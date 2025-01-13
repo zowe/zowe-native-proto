@@ -15,7 +15,7 @@ create your own `config.local.json` adjacent to `config.default.json` with somet
 
 ## Build Tool
 
-`cd tools/build && npx tsc`
+`cd tools/build && npm install && npx tsc`
 
 ## Deploy & Build
 
