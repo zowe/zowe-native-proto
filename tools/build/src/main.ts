@@ -24,8 +24,9 @@ try {
   privateKey = readFileSync(config.privateKey);
 } catch (e) {}
 
-const localDeployDir = `./../../../lib`;        // from here
+const localDeployDir = `./../../../native`;        // from here
 const deployDirectory = config.deployDirectory; // to here
+const cDeployDirectory = config.deployDirectory + '/c'; // to here
 
 const args = process.argv.slice(2);
 
@@ -212,7 +213,7 @@ async function getListings(connection: Client) {
   }
 
   const resp = (
-    await runCommandInShell(connection, `cd ${deployDirectory}\nls *.lst`)
+    await runCommandInShell(connection, `cd ${cDeployDirectory}\nls *.lst`)
   )
     .trim()
     .split(`\n`);
@@ -225,7 +226,7 @@ async function getListings(connection: Client) {
 async function getDumps(connection: Client) {
 
   const resp = (
-    await runCommandInShell(connection, `cd ${deployDirectory}\nls CEEDUMP.*`)
+    await runCommandInShell(connection, `cd ${cDeployDirectory}\nls CEEDUMP.*`)
   )
     .trim()
     .split(`\n`);
@@ -346,7 +347,7 @@ async function build(connection: Client) {
   console.log(`Building ...`);
   const resp = await runCommandInShell(
     connection,
-    `cd ${deployDirectory} && make\n`
+    `cd ${cDeployDirectory} && make\n`
   );
   console.log(resp);
   console.log(`Build complete!`);
@@ -356,7 +357,7 @@ async function clean(connection: Client) {
   console.log(`Cleaning dir ...`);
   const resp = await runCommandInShell(
     connection,
-    `cd ${deployDirectory} && make clean\n`
+    `cd ${cDeployDirectory} && make clean\n`
   );
   console.log(resp);
   console.log(`Clean complete`);
