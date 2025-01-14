@@ -278,10 +278,63 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &list)
 #endif
 
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=format-work-area-table
+typedef struct
+{
+  int total_size;
+  int min_size;
+  int used_size;
+  short number_feilds;
+} ZDS_CSI_HEADER;
+
+typedef struct
+{
+  char modid[2];
+  unsigned char rsn;
+  unsigned char rc;
+} ZDS_CSI_ERROR_INFO;
+
+typedef struct
+{
+  unsigned char flag;
+#define CSINTICF 0x80
+#define CSINOENT 0x40
+#define CSINTCMP 0x20
+#define CSICERR  0x10
+#define CSICERRP 0x08
+  unsigned char type;
+#define CATALOG_TYPE 0xF0
+  ZDS_CSI_ERROR_INFO error_info;
+} ZDS_CSI_CATALOG;
+
 // typedef struct
 // {
 
-// }
+// } ZDS_FIELD;
+
+
+typedef struct
+{
+  unsigned char flag;
+#define CSIPMENT 0x80
+#define CSIENTER 0x40
+#define CSIEDATA 0x20
+  unsigned char type;
+#define NON_VSAM_DATA_SET            'A'
+#define GENERATION_DATA_GROUP        'B'
+#define CLUSTER                      'C'
+#define DATA_COMPONENT               'D'
+#define ALTERNATE_INDEX              'G'
+#define GENERATION_DATA_SET          'H'
+#define INDEX_COMPONENT              'I'
+#define ATL_LIBRARY_ENTRY            'L'
+#define PATH                         'R'
+#define USER_CATALOG_CONNECTOR_ENTRY 'U'
+#define ATL_VOLUME_ENTRY             'W'
+#define ALIAS                        'X'
+  char name[44];
+
+  ZDS_CSI_ERROR_INFO error_info; // if CSIENTER=1
+} ZDS_CSI_ENTRY;
 
 typedef struct
 {
@@ -334,6 +387,8 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
   memset(&selection_criteria->csicldi, ' ', sizeof(selection_criteria->csicldi));
   memset(&selection_criteria->csiresum, ' ', sizeof(selection_criteria->csiresum));
   memset(&selection_criteria->csis1cat, ' ', sizeof(selection_criteria->csis1cat));
+  memset(&selection_criteria->csioptns, 'F', sizeof(selection_criteria->csioptns)); // 4 byte long output data fields
+  memset(selection_criteria->csidtyps, ' ', sizeof(selection_criteria->csidtyps));
   memset(selection_criteria->csidtyps, ' ', sizeof(selection_criteria->csidtyps));
   memset(selection_criteria->csidtyps, ' ', sizeof(selection_criteria->csidtyps));
 
