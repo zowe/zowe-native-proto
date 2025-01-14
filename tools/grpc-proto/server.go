@@ -22,7 +22,6 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
 	"log"
 	"net"
 
@@ -32,7 +31,8 @@ import (
 )
 
 var (
-	port = flag.Int("port", 50051, "The server port")
+	// port = flag.Int("port", 50051, "The server port")
+	socket = flag.String("socket", "/tmp/zowe-native-proto.sock", "Path to socket file")
 )
 
 // server is used to implement helloworld.GreeterServer.
@@ -48,7 +48,8 @@ func (s *server) SayHello(_ context.Context, in *pb.HelloRequest) (*pb.HelloRepl
 
 func main() {
 	flag.Parse()
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
+	// lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
+	lis, err := net.Listen("unix", *socket)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}

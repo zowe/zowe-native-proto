@@ -8,7 +8,7 @@
 ## Client
 
 * `cd tools/grpc-proto && npm install` (once)
-* `ssh -L 3000:localhost:50051 ibmuser@<zosHost>`
+* `ssh -L 3000:/tmp/zowe-native-proto.sock ibmuser@<zosHost>`
 * `npx tsx client.ts zowe --target localhost:3000`
 
 ## Alternatives
