@@ -1,5 +1,6 @@
 listings
 dumps
 artifacts
+node_modules
 zowe.config.json
 zowe.schema.json
