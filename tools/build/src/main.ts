@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync } from "fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync } from "fs";
 import * as readline from "readline/promises";
 import { resolve } from "path";
 import { Client, SFTPWrapper } from "ssh2";
@@ -24,9 +24,9 @@ try {
   privateKey = readFileSync(config.privateKey);
 } catch (e) {}
 
-const localDeployDir = `./../../../native`;        // from here
+const localDeployDir = `./../../../native`; // from here
 const deployDirectory = config.deployDirectory; // to here
-const cDeployDirectory = config.deployDirectory + '/c'; // to here
+const cDeployDirectory = config.deployDirectory + "/c"; // to here
 
 const args = process.argv.slice(2);
 
@@ -64,7 +64,9 @@ connection.on(`ready`, async () => {
       await build(connection);
       break;
     default:
-      console.log(`Unsupported command`);
+      console.log(
+        `Unsupported command\nUsage init|deploy|deploy-build [<file1>,<file2>,...|dir]`
+      );
       break;
   }
 
@@ -111,8 +113,46 @@ function getAllServerFiles() {
 }
 
 function getServerFiles(dir = ``) {
+  let argsFound = false;
+  const fileList: string[] = [];
+
   if (args[1]) {
-    return [...args.slice(1)];
+    argsFound = true;
+
+    args.forEach((arg, index) => {
+      if (0 === index) {
+        // do nothing
+      } else {
+        let stats;
+        try {
+          stats = statSync(resolve(__dirname, `${localDeployDir}/${arg}`));
+        } catch (e) {
+          console.log(`Error: input '${arg}' is not found`);
+          process.exit(1);
+        }
+
+        if (stats.isDirectory()) {
+          const files = readdirSync(
+            resolve(__dirname, `${localDeployDir}/${arg}`),
+            {
+              withFileTypes: true,
+            }
+          );
+          files.forEach((entry) => {
+            if (!entry.isDirectory()) {
+              fileList.push(`${arg}/${entry.name}`)
+            }
+          });
+        } else {
+          fileList.push(arg);
+        }
+      }
+    });
+
+  }
+
+  if (argsFound) {
+    return [...fileList];
   }
 
   const filesList: string[] = [];
@@ -205,11 +245,10 @@ async function init(connection: Client) {
 }
 
 async function getListings(connection: Client) {
-
   if (args[1]) {
     await convert(connection, `IBM-1047`, `utf8`, [...args.slice(1)]);
     await retrieve(connection, [...args.slice(1)], `listings`);
-    return
+    return;
   }
 
   const resp = (
@@ -222,9 +261,7 @@ async function getListings(connection: Client) {
   await retrieve(connection, resp, `listings`);
 }
 
-
 async function getDumps(connection: Client) {
-
   const resp = (
     await runCommandInShell(connection, `cd ${cDeployDirectory}\nls CEEDUMP.*`)
   )
@@ -258,7 +295,11 @@ async function runCommandInShell(connection: Client, command: string) {
   });
 }
 
-async function retrieve(connection: Client, files: string[], targetDir: string) {
+async function retrieve(
+  connection: Client,
+  files: string[],
+  targetDir: string
+) {
   return new Promise<void>((finish) => {
     console.log(`Retrieving files...`);
 
