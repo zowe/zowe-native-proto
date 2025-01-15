@@ -27,6 +27,7 @@ try {
 const localDeployDir = `./../../../native`; // from here
 const deployDirectory = config.deployDirectory; // to here
 const cDeployDirectory = config.deployDirectory + "/c"; // to here
+const goDeployDirectory = config.deployDirectory + "/golang"; // to here
 
 const args = process.argv.slice(2);
 
@@ -59,6 +60,9 @@ connection.on(`ready`, async () => {
       break;
     case `clean`:
       await clean(connection);
+      break;
+    case `bin`:
+      await bin(connection)
       break;
     case `build`:
       await build(connection);
@@ -372,6 +376,56 @@ async function convert(
 
       stream.on(`close`, () => {
         console.log(`Convert complete!`);
+        finish();
+      });
+      stream.on(`data`, (part: Buffer) => {
+        console.log(part.toString());
+      });
+      stream.stderr.on(`data`, (data: Buffer) => {
+        console.log(data.toString());
+      });
+    });
+  });
+}
+
+
+async function bin(connection: Client) {
+  return new Promise<void>((finish) => {
+
+    connection.shell(false, (err, stream) => {
+      if (err) {
+        console.log(`Error: runCommand connection.exec error ${err}`);
+        throw err;
+      }
+
+      // const buffer = Buffer.from([0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x15]);
+      // const greeting = "Hello";
+      const buffer = Buffer.from([0x01, 0x02, 0x03, 0x04, 0x05]); // 'Hello' in hexadecimal
+      // const bufferEncoded = Buffer.from(`12345`).toString(`base64`)
+      const bufferEncoded = buffer.toString(`base64`)
+
+      // Print the binary data as a string of hexadecimal values
+      // console.log(buffer.toString("hex"));
+      // console.log(buffer.toString("utf-8"));
+
+      // Print the binary data as a string of UTF-8 characters
+      // const enc = Buffer.from(greeting).toString(`base64`)
+      // console.log(enc.toString(`hex`))
+      stream.write(`cd ${goDeployDirectory}\n`, `ascii`);
+      stream.write(`./ping\n`, `ascii`);
+      stream.write(bufferEncoded, `ascii`);
+      stream.end(); // ``, `ascii`);
+
+      // stream.write(`pwd\n`, "ascii");
+      // stream.write(`cd ${deployDirectory}\n`);
+      // for (let i = 0; i < dirs.length; i++) {
+      //   console.log(`Creating ${dirs[i]}...`);
+      //   stream.write(`mkdir -p ${dirs[i]}\n`);
+      // }
+      // stream.end(`exit\n`);
+
+      stream.on(`close`, () => {
+        console.log(`Directories createed !`);
         finish();
       });
       stream.on(`data`, (part: Buffer) => {
