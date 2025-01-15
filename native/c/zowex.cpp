@@ -214,7 +214,7 @@ int handle_job_list(ZCLIResult result)
 
   for (vector<ZJob>::iterator it = jobs.begin(); it != jobs.end(); it++)
   {
-      cout << it->jobid << " " << left << setw(10) << it->retcode << " " << it->jobname << " " << it->status << endl;
+    cout << it->jobid << " " << left << setw(10) << it->retcode << " " << it->jobname << " " << it->status << endl;
   }
 
   return 0;
@@ -238,7 +238,7 @@ int handle_job_list_files(ZCLIResult result)
 
   for (vector<ZJobDD>::iterator it = job_dds.begin(); it != job_dds.end(); ++it)
   {
-      cout << left << setw(9) << it->ddn << " " << it->dsn << " " << setw(4) << it->key << " " << it->stepname << " " << it->procstep << endl;
+    cout << left << setw(9) << it->ddn << " " << it->dsn << " " << setw(4) << it->key << " " << it->stepname << " " << it->procstep << endl;
   }
 
   return 0;
@@ -284,8 +284,10 @@ int handle_job_submit(ZCLIResult result)
   }
 
   string only_jobid(result.get_option("--only-jobid").get_value());
-  if ("true" == only_jobid) cout << jobid << endl;
-  else cout << "Submitted " << dsn << ", " << jobid << endl;
+  if ("true" == only_jobid)
+    cout << jobid << endl;
+  else
+    cout << "Submitted " << dsn << ", " << jobid << endl;
 
   return 0;
 }
@@ -310,62 +312,61 @@ int handle_job_delete(ZCLIResult result)
   return 0;
 }
 
-
 int handle_console_issue(ZCLIResult result)
 {
-    int rc = 0;
-    ZCN zcn = {0};
+  int rc = 0;
+  ZCN zcn = {0};
 
-    string console_name(result.get_option("--console-name").get_value());
-    string command(result.get_positional("command").get_value());
+  string console_name(result.get_option("--console-name").get_value());
+  string command(result.get_positional("command").get_value());
 
-    rc = zcn_activate(&zcn, string(console_name));
-    if (0 != rc)
-    {
-      cout << "Error: could not activate console: '" << console_name << "' rc: '" << rc << "'" << endl;
-      cout << "  Details: " << zcn.diag.e_msg << endl;
-      return -1;
-    }
+  rc = zcn_activate(&zcn, string(console_name));
+  if (0 != rc)
+  {
+    cout << "Error: could not activate console: '" << console_name << "' rc: '" << rc << "'" << endl;
+    cout << "  Details: " << zcn.diag.e_msg << endl;
+    return -1;
+  }
 
-    printf("%.8s", zcn.console_name);
+  printf("%.8s", zcn.console_name);
 
-    rc = zcn_put(&zcn, command);
-    if (0 != rc)
-    {
-      cout << "Error: could not write to console: '" << console_name << "' rc: '" << rc << "'" << endl;
-      cout << "  Details: " << zcn.diag.e_msg << endl;
-      return -1;
-    }
+  rc = zcn_put(&zcn, command);
+  if (0 != rc)
+  {
+    cout << "Error: could not write to console: '" << console_name << "' rc: '" << rc << "'" << endl;
+    cout << "  Details: " << zcn.diag.e_msg << endl;
+    return -1;
+  }
 
-    string response = "";
-    rc = zcn_get(&zcn, response);
-    if (0 != rc)
-    {
-      cout << "Error: could not get from console: '" << console_name << "' rc: '" << rc << "'" << endl;
-      cout << "  Details: " << zcn.diag.e_msg << endl;
-      return -1;
-    }
+  string response = "";
+  rc = zcn_get(&zcn, response);
+  if (0 != rc)
+  {
+    cout << "Error: could not get from console: '" << console_name << "' rc: '" << rc << "'" << endl;
+    cout << "  Details: " << zcn.diag.e_msg << endl;
+    return -1;
+  }
 
-    cout << response << endl;
+  cout << response << endl;
 
-    // example issuing command which requires a reply
-    // e.g. zowexx console issue --console-name DKELOSKX "SL SET,ID=DK00"
-    // rc = zcn_get(&zcn, response);
-    // cout << response << endl;
-    // char reply[24] = {0};
-    // sprintf(reply, "R %.*s,CANCEL", zcn.reply_id_len, zcn.reply_id);
-    // rc = zcn_put(&zcn, reply.c_str());
-    // rc = zcn_get(&zcn, response);
-    // cout << response << endl;
+  // example issuing command which requires a reply
+  // e.g. zowexx console issue --console-name DKELOSKX "SL SET,ID=DK00"
+  // rc = zcn_get(&zcn, response);
+  // cout << response << endl;
+  // char reply[24] = {0};
+  // sprintf(reply, "R %.*s,CANCEL", zcn.reply_id_len, zcn.reply_id);
+  // rc = zcn_put(&zcn, reply.c_str());
+  // rc = zcn_get(&zcn, response);
+  // cout << response << endl;
 
-    rc = zcn_deactivate(&zcn);
-    if (0 != rc)
-    {
-      cout << "Error: could not deactivate console: '" << console_name << "' rc: '" << rc << "'" << endl;
-      cout << "  Details: " << zcn.diag.e_msg << endl;
-      return -1;
-    }
-    return rc;
+  rc = zcn_deactivate(&zcn);
+  if (0 != rc)
+  {
+    cout << "Error: could not deactivate console: '" << console_name << "' rc: '" << rc << "'" << endl;
+    cout << "  Details: " << zcn.diag.e_msg << endl;
+    return -1;
+  }
+  return rc;
 }
 
 int handle_data_set_create_dsn(ZCLIResult result)
@@ -378,7 +379,8 @@ int handle_data_set_create_dsn(ZCLIResult result)
   if (0 != rc)
   {
     cout << "Error: could not create data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-    cout << "  Details:\n" << response << endl;
+    cout << "  Details:\n"
+         << response << endl;
     return -1;
   }
 
@@ -391,9 +393,10 @@ int handle_data_set_view_dsn(ZCLIResult result)
 {
   int rc = 0;
   string dsn = result.get_positional("dsn").get_value();
+  auto encoding = result.get_option("encoding");
   ZDS zds = {0};
   string response;
-  rc = zds_read_from_dsn(&zds, dsn, response);
+  rc = zds_read_from_dsn(&zds, dsn, response, encoding.get_found() ? &encoding.get_value() : nullptr);
   if (0 != rc)
   {
     cout << "Error: could not read data set: '" << dsn << "' rc: '" << rc << "'" << endl;
@@ -427,7 +430,6 @@ int handle_data_set_list(ZCLIResult result)
 
   return rc;
 }
-
 
 int handle_data_set_list_members_dsn(ZCLIResult result)
 {
