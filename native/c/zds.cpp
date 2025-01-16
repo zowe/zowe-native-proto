@@ -69,7 +69,7 @@ int zds_read_from_dd(ZDS *zds, string ddname, string &response)
   return 0;
 }
 
-int zds_read_from_dsn(ZDS *zds, string dsn, string &response)
+int zds_read_from_dsn(ZDS *zds, string dsn, string &response, string *encoding)
 {
   dsn = "//'" + dsn + "'";
 
@@ -333,6 +333,8 @@ typedef struct
 #define ATL_LIBRARY_ENTRY 'L'
 #define PATH 'R'
 #define USER_CATALOG_CONNECTOR_ENTRY 'U'
+#define ATL_VOLUME_ENTRY 'W'
+#define ALIAS 'X'
 #define ATL_VOLUME_ENTRY 'W'
 #define ALIAS 'X'
   char name[44];
@@ -615,10 +617,8 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
                 entry.dsorg = DSORG_UNKNWON;
                 entry.volser = VOLSER_UNKNOWN;
               }
-
             }
           }
-
         }
       }
 
