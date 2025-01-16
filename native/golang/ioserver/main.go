@@ -27,6 +27,7 @@ func main() {
 	commandHandlers := map[string]CommandHandler{
 		"readDataset": HandleReadDatasetRequest,
 		"listDataset": HandleListDatasetRequest,
+		"listUss":     HandleListUssRequest,
 	}
 
 	for {

@@ -15,7 +15,7 @@ type ListDatasetRequest struct {
 
 // command: "listUss"
 type ListUssRequest struct {
-	Dir string `json:"fspath"`
+	Path string `json:"fspath"`
 	ListOptions
 }
 
@@ -58,8 +58,16 @@ type Dataset struct {
 	Dsorg string `json:"dsorg"`
 }
 
-// command: "listDataset"
 type ListDatasetResponse struct {
 	Items        []Dataset `json:"items"`
+	ReturnedRows int       `json:"returnedRows"`
+}
+
+type UssItem struct {
+	Name string `json:"name"`
+}
+
+type ListUssResponse struct {
+	Items        []UssItem `json:"items"`
 	ReturnedRows int       `json:"returnedRows"`
 }
