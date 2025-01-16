@@ -17,6 +17,7 @@
 #include "zut.hpp"
 #include "zutm.h"
 #include "zutm31.h"
+#include <iconv.h>
 #include <ios>
 #include "zdyn.h"
 
@@ -35,13 +36,12 @@ int zut_test()
  This example dynamically deallocates a data set.
  */
 
- __dyn_t ip;
+  __dyn_t ip;
 
- dyninit(&ip);
- ip.__dsname = "dkelosky.temp.test5";
+  dyninit(&ip);
+  ip.__dsname = "dkelosky.temp.test5";
 
- rc = dynfree(&ip);
-
+  rc = dynfree(&ip);
 
   // cout << "resp is:\n" << resp << endl;
   // printf("code is x'%x'\n", code);
@@ -51,9 +51,9 @@ int zut_test()
 
 void zut_uppercase_pad_truncate(string source, char *target, int len)
 {
-  memset(target, ' ', len); // pad with spaces
+  memset(target, ' ', len);                                           // pad with spaces
   transform(source.begin(), source.end(), source.begin(), ::toupper); // upper case
-  int length = source.size() > len ? len : source.size(); // truncate
+  int length = source.size() > len ? len : source.size();             // truncate
   strncpy(target, source.c_str(), length);
 }
 
@@ -84,12 +84,15 @@ int zut_get_current_user(string &struser)
   char user[9] = {0};
 
   rc = ZUTMGUSR(user);
-  if (0 != rc) return rc;
+  if (0 != rc)
+    return rc;
 
-  for (int i = sizeof(user) - 1; i >=0; i--)
+  for (int i = sizeof(user) - 1; i >= 0; i--)
   {
-    if (user[i] == ' ' || user[i] == 0x00) user[i] = 0x00;
-    else break;
+    if (user[i] == ' ' || user[i] == 0x00)
+      user[i] = 0x00;
+    else
+      break;
   }
 
   struser = string(user);
@@ -165,24 +168,24 @@ void zut_dump_storage(string title, const void *data, size_t size)
   cout << " | ";
   for (int y = 0; y < remainder; y++)
   {
-      unsigned char p = isprint(ptr[y]) ? ptr[y] : unknown;
-      cout << setw(1) << setfill(' ') << p;
+    unsigned char p = isprint(ptr[y]) ? ptr[y] : unknown;
+    cout << setw(1) << setfill(' ') << p;
   }
   memset(buf, 0x00, sizeof(buf));
   sprintf(buf, "%.*s", BYTES_PER_LINE - remainder, spaces);
-  cout  << buf << " | ";
+  cout << buf << " | ";
   for (int y = 0; y < remainder; y++)
   {
-      cout << hex << setw(2) << setfill('0') << static_cast<int>(ptr[y]);
+    cout << hex << setw(2) << setfill('0') << static_cast<int>(ptr[y]);
 
-      if ((y + 1) % 4 == 0)
-      {
-        std::cout << " ";
-      }
-      if ((y + 1) % 16 == 0)
-      {
-        std::cout << "    ";
-      }
+    if ((y + 1) % 4 == 0)
+    {
+      std::cout << " ";
+    }
+    if ((y + 1) % 16 == 0)
+    {
+      std::cout << "    ";
+    }
   }
   cout << endl;
   cout << "--- END ---" << endl;
@@ -190,83 +193,110 @@ void zut_dump_storage(string title, const void *data, size_t size)
   cout.flags(f);
 }
 
-
 /**
  * Get char value from hex byte, e.g. 0x0E -> 'E'
  */
 char zut_get_hex_char(int num)
 {
-    char val = '?';
+  char val = '?';
 
-    switch (num)
-    {
-    case 0:
-        /* code */
-        val = '0';
-        break;
-    case 1:
-        /* code */
-        val = '1';
-        break;
-    case 2:
-        /* code */
-        val = '2';
-        break;
-    case 3:
-        /* code */
-        val = '3';
-        break;
-    case 4:
-        /* code */
-        val = '4';
-        break;
-    case 5:
-        /* code */
-        val = '5';
-        break;
-    case 6:
-        /* code */
-        val = '6';
-        break;
-    case 7:
-        /* code */
-        val = '7';
-        break;
-    case 8:
-        /* code */
-        val = '8';
-        break;
-    case 9:
-        /* code */
-        val = '9';
-        break;
-    case 10:
-        /* code */
-        val = 'A';
-        break;
-    case 11:
-        /* code */
-        val = 'B';
-        break;
-    case 12:
-        /* code */
-        val = 'C';
-        break;
-    case 13:
-        /* code */
-        val = 'D';
-        break;
-    case 14:
-        /* code */
-        val = 'E';
-        break;
-    case 15:
-        /* code */
-        val = 'F';
-        break;
-    default:
-        break;
-    }
+  switch (num)
+  {
+  case 0:
+    /* code */
+    val = '0';
+    break;
+  case 1:
+    /* code */
+    val = '1';
+    break;
+  case 2:
+    /* code */
+    val = '2';
+    break;
+  case 3:
+    /* code */
+    val = '3';
+    break;
+  case 4:
+    /* code */
+    val = '4';
+    break;
+  case 5:
+    /* code */
+    val = '5';
+    break;
+  case 6:
+    /* code */
+    val = '6';
+    break;
+  case 7:
+    /* code */
+    val = '7';
+    break;
+  case 8:
+    /* code */
+    val = '8';
+    break;
+  case 9:
+    /* code */
+    val = '9';
+    break;
+  case 10:
+    /* code */
+    val = 'A';
+    break;
+  case 11:
+    /* code */
+    val = 'B';
+    break;
+  case 12:
+    /* code */
+    val = 'C';
+    break;
+  case 13:
+    /* code */
+    val = 'D';
+    break;
+  case 14:
+    /* code */
+    val = 'E';
+    break;
+  case 15:
+    /* code */
+    val = 'F';
+    break;
+  default:
+    break;
+  }
 
-    return val;
+  return val;
+}
+
+char *zut_encode_alloc(char *rawData, const string &encoding, ZDIAG &diag, char **bufEnd)
+{
+  iconv_t cd = iconv_open(encoding.c_str(), "IBM-1047");
+  if (cd == (iconv_t)(-1))
+  {
+    diag.e_msg_len = sprintf(diag.e_msg, "Cannot open converter from %s to %s", "IBM-1047", encoding.c_str());
+    return NULL;
+  }
+
+  size_t input_size = strlen(rawData);
+  size_t max_output_size = input_size * 4;
+  size_t input_bytes_remaining = input_size;
+  size_t output_bytes_remaining = max_output_size;
+  char *outbuf = new char[output_bytes_remaining];
+  memset(outbuf, 0, output_bytes_remaining);
+  char *outptr = outbuf;
+  size_t rc = iconv(cd, &rawData, &input_bytes_remaining, &outptr, &output_bytes_remaining);
+  if (rc == -1)
+  {
+    diag.e_msg_len = sprintf(diag.e_msg, "Error when converting characters");
+    delete[] outbuf;
+    return NULL;
+  }
+  *bufEnd = outptr;
+  iconv_close(cd);
+  return outbuf;
 }

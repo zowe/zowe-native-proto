@@ -13,6 +13,7 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include "zcntype.h"
 
 int zut_bpxwdyn(std::string, unsigned int *, std::string &);
 int zut_test();
@@ -21,5 +22,6 @@ int zut_hello(std::string);
 char zut_get_hex_char(int);
 int zut_get_current_user(std::string &);
 void zut_uppercase_pad_truncate(std::string, char *, int);
+char *zut_encode_alloc(char *rawData, const std::string &encoding, ZDIAG &diag, char **bufEnd);
 
 #endif
