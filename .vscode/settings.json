@@ -54,5 +54,6 @@
     "typeinfo": "cpp",
     "variant": "cpp",
     "algorithm": "cpp"
-  }
+  },
+  "editor.formatOnSave": true
 }
