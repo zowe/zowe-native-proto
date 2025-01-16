@@ -1,7 +1,3 @@
-module ioserver/entry
+module ioserver
 
 go 1.23.4
-
-replace ioserver/ds => ./ds
-
-replace ioserver/messages => ./messages
