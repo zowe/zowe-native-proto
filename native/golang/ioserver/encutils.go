@@ -6,10 +6,10 @@ import (
 	"strings"
 )
 
-func collectContentsAsBytes(input string, isEncoded bool) []byte {
+func collectContentsAsBytes(input string, isByteString bool) []byte {
 	var data []byte
 
-	if isEncoded {
+	if isByteString {
 		data_split := strings.Split(string(input), " ")
 		for _, b := range data_split[:len(data_split)-1] {
 			byteNum, err := strconv.ParseUint(b, 16, 8)
