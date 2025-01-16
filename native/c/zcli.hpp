@@ -78,11 +78,13 @@ class
 {
 private:
   string value;
+  vector<string> aliases;
 
 public:
   ZCLIOption(string n) : ZCLIFlag(n) {}
   void help_line() { cerr << "  " << left << setw(ZCLI_MENU_WIDTH) << get_flag_name() << "   " << get_description() << endl; }
   void set_value(string v) { value = v; }
+  vector<string>& get_aliases() { return aliases; }
   string get_value() { return value; }
 };
 
@@ -366,7 +368,8 @@ ZCLIOption &ZCLIOptionProvider::get_option(string option_name)
 {
   for (vector<ZCLIOption>::iterator it = options.begin(); it != options.end(); it++)
   {
-    if (option_name == it->get_flag_name())
+    auto& aliases = it->get_aliases();
+    if (option_name == it->get_flag_name() || std::find(aliases.begin(), aliases.end(), option_name.substr(2)) != it->get_aliases().end())
       return *it;
   }
   ZCLIOption *not_found = new ZCLIOption("not found");
