@@ -300,3 +300,17 @@ char *zut_encode_alloc(char *rawData, const string &encoding, ZDIAG &diag, char 
   iconv_close(cd);
   return outbuf;
 }
+
+string zut_format_as_csv(const initializer_list<string>& data) {
+  string encoded{};
+  int i{0};
+  for (const string* s = data.begin(); s != data.end(); s++) {
+    encoded += *s;
+    if (i < data.size() - 1) {
+      encoded += ",";
+    }
+    i++;
+  }
+
+  return encoded;
+}
