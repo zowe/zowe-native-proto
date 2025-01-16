@@ -48,14 +48,17 @@ func main() {
 			case "readDataset":
 				var dsRequest ReadDatasetRequest
 				err := json.Unmarshal(data, &dsRequest)
-				if err != nil || dsRequest.Encoding == "" || dsRequest.Dataset == "" {
-					log.Println("Error decoding ReadDatasetRequest:", err)
+				if err != nil || (dsRequest.Encoding == "" && dsRequest.Dataset == "") {
+					// log.Println("Error decoding ReadDatasetRequest:", err)
 					continue
 				}
-				log.Println("ReadDatasetRequest received:", dsRequest.Dataset, dsRequest.Encoding)
-				// TODO: test invoking backend with desired encoding and dataset
-				out, err := exec.Command("zowex", "data-set", "view", dsRequest.Dataset, "--encoding", dsRequest.Encoding).Output()
-				fmt.Println(out)
+				// log.Println("ReadDatasetRequest received:", dsRequest.Dataset, dsRequest.Encoding)
+				args := []string{"./../c/zowex", "data-set", "view", dsRequest.Dataset}
+				if len(dsRequest.Encoding) != 0 {
+					args = append(args, "--encoding", dsRequest.Encoding)
+				}
+				out, err := exec.Command(args[0], args[1:]...).Output()
+				fmt.Println(string(out))
 			}
 		}
 	}
