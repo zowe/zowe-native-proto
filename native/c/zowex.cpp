@@ -19,6 +19,7 @@
 #include "zcli.hpp"
 #include "zjb.hpp"
 #include "zds.hpp"
+#include "zusf.hpp"
 
 using namespace std;
 
@@ -39,6 +40,15 @@ int handle_data_set_delete_dsn(ZCLIResult);
 
 int handle_test_command(ZCLIResult);
 int handle_test_bpxwdyn(ZCLIResult);
+
+int handle_uss_create_file(ZCLIResult);
+// int handle_uss_create_dir(ZCLIResult);
+// int handle_uss_list(ZCLIResult);
+// int handle_uss_view(ZCLIResult);
+// int handle_uss_write(ZCLIResult);
+// int handle_uss_upload_dir(ZCLIResult);
+// int handle_uss_delete_file(ZCLIResult);
+// int handle_uss_delete_dir(ZCLIResult);
 
 int main(int argc, char *argv[])
 {
@@ -190,11 +200,34 @@ int main(int argc, char *argv[])
   console_issue.get_positionals().push_back(console_command);
   console_group.get_verbs().push_back(console_issue);
 
+  //
+  // uss group
+  //
+  ZCLIGroup uss_group("uss");
+  uss_group.set_description("z/OS USS operations");
+
+  // uss verbs
+  ZCLIVerb uss_create_file("create-file");
+  uss_create_file.set_description("create a USS file");
+  uss_create_file.set_zcli_verb_handler(handle_uss_create_file);
+  ZCLIOption uss_file_mode("mode");
+  uss_file_mode.set_required(false);
+  uss_file_mode.set_found("644");
+  uss_file_mode.set_description("file permissions");
+  uss_create_file.get_options().push_back(uss_file_mode);
+  ZCLIPositional uss_file_name("file-name");
+  uss_file_name.set_required(true);
+  uss_file_name.set_description("file name");
+  uss_create_file.get_positionals().push_back(uss_file_name);
+  uss_group.get_verbs().push_back(uss_create_file);
+
+
   // add all groups to the CLI
   zcli.get_groups().push_back(test_group);
   zcli.get_groups().push_back(data_set_group);
   zcli.get_groups().push_back(console_group);
   zcli.get_groups().push_back(job_group);
+  zcli.get_groups().push_back(uss_group);
 
   // parse
   return zcli.parse(argc, argv);
@@ -546,6 +579,31 @@ int handle_test_bpxwdyn(ZCLIResult result)
   }
 
   cout << resp << endl;
+
+  return rc;
+}
+
+int handle_uss_create_file(ZCLIResult result)
+{
+  int rc = 0;
+  string uss_file = result.get_positional("file-name").get_value();
+  ZCLIOption &mode = result.get_option("--mode");
+
+  ZUSF zusf = {0};
+  string response;
+  string modeValue = mode.get_value();
+  rc = zusf_read_from_uss_file(&zusf, uss_file, response, modeValue);
+  if (0 != rc)
+  {
+    cout << "Error: could not create USS file: '" << uss_file << "' rc: '" << rc << "'" << endl;
+    cout << "  Details:\n"
+         << zusf.diag.e_msg << endl
+         << response << endl;
+    return -1;
+  }
+
+  cout << "USS file '" << uss_file << "'" << endl;
+  cout << response;
 
   return rc;
 }
