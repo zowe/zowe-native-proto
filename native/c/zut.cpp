@@ -35,12 +35,32 @@ int zut_test()
  This example dynamically deallocates a data set.
  */
 
- __dyn_t ip;
+  __dyn_t ip;
 
- dyninit(&ip);
- ip.__dsname = "dkelosky.temp.test5";
+  dyninit(&ip);
 
- rc = dynfree(&ip);
+  // string ddname = "????????"; // system generated DD name
+  // ip.__ddname = (char *)ddname.c_str();
+  // ip.__dsname = "DKELOSKY.JCL";
+  // ip.__recfm = _FB_;
+
+  // ip.__ddname = "minemine";
+  ip.__dsname = "DKELOSKY.JCL";
+  // ip.__dsname = "DKELOSKY.SRCHDSL.LIST";
+  // ip.__member = "iefbr14";
+  ip.__status = __DISP_SHR;
+  rc = dynalloc(&ip);
+  if (0 != rc)
+  {
+    cerr << "Error: dynalloc failed with " << rc << endl; // TODO(Kelosky): better error handling scheme
+    return -1;
+  }
+
+  printf("%x\n", ip.__dsorg );
+
+  cout << "dsorg is " << ip.__dsorg << endl;
+
+  rc = dynfree(&ip);
 
 
   // cout << "resp is:\n" << resp << endl;

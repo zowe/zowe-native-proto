@@ -413,16 +413,17 @@ int handle_data_set_list(ZCLIResult result)
   vector<ZDSEntry> entries;
 
   rc = zds_list_data_sets(&zds, dsn, entries);
-  if (0 != rc)
+  if (0 != rc )
+  // if (0 != rc && ZDS_RTNCD_NOT_FOUND != zds.diag.detail_rc)
   {
-    cout << "Error: could not read data set: '" << dsn << "' rc: '" << rc << "'" << endl;
+    cout << "Error: could not list data set: '" << dsn << "' rc: '" << rc << "'" << endl;
     cout << "  Details: " << zds.diag.e_msg << endl;
     return -1;
   }
 
   for (vector<ZDSEntry>::iterator it = entries.begin(); it != entries.end(); ++it)
   {
-    std::cout << left << setw(12) << it->name << endl;
+    std::cout << left << setw(44) << it->name << " " << it->volser << " " << it->dsorg << endl;
   }
 
   return rc;

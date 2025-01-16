@@ -13,8 +13,9 @@
 #include <stdint.h>
 #include "ztype.h"
 
-#define ZCN_RTNCD_SERVICE_FAILURE -2
-#define ZCN_RTNCD_NOT_AUTH -3
+// RTNCD_CODE_SUCCESS ztype.h         -1
+#define ZCN_RTNCD_SERVICE_FAILURE     -2
+#define ZCN_RTNCD_NOT_AUTH            -3
 #define ZCN_RTNCD_INSUFFICIENT_BUFFER -4
 
 #define ZCN_DEFAULT_BUFFER_SIZE 4096

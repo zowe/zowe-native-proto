@@ -11,9 +11,19 @@
 #define ZDYN_H
 
 #include <stdio.h>
-
 #if defined(__cplusplus) && (defined(__IBMCPP__) || defined(__IBMC__))
 #include <dynit.h>
+#else
+
+static int zdummy(...)
+{
+  return 0;
+}
+
+typedef int __dyn_t;
+#define dyninit(...) zdummy(__VA_ARGS__)
+#define dynfree(...) zdummy(__VA_ARGS__)
+#define dynalloc(...) zdummy(__VA_ARGS__)
 #endif
 
 #include "iefzb4d0.h"

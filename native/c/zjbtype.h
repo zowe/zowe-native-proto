@@ -13,14 +13,17 @@
 #include <stdint.h>
 #include "ztype.h"
 
-#define ZJB_RTNCD_SERVICE_FAILURE -2
-#define ZJB_RTNCD_MAX_JOBS_REACHED -3
+// RTNCD_CODE_SUCCESS ztype.h         -1
+#define ZJB_RTNCD_SERVICE_FAILURE     -2
+#define ZJB_RTNCD_MAX_JOBS_REACHED    -3
 #define ZJB_RTNCD_INSUFFICIENT_BUFFER -4
-#define ZJB_RTNCD_JOB_NOT_FOUND -5
+#define ZJB_RTNCD_JOB_NOT_FOUND       -5
+
+#define ZJB_RSNCD_MAX_JOBS_REACHED    -2
 
 #define ZJB_DEFAULT_BUFFER_SIZE 128000
-#define ZJB_DEFAULT_MAX_JOBS 100
-#define ZJB_DEFAULT_MAX_DDS 100
+#define ZJB_DEFAULT_MAX_JOBS    100
+#define ZJB_DEFAULT_MAX_DDS     100
 
 #if (defined(__IBMCPP__) || defined(__IBMC__))
 #pragma pack(packed)

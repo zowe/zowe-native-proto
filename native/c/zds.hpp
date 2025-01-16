@@ -26,6 +26,7 @@ struct ZDSEntry
 {
   std::string name;
   std::string dsorg;
+  std::string volser;
 };
 
 /**
