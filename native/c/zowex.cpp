@@ -76,6 +76,9 @@ int main(int argc, char *argv[])
   data_set_dsn.set_description("data set name, optionally with member specified");
   data_set_dsn.set_required(true);
 
+  ZCLIOption data_set_encoding("encoding");
+  data_set_encoding.set_description("return data set contents in given encoding");
+
   // data set verbs
   ZCLIVerb data_set_create("create");
   data_set_create.set_description("create data set using defaults: DSORG=PO, RECFM=FB, LRECL=80");
@@ -87,6 +90,7 @@ int main(int argc, char *argv[])
   data_set_view.set_description("view data set");
   data_set_view.set_zcli_verb_handler(handle_data_set_view_dsn);
   data_set_view.get_positionals().push_back(data_set_dsn);
+  data_set_view.get_options().push_back(data_set_encoding);
   data_set_group.get_verbs().push_back(data_set_view);
 
   ZCLIVerb data_set_list("list");
@@ -393,17 +397,30 @@ int handle_data_set_view_dsn(ZCLIResult result)
 {
   int rc = 0;
   string dsn = result.get_positional("dsn").get_value();
-  auto encoding = result.get_option("encoding");
+  ZCLIOption &encoding = result.get_option("--encoding");
   ZDS zds = {0};
   string response;
-  rc = zds_read_from_dsn(&zds, dsn, response, encoding.get_found() ? &encoding.get_value() : nullptr);
+  string encodingValue = encoding.get_value();
+  const bool hasEncoding = !encodingValue.empty();
+  rc = zds_read_from_dsn(&zds, dsn, response, hasEncoding ? &encodingValue : NULL);
   if (0 != rc)
   {
     cout << "Error: could not read data set: '" << dsn << "' rc: '" << rc << "'" << endl;
     cout << "  Details: " << zds.diag.e_msg << endl;
     return -1;
   }
-  cout << response;
+  if (hasEncoding)
+  {
+    for (char *p = (char *)response.data(); p < (response.data() + response.length()); p++)
+    {
+      printf("%02x ", (unsigned char)*p);
+    }
+    printf("\n");
+  }
+  else
+  {
+    cout << response;
+  }
 
   return rc;
 }

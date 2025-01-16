@@ -82,39 +82,28 @@ int zds_read_from_dsn(ZDS *zds, string dsn, string &response, string *encoding)
     return RTNCD_FAILURE;
   }
 
-  string line;
-  while (getline(in, line))
-  {
-    response += line;
-    response.push_back('\n');
-  }
+  in.seekg(0, ios::end);
+  size_t size = in.tellg();
+  in.seekg(0, ios::beg);
 
-  if (encoding)
-  {
-    iconv_t cd = iconv_open(encoding->c_str(), "IBM-1047");
-    if (cd == (iconv_t)(-1))
-    {
-      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Cannot open converter from %s to %s", "IBM-1047", encoding->c_str());
-      return RTNCD_FAILURE;
-    }
+  char *rawData = new char[size];
+  in.read(rawData, size);
+  in.seekg(0, ios::beg);
 
-    size_t inleft = response.length();
-    size_t outleft = response.length() * 4;
-    char *inptr = (char *)response.c_str();
-    char *outptr = new char[outleft];
-    size_t rc = iconv(cd, &inptr, &inleft, &outptr, &outleft);
-    if (rc == -1)
-    {
-      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Error when converting characters");
-      delete[] outptr;
-      return RTNCD_FAILURE;
-    }
-    response.assign(outptr, outleft);
-    delete[] outptr;
-    iconv_close(cd);
-  }
-
+  response.assign(rawData);
   in.close();
+
+  char *bufEnd;
+  if (encoding /* && (*encoding != "IBM-1047" && *encoding != "01047") */)
+  {
+    char *outBuf = zut_encode_alloc(rawData, *encoding, zds->diag, &bufEnd);
+    if (outBuf)
+    {
+      response.clear();
+      response.assign(outBuf, bufEnd - outBuf);
+      delete[] outBuf;
+    }
+  }
 
   return 0;
 }
