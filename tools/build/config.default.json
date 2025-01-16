@@ -1,6 +1,0 @@
-{
-    "host": "hostname",
-    "username": "$mfuser",
-    "privateKey": "/Users/$userid/.ssh/id_ed25519",
-    "deployDirectory": "/u/users/$mfuser/zowe-native-proto"
-}
