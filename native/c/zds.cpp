@@ -14,6 +14,8 @@
 #include <string>
 #include <iomanip>
 #include <algorithm>
+#include <iconv.h>
+#include <stdlib.h>
 #include "zds.hpp"
 #include "zdyn.h"
 #include "zdstype.h"
@@ -69,7 +71,7 @@ int zds_read_from_dd(ZDS *zds, string ddname, string &response)
   return 0;
 }
 
-int zds_read_from_dsn(ZDS *zds, string dsn, string &response)
+int zds_read_from_dsn(ZDS *zds, string dsn, string &response, string *encoding)
 {
   dsn = "//'" + dsn + "'";
 
@@ -80,14 +82,28 @@ int zds_read_from_dsn(ZDS *zds, string dsn, string &response)
     return RTNCD_FAILURE;
   }
 
-  string line;
-  while (getline(in, line))
-  {
-    response += line;
-    response.push_back('\n');
-  }
+  in.seekg(0, ios::end);
+  size_t size = in.tellg();
+  in.seekg(0, ios::beg);
 
+  char *rawData = new char[size];
+  in.read(rawData, size);
+  in.seekg(0, ios::beg);
+
+  response.assign(rawData);
   in.close();
+
+  char *bufEnd;
+  if (encoding /* && (*encoding != "IBM-1047" && *encoding != "01047") */)
+  {
+    char *outBuf = zut_encode_alloc(rawData, *encoding, zds->diag, &bufEnd);
+    if (outBuf)
+    {
+      response.clear();
+      response.assign(outBuf, bufEnd - outBuf);
+      delete[] outBuf;
+    }
+  }
 
   return 0;
 }
@@ -272,7 +288,6 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &list)
   return 0;
 }
 
-
 #if (defined(__IBMCPP__) || defined(__IBMC__))
 #pragma pack(packed)
 #endif
@@ -299,7 +314,7 @@ typedef struct
 #define CSINTICF 0x80
 #define CSINOENT 0x40
 #define CSINTCMP 0x20
-#define CSICERR  0x10
+#define CSICERR 0x10
 #define CSICERRP 0x08
   unsigned char type;
 #define CATALOG_TYPE 0xF0
@@ -311,7 +326,6 @@ typedef struct
 
 // } ZDS_FIELD;
 
-
 typedef struct
 {
   unsigned char flag;
@@ -319,18 +333,18 @@ typedef struct
 #define CSIENTER 0x40
 #define CSIEDATA 0x20
   unsigned char type;
-#define NON_VSAM_DATA_SET            'A'
-#define GENERATION_DATA_GROUP        'B'
-#define CLUSTER                      'C'
-#define DATA_COMPONENT               'D'
-#define ALTERNATE_INDEX              'G'
-#define GENERATION_DATA_SET          'H'
-#define INDEX_COMPONENT              'I'
-#define ATL_LIBRARY_ENTRY            'L'
-#define PATH                         'R'
+#define NON_VSAM_DATA_SET 'A'
+#define GENERATION_DATA_GROUP 'B'
+#define CLUSTER 'C'
+#define DATA_COMPONENT 'D'
+#define ALTERNATE_INDEX 'G'
+#define GENERATION_DATA_SET 'H'
+#define INDEX_COMPONENT 'I'
+#define ATL_LIBRARY_ENTRY 'L'
+#define PATH 'R'
 #define USER_CATALOG_CONNECTOR_ENTRY 'U'
-#define ATL_VOLUME_ENTRY             'W'
-#define ALIAS                        'X'
+#define ATL_VOLUME_ENTRY 'W'
+#define ALIAS 'X'
   char name[44];
 
   ZDS_CSI_ERROR_INFO error_info; // if CSIENTER=1
@@ -345,11 +359,9 @@ typedef struct
 
 } ZDS_CSI_WORK_AREA;
 
-
 #if (defined(__IBMCPP__) || defined(__IBMC__))
 #pragma pack(reset)
 #endif
-
 
 #define BUFF_SIZE 1024
 #define FIELD_LEN 8
@@ -363,9 +375,8 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
 
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=directory-catalog-field-names
   string fields[][FIELD_LEN] = {
-    {"VOLSER"},
-    {"NVSMATTR"}
-    };
+      {"VOLSER"},
+      {"NVSMATTR"}};
 
   int number_of_fields = sizeof(fields) / sizeof(fields[0]);
 
@@ -395,7 +406,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
   for (int i = 0; i < number_of_fields; i++)
   {
     memset(csi_fields, ' ', FIELD_LEN);
-    memcpy(csi_fields,  fields[i][0].c_str(), fields[i][0].size());
+    memcpy(csi_fields, fields[i][0].c_str(), fields[i][0].size());
     csi_fields += FIELD_LEN;
   }
 

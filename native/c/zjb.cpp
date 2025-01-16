@@ -48,7 +48,8 @@ int zjb_read_jobs_output_by_jobid_and_key(ZJB *zjb, string jobid, int key, strin
   string job_dsn;
 
   rc = zjb_get_job_dsn_by_jobid_and_key(zjb, jobid, key, job_dsn);
-  if (0 != rc) return rc;
+  if (0 != rc)
+    return rc;
 
   return zjb_read_job_content_by_dsn(zjb, job_dsn, response);
 }
@@ -60,7 +61,8 @@ int zjb_get_job_dsn_by_jobid_and_key(ZJB *zjb, string jobid, int key, string &jo
   vector<ZJobDD> list;
 
   rc = zjb_list_dds_by_jobid(zjb, jobid, list);
-  if (0 != rc) return rc;
+  if (0 != rc)
+    return rc;
 
   rc = RTNCD_FAILURE; // assume failure
 
@@ -99,10 +101,10 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, string jobdsn, string &response)
 
   // carve up storage to needed structs
   IAZBTOKP *PTR32 iazbtokp = (IAZBTOKP * PTR32) parms;
-  S99TUNIT_X *PTR32 s99tunit_x = (S99TUNIT_X * PTR32) (parms + sizeof(IAZBTOKP));
-  S99TUPL *PTR32 s99tupl = (S99TUPL * PTR32) (parms + sizeof(IAZBTOKP) + (sizeof(S99TUNIT_X) * NUM_TEXT_UNITS));
-  __S99parms *PTR32 s99parms = (__S99parms * PTR32) (parms + sizeof(IAZBTOKP) + (sizeof(S99TUNIT_X) * NUM_TEXT_UNITS) + (sizeof(S99TUPL) * NUM_TEXT_UNITS));
-  __S99rbx_t *PTR32 s99parmsx = (__S99rbx_t * PTR32) (parms + sizeof(IAZBTOKP) + (sizeof(S99TUNIT_X) * NUM_TEXT_UNITS) + (sizeof(S99TUPL) * NUM_TEXT_UNITS) + sizeof(__S99parms));
+  S99TUNIT_X *PTR32 s99tunit_x = (S99TUNIT_X * PTR32)(parms + sizeof(IAZBTOKP));
+  S99TUPL *PTR32 s99tupl = (S99TUPL * PTR32)(parms + sizeof(IAZBTOKP) + (sizeof(S99TUNIT_X) * NUM_TEXT_UNITS));
+  __S99parms *PTR32 s99parms = (__S99parms * PTR32)(parms + sizeof(IAZBTOKP) + (sizeof(S99TUNIT_X) * NUM_TEXT_UNITS) + (sizeof(S99TUPL) * NUM_TEXT_UNITS));
+  __S99rbx_t *PTR32 s99parmsx = (__S99rbx_t * PTR32)(parms + sizeof(IAZBTOKP) + (sizeof(S99TUNIT_X) * NUM_TEXT_UNITS) + (sizeof(S99TUPL) * NUM_TEXT_UNITS) + sizeof(__S99parms));
 
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=allocation-building-browse-token-dalbrtkn
   short int len = sizeof(iazbtokp->btokid);
@@ -257,7 +259,7 @@ int zjb_submit(ZJB *zjb, string data_set, string &jobId)
   int rc = 0;
   string content;
   ZDS zds = {0};
-  rc = zds_read_from_dsn(&zds, data_set, content);
+  rc = zds_read_from_dsn(&zds, data_set, content, NULL);
   if (rc != 0)
   {
     memcpy(&zjb->diag, &zds.diag, sizeof(ZDIAG));
@@ -280,7 +282,7 @@ int zjb_submit(ZJB *zjb, string data_set, string &jobId)
   ip.__sysoutname = "INTRDR  "; // https://www.ibm.com/docs/en/zos/3.1.0?topic=control-destination-internal-reader && https://www.ibm.com/docs/en/zos/3.1.0?topic=programming-internal-reader-facility
   ip.__lrecl = 80;
   ip.__blksize = 80;
-  ip.__sysout =  __DEF_CLASS;
+  ip.__sysout = __DEF_CLASS;
   ip.__recfm = _FB_;
 
   rc = dynalloc(&ip);
@@ -305,7 +307,8 @@ int zjb_submit(ZJB *zjb, string data_set, string &jobId)
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=iazsymbl-jes-system-symbols
   rc = ZJBSYMB(zjb, "SYS_LASTJOBID", cjobid);
 
-  if (0 != rc) return rc;
+  if (0 != rc)
+    return rc;
 
   jobId = string(cjobid);
 
@@ -328,13 +331,16 @@ int zjb_list_dds_by_jobid(ZJB *zjb, string jobid, vector<ZJobDD> &jobDDs)
   STATSEVB *PTR64 sysoutInfo = NULL;
   int entries = 0;
 
-  if (0 == zjb->buffer_size) zjb->buffer_size = ZJB_DEFAULT_BUFFER_SIZE;
-  if (0 == zjb->dds_max) zjb->dds_max = ZJB_DEFAULT_MAX_DDS;
+  if (0 == zjb->buffer_size)
+    zjb->buffer_size = ZJB_DEFAULT_BUFFER_SIZE;
+  if (0 == zjb->dds_max)
+    zjb->dds_max = ZJB_DEFAULT_MAX_DDS;
 
   zut_uppercase_pad_truncate(jobid, zjb->jobid, sizeof(zjb->jobid));
 
   rc = ZJBMLSDS(zjb, &sysoutInfo, &entries);
-  if (0 != rc) return rc;
+  if (0 != rc)
+    return rc;
 
   if (0 == entries)
   {
@@ -399,13 +405,16 @@ int zjb_list_by_owner(ZJB *zjb, string owner_name, vector<ZJob> &jobs)
     }
   }
 
-  if (0 == zjb->buffer_size) zjb->buffer_size = ZJB_DEFAULT_BUFFER_SIZE;
-  if (0 == zjb->jobs_max) zjb->jobs_max = ZJB_DEFAULT_MAX_JOBS;
+  if (0 == zjb->buffer_size)
+    zjb->buffer_size = ZJB_DEFAULT_BUFFER_SIZE;
+  if (0 == zjb->jobs_max)
+    zjb->jobs_max = ZJB_DEFAULT_MAX_JOBS;
 
   zut_uppercase_pad_truncate(owner_name, zjb->owner_name, sizeof(zjb->owner_name));
 
   rc = ZJBMLIST(zjb, &jobInfo, &entries);
-  if (0 != rc) return rc;
+  if (0 != rc)
+    return rc;
 
   STATJQTR *PTR64 jobInfoNext = jobInfo;
 
