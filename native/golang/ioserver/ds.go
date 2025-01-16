@@ -110,8 +110,12 @@ func HandleListDsMembersRequest(jsonData []byte) {
 	}
 
 	for _, item := range items {
+		mem := strings.TrimSpace(item)
+		if len(mem) == 0 {
+			continue
+		}
 		dsResponse.Items = append(dsResponse.Items, DsMember{
-			Name:  item,
+			Name: mem,
 		})
 	}
 	dsResponse.ReturnedRows = len(items)
