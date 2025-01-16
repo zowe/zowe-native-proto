@@ -13,7 +13,7 @@ type ReadDatasetRequest struct {
 
 type ReadUssRequest struct {
 	Encoding string `json:"encoding"`
-	File     string `json:"file"`
+	Path     string `json:"path"`
 }
 
 // Responses
