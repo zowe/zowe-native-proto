@@ -7,11 +7,11 @@ import (
 	"os"
 )
 
-func HandleListUssRequest(jsonData []byte) {
-	var listRequest ListUssRequest
+func HandleListFilesRequest(jsonData []byte) {
+	var listRequest ListFilesRequest
 	err := json.Unmarshal(jsonData, &listRequest)
 	if err != nil {
-		// log.Println("Error decoding ListDatasetsRequest:", err)
+		// log.Println("Error decoding ListFilesRequest:", err)
 		return
 	}
 
@@ -23,7 +23,7 @@ func HandleListUssRequest(jsonData []byte) {
 		return
 	}
 
-	ussResponse := ListUssResponse{
+	ussResponse := ListFilesResponse{
 		Items: []UssItem{},
 	}
 

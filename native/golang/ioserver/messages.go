@@ -1,29 +1,36 @@
 package main
 
-// Requests
+/* Requests */
 
 type CommandRequest struct {
 	Command string `json:"command"`
 }
 
-// command: "listDataset"
-type ListDatasetRequest struct {
+// command: "listDatasets"
+type ListDatasetsRequest struct {
 	Pattern string `json:"pattern"`
 	ListOptions
 	ListDatasetOptions
 }
 
-// command: "listUss"
-type ListUssRequest struct {
+// command: "listDsMembers"
+type ListDsMembersRequest struct {
+	Dataset string `json:"dataset"`
+	ListOptions
+	ListDatasetOptions
+}
+
+// command: "listFiles"
+type ListFilesRequest struct {
 	Path string `json:"fspath"`
 	ListOptions
 }
 
 // command: "listJobs"
 type ListJobsRequest struct {
-	Owner  string `json:"owner"`
-	Prefix string `json:"prefix"`
-	Status string `json:"status"`
+	Owner  string `json:"owner,omitempty"`
+	Prefix string `json:"prefix,omitempty"`
+	Status string `json:"status,omitempty"`
 	ListOptions
 }
 
@@ -33,13 +40,13 @@ type ReadDatasetRequest struct {
 	Dataset  string `json:"dataset"`
 }
 
-// command: "readUss"
-type ReadUssRequest struct {
+// command: "readFile"
+type ReadFileRequest struct {
 	Encoding string `json:"encoding,omitempty"`
 	Path     string `json:"path"`
 }
 
-// Responses
+/* Responses */
 
 type ReadDatasetResponse struct {
 	Encoding string `json:"encoding,omitempty"`
@@ -47,27 +54,27 @@ type ReadDatasetResponse struct {
 	Data     []byte `json:"data"`
 }
 
-type ReadUssResponse struct {
+type ReadFileResponse struct {
 	Encoding string `json:"encoding,omitempty"`
 	File     string `json:"file"`
 	Data     []byte `json:"data"`
 }
 
-type Dataset struct {
-	Name  string `json:"name"`
-	Dsorg string `json:"dsorg"`
-}
-
-type ListDatasetResponse struct {
+type ListDatasetsResponse struct {
 	Items        []Dataset `json:"items"`
 	ReturnedRows int       `json:"returnedRows"`
 }
 
-type UssItem struct {
-	Name string `json:"name"`
+type ListDsMembersResponse struct {
+	Items        []DsMember `json:"items"`
+	ReturnedRows int       	`json:"returnedRows"`
 }
 
-type ListUssResponse struct {
+type ListFilesResponse struct {
 	Items        []UssItem `json:"items"`
 	ReturnedRows int       `json:"returnedRows"`
+}
+
+type ListJobsResponse struct {
+	Items []Job `json:"items"`
 }
