@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 set -e
 
+echo "setting required env vars..."
+export _BPXK_AUTOCVT=ON
+export _CEE_RUNOPTS="$_CEE_RUNOPTS FILETAG(AUTOCVT,AUTOTAG) POSIX(ON)"
+export _TAG_REDIR_ERR=txt
+export _TAG_REDIR_IN=txt
+export _TAG_REDIR_OUT=txt
+
 user=$(whoami)
 data_set=$user.test.temp.jcl
 data_set_jcl="$data_set(iefbr14)"
