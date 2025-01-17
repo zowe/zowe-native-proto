@@ -33,20 +33,16 @@ func main() {
 		"listJobs":      HandleListJobsRequest,
 	}
 
-	for {
-		select {
-		case data := <-input:
-			var request CommandRequest
-			err := json.Unmarshal(data, &request)
-			if err != nil {
-				log.Println("Error parsing command request:", err)
-				continue
-			}
+	for data := range input {
+		var request CommandRequest
+		err := json.Unmarshal(data, &request)
+		if err != nil {
+			log.Println("Error parsing command request:", err)
+			continue
+		}
 
-			if handler, ok := commandHandlers[request.Command]; ok {
-				handler(data)
-			}
+		if handler, ok := commandHandlers[request.Command]; ok {
+			handler(data)
 		}
 	}
-
 }
