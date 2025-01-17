@@ -1,10 +1,12 @@
 {
   "name": "zowe-native-proto-sdk",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "lib/index.js",
   "scripts": {
+    "build": "tsc",
     "lint": "@biomejs/biome check --write src",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "watch": "tsc -w"
   },
   "keywords": [],
   "author": "",
