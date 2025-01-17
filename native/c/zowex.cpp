@@ -130,6 +130,10 @@ int main(int argc, char *argv[])
   ZCLIOption job_owner("owner");
   job_owner.set_description("filter by owner");
   job_list.get_options().push_back(job_owner);
+  ZCLIOption job_list_rfc("response-format-csv");
+  job_list_rfc.set_description("returns the response in CSV format");
+  job_list_rfc.get_aliases().push_back("--rfc");
+  job_list.get_options().push_back(job_list_rfc);
   job_group.get_verbs().push_back(job_list);
 
   ZCLIVerb job_list_files("list-files");
@@ -139,10 +143,6 @@ int main(int argc, char *argv[])
   job_jobid.set_required(true);
   job_jobid.set_description("valid jobid");
   job_list_files.get_positionals().push_back(job_jobid);
-  ZCLIOption job_list_rfc("response-format-csv");
-  job_list_rfc.set_description("returns the response in CSV format");
-  job_list_rfc.get_aliases().push_back("rfc");
-  job_list_files.get_options().push_back(job_list_rfc);
   job_group.get_verbs().push_back(job_list_files);
 
   ZCLIVerb job_view_file("view-file");
@@ -223,9 +223,17 @@ int handle_job_list(ZCLIResult result)
   const bool emit_csv = result.get_option("--response-format-csv").get_found();
   for (vector<ZJob>::iterator it = jobs.begin(); it != jobs.end(); it++)
   {
-    if (emit_csv) {
-      cout << zut_format_as_csv({ it->jobid, it->retcode, it->jobname, it->status }) << endl;
-    } else {
+    if (emit_csv)
+    {
+      vector<string> fields;
+      fields.push_back(it->jobid);
+      fields.push_back(it->retcode);
+      fields.push_back(it->jobname);
+      fields.push_back(it->status);
+      cout << zut_format_as_csv(fields) << endl;
+    }
+    else
+    {
       cout << it->jobid << " " << left << setw(10) << it->retcode << " " << it->jobname << " " << it->status << endl;
     }
   }

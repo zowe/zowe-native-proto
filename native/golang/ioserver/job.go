@@ -1,12 +1,14 @@
 package main
 
-import "encoding/json"
-import "fmt"
-import "os/exec"
-import "log"
-import "strings"
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"os/exec"
+	"strings"
+)
 
-func HandleListJobRequest(jsonData []byte) {
+func HandleListJobsRequest(jsonData []byte) {
 	var listRequest ListJobsRequest
 	err := json.Unmarshal(jsonData, &listRequest)
 	if err != nil {
@@ -14,7 +16,7 @@ func HandleListJobRequest(jsonData []byte) {
 		return
 	}
 
-	args := []string{"./zowex", "job", "list"}
+	args := []string{"./zowex", "job", "list", "--rfc", "1"}
 	if len(listRequest.Owner) != 0 {
 		args = append(args, "--owner", listRequest.Owner)
 	}
@@ -31,13 +33,16 @@ func HandleListJobRequest(jsonData []byte) {
 
 	items := strings.Split(string(out), "\n")
 
-	for _, item := range items {
-		vals := strings.Split(item, " ")
+	for _, row := range items {
+		vals := strings.Split(row, ",")
+		if len(vals) < 4 {
+			continue
+		}
 		jobsResponse.Items = append(jobsResponse.Items, Job{
-			Id: vals[0],
+			Id:      vals[0],
 			Retcode: vals[1],
-			Name: vals[2],
-			Status: vals[3],
+			Name:    strings.TrimSpace(vals[2]),
+			Status:  vals[3],
 		})
 	}
 
