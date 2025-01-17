@@ -32,6 +32,10 @@ echo "$testing view data set..."
 zowex data-set view $data_set_jcl
 printf "$passed\n"
 
+echo "$testing data set list..."
+zowex data-set list $data_set
+printf "$passed\n"
+
 echo "$testing data set list-members..."
 zowex data-set list-members $data_set
 printf "$passed\n"
