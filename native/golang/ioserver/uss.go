@@ -17,20 +17,21 @@ func HandleListFilesRequest(jsonData []byte) {
 
 	dirPath := listRequest.Path
 
-	files, err := os.ReadDir(dirPath)
+	entries, err := os.ReadDir(dirPath)
 	if err != nil {
 		log.Println("Error reading directory:", err)
 		return
 	}
 
 	ussResponse := ListFilesResponse{
-		Items: []UssItem{},
+		Items: make([]UssItem, len(entries)),
 	}
 
-	for _, file := range files {
-		ussResponse.Items = append(ussResponse.Items, UssItem{
-			Name: file.Name(),
-		})
+	for i, entry := range entries {
+		ussResponse.Items[i] = UssItem{
+			Name: entry.Name(),
+			IsDir: entry.IsDir(),
+		}
 	}
 
 	ussResponse.ReturnedRows = len(ussResponse.Items)

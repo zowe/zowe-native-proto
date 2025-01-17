@@ -27,23 +27,23 @@ func HandleListJobsRequest(jsonData []byte) {
 		return
 	}
 
+	jobs := strings.Split(string(out), "\n")
+
 	jobsResponse := ListJobsResponse{
-		Items: []Job{},
+		Items: make([]Job, len(jobs)),
 	}
 
-	items := strings.Split(string(out), "\n")
-
-	for _, row := range items {
-		vals := strings.Split(row, ",")
+	for i, job := range jobs {
+		vals := strings.Split(job, ",")
 		if len(vals) < 4 {
 			continue
 		}
-		jobsResponse.Items = append(jobsResponse.Items, Job{
+		jobsResponse.Items[i] = Job{
 			Id:      vals[0],
 			Retcode: vals[1],
 			Name:    strings.TrimSpace(vals[2]),
 			Status:  vals[3],
-		})
+		}
 	}
 
 	v, err := json.Marshal(jobsResponse)

@@ -61,20 +61,20 @@ func HandleListDatasetsRequest(jsonData []byte) {
 		return
 	}
 
-	items := strings.Split(string(out), "\n")
+	datasets := strings.Split(string(out), "\n")
 
 	dsResponse := ListDatasetsResponse{
-		Items: []Dataset{},
+		Items: make([]Dataset, len(datasets)),
 	}
 
-	for _, item := range items {
-		vals := strings.Split(item, "\t\t\t")
-		dsResponse.Items = append(dsResponse.Items, Dataset{
+	for i, ds := range datasets {
+		vals := strings.Split(ds, "\t\t\t")
+		dsResponse.Items[i] = Dataset{
 			Name:  vals[0],
 			Dsorg: vals[1],
-		})
+		}
 	}
-	dsResponse.ReturnedRows = len(items)
+	dsResponse.ReturnedRows = len(datasets)
 
 	v, err := json.Marshal(dsResponse)
 	if err != nil {
@@ -103,20 +103,20 @@ func HandleListDsMembersRequest(jsonData []byte) {
 		return
 	}
 
-	items := strings.Split(string(out), "\n")
+	members := strings.Split(string(out), "\n")
 
 	dsResponse := ListDsMembersResponse{
-		Items: []DsMember{},
+		Items: make([]DsMember, len(members)),
 	}
 
-	for _, item := range items {
-		mem := strings.TrimSpace(item)
-		if len(mem) == 0 {
+	for i, member := range members {
+		name := strings.TrimSpace(member)
+		if len(name) == 0 {
 			continue
 		}
-		dsResponse.Items = append(dsResponse.Items, DsMember{
-			Name: mem,
-		})
+		dsResponse.Items[i] = DsMember{
+			Name: name,
+		}
 		dsResponse.ReturnedRows++
 	}
 
