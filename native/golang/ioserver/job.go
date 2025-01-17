@@ -27,7 +27,7 @@ func HandleListJobsRequest(jsonData []byte) {
 		return
 	}
 
-	jobs := strings.Split(string(out), "\n")
+	jobs := strings.Split(strings.TrimSpace(string(out)), "\n")
 
 	jobsResponse := ListJobsResponse{
 		Items: make([]Job, len(jobs)),
