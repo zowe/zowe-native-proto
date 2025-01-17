@@ -456,7 +456,7 @@ int handle_data_set_list(ZCLIResult result)
   vector<ZDSEntry> entries;
 
   rc = zds_list_data_sets(&zds, dsn, entries);
-  if (0 != rc )
+  if (0 != rc)
   // if (0 != rc && ZDS_RTNCD_NOT_FOUND != zds.diag.detail_rc)
   {
     cout << "Error: could not list data set: '" << dsn << "' rc: '" << rc << "'" << endl;
@@ -465,15 +465,19 @@ int handle_data_set_list(ZCLIResult result)
   }
 
   vector<string> fields;
-  for (vector<ZDSEntry>::iterator it = entries.begin(); it != entries.end(); ++it) {
-    if (result.get_option("--response-format-csv").get_found()) {
+  for (vector<ZDSEntry>::iterator it = entries.begin(); it != entries.end(); ++it)
+  {
+    if (result.get_option("--response-format-csv").get_found())
+    {
       fields.push_back(it->name);
       fields.push_back(it->dsorg);
       fields.push_back(it->volser);
       std::cout << zut_format_as_csv(fields) << std::endl;
       fields.clear();
-    } else {
-        std::cout << left << setw(44) << it->name << " " << it->volser << " " << it->dsorg << endl;
+    }
+    else
+    {
+      std::cout << left << setw(44) << it->name << " " << it->volser << " " << it->dsorg << endl;
     }
   }
 
