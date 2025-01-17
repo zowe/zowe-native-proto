@@ -117,8 +117,8 @@ func HandleListDsMembersRequest(jsonData []byte) {
 		dsResponse.Items = append(dsResponse.Items, DsMember{
 			Name: mem,
 		})
+		dsResponse.ReturnedRows++
 	}
-	dsResponse.ReturnedRows = len(items)
 
 	v, err := json.Marshal(dsResponse)
 	if err != nil {
