@@ -104,7 +104,7 @@ func HandleListDsMembersRequest(jsonData []byte) {
 		return
 	}
 
-	members := strings.Split(string(out), "\n")
+	members := strings.Split(strings.TrimSpace(string(out)), "\n")
 
 	dsResponse := ListDsMembersResponse{
 		Items: make([]DsMember, len(members)),
