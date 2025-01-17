@@ -50,7 +50,7 @@ func HandleListDatasetsRequest(jsonData []byte) {
 		return
 	}
 
-	args := []string{"./zowex", "data-set", "list", listRequest.Pattern}
+	args := []string{"./zowex", "data-set", "list", listRequest.Pattern, "--rfc", "1"}
 	// if len(listRequest.Start) != 0 {
 	// 	args = append(args, "--start", listRequest.Start)
 	// }
@@ -61,7 +61,7 @@ func HandleListDatasetsRequest(jsonData []byte) {
 		return
 	}
 
-	datasets := strings.Split(string(out), "\n")
+	datasets := strings.Split(strings.TrimSpace(string(out)), "\n")
 
 	dsResponse := ListDatasetsResponse{
 		Items: make([]Dataset, len(datasets)),
@@ -70,8 +70,8 @@ func HandleListDatasetsRequest(jsonData []byte) {
 	for i, ds := range datasets {
 		vals := strings.Split(ds, ",")
 		dsResponse.Items[i] = Dataset{
-			Name:  vals[0],
-			Dsorg: vals[1],
+			Name:   strings.TrimSpace(vals[0]),
+			Dsorg:  vals[1],
 			Volser: vals[2],
 		}
 	}
