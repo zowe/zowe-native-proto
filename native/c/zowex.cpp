@@ -471,11 +471,11 @@ int handle_data_set_list(ZCLIResult result)
   }
   vector<ZDSEntry> entries;
 
+  const bool emit_csv = result.get_option("--response-format-csv").is_found();
   rc = zds_list_data_sets(&zds, dsn, entries);
   if (RTNCD_SUCCESS == rc)
   {
     vector<string> fields;
-    const bool emit_csv = result.get_option("--response-format-csv").is_found();
     for (vector<ZDSEntry>::iterator it = entries.begin(); it != entries.end(); ++it)
     {
       if (emit_csv)
@@ -506,7 +506,6 @@ int handle_data_set_list(ZCLIResult result)
       }
     }
     vector<string> fields;
-    const bool emit_csv = result.get_option("--response-format-csv").is_found();
     for (vector<ZDSEntry>::iterator it = entries.begin(); it != entries.end(); ++it)
     {
       if (emit_csv)
