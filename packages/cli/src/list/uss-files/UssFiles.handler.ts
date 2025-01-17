@@ -11,16 +11,16 @@
 
 import { IHandlerParameters } from "@zowe/imperative";
 import { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
-import { IListUssRequest, IListUssResponse, ZSshClient } from "zowe-native-proto-sdk";
+import { IListFilesRequest, IListFilesResponse, ZSshClient } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class ListUssFilesHandler extends SshBaseHandler {
-    public async processWithSession(params: IHandlerParameters, session: SshSession): Promise<IListUssResponse> {
+    public async processWithSession(params: IHandlerParameters, session: SshSession): Promise<IListFilesResponse> {
         // const directory = UssUtils.normalizeUnixPath(params.arguments.directory);
         const directory = params.arguments.directory;
         using client = await ZSshClient.create(session);
-        const request: IListUssRequest = { command: "listUss", fspath: directory };
-        const response = await client.request<IListUssResponse>(request);
+        const request: IListFilesRequest = { command: "listFiles", fspath: directory };
+        const response = await client.request<IListFilesResponse>(request);
         params.response.data.setMessage("Listed files in uss directory %s", directory);
         params.response.format.output({
             output: response.items,

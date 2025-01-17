@@ -56,10 +56,10 @@ export class ZSshClient implements Disposable {
     public async request<T extends IRpcResponse>(request: IRpcRequest, stream?: Writable): Promise<T> {
         await this.sshMutex?.promise;
         this.sshMutex = new DeferredPromise();
+        this.mResponse = "";
         this.mResponseStream = stream;
 
         return new Promise((resolve, reject) => {
-            this.mResponse = "";
             this.mSshStream!.stdin.write(JSON.stringify(request) + "\n");
             this.mSshStream!.stderr.on("data", this.onErrData.bind(this, reject));
             this.mSshStream!.stdout.on("data", this.onOutData.bind(this, (response: any) => resolve(JSON.parse(response))));
@@ -80,10 +80,7 @@ export class ZSshClient implements Disposable {
     private onErrData(reject: typeof Promise["reject"], chunk: Buffer) {
         const error = chunk.toString();
         console.error(error);
-        this.mSshStream!.stderr.removeAllListeners();
-        this.mSshStream!.stdout.removeAllListeners();
-        this.mResponseStream?.end();
-        this.sshMutex?.resolve();
+        this.requestEnd();
         reject(error);
     }
 
@@ -98,11 +95,15 @@ export class ZSshClient implements Disposable {
             this.mResponse += chunk;
         }
         if (endsWithNewLine) {
-            this.mSshStream!.stderr.removeAllListeners();
-            this.mSshStream!.stdout.removeAllListeners();
-            this.mResponseStream?.end();
-            this.sshMutex?.resolve();
+            this.requestEnd();
             resolve(this.mResponse);
         }
+    }
+
+    private requestEnd() {
+        this.mSshStream!.stderr.removeAllListeners();
+        this.mSshStream!.stdout.removeAllListeners();
+        this.mResponseStream?.end();
+        this.sshMutex?.resolve();
     }
 }

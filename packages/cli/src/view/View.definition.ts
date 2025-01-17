@@ -11,22 +11,16 @@
 
 import { ICommandDefinition } from "@zowe/imperative";
 import { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
-import { ListDataSetDefinition } from "./data-set/DataSet.definition";
-import { ListDataSetMembersDefinition } from "./data-set-members/DataSetMembers.definition";
-import { ListJobsDefinition } from "./jobs/Jobs.definition";
-import { ListUssFilesDefinition } from "./uss-files/UssFiles.definition";
+import { ViewDataSetDefinition } from "./data-set/DataSet.definition";
 
-const ListDefinition: ICommandDefinition = {
-    name: "list",
-    aliases: ["ls"],
-    summary: "List data sets, data set members, uss files, jobs, spool files",
-    description: "List data sets, data set members, uss files, jobs, spool files",
+const ViewDefinition: ICommandDefinition = {
+    name: "view",
+    aliases: ["vw"],
+    summary: "View data set, job output, and USS content",
+    description: "View data sets, job output, and USS content",
     type: "group",
     children: [
-        ListDataSetDefinition,
-        ListDataSetMembersDefinition,
-        ListJobsDefinition,
-        ListUssFilesDefinition
+        ViewDataSetDefinition
     ],
     passOn: [
         {
@@ -40,4 +34,4 @@ const ListDefinition: ICommandDefinition = {
     ]
 };
 
-export = ListDefinition;
+export = ViewDefinition;
