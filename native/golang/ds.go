@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"os/exec"
 	"strings"
@@ -67,7 +66,7 @@ func HandleWriteDatasetRequest(jsonData []byte) {
 
 	go func() {
 		defer stdin.Close()
-		_, err = io.WriteString(stdin, string(decodedBytes))
+		_, err = stdin.Write(decodedBytes)
 		if err != nil {
 			log.Println("Error writing to stdin pipe:", err)
 		}
