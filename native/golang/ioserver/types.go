@@ -6,7 +6,7 @@ type Dataset struct {
 }
 
 type DsMember struct {
-	Name  string `json:"name"`
+	Name string `json:"name"`
 }
 
 type UssItem struct {
@@ -14,8 +14,8 @@ type UssItem struct {
 }
 
 type Job struct {
-	Id string `json:"id"`
-	Name string `json:"name"`
-	Status string `json:"status"`
+	Id      string `json:"id"`
+	Name    string `json:"name"`
+	Status  string `json:"status"`
 	Retcode string `json:"retcode"`
 }

@@ -67,7 +67,7 @@ type ListDatasetsResponse struct {
 
 type ListDsMembersResponse struct {
 	Items        []DsMember `json:"items"`
-	ReturnedRows int       	`json:"returnedRows"`
+	ReturnedRows int        `json:"returnedRows"`
 }
 
 type ListFilesResponse struct {

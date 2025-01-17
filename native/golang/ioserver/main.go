@@ -25,11 +25,11 @@ func main() {
 
 	type CommandHandler func([]byte)
 	commandHandlers := map[string]CommandHandler{
-		"readDataset":  	HandleReadDatasetRequest,
-		"listDatasets": 	HandleListDatasetsRequest,
-		"listDsMembers": 	HandleListDsMembersRequest,
-		"listFiles":    	HandleListFilesRequest,
-		"listJobs":     	HandleListJobRequest,
+		"readDataset":   HandleReadDatasetRequest,
+		"listDatasets":  HandleListDatasetsRequest,
+		"listDsMembers": HandleListDsMembersRequest,
+		"listFiles":     HandleListFilesRequest,
+		"listJobs":      HandleListJobsRequest,
 	}
 
 	for {
