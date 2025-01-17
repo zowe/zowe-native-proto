@@ -27,8 +27,6 @@ using namespace std;
 
 int zusf_read_from_uss_file(ZUSF *zusf, std::string file, std::string &response, std::string mode)
 {
-  file = "//'" + file + "'";
-
   ifstream in(file.c_str());
   if (!in.is_open())
   {

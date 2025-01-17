@@ -132,21 +132,6 @@ libzds.a: zds.o zdsm.o libzut.a
 	ar -rv $@ $^
 
 #
-# USS data
-#
-zusf.o: zusf.cpp
-	@echo 'Building zusf.o'
-	$(CXX) $(DLL_CPP_FLAGS) -qlist=$*.cpp.lst -o $@ $^
-
-libzusf.so: zusf.o libzut.a
-	$(CXX) $(DLL_BND_FLAGS) -o $@ $^ > $*.bind.lst
-	@echo 'Building libzusf.so'
-
-libzusf.a: zusf.o libzut.a
-	@echo 'Building libzusf.a'
-	ar -rv $@ $^
-
-#
 # Jobs
 #
 zjbm.s: zjbm.c
@@ -209,6 +194,21 @@ libzcn.so: zcn.o zcnm.o zcnm31.o libzut.a
 
 libzcn.a: zcn.o zcnm.o zcnm31.o libzut.a
 	@echo 'Building libzcn.a'
+	ar -rv $@ $^
+
+#
+# USS data
+#
+zusf.o: zusf.cpp
+	@echo 'Building zusf.o'
+	$(CXX) $(DLL_CPP_FLAGS) -qlist=$*.cpp.lst -o $@ $^
+
+libzusf.so: zusf.o libzut.a
+	$(CXX) $(DLL_BND_FLAGS) -o $@ $^ > $*.bind.lst
+	@echo 'Building libzusf.so'
+
+libzusf.a: zusf.o libzut.a
+	@echo 'Building libzusf.a'
 	ar -rv $@ $^
 
 #

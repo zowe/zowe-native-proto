@@ -42,13 +42,14 @@ int handle_test_command(ZCLIResult);
 int handle_test_bpxwdyn(ZCLIResult);
 
 int handle_uss_create_file(ZCLIResult);
-// int handle_uss_create_dir(ZCLIResult);
-// int handle_uss_list(ZCLIResult);
-// int handle_uss_view(ZCLIResult);
-// int handle_uss_write(ZCLIResult);
-// int handle_uss_upload_dir(ZCLIResult);
-// int handle_uss_delete_file(ZCLIResult);
-// int handle_uss_delete_dir(ZCLIResult);
+int handle_uss_create_dir(ZCLIResult);
+int handle_uss_list(ZCLIResult);
+int handle_uss_view(ZCLIResult);
+int handle_uss_write(ZCLIResult);
+int handle_uss_delete_file(ZCLIResult);
+int handle_uss_delete_dir(ZCLIResult);
+int handle_uss_chmod(ZCLIResult);
+int handle_uss_chown(ZCLIResult);
 
 int main(int argc, char *argv[])
 {
@@ -206,21 +207,78 @@ int main(int argc, char *argv[])
   ZCLIGroup uss_group("uss");
   uss_group.set_description("z/OS USS operations");
 
-  // uss verbs
-  ZCLIVerb uss_create_file("create-file");
-  uss_create_file.set_description("create a USS file");
-  uss_create_file.set_zcli_verb_handler(handle_uss_create_file);
+  // uss common options and positionals
+  ZCLIPositional uss_file_path("file-name");
+  uss_file_path.set_required(true);
+  uss_file_path.set_description("file path");
   ZCLIOption uss_file_mode("mode");
   uss_file_mode.set_required(false);
   uss_file_mode.set_found("644");
-  uss_file_mode.set_description("file permissions");
+  uss_file_mode.set_description("permissions");
+  ZCLIOption uss_recursive("recursive");
+  uss_recursive.set_required(false);
+  uss_recursive.set_found(false);
+  uss_recursive.set_description("recursive");
+
+  ZCLIVerb uss_create_file("create-file");
+  uss_create_file.set_description("create a USS file");
+  uss_create_file.set_zcli_verb_handler(handle_uss_create_file);
+  uss_create_file.get_positionals().push_back(uss_file_path);
   uss_create_file.get_options().push_back(uss_file_mode);
-  ZCLIPositional uss_file_name("file-name");
-  uss_file_name.set_required(true);
-  uss_file_name.set_description("file name");
-  uss_create_file.get_positionals().push_back(uss_file_name);
   uss_group.get_verbs().push_back(uss_create_file);
 
+  ZCLIVerb uss_create_dir("create-dir");
+  uss_create_dir.set_description("create a USS directory");
+  uss_create_dir.set_zcli_verb_handler(handle_uss_create_dir);
+  uss_create_dir.get_positionals().push_back(uss_file_path);
+  uss_create_dir.get_options().push_back(uss_file_mode);
+  uss_group.get_verbs().push_back(uss_create_dir);
+
+  ZCLIVerb uss_list("list");
+  uss_list.set_description("list USS files and directories");
+  uss_list.set_zcli_verb_handler(handle_uss_list);
+  uss_list.get_positionals().push_back(uss_file_path);
+  uss_group.get_verbs().push_back(uss_list);
+
+  ZCLIVerb uss_view("view");
+  uss_view.set_description("view a USS file");
+  uss_view.get_positionals().push_back(uss_file_path);
+  uss_view.set_zcli_verb_handler(handle_uss_view);
+  uss_group.get_verbs().push_back(uss_view);
+
+  ZCLIVerb uss_write("write");
+  uss_write.set_description("write to a USS file");
+  uss_write.set_zcli_verb_handler(handle_uss_write);
+  uss_write.get_positionals().push_back(uss_file_path);
+  uss_group.get_verbs().push_back(uss_write);
+
+  ZCLIVerb uss_delete_file("delete-file");
+  uss_delete_file.set_description("delete a USS file");
+  uss_delete_file.set_zcli_verb_handler(handle_uss_delete_file);
+  uss_delete_file.get_positionals().push_back(uss_file_path);
+  uss_group.get_verbs().push_back(uss_delete_file);
+
+  ZCLIVerb uss_delete_dir("delete-dir");
+  uss_delete_dir.set_description("delete a USS directory");
+  uss_delete_dir.set_zcli_verb_handler(handle_uss_delete_dir);
+  uss_delete_dir.get_positionals().push_back(uss_file_path);
+  uss_delete_dir.get_options().push_back(uss_recursive);
+  uss_group.get_verbs().push_back(uss_delete_dir);
+
+  ZCLIVerb uss_chmod("chmod");
+  uss_chmod.set_description("change permissions on a USS file or directory");
+  uss_chmod.set_zcli_verb_handler(handle_uss_chmod);
+  uss_chmod.get_positionals().push_back(uss_file_path);
+  uss_chmod.get_options().push_back(uss_file_mode);
+  uss_chmod.get_options().push_back(uss_recursive);
+  uss_group.get_verbs().push_back(uss_chmod);
+
+  ZCLIVerb uss_chown("chown");
+  uss_chown.set_description("change owner on a USS file or directory");
+  uss_chown.set_zcli_verb_handler(handle_uss_chown);
+  uss_chown.get_positionals().push_back(uss_file_path);
+  uss_chown.get_options().push_back(uss_recursive);
+  uss_group.get_verbs().push_back(uss_chown);
 
   // add all groups to the CLI
   zcli.get_groups().push_back(test_group);
@@ -583,7 +641,23 @@ int handle_test_bpxwdyn(ZCLIResult result)
   return rc;
 }
 
-int handle_uss_create_file(ZCLIResult result)
+int handle_uss_create_file(ZCLIResult)
+{
+  printf("method not implemented\n");
+  return 1;
+}
+int handle_uss_create_dir(ZCLIResult)
+{
+  printf("method not implemented\n");
+  return 1;
+}
+int handle_uss_list(ZCLIResult)
+{
+  printf("method not implemented\n");
+  return 1;
+}
+
+int handle_uss_view(ZCLIResult result)
 {
   int rc = 0;
   string uss_file = result.get_positional("file-name").get_value();
@@ -606,4 +680,30 @@ int handle_uss_create_file(ZCLIResult result)
   cout << response;
 
   return rc;
+}
+
+int handle_uss_write(ZCLIResult)
+{
+  printf("method not implemented\n");
+  return 1;
+}
+int handle_uss_delete_file(ZCLIResult)
+{
+  printf("method not implemented\n");
+  return 1;
+}
+int handle_uss_delete_dir(ZCLIResult)
+{
+  printf("method not implemented\n");
+  return 1;
+}
+int handle_uss_chmod(ZCLIResult)
+{
+  printf("method not implemented\n");
+  return 1;
+}
+int handle_uss_chown(ZCLIResult)
+{
+  printf("method not implemented\n");
+  return 1;
 }
