@@ -235,7 +235,7 @@ int handle_job_list(ZCLIResult result)
     return -1;
   }
 
-  const bool emit_csv = result.get_option("--response-format-csv").get_found();
+  const bool emit_csv = result.get_option("--response-format-csv").is_found();
   for (vector<ZJob>::iterator it = jobs.begin(); it != jobs.end(); it++)
   {
     if (emit_csv)
