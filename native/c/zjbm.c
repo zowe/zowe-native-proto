@@ -308,8 +308,11 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
     {
       if (loop_control > zjb->dds_max)
       {
+        stat.stattype = statmem; // free storage
+        rc = iefssreq(&ssobp);   // TODO(Kelosky): recovery
         zjb->diag.detail_rc = ZJB_RTNCD_MAX_JOBS_REACHED;
-        break;
+        zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "max jobs reached of %d", zjb->dds_max);
+        return RTNCD_WARNING;
       }
 
       total_size += (int)sizeof(STATSEVB);

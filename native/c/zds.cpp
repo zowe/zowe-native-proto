@@ -14,8 +14,6 @@
 #include <string>
 #include <iomanip>
 #include <algorithm>
-#include <iconv.h>
-#include <stdlib.h>
 #include "zds.hpp"
 #include "zdyn.h"
 #include "zdstype.h"
@@ -82,28 +80,14 @@ int zds_read_from_dsn(ZDS *zds, string dsn, string &response, string *encoding)
     return RTNCD_FAILURE;
   }
 
-  in.seekg(0, ios::end);
-  size_t size = in.tellg();
-  in.seekg(0, ios::beg);
-
-  char *rawData = new char[size];
-  in.read(rawData, size);
-  in.seekg(0, ios::beg);
-
-  response.assign(rawData);
-  in.close();
-
-  char *bufEnd;
-  if (encoding /* && (*encoding != "IBM-1047" && *encoding != "01047") */)
+  string line;
+  while (getline(in, line))
   {
-    char *outBuf = zut_encode_alloc(rawData, *encoding, zds->diag, &bufEnd);
-    if (outBuf)
-    {
-      response.clear();
-      response.assign(outBuf, bufEnd - outBuf);
-      delete[] outBuf;
-    }
+    response += line;
+    response.push_back('\n');
   }
+
+  in.close();
 
   return 0;
 }
@@ -293,12 +277,13 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &list)
 #endif
 
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=format-work-area-table
+// https://www.ibm.com/docs/en/zos/3.1.0?topic=format-work-area-picture
 typedef struct
 {
   int total_size;
   int min_size;
   int used_size;
-  short number_feilds;
+  short number_fields;
 } ZDS_CSI_HEADER;
 
 typedef struct
@@ -311,28 +296,33 @@ typedef struct
 typedef struct
 {
   unsigned char flag;
-#define CSINTICF 0x80
-#define CSINOENT 0x40
-#define CSINTCMP 0x20
-#define CSICERR 0x10
-#define CSICERRP 0x08
+#define NOT_SUPPORTED 0x80         // CSINTICF
+#define NO_ENTRY 0x40              // CSINOENT
+#define DATA_NOT_COMPLETE 0x20     // CSINTCMP
+#define PROCESS_ERROR 0x10         // CSICERR
+#define PARTIAL_PROCESS_ERROR 0x08 // CSICERRP
+#define ERROR_CONDITION 0XF8       // all flags
   unsigned char type;
 #define CATALOG_TYPE 0xF0
+  char name[44];
   ZDS_CSI_ERROR_INFO error_info;
 } ZDS_CSI_CATALOG;
 
-// typedef struct
-// {
-
-// } ZDS_FIELD;
+typedef struct
+{
+  int total_len;
+  unsigned int reserved;
+  int field_lens; // data after field_lens
+} ZDS_CSI_FIELD;
 
 typedef struct
 {
   unsigned char flag;
-#define CSIPMENT 0x80
-#define CSIENTER 0x40
-#define CSIEDATA 0x20
+#define PRIMARY_ENTRY 0x80 // CSIPMENT
+#define ERROR 0x40         // CSIENTER
+#define DATA 0x20          // CSIEDATA
   unsigned char type;
+#define NOT_FOUND 0x00
 #define NON_VSAM_DATA_SET 'A'
 #define GENERATION_DATA_GROUP 'B'
 #define CLUSTER 'C'
@@ -345,18 +335,22 @@ typedef struct
 #define USER_CATALOG_CONNECTOR_ENTRY 'U'
 #define ATL_VOLUME_ENTRY 'W'
 #define ALIAS 'X'
+#define ATL_VOLUME_ENTRY 'W'
+#define ALIAS 'X'
   char name[44];
 
-  ZDS_CSI_ERROR_INFO error_info; // if CSIENTER=1
+  union
+  {
+    ZDS_CSI_ERROR_INFO error_info; // if CSIENTER=1
+    ZDS_CSI_FIELD field;
+  } response;
 } ZDS_CSI_ENTRY;
 
 typedef struct
 {
-  int total_size;
-  int min_size;
-  int used_size;
-  short number_feilds;
-
+  ZDS_CSI_HEADER header;
+  ZDS_CSI_CATALOG catalog;
+  ZDS_CSI_ENTRY entry;
 } ZDS_CSI_WORK_AREA;
 
 #if (defined(__IBMCPP__) || defined(__IBMC__))
@@ -366,12 +360,23 @@ typedef struct
 #define BUFF_SIZE 1024
 #define FIELD_LEN 8
 
-// TODO(Kelosky): allow resume for more records
-// TODO(Kelosky): cap number of response
-// TODO(Kelosky): preserve loaded module until complete then delete
 int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
 {
   int rc = 0;
+
+  if (0 == zds->buffer_size)
+    zds->buffer_size = ZDS_DEFAULT_BUFFER_SIZE;
+  if (0 == zds->max_entries)
+    zds->max_entries = ZDS_DEFAULT_MAX_ENTRIES;
+
+#define MIN_BUFFER 1024
+
+  if (zds->buffer_size < MIN_BUFFER)
+  {
+    zds->diag.detail_rc = ZDS_RTNCD_INSUFFICIENT_BUFFER;
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Minimum buffer size required is %d but %d was provided", MIN_BUFFER, zds->buffer_size);
+    return RTNCD_FAILURE;
+  }
 
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=directory-catalog-field-names
   string fields[][FIELD_LEN] = {
@@ -380,27 +385,26 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
 
   int number_of_fields = sizeof(fields) / sizeof(fields[0]);
 
-  int total_size_needed = sizeof(CSIFIELD) + (number_of_fields * FIELD_LEN) + BUFF_SIZE;
-  unsigned char *area = (unsigned char *)__malloc31(total_size_needed);
-  memset(area, 0x00, total_size_needed);
+  unsigned char *area = (unsigned char *)__malloc31(zds->buffer_size);
+  memset(area, 0x00, zds->buffer_size);
 
   CSIFIELD *selection_criteria = (CSIFIELD *)area;
   char *csi_fields = (char *)(selection_criteria->csifldnm);
   ZDS_CSI_WORK_AREA *csi_work_area = (ZDS_CSI_WORK_AREA *)(area + sizeof(CSIFIELD) + number_of_fields * FIELD_LEN);
 
   // set work area
-  csi_work_area->total_size = BUFF_SIZE;
+  csi_work_area->header.total_size = zds->buffer_size;
+
+#define FOUR_BYTE_RETURN 'F'
 
   // init blanks in query and set input DSN name
   memset(selection_criteria->csifiltk, ' ', sizeof(selection_criteria->csifiltk));
   transform(dsn.begin(), dsn.end(), dsn.begin(), ::toupper); // upper case
   memcpy(selection_criteria->csifiltk, dsn.c_str(), dsn.size());
-  memset(&selection_criteria->csicldi, ' ', sizeof(selection_criteria->csicldi));
+  memset(&selection_criteria->csicldi, 'Y', sizeof(selection_criteria->csicldi));
   memset(&selection_criteria->csiresum, ' ', sizeof(selection_criteria->csiresum));
   memset(&selection_criteria->csis1cat, ' ', sizeof(selection_criteria->csis1cat));
-  memset(&selection_criteria->csioptns, 'F', sizeof(selection_criteria->csioptns)); // 4 byte long output data fields
-  memset(selection_criteria->csidtyps, ' ', sizeof(selection_criteria->csidtyps));
-  memset(selection_criteria->csidtyps, ' ', sizeof(selection_criteria->csidtyps));
+  memset(&selection_criteria->csioptns, FOUR_BYTE_RETURN, sizeof(selection_criteria->csioptns));
   memset(selection_criteria->csidtyps, ' ', sizeof(selection_criteria->csidtyps));
 
   for (int i = 0; i < number_of_fields; i++)
@@ -412,17 +416,226 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
 
   selection_criteria->csinumen = number_of_fields;
 
-  zut_dump_storage("slection ", selection_criteria, sizeof(CSIFIELD) + number_of_fields * FIELD_LEN);
-
-  rc = ZDSCSI00(zds, selection_criteria, csi_work_area);
-
-  if (0 != rc)
+  do
   {
-    free(area);
-    return RTNCD_FAILURE;
-  }
+    rc = ZDSCSI00(zds, selection_criteria, csi_work_area);
 
-  zut_dump_storage("work area", csi_work_area, 256);
+    if (0 != rc)
+    {
+      free(area);
+      strcpy(zds->diag.service_name, "ZDSCSI00");
+      zds->diag.service_rc = rc;
+      zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "ZDSCSI00 failed with rc %d", rc);
+      return RTNCD_FAILURE;
+    }
+
+    int number_fields = csi_work_area->header.number_fields - 1;
+
+    if (number_fields != number_of_fields)
+    {
+      free(area);
+      zds->diag.detail_rc = ZDS_RTNCD_UNEXPECTED_ERROR;
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Unexpected work area field response preset len %d and return len %d are not equal", number_fields, number_of_fields);
+      return RTNCD_FAILURE;
+    }
+
+    if (CATALOG_TYPE != csi_work_area->catalog.type)
+    {
+      free(area);
+      zds->diag.detail_rc = ZDS_RTNCD_PARSING_ERROR;
+      zds->diag.service_rc = ZDS_RTNCD_CATALOG_ERROR;
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Unexpected type '%x' ", csi_work_area->catalog.type);
+      return RTNCD_FAILURE;
+    }
+
+    if (ERROR_CONDITION == csi_work_area->catalog.flag)
+    {
+      free(area);
+      zds->diag.detail_rc = ZDS_RTNCD_PARSING_ERROR;
+      zds->diag.service_rc = ZDS_RTNCD_CATALOG_ERROR;
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Unexpected catalog flag '%x' ", csi_work_area->catalog.flag);
+      return RTNCD_FAILURE;
+    }
+
+    if (DATA_NOT_COMPLETE & csi_work_area->catalog.flag)
+    {
+      free(area);
+      zds->diag.detail_rc = ZDS_RTNCD_PARSING_ERROR;
+      zds->diag.service_rc = ZDS_RTNCD_CATALOG_ERROR;
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Unexpected catalog flag '%x' ", csi_work_area->catalog.flag);
+      return RTNCD_FAILURE;
+    }
+
+    if (NO_ENTRY & csi_work_area->catalog.flag)
+    {
+      free(area);
+      zds->diag.detail_rc = ZDS_RSNCD_NOT_FOUND;
+      zds->diag.service_rc = ZDS_RTNCD_CATALOG_ERROR;
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Not found in catalog, flag '%x' ", csi_work_area->catalog.flag);
+      return RTNCD_WARNING;
+    }
+
+    int work_area_total = csi_work_area->header.used_size;
+    unsigned char *p = (unsigned char *)&csi_work_area->entry;
+    ZDS_CSI_ENTRY *f = NULL;
+
+    work_area_total -= sizeof(ZDS_CSI_HEADER);
+    work_area_total -= sizeof(ZDS_CSI_CATALOG);
+
+    ZDSEntry entry = {0};
+    char buffer[sizeof(f->name) + 1] = {0};
+
+    while (work_area_total > 0)
+    {
+      f = (ZDS_CSI_ENTRY *)p;
+
+      if (ERROR == f->flag)
+      {
+        free(area);
+        zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
+        zds->diag.service_rc = ZDS_RTNCD_ENTRY_ERROR;
+        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Unexpected entry flag '%x' ", f->flag);
+        return RTNCD_FAILURE;
+      }
+
+      if (NOT_FOUND == f->type)
+      {
+        free(area);
+        zds->diag.detail_rc = ZDS_RTNCD_NOT_FOUND;
+        zds->diag.service_rc = ZDS_RTNCD_ENTRY_ERROR;
+        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "No entry found '%x' ", f->type);
+        return RTNCD_FAILURE;
+      }
+
+      // NOTE(Kelosky): rejecting entities we haven't tested... this can be removed as we verify the logic works for all return types
+      if (
+          NON_VSAM_DATA_SET != f->type &&
+          CLUSTER != f->type &&
+          DATA_COMPONENT != f->type &&
+          INDEX_COMPONENT != f->type)
+      {
+        free(area);
+        zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
+        zds->diag.service_rc = ZDS_RTNCD_UNSUPPORTED_ERROR;
+        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Unsupported entry type '%x' ", f->type);
+        return RTNCD_FAILURE;
+      }
+
+      memset(buffer, 0x00, sizeof(buffer));     // clear buffer
+      memcpy(buffer, f->name, sizeof(f->name)); // copy all & leave a null
+      entry.name = string(buffer);
+
+      int *field_len = &f->response.field.field_lens;
+      unsigned char *data = (unsigned char *)&f->response.field.field_lens;
+      data += (sizeof(f->response.field.field_lens) * number_fields);
+
+      memset(buffer, 0x00, sizeof(buffer)); // clear buffer
+      memcpy(buffer, data, *field_len);     // copy VOLSER
+      entry.volser = string(buffer);
+
+      if (0 == *field_len)
+      {
+
+        string dsn = "//'" + entry.name + "'";
+        FILE *dir = fopen(dsn.c_str(), "r");
+        fldata_t file_info = {0};
+        char file_name[64] = {0};
+
+        if (dir)
+        {
+          if (0 == fldata(dir, file_name, &file_info))
+          {
+            if (file_info.__dsorgVSAM)
+            {
+              entry.dsorg = DSORG_VSAM;
+              entry.volser = VOLSER_VSAM;
+            }
+            else if (file_info.__dsorgHFS)
+            {
+              entry.dsorg = DSORG_VSAM;
+              entry.volser = VOLSER_VSAM;
+            }
+          }
+          else
+            entry.dsorg = DSORG_UNKNWON;
+          entry.volser = VOLSER_UNKNOWN;
+        }
+        else
+        {
+          entry.dsorg = DSORG_UNKNWON;
+          entry.volser = VOLSER_UNKNOWN;
+        }
+      }
+
+      else
+      {
+
+        data += *field_len; // point to next data field
+        field_len++;        // point to next len field
+
+        char non_vsam_attribute = 0xFF;
+
+        if (*field_len > 0)
+        {
+          non_vsam_attribute = *(char *)data;
+
+#define SIMPLE_NON_VSAM_DATA_SET 0X00
+#define EXTENDED_PARTITIONED_DATA_SET 'L'
+
+          if (EXTENDED_PARTITIONED_DATA_SET == non_vsam_attribute)
+          {
+            entry.dsorg = DSORG_PDSE;
+          }
+          else if (SIMPLE_NON_VSAM_DATA_SET == non_vsam_attribute)
+          {
+            string dsn = "//'" + entry.name + "'";
+            FILE *dir = fopen(dsn.c_str(), "r");
+            fldata_t file_info = {0};
+            char file_name[64] = {0};
+
+            if (dir)
+            {
+              if (0 == fldata(dir, file_name, &file_info))
+              {
+                if (file_info.__dsorgPS)
+                {
+                  entry.dsorg = DSORG_PS;
+                }
+                else if (file_info.__dsorgPO)
+                {
+                  entry.dsorg = DSORG_PO;
+                }
+                else
+                {
+                  entry.dsorg = DSORG_UNKNWON;
+                  entry.volser = VOLSER_UNKNOWN;
+                }
+              }
+              else
+              {
+                entry.dsorg = DSORG_UNKNWON;
+                entry.volser = VOLSER_UNKNOWN;
+              }
+            }
+          }
+        }
+      }
+
+      if (attributes.size() + 1 > zds->max_entries)
+      {
+        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Reached maximum returned records requested %d", zds->max_entries);
+        zds->diag.detail_rc = ZDS_RSNCD_MAXED_ENTRIES_REACHED;
+        return RTNCD_WARNING;
+      }
+
+      attributes.push_back(entry);
+
+      work_area_total -= ((sizeof(ZDS_CSI_ENTRY) - sizeof(ZDS_CSI_FIELD) + f->response.field.total_len));
+      p = p + ((sizeof(ZDS_CSI_ENTRY) - sizeof(ZDS_CSI_FIELD) + f->response.field.total_len)); // next entry
+    }
+
+  } while ('Y' == selection_criteria->csiresum);
 
   free(area);
 
