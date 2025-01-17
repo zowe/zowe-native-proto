@@ -300,3 +300,18 @@ char *zut_encode_alloc(char *rawData, const string &encoding, ZDIAG &diag, char 
   iconv_close(cd);
   return outbuf;
 }
+
+string zut_format_as_csv(const std::vector<string> &fields)
+{
+  string formatted;
+  for (int i = 0; i < fields.size(); i++)
+  {
+    formatted += fields.at(i);
+    if (i < fields.size() - 1)
+    {
+      formatted += ",";
+    }
+  }
+
+  return formatted;
+}

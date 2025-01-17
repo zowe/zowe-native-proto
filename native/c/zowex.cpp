@@ -106,6 +106,12 @@ int main(int argc, char *argv[])
   data_set_list.set_description("list data sets");
   data_set_list.set_zcli_verb_handler(handle_data_set_list);
   data_set_list.get_positionals().push_back(data_set_dsn);
+
+  ZCLIOption dslist_rfc("response-format-csv");
+  dslist_rfc.set_description("returns the response in CSV format");
+  dslist_rfc.get_aliases().push_back("--rfc");
+  data_set_list.get_options().push_back(dslist_rfc);
+
   data_set_group.get_verbs().push_back(data_set_list);
 
   ZCLIVerb data_set_list_members("list-members");
@@ -139,6 +145,10 @@ int main(int argc, char *argv[])
   ZCLIOption job_owner("owner");
   job_owner.set_description("filter by owner");
   job_list.get_options().push_back(job_owner);
+  ZCLIOption job_list_rfc("response-format-csv");
+  job_list_rfc.set_description("returns the response in CSV format");
+  job_list_rfc.get_aliases().push_back("--rfc");
+  job_list.get_options().push_back(job_list_rfc);
   job_group.get_verbs().push_back(job_list);
 
   ZCLIVerb job_list_files("list-files");
@@ -225,9 +235,22 @@ int handle_job_list(ZCLIResult result)
     return -1;
   }
 
+  const bool emit_csv = result.get_option("--response-format-csv").is_found();
   for (vector<ZJob>::iterator it = jobs.begin(); it != jobs.end(); it++)
   {
-    cout << it->jobid << " " << left << setw(10) << it->retcode << " " << it->jobname << " " << it->status << endl;
+    if (emit_csv)
+    {
+      vector<string> fields;
+      fields.push_back(it->jobid);
+      fields.push_back(it->retcode);
+      fields.push_back(it->jobname);
+      fields.push_back(it->status);
+      cout << zut_format_as_csv(fields) << endl;
+    }
+    else
+    {
+      cout << it->jobid << " " << left << setw(10) << it->retcode << " " << it->jobname << " " << it->status << endl;
+    }
   }
 
   return 0;
@@ -451,12 +474,24 @@ int handle_data_set_list(ZCLIResult result)
   rc = zds_list_data_sets(&zds, dsn, entries);
   if (RTNCD_SUCCESS == rc)
   {
+    vector<string> fields;
+    const bool emit_csv = result.get_option("--response-format-csv").is_found();
     for (vector<ZDSEntry>::iterator it = entries.begin(); it != entries.end(); ++it)
     {
-      std::cout << left << setw(44) << it->name << " " << it->volser << " " << it->dsorg << endl;
+      if (emit_csv)
+      {
+        fields.push_back(it->name);
+        fields.push_back(it->dsorg);
+        fields.push_back(it->volser);
+        std::cout << zut_format_as_csv(fields) << std::endl;
+        fields.clear();
+      }
+      else
+      {
+        std::cout << left << setw(44) << it->name << " " << it->volser << " " << it->dsorg << endl;
+      }
     }
   }
-
   else if (RTNCD_WARNING == rc)
   {
     if ("true" == warn)
@@ -470,9 +505,22 @@ int handle_data_set_list(ZCLIResult result)
         cerr << "Warning: no matching results found" << endl;
       }
     }
+    vector<string> fields;
+    const bool emit_csv = result.get_option("--response-format-csv").is_found();
     for (vector<ZDSEntry>::iterator it = entries.begin(); it != entries.end(); ++it)
     {
-      std::cout << left << setw(44) << it->name << " " << it->volser << " " << it->dsorg << endl;
+      if (emit_csv)
+      {
+        fields.push_back(it->name);
+        fields.push_back(it->dsorg);
+        fields.push_back(it->volser);
+        std::cout << zut_format_as_csv(fields) << std::endl;
+        fields.clear();
+      }
+      else
+      {
+        std::cout << left << setw(44) << it->name << " " << it->volser << " " << it->dsorg << endl;
+      }
     }
   }
   else

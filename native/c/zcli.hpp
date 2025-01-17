@@ -10,6 +10,7 @@
 #ifndef ZCLI_HPP
 #define ZCLI_HPP
 
+#include <algorithm>
 #include <iostream>
 #include <vector>
 #include <string>
@@ -78,6 +79,7 @@ class
 {
 private:
   string value;
+  vector<string> aliases;
   string default_value;
   bool default_set;
 
@@ -85,6 +87,7 @@ public:
   ZCLIOption(string n) : ZCLIFlag(n) { default_set = false; }
   void help_line() { cerr << "  " << left << setw(ZCLI_MENU_WIDTH) << get_flag_name() << "   " << get_description() << endl; }
   void set_value(string v) { value = v; }
+  vector<string> &get_aliases() { return aliases; }
   string get_default() { return default_value; }
   void set_default(string v)
   {
@@ -376,7 +379,8 @@ ZCLIOption &ZCLIOptionProvider::get_option(string option_name)
 {
   for (vector<ZCLIOption>::iterator it = options.begin(); it != options.end(); it++)
   {
-    if (option_name == it->get_flag_name())
+    vector<string> &aliases = it->get_aliases();
+    if (option_name == it->get_flag_name() || std::find(aliases.begin(), aliases.end(), option_name) != it->get_aliases().end())
       return *it;
   }
   ZCLIOption *not_found = new ZCLIOption("not found");
