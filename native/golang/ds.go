@@ -93,7 +93,9 @@ func HandleWriteDatasetRequest(jsonData []byte) {
 }
 
 func HandleListDatasetsRequest(jsonData []byte) {
-	var listRequest ListDatasetsRequest
+	listRequest := ListDatasetsRequest{
+		Attributes: false,
+	}
 	err := json.Unmarshal(jsonData, &listRequest)
 	if err != nil {
 		// log.Println("Error decoding ListDatasetsRequest:", err)

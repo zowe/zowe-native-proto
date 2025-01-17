@@ -8,7 +8,8 @@ type CommandRequest struct {
 
 // command: "listDatasets"
 type ListDatasetsRequest struct {
-	Pattern string `json:"pattern"`
+	Pattern    string `json:"pattern"`
+	Attributes bool   `json:"attributes,omitempty"`
 	ListOptions
 	ListDatasetOptions
 }
