@@ -46,6 +46,13 @@ type ReadFileRequest struct {
 	Path     string `json:"path"`
 }
 
+// command: "writeDataset"
+type WriteDatasetRequest struct {
+	Encoding string `json:"encoding,omitempty"`
+	Dataset  string `json:"dataset"`
+	Contents string `json:"contents"`
+}
+
 /* Responses */
 
 type ReadDatasetResponse struct {
@@ -58,6 +65,11 @@ type ReadFileResponse struct {
 	Encoding string `json:"encoding,omitempty"`
 	File     string `json:"file"`
 	Data     []byte `json:"data"`
+}
+
+type WriteDatasetResponse struct {
+	Success bool   `json:"success"`
+	Dataset string `json:"dataset"`
 }
 
 type ListDatasetsResponse struct {

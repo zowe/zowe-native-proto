@@ -203,7 +203,7 @@ libzcn.a: zcn.o zcnm.o zcnm31.o libzut.a
 zowex: zowex.o libzcn.a libzut.a libzjb.a libzds.a
 	@echo 'Building zowex'
 	$(CXX) $(CPP_BND_FLAGS) -o $@ $^ > $*.bind.lst
-	cp $@ ../golang/ioserver/$(basename $@)
+	cp $@ ../golang/$(basename $@)
 	@echo 'Copied zowex to golang/ioserver'
 
 zowexx: zowex.o libzcn.a libzut.a libzjb.a libzds.a

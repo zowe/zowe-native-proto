@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"os/exec"
 	"strings"
@@ -33,6 +35,60 @@ func HandleReadDatasetRequest(jsonData []byte) {
 		Encoding: dsRequest.Encoding,
 		Dataset:  dsRequest.Dataset,
 		Data:     data,
+	}
+	v, err := json.Marshal(dsResponse)
+	if err != nil {
+		fmt.Println(err.Error())
+	} else {
+		fmt.Println(string(v))
+	}
+}
+
+func HandleWriteDatasetRequest(jsonData []byte) {
+	var dsRequest WriteDatasetRequest
+	err := json.Unmarshal(jsonData, &dsRequest)
+	if err != nil || (dsRequest.Encoding == "" && dsRequest.Dataset == "") {
+		// log.Println("Error decoding ReadDatasetRequest:", err)
+		return
+	}
+	// log.Println("ReadDatasetRequest received:", dsRequest.Dataset, dsRequest.Encoding)
+	decodedBytes, err := base64.StdEncoding.DecodeString(dsRequest.Contents)
+	if err != nil {
+		log.Println("Error decoding base64 contents:", err)
+		return
+	}
+	args := []string{"./zowex", "data-set", "write", dsRequest.Dataset}
+	cmd := exec.Command(args[0], args[1:]...)
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		log.Println("Error opening stdin pipe:", err)
+		return
+	}
+
+	go func() {
+		defer stdin.Close()
+		_, err = io.WriteString(stdin, string(decodedBytes))
+		if err != nil {
+			log.Println("Error writing to stdin pipe:", err)
+		}
+	}()
+
+	if err != nil {
+		log.Println("Error piping stdin to command:", err)
+		return
+	}
+
+	out, err := cmd.Output()
+	if err != nil {
+		log.Println("Error piping stdin to command:", err)
+		return
+	}
+	// discard CLI output as its currently unused
+	_ = out
+
+	dsResponse := WriteDatasetResponse{
+		Success: true,
+		Dataset: dsRequest.Dataset,
 	}
 	v, err := json.Marshal(dsResponse)
 	if err != nil {
