@@ -72,11 +72,6 @@ func HandleWriteDatasetRequest(jsonData []byte) {
 		}
 	}()
 
-	if err != nil {
-		log.Println("Error piping stdin to command:", err)
-		return
-	}
-
 	out, err := cmd.Output()
 	if err != nil {
 		log.Println("Error piping stdin to command:", err)
