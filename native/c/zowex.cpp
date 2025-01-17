@@ -97,6 +97,12 @@ int main(int argc, char *argv[])
   data_set_list.set_description("list data sets");
   data_set_list.set_zcli_verb_handler(handle_data_set_list);
   data_set_list.get_positionals().push_back(data_set_dsn);
+
+  ZCLIOption dslist_rfc("response-format-csv");
+  dslist_rfc.set_description("returns the response in CSV format");
+  dslist_rfc.get_aliases().push_back("--rfc");
+  data_set_list.get_options().push_back(dslist_rfc);
+
   data_set_group.get_verbs().push_back(data_set_list);
 
   ZCLIVerb data_set_list_members("list-members");
@@ -458,9 +464,17 @@ int handle_data_set_list(ZCLIResult result)
     return -1;
   }
 
-  for (vector<ZDSEntry>::iterator it = entries.begin(); it != entries.end(); ++it)
-  {
-    std::cout << left << setw(44) << it->name << " " << it->volser << " " << it->dsorg << endl;
+  vector<string> fields;
+  for (vector<ZDSEntry>::iterator it = entries.begin(); it != entries.end(); ++it) {
+    if (result.get_option("--response-format-csv").get_found()) {
+      fields.push_back(it->name);
+      fields.push_back(it->dsorg);
+      fields.push_back(it->volser);
+      std::cout << zut_format_as_csv(fields) << std::endl;
+      fields.clear();
+    } else {
+        std::cout << left << setw(44) << it->name << " " << it->volser << " " << it->dsorg << endl;
+    }
   }
 
   return rc;

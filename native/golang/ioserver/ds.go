@@ -68,10 +68,11 @@ func HandleListDatasetsRequest(jsonData []byte) {
 	}
 
 	for i, ds := range datasets {
-		vals := strings.Split(ds, "\t\t\t")
+		vals := strings.Split(ds, ",")
 		dsResponse.Items[i] = Dataset{
 			Name:  vals[0],
 			Dsorg: vals[1],
+			Volser: vals[2],
 		}
 	}
 	dsResponse.ReturnedRows = len(datasets)
