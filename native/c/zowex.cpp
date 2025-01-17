@@ -99,7 +99,7 @@ int main(int argc, char *argv[])
   data_set_list.get_options().push_back(data_set_max_entries);
 
   ZCLIOption data_set_truncate_warn("warn");
-  data_set_truncate_warn.set_description("warn if trucated");
+  data_set_truncate_warn.set_description("warn if trucated or not found");
   data_set_truncate_warn.set_default("true");
   data_set_list.get_options().push_back(data_set_truncate_warn);
 
@@ -461,7 +461,14 @@ int handle_data_set_list(ZCLIResult result)
   {
     if ("true" == warn)
     {
-      cerr << "Warning: results truncated" << endl;
+      if (ZDS_RSNCD_MAXED_ENTRIES_REACHED == zds.diag.detail_rc)
+      {
+        cerr << "Warning: results truncated" << endl;
+      }
+      else if (ZDS_RSNCD_NOT_FOUND == zds.diag.detail_rc)
+      {
+        cerr << "Warning: no matching results found" << endl;
+      }
     }
     for (vector<ZDSEntry>::iterator it = entries.begin(); it != entries.end(); ++it)
     {
