@@ -335,8 +335,6 @@ typedef struct
 #define USER_CATALOG_CONNECTOR_ENTRY 'U'
 #define ATL_VOLUME_ENTRY 'W'
 #define ALIAS 'X'
-#define ATL_VOLUME_ENTRY 'W'
-#define ALIAS 'X'
   char name[44];
 
   union
@@ -364,26 +362,30 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
 {
   int rc = 0;
 
-  if (0 == zds->buffer_size)
-    zds->buffer_size = ZDS_DEFAULT_BUFFER_SIZE;
-  if (0 == zds->max_entries)
-    zds->max_entries = ZDS_DEFAULT_MAX_ENTRIES;
-
-#define MIN_BUFFER 1024
-
-  if (zds->buffer_size < MIN_BUFFER)
-  {
-    zds->diag.detail_rc = ZDS_RTNCD_INSUFFICIENT_BUFFER;
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Minimum buffer size required is %d but %d was provided", MIN_BUFFER, zds->buffer_size);
-    return RTNCD_FAILURE;
-  }
-
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=directory-catalog-field-names
   string fields[][FIELD_LEN] = {
       {"VOLSER"},
       {"NVSMATTR"}};
 
   int number_of_fields = sizeof(fields) / sizeof(fields[0]);
+
+  int interal_used_buffer_size = sizeof(CSIFIELD) + number_of_fields * FIELD_LEN;
+
+  if (0 == zds->buffer_size)
+    zds->buffer_size = ZDS_DEFAULT_BUFFER_SIZE;
+  if (0 == zds->max_entries)
+    zds->max_entries = ZDS_DEFAULT_MAX_ENTRIES;
+
+#define MIN_BUFFER_FIXED 1024
+
+  int min_buffer_size = MIN_BUFFER_FIXED + interal_used_buffer_size;
+
+  if (zds->buffer_size < min_buffer_size)
+  {
+    zds->diag.detail_rc = ZDS_RTNCD_INSUFFICIENT_BUFFER;
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Minimum buffer size required is %d but %d was provided", min_buffer_size, zds->buffer_size);
+    return RTNCD_FAILURE;
+  }
 
   unsigned char *area = (unsigned char *)__malloc31(zds->buffer_size);
   memset(area, 0x00, zds->buffer_size);
@@ -393,7 +395,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
   ZDS_CSI_WORK_AREA *csi_work_area = (ZDS_CSI_WORK_AREA *)(area + sizeof(CSIFIELD) + number_of_fields * FIELD_LEN);
 
   // set work area
-  csi_work_area->header.total_size = zds->buffer_size;
+  csi_work_area->header.total_size = zds->buffer_size - min_buffer_size;
 
 #define FOUR_BYTE_RETURN 'F'
 
@@ -403,7 +405,8 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
   memcpy(selection_criteria->csifiltk, dsn.c_str(), dsn.size());
   memset(&selection_criteria->csicldi, 'Y', sizeof(selection_criteria->csicldi));
   memset(&selection_criteria->csiresum, ' ', sizeof(selection_criteria->csiresum));
-  memset(&selection_criteria->csis1cat, ' ', sizeof(selection_criteria->csis1cat));
+  memset(&selection_criteria->csicatnm, ' ', sizeof(selection_criteria->csicatnm));
+  memset(&selection_criteria->csis1cat, 'Y', sizeof(selection_criteria->csis1cat)); // do not search master catalog if alias is found
   memset(&selection_criteria->csioptns, FOUR_BYTE_RETURN, sizeof(selection_criteria->csioptns));
   memset(selection_criteria->csidtyps, ' ', sizeof(selection_criteria->csidtyps));
 
@@ -419,6 +422,8 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
   do
   {
     rc = ZDSCSI00(zds, selection_criteria, csi_work_area);
+
+    // zut_dump_storage("alias", csi_work_area, 512);
 
     if (0 != rc)
     {
@@ -513,7 +518,8 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
           NON_VSAM_DATA_SET != f->type &&
           CLUSTER != f->type &&
           DATA_COMPONENT != f->type &&
-          INDEX_COMPONENT != f->type)
+          INDEX_COMPONENT != f->type &&
+          ALIAS != f->type)
       {
         free(area);
         zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
@@ -534,43 +540,11 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
       memcpy(buffer, data, *field_len);     // copy VOLSER
       entry.volser = string(buffer);
 
-      if (0 == *field_len)
+      switch (f->type)
       {
 
-        string dsn = "//'" + entry.name + "'";
-        FILE *dir = fopen(dsn.c_str(), "r");
-        fldata_t file_info = {0};
-        char file_name[64] = {0};
-
-        if (dir)
-        {
-          if (0 == fldata(dir, file_name, &file_info))
-          {
-            if (file_info.__dsorgVSAM)
-            {
-              entry.dsorg = DSORG_VSAM;
-              entry.volser = VOLSER_VSAM;
-            }
-            else if (file_info.__dsorgHFS)
-            {
-              entry.dsorg = DSORG_VSAM;
-              entry.volser = VOLSER_VSAM;
-            }
-          }
-          else
-            entry.dsorg = DSORG_UNKNWON;
-          entry.volser = VOLSER_UNKNOWN;
-        }
-        else
-        {
-          entry.dsorg = DSORG_UNKNWON;
-          entry.volser = VOLSER_UNKNOWN;
-        }
-      }
-
-      else
+      case NON_VSAM_DATA_SET:
       {
-
         data += *field_len; // point to next data field
         field_len++;        // point to next len field
 
@@ -621,6 +595,59 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
           }
         }
       }
+
+      break;
+      case GENERATION_DATA_GROUP:
+        printf("case GENERATION_DATA_GROUP\n");
+        return -8;
+        break;
+      case CLUSTER:
+        // printf("case CLUSER\n");
+        entry.dsorg = DSORG_VSAM;
+        entry.volser = VOLSER_VSAM;
+        break;
+      case DATA_COMPONENT:
+        // printf("case DATA_COMPONENT\n");
+        entry.dsorg = DSORG_VSAM;
+        entry.volser = VOLSER_VSAM;
+        break;
+      case ALTERNATE_INDEX:
+        // printf("case ALTERNATE_INDEX\n");
+        // return -8;
+        break;
+      case GENERATION_DATA_SET:
+        // printf("case GENERATION_DATA_SET\n");
+        // return -8;
+        break;
+      case INDEX_COMPONENT:
+        entry.dsorg = DSORG_VSAM;
+        entry.volser = VOLSER_VSAM;
+        break;
+      case ATL_LIBRARY_ENTRY:
+        // printf("case ATL_LIBRARY_ENTRY\n");
+        // return -8;
+        break;
+      case PATH:
+        // printf("case PATH\n");
+        // return -8;
+        break;
+      case USER_CATALOG_CONNECTOR_ENTRY:
+        // printf("case USER_CATALOG_CONNECTOR_ENTRY\n");
+        // return -8;
+        break;
+      case ATL_VOLUME_ENTRY:
+        // printf("case ATL_VOLUME_ENTRY\n");
+        // return -8;
+        break;
+      case ALIAS:
+        entry.dsorg = DSORG_UNKNWON;
+        entry.volser = VOLSER_ALIAS;
+        break;
+      default:
+        // printf("case default\n");
+        // return -8;
+        break;
+      };
 
       if (attributes.size() + 1 > zds->max_entries)
       {

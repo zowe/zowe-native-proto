@@ -94,6 +94,15 @@ int main(int argc, char *argv[])
   data_set_group.get_verbs().push_back(data_set_view);
 
   ZCLIVerb data_set_list("list");
+  ZCLIOption data_set_max_entries("max-entries");
+  data_set_max_entries.set_description("max number of results to return before error generated");
+  data_set_list.get_options().push_back(data_set_max_entries);
+
+  ZCLIOption data_set_truncate_warn("warn");
+  data_set_truncate_warn.set_description("warn if trucated or not found");
+  data_set_truncate_warn.set_default("true");
+  data_set_list.get_options().push_back(data_set_truncate_warn);
+
   data_set_list.set_description("list data sets");
   data_set_list.set_zcli_verb_handler(handle_data_set_list);
   data_set_list.get_positionals().push_back(data_set_dsn);
@@ -452,33 +461,73 @@ int handle_data_set_list(ZCLIResult result)
 {
   int rc = 0;
   string dsn = result.get_positional("dsn").get_value();
+  string max_entries = result.get_option("--max-entries").get_value();
+  string warn = result.get_option("--warn").get_value();
+
   ZDS zds = {0};
+  if (max_entries.size() > 0)
+  {
+    zds.max_entries = atoi(max_entries.c_str());
+  }
   vector<ZDSEntry> entries;
 
   rc = zds_list_data_sets(&zds, dsn, entries);
-  if (0 != rc)
-  // if (0 != rc && ZDS_RTNCD_NOT_FOUND != zds.diag.detail_rc)
+  if (RTNCD_SUCCESS == rc)
+  {
+    vector<string> fields;
+    const bool emit_csv = result.get_option("--response-format-csv").is_found();
+    for (vector<ZDSEntry>::iterator it = entries.begin(); it != entries.end(); ++it)
+    {
+      if (emit_csv)
+      {
+        fields.push_back(it->name);
+        fields.push_back(it->dsorg);
+        fields.push_back(it->volser);
+        std::cout << zut_format_as_csv(fields) << std::endl;
+        fields.clear();
+      }
+      else
+      {
+        std::cout << left << setw(44) << it->name << " " << it->volser << " " << it->dsorg << endl;
+      }
+    }
+  }
+  else if (RTNCD_WARNING == rc)
+  {
+    if ("true" == warn)
+    {
+      if (ZDS_RSNCD_MAXED_ENTRIES_REACHED == zds.diag.detail_rc)
+      {
+        cerr << "Warning: results truncated" << endl;
+      }
+      else if (ZDS_RSNCD_NOT_FOUND == zds.diag.detail_rc)
+      {
+        cerr << "Warning: no matching results found" << endl;
+      }
+    }
+    vector<string> fields;
+    const bool emit_csv = result.get_option("--response-format-csv").is_found();
+    for (vector<ZDSEntry>::iterator it = entries.begin(); it != entries.end(); ++it)
+    {
+      if (emit_csv)
+      {
+        fields.push_back(it->name);
+        fields.push_back(it->dsorg);
+        fields.push_back(it->volser);
+        std::cout << zut_format_as_csv(fields) << std::endl;
+        fields.clear();
+      }
+      else
+      {
+        std::cout << left << setw(44) << it->name << " " << it->volser << " " << it->dsorg << endl;
+      }
+    }
+  }
+  else
   {
     cout << "Error: could not list data set: '" << dsn << "' rc: '" << rc << "'" << endl;
     cout << "  Details: " << zds.diag.e_msg << endl;
     return -1;
-  }
-
-  vector<string> fields;
-  for (vector<ZDSEntry>::iterator it = entries.begin(); it != entries.end(); ++it)
-  {
-    if (result.get_option("--response-format-csv").get_found())
-    {
-      fields.push_back(it->name);
-      fields.push_back(it->dsorg);
-      fields.push_back(it->volser);
-      std::cout << zut_format_as_csv(fields) << std::endl;
-      fields.clear();
-    }
-    else
-    {
-      std::cout << left << setw(44) << it->name << " " << it->volser << " " << it->dsorg << endl;
-    }
   }
 
   return rc;

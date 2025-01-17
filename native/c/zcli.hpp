@@ -49,7 +49,7 @@ protected:
 public:
   ZCLIRequired() { required = false; }
   void set_found(bool f) { found = f; }
-  bool get_found() { return found; }
+  bool is_found() { return found; }
 
   void set_required(bool r) { required = r; }
   bool get_required() { return required; }
@@ -80,12 +80,21 @@ class
 private:
   string value;
   vector<string> aliases;
+  string default_value;
+  bool default_set;
 
 public:
-  ZCLIOption(string n) : ZCLIFlag(n) {}
+  ZCLIOption(string n) : ZCLIFlag(n) { default_set = false; }
   void help_line() { cerr << "  " << left << setw(ZCLI_MENU_WIDTH) << get_flag_name() << "   " << get_description() << endl; }
   void set_value(string v) { value = v; }
   vector<string> &get_aliases() { return aliases; }
+  string get_default() { return default_value; }
+  void set_default(string v)
+  {
+    default_value = v;
+    default_set = true;
+  }
+  bool default_provided() { return default_set; }
   string get_value() { return value; }
 };
 
@@ -488,17 +497,23 @@ int ZCLI::parse(int argc, char *argv[])
 
   for (vector<ZCLIOption>::iterator it = verb.get_options().begin(); it != verb.get_options().end(); it++)
   {
-    if (it->get_required() && !it->get_found())
+    if (it->get_required() && !it->is_found())
     {
       cerr << "Required option missing: '" << it->get_flag_name() << "' on '" << group.get_name() << " " << verb.get_name() << "'" << endl;
       verb.help(name, group.get_name());
       return -1;
     }
+
+    if (it->default_provided() && !it->is_found())
+    {
+      it->set_value(it->get_default());
+      results.get_options().push_back(*it);
+    }
   }
 
   for (vector<ZCLIPositional>::iterator it = verb.get_positionals().begin(); it != verb.get_positionals().end(); it++)
   {
-    if (it->get_required() && !it->get_found())
+    if (it->get_required() && !it->is_found())
     {
       cerr << "Required positional missing: '" << it->get_name() << "' on '" << group.get_name() << " " << verb.get_name() << "'" << endl;
       verb.help(name, group.get_name());
