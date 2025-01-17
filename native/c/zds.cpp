@@ -362,26 +362,30 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
 {
   int rc = 0;
 
-  if (0 == zds->buffer_size)
-    zds->buffer_size = ZDS_DEFAULT_BUFFER_SIZE;
-  if (0 == zds->max_entries)
-    zds->max_entries = ZDS_DEFAULT_MAX_ENTRIES;
-
-#define MIN_BUFFER 1024
-
-  if (zds->buffer_size < MIN_BUFFER)
-  {
-    zds->diag.detail_rc = ZDS_RTNCD_INSUFFICIENT_BUFFER;
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Minimum buffer size required is %d but %d was provided", MIN_BUFFER, zds->buffer_size);
-    return RTNCD_FAILURE;
-  }
-
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=directory-catalog-field-names
   string fields[][FIELD_LEN] = {
       {"VOLSER"},
       {"NVSMATTR"}};
 
   int number_of_fields = sizeof(fields) / sizeof(fields[0]);
+
+  int interal_used_buffer_size = sizeof(CSIFIELD) + number_of_fields * FIELD_LEN;
+
+  if (0 == zds->buffer_size)
+    zds->buffer_size = ZDS_DEFAULT_BUFFER_SIZE;
+  if (0 == zds->max_entries)
+    zds->max_entries = ZDS_DEFAULT_MAX_ENTRIES;
+
+#define MIN_BUFFER_FIXED 1024
+
+  int min_buffer_size = MIN_BUFFER_FIXED + interal_used_buffer_size;
+
+  if (zds->buffer_size < min_buffer_size)
+  {
+    zds->diag.detail_rc = ZDS_RTNCD_INSUFFICIENT_BUFFER;
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Minimum buffer size required is %d but %d was provided", min_buffer_size, zds->buffer_size);
+    return RTNCD_FAILURE;
+  }
 
   unsigned char *area = (unsigned char *)__malloc31(zds->buffer_size);
   memset(area, 0x00, zds->buffer_size);
@@ -391,7 +395,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
   ZDS_CSI_WORK_AREA *csi_work_area = (ZDS_CSI_WORK_AREA *)(area + sizeof(CSIFIELD) + number_of_fields * FIELD_LEN);
 
   // set work area
-  csi_work_area->header.total_size = zds->buffer_size;
+  csi_work_area->header.total_size = zds->buffer_size - min_buffer_size;
 
 #define FOUR_BYTE_RETURN 'F'
 
@@ -540,48 +544,41 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
       {
 
       case NON_VSAM_DATA_SET:
-        // printf("case NON_VSAM_DATA_SET\n");
+      {
+        data += *field_len; // point to next data field
+        field_len++;        // point to next len field
+
+        char non_vsam_attribute = 0xFF;
+
+        if (*field_len > 0)
         {
-          data += *field_len; // point to next data field
-          field_len++;        // point to next len field
-
-          char non_vsam_attribute = 0xFF;
-
-          if (*field_len > 0)
-          {
-            non_vsam_attribute = *(char *)data;
+          non_vsam_attribute = *(char *)data;
 
 #define SIMPLE_NON_VSAM_DATA_SET 0X00
 #define EXTENDED_PARTITIONED_DATA_SET 'L'
 
-            if (EXTENDED_PARTITIONED_DATA_SET == non_vsam_attribute)
-            {
-              entry.dsorg = DSORG_PDSE;
-            }
-            else if (SIMPLE_NON_VSAM_DATA_SET == non_vsam_attribute)
-            {
-              string dsn = "//'" + entry.name + "'";
-              FILE *dir = fopen(dsn.c_str(), "r");
-              fldata_t file_info = {0};
-              char file_name[64] = {0};
+          if (EXTENDED_PARTITIONED_DATA_SET == non_vsam_attribute)
+          {
+            entry.dsorg = DSORG_PDSE;
+          }
+          else if (SIMPLE_NON_VSAM_DATA_SET == non_vsam_attribute)
+          {
+            string dsn = "//'" + entry.name + "'";
+            FILE *dir = fopen(dsn.c_str(), "r");
+            fldata_t file_info = {0};
+            char file_name[64] = {0};
 
-              if (dir)
+            if (dir)
+            {
+              if (0 == fldata(dir, file_name, &file_info))
               {
-                if (0 == fldata(dir, file_name, &file_info))
+                if (file_info.__dsorgPS)
                 {
-                  if (file_info.__dsorgPS)
-                  {
-                    entry.dsorg = DSORG_PS;
-                  }
-                  else if (file_info.__dsorgPO)
-                  {
-                    entry.dsorg = DSORG_PO;
-                  }
-                  else
-                  {
-                    entry.dsorg = DSORG_UNKNWON;
-                    entry.volser = VOLSER_UNKNOWN;
-                  }
+                  entry.dsorg = DSORG_PS;
+                }
+                else if (file_info.__dsorgPO)
+                {
+                  entry.dsorg = DSORG_PO;
                 }
                 else
                 {
@@ -589,13 +586,20 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
                   entry.volser = VOLSER_UNKNOWN;
                 }
               }
+              else
+              {
+                entry.dsorg = DSORG_UNKNWON;
+                entry.volser = VOLSER_UNKNOWN;
+              }
             }
           }
         }
+      }
 
-        break;
+      break;
       case GENERATION_DATA_GROUP:
-        // printf("case GENERATION_DATA_GROUP\n");
+        printf("case GENERATION_DATA_GROUP\n");
+        return -8;
         break;
       case CLUSTER:
         // printf("case CLUSER\n");
@@ -609,69 +613,41 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
         break;
       case ALTERNATE_INDEX:
         // printf("case ALTERNATE_INDEX\n");
+        // return -8;
         break;
       case GENERATION_DATA_SET:
         // printf("case GENERATION_DATA_SET\n");
+        // return -8;
         break;
       case INDEX_COMPONENT:
-        // printf("case INDEX_COMPONENT\n");
         entry.dsorg = DSORG_VSAM;
         entry.volser = VOLSER_VSAM;
         break;
       case ATL_LIBRARY_ENTRY:
         // printf("case ATL_LIBRARY_ENTRY\n");
+        // return -8;
         break;
       case PATH:
         // printf("case PATH\n");
+        // return -8;
         break;
       case USER_CATALOG_CONNECTOR_ENTRY:
         // printf("case USER_CATALOG_CONNECTOR_ENTRY\n");
+        // return -8;
         break;
       case ATL_VOLUME_ENTRY:
         // printf("case ATL_VOLUME_ENTRY\n");
+        // return -8;
         break;
       case ALIAS:
-        // printf("case ALIAS\n");
         entry.dsorg = DSORG_UNKNWON;
         entry.volser = VOLSER_ALIAS;
         break;
       default:
         // printf("case default\n");
+        // return -8;
         break;
       };
-
-      // if (0 == *field_len)
-      // {
-      //   string dsn = "//'" + entry.name + "'";
-      //   FILE *dir = fopen(dsn.c_str(), "r");
-      //   fldata_t file_info = {0};
-      //   char file_name[64] = {0};
-
-      //   if (dir)
-      //   {
-      //     if (0 == fldata(dir, file_name, &file_info))
-      //     {
-      //       if (file_info.__dsorgVSAM)
-      //       {
-      //         entry.dsorg = DSORG_VSAM;
-      //         entry.volser = VOLSER_VSAM;
-      //       }
-      //       else if (file_info.__dsorgHFS)
-      //       {
-      //         entry.dsorg = DSORG_VSAM;
-      //         entry.volser = VOLSER_VSAM;
-      //       }
-      //     }
-      //     else
-      //       entry.dsorg = DSORG_UNKNWON;
-      //     entry.volser = VOLSER_UNKNOWN;
-      //   }
-      //   else
-      //   {
-      //     entry.dsorg = DSORG_UNKNWON;
-      //     entry.volser = VOLSER_UNKNOWN;
-      //   }
-      // }
 
       if (attributes.size() + 1 > zds->max_entries)
       {
