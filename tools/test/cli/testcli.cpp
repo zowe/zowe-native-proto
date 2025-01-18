@@ -174,6 +174,7 @@ int main(int argc, char *argv[])
   console_issue.set_description("issue a console command");
   console_issue.set_zcli_verb_handler(handle_console_issue);
   ZCLIOption console_name("console-name");
+  console_name.get_aliases().push_back("--cn");
   console_name.set_required(true);
   console_name.set_description("extended console name");
   console_issue.get_options().push_back(console_name);
