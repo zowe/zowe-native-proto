@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "zmetal.h"
+#include "zattachx.h"
 #include "zstorage.h"
 #include "zwto.h"
 #include "zutm.h"
@@ -21,34 +22,33 @@
 
 // takes a conventional paramter list
 typedef int (*BPXWDYN)(
-  BPXWDYN_PARM *PTR32,
-  BPXWDYN_PARM *PTR32,
-  BPXWDYN_PARM *PTR32,
-  BPXWDYN_PARM *PTR32,
-  BPXWDYN_PARM *PTR32,
-  BPXWDYN_PARM *PTR32,
-  BPXWDYN_PARM *PTR32,
-  BPXWDYN_PARM *PTR32,
-  BPXWDYN_PARM *PTR32,
-  BPXWDYN_PARM *PTR32,
-  BPXWDYN_PARM *PTR32,
-  BPXWDYN_PARM *PTR32,
-  BPXWDYN_PARM *PTR32,
-  BPXWDYN_PARM *PTR32,
-  BPXWDYN_PARM *PTR32,
-  BPXWDYN_PARM *PTR32,
-  BPXWDYN_PARM *PTR32,
-  BPXWDYN_PARM *PTR32,
-  BPXWDYN_PARM *PTR32,
-  BPXWDYN_PARM *PTR32,
-  BPXWDYN_PARM *PTR32,
-  BPXWDYN_PARM *PTR32,
-  BPXWDYN_PARM *PTR32,
-  BPXWDYN_PARM *PTR32,
-  BPXWDYN_PARM *PTR32,
-  BPXWDYN_PARM *PTR32,
-  BPXWDYN_PARM *PTR32
-) ATTRIBUTE(amode31);
+    BPXWDYN_PARM *PTR32,
+    BPXWDYN_PARM *PTR32,
+    BPXWDYN_PARM *PTR32,
+    BPXWDYN_PARM *PTR32,
+    BPXWDYN_PARM *PTR32,
+    BPXWDYN_PARM *PTR32,
+    BPXWDYN_PARM *PTR32,
+    BPXWDYN_PARM *PTR32,
+    BPXWDYN_PARM *PTR32,
+    BPXWDYN_PARM *PTR32,
+    BPXWDYN_PARM *PTR32,
+    BPXWDYN_PARM *PTR32,
+    BPXWDYN_PARM *PTR32,
+    BPXWDYN_PARM *PTR32,
+    BPXWDYN_PARM *PTR32,
+    BPXWDYN_PARM *PTR32,
+    BPXWDYN_PARM *PTR32,
+    BPXWDYN_PARM *PTR32,
+    BPXWDYN_PARM *PTR32,
+    BPXWDYN_PARM *PTR32,
+    BPXWDYN_PARM *PTR32,
+    BPXWDYN_PARM *PTR32,
+    BPXWDYN_PARM *PTR32,
+    BPXWDYN_PARM *PTR32,
+    BPXWDYN_PARM *PTR32,
+    BPXWDYN_PARM *PTR32,
+    BPXWDYN_PARM *PTR32) ATTRIBUTE(amode31);
 
 // Doc:
 // * keywords - https://www.ibm.com/docs/en/zos/3.1.0?topic=output-requesting-dynamic-allocation
@@ -61,7 +61,7 @@ int ZUTWDYN(BPXWDYN_PARM *parm, BPXWDYN_RESPONSE *response)
   int rc = 0;
 
   // load our service
-  BPXWDYN dynalloc  = (BPXWDYN)load_module31("BPXWDY2"); // EP which doesn't require R0 == 0
+  BPXWDYN dynalloc = (BPXWDYN)load_module31("BPXWDY2"); // EP which doesn't require R0 == 0
   if (!dynalloc)
   {
     // TODO(Kelosky): pass diag information
@@ -99,34 +99,33 @@ int ZUTWDYN(BPXWDYN_PARM *parm, BPXWDYN_RESPONSE *response)
   // NOTE(Kelosky): to prevent the compiler optimizer from discarding any memory assignements,
   // we need to ensure a reference to all data is passed to this external function
   rc = dynalloc(
-    parms[0],
-    parms[1],
-    parms[2],
-    parms[3],
-    parms[4],
-    parms[5],
-    parms[6],
-    parms[7],
-    parms[8],
-    parms[9],
-    parms[10],
-    parms[11],
-    parms[12],
-    parms[13],
-    parms[14],
-    parms[15],
-    parms[16],
-    parms[17],
-    parms[18],
-    parms[19],
-    parms[20],
-    parms[21],
-    parms[22],
-    parms[23],
-    parms[24],
-    parms[25],
-    parms[26]
-  );
+      parms[0],
+      parms[1],
+      parms[2],
+      parms[3],
+      parms[4],
+      parms[5],
+      parms[6],
+      parms[7],
+      parms[8],
+      parms[9],
+      parms[10],
+      parms[11],
+      parms[12],
+      parms[13],
+      parms[14],
+      parms[15],
+      parms[16],
+      parms[17],
+      parms[18],
+      parms[19],
+      parms[20],
+      parms[21],
+      parms[22],
+      parms[23],
+      parms[24],
+      parms[25],
+      parms[26]);
 
   response->code = rc;
 
@@ -134,7 +133,8 @@ int ZUTWDYN(BPXWDYN_PARM *parm, BPXWDYN_RESPONSE *response)
 
   // obtain any messages returned
   char *respp = response->response;
-  for (int i = 0, j=atoi(parameters[1].str); i<j && i <MSG_ENTRIES + 2; i++){
+  for (int i = 0, j = atoi(parameters[1].str); i < j && i < MSG_ENTRIES + 2; i++)
+  {
     if (parameters[i + 2].len == RET_ARG_MAX_LEN - sizeof(parameters[i + 2].len))
     {
       return (0 != rc) ? ZUT_BPXWDYN_SERVICE_FAILURE : RTNCD_SUCCESS;
@@ -149,7 +149,7 @@ int ZUTWDYN(BPXWDYN_PARM *parm, BPXWDYN_RESPONSE *response)
 #pragma prolog(ZUTTEST, "&CCN_MAIN SETB 1 \n MYPROLOG")
 int ZUTTEST()
 {
-  return 0;
+  return attachx();
 }
 
 #pragma prolog(ZUTMGUSR, "&CCN_MAIN SETB 1 \n MYPROLOG")
@@ -158,7 +158,8 @@ int ZUTMGUSR(char user[8])
   char user31[8] = {0};
   int rc = zutm1gur(user31);
 
-  if (0 != rc) return rc;
+  if (0 != rc)
+    return rc;
 
   memcpy(user, user31, sizeof(user31));
   return 0;

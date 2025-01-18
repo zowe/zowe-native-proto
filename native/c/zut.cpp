@@ -28,23 +28,9 @@ int zut_test()
   int rc = 0;
   unsigned int code = 0;
   string resp;
-  string parm = "free dd(minemine)";
 
-  // rc = zut_bpxwdyn(parm, &code, resp);
-
-  /*
- This example dynamically deallocates a data set.
- */
-
-  __dyn_t ip;
-
-  dyninit(&ip);
-  ip.__dsname = "dkelosky.temp.test5";
-
-  rc = dynfree(&ip);
-
-  // cout << "resp is:\n" << resp << endl;
-  // printf("code is x'%x'\n", code);
+  cout << "@TEST\n";
+  rc = ZUTTEST();
 
   return rc;
 }
