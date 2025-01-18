@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
 {
   // CLI
   ZCLI zcli(argv[PROCESS_NAME_ARG]);
-  zcli.set_repl(true);
+  zcli.set_interactive_mode(true);
 
   //
   // test group
