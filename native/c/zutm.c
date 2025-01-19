@@ -152,6 +152,7 @@ int ZUTTEST()
   return attachx();
 }
 
+// TODO(Kelosky): this should probably be `getlogin()`
 #pragma prolog(ZUTMGUSR, "&CCN_MAIN SETB 1 \n MYPROLOG")
 int ZUTMGUSR(char user[8])
 {
