@@ -68,6 +68,16 @@ int zjb_get_job_dsn_by_jobid_and_key(ZJB *zjb, std::string, int, std::string &);
 int zjb_read_job_content_by_dsn(ZJB *zjb, std::string job_dsn, std::string &response);
 
 /**
+ * @brief Return JCL for a job by input jobid
+ *
+ * @param zjb job returned attributes and error information
+ * @param jobid jobid coresponding to the key to locate
+ * @param response return JCL
+ * @return int 0 for success; non zero otherwise
+ */
+int zjb_read_job_jcl_by_jobid(ZJB *zjb, std::string jobid, std::string &response);
+
+/**
  * @brief Submit a job from a given input data set
  *
  * @param zjb job returned attributes and error information

@@ -27,6 +27,7 @@ using namespace std;
 int handle_job_list(ZCLIResult);
 int handle_job_list_files(ZCLIResult);
 int handle_job_view_file(ZCLIResult);
+int handle_job_view_jcl(ZCLIResult);
 int handle_job_submit(ZCLIResult);
 int handle_job_delete(ZCLIResult);
 
@@ -167,7 +168,7 @@ int main(int argc, char *argv[])
   job_group.get_verbs().push_back(job_list);
 
   ZCLIVerb job_list_files("list-files");
-  job_list_files.set_description("list spool files");
+  job_list_files.set_description("list spool files for jobid");
   job_list_files.set_zcli_verb_handler(handle_job_list_files);
   ZCLIPositional job_jobid("jobid");
   job_jobid.set_required(true);
@@ -185,6 +186,12 @@ int main(int argc, char *argv[])
   job_dsn_key.set_description("valid job dsn key via 'job list-files'");
   job_view_file.get_positionals().push_back(job_dsn_key);
   job_group.get_verbs().push_back(job_view_file);
+
+  ZCLIVerb job_view_jcl("view-jcl");
+  job_view_jcl.set_description("view job jcl from inbput jobid");
+  job_view_jcl.set_zcli_verb_handler(handle_job_view_jcl);
+  job_view_jcl.get_positionals().push_back(job_jobid);
+  job_group.get_verbs().push_back(job_view_jcl);
 
   ZCLIVerb job_submit("submit");
   job_submit.set_description("submit a job");
@@ -349,6 +356,27 @@ int handle_job_view_file(ZCLIResult result)
   if (0 != rc)
   {
     cout << "Error: could not view job file for: '" << jobid << "' with key '" << key << "' rc: '" << rc << "'" << endl;
+    cout << "  Details: " << zjb.diag.e_msg << endl;
+    return -1;
+  }
+
+  cout << resp;
+
+  return 0;
+}
+
+int handle_job_view_jcl(ZCLIResult result)
+{
+  int rc = 0;
+  ZJB zjb = {0};
+  string jobid(result.get_positional("jobid").get_value());
+
+  string resp;
+  rc = zjb_read_job_jcl_by_jobid(&zjb, jobid, resp);
+
+  if (0 != rc)
+  {
+    cout << "Error: could not view job file for: '" << jobid << "' rc: '" << rc << "'" << endl;
     cout << "  Details: " << zjb.diag.e_msg << endl;
     return -1;
   }

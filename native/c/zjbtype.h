@@ -14,26 +14,28 @@
 #include "ztype.h"
 
 // RTNCD_CODE_SUCCESS ztype.h         -1
-#define ZJB_RTNCD_SERVICE_FAILURE     -2
-#define ZJB_RTNCD_MAX_JOBS_REACHED    -3
+#define ZJB_RTNCD_SERVICE_FAILURE -2
+#define ZJB_RTNCD_MAX_JOBS_REACHED -3
 #define ZJB_RTNCD_INSUFFICIENT_BUFFER -4
-#define ZJB_RTNCD_JOB_NOT_FOUND       -5
+#define ZJB_RTNCD_JOB_NOT_FOUND -5
+#define ZJB_RTNCD_UNEXPECTED_ERROR -6
 
-#define ZJB_RSNCD_MAX_JOBS_REACHED    -2
+#define ZJB_RSNCD_MAX_JOBS_REACHED -2
 
 #define ZJB_DEFAULT_BUFFER_SIZE 128000
-#define ZJB_DEFAULT_MAX_JOBS    100
-#define ZJB_DEFAULT_MAX_DDS     100
+#define ZJB_DEFAULT_MAX_JOBS 100
+#define ZJB_DEFAULT_MAX_DDS 100
 
 #if (defined(__IBMCPP__) || defined(__IBMC__))
 #pragma pack(packed)
 #endif
 
 // NOTE(Kelosky): struct is padded to nearest double word boundary; ensure proper alignment for fields
-typedef struct {
-  char eye[3]; // future use
+typedef struct
+{
+  char eye[3];              // future use
   unsigned char version[1]; // future use
-  int32_t len; // future use
+  int32_t len;              // future use
 
   unsigned char reserve_0[4];
   int32_t jobs_max;
@@ -44,7 +46,7 @@ typedef struct {
   int32_t buffer_size_needed; // total amount of buffer size needed to satisfy request
   unsigned char reserve_1[4];
 
-  char jobid[8]; // job id
+  char jobid[8];      // job id
   char owner_name[8]; // owner name used, upper cased/padded/truncated
 
   ZDIAG diag;

@@ -8,24 +8,24 @@
   Copyright Contributors to the Zowe Project.
 */
 #include <iostream>
-#include <fstream>
-#include "zmetal.h"
-#include "zds.hpp"
-#include "zjb.hpp"
-#include "zjbm.h"
-#include "zssitype.h"
-#include <cstring>
+#include <sstream>
 #include <string>
+#include <fstream>
+#include <cstring>
 #include <vector>
 #include <iomanip>
 #include <stdio.h>
-#include <sstream>
-#include <dynit.h>
+#include <istream>
 #include <ctype.h>
 #include <algorithm>
 #include "iazbtokp.h"
 #include "iefzb4d0.h"
 #include "iefzb4d2.h"
+#include "zmetal.h"
+#include "zds.hpp"
+#include "zjb.hpp"
+#include "zjbm.h"
+#include "zssitype.h"
 #include "zut.hpp"
 #include "zutm.h"
 #include "zjbtype.h"
@@ -40,8 +40,7 @@ using namespace std;
 
 // NOTE(Kelosky): see struct __S99struc via 'showinc' compiler option in <stdio.h>
 // NOTE(Kelosky): In the future, to allocate the logical SYSLOG concatenation for a system specify the following data set name (in DALDSNAM).
-// NOTE(Kelosky): needed for dynalloc JES spool https://www.ibm.com/docs/en/zos/3.1.0?topic=programming-jes-spool-data-set-browse
-// NOTE(Kelosky): needed for dynalloc https://www.ibm.com/docs/en/zos/3.1.0?topic=list-coding-dynamic-allocation-request
+// https://www.ibm.com/docs/en/zos/3.1.0?topic=allocation-specifying-data-set-name-daldsnam
 int zjb_read_jobs_output_by_jobid_and_key(ZJB *zjb, string jobid, int key, string &response)
 {
   int rc = 0;
@@ -84,6 +83,41 @@ int zjb_get_job_dsn_by_jobid_and_key(ZJB *zjb, string jobid, int key, string &jo
   }
 
   return RTNCD_SUCCESS;
+}
+
+int zjb_read_job_jcl_by_jobid(ZJB *zjb, string jobid, string &response)
+{
+  int rc = 0;
+
+  vector<ZJobDD> list;
+
+  rc = zjb_list_dds_by_jobid(zjb, jobid, list);
+  if (0 != rc)
+    return rc;
+
+  rc = RTNCD_FAILURE; // assume failure
+
+  istringstream iss(list[0].dsn);
+  vector<string> args;
+  string arg;
+
+  while (getline(iss, arg, '.'))
+  {
+    args.push_back(arg);
+  }
+
+#define MIN_SIZE 3 // HLQ + next + next
+
+  if (args.size() < MIN_SIZE)
+  {
+    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "Unexpected data set name '%s' for jobid %s", list[0].dsn.c_str(), jobid.c_str());
+    zjb->diag.detail_rc = ZJB_RTNCD_UNEXPECTED_ERROR;
+    return RTNCD_FAILURE;
+  }
+
+  string jcl_dsn = args[0] + "." + args[1] + "." + args[2] + ".JCL";
+
+  return zjb_read_job_content_by_dsn(zjb, jcl_dsn, response);
 }
 
 #define NUM_TEXT_UNITS 5
@@ -200,6 +234,7 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, string jobdsn, string &response)
   s99parms->__S99TXTPP = s99tupl;
   // s99parms->__S99S99X = s99parmsx; // TODO(Kelosky): reenable when we look at s99parmsx->__S99ENMSG and free
 
+  // https://www.ibm.com/docs/en/zos/3.1.0?topic=list-coding-dynamic-allocation-request
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=guide-dynamic-allocation
   rc = svc99(s99parms);
 
