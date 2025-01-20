@@ -14,10 +14,12 @@
 #include <string>
 #include <cstdlib>
 #include <stdio.h>
+#include <algorithm>
 #include "zcn.hpp"
 #include "zut.hpp"
 #include "zcli.hpp"
 #include "zjb.hpp"
+#include "unistd.h"
 #include "zds.hpp"
 
 using namespace std;
@@ -31,14 +33,23 @@ int handle_job_delete(ZCLIResult);
 int handle_console_issue(ZCLIResult);
 
 int handle_data_set_create_dsn(ZCLIResult);
+int handle_data_set_create_dsn_vb(ZCLIResult);
+int handle_data_set_create_dsn_adata(ZCLIResult);
 int handle_data_set_view_dsn(ZCLIResult);
 int handle_data_set_list(ZCLIResult);
 int handle_data_set_list_members_dsn(ZCLIResult);
 int handle_data_set_write_to_dsn(ZCLIResult);
 int handle_data_set_delete_dsn(ZCLIResult);
 
+int handle_tool_convert_dsect(ZCLIResult);
+
 int handle_test_command(ZCLIResult);
-int handle_test_bpxwdyn(ZCLIResult);
+int handle_test_dynalloc(ZCLIResult);
+int handle_test_run(ZCLIResult);
+
+// TODO(Kelosky):
+// help w/verbose examples
+// add simple examples to help
 
 int main(int argc, char *argv[])
 {
@@ -57,15 +68,6 @@ int main(int argc, char *argv[])
   test_command.set_description("test command");
   test_command.set_zcli_verb_handler(handle_test_command);
   test_group.get_verbs().push_back(test_command);
-
-  ZCLIVerb test_bpxwdyn("bpxwdyn");
-  test_bpxwdyn.set_description("test dynalloc command");
-  test_bpxwdyn.set_zcli_verb_handler(handle_test_bpxwdyn);
-  ZCLIPositional test_parm("parm");
-  test_parm.set_description("dynalloc test parm string");
-  test_parm.set_required(true);
-  test_bpxwdyn.get_positionals().push_back(test_parm);
-  test_group.get_verbs().push_back(test_bpxwdyn);
 
   //
   // data set group
@@ -86,6 +88,18 @@ int main(int argc, char *argv[])
   data_set_create.set_zcli_verb_handler(handle_data_set_create_dsn);
   data_set_create.get_positionals().push_back(data_set_dsn);
   data_set_group.get_verbs().push_back(data_set_create);
+
+  ZCLIVerb data_set_create_vb("create-vb");
+  data_set_create_vb.set_description("create VB data set using defaults: DSORG=PO, RECFM=VB, LRECL=255");
+  data_set_create_vb.set_zcli_verb_handler(handle_data_set_create_dsn_vb);
+  data_set_create_vb.get_positionals().push_back(data_set_dsn);
+  data_set_group.get_verbs().push_back(data_set_create_vb);
+
+  ZCLIVerb data_set_create_adata("create-adata");
+  data_set_create_adata.set_description("create VB data set using defaults: DSORG=PO, RECFM=VB, LRECL=32756");
+  data_set_create_adata.set_zcli_verb_handler(handle_data_set_create_dsn_adata);
+  data_set_create_adata.get_positionals().push_back(data_set_dsn);
+  data_set_group.get_verbs().push_back(data_set_create_adata);
 
   ZCLIVerb data_set_view("view");
   data_set_view.set_description("view data set");
@@ -211,11 +225,51 @@ int main(int argc, char *argv[])
   console_issue.get_positionals().push_back(console_command);
   console_group.get_verbs().push_back(console_issue);
 
+  //
+  // tool group
+  //
+  ZCLIGroup tool_group("tool");
+  tool_group.set_description("tool operations");
+
+  // console verbs
+  ZCLIVerb tool_convert_dsect("convert-dsect");
+  tool_convert_dsect.set_description("conver dsect to c struct");
+  tool_convert_dsect.set_zcli_verb_handler(handle_tool_convert_dsect);
+  ZCLIOption adata_dsn("adata-dsn");
+  adata_dsn.set_description("input adata dsn");
+  adata_dsn.set_required(true);
+  adata_dsn.get_aliases().push_back("--ad");
+  ZCLIOption chdr_name("chdr-dsn");
+  chdr_name.get_aliases().push_back("--cd");
+  chdr_name.set_description("output chdr dsn");
+  chdr_name.set_required(true);
+  ZCLIOption sysprint("sysprint");
+  sysprint.get_aliases().push_back("--sp");
+  sysprint.set_description("sysprint output");
+  ZCLIOption sysout("sysout");
+  sysout.set_description("sysout output");
+  sysout.get_aliases().push_back("--so");
+  tool_convert_dsect.get_options().push_back(adata_dsn);
+  tool_convert_dsect.get_options().push_back(chdr_name);
+  tool_convert_dsect.get_options().push_back(sysprint);
+  tool_convert_dsect.get_options().push_back(sysout);
+  tool_group.get_verbs().push_back(tool_convert_dsect);
+
+  ZCLIVerb tool_dynalloc("dynalloc");
+  tool_dynalloc.set_description("dynalloc command");
+  tool_dynalloc.set_zcli_verb_handler(handle_test_dynalloc);
+  ZCLIPositional dynalloc_parm("parm");
+  dynalloc_parm.set_description("dynalloc test parm string");
+  dynalloc_parm.set_required(true);
+  tool_dynalloc.get_positionals().push_back(dynalloc_parm);
+  tool_group.get_verbs().push_back(tool_dynalloc);
+
   // add all groups to the CLI
   zcli.get_groups().push_back(test_group);
   zcli.get_groups().push_back(data_set_group);
   zcli.get_groups().push_back(console_group);
   zcli.get_groups().push_back(job_group);
+  zcli.get_groups().push_back(tool_group);
 
   // parse
   return zcli.parse(argc, argv);
@@ -427,6 +481,46 @@ int handle_data_set_create_dsn(ZCLIResult result)
   return rc;
 }
 
+int handle_data_set_create_dsn_vb(ZCLIResult result)
+{
+  int rc = 0;
+  string dsn = result.get_positional("dsn").get_value();
+  ZDS zds = {0};
+  string response;
+  rc = zds_create_dsn_vb(&zds, dsn, response);
+  if (0 != rc)
+  {
+    cout << "Error: could not create data set: '" << dsn << "' rc: '" << rc << "'" << endl;
+    cout << "  Details:\n"
+         << response << endl;
+    return -1;
+  }
+
+  cout << "Data set '" << dsn << "' created" << endl;
+
+  return rc;
+}
+
+int handle_data_set_create_dsn_adata(ZCLIResult result)
+{
+  int rc = 0;
+  string dsn = result.get_positional("dsn").get_value();
+  ZDS zds = {0};
+  string response;
+  rc = zds_create_dsn_adata(&zds, dsn, response);
+  if (0 != rc)
+  {
+    cout << "Error: could not create data set: '" << dsn << "' rc: '" << rc << "'" << endl;
+    cout << "  Details:\n"
+         << response << endl;
+    return -1;
+  }
+
+  cout << "Data set '" << dsn << "' created" << endl;
+
+  return rc;
+}
+
 int handle_data_set_view_dsn(ZCLIResult result)
 {
   int rc = 0;
@@ -611,7 +705,7 @@ int handle_test_command(ZCLIResult result)
   return 0;
 }
 
-int handle_test_bpxwdyn(ZCLIResult result)
+int handle_test_dynalloc(ZCLIResult result)
 {
   int rc = 0;
   unsigned int code = 0;
@@ -632,6 +726,70 @@ int handle_test_bpxwdyn(ZCLIResult result)
   }
 
   cout << resp << endl;
+
+  return rc;
+}
+
+int handle_tool_convert_dsect(ZCLIResult result)
+{
+  int rc = 0;
+  ZCN zcn = {0};
+  unsigned int code = 0;
+  string resp;
+
+  // create a lrecl 255, vb for chdr output
+  // create a lrecl 32756, vb for adata output
+  // z/os unix .s file
+  // as -madata --gadata="//'DKELOSKY.TEMP.ADATA(IHAECB)'" ihaecb.s
+  // convert --adata (dsn) --out-chdr (dsn) --sysout /tmp/user/sysout.txt --sysprint /tmp/user/sysprint.txt
+
+  string adata_dsn(result.get_option("--adata-dsn").get_value());
+  string chdr_dsn(result.get_option("--chdr-dsn").get_value());
+  string sysprint(result.get_option("--sysprint").get_value());
+  string sysout(result.get_option("--sysout").get_value());
+
+  const char *user = getlogin();
+  string struser(user);
+  transform(struser.begin(), struser.end(), struser.begin(), ::tolower); // upper case
+
+  if (!result.get_option("--sysprint").is_found())
+    sysprint = "/tmp/" + struser + "_sysprint.txt";
+  if (!result.get_option("--sysout").is_found())
+    sysout = "/tmp/" + struser + "_sysout.txt";
+
+  cout << adata_dsn << " " << chdr_dsn << " " << sysprint << " " << sysout << endl;
+
+  vector<string> dds;
+  char buffer[256] = {0};
+  // https://www.ibm.com/docs/en/zos/3.1.0?topic=definition-status-group
+  // https://www.ibm.com/docs/en/zos/3.1.0?topic=pp-syntax-2
+  dds.push_back("alloc fi(sysprint) path('" + sysprint + "') pathopts(owronly,ocreat,otrunc) pathmode(sirusr,siwusr,sirgrp) filedata(text) msg(2)");
+  dds.push_back("alloc fi(sysout) path('" + sysout + "') pathopts(owronly,ocreat,otrunc) pathmode(sirusr,siwusr,sirgrp) filedata(text) msg(2)");
+  dds.push_back("alloc fi(sysadata) da('" + adata_dsn + "') shr msg(2)");
+  dds.push_back("alloc fi(edcdsect) da('" + chdr_dsn + "') shr msg(2)");
+
+  for (vector<string>::iterator it = dds.begin(); it != dds.end(); it++)
+  {
+    rc = zut_bpxwdyn(*it, &code, resp);
+
+    if (0 != rc)
+    {
+      cout << "Error: bpxwdyn failed with '" << *it << "' rc: '" << rc << "'" << endl;
+      cout << "  Details: " << resp << endl;
+      return -1;
+    }
+  }
+
+  rc = zut_convert_dsect();
+  if (0 != rc)
+  {
+    cout << "Error: convert failed with rc: '" << rc << "'" << endl;
+    cout << "  See '" << sysprint << "' and '" << sysout << "' for more details" << endl;
+    return -1;
+  }
+
+  cout << "DSECT converted to '" << chdr_dsn << "'" << endl;
+  cout << "Copy it via `cp \"//'" + chdr_dsn + "'\" <member>.h`" << endl;
 
   return rc;
 }

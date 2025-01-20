@@ -149,7 +149,22 @@ int ZUTWDYN(BPXWDYN_PARM *parm, BPXWDYN_RESPONSE *response)
 #pragma prolog(ZUTTEST, "&CCN_MAIN SETB 1 \n MYPROLOG")
 int ZUTTEST()
 {
-  return attachx();
+  return 0;
+}
+typedef struct
+{
+  short len;
+  char parms[100];
+} EDSCT_PARMS;
+
+typedef int (*CCNEDSCT)(EDSCT_PARMS *) ATTRIBUTE(amode31);
+#pragma prolog(ZUTEDSCT, "&CCN_MAIN SETB 1 \n MYPROLOG")
+int ZUTEDSCT()
+{
+  CCNEDSCT convert = (CCNEDSCT)load_module31("CCNEDSCT");
+  EDSCT_PARMS p = {0};
+  p.len = sprintf(p.parms, "PPCOND,EQUATE(DEF),BITF0XL,HDRSKIP,UNIQ,LP64,LEGACY,SECT(ALL)");
+  return convert(&p);
 }
 
 // TODO(Kelosky): this should probably be `getlogin()`

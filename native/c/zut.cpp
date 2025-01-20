@@ -25,14 +25,12 @@ using namespace std;
 
 int zut_test()
 {
-  int rc = 0;
-  unsigned int code = 0;
-  string resp;
+  return 0;
+}
 
-  cout << "@TEST\n";
-  rc = ZUTTEST();
-
-  return rc;
+int zut_convert_dsect()
+{
+  return ZUTEDSCT();
 }
 
 void zut_uppercase_pad_truncate(string source, char *target, int len)
