@@ -70,6 +70,10 @@ echo "$testing view job files..."
 zowex job view-file ${jobid} 2
 printf "$passed\n"
 
+echo "$testing view job jcl..."
+zowex job view-jcl ${jobid}
+printf "$passed\n"
+
 echo "$testing delete job ..."
 zowex job delete ${jobid}
 printf "$passed\n"
