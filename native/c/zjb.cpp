@@ -295,7 +295,7 @@ int zjb_submit(ZJB *zjb, string data_set, string &jobId)
   int rc = 0;
   string content;
   ZDS zds = {0};
-  rc = zds_read_from_dsn(&zds, data_set, content, NULL);
+  rc = zds_read_from_dsn(&zds, data_set, content);
   if (rc != 0)
   {
     memcpy(&zjb->diag, &zds.diag, sizeof(ZDIAG));

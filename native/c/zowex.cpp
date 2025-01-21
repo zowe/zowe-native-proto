@@ -607,7 +607,11 @@ int handle_data_set_view_dsn(ZCLIResult result)
   string response;
   string encodingValue = encoding.get_value();
   const bool hasEncoding = !encodingValue.empty();
-  rc = zds_read_from_dsn(&zds, dsn, response, hasEncoding ? &encodingValue : NULL);
+  if (hasEncoding)
+  {
+    memcpy(zds.encoding, encodingValue.c_str(), (std::min)(16ul, encodingValue.size()));
+  }
+  rc = zds_read_from_dsn(&zds, dsn, response);
   if (0 != rc)
   {
     cout << "Error: could not read data set: '" << dsn << "' rc: '" << rc << "'" << endl;

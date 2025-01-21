@@ -38,7 +38,7 @@ struct ZDSEntry
  * @param encoding The desired encoding for the data set (optional)
  * @return int 0 for success; non zero otherwise
  */
-int zds_read_from_dsn(ZDS *zds, std::string dsn, std::string &response, std::string *encoding);
+int zds_read_from_dsn(ZDS *zds, std::string dsn, std::string &response);
 
 /**
  * @brief Read data from a DDNAME
