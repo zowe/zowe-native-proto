@@ -3,8 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "build": "npm run build --workspaces",
     "lint": "npm run lint --workspaces",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "watch": "npm run watch --workspaces"
   },
   "keywords": [],
   "author": "",

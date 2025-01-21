@@ -11,34 +11,27 @@
 
 import type { IHandlerParameters } from "@zowe/imperative";
 import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
-import {
-	type IListDatasetsRequest,
-	type IListDatasetsResponse,
-	ZSshClient,
-} from "zowe-native-proto-sdk";
+import { type IListDatasetsRequest, type IListDatasetsResponse, ZSshClient } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class ListDataSetsHandler extends SshBaseHandler {
-	public async processWithSession(
-		params: IHandlerParameters,
-		session: SshSession,
-	): Promise<IListDatasetsResponse> {
-		using client = await ZSshClient.create(session);
-		const request: IListDatasetsRequest = {
-			command: "listDatasets",
-			pattern: params.arguments.pattern,
-		};
-		const response = await client.request<IListDatasetsResponse>(request);
-		params.response.data.setMessage(
-			"Successfully listed %d matching data sets for pattern '%s'",
-			response.returnedRows,
-			params.arguments.pattern,
-		);
-		params.response.format.output({
-			output: response.items,
-			format: "table",
-			fields: ["name", "dsorg", "volser"],
-		});
-		return response;
-	}
+    public async processWithSession(params: IHandlerParameters, session: SshSession): Promise<IListDatasetsResponse> {
+        using client = await ZSshClient.create(session);
+        const request: IListDatasetsRequest = {
+            command: "listDatasets",
+            pattern: params.arguments.pattern,
+        };
+        const response = await client.request<IListDatasetsResponse>(request);
+        params.response.data.setMessage(
+            "Successfully listed %d matching data sets for pattern '%s'",
+            response.returnedRows,
+            params.arguments.pattern,
+        );
+        params.response.format.output({
+            output: response.items,
+            format: "table",
+            fields: ["name", "dsorg", "volser"],
+        });
+        return response;
+    }
 }

@@ -12,26 +12,26 @@
 import type { ICommandDefinition } from "@zowe/imperative";
 
 export const ListDataSetMembersDefinition: ICommandDefinition = {
-	handler: __dirname + "/DataSetMembers.handler",
-	type: "command",
-	name: "data-set-members",
-	aliases: ["members"],
-	summary: "List PDS or PDSE data set members",
-	description: "List all members of the specified PDS or PDSE data set.",
-	examples: [
-		{
-			description: 'List all members in data set "ibmuser.test.cntl"',
-			options: '"ibmuser.test.cntl"',
-		},
-	],
-	positionals: [
-		{
-			name: "dsname",
-			description: "The PDS or PDSE data set name.",
-			type: "string",
-			required: true,
-		},
-	],
-	profile: { optional: ["ssh"] },
-	outputFormatOptions: true,
+    handler: __dirname + "/DataSetMembers.handler",
+    type: "command",
+    name: "data-set-members",
+    aliases: ["members"],
+    summary: "List PDS or PDSE data set members",
+    description: "List all members of the specified PDS or PDSE data set.",
+    examples: [
+        {
+            description: 'List all members in data set "ibmuser.test.cntl"',
+            options: '"ibmuser.test.cntl"',
+        },
+    ],
+    positionals: [
+        {
+            name: "dsname",
+            description: "The PDS or PDSE data set name.",
+            type: "string",
+            required: true,
+        },
+    ],
+    profile: { optional: ["ssh"] },
+    outputFormatOptions: true,
 };
