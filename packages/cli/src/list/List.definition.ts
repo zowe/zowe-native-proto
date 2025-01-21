@@ -17,25 +17,20 @@ import { ListJobsDefinition } from "./jobs/Jobs.definition";
 import { ListUssFilesDefinition } from "./uss-files/UssFiles.definition";
 
 const ListDefinition: ICommandDefinition = {
-	name: "list",
-	aliases: ["ls"],
-	summary: "List data sets, data set members, uss files, jobs, spool files",
-	description: "List data sets, data set members, uss files, jobs, spool files",
-	type: "group",
-	children: [
-		ListDataSetDefinition,
-		ListDataSetMembersDefinition,
-		ListJobsDefinition,
-		ListUssFilesDefinition,
-	],
-	passOn: [
-		{
-			property: "options",
-			value: SshSession.SSH_CONNECTION_OPTIONS,
-			merge: true,
-			ignoreNodes: [{ type: "group" }],
-		},
-	],
+    name: "list",
+    aliases: ["ls"],
+    summary: "List data sets, data set members, uss files, jobs, spool files",
+    description: "List data sets, data set members, uss files, jobs, spool files",
+    type: "group",
+    children: [ListDataSetDefinition, ListDataSetMembersDefinition, ListJobsDefinition, ListUssFilesDefinition],
+    passOn: [
+        {
+            property: "options",
+            value: SshSession.SSH_CONNECTION_OPTIONS,
+            merge: true,
+            ignoreNodes: [{ type: "group" }],
+        },
+    ],
 };
 
 export = ListDefinition;

@@ -14,19 +14,19 @@ import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { type IRpcResponse, ZSshUtils } from "zowe-native-proto-sdk";
 
 export abstract class SshBaseHandler implements ICommandHandler {
-	public async process(commandParameters: IHandlerParameters) {
-		const session = ZSshUtils.buildSession(commandParameters.arguments);
+    public async process(commandParameters: IHandlerParameters) {
+        const session = ZSshUtils.buildSession(commandParameters.arguments);
 
-		const response = await this.processWithSession(commandParameters, session);
+        const response = await this.processWithSession(commandParameters, session);
 
-		commandParameters.response.progress.endBar(); // end any progress bars
+        commandParameters.response.progress.endBar(); // end any progress bars
 
-		// Return as an object when using --response-format-json
-		commandParameters.response.data.setObj(response);
-	}
+        // Return as an object when using --response-format-json
+        commandParameters.response.data.setObj(response);
+    }
 
-	public abstract processWithSession(
-		commandParameters: IHandlerParameters,
-		session: SshSession,
-	): Promise<IRpcResponse>;
+    public abstract processWithSession(
+        commandParameters: IHandlerParameters,
+        session: SshSession,
+    ): Promise<IRpcResponse>;
 }
