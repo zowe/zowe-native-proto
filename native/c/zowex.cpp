@@ -731,8 +731,31 @@ int handle_uss_view(ZCLIResult result)
 
 int handle_uss_write(ZCLIResult result)
 {
-  printf("method not implemented\n");
-  return 1;
+  int rc = 0;
+  string file = result.get_positional("file-path").get_value();
+  // TODO(zFernand0): Avoid overriting existing files
+  ZUSF zusf = {0};
+
+  string data;
+  string line;
+
+  // Use Ctrl/Cmd + D to stop writing data manually
+  while (getline(cin, line))
+  {
+    data += line;
+    data.push_back('\n');
+  }
+
+  rc = zds_write_to_uss_file(&zusf, file, data);
+  if (0 != rc)
+  {
+    cout << "Error: could not write to USS file: '" << file << "' rc: '" << rc << "'" << endl;
+    cout << "  Details: " << zusf.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+  cout << "Wrote data to '" << file << "'" << endl;
+
+  return rc;
 }
 
 int handle_uss_delete_file(ZCLIResult result)

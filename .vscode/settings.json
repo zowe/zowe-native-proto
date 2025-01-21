@@ -1,5 +1,8 @@
 {
   "files.associations": {
+    "**/.hlasmplugin/proc_grps.json": "jsonc",
+    "**/.hlasmplugin/pgm_conf.json": "jsonc",
+    "*.proto": "csharp",
     "string": "cpp",
     "iostream": "cpp",
     "ios": "cpp",
@@ -53,7 +56,10 @@
     "tuple": "cpp",
     "typeinfo": "cpp",
     "variant": "cpp",
-    "algorithm": "cpp"
+    "algorithm": "cpp",
+    "memory": "cpp",
+    "print": "cpp",
+    "stack": "cpp"
   },
   "editor.formatOnSave": true
 }

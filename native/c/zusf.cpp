@@ -38,7 +38,7 @@ using namespace std;
  *
  * @return RTNCD_SUCCESS on success, -1 on failure
  */
-int zusf_create_uss_file_or_dir(ZUSF *zusf, std::string file, std::string mode, bool createDir)
+int zusf_create_uss_file_or_dir(ZUSF *zusf, string file, string mode, bool createDir)
 {
   struct stat file_stats;
   if (stat(file.c_str(), &file_stats) != -1)
@@ -80,7 +80,7 @@ int zusf_create_uss_file_or_dir(ZUSF *zusf, std::string file, std::string mode, 
   return RTNCD_FAILURE;
 }
 
-int zusf_list_uss_file_path(ZUSF *zusf, std::string file, std::string &response)
+int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response)
 {
   struct stat file_stats;
   if (stat(file.c_str(), &file_stats) == -1)
@@ -137,7 +137,7 @@ int zusf_list_uss_file_path(ZUSF *zusf, std::string file, std::string &response)
  *
  * @return RTNCD_SUCCESS on success, -1 on failure
  */
-int zusf_read_from_uss_file(ZUSF *zusf, std::string file, std::string &response)
+int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
 {
   ifstream in(file.c_str());
   if (!in.is_open())
@@ -158,4 +158,19 @@ int zusf_read_from_uss_file(ZUSF *zusf, std::string file, std::string &response)
   in.close();
 
   return RTNCD_SUCCESS;
+}
+
+int zds_write_to_uss_file(ZUSF *zusf, string file, string &data)
+{
+  ofstream out(file.c_str());
+  if (!out.is_open())
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open '%s'", file.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  out << data;
+  out.close();
+
+  return 0;
 }
