@@ -208,12 +208,11 @@ int main(int argc, char *argv[])
   uss_group.set_description("z/OS USS operations");
 
   // uss common options and positionals
-  ZCLIPositional uss_file_path("file-name");
+  ZCLIPositional uss_file_path("file-path");
   uss_file_path.set_required(true);
   uss_file_path.set_description("file path");
   ZCLIOption uss_file_mode("mode");
   uss_file_mode.set_required(false);
-  uss_file_mode.set_found("644");
   uss_file_mode.set_description("permissions");
   ZCLIOption uss_recursive("recursive");
   uss_recursive.set_required(false);
@@ -641,17 +640,55 @@ int handle_test_bpxwdyn(ZCLIResult result)
   return rc;
 }
 
-int handle_uss_create_file(ZCLIResult)
+int handle_uss_create_file(ZCLIResult result)
 {
-  printf("method not implemented\n");
-  return 1;
+  int rc = 0;
+  string file_path = result.get_positional("file-path").get_value();
+  string mode(result.get_option("--mode").get_value());
+  if (mode == "")
+    mode = "644";
+
+  ZUSF zusf = {0};
+  string response;
+  rc = zusf_create_uss_file_or_dir(&zusf, file_path, response, mode, false);
+  if (0 != rc)
+  {
+    cout << "Error: could not create USS file: '" << file_path << "' rc: '" << rc << "'" << endl;
+    cout << "  Details:\n"
+         << zusf.diag.e_msg << endl
+         << response << endl;
+    return -1;
+  }
+
+  cout << "USS file '" << file_path << "' created" << endl;
+
+  return rc;
 }
-int handle_uss_create_dir(ZCLIResult)
+int handle_uss_create_dir(ZCLIResult result)
 {
-  printf("method not implemented\n");
-  return 1;
+  int rc = 0;
+  string file_path = result.get_positional("file-path").get_value();
+  string mode(result.get_option("--mode").get_value());
+  if (mode == "")
+    mode = "755";
+
+  ZUSF zusf = {0};
+  string response;
+  rc = zusf_create_uss_file_or_dir(&zusf, file_path, response, mode, true);
+  if (0 != rc)
+  {
+    cout << "Error: could not create USS directory: '" << file_path << "' rc: '" << rc << "'" << endl;
+    cout << "  Details:\n"
+         << zusf.diag.e_msg << endl
+         << response << endl;
+    return -1;
+  }
+
+  cout << "USS directory '" << file_path << "' created" << endl;
+
+  return rc;
 }
-int handle_uss_list(ZCLIResult)
+int handle_uss_list(ZCLIResult result)
 {
   printf("method not implemented\n");
   return 1;
@@ -660,13 +697,11 @@ int handle_uss_list(ZCLIResult)
 int handle_uss_view(ZCLIResult result)
 {
   int rc = 0;
-  string uss_file = result.get_positional("file-name").get_value();
-  ZCLIOption &mode = result.get_option("--mode");
+  string uss_file = result.get_positional("file-path").get_value();
 
   ZUSF zusf = {0};
   string response;
-  string modeValue = mode.get_value();
-  rc = zusf_read_from_uss_file(&zusf, uss_file, response, modeValue);
+  rc = zusf_read_from_uss_file(&zusf, uss_file, response);
   if (0 != rc)
   {
     cout << "Error: could not create USS file: '" << uss_file << "' rc: '" << rc << "'" << endl;
@@ -682,27 +717,27 @@ int handle_uss_view(ZCLIResult result)
   return rc;
 }
 
-int handle_uss_write(ZCLIResult)
+int handle_uss_write(ZCLIResult result)
 {
   printf("method not implemented\n");
   return 1;
 }
-int handle_uss_delete_file(ZCLIResult)
+int handle_uss_delete_file(ZCLIResult result)
 {
   printf("method not implemented\n");
   return 1;
 }
-int handle_uss_delete_dir(ZCLIResult)
+int handle_uss_delete_dir(ZCLIResult result)
 {
   printf("method not implemented\n");
   return 1;
 }
-int handle_uss_chmod(ZCLIResult)
+int handle_uss_chmod(ZCLIResult result)
 {
   printf("method not implemented\n");
   return 1;
 }
-int handle_uss_chown(ZCLIResult)
+int handle_uss_chown(ZCLIResult result)
 {
   printf("method not implemented\n");
   return 1;
