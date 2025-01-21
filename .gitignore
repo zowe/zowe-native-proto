@@ -5,5 +5,3 @@ lib
 node_modules
 zowe.config.json
 zowe.schema.json
-a.out
-testcli
