@@ -239,8 +239,8 @@ int main(int argc, char *argv[])
   tool_group.set_description("tool operations");
 
   // console verbs
-  ZCLIVerb tool_convert_dsect("convert-dsect");
-  tool_convert_dsect.set_description("conver dsect to c struct");
+  ZCLIVerb tool_convert_dsect("ccnedsct");
+  tool_convert_dsect.set_description("convert dsect to c struct");
   tool_convert_dsect.set_zcli_verb_handler(handle_tool_convert_dsect);
   ZCLIOption adata_dsn("adata-dsn");
   adata_dsn.set_description("input adata dsn");
@@ -262,7 +262,7 @@ int main(int argc, char *argv[])
   tool_convert_dsect.get_options().push_back(sysout);
   tool_group.get_verbs().push_back(tool_convert_dsect);
 
-  ZCLIVerb tool_dynalloc("dynalloc");
+  ZCLIVerb tool_dynalloc("bpxwdy2");
   tool_dynalloc.set_description("dynalloc command");
   tool_dynalloc.set_zcli_verb_handler(handle_test_dynalloc);
   ZCLIPositional dynalloc_parm("parm");

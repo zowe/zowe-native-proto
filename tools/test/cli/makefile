@@ -2,7 +2,10 @@ CXX=g++
 HEADER=../../../native/c/
 INCLUDE=-I$(HEADER)
 
-all: touch testcli chmod
+all: touch testcli chmod test
+
+test: test.cpp
+	$(CXX) $(INCLUDE) $^ -o $@
 
 testcli: testcli.cpp
 	$(CXX) $(INCLUDE) $^ -o $@
