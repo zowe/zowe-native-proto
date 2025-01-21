@@ -45,6 +45,16 @@ struct ZJobDD
 int zjb_list_by_owner(ZJB *zjb, std::string owner_name, std::vector<ZJob> &jobs);
 
 /**
+ * @brief Return a job status struct from input jobid
+ *
+ * @param zjb job returned attributes and error information
+ * @param jobid jobid used to search
+ * @param job populated struct returned for found job
+ * @return int 0 for success; non zero otherwise
+ */
+int zjb_view_by_jobid(ZJB *zjb, std::string jobid, ZJob &job);
+
+/**
  * @brief Return a list of job file information from an input jobid
  *
  * @param zjb job returned attributes and error information
@@ -66,6 +76,16 @@ int zjb_read_jobs_output_by_jobid_and_key(ZJB *zjb, std::string jobid, int key, 
 
 int zjb_get_job_dsn_by_jobid_and_key(ZJB *zjb, std::string, int, std::string &);
 int zjb_read_job_content_by_dsn(ZJB *zjb, std::string job_dsn, std::string &response);
+
+/**
+ * @brief Return JCL for a job by input jobid
+ *
+ * @param zjb job returned attributes and error information
+ * @param jobid jobid coresponding to the key to locate
+ * @param response return JCL
+ * @return int 0 for success; non zero otherwise
+ */
+int zjb_read_job_jcl_by_jobid(ZJB *zjb, std::string jobid, std::string &response);
 
 /**
  * @brief Submit a job from a given input data set

@@ -1,0 +1,29 @@
+{
+  "name": "zowe-native-proto-cli",
+  "version": "1.0.0",
+  "main": "lib/index.js",
+  "scripts": {
+    "build": "tsc -b",
+    "lint": "npx @biomejs/biome check --write src",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "watch": "tsc -b -w"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "imperative": {
+    "configurationModule": "lib/imperative.js"
+  },
+  "dependencies": {
+    "@zowe/zos-uss-for-zowe-sdk": "^8.11.0",
+    "zowe-native-proto-sdk": "1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.7",
+    "typescript": "^5.7.3"
+  },
+  "peerDependencies": {
+    "@zowe/imperative": "^8.0.0"
+  }
+}

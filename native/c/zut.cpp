@@ -25,28 +25,12 @@ using namespace std;
 
 int zut_test()
 {
-  int rc = 0;
-  unsigned int code = 0;
-  string resp;
-  string parm = "free dd(minemine)";
+  return 0;
+}
 
-  // rc = zut_bpxwdyn(parm, &code, resp);
-
-  /*
- This example dynamically deallocates a data set.
- */
-
-  __dyn_t ip;
-
-  dyninit(&ip);
-  ip.__dsname = "dkelosky.temp.test5";
-
-  rc = dynfree(&ip);
-
-  // cout << "resp is:\n" << resp << endl;
-  // printf("code is x'%x'\n", code);
-
-  return rc;
+int zut_convert_dsect()
+{
+  return ZUTEDSCT();
 }
 
 void zut_uppercase_pad_truncate(string source, char *target, int len)
@@ -299,4 +283,19 @@ char *zut_encode_alloc(char *rawData, const string &encoding, ZDIAG &diag, char 
   *bufEnd = outptr;
   iconv_close(cd);
   return outbuf;
+}
+
+string zut_format_as_csv(const std::vector<string> &fields)
+{
+  string formatted;
+  for (int i = 0; i < fields.size(); i++)
+  {
+    formatted += fields.at(i);
+    if (i < fields.size() - 1)
+    {
+      formatted += ",";
+    }
+  }
+
+  return formatted;
 }

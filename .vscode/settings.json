@@ -57,9 +57,8 @@
     "typeinfo": "cpp",
     "variant": "cpp",
     "algorithm": "cpp",
-    "memory": "cpp",
-    "print": "cpp",
-    "stack": "cpp"
+    "zattachx.h": "c",
+    "charconv": "cpp"
   },
   "editor.formatOnSave": true
 }

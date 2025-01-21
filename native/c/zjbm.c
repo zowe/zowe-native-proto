@@ -21,6 +21,10 @@
 #include "zmetal.h"
 #include "zjbtype.h"
 
+// TODO(Kelosky):
+// https://www.ibm.com/docs/en/zos/3.1.0?topic=79-putget-requests
+// read system log
+
 #define SYMBOL_ENTRIES 3
 typedef struct
 {
@@ -90,7 +94,7 @@ int ZJBSYMB(ZJB *zjb, const char *symbol, char *value)
     return RTNCD_FAILURE;
   }
 
-  p = (unsigned char *)&jsymbolOutput.jsymbolTable; // --> table
+  p = (unsigned char *)&jsymbolOutput.jsymbolTable;                               // --> table
   JSYENTRY *jsymbolEntry = (JSYENTRY *)(p + jsymbolOutput.jsymbolTable.jsytent1); // --> first entry
 
   p = p + jsymbolEntry->jsyevalo;
@@ -146,7 +150,7 @@ int ZJBMPRG(ZJB *zjb)
     return RTNCD_FAILURE;
   }
 
-  ssjfp = (SSJF *) ssjm.ssjmsjf8; // NOTE(Kelosky): in the future we can return a list of SSJFs, for now, if none returned, the job was not found
+  ssjfp = (SSJF *)ssjm.ssjmsjf8; // NOTE(Kelosky): in the future we can return a list of SSJFs, for now, if none returned, the job was not found
 
   if (0 == ssjm.ssjmnsjf)
   {
@@ -158,9 +162,35 @@ int ZJBMPRG(ZJB *zjb)
   return RTNCD_SUCCESS;
 }
 
+// view job
+#pragma prolog(ZJBMVIEW, "&CCN_MAIN SETB 1 \n MYPROLOG")
+int ZJBMVIEW(ZJB *zjb, STATJQTR **PTR64 job_info, int *entries)
+{
+  STAT stat = {0};
+  init_stat(&stat);
+
+  stat.statsel1 = statsoji;
+  stat.stattype = statters;
+  memcpy(stat.statojbi, zjb->jobid, sizeof((stat.statojbi)));
+
+  return ZJBMTCOM(zjb, &stat, job_info, entries);
+}
+
 // list jobs
 #pragma prolog(ZJBMLIST, "&CCN_MAIN SETB 1 \n MYPROLOG")
-int ZJBMLIST(ZJB *zjb, STATJQTR **PTR64 jobInfo, int *entries)
+int ZJBMLIST(ZJB *zjb, STATJQTR **PTR64 job_info, int *entries)
+{
+  STAT stat = {0};
+  init_stat(&stat);
+
+  stat.statsel1 = statsown;
+  stat.stattype = statters;
+  memcpy(stat.statownr, zjb->owner_name, sizeof((stat.statownr)));
+
+  return ZJBMTCOM(zjb, &stat, job_info, entries);
+}
+
+int ZJBMTCOM(ZJB *zjb, STAT *PTR64 stat, STATJQTR **PTR64 jobInfo, int *entries)
 {
   int rc = 0;
   int loop_control = 0;
@@ -170,19 +200,14 @@ int ZJBMLIST(ZJB *zjb, STATJQTR **PTR64 jobInfo, int *entries)
   SSOB *PTR32 ssobp = NULL;
   SSOB ssob = {0};
   SSIB ssib = {0};
-  STAT stat = {0};
   STATJQ *PTR32 statjqp = NULL;
   STATJQHD *PTR32 statjqhdp = NULL;
   STATJQTR *PTR32 statjqtrp = NULL;
   WTO_BUF buf = {0};
 
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=sfcd-extended-status-function-call-ssi-function-code-80
-  init_ssob(&ssob, &ssib, &stat, 80);
+  init_ssob(&ssob, &ssib, stat, 80);
   init_ssib(&ssib);
-  init_stat(&stat);
-  stat.statsel1 = statsown;
-  stat.stattype = statters;
-  memcpy(stat.statownr, zjb->owner_name, sizeof((stat.statownr)));
 
   ssobp = &ssob;
   ssobp = (SSOB * PTR32)((unsigned int)ssobp | 0x80000000);
@@ -192,14 +217,14 @@ int ZJBMLIST(ZJB *zjb, STATJQTR **PTR64 jobInfo, int *entries)
   {
     strcpy(zjb->diag.service_name, "IEFSSREQ");
     zjb->diag.service_rc = ssob.ssobretn;
-    zjb->diag.service_rsn = stat.statreas;
-    zjb->diag.service_rsn_secondary = stat.statrea2;
-    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "IEFSSREQ rc was: '%d' SSOBRTN was: '%d', STATREAS was: '%d', STATREA2 was: '%d'", rc, ssob.ssobretn, stat.statreas, stat.statrea2); // STATREAS contains the reason
+    zjb->diag.service_rsn = stat->statreas;
+    zjb->diag.service_rsn_secondary = stat->statrea2;
+    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "IEFSSREQ rc was: '%d' SSOBRTN was: '%d', STATREAS was: '%d', STATREA2 was: '%d'", rc, ssob.ssobretn, stat->statreas, stat->statrea2); // STATREAS contains the reason
     storageFree64(statjqtrsp);
     return RTNCD_FAILURE;
   }
 
-  statjqp = (STATJQ * PTR32) stat.statjobf;
+  statjqp = (STATJQ * PTR32) stat->statjobf;
   *jobInfo = statjqtrsp;
 
   int total_size = 0;
@@ -208,7 +233,9 @@ int ZJBMLIST(ZJB *zjb, STATJQTR **PTR64 jobInfo, int *entries)
   {
     if (loop_control > zjb->jobs_max)
     {
-      zjb->diag.detail_rc = ZJB_RTNCD_MAX_JOBS_REACHED;
+      zjb->diag.detail_rc = ZJB_RSNCD_MAX_JOBS_REACHED;
+      zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "Reached maximum returned jobs requested %d", zjb->jobs_max);
+      return RTNCD_WARNING;
       break;
     }
 
@@ -236,8 +263,8 @@ int ZJBMLIST(ZJB *zjb, STATJQTR **PTR64 jobInfo, int *entries)
 
   zjb->buffer_size_needed = total_size;
 
-  stat.stattype = statmem; // free storage
-  rc = iefssreq(&ssobp); // TODO(Kelosky): recovery
+  stat->stattype = statmem; // free storage
+  rc = iefssreq(&ssobp);    // TODO(Kelosky): recovery
 
   return RTNCD_SUCCESS;
 }
@@ -308,8 +335,11 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
     {
       if (loop_control > zjb->dds_max)
       {
-        zjb->diag.detail_rc = ZJB_RTNCD_MAX_JOBS_REACHED;
-        break;
+        stat.stattype = statmem; // free storage
+        rc = iefssreq(&ssobp);   // TODO(Kelosky): recovery
+        zjb->diag.detail_rc = ZJB_RSNCD_MAX_JOBS_REACHED;
+        zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "max jobs reached of %d", zjb->dds_max);
+        return RTNCD_WARNING;
       }
 
       total_size += (int)sizeof(STATSEVB);
@@ -337,7 +367,6 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
     }
 
     statjqp = (STATJQ * PTR32) statjqp->stjqnext;
-
   }
 
   zjb->buffer_size_needed = total_size;

@@ -162,6 +162,7 @@ int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
 
 int zds_write_to_uss_file(ZUSF *zusf, string file, string &data)
 {
+  // TODO(zFernand0): Avoid overriding existing files
   ofstream out(file.c_str());
   if (!out.is_open())
   {

@@ -47,6 +47,7 @@ connection.on(`ready`, async () => {
       await deploy(connection);
       await convert(connection);
       break;
+    case `deploy:build`:
     case `deploy-build`:
       await deploy(connection);
       await convert(connection);
@@ -62,7 +63,7 @@ connection.on(`ready`, async () => {
       await clean(connection);
       break;
     case `bin`:
-      await bin(connection)
+      await bin(connection);
       break;
     case `build`:
       await build(connection);
@@ -145,7 +146,7 @@ function getServerFiles(dir = ``) {
           );
           files.forEach((entry) => {
             if (!entry.isDirectory()) {
-              fileList.push(`${arg}/${entry.name}`)
+              fileList.push(`${arg}/${entry.name}`);
             }
           });
         } else {
@@ -153,7 +154,6 @@ function getServerFiles(dir = ``) {
         }
       }
     });
-
   }
 
   if (argsFound) {
@@ -389,10 +389,8 @@ async function convert(
   });
 }
 
-
 async function bin(connection: Client) {
   return new Promise<void>((finish) => {
-
     connection.shell(false, (err, stream) => {
       if (err) {
         console.log(`Error: runCommand connection.exec error ${err}`);
@@ -403,7 +401,7 @@ async function bin(connection: Client) {
       // const greeting = "Hello";
       const buffer = Buffer.from([0x01, 0x02, 0x03, 0x04, 0x05]); // 'Hello' in hexadecimal
       // const bufferEncoded = Buffer.from(`12345`).toString(`base64`)
-      const bufferEncoded = buffer.toString(`base64`)
+      const bufferEncoded = buffer.toString(`base64`);
 
       // Print the binary data as a string of hexadecimal values
       // console.log(buffer.toString("hex"));

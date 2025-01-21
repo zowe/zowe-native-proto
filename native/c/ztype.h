@@ -12,7 +12,8 @@
 
 #include <stdint.h>
 
-#define RTNCD_SUCCESS 0
+#define RTNCD_WARNING  1
+#define RTNCD_SUCCESS  0
 #define RTNCD_FAILURE -1
 
 #if defined(__IBM_METAL__)

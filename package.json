@@ -1,0 +1,22 @@
+{
+  "name": "zowe-native-proto",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "lint": "npm run lint --workspaces",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "watch": "npm run watch --workspaces"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "workspaces": [
+    "packages/*"
+  ],
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@zowe/secrets-for-zowe-sdk": "^8.10.4",
+    "tsx": "^4.19.2"
+  }
+}

@@ -23,23 +23,26 @@ extern "C"
 #define RET_ARG_MAX_LEN 260
 #define MSG_ENTRIES 25
 
-typedef struct {
-  short len;
-  char str[RET_ARG_MAX_LEN];
-} BPXWDYN_RET_ARG;
+  typedef struct
+  {
+    short len;
+    char str[RET_ARG_MAX_LEN];
+  } BPXWDYN_RET_ARG;
 
-typedef BPXWDYN_RET_ARG BPXWDYN_PARM;
+  typedef BPXWDYN_RET_ARG BPXWDYN_PARM;
 
-typedef struct {
-  unsigned int code;
-  char response[RET_ARG_MAX_LEN * MSG_ENTRIES + 1];
-} BPXWDYN_RESPONSE;
+  typedef struct
+  {
+    unsigned int code;
+    char response[RET_ARG_MAX_LEN * MSG_ENTRIES + 1];
+  } BPXWDYN_RESPONSE;
 
-int ZUTMFR64(void *PTR64);
-int ZUTMGT64(void **PTR64, int *PTR64);
-int ZUTMGUSR(char[8]);
-int ZUTWDYN(BPXWDYN_PARM *, BPXWDYN_RESPONSE *);
-int ZUTTEST();
+  int ZUTMFR64(void *PTR64);
+  int ZUTMGT64(void **PTR64, int *PTR64);
+  int ZUTMGUSR(char[8]);
+  int ZUTWDYN(BPXWDYN_PARM *, BPXWDYN_RESPONSE *);
+  int ZUTEDSCT();
+  int ZUTTEST();
 
 #if defined(__cplusplus)
 }

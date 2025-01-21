@@ -26,6 +26,7 @@ struct ZDSEntry
 {
   std::string name;
   std::string dsorg;
+  std::string volser;
 };
 
 /**
@@ -37,7 +38,7 @@ struct ZDSEntry
  * @param encoding The desired encoding for the data set (optional)
  * @return int 0 for success; non zero otherwise
  */
-int zds_read_from_dsn(ZDS *zds, std::string dsn, std::string &response, std::string *encoding);
+int zds_read_from_dsn(ZDS *zds, std::string dsn, std::string &response);
 
 /**
  * @brief Read data from a DDNAME
@@ -78,6 +79,26 @@ int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data);
  * @return int 0 for success; non zero otherwise
  */
 int zds_create_dsn(ZDS *zds, std::string dsn, std::string &response);
+
+/**
+ * @brief Create a data set
+ *
+ * @param zds data set returned attributes and error information
+ * @param dsn data set name to create
+ * @param response messages from dynamic allocation (which may be present even when successful requests are made)
+ * @return int 0 for success; non zero otherwise
+ */
+int zds_create_dsn_vb(ZDS *zds, std::string dsn, std::string &response);
+
+/**
+ * @brief Create a data set
+ *
+ * @param zds data set returned attributes and error information
+ * @param dsn data set name to create
+ * @param response messages from dynamic allocation (which may be present even when successful requests are made)
+ * @return int 0 for success; non zero otherwise
+ */
+int zds_create_dsn_adata(ZDS *zds, std::string dsn, std::string &response);
 
 /**
  * @brief Delete a data set

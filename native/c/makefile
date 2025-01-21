@@ -38,6 +38,7 @@ MTL_FLAGS=-S -W "c,$(MTL_OPTS)"
 MTL_FLAGS64=-S -W "c,$(MTL_OPTS64)"
 
 MACLIBS=-ISYS1.MACLIB \
+ -ISYS1.MODGEN \
  -ICBC.SCCNSAM
 
 MTL_HEADERS=-I/usr/include/metal \
@@ -218,7 +219,7 @@ libzusf.a: zusf.o libzut.a
 zowex: zowex.o libzcn.a libzut.a libzjb.a libzds.a libzusf.a
 	@echo 'Building zowex'
 	$(CXX) $(CPP_BND_FLAGS) -o $@ $^ > $*.bind.lst
-	cp $@ ../golang/ioserver/$(basename $@)
+	cp $@ ../golang/$(basename $@)
 	@echo 'Copied zowex to golang/ioserver'
 
 zowexx: zowex.o libzcn.a libzut.a libzjb.a libzds.a libzusf.a

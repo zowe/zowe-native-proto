@@ -8,24 +8,25 @@
   Copyright Contributors to the Zowe Project.
 */
 #include <iostream>
+#include <sstream>
+#include <string>
 #include <fstream>
+#include <cstring>
+#include <vector>
+#include <iomanip>
+#include <stdio.h>
+#include <istream>
+#include <ctype.h>
+#include <algorithm>
+#include <unistd.h>
+#include "iazbtokp.h"
+#include "iefzb4d0.h"
+#include "iefzb4d2.h"
 #include "zmetal.h"
 #include "zds.hpp"
 #include "zjb.hpp"
 #include "zjbm.h"
 #include "zssitype.h"
-#include <cstring>
-#include <string>
-#include <vector>
-#include <iomanip>
-#include <stdio.h>
-#include <sstream>
-#include <dynit.h>
-#include <ctype.h>
-#include <algorithm>
-#include "iazbtokp.h"
-#include "iefzb4d0.h"
-#include "iefzb4d2.h"
 #include "zut.hpp"
 #include "zutm.h"
 #include "zjbtype.h"
@@ -40,8 +41,7 @@ using namespace std;
 
 // NOTE(Kelosky): see struct __S99struc via 'showinc' compiler option in <stdio.h>
 // NOTE(Kelosky): In the future, to allocate the logical SYSLOG concatenation for a system specify the following data set name (in DALDSNAM).
-// NOTE(Kelosky): needed for dynalloc JES spool https://www.ibm.com/docs/en/zos/3.1.0?topic=programming-jes-spool-data-set-browse
-// NOTE(Kelosky): needed for dynalloc https://www.ibm.com/docs/en/zos/3.1.0?topic=list-coding-dynamic-allocation-request
+// https://www.ibm.com/docs/en/zos/3.1.0?topic=allocation-specifying-data-set-name-daldsnam
 int zjb_read_jobs_output_by_jobid_and_key(ZJB *zjb, string jobid, int key, string &response)
 {
   int rc = 0;
@@ -84,6 +84,41 @@ int zjb_get_job_dsn_by_jobid_and_key(ZJB *zjb, string jobid, int key, string &jo
   }
 
   return RTNCD_SUCCESS;
+}
+
+int zjb_read_job_jcl_by_jobid(ZJB *zjb, string jobid, string &response)
+{
+  int rc = 0;
+
+  vector<ZJobDD> list;
+
+  rc = zjb_list_dds_by_jobid(zjb, jobid, list);
+  if (0 != rc)
+    return rc;
+
+  rc = RTNCD_FAILURE; // assume failure
+
+  istringstream iss(list[0].dsn);
+  vector<string> args;
+  string arg;
+
+  while (getline(iss, arg, '.'))
+  {
+    args.push_back(arg);
+  }
+
+#define MIN_SIZE 3 // HLQ + next + next
+
+  if (args.size() < MIN_SIZE)
+  {
+    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "Unexpected data set name '%s' for jobid %s", list[0].dsn.c_str(), jobid.c_str());
+    zjb->diag.detail_rc = ZJB_RTNCD_UNEXPECTED_ERROR;
+    return RTNCD_FAILURE;
+  }
+
+  string jcl_dsn = args[0] + "." + args[1] + "." + args[2] + ".JCL";
+
+  return zjb_read_job_content_by_dsn(zjb, jcl_dsn, response);
 }
 
 #define NUM_TEXT_UNITS 5
@@ -200,6 +235,7 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, string jobdsn, string &response)
   s99parms->__S99TXTPP = s99tupl;
   // s99parms->__S99S99X = s99parmsx; // TODO(Kelosky): reenable when we look at s99parmsx->__S99ENMSG and free
 
+  // https://www.ibm.com/docs/en/zos/3.1.0?topic=list-coding-dynamic-allocation-request
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=guide-dynamic-allocation
   rc = svc99(s99parms);
 
@@ -259,7 +295,7 @@ int zjb_submit(ZJB *zjb, string data_set, string &jobId)
   int rc = 0;
   string content;
   ZDS zds = {0};
-  rc = zds_read_from_dsn(&zds, data_set, content, NULL);
+  rc = zds_read_from_dsn(&zds, data_set, content);
   if (rc != 0)
   {
     memcpy(&zjb->diag, &zds.diag, sizeof(ZDIAG));
@@ -347,7 +383,7 @@ int zjb_list_dds_by_jobid(ZJB *zjb, string jobid, vector<ZJobDD> &jobDDs)
     ZUTMFR64(sysoutInfo);
     zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "Could not locate job '%s'", jobid.c_str());
     zjb->diag.detail_rc = ZJB_RTNCD_JOB_NOT_FOUND;
-    return RTNCD_FAILURE;
+    return RTNCD_WARNING;
   }
 
   STATSEVB *PTR64 sysoutInfoNext = sysoutInfo;
@@ -386,6 +422,125 @@ int zjb_list_dds_by_jobid(ZJB *zjb, string jobid, vector<ZJobDD> &jobDDs)
   return rc;
 }
 
+int zjb_view_by_jobid(ZJB *zjb, string jobid, ZJob &job)
+{
+  int rc = 0;
+  STATJQTR *PTR64 jobInfo = NULL;
+  int entries = 0;
+
+  ///
+
+  if (0 == zjb->buffer_size)
+    zjb->buffer_size = ZJB_DEFAULT_BUFFER_SIZE;
+  if (0 == zjb->jobs_max)
+    zjb->jobs_max = ZJB_DEFAULT_MAX_JOBS;
+
+  zut_uppercase_pad_truncate(jobid, zjb->jobid, sizeof(zjb->jobid));
+
+  rc = ZJBMVIEW(zjb, &jobInfo, &entries);
+  if (0 != rc)
+    return rc;
+
+  STATJQTR *PTR64 jobInfoNext = jobInfo;
+
+  cout << "entries " << entries << endl;
+
+  if (0 == entries)
+  {
+    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "Could not locate job with job id '%s'", jobid.c_str());
+    zjb->diag.detail_rc = ZJB_RTNCD_JOB_NOT_FOUND;
+    return RTNCD_FAILURE;
+  }
+
+  for (int i = 0; i < entries; i++)
+  {
+    char tempJobName[9] = {0};
+    char tempJobId[9] = {0};
+    char tempJobOwner[9] = {0};
+
+    strncpy(tempJobName, (char *)jobInfoNext[i].sttrname, sizeof(jobInfo->sttrname));
+    strncpy(tempJobId, (char *)jobInfoNext[i].sttrjid, sizeof(jobInfo->sttrjid));
+    strncpy(tempJobOwner, (char *)jobInfoNext[i].sttrouid, sizeof(jobInfo->sttrouid));
+
+    ZJob zjob = {0};
+
+    string jobname(tempJobName);
+    string jobid(tempJobId);
+    string owner(tempJobOwner);
+
+    union cc
+    {
+      int full;
+      unsigned char parts[4];
+    } mycc = {0};
+    memcpy(&mycc, &jobInfoNext[i].sttrxind, sizeof(cc));
+
+    // NOTE(Kelosky): this might need additional testing
+    // TODO(Kelosky): https://www.ibm.com/docs/en/zos/3.1.0?topic=80-text-lookup-service-iaztlkup
+    if (jobInfoNext[i].sttrphaz < stat___onmain)
+    {
+      zjob.status = "INPUT";
+    }
+    else if (jobInfoNext[i].sttrphaz == stat___onmain)
+    {
+      zjob.status = "ACTIVE";
+    }
+    else if (jobInfoNext[i].sttrphaz == stat___outpt)
+    {
+      zjob.status = "OUTPUT";
+    }
+    else
+    {
+      zjob.status = "UNKNOWN";
+    }
+
+    if ("OUTPUT" == zjob.status)
+    {
+
+      if ((unsigned char)jobInfoNext[i].sttrxind & sttrxab)
+      {
+        // for an abend, these are the bits which contain the code
+        mycc.full &= 0x00FFF000; // clear uneeded bits
+        unsigned char byte1 = mycc.parts[1] >> 4;
+        unsigned char byte2 = mycc.parts[1] & 0x0F;
+        unsigned char byte3 = mycc.parts[2] >> 4;
+
+        string result = "ABEND ";
+        result.push_back(zut_get_hex_char(byte1));
+        result.push_back(zut_get_hex_char(byte2));
+        result.push_back(zut_get_hex_char(byte3));
+        zjob.retcode = result;
+      }
+      else if ((unsigned char)jobInfoNext[i].sttrxind == sttrxjcl)
+      {
+        zjob.retcode = "JCL ERROR";
+      }
+      else
+      {
+        mycc.full &= 0x00000FFF; // clear uneeded bits
+        stringstream sscc;
+        sscc << setw(4) << setfill('0') << mycc.full; // format to 4 characters
+        zjob.retcode = "CC " + sscc.str();            // make it look like z/OSMF
+      }
+    }
+    else
+    {
+      zjob.retcode = ZJB_UNKNWON_RC;
+    }
+
+    zjob.jobname = jobname;
+    zjob.jobid = jobid;
+    zjob.owner = owner;
+
+    // jobs.push_back(zjob);
+    job = zjob;
+  }
+
+  ZUTMFR64(jobInfo);
+
+  return RTNCD_SUCCESS;
+}
+
 int zjb_list_by_owner(ZJB *zjb, string owner_name, vector<ZJob> &jobs)
 {
   int rc = 0;
@@ -394,15 +549,8 @@ int zjb_list_by_owner(ZJB *zjb, string owner_name, vector<ZJob> &jobs)
 
   if ("" == owner_name)
   {
-    rc = zut_get_current_user(owner_name);
-    if (0 != rc)
-    {
-      strcpy(zjb->diag.service_name, "IAZXJSAB");
-      zjb->diag.service_rc = rc;
-      zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "Could not get current user - %d", rc);
-      zjb->diag.detail_rc = ZJB_RTNCD_SERVICE_FAILURE;
-      return RTNCD_FAILURE;
-    }
+    char *name = getlogin();
+    owner_name = string(name);
   }
 
   if (0 == zjb->buffer_size)
@@ -441,33 +589,8 @@ int zjb_list_by_owner(ZJB *zjb, string owner_name, vector<ZJob> &jobs)
     } mycc = {0};
     memcpy(&mycc, &jobInfoNext[i].sttrxind, sizeof(cc));
 
-    if ((unsigned char)jobInfoNext[i].sttrxind & sttrxab)
-    {
-      // for an abend, these are the bits which contain the code
-      mycc.full &= 0x00FFF000; // clear uneeded bits
-      unsigned char byte1 = mycc.parts[1] >> 4;
-      unsigned char byte2 = mycc.parts[1] & 0x0F;
-      unsigned char byte3 = mycc.parts[2] >> 4;
-
-      string result = "ABEND ";
-      result.push_back(zut_get_hex_char(byte1));
-      result.push_back(zut_get_hex_char(byte2));
-      result.push_back(zut_get_hex_char(byte3));
-      zjob.retcode = result;
-    }
-    else if ((unsigned char)jobInfoNext[i].sttrxind == sttrxjcl)
-    {
-      zjob.retcode = "JCL ERROR";
-    }
-    else
-    {
-      mycc.full &= 0x00000FFF; // clear uneeded bits
-      stringstream sscc;
-      sscc << setw(4) << setfill('0') << mycc.full; // format to 4 characters
-      zjob.retcode = "CC " + sscc.str();            // make it look like z/OSMF
-    }
-
     // NOTE(Kelosky): this might need additional testing
+    // TODO(Kelosky): https://www.ibm.com/docs/en/zos/3.1.0?topic=80-text-lookup-service-iaztlkup
     if (jobInfoNext[i].sttrphaz < stat___onmain)
     {
       zjob.status = "INPUT";
@@ -483,6 +606,40 @@ int zjb_list_by_owner(ZJB *zjb, string owner_name, vector<ZJob> &jobs)
     else
     {
       zjob.status = "UNKNOWN";
+    }
+
+    if ("OUTPUT" == zjob.status)
+    {
+
+      if ((unsigned char)jobInfoNext[i].sttrxind & sttrxab)
+      {
+        // for an abend, these are the bits which contain the code
+        mycc.full &= 0x00FFF000; // clear uneeded bits
+        unsigned char byte1 = mycc.parts[1] >> 4;
+        unsigned char byte2 = mycc.parts[1] & 0x0F;
+        unsigned char byte3 = mycc.parts[2] >> 4;
+
+        string result = "ABEND ";
+        result.push_back(zut_get_hex_char(byte1));
+        result.push_back(zut_get_hex_char(byte2));
+        result.push_back(zut_get_hex_char(byte3));
+        zjob.retcode = result;
+      }
+      else if ((unsigned char)jobInfoNext[i].sttrxind == sttrxjcl)
+      {
+        zjob.retcode = "JCL ERROR";
+      }
+      else
+      {
+        mycc.full &= 0x00000FFF; // clear uneeded bits
+        stringstream sscc;
+        sscc << setw(4) << setfill('0') << mycc.full; // format to 4 characters
+        zjob.retcode = "CC " + sscc.str();            // make it look like z/OSMF
+      }
+    }
+    else
+    {
+      zjob.retcode = ZJB_UNKNWON_RC;
     }
 
     zjob.jobname = jobname;
