@@ -449,7 +449,7 @@ int zjb_view_by_jobid(ZJB *zjb, string jobid, ZJob &job)
   {
     zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "Could not locate job with job id '%s'", jobid.c_str());
     zjb->diag.detail_rc = ZJB_RTNCD_JOB_NOT_FOUND;
-    return RTNCD_WARNING;
+    return RTNCD_FAILURE;
   }
 
   for (int i = 0; i < entries; i++)
