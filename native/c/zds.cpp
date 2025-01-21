@@ -63,7 +63,6 @@ int zds_read_from_dd(ZDS *zds, string ddname, string &response)
 
   char *rawData = new char[size];
   in.read(rawData, size);
-  in.seekg(0, ios::beg);
 
   response.assign(rawData);
   in.close();
@@ -100,7 +99,6 @@ int zds_read_from_dsn(ZDS *zds, string dsn, string &response)
 
   char *rawData = new char[size];
   in.read(rawData, size);
-  in.seekg(0, ios::beg);
 
   response.assign(rawData);
   in.close();

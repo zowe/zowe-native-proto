@@ -402,10 +402,13 @@ int handle_job_view_file(ZCLIResult result)
   ZJB zjb = {0};
   string jobid(result.get_positional("jobid").get_value());
   string key(result.get_positional("key").get_value());
+  const bool hasEncoding = result.get_option("--encoding").is_found();
 
   if (result.get_option("--encoding").is_found()) {
     const string encodingValue = result.get_option("--encoding").get_value();
-    memcpy(zjb.encoding, encodingValue.data(), encodingValue.size());
+    memcpy(zjb.encoding, encodingValue.data(), (std::min)(16ul, encodingValue.size()));
+  } else {
+    memset(zjb.encoding, 0, 16ul);
   }
 
   string resp;
@@ -418,7 +421,18 @@ int handle_job_view_file(ZCLIResult result)
     return -1;
   }
 
-  cout << resp;
+  if (hasEncoding)
+  {
+    for (char *p = (char *)resp.data(); p < (resp.data() + resp.length()); p++)
+    {
+      printf("%02x ", (unsigned char)*p);
+    }
+    printf("\n");
+  }
+  else
+  {
+    cout << response;
+  }
 
   return 0;
 }
