@@ -216,7 +216,6 @@ int main(int argc, char *argv[])
   uss_file_mode.set_description("permissions");
   ZCLIOption uss_recursive("recursive");
   uss_recursive.set_required(false);
-  uss_recursive.set_found(false);
   uss_recursive.set_description("recursive");
 
   ZCLIVerb uss_create_file("create-file");
@@ -303,7 +302,7 @@ int handle_job_list(ZCLIResult result)
   {
     cout << "Error: could not list jobs for: '" << owner_name << "' rc: '" << rc << "'" << endl;
     cout << "  Details: " << zjb.diag.e_msg << endl;
-    return -1;
+    return RTNCD_FAILURE;
   }
 
   for (vector<ZJob>::iterator it = jobs.begin(); it != jobs.end(); it++)
@@ -311,7 +310,7 @@ int handle_job_list(ZCLIResult result)
     cout << it->jobid << " " << left << setw(10) << it->retcode << " " << it->jobname << " " << it->status << endl;
   }
 
-  return 0;
+  return RTNCD_SUCCESS;
 }
 
 int handle_job_list_files(ZCLIResult result)
@@ -327,7 +326,7 @@ int handle_job_list_files(ZCLIResult result)
   {
     cout << "Error: could not list jobs for: '" << jobid << "' rc: '" << rc << "'" << endl;
     cout << "  Details: " << zjb.diag.e_msg << endl;
-    return -1;
+    return RTNCD_FAILURE;
   }
 
   for (vector<ZJobDD>::iterator it = job_dds.begin(); it != job_dds.end(); ++it)
@@ -335,7 +334,7 @@ int handle_job_list_files(ZCLIResult result)
     cout << left << setw(9) << it->ddn << " " << it->dsn << " " << setw(4) << it->key << " " << it->stepname << " " << it->procstep << endl;
   }
 
-  return 0;
+  return RTNCD_SUCCESS;
 }
 
 int handle_job_view_file(ZCLIResult result)
@@ -352,12 +351,12 @@ int handle_job_view_file(ZCLIResult result)
   {
     cout << "Error: could not view job file for: '" << jobid << "' with key '" << key << "' rc: '" << rc << "'" << endl;
     cout << "  Details: " << zjb.diag.e_msg << endl;
-    return -1;
+    return RTNCD_FAILURE;
   }
 
   cout << resp;
 
-  return 0;
+  return RTNCD_SUCCESS;
 }
 
 int handle_job_submit(ZCLIResult result)
@@ -374,7 +373,7 @@ int handle_job_submit(ZCLIResult result)
   {
     cout << "Error: could not submit JCL: '" << dsn << "' rc: '" << rc << "'" << endl;
     cout << "  Details: " << zjb.diag.e_msg << endl;
-    return -1;
+    return RTNCD_FAILURE;
   }
 
   string only_jobid(result.get_option("--only-jobid").get_value());
@@ -383,7 +382,7 @@ int handle_job_submit(ZCLIResult result)
   else
     cout << "Submitted " << dsn << ", " << jobid << endl;
 
-  return 0;
+  return RTNCD_SUCCESS;
 }
 
 int handle_job_delete(ZCLIResult result)
@@ -398,12 +397,12 @@ int handle_job_delete(ZCLIResult result)
   {
     cout << "Error: could not delete job: '" << jobid << "' rc: '" << rc << "'" << endl;
     cout << "  Details: " << zjb.diag.e_msg << endl;
-    return -1;
+    return RTNCD_FAILURE;
   }
 
   cout << "Job " << jobid << " deleted " << endl;
 
-  return 0;
+  return RTNCD_SUCCESS;
 }
 
 int handle_console_issue(ZCLIResult result)
@@ -419,7 +418,7 @@ int handle_console_issue(ZCLIResult result)
   {
     cout << "Error: could not activate console: '" << console_name << "' rc: '" << rc << "'" << endl;
     cout << "  Details: " << zcn.diag.e_msg << endl;
-    return -1;
+    return RTNCD_FAILURE;
   }
 
   printf("%.8s", zcn.console_name);
@@ -429,7 +428,7 @@ int handle_console_issue(ZCLIResult result)
   {
     cout << "Error: could not write to console: '" << console_name << "' rc: '" << rc << "'" << endl;
     cout << "  Details: " << zcn.diag.e_msg << endl;
-    return -1;
+    return RTNCD_FAILURE;
   }
 
   string response = "";
@@ -438,7 +437,7 @@ int handle_console_issue(ZCLIResult result)
   {
     cout << "Error: could not get from console: '" << console_name << "' rc: '" << rc << "'" << endl;
     cout << "  Details: " << zcn.diag.e_msg << endl;
-    return -1;
+    return RTNCD_FAILURE;
   }
 
   cout << response << endl;
@@ -458,7 +457,7 @@ int handle_console_issue(ZCLIResult result)
   {
     cout << "Error: could not deactivate console: '" << console_name << "' rc: '" << rc << "'" << endl;
     cout << "  Details: " << zcn.diag.e_msg << endl;
-    return -1;
+    return RTNCD_FAILURE;
   }
   return rc;
 }
@@ -475,7 +474,7 @@ int handle_data_set_create_dsn(ZCLIResult result)
     cout << "Error: could not create data set: '" << dsn << "' rc: '" << rc << "'" << endl;
     cout << "  Details:\n"
          << response << endl;
-    return -1;
+    return RTNCD_FAILURE;
   }
 
   cout << "Data set '" << dsn << "' created" << endl;
@@ -497,7 +496,7 @@ int handle_data_set_view_dsn(ZCLIResult result)
   {
     cout << "Error: could not read data set: '" << dsn << "' rc: '" << rc << "'" << endl;
     cout << "  Details: " << zds.diag.e_msg << endl;
-    return -1;
+    return RTNCD_FAILURE;
   }
   if (hasEncoding)
   {
@@ -527,7 +526,7 @@ int handle_data_set_list(ZCLIResult result)
   {
     cout << "Error: could not read data set: '" << dsn << "' rc: '" << rc << "'" << endl;
     cout << "  Details: " << zds.diag.e_msg << endl;
-    return -1;
+    return RTNCD_FAILURE;
   }
 
   for (vector<ZDSEntry>::iterator it = entries.begin(); it != entries.end(); ++it)
@@ -549,7 +548,7 @@ int handle_data_set_list_members_dsn(ZCLIResult result)
   {
     cout << "Error: could not read data set: '" << dsn << "' rc: '" << rc << "'" << endl;
     cout << "  Details: " << zds.diag.e_msg << endl;
-    return -1;
+    return RTNCD_FAILURE;
   }
   for (vector<ZDSMem>::iterator it = members.begin(); it != members.end(); ++it)
   {
@@ -580,7 +579,7 @@ int handle_data_set_write_to_dsn(ZCLIResult result)
   {
     cout << "Error: could not write to data set: '" << dsn << "' rc: '" << rc << "'" << endl;
     cout << "  Details: " << zds.diag.e_msg << endl;
-    return -1;
+    return RTNCD_FAILURE;
   }
   cout << "Wrote data to '" << dsn << "'" << endl;
 
@@ -598,7 +597,7 @@ int handle_data_set_delete_dsn(ZCLIResult result)
   {
     cout << "Error: could not delete data set: '" << dsn << "' rc: '" << rc << "'" << endl;
     cout << "  Details: " << zds.diag.e_msg << endl;
-    return -1;
+    return RTNCD_FAILURE;
   }
   cout << "Data set '" << dsn << "' deleted" << endl;
 
@@ -612,7 +611,7 @@ int handle_test_command(ZCLIResult result)
 
   cout << "test code called " << rc << endl;
 
-  return 0;
+  return RTNCD_SUCCESS;
 }
 
 int handle_test_bpxwdyn(ZCLIResult result)
@@ -632,7 +631,7 @@ int handle_test_bpxwdyn(ZCLIResult result)
   {
     cout << "Error: bpxwdyn with parm '" << parm << "' rc: '" << rc << "'" << endl;
     cout << "  Details: " << resp << endl;
-    return -1;
+    return RTNCD_FAILURE;
   }
 
   cout << resp << endl;
@@ -649,21 +648,20 @@ int handle_uss_create_file(ZCLIResult result)
     mode = "644";
 
   ZUSF zusf = {0};
-  string response;
-  rc = zusf_create_uss_file_or_dir(&zusf, file_path, response, mode, false);
+  rc = zusf_create_uss_file_or_dir(&zusf, file_path, mode, false);
   if (0 != rc)
   {
     cout << "Error: could not create USS file: '" << file_path << "' rc: '" << rc << "'" << endl;
     cout << "  Details:\n"
-         << zusf.diag.e_msg << endl
-         << response << endl;
-    return -1;
+         << zusf.diag.e_msg << endl;
+    return RTNCD_FAILURE;
   }
 
   cout << "USS file '" << file_path << "' created" << endl;
 
   return rc;
 }
+
 int handle_uss_create_dir(ZCLIResult result)
 {
   int rc = 0;
@@ -673,25 +671,40 @@ int handle_uss_create_dir(ZCLIResult result)
     mode = "755";
 
   ZUSF zusf = {0};
-  string response;
-  rc = zusf_create_uss_file_or_dir(&zusf, file_path, response, mode, true);
+  rc = zusf_create_uss_file_or_dir(&zusf, file_path, mode, true);
   if (0 != rc)
   {
     cout << "Error: could not create USS directory: '" << file_path << "' rc: '" << rc << "'" << endl;
     cout << "  Details:\n"
-         << zusf.diag.e_msg << endl
-         << response << endl;
-    return -1;
+         << zusf.diag.e_msg << endl;
+    return RTNCD_FAILURE;
   }
 
   cout << "USS directory '" << file_path << "' created" << endl;
 
   return rc;
 }
+
 int handle_uss_list(ZCLIResult result)
 {
-  printf("method not implemented\n");
-  return 1;
+  int rc = 0;
+  string uss_file = result.get_positional("file-path").get_value();
+
+  ZUSF zusf = {0};
+  string response;
+  rc = zusf_list_uss_file_path(&zusf, uss_file, response);
+  if (0 != rc)
+  {
+    cout << "Error: could not list USS files: '" << uss_file << "' rc: '" << rc << "'" << endl;
+    cout << "  Details:\n"
+         << zusf.diag.e_msg << endl
+         << response << endl;
+    return RTNCD_FAILURE;
+  }
+
+  cout << response;
+
+  return rc;
 }
 
 int handle_uss_view(ZCLIResult result)
@@ -704,14 +717,13 @@ int handle_uss_view(ZCLIResult result)
   rc = zusf_read_from_uss_file(&zusf, uss_file, response);
   if (0 != rc)
   {
-    cout << "Error: could not create USS file: '" << uss_file << "' rc: '" << rc << "'" << endl;
+    cout << "Error: could not view USS file: '" << uss_file << "' rc: '" << rc << "'" << endl;
     cout << "  Details:\n"
          << zusf.diag.e_msg << endl
          << response << endl;
-    return -1;
+    return RTNCD_FAILURE;
   }
 
-  cout << "USS file '" << uss_file << "'" << endl;
   cout << response;
 
   return rc;
@@ -722,21 +734,25 @@ int handle_uss_write(ZCLIResult result)
   printf("method not implemented\n");
   return 1;
 }
+
 int handle_uss_delete_file(ZCLIResult result)
 {
   printf("method not implemented\n");
   return 1;
 }
+
 int handle_uss_delete_dir(ZCLIResult result)
 {
   printf("method not implemented\n");
   return 1;
 }
+
 int handle_uss_chmod(ZCLIResult result)
 {
   printf("method not implemented\n");
   return 1;
 }
+
 int handle_uss_chown(ZCLIResult result)
 {
   printf("method not implemented\n");

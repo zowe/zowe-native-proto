@@ -22,6 +22,7 @@
 #include "zut.hpp"
 #include "iefzb4d2.h"
 #include <sys/stat.h>
+#include <dirent.h>
 // #include "zusfm.h"
 
 using namespace std;
@@ -35,9 +36,9 @@ using namespace std;
  * @param mode mode of the file or directory
  * @param createDir flag indicating whether to create a directory
  *
- * @return 0 on success, -1 on failure
+ * @return RTNCD_SUCCESS on success, -1 on failure
  */
-int zusf_create_uss_file_or_dir(ZUSF *zusf, std::string file, std::string &response, std::string mode, bool createDir)
+int zusf_create_uss_file_or_dir(ZUSF *zusf, std::string file, std::string mode, bool createDir)
 {
   struct stat file_stats;
   if (stat(file.c_str(), &file_stats) != -1)
@@ -57,10 +58,12 @@ int zusf_create_uss_file_or_dir(ZUSF *zusf, std::string file, std::string &respo
     return RTNCD_FAILURE;
   }
 
+  // TODO(zFernand0): Implement `mkdirp` by default
+  // TODO(zFernand0): `mkdirp` when creatnig a file in a directory that doesn't exist
   if (createDir)
   {
     mkdir(file.c_str(), strtol(mode.c_str(), NULL, 8));
-    return 0;
+    return RTNCD_SUCCESS;
   }
   else
   {
@@ -69,12 +72,60 @@ int zusf_create_uss_file_or_dir(ZUSF *zusf, std::string file, std::string &respo
     {
       out.close();
       chmod(file.c_str(), strtol(mode.c_str(), NULL, 8));
-      return 0;
+      return RTNCD_SUCCESS;
     }
   }
 
   zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not create '%s'", file.c_str());
   return RTNCD_FAILURE;
+}
+
+int zusf_list_uss_file_path(ZUSF *zusf, std::string file, std::string &response)
+{
+  struct stat file_stats;
+  if (stat(file.c_str(), &file_stats) == -1)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Path '%s' does not exist", file.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  if (S_ISREG(file_stats.st_mode))
+  {
+    response.clear();
+    response += file.substr(file.find_last_of("/") + 1);
+    response.push_back('\n');
+    return RTNCD_SUCCESS;
+  }
+
+  if (!S_ISDIR(file_stats.st_mode))
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Path '%s' is not a directory", file.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  DIR *dir;
+  if ((dir = opendir(file.c_str())) == NULL)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open directory '%s'", file.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  struct dirent *entry;
+  response.clear();
+  while ((entry = readdir(dir)) != NULL)
+  {
+    // TODO(zFernand0): Skip hidden files
+    if ((strcmp(entry->d_name, ".") != 0) && (strcmp(entry->d_name, "..") != 0))
+    {
+      // TODO(zFernand0): Add option to list full file paths
+      // TODO(zFernand0): Add option to list file tags
+      response += entry->d_name;
+      response.push_back('\n');
+    }
+  }
+  closedir(dir);
+
+  return RTNCD_SUCCESS;
 }
 
 /**
@@ -84,7 +135,7 @@ int zusf_create_uss_file_or_dir(ZUSF *zusf, std::string file, std::string &respo
  * @param file name of the USS file
  * @param response reference to a string where the read data will be stored
  *
- * @return 0 on success, -1 on failure
+ * @return RTNCD_SUCCESS on success, -1 on failure
  */
 int zusf_read_from_uss_file(ZUSF *zusf, std::string file, std::string &response)
 {
@@ -106,5 +157,5 @@ int zusf_read_from_uss_file(ZUSF *zusf, std::string file, std::string &response)
   response.assign(rawData);
   in.close();
 
-  return 0;
+  return RTNCD_SUCCESS;
 }

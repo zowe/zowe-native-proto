@@ -16,7 +16,8 @@
 #include "zusf.hpp"
 #include "zusftype.h"
 
-int zusf_create_uss_file_or_dir(ZUSF *zusf, std::string file, std::string &response, std::string mode, bool createDir);
+int zusf_create_uss_file_or_dir(ZUSF *zusf, std::string file, std::string mode, bool createDir);
+int zusf_list_uss_file_path(ZUSF *zusf, std::string file, std::string &response);
 int zusf_read_from_uss_file(ZUSF *zusf, std::string file, std::string &response);
 
 #endif
