@@ -66,6 +66,10 @@ echo "$testing listing job files..."
 zowex job list-files ${jobid}
 printf "$passed\n"
 
+echo "$testing view job status..."
+zowex job view-status ${jobid}
+printf "$passed\n"
+
 echo "$testing view job files..."
 zowex job view-file ${jobid} 2
 printf "$passed\n"

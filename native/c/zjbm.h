@@ -22,10 +22,12 @@ extern "C"
 {
 #endif
 
-int ZJBMLIST(ZJB *PTR64, STATJQTR **PTR64, int *PTR64);
-int ZJBMLSDS(ZJB *PTR64, STATSEVB **PTR64, int *PTR64);
-int ZJBSYMB(ZJB *PTR64, const char *PTR64, char *PTR64);
-int ZJBMPRG(ZJB *PTR64);
+  int ZJBMVIEW(ZJB *PTR64, STATJQTR **PTR64, int *PTR64);
+  int ZJBMLIST(ZJB *PTR64, STATJQTR **PTR64, int *PTR64);
+  int ZJBMTCOM(ZJB *PTR64, STAT *PTR64 stat, STATJQTR **PTR64, int *PTR64);
+  int ZJBMLSDS(ZJB *PTR64, STATSEVB **PTR64, int *PTR64);
+  int ZJBSYMB(ZJB *PTR64, const char *PTR64, char *PTR64);
+  int ZJBMPRG(ZJB *PTR64);
 
 #if defined(__cplusplus)
 }

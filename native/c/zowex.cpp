@@ -26,6 +26,7 @@ using namespace std;
 
 int handle_job_list(ZCLIResult);
 int handle_job_list_files(ZCLIResult);
+int handle_job_view_status(ZCLIResult);
 int handle_job_view_file(ZCLIResult);
 int handle_job_view_jcl(ZCLIResult);
 int handle_job_submit(ZCLIResult);
@@ -175,6 +176,12 @@ int main(int argc, char *argv[])
   job_jobid.set_description("valid jobid");
   job_list_files.get_positionals().push_back(job_jobid);
   job_group.get_verbs().push_back(job_list_files);
+
+  ZCLIVerb job_view_status("view-status");
+  job_view_status.set_description("view job status");
+  job_view_status.set_zcli_verb_handler(handle_job_view_status);
+  job_view_status.get_positionals().push_back(job_jobid);
+  job_group.get_verbs().push_back(job_view_status);
 
   ZCLIVerb job_view_file("view-file");
   job_view_file.set_description("view job file output");
@@ -339,6 +346,31 @@ int handle_job_list_files(ZCLIResult result)
   {
     cout << left << setw(9) << it->ddn << " " << it->dsn << " " << setw(4) << it->key << " " << it->stepname << " " << it->procstep << endl;
   }
+
+  return 0;
+}
+
+int handle_job_view_status(ZCLIResult result)
+{
+  int rc = 0;
+  ZJB zjb = {0};
+  ZJob job = {0};
+  string jobid(result.get_positional("jobid").get_value());
+
+  rc = zjb_view_by_jobid(&zjb, jobid, job);
+
+  if (0 != rc)
+  {
+    cout << "Error: could not view job status for: '" << jobid << "' rc: '" << rc << "'" << endl;
+    cout << "  Details: " << zjb.diag.e_msg << endl;
+    return -1;
+  }
+
+  // cout << setw(10) << "jobid: " << job.jobid << endl;
+  // cout << setw(10) << "retcode: " << job.retcode << endl;
+  // cout << setw(10) << "jobname: " << job.jobname << endl;
+  // cout << setw(10) << "status: " << job.status << endl;
+  cout << job.jobid << " " << left << setw(10) << job.retcode << " " << job.jobname << " " << job.status << endl;
 
   return 0;
 }

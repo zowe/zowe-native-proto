@@ -18,6 +18,7 @@
 #include <istream>
 #include <ctype.h>
 #include <algorithm>
+#include <unistd.h>
 #include "iazbtokp.h"
 #include "iefzb4d0.h"
 #include "iefzb4d2.h"
@@ -421,6 +422,116 @@ int zjb_list_dds_by_jobid(ZJB *zjb, string jobid, vector<ZJobDD> &jobDDs)
   return rc;
 }
 
+int zjb_view_by_jobid(ZJB *zjb, string jobid, ZJob &job)
+{
+  int rc = 0;
+  STATJQTR *PTR64 jobInfo = NULL;
+  int entries = 0;
+
+  ///
+
+  if (0 == zjb->buffer_size)
+    zjb->buffer_size = ZJB_DEFAULT_BUFFER_SIZE;
+  if (0 == zjb->jobs_max)
+    zjb->jobs_max = ZJB_DEFAULT_MAX_JOBS;
+
+  zut_uppercase_pad_truncate(jobid, zjb->jobid, sizeof(zjb->jobid));
+
+  rc = ZJBMVIEW(zjb, &jobInfo, &entries);
+  if (0 != rc)
+    return rc;
+
+  STATJQTR *PTR64 jobInfoNext = jobInfo;
+
+  for (int i = 0; i < entries; i++)
+  {
+    char tempJobName[9] = {0};
+    char tempJobId[9] = {0};
+    char tempJobOwner[9] = {0};
+
+    strncpy(tempJobName, (char *)jobInfoNext[i].sttrname, sizeof(jobInfo->sttrname));
+    strncpy(tempJobId, (char *)jobInfoNext[i].sttrjid, sizeof(jobInfo->sttrjid));
+    strncpy(tempJobOwner, (char *)jobInfoNext[i].sttrouid, sizeof(jobInfo->sttrouid));
+
+    ZJob zjob = {0};
+
+    string jobname(tempJobName);
+    string jobid(tempJobId);
+    string owner(tempJobOwner);
+
+    union cc
+    {
+      int full;
+      unsigned char parts[4];
+    } mycc = {0};
+    memcpy(&mycc, &jobInfoNext[i].sttrxind, sizeof(cc));
+
+    // NOTE(Kelosky): this might need additional testing
+    // TODO(Kelosky): https://www.ibm.com/docs/en/zos/3.1.0?topic=80-text-lookup-service-iaztlkup
+    if (jobInfoNext[i].sttrphaz < stat___onmain)
+    {
+      zjob.status = "INPUT";
+    }
+    else if (jobInfoNext[i].sttrphaz == stat___onmain)
+    {
+      zjob.status = "ACTIVE";
+    }
+    else if (jobInfoNext[i].sttrphaz == stat___outpt)
+    {
+      zjob.status = "OUTPUT";
+    }
+    else
+    {
+      zjob.status = "UNKNOWN";
+    }
+
+    if ("OUTPUT" == zjob.status)
+    {
+
+      if ((unsigned char)jobInfoNext[i].sttrxind & sttrxab)
+      {
+        // for an abend, these are the bits which contain the code
+        mycc.full &= 0x00FFF000; // clear uneeded bits
+        unsigned char byte1 = mycc.parts[1] >> 4;
+        unsigned char byte2 = mycc.parts[1] & 0x0F;
+        unsigned char byte3 = mycc.parts[2] >> 4;
+
+        string result = "ABEND ";
+        result.push_back(zut_get_hex_char(byte1));
+        result.push_back(zut_get_hex_char(byte2));
+        result.push_back(zut_get_hex_char(byte3));
+        zjob.retcode = result;
+      }
+      else if ((unsigned char)jobInfoNext[i].sttrxind == sttrxjcl)
+      {
+        zjob.retcode = "JCL ERROR";
+      }
+      else
+      {
+        mycc.full &= 0x00000FFF; // clear uneeded bits
+        stringstream sscc;
+        sscc << setw(4) << setfill('0') << mycc.full; // format to 4 characters
+        zjob.retcode = "CC " + sscc.str();            // make it look like z/OSMF
+      }
+    }
+    else
+    {
+      zjob.retcode = ZJB_UNKNWON_RC;
+    }
+
+    zjob.jobname = jobname;
+    zjob.jobid = jobid;
+    zjob.owner = owner;
+
+    // jobs.push_back(zjob);
+    job = zjob;
+  }
+
+  ZUTMFR64(jobInfo);
+
+  return RTNCD_SUCCESS;
+}
+
 int zjb_list_by_owner(ZJB *zjb, string owner_name, vector<ZJob> &jobs)
 {
   int rc = 0;
@@ -429,15 +540,8 @@ int zjb_list_by_owner(ZJB *zjb, string owner_name, vector<ZJob> &jobs)
 
   if ("" == owner_name)
   {
-    rc = zut_get_current_user(owner_name);
-    if (0 != rc)
-    {
-      strcpy(zjb->diag.service_name, "IAZXJSAB");
-      zjb->diag.service_rc = rc;
-      zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "Could not get current user - %d", rc);
-      zjb->diag.detail_rc = ZJB_RTNCD_SERVICE_FAILURE;
-      return RTNCD_FAILURE;
-    }
+    char *name = getlogin();
+    owner_name = string(name);
   }
 
   if (0 == zjb->buffer_size)

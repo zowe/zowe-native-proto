@@ -162,9 +162,35 @@ int ZJBMPRG(ZJB *zjb)
   return RTNCD_SUCCESS;
 }
 
+// view job
+#pragma prolog(ZJBMVIEW, "&CCN_MAIN SETB 1 \n MYPROLOG")
+int ZJBMVIEW(ZJB *zjb, STATJQTR **PTR64 job_info, int *entries)
+{
+  STAT stat = {0};
+  init_stat(&stat);
+
+  stat.statsel1 = statsoji;
+  stat.stattype = statters;
+  memcpy(stat.statojbi, zjb->jobid, sizeof((stat.statojbi)));
+
+  return ZJBMTCOM(zjb, &stat, job_info, entries);
+}
+
 // list jobs
 #pragma prolog(ZJBMLIST, "&CCN_MAIN SETB 1 \n MYPROLOG")
-int ZJBMLIST(ZJB *zjb, STATJQTR **PTR64 jobInfo, int *entries)
+int ZJBMLIST(ZJB *zjb, STATJQTR **PTR64 job_info, int *entries)
+{
+  STAT stat = {0};
+  init_stat(&stat);
+
+  stat.statsel1 = statsown;
+  stat.stattype = statters;
+  memcpy(stat.statownr, zjb->owner_name, sizeof((stat.statownr)));
+
+  return ZJBMTCOM(zjb, &stat, job_info, entries);
+}
+
+int ZJBMTCOM(ZJB *zjb, STAT *PTR64 stat, STATJQTR **PTR64 jobInfo, int *entries)
 {
   int rc = 0;
   int loop_control = 0;
@@ -174,19 +200,14 @@ int ZJBMLIST(ZJB *zjb, STATJQTR **PTR64 jobInfo, int *entries)
   SSOB *PTR32 ssobp = NULL;
   SSOB ssob = {0};
   SSIB ssib = {0};
-  STAT stat = {0};
   STATJQ *PTR32 statjqp = NULL;
   STATJQHD *PTR32 statjqhdp = NULL;
   STATJQTR *PTR32 statjqtrp = NULL;
   WTO_BUF buf = {0};
 
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=sfcd-extended-status-function-call-ssi-function-code-80
-  init_ssob(&ssob, &ssib, &stat, 80);
+  init_ssob(&ssob, &ssib, stat, 80);
   init_ssib(&ssib);
-  init_stat(&stat);
-  stat.statsel1 = statsown;
-  stat.stattype = statters;
-  memcpy(stat.statownr, zjb->owner_name, sizeof((stat.statownr)));
 
   ssobp = &ssob;
   ssobp = (SSOB * PTR32)((unsigned int)ssobp | 0x80000000);
@@ -196,14 +217,14 @@ int ZJBMLIST(ZJB *zjb, STATJQTR **PTR64 jobInfo, int *entries)
   {
     strcpy(zjb->diag.service_name, "IEFSSREQ");
     zjb->diag.service_rc = ssob.ssobretn;
-    zjb->diag.service_rsn = stat.statreas;
-    zjb->diag.service_rsn_secondary = stat.statrea2;
-    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "IEFSSREQ rc was: '%d' SSOBRTN was: '%d', STATREAS was: '%d', STATREA2 was: '%d'", rc, ssob.ssobretn, stat.statreas, stat.statrea2); // STATREAS contains the reason
+    zjb->diag.service_rsn = stat->statreas;
+    zjb->diag.service_rsn_secondary = stat->statrea2;
+    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "IEFSSREQ rc was: '%d' SSOBRTN was: '%d', STATREAS was: '%d', STATREA2 was: '%d'", rc, ssob.ssobretn, stat->statreas, stat->statrea2); // STATREAS contains the reason
     storageFree64(statjqtrsp);
     return RTNCD_FAILURE;
   }
 
-  statjqp = (STATJQ * PTR32) stat.statjobf;
+  statjqp = (STATJQ * PTR32) stat->statjobf;
   *jobInfo = statjqtrsp;
 
   int total_size = 0;
@@ -240,8 +261,8 @@ int ZJBMLIST(ZJB *zjb, STATJQTR **PTR64 jobInfo, int *entries)
 
   zjb->buffer_size_needed = total_size;
 
-  stat.stattype = statmem; // free storage
-  rc = iefssreq(&ssobp);   // TODO(Kelosky): recovery
+  stat->stattype = statmem; // free storage
+  rc = iefssreq(&ssobp);    // TODO(Kelosky): recovery
 
   return RTNCD_SUCCESS;
 }
