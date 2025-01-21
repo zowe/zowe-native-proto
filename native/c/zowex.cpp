@@ -157,6 +157,9 @@ int main(int argc, char *argv[])
   ZCLIGroup job_group("job");
   job_group.set_description("z/OS job operations");
 
+  ZCLIOption spool_encoding("encoding");
+  spool_encoding.set_description("return spool contents in given encoding");
+
   // jobs verbs
   ZCLIVerb job_list("list");
   job_list.set_description("list jobs");
@@ -189,6 +192,7 @@ int main(int argc, char *argv[])
   job_view_file.set_description("view job file output");
   job_view_file.set_zcli_verb_handler(handle_job_view_file);
   job_view_file.get_positionals().push_back(job_jobid);
+  job_view_file.get_options().push_back(spool_encoding);
 
   ZCLIPositional job_dsn_key("key");
   job_dsn_key.set_required(true);
@@ -398,6 +402,11 @@ int handle_job_view_file(ZCLIResult result)
   ZJB zjb = {0};
   string jobid(result.get_positional("jobid").get_value());
   string key(result.get_positional("key").get_value());
+
+  if (result.get_option("--encoding").is_found()) {
+    const string encodingValue = result.get_option("--encoding").get_value();
+    memcpy(zjb.encoding, encodingValue.data(), encodingValue.size());
+  }
 
   string resp;
   rc = zjb_read_jobs_output_by_jobid_and_key(&zjb, jobid, atoi(key.c_str()), resp);

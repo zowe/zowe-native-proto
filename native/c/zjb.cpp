@@ -256,6 +256,10 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, string jobdsn, string &response)
   char cddname[8 + 1] = {0};
   memcpy(cddname, &s99tunit_x[4].s99tunit.s99tupar, ddnamelen);
   string ddname = string(cddname);
+  if (strlen(zjb->encoding) > 0) {
+    memcpy(zds.encoding, zjb->encoding, 16ul);
+  }
+
   rc = zds_read_from_dd(&zds, ddname, response);
 
   free(parms);

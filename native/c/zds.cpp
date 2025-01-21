@@ -57,14 +57,28 @@ int zds_read_from_dd(ZDS *zds, string ddname, string &response)
     return RTNCD_FAILURE;
   }
 
-  string line;
-  while (getline(in, line))
-  {
-    response += line;
-    response.push_back('\n');
-  }
+  in.seekg(0, ios::end);
+  size_t size = in.tellg();
+  in.seekg(0, ios::beg);
 
+  char *rawData = new char[size];
+  in.read(rawData, size);
+  in.seekg(0, ios::beg);
+
+  response.assign(rawData);
   in.close();
+
+  char *bufEnd;
+  if (strlen(zds->encoding) > 0 /* && (*encoding != "IBM-1047" && *encoding != "01047") */)
+  {
+    char *outBuf = zut_encode_alloc(rawData, string(zds->encoding), zds->diag, &bufEnd);
+    if (outBuf)
+    {
+      response.clear();
+      response.assign(outBuf, bufEnd - outBuf);
+      delete[] outBuf;
+    }
+  }
 
   return 0;
 }
