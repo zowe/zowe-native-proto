@@ -53,3 +53,37 @@ func HandleListJobsRequest(jsonData []byte) {
 		fmt.Println(string(v))
 	}
 }
+
+func HandleReadSpoolRequest(jsonData []byte) {
+	var request ReadSpoolRequest
+	err := json.Unmarshal(jsonData, &request)
+	if err != nil || (request.Encoding == "" && request.Dataset == "") {
+		// log.Println("Error decoding ReadSpoolRequest:", err)
+		return
+	}
+	// log.Println("ReadSpoolRequest received:", request.Dataset, request.Encoding)
+	args := []string{"./zowex", "data-set", "view", request.Dataset}
+	hasEncoding := len(request.Encoding) != 0
+	if hasEncoding {
+		args = append(args, "--encoding", request.Encoding)
+	}
+	out, err := exec.Command(args[0], args[1:]...).Output()
+	if err != nil {
+		log.Println("Error executing command:", err)
+		return
+	}
+
+	data := collectContentsAsBytes(string(out), hasEncoding)
+
+	dsResponse := ReadDatasetResponse{
+		Encoding: request.Encoding,
+		Dataset:  request.Dataset,
+		Data:     data,
+	}
+	v, err := json.Marshal(dsResponse)
+	if err != nil {
+		fmt.Println(err.Error())
+	} else {
+		fmt.Println(string(v))
+	}
+}
