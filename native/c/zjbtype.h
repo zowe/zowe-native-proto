@@ -26,6 +26,8 @@
 #define ZJB_DEFAULT_MAX_JOBS 100
 #define ZJB_DEFAULT_MAX_DDS 100
 
+#define ZJB_UNKNWON_RC "------"
+
 #if (defined(__IBMCPP__) || defined(__IBMC__))
 #pragma pack(packed)
 #endif

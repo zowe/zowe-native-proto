@@ -476,32 +476,6 @@ int zjb_list_by_owner(ZJB *zjb, string owner_name, vector<ZJob> &jobs)
     } mycc = {0};
     memcpy(&mycc, &jobInfoNext[i].sttrxind, sizeof(cc));
 
-    if ((unsigned char)jobInfoNext[i].sttrxind & sttrxab)
-    {
-      // for an abend, these are the bits which contain the code
-      mycc.full &= 0x00FFF000; // clear uneeded bits
-      unsigned char byte1 = mycc.parts[1] >> 4;
-      unsigned char byte2 = mycc.parts[1] & 0x0F;
-      unsigned char byte3 = mycc.parts[2] >> 4;
-
-      string result = "ABEND ";
-      result.push_back(zut_get_hex_char(byte1));
-      result.push_back(zut_get_hex_char(byte2));
-      result.push_back(zut_get_hex_char(byte3));
-      zjob.retcode = result;
-    }
-    else if ((unsigned char)jobInfoNext[i].sttrxind == sttrxjcl)
-    {
-      zjob.retcode = "JCL ERROR";
-    }
-    else
-    {
-      mycc.full &= 0x00000FFF; // clear uneeded bits
-      stringstream sscc;
-      sscc << setw(4) << setfill('0') << mycc.full; // format to 4 characters
-      zjob.retcode = "CC " + sscc.str();            // make it look like z/OSMF
-    }
-
     // NOTE(Kelosky): this might need additional testing
     // TODO(Kelosky): https://www.ibm.com/docs/en/zos/3.1.0?topic=80-text-lookup-service-iaztlkup
     if (jobInfoNext[i].sttrphaz < stat___onmain)
@@ -519,6 +493,40 @@ int zjb_list_by_owner(ZJB *zjb, string owner_name, vector<ZJob> &jobs)
     else
     {
       zjob.status = "UNKNOWN";
+    }
+
+    if ("OUTPUT" == zjob.status)
+    {
+
+      if ((unsigned char)jobInfoNext[i].sttrxind & sttrxab)
+      {
+        // for an abend, these are the bits which contain the code
+        mycc.full &= 0x00FFF000; // clear uneeded bits
+        unsigned char byte1 = mycc.parts[1] >> 4;
+        unsigned char byte2 = mycc.parts[1] & 0x0F;
+        unsigned char byte3 = mycc.parts[2] >> 4;
+
+        string result = "ABEND ";
+        result.push_back(zut_get_hex_char(byte1));
+        result.push_back(zut_get_hex_char(byte2));
+        result.push_back(zut_get_hex_char(byte3));
+        zjob.retcode = result;
+      }
+      else if ((unsigned char)jobInfoNext[i].sttrxind == sttrxjcl)
+      {
+        zjob.retcode = "JCL ERROR";
+      }
+      else
+      {
+        mycc.full &= 0x00000FFF; // clear uneeded bits
+        stringstream sscc;
+        sscc << setw(4) << setfill('0') << mycc.full; // format to 4 characters
+        zjob.retcode = "CC " + sscc.str();            // make it look like z/OSMF
+      }
+    }
+    else
+    {
+      zjob.retcode = ZJB_UNKNWON_RC;
     }
 
     zjob.jobname = jobname;

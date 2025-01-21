@@ -545,7 +545,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
 
           if (EXTENDED_PARTITIONED_DATA_SET == non_vsam_attribute)
           {
-            entry.dsorg = DSORG_PDSE;
+            entry.dsorg = ZDS_DSORG_PDSE;
           }
           else if (SIMPLE_NON_VSAM_DATA_SET == non_vsam_attribute)
           {
@@ -560,22 +560,22 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
               {
                 if (file_info.__dsorgPS)
                 {
-                  entry.dsorg = DSORG_PS;
+                  entry.dsorg = ZDS_DSORG_PS;
                 }
                 else if (file_info.__dsorgPO)
                 {
-                  entry.dsorg = DSORG_PO;
+                  entry.dsorg = ZDS_DSORG_PO;
                 }
                 else
                 {
-                  entry.dsorg = DSORG_UNKNWON;
-                  entry.volser = VOLSER_UNKNOWN;
+                  entry.dsorg = ZDS_DSORG_UNKNWON;
+                  entry.volser = ZDS_VOLSER_UNKNOWN;
                 }
               }
               else
               {
-                entry.dsorg = DSORG_UNKNWON;
-                entry.volser = VOLSER_UNKNOWN;
+                entry.dsorg = ZDS_DSORG_UNKNWON;
+                entry.volser = ZDS_VOLSER_UNKNOWN;
               }
               fclose(dir);
             }
@@ -590,13 +590,13 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
         break;
       case CLUSTER:
         // printf("case CLUSER\n");
-        entry.dsorg = DSORG_VSAM;
-        entry.volser = VOLSER_VSAM;
+        entry.dsorg = ZDS_DSORG_VSAM;
+        entry.volser = ZDS_VOLSER_VSAM;
         break;
       case DATA_COMPONENT:
         // printf("case DATA_COMPONENT\n");
-        entry.dsorg = DSORG_VSAM;
-        entry.volser = VOLSER_VSAM;
+        entry.dsorg = ZDS_DSORG_VSAM;
+        entry.volser = ZDS_VOLSER_VSAM;
         break;
       case ALTERNATE_INDEX:
         // printf("case ALTERNATE_INDEX\n");
@@ -607,8 +607,8 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
         // return -8;
         break;
       case INDEX_COMPONENT:
-        entry.dsorg = DSORG_VSAM;
-        entry.volser = VOLSER_VSAM;
+        entry.dsorg = ZDS_DSORG_VSAM;
+        entry.volser = ZDS_VOLSER_VSAM;
         break;
       case ATL_LIBRARY_ENTRY:
         // printf("case ATL_LIBRARY_ENTRY\n");
@@ -627,8 +627,8 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
         // return -8;
         break;
       case ALIAS:
-        entry.dsorg = DSORG_UNKNWON;
-        entry.volser = VOLSER_ALIAS;
+        entry.dsorg = ZDS_DSORG_UNKNWON;
+        entry.volser = ZDS_VOLSER_ALIAS;
         break;
       default:
         // printf("case default\n");

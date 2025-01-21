@@ -30,16 +30,16 @@
 #define ZDS_DEFAULT_BUFFER_SIZE 8096
 #define ZDS_DEFAULT_MAX_ENTRIES 100
 
-#define VOLSER_VSAM "*VSAM*" // library
-#define VOLSER_ALIAS "*ALIAS"
-#define VOLSER_GDG "??????"
-#define VOLSER_UNKNOWN "------"
+#define ZDS_VOLSER_VSAM "*VSAM*" // library
+#define ZDS_VOLSER_ALIAS "*ALIAS"
+#define ZDS_VOLSER_GDG "??????"
+#define ZDS_VOLSER_UNKNOWN "------"
 
-#define DSORG_UNKNWON "--" // library
-#define DSORG_PDSE "PO-E"  // library
-#define DSORG_VSAM "VS"    // VSAM
-#define DSORG_PS "PS"      // sequential
-#define DSORG_PO "PO"      // partitioned
+#define ZDS_DSORG_UNKNWON "--" // library
+#define ZDS_DSORG_PDSE "PO-E"  // library
+#define ZDS_DSORG_VSAM "VS"    // VSAM
+#define ZDS_DSORG_PS "PS"      // sequential
+#define ZDS_DSORG_PO "PO"      // partitioned
 
 #if (defined(__IBMCPP__) || defined(__IBMC__))
 #pragma pack(packed)
