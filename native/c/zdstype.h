@@ -52,6 +52,8 @@ typedef struct
   unsigned char version[1]; // future use
   int32_t len;              // future use
 
+  char encoding[8];
+
   int32_t max_entries;
   int32_t buffer_size;
 
