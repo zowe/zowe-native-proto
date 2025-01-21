@@ -503,6 +503,7 @@ int zjb_list_by_owner(ZJB *zjb, string owner_name, vector<ZJob> &jobs)
     }
 
     // NOTE(Kelosky): this might need additional testing
+    // TODO(Kelosky): https://www.ibm.com/docs/en/zos/3.1.0?topic=80-text-lookup-service-iaztlkup
     if (jobInfoNext[i].sttrphaz < stat___onmain)
     {
       zjob.status = "INPUT";

@@ -191,37 +191,6 @@ int zds_delete_dsn(ZDS *zds, string dsn)
   return 0;
 }
 
-// #include <dirent.h>
-// int obtain_member_info(ZCLIResult result)
-// {
-//   dsn = "//'" + dsn + "'";
-//   FILE *dir = fopen(dsn.c_str(), "r");
-//   if (dir) {
-//     cout << "got a doir" << endl;
-
-//     int rc = fldata(dir, filename, &fileinfo);
-
-//     zut_dump_storage("wowo", &fileinfo, sizeof(fldata_t));
-//     if (fileinfo.__recfmF) cout << "Fixed\n";
-//     if (fileinfo.__recfmV) cout << "Variable\n";
-//     if (fileinfo.__recfmU) cout << "Undefined\n";
-//     if (fileinfo.__recfmS) cout << "Standard\n";
-//     if (fileinfo.__recfmBlk) cout << "Blocked\n";
-//     if (fileinfo.__recfmASA) cout << "ASA\n";
-//     if (fileinfo.__recfmM) cout << "M\n";
-//     if (fileinfo.__dsorgPO) cout << "Partitioned\n";
-//     if (fileinfo.__dsorgPDSmem) cout << "Member\n";
-//     if (fileinfo.__dsorgPDSdir) cout << "PDS or PDSE directory\n";
-//     if (fileinfo.__dsorgPS) cout << "Sequention\n";
-//     if (fileinfo.__dsorgVSAM) cout << "VSAM\n";
-//     if (fileinfo.__dsorgPDSE) cout << "PDSE\n";
-
-//     printf("dsn %s and macxlrecl %d \n", fileinfo.__dsname, fileinfo.__maxreclen);
-
-//     cout << "rc was " << rc << endl;
-//   }
-// }
-
 int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &list)
 {
   // PO
@@ -231,7 +200,6 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &list)
   RECORD rec = {0};
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=pds-reading-directory-sequentially
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=pdse-reading-directory - long alias names omitted, use DESERV for those
-  // bldl / deserv
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=pds-directory
   FILE *fp = fopen(dsn.c_str(), "rb, blksize=256, recfm=fb");
 
@@ -609,6 +577,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
                 entry.dsorg = DSORG_UNKNWON;
                 entry.volser = VOLSER_UNKNOWN;
               }
+              fclose(dir);
             }
           }
         }
