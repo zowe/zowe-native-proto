@@ -21,7 +21,7 @@
 #include "zmetal.h"
 #include "zjbtype.h"
 
-// TODO(k=Kelosky):
+// TODO(Kelosky):
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=79-putget-requests
 // read system log
 
@@ -233,7 +233,9 @@ int ZJBMTCOM(ZJB *zjb, STAT *PTR64 stat, STATJQTR **PTR64 jobInfo, int *entries)
   {
     if (loop_control > zjb->jobs_max)
     {
-      zjb->diag.detail_rc = ZJB_RTNCD_MAX_JOBS_REACHED;
+      zjb->diag.detail_rc = ZJB_RSNCD_MAX_JOBS_REACHED;
+      zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "Reached maximum returned jobs requested %d", zjb->jobs_max);
+      return RTNCD_WARNING;
       break;
     }
 

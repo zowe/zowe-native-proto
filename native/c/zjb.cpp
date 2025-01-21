@@ -383,7 +383,7 @@ int zjb_list_dds_by_jobid(ZJB *zjb, string jobid, vector<ZJobDD> &jobDDs)
     ZUTMFR64(sysoutInfo);
     zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "Could not locate job '%s'", jobid.c_str());
     zjb->diag.detail_rc = ZJB_RTNCD_JOB_NOT_FOUND;
-    return RTNCD_FAILURE;
+    return RTNCD_WARNING;
   }
 
   STATSEVB *PTR64 sysoutInfoNext = sysoutInfo;
@@ -442,6 +442,13 @@ int zjb_view_by_jobid(ZJB *zjb, string jobid, ZJob &job)
     return rc;
 
   STATJQTR *PTR64 jobInfoNext = jobInfo;
+
+  if (0 == entries)
+  {
+    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "Could not locate job with job id '%s'", jobid.c_str());
+    zjb->diag.detail_rc = ZJB_RTNCD_JOB_NOT_FOUND;
+    return RTNCD_WARNING;
+  }
 
   for (int i = 0; i < entries; i++)
   {

@@ -43,10 +43,12 @@ int handle_data_set_list_members_dsn(ZCLIResult);
 int handle_data_set_write_to_dsn(ZCLIResult);
 int handle_data_set_delete_dsn(ZCLIResult);
 
+int handle_log_view(ZCLIResult);
+
 int handle_tool_convert_dsect(ZCLIResult);
+int handle_tool_dynalloc(ZCLIResult);
 
 int handle_test_command(ZCLIResult);
-int handle_test_dynalloc(ZCLIResult);
 int handle_test_run(ZCLIResult);
 
 // TODO(Kelosky):
@@ -240,6 +242,20 @@ int main(int argc, char *argv[])
   console_group.get_verbs().push_back(console_issue);
 
   //
+  // log group
+  //
+  ZCLIGroup log_group("log");
+  log_group.set_description("log operations");
+  ZCLIVerb log_view("view");
+  log_view.set_description("view log");
+  log_view.set_zcli_verb_handler(handle_log_view);
+  ZCLIOption log_option_lines("lines");
+  log_option_lines.set_default("100");
+  log_option_lines.set_description("number of lines to print");
+  log_view.get_options().push_back(log_option_lines);
+  log_group.get_verbs().push_back(log_view);
+
+  //
   // tool group
   //
   ZCLIGroup tool_group("tool");
@@ -271,7 +287,7 @@ int main(int argc, char *argv[])
 
   ZCLIVerb tool_dynalloc("bpxwdy2");
   tool_dynalloc.set_description("dynalloc command");
-  tool_dynalloc.set_zcli_verb_handler(handle_test_dynalloc);
+  tool_dynalloc.set_zcli_verb_handler(handle_tool_dynalloc);
   ZCLIPositional dynalloc_parm("parm");
   dynalloc_parm.set_description("dynalloc test parm string");
   dynalloc_parm.set_required(true);
@@ -283,6 +299,7 @@ int main(int argc, char *argv[])
   zcli.get_groups().push_back(data_set_group);
   zcli.get_groups().push_back(console_group);
   zcli.get_groups().push_back(job_group);
+  zcli.get_groups().push_back(log_group);
   zcli.get_groups().push_back(tool_group);
 
   // parse
@@ -765,15 +782,24 @@ int handle_test_command(ZCLIResult result)
   return 0;
 }
 
-int handle_test_dynalloc(ZCLIResult result)
+int handle_log_view(ZCLIResult result)
+{
+  int rc = 0;
+  unsigned int code = 0;
+  string resp;
+
+  string lines = result.get_option("--lines").get_value();
+
+  cout << "lines are " << lines << endl;
+}
+
+int handle_tool_dynalloc(ZCLIResult result)
 {
   int rc = 0;
   unsigned int code = 0;
   string resp;
 
   string parm(result.get_positional("parm").get_value());
-
-  cout << "parm is '" << parm << "'" << endl;
 
   // alloc da('DKELOSKY.TEMP.ADATA') DSORG(PO) SPACE(5,5) CYL LRECL(80) RECFM(F,b) NEW DIR(5) vol(USER01)
   // zowex test bpxwdyn "alloc da('ibmuser.temp') space(5,5) dsorg(po) dir(5) cyl lrecl(80) recfm(f,b) new"
