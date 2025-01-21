@@ -9,35 +9,33 @@
  *
  */
 
-import { ICommandDefinition } from "@zowe/imperative";
+import type { ICommandDefinition } from "@zowe/imperative";
 import { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
-import { ListDataSetDefinition } from "./data-set/DataSet.definition";
 import { ListDataSetMembersDefinition } from "./data-set-members/DataSetMembers.definition";
+import { ListDataSetDefinition } from "./data-set/DataSet.definition";
 import { ListJobsDefinition } from "./jobs/Jobs.definition";
 import { ListUssFilesDefinition } from "./uss-files/UssFiles.definition";
 
 const ListDefinition: ICommandDefinition = {
-    name: "list",
-    aliases: ["ls"],
-    summary: "List data sets, data set members, uss files, jobs, spool files",
-    description: "List data sets, data set members, uss files, jobs, spool files",
-    type: "group",
-    children: [
-        ListDataSetDefinition,
-        ListDataSetMembersDefinition,
-        ListJobsDefinition,
-        ListUssFilesDefinition
-    ],
-    passOn: [
-        {
-            property: "options",
-            value: SshSession.SSH_CONNECTION_OPTIONS,
-            merge: true,
-            ignoreNodes: [
-                {type: "group"}
-            ]
-        }
-    ]
+	name: "list",
+	aliases: ["ls"],
+	summary: "List data sets, data set members, uss files, jobs, spool files",
+	description: "List data sets, data set members, uss files, jobs, spool files",
+	type: "group",
+	children: [
+		ListDataSetDefinition,
+		ListDataSetMembersDefinition,
+		ListJobsDefinition,
+		ListUssFilesDefinition,
+	],
+	passOn: [
+		{
+			property: "options",
+			value: SshSession.SSH_CONNECTION_OPTIONS,
+			merge: true,
+			ignoreNodes: [{ type: "group" }],
+		},
+	],
 };
 
 export = ListDefinition;

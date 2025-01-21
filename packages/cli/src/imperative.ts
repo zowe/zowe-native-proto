@@ -9,15 +9,15 @@
  *
  */
 
-import { IImperativeConfig } from "@zowe/imperative";
+import type { IImperativeConfig } from "@zowe/imperative";
 
 const config: IImperativeConfig = {
-  commandModuleGlobs: ["*/*.definition!(.d).*s"],
-  rootCommandDescription: "Hello world",
-  productDisplayName: "z/OS SSH Plug-in",
-  name: "zowe-native-proto",
-  pluginAliases: ["zssh"],
-  pluginSummary: "z/OS Files and jobs via SSH"
+	commandModuleGlobs: ["*/*.definition!(.d).*s"],
+	rootCommandDescription: "Hello world",
+	productDisplayName: "z/OS SSH Plug-in",
+	name: "zowe-native-proto",
+	pluginAliases: ["zssh"],
+	pluginSummary: "z/OS Files and jobs via SSH",
 };
 
 export = config;

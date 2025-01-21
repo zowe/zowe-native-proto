@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "main": "lib/index.js",
   "scripts": {
-    "build": "tsc",
-    "lint": "@biomejs/biome check --write src",
+    "build": "tsc -b",
+    "lint": "npx @biomejs/biome check --write src",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "watch": "tsc -w"
+    "watch": "tsc -b -w"
   },
   "keywords": [],
   "author": "",

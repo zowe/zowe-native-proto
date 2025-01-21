@@ -1,21 +1,21 @@
 export type Dataset = {
-    name: string;
-    dsorg: string;
-    volser: string;
-}
+	name: string;
+	dsorg: string;
+	volser: string;
+};
 
 export type DsMember = {
-    name: string;
-}
+	name: string;
+};
 
 export type UssItem = {
-    name: string;
-    isDir: boolean;
-}
+	name: string;
+	isDir: boolean;
+};
 
 export type Job = {
-    id: string;
-    name: string;
-    status: string;
-    retcode: string;
-}
+	id: string;
+	name: string;
+	status: string;
+	retcode: string;
+};

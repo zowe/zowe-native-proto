@@ -9,25 +9,38 @@
  *
  */
 
-import { IHandlerParameters } from "@zowe/imperative";
-import { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
-import { IListFilesRequest, IListFilesResponse, ZSshClient } from "zowe-native-proto-sdk";
+import type { IHandlerParameters } from "@zowe/imperative";
+import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
+import {
+	type IListFilesRequest,
+	type IListFilesResponse,
+	ZSshClient,
+} from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class ListUssFilesHandler extends SshBaseHandler {
-    public async processWithSession(params: IHandlerParameters, session: SshSession): Promise<IListFilesResponse> {
-        // const directory = UssUtils.normalizeUnixPath(params.arguments.directory);
-        const directory = params.arguments.directory;
-        using client = await ZSshClient.create(session);
-        const request: IListFilesRequest = { command: "listFiles", fspath: directory };
-        const response = await client.request<IListFilesResponse>(request);
-        params.response.data.setMessage("Listed files in uss directory %s", directory);
-        params.response.format.output({
-            output: response.items,
-            format: "table",
-            // fields: ["name", "size", "owner", "group", "permissions"]
-            fields: ["name"]
-        });
-        return response;
-    }
+	public async processWithSession(
+		params: IHandlerParameters,
+		session: SshSession,
+	): Promise<IListFilesResponse> {
+		// const directory = UssUtils.normalizeUnixPath(params.arguments.directory);
+		const directory = params.arguments.directory;
+		using client = await ZSshClient.create(session);
+		const request: IListFilesRequest = {
+			command: "listFiles",
+			fspath: directory,
+		};
+		const response = await client.request<IListFilesResponse>(request);
+		params.response.data.setMessage(
+			"Listed files in uss directory %s",
+			directory,
+		);
+		params.response.format.output({
+			output: response.items,
+			format: "table",
+			// fields: ["name", "size", "owner", "group", "permissions"]
+			fields: ["name"],
+		});
+		return response;
+	}
 }
