@@ -29,7 +29,7 @@ func HandleListFilesRequest(jsonData []byte) {
 
 	for i, entry := range entries {
 		ussResponse.Items[i] = UssItem{
-			Name: entry.Name(),
+			Name:  entry.Name(),
 			IsDir: entry.IsDir(),
 		}
 	}

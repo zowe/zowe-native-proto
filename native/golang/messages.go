@@ -47,6 +47,18 @@ type ReadFileRequest struct {
 	Path     string `json:"path"`
 }
 
+// command: "readSpool"
+type ReadSpoolRequest struct {
+	Encoding string `json:"encoding,omitempty"`
+	DsnKey   string `json:"dsnKey"`
+	JobId    string `json:"jobId"`
+}
+
+// command: "getJcl"
+type GetJclRequest struct {
+	JobId string `json:"jobId"`
+}
+
 // command: "writeDataset"
 type WriteDatasetRequest struct {
 	Encoding string `json:"encoding,omitempty"`
@@ -65,6 +77,13 @@ type ReadDatasetResponse struct {
 type ReadFileResponse struct {
 	Encoding string `json:"encoding,omitempty"`
 	File     string `json:"file"`
+	Data     []byte `json:"data"`
+}
+
+type ReadSpoolResponse struct {
+	Encoding string `json:"encoding,omitempty"`
+	DsnKey   string `json:"dsnKey"`
+	JobId    string `json:"jobId"`
 	Data     []byte `json:"data"`
 }
 

@@ -57,12 +57,12 @@ func HandleListJobsRequest(jsonData []byte) {
 func HandleReadSpoolRequest(jsonData []byte) {
 	var request ReadSpoolRequest
 	err := json.Unmarshal(jsonData, &request)
-	if err != nil || (request.Encoding == "" && request.Dataset == "") {
+	if err != nil {
 		// log.Println("Error decoding ReadSpoolRequest:", err)
 		return
 	}
-	// log.Println("ReadSpoolRequest received:", request.Dataset, request.Encoding)
-	args := []string{"./zowex", "data-set", "view", request.Dataset}
+	// log.Println("ReadSpoolRequest received:", ...)
+	args := []string{"./zowex", "job", "view-file", request.JobId, request.DsnKey}
 	hasEncoding := len(request.Encoding) != 0
 	if hasEncoding {
 		args = append(args, "--encoding", request.Encoding)
@@ -75,12 +75,13 @@ func HandleReadSpoolRequest(jsonData []byte) {
 
 	data := collectContentsAsBytes(string(out), hasEncoding)
 
-	dsResponse := ReadDatasetResponse{
+	response := ReadSpoolResponse{
 		Encoding: request.Encoding,
-		Dataset:  request.Dataset,
+		DsnKey:   request.DsnKey,
+		JobId:    request.JobId,
 		Data:     data,
 	}
-	v, err := json.Marshal(dsResponse)
+	v, err := json.Marshal(response)
 	if err != nil {
 		fmt.Println(err.Error())
 	} else {

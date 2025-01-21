@@ -201,7 +201,7 @@ int main(int argc, char *argv[])
   job_group.get_verbs().push_back(job_view_file);
 
   ZCLIVerb job_view_jcl("view-jcl");
-  job_view_jcl.set_description("view job jcl from inbput jobid");
+  job_view_jcl.set_description("view job jcl from input jobid");
   job_view_jcl.set_zcli_verb_handler(handle_job_view_jcl);
   job_view_jcl.get_positionals().push_back(job_jobid);
   job_group.get_verbs().push_back(job_view_jcl);
