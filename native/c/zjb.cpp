@@ -443,6 +443,8 @@ int zjb_view_by_jobid(ZJB *zjb, string jobid, ZJob &job)
 
   STATJQTR *PTR64 jobInfoNext = jobInfo;
 
+  cout << "entries " << entries << endl;
+
   if (0 == entries)
   {
     zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "Could not locate job with job id '%s'", jobid.c_str());
