@@ -9,9 +9,9 @@
     "watch": "tsc -b -w"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
+  "author": "Zowe",
+  "license": "EPL-2.0",
+  "description": "Zowe Native Proto APIs for Zowe SDK",
   "peerDependencies": {
     "@zowe/imperative": "^8.11.0",
     "@zowe/zos-uss-for-zowe-sdk": "^8.11.0"

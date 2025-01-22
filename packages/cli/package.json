@@ -9,9 +9,9 @@
     "watch": "tsc -b -w"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
+  "author": "Zowe",
+  "license": "EPL-2.0",
+  "description": "Zowe Native Proto plug-in for Zowe CLI",
   "imperative": {
     "configurationModule": "lib/imperative.js"
   },
