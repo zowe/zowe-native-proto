@@ -122,6 +122,7 @@ int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response)
       response += entry->d_name;
       response.push_back('\n');
     }
+    // TODO(zFernand0): Sort in alphabetical order
   }
   closedir(dir);
 
@@ -173,5 +174,17 @@ int zds_write_to_uss_file(ZUSF *zusf, string file, string &data)
   out << data;
   out.close();
 
+  return 0;
+}
+
+int zds_chmod_uss_file_or_dir(ZUSF *zusf, string file, string mode)
+{
+  struct stat file_stats;
+  if (stat(file.c_str(), &file_stats) == -1)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Path '%s' does not exist", file.c_str());
+    return RTNCD_FAILURE;
+  }
+  chmod(file.c_str(), strtol(mode.c_str(), NULL, 8));
   return 0;
 }

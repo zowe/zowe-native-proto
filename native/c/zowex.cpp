@@ -1039,8 +1039,25 @@ int handle_uss_delete_dir(ZCLIResult result)
 
 int handle_uss_chmod(ZCLIResult result)
 {
-  printf("method not implemented\n");
-  return 1;
+  int rc = 0;
+  string file_path = result.get_positional("file-path").get_value();
+  string mode(result.get_option("--mode").get_value());
+  if (mode == "")
+    mode = "755";
+
+  ZUSF zusf = {0};
+  rc = zds_chmod_uss_file_or_dir(&zusf, file_path, mode);
+  if (0 != rc)
+  {
+    cout << "Error: could not create USS path: '" << file_path << "' rc: '" << rc << "'" << endl;
+    cout << "  Details:\n"
+         << zusf.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
+  cout << "USS path '" << file_path << "' modified: '" << mode << "'" << endl;
+
+  return rc;
 }
 
 int handle_uss_chown(ZCLIResult result)
