@@ -3,5 +3,6 @@ dumps
 artifacts
 lib
 node_modules
+tsconfig.tsbuildinfo
 zowe.config.json
 zowe.schema.json

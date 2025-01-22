@@ -11,19 +11,19 @@
 
 import type { IHandlerParameters } from "@zowe/imperative";
 import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
-import { type IListJobsRequest, type IListJobsResponse, ZSshClient } from "zowe-native-proto-sdk";
+import { type ListJobs, ZSshClient } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class ListJobsHandler extends SshBaseHandler {
-    public async processWithSession(params: IHandlerParameters, session: SshSession): Promise<IListJobsResponse> {
+    public async processWithSession(params: IHandlerParameters, session: SshSession): Promise<ListJobs.Response> {
         using client = await ZSshClient.create(session);
-        const request: IListJobsRequest = {
+        const request: ListJobs.Request = {
             command: "listJobs",
             owner: params.arguments.owner,
             prefix: params.arguments.prefix,
             status: params.arguments.status,
         };
-        const response = await client.request<IListJobsResponse>(request);
+        const response = await client.request<ListJobs.Response>(request);
         params.response.data.setMessage("Successfully listed %d matching jobs", response.items.length);
         params.response.format.output({
             output: response.items,

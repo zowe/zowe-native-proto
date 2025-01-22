@@ -60,5 +60,8 @@
     "zattachx.h": "c",
     "charconv": "cpp"
   },
-  "editor.formatOnSave": true
+  "editor.formatOnSave": true,
+  "[typescript]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  }
 }
