@@ -167,6 +167,8 @@ int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
 
   response.assign(rawData);
   in.close();
+  
+  delete[] rawData;
 
   return RTNCD_SUCCESS;
 }
