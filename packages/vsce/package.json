@@ -36,7 +36,6 @@
     "watch": "rspack --mode development --watch"
   },
   "dependencies": {
-    "@zowe/zos-uss-for-zowe-sdk": "^8.11.0",
     "@zowe/zowe-explorer-api": "^3.0.3",
     "zowe-native-proto-sdk": "1.0.0"
   },
@@ -47,6 +46,7 @@
     "@types/vscode": "^1.79.0",
     "@zowe/zos-files-for-zowe-sdk": "^8.11.0",
     "@zowe/zos-jobs-for-zowe-sdk": "^8.11.0",
+    "@zowe/zos-uss-for-zowe-sdk": "^8.11.0",
     "ts-loader": "^9.5.1",
     "typescript": "^5.1.3"
   }
