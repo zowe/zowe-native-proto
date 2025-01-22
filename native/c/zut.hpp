@@ -23,7 +23,10 @@ char zut_get_hex_char(int);
 int zut_get_current_user(std::string &);
 void zut_uppercase_pad_truncate(std::string, char *, int);
 int zut_convert_dsect();
-char *zut_encode_alloc(char *rawData, const std::string &encoding, ZDIAG &diag, char **bufEnd);
-std::string zut_format_as_csv(const std::vector<std::string> &fields);
+char *zut_encode_alloc(char *rawData, const size_t input_size, const std::string &encoding, ZDIAG &diag, char **bufEnd);
+std::string zut_format_as_csv(std::vector<std::string> &fields);
+std::string &zut_rtrim(std::string &s, const char *t = " ");
+std::string &zut_ltrim(std::string &s, const char *t = " ");
+std::string &zut_trim(std::string &s, const char *t = " ");
 
 #endif

@@ -63,8 +63,25 @@ int zds_read_from_dd(ZDS *zds, string ddname, string &response)
     response += line;
     response.push_back('\n');
   }
-
   in.close();
+
+  const size_t size = response.size() + 1;
+  char *raw_data = new char[size];
+  memcpy(raw_data, response.c_str(), size);
+
+  delete[] raw_data;
+
+  if (strlen(zds->encoding) > 0 /* && (*encoding != "IBM-1047" && *encoding != "01047") */)
+  {
+    char *bufEnd;
+    char *outBuf = zut_encode_alloc(raw_data, size, string(zds->encoding), zds->diag, &bufEnd);
+    if (outBuf)
+    {
+      response.clear();
+      response.assign(outBuf, bufEnd - outBuf);
+      delete[] outBuf;
+    }
+  }
 
   return 0;
 }
@@ -86,7 +103,6 @@ int zds_read_from_dsn(ZDS *zds, string dsn, string &response)
 
   char *rawData = new char[size];
   in.read(rawData, size);
-  in.seekg(0, ios::beg);
 
   response.assign(rawData);
   in.close();
@@ -94,7 +110,7 @@ int zds_read_from_dsn(ZDS *zds, string dsn, string &response)
   char *bufEnd;
   if (strlen(zds->encoding) > 0 /* && (*encoding != "IBM-1047" && *encoding != "01047") */)
   {
-    char *outBuf = zut_encode_alloc(rawData, string(zds->encoding), zds->diag, &bufEnd);
+    char *outBuf = zut_encode_alloc(rawData, size, string(zds->encoding), zds->diag, &bufEnd);
     if (outBuf)
     {
       response.clear();

@@ -35,6 +35,11 @@ type ListJobsRequest struct {
 	ListOptions
 }
 
+// command: "listSpools"
+type ListSpoolsRequest struct {
+	JobId string `json:"jobid"`
+}
+
 // command: "readDataset"
 type ReadDatasetRequest struct {
 	Encoding string `json:"encoding,omitempty"`
@@ -45,6 +50,18 @@ type ReadDatasetRequest struct {
 type ReadFileRequest struct {
 	Encoding string `json:"encoding,omitempty"`
 	Path     string `json:"path"`
+}
+
+// command: "readSpool"
+type ReadSpoolRequest struct {
+	Encoding string `json:"encoding,omitempty"`
+	DsnKey   int    `json:"dsnKey"`
+	JobId    string `json:"jobId"`
+}
+
+// command: "getJcl"
+type GetJclRequest struct {
+	JobId string `json:"jobId"`
 }
 
 // command: "writeDataset"
@@ -65,6 +82,13 @@ type ReadDatasetResponse struct {
 type ReadFileResponse struct {
 	Encoding string `json:"encoding,omitempty"`
 	File     string `json:"file"`
+	Data     []byte `json:"data"`
+}
+
+type ReadSpoolResponse struct {
+	Encoding string `json:"encoding,omitempty"`
+	DsnKey   int    `json:"dsnKey"`
+	JobId    string `json:"jobId"`
 	Data     []byte `json:"data"`
 }
 
@@ -90,4 +114,13 @@ type ListFilesResponse struct {
 
 type ListJobsResponse struct {
 	Items []Job `json:"items"`
+}
+
+type ListSpoolsResponse struct {
+	Items []Spool `json:"items"`
+}
+
+type GetJclResponse struct {
+	JobId string `json:"jobId"`
+	Data  string `json:"data"`
 }
