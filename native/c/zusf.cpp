@@ -36,7 +36,7 @@ using namespace std;
  * @param mode mode of the file or directory
  * @param createDir flag indicating whether to create a directory
  *
- * @return RTNCD_SUCCESS on success, -1 on failure
+ * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
 int zusf_create_uss_file_or_dir(ZUSF *zusf, string file, string mode, bool createDir)
 {
@@ -80,8 +80,18 @@ int zusf_create_uss_file_or_dir(ZUSF *zusf, string file, string mode, bool creat
   return RTNCD_FAILURE;
 }
 
+/**
+ * Lists the USS file path.
+ *
+ * @param zusf pointer to a ZUSF object
+ * @param file name of the USS file or directory
+ * @param response reference to a string where the read data will be stored
+ *
+ * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
+ */
 int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response)
 {
+  // TODO(zFernand0): Handle `*` and other bash-expansion rules
   struct stat file_stats;
   if (stat(file.c_str(), &file_stats) == -1)
   {
@@ -136,7 +146,7 @@ int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response)
  * @param file name of the USS file
  * @param response reference to a string where the read data will be stored
  *
- * @return RTNCD_SUCCESS on success, -1 on failure
+ * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
 int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
 {
@@ -161,6 +171,15 @@ int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
   return RTNCD_SUCCESS;
 }
 
+/**
+ * Writes data to a USS file.
+ *
+ * @param zusf pointer to a ZUSF object
+ * @param file name of the USS file
+ * @param data string to be written to the file
+ *
+ * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
+ */
 int zds_write_to_uss_file(ZUSF *zusf, string file, string &data)
 {
   // TODO(zFernand0): Avoid overriding existing files
@@ -177,8 +196,18 @@ int zds_write_to_uss_file(ZUSF *zusf, string file, string &data)
   return 0;
 }
 
+/**
+ * Changes the permissions of a USS file or directory.
+ *
+ * @param zusf pointer to a ZUSF object
+ * @param file name of the USS file
+ * @param mode new permissions in octal format
+ *
+ * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
+ */
 int zds_chmod_uss_file_or_dir(ZUSF *zusf, string file, string mode)
 {
+  // TODO(zFernand0): Add recursive option for directories
   struct stat file_stats;
   if (stat(file.c_str(), &file_stats) == -1)
   {
