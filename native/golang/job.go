@@ -63,7 +63,7 @@ func HandleListSpoolsRequest(jsonData []byte) {
 		return
 	}
 
-	args := []string{"./zowex", "job", "list-files", listRequest.JobId}
+	args := []string{"./zowex", "job", "list-files", listRequest.JobId, "--rfc", "1"}
 
 	out, err := exec.Command(args[0], args[1:]...).Output()
 	if err != nil {
