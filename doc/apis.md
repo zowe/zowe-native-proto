@@ -10,4 +10,4 @@
 | Read spool file  | ✅      | ✅         | ❌  | ❌  | ❌   |
 | Write data set   | ✅      | ✅         | ❌  | ❌  | ❌   |
 | Write USS file   | ✅      | ❌         | ❌  | ❌  | ❌   |
-| Get job JCL      | ✅      | ❌         | ❌  | ❌  | ❌   |
+| Get job JCL      | ✅      | ✅         | ❌  | ❌  | ❌   |
