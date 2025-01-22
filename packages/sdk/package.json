@@ -1,6 +1,6 @@
 {
   "name": "zowe-native-proto-sdk",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "main": "lib/index.js",
   "scripts": {
     "build": "tsc -b",
@@ -10,7 +10,7 @@
   },
   "keywords": [],
   "author": "Zowe",
-  "license": "EPL-2.0",
+  "license": "EPL-2.0 & Apache-2.0",
   "description": "Zowe Native Proto APIs for Zowe SDK",
   "peerDependencies": {
     "@zowe/imperative": "^8.11.0",

@@ -5,12 +5,13 @@
   "scripts": {
     "build": "npm run build --workspaces",
     "lint": "npm run lint --workspaces",
+    "license": "node scripts/updateLicenses.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "watch": "npm run watch --workspaces"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "EPL-2.0 & Apache-2.0",
   "workspaces": [
     "packages/*"
   ],
