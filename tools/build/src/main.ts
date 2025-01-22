@@ -449,12 +449,16 @@ async function bin(connection: Client) {
 }
 
 async function build(connection: Client) {
-  console.log(`Building ...`);
-  const resp = await runCommandInShell(
+  console.log(`Building native/c ...`);
+  console.log(await runCommandInShell(
     connection,
     `cd ${cDeployDirectory} && make\n`
-  );
-  console.log(resp);
+  ));
+  console.log(`Building native/golang ...`);
+  console.log(await runCommandInShell(
+    connection,
+    `cd ${goDeployDirectory} && go build\n`
+  ));
   console.log(`Build complete!`);
 }
 
