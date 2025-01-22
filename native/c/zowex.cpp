@@ -404,10 +404,13 @@ int handle_job_view_file(ZCLIResult result)
   string key(result.get_positional("key").get_value());
   const bool hasEncoding = result.get_option("--encoding").is_found();
 
-  if (result.get_option("--encoding").is_found()) {
+  if (result.get_option("--encoding").is_found())
+  {
     const string encodingValue = result.get_option("--encoding").get_value();
     memcpy(zjb.encoding, encodingValue.data(), (std::min)(16ul, encodingValue.size()));
-  } else {
+  }
+  else
+  {
     memset(zjb.encoding, 0, 16ul);
   }
 
@@ -431,7 +434,7 @@ int handle_job_view_file(ZCLIResult result)
   }
   else
   {
-    cout << response;
+    cout << resp;
   }
 
   return 0;
@@ -818,8 +821,8 @@ int handle_log_view(ZCLIResult result)
   string lines = result.get_option("--lines").get_value();
 
   cout << "lines are " << lines << endl;
+  return 0;
 }
-
 int handle_tool_dynalloc(ZCLIResult result)
 {
   int rc = 0;

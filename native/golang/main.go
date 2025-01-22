@@ -32,6 +32,7 @@ func main() {
 		"listDsMembers": HandleListDsMembersRequest,
 		"listFiles":     HandleListFilesRequest,
 		"listJobs":      HandleListJobsRequest,
+		"listSpools":    HandleListSpoolsRequest,
 	}
 
 	for data := range input {

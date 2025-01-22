@@ -35,6 +35,11 @@ type ListJobsRequest struct {
 	ListOptions
 }
 
+// command: "listSpools"
+type ListSpoolsRequest struct {
+	JobId string `json:"jobid"`
+}
+
 // command: "readDataset"
 type ReadDatasetRequest struct {
 	Encoding string `json:"encoding,omitempty"`
@@ -109,4 +114,8 @@ type ListFilesResponse struct {
 
 type ListJobsResponse struct {
 	Items []Job `json:"items"`
+}
+
+type ListSpoolsResponse struct {
+	Items []Spool `json:"items"`
 }

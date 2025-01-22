@@ -54,6 +54,47 @@ func HandleListJobsRequest(jsonData []byte) {
 	}
 }
 
+func HandleListSpoolsRequest(jsonData []byte) {
+	var listRequest ListSpoolsRequest
+	err := json.Unmarshal(jsonData, &listRequest)
+	if err != nil {
+		// log.Println("Error decoding ListSpoolsRequest:", err)
+		return
+	}
+
+	args := []string{"./zowex", "job", "list-files", listRequest.JobId}
+
+	out, err := exec.Command(args[0], args[1:]...).Output()
+	if err != nil {
+		log.Println("Error executing command:", err)
+		return
+	}
+
+	spools := strings.Split(strings.TrimSpace(string(out)), "\n")
+
+	response := ListSpoolsResponse{
+		Items: make([]Spool, len(spools)),
+	}
+
+	for i, spool := range spools {
+		vals := strings.Split(spool, ",")
+		if len(vals) < 4 {
+			continue
+		}
+		response.Items[i] = Spool{
+			Id:   vals[0],
+			Name: strings.TrimSpace(vals[2]),
+		}
+	}
+
+	v, err := json.Marshal(response)
+	if err != nil {
+		fmt.Println(err.Error())
+	} else {
+		fmt.Println(string(v))
+	}
+}
+
 func HandleReadSpoolRequest(jsonData []byte) {
 	var request ReadSpoolRequest
 	err := json.Unmarshal(jsonData, &request)
