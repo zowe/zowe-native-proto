@@ -167,7 +167,19 @@ int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
 
   response.assign(rawData);
   in.close();
-  
+
+  char *bufEnd;
+  if (strlen(zusf->encoding) > 0 /* && (*encoding != "IBM-1047" && *encoding != "01047") */)
+  {
+    char *outBuf = zut_encode_alloc(rawData, size, string(zusf->encoding), zds->diag, &bufEnd);
+    if (outBuf)
+    {
+      response.clear();
+      response.assign(outBuf, bufEnd - outBuf);
+      delete[] outBuf;
+    }
+  }
+
   delete[] rawData;
 
   return RTNCD_SUCCESS;
@@ -185,11 +197,24 @@ int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
 int zds_write_to_uss_file(ZUSF *zusf, string file, string &data)
 {
   // TODO(zFernand0): Avoid overriding existing files
-  ofstream out(file.c_str());
+  const bool withEncoding = strlen(zusf->encoding) > 0;
+  ofstream out(file.c_str(), withEncoding ? ios::out | ios::binary : ios::out);
   if (!out.is_open())
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open '%s'", file.c_str());
     return RTNCD_FAILURE;
+  }
+
+  if (strlen(zusf->encoding) > 0)
+  {
+    char *bufEnd;
+    char *outBuf = zut_encode_alloc(data.c_str(), data.length(), string(zusf->encoding), zusf->diag, &bufEnd);
+    if (outBuf)
+    {
+      data.clear();
+      data.assign(outBuf);
+      delete[] outBuf;
+    }
   }
 
   out << data;

@@ -119,6 +119,8 @@ int zds_read_from_dsn(ZDS *zds, string dsn, string &response)
     }
   }
 
+  delete[] rawData;
+
   return 0;
 }
 
