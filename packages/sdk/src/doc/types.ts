@@ -19,3 +19,9 @@ export type Job = {
     status: string;
     retcode: string;
 };
+
+export type Spool = {
+    id: number;
+    ddname: string;
+    stepname: string;
+};

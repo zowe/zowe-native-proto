@@ -23,7 +23,12 @@ const extensionConfig = {
   },
   resolve: {
     // support reading TypeScript and JavaScript files, 📖 -> https://github.com/TypeStrong/ts-loader
-    extensions: ['.ts', '.js']
+    extensions: ['.ts', '.js'],
+    alias: {
+      'cpu-features': false,
+      './crypto/build/Release/sshcrypto.node': false,
+      '../build/Release/cpufeatures.node': false,
+    }
   },
   module: {
     rules: [
@@ -35,6 +40,11 @@ const extensionConfig = {
             loader: 'ts-loader'
           }
         ]
+      },
+      {
+        test: /\.js/,
+        include: /wontache/, // https://gitlab.com/jgonggrijp/wontache/-/issues/68
+        type: "javascript/auto",
       }
     ]
   },
