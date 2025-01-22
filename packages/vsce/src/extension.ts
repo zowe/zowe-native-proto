@@ -1,7 +1,7 @@
-import * as vscode from "vscode";
 import { ZoweVsCodeExtension } from "@zowe/zowe-explorer-api";
-import { SshJesApi, SshMvsApi, SshUssApi } from "./api";
+import * as vscode from "vscode";
 import { SshClientCache } from "./SshClientCache";
+import { SshJesApi, SshMvsApi, SshUssApi } from "./api";
 
 // This method is called when your extension is activated
 export function activate(context: vscode.ExtensionContext) {

@@ -1,6 +1,6 @@
 import type * as zosjobs from "@zowe/zos-jobs-for-zowe-sdk";
 import type { MainframeInteraction } from "@zowe/zowe-explorer-api";
-import { GetJcl, type ListJobs, type ListSpools, type ReadSpool, ZSshUtils } from "zowe-native-proto-sdk";
+import { type GetJcl, type ListJobs, type ListSpools, type ReadSpool, ZSshUtils } from "zowe-native-proto-sdk";
 import { SshClientCache } from "../SshClientCache";
 import { SshCommonApi } from "./SshCommonApi";
 
