@@ -55,7 +55,7 @@ type ReadFileRequest struct {
 // command: "readSpool"
 type ReadSpoolRequest struct {
 	Encoding string `json:"encoding,omitempty"`
-	DsnKey   string `json:"dsnKey"`
+	DsnKey   int    `json:"dsnKey"`
 	JobId    string `json:"jobId"`
 }
 
