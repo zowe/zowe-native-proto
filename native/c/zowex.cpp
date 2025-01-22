@@ -12,6 +12,7 @@
 #include <vector>
 #include <stdlib.h>
 #include <string>
+#include <sstream>
 #include <cstdlib>
 #include <stdio.h>
 #include <algorithm>
@@ -21,6 +22,12 @@
 #include "zjb.hpp"
 #include "unistd.h"
 #include "zds.hpp"
+
+#ifndef TO_STRING
+#define TO_STRING(x) static_cast<std::ostringstream &>(           \
+                         (std::ostringstream() << std::dec << x)) \
+                         .str()
+#endif
 
 using namespace std;
 
@@ -173,6 +180,10 @@ int main(int argc, char *argv[])
   job_list.get_options().push_back(job_list_rfc);
   job_group.get_verbs().push_back(job_list);
 
+  ZCLIOption spool_list_rfc("response-format-csv");
+  spool_list_rfc.set_description("returns the response in CSV format");
+  spool_list_rfc.get_aliases().push_back("--rfc");
+
   ZCLIVerb job_list_files("list-files");
   job_list_files.set_description("list spool files for jobid");
   job_list_files.set_zcli_verb_handler(handle_job_list_files);
@@ -180,6 +191,7 @@ int main(int argc, char *argv[])
   job_jobid.set_required(true);
   job_jobid.set_description("valid jobid");
   job_list_files.get_positionals().push_back(job_jobid);
+  job_list_files.get_options().push_back(spool_list_rfc);
   job_group.get_verbs().push_back(job_list_files);
 
   ZCLIVerb job_view_status("view-status");
@@ -363,9 +375,23 @@ int handle_job_list_files(ZCLIResult result)
     return -1;
   }
 
+  const bool emit_csv = result.get_option("--response-format-csv").is_found();
   for (vector<ZJobDD>::iterator it = job_dds.begin(); it != job_dds.end(); ++it)
   {
-    cout << left << setw(9) << it->ddn << " " << it->dsn << " " << setw(4) << it->key << " " << it->stepname << " " << it->procstep << endl;
+    std::vector<string> fields;
+    fields.push_back(it->ddn);
+    fields.push_back(it->dsn);
+    fields.push_back(TO_STRING(it->key));
+    fields.push_back(it->stepname);
+    fields.push_back(it->procstep);
+    if (emit_csv)
+    {
+      cout << zut_format_as_csv(fields) << endl;
+    }
+    else
+    {
+      cout << left << setw(9) << it->ddn << " " << it->dsn << " " << setw(4) << it->key << " " << it->stepname << " " << it->procstep << endl;
+    }
   }
 
   return 0;
@@ -404,7 +430,7 @@ int handle_job_view_file(ZCLIResult result)
   string key(result.get_positional("key").get_value());
   const bool hasEncoding = result.get_option("--encoding").is_found();
 
-  if (result.get_option("--encoding").is_found())
+  if (hasEncoding)
   {
     const string encodingValue = result.get_option("--encoding").get_value();
     memcpy(zjb.encoding, encodingValue.data(), (std::min)(16ul, encodingValue.size()));

@@ -57,20 +57,24 @@ int zds_read_from_dd(ZDS *zds, string ddname, string &response)
     return RTNCD_FAILURE;
   }
 
-  in.seekg(0, ios::end);
-  size_t size = in.tellg();
-  in.seekg(0, ios::beg);
-
-  char *rawData = new char[size];
-  in.read(rawData, size);
-
-  response.assign(rawData);
+  string line;
+  while (getline(in, line))
+  {
+    response += line;
+    response.push_back('\n');
+  }
   in.close();
 
-  char *bufEnd;
+  const size_t size = response.size() + 1;
+  char *raw_data = new char[size];
+  memcpy(raw_data, response.c_str(), size);
+
+  delete[] raw_data;
+
   if (strlen(zds->encoding) > 0 /* && (*encoding != "IBM-1047" && *encoding != "01047") */)
   {
-    char *outBuf = zut_encode_alloc(rawData, string(zds->encoding), zds->diag, &bufEnd);
+    char *bufEnd;
+    char *outBuf = zut_encode_alloc(raw_data, size, string(zds->encoding), zds->diag, &bufEnd);
     if (outBuf)
     {
       response.clear();
@@ -106,7 +110,7 @@ int zds_read_from_dsn(ZDS *zds, string dsn, string &response)
   char *bufEnd;
   if (strlen(zds->encoding) > 0 /* && (*encoding != "IBM-1047" && *encoding != "01047") */)
   {
-    char *outBuf = zut_encode_alloc(rawData, string(zds->encoding), zds->diag, &bufEnd);
+    char *outBuf = zut_encode_alloc(rawData, size, string(zds->encoding), zds->diag, &bufEnd);
     if (outBuf)
     {
       response.clear();

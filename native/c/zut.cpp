@@ -257,7 +257,7 @@ char zut_get_hex_char(int num)
   return val;
 }
 
-char *zut_encode_alloc(char *rawData, const string &encoding, ZDIAG &diag, char **bufEnd)
+char *zut_encode_alloc(char *raw_data, const size_t input_size, const string &encoding, ZDIAG &diag, char **buf_end)
 {
   iconv_t cd = iconv_open(encoding.c_str(), "IBM-1047");
   if (cd == (iconv_t)(-1))
@@ -266,31 +266,45 @@ char *zut_encode_alloc(char *rawData, const string &encoding, ZDIAG &diag, char 
     return NULL;
   }
 
-  size_t input_size = strlen(rawData);
   size_t max_output_size = input_size * 4;
   size_t input_bytes_remaining = input_size;
   size_t output_bytes_remaining = max_output_size;
   char *outbuf = new char[output_bytes_remaining];
   memset(outbuf, 0, output_bytes_remaining);
   char *outptr = outbuf;
-  size_t rc = iconv(cd, &rawData, &input_bytes_remaining, &outptr, &output_bytes_remaining);
+  size_t rc = iconv(cd, &raw_data, &input_bytes_remaining, &outptr, &output_bytes_remaining);
   if (rc == -1)
   {
     diag.e_msg_len = sprintf(diag.e_msg, "Error when converting characters");
     delete[] outbuf;
     return NULL;
   }
-  *bufEnd = outptr;
+  *buf_end = outptr;
   iconv_close(cd);
   return outbuf;
 }
 
-string zut_format_as_csv(const std::vector<string> &fields)
+std::string &zut_rtrim(std::string &s, const char *t)
+{
+  return s.erase(s.find_last_not_of(t) + 1);
+}
+
+std::string &zut_ltrim(std::string &s, const char *t)
+{
+  return s.erase(0, s.find_first_not_of(t));
+}
+
+std::string &zut_trim(std::string &s, const char *t)
+{
+  return zut_ltrim(zut_rtrim(s, t), t);
+}
+
+string zut_format_as_csv(std::vector<string> &fields)
 {
   string formatted;
   for (int i = 0; i < fields.size(); i++)
   {
-    formatted += fields.at(i);
+    formatted += zut_trim(fields.at(i));
     if (i < fields.size() - 1)
     {
       formatted += ",";
