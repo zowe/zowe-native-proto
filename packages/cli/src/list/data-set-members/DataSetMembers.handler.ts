@@ -11,17 +11,17 @@
 
 import type { IHandlerParameters } from "@zowe/imperative";
 import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
-import { type IListDsMembersRequest, type IListDsMembersResponse, ZSshClient } from "zowe-native-proto-sdk";
+import { type ListDsMembers, ZSshClient } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class ListDataSetMembersHandler extends SshBaseHandler {
-    public async processWithSession(params: IHandlerParameters, session: SshSession): Promise<IListDsMembersResponse> {
+    public async processWithSession(params: IHandlerParameters, session: SshSession): Promise<ListDsMembers.Response> {
         using client = await ZSshClient.create(session);
-        const request: IListDsMembersRequest = {
+        const request: ListDsMembers.Request = {
             command: "listDsMembers",
             dataset: params.arguments.dsname,
         };
-        const response = await client.request<IListDsMembersResponse>(request);
+        const response = await client.request<ListDsMembers.Response>(request);
         params.response.data.setMessage(
             "Successfully listed %d members in data sets %s",
             response.returnedRows,

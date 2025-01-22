@@ -11,17 +11,17 @@
 
 import type { IHandlerParameters } from "@zowe/imperative";
 import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
-import { type IListDatasetsRequest, type IListDatasetsResponse, ZSshClient } from "zowe-native-proto-sdk";
+import { type ListDatasets, ZSshClient } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class ListDataSetsHandler extends SshBaseHandler {
-    public async processWithSession(params: IHandlerParameters, session: SshSession): Promise<IListDatasetsResponse> {
+    public async processWithSession(params: IHandlerParameters, session: SshSession): Promise<ListDatasets.Response> {
         using client = await ZSshClient.create(session);
-        const request: IListDatasetsRequest = {
+        const request: ListDatasets.Request = {
             command: "listDatasets",
             pattern: params.arguments.pattern,
         };
-        const response = await client.request<IListDatasetsResponse>(request);
+        const response = await client.request<ListDatasets.Response>(request);
         params.response.data.setMessage(
             "Successfully listed %d matching data sets for pattern '%s'",
             response.returnedRows,

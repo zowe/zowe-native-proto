@@ -76,7 +76,7 @@ CPP_FLAGS=-W "c,lp64,langlvl(extended),dll,xplink,showinc"\
 
 ASM_FLAGS=-mrent
 
-all: libzut.so libzut.a libzds.so libzds.a libzcn.so libzcn.a libzjb.so libzjb.a zowex zowexx extattr test
+all: libzut.so libzut.a libzds.so libzds.a libzusf.so libzusf.a libzcn.so libzcn.a libzjb.so libzjb.a zowex zowexx extattr test
 
 #
 # Utilities
@@ -198,16 +198,31 @@ libzcn.a: zcn.o zcnm.o zcnm31.o libzut.a
 	ar -rv $@ $^
 
 #
+# USS data
+#
+zusf.o: zusf.cpp
+	@echo 'Building zusf.o'
+	$(CXX) $(DLL_CPP_FLAGS) -qlist=$*.cpp.lst -o $@ $^
+
+libzusf.so: zusf.o libzut.a
+	$(CXX) $(DLL_BND_FLAGS) -o $@ $^ > $*.bind.lst
+	@echo 'Building libzusf.so'
+
+libzusf.a: zusf.o libzut.a
+	@echo 'Building libzusf.a'
+	ar -rv $@ $^
+
+#
 # Test CLI
 #
 # zowex: zowex.o zcn.o zcnm.o zcnm31.o zut.o zutm.o zutm31.o zjb.o zjbm.o zssi31.o zjbm31.o zds.o
-zowex: zowex.o libzcn.a libzut.a libzjb.a libzds.a
+zowex: zowex.o libzcn.a libzut.a libzjb.a libzds.a libzusf.a
 	@echo 'Building zowex'
 	$(CXX) $(CPP_BND_FLAGS) -o $@ $^ > $*.bind.lst
 	cp $@ ../golang/$(basename $@)
 	@echo 'Copied zowex to golang/ioserver'
 
-zowexx: zowex.o libzcn.a libzut.a libzjb.a libzds.a
+zowexx: zowex.o libzcn.a libzut.a libzjb.a libzds.a libzusf.a
 	@echo 'Building zowexx'
 	$(CXX) $(CPP_BND_FLAGS_AUTH) -o $@ $^ > $*.bind.lst
 

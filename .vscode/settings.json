@@ -1,5 +1,8 @@
 {
   "files.associations": {
+    "**/.hlasmplugin/proc_grps.json": "jsonc",
+    "**/.hlasmplugin/pgm_conf.json": "jsonc",
+    "*.proto": "csharp",
     "string": "cpp",
     "iostream": "cpp",
     "ios": "cpp",
@@ -57,5 +60,8 @@
     "zattachx.h": "c",
     "charconv": "cpp"
   },
-  "editor.formatOnSave": true
+  "editor.formatOnSave": true,
+  "[typescript]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  }
 }

@@ -12,7 +12,7 @@ try {
   );
 } catch (e) {
   console.log(
-    `You must create config.local.json (model from config.default.json) in same directory`
+    `You must create config.local.json (model from config.default.jsonc) in same directory`
   );
 }
 
@@ -83,8 +83,9 @@ connection.on(`close`, () => {
   console.log(`Client connection is closed`);
 });
 
-connection.on(`error`, () => {
-  console.log(`Client connection is errored`);
+connection.on(`error`, (err) => {
+  console.error(`Client connection errored`);
+  console.log(err)
 });
 
 if (!privateKey) {
