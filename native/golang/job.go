@@ -82,8 +82,12 @@ func HandleListSpoolsRequest(jsonData []byte) {
 		if len(vals) < 4 {
 			continue
 		}
+		id, err := strconv.Atoi(strings.TrimSpace(vals[2]))
+		if err != nil {
+			continue
+		}
 		response.Items[i] = Spool{
-			Id:       strings.TrimSpace(vals[2]),
+			Id:       id,
 			DdName:   vals[0],
 			StepName: vals[3],
 		}
