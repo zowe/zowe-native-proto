@@ -305,10 +305,14 @@ int main(int argc, char *argv[])
   uss_list.get_positionals().push_back(uss_file_path);
   uss_group.get_verbs().push_back(uss_list);
 
+  ZCLIOption uss_encoding("encoding");
+  uss_encoding.set_description("return file contents in given encoding");
+
   ZCLIVerb uss_view("view");
   uss_view.set_description("view a USS file");
   uss_view.get_positionals().push_back(uss_file_path);
   uss_view.set_zcli_verb_handler(handle_uss_view);
+  uss_view.get_options().push_back(uss_encoding);
   uss_group.get_verbs().push_back(uss_view);
 
   ZCLIVerb uss_write("write");

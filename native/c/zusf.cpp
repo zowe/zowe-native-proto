@@ -21,6 +21,10 @@
 #include "zusftype.h"
 #include "zut.hpp"
 #include "iefzb4d2.h"
+#ifndef _XPLATFORM_SOURCE
+#define _XPLATFORM_SOURCE
+#endif
+#include <sys/xattr.h>
 #include <sys/stat.h>
 #include <dirent.h>
 // #include "zusfm.h"
