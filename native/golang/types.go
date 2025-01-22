@@ -23,6 +23,7 @@ type Job struct {
 }
 
 type Spool struct {
-	Id   string `json:"id"`
-	Name string `json:"name"`
+	Id       string `json:"id"`
+	DdName   string `json:"ddname"`
+	StepName string `json:"stepname"`
 }

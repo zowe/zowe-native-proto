@@ -83,8 +83,9 @@ func HandleListSpoolsRequest(jsonData []byte) {
 			continue
 		}
 		response.Items[i] = Spool{
-			Id:   vals[0],
-			Name: strings.TrimSpace(vals[2]),
+			Id:       strings.TrimSpace(vals[2]),
+			DdName:   vals[0],
+			StepName: vals[3],
 		}
 	}
 
