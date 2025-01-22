@@ -1,24 +1,21 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
+import { ZoweVsCodeExtension } from "@zowe/zowe-explorer-api";
 import * as vscode from "vscode";
+import { SshClientCache } from "./SshClientCache";
+import { SshJesApi, SshMvsApi, SshUssApi } from "./api";
 
 // This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
-    // Use the console to output diagnostic information (console.log) and errors (console.error)
-    // This line of code will only be executed once when your extension is activated
-    console.log('Congratulations, your extension "zowe-native-proto-vsce" is now active!');
-
-    // The command has been defined in the package.json file
-    // Now provide the implementation of the command with registerCommand
-    // The commandId parameter must match the command field in package.json
-    const disposable = vscode.commands.registerCommand("zowe-native-proto-vsce.helloWorld", () => {
-        // The code you place here will be executed every time your command is executed
-        // Display a message box to the user
-        vscode.window.showInformationMessage("Hello World from zowe-native-proto-vsce!");
-    });
-
-    context.subscriptions.push(disposable);
+    const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
+    if (zoweExplorerApi != null) {
+        context.subscriptions.push(SshClientCache.inst);
+        zoweExplorerApi.registerMvsApi(new SshMvsApi());
+        zoweExplorerApi.registerUssApi(new SshUssApi());
+        zoweExplorerApi.registerJesApi(new SshJesApi());
+    } else {
+        vscode.window.showErrorMessage(
+            "Could not access Zowe Explorer API. Please check that the latest version of Zowe Explorer is installed.",
+        );
+    }
 }
 
 // This method is called when your extension is deactivated
