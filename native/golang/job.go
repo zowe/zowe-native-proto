@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os/exec"
+	"strconv"
 	"strings"
 )
 
@@ -103,7 +104,7 @@ func HandleReadSpoolRequest(jsonData []byte) {
 		return
 	}
 	// log.Println("ReadSpoolRequest received:", ...)
-	args := []string{"./zowex", "job", "view-file", request.JobId, request.DsnKey}
+	args := []string{"./zowex", "job", "view-file", request.JobId, strconv.Itoa(request.DsnKey)}
 	hasEncoding := len(request.Encoding) != 0
 	if hasEncoding {
 		args = append(args, "--encoding", request.Encoding)
@@ -121,6 +122,33 @@ func HandleReadSpoolRequest(jsonData []byte) {
 		DsnKey:   request.DsnKey,
 		JobId:    request.JobId,
 		Data:     data,
+	}
+	v, err := json.Marshal(response)
+	if err != nil {
+		fmt.Println(err.Error())
+	} else {
+		fmt.Println(string(v))
+	}
+}
+
+func HandleGetJclRequest(jsonData []byte) {
+	var request GetJclRequest
+	err := json.Unmarshal(jsonData, &request)
+	if err != nil {
+		// log.Println("Error decoding GetJclRequest:", err)
+		return
+	}
+	// log.Println("GetJclRequest received:", ...)
+	args := []string{"./zowex", "job", "view-jcl", request.JobId}
+	out, err := exec.Command(args[0], args[1:]...).Output()
+	if err != nil {
+		log.Println("Error executing command:", err)
+		return
+	}
+
+	response := GetJclResponse{
+		JobId: request.JobId,
+		Data:  string(out),
 	}
 	v, err := json.Marshal(response)
 	if err != nil {

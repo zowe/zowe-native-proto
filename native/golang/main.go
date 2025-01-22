@@ -27,6 +27,7 @@ func main() {
 	commandHandlers := map[string]CommandHandler{
 		"readDataset":   HandleReadDatasetRequest,
 		"readSpool":     HandleReadSpoolRequest,
+		"getJcl":        HandleGetJclRequest,
 		"writeDataset":  HandleWriteDatasetRequest,
 		"listDatasets":  HandleListDatasetsRequest,
 		"listDsMembers": HandleListDsMembersRequest,

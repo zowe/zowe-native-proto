@@ -87,7 +87,7 @@ type ReadFileResponse struct {
 
 type ReadSpoolResponse struct {
 	Encoding string `json:"encoding,omitempty"`
-	DsnKey   string `json:"dsnKey"`
+	DsnKey   int    `json:"dsnKey"`
 	JobId    string `json:"jobId"`
 	Data     []byte `json:"data"`
 }
@@ -118,4 +118,9 @@ type ListJobsResponse struct {
 
 type ListSpoolsResponse struct {
 	Items []Spool `json:"items"`
+}
+
+type GetJclResponse struct {
+	JobId string `json:"jobId"`
+	Data  string `json:"data"`
 }
