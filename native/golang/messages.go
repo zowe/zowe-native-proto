@@ -67,6 +67,7 @@ type GetJclRequest struct {
 // command: "writeDataset"
 type WriteDatasetRequest struct {
 	Encoding string `json:"encoding,omitempty"`
+	DataType string `json:"dataType,omitempty"`
 	Dataset  string `json:"dataset"`
 	Contents string `json:"contents"`
 }

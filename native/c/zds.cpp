@@ -143,13 +143,26 @@ int zds_write_to_dd(ZDS *zds, string ddname, string &data)
 
 int zds_write_to_dsn(ZDS *zds, string dsn, string &data)
 {
+  const bool hasEncoding = strlen(zds->encoding) > 0;
   dsn = "//'" + dsn + "'";
-  ofstream out(dsn.c_str());
+  ofstream out(dsn.c_str(), hasEncoding ? ios::out | ios::binary : ios::out);
 
   if (!out.is_open())
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open '%s'", dsn.c_str());
     return RTNCD_FAILURE;
+  }
+
+  if (hasEncoding)
+  {
+    char *bufEnd;
+    char *outBuf = zut_encode_alloc((char *)data.c_str(), data.length(), string(zusf->encoding), zusf->diag, &bufEnd);
+    if (outBuf)
+    {
+      data.clear();
+      data.assign(outBuf);
+      delete[] outBuf;
+    }
   }
 
   out << data;
