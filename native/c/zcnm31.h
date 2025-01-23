@@ -15,7 +15,7 @@
 
 int zcnm1act(ZCN *) ATTRIBUTE(amode31);
 int zcnm1put(ZCN *, const char *) ATTRIBUTE(amode31);
-int zcnm1get(ZCN *, char *) ATTRIBUTE(amode31,armode);
+int zcnm1get(ZCN *, char *) ATTRIBUTE(amode31, armode);
 int zcnm1dea(ZCN *) ATTRIBUTE(amode31);
 
 #endif

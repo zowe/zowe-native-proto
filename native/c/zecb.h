@@ -45,13 +45,13 @@ typedef struct ecb ECB;
 #endif // __IBM_METAL__
 
 #if defined(__IBM_METAL__)
-#define STIMERM_MODEL(stimermm)                                 \
-    __asm(                                                      \
-        "*                                                  \n" \
-        " STIMERM SET,"                                         \
-        "MF=L                                               \n" \
-        "*                                                    " \
-        : "DS"(stimermm));
+#define STIMERM_MODEL(stimermm)                               \
+  __asm(                                                      \
+      "*                                                  \n" \
+      " STIMERM SET,"                                         \
+      "MF=L                                               \n" \
+      "*                                                    " \
+      : "DS"(stimermm));
 #else
 #define STIMERM_MODEL(stimermm) void *stimermm;
 #endif
@@ -86,8 +86,8 @@ STIMERM_MODEL(stimerm_model); // make this copy in static storage
       "*                                                  \n" \
       " SYSSTATE POP    Restore SYSSTATE                  \n" \
       "*                                                    " \
-      : "+m"(plist),"=m"(id)                                  \
-      : "m"(time),"m"(parm),"m"(exit)                         \
+      : "+m"(plist), "=m"(id)                                 \
+      : "m"(time), "m"(parm), "m"(exit)                       \
       : "r0", "r1", "r2", "r14", "r15");
 #else
 #define STIMERM_SET(time, parm, exit, id, plist)
@@ -186,7 +186,7 @@ static void ecb_wait(ECB *ecb)
 // }
 
 static void ecbs_wait_on_one(
-    volatile ECB * ecbList[],
+    volatile ECB *ecbList[],
     int ecbListCount)
 {
 
@@ -207,8 +207,8 @@ typedef void (*zcli_stimer)(void *);
 // NOTE(Kelosky): seems unworkable in LE, should use LE timer equivalent
 static void timer(unsigned int time, zcli_stimer cb, void *parameter)
 {
-  int id = 0; // TODO(Kelosky): return & allow cancel by
-  STIMERM_MODEL(dsa_stimerm_model); // stack var
+  int id = 0;                        // TODO(Kelosky): return & allow cancel by
+  STIMERM_MODEL(dsa_stimerm_model);  // stack var
   dsa_stimerm_model = stimerm_model; // copy model
   STIMERM_SET(time, parameter, cb, id, dsa_stimerm_model);
 }
@@ -216,10 +216,10 @@ static void timer(unsigned int time, zcli_stimer cb, void *parameter)
 static int cancel_timers()
 {
   int rc = 0;
-  STIMERM_MODEL(dsa_stimerm_model); // stack var
+  STIMERM_MODEL(dsa_stimerm_model);  // stack var
   dsa_stimerm_model = stimerm_model; // copy model
   STIMERM_CANCEL(rc, dsa_stimerm_model);
   return rc;
 }
 
-#endif //ECBWAIT_H
+#endif // ECBWAIT_H

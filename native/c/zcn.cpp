@@ -35,7 +35,8 @@ int zcn_activate(ZCN *zcn, string console_name)
 
   rc = ZCNACT(zcn);
 
-  if (0 != rc) free(zcn->ecb);
+  if (0 != rc)
+    free(zcn->ecb);
 
   return rc;
 }
@@ -61,7 +62,8 @@ int zcn_get(ZCN *zcn, string &response)
   zcn->diag.detail_rc = 0;
 
   // user caller buffer size if provided
-  if (0 == zcn->buffer_size) zcn->buffer_size = ZCN_DEFAULT_BUFFER_SIZE;
+  if (0 == zcn->buffer_size)
+    zcn->buffer_size = ZCN_DEFAULT_BUFFER_SIZE;
   *zcn->ecb = 0; // reset ECB if follow up call
 
   char *resp31 = (char *)__malloc31(zcn->buffer_size);
@@ -69,7 +71,8 @@ int zcn_get(ZCN *zcn, string &response)
 
   rc = ZCNGET(zcn, resp31);
 
-  if (0 == rc) response += string(resp31);
+  if (0 == rc)
+    response += string(resp31);
   free(resp31);
 
   return rc;
@@ -78,7 +81,8 @@ int zcn_get(ZCN *zcn, string &response)
 int zcn_deactivate(ZCN *zcn)
 {
   zcn->diag.detail_rc = 0;
-  if (zcn->ecb) free(zcn->ecb);
+  if (zcn->ecb)
+    free(zcn->ecb);
 
   return ZCNDACT(zcn);
 }

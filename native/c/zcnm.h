@@ -21,10 +21,10 @@ extern "C"
 {
 #endif
 
-int ZCNACT(ZCN *);
-int ZCNPUT(ZCN *, const char *);
-int ZCNGET(ZCN *, char *);
-int ZCNDACT(ZCN *);
+  int ZCNACT(ZCN *);
+  int ZCNPUT(ZCN *, const char *);
+  int ZCNGET(ZCN *, char *);
+  int ZCNDACT(ZCN *);
 
 #if defined(__cplusplus)
 }

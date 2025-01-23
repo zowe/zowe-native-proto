@@ -52,8 +52,6 @@
 //   return rc;
 // }
 
-
-
 // #pragma prolog(ZDSSMSAT, "&CCN_MAIN SETB 1 \n MYPROLOG")
 // int ZDSSMSAT(ZDS *zds, const char *dsn)
 // {

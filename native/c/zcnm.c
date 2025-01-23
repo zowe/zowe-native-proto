@@ -83,7 +83,8 @@ int ZCNGET(ZCN *zcn, char *response)
     return RTNCD_FAILURE;
   }
 
-  if (zcn->ecb) ecb_wait((ECB *PTR32)zcn->ecb);
+  if (zcn->ecb)
+    ecb_wait((ECB * PTR32) zcn->ecb);
   ZCN zcn31 = {0};
   memcpy(&zcn31, zcn, sizeof(ZCN));
   rc = zcnm1get(&zcn31, response);

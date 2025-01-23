@@ -70,7 +70,8 @@ int zcnm1act(ZCN *zcn)
 
   strcpy(zcn->diag.service_name, "MCSOPER_ACTIVATE");
 
-  if (0 != zcn->diag.service_rc) zcn->diag.detail_rc = ZCN_RTNCD_SERVICE_FAILURE; // if the service failed, note in RC
+  if (0 != zcn->diag.service_rc)
+    zcn->diag.detail_rc = ZCN_RTNCD_SERVICE_FAILURE; // if the service failed, note in RC
   return zcn->diag.detail_rc;
 }
 
@@ -209,7 +210,9 @@ MCSOPMSG_MODEL(mcsopmsg_model);
       :                      \
       :);
 #else
-#define CLEAR_ARS() {}// NOTE(Kelosky): if literals become unreachable, pass in object of zeros
+#define CLEAR_ARS() \
+  {                 \
+  } // NOTE(Kelosky): if literals become unreachable, pass in object of zeros
 #endif
 
 // ___     ____________________________________________
@@ -242,7 +245,7 @@ MCSOPMSG_MODEL(mcsopmsg_model);
 //  |     ||__________________________________________||
 //  V__   |____________________________________________|
 
-#define _MI.BUILTN 1 // for the __far nonsense
+#define _MI .BUILTN 1 // for the __far nonsense
 
 #define RTNCD_RESUME_OK 4
 
@@ -312,7 +315,7 @@ int zcnm1get(ZCN *zcn, char *resp)
 
     // NOTE(Kelosky): treat everything as MDB since every structure begins with 2 byte len and 2 byte type
     unsigned char *FAR p = __set_far_ALET_offset(alet, area);
-    MDB *FAR mdb = (MDB *FAR)p;
+    MDB *FAR mdb = (MDB * FAR) p;
 
     // obtain total length
     short type = 0;
@@ -321,7 +324,7 @@ int zcnm1get(ZCN *zcn, char *resp)
     // general entry
     total_len -= sizeof(MDB);
     p = p + sizeof(MDB);
-    mdb = (MDB *FAR)p;
+    mdb = (MDB * FAR) p;
 
     // while entries
     while (total_len > 0)
@@ -337,7 +340,8 @@ int zcnm1get(ZCN *zcn, char *resp)
           int bytes_written = extract_text(alet, offset, text_len, resp);
           resp += bytes_written;
         }
-        else {
+        else
+        {
           zcn->diag.detail_rc = ZCN_RTNCD_INSUFFICIENT_BUFFER;
         }
         zcn->buffer_size_needed += text_len + 1; // return max number of bytes needed
@@ -351,7 +355,7 @@ int zcnm1get(ZCN *zcn, char *resp)
 
       total_len -= mdb->mdblen;
       p = p + mdb->mdblen;
-      mdb = (MDB *FAR)p;
+      mdb = (MDB * FAR) p;
     }
   }
 
@@ -403,6 +407,7 @@ int zcnm1dea(ZCN *zcn)
   mode_prob();
   strcpy(zcn->diag.service_name, "MCSOPER_DEACTIVATE");
 
-  if (0 != zcn->diag.service_rc) zcn->diag.detail_rc = ZCN_RTNCD_SERVICE_FAILURE; // if the service failed, note in RC
+  if (0 != zcn->diag.service_rc)
+    zcn->diag.detail_rc = ZCN_RTNCD_SERVICE_FAILURE; // if the service failed, note in RC
   return zcn->diag.detail_rc;
 }
