@@ -11,20 +11,18 @@
 
 import type { IHandlerParameters } from "@zowe/imperative";
 import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
-import { type ReadDataset, ZSshClient } from "zowe-native-proto-sdk";
+import { type ReadDataset, ZSshClient, ZSshUtils } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class ViewDataSetHandler extends SshBaseHandler {
     public async processWithSession(params: IHandlerParameters, session: SshSession): Promise<ReadDataset.Response> {
         using client = await ZSshClient.create(session);
-        const request: ReadDataset.Request = {
-            command: "readDataset",
+        const response = await client.ds.readDataset({
             dataset: params.arguments.dataSet,
             // binary: params.arguments.binary,
             encoding: params.arguments.encoding,
-        };
-        const response = await client.request<ReadDataset.Response>(request);
-        const content = Buffer.from(response.data as unknown as string, "base64").toString();
+        });
+        const content = ZSshUtils.decodeByteArray(response.data).toString();
         params.response.data.setMessage(
             "Successfully downloaded %d bytes of content from %s",
             content.length,

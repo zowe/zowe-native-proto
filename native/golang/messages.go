@@ -37,7 +37,7 @@ type ListJobsRequest struct {
 
 // command: "listSpools"
 type ListSpoolsRequest struct {
-	JobId string `json:"jobid"`
+	JobId string `json:"jobId"`
 }
 
 // command: "readDataset"

@@ -63,7 +63,7 @@ func HandleListSpoolsRequest(jsonData []byte) {
 		return
 	}
 
-	args := []string{"./zowex", "job", "list-files", listRequest.JobId}
+	args := []string{"./zowex", "job", "list-files", listRequest.JobId, "--rfc", "1"}
 
 	out, err := exec.Command(args[0], args[1:]...).Output()
 	if err != nil {
@@ -82,9 +82,14 @@ func HandleListSpoolsRequest(jsonData []byte) {
 		if len(vals) < 4 {
 			continue
 		}
+		id, err := strconv.Atoi(strings.TrimSpace(vals[2]))
+		if err != nil {
+			continue
+		}
 		response.Items[i] = Spool{
-			Id:   vals[0],
-			Name: strings.TrimSpace(vals[2]),
+			Id:       id,
+			DdName:   vals[0],
+			StepName: vals[3],
 		}
 	}
 

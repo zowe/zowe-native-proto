@@ -19,11 +19,9 @@ export default class ListUssFilesHandler extends SshBaseHandler {
         // const directory = UssUtils.normalizeUnixPath(params.arguments.directory);
         const directory = params.arguments.directory;
         using client = await ZSshClient.create(session);
-        const request: ListFiles.Request = {
-            command: "listFiles",
+        const response = await client.uss.listFiles({
             fspath: directory,
-        };
-        const response = await client.request<ListFiles.Response>(request);
+        });
         params.response.data.setMessage("Listed files in uss directory %s", directory);
         params.response.format.output({
             output: response.items,
