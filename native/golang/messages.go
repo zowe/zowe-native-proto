@@ -135,3 +135,13 @@ type GetJclResponse struct {
 	JobId string `json:"jobId"`
 	Data  string `json:"data"`
 }
+
+// command: "consoleCommand"
+type IssueConsoleRequest struct {
+	Command string `json:"commandText"`
+	Console string `json:"consoleName"`
+}
+
+type IssueConsoleResponse struct {
+	Data string `json:"data"`
+}

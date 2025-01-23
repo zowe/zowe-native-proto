@@ -21,6 +21,7 @@ export default class ConsoleCommandHandler extends SshBaseHandler {
         const response = await client.issue.consoleCommand({ commandText, consoleName });
 
         params.response.data.setMessage("Console: %s command: %s", consoleName, commandText);
+        params.response.console.log(response.data);
         return response;
     }
 

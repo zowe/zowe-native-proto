@@ -19,7 +19,7 @@ export namespace ConsoleCommand {
     }
 
     export interface Response extends IRpcResponse {
-        responseText: string;
+        data: string;
     }
 }
 
