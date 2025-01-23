@@ -172,15 +172,15 @@ int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
   in.close();
 
   char tagged_encoding[16] = {0};
-  ssize_t xattr_result = getxattr(file.c_str(), "system.filetag", &zusf->encoding);
+  // ssize_t xattr_result = getxattr(file.c_str(), "system.filetag", &zusf->encoding);
 
   const bool encodingProvided = strlen(zusf->encoding) > 0;
 
   char *bufEnd;
-  if (encodingProvided || xattr_result > 0 && strlen(tagged_encoding) > 0 /* && (*encoding != "IBM-1047" && *encoding != "01047") */)
+  if (encodingProvided /* && (*encoding != "IBM-1047" && *encoding != "01047") */)
   {
-    const encoding = encodingProvided ? string(zusf->encoding) : string(tagged_encoding);
-    char *outBuf = zut_encode_alloc(rawData, size, encoding, zds->diag, &bufEnd);
+    // const encoding = encodingProvided ? string(zusf->encoding) : string(tagged_encoding);
+    char *outBuf = zut_encode_alloc(rawData, size, string(zusf->encoding), zusf->diag, &bufEnd);
     if (outBuf)
     {
       response.clear();
@@ -217,7 +217,7 @@ int zds_write_to_uss_file(ZUSF *zusf, string file, string &data)
   if (strlen(zusf->encoding) > 0)
   {
     char *bufEnd;
-    char *outBuf = zut_encode_alloc(data.c_str(), data.length(), string(zusf->encoding), zusf->diag, &bufEnd);
+    char *outBuf = zut_encode_alloc((char *)data.c_str(), data.length(), string(zusf->encoding), zusf->diag, &bufEnd);
     if (outBuf)
     {
       data.clear();
