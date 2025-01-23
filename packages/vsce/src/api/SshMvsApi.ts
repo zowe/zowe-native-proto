@@ -1,4 +1,4 @@
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import type * as zosfiles from "@zowe/zos-files-for-zowe-sdk";
 import { type MainframeInteraction, imperative } from "@zowe/zowe-explorer-api";
 import { ZSshUtils } from "zowe-native-proto-sdk";
@@ -37,26 +37,39 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
             imperative.IO.createDirsSyncFromFilePath(options.file);
             writeFileSync(options.file, ZSshUtils.decodeByteArray(response.data));
         } else if (options.stream != null) {
+            const buf = ZSshUtils.decodeByteArray(response.data);
             options.stream.write(ZSshUtils.decodeByteArray(response.data));
             options.stream.end();
         }
         return this.buildZosFilesResponse({ etag: dataSetName });
     }
 
-    public uploadFromBuffer(
+    public async uploadFromBuffer(
         buffer: Buffer,
         dataSetName: string,
-        _options?: zosfiles.IUploadOptions,
+        options?: zosfiles.IUploadOptions,
     ): Promise<zosfiles.IZosFilesResponse> {
-        throw new Error("Not yet implemented");
+        const buf = ZSshUtils.encodeByteArray(buffer);
+        console.log(buf);
+        const response = await (await this.client).ds.writeDataset({
+            dataset: dataSetName,
+            encoding: options?.encoding,
+            contents: ZSshUtils.encodeByteArray(buffer),
+        });
+        return this.buildZosFilesResponse({ etag: dataSetName });
     }
 
     public async putContents(
         inputFilePath: string,
         dataSetName: string,
-        _options?: zosfiles.IUploadOptions,
+        options?: zosfiles.IUploadOptions,
     ): Promise<zosfiles.IZosFilesResponse> {
-        throw new Error("Not yet implemented");
+        const response = await (await this.client).ds.writeDataset({
+            dataset: dataSetName,
+            encoding: options?.encoding,
+            contents: ZSshUtils.encodeByteArray(readFileSync(inputFilePath)),
+        });
+        return this.buildZosFilesResponse({ etag: dataSetName });
     }
 
     public async createDataSet(
