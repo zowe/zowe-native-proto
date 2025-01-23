@@ -41,6 +41,8 @@ export abstract class AbstractRpcClient {
                 this.request({ command: "listSpools", ...request }),
             readSpool: (request: Omit<jobs.ReadSpool.Request, "command">): Promise<jobs.ReadSpool.Response> =>
                 this.request({ command: "readSpool", ...request }),
+            getStatus: (request: Omit<jobs.GetStatus.Request, "command">): Promise<jobs.GetStatus.Response> =>
+                this.request({ command: "getStatus", ...request }),
         };
     }
 

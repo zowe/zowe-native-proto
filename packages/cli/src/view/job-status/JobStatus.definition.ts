@@ -11,23 +11,23 @@
 
 import type { ICommandDefinition } from "@zowe/imperative";
 
-export const ViewJobJclDefinition: ICommandDefinition = {
-    handler: `${__dirname}/JobJcl.handler`,
-    description: "View the JCL contents of a job",
+export const ViewJobStatusDefinition: ICommandDefinition = {
+    handler: `${__dirname}/JobStatus.handler`,
+    description: "View the status of a job",
     type: "command",
-    name: "job-jcl",
-    aliases: ["jj"],
-    summary: "View job JCL",
+    name: "job-status",
+    aliases: ["js"],
+    summary: "View job status",
     examples: [
         {
-            description: "View the JCL contents of the job TSU00296",
+            description: "View the status of the job TSU00296",
             options: "TSU00296",
         },
     ],
     positionals: [
         {
             name: "job-id",
-            description: "The ID of the job which you would like to view the JCL of.",
+            description: "The ID of the job which you would like to view the status of.",
             type: "string",
             required: true,
         },
