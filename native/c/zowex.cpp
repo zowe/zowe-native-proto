@@ -45,6 +45,7 @@ int handle_console_issue(ZCLIResult);
 int handle_data_set_create_dsn(ZCLIResult);
 int handle_data_set_create_dsn_vb(ZCLIResult);
 int handle_data_set_create_dsn_adata(ZCLIResult);
+int handle_data_set_restore(ZCLIResult);
 int handle_data_set_view_dsn(ZCLIResult);
 int handle_data_set_list(ZCLIResult);
 int handle_data_set_list_members_dsn(ZCLIResult);
@@ -122,6 +123,12 @@ int main(int argc, char *argv[])
   data_set_create_adata.set_zcli_verb_handler(handle_data_set_create_dsn_adata);
   data_set_create_adata.get_positionals().push_back(data_set_dsn);
   data_set_group.get_verbs().push_back(data_set_create_adata);
+
+  ZCLIVerb data_set_restore("restore");
+  data_set_restore.set_description("restore/recall data set");
+  data_set_restore.set_zcli_verb_handler(handle_data_set_restore);
+  data_set_restore.get_positionals().push_back(data_set_dsn);
+  data_set_group.get_verbs().push_back(data_set_restore);
 
   ZCLIVerb data_set_view("view");
   data_set_view.set_description("view data set");
@@ -733,6 +740,29 @@ int handle_data_set_create_dsn_adata(ZCLIResult result)
   }
 
   cout << "Data set '" << dsn << "' created" << endl;
+
+  return rc;
+}
+
+int handle_data_set_restore(ZCLIResult result)
+{
+  int rc = 0;
+  string dsn = result.get_positional("dsn").get_value();
+  ZDS zds = {0};
+  string response;
+  unsigned int code = 0;
+
+  string parm = "alloc da('" + dsn + "') shr";
+
+  rc = zut_bpxwdyn(parm, &code, response);
+  if (0 != rc)
+  {
+    cout << "Error: bpxwdyn with parm '" << parm << "' rc: '" << rc << "'" << endl;
+    cout << "  Details: " << response << endl;
+    return RTNCD_FAILURE;
+  }
+
+  cout << "Data set '" << dsn << "' restored" << endl;
 
   return rc;
 }
