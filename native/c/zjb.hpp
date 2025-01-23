@@ -54,7 +54,7 @@ int zjb_list_by_owner(ZJB *zjb, std::string owner_name, std::vector<ZJob> &jobs)
  * @param job populated struct returned for found job
  * @return int 0 for success; non zero otherwise
  */
-int zjb_view_by_jobid(ZJB *zjb, std::string jobid, ZJob &job);
+int zjb_view_by_jobid(ZJB *zjb, std::string jobid, ZJob &job, bool silent);
 
 /**
  * @brief Return a list of job file information from an input jobid

@@ -430,7 +430,7 @@ int zjb_list_dds_by_jobid(ZJB *zjb, string jobid, vector<ZJobDD> &jobDDs)
   return rc;
 }
 
-int zjb_view_by_jobid(ZJB *zjb, string jobid, ZJob &job)
+int zjb_view_by_jobid(ZJB *zjb, string jobid, ZJob &job, bool silent)
 {
   int rc = 0;
   STATJQTR *PTR64 jobInfo = NULL;
@@ -451,7 +451,10 @@ int zjb_view_by_jobid(ZJB *zjb, string jobid, ZJob &job)
 
   STATJQTR *PTR64 jobInfoNext = jobInfo;
 
-  cout << "entries " << entries << endl;
+  if (silent == false)
+  {
+    cout << "entries " << entries << endl;
+  }
 
   if (0 == entries)
   {

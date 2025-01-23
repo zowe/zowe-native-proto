@@ -210,6 +210,7 @@ int main(int argc, char *argv[])
   job_view_status.set_description("view job status");
   job_view_status.set_zcli_verb_handler(handle_job_view_status);
   job_view_status.get_positionals().push_back(job_jobid);
+  job_view_status.get_options().push_back(job_list_rfc);
   job_group.get_verbs().push_back(job_view_status);
 
   ZCLIVerb job_view_file("view-file");
@@ -492,7 +493,8 @@ int handle_job_view_status(ZCLIResult result)
   ZJob job = {0};
   string jobid(result.get_positional("jobid").get_value());
 
-  rc = zjb_view_by_jobid(&zjb, jobid, job);
+  const bool emit_csv = result.get_option("--response-format-csv").is_found();
+  rc = zjb_view_by_jobid(&zjb, jobid, job, emit_csv);
 
   if (0 != rc)
   {
@@ -501,12 +503,19 @@ int handle_job_view_status(ZCLIResult result)
     return -1;
   }
 
-  // cout << setw(10) << "jobid: " << job.jobid << endl;
-  // cout << setw(10) << "retcode: " << job.retcode << endl;
-  // cout << setw(10) << "jobname: " << job.jobname << endl;
-  // cout << setw(10) << "status: " << job.status << endl;
-  cout << job.jobid << " " << left << setw(10) << job.retcode << " " << job.jobname << " " << job.status << endl;
-
+  if (emit_csv)
+  {
+    vector<string> fields;
+    fields.push_back(job.jobid);
+    fields.push_back(job.retcode);
+    fields.push_back(job.jobname);
+    fields.push_back(job.status);
+    cout << zut_format_as_csv(fields) << endl;
+  }
+  else
+  {
+    cout << job.jobid << " " << left << setw(10) << job.retcode << " " << job.jobname << " " << job.status << endl;
+  }
   return 0;
 }
 
