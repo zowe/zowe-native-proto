@@ -747,7 +747,7 @@ int handle_data_set_view_dsn(ZCLIResult result)
   string dsn = result.get_positional("dsn").get_value();
   ZCLIOption &encoding = result.get_option("--encoding");
   ZDS zds = {0};
-  zds.data_type = result.get_option("--encoding").get_value() == "binary" ? DataType::Binary : DataType::Text;
+  zds.data_type = result.get_option("--encoding").get_value() == "binary" ? eDataTypeBinary : eDataTypeText;
   string response;
   string encodingValue = encoding.get_value();
   const bool hasEncoding = !encodingValue.empty();
@@ -888,7 +888,7 @@ int handle_data_set_write_to_dsn(ZCLIResult result)
     data += line;
     data.push_back('\n');
   }
-  zds.data_type = result.get_option("--encoding").get_value() == "binary" ? DataType::Binary : DataType::Text;
+  zds.data_type = result.get_option("--encoding").get_value() == "binary" ? eDataTypeBinary : eDataTypeText;
   rc = zds_write_to_dsn(&zds, dsn, data);
 
   if (0 != rc)
@@ -1038,7 +1038,7 @@ int handle_uss_view(ZCLIResult result)
   string uss_file = result.get_positional("file-path").get_value();
 
   ZUSF zusf = {0};
-  zusf.data_type = result.get_option("--encoding").get_value() == "binary" ? DataType::Binary : DataType::Text;
+  zusf.data_type = result.get_option("--encoding").get_value() == "binary" ? eDataTypeBinary : eDataTypeText;
 
   string response;
   rc = zusf_read_from_uss_file(&zusf, uss_file, response);

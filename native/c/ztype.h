@@ -78,8 +78,8 @@ typedef struct
 
 enum DataType
 {
-  Text = 0,
-  Binary = 1
+  eDataTypeText = 0,
+  eDataTypeBinary = 1
 };
 
 #endif

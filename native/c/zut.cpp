@@ -259,10 +259,10 @@ char zut_get_hex_char(int num)
 
 char *zut_encode_alloc(char *raw_data, const string &from_encoding, const string &to_encoding, ZDIAG &diag, char **buf_end)
 {
-  iconv_t cd = iconv_open(encoding.c_str(), from_encoding);
+  iconv_t cd = iconv_open(to_encoding.c_str(), from_encoding.c_str());
   if (cd == (iconv_t)(-1))
   {
-    diag.e_msg_len = sprintf(diag.e_msg, "Cannot open converter from %s to %s", fromEncoding, encoding.c_str());
+    diag.e_msg_len = sprintf(diag.e_msg, "Cannot open converter from %s to %s", from_encoding.c_str(), to_encoding.c_str());
     return NULL;
   }
 
