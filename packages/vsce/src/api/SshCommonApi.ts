@@ -1,7 +1,7 @@
 import { type SshSession, ZosUssProfile } from "@zowe/zos-uss-for-zowe-sdk";
 import type { MainframeInteraction, imperative } from "@zowe/zowe-explorer-api";
 import * as vscode from "vscode";
-import { ZSshUtils } from "zowe-native-proto-sdk";
+import { type ZSshClient, ZSshUtils } from "zowe-native-proto-sdk";
 import { SshClientCache } from "../SshClientCache";
 
 export class SshCommonApi implements MainframeInteraction.ICommon {
@@ -26,6 +26,10 @@ export class SshCommonApi implements MainframeInteraction.ICommon {
             }
         }
         return Promise.resolve("unverified");
+    }
+
+    public get client(): Promise<ZSshClient> {
+        return SshClientCache.inst.connect(this.getSshSession());
     }
 
     public getSshSession(profile?: imperative.IProfileLoaded): SshSession {

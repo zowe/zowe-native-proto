@@ -27,10 +27,10 @@
     "Zowe.vscode-extension-for-zowe"
   ],
   "scripts": {
-    "build": "tsc -b --noEmit",
+    "build": "tsc -p . --noEmit",
     "compile": "rspack --mode development",
     "lint": "npx @biomejs/biome check --write src",
-    "package": "rspack --mode production --devtool hidden-source-map",
+    "package": "rspack --mode production --devtool=hidden-source-map",
     "test": "echo \"Error: no test specified\" && exit 1",
     "vscode:prepublish": "npm run package",
     "watch": "rspack --mode development --watch"
@@ -47,6 +47,7 @@
     "@zowe/zos-files-for-zowe-sdk": "^8.11.0",
     "@zowe/zos-jobs-for-zowe-sdk": "^8.11.0",
     "@zowe/zos-uss-for-zowe-sdk": "^8.11.0",
+    "ts-checker-rspack-plugin": "^1.1.1",
     "ts-loader": "^9.5.1",
     "typescript": "^5.1.3"
   }

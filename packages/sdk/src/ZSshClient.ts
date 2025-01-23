@@ -3,9 +3,10 @@ import type { Writable } from "node:stream";
 import { DeferredPromise } from "@zowe/imperative";
 import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Client, type ClientChannel, type ConnectConfig } from "ssh2";
+import { AbstractRpcClient } from "./AbstractRpcClient";
 import type { IRpcRequest, IRpcResponse } from "./doc";
 
-export class ZSshClient implements Disposable {
+export class ZSshClient extends AbstractRpcClient implements Disposable {
     private static readonly SERVER_CMD = "cd zowe-native-proto/golang && ./ioserver";
 
     private mSshClient: Client;
@@ -14,7 +15,9 @@ export class ZSshClient implements Disposable {
     private mResponseStream: Writable | undefined;
     private sshMutex: DeferredPromise<void> | undefined;
 
-    private constructor() {}
+    private constructor() {
+        super();
+    }
 
     public static async create(session: SshSession): Promise<ZSshClient> {
         const client = new ZSshClient();
