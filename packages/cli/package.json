@@ -10,7 +10,7 @@
   },
   "keywords": [],
   "author": "Zowe",
-  "license": "EPL-2.0 & Apache-2.0",
+  "license": "EPL-2.0",
   "description": "Zowe Native Proto plug-in for Zowe CLI",
   "imperative": {
     "configurationModule": "lib/imperative.js"

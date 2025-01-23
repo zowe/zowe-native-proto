@@ -3,7 +3,7 @@
  * Eclipse Public License v2.0 which accompanies this distribution, and is available at
  * https://www.eclipse.org/legal/epl-v20.html
  *
- * SPDX-License-Identifier: EPL-2.0 & Apache-2.0
+ * SPDX-License-Identifier: EPL-2.0
  *
  * Copyright Contributors to the Zowe Project.
  *
@@ -15,7 +15,7 @@ const fs = require("fs");
 (async () => {
     const filePaths = await require("glob").glob(
         "{**/*.js,**/*.ts,**/*.go,**/*.h,**/*.hpp,**/*.c,**/*.cpp}",
-        { ignore: ["**/node_modules/**", "**/lib/**", "**/out/**"] }
+        { ignore: ["**/node_modules/**", "**/lib/**", "**/out/**", "**/grpc-proto/proto/**"] }
     );
     // turn the license file into a multi line comment
     const header =
