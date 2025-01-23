@@ -17,11 +17,9 @@ import { SshBaseHandler } from "../../SshBaseHandler";
 export default class ListDataSetMembersHandler extends SshBaseHandler {
     public async processWithSession(params: IHandlerParameters, session: SshSession): Promise<ListDsMembers.Response> {
         using client = await ZSshClient.create(session);
-        const request: ListDsMembers.Request = {
-            command: "listDsMembers",
+        const response = await client.ds.listDsMembers({
             dataset: params.arguments.dsname,
-        };
-        const response = await client.request<ListDsMembers.Response>(request);
+        });
         params.response.data.setMessage(
             "Successfully listed %d members in data sets %s",
             response.returnedRows,
