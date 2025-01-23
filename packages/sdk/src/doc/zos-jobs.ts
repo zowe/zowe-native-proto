@@ -16,6 +16,7 @@ export namespace GetJcl {
     export interface Request extends IRpcRequest {
         command: "getJcl";
         jobId: string;
+        // TODO(zFernand0): Add encoding support?
     }
 
     export interface Response extends IRpcResponse {

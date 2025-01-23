@@ -57,12 +57,13 @@ export abstract class AbstractRpcClient {
 
     public get issue() {
         return {
-            consoleCommand: (request: Omit<issue.ConsoleCommand.Request, "command">): Promise<issue.ConsoleCommand.Response> =>
-                this.request({ command: "consoleCommand", ...request }),
+            consoleCommand: (
+                request: Omit<issue.ConsoleCommand.Request, "command">,
+            ): Promise<issue.ConsoleCommand.Response> => this.request({ command: "consoleCommand", ...request }),
             tsoCommand: (request: Omit<issue.TsoCommand.Request, "command">): Promise<issue.TsoCommand.Response> =>
                 this.request({ command: "tsoCommand", ...request }),
             unixCommand: (request: Omit<issue.UnixCommand.Request, "command">): Promise<issue.UnixCommand.Response> =>
                 this.request({ command: "unixCommand", ...request }),
-        }
+        };
     }
 }

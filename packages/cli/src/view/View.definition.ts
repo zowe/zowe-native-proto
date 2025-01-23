@@ -12,6 +12,8 @@
 import type { ICommandDefinition } from "@zowe/imperative";
 import { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { ViewDataSetDefinition } from "./data-set/DataSet.definition";
+import { ViewJobJclDefinition } from "./job-jcl/JobJcl.definition";
+import { ViewJobFileDefinition } from "./job-file/JobFile.definition";
 
 const ViewDefinition: ICommandDefinition = {
     name: "view",
@@ -19,7 +21,7 @@ const ViewDefinition: ICommandDefinition = {
     summary: "View data set, job output, and USS content",
     description: "View data sets, job output, and USS content",
     type: "group",
-    children: [ViewDataSetDefinition],
+    children: [ViewDataSetDefinition, ViewJobJclDefinition, ViewJobFileDefinition],
     passOn: [
         {
             property: "options",
