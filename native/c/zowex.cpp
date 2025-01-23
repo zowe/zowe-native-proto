@@ -524,11 +524,10 @@ int handle_job_view_file(ZCLIResult result)
   if (hasEncoding)
   {
     const string encodingValue = result.get_option("--encoding").get_value();
-    memcpy(zjb.encoding, encodingValue.data(), (std::min)(16ul, encodingValue.size()));
-  }
-  else
-  {
-    memset(zjb.encoding, 0, 16ul);
+    if (encodingValue.size() < sizeof(zjb.encoding))
+    {
+      memcpy(zjb.encoding, encodingValue.data(), encodingValue.size() + 1);
+    }
   }
 
   string resp;
@@ -751,9 +750,9 @@ int handle_data_set_view_dsn(ZCLIResult result)
   string response;
   string encodingValue = encoding.get_value();
   const bool hasEncoding = !encodingValue.empty();
-  if (hasEncoding)
+  if (hasEncoding && encodingValue.size() < sizeof(zds.encoding))
   {
-    memcpy(zds.encoding, encodingValue.c_str(), (std::min)(16ul, encodingValue.size()));
+    memcpy(zds.encoding, encodingValue.c_str(), encodingValue.size() + 1);
   }
   rc = zds_read_from_dsn(&zds, dsn, response);
   if (0 != rc)
@@ -1038,6 +1037,14 @@ int handle_uss_view(ZCLIResult result)
   string uss_file = result.get_positional("file-path").get_value();
 
   ZUSF zusf = {0};
+  const ZCLIOption &encodingOpt = result.get_option("--encoding");
+  const bool hasEncoding = encodingOpt.is_found();
+  string encoding = hasEncoding ? encodingOpt.get_value() : "";
+  if (hasEncoding && encoding.size() < sizeof(zusf.encoding))
+  {
+    memcpy(zusf.encoding, encoding.data(), encoding.size() + 1);
+  }
+
   zusf.data_type = result.get_option("--encoding").get_value() == "binary" ? eDataTypeBinary : eDataTypeText;
 
   string response;
@@ -1051,7 +1058,10 @@ int handle_uss_view(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  cout << response;
+  if
+
+      cout
+    << response;
 
   return rc;
 }
