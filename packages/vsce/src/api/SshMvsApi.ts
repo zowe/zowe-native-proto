@@ -1,18 +1,14 @@
 import { writeFileSync } from "node:fs";
 import type * as zosfiles from "@zowe/zos-files-for-zowe-sdk";
 import { type MainframeInteraction, imperative } from "@zowe/zowe-explorer-api";
-import { type ListDatasets, type ListDsMembers, type ReadDataset, ZSshUtils } from "zowe-native-proto-sdk";
-import { SshClientCache } from "../SshClientCache";
+import { ZSshUtils } from "zowe-native-proto-sdk";
 import { SshCommonApi } from "./SshCommonApi";
 
 export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs {
     public async dataSet(filter: string, options?: zosfiles.IListOptions): Promise<zosfiles.IZosFilesResponse> {
-        const client = await SshClientCache.inst.connect(this.getSshSession());
-        const request: ListDatasets.Request = {
-            command: "listDatasets",
+        const response = await (await this.client).ds.listDatasets({
             pattern: filter,
-        };
-        const response = await client.request<ListDatasets.Response>(request);
+        });
         return this.buildZosFilesResponse({
             items: response.items.map((item) => ({ dsname: item.name, dsorg: item.dsorg, vol: item.volser })),
             returnedRows: response.returnedRows,
@@ -20,12 +16,9 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
     }
 
     public async allMembers(dataSetName: string, options?: zosfiles.IListOptions): Promise<zosfiles.IZosFilesResponse> {
-        const client = await SshClientCache.inst.connect(this.getSshSession());
-        const request: ListDsMembers.Request = {
-            command: "listDsMembers",
+        const response = await (await this.client).ds.listDsMembers({
             dataset: dataSetName,
-        };
-        const response = await client.request<ListDsMembers.Response>(request);
+        });
         return this.buildZosFilesResponse({
             items: response.items.map((item) => ({ member: item.name })),
             returnedRows: response.returnedRows,
@@ -36,13 +29,10 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         dataSetName: string,
         options: zosfiles.IDownloadSingleOptions,
     ): Promise<zosfiles.IZosFilesResponse> {
-        const client = await SshClientCache.inst.connect(this.getSshSession());
-        const request: ReadDataset.Request = {
-            command: "readDataset",
+        const response = await (await this.client).ds.readDataset({
             dataset: dataSetName,
             encoding: options.encoding,
-        };
-        const response = await client.request<ReadDataset.Response>(request);
+        });
         if (options.file != null) {
             imperative.IO.createDirsSyncFromFilePath(options.file);
             writeFileSync(options.file, ZSshUtils.decodeByteArray(response.data));

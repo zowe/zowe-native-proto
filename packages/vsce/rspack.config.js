@@ -4,6 +4,7 @@
 
 const path = require('path');
 const rspack = require('@rspack/core');
+const { TsCheckerRspackPlugin } = require('ts-checker-rspack-plugin');
 
 /**@type {import('@rspack/core').RspackOptions}*/
 const extensionConfig = {
@@ -48,6 +49,6 @@ const extensionConfig = {
       }
     ]
   },
-  plugins: []
+  plugins: [new TsCheckerRspackPlugin()]
 };
 module.exports = [ extensionConfig ];

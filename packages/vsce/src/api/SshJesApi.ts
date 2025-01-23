@@ -1,17 +1,13 @@
 import type * as zosjobs from "@zowe/zos-jobs-for-zowe-sdk";
 import type { MainframeInteraction } from "@zowe/zowe-explorer-api";
-import { type GetJcl, type ListJobs, type ListSpools, type ReadSpool, ZSshUtils } from "zowe-native-proto-sdk";
-import { SshClientCache } from "../SshClientCache";
+import { ZSshUtils } from "zowe-native-proto-sdk";
 import { SshCommonApi } from "./SshCommonApi";
 
 export class SshJesApi extends SshCommonApi implements MainframeInteraction.IJes {
     public async getJobsByParameters(params: zosjobs.IGetJobsParms): Promise<zosjobs.IJob[]> {
-        const client = await SshClientCache.inst.connect(this.getSshSession());
-        const request: ListJobs.Request = {
-            command: "listJobs",
+        const response = await (await this.client).jobs.listJobs({
             owner: params.owner?.toUpperCase(),
-        };
-        const response = await client.request<ListJobs.Response>(request);
+        });
         return response.items.map(
             (item): Partial<zosjobs.IJob> => ({
                 jobid: item.id,
@@ -27,12 +23,9 @@ export class SshJesApi extends SshCommonApi implements MainframeInteraction.IJes
     }
 
     public async getSpoolFiles(jobname: string, jobid: string): Promise<zosjobs.IJobFile[]> {
-        const client = await SshClientCache.inst.connect(this.getSshSession());
-        const request: ListSpools.Request = {
-            command: "listSpools",
+        const response = await (await this.client).jobs.listSpools({
             jobId: jobid.toUpperCase(),
-        };
-        const response = await client.request<ListSpools.Response>(request);
+        });
         return response.items as zosjobs.IJobFile[];
     }
 
@@ -41,23 +34,17 @@ export class SshJesApi extends SshCommonApi implements MainframeInteraction.IJes
     }
 
     public async getSpoolContentById(jobname: string, jobid: string, spoolId: number): Promise<string> {
-        const client = await SshClientCache.inst.connect(this.getSshSession());
-        const request: ReadSpool.Request = {
-            command: "readSpool",
+        const response = await (await this.client).jobs.readSpool({
             dsnKey: spoolId,
             jobId: jobid.toUpperCase(),
-        };
-        const response = await client.request<ReadSpool.Response>(request);
+        });
         return ZSshUtils.decodeByteArray(response.data).toString();
     }
 
     public async getJclForJob(job: zosjobs.IJob): Promise<string> {
-        const client = await SshClientCache.inst.connect(this.getSshSession());
-        const request: GetJcl.Request = {
-            command: "getJcl",
+        const response = await (await this.client).jobs.getJcl({
             jobId: job.jobid.toUpperCase(),
-        };
-        const response = await client.request<GetJcl.Response>(request);
+        });
         return response.data;
     }
 
