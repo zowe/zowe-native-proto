@@ -13,7 +13,7 @@ const chalk = require("chalk");
 const fs = require("fs");
 
 (async () => {
-    const filePaths = await require("glob").glob("{**/*.js,**/*.ts}", { ignore: ["**/node_modules/**", "**/lib/**", "**/out/**"] });
+    const filePaths = await require("glob").glob("{**/*.js,**/*.ts,**/*.go}", { ignore: ["**/node_modules/**", "**/lib/**", "**/out/**"] });
     // turn the license file into a multi line comment
     const header =
         fs.readFileSync("LICENSE_HEADER", "utf-8") +

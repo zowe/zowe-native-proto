@@ -9,7 +9,7 @@
     "tools:build": "npm run tools -- build",
     "tools:deploy": "npm run tools -- deploy",
     "tools:all": "npm run tools -- deploy-build",
-    "build": "npm run build --workspaces && npm run build:tools",
+    "build": "npm run build --workspaces && npm run build:tools && npm run license",
     "lint": "npm run lint --workspaces",
     "license": "node scripts/updateLicenses.js",
     "test": "echo \"Error: no test specified\" && exit 1",
