@@ -67,7 +67,6 @@ type GetJclRequest struct {
 // command: "writeDataset"
 type WriteDatasetRequest struct {
 	Encoding string `json:"encoding,omitempty"`
-	DataType string `json:"dataType,omitempty"`
 	Dataset  string `json:"dataset"`
 	Contents string `json:"contents"`
 }
@@ -75,7 +74,6 @@ type WriteDatasetRequest struct {
 // command: "writeFile"
 type WriteFileRequest struct {
 	Encoding string `json:"encoding,omitempty"`
-	DataType string `json:"dataType,omitempty"`
 	Path     string `json:"path"`
 	Contents string `json:"contents"`
 }
