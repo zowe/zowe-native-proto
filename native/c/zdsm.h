@@ -22,10 +22,10 @@ extern "C"
 {
 #endif
 
-typedef struct csifield CSIFIELD;
+  typedef struct csifield CSIFIELD;
 
-int ZDSSMSAT(ZDS *zds, const char *dsn);
-int ZDSCSI00(ZDS *zds, CSIFIELD *selection, void *work_area);
+  int ZDSSMSAT(ZDS *zds, const char *dsn);
+  int ZDSCSI00(ZDS *zds, CSIFIELD *selection, void *work_area);
 
 #if defined(__cplusplus)
 }

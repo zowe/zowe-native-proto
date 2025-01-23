@@ -13,6 +13,6 @@
 #include "zmetal.h"
 #include "zssitype.h"
 
-int iefssreq(SSOB *PTR32*PTR32) ATTRIBUTE(amode31);
+int iefssreq(SSOB *PTR32 *PTR32) ATTRIBUTE(amode31);
 
 #endif

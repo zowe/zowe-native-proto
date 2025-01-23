@@ -28,12 +28,13 @@
 
 // NOTE(zFernand0): Figure out how to visualize the struct in memory
 // NOTE(Kelosky): struct is padded to nearest double word boundary; ensure proper alignment for fields
-typedef struct {
-  char eye[3]; // future use
+typedef struct
+{
+  char eye[3];              // future use
   unsigned char version[1]; // future use
-  int32_t len; // future use
+  int32_t len;              // future use
 
-  int16_t mode; // permissions
+  int16_t mode;         // permissions
   char file_name[1024]; // filename
 
   ZDIAG diag;

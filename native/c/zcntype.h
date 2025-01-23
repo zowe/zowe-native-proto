@@ -14,8 +14,8 @@
 #include "ztype.h"
 
 // RTNCD_CODE_SUCCESS ztype.h         -1
-#define ZCN_RTNCD_SERVICE_FAILURE     -2
-#define ZCN_RTNCD_NOT_AUTH            -3
+#define ZCN_RTNCD_SERVICE_FAILURE -2
+#define ZCN_RTNCD_NOT_AUTH -3
 #define ZCN_RTNCD_INSUFFICIENT_BUFFER -4
 
 #define ZCN_DEFAULT_BUFFER_SIZE 4096
@@ -27,10 +27,11 @@
 #define ZCN_EYE "ZCN"
 
 // NOTE(Kelosky): struct is padded to nearest double word boundary; ensure proper alignment for fields
-typedef struct {
-  char eye[3]; // future use
+typedef struct
+{
+  char eye[3];              // future use
   unsigned char version[1]; // future use
-  int32_t len; // future use
+  int32_t len;              // future use
 
   unsigned int *PTR64 ecb; // save and set to NULL to prevent waiting
 
@@ -39,7 +40,7 @@ typedef struct {
 
   char console_name[8]; // console name used, upper cased/padded/truncated
 
-  int16_t unused; // non-zero if reply found in control
+  int16_t unused;       // non-zero if reply found in control
   int16_t reply_id_len; // non-zero if reply found in control
   unsigned char reserve_1[4];
 

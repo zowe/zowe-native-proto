@@ -52,7 +52,7 @@ typedef struct
   unsigned char version[1]; // future use
   int32_t len;              // future use
 
-  char encoding[16];        // User-specified, desired encoding for dataset contents
+  char encoding[16]; // User-specified, desired encoding for dataset contents
 
   int32_t max_entries;
   int32_t buffer_size;

@@ -63,8 +63,7 @@ static void s0c3Abend(int n)
       "*                                                  \n" \
       " ST 15,%0               Save RC                    \n" \
       "*                                                    " \
-      : "=m"(rc)                                              \
-      :: "r0","r1","r14","r15");
+      : "=m"(rc)::"r0", "r1", "r14", "r15");
 #else
 #define TESTAUTH(rc)
 #endif
@@ -77,23 +76,21 @@ static int test_auth()
 }
 
 #if defined(__IBM_METAL__)
-#define MODESET_MODE(value)                                    \
-  __asm(                                                       \
-      "*                                                   \n" \
-      " MODESET MODE="#value##"                            \n" \
-      "*                                                    "  \
-      :::"r0","r1","r14","r15");
+#define MODESET_MODE(value)                                     \
+  __asm(                                                        \
+      "*                                                   \n"  \
+      " MODESET MODE=" #value##"                            \n" \
+                               "*                                                    " ::: "r0", "r1", "r14", "r15");
 #else
 #define MODESET_MODE(value)
 #endif
 
 #if defined(__IBM_METAL__)
-#define MODESET_KEY(value)                                     \
-  __asm(                                                       \
-      "*                                                   \n" \
-      " MODESET KEY="#value##"                             \n" \
-      "*                                                    "  \
-      :::"r0","r1","r14","r15");
+#define MODESET_KEY(value)                                      \
+  __asm(                                                        \
+      "*                                                   \n"  \
+      " MODESET KEY=" #value##"                             \n" \
+                              "*                                                    " ::: "r0", "r1", "r14", "r15");
 #else
 #define MODESET_KEY(value)
 #endif
@@ -106,13 +103,12 @@ static int test_auth()
       "*                                                   \n" \
       " STG 0,%0                                           \n" \
       "*                                                    "  \
-      :"=m"(ep)                                                \
-      :"m"(name)                                               \
-      :"r0","r1","r14","r15");
+      : "=m"(ep)                                               \
+      : "m"(name)                                              \
+      : "r0", "r1", "r14", "r15");
 #else
 #define LOAD(name, ep)
 #endif
-
 
 #if defined(__IBM_METAL__)
 #define DELETE(name, rc)                                         \
@@ -122,9 +118,9 @@ static int test_auth()
       "*                                                     \n" \
       " ST 15,%0                                             \n" \
       "*                                                      "  \
-      :"=m"(rc)                                                  \
-      :"m"(name)                                                 \
-      :"r0","r1","r14","r15");
+      : "=m"(rc)                                                 \
+      : "m"(name)                                                \
+      : "r0", "r1", "r14", "r15");
 #else
 #define DELETE(name, rc)
 #endif
@@ -140,7 +136,7 @@ static void *PTR64 load_module(char name[8])
   // TODO(Kelosky): ERRET
   void *PTR64 ep = NULL;
   char name_truncated[8 + 1] = {0};
-  memset(name_truncated, ' ', sizeof(name_truncated - 1)); // pad with spaces
+  memset(name_truncated, ' ', sizeof(name_truncated - 1));                                                             // pad with spaces
   memcpy(name_truncated, name, strlen(name) > sizeof(name_truncated) - 1 ? sizeof(name_truncated) - 1 : strlen(name)); // truncate
   LOAD(name_truncated, ep);
   return ep;
@@ -157,7 +153,7 @@ static Z31FUNC ATTRIBUTE(amode31) load_module31(char name[8])
 {
 
   // TODO(Kelosky): test return pointer flags to validate amode??
-  void *PTR64  function = load_module(name);
+  void *PTR64 function = load_module(name);
   Z31FUNC z31func = NULL;
   if (function)
   {
@@ -180,7 +176,7 @@ static int delete_module(char name[8])
 {
   int rc = 0;
   char name_truncated[9] = {0};
-  memset(name_truncated, ' ', sizeof(name_truncated - 1)); // pad with spaces
+  memset(name_truncated, ' ', sizeof(name_truncated - 1));                                                             // pad with spaces
   memcpy(name_truncated, name, strlen(name) > sizeof(name_truncated) - 1 ? sizeof(name_truncated) - 1 : strlen(name)); // truncate
   DELETE(name_truncated, rc);
   return rc;
@@ -215,13 +211,13 @@ static void mode_nzero()
 // int reg = 0;
 // GET_REG(13, &reg);
 #if defined(__IBM_METAL__)
-#define GET_REG(num, reg)                                       \
-  __asm(                                                        \
-      "*                                                   \n"  \
-      " ST    " #num ",%0 = Value passed by caller         \n"  \
-      "*                                                    "   \
-      : "=m"(*reg)                                              \
-      :                                                         \
+#define GET_REG(num, reg)                                      \
+  __asm(                                                       \
+      "*                                                   \n" \
+      " ST    " #num ",%0 = Value passed by caller         \n" \
+      "*                                                    "  \
+      : "=m"(*reg)                                             \
+      :                                                        \
       :);
 #else
 #define GET_REG(num, reg)

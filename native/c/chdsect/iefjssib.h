@@ -3,17 +3,18 @@
 #ifndef __ssib__
 #define __ssib__
 
-struct ssib {
-  unsigned char  ssibid[4];   /* CONTROL BLOCK IDENTIFIER              */
-  unsigned short ssiblen;     /* SSIB LENGTH                           */
-  unsigned char  ssibflg1;    /* FLAGS                                 */
-  unsigned char  ssibssid;    /* SUBSYSTEM IDENTIFIER. SET    @YC01974 */
-  unsigned char  ssibssnm[4]; /* Subsystem name to which a        @P1C */
-  unsigned char  ssibjbid[8]; /* Job Identifier or Subsystem name @P1C */
-  unsigned char  ssibdest[8]; /* DEFAULT USERID FOR SYSOUT DESTINATION */
-  int            ssibrsv1;    /* RESERVED                              */
-  int            ssibsuse;    /* RESERVED FOR SUBSYSTEM USAGE          */
-  };
+struct ssib
+{
+  unsigned char ssibid[4];   /* CONTROL BLOCK IDENTIFIER              */
+  unsigned short ssiblen;    /* SSIB LENGTH                           */
+  unsigned char ssibflg1;    /* FLAGS                                 */
+  unsigned char ssibssid;    /* SUBSYSTEM IDENTIFIER. SET    @YC01974 */
+  unsigned char ssibssnm[4]; /* Subsystem name to which a        @P1C */
+  unsigned char ssibjbid[8]; /* Job Identifier or Subsystem name @P1C */
+  unsigned char ssibdest[8]; /* DEFAULT USERID FOR SYSOUT DESTINATION */
+  int ssibrsv1;              /* RESERVED                              */
+  int ssibsuse;              /* RESERVED FOR SUBSYSTEM USAGE          */
+};
 
 /* Values for field "ssibflg1" */
 #define ssibpjes 0x80 /* THIS SSIB IS USED TO START THE        */

@@ -16,10 +16,9 @@
 
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=retrieval-parameters
 typedef int (*IGGCSI00)(
-  int *PTR32 rsn,
-  CSIFIELD *PTR32 selection,
-  void *PTR32 work_area
-) ATTRIBUTE(amode31);
+    int *PTR32 rsn,
+    CSIFIELD *PTR32 selection,
+    void *PTR32 work_area) ATTRIBUTE(amode31);
 
 #pragma prolog(ZDSCSI00, "&CCN_MAIN SETB 1 \n MYPROLOG")
 int ZDSCSI00(ZDS *zds, CSIFIELD *selection, void *work_area)
@@ -55,18 +54,18 @@ int ZDSCSI00(ZDS *zds, CSIFIELD *selection, void *work_area)
   return rc;
 }
 
-typedef struct {
+typedef struct
+{
   unsigned char data[30];
 } ZSMS_DATA;
 
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=retrieval-parameters
 typedef int (*IGWASMS)(
-  int * rc,
-  int * rsn,
-  int problem_data[2],
-  int *dsn_len,
-  const char *dsn,
-  ZSMS_DATA sms_data[3],
-  int *ds_type // 1 for PDSE, 2 for HFS
-) ATTRIBUTE(amode31);
-
+    int *rc,
+    int *rsn,
+    int problem_data[2],
+    int *dsn_len,
+    const char *dsn,
+    ZSMS_DATA sms_data[3],
+    int *ds_type // 1 for PDSE, 2 for HFS
+    ) ATTRIBUTE(amode31);

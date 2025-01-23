@@ -22,24 +22,24 @@
 #endif
 
 #if defined(__IBM_METAL__)
-#define IEFSSREQ(ssob, rc)                                      \
-    __asm(                                                      \
-        "*                                                  \n" \
-        " LA 1,%0        -> SSSOB                           \n" \
-        "*                                                  \n" \
-        " IEFSSREQ                                          \n" \
-        "*                                                  \n" \
-        " ST 15,%1                                          \n" \
-        "*                                                    " \
-        : "+m"(*(unsigned char *)ssob),"=m"(rc)                 \
-        :                                                       \
-        : "r0", "r1", "r14", "r15");
+#define IEFSSREQ(ssob, rc)                                    \
+  __asm(                                                      \
+      "*                                                  \n" \
+      " LA 1,%0        -> SSSOB                           \n" \
+      "*                                                  \n" \
+      " IEFSSREQ                                          \n" \
+      "*                                                  \n" \
+      " ST 15,%1                                          \n" \
+      "*                                                    " \
+      : "+m"(*(unsigned char *)ssob), "=m"(rc)                \
+      :                                                       \
+      : "r0", "r1", "r14", "r15");
 #else
 #define IEFSSREQ(ssob, rc)
 #endif
 
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=subsystem-making-request-iefssreq-macro
-int iefssreq(SSOB *PTR32*PTR32 ssob)
+int iefssreq(SSOB *PTR32 *PTR32 ssob)
 {
   int rc = 0;
   IEFSSREQ(ssob, rc);
