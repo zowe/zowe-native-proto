@@ -258,7 +258,6 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, string jobdsn, string &response)
   string ddname = string(cddname);
   if (strlen(zjb->encoding) > 0)
   {
-    memset(zds.encoding, 0, 16ul);
     memcpy(zds.encoding, zjb->encoding, 16ul);
   }
 
