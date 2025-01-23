@@ -1,7 +1,9 @@
+import { IssueCommand } from "@zowe/cli";
 import type { IRpcRequest, IRpcResponse } from "./doc";
 import type * as ds from "./doc/zos-ds";
 import type * as jobs from "./doc/zos-jobs";
 import type * as uss from "./doc/zos-uss";
+import type * as issue from "./doc/zos-issue";
 
 export abstract class AbstractRpcClient {
     public abstract request<T extends IRpcResponse>(request: IRpcRequest): Promise<T>;
@@ -41,5 +43,16 @@ export abstract class AbstractRpcClient {
             writeFile: (request: Omit<uss.WriteFile.Request, "command">): Promise<uss.WriteFile.Response> =>
                 this.request({ command: "writeFile", ...request }),
         };
+    }
+
+    public get issue() {
+        return {
+            consoleCommand: (request: Omit<issue.ConsoleCommand.Request, "command">): Promise<issue.ConsoleCommand.Response> =>
+                this.request({ command: "consoleCommand", ...request }),
+            tsoCommand: (request: Omit<issue.TsoCommand.Request, "command">): Promise<issue.TsoCommand.Response> =>
+                this.request({ command: "tsoCommand", ...request }),
+            unixCommand: (request: Omit<issue.UnixCommand.Request, "command">): Promise<issue.UnixCommand.Response> =>
+                this.request({ command: "unixCommand", ...request }),
+        }
     }
 }

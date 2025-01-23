@@ -10,7 +10,7 @@
  */
 
 import type { IHandlerParameters } from "@zowe/imperative";
-import { type ListDsMembers, ZSshClient } from "zowe-native-proto-sdk";
+import type { ListDsMembers, ZSshClient } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class ListDataSetMembersHandler extends SshBaseHandler {
