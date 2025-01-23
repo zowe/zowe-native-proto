@@ -39,6 +39,7 @@ func main() {
 		"readDataset":    HandleReadDatasetRequest,
 		"readSpool":      HandleReadSpoolRequest,
 		"getJcl":         HandleGetJclRequest,
+		"getStatus":      HandleGetStatusRequest,
 		"writeDataset":   HandleWriteDatasetRequest,
 		"listDatasets":   HandleListDatasetsRequest,
 		"listDsMembers":  HandleListDsMembersRequest,
