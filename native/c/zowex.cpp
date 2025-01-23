@@ -1037,7 +1037,7 @@ int handle_uss_view(ZCLIResult result)
   string uss_file = result.get_positional("file-path").get_value();
 
   ZUSF zusf = {0};
-  const ZCLIOption &encodingOpt = result.get_option("--encoding");
+  ZCLIOption &encodingOpt = result.get_option("--encoding");
   const bool hasEncoding = encodingOpt.is_found();
   string encoding = hasEncoding ? encodingOpt.get_value() : "";
   if (hasEncoding && encoding.size() < sizeof(zusf.encoding))
@@ -1058,10 +1058,17 @@ int handle_uss_view(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  if
-
-      cout
-    << response;
+  if (hasEncoding)
+  {
+    for (char *p = (char *)response.data(); p < (response.data() + response.length()); p++)
+    {
+      printf("%02x ", (unsigned char)*p);
+    }
+  }
+  else
+  {
+    cout << response << endl;
+  }
 
   return rc;
 }
