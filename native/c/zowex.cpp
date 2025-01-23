@@ -747,6 +747,7 @@ int handle_data_set_view_dsn(ZCLIResult result)
   string dsn = result.get_positional("dsn").get_value();
   ZCLIOption &encoding = result.get_option("--encoding");
   ZDS zds = {0};
+  zds.data_type = result.get_option("--encoding").get_value() == "binary" ? DataType::Binary : DataType::Text;
   string response;
   string encodingValue = encoding.get_value();
   const bool hasEncoding = !encodingValue.empty();
@@ -887,7 +888,7 @@ int handle_data_set_write_to_dsn(ZCLIResult result)
     data += line;
     data.push_back('\n');
   }
-
+  zds.data_type = result.get_option("--encoding").get_value() == "binary" ? DataType::Binary : DataType::Text;
   rc = zds_write_to_dsn(&zds, dsn, data);
 
   if (0 != rc)
@@ -1037,6 +1038,8 @@ int handle_uss_view(ZCLIResult result)
   string uss_file = result.get_positional("file-path").get_value();
 
   ZUSF zusf = {0};
+  zusf.data_type = result.get_option("--encoding").get_value() == "binary" ? DataType::Binary : DataType::Text;
+
   string response;
   rc = zusf_read_from_uss_file(&zusf, uss_file, response);
   if (0 != rc)
@@ -1069,7 +1072,7 @@ int handle_uss_write(ZCLIResult result)
     data.push_back('\n');
   }
 
-  rc = zds_write_to_uss_file(&zusf, file, data);
+  rc = zusf_write_to_uss_file(&zusf, file, data);
   if (0 != rc)
   {
     cout << "Error: could not write to USS file: '" << file << "' rc: '" << rc << "'" << endl;
@@ -1102,7 +1105,7 @@ int handle_uss_chmod(ZCLIResult result)
     mode = "755";
 
   ZUSF zusf = {0};
-  rc = zds_chmod_uss_file_or_dir(&zusf, file_path, mode);
+  rc = zusf_chmod_uss_file_or_dir(&zusf, file_path, mode);
   if (0 != rc)
   {
     cout << "Error: could not create USS path: '" << file_path << "' rc: '" << rc << "'" << endl;

@@ -74,7 +74,8 @@ int zds_read_from_dd(ZDS *zds, string ddname, string &response)
   if (strlen(zds->encoding) > 0 /* && (*encoding != "IBM-1047" && *encoding != "01047") */)
   {
     char *bufEnd;
-    char *outBuf = zut_encode_alloc(raw_data, size, string(zds->encoding), zds->diag, &bufEnd);
+    // Convert from stored encoding (IBM-1047) to desired encoding
+    char *outBuf = zut_encode_alloc(raw_data, size, "IBM-1047", string(zds->encoding), zds->diag, &bufEnd);
     if (outBuf)
     {
       response.clear();
@@ -90,7 +91,7 @@ int zds_read_from_dsn(ZDS *zds, string dsn, string &response)
 {
   dsn = "//'" + dsn + "'";
 
-  ifstream in(dsn.c_str());
+  ifstream in(dsn.c_str(), zds->data_type == DataType::Binary ? ios::in | ios::binary : ios::in);
   if (!in.is_open())
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open file '%s'", dsn.c_str());
@@ -107,10 +108,13 @@ int zds_read_from_dsn(ZDS *zds, string dsn, string &response)
   response.assign(rawData);
   in.close();
 
+  const bool encodingProvided = zds->data_type == DataType::Text && strlen(zds->encoding) > 0;
+
   char *bufEnd;
-  if (strlen(zds->encoding) > 0 /* && (*encoding != "IBM-1047" && *encoding != "01047") */)
+  if (encodingProvided /* && (*encoding != "IBM-1047" && *encoding != "01047") */)
   {
-    char *outBuf = zut_encode_alloc(rawData, size, string(zds->encoding), zds->diag, &bufEnd);
+    // Convert from stored encoding (IBM-1047) to desired encoding
+    char *outBuf = zut_encode_alloc(rawData, size, "IBM-1047", string(zds->encoding), zds->diag, &bufEnd);
     if (outBuf)
     {
       response.clear();
@@ -145,7 +149,7 @@ int zds_write_to_dsn(ZDS *zds, string dsn, string &data)
 {
   const bool hasEncoding = strlen(zds->encoding) > 0;
   dsn = "//'" + dsn + "'";
-  ofstream out(dsn.c_str(), hasEncoding ? ios::out | ios::binary : ios::out);
+  ofstream out(dsn.c_str(), zds->data_type == DataType::Binary ? ios::out | ios::binary : ios::out);
 
   if (!out.is_open())
   {
@@ -156,7 +160,8 @@ int zds_write_to_dsn(ZDS *zds, string dsn, string &data)
   if (hasEncoding)
   {
     char *bufEnd;
-    char *outBuf = zut_encode_alloc((char *)data.c_str(), data.length(), string(zusf->encoding), zusf->diag, &bufEnd);
+    // Convert from given encoding to IBM-1047 to store in dataset
+    char *outBuf = zut_encode_alloc((char *)data.c_str(), data.length(), zds->encoding, "IBM-1047", zds->diag, &bufEnd);
     if (outBuf)
     {
       data.clear();

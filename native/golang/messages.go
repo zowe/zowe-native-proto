@@ -75,6 +75,7 @@ type WriteDatasetRequest struct {
 // command: "writeFile"
 type WriteFileRequest struct {
 	Encoding string `json:"encoding,omitempty"`
+	DataType string `json:"dataType,omitempty"`
 	Path     string `json:"path"`
 	Contents string `json:"contents"`
 }

@@ -12,8 +12,8 @@
 
 #include <stdint.h>
 
-#define RTNCD_WARNING  1
-#define RTNCD_SUCCESS  0
+#define RTNCD_WARNING 1
+#define RTNCD_SUCCESS 0
 #define RTNCD_FAILURE -1
 
 #if defined(__IBM_METAL__)
@@ -46,10 +46,11 @@
 #endif
 
 // NOTE(Kelosky): struct is padded to nearest double word boundary; ensure proper alignment for fields
-typedef struct {
-  char eye[3]; // future use
+typedef struct
+{
+  char eye[3];              // future use
   unsigned char version[1]; // future use
-  int32_t len; // future use
+  int32_t len;              // future use
 
   char service_name[24];
 
@@ -74,5 +75,11 @@ typedef struct {
 #if (defined(__IBMCPP__) || defined(__IBMC__))
 #pragma pack(reset)
 #endif
+
+enum DataType
+{
+  Text = 0,
+  Binary = 1
+};
 
 #endif

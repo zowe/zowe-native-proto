@@ -154,7 +154,7 @@ int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response)
  */
 int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
 {
-  ifstream in(file.c_str());
+  ifstream in(file.c_str(), zusf->data_type == DataType::Binary ? ios::in | ios::binary : ios::in);
   if (!in.is_open())
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open file '%s'", file.c_str());
@@ -174,13 +174,13 @@ int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
   char tagged_encoding[16] = {0};
   // ssize_t xattr_result = getxattr(file.c_str(), "system.filetag", &zusf->encoding);
 
-  const bool encodingProvided = strlen(zusf->encoding) > 0;
+  const bool encodingProvided = zusf->data_type == DataType::Text && strlen(zusf->encoding) > 0;
 
   char *bufEnd;
   if (encodingProvided /* && (*encoding != "IBM-1047" && *encoding != "01047") */)
   {
     // const encoding = encodingProvided ? string(zusf->encoding) : string(tagged_encoding);
-    char *outBuf = zut_encode_alloc(rawData, size, string(zusf->encoding), zusf->diag, &bufEnd);
+    char *outBuf = zut_encode_alloc(rawData, size, "IBM-1047", string(zusf->encoding), zusf->diag, &bufEnd);
     if (outBuf)
     {
       response.clear();
@@ -203,21 +203,21 @@ int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zds_write_to_uss_file(ZUSF *zusf, string file, string &data)
+int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data)
 {
   // TODO(zFernand0): Avoid overriding existing files
-  const bool withEncoding = strlen(zusf->encoding) > 0;
-  ofstream out(file.c_str(), withEncoding ? ios::out | ios::binary : ios::out);
+  const bool hasEncoding = strlen(zusf->encoding) > 0;
+  ofstream out(file.c_str(), zusf->data_type == DataType::Binary ? ios::out | ios::binary : ios::out);
   if (!out.is_open())
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open '%s'", file.c_str());
     return RTNCD_FAILURE;
   }
 
-  if (strlen(zusf->encoding) > 0)
+  if (hasEncoding)
   {
     char *bufEnd;
-    char *outBuf = zut_encode_alloc((char *)data.c_str(), data.length(), string(zusf->encoding), zusf->diag, &bufEnd);
+    char *outBuf = zut_encode_alloc((char *)data.c_str(), data.length(), string(zusf->encoding), "IBM-1047", zusf->diag, &bufEnd);
     if (outBuf)
     {
       data.clear();
@@ -241,7 +241,7 @@ int zds_write_to_uss_file(ZUSF *zusf, string file, string &data)
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zds_chmod_uss_file_or_dir(ZUSF *zusf, string file, string mode)
+int zusf_chmod_uss_file_or_dir(ZUSF *zusf, string file, string mode)
 {
   // TODO(zFernand0): Add recursive option for directories
   struct stat file_stats;
