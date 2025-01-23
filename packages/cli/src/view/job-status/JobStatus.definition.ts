@@ -33,4 +33,5 @@ export const ViewJobStatusDefinition: ICommandDefinition = {
         },
     ],
     profile: { optional: ["ssh"] },
+    outputFormatOptions: true,
 };

@@ -113,7 +113,7 @@ func HandleListDatasetsRequest(jsonData []byte) {
 		return
 	}
 
-	args := []string{"./zowex", "data-set", "list", listRequest.Pattern, "--rfc", "1"}
+	args := []string{"./zowex", "data-set", "list", listRequest.Pattern, "--rfc", "true"}
 	// if len(listRequest.Start) != 0 {
 	// 	args = append(args, "--start", listRequest.Start)
 	// }

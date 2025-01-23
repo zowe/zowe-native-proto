@@ -28,7 +28,7 @@ func HandleListJobsRequest(jsonData []byte) {
 		return
 	}
 
-	args := []string{"./zowex", "job", "list", "--rfc", "1"}
+	args := []string{"./zowex", "job", "list", "--rfc", "true"}
 	if len(listRequest.Owner) != 0 {
 		args = append(args, "--owner", listRequest.Owner)
 	}
@@ -74,7 +74,7 @@ func HandleListSpoolsRequest(jsonData []byte) {
 		return
 	}
 
-	args := []string{"./zowex", "job", "list-files", listRequest.JobId, "--rfc", "1"}
+	args := []string{"./zowex", "job", "list-files", listRequest.JobId, "--rfc", "true"}
 
 	out, err := exec.Command(args[0], args[1:]...).Output()
 	if err != nil {
@@ -180,7 +180,7 @@ func HandleGetStatusRequest(jsonData []byte) {
 	if err != nil {
 		return
 	}
-	args := []string{"./zowex", "job", "view-status", request.JobId, "--rfc", "1"}
+	args := []string{"./zowex", "job", "view-status", request.JobId, "--rfc", "true"}
 	out, err := exec.Command(args[0], args[1:]...).Output()
 	if err != nil {
 		log.Println("Error executing command:", err)

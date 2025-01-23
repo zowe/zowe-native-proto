@@ -92,6 +92,12 @@ int main(int argc, char *argv[])
   test_command.set_zcli_verb_handler(handle_test_command);
   test_group.get_verbs().push_back(test_command);
 
+  ZCLIOption response_format_csv("response-format-csv");
+  response_format_csv.set_description("returns the response in CSV format");
+  response_format_csv.get_aliases().push_back("--rfc");
+  response_format_csv.set_default("false");
+  response_format_csv.set_required(false);
+
   //
   // data set group
   //
@@ -144,12 +150,7 @@ int main(int argc, char *argv[])
   data_set_list.set_description("list data sets");
   data_set_list.set_zcli_verb_handler(handle_data_set_list);
   data_set_list.get_positionals().push_back(data_set_dsn);
-
-  ZCLIOption dslist_rfc("response-format-csv");
-  dslist_rfc.set_description("returns the response in CSV format");
-  dslist_rfc.get_aliases().push_back("--rfc");
-  data_set_list.get_options().push_back(dslist_rfc);
-
+  data_set_list.get_options().push_back(response_format_csv);
   data_set_group.get_verbs().push_back(data_set_list);
 
   ZCLIVerb data_set_list_members("list-members");
@@ -186,15 +187,8 @@ int main(int argc, char *argv[])
   ZCLIOption job_owner("owner");
   job_owner.set_description("filter by owner");
   job_list.get_options().push_back(job_owner);
-  ZCLIOption job_list_rfc("response-format-csv");
-  job_list_rfc.set_description("returns the response in CSV format");
-  job_list_rfc.get_aliases().push_back("--rfc");
-  job_list.get_options().push_back(job_list_rfc);
+  job_list.get_options().push_back(response_format_csv);
   job_group.get_verbs().push_back(job_list);
-
-  ZCLIOption spool_list_rfc("response-format-csv");
-  spool_list_rfc.set_description("returns the response in CSV format");
-  spool_list_rfc.get_aliases().push_back("--rfc");
 
   ZCLIVerb job_list_files("list-files");
   job_list_files.set_description("list spool files for jobid");
@@ -203,14 +197,14 @@ int main(int argc, char *argv[])
   job_jobid.set_required(true);
   job_jobid.set_description("valid jobid");
   job_list_files.get_positionals().push_back(job_jobid);
-  job_list_files.get_options().push_back(spool_list_rfc);
+  job_list_files.get_options().push_back(response_format_csv);
   job_group.get_verbs().push_back(job_list_files);
 
   ZCLIVerb job_view_status("view-status");
   job_view_status.set_description("view job status");
   job_view_status.set_zcli_verb_handler(handle_job_view_status);
   job_view_status.get_positionals().push_back(job_jobid);
-  job_view_status.get_options().push_back(job_list_rfc);
+  job_view_status.get_options().push_back(response_format_csv);
   job_group.get_verbs().push_back(job_view_status);
 
   ZCLIVerb job_view_file("view-file");
@@ -427,7 +421,7 @@ int handle_job_list(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  const bool emit_csv = result.get_option("--response-format-csv").is_found();
+  const bool emit_csv = result.get_option("--response-format-csv").get_value() == "true";
   for (vector<ZJob>::iterator it = jobs.begin(); it != jobs.end(); it++)
   {
     if (emit_csv)
@@ -464,7 +458,7 @@ int handle_job_list_files(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  const bool emit_csv = result.get_option("--response-format-csv").is_found();
+  const bool emit_csv = result.get_option("--response-format-csv").get_value() == "true";
   for (vector<ZJobDD>::iterator it = job_dds.begin(); it != job_dds.end(); ++it)
   {
     std::vector<string> fields;
@@ -493,7 +487,7 @@ int handle_job_view_status(ZCLIResult result)
   ZJob job = {0};
   string jobid(result.get_positional("jobid").get_value());
 
-  const bool emit_csv = result.get_option("--response-format-csv").is_found();
+  const bool emit_csv = result.get_option("--response-format-csv").get_value() == "true";
   rc = zjb_view_by_jobid(&zjb, jobid, job, emit_csv);
 
   if (0 != rc)
@@ -797,7 +791,7 @@ int handle_data_set_list(ZCLIResult result)
   }
   vector<ZDSEntry> entries;
 
-  const bool emit_csv = result.get_option("--response-format-csv").is_found();
+  const bool emit_csv = result.get_option("--response-format-csv").get_value() == "true";
   rc = zds_list_data_sets(&zds, dsn, entries);
   if (RTNCD_SUCCESS == rc)
   {
