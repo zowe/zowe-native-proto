@@ -38,8 +38,7 @@ typedef struct
   int16_t mode;         // permissions
   char file_name[1024]; // filename
 
-  char encoding[16];  // User-specified, desired encoding for USS contents
-  DataType data_type; // Desired data type for USS contents (text or binary)
+  ZEncode encoding_opts;
 
   ZDIAG diag;
 

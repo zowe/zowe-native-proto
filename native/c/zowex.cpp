@@ -161,6 +161,7 @@ int main(int argc, char *argv[])
   data_set_write.set_description("write to data set");
   data_set_write.set_zcli_verb_handler(handle_data_set_write_to_dsn);
   data_set_write.get_positionals().push_back(data_set_dsn);
+  data_set_write.get_options().push_back(data_set_encoding);
   data_set_group.get_verbs().push_back(data_set_write);
 
   ZCLIVerb data_set_delete("delete");
@@ -519,16 +520,8 @@ int handle_job_view_file(ZCLIResult result)
   ZJB zjb = {0};
   string jobid(result.get_positional("jobid").get_value());
   string key(result.get_positional("key").get_value());
-  const bool hasEncoding = result.get_option("--encoding").is_found();
 
-  if (hasEncoding)
-  {
-    const string encodingValue = result.get_option("--encoding").get_value();
-    if (encodingValue.size() < sizeof(zjb.encoding))
-    {
-      memcpy(zjb.encoding, encodingValue.data(), encodingValue.size() + 1);
-    }
-  }
+  const bool hasEncoding = zut_prepare_encoding(result, &zjb.encoding_opts);
 
   string resp;
   rc = zjb_read_jobs_output_by_jobid_and_key(&zjb, jobid, atoi(key.c_str()), resp);
@@ -542,11 +535,7 @@ int handle_job_view_file(ZCLIResult result)
 
   if (hasEncoding)
   {
-    for (char *p = (char *)resp.data(); p < (resp.data() + resp.length()); p++)
-    {
-      printf("%02x ", (unsigned char)*p);
-    }
-    printf("\n");
+    zut_print_string_as_bytes(resp);
   }
   else
   {
@@ -746,14 +735,8 @@ int handle_data_set_view_dsn(ZCLIResult result)
   string dsn = result.get_positional("dsn").get_value();
   ZCLIOption &encoding = result.get_option("--encoding");
   ZDS zds = {0};
-  zds.data_type = result.get_option("--encoding").get_value() == "binary" ? eDataTypeBinary : eDataTypeText;
   string response;
-  string encodingValue = encoding.get_value();
-  const bool hasEncoding = !encodingValue.empty();
-  if (hasEncoding && encodingValue.size() < sizeof(zds.encoding))
-  {
-    memcpy(zds.encoding, encodingValue.c_str(), encodingValue.size() + 1);
-  }
+  const bool hasEncoding = zut_prepare_encoding(result, &zds.encoding_opts);
   rc = zds_read_from_dsn(&zds, dsn, response);
   if (0 != rc)
   {
@@ -764,12 +747,7 @@ int handle_data_set_view_dsn(ZCLIResult result)
 
   if (hasEncoding)
   {
-    char *bufEnd = (char *)response.data() + response.size();
-    for (char *p = (char *)response.data(); p < bufEnd; p++)
-    {
-      printf(p == bufEnd - 1 ? "%02x" : "%02x ", *p);
-    }
-    printf("\n");
+    zut_print_string_as_bytes(response);
   }
   else
   {
@@ -884,12 +862,27 @@ int handle_data_set_write_to_dsn(ZCLIResult result)
   string data;
   string line;
 
-  while (getline(cin, line))
+  size_t byteSize = 0ul;
+  const bool hasEncoding = zut_prepare_encoding(result, &zds.encoding_opts);
+  if (hasEncoding)
   {
-    data += line;
-    data.push_back('\n');
+    std::istreambuf_iterator<char> begin(std::cin);
+    std::istreambuf_iterator<char> end;
+
+    std::vector<char> bytes(begin, end);
+    data.assign(bytes.begin(), bytes.end());
+    byteSize = bytes.size();
   }
-  zds.data_type = result.get_option("--encoding").get_value() == "binary" ? eDataTypeBinary : eDataTypeText;
+  else
+  {
+    while (getline(cin, line))
+    {
+      data += line;
+      data.push_back('\n');
+    }
+    byteSize = data.size();
+  }
+
   rc = zds_write_to_dsn(&zds, dsn, data);
 
   if (0 != rc)
@@ -1039,15 +1032,7 @@ int handle_uss_view(ZCLIResult result)
   string uss_file = result.get_positional("file-path").get_value();
 
   ZUSF zusf = {0};
-  ZCLIOption &encodingOpt = result.get_option("--encoding");
-  const bool hasEncoding = encodingOpt.is_found();
-  string encoding = hasEncoding ? encodingOpt.get_value() : "";
-  if (hasEncoding && encoding.size() < sizeof(zusf.encoding))
-  {
-    memcpy(zusf.encoding, encoding.data(), encoding.size() + 1);
-  }
-
-  zusf.data_type = result.get_option("--encoding").get_value() == "binary" ? eDataTypeBinary : eDataTypeText;
+  const bool hasEncoding = zut_prepare_encoding(result, &zusf.encoding_opts);
 
   string response;
   rc = zusf_read_from_uss_file(&zusf, uss_file, response);
@@ -1062,10 +1047,7 @@ int handle_uss_view(ZCLIResult result)
 
   if (hasEncoding)
   {
-    for (char *p = (char *)response.data(); p < (response.data() + response.length()); p++)
-    {
-      printf("%02x ", (unsigned char)*p);
-    }
+    zut_print_string_as_bytes(response);
   }
   else
   {

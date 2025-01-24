@@ -257,6 +257,57 @@ char zut_get_hex_char(int num)
   return val;
 }
 
+void zut_print_string_as_bytes(string &input)
+{
+  for (char *p = (char *)input.data(); p < (input.data() + input.length()); p++)
+  {
+    if (p == (input.data() + input.length() - 1))
+    {
+      printf("%02x", (unsigned char)*p);
+    }
+    else
+    {
+      printf("%02x ", (unsigned char)*p);
+    }
+  }
+}
+
+/**
+ *
+ */
+bool zut_prepare_encoding(ZCLIResult &result, ZEncode *opts)
+{
+  if (!opts)
+  {
+    return false;
+  }
+
+  ZCLIOption &encodingOpt = result.get_option("--encoding");
+  const bool hasEncoding = encodingOpt.is_found();
+  string encodingValue = hasEncoding ? encodingOpt.get_value() : "";
+  if (hasEncoding && encodingValue.size() < sizeof(opts->codepage))
+  {
+    memcpy(opts->codepage, encodingValue.data(), encodingValue.length() + 1);
+    opts->data_type = result.get_option("--encoding").get_value() == "binary" ? eDataTypeBinary : eDataTypeText;
+    return true;
+  }
+
+  return false;
+}
+
+size_t zut_get_utf8_len(const char *str)
+{
+  size_t len = 0;
+  for (size_t i = 0; *str != 0; ++len)
+  {
+    int v01 = ((*str & 0x80) >> 7) & ((*str & 0x40) >> 6);
+    int v2 = (*str & 0x20) >> 5;
+    int v3 = (*str & 0x10) >> 4;
+    str += 1 + ((v01 << v2) | (v01 & v3));
+  }
+  return len;
+}
+
 char *zut_encode_alloc(char *raw_data, const string &from_encoding, const string &to_encoding, ZDIAG &diag, char **buf_end)
 {
   iconv_t cd = iconv_open(to_encoding.c_str(), from_encoding.c_str());

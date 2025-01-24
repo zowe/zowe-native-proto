@@ -71,11 +71,11 @@ int zds_read_from_dd(ZDS *zds, string ddname, string &response)
 
   delete[] raw_data;
 
-  if (strlen(zds->encoding) > 0 /* && (*encoding != "IBM-1047" && *encoding != "01047") */)
+  if (strlen(zds->encoding_opts.codepage) > 0 /* && (*encoding != "IBM-1047" && *encoding != "01047") */)
   {
     char *buf_end;
     // Convert from requested encoding to UTF-8 for standardized character code page
-    char *out_buf = zut_encode_alloc(raw_data, string(zds->encoding), "UTF-8", zds->diag, &buf_end);
+    char *out_buf = zut_encode_alloc(raw_data, string(zds->encoding_opts.codepage), "UTF-8", zds->diag, &buf_end);
     if (out_buf)
     {
       response.clear();
@@ -91,7 +91,7 @@ int zds_read_from_dsn(ZDS *zds, string dsn, string &response)
 {
   dsn = "//'" + dsn + "'";
 
-  ifstream in(dsn.c_str(), zds->data_type == eDataTypeBinary ? ios::in | ios::binary : ios::in);
+  ifstream in(dsn.c_str(), zds->encoding_opts.data_type == eDataTypeBinary ? ios::in | ios::binary : ios::in);
   if (!in.is_open())
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open file '%s'", dsn.c_str());
@@ -108,13 +108,13 @@ int zds_read_from_dsn(ZDS *zds, string dsn, string &response)
   response.assign(rawData);
   in.close();
 
-  const bool encodingProvided = zds->data_type == eDataTypeText && strlen(zds->encoding) > 0;
+  const bool encodingProvided = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
 
   char *bufEnd;
   if (encodingProvided /* && (*encoding != "IBM-1047" && *encoding != "01047") */)
   {
     // Convert the data with given codepage to UTF-8
-    char *outBuf = zut_encode_alloc(rawData, string(zds->encoding), "UTF-8", zds->diag, &bufEnd);
+    char *outBuf = zut_encode_alloc(rawData, string(zds->encoding_opts.codepage), "UTF-8", zds->diag, &bufEnd);
     if (outBuf)
     {
       response.clear();
@@ -145,13 +145,13 @@ int zds_write_to_dd(ZDS *zds, string ddname, string &data)
   return 0;
 }
 
-int zds_write_to_dsn(ZDS *zds, string dsn, string &data)
+int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data)
 {
-  const bool hasEncoding = strlen(zds->encoding) > 0;
+  const bool hasEncoding = strlen(zds->encoding_opts.codepage) > 0;
   dsn = "//'" + dsn + "'";
-  ofstream out(dsn.c_str(), zds->data_type == eDataTypeBinary ? ios::out | ios::binary : ios::out);
+  ofstream out(dsn.c_str(), zds->encoding_opts.data_type == eDataTypeBinary ? ios::binary : ios::out);
 
-  if (!out.is_open())
+  if (!out.good())
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open '%s'", dsn.c_str());
     return RTNCD_FAILURE;
@@ -161,16 +161,17 @@ int zds_write_to_dsn(ZDS *zds, string dsn, string &data)
   {
     char *bufEnd;
     // Convert from UTF-8 data representation to the given encoding to store within dataset
-    char *outBuf = zut_encode_alloc((char *)data.c_str(), "UTF-8", zds->encoding, zds->diag, &bufEnd);
+    char *outBuf = zut_encode_alloc((char *)data.c_str(), "UTF-8", zds->encoding_opts.codepage, zds->diag, &bufEnd);
     if (outBuf)
     {
-      data.clear();
-      data.assign(outBuf);
+      out << outBuf;
       delete[] outBuf;
     }
   }
-
-  out << data;
+  else
+  {
+    out << data;
+  }
   out.close();
 
   return 0;

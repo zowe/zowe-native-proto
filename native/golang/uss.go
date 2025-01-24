@@ -94,6 +94,9 @@ func HandleWriteFileRequest(jsonData []byte) {
 		return
 	}
 	args := []string{"./zowex", "uss", "write", request.Path}
+	if len(request.Encoding) > 0 {
+		args = append(args, "--encoding", request.Encoding)
+	}
 	cmd := exec.Command(args[0], args[1:]...)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {

@@ -256,11 +256,9 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, string jobdsn, string &response)
   char cddname[8 + 1] = {0};
   memcpy(cddname, &s99tunit_x[4].s99tunit.s99tupar, ddnamelen);
   string ddname = string(cddname);
-  const size_t encodingStrSize = strlen(zjb->encoding) > 0;
-  if (encodingStrSize > 0)
-  {
-    memcpy(zds.encoding, zjb->encoding, encodingStrSize);
-  }
+
+  zds.encoding_opts.data_type = zjb->encoding_opts.data_type;
+  memcpy((void *)&zds.encoding_opts.codepage, (const void *)&zjb->encoding_opts.codepage, sizeof(zjb->encoding_opts.codepage));
 
   rc = zds_read_from_dd(&zds, ddname, response);
 

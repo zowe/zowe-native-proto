@@ -57,6 +57,9 @@ func HandleWriteDatasetRequest(jsonData []byte) {
 		return
 	}
 	args := []string{"./zowex", "data-set", "write", dsRequest.Dataset}
+	if len(dsRequest.Encoding) > 0 {
+		args = append(args, "--encoding", dsRequest.Encoding)
+	}
 	cmd := exec.Command(args[0], args[1:]...)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
