@@ -615,8 +615,8 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
 
       break;
       case GENERATION_DATA_GROUP:
-        printf("case GENERATION_DATA_GROUP\n");
-        return -8;
+        // printf("case GENERATION_DATA_GROUP\n");
+        // return -8;
         break;
       case CLUSTER:
         // printf("case CLUSER\n");

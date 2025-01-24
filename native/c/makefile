@@ -175,18 +175,23 @@ libzjb.a: zjb.o zjbm.o zssi31.o zjbm31.o libzds.a libzut.a
 # Console
 #
 zcn.o: zcn.cpp
+	@echo 'Building zcn.o'
 	$(CXX) $(DLL_CPP_FLAGS) -qlist=$*.cpp.lst -o $@ $^
 
 zcnm.s: zcnm.c
+	@echo 'Building zcnm.s'
 	$(CC) $(MTL_FLAGS64) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
 
 zcnm.o: zcnm.s
+	@echo 'Building zcnm.o'
 	$(ASM) $(ASM_FLAGS) -a=$*.asm.lst $(MACLIBS) -o $@ $^
 
 zcnm31.s: zcnm31.c
+	@echo 'Building zcnm31.s'
 	$(CC) $(MTL_FLAGS) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
 
 zcnm31.o: zcnm31.s
+	@echo 'Building zcnm31.o'
 	$(ASM) $(ASM_FLAGS) -a=$*.asm.lst $(MACLIBS) -o $@ $^
 
 libzcn.so: zcn.o zcnm.o zcnm31.o libzut.a
@@ -198,6 +203,29 @@ libzcn.a: zcn.o zcnm.o zcnm31.o libzut.a
 	ar -rv $@ $^
 
 #
+# TSO
+#
+zts.o: zts.cpp
+	@echo 'Building zts.o'
+	$(CXX) $(DLL_CPP_FLAGS) -qlist=$*.cpp.lst -o $@ $^
+
+ztsm.s: ztsm.c
+	@echo 'Building ztsm.s'
+	$(CC) $(MTL_FLAGS64) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
+
+ztsm.o: ztsm.s
+	@echo 'Building ztsm.o'
+	$(ASM) $(ASM_FLAGS) -a=$*.asm.lst $(MACLIBS) -o $@ $^
+
+libzts.so: zts.o ztsm.o libzut.a
+	@echo 'Building libzts.so'
+	$(CXX) $(DLL_BND_FLAGS) -o $@ $^ > $*.bind.lst
+
+libzts.a: zts.o ztsm.o libzut.a
+	@echo 'Building libzts.a'
+	ar -rv $@ $^
+
+#
 # USS data
 #
 zusf.o: zusf.cpp
@@ -205,8 +233,8 @@ zusf.o: zusf.cpp
 	$(CXX) $(DLL_CPP_FLAGS) -qlist=$*.cpp.lst -o $@ $^
 
 libzusf.so: zusf.o libzut.a
-	$(CXX) $(DLL_BND_FLAGS) -o $@ $^ > $*.bind.lst
 	@echo 'Building libzusf.so'
+	$(CXX) $(DLL_BND_FLAGS) -o $@ $^ > $*.bind.lst
 
 libzusf.a: zusf.o libzut.a
 	@echo 'Building libzusf.a'
@@ -216,13 +244,13 @@ libzusf.a: zusf.o libzut.a
 # Test CLI
 #
 # zowex: zowex.o zcn.o zcnm.o zcnm31.o zut.o zutm.o zutm31.o zjb.o zjbm.o zssi31.o zjbm31.o zds.o
-zowex: zowex.o libzcn.a libzut.a libzjb.a libzds.a libzusf.a
+zowex: zowex.o libzcn.a libzut.a libzjb.a libzds.a libzusf.a libzts.a
 	@echo 'Building zowex'
 	$(CXX) $(CPP_BND_FLAGS) -o $@ $^ > $*.bind.lst
 	cp $@ ../golang/$(basename $@)
 	@echo 'Copied zowex to golang/ioserver'
 
-zowexx: zowex.o libzcn.a libzut.a libzjb.a libzds.a libzusf.a
+zowexx: zowex.o libzcn.a libzut.a libzjb.a libzds.a libzusf.a libzts.a
 	@echo 'Building zowexx'
 	$(CXX) $(CPP_BND_FLAGS_AUTH) -o $@ $^ > $*.bind.lst
 

@@ -20,6 +20,7 @@
 #include "zut.hpp"
 #include "zcli.hpp"
 #include "zjb.hpp"
+#include "zts.hpp"
 #include "unistd.h"
 #include "zds.hpp"
 #include "zusf.hpp"
@@ -31,6 +32,8 @@
 #endif
 
 using namespace std;
+
+int loop_dynalloc(vector<string> &);
 
 int handle_job_list(ZCLIResult);
 int handle_job_list_files(ZCLIResult);
@@ -50,6 +53,8 @@ int handle_data_set_list(ZCLIResult);
 int handle_data_set_list_members_dsn(ZCLIResult);
 int handle_data_set_write_to_dsn(ZCLIResult);
 int handle_data_set_delete_dsn(ZCLIResult);
+
+int handle_tso_issue(ZCLIResult);
 
 int handle_log_view(ZCLIResult);
 
@@ -358,12 +363,38 @@ int main(int argc, char *argv[])
   log_group.get_verbs().push_back(log_view);
 
   //
+  // tso group
+  //
+  ZCLIGroup tso_group("tso");
+  tso_group.set_description("tso operations");
+
+  ZCLIVerb tso_issue("issue");
+  tso_issue.set_description("issue tso command");
+  tso_issue.set_zcli_verb_handler(handle_tso_issue);
+
+  // ZCLIOption tso_issue_systsprt("systsprt");
+  // tso_issue_systsprt.set_description("sysprint output");
+  // tso_issue_systsprt.get_aliases().push_back("--so");
+  // tso_issue.get_options().push_back(tso_issue_systsprt);
+
+  // ZCLIOption tso_issue_systsin("systsin");
+  // tso_issue_systsin.set_description("systsin input");
+  // tso_issue_systsin.get_aliases().push_back("--si");
+  // tso_issue.get_options().push_back(tso_issue_systsin);
+
+  ZCLIPositional tso_issue_parm("parm");
+  tso_issue_parm.set_required(true);
+  tso_issue_parm.set_description("tso command to run");
+  tso_issue.get_positionals().push_back(tso_issue_parm);
+  tso_group.get_verbs().push_back(tso_issue);
+
+  //
   // tool group
   //
   ZCLIGroup tool_group("tool");
   tool_group.set_description("tool operations");
 
-  // console verbs
+  // tool verbs
   ZCLIVerb tool_convert_dsect("ccnedsct");
   tool_convert_dsect.set_description("convert dsect to c struct");
   tool_convert_dsect.set_zcli_verb_handler(handle_tool_convert_dsect);
@@ -397,12 +428,13 @@ int main(int argc, char *argv[])
   tool_group.get_verbs().push_back(tool_dynalloc);
 
   // add all groups to the CLI
-  zcli.get_groups().push_back(test_group);
+  // zcli.get_groups().push_back(test_group);
   zcli.get_groups().push_back(data_set_group);
   zcli.get_groups().push_back(console_group);
   zcli.get_groups().push_back(job_group);
   zcli.get_groups().push_back(uss_group);
-  zcli.get_groups().push_back(log_group);
+  zcli.get_groups().push_back(tso_group);
+  // zcli.get_groups().push_back(log_group); // TODO(Kelosky): reactivate when z/os log available
   zcli.get_groups().push_back(tool_group);
 
   // parse
@@ -915,6 +947,73 @@ int handle_data_set_delete_dsn(ZCLIResult result)
   return rc;
 }
 
+int handle_tso_issue(ZCLIResult result)
+{
+  int rc = 0;
+  string parm = result.get_positional("parm").get_value();
+  string response;
+
+  // string systsprt(result.get_option("--systsprt").get_value());
+  // string systsin(result.get_option("--systsin").get_value());
+
+  // const char *user = getlogin();
+  // string struser(user);
+  // transform(struser.begin(), struser.end(), struser.begin(), ::tolower);
+
+  // if (!result.get_option("--systsprt").is_found())
+  //   systsprt = "/tmp/" + struser + "_sysprint.txt";
+  // if (!result.get_option("--systsin").is_found())
+  //   systsin = "/tmp/" + struser + "_sysout.txt";
+
+  // vector<string> dds;
+  // char buffer[256] = {0};
+  // dds.push_back("alloc fi(sysprint) path('" + systsprt + "') pathopts(owronly,ocreat,otrunc) pathmode(sirusr,siwusr,sirgrp) filedata(text) msg(2)");
+  // dds.push_back("alloc fi(sysout) path('" + systsin + "') pathopts(owronly,ocreat,otrunc) pathmode(sirusr,siwusr,sirgrp) filedata(text) msg(2)");
+  // dds.push_back("alloc fi(sysadata) da('" + adata_dsn + "') shr msg(2)");
+  // dds.push_back("alloc fi(edcdsect) da('" + chdr_dsn + "') shr msg(2)");
+
+  // ZDS zds = {0};
+  // zds_write_to_dd(&zds, "SYSTSIN", parm);
+  // if (RTNCD_SUCCESS != rc)
+  // {
+  //   cout << "Error: writting to '" << systsprt << "' failed with rc: '" << rc << "'" << endl;
+  //   cout << "  Details:\n"
+  //        << zds.diag.e_msg << endl;
+  //   return RTNCD_FAILURE;
+  // }
+
+  // rc = loop_dynalloc(dds);
+  // if (RTNCD_SUCCESS != rc)
+  // {
+  //   return RTNCD_FAILURE;
+  // }
+
+  // rc = zut_ikjeft01(parm, response);
+
+  ZTS zts = {0};
+
+  rc = zts_init(&zts);
+  cout << "init rc was " << rc << endl;
+
+  rc = zts_invoke(&zts);
+  cout << "invoke rc was " << rc << endl;
+
+  rc = zts_term(&zts);
+  cout << "term rc was " << rc << endl;
+
+  if (RTNCD_SUCCESS != rc)
+  {
+    cout << "Error: ikjeft01 failed with parm '" << parm << "' rc: '" << rc << "'" << endl;
+    cout << "  Details:\n"
+         << response << endl;
+    return RTNCD_FAILURE;
+  }
+
+  cout << response << endl;
+
+  return rc;
+}
+
 int handle_test_command(ZCLIResult result)
 {
   int rc = 0;
@@ -1089,6 +1188,27 @@ int handle_uss_delete_dir(ZCLIResult result)
   return 1;
 }
 
+int loop_dynalloc(vector<string> &list)
+{
+  int rc = 0;
+  unsigned int code = 0;
+  string response;
+
+  for (vector<string>::iterator it = list.begin(); it != list.end(); it++)
+  {
+    rc = zut_bpxwdyn(*it, &code, response);
+
+    if (0 != rc)
+    {
+      cout << "Error: bpxwdyn failed with '" << *it << "' rc: '" << rc << "'" << endl;
+      cout << "  Details: " << response << endl;
+      return -1;
+    }
+  }
+
+  return rc;
+}
+
 int handle_uss_chmod(ZCLIResult result)
 {
   int rc = 0;
@@ -1138,14 +1258,12 @@ int handle_tool_convert_dsect(ZCLIResult result)
 
   const char *user = getlogin();
   string struser(user);
-  transform(struser.begin(), struser.end(), struser.begin(), ::tolower); // upper case
+  transform(struser.begin(), struser.end(), struser.begin(), ::tolower);
 
   if (!result.get_option("--sysprint").is_found())
     sysprint = "/tmp/" + struser + "_sysprint.txt";
   if (!result.get_option("--sysout").is_found())
     sysout = "/tmp/" + struser + "_sysout.txt";
-
-  cout << adata_dsn << " " << chdr_dsn << " " << sysprint << " " << sysout << endl;
 
   vector<string> dds;
   char buffer[256] = {0};
@@ -1156,20 +1274,14 @@ int handle_tool_convert_dsect(ZCLIResult result)
   dds.push_back("alloc fi(sysadata) da('" + adata_dsn + "') shr msg(2)");
   dds.push_back("alloc fi(edcdsect) da('" + chdr_dsn + "') shr msg(2)");
 
-  for (vector<string>::iterator it = dds.begin(); it != dds.end(); it++)
+  rc = loop_dynalloc(dds);
+  if (RTNCD_SUCCESS != rc)
   {
-    rc = zut_bpxwdyn(*it, &code, resp);
-
-    if (0 != rc)
-    {
-      cout << "Error: bpxwdyn failed with '" << *it << "' rc: '" << rc << "'" << endl;
-      cout << "  Details: " << resp << endl;
-      return -1;
-    }
+    return RTNCD_FAILURE;
   }
 
   rc = zut_convert_dsect();
-  if (0 != rc)
+  if (RTNCD_SUCCESS != rc)
   {
     cout << "Error: convert failed with rc: '" << rc << "'" << endl;
     cout << "  See '" << sysprint << "' and '" << sysout << "' for more details" << endl;
