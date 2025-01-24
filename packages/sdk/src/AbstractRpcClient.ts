@@ -1,7 +1,19 @@
+/**
+ * This program and the accompanying materials are made available under the terms of the
+ * Eclipse Public License v2.0 which accompanies this distribution, and is available at
+ * https://www.eclipse.org/legal/epl-v20.html
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ *
+ * Copyright Contributors to the Zowe Project.
+ *
+ */
+
 import type { IRpcRequest, IRpcResponse } from "./doc";
 import type * as ds from "./doc/zos-ds";
 import type * as jobs from "./doc/zos-jobs";
 import type * as uss from "./doc/zos-uss";
+import type * as cmds from "./doc/zos-cmds";
 
 export abstract class AbstractRpcClient {
     public abstract request<T extends IRpcResponse>(request: IRpcRequest): Promise<T>;
@@ -40,6 +52,17 @@ export abstract class AbstractRpcClient {
                 this.request({ command: "readFile", ...request }),
             writeFile: (request: Omit<uss.WriteFile.Request, "command">): Promise<uss.WriteFile.Response> =>
                 this.request({ command: "writeFile", ...request }),
+        };
+    }
+
+    public get cmds() {
+        return {
+            issueConsole: (request: Omit<cmds.IssueConsole.Request, "command">): Promise<cmds.IssueConsole.Response> =>
+                this.request({ command: "consoleCommand", ...request }),
+            issueTso: (request: Omit<cmds.IssueTso.Request, "command">): Promise<cmds.IssueTso.Response> =>
+                this.request({ command: "tsoCommand", ...request }),
+            issueUnix: (request: Omit<cmds.IssueUnix.Request, "command">): Promise<cmds.IssueUnix.Response> =>
+                this.request({ command: "unixCommand", ...request }),
         };
     }
 }

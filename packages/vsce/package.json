@@ -1,13 +1,14 @@
 {
   "name": "zowe-native-proto-vsce",
   "displayName": "zowe-native-proto-vsce",
-  "description": "",
+  "description": "Zowe Native Proto VS Code Extension for Zowe Explorer",
   "version": "0.0.1",
   "publisher": "Zowe",
   "repository": "https://github.com/zowe/zowe-native-proto-vsce/tree/main/packages/vsce",
   "engines": {
     "vscode": "^1.79.0"
   },
+  "license": "EPL-2.0",
   "categories": [
     "Other"
   ],
@@ -37,7 +38,7 @@
   },
   "dependencies": {
     "@zowe/zowe-explorer-api": "^3.0.3",
-    "zowe-native-proto-sdk": "1.0.0"
+    "zowe-native-proto-sdk": "0.0.1"
   },
   "devDependencies": {
     "@rspack/cli": "^1.1.5",
