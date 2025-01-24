@@ -4,7 +4,6 @@ artifacts
 lib
 node_modules
 out
-dist
 tsconfig.tsbuildinfo
 zowe.config.json
 zowe.schema.json
