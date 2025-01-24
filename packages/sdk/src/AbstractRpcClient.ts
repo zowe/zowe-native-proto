@@ -13,7 +13,7 @@ import type { IRpcRequest, IRpcResponse } from "./doc";
 import type * as ds from "./doc/zos-ds";
 import type * as jobs from "./doc/zos-jobs";
 import type * as uss from "./doc/zos-uss";
-import type * as issue from "./doc/zos-issue";
+import type * as cmds from "./doc/zos-cmds";
 
 export abstract class AbstractRpcClient {
     public abstract request<T extends IRpcResponse>(request: IRpcRequest): Promise<T>;
@@ -55,14 +55,14 @@ export abstract class AbstractRpcClient {
         };
     }
 
-    public get issue() {
+    public get cmds() {
         return {
-            consoleCommand: (request: Omit<issue.ConsoleCommand.Request, "command">): Promise<issue.ConsoleCommand.Response> =>
+            issueConsole: (request: Omit<cmds.IssueConsole.Request, "command">): Promise<cmds.IssueConsole.Response> =>
                 this.request({ command: "consoleCommand", ...request }),
-            tsoCommand: (request: Omit<issue.TsoCommand.Request, "command">): Promise<issue.TsoCommand.Response> =>
+            issueTso: (request: Omit<cmds.IssueTso.Request, "command">): Promise<cmds.IssueTso.Response> =>
                 this.request({ command: "tsoCommand", ...request }),
-            unixCommand: (request: Omit<issue.UnixCommand.Request, "command">): Promise<issue.UnixCommand.Response> =>
+            issueUnix: (request: Omit<cmds.IssueUnix.Request, "command">): Promise<cmds.IssueUnix.Response> =>
                 this.request({ command: "unixCommand", ...request }),
-        }
+        };
     }
 }
