@@ -761,11 +761,13 @@ int handle_data_set_view_dsn(ZCLIResult result)
     cout << "  Details: " << zds.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
+
   if (hasEncoding)
   {
-    for (char *p = (char *)response.data(); p < (response.data() + response.length()); p++)
+    char *bufEnd = (char *)response.data() + response.size();
+    for (char *p = (char *)response.data(); p < bufEnd; p++)
     {
-      printf("%02x ", (unsigned char)*p);
+      printf(p == bufEnd - 1 ? "%02x" : "%02x ", *p);
     }
     printf("\n");
   }

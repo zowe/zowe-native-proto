@@ -74,8 +74,8 @@ int zds_read_from_dd(ZDS *zds, string ddname, string &response)
   if (strlen(zds->encoding) > 0 /* && (*encoding != "IBM-1047" && *encoding != "01047") */)
   {
     char *buf_end;
-    // Convert from stored encoding (IBM-1047) to desired encoding
-    char *out_buf = zut_encode_alloc(raw_data, "IBM-1047", string(zds->encoding), zds->diag, &buf_end);
+    // Convert from requested encoding to UTF-8 for standardized character code page
+    char *out_buf = zut_encode_alloc(raw_data, string(zds->encoding), "UTF-8", zds->diag, &buf_end);
     if (out_buf)
     {
       response.clear();
@@ -113,8 +113,8 @@ int zds_read_from_dsn(ZDS *zds, string dsn, string &response)
   char *bufEnd;
   if (encodingProvided /* && (*encoding != "IBM-1047" && *encoding != "01047") */)
   {
-    // Convert from stored encoding (IBM-1047) to desired encoding
-    char *outBuf = zut_encode_alloc(rawData, "IBM-1047", string(zds->encoding), zds->diag, &bufEnd);
+    // Convert the data with given codepage to UTF-8
+    char *outBuf = zut_encode_alloc(rawData, string(zds->encoding), "UTF-8", zds->diag, &bufEnd);
     if (outBuf)
     {
       response.clear();
@@ -160,8 +160,8 @@ int zds_write_to_dsn(ZDS *zds, string dsn, string &data)
   if (hasEncoding)
   {
     char *bufEnd;
-    // Convert from given encoding to IBM-1047 to store in dataset
-    char *outBuf = zut_encode_alloc((char *)data.c_str(), zds->encoding, "IBM-1047", zds->diag, &bufEnd);
+    // Convert from UTF-8 data representation to the given encoding to store within dataset
+    char *outBuf = zut_encode_alloc((char *)data.c_str(), "UTF-8", zds->encoding, zds->diag, &bufEnd);
     if (outBuf)
     {
       data.clear();

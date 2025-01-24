@@ -180,7 +180,7 @@ int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
   if (encodingProvided /* && (*encoding != "IBM-1047" && *encoding != "01047") */)
   {
     // const encoding = encodingProvided ? string(zusf->encoding) : string(tagged_encoding);
-    char *outBuf = zut_encode_alloc(rawData, "IBM-1047", string(zusf->encoding), zusf->diag, &bufEnd);
+    char *outBuf = zut_encode_alloc(rawData, string(zusf->encoding), "UTF-8", zusf->diag, &bufEnd);
     if (outBuf)
     {
       response.clear();
@@ -217,7 +217,7 @@ int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data)
   if (hasEncoding)
   {
     char *bufEnd;
-    char *outBuf = zut_encode_alloc((char *)data.c_str(), string(zusf->encoding), "IBM-1047", zusf->diag, &bufEnd);
+    char *outBuf = zut_encode_alloc((char *)data.c_str(), "UTF-8", string(zusf->encoding), zusf->diag, &bufEnd);
     if (outBuf)
     {
       data.clear();
