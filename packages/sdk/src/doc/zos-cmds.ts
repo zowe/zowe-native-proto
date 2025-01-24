@@ -11,7 +11,7 @@
 
 import type { IRpcRequest, IRpcResponse } from "./common";
 
-export namespace ConsoleCommand {
+export namespace IssueConsole {
     export interface Request extends IRpcRequest {
         command: "consoleCommand";
         commandText: string;
@@ -23,7 +23,7 @@ export namespace ConsoleCommand {
     }
 }
 
-export namespace TsoCommand {
+export namespace IssueTso {
     export interface Request extends IRpcRequest {
         command: "tsoCommand";
         commandText: string;
@@ -34,7 +34,7 @@ export namespace TsoCommand {
     }
 }
 
-export namespace UnixCommand {
+export namespace IssueUnix {
     export interface Request extends IRpcRequest {
         command: "unixCommand";
         commandText: string;
