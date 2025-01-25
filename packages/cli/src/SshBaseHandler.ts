@@ -10,13 +10,12 @@
  */
 
 import type { ICommandHandler, IHandlerParameters } from "@zowe/imperative";
-import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { type IRpcResponse, ZSshClient, ZSshUtils } from "zowe-native-proto-sdk";
 
 export abstract class SshBaseHandler implements ICommandHandler {
     public async process(commandParameters: IHandlerParameters) {
         const session = ZSshUtils.buildSession(commandParameters.arguments);
-        using client = await ZSshClient.create(session);
+        using client = await ZSshClient.create(session, commandParameters.arguments.serverPath);
 
         const response = await this.processWithClient(commandParameters, client);
 
@@ -26,8 +25,5 @@ export abstract class SshBaseHandler implements ICommandHandler {
         commandParameters.response.data.setObj(response);
     }
 
-    public abstract processWithClient(
-        commandParameters: IHandlerParameters,
-        client: ZSshClient,
-    ): Promise<IRpcResponse>;
+    public abstract processWithClient(commandParameters: IHandlerParameters, client: ZSshClient): Promise<IRpcResponse>;
 }

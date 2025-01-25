@@ -10,10 +10,10 @@
  */
 
 import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
-import { Disposable } from "vscode";
+import * as vscode from "vscode";
 import { ZSshClient } from "zowe-native-proto-sdk";
 
-export class SshClientCache extends Disposable {
+export class SshClientCache extends vscode.Disposable {
     private static mInstance: SshClientCache;
     private mClientMap: Map<string, ZSshClient> = new Map();
 
@@ -32,10 +32,18 @@ export class SshClientCache extends Disposable {
         return SshClientCache.mInstance;
     }
 
+    public static getServerPath(hostname: string): string {
+        const serverPathMap = vscode.workspace
+            .getConfiguration("zowe-native-proto-vsce")
+            .get<Record<string, string>>("serverPath");
+        return serverPathMap?.[hostname] ?? ZSshClient.DEFAULT_SERVER_PATH;
+    }
+
     public async connect(session: SshSession): Promise<ZSshClient> {
         const clientKey = session.ISshSession.hostname!;
         if (!this.mClientMap.has(clientKey)) {
-            this.mClientMap.set(clientKey, await ZSshClient.create(session));
+            const serverPath = SshClientCache.getServerPath(clientKey);
+            this.mClientMap.set(clientKey, await ZSshClient.create(session, serverPath));
         }
         return this.mClientMap.get(clientKey) as ZSshClient;
     }

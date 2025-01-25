@@ -19,10 +19,38 @@
   "contributes": {
     "commands": [
       {
-        "command": "zowe-native-proto-vsce.helloWorld",
-        "title": "Hello World"
+        "command": "zowe-native-proto-vsce.connect",
+        "title": "Zowe-SSH: Connect to Host..."
+      },
+      {
+        "command": "zowe-native-proto-vsce.restart",
+        "title": "Zowe-SSH: Restart Zowe Server on Host..."
+      },
+      {
+        "command": "zowe-native-proto-vsce.uninstall",
+        "title": "Zowe-SSH: Uninstall Zowe Server from Host..."
       }
-    ]
+    ],
+    "configuration": {
+      "title": "zowe-native-proto-vsce",
+      "properties": {
+        "zowe-native-proto-vsce.serverInstallPath": {
+          "type": "object",
+          "description": "Defines custom server install paths for SSH hosts. Defaults to '~/.zowe-server'.",
+          "properties": {
+            "host": {
+              "type": "string",
+              "description": "SSH host"
+            },
+            "path": {
+              "type": "string",
+              "description": "Remote path"
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    }
   },
   "extensionDependencies": [
     "Zowe.vscode-extension-for-zowe"

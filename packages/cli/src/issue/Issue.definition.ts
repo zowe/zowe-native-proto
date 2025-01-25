@@ -11,6 +11,7 @@
 
 import type { ICommandDefinition } from "@zowe/imperative";
 import { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
+import { Constants } from "../Constants";
 import { ConsoleCommand } from "./console/ConsoleCommand.definition";
 
 const IssueDefinition: ICommandDefinition = {
@@ -19,13 +20,11 @@ const IssueDefinition: ICommandDefinition = {
     description: "Issue console, TSO, or Unix commands",
     type: "group",
     aliases: ["i"],
-    children: [
-        ConsoleCommand
-    ],
+    children: [ConsoleCommand],
     passOn: [
         {
             property: "options",
-            value: SshSession.SSH_CONNECTION_OPTIONS,
+            value: [...SshSession.SSH_CONNECTION_OPTIONS, Constants.OPT_SERVER_PATH],
             merge: true,
             ignoreNodes: [{ type: "group" }],
         },
@@ -33,4 +32,3 @@ const IssueDefinition: ICommandDefinition = {
 };
 
 export = IssueDefinition;
-
