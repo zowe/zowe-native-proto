@@ -95,7 +95,7 @@ int ZTSINVOK(ZTS *zts)
 
   int rc = 0;
 
-  char *parm = "LISTUSER";
+  char *parm = "HELP";
   // char *parm = "HELP";
   // char *parm = "FREE DD(MINEMINE)";
   // char *parm = "ALTLIB DISPLAY";
