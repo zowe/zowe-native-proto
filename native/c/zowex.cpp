@@ -953,61 +953,80 @@ int handle_tso_issue(ZCLIResult result)
   string parm = result.get_positional("parm").get_value();
   string response;
 
-  // string systsprt(result.get_option("--systsprt").get_value());
-  // string systsin(result.get_option("--systsin").get_value());
+  string systsprt(result.get_option("--systsprt").get_value());
+  string systsin(result.get_option("--systsin").get_value());
 
-  // const char *user = getlogin();
-  // string struser(user);
-  // transform(struser.begin(), struser.end(), struser.begin(), ::tolower);
+  const char *user = getlogin();
+  string struser(user);
+  transform(struser.begin(), struser.end(), struser.begin(), ::tolower);
 
-  // if (!result.get_option("--systsprt").is_found())
-  //   systsprt = "/tmp/" + struser + "_sysprint.txt";
-  // if (!result.get_option("--systsin").is_found())
-  //   systsin = "/tmp/" + struser + "_sysout.txt";
+  if (!result.get_option("--systsprt").is_found())
+    systsprt = "/tmp/" + struser + "_systsprt.txt";
+  if (!result.get_option("--systsin").is_found())
+    systsin = "/tmp/" + struser + "_systsin.txt";
 
-  // vector<string> dds;
-  // char buffer[256] = {0};
-  // dds.push_back("alloc fi(sysprint) path('" + systsprt + "') pathopts(owronly,ocreat,otrunc) pathmode(sirusr,siwusr,sirgrp) filedata(text) msg(2)");
-  // dds.push_back("alloc fi(sysout) path('" + systsin + "') pathopts(owronly,ocreat,otrunc) pathmode(sirusr,siwusr,sirgrp) filedata(text) msg(2)");
+  vector<string> dds;
+  char buffer[256] = {0};
+  dds.push_back("alloc fi(systsprt) path('" + systsprt + "') pathopts(owronly,ocreat,otrunc) pathmode(sirusr,siwusr,sirgrp) filedata(text) msg(2)");
+  // dds.push_back("alloc fi(systsin) path('" + systsin + "') pathopts(owronly,ocreat,otrunc) pathmode(sirusr,siwusr,sirgrp) filedata(text) msg(2)");
   // dds.push_back("alloc fi(sysadata) da('" + adata_dsn + "') shr msg(2)");
   // dds.push_back("alloc fi(edcdsect) da('" + chdr_dsn + "') shr msg(2)");
 
-  // ZDS zds = {0};
-  // zds_write_to_dd(&zds, "SYSTSIN", parm);
-  // if (RTNCD_SUCCESS != rc)
-  // {
-  //   cout << "Error: writting to '" << systsprt << "' failed with rc: '" << rc << "'" << endl;
-  //   cout << "  Details:\n"
-  //        << zds.diag.e_msg << endl;
-  //   return RTNCD_FAILURE;
-  // }
+  ZDS zds = {0};
+  zds_write_to_dd(&zds, "SYSTSIN", parm);
+  if (RTNCD_SUCCESS != rc)
+  {
+    cout << "Error: writting to '" << systsprt << "' failed with rc: '" << rc << "'" << endl;
+    cout << "  Details:\n"
+         << zds.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
 
-  // rc = loop_dynalloc(dds);
-  // if (RTNCD_SUCCESS != rc)
-  // {
-  //   return RTNCD_FAILURE;
-  // }
-
-  // rc = zut_ikjeft01(parm, response);
+  rc = loop_dynalloc(dds);
+  if (RTNCD_SUCCESS != rc)
+  {
+    return RTNCD_FAILURE;
+  }
 
   ZTS zts = {0};
 
-  rc = zts_init(&zts);
-  cout << "init rc was " << rc << endl;
+  rc = zts_init_env(&zts);
+  cout << "init env rc was " << rc << endl;
+  if (RTNCD_SUCCESS != rc)
+  {
+    cout << "Error: init env failed with rc: '" << rc << "'" << endl;
+    cout << "  Details: " << zts.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
+  // rc = zts_init(&zts);
+  // cout << "init rc was " << rc << endl;
+  // if (RTNCD_SUCCESS != rc)
+  // {
+  //   cout << "Error: init failed with rc: '" << rc << "'" << endl;
+  //   cout << "  Details: " << zts.diag.e_msg << endl;
+  //   return RTNCD_FAILURE;
+  // }
+
+  printf("@TEST token %04x %04x %04x %04x\n", zts.token[0], zts.token[1], zts.token[2], zts.token[3]);
 
   rc = zts_invoke(&zts);
   cout << "invoke rc was " << rc << endl;
-
-  rc = zts_term(&zts);
-  cout << "term rc was " << rc << endl;
-
   if (RTNCD_SUCCESS != rc)
   {
-    cout << "Error: ikjeft01 failed with parm '" << parm << "' rc: '" << rc << "'" << endl;
-    cout << "  Details:\n"
-         << response << endl;
+    cout << "Error: invoke failed with rc: '" << rc << "'" << endl;
+    cout << "  Details: " << zts.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
+
+  // rc = zts_term(&zts);
+  // cout << "term rc was " << rc << endl;
+  // if (RTNCD_SUCCESS != rc)
+  // {
+  //   cout << "Error: term failed with rc: '" << rc << "'" << endl;
+  //   cout << "  Details: " << zts.diag.e_msg << endl;
+  //   return RTNCD_FAILURE;
+  // }
 
   cout << response << endl;
 
@@ -1035,6 +1054,7 @@ int handle_log_view(ZCLIResult result)
   cout << "lines are " << lines << endl;
   return 0;
 }
+
 int handle_tool_dynalloc(ZCLIResult result)
 {
   int rc = 0;

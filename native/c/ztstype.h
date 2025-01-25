@@ -29,8 +29,12 @@ typedef struct
   unsigned char version[1]; // future use
   int32_t len;              // future use
 
-  int32_t buffer_size;
+  uint32_t ect;
   unsigned char reserve_1[4];
+
+  void *PTR64 cppl;
+
+  unsigned int token[4];
 
   ZDIAG diag;
 

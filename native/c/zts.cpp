@@ -25,18 +25,27 @@
 #include "zut.hpp"
 #include "ztstype.h"
 
+int zts_init_env(ZTS *zts)
+{
+  int rc = 0;
+  rc = ZTSIENV(zts);
+  return rc;
+}
+
 int zts_init(ZTS *zts)
 {
   int rc = 0;
   rc = ZTSINIT(zts);
   return rc;
 }
+
 int zts_invoke(ZTS *zts)
 {
   int rc = 0;
   rc = ZTSINVOK(zts);
   return rc;
 }
+
 int zts_term(ZTS *zts)
 {
   int rc = 0;

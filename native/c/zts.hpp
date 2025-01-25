@@ -15,6 +15,7 @@
 #include <string>
 #include "ztstype.h"
 
+int zts_init_env(ZTS *zts);
 int zts_init(ZTS *zts);
 int zts_invoke(ZTS *zts);
 int zts_term(ZTS *zts);

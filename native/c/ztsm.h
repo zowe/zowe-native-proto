@@ -21,6 +21,7 @@ extern "C"
 {
 #endif
 
+  int ZTSIENV(ZTS *PTR64);
   int ZTSINIT(ZTS *PTR64);
   int ZTSINVOK(ZTS *PTR64);
   int ZTSTERM(ZTS *PTR64);
