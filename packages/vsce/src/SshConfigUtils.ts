@@ -10,21 +10,19 @@
  */
 
 import { Gui, ZoweVsCodeExtension, type imperative } from "@zowe/zowe-explorer-api";
-import type * as vscode from "vscode";
+import * as vscode from "vscode";
+import { ZSshClient } from "zowe-native-proto-sdk";
 
-export class SshConfigManager {
-    private static mInstance: SshConfigManager;
-
-    public static get inst(): SshConfigManager {
-        SshConfigManager.mInstance ??= new SshConfigManager();
-        return SshConfigManager.mInstance;
+// biome-ignore lint/complexity/noStaticOnlyClass: <explanation>
+export class SshConfigUtils {
+    public static getServerPath(hostname: string): string {
+        const serverPathMap = vscode.workspace
+            .getConfiguration("zowe-native-proto-vsce")
+            .get<Record<string, string>>("serverPath");
+        return serverPathMap?.[hostname] ?? ZSshClient.DEFAULT_SERVER_PATH;
     }
 
-    public async createTeamConfig(): Promise<boolean> {
-        throw new Error("Not yet implemented");
-    }
-
-    public async promptForProfile(): Promise<imperative.IProfileLoaded | undefined> {
+    public static async promptForProfile(): Promise<imperative.IProfileLoaded | undefined> {
         const profCache = ZoweVsCodeExtension.getZoweExplorerApi().getExplorerExtenderApi().getProfilesCache();
         const sshProfiles = (await profCache.fetchAllProfilesByType("ssh")).filter(
             ({ name, profile }) => name != null && profile?.host != null,
@@ -35,7 +33,7 @@ export class SshConfigManager {
         ];
         const result = await Gui.showQuickPick(qpItems, { title: "Choose an SSH host" });
         if (result === qpItems[qpItems.length - 1]) {
-            if (await this.createTeamConfig()) {
+            if (await SshConfigUtils.createTeamConfig()) {
                 return profCache.getDefaultProfile("ssh");
             }
         } else if (result != null) {
@@ -43,7 +41,7 @@ export class SshConfigManager {
         }
     }
 
-    public showSessionInTree(profileName: string, visible: boolean): void {
+    public static showSessionInTree(profileName: string, visible: boolean): void {
         const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
         for (const setting of ["zowe.ds.history", "zowe.uss.history", "zowe.jobs.history"]) {
             const localStorage = (zoweExplorerApi.getExplorerExtenderApi() as any).getLocalStorage();
@@ -55,5 +53,9 @@ export class SshConfigManager {
             localStorage.setValue(setting, treeHistory);
         }
         zoweExplorerApi.getExplorerExtenderApi().reloadProfiles("ssh");
+    }
+
+    private static async createTeamConfig(): Promise<boolean> {
+        throw new Error("Not yet implemented");
     }
 }
