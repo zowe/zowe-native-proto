@@ -85,6 +85,15 @@ int ZTSINIT(ZTS *zts)
   // return RTNCD_SUCCESS;
 }
 
+// void write_stuff() ATTRIBUTE(amode31);
+void write_stuff()
+{
+  char data[256];
+  char savearea[256];
+  strcpy(data, "hello wolrd");
+  __asm(" LHI 0,11\n LA 1,%0\n sam31\n TPUT (1),(0)\n sam64" ::"m"(data) : "r0", "r1", "r14", "r15");
+}
+
 typedef int (*IKJEFTSR)(unsigned char *, char *, int *, int *, int *, void *PTR32) ATTRIBUTE(amode31);
 #pragma prolog(ZTSINVOK, "&CCN_MAIN SETB 1 \n MYPROLOG")
 int ZTSINVOK(ZTS *zts)
@@ -95,7 +104,7 @@ int ZTSINVOK(ZTS *zts)
 
   int rc = 0;
 
-  char *parm = "HELP";
+  char *parm = "LISTUSER";
   // char *parm = "HELP";
   // char *parm = "FREE DD(MINEMINE)";
   // char *parm = "ALTLIB DISPLAY";
@@ -103,7 +112,7 @@ int ZTSINVOK(ZTS *zts)
 
   flags[0] = 0x00;
   flags[1] = 0x01; // unauthorized
-  // flags[1] = 0x01; // unauthorized
+  flags[1] = 0x00; // authorized
   flags[2] = 0x01; // take a dump
   flags[3] = 0x01; // TSO/E, REXX, CLIST
 
@@ -132,6 +141,7 @@ int ZTSINVOK(ZTS *zts)
   zwto_debug("@TEST 3rd %d", zts31.diag.service_rc);
   zwto_debug("@TEST 4th %d", zts31.diag.service_rsn);
   zwto_debug("@TEST 5th %d", zts31.diag.service_rsn_secondary);
+  // write_stuff();
   memcpy(zts, &zts31, sizeof(ZTS));
 
   if (RTNCD_SUCCESS != rc && RTNCD_SUCCESS != zts31.diag.service_rc)

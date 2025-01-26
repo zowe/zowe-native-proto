@@ -966,23 +966,8 @@ int handle_tso_issue(ZCLIResult result)
     systsin = "/tmp/" + struser + "_systsin.txt";
 
   vector<string> dds;
-  // char buffer[256] = {0};
-  dds.push_back("alloc fi(systsprt) da('dkelosky.temp.systsprt')  space(5,5) CYL LRECL(80) RECFM(F,B) new dsorg(ps) keep");
-  // dds.push_back("alloc fi(systsprt) sysout(a) shr");
-  // dds.push_back("alloc fi(systsprt) path('" + systsprt + "') pathopts(owronly,ocreat,otrunc) pathmode(sirusr,siwusr,sirgrp) filedata(text) msg(2)");
-  // dds.push_back("alloc fi(systsin) path('" + systsin + "') pathopts(owronly,ocreat,otrunc) pathmode(sirusr,siwusr,sirgrp) filedata(text) msg(2)");
-  // dds.push_back("alloc fi(sysadata) da('" + adata_dsn + "') shr msg(2)");
-  // dds.push_back("alloc fi(edcdsect) da('" + chdr_dsn + "') shr msg(2)");
-
-  ZDS zds = {0};
-  // zds_write_to_dd(&zds, "SYSTSIN", parm);
-  // if (RTNCD_SUCCESS != rc)
-  // {
-  //   cout << "Error: writting to '" << systsprt << "' failed with rc: '" << rc << "'" << endl;
-  //   cout << "  Details:\n"
-  //        << zds.diag.e_msg << endl;
-  //   return RTNCD_FAILURE;
-  // }
+  dds.push_back("alloc fi(systsprt) path('" + systsprt + "') pathopts(ordwr,ocreat,otrunc,osync) pathmode(sirusr,siwusr,sirgrp) filedata(text) msg(2)");
+  // dds.push_back("alloc fi(systsprt) da('dkelosky.zowex') DSORG(PS) SPACE(5,5) CYL LRECL(80) RECFM(F,B) new keep");
 
   rc = loop_dynalloc(dds);
   if (RTNCD_SUCCESS != rc)
@@ -1009,7 +994,7 @@ int handle_tso_issue(ZCLIResult result)
   //   cout << "  Details: " << zts.diag.e_msg << endl;
   //   return RTNCD_FAILURE;
   // }
-
+  //
   printf("@TEST token %04x %04x %04x %04x\n", zts.token[0], zts.token[1], zts.token[2], zts.token[3]);
 
   rc = zts_invoke(&zts);
@@ -1021,23 +1006,24 @@ int handle_tso_issue(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  string f = "free dd(systsprt)";
-  unsigned int code = 0;
-  rc = zut_bpxwdyn(f, &code, response);
-  cout << "free " << response << endl;
+  // string f = "free dd(systsprt)";
+  // unsigned int code = 0;
+  // rc = zut_bpxwdyn(f, &code, response);
+  // cout << "free " << response << endl;
 
-  string a = "alloc fi(systsprt) da('dkelosky.temp.systsprt') shr";
-  rc = zut_bpxwdyn(f, &code, response);
-  cout << "alloc " << response << endl;
+  // string a = "alloc fi(systsprt) da('dkelosky.temp.systsprt') shr";
+  // rc = zut_bpxwdyn(f, &code, response);
+  // cout << "alloc " << response << endl;
 
   string output = "SYSTSPRT";
   string data;
   string dsn = "dkelosky.temp.systsprt";
-  rc = zds_read_from_dsn(&zds, dsn, data);
+  ZDS zds = {0};
+  rc = zds_read_from_dd(&zds, output, data);
   // rc = zds_read_from_dd(&zds, output, data);
   if (RTNCD_SUCCESS != rc)
   {
-    cout << "Error: reading from DD'" << output << "' failed with rc: '" << rc << "'" << endl;
+    cout << "Error: reading from DD '" << output << "' failed with rc: '" << rc << "'" << endl;
     cout << "  Details:\n"
          << zds.diag.e_msg << endl;
     return RTNCD_FAILURE;
