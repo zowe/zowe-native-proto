@@ -500,7 +500,7 @@ int handle_job_view_status(ZCLIResult result)
   string jobid(result.get_positional("jobid").get_value());
 
   const auto emit_csv = result.get_option("--response-format-csv").get_value() == "true";
-  rc = zjb_view_by_jobid(&zjb, jobid, job, emit_csv);
+  rc = zjb_view_by_jobid(&zjb, jobid, job);
 
   if (0 != rc)
   {
