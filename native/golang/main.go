@@ -37,9 +37,11 @@ func main() {
 	type CommandHandler func([]byte)
 	commandHandlers := map[string]CommandHandler{
 		"readDataset":    HandleReadDatasetRequest,
+		"readFile":       HandleReadFileRequest,
 		"readSpool":      HandleReadSpoolRequest,
 		"getJcl":         HandleGetJclRequest,
 		"writeDataset":   HandleWriteDatasetRequest,
+		"writeFile":      HandleWriteFileRequest,
 		"listDatasets":   HandleListDatasetsRequest,
 		"listDsMembers":  HandleListDsMembersRequest,
 		"listFiles":      HandleListFilesRequest,

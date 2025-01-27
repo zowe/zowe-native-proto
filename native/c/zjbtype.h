@@ -52,7 +52,7 @@ typedef struct
   char jobid[8];      // job id
   char owner_name[8]; // owner name used, upper cased/padded/truncated
 
-  char encoding[16]; // User-specified, desired encoding for spool contents
+  ZEncode encoding_opts; // User-specified, desired encoding options for spool contents
 
   ZDIAG diag;
 

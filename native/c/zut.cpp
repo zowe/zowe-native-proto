@@ -259,22 +259,77 @@ char zut_get_hex_char(int num)
   return val;
 }
 
-char *zut_encode_alloc(char *raw_data, const size_t input_size, const string &encoding, ZDIAG &diag, char **buf_end)
+void zut_print_string_as_bytes(string &input)
 {
-  iconv_t cd = iconv_open(encoding.c_str(), "IBM-1047");
+  for (char *p = (char *)input.data(); p < (input.data() + input.length()); p++)
+  {
+    if (p == (input.data() + input.length() - 1))
+    {
+      printf("%02x", (unsigned char)*p);
+    }
+    else
+    {
+      printf("%02x ", (unsigned char)*p);
+    }
+  }
+}
+
+/**
+ *
+ */
+bool zut_prepare_encoding(ZCLIResult &result, ZEncode *opts)
+{
+  if (!opts)
+  {
+    return false;
+  }
+
+  ZCLIOption &encodingOpt = result.get_option("--encoding");
+  const bool hasEncoding = encodingOpt.is_found();
+  string encodingValue = hasEncoding ? encodingOpt.get_value() : "";
+  if (hasEncoding && encodingValue.size() < sizeof(opts->codepage))
+  {
+    memcpy(opts->codepage, encodingValue.data(), encodingValue.length() + 1);
+    opts->data_type = result.get_option("--encoding").get_value() == "binary" ? eDataTypeBinary : eDataTypeText;
+    return true;
+  }
+
+  return false;
+}
+
+size_t zut_get_utf8_len(const char *str)
+{
+  size_t len = 0;
+  for (size_t i = 0; *str != 0; ++len)
+  {
+    int v01 = ((*str & 0x80) >> 7) & ((*str & 0x40) >> 6);
+    int v2 = (*str & 0x20) >> 5;
+    int v3 = (*str & 0x10) >> 4;
+    str += 1 + ((v01 << v2) | (v01 & v3));
+  }
+  return len;
+}
+
+char *zut_encode_alloc(const string &bytes, const string &from_encoding, const string &to_encoding, ZDIAG &diag, char **buf_end)
+{
+  iconv_t cd = iconv_open(to_encoding.c_str(), from_encoding.c_str());
   if (cd == (iconv_t)(-1))
   {
-    diag.e_msg_len = sprintf(diag.e_msg, "Cannot open converter from %s to %s", "IBM-1047", encoding.c_str());
+    diag.e_msg_len = sprintf(diag.e_msg, "Cannot open converter from %s to %s", from_encoding.c_str(), to_encoding.c_str());
     return NULL;
   }
 
-  size_t max_output_size = input_size * 4;
+  const size_t input_size = bytes.size();
+  const size_t max_output_size = input_size * 4;
   size_t input_bytes_remaining = input_size;
   size_t output_bytes_remaining = max_output_size;
   char *outbuf = new char[output_bytes_remaining];
   memset(outbuf, 0, output_bytes_remaining);
+
+  char *input = (char *)bytes.data();
   char *outptr = outbuf;
-  size_t rc = iconv(cd, &raw_data, &input_bytes_remaining, &outptr, &output_bytes_remaining);
+
+  size_t rc = iconv(cd, &input, &input_bytes_remaining, &outptr, &output_bytes_remaining);
   if (rc == -1)
   {
     diag.e_msg_len = sprintf(diag.e_msg, "Error when converting characters");

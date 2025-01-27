@@ -78,4 +78,16 @@ typedef struct
 #pragma pack(reset)
 #endif
 
+enum DataType
+{
+  eDataTypeText = 0,
+  eDataTypeBinary = 1
+};
+
+typedef struct _ZEncode
+{
+  char codepage[16];
+  int64_t data_type;
+} ZEncode;
+
 #endif
