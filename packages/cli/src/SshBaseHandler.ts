@@ -1,4 +1,4 @@
-/*
+/**
  * This program and the accompanying materials are made available under the terms of the
  * Eclipse Public License v2.0 which accompanies this distribution, and is available at
  * https://www.eclipse.org/legal/epl-v20.html
@@ -11,13 +11,14 @@
 
 import type { ICommandHandler, IHandlerParameters } from "@zowe/imperative";
 import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
-import { type IRpcResponse, ZSshUtils } from "zowe-native-proto-sdk";
+import { type IRpcResponse, ZSshClient, ZSshUtils } from "zowe-native-proto-sdk";
 
 export abstract class SshBaseHandler implements ICommandHandler {
     public async process(commandParameters: IHandlerParameters) {
         const session = ZSshUtils.buildSession(commandParameters.arguments);
+        using client = await ZSshClient.create(session);
 
-        const response = await this.processWithSession(commandParameters, session);
+        const response = await this.processWithClient(commandParameters, client);
 
         commandParameters.response.progress.endBar(); // end any progress bars
 
@@ -25,8 +26,8 @@ export abstract class SshBaseHandler implements ICommandHandler {
         commandParameters.response.data.setObj(response);
     }
 
-    public abstract processWithSession(
+    public abstract processWithClient(
         commandParameters: IHandlerParameters,
-        session: SshSession,
+        client: ZSshClient,
     ): Promise<IRpcResponse>;
 }

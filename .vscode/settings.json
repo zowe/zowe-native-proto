@@ -38,6 +38,7 @@
     "**/.hlasmplugin/proc_grps.json": "jsonc",
     "**/.hlasmplugin/pgm_conf.json": "jsonc",
     "*.proto": "csharp",
+    "*.s": "hlasm",
     "string": "cpp",
     "iostream": "cpp",
     "ios": "cpp",
