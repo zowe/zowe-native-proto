@@ -320,13 +320,15 @@ std::string zut_encode_alloc(const string &bytes, const string &from_encoding, c
   }
 
   const size_t input_size = bytes.size();
-  // assuming maximum supported format is UTF-16 (UCS-2) which can be represented as up to 2 2-byte code units per character
+  // the largest supported encoding scheme is UTF-16, which can be represented w/ up to two 2-byte code units per character
   const size_t max_output_size = input_size * 4;
 
   size_t input_bytes_remaining = input_size;
   size_t output_bytes_remaining = max_output_size;
 
   // Create a contiguous memory region to store the output w/ new encoding
+  // There is no guarantee that the memory is contiguous when using an empty std::string here (as xlc does not completely implement the C++11 standard),
+  // so we'll handle the memory ourselves
   char *output_buffer = new char[output_bytes_remaining];
   std::fill(output_buffer, output_buffer + output_bytes_remaining, 0);
 
@@ -337,16 +339,26 @@ std::string zut_encode_alloc(const string &bytes, const string &from_encoding, c
   string result;
 
   size_t rc = iconv(cd, &input, &input_bytes_remaining, &output_iter, &output_bytes_remaining);
+
+  // If an error occurred, throw an exception with iconv's return code and errno
   if (rc == -1)
   {
-    // If an error occurred, throw an exception with iconv's return code and the errno
     diag.e_msg_len = sprintf(diag.e_msg, "[zut_encode_alloc] Error when converting characters. rc=%lu,errno=%d", rc, errno);
     delete[] output_buffer;
-    throw std::exception("[zut_encode_alloc] Error converting characters: " + diag.e_msg_len);
+    throw std::exception(diag.e_msg);
   }
+
+  // "If the input conversion is stopped... the value pointed to by inbytesleft will be nonzero and errno is set to indicate the condition"
+  if (input_bytes_remaining != 0)
+  {
+    diag.e_msg_len = sprintf(diag.e_msg, "[zut_encode_alloc] Failed to convert all input bytes. rc=%lu,errno=%d", rc, errno);
+    delete[] output_buffer;
+    throw std::exception(diag.e_msg);
+  }
+
   iconv_close(cd);
 
-  // Copy the bytes into a new string and return it to the caller
+  // Copy converted bytes into a new string and return it to the caller
   result.assign(output_buffer, output_iter - output_buffer);
   delete[] output_buffer;
 
