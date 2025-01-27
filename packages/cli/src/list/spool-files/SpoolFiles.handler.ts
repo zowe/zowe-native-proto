@@ -22,7 +22,7 @@ export default class ListSpoolsHandler extends SshBaseHandler {
         params.response.format.output({
             output: response.items,
             format: "table",
-            fields: ["id", "ddname", "stepname"],
+            fields: ["id", "ddname", "stepname", "procstep", "dsname"],
         });
         return response;
     }

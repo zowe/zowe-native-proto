@@ -101,6 +101,8 @@ func HandleListSpoolsRequest(jsonData []byte) {
 			Id:       id,
 			DdName:   vals[0],
 			StepName: vals[3],
+			DsName:   vals[1],
+			ProcStep: vals[4],
 		}
 	}
 

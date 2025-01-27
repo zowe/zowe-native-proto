@@ -37,4 +37,6 @@ type Spool struct {
 	Id       int    `json:"id"`
 	DdName   string `json:"ddname"`
 	StepName string `json:"stepname"`
+	DsName   string `json:"dsname"`
+	ProcStep string `json:"procstep"`
 }
