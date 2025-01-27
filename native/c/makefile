@@ -58,7 +58,7 @@ C_FLAGS=-W "c,lp64,langlvl(extended),xplink,exportall"\
  -c \
  -I./chdsect
 
-DLL_CPP_FLAGS=-W "c,lp64,langlvl(extended),dll,xplink,exportall,showinc"\
+DLL_CPP_FLAGS=-W "c,lp64,langlvl(extended0x),dll,xplink,exportall,showinc"\
  -qsource \
  -g \
  -c \
@@ -69,7 +69,7 @@ DLL_BND_FLAGS=-W "l,lp64,dll,dynam=dll,xplink,map,list" \
  -qsource
 
 # -g generates debugging information
-CPP_FLAGS=-W "c,lp64,langlvl(extended),dll,xplink,showinc"\
+CPP_FLAGS=-W "c,lp64,langlvl(extended0x),dll,xplink,showinc"\
  -qsource \
  -g \
  -c
