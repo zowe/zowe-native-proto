@@ -29,7 +29,7 @@ int zut_convert_dsect();
 bool zut_prepare_encoding(ZCLIResult &result, ZEncode *opts);
 void zut_print_string_as_bytes(std::string &input);
 
-char *zut_encode_alloc(const std::string &bytes, const std::string &from_encoding, const std::string &to_encoding, ZDIAG &diag, char **buf_end);
+std::string zut_encode_alloc(const string &bytes, const string &from_encoding, const string &to_encoding, ZDIAG &diag);
 std::string zut_format_as_csv(std::vector<std::string> &fields);
 std::string &zut_rtrim(std::string &s, const char *t = " ");
 std::string &zut_ltrim(std::string &s, const char *t = " ");

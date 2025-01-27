@@ -310,7 +310,7 @@ size_t zut_get_utf8_len(const char *str)
   return len;
 }
 
-char *zut_encode_alloc(const string &bytes, const string &from_encoding, const string &to_encoding, ZDIAG &diag, char **buf_end)
+std::string zut_encode_alloc(const string &bytes, const string &from_encoding, const string &to_encoding, ZDIAG &diag)
 {
   iconv_t cd = iconv_open(to_encoding.c_str(), from_encoding.c_str());
   if (cd == (iconv_t)(-1))
@@ -320,25 +320,37 @@ char *zut_encode_alloc(const string &bytes, const string &from_encoding, const s
   }
 
   const size_t input_size = bytes.size();
-  const size_t max_output_size = input_size * 4;
+  // assuming maximum supported format is UTF-16 (UCS-2) which is a 2-byte character width
+  const size_t max_output_size = input_size * 2;
+
   size_t input_bytes_remaining = input_size;
   size_t output_bytes_remaining = max_output_size;
-  char *outbuf = new char[output_bytes_remaining];
-  memset(outbuf, 0, output_bytes_remaining);
 
+  // Create a contiguous memory region to store the output w/ new encoding
+  char *output_buffer = new char[output_bytes_remaining];
+  std::fill(output_buffer, output_buffer + output_bytes_remaining, 0);
+
+  // Prepare iconv parameters (copy output_buffer ptr to output_iter to cache start and end positions)
   char *input = (char *)bytes.data();
-  char *outptr = outbuf;
+  char *output_iter = output_buffer;
 
-  size_t rc = iconv(cd, &input, &input_bytes_remaining, &outptr, &output_bytes_remaining);
+  string result;
+
+  size_t rc = iconv(cd, &input, &input_bytes_remaining, &output_iter, &output_bytes_remaining);
   if (rc == -1)
   {
-    diag.e_msg_len = sprintf(diag.e_msg, "Error when converting characters");
-    delete[] outbuf;
-    return nullptr;
+    // If an error occurred, throw an exception with iconv's return code and the errno
+    diag.e_msg_len = sprintf(diag.e_msg, "[zut_encode_alloc] Error when converting characters. rc=%lu,errno=%d", rc, errno);
+    delete[] output_buffer;
+    throw std::exception("[zut_encode_alloc] Error converting characters: " + diag.e_msg_len);
   }
-  *buf_end = outptr;
   iconv_close(cd);
-  return outbuf;
+
+  // Copy the bytes into a new string and return it to the caller
+  result.assign(output_buffer, output_iter - output_buffer);
+  delete[] output_buffer;
+
+  return result;
 }
 
 std::string &zut_rtrim(std::string &s, const char *t)
