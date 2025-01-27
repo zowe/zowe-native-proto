@@ -156,7 +156,7 @@ int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response)
  */
 int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
 {
-  ifstream in(file.c_str(), zusf->encoding_opts.data_type == eDataTypeBinary ? ios::in | ios::binary : ios::in);
+  ifstream in(file.c_str(), zusf->encoding_opts.data_type == eDataTypeBinary ? ifstream::in | ifstream::binary : ifstream::in);
   if (!in.is_open())
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open file '%s'", file.c_str());
@@ -171,18 +171,21 @@ int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
   in.read(rawData, size);
 
   response.assign(rawData);
+  delete[] rawData;
+
   in.close();
 
-  char tagged_encoding[16] = {0};
+  // TODO(traeok): Finish support for encoding auto-detection
+  // char tagged_encoding[16] = {0};
   // ssize_t xattr_result = getxattr(file.c_str(), "system.filetag", &tagged_encoding);
 
   const bool encodingProvided = zusf->encoding_opts.data_type == eDataTypeText && strlen(zusf->encoding_opts.codepage) > 0;
 
   char *bufEnd;
-  if (encodingProvided /* && (*encoding != "IBM-1047" && *encoding != "01047") */)
+  if (size > 0 && encodingProvided /* && (*encoding != "IBM-1047" && *encoding != "01047") */)
   {
     // const encoding = encodingProvided ? string(zusf->encoding_opts.codepage) : string(tagged_encoding);
-    char *outBuf = zut_encode_alloc(rawData, string(zusf->encoding_opts.codepage), "UTF-8", zusf->diag, &bufEnd);
+    char *outBuf = zut_encode_alloc(response, string(zusf->encoding_opts.codepage), "UTF-8", zusf->diag, &bufEnd);
     if (outBuf)
     {
       response.clear();
@@ -190,8 +193,6 @@ int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
       delete[] outBuf;
     }
   }
-
-  delete[] rawData;
 
   return RTNCD_SUCCESS;
 }
@@ -219,7 +220,7 @@ int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data)
   if (hasEncoding)
   {
     char *bufEnd;
-    char *outBuf = zut_encode_alloc((char *)data.c_str(), "UTF-8", string(zusf->encoding_opts.codepage), zusf->diag, &bufEnd);
+    char *outBuf = zut_encode_alloc(data, "UTF-8", string(zusf->encoding_opts.codepage), zusf->diag, &bufEnd);
     if (outBuf)
     {
       data.clear();

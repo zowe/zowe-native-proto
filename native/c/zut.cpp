@@ -310,7 +310,7 @@ size_t zut_get_utf8_len(const char *str)
   return len;
 }
 
-char *zut_encode_alloc(char *raw_data, const string &from_encoding, const string &to_encoding, ZDIAG &diag, char **buf_end)
+char *zut_encode_alloc(const string &bytes, const string &from_encoding, const string &to_encoding, ZDIAG &diag, char **buf_end)
 {
   iconv_t cd = iconv_open(to_encoding.c_str(), from_encoding.c_str());
   if (cd == (iconv_t)(-1))
@@ -319,14 +319,17 @@ char *zut_encode_alloc(char *raw_data, const string &from_encoding, const string
     return NULL;
   }
 
-  const size_t input_size = strlen(raw_data);
+  const size_t input_size = bytes.size();
   const size_t max_output_size = input_size * 4;
   size_t input_bytes_remaining = input_size;
   size_t output_bytes_remaining = max_output_size;
   char *outbuf = new char[output_bytes_remaining];
   memset(outbuf, 0, output_bytes_remaining);
+
+  char *input = (char *)bytes.data();
   char *outptr = outbuf;
-  size_t rc = iconv(cd, &raw_data, &input_bytes_remaining, &outptr, &output_bytes_remaining);
+
+  size_t rc = iconv(cd, &input, &input_bytes_remaining, &outptr, &output_bytes_remaining);
   if (rc == -1)
   {
     diag.e_msg_len = sprintf(diag.e_msg, "Error when converting characters");
