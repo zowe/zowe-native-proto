@@ -64,3 +64,14 @@ export namespace WriteDataset {
         success: boolean;
     }
 }
+
+export namespace RestoreDataset {
+    export interface Request extends IRpcRequest {
+        command: "restoreDataset";
+        dataset: string;
+    }
+
+    export interface Response extends IRpcResponse {
+        success: boolean;
+    }
+}

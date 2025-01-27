@@ -49,6 +49,7 @@ func main() {
 		"listJobs":       HandleListJobsRequest,
 		"listSpools":     HandleListSpoolsRequest,
 		"consoleCommand": HandleConsoleCommandRequest,
+		"restoreDataset": HandleRestoreDatasetRequest,
 	}
 
 	for data := range input {

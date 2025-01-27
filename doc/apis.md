@@ -15,3 +15,4 @@
 | Run console cmds | ✅      | ✅         | ✅  | ✅  | ❌   |
 | Run tso cmds     | ❌      | ❌         | ✅  | ❌  | ❌   |
 | Run unix cmds    | ❌      | ❌         | ✅  | ❌  | ❌   |
+| Restore data set | ✅      | ✅         | ✅  | ✅  | ❌   |
