@@ -9,7 +9,7 @@
  *
  */
 
-import { writeFileSync } from "node:fs";
+import { writeFileSync, readFileSync } from "node:fs";
 import type * as zosfiles from "@zowe/zos-files-for-zowe-sdk";
 import { type MainframeInteraction, imperative } from "@zowe/zowe-explorer-api";
 import { ZSshUtils } from "zowe-native-proto-sdk";
