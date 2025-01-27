@@ -28,7 +28,7 @@ func HandleListJobsRequest(jsonData []byte) {
 		return
 	}
 
-	args := []string{"./zowex", "job", "list", "--rfc", "1"}
+	args := []string{"./zowex", "job", "list", "--rfc", "true"}
 	if len(listRequest.Owner) != 0 {
 		args = append(args, "--owner", listRequest.Owner)
 	}
@@ -74,7 +74,7 @@ func HandleListSpoolsRequest(jsonData []byte) {
 		return
 	}
 
-	args := []string{"./zowex", "job", "list-files", listRequest.JobId, "--rfc", "1"}
+	args := []string{"./zowex", "job", "list-files", listRequest.JobId, "--rfc", "true"}
 
 	out, err := exec.Command(args[0], args[1:]...).Output()
 	if err != nil {
@@ -172,4 +172,45 @@ func HandleGetJclRequest(jsonData []byte) {
 	} else {
 		fmt.Println(string(v))
 	}
+}
+
+func HandleGetStatusRequest(jsonData []byte) {
+	var request GetJclRequest
+	err := json.Unmarshal(jsonData, &request)
+	if err != nil {
+		return
+	}
+	args := []string{"./zowex", "job", "view-status", request.JobId, "--rfc", "true"}
+	out, err := exec.Command(args[0], args[1:]...).Output()
+	if err != nil {
+		log.Println("Error executing command:", err)
+		return
+	}
+	jobs := strings.Split(strings.TrimSpace(string(out)), "\n")
+
+	// log.Println(jobs)
+	jobsResponse := ListJobsResponse{
+		Items: make([]Job, len(jobs)),
+	}
+
+	for i, job := range jobs {
+		vals := strings.Split(job, ",")
+		if len(vals) < 4 {
+			continue
+		}
+		jobsResponse.Items[i] = Job{
+			Id:      vals[0],
+			Retcode: vals[1],
+			Name:    strings.TrimSpace(vals[2]),
+			Status:  vals[3],
+		}
+	}
+
+	v, err := json.Marshal(jobsResponse)
+	if err != nil {
+		fmt.Println(err.Error())
+	} else {
+		fmt.Println(string(v))
+	}
+
 }

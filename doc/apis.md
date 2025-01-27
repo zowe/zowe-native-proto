@@ -11,3 +11,7 @@
 | Write data set   | ✅      | ✅         | ✅  | ❌  | ❌   |
 | Write USS file   | ✅      | ✅         | ✅  | ❌  | ❌   |
 | Get job JCL      | ✅      | ✅         | ✅  | ❌  | ✅   |
+| List job status  | ✅      | ✅         | ✅  | ✅  | ❌   |
+| Run console cmds | ✅      | ✅         | ✅  | ✅  | ❌   |
+| Run tso cmds     | ❌      | ❌         | ✅  | ❌  | ❌   |
+| Run unix cmds    | ❌      | ❌         | ✅  | ❌  | ❌   |
