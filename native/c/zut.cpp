@@ -316,7 +316,7 @@ char *zut_encode_alloc(const string &bytes, const string &from_encoding, const s
   if (cd == (iconv_t)(-1))
   {
     diag.e_msg_len = sprintf(diag.e_msg, "Cannot open converter from %s to %s", from_encoding.c_str(), to_encoding.c_str());
-    return NULL;
+    return nullptr;
   }
 
   const size_t input_size = bytes.size();
@@ -334,7 +334,7 @@ char *zut_encode_alloc(const string &bytes, const string &from_encoding, const s
   {
     diag.e_msg_len = sprintf(diag.e_msg, "Error when converting characters");
     delete[] outbuf;
-    return NULL;
+    return nullptr;
   }
   *buf_end = outptr;
   iconv_close(cd);

@@ -245,7 +245,7 @@ bool ZCLI::validate()
       verb_map.insert(map<string, int>::value_type(iit->get_name(), 0));
 
       // ensure handler provided
-      if (NULL == iit->get_zcli_verb_handler())
+      if (iit->get_zcli_verb_handler() == nullptr)
       {
         cerr << "ZCLI Error: each verb must container a handler, " << iit->get_name() << " does not" << endl;
         return false;
@@ -492,7 +492,7 @@ int ZCLI::run(int argc, char *argv[])
   ZCLIVerb &verb = group.get_verb(argv[CLI_VERB_ARG]);
 
   // show group level help if unknwon verb
-  if (NULL == verb.get_zcli_verb_handler())
+  if (verb.get_zcli_verb_handler() == nullptr)
   {
     // delete command_group;
     cerr << "Unknown command verb: " << argv[CLI_VERB_ARG] << endl;

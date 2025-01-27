@@ -68,7 +68,7 @@ int zusf_create_uss_file_or_dir(ZUSF *zusf, string file, string mode, bool creat
   // TODO(zFernand0): `mkdirp` when creatnig a file in a directory that doesn't exist
   if (createDir)
   {
-    mkdir(file.c_str(), strtol(mode.c_str(), NULL, 8));
+    mkdir(file.c_str(), strtol(mode.c_str(), nullptr, 8));
     return RTNCD_SUCCESS;
   }
   else
@@ -77,7 +77,7 @@ int zusf_create_uss_file_or_dir(ZUSF *zusf, string file, string mode, bool creat
     if (out.is_open())
     {
       out.close();
-      chmod(file.c_str(), strtol(mode.c_str(), NULL, 8));
+      chmod(file.c_str(), strtol(mode.c_str(), nullptr, 8));
       return RTNCD_SUCCESS;
     }
   }
@@ -120,7 +120,7 @@ int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response)
   }
 
   DIR *dir;
-  if ((dir = opendir(file.c_str())) == NULL)
+  if ((dir = opendir(file.c_str())) == nullptr)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open directory '%s'", file.c_str());
     return RTNCD_FAILURE;
@@ -128,7 +128,7 @@ int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response)
 
   struct dirent *entry;
   response.clear();
-  while ((entry = readdir(dir)) != NULL)
+  while ((entry = readdir(dir)) != nullptr)
   {
     // TODO(zFernand0): Skip hidden files
     if ((strcmp(entry->d_name, ".") != 0) && (strcmp(entry->d_name, "..") != 0))
@@ -253,6 +253,6 @@ int zusf_chmod_uss_file_or_dir(ZUSF *zusf, string file, string mode)
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Path '%s' does not exist", file.c_str());
     return RTNCD_FAILURE;
   }
-  chmod(file.c_str(), strtol(mode.c_str(), NULL, 8));
+  chmod(file.c_str(), strtol(mode.c_str(), nullptr, 8));
   return 0;
 }

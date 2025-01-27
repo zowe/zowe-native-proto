@@ -128,7 +128,7 @@ int zjb_read_job_jcl_by_jobid(ZJB *zjb, string jobid, string &response)
 int zjb_read_job_content_by_dsn(ZJB *zjb, string jobdsn, string &response)
 {
   int rc = 0;
-  unsigned char *p = NULL;
+  unsigned char *p = nullptr;
   ZDS zds = {0};
 
   // calculate total size needed, obtain, & clear
@@ -370,7 +370,7 @@ int zjb_submit(ZJB *zjb, string data_set, string &jobId)
 int zjb_list_dds_by_jobid(ZJB *zjb, string jobid, vector<ZJobDD> &jobDDs)
 {
   int rc = 0;
-  STATSEVB *PTR64 sysoutInfo = NULL;
+  STATSEVB *PTR64 sysoutInfo = nullptr;
   int entries = 0;
 
   if (0 == zjb->buffer_size)
@@ -431,7 +431,7 @@ int zjb_list_dds_by_jobid(ZJB *zjb, string jobid, vector<ZJobDD> &jobDDs)
 int zjb_view_by_jobid(ZJB *zjb, string jobid, ZJob &job)
 {
   int rc = 0;
-  STATJQTR *PTR64 jobInfo = NULL;
+  STATJQTR *PTR64 jobInfo = nullptr;
   int entries = 0;
 
   ///
@@ -550,7 +550,7 @@ int zjb_view_by_jobid(ZJB *zjb, string jobid, ZJob &job)
 int zjb_list_by_owner(ZJB *zjb, string owner_name, vector<ZJob> &jobs)
 {
   int rc = 0;
-  STATJQTR *PTR64 jobInfo = NULL;
+  STATJQTR *PTR64 jobInfo = nullptr;
   int entries = 0;
 
   if ("" == owner_name)

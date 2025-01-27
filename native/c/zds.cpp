@@ -266,7 +266,7 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &list)
 
   while (fread(&rec, sizeof *buffer, sizeof(RECORD), fp))
   {
-    unsigned char *data = NULL;
+    unsigned char *data = nullptr;
     data = (unsigned char *)&rec;
     data += sizeof(rec.count); // increment past halfword length
     int len = sizeof(RECORD_ENTRY);
@@ -521,7 +521,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
 
     int work_area_total = csi_work_area->header.used_size;
     unsigned char *p = (unsigned char *)&csi_work_area->entry;
-    ZDS_CSI_ENTRY *f = NULL;
+    ZDS_CSI_ENTRY *f = nullptr;
 
     work_area_total -= sizeof(ZDS_CSI_HEADER);
     work_area_total -= sizeof(ZDS_CSI_CATALOG);
