@@ -431,7 +431,7 @@ int handle_job_list(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  const bool emit_csv = result.get_option("--response-format-csv").is_found();
+  const auto emit_csv = result.get_option("--response-format-csv").is_found();
   for (vector<ZJob>::iterator it = jobs.begin(); it != jobs.end(); it++)
   {
     if (emit_csv)
@@ -468,7 +468,7 @@ int handle_job_list_files(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  const bool emit_csv = result.get_option("--response-format-csv").is_found();
+  const auto emit_csv = result.get_option("--response-format-csv").is_found();
   for (vector<ZJobDD>::iterator it = job_dds.begin(); it != job_dds.end(); ++it)
   {
     std::vector<string> fields;
@@ -522,7 +522,7 @@ int handle_job_view_file(ZCLIResult result)
   string jobid(result.get_positional("jobid").get_value());
   string key(result.get_positional("key").get_value());
 
-  const bool hasEncoding = zut_prepare_encoding(result, &zjb.encoding_opts);
+  const auto hasEncoding = zut_prepare_encoding(result, &zjb.encoding_opts);
 
   string resp;
   rc = zjb_read_jobs_output_by_jobid_and_key(&zjb, jobid, atoi(key.c_str()), resp);
@@ -737,7 +737,7 @@ int handle_data_set_view_dsn(ZCLIResult result)
   ZCLIOption &encoding = result.get_option("--encoding");
   ZDS zds = {0};
   string response;
-  const bool hasEncoding = zut_prepare_encoding(result, &zds.encoding_opts);
+  const auto hasEncoding = zut_prepare_encoding(result, &zds.encoding_opts);
   rc = zds_read_from_dsn(&zds, dsn, response);
   if (0 != rc)
   {
@@ -772,7 +772,7 @@ int handle_data_set_list(ZCLIResult result)
   }
   vector<ZDSEntry> entries;
 
-  const bool emit_csv = result.get_option("--response-format-csv").is_found();
+  const auto emit_csv = result.get_option("--response-format-csv").is_found();
   rc = zds_list_data_sets(&zds, dsn, entries);
   if (RTNCD_SUCCESS == rc)
   {
@@ -864,7 +864,7 @@ int handle_data_set_write_to_dsn(ZCLIResult result)
   string line;
 
   size_t byteSize = 0ul;
-  const bool hasEncoding = zut_prepare_encoding(result, &zds.encoding_opts);
+  const auto hasEncoding = zut_prepare_encoding(result, &zds.encoding_opts);
   if (hasEncoding)
   {
     std::istreambuf_iterator<char> begin(std::cin);
@@ -1033,7 +1033,7 @@ int handle_uss_view(ZCLIResult result)
   string uss_file = result.get_positional("file-path").get_value();
 
   ZUSF zusf = {0};
-  const bool hasEncoding = zut_prepare_encoding(result, &zusf.encoding_opts);
+  const auto hasEncoding = zut_prepare_encoding(result, &zusf.encoding_opts);
 
   string response;
   rc = zusf_read_from_uss_file(&zusf, uss_file, response);
