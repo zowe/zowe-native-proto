@@ -18,14 +18,6 @@ import (
 )
 
 func main() {
-	// First, disable _BPXK_AUTOCVT for this process and all children. Otherwise, this will cause issues when
-	// piping data between layers.
-	err := os.Setenv("_BPXK_AUTOCVT", "")
-	if err != nil {
-		log.Fatalln("Error disabling _BPXK_AUTOCVT during initialization:", err)
-		return
-	}
-
 	input := make(chan []byte)
 
 	go func() {

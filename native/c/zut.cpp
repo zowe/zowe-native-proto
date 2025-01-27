@@ -320,8 +320,8 @@ std::string zut_encode_alloc(const string &bytes, const string &from_encoding, c
   }
 
   const size_t input_size = bytes.size();
-  // assuming maximum supported format is UTF-16 (UCS-2) which has 2-byte code units
-  const size_t max_output_size = input_size * 2;
+  // assuming maximum supported format is UTF-16 (UCS-2) which can be represented as up to 2 2-byte code units per character
+  const size_t max_output_size = input_size * 4;
 
   size_t input_bytes_remaining = input_size;
   size_t output_bytes_remaining = max_output_size;

@@ -16,6 +16,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
 	"strings"
 )
@@ -61,6 +62,17 @@ func HandleWriteDatasetRequest(jsonData []byte) {
 		// log.Println("Error decoding ReadDatasetRequest:", err)
 		return
 	}
+
+	// Temporarily disable _BPXK_AUTOCVT for this process and all children. Otherwise, this will cause issues when
+	// piping data between layers.
+	autocvt := os.Getenv("_BPXK_AUTOCVT")
+
+	err = os.Setenv("_BPXK_AUTOCVT", "")
+	if err != nil {
+		log.Println("Error disabling _BPXK_AUTOCVT during write:", err)
+		return
+	}
+
 	// log.Println("ReadDatasetRequest received:", dsRequest.Dataset, dsRequest.Encoding)
 	decodedBytes, err := base64.StdEncoding.DecodeString(dsRequest.Contents)
 	if err != nil {
@@ -93,6 +105,13 @@ func HandleWriteDatasetRequest(jsonData []byte) {
 	}
 	// discard CLI output as its currently unused
 	_ = out
+
+	// Restore value for _BPXK_AUTOCVT
+	err = os.Setenv("_BPXK_AUTOCVT", autocvt)
+	if err != nil {
+		log.Println("Error restoring _BPXK_AUTOCVT after write:", err)
+		return
+	}
 
 	dsResponse := WriteDatasetResponse{
 		Success: true,
