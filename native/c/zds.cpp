@@ -111,7 +111,7 @@ int zds_read_from_dsn(ZDS *zds, string dsn, string &response)
 
   in.close();
 
-  const bool encodingProvided = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
+  const auto encodingProvided = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
 
   char *bufEnd;
   if (size > 0 && encodingProvided /* && (*encoding != "IBM-1047" && *encoding != "01047") */)
@@ -148,7 +148,7 @@ int zds_write_to_dd(ZDS *zds, string ddname, string &data)
 
 int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data)
 {
-  const bool hasEncoding = strlen(zds->encoding_opts.codepage) > 0;
+  const auto hasEncoding = strlen(zds->encoding_opts.codepage) > 0;
   dsn = "//'" + dsn + "'";
   ofstream out(dsn.c_str(), zds->encoding_opts.data_type == eDataTypeBinary ? ios::binary : ios::out);
 

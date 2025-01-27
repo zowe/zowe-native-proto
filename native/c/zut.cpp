@@ -285,7 +285,7 @@ bool zut_prepare_encoding(ZCLIResult &result, ZEncode *opts)
   }
 
   ZCLIOption &encodingOpt = result.get_option("--encoding");
-  const bool hasEncoding = encodingOpt.is_found();
+  const auto hasEncoding = encodingOpt.is_found();
   string encodingValue = hasEncoding ? encodingOpt.get_value() : "";
   if (hasEncoding && encodingValue.size() < sizeof(opts->codepage))
   {
