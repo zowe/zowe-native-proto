@@ -30,6 +30,7 @@
 
 // NOTE(zFernand0): Figure out how to visualize the struct in memory
 // NOTE(Kelosky): struct is padded to nearest double word boundary; ensure proper alignment for fields
+
 typedef struct
 {
   char eye[3];              // future use
@@ -38,6 +39,8 @@ typedef struct
 
   int16_t mode;         // permissions
   char file_name[1024]; // filename
+
+  ZEncode encoding_opts;
 
   ZDIAG diag;
 

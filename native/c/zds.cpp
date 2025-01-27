@@ -68,20 +68,20 @@ int zds_read_from_dd(ZDS *zds, string ddname, string &response)
   in.close();
 
   const size_t size = response.size() + 1;
-  char *raw_data = new char[size];
-  memcpy(raw_data, response.c_str(), size);
+  string bytes;
+  bytes.reserve(size);
+  memcpy((char *)bytes.data(), response.c_str(), size);
 
-  delete[] raw_data;
-
-  if (strlen(zds->encoding) > 0 /* && (*encoding != "IBM-1047" && *encoding != "01047") */)
+  if (bytes.size() > 0 && strlen(zds->encoding_opts.codepage) > 0 /* && (*encoding != "IBM-1047" && *encoding != "01047") */)
   {
-    char *bufEnd;
-    char *outBuf = zut_encode_alloc(raw_data, size, string(zds->encoding), zds->diag, &bufEnd);
-    if (outBuf)
+    char *buf_end;
+    // Convert from requested encoding to UTF-8 for standardized character code page
+    char *out_buf = zut_encode_alloc(bytes, string(zds->encoding_opts.codepage), "UTF-8", zds->diag, &buf_end);
+    if (out_buf)
     {
       response.clear();
-      response.assign(outBuf, bufEnd - outBuf);
-      delete[] outBuf;
+      response.assign(out_buf, buf_end - out_buf);
+      delete[] out_buf;
     }
   }
 
@@ -92,7 +92,7 @@ int zds_read_from_dsn(ZDS *zds, string dsn, string &response)
 {
   dsn = "//'" + dsn + "'";
 
-  ifstream in(dsn.c_str());
+  ifstream in(dsn.c_str(), zds->encoding_opts.data_type == eDataTypeBinary ? ios::in | ios::binary : ios::in);
   if (!in.is_open())
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open file '%s'", dsn.c_str());
@@ -107,12 +107,17 @@ int zds_read_from_dsn(ZDS *zds, string dsn, string &response)
   in.read(rawData, size);
 
   response.assign(rawData);
+  delete[] rawData;
+
   in.close();
 
+  const auto encodingProvided = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
+
   char *bufEnd;
-  if (strlen(zds->encoding) > 0 /* && (*encoding != "IBM-1047" && *encoding != "01047") */)
+  if (size > 0 && encodingProvided /* && (*encoding != "IBM-1047" && *encoding != "01047") */)
   {
-    char *outBuf = zut_encode_alloc(rawData, size, string(zds->encoding), zds->diag, &bufEnd);
+    // Convert the data with given codepage to UTF-8
+    char *outBuf = zut_encode_alloc(response, string(zds->encoding_opts.codepage), "UTF-8", zds->diag, &bufEnd);
     if (outBuf)
     {
       response.clear();
@@ -141,18 +146,33 @@ int zds_write_to_dd(ZDS *zds, string ddname, string &data)
   return 0;
 }
 
-int zds_write_to_dsn(ZDS *zds, string dsn, string &data)
+int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data)
 {
+  const auto hasEncoding = strlen(zds->encoding_opts.codepage) > 0;
   dsn = "//'" + dsn + "'";
-  ofstream out(dsn.c_str());
+  ofstream out(dsn.c_str(), zds->encoding_opts.data_type == eDataTypeBinary ? ios::binary : ios::out);
 
-  if (!out.is_open())
+  if (!out.good())
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open '%s'", dsn.c_str());
     return RTNCD_FAILURE;
   }
 
-  out << data;
+  if (hasEncoding)
+  {
+    char *bufEnd;
+    // Convert from UTF-8 data representation to the given encoding to store within dataset
+    char *outBuf = zut_encode_alloc(data, "UTF-8", zds->encoding_opts.codepage, zds->diag, &bufEnd);
+    if (outBuf)
+    {
+      out << outBuf;
+      delete[] outBuf;
+    }
+  }
+  else
+  {
+    out << data;
+  }
   out.close();
 
   return 0;
@@ -246,7 +266,7 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &list)
 
   while (fread(&rec, sizeof *buffer, sizeof(RECORD), fp))
   {
-    unsigned char *data = NULL;
+    unsigned char *data = nullptr;
     data = (unsigned char *)&rec;
     data += sizeof(rec.count); // increment past halfword length
     int len = sizeof(RECORD_ENTRY);
@@ -501,7 +521,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
 
     int work_area_total = csi_work_area->header.used_size;
     unsigned char *p = (unsigned char *)&csi_work_area->entry;
-    ZDS_CSI_ENTRY *f = NULL;
+    ZDS_CSI_ENTRY *f = nullptr;
 
     work_area_total -= sizeof(ZDS_CSI_HEADER);
     work_area_total -= sizeof(ZDS_CSI_CATALOG);

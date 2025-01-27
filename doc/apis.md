@@ -6,8 +6,8 @@
 | List jobs        | ✅      | ✅         | ✅  | ✅  | ✅   |
 | List spool files | ✅      | ✅         | ✅  | ❌  | ✅   |
 | Read data set    | ✅      | ✅         | ✅  | ✅  | ✅   |
-| Read USS file    | ✅      | ❌         | ✅  | ❌  | ❌   |
+| Read USS file    | ✅      | ✅         | ✅  | ❌  | ❌   |
 | Read spool file  | ✅      | ✅         | ✅  | ❌  | ✅   |
 | Write data set   | ✅      | ✅         | ✅  | ❌  | ❌   |
-| Write USS file   | ✅      | ❌         | ✅  | ❌  | ❌   |
+| Write USS file   | ✅      | ✅         | ✅  | ❌  | ❌   |
 | Get job JCL      | ✅      | ✅         | ✅  | ❌  | ✅   |

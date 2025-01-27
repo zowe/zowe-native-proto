@@ -23,6 +23,10 @@
 #include "zusftype.h"
 #include "zut.hpp"
 #include "iefzb4d2.h"
+#ifndef _XPLATFORM_SOURCE
+#define _XPLATFORM_SOURCE
+#endif
+#include <sys/xattr.h>
 #include <sys/stat.h>
 #include <dirent.h>
 // #include "zusfm.h"
@@ -64,7 +68,7 @@ int zusf_create_uss_file_or_dir(ZUSF *zusf, string file, string mode, bool creat
   // TODO(zFernand0): `mkdirp` when creatnig a file in a directory that doesn't exist
   if (createDir)
   {
-    mkdir(file.c_str(), strtol(mode.c_str(), NULL, 8));
+    mkdir(file.c_str(), strtol(mode.c_str(), nullptr, 8));
     return RTNCD_SUCCESS;
   }
   else
@@ -73,7 +77,7 @@ int zusf_create_uss_file_or_dir(ZUSF *zusf, string file, string mode, bool creat
     if (out.is_open())
     {
       out.close();
-      chmod(file.c_str(), strtol(mode.c_str(), NULL, 8));
+      chmod(file.c_str(), strtol(mode.c_str(), nullptr, 8));
       return RTNCD_SUCCESS;
     }
   }
@@ -116,7 +120,7 @@ int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response)
   }
 
   DIR *dir;
-  if ((dir = opendir(file.c_str())) == NULL)
+  if ((dir = opendir(file.c_str())) == nullptr)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open directory '%s'", file.c_str());
     return RTNCD_FAILURE;
@@ -124,7 +128,7 @@ int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response)
 
   struct dirent *entry;
   response.clear();
-  while ((entry = readdir(dir)) != NULL)
+  while ((entry = readdir(dir)) != nullptr)
   {
     // TODO(zFernand0): Skip hidden files
     if ((strcmp(entry->d_name, ".") != 0) && (strcmp(entry->d_name, "..") != 0))
@@ -152,7 +156,7 @@ int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response)
  */
 int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
 {
-  ifstream in(file.c_str());
+  ifstream in(file.c_str(), zusf->encoding_opts.data_type == eDataTypeBinary ? ifstream::in | ifstream::binary : ifstream::in);
   if (!in.is_open())
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open file '%s'", file.c_str());
@@ -165,12 +169,30 @@ int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
 
   char *rawData = new char[size];
   in.read(rawData, size);
-  in.seekg(0, ios::beg);
 
   response.assign(rawData);
+  delete[] rawData;
+
   in.close();
 
-  delete[] rawData;
+  // TODO(traeok): Finish support for encoding auto-detection
+  // char tagged_encoding[16] = {0};
+  // ssize_t xattr_result = getxattr(file.c_str(), "system.filetag", &tagged_encoding);
+
+  const auto encodingProvided = zusf->encoding_opts.data_type == eDataTypeText && strlen(zusf->encoding_opts.codepage) > 0;
+
+  char *bufEnd;
+  if (size > 0 && encodingProvided /* && (*encoding != "IBM-1047" && *encoding != "01047") */)
+  {
+    // const encoding = encodingProvided ? string(zusf->encoding_opts.codepage) : string(tagged_encoding);
+    char *outBuf = zut_encode_alloc(response, string(zusf->encoding_opts.codepage), "UTF-8", zusf->diag, &bufEnd);
+    if (outBuf)
+    {
+      response.clear();
+      response.assign(outBuf, bufEnd - outBuf);
+      delete[] outBuf;
+    }
+  }
 
   return RTNCD_SUCCESS;
 }
@@ -184,14 +206,27 @@ int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zds_write_to_uss_file(ZUSF *zusf, string file, string &data)
+int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data)
 {
   // TODO(zFernand0): Avoid overriding existing files
-  ofstream out(file.c_str());
+  const auto hasEncoding = strlen(zusf->encoding_opts.codepage) > 0;
+  ofstream out(file.c_str(), zusf->encoding_opts.data_type == eDataTypeBinary ? ios::out | ios::binary : ios::out);
   if (!out.is_open())
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open '%s'", file.c_str());
     return RTNCD_FAILURE;
+  }
+
+  if (hasEncoding)
+  {
+    char *bufEnd;
+    char *outBuf = zut_encode_alloc(data, "UTF-8", string(zusf->encoding_opts.codepage), zusf->diag, &bufEnd);
+    if (outBuf)
+    {
+      data.clear();
+      data.assign(outBuf);
+      delete[] outBuf;
+    }
   }
 
   out << data;
@@ -209,7 +244,7 @@ int zds_write_to_uss_file(ZUSF *zusf, string file, string &data)
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zds_chmod_uss_file_or_dir(ZUSF *zusf, string file, string mode)
+int zusf_chmod_uss_file_or_dir(ZUSF *zusf, string file, string mode)
 {
   // TODO(zFernand0): Add recursive option for directories
   struct stat file_stats;
@@ -218,6 +253,6 @@ int zds_chmod_uss_file_or_dir(ZUSF *zusf, string file, string mode)
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Path '%s' does not exist", file.c_str());
     return RTNCD_FAILURE;
   }
-  chmod(file.c_str(), strtol(mode.c_str(), NULL, 8));
+  chmod(file.c_str(), strtol(mode.c_str(), nullptr, 8));
   return 0;
 }
