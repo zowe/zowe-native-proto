@@ -167,11 +167,12 @@ int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
   size_t size = in.tellg();
   in.seekg(0, ios::beg);
 
-  char *rawData = new char[size];
-  in.read(rawData, size);
+  char *raw_data = new char[size];
+  std::fill(raw_data, raw_data + size, 0);
+  in.read(raw_data, size);
 
-  response.assign(rawData);
-  delete[] rawData;
+  response.assign(raw_data);
+  delete[] raw_data;
 
   in.close();
 
@@ -181,16 +182,22 @@ int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
 
   const auto encodingProvided = zusf->encoding_opts.data_type == eDataTypeText && strlen(zusf->encoding_opts.codepage) > 0;
 
-  char *bufEnd;
-  if (size > 0 && encodingProvided /* && (*encoding != "IBM-1047" && *encoding != "01047") */)
+  if (size > 0 && encodingProvided)
   {
     // const encoding = encodingProvided ? string(zusf->encoding_opts.codepage) : string(tagged_encoding);
-    char *outBuf = zut_encode_alloc(response, string(zusf->encoding_opts.codepage), "UTF-8", zusf->diag, &bufEnd);
-    if (outBuf)
+    std::string temp = response;
+    try
     {
-      response.clear();
-      response.assign(outBuf, bufEnd - outBuf);
-      delete[] outBuf;
+      const auto bytes_with_encoding = zut_encode_alloc(temp, string(zusf->encoding_opts.codepage), "UTF-8", zusf->diag);
+      temp = bytes_with_encoding;
+    }
+    catch (std::exception &e)
+    {
+      // TODO: error handling
+    }
+    if (!temp.empty())
+    {
+      response = temp;
     }
   }
 
@@ -217,15 +224,21 @@ int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data)
     return RTNCD_FAILURE;
   }
 
-  if (hasEncoding)
+  if (!data.empty() && hasEncoding)
   {
-    char *bufEnd;
-    char *outBuf = zut_encode_alloc(data, "UTF-8", string(zusf->encoding_opts.codepage), zusf->diag, &bufEnd);
-    if (outBuf)
+    std::string temp = data;
+    try
     {
-      data.clear();
-      data.assign(outBuf);
-      delete[] outBuf;
+      const auto bytes_with_encoding = zut_encode_alloc(temp, "UTF-8", string(zusf->encoding_opts.codepage), zusf->diag);
+      temp = bytes_with_encoding;
+    }
+    catch (std::exception &e)
+    {
+      // TODO: error handling
+    }
+    if (!temp.empty())
+    {
+      data = temp;
     }
   }
 
