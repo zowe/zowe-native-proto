@@ -163,12 +163,22 @@ class ZCLIVerb : public ZCLIName, public ZCLIDescription, public ZCLIOptionProvi
 {
 private:
   zcli_verb_handler cb;
+  vector<string> aliases;
 
 public:
   ZCLIVerb(string n) : ZCLIName(n) {}
   void set_zcli_verb_handler(zcli_verb_handler h) { cb = h; }
   zcli_verb_handler get_zcli_verb_handler() { return cb; }
-  void help_line() { cerr << "  " << left << setw(ZCLI_MENU_WIDTH) << get_name() << " | " << get_description() << endl; }
+  vector<string> &get_aliases() { return aliases; }
+  void help_line()
+  {
+    string entry = get_name();
+    for (vector<string>::iterator it = get_aliases().begin(); it != get_aliases().end(); *it++)
+    {
+      entry += ("," + *it);
+    }
+    cerr << "  " << left << setw(ZCLI_MENU_WIDTH) << entry << " | " << get_description() << endl;
+  }
   void help(string, string);
 };
 
@@ -176,13 +186,23 @@ class ZCLIGroup : public ZCLIName, public ZCLIDescription, public ZCLIOptionProv
 {
 private:
   vector<ZCLIVerb> verbs;
+  vector<string> aliases;
 
 public:
   ZCLIGroup(string n) : ZCLIName(n) {};
   ZCLIVerb &get_verb(string);
   vector<ZCLIVerb> &get_verbs() { return verbs; }
+  vector<string> &get_aliases() { return aliases; }
   void help(string);
-  void help_line() { cerr << "  " << left << setw(ZCLI_MENU_WIDTH) << get_name() << " | " << get_description() << endl; }
+  void help_line()
+  {
+    string entry = get_name();
+    for (vector<string>::iterator it = get_aliases().begin(); it != get_aliases().end(); *it++)
+    {
+      entry += ("," + *it);
+    }
+    cerr << "  " << left << setw(ZCLI_MENU_WIDTH) << entry << " | " << get_description() << endl;
+  }
 };
 
 class ZCLI : public ZCLIName, public ZCLIOptionProvider
@@ -226,6 +246,17 @@ bool ZCLI::validate()
     }
     group_map.insert(map<string, int>::value_type(it->get_name(), 0));
 
+    for (vector<string>::iterator ijt = it->get_aliases().begin(); ijt != it->get_aliases().end(); ijt++)
+    {
+      // ensure no duplicate group aliases
+      if (group_map.find(*ijt) != (group_map.end()))
+      {
+        cerr << "ZCLI Error: duplicate group alias found, '" << it->get_name() << "'" << endl;
+        return false;
+      }
+      group_map.insert(map<string, int>::value_type(*ijt, 0));
+    }
+
     // ensure at least one verb
     if (0 == it->get_verbs().size())
     {
@@ -243,6 +274,16 @@ bool ZCLI::validate()
         return false;
       }
       verb_map.insert(map<string, int>::value_type(iit->get_name(), 0));
+
+      for (vector<string>::iterator iijt = iit->get_aliases().begin(); iijt != iit->get_aliases().end(); iijt++)
+      {
+        if (verb_map.find(*iijt) != (verb_map.end()))
+        {
+          cerr << "ZCLI Error: duplicate verb alias found, '" << iit->get_name() << "'" << endl;
+          return false;
+        }
+        verb_map.insert(map<string, int>::value_type(*iijt, 0));
+      }
 
       // ensure handler provided
       if (iit->get_zcli_verb_handler() == nullptr)
@@ -409,6 +450,11 @@ ZCLIGroup &ZCLI::get_group(string group_name)
   {
     if (group_name == it->get_name())
       return *it;
+    for (vector<string>::iterator iit = it->get_aliases().begin(); iit != it->get_aliases().end(); iit++)
+    {
+      if (group_name == *iit)
+        return *it;
+    }
   }
   ZCLIGroup *not_found = new ZCLIGroup("not found");
   return *not_found;
@@ -420,6 +466,11 @@ ZCLIVerb &ZCLIGroup::get_verb(string verb_name)
   {
     if (verb_name == it->get_name())
       return *it;
+    for (vector<string>::iterator iit = it->get_aliases().begin(); iit != it->get_aliases().end(); iit++)
+    {
+      if (verb_name == *iit)
+        return *it;
+    }
   }
   ZCLIVerb *not_found = new ZCLIVerb("not found");
   return *not_found;
