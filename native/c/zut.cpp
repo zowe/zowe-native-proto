@@ -310,7 +310,7 @@ size_t zut_get_utf8_len(const char *str)
   return len;
 }
 
-char *zut_encode_alloc(const string &bytes, const string &from_encoding, const string &to_encoding, ZDIAG &diag, char **buf_end)
+std::string zut_encode_alloc(const string &bytes, const string &from_encoding, const string &to_encoding, ZDIAG &diag)
 {
   iconv_t cd = iconv_open(to_encoding.c_str(), from_encoding.c_str());
   if (cd == (iconv_t)(-1))
@@ -320,25 +320,49 @@ char *zut_encode_alloc(const string &bytes, const string &from_encoding, const s
   }
 
   const size_t input_size = bytes.size();
+  // the largest supported encoding scheme is UTF-16, which can be represented w/ up to two 2-byte code units per character
   const size_t max_output_size = input_size * 4;
+
   size_t input_bytes_remaining = input_size;
   size_t output_bytes_remaining = max_output_size;
-  char *outbuf = new char[output_bytes_remaining];
-  memset(outbuf, 0, output_bytes_remaining);
 
+  // Create a contiguous memory region to store the output w/ new encoding
+  // There is no guarantee that the memory is contiguous when using an empty std::string here (as xlc does not completely implement the C++11 standard),
+  // so we'll handle the memory ourselves
+  char *output_buffer = new char[output_bytes_remaining];
+  std::fill(output_buffer, output_buffer + output_bytes_remaining, 0);
+
+  // Prepare iconv parameters (copy output_buffer ptr to output_iter to cache start and end positions)
   char *input = (char *)bytes.data();
-  char *outptr = outbuf;
+  char *output_iter = output_buffer;
 
-  size_t rc = iconv(cd, &input, &input_bytes_remaining, &outptr, &output_bytes_remaining);
+  string result;
+
+  size_t rc = iconv(cd, &input, &input_bytes_remaining, &output_iter, &output_bytes_remaining);
+
+  // If an error occurred, throw an exception with iconv's return code and errno
   if (rc == -1)
   {
-    diag.e_msg_len = sprintf(diag.e_msg, "Error when converting characters");
-    delete[] outbuf;
-    return nullptr;
+    diag.e_msg_len = sprintf(diag.e_msg, "[zut_encode_alloc] Error when converting characters. rc=%lu,errno=%d", rc, errno);
+    delete[] output_buffer;
+    throw std::exception(diag.e_msg);
   }
-  *buf_end = outptr;
+
+  // "If the input conversion is stopped... the value pointed to by inbytesleft will be nonzero and errno is set to indicate the condition"
+  if (input_bytes_remaining != 0)
+  {
+    diag.e_msg_len = sprintf(diag.e_msg, "[zut_encode_alloc] Failed to convert all input bytes. rc=%lu,errno=%d", rc, errno);
+    delete[] output_buffer;
+    throw std::exception(diag.e_msg);
+  }
+
   iconv_close(cd);
-  return outbuf;
+
+  // Copy converted bytes into a new string and return it to the caller
+  result.assign(output_buffer, output_iter - output_buffer);
+  delete[] output_buffer;
+
+  return result;
 }
 
 std::string &zut_rtrim(std::string &s, const char *t)

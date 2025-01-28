@@ -72,16 +72,21 @@ int zds_read_from_dd(ZDS *zds, string ddname, string &response)
   bytes.reserve(size);
   memcpy((char *)bytes.data(), response.c_str(), size);
 
-  if (bytes.size() > 0 && strlen(zds->encoding_opts.codepage) > 0 /* && (*encoding != "IBM-1047" && *encoding != "01047") */)
+  if (size > 0 && strlen(zds->encoding_opts.codepage) > 0)
   {
-    char *buf_end;
-    // Convert from requested encoding to UTF-8 for standardized character code page
-    char *out_buf = zut_encode_alloc(bytes, string(zds->encoding_opts.codepage), "UTF-8", zds->diag, &buf_end);
-    if (out_buf)
+    std::string temp = response;
+    try
     {
-      response.clear();
-      response.assign(out_buf, buf_end - out_buf);
-      delete[] out_buf;
+      const auto bytes_with_encoding = zut_encode_alloc(temp, string(zds->encoding_opts.codepage), "UTF-8", zds->diag);
+      temp = bytes_with_encoding;
+    }
+    catch (std::exception &e)
+    {
+      // TODO: error handling
+    }
+    if (!temp.empty())
+    {
+      response = temp;
     }
   }
 
@@ -103,26 +108,32 @@ int zds_read_from_dsn(ZDS *zds, string dsn, string &response)
   size_t size = in.tellg();
   in.seekg(0, ios::beg);
 
-  char *rawData = new char[size];
-  in.read(rawData, size);
+  char *raw_data = new char[size];
+  std::fill(raw_data, raw_data + size, 0);
+  in.read(raw_data, size);
 
-  response.assign(rawData);
-  delete[] rawData;
+  response.assign(raw_data);
+  delete[] raw_data;
 
   in.close();
 
   const auto encodingProvided = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
 
-  char *bufEnd;
-  if (size > 0 && encodingProvided /* && (*encoding != "IBM-1047" && *encoding != "01047") */)
+  if (size > 0 && encodingProvided)
   {
-    // Convert the data with given codepage to UTF-8
-    char *outBuf = zut_encode_alloc(response, string(zds->encoding_opts.codepage), "UTF-8", zds->diag, &bufEnd);
-    if (outBuf)
+    std::string temp = response;
+    try
     {
-      response.clear();
-      response.assign(outBuf, bufEnd - outBuf);
-      delete[] outBuf;
+      const auto bytes_with_encoding = zut_encode_alloc(temp, string(zds->encoding_opts.codepage), "UTF-8", zds->diag);
+      temp = bytes_with_encoding;
+    }
+    catch (std::exception &e)
+    {
+      // TODO: error handling
+    }
+    if (!temp.empty())
+    {
+      response = temp;
     }
   }
 
@@ -160,19 +171,28 @@ int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data)
 
   if (hasEncoding)
   {
-    char *bufEnd;
-    // Convert from UTF-8 data representation to the given encoding to store within dataset
-    char *outBuf = zut_encode_alloc(data, "UTF-8", zds->encoding_opts.codepage, zds->diag, &bufEnd);
-    if (outBuf)
+    for (char *c = (char *)data.data(); c != (char *)data.data() + data.size(); c++)
     {
-      out << outBuf;
-      delete[] outBuf;
+      printf("%02x ", *c);
+    }
+    printf("\n");
+    std::string temp = data;
+    try
+    {
+      const auto bytes_with_encoding = zut_encode_alloc(temp, "UTF-8", string(zds->encoding_opts.codepage), zds->diag);
+      temp = bytes_with_encoding;
+    }
+    catch (std::exception &e)
+    {
+      // TODO: error handling
+    }
+    if (!temp.empty())
+    {
+      data = temp;
     }
   }
-  else
-  {
-    out << data;
-  }
+
+  out << data;
   out.close();
 
   return 0;
