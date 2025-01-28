@@ -15,6 +15,7 @@ import { ListDataSetMembersDefinition } from "./data-set-members/DataSetMembers.
 import { ListDataSetDefinition } from "./data-set/DataSet.definition";
 import { ListJobsDefinition } from "./jobs/Jobs.definition";
 import { ListUssFilesDefinition } from "./uss-files/UssFiles.definition";
+import { ListSpoolFilesDefinition } from "./spool-files/SpoolFiles.definition";
 
 const ListDefinition: ICommandDefinition = {
     name: "list",
@@ -22,7 +23,13 @@ const ListDefinition: ICommandDefinition = {
     summary: "List data sets, data set members, uss files, jobs, spool files",
     description: "List data sets, data set members, uss files, jobs, spool files",
     type: "group",
-    children: [ListDataSetDefinition, ListDataSetMembersDefinition, ListJobsDefinition, ListUssFilesDefinition],
+    children: [
+        ListDataSetDefinition,
+        ListDataSetMembersDefinition,
+        ListUssFilesDefinition,
+        ListJobsDefinition,
+        ListSpoolFilesDefinition,
+    ],
     passOn: [
         {
             property: "options",

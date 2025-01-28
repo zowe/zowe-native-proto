@@ -28,6 +28,9 @@ export abstract class AbstractRpcClient {
                 this.request({ command: "readDataset", ...request }),
             writeDataset: (request: Omit<ds.WriteDataset.Request, "command">): Promise<ds.WriteDataset.Response> =>
                 this.request({ command: "writeDataset", ...request }),
+            restoreDataset: (
+                request: Omit<ds.RestoreDataset.Request, "command">,
+            ): Promise<ds.RestoreDataset.Response> => this.request({ command: "restoreDataset", ...request }),
         };
     }
 

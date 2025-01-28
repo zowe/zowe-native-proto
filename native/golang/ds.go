@@ -213,3 +213,30 @@ func HandleListDsMembersRequest(jsonData []byte) {
 		fmt.Println(string(v))
 	}
 }
+
+func HandleRestoreDatasetRequest(jsonData []byte) {
+	var dsRequest RestoreDatasetRequest
+	err := json.Unmarshal(jsonData, &dsRequest)
+	if err != nil {
+		return
+	}
+
+	args := []string{"./zowex", "data-set", "restore", dsRequest.Dataset}
+
+	out, err := exec.Command(args[0], args[1:]...).Output()
+	if err != nil {
+		log.Println("Error executing command:", err)
+		log.Println(string(out))
+		return
+	}
+
+	dsResponse := WriteDatasetResponse{
+		Success: true,
+	}
+	v, err := json.Marshal(dsResponse)
+	if err != nil {
+		fmt.Println(err.Error())
+	} else {
+		fmt.Println(string(v))
+	}
+}

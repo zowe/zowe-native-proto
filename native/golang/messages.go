@@ -157,3 +157,11 @@ type IssueConsoleRequest struct {
 type IssueConsoleResponse struct {
 	Data string `json:"data"`
 }
+
+type RestoreDatasetRequest struct {
+	Dataset string `json:"dataset"`
+}
+
+type RestoreDatasetResponse struct {
+	Success bool `json:"success"`
+}
