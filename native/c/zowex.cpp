@@ -111,6 +111,7 @@ int main(int argc, char *argv[])
   // data set group
   //
   ZCLIGroup data_set_group("data-set");
+  data_set_group.get_aliases().push_back("ds");
   data_set_group.set_description("z/OS data set operations");
 
   ZCLIPositional data_set_dsn("dsn");
@@ -118,6 +119,7 @@ int main(int argc, char *argv[])
   data_set_dsn.set_required(true);
 
   ZCLIOption data_set_encoding("encoding");
+  data_set_encoding.get_aliases().push_back("ec");
   data_set_encoding.set_description("return data set contents in given encoding");
 
   // data set verbs
@@ -160,11 +162,12 @@ int main(int argc, char *argv[])
   data_set_list.get_options().push_back(data_set_max_entries);
 
   ZCLIOption data_set_truncate_warn("warn");
-  data_set_truncate_warn.set_description("warn if trucated or not found");
+  data_set_truncate_warn.set_description("warn if truncated or not found");
   data_set_truncate_warn.set_default("true");
   data_set_list.get_options().push_back(data_set_truncate_warn);
 
   data_set_list.set_description("list data sets");
+  data_set_list.get_aliases().push_back("ls");
   data_set_list.set_zcli_verb_handler(handle_data_set_list);
   data_set_list.get_positionals().push_back(data_set_dsn);
   data_set_list.get_options().push_back(response_format_csv);
