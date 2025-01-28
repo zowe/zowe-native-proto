@@ -19,8 +19,8 @@ import { SshJesApi, SshMvsApi, SshUssApi } from "./api";
 
 function registerCommands(context: vscode.ExtensionContext): vscode.Disposable[] {
     return [
-        vscode.commands.registerCommand("zowe-native-proto-vsce.connect", async () => {
-            const profile = await SshConfigUtils.promptForProfile();
+        vscode.commands.registerCommand("zowe-native-proto-vsce.connect", async (profName?: string) => {
+            const profile = await SshConfigUtils.promptForProfile(profName);
             if (!profile) return;
             const serverPath = SshConfigUtils.getServerPath(profile.profile!.host);
             const localDir = path.join(context.extensionPath, "bin");
@@ -36,8 +36,8 @@ function registerCommands(context: vscode.ExtensionContext): vscode.Disposable[]
             SshConfigUtils.showSessionInTree(profile.name!, true);
             await Gui.showMessage(`Installed Zowe SSH server on ${profile.name}`);
         }),
-        vscode.commands.registerCommand("zowe-native-proto-vsce.restart", async () => {
-            const profile = await SshConfigUtils.promptForProfile();
+        vscode.commands.registerCommand("zowe-native-proto-vsce.restart", async (profName?: string) => {
+            const profile = await SshConfigUtils.promptForProfile(profName);
             if (!profile) return;
             const serverPath = SshConfigUtils.getServerPath(profile.profile!.host);
             const client = await SshClientCache.inst.connect(ZSshUtils.buildSession(profile.profile!));
@@ -46,8 +46,8 @@ function registerCommands(context: vscode.ExtensionContext): vscode.Disposable[]
             const statusMsg = Gui.setStatusBarMessage("Restarted Zowe SSH server");
             setTimeout(() => statusMsg.dispose(), 5000);
         }),
-        vscode.commands.registerCommand("zowe-native-proto-vsce.uninstall", async () => {
-            const profile = await SshConfigUtils.promptForProfile();
+        vscode.commands.registerCommand("zowe-native-proto-vsce.uninstall", async (profName?: string) => {
+            const profile = await SshConfigUtils.promptForProfile(profName);
             if (!profile) return;
             const serverPath = SshConfigUtils.getServerPath(profile.profile!.host);
             const localDir = path.join(context.extensionPath, "bin");

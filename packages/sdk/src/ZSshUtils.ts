@@ -81,12 +81,12 @@ export class ZSshUtils {
     }
 
     private static async uploadDir(sftp: SFTPWrapper, localDir: string, remoteDir: string): Promise<void> {
-        await new Promise<void>((resolve, reject) => {
+        const _dirExists = await new Promise((resolve, reject) => {
             sftp.mkdir(remoteDir, { mode: 0o700 }, (err) => {
                 if (err && (err as any).code !== 4) {
                     reject(err);
                 } else {
-                    resolve();
+                    resolve(err != null);
                 }
             });
         });
@@ -124,12 +124,12 @@ export class ZSshUtils {
                 });
             }),
         );
-        await new Promise<void>((resolve, reject) => {
+        const _dirEmpty = await new Promise((resolve, reject) => {
             sftp.rmdir(remoteDir, (err) => {
-                if (err) {
+                if (err && (err as any).code !== 4) {
                     reject(err);
                 } else {
-                    resolve();
+                    resolve(err == null);
                 }
             });
         });

@@ -22,8 +22,11 @@ export class SshConfigUtils {
         return serverPathMap?.[hostname] ?? ZSshClient.DEFAULT_SERVER_PATH;
     }
 
-    public static async promptForProfile(): Promise<imperative.IProfileLoaded | undefined> {
+    public static async promptForProfile(profileName?: string): Promise<imperative.IProfileLoaded | undefined> {
         const profCache = ZoweVsCodeExtension.getZoweExplorerApi().getExplorerExtenderApi().getProfilesCache();
+        if (profileName != null) {
+            return profCache.getLoadedProfConfig(profileName, "ssh");
+        }
         const sshProfiles = (await profCache.fetchAllProfilesByType("ssh")).filter(
             ({ name, profile }) => name != null && profile?.host != null,
         );
