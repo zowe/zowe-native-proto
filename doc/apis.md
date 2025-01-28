@@ -20,16 +20,17 @@
 | _Delete data set_        | ✅              | ✅  | ✅              | ❌         | ❌  | ❌  | ❌   |
 | _Delete data set member_ | ✅              | ✅  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | Migrate data set         | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
-| Recall data set          | ✅              | ❌  | ✅              | ✅         | ✅  | ✅  | ❌   |
+| Recall data set          | 🚧 <sup>3</sup> | ❌  | ✅              | ✅         | ✅  | ✅  | ❌   |
 | Delete migrated data set | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | Rename data set          | ✅              | ✅  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | Copy data set            | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | Invoke AMS (VSAM)        | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ➖   |
-| Search data sets         | 🚧 <sup>3</sup> | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
+| Search data sets         | 🚧 <sup>4</sup> | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
 
 1. Not all attributes are retrieved
 2. Streaming is not supported for large files
-3. Supports less features than ISPF `srchfor`
+3. Does not support some migration utilities like CA Disk
+4. Limited options compared to ISPF `srchfor`
 
 ## USS Files
 
