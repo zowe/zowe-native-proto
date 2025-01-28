@@ -81,22 +81,24 @@
 
 ## Commands
 
-| Operation                | z/OSMF | FTP | Backend | Middleware | SDK | CLI | VSCE |
-| ------------------------ | ------ | --- | ------- | ---------- | --- | --- | ---- |
-| Issue MVS command        | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ❌   |
-| Get MVS command response | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌   |
-| Get MVS detect result    | ✅     | ❌  | ❌      | ❌         | ❌  | ➖  | ➖   |
-| Start TSO address space  | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌   |
-| Start TSO app            | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ➖   |
-| Issue TSO command        | ✅     | ❌  | ❌      | ❌         | ✅  | ❌  | ❌   |
-| Get TSO command response | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌   |
-| Send TSO message         | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌   |
-| Send TSO app message     | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ➖   |
-| Ping TSO address space   | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌   |
-| Receive TSO message      | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌   |
-| Receive TSO app message  | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ➖   |
-| Stop TSO address space   | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌   |
-| Issue SSH command        | ❌     | ❌  | ❌      | ❌         | ✅  | ❌  | ❌   |
+| Operation                | z/OSMF | FTP | Backend         | Middleware | SDK | CLI | VSCE |
+| ------------------------ | ------ | --- | --------------- | ---------- | --- | --- | ---- |
+| Issue MVS command        | ✅     | ❌  | ✅ <sup>1</sup> | ✅         | ✅  | ✅  | ❌   |
+| Get MVS command response | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
+| Get MVS detect result    | ✅     | ❌  | ❌              | ❌         | ❌  | ➖  | ➖   |
+| Start TSO address space  | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
+| Start TSO app            | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ➖   |
+| Issue TSO command        | ✅     | ❌  | ❌              | ❌         | ✅  | ❌  | ❌   |
+| Get TSO command response | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
+| Send TSO message         | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
+| Send TSO app message     | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ➖   |
+| Ping TSO address space   | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
+| Receive TSO message      | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
+| Receive TSO app message  | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ➖   |
+| Stop TSO address space   | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
+| Issue SSH command        | ❌     | ❌  | ❌              | ❌         | ✅  | ❌  | ❌   |
+
+1. Requires APF authorization
 
 ## Other
 
