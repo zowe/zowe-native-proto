@@ -216,7 +216,7 @@ int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
 int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data)
 {
   // TODO(zFernand0): Avoid overriding existing files
-  const auto hasEncoding = strlen(zusf->encoding_opts.codepage) > 0;
+  const auto hasEncoding = zusf->encoding_opts.data_type == eDataTypeText && strlen(zusf->encoding_opts.codepage) > 0;
   ofstream out(file.c_str(), zusf->encoding_opts.data_type == eDataTypeBinary ? ios::out | ios::binary : ios::out);
   if (!out.is_open())
   {
