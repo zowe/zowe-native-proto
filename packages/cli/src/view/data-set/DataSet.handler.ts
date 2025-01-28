@@ -17,8 +17,7 @@ export default class ViewDataSetHandler extends SshBaseHandler {
     public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<ReadDataset.Response> {
         const response = await client.ds.readDataset({
             dataset: params.arguments.dataSet,
-            // binary: params.arguments.binary,
-            encoding: params.arguments.encoding,
+            encoding: params.arguments.binary ? "binary" : params.arguments.encoding,
         });
         const content = ZSshUtils.decodeByteArray(response.data).toString();
         params.response.data.setMessage(
