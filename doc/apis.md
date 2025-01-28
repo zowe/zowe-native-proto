@@ -79,26 +79,32 @@
 
 1. Listing by prefix and status is not supported
 
-## Commands
+## Console
 
 | Operation                | z/OSMF | FTP | Backend         | Middleware | SDK | CLI | VSCE |
 | ------------------------ | ------ | --- | --------------- | ---------- | --- | --- | ---- |
 | Issue MVS command        | ✅     | ❌  | ✅ <sup>1</sup> | ✅         | ✅  | ✅  | ❌   |
 | Get MVS command response | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | Get MVS detect result    | ✅     | ❌  | ❌              | ❌         | ❌  | ➖  | ➖   |
-| Start TSO address space  | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
-| Start TSO app            | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ➖   |
-| Issue TSO command        | ✅     | ❌  | ❌              | ❌         | ✅  | ❌  | ❌   |
-| Get TSO command response | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
-| Send TSO message         | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
-| Send TSO app message     | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ➖   |
-| Ping TSO address space   | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
-| Receive TSO message      | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
-| Receive TSO app message  | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ➖   |
-| Stop TSO address space   | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
-| Issue SSH command        | ❌     | ❌  | ❌              | ❌         | ✅  | ❌  | ❌   |
 
 1. Requires APF authorization
+
+## TSO
+
+## Commands
+
+| Operation                | z/OSMF | FTP | Backend | Middleware | SDK | CLI | VSCE |
+| ------------------------ | ------ | --- | ------- | ---------- | --- | --- | ---- |
+| Start TSO address space  | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌   |
+| Start TSO app            | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ➖   |
+| Issue TSO command        | ✅     | ❌  | ❌      | ❌         | ✅  | ❌  | ❌   |
+| Get TSO command response | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌   |
+| Send TSO message         | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌   |
+| Send TSO app message     | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ➖   |
+| Ping TSO address space   | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌   |
+| Receive TSO message      | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌   |
+| Receive TSO app message  | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ➖   |
+| Stop TSO address space   | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌   |
 
 ## Other
 
@@ -107,3 +113,4 @@
 | Read system log      | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ➖   |
 | Get server status    | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌   |
 | Change user password | ✅     | ❌  | ❌      | ❌         | ❌  | ➖  | ➖   |
+| Issue SSH command    | ❌     | ❌  | ❌      | ❌         | ✅  | ❌  | ❌   |
