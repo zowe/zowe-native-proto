@@ -72,7 +72,7 @@ graph LR
   other[&lt;My Custom App&gt;]-->sdk
   end
   subgraph z/OS Server
-  ioserver["Golang I/O Server<br>(Middleware)"]-->zowex["C++ CLI Binary<br>(Backend)"]
+  ioserver["Golang I/O Server<br>(Middleware)"]<-->zowex["C++ CLI Binary<br>(Backend)"]
   sdk<-->|SSH|ioserver
   subgraph Mainframe Resources
   ds[Data Sets]
@@ -82,10 +82,11 @@ graph LR
   zowex-->ds
   zowex-->uss
   zowex-->jobs
+  ioserver-->uss
   end
-  click sdk "./doc/design-client.md#sdk-package"
-  click cli "./doc/design-client.md#cli-plug-in"
-  click vsce "./doc/design-client.md#vs-code-extension"
-  click ioserver "./doc/design-server-go.md"
-  click zowex "./doc/design-server-c.md"
+  click sdk "https://github.com/zowe/zowe-native-proto/blob/main/doc/client/architecture.md#sdk-package"
+  click cli "https://github.com/zowe/zowe-native-proto/blob/main/doc/client/architecture.md#cli-plug-in"
+  click vsce "https://github.com/zowe/zowe-native-proto/blob/main/doc/client/architecture.md#vs-code-extension"
+  click ioserver "https://github.com/zowe/zowe-native-proto/blob/main/doc/server/ioserver_architecture.md"
+  click zowex "https://github.com/zowe/zowe-native-proto/blob/main/doc/server/zowex_architecture.md"
 ```
