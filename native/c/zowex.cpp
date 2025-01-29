@@ -119,7 +119,7 @@ int main(int argc, char *argv[])
   data_set_dsn.set_required(true);
 
   ZCLIOption data_set_encoding("encoding");
-  data_set_encoding.get_aliases().push_back("ec");
+  data_set_encoding.get_aliases().push_back("--ec");
   data_set_encoding.set_description("return data set contents in given encoding");
 
   // data set verbs
@@ -174,6 +174,7 @@ int main(int argc, char *argv[])
   data_set_group.get_verbs().push_back(data_set_list);
 
   ZCLIVerb data_set_list_members("list-members");
+  data_set_list_members.get_aliases().push_back("lm");
   data_set_list_members.set_description("list data set members");
   data_set_list_members.set_zcli_verb_handler(handle_data_set_list_members_dsn);
   data_set_list_members.get_positionals().push_back(data_set_dsn);
@@ -189,6 +190,7 @@ int main(int argc, char *argv[])
   data_set_group.get_verbs().push_back(data_set_write);
 
   ZCLIVerb data_set_delete("delete");
+  data_set_delete.get_aliases().push_back("del");
   data_set_delete.set_description("delete data set");
   data_set_delete.set_zcli_verb_handler(handle_data_set_delete_dsn);
   data_set_delete.get_positionals().push_back(data_set_dsn);
@@ -201,6 +203,7 @@ int main(int argc, char *argv[])
   job_group.set_description("z/OS job operations");
 
   ZCLIOption spool_encoding("encoding");
+  spool_encoding.get_aliases().push_back("--ec");
   spool_encoding.set_description("return spool contents in given encoding");
 
   // jobs verbs
@@ -208,12 +211,14 @@ int main(int argc, char *argv[])
   job_list.set_description("list jobs");
   job_list.set_zcli_verb_handler(handle_job_list);
   ZCLIOption job_owner("owner");
+  job_owner.get_aliases().push_back("--o");
   job_owner.set_description("filter by owner");
   job_list.get_options().push_back(job_owner);
   job_list.get_options().push_back(response_format_csv);
   job_group.get_verbs().push_back(job_list);
 
   ZCLIVerb job_list_files("list-files");
+  job_list_files.get_aliases().push_back("lf");
   job_list_files.set_description("list spool files for jobid");
   job_list_files.set_zcli_verb_handler(handle_job_list_files);
   ZCLIPositional job_jobid("jobid");
@@ -224,6 +229,7 @@ int main(int argc, char *argv[])
   job_group.get_verbs().push_back(job_list_files);
 
   ZCLIVerb job_view_status("view-status");
+  job_view_status.get_aliases().push_back("vs");
   job_view_status.set_description("view job status");
   job_view_status.set_zcli_verb_handler(handle_job_view_status);
   job_view_status.get_positionals().push_back(job_jobid);
@@ -231,6 +237,7 @@ int main(int argc, char *argv[])
   job_group.get_verbs().push_back(job_view_status);
 
   ZCLIVerb job_view_file("view-file");
+  job_view_file.get_aliases().push_back("vf");
   job_view_file.set_description("view job file output");
   job_view_file.set_zcli_verb_handler(handle_job_view_file);
   job_view_file.get_positionals().push_back(job_jobid);
@@ -244,15 +251,18 @@ int main(int argc, char *argv[])
   job_group.get_verbs().push_back(job_view_file);
 
   ZCLIVerb job_view_jcl("view-jcl");
+  job_view_jcl.get_aliases().push_back("vj");
   job_view_jcl.set_description("view job jcl from input jobid");
   job_view_jcl.set_zcli_verb_handler(handle_job_view_jcl);
   job_view_jcl.get_positionals().push_back(job_jobid);
   job_group.get_verbs().push_back(job_view_jcl);
 
   ZCLIVerb job_submit("submit");
+  job_submit.get_aliases().push_back("sub");
   job_submit.set_description("submit a job");
   job_submit.set_zcli_verb_handler(handle_job_submit);
   ZCLIOption job_jobid_only("only-jobid");
+  job_jobid_only.get_aliases().push_back("--oj");
   job_jobid_only.set_description("show only job id on success");
   job_submit.get_options().push_back(job_jobid_only);
   ZCLIPositional job_dsn("dsn");
@@ -262,6 +272,7 @@ int main(int argc, char *argv[])
   job_group.get_verbs().push_back(job_submit);
 
   ZCLIVerb job_delete("delete");
+  job_delete.get_aliases().push_back("del");
   job_delete.set_description("delete a job");
   job_delete.set_zcli_verb_handler(handle_job_delete);
   job_delete.get_positionals().push_back(job_jobid);
@@ -271,6 +282,7 @@ int main(int argc, char *argv[])
   // console group
   //
   ZCLIGroup console_group("console");
+  console_group.get_aliases().push_back("cn");
   console_group.set_description("z/OS console operations");
 
   // console verbs
