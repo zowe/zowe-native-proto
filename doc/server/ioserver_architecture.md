@@ -14,17 +14,89 @@ The command handlers can expect a stronger request type than what is expected du
 
 Once the command handler has the required data for a response, the handler "marshals" (serializes) the response type as JSON and prints it to stdout. The output is redirected to the SSH client, where it is interpreted as a response and processed according to the corresponding response type.
 
+See the example JSON request below for listing data sets:
+
+```json
+{
+  "command": "listDatasets",
+  "pattern": "DS.PAT.*"
+}
+```
+
+This request is deserialized by ioserver and `zowex` is invoked to get the list of data sets matching the given pattern. Then the response is composed, serialized as JSON and returned to the caller, for example:
+
+```json
+{
+  "items": [
+    {
+      "dsname": "DS.PAT.AB",
+      "dsorg": "PO",
+      "volser": "MIGRAT"
+    },
+    {
+      "dsname": "DS.PAT.ABC",
+      "dsorg": "PO-E",
+      "volser": "WRKD01"
+    },
+    {
+      "dsname": "DS.PAT.ABCD",
+      "dsorg": "PS",
+      "volser": "WRKD03"
+    }
+  ],
+  "returnedRows": 3
+}
+```
+
 ## Handling encoding for resource contents
 
 Modern text editors expect a standardized encoding format such as UTF-8. `ioserver` implements processing for reading/writing data sets, USS files and job spools (read-only) with a given encoding.
 
 ### Read
 
-When an encoding is not provided, we use the system default codepage as the source encoding for resource contents (`IBM-1047`). We convert the contents from the source encoding to UTF-8 so the contents can be rendered and edited within any modern text editor.
+When an encoding is not provided, we use the system default codepage as the source encoding for resource contents (`IBM-1047`, in most cases). We convert the contents from the source encoding to UTF-8 so the contents can be rendered and edited within any modern text editor.
+
+```json
+{
+  "command": "readFile",
+  "path": "/u/users/you/file.txt",
+  "encoding": "ISO8859-1"
+}
+```
+
+Response:
+
+```jsonc
+{
+  "encoding": "ISO8859-1",
+  "path": "/u/users/you/file.txt",
+  "data": [104, 101, 108, 108, 111] // "hello" in ASCII
+}
+```
 
 ### Write
 
-The contents of write requests are interpreted as UTF-8 data. We convert the UTF-8 bytes to the given encoding so the data can be read by z/OSMF and other mainframe utilities. If no encoding is provided, we convert the contents from `UTF-8` to `IBM-1047`.
+The contents of write requests are interpreted as UTF-8 data. We convert the UTF-8 bytes to the given encoding so the data can be read by z/OSMF and other mainframe utilities. If no encoding is provided, we convert the contents from `UTF-8` to the system default codepage.
+
+```jsonc
+{
+  "command": "writeFile",
+  "path": "/u/users/you/file.txt",
+  "encoding": "IBM-939",
+  "contents": [
+    165, 131, 191, 165, 132, 192, 165, 131, 171, 165, 131, 161, 165, 131, 175,
+    33
+  ] // "Hello!" in Japanese, encoded as UTF-8
+}
+```
+
+Response:
+
+```json
+{
+  "success": true
+}
+```
 
 ### Data transmission
 
