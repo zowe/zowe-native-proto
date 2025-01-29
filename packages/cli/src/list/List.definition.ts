@@ -14,8 +14,8 @@ import { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { ListDataSetMembersDefinition } from "./data-set-members/DataSetMembers.definition";
 import { ListDataSetDefinition } from "./data-set/DataSet.definition";
 import { ListJobsDefinition } from "./jobs/Jobs.definition";
-import { ListUssFilesDefinition } from "./uss-files/UssFiles.definition";
 import { ListSpoolFilesDefinition } from "./spool-files/SpoolFiles.definition";
+import { ListUssFilesDefinition } from "./uss-files/UssFiles.definition";
 
 const ListDefinition: ICommandDefinition = {
     name: "list",

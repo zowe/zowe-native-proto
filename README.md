@@ -58,3 +58,35 @@ linkupd *
 
 Note 1: You may need to run `linkact zowex` after an IPL.<br/>
 Note 2: You may need to replace `*` with your mask character. For example, `linkact zowex =`
+
+## Architecture
+
+Click on a component in the diagram below to learn more about it:
+
+```mermaid
+graph LR
+  subgraph Client
+  sdk[Node.js SDK Package]
+  cli[Zowe CLI Plug-in]-->sdk
+  vsce[VS Code Extension]-->sdk
+  other[&lt;My Custom App&gt;]-->sdk
+  end
+  subgraph z/OS Server
+  ioserver["Golang I/O Server<br>(Middleware)"]<-->zowex["C++ CLI Binary<br>(Backend)"]
+  sdk<-->|SSH|ioserver
+  subgraph Mainframe Resources
+  ds[Data Sets]
+  uss[USS Files]
+  jobs[Jobs]
+  end
+  zowex-->ds
+  zowex-->uss
+  zowex-->jobs
+  ioserver-->uss
+  end
+  click sdk "https://github.com/zowe/zowe-native-proto/blob/main/doc/client/architecture.md#sdk-package"
+  click cli "https://github.com/zowe/zowe-native-proto/blob/main/doc/client/architecture.md#cli-plug-in"
+  click vsce "https://github.com/zowe/zowe-native-proto/blob/main/doc/client/architecture.md#vs-code-extension"
+  click ioserver "https://github.com/zowe/zowe-native-proto/blob/main/doc/server/ioserver_architecture.md"
+  click zowex "https://github.com/zowe/zowe-native-proto/blob/main/doc/server/zowex_architecture.md"
+```

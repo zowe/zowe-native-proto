@@ -91,8 +91,6 @@
 
 ## TSO
 
-## Commands
-
 | Operation                | z/OSMF | FTP | Backend | Middleware | SDK | CLI | VSCE |
 | ------------------------ | ------ | --- | ------- | ---------- | --- | --- | ---- |
 | Start TSO address space  | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌   |
