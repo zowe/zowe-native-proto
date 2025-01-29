@@ -12,7 +12,7 @@
 import type { IProfile } from "@zowe/imperative";
 import { type ISshSession, SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 
-// biome-ignore lint/complexity/noStaticOnlyClass: <explanation>
+// biome-ignore lint/complexity/noStaticOnlyClass: Utilities class has static methods
 export class ZSshUtils {
     public static buildSession(args: IProfile): SshSession {
         const sshSessCfg: ISshSession = {

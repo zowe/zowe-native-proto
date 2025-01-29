@@ -10,7 +10,7 @@
  */
 
 import type { IHandlerParameters } from "@zowe/imperative";
-import { ZSshUtils, type ReadSpool, type ZSshClient } from "zowe-native-proto-sdk";
+import { type ReadSpool, type ZSshClient, ZSshUtils } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class ViewJobJclHandler extends SshBaseHandler {

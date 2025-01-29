@@ -12,8 +12,8 @@
 import type { ICommandDefinition } from "@zowe/imperative";
 import { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { ViewDataSetDefinition } from "./data-set/DataSet.definition";
-import { ViewJobJclDefinition } from "./job-jcl/JobJcl.definition";
 import { ViewJobFileDefinition } from "./job-file/JobFile.definition";
+import { ViewJobJclDefinition } from "./job-jcl/JobJcl.definition";
 import { ViewJobStatusDefinition } from "./job-status/JobStatus.definition";
 import { ViewUssFileDefinition } from "./uss-file/UssFile.definition";
 

@@ -19,9 +19,7 @@ const IssueDefinition: ICommandDefinition = {
     description: "Issue console, TSO, or Unix commands",
     type: "group",
     aliases: ["i"],
-    children: [
-        ConsoleCommand
-    ],
+    children: [ConsoleCommand],
     passOn: [
         {
             property: "options",
@@ -33,4 +31,3 @@ const IssueDefinition: ICommandDefinition = {
 };
 
 export = IssueDefinition;
-
