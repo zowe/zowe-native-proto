@@ -10,10 +10,10 @@
  */
 
 import type { IRpcRequest, IRpcResponse } from "./doc";
+import type * as cmds from "./doc/zos-cmds";
 import type * as ds from "./doc/zos-ds";
 import type * as jobs from "./doc/zos-jobs";
 import type * as uss from "./doc/zos-uss";
-import type * as cmds from "./doc/zos-cmds";
 
 export abstract class AbstractRpcClient {
     public abstract request<T extends IRpcResponse>(request: IRpcRequest): Promise<T>;

@@ -26,8 +26,5 @@ export abstract class SshBaseHandler implements ICommandHandler {
         commandParameters.response.data.setObj(response);
     }
 
-    public abstract processWithClient(
-        commandParameters: IHandlerParameters,
-        client: ZSshClient,
-    ): Promise<IRpcResponse>;
+    public abstract processWithClient(commandParameters: IHandlerParameters, client: ZSshClient): Promise<IRpcResponse>;
 }
