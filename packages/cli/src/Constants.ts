@@ -9,15 +9,19 @@
  *
  */
 
+import * as path from "node:path";
 import type { ICommandOptionDefinition } from "@zowe/imperative";
+import { ZSshClient } from "zowe-native-proto-sdk";
 
 // biome-ignore lint/complexity/noStaticOnlyClass: <explanation>
 export class Constants {
     public static readonly OPT_SERVER_PATH: ICommandOptionDefinition = {
         name: "server-path",
         aliases: ["sp"],
-        description: "The remote path of the Zowe SSH server. Defaults to '~/.zowe-server'.",
+        description: `The remote path of the Zowe SSH server. Defaults to '${ZSshClient.DEFAULT_SERVER_PATH}'.`,
         type: "string",
         required: false,
     };
+
+    public static readonly ZSSH_BIN_DIR = path.join(__dirname, "..", "bin");
 }

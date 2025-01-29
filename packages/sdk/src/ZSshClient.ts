@@ -41,6 +41,8 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                         reject(err);
                     } else {
                         stream.stderr.on("data", (chunk: Buffer) => {
+                            // const EBCDIC = require("ebcdic-ascii").default;
+                            // chunk = Buffer.from(new EBCDIC("1047").toEBCDIC(chunk.toString("hex")), "hex");
                             console.log("STDERR:", chunk.toString());
                         });
                         resolve(stream);

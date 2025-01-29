@@ -57,7 +57,9 @@ export class ZSshUtils {
                     if (err) {
                         reject(err);
                     } else {
-                        ZSshUtils.uploadDir(sftp, localDir, serverPath.replace(/^~/, ".")).then(resolve, reject);
+                        ZSshUtils.uploadDir(sftp, localDir, serverPath.replace(/^~/, "."))
+                            .then(resolve, reject)
+                            .finally(() => client.end());
                     }
                 });
             });
@@ -73,7 +75,9 @@ export class ZSshUtils {
                     if (err) {
                         reject(err);
                     } else {
-                        ZSshUtils.safeRemoveDir(sftp, localDir, serverPath.replace(/^~/, ".")).then(resolve, reject);
+                        ZSshUtils.safeRemoveDir(sftp, localDir, serverPath.replace(/^~/, "."))
+                            .then(resolve, reject)
+                            .finally(() => client.end());
                     }
                 });
             });
