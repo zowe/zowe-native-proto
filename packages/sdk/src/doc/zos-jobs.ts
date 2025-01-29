@@ -16,6 +16,7 @@ export namespace GetJcl {
     export interface Request extends IRpcRequest {
         command: "getJcl";
         jobId: string;
+        // TODO(zFernand0): Add encoding support?
     }
 
     export interface Response extends IRpcResponse {
@@ -61,5 +62,16 @@ export namespace ReadSpool {
         dsnKey: number;
         jobId: string;
         encoding?: string;
+    }
+}
+
+export namespace GetStatus {
+    export interface Request extends IRpcRequest {
+        command: "getStatus";
+        jobId: string;
+    }
+
+    export interface Response extends IRpcResponse {
+        items: Job[];
     }
 }

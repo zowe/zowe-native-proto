@@ -35,4 +35,6 @@ export type Spool = {
     id: number;
     ddname: string;
     stepname: string;
+    procstep?: string;
+    dsname?: string;
 };

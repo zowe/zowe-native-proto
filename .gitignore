@@ -5,6 +5,8 @@ lib
 node_modules
 out
 bin
+dist
+typedoc
 tsconfig.tsbuildinfo
 zowe.config.json
 zowe.schema.json

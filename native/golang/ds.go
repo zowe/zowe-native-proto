@@ -16,6 +16,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
 	"strings"
 )
@@ -61,6 +62,17 @@ func HandleWriteDatasetRequest(jsonData []byte) {
 		// log.Println("Error decoding ReadDatasetRequest:", err)
 		return
 	}
+
+	// Temporarily disable _BPXK_AUTOCVT for this process and all children. Otherwise, this will cause issues when
+	// piping data between layers.
+	autocvt := os.Getenv("_BPXK_AUTOCVT")
+
+	err = os.Setenv("_BPXK_AUTOCVT", "")
+	if err != nil {
+		log.Println("Error disabling _BPXK_AUTOCVT during write:", err)
+		return
+	}
+
 	// log.Println("ReadDatasetRequest received:", dsRequest.Dataset, dsRequest.Encoding)
 	decodedBytes, err := base64.StdEncoding.DecodeString(dsRequest.Contents)
 	if err != nil {
@@ -68,6 +80,9 @@ func HandleWriteDatasetRequest(jsonData []byte) {
 		return
 	}
 	args := []string{"./zowex", "data-set", "write", dsRequest.Dataset}
+	if len(dsRequest.Encoding) > 0 {
+		args = append(args, "--encoding", dsRequest.Encoding)
+	}
 	cmd := exec.Command(args[0], args[1:]...)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -91,6 +106,13 @@ func HandleWriteDatasetRequest(jsonData []byte) {
 	// discard CLI output as its currently unused
 	_ = out
 
+	// Restore value for _BPXK_AUTOCVT
+	err = os.Setenv("_BPXK_AUTOCVT", autocvt)
+	if err != nil {
+		log.Println("Error restoring _BPXK_AUTOCVT after write:", err)
+		return
+	}
+
 	dsResponse := WriteDatasetResponse{
 		Success: true,
 		Dataset: dsRequest.Dataset,
@@ -113,7 +135,7 @@ func HandleListDatasetsRequest(jsonData []byte) {
 		return
 	}
 
-	args := []string{"./zowex", "data-set", "list", listRequest.Pattern, "--rfc", "1"}
+	args := []string{"./zowex", "data-set", "list", listRequest.Pattern, "--rfc", "true"}
 	// if len(listRequest.Start) != 0 {
 	// 	args = append(args, "--start", listRequest.Start)
 	// }
@@ -184,6 +206,33 @@ func HandleListDsMembersRequest(jsonData []byte) {
 		dsResponse.ReturnedRows++
 	}
 
+	v, err := json.Marshal(dsResponse)
+	if err != nil {
+		fmt.Println(err.Error())
+	} else {
+		fmt.Println(string(v))
+	}
+}
+
+func HandleRestoreDatasetRequest(jsonData []byte) {
+	var dsRequest RestoreDatasetRequest
+	err := json.Unmarshal(jsonData, &dsRequest)
+	if err != nil {
+		return
+	}
+
+	args := []string{"./zowex", "data-set", "restore", dsRequest.Dataset}
+
+	out, err := exec.Command(args[0], args[1:]...).Output()
+	if err != nil {
+		log.Println("Error executing command:", err)
+		log.Println(string(out))
+		return
+	}
+
+	dsResponse := WriteDatasetResponse{
+		Success: true,
+	}
 	v, err := json.Marshal(dsResponse)
 	if err != nil {
 		fmt.Println(err.Error())

@@ -46,6 +46,7 @@ int handle_console_issue(ZCLIResult);
 int handle_data_set_create_dsn(ZCLIResult);
 int handle_data_set_create_dsn_vb(ZCLIResult);
 int handle_data_set_create_dsn_adata(ZCLIResult);
+int handle_data_set_restore(ZCLIResult);
 int handle_data_set_view_dsn(ZCLIResult);
 int handle_data_set_list(ZCLIResult);
 int handle_data_set_list_members_dsn(ZCLIResult);
@@ -92,6 +93,12 @@ int main(int argc, char *argv[])
   test_command.set_zcli_verb_handler(handle_test_command);
   test_group.get_verbs().push_back(test_command);
 
+  ZCLIOption response_format_csv("response-format-csv");
+  response_format_csv.set_description("returns the response in CSV format");
+  response_format_csv.get_aliases().push_back("--rfc");
+  response_format_csv.set_default("false");
+  response_format_csv.set_required(false);
+
   //
   // data set group
   //
@@ -124,6 +131,12 @@ int main(int argc, char *argv[])
   data_set_create_adata.get_positionals().push_back(data_set_dsn);
   data_set_group.get_verbs().push_back(data_set_create_adata);
 
+  ZCLIVerb data_set_restore("restore");
+  data_set_restore.set_description("restore/recall data set");
+  data_set_restore.set_zcli_verb_handler(handle_data_set_restore);
+  data_set_restore.get_positionals().push_back(data_set_dsn);
+  data_set_group.get_verbs().push_back(data_set_restore);
+
   ZCLIVerb data_set_view("view");
   data_set_view.set_description("view data set");
   data_set_view.set_zcli_verb_handler(handle_data_set_view_dsn);
@@ -144,12 +157,7 @@ int main(int argc, char *argv[])
   data_set_list.set_description("list data sets");
   data_set_list.set_zcli_verb_handler(handle_data_set_list);
   data_set_list.get_positionals().push_back(data_set_dsn);
-
-  ZCLIOption dslist_rfc("response-format-csv");
-  dslist_rfc.set_description("returns the response in CSV format");
-  dslist_rfc.get_aliases().push_back("--rfc");
-  data_set_list.get_options().push_back(dslist_rfc);
-
+  data_set_list.get_options().push_back(response_format_csv);
   data_set_group.get_verbs().push_back(data_set_list);
 
   ZCLIVerb data_set_list_members("list-members");
@@ -162,6 +170,7 @@ int main(int argc, char *argv[])
   data_set_write.set_description("write to data set");
   data_set_write.set_zcli_verb_handler(handle_data_set_write_to_dsn);
   data_set_write.get_positionals().push_back(data_set_dsn);
+  data_set_write.get_options().push_back(data_set_encoding);
   data_set_group.get_verbs().push_back(data_set_write);
 
   ZCLIVerb data_set_delete("delete");
@@ -186,15 +195,8 @@ int main(int argc, char *argv[])
   ZCLIOption job_owner("owner");
   job_owner.set_description("filter by owner");
   job_list.get_options().push_back(job_owner);
-  ZCLIOption job_list_rfc("response-format-csv");
-  job_list_rfc.set_description("returns the response in CSV format");
-  job_list_rfc.get_aliases().push_back("--rfc");
-  job_list.get_options().push_back(job_list_rfc);
+  job_list.get_options().push_back(response_format_csv);
   job_group.get_verbs().push_back(job_list);
-
-  ZCLIOption spool_list_rfc("response-format-csv");
-  spool_list_rfc.set_description("returns the response in CSV format");
-  spool_list_rfc.get_aliases().push_back("--rfc");
 
   ZCLIVerb job_list_files("list-files");
   job_list_files.set_description("list spool files for jobid");
@@ -203,13 +205,14 @@ int main(int argc, char *argv[])
   job_jobid.set_required(true);
   job_jobid.set_description("valid jobid");
   job_list_files.get_positionals().push_back(job_jobid);
-  job_list_files.get_options().push_back(spool_list_rfc);
+  job_list_files.get_options().push_back(response_format_csv);
   job_group.get_verbs().push_back(job_list_files);
 
   ZCLIVerb job_view_status("view-status");
   job_view_status.set_description("view job status");
   job_view_status.set_zcli_verb_handler(handle_job_view_status);
   job_view_status.get_positionals().push_back(job_jobid);
+  job_view_status.get_options().push_back(response_format_csv);
   job_group.get_verbs().push_back(job_view_status);
 
   ZCLIVerb job_view_file("view-file");
@@ -306,10 +309,14 @@ int main(int argc, char *argv[])
   uss_list.get_positionals().push_back(uss_file_path);
   uss_group.get_verbs().push_back(uss_list);
 
+  ZCLIOption uss_encoding("encoding");
+  uss_encoding.set_description("return file contents in given encoding");
+
   ZCLIVerb uss_view("view");
   uss_view.set_description("view a USS file");
   uss_view.get_positionals().push_back(uss_file_path);
   uss_view.set_zcli_verb_handler(handle_uss_view);
+  uss_view.get_options().push_back(uss_encoding);
   uss_group.get_verbs().push_back(uss_view);
 
   ZCLIVerb uss_write("write");
@@ -426,7 +433,7 @@ int handle_job_list(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  const bool emit_csv = result.get_option("--response-format-csv").is_found();
+  const auto emit_csv = result.get_option("--response-format-csv").get_value() == "true";
   for (vector<ZJob>::iterator it = jobs.begin(); it != jobs.end(); it++)
   {
     if (emit_csv)
@@ -463,7 +470,7 @@ int handle_job_list_files(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  const bool emit_csv = result.get_option("--response-format-csv").is_found();
+  const auto emit_csv = result.get_option("--response-format-csv").get_value() == "true";
   for (vector<ZJobDD>::iterator it = job_dds.begin(); it != job_dds.end(); ++it)
   {
     std::vector<string> fields;
@@ -492,6 +499,7 @@ int handle_job_view_status(ZCLIResult result)
   ZJob job = {0};
   string jobid(result.get_positional("jobid").get_value());
 
+  const auto emit_csv = result.get_option("--response-format-csv").get_value() == "true";
   rc = zjb_view_by_jobid(&zjb, jobid, job);
 
   if (0 != rc)
@@ -501,12 +509,19 @@ int handle_job_view_status(ZCLIResult result)
     return -1;
   }
 
-  // cout << setw(10) << "jobid: " << job.jobid << endl;
-  // cout << setw(10) << "retcode: " << job.retcode << endl;
-  // cout << setw(10) << "jobname: " << job.jobname << endl;
-  // cout << setw(10) << "status: " << job.status << endl;
-  cout << job.jobid << " " << left << setw(10) << job.retcode << " " << job.jobname << " " << job.status << endl;
-
+  if (emit_csv)
+  {
+    vector<string> fields;
+    fields.push_back(job.jobid);
+    fields.push_back(job.retcode);
+    fields.push_back(job.jobname);
+    fields.push_back(job.status);
+    cout << zut_format_as_csv(fields) << endl;
+  }
+  else
+  {
+    cout << job.jobid << " " << left << setw(10) << job.retcode << " " << job.jobname << " " << job.status << endl;
+  }
   return 0;
 }
 
@@ -516,17 +531,8 @@ int handle_job_view_file(ZCLIResult result)
   ZJB zjb = {0};
   string jobid(result.get_positional("jobid").get_value());
   string key(result.get_positional("key").get_value());
-  const bool hasEncoding = result.get_option("--encoding").is_found();
 
-  if (hasEncoding)
-  {
-    const string encodingValue = result.get_option("--encoding").get_value();
-    memcpy(zjb.encoding, encodingValue.data(), (std::min)(16ul, encodingValue.size()));
-  }
-  else
-  {
-    memset(zjb.encoding, 0, 16ul);
-  }
+  const auto hasEncoding = zut_prepare_encoding(result, &zjb.encoding_opts);
 
   string resp;
   rc = zjb_read_jobs_output_by_jobid_and_key(&zjb, jobid, atoi(key.c_str()), resp);
@@ -540,11 +546,7 @@ int handle_job_view_file(ZCLIResult result)
 
   if (hasEncoding)
   {
-    for (char *p = (char *)resp.data(); p < (resp.data() + resp.length()); p++)
-    {
-      printf("%02x ", (unsigned char)*p);
-    }
-    printf("\n");
+    zut_print_string_as_bytes(resp);
   }
   else
   {
@@ -738,6 +740,29 @@ int handle_data_set_create_dsn_adata(ZCLIResult result)
   return rc;
 }
 
+int handle_data_set_restore(ZCLIResult result)
+{
+  int rc = 0;
+  string dsn = result.get_positional("dsn").get_value();
+  ZDS zds = {0};
+  string response;
+  unsigned int code = 0;
+
+  string parm = "alloc da('" + dsn + "') shr";
+
+  rc = zut_bpxwdyn(parm, &code, response);
+  if (0 != rc)
+  {
+    cout << "Error: bpxwdyn with parm '" << parm << "' rc: '" << rc << "'" << endl;
+    cout << "  Details: " << response << endl;
+    return RTNCD_FAILURE;
+  }
+
+  cout << "Data set '" << dsn << "' restored" << endl;
+
+  return rc;
+}
+
 int handle_data_set_view_dsn(ZCLIResult result)
 {
   int rc = 0;
@@ -745,12 +770,7 @@ int handle_data_set_view_dsn(ZCLIResult result)
   ZCLIOption &encoding = result.get_option("--encoding");
   ZDS zds = {0};
   string response;
-  string encodingValue = encoding.get_value();
-  const bool hasEncoding = !encodingValue.empty();
-  if (hasEncoding)
-  {
-    memcpy(zds.encoding, encodingValue.c_str(), (std::min)(16ul, encodingValue.size()));
-  }
+  const auto hasEncoding = zut_prepare_encoding(result, &zds.encoding_opts);
   rc = zds_read_from_dsn(&zds, dsn, response);
   if (0 != rc)
   {
@@ -758,13 +778,10 @@ int handle_data_set_view_dsn(ZCLIResult result)
     cout << "  Details: " << zds.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
+
   if (hasEncoding)
   {
-    for (char *p = (char *)response.data(); p < (response.data() + response.length()); p++)
-    {
-      printf("%02x ", (unsigned char)*p);
-    }
-    printf("\n");
+    zut_print_string_as_bytes(response);
   }
   else
   {
@@ -788,7 +805,7 @@ int handle_data_set_list(ZCLIResult result)
   }
   vector<ZDSEntry> entries;
 
-  const bool emit_csv = result.get_option("--response-format-csv").is_found();
+  const auto emit_csv = result.get_option("--response-format-csv").get_value() == "true";
   rc = zds_list_data_sets(&zds, dsn, entries);
   if (RTNCD_SUCCESS == rc)
   {
@@ -879,10 +896,25 @@ int handle_data_set_write_to_dsn(ZCLIResult result)
   string data;
   string line;
 
-  while (getline(cin, line))
+  size_t byteSize = 0ul;
+  const auto hasEncoding = zut_prepare_encoding(result, &zds.encoding_opts);
+  if (hasEncoding)
   {
-    data += line;
-    data.push_back('\n');
+    std::istreambuf_iterator<char> begin(std::cin);
+    std::istreambuf_iterator<char> end;
+
+    std::vector<char> bytes(begin, end);
+    data.assign(bytes.begin(), bytes.end());
+    byteSize = bytes.size();
+  }
+  else
+  {
+    while (getline(cin, line))
+    {
+      data += line;
+      data.push_back('\n');
+    }
+    byteSize = data.size();
   }
 
   rc = zds_write_to_dsn(&zds, dsn, data);
@@ -1034,6 +1066,8 @@ int handle_uss_view(ZCLIResult result)
   string uss_file = result.get_positional("file-path").get_value();
 
   ZUSF zusf = {0};
+  const auto hasEncoding = zut_prepare_encoding(result, &zusf.encoding_opts);
+
   string response;
   rc = zusf_read_from_uss_file(&zusf, uss_file, response);
   if (0 != rc)
@@ -1045,7 +1079,14 @@ int handle_uss_view(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  cout << response;
+  if (hasEncoding)
+  {
+    zut_print_string_as_bytes(response);
+  }
+  else
+  {
+    cout << response << endl;
+  }
 
   return rc;
 }
@@ -1066,7 +1107,7 @@ int handle_uss_write(ZCLIResult result)
     data.push_back('\n');
   }
 
-  rc = zds_write_to_uss_file(&zusf, file, data);
+  rc = zusf_write_to_uss_file(&zusf, file, data);
   if (0 != rc)
   {
     cout << "Error: could not write to USS file: '" << file << "' rc: '" << rc << "'" << endl;
@@ -1099,7 +1140,7 @@ int handle_uss_chmod(ZCLIResult result)
     mode = "755";
 
   ZUSF zusf = {0};
-  rc = zds_chmod_uss_file_or_dir(&zusf, file_path, mode);
+  rc = zusf_chmod_uss_file_or_dir(&zusf, file_path, mode);
   if (0 != rc)
   {
     cout << "Error: could not create USS path: '" << file_path << "' rc: '" << rc << "'" << endl;

@@ -9,7 +9,7 @@
  *
  */
 
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import type * as zosfiles from "@zowe/zos-files-for-zowe-sdk";
 import { type MainframeInteraction, imperative } from "@zowe/zowe-explorer-api";
 import { ZSshUtils } from "zowe-native-proto-sdk";
@@ -48,20 +48,30 @@ export class SshUssApi extends SshCommonApi implements MainframeInteraction.IUss
         return this.buildZosFilesResponse({ etag: ussFilePath });
     }
 
-    public uploadFromBuffer(
+    public async uploadFromBuffer(
         buffer: Buffer,
         filePath: string,
-        _options?: zosfiles.IUploadOptions,
+        options?: zosfiles.IUploadOptions,
     ): Promise<zosfiles.IZosFilesResponse> {
-        throw new Error("Not yet implemented");
+        const response = await (await this.client).uss.writeFile({
+            path: filePath,
+            encoding: options?.encoding,
+            contents: ZSshUtils.encodeByteArray(buffer),
+        });
+        return this.buildZosFilesResponse({ etag: filePath });
     }
 
     public async putContent(
         inputFilePath: string,
         ussFilePath: string,
-        _options?: zosfiles.IUploadOptions,
+        options?: zosfiles.IUploadOptions,
     ): Promise<zosfiles.IZosFilesResponse> {
-        throw new Error("Not yet implemented");
+        const response = await (await this.client).uss.writeFile({
+            path: ussFilePath,
+            encoding: options?.encoding,
+            contents: ZSshUtils.encodeByteArray(readFileSync(inputFilePath)),
+        });
+        return this.buildZosFilesResponse({ etag: ussFilePath });
     }
 
     public async uploadDirectory(

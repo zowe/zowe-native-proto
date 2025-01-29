@@ -68,20 +68,25 @@ int zds_read_from_dd(ZDS *zds, string ddname, string &response)
   in.close();
 
   const size_t size = response.size() + 1;
-  char *raw_data = new char[size];
-  memcpy(raw_data, response.c_str(), size);
+  string bytes;
+  bytes.reserve(size);
+  memcpy((char *)bytes.data(), response.c_str(), size);
 
-  delete[] raw_data;
-
-  if (strlen(zds->encoding) > 0 /* && (*encoding != "IBM-1047" && *encoding != "01047") */)
+  if (size > 0 && strlen(zds->encoding_opts.codepage) > 0)
   {
-    char *bufEnd;
-    char *outBuf = zut_encode_alloc(raw_data, size, string(zds->encoding), zds->diag, &bufEnd);
-    if (outBuf)
+    std::string temp = response;
+    try
     {
-      response.clear();
-      response.assign(outBuf, bufEnd - outBuf);
-      delete[] outBuf;
+      const auto bytes_with_encoding = zut_encode_alloc(temp, string(zds->encoding_opts.codepage), "UTF-8", zds->diag);
+      temp = bytes_with_encoding;
+    }
+    catch (std::exception &e)
+    {
+      // TODO: error handling
+    }
+    if (!temp.empty())
+    {
+      response = temp;
     }
   }
 
@@ -92,7 +97,7 @@ int zds_read_from_dsn(ZDS *zds, string dsn, string &response)
 {
   dsn = "//'" + dsn + "'";
 
-  ifstream in(dsn.c_str());
+  ifstream in(dsn.c_str(), zds->encoding_opts.data_type == eDataTypeBinary ? ios::in | ios::binary : ios::in);
   if (!in.is_open())
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open file '%s'", dsn.c_str());
@@ -103,21 +108,32 @@ int zds_read_from_dsn(ZDS *zds, string dsn, string &response)
   size_t size = in.tellg();
   in.seekg(0, ios::beg);
 
-  char *rawData = new char[size];
-  in.read(rawData, size);
+  char *raw_data = new char[size];
+  std::fill(raw_data, raw_data + size, 0);
+  in.read(raw_data, size);
 
-  response.assign(rawData);
+  response.assign(raw_data);
+  delete[] raw_data;
+
   in.close();
 
-  char *bufEnd;
-  if (strlen(zds->encoding) > 0 /* && (*encoding != "IBM-1047" && *encoding != "01047") */)
+  const auto encodingProvided = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
+
+  if (size > 0 && encodingProvided)
   {
-    char *outBuf = zut_encode_alloc(rawData, size, string(zds->encoding), zds->diag, &bufEnd);
-    if (outBuf)
+    std::string temp = response;
+    try
     {
-      response.clear();
-      response.assign(outBuf, bufEnd - outBuf);
-      delete[] outBuf;
+      const auto bytes_with_encoding = zut_encode_alloc(temp, string(zds->encoding_opts.codepage), "UTF-8", zds->diag);
+      temp = bytes_with_encoding;
+    }
+    catch (std::exception &e)
+    {
+      // TODO: error handling
+    }
+    if (!temp.empty())
+    {
+      response = temp;
     }
   }
 
@@ -141,15 +157,34 @@ int zds_write_to_dd(ZDS *zds, string ddname, string &data)
   return 0;
 }
 
-int zds_write_to_dsn(ZDS *zds, string dsn, string &data)
+int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data)
 {
+  const auto hasEncoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
   dsn = "//'" + dsn + "'";
-  ofstream out(dsn.c_str());
+  ofstream out(dsn.c_str(), zds->encoding_opts.data_type == eDataTypeBinary ? ios::binary : ios::out);
 
-  if (!out.is_open())
+  if (!out.good())
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open '%s'", dsn.c_str());
     return RTNCD_FAILURE;
+  }
+
+  if (hasEncoding)
+  {
+    std::string temp = data;
+    try
+    {
+      const auto bytes_with_encoding = zut_encode_alloc(temp, "UTF-8", string(zds->encoding_opts.codepage), zds->diag);
+      temp = bytes_with_encoding;
+    }
+    catch (std::exception &e)
+    {
+      // TODO: error handling
+    }
+    if (!temp.empty())
+    {
+      data = temp;
+    }
   }
 
   out << data;
@@ -246,7 +281,7 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &list)
 
   while (fread(&rec, sizeof *buffer, sizeof(RECORD), fp))
   {
-    unsigned char *data = NULL;
+    unsigned char *data = nullptr;
     data = (unsigned char *)&rec;
     data += sizeof(rec.count); // increment past halfword length
     int len = sizeof(RECORD_ENTRY);
@@ -501,7 +536,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
 
     int work_area_total = csi_work_area->header.used_size;
     unsigned char *p = (unsigned char *)&csi_work_area->entry;
-    ZDS_CSI_ENTRY *f = NULL;
+    ZDS_CSI_ENTRY *f = nullptr;
 
     work_area_total -= sizeof(ZDS_CSI_HEADER);
     work_area_total -= sizeof(ZDS_CSI_CATALOG);
