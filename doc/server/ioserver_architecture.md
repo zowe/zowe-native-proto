@@ -4,7 +4,7 @@ ioserver acts as the middleware between the client and server. It is written in 
 
 ## Architectural overview
 
-ioserver mediates all requests and dispatches requests to appropriate command handlers. These command handlers are defined in a map and are accessed by the command name. Those command handlers can perform actions in Go, or execute the backend layer (`zowex`) to access data.
+ioserver mediates all requests and dispatches requests to appropriate command handlers. These command handlers are defined in a map and are accessed by the command name. Those command handlers can perform actions in Go, or execute the backend layer (`zowex`) to access data. The response data is composed and serialized as JSON before being returned to the caller through stdout.
 
 ## Request and response processing
 
