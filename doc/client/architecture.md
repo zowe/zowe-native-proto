@@ -2,7 +2,7 @@
 
 ## SDK Package
 
-The SDK defines a `ZSshClient` class with a `request` method that communicates with the [middleware component](./design-server-go) over SSH.
+The SDK defines a `ZSshClient` class with a `request` method that communicates with the [middleware component](../server/ioserver_architecture.md) over SSH.
 
 For each command supported by the middleware, a `Request` and `Response` type is defined in the `doc` folder. For example, to list data sets:
 
@@ -51,7 +51,8 @@ using client = await ZSshClient.create(session);
 const response = await client.ds.listDatasets({ pattern: "IBMUSER.*" });
 ```
 
-To transmit binary data, it must be Base64 encoded since the z/OS OpenSSH server does not support sending raw bytes without codepage conversion. Use the methods `ZSshUtils.encodeByteArray` before sending binary data and `ZSshUtils.decodeByteArray` after receiving it.
+> [!NOTE]
+> To transmit binary data, it must be Base64 encoded since the z/OS OpenSSH server does not support sending raw bytes without codepage conversion. Use the methods `ZSshUtils.encodeByteArray` before sending binary data and `ZSshUtils.decodeByteArray` after receiving it.
 
 ## CLI Plug-in
 
