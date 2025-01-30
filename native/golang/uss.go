@@ -18,6 +18,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 )
 
 func HandleListFilesRequest(jsonData []byte) {
@@ -30,24 +31,37 @@ func HandleListFilesRequest(jsonData []byte) {
 
 	dirPath := listRequest.Path
 
-	entries, err := os.ReadDir(dirPath)
+	fileInfo, err := os.Stat(dirPath)
 	if err != nil {
-		log.Println("Error reading directory:", err)
 		return
 	}
 
-	ussResponse := ListFilesResponse{
-		Items: make([]UssItem, len(entries)),
-	}
+	ussResponse := ListFilesResponse{}
 
-	for i, entry := range entries {
-		ussResponse.Items[i] = UssItem{
-			Name:  entry.Name(),
-			IsDir: entry.IsDir(),
+	if !fileInfo.IsDir() {
+		ussResponse.Items = make([]UssItem, 1)
+		ussResponse.Items[0] = UssItem{
+			Name:  filepath.Base(dirPath),
+			IsDir: false,
 		}
-	}
+		ussResponse.ReturnedRows = 1
+	} else {
+		entries, err := os.ReadDir(dirPath)
+		if err != nil {
+			log.Println("Error reading directory:", err)
+			return
+		}
+		ussResponse.Items = make([]UssItem, len(entries))
 
-	ussResponse.ReturnedRows = len(ussResponse.Items)
+		for i, entry := range entries {
+			ussResponse.Items[i] = UssItem{
+				Name:  entry.Name(),
+				IsDir: entry.IsDir(),
+			}
+		}
+
+		ussResponse.ReturnedRows = len(ussResponse.Items)
+	}
 
 	v, err := json.Marshal(ussResponse)
 	if err != nil {
