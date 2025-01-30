@@ -310,7 +310,69 @@ size_t zut_get_utf8_len(const char *str)
   return len;
 }
 
-std::string zut_encode_alloc(const string &bytes, const string &from_encoding, const string &to_encoding, ZDIAG &diag)
+wstring zut_encode_mbcs(const string &utf8_str)
+{
+  iconv_t cd = iconv_open("UTF-8", "UCS-2");
+  if (cd == (iconv_t)(-1))
+  {
+    diag.e_msg_len = sprintf(diag.e_msg, "Cannot open converter from %s to %s", from_encoding.c_str(), to_encoding.c_str());
+    return nullptr;
+  }
+
+  const size_t input_size = bytes.size();
+  // maximum possible size assumes UTF-8 data with 4-byte character sequences
+  const size_t max_output_size = input_size * 4;
+
+  // Create a contiguous memory region to store the output w/ new encoding
+  // There is no guarantee that the memory is contiguous when using an empty std::string here (as xlc does not completely implement the C++11 standard),
+  // so we'll handle the memory ourselves
+  uint16_t *output_buffer = new uint16_t[max_output_size];
+  std::fill(output_buffer, output_buffer + max_output_size, 0u);
+
+  // Prepare iconv parameters (copy output_buffer ptr to output_iter to cache start and end positions)
+  char *input = (char *)utf8_str.data();
+  char *output_iter = (char *)output_buffer;
+
+  ZConvData data = {input_size, max_output_size, output_buffer, output_iter};
+  size_t iconv_rc = zut_iconv(cd, data, diag);
+  iconv_close(cd);
+  if (iconv_rc == -1)
+  {
+    throw std::exception(diag.e_msg);
+  }
+
+  // Copy converted bytes into a new string and return it to the caller
+  wstring result((const wchar_t *)output_buffer, (data.output_iter - data.output_buffer) / sizeof(uint16_t));
+  delete[] data.output_buffer;
+
+  return result;
+}
+
+size_t zut_iconv(iconv_t cd, ZConvData &data, ZDIAG &diag)
+{
+  size_t input_bytes_remaining = data.input_size;
+  size_t output_bytes_remaining = data.max_output_size;
+
+  size_t rc = iconv(cd, &data.input, &input_bytes_remaining, &data.output_iter, &output_bytes_remaining);
+
+  // If an error occurred, throw an exception with iconv's return code and errno
+  if (rc == -1)
+  {
+    diag.e_msg_len = sprintf(diag.e_msg, "[zut_iconv] Error when converting characters. rc=%lu,errno=%d", rc, errno);
+    return -1;
+  }
+
+  // "If the input conversion is stopped... the value pointed to by inbytesleft will be nonzero and errno is set to indicate the condition"
+  if (input_bytes_remaining != 0)
+  {
+    diag.e_msg_len = sprintf(diag.e_msg, "[zut_iconv] Failed to convert all input bytes. rc=%lu,errno=%d", rc, errno);
+    return -1;
+  }
+
+  return rc;
+}
+
+std::string zut_encode(const string &bytes, const string &from_encoding, const string &to_encoding, ZDIAG &diag)
 {
   iconv_t cd = iconv_open(to_encoding.c_str(), from_encoding.c_str());
   if (cd == (iconv_t)(-1))
@@ -320,11 +382,8 @@ std::string zut_encode_alloc(const string &bytes, const string &from_encoding, c
   }
 
   const size_t input_size = bytes.size();
-  // the largest supported encoding scheme is UTF-16, which can be represented w/ up to two 2-byte code units per character
+  // maximum possible size assumes UTF-8 data with 4-byte character sequences
   const size_t max_output_size = input_size * 4;
-
-  size_t input_bytes_remaining = input_size;
-  size_t output_bytes_remaining = max_output_size;
 
   // Create a contiguous memory region to store the output w/ new encoding
   // There is no guarantee that the memory is contiguous when using an empty std::string here (as xlc does not completely implement the C++11 standard),
@@ -338,29 +397,17 @@ std::string zut_encode_alloc(const string &bytes, const string &from_encoding, c
 
   string result;
 
-  size_t rc = iconv(cd, &input, &input_bytes_remaining, &output_iter, &output_bytes_remaining);
-
-  // If an error occurred, throw an exception with iconv's return code and errno
-  if (rc == -1)
-  {
-    diag.e_msg_len = sprintf(diag.e_msg, "[zut_encode_alloc] Error when converting characters. rc=%lu,errno=%d", rc, errno);
-    delete[] output_buffer;
-    throw std::exception(diag.e_msg);
-  }
-
-  // "If the input conversion is stopped... the value pointed to by inbytesleft will be nonzero and errno is set to indicate the condition"
-  if (input_bytes_remaining != 0)
-  {
-    diag.e_msg_len = sprintf(diag.e_msg, "[zut_encode_alloc] Failed to convert all input bytes. rc=%lu,errno=%d", rc, errno);
-    delete[] output_buffer;
-    throw std::exception(diag.e_msg);
-  }
-
+  ZConvData data = {input_size, max_output_size, output_buffer, output_iter};
+  size_t iconv_rc = zut_iconv(cd, data, diag);
   iconv_close(cd);
+  if (iconv_rc == -1)
+  {
+    throw std::exception(diag.e_msg);
+  }
 
   // Copy converted bytes into a new string and return it to the caller
-  result.assign(output_buffer, output_iter - output_buffer);
-  delete[] output_buffer;
+  result.assign(output_buffer, data.output_iter - data.output_buffer);
+  delete[] data.output_buffer;
 
   return result;
 }

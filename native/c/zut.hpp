@@ -18,6 +18,14 @@
 #include "zcli.hpp"
 #include "zcntype.h"
 
+typedef struct ZConvData
+{
+    char *input;
+    size_t input_size;
+    char *output_buffer;
+    char *output_iter;
+} ZConvData;
+
 int zut_bpxwdyn(std::string, unsigned int *, std::string &);
 int zut_test();
 void zut_dump_storage(std::string, const void *, size_t);
