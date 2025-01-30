@@ -19,7 +19,6 @@
 #include "zut.hpp"
 #include "zutm.h"
 #include "zutm31.h"
-#include <iconv.h>
 #include <ios>
 #include "zdyn.h"
 
@@ -310,16 +309,16 @@ size_t zut_get_utf8_len(const char *str)
   return len;
 }
 
-wstring zut_encode_mbcs(const string &utf8_str)
+wstring zut_encode_mbcs(const string &utf8_str, ZDIAG &diag)
 {
-  iconv_t cd = iconv_open("UTF-8", "UCS-2");
+  iconv_t cd = iconv_open("01208", "13488");
   if (cd == (iconv_t)(-1))
   {
-    diag.e_msg_len = sprintf(diag.e_msg, "Cannot open converter from %s to %s", from_encoding.c_str(), to_encoding.c_str());
-    return nullptr;
+    diag.e_msg_len = sprintf(diag.e_msg, "Cannot open converter from UTF-8 to UCS-2");
+    return L"";
   }
 
-  const size_t input_size = bytes.size();
+  const size_t input_size = utf8_str.size();
   // maximum possible size assumes UTF-8 data with 4-byte character sequences
   const size_t max_output_size = input_size * 4;
 
@@ -333,7 +332,7 @@ wstring zut_encode_mbcs(const string &utf8_str)
   char *input = (char *)utf8_str.data();
   char *output_iter = (char *)output_buffer;
 
-  ZConvData data = {input, input_size, max_output_size, output_buffer, output_iter};
+  ZConvData data = {input, input_size, max_output_size, (char *)output_buffer, (char *)output_iter};
   size_t iconv_rc = zut_iconv(cd, data, diag);
   iconv_close(cd);
   if (iconv_rc == -1)
@@ -378,7 +377,7 @@ std::string zut_encode(const string &bytes, const string &from_encoding, const s
   if (cd == (iconv_t)(-1))
   {
     diag.e_msg_len = sprintf(diag.e_msg, "Cannot open converter from %s to %s", from_encoding.c_str(), to_encoding.c_str());
-    return nullptr;
+    return "";
   }
 
   const size_t input_size = bytes.size();

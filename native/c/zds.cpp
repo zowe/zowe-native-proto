@@ -77,7 +77,7 @@ int zds_read_from_dd(ZDS *zds, string ddname, string &response)
     std::string temp = response;
     try
     {
-      const auto bytes_with_encoding = zut_encode_alloc(temp, string(zds->encoding_opts.codepage), "UTF-8", zds->diag);
+      const auto bytes_with_encoding = zut_encode(temp, string(zds->encoding_opts.codepage), "UTF-8", zds->diag);
       temp = bytes_with_encoding;
     }
     catch (std::exception &e)
@@ -124,7 +124,7 @@ int zds_read_from_dsn(ZDS *zds, string dsn, string &response)
     std::string temp = response;
     try
     {
-      const auto bytes_with_encoding = zut_encode_alloc(temp, string(zds->encoding_opts.codepage), "UTF-8", zds->diag);
+      const auto bytes_with_encoding = zut_encode(temp, string(zds->encoding_opts.codepage), "UTF-8", zds->diag);
       temp = bytes_with_encoding;
     }
     catch (std::exception &e)
@@ -179,7 +179,7 @@ int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data)
     std::string temp = data;
     try
     {
-      const auto bytes_with_encoding = zut_encode_alloc(temp, "UTF-8", string(zds->encoding_opts.codepage), zds->diag);
+      const auto bytes_with_encoding = zut_encode(temp, "UTF-8", string(zds->encoding_opts.codepage), zds->diag);
       temp = bytes_with_encoding;
     }
     catch (std::exception &e)

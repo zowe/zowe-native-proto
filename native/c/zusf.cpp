@@ -188,7 +188,7 @@ int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
     std::string temp = response;
     try
     {
-      const auto bytes_with_encoding = zut_encode_alloc(temp, string(zusf->encoding_opts.codepage), "UTF-8", zusf->diag);
+      const auto bytes_with_encoding = zut_encode(temp, string(zusf->encoding_opts.codepage), "UTF-8", zusf->diag);
       temp = bytes_with_encoding;
     }
     catch (std::exception &e)
@@ -229,7 +229,7 @@ int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data)
     std::string temp = data;
     try
     {
-      const auto bytes_with_encoding = zut_encode_alloc(temp, "UTF-8", string(zusf->encoding_opts.codepage), zusf->diag);
+      const auto bytes_with_encoding = zut_encode(temp, "UTF-8", string(zusf->encoding_opts.codepage), zusf->diag);
       temp = bytes_with_encoding;
     }
     catch (std::exception &e)
