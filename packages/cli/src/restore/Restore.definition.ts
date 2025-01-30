@@ -11,15 +11,15 @@
 
 import type { ICommandDefinition } from "@zowe/imperative";
 import { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
-import { ConsoleCommand } from "./console/ConsoleCommand.definition";
+import { DataSetDefinition } from "./data-set/DataSet.definition";
 
-const IssueDefinition: ICommandDefinition = {
-    name: "issue",
-    summary: "Issue commands",
-    description: "Issue console, TSO, or Unix commands",
+const RestoreDefinition: ICommandDefinition = {
+    name: "restore",
+    summary: "Restore datasets",
+    description: "Restore datasets that have been archived/migrated",
     type: "group",
-    aliases: ["i"],
-    children: [ConsoleCommand],
+    aliases: ["r"],
+    children: [DataSetDefinition],
     passOn: [
         {
             property: "options",
@@ -30,4 +30,4 @@ const IssueDefinition: ICommandDefinition = {
     ],
 };
 
-export = IssueDefinition;
+export = RestoreDefinition;

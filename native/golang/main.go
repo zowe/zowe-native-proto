@@ -40,6 +40,7 @@ func main() {
 		"readFile":       HandleReadFileRequest,
 		"readSpool":      HandleReadSpoolRequest,
 		"getJcl":         HandleGetJclRequest,
+		"getStatus":      HandleGetStatusRequest,
 		"writeDataset":   HandleWriteDatasetRequest,
 		"writeFile":      HandleWriteFileRequest,
 		"listDatasets":   HandleListDatasetsRequest,
@@ -48,6 +49,7 @@ func main() {
 		"listJobs":       HandleListJobsRequest,
 		"listSpools":     HandleListSpoolsRequest,
 		"consoleCommand": HandleConsoleCommandRequest,
+		"restoreDataset": HandleRestoreDatasetRequest,
 	}
 
 	for data := range input {

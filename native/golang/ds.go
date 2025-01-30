@@ -135,7 +135,7 @@ func HandleListDatasetsRequest(jsonData []byte) {
 		return
 	}
 
-	args := []string{"./zowex", "data-set", "list", listRequest.Pattern, "--rfc", "1"}
+	args := []string{"./zowex", "data-set", "list", listRequest.Pattern, "--rfc", "true"}
 	// if len(listRequest.Start) != 0 {
 	// 	args = append(args, "--start", listRequest.Start)
 	// }
@@ -206,6 +206,33 @@ func HandleListDsMembersRequest(jsonData []byte) {
 		dsResponse.ReturnedRows++
 	}
 
+	v, err := json.Marshal(dsResponse)
+	if err != nil {
+		fmt.Println(err.Error())
+	} else {
+		fmt.Println(string(v))
+	}
+}
+
+func HandleRestoreDatasetRequest(jsonData []byte) {
+	var dsRequest RestoreDatasetRequest
+	err := json.Unmarshal(jsonData, &dsRequest)
+	if err != nil {
+		return
+	}
+
+	args := []string{"./zowex", "data-set", "restore", dsRequest.Dataset}
+
+	out, err := exec.Command(args[0], args[1:]...).Output()
+	if err != nil {
+		log.Println("Error executing command:", err)
+		log.Println(string(out))
+		return
+	}
+
+	dsResponse := WriteDatasetResponse{
+		Success: true,
+	}
 	v, err := json.Marshal(dsResponse)
 	if err != nil {
 		fmt.Println(err.Error())

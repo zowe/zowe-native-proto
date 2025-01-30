@@ -10,7 +10,7 @@
  */
 
 import type { IHandlerParameters } from "@zowe/imperative";
-import type { ZSshClient, IssueConsole } from "zowe-native-proto-sdk";
+import type { IssueConsole, ZSshClient } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class ConsoleCommandHandler extends SshBaseHandler {

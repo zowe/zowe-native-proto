@@ -21,16 +21,16 @@ export const ConsoleCommand: ICommandDefinition = {
     examples: [
         {
             description: "Issue a console command",
-            options: "\"D IPLINFO\""
-        }
+            options: '"D IPLINFO"',
+        },
     ],
     positionals: [
         {
             name: "command",
             description: "The command to issue.",
             type: "string",
-            required: true
-        }
+            required: true,
+        },
     ],
     options: [
         {
@@ -43,4 +43,3 @@ export const ConsoleCommand: ICommandDefinition = {
     ],
     profile: { optional: ["ssh"] },
 };
-

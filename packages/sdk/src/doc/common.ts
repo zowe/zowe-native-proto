@@ -13,4 +13,5 @@ export interface IRpcRequest {
     command: string;
 }
 
-export type IRpcResponse = {};
+// biome-ignore lint/suspicious/noEmptyInterface: Common type for RPC responses
+export interface IRpcResponse {}

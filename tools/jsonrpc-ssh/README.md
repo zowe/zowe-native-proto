@@ -1,5 +1,13 @@
 # JsonRPC SSH Demo
 
+```mermaid
+sequenceDiagram
+  Client->>Server: Request 1 (long)
+  Client->>Server: Request 2 (short)
+  Server--)Client: Response 2
+  Server--)Client: Response 1
+```
+
 ## Server
 
 * `zowe files upload dtu tools/jsonrpc-ssh <ussDir> --binary`

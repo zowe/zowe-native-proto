@@ -159,7 +159,7 @@ int zds_write_to_dd(ZDS *zds, string ddname, string &data)
 
 int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data)
 {
-  const auto hasEncoding = strlen(zds->encoding_opts.codepage) > 0;
+  const auto hasEncoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
   dsn = "//'" + dsn + "'";
   ofstream out(dsn.c_str(), zds->encoding_opts.data_type == eDataTypeBinary ? ios::binary : ios::out);
 
@@ -171,11 +171,6 @@ int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data)
 
   if (hasEncoding)
   {
-    for (char *c = (char *)data.data(); c != (char *)data.data() + data.size(); c++)
-    {
-      printf("%02x ", *c);
-    }
-    printf("\n");
     std::string temp = data;
     try
     {
