@@ -333,7 +333,7 @@ wstring zut_encode_mbcs(const string &utf8_str)
   char *input = (char *)utf8_str.data();
   char *output_iter = (char *)output_buffer;
 
-  ZConvData data = {input_size, max_output_size, output_buffer, output_iter};
+  ZConvData data = {input, input_size, max_output_size, output_buffer, output_iter};
   size_t iconv_rc = zut_iconv(cd, data, diag);
   iconv_close(cd);
   if (iconv_rc == -1)
@@ -388,8 +388,8 @@ std::string zut_encode(const string &bytes, const string &from_encoding, const s
   // Create a contiguous memory region to store the output w/ new encoding
   // There is no guarantee that the memory is contiguous when using an empty std::string here (as xlc does not completely implement the C++11 standard),
   // so we'll handle the memory ourselves
-  char *output_buffer = new char[output_bytes_remaining];
-  std::fill(output_buffer, output_buffer + output_bytes_remaining, 0);
+  char *output_buffer = new char[max_output_size];
+  std::fill(output_buffer, output_buffer + max_output_size, 0);
 
   // Prepare iconv parameters (copy output_buffer ptr to output_iter to cache start and end positions)
   char *input = (char *)bytes.data();
@@ -397,7 +397,7 @@ std::string zut_encode(const string &bytes, const string &from_encoding, const s
 
   string result;
 
-  ZConvData data = {input_size, max_output_size, output_buffer, output_iter};
+  ZConvData data = {input, input_size, max_output_size, output_buffer, output_iter};
   size_t iconv_rc = zut_iconv(cd, data, diag);
   iconv_close(cd);
   if (iconv_rc == -1)

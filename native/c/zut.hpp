@@ -22,6 +22,7 @@ typedef struct ZConvData
 {
     char *input;
     size_t input_size;
+    size_t max_output_size;
     char *output_buffer;
     char *output_iter;
 } ZConvData;
