@@ -542,8 +542,8 @@ int ZCLI::run(int argc, char *argv[])
   // attempt to get a verb
   ZCLIVerb &verb = group.get_verb(argv[CLI_VERB_ARG]);
 
-  // show group level help if unknwon verb
-  if (verb.get_name() == "not found")
+  // show group level help if unknown verb
+  if (verb.get_zcli_verb_handler() == nullptr)
   {
     // delete command_group;
     cerr << "Unknown command verb: " << argv[CLI_VERB_ARG] << endl;
