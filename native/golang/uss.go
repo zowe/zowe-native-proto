@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
 )
 
@@ -65,7 +64,7 @@ func HandleListFilesRequest(jsonData []byte) {
 
 	v, err := json.Marshal(ussResponse)
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Fprintln(os.Stderr, err.Error())
 	} else {
 		fmt.Println(string(v))
 	}
@@ -84,7 +83,7 @@ func HandleReadFileRequest(jsonData []byte) {
 	if hasEncoding {
 		args = append(args, "--encoding", request.Encoding)
 	}
-	out, err := exec.Command(args[0], args[1:]...).Output()
+	out, err := buildExecCommand(args).Output()
 	if err != nil {
 		log.Println("Error executing command:", err)
 		return
@@ -99,7 +98,7 @@ func HandleReadFileRequest(jsonData []byte) {
 	}
 	v, err := json.Marshal(response)
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Fprintln(os.Stderr, err.Error())
 	} else {
 		fmt.Println(string(v))
 	}
@@ -133,7 +132,7 @@ func HandleWriteFileRequest(jsonData []byte) {
 	if len(request.Encoding) > 0 {
 		args = append(args, "--encoding", request.Encoding)
 	}
-	cmd := exec.Command(args[0], args[1:]...)
+	cmd := buildExecCommand(args)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		log.Println("Error opening stdin pipe:", err)
@@ -169,7 +168,7 @@ func HandleWriteFileRequest(jsonData []byte) {
 	}
 	v, err := json.Marshal(response)
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Fprintln(os.Stderr, err.Error())
 	} else {
 		fmt.Println(string(v))
 	}
