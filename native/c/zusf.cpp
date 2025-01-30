@@ -168,7 +168,6 @@ int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
   in.seekg(0, ios::beg);
 
   char *raw_data = new char[size];
-  std::fill(raw_data, raw_data + size, 0);
   in.read(raw_data, size);
 
   response.assign(raw_data);
@@ -217,19 +216,21 @@ int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data)
 {
   // TODO(zFernand0): Avoid overriding existing files
   const auto hasEncoding = zusf->encoding_opts.data_type == eDataTypeText && strlen(zusf->encoding_opts.codepage) > 0;
-  ofstream out(file.c_str(), zusf->encoding_opts.data_type == eDataTypeBinary ? ios::out | ios::binary : ios::out);
-  if (!out.is_open())
-  {
-    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open '%s'", file.c_str());
-    return RTNCD_FAILURE;
-  }
+  const auto codepage = string(zusf->encoding_opts.codepage);
 
   if (!data.empty() && hasEncoding)
   {
+    ofstream out(file.c_str(), zusf->encoding_opts.data_type == eDataTypeBinary ? ios::out | ios::binary : ios::out);
+    if (!out.is_open())
+    {
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open '%s'", file.c_str());
+      return RTNCD_FAILURE;
+    }
+
     std::string temp = data;
     try
     {
-      const auto bytes_with_encoding = zut_encode(temp, "UTF-8", string(zusf->encoding_opts.codepage), zusf->diag);
+      const auto bytes_with_encoding = zut_encode(temp, "UTF-8", codepage, zusf->diag);
       temp = bytes_with_encoding;
     }
     catch (std::exception &e)
@@ -238,12 +239,10 @@ int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data)
     }
     if (!temp.empty())
     {
-      data = temp;
+      out << temp;
     }
+    out.close();
   }
-
-  out << data;
-  out.close();
 
   return 0;
 }

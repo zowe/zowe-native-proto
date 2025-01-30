@@ -39,7 +39,6 @@ int zut_convert_dsect();
 bool zut_prepare_encoding(ZCLIResult &result, ZEncode *opts);
 void zut_print_string_as_bytes(std::string &input);
 
-std::wstring zut_encode_mbcs(const std::string &utf8_str, ZDIAG &diag);
 size_t zut_iconv(iconv_t cd, ZConvData &data, ZDIAG &diag);
 std::string zut_encode(const std::string &bytes, const std::string &from_encoding, const std::string &to_encoding, ZDIAG &diag);
 std::string zut_format_as_csv(std::vector<std::string> &fields);

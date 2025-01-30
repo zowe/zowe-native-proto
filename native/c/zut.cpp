@@ -309,44 +309,17 @@ size_t zut_get_utf8_len(const char *str)
   return len;
 }
 
-wstring zut_encode_mbcs(const string &utf8_str, ZDIAG &diag)
-{
-  iconv_t cd = iconv_open("01208", "13488");
-  if (cd == (iconv_t)(-1))
-  {
-    diag.e_msg_len = sprintf(diag.e_msg, "Cannot open converter from UTF-8 to UCS-2");
-    return L"";
-  }
-
-  const size_t input_size = utf8_str.size();
-  // maximum possible size assumes UTF-8 data with 4-byte character sequences
-  const size_t max_output_size = input_size * 4;
-
-  // Create a contiguous memory region to store the output w/ new encoding
-  // There is no guarantee that the memory is contiguous when using an empty std::string here (as xlc does not completely implement the C++11 standard),
-  // so we'll handle the memory ourselves
-  uint16_t *output_buffer = new uint16_t[max_output_size];
-  std::fill(output_buffer, output_buffer + max_output_size, 0u);
-
-  // Prepare iconv parameters (copy output_buffer ptr to output_iter to cache start and end positions)
-  char *input = (char *)utf8_str.data();
-  char *output_iter = (char *)output_buffer;
-
-  ZConvData data = {input, input_size, max_output_size, (char *)output_buffer, (char *)output_iter};
-  size_t iconv_rc = zut_iconv(cd, data, diag);
-  iconv_close(cd);
-  if (iconv_rc == -1)
-  {
-    throw std::exception(diag.e_msg);
-  }
-
-  // Copy converted bytes into a new string and return it to the caller
-  wstring result((const wchar_t *)output_buffer, (data.output_iter - data.output_buffer) / sizeof(uint16_t));
-  delete[] data.output_buffer;
-
-  return result;
-}
-
+/**
+ * Converts a string from one encoding to another using the iconv function.
+ *
+ * @param cd the iconv descriptor
+ * @param data the conversion data structure
+ * @param diag the diagnostic structure to store error information
+ *
+ * @return the number of bytes converted
+ *
+ * @throws std::exception if an error occurs during conversion
+ */
 size_t zut_iconv(iconv_t cd, ZConvData &data, ZDIAG &diag)
 {
   size_t input_bytes_remaining = data.input_size;
