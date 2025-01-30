@@ -323,6 +323,7 @@ int main(int argc, char *argv[])
   uss_write.set_description("write to a USS file");
   uss_write.set_zcli_verb_handler(handle_uss_write);
   uss_write.get_positionals().push_back(uss_file_path);
+  uss_write.get_options().push_back(uss_encoding);
   uss_group.get_verbs().push_back(uss_write);
 
   ZCLIVerb uss_delete_file("delete-file");
@@ -1099,12 +1100,28 @@ int handle_uss_write(ZCLIResult result)
 
   string data;
   string line;
+  size_t byteSize = 0ul;
 
   // Use Ctrl/Cmd + D to stop writing data manually
-  while (getline(cin, line))
+  const auto hasEncoding = zut_prepare_encoding(result, &zusf.encoding_opts);
+  printf("hasEncoding: %u\n", hasEncoding);
+  if (hasEncoding)
   {
-    data += line;
-    data.push_back('\n');
+    std::istreambuf_iterator<char> begin(std::cin);
+    std::istreambuf_iterator<char> end;
+
+    std::vector<char> bytes(begin, end);
+    data.assign(bytes.begin(), bytes.end());
+    byteSize = bytes.size();
+  }
+  else
+  {
+    while (getline(cin, line))
+    {
+      data += line;
+      data.push_back('\n');
+    }
+    byteSize = data.size();
   }
 
   rc = zusf_write_to_uss_file(&zusf, file, data);
