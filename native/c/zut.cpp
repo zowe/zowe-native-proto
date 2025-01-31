@@ -397,6 +397,12 @@ std::string &zut_trim(std::string &s, const char *t)
   return zut_ltrim(zut_rtrim(s, t), t);
 }
 
+/**
+ * Formats a vector of strings as a CSV string.
+ *
+ * @param fields the vector of strings to format
+ * @return the formatted CSV string
+ */
 string zut_format_as_csv(std::vector<string> &fields)
 {
   string formatted;
