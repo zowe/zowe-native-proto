@@ -19,7 +19,6 @@
 #include "zut.hpp"
 #include "zutm.h"
 #include "zutm31.h"
-#include <iconv.h>
 #include <ios>
 #include "zdyn.h"
 
@@ -259,6 +258,10 @@ char zut_get_hex_char(int num)
   return val;
 }
 
+/**
+ * Prints the input string as bytes to stdout.
+ * @param input The input string to be printed.
+ */
 void zut_print_string_as_bytes(string &input)
 {
   for (char *p = (char *)input.data(); p < (input.data() + input.length()); p++)
@@ -275,92 +278,106 @@ void zut_print_string_as_bytes(string &input)
 }
 
 /**
+ * Prepares the encoding options.
  *
+ * @param encoding_value - The value of the encoding option.
+ * @param opts - Pointer to the ZEncode options.
+ *
+ * @return true if the encoding options are successfully prepared, false otherwise.
  */
-bool zut_prepare_encoding(ZCLIResult &result, ZEncode *opts)
+bool zut_prepare_encoding(const std::string &encoding_value, ZEncode *opts)
 {
   if (!opts)
   {
     return false;
   }
 
-  ZCLIOption &encodingOpt = result.get_option("--encoding");
-  const auto hasEncoding = encodingOpt.is_found();
-  string encodingValue = hasEncoding ? encodingOpt.get_value() : "";
-  if (hasEncoding && encodingValue.size() < sizeof(opts->codepage))
+  if (encoding_value.size() < sizeof(opts->codepage))
   {
-    memcpy(opts->codepage, encodingValue.data(), encodingValue.length() + 1);
-    opts->data_type = result.get_option("--encoding").get_value() == "binary" ? eDataTypeBinary : eDataTypeText;
+    memcpy(opts->codepage, encoding_value.data(), encoding_value.length() + 1);
+    opts->data_type = encoding_value == "binary" ? eDataTypeBinary : eDataTypeText;
     return true;
   }
 
   return false;
 }
 
-size_t zut_get_utf8_len(const char *str)
+/**
+ * Converts a string from one encoding to another using the `iconv` function.
+ *
+ * @param cd `iconv` conversion descriptor
+ * @param data required data (input, input size, output pointers) for conversion
+ * @param diag diagnostic structure to store error information
+ *
+ * @return return code from `iconv`
+ */
+size_t zut_iconv(iconv_t cd, ZConvData &data, ZDIAG &diag)
 {
-  size_t len = 0;
-  for (size_t i = 0; *str != 0; ++len)
-  {
-    int v01 = ((*str & 0x80) >> 7) & ((*str & 0x40) >> 6);
-    int v2 = (*str & 0x20) >> 5;
-    int v3 = (*str & 0x10) >> 4;
-    str += 1 + ((v01 << v2) | (v01 & v3));
-  }
-  return len;
-}
+  size_t input_bytes_remaining = data.input_size;
+  size_t output_bytes_remaining = data.max_output_size;
 
-std::string zut_encode_alloc(const string &bytes, const string &from_encoding, const string &to_encoding, ZDIAG &diag)
-{
-  iconv_t cd = iconv_open(to_encoding.c_str(), from_encoding.c_str());
-  if (cd == (iconv_t)(-1))
-  {
-    diag.e_msg_len = sprintf(diag.e_msg, "Cannot open converter from %s to %s", from_encoding.c_str(), to_encoding.c_str());
-    return nullptr;
-  }
-
-  const size_t input_size = bytes.size();
-  // the largest supported encoding scheme is UTF-16, which can be represented w/ up to two 2-byte code units per character
-  const size_t max_output_size = input_size * 4;
-
-  size_t input_bytes_remaining = input_size;
-  size_t output_bytes_remaining = max_output_size;
-
-  // Create a contiguous memory region to store the output w/ new encoding
-  // There is no guarantee that the memory is contiguous when using an empty std::string here (as xlc does not completely implement the C++11 standard),
-  // so we'll handle the memory ourselves
-  char *output_buffer = new char[output_bytes_remaining];
-  std::fill(output_buffer, output_buffer + output_bytes_remaining, 0);
-
-  // Prepare iconv parameters (copy output_buffer ptr to output_iter to cache start and end positions)
-  char *input = (char *)bytes.data();
-  char *output_iter = output_buffer;
-
-  string result;
-
-  size_t rc = iconv(cd, &input, &input_bytes_remaining, &output_iter, &output_bytes_remaining);
+  size_t rc = iconv(cd, &data.input, &input_bytes_remaining, &data.output_iter, &output_bytes_remaining);
 
   // If an error occurred, throw an exception with iconv's return code and errno
   if (rc == -1)
   {
-    diag.e_msg_len = sprintf(diag.e_msg, "[zut_encode_alloc] Error when converting characters. rc=%lu,errno=%d", rc, errno);
-    delete[] output_buffer;
-    throw std::exception(diag.e_msg);
+    diag.e_msg_len = sprintf(diag.e_msg, "[zut_iconv] Error when converting characters. rc=%lu,errno=%d", rc, errno);
+    return -1;
   }
 
   // "If the input conversion is stopped... the value pointed to by inbytesleft will be nonzero and errno is set to indicate the condition"
   if (input_bytes_remaining != 0)
   {
-    diag.e_msg_len = sprintf(diag.e_msg, "[zut_encode_alloc] Failed to convert all input bytes. rc=%lu,errno=%d", rc, errno);
-    delete[] output_buffer;
+    diag.e_msg_len = sprintf(diag.e_msg, "[zut_iconv] Failed to convert all input bytes. rc=%lu,errno=%d", rc, errno);
+    return -1;
+  }
+
+  return rc;
+}
+
+/**
+ * Converts the encoding for a string from one codepage to another.
+ * @param input_str input data to convert
+ * @param from_encoding current codepage for the input data
+ * @param to_encoding desired codepage for the data
+ * @param diag diagnostic structure to store error information
+ */
+std::string zut_encode(const string &input_str, const string &from_encoding, const string &to_encoding, ZDIAG &diag)
+{
+  iconv_t cd = iconv_open(to_encoding.c_str(), from_encoding.c_str());
+  if (cd == (iconv_t)(-1))
+  {
+    diag.e_msg_len = sprintf(diag.e_msg, "Cannot open converter from %s to %s", from_encoding.c_str(), to_encoding.c_str());
+    return "";
+  }
+
+  const size_t input_size = input_str.size();
+  // maximum possible size assumes UTF-8 data with 4-byte character sequences
+  const size_t max_output_size = input_size * 4;
+
+  // Create a contiguous memory region to store the output w/ new encoding
+  // There is no guarantee that the memory is contiguous when using an empty std::string here (as xlc does not completely implement the C++11 standard),
+  // so we'll handle the memory ourselves
+  char *output_buffer = new char[max_output_size];
+  std::fill(output_buffer, output_buffer + max_output_size, 0);
+
+  // Prepare iconv parameters (copy output_buffer ptr to output_iter to cache start and end positions)
+  char *input = (char *)input_str.data();
+  char *output_iter = output_buffer;
+
+  string result;
+
+  ZConvData data = {input, input_size, max_output_size, output_buffer, output_iter};
+  size_t iconv_rc = zut_iconv(cd, data, diag);
+  iconv_close(cd);
+  if (iconv_rc == -1)
+  {
     throw std::exception(diag.e_msg);
   }
 
-  iconv_close(cd);
-
-  // Copy converted bytes into a new string and return it to the caller
-  result.assign(output_buffer, output_iter - output_buffer);
-  delete[] output_buffer;
+  // Copy converted input into a new string and return it to the caller
+  result.assign(output_buffer, data.output_iter - data.output_buffer);
+  delete[] data.output_buffer;
 
   return result;
 }
@@ -380,6 +397,12 @@ std::string &zut_trim(std::string &s, const char *t)
   return zut_ltrim(zut_rtrim(s, t), t);
 }
 
+/**
+ * Formats a vector of strings as a CSV string.
+ *
+ * @param fields the vector of strings to format
+ * @return the formatted CSV string
+ */
 string zut_format_as_csv(std::vector<string> &fields)
 {
   string formatted;

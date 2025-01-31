@@ -52,11 +52,11 @@ protected:
 
 public:
   ZCLIRequired() { required = false; }
-  void set_found(bool f) { found = f; }
-  bool is_found() { return found; }
+  virtual void set_found(bool f) { found = f; }
+  virtual bool is_found() { return found; }
 
-  void set_required(bool r) { required = r; }
-  bool get_required() { return required; }
+  virtual void set_required(bool r) { required = r; }
+  virtual bool get_required() { return required; }
 };
 
 class ZCLIDescription
@@ -492,7 +492,7 @@ int ZCLI::run(int argc, char *argv[])
   ZCLIVerb &verb = group.get_verb(argv[CLI_VERB_ARG]);
 
   // show group level help if unknwon verb
-  if (verb.get_zcli_verb_handler() == nullptr)
+  if (verb.get_name() == "not found")
   {
     // delete command_group;
     cerr << "Unknown command verb: " << argv[CLI_VERB_ARG] << endl;

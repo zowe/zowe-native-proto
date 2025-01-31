@@ -12,11 +12,20 @@
 #ifndef ZUT_HPP
 #define ZUT_HPP
 
+#include <iconv.h>
 #include <iostream>
 #include <vector>
 #include <string>
-#include "zcli.hpp"
 #include "zcntype.h"
+
+typedef struct ZConvData
+{
+    char *input;
+    size_t input_size;
+    size_t max_output_size;
+    char *output_buffer;
+    char *output_iter;
+} ZConvData;
 
 int zut_bpxwdyn(std::string, unsigned int *, std::string &);
 int zut_test();
@@ -26,10 +35,11 @@ char zut_get_hex_char(int);
 int zut_get_current_user(std::string &);
 void zut_uppercase_pad_truncate(std::string, char *, int);
 int zut_convert_dsect();
-bool zut_prepare_encoding(ZCLIResult &result, ZEncode *opts);
+bool zut_prepare_encoding(const std::string &encoding_value, ZEncode *opts);
 void zut_print_string_as_bytes(std::string &input);
 
-std::string zut_encode_alloc(const string &bytes, const string &from_encoding, const string &to_encoding, ZDIAG &diag);
+size_t zut_iconv(iconv_t cd, ZConvData &data, ZDIAG &diag);
+std::string zut_encode(const std::string &input_str, const std::string &from_encoding, const std::string &to_encoding, ZDIAG &diag);
 std::string zut_format_as_csv(std::vector<std::string> &fields);
 std::string &zut_rtrim(std::string &s, const char *t = " ");
 std::string &zut_ltrim(std::string &s, const char *t = " ");
