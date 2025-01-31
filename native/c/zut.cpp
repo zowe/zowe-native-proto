@@ -310,15 +310,13 @@ size_t zut_get_utf8_len(const char *str)
 }
 
 /**
- * Converts a string from one encoding to another using the iconv function.
+ * Converts a string from one encoding to another using the `iconv` function.
  *
- * @param cd the iconv descriptor
- * @param data the conversion data structure
- * @param diag the diagnostic structure to store error information
+ * @param cd `iconv` conversion descriptor
+ * @param data required data (input, input size, output pointers) for conversion
+ * @param diag diagnostic structure to store error information
  *
- * @return the number of bytes converted
- *
- * @throws std::exception if an error occurs during conversion
+ * @return return code from `iconv`
  */
 size_t zut_iconv(iconv_t cd, ZConvData &data, ZDIAG &diag)
 {
@@ -344,7 +342,14 @@ size_t zut_iconv(iconv_t cd, ZConvData &data, ZDIAG &diag)
   return rc;
 }
 
-std::string zut_encode(const string &bytes, const string &from_encoding, const string &to_encoding, ZDIAG &diag)
+/**
+ * Converts the encoding for a string from one codepage to another.
+ * @param input input data to convert
+ * @param from_encoding current codepage for the input data
+ * @param to_encoding desired codepage for the data
+ * @param diag diagnostic structure to store error information
+ */
+std::string zut_encode(const string &input, const string &from_encoding, const string &to_encoding, ZDIAG &diag)
 {
   iconv_t cd = iconv_open(to_encoding.c_str(), from_encoding.c_str());
   if (cd == (iconv_t)(-1))
@@ -353,7 +358,7 @@ std::string zut_encode(const string &bytes, const string &from_encoding, const s
     return "";
   }
 
-  const size_t input_size = bytes.size();
+  const size_t input_size = input.size();
   // maximum possible size assumes UTF-8 data with 4-byte character sequences
   const size_t max_output_size = input_size * 4;
 
@@ -364,7 +369,7 @@ std::string zut_encode(const string &bytes, const string &from_encoding, const s
   std::fill(output_buffer, output_buffer + max_output_size, 0);
 
   // Prepare iconv parameters (copy output_buffer ptr to output_iter to cache start and end positions)
-  char *input = (char *)bytes.data();
+  char *input = (char *)input.data();
   char *output_iter = output_buffer;
 
   string result;
@@ -377,7 +382,7 @@ std::string zut_encode(const string &bytes, const string &from_encoding, const s
     throw std::exception(diag.e_msg);
   }
 
-  // Copy converted bytes into a new string and return it to the caller
+  // Copy converted input into a new string and return it to the caller
   result.assign(output_buffer, data.output_iter - data.output_buffer);
   delete[] data.output_buffer;
 
