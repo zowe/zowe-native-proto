@@ -13,15 +13,14 @@ create your own `config.local.json` adjacent to `config.default.json` with somet
 }
 ```
 
-## Build Tool
-
-`cd tools/build && npm install && npx tsc`
-
 ## Deploy & Build
 
-`node tools/build/lib init` (once)
-`node tools/build/lib/main.js deploy-build`
-`node tools/build/lib/main.js deploy-build c/zds.cpp`  to deploy one file
+`npm run tools:init` (once)
+`npm run tools:deploy [file(s)|dir(s)]`
+`npm run tools:build [file(s)|dir(s)]`
+`npm run tools:deploy:build [file(s)|dir(s)]`
+
+Example: `npm run tools:deploy:build c/zowex.cpp`  to deploy and build one file
 
 ## Test
 

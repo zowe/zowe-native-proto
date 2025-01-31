@@ -52,11 +52,11 @@ protected:
 
 public:
   ZCLIRequired() { required = false; }
-  void set_found(bool f) { found = f; }
-  bool is_found() { return found; }
+  virtual void set_found(bool f) { found = f; }
+  virtual bool is_found() { return found; }
 
-  void set_required(bool r) { required = r; }
-  bool get_required() { return required; }
+  virtual void set_required(bool r) { required = r; }
+  virtual bool get_required() { return required; }
 };
 
 class ZCLIDescription
@@ -252,11 +252,11 @@ bool ZCLI::validate()
       }
 
       map<string, int> option_map;
-      map<string, int> alias_map;
 
       for (vector<ZCLIOption>::iterator iiit = iit->get_options().begin(); iiit != iit->get_options().end(); iiit++)
       {
 
+        map<string, int> alias_map;
         for (vector<string>::iterator iiiit = iiit->get_aliases().begin(); iiiit != iiit->get_aliases().end(); iiiit++)
         {
           if (alias_map.find(*iiiit) != (alias_map.end()))
@@ -492,7 +492,7 @@ int ZCLI::run(int argc, char *argv[])
   ZCLIVerb &verb = group.get_verb(argv[CLI_VERB_ARG]);
 
   // show group level help if unknwon verb
-  if (verb.get_zcli_verb_handler() == nullptr)
+  if (verb.get_name() == "not found")
   {
     // delete command_group;
     cerr << "Unknown command verb: " << argv[CLI_VERB_ARG] << endl;

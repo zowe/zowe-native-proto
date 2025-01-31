@@ -12,13 +12,15 @@
 import type { Writable } from "node:stream";
 import { DeferredPromise } from "@zowe/imperative";
 import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
-import { Client, type ClientChannel } from "ssh2";
+import { Client, type ClientChannel, type PseudoTtyOptions } from "ssh2";
 import { AbstractRpcClient } from "./AbstractRpcClient";
 import { ZSshUtils } from "./ZSshUtils";
 import type { IRpcRequest, IRpcResponse } from "./doc";
 
 export class ZSshClient extends AbstractRpcClient implements Disposable {
     public static readonly DEFAULT_SERVER_PATH = "~/.zowe-server";
+    // https://github.com/mscdex/ssh2/blob/master/lib/protocol/constants.js#L252
+    private static readonly PTY_OPTIONS: PseudoTtyOptions = { modes: { ECHO: 0, ECHONL: 0 } };
 
     private mSshClient: Client;
     private mSshStream: ClientChannel;
@@ -36,7 +38,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
         client.mSshClient.connect(ZSshUtils.buildSshConfig(session));
         client.mSshStream = await new Promise((resolve, reject) => {
             client.mSshClient.on("ready", () => {
-                client.mSshClient.shell(false, (err, stream) => {
+                client.mSshClient.exec(ZSshClient.SERVER_CMD, { pty: ZSshClient.PTY_OPTIONS }, (err, stream) => {
                     if (err) {
                         reject(err);
                     } else {
