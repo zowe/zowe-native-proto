@@ -82,7 +82,7 @@ func HandleReadFileRequest(jsonData []byte) {
 	args := []string{"./zowex", "uss", "view", request.Path}
 	hasEncoding := len(request.Encoding) != 0
 	if hasEncoding {
-		args = append(args, "--encoding", request.Encoding)
+		args = append(args, "--encoding", request.Encoding, "--rfb", "true")
 	}
 	out, err := exec.Command(args[0], args[1:]...).Output()
 	if err != nil {

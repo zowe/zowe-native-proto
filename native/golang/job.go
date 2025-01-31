@@ -125,7 +125,7 @@ func HandleReadSpoolRequest(jsonData []byte) {
 	args := []string{"./zowex", "job", "view-file", request.JobId, strconv.Itoa(request.DsnKey)}
 	hasEncoding := len(request.Encoding) != 0
 	if hasEncoding {
-		args = append(args, "--encoding", request.Encoding)
+		args = append(args, "--encoding", request.Encoding, "--rfb", "true")
 	}
 	out, err := exec.Command(args[0], args[1:]...).Output()
 	if err != nil {

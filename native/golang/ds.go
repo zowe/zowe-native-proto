@@ -32,7 +32,7 @@ func HandleReadDatasetRequest(jsonData []byte) {
 	args := []string{"./zowex", "data-set", "view", dsRequest.Dataset}
 	hasEncoding := len(dsRequest.Encoding) != 0
 	if hasEncoding {
-		args = append(args, "--encoding", dsRequest.Encoding)
+		args = append(args, "--encoding", dsRequest.Encoding, "--rfb", "true")
 	}
 	out, err := exec.Command(args[0], args[1:]...).Output()
 	if err != nil {

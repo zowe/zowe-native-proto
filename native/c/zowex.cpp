@@ -99,6 +99,11 @@ int main(int argc, char *argv[])
   response_format_csv.set_default("false");
   response_format_csv.set_required(false);
 
+  ZCLIOption response_format_bytes("response-format-bytes");
+  response_format_bytes.set_description("returns the response as raw bytes");
+  response_format_bytes.get_aliases().push_back("--rfb");
+  response_format_bytes.set_required(false);
+
   //
   // data set group
   //
@@ -142,6 +147,7 @@ int main(int argc, char *argv[])
   data_set_view.set_zcli_verb_handler(handle_data_set_view_dsn);
   data_set_view.get_positionals().push_back(data_set_dsn);
   data_set_view.get_options().push_back(data_set_encoding);
+  data_set_view.get_options().push_back(response_format_bytes);
   data_set_group.get_verbs().push_back(data_set_view);
 
   ZCLIVerb data_set_list("list");
@@ -220,6 +226,7 @@ int main(int argc, char *argv[])
   job_view_file.set_zcli_verb_handler(handle_job_view_file);
   job_view_file.get_positionals().push_back(job_jobid);
   job_view_file.get_options().push_back(spool_encoding);
+  job_view_file.get_options().push_back(response_format_bytes);
 
   ZCLIPositional job_dsn_key("key");
   job_dsn_key.set_required(true);
@@ -317,6 +324,7 @@ int main(int argc, char *argv[])
   uss_view.get_positionals().push_back(uss_file_path);
   uss_view.set_zcli_verb_handler(handle_uss_view);
   uss_view.get_options().push_back(uss_encoding);
+  uss_view.get_options().push_back(response_format_bytes);
   uss_group.get_verbs().push_back(uss_view);
 
   ZCLIVerb uss_write("write");
@@ -545,7 +553,7 @@ int handle_job_view_file(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  if (hasEncoding)
+  if (hasEncoding && result.get_option("--response-format-bytes").get_value() == "true")
   {
     zut_print_string_as_bytes(resp);
   }
@@ -780,7 +788,7 @@ int handle_data_set_view_dsn(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  if (hasEncoding)
+  if (hasEncoding && result.get_option("--response-format-bytes").get_value() == "true")
   {
     zut_print_string_as_bytes(response);
   }
@@ -1080,7 +1088,7 @@ int handle_uss_view(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  if (hasEncoding)
+  if (hasEncoding && result.get_option("--response-format-bytes").get_value() == "true")
   {
     zut_print_string_as_bytes(response);
   }
