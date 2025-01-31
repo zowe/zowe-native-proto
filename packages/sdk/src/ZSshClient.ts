@@ -18,7 +18,8 @@ import { AbstractRpcClient } from "./AbstractRpcClient";
 import type { IRpcRequest, IRpcResponse } from "./doc";
 
 export class ZSshClient extends AbstractRpcClient implements Disposable {
-    private static readonly PTY_OPTIONS: PseudoTtyOptions = { modes: { ECHO: 0 } };
+    // https://github.com/mscdex/ssh2/blob/master/lib/protocol/constants.js#L252
+    private static readonly PTY_OPTIONS: PseudoTtyOptions = { modes: { ECHO: 0, ECHONL: 0 } };
     private static readonly SERVER_CMD = "./zowe-native-proto/golang/ioserver";
 
     private mSshClient: Client;
@@ -105,7 +106,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
         } else {
             this.mResponse += chunk;
         }
-        if (endsWithNewLine && this.mResponse.trim()) {
+        if (endsWithNewLine) {
             this.requestEnd();
             resolve(this.mResponse);
         }
