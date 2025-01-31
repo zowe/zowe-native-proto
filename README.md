@@ -13,7 +13,6 @@ create your own `config.local.json` adjacent to `config.default.json` with somet
 }
 ```
 
-
 ## Deploy & Build
 
 `npm run tools:init` (once)
