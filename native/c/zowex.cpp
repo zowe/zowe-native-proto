@@ -19,6 +19,7 @@
 #include <algorithm>
 #include "zcn.hpp"
 #include "zut.hpp"
+#include "zts.hpp"
 #include "zcli.hpp"
 #include "zjb.hpp"
 #include "unistd.h"
@@ -58,6 +59,7 @@ int handle_log_view(ZCLIResult);
 int handle_tool_convert_dsect(ZCLIResult);
 int handle_tool_dynalloc(ZCLIResult);
 
+int handle_tso_start(ZCLIResult);
 // TODO(Kelosky):
 // help w/verbose examples
 // add simple examples to help
@@ -83,6 +85,17 @@ int main(int argc, char *argv[])
   response_format_csv.get_aliases().push_back("--rfc");
   response_format_csv.set_default("false");
   response_format_csv.set_required(false);
+
+  //
+  // TSO group
+  //
+  ZCLIGroup tso_group("tso");
+  tso_group.set_description("TSO operations");
+
+  ZCLIVerb tso_start("start");
+  tso_start.set_description("start TSO address space");
+  tso_start.set_zcli_verb_handler(handle_tso_start);
+  tso_group.get_verbs().push_back(tso_start);
 
   //
   // data set group
@@ -395,7 +408,8 @@ int main(int argc, char *argv[])
   zcli.get_groups().push_back(console_group);
   zcli.get_groups().push_back(job_group);
   zcli.get_groups().push_back(uss_group);
-  zcli.get_groups().push_back(log_group);
+  zcli.get_groups().push_back(tso_group);
+  // zcli.get_groups().push_back(log_group);
   zcli.get_groups().push_back(tool_group);
 
   // parse
@@ -1148,6 +1162,13 @@ int handle_uss_chown(ZCLIResult result)
 {
   printf("method not implemented\n");
   return 1;
+}
+
+int handle_tso_start(ZCLIResult result)
+{
+  int rc = 0;
+  rc = zts_test();
+  return rc;
 }
 
 int handle_tool_convert_dsect(ZCLIResult result)

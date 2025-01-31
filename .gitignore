@@ -9,3 +9,4 @@ typedoc
 tsconfig.tsbuildinfo
 zowe.config.json
 zowe.schema.json
+native/c/__include__

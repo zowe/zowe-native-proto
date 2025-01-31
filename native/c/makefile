@@ -213,21 +213,35 @@ libzusf.a: zusf.o libzut.a
 	ar -rv $@ $^
 
 #
+# TSO
+#
+zts.o: zts.cpp
+	@echo 'Building zts.o'
+	$(CXX) $(DLL_CPP_FLAGS) -qlist=$*.cpp.lst -o $@ $^
+
+libzts.so: zts.o
+	$(CXX) $(DLL_BND_FLAGS) -o $@ $^ > $*.bind.lst
+	@echo 'Building libzts.so'
+
+libzts.a: zts.o
+	@echo 'Building libzts.a'
+	ar -rv $@ $^
+
+#
 # Test CLI
 #
 # zowex: zowex.o zcn.o zcnm.o zcnm31.o zut.o zutm.o zutm31.o zjb.o zjbm.o zssi31.o zjbm31.o zds.o
-zowex: zowex.o libzcn.a libzut.a libzjb.a libzds.a libzusf.a
+zowex: zowex.o libzcn.a libzut.a libzjb.a libzds.a libzusf.a libzts.a
 	@echo 'Building zowex'
 	$(CXX) $(CPP_BND_FLAGS) -o $@ $^ > $*.bind.lst
 	cp $@ ../golang/$(basename $@)
 	@echo 'Copied zowex to golang/'
 
-zowexx: zowex.o libzcn.a libzut.a libzjb.a libzds.a libzusf.a
+zowexx: zowex.o libzcn.a libzut.a libzjb.a libzds.a libzusf.a libzts.a
 	@echo 'Building zowexx'
 	$(CXX) $(CPP_BND_FLAGS_AUTH) -o $@ $^ > $*.bind.lst
 	cp $@ ../golang/$(basename $@)
 	@echo 'Copied zowexx to golang/'
-
 
 zowex.o: zowex.cpp
 	@echo 'Building zowex.o'
