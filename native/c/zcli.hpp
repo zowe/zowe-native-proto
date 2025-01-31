@@ -252,11 +252,11 @@ bool ZCLI::validate()
       }
 
       map<string, int> option_map;
-      map<string, int> alias_map;
 
       for (vector<ZCLIOption>::iterator iiit = iit->get_options().begin(); iiit != iit->get_options().end(); iiit++)
       {
 
+        map<string, int> alias_map;
         for (vector<string>::iterator iiiit = iiit->get_aliases().begin(); iiiit != iiit->get_aliases().end(); iiiit++)
         {
           if (alias_map.find(*iiiit) != (alias_map.end()))
