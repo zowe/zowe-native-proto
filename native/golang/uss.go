@@ -83,7 +83,7 @@ func HandleReadFileRequest(jsonData []byte) {
 	if hasEncoding {
 		args = append(args, "--encoding", request.Encoding)
 	}
-	out, err := buildExecCommand(args).Output()
+	out, err := buildCommand(args).Output()
 	if err != nil {
 		log.Println("Error executing command:", err)
 		return
@@ -132,7 +132,7 @@ func HandleWriteFileRequest(jsonData []byte) {
 	if len(request.Encoding) > 0 {
 		args = append(args, "--encoding", request.Encoding)
 	}
-	cmd := buildExecCommand(args)
+	cmd := buildCommand(args)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		log.Println("Error opening stdin pipe:", err)

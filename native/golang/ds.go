@@ -33,7 +33,7 @@ func HandleReadDatasetRequest(jsonData []byte) {
 	if hasEncoding {
 		args = append(args, "--encoding", dsRequest.Encoding)
 	}
-	out, err := buildExecCommand(args).Output()
+	out, err := buildCommand(args).Output()
 	if err != nil {
 		log.Println("Error executing command:", err)
 		return
@@ -82,7 +82,7 @@ func HandleWriteDatasetRequest(jsonData []byte) {
 	if len(dsRequest.Encoding) > 0 {
 		args = append(args, "--encoding", dsRequest.Encoding)
 	}
-	cmd := buildExecCommand(args)
+	cmd := buildCommand(args)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		log.Println("Error opening stdin pipe:", err)
@@ -139,7 +139,7 @@ func HandleListDatasetsRequest(jsonData []byte) {
 	// 	args = append(args, "--start", listRequest.Start)
 	// }
 
-	out, err := buildExecCommand(args).Output()
+	out, err := buildCommand(args).Output()
 	if err != nil {
 		log.Println("Error executing command:", err)
 		return
@@ -182,7 +182,7 @@ func HandleListDsMembersRequest(jsonData []byte) {
 	// 	args = append(args, "--start", listRequest.Start)
 	// }
 
-	out, err := buildExecCommand(args).Output()
+	out, err := buildCommand(args).Output()
 	if err != nil {
 		log.Println("Error executing command:", err)
 		return
@@ -222,7 +222,7 @@ func HandleRestoreDatasetRequest(jsonData []byte) {
 
 	args := []string{"./zowex", "data-set", "restore", dsRequest.Dataset}
 
-	out, err := buildExecCommand(args).Output()
+	out, err := buildCommand(args).Output()
 	if err != nil {
 		log.Println("Error executing command:", err)
 		log.Println(string(out))

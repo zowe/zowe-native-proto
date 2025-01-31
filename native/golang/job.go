@@ -33,7 +33,7 @@ func HandleListJobsRequest(jsonData []byte) {
 		args = append(args, "--owner", listRequest.Owner)
 	}
 
-	out, err := buildExecCommand(args).Output()
+	out, err := buildCommand(args).Output()
 	if err != nil {
 		log.Println("Error executing command:", err)
 		return
@@ -76,7 +76,7 @@ func HandleListSpoolsRequest(jsonData []byte) {
 
 	args := []string{"./zowex", "job", "list-files", listRequest.JobId, "--rfc", "true"}
 
-	out, err := buildExecCommand(args).Output()
+	out, err := buildCommand(args).Output()
 	if err != nil {
 		log.Println("Error executing command:", err)
 		return
@@ -127,7 +127,7 @@ func HandleReadSpoolRequest(jsonData []byte) {
 	if hasEncoding {
 		args = append(args, "--encoding", request.Encoding)
 	}
-	out, err := buildExecCommand(args).Output()
+	out, err := buildCommand(args).Output()
 	if err != nil {
 		log.Println("Error executing command:", err)
 		return
@@ -158,7 +158,7 @@ func HandleGetJclRequest(jsonData []byte) {
 	}
 	// log.Println("GetJclRequest received:", ...)
 	args := []string{"./zowex", "job", "view-jcl", request.JobId}
-	out, err := buildExecCommand(args).Output()
+	out, err := buildCommand(args).Output()
 	if err != nil {
 		log.Println("Error executing command:", err)
 		return
@@ -183,7 +183,7 @@ func HandleGetStatusRequest(jsonData []byte) {
 		return
 	}
 	args := []string{"./zowex", "job", "view-status", request.JobId, "--rfc", "true"}
-	out, err := buildExecCommand(args).Output()
+	out, err := buildCommand(args).Output()
 	if err != nil {
 		log.Println("Error executing command:", err)
 		return
