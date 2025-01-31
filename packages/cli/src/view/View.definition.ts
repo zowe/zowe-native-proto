@@ -11,6 +11,7 @@
 
 import type { ICommandDefinition } from "@zowe/imperative";
 import { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
+import { Constants } from "../Constants";
 import { ViewDataSetDefinition } from "./data-set/DataSet.definition";
 import { ViewJobFileDefinition } from "./job-file/JobFile.definition";
 import { ViewJobJclDefinition } from "./job-jcl/JobJcl.definition";
@@ -33,7 +34,7 @@ const ViewDefinition: ICommandDefinition = {
     passOn: [
         {
             property: "options",
-            value: SshSession.SSH_CONNECTION_OPTIONS,
+            value: [...SshSession.SSH_CONNECTION_OPTIONS, Constants.OPT_SERVER_PATH],
             merge: true,
             ignoreNodes: [{ type: "group" }],
         },

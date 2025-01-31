@@ -4,6 +4,7 @@ artifacts
 lib
 node_modules
 out
+bin
 dist
 typedoc
 tsconfig.tsbuildinfo

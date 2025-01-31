@@ -12,15 +12,16 @@
 import type { ICommandDefinition } from "@zowe/imperative";
 import { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Constants } from "../Constants";
-import { DataSetDefinition } from "./data-set/DataSet.definition";
+import { ServerInstallDefinition } from "./install/Install.definition";
+import { ServerUninstallDefinition } from "./uninstall/Uninstall.definition";
 
-const RestoreDefinition: ICommandDefinition = {
-    name: "restore",
-    summary: "Restore datasets",
-    description: "Restore datasets that have been archived/migrated",
+const ServerDefinition: ICommandDefinition = {
+    name: "server",
+    aliases: ["srv"],
+    summary: "Manage the Zowe SSH server",
+    description: "Manage the Zowe SSH server",
     type: "group",
-    aliases: ["r"],
-    children: [DataSetDefinition],
+    children: [ServerInstallDefinition, ServerUninstallDefinition],
     passOn: [
         {
             property: "options",
@@ -31,4 +32,4 @@ const RestoreDefinition: ICommandDefinition = {
     ],
 };
 
-export = RestoreDefinition;
+export = ServerDefinition;
