@@ -1104,7 +1104,6 @@ int handle_uss_write(ZCLIResult result)
 
   // Use Ctrl/Cmd + D to stop writing data manually
   const auto hasEncoding = zut_prepare_encoding(result.get_option("--encoding").is_found(), result.get_option("--encoding").get_value(), &zusf.encoding_opts);
-  printf("hasEncoding: %u\n", hasEncoding);
   if (hasEncoding)
   {
     std::istreambuf_iterator<char> begin(std::cin);
