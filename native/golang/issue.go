@@ -15,7 +15,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"os/exec"
+	"os"
 )
 
 func HandleConsoleCommandRequest(jsonData []byte) {
@@ -25,7 +25,7 @@ func HandleConsoleCommandRequest(jsonData []byte) {
 		return
 	}
 	args := []string{"./zowexx", "console", "issue", request.Command, "--cn", request.Console}
-	out, err := exec.Command(args[0], args[1:]...).Output()
+	out, err := buildCommand(args).Output()
 	if err != nil {
 		log.Println("Error executing command:", err)
 		log.Println(string(out))
@@ -37,7 +37,7 @@ func HandleConsoleCommandRequest(jsonData []byte) {
 	}
 	v, err := json.Marshal(response)
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Fprintln(os.Stderr, err.Error())
 	} else {
 		fmt.Println(string(v))
 	}
