@@ -59,9 +59,9 @@
     "build": "tsc -p . --noEmit",
     "compile": "rspack --mode development",
     "lint": "npx @biomejs/biome check --write src",
-    "package": "rspack --mode production --devtool=hidden-source-map",
+    "package": "vsce package --no-dependencies",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "vscode:prepublish": "npm run package",
+    "vscode:prepublish": "rspack --mode production --devtool=hidden-source-map",
     "watch": "rspack --mode development --watch"
   },
   "dependencies": {
@@ -73,6 +73,7 @@
     "@rspack/core": "^1.1.5",
     "@types/node": "^18.19.14",
     "@types/vscode": "^1.79.0",
+    "@vscode/vsce": "^3.2.2",
     "@zowe/zos-files-for-zowe-sdk": "^8.11.0",
     "@zowe/zos-jobs-for-zowe-sdk": "^8.11.0",
     "@zowe/zos-uss-for-zowe-sdk": "^8.11.0",

@@ -1,13 +1,12 @@
-.vscode/**
-.vscode-test/**
-node_modules/**
-src/**
-.gitignore
-.yarnrc
-rspack.config.js
-vsc-extension-quickstart.md
-**/tsconfig.json
-**/eslint.config.mjs
-**/*.map
-**/*.ts
-**/.vscode-test.*
+# Ignore everything
+*
+*/**
+
+# Allowlist what we need
+!bin/*
+!out/*
+
+!CHANGELOG.md
+!LICENSE
+!package*.json
+!README.md

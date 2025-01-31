@@ -33,8 +33,11 @@ export class SshClientCache extends vscode.Disposable {
         return SshClientCache.mInstance;
     }
 
-    public async connect(session: SshSession): Promise<ZSshClient> {
+    public async connect(session: SshSession, restart = false): Promise<ZSshClient> {
         const clientKey = session.ISshSession.hostname!;
+        if (restart) {
+            this.mClientMap.get(clientKey)?.dispose();
+        }
         if (!this.mClientMap.has(clientKey)) {
             const serverPath = SshConfigUtils.getServerPath(clientKey);
             this.mClientMap.set(clientKey, await ZSshClient.create(session, serverPath));

@@ -39,10 +39,7 @@ function registerCommands(context: vscode.ExtensionContext): vscode.Disposable[]
         vscode.commands.registerCommand("zowe-native-proto-vsce.restart", async (profName?: string) => {
             const profile = await SshConfigUtils.promptForProfile(profName);
             if (!profile) return;
-            const serverPath = SshConfigUtils.getServerPath(profile.profile!.host);
-            const client = await SshClientCache.inst.connect(ZSshUtils.buildSession(profile.profile!));
-            client.stop();
-            client.start(serverPath);
+            await SshClientCache.inst.connect(ZSshUtils.buildSession(profile.profile!), true);
             const statusMsg = Gui.setStatusBarMessage("Restarted Zowe SSH server");
             setTimeout(() => statusMsg.dispose(), 5000);
         }),

@@ -9,6 +9,7 @@
  *
  */
 
+import { posix } from "node:path";
 import type { Writable } from "node:stream";
 import { DeferredPromise } from "@zowe/imperative";
 import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
@@ -38,21 +39,25 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
         client.mSshClient.connect(ZSshUtils.buildSshConfig(session));
         client.mSshStream = await new Promise((resolve, reject) => {
             client.mSshClient.on("ready", () => {
-                client.mSshClient.exec(ZSshClient.SERVER_CMD, { pty: ZSshClient.PTY_OPTIONS }, (err, stream) => {
-                    if (err) {
-                        reject(err);
-                    } else {
-                        stream.stderr.on("data", (chunk: Buffer) => {
-                            // const EBCDIC = require("ebcdic-ascii").default;
-                            // chunk = Buffer.from(new EBCDIC("1047").toEBCDIC(chunk.toString("hex")), "hex");
-                            console.log("STDERR:", chunk.toString());
-                        });
-                        resolve(stream);
-                    }
-                });
+                client.mSshClient.exec(
+                    posix.join(serverPath ?? ZSshClient.DEFAULT_SERVER_PATH, "ioserver"),
+                    { pty: ZSshClient.PTY_OPTIONS },
+                    (err, stream) => {
+                        if (err) {
+                            reject(err);
+                        } else {
+                            stream.stderr.on("data", (chunk: Buffer) => {
+                                // const EBCDIC = require("ebcdic-ascii").default;
+                                // chunk = Buffer.from(new EBCDIC("1047").toEBCDIC(chunk.toString("hex")), "hex");
+                                console.log("STDERR:", chunk.toString());
+                            });
+                            // console.log("client ready");
+                            resolve(stream);
+                        }
+                    },
+                );
             });
         });
-        client.start(serverPath);
         return client;
     }
 
@@ -78,15 +83,6 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                 this.onOutData.bind(this, (response: any) => resolve(JSON.parse(response))),
             );
         });
-    }
-
-    public start(serverPath?: string): void {
-        this.mSshStream.write(`cd ${serverPath ?? ZSshClient.DEFAULT_SERVER_PATH} && ./ioserver\n`);
-        // console.log("client ready");
-    }
-
-    public stop(): void {
-        this.mSshStream.write("\x03");
     }
 
     private onErrData(reject: (typeof Promise)["reject"], chunk: Buffer) {

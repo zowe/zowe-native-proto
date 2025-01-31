@@ -26,6 +26,8 @@ Example: `npm run tools:deploy:build c/zowex.cpp`  to deploy and build one file
 
 On remote system, `cd` to deploy dir and run `test.sh` (or run `zowex`)
 
+To download binaries, run `npm run tools:artifacts`
+
 ## Troubleshooting
 
 ### Client connection error - Error: All configured authentication methods failed
