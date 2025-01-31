@@ -35,7 +35,7 @@ char zut_get_hex_char(int);
 int zut_get_current_user(std::string &);
 void zut_uppercase_pad_truncate(std::string, char *, int);
 int zut_convert_dsect();
-bool zut_prepare_encoding(const bool encoding_opt_found, const std::string &encoding_value, ZEncode *opts);
+bool zut_prepare_encoding(const std::string &encoding_value, ZEncode *opts);
 void zut_print_string_as_bytes(std::string &input);
 
 size_t zut_iconv(iconv_t cd, ZConvData &data, ZDIAG &diag);

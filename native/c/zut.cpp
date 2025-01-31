@@ -258,6 +258,10 @@ char zut_get_hex_char(int num)
   return val;
 }
 
+/**
+ * Prints the input string as bytes to stdout.
+ * @param input The input string to be printed.
+ */
 void zut_print_string_as_bytes(string &input)
 {
   for (char *p = (char *)input.data(); p < (input.data() + input.length()); p++)
@@ -274,18 +278,18 @@ void zut_print_string_as_bytes(string &input)
 }
 
 /**
+ * Prepares the encoding options.
  *
+ * @param encoding_value - The value of the encoding option.
+ * @param opts - Pointer to the ZEncode options.
+ *
+ * @return true if the encoding options are successfully prepared, false otherwise.
  */
-bool zut_prepare_encoding(const bool encoding_opt_found, const std::string &encoding_value, ZEncode *opts)
+bool zut_prepare_encoding(const std::string &encoding_value, ZEncode *opts)
 {
   if (!opts)
   {
     return false;
-  }
-
-  if (!encoding_opt_found)
-  {
-    return true;
   }
 
   if (encoding_value.size() < sizeof(opts->codepage))
