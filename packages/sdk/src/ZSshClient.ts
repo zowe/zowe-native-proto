@@ -13,15 +13,17 @@ import * as fs from "node:fs";
 import type { Writable } from "node:stream";
 import { DeferredPromise } from "@zowe/imperative";
 import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
-import { Client, type ClientChannel, type ConnectConfig } from "ssh2";
+import { Client, type ClientChannel, type ConnectConfig, type PseudoTtyOptions } from "ssh2";
 import { AbstractRpcClient } from "./AbstractRpcClient";
 import type { IRpcRequest, IRpcResponse } from "./doc";
 
 export class ZSshClient extends AbstractRpcClient implements Disposable {
-    private static readonly SERVER_CMD = "cd zowe-native-proto/golang && ./ioserver";
+    // https://github.com/mscdex/ssh2/blob/master/lib/protocol/constants.js#L252
+    private static readonly PTY_OPTIONS: PseudoTtyOptions = { modes: { ECHO: 0, ECHONL: 0 } };
+    private static readonly SERVER_CMD = "./zowe-native-proto/golang/ioserver";
 
     private mSshClient: Client;
-    private mSshStream: ClientChannel | undefined;
+    private mSshStream: ClientChannel;
     private mResponse = "";
     private mResponseStream: Writable | undefined;
     private sshMutex: DeferredPromise<void> | undefined;
@@ -36,20 +38,13 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
         client.mSshClient.connect(ZSshClient.buildConnectConfig(session));
         client.mSshStream = await new Promise((resolve, reject) => {
             client.mSshClient.on("ready", () => {
-                client.mSshClient.shell(false, (err, stream) => {
+                client.mSshClient.exec(ZSshClient.SERVER_CMD, { pty: ZSshClient.PTY_OPTIONS }, (err, stream) => {
                     if (err) {
                         reject(err);
                     } else {
                         stream.stderr.on("data", (chunk: Buffer) => {
                             console.log("STDERR:", chunk.toString());
                         });
-                        // stream.stdin.on("data", (chunk: Buffer) => {
-                        //     console.log("STDIN:", chunk.toString());
-                        // });
-                        // stream.stdout.on("data", (chunk: Buffer) => {
-                        //     console.log("STDOUT:", chunk.toString());
-                        // });
-                        stream.write(`${ZSshClient.SERVER_CMD}\n`);
                         // console.log("client ready");
                         resolve(stream);
                     }
@@ -74,9 +69,9 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
         this.mResponseStream = stream;
 
         return new Promise((resolve, reject) => {
-            this.mSshStream!.stdin.write(`${JSON.stringify(request)}\n`);
-            this.mSshStream!.stderr.on("data", this.onErrData.bind(this, reject));
-            this.mSshStream!.stdout.on(
+            this.mSshStream.stdin.write(`${JSON.stringify(request)}\n`);
+            this.mSshStream.stderr.on("data", this.onErrData.bind(this, reject));
+            this.mSshStream.stdout.on(
                 "data",
                 this.onOutData.bind(this, (response: any) => resolve(JSON.parse(response))),
             );
@@ -118,8 +113,8 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
     }
 
     private requestEnd() {
-        this.mSshStream!.stderr.removeAllListeners();
-        this.mSshStream!.stdout.removeAllListeners();
+        this.mSshStream.stderr.removeAllListeners();
+        this.mSshStream.stdout.removeAllListeners();
         this.mResponseStream?.end();
         this.sshMutex?.resolve();
     }

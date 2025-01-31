@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
 	"strings"
 )
 
@@ -34,7 +33,7 @@ func HandleReadDatasetRequest(jsonData []byte) {
 	if hasEncoding {
 		args = append(args, "--encoding", dsRequest.Encoding, "--rfb", "true")
 	}
-	out, err := exec.Command(args[0], args[1:]...).Output()
+	out, err := buildCommand(args).Output()
 	if err != nil {
 		log.Println("Error executing command:", err)
 		return
@@ -49,7 +48,7 @@ func HandleReadDatasetRequest(jsonData []byte) {
 	}
 	v, err := json.Marshal(dsResponse)
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Fprintln(os.Stderr, err.Error())
 	} else {
 		fmt.Println(string(v))
 	}
@@ -83,7 +82,7 @@ func HandleWriteDatasetRequest(jsonData []byte) {
 	if len(dsRequest.Encoding) > 0 {
 		args = append(args, "--encoding", dsRequest.Encoding)
 	}
-	cmd := exec.Command(args[0], args[1:]...)
+	cmd := buildCommand(args)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		log.Println("Error opening stdin pipe:", err)
@@ -119,7 +118,7 @@ func HandleWriteDatasetRequest(jsonData []byte) {
 	}
 	v, err := json.Marshal(dsResponse)
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Fprintln(os.Stderr, err.Error())
 	} else {
 		fmt.Println(string(v))
 	}
@@ -140,7 +139,7 @@ func HandleListDatasetsRequest(jsonData []byte) {
 	// 	args = append(args, "--start", listRequest.Start)
 	// }
 
-	out, err := exec.Command(args[0], args[1:]...).Output()
+	out, err := buildCommand(args).Output()
 	if err != nil {
 		log.Println("Error executing command:", err)
 		return
@@ -164,7 +163,7 @@ func HandleListDatasetsRequest(jsonData []byte) {
 
 	v, err := json.Marshal(dsResponse)
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Fprintln(os.Stderr, err.Error())
 	} else {
 		fmt.Println(string(v))
 	}
@@ -183,7 +182,7 @@ func HandleListDsMembersRequest(jsonData []byte) {
 	// 	args = append(args, "--start", listRequest.Start)
 	// }
 
-	out, err := exec.Command(args[0], args[1:]...).Output()
+	out, err := buildCommand(args).Output()
 	if err != nil {
 		log.Println("Error executing command:", err)
 		return
@@ -208,7 +207,7 @@ func HandleListDsMembersRequest(jsonData []byte) {
 
 	v, err := json.Marshal(dsResponse)
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Fprintln(os.Stderr, err.Error())
 	} else {
 		fmt.Println(string(v))
 	}
@@ -223,7 +222,7 @@ func HandleRestoreDatasetRequest(jsonData []byte) {
 
 	args := []string{"./zowex", "data-set", "restore", dsRequest.Dataset}
 
-	out, err := exec.Command(args[0], args[1:]...).Output()
+	out, err := buildCommand(args).Output()
 	if err != nil {
 		log.Println("Error executing command:", err)
 		log.Println(string(out))
@@ -235,7 +234,7 @@ func HandleRestoreDatasetRequest(jsonData []byte) {
 	}
 	v, err := json.Marshal(dsResponse)
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Fprintln(os.Stderr, err.Error())
 	} else {
 		fmt.Println(string(v))
 	}

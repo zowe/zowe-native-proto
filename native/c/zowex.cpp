@@ -58,9 +58,6 @@ int handle_log_view(ZCLIResult);
 int handle_tool_convert_dsect(ZCLIResult);
 int handle_tool_dynalloc(ZCLIResult);
 
-int handle_test_command(ZCLIResult);
-int handle_test_run(ZCLIResult);
-
 // TODO(Kelosky):
 // help w/verbose examples
 // add simple examples to help
@@ -80,18 +77,6 @@ int main(int argc, char *argv[])
   // CLI
   ZCLI zcli(argv[PROCESS_NAME_ARG]);
   zcli.set_interactive_mode(true);
-
-  //
-  // test group
-  //
-  ZCLIGroup test_group("test");
-  test_group.set_description("test other operations");
-
-  // test verbs
-  ZCLIVerb test_command("command");
-  test_command.set_description("test command");
-  test_command.set_zcli_verb_handler(handle_test_command);
-  test_group.get_verbs().push_back(test_command);
 
   ZCLIOption response_format_csv("response-format-csv");
   response_format_csv.set_description("returns the response in CSV format");
@@ -408,13 +393,12 @@ int main(int argc, char *argv[])
   tool_dynalloc.set_description("dynalloc command");
   tool_dynalloc.set_zcli_verb_handler(handle_tool_dynalloc);
   ZCLIPositional dynalloc_parm("parm");
-  dynalloc_parm.set_description("dynalloc test parm string");
+  dynalloc_parm.set_description("dynalloc parm string");
   dynalloc_parm.set_required(true);
   tool_dynalloc.get_positionals().push_back(dynalloc_parm);
   tool_group.get_verbs().push_back(tool_dynalloc);
 
   // add all groups to the CLI
-  zcli.get_groups().push_back(test_group);
   zcli.get_groups().push_back(data_set_group);
   zcli.get_groups().push_back(console_group);
   zcli.get_groups().push_back(job_group);
@@ -957,16 +941,6 @@ int handle_data_set_delete_dsn(ZCLIResult result)
   return rc;
 }
 
-int handle_test_command(ZCLIResult result)
-{
-  int rc = 0;
-  rc = zut_test();
-
-  cout << "test code called " << rc << endl;
-
-  return RTNCD_SUCCESS;
-}
-
 int handle_log_view(ZCLIResult result)
 {
   int rc = 0;
@@ -987,7 +961,6 @@ int handle_tool_dynalloc(ZCLIResult result)
   string parm(result.get_positional("parm").get_value());
 
   // alloc da('DKELOSKY.TEMP.ADATA') DSORG(PO) SPACE(5,5) CYL LRECL(80) RECFM(F,b) NEW DIR(5) vol(USER01)
-  // zowex test bpxwdyn "alloc da('ibmuser.temp') space(5,5) dsorg(po) dir(5) cyl lrecl(80) recfm(f,b) new"
   rc = zut_bpxwdyn(parm, &code, resp);
   if (0 != rc)
   {
