@@ -56,23 +56,3 @@ func main() {
 
 	// fmt.Println("\nBytes written to output.txt")
 }
-
-// func main() {
-// 	fd := int(os.Stdout.Fd())
-
-// 	state, err := term.GetState(fd)
-// 	if err != nil {
-// 		fmt.Fprintln(os.Stderr, "Error getting terminal attributes:", err)
-// 		return
-// 	}
-
-// 	file, err := os.OpenFile("/u/users/timothy/tty_flags.txt", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
-// 	if err != nil {
-// 		fmt.Fprintln(os.Stderr, "Error opening file:", err)
-// 		return
-// 	}
-// 	defer file.Close()
-
-// 	fmt.Fprintf(file, "%+v\n", state)
-// 	fmt.Println("Hello World")
-// }
