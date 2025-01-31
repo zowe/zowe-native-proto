@@ -17,11 +17,16 @@ import (
 	"path/filepath"
 )
 
+var exePath string
+
 func buildExecCommand(args []string) *exec.Cmd {
 	cmd := exec.Command(args[0], args[1:]...)
-	exePath, err := os.Executable()
-	if err != nil {
-		panic(err)
+	if exePath == "" {
+		path, err := os.Executable()
+		if err != nil {
+			panic(err)
+		}
+		exePath = path
 	}
 	cmd.Dir = filepath.Dir(exePath)
 	cmd.Env = append(os.Environ(), "_BPXK_AUTOCVT=ON")
