@@ -533,7 +533,7 @@ int handle_job_view_file(ZCLIResult result)
   string jobid(result.get_positional("jobid").get_value());
   string key(result.get_positional("key").get_value());
 
-  const auto hasEncoding = zut_prepare_encoding(result, &zjb.encoding_opts);
+  const auto hasEncoding = zut_prepare_encoding(result.get_option("--encoding").is_found(), result.get_option("--encoding").get_value(), &zjb.encoding_opts);
 
   string resp;
   rc = zjb_read_jobs_output_by_jobid_and_key(&zjb, jobid, atoi(key.c_str()), resp);
@@ -771,7 +771,7 @@ int handle_data_set_view_dsn(ZCLIResult result)
   ZCLIOption &encoding = result.get_option("--encoding");
   ZDS zds = {0};
   string response;
-  const auto hasEncoding = zut_prepare_encoding(result, &zds.encoding_opts);
+  const auto hasEncoding = zut_prepare_encoding(result.get_option("--encoding").is_found(), result.get_option("--encoding").get_value(), &zds.encoding_opts);
   rc = zds_read_from_dsn(&zds, dsn, response);
   if (0 != rc)
   {
@@ -898,7 +898,7 @@ int handle_data_set_write_to_dsn(ZCLIResult result)
   string line;
 
   size_t byteSize = 0ul;
-  const auto hasEncoding = zut_prepare_encoding(result, &zds.encoding_opts);
+  const auto hasEncoding = zut_prepare_encoding(result.get_option("--encoding").is_found(), result.get_option("--encoding").get_value(), &zds.encoding_opts);
   if (hasEncoding)
   {
     std::istreambuf_iterator<char> begin(std::cin);
@@ -1067,7 +1067,7 @@ int handle_uss_view(ZCLIResult result)
   string uss_file = result.get_positional("file-path").get_value();
 
   ZUSF zusf = {0};
-  const auto hasEncoding = zut_prepare_encoding(result, &zusf.encoding_opts);
+  const auto hasEncoding = zut_prepare_encoding(result.get_option("--encoding").is_found(), result.get_option("--encoding").get_value(), &zusf.encoding_opts);
 
   string response;
   rc = zusf_read_from_uss_file(&zusf, uss_file, response);
@@ -1103,7 +1103,7 @@ int handle_uss_write(ZCLIResult result)
   size_t byteSize = 0ul;
 
   // Use Ctrl/Cmd + D to stop writing data manually
-  const auto hasEncoding = zut_prepare_encoding(result, &zusf.encoding_opts);
+  const auto hasEncoding = zut_prepare_encoding(result.get_option("--encoding").is_found(), result.get_option("--encoding").get_value(), &zusf.encoding_opts);
   printf("hasEncoding: %u\n", hasEncoding);
   if (hasEncoding)
   {

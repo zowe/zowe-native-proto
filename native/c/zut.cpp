@@ -276,37 +276,26 @@ void zut_print_string_as_bytes(string &input)
 /**
  *
  */
-bool zut_prepare_encoding(ZCLIResult &result, ZEncode *opts)
+bool zut_prepare_encoding(const bool encoding_opt_found, const std::string &encoding_value, ZEncode *opts)
 {
   if (!opts)
   {
     return false;
   }
 
-  ZCLIOption &encodingOpt = result.get_option("--encoding");
-  const auto hasEncoding = encodingOpt.is_found();
-  string encodingValue = hasEncoding ? encodingOpt.get_value() : "";
-  if (hasEncoding && encodingValue.size() < sizeof(opts->codepage))
+  if (!encoding_opt_found)
   {
-    memcpy(opts->codepage, encodingValue.data(), encodingValue.length() + 1);
-    opts->data_type = result.get_option("--encoding").get_value() == "binary" ? eDataTypeBinary : eDataTypeText;
+    return true;
+  }
+
+  if (encoding_value.size() < sizeof(opts->codepage))
+  {
+    memcpy(opts->codepage, encoding_value.data(), encoding_value.length() + 1);
+    opts->data_type = encoding_value == "binary" ? eDataTypeBinary : eDataTypeText;
     return true;
   }
 
   return false;
-}
-
-size_t zut_get_utf8_len(const char *str)
-{
-  size_t len = 0;
-  for (size_t i = 0; *str != 0; ++len)
-  {
-    int v01 = ((*str & 0x80) >> 7) & ((*str & 0x40) >> 6);
-    int v2 = (*str & 0x20) >> 5;
-    int v3 = (*str & 0x10) >> 4;
-    str += 1 + ((v01 << v2) | (v01 & v3));
-  }
-  return len;
 }
 
 /**
@@ -344,12 +333,12 @@ size_t zut_iconv(iconv_t cd, ZConvData &data, ZDIAG &diag)
 
 /**
  * Converts the encoding for a string from one codepage to another.
- * @param input input data to convert
+ * @param input_str input data to convert
  * @param from_encoding current codepage for the input data
  * @param to_encoding desired codepage for the data
  * @param diag diagnostic structure to store error information
  */
-std::string zut_encode(const string &input, const string &from_encoding, const string &to_encoding, ZDIAG &diag)
+std::string zut_encode(const string &input_str, const string &from_encoding, const string &to_encoding, ZDIAG &diag)
 {
   iconv_t cd = iconv_open(to_encoding.c_str(), from_encoding.c_str());
   if (cd == (iconv_t)(-1))
@@ -358,7 +347,7 @@ std::string zut_encode(const string &input, const string &from_encoding, const s
     return "";
   }
 
-  const size_t input_size = input.size();
+  const size_t input_size = input_str.size();
   // maximum possible size assumes UTF-8 data with 4-byte character sequences
   const size_t max_output_size = input_size * 4;
 
@@ -369,7 +358,7 @@ std::string zut_encode(const string &input, const string &from_encoding, const s
   std::fill(output_buffer, output_buffer + max_output_size, 0);
 
   // Prepare iconv parameters (copy output_buffer ptr to output_iter to cache start and end positions)
-  char *input = (char *)input.data();
+  char *input = (char *)input_str.data();
   char *output_iter = output_buffer;
 
   string result;
