@@ -42,7 +42,7 @@ export namespace WriteFile {
     export interface Request extends IRpcRequest {
         command: "writeFile";
         fspath: string;
-        contents: Buffer | string;
+        data: Buffer | string;
         encoding?: string;
     }
 

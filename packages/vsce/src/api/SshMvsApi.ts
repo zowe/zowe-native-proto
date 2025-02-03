@@ -65,7 +65,7 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         const response = await (await this.client).ds.writeDataset({
             dsname: dataSetName,
             encoding: options?.binary ? "binary" : (options?.encoding ?? "IBM-1047"),
-            contents: ZSshUtils.encodeByteArray(buffer),
+            data: ZSshUtils.encodeByteArray(buffer),
         });
         return this.buildZosFilesResponse({ etag: dataSetName });
     }
@@ -78,7 +78,7 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         const response = await (await this.client).ds.writeDataset({
             dsname: dataSetName,
             encoding: options?.encoding,
-            contents: ZSshUtils.encodeByteArray(readFileSync(inputFilePath)),
+            data: ZSshUtils.encodeByteArray(readFileSync(inputFilePath)),
         });
         return this.buildZosFilesResponse({ etag: dataSetName });
     }

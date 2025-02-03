@@ -55,7 +55,7 @@ export namespace WriteDataset {
     export interface Request extends IRpcRequest {
         command: "writeDataset";
         dsname: string;
-        contents: Buffer | string;
+        data: Buffer | string;
         encoding?: string;
     }
 

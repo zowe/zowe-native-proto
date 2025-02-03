@@ -63,7 +63,7 @@ func HandleWriteDatasetRequest(jsonData []byte) {
 	}
 
 	// log.Println("ReadDatasetRequest received:", dsRequest.Dataset, dsRequest.Encoding)
-	decodedBytes, err := base64.StdEncoding.DecodeString(dsRequest.Contents)
+	decodedBytes, err := base64.StdEncoding.DecodeString(dsRequest.Data)
 	if err != nil {
 		log.Println("Error decoding base64 contents:", err)
 		return

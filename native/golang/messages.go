@@ -79,14 +79,14 @@ type GetJclRequest struct {
 type WriteDatasetRequest struct {
 	Encoding string `json:"encoding,omitempty"`
 	Dsname   string `json:"dsname"`
-	Contents string `json:"contents"`
+	Data     string `json:"data"`
 }
 
 // command: "writeFile"
 type WriteFileRequest struct {
 	Encoding string `json:"encoding,omitempty"`
 	Path     string `json:"fspath"`
-	Contents string `json:"contents"`
+	Data     string `json:"data"`
 }
 
 /* Responses */

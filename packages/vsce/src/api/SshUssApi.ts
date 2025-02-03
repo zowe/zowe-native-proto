@@ -56,7 +56,7 @@ export class SshUssApi extends SshCommonApi implements MainframeInteraction.IUss
         const response = await (await this.client).uss.writeFile({
             fspath: filePath,
             encoding: options?.binary ? "binary" : (options?.encoding ?? "IBM-1047"),
-            contents: ZSshUtils.encodeByteArray(buffer),
+            data: ZSshUtils.encodeByteArray(buffer),
         });
         return this.buildZosFilesResponse({ etag: filePath });
     }
@@ -69,7 +69,7 @@ export class SshUssApi extends SshCommonApi implements MainframeInteraction.IUss
         const response = await (await this.client).uss.writeFile({
             fspath: ussFilePath,
             encoding: options?.encoding,
-            contents: ZSshUtils.encodeByteArray(readFileSync(inputFilePath)),
+            data: ZSshUtils.encodeByteArray(readFileSync(inputFilePath)),
         });
         return this.buildZosFilesResponse({ etag: ussFilePath });
     }
