@@ -37,6 +37,7 @@ const extensionConfig = {
     // support reading TypeScript and JavaScript files, 📖 -> https://github.com/TypeStrong/ts-loader
     extensions: ['.ts', '.js'],
     alias: {
+      'zowe-native-proto-sdk': path.resolve(__dirname, '..', 'sdk', 'src'),
       'cpu-features': false,
       './crypto/build/Release/sshcrypto.node': false,
       '../build/Release/cpufeatures.node': false,
@@ -47,14 +48,17 @@ const extensionConfig = {
       {
         test: /\.ts$/,
         exclude: /node_modules/,
-        use: [
-          {
-            loader: 'ts-loader'
-          }
-        ]
+        loader: 'builtin:swc-loader',
+        options: {
+          jsc: {
+            parser: {
+              syntax: 'typescript',
+            },
+          },
+        },
       },
       {
-        test: /\.js/,
+        test: /\.js$/,
         include: /wontache/, // https://gitlab.com/jgonggrijp/wontache/-/issues/68
         type: "javascript/auto",
       }
