@@ -1,0 +1,29 @@
+name: zos-build
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: Set up Credentials
+        run: |
+          echo '{"host": "${{ secrets.SSH_MARIST_RACF_HOST }}", "username": "${{ secrets.SSH_MARIST_USERNAME }}", "password": "${{ secrets.SSH_MARIST_RACF_PASSWORD }}", "deployDirectory": "/tmp/zowe-native-proto"}' > tools/build/config.local.json
+
+      - name: Build (Local)
+        run: npm install && npm run build:tools
+
+      - name: Build (z/OS)
+        run: npm run tools:all && npm run tools:artifacts
+
+      - uses: upload-artifact@v4
+        with:
+          name: zowe-server
+          path: packages/cli/bin/server.pax.Z
