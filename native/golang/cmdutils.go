@@ -19,7 +19,10 @@ import (
 
 var exePath string
 
-func buildCommand(args []string) *exec.Cmd {
+/**
+ * Shared logic for command builder functions.
+ */
+func buildCommandShared(args []string) *exec.Cmd {
 	cmd := exec.Command(args[0], args[1:]...)
 	if exePath == "" {
 		path, err := os.Executable()
@@ -29,6 +32,23 @@ func buildCommand(args []string) *exec.Cmd {
 		exePath = path
 	}
 	cmd.Dir = filepath.Dir(exePath)
+	return cmd
+}
+
+/**
+ * Default builder function for invoking zowex commands.
+ */
+func buildCommand(args []string) *exec.Cmd {
+	cmd := buildCommandShared(args)
 	cmd.Env = append(os.Environ(), "_BPXK_AUTOCVT=ON")
+	return cmd
+}
+
+/**
+ * Builds a command with _BPXK_AUTOCVT=OFF.
+ */
+func buildCommandNoAutocvt(args []string) *exec.Cmd {
+	cmd := buildCommandShared(args)
+	cmd.Env = append(os.Environ(), "_BPXK_AUTOCVT=OFF")
 	return cmd
 }

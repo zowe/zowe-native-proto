@@ -112,16 +112,6 @@ func HandleWriteFileRequest(jsonData []byte) {
 		return
 	}
 
-	// Temporarily disable _BPXK_AUTOCVT for this process and all children. Otherwise, this will cause issues when
-	// piping data between layers.
-	autocvt := os.Getenv("_BPXK_AUTOCVT")
-
-	err = os.Setenv("_BPXK_AUTOCVT", "")
-	if err != nil {
-		log.Println("Error disabling _BPXK_AUTOCVT during write:", err)
-		return
-	}
-
 	// log.Println("WriteFileRequest received:", ...)
 	decodedBytes, err := base64.StdEncoding.DecodeString(request.Contents)
 	if err != nil {
@@ -132,7 +122,7 @@ func HandleWriteFileRequest(jsonData []byte) {
 	if len(request.Encoding) > 0 {
 		args = append(args, "--encoding", request.Encoding)
 	}
-	cmd := buildCommand(args)
+	cmd := buildCommandNoAutocvt(args)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		log.Println("Error opening stdin pipe:", err)
@@ -154,13 +144,6 @@ func HandleWriteFileRequest(jsonData []byte) {
 	}
 	// discard CLI output as its currently unused
 	_ = out
-
-	// Restore value for _BPXK_AUTOCVT
-	err = os.Setenv("_BPXK_AUTOCVT", autocvt)
-	if err != nil {
-		log.Println("Error restoring _BPXK_AUTOCVT after write:", err)
-		return
-	}
 
 	response := WriteFileResponse{
 		Success: true,
