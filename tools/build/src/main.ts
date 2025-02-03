@@ -28,6 +28,7 @@ try {
 }
 
 const host = config.host;
+const port = config.port ?? 22;
 const username = config.username;
 let privateKey;
 let password = config.password;
@@ -105,12 +106,14 @@ connection.on(`error`, (err) => {
 if (!privateKey) {
   connection.connect({
     host,
+    port,
     username,
     password,
   });
 } else {
   connection.connect({
     host,
+    port,
     username,
     privateKey,
   });
