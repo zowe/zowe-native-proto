@@ -12,7 +12,7 @@
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync } from "fs";
 import * as readline from "readline/promises";
 import { basename, resolve } from "path";
-import { Client, SFTPWrapper } from "ssh2";
+import { Client, ClientCallback, SFTPWrapper } from "ssh2";
 
 let config;
 
@@ -313,10 +313,10 @@ async function artifacts(connection: Client) {
   }
 }
 
-async function runCommandInShell(connection: Client, command: string) {
+async function runCommandInShell(connection: Client, command: string, pty = false) {
   return new Promise<string>((finish) => {
     let data: string = ``;
-    connection.shell(false, (err, stream) => {
+    const cb: ClientCallback = (err, stream) => {
       if (err) {
         console.log(`Error: runCommand connection.exec error ${err}`);
         throw err;
@@ -332,7 +332,12 @@ async function runCommandInShell(connection: Client, command: string) {
         console.log(data.toString());
       });
       stream.end(`${command}\nexit\n`);
-    });
+    };
+    if (pty) {
+      connection.shell(cb);
+    } else {
+      connection.shell(false, cb);
+    }
   });
 }
 
@@ -483,7 +488,8 @@ async function build(connection: Client) {
   console.log(`Building native/golang ...`);
   console.log(await runCommandInShell(
     connection,
-    `cd ${goDeployDirectory} && go build\n`
+    `cd ${goDeployDirectory} && go build\n`,
+    process.env.CI != null
   ));
   console.log(`Build complete!`);
 }
