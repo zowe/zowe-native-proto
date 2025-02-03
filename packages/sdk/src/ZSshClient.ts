@@ -38,7 +38,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
         client.mSshClient = new Client();
         client.mSshClient.connect(ZSshUtils.buildSshConfig(session));
         client.mSshStream = await new Promise((resolve, reject) => {
-            client.mSshClient.on("ready", () => {
+            client.mSshClient.on("error", reject).on("ready", () => {
                 client.mSshClient.exec(
                     posix.join(serverPath ?? ZSshClient.DEFAULT_SERVER_PATH, "ioserver"),
                     { pty: ZSshClient.PTY_OPTIONS },

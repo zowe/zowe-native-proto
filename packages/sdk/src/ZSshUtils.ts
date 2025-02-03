@@ -91,7 +91,7 @@ export class ZSshUtils {
         const client = new Client();
         client.connect(ZSshUtils.buildSshConfig(session));
         return new Promise((resolve, reject) => {
-            client.on("ready", () => {
+            client.on("error", reject).on("ready", () => {
                 client.sftp((err, sftp) => {
                     if (err) {
                         reject(err);
