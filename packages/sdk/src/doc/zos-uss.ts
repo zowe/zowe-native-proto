@@ -27,7 +27,7 @@ export namespace ListFiles {
 export namespace ReadFile {
     export interface Request extends IRpcRequest {
         command: "readFile";
-        path: string;
+        fspath: string;
         encoding?: string;
     }
 
@@ -41,13 +41,13 @@ export namespace ReadFile {
 export namespace WriteFile {
     export interface Request extends IRpcRequest {
         command: "writeFile";
-        path: string;
+        fspath: string;
         contents: Buffer | string;
         encoding?: string;
     }
 
     export interface Response extends IRpcResponse {
-        path: string;
+        fspath: string;
         success: boolean;
     }
 }

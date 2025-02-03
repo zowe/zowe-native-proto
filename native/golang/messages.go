@@ -60,7 +60,7 @@ type ReadDatasetRequest struct {
 // command: "readFile"
 type ReadFileRequest struct {
 	Encoding string `json:"encoding,omitempty"`
-	Path     string `json:"path"`
+	Path     string `json:"fspath"`
 }
 
 // command: "readSpool"
@@ -85,7 +85,7 @@ type WriteDatasetRequest struct {
 // command: "writeFile"
 type WriteFileRequest struct {
 	Encoding string `json:"encoding,omitempty"`
-	Path     string `json:"path"`
+	Path     string `json:"fspath"`
 	Contents string `json:"contents"`
 }
 
@@ -99,7 +99,7 @@ type ReadDatasetResponse struct {
 
 type ReadFileResponse struct {
 	Encoding string `json:"encoding,omitempty"`
-	Path     string `json:"path"`
+	Path     string `json:"fspath"`
 	Data     []byte `json:"data"`
 }
 
