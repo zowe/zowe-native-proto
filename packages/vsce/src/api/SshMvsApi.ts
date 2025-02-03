@@ -42,7 +42,7 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
     ): Promise<zosfiles.IZosFilesResponse> {
         const response = await (await this.client).ds.readDataset({
             dataset: dataSetName,
-            encoding: options.encoding ?? "IBM-1047",
+            encoding: options.binary ? "binary" : (options.encoding ?? "IBM-1047"),
         });
         if (options.file != null) {
             imperative.IO.createDirsSyncFromFilePath(options.file);
@@ -64,7 +64,7 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         console.log(buf);
         const response = await (await this.client).ds.writeDataset({
             dataset: dataSetName,
-            encoding: options?.encoding ?? "IBM-1047",
+            encoding: options?.binary ? "binary" : (options?.encoding ?? "IBM-1047"),
             contents: ZSshUtils.encodeByteArray(buffer),
         });
         return this.buildZosFilesResponse({ etag: dataSetName });
