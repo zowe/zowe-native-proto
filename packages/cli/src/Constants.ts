@@ -13,7 +13,7 @@ import * as path from "node:path";
 import type { ICommandOptionDefinition } from "@zowe/imperative";
 import { ZSshClient } from "zowe-native-proto-sdk";
 
-// biome-ignore lint/complexity/noStaticOnlyClass: <explanation>
+// biome-ignore lint/complexity/noStaticOnlyClass: Constants class has static properties
 export class Constants {
     public static readonly OPT_SERVER_PATH: ICommandOptionDefinition = {
         name: "server-path",

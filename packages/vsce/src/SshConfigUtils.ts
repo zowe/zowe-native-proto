@@ -13,7 +13,7 @@ import { Gui, ZoweVsCodeExtension, type imperative } from "@zowe/zowe-explorer-a
 import * as vscode from "vscode";
 import { ZSshClient } from "zowe-native-proto-sdk";
 
-// biome-ignore lint/complexity/noStaticOnlyClass: <explanation>
+// biome-ignore lint/complexity/noStaticOnlyClass: Utilities class has static methods
 export class SshConfigUtils {
     public static getServerPath(hostname: string): string {
         const serverPathMap = vscode.workspace

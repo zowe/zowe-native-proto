@@ -294,15 +294,18 @@ async function getDumps(connection: Client) {
 async function artifacts(connection: Client) {
   const localDirs = ["../packages/cli/bin", "../packages/vsce/bin"];
   const artifactNames = ["c/zowex", "golang/ioserver"];
+  const paxFile = "server.pax.Z";
+  const prePaxCmds = artifactNames.map((file) => `cp ${file} ${basename(file)} && chmod 700 ${basename(file)}`);
+  const postPaxCmds = artifactNames.map((file) => `rm ${basename(file)}`);
+  await runCommandInShell(connection, [`cd ${deployDirectory}`, ...prePaxCmds,
+    `pax -wzvf ${paxFile} ${artifactNames.map((file) => basename(file)).join(" ")}`, ...postPaxCmds].join("\n"));
   for (const localDir of localDirs) {
     mkdirSync(resolve(__dirname, `./../../${localDir}`), { recursive: true });
     if (localDirs.indexOf(localDir) === 0) {
-      await retrieve(connection, artifactNames, localDir);
+      await retrieve(connection, [paxFile], localDir);
     } else {
-      for (const file of artifactNames) {
-        cpSync(resolve(__dirname, `./../../${localDirs[0]}/${basename(file)}`),
-          resolve(__dirname, `./../../${localDir}/${basename(file)}`));
-      }
+      cpSync(resolve(__dirname, `./../../${localDirs[0]}/${paxFile}`),
+        resolve(__dirname, `./../../${localDir}/${paxFile}`));
     }
   }
 }
@@ -347,7 +350,7 @@ async function retrieve(
       for (let i = 0; i < files.length; i++) {
         const absTargetDir = resolve(__dirname, `./../../${targetDir}`);
         if (!existsSync(`${absTargetDir}`)) mkdirSync(`${absTargetDir}`);
-        const to = `${absTargetDir}/${basename(files[i])}`;
+        const to = `${absTargetDir}/${files[i]}`;
         const from = `${deployDirectory}/${files[i]}`;
         // console.log(`from '${from}' to'${to}'`)
         await download(sftpcon, from, to);

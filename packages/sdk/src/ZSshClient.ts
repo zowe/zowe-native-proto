@@ -80,7 +80,13 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
             this.mSshStream.stderr.on("data", this.onErrData.bind(this, reject));
             this.mSshStream.stdout.on(
                 "data",
-                this.onOutData.bind(this, (response: any) => resolve(JSON.parse(response))),
+                this.onOutData.bind(this, (response: string) => {
+                    try {
+                        resolve(JSON.parse(response));
+                    } catch {
+                        reject(response);
+                    }
+                }),
             );
         });
     }
