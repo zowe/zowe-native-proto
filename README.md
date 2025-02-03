@@ -2,7 +2,7 @@
 
 ## Setup
 
-create your own `config.local.json` adjacent to `config.default.json` with something like:
+create your own `config.local.json` adjacent to `config.default.jsonc` with something like:
 
 ```json
 {
@@ -29,6 +29,10 @@ On remote system, `cd` to deploy dir and run `test.sh` (or run `zowex`)
 To download binaries, run `npm run tools:artifacts`
 
 ## Troubleshooting
+
+### go: FSUM7351 not found
+
+Ensure go is part of PATH
 
 ### Client connection error - Error: All configured authentication methods failed
 
