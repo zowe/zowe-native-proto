@@ -1,6 +1,8 @@
 name: zos-build
 
-on: [push, pull_request]
+on:
+  pull_request:
+  workflow_dispatch:
 
 jobs:
   build:
@@ -23,7 +25,7 @@ jobs:
       - name: Build (z/OS)
         run: npm run tools:all && npm run tools:artifacts
 
-      - uses: upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: zowe-server
           path: packages/cli/bin/server.pax.Z
