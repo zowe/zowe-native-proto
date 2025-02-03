@@ -36,7 +36,7 @@ export class SshUssApi extends SshCommonApi implements MainframeInteraction.IUss
     ): Promise<zosfiles.IZosFilesResponse> {
         const response = await (await this.client).uss.readFile({
             path: ussFilePath,
-            encoding: options.encoding ?? "IBM-1047",
+            encoding: options.binary ? "binary" : (options.encoding ?? "IBM-1047"),
         });
         if (options.file != null) {
             imperative.IO.createDirsSyncFromFilePath(options.file);
@@ -55,7 +55,7 @@ export class SshUssApi extends SshCommonApi implements MainframeInteraction.IUss
     ): Promise<zosfiles.IZosFilesResponse> {
         const response = await (await this.client).uss.writeFile({
             path: filePath,
-            encoding: options?.encoding,
+            encoding: options?.binary ? "binary" : (options?.encoding ?? "IBM-1047"),
             contents: ZSshUtils.encodeByteArray(buffer),
         });
         return this.buildZosFilesResponse({ etag: filePath });
