@@ -23,12 +23,12 @@ import (
 func HandleReadDatasetRequest(jsonData []byte) {
 	var dsRequest ReadDatasetRequest
 	err := json.Unmarshal(jsonData, &dsRequest)
-	if err != nil || (dsRequest.Encoding == "" && dsRequest.Dataset == "") {
+	if err != nil || (dsRequest.Encoding == "" && dsRequest.Dsname == "") {
 		// log.Println("Error decoding ReadDatasetRequest:", err)
 		return
 	}
 	// log.Println("ReadDatasetRequest received:", dsRequest.Dataset, dsRequest.Encoding)
-	args := []string{"./zowex", "data-set", "view", dsRequest.Dataset}
+	args := []string{"./zowex", "data-set", "view", dsRequest.Dsname}
 	hasEncoding := len(dsRequest.Encoding) != 0
 	if hasEncoding {
 		args = append(args, "--encoding", dsRequest.Encoding, "--rfb", "true")
@@ -43,7 +43,7 @@ func HandleReadDatasetRequest(jsonData []byte) {
 
 	dsResponse := ReadDatasetResponse{
 		Encoding: dsRequest.Encoding,
-		Dataset:  dsRequest.Dataset,
+		Dsname:   dsRequest.Dsname,
 		Data:     data,
 	}
 	v, err := json.Marshal(dsResponse)
@@ -57,7 +57,7 @@ func HandleReadDatasetRequest(jsonData []byte) {
 func HandleWriteDatasetRequest(jsonData []byte) {
 	var dsRequest WriteDatasetRequest
 	err := json.Unmarshal(jsonData, &dsRequest)
-	if err != nil || (dsRequest.Encoding == "" && dsRequest.Dataset == "") {
+	if err != nil || (dsRequest.Encoding == "" && dsRequest.Dsname == "") {
 		// log.Println("Error decoding ReadDatasetRequest:", err)
 		return
 	}
@@ -68,7 +68,7 @@ func HandleWriteDatasetRequest(jsonData []byte) {
 		log.Println("Error decoding base64 contents:", err)
 		return
 	}
-	args := []string{"./zowex", "data-set", "write", dsRequest.Dataset}
+	args := []string{"./zowex", "data-set", "write", dsRequest.Dsname}
 	if len(dsRequest.Encoding) > 0 {
 		args = append(args, "--encoding", dsRequest.Encoding)
 	}
@@ -97,7 +97,7 @@ func HandleWriteDatasetRequest(jsonData []byte) {
 
 	dsResponse := WriteDatasetResponse{
 		Success: true,
-		Dataset: dsRequest.Dataset,
+		Dsname:  dsRequest.Dsname,
 	}
 	v, err := json.Marshal(dsResponse)
 	if err != nil {
@@ -160,7 +160,7 @@ func HandleListDsMembersRequest(jsonData []byte) {
 		return
 	}
 
-	args := []string{"./zowex", "data-set", "list-members", listRequest.Dataset}
+	args := []string{"./zowex", "data-set", "list-members", listRequest.Dsname}
 	// if len(listRequest.Start) != 0 {
 	// 	args = append(args, "--start", listRequest.Start)
 	// }
@@ -203,7 +203,7 @@ func HandleRestoreDatasetRequest(jsonData []byte) {
 		return
 	}
 
-	args := []string{"./zowex", "data-set", "restore", dsRequest.Dataset}
+	args := []string{"./zowex", "data-set", "restore", dsRequest.Dsname}
 
 	out, err := buildCommand(args).Output()
 	if err != nil {

@@ -28,7 +28,7 @@ export namespace ListDatasets {
 export namespace ListDsMembers {
     export interface Request extends IRpcRequest {
         command: "listDsMembers";
-        dataset: string;
+        dsname: string;
     }
 
     export interface Response extends IRpcResponse {
@@ -40,13 +40,13 @@ export namespace ListDsMembers {
 export namespace ReadDataset {
     export interface Request extends IRpcRequest {
         command: "readDataset";
-        dataset: string;
+        dsname: string;
         encoding?: string;
     }
 
     export interface Response extends IRpcResponse {
         data: Buffer | string;
-        dataset: string;
+        dsname: string;
         encoding?: string;
     }
 }
@@ -54,13 +54,13 @@ export namespace ReadDataset {
 export namespace WriteDataset {
     export interface Request extends IRpcRequest {
         command: "writeDataset";
-        dataset: string;
+        dsname: string;
         contents: Buffer | string;
         encoding?: string;
     }
 
     export interface Response extends IRpcResponse {
-        dataset: string;
+        dsname: string;
         success: boolean;
     }
 }
@@ -68,7 +68,7 @@ export namespace WriteDataset {
 export namespace RestoreDataset {
     export interface Request extends IRpcRequest {
         command: "restoreDataset";
-        dataset: string;
+        dsname: string;
     }
 
     export interface Response extends IRpcResponse {

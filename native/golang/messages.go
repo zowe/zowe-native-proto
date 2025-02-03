@@ -27,7 +27,7 @@ type ListDatasetsRequest struct {
 
 // command: "listDsMembers"
 type ListDsMembersRequest struct {
-	Dataset string `json:"dataset"`
+	Dsname string `json:"dsname"`
 	ListOptions
 	ListDatasetOptions
 }
@@ -54,7 +54,7 @@ type ListSpoolsRequest struct {
 // command: "readDataset"
 type ReadDatasetRequest struct {
 	Encoding string `json:"encoding,omitempty"`
-	Dataset  string `json:"dataset"`
+	Dsname   string `json:"dsname"`
 }
 
 // command: "readFile"
@@ -78,7 +78,7 @@ type GetJclRequest struct {
 // command: "writeDataset"
 type WriteDatasetRequest struct {
 	Encoding string `json:"encoding,omitempty"`
-	Dataset  string `json:"dataset"`
+	Dsname   string `json:"dsname"`
 	Contents string `json:"contents"`
 }
 
@@ -93,7 +93,7 @@ type WriteFileRequest struct {
 
 type ReadDatasetResponse struct {
 	Encoding string `json:"encoding,omitempty"`
-	Dataset  string `json:"dataset"`
+	Dsname   string `json:"dsname"`
 	Data     []byte `json:"data"`
 }
 
@@ -112,7 +112,7 @@ type ReadSpoolResponse struct {
 
 type WriteDatasetResponse struct {
 	Success bool   `json:"success"`
-	Dataset string `json:"dataset"`
+	Dsname  string `json:"dsname"`
 }
 
 type WriteFileResponse struct {
@@ -159,7 +159,7 @@ type IssueConsoleResponse struct {
 }
 
 type RestoreDatasetRequest struct {
-	Dataset string `json:"dataset"`
+	Dsname string `json:"dsname"`
 }
 
 type RestoreDatasetResponse struct {
