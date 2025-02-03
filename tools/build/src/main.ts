@@ -14,7 +14,7 @@ import * as readline from "readline/promises";
 import { basename, resolve } from "path";
 import { Client, ClientCallback, SFTPWrapper } from "ssh2";
 
-let config;
+let config: any;
 
 try {
   console.log(resolve(__dirname, `./../config.local.json`));
@@ -488,7 +488,7 @@ async function build(connection: Client) {
   console.log(`Building native/golang ...`);
   console.log(await runCommandInShell(
     connection,
-    `cd ${goDeployDirectory} && ${process.env.CI != null ? ("GOTMPDIR=" + deployDirectory) : ""} go build\n`,
+    `cd ${goDeployDirectory} && ${config.goEnv ?? ""} go build\n`,
     process.env.CI != null
   ));
   console.log(`Build complete!`);

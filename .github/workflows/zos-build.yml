@@ -1,8 +1,10 @@
 name: zos-build
 
 on:
-  pull_request:
-  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/zos-build.yml"
+      - "native/**"
 
 jobs:
   build:
@@ -17,7 +19,7 @@ jobs:
 
       - name: Set up Credentials
         run: |
-          echo '{"host": "${{ secrets.SSH_MARIST_RACF_HOST }}", "port": 65522, "username": "${{ secrets.SSH_MARIST_USERNAME }}", "password": "${{ secrets.SSH_MARIST_RACF_PASSWORD }}", "deployDirectory": "/ZOWE/tmp/zowe-native-proto"}' > tools/build/config.local.json
+          echo '{"host": "${{ secrets.SSH_MARIST_RACF_HOST }}", "port": 65522, "username": "${{ secrets.SSH_MARIST_USERNAME }}", "password": "${{ secrets.SSH_MARIST_RACF_PASSWORD }}", "deployDirectory": "/ZOWE/tmp/zowe-native-proto", "goEnv": "GOTMPDIR=/ZOWE/tmp"}' > tools/build/config.local.json
 
       - name: Build (Local)
         run: npm install && npm run build:tools

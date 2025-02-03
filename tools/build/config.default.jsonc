@@ -1,7 +1,9 @@
 {
     "host": "hostname",
+    "port": 22,
     "username": "$mfuser",
     "privateKey": "/Users/$userid/.ssh/id_ed25519", // Optional
     "password": "$mainframe-password", // Use either password or privateKey
-    "deployDirectory": "/u/users/$mfuser/zowe-native-proto"
+    "deployDirectory": "/u/users/$mfuser/zowe-native-proto",
+    "goEnv": "" // Optional
 }
