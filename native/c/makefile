@@ -215,29 +215,29 @@ libzusf.a: zusf.o libzut.a
 #
 # TSO
 #
-zts.o: zts.cpp
-	@echo 'Building zts.o'
+ztso.o: ztso.cpp
+	@echo 'Building ztso.o'
 	$(CXX) $(DLL_CPP_FLAGS) -qlist=$*.cpp.lst -o $@ $^
 
-libzts.so: zts.o
+libztso.so: ztso.o
 	$(CXX) $(DLL_BND_FLAGS) -o $@ $^ > $*.bind.lst
-	@echo 'Building libzts.so'
+	@echo 'Building libztso.so'
 
-libzts.a: zts.o
-	@echo 'Building libzts.a'
+libztso.a: ztso.o
+	@echo 'Building libztso.a'
 	ar -rv $@ $^
 
 #
 # Test CLI
 #
 # zowex: zowex.o zcn.o zcnm.o zcnm31.o zut.o zutm.o zutm31.o zjb.o zjbm.o zssi31.o zjbm31.o zds.o
-zowex: zowex.o libzcn.a libzut.a libzjb.a libzds.a libzusf.a libzts.a
+zowex: zowex.o libzcn.a libzut.a libzjb.a libzds.a libzusf.a libztso.a /usr/lib/ceasapit.x
 	@echo 'Building zowex'
 	$(CXX) $(CPP_BND_FLAGS) -o $@ $^ > $*.bind.lst
 	cp $@ ../golang/$(basename $@)
 	@echo 'Copied zowex to golang/'
 
-zowexx: zowex.o libzcn.a libzut.a libzjb.a libzds.a libzusf.a libzts.a
+zowexx: zowex.o libzcn.a libzut.a libzjb.a libzds.a libzusf.a libztso.a /usr/lib/ceasapit.x
 	@echo 'Building zowexx'
 	$(CXX) $(CPP_BND_FLAGS_AUTH) -o $@ $^ > $*.bind.lst
 	cp $@ ../golang/$(basename $@)
