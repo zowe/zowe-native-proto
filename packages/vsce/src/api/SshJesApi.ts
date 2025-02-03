@@ -46,7 +46,7 @@ export class SshJesApi extends SshCommonApi implements MainframeInteraction.IJes
 
     public async getSpoolContentById(jobname: string, jobid: string, spoolId: number): Promise<string> {
         const response = await (await this.client).jobs.readSpool({
-            dsnKey: spoolId,
+            spoolId: spoolId,
             jobId: jobid.toUpperCase(),
         });
         return ZSshUtils.decodeByteArray(response.data).toString();

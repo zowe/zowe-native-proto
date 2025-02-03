@@ -16,7 +16,7 @@ import { SshBaseHandler } from "../../SshBaseHandler";
 export default class ViewJobJclHandler extends SshBaseHandler {
     public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<ReadSpool.Response> {
         const response = await client.jobs.readSpool({
-            dsnKey: params.arguments.dsnKey,
+            spoolId: params.arguments.spoolId,
             jobId: params.arguments.jobId,
             encoding: params.arguments.encoding,
         });

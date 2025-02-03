@@ -32,8 +32,8 @@ export const ViewJobFileDefinition: ICommandDefinition = {
             required: true,
         },
         {
-            name: "dsn-key",
-            description: "The key of the job which you would like to view the contents of.",
+            name: "spool-id",
+            description: "The ID of the job spool which you would like to view the contents of.",
             type: "number",
             required: true,
         },

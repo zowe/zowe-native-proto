@@ -52,14 +52,14 @@ export namespace ListSpools {
 export namespace ReadSpool {
     export interface Request extends IRpcRequest {
         command: "readSpool";
-        dsnKey: number;
+        spoolId: number;
         jobId: string;
         encoding?: string;
     }
 
     export interface Response extends IRpcResponse {
         data: Buffer | string;
-        dsnKey: number;
+        spoolId: number;
         jobId: string;
         encoding?: string;
     }

@@ -122,7 +122,7 @@ func HandleReadSpoolRequest(jsonData []byte) {
 		return
 	}
 	// log.Println("ReadSpoolRequest received:", ...)
-	args := []string{"./zowex", "job", "view-file", request.JobId, strconv.Itoa(request.DsnKey)}
+	args := []string{"./zowex", "job", "view-file", request.JobId, strconv.Itoa(request.SpoolId)}
 	hasEncoding := len(request.Encoding) != 0
 	if hasEncoding {
 		args = append(args, "--encoding", request.Encoding, "--rfb", "true")
@@ -137,7 +137,7 @@ func HandleReadSpoolRequest(jsonData []byte) {
 
 	response := ReadSpoolResponse{
 		Encoding: request.Encoding,
-		DsnKey:   request.DsnKey,
+		SpoolId:  request.SpoolId,
 		JobId:    request.JobId,
 		Data:     data,
 	}
