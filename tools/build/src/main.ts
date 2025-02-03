@@ -9,9 +9,9 @@
  *
  */
 
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync } from "fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync } from "fs";
 import * as readline from "readline/promises";
-import { resolve } from "path";
+import { basename, resolve } from "path";
 import { Client, SFTPWrapper } from "ssh2";
 
 let config;
@@ -69,6 +69,9 @@ connection.on(`ready`, async () => {
       break;
     case `get-dumps`:
       await getDumps(connection);
+      break;
+    case `artifacts`:
+      await artifacts(connection);
       break;
     case `clean`:
       await clean(connection);
@@ -288,6 +291,25 @@ async function getDumps(connection: Client) {
   await retrieve(connection, resp, `dumps`);
 }
 
+async function artifacts(connection: Client) {
+  const localDirs = ["../packages/cli/bin", "../packages/vsce/bin"];
+  const artifactNames = ["c/zowex", "golang/ioserver"];
+  const paxFile = "server.pax.Z";
+  const prePaxCmds = artifactNames.map((file) => `cp ${file} ${basename(file)} && chmod 700 ${basename(file)}`);
+  const postPaxCmds = artifactNames.map((file) => `rm ${basename(file)}`);
+  await runCommandInShell(connection, [`cd ${deployDirectory}`, ...prePaxCmds,
+    `pax -wzvf ${paxFile} ${artifactNames.map((file) => basename(file)).join(" ")}`, ...postPaxCmds].join("\n"));
+  for (const localDir of localDirs) {
+    mkdirSync(resolve(__dirname, `./../../${localDir}`), { recursive: true });
+    if (localDirs.indexOf(localDir) === 0) {
+      await retrieve(connection, [paxFile], localDir);
+    } else {
+      cpSync(resolve(__dirname, `./../../${localDirs[0]}/${paxFile}`),
+        resolve(__dirname, `./../../${localDir}/${paxFile}`));
+    }
+  }
+}
+
 async function runCommandInShell(connection: Client, command: string) {
   return new Promise<string>((finish) => {
     let data: string = ``;
@@ -326,8 +348,9 @@ async function retrieve(
       }
 
       for (let i = 0; i < files.length; i++) {
-        if (!existsSync(`${targetDir}`)) mkdirSync(`${targetDir}`);
-        const to = resolve(__dirname, `./../../${targetDir}/${files[i]}`);
+        const absTargetDir = resolve(__dirname, `./../../${targetDir}`);
+        if (!existsSync(`${absTargetDir}`)) mkdirSync(`${absTargetDir}`);
+        const to = `${absTargetDir}/${files[i]}`;
         const from = `${deployDirectory}/${files[i]}`;
         // console.log(`from '${from}' to'${to}'`)
         await download(sftpcon, from, to);

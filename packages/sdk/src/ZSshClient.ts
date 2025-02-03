@@ -9,18 +9,19 @@
  *
  */
 
-import * as fs from "node:fs";
+import { posix } from "node:path";
 import type { Writable } from "node:stream";
 import { DeferredPromise } from "@zowe/imperative";
 import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
-import { Client, type ClientChannel, type ConnectConfig, type PseudoTtyOptions } from "ssh2";
+import { Client, type ClientChannel, type PseudoTtyOptions } from "ssh2";
 import { AbstractRpcClient } from "./AbstractRpcClient";
+import { ZSshUtils } from "./ZSshUtils";
 import type { IRpcRequest, IRpcResponse } from "./doc";
 
 export class ZSshClient extends AbstractRpcClient implements Disposable {
+    public static readonly DEFAULT_SERVER_PATH = "~/.zowe-server";
     // https://github.com/mscdex/ssh2/blob/master/lib/protocol/constants.js#L252
     private static readonly PTY_OPTIONS: PseudoTtyOptions = { modes: { ECHO: 0, ECHONL: 0 } };
-    private static readonly SERVER_CMD = "./zowe-native-proto/golang/ioserver";
 
     private mSshClient: Client;
     private mSshStream: ClientChannel;
@@ -32,23 +33,29 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
         super();
     }
 
-    public static async create(session: SshSession): Promise<ZSshClient> {
+    public static async create(session: SshSession, serverPath?: string): Promise<ZSshClient> {
         const client = new ZSshClient();
         client.mSshClient = new Client();
-        client.mSshClient.connect(ZSshClient.buildConnectConfig(session));
+        client.mSshClient.connect(ZSshUtils.buildSshConfig(session));
         client.mSshStream = await new Promise((resolve, reject) => {
             client.mSshClient.on("ready", () => {
-                client.mSshClient.exec(ZSshClient.SERVER_CMD, { pty: ZSshClient.PTY_OPTIONS }, (err, stream) => {
-                    if (err) {
-                        reject(err);
-                    } else {
-                        stream.stderr.on("data", (chunk: Buffer) => {
-                            console.log("STDERR:", chunk.toString());
-                        });
-                        // console.log("client ready");
-                        resolve(stream);
-                    }
-                });
+                client.mSshClient.exec(
+                    posix.join(serverPath ?? ZSshClient.DEFAULT_SERVER_PATH, "ioserver"),
+                    { pty: ZSshClient.PTY_OPTIONS },
+                    (err, stream) => {
+                        if (err) {
+                            reject(err);
+                        } else {
+                            stream.stderr.on("data", (chunk: Buffer) => {
+                                // const EBCDIC = require("ebcdic-ascii").default;
+                                // chunk = Buffer.from(new EBCDIC("1047").toEBCDIC(chunk.toString("hex")), "hex");
+                                console.log("STDERR:", chunk.toString());
+                            });
+                            // console.log("client ready");
+                            resolve(stream);
+                        }
+                    },
+                );
             });
         });
         return client;
@@ -73,20 +80,15 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
             this.mSshStream.stderr.on("data", this.onErrData.bind(this, reject));
             this.mSshStream.stdout.on(
                 "data",
-                this.onOutData.bind(this, (response: any) => resolve(JSON.parse(response))),
+                this.onOutData.bind(this, (response: string) => {
+                    try {
+                        resolve(JSON.parse(response));
+                    } catch {
+                        reject(response);
+                    }
+                }),
             );
         });
-    }
-
-    private static buildConnectConfig(session: SshSession): ConnectConfig {
-        return {
-            host: session.ISshSession.hostname,
-            port: session.ISshSession.port,
-            username: session.ISshSession.user,
-            password: session.ISshSession.password,
-            privateKey: session.ISshSession.privateKey ? fs.readFileSync(session.ISshSession.privateKey) : undefined,
-            passphrase: session.ISshSession.keyPassphrase,
-        };
     }
 
     private onErrData(reject: (typeof Promise)["reject"], chunk: Buffer) {

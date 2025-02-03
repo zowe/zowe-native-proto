@@ -10,10 +10,11 @@
  */
 
 import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
-import { Disposable } from "vscode";
+import * as vscode from "vscode";
 import { ZSshClient } from "zowe-native-proto-sdk";
+import { SshConfigUtils } from "./SshConfigUtils";
 
-export class SshClientCache extends Disposable {
+export class SshClientCache extends vscode.Disposable {
     private static mInstance: SshClientCache;
     private mClientMap: Map<string, ZSshClient> = new Map();
 
@@ -32,11 +33,20 @@ export class SshClientCache extends Disposable {
         return SshClientCache.mInstance;
     }
 
-    public async connect(session: SshSession): Promise<ZSshClient> {
+    public async connect(session: SshSession, restart = false): Promise<ZSshClient> {
         const clientKey = session.ISshSession.hostname!;
+        if (restart) {
+            this.end(clientKey);
+        }
         if (!this.mClientMap.has(clientKey)) {
-            this.mClientMap.set(clientKey, await ZSshClient.create(session));
+            const serverPath = SshConfigUtils.getServerPath(clientKey);
+            this.mClientMap.set(clientKey, await ZSshClient.create(session, serverPath));
         }
         return this.mClientMap.get(clientKey) as ZSshClient;
+    }
+
+    public end(hostname: string): void {
+        this.mClientMap.get(hostname)?.dispose();
+        this.mClientMap.delete(hostname);
     }
 }

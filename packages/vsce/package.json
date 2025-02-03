@@ -19,10 +19,38 @@
   "contributes": {
     "commands": [
       {
-        "command": "zowe-native-proto-vsce.helloWorld",
-        "title": "Hello World"
+        "command": "zowe-native-proto-vsce.connect",
+        "title": "Zowe-SSH: Connect to Host..."
+      },
+      {
+        "command": "zowe-native-proto-vsce.restart",
+        "title": "Zowe-SSH: Restart Zowe Server on Host..."
+      },
+      {
+        "command": "zowe-native-proto-vsce.uninstall",
+        "title": "Zowe-SSH: Uninstall Zowe Server from Host..."
       }
-    ]
+    ],
+    "configuration": {
+      "title": "zowe-native-proto-vsce",
+      "properties": {
+        "zowe-native-proto-vsce.serverInstallPath": {
+          "type": "object",
+          "description": "Defines custom server install paths for SSH hosts. Defaults to '~/.zowe-server'.",
+          "properties": {
+            "host": {
+              "type": "string",
+              "description": "SSH host"
+            },
+            "path": {
+              "type": "string",
+              "description": "Remote path"
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    }
   },
   "extensionDependencies": [
     "Zowe.vscode-extension-for-zowe"
@@ -31,9 +59,9 @@
     "build": "tsc -p . --noEmit",
     "compile": "rspack --mode development",
     "lint": "npx @biomejs/biome check --write src",
-    "package": "rspack --mode production --devtool=hidden-source-map",
+    "package": "vsce package --no-dependencies",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "vscode:prepublish": "npm run package",
+    "vscode:prepublish": "rspack --mode production --devtool=hidden-source-map",
     "watch": "rspack --mode development --watch"
   },
   "dependencies": {
@@ -45,6 +73,7 @@
     "@rspack/core": "^1.1.5",
     "@types/node": "^18.19.14",
     "@types/vscode": "^1.79.0",
+    "@vscode/vsce": "^3.2.2",
     "@zowe/zos-files-for-zowe-sdk": "^8.11.0",
     "@zowe/zos-jobs-for-zowe-sdk": "^8.11.0",
     "@zowe/zos-uss-for-zowe-sdk": "^8.11.0",
