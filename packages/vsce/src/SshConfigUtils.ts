@@ -28,7 +28,7 @@ export class SshConfigUtils {
             return profCache.getLoadedProfConfig(profileName, "ssh");
         }
         const sshProfiles = (await profCache.fetchAllProfilesByType("ssh")).filter(
-            ({ name, profile }) => name != null && profile?.host != null,
+            ({ name, profile }) => name != null && profile?.host,
         );
         const qpItems: vscode.QuickPickItem[] = [
             ...sshProfiles.map((prof) => ({ label: prof.name!, description: prof.profile?.host })),

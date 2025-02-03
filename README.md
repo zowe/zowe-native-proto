@@ -15,18 +15,17 @@ create your own `config.local.json` adjacent to `config.default.jsonc` with some
 
 ## Deploy & Build
 
-`npm run tools:init` (once)
-`npm run tools:deploy [file(s)|dir(s)]`
-`npm run tools:build [file(s)|dir(s)]`
-`npm run tools:deploy:build [file(s)|dir(s)]`
+- `npm run tools:init` (once)
+- `npm run tools:deploy [file(s)|dir(s)]`
+- `npm run tools:build [file(s)|dir(s)]`
+- `npm run tools:deploy:build [file(s)|dir(s)]`
+- `npm run tools:artifacts` (to download binaries)
 
 Example: `npm run tools:deploy:build c/zowex.cpp`  to deploy and build one file
 
 ## Test
 
 On remote system, `cd` to deploy dir and run `test.sh` (or run `zowex`)
-
-To download binaries, run `npm run tools:artifacts`
 
 ## Troubleshooting
 
