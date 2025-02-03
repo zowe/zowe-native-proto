@@ -488,7 +488,7 @@ async function build(connection: Client) {
   console.log(`Building native/golang ...`);
   console.log(await runCommandInShell(
     connection,
-    `cd ${goDeployDirectory} && go build\n`,
+    `cd ${goDeployDirectory} && ${process.env.CI != null ? ("GOTMPDIR=" + deployDirectory) : ""} go build\n`,
     process.env.CI != null
   ));
   console.log(`Build complete!`);
