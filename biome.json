@@ -7,7 +7,7 @@
 	},
 	"files": {
 		"ignoreUnknown": false,
-		"ignore": ["**/*.js"]
+		"ignore": ["**/*.js","node_modules"]
 	},
 	"formatter": {
 		"enabled": true,
@@ -21,7 +21,10 @@
 	"linter": {
 		"enabled": true,
 		"rules": {
-			"recommended": true
+			"recommended": true,
+			"style":{
+				"noNonNullAssertion": "off"
+			}
 		}
 	},
 	"javascript": {

@@ -33,7 +33,11 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
         super();
     }
 
-    public static async create(session: SshSession, serverPath?: string): Promise<ZSshClient> {
+    public static async create(
+        session: SshSession,
+        serverPath?: string,
+        onClose?: (session: SshSession) => void,
+    ): Promise<ZSshClient> {
         const client = new ZSshClient();
         client.mSshClient = new Client();
         client.mSshClient.connect(ZSshUtils.buildSshConfig(session));
@@ -56,6 +60,9 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                         }
                     },
                 );
+            });
+            client.mSshClient.on("close", () => {
+                onClose?.(session);
             });
         });
         return client;
@@ -100,13 +107,12 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
 
     private onOutData(resolve: (typeof Promise)["resolve"], chunk: Buffer) {
         const endsWithNewLine = chunk[chunk.length - 1] === 0x0a;
-        if (endsWithNewLine) {
-            chunk = chunk.subarray(0, chunk.length - 1);
-        }
+        const newChunk = endsWithNewLine ? chunk.subarray(0, chunk.length - 1) : chunk;
+
         if (this.mResponseStream != null) {
-            this.mResponseStream.write(chunk);
+            this.mResponseStream.write(newChunk);
         } else {
-            this.mResponse += chunk;
+            this.mResponse += newChunk;
         }
         if (endsWithNewLine) {
             this.requestEnd();

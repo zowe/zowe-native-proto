@@ -143,6 +143,7 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         throw new Error("Not yet implemented");
     }
 
+    // biome-ignore lint/suspicious/noExplicitAny: apiResponse has no strong type
     private buildZosFilesResponse(apiResponse: any, success = true): zosfiles.IZosFilesResponse {
         return { apiResponse, commandResponse: "", success };
     }
