@@ -1,0 +1,22 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Request",
+    "x-typescript-type": "RestoreDataset.Request",
+    "description": "Request to restore a dataset",
+    "type": "object",
+    "allOf": [
+        {
+            "$ref": "../../common/IRpcRequest.schema.json"
+        }
+    ],
+    "properties": {
+        "dataset": {
+            "type": "string",
+            "description": "Dataset name to restore"
+        }
+    },
+    "required": [
+        "command",
+        "dataset"
+    ]
+} 

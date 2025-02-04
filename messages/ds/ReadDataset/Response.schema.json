@@ -1,0 +1,37 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Response",
+    "x-typescript-type": "ReadDataset.Response",
+    "description": "Response containing dataset contents",
+    "type": "object",
+    "allOf": [
+        {
+            "$ref": "../../common/IRpcResponse.schema.json"
+        }
+    ],
+    "properties": {
+        "data": {
+            "oneOf": [
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "object",
+                    "description": "Buffer object containing UTF-8 data"
+                }
+            ]
+        },
+        "dsname": {
+            "type": "string",
+            "description": "Dataset name that was read"
+        },
+        "encoding": {
+            "type": "string",
+            "description": "Encoding used when reading the dataset"
+        }
+    },
+    "required": [
+        "data",
+        "dsname"
+    ]
+} 

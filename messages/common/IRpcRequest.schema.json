@@ -1,0 +1,15 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "IRpcRequest",
+    "x-typescript-type": "IRpcRequest",
+    "description": "Interface for RPC request objects",
+    "type": "object",
+    "properties": {
+        "command": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "command"
+    ]
+}

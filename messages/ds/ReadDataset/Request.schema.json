@@ -1,0 +1,26 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Request",
+    "x-typescript-type": "ReadDataset.Request",
+    "description": "Request to read contents of a dataset",
+    "type": "object",
+    "allOf": [
+        {
+            "$ref": "../../common/IRpcRequest.schema.json"
+        }
+    ],
+    "properties": {
+        "dsname": {
+            "type": "string",
+            "description": "Dataset name to read"
+        },
+        "encoding": {
+            "type": "string",
+            "description": "Encoding to use when reading the dataset"
+        }
+    },
+    "required": [
+        "command",
+        "dsname"
+    ]
+} 

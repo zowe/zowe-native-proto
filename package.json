@@ -5,6 +5,7 @@
   "scripts": {
     "postinstall": "cd tools/build && npm install",
     "build:tools": "cd tools/build && npm run build",
+    "build:types": "tsx scripts/generate-types.ts",
     "tools": "node tools/build/lib/main.js",
     "tools:init": "npm run tools -- init",
     "tools:artifacts": "npm run tools -- artifacts",
@@ -12,6 +13,7 @@
     "tools:deploy": "npm run tools -- deploy",
     "tools:deploy:build": "npm run tools -- deploy:build",
     "tools:all": "npm run tools:init && npm run tools:deploy:build",
+    "build:all": "npm run build:types && npm run build --workspaces && npm run build:tools && npm run license",
     "build": "npm run build --workspaces && npm run build:tools && npm run license",
     "lint": "npm run lint --workspaces",
     "license": "node scripts/updateLicenses.js",
@@ -27,6 +29,7 @@
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
     "@zowe/secrets-for-zowe-sdk": "^8.10.4",
+    "quicktype": "23.0.170",
     "tsx": "^4.19.2"
   }
 }

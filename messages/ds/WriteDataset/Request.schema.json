@@ -1,0 +1,38 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Request",
+    "x-typescript-type": "WriteDataset.Request",
+    "description": "Request to write contents to a dataset",
+    "type": "object",
+    "allOf": [
+        {
+            "$ref": "../../common/IRpcRequest.schema.json"
+        }
+    ],
+    "properties": {
+        "dsname": {
+            "type": "string",
+            "description": "Dataset name to write to"
+        },
+        "contents": {
+            "oneOf": [
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "object",
+                    "description": "Buffer object containing UTF-8 data"
+                }
+            ]
+        },
+        "encoding": {
+            "type": "string",
+            "description": "Encoding to use when writing the dataset"
+        }
+    },
+    "required": [
+        "command",
+        "dsname",
+        "contents"
+    ]
+} 
