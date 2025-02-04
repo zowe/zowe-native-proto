@@ -25,7 +25,7 @@ func HandleConsoleCommandRequest(jsonData []byte) {
 	if err != nil {
 		return
 	}
-	args := []string{"./zowexx", "console", "issue", request.Command, "--cn", request.Console}
+	args := []string{"./zowexx", "console", "issue", request.CommandText, "--cn", request.ConsoleName}
 	out, err := buildCommand(args).Output()
 	if err != nil {
 		log.Println("Error executing command:", err)
