@@ -17,73 +17,73 @@ type CommandRequest struct {
 	Command string `json:"command"`
 }
 
-// command: "listDatasets"
 type ListDatasetsRequest struct {
+	Command string `json:"command" tstype:"\"listDatasets\""`
 	Pattern            string `json:"pattern"`
 	Attributes         bool   `json:"attributes,omitempty"`
 	ListOptions        `tstype:",extends"`
 	ListDatasetOptions `tstype:",extends"`
 }
 
-// command: "listDsMembers"
 type ListDsMembersRequest struct {
+	Command string `json:"command" tstype:"\"listDsMembers\""`
 	Dataset            string `json:"dataset"`
 	ListOptions        `tstype:",extends"`
 	ListDatasetOptions `tstype:",extends"`
 }
 
-// command: "listFiles"
 type ListFilesRequest struct {
-	Path string `json:"fspath"`
+	Command string `json:"command" tstype:"\"listFiles\""`
+	Path    string `json:"fspath"`
 	ListOptions
 }
 
-// command: "listJobs"
 type ListJobsRequest struct {
+	Command string `json:"command" tstype:"\"listJobs\""`
 	Owner       string `json:"owner,omitempty"`
 	Prefix      string `json:"prefix,omitempty"`
 	Status      string `json:"status,omitempty"`
 	ListOptions `tstype:",extends"`
 }
 
-// command: "listSpools"
 type ListSpoolsRequest struct {
-	JobId string `json:"jobId"`
+	Command string `json:"command" tstype:"\"listSpools\""`
+	JobId    string `json:"jobId"`
 }
 
-// command: "readDataset"
 type ReadDatasetRequest struct {
+	Command string `json:"command" tstype:"\"readDataset\""`
 	Encoding string `json:"encoding,omitempty"`
 	Dataset  string `json:"dataset"`
 }
 
-// command: "readFile"
 type ReadFileRequest struct {
+	Command string `json:"command" tstype:"\"readFile\""`
 	Encoding string `json:"encoding,omitempty"`
 	Path     string `json:"path"`
 }
 
-// command: "readSpool"
 type ReadSpoolRequest struct {
+	Command string `json:"command" tstype:"\"readSpool\""`
 	Encoding string `json:"encoding,omitempty"`
 	DsnKey   int    `json:"dsnKey"`
 	JobId    string `json:"jobId"`
 }
 
-// command: "getJcl"
 type GetJclRequest struct {
-	JobId string `json:"jobId"`
+	Command string `json:"command" tstype:"\"getJcl\""`
+	JobId   string `json:"jobId"`
 }
 
-// command: "writeDataset"
 type WriteDatasetRequest struct {
+	Command string `json:"command" tstype:"\"writeDataset\""`
 	Encoding string `json:"encoding,omitempty"`
 	Dataset  string `json:"dataset"`
 	Contents string `json:"contents"`
 }
 
-// command: "writeFile"
 type WriteFileRequest struct {
+	Command string `json:"command" tstype:"\"writeFile\""`
 	Encoding string `json:"encoding,omitempty"`
 	Path     string `json:"path"`
 	Contents string `json:"contents"`
@@ -148,10 +148,10 @@ type GetJclResponse struct {
 	Data  string `json:"data"`
 }
 
-// command: "consoleCommand"
 type IssueConsoleRequest struct {
-	Command string `json:"commandText"`
-	Console string `json:"consoleName"`
+	Command string `json:"command" tstype:"\"consoleCommand\""`
+	CommandText string `json:"commandText"`
+	ConsoleName string `json:"consoleName"`
 }
 
 type IssueConsoleResponse struct {
@@ -159,6 +159,7 @@ type IssueConsoleResponse struct {
 }
 
 type RestoreDatasetRequest struct {
+	Command string `json:"command" tstype:"\"restoreDataset\""`
 	Dataset string `json:"dataset"`
 }
 
