@@ -9,7 +9,7 @@
  *
  */
 
-package main
+package types
 
 type Dataset struct {
 	Name   string `json:"name"`

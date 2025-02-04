@@ -16,10 +16,11 @@ import (
 	"fmt"
 	"log"
 	"os"
+	types "zowe-native-proto/ioserver/types"
 )
 
 func HandleConsoleCommandRequest(jsonData []byte) {
-	var request IssueConsoleRequest
+	var request types.IssueConsoleRequest
 	err := json.Unmarshal(jsonData, &request)
 	if err != nil {
 		return
@@ -32,7 +33,7 @@ func HandleConsoleCommandRequest(jsonData []byte) {
 		return
 	}
 
-	response := IssueConsoleResponse{
+	response := types.IssueConsoleResponse{
 		Data: string(out),
 	}
 	v, err := json.Marshal(response)

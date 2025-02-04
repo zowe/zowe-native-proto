@@ -9,7 +9,7 @@
  *
  */
 
-package main
+package types
 
 /* Requests */
 
@@ -19,17 +19,17 @@ type CommandRequest struct {
 
 // command: "listDatasets"
 type ListDatasetsRequest struct {
-	Pattern    string `json:"pattern"`
-	Attributes bool   `json:"attributes,omitempty"`
-	ListOptions
-	ListDatasetOptions
+	Pattern            string `json:"pattern"`
+	Attributes         bool   `json:"attributes,omitempty"`
+	ListOptions        `tstype:",extends"`
+	ListDatasetOptions `tstype:",extends"`
 }
 
 // command: "listDsMembers"
 type ListDsMembersRequest struct {
-	Dataset string `json:"dataset"`
-	ListOptions
-	ListDatasetOptions
+	Dataset            string `json:"dataset"`
+	ListOptions        `tstype:",extends"`
+	ListDatasetOptions `tstype:",extends"`
 }
 
 // command: "listFiles"
@@ -40,10 +40,10 @@ type ListFilesRequest struct {
 
 // command: "listJobs"
 type ListJobsRequest struct {
-	Owner  string `json:"owner,omitempty"`
-	Prefix string `json:"prefix,omitempty"`
-	Status string `json:"status,omitempty"`
-	ListOptions
+	Owner       string `json:"owner,omitempty"`
+	Prefix      string `json:"prefix,omitempty"`
+	Status      string `json:"status,omitempty"`
+	ListOptions `tstype:",extends"`
 }
 
 // command: "listSpools"
@@ -94,20 +94,20 @@ type WriteFileRequest struct {
 type ReadDatasetResponse struct {
 	Encoding string `json:"encoding,omitempty"`
 	Dataset  string `json:"dataset"`
-	Data     []byte `json:"data"`
+	Data     []byte `json:"data" tstype:"Buffer | string"`
 }
 
 type ReadFileResponse struct {
 	Encoding string `json:"encoding,omitempty"`
 	Path     string `json:"path"`
-	Data     []byte `json:"data"`
+	Data     []byte `json:"data" tstype:"Buffer | string"`
 }
 
 type ReadSpoolResponse struct {
 	Encoding string `json:"encoding,omitempty"`
 	DsnKey   int    `json:"dsnKey"`
 	JobId    string `json:"jobId"`
-	Data     []byte `json:"data"`
+	Data     []byte `json:"data" tstype:"Buffer | string"`
 }
 
 type WriteDatasetResponse struct {

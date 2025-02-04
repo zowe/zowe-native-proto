@@ -1,0 +1,2 @@
+packages:
+  - path: "zowe-native-proto/ioserver/types"

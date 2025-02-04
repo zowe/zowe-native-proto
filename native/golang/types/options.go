@@ -9,7 +9,7 @@
  *
  */
 
-package main
+package types
 
 type ListOptions struct {
 	MaxItems        int `json:"maxItems,omitempty"`
@@ -17,5 +17,5 @@ type ListOptions struct {
 }
 
 type ListDatasetOptions struct {
-	Start string `json:"start"`
+	Start string `json:"start,omitempty"`
 }

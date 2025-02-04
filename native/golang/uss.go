@@ -18,10 +18,11 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	types "zowe-native-proto/ioserver/types"
 )
 
 func HandleListFilesRequest(jsonData []byte) {
-	var listRequest ListFilesRequest
+	var listRequest types.ListFilesRequest
 	err := json.Unmarshal(jsonData, &listRequest)
 	if err != nil {
 		// log.Println("Error decoding ListFilesRequest:", err)
@@ -35,11 +36,11 @@ func HandleListFilesRequest(jsonData []byte) {
 		return
 	}
 
-	ussResponse := ListFilesResponse{}
+	ussResponse := types.ListFilesResponse{}
 
 	if !fileInfo.IsDir() {
-		ussResponse.Items = make([]UssItem, 1)
-		ussResponse.Items[0] = UssItem{
+		ussResponse.Items = make([]types.UssItem, 1)
+		ussResponse.Items[0] = types.UssItem{
 			Name:  filepath.Base(dirPath),
 			IsDir: false,
 		}
@@ -50,10 +51,10 @@ func HandleListFilesRequest(jsonData []byte) {
 			log.Println("Error reading directory:", err)
 			return
 		}
-		ussResponse.Items = make([]UssItem, len(entries))
+		ussResponse.Items = make([]types.UssItem, len(entries))
 
 		for i, entry := range entries {
-			ussResponse.Items[i] = UssItem{
+			ussResponse.Items[i] = types.UssItem{
 				Name:  entry.Name(),
 				IsDir: entry.IsDir(),
 			}
@@ -71,7 +72,7 @@ func HandleListFilesRequest(jsonData []byte) {
 }
 
 func HandleReadFileRequest(jsonData []byte) {
-	var request ReadFileRequest
+	var request types.ReadFileRequest
 	err := json.Unmarshal(jsonData, &request)
 	if err != nil || (request.Encoding == "" && request.Path == "") {
 		// log.Println("Error decoding ReadFileRequest:", err)
@@ -91,7 +92,7 @@ func HandleReadFileRequest(jsonData []byte) {
 
 	data := collectContentsAsBytes(string(out), hasEncoding)
 
-	response := ReadFileResponse{
+	response := types.ReadFileResponse{
 		Encoding: request.Encoding,
 		Path:     request.Path,
 		Data:     data,
@@ -105,7 +106,7 @@ func HandleReadFileRequest(jsonData []byte) {
 }
 
 func HandleWriteFileRequest(jsonData []byte) {
-	var request WriteFileRequest
+	var request types.WriteFileRequest
 	err := json.Unmarshal(jsonData, &request)
 	if err != nil || (request.Encoding == "" && request.Path == "") {
 		// log.Println("Error decoding WriteFileRequest:", err)
@@ -145,7 +146,7 @@ func HandleWriteFileRequest(jsonData []byte) {
 	// discard CLI output as its currently unused
 	_ = out
 
-	response := WriteFileResponse{
+	response := types.WriteFileResponse{
 		Success: true,
 		Path:    request.Path,
 	}

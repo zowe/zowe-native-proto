@@ -18,10 +18,12 @@ import (
 	"log"
 	"os"
 	"strings"
+
+	types "zowe-native-proto/ioserver/types"
 )
 
 func HandleReadDatasetRequest(jsonData []byte) {
-	var dsRequest ReadDatasetRequest
+	var dsRequest types.ReadDatasetRequest
 	err := json.Unmarshal(jsonData, &dsRequest)
 	if err != nil || (dsRequest.Encoding == "" && dsRequest.Dataset == "") {
 		// log.Println("Error decoding ReadDatasetRequest:", err)
@@ -41,7 +43,7 @@ func HandleReadDatasetRequest(jsonData []byte) {
 
 	data := collectContentsAsBytes(string(out), hasEncoding)
 
-	dsResponse := ReadDatasetResponse{
+	dsResponse := types.ReadDatasetResponse{
 		Encoding: dsRequest.Encoding,
 		Dataset:  dsRequest.Dataset,
 		Data:     data,
@@ -55,7 +57,7 @@ func HandleReadDatasetRequest(jsonData []byte) {
 }
 
 func HandleWriteDatasetRequest(jsonData []byte) {
-	var dsRequest WriteDatasetRequest
+	var dsRequest types.WriteDatasetRequest
 	err := json.Unmarshal(jsonData, &dsRequest)
 	if err != nil || (dsRequest.Encoding == "" && dsRequest.Dataset == "") {
 		// log.Println("Error decoding ReadDatasetRequest:", err)
@@ -95,7 +97,7 @@ func HandleWriteDatasetRequest(jsonData []byte) {
 	// discard CLI output as its currently unused
 	_ = out
 
-	dsResponse := WriteDatasetResponse{
+	dsResponse := types.WriteDatasetResponse{
 		Success: true,
 		Dataset: dsRequest.Dataset,
 	}
@@ -108,7 +110,7 @@ func HandleWriteDatasetRequest(jsonData []byte) {
 }
 
 func HandleListDatasetsRequest(jsonData []byte) {
-	listRequest := ListDatasetsRequest{
+	listRequest := types.ListDatasetsRequest{
 		Attributes: false,
 	}
 	err := json.Unmarshal(jsonData, &listRequest)
@@ -130,13 +132,13 @@ func HandleListDatasetsRequest(jsonData []byte) {
 
 	datasets := strings.Split(strings.TrimSpace(string(out)), "\n")
 
-	dsResponse := ListDatasetsResponse{
-		Items: make([]Dataset, len(datasets)),
+	dsResponse := types.ListDatasetsResponse{
+		Items: make([]types.Dataset, len(datasets)),
 	}
 
 	for i, ds := range datasets {
 		vals := strings.Split(ds, ",")
-		dsResponse.Items[i] = Dataset{
+		dsResponse.Items[i] = types.Dataset{
 			Name:   strings.TrimSpace(vals[0]),
 			Dsorg:  vals[1],
 			Volser: vals[2],
@@ -153,7 +155,7 @@ func HandleListDatasetsRequest(jsonData []byte) {
 }
 
 func HandleListDsMembersRequest(jsonData []byte) {
-	var listRequest ListDsMembersRequest
+	var listRequest types.ListDsMembersRequest
 	err := json.Unmarshal(jsonData, &listRequest)
 	if err != nil {
 		// log.Println("Error decoding ListDsMembersRequest:", err)
@@ -173,8 +175,8 @@ func HandleListDsMembersRequest(jsonData []byte) {
 
 	members := strings.Split(strings.TrimSpace(string(out)), "\n")
 
-	dsResponse := ListDsMembersResponse{
-		Items: make([]DsMember, len(members)),
+	dsResponse := types.ListDsMembersResponse{
+		Items: make([]types.DsMember, len(members)),
 	}
 
 	for i, member := range members {
@@ -182,7 +184,7 @@ func HandleListDsMembersRequest(jsonData []byte) {
 		if len(name) == 0 {
 			continue
 		}
-		dsResponse.Items[i] = DsMember{
+		dsResponse.Items[i] = types.DsMember{
 			Name: name,
 		}
 		dsResponse.ReturnedRows++
@@ -197,7 +199,7 @@ func HandleListDsMembersRequest(jsonData []byte) {
 }
 
 func HandleRestoreDatasetRequest(jsonData []byte) {
-	var dsRequest RestoreDatasetRequest
+	var dsRequest types.RestoreDatasetRequest
 	err := json.Unmarshal(jsonData, &dsRequest)
 	if err != nil {
 		return
@@ -212,7 +214,7 @@ func HandleRestoreDatasetRequest(jsonData []byte) {
 		return
 	}
 
-	dsResponse := WriteDatasetResponse{
+	dsResponse := types.WriteDatasetResponse{
 		Success: true,
 	}
 	v, err := json.Marshal(dsResponse)
