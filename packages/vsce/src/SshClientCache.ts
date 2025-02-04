@@ -40,7 +40,12 @@ export class SshClientCache extends vscode.Disposable {
         }
         if (!this.mClientMap.has(clientKey)) {
             const serverPath = SshConfigUtils.getServerPath(clientKey);
-            this.mClientMap.set(clientKey, await ZSshClient.create(session, serverPath));
+            this.mClientMap.set(
+                clientKey,
+                await ZSshClient.create(session, serverPath, (session) => {
+                    this.end(session.ISshSession.hostname!);
+                }),
+            );
         }
         return this.mClientMap.get(clientKey) as ZSshClient;
     }
