@@ -14,11 +14,11 @@ package job
 import common "zowe-native-proto/ioserver/types/common"
 
 type ListJobsResponse struct {
-	Items []common.Job `json:"items"`
+	Items []common.Job `json:"items" tstype:"common.Job[]"`
 }
 
 type ListSpoolsResponse struct {
-	Items []common.Spool `json:"items"`
+	Items []common.Spool `json:"items" tstype:"common.Spool[]"`
 }
 
 type GetJclResponse struct {

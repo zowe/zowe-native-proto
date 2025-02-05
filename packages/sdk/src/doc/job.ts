@@ -33,10 +33,10 @@ export interface GetStatusRequest {
 // source: responses.go
 
 export interface ListJobsResponse {
-  items: any /* common.Job */[];
+  items: common.Job[];
 }
 export interface ListSpoolsResponse {
-  items: any /* common.Spool */[];
+  items: common.Spool[];
 }
 export interface GetJclResponse {
   jobId: string;
