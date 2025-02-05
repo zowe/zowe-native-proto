@@ -45,7 +45,7 @@
 | Move file/directory      | ✅     | ✅  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | _`chmod` file/directory_ | ✅     | ❌  | ✅              | ✅         | ✅  | ✅  | ❌   |
 | _`chown` file/directory_ | ✅     | ❌  | ✅              | ❌         | ❌  | ❌  | ❌   |
-| _`chtag` file/directory_ | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
+| _`chtag` USS file_       | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | Invoke `extattr`         | ✅     | ❌  | ❌              | ❌         | ❌  | ➖  | ➖   |
 | Get ACL entries          | ✅     | ❌  | ❌              | ❌         | ❌  | ➖  | ➖   |
 | Set ACL entries          | ✅     | ❌  | ❌              | ❌         | ❌  | ➖  | ➖   |

@@ -40,6 +40,7 @@ export class SshConfigUtils {
         const result = await Gui.showQuickPick(qpItems, { title: "Choose an SSH host" });
         if (result === qpItems[qpItems.length - 1]) {
             if (await SshConfigUtils.createTeamConfig()) {
+                await profCache.refresh();
                 return profCache.getDefaultProfile("ssh");
             }
         } else if (result != null) {
