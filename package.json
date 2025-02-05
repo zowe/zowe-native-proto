@@ -15,6 +15,7 @@
     "build": "npm run build --workspaces && npm run build:tools && npm run license",
     "lint": "npm run lint --workspaces",
     "license": "node scripts/updateLicenses.js",
+    "package": "node -e \"fs.mkdirSync('dist',{recursive:true})\" && npm run package --workspaces",
     "test": "echo \"Error: no test specified\" && exit 1",
     "watch": "npm run watch --workspaces"
   },
