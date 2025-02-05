@@ -27,6 +27,7 @@
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
     "@zowe/secrets-for-zowe-sdk": "^8.10.4",
-    "tsx": "^4.19.2"
+    "tsx": "^4.19.2",
+    "ssh-config": "^5.0.3"
   }
 }
