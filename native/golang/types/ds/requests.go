@@ -24,7 +24,7 @@ type ListDatasetsRequest struct {
 
 type ListDsMembersRequest struct {
 	Command                   string `json:"command" tstype:"\"listDsMembers\""`
-	Dataset                   string `json:"dataset"`
+	Dsname                    string `json:"dsname"`
 	common.ListOptions        `tstype:",extends"`
 	common.ListDatasetOptions `tstype:",extends"`
 }
@@ -32,17 +32,17 @@ type ListDsMembersRequest struct {
 type ReadDatasetRequest struct {
 	Command  string `json:"command" tstype:"\"readDataset\""`
 	Encoding string `json:"encoding,omitempty"`
-	Dataset  string `json:"dataset"`
+	Dsname   string `json:"dsname"`
 }
 
 type WriteDatasetRequest struct {
 	Command  string `json:"command" tstype:"\"writeDataset\""`
 	Encoding string `json:"encoding,omitempty"`
-	Dataset  string `json:"dataset"`
-	Contents string `json:"contents"`
+	Dsname   string `json:"dsname"`
+	Data     string `json:"data"`
 }
 
 type RestoreDatasetRequest struct {
 	Command string `json:"command" tstype:"\"restoreDataset\""`
-	Dataset string `json:"dataset"`
+	Dsname  string `json:"dsname"`
 }

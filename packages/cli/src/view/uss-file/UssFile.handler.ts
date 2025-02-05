@@ -16,7 +16,7 @@ import { SshBaseHandler } from "../../SshBaseHandler";
 export default class ViewUssFileHandler extends SshBaseHandler {
     public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<uss.ReadFileResponse> {
         const response = await client.uss.readFile({
-            path: params.arguments.filePath,
+            fspath: params.arguments.filePath,
             encoding: params.arguments.binary ? "binary" : params.arguments.encoding,
         });
         const content = ZSshUtils.decodeByteArray(response.data).toString();

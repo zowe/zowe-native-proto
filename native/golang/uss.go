@@ -116,7 +116,7 @@ func HandleWriteFileRequest(jsonData []byte) {
 	}
 
 	// log.Println("WriteFileRequest received:", ...)
-	decodedBytes, err := base64.StdEncoding.DecodeString(request.Contents)
+	decodedBytes, err := base64.StdEncoding.DecodeString(request.Data)
 	if err != nil {
 		log.Println("Error decoding base64 contents:", err)
 		return

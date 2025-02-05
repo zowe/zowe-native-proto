@@ -15,11 +15,11 @@ import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class RestoreDatasetHandler extends SshBaseHandler {
     public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<ds.RestoreDatasetResponse> {
-        const dataset = params.arguments.dataSet;
+        const dsname = params.arguments.dataSet;
 
-        const response = await client.ds.restoreDataset({ dataset });
+        const response = await client.ds.restoreDataset({ dsname });
 
-        const dsMessage = `Dataset "${dataset}" restored`;
+        const dsMessage = `Dataset "${dsname}" restored`;
         params.response.data.setMessage(dsMessage);
         params.response.data.setObj(response);
         if (response.success) {

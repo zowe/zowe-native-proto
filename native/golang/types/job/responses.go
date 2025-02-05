@@ -28,7 +28,7 @@ type GetJclResponse struct {
 
 type ReadSpoolResponse struct {
 	Encoding string `json:"encoding,omitempty"`
-	DsnKey   int    `json:"dsnKey"`
+	DsnKey   int    `json:"spoolId"`
 	JobId    string `json:"jobId"`
 	Data     []byte `json:"data" tstype:"Buffer | string"`
 }

@@ -28,7 +28,7 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
 
     public async allMembers(dataSetName: string, options?: zosfiles.IListOptions): Promise<zosfiles.IZosFilesResponse> {
         const response = await (await this.client).ds.listDsMembers({
-            dataset: dataSetName,
+            dsname: dataSetName,
         });
         return this.buildZosFilesResponse({
             items: response.items.map((item) => ({ member: item.name })),
@@ -41,7 +41,7 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         options: zosfiles.IDownloadSingleOptions,
     ): Promise<zosfiles.IZosFilesResponse> {
         const response = await (await this.client).ds.readDataset({
-            dataset: dataSetName,
+            dsname: dataSetName,
             encoding: options.binary ? "binary" : (options.encoding ?? "IBM-1047"),
         });
         if (options.file != null) {
@@ -63,9 +63,9 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         const buf = ZSshUtils.encodeByteArray(buffer);
         console.log(buf);
         const response = await (await this.client).ds.writeDataset({
-            dataset: dataSetName,
+            dsname: dataSetName,
             encoding: options?.binary ? "binary" : (options?.encoding ?? "IBM-1047"),
-            contents: ZSshUtils.encodeByteArray(buffer),
+            data: ZSshUtils.encodeByteArray(buffer),
         });
         return this.buildZosFilesResponse({ etag: dataSetName });
     }
@@ -76,9 +76,9 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         options?: zosfiles.IUploadOptions,
     ): Promise<zosfiles.IZosFilesResponse> {
         const response = await (await this.client).ds.writeDataset({
-            dataset: dataSetName,
+            dsname: dataSetName,
             encoding: options?.encoding,
-            contents: ZSshUtils.encodeByteArray(readFileSync(inputFilePath)),
+            data: ZSshUtils.encodeByteArray(readFileSync(inputFilePath)),
         });
         return this.buildZosFilesResponse({ etag: dataSetName });
     }

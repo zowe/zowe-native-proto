@@ -22,12 +22,12 @@ type ListFilesRequest struct {
 type ReadFileRequest struct {
 	Command  string `json:"command" tstype:"\"readFile\""`
 	Encoding string `json:"encoding,omitempty"`
-	Path     string `json:"path"`
+	Path     string `json:"fspath"`
 }
 
 type WriteFileRequest struct {
 	Command  string `json:"command" tstype:"\"writeFile\""`
 	Encoding string `json:"encoding,omitempty"`
-	Path     string `json:"path"`
-	Contents string `json:"contents"`
+	Path     string `json:"fspath"`
+	Data     string `json:"data"`
 }

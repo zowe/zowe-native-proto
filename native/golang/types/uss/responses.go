@@ -15,13 +15,13 @@ import common "zowe-native-proto/ioserver/types/common"
 
 type ReadFileResponse struct {
 	Encoding string `json:"encoding,omitempty"`
-	Path     string `json:"path"`
+	Path     string `json:"fspath"`
 	Data     []byte `json:"data" tstype:"Buffer | string"`
 }
 
 type WriteFileResponse struct {
 	Success bool   `json:"success"`
-	Path    string `json:"path"`
+	Path    string `json:"fspath"`
 }
 type ListFilesResponse struct {
 	Items        []common.UssItem `tstype:"common.UssItem[]" json:"items"`

@@ -29,7 +29,7 @@ type ListSpoolsRequest struct {
 type ReadSpoolRequest struct {
 	Command  string `json:"command" tstype:"\"readSpool\""`
 	Encoding string `json:"encoding,omitempty"`
-	DsnKey   int    `json:"dsnKey"`
+	DsnKey   int    `json:"spoolId"`
 	JobId    string `json:"jobId"`
 }
 
