@@ -65,4 +65,9 @@ The Zowe CLI plug-in harnesses the SDK to access mainframe resources over SSH. T
 
 ## VS Code Extension
 
-TODO
+This extension replicates the core functionality of Zowe Explorer using the SSH backend. The `src` directory is structured as follows:
+
+- `extension.ts` - Main entry point of the extension that registers VS Code commands and loads SSH profiles in Zowe Explorer
+- `SshClientCache.ts` - Manages persistent SSH sessions for multiple z/OS servers so they can be reused for subsequent commands
+- `SshConfigUtils.ts` - Defines utility methods to interact with VS Code UI such as prompting for SSH profile
+- `api/Ssh*Api.ts` - Classes that extend the Zowe Explorer API to implement functionality for the Data Sets, USS, and Jobs trees
