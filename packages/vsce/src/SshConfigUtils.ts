@@ -9,6 +9,9 @@
  *
  */
 
+import * as fs from "node:fs";
+import { homedir } from "node:os";
+import * as path from "node:path";
 import { Gui, ZoweVsCodeExtension, type imperative } from "@zowe/zowe-explorer-api";
 import * as vscode from "vscode";
 import { ZSshClient } from "zowe-native-proto-sdk";
@@ -59,6 +62,141 @@ export class SshConfigUtils {
     }
 
     private static async createTeamConfig(): Promise<boolean> {
-        throw new Error("Not yet implemented");
+        let user: string;
+        let host: string;
+        let privateKey: string | undefined;
+        let port: number | undefined;
+        let privateKeyPath: string | boolean | undefined;
+        const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
+        const profInfo = await zoweExplorerApi.getExplorerExtenderApi().getProfilesCache().getProfileInfo();
+        const configExists = profInfo.getTeamConfig().exists;
+
+        if (!configExists) await vscode.commands.executeCommand("zowe.ds.addSession");
+
+        const sshResponse = await vscode.window.showInputBox({
+            prompt: "Enter SSH connection command",
+            placeHolder:
+                'Enter the SSH host address (E.g. ssh user@example.com --port 22 --privateKey "my passphrase")',
+        });
+        if (sshResponse === undefined) {
+            vscode.window.showWarningMessage("SSH setup cancelled.");
+            return false;
+        }
+        const sshRegex = /^ssh\s+([a-zA-Z0-9_-]+)@([a-zA-Z0-9.-]+)/;
+        const flagRegex = /--(\w+)(?:\s+("[^"]+"|'[^']+'|\S+))?/g;
+
+        const sshMatch = sshResponse.match(sshRegex);
+        if (!sshMatch) {
+            vscode.window.showErrorMessage("Invalid SSH command format. Ensure it matches the expected pattern.");
+            return false;
+        }
+        user = sshMatch[1];
+        host = sshMatch[2];
+        const parsedCommand: { [key: string]: string | undefined | number } = { user, host };
+
+        let flagMatch;
+        while ((flagMatch = flagRegex.exec(sshResponse)) !== null) {
+            const [, flag, value] = flagMatch;
+            const normalizedFlag = flag.toLowerCase();
+
+            // Check for missing value
+            if (!value) {
+                vscode.window.showErrorMessage(`Missing value for flag --${flag}.`);
+                return false;
+            }
+
+            const unquotedValue = value.replace(/^["']|["']$/g, ""); // Remove surrounding quotes
+
+            // Map aliases to consistent keys
+            if (normalizedFlag === "p" || normalizedFlag === "port") {
+                const portNumber = Number.parseInt(unquotedValue, 10);
+                if (Number.isNaN(portNumber)) {
+                    vscode.window.showErrorMessage(`Invalid value for flag --${flag}. Port must be a valid number.`);
+                    return false;
+                }
+                parsedCommand.port = portNumber;
+            } else if (normalizedFlag === "pk" || normalizedFlag === "privateKey") {
+                parsedCommand.privateKey = unquotedValue;
+            }
+
+            // Validate if quotes are required
+            if (/\s/.test(unquotedValue) && !/^["'].*["']$/.test(value)) {
+                vscode.window.showErrorMessage(`Invalid value for flag --${flag}. Values with spaces must be quoted.`);
+                return false;
+            }
+        }
+
+        // Output the parsed result for debugging purposes
+        console.log(`Parsed SSH Command: ${JSON.stringify(parsedCommand)}`);
+
+        // Example of using the parsed data
+        port = parsedCommand.port as number | undefined;
+
+        privateKeyPath =
+            typeof parsedCommand.privateKey === "number"
+                ? parsedCommand.privateKey.toString()
+                : parsedCommand.privateKey;
+
+        console.log(
+            `User: ${user}, Host: ${host}, Port: ${port || "Not Provided"}, Private Key: ${privateKey || "Not Provided"}`,
+        );
+        if (!privateKey) {
+            if (privateKeyPath == null) {
+                privateKeyPath = true;
+            }
+        } else {
+            privateKeyPath = undefined;
+        }
+        try {
+            if (typeof privateKeyPath === "string") {
+                let match;
+                if ((match = /~(\/.*)/.exec(privateKeyPath))) {
+                    privateKeyPath = path.join(homedir(), match[1]);
+                }
+            } else if (privateKeyPath === true) {
+                for (const algo of ["id_ed25519", "id_rsa"]) {
+                    const tempPath = path.resolve(homedir(), ".ssh", algo);
+                    if (fs.existsSync(tempPath)) {
+                        privateKeyPath = path.resolve(homedir(), ".ssh", algo);
+                        break;
+                    }
+                }
+                if (privateKey == null) {
+                    throw Error("Failed to discover an ssh private key inside `~/.ssh`.");
+                }
+            }
+        } catch (err) {
+            //do nuthin
+        }
+        let quickpickDefault = true;
+        await profInfo.readProfilesFromDisk();
+        if (profInfo.getAllProfiles("ssh").length > 0 && configExists) quickpickDefault = false;
+
+        const nameResponse = await vscode.window.showInputBox({
+            prompt: "Enter profile name",
+            value: quickpickDefault ? "ssh" : undefined,
+            placeHolder: quickpickDefault ? undefined : "Enter a profile name (E.g. ssh2)",
+        });
+        const configApi = profInfo.getTeamConfig().api;
+        if (nameResponse && !nameResponse.includes(".")) {
+            // await profInfo.addProfileToConfig("ssh");
+            configApi.profiles.set(nameResponse!, {
+                type: "ssh",
+                properties: {
+                    user: user,
+                    host: host,
+                    privateKey: privateKeyPath,
+                    port: port || 22,
+                },
+            });
+        } else {
+            vscode.window.showErrorMessage("Invalid profile name");
+            return false;
+        }
+
+        if (configApi.profiles.defaultGet("ssh") === null) configApi.profiles.defaultSet("ssh", nameResponse!);
+
+        await profInfo.getTeamConfig().save();
+        return true;
     }
 }
