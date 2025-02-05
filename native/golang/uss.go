@@ -18,11 +18,13 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	types "zowe-native-proto/ioserver/types"
+	t "zowe-native-proto/ioserver/types/common"
+	uss "zowe-native-proto/ioserver/types/uss"
+	utils "zowe-native-proto/ioserver/utils"
 )
 
 func HandleListFilesRequest(jsonData []byte) {
-	var listRequest types.ListFilesRequest
+	var listRequest uss.ListFilesRequest
 	err := json.Unmarshal(jsonData, &listRequest)
 	if err != nil {
 		// log.Println("Error decoding ListFilesRequest:", err)
@@ -36,11 +38,11 @@ func HandleListFilesRequest(jsonData []byte) {
 		return
 	}
 
-	ussResponse := types.ListFilesResponse{}
+	ussResponse := uss.ListFilesResponse{}
 
 	if !fileInfo.IsDir() {
-		ussResponse.Items = make([]types.UssItem, 1)
-		ussResponse.Items[0] = types.UssItem{
+		ussResponse.Items = make([]t.UssItem, 1)
+		ussResponse.Items[0] = t.UssItem{
 			Name:  filepath.Base(dirPath),
 			IsDir: false,
 		}
@@ -51,10 +53,10 @@ func HandleListFilesRequest(jsonData []byte) {
 			log.Println("Error reading directory:", err)
 			return
 		}
-		ussResponse.Items = make([]types.UssItem, len(entries))
+		ussResponse.Items = make([]t.UssItem, len(entries))
 
 		for i, entry := range entries {
-			ussResponse.Items[i] = types.UssItem{
+			ussResponse.Items[i] = t.UssItem{
 				Name:  entry.Name(),
 				IsDir: entry.IsDir(),
 			}
@@ -72,7 +74,7 @@ func HandleListFilesRequest(jsonData []byte) {
 }
 
 func HandleReadFileRequest(jsonData []byte) {
-	var request types.ReadFileRequest
+	var request uss.ReadFileRequest
 	err := json.Unmarshal(jsonData, &request)
 	if err != nil || (request.Encoding == "" && request.Path == "") {
 		// log.Println("Error decoding ReadFileRequest:", err)
@@ -84,15 +86,15 @@ func HandleReadFileRequest(jsonData []byte) {
 	if hasEncoding {
 		args = append(args, "--encoding", request.Encoding, "--rfb", "true")
 	}
-	out, err := buildCommand(args).Output()
+	out, err := utils.BuildCommand(args).Output()
 	if err != nil {
 		log.Println("Error executing command:", err)
 		return
 	}
 
-	data := collectContentsAsBytes(string(out), hasEncoding)
+	data := utils.CollectContentsAsBytes(string(out), hasEncoding)
 
-	response := types.ReadFileResponse{
+	response := uss.ReadFileResponse{
 		Encoding: request.Encoding,
 		Path:     request.Path,
 		Data:     data,
@@ -106,7 +108,7 @@ func HandleReadFileRequest(jsonData []byte) {
 }
 
 func HandleWriteFileRequest(jsonData []byte) {
-	var request types.WriteFileRequest
+	var request uss.WriteFileRequest
 	err := json.Unmarshal(jsonData, &request)
 	if err != nil || (request.Encoding == "" && request.Path == "") {
 		// log.Println("Error decoding WriteFileRequest:", err)
@@ -123,7 +125,7 @@ func HandleWriteFileRequest(jsonData []byte) {
 	if len(request.Encoding) > 0 {
 		args = append(args, "--encoding", request.Encoding)
 	}
-	cmd := buildCommandNoAutocvt(args)
+	cmd := utils.BuildCommandNoAutocvt(args)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		log.Println("Error opening stdin pipe:", err)
@@ -146,7 +148,7 @@ func HandleWriteFileRequest(jsonData []byte) {
 	// discard CLI output as its currently unused
 	_ = out
 
-	response := types.WriteFileResponse{
+	response := uss.WriteFileResponse{
 		Success: true,
 		Path:    request.Path,
 	}

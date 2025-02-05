@@ -18,11 +18,13 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	types "zowe-native-proto/ioserver/types"
+	t "zowe-native-proto/ioserver/types/common"
+	job "zowe-native-proto/ioserver/types/job"
+	utils "zowe-native-proto/ioserver/utils"
 )
 
 func HandleListJobsRequest(jsonData []byte) {
-	var listRequest types.ListJobsRequest
+	var listRequest job.ListJobsRequest
 	err := json.Unmarshal(jsonData, &listRequest)
 	if err != nil {
 		// log.Println("Error decoding ListDatasetsRequest:", err)
@@ -34,7 +36,7 @@ func HandleListJobsRequest(jsonData []byte) {
 		args = append(args, "--owner", listRequest.Owner)
 	}
 
-	out, err := buildCommand(args).Output()
+	out, err := utils.BuildCommand(args).Output()
 	if err != nil {
 		log.Println("Error executing command:", err)
 		return
@@ -42,8 +44,8 @@ func HandleListJobsRequest(jsonData []byte) {
 
 	jobs := strings.Split(strings.TrimSpace(string(out)), "\n")
 
-	jobsResponse := types.ListJobsResponse{
-		Items: make([]types.Job, len(jobs)),
+	jobsResponse := job.ListJobsResponse{
+		Items: make([]t.Job, len(jobs)),
 	}
 
 	for i, job := range jobs {
@@ -51,7 +53,7 @@ func HandleListJobsRequest(jsonData []byte) {
 		if len(vals) < 4 {
 			continue
 		}
-		jobsResponse.Items[i] = types.Job{
+		jobsResponse.Items[i] = t.Job{
 			Id:      vals[0],
 			Retcode: vals[1],
 			Name:    strings.TrimSpace(vals[2]),
@@ -68,7 +70,7 @@ func HandleListJobsRequest(jsonData []byte) {
 }
 
 func HandleListSpoolsRequest(jsonData []byte) {
-	var listRequest types.ListSpoolsRequest
+	var listRequest job.ListSpoolsRequest
 	err := json.Unmarshal(jsonData, &listRequest)
 	if err != nil {
 		// log.Println("Error decoding ListSpoolsRequest:", err)
@@ -77,7 +79,7 @@ func HandleListSpoolsRequest(jsonData []byte) {
 
 	args := []string{"./zowex", "job", "list-files", listRequest.JobId, "--rfc", "true"}
 
-	out, err := buildCommand(args).Output()
+	out, err := utils.BuildCommand(args).Output()
 	if err != nil {
 		log.Println("Error executing command:", err)
 		return
@@ -85,8 +87,8 @@ func HandleListSpoolsRequest(jsonData []byte) {
 
 	spools := strings.Split(strings.TrimSpace(string(out)), "\n")
 
-	response := types.ListSpoolsResponse{
-		Items: make([]types.Spool, len(spools)),
+	response := job.ListSpoolsResponse{
+		Items: make([]t.Spool, len(spools)),
 	}
 
 	for i, spool := range spools {
@@ -98,7 +100,7 @@ func HandleListSpoolsRequest(jsonData []byte) {
 		if err != nil {
 			continue
 		}
-		response.Items[i] = types.Spool{
+		response.Items[i] = t.Spool{
 			Id:       id,
 			DdName:   vals[0],
 			StepName: vals[3],
@@ -116,7 +118,7 @@ func HandleListSpoolsRequest(jsonData []byte) {
 }
 
 func HandleReadSpoolRequest(jsonData []byte) {
-	var request types.ReadSpoolRequest
+	var request job.ReadSpoolRequest
 	err := json.Unmarshal(jsonData, &request)
 	if err != nil {
 		// log.Println("Error decoding ReadSpoolRequest:", err)
@@ -128,15 +130,15 @@ func HandleReadSpoolRequest(jsonData []byte) {
 	if hasEncoding {
 		args = append(args, "--encoding", request.Encoding, "--rfb", "true")
 	}
-	out, err := buildCommand(args).Output()
+	out, err := utils.BuildCommand(args).Output()
 	if err != nil {
 		log.Println("Error executing command:", err)
 		return
 	}
 
-	data := collectContentsAsBytes(string(out), hasEncoding)
+	data := utils.CollectContentsAsBytes(string(out), hasEncoding)
 
-	response := types.ReadSpoolResponse{
+	response := job.ReadSpoolResponse{
 		Encoding: request.Encoding,
 		DsnKey:   request.DsnKey,
 		JobId:    request.JobId,
@@ -151,7 +153,7 @@ func HandleReadSpoolRequest(jsonData []byte) {
 }
 
 func HandleGetJclRequest(jsonData []byte) {
-	var request types.GetJclRequest
+	var request job.GetJclRequest
 	err := json.Unmarshal(jsonData, &request)
 	if err != nil {
 		// log.Println("Error decoding GetJclRequest:", err)
@@ -159,13 +161,13 @@ func HandleGetJclRequest(jsonData []byte) {
 	}
 	// log.Println("GetJclRequest received:", ...)
 	args := []string{"./zowex", "job", "view-jcl", request.JobId}
-	out, err := buildCommand(args).Output()
+	out, err := utils.BuildCommand(args).Output()
 	if err != nil {
 		log.Println("Error executing command:", err)
 		return
 	}
 
-	response := types.GetJclResponse{
+	response := job.GetJclResponse{
 		JobId: request.JobId,
 		Data:  string(out),
 	}
@@ -178,13 +180,13 @@ func HandleGetJclRequest(jsonData []byte) {
 }
 
 func HandleGetStatusRequest(jsonData []byte) {
-	var request types.GetJclRequest
+	var request job.GetJclRequest
 	err := json.Unmarshal(jsonData, &request)
 	if err != nil {
 		return
 	}
 	args := []string{"./zowex", "job", "view-status", request.JobId, "--rfc", "true"}
-	out, err := buildCommand(args).Output()
+	out, err := utils.BuildCommand(args).Output()
 	if err != nil {
 		log.Println("Error executing command:", err)
 		return
@@ -192,8 +194,8 @@ func HandleGetStatusRequest(jsonData []byte) {
 	jobs := strings.Split(strings.TrimSpace(string(out)), "\n")
 
 	// log.Println(jobs)
-	jobsResponse := types.ListJobsResponse{
-		Items: make([]types.Job, len(jobs)),
+	jobsResponse := job.ListJobsResponse{
+		Items: make([]t.Job, len(jobs)),
 	}
 
 	for i, job := range jobs {
@@ -201,7 +203,7 @@ func HandleGetStatusRequest(jsonData []byte) {
 		if len(vals) < 4 {
 			continue
 		}
-		jobsResponse.Items[i] = types.Job{
+		jobsResponse.Items[i] = t.Job{
 			Id:      vals[0],
 			Retcode: vals[1],
 			Name:    strings.TrimSpace(vals[2]),

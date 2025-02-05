@@ -15,7 +15,7 @@ import (
 	"encoding/json"
 	"log"
 	"os"
-	types "zowe-native-proto/ioserver/types"
+	t "zowe-native-proto/ioserver/types/common"
 )
 
 func main() {
@@ -54,7 +54,7 @@ func main() {
 	}
 
 	for data := range input {
-		var request types.CommandRequest
+		var request t.CommandRequest
 		err := json.Unmarshal(data, &request)
 		if err != nil {
 			log.Println("Error parsing command request:", err)
