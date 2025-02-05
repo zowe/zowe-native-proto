@@ -8,10 +8,24 @@ export interface IssueConsoleRequest {
   commandText: string;
   consoleName: string;
 }
+export interface IssueTsoRequest {
+  command: "tsoCommand";
+  commandText: string;
+}
+export interface IssueUnixRequest {
+  command: "unixCommand";
+  commandText: string;
+}
 
 //////////
 // source: responses.go
 
 export interface IssueConsoleResponse {
+  data: string;
+}
+export interface IssueTsoResponse {
+  data: string;
+}
+export interface IssueUnixResponse {
   data: string;
 }

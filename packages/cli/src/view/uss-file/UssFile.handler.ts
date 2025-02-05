@@ -10,11 +10,11 @@
  */
 
 import type { IHandlerParameters } from "@zowe/imperative";
-import { type ReadFile, type ZSshClient, ZSshUtils } from "zowe-native-proto-sdk";
+import { type uss, type ZSshClient, ZSshUtils } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class ViewUssFileHandler extends SshBaseHandler {
-    public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<ReadFile.Response> {
+    public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<uss.ReadFileResponse> {
         const response = await client.uss.readFile({
             path: params.arguments.filePath,
             encoding: params.arguments.binary ? "binary" : params.arguments.encoding,

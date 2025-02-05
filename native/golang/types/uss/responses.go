@@ -13,6 +13,6 @@ type WriteFileResponse struct {
 	Path    string `json:"path"`
 }
 type ListFilesResponse struct {
-	Items        []common.UssItem `json:"items"`
+	Items        []common.UssItem `tstype:"common.UssItem[]" json:"items"`
 	ReturnedRows int              `json:"returnedRows"`
 }

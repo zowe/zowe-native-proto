@@ -10,63 +10,62 @@
  */
 
 import type { IRpcRequest, IRpcResponse } from "./doc";
-import type * as cmds from "./doc/zos-cmds";
-import type * as ds from "./doc/zos-ds";
-import type * as jobs from "./doc/zos-jobs";
-import type * as uss from "./doc/zos-uss";
+import type * as cmds from "./doc/cmds";
+import type * as ds from "./doc/ds";
+import type * as jobs from "./doc/job";
+import type * as uss from "./doc/uss";
 
 export abstract class AbstractRpcClient {
     public abstract request<T extends IRpcResponse>(request: IRpcRequest): Promise<T>;
 
     public get ds() {
         return {
-            listDatasets: (request: Omit<ds.ListDatasets.Request, "command">): Promise<ds.ListDatasets.Response> =>
+            listDatasets: (request: Omit<ds.ListDatasetsRequest, "command">): Promise<ds.ListDatasetsResponse> =>
                 this.request({ command: "listDatasets", ...request }),
-            listDsMembers: (request: Omit<ds.ListDsMembers.Request, "command">): Promise<ds.ListDsMembers.Response> =>
+            listDsMembers: (request: Omit<ds.ListDsMembersRequest, "command">): Promise<ds.ListDsMembersResponse> =>
                 this.request({ command: "listDsMembers", ...request }),
-            readDataset: (request: Omit<ds.ReadDataset.Request, "command">): Promise<ds.ReadDataset.Response> =>
+            readDataset: (request: Omit<ds.ReadDatasetRequest, "command">): Promise<ds.ReadDatasetResponse> =>
                 this.request({ command: "readDataset", ...request }),
-            writeDataset: (request: Omit<ds.WriteDataset.Request, "command">): Promise<ds.WriteDataset.Response> =>
+            writeDataset: (request: Omit<ds.WriteDatasetRequest, "command">): Promise<ds.WriteDatasetResponse> =>
                 this.request({ command: "writeDataset", ...request }),
-            restoreDataset: (
-                request: Omit<ds.RestoreDataset.Request, "command">,
-            ): Promise<ds.RestoreDataset.Response> => this.request({ command: "restoreDataset", ...request }),
+            restoreDataset: (request: Omit<ds.RestoreDatasetRequest, "command">): Promise<ds.RestoreDatasetResponse> =>
+                this.request({ command: "restoreDataset", ...request }),
         };
     }
 
     public get jobs() {
         return {
-            getJcl: (request: Omit<jobs.GetJcl.Request, "command">): Promise<jobs.GetJcl.Response> =>
+            getJcl: (request: Omit<jobs.GetJclRequest, "command">): Promise<jobs.GetJclResponse> =>
                 this.request({ command: "getJcl", ...request }),
-            listJobs: (request: Omit<jobs.ListJobs.Request, "command">): Promise<jobs.ListJobs.Response> =>
+            listJobs: (request: Omit<jobs.ListJobsRequest, "command">): Promise<jobs.ListJobsResponse> =>
                 this.request({ command: "listJobs", ...request }),
-            listSpools: (request: Omit<jobs.ListSpools.Request, "command">): Promise<jobs.ListSpools.Response> =>
+            listSpools: (request: Omit<jobs.ListSpoolsRequest, "command">): Promise<jobs.ListSpoolsResponse> =>
                 this.request({ command: "listSpools", ...request }),
-            readSpool: (request: Omit<jobs.ReadSpool.Request, "command">): Promise<jobs.ReadSpool.Response> =>
+            readSpool: (request: Omit<jobs.ReadSpoolRequest, "command">): Promise<jobs.ReadSpoolResponse> =>
                 this.request({ command: "readSpool", ...request }),
-            getStatus: (request: Omit<jobs.GetStatus.Request, "command">): Promise<jobs.GetStatus.Response> =>
+            getStatus: (request: Omit<jobs.GetStatusRequest, "command">): Promise<jobs.GetStatusResponse> =>
                 this.request({ command: "getStatus", ...request }),
         };
     }
 
     public get uss() {
         return {
-            listFiles: (request: Omit<uss.ListFiles.Request, "command">): Promise<uss.ListFiles.Response> =>
+            listFiles: (request: Omit<uss.ListFilesRequest, "command">): Promise<uss.ListFilesResponse> =>
                 this.request({ command: "listFiles", ...request }),
-            readFile: (request: Omit<uss.ReadFile.Request, "command">): Promise<uss.ReadFile.Response> =>
+            readFile: (request: Omit<uss.ReadFileRequest, "command">): Promise<uss.ReadFileResponse> =>
                 this.request({ command: "readFile", ...request }),
-            writeFile: (request: Omit<uss.WriteFile.Request, "command">): Promise<uss.WriteFile.Response> =>
+            writeFile: (request: Omit<uss.WriteFileRequest, "command">): Promise<uss.WriteFileResponse> =>
                 this.request({ command: "writeFile", ...request }),
         };
     }
 
     public get cmds() {
         return {
-            issueConsole: (request: Omit<cmds.IssueConsole.Request, "command">): Promise<cmds.IssueConsole.Response> =>
+            issueConsole: (request: Omit<cmds.IssueConsoleRequest, "command">): Promise<cmds.IssueConsoleResponse> =>
                 this.request({ command: "consoleCommand", ...request }),
-            issueTso: (request: Omit<cmds.IssueTso.Request, "command">): Promise<cmds.IssueTso.Response> =>
+            issueTso: (request: Omit<cmds.IssueTsoRequest, "command">): Promise<cmds.IssueTsoResponse> =>
                 this.request({ command: "tsoCommand", ...request }),
-            issueUnix: (request: Omit<cmds.IssueUnix.Request, "command">): Promise<cmds.IssueUnix.Response> =>
+            issueUnix: (request: Omit<cmds.IssueUnixRequest, "command">): Promise<cmds.IssueUnixResponse> =>
                 this.request({ command: "unixCommand", ...request }),
         };
     }

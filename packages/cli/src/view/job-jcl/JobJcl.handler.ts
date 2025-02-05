@@ -10,11 +10,11 @@
  */
 
 import type { IHandlerParameters } from "@zowe/imperative";
-import type { GetJcl, ZSshClient } from "zowe-native-proto-sdk";
+import type { job, ZSshClient } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class ViewJobJclHandler extends SshBaseHandler {
-    public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<GetJcl.Response> {
+    public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<job.GetJclResponse> {
         const response = await client.jobs.getJcl({
             jobId: params.arguments.jobId,
         });

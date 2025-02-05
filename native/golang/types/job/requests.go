@@ -26,3 +26,8 @@ type GetJclRequest struct {
 	Command string `json:"command" tstype:"\"getJcl\""`
 	JobId   string `json:"jobId"`
 }
+
+type GetStatusRequest struct {
+	Command string `json:"command" tstype:"\"getStatus\""`
+	JobId   string `json:"jobId"`
+}

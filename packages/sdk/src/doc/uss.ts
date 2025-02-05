@@ -33,6 +33,6 @@ export interface WriteFileResponse {
   path: string;
 }
 export interface ListFilesResponse {
-  items: any /* common.UssItem */[];
+  items: common.UssItem[];
   returnedRows: number /* int */;
 }

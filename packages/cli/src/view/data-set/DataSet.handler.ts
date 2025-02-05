@@ -10,11 +10,11 @@
  */
 
 import type { IHandlerParameters } from "@zowe/imperative";
-import { type ReadDataset, type ZSshClient, ZSshUtils } from "zowe-native-proto-sdk";
+import { type ds, type ZSshClient, ZSshUtils } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class ViewDataSetHandler extends SshBaseHandler {
-    public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<ReadDataset.Response> {
+    public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<ds.ReadDatasetResponse> {
         const response = await client.ds.readDataset({
             dataset: params.arguments.dataSet,
             encoding: params.arguments.binary ? "binary" : params.arguments.encoding,

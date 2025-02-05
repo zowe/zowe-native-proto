@@ -21,3 +21,7 @@ type ReadSpoolResponse struct {
 	JobId    string `json:"jobId"`
 	Data     []byte `json:"data" tstype:"Buffer | string"`
 }
+
+type GetStatusResponse struct {
+	Items []common.Job `json:"items" tstype:"common.Job[]"`
+}

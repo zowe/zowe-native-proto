@@ -24,6 +24,10 @@ export interface GetJclRequest {
   command: "getJcl";
   jobId: string;
 }
+export interface GetStatusRequest {
+  command: "getStatus";
+  jobId: string;
+}
 
 //////////
 // source: responses.go
@@ -43,4 +47,7 @@ export interface ReadSpoolResponse {
   dsnKey: number /* int */;
   jobId: string;
   data: Buffer | string;
+}
+export interface GetStatusResponse {
+  items: common.Job[];
 }

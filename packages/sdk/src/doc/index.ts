@@ -10,8 +10,8 @@
  */
 
 export * from "./common";
-export * from "./types";
-export * from "./zos-ds";
-export * from "./zos-cmds";
-export * from "./zos-jobs";
-export * from "./zos-uss";
+export * from "./rpc";
+export * as ds from "./ds";
+export * as uss from "./uss";
+export * as job from "./job";
+export * as cmds from "./cmds";
