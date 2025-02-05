@@ -9,11 +9,7 @@
  *
  */
 
-import type { IRpcRequest, IRpcResponse } from "./doc";
-import type * as cmds from "./doc/cmds";
-import type * as ds from "./doc/ds";
-import type * as jobs from "./doc/job";
-import type * as uss from "./doc/uss";
+import type { IRpcRequest, IRpcResponse, cmds, ds, jobs, uss } from "./doc";
 
 export abstract class AbstractRpcClient {
     public abstract request<T extends IRpcResponse>(request: IRpcRequest): Promise<T>;

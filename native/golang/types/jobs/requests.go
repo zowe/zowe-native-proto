@@ -9,7 +9,7 @@
  *
  */
 
-package job
+package jobs
 
 import common "zowe-native-proto/ioserver/types/common"
 

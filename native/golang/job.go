@@ -19,12 +19,12 @@ import (
 	"strconv"
 	"strings"
 	t "zowe-native-proto/ioserver/types/common"
-	job "zowe-native-proto/ioserver/types/job"
+	"zowe-native-proto/ioserver/types/jobs"
 	utils "zowe-native-proto/ioserver/utils"
 )
 
 func HandleListJobsRequest(jsonData []byte) {
-	var listRequest job.ListJobsRequest
+	var listRequest jobs.ListJobsRequest
 	err := json.Unmarshal(jsonData, &listRequest)
 	if err != nil {
 		// log.Println("Error decoding ListDatasetsRequest:", err)
@@ -42,13 +42,13 @@ func HandleListJobsRequest(jsonData []byte) {
 		return
 	}
 
-	jobs := strings.Split(strings.TrimSpace(string(out)), "\n")
+	returnedJobs := strings.Split(strings.TrimSpace(string(out)), "\n")
 
-	jobsResponse := job.ListJobsResponse{
-		Items: make([]t.Job, len(jobs)),
+	jobsResponse := jobs.ListJobsResponse{
+		Items: make([]t.Job, len(returnedJobs)),
 	}
 
-	for i, job := range jobs {
+	for i, job := range returnedJobs {
 		vals := strings.Split(job, ",")
 		if len(vals) < 4 {
 			continue
@@ -70,7 +70,7 @@ func HandleListJobsRequest(jsonData []byte) {
 }
 
 func HandleListSpoolsRequest(jsonData []byte) {
-	var listRequest job.ListSpoolsRequest
+	var listRequest jobs.ListSpoolsRequest
 	err := json.Unmarshal(jsonData, &listRequest)
 	if err != nil {
 		// log.Println("Error decoding ListSpoolsRequest:", err)
@@ -87,7 +87,7 @@ func HandleListSpoolsRequest(jsonData []byte) {
 
 	spools := strings.Split(strings.TrimSpace(string(out)), "\n")
 
-	response := job.ListSpoolsResponse{
+	response := jobs.ListSpoolsResponse{
 		Items: make([]t.Spool, len(spools)),
 	}
 
@@ -118,7 +118,7 @@ func HandleListSpoolsRequest(jsonData []byte) {
 }
 
 func HandleReadSpoolRequest(jsonData []byte) {
-	var request job.ReadSpoolRequest
+	var request jobs.ReadSpoolRequest
 	err := json.Unmarshal(jsonData, &request)
 	if err != nil {
 		// log.Println("Error decoding ReadSpoolRequest:", err)
@@ -138,7 +138,7 @@ func HandleReadSpoolRequest(jsonData []byte) {
 
 	data := utils.CollectContentsAsBytes(string(out), hasEncoding)
 
-	response := job.ReadSpoolResponse{
+	response := jobs.ReadSpoolResponse{
 		Encoding: request.Encoding,
 		DsnKey:   request.DsnKey,
 		JobId:    request.JobId,
@@ -153,7 +153,7 @@ func HandleReadSpoolRequest(jsonData []byte) {
 }
 
 func HandleGetJclRequest(jsonData []byte) {
-	var request job.GetJclRequest
+	var request jobs.GetJclRequest
 	err := json.Unmarshal(jsonData, &request)
 	if err != nil {
 		// log.Println("Error decoding GetJclRequest:", err)
@@ -167,7 +167,7 @@ func HandleGetJclRequest(jsonData []byte) {
 		return
 	}
 
-	response := job.GetJclResponse{
+	response := jobs.GetJclResponse{
 		JobId: request.JobId,
 		Data:  string(out),
 	}
@@ -180,7 +180,7 @@ func HandleGetJclRequest(jsonData []byte) {
 }
 
 func HandleGetStatusRequest(jsonData []byte) {
-	var request job.GetJclRequest
+	var request jobs.GetJclRequest
 	err := json.Unmarshal(jsonData, &request)
 	if err != nil {
 		return
@@ -191,14 +191,14 @@ func HandleGetStatusRequest(jsonData []byte) {
 		log.Println("Error executing command:", err)
 		return
 	}
-	jobs := strings.Split(strings.TrimSpace(string(out)), "\n")
+	returnedJobs := strings.Split(strings.TrimSpace(string(out)), "\n")
 
 	// log.Println(jobs)
-	jobsResponse := job.ListJobsResponse{
-		Items: make([]t.Job, len(jobs)),
+	jobsResponse := jobs.ListJobsResponse{
+		Items: make([]t.Job, len(returnedJobs)),
 	}
 
-	for i, job := range jobs {
+	for i, job := range returnedJobs {
 		vals := strings.Split(job, ",")
 		if len(vals) < 4 {
 			continue

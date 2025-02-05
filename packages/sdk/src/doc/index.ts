@@ -13,5 +13,5 @@ export * from "./common";
 export * from "./rpc";
 export * as ds from "./ds";
 export * as uss from "./uss";
-export * as job from "./job";
+export * as jobs from "./jobs";
 export * as cmds from "./cmds";
