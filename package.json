@@ -15,6 +15,7 @@
     "build": "npm run build --workspaces && npm run build:tools && npm run license",
     "lint": "npm run lint --workspaces",
     "license": "node scripts/updateLicenses.js",
+    "prepare": "husky",
     "test": "echo \"Error: no test specified\" && exit 1",
     "watch": "npm run watch --workspaces"
   },
@@ -27,6 +28,7 @@
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
     "@zowe/secrets-for-zowe-sdk": "^8.10.4",
+    "husky": "^9.1.7",
     "tsx": "^4.19.2"
   }
 }

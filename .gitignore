@@ -1,12 +1,16 @@
-listings
-dumps
+# Directories
 artifacts
-lib
-node_modules
-out
 bin
 dist
+dumps
+lib
+listings
+node_modules
+out
 typedoc
+
+# Files
+.DS_Store
 tsconfig.tsbuildinfo
 zowe.config.json
 zowe.schema.json
