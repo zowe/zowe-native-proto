@@ -25,29 +25,6 @@
 
 using namespace std;
 
-// int zds_read_from_dd(ZDS *zds, string ddname, string &response)
-// {
-//   string prefix_ddname = "DD:" + ddname;
-
-//   FILE *fp = fopen(prefix_ddname.c_str(), "r"); // e.g. DD:SYS00001
-
-//   if (NULL == fp)
-//   {
-//     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to open ddname '%s'", prefix_ddname.c_str());
-//     return RTNCD_FAILURE;
-//   }
-
-//   int readlen = 0;
-//   char buffer[256 + 1] = {0};
-//   while ((readlen = fread(buffer, 1, sizeof(buffer), fp)) > 0)
-//   {
-//     response += string(buffer, readlen);
-//   }
-//   fclose(fp);
-
-//   return 0;
-// }
-
 int zds_read_from_dd(ZDS *zds, string ddname, string &response)
 {
   ddname = "DD:" + ddname;
@@ -264,11 +241,16 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &list)
   // PO-E (PDS)
   dsn = "//'" + dsn + "'";
 
+  int total_entries = 0;
+
+  if (0 == zds->max_entries)
+    zds->max_entries = ZDS_DEFAULT_MAX_ENTRIES;
+
   RECORD rec = {0};
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=pds-reading-directory-sequentially
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=pdse-reading-directory - long alias names omitted, use DESERV for those
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=pds-directory
-  FILE *fp = fopen(dsn.c_str(), "rb, blksize=256, recfm=fb");
+  FILE *fp = fopen(dsn.c_str(), "rb, blksize=256, recfm=u");
 
   const int bufsize = 256;
   char buffer[bufsize] = {0};
@@ -279,28 +261,45 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &list)
     return RTNCD_FAILURE;
   }
 
-  while (fread(&rec, sizeof *buffer, sizeof(RECORD), fp))
+  while (fread(&rec, sizeof(rec), 1, fp))
   {
     unsigned char *data = nullptr;
     data = (unsigned char *)&rec;
     data += sizeof(rec.count); // increment past halfword length
+
     int len = sizeof(RECORD_ENTRY);
     for (int i = 0; i < rec.count; i = i + len)
     {
-      RECORD_ENTRY RECORD_ENTRY = {0};
-      memcpy(&RECORD_ENTRY, data, sizeof(RECORD_ENTRY));
-      long long int end = 0xFFFFFFFFFFFFFFFF;
-      if (memcmp(RECORD_ENTRY.name, &end, sizeof(end)) == 0)
+      RECORD_ENTRY entry = {0};
+      memcpy(&entry, data, sizeof(entry));
+      long long int end = 0xFFFFFFFFFFFFFFFF; // indicates end of entries
+      if (memcmp(entry.name, &end, sizeof(end)) == 0)
       {
         break;
       }
       else
       {
-        unsigned char info = RECORD_ENTRY.info;
-        char name[9] = {0};
-        info &= 0x1F;
+        total_entries++;
 
-        memcpy(name, RECORD_ENTRY.name, sizeof(RECORD_ENTRY.name));
+        if (total_entries > zds->max_entries)
+        {
+          zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Reached maximum returned members requested %d", zds->max_entries);
+          zds->diag.detail_rc = ZDS_RSNCD_MAXED_ENTRIES_REACHED;
+          return RTNCD_WARNING;
+        }
+
+        unsigned char info = entry.info;
+        unsigned char pointer_count = entry.info;
+        char name[9] = {0};
+        if (info & 0x80)
+        {
+          // TODO(Kelosky): // member name is an alias
+        }
+        pointer_count & 0x60; // bits 1-2 contain number of user data TTRNs
+        pointer_count >>= 5;  // adjust to halfword boundary
+        info &= 0x1F;         // bits 3-7 contain the number of half words of user data
+
+        memcpy(name, entry.name, sizeof(entry.name));
 
         for (int j = 8; j >= 0; j--)
         {
@@ -314,8 +313,12 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &list)
         mem.name = string(name);
         list.push_back(mem);
 
-        data = data + sizeof(RECORD_ENTRY) + (info * 2); // skip number of half workds
-        len += (info * 2);
+        data = data + sizeof(entry) + (info * 2); // skip number of half words
+        len = sizeof(entry) + (info * 2);
+
+        int remainder = rec.count - (i + len);
+        if (remainder < sizeof(entry))
+          break;
       }
     }
   }
