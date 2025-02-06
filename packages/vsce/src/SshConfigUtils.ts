@@ -12,12 +12,15 @@
 import { Gui, ZoweVsCodeExtension, type imperative } from "@zowe/zowe-explorer-api";
 import * as fs from "fs";
 import * as vscode from "vscode";
-import SSHConfig, * as sshConfig from "ssh-config";
+import * as sshConfig from "ssh-config";
 import { ZSshClient } from "zowe-native-proto-sdk";
 import { homedir } from 'os';
 import { join } from 'path';
-import { ProfileInfo } from "@zowe/imperative";
-import { ISshSession, SshSession } from "@zowe/zos-uss-for-zowe-sdk";
+import { ISshSession } from "@zowe/zos-uss-for-zowe-sdk";
+
+interface sshConfigExt extends ISshSession {
+    name?: string;
+}
 
 // biome-ignore lint/complexity/noStaticOnlyClass: Utilities class has static methods
 export class SshConfigUtils {
@@ -30,89 +33,76 @@ export class SshConfigUtils {
 
     public static async promptForProfile(profileName?: string): Promise<imperative.IProfileLoaded | undefined> {
         const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
-        const profInfo = await zoweExplorerApi.getExplorerExtenderApi().getProfilesCache().getProfileInfo();
-
-        const profCache = ZoweVsCodeExtension.getZoweExplorerApi().getExplorerExtenderApi().getProfilesCache();
+        const profCache = zoweExplorerApi.getExplorerExtenderApi().getProfilesCache();
+        const profInfo = await profCache.getProfileInfo();
 
         if (profileName != null) {
             return profCache.getLoadedProfConfig(profileName, "ssh");
         }
 
-        const sshProfiles = (await profCache.fetchAllProfilesByType("ssh")).filter(
-            ({ name, profile }) => name != null && profile?.host,
-        );
+        const sshProfiles = (await profCache.fetchAllProfilesByType("ssh"))
+            .filter(({ name, profile }) => name != null && profile?.host);
+        const migratedConfigs = await SshConfigUtils.migrateSshConfig();
 
         const qpItems: vscode.QuickPickItem[] = [
-            ...sshProfiles.map((prof) => ({ label: prof.name!, description: prof.profile?.host })),
             { label: "$(plus) Add New SSH Host..." },
-            { label: "$(cloud-upload) Migrate SSH Config To Team Config" },
+            ...sshProfiles.map((prof) => ({ label: prof.name!, description: prof.profile?.host })),
+            { label: "Merge From SSH Config", kind: vscode.QuickPickItemKind.Separator },
+            ...migratedConfigs.map((config) => ({ label: config.name!, description: config.hostname }))
         ];
 
         const result = await Gui.showQuickPick(qpItems, { title: "Choose an SSH host" });
 
-        if (result === qpItems[qpItems.length - 2]) {
+        if (result === qpItems[0]) {
             if (await SshConfigUtils.createTeamConfig()) {
                 return profCache.getDefaultProfile("ssh");
             }
-        } else if (result === qpItems[qpItems.length - 1]) {
-            const parsedConfig: ISshSession[] = await SshConfigUtils.migrateSshConfig();
-            const configApi = profInfo.getTeamConfig().api;
-            for(const config of parsedConfig)
-            {
-                configApi.profiles.set("testasdasdasd", {
-                    type: "ssh",
-                    properties: {
-                        user: config.user,
-                        host: config.hostname,
-                        privateKey: config.privateKey,
-                        port: config.port || 22,
-                        keyPassphrase: config.keyPassphrase
-                    },
+        } else if (migratedConfigs.some((config) => result?.label === config.name!)) {
+            const selectedConfig = migratedConfigs.find((config) => result!.label === config.name!);
+            if (selectedConfig) {
+                const newName = await vscode.window.showInputBox({
+                    prompt: "Enter a name for the SSH config",
+                    value: selectedConfig.name!.replace(/\./g, "_"),
+                    validateInput: (input) => input.includes(".") ? "Name cannot contain '.'" : null
                 });
-            }
 
-            vscode.window.showInformationMessage("SSH Configs for Migration:", JSON.stringify(parsedConfig));
+                if (newName) {
+                    const configApi = profInfo.getTeamConfig().api;
+                    configApi.profiles.set(newName, {
+                        type: "ssh",
+                        properties: {
+                            user: selectedConfig.user,
+                            host: selectedConfig.hostname,
+                            privateKey: selectedConfig.privateKey,
+                            port: selectedConfig.port || 22,
+                            keyPassphrase: selectedConfig.keyPassphrase
+                        }
+                    });
+                    vscode.window.showInformationMessage(`SSH config '${newName}' saved successfully.`);
+                }
+            }
         } else if (result != null) {
             return sshProfiles.find((prof) => prof.name === result.label);
         }
     }
 
-    public static showSessionInTree(profileName: string, visible: boolean): void {
-        const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
-        for (const setting of ["zowe.ds.history", "zowe.uss.history", "zowe.jobs.history"]) {
-            const localStorage = (zoweExplorerApi.getExplorerExtenderApi() as any).getLocalStorage();
-            const treeHistory = localStorage.getValue(setting);
-            treeHistory.sessions = treeHistory.sessions.filter((session: any) => session !== profileName);
-            if (visible) {
-                treeHistory.sessions.push(profileName);
-            }
-            localStorage.setValue(setting, treeHistory);
-        }
-        zoweExplorerApi.getExplorerExtenderApi().reloadProfiles("ssh");
-    }
-
-    private static async createTeamConfig(): Promise<object[]> {
-        throw new Error("Not yet implemented");
-    }
-
-    public static async migrateSshConfig(): Promise<ISshSession[]> {
+    private static async migrateSshConfig(): Promise<sshConfigExt[]> {
         const filePath = join(homedir(), '.ssh', 'config');
         let fileContent: string;
         try {
             fileContent = fs.readFileSync(filePath, "utf-8");
         } catch (error) {
             vscode.window.showErrorMessage(`Error reading SSH config: ${error}`);
-            return undefined!;
+            return [];
         }
-        const parsedConfig = sshConfig.parse(fileContent);
 
-        let SSHConfigs: ISshSession[] = [];
+        const parsedConfig = sshConfig.parse(fileContent);
+        const SSHConfigs: sshConfigExt[] = [];
 
         for (const config of parsedConfig) {
             if (config.type === sshConfig.LineType.DIRECTIVE) {
-                const session: ISshSession = {};
-
-                session.hostname = (config as any).value;
+                const session: sshConfigExt = {};
+                session.name = (config as any).value;
 
                 if (Array.isArray((config as any).config)) {
                     for (const subConfig of (config as any).config) {
@@ -148,7 +138,24 @@ export class SshConfigUtils {
                 SSHConfigs.push(session);
             }
         }
-
         return SSHConfigs;
+    }
+
+    public static showSessionInTree(profileName: string, visible: boolean): void {
+        const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
+        for (const setting of ["zowe.ds.history", "zowe.uss.history", "zowe.jobs.history"]) {
+            const localStorage = (zoweExplorerApi.getExplorerExtenderApi() as any).getLocalStorage();
+            const treeHistory = localStorage.getValue(setting);
+            treeHistory.sessions = treeHistory.sessions.filter((session: any) => session !== profileName);
+            if (visible) {
+                treeHistory.sessions.push(profileName);
+            }
+            localStorage.setValue(setting, treeHistory);
+        }
+        zoweExplorerApi.getExplorerExtenderApi().reloadProfiles("ssh");
+    }
+
+    private static async createTeamConfig(): Promise<object[]> {
+        throw new Error("Not yet implemented");
     }
 }
