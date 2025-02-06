@@ -4,6 +4,7 @@
   "main": "lib/index.js",
   "scripts": {
     "build": "tsc -b",
+    "clean": "rimraf bin lib",
     "lint": "npx @biomejs/biome check --write src",
     "package": "bash ../../scripts/bundleCliTgz.sh",
     "test": "echo \"Error: no test specified\" && exit 1",

@@ -57,6 +57,7 @@
   ],
   "scripts": {
     "build": "tsc -p . --noEmit",
+    "clean": "rimraf bin out",
     "compile": "rspack --mode development",
     "lint": "npx @biomejs/biome check --write src",
     "package": "vsce package --no-dependencies --out ../../dist",
