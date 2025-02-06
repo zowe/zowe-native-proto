@@ -5,6 +5,7 @@
   "scripts": {
     "postinstall": "cd tools/build && npm install",
     "build:tools": "cd tools/build && npm run build",
+    "build:types": "cd native/golang && go run github.com/gzuidhof/tygo generate && cd ../.. && npm run license",
     "tools": "node tools/build/lib/main.js",
     "tools:init": "npm run tools -- init",
     "tools:artifacts": "npm run tools -- artifacts",
@@ -13,6 +14,7 @@
     "tools:deploy:build": "npm run tools -- deploy:build",
     "tools:all": "npm run tools:init && npm run tools:deploy:build",
     "build": "npm run build --workspaces && npm run build:tools && npm run license",
+    "build:all": "npm run build:types && npm run build",
     "lint": "npm run lint --workspaces",
     "license": "node scripts/updateLicenses.js",
     "test": "echo \"Error: no test specified\" && exit 1",

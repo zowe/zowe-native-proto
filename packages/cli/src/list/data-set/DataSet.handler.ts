@@ -10,11 +10,11 @@
  */
 
 import type { IHandlerParameters } from "@zowe/imperative";
-import type { ListDatasets, ZSshClient } from "zowe-native-proto-sdk";
+import type { ds, ZSshClient } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class ListDataSetsHandler extends SshBaseHandler {
-    public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<ListDatasets.Response> {
+    public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<ds.ListDatasetsResponse> {
         const response = await client.ds.listDatasets({
             pattern: params.arguments.pattern,
         });

@@ -10,11 +10,11 @@
  */
 
 import type { IHandlerParameters } from "@zowe/imperative";
-import type { ListFiles, ZSshClient } from "zowe-native-proto-sdk";
+import type { uss, ZSshClient } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class ListUssFilesHandler extends SshBaseHandler {
-    public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<ListFiles.Response> {
+    public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<uss.ListFilesResponse> {
         // const directory = UssUtils.normalizeUnixPath(params.arguments.directory);
         const directory = params.arguments.directory;
         const response = await client.uss.listFiles({
