@@ -10,11 +10,11 @@
  */
 
 import type { IHandlerParameters } from "@zowe/imperative";
-import type { ListSpools, ZSshClient } from "zowe-native-proto-sdk";
+import type { jobs, ZSshClient } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class ListSpoolsHandler extends SshBaseHandler {
-    public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<ListSpools.Response> {
+    public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<jobs.ListSpoolsResponse> {
         const response = await client.jobs.listSpools({
             jobId: params.arguments.jobId,
         });

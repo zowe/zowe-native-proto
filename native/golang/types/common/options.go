@@ -9,9 +9,13 @@
  *
  */
 
-export * from "./common";
-export * from "./rpc";
-export * as ds from "./ds";
-export * as uss from "./uss";
-export * as jobs from "./jobs";
-export * as cmds from "./cmds";
+package types
+
+type ListOptions struct {
+	MaxItems        int `json:"maxItems,omitempty"`
+	ResponseTimeout int `json:"responseTimeout,omitempty"`
+}
+
+type ListDatasetOptions struct {
+	Start string `json:"start,omitempty"`
+}

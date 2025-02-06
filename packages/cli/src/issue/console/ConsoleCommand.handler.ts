@@ -10,11 +10,11 @@
  */
 
 import type { IHandlerParameters } from "@zowe/imperative";
-import type { IssueConsole, ZSshClient } from "zowe-native-proto-sdk";
+import type { cmds, ZSshClient } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class ConsoleCommandHandler extends SshBaseHandler {
-    public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<IssueConsole.Response> {
+    public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<cmds.IssueConsoleResponse> {
         const commandText = params.arguments.command;
         const consoleName = params.arguments.consoleName;
 
