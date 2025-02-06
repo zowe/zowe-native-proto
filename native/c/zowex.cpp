@@ -24,6 +24,7 @@
 #include "unistd.h"
 #include "zds.hpp"
 #include "zusf.hpp"
+#include "ztso.hpp"
 
 #ifndef TO_STRING
 #define TO_STRING(x) static_cast<std::ostringstream &>(           \
@@ -72,6 +73,8 @@ int handle_uss_delete_dir(ZCLIResult);
 int handle_uss_chmod(ZCLIResult);
 int handle_uss_chown(ZCLIResult);
 
+int handle_tso_issue(ZCLIResult);
+
 int main(int argc, char *argv[])
 {
   // CLI
@@ -88,6 +91,21 @@ int main(int argc, char *argv[])
   response_format_bytes.set_description("returns the response as raw bytes");
   response_format_bytes.get_aliases().push_back("--rfb");
   response_format_bytes.set_required(false);
+
+  ZCLIGroup tso_group("tso");
+  tso_group.set_description("TSO operations");
+
+  ZCLIVerb tso_issue("issue");
+  tso_issue.set_description("issue TSO command");
+  tso_issue.set_zcli_verb_handler(handle_tso_issue);
+
+  ZCLIPositional tso_command("command");
+  tso_command.set_required(true);
+  tso_command.set_description("command to issue");
+
+  tso_issue.get_positionals().push_back(tso_command);
+
+  tso_group.get_verbs().push_back(tso_issue);
 
   //
   // data set group
@@ -403,7 +421,8 @@ int main(int argc, char *argv[])
   zcli.get_groups().push_back(console_group);
   zcli.get_groups().push_back(job_group);
   zcli.get_groups().push_back(uss_group);
-  zcli.get_groups().push_back(log_group);
+  zcli.get_groups().push_back(tso_group);
+  // zcli.get_groups().push_back(log_group);
   zcli.get_groups().push_back(tool_group);
 
   // parse
@@ -1155,6 +1174,25 @@ int handle_uss_chown(ZCLIResult result)
 {
   printf("method not implemented\n");
   return 1;
+}
+
+int handle_tso_issue(ZCLIResult result)
+{
+  int rc = 0;
+  string command = result.get_positional("command").get_value();
+  string response;
+
+  rc = ztso_issue(command, response);
+
+  if (0 != rc)
+  {
+    cerr << "Error running command, rc '" << rc << "'" << endl;
+    cerr << "  Details: " << response << endl;
+  }
+
+  cout << response;
+
+  return rc;
 }
 
 int handle_tool_convert_dsect(ZCLIResult result)

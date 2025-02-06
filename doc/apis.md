@@ -95,7 +95,7 @@
 | ------------------------ | ------ | --- | ------- | ---------- | --- | --- | ---- |
 | Start TSO address space  | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌   |
 | Start TSO app            | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ➖   |
-| Issue TSO command        | ✅     | ❌  | ❌      | ❌         | ✅  | ❌  | ❌   |
+| Issue TSO command        | ✅     | ❌  | ✅      | ❌         | ✅  | ❌  | ❌   |
 | Get TSO command response | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌   |
 | Send TSO message         | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌   |
 | Send TSO app message     | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ➖   |
