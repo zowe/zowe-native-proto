@@ -10,11 +10,11 @@
  */
 
 import type { IHandlerParameters } from "@zowe/imperative";
-import type { job, ZSshClient } from "zowe-native-proto-sdk";
+import type { jobs, ZSshClient } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class ViewJobStatusHandler extends SshBaseHandler {
-    public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<job.GetStatusResponse> {
+    public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<jobs.GetStatusResponse> {
         const response = await client.jobs.getStatus({
             jobId: params.arguments.jobId,
         });
