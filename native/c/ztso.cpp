@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <string>
 #include <sstream>
+#include "ztype.h"
 
 using namespace std;
 
@@ -34,7 +35,7 @@ int ztso_issue(string command, string &response)
   FILE *tso = popen(data.c_str(), "r");
   if (nullptr == tso)
   {
-    return -1; // TODO(Kelosky)
+    return RTNCD_FAILURE;
   }
 
   char buffer[256] = {0};
