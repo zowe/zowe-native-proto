@@ -29,6 +29,10 @@ using namespace std;
 int ztso_issue(string command, string &response)
 {
   int rc = 0;
+
+  // NOTE(Kelosky): for now we combined stderr and stdout as `popen` doesnt
+  // appear to allow access to stderr and tsocmd always writes the input parameters
+  // to stderr
   string data = "tsocmd " + command + " 2>&1"; // combine stderr
   string response_raw;
 
@@ -52,11 +56,7 @@ int ztso_issue(string command, string &response)
   while (getline(response_ss, line))
   {
     index++;
-    if (1 == index)
-    {
-      // do nothing
-    }
-    else
+    if (index > 1)
     {
       response += line + '\n';
     }
