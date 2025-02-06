@@ -9,9 +9,8 @@
  *
  */
 
-export * from "./common";
-export * from "./rpc";
-export * as ds from "./ds";
-export * as uss from "./uss";
-export * as jobs from "./jobs";
-export * as cmds from "./cmds";
+//go:build ignore
+
+package main
+
+import _ "github.com/gzuidhof/tygo"

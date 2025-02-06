@@ -10,16 +10,16 @@
  */
 
 import type { IHandlerParameters } from "@zowe/imperative";
-import type { RestoreDataset, ZSshClient } from "zowe-native-proto-sdk";
+import type { ds, ZSshClient } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class RestoreDatasetHandler extends SshBaseHandler {
-    public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<RestoreDataset.Response> {
-        const dataset = params.arguments.dataSet;
+    public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<ds.RestoreDatasetResponse> {
+        const dsname = params.arguments.dataSet;
 
-        const response = await client.ds.restoreDataset({ dataset });
+        const response = await client.ds.restoreDataset({ dsname });
 
-        const dsMessage = `Dataset "${dataset}" restored`;
+        const dsMessage = `Dataset "${dsname}" restored`;
         params.response.data.setMessage(dsMessage);
         params.response.data.setObj(response);
         if (response.success) {

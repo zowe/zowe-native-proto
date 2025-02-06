@@ -9,9 +9,16 @@
  *
  */
 
-export * from "./common";
-export * from "./rpc";
-export * as ds from "./ds";
-export * as uss from "./uss";
-export * as jobs from "./jobs";
-export * as cmds from "./cmds";
+package cmds
+
+type IssueConsoleResponse struct {
+	Data string `json:"data"`
+}
+
+type IssueTsoResponse struct {
+	Data string `json:"data"`
+}
+
+type IssueUnixResponse struct {
+	Data string `json:"data"`
+}
