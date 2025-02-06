@@ -1176,27 +1176,6 @@ int handle_uss_chown(ZCLIResult result)
   return 1;
 }
 
-int loop_dynalloc(vector<string> &list)
-{
-  int rc = 0;
-  unsigned int code = 0;
-  string response;
-
-  for (vector<string>::iterator it = list.begin(); it != list.end(); it++)
-  {
-    rc = zut_bpxwdyn(*it, &code, response);
-
-    if (0 != rc)
-    {
-      cout << "Error: bpxwdyn failed with '" << *it << "' rc: '" << rc << "'" << endl;
-      cout << "  Details: " << response << endl;
-      return -1;
-    }
-  }
-
-  return rc;
-}
-
 int handle_tso_issue(ZCLIResult result)
 {
   int rc = 0;
