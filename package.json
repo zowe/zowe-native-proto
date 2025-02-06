@@ -16,7 +16,8 @@
     "lint": "npm run lint --workspaces",
     "license": "node scripts/updateLicenses.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "watch": "npm run watch --workspaces"
+    "watch:native": "node scripts/watchNative.js",
+    "watch": "npm run watch:native & npm run watch --workspaces"
   },
   "keywords": [],
   "author": "",
@@ -27,6 +28,7 @@
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
     "@zowe/secrets-for-zowe-sdk": "^8.10.4",
+    "chokidar": "^3",
     "tsx": "^4.19.2"
   }
 }
