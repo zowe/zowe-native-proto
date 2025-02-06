@@ -5,6 +5,7 @@
   "scripts": {
     "build": "tsc -b",
     "lint": "npx @biomejs/biome check --write src",
+    "package": "bash ../../scripts/bundleCliTgz.sh",
     "test": "echo \"Error: no test specified\" && exit 1",
     "watch": "tsc -b -w"
   },
@@ -12,6 +13,11 @@
   "author": "Zowe",
   "license": "EPL-2.0",
   "description": "Zowe Native Proto plug-in for Zowe CLI",
+  "files": [
+    "bin",
+    "lib",
+    "npm-shrinkwrap.json"
+  ],
   "imperative": {
     "configurationModule": "lib/imperative.js"
   },
@@ -25,5 +31,8 @@
   },
   "peerDependencies": {
     "@zowe/imperative": "^8.11.0"
-  }
+  },
+  "bundleDependencies": [
+    "zowe-native-proto-sdk"
+  ]
 }
