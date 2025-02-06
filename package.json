@@ -14,6 +14,7 @@
     "tools:deploy:build": "npm run tools -- deploy:build",
     "tools:all": "npm run tools:init && npm run tools:deploy:build",
     "build": "npm run build --workspaces && npm run build:tools && npm run license",
+    "build:all": "npm run build:types && npm run build",
     "lint": "npm run lint --workspaces",
     "license": "node scripts/updateLicenses.js",
     "test": "echo \"Error: no test specified\" && exit 1",
