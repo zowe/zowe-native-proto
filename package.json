@@ -15,8 +15,11 @@
     "tools:all": "npm run tools:init && npm run tools:deploy:build",
     "build": "npm run build --workspaces && npm run build:tools && npm run license",
     "build:all": "npm run build:types && npm run build",
+    "clean": "npm run clean --workspaces",
     "lint": "npm run lint --workspaces",
     "license": "node scripts/updateLicenses.js",
+    "package": "npm run package --workspaces --if-present",
+    "prepare": "husky",
     "test": "echo \"Error: no test specified\" && exit 1",
     "watch": "npm run watch --workspaces"
   },
@@ -29,6 +32,8 @@
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
     "@zowe/secrets-for-zowe-sdk": "^8.10.4",
+    "husky": "^9.1.7",
+    "rimraf": "^6.0.1",
     "tsx": "^4.19.2"
   }
 }
