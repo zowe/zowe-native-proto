@@ -26,6 +26,11 @@
 
 using namespace std;
 
+// NOTE(Kelosky): alternatives we'll likely use / consider in the future
+// - CEA, probably needed to achieve z/OSMF parity (allows starting, stopping TSO address spaces)
+// - IKJEFT01, requires authorized caller
+// - IKJEFTSR, limited TSO dynamic environment
+// - Load TMP directly, untested, but potentially useful if we read/write SYSTSIN/SYSTSPRT
 int ztso_issue(string command, string &response)
 {
   int rc = 0;
