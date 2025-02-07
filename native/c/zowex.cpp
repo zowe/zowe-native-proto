@@ -155,6 +155,7 @@ int main(int argc, char *argv[])
 
   ZCLIVerb data_set_list("list");
   ZCLIOption data_set_max_entries("max-entries");
+  data_set_max_entries.get_aliases().push_back("--me");
   data_set_max_entries.set_description("max number of results to return before error generated");
   data_set_list.get_options().push_back(data_set_max_entries);
 
@@ -173,6 +174,8 @@ int main(int argc, char *argv[])
   data_set_list_members.set_description("list data set members");
   data_set_list_members.set_zcli_verb_handler(handle_data_set_list_members_dsn);
   data_set_list_members.get_positionals().push_back(data_set_dsn);
+  data_set_list_members.get_options().push_back(data_set_max_entries);
+  data_set_list_members.get_options().push_back(data_set_truncate_warn);
   data_set_group.get_verbs().push_back(data_set_list_members);
 
   ZCLIVerb data_set_write("write");
@@ -882,18 +885,42 @@ int handle_data_set_list_members_dsn(ZCLIResult result)
 {
   int rc = 0;
   string dsn = result.get_positional("dsn").get_value();
+  string max_entries = result.get_option("--max-entries").get_value();
+  string warn = result.get_option("--warn").get_value();
   ZDS zds = {0};
+  if (max_entries.size() > 0)
+  {
+    zds.max_entries = atoi(max_entries.c_str());
+  }
   vector<ZDSMem> members;
   rc = zds_list_members(&zds, dsn, members);
-  if (0 != rc)
+
+  if (RTNCD_SUCCESS == rc)
+  {
+    for (vector<ZDSMem>::iterator it = members.begin(); it != members.end(); ++it)
+    {
+      cout << left << setw(12) << it->name << endl;
+    }
+  }
+  else if (RTNCD_WARNING == rc)
+  {
+    if ("true" == warn)
+    {
+      if (ZDS_RSNCD_MAXED_ENTRIES_REACHED == zds.diag.detail_rc)
+      {
+        cerr << "Warning: results truncated" << endl;
+      }
+    }
+    for (vector<ZDSMem>::iterator it = members.begin(); it != members.end(); ++it)
+    {
+      cout << left << setw(12) << it->name << endl;
+    }
+  }
+  else
   {
     cout << "Error: could not read data set: '" << dsn << "' rc: '" << rc << "'" << endl;
     cout << "  Details: " << zds.diag.e_msg << endl;
     return RTNCD_FAILURE;
-  }
-  for (vector<ZDSMem>::iterator it = members.begin(); it != members.end(); ++it)
-  {
-    std::cout << left << setw(12) << it->name << endl;
   }
 
   return rc;
