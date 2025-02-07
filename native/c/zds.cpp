@@ -291,12 +291,12 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &list)
         unsigned char info = entry.info;
         unsigned char pointer_count = entry.info;
         char name[9] = {0};
-        if (info & 0x80)
+        if (info & 0x80) // bit 0 indicates alias
         {
           // TODO(Kelosky): // member name is an alias
         }
         pointer_count & 0x60; // bits 1-2 contain number of user data TTRNs
-        pointer_count >>= 5;  // adjust to halfword boundary
+        pointer_count >>= 5;  // adjust to byte boundary
         info &= 0x1F;         // bits 3-7 contain the number of half words of user data
 
         memcpy(name, entry.name, sizeof(entry.name));
