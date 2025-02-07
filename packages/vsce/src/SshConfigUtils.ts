@@ -41,7 +41,11 @@ export class SshConfigUtils {
 
         const sshProfiles = (await profCache.fetchAllProfilesByType("ssh"))
             .filter(({ name, profile }) => name != null && profile?.host);
-        const migratedConfigs = await SshConfigUtils.migrateSshConfig();
+
+        // get configs via migrateSshConfig() and remove options that have host name that already exists as an ssh profile on the config file
+        const migratedConfigs = (await SshConfigUtils.migrateSshConfig()).filter(migratedConfig =>
+            !sshProfiles.some(sshProfile => sshProfile.profile?.host === migratedConfig.hostname)
+        );
 
         const qpItems: vscode.QuickPickItem[] = [
             { label: "$(plus) Add New SSH Host..." },
@@ -66,11 +70,7 @@ export class SshConfigUtils {
                 selectedProfile = migratedConfigs.find((config) => result!.label === config.name!);
             }
             if (selectedProfile) {
-                selectedProfile.name = await vscode.window.showInputBox({
-                    prompt: "Enter a name for the SSH config",
-                    value: selectedProfile.name!.replace(/\./g, "_"),
-                    validateInput: (input) => input.includes(".") ? "Name cannot contain '.'" : null
-                });
+                selectedProfile = await SshConfigUtils.getNewProfileName(selectedProfile);
                 selectedProfile = await SshConfigUtils.promptForAuth(selectedProfile);
             }
         }
@@ -117,7 +117,7 @@ export class SshConfigUtils {
                                     session.privateKey = value;
                                     break;
                                 case 'connecttimeout':
-                                    session.handshakeTimeout = value;
+                                    session.handshakeTimeout = parseInt(value);
                                     break;
                                 default:
                                     break;
@@ -238,30 +238,55 @@ export class SshConfigUtils {
     }
 
     private static async promptForAuth(selectedConfig: sshConfigExt | undefined): Promise<sshConfigExt | undefined> {
-        //TODO: implement auto selection priority based on migratedConfigs
-        const qpItems: vscode.QuickPickItem[] = [
-            { label: "$(lock) Password", description: "Authenticate using a password" },
-            { label: "$(key) Private Key", description: "Authenticate using a private key" },
-            { label: "$(key) Private Key with Passphrase", description: "Authenticate using a private key with passphrase" }
+        let qpItems: vscode.QuickPickItem[] = [
+            { label: "$(lock) Password" },
+            { label: "$(key) Private Key" },
+            { label: "$(key) Private Key with Passphrase" }
+            // { label: "$(lock) Password", description: "Authenticate using a password" },
+            // { label: "$(key) Private Key", description: "Authenticate using a private key" },
+            // { label: "$(key) Private Key with Passphrase", description: "Authenticate using a private key with passphrase" }
         ];
 
-        const selectedOption = await vscode.window.showQuickPick(qpItems, { title: "Select an authentication method" });
+        //if PrivateKey/IdentityFile is passed, move password option to last priority
+        //add description to show that the option was detected from config
+        if(selectedConfig?.privateKey){
+            qpItems.push(qpItems.shift()!);
+            qpItems[0].description = " (detected from config)";
+            qpItems[1].description = " (detected from config)";
+        }
+        qpItems.push({ label: "$(x) Skip Authentication"})
 
+        const selectedOption = await vscode.window.showQuickPick(qpItems, { title: "Select an authentication method", ignoreFocusOut: true});
+
+        // Priority for default Private Key URI
+        // 1. IdentityFile/PrivateKey if passed from config
+        // 2. .ssh directory within homedir()
+        // 3. homedir()
+
+        let defaultPrivateKeyUri = vscode.Uri.file(selectedConfig?.privateKey
+            ? selectedConfig.privateKey
+            : fs.existsSync(path.join(homedir(), '.ssh'))
+            ? path.join(homedir(), '.ssh')
+            : homedir());
+
+        let privateKeyUri;
         if (selectedOption) {
             switch (selectedOption.label) {
                 case "$(lock) Password":
                     selectedConfig!.password = await vscode.window.showInputBox({
                         title: "Enter Password",
                         password: true,
-                        placeHolder: "Enter your password"
+                        placeHolder: "Enter your password",
+                        ignoreFocusOut: true,
                     });
                     break;
 
                 case "$(key) Private Key":
-                    const privateKeyUri = await vscode.window.showOpenDialog({
+                    privateKeyUri = await vscode.window.showOpenDialog({
                         canSelectFiles: true,
                         canSelectMany: false,
-                        title: "Select Private Key File"
+                        title: "Select Private Key File",
+                        defaultUri: defaultPrivateKeyUri,
                     });
                     if (privateKeyUri && privateKeyUri.length > 0) {
                         selectedConfig!.privateKey = privateKeyUri[0].fsPath;
@@ -269,25 +294,32 @@ export class SshConfigUtils {
                     break;
 
                 case "$(key) Private Key with Passphrase":
-                    const keyFileUri = await vscode.window.showOpenDialog({
+                    privateKeyUri = await vscode.window.showOpenDialog({
                         canSelectFiles: true,
                         canSelectMany: false,
                         title: "Select Private Key File",
+                        defaultUri: defaultPrivateKeyUri
                     });
-                    if (keyFileUri && keyFileUri.length > 0) {
-                        selectedConfig!.privateKey = keyFileUri[0].fsPath;
+                    if (privateKeyUri && privateKeyUri.length > 0) {
+                        selectedConfig!.privateKey = privateKeyUri[0].fsPath;
                         selectedConfig!.keyPassphrase = await vscode.window.showInputBox({
                             title: "Enter Passphrase",
                             password: true,
-                            placeHolder: "Enter passphrase for private key"
+                            placeHolder: "Enter passphrase for private key",
+                            ignoreFocusOut: true
                         });
                     }
                     break;
+                default:
+                    break;
             }
+
+            //Profile information
             const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
             const profCache = zoweExplorerApi.getExplorerExtenderApi().getProfilesCache();
             const profInfo = await profCache.getProfileInfo();
             const configApi = profInfo.getTeamConfig().api;
+
             if (selectedConfig?.name) {
                 // Create the base config object
                 const config = {
@@ -303,6 +335,7 @@ export class SshConfigUtils {
                     secure: []
                 };
 
+                //if password or KP is defined, make them secure
                 if (selectedConfig?.password) config.secure.push("password" as never);
                 if (selectedConfig?.keyPassphrase) config.secure.push("keyPassphrase" as never);
 
@@ -312,5 +345,34 @@ export class SshConfigUtils {
 
             return selectedConfig;
         }
+    }
+
+    private static async getNewProfileName(selectedProfile: sshConfigExt): Promise<sshConfigExt | undefined> {
+        const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
+        const profCache = zoweExplorerApi.getExplorerExtenderApi().getProfilesCache();
+        const profiles = await profCache.fetchAllProfiles();
+        let isUniqueName = false;
+        while (!isUniqueName) {
+            selectedProfile.name = await vscode.window.showInputBox({
+                prompt: "Enter a name for the SSH config",
+                value: selectedProfile.name!.replace(/\./g, "_"),
+                validateInput: (input) => input.includes(".") ? "Name cannot contain '.'" : null
+            });
+            const existingProfile = profiles.find(profile => profile.name === selectedProfile.name);
+            if (existingProfile) {
+                const overwriteResponse = await vscode.window.showQuickPick(
+                    ["Yes", "No"],
+                    {
+                        placeHolder: `A profile with the name "${selectedProfile.name}" already exists. Do you want to overwrite it?`
+                    }
+                );
+                if (overwriteResponse === "Yes") {
+                    isUniqueName = true;
+                } else {}
+            } else {
+                isUniqueName = true;
+            }
+        }
+        return selectedProfile
     }
 }
