@@ -207,6 +207,9 @@ int main(int argc, char *argv[])
   ZCLIOption job_owner("owner");
   job_owner.set_description("filter by owner");
   job_list.get_options().push_back(job_owner);
+  ZCLIOption job_prefix("prefix");
+  job_prefix.set_description("filter by prefix");
+  job_list.get_options().push_back(job_prefix);
   job_list.get_options().push_back(response_format_csv);
   job_group.get_verbs().push_back(job_list);
 
@@ -437,9 +440,10 @@ int handle_job_list(ZCLIResult result)
   int rc = 0;
   ZJB zjb = {0};
   string owner_name(result.get_option("--owner").get_value());
+  string prefix_name(result.get_option("--prefix").get_value());
 
   vector<ZJob> jobs;
-  rc = zjb_list_by_owner(&zjb, owner_name, jobs);
+  rc = zjb_list_by_owner(&zjb, owner_name, prefix_name, jobs);
 
   if (0 != rc)
   {

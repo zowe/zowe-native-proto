@@ -34,7 +34,7 @@ int zut_convert_dsect()
   return ZUTEDSCT();
 }
 
-void zut_uppercase_pad_truncate(string source, char *target, int len)
+void zut_uppercase_pad_truncate(char *target, string source, int len)
 {
   memset(target, ' ', len);                                           // pad with spaces
   transform(source.begin(), source.end(), source.begin(), ::toupper); // upper case
