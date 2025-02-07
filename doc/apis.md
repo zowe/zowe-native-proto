@@ -64,27 +64,25 @@
 
 | Operation          | z/OSMF | FTP | Backend         | Middleware | SDK | CLI | VSCE |
 | ------------------ | ------ | --- | --------------- | ---------- | --- | --- | ---- |
-| _Get job status_   | ✅     | ✅  | ✅              | ✅         | ✅  | ✅  | ❌   |
-| _List jobs_        | ✅     | ✅  | 🚧 <sup>1</sup> | ✅         | ✅  | ✅  | ✅   |
-| _List spool files_ | ✅     | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
-| _Read spool file_  | ✅     | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
-| _Get job JCL_      | ✅     | ❌  | ✅              | ✅         | ✅  | ✅  | ✅   |
-| _Submit job_       | ✅     | ✅  | ✅              | ❌         | ❌  | ❌  | ❌   |
-| Hold job           | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
-| Release job        | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
-| Change job class   | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ➖   |
-| Cancel job         | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
-| _Delete job_       | ✅     | ✅  | ✅              | ❌         | ❌  | ❌  | ❌   |
-
-1. Listing by prefix and status is not supported
+| _Get job status_   | ✅     | ✅  | ✅               | ✅         | ✅  | ✅  | ❌   |
+| _List jobs_        | ✅     | ✅  | ✅               | ✅         | ✅  | ✅  | ✅   |
+| _List spool files_ | ✅     | ✅  | ✅               | ✅         | ✅  | ✅  | ✅   |
+| _Read spool file_  | ✅     | ✅  | ✅               | ✅         | ✅  | ✅  | ✅   |
+| _Get job JCL_      | ✅     | ❌  | ✅               | ✅         | ✅  | ✅  | ✅   |
+| _Submit job_       | ✅     | ✅  | ✅               | ❌         | ❌  | ❌  | ❌   |
+| Hold job           | ✅     | ❌  | ❌               | ❌         | ❌  | ❌  | ❌   |
+| Release job        | ✅     | ❌  | ❌               | ❌         | ❌  | ❌  | ❌   |
+| Change job class   | ✅     | ❌  | ❌               | ❌         | ❌  | ❌  | ➖   |
+| Cancel job         | ✅     | ❌  | ❌               | ❌         | ❌  | ❌  | ❌   |
+| _Delete job_       | ✅     | ✅  | ✅               | ❌         | ❌  | ❌  | ❌   |
 
 ## Console
 
 | Operation                | z/OSMF | FTP | Backend         | Middleware | SDK | CLI | VSCE |
 | ------------------------ | ------ | --- | --------------- | ---------- | --- | --- | ---- |
-| Issue MVS command        | ✅     | ❌  | ✅ <sup>1</sup> | ✅         | ✅  | ✅  | ❌   |
-| Get MVS command response | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
-| Get MVS detect result    | ✅     | ❌  | ❌              | ❌         | ❌  | ➖  | ➖   |
+| Issue MVS command        | ✅     | ❌  | ✅ <sup>1</sup>  | ✅         | ✅  | ✅  | ❌   |
+| Get MVS command response | ✅     | ❌  | ❌               | ❌         | ❌  | ❌  | ❌   |
+| Get MVS detect result    | ✅     | ❌  | ❌               | ❌         | ❌  | ➖  | ➖   |
 
 1. Requires APF authorization
 
