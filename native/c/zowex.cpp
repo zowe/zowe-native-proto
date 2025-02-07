@@ -207,7 +207,7 @@ int main(int argc, char *argv[])
   job_list.set_description("list jobs");
   job_list.set_zcli_verb_handler(handle_job_list);
   ZCLIOption job_owner("owner");
-  job_owner.get_aliases().push_back("--o");
+  job_owner.get_aliases().push_back("-o");
   job_owner.set_description("filter by owner");
   job_list.get_options().push_back(job_owner);
   job_list.get_options().push_back(response_format_csv);
