@@ -301,7 +301,7 @@ async function artifacts(connection: Client) {
   const prePaxCmds = artifactNames.map((file) => `cp ${file} ${basename(file)} && chmod 700 ${basename(file)}`);
   const postPaxCmds = artifactNames.map((file) => `rm ${basename(file)}`);
   await runCommandInShell(connection, [`cd ${deployDirectory}`, ...prePaxCmds,
-    `pax -wzvf ${paxFile} ${artifactNames.map((file) => basename(file)).join(" ")}`, ...postPaxCmds].join("\n"));
+    `pax -wvzf ${paxFile} ${artifactNames.map((file) => basename(file)).join(" ")}`, ...postPaxCmds].join("\n"));
   for (const localDir of localDirs) {
     mkdirSync(resolve(__dirname, `./../../${localDir}`), { recursive: true });
     if (localDirs.indexOf(localDir) === 0) {

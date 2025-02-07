@@ -9,7 +9,11 @@
  *
  */
 
-package main
+package types
+
+type CommandRequest struct {
+	Command string `json:"command"`
+}
 
 type Dataset struct {
 	Name   string `json:"name"`

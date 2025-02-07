@@ -9,7 +9,7 @@
  *
  */
 
-package main
+package utils
 
 import (
 	"log"
@@ -17,7 +17,7 @@ import (
 	"strings"
 )
 
-func collectContentsAsBytes(input string, isByteString bool) []byte {
+func CollectContentsAsBytes(input string, isByteString bool) []byte {
 	var data []byte
 
 	if isByteString {

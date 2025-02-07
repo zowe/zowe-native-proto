@@ -9,7 +9,7 @@
  *
  */
 
-package main
+package utils
 
 import (
 	"os"
@@ -22,7 +22,7 @@ var exePath string
 /**
  * Shared logic for command builder functions.
  */
-func buildCommandShared(args []string) *exec.Cmd {
+func BuildCommandShared(args []string) *exec.Cmd {
 	cmd := exec.Command(args[0], args[1:]...)
 	if exePath == "" {
 		path, err := os.Executable()
@@ -38,8 +38,8 @@ func buildCommandShared(args []string) *exec.Cmd {
 /**
  * Default builder function for invoking zowex commands.
  */
-func buildCommand(args []string) *exec.Cmd {
-	cmd := buildCommandShared(args)
+func BuildCommand(args []string) *exec.Cmd {
+	cmd := BuildCommandShared(args)
 	cmd.Env = append(os.Environ(), "_BPXK_AUTOCVT=ON")
 	return cmd
 }
@@ -47,8 +47,8 @@ func buildCommand(args []string) *exec.Cmd {
 /**
  * Builds a command with _BPXK_AUTOCVT=OFF.
  */
-func buildCommandNoAutocvt(args []string) *exec.Cmd {
-	cmd := buildCommandShared(args)
+func BuildCommandNoAutocvt(args []string) *exec.Cmd {
+	cmd := BuildCommandShared(args)
 	cmd.Env = append(os.Environ(), "_BPXK_AUTOCVT=OFF")
 	return cmd
 }

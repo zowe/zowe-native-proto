@@ -17,8 +17,7 @@
 | _Read data set/member_   | ✅              | ✅  | 🚧 <sup>2</sup> | ✅         | ✅  | ✅  | ✅   |
 | _Write data set/member_  | ✅              | ✅  | 🚧 <sup>2</sup> | ✅         | ✅  | ❌  | ❌   |
 | _Create data set_        | ✅              | ✅  | ✅              | ❌         | ❌  | ❌  | ❌   |
-| _Delete data set_        | ✅              | ✅  | ✅              | ❌         | ❌  | ❌  | ❌   |
-| _Delete data set member_ | ✅              | ✅  | ❌              | ❌         | ❌  | ❌  | ❌   |
+| _Delete data set/member_ | ✅              | ✅  | ✅              | ❌         | ❌  | ❌  | ❌   |
 | Migrate data set         | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | Recall data set          | 🚧 <sup>3</sup> | ❌  | ✅              | ✅         | ✅  | ✅  | ❌   |
 | Delete migrated data set | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
@@ -45,7 +44,7 @@
 | Move file/directory      | ✅     | ✅  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | _`chmod` file/directory_ | ✅     | ❌  | ✅              | ✅         | ✅  | ✅  | ❌   |
 | _`chown` file/directory_ | ✅     | ❌  | ✅              | ❌         | ❌  | ❌  | ❌   |
-| _`chtag` file/directory_ | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
+| _`chtag` USS file_       | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | Invoke `extattr`         | ✅     | ❌  | ❌              | ❌         | ❌  | ➖  | ➖   |
 | Get ACL entries          | ✅     | ❌  | ❌              | ❌         | ❌  | ➖  | ➖   |
 | Set ACL entries          | ✅     | ❌  | ❌              | ❌         | ❌  | ➖  | ➖   |
@@ -95,7 +94,7 @@
 | ------------------------ | ------ | --- | ------- | ---------- | --- | --- | ---- |
 | Start TSO address space  | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌   |
 | Start TSO app            | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ➖   |
-| Issue TSO command        | ✅     | ❌  | ❌      | ❌         | ✅  | ❌  | ❌   |
+| Issue TSO command        | ✅     | ❌  | ✅      | ❌         | ✅  | ❌  | ❌   |
 | Get TSO command response | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌   |
 | Send TSO message         | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌   |
 | Send TSO app message     | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ➖   |

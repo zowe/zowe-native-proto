@@ -63,7 +63,7 @@ export class ZSshUtils {
                 path.join(localDir, ZSshUtils.SERVER_PAX_FILE),
                 path.posix.join(remoteDir, ZSshUtils.SERVER_PAX_FILE),
             );
-            await promisify(client.exec.bind(client))(`cd ${serverPath} && pax -rzvf ${ZSshUtils.SERVER_PAX_FILE}`);
+            await promisify(client.exec.bind(client))(`cd ${serverPath} && pax -rzf ${ZSshUtils.SERVER_PAX_FILE}`);
             await promisify(sftp.unlink.bind(sftp))(path.posix.join(remoteDir, ZSshUtils.SERVER_PAX_FILE));
         });
     }
