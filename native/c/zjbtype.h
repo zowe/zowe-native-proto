@@ -49,8 +49,9 @@ typedef struct
   int32_t buffer_size_needed; // total amount of buffer size needed to satisfy request
   unsigned char reserve_1[4];
 
-  char jobid[8];      // job id
-  char owner_name[8]; // owner name used, upper cased/padded/truncated
+  char jobid[8];       // job id
+  char owner_name[8];  // owner name used, upper cased/padded/truncated
+  char prefix_name[8]; // prefix used, upper cased/padded/truncated
 
   ZEncode encoding_opts; // User-specified, desired encoding options for spool contents
 

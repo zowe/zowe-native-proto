@@ -292,7 +292,7 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, string jobdsn, string &response)
 
 int zjb_delete_by_jobid(ZJB *zjb, string jobid)
 {
-  zut_uppercase_pad_truncate(jobid, zjb->jobid, sizeof(zjb->jobid));
+  zut_uppercase_pad_truncate(zjb->jobid, jobid, sizeof(zjb->jobid));
   return ZJBMPRG(zjb);
 }
 
@@ -378,7 +378,7 @@ int zjb_list_dds_by_jobid(ZJB *zjb, string jobid, vector<ZJobDD> &jobDDs)
   if (0 == zjb->dds_max)
     zjb->dds_max = ZJB_DEFAULT_MAX_DDS;
 
-  zut_uppercase_pad_truncate(jobid, zjb->jobid, sizeof(zjb->jobid));
+  zut_uppercase_pad_truncate(zjb->jobid, jobid, sizeof(zjb->jobid));
 
   rc = ZJBMLSDS(zjb, &sysoutInfo, &entries);
   if (0 != rc)
@@ -441,7 +441,7 @@ int zjb_view_by_jobid(ZJB *zjb, string jobid, ZJob &job)
   if (0 == zjb->jobs_max)
     zjb->jobs_max = ZJB_DEFAULT_MAX_JOBS;
 
-  zut_uppercase_pad_truncate(jobid, zjb->jobid, sizeof(zjb->jobid));
+  zut_uppercase_pad_truncate(zjb->jobid, jobid, sizeof(zjb->jobid));
 
   rc = ZJBMVIEW(zjb, &jobInfo, &entries);
   if (0 != rc)
@@ -547,6 +547,11 @@ int zjb_view_by_jobid(ZJB *zjb, string jobid, ZJob &job)
 
 int zjb_list_by_owner(ZJB *zjb, string owner_name, vector<ZJob> &jobs)
 {
+  return zjb_list_by_owner(zjb, owner_name, "", jobs);
+}
+
+int zjb_list_by_owner(ZJB *zjb, string owner_name, string prefix_name, vector<ZJob> &jobs)
+{
   int rc = 0;
   STATJQTR *PTR64 jobInfo = nullptr;
   int entries = 0;
@@ -562,7 +567,8 @@ int zjb_list_by_owner(ZJB *zjb, string owner_name, vector<ZJob> &jobs)
   if (0 == zjb->jobs_max)
     zjb->jobs_max = ZJB_DEFAULT_MAX_JOBS;
 
-  zut_uppercase_pad_truncate(owner_name, zjb->owner_name, sizeof(zjb->owner_name));
+  zut_uppercase_pad_truncate(zjb->owner_name, owner_name, sizeof(zjb->owner_name));
+  zut_uppercase_pad_truncate(zjb->prefix_name, prefix_name, sizeof(zjb->prefix_name));
 
   rc = ZJBMLIST(zjb, &jobInfo, &entries);
   if (0 != rc)
