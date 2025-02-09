@@ -15,11 +15,16 @@ import (
 	"encoding/json"
 	"log"
 	"os"
+	"runtime"
 	t "zowe-native-proto/ioserver/types/common"
 )
 
 func main() {
 	input := make(chan []byte)
+	stdio := []uintptr{os.Stdin.Fd(), os.Stdout.Fd(), os.Stderr.Fd()}
+	for fd := range stdio {
+		runtime.SetZosAutoConvOnFd(fd, 1047)
+	}
 
 	go func() {
 		buf := make([]byte, 1024)
