@@ -16,12 +16,12 @@
 #include <sstream>
 #include <cstdlib>
 #include <stdio.h>
+#include <unistd.h>
 #include <algorithm>
 #include "zcn.hpp"
 #include "zut.hpp"
 #include "zcli.hpp"
 #include "zjb.hpp"
-#include "unistd.h"
 #include "zds.hpp"
 #include "zusf.hpp"
 #include "ztso.hpp"
@@ -350,6 +350,10 @@ int main(int argc, char *argv[])
   uss_delete.get_options().push_back(uss_recursive);
   uss_group.get_verbs().push_back(uss_delete);
 
+  ZCLIPositional uss_owner("owner");
+  uss_owner.set_required(true);
+  uss_owner.set_description("New owner (or owner:group) for the file or directory");
+
   ZCLIVerb uss_chmod("chmod");
   uss_chmod.set_description("change permissions on a USS file or directory");
   uss_chmod.set_zcli_verb_handler(handle_uss_chmod);
@@ -361,6 +365,7 @@ int main(int argc, char *argv[])
   ZCLIVerb uss_chown("chown");
   uss_chown.set_description("change owner on a USS file or directory");
   uss_chown.set_zcli_verb_handler(handle_uss_chown);
+  uss_chown.get_positionals().push_back(uss_owner);
   uss_chown.get_positionals().push_back(uss_file_path);
   uss_chown.get_options().push_back(uss_recursive);
   uss_group.get_verbs().push_back(uss_chown);
@@ -1201,8 +1206,21 @@ int handle_uss_chmod(ZCLIResult result)
 
 int handle_uss_chown(ZCLIResult result)
 {
-  printf("method not implemented\n");
-  return 1;
+  string path = result.get_positional("file-path").get_value();
+  string owner = result.get_positional("owner").get_value();
+
+  ZUSF zusf = {0};
+
+  const auto rc = zusf_chown_uss_file_or_dir(&zusf, path, owner, result.get_option("--recursive").is_found());
+  if (rc != 0)
+  {
+    cout << "Error: could not chown USS path: '" << path << "' rc: '" << rc << "'" << endl;
+    cout << "  Details:\n"
+         << zusf.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
+  return rc;
 }
 
 int handle_tso_issue(ZCLIResult result)

@@ -35,6 +35,12 @@ export interface DeleteFileRequest {
   fspath: string;
   recursive: string;
 }
+export interface ChownFileRequest {
+  command: "chownFile";
+  owner: string;
+  fspath: string;
+  recursive: boolean;
+}
 
 //////////
 // source: responses.go
@@ -53,6 +59,10 @@ export interface ListFilesResponse {
   returnedRows: number /* int */;
 }
 export interface DeleteFileResponse {
+  success: boolean;
+  fspath: string;
+}
+export interface ChownFileResponse {
   success: boolean;
   fspath: string;
 }

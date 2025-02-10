@@ -32,3 +32,8 @@ type DeleteFileResponse struct {
 	Success bool   `json:"success"`
 	Path    string `json:"fspath"`
 }
+
+type ChownFileResponse struct {
+	Success bool   `json:"success"`
+	Path    string `json:"fspath"`
+}
