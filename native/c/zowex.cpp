@@ -68,8 +68,7 @@ int handle_uss_create_dir(ZCLIResult);
 int handle_uss_list(ZCLIResult);
 int handle_uss_view(ZCLIResult);
 int handle_uss_write(ZCLIResult);
-int handle_uss_delete_file(ZCLIResult);
-int handle_uss_delete_dir(ZCLIResult);
+int handle_uss_delete(ZCLIResult);
 int handle_uss_chmod(ZCLIResult);
 int handle_uss_chown(ZCLIResult);
 
@@ -302,8 +301,9 @@ int main(int argc, char *argv[])
   uss_file_mode.set_required(false);
   uss_file_mode.set_description("permissions");
   ZCLIOption uss_recursive("recursive");
+  uss_recursive.get_aliases().push_back("-r");
   uss_recursive.set_required(false);
-  uss_recursive.set_description("recursive");
+  uss_recursive.set_description("Specify this flag to delete a directory");
 
   ZCLIVerb uss_create_file("create-file");
   uss_create_file.set_description("create a USS file");
@@ -343,18 +343,12 @@ int main(int argc, char *argv[])
   uss_write.get_options().push_back(uss_encoding);
   uss_group.get_verbs().push_back(uss_write);
 
-  ZCLIVerb uss_delete_file("delete-file");
-  uss_delete_file.set_description("delete a USS file");
-  uss_delete_file.set_zcli_verb_handler(handle_uss_delete_file);
-  uss_delete_file.get_positionals().push_back(uss_file_path);
-  uss_group.get_verbs().push_back(uss_delete_file);
-
-  ZCLIVerb uss_delete_dir("delete-dir");
-  uss_delete_dir.set_description("delete a USS directory");
-  uss_delete_dir.set_zcli_verb_handler(handle_uss_delete_dir);
-  uss_delete_dir.get_positionals().push_back(uss_file_path);
-  uss_delete_dir.get_options().push_back(uss_recursive);
-  uss_group.get_verbs().push_back(uss_delete_dir);
+  ZCLIVerb uss_delete("delete");
+  uss_delete.set_description("delete a USS item");
+  uss_delete.set_zcli_verb_handler(handle_uss_delete);
+  uss_delete.get_positionals().push_back(uss_file_path);
+  uss_delete.get_options().push_back(uss_recursive);
+  uss_group.get_verbs().push_back(uss_delete);
 
   ZCLIVerb uss_chmod("chmod");
   uss_chmod.set_description("change permissions on a USS file or directory");
@@ -1166,15 +1160,19 @@ int handle_uss_write(ZCLIResult result)
   return rc;
 }
 
-int handle_uss_delete_file(ZCLIResult result)
+int handle_uss_delete(ZCLIResult result)
 {
-  printf("method not implemented\n");
-  return 1;
-}
+  string file_path = result.get_positional("file-path").get_value();
+  bool recursive = result.get_option("--recursive").is_found();
 
-int handle_uss_delete_dir(ZCLIResult result)
-{
-  printf("method not implemented\n");
+  ZUSF zusf = {0};
+  const auto rc = zusf_delete_uss_item(&zusf, file_path, recursive);
+
+  if (rc != 0)
+  {
+    cerr << "Failed to delete USS item " << file_path << ":\n " << zusf.diag.e_msg << endl;
+  }
+
   return 1;
 }
 

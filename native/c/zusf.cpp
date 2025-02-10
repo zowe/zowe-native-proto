@@ -268,3 +268,20 @@ int zusf_chmod_uss_file_or_dir(ZUSF *zusf, string file, string mode)
   chmod(file.c_str(), strtol(mode.c_str(), nullptr, 8));
   return 0;
 }
+
+int zusf_delete_uss_item(ZUSF *zusf, string file, bool recursive)
+{
+  struct stat file_stats;
+  if (stat(file.c_str(), &file_stats) == -1)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Path '%s' does not exist", file.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  if (S_ISDIR(file_stats.st_mode) && !recursive)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Path '%s' is a directory and recursive was false", file.c_str());
+    return RTNCD_FAILURE;
+  }
+  return remove(file.c_str());
+}
