@@ -35,6 +35,9 @@ export interface WriteDatasetRequest {
   dsname: string;
   data: string;
 }
+export interface DeleteDatasetRequest {
+  dsname: string;
+}
 export interface RestoreDatasetRequest {
   command: "restoreDataset";
   dsname: string;
@@ -62,4 +65,8 @@ export interface ListDatasetsResponse {
 export interface ListDsMembersResponse {
   items: common.DsMember[];
   returnedRows: number /* int */;
+}
+export interface DeleteDatasetResponse {
+  success: boolean;
+  dsname: string;
 }

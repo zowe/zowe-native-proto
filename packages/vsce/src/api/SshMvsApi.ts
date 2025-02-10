@@ -140,7 +140,12 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         dataSetName: string,
         options?: zosfiles.IDeleteDatasetOptions,
     ): Promise<zosfiles.IZosFilesResponse> {
-        throw new Error("Not yet implemented");
+        const response = await (await this.client).ds.deleteDataset({
+            dsname: dataSetName,
+        });
+        return this.buildZosFilesResponse({
+            success: response.success
+        });
     }
 
     // biome-ignore lint/suspicious/noExplicitAny: apiResponse has no strong type

@@ -51,6 +51,7 @@ func main() {
 		"listSpools":     HandleListSpoolsRequest,
 		"consoleCommand": HandleConsoleCommandRequest,
 		"restoreDataset": HandleRestoreDatasetRequest,
+		"deleteDataset":  HandleDeleteDatasetRequest,
 	}
 
 	for data := range input {

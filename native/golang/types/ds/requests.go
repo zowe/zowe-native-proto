@@ -42,6 +42,10 @@ type WriteDatasetRequest struct {
 	Data     string `json:"data"`
 }
 
+type DeleteDatasetRequest struct {
+	Dsname string `json:"dsname"`
+}
+
 type RestoreDatasetRequest struct {
 	Command string `json:"command" tstype:"\"restoreDataset\""`
 	Dsname  string `json:"dsname"`
