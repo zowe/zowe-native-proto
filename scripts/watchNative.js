@@ -36,12 +36,51 @@ async function uploadFile(localPath, remotePath) {
         reject(err);
         return;
       }
-      
       const readStream = fs.createReadStream(p.join('native', localPath));
       const writeStream = sftp.createWriteStream(remotePath);
       
       writeStream.on('close', () => {
-        resolve();
+        // If the uploaded file is in the `c` directory, run gmake
+        if (localPath.startsWith('c/')) {
+          conn.exec(`cd ${p.posix.join(config.deployDirectory, 'c')} && gmake`, (err, stream) => {
+            if (err) {
+              console.error('Failed to run gmake:', err);
+              resolve();
+              return;
+            }
+            
+            stream.on('close', () => {
+              resolve();
+            }).on('data', (data) => {
+              process.stdout.write(data);
+            }).stderr.on('data', (data) => {
+              process.stderr.write(data);
+            });
+          });
+        } else if (localPath.startsWith('golang/')) {
+          // Run `go build` for golang files
+          conn.shell((err, stream) => {
+            if (err) {
+              console.error('Failed to start shell:', err);
+              resolve();
+              return;
+            }
+
+            let buffer = '';
+            stream.on('close', () => {
+              resolve();
+            }).on('data', (data) => {
+              buffer += data;
+              process.stdout.write(data);
+            }).stderr.on('data', (data) => {
+              process.stderr.write(data);
+            });
+
+            stream.end(`cd ${p.posix.join(config.deployDirectory, 'golang')} && go build\nexit\n`);
+          });
+        } else {
+          resolve();
+        }
       });
       
       writeStream.on('error', (err) => {
