@@ -159,3 +159,31 @@ func HandleWriteFileRequest(jsonData []byte) {
 		fmt.Println(string(v))
 	}
 }
+
+func HandleDeleteFileRequest(jsonData []byte) {
+	var request uss.DeleteFileRequest
+	err := json.Unmarshal(jsonData, &request)
+	if err != nil || len(request.Path) == 0 {
+		return
+	}
+
+	args := []string{"./zowex", "uss", "delete", request.Path, "-r", request.Recursive}
+	out, err := utils.BuildCommand(args).Output()
+	response := uss.DeleteFileResponse{
+		Success: true,
+		Path:    request.Path,
+	}
+
+	if err != nil {
+		response.Success = false
+	}
+	// discard CLI output as its currently unused
+	_ = out
+
+	v, err := json.Marshal(response)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+	} else {
+		fmt.Println(string(v))
+	}
+}

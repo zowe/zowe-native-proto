@@ -27,3 +27,8 @@ type ListFilesResponse struct {
 	Items        []common.UssItem `tstype:"common.UssItem[]" json:"items"`
 	ReturnedRows int              `json:"returnedRows"`
 }
+
+type DeleteFileResponse struct {
+	Success bool   `json:"success"`
+	Path    string `json:"fspath"`
+}

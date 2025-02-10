@@ -36,6 +36,7 @@ export interface WriteDatasetRequest {
   data: string;
 }
 export interface DeleteDatasetRequest {
+  command: "deleteDataset";
   dsname: string;
 }
 export interface RestoreDatasetRequest {

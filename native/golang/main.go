@@ -52,6 +52,7 @@ func main() {
 		"consoleCommand": HandleConsoleCommandRequest,
 		"restoreDataset": HandleRestoreDatasetRequest,
 		"deleteDataset":  HandleDeleteDatasetRequest,
+		"deleteFile":     HandleDeleteFileRequest,
 	}
 
 	for data := range input {

@@ -31,3 +31,9 @@ type WriteFileRequest struct {
 	Path     string `json:"fspath"`
 	Data     string `json:"data"`
 }
+
+type DeleteFileRequest struct {
+	Command   string `json:"command" tstype:"\"deleteFile\""`
+	Path      string `json:"fspath"`
+	Recursive string `json:"recursive"`
+}

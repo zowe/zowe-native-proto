@@ -30,6 +30,11 @@ export interface WriteFileRequest {
   fspath: string;
   data: string;
 }
+export interface DeleteFileRequest {
+  command: "deleteFile";
+  fspath: string;
+  recursive: string;
+}
 
 //////////
 // source: responses.go
@@ -46,4 +51,8 @@ export interface WriteFileResponse {
 export interface ListFilesResponse {
   items: common.UssItem[];
   returnedRows: number /* int */;
+}
+export interface DeleteFileResponse {
+  success: boolean;
+  fspath: string;
 }

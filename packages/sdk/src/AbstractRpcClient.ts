@@ -54,6 +54,8 @@ export abstract class AbstractRpcClient {
                 this.request({ command: "readFile", ...request }),
             writeFile: (request: Omit<uss.WriteFileRequest, "command">): Promise<uss.WriteFileResponse> =>
                 this.request({ command: "writeFile", ...request }),
+            deleteFile: (request: Omit<uss.DeleteFileRequest, "command">): Promise<uss.DeleteFileResponse> =>
+                this.request({ command: "deleteFile", ...request }),
         };
     }
 
