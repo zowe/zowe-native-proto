@@ -14,23 +14,23 @@ package utils
 import (
 	"os"
 	"runtime"
+	"strconv"
 
 	"golang.org/x/term"
 )
 
 func SetAutoConvOnUntaggedStdio() {
-	for _, file := range []*os.File{os.Stdin, os.Stdout, os.Stderr} {
+	env_vars := []string{"__STDIN_CCSID", "__STDOUT_CCSID", "__STDERR_CCSID"}
+	for i, file := range []*os.File{os.Stdin, os.Stdout, os.Stderr} {
 		fd := int(file.Fd())
-		if !term.IsTerminal(fd) && getfdccsid(fd) == 0 {
+		if env := os.Getenv(env_vars[i]); env != "" {
+			ccsid, err := strconv.Atoi(env)
+			if err != nil {
+				panic(err)
+			}
+			runtime.SetZosAutoConvOnFd(fd, uint16(ccsid))
+		} else if !term.IsTerminal(fd) {
 			runtime.SetZosAutoConvOnFd(fd, 1047)
 		}
 	}
-}
-
-func getfdccsid(fd int) int {
-	// TODO Invoke fstat for fd and return the ccsid value
-	// var st unix.Stat_t
-	// unix.Fstat(fd, &st)
-	// fmt.Printf("fstat(%d): %+v\n", fd, st)
-	return 0
 }
