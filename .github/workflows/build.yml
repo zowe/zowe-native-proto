@@ -1,6 +1,6 @@
-name: ioserver
+name: build
 
-on: [push, pull_request]
+on: [pull_request]
 
 jobs:
   build:
@@ -9,5 +9,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build
-        run: cd native/golang && go build
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - run: npm install
+
+      - run: npm run build
+
+      # - run: npm run package
