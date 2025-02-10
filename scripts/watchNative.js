@@ -1,5 +1,4 @@
 const chokidar = require("chokidar");
-const child_process = require("node:child_process");
 const p = require("path");
 
 const watcher = chokidar.watch(["c/**/*.{c,cpp,h,s}", "golang/**"], {
@@ -8,20 +7,72 @@ const watcher = chokidar.watch(["c/**/*.{c,cpp,h,s}", "golang/**"], {
   persistent: true,
 });
 
-watcher.on("add", (path, stats) => {
+const fs = require('fs');
+const { Client } = require('ssh2');
+const config = JSON.parse(fs.readFileSync(p.join("tools", "build", "config.local.json")));
+let sshReady = false;
+
+const conn = new Client()
+.on('ready', () => {
+  sshReady = true;
+  console.log('SSH connection established');
+}).connect({
+  host: config.host,
+  port: config.port || 22,
+  username: config.user,
+  privateKey: config.privateKey ? fs.readFileSync(config.privateKey) : undefined,
+  password: config.password
+});
+
+async function uploadFile(localPath, remotePath) {
+  return new Promise((resolve, reject) => {
+    if (!sshReady) {
+      reject(new Error('SSH connection not ready'));
+      return;
+    }
+    
+    conn.sftp((err, sftp) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      
+      const readStream = fs.createReadStream(p.join('native', localPath));
+      const writeStream = sftp.createWriteStream(remotePath);
+      
+      writeStream.on('close', () => {
+        resolve();
+      });
+      
+      writeStream.on('error', (err) => {
+        reject(err);
+      });
+      
+      readStream.pipe(writeStream);
+    });
+  });
+}
+
+watcher.on("add", async (path, stats) => {
   process.stdout.write(`${Date.now().toLocaleString()} [+] ${path}`);
-  child_process.execSync(
-    ["npm", "run", "tools:deploy", p.posix.normalize(path)].join(" ")
-  );
-  console.log(" ✔");
+  try {
+    await uploadFile(path, p.posix.join(config.deployDirectory, path));
+    console.log(" ✔");
+  } catch (err) {
+    console.error(" ✘", err);
+  }
 });
-watcher.on("change", (path, stats) => {
+
+watcher.on("change", async (path, stats) => {
   process.stdout.write(`${Date.now().toLocaleString()} [~] ${path}`);
-  child_process.execSync(
-    ["npm", "run", "tools:deploy", p.posix.normalize(path)].join(" ")
-  );
-  console.log(" ✔");
+  try {
+    await uploadFile(path, p.posix.join(config.deployDirectory, path));
+    console.log(" ✔");
+  } catch (err) {
+    console.error(" ✘", err);
+  }
 });
+
 watcher.on("unlink", (path, stats) => {
   process.stdout.write(`${Date.now().toLocaleString()} [-] ${path}`);
   console.log(" ✔");
