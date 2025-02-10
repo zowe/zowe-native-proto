@@ -13,27 +13,24 @@ package uss
 
 import common "zowe-native-proto/ioserver/types/common"
 
+type GenericFileResponse struct {
+	Success bool   `json:"success"`
+	Path    string `json:"fspath"`
+}
+
 type ReadFileResponse struct {
 	Encoding string `json:"encoding,omitempty"`
 	Path     string `json:"fspath"`
 	Data     []byte `json:"data" tstype:"Buffer | string"`
 }
 
-type WriteFileResponse struct {
-	Success bool   `json:"success"`
-	Path    string `json:"fspath"`
-}
+type WriteFileResponse = GenericFileResponse
+
 type ListFilesResponse struct {
 	Items        []common.UssItem `tstype:"common.UssItem[]" json:"items"`
 	ReturnedRows int              `json:"returnedRows"`
 }
 
-type DeleteFileResponse struct {
-	Success bool   `json:"success"`
-	Path    string `json:"fspath"`
-}
-
-type ChownFileResponse struct {
-	Success bool   `json:"success"`
-	Path    string `json:"fspath"`
-}
+type DeleteFileResponse = GenericFileResponse
+type ChmodFileResponse = GenericFileResponse
+type ChownFileResponse = GenericFileResponse

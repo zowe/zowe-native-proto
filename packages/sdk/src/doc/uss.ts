@@ -35,6 +35,12 @@ export interface DeleteFileRequest {
   fspath: string;
   recursive: string;
 }
+export interface ChmodFileRequest {
+  command: "chmodFile";
+  mode: string;
+  fspath: string;
+  recursive: boolean;
+}
 export interface ChownFileRequest {
   command: "chownFile";
   owner: string;
@@ -45,24 +51,20 @@ export interface ChownFileRequest {
 //////////
 // source: responses.go
 
+export interface GenericFileResponse {
+  success: boolean;
+  fspath: string;
+}
 export interface ReadFileResponse {
   encoding?: string;
   fspath: string;
   data: Buffer | string;
 }
-export interface WriteFileResponse {
-  success: boolean;
-  fspath: string;
-}
+export type WriteFileResponse = GenericFileResponse;
 export interface ListFilesResponse {
   items: common.UssItem[];
   returnedRows: number /* int */;
 }
-export interface DeleteFileResponse {
-  success: boolean;
-  fspath: string;
-}
-export interface ChownFileResponse {
-  success: boolean;
-  fspath: string;
-}
+export type DeleteFileResponse = GenericFileResponse;
+export type ChmodFileResponse = GenericFileResponse;
+export type ChownFileResponse = GenericFileResponse;

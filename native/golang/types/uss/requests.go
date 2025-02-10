@@ -38,6 +38,13 @@ type DeleteFileRequest struct {
 	Recursive string `json:"recursive"`
 }
 
+type ChmodFileRequest struct {
+	Command   string `json:"command" tstype:"\"chmodFile\""`
+	Mode      string `json:"mode"`
+	Path      string `json:"fspath"`
+	Recursive bool   `json:"recursive"`
+}
+
 type ChownFileRequest struct {
 	Command   string `json:"command" tstype:"\"chownFile\""`
 	Owner     string `json:"owner"`

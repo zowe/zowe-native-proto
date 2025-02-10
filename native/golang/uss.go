@@ -218,3 +218,34 @@ func HandleChownFileRequest(jsonData []byte) {
 		fmt.Println(string(v))
 	}
 }
+
+func HandleChmodFileRequest(jsonData []byte) {
+	var request uss.ChmodFileRequest
+	err := json.Unmarshal(jsonData, &request)
+	if err != nil || len(request.Path) == 0 {
+		return
+	}
+
+	args := []string{"./zowex", "uss", "chmod", request.Mode, request.Path}
+	if request.Recursive {
+		args = append(args, "-r", "true")
+	}
+	out, err := utils.BuildCommand(args).Output()
+	response := uss.ChmodFileResponse{
+		Success: true,
+		Path:    request.Path,
+	}
+
+	if err != nil {
+		response.Success = false
+	}
+	// discard CLI output as its currently unused
+	_ = out
+
+	v, err := json.Marshal(response)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+	} else {
+		fmt.Println(string(v))
+	}
+}

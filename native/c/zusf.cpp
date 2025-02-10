@@ -258,7 +258,7 @@ int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data)
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zusf_chmod_uss_file_or_dir(ZUSF *zusf, string file, string mode)
+int zusf_chmod_uss_file_or_dir(ZUSF *zusf, string file, string mode, bool recursive)
 {
   // TODO(zFernand0): Add recursive option for directories
   struct stat file_stats;
@@ -267,6 +267,13 @@ int zusf_chmod_uss_file_or_dir(ZUSF *zusf, string file, string mode)
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Path '%s' does not exist", file.c_str());
     return RTNCD_FAILURE;
   }
+
+  if (!recursive && S_ISDIR(file_stats.st_mode))
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Path '%s' is a folder and recursive is false", file.c_str());
+    return RTNCD_FAILURE;
+  }
+
   chmod(file.c_str(), strtol(mode.c_str(), nullptr, 8));
   return 0;
 }

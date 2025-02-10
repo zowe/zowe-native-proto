@@ -354,11 +354,15 @@ int main(int argc, char *argv[])
   uss_owner.set_required(true);
   uss_owner.set_description("New owner (or owner:group) for the file or directory");
 
+  ZCLIPositional uss_mode_positional("mode");
+  uss_mode_positional.set_required(true);
+  uss_mode_positional.set_description("new permissions for the file or directory");
+
   ZCLIVerb uss_chmod("chmod");
   uss_chmod.set_description("change permissions on a USS file or directory");
   uss_chmod.set_zcli_verb_handler(handle_uss_chmod);
+  uss_chmod.get_positionals().push_back(uss_mode_positional);
   uss_chmod.get_positionals().push_back(uss_file_path);
-  uss_chmod.get_options().push_back(uss_file_mode);
   uss_chmod.get_options().push_back(uss_recursive);
   uss_group.get_verbs().push_back(uss_chmod);
 
@@ -1184,16 +1188,14 @@ int handle_uss_delete(ZCLIResult result)
 int handle_uss_chmod(ZCLIResult result)
 {
   int rc = 0;
+  string mode(result.get_positional("mode").get_value());
   string file_path = result.get_positional("file-path").get_value();
-  string mode(result.get_option("--mode").get_value());
-  if (mode == "")
-    mode = "755";
 
   ZUSF zusf = {0};
-  rc = zusf_chmod_uss_file_or_dir(&zusf, file_path, mode);
+  rc = zusf_chmod_uss_file_or_dir(&zusf, file_path, mode, result.get_option("--recursive").is_found());
   if (0 != rc)
   {
-    cout << "Error: could not create USS path: '" << file_path << "' rc: '" << rc << "'" << endl;
+    cout << "Error: could not chmod USS path: '" << file_path << "' rc: '" << rc << "'" << endl;
     cout << "  Details:\n"
          << zusf.diag.e_msg << endl;
     return RTNCD_FAILURE;
