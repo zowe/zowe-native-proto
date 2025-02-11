@@ -853,7 +853,7 @@ int handle_data_set_list(ZCLIResult result)
 
   const auto emit_csv = result.get_option("--response-format-csv").get_value() == "true";
   rc = zds_list_data_sets(&zds, dsn, entries);
-  if (RTNCD_SUCCESS == rc)
+  if (RTNCD_SUCCESS == rc || RTNCD_WARNING == rc)
   {
     vector<string> fields;
     for (vector<ZDSEntry>::iterator it = entries.begin(); it != entries.end(); ++it)
@@ -872,7 +872,7 @@ int handle_data_set_list(ZCLIResult result)
       }
     }
   }
-  else if (RTNCD_WARNING == rc)
+  if (RTNCD_WARNING == rc)
   {
     if ("true" == warn)
     {
@@ -885,27 +885,12 @@ int handle_data_set_list(ZCLIResult result)
         cerr << "Warning: no matching results found" << endl;
       }
     }
-    vector<string> fields;
-    for (vector<ZDSEntry>::iterator it = entries.begin(); it != entries.end(); ++it)
-    {
-      if (emit_csv)
-      {
-        fields.push_back(it->name);
-        fields.push_back(it->dsorg);
-        fields.push_back(it->volser);
-        std::cout << zut_format_as_csv(fields) << std::endl;
-        fields.clear();
-      }
-      else
-      {
-        std::cout << left << setw(44) << it->name << " " << it->volser << " " << it->dsorg << endl;
-      }
-    }
   }
-  else
+
+  if (rc > RTNCD_WARNING)
   {
-    cout << "Error: could not list data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-    cout << "  Details: " << zds.diag.e_msg << endl;
+    cerr << "Error: could not list data set: '" << dsn << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zds.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
@@ -926,14 +911,14 @@ int handle_data_set_list_members_dsn(ZCLIResult result)
   vector<ZDSMem> members;
   rc = zds_list_members(&zds, dsn, members);
 
-  if (RTNCD_SUCCESS == rc)
+  if (RTNCD_SUCCESS == rc || RTNCD_WARNING == rc)
   {
     for (vector<ZDSMem>::iterator it = members.begin(); it != members.end(); ++it)
     {
       cout << left << setw(12) << it->name << endl;
     }
   }
-  else if (RTNCD_WARNING == rc)
+  if (RTNCD_WARNING == rc)
   {
     if ("true" == warn)
     {
@@ -942,12 +927,8 @@ int handle_data_set_list_members_dsn(ZCLIResult result)
         cerr << "Warning: results truncated" << endl;
       }
     }
-    for (vector<ZDSMem>::iterator it = members.begin(); it != members.end(); ++it)
-    {
-      cout << left << setw(12) << it->name << endl;
-    }
   }
-  else
+  if (rc > RTNCD_WARNING)
   {
     cout << "Error: could not read data set: '" << dsn << "' rc: '" << rc << "'" << endl;
     cout << "  Details: " << zds.diag.e_msg << endl;
