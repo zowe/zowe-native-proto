@@ -27,12 +27,13 @@ In the `tools/build` folder, create your own `config.local.json` adjacent to `co
   - **Tip:** You can deploy just one file or directory like this: `npm run tools:deploy c/zowex.cpp`
 - `npm run tools:build` - build native binaries on z/OS
   - **Tip:** You can deploy and build at the same time with `npm run tools:deploy:build`
+- `npm run watch:native` - detect and upload changes to native code
 
 ## Client
 
 - `npm run tools:artifacts` - download binaries to package with clients
 - `npm run build` - build all projects in the `packages` folder
-  - **Tip:** You can run incremental builds with `npm run watch`
+  - **Tip:** You can run incremental builds with `npm run watch:client` for client code only, or `npm run watch` at the root to watch all code
 - `npm run package` - create CLI and VSCE artifacts in `dist` folder
 
 ## Test
