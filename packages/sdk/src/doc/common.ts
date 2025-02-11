@@ -15,41 +15,41 @@
 // source: common.go
 
 export interface CommandRequest {
-  command: string;
+    command: string;
 }
 export interface Dataset {
-  name: string;
-  dsorg: string;
-  volser: string;
+    name: string;
+    dsorg: string;
+    volser: string;
 }
 export interface DsMember {
-  name: string;
+    name: string;
 }
 export interface UssItem {
-  name: string;
-  isDir: boolean;
+    name: string;
+    isDir: boolean;
 }
 export interface Job {
-  id: string;
-  name: string;
-  status: string;
-  retcode: string;
+    id: string;
+    name: string;
+    status: string;
+    retcode: string;
 }
 export interface Spool {
-  id: number /* int */;
-  ddname: string;
-  stepname: string;
-  dsname: string;
-  procstep: string;
+    id: number /* int */;
+    ddname: string;
+    stepname: string;
+    dsname: string;
+    procstep: string;
 }
 
 //////////
 // source: options.go
 
 export interface ListOptions {
-  maxItems?: number /* int */;
-  responseTimeout?: number /* int */;
+    maxItems?: number /* int */;
+    responseTimeout?: number /* int */;
 }
 export interface ListDatasetOptions {
-  start?: string;
+    start?: string;
 }

@@ -11,7 +11,7 @@
 
 import { posix } from "node:path";
 import type { Writable } from "node:stream";
-import { DeferredPromise } from "@zowe/imperative";
+import { DeferredPromise, Logger } from "@zowe/imperative";
 import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Client, type ClientChannel } from "ssh2";
 import { AbstractRpcClient } from "./AbstractRpcClient";
@@ -36,6 +36,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
         serverPath?: string,
         onClose?: (session: SshSession) => void,
     ): Promise<ZSshClient> {
+        Logger.getAppLogger().debug("Starting SSH client");
         const client = new ZSshClient();
         client.mSshClient = new Client();
         client.mSshClient.connect(ZSshUtils.buildSshConfig(session));
@@ -45,18 +46,20 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                     posix.join(serverPath ?? ZSshClient.DEFAULT_SERVER_PATH, "ioserver"),
                     (err, stream) => {
                         if (err) {
+                            Logger.getAppLogger().error("Client connection error: %s", err.toString());
                             reject(err);
                         } else {
                             stream.stderr.on("data", (chunk: Buffer) => {
                                 console.log("STDERR:", chunk.toString());
                             });
-                            // console.log("client ready");
+                            Logger.getAppLogger().debug("Client is ready");
                             resolve(stream);
                         }
                     },
                 );
             });
             client.mSshClient.on("close", () => {
+                Logger.getAppLogger().debug("Client disconnected");
                 onClose?.(session);
             });
         });
@@ -64,6 +67,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
     }
 
     public dispose(): void {
+        Logger.getAppLogger().debug("Ending SSH client");
         this.mSshClient?.end();
     }
 
@@ -71,21 +75,24 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
         this.dispose();
     }
 
-    public async request<T extends IRpcResponse>(request: IRpcRequest, stream?: Writable): Promise<T> {
+    public async request<T extends IRpcResponse>(request: IRpcRequest, _stream?: Writable): Promise<T> {
         await this.sshMutex?.promise;
         this.sshMutex = new DeferredPromise();
         this.mResponse = "";
-        this.mResponseStream = stream;
+        // this.mResponseStream = stream;
 
         return new Promise((resolve, reject) => {
-            this.mSshStream.stdin.write(`${JSON.stringify(request)}\n`);
-            this.mSshStream.stderr.on("data", this.onErrData.bind(this, reject));
+            const requestStr = JSON.stringify(request);
+            Logger.getAppLogger().trace("Sending request: %s", requestStr);
+            this.mSshStream.stdin.write(`${requestStr}\n`);
             this.mSshStream.stdout.on(
                 "data",
                 this.onOutData.bind(this, (response: string) => {
+                    Logger.getAppLogger().trace("Received response: %s", response);
                     try {
                         resolve(JSON.parse(response));
                     } catch {
+                        Logger.getAppLogger().error("Failed to parse response: %s", response);
                         reject(response);
                     }
                 }),
@@ -93,14 +100,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
         });
     }
 
-    private onErrData(reject: (typeof Promise)["reject"], chunk: Buffer) {
-        const error = chunk.toString();
-        console.error(error);
-        this.requestEnd();
-        reject(error);
-    }
-
-    private onOutData(resolve: (typeof Promise)["resolve"], chunk: Buffer) {
+    private onOutData(callback: (data: string) => void, chunk: Buffer) {
         const endsWithNewLine = chunk[chunk.length - 1] === 0x0a;
         const newChunk = endsWithNewLine ? chunk.subarray(0, chunk.length - 1) : chunk;
 
@@ -109,16 +109,12 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
         } else {
             this.mResponse += newChunk;
         }
-        if (endsWithNewLine) {
-            this.requestEnd();
-            resolve(this.mResponse);
-        }
-    }
 
-    private requestEnd() {
-        this.mSshStream.stderr.removeAllListeners();
-        this.mSshStream.stdout.removeAllListeners();
-        this.mResponseStream?.end();
-        this.sshMutex?.resolve();
+        if (endsWithNewLine) {
+            this.mSshStream.stdout.removeAllListeners();
+            this.mResponseStream?.end();
+            this.sshMutex?.resolve();
+            callback(this.mResponse);
+        }
     }
 }
