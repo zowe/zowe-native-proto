@@ -4,7 +4,11 @@ on: [pull_request]
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu, windows, macos]
 
     steps:
       - uses: actions/checkout@v4
@@ -27,11 +31,13 @@ jobs:
       - run: npm run package
 
       - uses: actions/upload-artifact@v4
+        if: ${{ matrix.os == 'ubuntu' }}
         with:
           name: zowe-native-proto-cli
           path: dist/*.tgz
 
       - uses: actions/upload-artifact@v4
+        if: ${{ matrix.os == 'ubuntu' }}
         with:
           name: zowe-native-proto-vsce
           path: dist/*.vsix
