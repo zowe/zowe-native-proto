@@ -15,8 +15,7 @@ import (
 	"os"
 	"runtime"
 	"strconv"
-
-	"golang.org/x/term"
+	"syscall"
 )
 
 func SetAutoConvOnUntaggedStdio() {
@@ -29,8 +28,16 @@ func SetAutoConvOnUntaggedStdio() {
 				panic(err)
 			}
 			runtime.SetZosAutoConvOnFd(fd, uint16(ccsid))
-		} else if !term.IsTerminal(fd) {
+		} else if !isatty(fd) {
 			runtime.SetZosAutoConvOnFd(fd, 1047)
 		}
 	}
+}
+
+func isatty(fd int) bool {
+	var st syscall.Stat_t
+	if err := syscall.Fstat(fd, &st); err != nil {
+		return false
+	}
+	return st.Mode&syscall.S_IFMT == syscall.S_IFCHR
 }
