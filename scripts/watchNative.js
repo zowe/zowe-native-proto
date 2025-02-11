@@ -1,7 +1,7 @@
 const chokidar = require("chokidar");
 const p = require("path");
 
-const watcher = chokidar.watch(["c/**/*.{c,cpp,h,s}", "golang/**"], {
+const watcher = chokidar.watch(["c/**/*.{c,cpp,h,hpp,s}", "golang/**"], {
   cwd: "native/",
   ignoreInitial: true,
   persistent: true,
@@ -41,34 +41,59 @@ async function uploadFile(localPath, remotePath) {
         reject(err);
         return;
       }
-      const readStream = fs.createReadStream(p.join("native", localPath));
-      const writeStream = sftp.createWriteStream(remotePath);
+
+      process.stdout.write(` -> ${remotePath} `);
+      const readStream = fs.createReadStream(
+        p.join("native", localPath),
+        "utf8"
+      );
+      const writeStream = sftp.createWriteStream(remotePath, {
+        encoding: "utf8",
+      });
 
       writeStream.on("close", () => {
         // If the uploaded file is in the `c` directory, run gmake
-        if (localPath.startsWith("c/")) {
-          conn.exec(
-            `cd ${p.posix.join(config.deployDirectory, "c")} && gmake`,
-            (err, stream) => {
-              if (err) {
-                console.error("Failed to run gmake:", err);
-                resolve();
-                return;
-              }
-              
-              stream
-                .on("close", () => {
-                  resolve();
-                })
-                .on("data", (data) => {
-                  console.log(data.toString());
-                })
-                .stderr.on("data", (data) => {
-                  process.stderr.write(data);
-                });
+        if (localPath.split(p.sep)[0] === "c") {
+          conn.shell((err, stream) => {
+            if (err) {
+              console.error("Failed to start shell:", err);
+              resolve();
+              return;
             }
-          );
-        } else if (localPath.startsWith("golang/")) {
+
+            if (err) {
+              console.error("Failed to run gmake:", err);
+              resolve();
+              return;
+            }
+
+            let cmd = `mv ${remotePath} ${remotePath}.u\n`;
+            cmd += `iconv -f utf8 -t IBM-1047 ${remotePath}.u > ${remotePath}\n`;
+            cmd += `chtag -t -c IBM-1047 ${remotePath}\n`;
+            cmd += `\ncd ${p.posix.join(config.deployDirectory, "c")}\n`;
+            cmd += `gmake\nexit\n`;
+
+            stream.write(cmd);
+
+            let errText = "";
+            stream
+              .on("close", () => {
+                if (errText.length == 0) {
+                  console.log("\n\t[tasks -> c] gmake succeeded ✔");
+                } else {
+                  console.log(
+                    "\t[tasks -> c] gmake failed ✘\nerror: \n",
+                    errText
+                  );
+                }
+                resolve();
+              })
+              .on("data", (data) => {})
+              .stderr.on("data", (data) => {
+                errText += data;
+              });
+          });
+        } else if (localPath.split(p.sep)[0] == "golang") {
           // Run `go build` for golang files
           conn.shell((err, stream) => {
             if (err) {
@@ -77,16 +102,27 @@ async function uploadFile(localPath, remotePath) {
               return;
             }
 
-            let buffer = "";
+            let errText = "";
+            let cmd = `mv ${remotePath} ${remotePath}.u\n`;
+            cmd += `iconv -f utf8 -t IBM-1047 ${remotePath}.u > ${remotePath}\n`;
+            cmd += `chtag -t -c IBM-1047 ${remotePath}\n`;
+
+            stream.write(cmd);
             stream
               .on("close", () => {
+                if (errText.length == 0) {
+                  console.log("\n\t[tasks -> golang] go build succeeded ✔");
+                } else {
+                  console.log(
+                    "\t[tasks -> c] go build failed ✘\nerror: \n",
+                    errText
+                  );
+                }
                 resolve();
               })
-              .on("data", (data) => {
-                  console.log(data.toString());
-              })
+              .on("data", (data) => {})
               .stderr.on("data", (data) => {
-                process.stderr.write(data);
+                errText += data;
               });
 
             stream.end(
@@ -111,20 +147,24 @@ async function uploadFile(localPath, remotePath) {
 }
 
 watcher.on("add", async (path, stats) => {
-  process.stdout.write(`${Date.now().toLocaleString()} [+] ${path}`);
+  process.stdout.write(`${new Date().toLocaleString()} [+] ${path}`);
   try {
-    await uploadFile(path, p.posix.join(config.deployDirectory, path));
-    console.log(" ✔");
+    await uploadFile(
+      path,
+      p.posix.join(config.deployDirectory, path.replace(p.sep, p.posix.sep))
+    );
   } catch (err) {
     console.error(" ✘", err);
   }
 });
 
 watcher.on("change", async (path, stats) => {
-  process.stdout.write(`${Date.now().toLocaleString()} [~] ${path}`);
+  process.stdout.write(`${new Date().toLocaleString()} [~] ${path}`);
   try {
-    await uploadFile(path, p.posix.join(config.deployDirectory, path));
-    console.log(" ✔");
+    await uploadFile(
+      path,
+      p.posix.join(config.deployDirectory, path.replace(p.sep, p.posix.sep))
+    );
   } catch (err) {
     console.error(" ✘", err);
   }
