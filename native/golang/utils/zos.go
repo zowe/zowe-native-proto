@@ -18,6 +18,13 @@ import (
 	"syscall"
 )
 
+// Enables auto conversion on untagged stdio. This is necessary because the z/OS
+// Go runtime tags stdio with 1047 (EBCDIC) if TTY and 819 (ASCII) if not TTY.
+// We always want 1047 for compatibility with the z/OS OpenSSH implementation,
+// unless the user explicitly sets the CCSID through environment variables.
+//
+// See https://www.ibm.com/docs/en/zos/3.1.0?topic=systems-openssh-globalization
+// and https://github.com/ibmruntimes/zoslib/blob/zopen/src/zos.cc#L2742
 func SetAutoConvOnUntaggedStdio() {
 	env_vars := []string{"__STDIN_CCSID", "__STDOUT_CCSID", "__STDERR_CCSID"}
 	for i, file := range []*os.File{os.Stdin, os.Stdout, os.Stderr} {
@@ -34,6 +41,7 @@ func SetAutoConvOnUntaggedStdio() {
 	}
 }
 
+// Implements the C `isatty` method without external dependencies
 func isatty(fd int) bool {
 	var st syscall.Stat_t
 	if err := syscall.Fstat(fd, &st); err != nil {
