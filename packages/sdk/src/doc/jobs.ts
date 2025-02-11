@@ -17,26 +17,67 @@ import type * as common from "./common.ts"
 
 export interface ListJobsRequest extends common.ListOptions {
   command: "listJobs";
+  /**
+   * Filter jobs by matching job owner (optional)
+   */
   owner?: string;
+  /**
+   * Filter jobs by prefix (optional)
+   */
   prefix?: string;
+  /**
+   * Filter jobs by status (optional)
+   */
   status?: string;
 }
 export interface ListSpoolsRequest {
   command: "listSpools";
+  /**
+   * Job ID to list spools for
+   */
   jobId: string;
 }
 export interface ReadSpoolRequest {
   command: "readSpool";
+  /**
+   * Desired encoding for the spool file (optional)
+   */
   encoding?: string;
+  /**
+   * Spool ID to read under the given job ID
+   */
   spoolId: number /* int */;
+  /**
+   * Job ID with spools to read from
+   */
   jobId: string;
 }
 export interface GetJclRequest {
   command: "getJcl";
+  /**
+   * Job ID to get JCL for
+   */
   jobId: string;
 }
 export interface GetStatusRequest {
   command: "getStatus";
+  /**
+   * Job ID to get status for
+   */
+  jobId: string;
+}
+export interface SubmitJobRequest {
+  command: "submitJob";
+  /**
+   * JCL to submit
+   */
+  jcl: string;
+}
+export interface CancelJobRequest {
+  command: "cancelJob";
+  /**
+   * Job ID to cancel
+   */
   jobId: string;
 }
 
@@ -44,21 +85,48 @@ export interface GetStatusRequest {
 // source: responses.go
 
 export interface ListJobsResponse {
+  /**
+   * List of returned jobs
+   */
   items: common.Job[];
 }
 export interface ListSpoolsResponse {
+  /**
+   * List of returned spools
+   */
   items: common.Spool[];
 }
 export interface GetJclResponse {
+  /**
+   * Job ID for the returned JCL
+   */
   jobId: string;
+  /**
+   * JCL contents
+   */
   data: string;
 }
 export interface ReadSpoolResponse {
+  /**
+   * Desired encoding for the spool file (optional)
+   */
   encoding?: string;
+  /**
+   * Spool ID matching the returned spool contents
+   */
   spoolId: number /* int */;
+  /**
+   * Job ID associated with the returned spool
+   */
   jobId: string;
+  /**
+   * Spool contents
+   */
   data: Buffer | string;
 }
 export interface GetStatusResponse {
+  /**
+   * List of returned job statuses
+   */
   items: common.Job[];
 }

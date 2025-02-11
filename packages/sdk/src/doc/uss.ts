@@ -17,34 +17,91 @@ import type * as common from "./common.ts"
 
 export interface ListFilesRequest extends common.ListOptions {
   command: "listFiles";
+  /**
+   * Directory to list files for
+   */
   fspath: string;
 }
 export interface ReadFileRequest {
   command: "readFile";
+  /**
+   * Desired encoding for the file (optional)
+   */
   encoding?: string;
+  /**
+   * Remote file path to read contents from
+   */
   fspath: string;
 }
 export interface WriteFileRequest {
   command: "writeFile";
+  /**
+   * Desired encoding for the file (optional)
+   */
   encoding?: string;
+  /**
+   * Remote file path to write contents to
+   */
   fspath: string;
+  /**
+   * New contents for the file
+   */
   data: string;
 }
 export interface DeleteFileRequest {
   command: "deleteFile";
+  /**
+   * Remote file path to delete
+   */
   fspath: string;
+  /**
+   * Whether to delete the file recursively
+   */
   recursive: string;
 }
 export interface ChmodFileRequest {
   command: "chmodFile";
+  /**
+   * Desired permissions for the file (represented as an octal value, e.g. "755")
+   */
   mode: string;
+  /**
+   * Remote file path to change permissions for
+   */
   fspath: string;
+  /**
+   * Whether to change permissions recursively
+   */
   recursive: boolean;
 }
 export interface ChownFileRequest {
   command: "chownFile";
+  /**
+   * New owner for the file
+   */
   owner: string;
+  /**
+   * Remote file path to change ownership for
+   */
   fspath: string;
+  /**
+   * Whether to apply ownership to inner files and directories
+   */
+  recursive: boolean;
+}
+export interface ChtagFileRequest {
+  command: "chtagFile";
+  /**
+   * Remote file path to change tags for
+   */
+  fspath: string;
+  /**
+   * New tag for the file
+   */
+  tag: string;
+  /**
+   * Whether to apply the tag to inner files and directories
+   */
   recursive: boolean;
 }
 
@@ -52,12 +109,27 @@ export interface ChownFileRequest {
 // source: responses.go
 
 export interface GenericFileResponse {
+  /**
+   * Whether the operation was successful
+   */
   success: boolean;
+  /**
+   * Remote file path
+   */
   fspath: string;
 }
 export interface ReadFileResponse {
+  /**
+   * Returned encoding for the file
+   */
   encoding?: string;
+  /**
+   * Remote file path
+   */
   fspath: string;
+  /**
+   * File contents
+   */
   data: Buffer | string;
 }
 export type WriteFileResponse = GenericFileResponse;
@@ -68,3 +140,4 @@ export interface ListFilesResponse {
 export type DeleteFileResponse = GenericFileResponse;
 export type ChmodFileResponse = GenericFileResponse;
 export type ChownFileResponse = GenericFileResponse;
+export type ChtagFileResponse = GenericFileResponse;

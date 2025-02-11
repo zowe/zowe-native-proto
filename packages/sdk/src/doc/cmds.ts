@@ -17,15 +17,27 @@ import type * as common from "./common.ts"
 
 export interface IssueConsoleRequest {
   command: "consoleCommand";
+  /**
+   * Console command to execute
+   */
   commandText: string;
+  /**
+   * Name of the console
+   */
   consoleName: string;
 }
 export interface IssueTsoRequest {
   command: "tsoCommand";
+  /**
+   * TSO command to execute
+   */
   commandText: string;
 }
 export interface IssueUnixRequest {
   command: "unixCommand";
+  /**
+   * UNIX command to execute
+   */
   commandText: string;
 }
 
@@ -33,11 +45,20 @@ export interface IssueUnixRequest {
 // source: responses.go
 
 export interface IssueConsoleResponse {
+  /**
+   * Data returned from the console command
+   */
   data: string;
 }
 export interface IssueTsoResponse {
+  /**
+   * Data returned from the TSO command
+   */
   data: string;
 }
 export interface IssueUnixResponse {
+  /**
+   * Data returned from the UNIX command
+   */
   data: string;
 }

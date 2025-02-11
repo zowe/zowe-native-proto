@@ -17,30 +17,64 @@ import type * as common from "./common.ts"
 
 export interface ListDatasetsRequest extends common.ListOptions, common.ListDatasetOptions {
   command: "listDatasets";
+  /**
+   * Pattern to match against dataset names
+   */
   pattern: string;
+  /**
+   * Whether to include attributes in the response
+   */
   attributes?: boolean;
 }
 export interface ListDsMembersRequest extends common.ListOptions, common.ListDatasetOptions {
   command: "listDsMembers";
+  /**
+   * Dataset name
+   */
   dsname: string;
+  /**
+   * Whether to include attributes in the response
+   */
+  attributes?: boolean;
 }
 export interface ReadDatasetRequest {
   command: "readDataset";
+  /**
+   * Desired encoding for the dataset (optional)
+   */
   encoding?: string;
+  /**
+   * Dataset name
+   */
   dsname: string;
 }
 export interface WriteDatasetRequest {
   command: "writeDataset";
+  /**
+   * Desired encoding for the dataset (optional)
+   */
   encoding?: string;
+  /**
+   * Dataset name
+   */
   dsname: string;
+  /**
+   * Dataset contents
+   */
   data: string;
 }
 export interface DeleteDatasetRequest {
   command: "deleteDataset";
+  /**
+   * Dataset name
+   */
   dsname: string;
 }
 export interface RestoreDatasetRequest {
   command: "restoreDataset";
+  /**
+   * Dataset name
+   */
   dsname: string;
 }
 
@@ -48,26 +82,62 @@ export interface RestoreDatasetRequest {
 // source: responses.go
 
 export interface WriteDatasetResponse {
+  /**
+   * Whether the new data was stored successfully
+   */
   success: boolean;
+  /**
+   * Dataset name
+   */
   dataset: string;
 }
 export interface RestoreDatasetResponse {
+  /**
+   * Whether the dataset was restored successfully
+   */
   success: boolean;
 }
 export interface ReadDatasetResponse {
+  /**
+   * Desired encoding for the dataset (optional)
+   */
   encoding?: string;
+  /**
+   * Dataset name
+   */
   dataset: string;
+  /**
+   * Dataset contents
+   */
   data: Buffer | string;
 }
 export interface ListDatasetsResponse {
+  /**
+   * List of returned datasets
+   */
   items: common.Dataset[];
+  /**
+   * Number of rows returned
+   */
   returnedRows: number /* int */;
 }
 export interface ListDsMembersResponse {
+  /**
+   * List of returned dataset members
+   */
   items: common.DsMember[];
+  /**
+   * Number of rows returned
+   */
   returnedRows: number /* int */;
 }
 export interface DeleteDatasetResponse {
+  /**
+   * Whether the dataset was deleted successfully
+   */
   success: boolean;
+  /**
+   * Dataset name
+   */
   dsname: string;
 }
