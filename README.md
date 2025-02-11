@@ -101,7 +101,7 @@ You should be able to find the startup.mk file in `/samples`
 
 ### Building zut.o - FSUM3221 xlc++: Cannot spawn program /usr/lpp/cbclib/xlc/exe/ccndrvr
 
-The only way we (DKelosky) knew how to fix this is via SYSVIEW commands.
+One workaround is to add `CBC.SCCNCMP` to your system LINKLIST concatenation. Below is an example of doing this via SYSVIEW commands.
 
 :warning: These commands could ruin your system. :warning:
 
