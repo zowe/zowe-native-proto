@@ -16,23 +16,25 @@ import (
 	"fmt"
 	"log"
 	"os"
+	cmds "zowe-native-proto/ioserver/types/cmds"
+	utils "zowe-native-proto/ioserver/utils"
 )
 
 func HandleConsoleCommandRequest(jsonData []byte) {
-	var request IssueConsoleRequest
+	var request cmds.IssueConsoleRequest
 	err := json.Unmarshal(jsonData, &request)
 	if err != nil {
 		return
 	}
-	args := []string{"./zowexx", "console", "issue", request.Command, "--cn", request.Console}
-	out, err := buildCommand(args).Output()
+	args := []string{"./zowexx", "console", "issue", request.CommandText, "--cn", request.ConsoleName}
+	out, err := utils.BuildCommand(args).Output()
 	if err != nil {
 		log.Println("Error executing command:", err)
 		log.Println(string(out))
 		return
 	}
 
-	response := IssueConsoleResponse{
+	response := cmds.IssueConsoleResponse{
 		Data: string(out),
 	}
 	v, err := json.Marshal(response)

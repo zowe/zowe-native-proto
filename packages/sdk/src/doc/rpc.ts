@@ -9,13 +9,8 @@
  *
  */
 
-package main
-
-type ListOptions struct {
-	MaxItems        int `json:"maxItems,omitempty"`
-	ResponseTimeout int `json:"responseTimeout,omitempty"`
+export interface IRpcRequest {
+    command: string;
 }
 
-type ListDatasetOptions struct {
-	Start string `json:"start"`
-}
+export interface IRpcResponse {}

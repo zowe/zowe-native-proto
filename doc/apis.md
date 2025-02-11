@@ -17,8 +17,7 @@
 | _Read data set/member_   | ✅              | ✅  | 🚧 <sup>2</sup> | ✅         | ✅  | ✅  | ✅   |
 | _Write data set/member_  | ✅              | ✅  | 🚧 <sup>2</sup> | ✅         | ✅  | ❌  | ❌   |
 | _Create data set_        | ✅              | ✅  | ✅              | ❌         | ❌  | ❌  | ❌   |
-| _Delete data set_        | ✅              | ✅  | ✅              | ❌         | ❌  | ❌  | ❌   |
-| _Delete data set member_ | ✅              | ✅  | ❌              | ❌         | ❌  | ❌  | ❌   |
+| _Delete data set/member_ | ✅              | ✅  | ✅              | ❌         | ❌  | ❌  | ❌   |
 | Migrate data set         | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | Recall data set          | 🚧 <sup>3</sup> | ❌  | ✅              | ✅         | ✅  | ✅  | ❌   |
 | Delete migrated data set | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
@@ -45,7 +44,7 @@
 | Move file/directory      | ✅     | ✅  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | _`chmod` file/directory_ | ✅     | ❌  | ✅              | ✅         | ✅  | ✅  | ❌   |
 | _`chown` file/directory_ | ✅     | ❌  | ✅              | ❌         | ❌  | ❌  | ❌   |
-| _`chtag` file/directory_ | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
+| _`chtag` USS file_       | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | Invoke `extattr`         | ✅     | ❌  | ❌              | ❌         | ❌  | ➖  | ➖   |
 | Get ACL entries          | ✅     | ❌  | ❌              | ❌         | ❌  | ➖  | ➖   |
 | Set ACL entries          | ✅     | ❌  | ❌              | ❌         | ❌  | ➖  | ➖   |
@@ -65,27 +64,25 @@
 
 | Operation          | z/OSMF | FTP | Backend         | Middleware | SDK | CLI | VSCE |
 | ------------------ | ------ | --- | --------------- | ---------- | --- | --- | ---- |
-| _Get job status_   | ✅     | ✅  | ✅              | ✅         | ✅  | ✅  | ❌   |
-| _List jobs_        | ✅     | ✅  | 🚧 <sup>1</sup> | ✅         | ✅  | ✅  | ✅   |
-| _List spool files_ | ✅     | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
-| _Read spool file_  | ✅     | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
-| _Get job JCL_      | ✅     | ❌  | ✅              | ✅         | ✅  | ✅  | ✅   |
-| _Submit job_       | ✅     | ✅  | ✅              | ❌         | ❌  | ❌  | ❌   |
-| Hold job           | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
-| Release job        | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
-| Change job class   | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ➖   |
-| Cancel job         | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
-| _Delete job_       | ✅     | ✅  | ✅              | ❌         | ❌  | ❌  | ❌   |
-
-1. Listing by prefix and status is not supported
+| _Get job status_   | ✅     | ✅  | ✅               | ✅         | ✅  | ✅  | ❌   |
+| _List jobs_        | ✅     | ✅  | ✅               | ✅         | ✅  | ✅  | ✅   |
+| _List spool files_ | ✅     | ✅  | ✅               | ✅         | ✅  | ✅  | ✅   |
+| _Read spool file_  | ✅     | ✅  | ✅               | ✅         | ✅  | ✅  | ✅   |
+| _Get job JCL_      | ✅     | ❌  | ✅               | ✅         | ✅  | ✅  | ✅   |
+| _Submit job_       | ✅     | ✅  | ✅               | ❌         | ❌  | ❌  | ❌   |
+| Hold job           | ✅     | ❌  | ❌               | ❌         | ❌  | ❌  | ❌   |
+| Release job        | ✅     | ❌  | ❌               | ❌         | ❌  | ❌  | ❌   |
+| Change job class   | ✅     | ❌  | ❌               | ❌         | ❌  | ❌  | ➖   |
+| Cancel job         | ✅     | ❌  | ❌               | ❌         | ❌  | ❌  | ❌   |
+| _Delete job_       | ✅     | ✅  | ✅               | ❌         | ❌  | ❌  | ❌   |
 
 ## Console
 
 | Operation                | z/OSMF | FTP | Backend         | Middleware | SDK | CLI | VSCE |
 | ------------------------ | ------ | --- | --------------- | ---------- | --- | --- | ---- |
-| Issue MVS command        | ✅     | ❌  | ✅ <sup>1</sup> | ✅         | ✅  | ✅  | ❌   |
-| Get MVS command response | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
-| Get MVS detect result    | ✅     | ❌  | ❌              | ❌         | ❌  | ➖  | ➖   |
+| Issue MVS command        | ✅     | ❌  | ✅ <sup>1</sup>  | ✅         | ✅  | ✅  | ❌   |
+| Get MVS command response | ✅     | ❌  | ❌               | ❌         | ❌  | ❌  | ❌   |
+| Get MVS detect result    | ✅     | ❌  | ❌               | ❌         | ❌  | ➖  | ➖   |
 
 1. Requires APF authorization
 
@@ -95,7 +92,7 @@
 | ------------------------ | ------ | --- | ------- | ---------- | --- | --- | ---- |
 | Start TSO address space  | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌   |
 | Start TSO app            | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ➖   |
-| Issue TSO command        | ✅     | ❌  | ❌      | ❌         | ✅  | ❌  | ❌   |
+| Issue TSO command        | ✅     | ❌  | ✅      | ❌         | ✅  | ❌  | ❌   |
 | Get TSO command response | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌   |
 | Send TSO message         | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌   |
 | Send TSO app message     | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ➖   |

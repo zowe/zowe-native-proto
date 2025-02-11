@@ -35,7 +35,7 @@ export class SshUssApi extends SshCommonApi implements MainframeInteraction.IUss
         options: zosfiles.IDownloadSingleOptions,
     ): Promise<zosfiles.IZosFilesResponse> {
         const response = await (await this.client).uss.readFile({
-            path: ussFilePath,
+            fspath: ussFilePath,
             encoding: options.binary ? "binary" : (options.encoding ?? "IBM-1047"),
         });
         if (options.file != null) {
@@ -54,9 +54,9 @@ export class SshUssApi extends SshCommonApi implements MainframeInteraction.IUss
         options?: zosfiles.IUploadOptions,
     ): Promise<zosfiles.IZosFilesResponse> {
         const response = await (await this.client).uss.writeFile({
-            path: filePath,
+            fspath: filePath,
             encoding: options?.binary ? "binary" : (options?.encoding ?? "IBM-1047"),
-            contents: ZSshUtils.encodeByteArray(buffer),
+            data: ZSshUtils.encodeByteArray(buffer),
         });
         return this.buildZosFilesResponse({ etag: filePath });
     }
@@ -67,9 +67,9 @@ export class SshUssApi extends SshCommonApi implements MainframeInteraction.IUss
         options?: zosfiles.IUploadOptions,
     ): Promise<zosfiles.IZosFilesResponse> {
         const response = await (await this.client).uss.writeFile({
-            path: ussFilePath,
+            fspath: ussFilePath,
             encoding: options?.encoding,
-            contents: ZSshUtils.encodeByteArray(readFileSync(inputFilePath)),
+            data: ZSshUtils.encodeByteArray(readFileSync(inputFilePath)),
         });
         return this.buildZosFilesResponse({ etag: ussFilePath });
     }
