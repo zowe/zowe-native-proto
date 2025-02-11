@@ -15,11 +15,13 @@ In the `tools/build` folder, create your own `config.local.json` adjacent to `co
 }
 ```
 
+**Tip:** You can use a `privateKey` instead of `password` in the config.
+
 ## Deploy & Build
 
 ### z/OS
 
-- `npm run tools:build` - build local tool to manage z/OS builds
+- `npm run tools:build` - build local tool to manage z/OS builds (only needed once)
 - `npm run tools:init` - create project folder structure on z/OS (only needed once)
 - `npm run tools:deploy` - deploy source files to z/OS
   - **Tip:** You can deploy just one file or directory like this: `npm run tools:deploy c/zowex.cpp`
