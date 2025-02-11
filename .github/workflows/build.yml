@@ -1,4 +1,4 @@
-name: build
+name: client-build
 
 on: [pull_request]
 
@@ -17,4 +17,19 @@ jobs:
 
       - run: npm run build
 
-      # - run: npm run package
+      - run: |
+          gh run download --name zowe-server
+          mkdir packages/cli/bin && cp server.pax.Z packages/cli/bin/
+          mkdir packages/vsce/bin && cp server.pax.Z packages/vsce/bin/
+
+      - run: npm run package
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zowe-native-proto-cli
+          path: dist/*.tgz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zowe-native-proto-vsce
+          path: dist/*.vsix
