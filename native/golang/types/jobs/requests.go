@@ -14,31 +14,52 @@ package jobs
 import common "zowe-native-proto/ioserver/types/common"
 
 type ListJobsRequest struct {
-	Command            string `json:"command" tstype:"\"listJobs\""`
-	Owner              string `json:"owner,omitempty"`
-	Prefix             string `json:"prefix,omitempty"`
+	Command string `json:"command" tstype:"\"listJobs\""`
+	// Filter jobs by matching job owner (optional)
+	Owner string `json:"owner,omitempty"`
+	// Filter jobs by prefix (optional)
+	Prefix string `json:"prefix,omitempty"`
+	// Filter jobs by status (optional)
 	Status             string `json:"status,omitempty"`
 	common.ListOptions `tstype:",extends"`
 }
 
 type ListSpoolsRequest struct {
 	Command string `json:"command" tstype:"\"listSpools\""`
-	JobId   string `json:"jobId"`
+	// Job ID to list spools for
+	JobId string `json:"jobId"`
 }
 
 type ReadSpoolRequest struct {
-	Command  string `json:"command" tstype:"\"readSpool\""`
+	Command string `json:"command" tstype:"\"readSpool\""`
+	// Desired encoding for the spool file (optional)
 	Encoding string `json:"encoding,omitempty"`
-	DsnKey   int    `json:"spoolId"`
-	JobId    string `json:"jobId"`
+	// Spool ID to read under the given job ID
+	DsnKey int `json:"spoolId"`
+	// Job ID with spools to read from
+	JobId string `json:"jobId"`
 }
 
 type GetJclRequest struct {
 	Command string `json:"command" tstype:"\"getJcl\""`
-	JobId   string `json:"jobId"`
+	// Job ID to get JCL for
+	JobId string `json:"jobId"`
 }
 
 type GetStatusRequest struct {
 	Command string `json:"command" tstype:"\"getStatus\""`
-	JobId   string `json:"jobId"`
+	// Job ID to get status for
+	JobId string `json:"jobId"`
+}
+
+type SubmitJobRequest struct {
+	Command string `json:"command" tstype:"\"submitJob\""`
+	// JCL to submit
+	Jcl string `json:"jcl"`
+}
+
+type CancelJobRequest struct {
+	Command string `json:"command" tstype:"\"cancelJob\""`
+	// Job ID to cancel
+	JobId string `json:"jobId"`
 }

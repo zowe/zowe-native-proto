@@ -14,25 +14,34 @@ package jobs
 import common "zowe-native-proto/ioserver/types/common"
 
 type ListJobsResponse struct {
+	// List of returned jobs
 	Items []common.Job `json:"items" tstype:"common.Job[]"`
 }
 
 type ListSpoolsResponse struct {
+	// List of returned spools
 	Items []common.Spool `json:"items" tstype:"common.Spool[]"`
 }
 
 type GetJclResponse struct {
+	// Job ID for the returned JCL
 	JobId string `json:"jobId"`
-	Data  string `json:"data"`
+	// JCL contents
+	Data string `json:"data"`
 }
 
 type ReadSpoolResponse struct {
+	// Desired encoding for the spool file (optional)
 	Encoding string `json:"encoding,omitempty"`
-	DsnKey   int    `json:"spoolId"`
-	JobId    string `json:"jobId"`
-	Data     []byte `json:"data" tstype:"Buffer | string"`
+	// Spool ID matching the returned spool contents
+	DsnKey int `json:"spoolId"`
+	// Job ID associated with the returned spool
+	JobId string `json:"jobId"`
+	// Spool contents
+	Data []byte `json:"data" tstype:"Buffer | string"`
 }
 
 type GetStatusResponse struct {
+	// List of returned job statuses
 	Items []common.Job `json:"items" tstype:"common.Job[]"`
 }

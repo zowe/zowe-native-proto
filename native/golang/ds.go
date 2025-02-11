@@ -24,6 +24,7 @@ import (
 	utils "zowe-native-proto/ioserver/utils"
 )
 
+// HandleReadDatasetRequest handles a ReadDatasetRequest by invoking the `zowex data-set view` command
 func HandleReadDatasetRequest(jsonData []byte) {
 	var dsRequest ds.ReadDatasetRequest
 	err := json.Unmarshal(jsonData, &dsRequest)
@@ -58,15 +59,16 @@ func HandleReadDatasetRequest(jsonData []byte) {
 	}
 }
 
+// HandleWriteDatasetRequest handles a WriteDatasetRequest by invoking the `zowex data-set write` command
 func HandleWriteDatasetRequest(jsonData []byte) {
 	var dsRequest ds.WriteDatasetRequest
 	err := json.Unmarshal(jsonData, &dsRequest)
 	if err != nil || (dsRequest.Encoding == "" && dsRequest.Dsname == "") {
-		// log.Println("Error decoding ReadDatasetRequest:", err)
+		// log.Println("Error decoding WriteDatasetRequest:", err)
 		return
 	}
 
-	// log.Println("ReadDatasetRequest received:", dsRequest.Dataset, dsRequest.Encoding)
+	// log.Println("WriteDatasetRequest received:", dsRequest.Dataset, dsRequest.Encoding)
 	decodedBytes, err := base64.StdEncoding.DecodeString(dsRequest.Data)
 	if err != nil {
 		log.Println("Error decoding base64 contents:", err)
@@ -111,6 +113,7 @@ func HandleWriteDatasetRequest(jsonData []byte) {
 	}
 }
 
+// HandleListDatasetsRequest handles a ListDatasetsRequest by invoking the `zowex data-set list` command
 func HandleListDatasetsRequest(jsonData []byte) {
 	listRequest := ds.ListDatasetsRequest{
 		Attributes: false,
@@ -156,6 +159,7 @@ func HandleListDatasetsRequest(jsonData []byte) {
 	}
 }
 
+// HandleListDsMembersRequest handles a ListDsMembersRequest by invoking the `zowex data-set list-members` command
 func HandleListDsMembersRequest(jsonData []byte) {
 	var listRequest ds.ListDsMembersRequest
 	err := json.Unmarshal(jsonData, &listRequest)
@@ -200,6 +204,7 @@ func HandleListDsMembersRequest(jsonData []byte) {
 	}
 }
 
+// HandleRestoreDatasetRequest handles a RestoreDatasetRequest by invoking the `zowex data-set restore` command
 func HandleRestoreDatasetRequest(jsonData []byte) {
 	var dsRequest ds.RestoreDatasetRequest
 	err := json.Unmarshal(jsonData, &dsRequest)
@@ -227,6 +232,7 @@ func HandleRestoreDatasetRequest(jsonData []byte) {
 	}
 }
 
+// HandleDeleteDatasetRequest handles a DeleteDatasetRequest by invoking the `zowex data-set delete` command
 func HandleDeleteDatasetRequest(jsonData []byte) {
 	var dsRequest ds.DeleteDatasetRequest
 	err := json.Unmarshal(jsonData, &dsRequest)

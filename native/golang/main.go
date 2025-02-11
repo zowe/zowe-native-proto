@@ -19,11 +19,13 @@ import (
 )
 
 func main() {
+	// Channel for receiving input from stdin
 	input := make(chan []byte)
 
 	go func() {
 		buf := make([]byte, 1024)
 		for {
+			// Read input from stdin
 			n, err := os.Stdin.Read(buf)
 			if err != nil {
 				if err.Error() == "EOF" {
@@ -36,6 +38,7 @@ func main() {
 	}()
 
 	type CommandHandler func([]byte)
+	// Supported ioserver commands
 	commandHandlers := map[string]CommandHandler{
 		"readDataset":    HandleReadDatasetRequest,
 		"readFile":       HandleReadFileRequest,
@@ -53,9 +56,13 @@ func main() {
 		"restoreDataset": HandleRestoreDatasetRequest,
 		"deleteDataset":  HandleDeleteDatasetRequest,
 		"deleteFile":     HandleDeleteFileRequest,
+		"chownFile":      HandleChownFileRequest,
+		"chmodFile":      HandleChmodFileRequest,
+		"chtagFile":      HandleChtagFileRequest,
 	}
 
 	for data := range input {
+		// Parse the command request
 		var request t.CommandRequest
 		err := json.Unmarshal(data, &request)
 		if err != nil {
@@ -63,6 +70,7 @@ func main() {
 			continue
 		}
 
+		// Handle the command request if a supported command is provided
 		if handler, ok := commandHandlers[request.Command]; ok {
 			handler(data)
 		}

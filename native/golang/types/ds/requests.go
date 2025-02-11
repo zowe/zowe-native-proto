@@ -15,39 +15,50 @@ import common "zowe-native-proto/ioserver/types/common"
 
 type ListDatasetsRequest struct {
 	Command string `json:"command" tstype:"\"listDatasets\""`
+	// Pattern to match against dataset names
 	Pattern string `json:"pattern"`
-
+	// Whether to include attributes in the response
 	Attributes                bool `json:"attributes,omitempty"`
 	common.ListOptions        `tstype:",extends"`
 	common.ListDatasetOptions `tstype:",extends"`
 }
 
 type ListDsMembersRequest struct {
-	Command                   string `json:"command" tstype:"\"listDsMembers\""`
-	Dsname                    string `json:"dsname"`
+	Command string `json:"command" tstype:"\"listDsMembers\""`
+	// Dataset name
+	Dsname string `json:"dsname"`
+	// Whether to include attributes in the response
+	Attributes                bool `json:"attributes,omitempty"`
 	common.ListOptions        `tstype:",extends"`
 	common.ListDatasetOptions `tstype:",extends"`
 }
 
 type ReadDatasetRequest struct {
-	Command  string `json:"command" tstype:"\"readDataset\""`
+	Command string `json:"command" tstype:"\"readDataset\""`
+	// Desired encoding for the dataset (optional)
 	Encoding string `json:"encoding,omitempty"`
-	Dsname   string `json:"dsname"`
+	// Dataset name
+	Dsname string `json:"dsname"`
 }
 
 type WriteDatasetRequest struct {
-	Command  string `json:"command" tstype:"\"writeDataset\""`
+	Command string `json:"command" tstype:"\"writeDataset\""`
+	// Desired encoding for the dataset (optional)
 	Encoding string `json:"encoding,omitempty"`
-	Dsname   string `json:"dsname"`
-	Data     string `json:"data"`
+	// Dataset name
+	Dsname string `json:"dsname"`
+	// Dataset contents
+	Data string `json:"data"`
 }
 
 type DeleteDatasetRequest struct {
 	Command string `json:"command" tstype:"\"deleteDataset\""`
-	Dsname  string `json:"dsname"`
+	// Dataset name
+	Dsname string `json:"dsname"`
 }
 
 type RestoreDatasetRequest struct {
 	Command string `json:"command" tstype:"\"restoreDataset\""`
-	Dsname  string `json:"dsname"`
+	// Dataset name
+	Dsname string `json:"dsname"`
 }

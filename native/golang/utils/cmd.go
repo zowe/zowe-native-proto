@@ -19,9 +19,7 @@ import (
 
 var exePath string
 
-/**
- * Shared logic for command builder functions.
- */
+// BuildCommandShared builds a command with the shared logic for command builder functions
 func BuildCommandShared(args []string) *exec.Cmd {
 	cmd := exec.Command(args[0], args[1:]...)
 	if exePath == "" {
@@ -35,18 +33,14 @@ func BuildCommandShared(args []string) *exec.Cmd {
 	return cmd
 }
 
-/**
- * Default builder function for invoking zowex commands.
- */
+// BuildCommand builds a command with _BPXK_AUTOCVT=ON
 func BuildCommand(args []string) *exec.Cmd {
 	cmd := BuildCommandShared(args)
 	cmd.Env = append(os.Environ(), "_BPXK_AUTOCVT=ON")
 	return cmd
 }
 
-/**
- * Builds a command with _BPXK_AUTOCVT=OFF.
- */
+// BuildCommandNoAutocvt builds a command with _BPXK_AUTOCVT=OFF
 func BuildCommandNoAutocvt(args []string) *exec.Cmd {
 	cmd := BuildCommandShared(args)
 	cmd.Env = append(os.Environ(), "_BPXK_AUTOCVT=OFF")

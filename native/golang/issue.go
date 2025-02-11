@@ -20,6 +20,7 @@ import (
 	utils "zowe-native-proto/ioserver/utils"
 )
 
+// HandleConsoleCommandRequest handles a ConsoleCommandRequest by invoking the `zowex console issue` command
 func HandleConsoleCommandRequest(jsonData []byte) {
 	var request cmds.IssueConsoleRequest
 	err := json.Unmarshal(jsonData, &request)

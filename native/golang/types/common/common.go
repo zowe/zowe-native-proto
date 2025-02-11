@@ -12,35 +12,51 @@
 package types
 
 type CommandRequest struct {
+	// Requested command to execute
 	Command string `json:"command"`
 }
 
 type Dataset struct {
-	Name   string `json:"name"`
-	Dsorg  string `json:"dsorg"`
+	// Dataset name
+	Name string `json:"name"`
+	// Dataset organization
+	Dsorg string `json:"dsorg"`
+	// Volume serial number
 	Volser string `json:"volser"`
 }
 
 type DsMember struct {
+	// Dataset member name
 	Name string `json:"name"`
 }
 
 type UssItem struct {
-	Name  string `json:"name"`
-	IsDir bool   `json:"isDir"`
+	// File name
+	Name string `json:"name"`
+	// Whether the item is a directory
+	IsDir bool `json:"isDir"`
 }
 
 type Job struct {
-	Id      string `json:"id"`
-	Name    string `json:"name"`
-	Status  string `json:"status"`
+	// Job ID
+	Id string `json:"id"`
+	// Job name
+	Name string `json:"name"`
+	// Job status
+	Status string `json:"status"`
+	// Job return code
 	Retcode string `json:"retcode"`
 }
 
 type Spool struct {
-	Id       int    `json:"id"`
-	DdName   string `json:"ddname"`
+	// Spool ID
+	Id int `json:"id"`
+	// DD name
+	DdName string `json:"ddname"`
+	// Step name in the job
 	StepName string `json:"stepname"`
-	DsName   string `json:"dsname"`
+	// Dataset name
+	DsName string `json:"dsname"`
+	// Procedure name for the step
 	ProcStep string `json:"procstep"`
 }

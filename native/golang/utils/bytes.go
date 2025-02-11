@@ -17,6 +17,9 @@ import (
 	"strings"
 )
 
+// CollectContentsAsBytes converts a string of bytes into a byte slice.
+// If isByteString is true, the string is assumed to be a space-separated list of hexadecimal values.
+// Otherwise, the string is assumed to be a raw byte string.
 func CollectContentsAsBytes(input string, isByteString bool) []byte {
 	var data []byte
 
@@ -25,8 +28,8 @@ func CollectContentsAsBytes(input string, isByteString bool) []byte {
 		for _, b := range data_split {
 			byteNum, err := strconv.ParseUint(b, 16, 8)
 			if err != nil {
-				log.Println("Error parsing byte:", err)
-				continue
+				log.Fatalf("[CollectContentsAsBytes] Error parsing byte %s in input '%s': %s", b, input, err)
+				break
 			}
 			data = append(data, byte(byteNum))
 		}

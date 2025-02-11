@@ -14,14 +14,19 @@ package uss
 import common "zowe-native-proto/ioserver/types/common"
 
 type GenericFileResponse struct {
-	Success bool   `json:"success"`
-	Path    string `json:"fspath"`
+	// Whether the operation was successful
+	Success bool `json:"success"`
+	// Remote file path
+	Path string `json:"fspath"`
 }
 
 type ReadFileResponse struct {
+	// Returned encoding for the file
 	Encoding string `json:"encoding,omitempty"`
-	Path     string `json:"fspath"`
-	Data     []byte `json:"data" tstype:"Buffer | string"`
+	// Remote file path
+	Path string `json:"fspath"`
+	// File contents
+	Data []byte `json:"data" tstype:"Buffer | string"`
 }
 
 type WriteFileResponse = GenericFileResponse
@@ -34,3 +39,4 @@ type ListFilesResponse struct {
 type DeleteFileResponse = GenericFileResponse
 type ChmodFileResponse = GenericFileResponse
 type ChownFileResponse = GenericFileResponse
+type ChtagFileResponse = GenericFileResponse

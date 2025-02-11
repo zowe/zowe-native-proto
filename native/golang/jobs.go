@@ -23,11 +23,12 @@ import (
 	utils "zowe-native-proto/ioserver/utils"
 )
 
+// HandleListJobsRequest handles a ListJobsRequest by invoking the `zowex job list` command
 func HandleListJobsRequest(jsonData []byte) {
 	var listRequest jobs.ListJobsRequest
 	err := json.Unmarshal(jsonData, &listRequest)
 	if err != nil {
-		// log.Println("Error decoding ListDatasetsRequest:", err)
+		// log.Println("Error decoding ListJobsRequest:", err)
 		return
 	}
 
@@ -69,6 +70,7 @@ func HandleListJobsRequest(jsonData []byte) {
 	}
 }
 
+// HandleListSpoolsRequest handles a ListSpoolsRequest by invoking the `zowex job list-files` command
 func HandleListSpoolsRequest(jsonData []byte) {
 	var listRequest jobs.ListSpoolsRequest
 	err := json.Unmarshal(jsonData, &listRequest)
@@ -117,6 +119,7 @@ func HandleListSpoolsRequest(jsonData []byte) {
 	}
 }
 
+// HandleReadSpoolRequest handles a ReadSpoolRequest by invoking the `zowex job view-file` command
 func HandleReadSpoolRequest(jsonData []byte) {
 	var request jobs.ReadSpoolRequest
 	err := json.Unmarshal(jsonData, &request)
@@ -152,6 +155,7 @@ func HandleReadSpoolRequest(jsonData []byte) {
 	}
 }
 
+// HandleGetJclRequest handles a GetJclRequest by invoking the `zowex job view-jcl` command
 func HandleGetJclRequest(jsonData []byte) {
 	var request jobs.GetJclRequest
 	err := json.Unmarshal(jsonData, &request)
@@ -179,8 +183,9 @@ func HandleGetJclRequest(jsonData []byte) {
 	}
 }
 
+// HandleGetStatusRequest handles a GetStatusRequest by invoking the `zowex job view-status` command
 func HandleGetStatusRequest(jsonData []byte) {
-	var request jobs.GetJclRequest
+	var request jobs.GetStatusRequest
 	err := json.Unmarshal(jsonData, &request)
 	if err != nil {
 		return
@@ -193,7 +198,6 @@ func HandleGetStatusRequest(jsonData []byte) {
 	}
 	returnedJobs := strings.Split(strings.TrimSpace(string(out)), "\n")
 
-	// log.Println(jobs)
 	jobsResponse := jobs.ListJobsResponse{
 		Items: make([]t.Job, len(returnedJobs)),
 	}

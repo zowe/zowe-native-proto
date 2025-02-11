@@ -12,13 +12,16 @@
 package cmds
 
 type IssueConsoleResponse struct {
+	// Data returned from the console command
 	Data string `json:"data"`
 }
 
 type IssueTsoResponse struct {
+	// Data returned from the TSO command
 	Data string `json:"data"`
 }
 
 type IssueUnixResponse struct {
+	// Data returned from the UNIX command
 	Data string `json:"data"`
 }
