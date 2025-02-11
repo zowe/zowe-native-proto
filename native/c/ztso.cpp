@@ -8,6 +8,7 @@
  * Copyright Contributors to the Zowe Project.
  *
  */
+
 #define _XOPEN_SOURCE
 
 #include <stdio.h>
