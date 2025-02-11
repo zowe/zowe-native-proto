@@ -16,6 +16,11 @@ type CommandRequest struct {
 	Command string `json:"command"`
 }
 
+type ErrorResponse struct {
+	// Error details
+	Details string `json:"details"`
+}
+
 type Dataset struct {
 	// Dataset name
 	Name string `json:"name"`

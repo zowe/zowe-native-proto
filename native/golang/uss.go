@@ -14,7 +14,6 @@ package main
 import (
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -65,12 +64,7 @@ func HandleListFilesRequest(jsonData []byte) {
 		ussResponse.ReturnedRows = len(ussResponse.Items)
 	}
 
-	v, err := json.Marshal(ussResponse)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-	} else {
-		fmt.Println(string(v))
-	}
+	utils.PrintCommandResponse(ussResponse)
 }
 
 func HandleReadFileRequest(jsonData []byte) {
@@ -99,12 +93,7 @@ func HandleReadFileRequest(jsonData []byte) {
 		Path:     request.Path,
 		Data:     data,
 	}
-	v, err := json.Marshal(response)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-	} else {
-		fmt.Println(string(v))
-	}
+	utils.PrintCommandResponse(response)
 }
 
 // HandleWriteFileRequest handles a WriteFileRequest by invoking the `zowex uss write` command
@@ -153,12 +142,7 @@ func HandleWriteFileRequest(jsonData []byte) {
 		Success: true,
 		Path:    request.Path,
 	}
-	v, err := json.Marshal(response)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-	} else {
-		fmt.Println(string(v))
-	}
+	utils.PrintCommandResponse(response)
 }
 
 // HandleDeleteFileRequest handles a DeleteFileRequest by invoking the `zowex uss delete` command
@@ -182,12 +166,7 @@ func HandleDeleteFileRequest(jsonData []byte) {
 	// discard CLI output as its currently unused
 	_ = out
 
-	v, err := json.Marshal(response)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-	} else {
-		fmt.Println(string(v))
-	}
+	utils.PrintCommandResponse(response)
 }
 
 // HandleChownFileRequest handles a ChownFileRequest by invoking the `zowex uss chown` command
@@ -214,12 +193,7 @@ func HandleChownFileRequest(jsonData []byte) {
 	// discard CLI output as its currently unused
 	_ = out
 
-	v, err := json.Marshal(response)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-	} else {
-		fmt.Println(string(v))
-	}
+	utils.PrintCommandResponse(response)
 }
 
 // HandleChmodFileRequest handles a ChmodFileRequest by invoking the `zowex uss chmod` command
@@ -246,12 +220,7 @@ func HandleChmodFileRequest(jsonData []byte) {
 	// discard CLI output as its currently unused
 	_ = out
 
-	v, err := json.Marshal(response)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-	} else {
-		fmt.Println(string(v))
-	}
+	utils.PrintCommandResponse(response)
 }
 
 // HandleChtagFileRequest handles a ChtagFileRequest by invoking the `zowex uss chtag` command
@@ -278,10 +247,5 @@ func HandleChtagFileRequest(jsonData []byte) {
 	// discard CLI output as its currently unused
 	_ = out
 
-	v, err := json.Marshal(response)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-	} else {
-		fmt.Println(string(v))
-	}
+	utils.PrintCommandResponse(response)
 }

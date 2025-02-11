@@ -14,9 +14,7 @@ package main
 import (
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"log"
-	"os"
 	"strings"
 
 	t "zowe-native-proto/ioserver/types/common"
@@ -51,12 +49,7 @@ func HandleReadDatasetRequest(jsonData []byte) {
 		Dataset:  dsRequest.Dsname,
 		Data:     data,
 	}
-	v, err := json.Marshal(dsResponse)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-	} else {
-		fmt.Println(string(v))
-	}
+	utils.PrintCommandResponse(dsResponse)
 }
 
 // HandleWriteDatasetRequest handles a WriteDatasetRequest by invoking the `zowex data-set write` command
@@ -105,12 +98,7 @@ func HandleWriteDatasetRequest(jsonData []byte) {
 		Success: true,
 		Dataset: dsRequest.Dsname,
 	}
-	v, err := json.Marshal(dsResponse)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-	} else {
-		fmt.Println(string(v))
-	}
+	utils.PrintCommandResponse(dsResponse)
 }
 
 // HandleListDatasetsRequest handles a ListDatasetsRequest by invoking the `zowex data-set list` command
@@ -151,12 +139,7 @@ func HandleListDatasetsRequest(jsonData []byte) {
 	}
 	dsResponse.ReturnedRows = len(datasets)
 
-	v, err := json.Marshal(dsResponse)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-	} else {
-		fmt.Println(string(v))
-	}
+	utils.PrintCommandResponse(dsResponse)
 }
 
 // HandleListDsMembersRequest handles a ListDsMembersRequest by invoking the `zowex data-set list-members` command
@@ -196,12 +179,7 @@ func HandleListDsMembersRequest(jsonData []byte) {
 		dsResponse.ReturnedRows++
 	}
 
-	v, err := json.Marshal(dsResponse)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-	} else {
-		fmt.Println(string(v))
-	}
+	utils.PrintCommandResponse(dsResponse)
 }
 
 // HandleRestoreDatasetRequest handles a RestoreDatasetRequest by invoking the `zowex data-set restore` command
@@ -224,12 +202,7 @@ func HandleRestoreDatasetRequest(jsonData []byte) {
 	dsResponse := ds.WriteDatasetResponse{
 		Success: true,
 	}
-	v, err := json.Marshal(dsResponse)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-	} else {
-		fmt.Println(string(v))
-	}
+	utils.PrintCommandResponse(dsResponse)
 }
 
 // HandleDeleteDatasetRequest handles a DeleteDatasetRequest by invoking the `zowex data-set delete` command
@@ -253,10 +226,5 @@ func HandleDeleteDatasetRequest(jsonData []byte) {
 		dsResponse.Success = false
 	}
 
-	v, err := json.Marshal(dsResponse)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-	} else {
-		fmt.Println(string(v))
-	}
+	utils.PrintCommandResponse(dsResponse)
 }

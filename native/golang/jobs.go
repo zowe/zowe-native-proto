@@ -13,9 +13,7 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
-	"os"
 	"strconv"
 	"strings"
 	t "zowe-native-proto/ioserver/types/common"
@@ -62,12 +60,7 @@ func HandleListJobsRequest(jsonData []byte) {
 		}
 	}
 
-	v, err := json.Marshal(jobsResponse)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-	} else {
-		fmt.Println(string(v))
-	}
+	utils.PrintCommandResponse(jobsResponse)
 }
 
 // HandleListSpoolsRequest handles a ListSpoolsRequest by invoking the `zowex job list-files` command
@@ -111,12 +104,7 @@ func HandleListSpoolsRequest(jsonData []byte) {
 		}
 	}
 
-	v, err := json.Marshal(response)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-	} else {
-		fmt.Println(string(v))
-	}
+	utils.PrintCommandResponse(response)
 }
 
 // HandleReadSpoolRequest handles a ReadSpoolRequest by invoking the `zowex job view-file` command
@@ -147,12 +135,7 @@ func HandleReadSpoolRequest(jsonData []byte) {
 		JobId:    request.JobId,
 		Data:     data,
 	}
-	v, err := json.Marshal(response)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-	} else {
-		fmt.Println(string(v))
-	}
+	utils.PrintCommandResponse(response)
 }
 
 // HandleGetJclRequest handles a GetJclRequest by invoking the `zowex job view-jcl` command
@@ -175,12 +158,7 @@ func HandleGetJclRequest(jsonData []byte) {
 		JobId: request.JobId,
 		Data:  string(out),
 	}
-	v, err := json.Marshal(response)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-	} else {
-		fmt.Println(string(v))
-	}
+	utils.PrintCommandResponse(response)
 }
 
 // HandleGetStatusRequest handles a GetStatusRequest by invoking the `zowex job view-status` command
@@ -215,11 +193,5 @@ func HandleGetStatusRequest(jsonData []byte) {
 		}
 	}
 
-	v, err := json.Marshal(jobsResponse)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-	} else {
-		fmt.Println(string(v))
-	}
-
+	utils.PrintCommandResponse(jobsResponse)
 }

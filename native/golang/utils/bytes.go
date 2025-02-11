@@ -12,7 +12,8 @@
 package utils
 
 import (
-	"log"
+	"fmt"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -28,7 +29,7 @@ func CollectContentsAsBytes(input string, isByteString bool) []byte {
 		for _, b := range data_split {
 			byteNum, err := strconv.ParseUint(b, 16, 8)
 			if err != nil {
-				log.Fatalf("[CollectContentsAsBytes] Error parsing byte %s in input '%s': %s", b, input, err)
+				fmt.Fprintf(os.Stderr, "[CollectContentsAsBytes] Error parsing byte %s in input '%s': %s", b, input, err)
 				break
 			}
 			data = append(data, byte(byteNum))

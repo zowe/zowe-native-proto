@@ -13,9 +13,7 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
-	"os"
 	cmds "zowe-native-proto/ioserver/types/cmds"
 	utils "zowe-native-proto/ioserver/utils"
 )
@@ -38,10 +36,5 @@ func HandleConsoleCommandRequest(jsonData []byte) {
 	response := cmds.IssueConsoleResponse{
 		Data: string(out),
 	}
-	v, err := json.Marshal(response)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-	} else {
-		fmt.Println(string(v))
-	}
+	utils.PrintCommandResponse(response)
 }

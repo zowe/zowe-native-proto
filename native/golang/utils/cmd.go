@@ -12,9 +12,12 @@
 package utils
 
 import (
+	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	t "zowe-native-proto/ioserver/types/common"
 )
 
 var exePath string
@@ -45,4 +48,22 @@ func BuildCommandNoAutocvt(args []string) *exec.Cmd {
 	cmd := BuildCommandShared(args)
 	cmd.Env = append(os.Environ(), "_BPXK_AUTOCVT=OFF")
 	return cmd
+}
+
+// PrintCommandResponse prints the response from a command handler. If the response cannot be marshaled, an error response is returned.
+func PrintCommandResponse[T any](response T) {
+	v, err := json.Marshal(response)
+	if err != nil {
+		details := fmt.Sprintf("Could not marshal response: %s\n", err.Error())
+		errResponse, err2 := json.Marshal(t.ErrorResponse{
+			Details: details,
+		})
+		if err2 != nil {
+			fmt.Fprintf(os.Stderr, "[PrintCommandResponse] Could not marshal response: %s\n", err.Error())
+		} else {
+			fmt.Println(string(errResponse))
+		}
+	} else {
+		fmt.Println(string(v))
+	}
 }
