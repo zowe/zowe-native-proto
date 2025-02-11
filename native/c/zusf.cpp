@@ -11,6 +11,7 @@
 
 #include <stdio.h>
 #include <cstring>
+#include <fcntl.h>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -29,6 +30,10 @@
 #ifndef _XPLATFORM_SOURCE
 #define _XPLATFORM_SOURCE
 #endif
+#ifndef _LARGE_TIME_API
+#define _LARGE_TIME_API
+#endif
+#include <sys/stat.h>
 #include <sys/xattr.h>
 #include <dirent.h>
 // #include "zusfm.h"
@@ -339,5 +344,18 @@ int zusf_chown_uss_file_or_dir(ZUSF *zusf, string file, string owner, bool recur
     return RTNCD_FAILURE;
   }
 
+  return 0;
+}
+
+int zusf_chtag_uss_file_or_dir(ZUSF *zusf, string file, string tag, bool recursive)
+{
+  struct stat file_stats;
+  if (stat(file.c_str(), &file_stats) == -1)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Path '%s' does not exist", file.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  // TODO(traeok): finish implementation
   return 0;
 }

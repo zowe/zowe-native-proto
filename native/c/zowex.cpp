@@ -71,7 +71,7 @@ int handle_uss_write(ZCLIResult);
 int handle_uss_delete(ZCLIResult);
 int handle_uss_chmod(ZCLIResult);
 int handle_uss_chown(ZCLIResult);
-
+int handle_uss_chtag(ZCLIResult);
 int handle_tso_issue(ZCLIResult);
 
 int main(int argc, char *argv[])
@@ -373,6 +373,19 @@ int main(int argc, char *argv[])
   uss_chown.get_positionals().push_back(uss_file_path);
   uss_chown.get_options().push_back(uss_recursive);
   uss_group.get_verbs().push_back(uss_chown);
+
+  ZCLIPositional uss_tag("tag");
+  uss_tag.set_required(true);
+  uss_tag.set_description("new tag for the file");
+
+  ZCLIVerb uss_chtag("chtag");
+  uss_chtag.set_description("change tags on a USS file");
+  uss_chtag.set_zcli_verb_handler(handle_uss_chtag);
+  uss_chtag.get_positionals().push_back(uss_file_path);
+  uss_chtag.get_positionals().push_back(uss_tag);
+  uss_chtag.get_options().push_back(uss_recursive);
+  uss_group.get_verbs().push_back(uss_chtag);
+
   // log group
   //
   ZCLIGroup log_group("log");
@@ -1217,6 +1230,25 @@ int handle_uss_chown(ZCLIResult result)
   if (rc != 0)
   {
     cout << "Error: could not chown USS path: '" << path << "' rc: '" << rc << "'" << endl;
+    cout << "  Details:\n"
+         << zusf.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
+  return rc;
+}
+
+int handle_uss_chtag(ZCLIResult result)
+{
+  string path = result.get_positional("file-path").get_value();
+  string tag = result.get_positional("tag").get_value();
+
+  ZUSF zusf = {0};
+  const auto rc = zusf_chtag_uss_file_or_dir(&zusf, path, tag, result.get_option("--recursive").is_found());
+
+  if (rc != 0)
+  {
+    cout << "Error: could not chtag USS path: '" << path << "' rc: '" << rc << "'" << endl;
     cout << "  Details:\n"
          << zusf.diag.e_msg << endl;
     return RTNCD_FAILURE;

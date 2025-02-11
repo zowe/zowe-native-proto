@@ -107,6 +107,7 @@ func HandleReadFileRequest(jsonData []byte) {
 	}
 }
 
+// HandleWriteFileRequest handles a WriteFileRequest by invoking the `zowex uss write` command
 func HandleWriteFileRequest(jsonData []byte) {
 	var request uss.WriteFileRequest
 	err := json.Unmarshal(jsonData, &request)
@@ -160,6 +161,7 @@ func HandleWriteFileRequest(jsonData []byte) {
 	}
 }
 
+// HandleDeleteFileRequest handles a DeleteFileRequest by invoking the `zowex uss delete` command
 func HandleDeleteFileRequest(jsonData []byte) {
 	var request uss.DeleteFileRequest
 	err := json.Unmarshal(jsonData, &request)
@@ -188,6 +190,7 @@ func HandleDeleteFileRequest(jsonData []byte) {
 	}
 }
 
+// HandleChownFileRequest handles a ChownFileRequest by invoking the `zowex uss chown` command
 func HandleChownFileRequest(jsonData []byte) {
 	var request uss.ChownFileRequest
 	err := json.Unmarshal(jsonData, &request)
@@ -219,6 +222,7 @@ func HandleChownFileRequest(jsonData []byte) {
 	}
 }
 
+// HandleChmodFileRequest handles a ChmodFileRequest by invoking the `zowex uss chmod` command
 func HandleChmodFileRequest(jsonData []byte) {
 	var request uss.ChmodFileRequest
 	err := json.Unmarshal(jsonData, &request)
@@ -232,6 +236,38 @@ func HandleChmodFileRequest(jsonData []byte) {
 	}
 	out, err := utils.BuildCommand(args).Output()
 	response := uss.ChmodFileResponse{
+		Success: true,
+		Path:    request.Path,
+	}
+
+	if err != nil {
+		response.Success = false
+	}
+	// discard CLI output as its currently unused
+	_ = out
+
+	v, err := json.Marshal(response)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+	} else {
+		fmt.Println(string(v))
+	}
+}
+
+// HandleChtagFileRequest handles a ChtagFileRequest by invoking the `zowex uss chtag` command
+func HandleChtagFileRequest(jsonData []byte) {
+	var request uss.ChtagFileRequest
+	err := json.Unmarshal(jsonData, &request)
+	if err != nil || len(request.Path) == 0 {
+		return
+	}
+
+	args := []string{"./zowex", "uss", "chtag", request.Tag, request.Path}
+	if request.Recursive {
+		args = append(args, "-r", "true")
+	}
+	out, err := utils.BuildCommand(args).Output()
+	response := uss.ChtagFileResponse{
 		Success: true,
 		Path:    request.Path,
 	}
