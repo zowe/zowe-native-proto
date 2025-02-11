@@ -7,86 +7,104 @@ const watcher = chokidar.watch(["c/**/*.{c,cpp,h,s}", "golang/**"], {
   persistent: true,
 });
 
-const fs = require('fs');
-const { Client } = require('ssh2');
-const config = JSON.parse(fs.readFileSync(p.join("tools", "build", "config.local.json")));
+const fs = require("fs");
+const { Client } = require("ssh2");
+const config = JSON.parse(
+  fs.readFileSync(p.join("tools", "build", "config.local.json"))
+);
 let sshReady = false;
 
 const conn = new Client()
-.on('ready', () => {
-  sshReady = true;
-  console.log('SSH connection established');
-}).connect({
-  host: config.host,
-  port: config.port || 22,
-  username: config.user,
-  privateKey: config.privateKey ? fs.readFileSync(config.privateKey) : undefined,
-  password: config.password
-});
+  .on("ready", () => {
+    sshReady = true;
+    console.log("SSH connection established");
+  })
+  .connect({
+    host: config.host,
+    port: config.port || 22,
+    username: config.username,
+    privateKey: config.privateKey
+      ? fs.readFileSync(config.privateKey)
+      : undefined,
+    password: config.password,
+  });
 
 async function uploadFile(localPath, remotePath) {
   return new Promise((resolve, reject) => {
     if (!sshReady) {
-      reject(new Error('SSH connection not ready'));
+      reject(new Error("SSH connection not ready"));
       return;
     }
-    
+
     conn.sftp((err, sftp) => {
       if (err) {
         reject(err);
         return;
       }
-      const readStream = fs.createReadStream(p.join('native', localPath));
+      const readStream = fs.createReadStream(p.join("native", localPath));
       const writeStream = sftp.createWriteStream(remotePath);
-      
-      writeStream.on('close', () => {
+
+      writeStream.on("close", () => {
         // If the uploaded file is in the `c` directory, run gmake
-        if (localPath.startsWith('c/')) {
-          conn.exec(`cd ${p.posix.join(config.deployDirectory, 'c')} && gmake`, (err, stream) => {
-            if (err) {
-              console.error('Failed to run gmake:', err);
-              resolve();
-              return;
+        if (localPath.startsWith("c/")) {
+          conn.exec(
+            `cd ${p.posix.join(config.deployDirectory, "c")} && gmake`,
+            (err, stream) => {
+              if (err) {
+                console.error("Failed to run gmake:", err);
+                resolve();
+                return;
+              }
+              
+              stream
+                .on("close", () => {
+                  resolve();
+                })
+                .on("data", (data) => {
+                  console.log(data.toString());
+                })
+                .stderr.on("data", (data) => {
+                  process.stderr.write(data);
+                });
             }
-            
-            stream.on('close', () => {
-              resolve();
-            }).on('data', (data) => {
-              process.stdout.write(data);
-            }).stderr.on('data', (data) => {
-              process.stderr.write(data);
-            });
-          });
-        } else if (localPath.startsWith('golang/')) {
+          );
+        } else if (localPath.startsWith("golang/")) {
           // Run `go build` for golang files
           conn.shell((err, stream) => {
             if (err) {
-              console.error('Failed to start shell:', err);
+              console.error("Failed to start shell:", err);
               resolve();
               return;
             }
 
-            let buffer = '';
-            stream.on('close', () => {
-              resolve();
-            }).on('data', (data) => {
-              buffer += data;
-              process.stdout.write(data);
-            }).stderr.on('data', (data) => {
-              process.stderr.write(data);
-            });
+            let buffer = "";
+            stream
+              .on("close", () => {
+                resolve();
+              })
+              .on("data", (data) => {
+                  console.log(data.toString());
+              })
+              .stderr.on("data", (data) => {
+                process.stderr.write(data);
+              });
 
-            stream.end(`cd ${p.posix.join(config.deployDirectory, 'golang')} && go build\nexit\n`);
+            stream.end(
+              `cd ${p.posix.join(
+                config.deployDirectory,
+                "golang"
+              )} && go build\nexit\n`
+            );
           });
         } else {
           resolve();
         }
       });
-      
-      writeStream.on('error', (err) => {
+
+      writeStream.on("error", (err) => {
         reject(err);
       });
-      
+
       readStream.pipe(writeStream);
     });
   });
