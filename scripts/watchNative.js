@@ -37,7 +37,7 @@ function cTask(err, remotePath, stream, resolve) {
   }
 
   if (err) {
-    console.error("Failed to run gmake:", err);
+    console.error("Failed to run make:", err);
     resolve();
     return;
   }
