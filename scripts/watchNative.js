@@ -198,4 +198,4 @@ watcher.on("unlink", async (path, stats) => {
 });
 
 console.log("watching for changes...");
-setInterval(() => {}, 1_000_000);
+setInterval(() => {}, 1e6);
