@@ -4,7 +4,7 @@
   "main": "lib/index.js",
   "scripts": {
     "build": "tsc -b",
-    "clean": "rimraf lib",
+    "clean": "rimraf lib tsconfig.tsbuildinfo",
     "lint": "npx @biomejs/biome check --write src",
     "test": "echo \"Error: no test specified\" && exit 1",
     "typedoc": "typedoc src/index.ts --out ../../doc/typedoc",

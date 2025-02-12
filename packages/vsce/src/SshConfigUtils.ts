@@ -17,6 +17,7 @@ import { ZSshClient } from "zowe-native-proto-sdk";
 import { homedir } from 'os';
 import { ISshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import * as path from "node:path";
+import { hostname } from "node:os";
 
 interface sshConfigExt extends ISshSession {
     name?: string;
@@ -64,15 +65,25 @@ export class SshConfigUtils {
                 if (newConfig) {
                     await profCache.refresh();
                     newConfig = await SshConfigUtils.promptForAuth(newConfig);
-                    console.debug();
-                    SshConfigUtils.setProfile(newConfig);
-                    console.debug();
-                    let imperativeLoadedProfile: imperative.IProfileLoaded ={
+                    await SshConfigUtils.setProfile(newConfig);
+
+                    let profile: { [key: string]: any } = {
+                        hostname: newConfig?.hostname,
+                        name: newConfig?.name,
+                        password: newConfig?.password,
+                        user: newConfig?.user,
+                        privateKey: newConfig?.privateKey,
+                        handshakeTimeout: newConfig?.handshakeTimeout,
+                        port: newConfig?.port,
+                        keyPassphrase: newConfig?.keyPassphrase
+                    };
+                    let imperativeLoadedProfile: imperative.IProfileLoaded = {
                         message: "",
                         failNotFound: false,
                         type: "ssh",
-                        profile: []
+                        profile
                     };
+                    console.debug();
                     return imperativeLoadedProfile;
                 }
             }
@@ -242,9 +253,8 @@ export class SshConfigUtils {
                 }
             }
         } catch (err) {
-            //do nuthin
+            //do nothing
         }
-        console.debug(SshProfile);
         return SshProfile;
     }
 
@@ -329,11 +339,12 @@ export class SshConfigUtils {
     }
 
     private static async getNewProfileName(selectedProfile: sshConfigExt): Promise<sshConfigExt | undefined> {
-        console.debug();
         const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
         const profCache = zoweExplorerApi.getExplorerExtenderApi().getProfilesCache();
         const profiles = await profCache.fetchAllProfiles();
         let isUniqueName = false;
+
+        if(!selectedProfile.name) selectedProfile.name = selectedProfile.hostname;
         while (!isUniqueName) {
             selectedProfile.name = await vscode.window.showInputBox({
                 prompt: "Enter a name for the SSH config",
@@ -359,20 +370,16 @@ export class SshConfigUtils {
     }
     private static async setProfile(selectedConfig: sshConfigExt | undefined): Promise<void>
     {
-        console.debug();
-
         if (selectedConfig) {
             selectedConfig = await SshConfigUtils.getNewProfileName(selectedConfig);
         }
 
-        console.debug();
         //Profile information
         const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
         const profCache = zoweExplorerApi.getExplorerExtenderApi().getProfilesCache();
         const profInfo = await profCache.getProfileInfo();
         const configApi = profInfo.getTeamConfig().api;
         // Create the base config object
-        console.debug();
         const config = {
             type: "ssh",
             properties: {
@@ -385,13 +392,11 @@ export class SshConfigUtils {
             },
             secure: []
         };
-        console.debug();
         //if password or KP is defined, make them secure
         if (selectedConfig?.password) config.secure.push("password" as never);
         if (selectedConfig?.keyPassphrase) config.secure.push("keyPassphrase" as never);
 
         configApi.profiles.set(selectedConfig?.name!, config);
         await profInfo.getTeamConfig().save();
-        console.debug();
     }
 }
