@@ -24,9 +24,21 @@
 
 using namespace std;
 
-int zut_test()
+int zut_substitute_sybmol(string pattern, string &result)
 {
-  return 0;
+
+  SYMBOL_DATA *parms = (SYMBOL_DATA *)__malloc31(sizeof(SYMBOL_DATA));
+  memset(parms, 0x00, sizeof(SYMBOL_DATA));
+
+  strcpy(parms->input, pattern.c_str());
+  parms->length = strlen(pattern.c_str());
+  int rc = ZUTSYMBP(parms);
+  if (RTNCD_SUCCESS != rc)
+  {
+    return rc;
+  }
+  result += string(parms->output);
+  return RTNCD_SUCCESS;
 }
 
 int zut_convert_dsect()

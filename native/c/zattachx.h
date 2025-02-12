@@ -60,7 +60,7 @@ ATTACHX_MODEL(attachx_model); // make this copy in static storage
 #pragma prolog(ZUTATTCH, "&CCN_MAIN SETB 1 \n MYPROLOG")
 static void ZUTATTCH()
 {
-  zwto_debug("@TEST");
+  // zwto_debug("@TEST");
   return;
 }
 
