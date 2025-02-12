@@ -68,17 +68,19 @@ export class SshConfigUtils {
                     await SshConfigUtils.setProfile(newConfig);
 
                     let profile: { [key: string]: any } = {
-                        hostname: newConfig?.hostname,
+                        host: newConfig?.hostname,
                         name: newConfig?.name,
                         password: newConfig?.password,
                         user: newConfig?.user,
                         privateKey: newConfig?.privateKey,
                         handshakeTimeout: newConfig?.handshakeTimeout,
                         port: newConfig?.port,
-                        keyPassphrase: newConfig?.keyPassphrase
+                        keyPassphrase: newConfig?.keyPassphrase,
+                        rejectUnauthorized: false
                     };
                     let imperativeLoadedProfile: imperative.IProfileLoaded = {
-                        message: "",
+                        name: newConfig?.name,
+                        message: '',
                         failNotFound: false,
                         type: "ssh",
                         profile
