@@ -1,0 +1,4 @@
+{
+    "c": "make",
+    "golang": "go build"
+}
