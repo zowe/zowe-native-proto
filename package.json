@@ -21,7 +21,9 @@
     "package": "npm run package --workspaces --if-present",
     "prepare": "husky",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "watch": "npm run watch --workspaces"
+    "watch": "npm run watch:native & npm run watch:client",
+    "watch:client": "npm run watch --workspaces",
+    "watch:native": "node scripts/watchNative.js"
   },
   "keywords": [],
   "author": "",
@@ -32,6 +34,7 @@
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
     "@zowe/secrets-for-zowe-sdk": "^8.10.4",
+    "chokidar": "^3",
     "husky": "^9.1.7",
     "rimraf": "^6.0.1",
     "tsx": "^4.19.2"

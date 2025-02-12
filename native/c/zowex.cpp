@@ -210,6 +210,20 @@ int main(int argc, char *argv[])
   job_owner.get_aliases().push_back("-o");
   job_owner.set_description("filter by owner");
   job_list.get_options().push_back(job_owner);
+  ZCLIOption job_prefix("prefix");
+  job_prefix.set_description("filter by prefix");
+  job_list.get_options().push_back(job_prefix);
+
+  ZCLIOption job_max_entries("max-entries");
+  job_max_entries.get_aliases().push_back("--me");
+  job_max_entries.set_description("max number of results to return before error generated");
+  job_list.get_options().push_back(job_max_entries);
+
+  ZCLIOption job_truncate_warn("warn");
+  job_truncate_warn.set_description("warn if trucated or not found");
+  job_truncate_warn.set_default("true");
+  job_list.get_options().push_back(job_truncate_warn);
+
   job_list.get_options().push_back(response_format_csv);
   job_group.get_verbs().push_back(job_list);
 
@@ -445,36 +459,53 @@ int handle_job_list(ZCLIResult result)
   int rc = 0;
   ZJB zjb = {0};
   string owner_name(result.get_option("--owner").get_value());
+  string prefix_name(result.get_option("--prefix").get_value());
+  string max_entries = result.get_option("--max-entries").get_value();
+  string warn = result.get_option("--warn").get_value();
+
+  if (max_entries.size() > 0)
+  {
+    zjb.jobs_max = atoi(max_entries.c_str());
+  }
 
   vector<ZJob> jobs;
-  rc = zjb_list_by_owner(&zjb, owner_name, jobs);
+  rc = zjb_list_by_owner(&zjb, owner_name, prefix_name, jobs);
 
-  if (0 != rc)
+  if (RTNCD_SUCCESS == rc || RTNCD_WARNING == rc)
   {
-    cout << "Error: could not list jobs for: '" << owner_name << "' rc: '" << rc << "'" << endl;
-    cout << "  Details: " << zjb.diag.e_msg << endl;
+    const auto emit_csv = result.get_option("--response-format-csv").get_value() == "true";
+    for (vector<ZJob>::iterator it = jobs.begin(); it != jobs.end(); it++)
+    {
+      if (emit_csv)
+      {
+        vector<string> fields;
+        fields.push_back(it->jobid);
+        fields.push_back(it->retcode);
+        fields.push_back(it->jobname);
+        fields.push_back(it->status);
+        cout << zut_format_as_csv(fields) << endl;
+      }
+      else
+      {
+        cout << it->jobid << " " << left << setw(10) << it->retcode << " " << it->jobname << " " << it->status << endl;
+      }
+    }
+  }
+  if (RTNCD_WARNING == rc)
+  {
+    if ("true" == warn)
+    {
+      cerr << "Warning: results truncated" << endl;
+    }
+  }
+  if (rc > RTNCD_WARNING)
+  {
+    cerr << "Error: could not list jobs for: '" << owner_name << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zjb.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
-  const auto emit_csv = result.get_option("--response-format-csv").get_value() == "true";
-  for (vector<ZJob>::iterator it = jobs.begin(); it != jobs.end(); it++)
-  {
-    if (emit_csv)
-    {
-      vector<string> fields;
-      fields.push_back(it->jobid);
-      fields.push_back(it->retcode);
-      fields.push_back(it->jobname);
-      fields.push_back(it->status);
-      cout << zut_format_as_csv(fields) << endl;
-    }
-    else
-    {
-      cout << it->jobid << " " << left << setw(10) << it->retcode << " " << it->jobname << " " << it->status << endl;
-    }
-  }
-
-  return RTNCD_SUCCESS;
+  return rc;
 }
 
 int handle_job_list_files(ZCLIResult result)
@@ -830,7 +861,7 @@ int handle_data_set_list(ZCLIResult result)
 
   const auto emit_csv = result.get_option("--response-format-csv").get_value() == "true";
   rc = zds_list_data_sets(&zds, dsn, entries);
-  if (RTNCD_SUCCESS == rc)
+  if (RTNCD_SUCCESS == rc || RTNCD_WARNING == rc)
   {
     vector<string> fields;
     for (vector<ZDSEntry>::iterator it = entries.begin(); it != entries.end(); ++it)
@@ -849,7 +880,7 @@ int handle_data_set_list(ZCLIResult result)
       }
     }
   }
-  else if (RTNCD_WARNING == rc)
+  if (RTNCD_WARNING == rc)
   {
     if ("true" == warn)
     {
@@ -862,27 +893,12 @@ int handle_data_set_list(ZCLIResult result)
         cerr << "Warning: no matching results found" << endl;
       }
     }
-    vector<string> fields;
-    for (vector<ZDSEntry>::iterator it = entries.begin(); it != entries.end(); ++it)
-    {
-      if (emit_csv)
-      {
-        fields.push_back(it->name);
-        fields.push_back(it->dsorg);
-        fields.push_back(it->volser);
-        std::cout << zut_format_as_csv(fields) << std::endl;
-        fields.clear();
-      }
-      else
-      {
-        std::cout << left << setw(44) << it->name << " " << it->volser << " " << it->dsorg << endl;
-      }
-    }
   }
-  else
+
+  if (rc > RTNCD_WARNING)
   {
-    cout << "Error: could not list data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-    cout << "  Details: " << zds.diag.e_msg << endl;
+    cerr << "Error: could not list data set: '" << dsn << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zds.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
@@ -903,14 +919,14 @@ int handle_data_set_list_members_dsn(ZCLIResult result)
   vector<ZDSMem> members;
   rc = zds_list_members(&zds, dsn, members);
 
-  if (RTNCD_SUCCESS == rc)
+  if (RTNCD_SUCCESS == rc || RTNCD_WARNING == rc)
   {
     for (vector<ZDSMem>::iterator it = members.begin(); it != members.end(); ++it)
     {
       cout << left << setw(12) << it->name << endl;
     }
   }
-  else if (RTNCD_WARNING == rc)
+  if (RTNCD_WARNING == rc)
   {
     if ("true" == warn)
     {
@@ -919,12 +935,8 @@ int handle_data_set_list_members_dsn(ZCLIResult result)
         cerr << "Warning: results truncated" << endl;
       }
     }
-    for (vector<ZDSMem>::iterator it = members.begin(); it != members.end(); ++it)
-    {
-      cout << left << setw(12) << it->name << endl;
-    }
   }
-  else
+  if (rc > RTNCD_WARNING)
   {
     cout << "Error: could not read data set: '" << dsn << "' rc: '" << rc << "'" << endl;
     cout << "  Details: " << zds.diag.e_msg << endl;

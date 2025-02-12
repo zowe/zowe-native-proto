@@ -638,13 +638,13 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
                 }
                 else
                 {
-                  entry.dsorg = ZDS_DSORG_UNKNWON;
+                  entry.dsorg = ZDS_DSORG_UNKNOWN;
                   entry.volser = ZDS_VOLSER_UNKNOWN;
                 }
               }
               else
               {
-                entry.dsorg = ZDS_DSORG_UNKNWON;
+                entry.dsorg = ZDS_DSORG_UNKNOWN;
                 entry.volser = ZDS_VOLSER_UNKNOWN;
               }
               fclose(dir);
@@ -697,7 +697,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
         // return -8;
         break;
       case ALIAS:
-        entry.dsorg = ZDS_DSORG_UNKNWON;
+        entry.dsorg = ZDS_DSORG_UNKNOWN;
         entry.volser = ZDS_VOLSER_ALIAS;
         break;
       default:

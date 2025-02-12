@@ -30,7 +30,7 @@ int zcn_activate(ZCN *zcn, string console_name)
 
   strcpy(zcn->eye, ZCN_EYE);
 
-  zut_uppercase_pad_truncate(console_name, zcn->console_name, sizeof(zcn->console_name));
+  zut_uppercase_pad_truncate(zcn->console_name, console_name, sizeof(zcn->console_name));
 
   zcn->ecb = (unsigned int *)__malloc31(sizeof(unsigned int));
   memset(zcn->ecb, 0x00, sizeof(unsigned int));
