@@ -2,7 +2,7 @@
 
 ## DSECT to CHDR
 
-To create a HLASM DSECT to a CHDR:
+To create a C header from an HLASM DSECT:
 
 - create a `.s` file in `asmchdr` folder, e.g. `asasymbp.s`
 - upload, e.g. `npm run tools:deploy asmchdr/asasymbp.s`
