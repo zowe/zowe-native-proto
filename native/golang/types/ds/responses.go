@@ -37,3 +37,7 @@ type ListDsMembersResponse struct {
 	Items        []common.DsMember `tstype:"common.DsMember[]" json:"items"`
 	ReturnedRows int               `json:"returnedRows"`
 }
+
+type DeleteDatasetResponse struct {
+	Success bool `json:"success"`
+}

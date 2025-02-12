@@ -28,9 +28,7 @@ MTL_OPTS=metal,\
  warn64,\
  optimize(2),\
  list,\
- showinc,\
  showmacro,\
- source,\
  aggregate
 
 MTL_OPTS64=$(MTL_OPTS),lp64
@@ -44,37 +42,51 @@ MACLIBS=-ISYS1.MACLIB \
 MTL_HEADERS=-I/usr/include/metal \
  -I./chdsect
 
-CPP_BND_FLAGS=-W "l,lp64,xplink,map,list"\
- -qsource \
- -g
+CPP_BND_FLAGS=-W "l,lp64,xplink,map,list"
 
-CPP_BND_FLAGS_AUTH=-W "l,lp64,xplink,map,list,ac=1"\
- -qsource \
- -g
+CPP_BND_FLAGS_AUTH=-W "l,lp64,xplink,map,list,ac=1"
 
 C_FLAGS=-W "c,lp64,langlvl(extended),xplink,exportall"\
- -qsource \
- -g \
  -c \
  -I./chdsect
 
-DLL_CPP_FLAGS=-W "c,lp64,langlvl(extended0x),dll,xplink,exportall,showinc"\
- -qsource \
- -g \
+DLL_CPP_FLAGS=-W "c,lp64,langlvl(extended0x),dll,xplink,exportall"\
  -c \
  -I./chdsect
 
-DLL_BND_FLAGS=-W "l,lp64,dll,dynam=dll,xplink,map,list" \
- -g \
- -qsource
+DLL_BND_FLAGS=-W "l,lp64,dll,dynam=dll,xplink,map,list"
 
-# -g generates debugging information
-CPP_FLAGS=-W "c,lp64,langlvl(extended0x),dll,xplink,showinc"\
- -qsource \
- -g \
+CPP_FLAGS=-W "c,lp64,langlvl(extended0x),dll,xplink"\
  -c
 
-ASM_FLAGS=-mrent
+ASM_FLAGS=-mRENT
+
+# make -DBuildType=DEBUG
+.IF $(BuildType) == DEBUG
+# -g generates debugging information
+DEBUGGER_FLAGS=-qSOURCE -qDEBUG
+CPP_BND_FLAGS+=$(DEBUGGER_FLAGS)
+CPP_BND_FLAGS_AUTH+=$(DEBUGGER_FLAGS)
+C_FLAGS+=$(DEBUGGER_FLAGS)
+DLL_BND_FLAGS+=$(DEBUGGER_FLAGS)
+DLL_CPP_FLAGS+=$(DEBUGGER_FLAGS) -qSHOWINC
+CPP_FLAGS+=$(DEBUGGER_FLAGS) -qSHOWINC
+MTL_FLAGS+=$(DEBUGGER_FLAGS) -qSHOWINC
+MTL_FLAGS64+=$(DEBUGGER_FLAGS) -qSHOWINC
+ASM_FLAGS+=--verbose
+.ELSE
+PRODUCTION_FLAGS=-qNOSROUCE -qNODEBUG
+CPP_BND_FLAGS+=$(PRODUCTION_FLAGS)
+CPP_BND_FLAGS_AUTH+=$(PRODUCTION_FLAGS)
+C_FLAGS+=$(PRODUCTION_FLAGS)
+DLL_BND_FLAGS+=$(PRODUCTION_FLAGS)
+DLL_CPP_FLAGS+=$(PRODUCTION_FLAGS) -qNOSHOWINC
+CPP_FLAGS+=$(PRODUCTION_FLAGS) -qNOSHOWINC
+MTL_FLAGS+=$(PRODUCTION_FLAGS) -qNOSHOWINC
+MTL_FLAGS64+=$(PRODUCTION_FLAGS) -qNOSHOWINC
+ASM_FLAGS+=--noverbose
+.END
+
 
 all: libzut.so libzut.a libzds.so libzds.a libzusf.so libzusf.a libzcn.so libzcn.a libzjb.so libzjb.a zowex zowexx extattr test
 
