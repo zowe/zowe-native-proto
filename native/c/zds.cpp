@@ -36,11 +36,17 @@ int zds_read_from_dd(ZDS *zds, string ddname, string &response)
     return RTNCD_FAILURE;
   }
 
+  int index = 0;
+
   string line;
   while (getline(in, line))
   {
-    response += line;
-    response.push_back('\n');
+    if (index > 0 || line.size() > 0)
+    {
+      response += line;
+      response.push_back('\n');
+      index++;
+    }
   }
   in.close();
 
