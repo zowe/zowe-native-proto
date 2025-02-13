@@ -39,6 +39,10 @@ export interface RestoreDatasetRequest {
   command: "restoreDataset";
   dsname: string;
 }
+export interface DeleteDatasetRequest {
+  command: "deleteDataset";
+  dsname: string;
+}
 
 //////////
 // source: responses.go
@@ -62,4 +66,7 @@ export interface ListDatasetsResponse {
 export interface ListDsMembersResponse {
   items: common.DsMember[];
   returnedRows: number /* int */;
+}
+export interface DeleteDatasetResponse {
+  success: boolean;
 }
