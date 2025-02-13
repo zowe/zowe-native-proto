@@ -93,7 +93,7 @@ function golangTask(err, remotePath, stream, resolve) {
 
   stream.write(cmd);
   stream
-    .on("close", () => {
+    .on("end", () => {
       if (errText.length == 0) {
         console.log("\n\t[tasks -> golang] go build succeeded ✔");
       } else {
