@@ -57,23 +57,25 @@ function cTask(err, remotePath, stream, resolve) {
   cmd += `iconv -f utf8 -t IBM-1047 ${remotePath}.u > ${remotePath}\n`;
   cmd += `chtag -t -c IBM-1047 ${remotePath}\n`;
   cmd += `\ncd ${p.posix.join(config.deployDirectory, "c")}\n`;
-  cmd += `make\nexit\n`;
+  cmd += `make 1> /dev/null\nexit\n`;
 
   stream.write(cmd);
 
   let errText = "";
   stream
-    .on("close", () => {
+    .on("end", () => {
       if (errText.length == 0) {
         console.log("\n\t[tasks -> c] make succeeded ✔");
       } else {
-        console.log("\t[tasks -> c] make failed ✘\nerror: \n", errText);
+        console.log("\n\t[tasks -> c] make failed ✘\nerror: \n", errText);
       }
       resolve();
     })
     .on("data", (data) => {})
     .stderr.on("data", (data) => {
-      errText += data;
+      let str = data.toString().trim();
+      if (/IGD\d{5}I /.test(str)) return;
+      errText += str;
     });
 }
 
@@ -96,7 +98,7 @@ function golangTask(err, remotePath, stream, resolve) {
         console.log("\n\t[tasks -> golang] go build succeeded ✔");
       } else {
         console.log(
-          "\t[tasks -> golang] go build failed ✘\nerror: \n",
+          "\n\t[tasks -> golang] go build failed ✘\nerror: \n",
           errText
         );
       }
@@ -151,7 +153,7 @@ async function uploadFile(localPath, remotePath) {
       });
 
       writeStream.on("close", () => {
-        conn.shell((err, stream) => {
+        conn.shell(false, (err, stream) => {
           // If the uploaded file is in the `c` directory, run `make`
           if (localPath.split(p.sep)[0] === "c") {
             cTask(err, remotePath, stream, resolve);

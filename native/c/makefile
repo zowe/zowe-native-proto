@@ -75,7 +75,7 @@ MTL_FLAGS+=$(DEBUGGER_FLAGS) -qSHOWINC
 MTL_FLAGS64+=$(DEBUGGER_FLAGS) -qSHOWINC
 ASM_FLAGS+=--verbose
 .ELSE
-PRODUCTION_FLAGS=-qNOSROUCE -qNODEBUG
+PRODUCTION_FLAGS=-qNOSOURCE -qNODEBUG
 CPP_BND_FLAGS+=$(PRODUCTION_FLAGS)
 CPP_BND_FLAGS_AUTH+=$(PRODUCTION_FLAGS)
 C_FLAGS+=$(PRODUCTION_FLAGS)
@@ -246,13 +246,13 @@ libztso.a: ztso.o
 zowex: zowex.o libzcn.a libzut.a libzjb.a libzds.a libzusf.a libztso.a
 	@echo 'Building zowex'
 	$(CXX) $(CPP_BND_FLAGS) -o $@ $^ > $*.bind.lst
-	cp $@ ../golang/$(basename $@)
+	ln -s $@ ../golang/$(basename $@)
 	@echo 'Copied zowex to golang/'
 
 zowexx: zowex.o libzcn.a libzut.a libzjb.a libzds.a libzusf.a libztso.a
 	@echo 'Building zowexx'
 	$(CXX) $(CPP_BND_FLAGS_AUTH) -o $@ $^ > $*.bind.lst
-	cp $@ ../golang/$(basename $@)
+	ln -s $@ ../golang/$(basename $@)
 	@echo 'Copied zowexx to golang/'
 
 zowex.o: zowex.cpp
