@@ -25,29 +25,6 @@
 
 using namespace std;
 
-// int zds_read_from_dd(ZDS *zds, string ddname, string &response)
-// {
-//   string prefix_ddname = "DD:" + ddname;
-
-//   FILE *fp = fopen(prefix_ddname.c_str(), "r"); // e.g. DD:SYS00001
-
-//   if (NULL == fp)
-//   {
-//     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to open ddname '%s'", prefix_ddname.c_str());
-//     return RTNCD_FAILURE;
-//   }
-
-//   int readlen = 0;
-//   char buffer[256 + 1] = {0};
-//   while ((readlen = fread(buffer, 1, sizeof(buffer), fp)) > 0)
-//   {
-//     response += string(buffer, readlen);
-//   }
-//   fclose(fp);
-
-//   return 0;
-// }
-
 int zds_read_from_dd(ZDS *zds, string ddname, string &response)
 {
   ddname = "DD:" + ddname;
@@ -59,11 +36,17 @@ int zds_read_from_dd(ZDS *zds, string ddname, string &response)
     return RTNCD_FAILURE;
   }
 
+  int index = 0;
+
   string line;
   while (getline(in, line))
   {
-    response += line;
-    response.push_back('\n');
+    if (index > 0 || line.size() > 0)
+    {
+      response += line;
+      response.push_back('\n');
+      index++;
+    }
   }
   in.close();
 
@@ -264,11 +247,16 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &list)
   // PO-E (PDS)
   dsn = "//'" + dsn + "'";
 
+  int total_entries = 0;
+
+  if (0 == zds->max_entries)
+    zds->max_entries = ZDS_DEFAULT_MAX_ENTRIES;
+
   RECORD rec = {0};
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=pds-reading-directory-sequentially
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=pdse-reading-directory - long alias names omitted, use DESERV for those
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=pds-directory
-  FILE *fp = fopen(dsn.c_str(), "rb, blksize=256, recfm=fb");
+  FILE *fp = fopen(dsn.c_str(), "rb, blksize=256, recfm=u");
 
   const int bufsize = 256;
   char buffer[bufsize] = {0};
@@ -279,28 +267,45 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &list)
     return RTNCD_FAILURE;
   }
 
-  while (fread(&rec, sizeof *buffer, sizeof(RECORD), fp))
+  while (fread(&rec, sizeof(rec), 1, fp))
   {
     unsigned char *data = nullptr;
     data = (unsigned char *)&rec;
     data += sizeof(rec.count); // increment past halfword length
+
     int len = sizeof(RECORD_ENTRY);
     for (int i = 0; i < rec.count; i = i + len)
     {
-      RECORD_ENTRY RECORD_ENTRY = {0};
-      memcpy(&RECORD_ENTRY, data, sizeof(RECORD_ENTRY));
-      long long int end = 0xFFFFFFFFFFFFFFFF;
-      if (memcmp(RECORD_ENTRY.name, &end, sizeof(end)) == 0)
+      RECORD_ENTRY entry = {0};
+      memcpy(&entry, data, sizeof(entry));
+      long long int end = 0xFFFFFFFFFFFFFFFF; // indicates end of entries
+      if (memcmp(entry.name, &end, sizeof(end)) == 0)
       {
         break;
       }
       else
       {
-        unsigned char info = RECORD_ENTRY.info;
-        char name[9] = {0};
-        info &= 0x1F;
+        total_entries++;
 
-        memcpy(name, RECORD_ENTRY.name, sizeof(RECORD_ENTRY.name));
+        if (total_entries > zds->max_entries)
+        {
+          zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Reached maximum returned members requested %d", zds->max_entries);
+          zds->diag.detail_rc = ZDS_RSNCD_MAXED_ENTRIES_REACHED;
+          return RTNCD_WARNING;
+        }
+
+        unsigned char info = entry.info;
+        unsigned char pointer_count = entry.info;
+        char name[9] = {0};
+        if (info & 0x80) // bit 0 indicates alias
+        {
+          // TODO(Kelosky): // member name is an alias
+        }
+        pointer_count & 0x60; // bits 1-2 contain number of user data TTRNs
+        pointer_count >>= 5;  // adjust to byte boundary
+        info &= 0x1F;         // bits 3-7 contain the number of half words of user data
+
+        memcpy(name, entry.name, sizeof(entry.name));
 
         for (int j = 8; j >= 0; j--)
         {
@@ -314,8 +319,12 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &list)
         mem.name = string(name);
         list.push_back(mem);
 
-        data = data + sizeof(RECORD_ENTRY) + (info * 2); // skip number of half workds
-        len += (info * 2);
+        data = data + sizeof(entry) + (info * 2); // skip number of half words
+        len = sizeof(entry) + (info * 2);
+
+        int remainder = rec.count - (i + len);
+        if (remainder < sizeof(entry))
+          break;
       }
     }
   }
@@ -572,6 +581,8 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
           CLUSTER != f->type &&
           DATA_COMPONENT != f->type &&
           INDEX_COMPONENT != f->type &&
+          GENERATION_DATA_GROUP != f->type &&
+          GENERATION_DATA_SET != f->type &&
           ALIAS != f->type)
       {
         free(area);
@@ -592,6 +603,58 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
       memset(buffer, 0x00, sizeof(buffer)); // clear buffer
       memcpy(buffer, data, *field_len);     // copy VOLSER
       entry.volser = string(buffer);
+
+#define IPL_VOLUME "******"
+#define IPL_VOLUME_SYMBOL "&SYSR1" // https://www.ibm.com/docs/en/zos/3.1.0?topic=symbols-static-system
+
+      if (0 == strcmp(IPL_VOLUME, entry.volser.c_str()))
+      {
+        string symbol(IPL_VOLUME_SYMBOL);
+        string value;
+        int rc = zut_substitute_sybmol(symbol, value);
+        if (0 == rc)
+        {
+          entry.volser = value;
+        }
+      }
+
+      // attempt to obtain fldata in all cases and set default data
+      {
+        string dsn = "//'" + entry.name + "'";
+        FILE *dir = fopen(dsn.c_str(), "r");
+        fldata_t file_info = {0};
+        char file_name[64] = {0};
+
+        if (dir)
+        {
+          if (0 == fldata(dir, file_name, &file_info))
+          {
+            if (file_info.__dsorgPS)
+            {
+              entry.dsorg = ZDS_DSORG_PS;
+            }
+            else if (file_info.__dsorgPO)
+            {
+              entry.dsorg = ZDS_DSORG_PO;
+            }
+            else if (file_info.__dsorgVSAM)
+            {
+              entry.dsorg = ZDS_DSORG_VSAM;
+            }
+            else
+            {
+              entry.dsorg = ZDS_DSORG_UNKNOWN;
+              entry.volser = ZDS_VOLSER_UNKNOWN;
+            }
+          }
+          else
+          {
+            entry.dsorg = ZDS_DSORG_UNKNOWN;
+            entry.volser = ZDS_VOLSER_UNKNOWN;
+          }
+          fclose(dir);
+        }
+      }
 
       switch (f->type)
       {
@@ -614,92 +677,72 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
           {
             entry.dsorg = ZDS_DSORG_PDSE;
           }
-          else if (SIMPLE_NON_VSAM_DATA_SET == non_vsam_attribute)
-          {
-            string dsn = "//'" + entry.name + "'";
-            FILE *dir = fopen(dsn.c_str(), "r");
-            fldata_t file_info = {0};
-            char file_name[64] = {0};
-
-            if (dir)
-            {
-              if (0 == fldata(dir, file_name, &file_info))
-              {
-                if (file_info.__dsorgPS)
-                {
-                  entry.dsorg = ZDS_DSORG_PS;
-                }
-                else if (file_info.__dsorgPO)
-                {
-                  entry.dsorg = ZDS_DSORG_PO;
-                }
-                else
-                {
-                  entry.dsorg = ZDS_DSORG_UNKNWON;
-                  entry.volser = ZDS_VOLSER_UNKNOWN;
-                }
-              }
-              else
-              {
-                entry.dsorg = ZDS_DSORG_UNKNWON;
-                entry.volser = ZDS_VOLSER_UNKNOWN;
-              }
-              fclose(dir);
-            }
-          }
         }
       }
 
       break;
       case GENERATION_DATA_GROUP:
-        printf("case GENERATION_DATA_GROUP\n");
-        return -8;
+        entry.volser = ZDS_VOLSER_GDG;
         break;
       case CLUSTER:
-        // printf("case CLUSER\n");
         entry.dsorg = ZDS_DSORG_VSAM;
         entry.volser = ZDS_VOLSER_VSAM;
         break;
       case DATA_COMPONENT:
-        // printf("case DATA_COMPONENT\n");
         entry.dsorg = ZDS_DSORG_VSAM;
         entry.volser = ZDS_VOLSER_VSAM;
         break;
       case ALTERNATE_INDEX:
-        // printf("case ALTERNATE_INDEX\n");
-        // return -8;
+        free(area);
+        zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
+        zds->diag.service_rc = ZDS_RTNCD_UNSUPPORTED_ERROR;
+        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Unsupported entry type '%x' ", f->type);
+        return RTNCD_FAILURE;
         break;
       case GENERATION_DATA_SET:
-        // printf("case GENERATION_DATA_SET\n");
-        // return -8;
         break;
       case INDEX_COMPONENT:
         entry.dsorg = ZDS_DSORG_VSAM;
         entry.volser = ZDS_VOLSER_VSAM;
         break;
       case ATL_LIBRARY_ENTRY:
-        // printf("case ATL_LIBRARY_ENTRY\n");
-        // return -8;
+        free(area);
+        zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
+        zds->diag.service_rc = ZDS_RTNCD_UNSUPPORTED_ERROR;
+        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Unsupported entry type '%x' ", f->type);
+        return RTNCD_FAILURE;
         break;
       case PATH:
-        // printf("case PATH\n");
-        // return -8;
+        free(area);
+        zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
+        zds->diag.service_rc = ZDS_RTNCD_UNSUPPORTED_ERROR;
+        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Unsupported entry type '%x' ", f->type);
+        return RTNCD_FAILURE;
         break;
       case USER_CATALOG_CONNECTOR_ENTRY:
-        // printf("case USER_CATALOG_CONNECTOR_ENTRY\n");
-        // return -8;
+        free(area);
+        zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
+        zds->diag.service_rc = ZDS_RTNCD_UNSUPPORTED_ERROR;
+        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Unsupported entry type '%x' ", f->type);
+        return RTNCD_FAILURE;
         break;
       case ATL_VOLUME_ENTRY:
-        // printf("case ATL_VOLUME_ENTRY\n");
-        // return -8;
+        free(area);
+        zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
+        zds->diag.service_rc = ZDS_RTNCD_UNSUPPORTED_ERROR;
+        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Unsupported entry type '%x' ", f->type);
+        return RTNCD_FAILURE;
         break;
       case ALIAS:
-        entry.dsorg = ZDS_DSORG_UNKNWON;
+        entry.dsorg = ZDS_DSORG_UNKNOWN;
         entry.volser = ZDS_VOLSER_ALIAS;
         break;
       default:
-        // printf("case default\n");
-        // return -8;
+        free(area);
+        zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
+        zds->diag.service_rc = ZDS_RTNCD_UNSUPPORTED_ERROR;
+        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Unsupported entry type '%x' ", f->type);
+        return RTNCD_FAILURE;
         break;
       };
 

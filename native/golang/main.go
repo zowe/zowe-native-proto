@@ -15,10 +15,13 @@ import (
 	"encoding/json"
 	"log"
 	"os"
+
 	t "zowe-native-proto/ioserver/types/common"
+	utils "zowe-native-proto/ioserver/utils"
 )
 
 func main() {
+	utils.SetAutoConvOnUntaggedStdio()
 	input := make(chan []byte)
 
 	go func() {
@@ -51,6 +54,7 @@ func main() {
 		"listSpools":     HandleListSpoolsRequest,
 		"consoleCommand": HandleConsoleCommandRequest,
 		"restoreDataset": HandleRestoreDatasetRequest,
+		"deleteDataset":  HandleDeleteDatasetRequest,
 	}
 
 	for data := range input {

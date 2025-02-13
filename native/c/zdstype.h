@@ -37,7 +37,7 @@
 #define ZDS_VOLSER_GDG "??????"
 #define ZDS_VOLSER_UNKNOWN "------"
 
-#define ZDS_DSORG_UNKNWON "--" // library
+#define ZDS_DSORG_UNKNOWN "--" // library
 #define ZDS_DSORG_PDSE "PO-E"  // library
 #define ZDS_DSORG_VSAM "VS"    // VSAM
 #define ZDS_DSORG_PS "PS"      // sequential

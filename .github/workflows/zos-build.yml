@@ -34,7 +34,7 @@ jobs:
           EOF
 
       - name: Build (Local)
-        run: npm install && npm run build:tools
+        run: npm ci && npm run build:tools
 
       - name: Build (z/OS)
         run: npm run tools:all && npm run tools:artifacts

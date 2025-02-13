@@ -24,9 +24,27 @@
 
 using namespace std;
 
-int zut_test()
+int zut_search(string parms)
 {
-  return 0;
+  return ZUTSRCH();
+}
+
+int zut_substitute_sybmol(string pattern, string &result)
+{
+  SYMBOL_DATA *parms = (SYMBOL_DATA *)__malloc31(sizeof(SYMBOL_DATA));
+  memset(parms, 0x00, sizeof(SYMBOL_DATA));
+
+  strcpy(parms->input, pattern.c_str());
+  parms->length = strlen(pattern.c_str());
+  int rc = ZUTSYMBP(parms);
+  if (RTNCD_SUCCESS != rc)
+  {
+    free(parms);
+    return rc;
+  }
+  result += string(parms->output);
+  free(parms);
+  return RTNCD_SUCCESS;
 }
 
 int zut_convert_dsect()
@@ -34,7 +52,7 @@ int zut_convert_dsect()
   return ZUTEDSCT();
 }
 
-void zut_uppercase_pad_truncate(string source, char *target, int len)
+void zut_uppercase_pad_truncate(char *target, string source, int len)
 {
   memset(target, ' ', len);                                           // pad with spaces
   transform(source.begin(), source.end(), source.begin(), ::toupper); // upper case

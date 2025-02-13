@@ -189,6 +189,16 @@ int ZJBMLIST(ZJB *zjb, STATJQTR **PTR64 job_info, int *entries)
   stat.stattype = statters;
   memcpy(stat.statownr, zjb->owner_name, sizeof((stat.statownr)));
 
+  if (0 == strcmp(zjb->prefix_name, "        "))
+  {
+    // do nothing
+  }
+  else
+  {
+    stat.statsel1 |= statsjbn; // add job name filter
+    memcpy(stat.statjobn, zjb->prefix_name, sizeof((stat.statjobn)));
+  }
+
   return ZJBMTCOM(zjb, &stat, job_info, entries);
 }
 

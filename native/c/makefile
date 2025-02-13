@@ -28,9 +28,7 @@ MTL_OPTS=metal,\
  warn64,\
  optimize(2),\
  list,\
- showinc,\
  showmacro,\
- source,\
  aggregate
 
 MTL_OPTS64=$(MTL_OPTS),lp64
@@ -44,37 +42,51 @@ MACLIBS=-ISYS1.MACLIB \
 MTL_HEADERS=-I/usr/include/metal \
  -I./chdsect
 
-CPP_BND_FLAGS=-W "l,lp64,xplink,map,list"\
- -qsource \
- -g
+CPP_BND_FLAGS=-W "l,lp64,xplink,map,list"
 
-CPP_BND_FLAGS_AUTH=-W "l,lp64,xplink,map,list,ac=1"\
- -qsource \
- -g
+CPP_BND_FLAGS_AUTH=-W "l,lp64,xplink,map,list,ac=1"
 
 C_FLAGS=-W "c,lp64,langlvl(extended),xplink,exportall"\
- -qsource \
- -g \
  -c \
  -I./chdsect
 
-DLL_CPP_FLAGS=-W "c,lp64,langlvl(extended0x),dll,xplink,exportall,showinc"\
- -qsource \
- -g \
+DLL_CPP_FLAGS=-W "c,lp64,langlvl(extended0x),dll,xplink,exportall"\
  -c \
  -I./chdsect
 
-DLL_BND_FLAGS=-W "l,lp64,dll,dynam=dll,xplink,map,list" \
- -g \
- -qsource
+DLL_BND_FLAGS=-W "l,lp64,dll,dynam=dll,xplink,map,list"
 
-# -g generates debugging information
-CPP_FLAGS=-W "c,lp64,langlvl(extended0x),dll,xplink,showinc"\
- -qsource \
- -g \
+CPP_FLAGS=-W "c,lp64,langlvl(extended0x),dll,xplink"\
  -c
 
-ASM_FLAGS=-mrent
+ASM_FLAGS=-mRENT
+
+# make -DBuildType=DEBUG
+.IF $(BuildType) == DEBUG
+# -g generates debugging information
+DEBUGGER_FLAGS=-qSOURCE -qDEBUG
+CPP_BND_FLAGS+=$(DEBUGGER_FLAGS)
+CPP_BND_FLAGS_AUTH+=$(DEBUGGER_FLAGS)
+C_FLAGS+=$(DEBUGGER_FLAGS)
+DLL_BND_FLAGS+=$(DEBUGGER_FLAGS)
+DLL_CPP_FLAGS+=$(DEBUGGER_FLAGS) -qSHOWINC
+CPP_FLAGS+=$(DEBUGGER_FLAGS) -qSHOWINC
+MTL_FLAGS+=$(DEBUGGER_FLAGS) -qSHOWINC
+MTL_FLAGS64+=$(DEBUGGER_FLAGS) -qSHOWINC
+ASM_FLAGS+=--verbose
+.ELSE
+PRODUCTION_FLAGS=-qNOSOURCE -qNODEBUG
+CPP_BND_FLAGS+=$(PRODUCTION_FLAGS)
+CPP_BND_FLAGS_AUTH+=$(PRODUCTION_FLAGS)
+C_FLAGS+=$(PRODUCTION_FLAGS)
+DLL_BND_FLAGS+=$(PRODUCTION_FLAGS)
+DLL_CPP_FLAGS+=$(PRODUCTION_FLAGS) -qNOSHOWINC
+CPP_FLAGS+=$(PRODUCTION_FLAGS) -qNOSHOWINC
+MTL_FLAGS+=$(PRODUCTION_FLAGS) -qNOSHOWINC
+MTL_FLAGS64+=$(PRODUCTION_FLAGS) -qNOSHOWINC
+ASM_FLAGS+=--noverbose
+.END
+
 
 all: libzut.so libzut.a libzds.so libzds.a libzusf.so libzusf.a libzcn.so libzcn.a libzjb.so libzjb.a zowex zowexx extattr test
 
@@ -234,13 +246,13 @@ libztso.a: ztso.o
 zowex: zowex.o libzcn.a libzut.a libzjb.a libzds.a libzusf.a libztso.a
 	@echo 'Building zowex'
 	$(CXX) $(CPP_BND_FLAGS) -o $@ $^ > $*.bind.lst
-	cp $@ ../golang/$(basename $@)
+	ln -s $@ ../golang/$(basename $@) || true
 	@echo 'Copied zowex to golang/'
 
 zowexx: zowex.o libzcn.a libzut.a libzjb.a libzds.a libzusf.a libztso.a
 	@echo 'Building zowexx'
 	$(CXX) $(CPP_BND_FLAGS_AUTH) -o $@ $^ > $*.bind.lst
-	cp $@ ../golang/$(basename $@)
+	ln -s $@ ../golang/$(basename $@) || true
 	@echo 'Copied zowexx to golang/'
 
 zowex.o: zowex.cpp
@@ -253,17 +265,12 @@ test: test.sh
 #
 # TODO(Kelosky): makefile for chdsect (must have ADATA in data set)
 #
-# ISPF: tso alloc da('DKELOSKY.TEMP.ADATA') DSORG(PO) SPACE(5,5) CYL LRECL(80) RECFM(F,b) NEW vol(tsu063)
-# zowex: zowex test bpxwdyn "alloc da('DKELOSKY.TEMP.TEST2') DSORG(PO) SPACE(5,5) CYL LRECL(80) RECFM(F,b) NEW keep"
-# z/OS UNIX: tso "alloc da('dkelosky.temp.adata') DSORG(PO) SPACE(5,5) CYL LRECL(80) RECFM(F,b) NEW vol(tsu063)"
-# as -madata --gadata="//'DKELOSKY.TEMP.ADATA(IHAECB)'" ihaecb.s
-#
 
 #
 # Misc targets
 #
 extattr:
-	extattr +ap zowexx ../golang/zowexx
+	extattr +ap zowexx
 
 clean:
 	rm -f *.o
