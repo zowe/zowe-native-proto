@@ -75,8 +75,7 @@ export class SshConfigUtils {
                         privateKey: newConfig?.privateKey,
                         handshakeTimeout: newConfig?.handshakeTimeout,
                         port: newConfig?.port,
-                        keyPassphrase: newConfig?.keyPassphrase,
-                        rejectUnauthorized: false
+                        keyPassphrase: newConfig?.keyPassphrase
                     };
                     let imperativeLoadedProfile: imperative.IProfileLoaded = {
                         name: newConfig?.name,
@@ -85,7 +84,6 @@ export class SshConfigUtils {
                         type: "ssh",
                         profile
                     };
-                    console.debug();
                     return imperativeLoadedProfile;
                 }
             }
