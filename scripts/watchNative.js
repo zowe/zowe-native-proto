@@ -12,11 +12,14 @@
 const chokidar = require("chokidar");
 const p = require("path");
 
-const watcher = chokidar.watch(["c/**/*.{c,cpp,h,hpp,s}", "golang/**"], {
-  cwd: "native/",
-  ignoreInitial: true,
-  persistent: true,
-});
+const watcher = chokidar.watch(
+  ["c/makefile", "c/**/*.{c,cpp,h,hpp,s}", "golang/**"],
+  {
+    cwd: "native/",
+    ignoreInitial: true,
+    persistent: true,
+  }
+);
 
 const fs = require("fs");
 const { Client } = require("ssh2");

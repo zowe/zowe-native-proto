@@ -246,13 +246,13 @@ libztso.a: ztso.o
 zowex: zowex.o libzcn.a libzut.a libzjb.a libzds.a libzusf.a libztso.a
 	@echo 'Building zowex'
 	$(CXX) $(CPP_BND_FLAGS) -o $@ $^ > $*.bind.lst
-	ln -s $@ ../golang/$(basename $@)
+	ln -s $@ ../golang/$(basename $@) || true
 	@echo 'Copied zowex to golang/'
 
 zowexx: zowex.o libzcn.a libzut.a libzjb.a libzds.a libzusf.a libztso.a
 	@echo 'Building zowexx'
 	$(CXX) $(CPP_BND_FLAGS_AUTH) -o $@ $^ > $*.bind.lst
-	ln -s $@ ../golang/$(basename $@)
+	ln -s $@ ../golang/$(basename $@) || true
 	@echo 'Copied zowexx to golang/'
 
 zowex.o: zowex.cpp
@@ -275,7 +275,7 @@ test: test.sh
 # Misc targets
 #
 extattr:
-	extattr +ap zowexx ../golang/zowexx
+	extattr +ap zowexx
 
 clean:
 	rm -f *.o
