@@ -89,7 +89,7 @@ function invokeTaskAndPrintStatus(task, cmd, resolve) {
     }
 
     stream
-      .on("close", () => {
+      .on("end", () => {
         if (errText.length === 0) {
           console.log(`\n  [tasks -> ${task}] ${taskCmd} succeeded ✔`);
         } else {
@@ -100,7 +100,7 @@ function invokeTaskAndPrintStatus(task, cmd, resolve) {
         }
         resolve();
       })
-      .on("data", (data) => {
+      .stderr.on("data", (data) => {
         let str = data.toString().trim();
         if (
           str === "$" ||
