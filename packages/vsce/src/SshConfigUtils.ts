@@ -9,19 +9,16 @@
  *
  */
 
-import { Gui, imperative, ZoweVsCodeExtension } from "@zowe/zowe-explorer-api";
+import { FileManagement, Gui, imperative, ZoweVsCodeExtension } from "@zowe/zowe-explorer-api";
 import * as fs from "fs";
 import * as vscode from "vscode";
 import * as sshConfig from "ssh-config";
-import { ZSshClient } from "zowe-native-proto-sdk";
+import { ZClientUtils, ZSshClient } from "zowe-native-proto-sdk";
 import { homedir } from 'os';
-import { ISshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import * as path from "node:path";
-import { hostname } from "node:os";
-
-interface sshConfigExt extends ISshSession {
-    name?: string;
-}
+import { ProfileConstants } from "@zowe/core-for-zowe-sdk";
+import { ZosUssProfile } from "@zowe/zos-uss-for-zowe-sdk";
+import { sshConfigExt } from "zowe-native-proto-sdk";
 
 // biome-ignore lint/complexity/noStaticOnlyClass: Utilities class has static methods
 export class SshConfigUtils {
@@ -35,6 +32,8 @@ export class SshConfigUtils {
     public static async promptForProfile(profileName?: string): Promise<imperative.IProfileLoaded | undefined> {
         const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
         const profCache = zoweExplorerApi.getExplorerExtenderApi().getProfilesCache();
+        const profInfo = await zoweExplorerApi.getExplorerExtenderApi().getProfilesCache().getProfileInfo();
+        const configExists = profInfo.getTeamConfig().exists;
 
         if (profileName != null) {
             return profCache.getLoadedProfConfig(profileName, "ssh");
@@ -44,14 +43,14 @@ export class SshConfigUtils {
             .filter(({ name, profile }) => name != null && profile?.host);
 
         // get configs via migrateSshConfig() and remove options that have host name that already exists as an ssh profile on the config file
-        const migratedConfigs = (await SshConfigUtils.migrateSshConfig()).filter(migratedConfig =>
+        const migratedConfigs = (await ZClientUtils.migrateSshConfig()).filter(migratedConfig =>
             !sshProfiles.some(sshProfile => sshProfile.profile?.host === migratedConfig.hostname)
         );
 
         const qpItems: vscode.QuickPickItem[] = [
             { label: "$(plus) Add New SSH Host..." },
             ...sshProfiles.map((prof) => ({ label: prof.name!, description: prof.profile?.host })),
-            { label: "Merge From SSH Config", kind: vscode.QuickPickItemKind.Separator },
+            { label: "Migrate From SSH Config", kind: vscode.QuickPickItemKind.Separator },
             ...migratedConfigs.map((config) => ({ label: config.name!, description: config.hostname }))
         ];
         const result = await Gui.showQuickPick(qpItems, { title: "Choose an SSH host" });
@@ -59,6 +58,7 @@ export class SshConfigUtils {
         let selectedProfile: sshConfigExt | undefined;
 
         if (result === qpItems[0] || migratedConfigs.some((config) => result?.label === config.name!)) {
+            // Create new config
             if(result === qpItems[0]){
                 let newConfig = await SshConfigUtils.createNewConfig();
                 if (newConfig) {
@@ -86,89 +86,39 @@ export class SshConfigUtils {
                     return imperativeLoadedProfile;
                 }
             }
+            // Migrating from SSH Config
             else if(migratedConfigs.some((config) => result?.label === config.name!)){
+                if (!configExists) await SshConfigUtils.createZoweSchema();
                 selectedProfile = migratedConfigs.find((config) => result!.label === config.name!);
-            }
-
-            if (selectedProfile) {
-                selectedProfile = await SshConfigUtils.getNewProfileName(selectedProfile);
-                selectedProfile = await SshConfigUtils.promptForAuth(selectedProfile);
-                await SshConfigUtils.setProfile(selectedProfile);
-                let profile: { [key: string]: any } = {
-                    host: selectedProfile?.hostname,
-                    name: selectedProfile?.name,
-                    password: selectedProfile?.password,
-                    user: selectedProfile?.user,
-                    privateKey: selectedProfile?.privateKey,
-                    handshakeTimeout: selectedProfile?.handshakeTimeout,
-                    port: selectedProfile?.port,
-                    keyPassphrase: selectedProfile?.keyPassphrase
-                };
-                let imperativeLoadedProfile: imperative.IProfileLoaded = {
-                    name: selectedProfile?.name,
-                    message: '',
-                    failNotFound: false,
-                    type: "ssh",
-                    profile
-                };
-                return imperativeLoadedProfile;
+                if (selectedProfile) {
+                    selectedProfile = await SshConfigUtils.getNewProfileName(selectedProfile);
+                    selectedProfile = await SshConfigUtils.promptForAuth(selectedProfile);
+                    await SshConfigUtils.setProfile(selectedProfile);
+                    let profile: { [key: string]: any } = {
+                        host: selectedProfile?.hostname,
+                        name: selectedProfile?.name,
+                        password: selectedProfile?.password,
+                        user: selectedProfile?.user,
+                        privateKey: selectedProfile?.privateKey,
+                        handshakeTimeout: selectedProfile?.handshakeTimeout,
+                        port: selectedProfile?.port,
+                        keyPassphrase: selectedProfile?.keyPassphrase
+                    };
+                    let imperativeLoadedProfile: imperative.IProfileLoaded = {
+                        name: selectedProfile?.name,
+                        message: '',
+                        failNotFound: false,
+                        type: "ssh",
+                        profile
+                    };
+                    return imperativeLoadedProfile;
+                }
             }
         }
+        // Select an existing SSH config from team config
         else if (result != null) {
             return sshProfiles.find((prof) => prof.name === result.label);
         }
-    }
-
-    private static async migrateSshConfig(): Promise<sshConfigExt[]> {
-        const filePath = path.join(homedir(), '.ssh', 'config');
-        let fileContent: string;
-        try {
-            fileContent = fs.readFileSync(filePath, "utf-8");
-        } catch (error) {
-            vscode.window.showErrorMessage(`Error reading SSH config: ${error}`);
-            return [];
-        }
-
-        const parsedConfig = sshConfig.parse(fileContent);
-        const SSHConfigs: sshConfigExt[] = [];
-
-        for (const config of parsedConfig) {
-            if (config.type === sshConfig.LineType.DIRECTIVE) {
-                const session: sshConfigExt = {};
-                session.name = (config as any).value;
-
-                if (Array.isArray((config as any).config)) {
-                    for (const subConfig of (config as any).config) {
-                        if (typeof subConfig === 'object' && 'param' in subConfig && 'value' in subConfig) {
-                            const param = (subConfig as any).param.toLowerCase();
-                            const value = (subConfig as any).value;
-
-                            switch (param) {
-                                case 'hostname':
-                                    session.hostname = value;
-                                    break;
-                                case 'port':
-                                    session.port = parseInt(value);
-                                    break;
-                                case 'user':
-                                    session.user = value;
-                                    break;
-                                case 'identityfile':
-                                    session.privateKey = value;
-                                    break;
-                                case 'connecttimeout':
-                                    session.handshakeTimeout = parseInt(value);
-                                    break;
-                                default:
-                                    break;
-                            }
-                        }
-                    }
-                }
-                SSHConfigs.push(session);
-            }
-        }
-        return SSHConfigs;
     }
 
     public static showSessionInTree(profileName: string, visible: boolean): void {
@@ -192,7 +142,7 @@ export class SshConfigUtils {
         const profInfo = await zoweExplorerApi.getExplorerExtenderApi().getProfilesCache().getProfileInfo();
         const configExists = profInfo.getTeamConfig().exists;
 
-        if (!configExists) await vscode.commands.executeCommand("zowe.ds.addSession");
+        if (!configExists) await SshConfigUtils.createZoweSchema();
 
         const sshResponse = await vscode.window.showInputBox({
             prompt: "Enter SSH connection command",
@@ -259,17 +209,8 @@ export class SshConfigUtils {
                 if ((match = /~(\/.*)/.exec(privateKeyPath))) {
                     privateKeyPath = path.join(homedir(), match[1]);
                 }
-            } else if (privateKeyPath === true) {
-                for (const algo of ["id_ed25519", "id_rsa"]) {
-                    const tempPath = path.resolve(homedir(), ".ssh", algo);
-                    if (fs.existsSync(tempPath)) {
-                        privateKeyPath = path.resolve(homedir(), ".ssh", algo);
-                        break;
-                    }
-                }
-                if (SshProfile.privateKey == null) {
-                    throw Error("Failed to discover an ssh private key inside `~/.ssh`.");
-                }
+            } else if (privateKeyPath === true && SshProfile.privateKey) {
+                SshProfile.privateKey = await ZClientUtils.findPrivateKey(SshProfile.privateKey);
             }
         } catch (err) {
             //do nothing
@@ -282,9 +223,6 @@ export class SshConfigUtils {
             { label: "$(lock) Password" },
             { label: "$(key) Private Key" },
             { label: "$(key) Private Key with Passphrase" }
-            // { label: "$(lock) Password", description: "Authenticate using a password" },
-            // { label: "$(key) Private Key", description: "Authenticate using a private key" },
-            // { label: "$(key) Private Key with Passphrase", description: "Authenticate using a private key with passphrase" }
         ];
 
         //if PrivateKey/IdentityFile is passed, move password option to last priority
@@ -387,6 +325,7 @@ export class SshConfigUtils {
         }
         return selectedProfile
     }
+
     private static async setProfile(selectedConfig: sshConfigExt | undefined): Promise<void>
     {
         if (selectedConfig && !selectedConfig.name) {
@@ -417,5 +356,42 @@ export class SshConfigUtils {
 
         configApi.profiles.set(selectedConfig?.name!, config);
         await profInfo.getTeamConfig().save();
+    }
+
+        public static async createZoweSchema(): Promise<void> {
+        try {
+            let user = false;
+            let global = true;
+            let rootPath = FileManagement.getZoweDir();
+            const workspaceDir = ZoweVsCodeExtension.workspaceRoot;
+
+            const config = await imperative.Config.load("zowe", {
+                homeDir: FileManagement.getZoweDir(),
+                projectDir: FileManagement.getFullPath(rootPath),
+            });
+            if (workspaceDir != null) {
+                config.api.layers.activate(user, global, rootPath);
+            }
+
+            const knownCliConfig: imperative.ICommandProfileTypeConfiguration[] = [ZosUssProfile, ProfileConstants.BaseProfile];
+            config.setSchema(imperative.ConfigSchema.buildSchema(knownCliConfig));
+
+            // Note: IConfigBuilderOpts not exported
+            // const opts: IConfigBuilderOpts = {
+            const opts: any = {
+                // getSecureValue: this.promptForProp.bind(this),
+                populateProperties: true,
+            };
+            // Build new config and merge with existing layer
+            const impConfig: Partial<imperative.IImperativeConfig> = {
+                profiles: knownCliConfig,
+                baseProfile: ProfileConstants.BaseProfile,
+            };
+            const newConfig: imperative.IConfig = await imperative.ConfigBuilder.build(impConfig, global, opts);
+
+            config.api.layers.merge(newConfig);
+            await config.save(false);
+        } catch (err) {
+        }
     }
 }
