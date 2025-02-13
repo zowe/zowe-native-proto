@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "zmetal.h"
+#include "asasymbp.h"
 #include "zattachx.h"
 #include "zstorage.h"
 #include "zwto.h"
@@ -148,11 +149,38 @@ int ZUTWDYN(BPXWDYN_PARM *parm, BPXWDYN_RESPONSE *response)
   return (0 != rc) ? ZUT_BPXWDYN_SERVICE_FAILURE : RTNCD_SUCCESS;
 }
 
-#pragma prolog(ZUTTEST, "&CCN_MAIN SETB 1 \n MYPROLOG")
-int ZUTTEST()
+typedef struct symbfp SYMBFP;
+typedef int (*ASASYMBF)(SYMBFP) ATTRIBUTE(amode31);
+#pragma prolog(ZUTSYMBP, "&CCN_MAIN SETB 1 \n MYPROLOG")
+
+// symbol examples: https://www.ibm.com/docs/en/zos/3.1.0?topic=symbols-static-system
+// similar tool: https://www.ibm.com/docs/en/zos/3.1.0?topic=descriptions-sysvar-display-static-system-symbols
+// asasymbf callable service: https://www.ibm.com/docs/en/zos/3.1.0?topic=service-calling-asasymbm-asasymbf
+int ZUTSYMBP(SYMBOL_DATA *data)
 {
-  return 0;
+  int rc = 0;
+
+  SYMBFP parms = {0};
+
+  unsigned char work_area[1024] = {0};
+
+  parms.symbfppatternaddr = (void *PTR32)data->input;
+  parms.symbfppatternlength = (int)strlen(data->input);
+
+  parms.symbfptargetaddr = data->output;
+  parms.symbfptargetlengthaddr = &data->length;
+
+  parms.symbfpreturncodeaddr = &rc;
+
+  parms.symbfpworkareaaddr = work_area;
+
+  ASASYMBF substitute = (ASASYMBF)load_module31("ASASYMBF");
+  substitute(parms);
+
+  delete_module("ASASYMBF");
+  return rc;
 }
+
 typedef struct
 {
   short len;
@@ -163,13 +191,16 @@ typedef int (*CCNEDSCT)(EDSCT_PARMS *) ATTRIBUTE(amode31);
 #pragma prolog(ZUTEDSCT, "&CCN_MAIN SETB 1 \n MYPROLOG")
 int ZUTEDSCT()
 {
+  int rc = 0;
   CCNEDSCT convert = (CCNEDSCT)load_module31("CCNEDSCT");
   EDSCT_PARMS p = {0};
   p.len = sprintf(p.parms, "PPCOND,EQUATE(DEF),BITF0XL,HDRSKIP,UNIQ,LP64,LEGACY,SECT(ALL)");
-  return convert(&p);
+  rc = convert(&p);
+  delete_module("CCNEDSCT");
+  return rc;
 }
 
-// TODO(Kelosky): this should probably be `getlogin()`
+// NOTE(Kelosky): this is unused in favor of `getlogin()` but retained for other usages of IAZXJSAB
 #pragma prolog(ZUTMGUSR, "&CCN_MAIN SETB 1 \n MYPROLOG")
 int ZUTMGUSR(char user[8])
 {

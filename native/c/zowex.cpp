@@ -58,6 +58,7 @@ int handle_log_view(ZCLIResult);
 
 int handle_tool_convert_dsect(ZCLIResult);
 int handle_tool_dynalloc(ZCLIResult);
+int handle_tool_display_symbol(ZCLIResult);
 
 // TODO(Kelosky):
 // help w/verbose examples
@@ -441,6 +442,15 @@ int main(int argc, char *argv[])
   tool_dynalloc.get_positionals().push_back(dynalloc_parm);
   tool_group.get_verbs().push_back(tool_dynalloc);
 
+  ZCLIVerb tool_display_symbol("display-symbol");
+  tool_display_symbol.set_description("display system symbol");
+  tool_display_symbol.set_zcli_verb_handler(handle_tool_display_symbol);
+  ZCLIPositional symbol_value("symbol");
+  symbol_value.set_description("symbol to display");
+  symbol_value.set_required(true);
+  tool_display_symbol.get_positionals().push_back(symbol_value);
+  tool_group.get_verbs().push_back(tool_display_symbol);
+
   // add all groups to the CLI
   zcli.get_groups().push_back(data_set_group);
   zcli.get_groups().push_back(console_group);
@@ -498,7 +508,7 @@ int handle_job_list(ZCLIResult result)
       cerr << "Warning: results truncated" << endl;
     }
   }
-  if (rc > RTNCD_WARNING)
+  if (RTNCD_SUCCESS != rc && RTNCD_WARNING != rc)
   {
     cerr << "Error: could not list jobs for: '" << owner_name << "' rc: '" << rc << "'" << endl;
     cerr << "  Details: " << zjb.diag.e_msg << endl;
@@ -895,7 +905,7 @@ int handle_data_set_list(ZCLIResult result)
     }
   }
 
-  if (rc > RTNCD_WARNING)
+  if (RTNCD_SUCCESS != rc && RTNCD_WARNING != rc)
   {
     cerr << "Error: could not list data set: '" << dsn << "' rc: '" << rc << "'" << endl;
     cerr << "  Details: " << zds.diag.e_msg << endl;
@@ -936,7 +946,7 @@ int handle_data_set_list_members_dsn(ZCLIResult result)
       }
     }
   }
-  if (rc > RTNCD_WARNING)
+  if (RTNCD_SUCCESS != rc && RTNCD_WARNING != rc)
   {
     cout << "Error: could not read data set: '" << dsn << "' rc: '" << rc << "'" << endl;
     cout << "  Details: " << zds.diag.e_msg << endl;
@@ -1018,6 +1028,7 @@ int handle_log_view(ZCLIResult result)
   cout << "lines are " << lines << endl;
   return 0;
 }
+
 int handle_tool_dynalloc(ZCLIResult result)
 {
   int rc = 0;
@@ -1038,6 +1049,24 @@ int handle_tool_dynalloc(ZCLIResult result)
   cout << resp << endl;
 
   return rc;
+}
+
+int handle_tool_display_symbol(ZCLIResult result)
+{
+  int rc = 0;
+  string symbol(result.get_positional("symbol").get_value());
+  transform(symbol.begin(), symbol.end(), symbol.begin(), ::toupper); // upper case
+  symbol = "&" + symbol;
+  string value;
+  rc = zut_substitute_sybmol(symbol, value);
+  if (0 != rc)
+  {
+    cerr << "Error: asasymbf with parm '" << symbol << "' rc: '" << rc << "'" << endl;
+    return RTNCD_FAILURE;
+  }
+  cout << value << endl;
+
+  return RTNCD_SUCCESS;
 }
 
 int handle_uss_create_file(ZCLIResult result)
