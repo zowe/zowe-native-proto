@@ -1413,7 +1413,7 @@ int handle_tool_search(ZCLIResult result)
   }
 
   // build super c selection criteria
-  string data = " SRCHFOR  '" + pattern + "'\n";
+  string data = " SRCHFOR '" + pattern + "'\n";
 
   for (vector<ZDSMem>::iterator it = members.begin(); it != members.end(); ++it)
   {
