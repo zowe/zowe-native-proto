@@ -167,6 +167,7 @@ async function uploadFile(localPath, remotePath) {
             // Run `go build` when a Golang file has changed
             golangTask(err, remotePath, stream, resolve);
           } else {
+            console.log();
             resolve();
           }
         });
@@ -211,6 +212,7 @@ watcher.on("unlink", async (path, stats) => {
     await deleteFile(
       p.posix.join(config.deployDirectory, path.replaceAll(p.sep, p.posix.sep))
     );
+    console.log(" ✔");
   } catch (err) {
     console.error(" ✘", err);
   }
