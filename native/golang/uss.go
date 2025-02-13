@@ -23,7 +23,7 @@ import (
 	utils "zowe-native-proto/ioserver/utils"
 )
 
-func HandleListFilesRequest(jsonData []byte) {
+func HandleListFilesRequest(conn utils.ReadWriteCloser, jsonData []byte) {
 	var listRequest uss.ListFilesRequest
 	err := json.Unmarshal(jsonData, &listRequest)
 	if err != nil {
@@ -73,7 +73,7 @@ func HandleListFilesRequest(jsonData []byte) {
 	}
 }
 
-func HandleReadFileRequest(jsonData []byte) {
+func HandleReadFileRequest(conn utils.ReadWriteCloser, jsonData []byte) {
 	var request uss.ReadFileRequest
 	err := json.Unmarshal(jsonData, &request)
 	if err != nil || (request.Encoding == "" && request.Path == "") {
@@ -86,7 +86,7 @@ func HandleReadFileRequest(jsonData []byte) {
 	if hasEncoding {
 		args = append(args, "--encoding", request.Encoding, "--rfb", "true")
 	}
-	out, err := utils.BuildCommand(args).Output()
+	out, err := conn.ExecCmd(args)
 	if err != nil {
 		log.Println("Error executing command:", err)
 		return
@@ -107,7 +107,7 @@ func HandleReadFileRequest(jsonData []byte) {
 	}
 }
 
-func HandleWriteFileRequest(jsonData []byte) {
+func HandleWriteFileRequest(conn utils.ReadWriteCloser, jsonData []byte) {
 	var request uss.WriteFileRequest
 	err := json.Unmarshal(jsonData, &request)
 	if err != nil || (request.Encoding == "" && request.Path == "") {

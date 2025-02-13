@@ -19,12 +19,25 @@ import { ZSshClient } from "./src";
     const sshProfAttrs = profInfo.getDefaultProfile("ssh");
     const sshMergedArgs = profInfo.mergeArgsForProfile(sshProfAttrs, { getSecureVals: true });
     const session = new SshSession(ProfileInfo.initSessCfg(sshMergedArgs.knownArgs));
-    using client = await ZSshClient.create(session);
-    for (const fspath of ["/u/users/timothy", "/u/users/trae"]) {
-        console.time(`listFiles:${fspath}`);
-        const response = await client.uss.listFiles({ fspath });
-        console.timeEnd(`listFiles:${fspath}`);
-        console.log(response.items.map((item) => item.name));
+    using client = await ZSshClient.create(session, "~/zowe-native-proto/golang");
+    const testUsers = ["jace", "timothy", "trae"];
+    for (const user of testUsers) {
+        console.time(`listDatasets:${user}`);
+        const response = await client.ds.listDatasets({ pattern: `${user}.**` });
+        console.timeEnd(`listDatasets:${user}`);
+        console.dir(response.items.map((item) => item.name));
+    }
+    for (const user of testUsers) {
+        console.time(`listFiles:${user}`);
+        const response = await client.uss.listFiles({ fspath: `/u/users/${user}` });
+        console.timeEnd(`listFiles:${user}`);
+        console.dir(response.items.map((item) => item.name));
+    }
+    for (const user of testUsers) {
+        console.time(`listJobs:${user}`);
+        const response = await client.jobs.listJobs({ owner: user });
+        console.timeEnd(`listJobs:${user}`);
+        console.dir(response.items.map((item) => item.id));
     }
 })().catch((err) => {
     console.error(err);
