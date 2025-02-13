@@ -125,10 +125,13 @@ async function deleteFile(remotePath) {
     }
 
     conn.sftp((err, sftp) => {
-      sftp
-        .deleteFile(remotePath)
-        .then((res) => resolve())
-        .catch((err) => console.log(err) && resolve());
+      sftp.unlink(remotePath, (err) => {
+        if (err) {
+          return reject(err);
+        }
+
+        resolve();
+      });
     });
   });
 }
@@ -183,7 +186,7 @@ watcher.on("add", async (path, stats) => {
   try {
     await uploadFile(
       path,
-      p.posix.join(config.deployDirectory, path.replace(p.sep, p.posix.sep))
+      p.posix.join(config.deployDirectory, path.replaceAll(p.sep, p.posix.sep))
     );
   } catch (err) {
     console.error(" ✘", err);
@@ -195,7 +198,7 @@ watcher.on("change", async (path, stats) => {
   try {
     await uploadFile(
       path,
-      p.posix.join(config.deployDirectory, path.replace(p.sep, p.posix.sep))
+      p.posix.join(config.deployDirectory, path.replaceAll(p.sep, p.posix.sep))
     );
   } catch (err) {
     console.error(" ✘", err);
@@ -203,10 +206,10 @@ watcher.on("change", async (path, stats) => {
 });
 
 watcher.on("unlink", async (path, stats) => {
-  process.stdout.write(`${Date.now().toLocaleString()} [-] ${path}`);
+  process.stdout.write(`${new Date().toLocaleString()} [-] ${path}`);
   try {
     await deleteFile(
-      p.posix.join(config.deployDirectory, path.replace(p.sep, p.posix.sep))
+      p.posix.join(config.deployDirectory, path.replaceAll(p.sep, p.posix.sep))
     );
   } catch (err) {
     console.error(" ✘", err);
