@@ -53,6 +53,7 @@ extern "C"
   int ZUTWDYN(BPXWDYN_PARM *, BPXWDYN_RESPONSE *);
   int ZUTEDSCT();
   int ZUTSYMBP(SYMBOL_DATA *);
+  int ZUTSRCH();
 
 #if defined(__cplusplus)
 }

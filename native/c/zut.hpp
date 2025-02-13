@@ -27,6 +27,7 @@ typedef struct ZConvData
     char *output_iter;
 } ZConvData;
 
+int zut_search(std::string);
 int zut_substitute_sybmol(std::string, std::string &);
 int zut_bpxwdyn(std::string, unsigned int *, std::string &);
 void zut_dump_storage(std::string, const void *, size_t);

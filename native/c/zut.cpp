@@ -24,6 +24,11 @@
 
 using namespace std;
 
+int zut_search(string parms)
+{
+  return ZUTSRCH();
+}
+
 int zut_substitute_sybmol(string pattern, string &result)
 {
 

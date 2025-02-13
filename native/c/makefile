@@ -253,11 +253,6 @@ test: test.sh
 #
 # TODO(Kelosky): makefile for chdsect (must have ADATA in data set)
 #
-# ISPF: tso alloc da('DKELOSKY.TEMP.ADATA') DSORG(PO) SPACE(5,5) CYL LRECL(80) RECFM(F,b) NEW vol(tsu063)
-# zowex: zowex test bpxwdyn "alloc da('DKELOSKY.TEMP.TEST2') DSORG(PO) SPACE(5,5) CYL LRECL(80) RECFM(F,b) NEW keep"
-# z/OS UNIX: tso "alloc da('dkelosky.temp.adata') DSORG(PO) SPACE(5,5) CYL LRECL(80) RECFM(F,b) NEW vol(tsu063)"
-# as -madata --gadata="//'DKELOSKY.TEMP.ADATA(IHAECB)'" ihaecb.s
-#
 
 #
 # Misc targets
