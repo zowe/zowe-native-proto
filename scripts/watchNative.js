@@ -9,11 +9,11 @@
  *
  */
 
-
 const chokidar = require("chokidar");
 const p = require("path");
 const fs = require("fs");
 const { Client } = require("ssh2");
+const { promisify } = require("util");
 
 // Initialize file watcher to detect changes to native code
 const watcher = chokidar.watch(["c/**/*.{c,cpp,h,hpp,s}", "golang/**"], {
@@ -26,8 +26,18 @@ const watcher = chokidar.watch(["c/**/*.{c,cpp,h,hpp,s}", "golang/**"], {
 const CONFIG = JSON.parse(
   fs.readFileSync(p.join("tools", "build", "config.local.json"))
 );
-const USER_TASKS_DEFINED = fs.existsSync(p.join("tools", "build", "tasks.local.json"));
-const TASKS = JSON.parse(fs.readFileSync(p.join("tools", "build", USER_TASKS_DEFINED ? "tasks.local.json" : "tasks.default.json")));
+const USER_TASKS_DEFINED = fs.existsSync(
+  p.join("tools", "build", "tasks.local.json")
+);
+const TASKS = JSON.parse(
+  fs.readFileSync(
+    p.join(
+      "tools",
+      "build",
+      USER_TASKS_DEFINED ? "tasks.local.json" : "tasks.default.json"
+    )
+  )
+);
 
 let sshReady = false;
 
@@ -58,7 +68,7 @@ function buildCommonCommand(remotePath, task) {
   cmd += `iconv -f utf8 -t IBM-1047 ${remotePath}.u > ${remotePath} && `;
   cmd += `chtag -t -c IBM-1047 ${remotePath} && `;
   cmd += `cd ${p.posix.join(CONFIG.deployDirectory, task)} && `;
-  cmd += `${TASKS[task]} 1> /dev/null && exit\n`;
+  cmd += `${TASKS[task]} 1> /dev/null`;
   return cmd;
 }
 
@@ -66,140 +76,120 @@ function buildCommonCommand(remotePath, task) {
  * Invokes the given task and prints the status
  * @param {string} task - The task to run
  * @param {string} cmd - The command to run
- * @param {Stream} stream - The stream to write the command to
- * @param {Function} resolve - The function to call when the command is finished
+ * @param {Function} resolve - The resolve function to call once the command has finished
  */
-function invokeTaskAndPrintStatus(task, cmd, stream, resolve) {
+function invokeTaskAndPrintStatus(task, cmd, resolve) {
   const taskCmd = TASKS[task];
   let errText = "";
-  stream
-    .on("close", () => {
-      if (errText.length == 0) {
-        console.log(`\n\t[tasks -> ${task}] ${taskCmd} succeeded ✔`);
-      } else {
-        console.log(
-          `\t[tasks -> ${task}] ${taskCmd} failed ✘\nerror: \n`,
-          errText
-        );
-      }
+
+  conn.exec(cmd, (err, stream) => {
+    if (err) {
+      console.error(err);
       resolve();
-    })
-    .on("data", (data) => {
-      if (data.trim() === "$" || data.trim() === "exit") {
-        return;
-      }
-      errText += data;
-    });
-  stream.write(cmd);
+    }
+
+    stream
+      .on("close", () => {
+        if (errText.length === 0) {
+          console.log(`\n  [tasks -> ${task}] ${taskCmd} succeeded ✔`);
+        } else {
+          console.error(
+            `\n  [tasks -> ${task}] ${taskCmd} failed ✘\n`,
+            errText
+          );
+        }
+        resolve();
+      })
+      .on("data", (data) => {
+        let str = data.toString().trim();
+        if (
+          str === "$" ||
+          str === "exit" ||
+          /CCN[0-9]{4}\(W\)/.test(str) ||
+          str.startsWith("IGD")
+        ) {
+          return;
+        }
+        errText += str;
+      });
+  });
 }
 
 /**
  * Runs the given task to rebuild after changes were made to the given file
  * @param {string} remotePath - The remote path of the file
  * @param {string} task - The task to run
- * @param {Stream} stream - The stream to write the command to
- * @param {Function} resolve - The function to call when the command is finished
+ * @returns {Promise<void>} A promise that resolves once the task is complete
  */
-function runTask(remotePath, task, stream, resolve) {
-  if (err) {
-    console.error("✘ Failed to start shell:", err);
-    resolve();
-    return;
-  }
-
+async function runTask(remotePath, task) {
   let cmd = buildCommonCommand(remotePath, task);
-  invokeTaskAndPrintStatus(task, cmd, stream, resolve);
+  return new Promise((resolve) => invokeTaskAndPrintStatus(task, cmd, resolve));
 }
 
 /**
- * Delete a file from the remote server and run the appropriate task
+ * Performs an action on the remote server for the given file and then runs the appropriate task
  * @param {string} localPath - The local path of the file
  * @param {string} remotePath - The remote path of the file
+ * @param {string} - Whether to "upload" a file (addition/change) or "delete" it
  * @returns {Promise<void>} A promise that resolves when the file is deleted
  */
-async function deleteFile(localPath, remotePath) {
+async function performActionOnFile(localPath, remotePath, action) {
   return new Promise((resolve, reject) => {
     if (!sshReady) {
       return reject(new Error("SSH connection not ready"));
     }
 
-    conn.sftp((err, sftp) => {
+    conn.sftp(async (err, sftp) => {
       if (err) {
         return reject(err);
       }
-      sftp.unlink(remotePath);
-      if (localPath.split(p.sep)[0] === "c") {
-        runTask(remotePath, "c", stream, resolve);
-      } else if (localPath.split(p.sep)[0] == "golang") {
-        runTask(remotePath, "golang", stream, resolve);
-      } else {
-        resolve();
-      }
-    });
-  });
-}
+      switch (action) {
+        case "upload":
+          console.log(` -> ${remotePath}`);
+          // Set up streams to upload the file using SFTP
+          const readStream = fs.createReadStream(
+            p.join("native", localPath),
+            "utf8"
+          );
+          const writeStream = sftp.createWriteStream(remotePath, {
+            encoding: "utf8",
+          });
 
-/**
- * Upload a file to the remote server and run the appropriate task
- * @param {string} localPath - The local path of the file
- * @param {string} remotePath - The remote path of the file
- * @returns {Promise<void>} A promise that resolves when the file is uploaded
- */
-async function uploadFile(localPath, remotePath) {
-  return new Promise((resolve, reject) => {
-    if (!sshReady) {
-      return reject(new Error("SSH connection not ready"));
-    }
-
-    conn.sftp((err, sftp) => {
-      if (err) {
-        return reject(err);
-      }
-
-      process.stdout.write(` -> ${remotePath} `);
-      // Set up streams to upload the file using SFTP
-      const readStream = fs.createReadStream(
-        p.join("native", localPath),
-        "utf8"
-      );
-      const writeStream = sftp.createWriteStream(remotePath, {
-        encoding: "utf8",
-      });
-
-      writeStream.on("close", () => {
-        conn.shell({ modes: { ECHO: 0, ECHONL: 0 }, env: { PS1: "$" } }, (err, stream) => {
-          if (err) {
+          writeStream.on("error", (err) => {
             reject(err);
-            return;
-          }
+          });
 
-          // Run the appropriate build task based on the file type
-          if (localPath.split(p.sep)[0] === "c") {
-            runTask(remotePath, "c", stream, resolve);
-          } else if (localPath.split(p.sep)[0] == "golang") {
-            runTask(remotePath, "golang", stream, resolve);
-          } else {
+          writeStream.on("close", () => {
             resolve();
-          }
-        });
-      });
+          });
 
-      writeStream.on("error", (err) => {
-        reject(err);
-      });
-
-      // Stream the file to the remote path
-      readStream.pipe(writeStream);
+          // Stream the file to the remote path
+          readStream.pipe(writeStream);
+          break;
+        case "delete":
+          // Delete the file at the remote path
+          sftp.unlink(remotePath);
+          resolve();
+          break;
+        default:
+          break;
+      }
     });
-  });
+  }).then(
+    // Run tasks after performing the action
+    async (val) => {
+      return runTask(remotePath, localPath.split(p.sep)[0]);
+    }
+  );
 }
 
 watcher.on("add", async (path, stats) => {
   process.stdout.write(`${new Date().toLocaleString()} [+] ${path}`);
   try {
-    await uploadFile(
+    await performActionOnFile(
       path,
-      p.posix.join(CONFIG.deployDirectory, path.replace(p.sep, p.posix.sep))
+      p.posix.join(CONFIG.deployDirectory, path.replace(p.sep, p.posix.sep)),
+      "upload"
     );
   } catch (err) {
     console.error("✘", err);
@@ -209,9 +199,10 @@ watcher.on("add", async (path, stats) => {
 watcher.on("change", async (path, stats) => {
   process.stdout.write(`${new Date().toLocaleString()} [~] ${path}`);
   try {
-    await uploadFile(
+    await performActionOnFile(
       path,
-      p.posix.join(CONFIG.deployDirectory, path.replace(p.sep, p.posix.sep))
+      p.posix.join(CONFIG.deployDirectory, path.replace(p.sep, p.posix.sep)),
+      "upload"
     );
   } catch (err) {
     console.error("✘", err);
@@ -221,9 +212,10 @@ watcher.on("change", async (path, stats) => {
 watcher.on("unlink", async (path, stats) => {
   process.stdout.write(`${new Date().toLocaleString()} [-] ${path}`);
   try {
-    await deleteFile(
+    await performActionOnFile(
       path,
-      p.posix.join(CONFIG.deployDirectory, path.replace(p.sep, p.posix.sep))
+      p.posix.join(CONFIG.deployDirectory, path.replace(p.sep, p.posix.sep)),
+      "delete"
     );
   } catch (err) {
     console.error("✘", err);
