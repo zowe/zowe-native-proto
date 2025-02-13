@@ -25,6 +25,7 @@
 #include "zds.hpp"
 #include "zusf.hpp"
 #include "ztso.hpp"
+#include "zuttype.h"
 
 #ifndef TO_STRING
 #define TO_STRING(x) static_cast<std::ostringstream &>(           \
@@ -455,6 +456,10 @@ int main(int argc, char *argv[])
   search_value.set_description("string to search for");
   search_value.set_required(true);
   tool_search.get_positionals().push_back(search_value);
+
+  tool_search.get_options().push_back(data_set_max_entries);
+  tool_search.get_options().push_back(data_set_truncate_warn);
+
   tool_group.get_verbs().push_back(tool_search);
 
   // add all groups to the CLI
@@ -1359,12 +1364,14 @@ int handle_tool_display_symbol(ZCLIResult result)
 int handle_tool_search(ZCLIResult result)
 {
   int rc = 0;
+
   string pattern(result.get_positional("string").get_value());
   string warn = result.get_option("--warn").get_value();
   string max_entries = result.get_option("--max-entries").get_value();
-  ZDS zds = {0};
-
   string dsn(result.get_positional("dsn").get_value());
+
+  ZDS zds = {0};
+  bool results_truncated = false;
 
   if (max_entries.size() > 0)
   {
@@ -1379,12 +1386,10 @@ int handle_tool_search(ZCLIResult result)
 
   if (RTNCD_WARNING == rc)
   {
-    if ("true" == warn)
+
+    if (ZDS_RSNCD_MAXED_ENTRIES_REACHED == zds.diag.detail_rc)
     {
-      if (ZDS_RSNCD_MAXED_ENTRIES_REACHED == zds.diag.detail_rc)
-      {
-        // cerr << "Warning: results truncated" << endl;
-      }
+      results_truncated = true;
     }
   }
 
@@ -1397,8 +1402,8 @@ int handle_tool_search(ZCLIResult result)
 
   vector<string> dds;
   dds.push_back("alloc dd(newdd) da('" + dsn + "') shr");
-  dds.push_back("alloc dd(outdd) ");
-  dds.push_back("alloc dd(sysin) ");
+  dds.push_back("alloc dd(outdd)");
+  dds.push_back("alloc dd(sysin)");
 
   rc = loop_dynalloc(dds);
   if (RTNCD_SUCCESS != rc)
@@ -1422,12 +1427,14 @@ int handle_tool_search(ZCLIResult result)
   }
 
   rc = zut_search("parms are unused for now but can be passed to super c, e.g. ANYC (any case)");
-  // TODO(Kelosky): @TEST
-  // if (RTNCD_SUCCESS != rc)
-  // {
-  //   cout << "Error: search failed with rc: '" << rc << "'" << endl;
-  //   return -1;
-  // }
+  if (rc != RTNCD_SUCCESS ||
+      rc != ZUT_RTNCD_SEARCH_SUCCESS ||
+      rc != RTNCD_WARNING ||
+      rc != ZUT_RTNCD_SEARCH_WARNING)
+  {
+    cerr << "Error: could error invoking ISRSUPC rc: '" << rc << "'" << endl;
+    // NOTE(Kelosky): don't exit here, but proceed to print errors
+  }
 
   string output;
   rc = zds_read_from_dd(&zds, "outdd", output);
@@ -1438,6 +1445,14 @@ int handle_tool_search(ZCLIResult result)
     return RTNCD_FAILURE;
   }
   cout << output << endl;
+
+  if (results_truncated)
+  {
+    if ("true" == warn)
+    {
+      cerr << "Warning: results truncated" << endl;
+    }
+  }
 
   return RTNCD_SUCCESS;
 }
