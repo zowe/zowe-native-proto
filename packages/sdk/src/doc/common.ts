@@ -20,6 +20,12 @@ export interface CommandRequest {
    */
   command: string;
 }
+export interface ErrorResponse {
+  /**
+   * Error details
+   */
+  details: string;
+}
 export interface Dataset {
   /**
    * Dataset name

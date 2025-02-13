@@ -15,10 +15,13 @@ import (
 	"encoding/json"
 	"log"
 	"os"
+
 	t "zowe-native-proto/ioserver/types/common"
+	utils "zowe-native-proto/ioserver/utils"
 )
 
 func main() {
+	utils.SetAutoConvOnUntaggedStdio()
 	// Channel for receiving input from stdin
 	input := make(chan []byte)
 

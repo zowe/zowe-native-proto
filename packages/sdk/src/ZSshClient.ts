@@ -13,15 +13,13 @@ import { posix } from "node:path";
 import type { Writable } from "node:stream";
 import { DeferredPromise } from "@zowe/imperative";
 import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
-import { Client, type ClientChannel, type PseudoTtyOptions } from "ssh2";
+import { Client, type ClientChannel } from "ssh2";
 import { AbstractRpcClient } from "./AbstractRpcClient";
 import { ZSshUtils } from "./ZSshUtils";
 import type { IRpcRequest, IRpcResponse } from "./doc";
 
 export class ZSshClient extends AbstractRpcClient implements Disposable {
     public static readonly DEFAULT_SERVER_PATH = "~/.zowe-server";
-    // https://github.com/mscdex/ssh2/blob/master/lib/protocol/constants.js#L252
-    private static readonly PTY_OPTIONS: PseudoTtyOptions = { modes: { ECHO: 0, ECHONL: 0 } };
 
     private mSshClient: Client;
     private mSshStream: ClientChannel;
@@ -45,14 +43,11 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
             client.mSshClient.on("error", reject).on("ready", () => {
                 client.mSshClient.exec(
                     posix.join(serverPath ?? ZSshClient.DEFAULT_SERVER_PATH, "ioserver"),
-                    { pty: ZSshClient.PTY_OPTIONS },
                     (err, stream) => {
                         if (err) {
                             reject(err);
                         } else {
                             stream.stderr.on("data", (chunk: Buffer) => {
-                                // const EBCDIC = require("ebcdic-ascii").default;
-                                // chunk = Buffer.from(new EBCDIC("1047").toEBCDIC(chunk.toString("hex")), "hex");
                                 console.log("STDERR:", chunk.toString());
                             });
                             // console.log("client ready");

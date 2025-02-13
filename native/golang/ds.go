@@ -14,7 +14,9 @@ package main
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"log"
+	"os"
 	"strings"
 
 	t "zowe-native-proto/ioserver/types/common"
@@ -199,10 +201,15 @@ func HandleRestoreDatasetRequest(jsonData []byte) {
 		return
 	}
 
-	dsResponse := ds.WriteDatasetResponse{
+	dsResponse := ds.RestoreDatasetResponse{
 		Success: true,
 	}
-	utils.PrintCommandResponse(dsResponse)
+	v, err := json.Marshal(dsResponse)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+	} else {
+		fmt.Println(string(v))
+	}
 }
 
 // HandleDeleteDatasetRequest handles a DeleteDatasetRequest by invoking the `zowex data-set delete` command
