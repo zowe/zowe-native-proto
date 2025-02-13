@@ -575,6 +575,8 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
           CLUSTER != f->type &&
           DATA_COMPONENT != f->type &&
           INDEX_COMPONENT != f->type &&
+          GENERATION_DATA_GROUP != f->type &&
+          GENERATION_DATA_SET != f->type &&
           ALIAS != f->type)
       {
         free(area);
@@ -674,11 +676,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
 
       break;
       case GENERATION_DATA_GROUP:
-        free(area);
-        zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
-        zds->diag.service_rc = ZDS_RTNCD_UNSUPPORTED_ERROR;
-        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Unsupported entry type '%x' ", f->type);
-        return RTNCD_FAILURE;
+        entry.volser = ZDS_VOLSER_GDG;
         break;
       case CLUSTER:
         entry.dsorg = ZDS_DSORG_VSAM;
@@ -696,11 +694,6 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
         return RTNCD_FAILURE;
         break;
       case GENERATION_DATA_SET:
-        free(area);
-        zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
-        zds->diag.service_rc = ZDS_RTNCD_UNSUPPORTED_ERROR;
-        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Unsupported entry type '%x' ", f->type);
-        return RTNCD_FAILURE;
         break;
       case INDEX_COMPONENT:
         entry.dsorg = ZDS_DSORG_VSAM;
