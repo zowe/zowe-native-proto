@@ -1377,13 +1377,12 @@ int handle_tool_search(ZCLIResult result)
   {
     zds.max_entries = atoi(max_entries.c_str());
   }
+
+  // list members in a data set
   vector<ZDSMem> members;
   rc = zds_list_members(&zds, dsn, members);
 
-  if (RTNCD_SUCCESS == rc || RTNCD_WARNING == rc)
-  {
-  }
-
+  // note if results are truncated
   if (RTNCD_WARNING == rc)
   {
 
@@ -1393,6 +1392,7 @@ int handle_tool_search(ZCLIResult result)
     }
   }
 
+  // note failure if we can't list
   if (RTNCD_SUCCESS != rc && RTNCD_WARNING != rc)
   {
     cerr << "Error: could not read data set: '" << dsn << "' rc: '" << rc << "'" << endl;
@@ -1400,6 +1400,7 @@ int handle_tool_search(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
+  // perform dynalloc
   vector<string> dds;
   dds.push_back("alloc dd(newdd) da('" + dsn + "') shr");
   dds.push_back("alloc dd(outdd)");
@@ -1411,6 +1412,7 @@ int handle_tool_search(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
+  // build super c selection criteria
   string data = " SRCHFOR  '" + pattern + "'\n";
 
   for (vector<ZDSMem>::iterator it = members.begin(); it != members.end(); ++it)
@@ -1418,6 +1420,7 @@ int handle_tool_search(ZCLIResult result)
     data += " SELECT " + it->name + "\n";
   }
 
+  // write control statements
   zds_write_to_dd(&zds, "sysin", data);
   if (0 != rc)
   {
@@ -1426,6 +1429,7 @@ int handle_tool_search(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
+  // perform search
   rc = zut_search("parms are unused for now but can be passed to super c, e.g. ANYC (any case)");
   if (rc != RTNCD_SUCCESS ||
       rc != ZUT_RTNCD_SEARCH_SUCCESS ||
@@ -1436,6 +1440,7 @@ int handle_tool_search(ZCLIResult result)
     // NOTE(Kelosky): don't exit here, but proceed to print errors
   }
 
+  // read output from super c
   string output;
   rc = zds_read_from_dd(&zds, "outdd", output);
   if (0 != rc)
