@@ -63,6 +63,15 @@ export class SshConfigUtils {
                 let newConfig = await SshConfigUtils.createNewConfig();
                 if (newConfig) {
                     await profCache.refresh();
+                    if (newConfig && !newConfig.name)
+                    {
+                        newConfig = await SshConfigUtils.getNewProfileName(newConfig);
+                        if(!newConfig?.name)
+                        {
+                            vscode.window.showWarningMessage("SSH setup cancelled.");
+                            return;
+                        }
+                    }
                     newConfig = await SshConfigUtils.promptForAuth(newConfig);
                     await SshConfigUtils.setProfile(newConfig);
 
@@ -92,7 +101,16 @@ export class SshConfigUtils {
                 selectedProfile = migratedConfigs.find((config) => result!.label === config.name!);
                 if (selectedProfile) {
                     selectedProfile = await SshConfigUtils.getNewProfileName(selectedProfile);
+                    if(!selectedProfile?.name)
+                    {
+                        vscode.window.showWarningMessage("SSH setup cancelled.");
+                        return;
+                    }
                     selectedProfile = await SshConfigUtils.promptForAuth(selectedProfile);
+                    if(!selectedProfile?.privateKey && !selectedProfile?.password){
+                        vscode.window.showWarningMessage("SSH setup cancelled.");
+                        return;
+                    }
                     await SshConfigUtils.setProfile(selectedProfile);
                     let profile: { [key: string]: any } = {
                         host: selectedProfile?.hostname,
@@ -232,7 +250,7 @@ export class SshConfigUtils {
             qpItems[0].description = " (detected from config)";
             qpItems[1].description = " (detected from config)";
         }
-        qpItems.push({ label: "$(x) Skip Authentication"})
+        // qpItems.push({ label: "$(x) Skip Authentication"})
 
         const selectedOption = await vscode.window.showQuickPick(qpItems, { title: "Select an authentication method", ignoreFocusOut: true});
 
@@ -328,10 +346,6 @@ export class SshConfigUtils {
 
     private static async setProfile(selectedConfig: sshConfigExt | undefined): Promise<void>
     {
-        if (selectedConfig && !selectedConfig.name) {
-            selectedConfig = await SshConfigUtils.getNewProfileName(selectedConfig);
-        }
-
         //Profile information
         const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
         const profCache = zoweExplorerApi.getExplorerExtenderApi().getProfilesCache();
