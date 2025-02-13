@@ -54,7 +54,6 @@ export class SshConfigUtils {
             { label: "Merge From SSH Config", kind: vscode.QuickPickItemKind.Separator },
             ...migratedConfigs.map((config) => ({ label: config.name!, description: config.hostname }))
         ];
-
         const result = await Gui.showQuickPick(qpItems, { title: "Choose an SSH host" });
 
         let selectedProfile: sshConfigExt | undefined;
@@ -90,9 +89,29 @@ export class SshConfigUtils {
             else if(migratedConfigs.some((config) => result?.label === config.name!)){
                 selectedProfile = migratedConfigs.find((config) => result!.label === config.name!);
             }
+
             if (selectedProfile) {
                 selectedProfile = await SshConfigUtils.getNewProfileName(selectedProfile);
                 selectedProfile = await SshConfigUtils.promptForAuth(selectedProfile);
+                await SshConfigUtils.setProfile(selectedProfile);
+                let profile: { [key: string]: any } = {
+                    host: selectedProfile?.hostname,
+                    name: selectedProfile?.name,
+                    password: selectedProfile?.password,
+                    user: selectedProfile?.user,
+                    privateKey: selectedProfile?.privateKey,
+                    handshakeTimeout: selectedProfile?.handshakeTimeout,
+                    port: selectedProfile?.port,
+                    keyPassphrase: selectedProfile?.keyPassphrase
+                };
+                let imperativeLoadedProfile: imperative.IProfileLoaded = {
+                    name: selectedProfile?.name,
+                    message: '',
+                    failNotFound: false,
+                    type: "ssh",
+                    profile
+                };
+                return imperativeLoadedProfile;
             }
         }
         else if (result != null) {
@@ -370,7 +389,7 @@ export class SshConfigUtils {
     }
     private static async setProfile(selectedConfig: sshConfigExt | undefined): Promise<void>
     {
-        if (selectedConfig) {
+        if (selectedConfig && !selectedConfig.name) {
             selectedConfig = await SshConfigUtils.getNewProfileName(selectedConfig);
         }
 
