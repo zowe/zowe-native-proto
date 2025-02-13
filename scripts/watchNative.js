@@ -13,7 +13,7 @@ const chokidar = require("chokidar");
 const p = require("path");
 
 const watcher = chokidar.watch(
-  ["c/makefile", "c/**/*.{c,cpp,h,hpp,s}", "golang/**"],
+  ["c/makefile", "c/**/*.{c,cpp,h,hpp,s,sh}", "golang/**"],
   {
     cwd: "native/",
     ignoreInitial: true,
