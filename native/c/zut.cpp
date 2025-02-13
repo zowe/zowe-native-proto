@@ -33,6 +33,7 @@ int zut_substitute_sybmol(string pattern, string &result)
   strcpy(parms->input, pattern.c_str());
   parms->length = strlen(pattern.c_str());
   int rc = ZUTSYMBP(parms);
+  free(parms);
   if (RTNCD_SUCCESS != rc)
   {
     return rc;
