@@ -159,7 +159,7 @@ async function performActionOnFile(localPath, remotePath, action) {
             reject(err);
           });
 
-          writeStream.on("close", () => {
+          writeStream.on("finish", () => {
             resolve();
           });
 
