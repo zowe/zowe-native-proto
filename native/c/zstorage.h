@@ -95,26 +95,26 @@
 #define IARST64_FREE(areaaddr, temp)
 #endif
 
-static void *PTR32 storageObtain24(int size)
+static void *PTR32 storage_obtain24(int size)
 {
   void *PTR32 addr = NULL;
   STORAGE_OBTAIN(addr, size, 24);
   return addr;
 }
 
-static void *PTR32 storageObtain31(int size)
+static void *PTR32 storage_obtain31(int size)
 {
   void *PTR32 addr = NULL;
   STORAGE_OBTAIN(addr, size, 31);
   return addr;
 }
 
-static void storageRelease(void *PTR32 addr, int size)
+static void storage_release(void *PTR32 addr, int size)
 {
   STORAGE_RELEASE(addr, size);
 }
 
-static void *PTR64 storageGet64(int size)
+static void *PTR64 storage_get64(int size)
 {
   void *PTR64 storage = NULL;
 
@@ -122,7 +122,7 @@ static void *PTR64 storageGet64(int size)
   return storage;
 }
 
-static void storageFree64(void *PTR64 storage)
+static void storage_free64(void *PTR64 storage)
 {
   void *PTR64 temp = storage;
   IARST64_FREE(storage, temp);
