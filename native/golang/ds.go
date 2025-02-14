@@ -76,24 +76,9 @@ func HandleWriteDatasetRequest(conn utils.ReadWriteCloser, jsonData []byte) {
 	if len(dsRequest.Encoding) > 0 {
 		args = append(args, "--encoding", dsRequest.Encoding)
 	}
-	cmd := utils.BuildCommandNoAutocvt(args)
-	stdin, err := cmd.StdinPipe()
+	out, err := conn.ExecCmdWithStdin(args, decodedBytes)
 	if err != nil {
-		log.Println("Error opening stdin pipe:", err)
-		return
-	}
-
-	go func() {
-		defer stdin.Close()
-		_, err = stdin.Write(decodedBytes)
-		if err != nil {
-			log.Println("Error writing to stdin pipe:", err)
-		}
-	}()
-
-	out, err := cmd.Output()
-	if err != nil {
-		log.Println("Error piping stdin to command:", err)
+		log.Println("Error executing command:", err)
 		return
 	}
 	// discard CLI output as its currently unused

@@ -19,8 +19,8 @@ import { ZSshClient } from "./src";
     const sshProfAttrs = profInfo.getDefaultProfile("ssh");
     const sshMergedArgs = profInfo.mergeArgsForProfile(sshProfAttrs, { getSecureVals: true });
     const session = new SshSession(ProfileInfo.initSessCfg(sshMergedArgs.knownArgs));
-    using client = await ZSshClient.create(session, "~/zowe-native-proto/golang");
-    const testUsers = ["jace", "timothy", "trae"];
+    using client = await ZSshClient.create(session);
+    const testUsers = process.argv.slice(2);
     for (const user of testUsers) {
         console.time(`listDatasets:${user}`);
         const response = await client.ds.listDatasets({ pattern: `${user}.**` });

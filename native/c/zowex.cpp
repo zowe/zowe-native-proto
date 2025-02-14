@@ -9,6 +9,8 @@
  *
  */
 
+#define _OPEN_SYS_FILE_EXT 1
+
 #include <iostream>
 #include <vector>
 #include <stdlib.h>
@@ -17,6 +19,8 @@
 #include <cstdlib>
 #include <stdio.h>
 #include <algorithm>
+#include <fcntl.h>
+#include <_Nascii.h>
 #include "zcn.hpp"
 #include "zut.hpp"
 #include "zcli.hpp"
@@ -1001,20 +1005,30 @@ int handle_data_set_write_to_dsn(ZCLIResult result)
   int rc = 0;
   string dsn = result.get_positional("dsn").get_value();
   ZDS zds = {0};
+  if (result.get_option("--encoding").is_found())
+  {
+    zut_prepare_encoding(result.get_option("--encoding").get_value(), &zds.encoding_opts);
+  }
 
   string data;
   string line;
-
   size_t byteSize = 0ul;
-  const auto hasEncoding = result.get_option("--encoding").is_found() && zut_prepare_encoding(result.get_option("--encoding").get_value(), &zds.encoding_opts);
-  if (hasEncoding)
-  {
-    std::istreambuf_iterator<char> begin(std::cin);
-    std::istreambuf_iterator<char> end;
 
-    std::vector<char> bytes(begin, end);
-    data.assign(bytes.begin(), bytes.end());
-    byteSize = bytes.size();
+  if (!isatty(fileno(stdin)))
+  {
+    __ae_autoconvert_state(_CVTSTATE_OFF);
+    struct f_cnvrt cvtreqOff = {SETCVTOFF, 0, 0};
+    fcntl(fileno(stdin), F_CONTROL_CVT, cvtreqOff);
+    char dataLen[8];
+    std::cin.read(dataLen, 8);
+    __e2a_l(&dataLen[0], 8);
+    byteSize = *reinterpret_cast<const uint64_t *>(dataLen);
+
+    data.resize(byteSize);
+    std::cin.read(&data[0], byteSize);
+    __ae_autoconvert_state(_CVTSTATE_SWAP);
+    struct f_cnvrt cvtreqOn = {SETCVTON, 0, 1047};
+    fcntl(fileno(stdin), F_CONTROL_CVT, cvtreqOn);
   }
   else
   {
@@ -1173,21 +1187,31 @@ int handle_uss_write(ZCLIResult result)
   int rc = 0;
   string file = result.get_positional("file-path").get_value();
   ZUSF zusf = {0};
+  if (result.get_option("--encoding").is_found())
+  {
+    zut_prepare_encoding(result.get_option("--encoding").get_value(), &zusf.encoding_opts);
+  }
 
   string data;
   string line;
   size_t byteSize = 0ul;
 
   // Use Ctrl/Cmd + D to stop writing data manually
-  const auto hasEncoding = result.get_option("--encoding").is_found() && zut_prepare_encoding(result.get_option("--encoding").get_value(), &zusf.encoding_opts);
-  if (hasEncoding)
+  if (!isatty(fileno(stdin)))
   {
-    std::istreambuf_iterator<char> begin(std::cin);
-    std::istreambuf_iterator<char> end;
+    __ae_autoconvert_state(_CVTSTATE_OFF);
+    struct f_cnvrt cvtreqOff = {SETCVTOFF, 0, 0};
+    fcntl(fileno(stdin), F_CONTROL_CVT, cvtreqOff);
+    char dataLen[8];
+    std::cin.read(dataLen, 8);
+    __e2a_l(&dataLen[0], 8);
+    byteSize = *reinterpret_cast<const uint64_t *>(dataLen);
 
-    std::vector<char> bytes(begin, end);
-    data.assign(bytes.begin(), bytes.end());
-    byteSize = bytes.size();
+    data.resize(byteSize);
+    std::cin.read(&data[0], byteSize);
+    __ae_autoconvert_state(_CVTSTATE_SWAP);
+    struct f_cnvrt cvtreqOn = {SETCVTON, 0, 1047};
+    fcntl(fileno(stdin), F_CONTROL_CVT, cvtreqOn);
   }
   else
   {
