@@ -280,6 +280,31 @@ int zusf_chmod_uss_file_or_dir(ZUSF *zusf, string file, string mode, bool recurs
   }
 
   chmod(file.c_str(), strtol(mode.c_str(), nullptr, 8));
+  if (recursive && S_ISDIR(file_stats.st_mode))
+  {
+    DIR *dir;
+    if ((dir = opendir(file.c_str())) == nullptr)
+    {
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open directory '%s'", file.c_str());
+      return RTNCD_FAILURE;
+    }
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != nullptr)
+    {
+      if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0)
+      {
+        const string child_path = file[file.length() - 1] == '/' ? file.append((const char *)entry->d_name) : file.append(string("/") + (const char *)entry->d_name);
+        struct stat file_stats;
+        stat(child_path.c_str(), &file_stats);
+
+        const auto rc = zusf_chmod_uss_file_or_dir(zusf, child_path, mode, S_ISDIR(file_stats.st_mode));
+        if (rc != 0)
+        {
+          return rc;
+        }
+      }
+    }
+  }
   return 0;
 }
 
