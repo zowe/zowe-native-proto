@@ -369,6 +369,32 @@ int zusf_chown_uss_file_or_dir(ZUSF *zusf, string file, string owner, bool recur
     return RTNCD_FAILURE;
   }
 
+  if (recursive && S_ISDIR(file_stats.st_mode))
+  {
+    DIR *dir;
+    if ((dir = opendir(file.c_str())) == nullptr)
+    {
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open directory '%s'", file.c_str());
+      return RTNCD_FAILURE;
+    }
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != nullptr)
+    {
+      if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0)
+      {
+        const string child_path = file[file.length() - 1] == '/' ? file.append((const char *)entry->d_name) : file.append(string("/") + (const char *)entry->d_name);
+        struct stat file_stats;
+        stat(child_path.c_str(), &file_stats);
+
+        const auto rc = zusf_chown_uss_file_or_dir(zusf, child_path, mode, S_ISDIR(file_stats.st_mode));
+        if (rc != 0)
+        {
+          return rc;
+        }
+      }
+    }
+  }
+
   return 0;
 }
 
@@ -381,6 +407,48 @@ int zusf_chtag_uss_file_or_dir(ZUSF *zusf, string file, string tag, bool recursi
     return RTNCD_FAILURE;
   }
 
-  // TODO(traeok): finish implementation
-  return 0;
+  const auto ccsid = strtol(tag.c_str(), nullptr, 10);
+  if (ccsid == LONG_MAX || ccsid == LONG_MIN)
+  {
+    // TODO(traeok): Get CCSID from encoding name
+  }
+  attrib64_t attr;
+  memset(&attr, 0, sizeof(attr));
+  attr.att_filetagchg = 1;
+  attr.att_filetag.ft_ccsid = ccsid;
+  attr.att_filetag.ft_txtflag = int(ccsid != 65535);
+
+  const auto rc = __chattr64(file.c_str(), &attr, sizeof(attr));
+  if (rc != 0)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to update attributes for path '%s'", file.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  if (recursive && S_ISDIR(file_stats.st_mode))
+  {
+    DIR *dir;
+    if ((dir = opendir(file.c_str())) == nullptr)
+    {
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open directory '%s'", file.c_str());
+      return RTNCD_FAILURE;
+    }
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != nullptr)
+    {
+      if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0)
+      {
+        const string child_path = file[file.length() - 1] == '/' ? file.append((const char *)entry->d_name) : file.append(string("/") + (const char *)entry->d_name);
+        struct stat file_stats;
+        stat(child_path.c_str(), &file_stats);
+
+        const auto rc = zusf_chtag_uss_file_or_dir(zusf, child_path, mode, S_ISDIR(file_stats.st_mode));
+        if (rc != 0)
+        {
+          return rc;
+        }
+      }
+    }
+  }
+  return rc;
 }
