@@ -329,24 +329,33 @@ async function artifacts(connection: Client) {
 
 async function runCommandInShell(connection: Client, command: string, pty = false) {
     const spinner = startSpinner(`Running: ${command.trim()}`);
-    return new Promise<string>((finish) => {
+    return new Promise<string>((resolve, reject) => {
         let data = "";
+        let error = "";
         const cb: ClientCallback = (err, stream) => {
             if (err) {
                 stopSpinner(spinner, `Error: runCommand connection.exec error ${err}`);
-                throw err;
+                reject(err);
             }
             stream.on("close", () => {
                 stopSpinner(spinner);
-                finish(data);
+                resolve(data);
             });
             stream.on("data", (part: Buffer) => {
                 data += part.toString();
             });
-            stream.stderr.on("data", (data: Buffer) => {
-                DEBUG_MODE() && console.log(data.toString());
+            stream.stderr.on("data", (err: Buffer) => {
+                error += err.toString();
+                DEBUG_MODE() && console.log(error);
             });
-            stream.end(`${command}\nexit\n`);
+            stream.on("exit", (exitCode: number) => {
+                if (exitCode !== 0) {
+                    const fullError = `\nError: runCommand connection.exec error: \n ${error}`;
+                    stopSpinner(spinner, fullError);
+                    reject(fullError);
+                }
+            });
+            stream.end(`${command}\n`);
         };
         if (pty) {
             connection.shell(cb);
