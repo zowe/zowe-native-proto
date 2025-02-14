@@ -25,6 +25,7 @@
 #include "zds.hpp"
 #include "zusf.hpp"
 #include "ztso.hpp"
+#include "zuttype.h"
 
 #ifndef TO_STRING
 #define TO_STRING(x) static_cast<std::ostringstream &>(           \
@@ -59,6 +60,7 @@ int handle_log_view(ZCLIResult);
 int handle_tool_convert_dsect(ZCLIResult);
 int handle_tool_dynalloc(ZCLIResult);
 int handle_tool_display_symbol(ZCLIResult);
+int handle_tool_search(ZCLIResult);
 
 // TODO(Kelosky):
 // help w/verbose examples
@@ -467,6 +469,23 @@ int main(int argc, char *argv[])
   tool_display_symbol.get_positionals().push_back(symbol_value);
   tool_group.get_verbs().push_back(tool_display_symbol);
 
+  ZCLIVerb tool_search("search");
+  tool_search.set_description("search members for string");
+  tool_search.set_zcli_verb_handler(handle_tool_search);
+  ZCLIPositional search_dsn("dsn");
+  search_dsn.set_description("data set to search");
+  search_dsn.set_required(true);
+  tool_search.get_positionals().push_back(search_dsn);
+  ZCLIPositional search_value("string");
+  search_value.set_description("string to search for");
+  search_value.set_required(true);
+  tool_search.get_positionals().push_back(search_value);
+
+  tool_search.get_options().push_back(data_set_max_entries);
+  tool_search.get_options().push_back(data_set_truncate_warn);
+
+  tool_group.get_verbs().push_back(tool_search);
+
   // add all groups to the CLI
   zcli.get_groups().push_back(data_set_group);
   zcli.get_groups().push_back(console_group);
@@ -478,6 +497,27 @@ int main(int argc, char *argv[])
 
   // parse
   return zcli.parse(argc, argv);
+}
+
+int loop_dynalloc(vector<string> &list)
+{
+  int rc = 0;
+  unsigned int code = 0;
+  string response;
+
+  for (vector<string>::iterator it = list.begin(); it != list.end(); it++)
+  {
+    rc = zut_bpxwdyn(*it, &code, response);
+
+    if (0 != rc)
+    {
+      cout << "Error: bpxwdyn failed with '" << *it << "' rc: '" << rc << "'" << endl;
+      cout << "  Details: " << response << endl;
+      return -1;
+    }
+  }
+
+  return rc;
 }
 
 int handle_job_list(ZCLIResult result)
@@ -1045,46 +1085,6 @@ int handle_log_view(ZCLIResult result)
   return 0;
 }
 
-int handle_tool_dynalloc(ZCLIResult result)
-{
-  int rc = 0;
-  unsigned int code = 0;
-  string resp;
-
-  string parm(result.get_positional("parm").get_value());
-
-  // alloc da('DKELOSKY.TEMP.ADATA') DSORG(PO) SPACE(5,5) CYL LRECL(80) RECFM(F,b) NEW DIR(5) vol(USER01)
-  rc = zut_bpxwdyn(parm, &code, resp);
-  if (0 != rc)
-  {
-    cout << "Error: bpxwdyn with parm '" << parm << "' rc: '" << rc << "'" << endl;
-    cout << "  Details: " << resp << endl;
-    return RTNCD_FAILURE;
-  }
-
-  cout << resp << endl;
-
-  return rc;
-}
-
-int handle_tool_display_symbol(ZCLIResult result)
-{
-  int rc = 0;
-  string symbol(result.get_positional("symbol").get_value());
-  transform(symbol.begin(), symbol.end(), symbol.begin(), ::toupper); // upper case
-  symbol = "&" + symbol;
-  string value;
-  rc = zut_substitute_sybmol(symbol, value);
-  if (0 != rc)
-  {
-    cerr << "Error: asasymbf with parm '" << symbol << "' rc: '" << rc << "'" << endl;
-    return RTNCD_FAILURE;
-  }
-  cout << value << endl;
-
-  return RTNCD_SUCCESS;
-}
-
 int handle_uss_create_file(ZCLIResult result)
 {
   int rc = 0;
@@ -1359,16 +1359,10 @@ int handle_tool_convert_dsect(ZCLIResult result)
   dds.push_back("alloc fi(sysadata) da('" + adata_dsn + "') shr msg(2)");
   dds.push_back("alloc fi(edcdsect) da('" + chdr_dsn + "') shr msg(2)");
 
-  for (vector<string>::iterator it = dds.begin(); it != dds.end(); it++)
+  rc = loop_dynalloc(dds);
+  if (RTNCD_SUCCESS != rc)
   {
-    rc = zut_bpxwdyn(*it, &code, resp);
-
-    if (0 != rc)
-    {
-      cout << "Error: bpxwdyn failed with '" << *it << "' rc: '" << rc << "'" << endl;
-      cout << "  Details: " << resp << endl;
-      return -1;
-    }
+    return RTNCD_FAILURE;
   }
 
   rc = zut_convert_dsect();
@@ -1383,4 +1377,145 @@ int handle_tool_convert_dsect(ZCLIResult result)
   cout << "Copy it via `cp \"//'" + chdr_dsn + "'\" <member>.h`" << endl;
 
   return rc;
+}
+
+int handle_tool_dynalloc(ZCLIResult result)
+{
+  int rc = 0;
+  unsigned int code = 0;
+  string resp;
+
+  string parm(result.get_positional("parm").get_value());
+
+  // alloc da('DKELOSKY.TEMP.ADATA') DSORG(PO) SPACE(5,5) CYL LRECL(80) RECFM(F,b) NEW DIR(5) vol(USER01)
+  rc = zut_bpxwdyn(parm, &code, resp);
+  if (0 != rc)
+  {
+    cout << "Error: bpxwdyn with parm '" << parm << "' rc: '" << rc << "'" << endl;
+    cout << "  Details: " << resp << endl;
+    return RTNCD_FAILURE;
+  }
+
+  cout << resp << endl;
+
+  return rc;
+}
+
+int handle_tool_display_symbol(ZCLIResult result)
+{
+  int rc = 0;
+  string symbol(result.get_positional("symbol").get_value());
+  transform(symbol.begin(), symbol.end(), symbol.begin(), ::toupper); // upper case
+  symbol = "&" + symbol;
+  string value;
+  rc = zut_substitute_sybmol(symbol, value);
+  if (0 != rc)
+  {
+    cerr << "Error: asasymbf with parm '" << symbol << "' rc: '" << rc << "'" << endl;
+    return RTNCD_FAILURE;
+  }
+  cout << value << endl;
+
+  return RTNCD_SUCCESS;
+}
+
+int handle_tool_search(ZCLIResult result)
+{
+  int rc = 0;
+
+  string pattern(result.get_positional("string").get_value());
+  string warn = result.get_option("--warn").get_value();
+  string max_entries = result.get_option("--max-entries").get_value();
+  string dsn(result.get_positional("dsn").get_value());
+
+  ZDS zds = {0};
+  bool results_truncated = false;
+
+  if (max_entries.size() > 0)
+  {
+    zds.max_entries = atoi(max_entries.c_str());
+  }
+
+  // list members in a data set
+  vector<ZDSMem> members;
+  rc = zds_list_members(&zds, dsn, members);
+
+  // note if results are truncated
+  if (RTNCD_WARNING == rc)
+  {
+
+    if (ZDS_RSNCD_MAXED_ENTRIES_REACHED == zds.diag.detail_rc)
+    {
+      results_truncated = true;
+    }
+  }
+
+  // note failure if we can't list
+  if (RTNCD_SUCCESS != rc && RTNCD_WARNING != rc)
+  {
+    cerr << "Error: could not read data set: '" << dsn << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zds.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
+  // perform dynalloc
+  vector<string> dds;
+  dds.push_back("alloc dd(newdd) da('" + dsn + "') shr");
+  dds.push_back("alloc dd(outdd)");
+  dds.push_back("alloc dd(sysin)");
+
+  rc = loop_dynalloc(dds);
+  if (RTNCD_SUCCESS != rc)
+  {
+    return RTNCD_FAILURE;
+  }
+
+  // build super c selection criteria
+  string data = " SRCHFOR '" + pattern + "'\n";
+
+  for (vector<ZDSMem>::iterator it = members.begin(); it != members.end(); ++it)
+  {
+    data += " SELECT " + it->name + "\n";
+  }
+
+  // write control statements
+  zds_write_to_dd(&zds, "sysin", data);
+  if (0 != rc)
+  {
+    cout << "Error: could not write to dd: '" << "sysin" << "' rc: '" << rc << "'" << endl;
+    cout << "  Details: " << zds.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
+  // perform search
+  rc = zut_search("parms are unused for now but can be passed to super c, e.g. ANYC (any case)");
+  if (rc != RTNCD_SUCCESS ||
+      rc != ZUT_RTNCD_SEARCH_SUCCESS ||
+      rc != RTNCD_WARNING ||
+      rc != ZUT_RTNCD_SEARCH_WARNING)
+  {
+    cerr << "Error: could error invoking ISRSUPC rc: '" << rc << "'" << endl;
+    // NOTE(Kelosky): don't exit here, but proceed to print errors
+  }
+
+  // read output from super c
+  string output;
+  rc = zds_read_from_dd(&zds, "outdd", output);
+  if (0 != rc)
+  {
+    cout << "Error: could not read from dd: '" << "outdd" << "' rc: '" << rc << "'" << endl;
+    cout << "  Details: " << zds.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+  cout << output << endl;
+
+  if (results_truncated)
+  {
+    if ("true" == warn)
+    {
+      cerr << "Warning: results truncated" << endl;
+    }
+  }
+
+  return RTNCD_SUCCESS;
 }
