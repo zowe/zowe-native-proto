@@ -181,6 +181,19 @@ int ZUTSYMBP(SYMBOL_DATA *data)
   return rc;
 }
 
+typedef int (*ISRSUPC)() ATTRIBUTE(amode31);
+#pragma prolog(ZUTSRCH, "&CCN_MAIN SETB 1 \n MYPROLOG")
+int ZUTSRCH()
+{
+  int rc = 0;
+
+  ISRSUPC search = (ISRSUPC)load_module31("ISRSUPC");
+  rc = search();
+  delete_module("ISRSUPC");
+
+  return rc;
+}
+
 typedef struct
 {
   short len;

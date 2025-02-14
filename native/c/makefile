@@ -246,13 +246,13 @@ libztso.a: ztso.o
 zowex: zowex.o libzcn.a libzut.a libzjb.a libzds.a libzusf.a libztso.a
 	@echo 'Building zowex'
 	$(CXX) $(CPP_BND_FLAGS) -o $@ $^ > $*.bind.lst
-	ln -s $@ ../golang/$(basename $@) || true
+	ln -sf $@ ../golang/$(basename $@)
 	@echo 'Copied zowex to golang/'
 
 zowexx: zowex.o libzcn.a libzut.a libzjb.a libzds.a libzusf.a libztso.a
 	@echo 'Building zowexx'
 	$(CXX) $(CPP_BND_FLAGS_AUTH) -o $@ $^ > $*.bind.lst
-	ln -s $@ ../golang/$(basename $@) || true
+	ln -sf $@ ../golang/$(basename $@)
 	@echo 'Copied zowexx to golang/'
 
 zowex.o: zowex.cpp
@@ -264,11 +264,6 @@ test: test.sh
 
 #
 # TODO(Kelosky): makefile for chdsect (must have ADATA in data set)
-#
-# ISPF: tso alloc da('DKELOSKY.TEMP.ADATA') DSORG(PO) SPACE(5,5) CYL LRECL(80) RECFM(F,b) NEW vol(tsu063)
-# zowex: zowex test bpxwdyn "alloc da('DKELOSKY.TEMP.TEST2') DSORG(PO) SPACE(5,5) CYL LRECL(80) RECFM(F,b) NEW keep"
-# z/OS UNIX: tso "alloc da('dkelosky.temp.adata') DSORG(PO) SPACE(5,5) CYL LRECL(80) RECFM(F,b) NEW vol(tsu063)"
-# as -madata --gadata="//'DKELOSKY.TEMP.ADATA(IHAECB)'" ihaecb.s
 #
 
 #
