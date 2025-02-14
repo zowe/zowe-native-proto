@@ -41,3 +41,7 @@ type ListDsMembersResponse struct {
 type DeleteDatasetResponse struct {
 	Success bool `json:"success"`
 }
+
+type CreateDatasetResponse struct {
+	Success bool `json:"success"`
+}
