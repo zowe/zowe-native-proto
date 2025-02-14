@@ -11,8 +11,8 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import type * as zosfiles from "@zowe/zos-files-for-zowe-sdk";
-import { type MainframeInteraction, imperative } from "@zowe/zowe-explorer-api";
-import { ZSshUtils } from "zowe-native-proto-sdk";
+import { type MainframeInteraction, imperative, Gui } from "@zowe/zowe-explorer-api";
+import { ZSshUtils, type ds } from "zowe-native-proto-sdk";
 import { SshCommonApi } from "./SshCommonApi";
 
 export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs {
@@ -88,7 +88,19 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         dataSetName: string,
         options?: Partial<zosfiles.ICreateDataSetOptions>,
     ): Promise<zosfiles.IZosFilesResponse> {
-        throw new Error("Not yet implemented");
+        let response: ds.CreateDatasetResponse = { success: false };
+        try {
+            response = await (await this.client).ds.createDataset({
+                dsname: dataSetName,
+            });
+            if (!response.success) {
+                Gui.errorMessage(`Failed to create dataset ${dataSetName}`);
+            }
+        } catch (error) {
+            Gui.errorMessage(`Failed to create dataset ${dataSetName}`);
+            Gui.errorMessage(`Error: ${error}`);
+        }
+        return this.buildZosFilesResponse(response);
     }
 
     public async createDataSetMember(
@@ -133,14 +145,38 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
     }
 
     public async hRecallDataSet(dataSetName: string): Promise<zosfiles.IZosFilesResponse> {
-        throw new Error("Not yet implemented");
+        let response: ds.RestoreDatasetResponse = { success: false };
+        try {
+            response = await (await this.client).ds.restoreDataset({
+                dsname: dataSetName,
+            });
+            if (!response.success) {
+                Gui.errorMessage(`Failed to restore dataset ${dataSetName}`);
+            }
+        } catch (error) {
+            Gui.errorMessage(`Failed to restore dataset ${dataSetName}`);
+            Gui.errorMessage(`Error: ${error}`);
+        }
+        return this.buildZosFilesResponse(response);
     }
 
     public async deleteDataSet(
         dataSetName: string,
         options?: zosfiles.IDeleteDatasetOptions,
     ): Promise<zosfiles.IZosFilesResponse> {
-        throw new Error("Not yet implemented");
+        let response: ds.DeleteDatasetResponse = { success: false };
+        try {
+            response = await (await this.client).ds.deleteDataset({
+                dsname: dataSetName,
+            });
+            if (!response.success) {
+                Gui.errorMessage(`Failed to delete dataset ${dataSetName}`);
+            }
+        } catch (error) {
+            Gui.errorMessage(`Failed to delete dataset ${dataSetName}`);
+            Gui.errorMessage(`Error: ${error}`);
+        }
+        return this.buildZosFilesResponse(response);
     }
 
     // biome-ignore lint/suspicious/noExplicitAny: apiResponse has no strong type
