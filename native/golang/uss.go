@@ -145,6 +145,37 @@ func HandleWriteFileRequest(jsonData []byte) {
 	utils.PrintCommandResponse(response)
 }
 
+// HandleCreateFileRequest handles a CreateFileRequest by invoking the `zowex uss create-dir` or `create-file` command (depending on params)
+func HandleCreateFileRequest(jsonData []byte) {
+	var request uss.CreateFileRequest
+	err := json.Unmarshal(jsonData, &request)
+	if err != nil || len(request.Path) == 0 {
+		return
+	}
+
+	createCmd := "create-file"
+	if request.IsDir {
+		createCmd = "create-dir"
+	}
+	args := []string{"./zowex", "uss", createCmd, request.Path}
+	if len(request.Mode) > 0 {
+		args = append(args, "--mode", request.Mode)
+	}
+	out, err := utils.BuildCommand(args).Output()
+	response := uss.DeleteFileResponse{
+		Success: true,
+		Path:    request.Path,
+	}
+
+	if err != nil {
+		response.Success = false
+	}
+	// discard CLI output as its currently unused
+	_ = out
+
+	utils.PrintCommandResponse(response)
+}
+
 // HandleDeleteFileRequest handles a DeleteFileRequest by invoking the `zowex uss delete` command
 func HandleDeleteFileRequest(jsonData []byte) {
 	var request uss.DeleteFileRequest

@@ -36,6 +36,7 @@ type ListFilesResponse struct {
 	ReturnedRows int              `json:"returnedRows"`
 }
 
+type CreateFileResponse = GenericFileResponse
 type DeleteFileResponse = GenericFileResponse
 type ChmodFileResponse = GenericFileResponse
 type ChownFileResponse = GenericFileResponse

@@ -38,6 +38,16 @@ type WriteFileRequest struct {
 	Data string `json:"data"`
 }
 
+type CreateFileRequest struct {
+	Command string `json:"command" tstype:"\"createFile\""`
+	// Permissions for the new path
+	Mode string `json:"permissions,omitempty"`
+	// Remote file path to create
+	Path string `json:"fspath"`
+	// Whether to create a directory (true) or a file (false)
+	IsDir bool `json:"isDir,omitempty"`
+}
+
 type DeleteFileRequest struct {
 	Command string `json:"command" tstype:"\"deleteFile\""`
 	// Remote file path to delete
