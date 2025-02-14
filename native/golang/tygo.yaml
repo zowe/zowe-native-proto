@@ -4,7 +4,7 @@ packages:
   - path: "zowe-native-proto/ioserver/types/ds"
     output_path: "../../packages/sdk/src/doc/ds.ts"
     frontmatter: &fm |
-      import type * as common from "./common.ts"
+      import type * as common from "./common.ts";
   - path: "zowe-native-proto/ioserver/types/uss"
     output_path: "../../packages/sdk/src/doc/uss.ts"
     frontmatter: *fm

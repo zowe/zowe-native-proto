@@ -12,7 +12,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { promisify } from "node:util";
-import type { IProfile } from "@zowe/imperative";
+import { type IProfile, Logger } from "@zowe/imperative";
 import { type ISshSession, SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Client, type ConnectConfig, type SFTPWrapper } from "ssh2";
 
@@ -53,6 +53,7 @@ export class ZSshUtils {
     }
 
     public static async installServer(session: SshSession, serverPath: string, localDir: string): Promise<void> {
+        Logger.getAppLogger().debug(`Installing server to ${session.ISshSession.hostname} at path: ${serverPath}`);
         const remoteDir = serverPath.replace(/^~/, ".");
         return ZSshUtils.sftp(session, async (sftp, client) => {
             await promisify(sftp.mkdir.bind(sftp))(remoteDir, { mode: 0o700 }).catch((err: any) =>
@@ -69,6 +70,7 @@ export class ZSshUtils {
     }
 
     public static async uninstallServer(session: SshSession, serverPath: string): Promise<void> {
+        Logger.getAppLogger().debug(`Uninstalling server from ${session.ISshSession.hostname} at path: ${serverPath}`);
         const remoteDir = serverPath.replace(/^~/, ".");
         return ZSshUtils.sftp(session, async (sftp, _client) => {
             for (const file of ZSshUtils.SERVER_BIN_FILES) {

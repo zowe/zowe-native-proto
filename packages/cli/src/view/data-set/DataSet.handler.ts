@@ -10,7 +10,7 @@
  */
 
 import type { IHandlerParameters } from "@zowe/imperative";
-import { type ds, type ZSshClient, ZSshUtils } from "zowe-native-proto-sdk";
+import { type ZSshClient, ZSshUtils, type ds } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class ViewDataSetHandler extends SshBaseHandler {

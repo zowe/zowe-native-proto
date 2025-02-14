@@ -60,8 +60,6 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         dataSetName: string,
         options?: zosfiles.IUploadOptions,
     ): Promise<zosfiles.IZosFilesResponse> {
-        const buf = ZSshUtils.encodeByteArray(buffer);
-        console.log(buf);
         const response = await (await this.client).ds.writeDataset({
             dsname: dataSetName,
             encoding: options?.binary ? "binary" : (options?.encoding ?? "IBM-1047"),
