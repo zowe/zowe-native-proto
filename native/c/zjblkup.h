@@ -30,7 +30,7 @@
       "*                                                  \n" \
       " SLGR  0,0       Save RC                           \n" \
       "*                                                  \n" \
-      " IAZTLKUP LEVEL=1,"                                    \
+      " IAZTLKUP LEVEL=3,"                                    \
       "SSOB=%2,"                                              \
       "TABLEID=PHZ,"                                          \
       "DATASTR=%3,"                                           \
@@ -63,8 +63,6 @@ static int iaztlkup(SSOB *ssob, STATJQ *statjq)
            response_len,
            plist,
            rc);
-
-  zwto_debug("@TEST %d %s", rc, response);
 
   return rc;
 }

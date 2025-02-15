@@ -269,10 +269,10 @@ int ZJBMTCOM(ZJB *zjb, STAT *PTR64 stat, STATJQTR **PTR64 jobInfo, int *entries)
       zjb->diag.detail_rc = ZJB_RTNCD_INSUFFICIENT_BUFFER;
     }
 
+    // NOTE(Kelosky): rather than interpret job phase ourselves, this service provides text status of job phase
+    // however, it does not match z/osmf results
+    // iaztlkup(&ssob, statjqp);
     statjqp = (STATJQ * PTR32) statjqp->stjqnext;
-
-    int newrc = iaztlkup(&ssob, statjqp);
-    // zwto_debug("@TEST rc = %d phase %s", newrc, );
 
     loop_control++;
   }
