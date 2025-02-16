@@ -20,3 +20,8 @@ To create a C header from an HLASM DSECT:
 ## Logstreams
 
 - todo
+
+## Runtime options (recovery)
+
+- `_CEE_RUNOPTS` https://www.ibm.com/docs/en/zos/3.1.0?topic=options-how-specify-runtime
+- `TRAP(ON,NOSPIE)` https://www.ibm.com/docs/en/zos/3.1.0?topic=ulero-trap
