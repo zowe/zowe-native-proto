@@ -48,7 +48,6 @@ using namespace std;
  *
  * @param zusf pointer to a ZUSF object
  * @param file name of the USS file
- * @param response reference to a string where the read data will be stored
  * @param mode mode of the file or directory
  * @param createDir flag indicating whether to create a directory
  *
@@ -74,12 +73,25 @@ int zusf_create_uss_file_or_dir(ZUSF *zusf, string file, string mode, bool creat
     return RTNCD_FAILURE;
   }
 
-  // TODO(zFernand0): Implement `mkdirp` by default
-  // TODO(zFernand0): `mkdirp` when creatnig a file in a directory that doesn't exist
   if (createDir)
   {
-    mkdir(file.c_str(), strtol(mode.c_str(), nullptr, 8));
-    return RTNCD_SUCCESS;
+    const auto last_trailing_slash = file.find_last_of("/");
+    if (last_trailing_slash != std::string::npos)
+    {
+      const auto parent_path = file.substr(0, last_trailing_slash);
+      const auto exists = stat(parent_path.c_str(), &file_stats) == 0;
+      const auto rc = zusf_create_uss_file_or_dir(zusf, parent_path, mode, true);
+      if (rc != 0)
+      {
+        return rc;
+      }
+    }
+    const auto rc = mkdir(file.c_str(), strtol(mode.c_str(), nullptr, 8));
+    if (rc != 0)
+    {
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to create directory '%s', errno: %d", file.c_str(), errno);
+    }
+    return rc;
   }
   else
   {
