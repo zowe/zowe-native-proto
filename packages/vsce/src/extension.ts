@@ -57,6 +57,10 @@ function registerCommands(context: vscode.ExtensionContext): vscode.Disposable[]
 
 // This method is called when your extension is activated
 export function activate(context: vscode.ExtensionContext) {
+    if (context.extensionMode === vscode.ExtensionMode.Development) {
+        SshConfigUtils.EXTENSION_DEV_PATH = context.extensionPath;
+    }
+
     const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
     if (zoweExplorerApi == null) {
         vscode.window.showErrorMessage(

@@ -10,19 +10,25 @@
  */
 
 import { FileManagement, Gui, imperative, ZoweVsCodeExtension } from "@zowe/zowe-explorer-api";
-import * as fs from "fs";
+import * as fs from "node:fs";
 import * as vscode from "vscode";
-import * as sshConfig from "ssh-config";
-import { ZClientUtils, ZSshClient } from "zowe-native-proto-sdk";
-import { homedir } from 'os';
+import { ZClientUtils, ZSshClient, sshConfigExt } from "zowe-native-proto-sdk";
+import { homedir } from "node:os";
 import * as path from "node:path";
 import { ProfileConstants } from "@zowe/core-for-zowe-sdk";
 import { ZosUssProfile } from "@zowe/zos-uss-for-zowe-sdk";
-import { sshConfigExt } from "zowe-native-proto-sdk";
+
+declare const __non_webpack_require__: NodeRequire;
 
 // biome-ignore lint/complexity/noStaticOnlyClass: Utilities class has static methods
 export class SshConfigUtils {
+    public static EXTENSION_DEV_PATH: string;
+
     public static getServerPath(hostname: string): string {
+        if (SshConfigUtils.EXTENSION_DEV_PATH != null) {
+            const configJsonPath = path.resolve(SshConfigUtils.EXTENSION_DEV_PATH, "..", "..", "config.local.json");
+            return path.posix.join(__non_webpack_require__(configJsonPath).deployDirectory, "golang");
+        }
         const serverPathMap = vscode.workspace
             .getConfiguration("zowe-native-proto-vsce")
             .get<Record<string, string>>("serverPath");
