@@ -27,6 +27,7 @@ export class SshConfigUtils {
             const configJsonPath = path.resolve(process.env.EXTENSION_DEV_PATH, "../../config.local.json");
             return path.posix.join(__non_webpack_require__(configJsonPath).deployDirectory, "golang");
         }
+
         const serverPathMap = vscode.workspace
             .getConfiguration("zowe-native-proto-vsce")
             .get<Record<string, string>>("serverPath");
