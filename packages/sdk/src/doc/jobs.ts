@@ -69,12 +69,19 @@ export interface GetStatusRequest {
 export interface SubmitJobRequest {
   command: "submitJob";
   /**
-   * JCL to submit
+   * Dataset name w/ contents to submit as JCL
    */
-  jcl: string;
+  dsname: string;
 }
 export interface CancelJobRequest {
   command: "cancelJob";
+  /**
+   * Job ID to cancel
+   */
+  jobId: string;
+}
+export interface DeleteJobRequest {
+  command: "deleteJob";
   /**
    * Job ID to cancel
    */
@@ -129,4 +136,34 @@ export interface GetStatusResponse {
    * List of returned job statuses
    */
   items: common.Job[];
+}
+export interface SubmitJobResponse {
+  /**
+   * Whether the job was successfully submitted
+   */
+  success: boolean;
+  /**
+   * The data set name where the JCL was read from
+   */
+  dsname: string;
+}
+export interface DeleteJobResponse {
+  /**
+   * Whether the job was successfully deleted
+   */
+  success: boolean;
+  /**
+   * The ID for the job that was deletede
+   */
+  jobId: string;
+}
+export interface CancelJobResponse {
+  /**
+   * Whether the job was successfully cancelled
+   */
+  success: boolean;
+  /**
+   * The ID for the job that was cancelled
+   */
+  jobId: string;
 }

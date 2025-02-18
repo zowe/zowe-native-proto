@@ -43,6 +43,12 @@ export abstract class AbstractRpcClient {
                 this.request({ command: "readSpool", ...request }),
             getStatus: (request: Omit<jobs.GetStatusRequest, "command">): Promise<jobs.GetStatusResponse> =>
                 this.request({ command: "getStatus", ...request }),
+            cancelJob: (request: Omit<jobs.CancelJobRequest, "command">): Promise<jobs.CancelJobResponse> =>
+                this.request({ command: "cancelJob", ...request }),
+            deleteJob: (request: Omit<jobs.DeleteJobRequest, "command">): Promise<jobs.DeleteJobResponse> =>
+                this.request({ command: "deleteJob", ...request }),
+            submitJob: (request: Omit<jobs.SubmitJobRequest, "command">): Promise<jobs.SubmitJobResponse> =>
+                this.request({ command: "submitJob", ...request }),
         };
     }
 
@@ -56,6 +62,14 @@ export abstract class AbstractRpcClient {
                 this.request({ command: "writeFile", ...request }),
             deleteFile: (request: Omit<uss.DeleteFileRequest, "command">): Promise<uss.DeleteFileResponse> =>
                 this.request({ command: "deleteFile", ...request }),
+            createFile: (request: Omit<uss.CreateFileRequest, "command">): Promise<uss.CreateFileResponse> =>
+                this.request({ command: "createFile", ...request }),
+            chmodFile: (request: Omit<uss.ChmodFileRequest, "command">): Promise<uss.ChmodFileResponse> =>
+                this.request({ command: "chmodFile", ...request }),
+            chownFile: (request: Omit<uss.ChownFileRequest, "command">): Promise<uss.ChownFileResponse> =>
+                this.request({ command: "chownFile", ...request }),
+            chtagFile: (request: Omit<uss.ChtagFileRequest, "command">): Promise<uss.ChtagFileResponse> =>
+                this.request({ command: "chtagFile", ...request }),
         };
     }
 

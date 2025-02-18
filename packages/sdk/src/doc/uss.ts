@@ -48,6 +48,21 @@ export interface WriteFileRequest {
    */
   data: string;
 }
+export interface CreateFileRequest {
+  command: "createFile";
+  /**
+   * Permissions for the new path
+   */
+  permissions?: string;
+  /**
+   * Remote file path to create
+   */
+  fspath: string;
+  /**
+   * Whether to create a directory (true) or a file (false)
+   */
+  isDir?: boolean;
+}
 export interface DeleteFileRequest {
   command: "deleteFile";
   /**
@@ -137,6 +152,7 @@ export interface ListFilesResponse {
   items: common.UssItem[];
   returnedRows: number /* int */;
 }
+export type CreateFileResponse = GenericFileResponse;
 export type DeleteFileResponse = GenericFileResponse;
 export type ChmodFileResponse = GenericFileResponse;
 export type ChownFileResponse = GenericFileResponse;
