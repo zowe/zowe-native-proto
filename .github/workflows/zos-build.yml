@@ -22,7 +22,7 @@ jobs:
 
       - name: Set up Credentials
         run: |
-          cat << EOF > tools/build/config.local.json
+          cat << EOF > config.local.json
           {
             "host": "${{ secrets.SSH_MARIST_RACF_HOST }}",
             "port": 65522,
