@@ -52,7 +52,7 @@ let SPINNER_INDEX = 0;
 const SPINNER_FRAMES = ["-", "\\", "|", "/"];
 
 function startSpinner(text = "Loading...") {
-    if (DEBUG_MODE()) {
+    if (DEBUG_MODE() || process.env.CI != null) {
         console.log(text);
         return null;
     }
