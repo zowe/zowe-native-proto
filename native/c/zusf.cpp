@@ -9,6 +9,13 @@
  *
  */
 
+#ifndef _LARGE_TIME_API
+#define _LARGE_TIME_API
+#endif
+#ifndef _OPEN_SYS_FILE_EXT
+#define _OPEN_SYS_FILE_EXT 1
+#endif
+#include <sys/stat.h>
 #include <stdio.h>
 #include <cstring>
 #include <fcntl.h>
@@ -30,10 +37,6 @@
 #ifndef _XPLATFORM_SOURCE
 #define _XPLATFORM_SOURCE
 #endif
-#ifndef _LARGE_TIME_API
-#define _LARGE_TIME_API
-#endif
-#include <sys/stat.h>
 #include <sys/xattr.h>
 #include <dirent.h>
 // #include "zusfm.h"
@@ -412,13 +415,13 @@ int zusf_chtag_uss_file_or_dir(ZUSF *zusf, string file, string tag, bool recursi
   {
     // TODO(traeok): Get CCSID from encoding name
   }
-  attrib_t attr;
+  attrib64_t attr;
   memset(&attr, 0, sizeof(attr));
   attr.att_filetagchg = 1;
   attr.att_filetag.ft_ccsid = ccsid;
   attr.att_filetag.ft_txtflag = int(ccsid != 65535);
 
-  const auto rc = __chattr64(file.c_str(), &attr, sizeof(attr));
+  const auto rc = __chattr64((char *)file.c_str(), &attr, sizeof(attr));
   if (rc != 0)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to update attributes for path '%s'", file.c_str());
@@ -442,7 +445,7 @@ int zusf_chtag_uss_file_or_dir(ZUSF *zusf, string file, string tag, bool recursi
         struct stat file_stats;
         stat(child_path.c_str(), &file_stats);
 
-        const auto rc = zusf_chtag_uss_file_or_dir(zusf, child_path, mode, S_ISDIR(file_stats.st_mode));
+        const auto rc = zusf_chtag_uss_file_or_dir(zusf, child_path, tag, S_ISDIR(file_stats.st_mode));
         if (rc != 0)
         {
           return rc;

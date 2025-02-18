@@ -328,7 +328,7 @@ int main(int argc, char *argv[])
   ZCLIOption uss_recursive("recursive");
   uss_recursive.get_aliases().push_back("-r");
   uss_recursive.set_required(false);
-  uss_recursive.set_description("Specify this flag to delete a directory");
+  uss_recursive.set_description("Applies the operation recursively (e.g. for folders w/ inner files)");
 
   ZCLIVerb uss_create_file("create-file");
   uss_create_file.set_description("create a USS file");
