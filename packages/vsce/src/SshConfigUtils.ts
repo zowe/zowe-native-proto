@@ -22,11 +22,9 @@ declare const __non_webpack_require__: NodeRequire;
 
 // biome-ignore lint/complexity/noStaticOnlyClass: Utilities class has static methods
 export class SshConfigUtils {
-    public static EXTENSION_DEV_PATH: string;
-
     public static getServerPath(hostname: string): string {
-        if (SshConfigUtils.EXTENSION_DEV_PATH != null) {
-            const configJsonPath = path.resolve(SshConfigUtils.EXTENSION_DEV_PATH, "..", "..", "config.local.json");
+        if (process.env.EXTENSION_DEV_PATH != null) {
+            const configJsonPath = path.resolve(process.env.EXTENSION_DEV_PATH, "../../config.local.json");
             return path.posix.join(__non_webpack_require__(configJsonPath).deployDirectory, "golang");
         }
         const serverPathMap = vscode.workspace

@@ -10,9 +10,16 @@
       "type": "extensionHost",
       "request": "launch",
       "runtimeExecutable": "${execPath}",
-      "args": ["--extensionDevelopmentPath=${workspaceFolder}/packages/vsce"],
-      "outFiles": ["${workspaceFolder}/packages/vsce/out/**/*.js"],
-      "preLaunchTask": "npm: watch"
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/packages/vsce"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/packages/vsce/out/**/*.js"
+      ],
+      "preLaunchTask": "npm: watch",
+      "env": {
+        "EXTENSION_DEV_PATH": "${workspaceFolder}/packages/vsce"
+      }
     }
   ]
 }
