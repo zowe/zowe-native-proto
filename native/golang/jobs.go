@@ -195,3 +195,75 @@ func HandleGetStatusRequest(jsonData []byte) {
 
 	utils.PrintCommandResponse(jobsResponse)
 }
+
+// HandleSubmitJobRequest handles a SubmitJobRequest by invoking the `zowex job submit` command
+func HandleCancelJobRequest(jsonData []byte) {
+	var request jobs.CancelJobRequest
+	err := json.Unmarshal(jsonData, &request)
+	if err != nil {
+		return
+	}
+	args := []string{"./zowex", "job", "cancel", request.JobId}
+	out, err := utils.BuildCommand(args).Output()
+
+	_ = out
+
+	response := jobs.CancelJobResponse{
+		Success: true,
+		JobId:   request.JobId,
+	}
+
+	if err != nil {
+		response.Success = false
+	}
+
+	utils.PrintCommandResponse(response)
+}
+
+// HandleSubmitJobRequest handles a SubmitJobRequest by invoking the `zowex job submit` command
+func HandleSubmitJobRequest(jsonData []byte) {
+	var request jobs.SubmitJobRequest
+	err := json.Unmarshal(jsonData, &request)
+	if err != nil {
+		return
+	}
+	args := []string{"./zowex", "job", "submit", request.Dsname}
+	out, err := utils.BuildCommand(args).Output()
+
+	_ = out
+
+	response := jobs.SubmitJobResponse{
+		Success: true,
+		Dsname:  request.Dsname,
+	}
+
+	if err != nil {
+		response.Success = false
+	}
+
+	utils.PrintCommandResponse(response)
+}
+
+// HandleDeleteJobRequest handles a DeleteJobRequest by invoking the `zowex job delete` command
+func HandleDeleteJobRequest(jsonData []byte) {
+	var request jobs.DeleteJobRequest
+	err := json.Unmarshal(jsonData, &request)
+	if err != nil {
+		return
+	}
+	args := []string{"./zowex", "job", "delete", request.JobId}
+	out, err := utils.BuildCommand(args).Output()
+
+	_ = out
+
+	response := jobs.DeleteJobResponse{
+		Success: true,
+		JobId:   request.JobId,
+	}
+
+	if err != nil {
+		response.Success = false
+	}
+
+	utils.PrintCommandResponse(response)
+}

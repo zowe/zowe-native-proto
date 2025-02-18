@@ -45,3 +45,24 @@ type GetStatusResponse struct {
 	// List of returned job statuses
 	Items []common.Job `json:"items" tstype:"common.Job[]"`
 }
+
+type SubmitJobResponse struct {
+	// Whether the job was successfully submitted
+	Success bool `json:"success"`
+	// The data set name where the JCL was read from
+	Dsname string `json:"dsname"`
+}
+
+type DeleteJobResponse struct {
+	// Whether the job was successfully deleted
+	Success bool `json:"success"`
+	// The ID for the job that was deletede
+	JobId string `json:"jobId"`
+}
+
+type CancelJobResponse struct {
+	// Whether the job was successfully cancelled
+	Success bool `json:"success"`
+	// The ID for the job that was cancelled
+	JobId string `json:"jobId"`
+}

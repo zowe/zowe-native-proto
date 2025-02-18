@@ -54,12 +54,18 @@ type GetStatusRequest struct {
 
 type SubmitJobRequest struct {
 	Command string `json:"command" tstype:"\"submitJob\""`
-	// JCL to submit
-	Jcl string `json:"jcl"`
+	// Dataset name w/ contents to submit as JCL
+	Dsname string `json:"dsname"`
 }
 
 type CancelJobRequest struct {
 	Command string `json:"command" tstype:"\"cancelJob\""`
+	// Job ID to cancel
+	JobId string `json:"jobId"`
+}
+
+type DeleteJobRequest struct {
+	Command string `json:"command" tstype:"\"deleteJob\""`
 	// Job ID to cancel
 	JobId string `json:"jobId"`
 }
