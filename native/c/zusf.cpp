@@ -386,7 +386,7 @@ int zusf_chown_uss_file_or_dir(ZUSF *zusf, string file, string owner, bool recur
         struct stat file_stats;
         stat(child_path.c_str(), &file_stats);
 
-        const auto rc = zusf_chown_uss_file_or_dir(zusf, child_path, mode, S_ISDIR(file_stats.st_mode));
+        const auto rc = zusf_chown_uss_file_or_dir(zusf, child_path, owner, S_ISDIR(file_stats.st_mode));
         if (rc != 0)
         {
           return rc;
@@ -412,7 +412,7 @@ int zusf_chtag_uss_file_or_dir(ZUSF *zusf, string file, string tag, bool recursi
   {
     // TODO(traeok): Get CCSID from encoding name
   }
-  attrib64_t attr;
+  attrib_t attr;
   memset(&attr, 0, sizeof(attr));
   attr.att_filetagchg = 1;
   attr.att_filetag.ft_ccsid = ccsid;
