@@ -32,7 +32,7 @@ try {
     privateKey = readFileSync(config.privateKey);
 } catch (e) {}
 
-const localDeployDir = "./../../../native"; // from here
+const localDeployDir = "./../native"; // from here
 const deployDirectory = config.deployDirectory; // to here
 const cDeployDirectory = `${config.deployDirectory}/c`; // to here
 const goDeployDirectory = `${config.deployDirectory}/golang`; // to here
@@ -221,29 +221,6 @@ function getDirs(next = "") {
     return dirs;
 }
 
-function parse_ds_view(raw: string) {
-    console.log("ds-view parsing");
-}
-
-function parse_ds_ls_mem(raw: string) {
-    console.log("ds-ls-mem parsing");
-}
-
-function parse_ds_ls(raw: string) {
-    console.log("ds-ls parsing");
-    console.log("Raw: ", raw);
-    const lines = raw.trim().split(/\n/g);
-    for (const line of lines) {
-        const split = line.split(/\s+/g);
-        console.log(
-            JSON.stringify({
-                name: split[0].trim(),
-                dsorg: split[1].trim(),
-            }),
-        );
-    }
-}
-
 async function init(connection: Client) {
     const dirs = getDirs();
 
@@ -315,13 +292,13 @@ async function artifacts(connection: Client) {
         ].join("\n"),
     );
     for (const localDir of localDirs) {
-        mkdirSync(resolve(__dirname, `./../../${localDir}`), { recursive: true });
+        mkdirSync(resolve(__dirname, `./../${localDir}`), { recursive: true });
         if (localDirs.indexOf(localDir) === 0) {
             await retrieve(connection, [paxFile], localDir);
         } else {
             cpSync(
-                resolve(__dirname, `./../../${localDirs[0]}/${paxFile}`),
-                resolve(__dirname, `./../../${localDir}/${paxFile}`),
+                resolve(__dirname, `./../${localDirs[0]}/${paxFile}`),
+                resolve(__dirname, `./../${localDir}/${paxFile}`),
             );
         }
     }
@@ -376,7 +353,7 @@ async function retrieve(connection: Client, files: string[], targetDir: string) 
             }
 
             for (let i = 0; i < files.length; i++) {
-                const absTargetDir = resolve(__dirname, `./../../${targetDir}`);
+                const absTargetDir = resolve(__dirname, `./../${targetDir}`);
                 if (!existsSync(`${absTargetDir}`)) mkdirSync(`${absTargetDir}`);
                 const to = `${absTargetDir}/${files[i]}`;
                 const from = `${deployDirectory}/${files[i]}`;
