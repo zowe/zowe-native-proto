@@ -17,7 +17,6 @@ import {
 } from "@zowe/zowe-explorer-api";
 import * as fs from "fs";
 import * as vscode from "vscode";
-import * as sshConfig from "ssh-config";
 import { ZClientUtils, ZSshClient } from "zowe-native-proto-sdk";
 import { homedir } from "os";
 import * as path from "node:path";
@@ -42,21 +41,17 @@ export class SshConfigUtils {
     const profCache = zoweExplorerApi
       .getExplorerExtenderApi()
       .getProfilesCache();
-    const profInfo = await zoweExplorerApi
-      .getExplorerExtenderApi()
-      .getProfilesCache()
-      .getProfileInfo();
+    const profInfo = await profCache.getProfileInfo();
     const configExists = profInfo.getTeamConfig().exists;
 
-    if (profileName != null) {
+    if (profileName) {
       return profCache.getLoadedProfConfig(profileName, "ssh");
     }
 
     const sshProfiles = (await profCache.fetchAllProfilesByType("ssh")).filter(
-      ({ name, profile }) => name != null && profile?.host
+      ({ name, profile }) => name && profile?.host
     );
 
-    // get configs via migrateSshConfig() and remove options that have host name that already exists as an ssh profile on the config file
     const migratedConfigs = (await ZClientUtils.migrateSshConfig()).filter(
       (migratedConfig) =>
         !sshProfiles.some(
@@ -66,129 +61,82 @@ export class SshConfigUtils {
 
     const qpItems: vscode.QuickPickItem[] = [
       { label: "$(plus) Add New SSH Host..." },
-      ...sshProfiles.map((prof) => ({
-        label: prof.name!,
-        description: prof.profile?.host,
+      ...sshProfiles.map(({ name, profile }) => ({
+        label: name!,
+        description: profile?.host,
       })),
       {
         label: "Migrate From SSH Config",
         kind: vscode.QuickPickItemKind.Separator,
       },
-      ...migratedConfigs.map((config) => ({
-        label: config.name!,
-        description: config.hostname,
+      ...migratedConfigs.map(({ name, hostname }) => ({
+        label: name!,
+        description: hostname,
       })),
     ];
+
     const result = await Gui.showQuickPick(qpItems, {
       title: "Choose an SSH host",
     });
 
-    let selectedProfile: sshConfigExt | undefined;
+    if (!result) return;
 
     if (
       result === qpItems[0] ||
-      migratedConfigs.some((config) => result?.label === config.name!)
+      migratedConfigs.some(({ name }) => result.label === name)
     ) {
-      // Create new config
-      if (result === qpItems[0]) {
-        let newConfig = await SshConfigUtils.createNewConfig();
-        if (newConfig) {
-          await profCache.refresh();
-          if (newConfig && !newConfig.name) {
-            newConfig = await SshConfigUtils.getNewProfileName(newConfig);
-            if (!newConfig?.name) {
-              vscode.window.showWarningMessage("SSH setup cancelled.");
-              return;
-            }
-          }
+      const isNewConfig = result === qpItems[0];
+      let selectedProfile = isNewConfig
+        ? await SshConfigUtils.createNewConfig()
+        : migratedConfigs.find(({ name }) => result.label === name);
 
-          let validationResult = await SshConfigUtils.validateConfig(
-            newConfig!
-          );
-          if (typeof validationResult === "string")
-            newConfig.keyPassphrase = validationResult;
-          if (!validationResult)
-            newConfig = await SshConfigUtils.promptForAuth(newConfig);
-          await SshConfigUtils.setProfile(newConfig);
+      if (!selectedProfile) return;
 
-          let profile: { [key: string]: any } = {
-            host: newConfig?.hostname,
-            name: newConfig?.name,
-            password: newConfig?.password,
-            user: newConfig?.user,
-            privateKey: newConfig?.privateKey,
-            handshakeTimeout: newConfig?.handshakeTimeout,
-            port: newConfig?.port,
-            keyPassphrase: newConfig?.keyPassphrase,
-          };
-          let imperativeLoadedProfile: imperative.IProfileLoaded = {
-            name: newConfig?.name,
-            message: "",
-            failNotFound: false,
-            type: "ssh",
-            profile,
-          };
-          return imperativeLoadedProfile;
-        }
+      if (!isNewConfig && !configExists)
+        await SshConfigUtils.createZoweSchema();
+
+      selectedProfile = await SshConfigUtils.getNewProfileName(selectedProfile);
+      if (!selectedProfile?.name) {
+        vscode.window.showWarningMessage("SSH setup cancelled.");
+        return;
       }
-      // Migrating from SSH Config
-      else if (
-        migratedConfigs.some((config) => result?.label === config.name!)
-      ) {
-        if (!configExists) await SshConfigUtils.createZoweSchema();
-        selectedProfile = migratedConfigs.find(
-          (config) => result!.label === config.name!
-        );
-        if (selectedProfile) {
-          selectedProfile = await SshConfigUtils.getNewProfileName(
-            selectedProfile
-          );
-          if (!selectedProfile?.name) {
-            vscode.window.showWarningMessage("SSH setup cancelled.");
-            return;
-          }
 
-          let validationResult = await SshConfigUtils.validateConfig(
-            selectedProfile!
-          );
+      let validationResult = await SshConfigUtils.validateConfig(
+        selectedProfile
+      );
+      if (typeof validationResult === "string")
+        selectedProfile.keyPassphrase = validationResult;
 
-          if (typeof validationResult === "string")
-            selectedProfile.keyPassphrase = validationResult;
-
-          if (!validationResult)
-            selectedProfile = await SshConfigUtils.promptForAuth(
-              selectedProfile
-            );
-          if (!selectedProfile?.privateKey && !selectedProfile?.password) {
-            vscode.window.showWarningMessage("SSH setup cancelled.");
-            return;
-          }
-          await SshConfigUtils.setProfile(selectedProfile);
-          let profile: { [key: string]: any } = {
-            host: selectedProfile?.hostname,
-            name: selectedProfile?.name,
-            password: selectedProfile?.password,
-            user: selectedProfile?.user,
-            privateKey: selectedProfile?.privateKey,
-            handshakeTimeout: selectedProfile?.handshakeTimeout,
-            port: selectedProfile?.port,
-            keyPassphrase: selectedProfile?.keyPassphrase,
-          };
-          let imperativeLoadedProfile: imperative.IProfileLoaded = {
-            name: selectedProfile?.name,
-            message: "",
-            failNotFound: false,
-            type: "ssh",
-            profile,
-          };
-          return imperativeLoadedProfile;
-        }
+      if (!validationResult) {
+        selectedProfile = await SshConfigUtils.promptForAuth(selectedProfile);
+        if (!selectedProfile) return;
       }
+
+      if (!selectedProfile.privateKey && !selectedProfile.password) {
+        vscode.window.showWarningMessage("SSH setup cancelled.");
+        return;
+      }
+
+      await SshConfigUtils.setProfile(selectedProfile);
+      return {
+        name: selectedProfile.name,
+        message: "",
+        failNotFound: false,
+        type: "ssh",
+        profile: {
+          host: selectedProfile.hostname,
+          name: selectedProfile.name,
+          password: selectedProfile.password,
+          user: selectedProfile.user,
+          privateKey: selectedProfile.privateKey,
+          handshakeTimeout: selectedProfile.handshakeTimeout,
+          port: selectedProfile.port,
+          keyPassphrase: selectedProfile.keyPassphrase,
+        },
+      };
     }
-    // Select an existing SSH config from team config
-    else if (result != null) {
-      return sshProfiles.find((prof) => prof.name === result.label);
-    }
+
+    return sshProfiles.find(({ name }) => name === result.label);
   }
 
   public static showSessionInTree(profileName: string, visible: boolean): void {
@@ -294,15 +242,6 @@ export class SshConfigUtils {
       { label: "$(key) Private Key" },
       { label: "$(key) Private Key with Passphrase" },
     ];
-
-    //if PrivateKey/IdentityFile is passed, move password option to last priority
-    //add description to show that the option was detected from config
-    if (selectedConfig?.privateKey) {
-      qpItems.push(qpItems.shift()!);
-      qpItems[0].description = " (detected from config)";
-      qpItems[1].description = " (detected from config)";
-    }
-    // qpItems.push({ label: "$(x) Skip Authentication"})
 
     const selectedOption = await vscode.window.showQuickPick(qpItems, {
       title: "Select an authentication method",
@@ -529,11 +468,12 @@ export class SshConfigUtils {
           // Auth with passphrase
           await attemptConnection(newConfig);
           return (newConfig as any).passphrase;
-        } catch (e) {
+        } catch {
           // Auth with passphrase still failed
           vscode.window.showErrorMessage("Passphrase Authentication Failed");
+          // Start with a clean slate if auth fails
           delete (newConfig as any).passphrase;
-          newConfig.keyPassphrase = reservePassphrase;
+          delete (newConfig as any).privateKey;
           return false;
         }
       } else {
