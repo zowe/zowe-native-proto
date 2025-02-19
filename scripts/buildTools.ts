@@ -120,6 +120,7 @@ connection.on("close", () => {
 connection.on("error", (err) => {
     console.error("Client connection errored");
     console.log(err);
+    process.exit(1);
 });
 
 if (!privateKey) {
