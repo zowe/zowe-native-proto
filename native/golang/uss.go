@@ -13,8 +13,6 @@ package main
 
 import (
 	"encoding/base64"
-	"encoding/json"
-	"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -24,10 +22,8 @@ import (
 )
 
 func HandleListFilesRequest(jsonData []byte) {
-	var listRequest uss.ListFilesRequest
-	err := json.Unmarshal(jsonData, &listRequest)
+	listRequest, err := utils.ParseCommandRequest[uss.ListFilesRequest](jsonData)
 	if err != nil {
-		// log.Println("Error decoding ListFilesRequest:", err)
 		return
 	}
 
@@ -35,6 +31,7 @@ func HandleListFilesRequest(jsonData []byte) {
 
 	fileInfo, err := os.Stat(dirPath)
 	if err != nil {
+		utils.PrintErrorResponse("Failed to stat directory: %s", err)
 		return
 	}
 
@@ -50,7 +47,7 @@ func HandleListFilesRequest(jsonData []byte) {
 	} else {
 		entries, err := os.ReadDir(dirPath)
 		if err != nil {
-			log.Println("Error reading directory:", err)
+			utils.PrintErrorResponse("Failed to read directory: %s", err)
 			return
 		}
 		ussResponse.Items = make([]t.UssItem, len(entries))
@@ -69,25 +66,29 @@ func HandleListFilesRequest(jsonData []byte) {
 }
 
 func HandleReadFileRequest(jsonData []byte) {
-	var request uss.ReadFileRequest
-	err := json.Unmarshal(jsonData, &request)
+	request, err := utils.ParseCommandRequest[uss.ReadFileRequest](jsonData)
 	if err != nil || (request.Encoding == "" && request.Path == "") {
-		// log.Println("Error decoding ReadFileRequest:", err)
 		return
 	}
-	// log.Println("ReadFileRequest received:", ...)
-	args := []string{"./zowex", "uss", "view", request.Path}
+
+	args := []string{"uss", "view", request.Path}
 	hasEncoding := len(request.Encoding) != 0
 	if hasEncoding {
 		args = append(args, "--encoding", request.Encoding, "--rfb", "true")
 	}
 	out, err := utils.BuildCommand(args).Output()
 	if err != nil {
-		log.Println("Error executing command:", err)
+		utils.PrintErrorResponse("Error executing command: %s", err)
 		return
 	}
 
-	data := utils.CollectContentsAsBytes(string(out), hasEncoding)
+	output := string(out)
+	var data []byte
+	if len(output) > 0 {
+		data = utils.CollectContentsAsBytes(output, hasEncoding)
+	} else {
+		data = []byte{}
+	}
 
 	response := uss.ReadFileResponse{
 		Encoding: request.Encoding,
@@ -99,27 +100,24 @@ func HandleReadFileRequest(jsonData []byte) {
 
 // HandleWriteFileRequest handles a WriteFileRequest by invoking the `zowex uss write` command
 func HandleWriteFileRequest(jsonData []byte) {
-	var request uss.WriteFileRequest
-	err := json.Unmarshal(jsonData, &request)
+	request, err := utils.ParseCommandRequest[uss.WriteFileRequest](jsonData)
 	if err != nil || (request.Encoding == "" && request.Path == "") {
-		// log.Println("Error decoding WriteFileRequest:", err)
 		return
 	}
 
-	// log.Println("WriteFileRequest received:", ...)
 	decodedBytes, err := base64.StdEncoding.DecodeString(request.Data)
 	if err != nil {
-		log.Println("Error decoding base64 contents:", err)
+		utils.PrintErrorResponse("[WriteFileRequest] Error decoding base64 contents: %s", err)
 		return
 	}
-	args := []string{"./zowex", "uss", "write", request.Path}
+	args := []string{"uss", "write", request.Path}
 	if len(request.Encoding) > 0 {
 		args = append(args, "--encoding", request.Encoding)
 	}
 	cmd := utils.BuildCommandNoAutocvt(args)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
-		log.Println("Error opening stdin pipe:", err)
+		utils.PrintErrorResponse("[WriteFileRequest] Error opening stdin pipe: %s", err)
 		return
 	}
 
@@ -127,20 +125,19 @@ func HandleWriteFileRequest(jsonData []byte) {
 		defer stdin.Close()
 		_, err = stdin.Write(decodedBytes)
 		if err != nil {
-			log.Println("Error writing to stdin pipe:", err)
+			utils.PrintErrorResponse("[WriteFileRequest] Error writing to stdin pipe: %s", err)
+			return
 		}
 	}()
 
-	out, err := cmd.Output()
+	_, err = cmd.Output()
 	if err != nil {
-		log.Println("Error piping stdin to command:", err)
+		utils.PrintErrorResponse("[WriteFileRequest] Error piping stdin to command: %s", err)
 		return
 	}
-	// discard CLI output as its currently unused
-	_ = out
 
 	response := uss.WriteFileResponse{
-		Success: true,
+		Success: err == nil,
 		Path:    request.Path,
 	}
 	utils.PrintCommandResponse(response)
@@ -148,8 +145,7 @@ func HandleWriteFileRequest(jsonData []byte) {
 
 // HandleCreateFileRequest handles a CreateFileRequest by invoking the `zowex uss create-dir` or `create-file` command (depending on params)
 func HandleCreateFileRequest(jsonData []byte) {
-	var request uss.CreateFileRequest
-	err := json.Unmarshal(jsonData, &request)
+	request, err := utils.ParseCommandRequest[uss.CreateFileRequest](jsonData)
 	if err != nil || len(request.Path) == 0 {
 		return
 	}
@@ -158,126 +154,92 @@ func HandleCreateFileRequest(jsonData []byte) {
 	if request.IsDir {
 		createCmd = "create-dir"
 	}
-	args := []string{"./zowex", "uss", createCmd, request.Path}
+	args := []string{"uss", createCmd, request.Path}
 	if len(request.Mode) > 0 {
 		args = append(args, "--mode", request.Mode)
 	}
-	out, err := utils.BuildCommand(args).Output()
+	_, err = utils.BuildCommand(args).Output()
 	response := uss.DeleteFileResponse{
-		Success: true,
+		Success: err == nil,
 		Path:    request.Path,
 	}
-
-	if err != nil {
-		response.Success = false
-	}
-	// discard CLI output as its currently unused
-	_ = out
 
 	utils.PrintCommandResponse(response)
 }
 
 // HandleDeleteFileRequest handles a DeleteFileRequest by invoking the `zowex uss delete` command
 func HandleDeleteFileRequest(jsonData []byte) {
-	var request uss.DeleteFileRequest
-	err := json.Unmarshal(jsonData, &request)
+	request, err := utils.ParseCommandRequest[uss.DeleteFileRequest](jsonData)
 	if err != nil || len(request.Path) == 0 {
 		return
 	}
 
-	args := []string{"./zowex", "uss", "delete", request.Path, "-r", strconv.FormatBool(request.Recursive)}
-	out, err := utils.BuildCommand(args).Output()
+	args := []string{"uss", "delete", request.Path, "-r", strconv.FormatBool(request.Recursive)}
+	_, err = utils.BuildCommand(args).Output()
 	response := uss.DeleteFileResponse{
-		Success: true,
+		Success: err == nil,
 		Path:    request.Path,
 	}
-
-	if err != nil {
-		response.Success = false
-	}
-	// discard CLI output as its currently unused
-	_ = out
 
 	utils.PrintCommandResponse(response)
 }
 
 // HandleChownFileRequest handles a ChownFileRequest by invoking the `zowex uss chown` command
 func HandleChownFileRequest(jsonData []byte) {
-	var request uss.ChownFileRequest
-	err := json.Unmarshal(jsonData, &request)
+	request, err := utils.ParseCommandRequest[uss.ChownFileRequest](jsonData)
 	if err != nil || len(request.Path) == 0 {
 		return
 	}
 
-	args := []string{"./zowex", "uss", "chown", request.Owner, request.Path}
+	args := []string{"uss", "chown", request.Owner, request.Path}
 	if request.Recursive {
 		args = append(args, "-r", "true")
 	}
-	out, err := utils.BuildCommand(args).Output()
+	_, err = utils.BuildCommand(args).Output()
 	response := uss.ChownFileResponse{
-		Success: true,
+		Success: err == nil,
 		Path:    request.Path,
 	}
-
-	if err != nil {
-		response.Success = false
-	}
-	// discard CLI output as its currently unused
-	_ = out
 
 	utils.PrintCommandResponse(response)
 }
 
 // HandleChmodFileRequest handles a ChmodFileRequest by invoking the `zowex uss chmod` command
 func HandleChmodFileRequest(jsonData []byte) {
-	var request uss.ChmodFileRequest
-	err := json.Unmarshal(jsonData, &request)
+	request, err := utils.ParseCommandRequest[uss.ChmodFileRequest](jsonData)
 	if err != nil || len(request.Path) == 0 {
 		return
 	}
 
-	args := []string{"./zowex", "uss", "chmod", request.Mode, request.Path}
+	args := []string{"uss", "chmod", request.Mode, request.Path}
 	if request.Recursive {
 		args = append(args, "-r", "true")
 	}
-	out, err := utils.BuildCommand(args).Output()
+	_, err = utils.BuildCommand(args).Output()
 	response := uss.ChmodFileResponse{
-		Success: true,
+		Success: err == nil,
 		Path:    request.Path,
 	}
-
-	if err != nil {
-		response.Success = false
-	}
-	// discard CLI output as its currently unused
-	_ = out
 
 	utils.PrintCommandResponse(response)
 }
 
 // HandleChtagFileRequest handles a ChtagFileRequest by invoking the `zowex uss chtag` command
 func HandleChtagFileRequest(jsonData []byte) {
-	var request uss.ChtagFileRequest
-	err := json.Unmarshal(jsonData, &request)
+	request, err := utils.ParseCommandRequest[uss.ChtagFileRequest](jsonData)
 	if err != nil || len(request.Path) == 0 {
 		return
 	}
 
-	args := []string{"./zowex", "uss", "chtag", request.Tag, request.Path}
+	args := []string{"uss", "chtag", request.Tag, request.Path}
 	if request.Recursive {
 		args = append(args, "-r", "true")
 	}
-	out, err := utils.BuildCommand(args).Output()
+	_, err = utils.BuildCommand(args).Output()
 	response := uss.ChtagFileResponse{
-		Success: true,
+		Success: err == nil,
 		Path:    request.Path,
 	}
-
-	if err != nil {
-		response.Success = false
-	}
-	// discard CLI output as its currently unused
-	_ = out
 
 	utils.PrintCommandResponse(response)
 }

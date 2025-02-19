@@ -21,6 +21,7 @@ import (
 )
 
 func main() {
+	utils.InitLogger()
 	utils.SetAutoConvOnUntaggedStdio()
 	// Channel for receiving input from stdin
 	input := make(chan []byte)
@@ -69,7 +70,7 @@ func main() {
 		var request t.CommandRequest
 		err := json.Unmarshal(data, &request)
 		if err != nil {
-			log.Println("Error parsing command request:", err)
+			utils.LogError("Error parsing command request: %s", err)
 			continue
 		}
 

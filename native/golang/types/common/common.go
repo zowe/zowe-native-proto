@@ -16,9 +16,13 @@ type CommandRequest struct {
 	Command string `json:"command"`
 }
 
+type CommandResponse struct {
+	Error ErrorResponse `json:"error,omitempty"`
+}
+
 type ErrorResponse struct {
-	// Error details
-	Details string `json:"details"`
+	Msg  string `json:"msg"`
+	Code string `json:"code,omitempty"`
 }
 
 type Dataset struct {

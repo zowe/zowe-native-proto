@@ -13,8 +13,6 @@ package main
 
 import (
 	"encoding/base64"
-	"encoding/json"
-	"log"
 	"strconv"
 	"strings"
 	t "zowe-native-proto/ioserver/types/common"
@@ -24,21 +22,19 @@ import (
 
 // HandleListJobsRequest handles a ListJobsRequest by invoking the `zowex job list` command
 func HandleListJobsRequest(jsonData []byte) {
-	var listRequest jobs.ListJobsRequest
-	err := json.Unmarshal(jsonData, &listRequest)
+	listRequest, err := utils.ParseCommandRequest[jobs.ListJobsRequest](jsonData)
 	if err != nil {
-		// log.Println("Error decoding ListJobsRequest:", err)
 		return
 	}
 
-	args := []string{"./zowex", "job", "list", "--rfc", "true"}
+	args := []string{"job", "list", "--rfc", "true"}
 	if len(listRequest.Owner) != 0 {
 		args = append(args, "--owner", listRequest.Owner)
 	}
 
 	out, err := utils.BuildCommand(args).Output()
 	if err != nil {
-		log.Println("Error executing command:", err)
+		utils.PrintErrorResponse("Failed to list jobs: %s", err)
 		return
 	}
 
@@ -66,18 +62,16 @@ func HandleListJobsRequest(jsonData []byte) {
 
 // HandleListSpoolsRequest handles a ListSpoolsRequest by invoking the `zowex job list-files` command
 func HandleListSpoolsRequest(jsonData []byte) {
-	var listRequest jobs.ListSpoolsRequest
-	err := json.Unmarshal(jsonData, &listRequest)
+	listRequest, err := utils.ParseCommandRequest[jobs.ListSpoolsRequest](jsonData)
 	if err != nil {
-		// log.Println("Error decoding ListSpoolsRequest:", err)
 		return
 	}
 
-	args := []string{"./zowex", "job", "list-files", listRequest.JobId, "--rfc", "true"}
+	args := []string{"job", "list-files", listRequest.JobId, "--rfc", "true"}
 
 	out, err := utils.BuildCommand(args).Output()
 	if err != nil {
-		log.Println("Error executing command:", err)
+		utils.PrintErrorResponse("Failed to list spools: %s", err)
 		return
 	}
 
@@ -110,69 +104,62 @@ func HandleListSpoolsRequest(jsonData []byte) {
 
 // HandleReadSpoolRequest handles a ReadSpoolRequest by invoking the `zowex job view-file` command
 func HandleReadSpoolRequest(jsonData []byte) {
-	var request jobs.ReadSpoolRequest
-	err := json.Unmarshal(jsonData, &request)
+	request, err := utils.ParseCommandRequest[jobs.ReadSpoolRequest](jsonData)
 	if err != nil {
-		// log.Println("Error decoding ReadSpoolRequest:", err)
 		return
 	}
-	// log.Println("ReadSpoolRequest received:", ...)
-	args := []string{"./zowex", "job", "view-file", request.JobId, strconv.Itoa(request.DsnKey)}
+
+	args := []string{"job", "view-file", request.JobId, strconv.Itoa(request.DsnKey)}
 	hasEncoding := len(request.Encoding) != 0
 	if hasEncoding {
 		args = append(args, "--encoding", request.Encoding, "--rfb", "true")
 	}
 	out, err := utils.BuildCommand(args).Output()
 	if err != nil {
-		log.Println("Error executing command:", err)
+		utils.PrintErrorResponse("Failed to read spool: %s", err)
 		return
 	}
 
 	data := utils.CollectContentsAsBytes(string(out), hasEncoding)
-
-	response := jobs.ReadSpoolResponse{
+	utils.PrintCommandResponse(jobs.ReadSpoolResponse{
 		Encoding: request.Encoding,
 		DsnKey:   request.DsnKey,
 		JobId:    request.JobId,
 		Data:     data,
-	}
-	utils.PrintCommandResponse(response)
+	})
 }
 
 // HandleGetJclRequest handles a GetJclRequest by invoking the `zowex job view-jcl` command
 func HandleGetJclRequest(jsonData []byte) {
-	var request jobs.GetJclRequest
-	err := json.Unmarshal(jsonData, &request)
+	request, err := utils.ParseCommandRequest[jobs.GetJclRequest](jsonData)
 	if err != nil {
-		// log.Println("Error decoding GetJclRequest:", err)
-		return
-	}
-	// log.Println("GetJclRequest received:", ...)
-	args := []string{"./zowex", "job", "view-jcl", request.JobId}
-	out, err := utils.BuildCommand(args).Output()
-	if err != nil {
-		log.Println("Error executing command:", err)
 		return
 	}
 
-	response := jobs.GetJclResponse{
+	args := []string{"job", "view-jcl", request.JobId}
+	out, err := utils.BuildCommand(args).Output()
+	if err != nil {
+		utils.PrintErrorResponse("Failed to get JCL: %s", err)
+		return
+	}
+
+	utils.PrintCommandResponse(jobs.GetJclResponse{
 		JobId: request.JobId,
 		Data:  string(out),
-	}
-	utils.PrintCommandResponse(response)
+	})
 }
 
 // HandleGetStatusRequest handles a GetStatusRequest by invoking the `zowex job view-status` command
 func HandleGetStatusRequest(jsonData []byte) {
-	var request jobs.GetStatusRequest
-	err := json.Unmarshal(jsonData, &request)
+	request, err := utils.ParseCommandRequest[jobs.GetStatusRequest](jsonData)
 	if err != nil {
 		return
 	}
-	args := []string{"./zowex", "job", "view-status", request.JobId, "--rfc", "true"}
+
+	args := []string{"job", "view-status", request.JobId, "--rfc", "true"}
 	out, err := utils.BuildCommand(args).Output()
 	if err != nil {
-		log.Println("Error executing command:", err)
+		utils.PrintErrorResponse("Failed to get status: %s", err)
 		return
 	}
 	returnedJobs := strings.Split(strings.TrimSpace(string(out)), "\n")
@@ -199,72 +186,62 @@ func HandleGetStatusRequest(jsonData []byte) {
 
 // HandleSubmitJobRequest handles a SubmitJobRequest by invoking the `zowex job submit` command
 func HandleCancelJobRequest(jsonData []byte) {
-	var request jobs.CancelJobRequest
-	err := json.Unmarshal(jsonData, &request)
+	request, err := utils.ParseCommandRequest[jobs.CancelJobRequest](jsonData)
 	if err != nil {
 		return
 	}
-	args := []string{"./zowex", "job", "cancel", request.JobId}
-	out, err := utils.BuildCommand(args).Output()
 
-	_ = out
-
-	response := jobs.CancelJobResponse{
-		Success: true,
-		JobId:   request.JobId,
-	}
+	_, err = utils.BuildCommand([]string{"job", "cancel", request.JobId}).Output()
 
 	if err != nil {
-		response.Success = false
+		utils.PrintErrorResponse("Failed to cancel job: %s", err)
+		return
 	}
 
-	utils.PrintCommandResponse(response)
+	utils.PrintCommandResponse(jobs.CancelJobResponse{
+		Success: true,
+		JobId:   request.JobId,
+	})
 }
 
 // HandleSubmitJobRequest handles a SubmitJobRequest by invoking the `zowex job submit` command
 func HandleSubmitJobRequest(jsonData []byte) {
-	var request jobs.SubmitJobRequest
-	err := json.Unmarshal(jsonData, &request)
+	request, err := utils.ParseCommandRequest[jobs.SubmitJobRequest](jsonData)
 	if err != nil {
 		return
 	}
-	args := []string{"./zowex", "job", "submit", request.Dsname, "--only-jobid", "true"}
-	out, err := utils.BuildCommand(args).Output()
 
-	_ = out
+	out, err := utils.BuildCommand([]string{"job", "submit", request.Dsname, "--only-jobid", "true"}).Output()
 
-	response := jobs.SubmitJobResponse{
+	if err != nil {
+		utils.PrintErrorResponse("Failed to submit job: %s", err)
+		return
+	}
+
+	utils.PrintCommandResponse(jobs.SubmitJobResponse{
 		Success: true,
 		Dsname:  request.Dsname,
 		JobId:   strings.TrimSpace(string(out)),
-	}
-
-	if err != nil {
-		response.Success = false
-	}
-
-	utils.PrintCommandResponse(response)
+	})
 }
 
 // HandleSubmitJclRequest handles a SubmitJclRequest by invoking the `zowex job submit-jcl` command
 func HandleSubmitJclRequest(jsonData []byte) {
-	var request jobs.SubmitJclRequest
-	err := json.Unmarshal(jsonData, &request)
+	request, err := utils.ParseCommandRequest[jobs.SubmitJclRequest](jsonData)
 	if err != nil {
 		return
 	}
 
-	args := []string{"./zowex", "job", "submit-jcl", "--only-jobid", "true"}
 	decodedBytes, err := base64.StdEncoding.DecodeString(request.Jcl)
 	if err != nil {
-		log.Println("Error decoding base64 contents:", err)
+		utils.PrintErrorResponse("Failed to decode JCL contents: %s", err)
 		return
 	}
 
-	cmd := utils.BuildCommandNoAutocvt(args)
+	cmd := utils.BuildCommandNoAutocvt([]string{"job", "submit-jcl", "--only-jobid", "true"})
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
-		log.Println("Error opening stdin pipe:", err)
+		utils.PrintErrorResponse("Failed to open stdin pipe to zowex: %s", err)
 		return
 	}
 
@@ -272,50 +249,37 @@ func HandleSubmitJclRequest(jsonData []byte) {
 		defer stdin.Close()
 		_, err = stdin.Write(decodedBytes)
 		if err != nil {
-			log.Println("Error writing to stdin pipe:", err)
+			utils.PrintErrorResponse("Failed to write to pipe: %s", err)
 		}
 	}()
 
 	out, err := cmd.Output()
 	if err != nil {
-		log.Println("Error piping stdin to command:", err)
+		utils.PrintErrorResponse("Failed to submit JCL: %s", err)
 		return
 	}
-	// discard CLI output as its currently unused
-	_ = out
 
-	response := jobs.SubmitJclResponse{
+	utils.PrintCommandResponse(jobs.SubmitJclResponse{
 		Success: true,
 		JobId:   strings.TrimSpace(string(out)),
-	}
-
-	if err != nil {
-		response.Success = false
-	}
-
-	utils.PrintCommandResponse(response)
+	})
 }
 
 // HandleDeleteJobRequest handles a DeleteJobRequest by invoking the `zowex job delete` command
 func HandleDeleteJobRequest(jsonData []byte) {
-	var request jobs.DeleteJobRequest
-	err := json.Unmarshal(jsonData, &request)
+	request, err := utils.ParseCommandRequest[jobs.DeleteJobRequest](jsonData)
 	if err != nil {
 		return
 	}
-	args := []string{"./zowex", "job", "delete", request.JobId}
-	out, err := utils.BuildCommand(args).Output()
 
-	_ = out
+	_, err = utils.BuildCommand([]string{"job", "delete", request.JobId}).Output()
+	if err != nil {
+		utils.PrintErrorResponse("Failed to delete job %s: %s", request.JobId, err)
+		return
+	}
 
-	response := jobs.DeleteJobResponse{
+	utils.PrintCommandResponse(jobs.DeleteJobResponse{
 		Success: true,
 		JobId:   request.JobId,
-	}
-
-	if err != nil {
-		response.Success = false
-	}
-
-	utils.PrintCommandResponse(response)
+	})
 }

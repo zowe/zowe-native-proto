@@ -12,29 +12,25 @@
 package main
 
 import (
-	"encoding/json"
-	"log"
 	cmds "zowe-native-proto/ioserver/types/cmds"
 	utils "zowe-native-proto/ioserver/utils"
 )
 
 // HandleConsoleCommandRequest handles a ConsoleCommandRequest by invoking the `zowex console issue` command
 func HandleConsoleCommandRequest(jsonData []byte) {
-	var request cmds.IssueConsoleRequest
-	err := json.Unmarshal(jsonData, &request)
+	request, err := utils.ParseCommandRequest[cmds.IssueConsoleRequest](jsonData)
 	if err != nil {
-		return
-	}
-	args := []string{"./zowexx", "console", "issue", request.CommandText, "--cn", request.ConsoleName}
-	out, err := utils.BuildCommand(args).Output()
-	if err != nil {
-		log.Println("Error executing command:", err)
-		log.Println(string(out))
 		return
 	}
 
-	response := cmds.IssueConsoleResponse{
-		Data: string(out),
+	args := []string{"console", "issue", request.CommandText, "--cn", request.ConsoleName}
+	out, err := utils.BuildCommandAuthorized(args).Output()
+	if err != nil {
+		utils.PrintErrorResponse("Failed to execute command: %s", err)
+		return
 	}
-	utils.PrintCommandResponse(response)
+
+	utils.PrintCommandResponse(cmds.IssueConsoleResponse{
+		Data: string(out),
+	})
 }
