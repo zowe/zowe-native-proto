@@ -31,6 +31,7 @@ Create your own `config.local.json` adjacent to `config.default.jsonc` with some
 ## Client
 
 - `npm run z:artifacts` - download binaries to package with clients
+  - **Tip:** You can skip this step by defining `serverPath` property in your SSH profile in `zowe.config.json` to point to a dev build
 - `npm run build` - build all projects in the `packages` folder
   - **Tip:** You can run incremental builds with `npm run watch:client` for client code only, or `npm run watch` at the root to watch all code
 - `npm run package` - create CLI and VSCE artifacts in `dist` folder
