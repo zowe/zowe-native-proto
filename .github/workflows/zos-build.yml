@@ -43,3 +43,7 @@ jobs:
         with:
           name: zowe-server
           path: packages/cli/bin/server.pax.Z
+
+      - name: Clean up on z/OS
+        if: always()
+        run: npm run z:delete

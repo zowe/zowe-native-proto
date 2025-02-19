@@ -20,6 +20,7 @@
     "z:artifacts": "npm run tools -- artifacts",
     "z:build": "npm run tools -- build",
     "z:clean": "npm run tools -- clean",
+    "z:delete": "npm run tools -- delete",
     "z:deploy": "npm run tools -- deploy",
     "z:deploy:build": "npm run tools -- deploy:build",
     "z:init": "npm run tools -- init"
