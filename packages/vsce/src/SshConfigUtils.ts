@@ -23,15 +23,17 @@ declare const __non_webpack_require__: NodeRequire;
 // biome-ignore lint/complexity/noStaticOnlyClass: Utilities class has static methods
 export class SshConfigUtils {
     public static getServerPath(hostname: string): string {
+        const serverPathMap: Record<string, string> =
+            vscode.workspace.getConfiguration("zowe-native-proto-vsce").get("serverPath") ?? {};
+
         if (process.env.EXTENSION_DEV_PATH != null) {
+            // In debug mode, set default server path based on config.local.json
             const configJsonPath = path.resolve(process.env.EXTENSION_DEV_PATH, "../../config.local.json");
-            return path.posix.join(__non_webpack_require__(configJsonPath).deployDirectory, "golang");
+            const configJson = __non_webpack_require__(configJsonPath);
+            serverPathMap[configJson.host] ??= path.posix.join(configJson.deployDirectory, "golang");
         }
 
-        const serverPathMap = vscode.workspace
-            .getConfiguration("zowe-native-proto-vsce")
-            .get<Record<string, string>>("serverPath");
-        return serverPathMap?.[hostname] ?? ZSshClient.DEFAULT_SERVER_PATH;
+        return serverPathMap[hostname] ?? ZSshClient.DEFAULT_SERVER_PATH;
     }
 
     public static async promptForProfile(profileName?: string): Promise<imperative.IProfileLoaded | undefined> {
