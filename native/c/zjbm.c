@@ -116,11 +116,11 @@ int ZJBMPRG(ZJB *zjb)
 
 // cancel a job
 #pragma prolog(ZJBMCNL, "&CCN_MAIN SETB 1 \n MYPROLOG")
-int ZJBMCNL(ZJB *zjb, unsigned char flags)
+int ZJBMCNL(ZJB *zjb, int flags)
 {
   // cancel a job in protected (ssjmcprt) mode
-  unsigned char options = ssjmcprt | flags;
-  return ZJBMMOD(zjb, ssjmcanc, options);
+  int options = ssjmcprt | flags;
+  return ZJBMMOD(zjb, ssjmcanc, ssjmcprt);
 }
 
 // hold a job
@@ -141,7 +141,7 @@ int ZJBMRLS(ZJB *zjb)
 
 // modify a job
 #pragma prolog(ZJBMMOD, "&CCN_MAIN SETB 1 \n MYPROLOG")
-int ZJBMMOD(ZJB *zjb, unsigned char type, unsigned char flags)
+int ZJBMMOD(ZJB *zjb, int type, int flags)
 {
   int rc = 0;
   int loop_control = 0;
@@ -207,6 +207,7 @@ int ZJBMMOD(ZJB *zjb, unsigned char type, unsigned char flags)
     zjb->diag.service_rc = ssob.ssobretn;
     zjb->diag.service_rsn = ssjm.ssjmretn;
     zjb->diag.service_rsn_secondary = ssjm.ssjmret2;
+    // Understanding reason codes from this SSOB: https://www.ibm.com/docs/en/zos/3.1.0?topic=85-output-parameters
     zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "IEFSSREQ rc was: '%d' SSOBRTN was: '%d', SSJMRETN was: '%d', SSJMRET2 was: '%d'", rc, ssob.ssobretn, ssjm.ssjmretn, ssjm.ssjmret2);
     return RTNCD_FAILURE;
   }
