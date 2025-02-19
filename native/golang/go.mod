@@ -1,6 +1,6 @@
 module zowe-native-proto/ioserver
 
-go 1.23
+go 1.20
 
 require github.com/gzuidhof/tygo v0.2.17
 
