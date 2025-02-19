@@ -13,6 +13,8 @@ CC=xlc
 ASM=as
 BIND = ld
 
+# https://www.ibm.com/docs/en/zos/3.1.0?topic=bor-binder-options
+# https://www.ibm.com/docs/en/zos/3.1.0?topic=descriptions-ld-link-object-files
 BIND_FLAGS = -bRMODE=ANY
 
 MTL_OPTS=metal,\
@@ -225,7 +227,7 @@ libzusf.a: zusf.o libzut.a
 	ar -rv $@ $^
 
 #
-# TSO data
+# TSO
 #
 ztso.o: ztso.cpp
 	@echo 'Building ztso.o'
@@ -246,19 +248,22 @@ libztso.a: ztso.o
 zowex: zowex.o libzcn.a libzut.a libzjb.a libzds.a libzusf.a libztso.a
 	@echo 'Building zowex'
 	$(CXX) $(CPP_BND_FLAGS) -o $@ $^ > $*.bind.lst
-	ln -sf $@ ../golang/$(basename $@)
+	ln -sf ../c/$@ ../golang/zowex
 	@echo 'Copied zowex to golang/'
 
 zowexx: zowex.o libzcn.a libzut.a libzjb.a libzds.a libzusf.a libztso.a
 	@echo 'Building zowexx'
 	$(CXX) $(CPP_BND_FLAGS_AUTH) -o $@ $^ > $*.bind.lst
-	ln -sf $@ ../golang/$(basename $@)
+	ln -sf ../c/$@ ../golang/zowexx
 	@echo 'Copied zowexx to golang/'
 
 zowex.o: zowex.cpp
 	@echo 'Building zowex.o'
 	$(CXX) $(CPP_FLAGS) -qlist=$*.cpp.lst -c $^
 
+#
+# Testing utilities
+#
 test: test.sh
 	chmod +x test.sh
 

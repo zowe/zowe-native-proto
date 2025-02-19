@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "zjblkup.h"
 #include "zssitype.h"
 #include "zjbm.h"
 #include "zwto.h"
@@ -207,7 +208,7 @@ int ZJBMTCOM(ZJB *zjb, STAT *PTR64 stat, STATJQTR **PTR64 jobInfo, int *entries)
   int rc = 0;
   int loop_control = 0;
 
-  STATJQTR *statjqtrsp = storageGet64(zjb->buffer_size);
+  STATJQTR *statjqtrsp = storage_get64(zjb->buffer_size);
 
   SSOB *PTR32 ssobp = NULL;
   SSOB ssob = {0};
@@ -232,7 +233,7 @@ int ZJBMTCOM(ZJB *zjb, STAT *PTR64 stat, STATJQTR **PTR64 jobInfo, int *entries)
     zjb->diag.service_rsn = stat->statreas;
     zjb->diag.service_rsn_secondary = stat->statrea2;
     zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "IEFSSREQ rc was: '%d' SSOBRTN was: '%d', STATREAS was: '%d', STATREA2 was: '%d'", rc, ssob.ssobretn, stat->statreas, stat->statrea2); // STATREAS contains the reason
-    storageFree64(statjqtrsp);
+    storage_free64(statjqtrsp);
     return RTNCD_FAILURE;
   }
 
@@ -268,6 +269,9 @@ int ZJBMTCOM(ZJB *zjb, STAT *PTR64 stat, STATJQTR **PTR64 jobInfo, int *entries)
       zjb->diag.detail_rc = ZJB_RTNCD_INSUFFICIENT_BUFFER;
     }
 
+    // NOTE(Kelosky): rather than interpret job phase ourselves, this service provides text status of job phase
+    // however, it does not match z/osmf results
+    // iaztlkup(&ssob, statjqp);
     statjqp = (STATJQ * PTR32) statjqp->stjqnext;
 
     loop_control++;
@@ -290,7 +294,7 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
   int rc = 0;
   int loop_control = 0;
 
-  STATSEVB *statsetrsp = storageGet64(zjb->buffer_size);
+  STATSEVB *statsetrsp = storage_get64(zjb->buffer_size);
 
   // return rc
   SSOB *PTR32 ssobp = NULL;
@@ -328,7 +332,7 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
     zjb->diag.service_rsn = stat.statreas;
     zjb->diag.service_rsn_secondary = stat.statrea2;
     zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "IEFSSREQ rc was: '%d' SSOBRTN was: '%d', STATREAS was: '%d', STATREA2 was: '%d'", rc, ssob.ssobretn, stat.statreas, stat.statrea2); // STATREAS contains the reason
-    storageFree64(statsetrsp);
+    storage_free64(statsetrsp);
     return RTNCD_FAILURE;
   }
 

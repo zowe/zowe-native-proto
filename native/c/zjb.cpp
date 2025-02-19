@@ -479,8 +479,8 @@ int zjb_view_by_jobid(ZJB *zjb, string jobid, ZJob &job)
     } mycc = {0};
     memcpy(&mycc, &jobInfoNext[i].sttrxind, sizeof(cc));
 
-    // NOTE(Kelosky): this might need additional testing
-    // TODO(Kelosky): https://www.ibm.com/docs/en/zos/3.1.0?topic=80-text-lookup-service-iaztlkup
+    // NOTE(Kelosky): this might need additional testing and we can use
+    // iaztlkup if this becomes a problem
     if (jobInfoNext[i].sttrphaz < stat___onmain)
     {
       zjob.status = "INPUT";
