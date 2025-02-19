@@ -328,12 +328,12 @@ async function runCommandInShell(connection: Client, command: string, pty = fals
             });
             stream.on("exit", (exitCode: number) => {
                 if (exitCode !== 0) {
-                    const fullError = `\nError: runCommand connection.exec error: \n ${error}`;
+                    const fullError = `\nError: runCommand connection.exec error: \n ${error || data}`;
                     stopSpinner(spinner, fullError);
                     reject(fullError);
                 }
             });
-            stream.end(`${command}\n`);
+            stream.end(`${command}\nexit $?\n`);
         };
         if (pty) {
             connection.shell(cb);
@@ -482,7 +482,7 @@ async function build(connection: Client) {
         await runCommandInShell(
             connection,
             `cd ${goDeployDirectory} &&${config.goEnv ? ` ${config.goEnv}` : ""} go build\n`,
-            process.env.CI != null,
+            true,
         ),
     );
     console.log("Build complete!");
