@@ -1,5 +1,6 @@
 {
   "files.associations": {
+    "*.proto": "csharp",
     "**/.hlasmplugin/proc_grps.json": "jsonc",
     "**/.hlasmplugin/pgm_conf.json": "jsonc",
     "*.ASMPGM*": "hlasm",
@@ -40,7 +41,6 @@
     "*.REXXINC*": "rexx",
     "*.rex": "rexx",
     "*.rexx": "rexx",
-    "*.proto": "csharp",
     "*.s": "hlasm",
     "string": "cpp",
     "iostream": "cpp",
@@ -132,6 +132,8 @@
     "xtree": "cpp",
     "xutility": "cpp",
     "__memory": "c",
+    "print": "cpp",
+    "stack": "cpp",
     "zrecovery.h": "c"
   },
   "editor.formatOnSave": true,
