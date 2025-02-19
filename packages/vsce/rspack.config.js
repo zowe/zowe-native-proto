@@ -49,6 +49,7 @@ const extensionConfig = {
         exclude: /node_modules/,
         loader: 'builtin:swc-loader',
         options: {
+          devtool: 'source-map',
           jsc: {
             parser: {
               syntax: 'typescript',
@@ -68,4 +69,4 @@ const extensionConfig = {
     warnings: false,
   }
 };
-module.exports = [ extensionConfig ];
+module.exports = [extensionConfig];

@@ -253,3 +253,30 @@ func HandleDeleteDatasetRequest(jsonData []byte) {
 		fmt.Println(string(v))
 	}
 }
+
+func HandleCreateDatasetRequest(jsonData []byte) {
+	var dsRequest ds.CreateDatasetRequest
+	err := json.Unmarshal(jsonData, &dsRequest)
+	if err != nil {
+		return
+	}
+
+	args := []string{"./zowex", "data-set", "create", dsRequest.Dsname}
+
+	out, err := utils.BuildCommand(args).Output()
+	if err != nil {
+		log.Println("Error executing command:", err)
+		log.Println(string(out))
+		return
+	}
+
+	dsResponse := ds.DeleteDatasetResponse{
+		Success: true,
+	}
+	v, err := json.Marshal(dsResponse)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+	} else {
+		fmt.Println(string(v))
+	}
+}
