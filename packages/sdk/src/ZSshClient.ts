@@ -31,11 +31,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
         super();
     }
 
-    public static async create(
-        session: SshSession,
-        serverPath?: string,
-        onClose?: (session: SshSession) => void,
-    ): Promise<ZSshClient> {
+    public static async create(session: SshSession, serverPath?: string, onClose?: () => void): Promise<ZSshClient> {
         const client = new ZSshClient();
         client.mSshClient = new Client();
         client.mSshClient.connect(ZSshUtils.buildSshConfig(session));
@@ -57,7 +53,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                 );
             });
             client.mSshClient.on("close", () => {
-                onClose?.(session);
+                onClose?.();
             });
         });
         return client;

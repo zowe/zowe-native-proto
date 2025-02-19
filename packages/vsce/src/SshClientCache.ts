@@ -9,9 +9,9 @@
  *
  */
 
-import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
+import type { imperative } from "@zowe/zowe-explorer-api";
 import * as vscode from "vscode";
-import { ZSshClient } from "zowe-native-proto-sdk";
+import { ZSshClient, ZSshUtils } from "zowe-native-proto-sdk";
 import { SshConfigUtils } from "./SshConfigUtils";
 
 export class SshClientCache extends vscode.Disposable {
@@ -33,17 +33,18 @@ export class SshClientCache extends vscode.Disposable {
         return SshClientCache.mInstance;
     }
 
-    public async connect(session: SshSession, restart = false): Promise<ZSshClient> {
-        const clientKey = session.ISshSession.hostname!;
+    public async connect(profile: imperative.IProfileLoaded, restart = false): Promise<ZSshClient> {
+        const clientKey = profile.profile!.host;
         if (restart) {
             this.end(clientKey);
         }
         if (!this.mClientMap.has(clientKey)) {
-            const serverPath = SshConfigUtils.getServerPath(clientKey);
+            const session = ZSshUtils.buildSession(profile.profile!);
+            const serverPath = SshConfigUtils.getServerPath(profile);
             this.mClientMap.set(
                 clientKey,
-                await ZSshClient.create(session, serverPath, (session) => {
-                    this.end(session.ISshSession.hostname!);
+                await ZSshClient.create(session, serverPath, () => {
+                    this.end(clientKey);
                 }),
             );
         }

@@ -29,7 +29,7 @@ export class SshCommonApi implements MainframeInteraction.ICommon {
     public async getStatus(profile: imperative.IProfileLoaded, profileType?: string): Promise<string> {
         if (profileType === ZosUssProfile.type) {
             try {
-                await SshClientCache.inst.connect(this.getSshSession(profile));
+                await SshClientCache.inst.connect(profile);
                 return "active";
             } catch (err) {
                 vscode.window.showErrorMessage((err as Error).toString());
@@ -40,7 +40,10 @@ export class SshCommonApi implements MainframeInteraction.ICommon {
     }
 
     public get client(): Promise<ZSshClient> {
-        return SshClientCache.inst.connect(this.getSshSession());
+        if (this.profile == null) {
+            throw new Error("Failed to create SSH client: no profile found");
+        }
+        return SshClientCache.inst.connect(this.profile);
     }
 
     public getSshSession(profile?: imperative.IProfileLoaded): SshSession {
