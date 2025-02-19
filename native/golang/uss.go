@@ -17,6 +17,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 	t "zowe-native-proto/ioserver/types/common"
 	uss "zowe-native-proto/ioserver/types/uss"
 	utils "zowe-native-proto/ioserver/utils"
@@ -184,7 +185,7 @@ func HandleDeleteFileRequest(jsonData []byte) {
 		return
 	}
 
-	args := []string{"./zowex", "uss", "delete", request.Path, "-r", request.Recursive}
+	args := []string{"./zowex", "uss", "delete", request.Path, "-r", strconv.FormatBool(request.Recursive)}
 	out, err := utils.BuildCommand(args).Output()
 	response := uss.DeleteFileResponse{
 		Success: true,

@@ -72,7 +72,7 @@ export interface DeleteFileRequest {
   /**
    * Whether to delete the file recursively
    */
-  recursive: string;
+  recursive: boolean;
 }
 export interface ChmodFileRequest {
   command: "chmodFile";

@@ -53,7 +53,7 @@ type DeleteFileRequest struct {
 	// Remote file path to delete
 	Path string `json:"fspath"`
 	// Whether to delete the file recursively
-	Recursive string `json:"recursive"`
+	Recursive bool `json:"recursive"`
 }
 
 type ChmodFileRequest struct {
