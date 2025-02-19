@@ -277,7 +277,7 @@ async function getDumps(connection: Client) {
 }
 
 async function artifacts(connection: Client) {
-    const localDirs = ["../packages/cli/bin", "../packages/vsce/bin"];
+    const localDirs = ["packages/cli/bin", "packages/vsce/bin"];
     const artifactNames = ["c/zowex", "golang/ioserver"];
     const paxFile = "server.pax.Z";
     const prePaxCmds = artifactNames.map((file) => `cp ${file} ${basename(file)} && chmod 700 ${basename(file)}`);
