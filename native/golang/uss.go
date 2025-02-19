@@ -107,7 +107,7 @@ func HandleReadFileRequest(conn utils.ReadWriteCloser, jsonData []byte) {
 	}
 }
 
-func HandleWriteFileRequest(conn utils.ReadWriteCloser, jsonData []byte) {
+func HandleWriteFileRequest(_conn utils.ReadWriteCloser, jsonData []byte) {
 	var request uss.WriteFileRequest
 	err := json.Unmarshal(jsonData, &request)
 	if err != nil || (request.Encoding == "" && request.Path == "") {

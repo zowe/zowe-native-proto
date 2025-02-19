@@ -58,7 +58,7 @@ func HandleReadDatasetRequest(conn utils.ReadWriteCloser, jsonData []byte) {
 	}
 }
 
-func HandleWriteDatasetRequest(conn utils.ReadWriteCloser, jsonData []byte) {
+func HandleWriteDatasetRequest(_conn utils.ReadWriteCloser, jsonData []byte) {
 	var dsRequest ds.WriteDatasetRequest
 	err := json.Unmarshal(jsonData, &dsRequest)
 	if err != nil || (dsRequest.Encoding == "" && dsRequest.Dsname == "") {
