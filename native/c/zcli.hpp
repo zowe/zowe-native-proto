@@ -473,6 +473,7 @@ ZCLIVerb &ZCLIGroup::get_verb(string verb_name)
     }
   }
   ZCLIVerb *not_found = new ZCLIVerb("not found");
+  not_found->set_zcli_verb_handler(nullptr);
   return *not_found;
 }
 
