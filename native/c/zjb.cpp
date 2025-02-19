@@ -296,12 +296,21 @@ int zjb_delete_by_jobid(ZJB *zjb, string jobid)
   return ZJBMPRG(zjb);
 }
 
-int zjb_submit(ZJB *zjb, string data_set, string &jobId)
+int zjb_submit(ZJB *zjb, string dsn_or_contents, string &jobId, bool is_contents)
 {
   int rc = 0;
   string content;
   ZDS zds = {0};
-  rc = zds_read_from_dsn(&zds, data_set, content);
+
+  if (is_contents)
+  {
+    content = dsn_or_contents;
+  }
+  else
+  {
+    rc = zds_read_from_dsn(&zds, dsn_or_contents, content);
+  }
+
   if (rc != 0)
   {
     memcpy(&zjb->diag, &zds.diag, sizeof(ZDIAG));

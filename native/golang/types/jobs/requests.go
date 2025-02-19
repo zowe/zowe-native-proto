@@ -58,6 +58,12 @@ type SubmitJobRequest struct {
 	Dsname string `json:"dsname"`
 }
 
+type SubmitJclRequest struct {
+	Command string `json:"command" tstype:"\"submitJcl\""`
+	// JCL contents to submit as a job
+	Jcl string `json:"jcl"`
+}
+
 type CancelJobRequest struct {
 	Command string `json:"command" tstype:"\"cancelJob\""`
 	// Job ID to cancel

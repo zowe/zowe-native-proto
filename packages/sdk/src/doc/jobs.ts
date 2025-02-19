@@ -73,6 +73,13 @@ export interface SubmitJobRequest {
    */
   dsname: string;
 }
+export interface SubmitJclRequest {
+  command: "submitJcl";
+  /**
+   * JCL contents to submit as a job
+   */
+  jcl: string;
+}
 export interface CancelJobRequest {
   command: "cancelJob";
   /**
@@ -150,6 +157,16 @@ export interface SubmitJobResponse {
    * The data set name where the JCL was read from
    */
   dsname: string;
+}
+export interface SubmitJclResponse {
+  /**
+   * Whether the JCL was successfully submitted
+   */
+  success: boolean;
+  /**
+   * The ID of the new job
+   */
+  jobId: string;
 }
 export interface DeleteJobResponse {
   /**

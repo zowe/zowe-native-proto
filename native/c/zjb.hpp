@@ -104,11 +104,12 @@ int zjb_read_job_jcl_by_jobid(ZJB *zjb, std::string jobid, std::string &response
  * @brief Submit a job from a given input data set
  *
  * @param zjb job returned attributes and error information
- * @param dsn data set name containing JCL to submit, i.e. "IBMUSER.JCL(IEFBR14)""
+ * @param dsn_or_contents data set name containing JCL to submit, i.e. "IBMUSER.JCL(IEFBR14)""  OR the JCL contents
  * @param jobid jobid retuned after successfully submitting JCL
+ * @param is_contents Whether the input is the JCL contents
  * @return int 0 for success; non zero otherwise
  */
-int zjb_submit(ZJB *zjb, std::string dsn, std::string &jobid);
+int zjb_submit(ZJB *zjb, string dsn_or_contents, string &jobId, bool is_contents = false);
 
 /**
  * @brief Delete a job using input jobid

@@ -12,6 +12,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"log"
 	"strconv"
@@ -235,6 +236,56 @@ func HandleSubmitJobRequest(jsonData []byte) {
 	response := jobs.SubmitJobResponse{
 		Success: true,
 		Dsname:  request.Dsname,
+		JobId:   strings.TrimSpace(string(out)),
+	}
+
+	if err != nil {
+		response.Success = false
+	}
+
+	utils.PrintCommandResponse(response)
+}
+
+// HandleSubmitJclRequest handles a SubmitJclRequest by invoking the `zowex job submit-jcl` command
+func HandleSubmitJclRequest(jsonData []byte) {
+	var request jobs.SubmitJclRequest
+	err := json.Unmarshal(jsonData, &request)
+	if err != nil {
+		return
+	}
+
+	args := []string{"./zowex", "job", "submit-jcl", "--only-jobid", "true"}
+	decodedBytes, err := base64.StdEncoding.DecodeString(request.Jcl)
+	if err != nil {
+		log.Println("Error decoding base64 contents:", err)
+		return
+	}
+
+	cmd := utils.BuildCommandNoAutocvt(args)
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		log.Println("Error opening stdin pipe:", err)
+		return
+	}
+
+	go func() {
+		defer stdin.Close()
+		_, err = stdin.Write(decodedBytes)
+		if err != nil {
+			log.Println("Error writing to stdin pipe:", err)
+		}
+	}()
+
+	out, err := cmd.Output()
+	if err != nil {
+		log.Println("Error piping stdin to command:", err)
+		return
+	}
+	// discard CLI output as its currently unused
+	_ = out
+
+	response := jobs.SubmitJclResponse{
+		Success: true,
 		JobId:   strings.TrimSpace(string(out)),
 	}
 

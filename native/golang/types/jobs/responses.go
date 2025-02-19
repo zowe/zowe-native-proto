@@ -55,6 +55,13 @@ type SubmitJobResponse struct {
 	Dsname string `json:"dsname"`
 }
 
+type SubmitJclResponse struct {
+	// Whether the JCL was successfully submitted
+	Success bool `json:"success"`
+	// The ID of the new job
+	JobId string `json:"jobId"`
+}
+
 type DeleteJobResponse struct {
 	// Whether the job was successfully deleted
 	Success bool `json:"success"`

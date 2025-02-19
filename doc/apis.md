@@ -20,8 +20,8 @@
 | _Write data set member_  | ✅              | ✅  | 🚧 <sup>2</sup> | ✅         | ✅  | ✅  | ✅   |
 | _Create data set_        | ✅              | ✅  | 🚧 <sup>3</sup> | ❌         | ❌  | ❌  | ❌   |
 | _Create data set member_ | ✅              | ✅  | ❌              | ❌         | ❌  | ❌  | ❌   |
-| _Delete data set_        | ✅              | ✅  | ✅              | ✅         | ❌  | ❌  | ✅   |
-| _Delete data set member_ | ✅              | ✅  | ✅              | ✅         | ❌  | ❌  | ✅   |
+| _Delete data set_        | ✅              | ✅  | ✅              | ✅         | ✅  | ❌  | ✅   |
+| _Delete data set member_ | ✅              | ✅  | ✅              | ✅         | ✅  | ❌  | ✅   |
 | Migrate data set         | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | Recall data set          | 🚧 <sup>4</sup> | ❌  | ✅              | ✅         | ✅  | ✅  | ❌   |
 | Delete migrated data set | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
