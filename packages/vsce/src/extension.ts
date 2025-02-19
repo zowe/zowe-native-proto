@@ -22,7 +22,7 @@ function registerCommands(context: vscode.ExtensionContext): vscode.Disposable[]
         vscode.commands.registerCommand("zowe-native-proto-vsce.connect", async (profName?: string) => {
             const profile = await SshConfigUtils.promptForProfile(profName);
             if (!profile) return;
-            const serverPath = SshConfigUtils.getServerPath(profile);
+            const serverPath = SshConfigUtils.getServerPath(profile.profile);
             const localDir = path.join(context.extensionPath, "bin");
             await Gui.withProgress(
                 {
@@ -47,7 +47,7 @@ function registerCommands(context: vscode.ExtensionContext): vscode.Disposable[]
             const profile = await SshConfigUtils.promptForProfile(profName);
             if (!profile) return;
             SshClientCache.inst.end(profile.profile!.host);
-            const serverPath = SshConfigUtils.getServerPath(profile);
+            const serverPath = SshConfigUtils.getServerPath(profile.profile);
             await ZSshUtils.uninstallServer(ZSshUtils.buildSession(profile.profile!), serverPath);
             SshConfigUtils.showSessionInTree(profile.name!, false);
             await Gui.showMessage(`Uninstalled Zowe SSH server from ${profile.name}`);

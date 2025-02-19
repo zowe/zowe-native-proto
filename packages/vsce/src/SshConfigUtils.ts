@@ -20,13 +20,13 @@ import { ZosUssProfile } from "@zowe/zos-uss-for-zowe-sdk";
 
 // biome-ignore lint/complexity/noStaticOnlyClass: Utilities class has static methods
 export class SshConfigUtils {
-    public static getServerPath(profile: imperative.IProfileLoaded): string {
+    public static getServerPath(profile?: imperative.IProfile): string {
         const serverPathMap: Record<string, string> =
             vscode.workspace.getConfiguration("zowe-native-proto-vsce").get("serverPath") ?? {};
         return (
-            serverPathMap[profile.profile!.host] ??
+            (profile && serverPathMap[profile?.host]) ??
             process.env.ZOWE_OPT_SERVER_PATH ??
-            profile.profile!.serverPath ??
+            profile?.serverPath ??
             ZSshClient.DEFAULT_SERVER_PATH
         );
     }
