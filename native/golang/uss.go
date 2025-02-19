@@ -125,9 +125,24 @@ func HandleWriteFileRequest(conn utils.ReadWriteCloser, jsonData []byte) {
 	if len(request.Encoding) > 0 {
 		args = append(args, "--encoding", request.Encoding)
 	}
-	out, err := conn.ExecCmdWithStdin(args, decodedBytes)
+	cmd := utils.BuildCommandNoAutocvt(args)
+	stdin, err := cmd.StdinPipe()
 	if err != nil {
-		log.Println("Error executing command:", err)
+		log.Println("Error opening stdin pipe:", err)
+		return
+	}
+
+	go func() {
+		defer stdin.Close()
+		_, err = stdin.Write(decodedBytes)
+		if err != nil {
+			log.Println("Error writing to stdin pipe:", err)
+		}
+	}()
+
+	out, err := cmd.Output()
+	if err != nil {
+		log.Println("Error piping stdin to command:", err)
 		return
 	}
 	// discard CLI output as its currently unused

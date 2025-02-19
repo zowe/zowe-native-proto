@@ -16,7 +16,6 @@ import (
 	"encoding/binary"
 	"io"
 	"log"
-	"os"
 	"strings"
 )
 
@@ -41,6 +40,18 @@ func (rwc ReadWriteCloser) ExecCmd(args []string) (out []byte, err error) {
 	return
 }
 
+/*
+Note(TAJ): This method is not used yet since I can't find a way to temporarily
+disable auto-convert for an existing stdio pipe. If we figure this out in the
+future, here is C++ code that may be useful:
+
+	char dataLen[8];
+	std::cin.read(dataLen, 8);
+	__e2a_l(&dataLen[0], 8); // Only needed when autoconv is enabled
+	byteSize = *reinterpret_cast<const uint64_t *>(dataLen);
+	data.resize(byteSize);
+	std::cin.read(&data[0], byteSize);
+*/
 func (rwc ReadWriteCloser) ExecCmdWithStdin(args []string, data []byte) (out []byte, err error) {
 	_, err = rwc.WriteCloser.Write([]byte(strings.Join(args, " ") + "\n"))
 	if err != nil {
@@ -48,9 +59,9 @@ func (rwc ReadWriteCloser) ExecCmdWithStdin(args []string, data []byte) (out []b
 	}
 	var dataLen [8]byte
 	binary.BigEndian.PutUint64(dataLen[:], uint64(len(data)))
-	fd := int(rwc.WriteCloser.(*os.File).Fd())
-	DisableAutoConv(fd)
-	defer EnableAutoConv(fd)
+	// fd := int(rwc.WriteCloser.(*os.File).Fd())
+	// DisableAutoConv(fd)
+	// defer EnableAutoConv(fd)
 	if _, err = rwc.WriteCloser.Write(dataLen[:]); err == nil {
 		_, err = rwc.WriteCloser.Write(data)
 	}

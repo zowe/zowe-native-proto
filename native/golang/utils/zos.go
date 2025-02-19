@@ -41,14 +41,6 @@ func SetAutoConvOnUntaggedStdio() {
 	}
 }
 
-func DisableAutoConv(fd int) {
-	runtime.SetZosAutoConvOnFd(fd, 0)
-}
-
-func EnableAutoConv(fd int) {
-	runtime.SetZosAutoConvOnFd(fd, 1047)
-}
-
 // Implements the C `isatty` method without external dependencies
 func isatty(fd int) bool {
 	var st syscall.Stat_t

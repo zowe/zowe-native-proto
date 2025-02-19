@@ -9,8 +9,6 @@
  *
  */
 
-#define _OPEN_SYS_FILE_EXT 1
-
 #include <iostream>
 #include <vector>
 #include <stdlib.h>
@@ -19,8 +17,6 @@
 #include <cstdlib>
 #include <stdio.h>
 #include <algorithm>
-#include <fcntl.h>
-#include <_Nascii.h>
 #include "zcn.hpp"
 #include "zut.hpp"
 #include "zcli.hpp"
@@ -1016,19 +1012,12 @@ int handle_data_set_write_to_dsn(ZCLIResult result)
 
   if (!isatty(fileno(stdin)))
   {
-    __ae_autoconvert_state(_CVTSTATE_OFF);
-    struct f_cnvrt cvtreqOff = {SETCVTOFF, 0, 0};
-    fcntl(fileno(stdin), F_CONTROL_CVT, cvtreqOff);
-    char dataLen[8];
-    std::cin.read(dataLen, 8);
-    __e2a_l(&dataLen[0], 8);
-    byteSize = *reinterpret_cast<const uint64_t *>(dataLen);
+    std::istreambuf_iterator<char> begin(std::cin);
+    std::istreambuf_iterator<char> end;
 
-    data.resize(byteSize);
-    std::cin.read(&data[0], byteSize);
-    __ae_autoconvert_state(_CVTSTATE_SWAP);
-    struct f_cnvrt cvtreqOn = {SETCVTON, 0, 1047};
-    fcntl(fileno(stdin), F_CONTROL_CVT, cvtreqOn);
+    std::vector<char> bytes(begin, end);
+    data.assign(bytes.begin(), bytes.end());
+    byteSize = bytes.size();
   }
   else
   {
@@ -1199,19 +1188,12 @@ int handle_uss_write(ZCLIResult result)
   // Use Ctrl/Cmd + D to stop writing data manually
   if (!isatty(fileno(stdin)))
   {
-    __ae_autoconvert_state(_CVTSTATE_OFF);
-    struct f_cnvrt cvtreqOff = {SETCVTOFF, 0, 0};
-    fcntl(fileno(stdin), F_CONTROL_CVT, cvtreqOff);
-    char dataLen[8];
-    std::cin.read(dataLen, 8);
-    __e2a_l(&dataLen[0], 8);
-    byteSize = *reinterpret_cast<const uint64_t *>(dataLen);
+    std::istreambuf_iterator<char> begin(std::cin);
+    std::istreambuf_iterator<char> end;
 
-    data.resize(byteSize);
-    std::cin.read(&data[0], byteSize);
-    __ae_autoconvert_state(_CVTSTATE_SWAP);
-    struct f_cnvrt cvtreqOn = {SETCVTON, 0, 1047};
-    fcntl(fileno(stdin), F_CONTROL_CVT, cvtreqOn);
+    std::vector<char> bytes(begin, end);
+    data.assign(bytes.begin(), bytes.end());
+    byteSize = bytes.size();
   }
   else
   {
