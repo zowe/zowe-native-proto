@@ -288,7 +288,7 @@ bool ZCLI::validate()
       // ensure handler provided
       if (iit->get_zcli_verb_handler() == nullptr)
       {
-        cerr << "ZCLI Error: each verb must container a handler, " << iit->get_name() << " does not" << endl;
+        cerr << "ZCLI Error: each verb must contain a handler, " << iit->get_name() << " does not" << endl;
         return false;
       }
 

@@ -43,6 +43,10 @@ extern "C"
   int ZJBMLSDS(ZJB *PTR64, STATSEVB **PTR64, int *PTR64);
   int ZJBSYMB(ZJB *PTR64, const char *PTR64, char *PTR64);
   int ZJBMPRG(ZJB *PTR64);
+  int ZJBMCNL(ZJB *PTR64, unsigned char flags);
+  int ZJBMHLD(ZJB *PTR64);
+  int ZJBMRLS(ZJB *PTR64);
+  int ZJBMMOD(ZJB *PTR64, unsigned char type, unsigned char flags);
 
 #if defined(__cplusplus)
 }

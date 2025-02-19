@@ -301,7 +301,19 @@ int zjb_delete_by_jobid(ZJB *zjb, string jobid)
 int zjb_cancel_by_jobid(ZJB *zjb, string jobid)
 {
   zut_uppercase_pad_truncate(zjb->jobid, jobid, sizeof(zjb->jobid));
-  return ZJBMCNL(zjb);
+  return ZJBMCNL(zjb, 0);
+}
+
+int zjb_hold_by_jobid(ZJB *zjb, string jobid)
+{
+  zut_uppercase_pad_truncate(zjb->jobid, jobid, sizeof(zjb->jobid));
+  return ZJBMHLD(zjb);
+}
+
+int zjb_release_by_jobid(ZJB *zjb, string jobid)
+{
+  zut_uppercase_pad_truncate(zjb->jobid, jobid, sizeof(zjb->jobid));
+  return ZJBMRLS(zjb);
 }
 
 int zjb_submit(ZJB *zjb, string dsn, string &jobId)

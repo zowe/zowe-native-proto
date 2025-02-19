@@ -43,6 +43,7 @@ int handle_job_view_jcl(ZCLIResult);
 int handle_job_submit(ZCLIResult);
 int handle_job_submit_jcl(ZCLIResult);
 int handle_job_delete(ZCLIResult);
+int handle_job_cancel(ZCLIResult);
 
 int handle_console_issue(ZCLIResult);
 
@@ -308,6 +309,30 @@ int main(int argc, char *argv[])
   job_delete.set_zcli_verb_handler(handle_job_delete);
   job_delete.get_positionals().push_back(job_jobid);
   job_group.get_verbs().push_back(job_delete);
+
+  ZCLIVerb job_cancel("cancel");
+  job_cancel.get_aliases().push_back("cnl");
+  job_cancel.set_description("cancel a job");
+  job_cancel.set_zcli_verb_handler(handle_job_cancel);
+  job_cancel.get_positionals().push_back(job_jobid);
+  job_group.get_verbs().push_back(job_cancel);
+
+  ZCLIOption job_cancel_dump("dump");
+  job_cancel_dump.get_aliases().push_back("-d");
+  job_cancel_dump.set_description("Dump the cancelled jobs if waiting for conversion, in conversion, or in execution.");
+  job_cancel.get_options().push_back(job_cancel_dump);
+  ZCLIOption job_cancel_force("force");
+  job_cancel_force.get_aliases().push_back("-f");
+  job_cancel_force.set_description("Force cancel the jobs, even if marked.");
+  job_cancel.get_options().push_back(job_cancel_force);
+  ZCLIOption job_cancel_purge("purge");
+  job_cancel_purge.get_aliases().push_back("-p");
+  job_cancel_purge.set_description("Purge output of the cancelled jobs.");
+  job_cancel.get_options().push_back(job_cancel_purge);
+  ZCLIOption job_cancel_restart("restart");
+  job_cancel_restart.get_aliases().push_back("-r");
+  job_cancel_restart.set_description("Request that automatic restart management automatically restart the selected jobs after they are cancelled.");
+  job_cancel.get_options().push_back(job_cancel_restart);
 
   //
   // console group
@@ -792,6 +817,31 @@ int handle_job_delete(ZCLIResult result)
   }
 
   cout << "Job " << jobid << " deleted " << endl;
+
+  return RTNCD_SUCCESS;
+}
+
+int handle_job_cancel(ZCLIResult result)
+{
+  int rc = 0;
+  ZJB zjb = {0};
+  string jobid(result.get_positional("jobid").get_value());
+
+  string option_dump(result.get_option("--dump").get_value());
+  string option_force(result.get_option("--force").get_value());
+  string option_purge(result.get_option("--purge").get_value());
+  string option_restart(result.get_option("--restart").get_value());
+
+  rc = zjb_cancel_by_jobid(&zjb, jobid);
+
+  if (0 != rc)
+  {
+    cout << "Error: could not cancel job: '" << jobid << "' rc: '" << rc << "'" << endl;
+    cout << "  Details: " << zjb.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
+  cout << "Job " << jobid << " cancelled " << endl;
 
   return RTNCD_SUCCESS;
 }
