@@ -315,7 +315,6 @@ int main(int argc, char *argv[])
   job_cancel.set_description("cancel a job");
   job_cancel.set_zcli_verb_handler(handle_job_cancel);
   job_cancel.get_positionals().push_back(job_jobid);
-  job_group.get_verbs().push_back(job_cancel);
 
   ZCLIOption job_cancel_dump("dump");
   job_cancel_dump.get_aliases().push_back("-d");
@@ -333,6 +332,7 @@ int main(int argc, char *argv[])
   job_cancel_restart.get_aliases().push_back("-r");
   job_cancel_restart.set_description("Request that automatic restart management automatically restart the selected jobs after they are cancelled.");
   job_cancel.get_options().push_back(job_cancel_restart);
+  job_group.get_verbs().push_back(job_cancel);
 
   //
   // console group
