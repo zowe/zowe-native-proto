@@ -98,6 +98,9 @@ connection.on("ready", async () => {
         case "clean":
             await clean(connection);
             break;
+        case "delete":
+            await rmdir(connection);
+            break;
         case "bin":
             await bin(connection);
             break;
@@ -493,6 +496,13 @@ async function clean(connection: Client) {
     const resp = await runCommandInShell(connection, `cd ${cDeployDirectory} && make clean\n`);
     console.log(resp);
     console.log("Clean complete");
+}
+
+async function rmdir(connection: Client) {
+    console.log("Removing dir ...");
+    const resp = await runCommandInShell(connection, `rm -rf ${deployDirectory}\n`);
+    console.log(resp);
+    console.log("Removal complete");
 }
 
 async function uploadFile(sftpcon: SFTPWrapper, from: string, to: string) {
