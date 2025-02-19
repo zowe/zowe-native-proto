@@ -48,25 +48,25 @@ function DEBUG_MODE() {
     return process.env.ZOWE_NATIVE_DEBUG?.toUpperCase() === "TRUE" || process.env.ZOWE_NATIVE_DEBUG === "1";
 }
 
-let SPINNER_INDEX = 0;
-const SPINNER_FRAMES = ["-", "\\", "|", "/"];
-
 function startSpinner(text = "Loading...") {
     if (DEBUG_MODE()) {
         console.log(text);
         return null;
     }
-    process.stdout.write(`${text} `);
+    console.log(text);
+    let progressIndex = 0;
 
+    const PROGRESS_BAR_FRAMES = ["▏", "▎", "▍", "▌", "▋", "▊", "▉", "▊", "▋", "▌", "▍", "▎"];
     return setInterval(() => {
-        process.stdout.write(`\r${text} ${SPINNER_FRAMES[SPINNER_INDEX]}`);
-        SPINNER_INDEX = (SPINNER_INDEX + 1) % SPINNER_FRAMES.length;
+        const progressBar = PROGRESS_BAR_FRAMES.map((_, i) => (i === progressIndex ? "█" : " ")).join("");
+        process.stdout.write(`\rRunning... █${progressBar}`);
+        progressIndex = (progressIndex + 1) % PROGRESS_BAR_FRAMES.length;
     }, 100);
 }
 
 function stopSpinner(spinner: NodeJS.Timeout | null, text = "Done!") {
     spinner && clearInterval(spinner);
-    process.stdout.write(`\n${text}\n`);
+    process.stdout.write(`\x1b[2K\r${text}\n`);
 }
 
 const connection = new Client();
@@ -328,7 +328,7 @@ async function artifacts(connection: Client) {
 }
 
 async function runCommandInShell(connection: Client, command: string, pty = false) {
-    const spinner = startSpinner(`Running: ${command.trim()}`);
+    const spinner = startSpinner(`Command: ${command.trim()}`);
     return new Promise<string>((resolve, reject) => {
         let data = "";
         let error = "";

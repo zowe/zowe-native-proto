@@ -18,12 +18,12 @@
 | _Read data set member_   | ✅              | ✅  | 🚧 <sup>2</sup> | ✅         | ✅  | ✅  | ✅   |
 | _Write data set_         | ✅              | ✅  | 🚧 <sup>2</sup> | ✅         | ✅  | ❌  | ❌   |
 | _Write data set member_  | ✅              | ✅  | 🚧 <sup>2</sup> | ✅         | ✅  | ❌  | ❌   |
-| _Create data set_        | ✅              | ✅  | 🚧 <sup>3</sup> | ❌         | ❌  | ❌  | ❌   |
+| _Create data set_        | ✅              | ✅  | 🚧 <sup>3</sup> | ✅         | ✅  | ✅  | ✅   |
 | _Create data set member_ | ✅              | ✅  | ❌              | ❌         | ❌  | ❌  | ❌   |
-| _Delete data set_        | ✅              | ✅  | ✅              | ❌         | ❌  | ❌  | ❌   |
-| _Delete data set member_ | ✅              | ✅  | ✅              | ❌         | ❌  | ❌  | ❌   |
+| _Delete data set_        | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
+| _Delete data set member_ | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
 | Migrate data set         | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
-| Recall data set          | 🚧 <sup>4</sup> | ❌  | ✅              | ✅         | ✅  | ✅  | ❌   |
+| Recall data set          | 🚧 <sup>4</sup> | ❌  | ✅              | ✅         | ✅  | ✅  | ✅   |
 | Delete migrated data set | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | Rename data set          | ✅              | ✅  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | Copy data set            | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
@@ -67,27 +67,27 @@
 
 ## Jobs
 
-| Operation          | z/OSMF | FTP | Backend         | Middleware | SDK | CLI | VSCE |
-| ------------------ | ------ | --- | --------------- | ---------- | --- | --- | ---- |
-| _Get job status_   | ✅     | ✅  | ✅               | ✅         | ✅  | ✅  | ❌   |
-| _List jobs_        | ✅     | ✅  | ✅               | ✅         | ✅  | ✅  | ✅   |
-| _List spool files_ | ✅     | ✅  | ✅               | ✅         | ✅  | ✅  | ✅   |
-| _Read spool file_  | ✅     | ✅  | ✅               | ✅         | ✅  | ✅  | ✅   |
-| _Get job JCL_      | ✅     | ❌  | ✅               | ✅         | ✅  | ✅  | ✅   |
-| _Submit job_       | ✅     | ✅  | ✅               | ❌         | ❌  | ❌  | ❌   |
-| Hold job           | ✅     | ❌  | ❌               | ❌         | ❌  | ❌  | ❌   |
-| Release job        | ✅     | ❌  | ❌               | ❌         | ❌  | ❌  | ❌   |
-| Change job class   | ✅     | ❌  | ❌               | ❌         | ❌  | ❌  | ➖   |
-| Cancel job         | ✅     | ❌  | ❌               | ❌         | ❌  | ❌  | ❌   |
-| _Delete job_       | ✅     | ✅  | ✅               | ❌         | ❌  | ❌  | ❌   |
+| Operation          | z/OSMF | FTP | Backend | Middleware | SDK | CLI | VSCE |
+| ------------------ | ------ | --- | ------- | ---------- | --- | --- | ---- |
+| _Get job status_   | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ❌   |
+| _List jobs_        | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅   |
+| _List spool files_ | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅   |
+| _Read spool file_  | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅   |
+| _Get job JCL_      | ✅     | ❌  | ✅      | ✅         | ✅  | ✅  | ✅   |
+| _Submit job_       | ✅     | ✅  | ✅      | ❌         | ❌  | ❌  | ❌   |
+| Hold job           | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌   |
+| Release job        | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌   |
+| Change job class   | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ➖   |
+| Cancel job         | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌   |
+| _Delete job_       | ✅     | ✅  | ✅      | ❌         | ❌  | ❌  | ❌   |
 
 ## Console
 
 | Operation                | z/OSMF | FTP | Backend         | Middleware | SDK | CLI | VSCE |
 | ------------------------ | ------ | --- | --------------- | ---------- | --- | --- | ---- |
-| Issue MVS command        | ✅     | ❌  | ✅ <sup>1</sup>  | ✅         | ✅  | ✅  | ❌   |
-| Get MVS command response | ✅     | ❌  | ❌               | ❌         | ❌  | ❌  | ❌   |
-| Get MVS detect result    | ✅     | ❌  | ❌               | ❌         | ❌  | ➖  | ➖   |
+| Issue MVS command        | ✅     | ❌  | ✅ <sup>1</sup> | ✅         | ✅  | ✅  | ❌   |
+| Get MVS command response | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
+| Get MVS detect result    | ✅     | ❌  | ❌              | ❌         | ❌  | ➖  | ➖   |
 
 1. Requires APF authorization
 
