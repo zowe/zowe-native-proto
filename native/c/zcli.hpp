@@ -41,7 +41,7 @@ protected:
 
 public:
   ZCLIName(string n) : name(n) {}
-  string get_name() { return name; }
+  virtual string get_name() { return name; }
 };
 
 class ZCLIRequired
@@ -65,15 +65,15 @@ protected:
   string description;
 
 public:
-  void set_description(string d) { description = d; }
-  string get_description() { return description; }
+  virtual void set_description(string d) { description = d; }
+  virtual string get_description() { return description; }
 };
 
 class ZCLIFlag : public ZCLIName
 {
 public:
   ZCLIFlag(string n) : ZCLIName(n) {}
-  string get_flag_name() { return ZCLI_FLAG_PREFIX + name; };
+  virtual string get_flag_name() { return ZCLI_FLAG_PREFIX + name; };
 };
 
 class
