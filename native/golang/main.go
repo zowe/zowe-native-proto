@@ -43,25 +43,25 @@ func main() {
 	type CommandHandler func([]byte)
 	// Supported ioserver commands
 	commandHandlers := map[string]CommandHandler{
-		"readDataset":    HandleReadDatasetRequest,
-		"readFile":       HandleReadFileRequest,
-		"readSpool":      HandleReadSpoolRequest,
+		"chownFile":      HandleChownFileRequest,
+		"chmodFile":      HandleChmodFileRequest,
+		"chtagFile":      HandleChtagFileRequest,
+		"consoleCommand": HandleConsoleCommandRequest,
+		"deleteDataset":  HandleDeleteDatasetRequest,
+		"deleteFile":     HandleDeleteFileRequest,
 		"getJcl":         HandleGetJclRequest,
 		"getStatus":      HandleGetStatusRequest,
-		"writeDataset":   HandleWriteDatasetRequest,
-		"writeFile":      HandleWriteFileRequest,
 		"listDatasets":   HandleListDatasetsRequest,
 		"listDsMembers":  HandleListDsMembersRequest,
 		"listFiles":      HandleListFilesRequest,
 		"listJobs":       HandleListJobsRequest,
 		"listSpools":     HandleListSpoolsRequest,
-		"consoleCommand": HandleConsoleCommandRequest,
+		"readDataset":    HandleReadDatasetRequest,
+		"readFile":       HandleReadFileRequest,
+		"readSpool":      HandleReadSpoolRequest,
 		"restoreDataset": HandleRestoreDatasetRequest,
-		"deleteDataset":  HandleDeleteDatasetRequest,
-		"deleteFile":     HandleDeleteFileRequest,
-		"chownFile":      HandleChownFileRequest,
-		"chmodFile":      HandleChmodFileRequest,
-		"chtagFile":      HandleChtagFileRequest,
+		"writeDataset":   HandleWriteDatasetRequest,
+		"writeFile":      HandleWriteFileRequest,
 	}
 
 	for data := range input {
