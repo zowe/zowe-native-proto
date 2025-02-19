@@ -18,22 +18,17 @@ import * as path from "node:path";
 import { ProfileConstants } from "@zowe/core-for-zowe-sdk";
 import { ZosUssProfile } from "@zowe/zos-uss-for-zowe-sdk";
 
-declare const __non_webpack_require__: NodeRequire;
-
 // biome-ignore lint/complexity/noStaticOnlyClass: Utilities class has static methods
 export class SshConfigUtils {
-    public static getServerPath(hostname: string): string {
+    public static getServerPath(profile: imperative.IProfileLoaded): string {
         const serverPathMap: Record<string, string> =
             vscode.workspace.getConfiguration("zowe-native-proto-vsce").get("serverPath") ?? {};
-
-        if (process.env.EXTENSION_DEV_PATH != null) {
-            // In debug mode, set default server path based on config.local.json
-            const configJsonPath = path.resolve(process.env.EXTENSION_DEV_PATH, "../../config.local.json");
-            const configJson = __non_webpack_require__(configJsonPath);
-            serverPathMap[configJson.host] ??= path.posix.join(configJson.deployDirectory, "golang");
-        }
-
-        return serverPathMap[hostname] ?? ZSshClient.DEFAULT_SERVER_PATH;
+        return (
+            serverPathMap[profile.profile!.host] ??
+            process.env.ZOWE_OPT_SERVER_PATH ??
+            profile.profile!.serverPath ??
+            ZSshClient.DEFAULT_SERVER_PATH
+        );
     }
 
     public static async promptForProfile(profileName?: string): Promise<imperative.IProfileLoaded | undefined> {
