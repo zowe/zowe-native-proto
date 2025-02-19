@@ -23,7 +23,7 @@ import (
 	utils "zowe-native-proto/ioserver/utils"
 )
 
-func HandleListJobsRequest(jsonData []byte) {
+func HandleListJobsRequest(conn utils.ReadWriteCloser, jsonData []byte) {
 	var listRequest jobs.ListJobsRequest
 	err := json.Unmarshal(jsonData, &listRequest)
 	if err != nil {
@@ -36,7 +36,7 @@ func HandleListJobsRequest(jsonData []byte) {
 		args = append(args, "--owner", listRequest.Owner)
 	}
 
-	out, err := utils.BuildCommand(args).Output()
+	out, err := conn.ExecCmd(args)
 	if err != nil {
 		log.Println("Error executing command:", err)
 		return
@@ -69,7 +69,7 @@ func HandleListJobsRequest(jsonData []byte) {
 	}
 }
 
-func HandleListSpoolsRequest(jsonData []byte) {
+func HandleListSpoolsRequest(conn utils.ReadWriteCloser, jsonData []byte) {
 	var listRequest jobs.ListSpoolsRequest
 	err := json.Unmarshal(jsonData, &listRequest)
 	if err != nil {
@@ -79,7 +79,7 @@ func HandleListSpoolsRequest(jsonData []byte) {
 
 	args := []string{"./zowex", "job", "list-files", listRequest.JobId, "--rfc", "true"}
 
-	out, err := utils.BuildCommand(args).Output()
+	out, err := conn.ExecCmd(args)
 	if err != nil {
 		log.Println("Error executing command:", err)
 		return
@@ -117,7 +117,7 @@ func HandleListSpoolsRequest(jsonData []byte) {
 	}
 }
 
-func HandleReadSpoolRequest(jsonData []byte) {
+func HandleReadSpoolRequest(conn utils.ReadWriteCloser, jsonData []byte) {
 	var request jobs.ReadSpoolRequest
 	err := json.Unmarshal(jsonData, &request)
 	if err != nil {
@@ -130,7 +130,7 @@ func HandleReadSpoolRequest(jsonData []byte) {
 	if hasEncoding {
 		args = append(args, "--encoding", request.Encoding, "--rfb", "true")
 	}
-	out, err := utils.BuildCommand(args).Output()
+	out, err := conn.ExecCmd(args)
 	if err != nil {
 		log.Println("Error executing command:", err)
 		return
@@ -152,7 +152,7 @@ func HandleReadSpoolRequest(jsonData []byte) {
 	}
 }
 
-func HandleGetJclRequest(jsonData []byte) {
+func HandleGetJclRequest(conn utils.ReadWriteCloser, jsonData []byte) {
 	var request jobs.GetJclRequest
 	err := json.Unmarshal(jsonData, &request)
 	if err != nil {
@@ -161,7 +161,7 @@ func HandleGetJclRequest(jsonData []byte) {
 	}
 	// log.Println("GetJclRequest received:", ...)
 	args := []string{"./zowex", "job", "view-jcl", request.JobId}
-	out, err := utils.BuildCommand(args).Output()
+	out, err := conn.ExecCmd(args)
 	if err != nil {
 		log.Println("Error executing command:", err)
 		return
@@ -179,14 +179,14 @@ func HandleGetJclRequest(jsonData []byte) {
 	}
 }
 
-func HandleGetStatusRequest(jsonData []byte) {
+func HandleGetStatusRequest(conn utils.ReadWriteCloser, jsonData []byte) {
 	var request jobs.GetJclRequest
 	err := json.Unmarshal(jsonData, &request)
 	if err != nil {
 		return
 	}
 	args := []string{"./zowex", "job", "view-status", request.JobId, "--rfc", "true"}
-	out, err := utils.BuildCommand(args).Output()
+	out, err := conn.ExecCmd(args)
 	if err != nil {
 		log.Println("Error executing command:", err)
 		return

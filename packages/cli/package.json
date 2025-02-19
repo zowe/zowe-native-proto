@@ -4,7 +4,7 @@
   "main": "lib/index.js",
   "scripts": {
     "build": "tsc -b",
-    "clean": "rimraf bin lib tsconfig.tsbuildinfo",
+    "clean": "tsc -b --clean && rimraf bin",
     "lint": "npx @biomejs/biome check --write src",
     "package": "node ../../scripts/bundleCliTgz.js ../../dist",
     "test": "echo \"Error: no test specified\" && exit 1",

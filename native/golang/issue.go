@@ -20,14 +20,14 @@ import (
 	utils "zowe-native-proto/ioserver/utils"
 )
 
-func HandleConsoleCommandRequest(jsonData []byte) {
+func HandleConsoleCommandRequest(conn utils.ReadWriteCloser, jsonData []byte) {
 	var request cmds.IssueConsoleRequest
 	err := json.Unmarshal(jsonData, &request)
 	if err != nil {
 		return
 	}
 	args := []string{"./zowexx", "console", "issue", request.CommandText, "--cn", request.ConsoleName}
-	out, err := utils.BuildCommand(args).Output()
+	out, err := conn.ExecCmd(args)
 	if err != nil {
 		log.Println("Error executing command:", err)
 		log.Println(string(out))

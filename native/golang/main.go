@@ -12,6 +12,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"log"
 	"os"
@@ -23,6 +24,26 @@ import (
 func main() {
 	utils.SetAutoConvOnUntaggedStdio()
 	input := make(chan []byte)
+
+	cmd := utils.BuildCommand([]string{"./zowex", "--it"})
+	cmd.Stderr = os.Stderr
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		panic(err)
+	}
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		panic(err)
+	}
+	conn := utils.ReadWriteCloser{
+		ReadCloser:  stdout,
+		WriteCloser: stdin,
+	}
+	cmd.Start()
+	if _, err = bufio.NewReader(stdout).ReadBytes('\n'); err != nil {
+		panic(err)
+	}
+	defer conn.Close()
 
 	go func() {
 		buf := make([]byte, 1024)
@@ -38,7 +59,7 @@ func main() {
 		}
 	}()
 
-	type CommandHandler func([]byte)
+	type CommandHandler func(utils.ReadWriteCloser, []byte)
 	commandHandlers := map[string]CommandHandler{
 		"readDataset":    HandleReadDatasetRequest,
 		"readFile":       HandleReadFileRequest,
@@ -66,7 +87,7 @@ func main() {
 		}
 
 		if handler, ok := commandHandlers[request.Command]; ok {
-			handler(data)
+			handler(conn, data)
 		}
 	}
 }
