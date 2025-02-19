@@ -163,7 +163,6 @@ export class SshConfigUtils {
 
   private static async createNewConfig(): Promise<sshConfigExt | undefined> {
     let SshProfile: sshConfigExt = {};
-    let privateKeyPath: string | boolean | undefined;
     const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
     const profInfo = await zoweExplorerApi
       .getExplorerExtenderApi()
@@ -175,8 +174,7 @@ export class SshConfigUtils {
 
     const sshResponse = await vscode.window.showInputBox({
       prompt: "Enter SSH connection command",
-      placeHolder:
-        'Enter the SSH host address (E.g. ssh user@example.com --port 22 --privateKey "/path/to/privateKey")',
+      placeHolder: "E.g. ssh user@example.com",
     });
     if (sshResponse === undefined) {
       vscode.window.showWarningMessage("SSH setup cancelled.");
