@@ -35,7 +35,7 @@ typedef struct sdwa SDWA;
       : "r"(routine),                                             \
         "r"(parm),                                                \
         "r"(arr),                                                 \
-        "r"(*(unsigned char *)arr_parm)                           \
+        "r"(arr_parm)                                             \
       : "r0", "r1", "r14", "r15");
 #else
 #define IEAARR(routine, parm, arr, arr_parm)

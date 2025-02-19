@@ -25,12 +25,13 @@ int ZJBMTEST()
 #pragma prolog(ZJBMARR, "&CCN_MAIN SETB 1 \n MYPROLOG")
 int ZJBMARR(SDWA *sdwa)
 {
+  unsigned long long int r0 = get_prev_r0();
+  unsigned long long int r2 = get_prev_r2();
   // TODO(Kelosky): check r0 for 12, meaning no SDWA
   zwto_debug("@TEST recovery routine called");
-  unsigned long long int reg = get_prev_r2();
   // __asm(" exrl 0,*");
 
-  zwto_debug("@TEST %llx", reg);
+  zwto_debug("@TEST %llx and %llx", r0, r2);
 
   return 4;
 }

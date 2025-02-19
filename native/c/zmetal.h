@@ -214,7 +214,7 @@ static void mode_nzero()
 #define GET_REG(num, reg)                                      \
   __asm(                                                       \
       "*                                                   \n" \
-      " ST    " #num ",%0 = Value passed by caller         \n" \
+      " ST    " #num ",%0                                  \n" \
       "*                                                    "  \
       : "=m"(*reg)                                             \
       :                                                        \
@@ -227,8 +227,9 @@ static void mode_nzero()
 #define GET_PREV_REG64(reg, offset)                            \
   __asm(                                                       \
       "*                                                   \n" \
-      " LG     1," #offset "(,13)                          \n" \
-      " STG    1,%0 = Value passed by caller               \n" \
+      " LG     1,128(,13)                                  \n" \
+      " LG     1," #offset "(,1)                           \n" \
+      " STG    1,%0                                        \n" \
       "*                                                    "  \
       : "=m"(reg)                                              \
       :                                                        \
