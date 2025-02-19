@@ -110,6 +110,39 @@ int ZJBSYMB(ZJB *zjb, const char *symbol, char *value)
 #pragma prolog(ZJBMPRG, "&CCN_MAIN SETB 1 \n MYPROLOG")
 int ZJBMPRG(ZJB *zjb)
 {
+  // purge a job in protected (ssjmpprt) mode
+  return ZJBMMOD(zjb, ssjmprg, ssjmpprt);
+}
+
+// cancel a job
+#pragma prolog(ZJBMPRG, "&CCN_MAIN SETB 1 \n MYPROLOG")
+int ZJBMCNL(ZJB *zjb, unsigned char flags)
+{
+  // cancel a job in protected (ssjmcprt) mode
+  unsigned char options = ssjmcprt | flags;
+  return ZJBMMOD(zjb, ssjmcanc, options);
+}
+
+// hold a job
+#pragma prolog(ZJBMPRG, "&CCN_MAIN SETB 1 \n MYPROLOG")
+int ZJBMHLD(ZJB *zjb)
+{
+  // Hold a job in protected (ssjmpprt) mode
+  return ZJBMMOD(zjb, ssjmhold, 0);
+}
+
+// release a job
+#pragma prolog(ZJBMPRG, "&CCN_MAIN SETB 1 \n MYPROLOG")
+int ZJBMRLS(ZJB *zjb)
+{
+  // Release a job in protected (ssjmpprt) mode
+  return ZJBMMOD(zjb, ssjmrls, 0);
+}
+
+// modify a job
+#pragma prolog(ZJBMPRG, "&CCN_MAIN SETB 1 \n MYPROLOG")
+int ZJBMMOD(ZJB *zjb, unsigned char type, unsigned char flags)
+{
   int rc = 0;
   int loop_control = 0;
 
@@ -131,8 +164,33 @@ int ZJBMPRG(ZJB *zjb)
   ssjm.ssjmopt1 = ssjm.ssjmopt1 | ssjmpd64; // 64 bit storage
   ssjm.ssjmopt1 = ssjm.ssjmopt1 | ssjmpsyn; // SYNC
 
-  ssjm.ssjmtype = ssjmprg;                  // purge
-  ssjm.ssjmpflg = ssjm.ssjmpflg | ssjmpprt; // prehaps required for purge
+  ssjm.ssjmtype = type;
+  if (ssjmprg == type) // purge
+  {
+    ssjm.ssjmpflg = ssjm.ssjmpflg | flags;
+  }
+  else if (ssjmcanc == type) // cancel
+  {
+    ssjm.ssjmcflg = ssjm.ssjmcflg | flags;
+  }
+  else if (ssjmhold == type) // hold
+  {
+    // no flags needed
+  }
+  else if (ssjmrls == type) // release
+  {
+    // no flags needed
+  }
+  else if (ssjmrst == type) // restart
+  {
+    ssjm.ssjmeflg = ssjm.ssjmeflg | flags;
+  }
+  else if (ssjmspin == type) // spin
+  {
+    ssjm.ssjmtsfl = ssjm.ssjmtsfl | flags;
+    // ssjm.ssjmtsdn = dsname to spin
+  }
+
   ssjm.ssjmsel1 = ssjm.ssjmsel1 | ssjmsoji;
   ssjm.ssjmsel2 = ssjm.ssjmsel2 | ssjmsjob; // batch jobs
   ssjm.ssjmsel2 = ssjm.ssjmsel2 | ssjmsstc; // stcs
