@@ -132,7 +132,8 @@
     "xtree": "cpp",
     "xutility": "cpp",
     "__memory": "c",
-    "zrecovery.h": "c"
+    "zrecovery.h": "c",
+    "ihasdwa.h": "c"
   },
   "editor.formatOnSave": true,
   "[typescript]": {

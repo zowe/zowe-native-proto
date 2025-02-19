@@ -49,7 +49,7 @@ typedef struct
 #define S0C3(n)
 #endif
 
-static void s0c3Abend(int n)
+static void s0c3_abend(int n)
 {
   S0C3(n);
 }
@@ -210,8 +210,6 @@ static void mode_nzero()
   MODESET_KEY(NZERO);
 }
 
-// int reg = 0;
-// GET_REG(13, &reg);
 #if defined(__IBM_METAL__)
 #define GET_REG(num, reg)                                      \
   __asm(                                                       \
@@ -224,6 +222,55 @@ static void mode_nzero()
 #else
 #define GET_REG(num, reg)
 #endif
+
+#if defined(__IBM_METAL__)
+#define GET_PREV_REG64(reg, offset)                            \
+  __asm(                                                       \
+      "*                                                   \n" \
+      " LG     1," #offset "(,13)                          \n" \
+      " STG    1,%0 = Value passed by caller               \n" \
+      "*                                                    "  \
+      : "=m"(reg)                                              \
+      :                                                        \
+      : "r1");
+#else
+#define GET_PREV_REG64(reg, offset)
+#endif
+
+static unsigned long long int get_prev_r14()
+{
+  unsigned long long int reg = 0;
+  GET_PREV_REG64(reg, 8);
+  return reg;
+}
+
+static unsigned long long int get_prev_r15()
+{
+  unsigned long long int reg = 0;
+  GET_PREV_REG64(reg, 16);
+  return reg;
+}
+
+static unsigned long long int get_prev_r0()
+{
+  unsigned long long int reg = 0;
+  GET_PREV_REG64(reg, 24);
+  return reg;
+}
+
+static unsigned long long int get_prev_r1()
+{
+  unsigned long long int reg = 0;
+  GET_PREV_REG64(reg, 32);
+  return reg;
+}
+
+static unsigned long long int get_prev_r2()
+{
+  unsigned long long int reg = 0;
+  GET_PREV_REG64(reg, 40);
+  return reg;
+}
 
 #if defined(__IBM_METAL__)
 #define SET_REG(num, reg)                                       \

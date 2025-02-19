@@ -13,6 +13,9 @@
 #define ZRECOVERY_H
 #include <stdio.h>
 #include "zmetal.h"
+#include "ihasdwa.h"
+
+typedef struct sdwa SDWA;
 
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=ixg-ieaarr-establish-associated-recovery-routine-arr
 #if defined(__IBM_METAL__)
@@ -32,7 +35,7 @@
       : "r"(routine),                                             \
         "r"(parm),                                                \
         "r"(arr),                                                 \
-        "r"(arr_parm)                                             \
+        "r"(*(unsigned char *)arr_parm)                           \
       : "r0", "r1", "r14", "r15");
 #else
 #define IEAARR(routine, parm, arr, arr_parm)
@@ -47,13 +50,14 @@ static int recovery()
 // * routine parm
 // * save /restore stack
 typedef int (*ROUTINE)(void);
-static int set_recovery(ROUTINE some_func)
+typedef int (*RECOVERY_ROUTINE)(SDWA *);
+static int set_recovery(ROUTINE routine, ROUTINE arr, void *data)
 {
   IEAARR(
-      some_func,
-      NULL,
-      NULL,
-      NULL);
+      routine,
+      NULL, // parm for routine
+      arr,
+      data);
 }
 
 #endif
