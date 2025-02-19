@@ -10,9 +10,9 @@
  */
 
 import { readFileSync, writeFileSync } from "node:fs";
-import type * as zosfiles from "@zowe/zos-files-for-zowe-sdk";
+import * as zosfiles from "@zowe/zos-files-for-zowe-sdk";
 import { type MainframeInteraction, imperative } from "@zowe/zowe-explorer-api";
-import { ZSshUtils } from "zowe-native-proto-sdk";
+import { ZSshUtils, type ds } from "zowe-native-proto-sdk";
 import { SshCommonApi } from "./SshCommonApi";
 
 export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs {
@@ -88,7 +88,23 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         dataSetName: string,
         options?: Partial<zosfiles.ICreateDataSetOptions>,
     ): Promise<zosfiles.IZosFilesResponse> {
-        throw new Error("Not yet implemented");
+        let datasetTyp: ds.CreateDatasetRequest["dstype"];
+        switch (dataSetType) {
+            case zosfiles.CreateDataSetTypeEnum.DATA_SET_C:
+                datasetTyp = "default";
+                break;
+            case zosfiles.CreateDataSetTypeEnum.DATA_SET_CLASSIC:
+                datasetTyp = "adata";
+                break;
+            default:
+                throw new Error("Not yet implemented");
+        }
+
+        const response = await (await this.client).ds.createDataset({
+            dsname: dataSetName,
+            dstype: datasetTyp,
+        });
+        return this.buildZosFilesResponse(response, response.success);
     }
 
     public async createDataSetMember(
@@ -144,7 +160,7 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
             dsname: dataSetName,
         });
         return this.buildZosFilesResponse({
-            success: response.success
+            success: response.success,
         });
     }
 

@@ -77,6 +77,22 @@ export interface RestoreDatasetRequest {
    */
   dsname: string;
 }
+/**
+ * default: DSORG=PO, RECFM=FB, LRECL=80
+ * vb: DSORG=PO, RECFM=VB, LRECL=255
+ * adata: DSORG=PO, RECFM=VB, LRECL=32756
+ */
+export interface CreateDatasetRequest {
+  command: "createDataset";
+  /**
+   * Dataset name
+   */
+  dsname: string;
+  /**
+   * Type of the dataset to make
+   */
+  dstype: 'default' | 'vb' | 'adata';
+}
 
 //////////
 // source: responses.go
@@ -131,9 +147,9 @@ export interface ListDsMembersResponse {
    */
   returnedRows: number /* int */;
 }
-export interface DeleteDatasetResponse {
+export interface GenericDatasetResponse {
   /**
-   * Whether the dataset was deleted successfully
+   * Whether the dataset operation was successful
    */
   success: boolean;
   /**
@@ -141,3 +157,5 @@ export interface DeleteDatasetResponse {
    */
   dsname: string;
 }
+export type CreateDatasetResponse = GenericDatasetResponse;
+export type DeleteDatasetResponse = GenericDatasetResponse;

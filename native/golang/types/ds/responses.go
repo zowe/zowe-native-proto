@@ -48,9 +48,12 @@ type ListDsMembersResponse struct {
 	ReturnedRows int `json:"returnedRows"`
 }
 
-type DeleteDatasetResponse struct {
-	// Whether the dataset was deleted successfully
+type GenericDatasetResponse struct {
+	// Whether the dataset operation was successful
 	Success bool `json:"success"`
 	// Dataset name
 	Dsname string `json:"dsname"`
 }
+
+type CreateDatasetResponse = GenericDatasetResponse
+type DeleteDatasetResponse = GenericDatasetResponse

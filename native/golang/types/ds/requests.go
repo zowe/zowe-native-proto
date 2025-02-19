@@ -62,3 +62,14 @@ type RestoreDatasetRequest struct {
 	// Dataset name
 	Dsname string `json:"dsname"`
 }
+
+// default: DSORG=PO, RECFM=FB, LRECL=80
+// vb: DSORG=PO, RECFM=VB, LRECL=255
+// adata: DSORG=PO, RECFM=VB, LRECL=32756
+type CreateDatasetRequest struct {
+	Command string `json:"command" tstype:"\"createDataset\""`
+	// Dataset name
+	Dsname string `json:"dsname"`
+	// Type of the dataset to make
+	Type string `json:"dstype" tstype:"'default' | 'vb' | 'adata'"`
+}
