@@ -28,6 +28,8 @@ export abstract class AbstractRpcClient {
                 this.request({ command: "restoreDataset", ...request }),
             deleteDataset: (request: Omit<ds.DeleteDatasetRequest, "command">): Promise<ds.DeleteDatasetResponse> =>
                 this.request({ command: "deleteDataset", ...request }),
+            createDataset: (request: Omit<ds.CreateDatasetRequest, "command">): Promise<ds.CreateDatasetResponse> =>
+                this.request({ command: "createDataset", ...request }),
         };
     }
 
@@ -48,6 +50,8 @@ export abstract class AbstractRpcClient {
             deleteJob: (request: Omit<jobs.DeleteJobRequest, "command">): Promise<jobs.DeleteJobResponse> =>
                 this.request({ command: "deleteJob", ...request }),
             submitJob: (request: Omit<jobs.SubmitJobRequest, "command">): Promise<jobs.SubmitJobResponse> =>
+                this.request({ command: "submitJob", ...request }),
+            submitJcl: (request: Omit<jobs.SubmitJclRequest, "command">): Promise<jobs.SubmitJclResponse> =>
                 this.request({ command: "submitJob", ...request }),
         };
     }

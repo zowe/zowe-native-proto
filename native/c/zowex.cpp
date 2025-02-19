@@ -41,6 +41,7 @@ int handle_job_view_status(ZCLIResult);
 int handle_job_view_file(ZCLIResult);
 int handle_job_view_jcl(ZCLIResult);
 int handle_job_submit(ZCLIResult);
+int handle_job_submit_jcl(ZCLIResult);
 int handle_job_delete(ZCLIResult);
 
 int handle_console_issue(ZCLIResult);
@@ -282,6 +283,13 @@ int main(int argc, char *argv[])
   job_dsn.set_description("dsn containing JCL");
   job_submit.get_positionals().push_back(job_dsn);
   job_group.get_verbs().push_back(job_submit);
+
+  ZCLIVerb job_submit_jcl("submit-jcl");
+  job_submit_jcl.get_aliases().push_back("subj");
+  job_submit_jcl.set_description("submit JCL contents directly");
+  job_submit_jcl.set_zcli_verb_handler(handle_job_submit);
+  job_submit_jcl.get_options().push_back(job_jobid_only);
+  job_group.get_verbs().push_back(job_submit_jcl);
 
   ZCLIVerb job_delete("delete");
   job_delete.get_aliases().push_back("del");
@@ -719,6 +727,40 @@ int handle_job_submit(ZCLIResult result)
     cout << jobid << endl;
   else
     cout << "Submitted " << dsn << ", " << jobid << endl;
+
+  return RTNCD_SUCCESS;
+}
+
+int handle_job_submit_jcl(ZCLIResult result)
+{
+  int rc = 0;
+  ZJB zjb = {0};
+
+  string data;
+  string line;
+
+  std::istreambuf_iterator<char> begin(std::cin);
+  std::istreambuf_iterator<char> end;
+
+  std::vector<char> bytes(begin, end);
+  data.assign(bytes.begin(), bytes.end());
+
+  vector<ZJob> jobs;
+  string jobid;
+  rc = zjb_submit(&zjb, data, jobid, true);
+
+  if (0 != rc)
+  {
+    cout << "Error: could not submit JCL: '" << data << "' rc: '" << rc << "'" << endl;
+    cout << "  Details: " << zjb.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
+  string only_jobid(result.get_option("--only-jobid").get_value());
+  if ("true" == only_jobid)
+    cout << jobid << endl;
+  else
+    cout << "Submitted, " << jobid << endl;
 
   return RTNCD_SUCCESS;
 }
