@@ -296,6 +296,12 @@ int zjb_delete_by_jobid(ZJB *zjb, string jobid)
   return ZJBMPRG(zjb);
 }
 
+int zjb_cancel_by_jobid(ZJB *zjb, string jobid)
+{
+  zut_uppercase_pad_truncate(zjb->jobid, jobid, sizeof(zjb->jobid));
+  return ZJBMCNL(zjb);
+}
+
 int zjb_submit(ZJB *zjb, string data_set, string &jobId)
 {
   int rc = 0;
