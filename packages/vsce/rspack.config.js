@@ -26,7 +26,7 @@ const extensionConfig = {
     path: path.resolve(__dirname, 'out'),
     filename: 'extension.js',
     libraryTarget: 'commonjs2',
-    devtoolModuleFilenameTemplate: '../[resource-path]'
+    devtoolModuleFilenameTemplate: 'webpack:///[absolute-resource-path]'
   },
   devtool: 'source-map',
   externals: {
@@ -40,7 +40,6 @@ const extensionConfig = {
       'zowe-native-proto-sdk': path.resolve(__dirname, '..', 'sdk', 'src'),
       'cpu-features': false,
       './crypto/build/Release/sshcrypto.node': false,
-      '../build/Release/cpufeatures.node': false,
     }
   },
   module: {
@@ -65,6 +64,9 @@ const extensionConfig = {
       }
     ]
   },
-  plugins: [new TsCheckerRspackPlugin()]
+  plugins: [new TsCheckerRspackPlugin()],
+  stats: {
+    warnings: false,
+  }
 };
 module.exports = [extensionConfig];
