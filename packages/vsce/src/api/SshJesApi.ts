@@ -63,15 +63,22 @@ export class SshJesApi extends SshCommonApi implements MainframeInteraction.IJes
         jcl: string,
         internalReaderRecfm?: string,
         internalReaderLrecl?: string,
-    ): Promise<zosjobs.IJob> {
-        throw new Error("Not yet implemented");
-    }
+    ): Promise<zosjobs.IJob> {}
 
     public async submitJob(jobDataSet: string): Promise<zosjobs.IJob> {
-        throw new Error("Not yet implemented");
+        const response = await (await this.client).jobs.submitJob({
+            dsname: jobDataSet,
+        });
+        // TODO: implement missing job properties from submit job command
+        return { jobid: response.jobId } as unknown as zosjobs.IJob;
     }
 
     public async deleteJob(jobname: string, jobid: string): Promise<void> {
-        throw new Error("Not yet implemented");
+        const response = await (await this.client).jobs.deleteJob({
+            jobId: jobid,
+        });
+        if (!response.success) {
+            throw new Error(`Failed to delete job ${jobid}`);
+        }
     }
 }

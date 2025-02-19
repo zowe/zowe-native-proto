@@ -143,6 +143,10 @@ export interface SubmitJobResponse {
    */
   success: boolean;
   /**
+   * The job ID of the newly-submitted job
+   */
+  jobId: string;
+  /**
    * The data set name where the JCL was read from
    */
   dsname: string;

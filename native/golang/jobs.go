@@ -227,7 +227,7 @@ func HandleSubmitJobRequest(jsonData []byte) {
 	if err != nil {
 		return
 	}
-	args := []string{"./zowex", "job", "submit", request.Dsname}
+	args := []string{"./zowex", "job", "submit", request.Dsname, "--only-jobid", "true"}
 	out, err := utils.BuildCommand(args).Output()
 
 	_ = out
@@ -235,6 +235,7 @@ func HandleSubmitJobRequest(jsonData []byte) {
 	response := jobs.SubmitJobResponse{
 		Success: true,
 		Dsname:  request.Dsname,
+		JobId:   strings.TrimSpace(string(out)),
 	}
 
 	if err != nil {

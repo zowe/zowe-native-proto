@@ -49,6 +49,8 @@ type GetStatusResponse struct {
 type SubmitJobResponse struct {
 	// Whether the job was successfully submitted
 	Success bool `json:"success"`
+	// The job ID of the newly-submitted job
+	JobId string `json:"jobId"`
 	// The data set name where the JCL was read from
 	Dsname string `json:"dsname"`
 }
