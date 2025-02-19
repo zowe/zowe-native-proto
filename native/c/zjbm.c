@@ -115,7 +115,7 @@ int ZJBMPRG(ZJB *zjb)
 }
 
 // cancel a job
-#pragma prolog(ZJBMPRG, "&CCN_MAIN SETB 1 \n MYPROLOG")
+#pragma prolog(ZJBMCNL, "&CCN_MAIN SETB 1 \n MYPROLOG")
 int ZJBMCNL(ZJB *zjb, unsigned char flags)
 {
   // cancel a job in protected (ssjmcprt) mode
@@ -124,7 +124,7 @@ int ZJBMCNL(ZJB *zjb, unsigned char flags)
 }
 
 // hold a job
-#pragma prolog(ZJBMPRG, "&CCN_MAIN SETB 1 \n MYPROLOG")
+#pragma prolog(ZJBMHLD, "&CCN_MAIN SETB 1 \n MYPROLOG")
 int ZJBMHLD(ZJB *zjb)
 {
   // Hold a job in protected (ssjmpprt) mode
@@ -132,7 +132,7 @@ int ZJBMHLD(ZJB *zjb)
 }
 
 // release a job
-#pragma prolog(ZJBMPRG, "&CCN_MAIN SETB 1 \n MYPROLOG")
+#pragma prolog(ZJBMRLS, "&CCN_MAIN SETB 1 \n MYPROLOG")
 int ZJBMRLS(ZJB *zjb)
 {
   // Release a job in protected (ssjmpprt) mode
@@ -140,7 +140,7 @@ int ZJBMRLS(ZJB *zjb)
 }
 
 // modify a job
-#pragma prolog(ZJBMPRG, "&CCN_MAIN SETB 1 \n MYPROLOG")
+#pragma prolog(ZJBMMOD, "&CCN_MAIN SETB 1 \n MYPROLOG")
 int ZJBMMOD(ZJB *zjb, unsigned char type, unsigned char flags)
 {
   int rc = 0;
@@ -182,13 +182,13 @@ int ZJBMMOD(ZJB *zjb, unsigned char type, unsigned char flags)
     // no flags needed
   }
   else if (ssjmrst == type) // restart
-  {
+  {                         // TODO(zFernand0): not implemented
     ssjm.ssjmeflg = ssjm.ssjmeflg | flags;
   }
   else if (ssjmspin == type) // spin
-  {
+  {                          // TODO(zFernand0): not implemented
     ssjm.ssjmtsfl = ssjm.ssjmtsfl | flags;
-    // ssjm.ssjmtsdn = dsname to spin
+    // ssjm.ssjmtsdn = ddname to spin
   }
 
   ssjm.ssjmsel1 = ssjm.ssjmsel1 | ssjmsoji;
