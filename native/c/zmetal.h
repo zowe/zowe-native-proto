@@ -274,6 +274,27 @@ static unsigned long long int get_prev_r2()
 }
 
 #if defined(__IBM_METAL__)
+#define GET_STACK_ENV(reg)                                        \
+  __asm(                                                          \
+      "*                                                      \n" \
+      " LG     1,128(,13)                                     \n" \
+      " STG    1,%0                                           \n" \
+      "*                                                        " \
+      : "=m"(reg)                                                 \
+      :                                                           \
+      : "r1");
+#else
+#define GET_STACK_ENV(regs)
+#endif
+
+static unsigned long long int get_prev_r13()
+{
+  unsigned long long int reg = 0;
+  GET_STACK_ENV(reg);
+  return reg;
+}
+
+#if defined(__IBM_METAL__)
 #define SET_REG(num, reg)                                       \
   __asm(                                                        \
       "*                                                    \n" \

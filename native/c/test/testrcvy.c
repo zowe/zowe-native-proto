@@ -27,13 +27,18 @@ int ZJBMARR(SDWA *sdwa)
 {
   unsigned long long int r0 = get_prev_r0();
   unsigned long long int r2 = get_prev_r2();
+
+  if (NO_SDWA == r0)
+  {
+    return RTNCD_PERCOLATE; // TODO(Kelosky): handle no SDWA, for now percolate
+  }
   // TODO(Kelosky): check r0 for 12, meaning no SDWA
   zwto_debug("@TEST recovery routine called");
   // __asm(" exrl 0,*");
 
   zwto_debug("@TEST %llx and %llx", r0, r2);
 
-  return 4;
+  return RTNCD_PERCOLATE;
 }
 
 int main()

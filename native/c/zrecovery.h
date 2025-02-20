@@ -41,18 +41,36 @@ typedef struct sdwa SDWA;
 #define IEAARR(routine, parm, arr, arr_parm)
 #endif
 
-static int recovery()
+// TODO(Kelosky): save stack
+#pragma reachable(set_env)
+#pragma prolog(set_env, "&CCN_RLOW SETA 14 \n&CCN_RHIGH SETA 12 \n MYPROLOG")
+#pragma epilog(set_env, "&CCN_RLOW SETA 14 \n&CCN_RHIGH SETA 12 \n MYEPILOG")
+static int set_env(unsigned long long int regs[16]) ATTRIBUTE(noinline);
+static int set_env(unsigned long long int regs[16])
 {
-  return 0;
+  unsigned long long int r13 = get_prev_r13();
+  // memcpy registers
+  // set r15 = 0
 }
 
-// TODO(Kelosky):
-// * routine parm
-// * save /restore stack
+typedef struct
+{
+  unsigned long long int regs[16];
+  // TODO(Kelosky): add a recovery routine to be called on abend
+  // TODO(Kelosky): add a parameter to be passed to user recovery routine
+  // TODO(Kelosky): add flag to percolate
+} ZRCVY;
+
+#define RTNCD_RETRY 0
+#define RTNCD_PERCOLATE 4
+#define NO_SDWA 12
+
 typedef int (*ROUTINE)(void);
 typedef int (*RECOVERY_ROUTINE)(SDWA *);
+
 static int set_recovery(ROUTINE routine, ROUTINE arr, void *data)
 {
+
   IEAARR(
       routine,
       NULL, // parm for routine
