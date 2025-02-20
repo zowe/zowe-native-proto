@@ -17,10 +17,10 @@ type CommandRequest struct {
 }
 
 type CommandResponse struct {
-	Error ErrorResponse `json:"error,omitempty"`
+	Error ErrorDetails `json:"error,omitempty"`
 }
 
-type ErrorResponse struct {
+type ErrorDetails struct {
 	Msg  string `json:"msg"`
 	Code string `json:"code,omitempty"`
 }

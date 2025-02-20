@@ -81,7 +81,7 @@ func PrintCommandResponse[T any](response T) {
 	v, err := json.Marshal(response)
 	if err != nil {
 		details := fmt.Sprintf("Could not marshal response: %s\n", err.Error())
-		errResponse, err2 := json.Marshal(t.ErrorResponse{
+		errResponse, err2 := json.Marshal(t.ErrorDetails{
 			Msg: details,
 		})
 		if err2 != nil {

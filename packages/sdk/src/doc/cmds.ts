@@ -15,7 +15,7 @@ import type * as common from "./common.ts"
 //////////
 // source: requests.go
 
-export interface IssueConsoleRequest {
+export interface IssueConsoleRequest extends common.CommandRequest {
   command: "consoleCommand";
   /**
    * Console command to execute
@@ -26,14 +26,14 @@ export interface IssueConsoleRequest {
    */
   consoleName: string;
 }
-export interface IssueTsoRequest {
+export interface IssueTsoRequest extends common.CommandRequest {
   command: "tsoCommand";
   /**
    * TSO command to execute
    */
   commandText: string;
 }
-export interface IssueUnixRequest {
+export interface IssueUnixRequest extends common.CommandRequest {
   command: "unixCommand";
   /**
    * UNIX command to execute

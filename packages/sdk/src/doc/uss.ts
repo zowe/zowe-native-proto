@@ -15,14 +15,14 @@ import type * as common from "./common.ts"
 //////////
 // source: requests.go
 
-export interface ListFilesRequest extends common.ListOptions {
+export interface ListFilesRequest extends common.CommandRequest, common.ListOptions {
   command: "listFiles";
   /**
    * Directory to list files for
    */
   fspath: string;
 }
-export interface ReadFileRequest {
+export interface ReadFileRequest extends common.CommandRequest {
   command: "readFile";
   /**
    * Desired encoding for the file (optional)
@@ -33,7 +33,7 @@ export interface ReadFileRequest {
    */
   fspath: string;
 }
-export interface WriteFileRequest {
+export interface WriteFileRequest extends common.CommandRequest {
   command: "writeFile";
   /**
    * Desired encoding for the file (optional)
@@ -48,7 +48,7 @@ export interface WriteFileRequest {
    */
   data: string;
 }
-export interface CreateFileRequest {
+export interface CreateFileRequest extends common.CommandRequest {
   command: "createFile";
   /**
    * Permissions for the new path
@@ -63,7 +63,7 @@ export interface CreateFileRequest {
    */
   isDir?: boolean;
 }
-export interface DeleteFileRequest {
+export interface DeleteFileRequest extends common.CommandRequest {
   command: "deleteFile";
   /**
    * Remote file path to delete
@@ -74,7 +74,7 @@ export interface DeleteFileRequest {
    */
   recursive: boolean;
 }
-export interface ChmodFileRequest {
+export interface ChmodFileRequest extends common.CommandRequest {
   command: "chmodFile";
   /**
    * Desired permissions for the file (represented as an octal value, e.g. "755")
@@ -89,7 +89,7 @@ export interface ChmodFileRequest {
    */
   recursive: boolean;
 }
-export interface ChownFileRequest {
+export interface ChownFileRequest extends common.CommandRequest {
   command: "chownFile";
   /**
    * New owner for the file
@@ -104,7 +104,7 @@ export interface ChownFileRequest {
    */
   recursive: boolean;
 }
-export interface ChtagFileRequest {
+export interface ChtagFileRequest extends common.CommandRequest {
   command: "chtagFile";
   /**
    * Remote file path to change tags for

@@ -14,7 +14,8 @@ package ds
 import common "zowe-native-proto/ioserver/types/common"
 
 type ListDatasetsRequest struct {
-	Command string `json:"command" tstype:"\"listDatasets\""`
+	common.CommandRequest `tstype:",extends"`
+	Command               string `json:"command" tstype:"\"listDatasets\""`
 	// Pattern to match against dataset names
 	Pattern string `json:"pattern"`
 	// Whether to include attributes in the response
@@ -24,7 +25,8 @@ type ListDatasetsRequest struct {
 }
 
 type ListDsMembersRequest struct {
-	Command string `json:"command" tstype:"\"listDsMembers\""`
+	common.CommandRequest `tstype:",extends"`
+	Command               string `json:"command" tstype:"\"listDsMembers\""`
 	// Dataset name
 	Dsname string `json:"dsname"`
 	// Whether to include attributes in the response
@@ -34,7 +36,8 @@ type ListDsMembersRequest struct {
 }
 
 type ReadDatasetRequest struct {
-	Command string `json:"command" tstype:"\"readDataset\""`
+	common.CommandRequest `tstype:",extends"`
+	Command               string `json:"command" tstype:"\"readDataset\""`
 	// Desired encoding for the dataset (optional)
 	Encoding string `json:"encoding,omitempty"`
 	// Dataset name
@@ -42,7 +45,8 @@ type ReadDatasetRequest struct {
 }
 
 type WriteDatasetRequest struct {
-	Command string `json:"command" tstype:"\"writeDataset\""`
+	common.CommandRequest `tstype:",extends"`
+	Command               string `json:"command" tstype:"\"writeDataset\""`
 	// Desired encoding for the dataset (optional)
 	Encoding string `json:"encoding,omitempty"`
 	// Dataset name
@@ -52,13 +56,15 @@ type WriteDatasetRequest struct {
 }
 
 type DeleteDatasetRequest struct {
-	Command string `json:"command" tstype:"\"deleteDataset\""`
+	common.CommandRequest `tstype:",extends"`
+	Command               string `json:"command" tstype:"\"deleteDataset\""`
 	// Dataset name
 	Dsname string `json:"dsname"`
 }
 
 type RestoreDatasetRequest struct {
-	Command string `json:"command" tstype:"\"restoreDataset\""`
+	common.CommandRequest `tstype:",extends"`
+	Command               string `json:"command" tstype:"\"restoreDataset\""`
 	// Dataset name
 	Dsname string `json:"dsname"`
 }
@@ -67,7 +73,8 @@ type RestoreDatasetRequest struct {
 // vb: DSORG=PO, RECFM=VB, LRECL=255
 // adata: DSORG=PO, RECFM=VB, LRECL=32756
 type CreateDatasetRequest struct {
-	Command string `json:"command" tstype:"\"createDataset\""`
+	common.CommandRequest `tstype:",extends"`
+	Command               string `json:"command" tstype:"\"createDataset\""`
 	// Dataset name
 	Dsname string `json:"dsname"`
 	// Type of the dataset to make

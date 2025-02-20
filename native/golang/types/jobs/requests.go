@@ -14,7 +14,8 @@ package jobs
 import common "zowe-native-proto/ioserver/types/common"
 
 type ListJobsRequest struct {
-	Command string `json:"command" tstype:"\"listJobs\""`
+	common.CommandRequest `tstype:",extends"`
+	Command               string `json:"command" tstype:"\"listJobs\""`
 	// Filter jobs by matching job owner (optional)
 	Owner string `json:"owner,omitempty"`
 	// Filter jobs by prefix (optional)
@@ -25,13 +26,15 @@ type ListJobsRequest struct {
 }
 
 type ListSpoolsRequest struct {
-	Command string `json:"command" tstype:"\"listSpools\""`
+	common.CommandRequest `tstype:",extends"`
+	Command               string `json:"command" tstype:"\"listSpools\""`
 	// Job ID to list spools for
 	JobId string `json:"jobId"`
 }
 
 type ReadSpoolRequest struct {
-	Command string `json:"command" tstype:"\"readSpool\""`
+	common.CommandRequest `tstype:",extends"`
+	Command               string `json:"command" tstype:"\"readSpool\""`
 	// Desired encoding for the spool file (optional)
 	Encoding string `json:"encoding,omitempty"`
 	// Spool ID to read under the given job ID
@@ -41,37 +44,43 @@ type ReadSpoolRequest struct {
 }
 
 type GetJclRequest struct {
-	Command string `json:"command" tstype:"\"getJcl\""`
+	common.CommandRequest `tstype:",extends"`
+	Command               string `json:"command" tstype:"\"getJcl\""`
 	// Job ID to get JCL for
 	JobId string `json:"jobId"`
 }
 
 type GetStatusRequest struct {
-	Command string `json:"command" tstype:"\"getStatus\""`
+	common.CommandRequest `tstype:",extends"`
+	Command               string `json:"command" tstype:"\"getStatus\""`
 	// Job ID to get status for
 	JobId string `json:"jobId"`
 }
 
 type SubmitJobRequest struct {
-	Command string `json:"command" tstype:"\"submitJob\""`
+	common.CommandRequest `tstype:",extends"`
+	Command               string `json:"command" tstype:"\"submitJob\""`
 	// Dataset name w/ contents to submit as JCL
 	Dsname string `json:"dsname"`
 }
 
 type SubmitJclRequest struct {
-	Command string `json:"command" tstype:"\"submitJcl\""`
+	common.CommandRequest `tstype:",extends"`
+	Command               string `json:"command" tstype:"\"submitJcl\""`
 	// JCL contents to submit as a job
 	Jcl string `json:"jcl"`
 }
 
 type CancelJobRequest struct {
-	Command string `json:"command" tstype:"\"cancelJob\""`
+	common.CommandRequest `tstype:",extends"`
+	Command               string `json:"command" tstype:"\"cancelJob\""`
 	// Job ID to cancel
 	JobId string `json:"jobId"`
 }
 
 type DeleteJobRequest struct {
-	Command string `json:"command" tstype:"\"deleteJob\""`
+	common.CommandRequest `tstype:",extends"`
+	Command               string `json:"command" tstype:"\"deleteJob\""`
 	// Job ID to cancel
 	JobId string `json:"jobId"`
 }

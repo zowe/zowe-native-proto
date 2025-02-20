@@ -14,14 +14,16 @@ package uss
 import common "zowe-native-proto/ioserver/types/common"
 
 type ListFilesRequest struct {
-	Command string `json:"command" tstype:"\"listFiles\""`
+	common.CommandRequest `tstype:",extends"`
+	Command               string `json:"command" tstype:"\"listFiles\""`
 	// Directory to list files for
 	Path               string `json:"fspath"`
 	common.ListOptions `tstype:",extends"`
 }
 
 type ReadFileRequest struct {
-	Command string `json:"command" tstype:"\"readFile\""`
+	common.CommandRequest `tstype:",extends"`
+	Command               string `json:"command" tstype:"\"readFile\""`
 	// Desired encoding for the file (optional)
 	Encoding string `json:"encoding,omitempty"`
 	// Remote file path to read contents from
@@ -29,7 +31,8 @@ type ReadFileRequest struct {
 }
 
 type WriteFileRequest struct {
-	Command string `json:"command" tstype:"\"writeFile\""`
+	common.CommandRequest `tstype:",extends"`
+	Command               string `json:"command" tstype:"\"writeFile\""`
 	// Desired encoding for the file (optional)
 	Encoding string `json:"encoding,omitempty"`
 	// Remote file path to write contents to
@@ -39,7 +42,8 @@ type WriteFileRequest struct {
 }
 
 type CreateFileRequest struct {
-	Command string `json:"command" tstype:"\"createFile\""`
+	common.CommandRequest `tstype:",extends"`
+	Command               string `json:"command" tstype:"\"createFile\""`
 	// Permissions for the new path
 	Mode string `json:"permissions,omitempty"`
 	// Remote file path to create
@@ -49,7 +53,8 @@ type CreateFileRequest struct {
 }
 
 type DeleteFileRequest struct {
-	Command string `json:"command" tstype:"\"deleteFile\""`
+	common.CommandRequest `tstype:",extends"`
+	Command               string `json:"command" tstype:"\"deleteFile\""`
 	// Remote file path to delete
 	Path string `json:"fspath"`
 	// Whether to delete the file recursively
@@ -57,7 +62,8 @@ type DeleteFileRequest struct {
 }
 
 type ChmodFileRequest struct {
-	Command string `json:"command" tstype:"\"chmodFile\""`
+	common.CommandRequest `tstype:",extends"`
+	Command               string `json:"command" tstype:"\"chmodFile\""`
 	// Desired permissions for the file (represented as an octal value, e.g. "755")
 	Mode string `json:"mode"`
 	// Remote file path to change permissions for
@@ -67,7 +73,8 @@ type ChmodFileRequest struct {
 }
 
 type ChownFileRequest struct {
-	Command string `json:"command" tstype:"\"chownFile\""`
+	common.CommandRequest `tstype:",extends"`
+	Command               string `json:"command" tstype:"\"chownFile\""`
 	// New owner for the file
 	Owner string `json:"owner"`
 	// Remote file path to change ownership for
@@ -77,7 +84,8 @@ type ChownFileRequest struct {
 }
 
 type ChtagFileRequest struct {
-	Command string `json:"command" tstype:"\"chtagFile\""`
+	common.CommandRequest `tstype:",extends"`
+	Command               string `json:"command" tstype:"\"chtagFile\""`
 	// Remote file path to change tags for
 	Path string `json:"fspath"`
 	// New tag for the file

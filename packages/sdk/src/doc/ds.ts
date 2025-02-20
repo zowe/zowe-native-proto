@@ -15,7 +15,7 @@ import type * as common from "./common.ts"
 //////////
 // source: requests.go
 
-export interface ListDatasetsRequest extends common.ListOptions, common.ListDatasetOptions {
+export interface ListDatasetsRequest extends common.CommandRequest, common.ListOptions, common.ListDatasetOptions {
   command: "listDatasets";
   /**
    * Pattern to match against dataset names
@@ -26,7 +26,7 @@ export interface ListDatasetsRequest extends common.ListOptions, common.ListData
    */
   attributes?: boolean;
 }
-export interface ListDsMembersRequest extends common.ListOptions, common.ListDatasetOptions {
+export interface ListDsMembersRequest extends common.CommandRequest, common.ListOptions, common.ListDatasetOptions {
   command: "listDsMembers";
   /**
    * Dataset name
@@ -37,7 +37,7 @@ export interface ListDsMembersRequest extends common.ListOptions, common.ListDat
    */
   attributes?: boolean;
 }
-export interface ReadDatasetRequest {
+export interface ReadDatasetRequest extends common.CommandRequest {
   command: "readDataset";
   /**
    * Desired encoding for the dataset (optional)
@@ -48,7 +48,7 @@ export interface ReadDatasetRequest {
    */
   dsname: string;
 }
-export interface WriteDatasetRequest {
+export interface WriteDatasetRequest extends common.CommandRequest {
   command: "writeDataset";
   /**
    * Desired encoding for the dataset (optional)
@@ -63,14 +63,14 @@ export interface WriteDatasetRequest {
    */
   data: string;
 }
-export interface DeleteDatasetRequest {
+export interface DeleteDatasetRequest extends common.CommandRequest {
   command: "deleteDataset";
   /**
    * Dataset name
    */
   dsname: string;
 }
-export interface RestoreDatasetRequest {
+export interface RestoreDatasetRequest extends common.CommandRequest {
   command: "restoreDataset";
   /**
    * Dataset name
@@ -82,7 +82,7 @@ export interface RestoreDatasetRequest {
  * vb: DSORG=PO, RECFM=VB, LRECL=255
  * adata: DSORG=PO, RECFM=VB, LRECL=32756
  */
-export interface CreateDatasetRequest {
+export interface CreateDatasetRequest extends common.CommandRequest {
   command: "createDataset";
   /**
    * Dataset name

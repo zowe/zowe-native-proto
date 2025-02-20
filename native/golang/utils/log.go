@@ -1,3 +1,14 @@
+/**
+ * This program and the accompanying materials are made available under the terms of the
+ * Eclipse Public License v2.0 which accompanies this distribution, and is available at
+ * https://www.eclipse.org/legal/epl-v20.html
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ *
+ * Copyright Contributors to the Zowe Project.
+ *
+ */
+
 package utils
 
 import (
@@ -20,7 +31,7 @@ func LogError(format string, args ...any) {
 
 func PrintErrorResponse(format string, args ...any) {
 	LogError(format, args)
-	errResponse := t.ErrorResponse{
+	errResponse := t.ErrorDetails{
 		Msg: fmt.Sprintf(format, args),
 	}
 	out, _ := json.Marshal(errResponse)

@@ -15,7 +15,7 @@ import type * as common from "./common.ts"
 //////////
 // source: requests.go
 
-export interface ListJobsRequest extends common.ListOptions {
+export interface ListJobsRequest extends common.CommandRequest, common.ListOptions {
   command: "listJobs";
   /**
    * Filter jobs by matching job owner (optional)
@@ -30,14 +30,14 @@ export interface ListJobsRequest extends common.ListOptions {
    */
   status?: string;
 }
-export interface ListSpoolsRequest {
+export interface ListSpoolsRequest extends common.CommandRequest {
   command: "listSpools";
   /**
    * Job ID to list spools for
    */
   jobId: string;
 }
-export interface ReadSpoolRequest {
+export interface ReadSpoolRequest extends common.CommandRequest {
   command: "readSpool";
   /**
    * Desired encoding for the spool file (optional)
@@ -52,42 +52,42 @@ export interface ReadSpoolRequest {
    */
   jobId: string;
 }
-export interface GetJclRequest {
+export interface GetJclRequest extends common.CommandRequest {
   command: "getJcl";
   /**
    * Job ID to get JCL for
    */
   jobId: string;
 }
-export interface GetStatusRequest {
+export interface GetStatusRequest extends common.CommandRequest {
   command: "getStatus";
   /**
    * Job ID to get status for
    */
   jobId: string;
 }
-export interface SubmitJobRequest {
+export interface SubmitJobRequest extends common.CommandRequest {
   command: "submitJob";
   /**
    * Dataset name w/ contents to submit as JCL
    */
   dsname: string;
 }
-export interface SubmitJclRequest {
+export interface SubmitJclRequest extends common.CommandRequest {
   command: "submitJcl";
   /**
    * JCL contents to submit as a job
    */
   jcl: string;
 }
-export interface CancelJobRequest {
+export interface CancelJobRequest extends common.CommandRequest {
   command: "cancelJob";
   /**
    * Job ID to cancel
    */
   jobId: string;
 }
-export interface DeleteJobRequest {
+export interface DeleteJobRequest extends common.CommandRequest {
   command: "deleteJob";
   /**
    * Job ID to cancel
