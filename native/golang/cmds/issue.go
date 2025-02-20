@@ -9,16 +9,16 @@
  *
  */
 
-package main
+package cmds
 
 import (
-	cmds "zowe-native-proto/ioserver/types/cmds"
+	cmdTypes "zowe-native-proto/ioserver/types/cmds"
 	utils "zowe-native-proto/ioserver/utils"
 )
 
 // HandleConsoleCommandRequest handles a ConsoleCommandRequest by invoking the `zowex console issue` command
 func HandleConsoleCommandRequest(jsonData []byte) {
-	request, err := utils.ParseCommandRequest[cmds.IssueConsoleRequest](jsonData)
+	request, err := utils.ParseCommandRequest[cmdTypes.IssueConsoleRequest](jsonData)
 	if err != nil {
 		return
 	}
@@ -30,7 +30,7 @@ func HandleConsoleCommandRequest(jsonData []byte) {
 		return
 	}
 
-	utils.PrintCommandResponse(cmds.IssueConsoleResponse{
+	utils.PrintCommandResponse(cmdTypes.IssueConsoleResponse{
 		Data: string(out),
 	})
 }

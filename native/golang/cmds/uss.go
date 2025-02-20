@@ -9,7 +9,7 @@
  *
  */
 
-package main
+package cmds
 
 import (
 	"encoding/base64"

@@ -16,6 +16,7 @@ import (
 	"log"
 	"os"
 
+	"zowe-native-proto/ioserver/cmds"
 	t "zowe-native-proto/ioserver/types/common"
 	utils "zowe-native-proto/ioserver/utils"
 )
@@ -41,32 +42,8 @@ func main() {
 		}
 	}()
 
-	type CommandHandler func([]byte)
-	// Supported ioserver commands
-	commandHandlers := map[string]CommandHandler{
-		"chownFile":      HandleChownFileRequest,
-		"chmodFile":      HandleChmodFileRequest,
-		"chtagFile":      HandleChtagFileRequest,
-		"consoleCommand": HandleConsoleCommandRequest,
-		"createFile":     HandleCreateFileRequest,
-		"deleteDataset":  HandleDeleteDatasetRequest,
-		"deleteFile":     HandleDeleteFileRequest,
-		"getJcl":         HandleGetJclRequest,
-		"getJobStatus":   HandleGetStatusRequest,
-		"listDatasets":   HandleListDatasetsRequest,
-		"listDsMembers":  HandleListDsMembersRequest,
-		"listFiles":      HandleListFilesRequest,
-		"listJobs":       HandleListJobsRequest,
-		"listSpools":     HandleListSpoolsRequest,
-		"readDataset":    HandleReadDatasetRequest,
-		"readFile":       HandleReadFileRequest,
-		"readSpool":      HandleReadSpoolRequest,
-		"restoreDataset": HandleRestoreDatasetRequest,
-		"submitJob":      HandleSubmitJobRequest,
-		"submitJcl":      HandleSubmitJclRequest,
-		"writeDataset":   HandleWriteDatasetRequest,
-		"writeFile":      HandleWriteFileRequest,
-	}
+	dispatcher := cmds.NewDispatcher()
+	cmds.InitializeCoreHandlers(dispatcher)
 
 	for data := range input {
 		// Parse the command request
@@ -78,7 +55,7 @@ func main() {
 		}
 
 		// Handle the command request if a supported command is provided
-		if handler, ok := commandHandlers[request.Command]; ok {
+		if handler, ok := dispatcher.Get(request.Command); ok {
 			handler(data)
 		} else {
 			utils.PrintErrorResponse("Unrecognized command %s", request.Command)
