@@ -14,16 +14,19 @@ package jobs
 import common "zowe-native-proto/ioserver/types/common"
 
 type ListJobsResponse struct {
+	common.CommandResponse `tstype:",extends"`
 	// List of returned jobs
 	Items []common.Job `json:"items" tstype:"common.Job[]"`
 }
 
 type ListSpoolsResponse struct {
+	common.CommandResponse `tstype:",extends"`
 	// List of returned spools
 	Items []common.Spool `json:"items" tstype:"common.Spool[]"`
 }
 
 type GetJclResponse struct {
+	common.CommandResponse `tstype:",extends"`
 	// Job ID for the returned JCL
 	JobId string `json:"jobId"`
 	// JCL contents
@@ -31,6 +34,7 @@ type GetJclResponse struct {
 }
 
 type ReadSpoolResponse struct {
+	common.CommandResponse `tstype:",extends"`
 	// Desired encoding for the spool file (optional)
 	Encoding string `json:"encoding,omitempty"`
 	// Spool ID matching the returned spool contents
@@ -42,11 +46,13 @@ type ReadSpoolResponse struct {
 }
 
 type GetStatusResponse struct {
+	common.CommandResponse `tstype:",extends"`
 	// List of returned job statuses
 	Items []common.Job `json:"items" tstype:"common.Job[]"`
 }
 
 type SubmitJobResponse struct {
+	common.CommandResponse `tstype:",extends"`
 	// Whether the job was successfully submitted
 	Success bool `json:"success"`
 	// The job ID of the newly-submitted job
@@ -56,6 +62,7 @@ type SubmitJobResponse struct {
 }
 
 type SubmitJclResponse struct {
+	common.CommandResponse `tstype:",extends"`
 	// Whether the JCL was successfully submitted
 	Success bool `json:"success"`
 	// The ID of the new job
@@ -63,6 +70,7 @@ type SubmitJclResponse struct {
 }
 
 type DeleteJobResponse struct {
+	common.CommandResponse `tstype:",extends"`
 	// Whether the job was successfully deleted
 	Success bool `json:"success"`
 	// The ID for the job that was deletede
@@ -70,6 +78,7 @@ type DeleteJobResponse struct {
 }
 
 type CancelJobResponse struct {
+	common.CommandResponse `tstype:",extends"`
 	// Whether the job was successfully cancelled
 	Success bool `json:"success"`
 	// The ID for the job that was cancelled

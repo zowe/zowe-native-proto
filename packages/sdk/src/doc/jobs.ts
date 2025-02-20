@@ -98,19 +98,19 @@ export interface DeleteJobRequest extends common.CommandRequest {
 //////////
 // source: responses.go
 
-export interface ListJobsResponse {
+export interface ListJobsResponse extends common.CommandResponse {
   /**
    * List of returned jobs
    */
   items: common.Job[];
 }
-export interface ListSpoolsResponse {
+export interface ListSpoolsResponse extends common.CommandResponse {
   /**
    * List of returned spools
    */
   items: common.Spool[];
 }
-export interface GetJclResponse {
+export interface GetJclResponse extends common.CommandResponse {
   /**
    * Job ID for the returned JCL
    */
@@ -120,7 +120,7 @@ export interface GetJclResponse {
    */
   data: string;
 }
-export interface ReadSpoolResponse {
+export interface ReadSpoolResponse extends common.CommandResponse {
   /**
    * Desired encoding for the spool file (optional)
    */
@@ -138,13 +138,13 @@ export interface ReadSpoolResponse {
    */
   data: Buffer | string;
 }
-export interface GetStatusResponse {
+export interface GetStatusResponse extends common.CommandResponse {
   /**
    * List of returned job statuses
    */
   items: common.Job[];
 }
-export interface SubmitJobResponse {
+export interface SubmitJobResponse extends common.CommandResponse {
   /**
    * Whether the job was successfully submitted
    */
@@ -158,7 +158,7 @@ export interface SubmitJobResponse {
    */
   dsname: string;
 }
-export interface SubmitJclResponse {
+export interface SubmitJclResponse extends common.CommandResponse {
   /**
    * Whether the JCL was successfully submitted
    */
@@ -168,7 +168,7 @@ export interface SubmitJclResponse {
    */
   jobId: string;
 }
-export interface DeleteJobResponse {
+export interface DeleteJobResponse extends common.CommandResponse {
   /**
    * Whether the job was successfully deleted
    */
@@ -178,7 +178,7 @@ export interface DeleteJobResponse {
    */
   jobId: string;
 }
-export interface CancelJobResponse {
+export interface CancelJobResponse extends common.CommandResponse {
   /**
    * Whether the job was successfully cancelled
    */

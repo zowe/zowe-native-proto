@@ -14,6 +14,4 @@ export interface IRpcRequest {
     command: string;
 }
 
-export interface IRpcResponse extends CommandResponse {
-    [key: string]: any;
-}
+export interface IRpcResponse extends CommandResponse {}

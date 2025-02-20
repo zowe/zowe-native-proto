@@ -123,7 +123,7 @@ export interface ChtagFileRequest extends common.CommandRequest {
 //////////
 // source: responses.go
 
-export interface GenericFileResponse {
+export interface GenericFileResponse extends common.CommandResponse {
   /**
    * Whether the operation was successful
    */
@@ -133,7 +133,7 @@ export interface GenericFileResponse {
    */
   fspath: string;
 }
-export interface ReadFileResponse {
+export interface ReadFileResponse extends common.CommandResponse {
   /**
    * Returned encoding for the file
    */
@@ -148,7 +148,7 @@ export interface ReadFileResponse {
   data: Buffer | string;
 }
 export type WriteFileResponse = GenericFileResponse;
-export interface ListFilesResponse {
+export interface ListFilesResponse extends common.CommandResponse {
   items: common.UssItem[];
   returnedRows: number /* int */;
 }

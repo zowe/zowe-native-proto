@@ -48,6 +48,7 @@ func main() {
 		"chmodFile":      HandleChmodFileRequest,
 		"chtagFile":      HandleChtagFileRequest,
 		"consoleCommand": HandleConsoleCommandRequest,
+		"createFile":     HandleCreateFileRequest,
 		"deleteDataset":  HandleDeleteDatasetRequest,
 		"deleteFile":     HandleDeleteFileRequest,
 		"getJcl":         HandleGetJclRequest,

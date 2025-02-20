@@ -97,7 +97,7 @@ export interface CreateDatasetRequest extends common.CommandRequest {
 //////////
 // source: responses.go
 
-export interface WriteDatasetResponse {
+export interface WriteDatasetResponse extends common.CommandResponse {
   /**
    * Whether the new data was stored successfully
    */
@@ -107,13 +107,13 @@ export interface WriteDatasetResponse {
    */
   dataset: string;
 }
-export interface RestoreDatasetResponse {
+export interface RestoreDatasetResponse extends common.CommandResponse {
   /**
    * Whether the dataset was restored successfully
    */
   success: boolean;
 }
-export interface ReadDatasetResponse {
+export interface ReadDatasetResponse extends common.CommandResponse {
   /**
    * Desired encoding for the dataset (optional)
    */
@@ -127,7 +127,7 @@ export interface ReadDatasetResponse {
    */
   data: Buffer | string;
 }
-export interface ListDatasetsResponse {
+export interface ListDatasetsResponse extends common.CommandResponse {
   /**
    * List of returned datasets
    */
@@ -137,7 +137,7 @@ export interface ListDatasetsResponse {
    */
   returnedRows: number /* int */;
 }
-export interface ListDsMembersResponse {
+export interface ListDsMembersResponse extends common.CommandResponse {
   /**
    * List of returned dataset members
    */
@@ -147,7 +147,7 @@ export interface ListDsMembersResponse {
    */
   returnedRows: number /* int */;
 }
-export interface GenericDatasetResponse {
+export interface GenericDatasetResponse extends common.CommandResponse {
   /**
    * Whether the dataset operation was successful
    */
