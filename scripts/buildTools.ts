@@ -32,7 +32,7 @@ try {
     privateKey = readFileSync(config.privateKey);
 } catch (e) {}
 
-const localDeployDir = "./../../../native"; // from here
+const localDeployDir = "./../native"; // from here
 const deployDirectory = config.deployDirectory; // to here
 const cDeployDirectory = `${config.deployDirectory}/c`; // to here
 const goDeployDirectory = `${config.deployDirectory}/golang`; // to here
@@ -52,7 +52,7 @@ let SPINNER_INDEX = 0;
 const SPINNER_FRAMES = ["-", "\\", "|", "/"];
 
 function startSpinner(text = "Loading...") {
-    if (DEBUG_MODE()) {
+    if (DEBUG_MODE() || process.env.CI != null) {
         console.log(text);
         return null;
     }
@@ -98,6 +98,9 @@ connection.on("ready", async () => {
         case "clean":
             await clean(connection);
             break;
+        case "delete":
+            await rmdir(connection);
+            break;
         case "bin":
             await bin(connection);
             break;
@@ -120,6 +123,7 @@ connection.on("close", () => {
 connection.on("error", (err) => {
     console.error("Client connection errored");
     console.log(err);
+    process.exit(1);
 });
 
 if (!privateKey) {
@@ -221,29 +225,6 @@ function getDirs(next = "") {
     return dirs;
 }
 
-function parse_ds_view(raw: string) {
-    console.log("ds-view parsing");
-}
-
-function parse_ds_ls_mem(raw: string) {
-    console.log("ds-ls-mem parsing");
-}
-
-function parse_ds_ls(raw: string) {
-    console.log("ds-ls parsing");
-    console.log("Raw: ", raw);
-    const lines = raw.trim().split(/\n/g);
-    for (const line of lines) {
-        const split = line.split(/\s+/g);
-        console.log(
-            JSON.stringify({
-                name: split[0].trim(),
-                dsorg: split[1].trim(),
-            }),
-        );
-    }
-}
-
 async function init(connection: Client) {
     const dirs = getDirs();
 
@@ -300,7 +281,7 @@ async function getDumps(connection: Client) {
 }
 
 async function artifacts(connection: Client) {
-    const localDirs = ["../packages/cli/bin", "../packages/vsce/bin"];
+    const localDirs = ["packages/cli/bin", "packages/vsce/bin"];
     const artifactNames = ["c/zowex", "golang/ioserver"];
     const paxFile = "server.pax.Z";
     const prePaxCmds = artifactNames.map((file) => `cp ${file} ${basename(file)} && chmod 700 ${basename(file)}`);
@@ -315,13 +296,13 @@ async function artifacts(connection: Client) {
         ].join("\n"),
     );
     for (const localDir of localDirs) {
-        mkdirSync(resolve(__dirname, `./../../${localDir}`), { recursive: true });
+        mkdirSync(resolve(__dirname, `./../${localDir}`), { recursive: true });
         if (localDirs.indexOf(localDir) === 0) {
             await retrieve(connection, [paxFile], localDir);
         } else {
             cpSync(
-                resolve(__dirname, `./../../${localDirs[0]}/${paxFile}`),
-                resolve(__dirname, `./../../${localDir}/${paxFile}`),
+                resolve(__dirname, `./../${localDirs[0]}/${paxFile}`),
+                resolve(__dirname, `./../${localDir}/${paxFile}`),
             );
         }
     }
@@ -350,12 +331,12 @@ async function runCommandInShell(connection: Client, command: string, pty = fals
             });
             stream.on("exit", (exitCode: number) => {
                 if (exitCode !== 0) {
-                    const fullError = `\nError: runCommand connection.exec error: \n ${error}`;
+                    const fullError = `\nError: runCommand connection.exec error: \n ${error || data}`;
                     stopSpinner(spinner, fullError);
                     reject(fullError);
                 }
             });
-            stream.end(`${command}\n`);
+            stream.end(`${command}\nexit $?\n`);
         };
         if (pty) {
             connection.shell(cb);
@@ -376,7 +357,7 @@ async function retrieve(connection: Client, files: string[], targetDir: string) 
             }
 
             for (let i = 0; i < files.length; i++) {
-                const absTargetDir = resolve(__dirname, `./../../${targetDir}`);
+                const absTargetDir = resolve(__dirname, `./../${targetDir}`);
                 if (!existsSync(`${absTargetDir}`)) mkdirSync(`${absTargetDir}`);
                 const to = `${absTargetDir}/${files[i]}`;
                 const from = `${deployDirectory}/${files[i]}`;
@@ -504,7 +485,7 @@ async function build(connection: Client) {
         await runCommandInShell(
             connection,
             `cd ${goDeployDirectory} &&${config.goEnv ? ` ${config.goEnv}` : ""} go build\n`,
-            process.env.CI != null,
+            true,
         ),
     );
     console.log("Build complete!");
@@ -515,6 +496,13 @@ async function clean(connection: Client) {
     const resp = await runCommandInShell(connection, `cd ${cDeployDirectory} && make clean\n`);
     console.log(resp);
     console.log("Clean complete");
+}
+
+async function rmdir(connection: Client) {
+    console.log("Removing dir ...");
+    const resp = await runCommandInShell(connection, `rm -rf ${deployDirectory}\n`);
+    console.log(resp);
+    console.log("Removal complete");
 }
 
 async function uploadFile(sftpcon: SFTPWrapper, from: string, to: string) {
