@@ -33,7 +33,6 @@ export class SshJesApi extends SshCommonApi implements MainframeInteraction.IJes
         const response = await (await this.client).jobs.getStatus({
             jobId: jobid.toUpperCase(),
         });
-        console.log(response);
         return {
             jobid: response.id,
             jobname: response.name,
