@@ -1010,7 +1010,7 @@ int handle_data_set_list(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  return rc;
+  return warn == "false" && rc == RTNCD_WARNING ? RTNCD_SUCCESS : rc;
 }
 
 int handle_data_set_list_members_dsn(ZCLIResult result)

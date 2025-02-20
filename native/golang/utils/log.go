@@ -35,7 +35,7 @@ func PrintErrorResponse(format string, args ...any) {
 		Msg: fmt.Sprintf(format, args),
 	}
 	out, _ := json.Marshal(errResponse)
-	fmt.Fprintf(os.Stderr, string(out))
+	fmt.Fprintln(os.Stderr, string(out))
 }
 
 func InitLogger() {

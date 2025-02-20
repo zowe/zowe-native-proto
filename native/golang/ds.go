@@ -97,14 +97,14 @@ func HandleListDatasetsRequest(jsonData []byte) {
 		return
 	}
 
-	args := []string{"data-set", "list", listRequest.Pattern, "--rfc", "true"}
+	args := []string{"data-set", "list", listRequest.Pattern, "--warn", "false", "--rfc", "true"}
 	// if len(listRequest.Start) != 0 {
 	// 	args = append(args, "--start", listRequest.Start)
 	// }
 
-	out, err := utils.BuildCommand(args).Output()
+	out, err := utils.BuildCommand(args).CombinedOutput()
 	if err != nil {
-		utils.LogError("Error executing command:", err)
+		utils.PrintErrorResponse("Error executing command: %v", err)
 		return
 	}
 
@@ -139,7 +139,7 @@ func HandleListDsMembersRequest(jsonData []byte) {
 
 	out, err := utils.BuildCommand(args).Output()
 	if err != nil {
-		utils.LogError("Error executing command: %v", err)
+		utils.PrintErrorResponse("Error executing command: %v", err)
 		return
 	}
 
