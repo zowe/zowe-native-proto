@@ -341,6 +341,34 @@ int zusf_delete_uss_item(ZUSF *zusf, string file, bool recursive)
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Path '%s' is a directory and recursive was false", file.c_str());
     return RTNCD_FAILURE;
   }
+
+  if (is_dir)
+  {
+    DIR *dir;
+    if ((dir = opendir(file.c_str())) == nullptr)
+    {
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open directory '%s'", file.c_str());
+      return RTNCD_FAILURE;
+    }
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != nullptr)
+    {
+      if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0)
+      {
+        const string child_path = file[file.length() - 1] == '/' ? file.append((const char *)entry->d_name) : file.append(string("/") + (const char *)entry->d_name);
+        struct stat file_stats;
+        stat(child_path.c_str(), &file_stats);
+
+        const auto rc = zusf_delete_uss_item(zusf, child_path, S_ISDIR(file_stats.st_mode));
+        if (rc != 0)
+        {
+          return rc;
+        }
+      }
+    }
+    closedir(dir);
+  }
+
   return is_dir ? rmdir(file.c_str()) : remove(file.c_str());
 }
 

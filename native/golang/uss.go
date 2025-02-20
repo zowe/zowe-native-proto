@@ -15,7 +15,6 @@ import (
 	"encoding/base64"
 	"os"
 	"path/filepath"
-	"strconv"
 	t "zowe-native-proto/ioserver/types/common"
 	uss "zowe-native-proto/ioserver/types/uss"
 	utils "zowe-native-proto/ioserver/utils"
@@ -174,10 +173,18 @@ func HandleDeleteFileRequest(jsonData []byte) {
 		return
 	}
 
-	args := []string{"uss", "delete", request.Path, "-r", strconv.FormatBool(request.Recursive)}
+	args := []string{"uss", "delete", request.Path}
+	if request.Recursive {
+		args = append(args, "-r", "true")
+	}
 	_, err = utils.BuildCommand(args).Output()
+	if err != nil {
+		utils.PrintErrorResponse("Failed to delete USS item: %s", err.Error())
+		return
+	}
+
 	response := uss.DeleteFileResponse{
-		Success: err == nil,
+		Success: true,
 		Path:    request.Path,
 	}
 
