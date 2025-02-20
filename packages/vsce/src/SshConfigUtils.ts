@@ -9,24 +9,26 @@
  *
  */
 
-import * as fs from "fs";
+import * as fs from "node:fs";
 import * as path from "node:path";
-import { homedir } from "os";
+import { homedir } from "node:os";
 import { ProfileConstants } from "@zowe/core-for-zowe-sdk";
 import { ZosUssProfile } from "@zowe/zos-uss-for-zowe-sdk";
 import { FileManagement, Gui, ZoweVsCodeExtension, imperative } from "@zowe/zowe-explorer-api";
-import * as sshConfig from "ssh-config";
 import * as vscode from "vscode";
-import { ZClientUtils, ZSshClient } from "zowe-native-proto-sdk";
-import type { sshConfigExt } from "zowe-native-proto-sdk";
+import { ZClientUtils, ZSshClient, type sshConfigExt } from "zowe-native-proto-sdk";
 
 // biome-ignore lint/complexity/noStaticOnlyClass: Utilities class has static methods
 export class SshConfigUtils {
-    public static getServerPath(hostname: string): string {
-        const serverPathMap = vscode.workspace
-            .getConfiguration("zowe-native-proto-vsce")
-            .get<Record<string, string>>("serverPath");
-        return serverPathMap?.[hostname] ?? ZSshClient.DEFAULT_SERVER_PATH;
+    public static getServerPath(profile?: imperative.IProfile): string {
+        const serverPathMap: Record<string, string> =
+            vscode.workspace.getConfiguration("zowe-native-proto-vsce").get("serverPath") ?? {};
+        return (
+            (profile && serverPathMap[profile?.host]) ??
+            process.env.ZOWE_OPT_SERVER_PATH ??
+            profile?.serverPath ??
+            ZSshClient.DEFAULT_SERVER_PATH
+        );
     }
 
     public static async promptForProfile(profileName?: string): Promise<imperative.IProfileLoaded | undefined> {

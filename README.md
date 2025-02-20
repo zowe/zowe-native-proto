@@ -4,7 +4,7 @@
 
 Run `npm install` to install project dependencies.
 
-In the `tools/build` folder, create your own `config.local.json` adjacent to `config.default.jsonc` with something like:
+Create your own `config.local.json` adjacent to `config.default.jsonc` with something like:
 
 ```json
 {
@@ -21,17 +21,17 @@ In the `tools/build` folder, create your own `config.local.json` adjacent to `co
 
 ### z/OS
 
-- `npm run tools:build` - build local tool to manage z/OS builds (only needed once)
-- `npm run tools:init` - create project folder structure on z/OS (only needed once)
-- `npm run tools:deploy` - deploy source files to z/OS
-  - **Tip:** You can deploy just one file or directory like this: `npm run tools:deploy c/zowex.cpp`
-- `npm run tools:build` - build native binaries on z/OS
-  - **Tip:** You can deploy and build at the same time with `npm run tools:deploy:build`
+- `npm run z:init` - create project folder structure on z/OS (only needed once)
+- `npm run z:deploy` - deploy source files to z/OS
+  - **Tip:** You can deploy just one file or directory like this: `npm run z:deploy c/zowex.cpp`
+- `npm run z:build` - build native binaries on z/OS
+  - **Tip:** You can deploy and build at the same time with `npm run z:deploy:build`
 - `npm run watch:native` - detect and upload changes to native code
 
 ## Client
 
-- `npm run tools:artifacts` - download binaries to package with clients
+- `npm run z:artifacts` - download binaries to package with clients
+  - **Tip:** You can skip this step by defining `serverPath` property in your SSH profile in `zowe.config.json` to point to a dev build
 - `npm run build` - build all projects in the `packages` folder
   - **Tip:** You can run incremental builds with `npm run watch:client` for client code only, or `npm run watch` at the root to watch all code
 - `npm run package` - create CLI and VSCE artifacts in `dist` folder
