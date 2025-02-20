@@ -277,9 +277,9 @@ static unsigned long long int get_prev_r2()
 #define GET_STACK_ENV(reg)                                        \
   __asm(                                                          \
       "*                                                      \n" \
-      " LG     1,128(,13)                                     \n" \
-      " STG    1,%0                                           \n" \
-      "*                                                        " \
+      " LG     1,128(,13)   -> PREV SA                        \n" \
+      " STG    1,%0         SAVE                              \n" \
+      "*                                                       "  \
       : "=m"(reg)                                                 \
       :                                                           \
       : "r1");

@@ -46,5 +46,17 @@ int main()
   char *data = "hello";
   zwto_debug("@TEST data %x", data);
   zwto_debug("@TEST calling recovery");
-  set_recovery(ZJBMTEST, ZJBMARR, data);
+
+  SAVF4SA f4sa = {0};
+  // unsigned long long int all_regs[16] = {0};
+
+  // __asm(" LGHI 5,5 " ::: "r5");
+  // __asm(" LGHI 6,6 " ::: "r6");
+  // __asm(" LGHI 7,7 " ::: "r7");
+
+  __asm(" svc 199 ");
+  set_env(&f4sa);
+  zwto_debug("@TEST exiting");
+  return 0;
+  // set_recovery(ZJBMTEST, ZJBMARR, data);
 }
