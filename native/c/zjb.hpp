@@ -109,7 +109,7 @@ int zjb_read_job_jcl_by_jobid(ZJB *zjb, std::string jobid, std::string &response
  * @param is_contents Whether the input is the JCL contents
  * @return int 0 for success; non zero otherwise
  */
-int zjb_submit(ZJB *zjb, string dsn_or_contents, string &jobId, bool is_contents = false);
+int zjb_submit(ZJB *zjb, std::string dsn_or_contents, std::string &jobId, bool is_contents = false);
 
 /**
  * @brief Delete a job using input jobid
