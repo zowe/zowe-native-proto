@@ -52,7 +52,7 @@ func main() {
 		"deleteDataset":  HandleDeleteDatasetRequest,
 		"deleteFile":     HandleDeleteFileRequest,
 		"getJcl":         HandleGetJclRequest,
-		"getStatus":      HandleGetStatusRequest,
+		"getJobStatus":   HandleGetStatusRequest,
 		"listDatasets":   HandleListDatasetsRequest,
 		"listDsMembers":  HandleListDsMembersRequest,
 		"listFiles":      HandleListFilesRequest,
@@ -80,6 +80,8 @@ func main() {
 		// Handle the command request if a supported command is provided
 		if handler, ok := commandHandlers[request.Command]; ok {
 			handler(data)
+		} else {
+			utils.PrintErrorResponse("Unrecognized command %s", request.Command)
 		}
 	}
 }

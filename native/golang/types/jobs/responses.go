@@ -45,10 +45,9 @@ type ReadSpoolResponse struct {
 	Data []byte `json:"data" tstype:"Buffer | string"`
 }
 
-type GetStatusResponse struct {
+type GetJobStatusResponse struct {
 	common.CommandResponse `tstype:",extends"`
-	// List of returned job statuses
-	Items []common.Job `json:"items" tstype:"common.Job[]"`
+	common.Job             `tstype:",extends"`
 }
 
 type SubmitJobResponse struct {

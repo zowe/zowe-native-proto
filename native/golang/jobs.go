@@ -151,7 +151,7 @@ func HandleGetJclRequest(jsonData []byte) {
 
 // HandleGetStatusRequest handles a GetStatusRequest by invoking the `zowex job view-status` command
 func HandleGetStatusRequest(jsonData []byte) {
-	request, err := utils.ParseCommandRequest[jobs.GetStatusRequest](jsonData)
+	request, err := utils.ParseCommandRequest[jobs.GetJobStatusRequest](jsonData)
 	if err != nil {
 		return
 	}
@@ -162,26 +162,18 @@ func HandleGetStatusRequest(jsonData []byte) {
 		utils.PrintErrorResponse("Failed to get status: %v", err)
 		return
 	}
-	returnedJobs := strings.Split(strings.TrimSpace(string(out)), "\n")
-
-	jobsResponse := jobs.ListJobsResponse{
-		Items: make([]t.Job, len(returnedJobs)),
-	}
-
-	for i, job := range returnedJobs {
-		vals := strings.Split(job, ",")
-		if len(vals) < 4 {
-			continue
-		}
-		jobsResponse.Items[i] = t.Job{
+	vals := strings.Split(string(out), ",")
+	if len(vals) < 4 {
+		utils.PrintErrorResponse("Missing job properties for %s", request.JobId)
+	} else {
+		utils.PrintCommandResponse(t.Job{
 			Id:      vals[0],
 			Retcode: vals[1],
 			Name:    strings.TrimSpace(vals[2]),
 			Status:  vals[3],
-		}
+		})
 	}
 
-	utils.PrintCommandResponse(jobsResponse)
 }
 
 // HandleSubmitJobRequest handles a SubmitJobRequest by invoking the `zowex job submit` command

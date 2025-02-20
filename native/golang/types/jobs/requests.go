@@ -50,9 +50,9 @@ type GetJclRequest struct {
 	JobId string `json:"jobId"`
 }
 
-type GetStatusRequest struct {
+type GetJobStatusRequest struct {
 	common.CommandRequest `tstype:",extends"`
-	Command               string `json:"command" tstype:"\"getStatus\""`
+	Command               string `json:"command" tstype:"\"getJobStatus\""`
 	// Job ID to get status for
 	JobId string `json:"jobId"`
 }

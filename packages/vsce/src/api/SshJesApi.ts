@@ -30,7 +30,16 @@ export class SshJesApi extends SshCommonApi implements MainframeInteraction.IJes
     }
 
     public async getJob(jobid: string): Promise<zosjobs.IJob> {
-        throw new Error("Not yet implemented");
+        const response = await (await this.client).jobs.getStatus({
+            jobId: jobid.toUpperCase(),
+        });
+        console.log(response);
+        return {
+            jobid: response.id,
+            jobname: response.name,
+            status: response.status,
+            retcode: response.retcode,
+        } as zosjobs.IJob;
     }
 
     public async getSpoolFiles(jobname: string, jobid: string): Promise<zosjobs.IJobFile[]> {

@@ -59,8 +59,8 @@ export interface GetJclRequest extends common.CommandRequest {
    */
   jobId: string;
 }
-export interface GetStatusRequest extends common.CommandRequest {
-  command: "getStatus";
+export interface GetJobStatusRequest extends common.CommandRequest {
+  command: "getJobStatus";
   /**
    * Job ID to get status for
    */
@@ -138,11 +138,7 @@ export interface ReadSpoolResponse extends common.CommandResponse {
    */
   data: Buffer | string;
 }
-export interface GetStatusResponse extends common.CommandResponse {
-  /**
-   * List of returned job statuses
-   */
-  items: common.Job[];
+export interface GetJobStatusResponse extends common.CommandResponse, common.Job {
 }
 export interface SubmitJobResponse extends common.CommandResponse {
   /**

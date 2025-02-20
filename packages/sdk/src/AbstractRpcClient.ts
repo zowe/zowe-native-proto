@@ -43,8 +43,8 @@ export abstract class AbstractRpcClient {
                 this.request({ command: "listSpools", ...request }),
             readSpool: (request: Omit<jobs.ReadSpoolRequest, "command">): Promise<jobs.ReadSpoolResponse> =>
                 this.request({ command: "readSpool", ...request }),
-            getStatus: (request: Omit<jobs.GetStatusRequest, "command">): Promise<jobs.GetStatusResponse> =>
-                this.request({ command: "getStatus", ...request }),
+            getStatus: (request: Omit<jobs.GetJobStatusRequest, "command">): Promise<jobs.GetJobStatusResponse> =>
+                this.request({ command: "getJobStatus", ...request }),
             cancelJob: (request: Omit<jobs.CancelJobRequest, "command">): Promise<jobs.CancelJobResponse> =>
                 this.request({ command: "cancelJob", ...request }),
             deleteJob: (request: Omit<jobs.DeleteJobRequest, "command">): Promise<jobs.DeleteJobResponse> =>
