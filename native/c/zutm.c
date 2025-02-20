@@ -230,13 +230,13 @@ int ZUTMGUSR(char user[8])
 #pragma prolog(ZUTMFR64, "&CCN_MAIN SETB 1 \n MYPROLOG")
 int ZUTMFR64(void *PTR64 data)
 {
-  storageFree64(data);
+  storage_free64(data);
   return 0;
 }
 
 #pragma prolog(ZUTMGT64, "&CCN_MAIN SETB 1 \n MYPROLOG")
 int ZUTMGT64(void **PTR64 data, int *len)
 {
-  *data = storageGet64(*len);
+  *data = storage_get64(*len);
   return 0;
 }

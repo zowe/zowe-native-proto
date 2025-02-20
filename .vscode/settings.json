@@ -131,7 +131,8 @@
     "xtr1common": "cpp",
     "xtree": "cpp",
     "xutility": "cpp",
-    "__memory": "c"
+    "__memory": "c",
+    "zrecovery.h": "c"
   },
   "editor.formatOnSave": true,
   "[typescript]": {

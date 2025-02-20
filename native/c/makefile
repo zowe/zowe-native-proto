@@ -13,6 +13,8 @@ CC=xlc
 ASM=as
 BIND = ld
 
+# https://www.ibm.com/docs/en/zos/3.1.0?topic=bor-binder-options
+# https://www.ibm.com/docs/en/zos/3.1.0?topic=descriptions-ld-link-object-files
 BIND_FLAGS = -bRMODE=ANY
 
 MTL_OPTS=metal,\
@@ -225,7 +227,7 @@ libzusf.a: zusf.o libzut.a
 	ar -rv $@ $^
 
 #
-# TSO data
+# TSO
 #
 ztso.o: ztso.cpp
 	@echo 'Building ztso.o'
@@ -259,6 +261,9 @@ zowex.o: zowex.cpp
 	@echo 'Building zowex.o'
 	$(CXX) $(CPP_FLAGS) -qlist=$*.cpp.lst -c $^
 
+#
+# Testing utilities
+#
 test: test.sh
 	chmod +x test.sh
 
