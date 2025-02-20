@@ -42,7 +42,6 @@ export class SshConfigUtils {
       .getExplorerExtenderApi()
       .getProfilesCache();
     const profInfo = await profCache.getProfileInfo();
-    const configExists = profInfo.getTeamConfig().exists;
 
     if (profileName) {
       return profCache.getLoadedProfConfig(profileName, "ssh");
@@ -88,14 +87,23 @@ export class SshConfigUtils {
       filteredMigratedConfigs.some(({ name }) => result.label === name)
     ) {
       const isNewConfig = result === qpItems[0];
+
       let selectedProfile = isNewConfig
         ? await SshConfigUtils.createNewConfig()
         : filteredMigratedConfigs.find(({ name }) => result.label === name);
 
       if (!selectedProfile) return;
 
-      if (!isNewConfig && !configExists)
-        await SshConfigUtils.createZoweSchema();
+      const workspaceDir = ZoweVsCodeExtension.workspaceRoot;
+
+      if (
+        workspaceDir?.uri.fsPath !== undefined &&
+        !profInfo.getTeamConfig().layerExists(workspaceDir!.uri.fsPath)
+      ) {
+        await SshConfigUtils.createZoweSchema(false);
+      } else {
+        await SshConfigUtils.createZoweSchema(true);
+      }
 
       //If no profile name found, prompt for a new one with hostname as placeholder
       selectedProfile = await SshConfigUtils.getNewProfileName(selectedProfile);
@@ -155,7 +163,6 @@ export class SshConfigUtils {
       if (!validationResult) {
         foundPrivateKeys = await ZClientUtils.findPrivateKeys();
         for (let privateKey of foundPrivateKeys) {
-          console.debug();
           let testValidation: sshConfigExt = selectedProfile;
           testValidation.privateKey = privateKey;
           const result = await SshConfigUtils.validateConfig(testValidation);
@@ -240,9 +247,16 @@ export class SshConfigUtils {
       .getExplorerExtenderApi()
       .getProfilesCache()
       .getProfileInfo();
-    const configExists = profInfo.getTeamConfig().exists;
 
-    if (!configExists) await SshConfigUtils.createZoweSchema();
+    //check if project layer exists, if it doesnt create one, but if no workspace then create it as global
+    let global: boolean = false;
+    const workspaceDir = ZoweVsCodeExtension.workspaceRoot;
+    if (
+      workspaceDir?.uri.fsPath !== undefined &&
+      !profInfo.getTeamConfig().layerExists(workspaceDir!.uri.fsPath)
+    ) {
+      await SshConfigUtils.createZoweSchema(global);
+    }
 
     const sshResponse = await vscode.window.showInputBox({
       prompt: "Enter SSH connection command",
@@ -302,81 +316,6 @@ export class SshConfigUtils {
     }
 
     return SshProfile;
-  }
-
-  private static async promptForAuth(
-    selectedConfig: sshConfigExt | undefined
-  ): Promise<sshConfigExt | undefined> {
-    let qpItems: vscode.QuickPickItem[] = [
-      { label: "$(lock) Password" },
-      { label: "$(key) Private Key" },
-      { label: "$(key) Private Key with Passphrase" },
-    ];
-
-    const selectedOption = await vscode.window.showQuickPick(qpItems, {
-      title: "Select an authentication method",
-      ignoreFocusOut: true,
-    });
-
-    // Priority for default Private Key URI
-    // 1. IdentityFile/PrivateKey if passed from config
-    // 2. .ssh directory within homedir()
-    // 3. homedir()
-
-    let defaultPrivateKeyUri = vscode.Uri.file(
-      selectedConfig?.privateKey
-        ? selectedConfig.privateKey
-        : fs.existsSync(path.join(homedir(), ".ssh"))
-        ? path.join(homedir(), ".ssh")
-        : homedir()
-    );
-
-    let privateKeyUri;
-    if (selectedOption) {
-      switch (selectedOption.label) {
-        case "$(lock) Password":
-          selectedConfig!.password = await vscode.window.showInputBox({
-            title: "Enter Password",
-            password: true,
-            placeHolder: "Enter your password",
-            ignoreFocusOut: true,
-          });
-          break;
-
-        case "$(key) Private Key":
-          privateKeyUri = await vscode.window.showOpenDialog({
-            canSelectFiles: true,
-            canSelectMany: false,
-            title: "Select Private Key File",
-            defaultUri: defaultPrivateKeyUri,
-          });
-          if (privateKeyUri && privateKeyUri.length > 0) {
-            selectedConfig!.privateKey = privateKeyUri[0].fsPath;
-          }
-          break;
-
-        case "$(key) Private Key with Passphrase":
-          privateKeyUri = await vscode.window.showOpenDialog({
-            canSelectFiles: true,
-            canSelectMany: false,
-            title: "Select Private Key File",
-            defaultUri: defaultPrivateKeyUri,
-          });
-          if (privateKeyUri && privateKeyUri.length > 0) {
-            selectedConfig!.privateKey = privateKeyUri[0].fsPath;
-            selectedConfig!.keyPassphrase = await vscode.window.showInputBox({
-              title: "Enter Passphrase",
-              password: true,
-              placeHolder: "Enter passphrase for private key",
-              ignoreFocusOut: true,
-            });
-          }
-          break;
-        default:
-          break;
-      }
-      return selectedConfig;
-    }
   }
 
   private static async getNewProfileName(
@@ -446,25 +385,23 @@ export class SshConfigUtils {
     if (selectedConfig?.keyPassphrase)
       config.secure.push("keyPassphrase" as never);
 
+    configApi.profiles.defaultSet("ssh", selectedConfig?.name!);
     configApi.profiles.set(selectedConfig?.name!, config);
     await profInfo.getTeamConfig().save();
   }
 
   // Cloned method
-  public static async createZoweSchema(): Promise<void> {
+  public static async createZoweSchema(global: boolean): Promise<void> {
     try {
       let user = false;
-      let global = true;
-      let rootPath = FileManagement.getZoweDir();
       const workspaceDir = ZoweVsCodeExtension.workspaceRoot;
 
       const config = await imperative.Config.load("zowe", {
         homeDir: FileManagement.getZoweDir(),
-        projectDir: FileManagement.getFullPath(rootPath),
+        projectDir: workspaceDir?.uri.fsPath,
       });
-      if (workspaceDir != null) {
-        config.api.layers.activate(user, global, rootPath);
-      }
+
+      config.api.layers.activate(user, global);
 
       const knownCliConfig: imperative.ICommandProfileTypeConfiguration[] = [
         ZosUssProfile,
@@ -480,12 +417,11 @@ export class SshConfigUtils {
       };
       // Build new config and merge with existing layer
       const impConfig: Partial<imperative.IImperativeConfig> = {
-        profiles: knownCliConfig,
+        profiles: [ProfileConstants.BaseProfile],
         baseProfile: ProfileConstants.BaseProfile,
       };
       const newConfig: imperative.IConfig =
         await imperative.ConfigBuilder.build(impConfig, global, opts);
-
       config.api.layers.merge(newConfig);
       await config.save(false);
     } catch (err) {}
