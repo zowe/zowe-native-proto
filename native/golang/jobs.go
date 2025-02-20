@@ -34,7 +34,7 @@ func HandleListJobsRequest(jsonData []byte) {
 
 	out, err := utils.BuildCommand(args).Output()
 	if err != nil {
-		utils.PrintErrorResponse("Failed to list jobs: %s", err)
+		utils.PrintErrorResponse("Failed to list jobs: %v", err)
 		return
 	}
 
@@ -71,7 +71,7 @@ func HandleListSpoolsRequest(jsonData []byte) {
 
 	out, err := utils.BuildCommand(args).Output()
 	if err != nil {
-		utils.PrintErrorResponse("Failed to list spools: %s", err)
+		utils.PrintErrorResponse("Failed to list spools: %v", err)
 		return
 	}
 
@@ -116,7 +116,7 @@ func HandleReadSpoolRequest(jsonData []byte) {
 	}
 	out, err := utils.BuildCommand(args).Output()
 	if err != nil {
-		utils.PrintErrorResponse("Failed to read spool: %s", err)
+		utils.PrintErrorResponse("Failed to read spool: %v", err)
 		return
 	}
 
@@ -139,7 +139,7 @@ func HandleGetJclRequest(jsonData []byte) {
 	args := []string{"job", "view-jcl", request.JobId}
 	out, err := utils.BuildCommand(args).Output()
 	if err != nil {
-		utils.PrintErrorResponse("Failed to get JCL: %s", err)
+		utils.PrintErrorResponse("Failed to get JCL: %v", err)
 		return
 	}
 
@@ -159,7 +159,7 @@ func HandleGetStatusRequest(jsonData []byte) {
 	args := []string{"job", "view-status", request.JobId, "--rfc", "true"}
 	out, err := utils.BuildCommand(args).Output()
 	if err != nil {
-		utils.PrintErrorResponse("Failed to get status: %s", err)
+		utils.PrintErrorResponse("Failed to get status: %v", err)
 		return
 	}
 	returnedJobs := strings.Split(strings.TrimSpace(string(out)), "\n")
@@ -194,7 +194,7 @@ func HandleCancelJobRequest(jsonData []byte) {
 	_, err = utils.BuildCommand([]string{"job", "cancel", request.JobId}).Output()
 
 	if err != nil {
-		utils.PrintErrorResponse("Failed to cancel job: %s", err)
+		utils.PrintErrorResponse("Failed to cancel job: %v", err)
 		return
 	}
 
@@ -214,7 +214,7 @@ func HandleSubmitJobRequest(jsonData []byte) {
 	out, err := utils.BuildCommand([]string{"job", "submit", request.Dsname, "--only-jobid", "true"}).Output()
 
 	if err != nil {
-		utils.PrintErrorResponse("Failed to submit job: %s", err)
+		utils.PrintErrorResponse("Failed to submit job: %v", err)
 		return
 	}
 
@@ -234,14 +234,14 @@ func HandleSubmitJclRequest(jsonData []byte) {
 
 	decodedBytes, err := base64.StdEncoding.DecodeString(request.Jcl)
 	if err != nil {
-		utils.PrintErrorResponse("Failed to decode JCL contents: %s", err)
+		utils.PrintErrorResponse("Failed to decode JCL contents: %v", err)
 		return
 	}
 
 	cmd := utils.BuildCommandNoAutocvt([]string{"job", "submit-jcl", "--only-jobid", "true"})
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
-		utils.PrintErrorResponse("Failed to open stdin pipe to zowex: %s", err)
+		utils.PrintErrorResponse("Failed to open stdin pipe to zowex: %v", err)
 		return
 	}
 
@@ -249,13 +249,13 @@ func HandleSubmitJclRequest(jsonData []byte) {
 		defer stdin.Close()
 		_, err = stdin.Write(decodedBytes)
 		if err != nil {
-			utils.PrintErrorResponse("Failed to write to pipe: %s", err)
+			utils.PrintErrorResponse("Failed to write to pipe: %v", err)
 		}
 	}()
 
 	out, err := cmd.Output()
 	if err != nil {
-		utils.PrintErrorResponse("Failed to submit JCL: %s", err)
+		utils.PrintErrorResponse("Failed to submit JCL: %v", err)
 		return
 	}
 
@@ -274,7 +274,7 @@ func HandleDeleteJobRequest(jsonData []byte) {
 
 	_, err = utils.BuildCommand([]string{"job", "delete", request.JobId}).Output()
 	if err != nil {
-		utils.PrintErrorResponse("Failed to delete job %s: %s", request.JobId, err)
+		utils.PrintErrorResponse("Failed to delete job %s: %v", request.JobId, err)
 		return
 	}
 

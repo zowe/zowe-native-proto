@@ -68,7 +68,7 @@ func ParseCommandRequest[T any](data []byte) (T, error) {
 			name := runtime.FuncForPC(pc).Name()
 			PrintErrorResponse("[%s] Error unmarshalling JSON: %s", name, err)
 		} else {
-			PrintErrorResponse("Error unmarshalling JSON: %s", err)
+			PrintErrorResponse("Error unmarshalling JSON: %v", err)
 		}
 		return request, err
 	}

@@ -26,7 +26,7 @@ func HandleConsoleCommandRequest(jsonData []byte) {
 	args := []string{"console", "issue", request.CommandText, "--cn", request.ConsoleName}
 	out, err := utils.BuildCommandAuthorized(args).Output()
 	if err != nil {
-		utils.PrintErrorResponse("Failed to execute command: %s", err)
+		utils.PrintErrorResponse("Failed to execute command: %v", err)
 		return
 	}
 

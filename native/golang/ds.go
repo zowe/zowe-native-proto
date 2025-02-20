@@ -56,7 +56,7 @@ func HandleWriteDatasetRequest(jsonData []byte) {
 
 	decodedBytes, err := base64.StdEncoding.DecodeString(dsRequest.Data)
 	if err != nil {
-		utils.PrintErrorResponse("Failed to decode dataset contents: %s", err)
+		utils.PrintErrorResponse("Failed to decode dataset contents: %v", err)
 		return
 	}
 	args := []string{"data-set", "write", dsRequest.Dsname}
@@ -66,7 +66,7 @@ func HandleWriteDatasetRequest(jsonData []byte) {
 	cmd := utils.BuildCommandNoAutocvt(args)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
-		utils.PrintErrorResponse("Failed to open stdin pipe: %s", err)
+		utils.PrintErrorResponse("Failed to open stdin pipe: %v", err)
 		return
 	}
 
@@ -74,13 +74,13 @@ func HandleWriteDatasetRequest(jsonData []byte) {
 		defer stdin.Close()
 		_, err = stdin.Write(decodedBytes)
 		if err != nil {
-			utils.PrintErrorResponse("Failed to write to stdin pipe: %s", err)
+			utils.PrintErrorResponse("Failed to write to stdin pipe: %v", err)
 		}
 	}()
 
 	_, err = cmd.Output()
 	if err != nil {
-		utils.PrintErrorResponse("Failed to pipe stdin to command: %s", err)
+		utils.PrintErrorResponse("Failed to pipe stdin to command: %v", err)
 		return
 	}
 
@@ -139,7 +139,7 @@ func HandleListDsMembersRequest(jsonData []byte) {
 
 	out, err := utils.BuildCommand(args).Output()
 	if err != nil {
-		utils.LogError("Error executing command: %s", err)
+		utils.LogError("Error executing command: %v", err)
 		return
 	}
 
@@ -173,7 +173,7 @@ func HandleRestoreDatasetRequest(jsonData []byte) {
 	args := []string{"data-set", "restore", dsRequest.Dsname}
 	_, err = utils.BuildCommand(args).Output()
 	if err != nil {
-		utils.PrintErrorResponse("Failed to restore data set: %s", err)
+		utils.PrintErrorResponse("Failed to restore data set: %v", err)
 		return
 	}
 

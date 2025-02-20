@@ -30,7 +30,7 @@ func CollectContentsAsBytes(input string, isByteString bool) []byte {
 		for _, b := range data_split {
 			byteNum, err := strconv.ParseUint(b, 16, 8)
 			if err != nil {
-				PrintErrorResponse("Failed to parse byte %s in input: %s", b, input, err)
+				PrintErrorResponse("Failed to parse byte %s in input: %v", b, err)
 				break
 			}
 			data = append(data, byte(byteNum))

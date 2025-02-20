@@ -61,6 +61,8 @@ func main() {
 		"readFile":       HandleReadFileRequest,
 		"readSpool":      HandleReadSpoolRequest,
 		"restoreDataset": HandleRestoreDatasetRequest,
+		"submitJob":      HandleSubmitJobRequest,
+		"submitJcl":      HandleSubmitJclRequest,
 		"writeDataset":   HandleWriteDatasetRequest,
 		"writeFile":      HandleWriteFileRequest,
 	}
@@ -70,7 +72,7 @@ func main() {
 		var request t.CommandRequest
 		err := json.Unmarshal(data, &request)
 		if err != nil {
-			utils.LogError("Error parsing command request: %s", err)
+			utils.PrintErrorResponse("Failed to parse command request: %v", err)
 			continue
 		}
 

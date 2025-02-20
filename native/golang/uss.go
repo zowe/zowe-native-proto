@@ -31,7 +31,7 @@ func HandleListFilesRequest(jsonData []byte) {
 
 	fileInfo, err := os.Stat(dirPath)
 	if err != nil {
-		utils.PrintErrorResponse("Failed to stat directory: %s", err)
+		utils.PrintErrorResponse("Failed to stat directory: %v", err)
 		return
 	}
 
@@ -47,7 +47,7 @@ func HandleListFilesRequest(jsonData []byte) {
 	} else {
 		entries, err := os.ReadDir(dirPath)
 		if err != nil {
-			utils.PrintErrorResponse("Failed to read directory: %s", err)
+			utils.PrintErrorResponse("Failed to read directory: %v", err)
 			return
 		}
 		ussResponse.Items = make([]t.UssItem, len(entries))
@@ -78,7 +78,7 @@ func HandleReadFileRequest(jsonData []byte) {
 	}
 	out, err := utils.BuildCommand(args).Output()
 	if err != nil {
-		utils.PrintErrorResponse("Error executing command: %s", err)
+		utils.PrintErrorResponse("Error executing command: %v", err)
 		return
 	}
 
@@ -107,7 +107,7 @@ func HandleWriteFileRequest(jsonData []byte) {
 
 	decodedBytes, err := base64.StdEncoding.DecodeString(request.Data)
 	if err != nil {
-		utils.PrintErrorResponse("[WriteFileRequest] Error decoding base64 contents: %s", err)
+		utils.PrintErrorResponse("[WriteFileRequest] Error decoding base64 contents: %v", err)
 		return
 	}
 	args := []string{"uss", "write", request.Path}
@@ -117,7 +117,7 @@ func HandleWriteFileRequest(jsonData []byte) {
 	cmd := utils.BuildCommandNoAutocvt(args)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
-		utils.PrintErrorResponse("[WriteFileRequest] Error opening stdin pipe: %s", err)
+		utils.PrintErrorResponse("[WriteFileRequest] Error opening stdin pipe: %v", err)
 		return
 	}
 
@@ -125,14 +125,14 @@ func HandleWriteFileRequest(jsonData []byte) {
 		defer stdin.Close()
 		_, err = stdin.Write(decodedBytes)
 		if err != nil {
-			utils.PrintErrorResponse("[WriteFileRequest] Error writing to stdin pipe: %s", err)
+			utils.PrintErrorResponse("[WriteFileRequest] Error writing to stdin pipe: %v", err)
 			return
 		}
 	}()
 
 	_, err = cmd.Output()
 	if err != nil {
-		utils.PrintErrorResponse("[WriteFileRequest] Error piping stdin to command: %s", err)
+		utils.PrintErrorResponse("[WriteFileRequest] Error piping stdin to command: %v", err)
 		return
 	}
 
