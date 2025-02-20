@@ -80,10 +80,13 @@ int zusf_create_uss_file_or_dir(ZUSF *zusf, string file, string mode, bool creat
     {
       const auto parent_path = file.substr(0, last_trailing_slash);
       const auto exists = stat(parent_path.c_str(), &file_stats) == 0;
-      const auto rc = zusf_create_uss_file_or_dir(zusf, parent_path, mode, true);
-      if (rc != 0)
+      if (!exists)
       {
-        return rc;
+        const auto rc = zusf_create_uss_file_or_dir(zusf, parent_path, mode, true);
+        if (rc != 0)
+        {
+          return rc;
+        }
       }
     }
     const auto rc = mkdir(file.c_str(), strtol(mode.c_str(), nullptr, 8));
@@ -332,12 +335,13 @@ int zusf_delete_uss_item(ZUSF *zusf, string file, bool recursive)
     return RTNCD_FAILURE;
   }
 
-  if (S_ISDIR(file_stats.st_mode) && !recursive)
+  const auto is_dir = S_ISDIR(file_stats.st_mode);
+  if (is_dir && !recursive)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Path '%s' is a directory and recursive was false", file.c_str());
     return RTNCD_FAILURE;
   }
-  return remove(file.c_str());
+  return is_dir ? rmdir(file.c_str()) : remove(file.c_str());
 }
 
 short zusf_get_id_from_user_or_group(string user_or_group, bool is_user)
