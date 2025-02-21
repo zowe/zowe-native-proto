@@ -26,7 +26,6 @@ export class ZClientUtils {
 
         // Check standard ~/.ssh private keys
         for (const algo of keyNames) {
-            console.debug();
             const keyPath = path.resolve(homedir(), ".ssh", algo);
             try {
                 if (readFileSync(keyPath)) privateKeyPaths.add(keyPath);
