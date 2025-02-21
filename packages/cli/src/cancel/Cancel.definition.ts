@@ -12,16 +12,15 @@
 import type { ICommandDefinition } from "@zowe/imperative";
 import { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Constants } from "../Constants";
-import { DataSetDefinition } from "./data-set/DataSet.definition";
-import { ItemDefinition as UssDefinition } from "./uss/Item.definition";
+import { JobDefinition } from "./job/Job.definition";
 
-const DeleteDefinition: ICommandDefinition = {
-    name: "delete",
-    summary: "Delete data sets and/or members",
-    description: "Delete data sets and/or data set members",
+const CancelDefinition: ICommandDefinition = {
+    name: "cancel",
+    summary: "Cancel various resources",
+    description: "Cancel jobs, (potentially commands), and more",
     type: "group",
-    aliases: ["del"],
-    children: [DataSetDefinition, UssDefinition],
+    aliases: ["canc"],
+    children: [JobDefinition],
     passOn: [
         {
             property: "options",
@@ -32,4 +31,4 @@ const DeleteDefinition: ICommandDefinition = {
     ],
 };
 
-export = DeleteDefinition;
+export = CancelDefinition;
