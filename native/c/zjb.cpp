@@ -571,7 +571,7 @@ int zjb_list_by_owner(ZJB *zjb, string owner_name, string prefix_name, vector<ZJ
   zut_uppercase_pad_truncate(zjb->prefix_name, prefix_name, sizeof(zjb->prefix_name));
 
   rc = ZJBMLIST(zjb, &jobInfo, &entries);
-  if (RTNCD_SUCCESS != rc || RTNCD_WARNING != rc)
+  if (RTNCD_SUCCESS != rc && RTNCD_WARNING != rc)
   {
     return rc;
   }
