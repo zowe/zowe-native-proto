@@ -9,85 +9,82 @@
  *
  */
 
-import { homedir } from "os";
+import { readFileSync } from "node:fs";
+import { homedir } from "node:os";
 import * as path from "node:path";
-import * as fs from "fs";
-import { ISshSession } from "@zowe/zos-uss-for-zowe-sdk";
+import type { ISshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import * as sshConfig from "ssh-config";
 
 export interface sshConfigExt extends ISshSession {
-  name?: string;
+    name?: string;
 }
+// biome-ignore lint/complexity/noStaticOnlyClass: Utilities class has static methods
 export class ZClientUtils {
-  public static async findPrivateKeys(): Promise<string[]> {
-    const keyNames = ["id_ed25519", "id_rsa", "id_ecdsa", "id_dsa"];
-    const privateKeyPaths: Set<string> = new Set();
+    public static async findPrivateKeys(): Promise<string[]> {
+        const keyNames = ["id_ed25519", "id_rsa", "id_ecdsa", "id_dsa"];
+        const privateKeyPaths: Set<string> = new Set();
 
-    // Check standard ~/.ssh private keys
-    for (const algo of keyNames) {
-      console.debug();
-      const keyPath = path.resolve(homedir(), ".ssh", algo);
-      try {
-        if (fs.readFileSync(keyPath)) privateKeyPaths.add(keyPath);
-      } catch {
-        // Ignore missing keys
-      }
-    }
-    return Array.from(privateKeyPaths);
-  }
-
-  public static async migrateSshConfig(): Promise<sshConfigExt[]> {
-    const filePath = path.join(homedir(), ".ssh", "config");
-    let fileContent: string;
-    try {
-      fileContent = fs.readFileSync(filePath, "utf-8");
-    } catch (error) {
-      return [];
-    }
-
-    const parsedConfig = sshConfig.parse(fileContent);
-    const SSHConfigs: sshConfigExt[] = [];
-
-    for (const config of parsedConfig) {
-      if (config.type === sshConfig.LineType.DIRECTIVE) {
-        const session: sshConfigExt = {};
-        session.name = (config as any).value;
-
-        if (Array.isArray((config as any).config)) {
-          for (const subConfig of (config as any).config) {
-            if (
-              typeof subConfig === "object" &&
-              "param" in subConfig &&
-              "value" in subConfig
-            ) {
-              const param = (subConfig as any).param.toLowerCase();
-              const value = (subConfig as any).value;
-
-              switch (param) {
-                case "hostname":
-                  session.hostname = value;
-                  break;
-                case "port":
-                  session.port = parseInt(value);
-                  break;
-                case "user":
-                  session.user = value;
-                  break;
-                case "identityfile":
-                  session.privateKey = value;
-                  break;
-                case "connecttimeout":
-                  session.handshakeTimeout = parseInt(value);
-                  break;
-                default:
-                  break;
-              }
+        // Check standard ~/.ssh private keys
+        for (const algo of keyNames) {
+            console.debug();
+            const keyPath = path.resolve(homedir(), ".ssh", algo);
+            try {
+                if (readFileSync(keyPath)) privateKeyPaths.add(keyPath);
+            } catch {
+                // Ignore missing keys
             }
-          }
         }
-        SSHConfigs.push(session);
-      }
+        return Array.from(privateKeyPaths);
     }
-    return SSHConfigs;
-  }
+
+    public static async migrateSshConfig(): Promise<sshConfigExt[]> {
+        const filePath = path.join(homedir(), ".ssh", "config");
+        let fileContent: string;
+        try {
+            fileContent = readFileSync(filePath, "utf-8");
+        } catch (error) {
+            return [];
+        }
+
+        const parsedConfig = sshConfig.parse(fileContent);
+        const SSHConfigs: sshConfigExt[] = [];
+
+        for (const config of parsedConfig) {
+            if (config.type === sshConfig.LineType.DIRECTIVE) {
+                const session: sshConfigExt = {};
+                session.name = (config as any).value;
+
+                if (Array.isArray((config as any).config)) {
+                    for (const subConfig of (config as any).config) {
+                        if (typeof subConfig === "object" && "param" in subConfig && "value" in subConfig) {
+                            const param = (subConfig as any).param.toLowerCase();
+                            const value = (subConfig as any).value;
+
+                            switch (param) {
+                                case "hostname":
+                                    session.hostname = value;
+                                    break;
+                                case "port":
+                                    session.port = Number.parseInt(value);
+                                    break;
+                                case "user":
+                                    session.user = value;
+                                    break;
+                                case "identityfile":
+                                    session.privateKey = value;
+                                    break;
+                                case "connecttimeout":
+                                    session.handshakeTimeout = Number.parseInt(value);
+                                    break;
+                                default:
+                                    break;
+                            }
+                        }
+                    }
+                }
+                SSHConfigs.push(session);
+            }
+        }
+        return SSHConfigs;
+    }
 }
