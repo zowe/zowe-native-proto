@@ -22,7 +22,7 @@ import (
 )
 
 func main() {
-	utils.InitLogger()
+	utils.InitLogger(false)
 	utils.SetAutoConvOnUntaggedStdio()
 	// Channel for receiving input from stdin
 	input := make(chan []byte)
@@ -42,6 +42,7 @@ func main() {
 		}
 	}()
 
+	// Initialize the command dispatcher and register all core commands
 	dispatcher := cmds.NewDispatcher()
 	cmds.InitializeCoreHandlers(dispatcher)
 

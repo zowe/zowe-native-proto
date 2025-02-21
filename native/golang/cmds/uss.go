@@ -20,6 +20,7 @@ import (
 	utils "zowe-native-proto/ioserver/utils"
 )
 
+// HandleListFilesRequest handles a ListFilesRequest by invoking built-in functions from Go's `os` module.
 func HandleListFilesRequest(jsonData []byte) {
 	listRequest, err := utils.ParseCommandRequest[uss.ListFilesRequest](jsonData)
 	if err != nil {
@@ -36,6 +37,7 @@ func HandleListFilesRequest(jsonData []byte) {
 
 	ussResponse := uss.ListFilesResponse{}
 
+	// If the path is not a directory, return a single file item
 	if !fileInfo.IsDir() {
 		ussResponse.Items = make([]t.UssItem, 1)
 		ussResponse.Items[0] = t.UssItem{
@@ -64,6 +66,7 @@ func HandleListFilesRequest(jsonData []byte) {
 	utils.PrintCommandResponse(ussResponse)
 }
 
+// HandleReadFileRequest handles a ReadFileRequest by invoking the `zowex uss view` command
 func HandleReadFileRequest(jsonData []byte) {
 	request, err := utils.ParseCommandRequest[uss.ReadFileRequest](jsonData)
 	if err != nil || (request.Encoding == "" && request.Path == "") {

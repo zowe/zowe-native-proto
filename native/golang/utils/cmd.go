@@ -58,6 +58,7 @@ func BuildCommandNoAutocvt(args []string) *exec.Cmd {
 	return cmd
 }
 
+// ParseCommandRequest parses a command request and returns the parsed request as the given type.
 func ParseCommandRequest[T any](data []byte) (T, error) {
 	var request T
 	err := json.Unmarshal(data, &request)
