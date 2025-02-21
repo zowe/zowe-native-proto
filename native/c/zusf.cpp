@@ -459,20 +459,23 @@ int zusf_chtag_uss_file_or_dir(ZUSF *zusf, string file, string tag, bool recursi
   {
     // TODO(traeok): Get CCSID from encoding name
   }
-  attrib64_t attr;
-  memset(&attr, 0, sizeof(attr));
-  attr.att_filetagchg = 1;
-  attr.att_filetag.ft_ccsid = ccsid;
-  attr.att_filetag.ft_txtflag = int(ccsid != 65535);
-
-  const auto rc = __chattr64((char *)file.c_str(), &attr, sizeof(attr));
-  if (rc != 0)
+  const auto is_dir = S_ISDIR(file_stats.st_mode);
+  if (!is_dir)
   {
-    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to update attributes for path '%s'", file.c_str());
-    return RTNCD_FAILURE;
-  }
+    attrib64_t attr;
+    memset(&attr, 0, sizeof(attr));
+    attr.att_filetagchg = 1;
+    attr.att_filetag.ft_ccsid = ccsid;
+    attr.att_filetag.ft_txtflag = int(ccsid != 65535);
 
-  if (recursive && S_ISDIR(file_stats.st_mode))
+    const auto rc = __chattr64((char *)file.c_str(), &attr, sizeof(attr));
+    if (rc != 0)
+    {
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to update attributes for path '%s'", file.c_str());
+      return RTNCD_FAILURE;
+    }
+  }
+  else if (recursive)
   {
     DIR *dir;
     if ((dir = opendir(file.c_str())) == nullptr)
@@ -497,5 +500,5 @@ int zusf_chtag_uss_file_or_dir(ZUSF *zusf, string file, string tag, bool recursi
       }
     }
   }
-  return rc;
+  return 0;
 }
