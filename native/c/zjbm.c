@@ -230,9 +230,12 @@ int ZJBMTCOM(ZJB *zjb, STAT *PTR64 stat, STATJQTR **PTR64 jobInfo, int *entries)
 
   if (0 != rc || 0 != ssob.ssobretn)
   {
-    rc = iefssreq(&ssobp);                                       // TODO(Kelosky): recovery
     if (STATLERR == ssob.ssobretn && statrojb == stat->statreas) // skip if invalid job id
-      return RTNCD_SUCCESS;                                      // return no entries
+    {
+      stat->stattype = statmem; // free storage
+      rc = iefssreq(&ssobp);
+      return RTNCD_SUCCESS; // return no entries
+    }
 
     strcpy(zjb->diag.service_name, "IEFSSREQ");
     zjb->diag.service_rc = ssob.ssobretn;
@@ -240,6 +243,8 @@ int ZJBMTCOM(ZJB *zjb, STAT *PTR64 stat, STATJQTR **PTR64 jobInfo, int *entries)
     zjb->diag.service_rsn_secondary = stat->statrea2;
     zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "IEFSSREQ rc was: '%d' SSOBRTN was: '%d', STATREAS was: '%d', STATREA2 was: '%d'", rc, ssob.ssobretn, stat->statreas, stat->statrea2); // STATREAS contains the reason
     storage_free64(statjqtrsp);
+    stat->stattype = statmem; // free storage
+    rc = iefssreq(&ssobp);
     return RTNCD_FAILURE;
   }
 
@@ -252,9 +257,10 @@ int ZJBMTCOM(ZJB *zjb, STAT *PTR64 stat, STATJQTR **PTR64 jobInfo, int *entries)
   {
     if (loop_control > zjb->jobs_max)
     {
-      rc = iefssreq(&ssobp); // TODO(Kelosky): recovery
       zjb->diag.detail_rc = ZJB_RSNCD_MAX_JOBS_REACHED;
       zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "Reached maximum returned jobs requested %d", zjb->jobs_max);
+      stat->stattype = statmem; // free storage
+      rc = iefssreq(&ssobp);
       return RTNCD_WARNING;
       break;
     }
