@@ -713,7 +713,7 @@ int handle_job_submit(ZCLIResult result)
 
   vector<ZJob> jobs;
   string jobid;
-  rc = zjb_submit(&zjb, dsn, jobid);
+  rc = zjb_submit_dsn(&zjb, dsn, jobid);
 
   if (0 != rc)
   {
@@ -747,7 +747,7 @@ int handle_job_submit_jcl(ZCLIResult result)
 
   vector<ZJob> jobs;
   string jobid;
-  rc = zjb_submit(&zjb, data, jobid, true);
+  rc = zjb_submit(&zjb, data, jobid);
 
   if (0 != rc)
   {
