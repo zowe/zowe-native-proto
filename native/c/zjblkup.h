@@ -16,6 +16,7 @@
 #include "zssitype.h"
 #include "iaztlkdf.h"
 #include "zwto.h"
+#include "zjbm.h"
 
 #if defined(__IBM_METAL__)
 #ifndef _IAZTLKDF_DSECT
@@ -51,15 +52,15 @@
 #define IAZTLKUP(ssob, datastr, outarea, outlen, plist, rc)
 #endif
 
-static int iaztlkup(SSOB *ssob, STATJQ *statjq)
+static int iaztlkup(SSOB *ssob, ZJB_JOB_INFO *job_info)
 {
   int rc = 0;
-  char response[64] = {0};
-  int response_len = sizeof(response);
+  int response_len = sizeof(job_info->phase_text) - 1;
+  memset(job_info->phase_text, 0x00, sizeof(job_info->phase_text));
   struct tlkup plist = {0};
   IAZTLKUP(*ssob,
-           *statjq,
-           response[0],
+           job_info->statjqtr,
+           job_info->phase_text[0],
            response_len,
            plist,
            rc);

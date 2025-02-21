@@ -167,7 +167,7 @@ int ZJBMPRG(ZJB *zjb)
 
 // view job
 #pragma prolog(ZJBMVIEW, "&CCN_MAIN SETB 1 \n MYPROLOG")
-int ZJBMVIEW(ZJB *zjb, STATJQTR **PTR64 job_info, int *entries)
+int ZJBMVIEW(ZJB *zjb, ZJB_JOB_INFO **PTR64 job_info, int *entries)
 {
   STAT stat = {0};
   init_stat(&stat);
@@ -181,7 +181,7 @@ int ZJBMVIEW(ZJB *zjb, STATJQTR **PTR64 job_info, int *entries)
 
 // list jobs
 #pragma prolog(ZJBMLIST, "&CCN_MAIN SETB 1 \n MYPROLOG")
-int ZJBMLIST(ZJB *zjb, STATJQTR **PTR64 job_info, int *entries)
+int ZJBMLIST(ZJB *zjb, ZJB_JOB_INFO **PTR64 job_info, int *entries)
 {
   STAT stat = {0};
   init_stat(&stat);
@@ -203,12 +203,12 @@ int ZJBMLIST(ZJB *zjb, STATJQTR **PTR64 job_info, int *entries)
   return ZJBMTCOM(zjb, &stat, job_info, entries);
 }
 
-int ZJBMTCOM(ZJB *zjb, STAT *PTR64 stat, STATJQTR **PTR64 jobInfo, int *entries)
+int ZJBMTCOM(ZJB *zjb, STAT *PTR64 stat, ZJB_JOB_INFO **PTR64 job_info, int *entries)
 {
   int rc = 0;
   int loop_control = 0;
 
-  STATJQTR *statjqtrsp = storage_get64(zjb->buffer_size);
+  ZJB_JOB_INFO *statjqtrsp = storage_get64(zjb->buffer_size);
 
   SSOB *PTR32 ssobp = NULL;
   SSOB ssob = {0};
@@ -249,7 +249,7 @@ int ZJBMTCOM(ZJB *zjb, STAT *PTR64 stat, STATJQTR **PTR64 jobInfo, int *entries)
   }
 
   statjqp = (STATJQ * PTR32) stat->statjobf;
-  *jobInfo = statjqtrsp;
+  *job_info = statjqtrsp;
 
   int total_size = 0;
 
@@ -265,7 +265,7 @@ int ZJBMTCOM(ZJB *zjb, STAT *PTR64 stat, STATJQTR **PTR64 jobInfo, int *entries)
       break;
     }
 
-    total_size += (int)sizeof(STATJQTR);
+    total_size += (int)sizeof(ZJB_JOB_INFO);
 
     if (total_size <= zjb->buffer_size)
     {
@@ -275,6 +275,17 @@ int ZJBMTCOM(ZJB *zjb, STAT *PTR64 stat, STATJQTR **PTR64 jobInfo, int *entries)
       statjqtrp = (STATJQTR * PTR32)((unsigned char *PTR32)statjqhdp + sizeof(STATJQHD));
 
       memcpy(statjqtrsp, statjqtrp, sizeof(STATJQTR));
+
+      int rc = iaztlkup(&ssob, statjqtrsp);
+      if (0 != rc)
+      {
+        strcpy(zjb->diag.service_name, "iaztlkup");
+        zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "IAZTLKUP RC was: '%d'", rc);
+        zjb->diag.detail_rc = ZJB_RTNCD_SERVICE_FAILURE;
+        storage_free64(statjqtrsp);
+        return RTNCD_FAILURE;
+      }
+
       statjqtrsp++;
     }
     else
