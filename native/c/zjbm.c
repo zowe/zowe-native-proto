@@ -226,8 +226,14 @@ int ZJBMTCOM(ZJB *zjb, STAT *PTR64 stat, STATJQTR **PTR64 jobInfo, int *entries)
   ssobp = (SSOB * PTR32)((unsigned int)ssobp | 0x80000000);
   rc = iefssreq(&ssobp); // TODO(Kelosky): recovery
 
+#define STATLERR 8
+
   if (0 != rc || 0 != ssob.ssobretn)
   {
+    rc = iefssreq(&ssobp);                                       // TODO(Kelosky): recovery
+    if (STATLERR == ssob.ssobretn && statrojb == stat->statreas) // skip if invalid job id
+      return RTNCD_SUCCESS;                                      // return no entries
+
     strcpy(zjb->diag.service_name, "IEFSSREQ");
     zjb->diag.service_rc = ssob.ssobretn;
     zjb->diag.service_rsn = stat->statreas;
@@ -246,6 +252,7 @@ int ZJBMTCOM(ZJB *zjb, STAT *PTR64 stat, STATJQTR **PTR64 jobInfo, int *entries)
   {
     if (loop_control > zjb->jobs_max)
     {
+      rc = iefssreq(&ssobp); // TODO(Kelosky): recovery
       zjb->diag.detail_rc = ZJB_RSNCD_MAX_JOBS_REACHED;
       zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "Reached maximum returned jobs requested %d", zjb->jobs_max);
       return RTNCD_WARNING;
