@@ -53,7 +53,7 @@ future, here is C++ code that may be useful:
 	std::cin.read(&data[0], byteSize);
 */
 func (rwc ReadWriteCloser) ExecCmdWithStdin(args []string, data []byte) (out []byte, err error) {
-	_, err = rwc.WriteCloser.Write([]byte(strings.Join(args, " ") + "\n"))
+	_, err = rwc.WriteCloser.Write([]byte(BuildArgString(args) + "\n"))
 	if err != nil {
 		return
 	}

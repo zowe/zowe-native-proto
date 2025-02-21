@@ -15,9 +15,36 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
 var exePath string
+
+func BuildArgString(args []string) string {
+	var sb strings.Builder
+
+	for i, arg := range args {
+		if i > 0 {
+			sb.WriteString(" ")
+		}
+
+		if strings.Contains(arg, " ") || strings.Contains(arg, "\"") {
+			sb.WriteString("\"")
+			for _, char := range arg {
+				if char == '"' {
+					sb.WriteString("\\\"")
+				} else {
+					sb.WriteRune(char)
+				}
+			}
+			sb.WriteString("\"")
+		} else {
+			sb.WriteString(arg)
+		}
+	}
+
+	return sb.String()
+}
 
 /**
  * Shared logic for command builder functions.
