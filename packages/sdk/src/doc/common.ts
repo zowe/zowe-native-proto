@@ -15,31 +15,86 @@
 // source: common.go
 
 export interface CommandRequest {
+    /**
+     * Requested command to execute
+     */
     command: string;
 }
+export interface CommandResponse {
+    error?: ErrorDetails;
+}
+export interface ErrorDetails {
+    msg: string;
+    code?: string;
+}
 export interface Dataset {
+    /**
+     * Dataset name
+     */
     name: string;
+    /**
+     * Dataset organization
+     */
     dsorg: string;
+    /**
+     * Volume serial number
+     */
     volser: string;
 }
 export interface DsMember {
+    /**
+     * Dataset member name
+     */
     name: string;
 }
 export interface UssItem {
+    /**
+     * File name
+     */
     name: string;
+    /**
+     * Whether the item is a directory
+     */
     isDir: boolean;
 }
 export interface Job {
+    /**
+     * Job ID
+     */
     id: string;
+    /**
+     * Job name
+     */
     name: string;
+    /**
+     * Job status
+     */
     status: string;
+    /**
+     * Job return code
+     */
     retcode: string;
 }
 export interface Spool {
+    /**
+     * Spool ID
+     */
     id: number /* int */;
+    /**
+     * DD name
+     */
     ddname: string;
+    /**
+     * Step name in the job
+     */
     stepname: string;
+    /**
+     * Dataset name
+     */
     dsname: string;
+    /**
+     * Procedure name for the step
+     */
     procstep: string;
 }
 
@@ -47,9 +102,18 @@ export interface Spool {
 // source: options.go
 
 export interface ListOptions {
+    /**
+     * Maximum number of items to return
+     */
     maxItems?: number /* int */;
+    /**
+     * Response timeout in seconds
+     */
     responseTimeout?: number /* int */;
 }
 export interface ListDatasetOptions {
+    /**
+     * Skip data sets that come before this data set name
+     */
     start?: string;
 }

@@ -9,8 +9,9 @@
  *
  */
 
+import type { CommandResponse } from "./common";
 export interface IRpcRequest {
     command: string;
 }
 
-export type IRpcResponse = {};
+export interface IRpcResponse extends CommandResponse {}

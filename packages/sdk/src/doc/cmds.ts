@@ -15,29 +15,50 @@ import type * as common from "./common.ts";
 //////////
 // source: requests.go
 
-export interface IssueConsoleRequest {
+export interface IssueConsoleRequest extends common.CommandRequest {
     command: "consoleCommand";
+    /**
+     * Console command to execute
+     */
     commandText: string;
+    /**
+     * Name of the console
+     */
     consoleName: string;
 }
-export interface IssueTsoRequest {
+export interface IssueTsoRequest extends common.CommandRequest {
     command: "tsoCommand";
+    /**
+     * TSO command to execute
+     */
     commandText: string;
 }
-export interface IssueUnixRequest {
+export interface IssueUnixRequest extends common.CommandRequest {
     command: "unixCommand";
+    /**
+     * UNIX command to execute
+     */
     commandText: string;
 }
 
 //////////
 // source: responses.go
 
-export interface IssueConsoleResponse {
+export interface IssueConsoleResponse extends common.CommandResponse {
+    /**
+     * Data returned from the console command
+     */
     data: string;
 }
-export interface IssueTsoResponse {
+export interface IssueTsoResponse extends common.CommandResponse {
+    /**
+     * Data returned from the TSO command
+     */
     data: string;
 }
-export interface IssueUnixResponse {
+export interface IssueUnixResponse extends common.CommandResponse {
+    /**
+     * Data returned from the UNIX command
+     */
     data: string;
 }

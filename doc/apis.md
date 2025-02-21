@@ -16,12 +16,12 @@
 | _List data set members_  | ✅              | ✅  | 🚧 <sup>1</sup> | ✅         | ✅  | ✅  | ✅   |
 | _Read data set_          | ✅              | ✅  | 🚧 <sup>2</sup> | ✅         | ✅  | ✅  | ✅   |
 | _Read data set member_   | ✅              | ✅  | 🚧 <sup>2</sup> | ✅         | ✅  | ✅  | ✅   |
-| _Write data set_         | ✅              | ✅  | 🚧 <sup>2</sup> | ✅         | ✅  | ✅  | ❌   |
-| _Write data set member_  | ✅              | ✅  | 🚧 <sup>2</sup> | ✅         | ✅  | ✅  | ❌   |
-| _Create data set_        | ✅              | ✅  | 🚧 <sup>3</sup> | ❌         | ❌  | ❌  | ❌   |
+| _Write data set_         | ✅              | ✅  | 🚧 <sup>2</sup> | ✅         | ✅  | ✅  | ✅   |
+| _Write data set member_  | ✅              | ✅  | 🚧 <sup>2</sup> | ✅         | ✅  | ✅  | ✅   |
+| _Create data set_        | ✅              | ✅  | 🚧 <sup>3</sup> | ✅         | ✅  | ✅  | ✅   |
 | _Create data set member_ | ✅              | ✅  | ❌              | ❌         | ❌  | ❌  | ❌   |
-| _Delete data set_        | ✅              | ✅  | ✅              | ❌         | ❌  | ❌  | ❌   |
-| _Delete data set member_ | ✅              | ✅  | ✅              | ❌         | ❌  | ❌  | ❌   |
+| _Delete data set_        | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
+| _Delete data set member_ | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
 | Migrate data set         | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | Recall data set          | 🚧 <sup>4</sup> | ❌  | ✅              | ✅         | ✅  | ✅  | ❌   |
 | Delete migrated data set | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
@@ -41,15 +41,15 @@
 | Operation                | z/OSMF | FTP | Backend         | Middleware | SDK | CLI | VSCE |
 | ------------------------ | ------ | --- | --------------- | ---------- | --- | --- | ---- |
 | _List files/directories_ | ✅     | ✅  | 🚧 <sup>1</sup> | ✅         | ✅  | ✅  | ✅   |
-| _Read USS file_          | ✅     | ✅  | 🚧 <sup>2</sup> | ✅         | ✅  | ✅  | ❌   |
-| _Write USS file_         | ✅     | ✅  | 🚧 <sup>2</sup> | ✅         | ✅  | ✅  | ❌   |
-| _Create file/directory_  | ✅     | ✅  | 🚧 <sup>3</sup> | ✅         | ❌  | ❌  | ❌   |
-| _Delete file/directory_  | ✅     | ✅  | ✅              | ❌         | ❌  | ❌  | ❌   |
+| _Read USS file_          | ✅     | ✅  | 🚧 <sup>2</sup> | ✅         | ✅  | ✅  | ✅   |
+| _Write USS file_         | ✅     | ✅  | 🚧 <sup>2</sup> | ✅         | ✅  | ✅  | ✅   |
+| _Create file/directory_  | ✅     | ✅  | 🚧 <sup>3</sup> | ✅         | ✅  | ✅  | ✅   |
+| _Delete file/directory_  | ✅     | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
 | Copy file/directory      | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | Move file/directory      | ✅     | ✅  | ❌              | ❌         | ❌  | ❌  | ❌   |
-| _`chmod` file/directory_ | ✅     | ❌  | ✅              | ✅         | ✅  | ✅  | ❌   |
-| _`chown` file/directory_ | ✅     | ❌  | ✅              | ❌         | ❌  | ❌  | ❌   |
-| _`chtag` USS file_       | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
+| _`chmod` file/directory_ | ✅     | ❌  | ✅              | ✅         | ✅  | ✅  | ✅   |
+| _`chown` file/directory_ | ✅     | ❌  | ✅              | ✅         | ✅  | ✅  | ✅   |
+| _`chtag` USS file_       | ✅     | ❌  | ✅              | ✅         | ✅  | ✅  | ✅   |
 | Invoke `extattr`         | ✅     | ❌  | ❌              | ❌         | ❌  | ➖  | ➖   |
 | Get ACL entries          | ✅     | ❌  | ❌              | ❌         | ❌  | ➖  | ➖   |
 | Set ACL entries          | ✅     | ❌  | ❌              | ❌         | ❌  | ➖  | ➖   |
@@ -69,17 +69,17 @@
 
 | Operation          | z/OSMF | FTP | Backend | Middleware | SDK | CLI | VSCE |
 | ------------------ | ------ | --- | ------- | ---------- | --- | --- | ---- |
-| _Get job status_   | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ❌   |
+| _Get job status_   | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅   |
 | _List jobs_        | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅   |
 | _List spool files_ | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅   |
 | _Read spool file_  | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅   |
 | _Get job JCL_      | ✅     | ❌  | ✅      | ✅         | ✅  | ✅  | ✅   |
-| _Submit job_       | ✅     | ✅  | ✅      | ❌         | ❌  | ❌  | ❌   |
+| _Submit job_       | ✅     | ✅  | ✅      | ✅         | ✅  | ❌  | ✅   |
 | Hold job           | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌   |
 | Release job        | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌   |
 | Change job class   | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ➖   |
-| Cancel job         | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌   |
-| _Delete job_       | ✅     | ✅  | ✅      | ❌         | ❌  | ❌  | ❌   |
+| Cancel job         | ✅     | ❌  | ❌      | ✅         | ✅  | ❌  | ❌   |
+| _Delete job_       | ✅     | ✅  | ✅      | ✅         | ✅  | ❌  | ❌   |
 
 ## Console
 

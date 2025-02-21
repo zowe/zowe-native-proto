@@ -17,12 +17,15 @@ import (
 	"log"
 	"os"
 
+	"zowe-native-proto/ioserver/cmds"
 	t "zowe-native-proto/ioserver/types/common"
 	utils "zowe-native-proto/ioserver/utils"
 )
 
 func main() {
+	utils.InitLogger(false)
 	utils.SetAutoConvOnUntaggedStdio()
+	// Channel for receiving input from stdin
 	input := make(chan []byte)
 
 	cmd := utils.BuildCommand([]string{"./zowex", "--it"})
@@ -48,6 +51,7 @@ func main() {
 	go func() {
 		buf := make([]byte, 1024)
 		for {
+			// Read input from stdin
 			n, err := os.Stdin.Read(buf)
 			if err != nil {
 				if err.Error() == "EOF" {
@@ -59,35 +63,24 @@ func main() {
 		}
 	}()
 
-	type CommandHandler func(utils.ReadWriteCloser, []byte)
-	commandHandlers := map[string]CommandHandler{
-		"readDataset":    HandleReadDatasetRequest,
-		"readFile":       HandleReadFileRequest,
-		"readSpool":      HandleReadSpoolRequest,
-		"getJcl":         HandleGetJclRequest,
-		"getStatus":      HandleGetStatusRequest,
-		"writeDataset":   HandleWriteDatasetRequest,
-		"writeFile":      HandleWriteFileRequest,
-		"listDatasets":   HandleListDatasetsRequest,
-		"listDsMembers":  HandleListDsMembersRequest,
-		"listFiles":      HandleListFilesRequest,
-		"listJobs":       HandleListJobsRequest,
-		"listSpools":     HandleListSpoolsRequest,
-		"consoleCommand": HandleConsoleCommandRequest,
-		"restoreDataset": HandleRestoreDatasetRequest,
-		"deleteDataset":  HandleDeleteDatasetRequest,
-	}
+	// Initialize the command dispatcher and register all core commands
+	dispatcher := cmds.NewDispatcher()
+	cmds.InitializeCoreHandlers(dispatcher)
 
 	for data := range input {
+		// Parse the command request
 		var request t.CommandRequest
 		err := json.Unmarshal(data, &request)
 		if err != nil {
-			log.Println("Error parsing command request:", err)
+			utils.PrintErrorResponse("Failed to parse command request: %v", err)
 			continue
 		}
 
-		if handler, ok := commandHandlers[request.Command]; ok {
-			handler(conn, data)
+		// Handle the command request if a supported command is provided
+		if handler, ok := dispatcher.Get(request.Command); ok {
+			handler(data)
+		} else {
+			utils.PrintErrorResponse("Unrecognized command %s", request.Command)
 		}
 	}
 }

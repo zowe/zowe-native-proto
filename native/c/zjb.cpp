@@ -296,17 +296,24 @@ int zjb_delete_by_jobid(ZJB *zjb, string jobid)
   return ZJBMPRG(zjb);
 }
 
-int zjb_submit(ZJB *zjb, string data_set, string &jobId)
+int zjb_submit_dsn(ZJB *zjb, string dsn, string &jobId)
 {
-  int rc = 0;
-  string content;
   ZDS zds = {0};
-  rc = zds_read_from_dsn(&zds, data_set, content);
+  string contents;
+  const auto rc = zds_read_from_dsn(&zds, dsn, contents);
   if (rc != 0)
   {
     memcpy(&zjb->diag, &zds.diag, sizeof(ZDIAG));
     return rc;
   }
+
+  return zjb_submit(zjb, contents, jobId);
+}
+
+int zjb_submit(ZJB *zjb, string contents, string &jobId)
+{
+  int rc = 0;
+  ZDS zds = {0};
 
   __dyn_t ip;
   rc = dyninit(&ip);
@@ -338,7 +345,7 @@ int zjb_submit(ZJB *zjb, string data_set, string &jobId)
     return RTNCD_FAILURE;
   }
 
-  rc = zds_write_to_dd(&zds, ddname, content);
+  rc = zds_write_to_dd(&zds, ddname, contents);
   if (rc != 0)
   {
     memcpy(&zjb->diag, &zds.diag, sizeof(ZDIAG));
