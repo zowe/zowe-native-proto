@@ -18,10 +18,37 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	t "zowe-native-proto/ioserver/types/common"
 )
 
 var exePath string
+
+func BuildArgString(args []string) string {
+	var sb strings.Builder
+
+	for i, arg := range args {
+		if i > 0 {
+			sb.WriteString(" ")
+		}
+
+		if strings.Contains(arg, " ") || strings.Contains(arg, "\"") {
+			sb.WriteString("\"")
+			for _, char := range arg {
+				if char == '"' {
+					sb.WriteString("\\\"")
+				} else {
+					sb.WriteRune(char)
+				}
+			}
+			sb.WriteString("\"")
+		} else {
+			sb.WriteString(arg)
+		}
+	}
+
+	return sb.String()
+}
 
 // BuildCommandShared builds a command with the shared logic for command builder functions
 func BuildCommandShared(name string, args []string) *exec.Cmd {

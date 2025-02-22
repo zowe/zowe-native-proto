@@ -21,7 +21,7 @@ import (
 )
 
 // HandleListFilesRequest handles a ListFilesRequest by invoking built-in functions from Go's `os` module.
-func HandleListFilesRequest(jsonData []byte) {
+func HandleListFilesRequest(_conn utils.StdioConn, jsonData []byte) {
 	listRequest, err := utils.ParseCommandRequest[uss.ListFilesRequest](jsonData)
 	if err != nil {
 		return
@@ -67,7 +67,7 @@ func HandleListFilesRequest(jsonData []byte) {
 }
 
 // HandleReadFileRequest handles a ReadFileRequest by invoking the `zowex uss view` command
-func HandleReadFileRequest(jsonData []byte) {
+func HandleReadFileRequest(conn utils.StdioConn, jsonData []byte) {
 	request, err := utils.ParseCommandRequest[uss.ReadFileRequest](jsonData)
 	if err != nil || (request.Encoding == "" && request.Path == "") {
 		return
@@ -78,7 +78,7 @@ func HandleReadFileRequest(jsonData []byte) {
 	if hasEncoding {
 		args = append(args, "--encoding", request.Encoding, "--rfb", "true")
 	}
-	out, err := utils.BuildCommand(args).Output()
+	out, err := conn.ExecCmd(args)
 	if err != nil {
 		utils.PrintErrorResponse("Error executing command: %v", err)
 		return
@@ -101,7 +101,7 @@ func HandleReadFileRequest(jsonData []byte) {
 }
 
 // HandleWriteFileRequest handles a WriteFileRequest by invoking the `zowex uss write` command
-func HandleWriteFileRequest(jsonData []byte) {
+func HandleWriteFileRequest(_conn utils.StdioConn, jsonData []byte) {
 	request, err := utils.ParseCommandRequest[uss.WriteFileRequest](jsonData)
 	if err != nil || (request.Encoding == "" && request.Path == "") {
 		return
@@ -146,7 +146,7 @@ func HandleWriteFileRequest(jsonData []byte) {
 }
 
 // HandleCreateFileRequest handles a CreateFileRequest by invoking the `zowex uss create-dir` or `create-file` command (depending on params)
-func HandleCreateFileRequest(jsonData []byte) {
+func HandleCreateFileRequest(conn utils.StdioConn, jsonData []byte) {
 	request, err := utils.ParseCommandRequest[uss.CreateFileRequest](jsonData)
 	if err != nil || len(request.Path) == 0 {
 		return
@@ -160,7 +160,7 @@ func HandleCreateFileRequest(jsonData []byte) {
 	if len(request.Mode) > 0 {
 		args = append(args, "--mode", request.Mode)
 	}
-	_, err = utils.BuildCommand(args).Output()
+	_, err = conn.ExecCmd(args)
 	response := uss.DeleteFileResponse{
 		Success: err == nil,
 		Path:    request.Path,
@@ -170,7 +170,7 @@ func HandleCreateFileRequest(jsonData []byte) {
 }
 
 // HandleDeleteFileRequest handles a DeleteFileRequest by invoking the `zowex uss delete` command
-func HandleDeleteFileRequest(jsonData []byte) {
+func HandleDeleteFileRequest(conn utils.StdioConn, jsonData []byte) {
 	request, err := utils.ParseCommandRequest[uss.DeleteFileRequest](jsonData)
 	if err != nil || len(request.Path) == 0 {
 		return
@@ -180,7 +180,7 @@ func HandleDeleteFileRequest(jsonData []byte) {
 	if request.Recursive {
 		args = append(args, "-r", "true")
 	}
-	_, err = utils.BuildCommand(args).Output()
+	_, err = conn.ExecCmd(args)
 	if err != nil {
 		utils.PrintErrorResponse("Failed to delete USS item: %s", err.Error())
 		return
@@ -195,7 +195,7 @@ func HandleDeleteFileRequest(jsonData []byte) {
 }
 
 // HandleChownFileRequest handles a ChownFileRequest by invoking the `zowex uss chown` command
-func HandleChownFileRequest(jsonData []byte) {
+func HandleChownFileRequest(conn utils.StdioConn, jsonData []byte) {
 	request, err := utils.ParseCommandRequest[uss.ChownFileRequest](jsonData)
 	if err != nil || len(request.Path) == 0 {
 		return
@@ -205,7 +205,7 @@ func HandleChownFileRequest(jsonData []byte) {
 	if request.Recursive {
 		args = append(args, "-r", "true")
 	}
-	_, err = utils.BuildCommand(args).Output()
+	_, err = conn.ExecCmd(args)
 	response := uss.ChownFileResponse{
 		Success: err == nil,
 		Path:    request.Path,
@@ -215,7 +215,7 @@ func HandleChownFileRequest(jsonData []byte) {
 }
 
 // HandleChmodFileRequest handles a ChmodFileRequest by invoking the `zowex uss chmod` command
-func HandleChmodFileRequest(jsonData []byte) {
+func HandleChmodFileRequest(conn utils.StdioConn, jsonData []byte) {
 	request, err := utils.ParseCommandRequest[uss.ChmodFileRequest](jsonData)
 	if err != nil || len(request.Path) == 0 {
 		return
@@ -225,7 +225,7 @@ func HandleChmodFileRequest(jsonData []byte) {
 	if request.Recursive {
 		args = append(args, "-r", "true")
 	}
-	_, err = utils.BuildCommand(args).Output()
+	_, err = conn.ExecCmd(args)
 	response := uss.ChmodFileResponse{
 		Success: err == nil,
 		Path:    request.Path,
@@ -235,7 +235,7 @@ func HandleChmodFileRequest(jsonData []byte) {
 }
 
 // HandleChtagFileRequest handles a ChtagFileRequest by invoking the `zowex uss chtag` command
-func HandleChtagFileRequest(jsonData []byte) {
+func HandleChtagFileRequest(conn utils.StdioConn, jsonData []byte) {
 	request, err := utils.ParseCommandRequest[uss.ChtagFileRequest](jsonData)
 	if err != nil || len(request.Path) == 0 {
 		return
@@ -245,7 +245,7 @@ func HandleChtagFileRequest(jsonData []byte) {
 	if request.Recursive {
 		args = append(args, "-r", "true")
 	}
-	_, err = utils.BuildCommand(args).Output()
+	_, err = conn.ExecCmd(args)
 	response := uss.ChtagFileResponse{
 		Success: err == nil,
 		Path:    request.Path,

@@ -14,11 +14,11 @@ package cmds
 import (
 	"fmt"
 	"sync"
-	"zowe-native-proto/ioserver/utils"
+	utils "zowe-native-proto/ioserver/utils"
 )
 
 // CommandHandler represents a function that handles a command request
-type CommandHandler func([]byte)
+type CommandHandler func(utils.StdioConn, []byte)
 
 // CmdDispatcher manages registration and lookup of command handlers
 type CmdDispatcher struct {

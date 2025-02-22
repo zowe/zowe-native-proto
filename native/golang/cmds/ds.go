@@ -22,7 +22,7 @@ import (
 )
 
 // HandleReadDatasetRequest handles a ReadDatasetRequest by invoking the `zowex data-set view` command
-func HandleReadDatasetRequest(jsonData []byte) {
+func HandleReadDatasetRequest(conn utils.StdioConn, jsonData []byte) {
 	dsRequest, err := utils.ParseCommandRequest[ds.ReadDatasetRequest](jsonData)
 	if err != nil || (dsRequest.Encoding == "" && dsRequest.Dsname == "") {
 		return
@@ -33,7 +33,7 @@ func HandleReadDatasetRequest(jsonData []byte) {
 	if hasEncoding {
 		args = append(args, "--encoding", dsRequest.Encoding, "--rfb", "true")
 	}
-	out, err := utils.BuildCommand(args).Output()
+	out, err := conn.ExecCmd(args)
 	if err != nil {
 		log.Println("Error executing command:", err)
 		return
@@ -48,7 +48,7 @@ func HandleReadDatasetRequest(jsonData []byte) {
 }
 
 // HandleWriteDatasetRequest handles a WriteDatasetRequest by invoking the `zowex data-set write` command
-func HandleWriteDatasetRequest(jsonData []byte) {
+func HandleWriteDatasetRequest(_conn utils.StdioConn, jsonData []byte) {
 	dsRequest, err := utils.ParseCommandRequest[ds.WriteDatasetRequest](jsonData)
 	if err != nil || (dsRequest.Encoding == "" && dsRequest.Dsname == "") {
 		return
@@ -91,7 +91,7 @@ func HandleWriteDatasetRequest(jsonData []byte) {
 }
 
 // HandleListDatasetsRequest handles a ListDatasetsRequest by invoking the `zowex data-set list` command
-func HandleListDatasetsRequest(jsonData []byte) {
+func HandleListDatasetsRequest(conn utils.StdioConn, jsonData []byte) {
 	listRequest, err := utils.ParseCommandRequest[ds.ListDatasetsRequest](jsonData)
 	if err != nil {
 		return
@@ -102,7 +102,7 @@ func HandleListDatasetsRequest(jsonData []byte) {
 	// 	args = append(args, "--start", listRequest.Start)
 	// }
 
-	out, err := utils.BuildCommand(args).CombinedOutput()
+	out, err := conn.ExecCmd(args)
 	if err != nil {
 		utils.PrintErrorResponse("Error executing command: %v", err)
 		return
@@ -126,7 +126,7 @@ func HandleListDatasetsRequest(jsonData []byte) {
 }
 
 // HandleListDsMembersRequest handles a ListDsMembersRequest by invoking the `zowex data-set list-members` command
-func HandleListDsMembersRequest(jsonData []byte) {
+func HandleListDsMembersRequest(conn utils.StdioConn, jsonData []byte) {
 	listRequest, err := utils.ParseCommandRequest[ds.ListDsMembersRequest](jsonData)
 	if err != nil {
 		return
@@ -137,7 +137,7 @@ func HandleListDsMembersRequest(jsonData []byte) {
 	// 	args = append(args, "--start", listRequest.Start)
 	// }
 
-	out, err := utils.BuildCommand(args).Output()
+	out, err := conn.ExecCmd(args)
 	if err != nil {
 		utils.PrintErrorResponse("Error executing command: %v", err)
 		return
@@ -164,14 +164,14 @@ func HandleListDsMembersRequest(jsonData []byte) {
 }
 
 // HandleRestoreDatasetRequest handles a RestoreDatasetRequest by invoking the `zowex data-set restore` command
-func HandleRestoreDatasetRequest(jsonData []byte) {
+func HandleRestoreDatasetRequest(conn utils.StdioConn, jsonData []byte) {
 	dsRequest, err := utils.ParseCommandRequest[ds.RestoreDatasetRequest](jsonData)
 	if err != nil {
 		return
 	}
 
 	args := []string{"data-set", "restore", dsRequest.Dsname}
-	_, err = utils.BuildCommand(args).Output()
+	_, err = conn.ExecCmd(args)
 	if err != nil {
 		utils.PrintErrorResponse("Failed to restore data set: %v", err)
 		return
@@ -183,14 +183,14 @@ func HandleRestoreDatasetRequest(jsonData []byte) {
 }
 
 // HandleDeleteDatasetRequest handles a DeleteDatasetRequest by invoking the `zowex data-set delete` command
-func HandleDeleteDatasetRequest(jsonData []byte) {
+func HandleDeleteDatasetRequest(conn utils.StdioConn, jsonData []byte) {
 	dsRequest, err := utils.ParseCommandRequest[ds.DeleteDatasetRequest](jsonData)
 	if err != nil {
 		return
 	}
 
 	args := []string{"data-set", "delete", dsRequest.Dsname}
-	_, err = utils.BuildCommand(args).Output()
+	_, err = conn.ExecCmd(args)
 
 	utils.PrintCommandResponse(ds.DeleteDatasetResponse{
 		Success: true,
