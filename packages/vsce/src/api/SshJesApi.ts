@@ -30,7 +30,15 @@ export class SshJesApi extends SshCommonApi implements MainframeInteraction.IJes
     }
 
     public async getJob(jobid: string): Promise<zosjobs.IJob> {
-        throw new Error("Not yet implemented");
+        const response = await (await this.client).jobs.getStatus({
+            jobId: jobid.toUpperCase(),
+        });
+        return {
+            jobid: response.id,
+            jobname: response.name,
+            status: response.status,
+            retcode: response.retcode,
+        } as zosjobs.IJob;
     }
 
     public async getSpoolFiles(jobname: string, jobid: string): Promise<zosjobs.IJobFile[]> {
@@ -59,19 +67,38 @@ export class SshJesApi extends SshCommonApi implements MainframeInteraction.IJes
         return response.data;
     }
 
+    public async cancelJob(job: zosjobs.IJob): Promise<boolean> {
+        const response = await (await this.client).jobs.cancelJob({
+            jobId: job.jobid.toUpperCase(),
+        });
+        return response.success;
+    }
+
     public async submitJcl(
         jcl: string,
         internalReaderRecfm?: string,
         internalReaderLrecl?: string,
     ): Promise<zosjobs.IJob> {
-        throw new Error("Not yet implemented");
+        const response = await (await this.client).jobs.submitJcl({
+            jcl,
+        });
+        return { jobid: response.jobId } as zosjobs.IJob;
     }
 
     public async submitJob(jobDataSet: string): Promise<zosjobs.IJob> {
-        throw new Error("Not yet implemented");
+        const response = await (await this.client).jobs.submitJob({
+            dsname: jobDataSet,
+        });
+        // TODO: implement missing job properties from submit job command
+        return { jobid: response.jobId } as unknown as zosjobs.IJob;
     }
 
     public async deleteJob(jobname: string, jobid: string): Promise<void> {
-        throw new Error("Not yet implemented");
+        const response = await (await this.client).jobs.deleteJob({
+            jobId: jobid,
+        });
+        if (!response.success) {
+            throw new Error(`Failed to delete job ${jobid}`);
+        }
     }
 }
