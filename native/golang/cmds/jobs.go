@@ -183,7 +183,7 @@ func HandleCancelJobRequest(conn utils.StdioConn, jsonData []byte) {
 		return
 	}
 
-	_, err = utils.BuildCommand([]string{"job", "cancel", request.JobId}).Output()
+	_, err = conn.ExecCmd([]string{"job", "cancel", request.JobId})
 
 	if err != nil {
 		utils.PrintErrorResponse("Failed to cancel job: %v", err)
@@ -203,7 +203,7 @@ func HandleSubmitJobRequest(conn utils.StdioConn, jsonData []byte) {
 		return
 	}
 
-	out, err := utils.BuildCommand([]string{"job", "submit", request.Dsname, "--only-jobid", "true"}).Output()
+	out, err := conn.ExecCmd([]string{"job", "submit", request.Dsname, "--only-jobid", "true"})
 
 	if err != nil {
 		utils.PrintErrorResponse("Failed to submit job: %v", err)
@@ -264,7 +264,7 @@ func HandleDeleteJobRequest(conn utils.StdioConn, jsonData []byte) {
 		return
 	}
 
-	_, err = utils.BuildCommand([]string{"job", "delete", request.JobId}).Output()
+	_, err = conn.ExecCmd([]string{"job", "delete", request.JobId})
 	if err != nil {
 		utils.PrintErrorResponse("Failed to delete job %s: %v", request.JobId, err)
 		return
