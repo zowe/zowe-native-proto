@@ -28,8 +28,7 @@ func main() {
 	// Channel for receiving input from stdin
 	input := make(chan []byte)
 
-	cmd := utils.BuildCommand([]string{"./zowex", "--it"})
-	cmd.Stderr = os.Stderr
+	cmd := utils.BuildCommand([]string{"--it"})
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		panic(err)
@@ -38,9 +37,14 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	conn := utils.ReadWriteCloser{
-		ReadCloser:  stdout,
-		WriteCloser: stdin,
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		panic(err)
+	}
+	conn := utils.StdioConn{
+		Stdin:  stdin,
+		Stdout: stdout,
+		Stderr: stderr,
 	}
 	cmd.Start()
 	if _, err = bufio.NewReader(stdout).ReadBytes('\n'); err != nil {
@@ -78,7 +82,7 @@ func main() {
 
 		// Handle the command request if a supported command is provided
 		if handler, ok := dispatcher.Get(request.Command); ok {
-			handler(data)
+			handler(conn, data)
 		} else {
 			utils.PrintErrorResponse("Unrecognized command %s", request.Command)
 		}

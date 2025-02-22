@@ -21,7 +21,7 @@ import (
 )
 
 // HandleListJobsRequest handles a ListJobsRequest by invoking the `zowex job list` command
-func HandleListJobsRequest(jsonData []byte) {
+func HandleListJobsRequest(conn utils.StdioConn, jsonData []byte) {
 	listRequest, err := utils.ParseCommandRequest[jobs.ListJobsRequest](jsonData)
 	if err != nil {
 		return
@@ -32,7 +32,7 @@ func HandleListJobsRequest(jsonData []byte) {
 		args = append(args, "--owner", listRequest.Owner)
 	}
 
-	out, err := utils.BuildCommand(args).Output()
+	out, err := conn.ExecCmd(args)
 	if err != nil {
 		utils.PrintErrorResponse("Failed to list jobs: %v", err)
 		return
@@ -61,7 +61,7 @@ func HandleListJobsRequest(jsonData []byte) {
 }
 
 // HandleListSpoolsRequest handles a ListSpoolsRequest by invoking the `zowex job list-files` command
-func HandleListSpoolsRequest(jsonData []byte) {
+func HandleListSpoolsRequest(conn utils.StdioConn, jsonData []byte) {
 	listRequest, err := utils.ParseCommandRequest[jobs.ListSpoolsRequest](jsonData)
 	if err != nil {
 		return
@@ -69,7 +69,7 @@ func HandleListSpoolsRequest(jsonData []byte) {
 
 	args := []string{"job", "list-files", listRequest.JobId, "--rfc", "true"}
 
-	out, err := utils.BuildCommand(args).Output()
+	out, err := conn.ExecCmd(args)
 	if err != nil {
 		utils.PrintErrorResponse("Failed to list spools: %v", err)
 		return
@@ -103,7 +103,7 @@ func HandleListSpoolsRequest(jsonData []byte) {
 }
 
 // HandleReadSpoolRequest handles a ReadSpoolRequest by invoking the `zowex job view-file` command
-func HandleReadSpoolRequest(jsonData []byte) {
+func HandleReadSpoolRequest(conn utils.StdioConn, jsonData []byte) {
 	request, err := utils.ParseCommandRequest[jobs.ReadSpoolRequest](jsonData)
 	if err != nil {
 		return
@@ -114,7 +114,7 @@ func HandleReadSpoolRequest(jsonData []byte) {
 	if hasEncoding {
 		args = append(args, "--encoding", request.Encoding, "--rfb", "true")
 	}
-	out, err := utils.BuildCommand(args).Output()
+	out, err := conn.ExecCmd(args)
 	if err != nil {
 		utils.PrintErrorResponse("Failed to read spool: %v", err)
 		return
@@ -130,14 +130,14 @@ func HandleReadSpoolRequest(jsonData []byte) {
 }
 
 // HandleGetJclRequest handles a GetJclRequest by invoking the `zowex job view-jcl` command
-func HandleGetJclRequest(jsonData []byte) {
+func HandleGetJclRequest(conn utils.StdioConn, jsonData []byte) {
 	request, err := utils.ParseCommandRequest[jobs.GetJclRequest](jsonData)
 	if err != nil {
 		return
 	}
 
 	args := []string{"job", "view-jcl", request.JobId}
-	out, err := utils.BuildCommand(args).Output()
+	out, err := conn.ExecCmd(args)
 	if err != nil {
 		utils.PrintErrorResponse("Failed to get JCL: %v", err)
 		return
@@ -150,14 +150,14 @@ func HandleGetJclRequest(jsonData []byte) {
 }
 
 // HandleGetStatusRequest handles a GetStatusRequest by invoking the `zowex job view-status` command
-func HandleGetStatusRequest(jsonData []byte) {
+func HandleGetStatusRequest(conn utils.StdioConn, jsonData []byte) {
 	request, err := utils.ParseCommandRequest[jobs.GetJobStatusRequest](jsonData)
 	if err != nil {
 		return
 	}
 
 	args := []string{"job", "view-status", request.JobId, "--rfc", "true"}
-	out, err := utils.BuildCommand(args).Output()
+	out, err := conn.ExecCmd(args)
 	if err != nil {
 		utils.PrintErrorResponse("Failed to get status: %v", err)
 		return
@@ -177,7 +177,7 @@ func HandleGetStatusRequest(jsonData []byte) {
 }
 
 // HandleSubmitJobRequest handles a SubmitJobRequest by invoking the `zowex job submit` command
-func HandleCancelJobRequest(jsonData []byte) {
+func HandleCancelJobRequest(conn utils.StdioConn, jsonData []byte) {
 	request, err := utils.ParseCommandRequest[jobs.CancelJobRequest](jsonData)
 	if err != nil {
 		return
@@ -197,7 +197,7 @@ func HandleCancelJobRequest(jsonData []byte) {
 }
 
 // HandleSubmitJobRequest handles a SubmitJobRequest by invoking the `zowex job submit` command
-func HandleSubmitJobRequest(jsonData []byte) {
+func HandleSubmitJobRequest(conn utils.StdioConn, jsonData []byte) {
 	request, err := utils.ParseCommandRequest[jobs.SubmitJobRequest](jsonData)
 	if err != nil {
 		return
@@ -218,7 +218,7 @@ func HandleSubmitJobRequest(jsonData []byte) {
 }
 
 // HandleSubmitJclRequest handles a SubmitJclRequest by invoking the `zowex job submit-jcl` command
-func HandleSubmitJclRequest(jsonData []byte) {
+func HandleSubmitJclRequest(conn utils.StdioConn, jsonData []byte) {
 	request, err := utils.ParseCommandRequest[jobs.SubmitJclRequest](jsonData)
 	if err != nil {
 		return
@@ -258,7 +258,7 @@ func HandleSubmitJclRequest(jsonData []byte) {
 }
 
 // HandleDeleteJobRequest handles a DeleteJobRequest by invoking the `zowex job delete` command
-func HandleDeleteJobRequest(jsonData []byte) {
+func HandleDeleteJobRequest(conn utils.StdioConn, jsonData []byte) {
 	request, err := utils.ParseCommandRequest[jobs.DeleteJobRequest](jsonData)
 	if err != nil {
 		return
