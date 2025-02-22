@@ -230,18 +230,20 @@ int ZJBMTCOM(ZJB *zjb, STAT *PTR64 stat, ZJB_JOB_INFO **PTR64 job_info, int *ent
 
   if (0 != rc || 0 != ssob.ssobretn)
   {
-    if (STATLERR == ssob.ssobretn && statrojb == stat->statreas) // skip if invalid job id
-    {
-      stat->stattype = statmem; // free storage
-      rc = iefssreq(&ssobp);
-      return RTNCD_SUCCESS; // return no entries
-    }
 
     strcpy(zjb->diag.service_name, "IEFSSREQ");
+    zjb->diag.detail_rc = ZJB_RTNCD_SERVICE_FAILURE;
     zjb->diag.service_rc = ssob.ssobretn;
     zjb->diag.service_rsn = stat->statreas;
     zjb->diag.service_rsn_secondary = stat->statrea2;
-    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "IEFSSREQ rc was: '%d' SSOBRTN was: '%d', STATREAS was: '%d', STATREA2 was: '%d'", rc, ssob.ssobretn, stat->statreas, stat->statrea2); // STATREAS contains the reason
+    if (STATLERR == ssob.ssobretn && statrojb == stat->statreas) // skip if invalid job id
+    {
+      zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "Job ID '%.8s' was not valid", stat->statojbi); // STATREAS contains the reason
+    }
+    else
+    {
+      zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "IEFSSREQ rc was: '%d' SSOBRTN was: '%d', STATREAS was: '%d', STATREA2 was: '%d'", rc, ssob.ssobretn, stat->statreas, stat->statrea2); // STATREAS contains the reason
+    }
     storage_free64(statjqtrsp);
     stat->stattype = statmem; // free storage
     rc = iefssreq(&ssobp);
