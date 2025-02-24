@@ -93,6 +93,13 @@ export interface CreateDatasetRequest extends common.CommandRequest {
    */
   dstype: 'default' | 'vb' | 'adata';
 }
+export interface CreateMemberRequest extends common.CommandRequest {
+  command: "createMember";
+  /**
+   * Dataset name
+   */
+  dsname: string;
+}
 
 //////////
 // source: responses.go
@@ -158,4 +165,5 @@ export interface GenericDatasetResponse extends common.CommandResponse {
   dsname: string;
 }
 export type CreateDatasetResponse = GenericDatasetResponse;
+export type CreateMemberResponse = GenericDatasetResponse;
 export type DeleteDatasetResponse = GenericDatasetResponse;
