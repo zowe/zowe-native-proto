@@ -80,8 +80,3 @@ type CreateDatasetRequest struct {
 	// Type of the dataset to make
 	Type string `json:"dstype" tstype:"'default' | 'vb' | 'adata'"`
 }
-
-type CreateDatasetRequest struct {
-	Command string `json:"command" tstype:"\"createDataset\""`
-	Dsname  string `json:"dsname"`
-}
