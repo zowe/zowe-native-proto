@@ -511,6 +511,7 @@ async function uploadFile(sftpcon: SFTPWrapper, from: string, to: string) {
         sftpcon.fastPut(from, to, (err) => {
             if (err) {
                 console.log("Put err");
+                console.log(from, to);
                 throw err;
             }
             finish();
@@ -524,6 +525,7 @@ async function download(sftpcon: SFTPWrapper, from: string, to: string) {
         sftpcon.fastGet(from, to, (err) => {
             if (err) {
                 console.log("Get err");
+                console.log(from, to);
                 throw err;
             }
             finish();
