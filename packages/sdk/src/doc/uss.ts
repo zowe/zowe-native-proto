@@ -15,35 +15,145 @@ import type * as common from "./common.ts"
 //////////
 // source: requests.go
 
-export interface ListFilesRequest extends common.ListOptions {
+export interface ListFilesRequest extends common.CommandRequest, common.ListOptions {
   command: "listFiles";
+  /**
+   * Directory to list files for
+   */
   fspath: string;
 }
-export interface ReadFileRequest {
+export interface ReadFileRequest extends common.CommandRequest {
   command: "readFile";
+  /**
+   * Desired encoding for the file (optional)
+   */
   encoding?: string;
+  /**
+   * Remote file path to read contents from
+   */
   fspath: string;
 }
-export interface WriteFileRequest {
+export interface WriteFileRequest extends common.CommandRequest {
   command: "writeFile";
+  /**
+   * Desired encoding for the file (optional)
+   */
   encoding?: string;
+  /**
+   * Remote file path to write contents to
+   */
   fspath: string;
+  /**
+   * New contents for the file
+   */
   data: string;
+}
+export interface CreateFileRequest extends common.CommandRequest {
+  command: "createFile";
+  /**
+   * Permissions for the new path
+   */
+  permissions?: string;
+  /**
+   * Remote file path to create
+   */
+  fspath: string;
+  /**
+   * Whether to create a directory (true) or a file (false)
+   */
+  isDir?: boolean;
+}
+export interface DeleteFileRequest extends common.CommandRequest {
+  command: "deleteFile";
+  /**
+   * Remote file path to delete
+   */
+  fspath: string;
+  /**
+   * Whether to delete the file recursively
+   */
+  recursive: boolean;
+}
+export interface ChmodFileRequest extends common.CommandRequest {
+  command: "chmodFile";
+  /**
+   * Desired permissions for the file (represented as an octal value, e.g. "755")
+   */
+  mode: string;
+  /**
+   * Remote file path to change permissions for
+   */
+  fspath: string;
+  /**
+   * Whether to change permissions recursively
+   */
+  recursive: boolean;
+}
+export interface ChownFileRequest extends common.CommandRequest {
+  command: "chownFile";
+  /**
+   * New owner for the file
+   */
+  owner: string;
+  /**
+   * Remote file path to change ownership for
+   */
+  fspath: string;
+  /**
+   * Whether to apply ownership to inner files and directories
+   */
+  recursive: boolean;
+}
+export interface ChtagFileRequest extends common.CommandRequest {
+  command: "chtagFile";
+  /**
+   * Remote file path to change tags for
+   */
+  fspath: string;
+  /**
+   * New tag for the file
+   */
+  tag: string;
+  /**
+   * Whether to apply the tag to inner files and directories
+   */
+  recursive: boolean;
 }
 
 //////////
 // source: responses.go
 
-export interface ReadFileResponse {
-  encoding?: string;
+export interface GenericFileResponse extends common.CommandResponse {
+  /**
+   * Whether the operation was successful
+   */
+  success: boolean;
+  /**
+   * Remote file path
+   */
   fspath: string;
+}
+export interface ReadFileResponse extends common.CommandResponse {
+  /**
+   * Returned encoding for the file
+   */
+  encoding?: string;
+  /**
+   * Remote file path
+   */
+  fspath: string;
+  /**
+   * File contents
+   */
   data: Buffer | string;
 }
-export interface WriteFileResponse {
-  success: boolean;
-  fspath: string;
-}
-export interface ListFilesResponse {
+export type WriteFileResponse = GenericFileResponse;
+export interface ListFilesResponse extends common.CommandResponse {
   items: common.UssItem[];
   returnedRows: number /* int */;
 }
+export type CreateFileResponse = GenericFileResponse;
+export type DeleteFileResponse = GenericFileResponse;
+export type ChmodFileResponse = GenericFileResponse;
+export type ChownFileResponse = GenericFileResponse;
+export type ChtagFileResponse = GenericFileResponse;

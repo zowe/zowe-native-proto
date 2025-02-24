@@ -16,12 +16,12 @@
 #include <sstream>
 #include <cstdlib>
 #include <stdio.h>
+#include <unistd.h>
 #include <algorithm>
 #include "zcn.hpp"
 #include "zut.hpp"
 #include "zcli.hpp"
 #include "zjb.hpp"
-#include "unistd.h"
 #include "zds.hpp"
 #include "zusf.hpp"
 #include "ztso.hpp"
@@ -41,6 +41,7 @@ int handle_job_view_status(ZCLIResult);
 int handle_job_view_file(ZCLIResult);
 int handle_job_view_jcl(ZCLIResult);
 int handle_job_submit(ZCLIResult);
+int handle_job_submit_jcl(ZCLIResult);
 int handle_job_delete(ZCLIResult);
 
 int handle_console_issue(ZCLIResult);
@@ -71,11 +72,10 @@ int handle_uss_create_dir(ZCLIResult);
 int handle_uss_list(ZCLIResult);
 int handle_uss_view(ZCLIResult);
 int handle_uss_write(ZCLIResult);
-int handle_uss_delete_file(ZCLIResult);
-int handle_uss_delete_dir(ZCLIResult);
+int handle_uss_delete(ZCLIResult);
 int handle_uss_chmod(ZCLIResult);
 int handle_uss_chown(ZCLIResult);
-
+int handle_uss_chtag(ZCLIResult);
 int handle_tso_issue(ZCLIResult);
 
 int main(int argc, char *argv[])
@@ -284,6 +284,13 @@ int main(int argc, char *argv[])
   job_submit.get_positionals().push_back(job_dsn);
   job_group.get_verbs().push_back(job_submit);
 
+  ZCLIVerb job_submit_jcl("submit-jcl");
+  job_submit_jcl.get_aliases().push_back("subj");
+  job_submit_jcl.set_description("submit JCL contents directly");
+  job_submit_jcl.set_zcli_verb_handler(handle_job_submit);
+  job_submit_jcl.get_options().push_back(job_jobid_only);
+  job_group.get_verbs().push_back(job_submit_jcl);
+
   ZCLIVerb job_delete("delete");
   job_delete.get_aliases().push_back("del");
   job_delete.set_description("delete a job");
@@ -327,8 +334,9 @@ int main(int argc, char *argv[])
   uss_file_mode.set_required(false);
   uss_file_mode.set_description("permissions");
   ZCLIOption uss_recursive("recursive");
+  uss_recursive.get_aliases().push_back("-r");
   uss_recursive.set_required(false);
-  uss_recursive.set_description("recursive");
+  uss_recursive.set_description("Applies the operation recursively (e.g. for folders w/ inner files)");
 
   ZCLIVerb uss_create_file("create-file");
   uss_create_file.set_description("create a USS file");
@@ -365,33 +373,49 @@ int main(int argc, char *argv[])
   uss_write.get_options().push_back(encoding_option);
   uss_group.get_verbs().push_back(uss_write);
 
-  ZCLIVerb uss_delete_file("delete-file");
-  uss_delete_file.set_description("delete a USS file");
-  uss_delete_file.set_zcli_verb_handler(handle_uss_delete_file);
-  uss_delete_file.get_positionals().push_back(uss_file_path);
-  uss_group.get_verbs().push_back(uss_delete_file);
+  ZCLIVerb uss_delete("delete");
+  uss_delete.set_description("delete a USS item");
+  uss_delete.set_zcli_verb_handler(handle_uss_delete);
+  uss_delete.get_positionals().push_back(uss_file_path);
+  uss_delete.get_options().push_back(uss_recursive);
+  uss_group.get_verbs().push_back(uss_delete);
 
-  ZCLIVerb uss_delete_dir("delete-dir");
-  uss_delete_dir.set_description("delete a USS directory");
-  uss_delete_dir.set_zcli_verb_handler(handle_uss_delete_dir);
-  uss_delete_dir.get_positionals().push_back(uss_file_path);
-  uss_delete_dir.get_options().push_back(uss_recursive);
-  uss_group.get_verbs().push_back(uss_delete_dir);
+  ZCLIPositional uss_owner("owner");
+  uss_owner.set_required(true);
+  uss_owner.set_description("New owner (or owner:group) for the file or directory");
+
+  ZCLIPositional uss_mode_positional("mode");
+  uss_mode_positional.set_required(true);
+  uss_mode_positional.set_description("new permissions for the file or directory");
 
   ZCLIVerb uss_chmod("chmod");
   uss_chmod.set_description("change permissions on a USS file or directory");
   uss_chmod.set_zcli_verb_handler(handle_uss_chmod);
+  uss_chmod.get_positionals().push_back(uss_mode_positional);
   uss_chmod.get_positionals().push_back(uss_file_path);
-  uss_chmod.get_options().push_back(uss_file_mode);
   uss_chmod.get_options().push_back(uss_recursive);
   uss_group.get_verbs().push_back(uss_chmod);
 
   ZCLIVerb uss_chown("chown");
   uss_chown.set_description("change owner on a USS file or directory");
   uss_chown.set_zcli_verb_handler(handle_uss_chown);
+  uss_chown.get_positionals().push_back(uss_owner);
   uss_chown.get_positionals().push_back(uss_file_path);
   uss_chown.get_options().push_back(uss_recursive);
   uss_group.get_verbs().push_back(uss_chown);
+
+  ZCLIPositional uss_tag("tag");
+  uss_tag.set_required(true);
+  uss_tag.set_description("new tag for the file");
+
+  ZCLIVerb uss_chtag("chtag");
+  uss_chtag.set_description("change tags on a USS file");
+  uss_chtag.set_zcli_verb_handler(handle_uss_chtag);
+  uss_chtag.get_positionals().push_back(uss_file_path);
+  uss_chtag.get_positionals().push_back(uss_tag);
+  uss_chtag.get_options().push_back(uss_recursive);
+  uss_group.get_verbs().push_back(uss_chtag);
+
   // log group
   //
   ZCLIGroup log_group("log");
@@ -689,7 +713,7 @@ int handle_job_submit(ZCLIResult result)
 
   vector<ZJob> jobs;
   string jobid;
-  rc = zjb_submit(&zjb, dsn, jobid);
+  rc = zjb_submit_dsn(&zjb, dsn, jobid);
 
   if (0 != rc)
   {
@@ -703,6 +727,40 @@ int handle_job_submit(ZCLIResult result)
     cout << jobid << endl;
   else
     cout << "Submitted " << dsn << ", " << jobid << endl;
+
+  return RTNCD_SUCCESS;
+}
+
+int handle_job_submit_jcl(ZCLIResult result)
+{
+  int rc = 0;
+  ZJB zjb = {0};
+
+  string data;
+  string line;
+
+  std::istreambuf_iterator<char> begin(std::cin);
+  std::istreambuf_iterator<char> end;
+
+  std::vector<char> bytes(begin, end);
+  data.assign(bytes.begin(), bytes.end());
+
+  vector<ZJob> jobs;
+  string jobid;
+  rc = zjb_submit(&zjb, data, jobid);
+
+  if (0 != rc)
+  {
+    cout << "Error: could not submit JCL: '" << data << "' rc: '" << rc << "'" << endl;
+    cout << "  Details: " << zjb.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
+  string only_jobid(result.get_option("--only-jobid").get_value());
+  if ("true" == only_jobid)
+    cout << jobid << endl;
+  else
+    cout << "Submitted, " << jobid << endl;
 
   return RTNCD_SUCCESS;
 }
@@ -952,7 +1010,7 @@ int handle_data_set_list(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  return rc;
+  return warn == "false" && rc == RTNCD_WARNING ? RTNCD_SUCCESS : rc;
 }
 
 int handle_data_set_list_members_dsn(ZCLIResult result)
@@ -1211,31 +1269,33 @@ int handle_uss_write(ZCLIResult result)
   return rc;
 }
 
-int handle_uss_delete_file(ZCLIResult result)
+int handle_uss_delete(ZCLIResult result)
 {
-  printf("method not implemented\n");
-  return 1;
-}
+  string file_path = result.get_positional("file-path").get_value();
+  bool recursive = result.get_option("--recursive").is_found();
 
-int handle_uss_delete_dir(ZCLIResult result)
-{
-  printf("method not implemented\n");
-  return 1;
+  ZUSF zusf = {0};
+  const auto rc = zusf_delete_uss_item(&zusf, file_path, recursive);
+
+  if (rc != 0)
+  {
+    cerr << "Failed to delete USS item " << file_path << ":\n " << zusf.diag.e_msg << endl;
+  }
+
+  return rc;
 }
 
 int handle_uss_chmod(ZCLIResult result)
 {
   int rc = 0;
+  string mode(result.get_positional("mode").get_value());
   string file_path = result.get_positional("file-path").get_value();
-  string mode(result.get_option("--mode").get_value());
-  if (mode == "")
-    mode = "755";
 
   ZUSF zusf = {0};
-  rc = zusf_chmod_uss_file_or_dir(&zusf, file_path, mode);
+  rc = zusf_chmod_uss_file_or_dir(&zusf, file_path, mode, result.get_option("--recursive").is_found());
   if (0 != rc)
   {
-    cout << "Error: could not create USS path: '" << file_path << "' rc: '" << rc << "'" << endl;
+    cout << "Error: could not chmod USS path: '" << file_path << "' rc: '" << rc << "'" << endl;
     cout << "  Details:\n"
          << zusf.diag.e_msg << endl;
     return RTNCD_FAILURE;
@@ -1248,8 +1308,40 @@ int handle_uss_chmod(ZCLIResult result)
 
 int handle_uss_chown(ZCLIResult result)
 {
-  printf("method not implemented\n");
-  return 1;
+  string path = result.get_positional("file-path").get_value();
+  string owner = result.get_positional("owner").get_value();
+
+  ZUSF zusf = {0};
+
+  const auto rc = zusf_chown_uss_file_or_dir(&zusf, path, owner, result.get_option("--recursive").is_found());
+  if (rc != 0)
+  {
+    cout << "Error: could not chown USS path: '" << path << "' rc: '" << rc << "'" << endl;
+    cout << "  Details:\n"
+         << zusf.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
+  return rc;
+}
+
+int handle_uss_chtag(ZCLIResult result)
+{
+  string path = result.get_positional("file-path").get_value();
+  string tag = result.get_positional("tag").get_value();
+
+  ZUSF zusf = {0};
+  const auto rc = zusf_chtag_uss_file_or_dir(&zusf, path, tag, result.get_option("--recursive").is_found());
+
+  if (rc != 0)
+  {
+    cout << "Error: could not chtag USS path: '" << path << "' rc: '" << rc << "'" << endl;
+    cout << "  Details:\n"
+         << zusf.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
+  return rc;
 }
 
 int handle_tso_issue(ZCLIResult result)
