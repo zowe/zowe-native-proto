@@ -10,24 +10,20 @@
  */
 
 import { posix } from "node:path";
-import type { Writable } from "node:stream";
-import { DeferredPromise } from "@zowe/imperative";
 import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Client, type ClientChannel } from "ssh2";
 import { AbstractRpcClient } from "./AbstractRpcClient";
 import { ZSshUtils } from "./ZSshUtils";
-import type { CommandRequest, CommandResponse, IRpcRequest, IRpcResponse } from "./doc";
+import type { CommandRequest, CommandResponse, RpcRequest, RpcResponse } from "./doc";
 
 export class ZSshClient extends AbstractRpcClient implements Disposable {
     public static readonly DEFAULT_SERVER_PATH = "~/.zowe-server";
 
     private mSshClient: Client;
     private mSshStream: ClientChannel;
+    private mPromiseMap: Map<number, { resolve: typeof Promise.resolve; reject: typeof Promise.reject }> = new Map();
     private mRequestId = 0;
-    private mResponseMap: Map<
-        number,
-        { data: string; resolve: typeof Promise.resolve; reject: typeof Promise.reject }
-    > = new Map();
+    private mResponse = "";
 
     private constructor() {
         super();
@@ -45,9 +41,8 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                         if (err) {
                             reject(err);
                         } else {
-                            stream.stderr.on("data", (chunk: Buffer) => {
-                                console.log("STDERR:", chunk.toString());
-                            });
+                            stream.stderr.on("data", client.onErrData.bind(client));
+                            stream.stdout.on("data", client.onOutData.bind(client));
                             // console.log("client ready");
                             resolve(stream);
                         }
@@ -71,48 +66,45 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
 
     public async request<T extends CommandResponse>(request: CommandRequest): Promise<T> {
         return new Promise((resolve, reject) => {
-            this.mResponseMap.set(++this.mRequestId, { data: "", resolve, reject });
-            this.mSshStream.stdin.write(`${JSON.stringify(request)}\n`);
-            this.mSshStream.stderr.on("data", this.onErrData.bind(this, reject));
-            this.mSshStream.stdout.on(
-                "data",
-                this.onOutData.bind(this, (response: string) => {
-                    try {
-                        resolve(JSON.parse(response));
-                    } catch {
-                        reject(response);
-                    }
-                }),
-            );
+            const rpcRequest: RpcRequest = {
+                jsonrpc: "2.0",
+                method: request.command,
+                params: request,
+                id: ++this.mRequestId,
+            };
+            this.mPromiseMap.set(rpcRequest.id, { resolve, reject } as any);
+            this.mSshStream.stdin.write(`${JSON.stringify(rpcRequest)}\n`);
         });
     }
-
-    private onErrData(reject: (typeof Promise)["reject"], chunk: Buffer) {
-        const error = chunk.toString();
-        console.error(error);
-        this.requestEnd();
-        reject(error);
+    private onErrData(chunk: Buffer) {
+        console.error("STDERR:", chunk.toString());
     }
 
-    private onOutData(resolve: (typeof Promise)["resolve"], chunk: Buffer) {
+    private onOutData(chunk: Buffer) {
         const endsWithNewLine = chunk[chunk.length - 1] === 0x0a;
-        const newChunk = endsWithNewLine ? chunk.subarray(0, chunk.length - 1) : chunk;
-
-        if (this.mResponseStream != null) {
-            this.mResponseStream.write(newChunk);
-        } else {
-            this.mResponse += newChunk;
-        }
+        this.mResponse += endsWithNewLine ? chunk.subarray(0, chunk.length - 1) : chunk;
         if (endsWithNewLine) {
             this.requestEnd();
-            resolve(this.mResponse);
         }
     }
 
     private requestEnd() {
-        this.mSshStream.stderr.removeAllListeners();
-        this.mSshStream.stdout.removeAllListeners();
-        this.mResponseStream?.end();
-        this.sshMutex?.resolve();
+        let response: RpcResponse;
+        try {
+            response = JSON.parse(this.mResponse);
+        } catch (err) {
+            throw new Error(`Failed to parse response as JSON: ${err}`);
+        } finally {
+            this.mResponse = "";
+        }
+        if (!this.mPromiseMap.has(response.id)) {
+            throw new Error(`Missing promise for response ID: ${response.id}`);
+        }
+        if (response.error != null) {
+            this.mPromiseMap.get(response.id).reject(response.error.message);
+        } else {
+            this.mPromiseMap.get(response.id).resolve(response.result);
+        }
+        this.mPromiseMap.delete(response.id);
     }
 }

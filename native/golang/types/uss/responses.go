@@ -14,6 +14,7 @@ package uss
 import common "zowe-native-proto/ioserver/types/common"
 
 type GenericFileResponse struct {
+	common.CommandResponse `tstype:",extends"`
 	// Whether the operation was successful
 	Success bool `json:"success"`
 	// Remote file path
@@ -21,6 +22,7 @@ type GenericFileResponse struct {
 }
 
 type ReadFileResponse struct {
+	common.CommandResponse `tstype:",extends"`
 	// Returned encoding for the file
 	Encoding string `json:"encoding,omitempty"`
 	// Remote file path
@@ -32,8 +34,9 @@ type ReadFileResponse struct {
 type WriteFileResponse = GenericFileResponse
 
 type ListFilesResponse struct {
-	Items        []common.UssItem `tstype:"common.UssItem[]" json:"items"`
-	ReturnedRows int              `json:"returnedRows"`
+	common.CommandResponse `tstype:",extends"`
+	Items                  []common.UssItem `tstype:"common.UssItem[]" json:"items"`
+	ReturnedRows           int              `json:"returnedRows"`
 }
 
 type CreateFileResponse = GenericFileResponse

@@ -17,12 +17,12 @@
 export interface RpcRequest {
     jsonrpc: "2.0";
     method: string;
-    params?: Record<string;
+    params?: any;
     id: number /* int */;
 }
 export interface RpcResponse {
     jsonrpc: "2.0";
-    result?: Record<string;
+    result?: any;
     error?: ErrorDetails;
     id?: number /* int */;
 }
@@ -31,6 +31,8 @@ export interface CommandRequest {
      * Requested command to execute
      */
     command: string;
+}
+export interface CommandResponse {
 }
 export interface ErrorDetails {
     code: number /* int */;
