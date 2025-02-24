@@ -76,8 +76,13 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
             this.mSshStream.stdin.write(`${JSON.stringify(rpcRequest)}\n`);
         });
     }
+
     private onErrData(chunk: Buffer) {
-        console.error("STDERR:", chunk.toString());
+        if (this.mPromiseMap.size === 0) {
+            console.error("STDERR:", chunk.toString());
+            return;
+        }
+        this.onOutData(chunk);
     }
 
     private onOutData(chunk: Buffer) {
