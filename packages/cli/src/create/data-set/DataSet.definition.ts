@@ -31,34 +31,10 @@ export const DataSetDefinition: ICommandDefinition = {
     positionals: [
         {
             name: "name",
-            description: "The name of the data set to create",
+            description: "The data set or data set member to create",
             type: "string",
             required: true,
         },
     ],
     profile: { optional: ["ssh"] },
-    options: [
-        // {
-        //     name: "type",
-        //     description: "The type of the data set. Required for creating a data set",
-        //     type: "string",
-        //     allowableValues: { values: ["PDS", "PDSE"], caseSensitive: false },
-        // },
-        // {
-        //     name: "record-format",
-        //     description: "The record format of the data set. Required for creating a data set",
-        //     type: "string",
-        //     allowableValues: { values: ["FB", "VB", "FS", "VS", "U"], caseSensitive: false },
-        // },
-        // {
-        //     name: "block-size",
-        //     description: "The block size of the data set. Required for creating a data set",
-        //     type: "number",
-        // },
-        // {
-        //     name: "record-length",
-        //     description: "The record length of the data set. Required for creating a data set",
-        //     type: "number",
-        // },
-    ],
 };

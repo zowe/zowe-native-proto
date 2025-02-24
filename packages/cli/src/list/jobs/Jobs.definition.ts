@@ -31,7 +31,7 @@ export const ListJobsDefinition: ICommandDefinition = {
     options: [
         {
             name: "prefix",
-            aliases: [],
+            aliases: ["p"],
             description:
                 "Specify the job name prefix of the jobs you own and want to list. " +
                 'You can specify a wildcard, which is usually in the form "JOB*". \n ' +

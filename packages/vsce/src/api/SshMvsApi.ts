@@ -10,8 +10,8 @@
  */
 
 import { readFileSync, writeFileSync } from "node:fs";
-import type * as zosfiles from "@zowe/zos-files-for-zowe-sdk";
-import { type MainframeInteraction, imperative, Gui } from "@zowe/zowe-explorer-api";
+import * as zosfiles from "@zowe/zos-files-for-zowe-sdk";
+import { Gui, type MainframeInteraction, imperative } from "@zowe/zowe-explorer-api";
 import { ZSshUtils, type ds } from "zowe-native-proto-sdk";
 import { SshCommonApi } from "./SshCommonApi";
 
@@ -88,19 +88,23 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         dataSetName: string,
         options?: Partial<zosfiles.ICreateDataSetOptions>,
     ): Promise<zosfiles.IZosFilesResponse> {
-        let response: ds.CreateDatasetResponse = { success: false };
-        try {
-            response = await (await this.client).ds.createDataset({
-                dsname: dataSetName,
-            });
-            if (!response.success) {
-                Gui.errorMessage(`Failed to create dataset ${dataSetName}`);
-            }
-        } catch (error) {
-            Gui.errorMessage(`Failed to create dataset ${dataSetName}`);
-            Gui.errorMessage(`Error: ${error}`);
+        let datasetTyp: ds.CreateDatasetRequest["dstype"];
+        switch (dataSetType) {
+            case zosfiles.CreateDataSetTypeEnum.DATA_SET_C:
+                datasetTyp = "default";
+                break;
+            case zosfiles.CreateDataSetTypeEnum.DATA_SET_CLASSIC:
+                datasetTyp = "adata";
+                break;
+            default:
+                throw new Error("Not yet implemented");
         }
-        return this.buildZosFilesResponse(response);
+
+        const response = await (await this.client).ds.createDataset({
+            dsname: dataSetName,
+            dstype: datasetTyp,
+        });
+        return this.buildZosFilesResponse(response, response.success);
     }
 
     public async createDataSetMember(
@@ -164,19 +168,12 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         dataSetName: string,
         options?: zosfiles.IDeleteDatasetOptions,
     ): Promise<zosfiles.IZosFilesResponse> {
-        let response: ds.DeleteDatasetResponse = { success: false };
-        try {
-            response = await (await this.client).ds.deleteDataset({
-                dsname: dataSetName,
-            });
-            if (!response.success) {
-                Gui.errorMessage(`Failed to delete dataset ${dataSetName}`);
-            }
-        } catch (error) {
-            Gui.errorMessage(`Failed to delete dataset ${dataSetName}`);
-            Gui.errorMessage(`Error: ${error}`);
-        }
-        return this.buildZosFilesResponse(response);
+        const response = await (await this.client).ds.deleteDataset({
+            dsname: dataSetName,
+        });
+        return this.buildZosFilesResponse({
+            success: response.success,
+        });
     }
 
     // biome-ignore lint/suspicious/noExplicitAny: apiResponse has no strong type

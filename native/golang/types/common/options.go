@@ -12,10 +12,13 @@
 package types
 
 type ListOptions struct {
-	MaxItems        int `json:"maxItems,omitempty"`
+	// Maximum number of items to return
+	MaxItems int `json:"maxItems,omitempty"`
+	// Response timeout in seconds
 	ResponseTimeout int `json:"responseTimeout,omitempty"`
 }
 
 type ListDatasetOptions struct {
+	// Skip data sets that come before this data set name
 	Start string `json:"start,omitempty"`
 }

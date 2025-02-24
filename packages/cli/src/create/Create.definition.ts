@@ -13,13 +13,15 @@ import type { ICommandDefinition } from "@zowe/imperative";
 import { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Constants } from "../Constants";
 import { DataSetDefinition } from "./data-set/DataSet.definition";
+import { FileDefinition } from "./uss/File.definition";
 
-const DeleteDefinition: ICommandDefinition = {
+const CreateDefinition: ICommandDefinition = {
     name: "create",
-    summary: "Create data sets and/or members",
-    description: "Create data sets and/or data set members",
+    summary: "Create/initialize various resources",
+    description: "Create files and directories, data sets, and members",
     type: "group",
-    children: [DataSetDefinition],
+    aliases: ["cre"],
+    children: [DataSetDefinition, FileDefinition],
     passOn: [
         {
             property: "options",
@@ -30,4 +32,4 @@ const DeleteDefinition: ICommandDefinition = {
     ],
 };
 
-export = DeleteDefinition;
+export = CreateDefinition;

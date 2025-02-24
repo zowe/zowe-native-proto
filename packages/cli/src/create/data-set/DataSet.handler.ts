@@ -16,8 +16,7 @@ import { SshBaseHandler } from "../../SshBaseHandler";
 export default class CreateDatasetHandler extends SshBaseHandler {
     public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<ds.CreateDatasetResponse> {
         const dsname = params.arguments.name;
-
-        const response = await client.ds.createDataset({ dsname });
+        const response = await client.ds.createDataset({ dsname, dstype: "default" });
 
         const dsMessage = `Dataset "${dsname}" created`;
         params.response.data.setMessage(dsMessage);

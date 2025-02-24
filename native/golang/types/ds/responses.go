@@ -14,34 +14,52 @@ package ds
 import common "zowe-native-proto/ioserver/types/common"
 
 type WriteDatasetResponse struct {
-	Success bool   `json:"success"`
+	common.CommandResponse `tstype:",extends"`
+	// Whether the new data was stored successfully
+	Success bool `json:"success"`
+	// Dataset name
 	Dataset string `json:"dataset"`
 }
 
 type RestoreDatasetResponse struct {
+	common.CommandResponse `tstype:",extends"`
+	// Whether the dataset was restored successfully
 	Success bool `json:"success"`
 }
 
 type ReadDatasetResponse struct {
+	common.CommandResponse `tstype:",extends"`
+	// Desired encoding for the dataset (optional)
 	Encoding string `json:"encoding,omitempty"`
-	Dataset  string `json:"dataset"`
-	Data     []byte `json:"data" tstype:"Buffer | string"`
+	// Dataset name
+	Dataset string `json:"dataset"`
+	// Dataset contents
+	Data []byte `json:"data" tstype:"Buffer | string"`
 }
 
 type ListDatasetsResponse struct {
-	Items        []common.Dataset `tstype:"common.Dataset[]" json:"items"`
-	ReturnedRows int              `json:"returnedRows"`
+	common.CommandResponse `tstype:",extends"`
+	// List of returned datasets
+	Items []common.Dataset `tstype:"common.Dataset[]" json:"items"`
+	// Number of rows returned
+	ReturnedRows int `json:"returnedRows"`
 }
 
 type ListDsMembersResponse struct {
-	Items        []common.DsMember `tstype:"common.DsMember[]" json:"items"`
-	ReturnedRows int               `json:"returnedRows"`
+	common.CommandResponse `tstype:",extends"`
+	// List of returned dataset members
+	Items []common.DsMember `tstype:"common.DsMember[]" json:"items"`
+	// Number of rows returned
+	ReturnedRows int `json:"returnedRows"`
 }
 
-type DeleteDatasetResponse struct {
+type GenericDatasetResponse struct {
+	common.CommandResponse `tstype:",extends"`
+	// Whether the dataset operation was successful
 	Success bool `json:"success"`
+	// Dataset name
+	Dsname string `json:"dsname"`
 }
 
-type CreateDatasetResponse struct {
-	Success bool `json:"success"`
-}
+type CreateDatasetResponse = GenericDatasetResponse
+type DeleteDatasetResponse = GenericDatasetResponse

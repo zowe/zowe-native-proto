@@ -98,6 +98,9 @@ connection.on("ready", async () => {
         case "clean":
             await clean(connection);
             break;
+        case "delete":
+            await rmdir(connection);
+            break;
         case "bin":
             await bin(connection);
             break;
@@ -328,12 +331,12 @@ async function runCommandInShell(connection: Client, command: string, pty = fals
             });
             stream.on("exit", (exitCode: number) => {
                 if (exitCode !== 0) {
-                    const fullError = `\nError: runCommand connection.exec error: \n ${error}`;
+                    const fullError = `\nError: runCommand connection.exec error: \n ${error || data}`;
                     stopSpinner(spinner, fullError);
                     reject(fullError);
                 }
             });
-            stream.end(`${command}\n`);
+            stream.end(`${command}\nexit $?\n`);
         };
         if (pty) {
             connection.shell(cb);
@@ -482,7 +485,7 @@ async function build(connection: Client) {
         await runCommandInShell(
             connection,
             `cd ${goDeployDirectory} &&${config.goEnv ? ` ${config.goEnv}` : ""} go build\n`,
-            process.env.CI != null,
+            true,
         ),
     );
     console.log("Build complete!");
@@ -493,6 +496,13 @@ async function clean(connection: Client) {
     const resp = await runCommandInShell(connection, `cd ${cDeployDirectory} && make clean\n`);
     console.log(resp);
     console.log("Clean complete");
+}
+
+async function rmdir(connection: Client) {
+    console.log("Removing dir ...");
+    const resp = await runCommandInShell(connection, `rm -rf ${deployDirectory}\n`);
+    console.log(resp);
+    console.log("Removal complete");
 }
 
 async function uploadFile(sftpcon: SFTPWrapper, from: string, to: string) {
