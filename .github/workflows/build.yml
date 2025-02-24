@@ -1,9 +1,9 @@
-name: client-build
+name: build
 
 on: [pull_request]
 
 jobs:
-  build:
+  build-client:
     runs-on: ${{ matrix.os }}-latest
     strategy:
       fail-fast: false
@@ -41,3 +41,12 @@ jobs:
         with:
           name: zowe-native-proto-vsce
           path: dist/*.vsix
+
+  build-native:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: cd native/golang && go build
