@@ -49,7 +49,6 @@ const extensionConfig = {
         exclude: /node_modules/,
         loader: 'builtin:swc-loader',
         options: {
-          devtool: 'source-map',
           jsc: {
             parser: {
               syntax: 'typescript',

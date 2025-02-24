@@ -13,7 +13,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - `golang`: Added `procstep` and `dsname` to the list of fields when getting spool files
 - `golang`: Added `tygo` to generate types based on the Go types for the TypeScript SDK. [#71](https://github.com/zowe/zowe-native-proto/pull/71)
 - `c,golang`: Added `watch:native` npm script to detect and upload changes to files during development. [#100](https://github.com/zowe/zowe-native-proto/pull/100)
-- `golang`: Added `createDataset` and `deleteDataset` function in the middleware. [#95](https://github.com/zowe/zowe-native-proto/pull/95)
+- `golang`: Added `createDataset` function in the middleware. [#95](https://github.com/zowe/zowe-native-proto/pull/95)
 
 ## [Unreleased]
 

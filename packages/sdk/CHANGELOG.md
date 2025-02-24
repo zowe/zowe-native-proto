@@ -7,8 +7,6 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## Recent Changes
 
 - Added `ds.restoreDataset` function. [#38](https://github.com/zowe/zowe-native-proto/pull/38)
-- Added `ds.deleteDataset` function. [#87](https://github.com/zowe/zowe-native-proto/pull/87)
-- Added `ds.createDataset` function. [#95](https://github.com/zowe/zowe-native-proto/pull/95)
 
 ## [Unreleased]
 
