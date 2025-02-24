@@ -14,7 +14,6 @@ package ds
 import common "zowe-native-proto/ioserver/types/common"
 
 type WriteDatasetResponse struct {
-	common.CommandResponse `tstype:",extends"`
 	// Whether the new data was stored successfully
 	Success bool `json:"success"`
 	// Dataset name
@@ -22,13 +21,11 @@ type WriteDatasetResponse struct {
 }
 
 type RestoreDatasetResponse struct {
-	common.CommandResponse `tstype:",extends"`
 	// Whether the dataset was restored successfully
 	Success bool `json:"success"`
 }
 
 type ReadDatasetResponse struct {
-	common.CommandResponse `tstype:",extends"`
 	// Desired encoding for the dataset (optional)
 	Encoding string `json:"encoding,omitempty"`
 	// Dataset name
@@ -38,7 +35,6 @@ type ReadDatasetResponse struct {
 }
 
 type ListDatasetsResponse struct {
-	common.CommandResponse `tstype:",extends"`
 	// List of returned datasets
 	Items []common.Dataset `tstype:"common.Dataset[]" json:"items"`
 	// Number of rows returned
@@ -46,7 +42,6 @@ type ListDatasetsResponse struct {
 }
 
 type ListDsMembersResponse struct {
-	common.CommandResponse `tstype:",extends"`
 	// List of returned dataset members
 	Items []common.DsMember `tstype:"common.DsMember[]" json:"items"`
 	// Number of rows returned
@@ -54,7 +49,6 @@ type ListDsMembersResponse struct {
 }
 
 type GenericDatasetResponse struct {
-	common.CommandResponse `tstype:",extends"`
 	// Whether the dataset operation was successful
 	Success bool `json:"success"`
 	// Dataset name

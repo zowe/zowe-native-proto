@@ -14,18 +14,28 @@
 //////////
 // source: common.go
 
+export interface RpcRequest {
+    jsonrpc: "2.0";
+    method: string;
+    params?: Record<string;
+    id: number /* int */;
+}
+export interface RpcResponse {
+    jsonrpc: "2.0";
+    result?: Record<string;
+    error?: ErrorDetails;
+    id?: number /* int */;
+}
 export interface CommandRequest {
     /**
      * Requested command to execute
      */
     command: string;
 }
-export interface CommandResponse {
-    error?: ErrorDetails;
-}
 export interface ErrorDetails {
-    msg: string;
-    code?: string;
+    code: number /* int */;
+    message: string;
+    data?: any;
 }
 export interface Dataset {
     /**

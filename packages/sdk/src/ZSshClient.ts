@@ -16,16 +16,18 @@ import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Client, type ClientChannel } from "ssh2";
 import { AbstractRpcClient } from "./AbstractRpcClient";
 import { ZSshUtils } from "./ZSshUtils";
-import type { IRpcRequest, IRpcResponse } from "./doc";
+import type { CommandRequest, CommandResponse, IRpcRequest, IRpcResponse } from "./doc";
 
 export class ZSshClient extends AbstractRpcClient implements Disposable {
     public static readonly DEFAULT_SERVER_PATH = "~/.zowe-server";
 
     private mSshClient: Client;
     private mSshStream: ClientChannel;
-    private mResponse = "";
-    private mResponseStream: Writable | undefined;
-    private sshMutex: DeferredPromise<void> | undefined;
+    private mRequestId = 0;
+    private mResponseMap: Map<
+        number,
+        { data: string; resolve: typeof Promise.resolve; reject: typeof Promise.reject }
+    > = new Map();
 
     private constructor() {
         super();
@@ -67,13 +69,9 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
         this.dispose();
     }
 
-    public async request<T extends IRpcResponse>(request: IRpcRequest, stream?: Writable): Promise<T> {
-        await this.sshMutex?.promise;
-        this.sshMutex = new DeferredPromise();
-        this.mResponse = "";
-        this.mResponseStream = stream;
-
+    public async request<T extends CommandResponse>(request: CommandRequest): Promise<T> {
         return new Promise((resolve, reject) => {
+            this.mResponseMap.set(++this.mRequestId, { data: "", resolve, reject });
             this.mSshStream.stdin.write(`${JSON.stringify(request)}\n`);
             this.mSshStream.stderr.on("data", this.onErrData.bind(this, reject));
             this.mSshStream.stdout.on(

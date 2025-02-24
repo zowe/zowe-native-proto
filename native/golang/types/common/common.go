@@ -12,14 +12,14 @@
 package types
 
 type RpcRequest struct {
-	JsonRPC string `json:"jsonrpc"`
+	JsonRPC string `json:"jsonrpc" tstype:"\"2.0\""`
 	Method  string `json:"method"`
 	Params  any    `json:"params,omitempty"`
 	Id      int    `json:"id"`
 }
 
 type RpcResponse struct {
-	JsonRPC string        `json:"jsonrpc"`
+	JsonRPC string        `json:"jsonrpc" tstype:"\"2.0\""`
 	Result  any           `json:"result,omitempty"`
 	Error   *ErrorDetails `json:"error,omitempty"`
 	Id      *int          `json:"id,omitempty"`
@@ -30,9 +30,7 @@ type CommandRequest struct {
 	Command string `json:"command"`
 }
 
-type CommandResponse struct {
-	Error ErrorDetails `json:"error,omitempty"`
-}
+type CommandResponse struct{}
 
 type ErrorDetails struct {
 	Code    int    `json:"code"`

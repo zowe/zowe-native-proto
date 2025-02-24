@@ -98,19 +98,19 @@ export interface DeleteJobRequest extends common.CommandRequest {
 //////////
 // source: responses.go
 
-export interface ListJobsResponse extends common.CommandResponse {
+export interface ListJobsResponse {
     /**
      * List of returned jobs
      */
     items: common.Job[];
 }
-export interface ListSpoolsResponse extends common.CommandResponse {
+export interface ListSpoolsResponse {
     /**
      * List of returned spools
      */
     items: common.Spool[];
 }
-export interface GetJclResponse extends common.CommandResponse {
+export interface GetJclResponse {
     /**
      * Job ID for the returned JCL
      */
@@ -120,7 +120,7 @@ export interface GetJclResponse extends common.CommandResponse {
      */
     data: string;
 }
-export interface ReadSpoolResponse extends common.CommandResponse {
+export interface ReadSpoolResponse {
     /**
      * Desired encoding for the spool file (optional)
      */
@@ -138,8 +138,9 @@ export interface ReadSpoolResponse extends common.CommandResponse {
      */
     data: Buffer | string;
 }
-export interface GetJobStatusResponse extends common.CommandResponse, common.Job {}
-export interface SubmitJobResponse extends common.CommandResponse {
+export interface GetJobStatusResponse extends common.Job {
+}
+export interface SubmitJobResponse {
     /**
      * Whether the job was successfully submitted
      */
@@ -153,7 +154,7 @@ export interface SubmitJobResponse extends common.CommandResponse {
      */
     dsname: string;
 }
-export interface SubmitJclResponse extends common.CommandResponse {
+export interface SubmitJclResponse {
     /**
      * Whether the JCL was successfully submitted
      */
@@ -163,7 +164,7 @@ export interface SubmitJclResponse extends common.CommandResponse {
      */
     jobId: string;
 }
-export interface DeleteJobResponse extends common.CommandResponse {
+export interface DeleteJobResponse {
     /**
      * Whether the job was successfully deleted
      */
@@ -173,7 +174,7 @@ export interface DeleteJobResponse extends common.CommandResponse {
      */
     jobId: string;
 }
-export interface CancelJobResponse extends common.CommandResponse {
+export interface CancelJobResponse {
     /**
      * Whether the job was successfully cancelled
      */

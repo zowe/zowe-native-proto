@@ -44,19 +44,19 @@ export interface IssueUnixRequest extends common.CommandRequest {
 //////////
 // source: responses.go
 
-export interface IssueConsoleResponse extends common.CommandResponse {
+export interface IssueConsoleResponse {
     /**
      * Data returned from the console command
      */
     data: string;
 }
-export interface IssueTsoResponse extends common.CommandResponse {
+export interface IssueTsoResponse {
     /**
      * Data returned from the TSO command
      */
     data: string;
 }
-export interface IssueUnixResponse extends common.CommandResponse {
+export interface IssueUnixResponse {
     /**
      * Data returned from the UNIX command
      */

@@ -9,10 +9,10 @@
  *
  */
 
-import type { IRpcRequest, IRpcResponse, cmds, ds, jobs, uss } from "./doc";
+import type { CommandResponse, CommandRequest, cmds, ds, jobs, uss } from "./doc";
 
 export abstract class AbstractRpcClient {
-    public abstract request<Resp extends IRpcResponse, Req extends IRpcRequest>(request: Req): Promise<Resp>;
+    public abstract request<Resp extends CommandResponse, Req extends CommandRequest>(request: Req): Promise<Resp>;
 
     public get ds() {
         return {

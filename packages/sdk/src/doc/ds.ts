@@ -91,13 +91,13 @@ export interface CreateDatasetRequest extends common.CommandRequest {
     /**
      * Type of the dataset to make
      */
-    dstype: "default" | "vb" | "adata";
+    dstype: 'default' | 'vb' | 'adata';
 }
 
 //////////
 // source: responses.go
 
-export interface WriteDatasetResponse extends common.CommandResponse {
+export interface WriteDatasetResponse {
     /**
      * Whether the new data was stored successfully
      */
@@ -107,13 +107,13 @@ export interface WriteDatasetResponse extends common.CommandResponse {
      */
     dataset: string;
 }
-export interface RestoreDatasetResponse extends common.CommandResponse {
+export interface RestoreDatasetResponse {
     /**
      * Whether the dataset was restored successfully
      */
     success: boolean;
 }
-export interface ReadDatasetResponse extends common.CommandResponse {
+export interface ReadDatasetResponse {
     /**
      * Desired encoding for the dataset (optional)
      */
@@ -127,7 +127,7 @@ export interface ReadDatasetResponse extends common.CommandResponse {
      */
     data: Buffer | string;
 }
-export interface ListDatasetsResponse extends common.CommandResponse {
+export interface ListDatasetsResponse {
     /**
      * List of returned datasets
      */
@@ -137,7 +137,7 @@ export interface ListDatasetsResponse extends common.CommandResponse {
      */
     returnedRows: number /* int */;
 }
-export interface ListDsMembersResponse extends common.CommandResponse {
+export interface ListDsMembersResponse {
     /**
      * List of returned dataset members
      */
@@ -147,7 +147,7 @@ export interface ListDsMembersResponse extends common.CommandResponse {
      */
     returnedRows: number /* int */;
 }
-export interface GenericDatasetResponse extends common.CommandResponse {
+export interface GenericDatasetResponse {
     /**
      * Whether the dataset operation was successful
      */

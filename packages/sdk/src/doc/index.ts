@@ -10,7 +10,6 @@
  */
 
 export * from "./common";
-export * from "./rpc";
 export * as ds from "./ds";
 export * as uss from "./uss";
 export * as jobs from "./jobs";
