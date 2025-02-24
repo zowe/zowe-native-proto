@@ -198,6 +198,7 @@ func HandleDeleteDatasetRequest(jsonData []byte) {
 	})
 }
 
+// HandleCreateDatasetRequest handles a CreateDatasetRequest by invoking the `zowex data-set create` command
 func HandleCreateDatasetRequest(jsonData []byte) {
 	dsRequest, err := utils.ParseCommandRequest[ds.CreateDatasetRequest](jsonData)
 	if err != nil {
@@ -207,7 +208,7 @@ func HandleCreateDatasetRequest(jsonData []byte) {
 	args := []string{"./zowex", "data-set", "create", dsRequest.Dsname}
 	_, err = utils.BuildCommand(args).Output()
 	if err != nil {
-		utils.PrintErrorResponse("Failed to restore data set: %v", err)
+		utils.PrintErrorResponse("Failed to create data set: %v", err)
 		return
 	}
 

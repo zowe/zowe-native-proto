@@ -55,6 +55,7 @@ int handle_data_set_list(ZCLIResult);
 int handle_data_set_list_members_dsn(ZCLIResult);
 int handle_data_set_write_to_dsn(ZCLIResult);
 int handle_data_set_delete_dsn(ZCLIResult);
+int handle_data_set_create_member_dsn(ZCLIResult);
 
 int handle_log_view(ZCLIResult);
 
@@ -127,22 +128,32 @@ int main(int argc, char *argv[])
 
   // data set verbs
   ZCLIVerb data_set_create("create");
+  data_set_create.get_aliases().push_back("cre");
   data_set_create.set_description("create data set using defaults: DSORG=PO, RECFM=FB, LRECL=80");
   data_set_create.set_zcli_verb_handler(handle_data_set_create_dsn);
   data_set_create.get_positionals().push_back(data_set_dsn);
   data_set_group.get_verbs().push_back(data_set_create);
 
   ZCLIVerb data_set_create_vb("create-vb");
+  data_set_create_vb.get_aliases().push_back("cre-vb");
   data_set_create_vb.set_description("create VB data set using defaults: DSORG=PO, RECFM=VB, LRECL=255");
   data_set_create_vb.set_zcli_verb_handler(handle_data_set_create_dsn_vb);
   data_set_create_vb.get_positionals().push_back(data_set_dsn);
   data_set_group.get_verbs().push_back(data_set_create_vb);
 
   ZCLIVerb data_set_create_adata("create-adata");
+  data_set_create_adata.get_aliases().push_back("cre-a");
   data_set_create_adata.set_description("create VB data set using defaults: DSORG=PO, RECFM=VB, LRECL=32756");
   data_set_create_adata.set_zcli_verb_handler(handle_data_set_create_dsn_adata);
   data_set_create_adata.get_positionals().push_back(data_set_dsn);
   data_set_group.get_verbs().push_back(data_set_create_adata);
+
+  ZCLIVerb data_set_create_member("create-member");
+  data_set_create_member.get_aliases().push_back("cre-m");
+  data_set_create_member.set_description("create member in data set");
+  data_set_create_member.set_zcli_verb_handler(handle_data_set_create_member_dsn);
+  data_set_create_member.get_positionals().push_back(data_set_dsn);
+  data_set_group.get_verbs().push_back(data_set_create_member);
 
   ZCLIVerb data_set_restore("restore");
   data_set_restore.set_description("restore/recall data set");
@@ -842,6 +853,61 @@ int handle_console_issue(ZCLIResult result)
   return rc;
 }
 
+int handle_data_set_create_member(ZDS zds, string dsn)
+{
+  int rc = 0;
+  size_t start = dsn.find_first_of('(');
+  size_t end = dsn.find_last_of(')');
+
+  if (start != string::npos && end != string::npos && end > start)
+  {
+    string member_name = dsn.substr(start + 1, end - start - 1);
+    string data = "";
+    rc = zds_write_to_dsn(&zds, dsn, data);
+    if (0 != rc)
+    {
+      cout << "Error: could not write to data set: '" << dsn << "' rc: '" << rc << "'" << endl;
+      cout << "  Details: " << zds.diag.e_msg << endl;
+      return RTNCD_FAILURE;
+    }
+  }
+  cout << "Data set '" << dsn << "' created" << endl;
+  return rc;
+}
+
+int handle_data_set_create_member_dsn(ZCLIResult result)
+{
+  int rc = 0;
+  string dsn = result.get_positional("dsn").get_value();
+  ZDS zds = {0};
+  string response;
+  vector<ZDSEntry> entries;
+
+  size_t start = dsn.find_first_of('(');
+  size_t end = dsn.find_last_of(')');
+  string member_name = nullptr;
+  if (start != string::npos && end != string::npos && end > start)
+  {
+    member_name = dsn.substr(start + 1, end - start - 1);
+    dsn.erase(start, end - start + 1);
+  }
+  else
+  {
+    cout << "Error: could not find member name in dsn: '" << dsn << "'" << endl;
+    return RTNCD_FAILURE;
+  }
+
+  rc = zds_list_data_sets(&zds, dsn, entries);
+  if (0 != rc || entries.size() == 0)
+  {
+    cout << "Error: could not create data set member: '" << dsn << "' rc: '" << rc << "'" << endl;
+    cout << "  Details:\n"
+         << zds.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+  return handle_data_set_create_member(zds, dsn + "(" + member_name + ")");
+}
+
 int handle_data_set_create_dsn(ZCLIResult result)
 {
   int rc = 0;
@@ -856,10 +922,7 @@ int handle_data_set_create_dsn(ZCLIResult result)
          << response << endl;
     return RTNCD_FAILURE;
   }
-
-  cout << "Data set '" << dsn << "' created" << endl;
-
-  return rc;
+  return handle_data_set_create_member(zds, dsn);
 }
 
 int handle_data_set_create_dsn_vb(ZCLIResult result)
@@ -876,10 +939,7 @@ int handle_data_set_create_dsn_vb(ZCLIResult result)
          << response << endl;
     return -1;
   }
-
-  cout << "Data set '" << dsn << "' created" << endl;
-
-  return rc;
+  return handle_data_set_create_member(zds, dsn);
 }
 
 int handle_data_set_create_dsn_adata(ZCLIResult result)
@@ -896,10 +956,7 @@ int handle_data_set_create_dsn_adata(ZCLIResult result)
          << response << endl;
     return -1;
   }
-
-  cout << "Data set '" << dsn << "' created" << endl;
-
-  return rc;
+  return handle_data_set_create_member(zds, dsn);
 }
 
 int handle_data_set_restore(ZCLIResult result)
