@@ -13,6 +13,7 @@ package cmds
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -22,9 +23,13 @@ import (
 )
 
 // HandleListFilesRequest handles a ListFilesRequest by invoking built-in functions from Go's `os` module.
-func HandleListFilesRequest(_conn utils.StdioConn, p any) (result any, e error) {
-	params := p.(uss.ListFilesRequest)
-	dirPath := params.Path
+func HandleListFilesRequest(_conn utils.StdioConn, params []byte) (result any, e error) {
+	var request uss.ListFilesRequest
+	if err := json.Unmarshal(params, &request); err != nil {
+		return nil, err
+	}
+
+	dirPath := request.Path
 
 	fileInfo, err := os.Stat(dirPath)
 	if err != nil {
@@ -64,17 +69,19 @@ func HandleListFilesRequest(_conn utils.StdioConn, p any) (result any, e error) 
 }
 
 // HandleReadFileRequest handles a ReadFileRequest by invoking the `zowex uss view` command
-func HandleReadFileRequest(conn utils.StdioConn, p any) (result any, e error) {
-	params := p.(uss.ReadFileRequest)
-	if params.Encoding == "" || params.Path == "" {
+func HandleReadFileRequest(conn utils.StdioConn, params []byte) (result any, e error) {
+	var request uss.ReadFileRequest
+	if err := json.Unmarshal(params, &request); err != nil {
+		return nil, err
+	} else if request.Encoding == "" || request.Path == "" {
 		e = fmt.Errorf("Missing required parameters: Encoding or Path")
 		return
 	}
 
-	args := []string{"uss", "view", params.Path}
-	hasEncoding := len(params.Encoding) != 0
+	args := []string{"uss", "view", request.Path}
+	hasEncoding := len(request.Encoding) != 0
 	if hasEncoding {
-		args = append(args, "--encoding", params.Encoding, "--rfb", "true")
+		args = append(args, "--encoding", request.Encoding, "--rfb", "true")
 	}
 	out, err := conn.ExecCmd(args)
 	if err != nil {
@@ -91,29 +98,31 @@ func HandleReadFileRequest(conn utils.StdioConn, p any) (result any, e error) {
 	}
 
 	result = uss.ReadFileResponse{
-		Encoding: params.Encoding,
-		Path:     params.Path,
+		Encoding: request.Encoding,
+		Path:     request.Path,
 		Data:     data,
 	}
 	return
 }
 
 // HandleWriteFileRequest handles a WriteFileRequest by invoking the `zowex uss write` command
-func HandleWriteFileRequest(_conn utils.StdioConn, p any) (result any, e error) {
-	params := p.(uss.WriteFileRequest)
-	if params.Encoding == "" || params.Path == "" {
+func HandleWriteFileRequest(_conn utils.StdioConn, params []byte) (result any, e error) {
+	var request uss.WriteFileRequest
+	if err := json.Unmarshal(params, &request); err != nil {
+		return nil, err
+	} else if request.Encoding == "" || request.Path == "" {
 		e = fmt.Errorf("Missing required parameters: Encoding or Path")
 		return
 	}
 
-	decodedBytes, err := base64.StdEncoding.DecodeString(params.Data)
+	decodedBytes, err := base64.StdEncoding.DecodeString(request.Data)
 	if err != nil {
 		e = fmt.Errorf("[WriteFileRequest] Error decoding base64 contents: %v", err)
 		return
 	}
-	args := []string{"uss", "write", params.Path}
-	if len(params.Encoding) > 0 {
-		args = append(args, "--encoding", params.Encoding)
+	args := []string{"uss", "write", request.Path}
+	if len(request.Encoding) > 0 {
+		args = append(args, "--encoding", request.Encoding)
 	}
 	cmd := utils.BuildCommandNoAutocvt(args)
 	stdin, err := cmd.StdinPipe()
@@ -139,26 +148,28 @@ func HandleWriteFileRequest(_conn utils.StdioConn, p any) (result any, e error) 
 
 	result = uss.WriteFileResponse{
 		Success: err == nil,
-		Path:    params.Path,
+		Path:    request.Path,
 	}
 	return
 }
 
 // HandleCreateFileRequest handles a CreateFileRequest by invoking the `zowex uss create-dir` or `create-file` command (depending on params)
-func HandleCreateFileRequest(conn utils.StdioConn, p any) (result any, e error) {
-	params := p.(uss.CreateFileRequest)
-	if params.Path == "" {
+func HandleCreateFileRequest(conn utils.StdioConn, params []byte) (result any, e error) {
+	var request uss.CreateFileRequest
+	if err := json.Unmarshal(params, &request); err != nil {
+		return nil, err
+	} else if request.Path == "" {
 		e = fmt.Errorf("Missing required parameters: Path")
 		return
 	}
 
 	createCmd := "create-file"
-	if params.IsDir {
+	if request.IsDir {
 		createCmd = "create-dir"
 	}
-	args := []string{"uss", createCmd, params.Path}
-	if len(params.Mode) > 0 {
-		args = append(args, "--mode", params.Mode)
+	args := []string{"uss", createCmd, request.Path}
+	if len(request.Mode) > 0 {
+		args = append(args, "--mode", request.Mode)
 	}
 	_, err := conn.ExecCmd(args)
 	if err != nil {
@@ -168,21 +179,23 @@ func HandleCreateFileRequest(conn utils.StdioConn, p any) (result any, e error) 
 
 	result = uss.DeleteFileResponse{
 		Success: err == nil,
-		Path:    params.Path,
+		Path:    request.Path,
 	}
 	return
 }
 
 // HandleDeleteFileRequest handles a DeleteFileRequest by invoking the `zowex uss delete` command
-func HandleDeleteFileRequest(conn utils.StdioConn, p any) (result any, e error) {
-	params := p.(uss.DeleteFileRequest)
-	if params.Path == "" {
+func HandleDeleteFileRequest(conn utils.StdioConn, params []byte) (result any, e error) {
+	var request uss.DeleteFileRequest
+	if err := json.Unmarshal(params, &request); err != nil {
+		return nil, err
+	} else if request.Path == "" {
 		e = fmt.Errorf("Missing required parameters: Path")
 		return
 	}
 
-	args := []string{"uss", "delete", params.Path}
-	if params.Recursive {
+	args := []string{"uss", "delete", request.Path}
+	if request.Recursive {
 		args = append(args, "-r", "true")
 	}
 	_, err := conn.ExecCmd(args)
@@ -193,21 +206,23 @@ func HandleDeleteFileRequest(conn utils.StdioConn, p any) (result any, e error) 
 
 	result = uss.DeleteFileResponse{
 		Success: true,
-		Path:    params.Path,
+		Path:    request.Path,
 	}
 	return
 }
 
 // HandleChownFileRequest handles a ChownFileRequest by invoking the `zowex uss chown` command
-func HandleChownFileRequest(conn utils.StdioConn, p any) (result any, e error) {
-	params := p.(uss.ChownFileRequest)
-	if params.Path == "" {
+func HandleChownFileRequest(conn utils.StdioConn, params []byte) (result any, e error) {
+	var request uss.ChownFileRequest
+	if err := json.Unmarshal(params, &request); err != nil {
+		return nil, err
+	} else if request.Path == "" {
 		e = fmt.Errorf("Missing required parameters: Path")
 		return
 	}
 
-	args := []string{"uss", "chown", params.Owner, params.Path}
-	if params.Recursive {
+	args := []string{"uss", "chown", request.Owner, request.Path}
+	if request.Recursive {
 		args = append(args, "-r", "true")
 	}
 	_, err := conn.ExecCmd(args)
@@ -218,21 +233,23 @@ func HandleChownFileRequest(conn utils.StdioConn, p any) (result any, e error) {
 
 	result = uss.ChownFileResponse{
 		Success: err == nil,
-		Path:    params.Path,
+		Path:    request.Path,
 	}
 	return
 }
 
 // HandleChmodFileRequest handles a ChmodFileRequest by invoking the `zowex uss chmod` command
-func HandleChmodFileRequest(conn utils.StdioConn, p any) (result any, e error) {
-	params := p.(uss.ChmodFileRequest)
-	if params.Path == "" {
+func HandleChmodFileRequest(conn utils.StdioConn, params []byte) (result any, e error) {
+	var request uss.ChmodFileRequest
+	if err := json.Unmarshal(params, &request); err != nil {
+		return nil, err
+	} else if request.Path == "" {
 		e = fmt.Errorf("Missing required parameters: Path")
 		return
 	}
 
-	args := []string{"uss", "chmod", params.Mode, params.Path}
-	if params.Recursive {
+	args := []string{"uss", "chmod", request.Mode, request.Path}
+	if request.Recursive {
 		args = append(args, "-r", "true")
 	}
 	_, err := conn.ExecCmd(args)
@@ -243,21 +260,23 @@ func HandleChmodFileRequest(conn utils.StdioConn, p any) (result any, e error) {
 
 	result = uss.ChmodFileResponse{
 		Success: err == nil,
-		Path:    params.Path,
+		Path:    request.Path,
 	}
 	return
 }
 
 // HandleChtagFileRequest handles a ChtagFileRequest by invoking the `zowex uss chtag` command
-func HandleChtagFileRequest(conn utils.StdioConn, p any) (result any, e error) {
-	params := p.(uss.ChtagFileRequest)
-	if params.Path == "" {
+func HandleChtagFileRequest(conn utils.StdioConn, params []byte) (result any, e error) {
+	var request uss.ChtagFileRequest
+	if err := json.Unmarshal(params, &request); err != nil {
+		return nil, err
+	} else if request.Path == "" {
 		e = fmt.Errorf("Missing required parameters: Path")
 		return
 	}
 
-	args := []string{"uss", "chtag", params.Tag, params.Path}
-	if params.Recursive {
+	args := []string{"uss", "chtag", request.Tag, request.Path}
+	if request.Recursive {
 		args = append(args, "-r", "true")
 	}
 	_, err := conn.ExecCmd(args)
@@ -268,7 +287,7 @@ func HandleChtagFileRequest(conn utils.StdioConn, p any) (result any, e error) {
 
 	result = uss.ChtagFileResponse{
 		Success: err == nil,
-		Path:    params.Path,
+		Path:    request.Path,
 	}
 	return
 }

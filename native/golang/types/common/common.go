@@ -11,11 +11,13 @@
 
 package types
 
+import "encoding/json"
+
 type RpcRequest struct {
-	JsonRPC string `json:"jsonrpc" tstype:"\"2.0\""`
-	Method  string `json:"method"`
-	Params  any    `json:"params,omitempty"`
-	Id      int    `json:"id"`
+	JsonRPC string          `json:"jsonrpc" tstype:"\"2.0\""`
+	Method  string          `json:"method"`
+	Params  json.RawMessage `json:"params,omitempty" tstype:"any"`
+	Id      int             `json:"id"`
 }
 
 type RpcResponse struct {

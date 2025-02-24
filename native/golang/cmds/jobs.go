@@ -13,6 +13,7 @@ package cmds
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -22,11 +23,15 @@ import (
 )
 
 // HandleListJobsRequest handles a ListJobsRequest by invoking the `zowex job list` command
-func HandleListJobsRequest(conn utils.StdioConn, p any) (result any, e error) {
-	params := p.(jobs.ListJobsRequest)
+func HandleListJobsRequest(conn utils.StdioConn, params []byte) (result any, e error) {
+	var request jobs.ListJobsRequest
+	if err := json.Unmarshal(params, &request); err != nil {
+		return nil, err
+	}
+
 	args := []string{"job", "list", "--rfc", "true"}
-	if len(params.Owner) != 0 {
-		args = append(args, "--owner", params.Owner)
+	if len(request.Owner) != 0 {
+		args = append(args, "--owner", request.Owner)
 	}
 
 	out, err := conn.ExecCmd(args)
@@ -58,9 +63,13 @@ func HandleListJobsRequest(conn utils.StdioConn, p any) (result any, e error) {
 }
 
 // HandleListSpoolsRequest handles a ListSpoolsRequest by invoking the `zowex job list-files` command
-func HandleListSpoolsRequest(conn utils.StdioConn, p any) (result any, e error) {
-	params := p.(jobs.ListSpoolsRequest)
-	args := []string{"job", "list-files", params.JobId, "--rfc", "true"}
+func HandleListSpoolsRequest(conn utils.StdioConn, params []byte) (result any, e error) {
+	var request jobs.ListSpoolsRequest
+	if err := json.Unmarshal(params, &request); err != nil {
+		return nil, err
+	}
+
+	args := []string{"job", "list-files", request.JobId, "--rfc", "true"}
 
 	out, err := conn.ExecCmd(args)
 	if err != nil {
@@ -96,12 +105,16 @@ func HandleListSpoolsRequest(conn utils.StdioConn, p any) (result any, e error) 
 }
 
 // HandleReadSpoolRequest handles a ReadSpoolRequest by invoking the `zowex job view-file` command
-func HandleReadSpoolRequest(conn utils.StdioConn, p any) (result any, e error) {
-	params := p.(jobs.ReadSpoolRequest)
-	args := []string{"job", "view-file", params.JobId, strconv.Itoa(params.DsnKey)}
-	hasEncoding := len(params.Encoding) != 0
+func HandleReadSpoolRequest(conn utils.StdioConn, params []byte) (result any, e error) {
+	var request jobs.ReadSpoolRequest
+	if err := json.Unmarshal(params, &request); err != nil {
+		return nil, err
+	}
+
+	args := []string{"job", "view-file", request.JobId, strconv.Itoa(request.DsnKey)}
+	hasEncoding := len(request.Encoding) != 0
 	if hasEncoding {
-		args = append(args, "--encoding", params.Encoding, "--rfb", "true")
+		args = append(args, "--encoding", request.Encoding, "--rfb", "true")
 	}
 	out, err := conn.ExecCmd(args)
 	if err != nil {
@@ -111,18 +124,22 @@ func HandleReadSpoolRequest(conn utils.StdioConn, p any) (result any, e error) {
 
 	data, e := utils.CollectContentsAsBytes(string(out), hasEncoding)
 	result = jobs.ReadSpoolResponse{
-		Encoding: params.Encoding,
-		DsnKey:   params.DsnKey,
-		JobId:    params.JobId,
+		Encoding: request.Encoding,
+		DsnKey:   request.DsnKey,
+		JobId:    request.JobId,
 		Data:     data,
 	}
 	return
 }
 
 // HandleGetJclRequest handles a GetJclRequest by invoking the `zowex job view-jcl` command
-func HandleGetJclRequest(conn utils.StdioConn, p any) (result any, e error) {
-	params := p.(jobs.GetJclRequest)
-	args := []string{"job", "view-jcl", params.JobId}
+func HandleGetJclRequest(conn utils.StdioConn, params []byte) (result any, e error) {
+	var request jobs.GetJclRequest
+	if err := json.Unmarshal(params, &request); err != nil {
+		return nil, err
+	}
+
+	args := []string{"job", "view-jcl", request.JobId}
 	out, err := conn.ExecCmd(args)
 	if err != nil {
 		e = fmt.Errorf("Failed to get JCL: %v", err)
@@ -130,16 +147,20 @@ func HandleGetJclRequest(conn utils.StdioConn, p any) (result any, e error) {
 	}
 
 	result = jobs.GetJclResponse{
-		JobId: params.JobId,
+		JobId: request.JobId,
 		Data:  string(out),
 	}
 	return
 }
 
 // HandleGetStatusRequest handles a GetStatusRequest by invoking the `zowex job view-status` command
-func HandleGetStatusRequest(conn utils.StdioConn, p any) (result any, e error) {
-	params := p.(jobs.GetJobStatusRequest)
-	args := []string{"job", "view-status", params.JobId, "--rfc", "true"}
+func HandleGetStatusRequest(conn utils.StdioConn, params []byte) (result any, e error) {
+	var request jobs.GetJobStatusRequest
+	if err := json.Unmarshal(params, &request); err != nil {
+		return nil, err
+	}
+
+	args := []string{"job", "view-status", request.JobId, "--rfc", "true"}
 	out, err := conn.ExecCmd(args)
 	if err != nil {
 		e = fmt.Errorf("Failed to get status: %v", err)
@@ -147,7 +168,7 @@ func HandleGetStatusRequest(conn utils.StdioConn, p any) (result any, e error) {
 	}
 	vals := strings.Split(string(out), ",")
 	if len(vals) < 4 {
-		e = fmt.Errorf("Missing job properties for %s", params.JobId)
+		e = fmt.Errorf("Missing job properties for %s", request.JobId)
 	} else {
 		result = t.Job{
 			Id:      vals[0],
@@ -160,9 +181,13 @@ func HandleGetStatusRequest(conn utils.StdioConn, p any) (result any, e error) {
 }
 
 // HandleSubmitJobRequest handles a SubmitJobRequest by invoking the `zowex job submit` command
-func HandleCancelJobRequest(conn utils.StdioConn, p any) (result any, e error) {
-	params := p.(jobs.CancelJobRequest)
-	_, err := conn.ExecCmd([]string{"job", "cancel", params.JobId})
+func HandleCancelJobRequest(conn utils.StdioConn, params []byte) (result any, e error) {
+	var request jobs.CancelJobRequest
+	if err := json.Unmarshal(params, &request); err != nil {
+		return nil, err
+	}
+
+	_, err := conn.ExecCmd([]string{"job", "cancel", request.JobId})
 
 	if err != nil {
 		e = fmt.Errorf("Failed to cancel job: %v", err)
@@ -171,15 +196,19 @@ func HandleCancelJobRequest(conn utils.StdioConn, p any) (result any, e error) {
 
 	result = jobs.CancelJobResponse{
 		Success: true,
-		JobId:   params.JobId,
+		JobId:   request.JobId,
 	}
 	return
 }
 
 // HandleSubmitJobRequest handles a SubmitJobRequest by invoking the `zowex job submit` command
-func HandleSubmitJobRequest(conn utils.StdioConn, p any) (result any, e error) {
-	params := p.(jobs.SubmitJobRequest)
-	out, err := conn.ExecCmd([]string{"job", "submit", params.Dsname, "--only-jobid", "true"})
+func HandleSubmitJobRequest(conn utils.StdioConn, params []byte) (result any, e error) {
+	var request jobs.SubmitJobRequest
+	if err := json.Unmarshal(params, &request); err != nil {
+		return nil, err
+	}
+
+	out, err := conn.ExecCmd([]string{"job", "submit", request.Dsname, "--only-jobid", "true"})
 
 	if err != nil {
 		e = fmt.Errorf("Failed to submit job: %v", err)
@@ -188,16 +217,20 @@ func HandleSubmitJobRequest(conn utils.StdioConn, p any) (result any, e error) {
 
 	result = jobs.SubmitJobResponse{
 		Success: true,
-		Dsname:  params.Dsname,
+		Dsname:  request.Dsname,
 		JobId:   strings.TrimSpace(string(out)),
 	}
 	return
 }
 
 // HandleSubmitJclRequest handles a SubmitJclRequest by invoking the `zowex job submit-jcl` command
-func HandleSubmitJclRequest(conn utils.StdioConn, p any) (result any, e error) {
-	params := p.(jobs.SubmitJclRequest)
-	decodedBytes, err := base64.StdEncoding.DecodeString(params.Jcl)
+func HandleSubmitJclRequest(conn utils.StdioConn, params []byte) (result any, e error) {
+	var request jobs.SubmitJclRequest
+	if err := json.Unmarshal(params, &request); err != nil {
+		return nil, err
+	}
+
+	decodedBytes, err := base64.StdEncoding.DecodeString(request.Jcl)
 	if err != nil {
 		e = fmt.Errorf("Failed to decode JCL contents: %v", err)
 		return
@@ -232,17 +265,21 @@ func HandleSubmitJclRequest(conn utils.StdioConn, p any) (result any, e error) {
 }
 
 // HandleDeleteJobRequest handles a DeleteJobRequest by invoking the `zowex job delete` command
-func HandleDeleteJobRequest(conn utils.StdioConn, p any) (result any, e error) {
-	params := p.(jobs.DeleteJobRequest)
-	_, err := conn.ExecCmd([]string{"job", "delete", params.JobId})
+func HandleDeleteJobRequest(conn utils.StdioConn, params []byte) (result any, e error) {
+	var request jobs.DeleteJobRequest
+	if err := json.Unmarshal(params, &request); err != nil {
+		return nil, err
+	}
+
+	_, err := conn.ExecCmd([]string{"job", "delete", request.JobId})
 	if err != nil {
-		e = fmt.Errorf("Failed to delete job %s: %v", params.JobId, err)
+		e = fmt.Errorf("Failed to delete job %s: %v", request.JobId, err)
 		return
 	}
 
 	result = jobs.DeleteJobResponse{
 		Success: true,
-		JobId:   params.JobId,
+		JobId:   request.JobId,
 	}
 	return
 }
