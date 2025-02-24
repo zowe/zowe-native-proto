@@ -44,10 +44,16 @@ func LogError(format string, args ...any) {
 }
 
 // PrintErrorResponse prints a JSON-serialized error response to stderr and logs the error to the log file
-func PrintErrorResponse(format string, args ...any) {
-	LogError(format, args)
-	errResponse := t.ErrorDetails{
-		Msg: fmt.Sprintf(format, args),
+func PrintErrorResponse(details t.ErrorDetails, rpcId int) {
+	LogError(details.Message)
+	errResponse := t.RpcResponse{
+		JsonRPC: "2.0",
+		Result:  nil,
+		Error:   &details,
+		Id:      &rpcId,
+	}
+	if *errResponse.Id == -1 {
+		errResponse.Id = nil
 	}
 	out, _ := json.Marshal(errResponse)
 	fmt.Fprintln(os.Stderr, string(out))

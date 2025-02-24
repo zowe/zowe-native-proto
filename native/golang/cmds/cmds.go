@@ -12,25 +12,23 @@
 package cmds
 
 import (
+	"fmt"
 	cmdTypes "zowe-native-proto/ioserver/types/cmds"
 	utils "zowe-native-proto/ioserver/utils"
 )
 
 // HandleConsoleCommandRequest handles a ConsoleCommandRequest by invoking the `zowex console issue` command
-func HandleConsoleCommandRequest(_conn utils.StdioConn, jsonData []byte) {
-	request, err := utils.ParseCommandRequest[cmdTypes.IssueConsoleRequest](jsonData)
-	if err != nil {
-		return
-	}
-
-	args := []string{"console", "issue", request.CommandText, "--cn", request.ConsoleName}
+func HandleConsoleCommandRequest(_conn utils.StdioConn, p any) (result any, e error) {
+	params := p.(cmdTypes.IssueConsoleRequest)
+	args := []string{"console", "issue", params.CommandText, "--cn", params.ConsoleName}
 	out, err := utils.BuildCommandAuthorized(args).Output()
 	if err != nil {
-		utils.PrintErrorResponse("Failed to execute command: %v", err)
+		e = fmt.Errorf("Failed to execute command: %v", err)
 		return
 	}
 
-	utils.PrintCommandResponse(cmdTypes.IssueConsoleResponse{
+	result = cmdTypes.IssueConsoleResponse{
 		Data: string(out),
-	})
+	}
+	return
 }

@@ -12,14 +12,10 @@
 package utils
 
 import (
-	"encoding/json"
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
-	t "zowe-native-proto/ioserver/types/common"
 )
 
 var exePath string
@@ -83,41 +79,4 @@ func BuildCommandNoAutocvt(args []string) *exec.Cmd {
 	cmd := BuildCommandShared("./zowex", args)
 	cmd.Env = append(os.Environ(), "_BPXK_AUTOCVT=OFF")
 	return cmd
-}
-
-// ParseCommandRequest parses a command request and returns the parsed request as the given type.
-func ParseCommandRequest[T any](data []byte) (T, error) {
-	var request T
-	err := json.Unmarshal(data, &request)
-	if err != nil {
-		// Get the caller's function name for logging
-		pc, _, _, ok := runtime.Caller(1)
-		if ok {
-			name := runtime.FuncForPC(pc).Name()
-			PrintErrorResponse("[%s] Error unmarshalling JSON: %s", name, err)
-		} else {
-			PrintErrorResponse("Error unmarshalling JSON: %v", err)
-		}
-		return request, err
-	}
-
-	return request, nil
-}
-
-// PrintCommandResponse prints the response from a command handler. If the response cannot be marshaled, an error response is returned.
-func PrintCommandResponse[T any](response T) {
-	v, err := json.Marshal(response)
-	if err != nil {
-		details := fmt.Sprintf("Could not marshal response: %s\n", err.Error())
-		errResponse, err2 := json.Marshal(t.ErrorDetails{
-			Msg: details,
-		})
-		if err2 != nil {
-			fmt.Fprintf(os.Stderr, "[PrintCommandResponse] Could not marshal response: %s\n", err.Error())
-		} else {
-			fmt.Println(string(errResponse))
-		}
-	} else {
-		fmt.Println(string(v))
-	}
 }

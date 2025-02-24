@@ -14,6 +14,7 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 
@@ -73,18 +74,45 @@ func main() {
 
 	for data := range input {
 		// Parse the command request
-		var request t.CommandRequest
+		var request t.RpcRequest
 		err := json.Unmarshal(data, &request)
 		if err != nil {
-			utils.PrintErrorResponse("Failed to parse command request: %v", err)
+			utils.PrintErrorResponse(t.ErrorDetails{
+				Code:    -32700,
+				Message: fmt.Sprintf("Failed to parse command request: %v", err),
+			}, -1)
 			continue
 		}
 
 		// Handle the command request if a supported command is provided
-		if handler, ok := dispatcher.Get(request.Command); ok {
-			handler(conn, data)
+		if handler, ok := dispatcher.Get(request.Method); ok {
+			result, err := handler(conn, request.Params)
+			if err != nil {
+				utils.PrintErrorResponse(t.ErrorDetails{
+					Code:    1,
+					Message: err.Error(),
+				}, request.Id)
+			} else {
+				response, err := json.Marshal(t.RpcResponse{
+					JsonRPC: "2.0",
+					Result:  result,
+					Error:   nil,
+					Id:      &request.Id,
+				})
+				if err != nil {
+					utils.PrintErrorResponse(t.ErrorDetails{
+						Code:    -32603,
+						Message: fmt.Sprintf("Could not marshal response: %s\n", err.Error()),
+					}, request.Id)
+				} else {
+					fmt.Println(string(response))
+				}
+			}
 		} else {
-			utils.PrintErrorResponse("Unrecognized command %s", request.Command)
+			utils.PrintErrorResponse(t.ErrorDetails{
+				Code:    -32601,
+				Message: fmt.Sprintf("Unrecognized command %s", request.Method),
+			}, request.Id)
 		}
 	}
 }
