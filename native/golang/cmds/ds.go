@@ -216,3 +216,22 @@ func HandleCreateDatasetRequest(jsonData []byte) {
 		Success: true,
 	})
 }
+
+// HandleCreateMemberRequest handles a CreateMemberRequest by invoking the `zowex data-set create-member` command
+func HandleCreateMemberRequest(jsonData []byte) {
+	dsRequest, err := utils.ParseCommandRequest[ds.CreateMemberRequest](jsonData)
+	if err != nil {
+		return
+	}
+
+	args := []string{"./zowex", "data-set", "create-member", dsRequest.Dsname}
+	_, err = utils.BuildCommand(args).Output()
+	if err != nil {
+		utils.PrintErrorResponse("Failed to create data-set member: %v", err)
+		return
+	}
+
+	utils.PrintCommandResponse(ds.CreateMemberResponse{
+		Success: true,
+	})
+}

@@ -21,6 +21,7 @@ func initializeDatasetHandlers(disp *CmdDispatcher) {
 		"restoreDataset": HandleRestoreDatasetRequest,
 		"writeDataset":   HandleWriteDatasetRequest,
 		"createDataset":  HandleCreateDatasetRequest,
+		"createMember":   HandleCreateMemberRequest,
 	}
 	registerHandlers(disp, handlers)
 }
