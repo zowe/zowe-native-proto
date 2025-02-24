@@ -31,6 +31,9 @@ func HandleListJobsRequest(jsonData []byte) {
 	if len(listRequest.Owner) != 0 {
 		args = append(args, "--owner", listRequest.Owner)
 	}
+	if len(listRequest.Prefix) != 0 {
+		args = append(args, "--prefix", listRequest.Prefix)
+	}
 
 	out, err := utils.BuildCommand(args).Output()
 	if err != nil {
