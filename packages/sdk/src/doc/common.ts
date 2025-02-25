@@ -33,6 +33,10 @@ export interface CommandRequest {
     command: string;
 }
 export interface CommandResponse {
+    /**
+     * True if command succeeded
+     */
+    success: boolean;
 }
 export interface ErrorDetails {
     code: number /* int */;

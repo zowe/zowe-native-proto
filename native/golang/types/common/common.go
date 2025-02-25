@@ -32,7 +32,10 @@ type CommandRequest struct {
 	Command string `json:"command"`
 }
 
-type CommandResponse struct{}
+type CommandResponse struct {
+	// True if command succeeded
+	Success bool `json:"success"`
+}
 
 type ErrorDetails struct {
 	Code    int    `json:"code"`

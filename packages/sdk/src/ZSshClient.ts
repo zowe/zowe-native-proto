@@ -15,6 +15,7 @@ import { Client, type ClientChannel } from "ssh2";
 import { AbstractRpcClient } from "./AbstractRpcClient";
 import { ZSshUtils } from "./ZSshUtils";
 import type { CommandRequest, CommandResponse, RpcRequest, RpcResponse } from "./doc";
+import { ImperativeError } from "@zowe/imperative";
 
 export class ZSshClient extends AbstractRpcClient implements Disposable {
     public static readonly DEFAULT_SERVER_PATH = "~/.zowe-server";
@@ -66,10 +67,11 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
 
     public async request<T extends CommandResponse>(request: CommandRequest): Promise<T> {
         return new Promise((resolve, reject) => {
+            const { command, ...rest } = request;
             const rpcRequest: RpcRequest = {
                 jsonrpc: "2.0",
-                method: request.command,
-                params: request,
+                method: command,
+                params: rest,
                 id: ++this.mRequestId,
             };
             this.mPromiseMap.set(rpcRequest.id, { resolve, reject } as any);
@@ -82,18 +84,18 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
             console.error("STDERR:", chunk.toString());
             return;
         }
-        this.onOutData(chunk);
+        this.onOutData(chunk, true);
     }
 
-    private onOutData(chunk: Buffer) {
+    private onOutData(chunk: Buffer, stderr = false) {
         const endsWithNewLine = chunk[chunk.length - 1] === 0x0a;
         this.mResponse += endsWithNewLine ? chunk.subarray(0, chunk.length - 1) : chunk;
         if (endsWithNewLine) {
-            this.requestEnd();
+            this.requestEnd(!stderr);
         }
     }
 
-    private requestEnd() {
+    private requestEnd(success: boolean) {
         let response: RpcResponse;
         try {
             response = JSON.parse(this.mResponse);
@@ -106,9 +108,15 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
             throw new Error(`Missing promise for response ID: ${response.id}`);
         }
         if (response.error != null) {
-            this.mPromiseMap.get(response.id).reject(response.error.message);
+            this.mPromiseMap.get(response.id).reject(
+                new ImperativeError({
+                    msg: response.error.message,
+                    errorCode: response.error.code.toString(),
+                    additionalDetails: response.error.data,
+                }),
+            );
         } else {
-            this.mPromiseMap.get(response.id).resolve(response.result);
+            this.mPromiseMap.get(response.id).resolve({ success, ...response.result });
         }
         this.mPromiseMap.delete(response.id);
     }
