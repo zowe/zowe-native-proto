@@ -17,6 +17,7 @@ import { ZosUssProfile } from "@zowe/zos-uss-for-zowe-sdk";
 import { ZosmfProfile } from "@zowe/zosmf-for-zowe-sdk";
 import { FileManagement, Gui, ZoweVsCodeExtension, imperative } from "@zowe/zowe-explorer-api";
 import { Client } from "ssh2";
+import type { ClientChannel } from "ssh2";
 import * as vscode from "vscode";
 import { ZClientUtils, ZSshClient } from "zowe-native-proto-sdk";
 import type { sshConfigExt } from "zowe-native-proto-sdk";
@@ -336,6 +337,7 @@ export class SshConfigUtils {
         const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
         const profCache = zoweExplorerApi.getExplorerExtenderApi().getProfilesCache();
         const profiles = await profCache.fetchAllProfiles();
+
         let isUniqueName = false;
 
         if (!selectedProfile.name) selectedProfile.name = selectedProfile.hostname;
@@ -428,25 +430,42 @@ export class SshConfigUtils {
         } catch (err) {}
     }
     private static async validateConfig(newConfig: sshConfigExt): Promise<boolean | string> {
-        const attemptConnection = async (config: sshConfigExt) => {
+        const attemptConnection = async (config: sshConfigExt): Promise<boolean> => {
             return new Promise((resolve, reject) => {
                 const sshClient = new Client();
                 const testConnection = { ...config }; // Create a shallow copy
 
-                // Parse privateKey
+                // Parse privateKey if provided
                 if (testConnection.privateKey && typeof testConnection.privateKey === "string") {
                     testConnection.privateKey = readFileSync(path.normalize(testConnection.privateKey), "utf8");
                 }
+
                 // Test credentials
                 sshClient
                     .connect(testConnection)
                     .on("error", (err) => {
-                        if (err) {
-                            reject(err);
-                        }
+                        reject(err); // Reject if connection fails
                     })
                     .on("ready", () => {
-                        resolve(null);
+                        sshClient.shell((err: any, stream: ClientChannel) => {
+                            if (err) {
+                                reject(err); // Reject if shell command fails
+                                return;
+                            }
+
+                            stream.on("data", (data: Buffer | string) => {
+                                const dataStr = data.toString();
+
+                                // If password expired error is detected
+                                if (dataStr.startsWith("FOTS1668")) {
+                                    reject(new Error(dataStr));
+                                }
+                            });
+                            stream.on("end", () => {
+                                resolve(true);
+                            });
+                            sshClient.end();
+                        });
                     });
             });
         };
@@ -504,8 +523,12 @@ export class SshConfigUtils {
                         if (newConfig.password === "") break;
                         await attemptConnection(newConfig);
                         return (newConfig as any).password;
-                    } catch {
+                    } catch (passwordError) {
                         passwordAttempts++;
+                        if (passwordError && (passwordError as any).message.startsWith("FOTS1668")) {
+                            vscode.window.showErrorMessage("Password Expired on Target System");
+                            return false;
+                        }
                         vscode.window.showErrorMessage(`Password Authentication Failed (${passwordAttempts}/3)`);
                     }
                 }
