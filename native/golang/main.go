@@ -12,47 +12,48 @@
 package main
 
 import (
-	"bufio"
-	"encoding/json"
-	"fmt"
+	"flag"
 	"log"
 	"os"
 
 	"zowe-native-proto/ioserver/cmds"
 	t "zowe-native-proto/ioserver/types/common"
-	utils "zowe-native-proto/ioserver/utils"
+	"zowe-native-proto/ioserver/utils"
 )
 
+// parseOptions parses command-line flags and returns the parsed options
+func parseOptions() t.IoserverOptions {
+	numWorkersFlag := flag.Int("num-workers", 10, "Number of worker threads for concurrent processing")
+
+	flag.Parse()
+
+	if *numWorkersFlag <= 0 {
+		log.Fatalln("Number of workers must be greater than 0")
+	}
+
+	return t.IoserverOptions{
+		NumWorkers: *numWorkersFlag,
+	}
+}
+
 func main() {
+	options := parseOptions()
 	utils.InitLogger(false)
 	utils.SetAutoConvOnUntaggedStdio()
+
 	// Channel for receiving input from stdin
 	input := make(chan []byte)
 
-	cmd := utils.BuildCommand([]string{"--it"})
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		panic(err)
-	}
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		panic(err)
-	}
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		panic(err)
-	}
-	conn := utils.StdioConn{
-		Stdin:  stdin,
-		Stdout: stdout,
-		Stderr: stderr,
-	}
-	cmd.Start()
-	if _, err = bufio.NewReader(stdout).ReadBytes('\n'); err != nil {
-		panic(err)
-	}
-	defer conn.Close()
+	// Buffered request queue for workers
+	requestQueue := make(chan []byte, 100)
 
+	// Initialize the command dispatcher and register all core commands
+	dispatcher := cmds.NewDispatcher()
+	cmds.InitializeCoreHandlers(dispatcher)
+
+	wg, _ := CreateWorkerPool(options.NumWorkers, requestQueue, dispatcher)
+
+	// Start goroutine to read from stdin
 	go func() {
 		buf := make([]byte, 1024)
 		for {
@@ -60,46 +61,24 @@ func main() {
 			n, err := os.Stdin.Read(buf)
 			if err != nil {
 				if err.Error() == "EOF" {
+					close(requestQueue)
 					os.Exit(0)
 				}
 				log.Fatalln("Error reading from stdin:", err)
 			}
-			input <- buf[:n]
+			// Copy the data to avoid race conditions with buffer reuse
+			data := make([]byte, n)
+			copy(data, buf[:n])
+			input <- data
 		}
 	}()
 
-	// Initialize the command dispatcher and register all core commands
-	dispatcher := cmds.NewDispatcher()
-	cmds.InitializeCoreHandlers(dispatcher)
-
+	// Distribute incoming requests to the queue
 	for data := range input {
-		// Parse the command request
-		var request t.RpcRequest
-		err := json.Unmarshal(data, &request)
-		if err != nil {
-			utils.PrintErrorResponse(t.ErrorDetails{
-				Code:    -32700,
-				Message: fmt.Sprintf("Failed to parse command request: %v", err),
-			}, nil)
-			continue
-		}
-
-		// Handle the command request if a supported command is provided
-		if handler, ok := dispatcher.Get(request.Method); ok {
-			result, err := handler(conn, request.Params)
-			if err != nil {
-				utils.PrintErrorResponse(t.ErrorDetails{
-					Code:    1,
-					Message: err.Error(),
-				}, &request.Id)
-			} else {
-				utils.PrintCommandResponse(result, request.Id)
-			}
-		} else {
-			utils.PrintErrorResponse(t.ErrorDetails{
-				Code:    -32601,
-				Message: fmt.Sprintf("Unrecognized command %s", request.Method),
-			}, &request.Id)
-		}
+		requestQueue <- data
 	}
+
+	// If stdin is closed (process likely terminated), close the request queue and wait for all workers to finish
+	close(requestQueue)
+	wg.Wait()
 }
