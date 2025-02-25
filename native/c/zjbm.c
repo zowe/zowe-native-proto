@@ -336,14 +336,13 @@ int ZJBMTCOM(ZJB *zjb, STAT *PTR64 stat, ZJB_JOB_INFO **PTR64 job_info, int *ent
       statjqtrp = (STATJQTR * PTR32)((unsigned char *PTR32)statjqhdp + sizeof(STATJQHD));
 
       memcpy(statjqtrsp, statjqtrp, sizeof(STATJQTR));
-
       int rc = iaztlkup(&ssob, statjqtrsp, zjb);
       if (0 != rc)
       {
         strcpy(zjb->diag.service_name, "iaztlkup");
-        // For information about the overall return code, look for `tlkretcd` in "native/c/chdsect/iaztlkdf.h"
+        // For information about the reason code, look for `tlkretcd` in "native/c/chdsect/iaztlkdf.h"
         // https://www.ibm.com/docs/en/zos/3.1.0?topic=80-text-lookup-service-iaztlkup
-        zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "IAZTLKUP RC was: '%d' with overall return code: '%d'", rc, zjb->diag.detail_rc);
+        zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "IAZTLKUP RC: '%d' reason: '%d'", statjqtrsp->statjqtr.sttrjid, rc, zjb->diag.detail_rc);
         zjb->diag.detail_rc = ZJB_RTNCD_SERVICE_FAILURE;
         storage_free64(statjqtrsp);
         return RTNCD_FAILURE;

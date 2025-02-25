@@ -226,6 +226,7 @@ int main(int argc, char *argv[])
   job_owner.set_description("filter by owner");
   job_list.get_options().push_back(job_owner);
   ZCLIOption job_prefix("prefix");
+  job_prefix.get_aliases().push_back("-p");
   job_prefix.set_description("filter by prefix");
   job_list.get_options().push_back(job_prefix);
 
