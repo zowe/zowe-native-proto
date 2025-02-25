@@ -205,7 +205,7 @@ func HandleCreateDatasetRequest(jsonData []byte) {
 		return
 	}
 
-	args := []string{"./zowex", "data-set", "create", dsRequest.Dsname}
+	args := []string{"data-set", "create", dsRequest.Dsname}
 	_, err = utils.BuildCommand(args).Output()
 	if err != nil {
 		utils.PrintErrorResponse("Failed to create data set: %v", err)
@@ -214,6 +214,7 @@ func HandleCreateDatasetRequest(jsonData []byte) {
 
 	utils.PrintCommandResponse(ds.CreateDatasetResponse{
 		Success: true,
+		Dsname:  dsRequest.Dsname,
 	})
 }
 
@@ -224,7 +225,7 @@ func HandleCreateMemberRequest(jsonData []byte) {
 		return
 	}
 
-	args := []string{"./zowex", "data-set", "create-member", dsRequest.Dsname}
+	args := []string{"data-set", "create-member", dsRequest.Dsname}
 	_, err = utils.BuildCommand(args).Output()
 	if err != nil {
 		utils.PrintErrorResponse("Failed to create data-set member: %v", err)
@@ -233,5 +234,6 @@ func HandleCreateMemberRequest(jsonData []byte) {
 
 	utils.PrintCommandResponse(ds.CreateMemberResponse{
 		Success: true,
+		Dsname:  dsRequest.Dsname,
 	})
 }

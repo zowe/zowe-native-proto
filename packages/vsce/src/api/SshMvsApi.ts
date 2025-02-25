@@ -111,7 +111,19 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         dataSetName: string,
         options?: zosfiles.IUploadOptions,
     ): Promise<zosfiles.IZosFilesResponse> {
-        throw new Error("Not yet implemented");
+        let response: ds.CreateMemberResponse = { success: false, dsname: dataSetName };
+        try {
+            response = await (await this.client).ds.createMember({
+                dsname: dataSetName,
+            });
+            if (!response.success) {
+                Gui.errorMessage(`Failed to create data set member: ${dataSetName}`);
+            }
+        } catch (error) {
+            Gui.errorMessage(`Failed to create data set member: ${dataSetName}`);
+            Gui.errorMessage(`Error: ${error}`);
+        }
+        return this.buildZosFilesResponse(response, response.success);
     }
 
     public async allocateLikeDataSet(
@@ -177,7 +189,7 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
     }
 
     // biome-ignore lint/suspicious/noExplicitAny: apiResponse has no strong type
-    private buildZosFilesResponse(apiResponse: any, success = true): zosfiles.IZosFilesResponse {
-        return { apiResponse, commandResponse: "", success };
+    private buildZosFilesResponse(apiResponse: any, success = true, errorText?: string): zosfiles.IZosFilesResponse {
+        return { apiResponse, commandResponse: "", success, errorMessage: errorText };
     }
 }
