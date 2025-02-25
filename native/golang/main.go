@@ -80,7 +80,7 @@ func main() {
 			utils.PrintErrorResponse(t.ErrorDetails{
 				Code:    -32700,
 				Message: fmt.Sprintf("Failed to parse command request: %v", err),
-			}, -1)
+			}, nil)
 			continue
 		}
 
@@ -91,7 +91,7 @@ func main() {
 				utils.PrintErrorResponse(t.ErrorDetails{
 					Code:    1,
 					Message: err.Error(),
-				}, request.Id)
+				}, &request.Id)
 			} else {
 				response, err := json.Marshal(t.RpcResponse{
 					JsonRPC: "2.0",
@@ -103,7 +103,7 @@ func main() {
 					utils.PrintErrorResponse(t.ErrorDetails{
 						Code:    -32603,
 						Message: fmt.Sprintf("Could not marshal response: %s\n", err.Error()),
-					}, request.Id)
+					}, &request.Id)
 				} else {
 					fmt.Println(string(response))
 				}
@@ -112,7 +112,7 @@ func main() {
 			utils.PrintErrorResponse(t.ErrorDetails{
 				Code:    -32601,
 				Message: fmt.Sprintf("Unrecognized command %s", request.Method),
-			}, request.Id)
+			}, &request.Id)
 		}
 	}
 }

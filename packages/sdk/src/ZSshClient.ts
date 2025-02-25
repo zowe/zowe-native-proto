@@ -78,7 +78,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
     }
 
     private onErrData(chunk: Buffer) {
-        if (this.mPromiseMap.size === 0) {
+        if (this.mRequestId === 0) {
             console.error("STDERR:", chunk.toString());
             return;
         }

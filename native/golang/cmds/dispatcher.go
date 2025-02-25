@@ -13,8 +13,8 @@ package cmds
 
 import (
 	"fmt"
+	"os"
 	"sync"
-	t "zowe-native-proto/ioserver/types/common"
 	utils "zowe-native-proto/ioserver/utils"
 )
 
@@ -51,9 +51,8 @@ func (r *CmdDispatcher) Get(command string) (CommandHandler, bool) {
 // MustRegister registers a handler and prints to stderr if registration fails
 func (r *CmdDispatcher) MustRegister(command string, handler CommandHandler) {
 	if err := r.Register(command, handler); err != nil {
-		utils.PrintErrorResponse(t.ErrorDetails{
-			Code:    -32603,
-			Message: fmt.Sprintf("Failed to register command %s: %v", command, err),
-		}, -1)
+		errMsg := fmt.Sprintf("Failed to register command %s: %v", command, err)
+		utils.LogError(errMsg)
+		fmt.Fprintln(os.Stderr, errMsg)
 	}
 }

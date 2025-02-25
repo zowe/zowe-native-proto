@@ -27,8 +27,8 @@ func HandleReadDatasetRequest(conn utils.StdioConn, params []byte) (result any, 
 	var request ds.ReadDatasetRequest
 	if err := json.Unmarshal(params, &request); err != nil {
 		return nil, err
-	} else if request.Dsname == "" || request.Encoding == "" {
-		e = fmt.Errorf("Missing required parameters: Dsname or Encoding")
+	} else if request.Dsname == "" {
+		e = fmt.Errorf("Missing required parameters: Dsname")
 		return
 	}
 
@@ -57,8 +57,8 @@ func HandleWriteDatasetRequest(_conn utils.StdioConn, params []byte) (result any
 	var request ds.WriteDatasetRequest
 	if err := json.Unmarshal(params, &request); err != nil {
 		return nil, err
-	} else if request.Dsname == "" || request.Encoding == "" {
-		e = fmt.Errorf("Missing required parameters: Dsname or Encoding")
+	} else if request.Dsname == "" {
+		e = fmt.Errorf("Missing required parameters: Dsname")
 		return
 	}
 
