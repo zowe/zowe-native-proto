@@ -47,11 +47,15 @@ export class SshConfigUtils {
             ({ name, profile }) => name && profile?.host,
         );
 
+        // Get configs from ~/.ssh/config
         const migratedConfigs = await ZClientUtils.migrateSshConfig();
+
+        // Parse to remove migratable configs that already exist on the team config
         const filteredMigratedConfigs = migratedConfigs.filter(
             (migratedConfig) => !sshProfiles.some((sshProfile) => sshProfile.profile?.host === migratedConfig.hostname),
         );
 
+        // Choose between adding a new ssh host, an existing team config profile, and migrating from config.
         const qpItems: vscode.QuickPickItem[] = [
             { label: "$(plus) Add New SSH Host..." },
             ...sshProfiles.map(({ name, profile }) => ({
@@ -73,11 +77,13 @@ export class SshConfigUtils {
             title: "Choose an SSH host",
         });
 
+        // If nothing selected, return
         if (!result) return;
 
         if (result === qpItems[0] || filteredMigratedConfigs.some(({ name }) => result.label === name)) {
             const isNewConfig = result === qpItems[0];
 
+            // If result is add new SSH host then create a new config, if not use migrated configs
             let selectedProfile = isNewConfig
                 ? await SshConfigUtils.createNewConfig()
                 : filteredMigratedConfigs.find(({ name }) => result.label === name);
@@ -86,6 +92,7 @@ export class SshConfigUtils {
 
             const workspaceDir = ZoweVsCodeExtension.workspaceRoot;
 
+            // Prioritize creating a team config in the local workspace if it exists even if a global config exists
             if (
                 workspaceDir?.uri.fsPath !== undefined &&
                 !profInfo.getTeamConfig().layerExists(workspaceDir!.uri.fsPath)
@@ -177,19 +184,49 @@ export class SshConfigUtils {
                 );
             }
 
-            if (!validationResult) {
-                selectedProfile.privateKey = undefined;
-                const passwordPrompt = await vscode.window.showInputBox({
-                    title: `${selectedProfile.user}@${selectedProfile.hostname}'s password:`,
-                    password: true,
-                    placeHolder: "Enter your password",
-                    ignoreFocusOut: true,
-                });
-                if (!passwordPrompt) return;
-                if (!selectedProfile) return;
-                selectedProfile.password = passwordPrompt;
-            }
+            // Password loading bar
+            await Gui.withProgress(
+                {
+                    location: vscode.ProgressLocation.Notification,
+                    title: "Validating Password...",
+                    cancellable: false,
+                },
+                async (progress) => {
+                    // If not validated, remove private key from profile and get the password
+                    if (!validationResult) {
+                        selectedProfile!.privateKey = undefined;
 
+                        // Show the password input prompt
+                        const passwordPrompt = await vscode.window.showInputBox({
+                            title: `${selectedProfile?.user}@${selectedProfile?.hostname}'s password:`,
+                            password: true,
+                            placeHolder: "Enter your password",
+                            ignoreFocusOut: true,
+                        });
+
+                        if (!passwordPrompt) return;
+
+                        if (!selectedProfile) return;
+
+                        // Validate the password
+                        const validatePassword = await SshConfigUtils.validateConfig({
+                            ...selectedProfile,
+                            password: passwordPrompt,
+                        });
+
+                        if (validatePassword && typeof validatePassword === "boolean") {
+                            selectedProfile.password = passwordPrompt;
+                        } else if (validatePassword && typeof validatePassword === "string") {
+                            selectedProfile.password = validatePassword;
+                        } else {
+                            vscode.window.showWarningMessage("Password Authentication Failed");
+                            return;
+                        }
+                    }
+                },
+            );
+
+            // If no private key or password is on the profile then there is no possible validation combination, thus return
             if (!selectedProfile?.privateKey && !selectedProfile?.password) {
                 vscode.window.showWarningMessage("SSH setup cancelled.");
                 return;
@@ -265,7 +302,6 @@ export class SshConfigUtils {
         let flagMatch: RegExpExecArray | null;
         while ((flagMatch = flagRegex.exec(sshResponse)) !== null) {
             const [, flag, value] = flagMatch;
-            console.debug();
             // Check for missing value
             if (!value) {
                 vscode.window.showErrorMessage(`Missing value for flag -${flag}.`);
@@ -401,7 +437,6 @@ export class SshConfigUtils {
                 if (testConnection.privateKey && typeof testConnection.privateKey === "string") {
                     testConnection.privateKey = readFileSync(path.normalize(testConnection.privateKey), "utf8");
                 }
-
                 // Test credentials
                 sshClient
                     .connect(testConnection)
@@ -417,13 +452,18 @@ export class SshConfigUtils {
         };
 
         try {
-            // If private key cant be opened, return false validation
-            if (!readFileSync(path.normalize(newConfig?.privateKey!), "utf-8")) return false;
+            // If private key cant be opened or found and there is no password, return false validation
+            if (
+                (!newConfig?.privateKey || !readFileSync(path.normalize(newConfig?.privateKey!), "utf-8")) &&
+                !newConfig?.password
+            )
+                return false;
             await attemptConnection(newConfig);
         } catch (err) {
+            // Case in which the private key requires a passphrase
             if ((err as any).message.includes("but no passphrase given")) {
-                let attempts = 0;
-                while (attempts < 3) {
+                let passphraseAttempts = 0;
+                while (passphraseAttempts < 3) {
                     (newConfig as any).passphrase = await vscode.window.showInputBox({
                         title: `Enter passphrase for key '${newConfig.privateKey}'`,
                         password: true,
@@ -436,8 +476,8 @@ export class SshConfigUtils {
                         return (newConfig as any).passphrase;
                     } catch (error) {
                         if (!(error as any).message.includes("integrity check failed")) break;
-                        attempts++;
-                        vscode.window.showErrorMessage(`Passphrase Authentication Failed (${attempts}/3)`);
+                        passphraseAttempts++;
+                        vscode.window.showErrorMessage(`Passphrase Authentication Failed (${passphraseAttempts}/3)`);
                     }
                 }
 
@@ -445,6 +485,30 @@ export class SshConfigUtils {
                 (newConfig as any).passphrase = undefined;
                 (newConfig as any).privateKey = undefined;
                 return false;
+            }
+            // Case in which password was given but failed
+            if ((err as any).message.includes("All configured authentication methods failed")) {
+                // 1 attempt has already occured
+                let passwordAttempts = 1;
+                vscode.window.showErrorMessage(`Password Authentication Failed (${passwordAttempts}/3)`);
+
+                while (passwordAttempts <= 3) {
+                    newConfig.password = await vscode.window.showInputBox({
+                        title: `${newConfig.user}@${newConfig.hostname}'s password:`,
+                        password: true,
+                        placeHolder: "Enter your password",
+                        ignoreFocusOut: true,
+                    });
+                    try {
+                        // If password is blank then do not attempt and break out and return false;
+                        if (newConfig.password === "") break;
+                        await attemptConnection(newConfig);
+                        return (newConfig as any).password;
+                    } catch {
+                        passwordAttempts++;
+                        vscode.window.showErrorMessage(`Password Authentication Failed (${passwordAttempts}/3)`);
+                    }
+                }
             }
             return false;
         }
