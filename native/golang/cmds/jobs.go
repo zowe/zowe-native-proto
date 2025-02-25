@@ -13,7 +13,6 @@ package cmds
 
 import (
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -24,8 +23,8 @@ import (
 
 // HandleListJobsRequest handles a ListJobsRequest by invoking the `zowex job list` command
 func HandleListJobsRequest(conn utils.StdioConn, params []byte) (result any, e error) {
-	var request jobs.ListJobsRequest
-	if err := json.Unmarshal(params, &request); err != nil {
+	request, err := utils.ParseCommandRequest[jobs.ListJobsRequest](params)
+	if err != nil {
 		return nil, err
 	}
 
@@ -64,8 +63,8 @@ func HandleListJobsRequest(conn utils.StdioConn, params []byte) (result any, e e
 
 // HandleListSpoolsRequest handles a ListSpoolsRequest by invoking the `zowex job list-files` command
 func HandleListSpoolsRequest(conn utils.StdioConn, params []byte) (result any, e error) {
-	var request jobs.ListSpoolsRequest
-	if err := json.Unmarshal(params, &request); err != nil {
+	request, err := utils.ParseCommandRequest[jobs.ListSpoolsRequest](params)
+	if err != nil {
 		return nil, err
 	}
 
@@ -106,8 +105,8 @@ func HandleListSpoolsRequest(conn utils.StdioConn, params []byte) (result any, e
 
 // HandleReadSpoolRequest handles a ReadSpoolRequest by invoking the `zowex job view-file` command
 func HandleReadSpoolRequest(conn utils.StdioConn, params []byte) (result any, e error) {
-	var request jobs.ReadSpoolRequest
-	if err := json.Unmarshal(params, &request); err != nil {
+	request, err := utils.ParseCommandRequest[jobs.ReadSpoolRequest](params)
+	if err != nil {
 		return nil, err
 	}
 
@@ -134,8 +133,8 @@ func HandleReadSpoolRequest(conn utils.StdioConn, params []byte) (result any, e 
 
 // HandleGetJclRequest handles a GetJclRequest by invoking the `zowex job view-jcl` command
 func HandleGetJclRequest(conn utils.StdioConn, params []byte) (result any, e error) {
-	var request jobs.GetJclRequest
-	if err := json.Unmarshal(params, &request); err != nil {
+	request, err := utils.ParseCommandRequest[jobs.GetJclRequest](params)
+	if err != nil {
 		return nil, err
 	}
 
@@ -155,8 +154,8 @@ func HandleGetJclRequest(conn utils.StdioConn, params []byte) (result any, e err
 
 // HandleGetStatusRequest handles a GetStatusRequest by invoking the `zowex job view-status` command
 func HandleGetStatusRequest(conn utils.StdioConn, params []byte) (result any, e error) {
-	var request jobs.GetJobStatusRequest
-	if err := json.Unmarshal(params, &request); err != nil {
+	request, err := utils.ParseCommandRequest[jobs.GetJobStatusRequest](params)
+	if err != nil {
 		return nil, err
 	}
 
@@ -182,12 +181,12 @@ func HandleGetStatusRequest(conn utils.StdioConn, params []byte) (result any, e 
 
 // HandleSubmitJobRequest handles a SubmitJobRequest by invoking the `zowex job submit` command
 func HandleCancelJobRequest(conn utils.StdioConn, params []byte) (result any, e error) {
-	var request jobs.CancelJobRequest
-	if err := json.Unmarshal(params, &request); err != nil {
+	request, err := utils.ParseCommandRequest[jobs.CancelJobRequest](params)
+	if err != nil {
 		return nil, err
 	}
 
-	_, err := conn.ExecCmd([]string{"job", "cancel", request.JobId})
+	_, err = conn.ExecCmd([]string{"job", "cancel", request.JobId})
 
 	if err != nil {
 		e = fmt.Errorf("Failed to cancel job: %v", err)
@@ -203,8 +202,8 @@ func HandleCancelJobRequest(conn utils.StdioConn, params []byte) (result any, e 
 
 // HandleSubmitJobRequest handles a SubmitJobRequest by invoking the `zowex job submit` command
 func HandleSubmitJobRequest(conn utils.StdioConn, params []byte) (result any, e error) {
-	var request jobs.SubmitJobRequest
-	if err := json.Unmarshal(params, &request); err != nil {
+	request, err := utils.ParseCommandRequest[jobs.SubmitJobRequest](params)
+	if err != nil {
 		return nil, err
 	}
 
@@ -225,8 +224,8 @@ func HandleSubmitJobRequest(conn utils.StdioConn, params []byte) (result any, e 
 
 // HandleSubmitJclRequest handles a SubmitJclRequest by invoking the `zowex job submit-jcl` command
 func HandleSubmitJclRequest(conn utils.StdioConn, params []byte) (result any, e error) {
-	var request jobs.SubmitJclRequest
-	if err := json.Unmarshal(params, &request); err != nil {
+	request, err := utils.ParseCommandRequest[jobs.SubmitJclRequest](params)
+	if err != nil {
 		return nil, err
 	}
 
@@ -266,12 +265,12 @@ func HandleSubmitJclRequest(conn utils.StdioConn, params []byte) (result any, e 
 
 // HandleDeleteJobRequest handles a DeleteJobRequest by invoking the `zowex job delete` command
 func HandleDeleteJobRequest(conn utils.StdioConn, params []byte) (result any, e error) {
-	var request jobs.DeleteJobRequest
-	if err := json.Unmarshal(params, &request); err != nil {
+	request, err := utils.ParseCommandRequest[jobs.DeleteJobRequest](params)
+	if err != nil {
 		return nil, err
 	}
 
-	_, err := conn.ExecCmd([]string{"job", "delete", request.JobId})
+	_, err = conn.ExecCmd([]string{"job", "delete", request.JobId})
 	if err != nil {
 		e = fmt.Errorf("Failed to delete job %s: %v", request.JobId, err)
 		return

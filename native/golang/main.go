@@ -93,20 +93,7 @@ func main() {
 					Message: err.Error(),
 				}, &request.Id)
 			} else {
-				response, err := json.Marshal(t.RpcResponse{
-					JsonRPC: "2.0",
-					Result:  result,
-					Error:   nil,
-					Id:      &request.Id,
-				})
-				if err != nil {
-					utils.PrintErrorResponse(t.ErrorDetails{
-						Code:    -32603,
-						Message: fmt.Sprintf("Could not marshal response: %s\n", err.Error()),
-					}, &request.Id)
-				} else {
-					fmt.Println(string(response))
-				}
+				utils.PrintCommandResponse(result, request.Id)
 			}
 		} else {
 			utils.PrintErrorResponse(t.ErrorDetails{
