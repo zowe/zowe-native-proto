@@ -1,6 +1,5 @@
 {
   "files.associations": {
-    "*.proto": "csharp",
     "**/.hlasmplugin/proc_grps.json": "jsonc",
     "**/.hlasmplugin/pgm_conf.json": "jsonc",
     "*.ASMPGM*": "hlasm",

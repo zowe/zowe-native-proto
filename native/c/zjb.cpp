@@ -316,7 +316,7 @@ int zjb_release_by_jobid(ZJB *zjb, string jobid)
   return ZJBMRLS(zjb);
 }
 
-int zjb_submit(ZJB *zjb, string dsn, string &jobId)
+int zjb_submit_dsn(ZJB *zjb, string dsn, string &jobId)
 {
   ZDS zds = {0};
   string contents;
