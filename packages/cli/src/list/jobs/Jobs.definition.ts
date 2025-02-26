@@ -12,7 +12,7 @@
 import type { ICommandDefinition } from "@zowe/imperative";
 
 export const ListJobsDefinition: ICommandDefinition = {
-    handler: __dirname + "/Jobs.handler",
+    handler: `${__dirname}/Jobs.handler`,
     type: "command",
     name: "jobs",
     aliases: ["j", "js"],

@@ -15,7 +15,7 @@ import { ProfileConstants } from "@zowe/core-for-zowe-sdk";
 import { ZosTsoProfile } from "@zowe/zos-tso-for-zowe-sdk";
 import { ZosUssProfile } from "@zowe/zos-uss-for-zowe-sdk";
 import { ZosmfProfile } from "@zowe/zosmf-for-zowe-sdk";
-import { FileManagement, Gui, ZoweVsCodeExtension, imperative } from "@zowe/zowe-explorer-api";
+import { FileManagement, Gui, PersistenceSchemaEnum, ZoweVsCodeExtension, imperative } from "@zowe/zowe-explorer-api";
 import { Client } from "ssh2";
 import type { ClientChannel } from "ssh2";
 import * as vscode from "vscode";
@@ -257,14 +257,16 @@ export class SshConfigUtils {
 
     public static showSessionInTree(profileName: string, visible: boolean): void {
         const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
-        for (const setting of ["zowe.ds.history", "zowe.uss.history", "zowe.jobs.history"]) {
-            const localStorage = (zoweExplorerApi.getExplorerExtenderApi() as any).getLocalStorage();
-            const treeHistory = localStorage.getValue(setting);
-            treeHistory.sessions = treeHistory.sessions.filter((session: any) => session !== profileName);
-            if (visible) {
-                treeHistory.sessions.push(profileName);
+        for (const setting of [PersistenceSchemaEnum.Dataset, PersistenceSchemaEnum.USS, PersistenceSchemaEnum.Job]) {
+            const localStorage = zoweExplorerApi.getExplorerExtenderApi().getLocalStorage?.();
+            if (localStorage != null) {
+                const treeHistory = localStorage.getValue<any>(setting);
+                treeHistory.sessions = treeHistory.sessions.filter((session: any) => session !== profileName);
+                if (visible) {
+                    treeHistory.sessions.push(profileName);
+                }
+                localStorage.setValue(setting, treeHistory);
             }
-            localStorage.setValue(setting, treeHistory);
         }
         zoweExplorerApi.getExplorerExtenderApi().reloadProfiles("ssh");
     }

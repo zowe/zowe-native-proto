@@ -12,7 +12,7 @@
 import type { ICommandDefinition } from "@zowe/imperative";
 
 export const ListDataSetMembersDefinition: ICommandDefinition = {
-    handler: __dirname + "/DataSetMembers.handler",
+    handler: `${__dirname}/DataSetMembers.handler`,
     type: "command",
     name: "data-set-members",
     aliases: ["members"],
