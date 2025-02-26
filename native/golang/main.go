@@ -47,7 +47,7 @@ func main() {
 		Stdin:        stdin,
 		Stdout:       stdout,
 		Stderr:       stderr,
-		LastExitCode: new(int),
+		LastExitCode: 0,
 	}
 	cmd.Start()
 	if _, err = bufio.NewReader(stdout).ReadBytes('\n'); err != nil {
@@ -96,7 +96,7 @@ func main() {
 					errMsg, errData = parts[0], parts[1]
 				}
 				utils.PrintErrorResponse(t.ErrorDetails{
-					Code:    *conn.LastExitCode,
+					Code:    conn.LastExitCode,
 					Message: errMsg,
 					Data:    errData,
 				}, &request.Id)

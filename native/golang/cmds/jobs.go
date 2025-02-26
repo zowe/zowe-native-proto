@@ -255,7 +255,7 @@ func HandleSubmitJclRequest(conn utils.StdioConn, params []byte) (result any, e 
 	out, err := cmd.Output()
 	if err != nil {
 		e = fmt.Errorf("Failed to submit JCL: %v", err)
-		*conn.LastExitCode = cmd.ProcessState.ExitCode()
+		conn.LastExitCode = cmd.ProcessState.ExitCode()
 		return
 	}
 

@@ -26,7 +26,7 @@ type StdioConn struct {
 	Stdin        io.WriteCloser
 	Stdout       io.ReadCloser
 	Stderr       io.ReadCloser
-	LastExitCode *int
+	LastExitCode int
 }
 
 func (conn StdioConn) ExecCmd(args []string) (stdout []byte, stderr error) {
@@ -87,7 +87,7 @@ func (conn StdioConn) ExecCmd(args []string) (stdout []byte, stderr error) {
 	if rcVal, _ := outReader.ReadString(']'); rcVal != "" {
 		exitCode, err := strconv.Atoi(rcVal[2 : len(rcVal)-1])
 		if err == nil {
-			*conn.LastExitCode = exitCode
+			conn.LastExitCode = exitCode
 		}
 	}
 	return

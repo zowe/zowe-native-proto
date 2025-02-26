@@ -141,7 +141,7 @@ func HandleWriteFileRequest(conn utils.StdioConn, params []byte) (result any, e 
 	_, err = cmd.Output()
 	if err != nil {
 		e = fmt.Errorf("[WriteFileRequest] Error piping stdin to command: %v", err)
-		*conn.LastExitCode = cmd.ProcessState.ExitCode()
+		conn.LastExitCode = cmd.ProcessState.ExitCode()
 		return
 	}
 

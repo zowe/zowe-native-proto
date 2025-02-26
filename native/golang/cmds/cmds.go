@@ -29,7 +29,7 @@ func HandleConsoleCommandRequest(conn utils.StdioConn, params []byte) (result an
 	out, err := cmd.Output()
 	if err != nil {
 		e = fmt.Errorf("Failed to execute command: %v", err)
-		*conn.LastExitCode = cmd.ProcessState.ExitCode()
+		conn.LastExitCode = cmd.ProcessState.ExitCode()
 		return
 	}
 
