@@ -21,6 +21,7 @@ import type { ClientChannel } from "ssh2";
 import * as vscode from "vscode";
 import { ZClientUtils, ZSshClient } from "zowe-native-proto-sdk";
 import type { sshConfigExt } from "zowe-native-proto-sdk";
+import type { Config } from "@zowe/imperative";
 
 // biome-ignore lint/complexity/noStaticOnlyClass: Utilities class has static methods
 export class SshConfigUtils {
@@ -104,7 +105,7 @@ export class SshConfigUtils {
             }
 
             //If no profile name found, prompt for a new one with hostname as placeholder
-            selectedProfile = await SshConfigUtils.getNewProfileName(selectedProfile);
+            selectedProfile = await SshConfigUtils.getNewProfileName(selectedProfile, profInfo.getTeamConfig());
             if (!selectedProfile?.name) {
                 vscode.window.showWarningMessage("SSH setup cancelled.");
                 return;
@@ -220,7 +221,7 @@ export class SshConfigUtils {
                         } else if (validatePassword && typeof validatePassword === "string") {
                             selectedProfile.password = validatePassword;
                         } else {
-                            vscode.window.showWarningMessage("Password Authentication Failed");
+                            // vscode.window.showWarningMessage("Password Authentication Failed");
                             return;
                         }
                     }
@@ -336,11 +337,10 @@ export class SshConfigUtils {
         return SshProfile;
     }
 
-    private static async getNewProfileName(selectedProfile: sshConfigExt): Promise<sshConfigExt | undefined> {
-        const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
-        const profCache = zoweExplorerApi.getExplorerExtenderApi().getProfilesCache();
-        const profiles = await profCache.fetchAllProfiles();
-
+    private static async getNewProfileName(
+        selectedProfile: sshConfigExt,
+        configApi: Config,
+    ): Promise<sshConfigExt | undefined> {
         let isUniqueName = false;
 
         if (!selectedProfile.name) selectedProfile.name = selectedProfile.hostname;
@@ -350,7 +350,9 @@ export class SshConfigUtils {
                 value: selectedProfile.name!.replace(/\./g, "_"),
                 validateInput: (input) => (input.includes(".") ? "Name cannot contain '.'" : null),
             });
-            const existingProfile = profiles.find((profile) => profile.name === selectedProfile.name);
+            if (!selectedProfile.name) return;
+            const existingProfile = configApi.layerActive().properties.profiles[selectedProfile.name];
+            //profiles.find((profile) => profile.name === selectedProfile.name);
             if (existingProfile) {
                 const overwriteResponse = await vscode.window.showQuickPick(["Yes", "No"], {
                     placeHolder: `A profile with the name "${selectedProfile.name}" already exists. Do you want to overwrite it?`,
@@ -445,7 +447,7 @@ export class SshConfigUtils {
 
                 // Test credentials
                 sshClient
-                    .connect(testConnection)
+                    .connect({ ...testConnection, passphrase: testConnection.keyPassphrase })
                     .on("error", (err) => {
                         reject(err); // Reject if connection fails
                     })
@@ -486,7 +488,7 @@ export class SshConfigUtils {
             if (`${err}`.includes("but no passphrase given")) {
                 let passphraseAttempts = 0;
                 while (passphraseAttempts < 3) {
-                    (newConfig as any).passphrase = await vscode.window.showInputBox({
+                    newConfig.keyPassphrase = await vscode.window.showInputBox({
                         title: `Enter passphrase for key '${newConfig.privateKey}'`,
                         password: true,
                         placeHolder: "Enter passphrase for key",
@@ -495,7 +497,7 @@ export class SshConfigUtils {
 
                     try {
                         await attemptConnection(newConfig);
-                        return (newConfig as any).passphrase;
+                        return newConfig.keyPassphrase || true;
                     } catch (error) {
                         if (!`${error}`.includes("integrity check failed")) break;
                         passphraseAttempts++;
@@ -514,7 +516,7 @@ export class SshConfigUtils {
                 let passwordAttempts = 1;
                 vscode.window.showErrorMessage(`Password Authentication Failed (${passwordAttempts}/3)`);
 
-                while (passwordAttempts <= 3) {
+                while (passwordAttempts < 3) {
                     newConfig.password = await vscode.window.showInputBox({
                         title: `${newConfig.user}@${newConfig.hostname}'s password:`,
                         password: true,
