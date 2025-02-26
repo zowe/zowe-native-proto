@@ -23,7 +23,11 @@ func HandleConsoleCommandRequest(jsonData []byte) {
 		return
 	}
 
-	args := []string{"console", "issue", request.CommandText, "--cn", request.ConsoleName}
+	consoleName := "ZOWE00CN"
+	if request.ConsoleName != "" {
+		consoleName = request.ConsoleName
+	}
+	args := []string{"console", "issue", request.CommandText, "--cn", consoleName}
 	out, err := utils.BuildCommandAuthorized(args).Output()
 	if err != nil {
 		utils.PrintErrorResponse("Failed to execute command: %v", err)
