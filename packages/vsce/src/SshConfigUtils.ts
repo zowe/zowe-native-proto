@@ -486,7 +486,7 @@ export class SshConfigUtils {
             if (`${err}`.includes("but no passphrase given")) {
                 let passphraseAttempts = 0;
                 while (passphraseAttempts < 3) {
-                    newConfig.keyPassphrase = await vscode.window.showInputBox({
+                    (newConfig as any).passphrase = await vscode.window.showInputBox({
                         title: `Enter passphrase for key '${newConfig.privateKey}'`,
                         password: true,
                         placeHolder: "Enter passphrase for key",
@@ -495,7 +495,7 @@ export class SshConfigUtils {
 
                     try {
                         await attemptConnection(newConfig);
-                        return newConfig.keyPassphrase as string;
+                        return (newConfig as any).passphrase;
                     } catch (error) {
                         if (!`${error}`.includes("integrity check failed")) break;
                         passphraseAttempts++;
@@ -504,7 +504,7 @@ export class SshConfigUtils {
                 }
 
                 // Max attempts reached, clean up and return false
-                newConfig.keyPassphrase = undefined;
+                (newConfig as any).passphrase = undefined;
                 newConfig.privateKey = undefined;
                 return false;
             }
