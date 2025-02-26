@@ -579,7 +579,7 @@ int handle_job_list(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  return rc;
+  return "false" == warn && rc == RTNCD_WARNING ? RTNCD_SUCCESS : rc;
 }
 
 int handle_job_list_files(ZCLIResult result)
