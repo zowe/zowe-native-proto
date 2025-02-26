@@ -104,7 +104,7 @@ func HandleReadFileRequest(conn utils.StdioConn, params []byte) (result any, e e
 }
 
 // HandleWriteFileRequest handles a WriteFileRequest by invoking the `zowex uss write` command
-func HandleWriteFileRequest(_conn utils.StdioConn, params []byte) (result any, e error) {
+func HandleWriteFileRequest(conn utils.StdioConn, params []byte) (result any, e error) {
 	request, err := utils.ParseCommandRequest[uss.WriteFileRequest](params)
 	if err != nil {
 		return nil, err
@@ -141,6 +141,7 @@ func HandleWriteFileRequest(_conn utils.StdioConn, params []byte) (result any, e
 	_, err = cmd.Output()
 	if err != nil {
 		e = fmt.Errorf("[WriteFileRequest] Error piping stdin to command: %v", err)
+		*conn.LastExitCode = cmd.ProcessState.ExitCode()
 		return
 	}
 
