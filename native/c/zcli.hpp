@@ -641,7 +641,7 @@ void ZCLI::parse_input(string input, vector<string> &values)
 
   string arg;
   string temp;
-  bool open = false;
+  bool quoted = false;
 
   while (getline(iss, arg, ' '))
   {
@@ -650,53 +650,33 @@ void ZCLI::parse_input(string input, vector<string> &values)
 
   for (vector<string>::iterator it = args.begin(); it != args.end(); it++)
   {
-    size_t pos = it->find("\"");
+    quoted = quoted || it->at(0) == '"';
 
-    if (string::npos == pos)
+    if (quoted)
     {
-      if (open)
+      if (!temp.empty())
       {
-
-        temp += (*it + " ");
+        temp += ' ';
       }
-      else
+
+      temp += *it;
+
+      if (it->at(it->size() - 1) == '"')
       {
-        values.push_back(*it);
+        size_t pos = 0;
+        while ((pos = temp.find("\\\"", pos)) != std::string::npos)
+        {
+          temp.replace(pos++, 2, "\"");
+        }
+
+        values.push_back(temp.substr(1, temp.length() - 2));
+        temp = "";
+        quoted = false;
       }
     }
     else
     {
-      size_t end = it->find("\"", pos + 1);
-      if (string::npos != end)
-      {
-        values.push_back(*it);
-      }
-      else
-      {
-        if (!open)
-        {
-          open = true;
-          temp += (*it + " ");
-        }
-        else
-        {
-          open = false;
-          temp += *it;
-          values.push_back(temp);
-          temp = "";
-        }
-      }
-    }
-
-    // if last entry and open quote, just append remaining string
-    int index = distance(args.begin(), it);
-    if (index + 1 == args.size())
-    {
-      if (open)
-      {
-        temp += *it;
-        values.push_back(temp);
-      }
+      values.push_back(*it);
     }
   }
 }

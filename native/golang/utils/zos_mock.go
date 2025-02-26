@@ -1,3 +1,5 @@
+//go:build !zos
+
 /**
  * This program and the accompanying materials are made available under the terms of the
  * Eclipse Public License v2.0 which accompanies this distribution, and is available at
@@ -9,8 +11,6 @@
  *
  */
 
-export * from "./doc";
-export * from "./AbstractRpcClient";
-export * from "./ZSshClient";
-export * from "./ZSshUtils";
-export * from "./ZClientUtils";
+package utils
+
+func SetAutoConvOnUntaggedStdio() {}
