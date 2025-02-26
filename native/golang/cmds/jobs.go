@@ -13,6 +13,7 @@ package cmds
 
 import (
 	"encoding/base64"
+	"fmt"
 	"strconv"
 	"strings"
 	t "zowe-native-proto/ioserver/types/common"
@@ -112,18 +113,17 @@ func HandleReadSpoolRequest(conn utils.StdioConn, jsonData []byte) {
 		return
 	}
 
-	args := []string{"job", "view-file", request.JobId, strconv.Itoa(request.DsnKey)}
-	hasEncoding := len(request.Encoding) != 0
-	if hasEncoding {
-		args = append(args, "--encoding", request.Encoding, "--rfb", "true")
+	if len(request.Encoding) == 0 {
+		request.Encoding = fmt.Sprintf("IBM-%d", utils.DefaultEncoding)
 	}
+	args := []string{"job", "view-file", request.JobId, strconv.Itoa(request.DsnKey), "--encoding", request.Encoding, "--rfb", "true"}
 	out, err := conn.ExecCmd(args)
 	if err != nil {
 		utils.PrintErrorResponse("Failed to read spool: %v", err)
 		return
 	}
 
-	data := utils.CollectContentsAsBytes(string(out), hasEncoding)
+	data := utils.CollectContentsAsBytes(string(out), true)
 	utils.PrintCommandResponse(jobs.ReadSpoolResponse{
 		Encoding: request.Encoding,
 		DsnKey:   request.DsnKey,

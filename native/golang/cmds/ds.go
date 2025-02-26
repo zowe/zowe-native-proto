@@ -13,6 +13,7 @@ package cmds
 
 import (
 	"encoding/base64"
+	"fmt"
 	"log"
 	"strings"
 
@@ -28,18 +29,17 @@ func HandleReadDatasetRequest(conn utils.StdioConn, jsonData []byte) {
 		return
 	}
 
-	args := []string{"data-set", "view", dsRequest.Dsname}
-	hasEncoding := len(dsRequest.Encoding) != 0
-	if hasEncoding {
-		args = append(args, "--encoding", dsRequest.Encoding, "--rfb", "true")
+	if len(dsRequest.Encoding) == 0 {
+		dsRequest.Encoding = fmt.Sprintf("IBM-%d", utils.DefaultEncoding)
 	}
+	args := []string{"data-set", "view", dsRequest.Dsname, "--encoding", dsRequest.Encoding, "--rfb", "true"}
 	out, err := conn.ExecCmd(args)
 	if err != nil {
 		log.Println("Error executing command:", err)
 		return
 	}
 
-	data := utils.CollectContentsAsBytes(string(out), hasEncoding)
+	data := utils.CollectContentsAsBytes(string(out), true)
 	utils.PrintCommandResponse(ds.ReadDatasetResponse{
 		Encoding: dsRequest.Encoding,
 		Dataset:  dsRequest.Dsname,
@@ -59,10 +59,10 @@ func HandleWriteDatasetRequest(_conn utils.StdioConn, jsonData []byte) {
 		utils.PrintErrorResponse("Failed to decode dataset contents: %v", err)
 		return
 	}
-	args := []string{"data-set", "write", dsRequest.Dsname}
-	if len(dsRequest.Encoding) > 0 {
-		args = append(args, "--encoding", dsRequest.Encoding)
+	if len(dsRequest.Encoding) == 0 {
+		dsRequest.Encoding = fmt.Sprintf("IBM-%d", utils.DefaultEncoding)
 	}
+	args := []string{"data-set", "write", dsRequest.Dsname, "--encoding", dsRequest.Encoding}
 	cmd := utils.BuildCommandNoAutocvt(args)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {

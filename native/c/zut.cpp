@@ -293,6 +293,7 @@ void zut_print_string_as_bytes(string &input)
       printf("%02x ", (unsigned char)*p);
     }
   }
+  cout << endl;
 }
 
 /**

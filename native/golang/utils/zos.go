@@ -38,7 +38,7 @@ func SetAutoConvOnUntaggedStdio() {
 			}
 			runtime.SetZosAutoConvOnFd(fd, uint16(ccsid))
 		} else if !isatty(fd) {
-			runtime.SetZosAutoConvOnFd(fd, 1047)
+			runtime.SetZosAutoConvOnFd(fd, DefaultEncoding)
 		}
 	}
 }
