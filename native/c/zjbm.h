@@ -16,6 +16,19 @@
 #include "zssitype.h"
 #include "zjbtype.h"
 
+#if (defined(__IBMCPP__) || defined(__IBMC__))
+#pragma pack(packed)
+#endif
+typedef struct
+{
+  STATJQTR statjqtr;
+  char phase_text[64 + 1];
+} ZJB_JOB_INFO;
+
+#if (defined(__IBMCPP__) || defined(__IBMC__))
+#pragma pack(reset)
+#endif
+
 #if defined(__cplusplus) && (defined(__IBMCPP__) || defined(__IBMC__))
 extern "OS"
 {
@@ -24,9 +37,9 @@ extern "C"
 {
 #endif
 
-  int ZJBMVIEW(ZJB *PTR64, STATJQTR **PTR64, int *PTR64);
-  int ZJBMLIST(ZJB *PTR64, STATJQTR **PTR64, int *PTR64);
-  int ZJBMTCOM(ZJB *PTR64, STAT *PTR64 stat, STATJQTR **PTR64, int *PTR64);
+  int ZJBMVIEW(ZJB *PTR64, ZJB_JOB_INFO **PTR64, int *PTR64);
+  int ZJBMLIST(ZJB *PTR64, ZJB_JOB_INFO **PTR64, int *PTR64);
+  int ZJBMTCOM(ZJB *PTR64, STAT *PTR64 stat, ZJB_JOB_INFO **PTR64, int *PTR64);
   int ZJBMLSDS(ZJB *PTR64, STATSEVB **PTR64, int *PTR64);
   int ZJBSYMB(ZJB *PTR64, const char *PTR64, char *PTR64);
   int ZJBMPRG(ZJB *PTR64);

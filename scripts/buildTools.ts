@@ -155,7 +155,8 @@ function getAllServerFiles() {
     for (const dir of dirs) {
         files.push(...getServerFiles(dir));
     }
-    return files;
+
+    return files.filter((file) => !file.startsWith("golang/ioserver"));
 }
 
 function getServerFiles(dir = "") {

@@ -23,6 +23,7 @@ struct ZJob
   std::string jobid;
   std::string owner;
   std::string status;
+  std::string full_status;
   std::string retcode;
 };
 
@@ -101,14 +102,24 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, std::string job_dsn, std::string &resp
 int zjb_read_job_jcl_by_jobid(ZJB *zjb, std::string jobid, std::string &response);
 
 /**
+ * @brief Submit a job with the given JCL
+ *
+ * @param zjb job returned attributes and error information
+ * @param contents The JCL contents to submit
+ * @param jobid jobid returned after successfully submitting JCL
+ * @return int 0 for success; non zero otherwise
+ */
+int zjb_submit(ZJB *zjb, std::string contents, std::string &jobId);
+
+/**
  * @brief Submit a job from a given input data set
  *
  * @param zjb job returned attributes and error information
- * @param dsn data set name containing JCL to submit, i.e. "IBMUSER.JCL(IEFBR14)""
- * @param jobid jobid retuned after successfully submitting JCL
+ * @param dsn The DSN containing JCL contents to submit
+ * @param jobid jobid returned after successfully submitting JCL
  * @return int 0 for success; non zero otherwise
  */
-int zjb_submit(ZJB *zjb, std::string dsn, std::string &jobid);
+int zjb_submit_dsn(ZJB *zjb, std::string dsn, std::string &jobId);
 
 /**
  * @brief Delete a job using input jobid

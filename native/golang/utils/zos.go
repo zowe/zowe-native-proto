@@ -1,3 +1,5 @@
+//go:build zos
+
 /**
  * This program and the accompanying materials are made available under the terms of the
  * Eclipse Public License v2.0 which accompanies this distribution, and is available at
@@ -18,8 +20,8 @@ import (
 	"syscall"
 )
 
-// Enables auto conversion on untagged stdio. This is necessary because the z/OS
-// Go runtime tags stdio with 1047 (EBCDIC) if TTY and 819 (ASCII) if not TTY.
+// SetAutoConvOnUntaggedStdio sets auto conversion on untagged stdio.
+// This is necessary because the z/OS Go runtime tags stdio with 1047 (EBCDIC) if TTY and 819 (ASCII) if not TTY.
 // We always want 1047 for compatibility with the z/OS OpenSSH implementation,
 // unless the user explicitly sets the CCSID through environment variables.
 //
@@ -41,7 +43,7 @@ func SetAutoConvOnUntaggedStdio() {
 	}
 }
 
-// Implements the C `isatty` method without external dependencies
+// isatty implements the C `isatty` method without external dependencies
 func isatty(fd int) bool {
 	var st syscall.Stat_t
 	if err := syscall.Fstat(fd, &st); err != nil {
