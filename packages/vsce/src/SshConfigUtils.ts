@@ -15,7 +15,7 @@ import { ProfileConstants } from "@zowe/core-for-zowe-sdk";
 import { ZosTsoProfile } from "@zowe/zos-tso-for-zowe-sdk";
 import { ZosUssProfile } from "@zowe/zos-uss-for-zowe-sdk";
 import { ZosmfProfile } from "@zowe/zosmf-for-zowe-sdk";
-import { FileManagement, Gui, ZoweVsCodeExtension, imperative } from "@zowe/zowe-explorer-api";
+import { FileManagement, Gui, PersistenceSchemaEnum, ZoweVsCodeExtension, imperative } from "@zowe/zowe-explorer-api";
 import { Client } from "ssh2";
 import type { ClientChannel } from "ssh2";
 import * as vscode from "vscode";
@@ -257,14 +257,16 @@ export class SshConfigUtils {
 
     public static showSessionInTree(profileName: string, visible: boolean): void {
         const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
-        for (const setting of ["zowe.ds.history", "zowe.uss.history", "zowe.jobs.history"]) {
-            const localStorage = (zoweExplorerApi.getExplorerExtenderApi() as any).getLocalStorage();
-            const treeHistory = localStorage.getValue(setting);
-            treeHistory.sessions = treeHistory.sessions.filter((session: any) => session !== profileName);
-            if (visible) {
-                treeHistory.sessions.push(profileName);
+        for (const setting of [PersistenceSchemaEnum.Dataset, PersistenceSchemaEnum.USS, PersistenceSchemaEnum.Job]) {
+            const localStorage = zoweExplorerApi.getExplorerExtenderApi().getLocalStorage?.();
+            if (localStorage != null) {
+                const treeHistory = localStorage.getValue<any>(setting);
+                treeHistory.sessions = treeHistory.sessions.filter((session: any) => session !== profileName);
+                if (visible) {
+                    treeHistory.sessions.push(profileName);
+                }
+                localStorage.setValue(setting, treeHistory);
             }
-            localStorage.setValue(setting, treeHistory);
         }
         zoweExplorerApi.getExplorerExtenderApi().reloadProfiles("ssh");
     }
@@ -301,6 +303,7 @@ export class SshConfigUtils {
         SshProfile.hostname = sshMatch[2];
 
         let flagMatch: RegExpExecArray | null;
+        // biome-ignore lint/suspicious/noAssignInExpressions: We just want to use the regex array in the loop
         while ((flagMatch = flagRegex.exec(sshResponse)) !== null) {
             const [, flag, value] = flagMatch;
             // Check for missing value
@@ -415,7 +418,7 @@ export class SshConfigUtils {
 
             // Note: IConfigBuilderOpts not exported
             // const opts: IConfigBuilderOpts = {
-            const opts: any = {
+            const opts: imperative.IConfigBuilderOpts = {
                 // getSecureValue: this.promptForProp.bind(this),
                 populateProperties: true,
             };
@@ -447,7 +450,7 @@ export class SshConfigUtils {
                         reject(err); // Reject if connection fails
                     })
                     .on("ready", () => {
-                        sshClient.shell((err: any, stream: ClientChannel) => {
+                        sshClient.shell((err, stream: ClientChannel) => {
                             if (err) {
                                 reject(err); // Reject if shell command fails
                                 return;
@@ -480,10 +483,10 @@ export class SshConfigUtils {
             await attemptConnection(newConfig);
         } catch (err) {
             // Case in which the private key requires a passphrase
-            if ((err as any).message.includes("but no passphrase given")) {
+            if (`${err}`.includes("but no passphrase given")) {
                 let passphraseAttempts = 0;
                 while (passphraseAttempts < 3) {
-                    (newConfig as any).passphrase = await vscode.window.showInputBox({
+                    newConfig.keyPassphrase = await vscode.window.showInputBox({
                         title: `Enter passphrase for key '${newConfig.privateKey}'`,
                         password: true,
                         placeHolder: "Enter passphrase for key",
@@ -492,21 +495,21 @@ export class SshConfigUtils {
 
                     try {
                         await attemptConnection(newConfig);
-                        return (newConfig as any).passphrase;
+                        return newConfig.keyPassphrase as string;
                     } catch (error) {
-                        if (!(error as any).message.includes("integrity check failed")) break;
+                        if (!`${error}`.includes("integrity check failed")) break;
                         passphraseAttempts++;
                         vscode.window.showErrorMessage(`Passphrase Authentication Failed (${passphraseAttempts}/3)`);
                     }
                 }
 
                 // Max attempts reached, clean up and return false
-                (newConfig as any).passphrase = undefined;
-                (newConfig as any).privateKey = undefined;
+                newConfig.keyPassphrase = undefined;
+                newConfig.privateKey = undefined;
                 return false;
             }
             // Case in which password was given but failed
-            if ((err as any).message.includes("All configured authentication methods failed")) {
+            if (`${err}`.includes("All configured authentication methods failed")) {
                 // 1 attempt has already occured
                 let passwordAttempts = 1;
                 vscode.window.showErrorMessage(`Password Authentication Failed (${passwordAttempts}/3)`);
@@ -522,10 +525,10 @@ export class SshConfigUtils {
                         // If password is blank then do not attempt and break out and return false;
                         if (newConfig.password === "") break;
                         await attemptConnection(newConfig);
-                        return (newConfig as any).password;
+                        return newConfig.password as string;
                     } catch (passwordError) {
                         passwordAttempts++;
-                        if (passwordError && (passwordError as any).message.startsWith("FOTS1668")) {
+                        if (`${passwordError}`.includes("FOTS1668")) {
                             vscode.window.showErrorMessage("Password Expired on Target System");
                             return false;
                         }

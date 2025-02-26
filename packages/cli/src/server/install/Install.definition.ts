@@ -12,7 +12,7 @@
 import type { ICommandDefinition } from "@zowe/imperative";
 
 export const ServerInstallDefinition: ICommandDefinition = {
-    handler: __dirname + "/Install.handler",
+    handler: `${__dirname}/Install.handler`,
     type: "command",
     name: "install",
     aliases: ["up"],
