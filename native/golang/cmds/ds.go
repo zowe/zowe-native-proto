@@ -199,14 +199,14 @@ func HandleDeleteDatasetRequest(conn utils.StdioConn, jsonData []byte) {
 }
 
 // HandleCreateDatasetRequest handles a CreateDatasetRequest by invoking the `zowex data-set create` command
-func HandleCreateDatasetRequest(jsonData []byte) {
+func HandleCreateDatasetRequest(conn utils.StdioConn, jsonData []byte) {
 	dsRequest, err := utils.ParseCommandRequest[ds.CreateDatasetRequest](jsonData)
 	if err != nil {
 		return
 	}
 
 	args := []string{"data-set", "create", dsRequest.Dsname}
-	_, err = utils.BuildCommand(args).Output()
+	_, err = conn.ExecCmd(args)
 	if err != nil {
 		utils.PrintErrorResponse("Failed to create data set: %v", err)
 		return
@@ -219,14 +219,14 @@ func HandleCreateDatasetRequest(jsonData []byte) {
 }
 
 // HandleCreateMemberRequest handles a CreateMemberRequest by invoking the `zowex data-set create-member` command
-func HandleCreateMemberRequest(jsonData []byte) {
+func HandleCreateMemberRequest(conn utils.StdioConn, jsonData []byte) {
 	dsRequest, err := utils.ParseCommandRequest[ds.CreateMemberRequest](jsonData)
 	if err != nil {
 		return
 	}
 
 	args := []string{"data-set", "create-member", dsRequest.Dsname}
-	_, err = utils.BuildCommand(args).Output()
+	_, err = conn.ExecCmd(args)
 	if err != nil {
 		utils.PrintErrorResponse("Failed to create data-set member: %v", err)
 		return
