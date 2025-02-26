@@ -10,17 +10,18 @@
  */
 
 import type { IHandlerParameters } from "@zowe/imperative";
-import type { ZSshClient, uss } from "zowe-native-proto-sdk";
+import type { jobs, ZSshClient } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
 
-export default class DeleteItemHandler extends SshBaseHandler {
-    public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<uss.DeleteFileResponse> {
-        const fspath = params.arguments.path;
-        const recursive = params.arguments.recursive;
+export default class SubmitJclHandler extends SshBaseHandler {
+    public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<jobs.DeleteJobResponse> {
+        const jcl = params.arguments.jcl;
 
-        const response = await client.uss.deleteFile({ fspath, recursive });
+        const response = await client.jobs.submitJcl({ jcl });
 
-        const msg = `File "${fspath}" deleted`;
+        const msg = response.success
+            ? `Job submitted: ${response.jobId}`
+            : `Failed to submit job: ${response.error?.msg ?? "Unknown error"}`;
         params.response.data.setMessage(msg);
         params.response.data.setObj(response);
         if (response.success) {

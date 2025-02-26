@@ -12,6 +12,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"log"
 	"os"
@@ -26,6 +27,30 @@ func main() {
 	utils.SetAutoConvOnUntaggedStdio()
 	// Channel for receiving input from stdin
 	input := make(chan []byte)
+
+	cmd := utils.BuildCommand([]string{"--it"})
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		panic(err)
+	}
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		panic(err)
+	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		panic(err)
+	}
+	conn := utils.StdioConn{
+		Stdin:  stdin,
+		Stdout: stdout,
+		Stderr: stderr,
+	}
+	cmd.Start()
+	if _, err = bufio.NewReader(stdout).ReadBytes('\n'); err != nil {
+		panic(err)
+	}
+	defer conn.Close()
 
 	go func() {
 		buf := make([]byte, 1024)
@@ -57,7 +82,7 @@ func main() {
 
 		// Handle the command request if a supported command is provided
 		if handler, ok := dispatcher.Get(request.Command); ok {
-			handler(data)
+			handler(conn, data)
 		} else {
 			utils.PrintErrorResponse("Unrecognized command %s", request.Command)
 		}
