@@ -13,55 +13,83 @@ package utils
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"io"
 	"log"
+	"strconv"
 	"strings"
 )
 
 type StdioConn struct {
-	Stdin  io.WriteCloser
-	Stdout io.ReadCloser
-	Stderr io.ReadCloser
+	Stdin        io.WriteCloser
+	Stdout       io.ReadCloser
+	Stderr       io.ReadCloser
+	LastExitCode *int
 }
 
 func (conn StdioConn) ExecCmd(args []string) (stdout []byte, stderr error) {
 	_, err := conn.Stdin.Write([]byte("./zowex " + BuildArgString(args) + "\n"))
 	if err != nil {
-		return
+		return nil, err
 	}
-	done := make(chan struct{})
+	done := make(chan bool)
+	outReader := bufio.NewReader(conn.Stdout)
+	errReader := bufio.NewReader(conn.Stderr)
 
-	go func() {
-		defer close(done)
-		reader := bufio.NewReader(conn.Stdout)
+	go func(reader *bufio.Reader) {
 		for {
-			line, err := reader.ReadBytes('\n')
-			stdout = append(stdout, line...)
-			if err != nil || reader.Buffered() == 0 {
-				break
+			select {
+			case <-done:
+				return
+			default:
+				char, err := reader.Peek(1)
+				if err == io.EOF {
+					continue
+				} else if bytes.Equal(char, []byte("\r")) {
+					if len(stdout) > 0 || stderr != nil {
+						done <- true
+						return
+					} else {
+						continue
+					}
+				}
+				line, err := reader.ReadBytes('\n')
+				stdout = append(stdout, line...)
+				if err != nil || reader.Buffered() == 0 {
+					done <- true
+					return
+				}
 			}
 		}
-	}()
+	}(outReader)
 
-	go func() {
-		defer close(done)
-		reader := bufio.NewReader(conn.Stderr)
+	go func(reader *bufio.Reader) {
 		var tempErr []byte
 		for {
-			line, err := reader.ReadBytes('\n')
-			tempErr = append(tempErr, line...)
-			if err != nil || reader.Buffered() == 0 {
-				break
+			select {
+			case <-done:
+				return
+			default:
+				line, err := reader.ReadBytes('\n')
+				tempErr = append(tempErr, line...)
+				if err != nil || reader.Buffered() == 0 {
+					stderr = errors.New(string(tempErr))
+					done <- true
+					return
+				}
 			}
 		}
-		if len(tempErr) > 0 {
-			stderr = errors.New(string(tempErr))
-		}
-	}()
+	}(errReader)
 
 	<-done
+	if rcVal, _ := outReader.ReadString(']'); rcVal != "" {
+		exitCode, err := strconv.Atoi(rcVal[2 : len(rcVal)-1])
+		if err == nil {
+			*conn.LastExitCode = exitCode
+		}
+	}
 	return
 }
 

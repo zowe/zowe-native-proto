@@ -44,9 +44,10 @@ func main() {
 		panic(err)
 	}
 	conn := utils.StdioConn{
-		Stdin:  stdin,
-		Stdout: stdout,
-		Stderr: stderr,
+		Stdin:        stdin,
+		Stdout:       stdout,
+		Stderr:       stderr,
+		LastExitCode: new(int),
 	}
 	cmd.Start()
 	if _, err = bufio.NewReader(stdout).ReadBytes('\n'); err != nil {
@@ -95,7 +96,7 @@ func main() {
 					errMsg, errData = parts[0], parts[1]
 				}
 				utils.PrintErrorResponse(t.ErrorDetails{
-					Code:    1,
+					Code:    *conn.LastExitCode,
 					Message: errMsg,
 					Data:    errData,
 				}, &request.Id)

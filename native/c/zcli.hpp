@@ -697,6 +697,7 @@ int ZCLI::parse(int argc, char *argv[])
     int rc = 0;
     do
     {
+      cout << "\r> " << flush;
       getline(cin, command);
 
       if (should_quit(command))
@@ -716,6 +717,7 @@ int ZCLI::parse(int argc, char *argv[])
       }
 
       rc = run(entries.size(), args);
+      cout << "\r[" << rc << "]" << flush;
 
     } while (!should_quit(command));
 
