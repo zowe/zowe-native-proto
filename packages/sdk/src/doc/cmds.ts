@@ -24,7 +24,7 @@ export interface IssueConsoleRequest extends common.CommandRequest {
   /**
    * Name of the console
    */
-  consoleName: string;
+  consoleName?: string;
 }
 export interface IssueTsoRequest extends common.CommandRequest {
   command: "tsoCommand";

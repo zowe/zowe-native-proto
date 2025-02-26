@@ -22,13 +22,13 @@
 | _Create data set member_ | ✅              | ✅  | 🚧 <sup>4</sup> | ✅         | ✅  | ✅  | ✅   |
 | _Delete data set_        | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
 | _Delete data set member_ | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
-| Migrate data set         | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | Recall data set          | 🚧 <sup>5</sup> | ❌  | ✅              | ✅         | ✅  | ✅  | ✅   |
+| Migrate data set         | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | Delete migrated data set | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | Rename data set          | ✅              | ✅  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | Copy data set            | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
-| Invoke AMS (VSAM)        | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ➖   |
 | Search data sets         | 🚧 <sup>6</sup> | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
+| Invoke AMS (VSAM)        | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ➖   |
 
 1. Not all attributes are retrieved
 2. Streaming is not supported for large files
@@ -68,31 +68,30 @@
 
 ## Jobs
 
-| Operation          | z/OSMF | FTP | Backend | Middleware | SDK | CLI | VSCE            |
-| ------------------ | ------ | --- | ------- | ---------- | --- | --- | --------------- |
-| _Get job status_   | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | 🚧 <sup>1</sup> |
-| _List jobs_        | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅              |
-| _List spool files_ | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅              |
-| _Read spool file_  | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅              |
-| _Get job JCL_      | ✅     | ❌  | ✅      | ✅         | ✅  | ✅  | ✅              |
-| _Submit job_       | ✅     | ✅  | ✅      | ✅         | ✅  | ❌  | ✅              |
-| _Delete job_       | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅              |
-| Cancel job         | ✅     | ❌  | ✅      | ✅         | ✅  | ✅  | ✅              |
-| Hold job           | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌              |
-| Release job        | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌              |
-| Change job class   | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ➖              |
-
-1. Job status is returning the return code instead of status
+| Operation          | z/OSMF | FTP | Backend | Middleware | SDK | CLI | VSCE |
+| ------------------ | ------ | --- | ------- | ---------- | --- | --- | ---- |
+| _Get job status_   | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅   |
+| _List jobs_        | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅   |
+| _List spool files_ | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅   |
+| _Read spool file_  | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅   |
+| _Get job JCL_      | ✅     | ❌  | ✅      | ✅         | ✅  | ✅  | ✅   |
+| _Submit job_       | ✅     | ✅  | ✅      | ✅         | ✅  | ❌  | ✅   |
+| _Delete job_       | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅   |
+| Cancel job         | ✅     | ❌  | ✅      | ✅         | ✅  | ✅  | ✅   |
+| Hold job           | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌   |
+| Release job        | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌   |
+| Change job class   | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ➖   |
 
 ## Console
 
-| Operation                | z/OSMF | FTP | Backend         | Middleware | SDK | CLI | VSCE |
-| ------------------------ | ------ | --- | --------------- | ---------- | --- | --- | ---- |
-| Issue MVS command        | ✅     | ❌  | ✅ <sup>1</sup> | ✅         | ✅  | ✅  | ❌   |
-| Get MVS command response | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
-| Get MVS detect result    | ✅     | ❌  | ❌              | ❌         | ❌  | ➖  | ➖   |
+| Operation                | z/OSMF | FTP | Backend         | Middleware | SDK | CLI | VSCE            |
+| ------------------------ | ------ | --- | --------------- | ---------- | --- | --- | --------------- |
+| Issue MVS command        | ✅     | ❌  | ✅ <sup>1</sup> | ✅         | ✅  | ✅  | ✅ <sup>2</sup> |
+| Get MVS command response | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ❌              |
+| Get MVS detect result    | ✅     | ❌  | ❌              | ❌         | ❌  | ➖  | ➖              |
 
 1. Requires APF authorization
+2. You must manually deploy/symlink `zowexx`
 
 ## TSO
 

@@ -19,7 +19,7 @@ type IssueConsoleRequest struct {
 	// Console command to execute
 	CommandText string `json:"commandText"`
 	// Name of the console
-	ConsoleName string `json:"consoleName"`
+	ConsoleName *string `json:"consoleName,omitempty"`
 }
 
 type IssueTsoRequest struct {
