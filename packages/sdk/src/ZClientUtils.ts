@@ -9,18 +9,17 @@
  *
  */
 
-import { homedir } from "os";
-import * as path from "node:path";
 import * as fs from "fs";
-import { ISshSession } from "@zowe/zos-uss-for-zowe-sdk";
+import * as path from "node:path";
+import { homedir } from "os";
+import type { ISshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import * as sshConfig from "ssh-config";
 
 export interface sshConfigExt extends ISshSession {
     name?: string;
 }
-export class ZClientUtils{
-    public static async findPrivateKey(privateKeyPath: string)
-    {
+export class ZClientUtils {
+    public static async findPrivateKey(privateKeyPath: string) {
         for (const algo of ["id_ed25519", "id_rsa"]) {
             const tempPath = path.resolve(homedir(), ".ssh", algo);
             if (fs.existsSync(tempPath)) {
@@ -34,7 +33,7 @@ export class ZClientUtils{
         return privateKeyPath;
     }
     public static async migrateSshConfig(): Promise<sshConfigExt[]> {
-        const filePath = path.join(homedir(), '.ssh', 'config');
+        const filePath = path.join(homedir(), ".ssh", "config");
         let fileContent: string;
         try {
             fileContent = fs.readFileSync(filePath, "utf-8");
@@ -52,25 +51,25 @@ export class ZClientUtils{
 
                 if (Array.isArray((config as any).config)) {
                     for (const subConfig of (config as any).config) {
-                        if (typeof subConfig === 'object' && 'param' in subConfig && 'value' in subConfig) {
+                        if (typeof subConfig === "object" && "param" in subConfig && "value" in subConfig) {
                             const param = (subConfig as any).param.toLowerCase();
                             const value = (subConfig as any).value;
 
                             switch (param) {
-                                case 'hostname':
+                                case "hostname":
                                     session.hostname = value;
                                     break;
-                                case 'port':
-                                    session.port = parseInt(value);
+                                case "port":
+                                    session.port = Number.parseInt(value);
                                     break;
-                                case 'user':
+                                case "user":
                                     session.user = value;
                                     break;
-                                case 'identityfile':
+                                case "identityfile":
                                     session.privateKey = value;
                                     break;
-                                case 'connecttimeout':
-                                    session.handshakeTimeout = parseInt(value);
+                                case "connecttimeout":
+                                    session.handshakeTimeout = Number.parseInt(value);
                                     break;
                                 default:
                                     break;

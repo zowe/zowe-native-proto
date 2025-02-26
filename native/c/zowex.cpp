@@ -1059,13 +1059,16 @@ int handle_data_set_write_to_dsn(ZCLIResult result)
   int rc = 0;
   string dsn = result.get_positional("dsn").get_value();
   ZDS zds = {0};
+  if (result.get_option("--encoding").is_found())
+  {
+    zut_prepare_encoding(result.get_option("--encoding").get_value(), &zds.encoding_opts);
+  }
 
   string data;
   string line;
-
   size_t byteSize = 0ul;
-  const auto hasEncoding = result.get_option("--encoding").is_found() && zut_prepare_encoding(result.get_option("--encoding").get_value(), &zds.encoding_opts);
-  if (hasEncoding)
+
+  if (!isatty(fileno(stdin)))
   {
     std::istreambuf_iterator<char> begin(std::cin);
     std::istreambuf_iterator<char> end;
@@ -1231,14 +1234,17 @@ int handle_uss_write(ZCLIResult result)
   int rc = 0;
   string file = result.get_positional("file-path").get_value();
   ZUSF zusf = {0};
+  if (result.get_option("--encoding").is_found())
+  {
+    zut_prepare_encoding(result.get_option("--encoding").get_value(), &zusf.encoding_opts);
+  }
 
   string data;
   string line;
   size_t byteSize = 0ul;
 
   // Use Ctrl/Cmd + D to stop writing data manually
-  const auto hasEncoding = result.get_option("--encoding").is_found() && zut_prepare_encoding(result.get_option("--encoding").get_value(), &zusf.encoding_opts);
-  if (hasEncoding)
+  if (!isatty(fileno(stdin)))
   {
     std::istreambuf_iterator<char> begin(std::cin);
     std::istreambuf_iterator<char> end;
