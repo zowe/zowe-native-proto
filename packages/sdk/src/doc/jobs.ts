@@ -138,8 +138,7 @@ export interface ReadSpoolResponse extends common.CommandResponse {
      */
     data: Buffer | string;
 }
-export interface GetJobStatusResponse extends common.CommandResponse, common.Job {
-}
+export interface GetJobStatusResponse extends common.CommandResponse, common.Job {}
 export interface SubmitJobResponse extends common.CommandResponse {
     /**
      * Whether the job was successfully submitted

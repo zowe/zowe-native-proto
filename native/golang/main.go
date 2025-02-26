@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"zowe-native-proto/ioserver/cmds"
 	t "zowe-native-proto/ioserver/types/common"
@@ -88,9 +89,15 @@ func main() {
 		if handler, ok := dispatcher.Get(request.Method); ok {
 			result, err := handler(conn, request.Params)
 			if err != nil {
+				errMsg := err.Error()
+				var errData string
+				if parts := strings.SplitN(errMsg, ": ", 2); len(parts) > 1 {
+					errMsg, errData = parts[0], parts[1]
+				}
 				utils.PrintErrorResponse(t.ErrorDetails{
 					Code:    1,
-					Message: err.Error(),
+					Message: errMsg,
+					Data:    errData,
 				}, &request.Id)
 			} else {
 				utils.PrintCommandResponse(result, request.Id)
