@@ -31,18 +31,17 @@ func HandleReadDatasetRequest(conn utils.StdioConn, params []byte) (result any, 
 		return
 	}
 
-	args := []string{"data-set", "view", request.Dsname}
-	hasEncoding := len(request.Encoding) != 0
-	if hasEncoding {
-		args = append(args, "--encoding", request.Encoding, "--rfb", "true")
+	if len(request.Encoding) == 0 {
+		request.Encoding = fmt.Sprintf("IBM-%d", utils.DefaultEncoding)
 	}
+	args := []string{"data-set", "view", request.Dsname, "--encoding", request.Encoding, "--rfb", "true"}
 	out, err := conn.ExecCmd(args)
 	if err != nil {
 		e = fmt.Errorf("Error executing command:", err)
 		return
 	}
 
-	data, e := utils.CollectContentsAsBytes(string(out), hasEncoding)
+	data, e := utils.CollectContentsAsBytes(string(out), true)
 	result = ds.ReadDatasetResponse{
 		Encoding: request.Encoding,
 		Dataset:  request.Dsname,
@@ -66,10 +65,10 @@ func HandleWriteDatasetRequest(_conn utils.StdioConn, params []byte) (result any
 		e = fmt.Errorf("Failed to decode dataset contents: %v", err)
 		return
 	}
-	args := []string{"data-set", "write", request.Dsname}
-	if len(request.Encoding) > 0 {
-		args = append(args, "--encoding", request.Encoding)
+	if len(request.Encoding) == 0 {
+		request.Encoding = fmt.Sprintf("IBM-%d", utils.DefaultEncoding)
 	}
+	args := []string{"data-set", "write", request.Dsname, "--encoding", request.Encoding}
 	cmd := utils.BuildCommandNoAutocvt(args)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {

@@ -32,6 +32,9 @@ func HandleListJobsRequest(conn utils.StdioConn, params []byte) (result any, e e
 	if len(request.Owner) != 0 {
 		args = append(args, "--owner", request.Owner)
 	}
+	if len(request.Prefix) != 0 {
+		args = append(args, "--prefix", request.Prefix)
+	}
 
 	out, err := conn.ExecCmd(args)
 	if err != nil {
@@ -110,18 +113,17 @@ func HandleReadSpoolRequest(conn utils.StdioConn, params []byte) (result any, e 
 		return nil, err
 	}
 
-	args := []string{"job", "view-file", request.JobId, strconv.Itoa(request.DsnKey)}
-	hasEncoding := len(request.Encoding) != 0
-	if hasEncoding {
-		args = append(args, "--encoding", request.Encoding, "--rfb", "true")
+	if len(request.Encoding) == 0 {
+		request.Encoding = fmt.Sprintf("IBM-%d", utils.DefaultEncoding)
 	}
+	args := []string{"job", "view-file", request.JobId, strconv.Itoa(request.DsnKey), "--encoding", request.Encoding, "--rfb", "true"}
 	out, err := conn.ExecCmd(args)
 	if err != nil {
 		e = fmt.Errorf("Failed to read spool: %v", err)
 		return
 	}
 
-	data, e := utils.CollectContentsAsBytes(string(out), hasEncoding)
+	data, e := utils.CollectContentsAsBytes(string(out), true)
 	result = jobs.ReadSpoolResponse{
 		Encoding: request.Encoding,
 		DsnKey:   request.DsnKey,

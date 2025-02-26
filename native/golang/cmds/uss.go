@@ -77,11 +77,10 @@ func HandleReadFileRequest(conn utils.StdioConn, params []byte) (result any, e e
 		return
 	}
 
-	args := []string{"uss", "view", request.Path}
-	hasEncoding := len(request.Encoding) != 0
-	if hasEncoding {
-		args = append(args, "--encoding", request.Encoding, "--rfb", "true")
+	if len(request.Encoding) == 0 {
+		request.Encoding = fmt.Sprintf("IBM-%d", utils.DefaultEncoding)
 	}
+	args := []string{"uss", "view", request.Path, "--encoding", request.Encoding, "--rfb", "true"}
 	out, err := conn.ExecCmd(args)
 	if err != nil {
 		e = fmt.Errorf("Error executing command: %v", err)
@@ -91,7 +90,7 @@ func HandleReadFileRequest(conn utils.StdioConn, params []byte) (result any, e e
 	output := string(out)
 	var data []byte
 	if len(output) > 0 {
-		data, e = utils.CollectContentsAsBytes(output, hasEncoding)
+		data, e = utils.CollectContentsAsBytes(output, true)
 	} else {
 		data = []byte{}
 	}
@@ -119,10 +118,10 @@ func HandleWriteFileRequest(_conn utils.StdioConn, params []byte) (result any, e
 		e = fmt.Errorf("[WriteFileRequest] Error decoding base64 contents: %v", err)
 		return
 	}
-	args := []string{"uss", "write", request.Path}
-	if len(request.Encoding) > 0 {
-		args = append(args, "--encoding", request.Encoding)
+	if len(request.Encoding) == 0 {
+		request.Encoding = fmt.Sprintf("IBM-%d", utils.DefaultEncoding)
 	}
+	args := []string{"uss", "write", request.Path, "--encoding", request.Encoding}
 	cmd := utils.BuildCommandNoAutocvt(args)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
