@@ -287,6 +287,7 @@ export class SshConfigUtils {
         const sshResponse = await vscode.window.showInputBox({
             prompt: "Enter SSH connection command",
             placeHolder: "E.g. ssh user@example.com",
+            ignoreFocusOut: true,
         });
         if (sshResponse === undefined) {
             vscode.window.showWarningMessage("SSH setup cancelled.");
@@ -506,8 +507,9 @@ export class SshConfigUtils {
                 }
 
                 // Max attempts reached, clean up and return false
-                (newConfig as any).passphrase = undefined;
+                newConfig.keyPassphrase = undefined;
                 newConfig.privateKey = undefined;
+
                 return false;
             }
             // Case in which password was given but failed
