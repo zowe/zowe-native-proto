@@ -17,6 +17,8 @@ import (
 	"strings"
 )
 
+const DefaultEncoding = 1047
+
 // CollectContentsAsBytes converts a string of bytes into a byte slice.
 // If isByteString is true, the string is assumed to be a space-separated list of hexadecimal values.
 // Otherwise, the string is assumed to be a raw byte string.

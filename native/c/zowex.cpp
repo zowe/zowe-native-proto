@@ -579,7 +579,7 @@ int handle_job_list(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  return rc;
+  return "false" == warn && rc == RTNCD_WARNING ? RTNCD_SUCCESS : rc;
 }
 
 int handle_job_list_files(ZCLIResult result)
@@ -1288,7 +1288,7 @@ int handle_uss_delete(ZCLIResult result)
     cerr << "Failed to delete USS item " << file_path << ":\n " << zusf.diag.e_msg << endl;
   }
 
-  return 1;
+  return rc;
 }
 
 int handle_uss_chmod(ZCLIResult result)

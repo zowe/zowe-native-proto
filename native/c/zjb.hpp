@@ -23,6 +23,7 @@ struct ZJob
   std::string jobid;
   std::string owner;
   std::string status;
+  std::string full_status;
   std::string retcode;
 };
 

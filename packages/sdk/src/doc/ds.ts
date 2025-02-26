@@ -91,7 +91,7 @@ export interface CreateDatasetRequest extends common.CommandRequest {
     /**
      * Type of the dataset to make
      */
-    dstype: 'default' | 'vb' | 'adata';
+    dstype: "default" | "vb" | "adata";
 }
 
 //////////

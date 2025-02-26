@@ -42,7 +42,7 @@ Create your own `config.local.json` adjacent to `config.default.jsonc` with some
 
 On z/OS system, `cd` to C deploy dir and run `zowex` to invoke the C++ CLI binary or `test.sh` to test a number of commands.
 
-To test I/O server, `cd` to Go deploy dir and run `ioserver`, then type a JSON command like `{"command":"listFiles","fspath":"/tmp"}` and press Enter.
+To test I/O server, `cd` to Go deploy dir and run `ioserver`, then type a JSON command like `{"jsonrpc": "2.0", "method": "listFiles", "params": {"fspath": "/tmp"}, "id": 1}` and press Enter.
 
 ### Client
 

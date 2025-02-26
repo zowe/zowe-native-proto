@@ -10,12 +10,12 @@
  */
 
 import { posix } from "node:path";
+import { ImperativeError } from "@zowe/imperative";
 import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Client, type ClientChannel } from "ssh2";
 import { AbstractRpcClient } from "./AbstractRpcClient";
 import { ZSshUtils } from "./ZSshUtils";
 import type { CommandRequest, CommandResponse, RpcRequest, RpcResponse } from "./doc";
-import { ImperativeError } from "@zowe/imperative";
 
 export class ZSshClient extends AbstractRpcClient implements Disposable {
     public static readonly DEFAULT_SERVER_PATH = "~/.zowe-server";
