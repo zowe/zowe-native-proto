@@ -19,7 +19,7 @@ import (
 )
 
 // CommandHandler represents a function that handles a command request
-type CommandHandler func(conn utils.StdioConn, params []byte) (result any, err error)
+type CommandHandler func(conn *utils.StdioConn, params []byte) (result any, err error)
 
 // CmdDispatcher manages registration and lookup of command handlers
 type CmdDispatcher struct {
