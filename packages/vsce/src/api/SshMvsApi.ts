@@ -48,7 +48,6 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
             imperative.IO.createDirsSyncFromFilePath(options.file);
             writeFileSync(options.file, ZSshUtils.decodeByteArray(response.data));
         } else if (options.stream != null) {
-            const buf = ZSshUtils.decodeByteArray(response.data);
             options.stream.write(ZSshUtils.decodeByteArray(response.data));
             options.stream.end();
         }
@@ -60,8 +59,6 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         dataSetName: string,
         options?: zosfiles.IUploadOptions,
     ): Promise<zosfiles.IZosFilesResponse> {
-        const buf = ZSshUtils.encodeByteArray(buffer);
-        console.log(buf);
         const response = await (await this.client).ds.writeDataset({
             dsname: dataSetName,
             encoding: options?.binary ? "binary" : options?.encoding,
