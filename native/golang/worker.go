@@ -15,6 +15,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 
 	"zowe-native-proto/ioserver/cmds"
@@ -58,12 +59,18 @@ func (w *Worker) processRequest(data []byte) {
 
 	// Handle the command request if a supported command is provided
 	if handler, ok := w.Dispatcher.Get(request.Method); ok {
-		result, err := handler(w.Conn, request.Params)
+		result, err := handler(&w.Conn, request.Params)
 		w.ResponseMu.Lock()
 		if err != nil {
+			errMsg := err.Error()
+			var errData string
+			if parts := strings.SplitN(errMsg, ": ", 2); len(parts) > 1 {
+				errMsg, errData = parts[0], parts[1]
+			}
 			utils.PrintErrorResponse(t.ErrorDetails{
 				Code:    1,
-				Message: err.Error(),
+				Message: errMsg,
+				Data:    errData,
 			}, &request.Id)
 		} else {
 			utils.PrintCommandResponse(result, request.Id)
