@@ -22,7 +22,7 @@ import (
 )
 
 // HandleListFilesRequest handles a ListFilesRequest by invoking built-in functions from Go's `os` module.
-func HandleListFilesRequest(_conn utils.StdioConn, params []byte) (result any, e error) {
+func HandleListFilesRequest(_conn *utils.StdioConn, params []byte) (result any, e error) {
 	request, err := utils.ParseCommandRequest[uss.ListFilesRequest](params)
 	if err != nil {
 		return nil, err
@@ -68,7 +68,7 @@ func HandleListFilesRequest(_conn utils.StdioConn, params []byte) (result any, e
 }
 
 // HandleReadFileRequest handles a ReadFileRequest by invoking the `zowex uss view` command
-func HandleReadFileRequest(conn utils.StdioConn, params []byte) (result any, e error) {
+func HandleReadFileRequest(conn *utils.StdioConn, params []byte) (result any, e error) {
 	request, err := utils.ParseCommandRequest[uss.ReadFileRequest](params)
 	if err != nil {
 		return nil, err
@@ -104,7 +104,7 @@ func HandleReadFileRequest(conn utils.StdioConn, params []byte) (result any, e e
 }
 
 // HandleWriteFileRequest handles a WriteFileRequest by invoking the `zowex uss write` command
-func HandleWriteFileRequest(conn utils.StdioConn, params []byte) (result any, e error) {
+func HandleWriteFileRequest(conn *utils.StdioConn, params []byte) (result any, e error) {
 	request, err := utils.ParseCommandRequest[uss.WriteFileRequest](params)
 	if err != nil {
 		return nil, err
@@ -153,7 +153,7 @@ func HandleWriteFileRequest(conn utils.StdioConn, params []byte) (result any, e 
 }
 
 // HandleCreateFileRequest handles a CreateFileRequest by invoking the `zowex uss create-dir` or `create-file` command (depending on params)
-func HandleCreateFileRequest(conn utils.StdioConn, params []byte) (result any, e error) {
+func HandleCreateFileRequest(conn *utils.StdioConn, params []byte) (result any, e error) {
 	request, err := utils.ParseCommandRequest[uss.CreateFileRequest](params)
 	if err != nil {
 		return nil, err
@@ -184,7 +184,7 @@ func HandleCreateFileRequest(conn utils.StdioConn, params []byte) (result any, e
 }
 
 // HandleDeleteFileRequest handles a DeleteFileRequest by invoking the `zowex uss delete` command
-func HandleDeleteFileRequest(conn utils.StdioConn, params []byte) (result any, e error) {
+func HandleDeleteFileRequest(conn *utils.StdioConn, params []byte) (result any, e error) {
 	request, err := utils.ParseCommandRequest[uss.DeleteFileRequest](params)
 	if err != nil {
 		return nil, err
@@ -211,7 +211,7 @@ func HandleDeleteFileRequest(conn utils.StdioConn, params []byte) (result any, e
 }
 
 // HandleChownFileRequest handles a ChownFileRequest by invoking the `zowex uss chown` command
-func HandleChownFileRequest(conn utils.StdioConn, params []byte) (result any, e error) {
+func HandleChownFileRequest(conn *utils.StdioConn, params []byte) (result any, e error) {
 	request, err := utils.ParseCommandRequest[uss.ChownFileRequest](params)
 	if err != nil {
 		return nil, err
@@ -238,7 +238,7 @@ func HandleChownFileRequest(conn utils.StdioConn, params []byte) (result any, e 
 }
 
 // HandleChmodFileRequest handles a ChmodFileRequest by invoking the `zowex uss chmod` command
-func HandleChmodFileRequest(conn utils.StdioConn, params []byte) (result any, e error) {
+func HandleChmodFileRequest(conn *utils.StdioConn, params []byte) (result any, e error) {
 	request, err := utils.ParseCommandRequest[uss.ChmodFileRequest](params)
 	if err != nil {
 		return nil, err
@@ -265,7 +265,7 @@ func HandleChmodFileRequest(conn utils.StdioConn, params []byte) (result any, e 
 }
 
 // HandleChtagFileRequest handles a ChtagFileRequest by invoking the `zowex uss chtag` command
-func HandleChtagFileRequest(conn utils.StdioConn, params []byte) (result any, e error) {
+func HandleChtagFileRequest(conn *utils.StdioConn, params []byte) (result any, e error) {
 	request, err := utils.ParseCommandRequest[uss.ChtagFileRequest](params)
 	if err != nil {
 		return nil, err

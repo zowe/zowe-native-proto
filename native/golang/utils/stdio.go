@@ -29,66 +29,55 @@ type StdioConn struct {
 	LastExitCode int
 }
 
-func (conn StdioConn) ExecCmd(args []string) (stdout []byte, stderr error) {
+func (conn *StdioConn) ExecCmd(args []string) (stdout []byte, stderr error) {
 	_, err := conn.Stdin.Write([]byte("./zowex " + BuildArgString(args) + "\n"))
 	if err != nil {
 		return nil, err
 	}
-	done := make(chan bool)
-	outReader := bufio.NewReader(conn.Stdout)
-	errReader := bufio.NewReader(conn.Stderr)
 
-	go func(reader *bufio.Reader) {
-		for {
-			select {
-			case <-done:
-				return
-			default:
-				char, err := reader.Peek(1)
-				if err == io.EOF {
-					continue
-				} else if bytes.Equal(char, []byte("\r")) {
-					if len(stdout) > 0 || stderr != nil {
-						done <- true
-						return
-					} else {
-						continue
-					}
-				}
-				line, err := reader.ReadBytes('\n')
-				stdout = append(stdout, line...)
-				if err != nil || reader.Buffered() == 0 {
-					done <- true
-					return
-				}
-			}
-		}
-	}(outReader)
+	outChan := make(chan []byte)
+	errChan := make(chan []byte)
 
-	go func(reader *bufio.Reader) {
-		var tempErr []byte
-		for {
-			select {
-			case <-done:
-				return
-			default:
-				line, err := reader.ReadBytes('\n')
-				tempErr = append(tempErr, line...)
-				if err != nil || reader.Buffered() == 0 {
-					stderr = errors.New(string(tempErr))
-					done <- true
-					return
-				}
-			}
-		}
-	}(errReader)
+	go readUntilEot(bufio.NewReader(conn.Stdout), outChan)
+	go readUntilEot(bufio.NewReader(conn.Stderr), errChan)
 
-	<-done
-	if rcVal, _ := outReader.ReadString(']'); rcVal != "" {
-		exitCode, err := strconv.Atoi(rcVal[2 : len(rcVal)-1])
-		if err == nil {
-			conn.LastExitCode = exitCode
+	if outData := <-outChan; len(outData) > 0 {
+		stdout = parseExitCode(outData, &conn.LastExitCode)
+	}
+
+	if errData := <-errChan; len(errData) > 0 {
+		stderr = errors.New(string(errData))
+	}
+
+	return
+}
+
+func readUntilEot(reader *bufio.Reader, data chan<- []byte) {
+	var tempData []byte
+
+	for {
+		if char, _ := reader.Peek(1); char[0] == byte('\x04') {
+			reader.Discard(1)
+			break
 		}
+		line, _ := reader.ReadBytes('\n')
+		tempData = append(tempData, line...)
+	}
+
+	data <- tempData
+}
+
+func parseExitCode(outData []byte, exitCode *int) (stdout []byte) {
+	var rcVal string
+	if idx := bytes.LastIndex(outData[:len(outData)-1], []byte("\n")); idx != -1 {
+		rcVal = string(outData[idx+1:])
+		stdout = outData[:idx]
+	} else {
+		rcVal = string(outData)
+	}
+	rc, err := strconv.Atoi(string(rcVal[1 : len(rcVal)-2]))
+	if err == nil {
+		*exitCode = rc
 	}
 	return
 }
@@ -105,7 +94,7 @@ future, here is C++ code that may be useful:
 	data.resize(byteSize);
 	std::cin.read(&data[0], byteSize);
 */
-func (conn StdioConn) ExecCmdWithStdin(args []string, data []byte) (out []byte, err error) {
+func (conn *StdioConn) ExecCmdWithStdin(args []string, data []byte) (out []byte, err error) {
 	_, err = conn.Stdin.Write([]byte(strings.Join(args, " ") + "\n"))
 	if err != nil {
 		return
@@ -134,7 +123,7 @@ func (conn StdioConn) ExecCmdWithStdin(args []string, data []byte) (out []byte, 
 	return
 }
 
-func (conn StdioConn) Close() error {
+func (conn *StdioConn) Close() error {
 	var err error
 	if conn.Stdin != nil {
 		err = conn.Stdin.Close()

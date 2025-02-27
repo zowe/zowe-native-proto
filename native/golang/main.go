@@ -88,10 +88,13 @@ func main() {
 
 		// Handle the command request if a supported command is provided
 		if handler, ok := dispatcher.Get(request.Method); ok {
-			result, err := handler(conn, request.Params)
+			result, err := handler(&conn, request.Params)
 			if err != nil {
 				errMsg := err.Error()
 				var errData string
+				if strings.Index(errMsg, "Error: ") == 0 {
+					errMsg = strings.ToUpper(string(errMsg[7])) + errMsg[8:]
+				}
 				if parts := strings.SplitN(errMsg, ": ", 2); len(parts) > 1 {
 					errMsg, errData = parts[0], parts[1]
 				}

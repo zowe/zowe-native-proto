@@ -18,7 +18,7 @@ import (
 )
 
 // HandleConsoleCommandRequest handles a ConsoleCommandRequest by invoking the `zowex console issue` command
-func HandleConsoleCommandRequest(conn utils.StdioConn, params []byte) (result any, e error) {
+func HandleConsoleCommandRequest(conn *utils.StdioConn, params []byte) (result any, e error) {
 	request, err := utils.ParseCommandRequest[cmdTypes.IssueConsoleRequest](params)
 	if err != nil {
 		return nil, err
