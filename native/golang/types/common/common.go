@@ -34,7 +34,7 @@ type CommandRequest struct {
 
 type CommandResponse struct {
 	// True if command succeeded
-	Success bool `json:"success"`
+	Success *bool `json:"success,omitempty" tstype:",required"`
 }
 
 type ErrorDetails struct {
