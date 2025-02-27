@@ -20,7 +20,7 @@ import { Client } from "ssh2";
 import type { ClientChannel } from "ssh2";
 import * as vscode from "vscode";
 import { ZClientUtils, ZSshClient } from "zowe-native-proto-sdk";
-import type { sshConfigExt } from "zowe-native-proto-sdk";
+import type { ISshConfigExt } from "zowe-native-proto-sdk";
 import type { Config } from "@zowe/imperative";
 
 // biome-ignore lint/complexity/noStaticOnlyClass: Utilities class has static methods
@@ -62,7 +62,7 @@ export class SshConfigUtils {
             { label: "$(plus) Add New SSH Host..." },
             ...sshProfiles.map(({ name, profile }) => ({
                 label: name!,
-                description: profile?.host,
+                description: profile!.host!,
             })),
             {
                 label: "Migrate From SSH Config",
@@ -82,19 +82,28 @@ export class SshConfigUtils {
         // If nothing selected, return
         if (!result) return;
 
-        if (result === qpItems[0] || filteredMigratedConfigs.some(({ name }) => result.label === name)) {
+        if (
+            result === qpItems[0] ||
+            filteredMigratedConfigs.some(
+                ({ name, hostname }) => result.label === name && result.description === hostname,
+            )
+        ) {
             const isNewConfig = result === qpItems[0];
 
             // If result is add new SSH host then create a new config, if not use migrated configs
             let selectedProfile = isNewConfig
                 ? await SshConfigUtils.createNewConfig()
-                : filteredMigratedConfigs.find(({ name }) => result.label === name);
+                : filteredMigratedConfigs.find(
+                      ({ name, hostname }) => result.label === name && result.description === hostname,
+                  );
 
             if (!selectedProfile) return;
 
             const workspaceDir = ZoweVsCodeExtension.workspaceRoot;
 
             // Prioritize creating a team config in the local workspace if it exists even if a global config exists
+            // TODO: This behavior is only for the POC phase
+            ////////////////////////////////////////////////////////////////////////////////////////////////////////
             if (
                 workspaceDir?.uri.fsPath !== undefined &&
                 !profInfo.getTeamConfig().layerExists(workspaceDir!.uri.fsPath)
@@ -103,8 +112,9 @@ export class SshConfigUtils {
             } else {
                 await SshConfigUtils.createZoweSchema(true);
             }
+            ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-            //If no profile name found, prompt for a new one with hostname as placeholder
+            // Prompt for a new profile name with the hostname (for adding a new config) or host value (for migrating from a config)
             selectedProfile = await SshConfigUtils.getNewProfileName(selectedProfile, profInfo.getTeamConfig());
             if (!selectedProfile?.name) {
                 vscode.window.showWarningMessage("SSH setup cancelled.");
@@ -145,7 +155,7 @@ export class SshConfigUtils {
                         // Iterate over filtered validation attempts
                         let step = 0;
                         for (const profile of validationAttempts) {
-                            const testValidation: sshConfigExt = profile;
+                            const testValidation: ISshConfigExt = profile;
 
                             const result = await SshConfigUtils.validateConfig(testValidation);
                             step++;
@@ -165,7 +175,7 @@ export class SshConfigUtils {
                         if (!validationResult) {
                             const foundPrivateKeys = await ZClientUtils.findPrivateKeys();
                             for (const privateKey of foundPrivateKeys) {
-                                const testValidation: sshConfigExt = selectedProfile!;
+                                const testValidation: ISshConfigExt = selectedProfile!;
                                 testValidation.privateKey = privateKey;
 
                                 const result = await SshConfigUtils.validateConfig(testValidation);
@@ -272,8 +282,8 @@ export class SshConfigUtils {
         zoweExplorerApi.getExplorerExtenderApi().reloadProfiles("ssh");
     }
 
-    private static async createNewConfig(): Promise<sshConfigExt | undefined> {
-        const SshProfile: sshConfigExt = {};
+    private static async createNewConfig(): Promise<ISshConfigExt | undefined> {
+        const SshProfile: ISshConfigExt = {};
         const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
         const profInfo = await zoweExplorerApi.getExplorerExtenderApi().getProfilesCache().getProfileInfo();
 
@@ -339,12 +349,26 @@ export class SshConfigUtils {
     }
 
     private static async getNewProfileName(
-        selectedProfile: sshConfigExt,
+        selectedProfile: ISshConfigExt,
         configApi: Config,
-    ): Promise<sshConfigExt | undefined> {
+    ): Promise<ISshConfigExt | undefined> {
         let isUniqueName = false;
 
-        if (!selectedProfile.name) selectedProfile.name = selectedProfile.hostname;
+        // If no name option set then use hostname with all "." replaced with "_"
+        if (!selectedProfile.name) selectedProfile.name = selectedProfile.hostname!.replace(/\./g, "_");
+
+        // If selectedProfile already has a name, return it unless an existing profile is found
+        if (selectedProfile.name) {
+            const existingProfile = configApi.layerActive().properties.profiles[selectedProfile.name];
+            if (existingProfile) {
+                const overwriteResponse = await vscode.window.showQuickPick(["Yes", "No"], {
+                    placeHolder: `A profile with the name "${selectedProfile.name}" already exists. Do you want to overwrite it?`,
+                });
+                if (overwriteResponse === "Yes") return selectedProfile;
+            } else return selectedProfile;
+        }
+
+        // If no name set or overwriting, proceed with the input loop
         while (!isUniqueName) {
             selectedProfile.name = await vscode.window.showInputBox({
                 prompt: "Enter a name for the SSH config",
@@ -353,14 +377,12 @@ export class SshConfigUtils {
             });
             if (!selectedProfile.name) return;
             const existingProfile = configApi.layerActive().properties.profiles[selectedProfile.name];
-            //profiles.find((profile) => profile.name === selectedProfile.name);
             if (existingProfile) {
                 const overwriteResponse = await vscode.window.showQuickPick(["Yes", "No"], {
                     placeHolder: `A profile with the name "${selectedProfile.name}" already exists. Do you want to overwrite it?`,
                 });
                 if (overwriteResponse === "Yes") {
                     isUniqueName = true;
-                } else {
                 }
             } else {
                 isUniqueName = true;
@@ -369,7 +391,7 @@ export class SshConfigUtils {
         return selectedProfile;
     }
 
-    private static async setProfile(selectedConfig: sshConfigExt | undefined): Promise<void> {
+    private static async setProfile(selectedConfig: ISshConfigExt | undefined): Promise<void> {
         //Profile information
         const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
         const profCache = zoweExplorerApi.getExplorerExtenderApi().getProfilesCache();
@@ -435,8 +457,8 @@ export class SshConfigUtils {
             await config.save(false);
         } catch (err) {}
     }
-    private static async validateConfig(newConfig: sshConfigExt): Promise<boolean | string> {
-        const attemptConnection = async (config: sshConfigExt): Promise<boolean> => {
+    private static async validateConfig(newConfig: ISshConfigExt): Promise<boolean | string> {
+        const attemptConnection = async (config: ISshConfigExt): Promise<boolean> => {
             return new Promise((resolve, reject) => {
                 const sshClient = new Client();
                 const testConnection = { ...config }; // Create a shallow copy

@@ -15,7 +15,7 @@ import * as path from "node:path";
 import type { ISshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import * as sshConfig from "ssh-config";
 
-export interface sshConfigExt extends ISshSession {
+export interface ISshConfigExt extends ISshSession {
     name?: string;
 }
 // biome-ignore lint/complexity/noStaticOnlyClass: Utilities class has static methods
@@ -36,7 +36,7 @@ export class ZClientUtils {
         return Array.from(privateKeyPaths);
     }
 
-    public static async migrateSshConfig(): Promise<sshConfigExt[]> {
+    public static async migrateSshConfig(): Promise<ISshConfigExt[]> {
         const filePath = path.join(homedir(), ".ssh", "config");
         let fileContent: string;
         try {
@@ -46,11 +46,11 @@ export class ZClientUtils {
         }
 
         const parsedConfig = sshConfig.parse(fileContent);
-        const SSHConfigs: sshConfigExt[] = [];
+        const SSHConfigs: ISshConfigExt[] = [];
 
         for (const config of parsedConfig) {
             if (config.type === sshConfig.LineType.DIRECTIVE) {
-                const session: sshConfigExt = {};
+                const session: ISshConfigExt = {};
                 session.name = config.value as string;
 
                 if (Array.isArray((config as any).config)) {
