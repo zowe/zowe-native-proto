@@ -82,188 +82,175 @@ export class SshConfigUtils {
         // If nothing selected, return
         if (!result) return;
 
-        if (
-            result === qpItems[0] ||
-            filteredMigratedConfigs.some(
-                ({ name, hostname }) => result.label === name && result.description === hostname,
-            )
-        ) {
-            const isNewConfig = result === qpItems[0];
+        // If result is add new SSH host then create a new config, if not use migrated configs
+        let selectedProfile = filteredMigratedConfigs.find(
+            ({ name, hostname }) => result.label === name && result.description === hostname,
+        );
+        if (result === qpItems[0]) {
+            selectedProfile = await SshConfigUtils.createNewConfig();
+        }
 
-            // If result is add new SSH host then create a new config, if not use migrated configs
-            let selectedProfile = isNewConfig
-                ? await SshConfigUtils.createNewConfig()
-                : filteredMigratedConfigs.find(
-                      ({ name, hostname }) => result.label === name && result.description === hostname,
-                  );
+        if (!selectedProfile) return sshProfiles.find(({ name }) => name === result.label);
 
-            if (!selectedProfile) return;
+        const workspaceDir = ZoweVsCodeExtension.workspaceRoot;
 
-            const workspaceDir = ZoweVsCodeExtension.workspaceRoot;
+        // Prioritize creating a team config in the local workspace if it exists even if a global config exists
+        // TODO: This behavior is only for the POC phase
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////
+        if (workspaceDir?.uri.fsPath !== undefined && !profInfo.getTeamConfig().layerExists(workspaceDir!.uri.fsPath)) {
+            await SshConfigUtils.createZoweSchema(false);
+        } else {
+            await SshConfigUtils.createZoweSchema(true);
+        }
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-            // Prioritize creating a team config in the local workspace if it exists even if a global config exists
-            // TODO: This behavior is only for the POC phase
-            ////////////////////////////////////////////////////////////////////////////////////////////////////////
-            if (
-                workspaceDir?.uri.fsPath !== undefined &&
-                !profInfo.getTeamConfig().layerExists(workspaceDir!.uri.fsPath)
-            ) {
-                await SshConfigUtils.createZoweSchema(false);
-            } else {
-                await SshConfigUtils.createZoweSchema(true);
-            }
-            ////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Prompt for a new profile name with the hostname (for adding a new config) or host value (for migrating from a config)
+        selectedProfile = await SshConfigUtils.getNewProfileName(selectedProfile, profInfo.getTeamConfig());
+        if (!selectedProfile?.name) {
+            vscode.window.showWarningMessage("SSH setup cancelled.");
+            return;
+        }
 
-            // Prompt for a new profile name with the hostname (for adding a new config) or host value (for migrating from a config)
-            selectedProfile = await SshConfigUtils.getNewProfileName(selectedProfile, profInfo.getTeamConfig());
-            if (!selectedProfile?.name) {
-                vscode.window.showWarningMessage("SSH setup cancelled.");
-                return;
-            }
+        // Attempt to validate with given URL/creds
+        let validationResult = await SshConfigUtils.validateConfig(selectedProfile);
 
-            // Attempt to validate with given URL/creds
-            let validationResult = await SshConfigUtils.validateConfig(selectedProfile);
+        // If validateConfig returns a string, that string is the correct keyPassphrase
+        if (typeof validationResult === "string") selectedProfile.keyPassphrase = validationResult;
 
-            // If validateConfig returns a string, that string is the correct keyPassphrase
-            if (typeof validationResult === "string") selectedProfile.keyPassphrase = validationResult;
+        if (!validationResult) {
+            // Create a progress bar using the custom Gui.withProgress
+            await Gui.withProgress(
+                {
+                    location: vscode.ProgressLocation.Notification,
+                    title: "Validating SSH Configurations...",
+                    cancellable: false,
+                },
+                async (progress, token) => {
+                    let validationAttempts = migratedConfigs.filter(
+                        (config) => config.hostname === selectedProfile?.hostname,
+                    );
 
-            if (!validationResult) {
-                // Create a progress bar using the custom Gui.withProgress
-                await Gui.withProgress(
-                    {
-                        location: vscode.ProgressLocation.Notification,
-                        title: "Validating SSH Configurations...",
-                        cancellable: false,
-                    },
-                    async (progress, token) => {
-                        let validationAttempts = migratedConfigs.filter(
-                            (config) => config.hostname === selectedProfile?.hostname,
+                    // If multiple matches exist, narrow down by user
+                    if (validationAttempts.length > 1 && selectedProfile?.user) {
+                        validationAttempts = validationAttempts.filter(
+                            (config) => config.user === selectedProfile?.user,
                         );
+                    } else {
+                        // If no user is specified, allow all configs where the hostname matches
+                        validationAttempts = validationAttempts.filter(
+                            (config) => !selectedProfile?.user || config.user === selectedProfile?.user,
+                        );
+                    }
 
-                        // If multiple matches exist, narrow down by user
-                        if (validationAttempts.length > 1 && selectedProfile?.user) {
-                            validationAttempts = validationAttempts.filter(
-                                (config) => config.user === selectedProfile?.user,
-                            );
-                        } else {
-                            // If no user is specified, allow all configs where the hostname matches
-                            validationAttempts = validationAttempts.filter(
-                                (config) => !selectedProfile?.user || config.user === selectedProfile?.user,
-                            );
+                    // Iterate over filtered validation attempts
+                    let step = 0;
+                    for (const profile of validationAttempts) {
+                        const testValidation: ISshConfigExt = profile;
+
+                        const result = await SshConfigUtils.validateConfig(testValidation);
+                        step++;
+                        progress.report({ increment: (step / validationAttempts.length) * 100 });
+
+                        if (result) {
+                            validationResult = true;
+                            if (typeof result === "string") {
+                                testValidation.keyPassphrase = result;
+                            }
+                            selectedProfile = testValidation;
+                            break;
                         }
+                    }
 
-                        // Iterate over filtered validation attempts
-                        let step = 0;
-                        for (const profile of validationAttempts) {
-                            const testValidation: ISshConfigExt = profile;
+                    // Find private keys located at ~/.ssh/ and attempt to connect with them
+                    if (!validationResult) {
+                        const foundPrivateKeys = await ZClientUtils.findPrivateKeys();
+                        for (const privateKey of foundPrivateKeys) {
+                            const testValidation: ISshConfigExt = selectedProfile!;
+                            testValidation.privateKey = privateKey;
 
                             const result = await SshConfigUtils.validateConfig(testValidation);
                             step++;
-                            progress.report({ increment: (step / validationAttempts.length) * 100 });
+                            progress.report({ increment: (step / foundPrivateKeys.length) * 100 });
 
                             if (result) {
                                 validationResult = true;
                                 if (typeof result === "string") {
                                     testValidation.keyPassphrase = result;
+                                    selectedProfile = testValidation;
                                 }
-                                selectedProfile = testValidation;
                                 break;
                             }
-                        }
-
-                        // Find private keys located at ~/.ssh/ and attempt to connect with them
-                        if (!validationResult) {
-                            const foundPrivateKeys = await ZClientUtils.findPrivateKeys();
-                            for (const privateKey of foundPrivateKeys) {
-                                const testValidation: ISshConfigExt = selectedProfile!;
-                                testValidation.privateKey = privateKey;
-
-                                const result = await SshConfigUtils.validateConfig(testValidation);
-                                step++;
-                                progress.report({ increment: (step / foundPrivateKeys.length) * 100 });
-
-                                if (result) {
-                                    validationResult = true;
-                                    if (typeof result === "string") {
-                                        testValidation.keyPassphrase = result;
-                                        selectedProfile = testValidation;
-                                    }
-                                    break;
-                                }
-                            }
-                        }
-                    },
-                );
-            }
-
-            // Password loading bar
-            await Gui.withProgress(
-                {
-                    location: vscode.ProgressLocation.Notification,
-                    title: "Validating Password...",
-                    cancellable: false,
-                },
-                async (progress) => {
-                    // If not validated, remove private key from profile and get the password
-                    if (!validationResult) {
-                        selectedProfile!.privateKey = undefined;
-
-                        // Show the password input prompt
-                        const passwordPrompt = await vscode.window.showInputBox({
-                            title: `${selectedProfile?.user}@${selectedProfile?.hostname}'s password:`,
-                            password: true,
-                            placeHolder: "Enter your password",
-                            ignoreFocusOut: true,
-                        });
-
-                        if (!passwordPrompt) return;
-
-                        if (!selectedProfile) return;
-
-                        // Validate the password
-                        const validatePassword = await SshConfigUtils.validateConfig({
-                            ...selectedProfile,
-                            password: passwordPrompt,
-                        });
-
-                        if (validatePassword && typeof validatePassword === "boolean") {
-                            selectedProfile.password = passwordPrompt;
-                        } else if (validatePassword && typeof validatePassword === "string") {
-                            selectedProfile.password = validatePassword;
-                        } else {
-                            // vscode.window.showWarningMessage("Password Authentication Failed");
-                            return;
                         }
                     }
                 },
             );
-
-            // If no private key or password is on the profile then there is no possible validation combination, thus return
-            if (!selectedProfile?.privateKey && !selectedProfile?.password) {
-                vscode.window.showWarningMessage("SSH setup cancelled.");
-                return;
-            }
-
-            await SshConfigUtils.setProfile(selectedProfile);
-            return {
-                name: selectedProfile.name,
-                message: "",
-                failNotFound: false,
-                type: "ssh",
-                profile: {
-                    host: selectedProfile.hostname,
-                    name: selectedProfile.name,
-                    password: selectedProfile.password,
-                    user: selectedProfile.user,
-                    privateKey: selectedProfile.privateKey,
-                    handshakeTimeout: selectedProfile.handshakeTimeout,
-                    port: selectedProfile.port,
-                    keyPassphrase: selectedProfile.keyPassphrase,
-                },
-            };
         }
 
-        return sshProfiles.find(({ name }) => name === result.label);
+        // Password loading bar
+        await Gui.withProgress(
+            {
+                location: vscode.ProgressLocation.Notification,
+                title: "Validating Password...",
+                cancellable: false,
+            },
+            async (progress) => {
+                // If not validated, remove private key from profile and get the password
+                if (!validationResult) {
+                    selectedProfile!.privateKey = undefined;
+
+                    // Show the password input prompt
+                    const passwordPrompt = await vscode.window.showInputBox({
+                        title: `${selectedProfile?.user}@${selectedProfile?.hostname}'s password:`,
+                        password: true,
+                        placeHolder: "Enter your password",
+                        ignoreFocusOut: true,
+                    });
+
+                    if (!passwordPrompt) return;
+
+                    if (!selectedProfile) return;
+
+                    // Validate the password
+                    const validatePassword = await SshConfigUtils.validateConfig({
+                        ...selectedProfile,
+                        password: passwordPrompt,
+                    });
+
+                    if (validatePassword && typeof validatePassword === "boolean") {
+                        selectedProfile.password = passwordPrompt;
+                    } else if (validatePassword && typeof validatePassword === "string") {
+                        selectedProfile.password = validatePassword;
+                    } else {
+                        // vscode.window.showWarningMessage("Password Authentication Failed");
+                        return;
+                    }
+                }
+            },
+        );
+
+        // If no private key or password is on the profile then there is no possible validation combination, thus return
+        if (!selectedProfile?.privateKey && !selectedProfile?.password) {
+            vscode.window.showWarningMessage("SSH setup cancelled.");
+            return;
+        }
+
+        await SshConfigUtils.setProfile(selectedProfile);
+        return {
+            name: selectedProfile.name,
+            message: "",
+            failNotFound: false,
+            type: "ssh",
+            profile: {
+                host: selectedProfile.hostname,
+                name: selectedProfile.name,
+                password: selectedProfile.password,
+                user: selectedProfile.user,
+                privateKey: selectedProfile.privateKey,
+                handshakeTimeout: selectedProfile.handshakeTimeout,
+                port: selectedProfile.port,
+                keyPassphrase: selectedProfile.keyPassphrase,
+            },
+        };
     }
 
     public static showSessionInTree(profileName: string, visible: boolean): void {
