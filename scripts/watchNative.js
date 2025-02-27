@@ -24,7 +24,7 @@ const watcher = chokidar.watch(
 const fs = require("fs");
 const { Client } = require("ssh2");
 const config = JSON.parse(
-  fs.readFileSync(p.join("tools", "build", "config.local.json"))
+  fs.readFileSync(p.join(__dirname, "..", "config.local.json"))
 );
 let sshReady = false;
 
@@ -74,7 +74,7 @@ function cTask(err, remotePath, stream, resolve) {
       }
       resolve();
     })
-    .on("data", (data) => {})
+    .on("data", (data) => { })
     .stderr.on("data", (data) => {
       let str = data.toString().trim();
       if (/IGD\d{5}I /.test(str)) return;
@@ -107,7 +107,7 @@ function golangTask(err, remotePath, stream, resolve) {
       }
       resolve();
     })
-    .on("data", (data) => {})
+    .on("data", (data) => { })
     .stderr.on("data", (data) => {
       errText += data;
     });
@@ -219,4 +219,4 @@ watcher.on("unlink", async (path, stats) => {
 });
 
 console.log("watching for changes...");
-setInterval(() => {}, 1e6);
+setInterval(() => { }, 1e6);
