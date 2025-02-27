@@ -12,6 +12,7 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"log"
 	"os"
@@ -55,22 +56,13 @@ func main() {
 
 	// Start goroutine to read from stdin
 	go func() {
-		buf := make([]byte, 1024)
-		for {
-			// Read input from stdin
-			n, err := os.Stdin.Read(buf)
-			if err != nil {
-				if err.Error() == "EOF" {
-					close(requestQueue)
-					os.Exit(0)
-				}
-				log.Fatalln("Error reading from stdin:", err)
-			}
-			// Copy the data to avoid race conditions with buffer reuse
-			data := make([]byte, n)
-			copy(data, buf[:n])
-			input <- data
+		scanner := bufio.NewScanner(os.Stdin)
+		for scanner.Scan() {
+			line := scanner.Text()
+			// Process each line (it should be a complete JSON request)
+			input <- []byte(line)
 		}
+		close(requestQueue)
 	}()
 
 	// Distribute incoming requests to the queue
