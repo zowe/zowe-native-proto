@@ -62,7 +62,7 @@ func InitLogger(truncate bool) {
 	if truncate {
 		access = os.O_TRUNC
 	}
-	file, err := os.OpenFile("./ioserver.log", access|os.O_CREATE|os.O_WRONLY, 0644)
+	file, err := os.OpenFile(GetExecDir()+"/ioserver.log", access|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Fatalln("Failed to initialize logger:", err)
 		return

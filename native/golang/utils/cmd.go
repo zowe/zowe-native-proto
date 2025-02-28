@@ -22,7 +22,7 @@ import (
 	t "zowe-native-proto/ioserver/types/common"
 )
 
-var exePath string
+var execDir string
 
 func BuildArgString(args []string) string {
 	var sb strings.Builder
@@ -53,14 +53,7 @@ func BuildArgString(args []string) string {
 // BuildCommandShared builds a command with the shared logic for command builder functions
 func BuildCommandShared(name string, args []string) *exec.Cmd {
 	cmd := exec.Command(name, args...)
-	if exePath == "" {
-		path, err := os.Executable()
-		if err != nil {
-			panic(err)
-		}
-		exePath = path
-	}
-	cmd.Dir = filepath.Dir(exePath)
+	cmd.Dir = GetExecDir()
 	return cmd
 }
 
@@ -83,6 +76,18 @@ func BuildCommandNoAutocvt(args []string) *exec.Cmd {
 	cmd := BuildCommandShared("./zowex", args)
 	cmd.Env = append(os.Environ(), "_BPXK_AUTOCVT=OFF")
 	return cmd
+}
+
+// GetExecDir retrieves directory of the current executable
+func GetExecDir() string {
+	if execDir == "" {
+		path, err := os.Executable()
+		if err != nil {
+			panic(err)
+		}
+		execDir = filepath.Dir(path)
+	}
+	return execDir
 }
 
 // ParseCommandRequest parses a command request and returns the parsed request as the given type.
