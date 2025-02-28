@@ -396,6 +396,7 @@ std::string zut_encode(const string &input_str, const string &from_encoding, con
 
   // Copy converted input into a new string and return it to the caller
   result.assign(output_buffer, data.output_iter - data.output_buffer);
+  std::fill(output_buffer, output_buffer + max_output_size, 0);
   delete[] data.output_buffer;
 
   return result;
