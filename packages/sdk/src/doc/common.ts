@@ -117,6 +117,9 @@ export interface Spool {
 //////////
 // source: options.go
 
+export interface IoserverOptions {
+    numWorkers?: number /* int */;
+}
 export interface ListOptions {
     /**
      * Maximum number of items to return
