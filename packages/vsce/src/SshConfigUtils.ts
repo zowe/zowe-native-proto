@@ -114,7 +114,7 @@ export class SshConfigUtils {
             return result;
         }
         const result = await showQuickPickWithCustomInput();
-        console.debug(result);
+
         // If nothing selected, return
         if (!result) return;
 
