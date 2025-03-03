@@ -530,8 +530,8 @@ int loop_dynalloc(vector<string> &list)
 
     if (0 != rc)
     {
-      cout << "Error: bpxwdyn failed with '" << *it << "' rc: '" << rc << "'" << endl;
-      cout << "  Details: " << response << endl;
+      cerr << "Error: bpxwdyn failed with '" << *it << "' rc: '" << rc << "'" << endl;
+      cerr << "  Details: " << response << endl;
       return -1;
     }
   }
@@ -604,8 +604,8 @@ int handle_job_list_files(ZCLIResult result)
 
   if (0 != rc)
   {
-    cout << "Error: could not list jobs for: '" << jobid << "' rc: '" << rc << "'" << endl;
-    cout << "  Details: " << zjb.diag.e_msg << endl;
+    cerr << "Error: could not list jobs for: '" << jobid << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zjb.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
@@ -643,8 +643,8 @@ int handle_job_view_status(ZCLIResult result)
 
   if (0 != rc)
   {
-    cout << "Error: could not view job status for: '" << jobid << "' rc: '" << rc << "'" << endl;
-    cout << "  Details: " << zjb.diag.e_msg << endl;
+    cerr << "Error: could not view job status for: '" << jobid << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zjb.diag.e_msg << endl;
     return -1;
   }
 
@@ -678,8 +678,8 @@ int handle_job_view_file(ZCLIResult result)
 
   if (0 != rc)
   {
-    cout << "Error: could not view job file for: '" << jobid << "' with key '" << key << "' rc: '" << rc << "'" << endl;
-    cout << "  Details: " << zjb.diag.e_msg << endl;
+    cerr << "Error: could not view job file for: '" << jobid << "' with key '" << key << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zjb.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
@@ -706,8 +706,8 @@ int handle_job_view_jcl(ZCLIResult result)
 
   if (0 != rc)
   {
-    cout << "Error: could not view job file for: '" << jobid << "' rc: '" << rc << "'" << endl;
-    cout << "  Details: " << zjb.diag.e_msg << endl;
+    cerr << "Error: could not view job file for: '" << jobid << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zjb.diag.e_msg << endl;
     return -1;
   }
 
@@ -728,8 +728,8 @@ int handle_job_submit(ZCLIResult result)
 
   if (0 != rc)
   {
-    cout << "Error: could not submit JCL: '" << dsn << "' rc: '" << rc << "'" << endl;
-    cout << "  Details: " << zjb.diag.e_msg << endl;
+    cerr << "Error: could not submit JCL: '" << dsn << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zjb.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
@@ -762,8 +762,8 @@ int handle_job_submit_jcl(ZCLIResult result)
 
   if (0 != rc)
   {
-    cout << "Error: could not submit JCL: '" << data << "' rc: '" << rc << "'" << endl;
-    cout << "  Details: " << zjb.diag.e_msg << endl;
+    cerr << "Error: could not submit JCL: '" << data << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zjb.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
@@ -786,8 +786,8 @@ int handle_job_delete(ZCLIResult result)
 
   if (0 != rc)
   {
-    cout << "Error: could not delete job: '" << jobid << "' rc: '" << rc << "'" << endl;
-    cout << "  Details: " << zjb.diag.e_msg << endl;
+    cerr << "Error: could not delete job: '" << jobid << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zjb.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
@@ -807,8 +807,8 @@ int handle_console_issue(ZCLIResult result)
   rc = zcn_activate(&zcn, string(console_name));
   if (0 != rc)
   {
-    cout << "Error: could not activate console: '" << console_name << "' rc: '" << rc << "'" << endl;
-    cout << "  Details: " << zcn.diag.e_msg << endl;
+    cerr << "Error: could not activate console: '" << console_name << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zcn.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
@@ -817,8 +817,8 @@ int handle_console_issue(ZCLIResult result)
   rc = zcn_put(&zcn, command);
   if (0 != rc)
   {
-    cout << "Error: could not write to console: '" << console_name << "' rc: '" << rc << "'" << endl;
-    cout << "  Details: " << zcn.diag.e_msg << endl;
+    cerr << "Error: could not write to console: '" << console_name << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zcn.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
@@ -826,8 +826,8 @@ int handle_console_issue(ZCLIResult result)
   rc = zcn_get(&zcn, response);
   if (0 != rc)
   {
-    cout << "Error: could not get from console: '" << console_name << "' rc: '" << rc << "'" << endl;
-    cout << "  Details: " << zcn.diag.e_msg << endl;
+    cerr << "Error: could not get from console: '" << console_name << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zcn.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
@@ -846,8 +846,8 @@ int handle_console_issue(ZCLIResult result)
   rc = zcn_deactivate(&zcn);
   if (0 != rc)
   {
-    cout << "Error: could not deactivate console: '" << console_name << "' rc: '" << rc << "'" << endl;
-    cout << "  Details: " << zcn.diag.e_msg << endl;
+    cerr << "Error: could not deactivate console: '" << console_name << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zcn.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
   return rc;
@@ -917,8 +917,8 @@ int handle_data_set_create_dsn(ZCLIResult result)
   rc = zds_create_dsn(&zds, dsn, response);
   if (0 != rc)
   {
-    cout << "Error: could not create data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-    cout << "  Details:\n"
+    cerr << "Error: could not create data set: '" << dsn << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details:\n"
          << response << endl;
     return RTNCD_FAILURE;
   }
@@ -934,8 +934,8 @@ int handle_data_set_create_dsn_vb(ZCLIResult result)
   rc = zds_create_dsn_vb(&zds, dsn, response);
   if (0 != rc)
   {
-    cout << "Error: could not create data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-    cout << "  Details:\n"
+    cerr << "Error: could not create data set: '" << dsn << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details:\n"
          << response << endl;
     return -1;
   }
@@ -951,8 +951,8 @@ int handle_data_set_create_dsn_adata(ZCLIResult result)
   rc = zds_create_dsn_adata(&zds, dsn, response);
   if (0 != rc)
   {
-    cout << "Error: could not create data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-    cout << "  Details:\n"
+    cerr << "Error: could not create data set: '" << dsn << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details:\n"
          << response << endl;
     return -1;
   }
@@ -972,8 +972,8 @@ int handle_data_set_restore(ZCLIResult result)
   rc = zut_bpxwdyn(parm, &code, response);
   if (0 != rc)
   {
-    cout << "Error: bpxwdyn with parm '" << parm << "' rc: '" << rc << "'" << endl;
-    cout << "  Details: " << response << endl;
+    cerr << "Error: bpxwdyn with parm '" << parm << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << response << endl;
     return RTNCD_FAILURE;
   }
 
@@ -993,8 +993,8 @@ int handle_data_set_view_dsn(ZCLIResult result)
   rc = zds_read_from_dsn(&zds, dsn, response);
   if (0 != rc)
   {
-    cout << "Error: could not read data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-    cout << "  Details: " << zds.diag.e_msg << endl;
+    cerr << "Error: could not read data set: '" << dsn << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zds.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
@@ -1103,8 +1103,8 @@ int handle_data_set_list_members_dsn(ZCLIResult result)
   }
   if (RTNCD_SUCCESS != rc && RTNCD_WARNING != rc)
   {
-    cout << "Error: could not read data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-    cout << "  Details: " << zds.diag.e_msg << endl;
+    cerr << "Error: could not read data set: '" << dsn << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zds.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
@@ -1148,8 +1148,8 @@ int handle_data_set_write_to_dsn(ZCLIResult result)
 
   if (0 != rc)
   {
-    cout << "Error: could not write to data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-    cout << "  Details: " << zds.diag.e_msg << endl;
+    cerr << "Error: could not write to data set: '" << dsn << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zds.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
   cout << "Wrote data to '" << dsn << "'" << endl;
@@ -1166,8 +1166,8 @@ int handle_data_set_delete_dsn(ZCLIResult result)
 
   if (0 != rc)
   {
-    cout << "Error: could not delete data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-    cout << "  Details: " << zds.diag.e_msg << endl;
+    cerr << "Error: could not delete data set: '" << dsn << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zds.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
   cout << "Data set '" << dsn << "' deleted" << endl;
@@ -1199,8 +1199,8 @@ int handle_uss_create_file(ZCLIResult result)
   rc = zusf_create_uss_file_or_dir(&zusf, file_path, mode, false);
   if (0 != rc)
   {
-    cout << "Error: could not create USS file: '" << file_path << "' rc: '" << rc << "'" << endl;
-    cout << "  Details:\n"
+    cerr << "Error: could not create USS file: '" << file_path << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details:\n"
          << zusf.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
@@ -1222,8 +1222,8 @@ int handle_uss_create_dir(ZCLIResult result)
   rc = zusf_create_uss_file_or_dir(&zusf, file_path, mode, true);
   if (0 != rc)
   {
-    cout << "Error: could not create USS directory: '" << file_path << "' rc: '" << rc << "'" << endl;
-    cout << "  Details:\n"
+    cerr << "Error: could not create USS directory: '" << file_path << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details:\n"
          << zusf.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
@@ -1243,8 +1243,8 @@ int handle_uss_list(ZCLIResult result)
   rc = zusf_list_uss_file_path(&zusf, uss_file, response);
   if (0 != rc)
   {
-    cout << "Error: could not list USS files: '" << uss_file << "' rc: '" << rc << "'" << endl;
-    cout << "  Details:\n"
+    cerr << "Error: could not list USS files: '" << uss_file << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details:\n"
          << zusf.diag.e_msg << endl
          << response << endl;
     return RTNCD_FAILURE;
@@ -1267,8 +1267,8 @@ int handle_uss_view(ZCLIResult result)
   rc = zusf_read_from_uss_file(&zusf, uss_file, response);
   if (0 != rc)
   {
-    cout << "Error: could not view USS file: '" << uss_file << "' rc: '" << rc << "'" << endl;
-    cout << "  Details:\n"
+    cerr << "Error: could not view USS file: '" << uss_file << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details:\n"
          << zusf.diag.e_msg << endl
          << response << endl;
     return RTNCD_FAILURE;
@@ -1323,8 +1323,8 @@ int handle_uss_write(ZCLIResult result)
   rc = zusf_write_to_uss_file(&zusf, file, data);
   if (0 != rc)
   {
-    cout << "Error: could not write to USS file: '" << file << "' rc: '" << rc << "'" << endl;
-    cout << "  Details: " << zusf.diag.e_msg << endl;
+    cerr << "Error: could not write to USS file: '" << file << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zusf.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
   cout << "Wrote data to '" << file << "'" << endl;
@@ -1358,8 +1358,8 @@ int handle_uss_chmod(ZCLIResult result)
   rc = zusf_chmod_uss_file_or_dir(&zusf, file_path, mode, result.get_option("--recursive").is_found());
   if (0 != rc)
   {
-    cout << "Error: could not chmod USS path: '" << file_path << "' rc: '" << rc << "'" << endl;
-    cout << "  Details:\n"
+    cerr << "Error: could not chmod USS path: '" << file_path << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details:\n"
          << zusf.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
@@ -1379,8 +1379,8 @@ int handle_uss_chown(ZCLIResult result)
   const auto rc = zusf_chown_uss_file_or_dir(&zusf, path, owner, result.get_option("--recursive").is_found());
   if (rc != 0)
   {
-    cout << "Error: could not chown USS path: '" << path << "' rc: '" << rc << "'" << endl;
-    cout << "  Details:\n"
+    cerr << "Error: could not chown USS path: '" << path << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details:\n"
          << zusf.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
@@ -1398,8 +1398,8 @@ int handle_uss_chtag(ZCLIResult result)
 
   if (rc != 0)
   {
-    cout << "Error: could not chtag USS path: '" << path << "' rc: '" << rc << "'" << endl;
-    cout << "  Details:\n"
+    cerr << "Error: could not chtag USS path: '" << path << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details:\n"
          << zusf.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
@@ -1473,7 +1473,7 @@ int handle_tool_convert_dsect(ZCLIResult result)
   rc = zut_convert_dsect();
   if (0 != rc)
   {
-    cout << "Error: convert failed with rc: '" << rc << "'" << endl;
+    cerr << "Error: convert failed with rc: '" << rc << "'" << endl;
     cout << "  See '" << sysprint << "' and '" << sysout << "' for more details" << endl;
     return -1;
   }
@@ -1496,8 +1496,8 @@ int handle_tool_dynalloc(ZCLIResult result)
   rc = zut_bpxwdyn(parm, &code, resp);
   if (0 != rc)
   {
-    cout << "Error: bpxwdyn with parm '" << parm << "' rc: '" << rc << "'" << endl;
-    cout << "  Details: " << resp << endl;
+    cerr << "Error: bpxwdyn with parm '" << parm << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << resp << endl;
     return RTNCD_FAILURE;
   }
 
@@ -1587,8 +1587,8 @@ int handle_tool_search(ZCLIResult result)
   zds_write_to_dd(&zds, "sysin", data);
   if (0 != rc)
   {
-    cout << "Error: could not write to dd: '" << "sysin" << "' rc: '" << rc << "'" << endl;
-    cout << "  Details: " << zds.diag.e_msg << endl;
+    cerr << "Error: could not write to dd: '" << "sysin" << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zds.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
@@ -1608,8 +1608,8 @@ int handle_tool_search(ZCLIResult result)
   rc = zds_read_from_dd(&zds, "outdd", output);
   if (0 != rc)
   {
-    cout << "Error: could not read from dd: '" << "outdd" << "' rc: '" << rc << "'" << endl;
-    cout << "  Details: " << zds.diag.e_msg << endl;
+    cerr << "Error: could not read from dd: '" << "outdd" << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zds.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
   cout << output << endl;

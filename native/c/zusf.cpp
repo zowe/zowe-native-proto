@@ -193,6 +193,7 @@ int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
   in.seekg(0, ios::beg);
 
   char *raw_data = new char[size];
+  std::fill(raw_data, raw_data + size, 0);
   in.read(raw_data, size);
 
   response.assign(raw_data);

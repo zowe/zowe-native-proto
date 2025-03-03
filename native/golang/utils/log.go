@@ -44,10 +44,13 @@ func LogError(format string, args ...any) {
 }
 
 // PrintErrorResponse prints a JSON-serialized error response to stderr and logs the error to the log file
-func PrintErrorResponse(format string, args ...any) {
-	LogError(format, args)
-	errResponse := t.ErrorDetails{
-		Msg: fmt.Sprintf(format, args),
+func PrintErrorResponse(details t.ErrorDetails, rpcId *int) {
+	LogError(details.Message)
+	errResponse := t.RpcResponse{
+		JsonRPC: "2.0",
+		Result:  nil,
+		Error:   &details,
+		Id:      rpcId,
 	}
 	out, _ := json.Marshal(errResponse)
 	fmt.Fprintln(os.Stderr, string(out))
@@ -59,7 +62,7 @@ func InitLogger(truncate bool) {
 	if truncate {
 		access = os.O_TRUNC
 	}
-	file, err := os.OpenFile("./ioserver.log", access|os.O_CREATE|os.O_WRONLY, 0644)
+	file, err := os.OpenFile(GetExecDir()+"/ioserver.log", access|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Fatalln("Failed to initialize logger:", err)
 		return

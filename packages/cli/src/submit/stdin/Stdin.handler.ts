@@ -9,19 +9,17 @@
  *
  */
 
+import { text } from "node:stream/consumers";
 import type { IHandlerParameters } from "@zowe/imperative";
-import type { jobs, ZSshClient } from "zowe-native-proto-sdk";
+import type { ZSshClient, jobs } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class SubmitJclHandler extends SshBaseHandler {
     public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<jobs.DeleteJobResponse> {
-        const jcl = params.arguments.jcl;
-
+        const jcl = await text(params.stdin);
         const response = await client.jobs.submitJcl({ jcl });
 
-        const msg = response.success
-            ? `Job submitted: ${response.jobId}`
-            : `Failed to submit job: ${response.error?.msg ?? "Unknown error"}`;
+        const msg = `Job submitted: ${response.jobId}`;
         params.response.data.setMessage(msg);
         params.response.data.setObj(response);
         if (response.success) {

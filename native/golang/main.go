@@ -13,78 +13,64 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
+	"flag"
 	"log"
 	"os"
 
 	"zowe-native-proto/ioserver/cmds"
 	t "zowe-native-proto/ioserver/types/common"
-	utils "zowe-native-proto/ioserver/utils"
+	"zowe-native-proto/ioserver/utils"
 )
 
+// parseOptions parses command-line flags and returns the parsed options
+func parseOptions() t.IoserverOptions {
+	numWorkersFlag := flag.Int("num-workers", 10, "Number of worker threads for concurrent processing")
+
+	flag.Parse()
+
+	if *numWorkersFlag <= 0 {
+		log.Fatalln("Number of workers must be greater than 0")
+	}
+
+	return t.IoserverOptions{
+		NumWorkers: *numWorkersFlag,
+	}
+}
+
 func main() {
+	options := parseOptions()
 	utils.InitLogger(false)
 	utils.SetAutoConvOnUntaggedStdio()
+
 	// Channel for receiving input from stdin
 	input := make(chan []byte)
 
-	cmd := utils.BuildCommand([]string{"--it"})
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		panic(err)
-	}
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		panic(err)
-	}
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		panic(err)
-	}
-	conn := utils.StdioConn{
-		Stdin:  stdin,
-		Stdout: stdout,
-		Stderr: stderr,
-	}
-	cmd.Start()
-	if _, err = bufio.NewReader(stdout).ReadBytes('\n'); err != nil {
-		panic(err)
-	}
-	defer conn.Close()
-
-	go func() {
-		buf := make([]byte, 1024)
-		for {
-			// Read input from stdin
-			n, err := os.Stdin.Read(buf)
-			if err != nil {
-				if err.Error() == "EOF" {
-					os.Exit(0)
-				}
-				log.Fatalln("Error reading from stdin:", err)
-			}
-			input <- buf[:n]
-		}
-	}()
+	// Buffered request queue for workers
+	requestQueue := make(chan []byte, 100)
 
 	// Initialize the command dispatcher and register all core commands
 	dispatcher := cmds.NewDispatcher()
 	cmds.InitializeCoreHandlers(dispatcher)
 
-	for data := range input {
-		// Parse the command request
-		var request t.CommandRequest
-		err := json.Unmarshal(data, &request)
-		if err != nil {
-			utils.PrintErrorResponse("Failed to parse command request: %v", err)
-			continue
-		}
+	wg, _ := CreateWorkerPool(options.NumWorkers, requestQueue, dispatcher)
 
-		// Handle the command request if a supported command is provided
-		if handler, ok := dispatcher.Get(request.Command); ok {
-			handler(conn, data)
-		} else {
-			utils.PrintErrorResponse("Unrecognized command %s", request.Command)
+	// Start goroutine to read from stdin
+	go func() {
+		scanner := bufio.NewScanner(os.Stdin)
+		for scanner.Scan() {
+			line := scanner.Text()
+			// Process each line (it should be a complete JSON request)
+			input <- []byte(line)
 		}
+		close(requestQueue)
+	}()
+
+	// Distribute incoming requests to the queue
+	for data := range input {
+		requestQueue <- data
 	}
+
+	// If stdin is closed (process likely terminated), close the request queue and wait for all workers to finish
+	close(requestQueue)
+	wg.Wait()
 }
