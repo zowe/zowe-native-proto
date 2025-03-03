@@ -421,6 +421,8 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
 {
   int rc = 0;
 
+  zds->csi = NULL;
+
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=directory-catalog-field-names
   string fields[][FIELD_LEN] = {
       {"VOLSER"},
