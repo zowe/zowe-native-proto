@@ -11,6 +11,10 @@
 
 package types
 
+type IoserverOptions struct {
+	NumWorkers int `json:"numWorkers,omitempty"`
+}
+
 type ListOptions struct {
 	// Maximum number of items to return
 	MaxItems int `json:"maxItems,omitempty"`

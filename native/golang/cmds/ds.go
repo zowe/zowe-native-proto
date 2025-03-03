@@ -13,7 +13,7 @@ package cmds
 
 import (
 	"encoding/base64"
-	"log"
+	"fmt"
 	"strings"
 
 	t "zowe-native-proto/ioserver/types/common"
@@ -22,90 +22,92 @@ import (
 )
 
 // HandleReadDatasetRequest handles a ReadDatasetRequest by invoking the `zowex data-set view` command
-func HandleReadDatasetRequest(conn utils.StdioConn, jsonData []byte) {
-	dsRequest, err := utils.ParseCommandRequest[ds.ReadDatasetRequest](jsonData)
-	if err != nil || (dsRequest.Encoding == "" && dsRequest.Dsname == "") {
-		return
+func HandleReadDatasetRequest(conn *utils.StdioConn, params []byte) (result any, e error) {
+	request, err := utils.ParseCommandRequest[ds.ReadDatasetRequest](params)
+	if err != nil {
+		return nil, err
+	} else if request.Dsname == "" {
+		return nil, fmt.Errorf("Missing required parameters: Dsname")
 	}
 
-	args := []string{"data-set", "view", dsRequest.Dsname}
-	hasEncoding := len(dsRequest.Encoding) != 0
-	if hasEncoding {
-		args = append(args, "--encoding", dsRequest.Encoding, "--rfb", "true")
+	if len(request.Encoding) == 0 {
+		request.Encoding = fmt.Sprintf("IBM-%d", utils.DefaultEncoding)
 	}
+	args := []string{"data-set", "view", request.Dsname, "--encoding", request.Encoding, "--rfb", "true"}
 	out, err := conn.ExecCmd(args)
 	if err != nil {
-		log.Println("Error executing command:", err)
-		return
+		return nil, fmt.Errorf("Error executing command: %v", err)
 	}
 
-	data := utils.CollectContentsAsBytes(string(out), hasEncoding)
-	utils.PrintCommandResponse(ds.ReadDatasetResponse{
-		Encoding: dsRequest.Encoding,
-		Dataset:  dsRequest.Dsname,
+	data, e := utils.CollectContentsAsBytes(string(out), true)
+	result = ds.ReadDatasetResponse{
+		Encoding: request.Encoding,
+		Dataset:  request.Dsname,
 		Data:     data,
-	})
+	}
+	return result, nil
 }
 
 // HandleWriteDatasetRequest handles a WriteDatasetRequest by invoking the `zowex data-set write` command
-func HandleWriteDatasetRequest(_conn utils.StdioConn, jsonData []byte) {
-	dsRequest, err := utils.ParseCommandRequest[ds.WriteDatasetRequest](jsonData)
-	if err != nil || (dsRequest.Encoding == "" && dsRequest.Dsname == "") {
-		return
+func HandleWriteDatasetRequest(conn *utils.StdioConn, params []byte) (result any, e error) {
+	request, err := utils.ParseCommandRequest[ds.WriteDatasetRequest](params)
+	if err != nil {
+		return nil, err
+	} else if request.Dsname == "" {
+		return nil, fmt.Errorf("Missing required parameters: Dsname")
 	}
 
-	decodedBytes, err := base64.StdEncoding.DecodeString(dsRequest.Data)
+	decodedBytes, err := base64.StdEncoding.DecodeString(request.Data)
 	if err != nil {
-		utils.PrintErrorResponse("Failed to decode dataset contents: %v", err)
-		return
+		return nil, fmt.Errorf("Failed to decode dataset contents: %v", err)
 	}
-	args := []string{"data-set", "write", dsRequest.Dsname}
-	if len(dsRequest.Encoding) > 0 {
-		args = append(args, "--encoding", dsRequest.Encoding)
+	if len(request.Encoding) == 0 {
+		request.Encoding = fmt.Sprintf("IBM-%d", utils.DefaultEncoding)
 	}
+	args := []string{"data-set", "write", request.Dsname, "--encoding", request.Encoding}
 	cmd := utils.BuildCommandNoAutocvt(args)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
-		utils.PrintErrorResponse("Failed to open stdin pipe: %v", err)
-		return
+		return nil, fmt.Errorf("Failed to open stdin pipe: %v", err)
 	}
 
 	go func() {
 		defer stdin.Close()
 		_, err = stdin.Write(decodedBytes)
 		if err != nil {
-			utils.PrintErrorResponse("Failed to write to stdin pipe: %v", err)
+			e = fmt.Errorf("Failed to write to stdin pipe: %v", err)
 		}
 	}()
 
 	_, err = cmd.Output()
 	if err != nil {
-		utils.PrintErrorResponse("Failed to pipe stdin to command: %v", err)
-		return
+		e = fmt.Errorf("Failed to pipe stdin to command: %v", err)
+		conn.LastExitCode = cmd.ProcessState.ExitCode()
+		return nil, err
 	}
 
-	utils.PrintCommandResponse(ds.WriteDatasetResponse{
+	result = ds.WriteDatasetResponse{
 		Success: true,
-		Dataset: dsRequest.Dsname,
-	})
+		Dataset: request.Dsname,
+	}
+	return result, nil
 }
 
 // HandleListDatasetsRequest handles a ListDatasetsRequest by invoking the `zowex data-set list` command
-func HandleListDatasetsRequest(conn utils.StdioConn, jsonData []byte) {
-	listRequest, err := utils.ParseCommandRequest[ds.ListDatasetsRequest](jsonData)
+func HandleListDatasetsRequest(conn *utils.StdioConn, params []byte) (result any, e error) {
+	request, err := utils.ParseCommandRequest[ds.ListDatasetsRequest](params)
 	if err != nil {
-		return
+		return nil, err
 	}
 
-	args := []string{"data-set", "list", listRequest.Pattern, "--warn", "false", "--rfc", "true"}
+	args := []string{"data-set", "list", request.Pattern, "--warn", "false", "--rfc", "true"}
 	// if len(listRequest.Start) != 0 {
 	// 	args = append(args, "--start", listRequest.Start)
 	// }
 
 	out, err := conn.ExecCmd(args)
 	if err != nil {
-		utils.PrintErrorResponse("Error executing command: %v", err)
-		return
+		return nil, fmt.Errorf("Error executing command: %v", err)
 	}
 
 	datasets := strings.Split(strings.TrimSpace(string(out)), "\n")
@@ -122,25 +124,25 @@ func HandleListDatasetsRequest(conn utils.StdioConn, jsonData []byte) {
 			Volser: vals[2],
 		}
 	}
-	utils.PrintCommandResponse(dsResponse)
+
+	return dsResponse, nil
 }
 
 // HandleListDsMembersRequest handles a ListDsMembersRequest by invoking the `zowex data-set list-members` command
-func HandleListDsMembersRequest(conn utils.StdioConn, jsonData []byte) {
-	listRequest, err := utils.ParseCommandRequest[ds.ListDsMembersRequest](jsonData)
+func HandleListDsMembersRequest(conn *utils.StdioConn, params []byte) (result any, e error) {
+	request, err := utils.ParseCommandRequest[ds.ListDsMembersRequest](params)
 	if err != nil {
-		return
+		return nil, err
 	}
 
-	args := []string{"data-set", "list-members", listRequest.Dsname}
+	args := []string{"data-set", "list-members", request.Dsname, "--warn", "false"}
 	// if len(listRequest.Start) != 0 {
 	// 	args = append(args, "--start", listRequest.Start)
 	// }
 
 	out, err := conn.ExecCmd(args)
 	if err != nil {
-		utils.PrintErrorResponse("Error executing command: %v", err)
-		return
+		return nil, fmt.Errorf("Error executing command: %v", err)
 	}
 
 	members := strings.Split(strings.TrimSpace(string(out)), "\n")
@@ -160,42 +162,86 @@ func HandleListDsMembersRequest(conn utils.StdioConn, jsonData []byte) {
 		dsResponse.ReturnedRows++
 	}
 
-	utils.PrintCommandResponse(dsResponse)
+	return dsResponse, nil
 }
 
 // HandleRestoreDatasetRequest handles a RestoreDatasetRequest by invoking the `zowex data-set restore` command
-func HandleRestoreDatasetRequest(conn utils.StdioConn, jsonData []byte) {
-	dsRequest, err := utils.ParseCommandRequest[ds.RestoreDatasetRequest](jsonData)
+func HandleRestoreDatasetRequest(conn *utils.StdioConn, params []byte) (result any, e error) {
+	request, err := utils.ParseCommandRequest[ds.RestoreDatasetRequest](params)
 	if err != nil {
-		return
+		return nil, err
 	}
 
-	args := []string{"data-set", "restore", dsRequest.Dsname}
+	args := []string{"data-set", "restore", request.Dsname}
 	_, err = conn.ExecCmd(args)
 	if err != nil {
-		utils.PrintErrorResponse("Failed to restore data set: %v", err)
-		return
+		return nil, fmt.Errorf("Failed to restore data set: %v", err)
 	}
 
-	utils.PrintCommandResponse(ds.RestoreDatasetResponse{
+	result = ds.RestoreDatasetResponse{
 		Success: true,
-	})
+	}
+	return result, nil
 }
 
 // HandleDeleteDatasetRequest handles a DeleteDatasetRequest by invoking the `zowex data-set delete` command
-func HandleDeleteDatasetRequest(conn utils.StdioConn, jsonData []byte) {
-	dsRequest, err := utils.ParseCommandRequest[ds.DeleteDatasetRequest](jsonData)
+func HandleDeleteDatasetRequest(conn *utils.StdioConn, params []byte) (result any, e error) {
+	request, err := utils.ParseCommandRequest[ds.DeleteDatasetRequest](params)
 	if err != nil {
-		return
+		return nil, err
 	}
 
-	args := []string{"data-set", "delete", dsRequest.Dsname}
+	args := []string{"data-set", "delete", request.Dsname}
 	_, err = conn.ExecCmd(args)
+	if err != nil {
+		return nil, fmt.Errorf("Error executing command: %v", err)
+	}
 
-	utils.PrintCommandResponse(ds.DeleteDatasetResponse{
+	result = ds.DeleteDatasetResponse{
 		Success: true,
-		Dsname:  dsRequest.Dsname,
-	})
+		Dsname:  request.Dsname,
+	}
+	return result, nil
+}
+
+// HandleCreateDatasetRequest handles a CreateDatasetRequest by invoking the `zowex data-set create` command
+func HandleCreateDatasetRequest(conn *utils.StdioConn, jsonData []byte) (result any, e error) {
+	request, err := utils.ParseCommandRequest[ds.CreateDatasetRequest](jsonData)
+	if err != nil {
+		return nil, err
+	}
+
+	args := []string{"data-set", "create", request.Dsname}
+	_, err = conn.ExecCmd(args)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to create data set: %v", err)
+	}
+
+	result = ds.CreateDatasetResponse{
+		Success: true,
+		Dsname:  request.Dsname,
+	}
+	return result, nil
+}
+
+// HandleCreateMemberRequest handles a CreateMemberRequest by invoking the `zowex data-set create-member` command
+func HandleCreateMemberRequest(conn *utils.StdioConn, jsonData []byte) (result any, e error) {
+	request, err := utils.ParseCommandRequest[ds.CreateMemberRequest](jsonData)
+	if err != nil {
+		return nil, err
+	}
+
+	args := []string{"data-set", "create-member", request.Dsname}
+	_, err = conn.ExecCmd(args)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to create data set member: %v", err)
+	}
+
+	result = ds.CreateMemberResponse{
+		Success: true,
+		Dsname:  request.Dsname,
+	}
+	return result, nil
 }
 
 // HandleCreateDatasetRequest handles a CreateDatasetRequest by invoking the `zowex data-set create` command

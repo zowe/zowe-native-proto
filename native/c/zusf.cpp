@@ -192,12 +192,10 @@ int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
   size_t size = in.tellg();
   in.seekg(0, ios::beg);
 
-  char *raw_data = new char[size];
-  in.read(raw_data, size);
+  vector<char> raw_data(size);
+  in.read(&raw_data[0], size);
 
-  response.assign(raw_data);
-  delete[] raw_data;
-
+  response.assign(raw_data.begin(), raw_data.end());
   in.close();
 
   // TODO(traeok): Finish support for encoding auto-detection

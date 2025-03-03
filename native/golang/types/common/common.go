@@ -11,18 +11,36 @@
 
 package types
 
+import "encoding/json"
+
+type RpcRequest struct {
+	JsonRPC string          `json:"jsonrpc" tstype:"\"2.0\""`
+	Method  string          `json:"method"`
+	Params  json.RawMessage `json:"params,omitempty" tstype:"any"`
+	Id      int             `json:"id"`
+}
+
+type RpcResponse struct {
+	JsonRPC string        `json:"jsonrpc" tstype:"\"2.0\""`
+	Result  any           `json:"result,omitempty"`
+	Error   *ErrorDetails `json:"error,omitempty"`
+	Id      *int          `json:"id,omitempty"`
+}
+
 type CommandRequest struct {
 	// Requested command to execute
 	Command string `json:"command"`
 }
 
 type CommandResponse struct {
-	Error ErrorDetails `json:"error,omitempty"`
+	// True if command succeeded
+	Success *bool `json:"success,omitempty" tstype:",required"`
 }
 
 type ErrorDetails struct {
-	Msg  string `json:"msg"`
-	Code string `json:"code,omitempty"`
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+	Data    any    `json:"data,omitempty"`
 }
 
 type Dataset struct {

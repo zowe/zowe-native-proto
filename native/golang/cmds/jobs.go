@@ -13,6 +13,7 @@ package cmds
 
 import (
 	"encoding/base64"
+	"fmt"
 	"strconv"
 	"strings"
 	t "zowe-native-proto/ioserver/types/common"
@@ -21,23 +22,23 @@ import (
 )
 
 // HandleListJobsRequest handles a ListJobsRequest by invoking the `zowex job list` command
-func HandleListJobsRequest(conn utils.StdioConn, jsonData []byte) {
-	listRequest, err := utils.ParseCommandRequest[jobs.ListJobsRequest](jsonData)
+func HandleListJobsRequest(conn *utils.StdioConn, params []byte) (result any, e error) {
+	request, err := utils.ParseCommandRequest[jobs.ListJobsRequest](params)
 	if err != nil {
-		return
+		return nil, err
 	}
 
-	args := []string{"job", "list", "--rfc", "true"}
-	if len(listRequest.Owner) != 0 {
-		args = append(args, "--owner", listRequest.Owner)
+	args := []string{"job", "list", "--warn", "false", "--rfc", "true"}
+	if len(request.Owner) != 0 {
+		args = append(args, "--owner", request.Owner)
 	}
-	if len(listRequest.Prefix) != 0 {
-		args = append(args, "--prefix", listRequest.Prefix)
+	if len(request.Prefix) != 0 {
+		args = append(args, "--prefix", request.Prefix)
 	}
 
 	out, err := conn.ExecCmd(args)
 	if err != nil {
-		utils.PrintErrorResponse("Failed to list jobs: %v", err)
+		e = fmt.Errorf("Failed to list jobs: %v", err)
 		return
 	}
 
@@ -60,21 +61,21 @@ func HandleListJobsRequest(conn utils.StdioConn, jsonData []byte) {
 		}
 	}
 
-	utils.PrintCommandResponse(jobsResponse)
+	return jobsResponse, nil
 }
 
 // HandleListSpoolsRequest handles a ListSpoolsRequest by invoking the `zowex job list-files` command
-func HandleListSpoolsRequest(conn utils.StdioConn, jsonData []byte) {
-	listRequest, err := utils.ParseCommandRequest[jobs.ListSpoolsRequest](jsonData)
+func HandleListSpoolsRequest(conn *utils.StdioConn, params []byte) (result any, e error) {
+	request, err := utils.ParseCommandRequest[jobs.ListSpoolsRequest](params)
 	if err != nil {
-		return
+		return nil, err
 	}
 
-	args := []string{"job", "list-files", listRequest.JobId, "--rfc", "true"}
+	args := []string{"job", "list-files", request.JobId, "--rfc", "true"}
 
 	out, err := conn.ExecCmd(args)
 	if err != nil {
-		utils.PrintErrorResponse("Failed to list spools: %v", err)
+		e = fmt.Errorf("Failed to list spools: %v", err)
 		return
 	}
 
@@ -102,141 +103,144 @@ func HandleListSpoolsRequest(conn utils.StdioConn, jsonData []byte) {
 		}
 	}
 
-	utils.PrintCommandResponse(response)
+	return response, nil
 }
 
 // HandleReadSpoolRequest handles a ReadSpoolRequest by invoking the `zowex job view-file` command
-func HandleReadSpoolRequest(conn utils.StdioConn, jsonData []byte) {
-	request, err := utils.ParseCommandRequest[jobs.ReadSpoolRequest](jsonData)
+func HandleReadSpoolRequest(conn *utils.StdioConn, params []byte) (result any, e error) {
+	request, err := utils.ParseCommandRequest[jobs.ReadSpoolRequest](params)
 	if err != nil {
-		return
+		return nil, err
 	}
 
-	args := []string{"job", "view-file", request.JobId, strconv.Itoa(request.DsnKey)}
-	hasEncoding := len(request.Encoding) != 0
-	if hasEncoding {
-		args = append(args, "--encoding", request.Encoding, "--rfb", "true")
+	if len(request.Encoding) == 0 {
+		request.Encoding = fmt.Sprintf("IBM-%d", utils.DefaultEncoding)
 	}
+	args := []string{"job", "view-file", request.JobId, strconv.Itoa(request.DsnKey), "--encoding", request.Encoding, "--rfb", "true"}
 	out, err := conn.ExecCmd(args)
 	if err != nil {
-		utils.PrintErrorResponse("Failed to read spool: %v", err)
+		e = fmt.Errorf("Failed to read spool: %v", err)
 		return
 	}
 
-	data := utils.CollectContentsAsBytes(string(out), hasEncoding)
-	utils.PrintCommandResponse(jobs.ReadSpoolResponse{
+	data, e := utils.CollectContentsAsBytes(string(out), true)
+	result = jobs.ReadSpoolResponse{
 		Encoding: request.Encoding,
 		DsnKey:   request.DsnKey,
 		JobId:    request.JobId,
 		Data:     data,
-	})
+	}
+	return
 }
 
 // HandleGetJclRequest handles a GetJclRequest by invoking the `zowex job view-jcl` command
-func HandleGetJclRequest(conn utils.StdioConn, jsonData []byte) {
-	request, err := utils.ParseCommandRequest[jobs.GetJclRequest](jsonData)
+func HandleGetJclRequest(conn *utils.StdioConn, params []byte) (result any, e error) {
+	request, err := utils.ParseCommandRequest[jobs.GetJclRequest](params)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	args := []string{"job", "view-jcl", request.JobId}
 	out, err := conn.ExecCmd(args)
 	if err != nil {
-		utils.PrintErrorResponse("Failed to get JCL: %v", err)
+		e = fmt.Errorf("Failed to get JCL: %v", err)
 		return
 	}
 
-	utils.PrintCommandResponse(jobs.GetJclResponse{
+	result = jobs.GetJclResponse{
 		JobId: request.JobId,
 		Data:  string(out),
-	})
+	}
+	return
 }
 
 // HandleGetStatusRequest handles a GetStatusRequest by invoking the `zowex job view-status` command
-func HandleGetStatusRequest(conn utils.StdioConn, jsonData []byte) {
-	request, err := utils.ParseCommandRequest[jobs.GetJobStatusRequest](jsonData)
+func HandleGetStatusRequest(conn *utils.StdioConn, params []byte) (result any, e error) {
+	request, err := utils.ParseCommandRequest[jobs.GetJobStatusRequest](params)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	args := []string{"job", "view-status", request.JobId, "--rfc", "true"}
 	out, err := conn.ExecCmd(args)
 	if err != nil {
-		utils.PrintErrorResponse("Failed to get status: %v", err)
+		e = fmt.Errorf("Failed to get status: %v", err)
 		return
 	}
 	vals := strings.Split(string(out), ",")
 	if len(vals) < 4 {
-		utils.PrintErrorResponse("Missing job properties for %s", request.JobId)
+		e = fmt.Errorf("Missing job properties for %s", request.JobId)
 	} else {
-		utils.PrintCommandResponse(t.Job{
+		result = t.Job{
 			Id:      vals[0],
 			Retcode: vals[1],
 			Name:    strings.TrimSpace(vals[2]),
 			Status:  vals[3],
-		})
+		}
 	}
-
+	return
 }
 
 // HandleSubmitJobRequest handles a SubmitJobRequest by invoking the `zowex job submit` command
-func HandleCancelJobRequest(conn utils.StdioConn, jsonData []byte) {
-	request, err := utils.ParseCommandRequest[jobs.CancelJobRequest](jsonData)
+func HandleCancelJobRequest(conn *utils.StdioConn, params []byte) (result any, e error) {
+	request, err := utils.ParseCommandRequest[jobs.CancelJobRequest](params)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	_, err = conn.ExecCmd([]string{"job", "cancel", request.JobId})
 
 	if err != nil {
-		utils.PrintErrorResponse("Failed to cancel job: %v", err)
+		e = fmt.Errorf("Failed to cancel job: %v", err)
 		return
 	}
 
-	utils.PrintCommandResponse(jobs.CancelJobResponse{
+	result = jobs.CancelJobResponse{
 		Success: true,
 		JobId:   request.JobId,
-	})
+	}
+	return
 }
 
 // HandleSubmitJobRequest handles a SubmitJobRequest by invoking the `zowex job submit` command
-func HandleSubmitJobRequest(conn utils.StdioConn, jsonData []byte) {
-	request, err := utils.ParseCommandRequest[jobs.SubmitJobRequest](jsonData)
+func HandleSubmitJobRequest(conn *utils.StdioConn, params []byte) (result any, e error) {
+	request, err := utils.ParseCommandRequest[jobs.SubmitJobRequest](params)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	out, err := conn.ExecCmd([]string{"job", "submit", request.Dsname, "--only-jobid", "true"})
 
 	if err != nil {
-		utils.PrintErrorResponse("Failed to submit job: %v", err)
+		e = fmt.Errorf("Failed to submit job: %v", err)
 		return
 	}
 
-	utils.PrintCommandResponse(jobs.SubmitJobResponse{
+	result = jobs.SubmitJobResponse{
 		Success: true,
 		Dsname:  request.Dsname,
 		JobId:   strings.TrimSpace(string(out)),
-	})
+	}
+	return
 }
 
 // HandleSubmitJclRequest handles a SubmitJclRequest by invoking the `zowex job submit-jcl` command
-func HandleSubmitJclRequest(conn utils.StdioConn, jsonData []byte) {
-	request, err := utils.ParseCommandRequest[jobs.SubmitJclRequest](jsonData)
+func HandleSubmitJclRequest(conn *utils.StdioConn, params []byte) (result any, e error) {
+	request, err := utils.ParseCommandRequest[jobs.SubmitJclRequest](params)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	decodedBytes, err := base64.StdEncoding.DecodeString(request.Jcl)
 	if err != nil {
-		utils.PrintErrorResponse("Failed to decode JCL contents: %v", err)
+		e = fmt.Errorf("Failed to decode JCL contents: %v", err)
 		return
 	}
 
 	cmd := utils.BuildCommandNoAutocvt([]string{"job", "submit-jcl", "--only-jobid", "true"})
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
-		utils.PrintErrorResponse("Failed to open stdin pipe to zowex: %v", err)
+		e = fmt.Errorf("Failed to open stdin pipe to zowex: %v", err)
 		return
 	}
 
@@ -244,37 +248,40 @@ func HandleSubmitJclRequest(conn utils.StdioConn, jsonData []byte) {
 		defer stdin.Close()
 		_, err = stdin.Write(decodedBytes)
 		if err != nil {
-			utils.PrintErrorResponse("Failed to write to pipe: %v", err)
+			e = fmt.Errorf("Failed to write to pipe: %v", err)
 		}
 	}()
 
 	out, err := cmd.Output()
 	if err != nil {
-		utils.PrintErrorResponse("Failed to submit JCL: %v", err)
+		e = fmt.Errorf("Failed to submit JCL: %v", err)
+		conn.LastExitCode = cmd.ProcessState.ExitCode()
 		return
 	}
 
-	utils.PrintCommandResponse(jobs.SubmitJclResponse{
+	result = jobs.SubmitJclResponse{
 		Success: true,
 		JobId:   strings.TrimSpace(string(out)),
-	})
+	}
+	return
 }
 
 // HandleDeleteJobRequest handles a DeleteJobRequest by invoking the `zowex job delete` command
-func HandleDeleteJobRequest(conn utils.StdioConn, jsonData []byte) {
-	request, err := utils.ParseCommandRequest[jobs.DeleteJobRequest](jsonData)
+func HandleDeleteJobRequest(conn *utils.StdioConn, params []byte) (result any, e error) {
+	request, err := utils.ParseCommandRequest[jobs.DeleteJobRequest](params)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	_, err = conn.ExecCmd([]string{"job", "delete", request.JobId})
 	if err != nil {
-		utils.PrintErrorResponse("Failed to delete job %s: %v", request.JobId, err)
+		e = fmt.Errorf("Failed to delete job %s: %v", request.JobId, err)
 		return
 	}
 
-	utils.PrintCommandResponse(jobs.DeleteJobResponse{
+	result = jobs.DeleteJobResponse{
 		Success: true,
 		JobId:   request.JobId,
-	})
+	}
+	return
 }

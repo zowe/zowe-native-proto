@@ -22,7 +22,7 @@ import (
 	t "zowe-native-proto/ioserver/types/common"
 )
 
-var exePath string
+var execDir string
 
 func BuildArgString(args []string) string {
 	var sb strings.Builder
@@ -53,14 +53,7 @@ func BuildArgString(args []string) string {
 // BuildCommandShared builds a command with the shared logic for command builder functions
 func BuildCommandShared(name string, args []string) *exec.Cmd {
 	cmd := exec.Command(name, args...)
-	if exePath == "" {
-		path, err := os.Executable()
-		if err != nil {
-			panic(err)
-		}
-		exePath = path
-	}
-	cmd.Dir = filepath.Dir(exePath)
+	cmd.Dir = GetExecDir()
 	return cmd
 }
 
@@ -85,6 +78,18 @@ func BuildCommandNoAutocvt(args []string) *exec.Cmd {
 	return cmd
 }
 
+// GetExecDir retrieves directory of the current executable
+func GetExecDir() string {
+	if execDir == "" {
+		path, err := os.Executable()
+		if err != nil {
+			panic(err)
+		}
+		execDir = filepath.Dir(path)
+	}
+	return execDir
+}
+
 // ParseCommandRequest parses a command request and returns the parsed request as the given type.
 func ParseCommandRequest[T any](data []byte) (T, error) {
 	var request T
@@ -94,9 +99,9 @@ func ParseCommandRequest[T any](data []byte) (T, error) {
 		pc, _, _, ok := runtime.Caller(1)
 		if ok {
 			name := runtime.FuncForPC(pc).Name()
-			PrintErrorResponse("[%s] Error unmarshalling JSON: %s", name, err)
+			err = fmt.Errorf("[%s] Error unmarshalling JSON: %s", name, err)
 		} else {
-			PrintErrorResponse("Error unmarshalling JSON: %v", err)
+			err = fmt.Errorf("Error unmarshalling JSON: %v", err)
 		}
 		return request, err
 	}
@@ -105,19 +110,19 @@ func ParseCommandRequest[T any](data []byte) (T, error) {
 }
 
 // PrintCommandResponse prints the response from a command handler. If the response cannot be marshaled, an error response is returned.
-func PrintCommandResponse[T any](response T) {
-	v, err := json.Marshal(response)
+func PrintCommandResponse[T any](result T, reqId int) {
+	response, err := json.Marshal(t.RpcResponse{
+		JsonRPC: "2.0",
+		Result:  result,
+		Error:   nil,
+		Id:      &reqId,
+	})
 	if err != nil {
-		details := fmt.Sprintf("Could not marshal response: %s\n", err.Error())
-		errResponse, err2 := json.Marshal(t.ErrorDetails{
-			Msg: details,
-		})
-		if err2 != nil {
-			fmt.Fprintf(os.Stderr, "[PrintCommandResponse] Could not marshal response: %s\n", err.Error())
-		} else {
-			fmt.Println(string(errResponse))
-		}
+		PrintErrorResponse(t.ErrorDetails{
+			Code:    -32603,
+			Message: fmt.Sprintf("Could not marshal response: %s\n", err.Error()),
+		}, &reqId)
 	} else {
-		fmt.Println(string(v))
+		fmt.Println(string(response))
 	}
 }

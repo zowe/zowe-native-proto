@@ -32,7 +32,7 @@
 
 1. Not all attributes are retrieved
 2. Streaming is not supported for large files
-3. Does not support allocation attributes
+3. Does not support allocation attributes (or templates in VSCE)
 4. If the member already exists that data will be overwritten
 5. Does not support some migration utilities like CA Disk
 6. Limited options compared to ISPF `srchfor`
