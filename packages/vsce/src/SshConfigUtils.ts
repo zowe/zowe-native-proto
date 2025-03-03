@@ -80,16 +80,18 @@ export class SshConfigUtils {
             quickPick.items = qpItems;
             quickPick.placeholder = "Select configured SSH host or enter user@host";
 
-            // Event listener for when the user types in the search bar
+            let value: undefined;
+
+            // Add the custom entry
+            const customItem = {
+                label: `> ${value}`, // Using ">" as a visual cue for custom input
+                description: "Custom SSH Host",
+                alwaysShow: true,
+            };
             quickPick.onDidChangeValue((value) => {
                 if (value) {
-                    // Add the custom entry when the user types something
-                    const customItem = {
-                        label: `> ${value}`, // Using ">" as a visual cue for custom input
-                        description: "Custom SSH Host",
-                        alwaysShow: true, // Keeps it at the top
-                    };
-
+                    // Update custom entry when something is typed in search bar
+                    customItem.label = `> ${value}`;
                     // Update the QuickPick items with the custom entry at the top, if not already added
                     quickPick.items = [customItem, ...qpItems.filter((item) => item.label !== customItem.label)];
                 } else {
@@ -124,7 +126,7 @@ export class SshConfigUtils {
         );
 
         if (result.description === "Custom SSH Host") {
-            selectedProfile = await SshConfigUtils.createNewConfig(result.label);
+            selectedProfile = await SshConfigUtils.createNewConfig(result.label, false);
         } else if (result.label === "$(plus) Add New SSH Host...") {
             selectedProfile = await SshConfigUtils.createNewConfig();
         }
@@ -308,7 +310,12 @@ export class SshConfigUtils {
         zoweExplorerApi.getExplorerExtenderApi().reloadProfiles("ssh");
     }
 
-    private static async createNewConfig(knownConfigOpts?: string): Promise<ISshConfigExt | undefined> {
+    private static async createNewConfig(
+        knownConfigOpts?: string,
+        acceptFlags = true,
+    ): Promise<ISshConfigExt | undefined> {
+        const sshRegex = /^ssh\s+([a-zA-Z0-9_-]+)@([a-zA-Z0-9.-]+)/;
+        const flagRegex = /-(\w+)(?:\s+("[^"]+"|'[^']+'|\S+))?/g;
         const SshProfile: ISshConfigExt = {};
         const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
         const profInfo = await zoweExplorerApi.getExplorerExtenderApi().getProfilesCache().getProfileInfo();
@@ -329,14 +336,18 @@ export class SshConfigUtils {
                 placeHolder: "E.g. ssh user@example.com",
                 ignoreFocusOut: true,
             });
-        else sshResponse = `ssh ${knownConfigOpts}`;
+        else {
+            sshResponse = `ssh ${knownConfigOpts}`;
+            if (!sshResponse.match(sshRegex))
+                vscode.window.showErrorMessage(
+                    "Invalid custom connection format. Ensure it matches the expected pattern.",
+                );
+        }
 
         if (sshResponse === undefined) {
             vscode.window.showWarningMessage("SSH setup cancelled.");
             return undefined;
         }
-        const sshRegex = /^ssh\s+([a-zA-Z0-9_-]+)@([a-zA-Z0-9.-]+)/;
-        const flagRegex = /-(\w+)(?:\s+("[^"]+"|'[^']+'|\S+))?/g;
 
         const sshMatch = sshResponse.match(sshRegex);
         if (!sshMatch) {
@@ -347,36 +358,42 @@ export class SshConfigUtils {
         SshProfile.hostname = sshMatch[2];
 
         let flagMatch: RegExpExecArray | null;
-        // biome-ignore lint/suspicious/noAssignInExpressions: We just want to use the regex array in the loop
-        while ((flagMatch = flagRegex.exec(sshResponse)) !== null) {
-            const [, flag, value] = flagMatch;
-            // Check for missing value
-            if (!value) {
-                vscode.window.showErrorMessage(`Missing value for flag -${flag}.`);
-                return undefined;
-            }
 
-            const unquotedValue = value.replace(/^["']|["']$/g, ""); // Remove surrounding quotes
-
-            // Map aliases to consistent keys
-            if (flag === "p" || flag.toLowerCase() === "port") {
-                const portNumber = Number.parseInt(unquotedValue, 10);
-                if (Number.isNaN(portNumber)) {
-                    vscode.window.showErrorMessage(`Invalid value for flag --${flag}. Port must be a valid number.`);
+        if (acceptFlags) {
+            // biome-ignore lint/suspicious/noAssignInExpressions: We just want to use the regex array in the loop
+            while ((flagMatch = flagRegex.exec(sshResponse)) !== null) {
+                const [, flag, value] = flagMatch;
+                // Check for missing value
+                if (!value) {
+                    vscode.window.showErrorMessage(`Missing value for flag -${flag}.`);
                     return undefined;
                 }
-                SshProfile.port = portNumber;
-            } else if (flag === "i" || flag.toLowerCase() === "identity_file") {
-                SshProfile.privateKey = unquotedValue;
-            }
 
-            // Validate if quotes are required
-            if (/\s/.test(unquotedValue) && !/^["'].*["']$/.test(value)) {
-                vscode.window.showErrorMessage(`Invalid value for flag --${flag}. Values with spaces must be quoted.`);
-                return undefined;
+                const unquotedValue = value.replace(/^["']|["']$/g, ""); // Remove surrounding quotes
+
+                // Map aliases to consistent keys
+                if (flag === "p" || flag.toLowerCase() === "port") {
+                    const portNumber = Number.parseInt(unquotedValue, 10);
+                    if (Number.isNaN(portNumber)) {
+                        vscode.window.showErrorMessage(
+                            `Invalid value for flag --${flag}. Port must be a valid number.`,
+                        );
+                        return undefined;
+                    }
+                    SshProfile.port = portNumber;
+                } else if (flag === "i" || flag.toLowerCase() === "identity_file") {
+                    SshProfile.privateKey = unquotedValue;
+                }
+
+                // Validate if quotes are required
+                if (/\s/.test(unquotedValue) && !/^["'].*["']$/.test(value)) {
+                    vscode.window.showErrorMessage(
+                        `Invalid value for flag --${flag}. Values with spaces must be quoted.`,
+                    );
+                    return undefined;
+                }
             }
         }
-
         return SshProfile;
     }
 
