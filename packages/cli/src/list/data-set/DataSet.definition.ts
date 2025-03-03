@@ -12,7 +12,7 @@
 import { type ICommandDefinition, TextUtils } from "@zowe/imperative";
 
 export const ListDataSetDefinition: ICommandDefinition = {
-    handler: __dirname + "/DataSet.handler",
+    handler: `${__dirname}/DataSet.handler`,
     type: "command",
     name: "data-set",
     aliases: ["ds"],
@@ -32,6 +32,7 @@ export const ListDataSetDefinition: ICommandDefinition = {
         {
             name: "pattern",
             description:
+                // biome-ignore lint/style/useTemplate: We want to prevent having a 500 character line : )
                 "The pattern or patterns to match data sets against. Also known as 'DSLEVEL', it " +
                 "is somewhat similar to the concept of a 'glob' (but not identical)." +
                 " The following special sequences can be used in the pattern:\n" +

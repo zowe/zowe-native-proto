@@ -12,7 +12,7 @@
 import type { ICommandDefinition } from "@zowe/imperative";
 
 export const ConsoleCommand: ICommandDefinition = {
-    handler: __dirname + "/ConsoleCommand.handler",
+    handler: `${__dirname}/ConsoleCommand.handler`,
     description: "Issue a console command",
     type: "command",
     name: "console-commands",
