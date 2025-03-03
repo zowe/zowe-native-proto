@@ -331,6 +331,11 @@ int main(int argc, char *argv[])
   console_issue.get_positionals().push_back(console_command);
   console_group.get_verbs().push_back(console_issue);
 
+  ZCLIOption etag_only("etag-only");
+  etag_only.get_aliases().push_back("-et");
+  etag_only.set_required(false);
+  etag_only.set_description("Only print the e-tag for a write response (when successful)");
+
   //
   // uss group
   //
@@ -382,6 +387,7 @@ int main(int argc, char *argv[])
   uss_write.set_zcli_verb_handler(handle_uss_write);
   uss_write.get_positionals().push_back(uss_file_path);
   uss_write.get_options().push_back(encoding_option);
+  uss_write.get_options().push_back(etag_only);
   uss_group.get_verbs().push_back(uss_write);
 
   ZCLIVerb uss_delete("delete");
@@ -1331,7 +1337,10 @@ int handle_uss_write(ZCLIResult result)
     cerr << "  Details: " << zusf.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
-  cout << "Wrote data to '" << file << "'" << endl;
+  if (!result.get_option("--etag-only").is_found())
+  {
+    cout << "Wrote data to '" << file << "'" << endl;
+  }
 
   return rc;
 }

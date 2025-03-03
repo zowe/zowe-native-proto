@@ -121,7 +121,7 @@ func HandleWriteFileRequest(conn *utils.StdioConn, params []byte) (result any, e
 	if len(request.Encoding) == 0 {
 		request.Encoding = fmt.Sprintf("IBM-%d", utils.DefaultEncoding)
 	}
-	args := []string{"uss", "write", request.Path, "--encoding", request.Encoding}
+	args := []string{"uss", "write", request.Path, "--encoding", request.Encoding, "--etag-only"}
 	cmd := utils.BuildCommandNoAutocvt(args)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
