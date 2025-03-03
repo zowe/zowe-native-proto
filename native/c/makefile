@@ -95,6 +95,13 @@ MTL_FLAGS64+=-g1
 all: libzut.so libzut.a libzds.so libzds.a libzusf.so libzusf.a libzcn.so libzcn.a libzjb.so libzjb.a zowex zowexx extattr test
 
 #
+# CLI
+#
+zcli.o: zcli.cpp
+	@echo 'Building zcli.o'
+	$(CXX) $(DLL_CPP_FLAGS) -qlist=$*.cpp.lst -o $@ $^
+
+#
 # Utilities
 #
 zut.o: zut.cpp
@@ -247,13 +254,13 @@ libztso.a: ztso.o
 # Test CLI
 #
 # zowex: zowex.o zcn.o zcnm.o zcnm31.o zut.o zutm.o zutm31.o zjb.o zjbm.o zssi31.o zjbm31.o zds.o
-zowex: zowex.o libzcn.a libzut.a libzjb.a libzds.a libzusf.a libztso.a
+zowex: zowex.o zcli.o libzcn.a libzut.a libzjb.a libzds.a libzusf.a libztso.a
 	@echo 'Building zowex'
 	$(CXX) $(CPP_BND_FLAGS) -o $@ $^ > $*.bind.lst
 	ln -sf ../c/$@ ../golang/zowex
 	@echo 'Copied zowex to golang/'
 
-zowexx: zowex.o libzcn.a libzut.a libzjb.a libzds.a libzusf.a libztso.a
+zowexx: zowex.o zcli.o libzcn.a libzut.a libzjb.a libzds.a libzusf.a libztso.a
 	@echo 'Building zowexx'
 	$(CXX) $(CPP_BND_FLAGS_AUTH) -o $@ $^ > $*.bind.lst
 	ln -sf ../c/$@ ../golang/zowexx
