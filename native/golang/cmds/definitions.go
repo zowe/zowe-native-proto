@@ -51,6 +51,8 @@ func initializeJobHandlers(disp *CmdDispatcher) {
 		"readSpool":    HandleReadSpoolRequest,
 		"submitJob":    HandleSubmitJobRequest,
 		"submitJcl":    HandleSubmitJclRequest,
+		"cancelJob":    HandleCancelJobRequest,
+		"deleteJob":    HandleDeleteJobRequest,
 	}
 	registerHandlers(disp, handlers)
 }

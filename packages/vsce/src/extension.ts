@@ -15,7 +15,7 @@ import * as vscode from "vscode";
 import { ZSshUtils } from "zowe-native-proto-sdk";
 import { SshClientCache } from "./SshClientCache";
 import { SshConfigUtils } from "./SshConfigUtils";
-import { SshJesApi, SshMvsApi, SshUssApi } from "./api";
+import { SshCommandApi, SshJesApi, SshMvsApi, SshUssApi } from "./api";
 
 function registerCommands(context: vscode.ExtensionContext): vscode.Disposable[] {
     return [
@@ -70,6 +70,7 @@ export function activate(context: vscode.ExtensionContext) {
     zoweExplorerApi.registerMvsApi(new SshMvsApi());
     zoweExplorerApi.registerUssApi(new SshUssApi());
     zoweExplorerApi.registerJesApi(new SshJesApi());
+    zoweExplorerApi.registerCommandApi(new SshCommandApi());
     zoweExplorerApi.getExplorerExtenderApi().reloadProfiles("ssh");
 }
 
