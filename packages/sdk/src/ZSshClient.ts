@@ -22,9 +22,10 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
 
     private mSshClient: Client;
     private mSshStream: ClientChannel;
+    private mPartialStderr = "";
+    private mPartialStdout = "";
     private mPromiseMap: Map<number, { resolve: typeof Promise.resolve; reject: typeof Promise.reject }> = new Map();
     private mRequestId = 0;
-    private mResponse = "";
 
     private constructor() {
         super();
@@ -84,25 +85,27 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
             console.error("STDERR:", chunk.toString());
             return;
         }
-        this.onOutData(chunk, true);
+        this.mPartialStderr = this.processResponses(this.mPartialStderr + chunk.toString());
     }
 
-    private onOutData(chunk: Buffer, stderr = false) {
-        const endsWithNewLine = chunk[chunk.length - 1] === 0x0a;
-        this.mResponse += endsWithNewLine ? chunk.subarray(0, chunk.length - 1) : chunk;
-        if (endsWithNewLine) {
-            this.requestEnd(!stderr);
+    private onOutData(chunk: Buffer) {
+        this.mPartialStdout = this.processResponses(this.mPartialStdout + chunk.toString());
+    }
+
+    private processResponses(data: string): string {
+        const responses = data.split("\n");
+        for (let i = 0; i < responses.length - 1; i++) {
+            this.requestEnd(responses[i]);
         }
+        return responses[responses.length - 1];
     }
 
-    private requestEnd(success: boolean) {
+    private requestEnd(data: string, success = true) {
         let response: RpcResponse;
         try {
-            response = JSON.parse(this.mResponse);
+            response = JSON.parse(data);
         } catch (err) {
             throw new Error(`Failed to parse response as JSON: ${err}`);
-        } finally {
-            this.mResponse = "";
         }
         if (!this.mPromiseMap.has(response.id)) {
             throw new Error(`Missing promise for response ID: ${response.id}`);

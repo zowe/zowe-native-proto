@@ -141,7 +141,7 @@ func HandleListDsMembersRequest(conn *utils.StdioConn, params []byte) (result an
 		return nil, err
 	}
 
-	args := []string{"data-set", "list-members", request.Dsname}
+	args := []string{"data-set", "list-members", request.Dsname, "--warn", "false"}
 	// if len(listRequest.Start) != 0 {
 	// 	args = append(args, "--start", listRequest.Start)
 	// }
