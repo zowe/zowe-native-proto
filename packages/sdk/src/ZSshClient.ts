@@ -95,12 +95,12 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
     private processResponses(data: string): string {
         const responses = data.split("\n");
         for (let i = 0; i < responses.length - 1; i++) {
-            this.requestEnd(responses[i], true);
+            this.requestEnd(responses[i]);
         }
         return responses[responses.length - 1];
     }
 
-    private requestEnd(data: string, success: boolean) {
+    private requestEnd(data: string, success = true) {
         let response: RpcResponse;
         try {
             response = JSON.parse(data);

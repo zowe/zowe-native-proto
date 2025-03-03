@@ -64,11 +64,14 @@ func (w *Worker) processRequest(data []byte) {
 		if err != nil {
 			errMsg := err.Error()
 			var errData string
+			if strings.Index(errMsg, "Error: ") == 0 {
+				errMsg = errMsg[7:]
+			}
 			if parts := strings.SplitN(errMsg, ": ", 2); len(parts) > 1 {
 				errMsg, errData = parts[0], parts[1]
 			}
 			utils.PrintErrorResponse(t.ErrorDetails{
-				Code:    1,
+				Code:    w.Conn.LastExitCode,
 				Message: errMsg,
 				Data:    errData,
 			}, &request.Id)
