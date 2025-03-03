@@ -695,8 +695,12 @@ int ZCLI::parse(int argc, char *argv[])
 
     string command;
     int rc = 0;
+    int is_tty = isatty(fileno(stdout));
     do
     {
+      if (is_tty)
+        cout << "\r> " << flush;
+
       getline(cin, command);
 
       if (should_quit(command))
@@ -716,6 +720,14 @@ int ZCLI::parse(int argc, char *argv[])
       }
 
       rc = run(entries.size(), args);
+
+      if (!is_tty)
+      {
+        cout << "[" << rc << "]" << endl;
+        // EBCDIC \x37 = ASCII \x04 = End of Transmission (Ctrl+D)
+        cout << '\x37' << flush;
+        cerr << '\x37' << flush;
+      }
 
     } while (!should_quit(command));
 

@@ -12,7 +12,7 @@
 import type { ICommandDefinition } from "@zowe/imperative";
 import { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Constants } from "../Constants";
-import { SubmitJclDefinition } from "./job/SubmitJcl.definition";
+import { SubmitStdinDefinition } from "./stdin/Stdin.definition";
 
 const SubmitDefinition: ICommandDefinition = {
     name: "submit",
@@ -20,7 +20,7 @@ const SubmitDefinition: ICommandDefinition = {
     summary: "Submit contents",
     description: "Submit resource contents or requests to a mainframe system",
     type: "group",
-    children: [SubmitJclDefinition],
+    children: [SubmitStdinDefinition],
     passOn: [
         {
             property: "options",

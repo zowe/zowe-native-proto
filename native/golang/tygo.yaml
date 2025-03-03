@@ -1,16 +1,21 @@
 packages:
   - path: "zowe-native-proto/ioserver/types/common"
     output_path: "../../packages/sdk/src/doc/common.ts"
+    indent: "    "
   - path: "zowe-native-proto/ioserver/types/ds"
     output_path: "../../packages/sdk/src/doc/ds.ts"
+    indent: "    "
     frontmatter: &fm |
       import type * as common from "./common.ts";
   - path: "zowe-native-proto/ioserver/types/uss"
     output_path: "../../packages/sdk/src/doc/uss.ts"
+    indent: "    "
     frontmatter: *fm
   - path: "zowe-native-proto/ioserver/types/jobs"
     output_path: "../../packages/sdk/src/doc/jobs.ts"
+    indent: "    "
     frontmatter: *fm
   - path: "zowe-native-proto/ioserver/types/cmds"
     output_path: "../../packages/sdk/src/doc/cmds.ts"
+    indent: "    "
     frontmatter: *fm

@@ -14,8 +14,10 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"zowe-native-proto/ioserver/cmds"
 	t "zowe-native-proto/ioserver/types/common"
@@ -42,9 +44,10 @@ func main() {
 		panic(err)
 	}
 	conn := utils.StdioConn{
-		Stdin:  stdin,
-		Stdout: stdout,
-		Stderr: stderr,
+		Stdin:        stdin,
+		Stdout:       stdout,
+		Stderr:       stderr,
+		LastExitCode: 0,
 	}
 	cmd.Start()
 	if _, err = bufio.NewReader(stdout).ReadBytes('\n'); err != nil {
@@ -73,18 +76,41 @@ func main() {
 
 	for data := range input {
 		// Parse the command request
-		var request t.CommandRequest
+		var request t.RpcRequest
 		err := json.Unmarshal(data, &request)
 		if err != nil {
-			utils.PrintErrorResponse("Failed to parse command request: %v", err)
+			utils.PrintErrorResponse(t.ErrorDetails{
+				Code:    -32700,
+				Message: fmt.Sprintf("Failed to parse command request: %v", err),
+			}, nil)
 			continue
 		}
 
 		// Handle the command request if a supported command is provided
-		if handler, ok := dispatcher.Get(request.Command); ok {
-			handler(conn, data)
+		if handler, ok := dispatcher.Get(request.Method); ok {
+			result, err := handler(&conn, request.Params)
+			if err != nil {
+				errMsg := err.Error()
+				var errData string
+				if strings.Index(errMsg, "Error: ") == 0 {
+					errMsg = strings.ToUpper(string(errMsg[7])) + errMsg[8:]
+				}
+				if parts := strings.SplitN(errMsg, ": ", 2); len(parts) > 1 {
+					errMsg, errData = parts[0], parts[1]
+				}
+				utils.PrintErrorResponse(t.ErrorDetails{
+					Code:    conn.LastExitCode,
+					Message: errMsg,
+					Data:    errData,
+				}, &request.Id)
+			} else {
+				utils.PrintCommandResponse(result, request.Id)
+			}
 		} else {
-			utils.PrintErrorResponse("Unrecognized command %s", request.Command)
+			utils.PrintErrorResponse(t.ErrorDetails{
+				Code:    -32601,
+				Message: fmt.Sprintf("Unrecognized command %s", request.Method),
+			}, &request.Id)
 		}
 	}
 }
