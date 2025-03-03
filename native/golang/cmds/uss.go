@@ -122,6 +122,9 @@ func HandleWriteFileRequest(conn *utils.StdioConn, params []byte) (result any, e
 		request.Encoding = fmt.Sprintf("IBM-%d", utils.DefaultEncoding)
 	}
 	args := []string{"uss", "write", request.Path, "--encoding", request.Encoding, "--etag-only"}
+	if len(request.Etag) > 0 {
+		args = append(args, "--etag", request.Etag)
+	}
 	cmd := utils.BuildCommandNoAutocvt(args)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -138,7 +141,7 @@ func HandleWriteFileRequest(conn *utils.StdioConn, params []byte) (result any, e
 		}
 	}()
 
-	_, err = cmd.Output()
+	out, err := cmd.Output()
 	if err != nil {
 		e = fmt.Errorf("[WriteFileRequest] Error piping stdin to command: %v", err)
 		conn.LastExitCode = cmd.ProcessState.ExitCode()
@@ -146,8 +149,11 @@ func HandleWriteFileRequest(conn *utils.StdioConn, params []byte) (result any, e
 	}
 
 	result = uss.WriteFileResponse{
-		Success: err == nil,
-		Path:    request.Path,
+		GenericFileResponse: uss.GenericFileResponse{
+			Success: err == nil,
+			Path:    request.Path,
+		},
+		Etag: string(out),
 	}
 	return
 }

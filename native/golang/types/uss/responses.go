@@ -31,7 +31,10 @@ type ReadFileResponse struct {
 	Data []byte `json:"data" tstype:"Buffer | string"`
 }
 
-type WriteFileResponse = GenericFileResponse
+type WriteFileResponse struct {
+	GenericFileResponse `tstype:",extends"`
+	Etag                string `json:"etag"`
+}
 
 type ListFilesResponse struct {
 	common.CommandResponse `tstype:",extends"`

@@ -331,8 +331,11 @@ int main(int argc, char *argv[])
   console_issue.get_positionals().push_back(console_command);
   console_group.get_verbs().push_back(console_issue);
 
+  ZCLIOption etag("etag");
+  etag.set_required(false);
+  etag.set_description("Provide the e-tag for a write response to detect conflicts before save");
+
   ZCLIOption etag_only("etag-only");
-  etag_only.get_aliases().push_back("-et");
   etag_only.set_required(false);
   etag_only.set_description("Only print the e-tag for a write response (when successful)");
 
@@ -387,6 +390,7 @@ int main(int argc, char *argv[])
   uss_write.set_zcli_verb_handler(handle_uss_write);
   uss_write.get_positionals().push_back(uss_file_path);
   uss_write.get_options().push_back(encoding_option);
+  uss_write.get_options().push_back(etag);
   uss_write.get_options().push_back(etag_only);
   uss_group.get_verbs().push_back(uss_write);
 
@@ -1330,7 +1334,8 @@ int handle_uss_write(ZCLIResult result)
     byteSize = data.size();
   }
 
-  rc = zusf_write_to_uss_file(&zusf, file, data);
+  auto &etag_opt = result.get_option("--etag");
+  rc = zusf_write_to_uss_file(&zusf, file, data, etag_opt.is_found() ? etag_opt.get_value() : "");
   if (0 != rc)
   {
     cerr << "Error: could not write to USS file: '" << file << "' rc: '" << rc << "'" << endl;
