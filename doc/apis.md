@@ -68,19 +68,21 @@
 
 ## Jobs
 
-| Operation          | z/OSMF | FTP | Backend | Middleware | SDK | CLI | VSCE |
-| ------------------ | ------ | --- | ------- | ---------- | --- | --- | ---- |
-| _Get job status_   | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅   |
-| _List jobs_        | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅   |
-| _List spool files_ | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅   |
-| _Read spool file_  | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅   |
-| _Get job JCL_      | ✅     | ❌  | ✅      | ✅         | ✅  | ✅  | ✅   |
-| _Submit job_       | ✅     | ✅  | ✅      | ✅         | ✅  | ❌  | ✅   |
-| _Delete job_       | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅   |
-| Cancel job         | ✅     | ❌  | ✅      | ✅         | ✅  | ✅  | ✅   |
-| Hold job           | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌   |
-| Release job        | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌   |
-| Change job class   | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ➖   |
+| Operation          | z/OSMF | FTP | Backend | Middleware | SDK | CLI | VSCE            |
+| ------------------ | ------ | --- | ------- | ---------- | --- | --- | --------------- |
+| _Get job status_   | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅              |
+| _List jobs_        | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅              |
+| _List spool files_ | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅              |
+| _Read spool file_  | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅              |
+| _Get job JCL_      | ✅     | ❌  | ✅      | ✅         | ✅  | ✅  | ✅              |
+| _Submit job_       | ✅     | ✅  | ✅      | ✅         | ✅  | ❌  | ✅              |
+| _Delete job_       | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅              |
+| Cancel job         | ✅     | ❌  | ✅      | ✅         | ✅  | ✅  | ✅ <sup>1</sup> |
+| Hold job           | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌              |
+| Release job        | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌              |
+| Change job class   | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ➖              |
+
+1. Does not support force, restart, dump, or purge
 
 ## Console
 
