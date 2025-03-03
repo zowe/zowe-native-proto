@@ -21,9 +21,10 @@ export class SshCommandApi extends SshCommonApi implements MainframeInteraction.
     }
     public async issueMvsCommand?(command: string, consoleName?: string): Promise<IConsoleResponse> {
         try {
+            const user = this.profile?.profile?.user;
             const response = await (await this.client).cmds.issueConsole({
                 commandText: command,
-                consoleName: consoleName ?? `${this.profile?.profile?.user.slice(0, -2)}CN` ?? "ZOWE00CN",
+                consoleName: consoleName ?? (user ? `${user.slice(0, -2)}CN` : "ZOWE00CN"),
             });
             return {
                 success: true,
