@@ -57,7 +57,7 @@ export class SshConfigUtils {
             (migratedConfig) => !sshProfiles.some((sshProfile) => sshProfile.profile?.host === migratedConfig.hostname),
         );
 
-        // Choose between adding a new ssh host, an existing team config profile, and migrating from config.
+        // Choose between adding a new SSH host, an existing team config profile, and migrating from config.
         const qpItems: vscode.QuickPickItem[] = [
             { label: "$(plus) Add New SSH Host..." },
             ...sshProfiles.map(({ name, profile }) => ({
@@ -68,17 +68,53 @@ export class SshConfigUtils {
                 label: "Migrate From SSH Config",
                 kind: vscode.QuickPickItemKind.Separator,
             },
-
             ...filteredMigratedConfigs.map(({ name, hostname }) => ({
                 label: name!,
                 description: hostname,
             })),
         ];
 
-        const result = await Gui.showQuickPick(qpItems, {
-            title: "Choose an SSH host",
-        });
+        // Function to show the QuickPick with dynamic top option
+        async function showQuickPickWithCustomInput(): Promise<vscode.QuickPickItem | undefined> {
+            const quickPick = vscode.window.createQuickPick();
+            quickPick.items = qpItems;
+            quickPick.placeholder = "Select configured SSH host or enter user@host";
 
+            // Event listener for when the user types in the search bar
+            quickPick.onDidChangeValue((value) => {
+                if (value) {
+                    // Add the custom entry when the user types something
+                    const customItem = {
+                        label: `> ${value}`, // Using ">" as a visual cue for custom input
+                        description: "Custom SSH Host",
+                        alwaysShow: true, // Keeps it at the top
+                    };
+
+                    // Update the QuickPick items with the custom entry at the top, if not already added
+                    quickPick.items = [customItem, ...qpItems.filter((item) => item.label !== customItem.label)];
+                } else {
+                    // Remove the custom entry if the search bar is cleared
+                    quickPick.items = [...qpItems];
+                }
+            });
+
+            // Show the QuickPick
+            quickPick.show();
+
+            // Wait for selection
+            const result = await new Promise<vscode.QuickPickItem | undefined>((resolve) => {
+                quickPick.onDidAccept(() => {
+                    resolve(quickPick.selectedItems[0]);
+                    quickPick.hide();
+                });
+            });
+
+            if (result?.label.startsWith(">")) result.label = result.label.replace(">", "").trim();
+
+            return result;
+        }
+        const result = await showQuickPickWithCustomInput();
+        console.debug(result);
         // If nothing selected, return
         if (!result) return;
 
@@ -86,7 +122,10 @@ export class SshConfigUtils {
         let selectedProfile = filteredMigratedConfigs.find(
             ({ name, hostname }) => result.label === name && result.description === hostname,
         );
-        if (result === qpItems[0]) {
+
+        if (result.description === "Custom SSH Host") {
+            selectedProfile = await SshConfigUtils.createNewConfig(result.label);
+        } else if (result.label === "$(plus) Add New SSH Host...") {
             selectedProfile = await SshConfigUtils.createNewConfig();
         }
 
@@ -269,7 +308,7 @@ export class SshConfigUtils {
         zoweExplorerApi.getExplorerExtenderApi().reloadProfiles("ssh");
     }
 
-    private static async createNewConfig(): Promise<ISshConfigExt | undefined> {
+    private static async createNewConfig(knownConfigOpts?: string): Promise<ISshConfigExt | undefined> {
         const SshProfile: ISshConfigExt = {};
         const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
         const profInfo = await zoweExplorerApi.getExplorerExtenderApi().getProfilesCache().getProfileInfo();
@@ -281,11 +320,17 @@ export class SshConfigUtils {
             await SshConfigUtils.createZoweSchema(false);
         }
 
-        const sshResponse = await vscode.window.showInputBox({
-            prompt: "Enter SSH connection command",
-            placeHolder: "E.g. ssh user@example.com",
-            ignoreFocusOut: true,
-        });
+        let sshResponse: string | undefined;
+
+        // KnownConfigOpts is defined if a custom option is selected via the first quickpick (ex: user@host is entered in search bar)
+        if (!knownConfigOpts)
+            sshResponse = await vscode.window.showInputBox({
+                prompt: "Enter SSH connection command",
+                placeHolder: "E.g. ssh user@example.com",
+                ignoreFocusOut: true,
+            });
+        else sshResponse = `ssh ${knownConfigOpts}`;
+
         if (sshResponse === undefined) {
             vscode.window.showWarningMessage("SSH setup cancelled.");
             return undefined;
