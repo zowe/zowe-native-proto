@@ -205,7 +205,7 @@ func HandleDeleteDatasetRequest(conn *utils.StdioConn, params []byte) (result an
 }
 
 // HandleCreateDatasetRequest handles a CreateDatasetRequest by invoking the `zowex data-set create` command
-func HandleCreateDatasetRequest(conn utils.StdioConn, jsonData []byte) (result any, e error) {
+func HandleCreateDatasetRequest(conn *utils.StdioConn, jsonData []byte) (result any, e error) {
 	request, err := utils.ParseCommandRequest[ds.CreateDatasetRequest](jsonData)
 	if err != nil {
 		return nil, err
@@ -225,7 +225,7 @@ func HandleCreateDatasetRequest(conn utils.StdioConn, jsonData []byte) (result a
 }
 
 // HandleCreateMemberRequest handles a CreateMemberRequest by invoking the `zowex data-set create-member` command
-func HandleCreateMemberRequest(conn utils.StdioConn, jsonData []byte) (result any, e error) {
+func HandleCreateMemberRequest(conn *utils.StdioConn, jsonData []byte) (result any, e error) {
 	request, err := utils.ParseCommandRequest[ds.CreateMemberRequest](jsonData)
 	if err != nil {
 		return nil, err
