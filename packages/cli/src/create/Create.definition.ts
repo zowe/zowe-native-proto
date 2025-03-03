@@ -14,6 +14,7 @@ import { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Constants } from "../Constants";
 import { DataSetDefinition } from "./data-set/DataSet.definition";
 import { FileDefinition } from "./uss/File.definition";
+import { DataSetMemberDefinition } from "./data-set-member/DataSetMember.definition";
 
 const CreateDefinition: ICommandDefinition = {
     name: "create",
@@ -21,7 +22,7 @@ const CreateDefinition: ICommandDefinition = {
     description: "Create files and directories, data sets, and members",
     type: "group",
     aliases: ["cre"],
-    children: [DataSetDefinition, FileDefinition],
+    children: [DataSetDefinition, FileDefinition, DataSetMemberDefinition],
     passOn: [
         {
             property: "options",

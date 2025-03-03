@@ -80,3 +80,10 @@ type CreateDatasetRequest struct {
 	// Type of the dataset to make
 	Type string `json:"dstype" tstype:"'default' | 'vb' | 'adata'"`
 }
+
+type CreateMemberRequest struct {
+	common.CommandRequest `tstype:",extends"`
+	Command               string `json:"command" tstype:"\"createMember\""`
+	// Dataset name
+	Dsname string `json:"dsname"`
+}

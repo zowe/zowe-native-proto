@@ -9,10 +9,10 @@
  *
  */
 
-import type { IRpcRequest, IRpcResponse, cmds, ds, jobs, uss } from "./doc";
+import type { CommandRequest, CommandResponse, cmds, ds, jobs, uss } from "./doc";
 
 export abstract class AbstractRpcClient {
-    public abstract request<Resp extends IRpcResponse, Req extends IRpcRequest>(request: Req): Promise<Resp>;
+    public abstract request<Resp extends CommandResponse, Req extends CommandRequest>(request: Req): Promise<Resp>;
 
     public get ds() {
         return {
@@ -30,6 +30,8 @@ export abstract class AbstractRpcClient {
                 this.request({ command: "deleteDataset", ...request }),
             createDataset: (request: Omit<ds.CreateDatasetRequest, "command">): Promise<ds.CreateDatasetResponse> =>
                 this.request({ command: "createDataset", ...request }),
+            createMember: (request: Omit<ds.CreateMemberRequest, "command">): Promise<ds.CreateMemberResponse> =>
+                this.request({ command: "createMember", ...request }),
         };
     }
 

@@ -62,4 +62,5 @@ type GenericDatasetResponse struct {
 }
 
 type CreateDatasetResponse = GenericDatasetResponse
+type CreateMemberResponse = GenericDatasetResponse
 type DeleteDatasetResponse = GenericDatasetResponse

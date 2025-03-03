@@ -192,12 +192,10 @@ int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
   size_t size = in.tellg();
   in.seekg(0, ios::beg);
 
-  char *raw_data = new char[size];
-  in.read(raw_data, size);
+  vector<char> raw_data(size);
+  in.read(&raw_data[0], size);
 
-  response.assign(raw_data);
-  delete[] raw_data;
-
+  response.assign(raw_data.begin(), raw_data.end());
   in.close();
 
   // TODO(traeok): Finish support for encoding auto-detection
@@ -311,7 +309,8 @@ int zusf_chmod_uss_file_or_dir(ZUSF *zusf, string file, string mode, bool recurs
     {
       if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0)
       {
-        const string child_path = file[file.length() - 1] == '/' ? file.append((const char *)entry->d_name) : file.append(string("/") + (const char *)entry->d_name);
+        const string child_path = file[file.length() - 1] == '/' ? file + string((const char *)entry->d_name)
+                                                                 : file + string("/") + string((const char *)entry->d_name);
         struct stat file_stats;
         stat(child_path.c_str(), &file_stats);
 
@@ -355,7 +354,8 @@ int zusf_delete_uss_item(ZUSF *zusf, string file, bool recursive)
     {
       if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0)
       {
-        const string child_path = file[file.length() - 1] == '/' ? file.append((const char *)entry->d_name) : file.append(string("/") + (const char *)entry->d_name);
+        const string child_path = file[file.length() - 1] == '/' ? file + string((const char *)entry->d_name)
+                                                                 : file + string("/") + string((const char *)entry->d_name);
         struct stat file_stats;
         stat(child_path.c_str(), &file_stats);
 
@@ -369,7 +369,14 @@ int zusf_delete_uss_item(ZUSF *zusf, string file, bool recursive)
     closedir(dir);
   }
 
-  return is_dir ? rmdir(file.c_str()) : remove(file.c_str());
+  const auto rc = is_dir ? rmdir(file.c_str()) : remove(file.c_str());
+  if (rc != 0)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not delete '%s', rc: %d", file.c_str(), errno);
+    return RTNCD_FAILURE;
+  }
+
+  return 0;
 }
 
 short zusf_get_id_from_user_or_group(string user_or_group, bool is_user)
@@ -429,7 +436,8 @@ int zusf_chown_uss_file_or_dir(ZUSF *zusf, string file, string owner, bool recur
     {
       if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0)
       {
-        const string child_path = file[file.length() - 1] == '/' ? file.append((const char *)entry->d_name) : file.append(string("/") + (const char *)entry->d_name);
+        const string child_path = file[file.length() - 1] == '/' ? file + string((const char *)entry->d_name)
+                                                                 : file + string("/") + string((const char *)entry->d_name);
         struct stat file_stats;
         stat(child_path.c_str(), &file_stats);
 
@@ -488,7 +496,8 @@ int zusf_chtag_uss_file_or_dir(ZUSF *zusf, string file, string tag, bool recursi
     {
       if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0)
       {
-        const string child_path = file[file.length() - 1] == '/' ? file.append((const char *)entry->d_name) : file.append(string("/") + (const char *)entry->d_name);
+        const string child_path = file[file.length() - 1] == '/' ? file + string((const char *)entry->d_name)
+                                                                 : file + string("/") + string((const char *)entry->d_name);
         struct stat file_stats;
         stat(child_path.c_str(), &file_stats);
 

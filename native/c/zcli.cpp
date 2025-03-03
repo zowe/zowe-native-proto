@@ -9,9 +9,9 @@
  *
  */
 
-import type { CommandResponse } from "./common";
-export interface IRpcRequest {
-    command: string;
-}
+#include "zcli.hpp"
 
-export interface IRpcResponse extends CommandResponse {}
+ZCLIOption ZCLIOptionProvider::option_not_found = ZCLIOption("not found");
+ZCLIPositional ZCLIPositionalProvider::positional_not_found = ZCLIPositional("not found");
+ZCLIVerb ZCLIGroup::verb_not_found = ZCLIVerb("not found");
+ZCLIGroup ZCLI::group_not_found = ZCLIGroup("not found");

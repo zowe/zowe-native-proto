@@ -11,7 +11,7 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import * as zosfiles from "@zowe/zos-files-for-zowe-sdk";
-import { type MainframeInteraction, imperative } from "@zowe/zowe-explorer-api";
+import { Gui, type MainframeInteraction, imperative } from "@zowe/zowe-explorer-api";
 import { ZSshUtils, type ds } from "zowe-native-proto-sdk";
 import { SshCommonApi } from "./SshCommonApi";
 
@@ -42,13 +42,12 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
     ): Promise<zosfiles.IZosFilesResponse> {
         const response = await (await this.client).ds.readDataset({
             dsname: dataSetName,
-            encoding: options.binary ? "binary" : (options.encoding ?? "IBM-1047"),
+            encoding: options.binary ? "binary" : options.encoding,
         });
         if (options.file != null) {
             imperative.IO.createDirsSyncFromFilePath(options.file);
             writeFileSync(options.file, ZSshUtils.decodeByteArray(response.data));
         } else if (options.stream != null) {
-            const buf = ZSshUtils.decodeByteArray(response.data);
             options.stream.write(ZSshUtils.decodeByteArray(response.data));
             options.stream.end();
         }
@@ -60,11 +59,9 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         dataSetName: string,
         options?: zosfiles.IUploadOptions,
     ): Promise<zosfiles.IZosFilesResponse> {
-        const buf = ZSshUtils.encodeByteArray(buffer);
-        console.log(buf);
         const response = await (await this.client).ds.writeDataset({
             dsname: dataSetName,
-            encoding: options?.binary ? "binary" : (options?.encoding ?? "IBM-1047"),
+            encoding: options?.binary ? "binary" : options?.encoding,
             data: ZSshUtils.encodeByteArray(buffer),
         });
         return this.buildZosFilesResponse({ etag: dataSetName });
@@ -111,7 +108,19 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         dataSetName: string,
         options?: zosfiles.IUploadOptions,
     ): Promise<zosfiles.IZosFilesResponse> {
-        throw new Error("Not yet implemented");
+        let response: ds.CreateMemberResponse = { success: false, dsname: dataSetName };
+        try {
+            response = await (await this.client).ds.createMember({
+                dsname: dataSetName,
+            });
+            if (!response.success) {
+                Gui.errorMessage(`Failed to create data set member: ${dataSetName}`);
+            }
+        } catch (error) {
+            Gui.errorMessage(`Failed to create data set member: ${dataSetName}`);
+            Gui.errorMessage(`Error: ${error}`);
+        }
+        return this.buildZosFilesResponse(response, response.success);
     }
 
     public async allocateLikeDataSet(
@@ -149,7 +158,19 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
     }
 
     public async hRecallDataSet(dataSetName: string): Promise<zosfiles.IZosFilesResponse> {
-        throw new Error("Not yet implemented");
+        let response: ds.RestoreDatasetResponse = { success: false };
+        try {
+            response = await (await this.client).ds.restoreDataset({
+                dsname: dataSetName,
+            });
+            if (!response.success) {
+                Gui.errorMessage(`Failed to restore dataset ${dataSetName}`);
+            }
+        } catch (error) {
+            Gui.errorMessage(`Failed to restore dataset ${dataSetName}`);
+            Gui.errorMessage(`Error: ${error}`);
+        }
+        return this.buildZosFilesResponse(response);
     }
 
     public async deleteDataSet(
@@ -165,7 +186,7 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
     }
 
     // biome-ignore lint/suspicious/noExplicitAny: apiResponse has no strong type
-    private buildZosFilesResponse(apiResponse: any, success = true): zosfiles.IZosFilesResponse {
-        return { apiResponse, commandResponse: "", success };
+    private buildZosFilesResponse(apiResponse: any, success = true, errorText?: string): zosfiles.IZosFilesResponse {
+        return { apiResponse, commandResponse: "", success, errorMessage: errorText };
     }
 }

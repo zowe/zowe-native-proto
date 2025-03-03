@@ -13,12 +13,13 @@ package cmds
 
 import (
 	"fmt"
+	"os"
 	"sync"
 	utils "zowe-native-proto/ioserver/utils"
 )
 
 // CommandHandler represents a function that handles a command request
-type CommandHandler func(utils.StdioConn, []byte)
+type CommandHandler func(conn *utils.StdioConn, params []byte) (result any, err error)
 
 // CmdDispatcher manages registration and lookup of command handlers
 type CmdDispatcher struct {
@@ -50,6 +51,8 @@ func (r *CmdDispatcher) Get(command string) (CommandHandler, bool) {
 // MustRegister registers a handler and prints to stderr if registration fails
 func (r *CmdDispatcher) MustRegister(command string, handler CommandHandler) {
 	if err := r.Register(command, handler); err != nil {
-		utils.PrintErrorResponse("Failed to register command %s: %v", command, err)
+		errMsg := fmt.Sprintf("Failed to register command %s: %v", command, err)
+		utils.LogError(errMsg)
+		fmt.Fprintln(os.Stderr, errMsg)
 	}
 }

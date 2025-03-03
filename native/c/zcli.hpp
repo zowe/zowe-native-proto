@@ -18,6 +18,7 @@
 #include <string>
 #include <iomanip>
 #include <sstream>
+#include <unistd.h>
 #include <map>
 
 using namespace std;
@@ -112,6 +113,8 @@ public:
 
 class ZCLIOptionProvider
 {
+  static ZCLIOption option_not_found;
+
 protected:
   vector<ZCLIOption> options;
 
@@ -142,6 +145,8 @@ public:
 
 class ZCLIPositionalProvider
 {
+  static ZCLIPositional positional_not_found;
+
 protected:
   vector<ZCLIPositional> positionals;
 
@@ -184,6 +189,8 @@ public:
 
 class ZCLIGroup : public ZCLIName, public ZCLIDescription, public ZCLIOptionProvider
 {
+  static ZCLIVerb verb_not_found;
+
 private:
   vector<ZCLIVerb> verbs;
   vector<string> aliases;
@@ -207,6 +214,8 @@ public:
 
 class ZCLI : public ZCLIName, public ZCLIOptionProvider
 {
+  static ZCLIGroup group_not_found;
+
 private:
   bool validate();
   void init();
@@ -456,8 +465,7 @@ ZCLIGroup &ZCLI::get_group(string group_name)
         return *it;
     }
   }
-  ZCLIGroup *not_found = new ZCLIGroup("not found");
-  return *not_found;
+  return ZCLI::group_not_found;
 }
 
 ZCLIVerb &ZCLIGroup::get_verb(string verb_name)
@@ -472,9 +480,7 @@ ZCLIVerb &ZCLIGroup::get_verb(string verb_name)
         return *it;
     }
   }
-  ZCLIVerb *not_found = new ZCLIVerb("not found");
-  not_found->set_zcli_verb_handler(nullptr);
-  return *not_found;
+  return ZCLIGroup::verb_not_found;
 }
 
 ZCLIOption &ZCLIOptionProvider::get_option(string option_name)
@@ -485,8 +491,7 @@ ZCLIOption &ZCLIOptionProvider::get_option(string option_name)
     if (option_name == it->get_flag_name() || std::find(aliases.begin(), aliases.end(), option_name) != it->get_aliases().end())
       return *it;
   }
-  ZCLIOption *not_found = new ZCLIOption("not found");
-  return *not_found;
+  return ZCLIOptionProvider::option_not_found;
 }
 
 ZCLIPositional &ZCLIPositionalProvider::get_positional(string positional_name)
@@ -496,8 +501,7 @@ ZCLIPositional &ZCLIPositionalProvider::get_positional(string positional_name)
     if (positional_name == it->get_name())
       return *it;
   }
-  ZCLIPositional *not_found = new ZCLIPositional("not found");
-  return *not_found;
+  return ZCLIPositionalProvider::positional_not_found;
 }
 
 bool ZCLI::should_quit(string arg)
@@ -695,8 +699,12 @@ int ZCLI::parse(int argc, char *argv[])
 
     string command;
     int rc = 0;
+    int is_tty = isatty(fileno(stdout));
     do
     {
+      if (is_tty)
+        cout << "\r> " << flush;
+
       getline(cin, command);
 
       if (should_quit(command))
@@ -716,6 +724,14 @@ int ZCLI::parse(int argc, char *argv[])
       }
 
       rc = run(entries.size(), args);
+
+      if (!is_tty)
+      {
+        cout << "[" << rc << "]" << endl;
+        // EBCDIC \x37 = ASCII \x04 = End of Transmission (Ctrl+D)
+        cout << '\x37' << flush;
+        cerr << '\x37' << flush;
+      }
 
     } while (!should_quit(command));
 

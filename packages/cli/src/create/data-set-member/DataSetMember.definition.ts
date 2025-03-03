@@ -11,22 +11,23 @@
 
 import type { ICommandDefinition } from "@zowe/imperative";
 
-export const SubmitJclDefinition: ICommandDefinition = {
-    handler: `${__dirname}/SubmitJcl.handler`,
-    description: "Submit JCL contents",
+export const DataSetMemberDefinition: ICommandDefinition = {
+    handler: `${__dirname}/DataSetMember.handler`,
+    description: "Create a data set member",
     type: "command",
-    name: "jcl",
-    summary: "Submit JCL contents as a new job",
+    name: "data-set-member",
+    aliases: ["ds-m"],
+    summary: "Create a data set member",
     examples: [
         {
-            description: "Submit a job",
-            options: '"//FIRSTJOB JOB (IZUACCT),CLASS=A,MSGLEVEL=(1,1),NOTIFY=&SYSUID"',
+            description: "Create a data set member",
+            options: '"ibmuser.test.cntl(member)"',
         },
     ],
     positionals: [
         {
-            name: "jcl",
-            description: "The JCL contents to submit as a new job",
+            name: "name",
+            description: "The data set name with the member to create",
             type: "string",
             required: true,
         },

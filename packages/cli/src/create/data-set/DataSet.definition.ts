@@ -13,25 +13,21 @@ import type { ICommandDefinition } from "@zowe/imperative";
 
 export const DataSetDefinition: ICommandDefinition = {
     handler: `${__dirname}/DataSet.handler`,
-    description: "Create a data set or data set member",
+    description: "Create a data set",
     type: "command",
     name: "data-set",
     aliases: ["ds"],
-    summary: "Create a data set or data set member",
+    summary: "Create a data set",
     examples: [
         {
             description: "Create a data set",
             options: '"ibmuser.test.cntl"',
         },
-        {
-            description: "Create a data set member",
-            options: '"ibmuser.test.cntl(member)"',
-        },
     ],
     positionals: [
         {
             name: "name",
-            description: "The data set or data set member to create",
+            description: "The data set to create",
             type: "string",
             required: true,
         },
