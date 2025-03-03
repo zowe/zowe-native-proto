@@ -870,8 +870,12 @@ int handle_data_set_create_member(ZDS zds, string dsn)
       cout << "  Details: " << zds.diag.e_msg << endl;
       return RTNCD_FAILURE;
     }
+    cout << "Data set and/or member created: '" << dsn << "'" << endl;
   }
-  cout << "Data set '" << dsn << "' created" << endl;
+  else
+  {
+    cout << "Data set created: '" << dsn << "'" << endl;
+  }
   return rc;
 }
 
