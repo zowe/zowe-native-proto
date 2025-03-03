@@ -21,6 +21,7 @@
 #include <fcntl.h>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <iomanip>
 #include <algorithm>
@@ -235,11 +236,28 @@ int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data)
+int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data, std::string etag)
 {
+  struct stat file_stats;
+  if (stat(file.c_str(), &file_stats) == -1)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Path '%s' does not exist", file.c_str());
+    return RTNCD_FAILURE;
+  }
+
   // TODO(zFernand0): Avoid overriding existing files
   const auto hasEncoding = zusf->encoding_opts.data_type == eDataTypeText && strlen(zusf->encoding_opts.codepage) > 0;
   const auto codepage = string(zusf->encoding_opts.codepage);
+
+  if (!etag.empty())
+  {
+    const auto current_etag = zut_build_etag(file_stats.st_mtime, file_stats.st_size);
+    if (current_etag != etag)
+    {
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Etag mismatch: expected %s, actual %s", etag.c_str(), current_etag.c_str());
+      return RTNCD_FAILURE;
+    }
+  }
 
   if (!data.empty() && hasEncoding)
   {
@@ -265,6 +283,16 @@ int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data)
       out << temp;
     }
     out.close();
+
+    struct stat file_stats;
+    if (stat(file.c_str(), &file_stats) == -1)
+    {
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Path '%s' does not exist", file.c_str());
+      return RTNCD_FAILURE;
+    }
+
+    // Print new e-tag to stdout as response
+    cout << zut_build_etag(file_stats.st_mtime, file_stats.st_size) << endl;
   }
 
   return 0;

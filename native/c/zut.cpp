@@ -81,6 +81,15 @@ int zut_bpxwdyn(string parm, unsigned int *code, string &resp)
   return rc;
 }
 
+string zut_build_etag(const size_t mtime, const size_t byte_size)
+{
+  stringstream ss;
+  ss << std::hex << mtime;
+  ss << "-";
+  ss << std::hex << byte_size;
+  return ss.str();
+}
+
 int zut_get_current_user(string &struser)
 {
   int rc = 0;
