@@ -19,22 +19,23 @@
 | _Write data set_         | ✅              | ✅  | 🚧 <sup>2</sup> | ✅         | ✅  | ✅  | ✅   |
 | _Write data set member_  | ✅              | ✅  | 🚧 <sup>2</sup> | ✅         | ✅  | ✅  | ✅   |
 | _Create data set_        | ✅              | ✅  | 🚧 <sup>3</sup> | ✅         | ✅  | ✅  | ✅   |
-| _Create data set member_ | ✅              | ✅  | ❌              | ❌         | ❌  | ❌  | ❌   |
+| _Create data set member_ | ✅              | ✅  | 🚧 <sup>4</sup> | ✅         | ✅  | ✅  | ✅   |
 | _Delete data set_        | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
 | _Delete data set member_ | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
 | Migrate data set         | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
-| Recall data set          | 🚧 <sup>4</sup> | ❌  | ✅              | ✅         | ✅  | ✅  | ❌   |
+| Recall data set          | 🚧 <sup>5</sup> | ❌  | ✅              | ✅         | ✅  | ✅  | ✅   |
 | Delete migrated data set | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | Rename data set          | ✅              | ✅  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | Copy data set            | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | Invoke AMS (VSAM)        | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ➖   |
-| Search data sets         | 🚧 <sup>5</sup> | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
+| Search data sets         | 🚧 <sup>6</sup> | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
 
 1. Not all attributes are retrieved
 2. Streaming is not supported for large files
 3. Does not support allocation attributes
-4. Does not support some migration utilities like CA Disk
-5. Limited options compared to ISPF `srchfor`
+4. If the member already exists that data will be overwritten
+5. Does not support some migration utilities like CA Disk
+6. Limited options compared to ISPF `srchfor`
 
 ## USS Files
 
@@ -75,11 +76,11 @@
 | _Read spool file_  | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅   |
 | _Get job JCL_      | ✅     | ❌  | ✅      | ✅         | ✅  | ✅  | ✅   |
 | _Submit job_       | ✅     | ✅  | ✅      | ✅         | ✅  | ❌  | ✅   |
+| _Delete job_       | ✅     | ✅  | ✅      | ✅         | ✅  | ❌  | ❌   |
+| Cancel job         | ✅     | ❌  | ❌      | ✅         | ✅  | ❌  | ❌   |
 | Hold job           | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌   |
 | Release job        | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌   |
 | Change job class   | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ➖   |
-| Cancel job         | ✅     | ❌  | ❌      | ✅         | ✅  | ❌  | ❌   |
-| _Delete job_       | ✅     | ✅  | ✅      | ✅         | ✅  | ❌  | ❌   |
 
 ## Console
 
