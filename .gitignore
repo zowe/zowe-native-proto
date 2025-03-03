@@ -8,9 +8,12 @@ listings
 node_modules
 out
 typedoc
+zowe-native-proto-package
 
 # Files
 .DS_Store
+config.*.json
+native/golang/ioserver*
 tsconfig.tsbuildinfo
 zowe.config.json
 zowe.schema.json

@@ -11,17 +11,27 @@
 
 package cmds
 
+import common "zowe-native-proto/ioserver/types/common"
+
 type IssueConsoleRequest struct {
-	Command     string `json:"command" tstype:"\"consoleCommand\""`
+	common.CommandRequest `tstype:",extends"`
+	Command               string `json:"command" tstype:"\"consoleCommand\""`
+	// Console command to execute
 	CommandText string `json:"commandText"`
+	// Name of the console
 	ConsoleName string `json:"consoleName"`
 }
 
 type IssueTsoRequest struct {
-	Command     string `json:"command" tstype:"\"tsoCommand\""`
+	common.CommandRequest `tstype:",extends"`
+	Command               string `json:"command" tstype:"\"tsoCommand\""`
+	// TSO command to execute
 	CommandText string `json:"commandText"`
 }
+
 type IssueUnixRequest struct {
-	Command     string `json:"command" tstype:"\"unixCommand\""`
+	common.CommandRequest `tstype:",extends"`
+	Command               string `json:"command" tstype:"\"unixCommand\""`
+	// UNIX command to execute
 	CommandText string `json:"commandText"`
 }

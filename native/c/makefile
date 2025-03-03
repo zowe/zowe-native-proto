@@ -13,6 +13,8 @@ CC=xlc
 ASM=as
 BIND = ld
 
+# https://www.ibm.com/docs/en/zos/3.1.0?topic=bor-binder-options
+# https://www.ibm.com/docs/en/zos/3.1.0?topic=descriptions-ld-link-object-files
 BIND_FLAGS = -bRMODE=ANY
 
 MTL_OPTS=metal,\
@@ -27,10 +29,6 @@ MTL_OPTS=metal,\
  list,\
  warn64,\
  optimize(2),\
- list,\
- showinc,\
- showmacro,\
- source,\
  aggregate
 
 MTL_OPTS64=$(MTL_OPTS),lp64
@@ -44,39 +42,64 @@ MACLIBS=-ISYS1.MACLIB \
 MTL_HEADERS=-I/usr/include/metal \
  -I./chdsect
 
-CPP_BND_FLAGS=-W "l,lp64,xplink,map,list"\
- -qsource \
- -g
+CPP_BND_FLAGS=-W "l,lp64,xplink,map,list"
 
-CPP_BND_FLAGS_AUTH=-W "l,lp64,xplink,map,list,ac=1"\
- -qsource \
- -g
+CPP_BND_FLAGS_AUTH=-W "l,lp64,xplink,map,list,ac=1"
 
 C_FLAGS=-W "c,lp64,langlvl(extended),xplink,exportall"\
- -qsource \
- -g \
  -c \
  -I./chdsect
 
-DLL_CPP_FLAGS=-W "c,lp64,langlvl(extended0x),dll,xplink,exportall,showinc"\
- -qsource \
- -g \
+DLL_CPP_FLAGS=-W "c,lp64,langlvl(extended0x),dll,xplink,exportall"\
  -c \
  -I./chdsect
 
-DLL_BND_FLAGS=-W "l,lp64,dll,dynam=dll,xplink,map,list" \
- -g \
- -qsource
+DLL_BND_FLAGS=-W "l,lp64,dll,dynam=dll,xplink,map,list"
 
-# -g generates debugging information
-CPP_FLAGS=-W "c,lp64,langlvl(extended0x),dll,xplink,showinc"\
- -qsource \
- -g \
+CPP_FLAGS=-W "c,lp64,langlvl(extended0x),dll,xplink"\
  -c
 
-ASM_FLAGS=-mrent
+ASM_FLAGS=-mRENT
+
+# make -DBuildType=DEBUG
+.IF $(BuildType) == DEBUG
+# -g generates debugging information
+DEBUGGER_FLAGS=-qSOURCE -g9
+OTHER_C_FLAGS=-qSHOWINC -qSHOWMACROS
+
+CPP_BND_FLAGS+=$(DEBUGGER_FLAGS)
+CPP_BND_FLAGS_AUTH+=$(DEBUGGER_FLAGS)
+C_FLAGS+=$(DEBUGGER_FLAGS)
+DLL_BND_FLAGS+=$(DEBUGGER_FLAGS)
+DLL_CPP_FLAGS+=$(DEBUGGER_FLAGS) $(OTHER_C_FLAGS)
+CPP_FLAGS+=$(DEBUGGER_FLAGS) $(OTHER_C_FLAGS)
+MTL_FLAGS+=$(DEBUGGER_FLAGS) $(OTHER_C_FLAGS)
+MTL_FLAGS64+=$(DEBUGGER_FLAGS) $(OTHER_C_FLAGS)
+ASM_FLAGS+=--verbose
+
+.ELSE
+C_FLAGS+=-g0
+CPP_FLAGS+=-g0
+CPP_BND_FLAGS+=-g0
+CPP_BND_FLAGS_AUTH+=-g0
+DLL_BND_FLAGS+=-g0
+DLL_CPP_FLAGS+=-g0
+ASM_FLAGS+=--noverbose
+
+# Still investigating why we need `-g1` for the MetalC flags :'(
+MTL_FLAGS+=-g1
+MTL_FLAGS64+=-g1
+.END
+
 
 all: libzut.so libzut.a libzds.so libzds.a libzusf.so libzusf.a libzcn.so libzcn.a libzjb.so libzjb.a zowex zowexx extattr test
+
+#
+# CLI
+#
+zcli.o: zcli.cpp
+	@echo 'Building zcli.o'
+	$(CXX) $(DLL_CPP_FLAGS) -qlist=$*.cpp.lst -o $@ $^
 
 #
 # Utilities
@@ -213,7 +236,7 @@ libzusf.a: zusf.o libzut.a
 	ar -rv $@ $^
 
 #
-# TSO data
+# TSO
 #
 ztso.o: ztso.cpp
 	@echo 'Building ztso.o'
@@ -231,39 +254,37 @@ libztso.a: ztso.o
 # Test CLI
 #
 # zowex: zowex.o zcn.o zcnm.o zcnm31.o zut.o zutm.o zutm31.o zjb.o zjbm.o zssi31.o zjbm31.o zds.o
-zowex: zowex.o libzcn.a libzut.a libzjb.a libzds.a libzusf.a libztso.a
+zowex: zowex.o zcli.o libzcn.a libzut.a libzjb.a libzds.a libzusf.a libztso.a
 	@echo 'Building zowex'
 	$(CXX) $(CPP_BND_FLAGS) -o $@ $^ > $*.bind.lst
-	cp $@ ../golang/$(basename $@)
+	ln -sf ../c/$@ ../golang/zowex
 	@echo 'Copied zowex to golang/'
 
-zowexx: zowex.o libzcn.a libzut.a libzjb.a libzds.a libzusf.a libztso.a
+zowexx: zowex.o zcli.o libzcn.a libzut.a libzjb.a libzds.a libzusf.a libztso.a
 	@echo 'Building zowexx'
 	$(CXX) $(CPP_BND_FLAGS_AUTH) -o $@ $^ > $*.bind.lst
-	cp $@ ../golang/$(basename $@)
+	ln -sf ../c/$@ ../golang/zowexx
 	@echo 'Copied zowexx to golang/'
 
 zowex.o: zowex.cpp
 	@echo 'Building zowex.o'
 	$(CXX) $(CPP_FLAGS) -qlist=$*.cpp.lst -c $^
 
+#
+# Testing utilities
+#
 test: test.sh
 	chmod +x test.sh
 
 #
 # TODO(Kelosky): makefile for chdsect (must have ADATA in data set)
 #
-# ISPF: tso alloc da('DKELOSKY.TEMP.ADATA') DSORG(PO) SPACE(5,5) CYL LRECL(80) RECFM(F,b) NEW vol(tsu063)
-# zowex: zowex test bpxwdyn "alloc da('DKELOSKY.TEMP.TEST2') DSORG(PO) SPACE(5,5) CYL LRECL(80) RECFM(F,b) NEW keep"
-# z/OS UNIX: tso "alloc da('dkelosky.temp.adata') DSORG(PO) SPACE(5,5) CYL LRECL(80) RECFM(F,b) NEW vol(tsu063)"
-# as -madata --gadata="//'DKELOSKY.TEMP.ADATA(IHAECB)'" ihaecb.s
-#
 
 #
 # Misc targets
 #
 extattr:
-	extattr +ap zowexx ../golang/zowexx
+	extattr +ap zowexx
 
 clean:
 	rm -f *.o

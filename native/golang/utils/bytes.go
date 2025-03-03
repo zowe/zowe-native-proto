@@ -12,21 +12,29 @@
 package utils
 
 import (
-	"log"
+	"fmt"
 	"strconv"
 	"strings"
 )
 
-func CollectContentsAsBytes(input string, isByteString bool) []byte {
-	var data []byte
+const DefaultEncoding = 1047
+
+// CollectContentsAsBytes converts a string of bytes into a byte slice.
+// If isByteString is true, the string is assumed to be a space-separated list of hexadecimal values.
+// Otherwise, the string is assumed to be a raw byte string.
+func CollectContentsAsBytes(input string, isByteString bool) (data []byte, err error) {
+	data = []byte{}
+	if len(input) == 0 {
+		return data, nil
+	}
 
 	if isByteString {
 		data_split := strings.Split(string(input), " ")
 		for _, b := range data_split {
 			byteNum, err := strconv.ParseUint(b, 16, 8)
 			if err != nil {
-				log.Println("Error parsing byte:", err)
-				continue
+				err = fmt.Errorf("Failed to parse byte %s in input: %v", b, err)
+				break
 			}
 			data = append(data, byte(byteNum))
 		}
@@ -34,5 +42,5 @@ func CollectContentsAsBytes(input string, isByteString bool) []byte {
 		data = []byte(input)
 	}
 
-	return data
+	return
 }

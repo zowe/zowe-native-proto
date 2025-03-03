@@ -4,7 +4,7 @@
   "main": "lib/index.js",
   "scripts": {
     "build": "tsc -b",
-    "clean": "rimraf bin lib",
+    "clean": "tsc -b --clean && rimraf bin",
     "lint": "npx @biomejs/biome check --write src",
     "package": "node ../../scripts/bundleCliTgz.js ../../dist",
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -31,7 +31,7 @@
     "typescript": "^5.7.3"
   },
   "peerDependencies": {
-    "@zowe/imperative": "^8.11.0"
+    "@zowe/imperative": "^8.0.0"
   },
   "bundleDependencies": [
     "zowe-native-proto-sdk"

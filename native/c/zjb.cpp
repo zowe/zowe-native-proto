@@ -37,6 +37,8 @@
 
 typedef struct iazbtokp IAZBTOKP;
 
+void zjb_build_job_response(ZJB_JOB_INFO *PTR64, int, std::vector<ZJob> &);
+
 using namespace std;
 
 #define BTOKLEN (293 - 254) // 293 is the full length, minus the max optional buffer area for logs (less 254)
@@ -296,17 +298,24 @@ int zjb_delete_by_jobid(ZJB *zjb, string jobid)
   return ZJBMPRG(zjb);
 }
 
-int zjb_submit(ZJB *zjb, string data_set, string &jobId)
+int zjb_submit_dsn(ZJB *zjb, string dsn, string &jobId)
 {
-  int rc = 0;
-  string content;
   ZDS zds = {0};
-  rc = zds_read_from_dsn(&zds, data_set, content);
+  string contents;
+  const auto rc = zds_read_from_dsn(&zds, dsn, contents);
   if (rc != 0)
   {
     memcpy(&zjb->diag, &zds.diag, sizeof(ZDIAG));
     return rc;
   }
+
+  return zjb_submit(zjb, contents, jobId);
+}
+
+int zjb_submit(ZJB *zjb, string contents, string &jobId)
+{
+  int rc = 0;
+  ZDS zds = {0};
 
   __dyn_t ip;
   rc = dyninit(&ip);
@@ -338,7 +347,7 @@ int zjb_submit(ZJB *zjb, string data_set, string &jobId)
     return RTNCD_FAILURE;
   }
 
-  rc = zds_write_to_dd(&zds, ddname, content);
+  rc = zds_write_to_dd(&zds, ddname, contents);
   if (rc != 0)
   {
     memcpy(&zjb->diag, &zds.diag, sizeof(ZDIAG));
@@ -431,7 +440,7 @@ int zjb_list_dds_by_jobid(ZJB *zjb, string jobid, vector<ZJobDD> &jobDDs)
 int zjb_view_by_jobid(ZJB *zjb, string jobid, ZJob &job)
 {
   int rc = 0;
-  STATJQTR *PTR64 jobInfo = nullptr;
+  ZJB_JOB_INFO *PTR64 job_info = nullptr;
   int entries = 0;
 
   ///
@@ -443,11 +452,11 @@ int zjb_view_by_jobid(ZJB *zjb, string jobid, ZJob &job)
 
   zut_uppercase_pad_truncate(zjb->jobid, jobid, sizeof(zjb->jobid));
 
-  rc = ZJBMVIEW(zjb, &jobInfo, &entries);
+  rc = ZJBMVIEW(zjb, &job_info, &entries);
   if (0 != rc)
+  {
     return rc;
-
-  STATJQTR *PTR64 jobInfoNext = jobInfo;
+  }
 
   if (0 == entries)
   {
@@ -456,91 +465,12 @@ int zjb_view_by_jobid(ZJB *zjb, string jobid, ZJob &job)
     return RTNCD_FAILURE;
   }
 
-  for (int i = 0; i < entries; i++)
-  {
-    char tempJobName[9] = {0};
-    char tempJobId[9] = {0};
-    char tempJobOwner[9] = {0};
+  // create a vector which will only have one entry
+  vector<ZJob> jobs;
+  zjb_build_job_response(job_info, entries, jobs);
+  job = jobs[0];
 
-    strncpy(tempJobName, (char *)jobInfoNext[i].sttrname, sizeof(jobInfo->sttrname));
-    strncpy(tempJobId, (char *)jobInfoNext[i].sttrjid, sizeof(jobInfo->sttrjid));
-    strncpy(tempJobOwner, (char *)jobInfoNext[i].sttrouid, sizeof(jobInfo->sttrouid));
-
-    ZJob zjob = {0};
-
-    string jobname(tempJobName);
-    string jobid(tempJobId);
-    string owner(tempJobOwner);
-
-    union cc
-    {
-      int full;
-      unsigned char parts[4];
-    } mycc = {0};
-    memcpy(&mycc, &jobInfoNext[i].sttrxind, sizeof(cc));
-
-    // NOTE(Kelosky): this might need additional testing
-    // TODO(Kelosky): https://www.ibm.com/docs/en/zos/3.1.0?topic=80-text-lookup-service-iaztlkup
-    if (jobInfoNext[i].sttrphaz < stat___onmain)
-    {
-      zjob.status = "INPUT";
-    }
-    else if (jobInfoNext[i].sttrphaz == stat___onmain)
-    {
-      zjob.status = "ACTIVE";
-    }
-    else if (jobInfoNext[i].sttrphaz == stat___outpt)
-    {
-      zjob.status = "OUTPUT";
-    }
-    else
-    {
-      zjob.status = "UNKNOWN";
-    }
-
-    if ("OUTPUT" == zjob.status)
-    {
-
-      if ((unsigned char)jobInfoNext[i].sttrxind & sttrxab)
-      {
-        // for an abend, these are the bits which contain the code
-        mycc.full &= 0x00FFF000; // clear uneeded bits
-        unsigned char byte1 = mycc.parts[1] >> 4;
-        unsigned char byte2 = mycc.parts[1] & 0x0F;
-        unsigned char byte3 = mycc.parts[2] >> 4;
-
-        string result = "ABEND ";
-        result.push_back(zut_get_hex_char(byte1));
-        result.push_back(zut_get_hex_char(byte2));
-        result.push_back(zut_get_hex_char(byte3));
-        zjob.retcode = result;
-      }
-      else if ((unsigned char)jobInfoNext[i].sttrxind == sttrxjcl)
-      {
-        zjob.retcode = "JCL ERROR";
-      }
-      else
-      {
-        mycc.full &= 0x00000FFF; // clear uneeded bits
-        stringstream sscc;
-        sscc << setw(4) << setfill('0') << mycc.full; // format to 4 characters
-        zjob.retcode = "CC " + sscc.str();            // make it look like z/OSMF
-      }
-    }
-    else
-    {
-      zjob.retcode = ZJB_UNKNWON_RC;
-    }
-
-    zjob.jobname = jobname;
-    zjob.jobid = jobid;
-    zjob.owner = owner;
-
-    // jobs.push_back(zjob);
-    job = zjob;
-  }
-
-  ZUTMFR64(jobInfo);
+  ZUTMFR64(job_info);
 
   return RTNCD_SUCCESS;
 }
@@ -553,7 +483,7 @@ int zjb_list_by_owner(ZJB *zjb, string owner_name, vector<ZJob> &jobs)
 int zjb_list_by_owner(ZJB *zjb, string owner_name, string prefix_name, vector<ZJob> &jobs)
 {
   int rc = 0;
-  STATJQTR *PTR64 jobInfo = nullptr;
+  ZJB_JOB_INFO *PTR64 job_info = nullptr;
   int entries = 0;
 
   if ("" == owner_name)
@@ -570,11 +500,22 @@ int zjb_list_by_owner(ZJB *zjb, string owner_name, string prefix_name, vector<ZJ
   zut_uppercase_pad_truncate(zjb->owner_name, owner_name, sizeof(zjb->owner_name));
   zut_uppercase_pad_truncate(zjb->prefix_name, prefix_name, sizeof(zjb->prefix_name));
 
-  rc = ZJBMLIST(zjb, &jobInfo, &entries);
-  if (0 != rc)
+  rc = ZJBMLIST(zjb, &job_info, &entries);
+  if (RTNCD_SUCCESS != rc && RTNCD_WARNING != rc)
+  {
     return rc;
+  }
 
-  STATJQTR *PTR64 jobInfoNext = jobInfo;
+  zjb_build_job_response(job_info, entries, jobs);
+
+  ZUTMFR64(job_info);
+
+  return rc;
+}
+
+void zjb_build_job_response(ZJB_JOB_INFO *PTR64 job_info, int entries, vector<ZJob> &jobs)
+{
+  ZJB_JOB_INFO *PTR64 job_info_next = job_info;
 
   for (int i = 0; i < entries; i++)
   {
@@ -582,9 +523,9 @@ int zjb_list_by_owner(ZJB *zjb, string owner_name, string prefix_name, vector<ZJ
     char tempJobId[9] = {0};
     char tempJobOwner[9] = {0};
 
-    strncpy(tempJobName, (char *)jobInfoNext[i].sttrname, sizeof(jobInfo->sttrname));
-    strncpy(tempJobId, (char *)jobInfoNext[i].sttrjid, sizeof(jobInfo->sttrjid));
-    strncpy(tempJobOwner, (char *)jobInfoNext[i].sttrouid, sizeof(jobInfo->sttrouid));
+    strncpy(tempJobName, (char *)job_info_next[i].statjqtr.sttrname, sizeof(job_info->statjqtr.sttrname));
+    strncpy(tempJobId, (char *)job_info_next[i].statjqtr.sttrjid, sizeof(job_info->statjqtr.sttrjid));
+    strncpy(tempJobOwner, (char *)job_info_next[i].statjqtr.sttrouid, sizeof(job_info->statjqtr.sttrouid));
 
     ZJob zjob = {0};
 
@@ -597,31 +538,26 @@ int zjb_list_by_owner(ZJB *zjb, string owner_name, string prefix_name, vector<ZJ
       int full;
       unsigned char parts[4];
     } mycc = {0};
-    memcpy(&mycc, &jobInfoNext[i].sttrxind, sizeof(cc));
+    memcpy(&mycc, &job_info_next[i].statjqtr.sttrxind, sizeof(cc));
 
-    // NOTE(Kelosky): this might need additional testing
-    // TODO(Kelosky): https://www.ibm.com/docs/en/zos/3.1.0?topic=80-text-lookup-service-iaztlkup
-    if (jobInfoNext[i].sttrphaz < stat___onmain)
+    zjob.full_status = string(job_info_next[i].phase_text);
+    zut_rtrim(zjob.full_status);
+
+    zjob.retcode = ZJB_UNKNWON_RC;
+
+    if ("AWAIT MAIN SELECT" == zjob.full_status)
     {
       zjob.status = "INPUT";
     }
-    else if (jobInfoNext[i].sttrphaz == stat___onmain)
+    else if ("EXECUTING" == zjob.full_status)
     {
       zjob.status = "ACTIVE";
     }
-    else if (jobInfoNext[i].sttrphaz == stat___outpt)
+    else if ("AWAITING OUTPUT" == zjob.full_status)
     {
       zjob.status = "OUTPUT";
-    }
-    else
-    {
-      zjob.status = "UNKNOWN";
-    }
 
-    if ("OUTPUT" == zjob.status)
-    {
-
-      if ((unsigned char)jobInfoNext[i].sttrxind & sttrxab)
+      if ((unsigned char)job_info_next[i].statjqtr.sttrxind & sttrxab)
       {
         // for an abend, these are the bits which contain the code
         mycc.full &= 0x00FFF000; // clear uneeded bits
@@ -635,7 +571,7 @@ int zjb_list_by_owner(ZJB *zjb, string owner_name, string prefix_name, vector<ZJ
         result.push_back(zut_get_hex_char(byte3));
         zjob.retcode = result;
       }
-      else if ((unsigned char)jobInfoNext[i].sttrxind == sttrxjcl)
+      else if ((unsigned char)job_info_next[i].statjqtr.sttrxind == sttrxjcl)
       {
         zjob.retcode = "JCL ERROR";
       }
@@ -649,7 +585,7 @@ int zjb_list_by_owner(ZJB *zjb, string owner_name, string prefix_name, vector<ZJ
     }
     else
     {
-      zjob.retcode = ZJB_UNKNWON_RC;
+      // leave service text as-is
     }
 
     zjob.jobname = jobname;
@@ -658,8 +594,4 @@ int zjb_list_by_owner(ZJB *zjb, string owner_name, string prefix_name, vector<ZJ
 
     jobs.push_back(zjob);
   }
-
-  ZUTMFR64(jobInfo);
-
-  return RTNCD_SUCCESS;
 }

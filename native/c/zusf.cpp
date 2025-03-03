@@ -9,14 +9,25 @@
  *
  */
 
+#ifndef _LARGE_TIME_API
+#define _LARGE_TIME_API
+#endif
+#ifndef _OPEN_SYS_FILE_EXT
+#define _OPEN_SYS_FILE_EXT 1
+#endif
+#include <sys/stat.h>
 #include <stdio.h>
 #include <cstring>
+#include <fcntl.h>
 #include <fstream>
 #include <iostream>
 #include <string>
 #include <iomanip>
 #include <algorithm>
 #include <iconv.h>
+#include <grp.h>
+#include <pwd.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include "zusf.hpp"
 #include "zdyn.h"
@@ -27,7 +38,6 @@
 #define _XPLATFORM_SOURCE
 #endif
 #include <sys/xattr.h>
-#include <sys/stat.h>
 #include <dirent.h>
 // #include "zusfm.h"
 
@@ -38,7 +48,6 @@ using namespace std;
  *
  * @param zusf pointer to a ZUSF object
  * @param file name of the USS file
- * @param response reference to a string where the read data will be stored
  * @param mode mode of the file or directory
  * @param createDir flag indicating whether to create a directory
  *
@@ -64,12 +73,28 @@ int zusf_create_uss_file_or_dir(ZUSF *zusf, string file, string mode, bool creat
     return RTNCD_FAILURE;
   }
 
-  // TODO(zFernand0): Implement `mkdirp` by default
-  // TODO(zFernand0): `mkdirp` when creatnig a file in a directory that doesn't exist
   if (createDir)
   {
-    mkdir(file.c_str(), strtol(mode.c_str(), nullptr, 8));
-    return RTNCD_SUCCESS;
+    const auto last_trailing_slash = file.find_last_of("/");
+    if (last_trailing_slash != std::string::npos)
+    {
+      const auto parent_path = file.substr(0, last_trailing_slash);
+      const auto exists = stat(parent_path.c_str(), &file_stats) == 0;
+      if (!exists)
+      {
+        const auto rc = zusf_create_uss_file_or_dir(zusf, parent_path, mode, true);
+        if (rc != 0)
+        {
+          return rc;
+        }
+      }
+    }
+    const auto rc = mkdir(file.c_str(), strtol(mode.c_str(), nullptr, 8));
+    if (rc != 0)
+    {
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to create directory '%s', errno: %d", file.c_str(), errno);
+    }
+    return rc;
   }
   else
   {
@@ -167,12 +192,10 @@ int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
   size_t size = in.tellg();
   in.seekg(0, ios::beg);
 
-  char *raw_data = new char[size];
-  in.read(raw_data, size);
+  vector<char> raw_data(size);
+  in.read(&raw_data[0], size);
 
-  response.assign(raw_data);
-  delete[] raw_data;
-
+  response.assign(raw_data.begin(), raw_data.end());
   in.close();
 
   // TODO(traeok): Finish support for encoding auto-detection
@@ -256,7 +279,7 @@ int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data)
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zusf_chmod_uss_file_or_dir(ZUSF *zusf, string file, string mode)
+int zusf_chmod_uss_file_or_dir(ZUSF *zusf, string file, string mode, bool recursive)
 {
   // TODO(zFernand0): Add recursive option for directories
   struct stat file_stats;
@@ -265,6 +288,226 @@ int zusf_chmod_uss_file_or_dir(ZUSF *zusf, string file, string mode)
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Path '%s' does not exist", file.c_str());
     return RTNCD_FAILURE;
   }
+
+  if (!recursive && S_ISDIR(file_stats.st_mode))
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Path '%s' is a folder and recursive is false", file.c_str());
+    return RTNCD_FAILURE;
+  }
+
   chmod(file.c_str(), strtol(mode.c_str(), nullptr, 8));
+  if (recursive && S_ISDIR(file_stats.st_mode))
+  {
+    DIR *dir;
+    if ((dir = opendir(file.c_str())) == nullptr)
+    {
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open directory '%s'", file.c_str());
+      return RTNCD_FAILURE;
+    }
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != nullptr)
+    {
+      if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0)
+      {
+        const string child_path = file[file.length() - 1] == '/' ? file + string((const char *)entry->d_name)
+                                                                 : file + string("/") + string((const char *)entry->d_name);
+        struct stat file_stats;
+        stat(child_path.c_str(), &file_stats);
+
+        const auto rc = zusf_chmod_uss_file_or_dir(zusf, child_path, mode, S_ISDIR(file_stats.st_mode));
+        if (rc != 0)
+        {
+          return rc;
+        }
+      }
+    }
+  }
+  return 0;
+}
+
+int zusf_delete_uss_item(ZUSF *zusf, string file, bool recursive)
+{
+  struct stat file_stats;
+  if (stat(file.c_str(), &file_stats) == -1)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Path '%s' does not exist", file.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  const auto is_dir = S_ISDIR(file_stats.st_mode);
+  if (is_dir && !recursive)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Path '%s' is a directory and recursive was false", file.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  if (is_dir)
+  {
+    DIR *dir;
+    if ((dir = opendir(file.c_str())) == nullptr)
+    {
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open directory '%s'", file.c_str());
+      return RTNCD_FAILURE;
+    }
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != nullptr)
+    {
+      if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0)
+      {
+        const string child_path = file[file.length() - 1] == '/' ? file + string((const char *)entry->d_name)
+                                                                 : file + string("/") + string((const char *)entry->d_name);
+        struct stat file_stats;
+        stat(child_path.c_str(), &file_stats);
+
+        const auto rc = zusf_delete_uss_item(zusf, child_path, S_ISDIR(file_stats.st_mode));
+        if (rc != 0)
+        {
+          return rc;
+        }
+      }
+    }
+    closedir(dir);
+  }
+
+  const auto rc = is_dir ? rmdir(file.c_str()) : remove(file.c_str());
+  if (rc != 0)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not delete '%s', rc: %d", file.c_str(), errno);
+    return RTNCD_FAILURE;
+  }
+
+  return 0;
+}
+
+short zusf_get_id_from_user_or_group(string user_or_group, bool is_user)
+{
+  const auto is_numeric = user_or_group.find_first_not_of("0123456789") == std::string::npos;
+  if (is_numeric)
+  {
+    return (short)atoi(user_or_group.c_str());
+  }
+
+  auto *meta = is_user ? (void *)getpwnam(user_or_group.c_str()) : (void *)getgrnam(user_or_group.c_str());
+  if (meta)
+  {
+    return is_user ? ((passwd *)meta)->pw_uid : ((group *)meta)->gr_gid;
+  }
+
+  return -1;
+}
+
+int zusf_chown_uss_file_or_dir(ZUSF *zusf, string file, string owner, bool recursive)
+{
+  struct stat file_stats;
+  if (stat(file.c_str(), &file_stats) == -1)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Path '%s' does not exist", file.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  if (S_ISDIR(file_stats.st_mode) && !recursive)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Path '%s' is a folder and recursive is false", file.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  const auto uid = zusf_get_id_from_user_or_group(owner, true);
+  const auto colon_pos = owner.find_first_of(":");
+  const auto group = colon_pos != std::string::npos ? owner.substr(colon_pos + 1) : std::string();
+  const auto gid = group.empty() ? file_stats.st_gid : zusf_get_id_from_user_or_group(group, false);
+  const auto rc = chown(file.c_str(), uid, gid);
+
+  if (rc != 0)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "chmod failed for path '%s', errno %d", file.c_str(), errno);
+    return RTNCD_FAILURE;
+  }
+
+  if (recursive && S_ISDIR(file_stats.st_mode))
+  {
+    DIR *dir;
+    if ((dir = opendir(file.c_str())) == nullptr)
+    {
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open directory '%s'", file.c_str());
+      return RTNCD_FAILURE;
+    }
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != nullptr)
+    {
+      if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0)
+      {
+        const string child_path = file[file.length() - 1] == '/' ? file + string((const char *)entry->d_name)
+                                                                 : file + string("/") + string((const char *)entry->d_name);
+        struct stat file_stats;
+        stat(child_path.c_str(), &file_stats);
+
+        const auto rc = zusf_chown_uss_file_or_dir(zusf, child_path, owner, S_ISDIR(file_stats.st_mode));
+        if (rc != 0)
+        {
+          return rc;
+        }
+      }
+    }
+  }
+
+  return 0;
+}
+
+int zusf_chtag_uss_file_or_dir(ZUSF *zusf, string file, string tag, bool recursive)
+{
+  struct stat file_stats;
+  if (stat(file.c_str(), &file_stats) == -1)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Path '%s' does not exist", file.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  const auto ccsid = strtol(tag.c_str(), nullptr, 10);
+  if (ccsid == LONG_MAX || ccsid == LONG_MIN)
+  {
+    // TODO(traeok): Get CCSID from encoding name
+  }
+  const auto is_dir = S_ISDIR(file_stats.st_mode);
+  if (!is_dir)
+  {
+    attrib64_t attr;
+    memset(&attr, 0, sizeof(attr));
+    attr.att_filetagchg = 1;
+    attr.att_filetag.ft_ccsid = ccsid;
+    attr.att_filetag.ft_txtflag = int(ccsid != 65535);
+
+    const auto rc = __chattr64((char *)file.c_str(), &attr, sizeof(attr));
+    if (rc != 0)
+    {
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to update attributes for path '%s'", file.c_str());
+      return RTNCD_FAILURE;
+    }
+  }
+  else if (recursive)
+  {
+    DIR *dir;
+    if ((dir = opendir(file.c_str())) == nullptr)
+    {
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open directory '%s'", file.c_str());
+      return RTNCD_FAILURE;
+    }
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != nullptr)
+    {
+      if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0)
+      {
+        const string child_path = file[file.length() - 1] == '/' ? file + string((const char *)entry->d_name)
+                                                                 : file + string("/") + string((const char *)entry->d_name);
+        struct stat file_stats;
+        stat(child_path.c_str(), &file_stats);
+
+        const auto rc = zusf_chtag_uss_file_or_dir(zusf, child_path, tag, S_ISDIR(file_stats.st_mode));
+        if (rc != 0)
+        {
+          return rc;
+        }
+      }
+    }
+  }
   return 0;
 }

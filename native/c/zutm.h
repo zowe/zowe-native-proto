@@ -39,12 +39,21 @@ extern "C"
     char response[RET_ARG_MAX_LEN * MSG_ENTRIES + 1];
   } BPXWDYN_RESPONSE;
 
+  typedef struct
+  {
+    char input[128];
+    char output[128];
+    int length;
+    int reserve_1;
+  } SYMBOL_DATA;
+
   int ZUTMFR64(void *PTR64);
   int ZUTMGT64(void **PTR64, int *PTR64);
   int ZUTMGUSR(char[8]);
   int ZUTWDYN(BPXWDYN_PARM *, BPXWDYN_RESPONSE *);
   int ZUTEDSCT();
-  int ZUTTEST();
+  int ZUTSYMBP(SYMBOL_DATA *);
+  int ZUTSRCH();
 
 #if defined(__cplusplus)
 }

@@ -11,36 +11,79 @@
 
 package types
 
+import "encoding/json"
+
+type RpcRequest struct {
+	JsonRPC string          `json:"jsonrpc" tstype:"\"2.0\""`
+	Method  string          `json:"method"`
+	Params  json.RawMessage `json:"params,omitempty" tstype:"any"`
+	Id      int             `json:"id"`
+}
+
+type RpcResponse struct {
+	JsonRPC string        `json:"jsonrpc" tstype:"\"2.0\""`
+	Result  any           `json:"result,omitempty"`
+	Error   *ErrorDetails `json:"error,omitempty"`
+	Id      *int          `json:"id,omitempty"`
+}
+
 type CommandRequest struct {
+	// Requested command to execute
 	Command string `json:"command"`
 }
 
+type CommandResponse struct {
+	// True if command succeeded
+	Success *bool `json:"success,omitempty" tstype:",required"`
+}
+
+type ErrorDetails struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+	Data    any    `json:"data,omitempty"`
+}
+
 type Dataset struct {
-	Name   string `json:"name"`
-	Dsorg  string `json:"dsorg"`
+	// Dataset name
+	Name string `json:"name"`
+	// Dataset organization
+	Dsorg string `json:"dsorg"`
+	// Volume serial number
 	Volser string `json:"volser"`
 }
 
 type DsMember struct {
+	// Dataset member name
 	Name string `json:"name"`
 }
 
 type UssItem struct {
-	Name  string `json:"name"`
-	IsDir bool   `json:"isDir"`
+	// File name
+	Name string `json:"name"`
+	// Whether the item is a directory
+	IsDir bool `json:"isDir"`
 }
 
 type Job struct {
-	Id      string `json:"id"`
-	Name    string `json:"name"`
-	Status  string `json:"status"`
+	// Job ID
+	Id string `json:"id"`
+	// Job name
+	Name string `json:"name"`
+	// Job status
+	Status string `json:"status"`
+	// Job return code
 	Retcode string `json:"retcode"`
 }
 
 type Spool struct {
-	Id       int    `json:"id"`
-	DdName   string `json:"ddname"`
+	// Spool ID
+	Id int `json:"id"`
+	// DD name
+	DdName string `json:"ddname"`
+	// Step name in the job
 	StepName string `json:"stepname"`
-	DsName   string `json:"dsname"`
+	// Dataset name
+	DsName string `json:"dsname"`
+	// Procedure name for the step
 	ProcStep string `json:"procstep"`
 }

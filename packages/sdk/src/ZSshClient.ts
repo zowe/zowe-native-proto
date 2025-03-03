@@ -10,32 +10,28 @@
  */
 
 import { posix } from "node:path";
-import type { Writable } from "node:stream";
-import { DeferredPromise, Logger } from "@zowe/imperative";
+import { ImperativeError, Logger } from "@zowe/imperative";
 import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Client, type ClientChannel } from "ssh2";
 import { AbstractRpcClient } from "./AbstractRpcClient";
 import { ZSshUtils } from "./ZSshUtils";
-import type { IRpcRequest, IRpcResponse } from "./doc";
+import type { CommandRequest, CommandResponse, RpcRequest, RpcResponse } from "./doc";
 
 export class ZSshClient extends AbstractRpcClient implements Disposable {
     public static readonly DEFAULT_SERVER_PATH = "~/.zowe-server";
 
     private mSshClient: Client;
     private mSshStream: ClientChannel;
-    private mResponse = "";
-    private mResponseStream: Writable | undefined;
-    private sshMutex: DeferredPromise<void> | undefined;
+    private mPartialStderr = "";
+    private mPartialStdout = "";
+    private mPromiseMap: Map<number, { resolve: typeof Promise.resolve; reject: typeof Promise.reject }> = new Map();
+    private mRequestId = 0;
 
     private constructor() {
         super();
     }
 
-    public static async create(
-        session: SshSession,
-        serverPath?: string,
-        onClose?: (session: SshSession) => void,
-    ): Promise<ZSshClient> {
+    public static async create(session: SshSession, serverPath?: string, onClose?: () => void): Promise<ZSshClient> {
         Logger.getAppLogger().debug("Starting SSH client");
         const client = new ZSshClient();
         client.mSshClient = new Client();
@@ -49,9 +45,8 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                             Logger.getAppLogger().error("Client connection error: %s", err.toString());
                             reject(err);
                         } else {
-                            stream.stderr.on("data", (chunk: Buffer) => {
-                                console.log("STDERR:", chunk.toString());
-                            });
+                            stream.stderr.on("data", client.onErrData.bind(client));
+                            stream.stdout.on("data", client.onOutData.bind(client));
                             Logger.getAppLogger().debug("Client is ready");
                             resolve(stream);
                         }
@@ -60,7 +55,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
             });
             client.mSshClient.on("close", () => {
                 Logger.getAppLogger().debug("Client disconnected");
-                onClose?.(session);
+                onClose?.();
             });
         });
         return client;
@@ -75,46 +70,66 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
         this.dispose();
     }
 
-    public async request<T extends IRpcResponse>(request: IRpcRequest, _stream?: Writable): Promise<T> {
-        await this.sshMutex?.promise;
-        this.sshMutex = new DeferredPromise();
-        this.mResponse = "";
-        // this.mResponseStream = stream;
-
+    public async request<T extends CommandResponse>(request: CommandRequest): Promise<T> {
         return new Promise((resolve, reject) => {
+            const { command, ...rest } = request;
+            const rpcRequest: RpcRequest = {
+                jsonrpc: "2.0",
+                method: command,
+                params: rest,
+                id: ++this.mRequestId,
+            };
+            this.mPromiseMap.set(rpcRequest.id, { resolve, reject } as any);
             const requestStr = JSON.stringify(request);
             Logger.getAppLogger().trace("Sending request: %s", requestStr);
             this.mSshStream.stdin.write(`${requestStr}\n`);
-            this.mSshStream.stdout.on(
-                "data",
-                this.onOutData.bind(this, (response: string) => {
-                    Logger.getAppLogger().trace("Received response: %s", response);
-                    try {
-                        resolve(JSON.parse(response));
-                    } catch {
-                        Logger.getAppLogger().error("Failed to parse response: %s", response);
-                        reject(response);
-                    }
-                }),
-            );
         });
     }
 
-    private onOutData(callback: (data: string) => void, chunk: Buffer) {
-        const endsWithNewLine = chunk[chunk.length - 1] === 0x0a;
-        const newChunk = endsWithNewLine ? chunk.subarray(0, chunk.length - 1) : chunk;
+    private onErrData(chunk: Buffer) {
+        if (this.mRequestId === 0) {
+            console.error("STDERR:", chunk.toString());
+            return;
+        }
+        this.mPartialStderr = this.processResponses(this.mPartialStderr + chunk.toString());
+    }
 
-        if (this.mResponseStream != null) {
-            this.mResponseStream.write(newChunk);
+    private onOutData(chunk: Buffer) {
+        this.mPartialStdout = this.processResponses(this.mPartialStdout + chunk.toString());
+    }
+
+    private processResponses(data: string): string {
+        const responses = data.split("\n");
+        for (let i = 0; i < responses.length - 1; i++) {
+            this.requestEnd(responses[i]);
+        }
+        return responses[responses.length - 1];
+    }
+
+    private requestEnd(data: string, success = true) {
+        Logger.getAppLogger().trace("Received response: %s", data);
+        let response: RpcResponse;
+        try {
+            response = JSON.parse(data);
+        } catch (err) {
+            const errMsg = `Failed to parse response as JSON: ${err}`;
+            Logger.getAppLogger().error(errMsg);
+            throw new Error(errMsg);
+        }
+        if (!this.mPromiseMap.has(response.id)) {
+            throw new Error(`Missing promise for response ID: ${response.id}`);
+        }
+        if (response.error != null) {
+            this.mPromiseMap.get(response.id).reject(
+                new ImperativeError({
+                    msg: response.error.message,
+                    errorCode: response.error.code.toString(),
+                    additionalDetails: response.error.data,
+                }),
+            );
         } else {
-            this.mResponse += newChunk;
+            this.mPromiseMap.get(response.id).resolve({ success, ...response.result });
         }
-
-        if (endsWithNewLine) {
-            this.mSshStream.stdout.removeAllListeners();
-            this.mResponseStream?.end();
-            this.sshMutex?.resolve();
-            callback(this.mResponse);
-        }
+        this.mPromiseMap.delete(response.id);
     }
 }

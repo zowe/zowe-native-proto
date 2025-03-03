@@ -1,10 +1,14 @@
-name: client-build
+name: build
 
 on: [pull_request]
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  build-client:
+    runs-on: ${{ matrix.os }}-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu, windows, macos]
 
     steps:
       - uses: actions/checkout@v4
@@ -13,7 +17,7 @@ jobs:
         with:
           node-version: lts/*
 
-      - run: npm install
+      - run: npm ci
 
       - run: npm run build
 
@@ -27,11 +31,22 @@ jobs:
       - run: npm run package
 
       - uses: actions/upload-artifact@v4
+        if: ${{ matrix.os == 'ubuntu' }}
         with:
           name: zowe-native-proto-cli
           path: dist/*.tgz
 
       - uses: actions/upload-artifact@v4
+        if: ${{ matrix.os == 'ubuntu' }}
         with:
           name: zowe-native-proto-vsce
           path: dist/*.vsix
+
+  build-native:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: cd native/golang && go build

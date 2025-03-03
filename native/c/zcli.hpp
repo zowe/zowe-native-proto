@@ -18,6 +18,7 @@
 #include <string>
 #include <iomanip>
 #include <sstream>
+#include <unistd.h>
 #include <map>
 
 using namespace std;
@@ -41,7 +42,7 @@ protected:
 
 public:
   ZCLIName(string n) : name(n) {}
-  string get_name() { return name; }
+  virtual string get_name() { return name; }
 };
 
 class ZCLIRequired
@@ -65,15 +66,15 @@ protected:
   string description;
 
 public:
-  void set_description(string d) { description = d; }
-  string get_description() { return description; }
+  virtual void set_description(string d) { description = d; }
+  virtual string get_description() { return description; }
 };
 
 class ZCLIFlag : public ZCLIName
 {
 public:
   ZCLIFlag(string n) : ZCLIName(n) {}
-  string get_flag_name() { return ZCLI_FLAG_PREFIX + name; };
+  virtual string get_flag_name() { return ZCLI_FLAG_PREFIX + name; };
 };
 
 class
@@ -112,6 +113,8 @@ public:
 
 class ZCLIOptionProvider
 {
+  static ZCLIOption option_not_found;
+
 protected:
   vector<ZCLIOption> options;
 
@@ -142,6 +145,8 @@ public:
 
 class ZCLIPositionalProvider
 {
+  static ZCLIPositional positional_not_found;
+
 protected:
   vector<ZCLIPositional> positionals;
 
@@ -163,30 +168,54 @@ class ZCLIVerb : public ZCLIName, public ZCLIDescription, public ZCLIOptionProvi
 {
 private:
   zcli_verb_handler cb;
+  vector<string> aliases;
 
 public:
   ZCLIVerb(string n) : ZCLIName(n) {}
   void set_zcli_verb_handler(zcli_verb_handler h) { cb = h; }
   zcli_verb_handler get_zcli_verb_handler() { return cb; }
-  void help_line() { cerr << "  " << left << setw(ZCLI_MENU_WIDTH) << get_name() << " | " << get_description() << endl; }
+  vector<string> &get_aliases() { return aliases; }
+  void help_line()
+  {
+    string entry = get_name();
+    for (vector<string>::iterator it = get_aliases().begin(); it != get_aliases().end(); *it++)
+    {
+      entry += ("," + *it);
+    }
+    cerr << "  " << left << setw(ZCLI_MENU_WIDTH) << entry << " | " << get_description() << endl;
+  }
   void help(string, string);
 };
 
 class ZCLIGroup : public ZCLIName, public ZCLIDescription, public ZCLIOptionProvider
 {
+  static ZCLIVerb verb_not_found;
+
 private:
   vector<ZCLIVerb> verbs;
+  vector<string> aliases;
 
 public:
   ZCLIGroup(string n) : ZCLIName(n) {};
   ZCLIVerb &get_verb(string);
   vector<ZCLIVerb> &get_verbs() { return verbs; }
+  vector<string> &get_aliases() { return aliases; }
   void help(string);
-  void help_line() { cerr << "  " << left << setw(ZCLI_MENU_WIDTH) << get_name() << " | " << get_description() << endl; }
+  void help_line()
+  {
+    string entry = get_name();
+    for (vector<string>::iterator it = get_aliases().begin(); it != get_aliases().end(); *it++)
+    {
+      entry += ("," + *it);
+    }
+    cerr << "  " << left << setw(ZCLI_MENU_WIDTH) << entry << " | " << get_description() << endl;
+  }
 };
 
 class ZCLI : public ZCLIName, public ZCLIOptionProvider
 {
+  static ZCLIGroup group_not_found;
+
 private:
   bool validate();
   void init();
@@ -226,6 +255,17 @@ bool ZCLI::validate()
     }
     group_map.insert(map<string, int>::value_type(it->get_name(), 0));
 
+    for (vector<string>::iterator ijt = it->get_aliases().begin(); ijt != it->get_aliases().end(); ijt++)
+    {
+      // ensure no duplicate group aliases
+      if (group_map.find(*ijt) != (group_map.end()))
+      {
+        cerr << "ZCLI Error: duplicate group alias found, '" << it->get_name() << "'" << endl;
+        return false;
+      }
+      group_map.insert(map<string, int>::value_type(*ijt, 0));
+    }
+
     // ensure at least one verb
     if (0 == it->get_verbs().size())
     {
@@ -243,6 +283,16 @@ bool ZCLI::validate()
         return false;
       }
       verb_map.insert(map<string, int>::value_type(iit->get_name(), 0));
+
+      for (vector<string>::iterator iijt = iit->get_aliases().begin(); iijt != iit->get_aliases().end(); iijt++)
+      {
+        if (verb_map.find(*iijt) != (verb_map.end()))
+        {
+          cerr << "ZCLI Error: duplicate verb alias found, '" << iit->get_name() << "'" << endl;
+          return false;
+        }
+        verb_map.insert(map<string, int>::value_type(*iijt, 0));
+      }
 
       // ensure handler provided
       if (iit->get_zcli_verb_handler() == nullptr)
@@ -409,9 +459,13 @@ ZCLIGroup &ZCLI::get_group(string group_name)
   {
     if (group_name == it->get_name())
       return *it;
+    for (vector<string>::iterator iit = it->get_aliases().begin(); iit != it->get_aliases().end(); iit++)
+    {
+      if (group_name == *iit)
+        return *it;
+    }
   }
-  ZCLIGroup *not_found = new ZCLIGroup("not found");
-  return *not_found;
+  return ZCLI::group_not_found;
 }
 
 ZCLIVerb &ZCLIGroup::get_verb(string verb_name)
@@ -420,9 +474,13 @@ ZCLIVerb &ZCLIGroup::get_verb(string verb_name)
   {
     if (verb_name == it->get_name())
       return *it;
+    for (vector<string>::iterator iit = it->get_aliases().begin(); iit != it->get_aliases().end(); iit++)
+    {
+      if (verb_name == *iit)
+        return *it;
+    }
   }
-  ZCLIVerb *not_found = new ZCLIVerb("not found");
-  return *not_found;
+  return ZCLIGroup::verb_not_found;
 }
 
 ZCLIOption &ZCLIOptionProvider::get_option(string option_name)
@@ -433,8 +491,7 @@ ZCLIOption &ZCLIOptionProvider::get_option(string option_name)
     if (option_name == it->get_flag_name() || std::find(aliases.begin(), aliases.end(), option_name) != it->get_aliases().end())
       return *it;
   }
-  ZCLIOption *not_found = new ZCLIOption("not found");
-  return *not_found;
+  return ZCLIOptionProvider::option_not_found;
 }
 
 ZCLIPositional &ZCLIPositionalProvider::get_positional(string positional_name)
@@ -444,8 +501,7 @@ ZCLIPositional &ZCLIPositionalProvider::get_positional(string positional_name)
     if (positional_name == it->get_name())
       return *it;
   }
-  ZCLIPositional *not_found = new ZCLIPositional("not found");
-  return *not_found;
+  return ZCLIPositionalProvider::positional_not_found;
 }
 
 bool ZCLI::should_quit(string arg)
@@ -491,8 +547,8 @@ int ZCLI::run(int argc, char *argv[])
   // attempt to get a verb
   ZCLIVerb &verb = group.get_verb(argv[CLI_VERB_ARG]);
 
-  // show group level help if unknwon verb
-  if (verb.get_name() == "not found")
+  // show group level help if unknown verb
+  if (verb.get_zcli_verb_handler() == nullptr)
   {
     // delete command_group;
     cerr << "Unknown command verb: " << argv[CLI_VERB_ARG] << endl;
@@ -589,7 +645,7 @@ void ZCLI::parse_input(string input, vector<string> &values)
 
   string arg;
   string temp;
-  bool open = false;
+  bool quoted = false;
 
   while (getline(iss, arg, ' '))
   {
@@ -598,53 +654,33 @@ void ZCLI::parse_input(string input, vector<string> &values)
 
   for (vector<string>::iterator it = args.begin(); it != args.end(); it++)
   {
-    size_t pos = it->find("\"");
+    quoted = quoted || it->at(0) == '"';
 
-    if (string::npos == pos)
+    if (quoted)
     {
-      if (open)
+      if (!temp.empty())
       {
-
-        temp += (*it + " ");
+        temp += ' ';
       }
-      else
+
+      temp += *it;
+
+      if (it->at(it->size() - 1) == '"')
       {
-        values.push_back(*it);
+        size_t pos = 0;
+        while ((pos = temp.find("\\\"", pos)) != std::string::npos)
+        {
+          temp.replace(pos++, 2, "\"");
+        }
+
+        values.push_back(temp.substr(1, temp.length() - 2));
+        temp = "";
+        quoted = false;
       }
     }
     else
     {
-      size_t end = it->find("\"", pos + 1);
-      if (string::npos != end)
-      {
-        values.push_back(*it);
-      }
-      else
-      {
-        if (!open)
-        {
-          open = true;
-          temp += (*it + " ");
-        }
-        else
-        {
-          open = false;
-          temp += *it;
-          values.push_back(temp);
-          temp = "";
-        }
-      }
-    }
-
-    // if last entry and open quote, just append remaining string
-    int index = distance(args.begin(), it);
-    if (index + 1 == args.size())
-    {
-      if (open)
-      {
-        temp += *it;
-        values.push_back(temp);
-      }
+      values.push_back(*it);
     }
   }
 }
@@ -663,8 +699,12 @@ int ZCLI::parse(int argc, char *argv[])
 
     string command;
     int rc = 0;
+    int is_tty = isatty(fileno(stdout));
     do
     {
+      if (is_tty)
+        cout << "\r> " << flush;
+
       getline(cin, command);
 
       if (should_quit(command))
@@ -684,6 +724,14 @@ int ZCLI::parse(int argc, char *argv[])
       }
 
       rc = run(entries.size(), args);
+
+      if (!is_tty)
+      {
+        cout << "[" << rc << "]" << endl;
+        // EBCDIC \x37 = ASCII \x04 = End of Transmission (Ctrl+D)
+        cout << '\x37' << flush;
+        cerr << '\x37' << flush;
+      }
 
     } while (!should_quit(command));
 
