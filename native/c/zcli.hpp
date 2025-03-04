@@ -522,7 +522,7 @@ int ZCLI::run(int argc, char *argv[])
   ZCLIGroup *group = get_group(argv[CLI_GROUP_ARG]);
 
   // show main help if unknown group
-  if (0 == group->get_verbs().size())
+  if (nullptr == group)
   {
     // delete command_group;
     cerr << "Unknown command group: " << argv[CLI_GROUP_ARG] << endl;
