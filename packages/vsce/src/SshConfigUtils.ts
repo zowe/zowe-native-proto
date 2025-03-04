@@ -557,8 +557,19 @@ export class SshConfigUtils {
                 return false;
             await attemptConnection(newConfig);
         } catch (err) {
-            // Case in which the private key requires a passphrase
-            if (`${err}`.includes("but no passphrase given")) {
+            const errorMessage = `${err}`;
+
+            // Private key authentication failed (but not due to missing passphrase)
+            if (
+                newConfig.privateKey &&
+                !newConfig.password &&
+                errorMessage.includes("All configured authentication methods failed")
+            ) {
+                return false;
+            }
+
+            // Case: Private key requires a passphrase
+            if (errorMessage.includes("but no passphrase given")) {
                 let passphraseAttempts = 0;
                 while (passphraseAttempts < 3) {
                     newConfig.keyPassphrase = await vscode.window.showInputBox({
@@ -581,12 +592,11 @@ export class SshConfigUtils {
                 // Max attempts reached, clean up and return false
                 newConfig.keyPassphrase = undefined;
                 newConfig.privateKey = undefined;
-
                 return false;
             }
-            // Case in which password was given but failed
-            if (`${err}`.includes("All configured authentication methods failed")) {
-                // 1 attempt has already occured
+
+            // Case: Password authentication failed
+            if (errorMessage.includes("All configured authentication methods failed")) {
                 let passwordAttempts = 1;
                 vscode.window.showErrorMessage(`Password Authentication Failed (${passwordAttempts}/3)`);
 
@@ -597,9 +607,10 @@ export class SshConfigUtils {
                         placeHolder: "Enter your password",
                         ignoreFocusOut: true,
                     });
+
+                    if (!newConfig.password) break; // Do not retry if user leaves input blank
+
                     try {
-                        // If password is blank then do not attempt and break out and return false;
-                        if (newConfig.password === "") break;
                         await attemptConnection(newConfig);
                         return newConfig.password as string;
                     } catch (passwordError) {
