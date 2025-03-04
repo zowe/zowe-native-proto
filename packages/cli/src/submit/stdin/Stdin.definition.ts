@@ -12,7 +12,7 @@
 import type { ICommandDefinition } from "@zowe/imperative";
 
 export const SubmitStdinDefinition: ICommandDefinition = {
-    handler: __dirname + "/Stdin.handler",
+    handler: `${__dirname}/Stdin.handler`,
     description: "Submit a job from JCL written to the standard input (stdin) of this process.",
     type: "command",
     name: "stdin",

@@ -7,7 +7,7 @@
 	},
 	"files": {
 		"ignoreUnknown": false,
-		"ignore": ["**/*.js","node_modules"]
+		"ignore": ["**/*.js", "node_modules", "src/doc/gen"]
 	},
 	"formatter": {
 		"enabled": true,
