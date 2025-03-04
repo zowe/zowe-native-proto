@@ -41,7 +41,7 @@ int ZDSCSI00(ZDS *zds, CSIFIELD *selection, void *work_area)
   // load our service on first call
   if (!zds->csi)
   {
-    zds->csi = (IGGCSI00)load_module31("IGGCSI00"); // EP which doesn't require R0 == 0
+    zds->csi = (void *PTR64)load_module31("IGGCSI00"); // EP which doesn't require R0 == 0
   }
 
   if (!zds->csi)

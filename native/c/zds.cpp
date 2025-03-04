@@ -618,6 +618,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
       }
 
       // attempt to obtain fldata in all cases and set default data
+      if (0)
       {
         string dsn = "//'" + entry.name + "'";
         FILE *dir = fopen(dsn.c_str(), "r");
