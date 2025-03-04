@@ -38,6 +38,7 @@ void zut_uppercase_pad_truncate(char *, std::string, int);
 int zut_convert_dsect();
 bool zut_prepare_encoding(const std::string &encoding_value, ZEncode *opts);
 void zut_print_string_as_bytes(std::string &input);
+std::vector<uint8_t> zut_get_contents_as_bytes(const std::string &hex_string);
 
 size_t zut_iconv(iconv_t cd, ZConvData &data, ZDIAG &diag);
 std::string zut_build_etag(const size_t mtime, const size_t byte_size);

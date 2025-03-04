@@ -306,6 +306,24 @@ void zut_print_string_as_bytes(string &input)
   cout << endl;
 }
 
+vector<uint8_t> zut_get_contents_as_bytes(const string &hex_string)
+{
+  vector<uint8_t> bytes;
+  if (hex_string.length() % 2 != 0)
+  {
+    return bytes;
+  }
+
+  for (auto i = 0u; i < hex_string.size(); i += 2u)
+  {
+    const auto byte_str = hex_string.substr(i, 2);
+    const uint8_t byte = strtoul(byte_str.c_str(), nullptr, 16);
+    bytes.push_back(byte);
+  }
+
+  return bytes;
+}
+
 /**
  * Prepares the encoding options.
  *

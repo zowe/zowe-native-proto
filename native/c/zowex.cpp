@@ -1277,6 +1277,13 @@ int handle_uss_view(ZCLIResult result)
   ZUSF zusf = {0};
   const auto hasEncoding = result.get_option("--encoding").is_found() && zut_prepare_encoding(result.get_option("--encoding").get_value(), &zusf.encoding_opts);
 
+  struct stat file_stats;
+  if (stat(uss_file.c_str(), &file_stats) == -1)
+  {
+    cerr << "Error: Path " << uss_file << " does not exist";
+    return RTNCD_FAILURE;
+  }
+
   string response;
   rc = zusf_read_from_uss_file(&zusf, uss_file, response);
   if (0 != rc)
@@ -1288,6 +1295,8 @@ int handle_uss_view(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
+  cout << "etag: " << zut_build_etag(file_stats.st_mtime, file_stats.st_size) << endl;
+  cout << "data: ";
   if (hasEncoding && result.get_option("--response-format-bytes").get_value() == "true")
   {
     zut_print_string_as_bytes(response);
@@ -1320,7 +1329,11 @@ int handle_uss_write(ZCLIResult result)
     std::istreambuf_iterator<char> begin(std::cin);
     std::istreambuf_iterator<char> end;
 
-    std::vector<char> bytes(begin, end);
+    vector<char> input(begin, end);
+    const auto temp = string(input.begin(), input.end());
+    input.clear();
+    const auto bytes = zut_get_contents_as_bytes(temp);
+
     data.assign(bytes.begin(), bytes.end());
     byteSize = bytes.size();
   }
