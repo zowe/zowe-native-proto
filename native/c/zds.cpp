@@ -625,9 +625,20 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
           entry.volser = value;
         }
       }
+#define MIGRAT_VOLUME "MIGRAT"
+#define ARCIVE_VOLUME "ARCIVE"
+
+      if (entry.volser == MIGRAT_VOLUME || entry.volser == ARCIVE_VOLUME)
+      {
+        entry.migr = MIGRATE_YES;
+      }
+      else
+      {
+        entry.migr = MIGRATE_NO;
+      }
 
       // attempt to obtain fldata in all cases and set default data
-      if (0)
+      if (MIGRATE_NO == entry.migr)
       {
         string dsn = "//'" + entry.name + "'";
         FILE *dir = fopen(dsn.c_str(), "r");

@@ -24,6 +24,9 @@ struct ZDSMem
   // std::string dsorg;
 };
 
+#define MIGRATE_YES "YES"
+#define MIGRATE_NO "NO"
+
 struct ZDSEntry
 {
   std::string name;
