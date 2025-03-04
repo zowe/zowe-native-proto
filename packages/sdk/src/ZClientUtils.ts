@@ -53,10 +53,10 @@ export class ZClientUtils {
                 const session: ISshConfigExt = {};
                 session.name = config.value as string;
 
-                if (Array.isArray((config as any).config)) {
-                    for (const subConfig of (config as any).config) {
+                if (Array.isArray((config as sshConfig.Section).config)) {
+                    for (const subConfig of (config as sshConfig.Section).config) {
                         if (typeof subConfig === "object" && "param" in subConfig && "value" in subConfig) {
-                            const param = (subConfig as any).param.toLowerCase();
+                            const param = (subConfig as sshConfig.Directive).param.toLowerCase();
                             const value = subConfig.value as string;
 
                             switch (param) {

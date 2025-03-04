@@ -299,8 +299,8 @@ export class SshConfigUtils {
         for (const setting of [PersistenceSchemaEnum.Dataset, PersistenceSchemaEnum.USS, PersistenceSchemaEnum.Job]) {
             const localStorage = zoweExplorerApi.getExplorerExtenderApi().getLocalStorage?.();
             if (localStorage != null) {
-                const treeHistory = localStorage.getValue<any>(setting);
-                treeHistory.sessions = treeHistory.sessions.filter((session: any) => session !== profileName);
+                const treeHistory = localStorage.getValue<{ sessions: string[] }>(setting);
+                treeHistory.sessions = treeHistory.sessions.filter((session: string) => session !== profileName);
                 if (visible) {
                     treeHistory.sessions.push(profileName);
                 }
