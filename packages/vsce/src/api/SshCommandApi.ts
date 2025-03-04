@@ -9,10 +9,10 @@
  *
  */
 
+import type { IConsoleResponse } from "@zowe/zos-console-for-zowe-sdk";
+import type { IIssueResponse, IStartTsoParms } from "@zowe/zos-tso-for-zowe-sdk";
 import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import type { MainframeInteraction } from "@zowe/zowe-explorer-api";
-import type { IConsoleResponse } from "@zowe/zos-console-for-zowe-sdk";
-import type { IStartTsoParms, IIssueResponse } from "@zowe/zos-tso-for-zowe-sdk";
 import { SshCommonApi } from "./SshCommonApi";
 
 export class SshCommandApi extends SshCommonApi implements MainframeInteraction.ICommand {
