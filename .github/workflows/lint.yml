@@ -15,7 +15,7 @@ jobs:
           version: latest
 
       - name: Run Biome
-        run: biome ci .
+        run: biome ci packages
 
   lint-native:
     runs-on: ubuntu-latest
