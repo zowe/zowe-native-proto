@@ -87,15 +87,24 @@ int zds_read_from_dsn(ZDS *zds, string dsn, string &response)
     return RTNCD_FAILURE;
   }
 
-  in.seekg(0, ios::end);
-  size_t size = in.tellg();
-  in.seekg(0, ios::beg);
+  int index = 0;
 
-  vector<char> raw_data(size);
-  in.read(&raw_data[0], size);
-
-  response.assign(raw_data.begin(), raw_data.end());
+  string line;
+  while (getline(in, line))
+  {
+    if (index > 0 || line.size() > 0)
+    {
+      response += line;
+      response.push_back('\n');
+      index++;
+    }
+  }
   in.close();
+
+  const size_t size = response.size() + 1;
+  string bytes;
+  bytes.reserve(size);
+  memcpy((char *)bytes.data(), response.c_str(), size);
 
   const auto encodingProvided = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
 
