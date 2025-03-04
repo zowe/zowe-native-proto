@@ -13,8 +13,8 @@ import type { ICommandDefinition } from "@zowe/imperative";
 import { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Constants } from "../Constants";
 import { DataSetDefinition } from "./data-set/DataSet.definition";
-import { ItemDefinition as UssDefinition } from "./uss/Item.definition";
 import { JobDefinition } from "./job/Job.definition";
+import { ItemDefinition as UssDefinition } from "./uss/Item.definition";
 
 const DeleteDefinition: ICommandDefinition = {
     name: "delete",
