@@ -463,7 +463,8 @@ export class SshConfigUtils {
         if (selectedConfig?.password) config.secure.push("password" as never);
         if (selectedConfig?.keyPassphrase) config.secure.push("keyPassphrase" as never);
 
-        configApi.profiles.defaultSet("ssh", selectedConfig?.name!);
+        if (!configApi.profiles.defaultGet("ssh")) configApi.profiles.defaultSet("ssh", selectedConfig?.name!);
+
         configApi.profiles.set(selectedConfig?.name!, config);
         await profInfo.getTeamConfig().save();
     }
