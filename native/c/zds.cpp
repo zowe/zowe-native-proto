@@ -79,27 +79,26 @@ int zds_read_from_dd(ZDS *zds, string ddname, string &response)
 int zds_read_from_dsn(ZDS *zds, string dsn, string &response)
 {
   dsn = "//'" + dsn + "'";
-
-  ifstream in(dsn.c_str(), zds->encoding_opts.data_type == eDataTypeBinary ? ios::in | ios::binary : ios::in);
-  if (!in.is_open())
+  const std::string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "rb,recfm=U" : "r";
+  FILE *fp = fopen(dsn.c_str(), fopen_flags.c_str());
+  if (!fp)
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open file '%s'", dsn.c_str());
     return RTNCD_FAILURE;
   }
 
-  in.seekg(0, ios::end);
-  size_t size = in.tellg();
-  in.seekg(0, ios::beg);
-
-  vector<char> raw_data(size);
-  in.read(&raw_data[0], size);
-
-  response.assign(raw_data.begin(), raw_data.end());
-  in.close();
+  size_t bytes_read, total_size;
+  char buffer[4096] = {0};
+  while ((bytes_read = fread(buffer, 1, sizeof(buffer), fp)) > 0)
+  {
+    total_size += bytes_read;
+    response.append(buffer, bytes_read);
+  }
+  fclose(fp);
 
   const auto encodingProvided = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
 
-  if (size > 0 && encodingProvided)
+  if (total_size > 0 && encodingProvided)
   {
     std::string temp = response;
     try

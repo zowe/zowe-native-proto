@@ -22,7 +22,7 @@ export default class UploadFileToUssFileHandler extends SshBaseHandler {
             fspath: params.arguments.ussFile,
             encoding: params.arguments.binary ? "binary" : params.arguments.encoding,
         });
-        const uploadSource: string = "local file '" + params.arguments.file + "'";
+        const uploadSource: string = `local file '${params.arguments.file}'`;
         const successMsg = params.response.console.log(
             "Uploaded from %s to %s ",
             uploadSource,

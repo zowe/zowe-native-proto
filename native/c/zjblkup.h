@@ -52,7 +52,7 @@
 #define IAZTLKUP(ssob, datastr, outarea, outlen, plist, rc)
 #endif
 
-static int iaztlkup(SSOB *ssob, ZJB_JOB_INFO *job_info)
+static int iaztlkup(SSOB *ssob, ZJB_JOB_INFO *job_info, ZJB *zjb)
 {
   int rc = 0;
   int response_len = sizeof(job_info->phase_text) - 1;
@@ -64,7 +64,7 @@ static int iaztlkup(SSOB *ssob, ZJB_JOB_INFO *job_info)
            response_len,
            plist,
            rc);
-
+  zjb->diag.detail_rc = plist.tlkretcd;
   return rc;
 }
 

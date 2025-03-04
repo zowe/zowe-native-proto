@@ -12,7 +12,7 @@
 import type { ICommandDefinition } from "@zowe/imperative";
 
 export const UploadFileToDataSetDefinition: ICommandDefinition = {
-    handler: __dirname + "/FileToDataSet.handler",
+    handler: `${__dirname}/FileToDataSet.handler`,
     description: "Upload contents of a local file to a z/OS data set",
     type: "command",
     name: "file-to-data-set",
