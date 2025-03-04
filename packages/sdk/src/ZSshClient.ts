@@ -80,7 +80,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                 id: ++this.mRequestId,
             };
             this.mPromiseMap.set(rpcRequest.id, { resolve, reject } as any);
-            const requestStr = JSON.stringify(request);
+            const requestStr = JSON.stringify(rpcRequest);
             Logger.getAppLogger().trace("Sending request: %s", requestStr);
             this.mSshStream.stdin.write(`${requestStr}\n`);
         });

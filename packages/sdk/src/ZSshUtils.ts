@@ -56,10 +56,10 @@ export class ZSshUtils {
         Logger.getAppLogger().debug(`Installing server to ${session.ISshSession.hostname} at path: ${serverPath}`);
         const remoteDir = serverPath.replace(/^~/, ".");
         return ZSshUtils.sftp(session, async (sftp, client) => {
-            await promisify(sftp.mkdir.bind(sftp))(remoteDir, { mode: 0o700 }).catch((err: any) =>
-                // Ignore if directory already exists
-                err.code !== 4 ? Promise.reject(err) : Promise.resolve(),
-            );
+            await promisify(sftp.mkdir.bind(sftp))(remoteDir, { mode: 0o700 }).catch((err: any) => {
+                if (err.code !== 4) throw err;
+                Logger.getAppLogger().debug(`Remote directory already exists: ${remoteDir}`);
+            });
             await promisify(sftp.fastPut.bind(sftp))(
                 path.join(localDir, ZSshUtils.SERVER_PAX_FILE),
                 path.posix.join(remoteDir, ZSshUtils.SERVER_PAX_FILE),
@@ -74,15 +74,15 @@ export class ZSshUtils {
         const remoteDir = serverPath.replace(/^~/, ".");
         return ZSshUtils.sftp(session, async (sftp, _client) => {
             for (const file of ZSshUtils.SERVER_BIN_FILES) {
-                await promisify(sftp.unlink.bind(sftp))(path.posix.join(remoteDir, file)).catch((err: any) =>
-                    // Ignore if file does not exist
-                    err.code !== 2 ? Promise.reject(err) : Promise.resolve(),
-                );
+                await promisify(sftp.unlink.bind(sftp))(path.posix.join(remoteDir, file)).catch((err: any) => {
+                    if (err.code !== 2) throw err;
+                    Logger.getAppLogger().info(`Remote file does not exist: ${remoteDir}/${file}`);
+                });
             }
-            await promisify(sftp.rmdir.bind(sftp))(remoteDir).catch((err: any) =>
-                // Ignore if directory is not empty
-                err.code !== 4 ? Promise.reject(err) : Promise.resolve(),
-            );
+            await promisify(sftp.rmdir.bind(sftp))(remoteDir).catch((err: any) => {
+                if (err.code !== 4) throw err;
+                Logger.getAppLogger().info(`Remote directory does not exist: ${remoteDir}`);
+            });
         });
     }
 
