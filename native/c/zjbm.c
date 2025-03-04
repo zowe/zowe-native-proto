@@ -110,6 +110,39 @@ int ZJBSYMB(ZJB *zjb, const char *symbol, char *value)
 #pragma prolog(ZJBMPRG, "&CCN_MAIN SETB 1 \n MYPROLOG")
 int ZJBMPRG(ZJB *zjb)
 {
+  // purge a job in protected (ssjmpprt) mode
+  return ZJBMMOD(zjb, ssjmprg, ssjmpprt);
+}
+
+// cancel a job
+#pragma prolog(ZJBMCNL, "&CCN_MAIN SETB 1 \n MYPROLOG")
+int ZJBMCNL(ZJB *zjb, int flags)
+{
+  // cancel a job in protected (ssjmcprt) mode
+  int options = ssjmcprt | flags;
+  return ZJBMMOD(zjb, ssjmcanc, ssjmcprt);
+}
+
+// hold a job
+#pragma prolog(ZJBMHLD, "&CCN_MAIN SETB 1 \n MYPROLOG")
+int ZJBMHLD(ZJB *zjb)
+{
+  // Hold a job in protected (ssjmpprt) mode
+  return ZJBMMOD(zjb, ssjmhold, 0);
+}
+
+// release a job
+#pragma prolog(ZJBMRLS, "&CCN_MAIN SETB 1 \n MYPROLOG")
+int ZJBMRLS(ZJB *zjb)
+{
+  // Release a job in protected (ssjmpprt) mode
+  return ZJBMMOD(zjb, ssjmrls, 0);
+}
+
+// modify a job
+#pragma prolog(ZJBMMOD, "&CCN_MAIN SETB 1 \n MYPROLOG")
+int ZJBMMOD(ZJB *zjb, int type, int flags)
+{
   int rc = 0;
   int loop_control = 0;
 
@@ -131,8 +164,33 @@ int ZJBMPRG(ZJB *zjb)
   ssjm.ssjmopt1 = ssjm.ssjmopt1 | ssjmpd64; // 64 bit storage
   ssjm.ssjmopt1 = ssjm.ssjmopt1 | ssjmpsyn; // SYNC
 
-  ssjm.ssjmtype = ssjmprg;                  // purge
-  ssjm.ssjmpflg = ssjm.ssjmpflg | ssjmpprt; // prehaps required for purge
+  ssjm.ssjmtype = type;
+  if (ssjmprg == type) // purge
+  {
+    ssjm.ssjmpflg = ssjm.ssjmpflg | flags;
+  }
+  else if (ssjmcanc == type) // cancel
+  {
+    ssjm.ssjmcflg = ssjm.ssjmcflg | flags;
+  }
+  else if (ssjmhold == type) // hold
+  {
+    // no flags needed
+  }
+  else if (ssjmrls == type) // release
+  {
+    // no flags needed
+  }
+  else if (ssjmrst == type) // restart
+  {                         // TODO(zFernand0): not implemented
+    ssjm.ssjmeflg = ssjm.ssjmeflg | flags;
+  }
+  else if (ssjmspin == type) // spin
+  {                          // TODO(zFernand0): not implemented
+    ssjm.ssjmtsfl = ssjm.ssjmtsfl | flags;
+    // ssjm.ssjmtsdn = ddname to spin
+  }
+
   ssjm.ssjmsel1 = ssjm.ssjmsel1 | ssjmsoji;
   ssjm.ssjmsel2 = ssjm.ssjmsel2 | ssjmsjob; // batch jobs
   ssjm.ssjmsel2 = ssjm.ssjmsel2 | ssjmsstc; // stcs
@@ -149,6 +207,7 @@ int ZJBMPRG(ZJB *zjb)
     zjb->diag.service_rc = ssob.ssobretn;
     zjb->diag.service_rsn = ssjm.ssjmretn;
     zjb->diag.service_rsn_secondary = ssjm.ssjmret2;
+    // Understanding reason codes from this SSOB: https://www.ibm.com/docs/en/zos/3.1.0?topic=85-output-parameters
     zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "IEFSSREQ rc was: '%d' SSOBRTN was: '%d', SSJMRETN was: '%d', SSJMRET2 was: '%d'", rc, ssob.ssobretn, ssjm.ssjmretn, ssjm.ssjmret2);
     return RTNCD_FAILURE;
   }
@@ -277,12 +336,13 @@ int ZJBMTCOM(ZJB *zjb, STAT *PTR64 stat, ZJB_JOB_INFO **PTR64 job_info, int *ent
       statjqtrp = (STATJQTR * PTR32)((unsigned char *PTR32)statjqhdp + sizeof(STATJQHD));
 
       memcpy(statjqtrsp, statjqtrp, sizeof(STATJQTR));
-
-      int rc = iaztlkup(&ssob, statjqtrsp);
+      int rc = iaztlkup(&ssob, statjqtrsp, zjb);
       if (0 != rc)
       {
         strcpy(zjb->diag.service_name, "iaztlkup");
-        zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "IAZTLKUP RC was: '%d'", rc);
+        // For information about the reason code, look for `tlkretcd` in "native/c/chdsect/iaztlkdf.h"
+        // https://www.ibm.com/docs/en/zos/3.1.0?topic=80-text-lookup-service-iaztlkup
+        zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "IAZTLKUP RC: '%d' reason: '%d'", statjqtrsp->statjqtr.sttrjid, rc, zjb->diag.detail_rc);
         zjb->diag.detail_rc = ZJB_RTNCD_SERVICE_FAILURE;
         storage_free64(statjqtrsp);
         return RTNCD_FAILURE;

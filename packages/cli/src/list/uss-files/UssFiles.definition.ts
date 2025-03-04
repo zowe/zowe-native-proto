@@ -12,7 +12,7 @@
 import type { ICommandDefinition } from "@zowe/imperative";
 
 export const ListUssFilesDefinition: ICommandDefinition = {
-    handler: __dirname + "/UssFiles.handler",
+    handler: `${__dirname}/UssFiles.handler`,
     type: "command",
     name: "uss-files",
     aliases: ["uss", "uf"],

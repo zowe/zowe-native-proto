@@ -12,7 +12,7 @@
 import type { ICommandDefinition } from "@zowe/imperative";
 
 export const ServerUninstallDefinition: ICommandDefinition = {
-    handler: __dirname + "/Uninstall.handler",
+    handler: `${__dirname}/Uninstall.handler`,
     type: "command",
     name: "uninstall",
     aliases: ["rm"],

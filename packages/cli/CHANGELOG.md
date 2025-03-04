@@ -9,6 +9,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - Added `zssh restore dataset` command. [#38](https://github.com/zowe/zowe-native-proto/pull/38)
 - Added `zssh view uss-file` command. [#38](https://github.com/zowe/zowe-native-proto/pull/38)
 - Added `zssh list spool-files` command. [#38](https://github.com/zowe/zowe-native-proto/pull/38)
+- Added support for cancelling jobs. [#138](https://github.com/zowe/zowe-native-proto/pull/138)
 
 ## [Unreleased]
 
