@@ -25,6 +25,8 @@ type ReadFileResponse struct {
 	common.CommandResponse `tstype:",extends"`
 	// Returned encoding for the file
 	Encoding string `json:"encoding,omitempty"`
+	// Returned e-tag for the file
+	Etag string `json:"etag"`
 	// Remote file path
 	Path string `json:"fspath"`
 	// File contents

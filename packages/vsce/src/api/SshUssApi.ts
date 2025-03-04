@@ -12,7 +12,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import type * as zosfiles from "@zowe/zos-files-for-zowe-sdk";
 import { type MainframeInteraction, type Types, imperative } from "@zowe/zowe-explorer-api";
-import { ZSshUtils } from "zowe-native-proto-sdk";
+import { ZSshUtils, type uss } from "zowe-native-proto-sdk";
 import { SshCommonApi } from "./SshCommonApi";
 
 export class SshUssApi extends SshCommonApi implements MainframeInteraction.IUss {
@@ -45,7 +45,7 @@ export class SshUssApi extends SshCommonApi implements MainframeInteraction.IUss
             options.stream.write(ZSshUtils.decodeByteArray(response.data));
             options.stream.end();
         }
-        return this.buildZosFilesResponse({ etag: ussFilePath });
+        return this.buildZosFilesResponse({ etag: response.etag });
     }
 
     public async uploadFromBuffer(
@@ -53,12 +53,21 @@ export class SshUssApi extends SshCommonApi implements MainframeInteraction.IUss
         filePath: string,
         options?: zosfiles.IUploadOptions,
     ): Promise<zosfiles.IZosFilesResponse> {
-        const response = await (await this.client).uss.writeFile({
-            fspath: filePath,
-            encoding: options?.binary ? "binary" : options?.encoding,
-            data: ZSshUtils.encodeByteArray(buffer),
-        });
-        return this.buildZosFilesResponse({ etag: filePath });
+        let response: uss.WriteFileResponse;
+        try {
+            response = await (await this.client).uss.writeFile({
+                fspath: filePath,
+                encoding: options?.binary ? "binary" : options?.encoding,
+                data: ZSshUtils.encodeByteArray(buffer),
+                etag: options?.etag,
+            });
+        } catch (err) {
+            if (err instanceof imperative.ImperativeError && err.additionalDetails.includes("Etag mismatch")) {
+                throw new Error("Rest API failure with HTTP(S) status 412");
+            }
+            throw err;
+        }
+        return this.buildZosFilesResponse({ etag: response.etag });
     }
 
     public async putContent(
@@ -70,8 +79,9 @@ export class SshUssApi extends SshCommonApi implements MainframeInteraction.IUss
             fspath: ussFilePath,
             encoding: options?.encoding,
             data: ZSshUtils.encodeByteArray(readFileSync(inputFilePath)),
+            etag: options?.etag,
         });
-        return this.buildZosFilesResponse({ etag: ussFilePath });
+        return this.buildZosFilesResponse({ etag: response.etag });
     }
 
     public async uploadDirectory(

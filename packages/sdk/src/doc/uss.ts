@@ -143,6 +143,10 @@ export interface ReadFileResponse extends common.CommandResponse {
      */
     encoding?: string;
     /**
+     * Returned e-tag for the file
+     */
+    etag: string;
+    /**
      * Remote file path
      */
     fspath: string;
