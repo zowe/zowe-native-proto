@@ -78,8 +78,8 @@
 | _Submit job_       | ✅     | ✅  | ✅      | ✅         | ✅  | ❌  | ✅              |
 | _Delete job_       | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅              |
 | Cancel job         | ✅     | ❌  | ✅      | ✅         | ✅  | ✅  | ✅ <sup>1</sup> |
-| Hold job           | ✅     | ❌  | ✅      | ❌         | ❌  | ❌  | ❌              |
-| Release job        | ✅     | ❌  | ✅      | ❌         | ❌  | ❌  | ❌              |
+| Hold job           | ✅     | ❌  | ✅      | ✅         | ❌  | ❌  | ❌              |
+| Release job        | ✅     | ❌  | ✅      | ✅         | ❌  | ❌  | ❌              |
 | Change job class   | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ➖              |
 
 1. Does not support force, restart, dump, or purge

@@ -83,3 +83,19 @@ type CancelJobResponse struct {
 	// The ID for the job that was cancelled
 	JobId string `json:"jobId"`
 }
+
+type HoldJobResponse struct {
+	common.CommandResponse `tstype:",extends"`
+	// Whether the job was successfully held
+	Success bool `json:"success"`
+	// The ID for the job that was held
+	JobId string `json:"jobId"`
+}
+
+type ReleaseJobResponse struct {
+	common.CommandResponse `tstype:",extends"`
+	// Whether the job was successfully released
+	Success bool `json:"success"`
+	// The ID for the job that was released
+	JobId string `json:"jobId"`
+}
