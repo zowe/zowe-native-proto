@@ -286,6 +286,22 @@ char zut_get_hex_char(int num)
   return val;
 }
 
+// TODO(traeok): SLOW - optimize
+// built from pseudocode in https://en.wikipedia.org/wiki/Adler-32#Calculation
+uint32_t zut_calc_adler32_checksum(const string &input)
+{
+  uint16_t a = 1u;
+  uint16_t b = 0u;
+
+  for (auto i = 0u; i < input.length(); i++)
+  {
+    a += (uint16_t)input[i] % 65521u;
+    b += ((input.length() - i) * (uint16_t)input[i]) % 65521u;
+  }
+
+  return b * 65536u + a;
+}
+
 /**
  * Prints the input string as bytes to stdout.
  * @param input The input string to be printed.

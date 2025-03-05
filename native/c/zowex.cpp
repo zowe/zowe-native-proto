@@ -1012,6 +1012,8 @@ int handle_data_set_view_dsn(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
+  const auto etag = zut_calc_adler32_checksum(response);
+  cout << "etag: " << std::hex << etag << endl;
   cout << "data: ";
   if (hasEncoding && result.get_option("--response-format-bytes").get_value() == "true")
   {
