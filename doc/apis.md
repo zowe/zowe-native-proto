@@ -78,11 +78,12 @@
 | _Submit job_       | ✅     | ✅  | ✅      | ✅         | ✅  | ❌  | ✅              |
 | _Delete job_       | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅              |
 | Cancel job         | ✅     | ❌  | ✅      | ✅         | ✅  | ✅  | ✅ <sup>1</sup> |
-| Hold job           | ✅     | ❌  | ✅      | ✅         | ❌  | ❌  | ❌              |
-| Release job        | ✅     | ❌  | ✅      | ✅         | ❌  | ❌  | ❌              |
+| Hold job           | ✅     | ❌  | ✅      | ✅         | ✅  | ✅  | ➖ <sup>2</sup> |
+| Release job        | ✅     | ❌  | ✅      | ✅         | ✅  | ✅  | ➖ <sup>2</sup> |
 | Change job class   | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ➖              |
 
 1. Does not support force, restart, dump, or purge
+2. Zowe Explorer does not support the Job Hold/Release operation
 
 ## Console
 
