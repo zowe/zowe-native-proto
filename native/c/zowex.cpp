@@ -44,6 +44,8 @@ int handle_job_submit(ZCLIResult);
 int handle_job_submit_jcl(ZCLIResult);
 int handle_job_delete(ZCLIResult);
 int handle_job_cancel(ZCLIResult);
+int handle_job_hold(ZCLIResult);
+int handle_job_release(ZCLIResult);
 
 int handle_console_issue(ZCLIResult);
 
@@ -339,6 +341,20 @@ int main(int argc, char *argv[])
   job_cancel_restart.set_description("Request that automatic restart management automatically restart the selected jobs after they are cancelled.");
   job_cancel.get_options().push_back(job_cancel_restart);
   job_group.get_verbs().push_back(job_cancel);
+
+  ZCLIVerb job_hold("hold");
+  job_hold.get_aliases().push_back("hld");
+  job_hold.set_description("hold a job");
+  job_hold.set_zcli_verb_handler(handle_job_hold);
+  job_hold.get_positionals().push_back(job_jobid);
+  job_group.get_verbs().push_back(job_hold);
+
+  ZCLIVerb job_release("release");
+  job_release.get_aliases().push_back("rel");
+  job_release.set_description("release a job");
+  job_release.set_zcli_verb_handler(handle_job_release);
+  job_release.get_positionals().push_back(job_jobid);
+  job_group.get_verbs().push_back(job_release);
 
   //
   // console group
@@ -848,6 +864,46 @@ int handle_job_cancel(ZCLIResult result)
   }
 
   cout << "Job " << jobid << " cancelled " << endl;
+
+  return RTNCD_SUCCESS;
+}
+
+int handle_job_hold(ZCLIResult result)
+{
+  int rc = 0;
+  ZJB zjb = {0};
+  string jobid(result.get_positional("jobid")->get_value());
+
+  rc = zjb_hold_by_jobid(&zjb, jobid);
+
+  if (0 != rc)
+  {
+    cout << "Error: could not hold job: '" << jobid << "' rc: '" << rc << "'" << endl;
+    cout << "  Details: " << zjb.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
+  cout << "Job " << jobid << " held " << endl;
+
+  return RTNCD_SUCCESS;
+}
+
+int handle_job_release(ZCLIResult result)
+{
+  int rc = 0;
+  ZJB zjb = {0};
+  string jobid(result.get_positional("jobid")->get_value());
+
+  rc = zjb_release_by_jobid(&zjb, jobid);
+
+  if (0 != rc)
+  {
+    cout << "Error: could not release job: '" << jobid << "' rc: '" << rc << "'" << endl;
+    cout << "  Details: " << zjb.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
+  cout << "Job " << jobid << " released " << endl;
 
   return RTNCD_SUCCESS;
 }
