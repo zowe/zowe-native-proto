@@ -59,6 +59,8 @@ typedef struct
   int32_t max_entries;
   int32_t buffer_size;
 
+  void *PTR64 csi;
+
   ZDIAG diag;
 
 } ZDS;
