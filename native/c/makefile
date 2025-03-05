@@ -8,14 +8,11 @@
 #
 #  Copyright Contributors to the Zowe Project.
 #
-CXX=xlc++
-CC=xlc
-ASM=as
-BIND = ld
 
-# https://www.ibm.com/docs/en/zos/3.1.0?topic=bor-binder-options
-# https://www.ibm.com/docs/en/zos/3.1.0?topic=descriptions-ld-link-object-files
-BIND_FLAGS = -bRMODE=ANY
+XLC_FLAGS=_CC_ACCEPTABLE_RC=0 _C89_ACCEPTABLE_RC=0 _CXX_ACCEPTABLE_RC=0
+CXX=$(XLC_FLAGS) xlc++
+CC=$(XLC_FLAGS) xlc
+ASM=as
 
 MTL_OPTS=metal,\
  langlvl(extended),\
