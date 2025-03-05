@@ -9,8 +9,8 @@
  *
  */
 
-export * from "./common";
-export * as ds from "./ds";
-export * as uss from "./uss";
-export * as jobs from "./jobs";
-export * as cmds from "./cmds";
+export * from "./gen/common";
+export * as ds from "./gen/ds";
+export * as uss from "./gen/uss";
+export * as jobs from "./gen/jobs";
+export * as cmds from "./gen/cmds";

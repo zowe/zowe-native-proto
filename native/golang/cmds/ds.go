@@ -45,7 +45,7 @@ func HandleReadDatasetRequest(conn *utils.StdioConn, params []byte) (result any,
 		Dataset:  request.Dsname,
 		Data:     data,
 	}
-	return result, nil
+	return
 }
 
 // HandleWriteDatasetRequest handles a WriteDatasetRequest by invoking the `zowex data-set write` command
@@ -90,7 +90,7 @@ func HandleWriteDatasetRequest(conn *utils.StdioConn, params []byte) (result any
 		Success: true,
 		Dataset: request.Dsname,
 	}
-	return result, nil
+	return
 }
 
 // HandleListDatasetsRequest handles a ListDatasetsRequest by invoking the `zowex data-set list` command
@@ -186,7 +186,7 @@ func HandleRestoreDatasetRequest(conn *utils.StdioConn, params []byte) (result a
 	result = ds.RestoreDatasetResponse{
 		Success: true,
 	}
-	return result, nil
+	return
 }
 
 // HandleDeleteDatasetRequest handles a DeleteDatasetRequest by invoking the `zowex data-set delete` command
@@ -206,7 +206,7 @@ func HandleDeleteDatasetRequest(conn *utils.StdioConn, params []byte) (result an
 		Success: true,
 		Dsname:  request.Dsname,
 	}
-	return result, nil
+	return
 }
 
 // HandleCreateDatasetRequest handles a CreateDatasetRequest by invoking the `zowex data-set create` command
@@ -226,7 +226,7 @@ func HandleCreateDatasetRequest(conn *utils.StdioConn, jsonData []byte) (result 
 		Success: true,
 		Dsname:  request.Dsname,
 	}
-	return result, nil
+	return
 }
 
 // HandleCreateMemberRequest handles a CreateMemberRequest by invoking the `zowex data-set create-member` command
@@ -246,5 +246,5 @@ func HandleCreateMemberRequest(conn *utils.StdioConn, jsonData []byte) (result a
 		Success: true,
 		Dsname:  request.Dsname,
 	}
-	return result, nil
+	return
 }

@@ -18,6 +18,7 @@
     "lib"
   ],
   "dependencies": {
+    "node-ssh": "^13.2.0",
     "ssh-config": "^5.0.3",
     "ssh2": "^1.16.0"
   },
