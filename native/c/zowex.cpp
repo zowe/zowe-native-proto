@@ -1012,13 +1012,14 @@ int handle_data_set_view_dsn(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
+  cout << "data: ";
   if (hasEncoding && result.get_option("--response-format-bytes").get_value() == "true")
   {
     zut_print_string_as_bytes(response);
   }
   else
   {
-    cout << response;
+    cout << response << endl;
   }
 
   return rc;

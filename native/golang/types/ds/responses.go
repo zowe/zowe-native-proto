@@ -31,6 +31,8 @@ type ReadDatasetResponse struct {
 	common.CommandResponse `tstype:",extends"`
 	// Desired encoding for the dataset (optional)
 	Encoding string `json:"encoding,omitempty"`
+	// Returned e-tag for the data set
+	Etag string `json:"etag"`
 	// Dataset name
 	Dataset string `json:"dataset"`
 	// Dataset contents

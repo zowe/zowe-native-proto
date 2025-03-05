@@ -39,9 +39,18 @@ func HandleReadDatasetRequest(conn *utils.StdioConn, params []byte) (result any,
 		return nil, fmt.Errorf("Error executing command: %v", err)
 	}
 
-	data, e := utils.CollectContentsAsBytes(string(out), true)
+	output := utils.YamlToMap(string(out))
+
+	var data []byte
+	if len(output) > 0 {
+		data, _ = utils.CollectContentsAsBytes(output["data"], true)
+	} else {
+		data = []byte{}
+	}
+
 	result = ds.ReadDatasetResponse{
 		Encoding: request.Encoding,
+		Etag:     "",
 		Dataset:  request.Dsname,
 		Data:     data,
 	}

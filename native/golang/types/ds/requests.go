@@ -49,6 +49,8 @@ type WriteDatasetRequest struct {
 	Command               string `json:"command" tstype:"\"writeDataset\""`
 	// Desired encoding for the dataset (optional)
 	Encoding string `json:"encoding,omitempty"`
+	// Last e-tag for the data set (optional, omit to overwrite)
+	Etag string `json:"etag,omitempty"`
 	// Dataset name
 	Dsname string `json:"dsname"`
 	// Dataset contents
