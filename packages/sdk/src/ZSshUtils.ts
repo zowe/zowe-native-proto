@@ -14,7 +14,8 @@ import * as path from "node:path";
 import { promisify } from "node:util";
 import type { IProfile } from "@zowe/imperative";
 import { type ISshSession, SshSession } from "@zowe/zos-uss-for-zowe-sdk";
-import { Client, type ConnectConfig, type SFTPWrapper } from "ssh2";
+import { NodeSSH, type Config as NodeSSHConfig } from "node-ssh";
+import type { ConnectConfig, SFTPWrapper } from "ssh2";
 
 type SftpError = Error & { code?: number };
 
@@ -56,7 +57,7 @@ export class ZSshUtils {
 
     public static async installServer(session: SshSession, serverPath: string, localDir: string): Promise<void> {
         const remoteDir = serverPath.replace(/^~/, ".");
-        return ZSshUtils.sftp(session, async (sftp, client) => {
+        return ZSshUtils.sftp(session, async (sftp, ssh) => {
             await promisify(sftp.mkdir.bind(sftp))(remoteDir, { mode: 0o700 }).catch((err: SftpError) =>
                 // Ignore if directory already exists
                 err.code !== 4 ? Promise.reject(err) : Promise.resolve(),
@@ -65,14 +66,14 @@ export class ZSshUtils {
                 path.join(localDir, ZSshUtils.SERVER_PAX_FILE),
                 path.posix.join(remoteDir, ZSshUtils.SERVER_PAX_FILE),
             );
-            await promisify(client.exec.bind(client))(`cd ${serverPath} && pax -rzf ${ZSshUtils.SERVER_PAX_FILE}`);
+            await ssh.execCommand(`pax -rzf ${ZSshUtils.SERVER_PAX_FILE}`, { cwd: remoteDir });
             await promisify(sftp.unlink.bind(sftp))(path.posix.join(remoteDir, ZSshUtils.SERVER_PAX_FILE));
         });
     }
 
     public static async uninstallServer(session: SshSession, serverPath: string): Promise<void> {
         const remoteDir = serverPath.replace(/^~/, ".");
-        return ZSshUtils.sftp(session, async (sftp, _client) => {
+        return ZSshUtils.sftp(session, async (sftp, _ssh) => {
             for (const file of ZSshUtils.SERVER_BIN_FILES) {
                 await promisify(sftp.unlink.bind(sftp))(path.posix.join(remoteDir, file)).catch((err: SftpError) =>
                     // Ignore if file does not exist
@@ -88,22 +89,14 @@ export class ZSshUtils {
 
     private static async sftp<T>(
         session: SshSession,
-        callback: (sftp: SFTPWrapper, client: Client) => Promise<T>,
+        callback: (sftp: SFTPWrapper, ssh: NodeSSH) => Promise<T>,
     ): Promise<T> {
-        const client = new Client();
-        client.connect(ZSshUtils.buildSshConfig(session));
-        return new Promise((resolve, reject) => {
-            client.on("error", reject).on("ready", () => {
-                client.sftp((err, sftp) => {
-                    if (err) {
-                        reject(err);
-                    } else {
-                        callback(sftp, client)
-                            .then(resolve, reject)
-                            .finally(() => client.end());
-                    }
-                });
-            });
-        });
+        const ssh = new NodeSSH();
+        await ssh.connect(ZSshUtils.buildSshConfig(session) as NodeSSHConfig);
+        try {
+            return await ssh.requestSFTP().then((sftp) => callback(sftp, ssh));
+        } finally {
+            ssh.dispose();
+        }
     }
 }
