@@ -114,7 +114,10 @@ func CreateWorkerPool(numWorkers int, requestQueue chan []byte, dispatcher *cmds
 			Stdout: workerStdout,
 			Stderr: workerStderr,
 		}
-		workerCmd.Start()
+		err = workerCmd.Start()
+		if err != nil {
+			panic(err)
+		}
 
 		// Wait for the instance of `zowex` to be ready
 		if _, err = bufio.NewReader(workerStdout).ReadBytes('\n'); err != nil {

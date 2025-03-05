@@ -17,6 +17,10 @@ import { AbstractRpcClient } from "./AbstractRpcClient";
 import { ZSshUtils } from "./ZSshUtils";
 import type { CommandRequest, CommandResponse, RpcRequest, RpcResponse } from "./doc";
 
+type PromiseResolve<T> = (value: T | PromiseLike<T>) => void;
+// biome-ignore lint/suspicious/noExplicitAny: Promise reject type uses any
+type PromiseReject = (reason?: any) => void;
+
 export class ZSshClient extends AbstractRpcClient implements Disposable {
     public static readonly DEFAULT_SERVER_PATH = "~/.zowe-server";
 
@@ -24,7 +28,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
     private mSshStream: ClientChannel;
     private mPartialStderr = "";
     private mPartialStdout = "";
-    private mPromiseMap: Map<number, { resolve: typeof Promise.resolve; reject: typeof Promise.reject }> = new Map();
+    private mPromiseMap: Map<number, { resolve: PromiseResolve<CommandResponse>; reject: PromiseReject }> = new Map();
     private mRequestId = 0;
 
     private constructor() {
@@ -79,7 +83,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                 params: rest,
                 id: ++this.mRequestId,
             };
-            this.mPromiseMap.set(rpcRequest.id, { resolve, reject } as any);
+            this.mPromiseMap.set(rpcRequest.id, { resolve, reject });
             const requestStr = JSON.stringify(rpcRequest);
             Logger.getAppLogger().trace("Sending request: %s", requestStr);
             this.mSshStream.stdin.write(`${requestStr}\n`);

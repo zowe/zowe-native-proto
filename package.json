@@ -9,6 +9,7 @@
     "clean": "npm run clean --workspaces",
     "license": "node scripts/updateLicenses.js",
     "lint": "npm run lint --workspaces",
+    "lint:go": "cd native/golang && golangci-lint run",
     "package": "npm run package --workspaces --if-present",
     "prepare": "husky",
     "test": "echo \"Error: no test specified\" && exit 1",
