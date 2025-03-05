@@ -5,6 +5,7 @@ dist
 dumps
 lib
 listings
+logs
 node_modules
 out
 typedoc

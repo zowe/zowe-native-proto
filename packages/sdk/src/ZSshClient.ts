@@ -41,22 +41,27 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
         client.mSshClient = new Client();
         client.mSshClient.connect(ZSshUtils.buildSshConfig(session));
         client.mSshStream = await new Promise((resolve, reject) => {
-            client.mSshClient.on("error", reject).on("ready", () => {
-                client.mSshClient.exec(
-                    posix.join(serverPath ?? ZSshClient.DEFAULT_SERVER_PATH, "ioserver"),
-                    (err, stream) => {
-                        if (err) {
-                            Logger.getAppLogger().error("Client connection error: %s", err.toString());
-                            reject(err);
-                        } else {
-                            stream.stderr.on("data", client.onErrData.bind(client));
-                            stream.stdout.on("data", client.onOutData.bind(client));
-                            Logger.getAppLogger().debug("Client is ready");
-                            resolve(stream);
-                        }
-                    },
-                );
-            });
+            client.mSshClient
+                .on("error", (err) => {
+                    Logger.getAppLogger().error("Error connecting to SSH: %s", err.toString());
+                    reject(err);
+                })
+                .on("ready", () => {
+                    client.mSshClient.exec(
+                        posix.join(serverPath ?? ZSshClient.DEFAULT_SERVER_PATH, "ioserver"),
+                        (err, stream) => {
+                            if (err) {
+                                Logger.getAppLogger().error("Error running SSH command: %s", err.toString());
+                                reject(err);
+                            } else {
+                                stream.stderr.on("data", client.onErrData.bind(client));
+                                stream.stdout.on("data", client.onOutData.bind(client));
+                                Logger.getAppLogger().debug("Client is ready");
+                                resolve(stream);
+                            }
+                        },
+                    );
+                });
             client.mSshClient.on("close", () => {
                 Logger.getAppLogger().debug("Client disconnected");
                 onClose?.();
@@ -66,7 +71,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
     }
 
     public dispose(): void {
-        Logger.getAppLogger().debug("Ending SSH client");
+        Logger.getAppLogger().debug("Stopping SSH client");
         this.mSshClient?.end();
     }
 
@@ -121,7 +126,9 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
             throw new Error(errMsg);
         }
         if (!this.mPromiseMap.has(response.id)) {
-            throw new Error(`Missing promise for response ID: ${response.id}`);
+            const errMsg = `Missing promise for response ID: ${response.id}`;
+            Logger.getAppLogger().error(errMsg);
+            throw new Error(errMsg);
         }
         if (response.error != null) {
             this.mPromiseMap.get(response.id).reject(

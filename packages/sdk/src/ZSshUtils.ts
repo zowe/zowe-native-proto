@@ -67,7 +67,14 @@ export class ZSshUtils {
                 path.join(localDir, ZSshUtils.SERVER_PAX_FILE),
                 path.posix.join(remoteDir, ZSshUtils.SERVER_PAX_FILE),
             );
-            await ssh.execCommand(`pax -rzf ${ZSshUtils.SERVER_PAX_FILE}`, { cwd: remoteDir });
+            const result = await ssh.execCommand(`pax -rzf ${ZSshUtils.SERVER_PAX_FILE}`, { cwd: remoteDir });
+            if (result.code === 0) {
+                Logger.getAppLogger().debug(`Extracted server binaries with response: ${result.stdout}`);
+            } else {
+                const errMsg = `Failed to extract server binaries: ${result.stderr}`;
+                Logger.getAppLogger().error(errMsg);
+                throw new Error(errMsg);
+            }
             await promisify(sftp.unlink.bind(sftp))(path.posix.join(remoteDir, ZSshUtils.SERVER_PAX_FILE));
         });
     }
