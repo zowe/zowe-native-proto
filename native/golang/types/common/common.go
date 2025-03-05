@@ -50,6 +50,8 @@ type Dataset struct {
 	Dsorg string `json:"dsorg"`
 	// Volume serial number
 	Volser string `json:"volser"`
+	// Dataset migrated
+	Migr bool `json:"migr"`
 }
 
 type DsMember struct {

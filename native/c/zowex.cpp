@@ -183,6 +183,11 @@ int main(int argc, char *argv[])
 
   data_set_list.set_description("list data sets");
   data_set_list.get_aliases().push_back("ls");
+  ZCLIOption data_set_attributes("attributes");
+  data_set_attributes.set_description("display data set attributes");
+  data_set_attributes.get_aliases().push_back("-a");
+  data_set_attributes.set_default("false");
+  data_set_list.get_options().push_back(data_set_attributes);
   data_set_list.set_zcli_verb_handler(handle_data_set_list);
   data_set_list.get_positionals().push_back(data_set_dsn);
   data_set_list.get_options().push_back(response_format_csv);
@@ -1071,6 +1076,7 @@ int handle_data_set_list(ZCLIResult result)
   string dsn = result.get_positional("dsn")->get_value();
   string max_entries = result.get_option("--max-entries")->get_value();
   string warn = result.get_option("--warn")->get_value();
+  string attributes = result.get_option("--attributes")->get_value();
 
   ZDS zds = {0};
   if (max_entries.size() > 0)
@@ -1091,12 +1097,20 @@ int handle_data_set_list(ZCLIResult result)
         fields.push_back(it->name);
         fields.push_back(it->dsorg);
         fields.push_back(it->volser);
+        fields.push_back(it->migr ? "true" : "false");
         std::cout << zut_format_as_csv(fields) << std::endl;
         fields.clear();
       }
       else
       {
-        std::cout << left << setw(44) << it->name << " " << it->volser << " " << it->dsorg << endl;
+        if (attributes == "true")
+        {
+          std::cout << left << setw(44) << it->name << " " << it->volser << " " << setw(4) << it->dsorg << endl;
+        }
+        else
+        {
+          std::cout << left << setw(44) << it->name << endl;
+        }
       }
     }
   }

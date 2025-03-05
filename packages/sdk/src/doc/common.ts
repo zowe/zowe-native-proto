@@ -56,6 +56,10 @@ export interface Dataset {
      * Volume serial number
      */
     volser: string;
+    /**
+     * Dataset migrated
+     */
+    migr: boolean;
 }
 export interface DsMember {
     /**
