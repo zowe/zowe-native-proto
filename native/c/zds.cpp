@@ -87,7 +87,8 @@ int zds_read_from_dsn(ZDS *zds, string dsn, string &response)
     return RTNCD_FAILURE;
   }
 
-  size_t bytes_read, total_size;
+  size_t bytes_read = 0;
+  size_t total_size = 0;
   char buffer[4096] = {0};
   while ((bytes_read = fread(buffer, 1, sizeof(buffer), fp)) > 0)
   {
@@ -624,20 +625,21 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
           entry.volser = value;
         }
       }
+
 #define MIGRAT_VOLUME "MIGRAT"
 #define ARCIVE_VOLUME "ARCIVE"
 
       if (entry.volser == MIGRAT_VOLUME || entry.volser == ARCIVE_VOLUME)
       {
-        entry.migr = MIGRATE_YES;
+        entry.migr = true;
       }
       else
       {
-        entry.migr = MIGRATE_NO;
+        entry.migr = false;
       }
 
       // attempt to obtain fldata in all cases and set default data
-      if (MIGRATE_NO == entry.migr)
+      if (!entry.migr)
       {
         string dsn = "//'" + entry.name + "'";
         FILE *dir = fopen(dsn.c_str(), "r");

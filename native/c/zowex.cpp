@@ -826,12 +826,12 @@ int handle_job_cancel(ZCLIResult result)
 {
   int rc = 0;
   ZJB zjb = {0};
-  string jobid(result.get_positional("jobid").get_value());
+  string jobid(result.get_positional("jobid")->get_value());
 
-  string option_dump(result.get_option("--dump").get_value());
-  string option_force(result.get_option("--force").get_value());
-  string option_purge(result.get_option("--purge").get_value());
-  string option_restart(result.get_option("--restart").get_value());
+  // string option_dump(result.get_option("--dump").get_value());
+  // string option_force(result.get_option("--force").get_value());
+  // string option_purge(result.get_option("--purge").get_value());
+  // string option_restart(result.get_option("--restart").get_value());
 
   rc = zjb_cancel_by_jobid(&zjb, jobid);
 
@@ -1044,7 +1044,6 @@ int handle_data_set_view_dsn(ZCLIResult result)
   ZDS zds = {0};
   string response;
 
-  ZCLIOption *opt = result.get_option("--encoding");
   const auto hasEncoding = result.get_option("--encoding") && zut_prepare_encoding(result.get_option("--encoding")->get_value(), &zds.encoding_opts);
   rc = zds_read_from_dsn(&zds, dsn, response);
   if (0 != rc)
