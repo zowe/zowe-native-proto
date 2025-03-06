@@ -87,7 +87,8 @@ int zds_read_from_dsn(ZDS *zds, string dsn, string &response)
     return RTNCD_FAILURE;
   }
 
-  size_t bytes_read, total_size;
+  size_t bytes_read = 0;
+  size_t total_size = 0;
   char buffer[4096] = {0};
   while ((bytes_read = fread(buffer, 1, sizeof(buffer), fp)) > 0)
   {
@@ -420,6 +421,8 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
 {
   int rc = 0;
 
+  zds->csi = NULL;
+
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=directory-catalog-field-names
   string fields[][FIELD_LEN] = {
       {"VOLSER"},
@@ -486,6 +489,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
     if (0 != rc)
     {
       free(area);
+      ZDSDEL(zds);
       strcpy(zds->diag.service_name, "ZDSCSI00");
       zds->diag.service_rc = rc;
       zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
@@ -498,6 +502,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
     if (number_fields != number_of_fields)
     {
       free(area);
+      ZDSDEL(zds);
       zds->diag.detail_rc = ZDS_RTNCD_UNEXPECTED_ERROR;
       zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Unexpected work area field response preset len %d and return len %d are not equal", number_fields, number_of_fields);
       return RTNCD_FAILURE;
@@ -506,6 +511,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
     if (CATALOG_TYPE != csi_work_area->catalog.type)
     {
       free(area);
+      ZDSDEL(zds);
       zds->diag.detail_rc = ZDS_RTNCD_PARSING_ERROR;
       zds->diag.service_rc = ZDS_RTNCD_CATALOG_ERROR;
       zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Unexpected type '%x' ", csi_work_area->catalog.type);
@@ -515,6 +521,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
     if (ERROR_CONDITION == csi_work_area->catalog.flag)
     {
       free(area);
+      ZDSDEL(zds);
       zds->diag.detail_rc = ZDS_RTNCD_PARSING_ERROR;
       zds->diag.service_rc = ZDS_RTNCD_CATALOG_ERROR;
       zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Unexpected catalog flag '%x' ", csi_work_area->catalog.flag);
@@ -524,6 +531,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
     if (DATA_NOT_COMPLETE & csi_work_area->catalog.flag)
     {
       free(area);
+      ZDSDEL(zds);
       zds->diag.detail_rc = ZDS_RTNCD_PARSING_ERROR;
       zds->diag.service_rc = ZDS_RTNCD_CATALOG_ERROR;
       zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Unexpected catalog flag '%x' ", csi_work_area->catalog.flag);
@@ -533,6 +541,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
     if (NO_ENTRY & csi_work_area->catalog.flag)
     {
       free(area);
+      ZDSDEL(zds);
       zds->diag.detail_rc = ZDS_RSNCD_NOT_FOUND;
       zds->diag.service_rc = ZDS_RTNCD_CATALOG_ERROR;
       zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Not found in catalog, flag '%x' ", csi_work_area->catalog.flag);
@@ -556,6 +565,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
       if (ERROR == f->flag)
       {
         free(area);
+        ZDSDEL(zds);
         zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
         zds->diag.service_rc = ZDS_RTNCD_ENTRY_ERROR;
         zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Unexpected entry flag '%x' ", f->flag);
@@ -565,6 +575,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
       if (NOT_FOUND == f->type)
       {
         free(area);
+        ZDSDEL(zds);
         zds->diag.detail_rc = ZDS_RTNCD_NOT_FOUND;
         zds->diag.service_rc = ZDS_RTNCD_ENTRY_ERROR;
         zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "No entry found '%x' ", f->type);
@@ -582,6 +593,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
           ALIAS != f->type)
       {
         free(area);
+        ZDSDEL(zds);
         zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
         zds->diag.service_rc = ZDS_RTNCD_UNSUPPORTED_ERROR;
         zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Unsupported entry type '%x' ", f->type);
@@ -614,7 +626,20 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
         }
       }
 
+#define MIGRAT_VOLUME "MIGRAT"
+#define ARCIVE_VOLUME "ARCIVE"
+
+      if (entry.volser == MIGRAT_VOLUME || entry.volser == ARCIVE_VOLUME)
+      {
+        entry.migr = true;
+      }
+      else
+      {
+        entry.migr = false;
+      }
+
       // attempt to obtain fldata in all cases and set default data
+      if (!entry.migr)
       {
         string dsn = "//'" + entry.name + "'";
         FILE *dir = fopen(dsn.c_str(), "r");
@@ -690,6 +715,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
         break;
       case ALTERNATE_INDEX:
         free(area);
+        ZDSDEL(zds);
         zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
         zds->diag.service_rc = ZDS_RTNCD_UNSUPPORTED_ERROR;
         zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Unsupported entry type '%x' ", f->type);
@@ -703,6 +729,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
         break;
       case ATL_LIBRARY_ENTRY:
         free(area);
+        ZDSDEL(zds);
         zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
         zds->diag.service_rc = ZDS_RTNCD_UNSUPPORTED_ERROR;
         zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Unsupported entry type '%x' ", f->type);
@@ -710,6 +737,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
         break;
       case PATH:
         free(area);
+        ZDSDEL(zds);
         zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
         zds->diag.service_rc = ZDS_RTNCD_UNSUPPORTED_ERROR;
         zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Unsupported entry type '%x' ", f->type);
@@ -717,6 +745,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
         break;
       case USER_CATALOG_CONNECTOR_ENTRY:
         free(area);
+        ZDSDEL(zds);
         zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
         zds->diag.service_rc = ZDS_RTNCD_UNSUPPORTED_ERROR;
         zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Unsupported entry type '%x' ", f->type);
@@ -724,6 +753,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
         break;
       case ATL_VOLUME_ENTRY:
         free(area);
+        ZDSDEL(zds);
         zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
         zds->diag.service_rc = ZDS_RTNCD_UNSUPPORTED_ERROR;
         zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Unsupported entry type '%x' ", f->type);
@@ -735,6 +765,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
         break;
       default:
         free(area);
+        ZDSDEL(zds);
         zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
         zds->diag.service_rc = ZDS_RTNCD_UNSUPPORTED_ERROR;
         zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Unsupported entry type '%x' ", f->type);
@@ -758,6 +789,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
   } while ('Y' == selection_criteria->csiresum);
 
   free(area);
+  ZDSDEL(zds);
 
   return rc;
 }

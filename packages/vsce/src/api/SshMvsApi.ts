@@ -21,7 +21,12 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
             pattern: filter,
         });
         return this.buildZosFilesResponse({
-            items: response.items.map((item) => ({ dsname: item.name, dsorg: item.dsorg, vol: item.volser })),
+            items: response.items.map((item) => ({
+                dsname: item.name,
+                dsorg: item.dsorg,
+                vol: item.volser,
+                migr: item.migr ? "YES" : "NO",
+            })),
             returnedRows: response.returnedRows,
         });
     }

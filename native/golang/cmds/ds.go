@@ -118,10 +118,15 @@ func HandleListDatasetsRequest(conn *utils.StdioConn, params []byte) (result any
 
 	for i, ds := range datasets {
 		vals := strings.Split(ds, ",")
+		migr := false
+		if vals[3] == "true" {
+			migr = true
+		}
 		dsResponse.Items[i] = t.Dataset{
 			Name:   strings.TrimSpace(vals[0]),
 			Dsorg:  vals[1],
 			Volser: vals[2],
+			Migr:   migr,
 		}
 	}
 

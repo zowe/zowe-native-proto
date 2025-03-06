@@ -113,14 +113,12 @@ public:
 
 class ZCLIOptionProvider
 {
-  static ZCLIOption option_not_found;
-
 protected:
   vector<ZCLIOption> options;
 
 public:
   vector<ZCLIOption> &get_options() { return options; }
-  ZCLIOption &get_option(string);
+  ZCLIOption *get_option(string);
 };
 
 class ZCLIPositional : public ZCLIName,
@@ -145,14 +143,13 @@ public:
 
 class ZCLIPositionalProvider
 {
-  static ZCLIPositional positional_not_found;
 
 protected:
   vector<ZCLIPositional> positionals;
 
 public:
   vector<ZCLIPositional> &get_positionals() { return positionals; }
-  ZCLIPositional &get_positional(string);
+  ZCLIPositional *get_positional(string);
 };
 
 class ZCLIResult : public ZCLIOptionProvider, public ZCLIPositionalProvider
@@ -189,15 +186,13 @@ public:
 
 class ZCLIGroup : public ZCLIName, public ZCLIDescription, public ZCLIOptionProvider
 {
-  static ZCLIVerb verb_not_found;
-
 private:
   vector<ZCLIVerb> verbs;
   vector<string> aliases;
 
 public:
   ZCLIGroup(string n) : ZCLIName(n) {};
-  ZCLIVerb &get_verb(string);
+  ZCLIVerb *get_verb(string);
   vector<ZCLIVerb> &get_verbs() { return verbs; }
   vector<string> &get_aliases() { return aliases; }
   void help(string);
@@ -214,8 +209,6 @@ public:
 
 class ZCLI : public ZCLIName, public ZCLIOptionProvider
 {
-  static ZCLIGroup group_not_found;
-
 private:
   bool validate();
   void init();
@@ -229,7 +222,7 @@ public:
   ZCLI(string n) : ZCLIName(n) { interactive_mode = false; }
   int parse(int, char *[]);
   vector<ZCLIGroup> &get_groups() { return groups; };
-  ZCLIGroup &get_group(string);
+  ZCLIGroup *get_group(string);
   ZCLIVerb &get_verb(int, char *[]);
   void help();
   void set_interactive_mode(bool v) { interactive_mode = v; }
@@ -453,55 +446,55 @@ void ZCLI::help()
   }
 }
 
-ZCLIGroup &ZCLI::get_group(string group_name)
+ZCLIGroup *ZCLI::get_group(string group_name)
 {
   for (vector<ZCLIGroup>::iterator it = groups.begin(); it != groups.end(); it++)
   {
     if (group_name == it->get_name())
-      return *it;
+      return &*it;
     for (vector<string>::iterator iit = it->get_aliases().begin(); iit != it->get_aliases().end(); iit++)
     {
       if (group_name == *iit)
-        return *it;
+        return &*it;
     }
   }
-  return ZCLI::group_not_found;
+  return nullptr;
 }
 
-ZCLIVerb &ZCLIGroup::get_verb(string verb_name)
+ZCLIVerb *ZCLIGroup::get_verb(string verb_name)
 {
   for (vector<ZCLIVerb>::iterator it = verbs.begin(); it != verbs.end(); it++)
   {
     if (verb_name == it->get_name())
-      return *it;
+      return &*it;
     for (vector<string>::iterator iit = it->get_aliases().begin(); iit != it->get_aliases().end(); iit++)
     {
       if (verb_name == *iit)
-        return *it;
+        return &*it;
     }
   }
-  return ZCLIGroup::verb_not_found;
+  return nullptr;
 }
 
-ZCLIOption &ZCLIOptionProvider::get_option(string option_name)
+ZCLIOption *ZCLIOptionProvider::get_option(string option_name)
 {
   for (vector<ZCLIOption>::iterator it = options.begin(); it != options.end(); it++)
   {
     vector<string> &aliases = it->get_aliases();
     if (option_name == it->get_flag_name() || std::find(aliases.begin(), aliases.end(), option_name) != it->get_aliases().end())
-      return *it;
+      return &*it;
   }
-  return ZCLIOptionProvider::option_not_found;
+  return nullptr;
 }
 
-ZCLIPositional &ZCLIPositionalProvider::get_positional(string positional_name)
+ZCLIPositional *ZCLIPositionalProvider::get_positional(string positional_name)
 {
   for (vector<ZCLIPositional>::iterator it = positionals.begin(); it != positionals.end(); it++)
   {
     if (positional_name == it->get_name())
-      return *it;
+      return &*it;
   }
-  return ZCLIPositionalProvider::positional_not_found;
+  return nullptr;
 }
 
 bool ZCLI::should_quit(string arg)
@@ -526,10 +519,10 @@ int ZCLI::run(int argc, char *argv[])
   }
 
   // attempt to get a group
-  ZCLIGroup &group = get_group(argv[CLI_GROUP_ARG]);
+  ZCLIGroup *group = get_group(argv[CLI_GROUP_ARG]);
 
   // show main help if unknown group
-  if (0 == group.get_verbs().size())
+  if (nullptr == group)
   {
     // delete command_group;
     cerr << "Unknown command group: " << argv[CLI_GROUP_ARG] << endl;
@@ -540,19 +533,19 @@ int ZCLI::run(int argc, char *argv[])
   // show group level help if group only
   if (argc <= CLI_VERB_ARG || string(argv[CLI_VERB_ARG]) == "--help" || string(argv[CLI_VERB_ARG]) == "-h")
   {
-    group.help(name);
+    group->help(name);
     return 0;
   }
 
   // attempt to get a verb
-  ZCLIVerb &verb = group.get_verb(argv[CLI_VERB_ARG]);
+  ZCLIVerb *verb = group->get_verb(argv[CLI_VERB_ARG]);
 
   // show group level help if unknown verb
-  if (verb.get_zcli_verb_handler() == nullptr)
+  if (verb == nullptr)
   {
     // delete command_group;
     cerr << "Unknown command verb: " << argv[CLI_VERB_ARG] << endl;
-    group.help(name);
+    group->help(name);
     return 0;
   }
 
@@ -561,7 +554,7 @@ int ZCLI::run(int argc, char *argv[])
   {
     if (string(argv[i]) == "--help" || string(argv[i]) == "-h")
     {
-      verb.help(name, group.get_name());
+      verb->help(name, group->get_name());
       return 0;
     }
   }
@@ -572,24 +565,25 @@ int ZCLI::run(int argc, char *argv[])
 
   for (int i = CLI_REMAIN_ARG_START; i < argc; i++)
   {
-    ZCLIOption &option = verb.get_option(argv[i]);
+    ZCLIOption *option = verb->get_option(argv[i]);
 
     // if not an option, check for positional
-    if (string::npos != option.get_name().find(" "))
+    if (nullptr == option)
     {
-      if (positional_index < verb.get_positionals().size())
+
+      if (positional_index < verb->get_positionals().size())
       {
         // found positional
-        verb.get_positionals()[positional_index].set_found(true);
-        verb.get_positionals()[positional_index].set_value(argv[i]);
-        results.get_positionals().push_back(verb.get_positionals()[positional_index]);
+        verb->get_positionals()[positional_index].set_found(true);
+        verb->get_positionals()[positional_index].set_value(argv[i]);
+        results.get_positionals().push_back(verb->get_positionals()[positional_index]);
         positional_index++;
         continue;
       }
       else
       {
-        cerr << "Unexpected positional present '" << argv[i] << "' on '" << group.get_name() << " " << verb.get_name() << "'" << endl;
-        verb.help(name, group.get_name());
+        cerr << "Unexpected positional present '" << argv[i] << "' on '" << group->get_name() << " " << verb->get_name() << "'" << endl;
+        verb->help(name, group->get_name());
         return 1;
       }
     }
@@ -597,23 +591,23 @@ int ZCLI::run(int argc, char *argv[])
     if (i + 1 > argc - 1) // index vs count
     {
       cerr << "Missing required value for: " << argv[i] << endl;
-      verb.help(name, group.get_name());
+      verb->help(name, group->get_name());
       return -1;
     }
 
-    option.set_found(true);
-    option.set_value(argv[i + 1]);
-    results.get_options().push_back(option);
+    option->set_found(true);
+    option->set_value(argv[i + 1]);
+    results.get_options().push_back(*option);
 
     i++; // advance to next parm
   }
 
-  for (vector<ZCLIOption>::iterator it = verb.get_options().begin(); it != verb.get_options().end(); it++)
+  for (vector<ZCLIOption>::iterator it = verb->get_options().begin(); it != verb->get_options().end(); it++)
   {
     if (it->get_required() && !it->is_found())
     {
-      cerr << "Required option missing: '" << it->get_flag_name() << "' on '" << group.get_name() << " " << verb.get_name() << "'" << endl;
-      verb.help(name, group.get_name());
+      cerr << "Required option missing: '" << it->get_flag_name() << "' on '" << group->get_name() << " " << verb->get_name() << "'" << endl;
+      verb->help(name, group->get_name());
       return -1;
     }
 
@@ -624,18 +618,18 @@ int ZCLI::run(int argc, char *argv[])
     }
   }
 
-  for (vector<ZCLIPositional>::iterator it = verb.get_positionals().begin(); it != verb.get_positionals().end(); it++)
+  for (vector<ZCLIPositional>::iterator it = verb->get_positionals().begin(); it != verb->get_positionals().end(); it++)
   {
     if (it->get_required() && !it->is_found())
     {
-      cerr << "Required positional missing: '" << it->get_name() << "' on '" << group.get_name() << " " << verb.get_name() << "'" << endl;
-      verb.help(name, group.get_name());
+      cerr << "Required positional missing: '" << it->get_name() << "' on '" << group->get_name() << " " << verb->get_name() << "'" << endl;
+      verb->help(name, group->get_name());
       return -1;
     }
   }
 
   // set values
-  return verb.get_zcli_verb_handler()(results);
+  return verb->get_zcli_verb_handler()(results);
 }
 
 void ZCLI::parse_input(string input, vector<string> &values)
