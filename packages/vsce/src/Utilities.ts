@@ -24,8 +24,8 @@ export function initLogger(context: vscode.ExtensionContext): void {
 
     for (const appenderName of Object.keys(loggerConfig.log4jsConfig.appenders)) {
         loggerConfig.log4jsConfig.appenders[appenderName].filename = path.join(
-            context.extensionPath,
-            loggerConfig.log4jsConfig.appenders[appenderName].filename,
+            context.logUri.fsPath,
+            path.basename(loggerConfig.log4jsConfig.appenders[appenderName].filename),
         );
         if (logLevel != null) {
             loggerConfig.log4jsConfig.categories[appenderName].level = logLevel;
@@ -71,6 +71,13 @@ export function registerCommands(context: vscode.ExtensionContext): vscode.Dispo
             );
             const statusMsg = Gui.setStatusBarMessage("Restarted Zowe SSH server");
             setTimeout(() => statusMsg.dispose(), 5000);
+        }),
+        vscode.commands.registerCommand("zowe-native-proto-vsce.showLog", () => {
+            imperative.Logger.getAppLogger().trace("Running showLog command");
+            vscode.commands.executeCommand(
+                "vscode.open",
+                vscode.Uri.file(path.join(context.logUri.fsPath, "zowe-native-proto.log")),
+            );
         }),
         vscode.commands.registerCommand("zowe-native-proto-vsce.uninstall", async (profName?: string) => {
             imperative.Logger.getAppLogger().trace("Running uninstall command for profile %s", profName);
