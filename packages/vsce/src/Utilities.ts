@@ -32,7 +32,6 @@ export function initLogger(context: vscode.ExtensionContext): void {
         }
     }
 
-    console.log(loggerConfig);
     imperative.Logger.initLogger(loggerConfig);
     imperative.Logger.getAppLogger().debug("Initialized logger for VSCode extension");
 }

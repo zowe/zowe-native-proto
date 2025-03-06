@@ -97,7 +97,8 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
 
     private onErrData(chunk: Buffer) {
         if (this.mRequestId === 0) {
-            console.error("STDERR:", chunk.toString());
+            const errMsg = Logger.getAppLogger().error("Message received on stderr: %s", chunk.toString());
+            console.error(errMsg);
             return;
         }
         this.mPartialStderr = this.processResponses(this.mPartialStderr + chunk.toString());
