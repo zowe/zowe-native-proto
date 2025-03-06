@@ -41,6 +41,7 @@
         "zowe-native-proto-vsce.logLevel": {
           "type": "string",
           "default": "INFO",
+          "description": "Sets logging level of the extension. Requires extension restart to take effect.",
           "enum": [
             "TRACE",
             "DEBUG",
@@ -48,8 +49,7 @@
             "WARN",
             "ERROR",
             "FATAL"
-          ],
-          "description": "Sets log level of the extension. Requires restart to take effect."
+          ]
         },
         "zowe-native-proto-vsce.serverInstallPath": {
           "type": "object",
