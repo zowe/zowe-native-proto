@@ -19,6 +19,8 @@ type WriteDatasetResponse struct {
 	Success bool `json:"success"`
 	// Dataset name
 	Dataset string `json:"dataset"`
+	// Returned e-tag for the data set
+	Etag string `json:"etag"`
 }
 
 type RestoreDatasetResponse struct {

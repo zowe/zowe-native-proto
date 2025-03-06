@@ -115,6 +115,10 @@ int main(int argc, char *argv[])
   encoding_option.get_aliases().push_back("--ec");
   encoding_option.set_description("return contents in given encoding");
 
+  ZCLIOption etag_only("etag-only");
+  etag_only.set_required(false);
+  etag_only.set_description("Only print the e-tag for a write response (when successful)");
+
   //
   // data set group
   //
@@ -201,6 +205,7 @@ int main(int argc, char *argv[])
   data_set_write.set_zcli_verb_handler(handle_data_set_write_to_dsn);
   data_set_write.get_positionals().push_back(data_set_dsn);
   data_set_write.get_options().push_back(encoding_option);
+  data_set_write.get_options().push_back(etag_only);
   data_set_group.get_verbs().push_back(data_set_write);
 
   ZCLIVerb data_set_delete("delete");
@@ -334,10 +339,6 @@ int main(int argc, char *argv[])
   ZCLIOption etag("etag");
   etag.set_required(false);
   etag.set_description("Provide the e-tag for a write response to detect conflicts before save");
-
-  ZCLIOption etag_only("etag-only");
-  etag_only.set_required(false);
-  etag_only.set_description("Only print the e-tag for a write response (when successful)");
 
   //
   // uss group
@@ -1147,7 +1148,11 @@ int handle_data_set_write_to_dsn(ZCLIResult result)
     std::istreambuf_iterator<char> begin(std::cin);
     std::istreambuf_iterator<char> end;
 
-    std::vector<char> bytes(begin, end);
+    vector<char> input(begin, end);
+    const auto temp = string(input.begin(), input.end());
+    input.clear();
+    const auto bytes = zut_get_contents_as_bytes(temp);
+
     data.assign(bytes.begin(), bytes.end());
     byteSize = bytes.size();
   }
@@ -1169,7 +1174,11 @@ int handle_data_set_write_to_dsn(ZCLIResult result)
     cerr << "  Details: " << zds.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
-  cout << "Wrote data to '" << dsn << "'" << endl;
+
+  if (!result.get_option("--etag-only").is_found())
+  {
+    cout << "Wrote data to '" << dsn << "'" << endl;
+  }
 
   return rc;
 }
@@ -1322,8 +1331,8 @@ int handle_uss_write(ZCLIResult result)
     zut_prepare_encoding(result.get_option("--encoding").get_value(), &zusf.encoding_opts);
   }
 
-  string data;
-  string line;
+  string data = "";
+  string line = "";
   size_t byteSize = 0ul;
 
   // Use Ctrl/Cmd + D to stop writing data manually

@@ -117,6 +117,10 @@ export interface WriteDatasetResponse extends common.CommandResponse {
      * Dataset name
      */
     dataset: string;
+    /**
+     * Returned e-tag for the data set
+     */
+    etag: string;
 }
 export interface RestoreDatasetResponse extends common.CommandResponse {
     /**

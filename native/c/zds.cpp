@@ -87,7 +87,8 @@ int zds_read_from_dsn(ZDS *zds, string dsn, string &response)
     return RTNCD_FAILURE;
   }
 
-  size_t bytes_read, total_size;
+  size_t bytes_read = 0;
+  size_t total_size = 0;
   char buffer[4096] = {0};
   while ((bytes_read = fread(buffer, 1, sizeof(buffer), fp)) > 0)
   {
@@ -138,36 +139,40 @@ int zds_write_to_dd(ZDS *zds, string ddname, string &data)
 
 int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data)
 {
-  const auto hasEncoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
   dsn = "//'" + dsn + "'";
-  ofstream out(dsn.c_str(), zds->encoding_opts.data_type == eDataTypeBinary ? ios::binary : ios::out);
 
-  if (!out.good())
-  {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open '%s'", dsn.c_str());
-    return RTNCD_FAILURE;
-  }
+  const auto hasEncoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
+  const auto codepage = string(zds->encoding_opts.codepage);
 
-  if (hasEncoding)
+  if (!data.empty() && hasEncoding)
   {
+    auto *fp = fopen(dsn.c_str(), zds->encoding_opts.data_type == eDataTypeBinary ? "wb,recfm=U" : "w");
+    if (fp == nullptr)
+    {
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open '%s'", dsn.c_str());
+      return RTNCD_FAILURE;
+    }
+
     std::string temp = data;
     try
     {
-      const auto bytes_with_encoding = zut_encode(temp, "UTF-8", string(zds->encoding_opts.codepage), zds->diag);
+      const auto bytes_with_encoding = zut_encode(temp, "UTF-8", codepage, zds->diag);
       temp = bytes_with_encoding;
     }
     catch (std::exception &e)
     {
-      // TODO: error handling
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from UTF-8 to %s", codepage);
+      return RTNCD_FAILURE;
     }
     if (!temp.empty())
     {
-      data = temp;
+      const auto bytes_written = fwrite(temp.c_str(), 1u, temp.length(), fp);
     }
+    fclose(fp);
   }
 
-  out << data;
-  out.close();
+  // Print new e-tag to stdout as response
+  cout << std::hex << zut_calc_adler32_checksum(data) << std::dec << endl;
 
   return 0;
 }

@@ -51,7 +51,7 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
             options.stream.write(ZSshUtils.decodeByteArray(response.data));
             options.stream.end();
         }
-        return this.buildZosFilesResponse({ etag: dataSetName });
+        return this.buildZosFilesResponse({ etag: response.etag });
     }
 
     public async uploadFromBuffer(
@@ -64,7 +64,7 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
             encoding: options?.binary ? "binary" : options?.encoding,
             data: ZSshUtils.encodeByteArray(buffer),
         });
-        return this.buildZosFilesResponse({ etag: dataSetName });
+        return this.buildZosFilesResponse({ etag: response.etag });
     }
 
     public async putContents(
@@ -77,7 +77,7 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
             encoding: options?.encoding,
             data: ZSshUtils.encodeByteArray(readFileSync(inputFilePath)),
         });
-        return this.buildZosFilesResponse({ etag: dataSetName });
+        return this.buildZosFilesResponse({ etag: response.etag });
     }
 
     public async createDataSet(
