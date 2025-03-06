@@ -266,6 +266,28 @@ func HandleSubmitJobRequest(conn *utils.StdioConn, params []byte) (result any, e
 	return
 }
 
+// HandleSubmitUssRequest handles a SubmitUssRequest by invoking the `zowex job submit-uss` command
+func HandleSubmitUssRequest(conn *utils.StdioConn, params []byte) (result any, e error) {
+	request, err := utils.ParseCommandRequest[jobs.SubmitUssRequest](params)
+	if err != nil {
+		return nil, err
+	}
+
+	out, err := conn.ExecCmd([]string{"job", "submit-uss", request.Path, "--only-jobid", "true"})
+
+	if err != nil {
+		e = fmt.Errorf("Failed to submit job: %v", err)
+		return
+	}
+
+	result = jobs.SubmitUssResponse{
+		Success: true,
+		Path:    request.Path,
+		JobId:   strings.TrimSpace(string(out)),
+	}
+	return
+}
+
 // HandleSubmitJclRequest handles a SubmitJclRequest by invoking the `zowex job submit-jcl` command
 func HandleSubmitJclRequest(conn *utils.StdioConn, params []byte) (result any, e error) {
 	request, err := utils.ParseCommandRequest[jobs.SubmitJclRequest](params)

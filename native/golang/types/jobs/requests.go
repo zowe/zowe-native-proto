@@ -64,6 +64,13 @@ type SubmitJobRequest struct {
 	Dsname string `json:"dsname"`
 }
 
+type SubmitUssRequest struct {
+	common.CommandRequest `tstype:",extends"`
+	Command               string `json:"command" tstype:"\"submitUss\""`
+	// File path w/ contents to submit as JCL
+	Path string `json:"fspath"`
+}
+
 type SubmitJclRequest struct {
 	common.CommandRequest `tstype:",extends"`
 	Command               string `json:"command" tstype:"\"submitJcl\""`
