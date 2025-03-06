@@ -9,15 +9,25 @@
  *
  */
 
-import { text } from "node:stream/consumers";
-import type { IHandlerParameters } from "@zowe/imperative";
+import { ImperativeError, type IHandlerParameters } from "@zowe/imperative";
 import type { ZSshClient, jobs } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
+import { readFileSync } from "node:fs";
 
-export default class SubmitJclHandler extends SshBaseHandler {
+export default class SubmitLocalFileHandler extends SshBaseHandler {
     public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<jobs.SubmitJclResponse> {
-        const jcl = await text(params.stdin);
-        const response = await client.jobs.submitJcl({ jcl });
+        const fspath = params.arguments.fspath;
+        let JclString: string;
+        try {
+            JclString = readFileSync(fspath).toString();
+        } catch (err) {
+            throw new ImperativeError({
+                msg: "Failed to read local file",
+                additionalDetails: err.toString(),
+                causeErrors: err,
+            });
+        }
+        const response = await client.jobs.submitJcl({ jcl: JclString });
 
         const msg = `Job submitted: ${response.jobId}`;
         params.response.data.setMessage(msg);

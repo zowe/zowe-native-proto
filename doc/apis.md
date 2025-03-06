@@ -68,22 +68,23 @@
 
 ## Jobs
 
-| Operation          | z/OSMF | FTP | Backend | Middleware | SDK | CLI | VSCE            |
-| ------------------ | ------ | --- | ------- | ---------- | --- | --- | --------------- |
-| _Get job status_   | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅              |
-| _List jobs_        | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅              |
-| _List spool files_ | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅              |
-| _Read spool file_  | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅              |
-| _Get job JCL_      | ✅     | ❌  | ✅      | ✅         | ✅  | ✅  | ✅              |
-| _Submit job_       | ✅     | ✅  | ✅      | ✅         | ✅  | ❌  | ✅              |
-| _Delete job_       | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅              |
-| Cancel job         | ✅     | ❌  | ✅      | ✅         | ✅  | ✅  | ✅ <sup>1</sup> |
-| Hold job           | ✅     | ❌  | ✅      | ✅         | ✅  | ✅  | ➖ <sup>2</sup> |
-| Release job        | ✅     | ❌  | ✅      | ✅         | ✅  | ✅  | ➖ <sup>2</sup> |
-| Change job class   | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ➖              |
+| Operation          | z/OSMF | FTP | Backend         | Middleware | SDK | CLI | VSCE            |
+| ------------------ | ------ | --- | --------------- | ---------- | --- | --- | --------------- |
+| _Get job status_   | ✅     | ✅  | ✅              | ✅         | ✅  | ✅  | ✅              |
+| _List jobs_        | ✅     | ✅  | ✅              | ✅         | ✅  | ✅  | ✅              |
+| _List spool files_ | ✅     | ✅  | ✅              | ✅         | ✅  | ✅  | ✅              |
+| _Read spool file_  | ✅     | ✅  | ✅              | ✅         | ✅  | ✅  | ✅              |
+| _Get job JCL_      | ✅     | ❌  | ✅              | ✅         | ✅  | ✅  | ✅              |
+| _Submit job_       | ✅     | ✅  | ✅ <sup>1</sup> | ✅         | ✅  | ✅  | ✅              |
+| _Delete job_       | ✅     | ✅  | ✅              | ✅         | ✅  | ✅  | ✅              |
+| Cancel job         | ✅     | ❌  | ✅              | ✅         | ✅  | ✅  | ✅ <sup>2</sup> |
+| Hold job           | ✅     | ❌  | ✅              | ✅         | ✅  | ✅  | ➖ <sup>3</sup> |
+| Release job        | ✅     | ❌  | ✅              | ✅         | ✅  | ✅  | ➖ <sup>3</sup> |
+| Change job class   | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ➖              |
 
-1. Does not support force, restart, dump, or purge
-2. Zowe Explorer does not support the Job Hold/Release operation
+1. Unable to submit JCL from stdin (see #183)
+2. Does not support force, restart, dump, or purge
+3. Zowe Explorer does not support the Job Hold/Release operation
 
 ## Console
 
