@@ -12,16 +12,10 @@
 import { readFileSync } from "node:fs";
 import * as path from "node:path";
 import { ProfileConstants } from "@zowe/core-for-zowe-sdk";
-import type { Config } from "@zowe/imperative";
-import { ZosTsoProfile } from "@zowe/zos-tso-for-zowe-sdk";
-import { ZosUssProfile } from "@zowe/zos-uss-for-zowe-sdk";
-import { ZosmfProfile } from "@zowe/zosmf-for-zowe-sdk";
 import { FileManagement, Gui, PersistenceSchemaEnum, ZoweVsCodeExtension, imperative } from "@zowe/zowe-explorer-api";
-import { Client } from "ssh2";
-import type { ClientChannel } from "ssh2";
+import { Client, type ClientChannel } from "ssh2";
 import * as vscode from "vscode";
-import { ZClientUtils, ZSshClient } from "zowe-native-proto-sdk";
-import type { ISshConfigExt } from "zowe-native-proto-sdk";
+import { type ISshConfigExt, ZClientUtils, ZSshClient } from "zowe-native-proto-sdk";
 
 // biome-ignore lint/complexity/noStaticOnlyClass: Utilities class has static methods
 export class SshConfigUtils {
@@ -399,7 +393,7 @@ export class SshConfigUtils {
 
     private static async getNewProfileName(
         selectedProfile: ISshConfigExt,
-        configApi: Config,
+        configApi: imperative.Config,
     ): Promise<ISshConfigExt | undefined> {
         let isUniqueName = false;
 
@@ -482,12 +476,14 @@ export class SshConfigUtils {
 
             config.api.layers.activate(user, global);
 
+            const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
+            const profCache = zoweExplorerApi.getExplorerExtenderApi().getProfilesCache();
             const knownCliConfig: imperative.ICommandProfileTypeConfiguration[] = [
-                ZosUssProfile,
+                // biome-ignore lint/suspicious/noExplicitAny: Accessing protected method
+                ...(profCache as any).getCoreProfileTypes(),
+                ...profCache.getConfigArray(),
                 ProfileConstants.BaseProfile,
             ];
-
-            if (global) knownCliConfig.push(ZosmfProfile, ZosTsoProfile);
 
             config.setSchema(imperative.ConfigSchema.buildSchema(knownCliConfig));
 
