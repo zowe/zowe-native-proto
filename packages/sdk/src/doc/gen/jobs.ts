@@ -94,6 +94,20 @@ export interface DeleteJobRequest extends common.CommandRequest {
    */
   jobId: string;
 }
+export interface HoldJobRequest extends common.CommandRequest {
+  command: "holdJob";
+  /**
+   * Job ID to hold
+   */
+  jobId: string;
+}
+export interface ReleaseJobRequest extends common.CommandRequest {
+  command: "releaseJob";
+  /**
+   * Job ID to release
+   */
+  jobId: string;
+}
 
 //////////
 // source: responses.go
@@ -181,6 +195,26 @@ export interface CancelJobResponse extends common.CommandResponse {
   success: boolean;
   /**
    * The ID for the job that was cancelled
+   */
+  jobId: string;
+}
+export interface HoldJobResponse extends common.CommandResponse {
+  /**
+   * Whether the job was successfully held
+   */
+  success: boolean;
+  /**
+   * The ID for the job that was held
+   */
+  jobId: string;
+}
+export interface ReleaseJobResponse extends common.CommandResponse {
+  /**
+   * Whether the job was successfully released
+   */
+  success: boolean;
+  /**
+   * The ID for the job that was released
    */
   jobId: string;
 }

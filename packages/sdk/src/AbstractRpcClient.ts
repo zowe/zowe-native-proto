@@ -55,6 +55,10 @@ export abstract class AbstractRpcClient {
                 this.request({ command: "submitJob", ...request }),
             submitJcl: (request: Omit<jobs.SubmitJclRequest, "command">): Promise<jobs.SubmitJclResponse> =>
                 this.request({ command: "submitJcl", ...request }),
+            holdJob: (request: Omit<jobs.HoldJobRequest, "command">): Promise<jobs.HoldJobResponse> =>
+                this.request({ command: "holdJob", ...request }),
+            releaseJob: (request: Omit<jobs.ReleaseJobRequest, "command">): Promise<jobs.ReleaseJobResponse> =>
+                this.request({ command: "releaseJob", ...request }),
         };
     }
 

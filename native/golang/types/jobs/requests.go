@@ -84,3 +84,17 @@ type DeleteJobRequest struct {
 	// Job ID to cancel
 	JobId string `json:"jobId"`
 }
+
+type HoldJobRequest struct {
+	common.CommandRequest `tstype:",extends"`
+	Command               string `json:"command" tstype:"\"holdJob\""`
+	// Job ID to hold
+	JobId string `json:"jobId"`
+}
+
+type ReleaseJobRequest struct {
+	common.CommandRequest `tstype:",extends"`
+	Command               string `json:"command" tstype:"\"releaseJob\""`
+	// Job ID to release
+	JobId string `json:"jobId"`
+}

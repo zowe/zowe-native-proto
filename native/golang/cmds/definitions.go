@@ -53,6 +53,8 @@ func initializeJobHandlers(disp *CmdDispatcher) {
 		"submitJcl":    HandleSubmitJclRequest,
 		"cancelJob":    HandleCancelJobRequest,
 		"deleteJob":    HandleDeleteJobRequest,
+		"holdJob":      HandleHoldJobRequest,
+		"releaseJob":   HandleReleaseJobRequest,
 	}
 	registerHandlers(disp, handlers)
 }

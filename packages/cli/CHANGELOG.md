@@ -10,6 +10,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - Added `zssh view uss-file` command. [#38](https://github.com/zowe/zowe-native-proto/pull/38)
 - Added `zssh list spool-files` command. [#38](https://github.com/zowe/zowe-native-proto/pull/38)
 - Added support for cancelling jobs. [#138](https://github.com/zowe/zowe-native-proto/pull/138)
+- Added support for holding and releasing jobs. [#182](https://github.com/zowe/zowe-native-proto/pull/182)
 
 ## [Unreleased]
 
