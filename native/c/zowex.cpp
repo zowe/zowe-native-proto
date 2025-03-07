@@ -1129,7 +1129,7 @@ int handle_data_set_view_dsn(ZCLIResult result)
 int handle_data_set_list(ZCLIResult result)
 {
   int rc = 0;
-  string dsn = result.get_positional("dsn")->get_value();
+  string dsn = result.get_positional("dsn")->get_value() + ".**";
   string max_entries = result.get_option("--max-entries")->get_value();
   string warn = result.get_option("--warn")->get_value();
   string attributes = result.get_option("--attributes")->get_value();
