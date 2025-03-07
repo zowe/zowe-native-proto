@@ -9,6 +9,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - Added `zssh restore dataset` command. [#38](https://github.com/zowe/zowe-native-proto/pull/38)
 - Added `zssh view uss-file` command. [#38](https://github.com/zowe/zowe-native-proto/pull/38)
 - Added `zssh list spool-files` command. [#38](https://github.com/zowe/zowe-native-proto/pull/38)
+- Added support for conflict detection through use of e-tags. When a data set or USS file is viewed, the e-tag is displayed to the user and can be passed for future write requests to prevent overwriting new changes on the target system. [#144](https://github.com/zowe/zowe-native-proto/issues/144)
 
 ## [Unreleased]
 
