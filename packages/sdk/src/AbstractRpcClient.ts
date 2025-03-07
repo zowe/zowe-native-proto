@@ -12,7 +12,7 @@
 import type { CommandRequest, CommandResponse, cmds, ds, jobs, uss } from "./doc";
 
 export abstract class AbstractRpcClient {
-    public abstract request<Resp extends CommandResponse, Req extends CommandRequest>(request: Req): Promise<Resp>;
+    public abstract request<Req extends CommandRequest, Resp extends CommandResponse>(request: Req): Promise<Resp>;
 
     public get ds() {
         return {
