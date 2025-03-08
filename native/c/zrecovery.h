@@ -115,7 +115,8 @@ typedef struct sdwarc4 SDWARC4;
  * TODO(Kelosky): features
  * - abend counter
  * - detect recursive abends
- * - SETRP & VRA data wrappers
+ * - VRA data wrappers
+ * - get abend info, code, psw, bea, load module, and offset
  */
 
 #define RTNCD_RETRY 4
@@ -124,16 +125,17 @@ typedef struct sdwarc4 SDWARC4;
 #define NO_SDWA 12
 typedef struct
 {
+  // NOTE(Kelosky): we can also dervive R13 using f4sa->saveprev->savenext so that we probably don't need to store R13
+  unsigned long long int r13;
   // main line stack regs and pointer (r13)
   SAVF4SA f4sa;
-  unsigned long long int r13;
 
   // return address to IEAARR
   unsigned long long int arr_return;
 
   // main line stack regs and pointer (r13)
-  SAVF4SA final_f4sa;
   unsigned long long int final_r13;
+  SAVF4SA final_f4sa;
 
   // flags
   unsigned int recovery_entered : 1;
@@ -143,7 +145,7 @@ typedef struct
 typedef int (*ROUTINE)(ZRCVY_ENV *);
 typedef int (*RECOVERY_ROUTINE)(SDWA);
 
-static int set_recovery(ROUTINE routine, void *routine_parm, RECOVERY_ROUTINE arr, void *arr_parm)
+static int establish_recovery_env(ROUTINE routine, void *routine_parm, RECOVERY_ROUTINE arr, void *arr_parm)
 {
   IEAARR(
       routine,
@@ -158,64 +160,46 @@ static int set_recovery(ROUTINE routine, void *routine_parm, RECOVERY_ROUTINE ar
 typedef void (*RETRY_ROUTINE)(ZRCVY_ENV);
 static void ZRCVYRTY(ZRCVY_ENV zenv)
 {
-  zwto_debug("@TEST retry routine entered zenv=%llx", zenv);
-  JUMP_ENV(zenv.f4sa, zenv.r13, 4);
+  JUMP_ENV(zenv.f4sa, zenv.r13, 4); // TODO(Kelosky): document non-zero return code
 }
 
 #pragma prolog(ZRCVYARR, "&CCN_MAIN SETB 1 \n MYPROLOG")
 #pragma epilog(ZRCVYARR, "&CCN_MAIN SETB 1 \n MYEPILOG")
 int ZRCVYARR(SDWA sdwa)
 {
-  unsigned long long int r0 = get_prev_r0(); // if current r0 = 12, NO_SDWA
+  unsigned long long int r0 = get_prev_r0(); // if r0 = 12, NO_SDWA
   unsigned long long int r2 = get_prev_r2();
   ZRCVY_ENV *zenv = NULL;
   memcpy(&zenv, &r2, sizeof(r2));
 
-  if (zenv->recovery_entered)
+  if (NO_SDWA == r0) // no sdwa
+  {
+    // NOTE(Kelosky): we can use this block + RTNCD_RETRY if no SDWA to attempt retry
+    // unsigned long long int return_r0 = 0;
+    // memcpy(&return_r0, &retry_function, sizeof(return_r0));
+    // set_prev_r0(return_r0);
+
+    return RTNCD_PERCOLATE; // TODO(Kelosky): handle no SDWA, for now percolate, but we can retry
+  }
+
+  if (zenv->recovery_entered) // repeated abends
   {
     return RTNCD_PERCOLATE; // TODO(Kelosky): handle no SDWA, call recovery routine if provided, handle counter, & use SETRP
   }
   zenv->recovery_entered = 1;
-
-  zwto_debug("@TEST recovery routine called");
-  zwto_debug("@TEST r0=%llx, r2=%llx, zenv=%llx and sdwa=%llx", r0, r2, zenv, sdwa.sdwaparm);
-  zwto_debug("@TEST abend=%02x%02x%02x%02x", sdwa.sdwacmpf, sdwa.sdwacmpc[0], sdwa.sdwacmpc[1], sdwa.sdwacmpc[2]);
-
-  if (NO_SDWA == r0)
-  {
-    return RTNCD_PERCOLATE; // TODO(Kelosky): handle no SDWA, for now percolate, but we can retry
-  }
 
   if (sdwa.sdwaerrd & sdwaclup) // clean up only
   {
     return RTNCD_PERCOLATE; // TODO(Kelosky): for now percolate, user SETRP if SDWA, call recovery routine if provided
   }
 
-  zwto_debug("@TEST recovery preparing for retry called");
-
-  // NOTE(Kelosky): needed for FRR
-  // SDWAPTRS *PTR32 sdwaptrs = NULL;
-  // memcpy(&sdwaptrs, &sdwa.sdwaxpad, sizeof(SDWAPTRS * PTR32));
-  // zwto_debug("@TEST part1");
-  // SDWARC4 *PTR32 sdwarc4 = NULL;
-  // memcpy(&sdwarc4, &sdwaptrs->sdwaxeme, sizeof(SDWAPTRS * PTR32));
-  // zwto_debug("@TEST part2");
-  // memcpy(
-  //     &sdwarc4->sdwag6401,
-  //     &r2,
-  //     sizeof(r2));
+  // TODO(Kelosky): capture diag info here
 
   RETRY_ROUTINE retry_function = ZRCVYRTY;
-
   SETRP(
       4, // RTNCD_RETRY
       retry_function,
       &sdwa);
-
-  // NOTE(Kelosky): this is technically only needed if no SDWA
-  unsigned long long int return_r0 = 0;
-  memcpy(&return_r0, &retry_function, sizeof(return_r0));
-  set_prev_r0(return_r0);
 
   return RTNCD_RETRY;
 }
@@ -223,23 +207,18 @@ int ZRCVYARR(SDWA sdwa)
 // TODO(Kelosky): memory leak #1... we need a custom prolog for this instance where we take storage from a work area
 // anchored off ZRCVY_ENV.  We can then use this prolog here and other locations where we have a memory leak
 // when we use the prolog and bypass our epilog
-#pragma prolog(ZRCVYINT, " MYPROLOG ")
-#pragma epilog(ZRCVYINT, " MYEPILOG ")
-static int ZRCVYINT(ZRCVY_ENV *zenv)
+#pragma prolog(ZRCVYRTE, " MYPROLOG ")
+#pragma epilog(ZRCVYRTE, " MYEPILOG ")
+static int ZRCVYRTE(ZRCVY_ENV *zenv)
 {
-  // unsigned long long int r13 = get_prev_r13();
   unsigned long long int r14 = get_prev_r14();
-  // unsigned char *save_area = (unsigned char *)r13;
-
   zenv->arr_return = r14;
-
-  zwto_debug("@TEST intermediate called");
-
   JUMP_ENV(zenv->f4sa, zenv->r13, 0);
 }
 
-static int recovery_drop(ZRCVY_ENV *zenv) ATTRIBUTE(noinline);
-static int recovery_drop(ZRCVY_ENV *zenv)
+// NOTE(Kelosky): we must not have this function inline so to save and return to the mainline
+static int disable_recovery(ZRCVY_ENV *zenv) ATTRIBUTE(noinline);
+static int disable_recovery(ZRCVY_ENV *zenv)
 {
   // get main stack regs and stack pointer
   unsigned long long int r13 = get_prev_r13();
@@ -247,15 +226,15 @@ static int recovery_drop(ZRCVY_ENV *zenv)
   memcpy(&zenv->final_f4sa, save_area, sizeof(SAVF4SA));
   zenv->final_r13 = r13;
 
-  // return to the IEAARR which will "jump" back to the stack position set just above
-  zwto_debug("@TEST returning to IEAARR");
+  // return to the IEAARR (establish_recovery_env) which will then "jump" back to the stack position set just above
   RETURN_ARR(zenv->arr_return);
 }
 
-#pragma reachable(set_env)
-
-static int set_env(ZRCVY_ENV *zenv) ATTRIBUTE(noinline);
-static int set_env(ZRCVY_ENV *zenv)
+// NOTE(Kelosky): this function may "return twice" like setjmp()
+#pragma reachable(enable_recovery)
+// NOTE(Kelosky): we must not have this function inline so to save and return to the mainline
+static int enable_recovery(ZRCVY_ENV *zenv) ATTRIBUTE(noinline);
+static int enable_recovery(ZRCVY_ENV *zenv)
 {
   unsigned long long int r13 = get_prev_r13();
   unsigned char *save_area = (unsigned char *)r13;
@@ -263,68 +242,13 @@ static int set_env(ZRCVY_ENV *zenv)
   memcpy(&zenv->f4sa, save_area, sizeof(SAVF4SA));
   zenv->r13 = r13;
 
-  // NOTE(Kelosky): this code block shows that the previous R13 via get_prev_r13() is identical
-  // f4sa->saveprev->savenext so that we probably don't need to store R13
-  zwto_debug("@TEST prev r13 is %llx", r13);
-  SAVF4SA *save_prev = NULL; // save_area + 144;
-  memcpy(&save_prev, zenv->f4sa.savf4saprev, 8);
-  SAVF4SA *save_next = NULL;
-  memcpy(&save_next, save_prev->savf4sanext, 8);
-  zwto_debug("@TEST prev comparison value is %llx", save_next);
-
-  zwto_debug("@TEST zenv=%llx", zenv);
-
-  // here we call an intermediate routine which will route back to main line code
+  // here we call a router routine which will route back to main line code
   // eventually, whenever we call to drop recovery, we then fall through after this
-  // IEAARR invocation
-  set_recovery(ZRCVYINT, zenv, ZRCVYARR, zenv);
+  // IEAARR invocation and jump back to where to drop was called
+  establish_recovery_env(ZRCVYRTE, zenv, ZRCVYARR, zenv);
 
-  // TODO(Kelosky): zwto_debug() has a bug here
-  WTO_BUF buf = {0};
-  buf.len = sprintf(buf.msg, "ZWEX0001I @TEST returned from IEAARR");
-  wto(&buf);
-
-  // not a memory leak since we didn't obtain stack space
   // jump back to main whever drop was called
   JUMP_ENV(zenv->final_f4sa, zenv->final_r13, 0);
 }
-
-// #pragma prolog(set_env, "&CCN_NAB_STORED SETB 1 \n&CCN_RLOW SETA 14 \n&CCN_RHIGH SETA 12")
-// #pragma epilog(set_env, "&CCN_NAB_STORED SETB 1 \n&CCN_RLOW SETA 14 \n&CCN_RHIGH SETA 12")
-// #pragma prolog(set_env, "&CCN_RLOW SETA 14 \n&CCN_RHIGH SETA 12 \n&CCN_MAIN SETB 0 \n MYPROLOG")
-// #pragma epilog(set_env, "&CCN_RLOW SETA 14 \n&CCN_RHIGH SETA 12 \n&CCN_MAIN SETB 0 \n MYEPILOG")
-
-// void deadcode()
-// {
-// zwto_debug("@TEST after %02x%02x%02x%02x%02x%02x%02x%02x",
-//            f4sa->savf4sag64rs5[0],
-//            f4sa->savf4sag64rs5[1],
-//            f4sa->savf4sag64rs5[2],
-//            f4sa->savf4sag64rs5[3],
-//            f4sa->savf4sag64rs5[4],
-//            f4sa->savf4sag64rs5[5],
-//            f4sa->savf4sag64rs5[6],
-//            f4sa->savf4sag64rs5[7]);
-
-// zwto_debug("@TEST after %02x%02x%02x%02x%02x%02x%02x%02x",
-//            f4sa->savf4sag64rs6[0],
-//            f4sa->savf4sag64rs6[1],
-//            f4sa->savf4sag64rs6[2],
-//            f4sa->savf4sag64rs6[3],
-//            f4sa->savf4sag64rs6[4],
-//            f4sa->savf4sag64rs6[5],
-//            f4sa->savf4sag64rs6[6],
-//            f4sa->savf4sag64rs6[7]);
-
-// zwto_debug("@TEST after %02x%02x%02x%02x%02x%02x%02x%02x",
-//            f4sa->savf4sag64rs7[0],
-//            f4sa->savf4sag64rs7[1],
-//            f4sa->savf4sag64rs7[2],
-//            f4sa->savf4sag64rs7[3],
-//            f4sa->savf4sag64rs7[4],
-//            f4sa->savf4sag64rs7[5],
-//            f4sa->savf4sag64rs7[6],
-//            f4sa->savf4sag64rs7[7]);
-// }
 
 #endif
