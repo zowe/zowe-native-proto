@@ -14,9 +14,25 @@
 #include "zrecovery.h"
 #include "zwto.h"
 
+#pragma prolog(ABEXIT, " MYPROLOG ")
+#pragma epilog(ABEXIT, " MYEPILOG ")
+void ABEXIT(SDWA *sdwa, void *abexit_data)
+{
+  zwto_debug("@TEST called on abend");
+}
+
+#pragma prolog(PERCEXIT, " MYPROLOG ")
+#pragma epilog(PERCEXIT, " MYEPILOG ")
+void PERCEXIT(void *perc_exit_data)
+{
+  zwto_debug("@TEST called to percolate");
+}
+
 int main()
 {
   ZRCVY_ENV zenv = {0};
+  zenv.abexit = ABEXIT;
+  zenv.perc_exit = PERCEXIT;
 
   zwto_debug("@TEST main");
 
@@ -28,7 +44,7 @@ int main()
   else
   {
     zwto_debug("@TEST in else");
-    // s0c3_abend(2);
+    s0c3_abend(2);
   }
   zwto_debug("@TEST outside of if/else");
 

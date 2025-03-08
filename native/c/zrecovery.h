@@ -123,6 +123,10 @@ typedef struct sdwarc4 SDWARC4;
 #define RTNCD_PERCOLATE 0
 
 #define NO_SDWA 12
+
+typedef void (*ABEND_EXIT)(SDWA *, void *); // called to enrich VRA data
+typedef void (*PERCOLATE_EXIT)(void *);     // called only for percolated abends, may be called manually in "retry" logic
+
 typedef struct
 {
   // NOTE(Kelosky): we can also dervive R13 using f4sa->saveprev->savenext so that we probably don't need to store R13
@@ -137,15 +141,25 @@ typedef struct
   unsigned long long int final_r13;
   SAVF4SA final_f4sa;
 
+  ABEND_EXIT abexit;
+  void *abexit_data;
+
+  PERCOLATE_EXIT perc_exit;
+  void *perc_exit_data;
+
+  int max_retries;
+
   // flags
   unsigned int recovery_entered : 1;
+  unsigned int request_dump : 1;
+  unsigned int unconditional_percolate : 1;
 
 } ZRCVY_ENV;
 
 typedef int (*ROUTINE)(ZRCVY_ENV *);
 typedef int (*RECOVERY_ROUTINE)(SDWA);
 
-static int establish_recovery_env(ROUTINE routine, void *routine_parm, RECOVERY_ROUTINE arr, void *arr_parm)
+static int ieaarr(ROUTINE routine, void *routine_parm, RECOVERY_ROUTINE arr, void *arr_parm)
 {
   IEAARR(
       routine,
@@ -178,22 +192,30 @@ int ZRCVYARR(SDWA sdwa)
     // unsigned long long int return_r0 = 0;
     // memcpy(&return_r0, &retry_function, sizeof(return_r0));
     // set_prev_r0(return_r0);
-
+    if (zenv->perc_exit)
+      zenv->perc_exit(zenv->perc_exit_data);
     return RTNCD_PERCOLATE; // TODO(Kelosky): handle no SDWA, for now percolate, but we can retry
   }
 
   if (zenv->recovery_entered) // repeated abends
   {
+    if (zenv->perc_exit)
+      zenv->perc_exit(zenv->perc_exit_data);
     return RTNCD_PERCOLATE; // TODO(Kelosky): handle no SDWA, call recovery routine if provided, handle counter, & use SETRP
   }
   zenv->recovery_entered = 1;
 
   if (sdwa.sdwaerrd & sdwaclup) // clean up only
   {
+    if (zenv->perc_exit)
+      zenv->perc_exit(zenv->perc_exit_data);
     return RTNCD_PERCOLATE; // TODO(Kelosky): for now percolate, user SETRP if SDWA, call recovery routine if provided
   }
 
   // TODO(Kelosky): capture diag info here
+
+  if (zenv->abexit)
+    zenv->abexit(&sdwa, zenv->abexit_data);
 
   RETRY_ROUTINE retry_function = ZRCVYRTY;
   SETRP(
@@ -226,7 +248,7 @@ static int disable_recovery(ZRCVY_ENV *zenv)
   memcpy(&zenv->final_f4sa, save_area, sizeof(SAVF4SA));
   zenv->final_r13 = r13;
 
-  // return to the IEAARR (establish_recovery_env) which will then "jump" back to the stack position set just above
+  // return to the IEAARR (ieaarr) which will then "jump" back to the stack position set just above
   RETURN_TO_IEAARR(zenv->arr_return);
 }
 
@@ -245,7 +267,7 @@ static int enable_recovery(ZRCVY_ENV *zenv)
   // here we call a router routine which will route back to main line code
   // eventually, whenever we call to drop recovery, we then fall through after this
   // IEAARR invocation and jump back to where to drop was called
-  establish_recovery_env(ZRCVYRTE, zenv, ZRCVYARR, zenv);
+  ieaarr(ZRCVYRTE, zenv, ZRCVYARR, zenv);
 
   // jump back to main whever drop was called
   JUMP_ENV(zenv->final_f4sa, zenv->final_r13, 0);
