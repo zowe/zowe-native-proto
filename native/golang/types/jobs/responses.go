@@ -14,25 +14,88 @@ package jobs
 import common "zowe-native-proto/ioserver/types/common"
 
 type ListJobsResponse struct {
+	common.CommandResponse `tstype:",extends"`
+	// List of returned jobs
 	Items []common.Job `json:"items" tstype:"common.Job[]"`
 }
 
 type ListSpoolsResponse struct {
+	common.CommandResponse `tstype:",extends"`
+	// List of returned spools
 	Items []common.Spool `json:"items" tstype:"common.Spool[]"`
 }
 
 type GetJclResponse struct {
+	common.CommandResponse `tstype:",extends"`
+	// Job ID for the returned JCL
 	JobId string `json:"jobId"`
-	Data  string `json:"data"`
+	// JCL contents
+	Data string `json:"data"`
 }
 
 type ReadSpoolResponse struct {
+	common.CommandResponse `tstype:",extends"`
+	// Desired encoding for the spool file (optional)
 	Encoding string `json:"encoding,omitempty"`
-	DsnKey   int    `json:"spoolId"`
-	JobId    string `json:"jobId"`
-	Data     []byte `json:"data" tstype:"Buffer | string"`
+	// Spool ID matching the returned spool contents
+	DsnKey int `json:"spoolId"`
+	// Job ID associated with the returned spool
+	JobId string `json:"jobId"`
+	// Spool contents
+	Data []byte `json:"data" tstype:"Buffer | string"`
 }
 
-type GetStatusResponse struct {
-	Items []common.Job `json:"items" tstype:"common.Job[]"`
+type GetJobStatusResponse struct {
+	common.CommandResponse `tstype:",extends"`
+	common.Job             `tstype:",extends"`
+}
+
+type SubmitJobResponse struct {
+	common.CommandResponse `tstype:",extends"`
+	// Whether the job was successfully submitted
+	Success bool `json:"success"`
+	// The job ID of the newly-submitted job
+	JobId string `json:"jobId"`
+	// The data set name where the JCL was read from
+	Dsname string `json:"dsname"`
+}
+
+type SubmitJclResponse struct {
+	common.CommandResponse `tstype:",extends"`
+	// Whether the JCL was successfully submitted
+	Success bool `json:"success"`
+	// The ID of the new job
+	JobId string `json:"jobId"`
+}
+
+type DeleteJobResponse struct {
+	common.CommandResponse `tstype:",extends"`
+	// Whether the job was successfully deleted
+	Success bool `json:"success"`
+	// The ID for the job that was deletede
+	JobId string `json:"jobId"`
+}
+
+type CancelJobResponse struct {
+	common.CommandResponse `tstype:",extends"`
+	// Whether the job was successfully cancelled
+	Success bool `json:"success"`
+	// The ID for the job that was cancelled
+	JobId string `json:"jobId"`
+}
+
+type HoldJobResponse struct {
+	common.CommandResponse `tstype:",extends"`
+	// Whether the job was successfully held
+	Success bool `json:"success"`
+	// The ID for the job that was held
+	JobId string `json:"jobId"`
+}
+
+type ReleaseJobResponse struct {
+	common.CommandResponse `tstype:",extends"`
+	// Whether the job was successfully released
+	Success bool `json:"success"`
+	// The ID for the job that was released
+	JobId string `json:"jobId"`
 }

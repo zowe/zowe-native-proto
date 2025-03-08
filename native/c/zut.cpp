@@ -293,6 +293,7 @@ void zut_print_string_as_bytes(string &input)
       printf("%02x ", (unsigned char)*p);
     }
   }
+  cout << endl;
 }
 
 /**
@@ -360,7 +361,7 @@ size_t zut_iconv(iconv_t cd, ZConvData &data, ZDIAG &diag)
  * @param to_encoding desired codepage for the data
  * @param diag diagnostic structure to store error information
  */
-std::string zut_encode(const string &input_str, const string &from_encoding, const string &to_encoding, ZDIAG &diag)
+string zut_encode(const string &input_str, const string &from_encoding, const string &to_encoding, ZDIAG &diag)
 {
   iconv_t cd = iconv_open(to_encoding.c_str(), from_encoding.c_str());
   if (cd == (iconv_t)(-1))
@@ -373,19 +374,13 @@ std::string zut_encode(const string &input_str, const string &from_encoding, con
   // maximum possible size assumes UTF-8 data with 4-byte character sequences
   const size_t max_output_size = input_size * 4;
 
-  // Create a contiguous memory region to store the output w/ new encoding
-  // There is no guarantee that the memory is contiguous when using an empty std::string here (as xlc does not completely implement the C++11 standard),
-  // so we'll handle the memory ourselves
-  char *output_buffer = new char[max_output_size];
-  std::fill(output_buffer, output_buffer + max_output_size, 0);
+  vector<char> output_buffer(max_output_size, 0);
 
   // Prepare iconv parameters (copy output_buffer ptr to output_iter to cache start and end positions)
   char *input = (char *)input_str.data();
-  char *output_iter = output_buffer;
+  char *output_iter = &output_buffer[0];
 
-  string result;
-
-  ZConvData data = {input, input_size, max_output_size, output_buffer, output_iter};
+  ZConvData data = {input, input_size, max_output_size, &output_buffer[0], output_iter};
   size_t iconv_rc = zut_iconv(cd, data, diag);
   iconv_close(cd);
   if (iconv_rc == -1)
@@ -394,10 +389,7 @@ std::string zut_encode(const string &input_str, const string &from_encoding, con
   }
 
   // Copy converted input into a new string and return it to the caller
-  result.assign(output_buffer, data.output_iter - data.output_buffer);
-  delete[] data.output_buffer;
-
-  return result;
+  return string(&output_buffer[0], data.output_iter - data.output_buffer);
 }
 
 std::string &zut_rtrim(std::string &s, const char *t)

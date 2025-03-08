@@ -13,6 +13,8 @@ import type { ICommandDefinition } from "@zowe/imperative";
 import { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Constants } from "../Constants";
 import { DataSetDefinition } from "./data-set/DataSet.definition";
+import { JobDefinition } from "./job/Job.definition";
+import { ItemDefinition as UssDefinition } from "./uss/Item.definition";
 
 const DeleteDefinition: ICommandDefinition = {
     name: "delete",
@@ -20,7 +22,7 @@ const DeleteDefinition: ICommandDefinition = {
     description: "Delete data sets and/or data set members",
     type: "group",
     aliases: ["del"],
-    children: [DataSetDefinition],
+    children: [DataSetDefinition, UssDefinition, JobDefinition],
     passOn: [
         {
             property: "options",

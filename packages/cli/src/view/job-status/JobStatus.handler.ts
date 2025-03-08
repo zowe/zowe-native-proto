@@ -10,17 +10,17 @@
  */
 
 import type { IHandlerParameters } from "@zowe/imperative";
-import type { jobs, ZSshClient } from "zowe-native-proto-sdk";
+import type { ZSshClient, jobs } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class ViewJobStatusHandler extends SshBaseHandler {
-    public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<jobs.GetStatusResponse> {
+    public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<jobs.GetJobStatusResponse> {
         const response = await client.jobs.getStatus({
             jobId: params.arguments.jobId,
         });
         params.response.data.setMessage("Successfully downloaded status for %s", params.arguments.jobId);
         params.response.format.output({
-            output: response.items,
+            output: response,
             format: "table",
             fields: ["id", "name", "status", "retcode"],
         });

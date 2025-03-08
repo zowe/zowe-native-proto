@@ -9,6 +9,7 @@
     "clean": "npm run clean --workspaces",
     "license": "node scripts/updateLicenses.js",
     "lint": "npm run lint --workspaces",
+    "lint:go": "cd native/golang && golangci-lint run",
     "package": "npm run package --workspaces --if-present",
     "prepare": "husky",
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -20,6 +21,7 @@
     "z:artifacts": "npm run tools -- artifacts",
     "z:build": "npm run tools -- build",
     "z:clean": "npm run tools -- clean",
+    "z:delete": "npm run tools -- delete",
     "z:deploy": "npm run tools -- deploy",
     "z:deploy:build": "npm run tools -- deploy:build",
     "z:init": "npm run tools -- init"

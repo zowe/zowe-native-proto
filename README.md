@@ -31,6 +31,7 @@ Create your own `config.local.json` adjacent to `config.default.jsonc` with some
 ## Client
 
 - `npm run z:artifacts` - download binaries to package with clients
+  - **Tip:** You can skip this step by defining `serverPath` property in your SSH profile in `zowe.config.json` to point to a dev build
 - `npm run build` - build all projects in the `packages` folder
   - **Tip:** You can run incremental builds with `npm run watch:client` for client code only, or `npm run watch` at the root to watch all code
 - `npm run package` - create CLI and VSCE artifacts in `dist` folder
@@ -41,7 +42,7 @@ Create your own `config.local.json` adjacent to `config.default.jsonc` with some
 
 On z/OS system, `cd` to C deploy dir and run `zowex` to invoke the C++ CLI binary or `test.sh` to test a number of commands.
 
-To test I/O server, `cd` to Go deploy dir and run `ioserver`, then type a JSON command like `{"command":"listFiles","fspath":"/tmp"}` and press Enter.
+To test I/O server, `cd` to Go deploy dir and run `ioserver`, then type a JSON command like `{"jsonrpc": "2.0", "method": "listFiles", "params": {"fspath": "/tmp"}, "id": 1}` and press Enter.
 
 ### Client
 

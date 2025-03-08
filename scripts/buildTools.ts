@@ -48,25 +48,25 @@ function DEBUG_MODE() {
     return process.env.ZOWE_NATIVE_DEBUG?.toUpperCase() === "TRUE" || process.env.ZOWE_NATIVE_DEBUG === "1";
 }
 
-let SPINNER_INDEX = 0;
-const SPINNER_FRAMES = ["-", "\\", "|", "/"];
-
 function startSpinner(text = "Loading...") {
     if (DEBUG_MODE() || process.env.CI != null) {
         console.log(text);
         return null;
     }
-    process.stdout.write(`${text} `);
+    console.log(text);
+    let progressIndex = 0;
 
+    const PROGRESS_BAR_FRAMES = ["▏", "▎", "▍", "▌", "▋", "▊", "▉", "▊", "▋", "▌", "▍", "▎"];
     return setInterval(() => {
-        process.stdout.write(`\r${text} ${SPINNER_FRAMES[SPINNER_INDEX]}`);
-        SPINNER_INDEX = (SPINNER_INDEX + 1) % SPINNER_FRAMES.length;
+        const progressBar = PROGRESS_BAR_FRAMES.map((_, i) => (i === progressIndex ? "█" : " ")).join("");
+        process.stdout.write(`\rRunning... █${progressBar}`);
+        progressIndex = (progressIndex + 1) % PROGRESS_BAR_FRAMES.length;
     }, 100);
 }
 
 function stopSpinner(spinner: NodeJS.Timeout | null, text = "Done!") {
     spinner && clearInterval(spinner);
-    process.stdout.write(`\n${text}\n`);
+    process.stdout.write(`\x1b[2K\r${text}\n`);
 }
 
 const connection = new Client();
@@ -97,6 +97,9 @@ connection.on("ready", async () => {
             break;
         case "clean":
             await clean(connection);
+            break;
+        case "delete":
+            await rmdir(connection);
             break;
         case "bin":
             await bin(connection);
@@ -152,7 +155,8 @@ function getAllServerFiles() {
     for (const dir of dirs) {
         files.push(...getServerFiles(dir));
     }
-    return files;
+
+    return files.filter((file) => !file.startsWith("golang/ioserver"));
 }
 
 function getServerFiles(dir = "") {
@@ -306,7 +310,7 @@ async function artifacts(connection: Client) {
 }
 
 async function runCommandInShell(connection: Client, command: string, pty = false) {
-    const spinner = startSpinner(`Running: ${command.trim()}`);
+    const spinner = startSpinner(`Command: ${command.trim()}`);
     return new Promise<string>((resolve, reject) => {
         let data = "";
         let error = "";
@@ -328,12 +332,12 @@ async function runCommandInShell(connection: Client, command: string, pty = fals
             });
             stream.on("exit", (exitCode: number) => {
                 if (exitCode !== 0) {
-                    const fullError = `\nError: runCommand connection.exec error: \n ${error}`;
+                    const fullError = `\nError: runCommand connection.exec error: \n ${error || data}`;
                     stopSpinner(spinner, fullError);
                     reject(fullError);
                 }
             });
-            stream.end(`${command}\n`);
+            stream.end(`${command}\nexit $?\n`);
         };
         if (pty) {
             connection.shell(cb);
@@ -482,7 +486,7 @@ async function build(connection: Client) {
         await runCommandInShell(
             connection,
             `cd ${goDeployDirectory} &&${config.goEnv ? ` ${config.goEnv}` : ""} go build\n`,
-            process.env.CI != null,
+            true,
         ),
     );
     console.log("Build complete!");
@@ -495,12 +499,20 @@ async function clean(connection: Client) {
     console.log("Clean complete");
 }
 
+async function rmdir(connection: Client) {
+    console.log("Removing dir ...");
+    const resp = await runCommandInShell(connection, `rm -rf ${deployDirectory}\n`);
+    console.log(resp);
+    console.log("Removal complete");
+}
+
 async function uploadFile(sftpcon: SFTPWrapper, from: string, to: string) {
     await new Promise<void>((finish) => {
         DEBUG_MODE() && console.log(`Uploading '${from}' to ${to}`);
         sftpcon.fastPut(from, to, (err) => {
             if (err) {
                 console.log("Put err");
+                console.log(from, to);
                 throw err;
             }
             finish();
@@ -514,6 +526,7 @@ async function download(sftpcon: SFTPWrapper, from: string, to: string) {
         sftpcon.fastGet(from, to, (err) => {
             if (err) {
                 console.log("Get err");
+                console.log(from, to);
                 throw err;
             }
             finish();

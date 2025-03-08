@@ -28,6 +28,7 @@ extern "C"
 
   int ZDSSMSAT(ZDS *zds, const char *dsn);
   int ZDSCSI00(ZDS *zds, CSIFIELD *selection, void *work_area);
+  void ZDSDEL(ZDS *zds);
 
 #if defined(__cplusplus)
 }

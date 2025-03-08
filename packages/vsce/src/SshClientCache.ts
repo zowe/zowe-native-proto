@@ -34,25 +34,30 @@ export class SshClientCache extends vscode.Disposable {
     }
 
     public async connect(profile: imperative.IProfileLoaded, restart = false): Promise<ZSshClient> {
-        const clientKey = profile.profile!.host;
+        const clientId = this.getClientId(profile.profile!);
         if (restart) {
-            this.end(clientKey);
+            this.end(clientId);
         }
-        if (!this.mClientMap.has(clientKey)) {
+        if (!this.mClientMap.has(clientId)) {
             const session = ZSshUtils.buildSession(profile.profile!);
             const serverPath = SshConfigUtils.getServerPath(profile.profile);
             this.mClientMap.set(
-                clientKey,
+                clientId,
                 await ZSshClient.create(session, serverPath, () => {
-                    this.end(clientKey);
+                    this.end(clientId);
                 }),
             );
         }
-        return this.mClientMap.get(clientKey) as ZSshClient;
+        return this.mClientMap.get(clientId) as ZSshClient;
     }
 
-    public end(hostname: string): void {
-        this.mClientMap.get(hostname)?.dispose();
-        this.mClientMap.delete(hostname);
+    public end(hostOrProfile: string | imperative.IProfile): void {
+        const clientId = typeof hostOrProfile === "string" ? hostOrProfile : this.getClientId(hostOrProfile);
+        this.mClientMap.get(clientId)?.dispose();
+        this.mClientMap.delete(clientId);
+    }
+
+    private getClientId(profile: imperative.IProfile): string {
+        return `${profile.host}:${profile.port ?? 22}`;
     }
 }

@@ -15,6 +15,17 @@
 #include "iggcsina.h"
 #include "zwto.h"
 
+#pragma prolog(ZDSDEL, "&CCN_MAIN SETB 1 \n MYPROLOG")
+void ZDSDEL(ZDS *zds)
+{
+  if (zds->csi)
+  {
+    delete_module("IGGCSI00");
+  }
+
+  zds->csi = NULL;
+}
+
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=retrieval-parameters
 typedef int (*IGGCSI00)(
     int *PTR32 rsn,
@@ -27,9 +38,13 @@ int ZDSCSI00(ZDS *zds, CSIFIELD *selection, void *work_area)
   int rc = 0;
   int rsn = 0;
 
-  // load our service
-  IGGCSI00 csi = (IGGCSI00)load_module31("IGGCSI00"); // EP which doesn't require R0 == 0
-  if (!csi)
+  // load our service on first call
+  if (!zds->csi)
+  {
+    zds->csi = (void *PTR64)load_module31("IGGCSI00"); // EP which doesn't require R0 == 0
+  }
+
+  if (!zds->csi)
   {
     strcpy(zds->diag.service_name, "LOAD");
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Load failure for IGGCSI00");
@@ -37,9 +52,7 @@ int ZDSCSI00(ZDS *zds, CSIFIELD *selection, void *work_area)
     return RTNCD_FAILURE;
   }
 
-  rc = csi(&rsn, selection, work_area);
-
-  delete_module("IGGCSI00");
+  rc = ((IGGCSI00)(zds->csi))(&rsn, selection, work_area);
 
   // https://www.ibm.com/docs/en/SSLTBW_3.1.0/com.ibm.zos.v3r1.idac100/c1055.htm
   if (0 != rc)
