@@ -133,7 +133,9 @@
     "xutility": "cpp",
     "__memory": "c",
     "zrecovery.h": "c",
-    "ihasdwa.h": "c"
+    "ihasdwa.h": "c",
+    "zmetal.h": "c",
+    "string.h": "c"
   },
   "editor.formatOnSave": true,
   "[typescript]": {

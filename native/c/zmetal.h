@@ -211,16 +211,16 @@ static void mode_nzero()
 }
 
 #if defined(__IBM_METAL__)
-#define GET_REG(num, reg)                                      \
+#define GET_REG64(reg, number)                                 \
   __asm(                                                       \
       "*                                                   \n" \
-      " ST    " #num ",%0                                  \n" \
+      " STG    " #number ",%0     Save RC                  \n" \
       "*                                                    "  \
-      : "=m"(*reg)                                             \
+      : "=m"(reg)                                              \
       :                                                        \
       :);
 #else
-#define GET_REG(num, reg)
+#define GET_REG64(reg, number)
 #endif
 
 #if defined(__IBM_METAL__)
@@ -237,6 +237,55 @@ static void mode_nzero()
 #else
 #define GET_PREV_REG64(reg, offset)
 #endif
+
+static unsigned long long int get_r0()
+{
+  unsigned long long int reg = 0;
+  GET_REG64(reg, 0);
+  return reg;
+}
+
+static unsigned long long int get_r1()
+{
+  unsigned long long int reg = 0;
+  GET_REG64(reg, 1);
+  return reg;
+}
+
+static unsigned long long int get_r2()
+{
+  unsigned long long int reg = 0;
+  GET_REG64(reg, 1);
+  return reg;
+}
+
+static unsigned long long int get_r5()
+{
+  unsigned long long int reg = 0;
+  GET_REG64(reg, 5);
+  return reg;
+}
+
+static unsigned long long int get_r6()
+{
+  unsigned long long int reg = 0;
+  GET_REG64(reg, 6);
+  return reg;
+}
+
+static unsigned long long int get_r7()
+{
+  unsigned long long int reg = 0;
+  GET_REG64(reg, 7);
+  return reg;
+}
+
+static unsigned long long int get_r13()
+{
+  unsigned long long int reg = 0;
+  GET_REG64(reg, 13);
+  return reg;
+}
 
 static unsigned long long int get_prev_r14()
 {
