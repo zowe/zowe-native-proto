@@ -20,6 +20,8 @@
 
 typedef struct sdwa SDWA;
 typedef struct savf4sa SAVF4SA;
+typedef struct sdwaptrs SDWAPTRS;
+typedef struct sdwarc4 SDWARC4;
 
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=ixg-ieaarr-establish-associated-recovery-routine-arr
 #if defined(__IBM_METAL__)
@@ -76,13 +78,6 @@ typedef struct savf4sa SAVF4SA;
 #else
 #define RETURN_ARR(r14)
 #endif
-
-//  SETRP RC=4,            I.set for retry                        +
-//  RETREGS=NO,      I.do not restore SDWAARSV registers    +
-//  RETADDR=(R0),    I.retry address                        +
-//  FRESDWA=YES,     I.release SDWA before retry            +
-//  WKAREA=(R4),     I.input SDWA                           +
-//  RECORD=YES       I.perform LOGREC recording
 
 #if defined(__IBM_METAL__)
 #ifndef _IHASDWA_DSECT
@@ -155,10 +150,12 @@ static int set_recovery(ROUTINE routine, void *routine_parm, RECOVERY_ROUTINE ar
 
 #pragma prolog(ZRCVYRTY, " MYPROLOG ")
 #pragma epilog(ZRCVYRTY, " MYEPILOG ")
-typedef void (*RETRY_ROUTINE)();
-static void ZRCVYRTY()
+// TODO(Kelosky): memory leak bc of JUMP_ENV
+typedef void (*RETRY_ROUTINE)(ZRCVY_ENV *);
+static void ZRCVYRTY(ZRCVY_ENV zenv)
 {
-  zwto_debug("@TEST OMGOODNESS");
+  zwto_debug("@TEST retry routine entered zenv=%llx", zenv);
+  JUMP_ENV(zenv.f4sa, zenv.r13, 4);
 }
 
 #pragma prolog(ZRCVYARR, "&CCN_MAIN SETB 1 \n MYPROLOG")
@@ -191,6 +188,18 @@ int ZRCVYARR(SDWA sdwa)
   }
 
   zwto_debug("@TEST recovery preparing for retry called");
+
+  // NOTE(Kelosky): needed for FRR
+  // SDWAPTRS *PTR32 sdwaptrs = NULL;
+  // memcpy(&sdwaptrs, &sdwa.sdwaxpad, sizeof(SDWAPTRS * PTR32));
+  // zwto_debug("@TEST part1");
+  // SDWARC4 *PTR32 sdwarc4 = NULL;
+  // memcpy(&sdwarc4, &sdwaptrs->sdwaxeme, sizeof(SDWAPTRS * PTR32));
+  // zwto_debug("@TEST part2");
+  // memcpy(
+  //     &sdwarc4->sdwag6401,
+  //     &r2,
+  //     sizeof(r2));
 
   RETRY_ROUTINE retry_function = ZRCVYRTY;
 
