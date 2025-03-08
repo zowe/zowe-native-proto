@@ -63,6 +63,20 @@ typedef struct savf4sa SAVF4SA;
 #define JUMP_ENV(f4sa, r13)
 #endif
 
+#if defined(__IBM_METAL__)
+#define RETURN_ARR(r14)                                         \
+  __asm(                                                        \
+      "*                                                    \n" \
+      " LG   14,%0            = R14                         \n" \
+      " BR   14               Branch and never return       \n" \
+      "*                                                      " \
+      :                                                         \
+      : "m"(r14)                                                \
+      :);
+#else
+#define RETURN_ARR(r14)
+#endif
+
 /**
  * TODO(Kelosky): tech debt
  * - ensure no memory leaks
@@ -85,9 +99,6 @@ typedef struct
   SAVF4SA f4sa;
   unsigned long long int r13;
 
-  SAVF4SA intermediate_f4sa;
-  unsigned long long int intermediate_r13;
-
   unsigned long long int intermediate_r14;
 
   SAVF4SA final_f4sa;
@@ -102,9 +113,9 @@ static int set_recovery(ROUTINE routine, void *routine_parm, RECOVERY_ROUTINE ar
 {
   IEAARR(
       routine,
-      &routine_parm, // parm for routine
+      &routine_parm,
       arr,
-      arr_parm); // @TEST@TEST@TEST@TEST@TEST@TEST@TEST this might need another level of indirection
+      arr_parm);
 }
 
 #pragma prolog(ZRCVYARR, "&CCN_MAIN SETB 1 \n MYPROLOG")
@@ -122,15 +133,14 @@ int ZRCVYARR(SDWA sdwa)
   {
     return RTNCD_PERCOLATE; // TODO(Kelosky): handle no SDWA, for now percolate
   }
-  // TODO(Kelosky): check r0 for 12, meaning no SDWA
   zwto_debug("@TEST recovery routine called");
-  // __asm(" exrl 0,*");
-
-  // zwto_debug("@TEST %llx and %llx", r0, r2);
 
   return RTNCD_PERCOLATE;
 }
 
+// TODO(Kelosky): memory leak #1... we need a custom prolog for this instance where we take storage from a work area
+// anchored off ZRCVY_ENV.  We can then use this prolog here and other locations where we have a memory leak
+// when we use the prolog and bypass our epilog
 #pragma prolog(ZRCVYINT, " MYPROLOG ")
 #pragma epilog(ZRCVYINT, " MYEPILOG ")
 static int ZRCVYINT(ZRCVY_ENV *zenv)
@@ -139,8 +149,6 @@ static int ZRCVYINT(ZRCVY_ENV *zenv)
   unsigned long long int r14 = get_prev_r14();
   unsigned char *save_area = (unsigned char *)r13;
 
-  memcpy(&zenv->intermediate_f4sa, save_area, sizeof(SAVF4SA));
-  zenv->intermediate_r13 = r13;
   zenv->intermediate_r14 = r14;
 
   zwto_debug("@TEST intermediate called");
@@ -158,10 +166,7 @@ static int recovery_drop(ZRCVY_ENV *zenv)
   zenv->final_r13 = r13;
 
   zwto_debug("@TEST returning to IEAARR");
-  __asm(" LG 14,%0 \n BR 14 \n"
-        :
-        : "m"(zenv->intermediate_r14)
-        : "r14");
+  RETURN_ARR(zenv->intermediate_r14);
 }
 
 #pragma reachable(set_env)
@@ -174,6 +179,15 @@ static int set_env(ZRCVY_ENV *zenv)
 
   memcpy(&zenv->f4sa, save_area, sizeof(SAVF4SA));
   zenv->r13 = r13;
+
+  // NOTE(Kelosky): this code block shows that the previous R13 via get_prev_r13() is identical
+  // f4sa->saveprev->savenext so that we probably don't need to store R13
+  zwto_debug("@TEST prev r13 is %llx", r13);
+  SAVF4SA *save_prev = NULL; // save_area + 144;
+  memcpy(&save_prev, zenv->f4sa.savf4saprev, 8);
+  SAVF4SA *save_next = NULL;
+  memcpy(&save_next, save_prev->savf4sanext, 8);
+  zwto_debug("@TEST prev comparison value is %llx", save_next);
 
   zwto_debug("@TEST zenv=%llx", zenv);
   set_recovery(ZRCVYINT, zenv, ZRCVYARR, zenv);
