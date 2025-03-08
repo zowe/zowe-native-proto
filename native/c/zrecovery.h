@@ -156,10 +156,10 @@ typedef struct
 
 } ZRCVY_ENV;
 
-typedef int (*ROUTINE)(ZRCVY_ENV *);
+typedef void (*ROUTINE)(ZRCVY_ENV *);
 typedef int (*RECOVERY_ROUTINE)(SDWA);
 
-static int ieaarr(ROUTINE routine, void *routine_parm, RECOVERY_ROUTINE arr, void *arr_parm)
+static void ieaarr(ROUTINE routine, void *routine_parm, RECOVERY_ROUTINE arr, void *arr_parm)
 {
   IEAARR(
       routine,
@@ -231,7 +231,7 @@ int ZRCVYARR(SDWA sdwa)
 // when we use the prolog and bypass our epilog
 #pragma prolog(ZRCVYRTE, " MYPROLOG ")
 #pragma epilog(ZRCVYRTE, " MYEPILOG ")
-static int ZRCVYRTE(ZRCVY_ENV *zenv)
+static void ZRCVYRTE(ZRCVY_ENV *zenv)
 {
   unsigned long long int r14 = get_prev_r14();
   zenv->arr_return = r14;
@@ -255,8 +255,8 @@ static int disable_recovery(ZRCVY_ENV *zenv)
 // NOTE(Kelosky): this function may "return twice" like setjmp()
 #pragma reachable(enable_recovery)
 // NOTE(Kelosky): we must not have this function inline so to save and return to the mainline
-static int enable_recovery(ZRCVY_ENV *zenv) ATTRIBUTE(noinline);
-static int enable_recovery(ZRCVY_ENV *zenv)
+static void enable_recovery(ZRCVY_ENV *zenv) ATTRIBUTE(noinline);
+static void enable_recovery(ZRCVY_ENV *zenv)
 {
   unsigned long long int r13 = get_prev_r13();
   unsigned char *save_area = (unsigned char *)r13;
