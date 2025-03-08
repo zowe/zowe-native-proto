@@ -131,12 +131,14 @@
     "xtree": "cpp",
     "xutility": "cpp",
     "__memory": "c",
+    "zrecovery.h": "c",
     "ihasdwa.h": "c",
     "zmetal.h": "c",
     "string.h": "c",
     "print": "cpp",
     "stack": "cpp",
-    "zrecovery.h": "c"
+    "zwto.h": "c",
+    "ihasaver.h": "c"
   },
   "editor.formatOnSave": true,
   "[typescript]": {

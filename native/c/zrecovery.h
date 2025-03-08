@@ -33,7 +33,6 @@ typedef struct savf4sa SAVF4SA;
       "TARGETSTATE=PROB,"                                         \
       "ARR=(%2),"                                                 \
       "TARGET=(%0)                                            \n" \
-      "*                                                      \n" \
       "*                                                        " \
       :                                                           \
       : "r"(routine),                                             \
@@ -44,6 +43,38 @@ typedef struct savf4sa SAVF4SA;
 #else
 #define IEAARR(routine, parm, arr, arr_parm)
 #endif
+
+#if defined(__IBM_METAL__)
+#define JUMP_ENV(f4sa, r13)                                       \
+  __asm(                                                          \
+      "*                                                      \n" \
+      " LA   15,%0            -> F4SA                         \n" \
+      " LG   13,%1            = prev R13                      \n" \
+      " LMG  14,14,8(15)      Restore R14                     \n" \
+      " LMG  0,12,24(15)      Restore R0-R12                  \n" \
+      " SLGR 15,15            Clear RC                        \n" \
+      " BR   14               Branch and never return         \n" \
+      "*                                                        " \
+      :                                                           \
+      : "m"(f4sa),                                                \
+        "m"(r13)                                                  \
+      :);
+#else
+#define JUMP_ENV(f4sa, r13)
+#endif
+
+/**
+ * TODO(Kelosky): tech debt
+ * - ensure no memory leaks
+ * - ensure RLOW and RHIGH set properly
+ * - ensure matching prolog / epilog
+ * - ensure CCN_NAB bit set properly for all
+ *
+ * TODO(Kelosky): features
+ * - abend counter
+ * - detect recursive abends
+ * - SETRP & VRA data wrappers
+ */
 
 #define RTNCD_RETRY 0
 #define RTNCD_PERCOLATE 4
@@ -65,7 +96,7 @@ typedef struct
 } ZRCVY_ENV;
 
 typedef int (*ROUTINE)(ZRCVY_ENV *);
-typedef int (*RECOVERY_ROUTINE)(SDWA *);
+typedef int (*RECOVERY_ROUTINE)(SDWA);
 
 static int set_recovery(ROUTINE routine, void *routine_parm, RECOVERY_ROUTINE arr, void *arr_parm)
 {
@@ -77,10 +108,15 @@ static int set_recovery(ROUTINE routine, void *routine_parm, RECOVERY_ROUTINE ar
 }
 
 #pragma prolog(ZRCVYARR, "&CCN_MAIN SETB 1 \n MYPROLOG")
-int ZRCVYARR(SDWA *sdwa)
+#pragma eiplog(ZRCVYARR, "&CCN_MAIN SETB 1 \n MYEPILOG")
+int ZRCVYARR(SDWA sdwa)
 {
-  unsigned long long int r0 = get_r0(); // if current r0 = 12, NO_SDWA
-  unsigned long long int r2 = get_r2(); // TODO(Kelosky): this should not be prev, it is EASTEX parm
+  unsigned long long int r0 = get_prev_r0(); // if current r0 = 12, NO_SDWA
+  unsigned long long int r2 = get_prev_r2();
+
+  zwto_debug("@TEST recovery routine called");
+  zwto_debug("@TEST r0=%llx, r2=%llx, and sdwa=%llx", r0, r2, sdwa.sdwaparm);
+  zwto_debug("@TEST abend=%02x%02x%02x%02x", sdwa.sdwacmpf, sdwa.sdwacmpc[0], sdwa.sdwacmpc[1], sdwa.sdwacmpc[2]);
 
   if (NO_SDWA == r0)
   {
@@ -94,17 +130,9 @@ int ZRCVYARR(SDWA *sdwa)
 
   return RTNCD_PERCOLATE;
 }
-// flow
-// set_env
-// raise recovery
-// if abend, long jump
 
-// @TEST@TEST@TEST@TEST@TEST@TEST@TEST memory leak if we never return to this routine and skip epilog!!!!
-// @TEST@TEST@TEST@TEST@TEST@TEST@TEST save RLOW and RHIGH registers
 #pragma prolog(ZRCVYINT, " MYPROLOG ")
 #pragma epilog(ZRCVYINT, " MYEPILOG ")
-// #pragma epilog(set_env, "&CCN_RLOW SETA 14 \n&CCN_RHIGH SETA 12 \n&CCN_MAIN SETB 0 \n MYEPILOG")
-// static int ZRCVYINT(char *message)
 static int ZRCVYINT(ZRCVY_ENV *zenv)
 {
   unsigned long long int r13 = get_prev_r13();
@@ -117,12 +145,7 @@ static int ZRCVYINT(ZRCVY_ENV *zenv)
 
   zwto_debug("@TEST intermediate called");
 
-  // NOTE(Kelosky): we cannot change memory access for first instructions that reference them, e.g. 15 & 13, they must be first
-  // because we won't know which registers are used by the compiler to reference them
-  __asm(" LA 15,%0 \n LG 13,%1 \n LMG 14,14,8(15) \n LMG 0,12,24(15) \n SLGR 15,15 \n BR 14 \n"
-        :
-        : "m"(zenv->f4sa), "m"(zenv->r13)
-        : "r15"); // ignore r13
+  JUMP_ENV(zenv->f4sa, zenv->r13);
 }
 
 static int recovery_drop(ZRCVY_ENV *zenv)
@@ -152,18 +175,15 @@ static int set_env(ZRCVY_ENV *zenv)
   memcpy(&zenv->f4sa, save_area, sizeof(SAVF4SA));
   zenv->r13 = r13;
 
-  set_recovery(ZRCVYINT, zenv, ZRCVYARR, NULL);
+  zwto_debug("@TEST zenv=%llx", zenv);
+  set_recovery(ZRCVYINT, zenv, ZRCVYARR, zenv);
 
   // TODO(Kelosky): zwto_debug() has a bug here
   WTO_BUF buf = {0};
   buf.len = sprintf(buf.msg, "ZWEX0001I @TEST returned from IEAARR");
   wto(&buf);
 
-  // NOTE(Kelosky): use great care in altering this instruction order
-  __asm(" LA 15,%0 \n LG 13,%1 \n LMG 14,14,8(15) \n LMG 0,12,24(15) \n SLGR 15,15 \n BR 14 \n"
-        :
-        : "m"(zenv->final_f4sa), "m"(zenv->final_r13)
-        : "r15");
+  JUMP_ENV(zenv->final_f4sa, zenv->final_r13);
 }
 
 // #pragma prolog(set_env, "&CCN_NAB_STORED SETB 1 \n&CCN_RLOW SETA 14 \n&CCN_RHIGH SETA 12")
