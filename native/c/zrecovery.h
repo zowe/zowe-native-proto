@@ -54,7 +54,7 @@ typedef struct sdwarc4 SDWARC4;
       " LG   13,%1            = prev R13                      \n" \
       " LMG  14,14,8(15)      Restore R14                     \n" \
       " LMG  0,12,24(15)      Restore R0-R12                  \n" \
-      " LGHI 15," #rc "            Clear RC                   \n" \
+      " LGHI 15," #rc "       Set RC                          \n" \
       " BR   14               Branch and never return         \n" \
       "*                                                        " \
       :                                                           \
@@ -66,7 +66,7 @@ typedef struct sdwarc4 SDWARC4;
 #endif
 
 #if defined(__IBM_METAL__)
-#define RETURN_ARR(r14)                                         \
+#define RETURN_TO_IEAARR(r14)                                   \
   __asm(                                                        \
       "*                                                    \n" \
       " LG   14,%0            = R14                         \n" \
@@ -76,7 +76,7 @@ typedef struct sdwarc4 SDWARC4;
       : "m"(r14)                                                \
       :);
 #else
-#define RETURN_ARR(r14)
+#define RETURN_TO_IEAARR(r14)
 #endif
 
 #if defined(__IBM_METAL__)
@@ -227,7 +227,7 @@ static int disable_recovery(ZRCVY_ENV *zenv)
   zenv->final_r13 = r13;
 
   // return to the IEAARR (establish_recovery_env) which will then "jump" back to the stack position set just above
-  RETURN_ARR(zenv->arr_return);
+  RETURN_TO_IEAARR(zenv->arr_return);
 }
 
 // NOTE(Kelosky): this function may "return twice" like setjmp()
