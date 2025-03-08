@@ -214,7 +214,7 @@ static void mode_nzero()
 #define GET_REG64(reg, number)                                 \
   __asm(                                                       \
       "*                                                   \n" \
-      " STG    " #number ",%0     Save RC                  \n" \
+      " STG    " #number ",%0     Save reg                 \n" \
       "*                                                    "  \
       : "=m"(reg)                                              \
       :                                                        \
