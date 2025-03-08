@@ -45,14 +45,14 @@ typedef struct savf4sa SAVF4SA;
 #endif
 
 #if defined(__IBM_METAL__)
-#define JUMP_ENV(f4sa, r13)                                       \
+#define JUMP_ENV(f4sa, r13, rc)                                   \
   __asm(                                                          \
       "*                                                      \n" \
       " LA   15,%0            -> F4SA                         \n" \
       " LG   13,%1            = prev R13                      \n" \
       " LMG  14,14,8(15)      Restore R14                     \n" \
       " LMG  0,12,24(15)      Restore R0-R12                  \n" \
-      " SLGR 15,15            Clear RC                        \n" \
+      " LGHI 15," #rc "            Clear RC                   \n" \
       " BR   14               Branch and never return         \n" \
       "*                                                        " \
       :                                                           \
@@ -60,7 +60,7 @@ typedef struct savf4sa SAVF4SA;
         "m"(r13)                                                  \
       :);
 #else
-#define JUMP_ENV(f4sa, r13)
+#define JUMP_ENV(f4sa, r13, rc)
 #endif
 
 #if defined(__IBM_METAL__)
@@ -77,6 +77,39 @@ typedef struct savf4sa SAVF4SA;
 #define RETURN_ARR(r14)
 #endif
 
+//  SETRP RC=4,            I.set for retry                        +
+//  RETREGS=NO,      I.do not restore SDWAARSV registers    +
+//  RETADDR=(R0),    I.retry address                        +
+//  FRESDWA=YES,     I.release SDWA before retry            +
+//  WKAREA=(R4),     I.input SDWA                           +
+//  RECORD=YES       I.perform LOGREC recording
+
+#if defined(__IBM_METAL__)
+#ifndef _IHASDWA_DSECT
+#define _IHASDWA_DSECT
+#pragma insert_asm(" IHASDWA ")
+#endif
+#endif
+
+#if defined(__IBM_METAL__)
+#define SETRP(rc, retry_routine, sdwa)                        \
+  __asm(                                                      \
+      "*                                                  \n" \
+      " SETRP RC=" #rc ","                                    \
+      "RETREGS=NO,"                                           \
+      "RETADDR=(%0),"                                         \
+      "FRESDWA=YES,"                                          \
+      "WKAREA=(%1),"                                          \
+      "RECORD=YES                                         \n" \
+      "*                                                  \n" \
+      "*                                                    " \
+      :                                                       \
+      : "r"(retry_routine), "r"(sdwa)                         \
+      : "r0", "r1", "r14", "r15");
+#else
+#define SETRP(rc, retry_routine, sdwa)
+#endif
+
 /**
  * TODO(Kelosky): tech debt
  * - ensure no memory leaks
@@ -90,10 +123,10 @@ typedef struct savf4sa SAVF4SA;
  * - SETRP & VRA data wrappers
  */
 
-#define RTNCD_RETRY 0
-#define RTNCD_PERCOLATE 4
-#define NO_SDWA 12
+#define RTNCD_RETRY 4
+#define RTNCD_PERCOLATE 0
 
+#define NO_SDWA 12
 typedef struct
 {
   SAVF4SA f4sa;
@@ -103,6 +136,8 @@ typedef struct
 
   SAVF4SA final_f4sa;
   unsigned long long int final_r13;
+
+  unsigned int recovery_entered : 1;
 
 } ZRCVY_ENV;
 
@@ -118,24 +153,58 @@ static int set_recovery(ROUTINE routine, void *routine_parm, RECOVERY_ROUTINE ar
       arr_parm);
 }
 
+#pragma prolog(ZRCVYRTY, " MYPROLOG ")
+#pragma epilog(ZRCVYRTY, " MYEPILOG ")
+typedef void (*RETRY_ROUTINE)();
+static void ZRCVYRTY()
+{
+  zwto_debug("@TEST OMGOODNESS");
+}
+
 #pragma prolog(ZRCVYARR, "&CCN_MAIN SETB 1 \n MYPROLOG")
-#pragma eiplog(ZRCVYARR, "&CCN_MAIN SETB 1 \n MYEPILOG")
+#pragma epilog(ZRCVYARR, "&CCN_MAIN SETB 1 \n MYEPILOG")
 int ZRCVYARR(SDWA sdwa)
 {
   unsigned long long int r0 = get_prev_r0(); // if current r0 = 12, NO_SDWA
   unsigned long long int r2 = get_prev_r2();
+  ZRCVY_ENV *zenv = NULL;
+  memcpy(&zenv, &r2, sizeof(r2));
+
+  if (zenv->recovery_entered)
+  {
+    return RTNCD_PERCOLATE; // TODO(Kelosky): handle no SDWA, call recovery routine if provided, handle counter, & use SETRP
+  }
+  zenv->recovery_entered = 1;
 
   zwto_debug("@TEST recovery routine called");
-  zwto_debug("@TEST r0=%llx, r2=%llx, and sdwa=%llx", r0, r2, sdwa.sdwaparm);
+  zwto_debug("@TEST r0=%llx, r2=%llx, zenv=%llx and sdwa=%llx", r0, r2, zenv, sdwa.sdwaparm);
   zwto_debug("@TEST abend=%02x%02x%02x%02x", sdwa.sdwacmpf, sdwa.sdwacmpc[0], sdwa.sdwacmpc[1], sdwa.sdwacmpc[2]);
 
   if (NO_SDWA == r0)
   {
-    return RTNCD_PERCOLATE; // TODO(Kelosky): handle no SDWA, for now percolate
+    return RTNCD_PERCOLATE; // TODO(Kelosky): handle no SDWA, for now percolate, but we can retry
   }
-  zwto_debug("@TEST recovery routine called");
 
-  return RTNCD_PERCOLATE;
+  if (sdwa.sdwaerrd & sdwaclup) // clean up only
+  {
+    return RTNCD_PERCOLATE; // TODO(Kelosky): for now percolate, user SETRP if SDWA, call recovery routine if provided
+  }
+
+  zwto_debug("@TEST recovery preparing for retry called");
+
+  RETRY_ROUTINE retry_function = ZRCVYRTY;
+
+  SETRP(
+      4, // RTNCD_RETRY
+      retry_function,
+      &sdwa);
+
+  // NOTE(Kelosky): this is technically only needed if no SDWA
+  unsigned long long int return_r0 = 0;
+  memcpy(&return_r0, &retry_function, sizeof(return_r0));
+  set_prev_r0(return_r0);
+
+  return RTNCD_RETRY;
 }
 
 // TODO(Kelosky): memory leak #1... we need a custom prolog for this instance where we take storage from a work area
@@ -145,15 +214,15 @@ int ZRCVYARR(SDWA sdwa)
 #pragma epilog(ZRCVYINT, " MYEPILOG ")
 static int ZRCVYINT(ZRCVY_ENV *zenv)
 {
-  unsigned long long int r13 = get_prev_r13();
+  // unsigned long long int r13 = get_prev_r13();
   unsigned long long int r14 = get_prev_r14();
-  unsigned char *save_area = (unsigned char *)r13;
+  // unsigned char *save_area = (unsigned char *)r13;
 
   zenv->intermediate_r14 = r14;
 
   zwto_debug("@TEST intermediate called");
 
-  JUMP_ENV(zenv->f4sa, zenv->r13);
+  JUMP_ENV(zenv->f4sa, zenv->r13, 0);
 }
 
 static int recovery_drop(ZRCVY_ENV *zenv)
@@ -197,7 +266,7 @@ static int set_env(ZRCVY_ENV *zenv)
   buf.len = sprintf(buf.msg, "ZWEX0001I @TEST returned from IEAARR");
   wto(&buf);
 
-  JUMP_ENV(zenv->final_f4sa, zenv->final_r13);
+  JUMP_ENV(zenv->final_f4sa, zenv->final_r13, 0);
 }
 
 // #pragma prolog(set_env, "&CCN_NAB_STORED SETB 1 \n&CCN_RLOW SETA 14 \n&CCN_RHIGH SETA 12")
