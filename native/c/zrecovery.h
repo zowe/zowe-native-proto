@@ -124,14 +124,18 @@ typedef struct sdwarc4 SDWARC4;
 #define NO_SDWA 12
 typedef struct
 {
+  // main line stack regs and pointer (r13)
   SAVF4SA f4sa;
   unsigned long long int r13;
 
-  unsigned long long int intermediate_r14;
+  // return address to IEAARR
+  unsigned long long int arr_return;
 
+  // main line stack regs and pointer (r13)
   SAVF4SA final_f4sa;
   unsigned long long int final_r13;
 
+  // flags
   unsigned int recovery_entered : 1;
 
 } ZRCVY_ENV;
@@ -151,7 +155,7 @@ static int set_recovery(ROUTINE routine, void *routine_parm, RECOVERY_ROUTINE ar
 #pragma prolog(ZRCVYRTY, " MYPROLOG ")
 #pragma epilog(ZRCVYRTY, " MYEPILOG ")
 // TODO(Kelosky): memory leak bc of JUMP_ENV
-typedef void (*RETRY_ROUTINE)(ZRCVY_ENV *);
+typedef void (*RETRY_ROUTINE)(ZRCVY_ENV);
 static void ZRCVYRTY(ZRCVY_ENV zenv)
 {
   zwto_debug("@TEST retry routine entered zenv=%llx", zenv);
@@ -227,24 +231,25 @@ static int ZRCVYINT(ZRCVY_ENV *zenv)
   unsigned long long int r14 = get_prev_r14();
   // unsigned char *save_area = (unsigned char *)r13;
 
-  zenv->intermediate_r14 = r14;
+  zenv->arr_return = r14;
 
   zwto_debug("@TEST intermediate called");
 
   JUMP_ENV(zenv->f4sa, zenv->r13, 0);
 }
 
+static int recovery_drop(ZRCVY_ENV *zenv) ATTRIBUTE(noinline);
 static int recovery_drop(ZRCVY_ENV *zenv)
 {
+  // get main stack regs and stack pointer
   unsigned long long int r13 = get_prev_r13();
-  unsigned long long int r14 = get_prev_r14();
   unsigned char *save_area = (unsigned char *)r13;
-
   memcpy(&zenv->final_f4sa, save_area, sizeof(SAVF4SA));
   zenv->final_r13 = r13;
 
+  // return to the IEAARR which will "jump" back to the stack position set just above
   zwto_debug("@TEST returning to IEAARR");
-  RETURN_ARR(zenv->intermediate_r14);
+  RETURN_ARR(zenv->arr_return);
 }
 
 #pragma reachable(set_env)
@@ -268,6 +273,10 @@ static int set_env(ZRCVY_ENV *zenv)
   zwto_debug("@TEST prev comparison value is %llx", save_next);
 
   zwto_debug("@TEST zenv=%llx", zenv);
+
+  // here we call an intermediate routine which will route back to main line code
+  // eventually, whenever we call to drop recovery, we then fall through after this
+  // IEAARR invocation
   set_recovery(ZRCVYINT, zenv, ZRCVYARR, zenv);
 
   // TODO(Kelosky): zwto_debug() has a bug here
@@ -275,6 +284,8 @@ static int set_env(ZRCVY_ENV *zenv)
   buf.len = sprintf(buf.msg, "ZWEX0001I @TEST returned from IEAARR");
   wto(&buf);
 
+  // not a memory leak since we didn't obtain stack space
+  // jump back to main whever drop was called
   JUMP_ENV(zenv->final_f4sa, zenv->final_r13, 0);
 }
 

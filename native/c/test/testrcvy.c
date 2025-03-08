@@ -51,11 +51,12 @@ int main()
   if (0 == set_env(&zenv))
   {
     zwto_debug("@TEST in if");
-    s0c3_abend(2);
+    // s0c3_abend(2);
   }
   else
   {
     zwto_debug("@TEST in else");
+    // s0c3_abend(2);
   }
   zwto_debug("@TEST outside of if/else");
 
