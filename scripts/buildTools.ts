@@ -485,7 +485,7 @@ async function build(connection: Client) {
     console.log(
         await runCommandInShell(
             connection,
-            `cd ${goDeployDirectory} &&${config.goEnv ? ` ${config.goEnv}` : ""} go build\n`,
+            `cd ${goDeployDirectory} &&${config.goEnv ? ` ${config.goEnv}` : ""} go build${DEBUG_MODE() ? "" : ' -ldflags="-s -w"'}\n`,
             true,
         ),
     );
