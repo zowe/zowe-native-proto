@@ -42,7 +42,9 @@ export class ZSshUtils {
             port: session.ISshSession.port,
             username: session.ISshSession.user,
             password: session.ISshSession.password,
-            privateKey: session.ISshSession.privateKey ? fs.readFileSync(session.ISshSession.privateKey) : undefined,
+            privateKey: session.ISshSession.privateKey
+                ? fs.readFileSync(session.ISshSession.privateKey, "utf-8")
+                : undefined,
             passphrase: session.ISshSession.keyPassphrase,
         };
     }
