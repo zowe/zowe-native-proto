@@ -303,7 +303,7 @@ int main(int argc, char *argv[])
   ZCLIVerb job_submit_jcl("submit-jcl");
   job_submit_jcl.get_aliases().push_back("subj");
   job_submit_jcl.set_description("submit JCL contents directly");
-  job_submit_jcl.set_zcli_verb_handler(handle_job_submit);
+  job_submit_jcl.set_zcli_verb_handler(handle_job_submit_jcl);
   job_submit_jcl.get_options().push_back(job_jobid_only);
   job_group.get_verbs().push_back(job_submit_jcl);
 
@@ -764,8 +764,19 @@ int handle_job_submit_jcl(ZCLIResult result)
   std::istreambuf_iterator<char> begin(std::cin);
   std::istreambuf_iterator<char> end;
 
-  std::vector<char> bytes(begin, end);
-  data.assign(bytes.begin(), bytes.end());
+  if (isatty(fileno(stdout)))
+  {
+    std::vector<char> bytes(begin, end);
+    data.assign(bytes.begin(), bytes.end());
+  }
+  else
+  {
+    vector<char> input(begin, end);
+    const auto temp = string(input.begin(), input.end());
+    input.clear();
+    const auto bytes = zut_get_contents_as_bytes(temp);
+    data.assign(bytes.begin(), bytes.end());
+  }
 
   vector<ZJob> jobs;
   string jobid;
@@ -782,7 +793,7 @@ int handle_job_submit_jcl(ZCLIResult result)
   if ("true" == only_jobid)
     cout << jobid << endl;
   else
-    cout << "Submitted, " << jobid << endl;
+    cout << "Submitted from stdin, " << jobid << endl;
 
   return RTNCD_SUCCESS;
 }

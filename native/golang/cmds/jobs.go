@@ -13,6 +13,7 @@ package cmds
 
 import (
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"strconv"
 	"strings"
@@ -237,7 +238,9 @@ func HandleSubmitJclRequest(conn *utils.StdioConn, params []byte) (result any, e
 		return
 	}
 
-	cmd := utils.BuildCommandNoAutocvt([]string{"job", "submit-jcl", "--only-jobid", "true"})
+	byteString := hex.EncodeToString(decodedBytes)
+
+	cmd := utils.BuildCommand([]string{"job", "submit-jcl", "--only-jobid", "true"})
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		e = fmt.Errorf("Failed to open stdin pipe to zowex: %v", err)
@@ -246,13 +249,13 @@ func HandleSubmitJclRequest(conn *utils.StdioConn, params []byte) (result any, e
 
 	go func() {
 		defer stdin.Close()
-		_, err = stdin.Write(decodedBytes)
+		_, err = stdin.Write([]byte(byteString))
 		if err != nil {
 			e = fmt.Errorf("Failed to write to pipe: %v", err)
 		}
 	}()
 
-	out, err := cmd.Output()
+	out, err := cmd.CombinedOutput()
 	if err != nil {
 		e = fmt.Errorf("Failed to submit JCL: %v", err)
 		conn.LastExitCode = cmd.ProcessState.ExitCode()
