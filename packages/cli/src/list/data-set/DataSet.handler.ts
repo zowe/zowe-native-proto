@@ -9,7 +9,7 @@
  *
  */
 
-import { ImperativeError, type IHandlerParameters } from "@zowe/imperative";
+import { type IHandlerParameters, ImperativeError } from "@zowe/imperative";
 import type { ZSshClient, ds } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
 
