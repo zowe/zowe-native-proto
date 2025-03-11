@@ -15,7 +15,7 @@ export const ListDataSetMembersDefinition: ICommandDefinition = {
     handler: `${__dirname}/DataSetMembers.handler`,
     type: "command",
     name: "all-members",
-    aliases: ["data-set-members"],
+    aliases: ["data-set-members", "am"],
     summary: "List PDS or PDSE data set members",
     description: "List all members of the specified PDS or PDSE data set.",
     examples: [
