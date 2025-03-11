@@ -17,7 +17,9 @@ export const ListJobsDefinition: ICommandDefinition = {
     name: "jobs",
     aliases: ["j", "js"],
     summary: "List jobs by prefix",
-    description: "List all data sets that match a DSLEVEL pattern (see help below). ",
+    description:
+        "List jobs on JES spool/queues. By default, the command lists jobs owned (owner) by the user specified in your z/OSMF profile." +
+        ' The default for prefix is "*". The command does not prevalidate your user ID. The command surfaces errors verbatim from the z/OSMF Jobs REST endpoints.',
     examples: [
         {
             description: 'List all jobs with names beginning beginning with "ibmu"',

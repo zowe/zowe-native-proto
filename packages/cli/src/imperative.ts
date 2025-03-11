@@ -13,7 +13,7 @@ import type { IImperativeConfig } from "@zowe/imperative";
 
 const config: IImperativeConfig = {
     commandModuleGlobs: ["*/*.definition!(.d).*s"],
-    rootCommandDescription: "Hello world",
+    rootCommandDescription: "Zowe Native Proto Plug-in for Zowe CLI",
     productDisplayName: "z/OS SSH Plug-in",
     name: "zowe-native-proto",
     pluginAliases: ["zssh"],
