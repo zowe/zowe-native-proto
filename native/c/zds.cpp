@@ -365,7 +365,7 @@ typedef struct
 #define ERROR_CONDITION 0XF8       // all flags
   unsigned char type;
 #define CATALOG_TYPE 0xF0
-  char name[44];
+  char name[MAX_DS_LENGTH];
   ZDS_CSI_ERROR_INFO error_info;
 } ZDS_CSI_CATALOG;
 
@@ -396,7 +396,7 @@ typedef struct
 #define USER_CATALOG_CONNECTOR_ENTRY 'U'
 #define ATL_VOLUME_ENTRY 'W'
 #define ALIAS 'X'
-  char name[44];
+  char name[MAX_DS_LENGTH];
 
   union
   {
