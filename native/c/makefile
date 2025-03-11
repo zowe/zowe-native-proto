@@ -8,14 +8,11 @@
 #
 #  Copyright Contributors to the Zowe Project.
 #
-CXX=xlc++
-CC=xlc
-ASM=as
-BIND = ld
 
-# https://www.ibm.com/docs/en/zos/3.1.0?topic=bor-binder-options
-# https://www.ibm.com/docs/en/zos/3.1.0?topic=descriptions-ld-link-object-files
-BIND_FLAGS = -bRMODE=ANY
+XLC_FLAGS=_CC_ACCEPTABLE_RC=0 _C89_ACCEPTABLE_RC=0 _CXX_ACCEPTABLE_RC=0
+CXX=$(XLC_FLAGS) xlc++
+CC=$(XLC_FLAGS) xlc
+ASM=as
 
 MTL_OPTS=metal,\
  langlvl(extended),\
@@ -93,13 +90,6 @@ MTL_FLAGS64+=-g1
 
 
 all: libzut.so libzut.a libzds.so libzds.a libzusf.so libzusf.a libzcn.so libzcn.a libzjb.so libzjb.a zowex zowexx extattr test
-
-#
-# CLI
-#
-zcli.o: zcli.cpp
-	@echo 'Building zcli.o'
-	$(CXX) $(DLL_CPP_FLAGS) -qlist=$*.cpp.lst -o $@ $^
 
 #
 # Utilities
@@ -254,13 +244,13 @@ libztso.a: ztso.o
 # Test CLI
 #
 # zowex: zowex.o zcn.o zcnm.o zcnm31.o zut.o zutm.o zutm31.o zjb.o zjbm.o zssi31.o zjbm31.o zds.o
-zowex: zowex.o zcli.o libzcn.a libzut.a libzjb.a libzds.a libzusf.a libztso.a
+zowex: zowex.o libzcn.a libzut.a libzjb.a libzds.a libzusf.a libztso.a
 	@echo 'Building zowex'
 	$(CXX) $(CPP_BND_FLAGS) -o $@ $^ > $*.bind.lst
 	ln -sf ../c/$@ ../golang/zowex
 	@echo 'Copied zowex to golang/'
 
-zowexx: zowex.o zcli.o libzcn.a libzut.a libzjb.a libzds.a libzusf.a libztso.a
+zowexx: zowex.o libzcn.a libzut.a libzjb.a libzds.a libzusf.a libztso.a
 	@echo 'Building zowexx'
 	$(CXX) $(CPP_BND_FLAGS_AUTH) -o $@ $^ > $*.bind.lst
 	ln -sf ../c/$@ ../golang/zowexx

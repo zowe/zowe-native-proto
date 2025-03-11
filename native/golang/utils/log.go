@@ -23,8 +23,7 @@ var logFile *os.File
 
 // LogError logs an error to the log file
 func LogError(format string, args ...any) {
-	_, err := logFile.WriteString(fmt.Sprintf(format, args))
-	_, err = logFile.WriteString("\n")
+	_, err := logFile.WriteString(fmt.Sprintf(format, args...) + "\n")
 	if err != nil {
 		log.Fatalln("Failed to write to log file:", err)
 	}
@@ -39,7 +38,7 @@ func LogError(format string, args ...any) {
 	if info.Size() > 10*1024*1024 {
 		logFile.Close()
 		InitLogger(true)
-		logFile.WriteString("Log file truncated due to size limit\n")
+		_, _ = logFile.WriteString("Log file truncated due to size limit\n")
 	}
 }
 

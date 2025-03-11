@@ -22,17 +22,17 @@
 | _Create data set member_ | ✅              | ✅  | 🚧 <sup>4</sup> | ✅         | ✅  | ✅  | ✅   |
 | _Delete data set_        | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
 | _Delete data set member_ | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
-| Migrate data set         | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | Recall data set          | 🚧 <sup>5</sup> | ❌  | ✅              | ✅         | ✅  | ✅  | ✅   |
+| Migrate data set         | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | Delete migrated data set | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | Rename data set          | ✅              | ✅  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | Copy data set            | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
-| Invoke AMS (VSAM)        | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ➖   |
 | Search data sets         | 🚧 <sup>6</sup> | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
+| Invoke AMS (VSAM)        | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ➖   |
 
 1. Not all attributes are retrieved
 2. Streaming is not supported for large files
-3. Does not support allocation attributes
+3. Does not support allocation attributes (or templates in VSCE)
 4. If the member already exists that data will be overwritten
 5. Does not support some migration utilities like CA Disk
 6. Limited options compared to ISPF `srchfor`
@@ -68,29 +68,33 @@
 
 ## Jobs
 
-| Operation          | z/OSMF | FTP | Backend | Middleware | SDK | CLI | VSCE |
-| ------------------ | ------ | --- | ------- | ---------- | --- | --- | ---- |
-| _Get job status_   | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅   |
-| _List jobs_        | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅   |
-| _List spool files_ | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅   |
-| _Read spool file_  | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅   |
-| _Get job JCL_      | ✅     | ❌  | ✅      | ✅         | ✅  | ✅  | ✅   |
-| _Submit job_       | ✅     | ✅  | ✅      | ✅         | ✅  | ❌  | ✅   |
-| _Delete job_       | ✅     | ✅  | ✅      | ✅         | ✅  | ❌  | ❌   |
-| Cancel job         | ✅     | ❌  | ❌      | ✅         | ✅  | ❌  | ❌   |
-| Hold job           | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌   |
-| Release job        | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌   |
-| Change job class   | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ➖   |
+| Operation          | z/OSMF | FTP | Backend | Middleware | SDK | CLI | VSCE            |
+| ------------------ | ------ | --- | ------- | ---------- | --- | --- | --------------- |
+| _Get job status_   | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅              |
+| _List jobs_        | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅              |
+| _List spool files_ | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅              |
+| _Read spool file_  | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅              |
+| _Get job JCL_      | ✅     | ❌  | ✅      | ✅         | ✅  | ✅  | ✅              |
+| _Submit job_       | ✅     | ✅  | ✅      | ✅         | ✅  | ❌  | ✅              |
+| _Delete job_       | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅              |
+| Cancel job         | ✅     | ❌  | ✅      | ✅         | ✅  | ✅  | ✅ <sup>1</sup> |
+| Hold job           | ✅     | ❌  | ✅      | ✅         | ✅  | ✅  | ➖ <sup>2</sup> |
+| Release job        | ✅     | ❌  | ✅      | ✅         | ✅  | ✅  | ➖ <sup>2</sup> |
+| Change job class   | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ➖              |
+
+1. Does not support force, restart, dump, or purge
+2. Zowe Explorer does not support the Job Hold/Release operation
 
 ## Console
 
-| Operation                | z/OSMF | FTP | Backend         | Middleware | SDK | CLI | VSCE |
-| ------------------------ | ------ | --- | --------------- | ---------- | --- | --- | ---- |
-| Issue MVS command        | ✅     | ❌  | ✅ <sup>1</sup> | ✅         | ✅  | ✅  | ❌   |
-| Get MVS command response | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
-| Get MVS detect result    | ✅     | ❌  | ❌              | ❌         | ❌  | ➖  | ➖   |
+| Operation                | z/OSMF | FTP | Backend         | Middleware | SDK | CLI | VSCE            |
+| ------------------------ | ------ | --- | --------------- | ---------- | --- | --- | --------------- |
+| Issue MVS command        | ✅     | ❌  | ✅ <sup>1</sup> | ✅         | ✅  | ✅  | ✅ <sup>2</sup> |
+| Get MVS command response | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ❌              |
+| Get MVS detect result    | ✅     | ❌  | ❌              | ❌         | ❌  | ➖  | ➖              |
 
 1. Requires APF authorization
+2. You must manually deploy/symlink `zowexx`
 
 ## TSO
 

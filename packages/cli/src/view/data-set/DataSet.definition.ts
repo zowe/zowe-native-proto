@@ -12,7 +12,7 @@
 import type { ICommandDefinition } from "@zowe/imperative";
 
 export const ViewDataSetDefinition: ICommandDefinition = {
-    handler: __dirname + "/DataSet.handler",
+    handler: `${__dirname}/DataSet.handler`,
     description: "View the contents of a z/OS data set",
     type: "command",
     name: "data-set",

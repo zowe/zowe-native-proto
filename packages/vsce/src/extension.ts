@@ -9,59 +9,21 @@
  *
  */
 
-import * as path from "node:path";
-import { Gui, ZoweVsCodeExtension } from "@zowe/zowe-explorer-api";
+import { ZoweVsCodeExtension, imperative } from "@zowe/zowe-explorer-api";
 import * as vscode from "vscode";
-import { ZSshUtils } from "zowe-native-proto-sdk";
 import { SshClientCache } from "./SshClientCache";
-import { SshConfigUtils } from "./SshConfigUtils";
-import { SshJesApi, SshMvsApi, SshUssApi } from "./api";
-
-function registerCommands(context: vscode.ExtensionContext): vscode.Disposable[] {
-    return [
-        vscode.commands.registerCommand("zowe-native-proto-vsce.connect", async (profName?: string) => {
-            const profile = await SshConfigUtils.promptForProfile(profName);
-            if (!profile) return;
-            const serverPath = SshConfigUtils.getServerPath(profile.profile);
-            const localDir = path.join(context.extensionPath, "bin");
-            await Gui.withProgress(
-                {
-                    location: vscode.ProgressLocation.Notification,
-                    title: "Deploying Zowe SSH server...",
-                },
-                () => {
-                    return ZSshUtils.installServer(ZSshUtils.buildSession(profile.profile!), serverPath, localDir);
-                },
-            );
-            SshConfigUtils.showSessionInTree(profile.name!, true);
-            await Gui.showMessage(`Installed Zowe SSH server on ${profile.name}`);
-        }),
-        vscode.commands.registerCommand("zowe-native-proto-vsce.restart", async (profName?: string) => {
-            const profile = await SshConfigUtils.promptForProfile(profName);
-            if (!profile) return;
-            await SshClientCache.inst.connect(profile, true);
-            const statusMsg = Gui.setStatusBarMessage("Restarted Zowe SSH server");
-            setTimeout(() => statusMsg.dispose(), 5000);
-        }),
-        vscode.commands.registerCommand("zowe-native-proto-vsce.uninstall", async (profName?: string) => {
-            const profile = await SshConfigUtils.promptForProfile(profName);
-            if (!profile) return;
-            SshClientCache.inst.end(profile.profile!.host);
-            const serverPath = SshConfigUtils.getServerPath(profile.profile);
-            await ZSshUtils.uninstallServer(ZSshUtils.buildSession(profile.profile!), serverPath);
-            SshConfigUtils.showSessionInTree(profile.name!, false);
-            await Gui.showMessage(`Uninstalled Zowe SSH server from ${profile.name}`);
-        }),
-    ];
-}
+import { initLogger, registerCommands } from "./Utilities";
+import { SshCommandApi, SshJesApi, SshMvsApi, SshUssApi } from "./api";
 
 // This method is called when your extension is activated
 export function activate(context: vscode.ExtensionContext) {
+    initLogger(context);
     const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
     if (zoweExplorerApi == null) {
-        vscode.window.showErrorMessage(
-            "Could not access Zowe Explorer API. Please check that the latest version of Zowe Explorer is installed.",
-        );
+        const errMsg =
+            "Could not access Zowe Explorer API. Please check that the latest version of Zowe Explorer is installed.";
+        imperative.Logger.getAppLogger().fatal(errMsg);
+        vscode.window.showErrorMessage(errMsg);
         return;
     }
 
@@ -70,6 +32,7 @@ export function activate(context: vscode.ExtensionContext) {
     zoweExplorerApi.registerMvsApi(new SshMvsApi());
     zoweExplorerApi.registerUssApi(new SshUssApi());
     zoweExplorerApi.registerJesApi(new SshJesApi());
+    zoweExplorerApi.registerCommandApi(new SshCommandApi());
     zoweExplorerApi.getExplorerExtenderApi().reloadProfiles("ssh");
 }
 

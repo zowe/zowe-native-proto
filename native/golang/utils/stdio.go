@@ -57,7 +57,7 @@ func readUntilEot(reader *bufio.Reader, data chan<- []byte) {
 
 	for {
 		if char, _ := reader.Peek(1); char[0] == byte('\x04') {
-			reader.Discard(1)
+			_, _ = reader.Discard(1)
 			break
 		}
 		line, _ := reader.ReadBytes('\n')

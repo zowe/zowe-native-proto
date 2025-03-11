@@ -40,7 +40,6 @@
     "*.REXXINC*": "rexx",
     "*.rex": "rexx",
     "*.rexx": "rexx",
-    "*.proto": "csharp",
     "*.s": "hlasm",
     "string": "cpp",
     "iostream": "cpp",
@@ -132,7 +131,14 @@
     "xtree": "cpp",
     "xutility": "cpp",
     "__memory": "c",
-    "zrecovery.h": "c"
+    "zrecovery.h": "c",
+    "ihasdwa.h": "c",
+    "zmetal.h": "c",
+    "string.h": "c",
+    "print": "cpp",
+    "stack": "cpp",
+    "zwto.h": "c",
+    "ihasaver.h": "c"
   },
   "editor.formatOnSave": true,
   "[typescript]": {

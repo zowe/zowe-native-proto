@@ -27,6 +27,10 @@
         "title": "Zowe-SSH: Restart Zowe Server on Host..."
       },
       {
+        "command": "zowe-native-proto-vsce.showLog",
+        "title": "Zowe-SSH: Show Log"
+      },
+      {
         "command": "zowe-native-proto-vsce.uninstall",
         "title": "Zowe-SSH: Uninstall Zowe Server from Host..."
       }
@@ -34,6 +38,19 @@
     "configuration": {
       "title": "zowe-native-proto-vsce",
       "properties": {
+        "zowe-native-proto-vsce.logLevel": {
+          "type": "string",
+          "default": "INFO",
+          "description": "Sets logging level of the extension. Requires extension restart to take effect.",
+          "enum": [
+            "TRACE",
+            "DEBUG",
+            "INFO",
+            "WARN",
+            "ERROR",
+            "FATAL"
+          ]
+        },
         "zowe-native-proto-vsce.serverInstallPath": {
           "type": "object",
           "description": "Defines custom server install paths for SSH hosts. Defaults to '~/.zowe-server'.",
@@ -66,13 +83,16 @@
     "watch": "rspack --mode development --watch"
   },
   "dependencies": {
-    "@zowe/zowe-explorer-api": "^3.0.3",
+    "@zowe/core-for-zowe-sdk": "^8.11.0",
+    "@zowe/zowe-explorer-api": "^3.1.0",
+    "ssh2": "^1.16.0",
     "zowe-native-proto-sdk": "0.0.1"
   },
   "devDependencies": {
     "@rspack/cli": "^1.1.5",
     "@rspack/core": "^1.1.5",
     "@types/node": "^18.19.14",
+    "@types/ssh2": "^1.15.4",
     "@types/vscode": "^1.79.0",
     "@vscode/vsce": "^3.2.2",
     "@zowe/zos-files-for-zowe-sdk": "^8.11.0",

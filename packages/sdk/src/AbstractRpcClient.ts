@@ -12,7 +12,7 @@
 import type { CommandRequest, CommandResponse, cmds, ds, jobs, uss } from "./doc";
 
 export abstract class AbstractRpcClient {
-    public abstract request<Resp extends CommandResponse, Req extends CommandRequest>(request: Req): Promise<Resp>;
+    public abstract request<Req extends CommandRequest, Resp extends CommandResponse>(request: Req): Promise<Resp>;
 
     public get ds() {
         return {
@@ -55,6 +55,10 @@ export abstract class AbstractRpcClient {
                 this.request({ command: "submitJob", ...request }),
             submitJcl: (request: Omit<jobs.SubmitJclRequest, "command">): Promise<jobs.SubmitJclResponse> =>
                 this.request({ command: "submitJcl", ...request }),
+            holdJob: (request: Omit<jobs.HoldJobRequest, "command">): Promise<jobs.HoldJobResponse> =>
+                this.request({ command: "holdJob", ...request }),
+            releaseJob: (request: Omit<jobs.ReleaseJobRequest, "command">): Promise<jobs.ReleaseJobResponse> =>
+                this.request({ command: "releaseJob", ...request }),
         };
     }
 

@@ -17,13 +17,31 @@ import { SshCommonApi } from "./SshCommonApi";
 
 export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs {
     public async dataSet(filter: string, options?: zosfiles.IListOptions): Promise<zosfiles.IZosFilesResponse> {
-        const response = await (await this.client).ds.listDatasets({
-            pattern: filter,
-        });
-        return this.buildZosFilesResponse({
-            items: response.items.map((item) => ({ dsname: item.name, dsorg: item.dsorg, vol: item.volser })),
-            returnedRows: response.returnedRows,
-        });
+        try {
+            const response = await (await this.client).ds.listDatasets({
+                pattern: filter,
+            });
+            return this.buildZosFilesResponse({
+                items: response.items.map((item) => ({
+                    dsname: item.name,
+                    dsorg: item.dsorg,
+                    vol: item.volser,
+                    migr: item.migr ? "YES" : "NO",
+                })),
+                returnedRows: response.returnedRows,
+            });
+        } catch (err) {
+            if (err instanceof imperative.ImperativeError) {
+                Gui.errorMessage(`Failed to list data sets: ${err.additionalDetails.replace("Error: ", "")}`);
+            }
+            return this.buildZosFilesResponse(
+                {
+                    items: [],
+                    returnedRows: 0,
+                },
+                false,
+            );
+        }
     }
 
     public async allMembers(dataSetName: string, options?: zosfiles.IListOptions): Promise<zosfiles.IZosFilesResponse> {

@@ -12,7 +12,7 @@
 import type { ICommandDefinition } from "@zowe/imperative";
 
 export const UploadFileToUssFileDefinition: ICommandDefinition = {
-    handler: __dirname + "/FileToUssFile.handler",
+    handler: `${__dirname}/FileToUssFile.handler`,
     description: "Upload contents of a local to a Unix System Services file.",
     type: "command",
     name: "file-to-uss-file",

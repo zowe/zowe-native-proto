@@ -24,7 +24,7 @@ export class SshJesApi extends SshCommonApi implements MainframeInteraction.IJes
                 jobid: item.id,
                 jobname: item.name,
                 status: item.status,
-                retcode: item.retcode,
+                retcode: item.retcode === "------" ? item.status : item.retcode,
             }),
         ) as zosjobs.IJob[];
     }
@@ -37,7 +37,7 @@ export class SshJesApi extends SshCommonApi implements MainframeInteraction.IJes
             jobid: response.id,
             jobname: response.name,
             status: response.status,
-            retcode: response.retcode,
+            retcode: response.retcode === "------" ? response.status : response.retcode,
         } as zosjobs.IJob;
     }
 

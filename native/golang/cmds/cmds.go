@@ -24,7 +24,11 @@ func HandleConsoleCommandRequest(conn *utils.StdioConn, params []byte) (result a
 		return nil, err
 	}
 
-	args := []string{"console", "issue", request.CommandText, "--cn", request.ConsoleName}
+	consoleName := "ZOWE00CN"
+	if request.ConsoleName != "" {
+		consoleName = request.ConsoleName
+	}
+	args := []string{"console", "issue", request.CommandText, "--cn", consoleName}
 	cmd := utils.BuildCommandAuthorized(args)
 	out, err := cmd.Output()
 	if err != nil {

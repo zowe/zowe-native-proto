@@ -154,6 +154,7 @@ export class SshUssApi extends SshCommonApi implements MainframeInteraction.IUss
         return this.buildZosFilesResponse(undefined, success);
     }
 
+    // biome-ignore lint/suspicious/noExplicitAny: The apiResponse has no strong type
     private buildZosFilesResponse(apiResponse: any, success = true): zosfiles.IZosFilesResponse {
         return { apiResponse, commandResponse: "", success };
     }

@@ -203,6 +203,48 @@ func HandleCancelJobRequest(conn *utils.StdioConn, params []byte) (result any, e
 	return
 }
 
+// HandleHoldJobRequest holds a job by invoking the `zowex job hold` command
+func HandleHoldJobRequest(conn *utils.StdioConn, params []byte) (result any, e error) {
+	request, err := utils.ParseCommandRequest[jobs.HoldJobRequest](params)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = conn.ExecCmd([]string{"job", "hold", request.JobId})
+
+	if err != nil {
+		e = fmt.Errorf("Failed to hold job: %v", err)
+		return
+	}
+
+	result = jobs.HoldJobResponse{
+		Success: true,
+		JobId:   request.JobId,
+	}
+	return
+}
+
+// HandleReleaseJobRequest releases a job by invoking the `zowex job release` command
+func HandleReleaseJobRequest(conn *utils.StdioConn, params []byte) (result any, e error) {
+	request, err := utils.ParseCommandRequest[jobs.ReleaseJobRequest](params)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = conn.ExecCmd([]string{"job", "release", request.JobId})
+
+	if err != nil {
+		e = fmt.Errorf("Failed to release job: %v", err)
+		return
+	}
+
+	result = jobs.ReleaseJobResponse{
+		Success: true,
+		JobId:   request.JobId,
+	}
+	return
+}
+
 // HandleSubmitJobRequest handles a SubmitJobRequest by invoking the `zowex job submit` command
 func HandleSubmitJobRequest(conn *utils.StdioConn, params []byte) (result any, e error) {
 	request, err := utils.ParseCommandRequest[jobs.SubmitJobRequest](params)

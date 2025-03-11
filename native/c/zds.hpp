@@ -15,8 +15,9 @@
 #include <iostream>
 #include <vector>
 #include <string>
-#include "zds.hpp"
 #include "zdstype.h"
+
+extern const size_t MAX_DS_LENGTH;
 
 struct ZDSMem
 {
@@ -29,6 +30,7 @@ struct ZDSEntry
   std::string name;
   std::string dsorg;
   std::string volser;
+  bool migr;
 };
 
 /**
