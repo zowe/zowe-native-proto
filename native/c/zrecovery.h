@@ -112,6 +112,10 @@ typedef struct sdwarc4 SDWARC4;
  * - ensure matching prolog / epilog
  * - ensure CCN_NAB bit set properly for all
  *
+ * TODO(Kelosky):
+ * - prolog / epilog can have SAVE=YES and SAVE=YES_DSA
+ * - SAVE=YES might be sufficient to fix the memory leaks found here
+ *
  * TODO(Kelosky): features
  * - abend counter
  * - detect recursive abends
@@ -255,8 +259,8 @@ static int disable_recovery(ZRCVY_ENV *zenv)
 // NOTE(Kelosky): this function may "return twice" like setjmp()
 #pragma reachable(enable_recovery)
 // NOTE(Kelosky): we must not have this function inline so to save and return to the mainline
-static void enable_recovery(ZRCVY_ENV *zenv) ATTRIBUTE(noinline);
-static void enable_recovery(ZRCVY_ENV *zenv)
+static int enable_recovery(ZRCVY_ENV *zenv) ATTRIBUTE(noinline);
+static int enable_recovery(ZRCVY_ENV *zenv)
 {
   unsigned long long int r13 = get_prev_r13();
   unsigned char *save_area = (unsigned char *)r13;
