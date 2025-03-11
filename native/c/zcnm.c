@@ -17,6 +17,7 @@
 #include "zecb.h"
 
 #pragma prolog(ZCNACT, "&CCN_MAIN SETB 1 \n MYPROLOG")
+#pragma epilog(ZCNACT, "&CCN_MAIN SETB 1 \n MYEPILOG")
 int ZCNACT(ZCN *zcn)
 {
   int rc = 0;
@@ -44,6 +45,7 @@ int ZCNACT(ZCN *zcn)
 }
 
 #pragma prolog(ZCNPUT, "&CCN_MAIN SETB 1 \n MYPROLOG")
+#pragma epilog(ZCNPUT, "&CCN_MAIN SETB 1 \n MYEPILOG")
 int ZCNPUT(ZCN *zcn, const char *command)
 {
   int rc = 0;
@@ -72,6 +74,7 @@ int ZCNPUT(ZCN *zcn, const char *command)
 }
 
 #pragma prolog(ZCNGET, "&CCN_MAIN SETB 1 \n MYPROLOG")
+#pragma epilog(ZCNGET, "&CCN_MAIN SETB 1 \n MYEPILOG")
 int ZCNGET(ZCN *zcn, char *response)
 {
   int rc = 0;
@@ -102,6 +105,7 @@ int ZCNGET(ZCN *zcn, char *response)
 }
 
 #pragma prolog(ZCNDACT, "&CCN_MAIN SETB 1 \n MYPROLOG")
+#pragma epilog(ZCNDACT, "&CCN_MAIN SETB 1 \n MYEPILOG")
 int ZCNDACT(ZCN *zcn)
 {
   int rc = 0;

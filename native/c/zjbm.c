@@ -226,6 +226,7 @@ int ZJBMMOD(ZJB *zjb, int type, int flags)
 
 // view job
 #pragma prolog(ZJBMVIEW, "&CCN_MAIN SETB 1 \n MYPROLOG")
+#pragma epilog(ZJBMVIEW, "&CCN_MAIN SETB 1 \n MYEPILOG")
 int ZJBMVIEW(ZJB *zjb, ZJB_JOB_INFO **PTR64 job_info, int *entries)
 {
   STAT stat = {0};
@@ -240,6 +241,7 @@ int ZJBMVIEW(ZJB *zjb, ZJB_JOB_INFO **PTR64 job_info, int *entries)
 
 // list jobs
 #pragma prolog(ZJBMLIST, "&CCN_MAIN SETB 1 \n MYPROLOG")
+#pragma epilog(ZJBMLIST, "&CCN_MAIN SETB 1 \n MYEPILOG")
 int ZJBMLIST(ZJB *zjb, ZJB_JOB_INFO **PTR64 job_info, int *entries)
 {
   STAT stat = {0};
@@ -375,6 +377,7 @@ int ZJBMTCOM(ZJB *zjb, STAT *PTR64 stat, ZJB_JOB_INFO **PTR64 job_info, int *ent
 
 // list data sets for a job
 #pragma prolog(ZJBMLSDS, "&CCN_MAIN SETB 1 \n MYPROLOG")
+#pragma epilog(ZJBMLSDS, "&CCN_MAIN SETB 1 \n MYEPILOG")
 int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
 {
   int rc = 0;
