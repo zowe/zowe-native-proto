@@ -12,7 +12,14 @@
 import { readFileSync } from "node:fs";
 import * as path from "node:path";
 import { ProfileConstants } from "@zowe/core-for-zowe-sdk";
-import { FileManagement, Gui, PersistenceSchemaEnum, ZoweVsCodeExtension, imperative } from "@zowe/zowe-explorer-api";
+import {
+    FileManagement,
+    Gui,
+    type IZoweTree,
+    type IZoweTreeNode,
+    ZoweVsCodeExtension,
+    imperative,
+} from "@zowe/zowe-explorer-api";
 import { Client, type ClientChannel } from "ssh2";
 import * as vscode from "vscode";
 import { type ISshConfigExt, ZClientUtils, ZSshClient } from "zowe-native-proto-sdk";
@@ -288,20 +295,34 @@ export class SshConfigUtils {
         };
     }
 
-    public static showSessionInTree(profileName: string, visible: boolean): void {
-        const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
-        for (const setting of [PersistenceSchemaEnum.Dataset, PersistenceSchemaEnum.USS, PersistenceSchemaEnum.Job]) {
-            const localStorage = zoweExplorerApi.getExplorerExtenderApi().getLocalStorage?.();
+    public static async showSessionInTree(profileName: string, visible: boolean): Promise<void> {
+        // This method is a hack until the ZE API offers a method to show/hide profile in tree
+        // See https://github.com/zowe/zowe-explorer-vscode/issues/3506
+        const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi().getExplorerExtenderApi();
+        const treeProviders = ["datasetProvider", "ussFileProvider", "jobsProvider"].map(
+            // biome-ignore lint/suspicious/noExplicitAny: Accessing internal properties
+            (prop) => (zoweExplorerApi as any)[prop] as IZoweTree<IZoweTreeNode>,
+        );
+        const localStorage = zoweExplorerApi.getLocalStorage?.();
+        for (const provider of treeProviders) {
+            // Show or hide profile in active window
+            const sessionNode = provider.mSessionNodes.find((node) => node.getProfileName() === profileName);
+            if (visible && sessionNode == null) {
+                await provider.addSession({ sessionName: profileName, profileType: "ssh" });
+            } else if (!visible && sessionNode != null) {
+                provider.deleteSession(sessionNode);
+            }
+            // Update tree session history to persist
+            const settingName = provider.getTreeType();
             if (localStorage != null) {
-                const treeHistory = localStorage.getValue<{ sessions: string[] }>(setting);
+                const treeHistory = localStorage.getValue<{ sessions: string[] }>(settingName);
                 treeHistory.sessions = treeHistory.sessions.filter((session: string) => session !== profileName);
                 if (visible) {
                     treeHistory.sessions.push(profileName);
                 }
-                localStorage.setValue(setting, treeHistory);
+                localStorage.setValue(settingName, treeHistory);
             }
         }
-        zoweExplorerApi.getExplorerExtenderApi().reloadProfiles("ssh");
     }
 
     private static async createNewConfig(
