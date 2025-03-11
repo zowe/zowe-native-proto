@@ -9,18 +9,48 @@
  *
  */
 
+#include "ihasdwa.h"
+#include "zmetal.h"
 #include "zrecovery.h"
 #include "zwto.h"
 
-#pragma prolog(ZJBMTEST, "&CCN_MAIN SETB 1 \n MYPROLOG")
-int ZJBMTEST()
+#pragma prolog(ABEXIT, " MYPROLOG ")
+#pragma epilog(ABEXIT, " MYEPILOG ")
+void ABEXIT(SDWA *sdwa, void *abexit_data)
 {
-  zwto_debug("@TEST routine called under recovery");
-  return 0;
+  zwto_debug("@TEST called on abend");
+}
+
+#pragma prolog(PERCEXIT, " MYPROLOG ")
+#pragma epilog(PERCEXIT, " MYEPILOG ")
+void PERCEXIT(void *perc_exit_data)
+{
+  zwto_debug("@TEST called to percolate");
 }
 
 int main()
 {
-  zwto_debug("@TEST calling recovery");
-  set_recovery(ZJBMTEST);
+  ZRCVY_ENV zenv = {0};
+  zenv.abexit = ABEXIT;
+  zenv.perc_exit = PERCEXIT;
+
+  zwto_debug("@TEST main");
+
+  if (0 == enable_recovery(&zenv))
+  {
+    zwto_debug("@TEST in if");
+    // s0c3_abend(2);
+  }
+  else
+  {
+    zwto_debug("@TEST in else");
+    // s0c3_abend(2);
+  }
+  zwto_debug("@TEST outside of if/else");
+
+  disable_recovery(&zenv);
+
+  zwto_debug("@TEST exiting");
+
+  return 0;
 }

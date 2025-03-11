@@ -49,7 +49,7 @@ typedef struct
 #define S0C3(n)
 #endif
 
-static void s0c3Abend(int n)
+static void s0c3_abend(int n)
 {
   S0C3(n);
 }
@@ -210,20 +210,157 @@ static void mode_nzero()
   MODESET_KEY(NZERO);
 }
 
-// int reg = 0;
-// GET_REG(13, &reg);
 #if defined(__IBM_METAL__)
-#define GET_REG(num, reg)                                      \
+#define GET_REG64(reg, number)                                 \
   __asm(                                                       \
       "*                                                   \n" \
-      " ST    " #num ",%0 = Value passed by caller         \n" \
+      " STG    " #number ",%0     Save reg                 \n" \
       "*                                                    "  \
-      : "=m"(*reg)                                             \
+      : "=m"(reg)                                              \
       :                                                        \
       :);
 #else
-#define GET_REG(num, reg)
+#define GET_REG64(reg, number)
 #endif
+
+#if defined(__IBM_METAL__)
+#define GET_PREV_REG64(reg, offset)                            \
+  __asm(                                                       \
+      "*                                                   \n" \
+      " LG     1,128(,13)                                  \n" \
+      " LG     1," #offset "(,1)                           \n" \
+      " STG    1,%0                                        \n" \
+      "*                                                    "  \
+      : "=m"(reg)                                              \
+      :                                                        \
+      : "r1");
+#else
+#define GET_PREV_REG64(reg, offset)
+#endif
+
+#if defined(__IBM_METAL__)
+#define SET_PREV_REG64(reg, offset)                            \
+  __asm(                                                       \
+      "*                                                   \n" \
+      " LG     1,128(,13)                                  \n" \
+      " STG    1," #offset "(,1)                           \n" \
+      "*                                                    "  \
+      :                                                        \
+      : "m"(reg)                                               \
+      : "r1");
+#else
+#define SET_PREV_REG64(reg, offset)
+#endif
+
+static unsigned long long int get_r0()
+{
+  unsigned long long int reg = 0;
+  GET_REG64(reg, 0);
+  return reg;
+}
+
+static unsigned long long int get_r1()
+{
+  unsigned long long int reg = 0;
+  GET_REG64(reg, 1);
+  return reg;
+}
+
+static unsigned long long int get_r2()
+{
+  unsigned long long int reg = 0;
+  GET_REG64(reg, 1);
+  return reg;
+}
+
+static unsigned long long int get_r5()
+{
+  unsigned long long int reg = 0;
+  GET_REG64(reg, 5);
+  return reg;
+}
+
+static unsigned long long int get_r6()
+{
+  unsigned long long int reg = 0;
+  GET_REG64(reg, 6);
+  return reg;
+}
+
+static unsigned long long int get_r7()
+{
+  unsigned long long int reg = 0;
+  GET_REG64(reg, 7);
+  return reg;
+}
+
+static unsigned long long int get_r13()
+{
+  unsigned long long int reg = 0;
+  GET_REG64(reg, 13);
+  return reg;
+}
+
+static unsigned long long int get_prev_r14()
+{
+  unsigned long long int reg = 0;
+  GET_PREV_REG64(reg, 8);
+  return reg;
+}
+
+static unsigned long long int get_prev_r15()
+{
+  unsigned long long int reg = 0;
+  GET_PREV_REG64(reg, 16);
+  return reg;
+}
+
+static unsigned long long int get_prev_r0()
+{
+  unsigned long long int reg = 0;
+  GET_PREV_REG64(reg, 24);
+  return reg;
+}
+
+static unsigned long long int get_prev_r1()
+{
+  unsigned long long int reg = 0;
+  GET_PREV_REG64(reg, 32);
+  return reg;
+}
+
+static unsigned long long int get_prev_r2()
+{
+  unsigned long long int reg = 0;
+  GET_PREV_REG64(reg, 40);
+  return reg;
+}
+
+static void set_prev_r0(unsigned long long int reg)
+{
+  SET_PREV_REG64(reg, 24);
+}
+
+#if defined(__IBM_METAL__)
+#define GET_STACK_ENV(reg)                                        \
+  __asm(                                                          \
+      "*                                                      \n" \
+      " LG     1,128(,13)   -> PREV SA                        \n" \
+      " STG    1,%0         SAVE                              \n" \
+      "*                                                       "  \
+      : "=m"(reg)                                                 \
+      :                                                           \
+      : "r1");
+#else
+#define GET_STACK_ENV(regs)
+#endif
+
+static unsigned long long int get_prev_r13()
+{
+  unsigned long long int reg = 0;
+  GET_STACK_ENV(reg);
+  return reg;
+}
 
 #if defined(__IBM_METAL__)
 #define SET_REG(num, reg)                                       \
