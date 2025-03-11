@@ -59,6 +59,7 @@ typedef int (*BPXWDYN)(
 // * detail codes (high 4 hex bytes) - https://www.ibm.com/docs/en/zos/3.1.0?topic=codes-interpreting-error-reason-from-dynalloc#erc__mjfig8
 // * parm list - https://www.ibm.com/docs/en/zos/3.1.0?topic=conventions-conventional-mvs-parameter-list
 #pragma prolog(ZUTWDYN, "&CCN_MAIN SETB 1 \n MYPROLOG")
+#pragma epilog(ZUTWDYN, "&CCN_MAIN SETB 1 \n MYEPILOG")
 int ZUTWDYN(BPXWDYN_PARM *parm, BPXWDYN_RESPONSE *response)
 {
   int rc = 0;
@@ -152,6 +153,7 @@ int ZUTWDYN(BPXWDYN_PARM *parm, BPXWDYN_RESPONSE *response)
 typedef struct symbfp SYMBFP;
 typedef int (*ASASYMBF)(SYMBFP) ATTRIBUTE(amode31);
 #pragma prolog(ZUTSYMBP, "&CCN_MAIN SETB 1 \n MYPROLOG")
+#pragma epilog(ZUTSYMBP, "&CCN_MAIN SETB 1 \n MYEPILOG")
 
 // symbol examples: https://www.ibm.com/docs/en/zos/3.1.0?topic=symbols-static-system
 // similar tool: https://www.ibm.com/docs/en/zos/3.1.0?topic=descriptions-sysvar-display-static-system-symbols
@@ -183,6 +185,7 @@ int ZUTSYMBP(SYMBOL_DATA *data)
 
 typedef int (*ISRSUPC)() ATTRIBUTE(amode31);
 #pragma prolog(ZUTSRCH, "&CCN_MAIN SETB 1 \n MYPROLOG")
+#pragma epilog(ZUTSRCH, "&CCN_MAIN SETB 1 \n MYEPILOG")
 int ZUTSRCH()
 {
   int rc = 0;
@@ -202,6 +205,7 @@ typedef struct
 
 typedef int (*CCNEDSCT)(EDSCT_PARMS *) ATTRIBUTE(amode31);
 #pragma prolog(ZUTEDSCT, "&CCN_MAIN SETB 1 \n MYPROLOG")
+#pragma epilog(ZUTEDSCT, "&CCN_MAIN SETB 1 \n MYEPILOG")
 int ZUTEDSCT()
 {
   int rc = 0;
@@ -215,6 +219,7 @@ int ZUTEDSCT()
 
 // NOTE(Kelosky): this is unused in favor of `getlogin()` but retained for other usages of IAZXJSAB
 #pragma prolog(ZUTMGUSR, "&CCN_MAIN SETB 1 \n MYPROLOG")
+#pragma epilog(ZUTMGUSR, "&CCN_MAIN SETB 1 \n MYEPILOG")
 int ZUTMGUSR(char user[8])
 {
   char user31[8] = {0};
@@ -228,6 +233,7 @@ int ZUTMGUSR(char user[8])
 }
 
 #pragma prolog(ZUTMFR64, "&CCN_MAIN SETB 1 \n MYPROLOG")
+#pragma epilog(ZUTMFR64, "&CCN_MAIN SETB 1 \n MYEPILOG")
 int ZUTMFR64(void *PTR64 data)
 {
   storage_free64(data);
@@ -235,6 +241,7 @@ int ZUTMFR64(void *PTR64 data)
 }
 
 #pragma prolog(ZUTMGT64, "&CCN_MAIN SETB 1 \n MYPROLOG")
+#pragma epilog(ZUTMGT64, "&CCN_MAIN SETB 1 \n MYEPILOG")
 int ZUTMGT64(void **PTR64 data, int *len)
 {
   *data = storage_get64(*len);
