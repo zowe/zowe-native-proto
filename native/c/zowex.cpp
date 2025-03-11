@@ -1276,7 +1276,7 @@ int handle_data_set_write_to_dsn(ZCLIResult result)
   string line;
   size_t byteSize = 0ul;
 
-  if (!isatty(fileno(stdin)))
+  if (!isatty(fileno(stdout)))
   {
     std::istreambuf_iterator<char> begin(std::cin);
     std::istreambuf_iterator<char> end;
@@ -1452,7 +1452,7 @@ int handle_uss_write(ZCLIResult result)
   size_t byteSize = 0ul;
 
   // Use Ctrl/Cmd + D to stop writing data manually
-  if (!isatty(fileno(stdin)))
+  if (!isatty(fileno(stdout)))
   {
     std::istreambuf_iterator<char> begin(std::cin);
     std::istreambuf_iterator<char> end;
