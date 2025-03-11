@@ -813,10 +813,9 @@ int handle_job_submit_jcl(ZCLIResult result)
   raw_bytes.clear();
 
   ZEncode encoding_opts = {0};
-  const auto encoding_value = result.get_option("--encoding")->is_found() ? result.get_option("--encoding")->get_value() : "";
-  zut_prepare_encoding(encoding_value, &encoding_opts);
+  const auto encoding_prepared = result.get_option("--encoding")->is_found() && zut_prepare_encoding(encoding_value, &encoding_opts);
 
-  if (encoding_opts.data_type != eDataTypeBinary)
+  if (encoding_prepared && encoding_opts.data_type != eDataTypeBinary)
   {
     data = zut_encode(data, "UTF-8", string(encoding_opts.codepage), zjb.diag);
   }
@@ -1268,7 +1267,7 @@ int handle_data_set_write_to_dsn(ZCLIResult result)
   int rc = 0;
   string dsn = result.get_positional("dsn")->get_value();
   ZDS zds = {0};
-  if (result.get_option("--encoding"))
+  if (result.get_option("--encoding")->is_found())
   {
     zut_prepare_encoding(result.get_option("--encoding")->get_value(), &zds.encoding_opts);
   }
