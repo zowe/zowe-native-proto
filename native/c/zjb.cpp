@@ -561,7 +561,7 @@ void zjb_build_job_response(ZJB_JOB_INFO *PTR64 job_info, int entries, vector<ZJ
     zjob.full_status = string(job_info_next[i].phase_text);
     zut_rtrim(zjob.full_status);
 
-    zjob.retcode = ZJB_UNKNWON_RC;
+    zjob.retcode = ZJB_UNKNOWN_RC;
 
     if ("AWAIT MAIN SELECT" == zjob.full_status)
     {
