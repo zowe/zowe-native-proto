@@ -275,6 +275,8 @@ static int enable_recovery(ZRCVY_ENV *zenv)
 
   // jump back to main whever drop was called
   JUMP_ENV(zenv->final_f4sa, zenv->final_r13, 0);
+
+  return 0; // NOTE(Kelosky): this never runs
 }
 
 #endif
