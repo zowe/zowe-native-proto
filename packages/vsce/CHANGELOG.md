@@ -9,6 +9,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - Fixed issue where `Open with Encoding: Binary` for MVS and USS files did not pass the correct encoding value to the server. [#61](https://github.com/zowe/zowe-native-proto/pull/61)
 - Added support for cancelling jobs. [#138](https://github.com/zowe/zowe-native-proto/pull/138)
 - Added support for running MVS commands. [#138](https://github.com/zowe/zowe-native-proto/pull/138)
+- Updated error handling for listing data sets. [#185](https://github.com/zowe/zowe-native-proto/pull/185)
 
 ## [Unreleased]
 
