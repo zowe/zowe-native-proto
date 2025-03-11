@@ -80,7 +80,7 @@ export class SshJesApi extends SshCommonApi implements MainframeInteraction.IJes
         internalReaderLrecl?: string,
     ): Promise<zosjobs.IJob> {
         const response = await (await this.client).jobs.submitJcl({
-            jcl,
+            jcl: ZSshUtils.encodeByteArray(Buffer.from(jcl)),
         });
         return { jobid: response.jobId } as zosjobs.IJob;
     }
