@@ -286,14 +286,14 @@ async function artifacts(connection: Client) {
     const artifactNames = ["c/zowex", "golang/zowed"];
     const paxFile = "server.pax.Z";
     const prePaxCmds = artifactNames.map((file) => `cp ${file} ${basename(file)} && chmod 700 ${basename(file)}`);
-    const postPaxCmds = artifactNames.map((file) => `rm ${basename(file)}`);
+    const postPaxCmd = `rm ${artifactNames.map((file) => basename(file)).join(" ")}`;
     await runCommandInShell(
         connection,
         [
             `cd ${deployDirectory}`,
             ...prePaxCmds,
             `pax -wvzf ${paxFile} ${artifactNames.map((file) => basename(file)).join(" ")}`,
-            ...postPaxCmds,
+            postPaxCmd,
         ].join("\n"),
     );
     for (const localDir of localDirs) {
