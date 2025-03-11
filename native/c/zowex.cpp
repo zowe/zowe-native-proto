@@ -1131,7 +1131,7 @@ int handle_data_set_list(ZCLIResult result)
   int rc = 0;
   string dsn = result.get_positional("dsn")->get_value() + ".**";
 
-  if (dsn.length() > 44)
+  if (dsn.length() > MAX_DS_LENGTH)
   {
     cerr << "Error: data set pattern '" << dsn << "' exceeds 44 character length limit";
     return RTNCD_FAILURE;

@@ -23,6 +23,8 @@
 #include "iefzb4d2.h"
 #include "zdsm.h"
 
+const size_t MAX_DS_LENGTH = 44u;
+
 using namespace std;
 
 int zds_read_from_dd(ZDS *zds, string ddname, string &response)
