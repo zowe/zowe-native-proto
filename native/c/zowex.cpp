@@ -807,7 +807,6 @@ int handle_job_submit_jcl(ZCLIResult result)
   if (!isatty(fileno(stdout)))
   {
     const auto bytes = zut_get_contents_as_bytes(data);
-    data.clear();
     data.assign(bytes.begin(), bytes.end());
   }
   raw_bytes.clear();
