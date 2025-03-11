@@ -94,7 +94,7 @@
 | Get MVS detect result    | ✅     | ❌  | ❌              | ❌         | ❌  | ➖  | ➖              |
 
 1. Requires APF authorization
-2. You must manually deploy/symlink `zowexx`
+2. You must manually deploy/symlink `zoweax`
 
 ## TSO
 

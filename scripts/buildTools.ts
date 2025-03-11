@@ -156,7 +156,7 @@ function getAllServerFiles() {
         files.push(...getServerFiles(dir));
     }
 
-    return files.filter((file) => !file.startsWith("golang/ioserver"));
+    return files.filter((file) => !file.startsWith("golang/zowed"));
 }
 
 function getServerFiles(dir = "") {
@@ -283,7 +283,7 @@ async function getDumps(connection: Client) {
 
 async function artifacts(connection: Client) {
     const localDirs = ["packages/cli/bin", "packages/vsce/bin"];
-    const artifactNames = ["c/zowex", "golang/ioserver"];
+    const artifactNames = ["c/zowex", "golang/zowed"];
     const paxFile = "server.pax.Z";
     const prePaxCmds = artifactNames.map((file) => `cp ${file} ${basename(file)} && chmod 700 ${basename(file)}`);
     const postPaxCmds = artifactNames.map((file) => `rm ${basename(file)}`);

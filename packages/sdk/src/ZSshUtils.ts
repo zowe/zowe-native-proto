@@ -21,7 +21,7 @@ type SftpError = Error & { code?: number };
 
 // biome-ignore lint/complexity/noStaticOnlyClass: Utilities class has static methods
 export class ZSshUtils {
-    private static readonly SERVER_BIN_FILES = ["ioserver", "zowex"];
+    private static readonly SERVER_BIN_FILES = ["zowed", "zowex"];
     private static readonly SERVER_PAX_FILE = "server.pax.Z";
 
     public static buildSession(args: IProfile): SshSession {

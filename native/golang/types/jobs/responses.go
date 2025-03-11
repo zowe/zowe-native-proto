@@ -11,7 +11,7 @@
 
 package jobs
 
-import common "zowe-native-proto/ioserver/types/common"
+import common "zowe-native-proto/zowed/types/common"
 
 type ListJobsResponse struct {
 	common.CommandResponse `tstype:",extends"`

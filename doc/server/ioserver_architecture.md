@@ -1,6 +1,6 @@
-# ioserver
+# I/O Server
 
-ioserver acts as the middleware between the client and server. It is written in Go and leverages an input channel to support asynchronous request processing.
+ioserver (`zowed`) acts as the middleware between the client and server. It is written in Go and leverages an input channel to support asynchronous request processing.
 
 ## Architectural overview
 

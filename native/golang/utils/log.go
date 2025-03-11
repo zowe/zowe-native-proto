@@ -16,7 +16,7 @@ import (
 	"fmt"
 	"log"
 	"os"
-	t "zowe-native-proto/ioserver/types/common"
+	t "zowe-native-proto/zowed/types/common"
 )
 
 var logFile *os.File
@@ -61,7 +61,7 @@ func InitLogger(truncate bool) {
 	if truncate {
 		access = os.O_TRUNC
 	}
-	file, err := os.OpenFile(GetExecDir()+"/ioserver.log", access|os.O_CREATE|os.O_WRONLY, 0644)
+	file, err := os.OpenFile(os.Args[0]+".log", access|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Fatalln("Failed to initialize logger:", err)
 		return
