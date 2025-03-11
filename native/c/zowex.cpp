@@ -1133,7 +1133,7 @@ int handle_data_set_list(ZCLIResult result)
 
   if (dsn.length() > MAX_DS_LENGTH)
   {
-    cerr << "Error: data set pattern '" << dsn << "' exceeds 44 character length limit";
+    cerr << "Error: data set pattern exceeds 44 character length limit" << endl;
     return RTNCD_FAILURE;
   }
 
