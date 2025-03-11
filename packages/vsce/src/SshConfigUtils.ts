@@ -306,14 +306,11 @@ export class SshConfigUtils {
         const localStorage = zoweExplorerApi.getLocalStorage?.();
         for (const provider of treeProviders) {
             // Show or hide profile in active window
-            if (visible) {
+            const sessionNode = provider.mSessionNodes.find((node) => node.getProfileName() === profileName);
+            if (visible && sessionNode == null) {
                 await provider.addSession({ sessionName: profileName, profileType: "ssh" });
-            } else {
-                provider.deleteSession(
-                    provider.mSessionNodes.find(
-                        (node: IZoweTreeNode) => node.getProfileName() === profileName,
-                    ) as IZoweTreeNode,
-                );
+            } else if (!visible && sessionNode != null) {
+                provider.deleteSession(sessionNode);
             }
             // Update tree session history to persist
             const settingName = provider.getTreeType();
