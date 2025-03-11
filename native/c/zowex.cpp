@@ -813,7 +813,7 @@ int handle_job_submit_jcl(ZCLIResult result)
   raw_bytes.clear();
 
   ZEncode encoding_opts = {0};
-  const auto encoding_prepared = result.get_option("--encoding")->is_found() && zut_prepare_encoding(encoding_value, &encoding_opts);
+  const auto encoding_prepared = result.get_option("--encoding")->is_found() && zut_prepare_encoding(result.get_option("--encoding")->get_value(), &encoding_opts);
 
   if (encoding_prepared && encoding_opts.data_type != eDataTypeBinary)
   {
