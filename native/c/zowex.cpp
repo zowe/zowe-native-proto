@@ -1129,13 +1129,15 @@ int handle_data_set_view_dsn(ZCLIResult result)
 int handle_data_set_list(ZCLIResult result)
 {
   int rc = 0;
-  string dsn = result.get_positional("dsn")->get_value() + ".**";
+  string dsn = result.get_positional("dsn")->get_value();
 
   if (dsn.length() > MAX_DS_LENGTH)
   {
     cerr << "Error: data set pattern exceeds 44 character length limit" << endl;
     return RTNCD_FAILURE;
   }
+
+  dsn += ".**";
 
   string max_entries = result.get_option("--max-entries")->get_value();
   string warn = result.get_option("--warn")->get_value();
