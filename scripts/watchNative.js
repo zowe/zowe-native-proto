@@ -113,7 +113,7 @@ function golangTask(err, remotePath, stream, resolve) {
     });
 
   stream.end(
-    `cd ${p.posix.join(config.deployDirectory, "golang")} && go build\nexit\n`
+    `cd ${p.posix.join(config.deployDirectory, "golang")} && go build -ldflags="-s -w"\nexit\n`
   );
 }
 
