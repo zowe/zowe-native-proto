@@ -70,7 +70,7 @@ type SubmitJclRequest struct {
 	// Desired encoding for the spool file (optional)
 	Encoding string `json:"encoding,omitempty"`
 	// JCL contents to submit as a job
-	Jcl string `json:"jcl"`
+	Jcl string `json:"jcl" tstype:"B64String"`
 }
 
 type CancelJobRequest struct {
