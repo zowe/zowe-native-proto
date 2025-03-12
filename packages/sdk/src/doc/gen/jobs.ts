@@ -74,6 +74,13 @@ export interface SubmitJobRequest extends common.CommandRequest {
    */
   dsname: string;
 }
+export interface SubmitUssRequest extends common.CommandRequest {
+  command: "submitUss";
+  /**
+   * File path w/ contents to submit as JCL
+   */
+  fspath: string;
+}
 export interface SubmitJclRequest extends common.CommandRequest {
   command: "submitJcl";
   /**
@@ -172,6 +179,20 @@ export interface SubmitJobResponse extends common.CommandResponse {
    * The data set name where the JCL was read from
    */
   dsname: string;
+}
+export interface SubmitUssResponse extends common.CommandResponse {
+  /**
+   * Whether the job was successfully submitted
+   */
+  success: boolean;
+  /**
+   * The job ID of the newly-submitted job
+   */
+  jobId: string;
+  /**
+   * The USS file where the JCL was read from
+   */
+  fspath: string;
 }
 export interface SubmitJclResponse extends common.CommandResponse {
   /**

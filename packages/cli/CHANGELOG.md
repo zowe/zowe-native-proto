@@ -12,6 +12,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - Added support for cancelling jobs. [#138](https://github.com/zowe/zowe-native-proto/pull/138)
 - Added support for holding and releasing jobs. [#182](https://github.com/zowe/zowe-native-proto/pull/182)
 - Updated error handling for listing data sets. [#185](https://github.com/zowe/zowe-native-proto/pull/185)
+- Added `zssh submit uss-file|local-file|data-set` commands. [#184](https://github.com/zowe/zowe-native-proto/pull/184)
 
 ## [Unreleased]
 
