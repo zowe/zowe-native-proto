@@ -11,7 +11,7 @@
 
 package cmds
 
-import common "zowe-native-proto/ioserver/types/common"
+import common "zowe-native-proto/zowed/types/common"
 
 type IssueConsoleResponse struct {
 	common.CommandResponse `tstype:",extends"`

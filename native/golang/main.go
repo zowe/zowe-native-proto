@@ -17,9 +17,9 @@ import (
 	"log"
 	"os"
 
-	"zowe-native-proto/ioserver/cmds"
-	t "zowe-native-proto/ioserver/types/common"
-	"zowe-native-proto/ioserver/utils"
+	"zowe-native-proto/zowed/cmds"
+	t "zowe-native-proto/zowed/types/common"
+	"zowe-native-proto/zowed/utils"
 )
 
 // parseOptions parses command-line flags and returns the parsed options

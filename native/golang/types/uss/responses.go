@@ -11,7 +11,7 @@
 
 package uss
 
-import common "zowe-native-proto/ioserver/types/common"
+import common "zowe-native-proto/zowed/types/common"
 
 type GenericFileResponse struct {
 	common.CommandResponse `tstype:",extends"`

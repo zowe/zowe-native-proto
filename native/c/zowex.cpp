@@ -962,7 +962,7 @@ int handle_console_issue(ZCLIResult result)
   cout << response << endl;
 
   // example issuing command which requires a reply
-  // e.g. zowexx console issue --console-name DKELOSKX "SL SET,ID=DK00"
+  // e.g. zoweax console issue --console-name DKELOSKX "SL SET,ID=DK00"
   // rc = zcn_get(&zcn, response);
   // cout << response << endl;
   // char reply[24] = {0};
