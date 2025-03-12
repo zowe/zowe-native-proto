@@ -67,6 +67,8 @@ type SubmitJobRequest struct {
 type SubmitJclRequest struct {
 	common.CommandRequest `tstype:",extends"`
 	Command               string `json:"command" tstype:"\"submitJcl\""`
+	// Desired encoding for the spool file (optional)
+	Encoding string `json:"encoding,omitempty"`
 	// JCL contents to submit as a job
 	Jcl string `json:"jcl"`
 }
