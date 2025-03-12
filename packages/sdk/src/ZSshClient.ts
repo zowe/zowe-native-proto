@@ -110,7 +110,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
 
     private onErrData(chunk: Buffer) {
         if (this.mRequestId === 0) {
-            const errMsg = Logger.getAppLogger().error("Message received on stderr: %s", chunk.toString());
+            const errMsg = Logger.getAppLogger().error("Error from server: %s", chunk.toString());
             this.mErrHandler(new Error(errMsg));
             return;
         }
@@ -137,7 +137,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
         try {
             response = JSON.parse(data);
         } catch (err) {
-            const errMsg = `Failed to parse response as JSON: ${data}`;
+            const errMsg = `Invalid JSON response: ${data}`;
             Logger.getAppLogger().error(errMsg);
             this.mErrHandler(new Error(errMsg));
             return;
