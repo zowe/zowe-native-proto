@@ -19,7 +19,7 @@ export default class SubmitLocalFileHandler extends SshBaseHandler {
         const fspath = params.arguments.fspath;
         let JclString: string;
         try {
-            JclString = readFileSync(fspath).toString();
+            JclString = readFileSync(fspath);
         } catch (err) {
             throw new ImperativeError({
                 msg: "Failed to read local file",
@@ -27,7 +27,7 @@ export default class SubmitLocalFileHandler extends SshBaseHandler {
                 causeErrors: err,
             });
         }
-        const response = await client.jobs.submitJcl({ jcl: B64String.encode(Buffer.from(JclString)) });
+        const response = await client.jobs.submitJcl({ jcl: B64String.encode(JclString) });
 
         const msg = `Job submitted: ${response.jobId}`;
         params.response.data.setMessage(msg);
