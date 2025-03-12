@@ -11,7 +11,7 @@
 
 import { readFileSync } from "node:fs";
 import { type IHandlerParameters, ImperativeError } from "@zowe/imperative";
-import type { ZSshClient, jobs } from "zowe-native-proto-sdk";
+import { type ZSshClient, ZSshUtils, type jobs } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class SubmitLocalFileHandler extends SshBaseHandler {
@@ -27,7 +27,7 @@ export default class SubmitLocalFileHandler extends SshBaseHandler {
                 causeErrors: err,
             });
         }
-        const response = await client.jobs.submitJcl({ jcl: JclString });
+        const response = await client.jobs.submitJcl({ jcl: ZSshUtils.encodeByteArray(Buffer.from(JclString)) });
 
         const msg = `Job submitted: ${response.jobId}`;
         params.response.data.setMessage(msg);
