@@ -17,7 +17,7 @@ import { SshBaseHandler } from "../../SshBaseHandler";
 export default class SubmitLocalFileHandler extends SshBaseHandler {
     public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<jobs.SubmitJclResponse> {
         const fspath = params.arguments.fspath;
-        let JclString: string;
+        let JclString: Buffer;
         try {
             JclString = readFileSync(fspath);
         } catch (err) {
