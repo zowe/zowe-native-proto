@@ -30,10 +30,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
     private mSshStream: ClientChannel;
     private mPartialStderr = "";
     private mPartialStdout = "";
-    private mPromiseMap: Map<
-        number,
-        { resolve: PromiseResolve<CommandResponse>; reject: PromiseReject; timeout: NodeJS.Timeout }
-    > = new Map();
+    private mPromiseMap: Map<number, { resolve: PromiseResolve<CommandResponse>; reject: PromiseReject }> = new Map();
     private mRequestId = 0;
 
     private constructor() {
@@ -87,23 +84,28 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
     }
 
     public async request<T extends CommandResponse>(request: CommandRequest): Promise<T> {
-        return new Promise((resolve, reject) => {
-            const { command, ...rest } = request;
-            const rpcRequest: RpcRequest = {
-                jsonrpc: "2.0",
-                method: command,
-                params: rest,
-                id: ++this.mRequestId,
-            };
-            const timeout = setTimeout(() => {
-                this.mPromiseMap.delete(rpcRequest.id);
-                reject(new Error("Request timed out"));
-            }, this.mResponseTimeout);
-            this.mPromiseMap.set(rpcRequest.id, { resolve, reject, timeout });
-            const requestStr = JSON.stringify(rpcRequest);
-            Logger.getAppLogger().trace("Sending request: %s", requestStr);
-            this.mSshStream.stdin.write(`${requestStr}\n`);
-        });
+        const reqId = ++this.mRequestId;
+        return Promise.race<T>([
+            new Promise((resolve, reject) => {
+                const { command, ...rest } = request;
+                const rpcRequest: RpcRequest = {
+                    jsonrpc: "2.0",
+                    method: command,
+                    params: rest,
+                    id: reqId,
+                };
+                this.mPromiseMap.set(rpcRequest.id, { resolve, reject });
+                const requestStr = JSON.stringify(rpcRequest);
+                Logger.getAppLogger().trace("Sending request: %s", requestStr);
+                this.mSshStream.stdin.write(`${requestStr}\n`);
+            }),
+            new Promise((_resolve, reject) => {
+                setTimeout(() => {
+                    this.mPromiseMap.delete(reqId);
+                    reject(new Error("Request timed out"));
+                }, this.mResponseTimeout);
+            }),
+        ]);
     }
 
     private onErrData(chunk: Buffer) {
@@ -144,11 +146,9 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
             this.mErrHandler(new Error(errMsg));
             return;
         }
-        const { resolve, reject, timeout } = this.mPromiseMap.get(response.id);
-        clearTimeout(timeout);
         if (response.error != null) {
             Logger.getAppLogger().error(`Error for response ID: ${response.id}\n${JSON.stringify(response.error)}`);
-            reject(
+            this.mPromiseMap.get(response.id).reject(
                 new ImperativeError({
                     msg: response.error.message,
                     errorCode: response.error.code.toString(),
@@ -156,7 +156,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                 }),
             );
         } else {
-            resolve({ success, ...response.result });
+            this.mPromiseMap.get(response.id).resolve({ success, ...response.result });
         }
         this.mPromiseMap.delete(response.id);
     }
