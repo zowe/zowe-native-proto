@@ -198,7 +198,7 @@ int main(int argc, char *argv[])
 int handle_job_list(ZCLIResult result)
 {
   int rc = 0;
-  string owner_name(result.get_option("--owner").get_value());
+  string owner_name(result.get_option_value("--owner"));
 
   cout << "handle_job_list " << owner_name << endl;
 
