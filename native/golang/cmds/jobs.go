@@ -262,7 +262,7 @@ func HandleSubmitJobRequest(conn *utils.StdioConn, params []byte) (result any, e
 	result = jobs.SubmitJobResponse{
 		Success: true,
 		Dsname:  request.Dsname,
-		JobId:   strings.TrimSpace(string(out)),
+		JobId:   string(out),
 	}
 	return
 }
@@ -284,7 +284,7 @@ func HandleSubmitUssRequest(conn *utils.StdioConn, params []byte) (result any, e
 	result = jobs.SubmitUssResponse{
 		Success: true,
 		Path:    request.Path,
-		JobId:   strings.TrimSpace(string(out)),
+		JobId:   string(out),
 	}
 	return
 }
@@ -331,7 +331,7 @@ func HandleSubmitJclRequest(conn *utils.StdioConn, params []byte) (result any, e
 
 	result = jobs.SubmitJclResponse{
 		Success: true,
-		JobId:   strings.TrimSpace(string(out)),
+		JobId:   string(out),
 	}
 	return
 }
