@@ -9,10 +9,8 @@
  *
  */
 
-export * from "./gen/common";
-export * as ds from "./gen/ds";
-export * as uss from "./gen/uss";
-export * as jobs from "./gen/jobs";
-export * as cmds from "./gen/cmds";
-export * from "./client";
-export * from "./types";
+export interface ClientOptions {
+    onClose?: () => void | Promise<void>;
+    onError?: (error: Error) => void | Promise<void>;
+    serverPath?: string;
+}
