@@ -38,7 +38,7 @@ type WriteFileRequest struct {
 	// Remote file path to write contents to
 	Path string `json:"fspath"`
 	// New contents for the file
-	Data string `json:"data"`
+	Data string `json:"data" tstype:"B64String"`
 }
 
 type CreateFileRequest struct {

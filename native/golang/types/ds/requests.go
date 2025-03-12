@@ -52,7 +52,7 @@ type WriteDatasetRequest struct {
 	// Dataset name
 	Dsname string `json:"dsname"`
 	// Dataset contents
-	Data string `json:"data"`
+	Data string `json:"data" tstype:"B64String"`
 }
 
 type DeleteDatasetRequest struct {

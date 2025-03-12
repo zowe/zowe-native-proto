@@ -10,7 +10,7 @@
  */
 
 import type { IHandlerParameters } from "@zowe/imperative";
-import { type ZSshClient, ZSshUtils, type ds } from "zowe-native-proto-sdk";
+import { B64String, type ZSshClient, type ds } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class ViewDataSetHandler extends SshBaseHandler {
@@ -19,7 +19,7 @@ export default class ViewDataSetHandler extends SshBaseHandler {
             dsname: params.arguments.dataSet,
             encoding: params.arguments.binary ? "binary" : params.arguments.encoding,
         });
-        const content = ZSshUtils.decodeByteArray(response.data).toString();
+        const content = B64String.decode(response.data);
         params.response.data.setMessage(
             "Successfully downloaded %d bytes of content from %s",
             content.length,
