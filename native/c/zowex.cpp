@@ -307,8 +307,9 @@ int main(int argc, char *argv[])
   ZCLIVerb job_submit_jcl("submit-jcl");
   job_submit_jcl.get_aliases().push_back("subj");
   job_submit_jcl.set_description("submit JCL contents directly");
-  job_submit_jcl.set_zcli_verb_handler(handle_job_submit);
+  job_submit_jcl.set_zcli_verb_handler(handle_job_submit_jcl);
   job_submit_jcl.get_options().push_back(job_jobid_only);
+  job_submit_jcl.get_options().push_back(encoding_option);
   job_group.get_verbs().push_back(job_submit_jcl);
 
   ZCLIVerb job_delete("delete");
@@ -800,8 +801,23 @@ int handle_job_submit_jcl(ZCLIResult result)
   std::istreambuf_iterator<char> begin(std::cin);
   std::istreambuf_iterator<char> end;
 
-  std::vector<char> bytes(begin, end);
-  data.assign(bytes.begin(), bytes.end());
+  std::vector<char> raw_bytes(begin, end);
+  data.assign(raw_bytes.begin(), raw_bytes.end());
+
+  if (!isatty(fileno(stdout)))
+  {
+    const auto bytes = zut_get_contents_as_bytes(data);
+    data.assign(bytes.begin(), bytes.end());
+  }
+  raw_bytes.clear();
+
+  ZEncode encoding_opts = {0};
+  const auto encoding_prepared = result.get_option("--encoding")->is_found() && zut_prepare_encoding(result.get_option("--encoding")->get_value(), &encoding_opts);
+
+  if (encoding_prepared && encoding_opts.data_type != eDataTypeBinary)
+  {
+    data = zut_encode(data, "UTF-8", string(encoding_opts.codepage), zjb.diag);
+  }
 
   vector<ZJob> jobs;
   string jobid;
@@ -1250,7 +1266,7 @@ int handle_data_set_write_to_dsn(ZCLIResult result)
   int rc = 0;
   string dsn = result.get_positional("dsn")->get_value();
   ZDS zds = {0};
-  if (result.get_option("--encoding"))
+  if (result.get_option("--encoding")->is_found())
   {
     zut_prepare_encoding(result.get_option("--encoding")->get_value(), &zds.encoding_opts);
   }
@@ -1259,7 +1275,7 @@ int handle_data_set_write_to_dsn(ZCLIResult result)
   string line;
   size_t byteSize = 0ul;
 
-  if (!isatty(fileno(stdin)))
+  if (!isatty(fileno(stdout)))
   {
     std::istreambuf_iterator<char> begin(std::cin);
     std::istreambuf_iterator<char> end;
@@ -1435,7 +1451,7 @@ int handle_uss_write(ZCLIResult result)
   size_t byteSize = 0ul;
 
   // Use Ctrl/Cmd + D to stop writing data manually
-  if (!isatty(fileno(stdin)))
+  if (!isatty(fileno(stdout)))
   {
     std::istreambuf_iterator<char> begin(std::cin);
     std::istreambuf_iterator<char> end;
