@@ -1485,7 +1485,7 @@ int handle_uss_write(ZCLIResult result)
 int handle_uss_delete(ZCLIResult result)
 {
   string file_path = result.get_positional("file-path")->get_value();
-  bool recursive = result.get_option("--recursive") != nullptr && result.get_option("--recursive")->is_found();
+  bool recursive = result.get_option_value("--recursive") == "true";
 
   ZUSF zusf = {0};
   const auto rc = zusf_delete_uss_item(&zusf, file_path, recursive);
