@@ -23,9 +23,9 @@ type PromiseReject = (reason?: any) => void;
 
 export class ZSshClient extends AbstractRpcClient implements Disposable {
     public static readonly DEFAULT_SERVER_PATH = "~/.zowe-server";
-    public static readonly REQUEST_TIMEOUT = 60000;
 
     private mErrHandler: ClientOptions["onError"];
+    private mResponseTimeout: number;
     private mSshClient: Client;
     private mSshStream: ClientChannel;
     private mPartialStderr = "";
@@ -44,6 +44,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
         Logger.getAppLogger().debug("Starting SSH client");
         const client = new ZSshClient();
         client.mErrHandler = opts.onError ?? console.error;
+        client.mResponseTimeout = opts.responseTimeout ? opts.responseTimeout * 1000 : 60000;
         client.mSshClient = new Client();
         client.mSshClient.connect(ZSshUtils.buildSshConfig(session));
         client.mSshStream = await new Promise((resolve, reject) => {
@@ -97,7 +98,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
             const timeout = setTimeout(() => {
                 this.mPromiseMap.delete(rpcRequest.id);
                 reject(new Error("Request timed out"));
-            }, ZSshClient.REQUEST_TIMEOUT);
+            }, this.mResponseTimeout);
             this.mPromiseMap.set(rpcRequest.id, { resolve, reject, timeout });
             const requestStr = JSON.stringify(rpcRequest);
             Logger.getAppLogger().trace("Sending request: %s", requestStr);

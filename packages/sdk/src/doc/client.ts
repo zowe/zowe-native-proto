@@ -10,7 +10,25 @@
  */
 
 export interface ClientOptions {
+    /**
+     * Function called when the connection is closed
+     */
     onClose?: () => void | Promise<void>;
+
+    /**
+     * Function called when there is a connection error
+     */
     onError?: (error: Error) => void | Promise<void>;
+
+    /**
+     * Number of seconds to wait for a response
+     * (default: 60)
+     */
+    responseTimeout?: number;
+
+    /**
+     * Remote path of the Zowe Native Proto server
+     * (default: `~/.zowe-server`)
+     */
     serverPath?: string;
 }
