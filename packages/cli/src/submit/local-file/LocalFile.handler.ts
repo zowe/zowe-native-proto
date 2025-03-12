@@ -9,10 +9,10 @@
  *
  */
 
-import { ImperativeError, type IHandlerParameters } from "@zowe/imperative";
+import { readFileSync } from "node:fs";
+import { type IHandlerParameters, ImperativeError } from "@zowe/imperative";
 import type { ZSshClient, jobs } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
-import { readFileSync } from "node:fs";
 
 export default class SubmitLocalFileHandler extends SshBaseHandler {
     public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<jobs.SubmitJclResponse> {

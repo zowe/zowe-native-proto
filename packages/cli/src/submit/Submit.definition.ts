@@ -12,10 +12,10 @@
 import type { ICommandDefinition } from "@zowe/imperative";
 import { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Constants } from "../Constants";
-import { SubmitStdinDefinition } from "./stdin/Stdin.definition";
 import { SubmitDsDefinition } from "./ds/Dataset.definition";
-import { SubmitUssDefinition } from "./uss/Uss.definition";
 import { SubmitLocalFileDefinition } from "./local-file/LocalFile.definition";
+import { SubmitStdinDefinition } from "./stdin/Stdin.definition";
+import { SubmitUssDefinition } from "./uss/Uss.definition";
 
 const SubmitDefinition: ICommandDefinition = {
     name: "submit",
