@@ -126,14 +126,17 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
         } catch (err) {
             const errMsg = `Failed to parse response as JSON: ${err}`;
             Logger.getAppLogger().error(errMsg);
-            throw new Error(errMsg);
+            this.mErrHandler(new Error(errMsg));
+            return;
         }
         if (!this.mPromiseMap.has(response.id)) {
             const errMsg = `Missing promise for response ID: ${response.id}`;
             Logger.getAppLogger().error(errMsg);
-            throw new Error(errMsg);
+            this.mErrHandler(new Error(errMsg));
+            return;
         }
         if (response.error != null) {
+            Logger.getAppLogger().error(`Error for response ID: ${response.id}\n${JSON.stringify(response.error)}`);
             this.mPromiseMap.get(response.id).reject(
                 new ImperativeError({
                     msg: response.error.message,
