@@ -15,7 +15,7 @@ export const ConsoleCommand: ICommandDefinition = {
     handler: `${__dirname}/ConsoleCommand.handler`,
     description: "Issue a console command",
     type: "command",
-    name: "console-commands",
+    name: "console-command",
     aliases: ["console", "cc"],
     summary: "Issue a console command",
     examples: [
