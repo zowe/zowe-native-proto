@@ -15,8 +15,8 @@ export const ViewJobStatusDefinition: ICommandDefinition = {
     handler: `${__dirname}/JobStatus.handler`,
     description: "View the status of a job",
     type: "command",
-    name: "job-status",
-    aliases: ["js"],
+    name: "job-status-by-job-id",
+    aliases: ["js", "job-status"],
     summary: "View job status",
     examples: [
         {

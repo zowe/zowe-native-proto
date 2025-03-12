@@ -13,7 +13,7 @@ import type { ICommandDefinition } from "@zowe/imperative";
 import { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Constants } from "../Constants";
 import { UploadFileToDataSetDefinition } from "./file-to-data-set/FileToDataSet.definition";
-import { UploadFileToUssFileDefinition } from "./file-to-uss-file/FileToUssFile.definition";
+import { UploadFileToUssFileDefinition } from "./file-to-uss/FileToUss.definition";
 
 const UploadDefinition: ICommandDefinition = {
     name: "upload",

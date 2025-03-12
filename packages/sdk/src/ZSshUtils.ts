@@ -12,7 +12,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { promisify } from "node:util";
-import type { IProfile } from "@zowe/imperative";
+import { type IProfile, Logger } from "@zowe/imperative";
 import { type ISshSession, SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { NodeSSH, type Config as NodeSSHConfig } from "node-ssh";
 import type { ConnectConfig, SFTPWrapper } from "ssh2";
@@ -21,7 +21,7 @@ type SftpError = Error & { code?: number };
 
 // biome-ignore lint/complexity/noStaticOnlyClass: Utilities class has static methods
 export class ZSshUtils {
-    private static readonly SERVER_BIN_FILES = ["ioserver", "zowex"];
+    private static readonly SERVER_BIN_FILES = ["zowed", "zowex"];
     private static readonly SERVER_PAX_FILE = "server.pax.Z";
 
     public static buildSession(args: IProfile): SshSession {
@@ -42,7 +42,9 @@ export class ZSshUtils {
             port: session.ISshSession.port,
             username: session.ISshSession.user,
             password: session.ISshSession.password,
-            privateKey: session.ISshSession.privateKey ? fs.readFileSync(session.ISshSession.privateKey) : undefined,
+            privateKey: session.ISshSession.privateKey
+                ? fs.readFileSync(session.ISshSession.privateKey, "utf-8")
+                : undefined,
             passphrase: session.ISshSession.keyPassphrase,
         };
     }
@@ -56,34 +58,43 @@ export class ZSshUtils {
     }
 
     public static async installServer(session: SshSession, serverPath: string, localDir: string): Promise<void> {
+        Logger.getAppLogger().debug(`Installing server to ${session.ISshSession.hostname} at path: ${serverPath}`);
         const remoteDir = serverPath.replace(/^~/, ".");
         return ZSshUtils.sftp(session, async (sftp, ssh) => {
-            await promisify(sftp.mkdir.bind(sftp))(remoteDir, { mode: 0o700 }).catch((err: SftpError) =>
-                // Ignore if directory already exists
-                err.code !== 4 ? Promise.reject(err) : Promise.resolve(),
-            );
+            await promisify(sftp.mkdir.bind(sftp))(remoteDir, { mode: 0o700 }).catch((err: SftpError) => {
+                if (err.code !== 4) throw err;
+                Logger.getAppLogger().debug(`Remote directory already exists: ${remoteDir}`);
+            });
             await promisify(sftp.fastPut.bind(sftp))(
                 path.join(localDir, ZSshUtils.SERVER_PAX_FILE),
                 path.posix.join(remoteDir, ZSshUtils.SERVER_PAX_FILE),
             );
-            await ssh.execCommand(`pax -rzf ${ZSshUtils.SERVER_PAX_FILE}`, { cwd: remoteDir });
+            const result = await ssh.execCommand(`pax -rzf ${ZSshUtils.SERVER_PAX_FILE}`, { cwd: remoteDir });
+            if (result.code === 0) {
+                Logger.getAppLogger().debug(`Extracted server binaries with response: ${result.stdout}`);
+            } else {
+                const errMsg = `Failed to extract server binaries: ${result.stderr}`;
+                Logger.getAppLogger().error(errMsg);
+                throw new Error(errMsg);
+            }
             await promisify(sftp.unlink.bind(sftp))(path.posix.join(remoteDir, ZSshUtils.SERVER_PAX_FILE));
         });
     }
 
     public static async uninstallServer(session: SshSession, serverPath: string): Promise<void> {
+        Logger.getAppLogger().debug(`Uninstalling server from ${session.ISshSession.hostname} at path: ${serverPath}`);
         const remoteDir = serverPath.replace(/^~/, ".");
         return ZSshUtils.sftp(session, async (sftp, _ssh) => {
             for (const file of ZSshUtils.SERVER_BIN_FILES) {
-                await promisify(sftp.unlink.bind(sftp))(path.posix.join(remoteDir, file)).catch((err: SftpError) =>
-                    // Ignore if file does not exist
-                    err.code !== 2 ? Promise.reject(err) : Promise.resolve(),
-                );
+                await promisify(sftp.unlink.bind(sftp))(path.posix.join(remoteDir, file)).catch((err: SftpError) => {
+                    if (err.code !== 2) throw err;
+                    Logger.getAppLogger().info(`Remote file does not exist: ${remoteDir}/${file}`);
+                });
             }
-            await promisify(sftp.rmdir.bind(sftp))(remoteDir).catch((err: SftpError) =>
-                // Ignore if directory is not empty
-                err.code !== 4 ? Promise.reject(err) : Promise.resolve(),
-            );
+            await promisify(sftp.rmdir.bind(sftp))(remoteDir).catch((err: SftpError) => {
+                if (err.code !== 4) throw err;
+                Logger.getAppLogger().info(`Remote directory does not exist: ${remoteDir}`);
+            });
         });
     }
 

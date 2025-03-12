@@ -14,8 +14,8 @@ import type { ICommandDefinition } from "@zowe/imperative";
 export const ListSpoolFilesDefinition: ICommandDefinition = {
     handler: `${__dirname}/SpoolFiles.handler`,
     type: "command",
-    name: "spool-files",
-    aliases: ["spool", "sf"],
+    name: "spool-files-by-job-id",
+    aliases: ["sfbj", "job-spool-file"],
     summary: "List spool files by job id",
     description: "List all spool files for a given job id. ",
     positionals: [

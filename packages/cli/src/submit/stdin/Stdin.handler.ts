@@ -9,14 +9,14 @@
  *
  */
 
-import { text } from "node:stream/consumers";
+import { buffer } from "node:stream/consumers";
 import type { IHandlerParameters } from "@zowe/imperative";
-import type { ZSshClient, jobs } from "zowe-native-proto-sdk";
+import { type ZSshClient, ZSshUtils, type jobs } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class SubmitJclHandler extends SshBaseHandler {
-    public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<jobs.SubmitJclResponse> {
-        const jcl = await text(params.stdin);
+    public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<jobs.DeleteJobResponse> {
+        const jcl = ZSshUtils.encodeByteArray(await buffer(params.stdin));
         const response = await client.jobs.submitJcl({ jcl });
 
         const msg = `Job submitted: ${response.jobId}`;

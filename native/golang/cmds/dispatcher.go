@@ -15,7 +15,7 @@ import (
 	"fmt"
 	"os"
 	"sync"
-	utils "zowe-native-proto/ioserver/utils"
+	utils "zowe-native-proto/zowed/utils"
 )
 
 // CommandHandler represents a function that handles a command request

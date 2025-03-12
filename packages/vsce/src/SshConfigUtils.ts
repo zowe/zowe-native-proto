@@ -12,16 +12,17 @@
 import { readFileSync } from "node:fs";
 import * as path from "node:path";
 import { ProfileConstants } from "@zowe/core-for-zowe-sdk";
-import type { Config } from "@zowe/imperative";
-import { ZosTsoProfile } from "@zowe/zos-tso-for-zowe-sdk";
-import { ZosUssProfile } from "@zowe/zos-uss-for-zowe-sdk";
-import { ZosmfProfile } from "@zowe/zosmf-for-zowe-sdk";
-import { FileManagement, Gui, PersistenceSchemaEnum, ZoweVsCodeExtension, imperative } from "@zowe/zowe-explorer-api";
-import { Client } from "ssh2";
-import type { ClientChannel } from "ssh2";
+import {
+    FileManagement,
+    Gui,
+    type IZoweTree,
+    type IZoweTreeNode,
+    ZoweVsCodeExtension,
+    imperative,
+} from "@zowe/zowe-explorer-api";
+import { Client, type ClientChannel } from "ssh2";
 import * as vscode from "vscode";
-import { ZClientUtils, ZSshClient } from "zowe-native-proto-sdk";
-import type { ISshConfigExt } from "zowe-native-proto-sdk";
+import { type ISshConfigExt, ZClientUtils, ZSshClient } from "zowe-native-proto-sdk";
 
 // biome-ignore lint/complexity/noStaticOnlyClass: Utilities class has static methods
 export class SshConfigUtils {
@@ -294,20 +295,34 @@ export class SshConfigUtils {
         };
     }
 
-    public static showSessionInTree(profileName: string, visible: boolean): void {
-        const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
-        for (const setting of [PersistenceSchemaEnum.Dataset, PersistenceSchemaEnum.USS, PersistenceSchemaEnum.Job]) {
-            const localStorage = zoweExplorerApi.getExplorerExtenderApi().getLocalStorage?.();
+    public static async showSessionInTree(profileName: string, visible: boolean): Promise<void> {
+        // This method is a hack until the ZE API offers a method to show/hide profile in tree
+        // See https://github.com/zowe/zowe-explorer-vscode/issues/3506
+        const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi().getExplorerExtenderApi();
+        const treeProviders = ["datasetProvider", "ussFileProvider", "jobsProvider"].map(
+            // biome-ignore lint/suspicious/noExplicitAny: Accessing internal properties
+            (prop) => (zoweExplorerApi as any)[prop] as IZoweTree<IZoweTreeNode>,
+        );
+        const localStorage = zoweExplorerApi.getLocalStorage?.();
+        for (const provider of treeProviders) {
+            // Show or hide profile in active window
+            const sessionNode = provider.mSessionNodes.find((node) => node.getProfileName() === profileName);
+            if (visible && sessionNode == null) {
+                await provider.addSession({ sessionName: profileName, profileType: "ssh" });
+            } else if (!visible && sessionNode != null) {
+                provider.deleteSession(sessionNode);
+            }
+            // Update tree session history to persist
+            const settingName = provider.getTreeType();
             if (localStorage != null) {
-                const treeHistory = localStorage.getValue<{ sessions: string[] }>(setting);
+                const treeHistory = localStorage.getValue<{ sessions: string[] }>(settingName);
                 treeHistory.sessions = treeHistory.sessions.filter((session: string) => session !== profileName);
                 if (visible) {
                     treeHistory.sessions.push(profileName);
                 }
-                localStorage.setValue(setting, treeHistory);
+                localStorage.setValue(settingName, treeHistory);
             }
         }
-        zoweExplorerApi.getExplorerExtenderApi().reloadProfiles("ssh");
     }
 
     private static async createNewConfig(
@@ -399,7 +414,7 @@ export class SshConfigUtils {
 
     private static async getNewProfileName(
         selectedProfile: ISshConfigExt,
-        configApi: Config,
+        configApi: imperative.Config,
     ): Promise<ISshConfigExt | undefined> {
         let isUniqueName = false;
 
@@ -482,12 +497,14 @@ export class SshConfigUtils {
 
             config.api.layers.activate(user, global);
 
+            const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
+            const profCache = zoweExplorerApi.getExplorerExtenderApi().getProfilesCache();
             const knownCliConfig: imperative.ICommandProfileTypeConfiguration[] = [
-                ZosUssProfile,
+                // biome-ignore lint/suspicious/noExplicitAny: Accessing protected method
+                ...(profCache as any).getCoreProfileTypes(),
+                ...profCache.getConfigArray(),
                 ProfileConstants.BaseProfile,
             ];
-
-            if (global) knownCliConfig.push(ZosmfProfile, ZosTsoProfile);
 
             config.setSchema(imperative.ConfigSchema.buildSchema(knownCliConfig));
 

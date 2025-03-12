@@ -308,8 +308,9 @@ int main(int argc, char *argv[])
   ZCLIVerb job_submit_jcl("submit-jcl");
   job_submit_jcl.get_aliases().push_back("subj");
   job_submit_jcl.set_description("submit JCL contents directly");
-  job_submit_jcl.set_zcli_verb_handler(handle_job_submit);
+  job_submit_jcl.set_zcli_verb_handler(handle_job_submit_jcl);
   job_submit_jcl.get_options().push_back(job_jobid_only);
+  job_submit_jcl.get_options().push_back(encoding_option);
   job_group.get_verbs().push_back(job_submit_jcl);
 
   ZCLIVerb job_submit_uss("submit-uss");
@@ -851,8 +852,23 @@ int handle_job_submit_jcl(ZCLIResult result)
   std::istreambuf_iterator<char> begin(std::cin);
   std::istreambuf_iterator<char> end;
 
-  std::vector<char> bytes(begin, end);
-  data.assign(bytes.begin(), bytes.end());
+  std::vector<char> raw_bytes(begin, end);
+  data.assign(raw_bytes.begin(), raw_bytes.end());
+
+  if (!isatty(fileno(stdout)))
+  {
+    const auto bytes = zut_get_contents_as_bytes(data);
+    data.assign(bytes.begin(), bytes.end());
+  }
+  raw_bytes.clear();
+
+  ZEncode encoding_opts = {0};
+  const auto encoding_prepared = result.get_option("--encoding")->is_found() && zut_prepare_encoding(result.get_option("--encoding")->get_value(), &encoding_opts);
+
+  if (encoding_prepared && encoding_opts.data_type != eDataTypeBinary)
+  {
+    data = zut_encode(data, "UTF-8", string(encoding_opts.codepage), zjb.diag);
+  }
 
   vector<ZJob> jobs;
   string jobid;
@@ -997,7 +1013,7 @@ int handle_console_issue(ZCLIResult result)
   cout << response << endl;
 
   // example issuing command which requires a reply
-  // e.g. zowexx console issue --console-name DKELOSKX "SL SET,ID=DK00"
+  // e.g. zoweax console issue --console-name DKELOSKX "SL SET,ID=DK00"
   // rc = zcn_get(&zcn, response);
   // cout << response << endl;
   // char reply[24] = {0};
@@ -1181,6 +1197,15 @@ int handle_data_set_list(ZCLIResult result)
 {
   int rc = 0;
   string dsn = result.get_positional("dsn")->get_value();
+
+  if (dsn.length() > MAX_DS_LENGTH)
+  {
+    cerr << "Error: data set pattern exceeds 44 character length limit" << endl;
+    return RTNCD_FAILURE;
+  }
+
+  dsn += ".**";
+
   string max_entries = result.get_option("--max-entries")->get_value();
   string warn = result.get_option("--warn")->get_value();
   string attributes = result.get_option("--attributes")->get_value();
@@ -1292,7 +1317,7 @@ int handle_data_set_write_to_dsn(ZCLIResult result)
   int rc = 0;
   string dsn = result.get_positional("dsn")->get_value();
   ZDS zds = {0};
-  if (result.get_option("--encoding"))
+  if (result.get_option("--encoding")->is_found())
   {
     zut_prepare_encoding(result.get_option("--encoding")->get_value(), &zds.encoding_opts);
   }
@@ -1301,7 +1326,7 @@ int handle_data_set_write_to_dsn(ZCLIResult result)
   string line;
   size_t byteSize = 0ul;
 
-  if (!isatty(fileno(stdin)))
+  if (!isatty(fileno(stdout)))
   {
     std::istreambuf_iterator<char> begin(std::cin);
     std::istreambuf_iterator<char> end;
@@ -1477,7 +1502,7 @@ int handle_uss_write(ZCLIResult result)
   size_t byteSize = 0ul;
 
   // Use Ctrl/Cmd + D to stop writing data manually
-  if (!isatty(fileno(stdin)))
+  if (!isatty(fileno(stdout)))
   {
     std::istreambuf_iterator<char> begin(std::cin);
     std::istreambuf_iterator<char> end;

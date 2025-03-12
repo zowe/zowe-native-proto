@@ -83,6 +83,10 @@ export interface SubmitUssRequest extends common.CommandRequest {
 export interface SubmitJclRequest extends common.CommandRequest {
   command: "submitJcl";
   /**
+   * Desired encoding for the spool file (optional)
+   */
+  encoding?: string;
+  /**
    * JCL contents to submit as a job
    */
   jcl: string;

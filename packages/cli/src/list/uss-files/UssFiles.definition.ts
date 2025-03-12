@@ -15,7 +15,7 @@ export const ListUssFilesDefinition: ICommandDefinition = {
     handler: `${__dirname}/UssFiles.handler`,
     type: "command",
     name: "uss-files",
-    aliases: ["uss", "uf"],
+    aliases: ["uf", "uss"],
     summary: "List USS files in a directory",
     description:
         "List USS files and subdirectories in a directory. Optional file name pattern like " +
