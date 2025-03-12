@@ -11,7 +11,7 @@
 
 package ds
 
-import common "zowe-native-proto/ioserver/types/common"
+import common "zowe-native-proto/zowed/types/common"
 
 type ListDatasetsRequest struct {
 	common.CommandRequest `tstype:",extends"`
@@ -54,7 +54,7 @@ type WriteDatasetRequest struct {
 	// Dataset name
 	Dsname string `json:"dsname"`
 	// Dataset contents
-	Data string `json:"data"`
+	Data string `json:"data" tstype:"B64String"`
 }
 
 type DeleteDatasetRequest struct {

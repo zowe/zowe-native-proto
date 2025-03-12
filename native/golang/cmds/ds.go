@@ -17,9 +17,9 @@ import (
 	"fmt"
 	"strings"
 
-	t "zowe-native-proto/ioserver/types/common"
-	"zowe-native-proto/ioserver/types/ds"
-	utils "zowe-native-proto/ioserver/utils"
+	t "zowe-native-proto/zowed/types/common"
+	"zowe-native-proto/zowed/types/ds"
+	utils "zowe-native-proto/zowed/utils"
 )
 
 // HandleReadDatasetRequest handles a ReadDatasetRequest by invoking the `zowex data-set view` command

@@ -11,7 +11,7 @@
 
 package uss
 
-import common "zowe-native-proto/ioserver/types/common"
+import common "zowe-native-proto/zowed/types/common"
 
 type GenericFileResponse struct {
 	common.CommandResponse `tstype:",extends"`
@@ -30,7 +30,7 @@ type ReadFileResponse struct {
 	// Remote file path
 	Path string `json:"fspath"`
 	// File contents
-	Data []byte `json:"data" tstype:"Buffer | string"`
+	Data []byte `json:"data" tstype:"B64String"`
 }
 
 type WriteFileResponse struct {

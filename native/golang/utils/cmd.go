@@ -19,7 +19,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	t "zowe-native-proto/ioserver/types/common"
+	t "zowe-native-proto/zowed/types/common"
 )
 
 var execDir string
@@ -64,9 +64,9 @@ func BuildCommand(args []string) *exec.Cmd {
 	return cmd
 }
 
-// BuildCommand builds a `zowexx` command to perform operations that require authorization
+// BuildCommand builds a `zoweax` command to perform operations that require authorization
 func BuildCommandAuthorized(args []string) *exec.Cmd {
-	cmd := BuildCommandShared("./zowexx", args)
+	cmd := BuildCommandShared("./zoweax", args)
 	cmd.Env = append(os.Environ(), "_BPXK_AUTOCVT=ON")
 	return cmd
 }

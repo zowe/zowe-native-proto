@@ -11,12 +11,12 @@
 
 import { buffer } from "node:stream/consumers";
 import type { IHandlerParameters } from "@zowe/imperative";
-import { type ZSshClient, ZSshUtils, type jobs } from "zowe-native-proto-sdk";
+import { B64String, type ZSshClient, type jobs } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class SubmitJclHandler extends SshBaseHandler {
     public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<jobs.DeleteJobResponse> {
-        const jcl = ZSshUtils.encodeByteArray(await buffer(params.stdin));
+        const jcl = B64String.encode(await buffer(params.stdin));
         const response = await client.jobs.submitJcl({ jcl });
 
         const msg = `Job submitted: ${response.jobId}`;

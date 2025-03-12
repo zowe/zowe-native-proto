@@ -818,16 +818,14 @@ int handle_job_submit_jcl(ZCLIResult result)
   if (!isatty(fileno(stdout)))
   {
     const auto bytes = zut_get_contents_as_bytes(data);
-    data.clear();
     data.assign(bytes.begin(), bytes.end());
   }
   raw_bytes.clear();
 
   ZEncode encoding_opts = {0};
-  const auto encoding_value = result.get_option("--encoding") != nullptr && result.get_option("--encoding")->is_found() ? result.get_option("--encoding")->get_value() : "";
-  zut_prepare_encoding(encoding_value, &encoding_opts);
+  const auto encoding_prepared = result.get_option("--encoding") != nullptr && result.get_option("--encoding")->is_found() && zut_prepare_encoding(result.get_option("--encoding")->get_value(), &encoding_opts);
 
-  if (encoding_opts.data_type != eDataTypeBinary)
+  if (encoding_prepared && encoding_opts.data_type != eDataTypeBinary)
   {
     data = zut_encode(data, "UTF-8", string(encoding_opts.codepage), zjb.diag);
   }
@@ -975,7 +973,7 @@ int handle_console_issue(ZCLIResult result)
   cout << response << endl;
 
   // example issuing command which requires a reply
-  // e.g. zowexx console issue --console-name DKELOSKX "SL SET,ID=DK00"
+  // e.g. zoweax console issue --console-name DKELOSKX "SL SET,ID=DK00"
   // rc = zcn_get(&zcn, response);
   // cout << response << endl;
   // char reply[24] = {0};
@@ -1282,7 +1280,7 @@ int handle_data_set_write_to_dsn(ZCLIResult result)
   int rc = 0;
   string dsn = result.get_positional("dsn")->get_value();
   ZDS zds = {0};
-  if (result.get_option("--encoding"))
+  if (result.get_option("--encoding")->is_found())
   {
     zut_prepare_encoding(result.get_option("--encoding")->get_value(), &zds.encoding_opts);
   }

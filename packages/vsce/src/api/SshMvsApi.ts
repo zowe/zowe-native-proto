@@ -12,7 +12,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import * as zosfiles from "@zowe/zos-files-for-zowe-sdk";
 import { Gui, type MainframeInteraction, imperative } from "@zowe/zowe-explorer-api";
-import { ZSshUtils, type ds } from "zowe-native-proto-sdk";
+import { B64String, type ds } from "zowe-native-proto-sdk";
 import { SshCommonApi } from "./SshCommonApi";
 
 export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs {
@@ -64,9 +64,9 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         });
         if (options.file != null) {
             imperative.IO.createDirsSyncFromFilePath(options.file);
-            writeFileSync(options.file, ZSshUtils.decodeByteArray(response.data));
+            writeFileSync(options.file, B64String.decodeBytes(response.data));
         } else if (options.stream != null) {
-            options.stream.write(ZSshUtils.decodeByteArray(response.data));
+            options.stream.write(B64String.decodeBytes(response.data));
             options.stream.end();
         }
         return this.buildZosFilesResponse({ etag: response.etag });
@@ -80,7 +80,7 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         const response = await (await this.client).ds.writeDataset({
             dsname: dataSetName,
             encoding: options?.binary ? "binary" : options?.encoding,
-            data: ZSshUtils.encodeByteArray(buffer),
+            data: B64String.encode(buffer),
         });
         return this.buildZosFilesResponse({ etag: response.etag });
     }
@@ -93,7 +93,7 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         const response = await (await this.client).ds.writeDataset({
             dsname: dataSetName,
             encoding: options?.encoding,
-            data: ZSshUtils.encodeByteArray(readFileSync(inputFilePath)),
+            data: B64String.encode(readFileSync(inputFilePath)),
         });
         return this.buildZosFilesResponse({ etag: response.etag });
     }

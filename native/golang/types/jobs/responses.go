@@ -11,7 +11,7 @@
 
 package jobs
 
-import common "zowe-native-proto/ioserver/types/common"
+import common "zowe-native-proto/zowed/types/common"
 
 type ListJobsResponse struct {
 	common.CommandResponse `tstype:",extends"`
@@ -42,7 +42,7 @@ type ReadSpoolResponse struct {
 	// Job ID associated with the returned spool
 	JobId string `json:"jobId"`
 	// Spool contents
-	Data []byte `json:"data" tstype:"Buffer | string"`
+	Data []byte `json:"data" tstype:"B64String"`
 }
 
 type GetJobStatusResponse struct {

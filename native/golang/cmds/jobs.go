@@ -17,9 +17,9 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	t "zowe-native-proto/ioserver/types/common"
-	"zowe-native-proto/ioserver/types/jobs"
-	utils "zowe-native-proto/ioserver/utils"
+	t "zowe-native-proto/zowed/types/common"
+	"zowe-native-proto/zowed/types/jobs"
+	utils "zowe-native-proto/zowed/utils"
 )
 
 // HandleListJobsRequest handles a ListJobsRequest by invoking the `zowex job list` command

@@ -83,5 +83,5 @@ zowex job delete ${jobid}
 printf "$passed\n"
 
 echo "$testing issuing conosle command ..."
-zowexx console issue "d iplinfo" --console-name zowe
+zoweax console issue "d iplinfo" --console-name zowe
 printf "$passed\n"

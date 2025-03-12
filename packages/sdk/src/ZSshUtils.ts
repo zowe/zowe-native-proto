@@ -21,7 +21,7 @@ type SftpError = Error & { code?: number };
 
 // biome-ignore lint/complexity/noStaticOnlyClass: Utilities class has static methods
 export class ZSshUtils {
-    private static readonly SERVER_BIN_FILES = ["ioserver", "zowex"];
+    private static readonly SERVER_BIN_FILES = ["zowed", "zowex"];
     private static readonly SERVER_PAX_FILE = "server.pax.Z";
 
     public static buildSession(args: IProfile): SshSession {
@@ -47,14 +47,6 @@ export class ZSshUtils {
                 : undefined,
             passphrase: session.ISshSession.keyPassphrase,
         };
-    }
-
-    public static decodeByteArray(data: Buffer | string): Buffer {
-        return typeof data === "string" ? Buffer.from(data, "base64") : data;
-    }
-
-    public static encodeByteArray(data: Buffer | string): string {
-        return typeof data !== "string" ? Buffer.from(data).toString("base64") : data;
     }
 
     public static async installServer(session: SshSession, serverPath: string, localDir: string): Promise<void> {

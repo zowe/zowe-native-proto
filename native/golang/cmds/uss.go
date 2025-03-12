@@ -18,9 +18,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	t "zowe-native-proto/ioserver/types/common"
-	uss "zowe-native-proto/ioserver/types/uss"
-	utils "zowe-native-proto/ioserver/utils"
+	t "zowe-native-proto/zowed/types/common"
+	uss "zowe-native-proto/zowed/types/uss"
+	utils "zowe-native-proto/zowed/utils"
 )
 
 // HandleListFilesRequest handles a ListFilesRequest by invoking built-in functions from Go's `os` module.

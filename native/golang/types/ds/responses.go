@@ -11,7 +11,7 @@
 
 package ds
 
-import common "zowe-native-proto/ioserver/types/common"
+import common "zowe-native-proto/zowed/types/common"
 
 type WriteDatasetResponse struct {
 	common.CommandResponse `tstype:",extends"`
@@ -38,7 +38,7 @@ type ReadDatasetResponse struct {
 	// Dataset name
 	Dataset string `json:"dataset"`
 	// Dataset contents
-	Data []byte `json:"data" tstype:"Buffer | string"`
+	Data []byte `json:"data" tstype:"B64String"`
 }
 
 type ListDatasetsResponse struct {
