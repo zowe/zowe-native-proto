@@ -275,7 +275,7 @@ int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data, std::string et
     }
     catch (std::exception &e)
     {
-      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to convert input data from UTF-8 to %s", codepage);
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to convert input data from UTF-8 to %s", codepage.c_str());
       return RTNCD_FAILURE;
     }
     if (!temp.empty())

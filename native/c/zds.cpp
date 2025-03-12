@@ -163,7 +163,7 @@ int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data)
     }
     catch (std::exception &e)
     {
-      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from UTF-8 to %s", codepage);
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from UTF-8 to %s", codepage.c_str());
       return RTNCD_FAILURE;
     }
     if (!temp.empty())

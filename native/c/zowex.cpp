@@ -824,7 +824,7 @@ int handle_job_submit_jcl(ZCLIResult result)
   raw_bytes.clear();
 
   ZEncode encoding_opts = {0};
-  const auto encoding_value = result.get_option("--encoding").is_found() ? result.get_option("--encoding").get_value() : "";
+  const auto encoding_value = result.get_option("--encoding") != nullptr && result.get_option("--encoding")->is_found() ? result.get_option("--encoding")->get_value() : "";
   zut_prepare_encoding(encoding_value, &encoding_opts);
 
   if (encoding_opts.data_type != eDataTypeBinary)
@@ -1323,7 +1323,7 @@ int handle_data_set_write_to_dsn(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  if (!result.get_option("--etag-only").is_found())
+  if (result.get_option("--etag-only") == nullptr || !result.get_option("--etag-only")->is_found())
   {
     cout << "Wrote data to '" << dsn << "'" << endl;
   }
@@ -1507,15 +1507,15 @@ int handle_uss_write(ZCLIResult result)
     byteSize = data.size();
   }
 
-  auto &etag_opt = result.get_option("--etag");
-  rc = zusf_write_to_uss_file(&zusf, file, data, etag_opt.is_found() ? etag_opt.get_value() : "");
+  auto *etag_opt = result.get_option("--etag");
+  rc = zusf_write_to_uss_file(&zusf, file, data, etag_opt != nullptr && etag_opt->is_found() ? etag_opt->get_value() : "");
   if (0 != rc)
   {
     cerr << "Error: could not write to USS file: '" << file << "' rc: '" << rc << "'" << endl;
     cerr << "  Details: " << zusf.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
-  if (!result.get_option("--etag-only").is_found())
+  if (result.get_option("--etag-only") != nullptr || !result.get_option("--etag-only")->is_found())
   {
     cout << "Wrote data to '" << file << "'" << endl;
   }
