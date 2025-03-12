@@ -12,7 +12,10 @@
 import type { ICommandDefinition } from "@zowe/imperative";
 import { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Constants } from "../Constants";
+import { SubmitDsDefinition } from "./ds/Dataset.definition";
+import { SubmitLocalFileDefinition } from "./local-file/LocalFile.definition";
 import { SubmitStdinDefinition } from "./stdin/Stdin.definition";
+import { SubmitUssDefinition } from "./uss/Uss.definition";
 
 const SubmitDefinition: ICommandDefinition = {
     name: "submit",
@@ -20,7 +23,7 @@ const SubmitDefinition: ICommandDefinition = {
     summary: "Submit contents",
     description: "Submit resource contents or requests to a mainframe system",
     type: "group",
-    children: [SubmitStdinDefinition],
+    children: [SubmitStdinDefinition, SubmitDsDefinition, SubmitUssDefinition, SubmitLocalFileDefinition],
     passOn: [
         {
             property: "options",

@@ -42,6 +42,7 @@ int handle_job_view_file(ZCLIResult);
 int handle_job_view_jcl(ZCLIResult);
 int handle_job_submit(ZCLIResult);
 int handle_job_submit_jcl(ZCLIResult);
+int handle_job_submit_uss(ZCLIResult);
 int handle_job_delete(ZCLIResult);
 int handle_job_cancel(ZCLIResult);
 int handle_job_hold(ZCLIResult);
@@ -311,6 +312,18 @@ int main(int argc, char *argv[])
   job_submit_jcl.get_options().push_back(job_jobid_only);
   job_submit_jcl.get_options().push_back(encoding_option);
   job_group.get_verbs().push_back(job_submit_jcl);
+
+  ZCLIVerb job_submit_uss("submit-uss");
+  job_submit_uss.get_aliases().push_back("sub-u");
+  job_submit_uss.set_description("submit a job from USS files");
+  job_submit_uss.set_zcli_verb_handler(handle_job_submit_uss);
+  ZCLIPositional job_uss_file("file-path");
+  job_uss_file.set_required(true);
+  job_uss_file.set_description("USS file containing JCL");
+  job_submit_uss.get_positionals().push_back(job_uss_file);
+
+  job_submit_uss.get_options().push_back(job_jobid_only);
+  job_group.get_verbs().push_back(job_submit_uss);
 
   ZCLIVerb job_delete("delete");
   job_delete.get_aliases().push_back("del");
@@ -786,6 +799,44 @@ int handle_job_submit(ZCLIResult result)
     cout << jobid << endl;
   else
     cout << "Submitted " << dsn << ", " << jobid << endl;
+
+  return RTNCD_SUCCESS;
+}
+
+int handle_job_submit_uss(ZCLIResult result)
+{
+  int rc = 0;
+  ZJB zjb = {0};
+  string file(result.get_positional("file-path")->get_value());
+
+  ZUSF zusf = {0};
+  string response;
+  rc = zusf_read_from_uss_file(&zusf, file, response);
+  if (0 != rc)
+  {
+    cerr << "Error: could not view USS file: '" << file << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details:\n"
+         << zusf.diag.e_msg << endl
+         << response << endl;
+    return RTNCD_FAILURE;
+  }
+
+  vector<ZJob> jobs;
+  string jobid;
+  rc = zjb_submit(&zjb, response, jobid);
+
+  if (0 != rc)
+  {
+    cerr << "Error: could not submit JCL: '" << file << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zjb.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
+  string only_jobid(result.get_option("--only-jobid")->get_value());
+  if ("true" == only_jobid)
+    cout << jobid << endl;
+  else
+    cout << "Submitted " << file << ", " << jobid << endl;
 
   return RTNCD_SUCCESS;
 }
