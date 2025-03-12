@@ -11,7 +11,7 @@
 
 package ds
 
-import common "zowe-native-proto/ioserver/types/common"
+import common "zowe-native-proto/zowed/types/common"
 
 type WriteDatasetResponse struct {
 	common.CommandResponse `tstype:",extends"`

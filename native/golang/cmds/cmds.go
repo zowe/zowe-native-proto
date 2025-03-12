@@ -13,8 +13,8 @@ package cmds
 
 import (
 	"fmt"
-	cmdTypes "zowe-native-proto/ioserver/types/cmds"
-	utils "zowe-native-proto/ioserver/utils"
+	cmdTypes "zowe-native-proto/zowed/types/cmds"
+	utils "zowe-native-proto/zowed/utils"
 )
 
 // HandleConsoleCommandRequest handles a ConsoleCommandRequest by invoking the `zowex console issue` command

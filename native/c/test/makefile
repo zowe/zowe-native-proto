@@ -15,7 +15,7 @@ BIND=ld
 
 # https://www.ibm.com/docs/en/zos/3.1.0?topic=bor-binder-options
 # https://www.ibm.com/docs/en/zos/2.2.0?topic=descriptions-ld-link-object-files
-BIND_FLAGS = -bRMODE=ANY
+BIND_FLAGS = -bRMODE=ANY -bAMODE=64
 
 MTL_OPTS=metal,\
  langlvl(extended),\

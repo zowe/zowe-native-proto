@@ -1,4 +1,4 @@
-module zowe-native-proto/ioserver
+module zowe-native-proto/zowed
 
 go 1.20
 

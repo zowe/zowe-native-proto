@@ -120,7 +120,6 @@ static int wto(WTO_BUF *buf)
     buf.len += sprintf(buf.msg + buf.len, __VA_ARGS__); \
     wto(&buf);                                          \
   }
-
 typedef struct
 {
   char msg[MAX_WTOR_TEXT + 1];

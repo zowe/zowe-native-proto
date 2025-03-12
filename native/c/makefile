@@ -89,7 +89,7 @@ MTL_FLAGS64+=-g1
 .END
 
 
-all: libzut.so libzut.a libzds.so libzds.a libzusf.so libzusf.a libzcn.so libzcn.a libzjb.so libzjb.a zowex zowexx extattr test
+all: libzut.so libzut.a libzds.so libzds.a libzusf.so libzusf.a libzcn.so libzcn.a libzjb.so libzjb.a zowex zoweax extattr test
 
 #
 # Utilities
@@ -250,11 +250,11 @@ zowex: zowex.o libzcn.a libzut.a libzjb.a libzds.a libzusf.a libztso.a
 	ln -sf ../c/$@ ../golang/zowex
 	@echo 'Copied zowex to golang/'
 
-zowexx: zowex.o libzcn.a libzut.a libzjb.a libzds.a libzusf.a libztso.a
-	@echo 'Building zowexx'
+zoweax: zowex.o libzcn.a libzut.a libzjb.a libzds.a libzusf.a libztso.a
+	@echo 'Building zoweax'
 	$(CXX) $(CPP_BND_FLAGS_AUTH) -o $@ $^ > $*.bind.lst
-	ln -sf ../c/$@ ../golang/zowexx
-	@echo 'Copied zowexx to golang/'
+	ln -sf ../c/$@ ../golang/zoweax
+	@echo 'Copied zoweax to golang/'
 
 zowex.o: zowex.cpp
 	@echo 'Building zowex.o'
@@ -274,7 +274,7 @@ test: test.sh
 # Misc targets
 #
 extattr:
-	extattr +ap zowexx
+	extattr +ap zoweax
 
 clean:
 	rm -f *.o

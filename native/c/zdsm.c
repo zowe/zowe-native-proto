@@ -16,6 +16,7 @@
 #include "zwto.h"
 
 #pragma prolog(ZDSDEL, "&CCN_MAIN SETB 1 \n MYPROLOG")
+#pragma epilog(ZDSDEL, "&CCN_MAIN SETB 1 \n MYEPILOG")
 void ZDSDEL(ZDS *zds)
 {
   if (zds->csi)
@@ -33,6 +34,7 @@ typedef int (*IGGCSI00)(
     void *PTR32 work_area) ATTRIBUTE(amode31);
 
 #pragma prolog(ZDSCSI00, "&CCN_MAIN SETB 1 \n MYPROLOG")
+#pragma epilog(ZDSCSI00, "&CCN_MAIN SETB 1 \n MYEPILOG")
 int ZDSCSI00(ZDS *zds, CSIFIELD *selection, void *work_area)
 {
   int rc = 0;

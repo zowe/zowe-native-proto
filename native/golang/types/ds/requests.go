@@ -11,7 +11,7 @@
 
 package ds
 
-import common "zowe-native-proto/ioserver/types/common"
+import common "zowe-native-proto/zowed/types/common"
 
 type ListDatasetsRequest struct {
 	common.CommandRequest `tstype:",extends"`
