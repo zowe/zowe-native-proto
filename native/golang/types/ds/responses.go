@@ -34,7 +34,7 @@ type ReadDatasetResponse struct {
 	// Dataset name
 	Dataset string `json:"dataset"`
 	// Dataset contents
-	Data []byte `json:"data" tstype:"Buffer | string"`
+	Data []byte `json:"data" tstype:"B64String"`
 }
 
 type ListDatasetsResponse struct {

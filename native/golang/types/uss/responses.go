@@ -28,7 +28,7 @@ type ReadFileResponse struct {
 	// Remote file path
 	Path string `json:"fspath"`
 	// File contents
-	Data []byte `json:"data" tstype:"Buffer | string"`
+	Data []byte `json:"data" tstype:"B64String"`
 }
 
 type WriteFileResponse = GenericFileResponse

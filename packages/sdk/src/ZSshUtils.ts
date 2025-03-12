@@ -49,14 +49,6 @@ export class ZSshUtils {
         };
     }
 
-    public static decodeByteArray(data: Buffer | string): Buffer {
-        return typeof data === "string" ? Buffer.from(data, "base64") : data;
-    }
-
-    public static encodeByteArray(data: Buffer | string): string {
-        return typeof data !== "string" ? Buffer.from(data).toString("base64") : data;
-    }
-
     public static async installServer(session: SshSession, serverPath: string, localDir: string): Promise<void> {
         Logger.getAppLogger().debug(`Installing server to ${session.ISshSession.hostname} at path: ${serverPath}`);
         const remoteDir = serverPath.replace(/^~/, ".");
