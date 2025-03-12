@@ -23,13 +23,17 @@ type PromiseReject = (reason?: any) => void;
 
 export class ZSshClient extends AbstractRpcClient implements Disposable {
     public static readonly DEFAULT_SERVER_PATH = "~/.zowe-server";
+    public static readonly REQUEST_TIMEOUT = 60000;
 
     private mErrHandler: ClientOptions["onError"];
     private mSshClient: Client;
     private mSshStream: ClientChannel;
     private mPartialStderr = "";
     private mPartialStdout = "";
-    private mPromiseMap: Map<number, { resolve: PromiseResolve<CommandResponse>; reject: PromiseReject }> = new Map();
+    private mPromiseMap: Map<
+        number,
+        { resolve: PromiseResolve<CommandResponse>; reject: PromiseReject; timeout: NodeJS.Timeout }
+    > = new Map();
     private mRequestId = 0;
 
     private constructor() {
@@ -90,7 +94,11 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                 params: rest,
                 id: ++this.mRequestId,
             };
-            this.mPromiseMap.set(rpcRequest.id, { resolve, reject });
+            const timeout = setTimeout(() => {
+                this.mPromiseMap.delete(rpcRequest.id);
+                reject(new Error("Request timed out"));
+            }, ZSshClient.REQUEST_TIMEOUT);
+            this.mPromiseMap.set(rpcRequest.id, { resolve, reject, timeout });
             const requestStr = JSON.stringify(rpcRequest);
             Logger.getAppLogger().trace("Sending request: %s", requestStr);
             this.mSshStream.stdin.write(`${requestStr}\n`);
@@ -135,9 +143,11 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
             this.mErrHandler(new Error(errMsg));
             return;
         }
+        const { resolve, reject, timeout } = this.mPromiseMap.get(response.id);
+        clearTimeout(timeout);
         if (response.error != null) {
             Logger.getAppLogger().error(`Error for response ID: ${response.id}\n${JSON.stringify(response.error)}`);
-            this.mPromiseMap.get(response.id).reject(
+            reject(
                 new ImperativeError({
                     msg: response.error.message,
                     errorCode: response.error.code.toString(),
@@ -145,7 +155,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                 }),
             );
         } else {
-            this.mPromiseMap.get(response.id).resolve({ success, ...response.result });
+            resolve({ success, ...response.result });
         }
         this.mPromiseMap.delete(response.id);
     }
