@@ -124,7 +124,9 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
     private processResponses(data: string): string {
         const responses = data.split("\n");
         for (let i = 0; i < responses.length - 1; i++) {
-            this.requestEnd(responses[i]);
+            if (responses[i].length > 0) {
+                this.requestEnd(responses[i]);
+            }
         }
         return responses[responses.length - 1];
     }
@@ -135,7 +137,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
         try {
             response = JSON.parse(data);
         } catch (err) {
-            const errMsg = `Failed to parse response as JSON: ${err}`;
+            const errMsg = `Failed to parse response as JSON: ${data}`;
             Logger.getAppLogger().error(errMsg);
             this.mErrHandler(new Error(errMsg));
             return;
