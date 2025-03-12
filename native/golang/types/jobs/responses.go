@@ -60,6 +60,16 @@ type SubmitJobResponse struct {
 	Dsname string `json:"dsname"`
 }
 
+type SubmitUssResponse struct {
+	common.CommandResponse `tstype:",extends"`
+	// Whether the job was successfully submitted
+	Success bool `json:"success"`
+	// The job ID of the newly-submitted job
+	JobId string `json:"jobId"`
+	// The USS file where the JCL was read from
+	Path string `json:"fspath"`
+}
+
 type SubmitJclResponse struct {
 	common.CommandResponse `tstype:",extends"`
 	// Whether the JCL was successfully submitted

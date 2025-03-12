@@ -75,7 +75,7 @@
 | _List spool files_ | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅              |
 | _Read spool file_  | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅              |
 | _Get job JCL_      | ✅     | ❌  | ✅      | ✅         | ✅  | ✅  | ✅              |
-| _Submit job_       | ✅     | ✅  | ✅      | ✅         | ✅  | ❌  | ✅              |
+| _Submit job_       | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅              |
 | _Delete job_       | ✅     | ✅  | ✅      | ✅         | ✅  | ✅  | ✅              |
 | Cancel job         | ✅     | ❌  | ✅      | ✅         | ✅  | ✅  | ✅ <sup>1</sup> |
 | Hold job           | ✅     | ❌  | ✅      | ✅         | ✅  | ✅  | ➖ <sup>2</sup> |

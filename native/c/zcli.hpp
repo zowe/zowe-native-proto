@@ -156,6 +156,15 @@ class ZCLIResult : public ZCLIOptionProvider, public ZCLIPositionalProvider
 {
 private:
 public:
+  string get_option_value(string option_name, string default_value = "")
+  {
+    if (this->get_option(option_name) == nullptr)
+    {
+      return default_value;
+    }
+
+    return this->get_option(option_name)->get_value();
+  }
 };
 
 typedef ZCLIOption &(*zcli_get_option)(string); // callback
