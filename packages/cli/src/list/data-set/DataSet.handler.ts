@@ -9,15 +9,29 @@
  *
  */
 
-import type { IHandlerParameters } from "@zowe/imperative";
+import { type IHandlerParameters, ImperativeError, TextUtils } from "@zowe/imperative";
 import type { ZSshClient, ds } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class ListDataSetsHandler extends SshBaseHandler {
     public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<ds.ListDatasetsResponse> {
-        const response = await client.ds.listDatasets({
-            pattern: params.arguments.pattern,
-        });
+        let response: ds.ListDatasetsResponse;
+        try {
+            response = await client.ds.listDatasets({
+                pattern: params.arguments.pattern,
+            });
+        } catch (err) {
+            const errText = (err instanceof ImperativeError ? err.additionalDetails : err.toString()).replace(
+                "Error: ",
+                "",
+            );
+            params.response.data.setExitCode(1);
+            params.response.console.errorHeader(TextUtils.chalk.red("Response from Service"));
+            params.response.console.error(errText);
+            params.response.data.setMessage(errText);
+            return { success: false, items: [], returnedRows: 0 };
+        }
+
         params.response.data.setMessage(
             "Successfully listed %d matching data sets for pattern '%s'",
             response.returnedRows,
