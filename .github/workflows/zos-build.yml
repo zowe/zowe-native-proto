@@ -1,4 +1,4 @@
-name: zos-build
+name: z/OS Build
 
 on:
   pull_request:
