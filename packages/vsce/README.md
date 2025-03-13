@@ -1,3 +1,46 @@
-# zowe-native-proto-vsce README
+# Zowe Native Protocol for Zowe Explorer
 
-TODO
+The Zowe Native Protocol extension for Zowe Explorer offers several features powered by the Zowe Native Protocol, enabling developers to interact with mainframe resources directly from their IDE.
+
+## Features
+
+- **Dataset Operations**: Create, read, write, and delete datasets
+- **USS File Access**: Create, read, write, and delete files and directories in Unix System Services
+- **Job Management**: Submit, view, cancel, hold, and release jobs on z/OS
+
+## Minimum Requirements
+
+- VS Code 1.73.0 (or newer)
+- Zowe Explorer v3.1.0 (or newer)
+
+## Installation
+
+Access the latest version of the VS Code extension from the GitHub Releases page.
+
+Install the extension from the VSIX file in VS Code:
+
+1. Open the Extensions view (Ctrl+Shift+X)
+2. Click the `...` button and select `Install from VSIX...`
+3. Select the VSIX file in the `dist` folder
+4. Click `Install`
+
+The extension is installed and ready to use.
+
+## Usage
+
+To deploy an instance of the Zowe Native Protocol server, run the `Zowe-SSH: Connect to Host...` command from the command palette. Select an SSH profile from the list of profiles to start the deployment and connection process. Once complete, the SSH profile is added to the Zowe Explorer tree views.
+
+In the event that the server is unresponsive, you can restart the server with the `Zowe-SSH: Restart Zowe Server on Host...` command. 
+
+To remove the server instance entirely, run the `Zowe-SSH: Uninstall Zowe Server on Host...` command.
+
+## Building from source
+
+1. From the root of this repository, run `npm install` to install all the dependencies
+2. Change to the `packages/sdk` folder and run `npm run build` to build the SDK
+3. Change to the `packages/vsce` folder and run `npm run build` to build the extension
+4. `npm run package` packages the extension
+
+The VSIX file is created and saved in the `dist` folder.
+
+After installation, you may be prompted to reload VS Code.
