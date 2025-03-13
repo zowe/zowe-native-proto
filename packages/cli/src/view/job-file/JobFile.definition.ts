@@ -41,7 +41,7 @@ export const ViewJobFileDefinition: ICommandDefinition = {
     options: [
         {
             name: "encoding",
-            description: "The encoding for downloading the job spool file.",
+            description: "The encoding for viewing a spool file.",
             type: "string",
             required: false,
         },
