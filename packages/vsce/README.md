@@ -21,7 +21,7 @@ Install the extension from the VSIX file in VS Code:
 
 1. Open the Extensions view (Ctrl+Shift+X)
 2. Click the `...` button and select `Install from VSIX...`
-3. Select the VSIX file in the `dist` folder
+3. Locate the VSIX file on your machine and select it
 4. Click `Install`
 
 The extension is installed and ready to use.
@@ -37,9 +37,8 @@ To remove the server instance entirely, run the `Zowe-SSH: Uninstall Zowe Server
 ## Building from source
 
 1. From the root of this repository, run `npm install` to install all the dependencies
-2. Change to the `packages/sdk` folder and run `npm run build` to build the SDK
-3. Change to the `packages/vsce` folder and run `npm run build` to build the extension
-4. `npm run package` packages the extension
+2. Change to the `packages/vsce` folder and run `npm run build` to build the extension
+3. `npm run package` packages the extension
 
 The VSIX file is created and saved in the `dist` folder.
 
