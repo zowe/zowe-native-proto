@@ -9,12 +9,12 @@
  *
  */
 
+import * as fs from "node:fs";
+import { homedir } from "node:os";
 import type { IHandlerParameters } from "@zowe/imperative";
 import { IO } from "@zowe/imperative";
 import { B64String, type ZSshClient, type jobs } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
-import * as fs from "node:fs";
-import { homedir } from "node:os";
 import path = require("node:path");
 
 export default class DownloadJobJclHandler extends SshBaseHandler {
