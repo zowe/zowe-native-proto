@@ -1,6 +1,10 @@
 name: build
 
-on: [pull_request]
+on:
+  pull_request:
+  push:
+    branches:
+      - main
 
 jobs:
   build-client:
@@ -20,6 +24,14 @@ jobs:
       - run: npm ci
 
       - run: npm run build
+
+      - uses: lewagon/wait-on-check-action@master
+        if: ${{ matrix.os == 'ubuntu' }}
+        with:
+          check-name: zos-build
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          repo-token: ${{ github.token }}
+          wait-interval: 10
 
       - run: |
           gh run download --name zowe-server

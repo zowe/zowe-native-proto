@@ -5,6 +5,9 @@ on:
     paths:
       - ".github/workflows/zos-build.yml"
       - "native/**"
+  push:
+    branches:
+      - main
 
 jobs:
   build:
