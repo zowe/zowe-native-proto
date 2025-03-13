@@ -19,7 +19,7 @@ Access the latest version of the VS Code extension from the GitHub Releases page
 
 Install the extension from the VSIX file in VS Code:
 
-1. Open the Extensions view (Ctrl+Shift+X)
+1. Open the Extensions view (Ctrl+Shift+X, or Command+Shift+X on macOS)
 2. Click the `...` button and select `Install from VSIX...`
 3. Locate the VSIX file on your machine and select it
 4. Click `Install`
