@@ -34,6 +34,8 @@ In the event that the server is unresponsive, you can restart the server with th
 
 To remove the server instance entirely, run the `Zowe-SSH: Uninstall Zowe Server on Host...` command.
 
+To access logs for the VS Code extension or to troubleshoot an error, run the `Zowe-SSH: Show Log` command.
+
 ## Building from source
 
 1. From the root of this repository, run `npm install` to install all the dependencies
