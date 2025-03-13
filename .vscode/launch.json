@@ -23,7 +23,7 @@
       "request": "launch",
       "program": "packages/cli/lib/main.js",
       // "program": "file.ts",
-      "args": ["zssh", "dl", "ds", "JROELL.ORIGINAL.TEST1(MEM1)", "-b"],
+      "args": ["zssh", "dl", "uss", "/u/users/jace/files/file1.txt"],
       // "cwd": "${env:OLDPWD}",
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen"

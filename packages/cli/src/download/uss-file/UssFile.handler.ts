@@ -10,24 +10,28 @@
  */
 
 import type { IHandlerParameters } from "@zowe/imperative";
+import { IO } from "@zowe/imperative";
 import { B64String, type ZSshClient, type uss } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
+import * as fs from "node:fs";
+import { homedir } from "node:os";
+import path = require("node:path");
 
 export default class DownloadUssFileHandler extends SshBaseHandler {
     public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<uss.ReadFileResponse> {
-        console.debug();
         const response = await client.uss.readFile({
             fspath: params.arguments.filePath,
             encoding: params.arguments.binary ? "binary" : params.arguments.encoding,
         });
         const content = B64String.decode(response.data);
-        params.response.data.setMessage(
-            "Successfully downloaded %d bytes of content from %s",
-            content.length,
-            params.arguments.filePath,
-        );
-        params.response.data.setObj(content);
-        params.response.console.log(content);
+        const match = params.arguments.filePath.match(/[^/]+$/)?.[0] || "";
+        const localFilePath: string = path.join(homedir(), match);
+
+        console.log("Downloading data set '%s' to local file '%s'", params.arguments.filePath, localFilePath);
+        IO.createDirsSyncFromFilePath(localFilePath);
+        fs.writeFileSync(localFilePath, content, params.arguments.binary ? "binary" : "utf8");
+        params.response.data.setMessage("Successfully downloaded content to %s", localFilePath);
+
         return response;
     }
 }
