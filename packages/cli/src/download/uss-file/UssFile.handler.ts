@@ -27,7 +27,7 @@ export default class DownloadUssFileHandler extends SshBaseHandler {
         const match = params.arguments.filePath.match(/[^/]+$/)?.[0] || "";
         const localFilePath: string = path.join(homedir(), match);
 
-        console.log("Downloading data set '%s' to local file '%s'", params.arguments.filePath, localFilePath);
+        console.log("Downloading USS file '%s' to local file '%s'", params.arguments.filePath, localFilePath);
         IO.createDirsSyncFromFilePath(localFilePath);
         fs.writeFileSync(localFilePath, content, params.arguments.binary ? "binary" : "utf8");
         params.response.data.setMessage("Successfully downloaded content to %s", localFilePath);
