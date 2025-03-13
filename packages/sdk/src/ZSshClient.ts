@@ -85,6 +85,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
 
     public async request<T extends CommandResponse>(request: CommandRequest): Promise<T> {
         const reqId = ++this.mRequestId;
+        let timeoutId: NodeJS.Timeout;
         return Promise.race<T>([
             new Promise((resolve, reject) => {
                 const { command, ...rest } = request;
@@ -100,12 +101,12 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                 this.mSshStream.stdin.write(`${requestStr}\n`);
             }),
             new Promise((_resolve, reject) => {
-                setTimeout(() => {
+                timeoutId = setTimeout(() => {
                     this.mPromiseMap.delete(reqId);
                     reject(new Error("Request timed out"));
                 }, this.mResponseTimeout);
             }),
-        ]);
+        ]).finally(() => clearTimeout(timeoutId));
     }
 
     private onErrData(chunk: Buffer) {
