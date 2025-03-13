@@ -10,7 +10,7 @@ on:
       - main
 
 jobs:
-  build:
+  build-server:
     runs-on: ubuntu-latest
     concurrency:
       group: ${{ github.workflow }}
