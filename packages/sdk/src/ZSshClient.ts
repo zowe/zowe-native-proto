@@ -52,7 +52,10 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                 })
                 .on("ready", () => {
                     client.mSshClient.exec(
-                        posix.join(opts.serverPath ?? ZSshClient.DEFAULT_SERVER_PATH, "zowed"),
+                        [
+                            posix.join(opts.serverPath ?? ZSshClient.DEFAULT_SERVER_PATH, "zowed"),
+                            `-num-workers ${opts.numWorkers ?? 10}`,
+                        ].join(" "),
                         (err, stream) => {
                             if (err) {
                                 Logger.getAppLogger().error("Error running SSH command: %s", err.toString());
