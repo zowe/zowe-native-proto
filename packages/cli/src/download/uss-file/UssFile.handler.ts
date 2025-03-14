@@ -16,6 +16,7 @@ import { IO } from "@zowe/imperative";
 import { B64String, type ZSshClient, type uss } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
 import path = require("node:path");
+import { posix } from "node:path";
 
 export default class DownloadUssFileHandler extends SshBaseHandler {
     public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<uss.ReadFileResponse> {
@@ -24,8 +25,9 @@ export default class DownloadUssFileHandler extends SshBaseHandler {
             encoding: params.arguments.binary ? "binary" : params.arguments.encoding,
         });
         const content = B64String.decode(response.data);
-        const match = params.arguments.filePath.match(/[^/]+$/)?.[0] || "";
-        const localFilePath: string = path.join(homedir(), match);
+
+        const baseName = posix.basename(params.arguments.filePath);
+        const localFilePath: string = path.join(process.cwd(), baseName);
 
         console.log("Downloading USS file '%s' to local file '%s'", params.arguments.filePath, localFilePath);
         IO.createDirsSyncFromFilePath(localFilePath);
