@@ -385,7 +385,7 @@ vector<uint8_t> zut_get_contents_as_bytes(const string &hex_string)
  */
 bool zut_prepare_encoding(const std::string &encoding_value, ZEncode *opts)
 {
-  if (!opts)
+  if (encoding_value.empty() || opts == nullptr)
   {
     return false;
   }
