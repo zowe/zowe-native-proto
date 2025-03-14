@@ -127,7 +127,14 @@ func HandleListDatasetsRequest(conn *utils.StdioConn, params []byte) (result any
 		return nil, fmt.Errorf("Error executing command: %v", err)
 	}
 
-	datasets := strings.Split(strings.TrimSpace(string(out)), "\n")
+	rawResponse := strings.TrimSpace(string(out))
+	if len(rawResponse) == 0 {
+		return ds.ListDatasetsResponse{
+			Items:        []t.Dataset{},
+			ReturnedRows: 0,
+		}, nil
+	}
+	datasets := strings.Split(rawResponse, "\n")
 	dsResponse := ds.ListDatasetsResponse{
 		Items:        make([]t.Dataset, len(datasets)),
 		ReturnedRows: len(datasets),
@@ -135,6 +142,9 @@ func HandleListDatasetsRequest(conn *utils.StdioConn, params []byte) (result any
 
 	for i, ds := range datasets {
 		vals := strings.Split(ds, ",")
+		if len(vals) < 4 {
+			continue
+		}
 		migr := false
 		if vals[3] == "true" {
 			migr = true
