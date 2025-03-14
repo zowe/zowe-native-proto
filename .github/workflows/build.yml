@@ -25,13 +25,12 @@ jobs:
 
       - run: npm run build
 
-      - uses: lewagon/wait-on-check-action@master
+      - run: |
+          RUN_ID=$(gh run list --commit=${{ github.event.pull_request.head.sha || github.sha }} --workflow=zos-build.yml --status=in_progress --json=databaseId --jq='.[0].databaseId')
+          [ -z "$RUN_ID" ] || gh run watch $RUN_ID
         if: ${{ matrix.os == 'ubuntu' }}
-        with:
-          check-name: build-server
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          repo-token: ${{ github.token }}
-          wait-interval: 10
+        env:
+          GH_TOKEN: ${{ github.token }}
 
       - run: |
           gh run download --name zowe-server
