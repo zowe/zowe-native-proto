@@ -4,7 +4,7 @@ All notable changes to the Client code for "zowe-native-proto-sdk" are documente
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## Recent Changes
+## `0.1.0`
 
 - Added `ds.restoreDataset` function. [#38](https://github.com/zowe/zowe-native-proto/pull/38)
 - Added support for cancelling jobs. [#138](https://github.com/zowe/zowe-native-proto/pull/138)
