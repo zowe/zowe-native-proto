@@ -41,7 +41,7 @@ export const DownloadUssFileDefinition: ICommandDefinition = {
         {
             name: "binary",
             aliases: ["b"],
-            description: "Download content in binary form without converting to ASCII text",
+            description: "Download content in binary form without any conversions",
             type: "boolean",
         },
         {
