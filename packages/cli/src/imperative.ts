@@ -18,6 +18,11 @@ const config: IImperativeConfig = {
     name: "zowe-native-proto",
     pluginAliases: ["zssh"],
     pluginSummary: "z/OS Files and jobs via SSH",
+    pluginFirstSteps: `
+If you do not have a Zowe team configuration, run the \`zowe config init\` command to create one.
+Edit the team configuration file to add a SSH profile, including the hostname, port, and credentials. We recommend using a private key for authentication.
+Run the \`zowe zssh server install\` command to install the Zowe Native Protocol server.
+    `,
 };
 
 export = config;
