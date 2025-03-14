@@ -331,7 +331,7 @@ func HandleSubmitJclRequest(conn *utils.StdioConn, params []byte) (result any, e
 
 	result = jobs.SubmitJclResponse{
 		Success: true,
-		JobId:   string(out),
+		JobId:   strings.TrimRight(string(out), "\n"),
 	}
 	return
 }
