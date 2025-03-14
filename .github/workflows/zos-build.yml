@@ -1,13 +1,16 @@
-name: zos-build
+name: z/OS Build
 
 on:
   pull_request:
     paths:
       - ".github/workflows/zos-build.yml"
       - "native/**"
+  push:
+    branches:
+      - main
 
 jobs:
-  build:
+  build-server:
     runs-on: ubuntu-latest
     concurrency:
       group: ${{ github.workflow }}
