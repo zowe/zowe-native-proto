@@ -48,7 +48,7 @@ export const DownloadDataSetDefinition: ICommandDefinition = {
         {
             name: "encoding",
             aliases: ["ec"],
-            description: "The encoding for download and upload of the z/OS data set.",
+            description: "The desired encoding for the z/OS data set.",
             defaultValue: null,
             type: "string",
         },
