@@ -36,7 +36,7 @@ jobs:
 
       - name: Download Server
         run: |
-          RUN_ID=$(gh run list --branch=${{ github.ref }}) --workflow=zos-build.yml --limit=1 --json=databaseId --jq='.[0].databaseId')
+          RUN_ID=$(gh run list --branch=${{ github.ref }} --workflow=zos-build.yml --limit=1 --json=databaseId --jq='.[0].databaseId')
           NEW_VERSION=$([ -z "${{ inputs.version }}" ] && jq -r '.version' package.json || echo "${{ inputs.version }}")
           gh run download $RUN_ID --name zowe-server
           mkdir packages/cli/bin && cp server.pax.Z packages/cli/bin/
