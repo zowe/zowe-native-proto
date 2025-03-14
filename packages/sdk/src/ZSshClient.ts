@@ -84,28 +84,24 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
     }
 
     public async request<T extends CommandResponse>(request: CommandRequest): Promise<T> {
-        const reqId = ++this.mRequestId;
-        return Promise.race<T>([
-            new Promise((resolve, reject) => {
-                const { command, ...rest } = request;
-                const rpcRequest: RpcRequest = {
-                    jsonrpc: "2.0",
-                    method: command,
-                    params: rest,
-                    id: reqId,
-                };
-                this.mPromiseMap.set(rpcRequest.id, { resolve, reject });
-                const requestStr = JSON.stringify(rpcRequest);
-                Logger.getAppLogger().trace("Sending request: %s", requestStr);
-                this.mSshStream.stdin.write(`${requestStr}\n`);
-            }),
-            new Promise((_resolve, reject) => {
-                setTimeout(() => {
-                    this.mPromiseMap.delete(reqId);
-                    reject(new Error("Request timed out"));
-                }, this.mResponseTimeout);
-            }),
-        ]);
+        let timeoutId: NodeJS.Timeout;
+        return new Promise<T>((resolve, reject) => {
+            const { command, ...rest } = request;
+            const rpcRequest: RpcRequest = {
+                jsonrpc: "2.0",
+                method: command,
+                params: rest,
+                id: ++this.mRequestId,
+            };
+            timeoutId = setTimeout(() => {
+                this.mPromiseMap.delete(rpcRequest.id);
+                reject(new ImperativeError({ msg: "Request timed out", errorCode: "ETIMEDOUT" }));
+            }, this.mResponseTimeout);
+            this.mPromiseMap.set(rpcRequest.id, { resolve, reject });
+            const requestStr = JSON.stringify(rpcRequest);
+            Logger.getAppLogger().trace("Sending request: %s", requestStr);
+            this.mSshStream.stdin.write(`${requestStr}\n`);
+        }).finally(() => clearTimeout(timeoutId));
     }
 
     private onErrData(chunk: Buffer) {
