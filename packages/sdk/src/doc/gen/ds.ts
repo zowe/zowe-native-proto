@@ -56,6 +56,10 @@ export interface WriteDatasetRequest extends common.CommandRequest {
    */
   encoding?: string;
   /**
+   * Last e-tag for the data set (optional, omit to overwrite)
+   */
+  etag?: string;
+  /**
    * Dataset name
    */
   dsname: string;
@@ -114,6 +118,10 @@ export interface WriteDatasetResponse extends common.CommandResponse {
    * Dataset name
    */
   dataset: string;
+  /**
+   * Returned e-tag for the data set
+   */
+  etag: string;
 }
 export interface RestoreDatasetResponse extends common.CommandResponse {
   /**
@@ -126,6 +134,10 @@ export interface ReadDatasetResponse extends common.CommandResponse {
    * Desired encoding for the dataset (optional)
    */
   encoding?: string;
+  /**
+   * Returned e-tag for the data set
+   */
+  etag: string;
   /**
    * Dataset name
    */

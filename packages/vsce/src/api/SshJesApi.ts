@@ -18,6 +18,7 @@ export class SshJesApi extends SshCommonApi implements MainframeInteraction.IJes
     public async getJobsByParameters(params: zosjobs.IGetJobsParms): Promise<zosjobs.IJob[]> {
         const response = await (await this.client).jobs.listJobs({
             owner: params.owner?.toUpperCase(),
+            prefix: params.prefix,
         });
         return response.items.map(
             (item): Partial<zosjobs.IJob> => ({

@@ -119,6 +119,14 @@ int main(int argc, char *argv[])
   encoding_option.get_aliases().push_back("--ec");
   encoding_option.set_description("return contents in given encoding");
 
+  ZCLIOption etag("etag");
+  etag.set_required(false);
+  etag.set_description("Provide the e-tag for a write response to detect conflicts before save");
+
+  ZCLIOption etag_only("etag-only");
+  etag_only.set_required(false);
+  etag_only.set_description("Only print the e-tag for a write response (when successful)");
+
   //
   // data set group
   //
@@ -210,6 +218,8 @@ int main(int argc, char *argv[])
   data_set_write.set_zcli_verb_handler(handle_data_set_write_to_dsn);
   data_set_write.get_positionals().push_back(data_set_dsn);
   data_set_write.get_options().push_back(encoding_option);
+  data_set_write.get_options().push_back(etag);
+  data_set_write.get_options().push_back(etag_only);
   data_set_group.get_verbs().push_back(data_set_write);
 
   ZCLIVerb data_set_delete("delete");
@@ -443,6 +453,8 @@ int main(int argc, char *argv[])
   uss_write.set_zcli_verb_handler(handle_uss_write);
   uss_write.get_positionals().push_back(uss_file_path);
   uss_write.get_options().push_back(encoding_option);
+  uss_write.get_options().push_back(etag);
+  uss_write.get_options().push_back(etag_only);
   uss_group.get_verbs().push_back(uss_write);
 
   ZCLIVerb uss_delete("delete");
@@ -1181,13 +1193,16 @@ int handle_data_set_view_dsn(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
+  const auto etag = zut_calc_adler32_checksum(response);
+  cout << "etag: " << std::hex << etag << endl;
+  cout << "data: ";
   if (hasEncoding && result.get_option_value("--response-format-bytes") == "true")
   {
     zut_print_string_as_bytes(response);
   }
   else
   {
-    cout << response;
+    cout << response << endl;
   }
 
   return rc;
@@ -1331,7 +1346,11 @@ int handle_data_set_write_to_dsn(ZCLIResult result)
     std::istreambuf_iterator<char> begin(std::cin);
     std::istreambuf_iterator<char> end;
 
-    std::vector<char> bytes(begin, end);
+    vector<char> input(begin, end);
+    const auto temp = string(input.begin(), input.end());
+    input.clear();
+    const auto bytes = zut_get_contents_as_bytes(temp);
+
     data.assign(bytes.begin(), bytes.end());
     byteSize = bytes.size();
   }
@@ -1345,7 +1364,7 @@ int handle_data_set_write_to_dsn(ZCLIResult result)
     byteSize = data.size();
   }
 
-  rc = zds_write_to_dsn(&zds, dsn, data);
+  rc = zds_write_to_dsn(&zds, dsn, data, result.get_option_value("--etag"));
 
   if (0 != rc)
   {
@@ -1353,7 +1372,11 @@ int handle_data_set_write_to_dsn(ZCLIResult result)
     cerr << "  Details: " << zds.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
-  cout << "Wrote data to '" << dsn << "'" << endl;
+
+  if (result.get_option("--etag-only") == nullptr || !result.get_option("--etag-only")->is_found())
+  {
+    cout << "Wrote data to '" << dsn << "'" << endl;
+  }
 
   return rc;
 }
@@ -1462,7 +1485,14 @@ int handle_uss_view(ZCLIResult result)
   string uss_file = result.get_positional("file-path")->get_value();
 
   ZUSF zusf = {0};
-  const auto hasEncoding = zut_prepare_encoding(result.get_option_value("--encoding"), &zusf.encoding_opts);
+  const auto hasEncoding = result.get_option("--encoding") != nullptr && zut_prepare_encoding(result.get_option_value("--encoding"), &zusf.encoding_opts);
+
+  struct stat file_stats;
+  if (stat(uss_file.c_str(), &file_stats) == -1)
+  {
+    cerr << "Error: Path " << uss_file << " does not exist";
+    return RTNCD_FAILURE;
+  }
 
   string response;
   rc = zusf_read_from_uss_file(&zusf, uss_file, response);
@@ -1475,6 +1505,8 @@ int handle_uss_view(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
+  cout << "etag: " << zut_build_etag(file_stats.st_mtime, file_stats.st_size) << endl;
+  cout << "data: ";
   if (hasEncoding && result.get_option_value("--response-format-bytes") == "true")
   {
     zut_print_string_as_bytes(response);
@@ -1497,8 +1529,8 @@ int handle_uss_write(ZCLIResult result)
     zut_prepare_encoding(result.get_option_value("--encoding"), &zusf.encoding_opts);
   }
 
-  string data;
-  string line;
+  string data = "";
+  string line = "";
   size_t byteSize = 0ul;
 
   // Use Ctrl/Cmd + D to stop writing data manually
@@ -1507,7 +1539,11 @@ int handle_uss_write(ZCLIResult result)
     std::istreambuf_iterator<char> begin(std::cin);
     std::istreambuf_iterator<char> end;
 
-    std::vector<char> bytes(begin, end);
+    vector<char> input(begin, end);
+    const auto temp = string(input.begin(), input.end());
+    input.clear();
+    const auto bytes = zut_get_contents_as_bytes(temp);
+
     data.assign(bytes.begin(), bytes.end());
     byteSize = bytes.size();
   }
@@ -1521,14 +1557,18 @@ int handle_uss_write(ZCLIResult result)
     byteSize = data.size();
   }
 
-  rc = zusf_write_to_uss_file(&zusf, file, data);
+  auto *etag_opt = result.get_option("--etag");
+  rc = zusf_write_to_uss_file(&zusf, file, data, etag_opt != nullptr && etag_opt->is_found() ? etag_opt->get_value() : "");
   if (0 != rc)
   {
     cerr << "Error: could not write to USS file: '" << file << "' rc: '" << rc << "'" << endl;
     cerr << "  Details: " << zusf.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
-  cout << "Wrote data to '" << file << "'" << endl;
+  if (result.get_option("--etag-only") != nullptr || !result.get_option("--etag-only")->is_found())
+  {
+    cout << "Wrote data to '" << file << "'" << endl;
+  }
 
   return rc;
 }
