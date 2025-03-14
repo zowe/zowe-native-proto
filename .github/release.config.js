@@ -1,7 +1,7 @@
 module.exports = {
     branches: [
         {
-            name: "main",
+            name: "ci/fix-release-workflow",
             level: "minor"
         }
     ],
