@@ -25,7 +25,10 @@ export default class DownloadJobJclHandler extends SshBaseHandler {
             encoding: params.arguments.encoding,
         });
         const content = B64String.decode(response.data);
-        const localFilePath: string = path.join(homedir(), params.arguments.jobId);
+        const localFilePath: string = path.join(
+            params.arguments.directory ?? process.cwd(),
+            `${params.arguments.jobId}.txt`,
+        );
 
         console.log(
             "Downloading spool '%s' from job ID '%s' to local file '%s'",

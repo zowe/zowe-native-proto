@@ -52,6 +52,13 @@ export const DownloadDataSetDefinition: ICommandDefinition = {
             defaultValue: null,
             type: "string",
         },
+        {
+            name: "directory",
+            aliases: ["d"],
+            description: "The directory for the downloaded data set.",
+            defaultValue: null,
+            type: "string",
+        },
     ],
     profile: { optional: ["ssh"] },
 };

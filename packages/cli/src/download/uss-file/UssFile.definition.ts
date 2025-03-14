@@ -51,6 +51,13 @@ export const DownloadUssFileDefinition: ICommandDefinition = {
             defaultValue: null,
             type: "string",
         },
+        {
+            name: "directory",
+            aliases: ["d"],
+            description: "The directory for the downloaded USS file.",
+            defaultValue: null,
+            type: "string",
+        },
     ],
     profile: { optional: ["ssh"] },
 };

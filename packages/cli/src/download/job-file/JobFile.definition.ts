@@ -45,6 +45,13 @@ export const DownloadJobFileDefinition: ICommandDefinition = {
             type: "string",
             required: false,
         },
+        {
+            name: "directory",
+            aliases: ["d"],
+            description: "The directory for the downloaded job spool file.",
+            defaultValue: null,
+            type: "string",
+        },
     ],
     profile: { optional: ["ssh"] },
 };

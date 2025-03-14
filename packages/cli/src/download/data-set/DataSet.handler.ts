@@ -26,7 +26,10 @@ export default class DownloadDataSetHandler extends SshBaseHandler {
 
         const content = B64String.decode(response.data);
         const match = params.arguments.dataSet.match(/\(([^)]+)\)/);
-        const localFilePath: string = path.join(process.cwd(), match ? match[1] : params.arguments.dataSet);
+        const localFilePath: string = path.join(
+            params.arguments.directory ?? process.cwd(),
+            `${match ? match[1] : params.arguments.dataSet}.txt`,
+        );
 
         console.log("Downloading data set '%s' to local file '%s'", params.arguments.dataSet, localFilePath);
         IO.createDirsSyncFromFilePath(localFilePath);

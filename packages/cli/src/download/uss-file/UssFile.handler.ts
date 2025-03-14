@@ -27,7 +27,7 @@ export default class DownloadUssFileHandler extends SshBaseHandler {
         const content = B64String.decode(response.data);
 
         const baseName = posix.basename(params.arguments.filePath);
-        const localFilePath: string = path.join(process.cwd(), baseName);
+        const localFilePath: string = path.join(params.arguments.directory ?? process.cwd(), baseName);
 
         console.log("Downloading USS file '%s' to local file '%s'", params.arguments.filePath, localFilePath);
         IO.createDirsSyncFromFilePath(localFilePath);
