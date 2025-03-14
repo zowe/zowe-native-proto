@@ -11,29 +11,29 @@
 
 import type { ICommandDefinition } from "@zowe/imperative";
 
-export const ViewJobFileDefinition: ICommandDefinition = {
+export const DownloadJobFileDefinition: ICommandDefinition = {
     handler: `${__dirname}/JobFile.handler`,
-    description: "View the contents of a job spool file",
+    description: "Download the contents of a job spool file",
     type: "command",
     name: "spool-files-by-id",
     aliases: ["jsf", "spool", "job-spool-file"],
-    summary: "View job spool file",
+    summary: "Download job spool file",
     examples: [
         {
-            description: "View the contents of a job spool file",
+            description: "Download the contents of a job spool file",
             options: "TSU00296 2",
         },
     ],
     positionals: [
         {
             name: "job-id",
-            description: "The ID of the job which you would like to view the contents of.",
+            description: "The ID of the job which you would like to download the contents of.",
             type: "string",
             required: true,
         },
         {
             name: "dsn-key",
-            description: "The key of the job which you would like to view the contents of.",
+            description: "The key of the job which you would like to download the contents of.",
             type: "number",
             required: true,
         },
@@ -41,9 +41,16 @@ export const ViewJobFileDefinition: ICommandDefinition = {
     options: [
         {
             name: "encoding",
-            description: "The encoding for viewing a spool file.",
+            description: "The encoding for the job spool file.",
             type: "string",
             required: false,
+        },
+        {
+            name: "directory",
+            aliases: ["d"],
+            description: "The directory for the downloaded job spool file.",
+            defaultValue: null,
+            type: "string",
         },
     ],
     profile: { optional: ["ssh"] },
