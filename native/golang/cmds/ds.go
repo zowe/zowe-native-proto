@@ -97,9 +97,9 @@ func HandleWriteDatasetRequest(conn *utils.StdioConn, params []byte) (result any
 
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		e = fmt.Errorf("Failed to pipe stdin to command: %v", out)
+		e = fmt.Errorf("Failed to pipe stdin to command: %v", string(out))
 		conn.LastExitCode = cmd.ProcessState.ExitCode()
-		return nil, err
+		return
 	}
 
 	result = ds.WriteDatasetResponse{

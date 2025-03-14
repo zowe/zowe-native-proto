@@ -77,11 +77,20 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         dataSetName: string,
         options?: zosfiles.IUploadOptions,
     ): Promise<zosfiles.IZosFilesResponse> {
-        const response = await (await this.client).ds.writeDataset({
-            dsname: dataSetName,
-            encoding: options?.binary ? "binary" : options?.encoding,
-            data: B64String.encode(buffer),
-        });
+        let response: ds.WriteDatasetResponse;
+        try {
+            response = await (await this.client).ds.writeDataset({
+                dsname: dataSetName,
+                encoding: options?.binary ? "binary" : options?.encoding,
+                data: B64String.encode(buffer),
+                etag: options?.etag,
+            });
+        } catch (err) {
+            if (err instanceof imperative.ImperativeError && err.additionalDetails.includes("Etag mismatch")) {
+                throw new Error("Rest API failure with HTTP(S) status 412");
+            }
+            throw err;
+        }
         return this.buildZosFilesResponse({ etag: response.etag });
     }
 
@@ -94,6 +103,7 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
             dsname: dataSetName,
             encoding: options?.encoding,
             data: B64String.encode(readFileSync(inputFilePath)),
+            etag: options?.etag,
         });
         return this.buildZosFilesResponse({ etag: response.etag });
     }

@@ -119,6 +119,10 @@ int main(int argc, char *argv[])
   encoding_option.get_aliases().push_back("--ec");
   encoding_option.set_description("return contents in given encoding");
 
+  ZCLIOption etag("etag");
+  etag.set_required(false);
+  etag.set_description("Provide the e-tag for a write response to detect conflicts before save");
+
   ZCLIOption etag_only("etag-only");
   etag_only.set_required(false);
   etag_only.set_description("Only print the e-tag for a write response (when successful)");
@@ -214,6 +218,7 @@ int main(int argc, char *argv[])
   data_set_write.set_zcli_verb_handler(handle_data_set_write_to_dsn);
   data_set_write.get_positionals().push_back(data_set_dsn);
   data_set_write.get_options().push_back(encoding_option);
+  data_set_write.get_options().push_back(etag);
   data_set_write.get_options().push_back(etag_only);
   data_set_group.get_verbs().push_back(data_set_write);
 
@@ -396,10 +401,6 @@ int main(int argc, char *argv[])
   console_command.set_description("command to run, e.g. 'D IPLINFO'");
   console_issue.get_positionals().push_back(console_command);
   console_group.get_verbs().push_back(console_issue);
-
-  ZCLIOption etag("etag");
-  etag.set_required(false);
-  etag.set_description("Provide the e-tag for a write response to detect conflicts before save");
 
   //
   // uss group
@@ -1363,7 +1364,7 @@ int handle_data_set_write_to_dsn(ZCLIResult result)
     byteSize = data.size();
   }
 
-  rc = zds_write_to_dsn(&zds, dsn, data);
+  rc = zds_write_to_dsn(&zds, dsn, data, result.get_option_value("--etag"));
 
   if (0 != rc)
   {
