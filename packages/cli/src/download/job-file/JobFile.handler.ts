@@ -30,7 +30,7 @@ export default class DownloadJobJclHandler extends SshBaseHandler {
             `${params.arguments.jobId}.txt`,
         );
 
-        console.log(
+        params.response.console.log(
             "Downloading spool '%s' from job ID '%s' to local file '%s'",
             params.arguments.dsnKey,
             params.arguments.jobId,

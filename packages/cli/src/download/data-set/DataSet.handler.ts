@@ -31,7 +31,11 @@ export default class DownloadDataSetHandler extends SshBaseHandler {
             `${match ? match[1] : params.arguments.dataSet}.txt`,
         );
 
-        console.log("Downloading data set '%s' to local file '%s'", params.arguments.dataSet, localFilePath);
+        params.response.console.log(
+            "Downloading data set '%s' to local file '%s'",
+            params.arguments.dataSet,
+            localFilePath,
+        );
         IO.createDirsSyncFromFilePath(localFilePath);
         fs.writeFileSync(localFilePath, content, params.arguments.binary ? "binary" : "utf8");
         params.response.data.setMessage("Successfully downloaded content to %s", localFilePath);
