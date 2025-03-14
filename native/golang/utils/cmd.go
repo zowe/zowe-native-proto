@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -52,28 +53,28 @@ func BuildArgString(args []string) string {
 
 // BuildCommandShared builds a command with the shared logic for command builder functions
 func BuildCommandShared(name string, args []string) *exec.Cmd {
-	cmd := exec.Command(name, args...)
-	cmd.Dir = GetExecDir()
+	execDir := GetExecDir()
+	cmd := exec.Command(path.Join(execDir, name), args...)
 	return cmd
 }
 
 // BuildCommand builds a command with _BPXK_AUTOCVT=ON
 func BuildCommand(args []string) *exec.Cmd {
-	cmd := BuildCommandShared("./zowex", args)
+	cmd := BuildCommandShared("zowex", args)
 	cmd.Env = append(os.Environ(), "_BPXK_AUTOCVT=ON")
 	return cmd
 }
 
 // BuildCommand builds a `zoweax` command to perform operations that require authorization
 func BuildCommandAuthorized(args []string) *exec.Cmd {
-	cmd := BuildCommandShared("./zoweax", args)
+	cmd := BuildCommandShared("zoweax", args)
 	cmd.Env = append(os.Environ(), "_BPXK_AUTOCVT=ON")
 	return cmd
 }
 
 // BuildCommandNoAutocvt builds a command with _BPXK_AUTOCVT=OFF
 func BuildCommandNoAutocvt(args []string) *exec.Cmd {
-	cmd := BuildCommandShared("./zowex", args)
+	cmd := BuildCommandShared("zowex", args)
 	cmd.Env = append(os.Environ(), "_BPXK_AUTOCVT=OFF")
 	return cmd
 }
