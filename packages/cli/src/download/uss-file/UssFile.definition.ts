@@ -47,7 +47,7 @@ export const DownloadUssFileDefinition: ICommandDefinition = {
         {
             name: "encoding",
             aliases: ["ec"],
-            description: "The encoding for download and upload of the USS File.",
+            description: "The encoding for the USS file.",
             defaultValue: null,
             type: "string",
         },
