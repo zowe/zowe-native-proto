@@ -28,6 +28,11 @@ jobs:
       - run: |
           RUN_ID=$(gh run list --commit=${{ github.event.pull_request.head.sha || github.sha }} --workflow=zos-build.yml --status=in_progress --json=databaseId --jq='.[0].databaseId')
           [ -z "$RUN_ID" ] || gh run watch $RUN_ID
+        if: ${{ matrix.os == 'ubuntu' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - run: |
           gh run download --name zowe-server
           mkdir packages/cli/bin && cp server.pax.Z packages/cli/bin/
           mkdir packages/vsce/bin && cp server.pax.Z packages/vsce/bin/
