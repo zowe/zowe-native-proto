@@ -46,6 +46,7 @@ export class ZSshUtils {
                 ? fs.readFileSync(session.ISshSession.privateKey, "utf-8")
                 : undefined,
             passphrase: session.ISshSession.keyPassphrase,
+            debug: (msg: string) => Logger.getAppLogger().trace(msg),
         };
     }
 
