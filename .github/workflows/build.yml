@@ -1,6 +1,10 @@
-name: build
+name: Build
 
-on: [pull_request]
+on:
+  pull_request:
+  push:
+    branches:
+      - main
 
 jobs:
   build-client:
@@ -20,6 +24,13 @@ jobs:
       - run: npm ci
 
       - run: npm run build
+
+      - run: |
+          RUN_ID=$(gh run list --commit=${{ github.event.pull_request.head.sha || github.sha }} --workflow=zos-build.yml --status=in_progress --json=databaseId --jq='.[0].databaseId')
+          [ -z "$RUN_ID" ] || gh run watch $RUN_ID
+        if: ${{ matrix.os == 'ubuntu' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
 
       - run: |
           gh run download --name zowe-server

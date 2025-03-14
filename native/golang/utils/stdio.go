@@ -30,7 +30,7 @@ type StdioConn struct {
 }
 
 func (conn *StdioConn) ExecCmd(args []string) (stdout []byte, stderr error) {
-	_, err := conn.Stdin.Write([]byte("./zowex " + BuildArgString(args) + "\n"))
+	_, err := conn.Stdin.Write([]byte("zowex " + BuildArgString(args) + "\n"))
 	if err != nil {
 		return nil, err
 	}

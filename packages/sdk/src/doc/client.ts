@@ -21,6 +21,11 @@ export interface ClientOptions {
     onError?: (error: Error) => void | Promise<void>;
 
     /**
+     * Number of workers to spawn
+     */
+    numWorkers?: number;
+
+    /**
      * Number of seconds to wait for a response
      * (default: 60)
      */
