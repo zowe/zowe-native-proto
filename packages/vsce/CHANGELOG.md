@@ -10,6 +10,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - Added support for cancelling jobs. [#138](https://github.com/zowe/zowe-native-proto/pull/138)
 - Added support for running MVS commands. [#138](https://github.com/zowe/zowe-native-proto/pull/138)
 - Updated error handling for listing data sets. [#185](https://github.com/zowe/zowe-native-proto/pull/185)
+- Added support for conflict detection through use of e-tags. When a data set or USS file is opened, the e-tag is received by the VS Code extension and used in future write requests to prevent overwriting new changes on the target system. [#144](https://github.com/zowe/zowe-native-proto/issues/144)
 
 ## [Unreleased]
 
