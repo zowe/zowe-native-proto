@@ -258,7 +258,7 @@ int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data, std::string et
     }
   }
 
-  if (!data.empty() && hasEncoding)
+  if (!data.empty())
   {
     ofstream out(file.c_str(), zusf->encoding_opts.data_type == eDataTypeBinary ? ios::out | ios::binary : ios::out);
     if (!out.is_open())
@@ -268,15 +268,18 @@ int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data, std::string et
     }
 
     std::string temp = data;
-    try
+    if (hasEncoding)
     {
-      const auto bytes_with_encoding = zut_encode(temp, "UTF-8", codepage, zusf->diag);
-      temp = bytes_with_encoding;
-    }
-    catch (std::exception &e)
-    {
-      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to convert input data from UTF-8 to %s", codepage.c_str());
-      return RTNCD_FAILURE;
+      try
+      {
+        const auto bytes_with_encoding = zut_encode(temp, "UTF-8", codepage, zusf->diag);
+        temp = bytes_with_encoding;
+      }
+      catch (std::exception &e)
+      {
+        zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to convert input data from UTF-8 to %s", codepage.c_str());
+        return RTNCD_FAILURE;
+      }
     }
     if (!temp.empty())
     {
