@@ -177,18 +177,18 @@ int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data, std::string e
     }
   }
 
-  dsn = "//'" + dsn + "'";
+  const string dsname = "//'" + dsn + "'";
 
+  std::string temp = data;
   if (!data.empty())
   {
-    auto *fp = fopen(dsn.c_str(), zds->encoding_opts.data_type == eDataTypeBinary ? "wb,recfm=U" : "w");
+    auto *fp = fopen(dsname.c_str(), zds->encoding_opts.data_type == eDataTypeBinary ? "wb,recfm=U" : "w");
     if (fp == nullptr)
     {
-      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open '%s'", dsn.c_str());
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open '%s'", dsname.c_str());
       return RTNCD_FAILURE;
     }
 
-    std::string temp = data;
     if (hasEncoding)
     {
       try
@@ -210,8 +210,14 @@ int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data, std::string e
   }
 
   // Print new e-tag to stdout as response
-  cout << std::hex << zut_calc_adler32_checksum(data) << std::dec << endl;
+  string saved_contents = "";
+  const auto read_rc = zds_read_from_dsn(zds, dsn, saved_contents);
+  if (read_rc != 0)
+  {
+    return RTNCD_FAILURE;
+  }
 
+  cout << std::hex << zut_calc_adler32_checksum(saved_contents) << std::dec << endl;
   return 0;
 }
 
