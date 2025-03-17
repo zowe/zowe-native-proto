@@ -9,12 +9,9 @@ module.exports = {
         [
             "@octorelease/changelog",
             {
+                extraDirs: ["native"],
                 headerLine: "## Recent Changes",
-            },
-            {
-                $cwd: "native",
-                headerLine: "## Recent Changes",
-            },
+            }
         ],
         [
             "@octorelease/lerna",
