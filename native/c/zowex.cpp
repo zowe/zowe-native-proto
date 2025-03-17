@@ -1373,7 +1373,7 @@ int handle_data_set_write_to_dsn(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  if (result.get_option("--etag-only") == nullptr || !result.get_option("--etag-only")->is_found())
+  if (result.get_option("--etag-only") == nullptr && !result.get_option("--etag-only")->is_found())
   {
     cout << "Wrote data to '" << dsn << "'" << endl;
   }
@@ -1565,7 +1565,7 @@ int handle_uss_write(ZCLIResult result)
     cerr << "  Details: " << zusf.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
-  if (result.get_option("--etag-only") != nullptr || !result.get_option("--etag-only")->is_found())
+  if (result.get_option("--etag-only") != nullptr && !result.get_option("--etag-only")->is_found())
   {
     cout << "Wrote data to '" << file << "'" << endl;
   }
