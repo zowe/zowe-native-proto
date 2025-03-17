@@ -51,7 +51,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
 
       - name: Run Octorelease
-        uses: zowe-actions/octorelease@feat/exec-plugin
+        uses: zowe-actions/octorelease@v1
         env:
           GIT_COMMITTER_NAME: ${{ secrets.ZOWE_ROBOT_USER }}
           GIT_COMMITTER_EMAIL: ${{ secrets.ZOWE_ROBOT_EMAIL }}
