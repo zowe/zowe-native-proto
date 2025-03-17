@@ -53,18 +53,10 @@
         },
         "zowe-native-proto-vsce.serverInstallPath": {
           "type": "object",
-          "description": "Defines custom server install paths for SSH hosts. Defaults to '~/.zowe-server'.",
-          "properties": {
-            "host": {
-              "type": "string",
-              "description": "SSH host"
-            },
-            "path": {
-              "type": "string",
-              "description": "Remote path"
-            }
-          },
-          "additionalProperties": false
+          "description": "Mapping of SSH hostname to server install path for that host. Defaults to '~/.zowe-server'.",
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       }
     }
