@@ -58,15 +58,21 @@ export class ZSshUtils {
                 if (err.code !== 4) throw err;
                 Logger.getAppLogger().debug(`Remote directory already exists: ${remoteDir}`);
             });
-            await promisify(sftp.fastPut.bind(sftp))(
-                path.join(localDir, ZSshUtils.SERVER_PAX_FILE),
-                path.posix.join(remoteDir, ZSshUtils.SERVER_PAX_FILE),
-            );
+            try {
+                await promisify(sftp.fastPut.bind(sftp))(
+                    path.join(localDir, ZSshUtils.SERVER_PAX_FILE),
+                    path.posix.join(remoteDir, ZSshUtils.SERVER_PAX_FILE),
+                );
+            } catch (err) {
+                const errMsg = `Failed to upload server PAX file${err.code ? ` with RC ${err.code}` : ""}: ${err}`;
+                Logger.getAppLogger().error(errMsg);
+                throw new Error(errMsg);
+            }
             const result = await ssh.execCommand(`pax -rzf ${ZSshUtils.SERVER_PAX_FILE}`, { cwd: remoteDir });
             if (result.code === 0) {
                 Logger.getAppLogger().debug(`Extracted server binaries with response: ${result.stdout}`);
             } else {
-                const errMsg = `Failed to extract server binaries: ${result.stderr}`;
+                const errMsg = `Failed to extract server binaries with RC ${result.code}: ${result.stderr}`;
                 Logger.getAppLogger().error(errMsg);
                 throw new Error(errMsg);
             }
