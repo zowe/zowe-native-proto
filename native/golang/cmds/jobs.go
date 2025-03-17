@@ -43,8 +43,13 @@ func HandleListJobsRequest(conn *utils.StdioConn, params []byte) (result any, e 
 		return
 	}
 
-	returnedJobs := strings.Split(strings.TrimSpace(string(out)), "\n")
-
+	rawResponse := strings.TrimSpace(string(out))
+	if len(rawResponse) == 0 {
+		return jobs.ListJobsResponse{
+			Items: []t.Job{},
+		}, nil
+	}
+	returnedJobs := strings.Split(rawResponse, "\n")
 	jobsResponse := jobs.ListJobsResponse{
 		Items: make([]t.Job, len(returnedJobs)),
 	}
