@@ -179,7 +179,7 @@ int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data, std::string e
 
   dsn = "//'" + dsn + "'";
 
-  if (!data.empty() && hasEncoding)
+  if (!data.empty())
   {
     auto *fp = fopen(dsn.c_str(), zds->encoding_opts.data_type == eDataTypeBinary ? "wb,recfm=U" : "w");
     if (fp == nullptr)
@@ -189,15 +189,18 @@ int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data, std::string e
     }
 
     std::string temp = data;
-    try
+    if (hasEncoding)
     {
-      const auto bytes_with_encoding = zut_encode(temp, "UTF-8", codepage, zds->diag);
-      temp = bytes_with_encoding;
-    }
-    catch (std::exception &e)
-    {
-      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from UTF-8 to %s", codepage.c_str());
-      return RTNCD_FAILURE;
+      try
+      {
+        const auto bytes_with_encoding = zut_encode(temp, "UTF-8", codepage, zds->diag);
+        temp = bytes_with_encoding;
+      }
+      catch (std::exception &e)
+      {
+        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from UTF-8 to %s", codepage.c_str());
+        return RTNCD_FAILURE;
+      }
     }
     if (!temp.empty())
     {
