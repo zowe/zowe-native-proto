@@ -9,6 +9,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - `c`: Fixed issue where running the `zowex uss write` or `zowex ds write` commands without the `--etag-only` parameter resulted in a S0C4 and abrupt termination. [#216](https://github.com/zowe/zowe-native-proto/pull/216)
 - `c`: Fixed issue where running the `zowex uss write` or `zowex ds write` commands without the `--encoding` parameter resulted in a no-op. [#216](https://github.com/zowe/zowe-native-proto/pull/216)
 - `golang`: Fixed issue where a jobs list request returns unexpected results whenever a search query does not match any jobs. [#217](https://github.com/zowe/zowe-native-proto/pull/217)
+- `c`: Fixed issue where e-tag calculation did not match when a data set was saved with the `--encoding` parameter provided. [#219](https://github.com/zowe/zowe-native-proto/pull/219)
 
 ## `0.1.0`
 
