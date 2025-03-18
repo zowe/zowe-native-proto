@@ -11,9 +11,9 @@
 
 import {
     ConfigUtils,
-    type ITaskWithStatus,
     type ICommandHandler,
     type IHandlerParameters,
+    type ITaskWithStatus,
     TaskStage,
 } from "@zowe/imperative";
 import { ZSshClient, ZSshUtils } from "zowe-native-proto-sdk";
