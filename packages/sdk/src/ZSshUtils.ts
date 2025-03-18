@@ -54,7 +54,7 @@ export class ZSshUtils {
         session: SshSession,
         serverPath: string,
         localDir: string,
-        onProgress: (increment: number) => void, // Callback to report incremental progress
+        onProgress?: (increment: number) => void, // Callback to report incremental progress
     ): Promise<void> {
         Logger.getAppLogger().debug(`Installing server to ${session.ISshSession.hostname} at path: ${serverPath}`);
         const remoteDir = serverPath.replace(/^~/, ".");
@@ -68,15 +68,17 @@ export class ZSshUtils {
             let previousPercentage = 0;
 
             // Create the progress callback for tracking the upload progress
-            const progressCallback = (progress: number, chunk: number, total: number) => {
-                const percentage = Math.floor((progress / total) * 100); // Calculate percentage
-                const increment = percentage - previousPercentage;
+            const progressCallback = onProgress
+                ? (progress: number, chunk: number, total: number) => {
+                      const percentage = Math.floor((progress / total) * 100); // Calculate percentage
+                      const increment = percentage - previousPercentage;
 
-                if (increment > 0) {
-                    onProgress(increment);
-                    previousPercentage = percentage;
-                }
-            };
+                      if (increment > 0) {
+                          onProgress(increment);
+                          previousPercentage = percentage;
+                      }
+                  }
+                : undefined;
 
             // Perform the file upload with progress tracking
             await promisify(sftp.fastPut.bind(sftp))(

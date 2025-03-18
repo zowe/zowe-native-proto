@@ -54,7 +54,6 @@ export function registerCommands(context: vscode.ExtensionContext): vscode.Dispo
                 async (progress) => {
                     // Pass a callback function that will update the progress object
                     await ZSshUtils.installServer(sshSession, serverPath, localDir, (progressIncrement) => {
-                        console.debug(progressIncrement);
                         progress.report({ increment: progressIncrement });
                     });
                 },
