@@ -40,7 +40,13 @@ jobs:
         run: npm ci --workspaces=false
 
       - name: Build on z/OS
-        run: npm run z:all
+        uses: nick-fields/retry@v3
+        with:
+          command: npm run z:all
+          max_attempts: 3
+          new_command_on_retry: npm run z:build
+          retry_on_exit_code: 139 # Ignore transient SIGSEGV error on Go build
+          timeout_minutes: 5
 
       - uses: actions/upload-artifact@v4
         with:
