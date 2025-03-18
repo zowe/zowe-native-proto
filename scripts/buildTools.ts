@@ -339,7 +339,7 @@ async function runCommandInShell(connection: Client, command: string, pty = fals
                 if (exitCode !== 0) {
                     const fullError = `\nError: runCommand connection.exec error: \n ${error || data}`;
                     stopSpinner(spinner, fullError);
-                    process.exitCode = exitCode;
+                    process.exitCode = fullError.includes("SIGSEGV: segmentation violation") ? 11 : exitCode;
                     reject(fullError);
                 }
             });
