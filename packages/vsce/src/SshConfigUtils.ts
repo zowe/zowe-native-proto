@@ -23,6 +23,7 @@ import {
 import { Client, type ClientChannel } from "ssh2";
 import * as vscode from "vscode";
 import { type ISshConfigExt, ZClientUtils, ZSshClient } from "zowe-native-proto-sdk";
+import { ImperativeError } from "@zowe/imperative";
 
 // biome-ignore lint/complexity/noStaticOnlyClass: Utilities class has static methods
 export class SshConfigUtils {
@@ -132,8 +133,22 @@ export class SshConfigUtils {
             selectedProfile = await SshConfigUtils.createNewConfig();
         }
 
-        if (!selectedProfile) return sshProfiles.find(({ name }) => name === result.label);
-
+        if (!selectedProfile) {
+            const foundProfile = sshProfiles.find(({ name }) => name === result.label);
+            if (foundProfile) {
+                const validConfig = await SshConfigUtils.validateConfig({
+                    hostname: foundProfile?.profile?.host,
+                    port: foundProfile?.profile?.port,
+                    privateKey: foundProfile?.profile?.privateKey,
+                    keyPassphrase: foundProfile?.profile?.keyPassphrase,
+                    user: foundProfile?.profile?.user,
+                    password: foundProfile?.profile?.password,
+                });
+                console.debug();
+                if (validConfig === undefined) return;
+                return { ...foundProfile, profile: { ...foundProfile.profile, ...validConfig } };
+            }
+        }
         const workspaceDir = ZoweVsCodeExtension.workspaceRoot;
 
         // Prioritize creating a team config in the local workspace if it exists even if a global config exists
@@ -147,7 +162,8 @@ export class SshConfigUtils {
         ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         // Prompt for a new profile name with the hostname (for adding a new config) or host value (for migrating from a config)
-        selectedProfile = await SshConfigUtils.getNewProfileName(selectedProfile, profInfo.getTeamConfig());
+
+        selectedProfile = await SshConfigUtils.getNewProfileName(selectedProfile!, profInfo.getTeamConfig());
         if (!selectedProfile?.name) {
             vscode.window.showWarningMessage("SSH setup cancelled.");
             return;
@@ -194,7 +210,7 @@ export class SshConfigUtils {
                         progress.report({ increment: (step / validationAttempts.length) * 100 });
 
                         if (result) {
-                            validationResult = true;
+                            validationResult = {};
                             if (typeof result === "string") {
                                 testValidation.keyPassphrase = result;
                             }
@@ -215,7 +231,7 @@ export class SshConfigUtils {
                             progress.report({ increment: (step / foundPrivateKeys.length) * 100 });
 
                             if (result) {
-                                validationResult = true;
+                                validationResult = {};
                                 if (typeof result === "string") {
                                     testValidation.keyPassphrase = result;
                                     selectedProfile = testValidation;
@@ -257,11 +273,11 @@ export class SshConfigUtils {
                         ...selectedProfile,
                         password: passwordPrompt,
                     });
-
-                    if (validatePassword && typeof validatePassword === "boolean") {
+                    console.debug();
+                    if (validatePassword && Object.keys(validatePassword).length === 0) {
                         selectedProfile.password = passwordPrompt;
-                    } else if (validatePassword && typeof validatePassword === "string") {
-                        selectedProfile.password = validatePassword;
+                    } else if (validatePassword && Object.keys(validatePassword).length >= 1) {
+                        selectedProfile = { ...selectedProfile, ...validatePassword };
                     } else {
                         // vscode.window.showWarningMessage("Password Authentication Failed");
                         return;
@@ -282,16 +298,7 @@ export class SshConfigUtils {
             message: "",
             failNotFound: false,
             type: "ssh",
-            profile: {
-                host: selectedProfile.hostname,
-                name: selectedProfile.name,
-                password: selectedProfile.password,
-                user: selectedProfile.user,
-                privateKey: selectedProfile.privateKey,
-                handshakeTimeout: selectedProfile.handshakeTimeout,
-                port: selectedProfile.port,
-                keyPassphrase: selectedProfile.keyPassphrase,
-            },
+            profile: selectedProfile,
         };
     }
 
@@ -524,7 +531,11 @@ export class SshConfigUtils {
             await config.save(false);
         } catch (err) {}
     }
-    private static async validateConfig(newConfig: ISshConfigExt): Promise<boolean | string> {
+    private static async validateConfig(newConfig: ISshConfigExt): Promise<Partial<ISshConfigExt> | undefined> {
+        // Function will return an empty partial object if it is a valid config.
+        // Function will return a partial object with the modification that must be merged with the existing object in order for a valid config.
+        // Function will return undefined if the config is not valid.
+
         const attemptConnection = async (config: ISshConfigExt): Promise<boolean> => {
             return new Promise((resolve, reject) => {
                 const sshClient = new Client();
@@ -571,9 +582,10 @@ export class SshConfigUtils {
                 (!newConfig?.privateKey || !readFileSync(path.normalize(newConfig?.privateKey!), "utf-8")) &&
                 !newConfig?.password
             )
-                return false;
+                return undefined;
             await attemptConnection(newConfig);
         } catch (err) {
+            console.debug();
             const errorMessage = `${err}`;
 
             // Private key authentication failed (but not due to missing passphrase)
@@ -582,7 +594,7 @@ export class SshConfigUtils {
                 !newConfig.password &&
                 errorMessage.includes("All configured authentication methods failed")
             ) {
-                return false;
+                return undefined;
             }
 
             // Case: Private key requires a passphrase
@@ -598,7 +610,7 @@ export class SshConfigUtils {
 
                     try {
                         await attemptConnection(newConfig);
-                        return newConfig.keyPassphrase || true;
+                        return newConfig.keyPassphrase ? { keyPassphrase: newConfig.keyPassphrase } : {};
                     } catch (error) {
                         if (!`${error}`.includes("integrity check failed")) break;
                         passphraseAttempts++;
@@ -609,7 +621,7 @@ export class SshConfigUtils {
                 // Max attempts reached, clean up and return false
                 newConfig.keyPassphrase = undefined;
                 newConfig.privateKey = undefined;
-                return false;
+                return undefined;
             }
 
             // Case: Password authentication failed
@@ -629,19 +641,19 @@ export class SshConfigUtils {
 
                     try {
                         await attemptConnection(newConfig);
-                        return newConfig.password as string;
+                        return newConfig.password ? { password: newConfig.password } : {};
                     } catch (passwordError) {
                         passwordAttempts++;
                         if (`${passwordError}`.includes("FOTS1668")) {
                             vscode.window.showErrorMessage("Password Expired on Target System");
-                            return false;
+                            return undefined;
                         }
                         vscode.window.showErrorMessage(`Password Authentication Failed (${passwordAttempts}/3)`);
                     }
                 }
             }
-            return false;
+            return undefined;
         }
-        return true;
+        return {};
     }
 }
