@@ -28,7 +28,7 @@ import { type ISshConfigExt, ZClientUtils, ZSshClient } from "zowe-native-proto-
 export class SshConfigUtils {
     public static getServerPath(profile?: imperative.IProfile): string {
         const serverPathMap: Record<string, string> =
-            vscode.workspace.getConfiguration("zowe-native-proto-vsce").get("serverPath") ?? {};
+            vscode.workspace.getConfiguration("zowe-native-proto-vsce").get("serverInstallPath") ?? {};
         return (
             (profile && serverPathMap[profile?.host]) ??
             process.env.ZOWE_OPT_SERVER_PATH ??
