@@ -50,7 +50,12 @@ export class ZSshUtils {
         };
     }
 
-    public static async installServer(session: SshSession, serverPath: string, localDir: string): Promise<void> {
+    public static async installServer(
+        session: SshSession,
+        serverPath: string,
+        localDir: string,
+        onProgress: (increment: number) => void, // Callback to report incremental progress
+    ): Promise<void> {
         Logger.getAppLogger().debug(`Installing server to ${session.ISshSession.hostname} at path: ${serverPath}`);
         const remoteDir = serverPath.replace(/^~/, ".");
         return ZSshUtils.sftp(session, async (sftp, ssh) => {
@@ -58,10 +63,28 @@ export class ZSshUtils {
                 if (err.code !== 4) throw err;
                 Logger.getAppLogger().debug(`Remote directory already exists: ${remoteDir}`);
             });
+
+            // Track the previous progress percentage
+            let previousPercentage = 0;
+
+            // Create the progress callback for tracking the upload progress
+            const progressCallback = (progress: number, chunk: number, total: number) => {
+                const percentage = Math.floor((progress / total) * 100); // Calculate percentage
+                const increment = percentage - previousPercentage;
+
+                if (increment > 0) {
+                    onProgress(increment);
+                    previousPercentage = percentage;
+                }
+            };
+
+            // Perform the file upload with progress tracking
             await promisify(sftp.fastPut.bind(sftp))(
                 path.join(localDir, ZSshUtils.SERVER_PAX_FILE),
                 path.posix.join(remoteDir, ZSshUtils.SERVER_PAX_FILE),
+                { step: progressCallback },
             );
+
             const result = await ssh.execCommand(`pax -rzf ${ZSshUtils.SERVER_PAX_FILE}`, { cwd: remoteDir });
             if (result.code === 0) {
                 Logger.getAppLogger().debug(`Extracted server binaries with response: ${result.stdout}`);
