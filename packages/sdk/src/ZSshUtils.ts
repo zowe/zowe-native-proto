@@ -84,6 +84,7 @@ export class ZSshUtils {
                 await promisify(sftp.fastPut.bind(sftp))(
                     path.join(localDir, ZSshUtils.SERVER_PAX_FILE),
                     path.posix.join(remoteDir, ZSshUtils.SERVER_PAX_FILE),
+                    { step: progressCallback },
                 );
             } catch (err) {
                 const errMsg = `Failed to upload server PAX file${err.code ? ` with RC ${err.code}` : ""}: ${err}`;
