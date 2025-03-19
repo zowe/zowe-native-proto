@@ -13,6 +13,7 @@ package cmds
 
 import (
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"strings"
 
@@ -39,9 +40,18 @@ func HandleReadDatasetRequest(conn *utils.StdioConn, params []byte) (result any,
 		return nil, fmt.Errorf("Error executing command: %v", err)
 	}
 
-	data, e := utils.CollectContentsAsBytes(string(out), true)
+	output := utils.YamlToMap(string(out))
+
+	var data []byte
+	if len(output) > 0 {
+		data, _ = utils.CollectContentsAsBytes(output["data"], true)
+	} else {
+		data = []byte{}
+	}
+
 	result = ds.ReadDatasetResponse{
 		Encoding: request.Encoding,
+		Etag:     output["etag"],
 		Dataset:  request.Dsname,
 		Data:     data,
 	}
@@ -61,11 +71,17 @@ func HandleWriteDatasetRequest(conn *utils.StdioConn, params []byte) (result any
 	if err != nil {
 		return nil, fmt.Errorf("Failed to decode dataset contents: %v", err)
 	}
+
+	byteString := hex.EncodeToString(decodedBytes)
+
 	if len(request.Encoding) == 0 {
 		request.Encoding = fmt.Sprintf("IBM-%d", utils.DefaultEncoding)
 	}
-	args := []string{"data-set", "write", request.Dsname, "--encoding", request.Encoding}
-	cmd := utils.BuildCommandNoAutocvt(args)
+	args := []string{"data-set", "write", request.Dsname, "--encoding", request.Encoding, "--etag-only", "true"}
+	if len(request.Etag) > 0 {
+		args = append(args, "--etag", request.Etag)
+	}
+	cmd := utils.BuildCommand(args)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return nil, fmt.Errorf("Failed to open stdin pipe: %v", err)
@@ -73,22 +89,23 @@ func HandleWriteDatasetRequest(conn *utils.StdioConn, params []byte) (result any
 
 	go func() {
 		defer stdin.Close()
-		_, err = stdin.Write(decodedBytes)
+		_, err = stdin.Write([]byte(byteString))
 		if err != nil {
 			e = fmt.Errorf("Failed to write to stdin pipe: %v", err)
 		}
 	}()
 
-	_, err = cmd.Output()
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		e = fmt.Errorf("Failed to pipe stdin to command: %v", err)
+		e = fmt.Errorf("Failed to pipe stdin to command: %v", string(out))
 		conn.LastExitCode = cmd.ProcessState.ExitCode()
-		return nil, err
+		return
 	}
 
 	result = ds.WriteDatasetResponse{
 		Success: true,
 		Dataset: request.Dsname,
+		Etag:    strings.TrimRight(string(out), "\n"),
 	}
 	return
 }
@@ -110,7 +127,14 @@ func HandleListDatasetsRequest(conn *utils.StdioConn, params []byte) (result any
 		return nil, fmt.Errorf("Error executing command: %v", err)
 	}
 
-	datasets := strings.Split(strings.TrimSpace(string(out)), "\n")
+	rawResponse := strings.TrimSpace(string(out))
+	if len(rawResponse) == 0 {
+		return ds.ListDatasetsResponse{
+			Items:        []t.Dataset{},
+			ReturnedRows: 0,
+		}, nil
+	}
+	datasets := strings.Split(rawResponse, "\n")
 	dsResponse := ds.ListDatasetsResponse{
 		Items:        make([]t.Dataset, len(datasets)),
 		ReturnedRows: len(datasets),
@@ -118,6 +142,9 @@ func HandleListDatasetsRequest(conn *utils.StdioConn, params []byte) (result any
 
 	for i, ds := range datasets {
 		vals := strings.Split(ds, ",")
+		if len(vals) < 4 {
+			continue
+		}
 		migr := false
 		if vals[3] == "true" {
 			migr = true

@@ -39,8 +39,10 @@ int zut_convert_dsect();
 bool zut_prepare_encoding(const std::string &encoding_value, ZEncode *opts);
 void zut_print_string_as_bytes(std::string &input);
 std::vector<uint8_t> zut_get_contents_as_bytes(const std::string &hex_string);
+uint32_t zut_calc_adler32_checksum(const std::string &input);
 
 size_t zut_iconv(iconv_t cd, ZConvData &data, ZDIAG &diag);
+std::string zut_build_etag(const size_t mtime, const size_t byte_size);
 std::string zut_encode(const std::string &input_str, const std::string &from_encoding, const std::string &to_encoding, ZDIAG &diag);
 std::string zut_format_as_csv(std::vector<std::string> &fields);
 std::string &zut_rtrim(std::string &s, const char *t = " ");

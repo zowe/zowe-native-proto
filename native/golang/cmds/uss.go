@@ -13,9 +13,11 @@ package cmds
 
 import (
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	t "zowe-native-proto/zowed/types/common"
 	uss "zowe-native-proto/zowed/types/uss"
 	utils "zowe-native-proto/zowed/utils"
@@ -87,16 +89,18 @@ func HandleReadFileRequest(conn *utils.StdioConn, params []byte) (result any, e 
 		return
 	}
 
-	output := string(out)
+	output := utils.YamlToMap(string(out))
+
 	var data []byte
 	if len(output) > 0 {
-		data, e = utils.CollectContentsAsBytes(output, true)
+		data, e = utils.CollectContentsAsBytes(output["data"], true)
 	} else {
 		data = []byte{}
 	}
 
 	result = uss.ReadFileResponse{
 		Encoding: request.Encoding,
+		Etag:     output["etag"],
 		Path:     request.Path,
 		Data:     data,
 	}
@@ -118,11 +122,17 @@ func HandleWriteFileRequest(conn *utils.StdioConn, params []byte) (result any, e
 		e = fmt.Errorf("[WriteFileRequest] Error decoding base64 contents: %v", err)
 		return
 	}
+
+	byteString := hex.EncodeToString(decodedBytes)
+
 	if len(request.Encoding) == 0 {
 		request.Encoding = fmt.Sprintf("IBM-%d", utils.DefaultEncoding)
 	}
-	args := []string{"uss", "write", request.Path, "--encoding", request.Encoding}
-	cmd := utils.BuildCommandNoAutocvt(args)
+	args := []string{"uss", "write", request.Path, "--encoding", request.Encoding, "--etag-only", "true"}
+	if len(request.Etag) > 0 {
+		args = append(args, "--etag", request.Etag)
+	}
+	cmd := utils.BuildCommand(args)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		e = fmt.Errorf("[WriteFileRequest] Error opening stdin pipe: %v", err)
@@ -131,23 +141,26 @@ func HandleWriteFileRequest(conn *utils.StdioConn, params []byte) (result any, e
 
 	go func() {
 		defer stdin.Close()
-		_, err = stdin.Write(decodedBytes)
+		_, err = stdin.Write([]byte(byteString))
 		if err != nil {
 			e = fmt.Errorf("[WriteFileRequest] Error writing to stdin pipe: %v", err)
 			return
 		}
 	}()
 
-	_, err = cmd.Output()
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		e = fmt.Errorf("[WriteFileRequest] Error piping stdin to command: %v", err)
+		e = fmt.Errorf("[WriteFileRequest] Error piping stdin to command: %s", string(out))
 		conn.LastExitCode = cmd.ProcessState.ExitCode()
 		return
 	}
 
 	result = uss.WriteFileResponse{
-		Success: err == nil,
-		Path:    request.Path,
+		GenericFileResponse: uss.GenericFileResponse{
+			Success: true,
+			Path:    request.Path,
+		},
+		Etag: strings.TrimRight(string(out), "\n"),
 	}
 	return
 }

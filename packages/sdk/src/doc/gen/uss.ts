@@ -41,6 +41,10 @@ export interface WriteFileRequest extends common.CommandRequest {
    */
   encoding?: string;
   /**
+   * E-tag for the file to detect conflicts during save (optional)
+   */
+  etag?: string;
+  /**
    * Remote file path to write contents to
    */
   fspath: string;
@@ -140,6 +144,10 @@ export interface ReadFileResponse extends common.CommandResponse {
    */
   encoding?: string;
   /**
+   * Returned e-tag for the file
+   */
+  etag: string;
+  /**
    * Remote file path
    */
   fspath: string;
@@ -148,7 +156,9 @@ export interface ReadFileResponse extends common.CommandResponse {
    */
   data: B64String;
 }
-export type WriteFileResponse = GenericFileResponse;
+export interface WriteFileResponse extends GenericFileResponse {
+  etag: string;
+}
 export interface ListFilesResponse extends common.CommandResponse {
   items: common.UssItem[];
   returnedRows: number /* int */;

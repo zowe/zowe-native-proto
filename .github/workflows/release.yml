@@ -1,0 +1,63 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version number to publish (e.g., 1.0.0)
+        required: false
+        type: string
+      dry-run:
+        description: Dry run mode
+        required: false
+        type: boolean
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.ref }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build Source
+        run: npm run build
+
+      - name: Download Server
+        run: |
+          RUN_ID=$(gh run list --branch=${{ github.ref }} --workflow=zos-build.yml --limit=1 --json=databaseId --jq='.[0].databaseId')
+          NEW_VERSION=$([ -z "${{ inputs.version }}" ] && jq -r '.version' package.json || echo "${{ inputs.version }}")
+          gh run download $RUN_ID --name zowe-server
+          mkdir packages/cli/bin && cp server.pax.Z packages/cli/bin/
+          mkdir packages/vsce/bin && cp server.pax.Z packages/vsce/bin/
+          mkdir dist && mv server.pax.Z dist/zowe-server-${NEW_VERSION}.pax.Z
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Run Octorelease
+        uses: zowe-actions/octorelease@v1
+        env:
+          GIT_COMMITTER_NAME: ${{ secrets.ZOWE_ROBOT_USER }}
+          GIT_COMMITTER_EMAIL: ${{ secrets.ZOWE_ROBOT_EMAIL }}
+          GIT_CREDENTIALS: x-access-token:${{ secrets.ZOWE_ROBOT_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          config-dir: .github
+          dry-run: ${{ inputs.dry-run }}
+          new-version: ${{ inputs.version }}

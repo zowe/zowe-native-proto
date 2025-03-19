@@ -46,10 +46,16 @@ export class ZSshUtils {
                 ? fs.readFileSync(session.ISshSession.privateKey, "utf-8")
                 : undefined,
             passphrase: session.ISshSession.keyPassphrase,
+            debug: (msg: string) => Logger.getAppLogger().trace(msg),
         };
     }
 
-    public static async installServer(session: SshSession, serverPath: string, localDir: string): Promise<void> {
+    public static async installServer(
+        session: SshSession,
+        serverPath: string,
+        localDir: string,
+        onProgress?: (increment: number) => void, // Callback to report incremental progress
+    ): Promise<void> {
         Logger.getAppLogger().debug(`Installing server to ${session.ISshSession.hostname} at path: ${serverPath}`);
         const remoteDir = serverPath.replace(/^~/, ".");
         return ZSshUtils.sftp(session, async (sftp, ssh) => {
@@ -57,15 +63,40 @@ export class ZSshUtils {
                 if (err.code !== 4) throw err;
                 Logger.getAppLogger().debug(`Remote directory already exists: ${remoteDir}`);
             });
-            await promisify(sftp.fastPut.bind(sftp))(
-                path.join(localDir, ZSshUtils.SERVER_PAX_FILE),
-                path.posix.join(remoteDir, ZSshUtils.SERVER_PAX_FILE),
-            );
+
+            // Track the previous progress percentage
+            let previousPercentage = 0;
+
+            // Create the progress callback for tracking the upload progress
+            const progressCallback = onProgress
+                ? (progress: number, chunk: number, total: number) => {
+                      const percentage = Math.floor((progress / total) * 100); // Calculate percentage
+                      const increment = percentage - previousPercentage;
+
+                      if (increment > 0) {
+                          onProgress(increment);
+                          previousPercentage = percentage;
+                      }
+                  }
+                : undefined;
+
+            try {
+                await promisify(sftp.fastPut.bind(sftp))(
+                    path.join(localDir, ZSshUtils.SERVER_PAX_FILE),
+                    path.posix.join(remoteDir, ZSshUtils.SERVER_PAX_FILE),
+                    { step: progressCallback },
+                );
+            } catch (err) {
+                const errMsg = `Failed to upload server PAX file${err.code ? ` with RC ${err.code}` : ""}: ${err}`;
+                Logger.getAppLogger().error(errMsg);
+                throw new Error(errMsg);
+            }
+
             const result = await ssh.execCommand(`pax -rzf ${ZSshUtils.SERVER_PAX_FILE}`, { cwd: remoteDir });
             if (result.code === 0) {
                 Logger.getAppLogger().debug(`Extracted server binaries with response: ${result.stdout}`);
             } else {
-                const errMsg = `Failed to extract server binaries: ${result.stderr}`;
+                const errMsg = `Failed to extract server binaries with RC ${result.code}: ${result.stderr}`;
                 Logger.getAppLogger().error(errMsg);
                 throw new Error(errMsg);
             }

@@ -15,7 +15,7 @@ import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Client, type ClientChannel } from "ssh2";
 import { AbstractRpcClient } from "./AbstractRpcClient";
 import { ZSshUtils } from "./ZSshUtils";
-import type { CommandRequest, CommandResponse, RpcRequest, RpcResponse } from "./doc";
+import type { ClientOptions, CommandRequest, CommandResponse, RpcRequest, RpcResponse } from "./doc";
 
 type PromiseResolve<T> = (value: T | PromiseLike<T>) => void;
 // biome-ignore lint/suspicious/noExplicitAny: Promise reject type uses any
@@ -24,6 +24,8 @@ type PromiseReject = (reason?: any) => void;
 export class ZSshClient extends AbstractRpcClient implements Disposable {
     public static readonly DEFAULT_SERVER_PATH = "~/.zowe-server";
 
+    private mErrHandler: ClientOptions["onError"];
+    private mResponseTimeout: number;
     private mSshClient: Client;
     private mSshStream: ClientChannel;
     private mPartialStderr = "";
@@ -35,9 +37,11 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
         super();
     }
 
-    public static async create(session: SshSession, serverPath?: string, onClose?: () => void): Promise<ZSshClient> {
+    public static async create(session: SshSession, opts: ClientOptions = {}): Promise<ZSshClient> {
         Logger.getAppLogger().debug("Starting SSH client");
         const client = new ZSshClient();
+        client.mErrHandler = opts.onError ?? console.error;
+        client.mResponseTimeout = opts.responseTimeout ? opts.responseTimeout * 1000 : 60000;
         client.mSshClient = new Client();
         client.mSshClient.connect(ZSshUtils.buildSshConfig(session));
         client.mSshStream = await new Promise((resolve, reject) => {
@@ -48,7 +52,10 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                 })
                 .on("ready", () => {
                     client.mSshClient.exec(
-                        posix.join(serverPath ?? ZSshClient.DEFAULT_SERVER_PATH, "zowed"),
+                        [
+                            posix.join(opts.serverPath ?? ZSshClient.DEFAULT_SERVER_PATH, "zowed"),
+                            `-num-workers ${opts.numWorkers ?? 10}`,
+                        ].join(" "),
                         (err, stream) => {
                             if (err) {
                                 Logger.getAppLogger().error("Error running SSH command: %s", err.toString());
@@ -64,7 +71,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                 });
             client.mSshClient.on("close", () => {
                 Logger.getAppLogger().debug("Client disconnected");
-                onClose?.();
+                opts.onClose?.();
             });
         });
         return client;
@@ -80,7 +87,8 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
     }
 
     public async request<T extends CommandResponse>(request: CommandRequest): Promise<T> {
-        return new Promise((resolve, reject) => {
+        let timeoutId: NodeJS.Timeout;
+        return new Promise<T>((resolve, reject) => {
             const { command, ...rest } = request;
             const rpcRequest: RpcRequest = {
                 jsonrpc: "2.0",
@@ -88,17 +96,21 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                 params: rest,
                 id: ++this.mRequestId,
             };
+            timeoutId = setTimeout(() => {
+                this.mPromiseMap.delete(rpcRequest.id);
+                reject(new ImperativeError({ msg: "Request timed out", errorCode: "ETIMEDOUT" }));
+            }, this.mResponseTimeout);
             this.mPromiseMap.set(rpcRequest.id, { resolve, reject });
             const requestStr = JSON.stringify(rpcRequest);
             Logger.getAppLogger().trace("Sending request: %s", requestStr);
             this.mSshStream.stdin.write(`${requestStr}\n`);
-        });
+        }).finally(() => clearTimeout(timeoutId));
     }
 
     private onErrData(chunk: Buffer) {
         if (this.mRequestId === 0) {
-            const errMsg = Logger.getAppLogger().error("Message received on stderr: %s", chunk.toString());
-            console.error(errMsg);
+            const errMsg = Logger.getAppLogger().error("Error from server: %s", chunk.toString());
+            this.mErrHandler(new Error(errMsg));
             return;
         }
         this.mPartialStderr = this.processResponses(this.mPartialStderr + chunk.toString());
@@ -111,7 +123,9 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
     private processResponses(data: string): string {
         const responses = data.split("\n");
         for (let i = 0; i < responses.length - 1; i++) {
-            this.requestEnd(responses[i]);
+            if (responses[i].length > 0) {
+                this.requestEnd(responses[i]);
+            }
         }
         return responses[responses.length - 1];
     }
@@ -122,16 +136,19 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
         try {
             response = JSON.parse(data);
         } catch (err) {
-            const errMsg = `Failed to parse response as JSON: ${err}`;
+            const errMsg = `Invalid JSON response: ${data}`;
             Logger.getAppLogger().error(errMsg);
-            throw new Error(errMsg);
+            this.mErrHandler(new Error(errMsg));
+            return;
         }
         if (!this.mPromiseMap.has(response.id)) {
             const errMsg = `Missing promise for response ID: ${response.id}`;
             Logger.getAppLogger().error(errMsg);
-            throw new Error(errMsg);
+            this.mErrHandler(new Error(errMsg));
+            return;
         }
         if (response.error != null) {
+            Logger.getAppLogger().error(`Error for response ID: ${response.id}\n${JSON.stringify(response.error)}`);
             this.mPromiseMap.get(response.id).reject(
                 new ImperativeError({
                     msg: response.error.message,

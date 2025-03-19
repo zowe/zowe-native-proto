@@ -25,7 +25,7 @@
 int zusf_create_uss_file_or_dir(ZUSF *zusf, std::string file, std::string mode, bool createDir);
 int zusf_list_uss_file_path(ZUSF *zusf, std::string file, std::string &response);
 int zusf_read_from_uss_file(ZUSF *zusf, std::string file, std::string &response);
-int zusf_write_to_uss_file(ZUSF *zusf, std::string file, std::string &response);
+int zusf_write_to_uss_file(ZUSF *zusf, std::string file, std::string &response, std::string etag = "");
 int zusf_chmod_uss_file_or_dir(ZUSF *zusf, std::string file, std::string mode, bool recursive);
 int zusf_delete_uss_item(ZUSF *zusf, std::string file, bool recursive);
 int zusf_chown_uss_file_or_dir(ZUSF *zusf, std::string file, std::string owner, bool recursive);

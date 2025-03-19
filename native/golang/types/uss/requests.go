@@ -35,6 +35,8 @@ type WriteFileRequest struct {
 	Command               string `json:"command" tstype:"\"writeFile\""`
 	// Desired encoding for the file (optional)
 	Encoding string `json:"encoding,omitempty"`
+	// E-tag for the file to detect conflicts during save (optional)
+	Etag string `json:"etag,omitempty"`
 	// Remote file path to write contents to
 	Path string `json:"fspath"`
 	// New contents for the file
