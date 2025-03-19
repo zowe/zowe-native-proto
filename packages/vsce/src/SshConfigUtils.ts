@@ -146,7 +146,7 @@ export class SshConfigUtils {
                 });
                 console.debug();
                 if (validConfig === undefined) return;
-                SshConfigUtils.setProfile(validConfig, true);
+                SshConfigUtils.setProfile(validConfig, foundProfile.name);
                 return { ...foundProfile, profile: { ...foundProfile.profile, ...validConfig } };
             }
         }
@@ -309,7 +309,7 @@ export class SshConfigUtils {
                 password: selectedProfile.password,
                 user: selectedProfile.user,
                 privateKey: selectedProfile.privateKey,
-                handshakeTimeout: 5,
+                handshakeTimeout: selectedProfile.handshakeTimeout,
                 port: selectedProfile.port,
                 keyPassphrase: selectedProfile.keyPassphrase,
             },
@@ -478,7 +478,7 @@ export class SshConfigUtils {
 
     private static async setProfile(
         selectedConfig: Partial<ISshConfigExt> | undefined,
-        update?: boolean,
+        updatedProfile?: string,
     ): Promise<void> {
         // Profile information
         console.debug();
@@ -486,10 +486,6 @@ export class SshConfigUtils {
         const profCache = zoweExplorerApi.getExplorerExtenderApi().getProfilesCache();
         const profInfo = await profCache.getProfileInfo();
         const configApi = profInfo.getTeamConfig().api;
-
-        if (update) {
-            // UPDATE CREDIENTIALS
-        }
 
         // Create the base config object
         const config = {
@@ -508,9 +504,21 @@ export class SshConfigUtils {
         if (selectedConfig?.password) config.secure.push("password" as never);
         if (selectedConfig?.keyPassphrase) config.secure.push("keyPassphrase" as never);
 
-        if (!configApi.profiles.defaultGet("ssh")) configApi.profiles.defaultSet("ssh", selectedConfig?.name!);
+        if (updatedProfile) {
+            for (const key of Object.keys(selectedConfig!)) {
+                const validKey = key as keyof ISshConfigExt;
 
-        configApi.profiles.set(selectedConfig?.name!, config);
+                profInfo.updateProperty({
+                    profileName: updatedProfile,
+                    profileType: "ssh",
+                    property: validKey,
+                    value: selectedConfig![validKey],
+                });
+            }
+        } else {
+            if (!configApi.profiles.defaultGet("ssh")) configApi.profiles.defaultSet("ssh", selectedConfig?.name!);
+            configApi.profiles.set(selectedConfig?.name!, config);
+        }
 
         await profInfo.getTeamConfig().save();
     }
@@ -556,64 +564,76 @@ export class SshConfigUtils {
         } catch (err) {}
     }
     private static async validateConfig(newConfig: ISshConfigExt): Promise<Partial<ISshConfigExt> | undefined> {
-        // Function will return an empty partial object if it is a valid config.
-        // Function will return a partial object with the modification that must be merged with the existing object in order for a valid config.
-        // Function will return undefined if the config is not valid.
-
         const attemptConnection = async (config: ISshConfigExt): Promise<boolean> => {
             return new Promise((resolve, reject) => {
                 const sshClient = new Client();
-                const testConnection = { ...config }; // Create a shallow copy
-                console.debug();
-                // Parse privateKey if provided
+                const testConnection = { ...config };
+
                 if (testConnection.privateKey && typeof testConnection.privateKey === "string") {
                     testConnection.privateKey = readFileSync(path.normalize(testConnection.privateKey), "utf8");
                 }
 
-                // Test credentials
                 sshClient
                     .connect({ ...testConnection, passphrase: testConnection.keyPassphrase })
-                    .on("error", (err) => {
-                        reject(err); // Reject if connection fails
-                    })
+                    .on("error", (err) => reject(err))
                     .on("ready", () => {
                         sshClient.shell((err, stream: ClientChannel) => {
                             if (err) {
-                                reject(err); // Reject if shell command fails
+                                reject(err);
                                 return;
                             }
 
                             stream.on("data", (data: Buffer | string) => {
-                                const dataStr = data.toString();
-
-                                // If password expired error is detected
-                                if (dataStr.startsWith("FOTS1668")) {
-                                    reject(new Error(dataStr));
+                                if (data.toString().startsWith("FOTS1668")) {
+                                    reject(new Error(data.toString()));
                                 }
                             });
-                            stream.on("end", () => {
-                                resolve(true);
-                            });
+                            stream.on("end", () => resolve(true));
                             sshClient.end();
                         });
                     });
             });
         };
 
+        const promptForPassword = async (config: ISshConfigExt): Promise<Partial<ISshConfigExt> | undefined> => {
+            let passwordAttempts = 0;
+            while (passwordAttempts < 3) {
+                config.password = await vscode.window.showInputBox({
+                    title: `${config.user}@${config.hostname}'s password:`,
+                    password: true,
+                    placeHolder: "Enter your password",
+                    ignoreFocusOut: true,
+                });
+
+                if (!config.password) return undefined;
+
+                try {
+                    await attemptConnection(config);
+                    return { password: config.password };
+                } catch (error) {
+                    passwordAttempts++;
+                    if (`${error}`.includes("FOTS1668")) {
+                        vscode.window.showErrorMessage("Password Expired on Target System");
+                        return undefined;
+                    }
+                    vscode.window.showErrorMessage(`Password Authentication Failed (${passwordAttempts}/3)`);
+                }
+            }
+            return undefined;
+        };
+
         try {
-            // If private key cant be opened or found and there is no password, return false validation
-            console.debug();
             if (
                 (!newConfig?.privateKey || !readFileSync(path.normalize(newConfig?.privateKey!), "utf-8")) &&
                 !newConfig?.password
-            )
-                return undefined;
+            ) {
+                return await promptForPassword(newConfig);
+            }
+
             await attemptConnection(newConfig);
         } catch (err) {
-            console.debug();
             const errorMessage = `${err}`;
 
-            // Private key authentication failed (but not due to missing passphrase)
             if (
                 newConfig.privateKey &&
                 !newConfig.password &&
@@ -622,7 +642,6 @@ export class SshConfigUtils {
                 return undefined;
             }
 
-            // Case: Private key requires a passphrase
             if (errorMessage.includes("but no passphrase given")) {
                 let passphraseAttempts = 0;
                 while (passphraseAttempts < 3) {
@@ -634,9 +653,7 @@ export class SshConfigUtils {
                     });
 
                     try {
-                        console.debug();
                         await attemptConnection(newConfig);
-                        console.debug();
                         return newConfig.keyPassphrase ? { keyPassphrase: newConfig.keyPassphrase } : {};
                     } catch (error) {
                         if (!`${error}`.includes("integrity check failed")) break;
@@ -645,41 +662,14 @@ export class SshConfigUtils {
                     }
                 }
 
-                // Max attempts reached, clean up and return false
                 newConfig.keyPassphrase = undefined;
                 newConfig.privateKey = undefined;
                 return undefined;
             }
 
-            // Case: Password authentication failed
             if (errorMessage.includes("All configured authentication methods failed")) {
-                let passwordAttempts = 1;
-                vscode.window.showErrorMessage(`Password Authentication Failed (${passwordAttempts}/3)`);
-
-                while (passwordAttempts < 3) {
-                    newConfig.password = await vscode.window.showInputBox({
-                        title: `${newConfig.user}@${newConfig.hostname}'s password:`,
-                        password: true,
-                        placeHolder: "Enter your password",
-                        ignoreFocusOut: true,
-                    });
-
-                    if (!newConfig.password) break; // Do not retry if user leaves input blank
-
-                    try {
-                        await attemptConnection(newConfig);
-                        return newConfig.password ? { password: newConfig.password } : {};
-                    } catch (passwordError) {
-                        passwordAttempts++;
-                        if (`${passwordError}`.includes("FOTS1668")) {
-                            vscode.window.showErrorMessage("Password Expired on Target System");
-                            return undefined;
-                        }
-                        vscode.window.showErrorMessage(`Password Authentication Failed (${passwordAttempts}/3)`);
-                    }
-                }
+                return await promptForPassword(newConfig);
             }
-            return undefined;
         }
         return {};
     }
