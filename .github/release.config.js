@@ -9,6 +9,12 @@ module.exports = {
         [
             "@octorelease/changelog",
             {
+                displayNames: {
+                    "vsce": "VS Code Extension",
+                    "cli": "CLI Plug-in",
+                    "sdk": "Client SDK",
+                    "native": "z/OS Components"
+                },
                 extraDirs: ["native"],
                 headerLine: "## Recent Changes",
             }
