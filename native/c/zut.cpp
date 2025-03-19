@@ -29,6 +29,11 @@ int zut_search(string parms)
   return ZUTSRCH();
 }
 
+int zut_run(string program)
+{
+  return ZUTRUN(program.c_str());
+}
+
 int zut_substitute_sybmol(string pattern, string &result)
 {
   SYMBOL_DATA *parms = (SYMBOL_DATA *)__malloc31(sizeof(SYMBOL_DATA));

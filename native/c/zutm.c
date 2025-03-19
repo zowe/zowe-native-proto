@@ -197,6 +197,20 @@ int ZUTSRCH()
   return rc;
 }
 
+#pragma prolog(ZUTRUN, "&CCN_MAIN SETB 1 \n MYPROLOG")
+#pragma epilog(ZUTRUN, "&CCN_MAIN SETB 1 \n MYEPILOG")
+typedef int (*PGM)() ATTRIBUTE(amode31);
+int ZUTRUN(const char *program)
+{
+  int rc = 0;
+
+  PGM pgm = (PGM)load_module31(program);
+  rc = pgm();
+  delete_module(program);
+
+  return rc;
+}
+
 typedef struct
 {
   short len;

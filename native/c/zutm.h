@@ -54,6 +54,7 @@ extern "C"
   int ZUTEDSCT();
   int ZUTSYMBP(SYMBOL_DATA *);
   int ZUTSRCH();
+  int ZUTRUN(const char *));
 
 #if defined(__cplusplus)
 }
