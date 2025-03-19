@@ -121,7 +121,7 @@ int zcnm1put(ZCN *zcn, const char *command)
     char command[256];
   } commandBuffer = {0};
 
-  unsigned short authcmdx = 0x8000;
+  unsigned short authcmdx = 0x8000; // 1000000000000000 - Master Authority - https://www.ibm.com/docs/en/zos/3.1.0?topic=commands-mgcre-execute-form
   unsigned short *authcmdxp = &authcmdx;
 
   commandBuffer.commandLen = sprintf(commandBuffer.command, "%s", command);
