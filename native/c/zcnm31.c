@@ -91,21 +91,22 @@ int zcnm1act(ZCN *zcn)
 MGCRE_MODEL(mgcre_model);
 
 #if defined(__IBM_METAL__)
-#define MGCRE(id, message, cart, plist)              \
-  __asm(                                             \
-      "*                                      \n"    \
-      " LA 2,%1                               \n"    \
-      "*                                      \n"    \
-      " MGCRE TEXT=(2),"                             \
-      "CART=%2,"                                     \
-      "CONSID=%0,"                                   \
-      "MF=(E,%3)                              \n"    \
-      "*                                      \n"    \
-      :                                              \
-      : "m"(id), "m"(message), "m"(cart), "m"(plist) \
+#define MGCRE(id, message, cart, authcmdx, plist)                   \
+  __asm(                                                            \
+      "*                                      \n"                   \
+      " LA 2,%1                               \n"                   \
+      "*                                      \n"                   \
+      " MGCRE TEXT=(2),"                                            \
+      "CART=%2,"                                                    \
+      "AUTHCMDX=%3,"                                                \
+      "CONSID=%0,"                                                  \
+      "MF=(E,%4)                              \n"                   \
+      "*                                      \n"                   \
+      :                                                             \
+      : "m"(id), "m"(message), "m"(cart), "m"(authcmdx), "m"(plist) \
       : "r0", "r1", "r2", "r14", "r15");
 #else
-#define MGCRE(id, message, cart, plist)
+#define MGCRE(id, message, cart, authcmdx, plist)
 #endif
 
 // NOTE(Kelosky): this piece is permitted in AMODE64 - for consistency, it remains here
@@ -120,12 +121,15 @@ int zcnm1put(ZCN *zcn, const char *command)
     char command[256];
   } commandBuffer = {0};
 
+  unsigned short authcmdx = 0x8000;
+  unsigned short *authcmdxp = &authcmdx;
+
   commandBuffer.commandLen = sprintf(commandBuffer.command, "%s", command);
   char cart[8] = "ZOWECART";
 
   mode_sup();
   mode_zero();
-  MGCRE(zcn->id, commandBuffer, cart, dsa_mgcre_model);
+  MGCRE(zcn->id, commandBuffer, cart, authcmdxp, dsa_mgcre_model);
   mode_nzero();
   mode_prob();
 
