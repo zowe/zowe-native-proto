@@ -146,6 +146,7 @@ export class SshConfigUtils {
                 });
                 console.debug();
                 if (validConfig === undefined) return;
+                SshConfigUtils.setProfile(validConfig, true);
                 return { ...foundProfile, profile: { ...foundProfile.profile, ...validConfig } };
             }
         }
@@ -173,9 +174,11 @@ export class SshConfigUtils {
         let validationResult = await SshConfigUtils.validateConfig(selectedProfile);
 
         // If validateConfig returns a string, that string is the correct keyPassphrase
-        if (typeof validationResult === "string") selectedProfile.keyPassphrase = validationResult;
+        if (validationResult && Object.keys(validationResult).length >= 1) {
+            selectedProfile = { ...selectedProfile, ...validationResult };
+        }
 
-        if (!validationResult) {
+        if (validationResult === undefined) {
             // Create a progress bar using the custom Gui.withProgress
             await Gui.withProgress(
                 {
@@ -253,7 +256,7 @@ export class SshConfigUtils {
             },
             async (progress) => {
                 // If not validated, remove private key from profile and get the password
-                if (!validationResult) {
+                if (validationResult === undefined) {
                     selectedProfile!.privateKey = undefined;
 
                     // Show the password input prompt
@@ -292,13 +295,24 @@ export class SshConfigUtils {
             return;
         }
 
+        console.debug();
         await SshConfigUtils.setProfile(selectedProfile);
+        console.debug();
         return {
             name: selectedProfile.name,
             message: "",
             failNotFound: false,
             type: "ssh",
-            profile: selectedProfile,
+            profile: {
+                host: selectedProfile.hostname,
+                name: selectedProfile.name,
+                password: selectedProfile.password,
+                user: selectedProfile.user,
+                privateKey: selectedProfile.privateKey,
+                handshakeTimeout: 5,
+                port: selectedProfile.port,
+                keyPassphrase: selectedProfile.keyPassphrase,
+            },
         };
     }
 
@@ -462,12 +476,21 @@ export class SshConfigUtils {
         return selectedProfile;
     }
 
-    private static async setProfile(selectedConfig: ISshConfigExt | undefined): Promise<void> {
-        //Profile information
+    private static async setProfile(
+        selectedConfig: Partial<ISshConfigExt> | undefined,
+        update?: boolean,
+    ): Promise<void> {
+        // Profile information
+        console.debug();
         const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
         const profCache = zoweExplorerApi.getExplorerExtenderApi().getProfilesCache();
         const profInfo = await profCache.getProfileInfo();
         const configApi = profInfo.getTeamConfig().api;
+
+        if (update) {
+            // UPDATE CREDIENTIALS
+        }
+
         // Create the base config object
         const config = {
             type: "ssh",
@@ -488,6 +511,7 @@ export class SshConfigUtils {
         if (!configApi.profiles.defaultGet("ssh")) configApi.profiles.defaultSet("ssh", selectedConfig?.name!);
 
         configApi.profiles.set(selectedConfig?.name!, config);
+
         await profInfo.getTeamConfig().save();
     }
 
@@ -540,7 +564,7 @@ export class SshConfigUtils {
             return new Promise((resolve, reject) => {
                 const sshClient = new Client();
                 const testConnection = { ...config }; // Create a shallow copy
-
+                console.debug();
                 // Parse privateKey if provided
                 if (testConnection.privateKey && typeof testConnection.privateKey === "string") {
                     testConnection.privateKey = readFileSync(path.normalize(testConnection.privateKey), "utf8");
@@ -578,6 +602,7 @@ export class SshConfigUtils {
 
         try {
             // If private key cant be opened or found and there is no password, return false validation
+            console.debug();
             if (
                 (!newConfig?.privateKey || !readFileSync(path.normalize(newConfig?.privateKey!), "utf-8")) &&
                 !newConfig?.password
@@ -609,7 +634,9 @@ export class SshConfigUtils {
                     });
 
                     try {
+                        console.debug();
                         await attemptConnection(newConfig);
+                        console.debug();
                         return newConfig.keyPassphrase ? { keyPassphrase: newConfig.keyPassphrase } : {};
                     } catch (error) {
                         if (!`${error}`.includes("integrity check failed")) break;

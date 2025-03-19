@@ -41,6 +41,7 @@ export function registerCommands(context: vscode.ExtensionContext): vscode.Dispo
         vscode.commands.registerCommand("zowe-native-proto-vsce.connect", async (profName?: string) => {
             imperative.Logger.getAppLogger().trace("Running connect command for profile %s", profName);
             const profile = await SshConfigUtils.promptForProfile(profName);
+            console.debug();
             if (!profile?.profile) return;
 
             const sshSession = ZSshUtils.buildSession(profile.profile);
