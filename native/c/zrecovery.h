@@ -133,13 +133,16 @@ typedef void (*PERCOLATE_EXIT)(void *);     // called only for percolated abends
 
 typedef struct
 {
+
+  unsigned long long int arr_return;
+
   // NOTE(Kelosky): we can also dervive R13 using f4sa->saveprev->savenext so that we probably don't need to store R13
   unsigned long long int r13;
+
   // main line stack regs and pointer (r13)
   SAVF4SA f4sa;
 
   // return address to IEAARR
-  unsigned long long int arr_return;
 
   // main line stack regs and pointer (r13)
   unsigned long long int final_r13;
@@ -158,6 +161,10 @@ typedef struct
   unsigned int request_dump : 1;
   unsigned int unconditional_percolate : 1;
 
+  // work fields (to avoid DSA usage)
+  unsigned long long int work_r0;
+  unsigned long long int work_r2;
+
 } ZRCVY_ENV;
 
 typedef void (*ROUTINE)(ZRCVY_ENV *);
@@ -172,15 +179,18 @@ static void ieaarr(ROUTINE routine, void *routine_parm, RECOVERY_ROUTINE arr, vo
       arr_parm);
 }
 
-#pragma prolog(ZRCVYRTY, " MYPROLOG ")
-#pragma epilog(ZRCVYRTY, " MYEPILOG ")
-// TODO(Kelosky): memory leak bc of JUMP_ENV
+// #pragma prolog(ZRCVYRTY, " ZWEPROLG NEWDSA=NO ")
+// #pragma epilog(ZRCVYRTY, " ZWEEPILG ")
+
+#pragma prolog(ZRCVYRTY, "&CCN_MAIN SETB 1 \n MYPROLOG ") // NEWDSA=NO ")
+#pragma epilog(ZRCVYRTY, "&CCN_MAIN SETB 1 \n MYEPILOG")
 typedef void (*RETRY_ROUTINE)(ZRCVY_ENV);
 static void ZRCVYRTY(ZRCVY_ENV zenv)
 {
   JUMP_ENV(zenv.f4sa, zenv.r13, 4); // TODO(Kelosky): document non-zero return code
 }
 
+// TODO(Kelosky): memory leak when percolate
 #pragma prolog(ZRCVYARR, "&CCN_MAIN SETB 1 \n MYPROLOG")
 #pragma epilog(ZRCVYARR, "&CCN_MAIN SETB 1 \n MYEPILOG")
 int ZRCVYARR(SDWA sdwa)
@@ -230,15 +240,17 @@ int ZRCVYARR(SDWA sdwa)
   return RTNCD_RETRY;
 }
 
-// TODO(Kelosky): memory leak #1... we need a custom prolog for this instance where we take storage from a work area
-// anchored off ZRCVY_ENV.  We can then use this prolog here and other locations where we have a memory leak
-// when we use the prolog and bypass our epilog
-#pragma prolog(ZRCVYRTE, " MYPROLOG ")
-#pragma epilog(ZRCVYRTE, " MYEPILOG ")
+// router back to main routine
+#pragma prolog(ZRCVYRTE, " ZWEPROLG NEWDSA=NO ")
+// #pragma epilog(ZRCVYRTE, " ZWEEPILG ")
+// #pragma prolog(ZRCVYRTE, " MYPROLOG ")
+// #pragma epilog(ZRCVYRTE, " MYEPILOG ")
 static void ZRCVYRTE(ZRCVY_ENV *zenv)
 {
-  unsigned long long int r14 = get_prev_r14();
-  zenv->arr_return = r14;
+  // zenv->arr_return = get_prev_r14();
+  // GET_PREV_REG64(zenv->arr_return, 8);
+  get_r14_by_ref(NULL);
+  __asm(" check r1 parm and setting r14 so we can do this  ");
   JUMP_ENV(zenv->f4sa, zenv->r13, 0);
 }
 

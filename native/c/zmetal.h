@@ -301,6 +301,11 @@ static unsigned long long int get_r13()
   return reg;
 }
 
+static void get_r14_by_ref(unsigned long long int *reg)
+{
+  GET_REG64(reg, 14);
+}
+
 static unsigned long long int get_prev_r14()
 {
   unsigned long long int reg = 0;
