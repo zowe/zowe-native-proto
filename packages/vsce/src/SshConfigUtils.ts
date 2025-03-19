@@ -210,7 +210,7 @@ export class SshConfigUtils {
 
                         const result = await SshConfigUtils.validateConfig(testValidation);
                         step++;
-                        progress.report({ increment: (step / validationAttempts.length) * 100 });
+                        progress.report({ increment: 100 / validationAttempts.length });
 
                         if (result) {
                             validationResult = {};
@@ -231,7 +231,7 @@ export class SshConfigUtils {
 
                             const result = await SshConfigUtils.validateConfig(testValidation);
                             step++;
-                            progress.report({ increment: (step / foundPrivateKeys.length) * 100 });
+                            progress.report({ increment: 100 / foundPrivateKeys.length });
 
                             if (result) {
                                 validationResult = {};

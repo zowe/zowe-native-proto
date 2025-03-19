@@ -52,7 +52,12 @@ export function registerCommands(context: vscode.ExtensionContext): vscode.Dispo
                     location: vscode.ProgressLocation.Notification,
                     title: "Deploying Zowe SSH server...",
                 },
-                () => ZSshUtils.installServer(sshSession, serverPath, localDir),
+                async (progress) => {
+                    // Pass a callback function that will update the progress object
+                    await ZSshUtils.installServer(sshSession, serverPath, localDir, (progressIncrement) => {
+                        progress.report({ increment: progressIncrement });
+                    });
+                },
             );
 
             await SshConfigUtils.showSessionInTree(profile.name!, true);

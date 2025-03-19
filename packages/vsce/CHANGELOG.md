@@ -4,7 +4,7 @@ All notable changes to the "zowe-native-proto-vsce" extension will be documented
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## Recent Changes
+## `0.1.1`
 
 - Fixed issue where a jobs list request returns unexpected results whenever a search query does not match any jobs. [#217](https://github.com/zowe/zowe-native-proto/pull/217)
 - Fixed issue where data set save requests sometimes resulted in an unexpected conflict error. [#219](https://github.com/zowe/zowe-native-proto/pull/219)
