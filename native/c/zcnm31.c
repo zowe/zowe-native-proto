@@ -91,19 +91,19 @@ int zcnm1act(ZCN *zcn)
 MGCRE_MODEL(mgcre_model);
 
 #if defined(__IBM_METAL__)
-#define MGCRE(id, message, cart, authcmdx, plist)                   \
-  __asm(                                                            \
-      "*                                      \n"                   \
-      " LA 2,%1                               \n"                   \
-      "*                                      \n"                   \
-      " MGCRE TEXT=(2),"                                            \
-      "CART=%2,"                                                    \
-      "AUTHCMDX=%3,"                                                \
-      "CONSID=%0,"                                                  \
-      "MF=(E,%4)                              \n"                   \
-      "*                                      \n"                   \
-      :                                                             \
-      : "m"(id), "m"(message), "m"(cart), "m"(authcmdx), "m"(plist) \
+#define MGCRE(id, message, cart, authcmdx, plist)                       \
+  __asm(                                                                \
+      "*                                                            \n" \
+      " LA 2,%1                                                     \n" \
+      "*                                                            \n" \
+      " MGCRE TEXT=(2),"                                                \
+      "CART=%2,"                                                        \
+      "AUTHCMDX=%3,"                                                    \
+      "CONSID=%0,"                                                      \
+      "MF=(E,%4)                                                    \n" \
+      "*                                                            \n" \
+      :                                                                 \
+      : "m"(id), "m"(message), "m"(cart), "m"(authcmdx), "m"(plist)     \
       : "r0", "r1", "r2", "r14", "r15");
 #else
 #define MGCRE(id, message, cart, authcmdx, plist)
