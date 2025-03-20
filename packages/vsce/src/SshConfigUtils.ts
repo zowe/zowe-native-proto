@@ -12,7 +12,6 @@
 import { readFileSync } from "node:fs";
 import * as path from "node:path";
 import { ProfileConstants } from "@zowe/core-for-zowe-sdk";
-import { ImperativeError } from "@zowe/imperative";
 import {
     FileManagement,
     Gui,
@@ -21,7 +20,6 @@ import {
     ZoweVsCodeExtension,
     imperative,
 } from "@zowe/zowe-explorer-api";
-import { all } from "axios";
 import { Client, type ClientChannel } from "ssh2";
 import * as vscode from "vscode";
 import { type ISshConfigExt, ZClientUtils, ZSshClient } from "zowe-native-proto-sdk";
