@@ -12,9 +12,11 @@
 import * as path from "node:path";
 import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { imperative } from "@zowe/zowe-explorer-api";
+import type { Client } from "ssh2";
 import * as vscode from "vscode";
-import { ZSshClient, ZSshUtils } from "zowe-native-proto-sdk";
+import { type ClientOptions, ZSshClient, ZSshUtils } from "zowe-native-proto-sdk";
 import { SshConfigUtils } from "./SshConfigUtils";
+import { deployWithProgress } from "./Utilities";
 
 export class SshClientCache extends vscode.Disposable {
     private static mInstance: SshClientCache;
@@ -49,23 +51,31 @@ export class SshClientCache extends vscode.Disposable {
             const session = ZSshUtils.buildSession(profile.profile!);
             const serverPath = SshConfigUtils.getServerPath(profile.profile);
             const localDir = path.join(this.mContext.extensionPath, "bin");
-
-            if (
-                vscode.workspace.getConfiguration("zowe-native-proto-vsce").get("serverAutoUpdate", true) &&
-                (await ZSshUtils.checkIfOutdated(session, serverPath, path.join(localDir, "checksums.asc")))
-            ) {
-                // Server is out of date so re-deploy it
-                await ZSshUtils.installServer(session, serverPath, localDir);
-            }
+            const autoUpdate = vscode.workspace
+                .getConfiguration("zowe-native-proto-vsce")
+                .get("serverAutoUpdate", true);
 
             let newClient: ZSshClient;
             try {
-                newClient = await this.buildClient(session, serverPath, clientId);
+                newClient = await this.buildClient(session, clientId, {
+                    serverPath,
+                    onConnect: async (client: Client) => {
+                        if (
+                            autoUpdate &&
+                            (await ZSshUtils.checkIfOutdated(client, serverPath, path.join(localDir, "checksums.asc")))
+                        ) {
+                            imperative.Logger.getAppLogger().info(
+                                `Server is out of date, deploying to ${profile.name}`,
+                            );
+                            await deployWithProgress(session, serverPath, localDir);
+                        }
+                    },
+                });
             } catch (err) {
                 if (err instanceof imperative.ImperativeError && err.errorCode === "ENOTFOUND") {
-                    // Server is missing so deploy it and try again
-                    await ZSshUtils.installServer(session, serverPath, localDir);
-                    newClient = await this.buildClient(session, serverPath, clientId);
+                    imperative.Logger.getAppLogger().info(`Server is missing, deploying to ${profile.name}`);
+                    await deployWithProgress(session, serverPath, localDir);
+                    newClient = await this.buildClient(session, clientId, { serverPath });
                 } else {
                     throw err;
                 }
@@ -86,9 +96,9 @@ export class SshClientCache extends vscode.Disposable {
         return `${profile.host}:${profile.port ?? 22}`;
     }
 
-    private buildClient(session: SshSession, serverPath: string, clientId: string): Promise<ZSshClient> {
+    private buildClient(session: SshSession, clientId: string, opts: ClientOptions): Promise<ZSshClient> {
         return ZSshClient.create(session, {
-            serverPath,
+            ...opts,
             onClose: () => {
                 this.end(clientId);
             },

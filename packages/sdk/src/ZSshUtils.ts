@@ -15,7 +15,7 @@ import { promisify } from "node:util";
 import { type IProfile, Logger } from "@zowe/imperative";
 import { type ISshSession, SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { NodeSSH, type Config as NodeSSHConfig } from "node-ssh";
-import type { ConnectConfig, SFTPWrapper } from "ssh2";
+import type { Client, ConnectConfig, SFTPWrapper } from "ssh2";
 
 type SftpError = Error & { code?: number };
 
@@ -61,7 +61,7 @@ export class ZSshUtils {
         return ZSshUtils.sftp(session, async (sftp, ssh) => {
             await promisify(sftp.mkdir.bind(sftp))(remoteDir, { mode: 0o700 }).catch((err: SftpError) => {
                 if (err.code !== 4) throw err;
-                Logger.getAppLogger().debug(`Remote directory already exists: ${remoteDir}`);
+                Logger.getAppLogger().debug(`Remote directory already exists: ${serverPath}`);
             });
 
             // Track the previous progress percentage
@@ -111,26 +111,25 @@ export class ZSshUtils {
             for (const file of ZSshUtils.SERVER_BIN_FILES) {
                 await promisify(sftp.unlink.bind(sftp))(path.posix.join(remoteDir, file)).catch((err: SftpError) => {
                     if (err.code !== 2) throw err;
-                    Logger.getAppLogger().info(`Remote file does not exist: ${remoteDir}/${file}`);
+                    Logger.getAppLogger().info(`Remote file does not exist: ${serverPath}/${file}`);
                 });
             }
             await promisify(sftp.rmdir.bind(sftp))(remoteDir).catch((err: SftpError) => {
                 if (err.code !== 4) throw err;
-                Logger.getAppLogger().info(`Remote directory does not exist: ${remoteDir}`);
+                Logger.getAppLogger().info(`Remote directory does not exist: ${serverPath}`);
             });
         });
     }
 
-    public static async checkIfOutdated(session: SshSession, serverPath: string, localFile: string): Promise<boolean> {
+    public static async checkIfOutdated(client: Client, serverPath: string, localFile: string): Promise<boolean> {
         const remoteDir = serverPath.replace(/^~/, ".");
-        const remoteChecksums = await ZSshUtils.sftp(session, (sftp, _ssh) =>
-            promisify(sftp.readFile.bind(sftp))(path.posix.join(remoteDir, "checksums.asc"))
-                .then((contents: Buffer) => ZSshUtils.parseChecksumsFile(contents.toString()))
-                .catch((err: SftpError) => {
-                    if (err.code !== 2) throw err;
-                    Logger.getAppLogger().warn(`Remote checksums file not found: ${remoteDir}/checksums.asc`);
-                }),
-        );
+        const sftp = await promisify(client.sftp.bind(client))();
+        const remoteChecksums = await promisify(sftp.readFile.bind(sftp))(path.posix.join(remoteDir, "checksums.asc"))
+            .then((contents: Buffer) => ZSshUtils.parseChecksumsFile(contents.toString()))
+            .catch((err: SftpError) => {
+                if (err.code !== 2) throw err;
+                Logger.getAppLogger().warn(`Checksums file not found: ${serverPath}/checksums.asc`);
+            });
         if (remoteChecksums == null) {
             return false;
         }

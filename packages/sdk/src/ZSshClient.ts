@@ -50,7 +50,8 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                     Logger.getAppLogger().error("Error connecting to SSH: %s", err.toString());
                     reject(err);
                 })
-                .on("ready", () => {
+                .on("ready", async () => {
+                    await opts.onConnect?.(client.mSshClient);
                     client.mSshClient.exec(
                         [
                             posix.join(opts.serverPath ?? ZSshClient.DEFAULT_SERVER_PATH, "zowed"),
