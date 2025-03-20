@@ -121,6 +121,23 @@ export class ZSshUtils {
         });
     }
 
+    public static async checkIfOutdated(session: SshSession, serverPath: string, localFile: string): Promise<boolean> {
+        const remoteDir = serverPath.replace(/^~/, ".");
+        const remoteChecksums = await ZSshUtils.sftp(session, (sftp, _ssh) =>
+            promisify(sftp.readFile.bind(sftp))(path.posix.join(remoteDir, "checksums.asc"))
+                .then((contents: Buffer) => ZSshUtils.parseChecksumsFile(contents.toString()))
+                .catch((err: SftpError) => {
+                    if (err.code !== 2) throw err;
+                    Logger.getAppLogger().warn(`Remote checksums file not found: ${remoteDir}/checksums.asc`);
+                }),
+        );
+        if (remoteChecksums == null) {
+            return false;
+        }
+        const localChecksums = ZSshUtils.parseChecksumsFile(fs.readFileSync(localFile, "utf-8"));
+        return JSON.stringify(localChecksums) !== JSON.stringify(remoteChecksums);
+    }
+
     private static async sftp<T>(
         session: SshSession,
         callback: (sftp: SFTPWrapper, ssh: NodeSSH) => Promise<T>,
@@ -132,5 +149,14 @@ export class ZSshUtils {
         } finally {
             ssh.dispose();
         }
+    }
+
+    private static parseChecksumsFile(data: string): Record<string, string> {
+        const checksums: Record<string, string> = {};
+        for (const line of data.trimEnd().split("\n")) {
+            const [checksum, file] = line.split(/\s+/);
+            checksums[file] = checksum;
+        }
+        return checksums;
     }
 }
