@@ -45,51 +45,25 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
         client.mSshClient = new Client();
         client.mSshClient.connect(ZSshUtils.buildSshConfig(session));
         client.mSshStream = await new Promise((resolve, reject) => {
-            client.mSshClient
-                .on("error", (err) => {
-                    Logger.getAppLogger().error("Error connecting to SSH: %s", err.toString());
-                    reject(err);
-                })
-                .on("ready", async () => {
-                    await opts.onConnect?.(client.mSshClient);
-                    client.mSshClient.exec(
-                        [
-                            posix.join(opts.serverPath ?? ZSshClient.DEFAULT_SERVER_PATH, "zowed"),
-                            `-num-workers ${opts.numWorkers ?? 10}`,
-                        ].join(" "),
-                        (err, stream) => {
-                            if (err) {
-                                Logger.getAppLogger().error("Error running SSH command: %s", err.toString());
-                                reject(err);
-                            } else {
-                                stream.once("data", (data: Buffer) => {
-                                    let response: StatusMessage;
-                                    try {
-                                        response = JSON.parse(data.toString());
-                                    } catch (err) {
-                                        if ((err as Error).message.includes("FSUM7351")) {
-                                            reject(
-                                                new ImperativeError({
-                                                    msg: "Server not found",
-                                                    errorCode: "ENOTFOUND",
-                                                    additionalDetails: data.toString(),
-                                                }),
-                                            );
-                                        } else {
-                                            reject(new Error(data.toString()));
-                                        }
-                                    }
-                                    if (response.status === "ready") {
-                                        stream.stderr.on("data", client.onErrData.bind(client));
-                                        stream.stdout.on("data", client.onOutData.bind(client));
-                                        Logger.getAppLogger().debug("Client is ready");
-                                        resolve(stream);
-                                    }
-                                });
-                            }
-                        },
-                    );
-                });
+            client.mSshClient.on("error", (err) => {
+                Logger.getAppLogger().error("Error connecting to SSH: %s", err.toString());
+                reject(err);
+            });
+            client.mSshClient.on("ready", async () => {
+                await opts.onConnect?.(client.mSshClient);
+                const zowedArgs = ["-num-workers", `${opts.numWorkers ?? 10}`];
+                client.mSshClient.exec(
+                    [posix.join(opts.serverPath ?? ZSshClient.DEFAULT_SERVER_PATH, "zowed"), ...zowedArgs].join(" "),
+                    (err, stream) => {
+                        if (err) {
+                            Logger.getAppLogger().error("Error running SSH command: %s", err.toString());
+                            reject(err);
+                        } else {
+                            stream.once("data", (data: Buffer) => client.onReady(data).then(resolve, reject));
+                        }
+                    },
+                );
+            });
             client.mSshClient.on("close", () => {
                 Logger.getAppLogger().debug("Client disconnected");
                 opts.onClose?.();
@@ -126,6 +100,29 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
             Logger.getAppLogger().trace("Sending request: %s", requestStr);
             this.mSshStream.stdin.write(`${requestStr}\n`);
         }).finally(() => clearTimeout(timeoutId));
+    }
+
+    private async onReady(data: Buffer): Promise<ClientChannel> {
+        let response: StatusMessage;
+        try {
+            response = JSON.parse(data.toString());
+        } catch (err) {
+            const errMsg = Logger.getAppLogger().error("Error running SSH command: %s", data.toString());
+            if ((err as Error).message.includes("FSUM7351")) {
+                throw new ImperativeError({
+                    msg: "Server not found",
+                    errorCode: "ENOTFOUND",
+                    additionalDetails: data.toString(),
+                });
+            }
+            throw new Error(errMsg);
+        }
+        if (response.status === "ready") {
+            this.mSshStream.stderr.on("data", this.onErrData.bind(this));
+            this.mSshStream.stdout.on("data", this.onOutData.bind(this));
+            Logger.getAppLogger().debug("Client is ready");
+            return this.mSshStream;
+        }
     }
 
     private onErrData(chunk: Buffer) {
