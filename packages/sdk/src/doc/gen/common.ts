@@ -123,6 +123,7 @@ export interface Spool {
 
 export interface IoserverOptions {
   numWorkers?: number /* int */;
+  verbose?: boolean;
 }
 export interface ListOptions {
   /**
