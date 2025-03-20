@@ -21,6 +21,7 @@ import {
     ZoweVsCodeExtension,
     imperative,
 } from "@zowe/zowe-explorer-api";
+import { all } from "axios";
 import { Client, type ClientChannel } from "ssh2";
 import * as vscode from "vscode";
 import { type ISshConfigExt, ZClientUtils, ZSshClient } from "zowe-native-proto-sdk";
@@ -144,8 +145,9 @@ export class SshConfigUtils {
                     user: foundProfile?.profile?.user,
                     password: foundProfile?.profile?.password,
                 });
+
                 if (validConfig === undefined) return;
-                SshConfigUtils.setProfile(validConfig, foundProfile.name);
+                await SshConfigUtils.setProfile(validConfig, foundProfile.name);
                 return { ...foundProfile, profile: { ...foundProfile.profile, ...validConfig } };
             }
         }
@@ -515,7 +517,6 @@ export class SshConfigUtils {
                     })
                     .knownArgs.find((obj) => obj.argName === key)?.argLoc.jsonLoc;
 
-                let secureValue = true;
                 let allowBaseModification: string | undefined;
 
                 if (propertyLocation) {
@@ -524,16 +525,13 @@ export class SshConfigUtils {
                     // Check to see if the property being modified comes from the service profile to handle possibly breaking configuration changes
                     const doesPropComeFromProfile = profileName === updatedProfile;
 
-                    if (propertyLocation && !configApi.secure.securePropsForProfile(profileName).includes(key))
-                        secureValue = false;
-
                     if (!doesPropComeFromProfile) {
                         const quickPick = vscode.window.createQuickPick();
                         quickPick.items = [
                             { label: "Yes", description: "Proceed with modification" },
                             { label: "No", description: "Modify SSH profile instead" },
                         ];
-                        quickPick.title = `Property: "${key}" found in a possibly shared configuration and may break others, continue?"?`;
+                        quickPick.title = `Property: "${key}" found in a possibly shared configuration and may break others, continue?`;
                         quickPick.placeholder = "Select an option";
                         quickPick.ignoreFocusOut = true;
 
@@ -554,7 +552,7 @@ export class SshConfigUtils {
                     property: validKey,
                     value: selectedConfig![validKey],
                     forceUpdate: allowBaseModification !== "Yes",
-                    setSecure: secureValue,
+                    setSecure: profInfo.isSecured(),
                 });
             }
         } else {
@@ -684,7 +682,7 @@ export class SshConfigUtils {
                 return undefined;
             }
 
-            if (errorMessage.includes("but no passphrase given")) {
+            if (errorMessage.includes("but no passphrase given") || errorMessage.includes("integrity check failed")) {
                 let passphraseAttempts = 0;
                 while (passphraseAttempts < 3) {
                     newConfig.keyPassphrase = await vscode.window.showInputBox({
