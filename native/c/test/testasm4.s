@@ -1,0 +1,6 @@
+TESTASM4 RSECT ,
+TESTASM4 AMODE 64
+TESTASM4 RMODE ANY
+         LGHI  15,2
+         BR    14
+         END

@@ -199,13 +199,34 @@ int ZUTSRCH()
 
 #pragma prolog(ZUTRUN, "&CCN_MAIN SETB 1 \n MYPROLOG")
 #pragma epilog(ZUTRUN, "&CCN_MAIN SETB 1 \n MYEPILOG")
-typedef int (*PGM)() ATTRIBUTE(amode31);
+typedef int (*PGM31)() ATTRIBUTE(amode31);
+typedef int (*PGM64)() ATTRIBUTE(amode64);
+;
 int ZUTRUN(const char *program)
 {
   int rc = 0;
 
-  PGM pgm = (PGM)load_module31(program);
-  rc = pgm();
+  void *p = load_module(program);
+
+  if (p)
+  {
+
+    long long unsigned int ifunction = (long long unsigned int)p;
+
+    if (ifunction & 0x00000000000000001)
+    {
+      ifunction &= 0xFFFFFFFFFFFFFFFE; // clear low bit
+      PGM64 p64 = (PGM64)ifunction;
+      rc = p64();
+    }
+    else
+    {
+      ifunction &= 0x000000007FFFFFFF; // clear high bit
+      PGM31 p31 = (PGM31)ifunction;
+      rc = p31();
+    }
+  }
+
   delete_module(program);
 
   return rc;

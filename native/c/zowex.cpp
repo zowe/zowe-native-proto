@@ -573,6 +573,7 @@ int main(int argc, char *argv[])
   ZCLIPositional run_name("program");
   run_name.set_description("name of program to run");
   run_name.set_required(true);
+  tool_run.get_positionals().push_back(run_name);
   tool_group.get_verbs().push_back(tool_run);
 
   // add all groups to the CLI
@@ -1739,12 +1740,14 @@ int handle_tool_run(ZCLIResult result)
   int rc = 0;
   string program(result.get_positional("program")->get_value());
   transform(program.begin(), program.end(), program.begin(), ::toupper); // upper case
+
+  rc = zut_run(program);
+
   if (0 != rc)
   {
-    cerr << "Error: asasymbf with parm '" << symbol << "' rc: '" << rc << "'" << endl;
+    cerr << "Error: program '" << program << "' ended with rc: '" << rc << "'" << endl;
     return RTNCD_FAILURE;
   }
-  zut_run(program);
 
   return RTNCD_SUCCESS;
 }

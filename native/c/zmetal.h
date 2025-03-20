@@ -133,7 +133,7 @@ static int test_auth()
  * @param name name of module to load
  * @return void* address of entry point or NULL if not found
  */
-static void *PTR64 load_module(char name[8])
+static void *PTR64 load_module(const char name[8])
 {
   // TODO(Kelosky): ERRET
   void *PTR64 ep = NULL;
@@ -151,7 +151,7 @@ typedef void (*Z31FUNC)(void) ATTRIBUTE(amode31);
  * @param name name of module to load
  * @return Z31FUNC 31 bit function cleared for use within 64-bit routine or NULL if not found
  */
-static Z31FUNC ATTRIBUTE(amode31) load_module31(char name[8])
+static Z31FUNC ATTRIBUTE(amode31) load_module31(const char name[8])
 {
 
   // TODO(Kelosky): test return pointer flags to validate amode??
@@ -174,7 +174,7 @@ static Z31FUNC ATTRIBUTE(amode31) load_module31(char name[8])
  * @param name name of module to delete after a successful load
  * @return int 0 for success; non zero otherwise
  */
-static int delete_module(char name[8])
+static int delete_module(const char name[8])
 {
   int rc = 0;
   char name_truncated[9] = {0};

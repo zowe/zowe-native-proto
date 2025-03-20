@@ -1,0 +1,6 @@
+TESTASM1 RSECT ,
+TESTASM1 AMODE 31
+TESTASM1 RMODE ANY
+         LHI   15,1
+         BR    14
+         END
