@@ -10,11 +10,14 @@
 #
 CXX=xlc++
 CC=xlc
+
+# https://www.ibm.com/docs/en/hla-and-tf/1.6?topic=options-assembler
+# https://www.ibm.com/docs/en/zos/3.1.0?topic=descriptions-as-use-hlasm-assembler-produce-object-files
 ASM=as
 BIND=ld
 
 # https://www.ibm.com/docs/en/zos/3.1.0?topic=bor-binder-options
-# https://www.ibm.com/docs/en/zos/2.2.0?topic=descriptions-ld-link-object-files
+# https://www.ibm.com/docs/en/zos/3.1.0?topic=descriptions-ld-link-object-files
 BIND_FLAGS = -bRMODE=ANY
 BIND_FLAGS_64 = -bRMODE=ANY -bAMODE=64
 
