@@ -4,6 +4,11 @@ All notable changes to the native code for "zowe-native-proto" are documented in
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+
+- `golang`: Reduced startup time for `zowed` by initializing workers in the background. [#237](https://github.com/zowe/zowe-native-proto/pull/237)
+- `golang`: Added verbose option to enable debug logging. [#237](https://github.com/zowe/zowe-native-proto/pull/237)
+
 ## `0.1.1`
 
 - `c`: Fixed issue where running the `zowex uss write` or `zowex ds write` commands without the `--etag-only` parameter resulted in a S0C4 and abrupt termination. [#216](https://github.com/zowe/zowe-native-proto/pull/216)
