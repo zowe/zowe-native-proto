@@ -51,6 +51,11 @@
             "FATAL"
           ]
         },
+        "zowe-native-proto-vsce.serverAutoUpdate": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically re-deploys the Zowe SSH server if out of date."
+        },
         "zowe-native-proto-vsce.serverInstallPath": {
           "type": "object",
           "description": "Mapping of SSH hostname to server install path for that host. Defaults to '~/.zowe-server'.",
