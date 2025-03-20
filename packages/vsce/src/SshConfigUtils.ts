@@ -144,7 +144,6 @@ export class SshConfigUtils {
                     user: foundProfile?.profile?.user,
                     password: foundProfile?.profile?.password,
                 });
-                console.debug();
                 if (validConfig === undefined) return;
                 SshConfigUtils.setProfile(validConfig, foundProfile.name);
                 return { ...foundProfile, profile: { ...foundProfile.profile, ...validConfig } };
@@ -276,7 +275,6 @@ export class SshConfigUtils {
                         ...selectedProfile,
                         password: passwordPrompt,
                     });
-                    console.debug();
                     if (validatePassword && Object.keys(validatePassword).length === 0) {
                         selectedProfile.password = passwordPrompt;
                     } else if (validatePassword && Object.keys(validatePassword).length >= 1) {
@@ -295,9 +293,8 @@ export class SshConfigUtils {
             return;
         }
 
-        console.debug();
         await SshConfigUtils.setProfile(selectedProfile);
-        console.debug();
+
         return {
             name: selectedProfile.name,
             message: "",
@@ -481,7 +478,6 @@ export class SshConfigUtils {
         updatedProfile?: string,
     ): Promise<void> {
         // Profile information
-        console.debug();
         const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
         const profCache = zoweExplorerApi.getExplorerExtenderApi().getProfilesCache();
         const profInfo = await profCache.getProfileInfo();
@@ -508,11 +504,57 @@ export class SshConfigUtils {
             for (const key of Object.keys(selectedConfig!)) {
                 const validKey = key as keyof ISshConfigExt;
 
+                // Get the location of the property being modified
+                profCache.getDefaultProfile("ssh");
+                const propertyLocation = profInfo
+                    .mergeArgsForProfile({
+                        profName: updatedProfile,
+                        profType: "ssh",
+                        isDefaultProfile: profCache.getDefaultProfile("ssh").name === updatedProfile,
+                        profLoc: { locType: 1 },
+                    })
+                    .knownArgs.find((obj) => obj.argName === key)?.argLoc.jsonLoc;
+
+                let secureValue = true;
+                let allowBaseModification: string | undefined;
+
+                if (propertyLocation) {
+                    const profileName = configApi.profiles.getProfileNameFromPath(propertyLocation);
+
+                    // Check to see if the property being modified comes from the service profile to handle possibly breaking configuration changes
+                    const doesPropComeFromProfile = profileName === updatedProfile;
+
+                    if (propertyLocation && !configApi.secure.securePropsForProfile(profileName).includes(key))
+                        secureValue = false;
+
+                    if (!doesPropComeFromProfile) {
+                        const quickPick = vscode.window.createQuickPick();
+                        quickPick.items = [
+                            { label: "Yes", description: "Proceed with modification" },
+                            { label: "No", description: "Modify SSH profile instead" },
+                        ];
+                        quickPick.title = `Property: "${key}" found in a possibly shared configuration and may break others, continue?"?`;
+                        quickPick.placeholder = "Select an option";
+                        quickPick.ignoreFocusOut = true;
+
+                        allowBaseModification = await new Promise<string | undefined>((resolve) => {
+                            quickPick.onDidAccept(() => {
+                                resolve(quickPick.selectedItems[0]?.label);
+                                quickPick.hide();
+                            });
+                            quickPick.onDidHide(() => resolve(undefined)); // Handle case when user cancels
+                            quickPick.show();
+                        });
+                    }
+                }
+
                 profInfo.updateProperty({
                     profileName: updatedProfile,
                     profileType: "ssh",
                     property: validKey,
                     value: selectedConfig![validKey],
+                    forceUpdate: allowBaseModification !== "Yes",
+                    setSecure: secureValue,
                 });
             }
         } else {
