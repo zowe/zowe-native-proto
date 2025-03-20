@@ -613,17 +613,18 @@ int ZCLI::run(int argc, char *argv[])
 
   for (vector<ZCLIOption>::iterator it = verb->get_options().begin(); it != verb->get_options().end(); it++)
   {
+    if (it->default_provided() && !it->is_found())
+    {
+      it->set_value(it->get_default());
+      results.get_options().push_back(*it);
+      it->set_found(true);
+    }
+
     if (it->get_required() && !it->is_found())
     {
       cerr << "Required option missing: '" << it->get_flag_name() << "' on '" << group->get_name() << " " << verb->get_name() << "'" << endl;
       verb->help(name, group->get_name());
       return -1;
-    }
-
-    if (it->default_provided() && !it->is_found())
-    {
-      it->set_value(it->get_default());
-      results.get_options().push_back(*it);
     }
   }
 

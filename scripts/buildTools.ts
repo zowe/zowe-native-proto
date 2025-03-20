@@ -72,44 +72,49 @@ function stopSpinner(spinner: NodeJS.Timeout | null, text = "Done!") {
 const connection = new Client();
 
 connection.on("ready", async () => {
-    switch (args[0]) {
-        case "init":
-            await init(connection);
-            break;
-        case "deploy":
-            await deploy(connection);
-            await convert(connection);
-            break;
-        case "deploy:build":
-        case "deploy-build":
-            await deploy(connection);
-            await convert(connection);
-            await build(connection);
-            break;
-        case "get-listings":
-            await getListings(connection);
-            break;
-        case "get-dumps":
-            await getDumps(connection);
-            break;
-        case "artifacts":
-            await artifacts(connection);
-            break;
-        case "clean":
-            await clean(connection);
-            break;
-        case "delete":
-            await rmdir(connection);
-            break;
-        case "bin":
-            await bin(connection);
-            break;
-        case "build":
-            await build(connection);
-            break;
-        default:
-            console.log("Unsupported command\nUsage init|deploy|deploy-build [<file1>,<file2>,...|dir]");
-            break;
+    try {
+        switch (args[0]) {
+            case "init":
+                await init(connection);
+                break;
+            case "deploy":
+                await deploy(connection);
+                await convert(connection);
+                break;
+            case "deploy:build":
+            case "deploy-build":
+                await deploy(connection);
+                await convert(connection);
+                await build(connection);
+                break;
+            case "get-listings":
+                await getListings(connection);
+                break;
+            case "get-dumps":
+                await getDumps(connection);
+                break;
+            case "artifacts":
+                await artifacts(connection);
+                break;
+            case "clean":
+                await clean(connection);
+                break;
+            case "delete":
+                await rmdir(connection);
+                break;
+            case "bin":
+                await bin(connection);
+                break;
+            case "build":
+                await build(connection);
+                break;
+            default:
+                console.log("Unsupported command\nUsage init|deploy|deploy-build [<file1>,<file2>,...|dir]");
+                break;
+        }
+    } catch (err) {
+        console.error(err);
+        process.exit(process.exitCode ?? 1);
     }
 
     line.close();
@@ -334,6 +339,7 @@ async function runCommandInShell(connection: Client, command: string, pty = fals
                 if (exitCode !== 0) {
                     const fullError = `\nError: runCommand connection.exec error: \n ${error || data}`;
                     stopSpinner(spinner, fullError);
+                    process.exitCode = fullError.includes("SIGSEGV: segmentation violation") ? 11 : exitCode;
                     reject(fullError);
                 }
             });
