@@ -169,7 +169,7 @@ func CreateWorkerPool(numWorkers int, requestQueue chan []byte, dispatcher *cmds
 		Queue:      requestQueue,
 	}
 
-	// Create all workers but initialize them asynchronously
+	// Create each worker
 	for i := 0; i < numWorkers; i++ {
 		worker := &Worker{
 			ID:           i,
@@ -187,7 +187,7 @@ func CreateWorkerPool(numWorkers int, requestQueue chan []byte, dispatcher *cmds
 	return pool
 }
 
-// initializeWorker initializes a worker asynchronously
+// initializeWorker initializes a worker for forwarding `zowex` requests/responses
 func initializeWorker(worker *Worker, pool *WorkerPool) {
 	// Create a separate `zowex` process in interactive mode for each worker
 	workerCmd := utils.BuildCommand([]string{"--it"})

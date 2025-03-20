@@ -55,7 +55,7 @@ func main() {
 	dispatcher := cmds.NewDispatcher()
 	cmds.InitializeCoreHandlers(dispatcher)
 
-	// Create the worker pool - workers are now initialized asynchronously
+	// Initialize workers in background
 	workerPool := CreateWorkerPool(options.NumWorkers, requestQueue, dispatcher)
 
 	// Log available worker count at initialization when verbose is enabled
