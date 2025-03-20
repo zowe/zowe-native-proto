@@ -9,7 +9,9 @@
  *
  */
 
-import type { imperative } from "@zowe/zowe-explorer-api";
+import * as path from "node:path";
+import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
+import { imperative } from "@zowe/zowe-explorer-api";
 import * as vscode from "vscode";
 import { ZSshClient, ZSshUtils } from "zowe-native-proto-sdk";
 import { SshConfigUtils } from "./SshConfigUtils";
@@ -18,7 +20,7 @@ export class SshClientCache extends vscode.Disposable {
     private static mInstance: SshClientCache;
     private mClientMap: Map<string, ZSshClient> = new Map();
 
-    private constructor() {
+    private constructor(private mContext: vscode.ExtensionContext) {
         super(() => this.dispose());
     }
 
@@ -28,8 +30,12 @@ export class SshClientCache extends vscode.Disposable {
         }
     }
 
+    public static initialize(context: vscode.ExtensionContext): SshClientCache {
+        SshClientCache.mInstance = new SshClientCache(context);
+        return SshClientCache.mInstance;
+    }
+
     public static get inst(): SshClientCache {
-        SshClientCache.mInstance ??= new SshClientCache();
         return SshClientCache.mInstance;
     }
 
@@ -38,22 +44,35 @@ export class SshClientCache extends vscode.Disposable {
         if (restart) {
             this.end(clientId);
         }
+
         if (!this.mClientMap.has(clientId)) {
             const session = ZSshUtils.buildSession(profile.profile!);
             const serverPath = SshConfigUtils.getServerPath(profile.profile);
-            this.mClientMap.set(
-                clientId,
-                await ZSshClient.create(session, {
-                    serverPath,
-                    onClose: () => {
-                        this.end(clientId);
-                    },
-                    onError: (err: Error) => {
-                        vscode.window.showErrorMessage(err.toString());
-                    },
-                }),
-            );
+            const localDir = path.join(this.mContext.extensionPath, "bin");
+
+            if (
+                vscode.workspace.getConfiguration("zowe-native-proto-vsce").get("serverAutoUpdate", true) &&
+                (await ZSshUtils.checkIfOutdated(session, serverPath, path.join(localDir, "checksums.asc")))
+            ) {
+                // Server is out of date so re-deploy it
+                await ZSshUtils.installServer(session, serverPath, localDir);
+            }
+
+            let newClient: ZSshClient;
+            try {
+                newClient = await this.buildClient(session, serverPath, clientId);
+            } catch (err) {
+                if (err instanceof imperative.ImperativeError && err.errorCode === "ENOTFOUND") {
+                    // Server is missing so deploy it and try again
+                    await ZSshUtils.installServer(session, serverPath, localDir);
+                    newClient = await this.buildClient(session, serverPath, clientId);
+                } else {
+                    throw err;
+                }
+            }
+            this.mClientMap.set(clientId, newClient);
         }
+
         return this.mClientMap.get(clientId) as ZSshClient;
     }
 
@@ -65,5 +84,17 @@ export class SshClientCache extends vscode.Disposable {
 
     private getClientId(profile: imperative.IProfile): string {
         return `${profile.host}:${profile.port ?? 22}`;
+    }
+
+    private buildClient(session: SshSession, serverPath: string, clientId: string): Promise<ZSshClient> {
+        return ZSshClient.create(session, {
+            serverPath,
+            onClose: () => {
+                this.end(clientId);
+            },
+            onError: (err: Error) => {
+                vscode.window.showErrorMessage(err.toString());
+            },
+        });
     }
 }
