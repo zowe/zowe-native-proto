@@ -29,16 +29,80 @@ type Worker struct {
 	RequestQueue chan []byte
 	Dispatcher   *cmds.CmdDispatcher
 	Conn         utils.StdioConn
-	WG           *sync.WaitGroup
 	ResponseMu   *sync.Mutex // Mutex to synchronize response printing
+	Ready        bool        // Indicates if the worker is ready to process requests
+}
+
+// WorkerPool manages a pool of workers
+type WorkerPool struct {
+	Workers    []*Worker
+	ReadyCount int32 // Number of workers that are ready
+	ResponseMu *sync.Mutex
+	ReadyMu    *sync.Mutex // Mutex to synchronize access to ReadyCount and Workers
+	ReadyCond  *sync.Cond  // Condition variable to signal when workers become ready
+	Queue      chan []byte // Request queue for all workers
+}
+
+// GetReadyWorker returns a worker that's ready to process requests
+// Blocks if no workers are ready
+func (wp *WorkerPool) GetReadyWorker() *Worker {
+	wp.ReadyMu.Lock()
+	defer wp.ReadyMu.Unlock()
+
+	// Wait until at least one worker is ready
+	for wp.ReadyCount == 0 {
+		wp.ReadyCond.Wait()
+	}
+
+	// Find a ready worker
+	for _, worker := range wp.Workers {
+		if worker.Ready {
+			return worker
+		}
+	}
+
+	// Should never reach here if ReadyCount > 0
+	return nil
+}
+
+// SetWorkerReady marks a worker as ready and updates the ready count
+func (wp *WorkerPool) SetWorkerReady(workerID int) {
+	wp.ReadyMu.Lock()
+	defer wp.ReadyMu.Unlock()
+
+	for _, worker := range wp.Workers {
+		if worker.ID == workerID && !worker.Ready {
+			worker.Ready = true
+			wp.ReadyCount++
+			wp.ReadyCond.Signal()
+			break
+		}
+	}
+}
+
+// DistributeRequest sends a request to the shared worker queue
+func (wp *WorkerPool) DistributeRequest(data []byte) {
+	// Non-blocking send to the shared queue
+	// If no workers are ready yet, this will still queue the request
+	// for when workers become available
+	go func() {
+		wp.Queue <- data
+	}()
 }
 
 // Start starts the worker
 func (w *Worker) Start() {
-	defer w.WG.Done()
-
 	for data := range w.RequestQueue {
-		w.processRequest(data)
+		// Only process requests if worker is ready
+		if w.Ready {
+			w.processRequest(data)
+		} else {
+			// If this worker isn't ready yet, put the request back in the shared queue
+			// This should rarely happen as workers are initialized asynchronously
+			go func(reqData []byte) {
+				w.RequestQueue <- reqData
+			}(data)
+		}
 	}
 }
 
@@ -90,52 +154,83 @@ func (w *Worker) processRequest(data []byte) {
 }
 
 // CreateWorkerPool creates a pool of workers to start interpreting command requests
-func CreateWorkerPool(numWorkers int, requestQueue chan []byte, dispatcher *cmds.CmdDispatcher) (*sync.WaitGroup, *sync.Mutex) {
-	var wg sync.WaitGroup
+// Now returns a WorkerPool that manages worker lifecycle and state
+func CreateWorkerPool(numWorkers int, requestQueue chan []byte, dispatcher *cmds.CmdDispatcher) *WorkerPool {
 	responseMu := &sync.Mutex{}
+	readyMu := &sync.Mutex{}
+	readyCond := sync.NewCond(readyMu)
 
+	pool := &WorkerPool{
+		Workers:    make([]*Worker, numWorkers),
+		ReadyCount: 0,
+		ResponseMu: responseMu,
+		ReadyMu:    readyMu,
+		ReadyCond:  readyCond,
+		Queue:      requestQueue,
+	}
+
+	// Create all workers but initialize them asynchronously
 	for i := 0; i < numWorkers; i++ {
-		// Create a separate `zowex` process in interactive mode for each worker
-		workerCmd := utils.BuildCommand([]string{"--it"})
-		workerStdin, err := workerCmd.StdinPipe()
-		if err != nil {
-			panic(err)
-		}
-		workerStdout, err := workerCmd.StdoutPipe()
-		if err != nil {
-			panic(err)
-		}
-		workerStderr, err := workerCmd.StderrPipe()
-		if err != nil {
-			panic(err)
-		}
-		workerConn := utils.StdioConn{
-			Stdin:  workerStdin,
-			Stdout: workerStdout,
-			Stderr: workerStderr,
-		}
-		err = workerCmd.Start()
-		if err != nil {
-			panic(err)
-		}
-
-		// Wait for the instance of `zowex` to be ready
-		if _, err = bufio.NewReader(workerStdout).ReadBytes('\n'); err != nil {
-			panic(err)
-		}
-
-		// Create and start the worker with the stdio pipe connections for the `zowex` instance
 		worker := &Worker{
 			ID:           i,
 			RequestQueue: requestQueue,
 			Dispatcher:   dispatcher,
-			Conn:         workerConn,
-			WG:           &wg,
 			ResponseMu:   responseMu,
+			Ready:        false, // Worker starts as not ready
 		}
-		wg.Add(1)
-		go worker.Start()
+		pool.Workers[i] = worker
+
+		// Initialize worker asynchronously
+		go initializeWorker(worker, pool)
 	}
 
-	return &wg, responseMu
+	return pool
+}
+
+// initializeWorker initializes a worker asynchronously
+func initializeWorker(worker *Worker, pool *WorkerPool) {
+	// Create a separate `zowex` process in interactive mode for each worker
+	workerCmd := utils.BuildCommand([]string{"--it"})
+	workerStdin, err := workerCmd.StdinPipe()
+	if err != nil {
+		panic(err)
+	}
+	workerStdout, err := workerCmd.StdoutPipe()
+	if err != nil {
+		panic(err)
+	}
+	workerStderr, err := workerCmd.StderrPipe()
+	if err != nil {
+		panic(err)
+	}
+	workerConn := utils.StdioConn{
+		Stdin:  workerStdin,
+		Stdout: workerStdout,
+		Stderr: workerStderr,
+	}
+	err = workerCmd.Start()
+	if err != nil {
+		panic(err)
+	}
+
+	// Wait for the instance of `zowex` to be ready
+	if _, err = bufio.NewReader(workerStdout).ReadBytes('\n'); err != nil {
+		panic(err)
+	}
+
+	// Set up the connection for the worker
+	worker.Conn = workerConn
+
+	// Start the worker
+	go worker.Start()
+
+	// Mark the worker as ready
+	pool.SetWorkerReady(worker.ID)
+}
+
+// GetAvailableWorkersCount returns the number of ready workers
+func (wp *WorkerPool) GetAvailableWorkersCount() int32 {
+	wp.ReadyMu.Lock()
+	defer wp.ReadyMu.Unlock()
+	return wp.ReadyCount
 }
