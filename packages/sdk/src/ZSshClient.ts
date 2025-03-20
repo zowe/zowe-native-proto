@@ -15,7 +15,7 @@ import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Client, type ClientChannel } from "ssh2";
 import { AbstractRpcClient } from "./AbstractRpcClient";
 import { ZSshUtils } from "./ZSshUtils";
-import type { ClientOptions, CommandRequest, CommandResponse, RpcRequest, RpcResponse } from "./doc";
+import type { ClientOptions, CommandRequest, CommandResponse, RpcRequest, RpcResponse, StatusMessage } from "./doc";
 
 type PromiseResolve<T> = (value: T | PromiseLike<T>) => void;
 // biome-ignore lint/suspicious/noExplicitAny: Promise reject type uses any
@@ -61,10 +61,30 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                                 Logger.getAppLogger().error("Error running SSH command: %s", err.toString());
                                 reject(err);
                             } else {
-                                stream.stderr.on("data", client.onErrData.bind(client));
-                                stream.stdout.on("data", client.onOutData.bind(client));
-                                Logger.getAppLogger().debug("Client is ready");
-                                resolve(stream);
+                                stream.once("data", (data: Buffer) => {
+                                    let response: StatusMessage;
+                                    try {
+                                        response = JSON.parse(data.toString());
+                                    } catch (err) {
+                                        if ((err as Error).message.includes("FSUM7351")) {
+                                            reject(
+                                                new ImperativeError({
+                                                    msg: "Server not found",
+                                                    errorCode: "ENOTFOUND",
+                                                    additionalDetails: data.toString(),
+                                                }),
+                                            );
+                                        } else {
+                                            reject(new Error(data.toString()));
+                                        }
+                                    }
+                                    if (response.status === "ready") {
+                                        stream.stderr.on("data", client.onErrData.bind(client));
+                                        stream.stdout.on("data", client.onOutData.bind(client));
+                                        Logger.getAppLogger().debug("Client is ready");
+                                        resolve(stream);
+                                    }
+                                });
                             }
                         },
                     );
@@ -108,7 +128,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
     }
 
     private onErrData(chunk: Buffer) {
-        if (this.mRequestId === 0) {
+        if (this.mPromiseMap.size === 0) {
             const errMsg = Logger.getAppLogger().error("Error from server: %s", chunk.toString());
             this.mErrHandler(new Error(errMsg));
             return;
