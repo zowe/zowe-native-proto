@@ -75,7 +75,6 @@
     "compile": "rspack --mode development",
     "lint": "npx @biomejs/biome check --write src",
     "package": "vsce package --out ../../dist",
-    "test": "echo \"Error: no test specified\" && exit 1",
     "vscode:prepublish": "rspack --mode production --devtool=hidden-source-map",
     "watch": "rspack --mode development --watch"
   },
