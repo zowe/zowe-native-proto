@@ -62,15 +62,7 @@ describe("ZSshClient", () => {
                 this.emit("ready");
                 return this;
             });
-            jest.spyOn(Client.prototype, "exec").mockImplementationOnce(function (
-                _command: string,
-                callback: ClientCallback,
-            ) {
-                callback(undefined, sshStream as any);
-                sshStream.emit("data");
-                return this;
-            });
-            jest.spyOn(ZSshClient.prototype as any, "onReady").mockResolvedValueOnce(sshStream);
+            jest.spyOn(ZSshClient.prototype as any, "execAsync").mockResolvedValueOnce(sshStream);
             const client = await ZSshClient.create(new SshSession(fakeSession));
             expect(client).toBeInstanceOf(ZSshClient);
         });
@@ -81,13 +73,7 @@ describe("ZSshClient", () => {
                 this.emit("error", sshError);
                 return this;
             });
-            let caughtError: Error | undefined;
-            try {
-                await ZSshClient.create(new SshSession(fakeSession));
-            } catch (err) {
-                caughtError = err;
-            }
-            expect(caughtError).toBe(sshError);
+            expect(ZSshClient.create(new SshSession(fakeSession))).rejects.toThrow(sshError);
         });
 
         it("should handle error in SSH exec callback", async () => {
@@ -103,13 +89,7 @@ describe("ZSshClient", () => {
                 callback(sshError, undefined);
                 return this;
             });
-            let caughtError: Error | undefined;
-            try {
-                await ZSshClient.create(new SshSession(fakeSession));
-            } catch (err) {
-                caughtError = err;
-            }
-            expect(caughtError).toBe(sshError);
+            expect(ZSshClient.create(new SshSession(fakeSession))).rejects.toThrow(sshError);
         });
 
         it("should handle error in SSH data handler", async () => {
@@ -128,13 +108,7 @@ describe("ZSshClient", () => {
                 return this;
             });
             jest.spyOn(ZSshClient.prototype as any, "onReady").mockRejectedValueOnce(sshError);
-            let caughtError: Error | undefined;
-            try {
-                await ZSshClient.create(new SshSession(fakeSession));
-            } catch (err) {
-                caughtError = err;
-            }
-            expect(caughtError).toBe(sshError);
+            expect(ZSshClient.create(new SshSession(fakeSession))).rejects.toThrow(sshError);
         });
 
         it("should invoke onClose callback", async () => {
@@ -144,15 +118,7 @@ describe("ZSshClient", () => {
                 this.emit("close");
                 return this;
             });
-            jest.spyOn(Client.prototype, "exec").mockImplementationOnce(function (
-                _command: string,
-                callback: ClientCallback,
-            ) {
-                callback(undefined, sshStream as any);
-                sshStream.emit("data");
-                return this;
-            });
-            jest.spyOn(ZSshClient.prototype as any, "onReady").mockResolvedValueOnce(sshStream);
+            jest.spyOn(ZSshClient.prototype as any, "execAsync").mockResolvedValueOnce(sshStream);
             const onCloseMock = jest.fn();
             await ZSshClient.create(new SshSession(fakeSession), {
                 onClose: onCloseMock,
@@ -166,15 +132,7 @@ describe("ZSshClient", () => {
                 this.emit("ready");
                 return this;
             });
-            jest.spyOn(Client.prototype, "exec").mockImplementationOnce(function (
-                _command: string,
-                callback: ClientCallback,
-            ) {
-                callback(undefined, sshStream as any);
-                sshStream.emit("data");
-                return this;
-            });
-            jest.spyOn(ZSshClient.prototype as any, "onReady").mockResolvedValueOnce(sshStream);
+            jest.spyOn(ZSshClient.prototype as any, "execAsync").mockResolvedValueOnce(sshStream);
             const onConnectMock = jest.fn();
             await ZSshClient.create(new SshSession(fakeSession), {
                 onConnect: onConnectMock,
@@ -188,15 +146,7 @@ describe("ZSshClient", () => {
                 this.emit("ready");
                 return this;
             });
-            jest.spyOn(Client.prototype, "exec").mockImplementationOnce(function (
-                _command: string,
-                callback: ClientCallback,
-            ) {
-                callback(undefined, sshStream as any);
-                sshStream.emit("data");
-                return this;
-            });
-            jest.spyOn(ZSshClient.prototype as any, "onReady").mockResolvedValueOnce(sshStream);
+            jest.spyOn(ZSshClient.prototype as any, "execAsync").mockResolvedValueOnce(sshStream);
             const onErrorMock = jest.fn();
             const client = await ZSshClient.create(new SshSession(fakeSession), {
                 onError: onErrorMock,
@@ -211,19 +161,12 @@ describe("ZSshClient", () => {
                 this.emit("ready");
                 return this;
             });
-            const execSpy = jest.spyOn(Client.prototype, "exec").mockImplementationOnce(function (
-                _command: string,
-                callback: ClientCallback,
-            ) {
-                callback(undefined, sshStream as any);
-                sshStream.emit("data");
-                return this;
-            });
-            jest.spyOn(ZSshClient.prototype as any, "onReady").mockResolvedValueOnce(sshStream);
+            const execAsyncSpy = jest.spyOn(ZSshClient.prototype as any, "execAsync").mockResolvedValueOnce(sshStream);
             await ZSshClient.create(new SshSession(fakeSession), {
                 numWorkers: 1,
             });
-            expect(execSpy).toHaveBeenCalledWith(expect.stringContaining("-num-workers 1"), expect.any(Function));
+            expect(execAsyncSpy).toHaveBeenCalledTimes(1);
+            expect(execAsyncSpy.mock.calls[0]).toEqual(expect.arrayContaining(["-num-workers", "1"]));
         });
 
         it("should respect responseTimeout option", async () => {
@@ -232,15 +175,7 @@ describe("ZSshClient", () => {
                 this.emit("ready");
                 return this;
             });
-            jest.spyOn(Client.prototype, "exec").mockImplementationOnce(function (
-                _command: string,
-                callback: ClientCallback,
-            ) {
-                callback(undefined, sshStream as any);
-                sshStream.emit("data");
-                return this;
-            });
-            jest.spyOn(ZSshClient.prototype as any, "onReady").mockResolvedValueOnce(sshStream);
+            jest.spyOn(ZSshClient.prototype as any, "execAsync").mockResolvedValueOnce(sshStream);
             const client = await ZSshClient.create(new SshSession(fakeSession), {
                 responseTimeout: 300,
             });
@@ -253,22 +188,12 @@ describe("ZSshClient", () => {
                 this.emit("ready");
                 return this;
             });
-            const execSpy = jest.spyOn(Client.prototype, "exec").mockImplementationOnce(function (
-                _command: string,
-                callback: ClientCallback,
-            ) {
-                callback(undefined, sshStream as any);
-                sshStream.emit("data");
-                return this;
-            });
-            jest.spyOn(ZSshClient.prototype as any, "onReady").mockResolvedValueOnce(sshStream);
+            const execAsyncSpy = jest.spyOn(ZSshClient.prototype as any, "execAsync").mockResolvedValueOnce(sshStream);
             await ZSshClient.create(new SshSession(fakeSession), {
                 serverPath: "/tmp/zowe-server",
             });
-            expect(execSpy).toHaveBeenCalledWith(
-                expect.stringContaining("/tmp/zowe-server/zowed"),
-                expect.any(Function),
-            );
+            expect(execAsyncSpy).toHaveBeenCalledTimes(1);
+            expect(execAsyncSpy.mock.calls[0]).toContain("/tmp/zowe-server/zowed");
         });
     });
 

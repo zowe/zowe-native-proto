@@ -50,24 +50,9 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
             });
             client.mSshClient.on("ready", async () => {
                 await opts.onConnect?.(client.mSshClient);
+                const zowedBin = posix.join(opts.serverPath ?? ZSshClient.DEFAULT_SERVER_PATH, "zowed");
                 const zowedArgs = ["-num-workers", `${opts.numWorkers ?? 10}`];
-                client.mSshClient.exec(
-                    [posix.join(opts.serverPath ?? ZSshClient.DEFAULT_SERVER_PATH, "zowed"), ...zowedArgs].join(" "),
-                    (err, stream) => {
-                        if (err) {
-                            Logger.getAppLogger().error("Error running SSH command: %s", err.toString());
-                            reject(err);
-                        } else {
-                            stream.once("data", (data: Buffer) => {
-                                try {
-                                    resolve(client.onReady(stream, data));
-                                } catch (err) {
-                                    reject(err);
-                                }
-                            });
-                        }
-                    },
-                );
+                client.execAsync(zowedBin, ...zowedArgs).then(resolve, reject);
             });
             client.mSshClient.on("close", () => {
                 Logger.getAppLogger().debug("Client disconnected");
@@ -106,6 +91,25 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
             Logger.getAppLogger().trace("Sending request: %s", requestStr);
             this.mSshStream.stdin.write(`${requestStr}\n`);
         }).finally(() => clearTimeout(timeoutId));
+    }
+
+    private execAsync(...args: string[]): Promise<ClientChannel> {
+        return new Promise((resolve, reject) => {
+            this.mSshClient.exec(args.join(" "), (err, stream) => {
+                if (err) {
+                    Logger.getAppLogger().error("Error running SSH command: %s", err.toString());
+                    reject(err);
+                } else {
+                    stream.once("data", (data: Buffer) => {
+                        try {
+                            resolve(this.onReady(stream, data));
+                        } catch (err) {
+                            reject(err);
+                        }
+                    });
+                }
+            });
+        });
     }
 
     private onReady(stream: ClientChannel, data: Buffer): ClientChannel {
