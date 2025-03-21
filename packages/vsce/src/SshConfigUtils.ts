@@ -473,10 +473,7 @@ export class SshConfigUtils {
         return selectedProfile;
     }
 
-    private static async setProfile(
-        selectedConfig: Partial<ISshConfigExt> | undefined,
-        updatedProfile?: string,
-    ): Promise<void> {
+    private static async setProfile(selectedConfig: ISshConfigExt | undefined, updatedProfile?: string): Promise<void> {
         // Profile information
         const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
         const profCache = zoweExplorerApi.getExplorerExtenderApi().getProfilesCache();
