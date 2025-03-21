@@ -75,9 +75,16 @@ func main() {
 	}
 
 	// Print ready message to stdout as JSON
+	var data *map[string]any = nil
+	if checksums := utils.LoadChecksums(); checksums != nil {
+		data = &map[string]any{
+			"checksums": checksums,
+		}
+	}
 	readyMsg := t.StatusMessage{
 		Status:  "ready",
 		Message: "zowed is ready to accept input",
+		Data:    data,
 	}
 	readyJson, err := json.Marshal(readyMsg)
 	if err != nil {

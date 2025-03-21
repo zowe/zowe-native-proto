@@ -15,7 +15,7 @@ import { promisify } from "node:util";
 import { type IProfile, Logger } from "@zowe/imperative";
 import { type ISshSession, SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { NodeSSH, type Config as NodeSSHConfig } from "node-ssh";
-import type { Client, ConnectConfig, SFTPWrapper } from "ssh2";
+import type { ConnectConfig, SFTPWrapper } from "ssh2";
 
 type SftpError = Error & { code?: number };
 
@@ -121,19 +121,16 @@ export class ZSshUtils {
         });
     }
 
-    public static async checkIfOutdated(client: Client, serverPath: string, localFile: string): Promise<boolean> {
-        const remoteDir = serverPath.replace(/^~/, ".");
-        const sftp = await promisify(client.sftp.bind(client))();
-        const remoteChecksums = await promisify(sftp.readFile.bind(sftp))(path.posix.join(remoteDir, "checksums.asc"))
-            .then((contents: Buffer) => ZSshUtils.parseChecksumsFile(contents.toString()))
-            .catch((err: SftpError) => {
-                if (err.code !== 2) throw err;
-                Logger.getAppLogger().warn(`Checksums file not found: ${serverPath}/checksums.asc`);
-            });
+    public static async checkIfOutdated(localFile: string, remoteChecksums?: Record<string, string>): Promise<boolean> {
         if (remoteChecksums == null) {
+            Logger.getAppLogger().warn("Checksums not found, could not verify server");
             return false;
         }
-        const localChecksums = ZSshUtils.parseChecksumsFile(fs.readFileSync(localFile, "utf-8"));
+        const localChecksums: Record<string, string> = {};
+        for (const line of fs.readFileSync(localFile, "utf-8").trimEnd().split("\n")) {
+            const [checksum, file] = line.split(/\s+/);
+            localChecksums[file] = checksum;
+        }
         return JSON.stringify(localChecksums) !== JSON.stringify(remoteChecksums);
     }
 
@@ -148,14 +145,5 @@ export class ZSshUtils {
         } finally {
             ssh.dispose();
         }
-    }
-
-    private static parseChecksumsFile(data: string): Record<string, string> {
-        const checksums: Record<string, string> = {};
-        for (const line of data.trimEnd().split("\n")) {
-            const [checksum, file] = line.split(/\s+/);
-            checksums[file] = checksum;
-        }
-        return checksums;
     }
 }

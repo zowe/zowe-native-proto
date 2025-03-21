@@ -26,6 +26,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
 
     private mErrHandler: ClientOptions["onError"];
     private mResponseTimeout: number;
+    private mServerInfo: { checksums?: Record<string, string> };
     private mSshClient: Client;
     private mSshStream: ClientChannel;
     private mPartialStderr = "";
@@ -49,7 +50,6 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                 reject(err);
             });
             client.mSshClient.on("ready", async () => {
-                await opts.onConnect?.(client.mSshClient);
                 const zowedBin = posix.join(opts.serverPath ?? ZSshClient.DEFAULT_SERVER_PATH, "zowed");
                 const zowedArgs = ["-num-workers", `${opts.numWorkers ?? 10}`];
                 client.execAsync(zowedBin, ...zowedArgs).then(resolve, reject);
@@ -70,6 +70,10 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
 
     public [Symbol.dispose](): void {
         this.dispose();
+    }
+
+    public get serverChecksums(): Record<string, string> | undefined {
+        return this.mServerInfo?.checksums;
     }
 
     public async request<T extends CommandResponse>(request: CommandRequest): Promise<T> {
@@ -102,7 +106,8 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                 } else {
                     stream.once("data", (data: Buffer) => {
                         try {
-                            resolve(this.onReady(stream, data));
+                            this.mServerInfo = this.onReady(stream, data);
+                            resolve(stream);
                         } catch (err) {
                             reject(err);
                         }
@@ -112,7 +117,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
         });
     }
 
-    private onReady(stream: ClientChannel, data: Buffer): ClientChannel {
+    private onReady(stream: ClientChannel, data: Buffer): object {
         let response: StatusMessage;
         try {
             response = JSON.parse(data.toString());
@@ -131,7 +136,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
             stream.stderr.on("data", this.onErrData.bind(this));
             stream.stdout.on("data", this.onOutData.bind(this));
             Logger.getAppLogger().debug("Client is ready");
-            return stream;
+            return response.data;
         }
     }
 

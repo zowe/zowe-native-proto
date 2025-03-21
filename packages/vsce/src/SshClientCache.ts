@@ -57,20 +57,15 @@ export class SshClientCache extends vscode.Disposable {
 
             let newClient: ZSshClient;
             try {
-                newClient = await this.buildClient(session, clientId, {
-                    serverPath,
-                    onConnect: async (client: Client) => {
-                        if (
-                            autoUpdate &&
-                            (await ZSshUtils.checkIfOutdated(client, serverPath, path.join(localDir, "checksums.asc")))
-                        ) {
-                            imperative.Logger.getAppLogger().info(
-                                `Server is out of date, deploying to ${profile.name}`,
-                            );
-                            await deployWithProgress(session, serverPath, localDir);
-                        }
-                    },
-                });
+                newClient = await this.buildClient(session, clientId, { serverPath });
+                if (
+                    autoUpdate &&
+                    (await ZSshUtils.checkIfOutdated(path.join(localDir, "checksums.asc"), newClient.serverChecksums))
+                ) {
+                    imperative.Logger.getAppLogger().info(`Server is out of date, deploying to ${profile.name}`);
+                    await deployWithProgress(session, serverPath, localDir);
+                    newClient = await this.buildClient(session, clientId, { serverPath });
+                }
             } catch (err) {
                 if (err instanceof imperative.ImperativeError && err.errorCode === "ENOTFOUND") {
                     imperative.Logger.getAppLogger().info(`Server is missing, deploying to ${profile.name}`);

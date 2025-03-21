@@ -9,18 +9,11 @@
  *
  */
 
-import type { Client } from "ssh2";
-
 export interface ClientOptions {
     /**
      * Function called when the connection is closed
      */
     onClose?: () => void | Promise<void>;
-
-    /**
-     * Function called when the connection is established
-     */
-    onConnect?: (client: Client) => void | Promise<void>;
 
     /**
      * Function called when there is a connection error

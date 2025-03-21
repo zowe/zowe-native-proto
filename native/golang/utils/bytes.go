@@ -12,7 +12,9 @@
 package utils
 
 import (
+	"bufio"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -43,4 +45,25 @@ func CollectContentsAsBytes(input string, isByteString bool) (data []byte, err e
 	}
 
 	return
+}
+
+func LoadChecksums() map[string]string {
+	checksumsFile := "checksums.asc"
+	file, err := os.Open(checksumsFile)
+	if os.IsNotExist(err) {
+		return nil
+	} else if err != nil {
+		panic(err)
+	}
+	defer file.Close()
+	checksums := make(map[string]string)
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		parts := strings.Fields(scanner.Text())
+		if len(parts) == 2 {
+			checksum, file := parts[0], parts[1]
+			checksums[file] = checksum
+		}
+	}
+	return checksums
 }
