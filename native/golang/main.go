@@ -13,7 +13,9 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"time"
@@ -71,6 +73,17 @@ func main() {
 			}
 		}()
 	}
+
+	// Print ready message to stdout as JSON
+	readyMsg := t.StatusMessage{
+		Status:  "ready",
+		Message: "zowed is ready to accept input",
+	}
+	readyJson, err := json.Marshal(readyMsg)
+	if err != nil {
+		log.Fatalln("Failed to marshal ready message:", err)
+	}
+	fmt.Println(string(readyJson))
 
 	// Start goroutine to read from stdin
 	go func() {

@@ -6,6 +6,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
+- `golang`: `zowed` now prints a ready message once it can accept input over stdin. [#221](https://github.com/zowe/zowe-native-proto/pull/221)
 - `golang`: Reduced startup time for `zowed` by initializing workers in the background. [#237](https://github.com/zowe/zowe-native-proto/pull/237)
 - `golang`: Added verbose option to enable debug logging. [#237](https://github.com/zowe/zowe-native-proto/pull/237)
 
