@@ -43,7 +43,6 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
         client.mErrHandler = opts.onError ?? console.error;
         client.mResponseTimeout = opts.responseTimeout ? opts.responseTimeout * 1000 : 60000;
         client.mSshClient = new Client();
-        client.mSshClient.connect(ZSshUtils.buildSshConfig(session));
         client.mSshStream = await new Promise((resolve, reject) => {
             client.mSshClient.on("error", (err) => {
                 Logger.getAppLogger().error("Error connecting to SSH: %s", err.toString());
@@ -59,7 +58,13 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                             Logger.getAppLogger().error("Error running SSH command: %s", err.toString());
                             reject(err);
                         } else {
-                            stream.once("data", (data: Buffer) => client.onReady(data).then(resolve, reject));
+                            stream.once("data", (data: Buffer) => {
+                                try {
+                                    resolve(client.onReady(stream, data));
+                                } catch (err) {
+                                    reject(err);
+                                }
+                            });
                         }
                     },
                 );
@@ -68,6 +73,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                 Logger.getAppLogger().debug("Client disconnected");
                 opts.onClose?.();
             });
+            client.mSshClient.connect(ZSshUtils.buildSshConfig(session));
         });
         return client;
     }
@@ -102,12 +108,12 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
         }).finally(() => clearTimeout(timeoutId));
     }
 
-    private async onReady(data: Buffer): Promise<ClientChannel> {
+    private onReady(stream: ClientChannel, data: Buffer): ClientChannel {
         let response: StatusMessage;
         try {
             response = JSON.parse(data.toString());
         } catch (err) {
-            const errMsg = Logger.getAppLogger().error("Error running SSH command: %s", data.toString());
+            const errMsg = Logger.getAppLogger().error("Error starting Zowe server: %s", data.toString());
             if ((err as Error).message.includes("FSUM7351")) {
                 throw new ImperativeError({
                     msg: "Server not found",
@@ -118,10 +124,10 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
             throw new Error(errMsg);
         }
         if (response.status === "ready") {
-            this.mSshStream.stderr.on("data", this.onErrData.bind(this));
-            this.mSshStream.stdout.on("data", this.onOutData.bind(this));
+            stream.stderr.on("data", this.onErrData.bind(this));
+            stream.stdout.on("data", this.onOutData.bind(this));
             Logger.getAppLogger().debug("Client is ready");
-            return this.mSshStream;
+            return stream;
         }
     }
 
