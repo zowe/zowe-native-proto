@@ -13,6 +13,7 @@
 #include <cstring>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <iomanip>
 #include <algorithm>
@@ -139,39 +140,84 @@ int zds_write_to_dd(ZDS *zds, string ddname, string &data)
   return 0;
 }
 
-int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data)
+int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data, std::string etag_value)
 {
   const auto hasEncoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
-  dsn = "//'" + dsn + "'";
-  ofstream out(dsn.c_str(), zds->encoding_opts.data_type == eDataTypeBinary ? ios::binary : ios::out);
+  const auto codepage = string(zds->encoding_opts.codepage);
 
-  if (!out.good())
+  if (!etag_value.empty())
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open '%s'", dsn.c_str());
-    return RTNCD_FAILURE;
+    ZDS read_ds = {0};
+    string current_contents = "";
+    if (hasEncoding)
+    {
+      memcpy(&read_ds.encoding_opts, &zds->encoding_opts, sizeof(ZEncode));
+    }
+    const auto read_rc = zds_read_from_dsn(&read_ds, dsn, current_contents);
+    if (read_rc != 0)
+    {
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to read contents of data set for e-tag comparison: %s", read_ds.diag.e_msg);
+      return RTNCD_FAILURE;
+    }
+
+    const auto given_etag = strtoul(etag_value.c_str(), nullptr, 16);
+    const auto new_etag = zut_calc_adler32_checksum(current_contents);
+
+    if (given_etag != new_etag)
+    {
+      ostringstream ss;
+      ss << "Etag mismatch: expected ";
+      ss << std::hex << given_etag << std::dec;
+      ss << ", actual ";
+      ss << std::hex << new_etag << std::dec;
+
+      const auto error_msg = ss.str();
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "%s", error_msg.c_str());
+      return RTNCD_FAILURE;
+    }
   }
 
-  if (hasEncoding)
+  const string dsname = "//'" + dsn + "'";
+
+  std::string temp = data;
+  if (!data.empty())
   {
-    std::string temp = data;
-    try
+    auto *fp = fopen(dsname.c_str(), zds->encoding_opts.data_type == eDataTypeBinary ? "wb,recfm=U" : "w");
+    if (fp == nullptr)
     {
-      const auto bytes_with_encoding = zut_encode(temp, "UTF-8", string(zds->encoding_opts.codepage), zds->diag);
-      temp = bytes_with_encoding;
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open '%s'", dsname.c_str());
+      return RTNCD_FAILURE;
     }
-    catch (std::exception &e)
+
+    if (hasEncoding)
     {
-      // TODO: error handling
+      try
+      {
+        const auto bytes_with_encoding = zut_encode(temp, "UTF-8", codepage, zds->diag);
+        temp = bytes_with_encoding;
+      }
+      catch (std::exception &e)
+      {
+        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from UTF-8 to %s", codepage.c_str());
+        return RTNCD_FAILURE;
+      }
     }
     if (!temp.empty())
     {
-      data = temp;
+      const auto bytes_written = fwrite(temp.c_str(), 1u, temp.length(), fp);
     }
+    fclose(fp);
   }
 
-  out << data;
-  out.close();
+  // Print new e-tag to stdout as response
+  string saved_contents = "";
+  const auto read_rc = zds_read_from_dsn(zds, dsn, saved_contents);
+  if (read_rc != 0)
+  {
+    return RTNCD_FAILURE;
+  }
 
+  cout << std::hex << zut_calc_adler32_checksum(saved_contents) << std::dec << endl;
   return 0;
 }
 

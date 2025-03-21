@@ -28,7 +28,7 @@ import { type ISshConfigExt, ZClientUtils, ZSshClient } from "zowe-native-proto-
 export class SshConfigUtils {
     public static getServerPath(profile?: imperative.IProfile): string {
         const serverPathMap: Record<string, string> =
-            vscode.workspace.getConfiguration("zowe-native-proto-vsce").get("serverPath") ?? {};
+            vscode.workspace.getConfiguration("zowe-native-proto-vsce").get("serverInstallPath") ?? {};
         return (
             (profile && serverPathMap[profile?.host]) ??
             process.env.ZOWE_OPT_SERVER_PATH ??
@@ -191,7 +191,7 @@ export class SshConfigUtils {
 
                         const result = await SshConfigUtils.validateConfig(testValidation);
                         step++;
-                        progress.report({ increment: (step / validationAttempts.length) * 100 });
+                        progress.report({ increment: 100 / validationAttempts.length });
 
                         if (result) {
                             validationResult = true;
@@ -212,7 +212,7 @@ export class SshConfigUtils {
 
                             const result = await SshConfigUtils.validateConfig(testValidation);
                             step++;
-                            progress.report({ increment: (step / foundPrivateKeys.length) * 100 });
+                            progress.report({ increment: 100 / foundPrivateKeys.length });
 
                             if (result) {
                                 validationResult = true;

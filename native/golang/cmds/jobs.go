@@ -43,8 +43,13 @@ func HandleListJobsRequest(conn *utils.StdioConn, params []byte) (result any, e 
 		return
 	}
 
-	returnedJobs := strings.Split(strings.TrimSpace(string(out)), "\n")
-
+	rawResponse := strings.TrimSpace(string(out))
+	if len(rawResponse) == 0 {
+		return jobs.ListJobsResponse{
+			Items: []t.Job{},
+		}, nil
+	}
+	returnedJobs := strings.Split(rawResponse, "\n")
 	jobsResponse := jobs.ListJobsResponse{
 		Items: make([]t.Job, len(returnedJobs)),
 	}
@@ -262,7 +267,7 @@ func HandleSubmitJobRequest(conn *utils.StdioConn, params []byte) (result any, e
 	result = jobs.SubmitJobResponse{
 		Success: true,
 		Dsname:  request.Dsname,
-		JobId:   string(out),
+		JobId:   strings.TrimRight(string(out), "\n"),
 	}
 	return
 }
@@ -284,7 +289,7 @@ func HandleSubmitUssRequest(conn *utils.StdioConn, params []byte) (result any, e
 	result = jobs.SubmitUssResponse{
 		Success: true,
 		Path:    request.Path,
-		JobId:   string(out),
+		JobId:   strings.TrimRight(string(out), "\n"),
 	}
 	return
 }
@@ -331,7 +336,7 @@ func HandleSubmitJclRequest(conn *utils.StdioConn, params []byte) (result any, e
 
 	result = jobs.SubmitJclResponse{
 		Success: true,
-		JobId:   string(out),
+		JobId:   strings.TrimRight(string(out), "\n"),
 	}
 	return
 }

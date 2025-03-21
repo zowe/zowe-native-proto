@@ -11,28 +11,28 @@
 
 import type { ICommandDefinition } from "@zowe/imperative";
 
-export const ViewUssFileDefinition: ICommandDefinition = {
+export const DownloadUssFileDefinition: ICommandDefinition = {
     handler: `${__dirname}/UssFile.handler`,
-    description: "View the contents of a USS file",
+    description: "Download the contents of a USS file",
     type: "command",
     name: "uss-file",
     aliases: ["uf", "uss"],
-    summary: "View USS file content",
+    summary: "Download USS file content",
     examples: [
         {
-            description: 'View the content of the USS file "/u/tsu/jcl/test"',
+            description: 'Download the content of the USS file "/u/tsu/jcl/test"',
             options: '"/u/tsu/jcl/test"',
         },
         {
             description:
-                'View the content of the USS file "/u/tsu/jcl/test" and pipe it into the hex viewer program xxd',
+                'Download the content of the USS file "/u/tsu/jcl/test" and pipe it into the hex viewer program xxd',
             options: '"/u/tsu/jcl/test" -b | xxd',
         },
     ],
     positionals: [
         {
             name: "file-path",
-            description: "The USS file which you would like to view the contents of.",
+            description: "The USS file which you would like to download the contents of.",
             type: "string",
             required: true,
         },
@@ -41,13 +41,20 @@ export const ViewUssFileDefinition: ICommandDefinition = {
         {
             name: "binary",
             aliases: ["b"],
-            description: "View content in binary form without converting to ASCII text",
+            description: "Download content in binary form without any conversions",
             type: "boolean",
         },
         {
             name: "encoding",
             aliases: ["ec"],
-            description: "The encoding for viewing a USS file.",
+            description: "The encoding for the USS file.",
+            defaultValue: null,
+            type: "string",
+        },
+        {
+            name: "directory",
+            aliases: ["d"],
+            description: "The directory for the downloaded USS file.",
             defaultValue: null,
             type: "string",
         },
