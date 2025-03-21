@@ -143,6 +143,7 @@ export class SshConfigUtils {
                     user: foundProfile?.profile?.user,
                     password: foundProfile?.profile?.password,
                 });
+
                 if (validConfig === undefined) return;
                 await SshConfigUtils.setProfile(validConfig, foundProfile.name);
                 return { ...foundProfile, profile: { ...foundProfile.profile, ...validConfig } };
@@ -656,7 +657,6 @@ export class SshConfigUtils {
 
         try {
             const privateKeyPath = newConfig.privateKey;
-            console.debug();
 
             if (!newConfig.user) {
                 newConfig.user = await vscode.window.showInputBox({
@@ -673,7 +673,6 @@ export class SshConfigUtils {
 
             await attemptConnection(newConfig);
         } catch (err) {
-            console.debug();
             const errorMessage = `${err}`;
 
             if (
@@ -728,6 +727,6 @@ export class SshConfigUtils {
                 return { ...configModifications, ...(await promptForPassword(newConfig)) };
             }
         }
-        return {};
+        return configModifications;
     }
 }
