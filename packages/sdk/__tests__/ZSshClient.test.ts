@@ -55,7 +55,7 @@ describe("ZSshClient", () => {
         jest.clearAllMocks();
     });
 
-    describe("create", () => {
+    describe("create function", () => {
         it("should start SSH client with default options", async () => {
             const sshStream = new EventEmitter();
             jest.spyOn(Client.prototype, "connect").mockImplementationOnce(function (_config: ConnectConfig) {
@@ -86,7 +86,7 @@ describe("ZSshClient", () => {
                 _command: string,
                 callback: ClientCallback,
             ) {
-                callback(sshError, undefined);
+                callback(sshError, undefined as any);
                 return this;
             });
             expect(ZSshClient.create(new SshSession(fakeSession))).rejects.toThrow(sshError);
@@ -197,7 +197,7 @@ describe("ZSshClient", () => {
         });
     });
 
-    describe("dispose", () => {
+    describe("dispose function", () => {
         it("should end SSH connection", () => {
             const endMock = jest.fn();
             const client: ZSshClient = new (ZSshClient as any)();
@@ -215,7 +215,7 @@ describe("ZSshClient", () => {
         });
     });
 
-    describe("request", () => {
+    describe("request function", () => {
         it("should send request that succeeds", async () => {
             const request: CommandRequest = { command: "ping" };
             const writeMock = jest.fn();
@@ -224,7 +224,7 @@ describe("ZSshClient", () => {
             const response = client.request(request);
             (client as any).requestEnd(JSON.stringify(rpcResponseGood));
             expect(await response).toEqual({ success: true });
-            expect(writeMock).toHaveBeenCalledWith(JSON.stringify(rpcRequest) + "\n");
+            expect(writeMock).toHaveBeenCalledWith(`${JSON.stringify(rpcRequest)}\n`);
         });
 
         it("should send request that fails", async () => {
@@ -234,15 +234,8 @@ describe("ZSshClient", () => {
             (client as any).mSshStream = { stdin: { write: writeMock } };
             const response = client.request(request);
             (client as any).requestEnd(JSON.stringify(rpcResponseBad));
-            let caughtError: Error | undefined;
-            try {
-                await response;
-            } catch (err) {
-                caughtError = err;
-            }
-            expect(caughtError).toBeDefined();
-            expect(caughtError?.message).toBe(rpcResponseBad.error?.message);
-            expect(writeMock).toHaveBeenCalledWith(JSON.stringify(rpcRequest) + "\n");
+            expect(response).rejects.toThrow(rpcResponseBad.error?.message);
+            expect(writeMock).toHaveBeenCalledWith(`${JSON.stringify(rpcRequest)}\n`);
         });
 
         it("should send request that times out", async () => {
@@ -252,155 +245,105 @@ describe("ZSshClient", () => {
             (client as any).mSshStream = { stdin: { write: writeMock } };
             const response = client.request(request);
             jest.advanceTimersToNextTimer();
-            let caughtError: (Error & { errorCode?: string }) | undefined;
-            try {
-                await response;
-            } catch (err) {
-                caughtError = err;
-            }
-            expect(caughtError).toBeDefined();
-            expect(caughtError?.errorCode).toBe("ETIMEDOUT");
-            expect(writeMock).toHaveBeenCalledWith(JSON.stringify(rpcRequest) + "\n");
+            expect(response).rejects.toThrow(expect.objectContaining({ errorCode: "ETIMEDOUT" }));
+            expect(writeMock).toHaveBeenCalledWith(`${JSON.stringify(rpcRequest)}\n`);
         });
     });
 
-    it("should receive ready message from Zowe server", async () => {
-        const sshStream = new EventEmitter();
-        const onStderrMock = jest.fn();
-        const onStdoutMock = jest.fn();
-        Object.defineProperty(sshStream, "stderr", { value: { on: onStderrMock } });
-        Object.defineProperty(sshStream, "stdout", { value: { on: onStdoutMock } });
-        jest.spyOn(Client.prototype, "connect").mockImplementationOnce(function (_config: ConnectConfig) {
-            this.emit("ready");
-            return this;
+    describe("callbacks", () => {
+        it("should receive ready message from Zowe server", async () => {
+            const sshStream = new EventEmitter();
+            const onStderrMock = jest.fn();
+            const onStdoutMock = jest.fn();
+            Object.defineProperty(sshStream, "stderr", { value: { on: onStderrMock } });
+            Object.defineProperty(sshStream, "stdout", { value: { on: onStdoutMock } });
+            const client: ZSshClient = new (ZSshClient as any)();
+            (client as any).mSshClient = {
+                exec: function (_command: string, callback: ClientCallback) {
+                    callback(undefined, sshStream as any);
+                    sshStream.emit("data", readyMessage);
+                    return this;
+                },
+            };
+            await (client as any).execAsync();
+            expect(onStderrMock).toHaveBeenCalledTimes(1);
+            expect(onStdoutMock).toHaveBeenCalledTimes(1);
         });
-        jest.spyOn(Client.prototype, "exec").mockImplementationOnce(function (
-            _command: string,
-            callback: ClientCallback,
-        ) {
-            callback(undefined, sshStream as any);
-            sshStream.emit("data", readyMessage);
-            return this;
+
+        it("should handle not found error from Zowe server", async () => {
+            const sshStream = new EventEmitter();
+            const client: ZSshClient = new (ZSshClient as any)();
+            (client as any).mSshClient = {
+                exec: function (_command: string, callback: ClientCallback) {
+                    callback(undefined, sshStream as any);
+                    sshStream.emit("data", "FSUM7351 not found");
+                    return this;
+                },
+            };
+            expect((client as any).execAsync()).rejects.toThrow(expect.objectContaining({ errorCode: "ENOTFOUND" }));
         });
-        await ZSshClient.create(new SshSession(fakeSession));
-        expect(onStderrMock).toHaveBeenCalledTimes(1);
-        expect(onStdoutMock).toHaveBeenCalledTimes(1);
-    });
 
-    it("should handle not found error from Zowe server", async () => {
-        const sshStream = new EventEmitter();
-        jest.spyOn(Client.prototype, "connect").mockImplementationOnce(function (_config: ConnectConfig) {
-            this.emit("ready");
-            return this;
+        it("should handle startup error from Zowe server", async () => {
+            const sshStream = new EventEmitter();
+            const client: ZSshClient = new (ZSshClient as any)();
+            (client as any).mSshClient = {
+                exec: function (_command: string, callback: ClientCallback) {
+                    callback(undefined, sshStream as any);
+                    sshStream.emit("data", "bad json");
+                    return this;
+                },
+            };
+            expect((client as any).execAsync()).rejects.toThrow("Error starting Zowe server");
         });
-        jest.spyOn(Client.prototype, "exec").mockImplementationOnce(function (
-            _command: string,
-            callback: ClientCallback,
-        ) {
-            callback(undefined, sshStream as any);
-            sshStream.emit("data", "FSUM7351 not found");
-            return this;
+
+        it("should process stderr data from Zowe server", async () => {
+            const request: CommandRequest = { command: "ping" };
+            const fakeStderr = new EventEmitter();
+            const sshStream = { stdin: { write: jest.fn() }, stdout: { on: jest.fn() }, stderr: fakeStderr };
+            const client: ZSshClient = new (ZSshClient as any)();
+            (client as any).mSshStream = (client as any).onReady(sshStream, readyMessage);
+            const response = client.request(request);
+            fakeStderr.emit("data", `${JSON.stringify(rpcResponseBad)}\n`);
+            expect(response).rejects.toThrow(rpcResponseBad.error?.message);
         });
-        let caughtError: (Error & { errorCode?: string }) | undefined;
-        try {
-            await ZSshClient.create(new SshSession(fakeSession));
-        } catch (err) {
-            caughtError = err;
-        }
-        expect(caughtError).toBeDefined();
-        expect(caughtError?.errorCode).toBe("ENOTFOUND");
-    });
 
-    it("should handle unknown error from Zowe server", async () => {
-        const sshStream = new EventEmitter();
-        jest.spyOn(Client.prototype, "connect").mockImplementationOnce(function (_config: ConnectConfig) {
-            this.emit("ready");
-            return this;
+        it("should process stdout data from Zowe server", async () => {
+            const request: CommandRequest = { command: "ping" };
+            const fakeStdout = new EventEmitter();
+            const sshStream = { stdin: { write: jest.fn() }, stdout: fakeStdout, stderr: { on: jest.fn() } };
+            const client: ZSshClient = new (ZSshClient as any)();
+            (client as any).mSshStream = (client as any).onReady(sshStream, readyMessage);
+            const response = client.request(request);
+            fakeStdout.emit("data", `${JSON.stringify(rpcResponseGood)}\n`);
+            expect(await response).toEqual({ success: true });
         });
-        jest.spyOn(Client.prototype, "exec").mockImplementationOnce(function (
-            _command: string,
-            callback: ClientCallback,
-        ) {
-            callback(undefined, sshStream as any);
-            sshStream.emit("data", "bad json");
-            return this;
+
+        it("should handle invalid response from Zowe server", async () => {
+            const request: CommandRequest = { command: "ping" };
+            const fakeStdout = new EventEmitter();
+            const sshStream = { stdin: { write: jest.fn() }, stdout: fakeStdout, stderr: { on: jest.fn() } };
+            const client: ZSshClient = new (ZSshClient as any)();
+            (client as any).mErrHandler = (err: Error) => {
+                throw err;
+            };
+            (client as any).mSshStream = (client as any).onReady(sshStream, readyMessage);
+            client.request(request);
+            expect(() => fakeStdout.emit("data", "bad json\n")).toThrow("Invalid JSON response");
         });
-        let caughtError: Error | undefined;
-        try {
-            await ZSshClient.create(new SshSession(fakeSession));
-        } catch (err) {
-            caughtError = err;
-        }
-        expect(caughtError).toBeDefined();
-        expect(caughtError?.message).toContain("Error starting Zowe server");
-    });
 
-    it("should process stderr data from Zowe server", async () => {
-        const request: CommandRequest = { command: "ping" };
-        const fakeStderr = new EventEmitter();
-        const sshStream = { stdin: { write: jest.fn() }, stdout: { on: jest.fn() }, stderr: fakeStderr };
-        const client: ZSshClient = new (ZSshClient as any)();
-        (client as any).mSshStream = (client as any).onReady(sshStream, readyMessage);
-        const response = client.request(request);
-        fakeStderr.emit("data", JSON.stringify(rpcResponseBad) + "\n");
-        let caughtError: Error | undefined;
-        try {
-            await response;
-        } catch (err) {
-            caughtError = err;
-        }
-        expect(caughtError).toBeDefined();
-        expect(caughtError?.message).toBe(rpcResponseBad.error?.message);
-    });
-
-    it("should process stdout data from Zowe server", async () => {
-        const request: CommandRequest = { command: "ping" };
-        const fakeStdout = new EventEmitter();
-        const sshStream = { stdin: { write: jest.fn() }, stdout: fakeStdout, stderr: { on: jest.fn() } };
-        const client: ZSshClient = new (ZSshClient as any)();
-        (client as any).mSshStream = (client as any).onReady(sshStream, readyMessage);
-        const response = client.request(request);
-        fakeStdout.emit("data", JSON.stringify(rpcResponseGood) + "\n");
-        expect(await response).toEqual({ success: true });
-    });
-
-    it("should handle invalid response from Zowe server", async () => {
-        const request: CommandRequest = { command: "ping" };
-        const fakeStdout = new EventEmitter();
-        const sshStream = { stdin: { write: jest.fn() }, stdout: fakeStdout, stderr: { on: jest.fn() } };
-        const client: ZSshClient = new (ZSshClient as any)();
-        (client as any).mErrHandler = (err: Error) => {
-            throw err;
-        };
-        (client as any).mSshStream = (client as any).onReady(sshStream, readyMessage);
-        client.request(request);
-        let caughtError: Error | undefined;
-        try {
-            fakeStdout.emit("data", "bad json\n");
-        } catch (err) {
-            caughtError = err;
-        }
-        expect(caughtError).toBeDefined();
-        expect(caughtError?.message).toContain("Invalid JSON response");
-    });
-
-    it("should handle unmapped response from Zowe server", async () => {
-        const request: CommandRequest = { command: "ping" };
-        const fakeStdout = new EventEmitter();
-        const sshStream = { stdin: { write: jest.fn() }, stdout: fakeStdout, stderr: { on: jest.fn() } };
-        const client: ZSshClient = new (ZSshClient as any)();
-        (client as any).mErrHandler = (err: Error) => {
-            throw err;
-        };
-        (client as any).mSshStream = (client as any).onReady(sshStream, readyMessage);
-        client.request(request);
-        let caughtError: Error | undefined;
-        try {
-            fakeStdout.emit("data", JSON.stringify({ ...rpcResponseGood, id: -1 }) + "\n");
-        } catch (err) {
-            caughtError = err;
-        }
-        expect(caughtError).toBeDefined();
-        expect(caughtError?.message).toContain("Missing promise for response ID");
+        it("should handle unmapped response from Zowe server", async () => {
+            const request: CommandRequest = { command: "ping" };
+            const fakeStdout = new EventEmitter();
+            const sshStream = { stdin: { write: jest.fn() }, stdout: fakeStdout, stderr: { on: jest.fn() } };
+            const client: ZSshClient = new (ZSshClient as any)();
+            (client as any).mErrHandler = (err: Error) => {
+                throw err;
+            };
+            (client as any).mSshStream = (client as any).onReady(sshStream, readyMessage);
+            client.request(request);
+            expect(() => fakeStdout.emit("data", `${JSON.stringify({ ...rpcResponseGood, id: -1 })}\n`)).toThrow(
+                "Missing promise for response ID",
+            );
+        });
     });
 });
