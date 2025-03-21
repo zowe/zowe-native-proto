@@ -67,6 +67,7 @@ int handle_tool_convert_dsect(ZCLIResult);
 int handle_tool_dynalloc(ZCLIResult);
 int handle_tool_display_symbol(ZCLIResult);
 int handle_tool_search(ZCLIResult);
+int handle_tool_run(ZCLIResult);
 
 // TODO(Kelosky):
 // help w/verbose examples
@@ -578,6 +579,15 @@ int main(int argc, char *argv[])
   tool_search.get_options().push_back(data_set_truncate_warn);
 
   tool_group.get_verbs().push_back(tool_search);
+
+  ZCLIVerb tool_run("run");
+  tool_run.set_description("run a program");
+  tool_run.set_zcli_verb_handler(handle_tool_run);
+  ZCLIPositional run_name("program");
+  run_name.set_description("name of program to run");
+  run_name.set_required(true);
+  tool_run.get_positionals().push_back(run_name);
+  tool_group.get_verbs().push_back(tool_run);
 
   // add all groups to the CLI
   zcli.get_groups().push_back(data_set_group);
@@ -1760,6 +1770,23 @@ int handle_tool_display_symbol(ZCLIResult result)
     return RTNCD_FAILURE;
   }
   cout << value << endl;
+
+  return RTNCD_SUCCESS;
+}
+
+int handle_tool_run(ZCLIResult result)
+{
+  int rc = 0;
+  string program(result.get_positional("program")->get_value());
+  transform(program.begin(), program.end(), program.begin(), ::toupper); // upper case
+
+  rc = zut_run(program);
+
+  if (0 != rc)
+  {
+    cerr << "Error: program '" << program << "' ended with rc: '" << rc << "'" << endl;
+    return RTNCD_FAILURE;
+  }
 
   return RTNCD_SUCCESS;
 }
