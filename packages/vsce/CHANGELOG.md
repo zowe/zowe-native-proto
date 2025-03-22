@@ -4,6 +4,10 @@ All notable changes to the "zowe-native-proto-vsce" extension will be documented
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+
+- Enhanced SSH profile validation to auto-deploy server when it is missing or out of date. [#44](https://github.com/zowe/zowe-native-proto/issues/44)
+
 ## `0.1.1`
 
 - Fixed issue where a jobs list request returns unexpected results whenever a search query does not match any jobs. [#217](https://github.com/zowe/zowe-native-proto/pull/217)

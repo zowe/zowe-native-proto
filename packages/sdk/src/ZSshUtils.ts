@@ -61,7 +61,7 @@ export class ZSshUtils {
         return ZSshUtils.sftp(session, async (sftp, ssh) => {
             await promisify(sftp.mkdir.bind(sftp))(remoteDir, { mode: 0o700 }).catch((err: SftpError) => {
                 if (err.code !== 4) throw err;
-                Logger.getAppLogger().debug(`Remote directory already exists: ${remoteDir}`);
+                Logger.getAppLogger().debug(`Remote directory already exists: ${serverPath}`);
             });
 
             // Track the previous progress percentage
@@ -111,14 +111,27 @@ export class ZSshUtils {
             for (const file of ZSshUtils.SERVER_BIN_FILES) {
                 await promisify(sftp.unlink.bind(sftp))(path.posix.join(remoteDir, file)).catch((err: SftpError) => {
                     if (err.code !== 2) throw err;
-                    Logger.getAppLogger().info(`Remote file does not exist: ${remoteDir}/${file}`);
+                    Logger.getAppLogger().info(`Remote file does not exist: ${serverPath}/${file}`);
                 });
             }
             await promisify(sftp.rmdir.bind(sftp))(remoteDir).catch((err: SftpError) => {
                 if (err.code !== 4) throw err;
-                Logger.getAppLogger().info(`Remote directory does not exist: ${remoteDir}`);
+                Logger.getAppLogger().info(`Remote directory does not exist: ${serverPath}`);
             });
         });
+    }
+
+    public static async checkIfOutdated(localFile: string, remoteChecksums?: Record<string, string>): Promise<boolean> {
+        if (remoteChecksums == null) {
+            Logger.getAppLogger().warn("Checksums not found, could not verify server");
+            return false;
+        }
+        const localChecksums: Record<string, string> = {};
+        for (const line of fs.readFileSync(localFile, "utf-8").trimEnd().split("\n")) {
+            const [checksum, file] = line.split(/\s+/);
+            localChecksums[file] = checksum;
+        }
+        return JSON.stringify(localChecksums) !== JSON.stringify(remoteChecksums);
     }
 
     private static async sftp<T>(

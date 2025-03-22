@@ -6,7 +6,7 @@
     "build": "tsc -b",
     "clean": "tsc -b --clean",
     "lint": "npx @biomejs/biome check --write src",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest __tests__/ --config ../../jest.config.js",
     "typedoc": "typedoc src/index.ts --out ../../doc/typedoc",
     "watch": "tsc -b -w"
   },

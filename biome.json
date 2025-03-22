@@ -7,7 +7,12 @@
 	},
 	"files": {
 		"ignoreUnknown": false,
-		"ignore": ["**/*.js", "**/*.json", "node_modules", "src/doc/gen"]
+		"ignore": [
+			"**/*.js",
+			"**/*.json",
+			"node_modules",
+			"src/doc/gen"
+		]
 	},
 	"formatter": {
 		"enabled": true,
@@ -22,7 +27,7 @@
 		"enabled": true,
 		"rules": {
 			"recommended": true,
-			"style":{
+			"style": {
 				"noNonNullAssertion": "off"
 			}
 		}
@@ -31,5 +36,19 @@
 		"formatter": {
 			"quoteStyle": "double"
 		}
-	}
+	},
+	"overrides": [
+		{
+			"include": [
+				"__tests__/**"
+			],
+			"linter": {
+				"rules": {
+					"suspicious": {
+						"noExplicitAny": "off"
+					}
+				}
+			}
+		}
+	]
 }

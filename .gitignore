@@ -1,6 +1,7 @@
 # Directories
 artifacts
 bin
+coverage
 dist
 dumps
 lib

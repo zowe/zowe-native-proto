@@ -290,6 +290,7 @@ async function artifacts(connection: Client) {
     const localDirs = ["packages/cli/bin", "packages/vsce/bin"];
     const artifactNames = ["c/zowex", "golang/zowed"];
     const paxFile = "server.pax.Z";
+    const checksumFile = "checksums.asc";
     const prePaxCmds = artifactNames.map((file) => `cp ${file} ${basename(file)} && chmod 700 ${basename(file)}`);
     const postPaxCmd = `rm ${artifactNames.map((file) => basename(file)).join(" ")}`;
     await runCommandInShell(
@@ -297,19 +298,22 @@ async function artifacts(connection: Client) {
         [
             `cd ${deployDirectory}`,
             ...prePaxCmds,
-            `pax -wvzf ${paxFile} ${artifactNames.map((file) => basename(file)).join(" ")}`,
+            `_BPXK_AUTOCVT=OFF sha256 -r ${artifactNames.map((file) => basename(file)).join(" ")} | iconv -f IBM-1047 -t ISO8859-1 > ${checksumFile}`,
+            `pax -wvzf ${paxFile} ${artifactNames.map((file) => basename(file)).join(" ")} ${checksumFile}`,
             postPaxCmd,
         ].join("\n"),
     );
     for (const localDir of localDirs) {
         mkdirSync(resolve(__dirname, `./../${localDir}`), { recursive: true });
-        if (localDirs.indexOf(localDir) === 0) {
-            await retrieve(connection, [paxFile], localDir);
-        } else {
-            cpSync(
-                resolve(__dirname, `./../${localDirs[0]}/${paxFile}`),
-                resolve(__dirname, `./../${localDir}/${paxFile}`),
-            );
+        for (const localFile of [paxFile, checksumFile]) {
+            if (localDirs.indexOf(localDir) === 0) {
+                await retrieve(connection, [localFile], localDir);
+            } else {
+                cpSync(
+                    resolve(__dirname, `./../${localDirs[0]}/${localFile}`),
+                    resolve(__dirname, `./../${localDir}/${localFile}`),
+                );
+            }
         }
     }
 }

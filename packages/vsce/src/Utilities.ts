@@ -11,11 +11,27 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
+import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Gui, imperative } from "@zowe/zowe-explorer-api";
 import * as vscode from "vscode";
 import { ZSshUtils } from "zowe-native-proto-sdk";
 import { SshClientCache } from "./SshClientCache";
 import { SshConfigUtils } from "./SshConfigUtils";
+
+export function deployWithProgress(session: SshSession, serverPath: string, localDir: string): Thenable<void> {
+    return Gui.withProgress(
+        {
+            location: vscode.ProgressLocation.Notification,
+            title: "Deploying Zowe SSH server...",
+        },
+        async (progress) => {
+            // Pass a callback function that will update the progress object
+            await ZSshUtils.installServer(session, serverPath, localDir, (progressIncrement) => {
+                progress.report({ increment: progressIncrement });
+            });
+        },
+    );
+}
 
 export function initLogger(context: vscode.ExtensionContext): void {
     const loggerConfigPath = path.join(context.extensionPath, "log4jsconfig.json");
@@ -46,18 +62,7 @@ export function registerCommands(context: vscode.ExtensionContext): vscode.Dispo
             const sshSession = ZSshUtils.buildSession(profile.profile);
             const serverPath = SshConfigUtils.getServerPath(profile.profile);
             const localDir = path.join(context.extensionPath, "bin");
-            await Gui.withProgress(
-                {
-                    location: vscode.ProgressLocation.Notification,
-                    title: "Deploying Zowe SSH server...",
-                },
-                async (progress) => {
-                    // Pass a callback function that will update the progress object
-                    await ZSshUtils.installServer(sshSession, serverPath, localDir, (progressIncrement) => {
-                        progress.report({ increment: progressIncrement });
-                    });
-                },
-            );
+            await deployWithProgress(sshSession, serverPath, localDir);
 
             await SshConfigUtils.showSessionInTree(profile.name!, true);
             const infoMsg = `Installed Zowe SSH server on ${profile.profile?.host ?? profile.name}`;

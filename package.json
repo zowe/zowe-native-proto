@@ -12,7 +12,7 @@
     "lint:go": "cd native/golang && golangci-lint run",
     "package": "npm run package --workspaces --if-present",
     "prepare": "husky",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "npm run test --workspaces --if-present",
     "tools": "tsx scripts/buildTools.ts",
     "watch": "npm run watch:native & npm run watch:client",
     "watch:client": "npm run watch --workspaces",
@@ -34,13 +34,17 @@
   ],
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
+    "@types/jest": "^29.5.14",
     "@types/node": "^22.13.4",
     "@types/ssh2": "^1.15.4",
     "@zowe/secrets-for-zowe-sdk": "^8.10.4",
     "chokidar": "^3",
     "husky": "^9.1.7",
+    "jest": "^29.7.0",
     "rimraf": "^6.0.1",
     "ssh2": "^1.16.0",
-    "tsx": "^4.19.3"
+    "ts-jest": "^29.2.6",
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.3"
   }
 }

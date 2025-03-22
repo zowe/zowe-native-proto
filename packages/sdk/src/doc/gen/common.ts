@@ -123,6 +123,7 @@ export interface Spool {
 export interface StatusMessage {
   status: string;
   message: string;
+  data?: { [key: string]: any};
 }
 
 //////////
