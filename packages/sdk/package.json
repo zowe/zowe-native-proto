@@ -5,8 +5,8 @@
   "scripts": {
     "build": "tsc -b",
     "clean": "tsc -b --clean",
-    "lint": "npx @biomejs/biome check --write src",
-    "test": "jest __tests__/ --config ../../jest.config.js",
+    "lint": "npx @biomejs/biome check --write src test",
+    "test": "c8 node --import tsx --experimental-test-module-mocks --test test/**/*.test.ts",
     "typedoc": "typedoc src/index.ts --out ../../doc/typedoc",
     "watch": "tsc -b -w"
   },
@@ -25,7 +25,8 @@
   "devDependencies": {
     "@types/node": "^22.10.7",
     "@types/ssh2": "^1.15.4",
-    "typedoc": "^0.27.6"
+    "typedoc": "^0.27.6",
+    "typescript": "^5.7.3"
   },
   "peerDependencies": {
     "@zowe/imperative": "^8.11.0",
