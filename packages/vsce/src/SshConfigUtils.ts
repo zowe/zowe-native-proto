@@ -629,7 +629,6 @@ export class SshConfigUtils {
         };
 
         const promptForPassword = async (config: ISshConfigExt): Promise<ISshConfigExt | undefined> => {
-
             for (let attempts = 0; attempts < 3; attempts++) {
                 const testPassword = await vscode.window.showInputBox({
                     title: `${config.user}@${config.hostname}'s password:`,
@@ -649,7 +648,6 @@ export class SshConfigUtils {
                         return undefined;
                     }
                     vscode.window.showErrorMessage(`Password Authentication Failed (${attempts + 1}/3)`);
-
                 }
             }
             return undefined;
