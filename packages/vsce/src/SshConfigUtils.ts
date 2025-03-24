@@ -26,6 +26,9 @@ import { type ISshConfigExt, ZClientUtils, ZSshClient } from "zowe-native-proto-
 
 // biome-ignore lint/complexity/noStaticOnlyClass: Utilities class has static methods
 export class SshConfigUtils {
+    public static migratedConfigs: ISshConfigExt[];
+    public static validationResult: ISshConfigExt | undefined;
+
     public static getServerPath(profile?: imperative.IProfile): string {
         const serverPathMap: Record<string, string> =
             vscode.workspace.getConfiguration("zowe-native-proto-vsce").get("serverInstallPath") ?? {};
@@ -51,10 +54,10 @@ export class SshConfigUtils {
         );
 
         // Get configs from ~/.ssh/config
-        const migratedConfigs = await ZClientUtils.migrateSshConfig();
+        SshConfigUtils.migratedConfigs = await ZClientUtils.migrateSshConfig();
 
         // Parse to remove migratable configs that already exist on the team config
-        const filteredMigratedConfigs = migratedConfigs.filter(
+        const filteredMigratedConfigs = SshConfigUtils.migratedConfigs.filter(
             (migratedConfig) => !sshProfiles.some((sshProfile) => sshProfile.profile?.host === migratedConfig.hostname),
         );
 
@@ -171,13 +174,13 @@ export class SshConfigUtils {
         }
 
         // Attempt to validate with given URL/creds
-        let validationResult = await SshConfigUtils.validateConfig(selectedProfile);
+        SshConfigUtils.validationResult = await SshConfigUtils.validateConfig(selectedProfile);
 
         // If validateConfig returns a string, that string is the correct keyPassphrase
-        if (validationResult && Object.keys(validationResult).length >= 1) {
-            selectedProfile = { ...selectedProfile, ...validationResult };
+        if (SshConfigUtils.validationResult && Object.keys(SshConfigUtils.validationResult).length >= 1) {
+            selectedProfile = { ...selectedProfile, ...SshConfigUtils.validationResult };
         }
-        if (validationResult === undefined) {
+        if (SshConfigUtils.validationResult === undefined) {
             // Create a progress bar using the custom Gui.withProgress
             await Gui.withProgress(
                 {
@@ -186,7 +189,7 @@ export class SshConfigUtils {
                     cancellable: false,
                 },
                 async (progress, token) => {
-                    let validationAttempts = migratedConfigs.filter(
+                    let validationAttempts = SshConfigUtils.migratedConfigs.filter(
                         (config) => config.hostname === selectedProfile?.hostname,
                     );
 
@@ -212,7 +215,7 @@ export class SshConfigUtils {
                         progress.report({ increment: 100 / validationAttempts.length });
 
                         if (result) {
-                            validationResult = {};
+                            SshConfigUtils.validationResult = {};
                             if (typeof result === "string") {
                                 testValidation.keyPassphrase = result;
                             }
@@ -222,7 +225,7 @@ export class SshConfigUtils {
                     }
 
                     // Find private keys located at ~/.ssh/ and attempt to connect with them
-                    if (!validationResult) {
+                    if (!SshConfigUtils.validationResult) {
                         const foundPrivateKeys = await ZClientUtils.findPrivateKeys();
                         for (const privateKey of foundPrivateKeys) {
                             const testValidation: ISshConfigExt = selectedProfile!;
@@ -233,7 +236,7 @@ export class SshConfigUtils {
                             progress.report({ increment: 100 / foundPrivateKeys.length });
 
                             if (result) {
-                                validationResult = {};
+                                SshConfigUtils.validationResult = {};
                                 if (typeof result === "string") {
                                     testValidation.keyPassphrase = result;
                                     selectedProfile = testValidation;
@@ -255,7 +258,7 @@ export class SshConfigUtils {
             },
             async (progress) => {
                 // If not validated, remove private key from profile and get the password
-                if (validationResult === undefined) {
+                if (SshConfigUtils.validationResult === undefined) {
                     selectedProfile!.privateKey = undefined;
 
                     // Show the password input prompt
