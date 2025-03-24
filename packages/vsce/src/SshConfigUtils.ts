@@ -145,6 +145,7 @@ export class SshConfigUtils {
                 });
 
                 if (validConfig === undefined) return;
+
                 await SshConfigUtils.setProfile(validConfig, foundProfile.name);
                 return { ...foundProfile, profile: { ...foundProfile.profile, ...validConfig } };
             }
@@ -176,7 +177,6 @@ export class SshConfigUtils {
         if (validationResult && Object.keys(validationResult).length >= 1) {
             selectedProfile = { ...selectedProfile, ...validationResult };
         }
-
         if (validationResult === undefined) {
             // Create a progress bar using the custom Gui.withProgress
             await Gui.withProgress(
@@ -266,15 +266,14 @@ export class SshConfigUtils {
                         ignoreFocusOut: true,
                     });
 
-                    if (!passwordPrompt) return;
-
-                    if (!selectedProfile) return;
+                    if (!passwordPrompt || !selectedProfile) return;
 
                     // Validate the password
                     const validatePassword = await SshConfigUtils.validateConfig({
                         ...selectedProfile,
                         password: passwordPrompt,
                     });
+
                     if (validatePassword && Object.keys(validatePassword).length === 0) {
                         selectedProfile.password = passwordPrompt;
                     } else if (validatePassword && Object.keys(validatePassword).length >= 1) {
@@ -604,7 +603,7 @@ export class SshConfigUtils {
         } catch (err) {}
     }
     private static async validateConfig(newConfig: ISshConfigExt): Promise<Partial<ISshConfigExt> | undefined> {
-        const configModifications: Partial<ISshConfigExt> | undefined = {};
+        const configModifications: ISshConfigExt | undefined = {};
         const attemptConnection = async (config: ISshConfigExt): Promise<boolean> => {
             return new Promise((resolve, reject) => {
                 const sshClient = new Client();
@@ -632,18 +631,18 @@ export class SshConfigUtils {
 
         const promptForPassword = async (config: ISshConfigExt): Promise<Partial<ISshConfigExt> | undefined> => {
             for (let attempts = 0; attempts < 3; attempts++) {
-                config.password = await vscode.window.showInputBox({
+                const testPassword = await vscode.window.showInputBox({
                     title: `${config.user}@${config.hostname}'s password:`,
                     password: true,
                     placeHolder: "Enter your password",
                     ignoreFocusOut: true,
                 });
 
-                if (!config.password) return undefined;
+                if (!testPassword) return undefined;
 
                 try {
-                    await attemptConnection(config);
-                    return { password: config.password };
+                    await attemptConnection({ ...config, password: testPassword });
+                    return { password: testPassword };
                 } catch (error) {
                     if (`${error}`.includes("FOTS1668")) {
                         vscode.window.showErrorMessage("Password Expired on Target System");
@@ -659,19 +658,19 @@ export class SshConfigUtils {
             const privateKeyPath = newConfig.privateKey;
 
             if (!newConfig.user) {
-                newConfig.user = await vscode.window.showInputBox({
+                const userModification = await vscode.window.showInputBox({
                     title: `Enter user for host: '${newConfig.hostname}'`,
                     placeHolder: "Enter the user for the target host",
                     ignoreFocusOut: true,
                 });
-                configModifications.user = newConfig.user;
+                configModifications.user = userModification;
             }
 
             if ((!privateKeyPath || !readFileSync(path.normalize(privateKeyPath), "utf-8")) && !newConfig.password) {
                 return { ...configModifications, ...(await promptForPassword(newConfig)) };
             }
 
-            await attemptConnection(newConfig);
+            await attemptConnection({ ...newConfig, ...configModifications });
         } catch (err) {
             const errorMessage = `${err}`;
 
@@ -684,16 +683,16 @@ export class SshConfigUtils {
             }
 
             if (errorMessage.includes("Invalid username")) {
-                newConfig.user = await vscode.window.showInputBox({
+                const testUser = await vscode.window.showInputBox({
                     title: `Enter user for host: '${newConfig.hostname}'`,
                     placeHolder: "Enter the user for the target host",
                     ignoreFocusOut: true,
                 });
 
-                if (!newConfig.user) return undefined;
+                if (!testUser) return undefined;
                 try {
-                    await attemptConnection(newConfig);
-                    return { user: newConfig.user };
+                    await attemptConnection({ ...newConfig, user: testUser });
+                    return { user: testUser };
                 } catch {
                     return undefined;
                 }
@@ -703,7 +702,7 @@ export class SshConfigUtils {
                 const privateKeyPath = newConfig.privateKey;
 
                 for (let attempts = 0; attempts < 3; attempts++) {
-                    newConfig.keyPassphrase = await vscode.window.showInputBox({
+                    const testKeyPassphrase = await vscode.window.showInputBox({
                         title: `Enter passphrase for key '${privateKeyPath}'`,
                         password: true,
                         placeHolder: "Enter passphrase for key",
@@ -711,15 +710,18 @@ export class SshConfigUtils {
                     });
 
                     try {
-                        await attemptConnection(newConfig);
-                        return { ...configModifications, keyPassphrase: newConfig.keyPassphrase };
+                        await attemptConnection({
+                            ...newConfig,
+                            ...configModifications,
+                            keyPassphrase: testKeyPassphrase,
+                        });
+                        return { ...configModifications, keyPassphrase: testKeyPassphrase };
                     } catch (error) {
                         if (!`${error}`.includes("integrity check failed")) break;
                         vscode.window.showErrorMessage(`Passphrase Authentication Failed (${attempts + 1}/3)`);
                     }
                 }
-                newConfig.keyPassphrase = undefined;
-                newConfig.privateKey = undefined;
+
                 return undefined;
             }
 
