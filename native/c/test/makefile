@@ -10,12 +10,16 @@
 #
 CXX=xlc++
 CC=xlc
+
+# https://www.ibm.com/docs/en/hla-and-tf/1.6?topic=options-assembler
+# https://www.ibm.com/docs/en/zos/3.1.0?topic=descriptions-as-use-hlasm-assembler-produce-object-files
 ASM=as
 BIND=ld
 
 # https://www.ibm.com/docs/en/zos/3.1.0?topic=bor-binder-options
-# https://www.ibm.com/docs/en/zos/2.2.0?topic=descriptions-ld-link-object-files
-BIND_FLAGS = -bRMODE=ANY -bAMODE=64
+# https://www.ibm.com/docs/en/zos/3.1.0?topic=descriptions-ld-link-object-files
+BIND_FLAGS = -bRMODE=ANY
+BIND_FLAGS_64 = -bRMODE=ANY -bAMODE=64
 
 MTL_OPTS=metal,\
  langlvl(extended),\
@@ -89,7 +93,7 @@ ASM_FLAGS+=--noverbose
 .END
 
 
-all: testrcvy
+all: testrcvy testasm1 testasm4
 
 #
 # Testing utilities
@@ -101,7 +105,19 @@ testrcvy.o: testrcvy.s
 	$(ASM) $(ASM_FLAGS) -a=$*.asm.lst $(MACLIBS) -o $@ $^
 
 testrcvy: testrcvy.o
-	$(BIND) $(BIND_FLAGS) -V -eMAIN -o $@ $^ > $*.bind.lst
+	$(BIND) $(BIND_FLAGS_64) -V -eMAIN -o $@ $^ > $*.bind.lst
+
+testasm1.o: testasm1.s
+	$(ASM) $(ASM_FLAGS) -a=$*.asm.lst $(MACLIBS) -o $@ $^
+
+testasm4.o: testasm4.s
+	$(ASM) $(ASM_FLAGS) -a=$*.asm.lst $(MACLIBS) -o $@ $^
+
+testasm1: testasm1.o
+	$(BIND) $(BIND_FLAGS) -V -eTESTASM1 -o $@ $^ > $*.bind.lst
+
+testasm4: testasm4.o
+	$(BIND) $(BIND_FLAGS_64) -V -eTESTASM4 -o $@ $^ > $*.bind.lst
 
 clean:
 	rm -f *.o

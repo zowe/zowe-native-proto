@@ -20,6 +20,23 @@ import (
 )
 
 var logFile *os.File
+var verboseLogging bool
+
+// IsVerboseLogging returns whether verbose logging is enabled
+func IsVerboseLogging() bool {
+	return verboseLogging
+}
+
+// LogDebug logs a debug message to the log file if verbose logging is enabled
+func LogDebug(format string, args ...any) {
+	if !verboseLogging {
+		return
+	}
+	_, err := logFile.WriteString(fmt.Sprintf("[DEBUG] "+format, args...) + "\n")
+	if err != nil {
+		log.Fatalln("Failed to write to log file:", err)
+	}
+}
 
 // LogError logs an error to the log file
 func LogError(format string, args ...any) {
@@ -37,7 +54,7 @@ func LogError(format string, args ...any) {
 	// If log file size exceeds 10MB, truncate and reopen the file
 	if info.Size() > 10*1024*1024 {
 		logFile.Close()
-		InitLogger(true)
+		InitLogger(true, verboseLogging)
 		_, _ = logFile.WriteString("Log file truncated due to size limit\n")
 	}
 }
@@ -56,7 +73,8 @@ func PrintErrorResponse(details t.ErrorDetails, rpcId *int) {
 }
 
 // InitLogger initializes the logger
-func InitLogger(truncate bool) {
+func InitLogger(truncate bool, verbose bool) {
+	verboseLogging = verbose
 	access := os.O_APPEND
 	if truncate {
 		access = os.O_TRUNC
@@ -68,4 +86,7 @@ func InitLogger(truncate bool) {
 	}
 
 	logFile = file
+	if verbose {
+		LogDebug("Verbose logging enabled")
+	}
 }

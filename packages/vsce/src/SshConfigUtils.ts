@@ -474,10 +474,7 @@ export class SshConfigUtils {
         return selectedProfile;
     }
 
-    private static async setProfile(
-        selectedConfig: Partial<ISshConfigExt> | undefined,
-        updatedProfile?: string,
-    ): Promise<void> {
+    private static async setProfile(selectedConfig: ISshConfigExt | undefined, updatedProfile?: string): Promise<void> {
         // Profile information
         const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
         const profCache = zoweExplorerApi.getExplorerExtenderApi().getProfilesCache();
@@ -602,8 +599,8 @@ export class SshConfigUtils {
             await config.save(false);
         } catch (err) {}
     }
-    private static async validateConfig(newConfig: ISshConfigExt): Promise<Partial<ISshConfigExt> | undefined> {
-        const configModifications: ISshConfigExt | undefined = {};
+
+    private static async validateConfig(newConfig: ISshConfigExt): Promise<ISshConfigExt | undefined> {
         const attemptConnection = async (config: ISshConfigExt): Promise<boolean> => {
             return new Promise((resolve, reject) => {
                 const sshClient = new Client();
@@ -629,9 +626,10 @@ export class SshConfigUtils {
             });
         };
 
-        const promptForPassword = async (config: ISshConfigExt): Promise<Partial<ISshConfigExt> | undefined> => {
+        const promptForPassword = async (config: ISshConfigExt): Promise<ISshConfigExt | undefined> => {
+            let passwordAttempts = 0;
             for (let attempts = 0; attempts < 3; attempts++) {
-                const testPassword = await vscode.window.showInputBox({
+                const testPassword = await vscode.window.showInputBox({ await vscode.window.showInputBox({
                     title: `${config.user}@${config.hostname}'s password:`,
                     password: true,
                     placeHolder: "Enter your password",
