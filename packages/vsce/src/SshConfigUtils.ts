@@ -598,7 +598,7 @@ export class SshConfigUtils {
             await config.save(false);
         } catch (err) {}
     }
-    private static async validateConfig(newConfig: ISshConfigExt): Promise<Partial<ISshConfigExt> | undefined> {
+    private static async validateConfig(newConfig: ISshConfigExt): Promise<ISshConfigExt | undefined> {
         const attemptConnection = async (config: ISshConfigExt): Promise<boolean> => {
             return new Promise((resolve, reject) => {
                 const sshClient = new Client();
@@ -630,7 +630,7 @@ export class SshConfigUtils {
             });
         };
 
-        const promptForPassword = async (config: ISshConfigExt): Promise<Partial<ISshConfigExt> | undefined> => {
+        const promptForPassword = async (config: ISshConfigExt): Promise<ISshConfigExt | undefined> => {
             let passwordAttempts = 0;
             while (passwordAttempts < 3) {
                 config.password = await vscode.window.showInputBox({
