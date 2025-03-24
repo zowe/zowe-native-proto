@@ -177,6 +177,7 @@ export class SshConfigUtils {
         if (validationResult && Object.keys(validationResult).length >= 1) {
             selectedProfile = { ...selectedProfile, ...validationResult };
         }
+
         if (validationResult === undefined) {
             // Create a progress bar using the custom Gui.withProgress
             await Gui.withProgress(
@@ -628,6 +629,7 @@ export class SshConfigUtils {
         };
 
         const promptForPassword = async (config: ISshConfigExt): Promise<ISshConfigExt | undefined> => {
+
             for (let attempts = 0; attempts < 3; attempts++) {
                 const testPassword = await vscode.window.showInputBox({
                     title: `${config.user}@${config.hostname}'s password:`,
@@ -647,6 +649,7 @@ export class SshConfigUtils {
                         return undefined;
                     }
                     vscode.window.showErrorMessage(`Password Authentication Failed (${attempts + 1}/3)`);
+
                 }
             }
             return undefined;
@@ -719,7 +722,6 @@ export class SshConfigUtils {
                         vscode.window.showErrorMessage(`Passphrase Authentication Failed (${attempts + 1}/3)`);
                     }
                 }
-
                 return undefined;
             }
 
