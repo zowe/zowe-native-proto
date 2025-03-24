@@ -631,7 +631,7 @@ export class SshConfigUtils {
         const promptForPassword = async (config: ISshConfigExt): Promise<ISshConfigExt | undefined> => {
             for (let attempts = 0; attempts < 3; attempts++) {
                 const testPassword = await vscode.window.showInputBox({
-                    title: `${config.user}@${config.hostname}'s password:`,
+                    title: `${configModifications.user ?? config.user}@${config.hostname}'s password:`,
                     password: true,
                     placeHolder: "Enter your password",
                     ignoreFocusOut: true,
@@ -640,7 +640,7 @@ export class SshConfigUtils {
                 if (!testPassword) return undefined;
 
                 try {
-                    await attemptConnection({ ...config, password: testPassword });
+                    await attemptConnection({ ...config, ...configModifications, password: testPassword });
                     return { password: testPassword };
                 } catch (error) {
                     if (`${error}`.includes("FOTS1668")) {
@@ -727,6 +727,7 @@ export class SshConfigUtils {
                 return { ...configModifications, ...(await promptForPassword(newConfig)) };
             }
         }
+        console.debug();
         return configModifications;
     }
 }
