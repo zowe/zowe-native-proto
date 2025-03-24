@@ -9,16 +9,16 @@
  *
  */
 
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, Stats, statSync } from "fs";
-import * as readline from "readline/promises";
-import { basename, resolve } from "path";
-import { Client, ClientCallback, SFTPWrapper } from "ssh2";
+import * as fs from "node:fs";
+import { basename, resolve } from "node:path";
+import * as readline from "node:readline/promises";
+import { Client, type ClientCallback, type SFTPWrapper } from "ssh2";
 
-let config: any;
+let config: Record<string, any>;
 
 try {
     console.log(resolve(__dirname, "./../config.local.json"));
-    config = JSON.parse(readFileSync(resolve(__dirname, "./../config.local.json")).toString());
+    config = JSON.parse(fs.readFileSync(resolve(__dirname, "./../config.local.json")).toString());
 } catch (e) {
     console.log("You must create config.local.json (model from config.default.jsonc) in same directory");
 }
@@ -26,10 +26,10 @@ try {
 const host = config.host;
 const port = config.port ?? 22;
 const username = config.username;
-let privateKey: any;
+let privateKey: Buffer | undefined;
 const password = config.password;
 try {
-    privateKey = readFileSync(config.privateKey);
+    privateKey = fs.readFileSync(config.privateKey);
 } catch (e) {}
 
 const localDeployDir = "./../native"; // from here
@@ -175,16 +175,16 @@ function getServerFiles(dir = "") {
             if (0 === index) {
                 // do nothing
             } else {
-                let stats: Stats;
+                let stats: fs.Stats;
                 try {
-                    stats = statSync(resolve(__dirname, `${localDeployDir}/${arg}`));
+                    stats = fs.statSync(resolve(__dirname, `${localDeployDir}/${arg}`));
                 } catch (e) {
                     console.log(`Error: input '${arg}' is not found`);
                     process.exit(1);
                 }
 
                 if (stats.isDirectory()) {
-                    const files = readdirSync(resolve(__dirname, `${localDeployDir}/${arg}`), {
+                    const files = fs.readdirSync(resolve(__dirname, `${localDeployDir}/${arg}`), {
                         withFileTypes: true,
                     });
                     for (const entry of files) {
@@ -204,7 +204,7 @@ function getServerFiles(dir = "") {
     }
 
     const filesList: string[] = [];
-    const files = readdirSync(resolve(__dirname, `${localDeployDir}/${dir}`), {
+    const files = fs.readdirSync(resolve(__dirname, `${localDeployDir}/${dir}`), {
         withFileTypes: true,
     });
 
@@ -220,7 +220,7 @@ function getServerFiles(dir = "") {
 function getDirs(next = "") {
     const dirs: string[] = [];
 
-    const readDirs = readdirSync(resolve(__dirname, `${localDeployDir}/${next}`), { withFileTypes: true });
+    const readDirs = fs.readdirSync(resolve(__dirname, `${localDeployDir}/${next}`), { withFileTypes: true });
     for (const dir of readDirs) {
         if (dir.isDirectory()) {
             const newDir = `${dir.name}/`;
@@ -287,10 +287,10 @@ async function getDumps(connection: Client) {
 }
 
 async function artifacts(connection: Client) {
-    const localDirs = ["packages/cli/bin", "packages/vsce/bin"];
     const artifactNames = ["c/zowex", "golang/zowed"];
-    const paxFile = "server.pax.Z";
-    const checksumFile = "checksums.asc";
+    const localDirs = ["packages/cli/bin", "packages/vsce/bin"];
+    const localFiles = ["server.pax.Z", "checksums.asc"];
+    const [paxFile, checksumFile] = localFiles;
     const prePaxCmds = artifactNames.map((file) => `cp ${file} ${basename(file)} && chmod 700 ${basename(file)}`);
     const postPaxCmd = `rm ${artifactNames.map((file) => basename(file)).join(" ")}`;
     await runCommandInShell(
@@ -304,12 +304,12 @@ async function artifacts(connection: Client) {
         ].join("\n"),
     );
     for (const localDir of localDirs) {
-        mkdirSync(resolve(__dirname, `./../${localDir}`), { recursive: true });
-        for (const localFile of [paxFile, checksumFile]) {
+        fs.mkdirSync(resolve(__dirname, `./../${localDir}`), { recursive: true });
+        for (const localFile of localFiles) {
             if (localDirs.indexOf(localDir) === 0) {
                 await retrieve(connection, [localFile], localDir);
             } else {
-                cpSync(
+                fs.cpSync(
                     resolve(__dirname, `./../${localDirs[0]}/${localFile}`),
                     resolve(__dirname, `./../${localDir}/${localFile}`),
                 );
@@ -369,7 +369,7 @@ async function retrieve(connection: Client, files: string[], targetDir: string) 
 
             for (let i = 0; i < files.length; i++) {
                 const absTargetDir = resolve(__dirname, `./../${targetDir}`);
-                if (!existsSync(`${absTargetDir}`)) mkdirSync(`${absTargetDir}`);
+                if (!fs.existsSync(`${absTargetDir}`)) fs.mkdirSync(`${absTargetDir}`);
                 const to = `${absTargetDir}/${files[i]}`;
                 const from = `${deployDirectory}/${files[i]}`;
                 // console.log(`from '${from}' to'${to}'`)
