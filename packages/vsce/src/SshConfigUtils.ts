@@ -166,6 +166,108 @@ export class SshConfigUtils {
         };
     }
 
+    // Function to show the QuickPick with dynamic top option
+    private static async showQuickPickWithCustomInput(): Promise<vscode.QuickPickItem | undefined> {
+        // Choose between adding a new SSH host, an existing team config profile, and migrating from config.
+        const qpItems: vscode.QuickPickItem[] = [
+            { label: "$(plus) Add New SSH Host..." },
+            ...SshConfigUtils.sshProfiles.map(({ name, profile }) => ({
+                label: name!,
+                description: profile!.host!,
+            })),
+            {
+                label: "Migrate From SSH Config",
+                kind: vscode.QuickPickItemKind.Separator,
+            },
+            ...SshConfigUtils.filteredMigratedConfigs.map(({ name, hostname }) => ({
+                label: name!,
+                description: hostname,
+            })),
+        ];
+
+        const quickPick = vscode.window.createQuickPick();
+        quickPick.items = qpItems;
+        quickPick.placeholder = "Select configured SSH host or enter user@host";
+
+        let value: undefined;
+
+        // Add the custom entry
+        const customItem = {
+            label: `> ${value}`, // Using ">" as a visual cue for custom input
+            description: "Custom SSH Host",
+            alwaysShow: true,
+        };
+
+        quickPick.onDidChangeValue((value) => {
+            if (value) {
+                // Update custom entry when something is typed in search bar
+                customItem.label = `> ${value}`;
+                // Update the QuickPick items with the custom entry at the top, if not already added
+                quickPick.items = [customItem, ...qpItems.filter((item) => item.label !== customItem.label)];
+            } else {
+                // Remove the custom entry if the search bar is cleared
+                quickPick.items = [...qpItems];
+            }
+        });
+
+        // Show the QuickPick
+        quickPick.show();
+
+        // Wait for selection
+        const result = await new Promise<vscode.QuickPickItem | undefined>((resolve) => {
+            quickPick.onDidAccept(() => {
+                resolve(quickPick.selectedItems[0]);
+                quickPick.hide();
+            });
+        });
+
+        if (result?.label.startsWith(">")) result.label = result.label.replace(">", "").trim();
+
+        return result;
+    }
+
+    private static async validatePassword() {
+        // Password loading bar
+        await Gui.withProgress(
+            {
+                location: vscode.ProgressLocation.Notification,
+                title: "Validating Password...",
+                cancellable: false,
+            },
+            async (progress) => {
+                // If not validated, remove private key from profile and get the password
+                if (SshConfigUtils.validationResult === undefined) {
+                    SshConfigUtils.selectedProfile!.privateKey = undefined;
+
+                    // Show the password input prompt
+                    const passwordPrompt = await vscode.window.showInputBox({
+                        title: `${SshConfigUtils.selectedProfile?.user}@${SshConfigUtils.selectedProfile?.hostname}'s password:`,
+                        password: true,
+                        placeHolder: "Enter your password",
+                        ignoreFocusOut: true,
+                    });
+
+                    if (!passwordPrompt || !SshConfigUtils.selectedProfile) return;
+
+                    // Validate the password
+                    const validatePassword = await SshConfigUtils.validateConfig({
+                        ...SshConfigUtils.selectedProfile,
+                        password: passwordPrompt,
+                    });
+
+                    if (validatePassword && Object.keys(validatePassword).length === 0) {
+                        SshConfigUtils.selectedProfile.password = passwordPrompt;
+                    } else if (validatePassword && Object.keys(validatePassword).length >= 1) {
+                        SshConfigUtils.selectedProfile = { ...SshConfigUtils.selectedProfile, ...validatePassword };
+                    } else {
+                        // vscode.window.showWarningMessage("Password Authentication Failed");
+                        return;
+                    }
+                }
+            },
+        );
+    }
+
     public static async showSessionInTree(profileName: string, visible: boolean): Promise<void> {
         // This method is a hack until the ZE API offers a method to show/hide profile in tree
         // See https://github.com/zowe/zowe-explorer-vscode/issues/3506
@@ -653,107 +755,5 @@ export class SshConfigUtils {
                 }
             },
         );
-    }
-
-    private static async validatePassword() {
-        // Password loading bar
-        await Gui.withProgress(
-            {
-                location: vscode.ProgressLocation.Notification,
-                title: "Validating Password...",
-                cancellable: false,
-            },
-            async (progress) => {
-                // If not validated, remove private key from profile and get the password
-                if (SshConfigUtils.validationResult === undefined) {
-                    SshConfigUtils.selectedProfile!.privateKey = undefined;
-
-                    // Show the password input prompt
-                    const passwordPrompt = await vscode.window.showInputBox({
-                        title: `${SshConfigUtils.selectedProfile?.user}@${SshConfigUtils.selectedProfile?.hostname}'s password:`,
-                        password: true,
-                        placeHolder: "Enter your password",
-                        ignoreFocusOut: true,
-                    });
-
-                    if (!passwordPrompt || !SshConfigUtils.selectedProfile) return;
-
-                    // Validate the password
-                    const validatePassword = await SshConfigUtils.validateConfig({
-                        ...SshConfigUtils.selectedProfile,
-                        password: passwordPrompt,
-                    });
-
-                    if (validatePassword && Object.keys(validatePassword).length === 0) {
-                        SshConfigUtils.selectedProfile.password = passwordPrompt;
-                    } else if (validatePassword && Object.keys(validatePassword).length >= 1) {
-                        SshConfigUtils.selectedProfile = { ...SshConfigUtils.selectedProfile, ...validatePassword };
-                    } else {
-                        // vscode.window.showWarningMessage("Password Authentication Failed");
-                        return;
-                    }
-                }
-            },
-        );
-    }
-
-    // Function to show the QuickPick with dynamic top option
-    private static async showQuickPickWithCustomInput(): Promise<vscode.QuickPickItem | undefined> {
-        // Choose between adding a new SSH host, an existing team config profile, and migrating from config.
-        const qpItems: vscode.QuickPickItem[] = [
-            { label: "$(plus) Add New SSH Host..." },
-            ...SshConfigUtils.sshProfiles.map(({ name, profile }) => ({
-                label: name!,
-                description: profile!.host!,
-            })),
-            {
-                label: "Migrate From SSH Config",
-                kind: vscode.QuickPickItemKind.Separator,
-            },
-            ...SshConfigUtils.filteredMigratedConfigs.map(({ name, hostname }) => ({
-                label: name!,
-                description: hostname,
-            })),
-        ];
-
-        const quickPick = vscode.window.createQuickPick();
-        quickPick.items = qpItems;
-        quickPick.placeholder = "Select configured SSH host or enter user@host";
-
-        let value: undefined;
-
-        // Add the custom entry
-        const customItem = {
-            label: `> ${value}`, // Using ">" as a visual cue for custom input
-            description: "Custom SSH Host",
-            alwaysShow: true,
-        };
-
-        quickPick.onDidChangeValue((value) => {
-            if (value) {
-                // Update custom entry when something is typed in search bar
-                customItem.label = `> ${value}`;
-                // Update the QuickPick items with the custom entry at the top, if not already added
-                quickPick.items = [customItem, ...qpItems.filter((item) => item.label !== customItem.label)];
-            } else {
-                // Remove the custom entry if the search bar is cleared
-                quickPick.items = [...qpItems];
-            }
-        });
-
-        // Show the QuickPick
-        quickPick.show();
-
-        // Wait for selection
-        const result = await new Promise<vscode.QuickPickItem | undefined>((resolve) => {
-            quickPick.onDidAccept(() => {
-                resolve(quickPick.selectedItems[0]);
-                quickPick.hide();
-            });
-        });
-
-        if (result?.label.startsWith(">")) result.label = result.label.replace(">", "").trim();
-
-        return result;
     }
 }
