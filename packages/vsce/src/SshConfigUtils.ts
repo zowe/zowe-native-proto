@@ -59,30 +59,22 @@ export class SshConfigUtils {
         // Get configs from ~/.ssh/config
         SshConfigUtils.migratedConfigs = await ZClientUtils.migrateSshConfig();
 
-        console.debug();
         // Parse to remove migratable configs that already exist on the team config
         SshConfigUtils.filteredMigratedConfigs = SshConfigUtils.migratedConfigs.filter(
             (migratedConfig) =>
                 !SshConfigUtils.sshProfiles.some((sshProfile) => sshProfile.profile?.host === migratedConfig.hostname),
         );
 
-        console.debug();
-        // If result is add new SSH host then create a new config, if not use migrated configs
-        SshConfigUtils.selectedProfile = SshConfigUtils.filteredMigratedConfigs.find(
-            ({ name, hostname }) => result?.label === name && result?.description === hostname,
-        );
-
-        console.debug();
-        // Prompt for a new profile name with the hostname (for adding a new config) or host value (for migrating from a config)
-        SshConfigUtils.selectedProfile = await SshConfigUtils.getNewProfileName(
-            SshConfigUtils.selectedProfile!,
-            profInfo.getTeamConfig(),
-        );
-
+        // Prompt user for ssh (new config, existing, migrating)
         const result = await SshConfigUtils.showQuickPickWithCustomInput();
 
         // If nothing selected, return
         if (!result) return;
+
+        // If result is add new SSH host then create a new config, if not use migrated configs
+        SshConfigUtils.selectedProfile = SshConfigUtils.filteredMigratedConfigs.find(
+            ({ name, hostname }) => result?.label === name && result?.description === hostname,
+        );
 
         if (result.description === "Custom SSH Host") {
             SshConfigUtils.selectedProfile = await SshConfigUtils.createNewConfig(result.label, false);
@@ -90,6 +82,7 @@ export class SshConfigUtils {
             SshConfigUtils.selectedProfile = await SshConfigUtils.createNewConfig();
         }
 
+        // If an existing team config profile was selected
         if (!SshConfigUtils.selectedProfile) {
             const foundProfile = SshConfigUtils.sshProfiles.find(({ name }) => name === result.label);
             if (foundProfile) {
@@ -108,6 +101,8 @@ export class SshConfigUtils {
                 return { ...foundProfile, profile: { ...foundProfile.profile, ...validConfig } };
             }
         }
+
+        // Current directory open in vscode window
         const workspaceDir = ZoweVsCodeExtension.workspaceRoot;
 
         // Prioritize creating a team config in the local workspace if it exists even if a global config exists
@@ -119,6 +114,12 @@ export class SshConfigUtils {
             await SshConfigUtils.createZoweSchema(true);
         }
         ////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        // Prompt for a new profile name with the hostname (for adding a new config) or host value (for migrating from a config)
+        SshConfigUtils.selectedProfile = await SshConfigUtils.getNewProfileName(
+            SshConfigUtils.selectedProfile!,
+            profInfo.getTeamConfig(),
+        );
 
         if (!SshConfigUtils.selectedProfile?.name) {
             vscode.window.showWarningMessage("SSH setup cancelled.");
