@@ -92,7 +92,7 @@ type Spool struct {
 
 // StatusMessage represents the status of `zowed` and serves as a health check
 type StatusMessage struct {
-	Status  string          `json:"status"`
-	Message string          `json:"message"`
-	Data    *map[string]any `json:"data,omitempty"`
+	Status  string         `json:"status"`
+	Message string         `json:"message"`
+	Data    map[string]any `json:"data,omitempty"`
 }

@@ -51,8 +51,10 @@ func LoadChecksums() map[string]string {
 	checksumsFile := "checksums.asc"
 	file, err := os.Open(checksumsFile)
 	if os.IsNotExist(err) {
+		// Checksums file does not exist for dev builds
 		return nil
 	} else if err != nil {
+		LogError("Failed to open checksums file: %v", err)
 		panic(err)
 	}
 	defer file.Close()
