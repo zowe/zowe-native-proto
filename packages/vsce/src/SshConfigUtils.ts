@@ -136,10 +136,6 @@ export class SshConfigUtils {
         }
 
         if (SshConfigUtils.validationResult === undefined) {
-            // Remove instances from migrated configs where the privateKey was already attempted to avoid prompt duplication
-            SshConfigUtils.migratedConfigs = SshConfigUtils.migratedConfigs.filter(
-                (obj) => obj.privateKey !== SshConfigUtils.selectedProfile?.privateKey,
-            );
             await SshConfigUtils.validateFoundPrivateKeys();
         }
         if (SshConfigUtils.validationResult === undefined) {
@@ -687,42 +683,6 @@ export class SshConfigUtils {
                 cancellable: false,
             },
             async (progress, token) => {
-                let validationAttempts = SshConfigUtils.migratedConfigs.filter(
-                    (config) => config.hostname === SshConfigUtils.selectedProfile?.hostname,
-                );
-
-                // If multiple matches exist, narrow down by user
-                if (validationAttempts.length > 1 && SshConfigUtils.selectedProfile?.user) {
-                    validationAttempts = validationAttempts.filter(
-                        (config) => config.user === SshConfigUtils.selectedProfile?.user,
-                    );
-                } else {
-                    // If no user is specified, allow all configs where the hostname matches
-                    validationAttempts = validationAttempts.filter(
-                        (config) =>
-                            !SshConfigUtils.selectedProfile?.user ||
-                            config.user === SshConfigUtils.selectedProfile?.user,
-                    );
-                }
-
-                // Iterate over filtered validation attempts
-                let step = 0;
-                for (const profile of validationAttempts) {
-                    const testValidation: ISshConfigExt = profile;
-
-                    const result = await SshConfigUtils.validateConfig(testValidation);
-                    step++;
-                    progress.report({ increment: 100 / validationAttempts.length });
-
-                    if (result) {
-                        SshConfigUtils.validationResult = {};
-                        if (Object.keys(result).length >= 1) {
-                            SshConfigUtils.selectedProfile = { ...SshConfigUtils.selectedProfile, ...result };
-                        }
-                        break;
-                    }
-                }
-
                 // Find private keys located at ~/.ssh/ and attempt to connect with them
                 if (!SshConfigUtils.validationResult) {
                     const foundPrivateKeys = await ZClientUtils.findPrivateKeys();
@@ -730,7 +690,6 @@ export class SshConfigUtils {
                         const testValidation: ISshConfigExt = SshConfigUtils.selectedProfile!;
                         testValidation.privateKey = privateKey;
                         const result = await SshConfigUtils.validateConfig(testValidation);
-                        step++;
                         progress.report({ increment: 100 / foundPrivateKeys.length });
 
                         if (result) {
