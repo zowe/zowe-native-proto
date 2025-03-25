@@ -82,6 +82,7 @@ export class SshConfigUtils {
             SshConfigUtils.selectedProfile = await SshConfigUtils.createNewConfig();
         }
 
+        console.debug();
         // If an existing team config profile was selected
         if (!SshConfigUtils.selectedProfile) {
             const foundProfile = SshConfigUtils.sshProfiles.find(({ name }) => name === result.label);
@@ -135,10 +136,15 @@ export class SshConfigUtils {
         }
 
         if (SshConfigUtils.validationResult === undefined) {
+            // Remove instances from migrated configs where the privateKey was already attempted to avoid prompt duplication
+            SshConfigUtils.migratedConfigs = SshConfigUtils.migratedConfigs.filter(
+                (obj) => obj.privateKey !== SshConfigUtils.selectedProfile?.privateKey,
+            );
             await SshConfigUtils.validateFoundPrivateKeys();
         }
-
-        await SshConfigUtils.validatePassword();
+        if (SshConfigUtils.validationResult === undefined) {
+            await SshConfigUtils.validatePassword();
+        }
 
         // If no private key or password is on the profile then there is no possible validation combination, thus return
         if (!SshConfigUtils.selectedProfile?.privateKey && !SshConfigUtils.selectedProfile?.password) {
@@ -238,26 +244,12 @@ export class SshConfigUtils {
                 // If not validated, remove private key from profile and get the password
                 if (SshConfigUtils.validationResult === undefined) {
                     SshConfigUtils.selectedProfile!.privateKey = undefined;
-
-                    // Show the password input prompt
-                    const passwordPrompt = await vscode.window.showInputBox({
-                        title: `${SshConfigUtils.selectedProfile?.user}@${SshConfigUtils.selectedProfile?.hostname}'s password:`,
-                        password: true,
-                        placeHolder: "Enter your password",
-                        ignoreFocusOut: true,
-                    });
-
-                    if (!passwordPrompt || !SshConfigUtils.selectedProfile) return;
+                    if (!SshConfigUtils.selectedProfile) return;
 
                     // Validate the password
-                    const validatePassword = await SshConfigUtils.validateConfig({
-                        ...SshConfigUtils.selectedProfile,
-                        password: passwordPrompt,
-                    });
+                    const validatePassword = await SshConfigUtils.validateConfig(SshConfigUtils.selectedProfile);
 
-                    if (validatePassword && Object.keys(validatePassword).length === 0) {
-                        SshConfigUtils.selectedProfile.password = passwordPrompt;
-                    } else if (validatePassword && Object.keys(validatePassword).length >= 1) {
+                    if (validatePassword && Object.keys(validatePassword).length >= 1) {
                         SshConfigUtils.selectedProfile = { ...SshConfigUtils.selectedProfile, ...validatePassword };
                     } else {
                         // vscode.window.showWarningMessage("Password Authentication Failed");
@@ -384,6 +376,7 @@ export class SshConfigUtils {
                 }
             }
         }
+        console.debug();
         return SshProfile;
     }
 
@@ -682,7 +675,6 @@ export class SshConfigUtils {
                 return { ...configModifications, ...(await promptForPassword(newConfig)) };
             }
         }
-        console.debug();
         return configModifications;
     }
 
@@ -724,10 +716,9 @@ export class SshConfigUtils {
 
                     if (result) {
                         SshConfigUtils.validationResult = {};
-                        if (typeof result === "string") {
-                            testValidation.keyPassphrase = result;
+                        if (Object.keys(result).length >= 1) {
+                            SshConfigUtils.selectedProfile = { ...SshConfigUtils.selectedProfile, ...result };
                         }
-                        SshConfigUtils.selectedProfile = testValidation;
                         break;
                     }
                 }
@@ -738,16 +729,14 @@ export class SshConfigUtils {
                     for (const privateKey of foundPrivateKeys) {
                         const testValidation: ISshConfigExt = SshConfigUtils.selectedProfile!;
                         testValidation.privateKey = privateKey;
-
                         const result = await SshConfigUtils.validateConfig(testValidation);
                         step++;
                         progress.report({ increment: 100 / foundPrivateKeys.length });
 
                         if (result) {
                             SshConfigUtils.validationResult = {};
-                            if (typeof result === "string") {
-                                testValidation.keyPassphrase = result;
-                                SshConfigUtils.selectedProfile = testValidation;
+                            if (Object.keys(result).length >= 1) {
+                                SshConfigUtils.selectedProfile = { ...SshConfigUtils.selectedProfile, ...result };
                             }
                             break;
                         }
