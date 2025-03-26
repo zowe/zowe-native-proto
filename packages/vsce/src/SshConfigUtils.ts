@@ -145,6 +145,7 @@ export class SshConfigUtils {
                 });
 
                 if (validConfig === undefined) return;
+
                 await SshConfigUtils.setProfile(validConfig, foundProfile.name);
                 return { ...foundProfile, profile: { ...foundProfile.profile, ...validConfig } };
             }
@@ -266,15 +267,14 @@ export class SshConfigUtils {
                         ignoreFocusOut: true,
                     });
 
-                    if (!passwordPrompt) return;
-
-                    if (!selectedProfile) return;
+                    if (!passwordPrompt || !selectedProfile) return;
 
                     // Validate the password
                     const validatePassword = await SshConfigUtils.validateConfig({
                         ...selectedProfile,
                         password: passwordPrompt,
                     });
+
                     if (validatePassword && Object.keys(validatePassword).length === 0) {
                         selectedProfile.password = passwordPrompt;
                     } else if (validatePassword && Object.keys(validatePassword).length >= 1) {
@@ -347,7 +347,7 @@ export class SshConfigUtils {
         knownConfigOpts?: string,
         acceptFlags = true,
     ): Promise<ISshConfigExt | undefined> {
-        const sshRegex = /^ssh\s+([a-zA-Z0-9_-]+)@([a-zA-Z0-9.-]+)/;
+        const sshRegex = /^ssh\s+(?:([a-zA-Z0-9_-]+)@)?([a-zA-Z0-9.-]+)/;
         const flagRegex = /-(\w+)(?:\s+("[^"]+"|'[^']+'|\S+))?/g;
         const SshProfile: ISshConfigExt = {};
         const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
@@ -383,11 +383,13 @@ export class SshConfigUtils {
         }
 
         const sshMatch = sshResponse.match(sshRegex);
+
         if (!sshMatch) {
             vscode.window.showErrorMessage("Invalid SSH command format. Ensure it matches the expected pattern.");
             return undefined;
         }
-        SshProfile.user = sshMatch[1];
+
+        SshProfile.user = sshMatch[1] || require("node:os").userInfo().username;
         SshProfile.hostname = sshMatch[2];
 
         let flagMatch: RegExpExecArray | null;
@@ -598,30 +600,26 @@ export class SshConfigUtils {
             await config.save(false);
         } catch (err) {}
     }
+
     private static async validateConfig(newConfig: ISshConfigExt): Promise<ISshConfigExt | undefined> {
+        const configModifications: ISshConfigExt | undefined = {};
         const attemptConnection = async (config: ISshConfigExt): Promise<boolean> => {
             return new Promise((resolve, reject) => {
                 const sshClient = new Client();
-                const testConnection = { ...config };
+                const testConfig = { ...config };
 
-                if (testConnection.privateKey && typeof testConnection.privateKey === "string") {
-                    testConnection.privateKey = readFileSync(path.normalize(testConnection.privateKey), "utf8");
+                if (testConfig.privateKey && typeof testConfig.privateKey === "string") {
+                    testConfig.privateKey = readFileSync(path.normalize(testConfig.privateKey), "utf8");
                 }
 
                 sshClient
-                    .connect({ ...testConnection, passphrase: testConnection.keyPassphrase })
-                    .on("error", (err) => reject(err))
+                    .connect({ ...testConfig, passphrase: testConfig.keyPassphrase })
+                    .on("error", reject)
                     .on("ready", () => {
                         sshClient.shell((err, stream: ClientChannel) => {
-                            if (err) {
-                                reject(err);
-                                return;
-                            }
-
+                            if (err) return reject(err);
                             stream.on("data", (data: Buffer | string) => {
-                                if (data.toString().startsWith("FOTS1668")) {
-                                    reject(new Error(data.toString()));
-                                }
+                                if (data.toString().startsWith("FOTS1668")) reject(new Error(data.toString()));
                             });
                             stream.on("end", () => resolve(true));
                             sshClient.end();
@@ -631,41 +629,47 @@ export class SshConfigUtils {
         };
 
         const promptForPassword = async (config: ISshConfigExt): Promise<ISshConfigExt | undefined> => {
-            let passwordAttempts = 0;
-            while (passwordAttempts < 3) {
-                config.password = await vscode.window.showInputBox({
-                    title: `${config.user}@${config.hostname}'s password:`,
+            for (let attempts = 0; attempts < 3; attempts++) {
+                const testPassword = await vscode.window.showInputBox({
+                    title: `${configModifications.user ?? config.user}@${config.hostname}'s password:`,
                     password: true,
                     placeHolder: "Enter your password",
                     ignoreFocusOut: true,
                 });
 
-                if (!config.password) return undefined;
+                if (!testPassword) return undefined;
 
                 try {
-                    await attemptConnection(config);
-                    return { password: config.password };
+                    await attemptConnection({ ...config, ...configModifications, password: testPassword });
+                    return { password: testPassword };
                 } catch (error) {
-                    passwordAttempts++;
                     if (`${error}`.includes("FOTS1668")) {
                         vscode.window.showErrorMessage("Password Expired on Target System");
                         return undefined;
                     }
-                    vscode.window.showErrorMessage(`Password Authentication Failed (${passwordAttempts}/3)`);
+                    vscode.window.showErrorMessage(`Password Authentication Failed (${attempts + 1}/3)`);
                 }
             }
             return undefined;
         };
 
         try {
-            if (
-                (!newConfig?.privateKey || !readFileSync(path.normalize(newConfig?.privateKey!), "utf-8")) &&
-                !newConfig?.password
-            ) {
-                return await promptForPassword(newConfig);
+            const privateKeyPath = newConfig.privateKey;
+
+            if (!newConfig.user) {
+                const userModification = await vscode.window.showInputBox({
+                    title: `Enter user for host: '${newConfig.hostname}'`,
+                    placeHolder: "Enter the user for the target host",
+                    ignoreFocusOut: true,
+                });
+                configModifications.user = userModification;
             }
 
-            await attemptConnection(newConfig);
+            if ((!privateKeyPath || !readFileSync(path.normalize(privateKeyPath), "utf-8")) && !newConfig.password) {
+                return { ...configModifications, ...(await promptForPassword(newConfig)) };
+            }
+
+            await attemptConnection({ ...newConfig, ...configModifications });
         } catch (err) {
             const errorMessage = `${err}`;
 
@@ -677,35 +681,53 @@ export class SshConfigUtils {
                 return undefined;
             }
 
+            if (errorMessage.includes("Invalid username")) {
+                const testUser = await vscode.window.showInputBox({
+                    title: `Enter user for host: '${newConfig.hostname}'`,
+                    placeHolder: "Enter the user for the target host",
+                    ignoreFocusOut: true,
+                });
+
+                if (!testUser) return undefined;
+                try {
+                    await attemptConnection({ ...newConfig, user: testUser });
+                    return { user: testUser };
+                } catch {
+                    return undefined;
+                }
+            }
+
             if (errorMessage.includes("but no passphrase given") || errorMessage.includes("integrity check failed")) {
-                let passphraseAttempts = 0;
-                while (passphraseAttempts < 3) {
-                    newConfig.keyPassphrase = await vscode.window.showInputBox({
-                        title: `Enter passphrase for key '${newConfig.privateKey}'`,
+                const privateKeyPath = newConfig.privateKey;
+
+                for (let attempts = 0; attempts < 3; attempts++) {
+                    const testKeyPassphrase = await vscode.window.showInputBox({
+                        title: `Enter passphrase for key '${privateKeyPath}'`,
                         password: true,
                         placeHolder: "Enter passphrase for key",
                         ignoreFocusOut: true,
                     });
 
                     try {
-                        await attemptConnection(newConfig);
-                        return newConfig.keyPassphrase ? { keyPassphrase: newConfig.keyPassphrase } : {};
+                        await attemptConnection({
+                            ...newConfig,
+                            ...configModifications,
+                            keyPassphrase: testKeyPassphrase,
+                        });
+                        return { ...configModifications, keyPassphrase: testKeyPassphrase };
                     } catch (error) {
                         if (!`${error}`.includes("integrity check failed")) break;
-                        passphraseAttempts++;
-                        vscode.window.showErrorMessage(`Passphrase Authentication Failed (${passphraseAttempts}/3)`);
+                        vscode.window.showErrorMessage(`Passphrase Authentication Failed (${attempts + 1}/3)`);
                     }
                 }
-
-                newConfig.keyPassphrase = undefined;
-                newConfig.privateKey = undefined;
                 return undefined;
             }
 
             if (errorMessage.includes("All configured authentication methods failed")) {
-                return await promptForPassword(newConfig);
+                return { ...configModifications, ...(await promptForPassword(newConfig)) };
             }
         }
-        return {};
+        console.debug();
+        return configModifications;
     }
 }
