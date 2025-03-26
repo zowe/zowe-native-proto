@@ -26,6 +26,12 @@ import { type ISshConfigExt, ZClientUtils, ZSshClient } from "zowe-native-proto-
 
 // biome-ignore lint/complexity/noStaticOnlyClass: Utilities class has static methods
 export class SshConfigUtils {
+    public static migratedConfigs: ISshConfigExt[];
+    public static filteredMigratedConfigs: ISshConfigExt[];
+    public static validationResult: ISshConfigExt | undefined;
+    public static selectedProfile: ISshConfigExt | undefined;
+    public static sshProfiles: imperative.IProfileLoaded[];
+
     public static getServerPath(profile?: imperative.IProfile): string {
         const serverPathMap: Record<string, string> =
             vscode.workspace.getConfiguration("zowe-native-proto-vsce").get("serverInstallPath") ?? {};
@@ -41,99 +47,47 @@ export class SshConfigUtils {
         const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
         const profCache = zoweExplorerApi.getExplorerExtenderApi().getProfilesCache();
         const profInfo = await profCache.getProfileInfo();
-
+        SshConfigUtils.validationResult = undefined;
         if (profileName) {
             return profCache.getLoadedProfConfig(profileName, "ssh");
         }
 
-        const sshProfiles = (await profCache.fetchAllProfilesByType("ssh")).filter(
+        SshConfigUtils.sshProfiles = (await profCache.fetchAllProfilesByType("ssh")).filter(
             ({ name, profile }) => name && profile?.host,
         );
-
         // Get configs from ~/.ssh/config
-        const migratedConfigs = await ZClientUtils.migrateSshConfig();
+        SshConfigUtils.migratedConfigs = await ZClientUtils.migrateSshConfig();
 
         // Parse to remove migratable configs that already exist on the team config
-        const filteredMigratedConfigs = migratedConfigs.filter(
-            (migratedConfig) => !sshProfiles.some((sshProfile) => sshProfile.profile?.host === migratedConfig.hostname),
+        SshConfigUtils.filteredMigratedConfigs = SshConfigUtils.migratedConfigs.filter(
+            (migratedConfig) =>
+                !SshConfigUtils.sshProfiles.some((sshProfile) => sshProfile.profile?.host === migratedConfig.hostname),
         );
 
-        // Choose between adding a new SSH host, an existing team config profile, and migrating from config.
-        const qpItems: vscode.QuickPickItem[] = [
-            { label: "$(plus) Add New SSH Host..." },
-            ...sshProfiles.map(({ name, profile }) => ({
-                label: name!,
-                description: profile!.host!,
-            })),
-            {
-                label: "Migrate From SSH Config",
-                kind: vscode.QuickPickItemKind.Separator,
-            },
-            ...filteredMigratedConfigs.map(({ name, hostname }) => ({
-                label: name!,
-                description: hostname,
-            })),
-        ];
-
-        // Function to show the QuickPick with dynamic top option
-        async function showQuickPickWithCustomInput(): Promise<vscode.QuickPickItem | undefined> {
-            const quickPick = vscode.window.createQuickPick();
-            quickPick.items = qpItems;
-            quickPick.placeholder = "Select configured SSH host or enter user@host";
-
-            let value: undefined;
-
-            // Add the custom entry
-            const customItem = {
-                label: `> ${value}`, // Using ">" as a visual cue for custom input
-                description: "Custom SSH Host",
-                alwaysShow: true,
-            };
-            quickPick.onDidChangeValue((value) => {
-                if (value) {
-                    // Update custom entry when something is typed in search bar
-                    customItem.label = `> ${value}`;
-                    // Update the QuickPick items with the custom entry at the top, if not already added
-                    quickPick.items = [customItem, ...qpItems.filter((item) => item.label !== customItem.label)];
-                } else {
-                    // Remove the custom entry if the search bar is cleared
-                    quickPick.items = [...qpItems];
-                }
-            });
-
-            // Show the QuickPick
-            quickPick.show();
-
-            // Wait for selection
-            const result = await new Promise<vscode.QuickPickItem | undefined>((resolve) => {
-                quickPick.onDidAccept(() => {
-                    resolve(quickPick.selectedItems[0]);
-                    quickPick.hide();
-                });
-            });
-
-            if (result?.label.startsWith(">")) result.label = result.label.replace(">", "").trim();
-
-            return result;
-        }
-        const result = await showQuickPickWithCustomInput();
+        // Prompt user for ssh (new config, existing, migrating)
+        const result = await SshConfigUtils.showQuickPickWithCustomInput();
 
         // If nothing selected, return
         if (!result) return;
 
         // If result is add new SSH host then create a new config, if not use migrated configs
-        let selectedProfile = filteredMigratedConfigs.find(
-            ({ name, hostname }) => result.label === name && result.description === hostname,
+        SshConfigUtils.selectedProfile = SshConfigUtils.filteredMigratedConfigs.find(
+            ({ name, hostname }) => result?.label === name && result?.description === hostname,
         );
 
         if (result.description === "Custom SSH Host") {
-            selectedProfile = await SshConfigUtils.createNewConfig(result.label, false);
+            const createNewConfig = await SshConfigUtils.createNewConfig(result.label);
+            if (!createNewConfig) return undefined;
+            SshConfigUtils.selectedProfile = createNewConfig;
         } else if (result.label === "$(plus) Add New SSH Host...") {
-            selectedProfile = await SshConfigUtils.createNewConfig();
+            const createNewConfig = await SshConfigUtils.createNewConfig();
+            if (!createNewConfig) return undefined;
+            SshConfigUtils.selectedProfile = createNewConfig;
         }
 
-        if (!selectedProfile) {
-            const foundProfile = sshProfiles.find(({ name }) => name === result.label);
+        // If an existing team config profile was selected
+        if (!SshConfigUtils.selectedProfile) {
+            const foundProfile = SshConfigUtils.sshProfiles.find(({ name }) => name === result.label);
             if (foundProfile) {
                 const validConfig = await SshConfigUtils.validateConfig({
                     hostname: foundProfile?.profile?.host,
@@ -143,13 +97,14 @@ export class SshConfigUtils {
                     user: foundProfile?.profile?.user,
                     password: foundProfile?.profile?.password,
                 });
-
                 if (validConfig === undefined) return;
 
                 await SshConfigUtils.setProfile(validConfig, foundProfile.name);
                 return { ...foundProfile, profile: { ...foundProfile.profile, ...validConfig } };
             }
         }
+
+        // Current directory open in vscode window
         const workspaceDir = ZoweVsCodeExtension.workspaceRoot;
 
         // Prioritize creating a team config in the local workspace if it exists even if a global config exists
@@ -163,154 +118,113 @@ export class SshConfigUtils {
         ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         // Prompt for a new profile name with the hostname (for adding a new config) or host value (for migrating from a config)
-
-        selectedProfile = await SshConfigUtils.getNewProfileName(selectedProfile!, profInfo.getTeamConfig());
-        if (!selectedProfile?.name) {
-            vscode.window.showWarningMessage("SSH setup cancelled.");
-            return;
-        }
-
-        // Attempt to validate with given URL/creds
-        let validationResult = await SshConfigUtils.validateConfig(selectedProfile);
-
-        // If validateConfig returns a string, that string is the correct keyPassphrase
-        if (validationResult && Object.keys(validationResult).length >= 1) {
-            selectedProfile = { ...selectedProfile, ...validationResult };
-        }
-
-        if (validationResult === undefined) {
-            // Create a progress bar using the custom Gui.withProgress
-            await Gui.withProgress(
-                {
-                    location: vscode.ProgressLocation.Notification,
-                    title: "Validating SSH Configurations...",
-                    cancellable: false,
-                },
-                async (progress, token) => {
-                    let validationAttempts = migratedConfigs.filter(
-                        (config) => config.hostname === selectedProfile?.hostname,
-                    );
-
-                    // If multiple matches exist, narrow down by user
-                    if (validationAttempts.length > 1 && selectedProfile?.user) {
-                        validationAttempts = validationAttempts.filter(
-                            (config) => config.user === selectedProfile?.user,
-                        );
-                    } else {
-                        // If no user is specified, allow all configs where the hostname matches
-                        validationAttempts = validationAttempts.filter(
-                            (config) => !selectedProfile?.user || config.user === selectedProfile?.user,
-                        );
-                    }
-
-                    // Iterate over filtered validation attempts
-                    let step = 0;
-                    for (const profile of validationAttempts) {
-                        const testValidation: ISshConfigExt = profile;
-
-                        const result = await SshConfigUtils.validateConfig(testValidation);
-                        step++;
-                        progress.report({ increment: 100 / validationAttempts.length });
-
-                        if (result) {
-                            validationResult = {};
-                            if (typeof result === "string") {
-                                testValidation.keyPassphrase = result;
-                            }
-                            selectedProfile = testValidation;
-                            break;
-                        }
-                    }
-
-                    // Find private keys located at ~/.ssh/ and attempt to connect with them
-                    if (!validationResult) {
-                        const foundPrivateKeys = await ZClientUtils.findPrivateKeys();
-                        for (const privateKey of foundPrivateKeys) {
-                            const testValidation: ISshConfigExt = selectedProfile!;
-                            testValidation.privateKey = privateKey;
-
-                            const result = await SshConfigUtils.validateConfig(testValidation);
-                            step++;
-                            progress.report({ increment: 100 / foundPrivateKeys.length });
-
-                            if (result) {
-                                validationResult = {};
-                                if (typeof result === "string") {
-                                    testValidation.keyPassphrase = result;
-                                    selectedProfile = testValidation;
-                                }
-                                break;
-                            }
-                        }
-                    }
-                },
-            );
-        }
-
-        // Password loading bar
-        await Gui.withProgress(
-            {
-                location: vscode.ProgressLocation.Notification,
-                title: "Validating Password...",
-                cancellable: false,
-            },
-            async (progress) => {
-                // If not validated, remove private key from profile and get the password
-                if (validationResult === undefined) {
-                    selectedProfile!.privateKey = undefined;
-
-                    // Show the password input prompt
-                    const passwordPrompt = await vscode.window.showInputBox({
-                        title: `${selectedProfile?.user}@${selectedProfile?.hostname}'s password:`,
-                        password: true,
-                        placeHolder: "Enter your password",
-                        ignoreFocusOut: true,
-                    });
-
-                    if (!passwordPrompt || !selectedProfile) return;
-
-                    // Validate the password
-                    const validatePassword = await SshConfigUtils.validateConfig({
-                        ...selectedProfile,
-                        password: passwordPrompt,
-                    });
-
-                    if (validatePassword && Object.keys(validatePassword).length === 0) {
-                        selectedProfile.password = passwordPrompt;
-                    } else if (validatePassword && Object.keys(validatePassword).length >= 1) {
-                        selectedProfile = { ...selectedProfile, ...validatePassword };
-                    } else {
-                        // vscode.window.showWarningMessage("Password Authentication Failed");
-                        return;
-                    }
-                }
-            },
+        SshConfigUtils.selectedProfile = await SshConfigUtils.getNewProfileName(
+            SshConfigUtils.selectedProfile!,
+            profInfo.getTeamConfig(),
         );
 
+        if (!SshConfigUtils.selectedProfile?.name) {
+            vscode.window.showWarningMessage("SSH setup cancell1ed.");
+            return;
+        }
+
+        if (SshConfigUtils.validationResult === undefined) {
+            await SshConfigUtils.validateFoundPrivateKeys();
+        }
+
+        if (SshConfigUtils.validationResult === undefined) {
+            // Attempt to validate with given URL/creds
+            SshConfigUtils.validationResult = await SshConfigUtils.validateConfig(SshConfigUtils.selectedProfile);
+        }
+        // If validateConfig returns a string, that string is the correct keyPassphrase
+        if (SshConfigUtils.validationResult && Object.keys(SshConfigUtils.validationResult).length >= 1) {
+            SshConfigUtils.selectedProfile = { ...SshConfigUtils.selectedProfile, ...SshConfigUtils.validationResult };
+        }
+
         // If no private key or password is on the profile then there is no possible validation combination, thus return
-        if (!selectedProfile?.privateKey && !selectedProfile?.password) {
+        if (!SshConfigUtils.selectedProfile?.privateKey && !SshConfigUtils.selectedProfile?.password) {
             vscode.window.showWarningMessage("SSH setup cancelled.");
             return;
         }
 
-        await SshConfigUtils.setProfile(selectedProfile);
+        await SshConfigUtils.setProfile(SshConfigUtils.selectedProfile);
 
         return {
-            name: selectedProfile.name,
+            name: SshConfigUtils.selectedProfile.name,
             message: "",
             failNotFound: false,
             type: "ssh",
             profile: {
-                host: selectedProfile.hostname,
-                name: selectedProfile.name,
-                password: selectedProfile.password,
-                user: selectedProfile.user,
-                privateKey: selectedProfile.privateKey,
-                handshakeTimeout: selectedProfile.handshakeTimeout,
-                port: selectedProfile.port,
-                keyPassphrase: selectedProfile.keyPassphrase,
+                host: SshConfigUtils.selectedProfile.hostname,
+                name: SshConfigUtils.selectedProfile.name,
+                password: SshConfigUtils.selectedProfile.password,
+                user: SshConfigUtils.selectedProfile.user,
+                privateKey: SshConfigUtils.selectedProfile.privateKey,
+                handshakeTimeout: SshConfigUtils.selectedProfile.handshakeTimeout,
+                port: SshConfigUtils.selectedProfile.port,
+                keyPassphrase: SshConfigUtils.selectedProfile.keyPassphrase,
             },
         };
+    }
+
+    // Function to show the QuickPick with dynamic top option
+    private static async showQuickPickWithCustomInput(): Promise<vscode.QuickPickItem | undefined> {
+        // Choose between adding a new SSH host, an existing team config profile, and migrating from config.
+        const qpItems: vscode.QuickPickItem[] = [
+            { label: "$(plus) Add New SSH Host..." },
+            ...SshConfigUtils.sshProfiles.map(({ name, profile }) => ({
+                label: name!,
+                description: profile!.host!,
+            })),
+            {
+                label: "Migrate From SSH Config",
+                kind: vscode.QuickPickItemKind.Separator,
+            },
+            ...SshConfigUtils.filteredMigratedConfigs.map(({ name, hostname }) => ({
+                label: name!,
+                description: hostname,
+            })),
+        ];
+
+        const quickPick = vscode.window.createQuickPick();
+        quickPick.items = qpItems;
+        quickPick.placeholder = "Select configured SSH host or enter user@host";
+
+        let value: undefined;
+
+        // Add the custom entry
+        const customItem = {
+            label: `> ${value}`, // Using ">" as a visual cue for custom input
+            description: "Custom SSH Host",
+            alwaysShow: true,
+        };
+
+        quickPick.onDidChangeValue((value) => {
+            if (value) {
+                // Update custom entry when something is typed in search bar
+                customItem.label = `> ${value}`;
+                // Update the QuickPick items with the custom entry at the top, if not already added
+                quickPick.items = [customItem, ...qpItems.filter((item) => item.label !== customItem.label)];
+            } else {
+                // Remove the custom entry if the search bar is cleared
+                quickPick.items = [...qpItems];
+            }
+        });
+
+        // Show the QuickPick
+        quickPick.show();
+
+        // Wait for selection
+        const result = await new Promise<vscode.QuickPickItem | undefined>((resolve) => {
+            quickPick.onDidAccept(() => {
+                resolve(quickPick.selectedItems[0]);
+                quickPick.hide();
+            });
+        });
+
+        if (result?.label.startsWith(">")) result.label = result.label.replace(">", "").trim();
+
+        return result;
     }
 
     public static async showSessionInTree(profileName: string, visible: boolean): Promise<void> {
@@ -343,11 +257,9 @@ export class SshConfigUtils {
         }
     }
 
-    private static async createNewConfig(
-        knownConfigOpts?: string,
-        acceptFlags = true,
-    ): Promise<ISshConfigExt | undefined> {
+    private static async createNewConfig(knownConfigOpts?: string): Promise<ISshConfigExt | undefined> {
         const sshRegex = /^ssh\s+(?:([a-zA-Z0-9_-]+)@)?([a-zA-Z0-9.-]+)/;
+
         const flagRegex = /-(\w+)(?:\s+("[^"]+"|'[^']+'|\S+))?/g;
         const SshProfile: ISshConfigExt = {};
         const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
@@ -363,26 +275,33 @@ export class SshConfigUtils {
         let sshResponse: string | undefined;
 
         // KnownConfigOpts is defined if a custom option is selected via the first quickpick (ex: user@host is entered in search bar)
-        if (!knownConfigOpts)
+        console.debug();
+        if (!knownConfigOpts) {
             sshResponse = await vscode.window.showInputBox({
                 prompt: "Enter SSH connection command",
                 placeHolder: "E.g. ssh user@example.com",
                 ignoreFocusOut: true,
             });
-        else {
+        } else {
             sshResponse = `ssh ${knownConfigOpts}`;
-            if (!sshResponse.match(sshRegex))
+            console.debug();
+            const match = sshResponse.match(sshRegex);
+            console.debug();
+            if (!match || match[0].length < sshResponse.length) {
                 vscode.window.showErrorMessage(
                     "Invalid custom connection format. Ensure it matches the expected pattern.",
                 );
+                return undefined;
+            }
         }
-
+        console.debug();
         if (sshResponse === undefined) {
             vscode.window.showWarningMessage("SSH setup cancelled.");
             return undefined;
         }
 
         const sshMatch = sshResponse.match(sshRegex);
+        console.debug();
 
         if (!sshMatch) {
             vscode.window.showErrorMessage("Invalid SSH command format. Ensure it matches the expected pattern.");
@@ -394,7 +313,7 @@ export class SshConfigUtils {
 
         let flagMatch: RegExpExecArray | null;
 
-        if (acceptFlags) {
+        if (!knownConfigOpts) {
             // biome-ignore lint/suspicious/noAssignInExpressions: We just want to use the regex array in the loop
             while ((flagMatch = flagRegex.exec(sshResponse)) !== null) {
                 const [, flag, value] = flagMatch;
@@ -666,11 +585,13 @@ export class SshConfigUtils {
             }
 
             if ((!privateKeyPath || !readFileSync(path.normalize(privateKeyPath), "utf-8")) && !newConfig.password) {
-                return { ...configModifications, ...(await promptForPassword(newConfig)) };
+                const passwordPrompt = await promptForPassword(newConfig);
+                return passwordPrompt ? { ...configModifications, ...passwordPrompt } : undefined;
             }
 
             await attemptConnection({ ...newConfig, ...configModifications });
         } catch (err) {
+            console.debug();
             const errorMessage = `${err}`;
 
             if (
@@ -722,12 +643,79 @@ export class SshConfigUtils {
                 }
                 return undefined;
             }
-
             if (errorMessage.includes("All configured authentication methods failed")) {
-                return { ...configModifications, ...(await promptForPassword(newConfig)) };
+                const passwordPrompt = await promptForPassword(newConfig);
+                return passwordPrompt ? { ...configModifications, ...passwordPrompt } : undefined;
             }
         }
-        console.debug();
         return configModifications;
+    }
+
+    private static async validateFoundPrivateKeys() {
+        // Create a progress bar using the custom Gui.withProgress
+        await Gui.withProgress(
+            {
+                location: vscode.ProgressLocation.Notification,
+                title: "Validating SSH Configurations...",
+                cancellable: false,
+            },
+
+            async (progress, token) => {
+                // Find private keys located at ~/.ssh/ and attempt to connect with them
+                if (!SshConfigUtils.validationResult) {
+                    const foundPrivateKeys = await ZClientUtils.findPrivateKeys();
+                    for (const privateKey of foundPrivateKeys) {
+                        const testValidation: ISshConfigExt = SshConfigUtils.selectedProfile!;
+                        testValidation.privateKey = privateKey;
+                        const result = await SshConfigUtils.validateConfig(testValidation);
+                        progress.report({ increment: 100 / foundPrivateKeys.length });
+
+                        if (result) {
+                            SshConfigUtils.validationResult = {};
+                            if (Object.keys(result).length >= 1) {
+                                SshConfigUtils.selectedProfile = { ...SshConfigUtils.selectedProfile, ...result };
+                            }
+                            return;
+                        }
+                    }
+                }
+
+                // Match hostname to configurations from ~/.ssh/config file
+                let validationAttempts = SshConfigUtils.migratedConfigs.filter(
+                    (config) => config.hostname === SshConfigUtils.selectedProfile?.hostname,
+                );
+
+                // If multiple matches exist, narrow down by user
+                if (validationAttempts.length > 1 && SshConfigUtils.selectedProfile?.user) {
+                    validationAttempts = validationAttempts.filter(
+                        (config) => config.user === SshConfigUtils.selectedProfile?.user,
+                    );
+                } else {
+                    // If no user is specified, allow all configs where the hostname matches
+                    validationAttempts = validationAttempts.filter(
+                        (config) =>
+                            !SshConfigUtils.selectedProfile?.user ||
+                            config.user === SshConfigUtils.selectedProfile?.user,
+                    );
+                }
+
+                for (const profile of validationAttempts) {
+                    const testValidation: ISshConfigExt = profile;
+                    const result = await SshConfigUtils.validateConfig(testValidation);
+                    progress.report({ increment: 100 / validationAttempts.length });
+                    if (result !== undefined) {
+                        SshConfigUtils.validationResult = {};
+                        if (Object.keys(result).length >= 1) {
+                            SshConfigUtils.selectedProfile = {
+                                ...SshConfigUtils.selectedProfile,
+                                ...result,
+                                privateKey: testValidation.privateKey,
+                            };
+                        }
+                        return;
+                    }
+                }
+            },
+        );
     }
 }
