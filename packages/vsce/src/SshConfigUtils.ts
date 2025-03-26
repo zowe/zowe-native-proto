@@ -76,9 +76,13 @@ export class SshConfigUtils {
         );
 
         if (result.description === "Custom SSH Host") {
-            SshConfigUtils.selectedProfile = await SshConfigUtils.createNewConfig(result.label, false);
+            const createNewConfig = await SshConfigUtils.createNewConfig(result.label);
+            if (!createNewConfig) return undefined;
+            SshConfigUtils.selectedProfile = createNewConfig;
         } else if (result.label === "$(plus) Add New SSH Host...") {
-            SshConfigUtils.selectedProfile = await SshConfigUtils.createNewConfig();
+            const createNewConfig = await SshConfigUtils.createNewConfig();
+            if (!createNewConfig) return undefined;
+            SshConfigUtils.selectedProfile = createNewConfig;
         }
 
         // If an existing team config profile was selected
@@ -93,7 +97,6 @@ export class SshConfigUtils {
                     user: foundProfile?.profile?.user,
                     password: foundProfile?.profile?.password,
                 });
-
                 if (validConfig === undefined) return;
 
                 await SshConfigUtils.setProfile(validConfig, foundProfile.name);
@@ -254,11 +257,9 @@ export class SshConfigUtils {
         }
     }
 
-    private static async createNewConfig(
-        knownConfigOpts?: string,
-        acceptFlags = true,
-    ): Promise<ISshConfigExt | undefined> {
+    private static async createNewConfig(knownConfigOpts?: string): Promise<ISshConfigExt | undefined> {
         const sshRegex = /^ssh\s+(?:([a-zA-Z0-9_-]+)@)?([a-zA-Z0-9.-]+)/;
+
         const flagRegex = /-(\w+)(?:\s+("[^"]+"|'[^']+'|\S+))?/g;
         const SshProfile: ISshConfigExt = {};
         const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
@@ -274,26 +275,33 @@ export class SshConfigUtils {
         let sshResponse: string | undefined;
 
         // KnownConfigOpts is defined if a custom option is selected via the first quickpick (ex: user@host is entered in search bar)
-        if (!knownConfigOpts)
+        console.debug();
+        if (!knownConfigOpts) {
             sshResponse = await vscode.window.showInputBox({
                 prompt: "Enter SSH connection command",
                 placeHolder: "E.g. ssh user@example.com",
                 ignoreFocusOut: true,
             });
-        else {
+        } else {
             sshResponse = `ssh ${knownConfigOpts}`;
-            if (!sshResponse.match(sshRegex))
+            console.debug();
+            const match = sshResponse.match(sshRegex);
+            console.debug();
+            if (!match || match[0].length < sshResponse.length) {
                 vscode.window.showErrorMessage(
                     "Invalid custom connection format. Ensure it matches the expected pattern.",
                 );
+                return undefined;
+            }
         }
-
+        console.debug();
         if (sshResponse === undefined) {
             vscode.window.showWarningMessage("SSH setup cancelled.");
             return undefined;
         }
 
         const sshMatch = sshResponse.match(sshRegex);
+        console.debug();
 
         if (!sshMatch) {
             vscode.window.showErrorMessage("Invalid SSH command format. Ensure it matches the expected pattern.");
@@ -305,7 +313,7 @@ export class SshConfigUtils {
 
         let flagMatch: RegExpExecArray | null;
 
-        if (acceptFlags) {
+        if (!knownConfigOpts) {
             // biome-ignore lint/suspicious/noAssignInExpressions: We just want to use the regex array in the loop
             while ((flagMatch = flagRegex.exec(sshResponse)) !== null) {
                 const [, flag, value] = flagMatch;
@@ -577,11 +585,13 @@ export class SshConfigUtils {
             }
 
             if ((!privateKeyPath || !readFileSync(path.normalize(privateKeyPath), "utf-8")) && !newConfig.password) {
-                return { ...configModifications, ...(await promptForPassword(newConfig)) };
+                const passwordPrompt = await promptForPassword(newConfig);
+                return passwordPrompt ? { ...configModifications, ...passwordPrompt } : undefined;
             }
 
             await attemptConnection({ ...newConfig, ...configModifications });
         } catch (err) {
+            console.debug();
             const errorMessage = `${err}`;
 
             if (
@@ -633,9 +643,9 @@ export class SshConfigUtils {
                 }
                 return undefined;
             }
-
             if (errorMessage.includes("All configured authentication methods failed")) {
-                return { ...configModifications, ...(await promptForPassword(newConfig)) };
+                const passwordPrompt = await promptForPassword(newConfig);
+                return passwordPrompt ? { ...configModifications, ...passwordPrompt } : undefined;
             }
         }
         return configModifications;
