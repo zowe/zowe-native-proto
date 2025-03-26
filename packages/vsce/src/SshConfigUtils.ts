@@ -11,18 +11,19 @@
 
 import { readFileSync } from "node:fs";
 import * as path from "node:path";
-import { ProfileConstants } from "@zowe/core-for-zowe-sdk";
+
 import {
     FileManagement,
     Gui,
     type IZoweTree,
     type IZoweTreeNode,
     ZoweVsCodeExtension,
-    imperative,
+    type imperative,
 } from "@zowe/zowe-explorer-api";
 import { Client, type ClientChannel } from "ssh2";
 import * as vscode from "vscode";
 import { type ISshConfigExt, ZClientUtils, ZSshClient } from "zowe-native-proto-sdk";
+import { AbstractConfigManager, MESSAGE_TYPE, type inputBoxOpts } from "../../sdk/src/ZSshAuthUtils";
 
 // biome-ignore lint/complexity/noStaticOnlyClass: Utilities class has static methods
 export class SshConfigUtils {
@@ -257,100 +258,6 @@ export class SshConfigUtils {
         }
     }
 
-    private static async createNewConfig(knownConfigOpts?: string): Promise<ISshConfigExt | undefined> {
-        const sshRegex = /^ssh\s+(?:([a-zA-Z0-9_-]+)@)?([a-zA-Z0-9.-]+)/;
-
-        const flagRegex = /-(\w+)(?:\s+("[^"]+"|'[^']+'|\S+))?/g;
-        const SshProfile: ISshConfigExt = {};
-        const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
-        const profInfo = await zoweExplorerApi.getExplorerExtenderApi().getProfilesCache().getProfileInfo();
-
-        //check if project layer exists, if it doesnt create one, but if no workspace then create it as global
-
-        const workspaceDir = ZoweVsCodeExtension.workspaceRoot;
-        if (workspaceDir?.uri.fsPath !== undefined && !profInfo.getTeamConfig().layerExists(workspaceDir!.uri.fsPath)) {
-            await SshConfigUtils.createZoweSchema(false);
-        }
-
-        let sshResponse: string | undefined;
-
-        // KnownConfigOpts is defined if a custom option is selected via the first quickpick (ex: user@host is entered in search bar)
-        console.debug();
-        if (!knownConfigOpts) {
-            sshResponse = await vscode.window.showInputBox({
-                prompt: "Enter SSH connection command",
-                placeHolder: "E.g. ssh user@example.com",
-                ignoreFocusOut: true,
-            });
-        } else {
-            sshResponse = `ssh ${knownConfigOpts}`;
-            console.debug();
-            const match = sshResponse.match(sshRegex);
-            console.debug();
-            if (!match || match[0].length < sshResponse.length) {
-                vscode.window.showErrorMessage(
-                    "Invalid custom connection format. Ensure it matches the expected pattern.",
-                );
-                return undefined;
-            }
-        }
-        console.debug();
-        if (sshResponse === undefined) {
-            vscode.window.showWarningMessage("SSH setup cancelled.");
-            return undefined;
-        }
-
-        const sshMatch = sshResponse.match(sshRegex);
-        console.debug();
-
-        if (!sshMatch) {
-            vscode.window.showErrorMessage("Invalid SSH command format. Ensure it matches the expected pattern.");
-            return undefined;
-        }
-
-        SshProfile.user = sshMatch[1] || require("node:os").userInfo().username;
-        SshProfile.hostname = sshMatch[2];
-
-        let flagMatch: RegExpExecArray | null;
-
-        if (!knownConfigOpts) {
-            // biome-ignore lint/suspicious/noAssignInExpressions: We just want to use the regex array in the loop
-            while ((flagMatch = flagRegex.exec(sshResponse)) !== null) {
-                const [, flag, value] = flagMatch;
-                // Check for missing value
-                if (!value) {
-                    vscode.window.showErrorMessage(`Missing value for flag -${flag}.`);
-                    return undefined;
-                }
-
-                const unquotedValue = value.replace(/^["']|["']$/g, ""); // Remove surrounding quotes
-
-                // Map aliases to consistent keys
-                if (flag === "p" || flag.toLowerCase() === "port") {
-                    const portNumber = Number.parseInt(unquotedValue, 10);
-                    if (Number.isNaN(portNumber)) {
-                        vscode.window.showErrorMessage(
-                            `Invalid value for flag --${flag}. Port must be a valid number.`,
-                        );
-                        return undefined;
-                    }
-                    SshProfile.port = portNumber;
-                } else if (flag === "i" || flag.toLowerCase() === "identity_file") {
-                    SshProfile.privateKey = unquotedValue;
-                }
-
-                // Validate if quotes are required
-                if (/\s/.test(unquotedValue) && !/^["'].*["']$/.test(value)) {
-                    vscode.window.showErrorMessage(
-                        `Invalid value for flag --${flag}. Values with spaces must be quoted.`,
-                    );
-                    return undefined;
-                }
-            }
-        }
-        return SshProfile;
-    }
-
     private static async getNewProfileName(
         selectedProfile: ISshConfigExt,
         configApi: imperative.Config,
@@ -479,178 +386,6 @@ export class SshConfigUtils {
         await profInfo.getTeamConfig().save();
     }
 
-    // Cloned method
-    public static async createZoweSchema(global: boolean): Promise<void> {
-        try {
-            const user = false;
-            const workspaceDir = ZoweVsCodeExtension.workspaceRoot;
-
-            const config = await imperative.Config.load("zowe", {
-                homeDir: FileManagement.getZoweDir(),
-                projectDir: workspaceDir?.uri.fsPath,
-            });
-
-            config.api.layers.activate(user, global);
-
-            const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
-            const profCache = zoweExplorerApi.getExplorerExtenderApi().getProfilesCache();
-            const knownCliConfig: imperative.ICommandProfileTypeConfiguration[] = [
-                // biome-ignore lint/suspicious/noExplicitAny: Accessing protected method
-                ...(profCache as any).getCoreProfileTypes(),
-                ...profCache.getConfigArray(),
-                ProfileConstants.BaseProfile,
-            ];
-
-            config.setSchema(imperative.ConfigSchema.buildSchema(knownCliConfig));
-
-            // Note: IConfigBuilderOpts not exported
-            // const opts: IConfigBuilderOpts = {
-            const opts: imperative.IConfigBuilderOpts = {
-                // getSecureValue: this.promptForProp.bind(this),
-                populateProperties: true,
-            };
-            // Build new config and merge with existing layer
-            const impConfig: Partial<imperative.IImperativeConfig> = {
-                profiles: [ProfileConstants.BaseProfile],
-                baseProfile: ProfileConstants.BaseProfile,
-            };
-            const newConfig: imperative.IConfig = await imperative.ConfigBuilder.build(impConfig, global, opts);
-            config.api.layers.merge(newConfig);
-            await config.save(false);
-        } catch (err) {}
-    }
-
-    private static async validateConfig(newConfig: ISshConfigExt): Promise<ISshConfigExt | undefined> {
-        const configModifications: ISshConfigExt | undefined = {};
-        const attemptConnection = async (config: ISshConfigExt): Promise<boolean> => {
-            return new Promise((resolve, reject) => {
-                const sshClient = new Client();
-                const testConfig = { ...config };
-
-                if (testConfig.privateKey && typeof testConfig.privateKey === "string") {
-                    testConfig.privateKey = readFileSync(path.normalize(testConfig.privateKey), "utf8");
-                }
-
-                sshClient
-                    .connect({ ...testConfig, passphrase: testConfig.keyPassphrase })
-                    .on("error", reject)
-                    .on("ready", () => {
-                        sshClient.shell((err, stream: ClientChannel) => {
-                            if (err) return reject(err);
-                            stream.on("data", (data: Buffer | string) => {
-                                if (data.toString().startsWith("FOTS1668")) reject(new Error(data.toString()));
-                            });
-                            stream.on("end", () => resolve(true));
-                            sshClient.end();
-                        });
-                    });
-            });
-        };
-
-        const promptForPassword = async (config: ISshConfigExt): Promise<ISshConfigExt | undefined> => {
-            for (let attempts = 0; attempts < 3; attempts++) {
-                const testPassword = await vscode.window.showInputBox({
-                    title: `${configModifications.user ?? config.user}@${config.hostname}'s password:`,
-                    password: true,
-                    placeHolder: "Enter your password",
-                    ignoreFocusOut: true,
-                });
-
-                if (!testPassword) return undefined;
-
-                try {
-                    await attemptConnection({ ...config, ...configModifications, password: testPassword });
-                    return { password: testPassword };
-                } catch (error) {
-                    if (`${error}`.includes("FOTS1668")) {
-                        vscode.window.showErrorMessage("Password Expired on Target System");
-                        return undefined;
-                    }
-                    vscode.window.showErrorMessage(`Password Authentication Failed (${attempts + 1}/3)`);
-                }
-            }
-            return undefined;
-        };
-
-        try {
-            const privateKeyPath = newConfig.privateKey;
-
-            if (!newConfig.user) {
-                const userModification = await vscode.window.showInputBox({
-                    title: `Enter user for host: '${newConfig.hostname}'`,
-                    placeHolder: "Enter the user for the target host",
-                    ignoreFocusOut: true,
-                });
-                configModifications.user = userModification;
-            }
-
-            if ((!privateKeyPath || !readFileSync(path.normalize(privateKeyPath), "utf-8")) && !newConfig.password) {
-                const passwordPrompt = await promptForPassword(newConfig);
-                return passwordPrompt ? { ...configModifications, ...passwordPrompt } : undefined;
-            }
-
-            await attemptConnection({ ...newConfig, ...configModifications });
-        } catch (err) {
-            console.debug();
-            const errorMessage = `${err}`;
-
-            if (
-                newConfig.privateKey &&
-                !newConfig.password &&
-                errorMessage.includes("All configured authentication methods failed")
-            ) {
-                return undefined;
-            }
-
-            if (errorMessage.includes("Invalid username")) {
-                const testUser = await vscode.window.showInputBox({
-                    title: `Enter user for host: '${newConfig.hostname}'`,
-                    placeHolder: "Enter the user for the target host",
-                    ignoreFocusOut: true,
-                });
-
-                if (!testUser) return undefined;
-                try {
-                    await attemptConnection({ ...newConfig, user: testUser });
-                    return { user: testUser };
-                } catch {
-                    return undefined;
-                }
-            }
-
-            if (errorMessage.includes("but no passphrase given") || errorMessage.includes("integrity check failed")) {
-                const privateKeyPath = newConfig.privateKey;
-
-                for (let attempts = 0; attempts < 3; attempts++) {
-                    const testKeyPassphrase = await vscode.window.showInputBox({
-                        title: `Enter passphrase for key '${privateKeyPath}'`,
-                        password: true,
-                        placeHolder: "Enter passphrase for key",
-                        ignoreFocusOut: true,
-                    });
-
-                    try {
-                        await attemptConnection({
-                            ...newConfig,
-                            ...configModifications,
-                            keyPassphrase: testKeyPassphrase,
-                        });
-                        return { ...configModifications, keyPassphrase: testKeyPassphrase };
-                    } catch (error) {
-                        if (!`${error}`.includes("integrity check failed")) break;
-                        vscode.window.showErrorMessage(`Passphrase Authentication Failed (${attempts + 1}/3)`);
-                    }
-                }
-                return undefined;
-            }
-            if (errorMessage.includes("All configured authentication methods failed")) {
-                const passwordPrompt = await promptForPassword(newConfig);
-                return passwordPrompt ? { ...configModifications, ...passwordPrompt } : undefined;
-            }
-        }
-        return configModifications;
-    }
-
     private static async validateFoundPrivateKeys() {
         // Create a progress bar using the custom Gui.withProgress
         await Gui.withProgress(
@@ -717,5 +452,25 @@ export class SshConfigUtils {
                 }
             },
         );
+    }
+}
+class VscePromptApi extends AbstractConfigManager {
+    protected showMessage(message: string, messageType: MESSAGE_TYPE): void {
+        switch (messageType) {
+            case MESSAGE_TYPE.INFORMATION:
+                vscode.window.showInformationMessage(message);
+                break;
+            case MESSAGE_TYPE.WARNING:
+                vscode.window.showWarningMessage(message);
+                break;
+            case MESSAGE_TYPE.ERROR:
+                vscode.window.showErrorMessage(message);
+                break;
+            default:
+                break;
+        }
+    }
+    protected async showInputBox(opts: inputBoxOpts): Promise<string | undefined> {
+        return vscode.window.showInputBox(opts);
     }
 }
