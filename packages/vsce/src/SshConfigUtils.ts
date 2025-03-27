@@ -33,12 +33,6 @@ import {
 
 // biome-ignore lint/complexity/noStaticOnlyClass: Utilities class has static methods
 export class SshConfigUtils {
-    public static migratedConfigs: ISshConfigExt[];
-    public static filteredMigratedConfigs: ISshConfigExt[];
-    public static validationResult: ISshConfigExt | undefined;
-    public static selectedProfile: ISshConfigExt | undefined;
-    public static sshProfiles: imperative.IProfileLoaded[];
-
     public static getServerPath(profile?: imperative.IProfile): string {
         const serverPathMap: Record<string, string> =
             vscode.workspace.getConfiguration("zowe-native-proto-vsce").get("serverInstallPath") ?? {};
@@ -48,66 +42,6 @@ export class SshConfigUtils {
             profile?.serverPath ??
             ZSshClient.DEFAULT_SERVER_PATH
         );
-    }
-
-    // Function to show the QuickPick with dynamic top option
-    private static async showQuickPickWithCustomInput(): Promise<vscode.QuickPickItem | undefined> {
-        // Choose between adding a new SSH host, an existing team config profile, and migrating from config.
-        const qpItems: vscode.QuickPickItem[] = [
-            { label: "$(plus) Add New SSH Host..." },
-            ...SshConfigUtils.sshProfiles.map(({ name, profile }) => ({
-                label: name!,
-                description: profile!.host!,
-            })),
-            {
-                label: "Migrate From SSH Config",
-                kind: vscode.QuickPickItemKind.Separator,
-            },
-            ...SshConfigUtils.filteredMigratedConfigs.map(({ name, hostname }) => ({
-                label: name!,
-                description: hostname,
-            })),
-        ];
-
-        const quickPick = vscode.window.createQuickPick();
-        quickPick.items = qpItems;
-        quickPick.placeholder = "Select configured SSH host or enter user@host";
-
-        let value: undefined;
-
-        // Add the custom entry
-        const customItem = {
-            label: `> ${value}`, // Using ">" as a visual cue for custom input
-            description: "Custom SSH Host",
-            alwaysShow: true,
-        };
-
-        quickPick.onDidChangeValue((value) => {
-            if (value) {
-                // Update custom entry when something is typed in search bar
-                customItem.label = `> ${value}`;
-                // Update the QuickPick items with the custom entry at the top, if not already added
-                quickPick.items = [customItem, ...qpItems.filter((item) => item.label !== customItem.label)];
-            } else {
-                // Remove the custom entry if the search bar is cleared
-                quickPick.items = [...qpItems];
-            }
-        });
-
-        // Show the QuickPick
-        quickPick.show();
-
-        // Wait for selection
-        const result = await new Promise<vscode.QuickPickItem | undefined>((resolve) => {
-            quickPick.onDidAccept(() => {
-                resolve(quickPick.selectedItems[0]);
-                quickPick.hide();
-            });
-        });
-
-        if (result?.label.startsWith(">")) result.label = result.label.replace(">", "").trim();
-
-        return result;
     }
 
     public static async showSessionInTree(profileName: string, visible: boolean): Promise<void> {
@@ -140,7 +74,7 @@ export class SshConfigUtils {
         }
     }
 }
-class VscePromptApi extends AbstractConfigManager {
+export class VscePromptApi extends AbstractConfigManager {
     protected showMessage(message: string, messageType: MESSAGE_TYPE): void {
         switch (messageType) {
             case MESSAGE_TYPE.INFORMATION:
@@ -185,6 +119,56 @@ class VscePromptApi extends AbstractConfigManager {
                 quickPick.hide();
             });
             quickPick.onDidHide(() => resolve(undefined)); // Handle case when user cancels
+            quickPick.show();
+        });
+    }
+
+    protected async showCustomQuickPick(opts: qpOpts): Promise<qpItem | undefined> {
+        const quickPick = vscode.window.createQuickPick();
+        quickPick.items = opts.items.map((item) => {
+            if (item.separator) {
+                return {
+                    ...item,
+                    kind: vscode.QuickPickItemKind.Separator,
+                };
+            }
+            return item;
+        });
+        quickPick.title = opts.title;
+        quickPick.placeholder = opts.placeholder;
+        quickPick.ignoreFocusOut = opts.ignoreFocusOut ?? false;
+
+        const customItem = {
+            label: ">", // Using ">" as a visual cue for custom input
+            description: "Custom SSH Host",
+            alwaysShow: true,
+        };
+
+        quickPick.onDidChangeValue((value) => {
+            if (value) {
+                customItem.label = `> ${value}`;
+                quickPick.items = [customItem, ...opts.items];
+            } else {
+                quickPick.items = opts.items;
+            }
+        });
+
+        return new Promise<qpItem | undefined>((resolve) => {
+            quickPick.onDidAccept(() => {
+                const selection = quickPick.selectedItems[0];
+                if (selection) {
+                    if (selection.label.startsWith(">")) {
+                        resolve({
+                            label: selection.label.replace(">", "").trim(),
+                            description: "Custom SSH Host",
+                        });
+                    } else {
+                        resolve(selection);
+                    }
+                }
+                quickPick.hide();
+            });
+            quickPick.onDidHide(() => resolve(undefined));
             quickPick.show();
         });
     }
