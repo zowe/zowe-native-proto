@@ -49,7 +49,7 @@ func CollectContentsAsBytes(input string, isByteString bool) (data []byte, err e
 }
 
 func LoadChecksums() map[string]string {
-	checksumsFile := filepath.Dir(os.Args[0]) + "/checksums.asc"
+	checksumsFile := filepath.Join(GetExecDir(), "checksums.asc")
 	file, err := os.Open(checksumsFile)
 	if os.IsNotExist(err) {
 		// Checksums file does not exist for dev builds
