@@ -24,11 +24,21 @@ export interface inputBoxOpts {
     ignoreFocusOut?: boolean;
     password?: boolean;
 }
-
+export type ProgressCallback = (percent: number) => void;
 export abstract class AbstractConfigManager {
     protected abstract showMessage(message: string, type: MESSAGE_TYPE): void;
     protected abstract showInputBox(opts: inputBoxOpts): Promise<string | undefined>;
+    protected abstract withProgress<T>(message: string, task: (progress: ProgressCallback) => Promise<T>): Promise<T>;
 
+    public async doLongTask(max: number): Promise<void> {
+        await this.withProgress("Working...", async (progress) => {
+            for (let i = 0; i < max; i++) {
+                // Invoke progress callback, then do long running task
+                progress(1);
+                await new Promise((resolve) => setTimeout(resolve, 100));
+            }
+        });
+    }
     // protected abstract progressBar(): Promise<string>;
 
     public async createNewConfig(knownConfigOpts?: string): Promise<ISshConfigExt | undefined> {
@@ -291,5 +301,65 @@ export abstract class AbstractConfigManager {
             }
         }
         return configModifications;
+    }
+
+    public async validateFoundPrivateKeys() {
+        // Create a progress bar using the custom Gui.withProgress
+
+        await this.withProgress("Working...", async (progress) => {
+            // Find private keys located at ~/.ssh/ and attempt to connect with them
+            if (!SshConfigUtils.validationResult) {
+                const foundPrivateKeys = await ZClientUtils.findPrivateKeys();
+                for (const privateKey of foundPrivateKeys) {
+                    const testValidation: ISshConfigExt = SshConfigUtils.selectedProfile!;
+                    testValidation.privateKey = privateKey;
+                    const result = await SshConfigUtils.validateConfig(testValidation);
+                    progress.report({ increment: 100 / foundPrivateKeys.length });
+
+                    if (result) {
+                        SshConfigUtils.validationResult = {};
+                        if (Object.keys(result).length >= 1) {
+                            SshConfigUtils.selectedProfile = { ...SshConfigUtils.selectedProfile, ...result };
+                        }
+                        return;
+                    }
+                }
+            }
+
+            // Match hostname to configurations from ~/.ssh/config file
+            let validationAttempts = SshConfigUtils.migratedConfigs.filter(
+                (config) => config.hostname === SshConfigUtils.selectedProfile?.hostname,
+            );
+
+            // If multiple matches exist, narrow down by user
+            if (validationAttempts.length > 1 && SshConfigUtils.selectedProfile?.user) {
+                validationAttempts = validationAttempts.filter(
+                    (config) => config.user === SshConfigUtils.selectedProfile?.user,
+                );
+            } else {
+                // If no user is specified, allow all configs where the hostname matches
+                validationAttempts = validationAttempts.filter(
+                    (config) =>
+                        !SshConfigUtils.selectedProfile?.user || config.user === SshConfigUtils.selectedProfile?.user,
+                );
+            }
+
+            for (const profile of validationAttempts) {
+                const testValidation: ISshConfigExt = profile;
+                const result = await SshConfigUtils.validateConfig(testValidation);
+                progress.report({ increment: 100 / validationAttempts.length });
+                if (result !== undefined) {
+                    SshConfigUtils.validationResult = {};
+                    if (Object.keys(result).length >= 1) {
+                        SshConfigUtils.selectedProfile = {
+                            ...SshConfigUtils.selectedProfile,
+                            ...result,
+                            privateKey: testValidation.privateKey,
+                        };
+                    }
+                    return;
+                }
+            }
+        });
     }
 }
