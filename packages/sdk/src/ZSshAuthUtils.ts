@@ -1,4 +1,4 @@
-import type { ISshConfigExt } from "./ZClientUtils";
+import { ZClientUtils, type ISshConfigExt } from "./ZClientUtils";
 import {
     FileManagement,
     Gui,
@@ -23,23 +23,150 @@ export interface inputBoxOpts {
     placeHolder: string;
     ignoreFocusOut?: boolean;
     password?: boolean;
+    value?: string;
+    validateInput?: (input: string) => string;
 }
+export interface qpOpts {
+    items: qpItem[];
+    title?: string;
+    placeholder?: string;
+    ignoreFocusOut?: boolean;
+}
+export interface qpItem {
+    label: string;
+    description?: string;
+}
+
 export type ProgressCallback = (percent: number) => void;
 export abstract class AbstractConfigManager {
     protected abstract showMessage(message: string, type: MESSAGE_TYPE): void;
     protected abstract showInputBox(opts: inputBoxOpts): Promise<string | undefined>;
     protected abstract withProgress<T>(message: string, task: (progress: ProgressCallback) => Promise<T>): Promise<T>;
+    protected abstract showQuickPick(opts: qpOpts): Promise<string | undefined>;
 
-    public async doLongTask(max: number): Promise<void> {
-        await this.withProgress("Working...", async (progress) => {
-            for (let i = 0; i < max; i++) {
-                // Invoke progress callback, then do long running task
-                progress(1);
-                await new Promise((resolve) => setTimeout(resolve, 100));
+    public async promptForProfile(profileName?: string): Promise<imperative.IProfileLoaded | undefined> {
+        const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
+        const profCache = zoweExplorerApi.getExplorerExtenderApi().getProfilesCache();
+        const profInfo = await profCache.getProfileInfo();
+        SshConfigUtils.validationResult = undefined;
+        if (profileName) {
+            return profCache.getLoadedProfConfig(profileName, "ssh");
+        }
+
+        SshConfigUtils.sshProfiles = (await profCache.fetchAllProfilesByType("ssh")).filter(
+            ({ name, profile }) => name && profile?.host,
+        );
+        // Get configs from ~/.ssh/config
+        SshConfigUtils.migratedConfigs = await ZClientUtils.migrateSshConfig();
+
+        // Parse to remove migratable configs that already exist on the team config
+        SshConfigUtils.filteredMigratedConfigs = SshConfigUtils.migratedConfigs.filter(
+            (migratedConfig) =>
+                !SshConfigUtils.sshProfiles.some((sshProfile) => sshProfile.profile?.host === migratedConfig.hostname),
+        );
+
+        // Prompt user for ssh (new config, existing, migrating)
+        const result = await SshConfigUtils.showQuickPickWithCustomInput();
+
+        // If nothing selected, return
+        if (!result) return;
+
+        // If result is add new SSH host then create a new config, if not use migrated configs
+        SshConfigUtils.selectedProfile = SshConfigUtils.filteredMigratedConfigs.find(
+            ({ name, hostname }) => result?.label === name && result?.description === hostname,
+        );
+
+        if (result.description === "Custom SSH Host") {
+            const createNewConfig = await this.createNewConfig(result.label);
+            if (!createNewConfig) return undefined;
+            SshConfigUtils.selectedProfile = createNewConfig;
+        } else if (result.label === "$(plus) Add New SSH Host...") {
+            const createNewConfig = await this.createNewConfig();
+            if (!createNewConfig) return undefined;
+            SshConfigUtils.selectedProfile = createNewConfig;
+        }
+
+        // If an existing team config profile was selected
+        if (!SshConfigUtils.selectedProfile) {
+            const foundProfile = SshConfigUtils.sshProfiles.find(({ name }) => name === result.label);
+            if (foundProfile) {
+                const validConfig = await this.validateConfig({
+                    hostname: foundProfile?.profile?.host,
+                    port: foundProfile?.profile?.port,
+                    privateKey: foundProfile?.profile?.privateKey,
+                    keyPassphrase: foundProfile?.profile?.keyPassphrase,
+                    user: foundProfile?.profile?.user,
+                    password: foundProfile?.profile?.password,
+                });
+                if (validConfig === undefined) return;
+
+                await this.setProfile(validConfig, foundProfile.name);
+                return { ...foundProfile, profile: { ...foundProfile.profile, ...validConfig } };
             }
-        });
+        }
+
+        // Current directory open in vscode window
+        const workspaceDir = ZoweVsCodeExtension.workspaceRoot;
+
+        // Prioritize creating a team config in the local workspace if it exists even if a global config exists
+        // TODO: This behavior is only for the POC phase
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////
+        if (workspaceDir?.uri.fsPath !== undefined && !profInfo.getTeamConfig().layerExists(workspaceDir!.uri.fsPath)) {
+            await this.createZoweSchema(false);
+        } else {
+            await this.createZoweSchema(true);
+        }
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        // Prompt for a new profile name with the hostname (for adding a new config) or host value (for migrating from a config)
+        SshConfigUtils.selectedProfile = await this.getNewProfileName(
+            SshConfigUtils.selectedProfile!,
+            profInfo.getTeamConfig(),
+        );
+
+        if (!SshConfigUtils.selectedProfile?.name) {
+            this.showMessage("SSH setup cancell1ed.", MESSAGE_TYPE.WARNING);
+            return;
+        }
+
+        if (SshConfigUtils.validationResult === undefined) {
+            await this.validateFoundPrivateKeys();
+        }
+
+        if (SshConfigUtils.validationResult === undefined) {
+            // Attempt to validate with given URL/creds
+            SshConfigUtils.validationResult = await this.validateConfig(SshConfigUtils.selectedProfile);
+        }
+        // If validateConfig returns a string, that string is the correct keyPassphrase
+        if (SshConfigUtils.validationResult && Object.keys(SshConfigUtils.validationResult).length >= 1) {
+            SshConfigUtils.selectedProfile = { ...SshConfigUtils.selectedProfile, ...SshConfigUtils.validationResult };
+        }
+
+        // If no private key or password is on the profile then there is no possible validation combination, thus return
+        if (!SshConfigUtils.selectedProfile?.privateKey && !SshConfigUtils.selectedProfile?.password) {
+            this.showMessage("SSH setup cancelled.", MESSAGE_TYPE.WARNING);
+            return;
+        }
+
+        await this.setProfile(SshConfigUtils.selectedProfile);
+
+        return {
+            name: SshConfigUtils.selectedProfile.name,
+            message: "",
+            failNotFound: false,
+            type: "ssh",
+            profile: {
+                host: SshConfigUtils.selectedProfile.hostname,
+                name: SshConfigUtils.selectedProfile.name,
+                password: SshConfigUtils.selectedProfile.password,
+                user: SshConfigUtils.selectedProfile.user,
+                privateKey: SshConfigUtils.selectedProfile.privateKey,
+                handshakeTimeout: SshConfigUtils.selectedProfile.handshakeTimeout,
+                port: SshConfigUtils.selectedProfile.port,
+                keyPassphrase: SshConfigUtils.selectedProfile.keyPassphrase,
+            },
+        };
     }
-    // protected abstract progressBar(): Promise<string>;
 
     public async createNewConfig(knownConfigOpts?: string): Promise<ISshConfigExt | undefined> {
         const sshRegex = /^ssh\s+(?:([a-zA-Z0-9_-]+)@)?([a-zA-Z0-9.-]+)/;
@@ -314,7 +441,7 @@ export abstract class AbstractConfigManager {
                     const testValidation: ISshConfigExt = SshConfigUtils.selectedProfile!;
                     testValidation.privateKey = privateKey;
                     const result = await SshConfigUtils.validateConfig(testValidation);
-                    progress.report({ increment: 100 / foundPrivateKeys.length });
+                    progress(100 / foundPrivateKeys.length);
 
                     if (result) {
                         SshConfigUtils.validationResult = {};
@@ -347,7 +474,7 @@ export abstract class AbstractConfigManager {
             for (const profile of validationAttempts) {
                 const testValidation: ISshConfigExt = profile;
                 const result = await SshConfigUtils.validateConfig(testValidation);
-                progress.report({ increment: 100 / validationAttempts.length });
+                progress(100 / validationAttempts.length);
                 if (result !== undefined) {
                     SshConfigUtils.validationResult = {};
                     if (Object.keys(result).length >= 1) {
@@ -361,5 +488,135 @@ export abstract class AbstractConfigManager {
                 }
             }
         });
+    }
+
+    public async setProfile(selectedConfig: ISshConfigExt | undefined, updatedProfile?: string): Promise<void> {
+        // Profile information
+        const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
+        const profCache = zoweExplorerApi.getExplorerExtenderApi().getProfilesCache();
+        const profInfo = await profCache.getProfileInfo();
+        const configApi = profInfo.getTeamConfig().api;
+
+        // Create the base config object
+        const config = {
+            type: "ssh",
+            properties: {
+                user: selectedConfig?.user,
+                host: selectedConfig?.hostname,
+                privateKey: selectedConfig?.privateKey,
+                port: selectedConfig?.port || 22,
+                keyPassphrase: selectedConfig?.keyPassphrase,
+                password: selectedConfig?.password,
+            },
+            secure: [],
+        };
+        //if password or KP is defined, make them secure
+        if (selectedConfig?.password) config.secure.push("password" as never);
+        if (selectedConfig?.keyPassphrase) config.secure.push("keyPassphrase" as never);
+
+        if (updatedProfile) {
+            for (const key of Object.keys(selectedConfig!)) {
+                const validKey = key as keyof ISshConfigExt;
+
+                // Get the location of the property being modified
+                profCache.getDefaultProfile("ssh");
+                const propertyLocation = profInfo
+                    .mergeArgsForProfile({
+                        profName: updatedProfile,
+                        profType: "ssh",
+                        isDefaultProfile: profCache.getDefaultProfile("ssh").name === updatedProfile,
+                        profLoc: { locType: 1 },
+                    })
+                    .knownArgs.find((obj) => obj.argName === key)?.argLoc.jsonLoc;
+
+                let allowBaseModification: string | undefined;
+
+                if (propertyLocation) {
+                    const profileName = configApi.profiles.getProfileNameFromPath(propertyLocation);
+
+                    // Check to see if the property being modified comes from the service profile to handle possibly breaking configuration changes
+                    const doesPropComeFromProfile = profileName === updatedProfile;
+
+                    if (!doesPropComeFromProfile) {
+                        const qpOpts: qpOpts = {
+                            items: [
+                                { label: "Yes", description: "Proceed with modification" },
+                                { label: "No", description: "Modify SSH profile instead" },
+                            ],
+                            title: `Property: "${key}" found in a possibly shared configuration and may break others, continue?`,
+                            placeholder: "Select an option",
+                            ignoreFocusOut: false,
+                        };
+                        allowBaseModification = await this.showQuickPick(qpOpts);
+                    }
+                }
+
+                profInfo.updateProperty({
+                    profileName: updatedProfile,
+                    profileType: "ssh",
+                    property: validKey,
+                    value: selectedConfig![validKey],
+                    forceUpdate: allowBaseModification !== "Yes",
+                    setSecure: profInfo.isSecured(),
+                });
+            }
+        } else {
+            if (!configApi.profiles.defaultGet("ssh")) configApi.profiles.defaultSet("ssh", selectedConfig?.name!);
+            configApi.profiles.set(selectedConfig?.name!, config);
+        }
+
+        await profInfo.getTeamConfig().save();
+    }
+
+    public async getNewProfileName(
+        selectedProfile: ISshConfigExt,
+        configApi: imperative.Config,
+    ): Promise<ISshConfigExt | undefined> {
+        let isUniqueName = false;
+
+        // If no name option set then use hostname with all "." replaced with "_"
+        if (!selectedProfile.name) selectedProfile.name = selectedProfile.hostname!.replace(/\./g, "_");
+
+        // If selectedProfile already has a name, return it unless an existing profile is found
+        if (selectedProfile.name) {
+            const existingProfile = configApi.layerActive().properties.profiles[selectedProfile.name];
+            if (existingProfile) {
+                const overwriteOpts: qpOpts = {
+                    items: [{ label: "Yes" }, { label: "No" }],
+                    placeholder: `A profile with the name "${selectedProfile.name}" already exists. Do you want to overwrite it?`,
+                };
+
+                const overwriteResponse = await this.showQuickPick(overwriteOpts);
+
+                if (overwriteResponse === "Yes") return selectedProfile;
+            } else return selectedProfile;
+        }
+
+        // If no name set or overwriting, proceed with the input loop
+        while (!isUniqueName) {
+            selectedProfile.name = await this.showInputBox({
+                title: "Enter a name for the SSH config",
+                password: true,
+                placeHolder: "Enter passphrase for key",
+                ignoreFocusOut: true,
+                value: selectedProfile.name!.replace(/\./g, "_"),
+                validateInput: (input: string) => (input.includes(".") ? "Name cannot contain '.'" : null),
+            });
+
+            if (!selectedProfile.name) return;
+            const existingProfile = configApi.layerActive().properties.profiles[selectedProfile.name];
+            if (existingProfile) {
+                const overwriteResponse = await this.showQuickPick({
+                    items: [{ label: "Yes" }, { label: "No" }],
+                    placeholder: `A profile with the name "${selectedProfile.name}" already exists. Do you want to overwrite it?`,
+                });
+                if (overwriteResponse === "Yes") {
+                    isUniqueName = true;
+                }
+            } else {
+                isUniqueName = true;
+            }
+        }
+        return selectedProfile;
     }
 }
