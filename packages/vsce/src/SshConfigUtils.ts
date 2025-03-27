@@ -17,6 +17,7 @@ import {
     Gui,
     type IZoweTree,
     type IZoweTreeNode,
+    type ProfilesCache,
     ZoweVsCodeExtension,
     type imperative,
 } from "@zowe/zowe-explorer-api";
@@ -75,6 +76,10 @@ export class SshConfigUtils {
     }
 }
 export class VscePromptApi extends AbstractConfigManager {
+    public constructor(private mProfilesCache: ProfilesCache) {
+        super();
+    }
+
     protected showMessage(message: string, messageType: MESSAGE_TYPE): void {
         switch (messageType) {
             case MESSAGE_TYPE.INFORMATION:
