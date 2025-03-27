@@ -20,7 +20,7 @@ export enum MESSAGE_TYPE {
 
 export interface inputBoxOpts {
     title: string;
-    placeHolder: string;
+    placeHolder?: string;
     ignoreFocusOut?: boolean;
     password?: boolean;
     value?: string;
@@ -631,11 +631,8 @@ export abstract class AbstractConfigManager {
         while (!isUniqueName) {
             selectedProfile.name = await this.showInputBox({
                 title: "Enter a name for the SSH config",
-                password: true,
-                placeHolder: "Enter passphrase for key",
-                ignoreFocusOut: true,
                 value: selectedProfile.name!.replace(/\./g, "_"),
-                validateInput: (input: string) => (input.includes(".") ? "Name cannot contain '.'" : null),
+                validateInput: (input) => (input.includes(".") ? "Name cannot contain '.'" : null),
             });
 
             if (!selectedProfile.name) return;
