@@ -287,19 +287,21 @@ async function getDumps(connection: Client) {
 }
 
 async function artifacts(connection: Client) {
-    const artifactNames = ["c/zowex", "golang/zowed"];
+    const artifactPaths = ["c/zowex", "golang/zowed"];
+    const artifactNames = artifactPaths.map((file) => basename(file)).sort();
     const localDirs = ["packages/cli/bin", "packages/vsce/bin"];
     const localFiles = ["server.pax.Z", "checksums.asc"];
     const [paxFile, checksumFile] = localFiles;
-    const prePaxCmds = artifactNames.map((file) => `cp ${file} ${basename(file)} && chmod 700 ${basename(file)}`);
-    const postPaxCmd = `rm ${artifactNames.map((file) => basename(file)).join(" ")}`;
+    const prePaxCmds = artifactPaths.map((file) => `cp ${file} ${basename(file)} && chmod 700 ${basename(file)}`);
+    const postPaxCmd = `rm ${artifactNames.join(" ")}`;
+    const e2aPipe = (file: string) => `iconv -f IBM-1047 -t ISO8859-1 > ${file} && chtag -t ISO8859-1 ${file}`;
     await runCommandInShell(
         connection,
         [
             `cd ${deployDirectory}`,
             ...prePaxCmds,
-            `_BPXK_AUTOCVT=OFF sha256 -r ${artifactNames.map((file) => basename(file)).join(" ")} | iconv -f IBM-1047 -t ISO8859-1 > ${checksumFile}`,
-            `pax -wvzf ${paxFile} ${artifactNames.map((file) => basename(file)).join(" ")} ${checksumFile}`,
+            `_BPXK_AUTOCVT=OFF sha256 -r ${artifactNames.join(" ")} | ${e2aPipe(checksumFile)}`,
+            `pax -wvz -o saveext -f ${paxFile} ${artifactNames.join(" ")} ${checksumFile}`,
             postPaxCmd,
         ].join("\n"),
     );
