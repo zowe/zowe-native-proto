@@ -19,7 +19,7 @@ import {
     type inputBoxOpts,
     type qpItem,
     type qpOpts,
-} from "../../sdk/src/ZSshAuthUtils";
+} from "zowe-native-proto-sdk/src/AbstractConfigManager";
 
 // biome-ignore lint/complexity/noStaticOnlyClass: Utilities class has static methods
 export class SshConfigUtils {
