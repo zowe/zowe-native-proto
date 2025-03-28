@@ -96,14 +96,14 @@ describe("ZSshClient", () => {
 
         it("should handle error in SSH data handler", async () => {
             const sshError = new Error("bad ssh");
-            const sshStream = new EventEmitter();
+            const sshStream = { stderr: new EventEmitter(), stdout: new EventEmitter() };
             mock.method(Client.prototype, "connect", function (_config: ConnectConfig) {
                 this.emit("ready");
                 return this;
             });
             mock.method(Client.prototype, "exec", function (_command: string, callback: ClientCallback) {
                 callback(undefined, sshStream as any);
-                sshStream.emit("data");
+                sshStream.stderr.emit("data", "");
                 return this;
             });
             mock.method(ZSshClient.prototype as any, "onReady", () => {
@@ -239,32 +239,30 @@ describe("ZSshClient", () => {
 
     describe("callbacks", () => {
         it("should receive ready message from Zowe server", async () => {
-            const sshStream = new EventEmitter();
-            const onStderrMock = mock.fn();
-            const onStdoutMock = mock.fn();
-            Object.defineProperty(sshStream, "stderr", { value: { on: onStderrMock } });
-            Object.defineProperty(sshStream, "stdout", { value: { on: onStdoutMock } });
+            const sshStream = { stderr: new EventEmitter(), stdout: new EventEmitter() };
+            const onStderrMock = mock.method(sshStream.stderr, "on");
+            const onStdoutMock = mock.method(sshStream.stdout, "on");
             const client: ZSshClient = new (ZSshClient as any)();
             (client as any).mSshClient = {
                 exec: function (_command: string, callback: ClientCallback) {
                     callback(undefined, sshStream as any);
-                    sshStream.emit("data", readyMessage);
+                    sshStream.stdout.emit("data", readyMessage);
                     return this;
                 },
             };
             await (client as any).execAsync();
-            assert.equal(onStderrMock.mock.callCount(), 1);
-            assert.equal(onStdoutMock.mock.callCount(), 1);
+            assert.equal(onStderrMock.mock.callCount(), 2);
+            assert.equal(onStdoutMock.mock.callCount(), 2);
             assert(client.serverChecksums != null);
         });
 
         it("should handle not found error from Zowe server", async () => {
-            const sshStream = new EventEmitter();
+            const sshStream = { stderr: new EventEmitter(), stdout: new EventEmitter() };
             const client: ZSshClient = new (ZSshClient as any)();
             (client as any).mSshClient = {
                 exec: function (_command: string, callback: ClientCallback) {
                     callback(undefined, sshStream as any);
-                    sshStream.emit("data", "FSUM7351 not found");
+                    sshStream.stderr.emit("data", "FSUM7351 not found");
                     return this;
                 },
             };
@@ -272,12 +270,12 @@ describe("ZSshClient", () => {
         });
 
         it("should handle startup error from Zowe server", async () => {
-            const sshStream = new EventEmitter();
+            const sshStream = { stderr: new EventEmitter(), stdout: new EventEmitter() };
             const client: ZSshClient = new (ZSshClient as any)();
             (client as any).mSshClient = {
                 exec: function (_command: string, callback: ClientCallback) {
                     callback(undefined, sshStream as any);
-                    sshStream.emit("data", "bad json");
+                    sshStream.stderr.emit("data", "bad json");
                     return this;
                 },
             };
