@@ -1,16 +1,22 @@
-import { ZClientUtils, type ISshConfigExt } from "./ZClientUtils";
-import {
-    FileManagement,
-    Gui,
-    type IZoweTree,
-    type IZoweTreeNode,
-    ZoweVsCodeExtension,
-    imperative,
-} from "@zowe/zowe-explorer-api";
-import { ProfileConstants } from "@zowe/core-for-zowe-sdk";
-import { Client, type ClientChannel } from "ssh2";
 import { readFileSync } from "node:fs";
 import * as path from "node:path";
+import { ProfileConstants } from "@zowe/core-for-zowe-sdk";
+import {
+    Config,
+    ConfigBuilder,
+    ConfigSchema,
+    ConfigUtils,
+    type IConfig,
+    type IConfigBuilderOpts,
+    type IImperativeConfig,
+    type IProfAttrs,
+    type IProfile,
+    type IProfileLoaded,
+    type IProfileTypeConfiguration,
+    type ProfileInfo,
+} from "@zowe/imperative";
+import { Client, type ClientChannel } from "ssh2";
+import { type ISshConfigExt, ZClientUtils } from "./ZClientUtils";
 
 export enum MESSAGE_TYPE {
     INFORMATION = 1,
@@ -21,7 +27,6 @@ export enum MESSAGE_TYPE {
 export interface inputBoxOpts {
     title: string;
     placeHolder?: string;
-    ignoreFocusOut?: boolean;
     password?: boolean;
     value?: string;
     validateInput?: (input: string) => string;
@@ -30,14 +35,7 @@ export interface qpOpts {
     items: qpItem[];
     title?: string;
     placeholder?: string;
-    ignoreFocusOut?: boolean;
 }
-export interface qpItem {
-    label: string;
-    description?: string;
-    separator?: boolean;
-}
-
 export interface qpItem {
     label: string;
     description?: string;
@@ -46,30 +44,31 @@ export interface qpItem {
 
 export type ProgressCallback = (percent: number) => void;
 export abstract class AbstractConfigManager {
+    public constructor(private mProfilesCache: ProfileInfo) {}
+
     protected abstract showMessage(message: string, type: MESSAGE_TYPE): void;
     protected abstract showInputBox(opts: inputBoxOpts): Promise<string | undefined>;
     protected abstract withProgress<T>(message: string, task: (progress: ProgressCallback) => Promise<T>): Promise<T>;
     protected abstract showQuickPick(opts: qpOpts): Promise<string | undefined>;
     protected abstract showCustomQuickPick(opts: qpOpts): Promise<qpItem | undefined>;
+    protected abstract getCurrentDir(): string | undefined;
+    protected abstract getProfileType(): IProfileTypeConfiguration[];
 
     private migratedConfigs: ISshConfigExt[];
     private filteredMigratedConfigs: ISshConfigExt[];
     private validationResult: ISshConfigExt | undefined;
     private selectedProfile: ISshConfigExt | undefined;
-    private sshProfiles: imperative.IProfileLoaded[];
+    private sshProfiles: IProfileLoaded[];
 
-    public async promptForProfile(profileName?: string): Promise<imperative.IProfileLoaded | undefined> {
-        const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
-        const profCache = zoweExplorerApi.getExplorerExtenderApi().getProfilesCache();
-        const profInfo = await profCache.getProfileInfo();
+    /**/
+    public async promptForProfile(profileName?: string): Promise<IProfileLoaded | undefined> {
         this.validationResult = undefined;
         if (profileName) {
-            return profCache.getLoadedProfConfig(profileName, "ssh");
+            return { profile: this.getMergedAttrs(profileName), message: "", failNotFound: false, type: "ssh" };
         }
 
-        this.sshProfiles = (await profCache.fetchAllProfilesByType("ssh")).filter(
-            ({ name, profile }) => name && profile?.host,
-        );
+        this.sshProfiles = this.fetchAllSshProfiles().filter(({ name, profile }) => name && profile?.host);
+
         // Get configs from ~/.ssh/config
         this.migratedConfigs = await ZClientUtils.migrateSshConfig();
 
@@ -120,12 +119,12 @@ export abstract class AbstractConfigManager {
         }
 
         // Current directory open in vscode window
-        const workspaceDir = ZoweVsCodeExtension.workspaceRoot;
+        const workspaceDir = this.getCurrentDir();
 
         // Prioritize creating a team config in the local workspace if it exists even if a global config exists
         // TODO: This behavior is only for the POC phase
         ////////////////////////////////////////////////////////////////////////////////////////////////////////
-        if (workspaceDir?.uri.fsPath !== undefined && !profInfo.getTeamConfig().layerExists(workspaceDir!.uri.fsPath)) {
+        if (workspaceDir !== undefined && !this.mProfilesCache.getTeamConfig().layerExists(workspaceDir)) {
             await this.createZoweSchema(false);
         } else {
             await this.createZoweSchema(true);
@@ -133,7 +132,7 @@ export abstract class AbstractConfigManager {
         ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         // Prompt for a new profile name with the hostname (for adding a new config) or host value (for migrating from a config)
-        this.selectedProfile = await this.getNewProfileName(this.selectedProfile!, profInfo.getTeamConfig());
+        this.selectedProfile = await this.getNewProfileName(this.selectedProfile!, this.mProfilesCache.getTeamConfig());
 
         if (!this.selectedProfile?.name) {
             this.showMessage("SSH setup cancelled.", MESSAGE_TYPE.WARNING);
@@ -204,16 +203,13 @@ export abstract class AbstractConfigManager {
 
     private async createNewConfig(knownConfigOpts?: string): Promise<ISshConfigExt | undefined> {
         const sshRegex = /^ssh\s+(?:([a-zA-Z0-9_-]+)@)?([a-zA-Z0-9.-]+)/;
-
         const flagRegex = /-(\w+)(?:\s+("[^"]+"|'[^']+'|\S+))?/g;
         const SshProfile: ISshConfigExt = {};
-        const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
-        const profInfo = await zoweExplorerApi.getExplorerExtenderApi().getProfilesCache().getProfileInfo();
 
         //check if project layer exists, if it doesnt create one, but if no workspace then create it as global
 
-        const workspaceDir = ZoweVsCodeExtension.workspaceRoot;
-        if (workspaceDir?.uri.fsPath !== undefined && !profInfo.getTeamConfig().layerExists(workspaceDir!.uri.fsPath)) {
+        const workspaceDirPath = this.getCurrentDir();
+        if (workspaceDirPath !== undefined && !this.mProfilesCache.getTeamConfig().layerExists(workspaceDirPath)) {
             await this.createZoweSchema(false);
         }
 
@@ -224,7 +220,6 @@ export abstract class AbstractConfigManager {
             sshResponse = await this.showInputBox({
                 title: "Enter SSH connection command",
                 placeHolder: "E.g. ssh user@example.com",
-                ignoreFocusOut: true,
             });
         } else {
             sshResponse = `ssh ${knownConfigOpts}`;
@@ -297,38 +292,29 @@ export abstract class AbstractConfigManager {
     private async createZoweSchema(global: boolean): Promise<void> {
         try {
             const user = false;
-            const workspaceDir = ZoweVsCodeExtension.workspaceRoot;
+            const workspaceDir = this.getCurrentDir();
 
-            const config = await imperative.Config.load("zowe", {
-                homeDir: FileManagement.getZoweDir(),
-                projectDir: workspaceDir?.uri.fsPath,
+            const config = await Config.load("zowe", {
+                homeDir: ConfigUtils.getZoweDir(),
+                projectDir: workspaceDir,
             });
 
             config.api.layers.activate(user, global);
 
-            const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
-            const profCache = zoweExplorerApi.getExplorerExtenderApi().getProfilesCache();
-            const knownCliConfig: imperative.ICommandProfileTypeConfiguration[] = [
-                // biome-ignore lint/suspicious/noExplicitAny: Accessing protected method
-                ...(profCache as any).getCoreProfileTypes(),
-                ...profCache.getConfigArray(),
-                ProfileConstants.BaseProfile,
-            ];
-
-            config.setSchema(imperative.ConfigSchema.buildSchema(knownCliConfig));
+            config.setSchema(ConfigSchema.buildSchema(this.getProfileType()));
 
             // Note: IConfigBuilderOpts not exported
             // const opts: IConfigBuilderOpts = {
-            const opts: imperative.IConfigBuilderOpts = {
+            const opts: IConfigBuilderOpts = {
                 // getSecureValue: this.promptForProp.bind(this),
                 populateProperties: true,
             };
             // Build new config and merge with existing layer
-            const impConfig: Partial<imperative.IImperativeConfig> = {
+            const impConfig: Partial<IImperativeConfig> = {
                 profiles: [ProfileConstants.BaseProfile],
                 baseProfile: ProfileConstants.BaseProfile,
             };
-            const newConfig: imperative.IConfig = await imperative.ConfigBuilder.build(impConfig, global, opts);
+            const newConfig: IConfig = await ConfigBuilder.build(impConfig, global, opts);
             config.api.layers.merge(newConfig);
             await config.save(false);
         } catch (err) {}
@@ -367,7 +353,6 @@ export abstract class AbstractConfigManager {
                     title: `${configModifications.user ?? config.user}@${config.hostname}'s password:`,
                     password: true,
                     placeHolder: "Enter your password",
-                    ignoreFocusOut: true,
                 });
 
                 if (!testPassword) return undefined;
@@ -393,7 +378,6 @@ export abstract class AbstractConfigManager {
                 const userModification = await this.showInputBox({
                     title: `Enter user for host: '${newConfig.hostname}'`,
                     placeHolder: "Enter the user for the target host",
-                    ignoreFocusOut: true,
                 });
                 configModifications.user = userModification;
             }
@@ -419,7 +403,6 @@ export abstract class AbstractConfigManager {
                 const testUser = await this.showInputBox({
                     title: `Enter user for host: '${newConfig.hostname}'`,
                     placeHolder: "Enter the user for the target host",
-                    ignoreFocusOut: true,
                 });
 
                 if (!testUser) return undefined;
@@ -439,7 +422,6 @@ export abstract class AbstractConfigManager {
                         title: `Enter passphrase for key '${privateKeyPath}'`,
                         password: true,
                         placeHolder: "Enter passphrase for key",
-                        ignoreFocusOut: true,
                     });
 
                     try {
@@ -525,12 +507,7 @@ export abstract class AbstractConfigManager {
     }
 
     private async setProfile(selectedConfig: ISshConfigExt | undefined, updatedProfile?: string): Promise<void> {
-        // Profile information
-        const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
-        const profCache = zoweExplorerApi.getExplorerExtenderApi().getProfilesCache();
-        const profInfo = await profCache.getProfileInfo();
-        const configApi = profInfo.getTeamConfig().api;
-
+        const configApi = this.mProfilesCache.getTeamConfig().api;
         // Create the base config object
         const config = {
             type: "ssh",
@@ -554,12 +531,12 @@ export abstract class AbstractConfigManager {
                 const validKey = key as keyof ISshConfigExt;
 
                 // Get the location of the property being modified
-                profCache.getDefaultProfile("ssh");
-                const propertyLocation = profInfo
+
+                const propertyLocation = this.mProfilesCache
                     .mergeArgsForProfile({
                         profName: updatedProfile,
                         profType: "ssh",
-                        isDefaultProfile: profCache.getDefaultProfile("ssh").name === updatedProfile,
+                        isDefaultProfile: this.fetchDefaultProfile().name === updatedProfile,
                         profLoc: { locType: 1 },
                     })
                     .knownArgs.find((obj) => obj.argName === key)?.argLoc.jsonLoc;
@@ -580,19 +557,18 @@ export abstract class AbstractConfigManager {
                             ],
                             title: `Property: "${key}" found in a possibly shared configuration and may break others, continue?`,
                             placeholder: "Select an option",
-                            ignoreFocusOut: false,
                         };
                         allowBaseModification = await this.showQuickPick(qpOpts);
                     }
                 }
 
-                profInfo.updateProperty({
+                this.mProfilesCache.updateProperty({
                     profileName: updatedProfile,
                     profileType: "ssh",
                     property: validKey,
                     value: selectedConfig![validKey],
                     forceUpdate: allowBaseModification !== "Yes",
-                    setSecure: profInfo.isSecured(),
+                    setSecure: this.mProfilesCache.isSecured(),
                 });
             }
         } else {
@@ -600,12 +576,12 @@ export abstract class AbstractConfigManager {
             configApi.profiles.set(selectedConfig?.name!, config);
         }
 
-        await profInfo.getTeamConfig().save();
+        await this.mProfilesCache.getTeamConfig().save();
     }
 
     private async getNewProfileName(
         selectedProfile: ISshConfigExt,
-        configApi: imperative.Config,
+        configApi: Config,
     ): Promise<ISshConfigExt | undefined> {
         let isUniqueName = false;
 
@@ -650,5 +626,50 @@ export abstract class AbstractConfigManager {
             }
         }
         return selectedProfile;
+    }
+
+    // Taken from ZE Api and tweaked for usage
+    private getMergedAttrs(prof: string | IProfAttrs): IProfile {
+        const profile: IProfile = {};
+        if (prof !== null) {
+            const mergedArgs = this.mProfilesCache.mergeArgsForProfile(
+                typeof prof === "string"
+                    ? this.mProfilesCache.getAllProfiles("ssh").find((p) => p.profName === prof)
+                    : prof,
+                { getSecureVals: true },
+            );
+            for (const arg of mergedArgs.knownArgs) {
+                profile[arg.argName] = arg.argValue;
+            }
+        }
+        return profile;
+    }
+
+    // Taken from ZE Api and tweaked for usage
+    private fetchAllSshProfiles(): IProfileLoaded[] {
+        const profByType: IProfileLoaded[] = [];
+        const profilesForType = this.mProfilesCache.getAllProfiles("ssh");
+        for (const prof of profilesForType) {
+            profByType.push({
+                message: "",
+                name: prof.profName,
+                type: "ssh",
+                profile: this.getMergedAttrs(prof),
+                failNotFound: false,
+            });
+        }
+        return profByType;
+    }
+
+    // Taken from ZE Api and tweaked for usage
+    private fetchDefaultProfile(): IProfileLoaded {
+        const defaultProfile = this.mProfilesCache.getDefaultProfile("ssh");
+        return {
+            message: "",
+            name: defaultProfile.profName,
+            type: "ssh",
+            profile: this.getMergedAttrs(defaultProfile),
+            failNotFound: false,
+        };
     }
 }

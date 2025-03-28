@@ -11,13 +11,12 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { Gui, imperative, ZoweVsCodeExtension } from "@zowe/zowe-explorer-api";
+import { Gui, ZoweVsCodeExtension, imperative } from "@zowe/zowe-explorer-api";
 import * as vscode from "vscode";
 import { ZSshUtils } from "zowe-native-proto-sdk";
+import { VscePromptApi } from "../../vsce/src/SshConfigUtils";
 import { SshClientCache } from "./SshClientCache";
 import { SshConfigUtils } from "./SshConfigUtils";
-import { VscePromptApi } from "../../vsce/src/SshConfigUtils";
-import { AbstractCredentialManager } from "@zowe/imperative";
 
 export function initLogger(context: vscode.ExtensionContext): void {
     const loggerConfigPath = path.join(context.extensionPath, "log4jsconfig.json");
@@ -43,7 +42,7 @@ export function registerCommands(context: vscode.ExtensionContext): vscode.Dispo
     return [
         vscode.commands.registerCommand("zowe-native-proto-vsce.connect", async (profName?: string) => {
             imperative.Logger.getAppLogger().trace("Running connect command for profile %s", profName);
-            const vscePromptApi = new VscePromptApi(profCache);
+            const vscePromptApi = new VscePromptApi(await profCache.getProfileInfo());
             const profile = await vscePromptApi.promptForProfile(profName);
             if (!profile?.profile) return;
 
@@ -70,7 +69,7 @@ export function registerCommands(context: vscode.ExtensionContext): vscode.Dispo
         }),
         vscode.commands.registerCommand("zowe-native-proto-vsce.restart", async (profName?: string) => {
             imperative.Logger.getAppLogger().trace("Running restart command for profile %s", profName);
-            const vscePromptApi = new VscePromptApi(profCache);
+            const vscePromptApi = new VscePromptApi(await profCache.getProfileInfo());
             const profile = await vscePromptApi.promptForProfile(profName);
             if (!profile?.profile) return;
 
@@ -91,7 +90,7 @@ export function registerCommands(context: vscode.ExtensionContext): vscode.Dispo
         }),
         vscode.commands.registerCommand("zowe-native-proto-vsce.uninstall", async (profName?: string) => {
             imperative.Logger.getAppLogger().trace("Running uninstall command for profile %s", profName);
-            const vscePromptApi = new VscePromptApi(profCache);
+            const vscePromptApi = new VscePromptApi(await profCache.getProfileInfo());
             const profile = await vscePromptApi.promptForProfile(profName);
             if (!profile?.profile) return;
 

@@ -8,26 +8,15 @@
  * Copyright Contributors to the Zowe Project.
  *
  */
-
-import { readFileSync } from "node:fs";
-import * as path from "node:path";
-
-import {
-    FileManagement,
-    Gui,
-    type IZoweTree,
-    type IZoweTreeNode,
-    type ProfilesCache,
-    ZoweVsCodeExtension,
-    type imperative,
-} from "@zowe/zowe-explorer-api";
+import { ProfileConstants } from "@zowe/core-for-zowe-sdk";
+import { Gui, type IZoweTree, type IZoweTreeNode, ZoweVsCodeExtension, type imperative } from "@zowe/zowe-explorer-api";
 import * as vscode from "vscode";
-import { type ISshConfigExt, ZClientUtils, ZSshClient } from "zowe-native-proto-sdk";
+import { ZSshClient } from "zowe-native-proto-sdk";
 import {
     AbstractConfigManager,
     MESSAGE_TYPE,
-    type inputBoxOpts,
     type ProgressCallback,
+    type inputBoxOpts,
     type qpItem,
     type qpOpts,
 } from "../../sdk/src/ZSshAuthUtils";
@@ -76,10 +65,6 @@ export class SshConfigUtils {
     }
 }
 export class VscePromptApi extends AbstractConfigManager {
-    public constructor(private mProfilesCache: ProfilesCache) {
-        super();
-    }
-
     protected showMessage(message: string, messageType: MESSAGE_TYPE): void {
         switch (messageType) {
             case MESSAGE_TYPE.INFORMATION:
@@ -113,10 +98,12 @@ export class VscePromptApi extends AbstractConfigManager {
     }
     protected async showQuickPick(opts: qpOpts): Promise<string | undefined> {
         const quickPick = vscode.window.createQuickPick();
-        quickPick.items = opts.items;
-        quickPick.title = opts.title;
-        quickPick.placeholder = opts.placeholder;
-        quickPick.ignoreFocusOut = opts.ignoreFocusOut ?? false;
+        Object.assign(quickPick, {
+            items: opts.items,
+            title: opts.title,
+            placeholder: opts.placeholder,
+            ignoreFocusOut: true,
+        });
 
         return await new Promise<string | undefined>((resolve) => {
             quickPick.onDidAccept(() => {
@@ -130,18 +117,14 @@ export class VscePromptApi extends AbstractConfigManager {
 
     protected async showCustomQuickPick(opts: qpOpts): Promise<qpItem | undefined> {
         const quickPick = vscode.window.createQuickPick();
-        quickPick.items = opts.items.map((item) => {
-            if (item.separator) {
-                return {
-                    ...item,
-                    kind: vscode.QuickPickItemKind.Separator,
-                };
-            }
-            return item;
+        Object.assign(quickPick, {
+            items: opts.items.map((item) =>
+                item.separator ? { ...item, kind: vscode.QuickPickItemKind.Separator } : item,
+            ),
+            title: opts.title,
+            placeholder: opts.placeholder,
+            ignoreFocusOut: true,
         });
-        quickPick.title = opts.title;
-        quickPick.placeholder = opts.placeholder;
-        quickPick.ignoreFocusOut = opts.ignoreFocusOut ?? false;
 
         const customItem = {
             label: ">", // Using ">" as a visual cue for custom input
@@ -176,5 +159,21 @@ export class VscePromptApi extends AbstractConfigManager {
             quickPick.onDidHide(() => resolve(undefined));
             quickPick.show();
         });
+    }
+
+    protected getCurrentDir(): string | undefined {
+        return ZoweVsCodeExtension.workspaceRoot?.uri.fsPath;
+    }
+
+    protected getProfileType(): imperative.IProfileTypeConfiguration[] {
+        const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
+        const profCache = zoweExplorerApi.getExplorerExtenderApi().getProfilesCache();
+
+        return [
+            // biome-ignore lint/suspicious/noExplicitAny: Accessing protected method
+            ...(profCache as any).getCoreProfileTypes(),
+            ...profCache.getConfigArray(),
+            ProfileConstants.BaseProfile,
+        ];
     }
 }
