@@ -12,7 +12,6 @@
 import { ProfileConstants } from "@zowe/core-for-zowe-sdk";
 import { Gui, type IZoweTree, type IZoweTreeNode, ZoweVsCodeExtension, type imperative } from "@zowe/zowe-explorer-api";
 import * as vscode from "vscode";
-import { ZSshClient } from "zowe-native-proto-sdk";
 import {
     AbstractConfigManager,
     MESSAGE_TYPE,
@@ -20,7 +19,8 @@ import {
     type inputBoxOpts,
     type qpItem,
     type qpOpts,
-} from "zowe-native-proto-sdk/src/AbstractConfigManager";
+    ZSshClient,
+} from "zowe-native-proto-sdk";
 
 // biome-ignore lint/complexity/noStaticOnlyClass: Utilities class has static methods
 export class SshConfigUtils {
