@@ -104,30 +104,36 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                     Logger.getAppLogger().error("Error running SSH command: %s", err.toString());
                     reject(err);
                 } else {
-                    stream.once("data", (data: Buffer) => {
+                    const onData = (data: Buffer) => {
                         try {
-                            this.mServerInfo = this.onReady(stream, data);
+                            this.mServerInfo = this.onReady(stream, data.toString());
                             resolve(stream);
                         } catch (err) {
                             reject(err);
+                        } finally {
+                            stream.stderr.removeListener("data", onData);
+                            stream.stdout.removeListener("data", onData);
                         }
-                    });
+                    };
+                    stream.stderr.once("data", onData);
+                    stream.stdout.once("data", onData);
                 }
             });
         });
     }
 
-    private onReady(stream: ClientChannel, data: Buffer): object {
+    private onReady(stream: ClientChannel, data: string): StatusMessage["data"] {
+        Logger.getAppLogger().debug("Received SSH data: %s", data);
         let response: StatusMessage;
         try {
-            response = JSON.parse(data.toString());
+            response = JSON.parse(data);
         } catch (err) {
-            const errMsg = Logger.getAppLogger().error("Error starting Zowe server: %s", data.toString());
-            if ((err as Error).message.includes("FSUM7351")) {
+            const errMsg = Logger.getAppLogger().error("Error starting Zowe server: %s", data);
+            if (data.includes("FSUM7351")) {
                 throw new ImperativeError({
                     msg: "Server not found",
                     errorCode: "ENOTFOUND",
-                    additionalDetails: data.toString(),
+                    additionalDetails: data,
                 });
             }
             throw new Error(errMsg);
