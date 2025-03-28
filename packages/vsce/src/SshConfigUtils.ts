@@ -16,10 +16,10 @@ import {
     AbstractConfigManager,
     MESSAGE_TYPE,
     type ProgressCallback,
+    ZSshClient,
     type inputBoxOpts,
     type qpItem,
     type qpOpts,
-    ZSshClient,
 } from "zowe-native-proto-sdk";
 
 // biome-ignore lint/complexity/noStaticOnlyClass: Utilities class has static methods
