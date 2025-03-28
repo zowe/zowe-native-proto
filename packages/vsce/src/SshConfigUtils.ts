@@ -23,6 +23,12 @@ import {
 
 // biome-ignore lint/complexity/noStaticOnlyClass: Utilities class has static methods
 export class SshConfigUtils {
+    public static migratedConfigs: ISshConfigExt[];
+    public static filteredMigratedConfigs: ISshConfigExt[];
+    public static validationResult: ISshConfigExt | undefined;
+    public static selectedProfile: ISshConfigExt | undefined;
+    public static sshProfiles: imperative.IProfileLoaded[];
+
     public static getServerPath(profile?: imperative.IProfile): string {
         const serverPathMap: Record<string, string> =
             vscode.workspace.getConfiguration("zowe-native-proto-vsce").get("serverInstallPath") ?? {};
@@ -64,6 +70,7 @@ export class SshConfigUtils {
         }
     }
 }
+
 export class VscePromptApi extends AbstractConfigManager {
     protected showMessage(message: string, messageType: MESSAGE_TYPE): void {
         switch (messageType) {
@@ -131,7 +138,6 @@ export class VscePromptApi extends AbstractConfigManager {
             description: "Custom SSH Host",
             alwaysShow: true,
         };
-
         quickPick.onDidChangeValue((value) => {
             if (value) {
                 customItem.label = `> ${value}`;
@@ -175,5 +181,73 @@ export class VscePromptApi extends AbstractConfigManager {
             ...profCache.getConfigArray(),
             ProfileConstants.BaseProfile,
         ];
+    }
+
+    private static async validateFoundPrivateKeys() {
+        // Create a progress bar using the custom Gui.withProgress
+        await Gui.withProgress(
+            {
+                location: vscode.ProgressLocation.Notification,
+                title: "Validating SSH Configurations...",
+                cancellable: false,
+            },
+
+            async (progress, token) => {
+                // Find private keys located at ~/.ssh/ and attempt to connect with them
+                if (!SshConfigUtils.validationResult) {
+                    const foundPrivateKeys = await ZClientUtils.findPrivateKeys();
+                    for (const privateKey of foundPrivateKeys) {
+                        const testValidation: ISshConfigExt = SshConfigUtils.selectedProfile!;
+                        testValidation.privateKey = privateKey;
+                        const result = await SshConfigUtils.validateConfig(testValidation);
+                        progress.report({ increment: 100 / foundPrivateKeys.length });
+
+                        if (result) {
+                            SshConfigUtils.validationResult = {};
+                            if (Object.keys(result).length >= 1) {
+                                SshConfigUtils.selectedProfile = { ...SshConfigUtils.selectedProfile, ...result };
+                            }
+                            return;
+                        }
+                    }
+                }
+
+                // Match hostname to configurations from ~/.ssh/config file
+                let validationAttempts = SshConfigUtils.migratedConfigs.filter(
+                    (config) => config.hostname === SshConfigUtils.selectedProfile?.hostname,
+                );
+
+                // If multiple matches exist, narrow down by user
+                if (validationAttempts.length > 1 && SshConfigUtils.selectedProfile?.user) {
+                    validationAttempts = validationAttempts.filter(
+                        (config) => config.user === SshConfigUtils.selectedProfile?.user,
+                    );
+                } else {
+                    // If no user is specified, allow all configs where the hostname matches
+                    validationAttempts = validationAttempts.filter(
+                        (config) =>
+                            !SshConfigUtils.selectedProfile?.user ||
+                            config.user === SshConfigUtils.selectedProfile?.user,
+                    );
+                }
+
+                for (const profile of validationAttempts) {
+                    const testValidation: ISshConfigExt = profile;
+                    const result = await SshConfigUtils.validateConfig(testValidation);
+                    progress.report({ increment: 100 / validationAttempts.length });
+                    if (result !== undefined) {
+                        SshConfigUtils.validationResult = {};
+                        if (Object.keys(result).length >= 1) {
+                            SshConfigUtils.selectedProfile = {
+                                ...SshConfigUtils.selectedProfile,
+                                ...result,
+                                privateKey: testValidation.privateKey,
+                            };
+                        }
+                        return;
+                    }
+                }
+            },
+        );
     }
 }
