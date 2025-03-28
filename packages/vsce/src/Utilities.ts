@@ -11,13 +11,13 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
+import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Gui, ZoweVsCodeExtension, imperative } from "@zowe/zowe-explorer-api";
 import * as vscode from "vscode";
 import { ZSshUtils } from "zowe-native-proto-sdk";
 import { VscePromptApi } from "../../vsce/src/SshConfigUtils";
 import { SshClientCache } from "./SshClientCache";
 import { SshConfigUtils } from "./SshConfigUtils";
-import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 
 export function deployWithProgress(session: SshSession, serverPath: string, localDir: string): Thenable<void> {
     return Gui.withProgress(
