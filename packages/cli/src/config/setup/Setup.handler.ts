@@ -9,9 +9,21 @@
  *
  */
 
-import { CommandResponse, type ICommandHandler, type IHandlerParameters, ImperativeError } from "@zowe/imperative";
+import {
+    CommandResponse,
+    type ICommandHandler,
+    type IHandlerParameters,
+    ImperativeError,
+    type ITaskWithStatus,
+} from "@zowe/imperative";
 import { ProfileConstants } from "@zowe/core-for-zowe-sdk";
-import { type IProfileTypeConfiguration, ProfileInfo } from "@zowe/imperative";
+import {
+    type IProfileTypeConfiguration,
+    ProfileInfo,
+    TaskStage,
+    type IHandlerResponseApi,
+    TextUtils,
+} from "@zowe/imperative";
 import {
     AbstractConfigManager,
     MESSAGE_TYPE,
@@ -26,24 +38,31 @@ export default class ServerInstallHandler implements ICommandHandler {
     public async process(params: IHandlerParameters): Promise<void> {
         const profInfo = new ProfileInfo("zowe");
         await profInfo.readProfilesFromDisk();
-        const cliPromptApi = new CliPromptApi(profInfo);
+        const cliPromptApi = new CliPromptApi(profInfo, params.response);
         const profile = await cliPromptApi.promptForProfile();
         console.debug("Profile", profile);
     }
 }
 
 export class CliPromptApi extends AbstractConfigManager {
+    constructor(
+        mProfilesCache: ProfileInfo,
+        private mResponseApi: IHandlerResponseApi,
+    ) {
+        super(mProfilesCache);
+    }
+
     private term = termkit.terminal;
     protected showMessage(message: string, type: MESSAGE_TYPE): void {
         switch (type) {
             case MESSAGE_TYPE.INFORMATION:
-                console.log(`INFO: ${message}`);
+                this.mResponseApi.console.log(message);
                 break;
             case MESSAGE_TYPE.WARNING:
-                console.warn(`WARNING: ${message}`);
+                this.mResponseApi.console.log(TextUtils.chalk.yellow(message));
                 break;
             case MESSAGE_TYPE.ERROR:
-                console.error(`ERROR: ${message}`);
+                this.mResponseApi.console.log(TextUtils.chalk.red(message));
                 break;
             default:
                 throw new ImperativeError({ msg: "Unknown message type" });
@@ -51,43 +70,20 @@ export class CliPromptApi extends AbstractConfigManager {
     }
 
     protected async showInputBox(opts: inputBoxOpts): Promise<string | undefined> {
-        this.term(`${opts.title || "Input"}: `);
-        this.term.grabInput(true);
-        return new Promise<string | undefined>((resolve) => {
-            this.term.inputField(
-                {
-                    echo: !opts.password,
-                },
-                (error: Error, input: string) => {
-                    this.term("\n\n");
-                    this.term.grabInput(false);
-                    if (error) {
-                        console.error("An error occurred while getting input:", error);
-                        resolve(undefined);
-                    } else {
-                        resolve(input);
-                    }
-                },
-            );
-        });
+        return await this.mResponseApi.console.prompt(`${opts.title || "Input"}: `, { hideText: opts.password });
     }
 
     protected async withProgress<T>(message: string, task: (progress: ProgressCallback) => Promise<T>): Promise<T> {
-        const commandResponse = new CommandResponse();
-
-        commandResponse.console.log(message);
-
-        let result: T;
-        try {
-            result = await task((percent) => {
-                commandResponse.console.log(`Progress: ${percent}%`);
-            });
-            commandResponse.console.log("Task completed successfully.");
-        } catch (error) {
-            commandResponse.console.error(`Task failed: ${error}`);
-            throw error;
-        }
-
+        const progressTask: ITaskWithStatus = {
+            percentComplete: 0,
+            stageName: TaskStage.IN_PROGRESS,
+            statusMessage: message,
+        };
+        this.mResponseApi.progress.startBar({ task: progressTask });
+        const result = await task((percent) => {
+            progressTask.percentComplete += percent;
+        });
+        this.mResponseApi.progress.endBar();
         return result;
     }
 
@@ -98,7 +94,6 @@ export class CliPromptApi extends AbstractConfigManager {
         this.term.on("key", (key: string) => {
             if (key === "ESCAPE" || key === "CTRL_C") {
                 this.term.grabInput(false);
-                this.term.clear();
                 return Promise<undefined>;
             }
         });
@@ -130,15 +125,15 @@ export class CliPromptApi extends AbstractConfigManager {
     protected async showCustomQuickPick(opts: qpOpts): Promise<qpItem | undefined> {
         this.term.grabInput(true);
 
-        // Handle cancellation
-        this.term.on("key", (key: string) => {
-            if (key === "ESCAPE" || key === "CTRL_C") {
-                this.term.grabInput(false);
-                this.term.clear();
-                return Promise<undefined>;
-            }
-        });
         return new Promise<qpItem | undefined>((resolve) => {
+            // Handle cancellation
+            this.term.on("key", (key: string) => {
+                if (key === "ESCAPE" || key === "CTRL_C") {
+                    this.term.grabInput(false);
+                    resolve(undefined);
+                }
+            });
+
             // Map items for Terminal Kit with separator handling
             const menuItems = opts.items.map((item) =>
                 item.separator ? `${"─".repeat(10)}Migrate from SSH Config${"─".repeat(10)}` : item.label,

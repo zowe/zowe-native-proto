@@ -20,5 +20,4 @@ export const ConfigSetupDefinition: ICommandDefinition = {
     description:
         "Setup SSH Configuration from an SSH Command, an existing team configuration file, or a local SSH Config",
     examples: [],
-    profile: { optional: ["ssh"] },
 };
