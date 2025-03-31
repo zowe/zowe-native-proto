@@ -118,27 +118,43 @@ export class VscePromptApi extends AbstractConfigManager {
     }
 
     protected async showCustomQuickPick(opts: qpOpts): Promise<qpItem | undefined> {
-        const quickPick = vscode.window.createQuickPick();
+        const quickPick = vscode.window.createQuickPick<vscode.QuickPickItem>();
+
+        // Map qpItem[] to vscode.QuickPickItem[] with proper handling for separators
+        quickPick.items = opts.items.map((item) =>
+            item.separator
+                ? { label: item.label, kind: vscode.QuickPickItemKind.Separator }
+                : { label: item.label, description: item.description },
+        );
+
         Object.assign(quickPick, {
-            items: opts.items.map((item) =>
-                item.separator ? { ...item, kind: vscode.QuickPickItemKind.Separator } : item,
-            ),
             title: opts.title,
             placeholder: opts.placeholder,
             ignoreFocusOut: true,
         });
 
-        const customItem = {
-            label: ">", // Using ">" as a visual cue for custom input
+        const customItem: qpItem = {
+            label: ">",
             description: "Custom SSH Host",
-            alwaysShow: true,
         };
+
         quickPick.onDidChangeValue((value) => {
             if (value) {
                 customItem.label = `> ${value}`;
-                quickPick.items = [customItem, ...opts.items];
+                quickPick.items = [
+                    { label: customItem.label, description: customItem.description },
+                    ...opts.items.map((item) =>
+                        item.separator
+                            ? { label: item.label, kind: vscode.QuickPickItemKind.Separator }
+                            : { label: item.label, description: item.description },
+                    ),
+                ];
             } else {
-                quickPick.items = opts.items;
+                quickPick.items = opts.items.map((item) =>
+                    item.separator
+                        ? { label: item.label, kind: vscode.QuickPickItemKind.Separator }
+                        : { label: item.label, description: item.description },
+                );
             }
         });
 
@@ -152,7 +168,10 @@ export class VscePromptApi extends AbstractConfigManager {
                             description: "Custom SSH Host",
                         });
                     } else {
-                        resolve(selection);
+                        resolve({
+                            label: selection.label,
+                            description: selection.description,
+                        });
                     }
                 }
                 quickPick.hide();

@@ -90,7 +90,24 @@ export abstract class AbstractConfigManager {
         );
 
         // Prompt user for ssh (new config, existing, migrating)
-        const result = await this.showQuickPickWithCustomInput();
+        const result = await this.showCustomQuickPick({
+            items: [
+                { label: "$(plus) Add New SSH Host..." },
+                ...this.sshProfiles.map(({ name, profile }) => ({
+                    label: name!,
+                    description: profile!.host!,
+                })),
+                {
+                    label: "Migrate From SSH Config",
+                    separator: true,
+                },
+                ...this.filteredMigratedConfigs.map(({ name, hostname }) => ({
+                    label: name!,
+                    description: hostname,
+                })),
+            ],
+            placeholder: "Select configured SSH host or enter user@host",
+        });
 
         // If nothing selected, return
         if (!result) return;
@@ -184,32 +201,6 @@ export abstract class AbstractConfigManager {
                 keyPassphrase: this.selectedProfile.keyPassphrase,
             },
         };
-    }
-
-    // Function to show the QuickPick with dynamic top option
-    private async showQuickPickWithCustomInput(): Promise<qpItem | undefined> {
-        // Choose between adding a new SSH host, an existing team config profile, and migrating from config.
-
-        const customQuickPick = await this.showCustomQuickPick({
-            items: [
-                { label: "$(plus) Add New SSH Host..." },
-                ...this.sshProfiles.map(({ name, profile }) => ({
-                    label: name!,
-                    description: profile!.host!,
-                })),
-                {
-                    label: "Migrate From SSH Config",
-                    separator: true,
-                },
-                ...this.filteredMigratedConfigs.map(({ name, hostname }) => ({
-                    label: name!,
-                    description: hostname,
-                })),
-            ],
-            placeholder: "Select configured SSH host or enter user@host",
-        });
-
-        return customQuickPick;
     }
 
     private async createNewConfig(knownConfigOpts?: string): Promise<ISshConfigExt | undefined> {
