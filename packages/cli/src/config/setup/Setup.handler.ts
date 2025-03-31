@@ -10,7 +10,7 @@
  */
 
 import { type ICommandHandler, type IHandlerParameters, ImperativeError } from "@zowe/imperative";
-import type { IProfileTypeConfiguration } from "@zowe/imperative";
+import { type IProfileTypeConfiguration, ProfileInfo } from "@zowe/imperative";
 import {
     AbstractConfigManager,
     MESSAGE_TYPE,
@@ -23,14 +23,16 @@ import * as termkit from "terminal-kit";
 
 export default class ServerInstallHandler implements ICommandHandler {
     public async process(params: IHandlerParameters): Promise<void> {
-        // const session = ZSshUtils.buildSession(params.arguments);
-
-        const cliPromptApi = new CliPromptApi(undefined); ////FIX
+        const profInfo = new ProfileInfo("zowe");
+        await profInfo.readProfilesFromDisk();
+        const cliPromptApi = new CliPromptApi(profInfo);
         const profile = await cliPromptApi.promptForProfile();
+        console.debug("Profile", profile);
     }
 }
 
 export class CliPromptApi extends AbstractConfigManager {
+    private term = termkit.terminal;
     protected showMessage(message: string, type: MESSAGE_TYPE): void {
         switch (type) {
             case MESSAGE_TYPE.INFORMATION:
@@ -48,11 +50,10 @@ export class CliPromptApi extends AbstractConfigManager {
     }
 
     protected async showInputBox(opts: inputBoxOpts): Promise<string | undefined> {
-        const term = termkit.terminal;
-        term(`${opts.title || "Input"}: `);
+        this.term(`${opts.title || "Input"}: `);
 
         return new Promise<string | undefined>((resolve) => {
-            term.inputField(
+            this.term.inputField(
                 {
                     echo: true,
                 },
@@ -77,7 +78,26 @@ export class CliPromptApi extends AbstractConfigManager {
     }
 
     protected async showCustomQuickPick(opts: qpOpts): Promise<qpItem | undefined> {
-        throw new ImperativeError({ msg: "Not implemented yet" });
+        const items: string[] = [];
+
+        for (const index of opts.items) {
+            items.push(index.label);
+        }
+
+        let selectedItem: qpItem;
+
+        this.term.singleColumnMenu(items, function (error, response) {
+            this.term("\n").eraseLineAfter.green(
+                "#%s selected: %s (%s,%s)\n",
+                response.selectedIndex,
+                response.selectedText,
+                response.x,
+                response.y,
+            );
+            selectedItem.label = response.selectedText;
+            process.exit();
+        });
+        return selectedItem;
     }
 
     protected getCurrentDir(): string | undefined {
