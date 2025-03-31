@@ -120,12 +120,13 @@ export class VscePromptApi extends AbstractConfigManager {
     protected async showCustomQuickPick(opts: qpOpts): Promise<qpItem | undefined> {
         const quickPick = vscode.window.createQuickPick<vscode.QuickPickItem>();
 
-        // Map qpItem[] to vscode.QuickPickItem[] with proper handling for separators
-        quickPick.items = opts.items.map((item) =>
+        const mappedItems = opts.items.map((item) =>
             item.separator
                 ? { label: item.label, kind: vscode.QuickPickItemKind.Separator }
                 : { label: item.label, description: item.description },
         );
+
+        quickPick.items = mappedItems;
 
         Object.assign(quickPick, {
             title: opts.title,
@@ -133,7 +134,7 @@ export class VscePromptApi extends AbstractConfigManager {
             ignoreFocusOut: true,
         });
 
-        const customItem: qpItem = {
+        const customItem = {
             label: ">",
             description: "Custom SSH Host",
         };
@@ -141,20 +142,9 @@ export class VscePromptApi extends AbstractConfigManager {
         quickPick.onDidChangeValue((value) => {
             if (value) {
                 customItem.label = `> ${value}`;
-                quickPick.items = [
-                    { label: customItem.label, description: customItem.description },
-                    ...opts.items.map((item) =>
-                        item.separator
-                            ? { label: item.label, kind: vscode.QuickPickItemKind.Separator }
-                            : { label: item.label, description: item.description },
-                    ),
-                ];
+                quickPick.items = [{ label: customItem.label, description: customItem.description }, ...mappedItems];
             } else {
-                quickPick.items = opts.items.map((item) =>
-                    item.separator
-                        ? { label: item.label, kind: vscode.QuickPickItemKind.Separator }
-                        : { label: item.label, description: item.description },
-                );
+                quickPick.items = mappedItems;
             }
         });
 
