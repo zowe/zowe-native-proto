@@ -438,6 +438,8 @@ export abstract class AbstractConfigManager {
                         this.showMessage(`Passphrase Authentication Failed (${attempts + 1}/3)`, MESSAGE_TYPE.ERROR);
                     }
                 }
+                newConfig.privateKey = undefined;
+                newConfig.keyPassphrase = undefined;
                 return undefined;
             }
             if (errorMessage.includes("All configured authentication methods failed")) {

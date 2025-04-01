@@ -64,7 +64,9 @@ export class CliPromptApi extends AbstractConfigManager {
     }
 
     protected async showInputBox(opts: inputBoxOpts): Promise<string | undefined> {
-        return await this.mResponseApi.console.prompt(`${opts.title}: `, { hideText: opts.password });
+        return await this.mResponseApi.console.prompt(`${opts.title}: `.replace("::", ":"), {
+            hideText: opts.password,
+        });
     }
 
     protected async withProgress<T>(message: string, task: (progress: ProgressCallback) => Promise<T>): Promise<T> {
