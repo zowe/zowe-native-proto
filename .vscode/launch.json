@@ -13,20 +13,6 @@
       "args": ["--extensionDevelopmentPath=${workspaceFolder}/packages/vsce"],
       "outFiles": ["${workspaceFolder}/packages/vsce/out/**/*.js"],
       "preLaunchTask": "npm: watch"
-    },
-    {
-      "type": "node",
-      //"cwd": "/Users/jr897694/github/zowe-cli-v1/zowe-cli",    //v1
-      //"cwd": "/Users/jr897694/github/zowe-cli-v2",             //v2
-      "cwd": "/Users/jr897694/github/zowe-cli-v3", //v3
-      "name": "Debug Zowe Command",
-      "request": "launch",
-      "program": "packages/cli/lib/main.js",
-      // "program": "file.ts",
-      "args": ["zssh", "config", "setup"],
-      // "cwd": "${env:OLDPWD}",
-      "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen"
     }
   ]
 }
