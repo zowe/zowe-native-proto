@@ -78,18 +78,10 @@ export class CliPromptApi extends AbstractConfigManager {
     }
 
     protected async showCustomQuickPick(opts: qpOpts): Promise<qpItem | undefined> {
-        this.term.grabInput(true);
-
         return new Promise<qpItem | undefined>((resolve) => {
-            // Handle cancellation
-            this.term.on("key", (key: string) => {
-                if (key === "ESCAPE" || key === "CTRL_C") {
-                    this.term.grabInput(false);
-                    resolve(undefined);
-                }
-            });
+            this.term.grabInput(true);
 
-            // Map items for Terminal Kit with separator handling
+            // Prepare menu items
             const menuItems = opts.items.map((item) =>
                 item.separator
                     ? `${"─".repeat(10)}Migrate from SSH Config${"─".repeat(10)}`
@@ -98,24 +90,80 @@ export class CliPromptApi extends AbstractConfigManager {
 
             this.term.green(`\n${opts.placeholder.replace("enter user@host", "create a new SSH host")}\n`);
 
-            // Create menu with proper type assertion
-            const menu = this.term.singleColumnMenu(menuItems, {
-                cancelable: true,
-                continueOnSubmit: false,
-                leftPadding: "",
-                oneLineItem: true,
-                // biome-ignore lint/suspicious/noExplicitAny: Required for callback
-            } as any) as unknown as {
-                on: (event: string, handler: (key: string) => void) => void;
-                abort: () => void;
-            };
+            let selectedIndex = 0;
+            while (opts.items[selectedIndex]?.separator) {
+                selectedIndex++;
+            }
 
-            // biome-ignore lint/suspicious/noExplicitAny: Required for callback
-            menu.on("submit", (response: any) => {
-                const selected = opts.items[response.selectedIndex];
-                this.term.grabInput(false);
-                this.term("\n\n");
-                resolve(selected?.separator ? undefined : selected);
+            this.term.getCursorLocation((error, x, y) => {
+                if (error) {
+                    console.error("Error getting cursor location:", error);
+                    resolve(undefined);
+                    return;
+                }
+
+                const menu = this.term.singleColumnMenu(menuItems, {
+                    cancelable: true,
+                    continueOnSubmit: false,
+                    oneLineItem: true,
+                    selectedIndex,
+                    y: y + 2,
+                    submittedStyle: this.term.green,
+                    selectedStyle: this.term.bold.brightGreen,
+                    leftPadding: "  ",
+                    selectedLeftPadding: "> ",
+                }) as unknown as {
+                    // biome-ignore lint/suspicious/noExplicitAny: Required for callback
+                    on: (event: string, handler: (response: any) => void) => void;
+                    abort: () => void;
+                    select: (index: number) => void;
+                };
+
+                const moveSelection = (direction: 1 | -1) => {
+                    let newIndex = selectedIndex;
+                    do {
+                        newIndex += direction;
+                        if (newIndex < 0) newIndex = opts.items.length - 1;
+                        if (newIndex >= opts.items.length) newIndex = 0;
+                    } while (opts.items[newIndex]?.separator && newIndex >= 0 && newIndex < opts.items.length);
+
+                    selectedIndex = newIndex;
+                    menu.select(selectedIndex);
+                };
+
+                // Key bindings for navigation
+                const keyHandler = (key: string) => {
+                    if (key === "UP" || key === "k") moveSelection(-1);
+                    if (key === "DOWN" || key === "j") moveSelection(1);
+                    if (key === "TAB") moveSelection(1);
+                };
+                this.term.on("key", keyHandler);
+
+                // Handle menu submission
+                // biome-ignore lint/suspicious/noExplicitAny: Required for callback
+                menu.on("submit", (response: any) => {
+                    const selected = opts.items[response.selectedIndex];
+
+                    // Cleanup event listeners and input grabbing
+                    this.term.removeListener("key", keyHandler);
+                    this.term.grabInput(false);
+
+                    resolve(selected?.separator ? undefined : selected);
+                });
+
+                // Handle cancellation or ESCAPE
+                const cancelHandler = (key: string) => {
+                    if (key === "ESCAPE" || key === "CTRL_C") {
+                        // Cleanup event listeners and input grabbing
+                        this.term.removeListener("key", keyHandler);
+                        this.term.removeListener("key", cancelHandler);
+                        menu.abort();
+                        this.term.grabInput(false);
+
+                        resolve(undefined);
+                    }
+                };
+                this.term.on("key", cancelHandler);
             });
         });
     }
