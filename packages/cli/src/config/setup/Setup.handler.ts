@@ -10,20 +10,16 @@
  */
 
 import {
-    CommandResponse,
     type ICommandHandler,
     type IHandlerParameters,
-    ImperativeError,
-    type ITaskWithStatus,
-} from "@zowe/imperative";
-import { ProfileConstants } from "@zowe/core-for-zowe-sdk";
-import {
-    type IProfileTypeConfiguration,
-    ProfileInfo,
-    TaskStage,
     type IHandlerResponseApi,
+    type IProfileTypeConfiguration,
+    ImperativeConfig,
+    ImperativeError,
+    ProfileInfo,
     TextUtils,
 } from "@zowe/imperative";
+import * as termkit from "terminal-kit";
 import {
     AbstractConfigManager,
     MESSAGE_TYPE,
@@ -32,15 +28,13 @@ import {
     type qpItem,
     type qpOpts,
 } from "zowe-native-proto-sdk";
-import * as termkit from "terminal-kit";
 
 export default class ServerInstallHandler implements ICommandHandler {
     public async process(params: IHandlerParameters): Promise<void> {
         const profInfo = new ProfileInfo("zowe");
         await profInfo.readProfilesFromDisk();
         const cliPromptApi = new CliPromptApi(profInfo, params.response);
-        const profile = await cliPromptApi.promptForProfile();
-        console.debug("Profile", profile);
+        await cliPromptApi.promptForProfile();
     }
 }
 
@@ -70,56 +64,15 @@ export class CliPromptApi extends AbstractConfigManager {
     }
 
     protected async showInputBox(opts: inputBoxOpts): Promise<string | undefined> {
-        return await this.mResponseApi.console.prompt(`${opts.title || "Input"}: `, { hideText: opts.password });
+        return await this.mResponseApi.console.prompt(`${opts.title}: `, { hideText: opts.password });
     }
 
     protected async withProgress<T>(message: string, task: (progress: ProgressCallback) => Promise<T>): Promise<T> {
-        const progressTask: ITaskWithStatus = {
-            percentComplete: 0,
-            stageName: TaskStage.IN_PROGRESS,
-            statusMessage: message,
-        };
-        this.mResponseApi.progress.startBar({ task: progressTask });
-        const result = await task((percent) => {
-            progressTask.percentComplete += percent;
-        });
-        this.mResponseApi.progress.endBar();
-        return result;
+        return await task(() => {});
     }
 
     protected async showQuickPick(opts: qpOpts): Promise<string | undefined> {
-        this.term.grabInput(true);
-
-        // Handle cancellation
-        this.term.on("key", (key: string) => {
-            if (key === "ESCAPE" || key === "CTRL_C") {
-                this.term.grabInput(false);
-                return Promise<undefined>;
-            }
-        });
-        return new Promise<string | undefined>((resolve) => {
-            if (opts.placeholder) this.term.green(`\n${opts.placeholder}\n`);
-
-            const menuItems = opts.items.map((item) => item.label);
-
-            // Create menu with proper type assertion
-            const menu = this.term.singleColumnMenu(menuItems, {
-                cancelable: true,
-                continueOnSubmit: false,
-                // biome-ignore lint/suspicious/noExplicitAny: Required for callback
-            } as any) as unknown as {
-                on: (event: string, handler: (key: string) => void) => void;
-                abort: () => void;
-            };
-
-            // biome-ignore lint/suspicious/noExplicitAny: Required for callback
-            menu.on("submit", (response: any) => {
-                const selected = opts.items[response.selectedIndex];
-                this.term("\n\n");
-                this.term.grabInput(false);
-                resolve(selected.label);
-            });
-        });
+        return (await this.showCustomQuickPick(opts)).label;
     }
 
     protected async showCustomQuickPick(opts: qpOpts): Promise<qpItem | undefined> {
@@ -136,15 +89,19 @@ export class CliPromptApi extends AbstractConfigManager {
 
             // Map items for Terminal Kit with separator handling
             const menuItems = opts.items.map((item) =>
-                item.separator ? `${"─".repeat(10)}Migrate from SSH Config${"─".repeat(10)}` : item.label,
+                item.separator
+                    ? `${"─".repeat(10)}Migrate from SSH Config${"─".repeat(10)}`
+                    : item.label.replace("$(plus)", "+"),
             );
 
-            this.term.green(`\n${opts.placeholder}\n`);
+            this.term.green(`\n${opts.placeholder.replace("enter user@host", "create a new SSH host")}\n`);
 
             // Create menu with proper type assertion
             const menu = this.term.singleColumnMenu(menuItems, {
                 cancelable: true,
                 continueOnSubmit: false,
+                leftPadding: "",
+                oneLineItem: true,
                 // biome-ignore lint/suspicious/noExplicitAny: Required for callback
             } as any) as unknown as {
                 on: (event: string, handler: (key: string) => void) => void;
@@ -166,10 +123,6 @@ export class CliPromptApi extends AbstractConfigManager {
     }
 
     protected getProfileType(): IProfileTypeConfiguration[] {
-        return [
-            // biome-ignore lint/suspicious/noExplicitAny: Accessing protected method
-            ...(ProfileInfo as any).getCoreProfileTypes(),
-            ProfileConstants.BaseProfile,
-        ];
+        return ImperativeConfig.instance.loadedConfig.profiles;
     }
 }
