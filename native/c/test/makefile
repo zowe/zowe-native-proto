@@ -89,7 +89,6 @@ MTL_FLAGS64+=$(PRODUCTION_FLAGS) -qNOSHOWINC
 ASM_FLAGS+=--noverbose
 .END
 
-
 all: testrcvy
 
 #
@@ -99,7 +98,7 @@ testrcvy.s: testrcvy.c
 	$(CC) $(MTL_FLAGS64) -qlist=$*.mtl.lst $(MTL_HEADERS) -I../chdsect -I../ -o $@ $^
 
 testrcvy.o: testrcvy.s
-	$(ASM) $(ASM_FLAGS) -a=$*.asm.lst $(MACLIBS) -o $@ $^
+	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
 testrcvy: testrcvy.o
 	$(BIND) $(BIND_FLAGS) -V -eMAIN -o $@ $^ > $*.bind.lst

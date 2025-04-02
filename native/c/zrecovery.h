@@ -106,19 +106,8 @@ typedef struct sdwarc4 SDWARC4;
 #endif
 
 /**
- * TODO(Kelosky): tech debt
- * - ensure no memory leaks
- * - ensure RLOW and RHIGH set properly
- * - ensure matching prolog / epilog
- * - ensure CCN_NAB bit set properly for all
- *
- * TODO(Kelosky):
- * - prolog / epilog can have SAVE=YES and SAVE=YES_DSA
- * - SAVE=YES might be sufficient to fix the memory leaks found here
- *
  * TODO(Kelosky): features
  * - abend counter
- * - detect recursive abends
  * - VRA data wrappers
  * - get abend info, code, psw, bea, load module, and offset
  */
@@ -134,6 +123,7 @@ typedef void (*PERCOLATE_EXIT)(void *);     // called only for percolated abends
 typedef struct
 {
 
+  // return address to IEAARR
   unsigned long long int arr_return;
 
   // NOTE(Kelosky): we can also dervive R13 using f4sa->saveprev->savenext so that we probably don't need to store R13
@@ -141,8 +131,6 @@ typedef struct
 
   // main line stack regs and pointer (r13)
   SAVF4SA f4sa;
-
-  // return address to IEAARR
 
   // main line stack regs and pointer (r13)
   unsigned long long int final_r13;
@@ -179,20 +167,16 @@ static void ieaarr(ROUTINE routine, void *routine_parm, RECOVERY_ROUTINE arr, vo
       arr_parm);
 }
 
-// #pragma prolog(ZRCVYRTY, " ZWEPROLG NEWDSA=NO ")
-// #pragma epilog(ZRCVYRTY, " ZWEEPILG ")
-
-#pragma prolog(ZRCVYRTY, "&CCN_MAIN SETB 1 \n MYPROLOG ") // NEWDSA=NO ")
-#pragma epilog(ZRCVYRTY, "&CCN_MAIN SETB 1 \n MYEPILOG")
+#pragma prolog(ZRCVYRTY, " ZWEPROLG NEWDSA=NO ")
+#pragma epilog(ZRCVYRTY, " ZWEEPILG ")
 typedef void (*RETRY_ROUTINE)(ZRCVY_ENV);
 static void ZRCVYRTY(ZRCVY_ENV zenv)
 {
   JUMP_ENV(zenv.f4sa, zenv.r13, 4); // TODO(Kelosky): document non-zero return code
 }
 
-// TODO(Kelosky): memory leak when percolate
-#pragma prolog(ZRCVYARR, "&CCN_MAIN SETB 1 \n MYPROLOG")
-#pragma epilog(ZRCVYARR, "&CCN_MAIN SETB 1 \n MYEPILOG")
+#pragma prolog(ZRCVYARR, " ZWEPROLG NEWDSA=(YES,128) ")
+#pragma epilog(ZRCVYARR, " ZWEEPILG ")
 int ZRCVYARR(SDWA sdwa)
 {
   unsigned long long int r0 = get_prev_r0(); // if r0 = 12, NO_SDWA
@@ -242,15 +226,11 @@ int ZRCVYARR(SDWA sdwa)
 
 // router back to main routine
 #pragma prolog(ZRCVYRTE, " ZWEPROLG NEWDSA=NO ")
-// #pragma epilog(ZRCVYRTE, " ZWEEPILG ")
-// #pragma prolog(ZRCVYRTE, " MYPROLOG ")
-// #pragma epilog(ZRCVYRTE, " MYEPILOG ")
+#pragma epilog(ZRCVYRTE, " ZWEEPILG ")
+static void ZRCVYRTE(ZRCVY_ENV *zenv) ATTRIBUTE(noinline);
 static void ZRCVYRTE(ZRCVY_ENV *zenv)
 {
-  // zenv->arr_return = get_prev_r14();
-  // GET_PREV_REG64(zenv->arr_return, 8);
-  get_r14_by_ref(NULL);
-  __asm(" check r1 parm and setting r14 so we can do this  ");
+  get_r14_by_ref(&zenv->arr_return);
   JUMP_ENV(zenv->f4sa, zenv->r13, 0);
 }
 
@@ -269,8 +249,8 @@ static int disable_recovery(ZRCVY_ENV *zenv)
 }
 
 // NOTE(Kelosky): this function may "return twice" like setjmp()
-#pragma reachable(enable_recovery)
 // NOTE(Kelosky): we must not have this function inline so to save and return to the mainline
+#pragma reachable(enable_recovery)
 static int enable_recovery(ZRCVY_ENV *zenv) ATTRIBUTE(noinline);
 static int enable_recovery(ZRCVY_ENV *zenv)
 {

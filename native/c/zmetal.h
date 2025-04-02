@@ -303,7 +303,7 @@ static unsigned long long int get_r13()
 
 static void get_r14_by_ref(unsigned long long int *reg)
 {
-  GET_REG64(reg, 14);
+  GET_REG64(*reg, 14);
 }
 
 static unsigned long long int get_prev_r14()
