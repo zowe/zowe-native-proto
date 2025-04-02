@@ -11,6 +11,7 @@
 
 import {
     type ICommandHandler,
+    type IConfigLayer,
     type IHandlerParameters,
     type IHandlerResponseApi,
     type IProfileTypeConfiguration,
@@ -18,7 +19,6 @@ import {
     ImperativeError,
     ProfileInfo,
     TextUtils,
-    type IConfigLayer,
 } from "@zowe/imperative";
 import * as termkit from "terminal-kit";
 import {
