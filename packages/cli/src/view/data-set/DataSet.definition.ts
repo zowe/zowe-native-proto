@@ -48,7 +48,7 @@ export const ViewDataSetDefinition: ICommandDefinition = {
         {
             name: "encoding",
             aliases: ["ec"],
-            description: "The encoding for download and upload of z/OS data set.",
+            description: "The encoding for viewing a z/OS data set.",
             defaultValue: null,
             type: "string",
         },

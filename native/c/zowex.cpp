@@ -67,6 +67,7 @@ int handle_tool_convert_dsect(ZCLIResult);
 int handle_tool_dynalloc(ZCLIResult);
 int handle_tool_display_symbol(ZCLIResult);
 int handle_tool_search(ZCLIResult);
+int handle_tool_run(ZCLIResult);
 
 // TODO(Kelosky):
 // help w/verbose examples
@@ -118,6 +119,14 @@ int main(int argc, char *argv[])
   ZCLIOption encoding_option("encoding");
   encoding_option.get_aliases().push_back("--ec");
   encoding_option.set_description("return contents in given encoding");
+
+  ZCLIOption etag("etag");
+  etag.set_required(false);
+  etag.set_description("Provide the e-tag for a write response to detect conflicts before save");
+
+  ZCLIOption etag_only("etag-only");
+  etag_only.set_required(false);
+  etag_only.set_description("Only print the e-tag for a write response (when successful)");
 
   //
   // data set group
@@ -210,6 +219,8 @@ int main(int argc, char *argv[])
   data_set_write.set_zcli_verb_handler(handle_data_set_write_to_dsn);
   data_set_write.get_positionals().push_back(data_set_dsn);
   data_set_write.get_options().push_back(encoding_option);
+  data_set_write.get_options().push_back(etag);
+  data_set_write.get_options().push_back(etag_only);
   data_set_group.get_verbs().push_back(data_set_write);
 
   ZCLIVerb data_set_delete("delete");
@@ -382,6 +393,7 @@ int main(int argc, char *argv[])
   console_issue.set_description("issue a console command");
   console_issue.set_zcli_verb_handler(handle_console_issue);
   ZCLIOption console_name("console-name");
+  console_name.set_default("zowex");
   console_name.set_required(true);
   console_name.get_aliases().push_back("--cn");
   console_name.set_description("extended console name");
@@ -443,6 +455,8 @@ int main(int argc, char *argv[])
   uss_write.set_zcli_verb_handler(handle_uss_write);
   uss_write.get_positionals().push_back(uss_file_path);
   uss_write.get_options().push_back(encoding_option);
+  uss_write.get_options().push_back(etag);
+  uss_write.get_options().push_back(etag_only);
   uss_group.get_verbs().push_back(uss_write);
 
   ZCLIVerb uss_delete("delete");
@@ -566,6 +580,15 @@ int main(int argc, char *argv[])
 
   tool_group.get_verbs().push_back(tool_search);
 
+  ZCLIVerb tool_run("run");
+  tool_run.set_description("run a program");
+  tool_run.set_zcli_verb_handler(handle_tool_run);
+  ZCLIPositional run_name("program");
+  run_name.set_description("name of program to run");
+  run_name.set_required(true);
+  tool_run.get_positionals().push_back(run_name);
+  tool_group.get_verbs().push_back(tool_run);
+
   // add all groups to the CLI
   zcli.get_groups().push_back(data_set_group);
   zcli.get_groups().push_back(console_group);
@@ -604,10 +627,10 @@ int handle_job_list(ZCLIResult result)
 {
   int rc = 0;
   ZJB zjb = {0};
-  string owner_name(result.get_option("--owner")->get_value());
-  string prefix_name(result.get_option("--prefix")->get_value());
-  string max_entries = result.get_option("--max-entries")->get_value();
-  string warn = result.get_option("--warn")->get_value();
+  string owner_name(result.get_option_value("--owner"));
+  string prefix_name(result.get_option_value("--prefix"));
+  string max_entries = result.get_option_value("--max-entries");
+  string warn = result.get_option_value("--warn");
 
   if (max_entries.size() > 0)
   {
@@ -619,7 +642,7 @@ int handle_job_list(ZCLIResult result)
 
   if (RTNCD_SUCCESS == rc || RTNCD_WARNING == rc)
   {
-    const auto emit_csv = result.get_option("--response-format-csv")->get_value() == "true";
+    const auto emit_csv = result.get_option_value("--response-format-csv") == "true";
     for (vector<ZJob>::iterator it = jobs.begin(); it != jobs.end(); it++)
     {
       if (emit_csv)
@@ -670,7 +693,7 @@ int handle_job_list_files(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  const auto emit_csv = result.get_option("--response-format-csv")->get_value() == "true";
+  const auto emit_csv = result.get_option_value("--response-format-csv") == "true";
   for (vector<ZJobDD>::iterator it = job_dds.begin(); it != job_dds.end(); ++it)
   {
     std::vector<string> fields;
@@ -699,7 +722,7 @@ int handle_job_view_status(ZCLIResult result)
   ZJob job = {0};
   string jobid(result.get_positional("jobid")->get_value());
 
-  const auto emit_csv = result.get_option("--response-format-csv")->get_value() == "true";
+  const auto emit_csv = result.get_option_value("--response-format-csv") == "true";
   rc = zjb_view_by_jobid(&zjb, jobid, job);
 
   if (0 != rc)
@@ -732,7 +755,7 @@ int handle_job_view_file(ZCLIResult result)
   string jobid(result.get_positional("jobid")->get_value());
   string key(result.get_positional("key")->get_value());
 
-  const auto hasEncoding = zut_prepare_encoding(result.get_option("--encoding")->get_value(), &zjb.encoding_opts);
+  const auto hasEncoding = zut_prepare_encoding(result.get_option_value("--encoding"), &zjb.encoding_opts);
 
   string resp;
   rc = zjb_read_jobs_output_by_jobid_and_key(&zjb, jobid, atoi(key.c_str()), resp);
@@ -744,7 +767,7 @@ int handle_job_view_file(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  if (hasEncoding && result.get_option("--response-format-bytes")->get_value() == "true")
+  if (hasEncoding && result.get_option_value("--response-format-bytes") == "true")
   {
     zut_print_string_as_bytes(resp);
   }
@@ -794,7 +817,7 @@ int handle_job_submit(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  string only_jobid(result.get_option("--only-jobid")->get_value());
+  string only_jobid(result.get_option_value("--only-jobid"));
   if ("true" == only_jobid)
     cout << jobid << endl;
   else
@@ -863,7 +886,7 @@ int handle_job_submit_jcl(ZCLIResult result)
   raw_bytes.clear();
 
   ZEncode encoding_opts = {0};
-  const auto encoding_prepared = result.get_option("--encoding") != nullptr && result.get_option("--encoding")->is_found() && zut_prepare_encoding(result.get_option("--encoding")->get_value(), &encoding_opts);
+  const auto encoding_prepared = result.get_option("--encoding") != nullptr && zut_prepare_encoding(result.get_option_value("--encoding"), &encoding_opts);
 
   if (encoding_prepared && encoding_opts.data_type != eDataTypeBinary)
   {
@@ -881,7 +904,7 @@ int handle_job_submit_jcl(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  string only_jobid(result.get_option("--only-jobid")->get_value());
+  string only_jobid(result.get_option_value("--only-jobid"));
   if ("true" == only_jobid)
     cout << jobid << endl;
   else
@@ -916,10 +939,10 @@ int handle_job_cancel(ZCLIResult result)
   ZJB zjb = {0};
   string jobid(result.get_positional("jobid")->get_value());
 
-  string option_dump(result.get_option("--dump")->get_value());
-  string option_force(result.get_option("--force")->get_value());
-  string option_purge(result.get_option("--purge")->get_value());
-  string option_restart(result.get_option("--restart")->get_value());
+  string option_dump(result.get_option_value("--dump"));
+  string option_force(result.get_option_value("--force"));
+  string option_purge(result.get_option_value("--purge"));
+  string option_restart(result.get_option_value("--restart"));
 
   rc = zjb_cancel_by_jobid(&zjb, jobid);
 
@@ -980,7 +1003,7 @@ int handle_console_issue(ZCLIResult result)
   int rc = 0;
   ZCN zcn = {0};
 
-  string console_name(result.get_option("--console-name")->get_value());
+  string console_name(result.get_option_value("--console-name"));
   string command(result.get_positional("command")->get_value());
 
   rc = zcn_activate(&zcn, string(console_name));
@@ -990,8 +1013,6 @@ int handle_console_issue(ZCLIResult result)
     cerr << "  Details: " << zcn.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
-
-  printf("%.8s", zcn.console_name);
 
   rc = zcn_put(&zcn, command);
   if (0 != rc)
@@ -1172,7 +1193,7 @@ int handle_data_set_view_dsn(ZCLIResult result)
   ZDS zds = {0};
   string response;
 
-  const auto hasEncoding = zut_prepare_encoding(result.get_option("--encoding")->get_value(), &zds.encoding_opts);
+  const auto hasEncoding = zut_prepare_encoding(result.get_option_value("--encoding"), &zds.encoding_opts);
   rc = zds_read_from_dsn(&zds, dsn, response);
   if (0 != rc)
   {
@@ -1181,13 +1202,16 @@ int handle_data_set_view_dsn(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  if (hasEncoding && result.get_option("--response-format-bytes")->get_value() == "true")
+  const auto etag = zut_calc_adler32_checksum(response);
+  cout << "etag: " << std::hex << etag << endl;
+  cout << "data: ";
+  if (hasEncoding && result.get_option_value("--response-format-bytes") == "true")
   {
     zut_print_string_as_bytes(response);
   }
   else
   {
-    cout << response;
+    cout << response << endl;
   }
 
   return rc;
@@ -1206,9 +1230,9 @@ int handle_data_set_list(ZCLIResult result)
 
   dsn += ".**";
 
-  string max_entries = result.get_option("--max-entries")->get_value();
-  string warn = result.get_option("--warn")->get_value();
-  string attributes = result.get_option("--attributes")->get_value();
+  string max_entries = result.get_option_value("--max-entries");
+  string warn = result.get_option_value("--warn");
+  string attributes = result.get_option_value("--attributes");
 
   ZDS zds = {0};
   if (max_entries.size() > 0)
@@ -1217,7 +1241,7 @@ int handle_data_set_list(ZCLIResult result)
   }
   vector<ZDSEntry> entries;
 
-  const auto emit_csv = result.get_option("--response-format-csv")->get_value() == "true";
+  const auto emit_csv = result.get_option_value("--response-format-csv") == "true";
   rc = zds_list_data_sets(&zds, dsn, entries);
   if (RTNCD_SUCCESS == rc || RTNCD_WARNING == rc)
   {
@@ -1275,8 +1299,8 @@ int handle_data_set_list_members_dsn(ZCLIResult result)
 {
   int rc = 0;
   string dsn = result.get_positional("dsn")->get_value();
-  string max_entries = result.get_option("--max-entries")->get_value();
-  string warn = result.get_option("--warn")->get_value();
+  string max_entries = result.get_option_value("--max-entries");
+  string warn = result.get_option_value("--warn");
   ZDS zds = {0};
   if (max_entries.size() > 0)
   {
@@ -1317,9 +1341,9 @@ int handle_data_set_write_to_dsn(ZCLIResult result)
   int rc = 0;
   string dsn = result.get_positional("dsn")->get_value();
   ZDS zds = {0};
-  if (result.get_option("--encoding")->is_found())
+  if (result.get_option("--encoding") != nullptr)
   {
-    zut_prepare_encoding(result.get_option("--encoding")->get_value(), &zds.encoding_opts);
+    zut_prepare_encoding(result.get_option_value("--encoding"), &zds.encoding_opts);
   }
 
   string data;
@@ -1331,7 +1355,11 @@ int handle_data_set_write_to_dsn(ZCLIResult result)
     std::istreambuf_iterator<char> begin(std::cin);
     std::istreambuf_iterator<char> end;
 
-    std::vector<char> bytes(begin, end);
+    vector<char> input(begin, end);
+    const auto temp = string(input.begin(), input.end());
+    input.clear();
+    const auto bytes = zut_get_contents_as_bytes(temp);
+
     data.assign(bytes.begin(), bytes.end());
     byteSize = bytes.size();
   }
@@ -1345,7 +1373,7 @@ int handle_data_set_write_to_dsn(ZCLIResult result)
     byteSize = data.size();
   }
 
-  rc = zds_write_to_dsn(&zds, dsn, data);
+  rc = zds_write_to_dsn(&zds, dsn, data, result.get_option_value("--etag"));
 
   if (0 != rc)
   {
@@ -1353,7 +1381,11 @@ int handle_data_set_write_to_dsn(ZCLIResult result)
     cerr << "  Details: " << zds.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
-  cout << "Wrote data to '" << dsn << "'" << endl;
+
+  if (result.get_option("--etag-only") == nullptr || !result.get_option("--etag-only")->is_found())
+  {
+    cout << "Wrote data to '" << dsn << "'" << endl;
+  }
 
   return rc;
 }
@@ -1382,7 +1414,7 @@ int handle_log_view(ZCLIResult result)
   unsigned int code = 0;
   string resp;
 
-  string lines = result.get_option("--lines")->get_value();
+  string lines = result.get_option_value("--lines");
 
   cout << "lines are " << lines << endl;
   return 0;
@@ -1392,7 +1424,7 @@ int handle_uss_create_file(ZCLIResult result)
 {
   int rc = 0;
   string file_path = result.get_positional("file-path")->get_value();
-  string mode(result.get_option("--mode")->get_value());
+  string mode(result.get_option_value("--mode"));
   if (mode == "")
     mode = "644";
 
@@ -1415,7 +1447,7 @@ int handle_uss_create_dir(ZCLIResult result)
 {
   int rc = 0;
   string file_path = result.get_positional("file-path")->get_value();
-  string mode(result.get_option("--mode")->get_value());
+  string mode(result.get_option_value("--mode"));
   if (mode == "")
     mode = "755";
 
@@ -1462,7 +1494,14 @@ int handle_uss_view(ZCLIResult result)
   string uss_file = result.get_positional("file-path")->get_value();
 
   ZUSF zusf = {0};
-  const auto hasEncoding = zut_prepare_encoding(result.get_option("--encoding")->get_value(), &zusf.encoding_opts);
+  const auto hasEncoding = result.get_option("--encoding") != nullptr && zut_prepare_encoding(result.get_option_value("--encoding"), &zusf.encoding_opts);
+
+  struct stat file_stats;
+  if (stat(uss_file.c_str(), &file_stats) == -1)
+  {
+    cerr << "Error: Path " << uss_file << " does not exist";
+    return RTNCD_FAILURE;
+  }
 
   string response;
   rc = zusf_read_from_uss_file(&zusf, uss_file, response);
@@ -1475,7 +1514,9 @@ int handle_uss_view(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  if (hasEncoding && result.get_option("--response-format-bytes")->get_value() == "true")
+  cout << "etag: " << zut_build_etag(file_stats.st_mtime, file_stats.st_size) << endl;
+  cout << "data: ";
+  if (hasEncoding && result.get_option_value("--response-format-bytes") == "true")
   {
     zut_print_string_as_bytes(response);
   }
@@ -1492,13 +1533,13 @@ int handle_uss_write(ZCLIResult result)
   int rc = 0;
   string file = result.get_positional("file-path")->get_value();
   ZUSF zusf = {0};
-  if (result.get_option("--encoding"))
+  if (result.get_option("--encoding") != nullptr)
   {
-    zut_prepare_encoding(result.get_option("--encoding")->get_value(), &zusf.encoding_opts);
+    zut_prepare_encoding(result.get_option_value("--encoding"), &zusf.encoding_opts);
   }
 
-  string data;
-  string line;
+  string data = "";
+  string line = "";
   size_t byteSize = 0ul;
 
   // Use Ctrl/Cmd + D to stop writing data manually
@@ -1507,7 +1548,11 @@ int handle_uss_write(ZCLIResult result)
     std::istreambuf_iterator<char> begin(std::cin);
     std::istreambuf_iterator<char> end;
 
-    std::vector<char> bytes(begin, end);
+    vector<char> input(begin, end);
+    const auto temp = string(input.begin(), input.end());
+    input.clear();
+    const auto bytes = zut_get_contents_as_bytes(temp);
+
     data.assign(bytes.begin(), bytes.end());
     byteSize = bytes.size();
   }
@@ -1521,14 +1566,18 @@ int handle_uss_write(ZCLIResult result)
     byteSize = data.size();
   }
 
-  rc = zusf_write_to_uss_file(&zusf, file, data);
+  auto *etag_opt = result.get_option("--etag");
+  rc = zusf_write_to_uss_file(&zusf, file, data, etag_opt != nullptr && etag_opt->is_found() ? etag_opt->get_value() : "");
   if (0 != rc)
   {
     cerr << "Error: could not write to USS file: '" << file << "' rc: '" << rc << "'" << endl;
     cerr << "  Details: " << zusf.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
-  cout << "Wrote data to '" << file << "'" << endl;
+  if (result.get_option("--etag-only") == nullptr || !result.get_option("--etag-only")->is_found())
+  {
+    cout << "Wrote data to '" << file << "'" << endl;
+  }
 
   return rc;
 }
@@ -1536,7 +1585,7 @@ int handle_uss_write(ZCLIResult result)
 int handle_uss_delete(ZCLIResult result)
 {
   string file_path = result.get_positional("file-path")->get_value();
-  bool recursive = result.get_option("--recursive");
+  bool recursive = result.get_option_value("--recursive") == "true";
 
   ZUSF zusf = {0};
   const auto rc = zusf_delete_uss_item(&zusf, file_path, recursive);
@@ -1556,7 +1605,7 @@ int handle_uss_chmod(ZCLIResult result)
   string file_path = result.get_positional("file-path")->get_value();
 
   ZUSF zusf = {0};
-  rc = zusf_chmod_uss_file_or_dir(&zusf, file_path, mode, result.get_option("--recursive"));
+  rc = zusf_chmod_uss_file_or_dir(&zusf, file_path, mode, result.get_option_value("--recursive") == "true");
   if (0 != rc)
   {
     cerr << "Error: could not chmod USS path: '" << file_path << "' rc: '" << rc << "'" << endl;
@@ -1577,7 +1626,7 @@ int handle_uss_chown(ZCLIResult result)
 
   ZUSF zusf = {0};
 
-  const auto rc = zusf_chown_uss_file_or_dir(&zusf, path, owner, result.get_option("--recursive"));
+  const auto rc = zusf_chown_uss_file_or_dir(&zusf, path, owner, result.get_option_value("--recursive") == "true");
   if (rc != 0)
   {
     cerr << "Error: could not chown USS path: '" << path << "' rc: '" << rc << "'" << endl;
@@ -1595,7 +1644,7 @@ int handle_uss_chtag(ZCLIResult result)
   string tag = result.get_positional("tag")->get_value();
 
   ZUSF zusf = {0};
-  const auto rc = zusf_chtag_uss_file_or_dir(&zusf, path, tag, result.get_option("--recursive"));
+  const auto rc = zusf_chtag_uss_file_or_dir(&zusf, path, tag, result.get_option_value("--recursive") == "true");
 
   if (rc != 0)
   {
@@ -1640,10 +1689,10 @@ int handle_tool_convert_dsect(ZCLIResult result)
   // as -madata --gadata="//'DKELOSKY.TEMP.ADATA(IHAECB)'" ihaecb.s
   // convert --adata (dsn) --out-chdr (dsn) --sysout /tmp/user/sysout.txt --sysprint /tmp/user/sysprint.txt
 
-  string adata_dsn(result.get_option("--adata-dsn")->get_value());
-  string chdr_dsn(result.get_option("--chdr-dsn")->get_value());
-  string sysprint(result.get_option("--sysprint")->get_value());
-  string sysout(result.get_option("--sysout")->get_value());
+  string adata_dsn(result.get_option_value("--adata-dsn"));
+  string chdr_dsn(result.get_option_value("--chdr-dsn"));
+  string sysprint(result.get_option_value("--sysprint"));
+  string sysout(result.get_option_value("--sysout"));
 
   const char *user = getlogin();
   string struser(user);
@@ -1725,13 +1774,30 @@ int handle_tool_display_symbol(ZCLIResult result)
   return RTNCD_SUCCESS;
 }
 
+int handle_tool_run(ZCLIResult result)
+{
+  int rc = 0;
+  string program(result.get_positional("program")->get_value());
+  transform(program.begin(), program.end(), program.begin(), ::toupper); // upper case
+
+  rc = zut_run(program);
+
+  if (0 != rc)
+  {
+    cerr << "Error: program '" << program << "' ended with rc: '" << rc << "'" << endl;
+    return RTNCD_FAILURE;
+  }
+
+  return RTNCD_SUCCESS;
+}
+
 int handle_tool_search(ZCLIResult result)
 {
   int rc = 0;
 
   string pattern(result.get_positional("string")->get_value());
-  string warn = result.get_option("--warn")->get_value();
-  string max_entries = result.get_option("--max-entries")->get_value();
+  string warn = result.get_option_value("--warn");
+  string max_entries = result.get_option_value("--max-entries");
   string dsn(result.get_positional("dsn")->get_value());
 
   ZDS zds = {0};

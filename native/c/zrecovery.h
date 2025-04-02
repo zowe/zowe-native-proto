@@ -149,10 +149,6 @@ typedef struct
   unsigned int request_dump : 1;
   unsigned int unconditional_percolate : 1;
 
-  // work fields (to avoid DSA usage)
-  unsigned long long int work_r0;
-  unsigned long long int work_r2;
-
 } ZRCVY_ENV;
 
 typedef void (*ROUTINE)(ZRCVY_ENV *);

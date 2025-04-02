@@ -117,12 +117,21 @@ export interface Spool {
    */
   procstep: string;
 }
+/**
+ * StatusMessage represents the status of `zowed` and serves as a health check
+ */
+export interface StatusMessage {
+  status: string;
+  message: string;
+  data?: { [key: string]: any};
+}
 
 //////////
 // source: options.go
 
 export interface IoserverOptions {
   numWorkers?: number /* int */;
+  verbose?: boolean;
 }
 export interface ListOptions {
   /**

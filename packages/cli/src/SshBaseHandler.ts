@@ -15,7 +15,10 @@ import { type CommandResponse, ZSshClient, ZSshUtils } from "zowe-native-proto-s
 export abstract class SshBaseHandler implements ICommandHandler {
     public async process(commandParameters: IHandlerParameters) {
         const session = ZSshUtils.buildSession(commandParameters.arguments);
-        using client = await ZSshClient.create(session, commandParameters.arguments.serverPath);
+        using client = await ZSshClient.create(session, {
+            serverPath: commandParameters.arguments.serverPath,
+            numWorkers: 1,
+        });
 
         const response = await this.processWithClient(commandParameters, client);
 

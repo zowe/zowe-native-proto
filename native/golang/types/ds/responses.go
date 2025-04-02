@@ -19,6 +19,8 @@ type WriteDatasetResponse struct {
 	Success bool `json:"success"`
 	// Dataset name
 	Dataset string `json:"dataset"`
+	// Returned e-tag for the data set
+	Etag string `json:"etag"`
 }
 
 type RestoreDatasetResponse struct {
@@ -31,6 +33,8 @@ type ReadDatasetResponse struct {
 	common.CommandResponse `tstype:",extends"`
 	// Desired encoding for the dataset (optional)
 	Encoding string `json:"encoding,omitempty"`
+	// Returned e-tag for the data set
+	Etag string `json:"etag"`
 	// Dataset name
 	Dataset string `json:"dataset"`
 	// Dataset contents

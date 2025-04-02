@@ -25,13 +25,18 @@ type ReadFileResponse struct {
 	common.CommandResponse `tstype:",extends"`
 	// Returned encoding for the file
 	Encoding string `json:"encoding,omitempty"`
+	// Returned e-tag for the file
+	Etag string `json:"etag"`
 	// Remote file path
 	Path string `json:"fspath"`
 	// File contents
 	Data []byte `json:"data" tstype:"B64String"`
 }
 
-type WriteFileResponse = GenericFileResponse
+type WriteFileResponse struct {
+	GenericFileResponse `tstype:",extends"`
+	Etag                string `json:"etag"`
+}
 
 type ListFilesResponse struct {
 	common.CommandResponse `tstype:",extends"`

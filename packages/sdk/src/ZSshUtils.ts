@@ -46,26 +46,57 @@ export class ZSshUtils {
                 ? fs.readFileSync(session.ISshSession.privateKey, "utf-8")
                 : undefined,
             passphrase: session.ISshSession.keyPassphrase,
+            debug: (msg: string) => Logger.getAppLogger().trace(msg),
         };
     }
 
-    public static async installServer(session: SshSession, serverPath: string, localDir: string): Promise<void> {
+    public static async installServer(
+        session: SshSession,
+        serverPath: string,
+        localDir: string,
+        onProgress?: (increment: number) => void, // Callback to report incremental progress
+    ): Promise<void> {
         Logger.getAppLogger().debug(`Installing server to ${session.ISshSession.hostname} at path: ${serverPath}`);
         const remoteDir = serverPath.replace(/^~/, ".");
         return ZSshUtils.sftp(session, async (sftp, ssh) => {
             await promisify(sftp.mkdir.bind(sftp))(remoteDir, { mode: 0o700 }).catch((err: SftpError) => {
                 if (err.code !== 4) throw err;
-                Logger.getAppLogger().debug(`Remote directory already exists: ${remoteDir}`);
+                Logger.getAppLogger().debug(`Remote directory already exists: ${serverPath}`);
             });
-            await promisify(sftp.fastPut.bind(sftp))(
-                path.join(localDir, ZSshUtils.SERVER_PAX_FILE),
-                path.posix.join(remoteDir, ZSshUtils.SERVER_PAX_FILE),
-            );
+
+            // Track the previous progress percentage
+            let previousPercentage = 0;
+
+            // Create the progress callback for tracking the upload progress
+            const progressCallback = onProgress
+                ? (progress: number, chunk: number, total: number) => {
+                      const percentage = Math.floor((progress / total) * 100); // Calculate percentage
+                      const increment = percentage - previousPercentage;
+
+                      if (increment > 0) {
+                          onProgress(increment);
+                          previousPercentage = percentage;
+                      }
+                  }
+                : undefined;
+
+            try {
+                await promisify(sftp.fastPut.bind(sftp))(
+                    path.join(localDir, ZSshUtils.SERVER_PAX_FILE),
+                    path.posix.join(remoteDir, ZSshUtils.SERVER_PAX_FILE),
+                    { step: progressCallback },
+                );
+            } catch (err) {
+                const errMsg = `Failed to upload server PAX file${err.code ? ` with RC ${err.code}` : ""}: ${err}`;
+                Logger.getAppLogger().error(errMsg);
+                throw new Error(errMsg);
+            }
+
             const result = await ssh.execCommand(`pax -rzf ${ZSshUtils.SERVER_PAX_FILE}`, { cwd: remoteDir });
             if (result.code === 0) {
                 Logger.getAppLogger().debug(`Extracted server binaries with response: ${result.stdout}`);
             } else {
-                const errMsg = `Failed to extract server binaries: ${result.stderr}`;
+                const errMsg = `Failed to extract server binaries with RC ${result.code}: ${result.stderr}`;
                 Logger.getAppLogger().error(errMsg);
                 throw new Error(errMsg);
             }
@@ -80,14 +111,27 @@ export class ZSshUtils {
             for (const file of ZSshUtils.SERVER_BIN_FILES) {
                 await promisify(sftp.unlink.bind(sftp))(path.posix.join(remoteDir, file)).catch((err: SftpError) => {
                     if (err.code !== 2) throw err;
-                    Logger.getAppLogger().info(`Remote file does not exist: ${remoteDir}/${file}`);
+                    Logger.getAppLogger().info(`Remote file does not exist: ${serverPath}/${file}`);
                 });
             }
             await promisify(sftp.rmdir.bind(sftp))(remoteDir).catch((err: SftpError) => {
                 if (err.code !== 4) throw err;
-                Logger.getAppLogger().info(`Remote directory does not exist: ${remoteDir}`);
+                Logger.getAppLogger().info(`Remote directory does not exist: ${serverPath}`);
             });
         });
+    }
+
+    public static async checkIfOutdated(localFile: string, remoteChecksums?: Record<string, string>): Promise<boolean> {
+        if (remoteChecksums == null) {
+            Logger.getAppLogger().warn("Checksums not found, could not verify server");
+            return false;
+        }
+        const localChecksums: Record<string, string> = {};
+        for (const line of fs.readFileSync(localFile, "utf-8").trimEnd().split("\n")) {
+            const [checksum, file] = line.split(/\s+/);
+            localChecksums[file] = checksum;
+        }
+        return JSON.stringify(localChecksums) !== JSON.stringify(remoteChecksums);
     }
 
     private static async sftp<T>(

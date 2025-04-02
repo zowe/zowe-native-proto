@@ -13,9 +13,12 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"flag"
+	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"zowe-native-proto/zowed/cmds"
 	t "zowe-native-proto/zowed/types/common"
@@ -25,6 +28,7 @@ import (
 // parseOptions parses command-line flags and returns the parsed options
 func parseOptions() t.IoserverOptions {
 	numWorkersFlag := flag.Int("num-workers", 10, "Number of worker threads for concurrent processing")
+	verboseFlag := flag.Bool("verbose", false, "Enable verbose logging")
 
 	flag.Parse()
 
@@ -34,12 +38,13 @@ func parseOptions() t.IoserverOptions {
 
 	return t.IoserverOptions{
 		NumWorkers: *numWorkersFlag,
+		Verbose:    *verboseFlag,
 	}
 }
 
 func main() {
 	options := parseOptions()
-	utils.InitLogger(false)
+	utils.InitLogger(false, options.Verbose)
 	utils.SetAutoConvOnUntaggedStdio()
 
 	// Channel for receiving input from stdin
@@ -52,7 +57,36 @@ func main() {
 	dispatcher := cmds.NewDispatcher()
 	cmds.InitializeCoreHandlers(dispatcher)
 
-	wg, _ := CreateWorkerPool(options.NumWorkers, requestQueue, dispatcher)
+	// Initialize workers in background
+	workerPool := CreateWorkerPool(options.NumWorkers, requestQueue, dispatcher)
+
+	// Log available worker count at initialization when verbose is enabled
+	if utils.IsVerboseLogging() {
+		go func() {
+			for {
+				count := workerPool.GetAvailableWorkersCount()
+				utils.LogDebug("Available workers: %d/%d", count, options.NumWorkers)
+				time.Sleep(500 * time.Millisecond)
+				if count == int32(options.NumWorkers) {
+					break
+				}
+			}
+		}()
+	}
+
+	// Print ready message to stdout as JSON
+	data := make(map[string]any)
+	data["checksums"] = utils.LoadChecksums()
+	readyMsg := t.StatusMessage{
+		Status:  "ready",
+		Message: "zowed is ready to accept input",
+		Data:    data,
+	}
+	readyJson, err := json.Marshal(readyMsg)
+	if err != nil {
+		log.Fatalln("Failed to marshal ready message:", err)
+	}
+	fmt.Println(string(readyJson))
 
 	// Start goroutine to read from stdin
 	go func() {
@@ -62,15 +96,14 @@ func main() {
 			// Process each line (it should be a complete JSON request)
 			input <- []byte(line)
 		}
-		close(requestQueue)
+		// Close the input channel once stdin is closed
+		close(input)
 	}()
 
-	// Distribute incoming requests to the queue
+	// Distribute incoming requests to available workers
 	for data := range input {
-		requestQueue <- data
+		workerPool.DistributeRequest(data)
 	}
 
-	// If stdin is closed (process likely terminated), close the request queue and wait for all workers to finish
-	close(requestQueue)
-	wg.Wait()
+	// `zowed` exits after stdin is closed and all pending requests are processed
 }

@@ -89,3 +89,10 @@ type Spool struct {
 	// Procedure name for the step
 	ProcStep string `json:"procstep"`
 }
+
+// StatusMessage represents the status of `zowed` and serves as a health check
+type StatusMessage struct {
+	Status  string         `json:"status"`
+	Message string         `json:"message"`
+	Data    map[string]any `json:"data,omitempty"`
+}

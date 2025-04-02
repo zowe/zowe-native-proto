@@ -9,7 +9,13 @@
  *
  */
 
-import { ConfigUtils, type ICommandHandler, type IHandlerParameters } from "@zowe/imperative";
+import {
+    ConfigUtils,
+    type ICommandHandler,
+    type IHandlerParameters,
+    type ITaskWithStatus,
+    TaskStage,
+} from "@zowe/imperative";
 import { ZSshClient, ZSshUtils } from "zowe-native-proto-sdk";
 import { Constants } from "../../Constants";
 
@@ -17,11 +23,21 @@ export default class ServerInstallHandler implements ICommandHandler {
     public async process(params: IHandlerParameters): Promise<void> {
         const session = ZSshUtils.buildSession(params.arguments);
         const serverPath = params.arguments.serverPath ?? ZSshClient.DEFAULT_SERVER_PATH;
-        params.response.progress.startSpinner("Deploying Zowe SSH server...");
+
+        const task: ITaskWithStatus = {
+            percentComplete: 0,
+            statusMessage: "Deploying Zowe SSH server...",
+            stageName: TaskStage.IN_PROGRESS,
+        };
+
+        params.response.progress.startBar({ task });
         try {
-            await ZSshUtils.installServer(session, serverPath, Constants.ZSSH_BIN_DIR);
+            await ZSshUtils.installServer(session, serverPath, Constants.ZSSH_BIN_DIR, (progressIncrement) => {
+                task.percentComplete += progressIncrement;
+            });
         } finally {
-            params.response.progress.endSpinner();
+            task.stageName = TaskStage.COMPLETE;
+            params.response.progress.endBar();
         }
         params.response.console.log(
             `Installed Zowe SSH server on ${ConfigUtils.getActiveProfileName("ssh", params.arguments)}`,
