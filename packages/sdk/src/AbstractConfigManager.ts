@@ -170,19 +170,23 @@ export abstract class AbstractConfigManager {
         if (this.validationResult === undefined) {
             await this.validateFoundPrivateKeys();
         }
+
         if (this.validationResult === undefined) {
             // Attempt to validate with given URL/creds
             this.validationResult = await this.validateConfig(this.selectedProfile);
         }
+
         // If validateConfig returns a string, that string is the correct keyPassphrase
         if (this.validationResult && Object.keys(this.validationResult).length >= 1) {
             this.selectedProfile = { ...this.selectedProfile, ...this.validationResult };
         }
+
         // If no private key or password is on the profile then there is no possible validation combination, thus return
         if (!this.selectedProfile?.privateKey && !this.selectedProfile?.password) {
             this.showMessage("SSH setup cancelled.", MESSAGE_TYPE.WARNING);
             return;
         }
+
         await this.setProfile(this.selectedProfile);
 
         return {
@@ -322,7 +326,7 @@ export abstract class AbstractConfigManager {
         } catch (err) {}
     }
 
-    private async validateConfig(newConfig: ISshConfigExt): Promise<ISshConfigExt | undefined> {
+    private async validateConfig(newConfig: ISshConfigExt, askForPassword = true): Promise<ISshConfigExt | undefined> {
         const configModifications: ISshConfigExt | undefined = {};
         const attemptConnection = async (config: ISshConfigExt): Promise<boolean> => {
             return new Promise((resolve, reject) => {
@@ -385,7 +389,7 @@ export abstract class AbstractConfigManager {
             }
 
             if ((!privateKeyPath || !readFileSync(path.normalize(privateKeyPath), "utf-8")) && !newConfig.password) {
-                const passwordPrompt = await promptForPassword(newConfig);
+                const passwordPrompt = askForPassword ? await promptForPassword(newConfig) : undefined;
                 return passwordPrompt ? { ...configModifications, ...passwordPrompt } : undefined;
             }
 
@@ -443,7 +447,7 @@ export abstract class AbstractConfigManager {
                 return undefined;
             }
             if (errorMessage.includes("All configured authentication methods failed")) {
-                const passwordPrompt = await promptForPassword(newConfig);
+                const passwordPrompt = askForPassword ? await promptForPassword(newConfig) : undefined;
                 return passwordPrompt ? { ...configModifications, ...passwordPrompt } : undefined;
             }
         }
@@ -452,7 +456,6 @@ export abstract class AbstractConfigManager {
 
     private async validateFoundPrivateKeys() {
         // Create a progress bar using the custom Gui.withProgress
-
         await this.withProgress("Validating Private Keys...", async (progress) => {
             // Find private keys located at ~/.ssh/ and attempt to connect with them
             if (!this.validationResult) {
@@ -460,7 +463,7 @@ export abstract class AbstractConfigManager {
                 for (const privateKey of foundPrivateKeys) {
                     const testValidation: ISshConfigExt = this.selectedProfile!;
                     testValidation.privateKey = privateKey;
-                    const result = await this.validateConfig(testValidation);
+                    const result = await this.validateConfig(testValidation, false);
                     progress(100 / foundPrivateKeys.length);
 
                     if (result) {
@@ -490,7 +493,7 @@ export abstract class AbstractConfigManager {
 
             for (const profile of validationAttempts) {
                 const testValidation: ISshConfigExt = profile;
-                const result = await this.validateConfig(testValidation);
+                const result = await this.validateConfig(testValidation, false);
                 progress(100 / validationAttempts.length);
                 if (result !== undefined) {
                     this.validationResult = {};
@@ -565,7 +568,6 @@ export abstract class AbstractConfigManager {
                         allowBaseModification = await this.showQuickPick(qpOpts);
                     }
                 }
-
                 this.mProfilesCache.updateProperty({
                     profileName: updatedProfile,
                     profileType: "ssh",
