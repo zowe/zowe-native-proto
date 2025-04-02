@@ -18,6 +18,7 @@ import {
     ImperativeError,
     ProfileInfo,
     TextUtils,
+    type IConfigLayer,
 } from "@zowe/imperative";
 import * as termkit from "terminal-kit";
 import {
@@ -34,7 +35,12 @@ export default class ServerInstallHandler implements ICommandHandler {
         const profInfo = new ProfileInfo("zowe");
         await profInfo.readProfilesFromDisk();
         const cliPromptApi = new CliPromptApi(profInfo, params.response);
-        await cliPromptApi.promptForProfile();
+        const profile = await cliPromptApi.promptForProfile();
+        if (profile) {
+            params.response.console.log(
+                `SSH Profile Validated: ${(profInfo.getTeamConfig().api.layers.find(profile.name) as IConfigLayer).path}`,
+            );
+        }
     }
 }
 
@@ -107,11 +113,13 @@ export class CliPromptApi extends AbstractConfigManager {
                     continueOnSubmit: false,
                     oneLineItem: true,
                     selectedIndex,
-                    y: y + 2,
-                    submittedStyle: this.term.green,
-                    selectedStyle: this.term.bold.brightGreen,
+                    y: y + 1,
+                    submittedStyle: this.term.bold.green,
+                    selectedStyle: this.term.brightGreen,
                     leftPadding: "  ",
                     selectedLeftPadding: "> ",
+                    submittedLeftPadding: "> ",
+                    extraLines: 2,
                 }) as unknown as {
                     // biome-ignore lint/suspicious/noExplicitAny: Required for callback
                     on: (event: string, handler: (response: any) => void) => void;
@@ -147,7 +155,6 @@ export class CliPromptApi extends AbstractConfigManager {
                     // Cleanup event listeners and input grabbing
                     this.term.removeListener("key", keyHandler);
                     this.term.grabInput(false);
-
                     resolve(selected?.separator ? undefined : selected);
                 });
 
