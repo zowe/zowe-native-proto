@@ -18,9 +18,9 @@ import (
 	"strings"
 	"sync"
 
-	"zowe-native-proto/ioserver/cmds"
-	t "zowe-native-proto/ioserver/types/common"
-	"zowe-native-proto/ioserver/utils"
+	"zowe-native-proto/zowed/cmds"
+	t "zowe-native-proto/zowed/types/common"
+	"zowe-native-proto/zowed/utils"
 )
 
 // Worker represents a worker that processes command requests

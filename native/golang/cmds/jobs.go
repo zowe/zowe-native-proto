@@ -13,12 +13,13 @@ package cmds
 
 import (
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"strconv"
 	"strings"
-	t "zowe-native-proto/ioserver/types/common"
-	"zowe-native-proto/ioserver/types/jobs"
-	utils "zowe-native-proto/ioserver/utils"
+	t "zowe-native-proto/zowed/types/common"
+	"zowe-native-proto/zowed/types/jobs"
+	utils "zowe-native-proto/zowed/utils"
 )
 
 // HandleListJobsRequest handles a ListJobsRequest by invoking the `zowex job list` command
@@ -261,7 +262,29 @@ func HandleSubmitJobRequest(conn *utils.StdioConn, params []byte) (result any, e
 	result = jobs.SubmitJobResponse{
 		Success: true,
 		Dsname:  request.Dsname,
-		JobId:   strings.TrimSpace(string(out)),
+		JobId:   string(out),
+	}
+	return
+}
+
+// HandleSubmitUssRequest handles a SubmitUssRequest by invoking the `zowex job submit-uss` command
+func HandleSubmitUssRequest(conn *utils.StdioConn, params []byte) (result any, e error) {
+	request, err := utils.ParseCommandRequest[jobs.SubmitUssRequest](params)
+	if err != nil {
+		return nil, err
+	}
+
+	out, err := conn.ExecCmd([]string{"job", "submit-uss", request.Path, "--only-jobid", "true"})
+
+	if err != nil {
+		e = fmt.Errorf("Failed to submit job: %v", err)
+		return
+	}
+
+	result = jobs.SubmitUssResponse{
+		Success: true,
+		Path:    request.Path,
+		JobId:   string(out),
 	}
 	return
 }
@@ -275,35 +298,40 @@ func HandleSubmitJclRequest(conn *utils.StdioConn, params []byte) (result any, e
 
 	decodedBytes, err := base64.StdEncoding.DecodeString(request.Jcl)
 	if err != nil {
-		e = fmt.Errorf("Failed to decode JCL contents: %v", err)
+		e = fmt.Errorf("failed to decode JCL contents: %v", err)
 		return
 	}
 
-	cmd := utils.BuildCommandNoAutocvt([]string{"job", "submit-jcl", "--only-jobid", "true"})
+	byteString := hex.EncodeToString(decodedBytes)
+	if len(request.Encoding) == 0 {
+		request.Encoding = fmt.Sprintf("IBM-%d", utils.DefaultEncoding)
+	}
+
+	cmd := utils.BuildCommand([]string{"job", "submit-jcl", "--only-jobid", "true", "--encoding", request.Encoding})
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
-		e = fmt.Errorf("Failed to open stdin pipe to zowex: %v", err)
+		e = fmt.Errorf("failed to open stdin pipe to zowex: %v", err)
 		return
 	}
 
 	go func() {
 		defer stdin.Close()
-		_, err = stdin.Write(decodedBytes)
+		_, err = stdin.Write([]byte(byteString))
 		if err != nil {
-			e = fmt.Errorf("Failed to write to pipe: %v", err)
+			e = fmt.Errorf("failed to write to pipe: %v", err)
 		}
 	}()
 
-	out, err := cmd.Output()
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		e = fmt.Errorf("Failed to submit JCL: %v", err)
+		e = fmt.Errorf("failed to submit JCL: %v", err)
 		conn.LastExitCode = cmd.ProcessState.ExitCode()
 		return
 	}
 
 	result = jobs.SubmitJclResponse{
 		Success: true,
-		JobId:   strings.TrimSpace(string(out)),
+		JobId:   string(out),
 	}
 	return
 }

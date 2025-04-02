@@ -11,7 +11,7 @@
 
 package jobs
 
-import common "zowe-native-proto/ioserver/types/common"
+import common "zowe-native-proto/zowed/types/common"
 
 type ListJobsResponse struct {
 	common.CommandResponse `tstype:",extends"`
@@ -42,7 +42,7 @@ type ReadSpoolResponse struct {
 	// Job ID associated with the returned spool
 	JobId string `json:"jobId"`
 	// Spool contents
-	Data []byte `json:"data" tstype:"Buffer | string"`
+	Data []byte `json:"data" tstype:"B64String"`
 }
 
 type GetJobStatusResponse struct {
@@ -58,6 +58,16 @@ type SubmitJobResponse struct {
 	JobId string `json:"jobId"`
 	// The data set name where the JCL was read from
 	Dsname string `json:"dsname"`
+}
+
+type SubmitUssResponse struct {
+	common.CommandResponse `tstype:",extends"`
+	// Whether the job was successfully submitted
+	Success bool `json:"success"`
+	// The job ID of the newly-submitted job
+	JobId string `json:"jobId"`
+	// The USS file where the JCL was read from
+	Path string `json:"fspath"`
 }
 
 type SubmitJclResponse struct {

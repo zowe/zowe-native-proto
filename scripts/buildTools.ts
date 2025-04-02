@@ -156,7 +156,7 @@ function getAllServerFiles() {
         files.push(...getServerFiles(dir));
     }
 
-    return files.filter((file) => !file.startsWith("golang/ioserver"));
+    return files.filter((file) => !file.startsWith("golang/zowed"));
 }
 
 function getServerFiles(dir = "") {
@@ -283,17 +283,17 @@ async function getDumps(connection: Client) {
 
 async function artifacts(connection: Client) {
     const localDirs = ["packages/cli/bin", "packages/vsce/bin"];
-    const artifactNames = ["c/zowex", "golang/ioserver"];
+    const artifactNames = ["c/zowex", "golang/zowed"];
     const paxFile = "server.pax.Z";
     const prePaxCmds = artifactNames.map((file) => `cp ${file} ${basename(file)} && chmod 700 ${basename(file)}`);
-    const postPaxCmds = artifactNames.map((file) => `rm ${basename(file)}`);
+    const postPaxCmd = `rm ${artifactNames.map((file) => basename(file)).join(" ")}`;
     await runCommandInShell(
         connection,
         [
             `cd ${deployDirectory}`,
             ...prePaxCmds,
             `pax -wvzf ${paxFile} ${artifactNames.map((file) => basename(file)).join(" ")}`,
-            ...postPaxCmds,
+            postPaxCmd,
         ].join("\n"),
     );
     for (const localDir of localDirs) {
@@ -485,7 +485,7 @@ async function build(connection: Client) {
     console.log(
         await runCommandInShell(
             connection,
-            `cd ${goDeployDirectory} &&${config.goEnv ? ` ${config.goEnv}` : ""} go build\n`,
+            `cd ${goDeployDirectory} &&${config.goEnv ? ` ${config.goEnv}` : ""} go build${DEBUG_MODE() ? "" : ' -ldflags="-s -w"'}\n`,
             true,
         ),
     );

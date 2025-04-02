@@ -11,23 +11,23 @@
 
 import type { ICommandDefinition } from "@zowe/imperative";
 
-export const ViewJobStatusDefinition: ICommandDefinition = {
-    handler: `${__dirname}/JobStatus.handler`,
-    description: "View the status of a job",
+export const SubmitUssDefinition: ICommandDefinition = {
+    handler: `${__dirname}/Uss.handler`,
+    description: "Submit a job from JCL written in a USS file.",
     type: "command",
-    name: "job-status-by-job-id",
-    aliases: ["js", "job-status"],
-    summary: "View job status",
+    name: "uss-file",
+    aliases: ["uss"],
+    summary: "Submit a job from USS files",
     examples: [
         {
-            description: "View the status of the job TSU00296",
-            options: "TSU00296",
+            description: 'Submit a job from the USS file "my_jcl.txt"',
+            options: '"my_jcl.txt"',
         },
     ],
     positionals: [
         {
-            name: "job-id",
-            description: "The ID of the job which you would like to view the status of.",
+            name: "fspath",
+            description: "The USS path to the JCL to submit",
             type: "string",
             required: true,
         },

@@ -13,7 +13,7 @@ zowe-native-proto-package
 # Files
 .DS_Store
 config.*.json
-native/golang/ioserver*
+native/golang/zowed*
 tsconfig.tsbuildinfo
 zowe.config.json
 zowe.schema.json

@@ -11,7 +11,7 @@
 
 package jobs
 
-import common "zowe-native-proto/ioserver/types/common"
+import common "zowe-native-proto/zowed/types/common"
 
 type ListJobsRequest struct {
 	common.CommandRequest `tstype:",extends"`
@@ -64,11 +64,20 @@ type SubmitJobRequest struct {
 	Dsname string `json:"dsname"`
 }
 
+type SubmitUssRequest struct {
+	common.CommandRequest `tstype:",extends"`
+	Command               string `json:"command" tstype:"\"submitUss\""`
+	// File path w/ contents to submit as JCL
+	Path string `json:"fspath"`
+}
+
 type SubmitJclRequest struct {
 	common.CommandRequest `tstype:",extends"`
 	Command               string `json:"command" tstype:"\"submitJcl\""`
+	// Desired encoding for the spool file (optional)
+	Encoding string `json:"encoding,omitempty"`
 	// JCL contents to submit as a job
-	Jcl string `json:"jcl"`
+	Jcl string `json:"jcl" tstype:"B64String"`
 }
 
 type CancelJobRequest struct {

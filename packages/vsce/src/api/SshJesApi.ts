@@ -11,7 +11,7 @@
 
 import type * as zosjobs from "@zowe/zos-jobs-for-zowe-sdk";
 import type { MainframeInteraction } from "@zowe/zowe-explorer-api";
-import { ZSshUtils } from "zowe-native-proto-sdk";
+import { B64String } from "zowe-native-proto-sdk";
 import { SshCommonApi } from "./SshCommonApi";
 
 export class SshJesApi extends SshCommonApi implements MainframeInteraction.IJes {
@@ -57,7 +57,7 @@ export class SshJesApi extends SshCommonApi implements MainframeInteraction.IJes
             spoolId,
             jobId: jobid.toUpperCase(),
         });
-        return ZSshUtils.decodeByteArray(response.data).toString();
+        return B64String.decode(response.data);
     }
 
     public async getJclForJob(job: zosjobs.IJob): Promise<string> {
@@ -80,7 +80,7 @@ export class SshJesApi extends SshCommonApi implements MainframeInteraction.IJes
         internalReaderLrecl?: string,
     ): Promise<zosjobs.IJob> {
         const response = await (await this.client).jobs.submitJcl({
-            jcl,
+            jcl: B64String.encode(jcl),
         });
         return { jobid: response.jobId } as zosjobs.IJob;
     }

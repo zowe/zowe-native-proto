@@ -12,23 +12,36 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import * as zosfiles from "@zowe/zos-files-for-zowe-sdk";
 import { Gui, type MainframeInteraction, imperative } from "@zowe/zowe-explorer-api";
-import { ZSshUtils, type ds } from "zowe-native-proto-sdk";
+import { B64String, type ds } from "zowe-native-proto-sdk";
 import { SshCommonApi } from "./SshCommonApi";
 
 export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs {
     public async dataSet(filter: string, options?: zosfiles.IListOptions): Promise<zosfiles.IZosFilesResponse> {
-        const response = await (await this.client).ds.listDatasets({
-            pattern: filter,
-        });
-        return this.buildZosFilesResponse({
-            items: response.items.map((item) => ({
-                dsname: item.name,
-                dsorg: item.dsorg,
-                vol: item.volser,
-                migr: item.migr ? "YES" : "NO",
-            })),
-            returnedRows: response.returnedRows,
-        });
+        try {
+            const response = await (await this.client).ds.listDatasets({
+                pattern: filter,
+            });
+            return this.buildZosFilesResponse({
+                items: response.items.map((item) => ({
+                    dsname: item.name,
+                    dsorg: item.dsorg,
+                    vol: item.volser,
+                    migr: item.migr ? "YES" : "NO",
+                })),
+                returnedRows: response.returnedRows,
+            });
+        } catch (err) {
+            if (err instanceof imperative.ImperativeError) {
+                Gui.errorMessage(`Failed to list data sets: ${err.additionalDetails.replace("Error: ", "")}`);
+            }
+            return this.buildZosFilesResponse(
+                {
+                    items: [],
+                    returnedRows: 0,
+                },
+                false,
+            );
+        }
     }
 
     public async allMembers(dataSetName: string, options?: zosfiles.IListOptions): Promise<zosfiles.IZosFilesResponse> {
@@ -51,9 +64,9 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         });
         if (options.file != null) {
             imperative.IO.createDirsSyncFromFilePath(options.file);
-            writeFileSync(options.file, ZSshUtils.decodeByteArray(response.data));
+            writeFileSync(options.file, B64String.decodeBytes(response.data));
         } else if (options.stream != null) {
-            options.stream.write(ZSshUtils.decodeByteArray(response.data));
+            options.stream.write(B64String.decodeBytes(response.data));
             options.stream.end();
         }
         return this.buildZosFilesResponse({ etag: dataSetName });
@@ -67,7 +80,7 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         const response = await (await this.client).ds.writeDataset({
             dsname: dataSetName,
             encoding: options?.binary ? "binary" : options?.encoding,
-            data: ZSshUtils.encodeByteArray(buffer),
+            data: B64String.encode(buffer),
         });
         return this.buildZosFilesResponse({ etag: dataSetName });
     }
@@ -80,7 +93,7 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         const response = await (await this.client).ds.writeDataset({
             dsname: dataSetName,
             encoding: options?.encoding,
-            data: ZSshUtils.encodeByteArray(readFileSync(inputFilePath)),
+            data: B64String.encode(readFileSync(inputFilePath)),
         });
         return this.buildZosFilesResponse({ etag: dataSetName });
     }

@@ -11,23 +11,23 @@
 
 import type { ICommandDefinition } from "@zowe/imperative";
 
-export const ViewJobStatusDefinition: ICommandDefinition = {
-    handler: `${__dirname}/JobStatus.handler`,
-    description: "View the status of a job",
+export const SubmitDsDefinition: ICommandDefinition = {
+    handler: `${__dirname}/Dataset.handler`,
+    description: "Submit a job from JCL written in a dataset.",
     type: "command",
-    name: "job-status-by-job-id",
-    aliases: ["js", "job-status"],
-    summary: "View job status",
+    name: "data-set",
+    aliases: ["ds"],
+    summary: "Submit a job from a dataset",
     examples: [
         {
-            description: "View the status of the job TSU00296",
-            options: "TSU00296",
+            description: 'Submit a job from the dataset "IBMUSER.PUBLIC.CNTL(IEFBR14)"',
+            options: '"IBMUSER.PUBLIC.CNTL(IEFBR14)"',
         },
     ],
     positionals: [
         {
-            name: "job-id",
-            description: "The ID of the job which you would like to view the status of.",
+            name: "name",
+            description: "The dataset containing the JCL to submit",
             type: "string",
             required: true,
         },

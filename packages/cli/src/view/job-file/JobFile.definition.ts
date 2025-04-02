@@ -15,8 +15,8 @@ export const ViewJobFileDefinition: ICommandDefinition = {
     handler: `${__dirname}/JobFile.handler`,
     description: "View the contents of a job spool file",
     type: "command",
-    name: "job-spool-file",
-    aliases: ["jsf", "spool"],
+    name: "spool-files-by-id",
+    aliases: ["jsf", "spool", "job-spool-file"],
     summary: "View job spool file",
     examples: [
         {

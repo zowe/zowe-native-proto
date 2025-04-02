@@ -14,12 +14,12 @@ import { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Constants } from "../Constants";
 import { DataSetDefinition } from "./data-set/DataSet.definition";
 
-const RestoreDefinition: ICommandDefinition = {
-    name: "restore",
-    summary: "Restore datasets",
-    description: "Restore datasets that have been archived/migrated",
+const RecallDefinition: ICommandDefinition = {
+    name: "recall",
+    summary: "Recall datasets",
+    description: "Recall datasets that have been archived/migrated",
     type: "group",
-    aliases: ["r"],
+    aliases: ["r", "restore"],
     children: [DataSetDefinition],
     passOn: [
         {
@@ -31,4 +31,4 @@ const RestoreDefinition: ICommandDefinition = {
     ],
 };
 
-export = RestoreDefinition;
+export = RecallDefinition;

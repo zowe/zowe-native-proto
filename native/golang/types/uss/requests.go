@@ -11,7 +11,7 @@
 
 package uss
 
-import common "zowe-native-proto/ioserver/types/common"
+import common "zowe-native-proto/zowed/types/common"
 
 type ListFilesRequest struct {
 	common.CommandRequest `tstype:",extends"`
@@ -38,7 +38,7 @@ type WriteFileRequest struct {
 	// Remote file path to write contents to
 	Path string `json:"fspath"`
 	// New contents for the file
-	Data string `json:"data"`
+	Data string `json:"data" tstype:"B64String"`
 }
 
 type CreateFileRequest struct {

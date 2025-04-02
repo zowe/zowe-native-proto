@@ -52,7 +52,7 @@ const response = await client.ds.listDatasets({ pattern: "IBMUSER.*" });
 ```
 
 > [!NOTE]
-> To transmit binary data, it must be Base64 encoded since the z/OS OpenSSH server does not support sending raw bytes without codepage conversion. Use the methods `ZSshUtils.encodeByteArray` before sending binary data and `ZSshUtils.decodeByteArray` after receiving it.
+> To transmit binary data, it must be Base64 encoded since the z/OS OpenSSH server does not support sending raw bytes without codepage conversion. Use the methods `B64String.encode` before sending binary data and `B64String.decode` after receiving it.
 
 ## CLI Plug-in
 
