@@ -294,7 +294,7 @@ async function artifacts(connection: Client) {
     const [paxFile, checksumFile] = localFiles;
     const prePaxCmds = artifactPaths.map((file) => `cp ${file} ${basename(file)} && chmod 700 ${basename(file)}`);
     const postPaxCmd = `rm ${artifactNames.join(" ")}`;
-    const e2aPipe = (file: string) => `iconv -f IBM-1047 -t ISO8859-1 > ${file} && chtag -t ISO8859-1 ${file}`;
+    const e2aPipe = (file: string) => `iconv -f IBM-1047 -t ISO8859-1 > ${file} && chtag -tc ISO8859-1 ${file}`;
     await runCommandInShell(
         connection,
         [
