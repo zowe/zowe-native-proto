@@ -14,18 +14,26 @@
 #include "zrecovery.h"
 #include "zwto.h"
 
-#pragma prolog(ABEXIT, " MYPROLOG ")
-#pragma epilog(ABEXIT, " MYEPILOG ")
+#pragma prolog(ABEXIT, " ZWEPROLG NEWDSA=(YES,128) ")
+#pragma epilog(ABEXIT, " ZWEEPILG ")
 void ABEXIT(SDWA *sdwa, void *abexit_data)
 {
   zwto_debug("@TEST called on abend");
 }
 
-#pragma prolog(PERCEXIT, " MYPROLOG ")
-#pragma epilog(PERCEXIT, " MYEPILOG ")
+#pragma prolog(PERCEXIT, " ZWEPROLG NEWDSA=(YES,128) ")
+#pragma epilog(PERCEXIT, " ZWEEPILG ")
 void PERCEXIT(void *perc_exit_data)
 {
   zwto_debug("@TEST called to percolate");
+}
+
+#pragma prolog(SOMEFUNC, " ZWEPROLG NEWDSA=(YES,128) ")
+#pragma epilog(SOMEFUNC, " ZWEEPILG ")
+int SOMEFUNC()
+{
+  zwto_debug("@TEST called some func");
+  return 0;
 }
 
 int main()
@@ -33,6 +41,8 @@ int main()
   ZRCVY_ENV zenv = {0};
   zenv.abexit = ABEXIT;
   zenv.perc_exit = PERCEXIT;
+
+  int val = SOMEFUNC();
 
   zwto_debug("@TEST main");
 
