@@ -17,8 +17,8 @@ import { ConfigSetupDefinition } from "./setup/Setup.definition";
 const ConfigDefinition: ICommandDefinition = {
     name: "config",
     aliases: ["cfg"],
-    summary: "placeholder",
-    description: "placeholder",
+    summary: "Manage Configurations",
+    description: "Manage Configurations of SSH Profiles",
     type: "group",
     children: [ConfigSetupDefinition],
     passOn: [
