@@ -51,6 +51,7 @@
 &LRxx    SETC  'LR  '
 &Lxxx    SETC  'L   '
 &ARxx    SETC  'AR  '
+&SLRx    SETC  'SLR '
          AGO   .CONT000
 .INST64  ANOP  ,
 &LHIx    SETC  'LGHI'
@@ -58,6 +59,7 @@
 &LRxx    SETC  'LGR '
 &Lxxx    SETC  'LGF '
 &ARxx    SETC  'AGR '
+&SLRx    SETC  'SLGR'
 .CONT000 ANOP  ,
 .*
 .*       Validate paramters
@@ -91,27 +93,34 @@
          USING &CCN_LITN,15
 .*
 &DSA_SZ  SETA  &KB#*1024
-         &LHIx 0,&KB#
-         &MHIx 0,1024
+         &LHIx 3,&KB#
+         &MHIx 3,1024
 *
          STORAGE OBTAIN,                                               +
-               LENGTH=(0),                                             +
+               LENGTH=(3),                                             +
                BNDRY=PAGE,                                             +
                COND=NO
 .*
-.*       TODO(Kelosky): clear storage
-.*       TODO(Kelosky): add eye catchers
+         &LRxx 2,1               -> New storage save
 .*
-         &LRxx 15,1
+         &LRxx 0,1               -> New storage
+         &LRxx 1,3               Storage len
+         &SLRx 15,15             No source len
+         MVCL  0,14              Clear storage
+.*
+         &LRxx 15,2              -> New storage
+.*
          AIF   (&IS_64).LINK64
          ST    15,8(,13)
          ST    13,4(,15)
-         LM    0,1,20(13)
+         LM    14,14,12(13)
+         LM    0,3,20(13)
          AGO   .CONT600
 .LINK64  ANOP
          STG   15,136(,13)
          STG   13,128(,15)
-         LMG   0,1,24(13)
+         LMG   14,14,8(13)
+         LMG   0,3,24(13)
 .CONT600 ANOP
          &LRxx 13,15
          DROP  15
