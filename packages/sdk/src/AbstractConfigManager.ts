@@ -28,30 +28,7 @@ import {
 } from "@zowe/imperative";
 import { Client, type ClientChannel } from "ssh2";
 import { type ISshConfigExt, ZClientUtils } from "./ZClientUtils";
-
-export enum MESSAGE_TYPE {
-    INFORMATION = 1,
-    WARNING = 2,
-    ERROR = 3,
-}
-
-export interface inputBoxOpts {
-    title: string;
-    placeHolder?: string;
-    password?: boolean;
-    value?: string;
-    validateInput?: (input: string) => string;
-}
-export interface qpOpts {
-    items: qpItem[];
-    title?: string;
-    placeholder?: string;
-}
-export interface qpItem {
-    label: string;
-    description?: string;
-    separator?: boolean;
-}
+import { MESSAGE_TYPE, type inputBoxOpts, type qpItem, type qpOpts } from "./doc";
 
 export type ProgressCallback = (percent: number) => void;
 export abstract class AbstractConfigManager {
