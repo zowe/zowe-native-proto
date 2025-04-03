@@ -94,7 +94,10 @@ connection.on("ready", async () => {
                 await getDumps(connection);
                 break;
             case "artifacts":
-                await artifacts(connection);
+                await artifacts(connection, false);
+                break;
+            case "package":
+                await artifacts(connection, true);
                 break;
             case "clean":
                 await clean(connection);
@@ -286,10 +289,13 @@ async function getDumps(connection: Client) {
     await retrieve(connection, resp, "dumps");
 }
 
-async function artifacts(connection: Client) {
+async function artifacts(connection: Client, packageApf: boolean) {
     const artifactPaths = ["c/zowex", "golang/zowed"];
+    if (packageApf) {
+        artifactPaths.push("c/zoweax");
+    }
     const artifactNames = artifactPaths.map((file) => basename(file)).sort();
-    const localDirs = ["packages/cli/bin", "packages/vsce/bin"];
+    const localDirs = packageApf ? ["dist"] : ["packages/cli/bin", "packages/vsce/bin"];
     const localFiles = ["server.pax.Z", "checksums.asc"];
     const [paxFile, checksumFile] = localFiles;
     const prePaxCmds = artifactPaths.map((file) => `cp ${file} ${basename(file)} && chmod 700 ${basename(file)}`);
