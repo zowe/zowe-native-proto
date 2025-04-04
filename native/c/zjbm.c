@@ -311,7 +311,7 @@ int ZJBMTCOM(ZJB *zjb, STAT *PTR64 stat, ZJB_JOB_INFO **PTR64 job_info, int *ent
         p += sizeof(SSOB);
         memcpy(p, &ssib, sizeof(SSIB));
         p += sizeof(SSIB);
-        memcpy(p, stat, sizeof(SSIB));
+        memcpy(p, stat, sizeof(STAT));
       }
     }
     storage_free64(statjqtrsp);
