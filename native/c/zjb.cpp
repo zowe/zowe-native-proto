@@ -470,11 +470,17 @@ int zjb_view_by_jobid(ZJB *zjb, string jobid, ZJob &job)
 
   zut_uppercase_pad_truncate(zjb->jobid, jobid, sizeof(zjb->jobid));
 
+  zjb->diag.data = malloc(256);
+  memset(zjb->diag.data, 0x00, 256);
+
   rc = ZJBMVIEW(zjb, &job_info, &entries);
   if (0 != rc)
   {
+    zut_dump_storage("SSOB", zjb->diag.data, 512);
+    free(zjb->diag.data);
     return rc;
   }
+  free(zjb->diag.data);
 
   if (0 == entries)
   {

@@ -304,6 +304,15 @@ int ZJBMTCOM(ZJB *zjb, STAT *PTR64 stat, ZJB_JOB_INFO **PTR64 job_info, int *ent
     else
     {
       zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "IEFSSREQ rc was: '%d' SSOBRTN was: '%d', STATREAS was: '%d', STATREA2 was: '%d'", rc, ssob.ssobretn, stat->statreas, stat->statrea2); // STATREAS contains the reason
+      if (zjb->diag.data)
+      {
+        unsigned char *p = (unsigned char *)zjb->diag.data;
+        memcpy(p, &ssob, sizeof(SSOB));
+        p += sizeof(SSOB);
+        memcpy(p, &ssib, sizeof(SSIB));
+        p += sizeof(SSIB);
+        memcpy(p, stat, sizeof(SSIB));
+      }
     }
     storage_free64(statjqtrsp);
     stat->stattype = statmem; // free storage
