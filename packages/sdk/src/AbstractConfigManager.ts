@@ -17,6 +17,7 @@ import {
     ConfigBuilder,
     ConfigSchema,
     ConfigUtils,
+    type IConfigProfile,
     type IConfig,
     type IConfigBuilderOpts,
     type IImperativeConfig,
@@ -37,8 +38,8 @@ export abstract class AbstractConfigManager {
     protected abstract showMessage(message: string, type: MESSAGE_TYPE): void;
     protected abstract showInputBox(opts: inputBoxOpts): Promise<string | undefined>;
     protected abstract withProgress<T>(message: string, task: (progress: ProgressCallback) => Promise<T>): Promise<T>;
-    protected abstract showQuickPick(opts: qpOpts): Promise<string | undefined>;
-    protected abstract showCustomQuickPick(opts: qpOpts): Promise<qpItem | undefined>;
+    protected abstract showMenu(opts: qpOpts): Promise<string | undefined>;
+    protected abstract showCustomMenu(opts: qpOpts): Promise<qpItem | undefined>;
     protected abstract getCurrentDir(): string | undefined;
     protected abstract getProfileType(): IProfileTypeConfiguration[];
 
@@ -47,7 +48,8 @@ export abstract class AbstractConfigManager {
     private validationResult: ISshConfigExt | undefined;
     private selectedProfile: ISshConfigExt | undefined;
     private sshProfiles: IProfileLoaded[];
-
+    private sshRegex = /^ssh\s+(?:([a-zA-Z0-9_-]+)@)?([a-zA-Z0-9.-]+)/;
+    private flagRegex = /-(\w+)(?:\s+("[^"]+"|'[^']+'|\S+))?/g;
     /**/
     public async promptForProfile(profileName?: string): Promise<IProfileLoaded | undefined> {
         this.validationResult = undefined;
@@ -67,7 +69,7 @@ export abstract class AbstractConfigManager {
         );
 
         // Prompt user for ssh (new config, existing, migrating)
-        const result = await this.showCustomQuickPick({
+        const result = await this.showCustomMenu({
             items: [
                 { label: "$(plus) Add New SSH Host..." },
                 ...this.sshProfiles.map(({ name, profile }) => ({
@@ -129,11 +131,8 @@ export abstract class AbstractConfigManager {
         // Prioritize creating a team config in the local workspace if it exists even if a global config exists
         // TODO: This behavior is only for the POC phase
         ////////////////////////////////////////////////////////////////////////////////////////////////////////
-        if (workspaceDir !== undefined && !this.mProfilesCache.getTeamConfig().layerExists(workspaceDir)) {
-            await this.createZoweSchema(false);
-        } else {
-            await this.createZoweSchema(true);
-        }
+        const useProject = workspaceDir !== undefined && !this.mProfilesCache.getTeamConfig().layerExists(workspaceDir);
+        await this.createZoweSchema(!useProject);
         ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         // Prompt for a new profile name with the hostname (for adding a new config) or host value (for migrating from a config)
@@ -181,8 +180,6 @@ export abstract class AbstractConfigManager {
     }
 
     private async createNewConfig(knownConfigOpts?: string): Promise<ISshConfigExt | undefined> {
-        const sshRegex = /^ssh\s+(?:([a-zA-Z0-9_-]+)@)?([a-zA-Z0-9.-]+)/;
-        const flagRegex = /-(\w+)(?:\s+("[^"]+"|'[^']+'|\S+))?/g;
         const SshProfile: ISshConfigExt = {};
 
         //check if project layer exists, if it doesnt create one, but if no workspace then create it as global
@@ -202,7 +199,7 @@ export abstract class AbstractConfigManager {
             });
         } else {
             sshResponse = `ssh ${knownConfigOpts}`;
-            const match = sshResponse.match(sshRegex);
+            const match = sshResponse.match(this.sshRegex);
             if (!match || match[0].length < sshResponse.length) {
                 this.showMessage(
                     "Invalid custom connection format. Ensure it matches the expected pattern.",
@@ -216,7 +213,7 @@ export abstract class AbstractConfigManager {
             return undefined;
         }
 
-        const sshMatch = sshResponse.match(sshRegex);
+        const sshMatch = sshResponse.match(this.sshRegex);
 
         if (!sshMatch) {
             this.showMessage("Invalid SSH command format. Ensure it matches the expected pattern.", MESSAGE_TYPE.ERROR);
@@ -230,7 +227,7 @@ export abstract class AbstractConfigManager {
 
         if (!knownConfigOpts) {
             // biome-ignore lint/suspicious/noAssignInExpressions: We just want to use the regex array in the loop
-            while ((flagMatch = flagRegex.exec(sshResponse)) !== null) {
+            while ((flagMatch = this.flagRegex.exec(sshResponse)) !== null) {
                 const [, flag, value] = flagMatch;
                 // Check for missing value
                 if (!value) {
@@ -488,7 +485,7 @@ export abstract class AbstractConfigManager {
     private async setProfile(selectedConfig: ISshConfigExt | undefined, updatedProfile?: string): Promise<void> {
         const configApi = this.mProfilesCache.getTeamConfig().api;
         // Create the base config object
-        const config = {
+        const config: IConfigProfile = {
             type: "ssh",
             properties: {
                 user: selectedConfig?.user,
@@ -498,7 +495,6 @@ export abstract class AbstractConfigManager {
                 keyPassphrase: selectedConfig?.keyPassphrase,
                 password: selectedConfig?.password,
             },
-            // @ts-ignore
             secure: [],
         };
         //if password or KP is defined, make them secure
@@ -537,7 +533,7 @@ export abstract class AbstractConfigManager {
                             title: `Property: "${key}" found in a possibly shared configuration and may break others, continue?`,
                             placeholder: "Select an option",
                         };
-                        allowBaseModification = await this.showQuickPick(qpOpts);
+                        allowBaseModification = await this.showMenu(qpOpts);
                     }
                 }
 
@@ -576,7 +572,7 @@ export abstract class AbstractConfigManager {
                     placeholder: `A profile with the name "${selectedProfile.name}" already exists. Do you want to overwrite it?`,
                 };
 
-                const overwriteResponse = await this.showQuickPick(overwriteOpts);
+                const overwriteResponse = await this.showMenu(overwriteOpts);
 
                 if (overwriteResponse === "Yes") return selectedProfile;
             } else return selectedProfile;
@@ -593,7 +589,7 @@ export abstract class AbstractConfigManager {
             if (!selectedProfile.name) return;
             const existingProfile = configApi.layerActive().properties.profiles[selectedProfile.name];
             if (existingProfile) {
-                const overwriteResponse = await this.showQuickPick({
+                const overwriteResponse = await this.showMenu({
                     items: [{ label: "Yes" }, { label: "No" }],
                     placeholder: `A profile with the name "${selectedProfile.name}" already exists. Do you want to overwrite it?`,
                 });
