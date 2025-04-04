@@ -79,11 +79,11 @@ export class CliPromptApi extends AbstractConfigManager {
         return await task(() => {});
     }
 
-    protected async showQuickPick(opts: qpOpts): Promise<string | undefined> {
-        return (await this.showCustomQuickPick(opts)).label;
+    protected async showMenu(opts: qpOpts): Promise<string | undefined> {
+        return (await this.showCustomMenu(opts)).label;
     }
 
-    protected async showCustomQuickPick(opts: qpOpts): Promise<qpItem | undefined> {
+    protected async showCustomMenu(opts: qpOpts): Promise<qpItem | undefined> {
         return new Promise<qpItem | undefined>((resolve) => {
             this.term.grabInput(true);
 
