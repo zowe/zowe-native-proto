@@ -470,8 +470,8 @@ int zjb_view_by_jobid(ZJB *zjb, string jobid, ZJob &job)
 
   zut_uppercase_pad_truncate(zjb->jobid, jobid, sizeof(zjb->jobid));
 
-  zjb->diag.data = malloc(256);
-  memset(zjb->diag.data, 0x00, 256);
+  zjb->diag.data = malloc(512);
+  memset(zjb->diag.data, 0x00, 512);
 
   rc = ZJBMVIEW(zjb, &job_info, &entries);
   if (0 != rc)
