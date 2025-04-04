@@ -46,6 +46,7 @@ jobs:
           gh run download $RUN_ID --name zowe-server
           mkdir packages/cli/bin && cp server.pax.Z packages/cli/bin/
           mkdir packages/vsce/bin && cp server.pax.Z packages/vsce/bin/
+          gh run download $RUN_ID --name zowe-server-full
           mkdir dist && mv server.pax.Z dist/zowe-server-${NEW_VERSION}.pax.Z
         env:
           GH_TOKEN: ${{ github.token }}

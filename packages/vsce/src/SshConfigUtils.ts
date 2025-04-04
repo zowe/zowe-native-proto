@@ -98,7 +98,7 @@ export class VscePromptApi extends AbstractConfigManager {
             },
         );
     }
-    protected async showQuickPick(opts: qpOpts): Promise<string | undefined> {
+    protected async showMenu(opts: qpOpts): Promise<string | undefined> {
         const quickPick = vscode.window.createQuickPick();
         Object.assign(quickPick, {
             items: opts.items,
@@ -117,7 +117,7 @@ export class VscePromptApi extends AbstractConfigManager {
         });
     }
 
-    protected async showCustomQuickPick(opts: qpOpts): Promise<qpItem | undefined> {
+    protected async showCustomMenu(opts: qpOpts): Promise<qpItem | undefined> {
         const quickPick = vscode.window.createQuickPick<vscode.QuickPickItem>();
 
         const mappedItems = opts.items.map((item) =>
