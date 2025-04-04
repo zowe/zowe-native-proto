@@ -21,14 +21,6 @@ const ConfigDefinition: ICommandDefinition = {
     description: "Manage Configurations of SSH Profiles",
     type: "group",
     children: [ConfigSetupDefinition],
-    passOn: [
-        {
-            property: "options",
-            value: [...SshSession.SSH_CONNECTION_OPTIONS, Constants.OPT_SERVER_PATH],
-            merge: true,
-            ignoreNodes: [{ type: "group" }],
-        },
-    ],
 };
 
 export = ConfigDefinition;

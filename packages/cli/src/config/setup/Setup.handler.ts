@@ -62,7 +62,7 @@ export class CliPromptApi extends AbstractConfigManager {
                 this.mResponseApi.console.log(TextUtils.chalk.yellow(message));
                 break;
             case MESSAGE_TYPE.ERROR:
-                this.mResponseApi.console.log(TextUtils.chalk.red(message));
+                this.mResponseApi.console.error(TextUtils.chalk.red(message));
                 break;
             default:
                 throw new ImperativeError({ msg: "Unknown message type" });
