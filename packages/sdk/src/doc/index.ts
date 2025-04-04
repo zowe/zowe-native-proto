@@ -16,3 +16,4 @@ export * as jobs from "./gen/jobs";
 export * as cmds from "./gen/cmds";
 export * from "./client";
 export * from "./types";
+export * from "./gui";
