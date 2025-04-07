@@ -146,7 +146,7 @@ export abstract class AbstractConfigManager {
         if (this.validationResult === undefined) {
             await this.validateFoundPrivateKeys();
         }
-      
+
         if (this.validationResult === undefined) {
             // Attempt to validate with given URL/creds
             this.validationResult = await this.validateConfig(this.selectedProfile);
@@ -212,7 +212,7 @@ export abstract class AbstractConfigManager {
                 return undefined;
             }
         }
-      
+
         if (sshResponse === undefined) {
             this.showMessage("SSH setup cancelled.", MESSAGE_TYPE.WARNING);
             return undefined;
