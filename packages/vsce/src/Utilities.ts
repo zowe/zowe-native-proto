@@ -86,12 +86,13 @@ export function registerCommands(context: vscode.ExtensionContext): vscode.Dispo
             const statusMsg = Gui.setStatusBarMessage("Restarted Zowe SSH server");
             setTimeout(() => statusMsg.dispose(), 5000);
         }),
-        vscode.commands.registerCommand("zowe-native-proto-vsce.showLog", () => {
+        vscode.commands.registerCommand("zowe-native-proto-vsce.showLog", async () => {
             imperative.Logger.getAppLogger().trace("Running showLog command");
-            vscode.commands.executeCommand(
+            await vscode.commands.executeCommand(
                 "vscode.open",
                 vscode.Uri.file(path.join(context.logUri.fsPath, "zowe-native-proto.log")),
             );
+            await vscode.commands.executeCommand("workbench.action.files.setActiveEditorReadonlyInSession");
         }),
         vscode.commands.registerCommand("zowe-native-proto-vsce.uninstall", async (profName?: string) => {
             imperative.Logger.getAppLogger().trace("Running uninstall command for profile %s", profName);

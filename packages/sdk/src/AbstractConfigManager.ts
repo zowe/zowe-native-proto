@@ -146,7 +146,7 @@ export abstract class AbstractConfigManager {
         if (this.validationResult === undefined) {
             await this.validateFoundPrivateKeys();
         }
-
+      
         if (this.validationResult === undefined) {
             // Attempt to validate with given URL/creds
             this.validationResult = await this.validateConfig(this.selectedProfile);
@@ -212,6 +212,7 @@ export abstract class AbstractConfigManager {
                 return undefined;
             }
         }
+      
         if (sshResponse === undefined) {
             this.showMessage("SSH setup cancelled.", MESSAGE_TYPE.WARNING);
             return undefined;
@@ -437,7 +438,9 @@ export abstract class AbstractConfigManager {
                 for (const privateKey of foundPrivateKeys) {
                     const testValidation: ISshConfigExt = this.selectedProfile!;
                     testValidation.privateKey = privateKey;
+
                     const result = await this.validateConfig(testValidation, false);
+
                     progress(100 / foundPrivateKeys.length);
 
                     if (result) {
