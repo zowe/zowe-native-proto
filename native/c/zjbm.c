@@ -64,7 +64,6 @@ static void init_stat(STAT *stat)
 int ZJBSYMB(ZJB *zjb, const char *symbol, char *value)
 {
   int rc = 0;
-  WTO_BUF buf = {0};
 
   JSYMPARM jsym = {0};
 
@@ -102,6 +101,7 @@ int ZJBSYMB(ZJB *zjb, const char *symbol, char *value)
 
   p = p + jsymbolEntry->jsyevalo;
   memcpy(value, p, jsymbolEntry->jsyevals);
+  zwto_debug("@TEST %x", p);
 
   return RTNCD_SUCCESS;
 }
