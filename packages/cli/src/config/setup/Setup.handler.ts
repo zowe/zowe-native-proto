@@ -10,6 +10,7 @@
  */
 
 import {
+    Config,
     type ICommandHandler,
     type IConfigLayer,
     type IHandlerParameters,
@@ -36,6 +37,22 @@ export default class ServerInstallHandler implements ICommandHandler {
         await profInfo.readProfilesFromDisk();
         const cliPromptApi = new CliPromptApi(profInfo, params.response);
         const profile = await cliPromptApi.promptForProfile();
+
+        const Config = ImperativeConfig.instance.config;
+
+        if (Config.properties.defaults.ssh !== profile.name) {
+            const defaultResponse = (
+                await params.response.console.prompt(
+                    `Would you like to set ${profile.name} as the default SSH Profile? (Y/N)`,
+                )
+            )
+                .toLocaleLowerCase()
+                .trim();
+            if (defaultResponse === "y" || defaultResponse === "") {
+                Config.api.profiles.defaultSet("ssh", profile.name);
+                await Config.save();
+            }
+        }
         if (profile) {
             params.response.console.log(
                 `SSH Profile Validated: ${(profInfo.getTeamConfig().api.layers.find(profile.name) as IConfigLayer).path}`,
@@ -79,7 +96,7 @@ export class CliPromptApi extends AbstractConfigManager {
         return await task(() => {});
     }
 
-    protected async showMenu(opts: qpOpts): Promise<string | undefined> {
+    public async showMenu(opts: qpOpts): Promise<string | undefined> {
         return (await this.showCustomMenu(opts)).label;
     }
 
@@ -94,7 +111,8 @@ export class CliPromptApi extends AbstractConfigManager {
                     : item.label.replace("$(plus)", "+"),
             );
 
-            this.term.green(`\n${opts.placeholder.replace("enter user@host", "create a new SSH host")}\n`);
+            if (opts.placeholder)
+                this.term.green(`\n${opts.placeholder.replace("enter user@host", "create a new SSH host")}\n`);
 
             let selectedIndex = 0;
             while (opts.items[selectedIndex]?.separator) {
