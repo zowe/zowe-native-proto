@@ -144,6 +144,5 @@
   "[typescript]": {
     "editor.defaultFormatter": "biomejs.biome"
   },
-  "files.eol": "\n",
-  "cmake.sourceDirectory": "/Users/dk635460/dev/c/zowe-native-proto/node_modules/cpu-features/deps/cpu_features/cmake/ci/sample"
+  "files.eol": "\n"
 }
