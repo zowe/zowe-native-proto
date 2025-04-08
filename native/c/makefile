@@ -104,7 +104,7 @@ zutm.s: zutm.c
 
 zutm.o: zutm.s
 	@echo 'Building zutm.s'
-	$(ASM) $(ASM_FLAGS) -a=$*.asm.lst $(MACLIBS) -o $@ $^
+	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
 zutm31.s: zutm31.c
 	@echo 'Building zutm31.s'
@@ -112,7 +112,7 @@ zutm31.s: zutm31.c
 
 zutm31.o: zutm31.s
 	@echo 'Building zutm31.o'
-	$(ASM) $(ASM_FLAGS) -a=$*.asm.lst $(MACLIBS) -o $@ $^
+	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
 libzut.so: zut.o zutm.o zutm31.o
 	@echo 'Building libzut.so'
@@ -131,7 +131,7 @@ zdsm.s: zdsm.c
 
 zdsm.o: zdsm.s
 	@echo 'Building zdsm.o'
-	$(ASM) $(ASM_FLAGS) -a=$*.asm.lst $(MACLIBS) -o $@ $^
+	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
 zds.o: zds.cpp
 	@echo 'Building zds.o'
@@ -154,7 +154,7 @@ zjbm.s: zjbm.c
 
 zjbm.o: zjbm.s
 	@echo 'Building zjbm.o'
-	$(ASM) $(ASM_FLAGS) -a=$*.asm.lst $(MACLIBS) -o $@ $^
+	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
 zjb.o: zjb.cpp
 	@echo 'Building zjb.o'
@@ -166,7 +166,7 @@ zjbm31.s: zjbm31.c
 
 zjbm31.o: zjbm31.s
 	@echo 'Building zjbm31.o'
-	$(ASM) $(ASM_FLAGS) -a=$*.asm.lst $(MACLIBS) -o $@ $^
+	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
 zssi31.s: zssi31.c
 	@echo 'Building zssi31.s'
@@ -174,7 +174,7 @@ zssi31.s: zssi31.c
 
 zssi31.o: zssi31.s
 	@echo 'Building zssi31.o'
-	$(ASM) $(ASM_FLAGS) -a=$*.asm.lst $(MACLIBS) -o $@ $^
+	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
 libzjb.so: zjb.o zjbm.o zssi31.o zjbm31.o libzds.a libzut.a
 	@echo 'Building libzjb.so'
@@ -194,13 +194,13 @@ zcnm.s: zcnm.c
 	$(CC) $(MTL_FLAGS64) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
 
 zcnm.o: zcnm.s
-	$(ASM) $(ASM_FLAGS) -a=$*.asm.lst $(MACLIBS) -o $@ $^
+	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
 zcnm31.s: zcnm31.c
 	$(CC) $(MTL_FLAGS) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
 
 zcnm31.o: zcnm31.s
-	$(ASM) $(ASM_FLAGS) -a=$*.asm.lst $(MACLIBS) -o $@ $^
+	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
 libzcn.so: zcn.o zcnm.o zcnm31.o libzut.a
 	@echo 'Building libzcn.so'
