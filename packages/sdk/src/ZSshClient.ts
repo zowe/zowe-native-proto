@@ -42,7 +42,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
         Logger.getAppLogger().debug("Starting SSH client");
         const client = new ZSshClient();
         client.mErrHandler = opts.onError ?? console.error;
-        client.mResponseTimeout = opts.responseTimeout ? opts.responseTimeout * 1000 : 60000;
+        client.mResponseTimeout = opts.responseTimeout ? opts.responseTimeout * 1000 : 60e3;
         client.mSshClient = new Client();
         client.mSshStream = await new Promise((resolve, reject) => {
             client.mSshClient.on("error", (err) => {
@@ -58,7 +58,9 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                 Logger.getAppLogger().debug("Client disconnected");
                 opts.onClose?.();
             });
-            client.mSshClient.connect(ZSshUtils.buildSshConfig(session));
+            client.mSshClient.connect(
+                ZSshUtils.buildSshConfig(session, opts.keepaliveInterval ? opts.keepaliveInterval * 1000 : 30e3),
+            );
         });
         return client;
     }
