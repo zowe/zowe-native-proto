@@ -58,9 +58,8 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                 Logger.getAppLogger().debug("Client disconnected");
                 opts.onClose?.();
             });
-            client.mSshClient.connect(
-                ZSshUtils.buildSshConfig(session, opts.keepAliveInterval ? opts.keepAliveInterval * 1000 : 30e3),
-            );
+            const keepAliveMsec = opts.keepAliveInterval != null ? opts.keepAliveInterval * 1000 : 30e3;
+            client.mSshClient.connect(ZSshUtils.buildSshConfig(session, { keepaliveInterval: keepAliveMsec }));
         });
         return client;
     }

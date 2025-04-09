@@ -37,7 +37,7 @@ export class ZSshUtils {
         return new SshSession(sshSessCfg);
     }
 
-    public static buildSshConfig(session: SshSession, keepAliveMsec?: number): ConnectConfig {
+    public static buildSshConfig(session: SshSession, configProps?: ConnectConfig): ConnectConfig {
         return {
             host: session.ISshSession.hostname,
             port: session.ISshSession.port,
@@ -48,8 +48,9 @@ export class ZSshUtils {
                 : undefined,
             passphrase: session.ISshSession.keyPassphrase,
             readyTimeout: session.ISshSession.handshakeTimeout,
-            keepaliveInterval: keepAliveMsec,
-            debug: (msg: string) => Logger.getAppLogger().trace(msg),
+            // ssh2 debug messages are extremely verbose so log at TRACE level
+            debug: (msg) => Logger.getAppLogger().trace(msg),
+            ...configProps,
         };
     }
 

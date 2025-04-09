@@ -154,7 +154,7 @@ describe("ZSshClient", () => {
                 keepAliveInterval: 5,
             });
             assert.equal(buildSshConfigMock.mock.callCount(), 1);
-            assert.deepEqual(buildSshConfigMock.mock.calls[0].arguments.pop(), 5e3);
+            assert.deepEqual(buildSshConfigMock.mock.calls[0].arguments.pop(), { keepaliveInterval: 5e3 });
         });
 
         it("should respect numWorkers option", async () => {
