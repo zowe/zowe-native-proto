@@ -604,7 +604,7 @@ int main(int argc, char *argv[])
   tool_run.get_options().push_back(input);
 
   ZCLIOption outdd("out-dd");
-  outdd.set_description("input ddname");
+  outdd.set_description("output ddname");
   outdd.get_aliases().push_back("--odd");
   tool_run.get_options().push_back(outdd);
 
