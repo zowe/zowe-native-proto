@@ -40,10 +40,10 @@ export default class ServerInstallHandler implements ICommandHandler {
 
         const Config = ImperativeConfig.instance.config;
 
-        if (Config.properties.defaults.ssh !== profile.name) {
+        if (profile && Config.properties.defaults.ssh !== profile.name) {
             const defaultResponse = (
                 await params.response.console.prompt(
-                    `Would you like to set ${profile.name} as the default SSH Profile? (Y/N)`,
+                    `Would you like to set ${profile.name} as the default SSH Profile? (Y/n)`,
                 )
             )
                 .toLocaleLowerCase()
