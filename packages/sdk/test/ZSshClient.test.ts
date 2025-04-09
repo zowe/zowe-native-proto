@@ -142,7 +142,7 @@ describe("ZSshClient", () => {
             assert.equal(onErrorMock.mock.callCount(), 1);
         });
 
-        it("should respect keepaliveInterval option", async () => {
+        it("should respect keepAliveInterval option", async () => {
             const sshStream = new EventEmitter();
             mock.method(Client.prototype, "connect", function (_config: ConnectConfig) {
                 this.emit("ready");
@@ -151,7 +151,7 @@ describe("ZSshClient", () => {
             mock.method(ZSshClient.prototype as any, "execAsync", async () => sshStream);
             const buildSshConfigMock = mock.method(ZSshUtils, "buildSshConfig");
             await ZSshClient.create(new SshSession(fakeSession), {
-                keepaliveInterval: 5,
+                keepAliveInterval: 5,
             });
             assert.equal(buildSshConfigMock.mock.callCount(), 1);
             assert.deepEqual(buildSshConfigMock.mock.calls[0].arguments.pop(), 5e3);

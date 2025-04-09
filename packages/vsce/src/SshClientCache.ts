@@ -51,7 +51,7 @@ export class SshClientCache extends vscode.Disposable {
             const session = ZSshUtils.buildSession(profile.profile!);
             const serverPath = SshConfigUtils.getServerPath(profile.profile);
             const localDir = path.join(this.mContext.extensionPath, "bin");
-            const keepaliveInterval = vscode.workspace
+            const keepAliveInterval = vscode.workspace
                 .getConfiguration("zowe-native-proto-vsce")
                 .get<number>("keepAliveInterval");
             const autoUpdate = vscode.workspace
@@ -60,7 +60,7 @@ export class SshClientCache extends vscode.Disposable {
 
             let newClient: ZSshClient | undefined;
             try {
-                newClient = await this.buildClient(session, clientId, { serverPath, keepaliveInterval });
+                newClient = await this.buildClient(session, clientId, { serverPath, keepAliveInterval });
                 imperative.Logger.getAppLogger().debug(
                     `Server checksums: ${JSON.stringify(newClient.serverChecksums)}`,
                 );
@@ -83,7 +83,7 @@ export class SshClientCache extends vscode.Disposable {
             }
             if (newClient == null) {
                 await deployWithProgress(session, serverPath, localDir);
-                newClient = await this.buildClient(session, clientId, { serverPath, keepaliveInterval });
+                newClient = await this.buildClient(session, clientId, { serverPath, keepAliveInterval });
             }
             this.mClientMap.set(clientId, newClient);
         }

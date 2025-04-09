@@ -59,7 +59,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                 opts.onClose?.();
             });
             client.mSshClient.connect(
-                ZSshUtils.buildSshConfig(session, opts.keepaliveInterval ? opts.keepaliveInterval * 1000 : 30e3),
+                ZSshUtils.buildSshConfig(session, opts.keepAliveInterval ? opts.keepAliveInterval * 1000 : 30e3),
             );
         });
         return client;
