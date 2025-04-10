@@ -175,12 +175,15 @@ class ZCLIVerb : public ZCLIName, public ZCLIDescription, public ZCLIOptionProvi
 private:
   zcli_verb_handler cb;
   vector<string> aliases;
+  vector<ZCLIOption> exclusive_options;
 
 public:
   ZCLIVerb(string n) : ZCLIName(n) {}
   void set_zcli_verb_handler(zcli_verb_handler h) { cb = h; }
   zcli_verb_handler get_zcli_verb_handler() { return cb; }
   vector<string> &get_aliases() { return aliases; }
+  vector<ZCLIOption> &get_exclusive_options() { return exclusive_options; };
+
   void help_line()
   {
     string entry = get_name();
@@ -635,6 +638,22 @@ int ZCLI::run(int argc, char *argv[])
       cerr << "Required positional missing: '" << it->get_name() << "' on '" << group->get_name() << " " << verb->get_name() << "'" << endl;
       verb->help(name, group->get_name());
       return -1;
+    }
+  }
+
+  bool exclusive_found = false;
+  string last_used_flag;
+  for (vector<ZCLIOption>::iterator it = verb->get_exclusive_options().begin(); it != verb->get_exclusive_options().end(); it++)
+  {
+    if (results.get_option(it->get_flag_name()))
+    {
+      if (exclusive_found)
+      {
+        cerr << "Mutually exclusive option '" << it->get_flag_name() << "' cannot be used with '" << last_used_flag << "'" << endl;
+        return -1;
+      }
+      exclusive_found = true;
+      last_used_flag = it->get_flag_name();
     }
   }
 
