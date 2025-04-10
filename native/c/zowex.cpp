@@ -98,11 +98,13 @@ int main(int argc, char *argv[])
   response_format_csv.get_aliases().push_back("--rfc");
   response_format_csv.set_default("false");
   response_format_csv.set_required(false);
+  response_format_csv.set_is_bool(true);
 
   ZCLIOption response_format_bytes("response-format-bytes");
   response_format_bytes.set_description("returns the response as raw bytes");
   response_format_bytes.get_aliases().push_back("--rfb");
   response_format_bytes.set_required(false);
+  response_format_bytes.set_is_bool(true);
 
   ZCLIGroup tso_group("tso");
   tso_group.set_description("TSO operations");
@@ -194,6 +196,7 @@ int main(int argc, char *argv[])
   ZCLIOption data_set_truncate_warn("warn");
   data_set_truncate_warn.set_description("warn if truncated or not found");
   data_set_truncate_warn.set_default("true");
+  data_set_truncate_warn.set_is_bool(true);
   data_set_list.get_options().push_back(data_set_truncate_warn);
 
   data_set_list.set_description("list data sets");
@@ -260,6 +263,7 @@ int main(int argc, char *argv[])
   ZCLIOption job_truncate_warn("warn");
   job_truncate_warn.set_description("warn if trucated or not found");
   job_truncate_warn.set_default("true");
+  job_truncate_warn.set_is_bool(true);
   job_list.get_options().push_back(job_truncate_warn);
 
   job_list.get_options().push_back(response_format_csv);
