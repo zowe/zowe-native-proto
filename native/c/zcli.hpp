@@ -32,6 +32,7 @@ using namespace std;
 #define ZCLI_MENU_WIDTH 25
 #define ZCLI_MENU_INDENT "  " // TODO(Kelosky)
 #define ZCLI_FLAG_PREFIX "--"
+#define ZCLI_INVERSE_FLAG_PREFIX "--no-"
 
 // TODO(Kelosky): map instead of vectors for result
 
@@ -75,6 +76,7 @@ class ZCLIFlag : public ZCLIName
 public:
   ZCLIFlag(string n) : ZCLIName(n) {}
   virtual string get_flag_name() { return ZCLI_FLAG_PREFIX + name; };
+  virtual string get_inverse_flag_name() { return ZCLI_INVERSE_FLAG_PREFIX + name; };
 };
 
 class
@@ -496,7 +498,7 @@ ZCLIOption *ZCLIOptionProvider::get_option(string option_name)
   for (vector<ZCLIOption>::iterator it = options.begin(); it != options.end(); it++)
   {
     vector<string> &aliases = it->get_aliases();
-    if (option_name == it->get_flag_name() || std::find(aliases.begin(), aliases.end(), option_name) != it->get_aliases().end())
+    if (option_name == it->get_flag_name() || option_name == it->get_inverse_flag_name() || std::find(aliases.begin(), aliases.end(), option_name) != it->get_aliases().end())
       return &*it;
   }
   return nullptr;
@@ -607,10 +609,13 @@ int ZCLI::run(int argc, char *argv[])
     {
       if (i + 1 < argc) // if another parm
       {
-        if (string(argv[i + 1]) == "true" || string(argv[i + 1]) == "false")
+        string str_argv(argv[i + 1]);
+        transform(str_argv.begin(), str_argv.end(), str_argv.begin(), ::tolower); // upper case
+
+        if (str_argv == "true" || str_argv == "false")
         {
           option->set_found(true);
-          option->set_value(argv[i + 1]);
+          option->set_value(str_argv);
           results.get_options().push_back(*option);
 
           i++; // advance to next parm
@@ -619,7 +624,10 @@ int ZCLI::run(int argc, char *argv[])
       }
 
       option->set_found(true);
-      option->set_value("true");
+      if (strncmp(argv[i], ZCLI_INVERSE_FLAG_PREFIX, strlen(ZCLI_INVERSE_FLAG_PREFIX)) == 0)
+        option->set_value("false");
+      else
+        option->set_value("true");
       results.get_options().push_back(*option);
     }
 
