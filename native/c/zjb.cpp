@@ -316,7 +316,7 @@ int zjb_release_by_jobid(ZJB *zjb, string jobid)
   return ZJBMRLS(zjb);
 }
 
-int zjb_submit_dsn(ZJB *zjb, string dsn, string &jobId)
+int zjb_submit_dsn(ZJB *zjb, string dsn, string &jobid)
 {
   ZDS zds = {0};
   string contents;
@@ -327,10 +327,10 @@ int zjb_submit_dsn(ZJB *zjb, string dsn, string &jobId)
     return rc;
   }
 
-  return zjb_submit(zjb, contents, jobId);
+  return zjb_submit(zjb, contents, jobid);
 }
 
-int zjb_submit(ZJB *zjb, string contents, string &jobId)
+int zjb_submit(ZJB *zjb, string contents, string &jobid)
 {
   int rc = 0;
   ZDS zds = {0};
@@ -369,6 +369,7 @@ int zjb_submit(ZJB *zjb, string contents, string &jobId)
   if (rc != 0)
   {
     memcpy(&zjb->diag, &zds.diag, sizeof(ZDIAG));
+    dynfree(&ip);
     return rc;
   }
 
@@ -377,15 +378,30 @@ int zjb_submit(ZJB *zjb, string contents, string &jobId)
   rc = ZJBSYMB(zjb, "SYS_LASTJOBID", cjobid);
 
   if (0 != rc)
+  {
+    dynfree(&ip);
     return rc;
+  }
 
-  jobId = string(cjobid);
+  jobid = string(cjobid);
+
+  if (jobid == "")
+  {
+    rc = dynfree(&ip);
+    strcpy(zjb->diag.service_name, "intrdr");
+    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "job submission failed");
+    zjb->diag.detail_rc = ZJB_RTNCD_SUBMIT_ERROR;
+    return RTNCD_FAILURE;
+  }
 
   char cjob_correlator[64 + 1] = {0};
   rc = ZJBSYMB(zjb, "SYS_CORR_LASTJOB", cjob_correlator);
 
   if (0 != rc)
+  {
+    dynfree(&ip);
     return rc;
+  }
 
   memcpy(zjb->job_correlator, cjob_correlator, sizeof(zjb->job_correlator));
 
