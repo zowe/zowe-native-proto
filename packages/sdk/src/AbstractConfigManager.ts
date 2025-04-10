@@ -51,7 +51,10 @@ export abstract class AbstractConfigManager {
     private sshRegex = /^ssh\s+(?:([a-zA-Z0-9_-]+)@)?([a-zA-Z0-9.-]+)/;
     private flagRegex = /-(\w+)(?:\s+("[^"]+"|'[^']+'|\S+))?/g;
     /**/
-    public async promptForProfile(profileName?: string): Promise<IProfileLoaded | undefined> {
+    public async promptForProfile(
+        profileName?: string,
+        setExistingProfile = true,
+    ): Promise<IProfileLoaded | undefined> {
         this.validationResult = undefined;
         if (profileName) {
             return { profile: this.getMergedAttrs(profileName), message: "", failNotFound: false, type: "ssh" };
@@ -120,7 +123,7 @@ export abstract class AbstractConfigManager {
                 });
                 if (validConfig === undefined) return;
 
-                await this.setProfile(validConfig, foundProfile.name);
+                if (setExistingProfile) await this.setProfile(validConfig, foundProfile.name);
                 return { ...foundProfile, profile: { ...foundProfile.profile, ...validConfig } };
             }
         }

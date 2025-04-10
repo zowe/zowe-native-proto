@@ -36,7 +36,9 @@ export default class ServerInstallHandler implements ICommandHandler {
         const profInfo = new ProfileInfo("zowe");
         await profInfo.readProfilesFromDisk();
         const cliPromptApi = new CliPromptApi(profInfo, params.response);
-        const profile = await cliPromptApi.promptForProfile();
+
+        // Pass false for setProfile in the case of an existing team config profile being selected such that it will not touch the team config unless needed
+        const profile = await cliPromptApi.promptForProfile(undefined, false);
 
         const Config = ImperativeConfig.instance.config;
 
@@ -104,17 +106,24 @@ export class CliPromptApi extends AbstractConfigManager {
         return new Promise<qpItem | undefined>((resolve) => {
             this.term.grabInput(true);
 
-            // Prepare menu items
+            // Add title and spacing to the menuItems as separators for easy handling
+            opts.items.unshift({ label: "", separator: true });
+            opts.items.unshift({
+                label: TextUtils.chalk.bold.green(
+                    `${opts.placeholder.replace("enter user@host", "create a new SSH host")}`,
+                ),
+                separator: true,
+            });
+
             const menuItems = opts.items.map((item) =>
-                item.separator
+                item.separator && item.label === "Migrate From SSH Config"
                     ? `${"─".repeat(10)}Migrate from SSH Config${"─".repeat(10)}`
                     : item.label.replace("$(plus)", "+"),
             );
 
-            if (opts.placeholder)
-                this.term.green(`\n${opts.placeholder.replace("enter user@host", "create a new SSH host")}\n`);
-
             let selectedIndex = 0;
+
+            // Logic to skip over separators from opts objects
             while (opts.items[selectedIndex]?.separator) {
                 selectedIndex++;
             }
@@ -124,6 +133,12 @@ export class CliPromptApi extends AbstractConfigManager {
                     console.error("Error getting cursor location:", error);
                     resolve(undefined);
                     return;
+                }
+
+                // Offset the terminal if near the end
+                if (this.term.height - y - opts.items.length < 0) {
+                    this.term.scrollUp(this.term.height - y);
+                    this.term.move(0, this.term.height - y);
                 }
 
                 const menu = this.term.singleColumnMenu(menuItems, {
@@ -137,7 +152,6 @@ export class CliPromptApi extends AbstractConfigManager {
                     leftPadding: "  ",
                     selectedLeftPadding: "> ",
                     submittedLeftPadding: "> ",
-                    extraLines: 2,
                 }) as unknown as {
                     // biome-ignore lint/suspicious/noExplicitAny: Required for callback
                     on: (event: string, handler: (response: any) => void) => void;
@@ -145,6 +159,7 @@ export class CliPromptApi extends AbstractConfigManager {
                     select: (index: number) => void;
                 };
 
+                // Menu selection logic
                 const moveSelection = (direction: 1 | -1) => {
                     let newIndex = selectedIndex;
                     do {
@@ -179,12 +194,12 @@ export class CliPromptApi extends AbstractConfigManager {
                 // Handle cancellation or ESCAPE
                 const cancelHandler = (key: string) => {
                     if (key === "ESCAPE" || key === "CTRL_C") {
+                        if (key === "CTRL_C") this.term.moveTo(1, y + opts.items.length + 2);
                         // Cleanup event listeners and input grabbing
                         this.term.removeListener("key", keyHandler);
                         this.term.removeListener("key", cancelHandler);
                         menu.abort();
                         this.term.grabInput(false);
-
                         resolve(undefined);
                     }
                 };
