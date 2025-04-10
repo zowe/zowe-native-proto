@@ -608,7 +608,7 @@ int main(int argc, char *argv[])
   amblist_dsn.set_required(true);
   tool_amblist.get_positionals().push_back(amblist_dsn);
   ZCLIOption ablist_control("control-statements");
-  ablist_control.set_description("amblist control statements, e.g. LISTLOAD OUTPUT=MAP,MEMBER=TESTPROG");
+  ablist_control.set_description("amblist control statements, e.g. listload output=map,member=testprog");
   ablist_control.set_required(true);
   ablist_control.get_aliases().push_back("--cs");
   tool_amblist.get_options().push_back(ablist_control);
@@ -2053,6 +2053,8 @@ int handle_tool_amblist(ZCLIResult result)
   {
     return RTNCD_FAILURE;
   }
+
+  transform(statements.begin(), statements.end(), statements.begin(), ::toupper); // upper case
 
   // write control statements
   ZDS zds = {0};
