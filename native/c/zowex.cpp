@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <algorithm>
+#include <fstream>
 #include "zcn.hpp"
 #include "zut.hpp"
 #include "zcli.hpp"
@@ -589,6 +590,32 @@ int main(int argc, char *argv[])
   tool_group.get_verbs().push_back(tool_search);
 
   ZCLIVerb tool_run("run");
+
+  ZCLIOption dynalloc_pre("dynalloc-pre");
+  dynalloc_pre.set_description("dynalloc pre run statements");
+  dynalloc_pre.get_aliases().push_back("--dp");
+  tool_run.get_options().push_back(dynalloc_pre);
+
+  ZCLIOption dynalloc_post("dynalloc-post");
+  dynalloc_post.set_description("dynalloc post run statements");
+  dynalloc_post.get_aliases().push_back("--dt");
+  tool_run.get_options().push_back(dynalloc_post);
+
+  ZCLIOption indd("in-dd");
+  indd.set_description("input ddname");
+  indd.get_aliases().push_back("--idd");
+  tool_run.get_options().push_back(indd);
+
+  ZCLIOption input("input");
+  input.set_description("input");
+  input.get_aliases().push_back("--in");
+  tool_run.get_options().push_back(input);
+
+  ZCLIOption outdd("out-dd");
+  outdd.set_description("output ddname");
+  outdd.get_aliases().push_back("--odd");
+  tool_run.get_options().push_back(outdd);
+
   tool_run.set_description("run a program");
   tool_run.set_zcli_verb_handler(handle_tool_run);
   ZCLIPositional run_name("program");
@@ -1780,6 +1807,55 @@ int handle_tool_run(ZCLIResult result)
 {
   int rc = 0;
   string program(result.get_positional("program")->get_value());
+  string dynalloc_pre(result.get_option_value("--dynalloc-pre"));
+  string dynalloc_post(result.get_option_value("--dynalloc-post"));
+
+  // allocate anything that was requested
+  if (result.get_option("--dynalloc-pre"))
+  {
+    vector<string> dds;
+
+    ifstream in(dynalloc_pre.c_str());
+    if (!in.is_open())
+    {
+      cerr << "Error: could not open '" << dynalloc_pre << "'" << endl;
+      return RTNCD_FAILURE;
+    }
+
+    string line;
+    while (getline(in, line))
+    {
+      dds.push_back(line);
+    }
+    in.close();
+
+    rc = loop_dynalloc(dds);
+    if (RTNCD_SUCCESS != rc)
+    {
+      return RTNCD_FAILURE;
+    }
+  }
+
+  string indd(result.get_option_value("--in-dd"));
+  if (result.get_option("--in-dd"))
+  {
+    string ddname = "DD:" + indd;
+    ofstream out(ddname.c_str());
+    if (!out.is_open())
+    {
+      cerr << "Error: could not open input '" << ddname << "'" << endl;
+      return RTNCD_FAILURE;
+    }
+
+    string input(result.get_option_value("--input"));
+    if (result.get_option("--input"))
+    {
+      out << input << endl;
+    }
+
+    out.close();
+  }
+
   transform(program.begin(), program.end(), program.begin(), ::toupper); // upper case
 
   rc = zut_run(program);
@@ -1787,10 +1863,50 @@ int handle_tool_run(ZCLIResult result)
   if (0 != rc)
   {
     cerr << "Error: program '" << program << "' ended with rc: '" << rc << "'" << endl;
-    return RTNCD_FAILURE;
+    rc = RTNCD_FAILURE; // continue to obtain output
   }
 
-  return RTNCD_SUCCESS;
+  string outdd(result.get_option_value("--out-dd"));
+  if (result.get_option("--out-dd"))
+  {
+    string ddname = "DD:" + outdd;
+    ifstream in(ddname.c_str());
+    if (!in.is_open())
+    {
+      cerr << "Error: could not open output '" << ddname << "'" << endl;
+      return RTNCD_FAILURE;
+    }
+
+    string line;
+    while (getline(in, line))
+    {
+      cout << line << endl;
+    }
+    in.close();
+  }
+
+  // optionally free everything that was allocated
+  if (result.get_option("--dynalloc-post"))
+  {
+    vector<string> dds;
+
+    ifstream in(dynalloc_post.c_str());
+    if (!in.is_open())
+    {
+      cerr << "Error: could not open '" << dynalloc_post << "'" << endl;
+    }
+
+    string line;
+    while (getline(in, line))
+    {
+      dds.push_back(line);
+    }
+    in.close();
+
+    loop_dynalloc(dds);
+  }
+
+  return rc;
 }
 
 int handle_tool_search(ZCLIResult result)
