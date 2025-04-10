@@ -309,16 +309,22 @@ int main(int argc, char *argv[])
   job_submit.get_aliases().push_back("sub");
   job_submit.set_description("submit a job");
   job_submit.set_zcli_verb_handler(handle_job_submit);
+
   ZCLIOption job_jobid_only("only-jobid");
   job_jobid_only.get_aliases().push_back("--oj");
   job_jobid_only.set_description("show only job id on success");
+  job_jobid_only.set_is_bool(true);
   job_submit.get_options().push_back(job_jobid_only);
+
   ZCLIOption job_job_correlator_only("only-correlator");
   job_job_correlator_only.get_aliases().push_back("--oc");
   job_job_correlator_only.set_description("show only job correlator on success");
+  job_job_correlator_only.set_is_bool(true);
   job_submit.get_options().push_back(job_job_correlator_only);
+
   job_submit.get_exclusive_options().push_back(job_jobid_only);
   job_submit.get_exclusive_options().push_back(job_job_correlator_only);
+
   ZCLIPositional job_dsn("dsn");
   job_dsn.set_required(true);
   job_dsn.set_description("dsn containing JCL");
@@ -854,7 +860,7 @@ int job_submit_common(ZCLIResult result, string jcl, string &jobid, string ident
   string only_correlator(result.get_option_value("--only-correlator"));
   if ("true" == only_jobid)
     cout << jobid << endl;
-  if ("true" == only_correlator)
+  else if ("true" == only_correlator)
     cout << string(zjb.job_correlator, sizeof(zjb.job_correlator)) << endl;
   else
     cout << "Submitted " << identifier << ", " << jobid << endl;

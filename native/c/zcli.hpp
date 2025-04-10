@@ -86,6 +86,7 @@ private:
   string value;
   vector<string> aliases;
   string default_value;
+  bool is_bool;
   bool default_set;
 
 public:
@@ -107,6 +108,8 @@ public:
     default_value = v;
     default_set = true;
   }
+  bool get_is_bool() { return is_bool; }
+  void set_is_bool(bool v) { is_bool = v; }
   bool default_provided() { return default_set; }
   string get_value() { return value; }
 };
@@ -182,7 +185,7 @@ public:
   void set_zcli_verb_handler(zcli_verb_handler h) { cb = h; }
   zcli_verb_handler get_zcli_verb_handler() { return cb; }
   vector<string> &get_aliases() { return aliases; }
-  vector<ZCLIOption> &get_exclusive_options() { return exclusive_options; };
+  vector<ZCLIOption> &get_exclusive_options() { return exclusive_options; }
 
   void help_line()
   {
@@ -600,18 +603,41 @@ int ZCLI::run(int argc, char *argv[])
       }
     }
 
-    if (i + 1 > argc - 1) // index vs count
+    if (option->get_is_bool())
     {
-      cerr << "Missing required value for: " << argv[i] << endl;
-      verb->help(name, group->get_name());
-      return -1;
+      if (i + 1 < argc) // if another parm
+      {
+        if (string(argv[i + 1]) == "true" || string(argv[i + 1]) == "false")
+        {
+          option->set_found(true);
+          option->set_value(argv[i + 1]);
+          results.get_options().push_back(*option);
+
+          i++; // advance to next parm
+          continue;
+        }
+      }
+
+      option->set_found(true);
+      option->set_value("true");
+      results.get_options().push_back(*option);
     }
 
-    option->set_found(true);
-    option->set_value(argv[i + 1]);
-    results.get_options().push_back(*option);
+    else
+    {
+      if (i + 1 >= argc) // if no more parms
+      {
+        cerr << "Missing required value for: " << argv[i] << endl;
+        verb->help(name, group->get_name());
+        return -1;
+      }
 
-    i++; // advance to next parm
+      option->set_found(true);
+      option->set_value(argv[i + 1]);
+      results.get_options().push_back(*option);
+
+      i++; // advance to next parm
+    }
   }
 
   for (vector<ZCLIOption>::iterator it = verb->get_options().begin(); it != verb->get_options().end(); it++)
