@@ -25,6 +25,7 @@ struct ZJob
   std::string status;
   std::string full_status;
   std::string retcode;
+  std::string job_correlator;
 };
 
 struct ZJobDD
@@ -62,11 +63,11 @@ int zjb_list_by_owner(ZJB *zjb, std::string owner_name, std::string prefix_name,
  * @brief Return a job status struct from input jobid
  *
  * @param zjb job returned attributes and error information
- * @param jobid jobid used to search
+ * @param jobid jobid or job correlator used to search
  * @param job populated struct returned for found job
  * @return int 0 for success; non zero otherwise
  */
-int zjb_view_by_jobid(ZJB *zjb, std::string jobid, ZJob &job);
+int zjb_view(ZJB *zjb, std::string jobid, ZJob &job);
 
 /**
  * @brief Return a list of job file information from an input jobid
