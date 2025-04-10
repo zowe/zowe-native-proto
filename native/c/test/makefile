@@ -41,7 +41,8 @@ MTL_OPTS64=$(MTL_OPTS),lp64
 MTL_FLAGS=-S -W "c,$(MTL_OPTS)"
 MTL_FLAGS64=-S -W "c,$(MTL_OPTS64)"
 
-MACLIBS=-ISYS1.MACLIB \
+MACLIBS= -I../../asmmac \
+ -ISYS1.MACLIB \
  -ISYS1.MODGEN \
  -ICBC.SCCNSAM
 
@@ -102,7 +103,7 @@ testrcvy.s: testrcvy.c
 	$(CC) $(MTL_FLAGS64) -qlist=$*.mtl.lst $(MTL_HEADERS) -I../chdsect -I../ -o $@ $^
 
 testrcvy.o: testrcvy.s
-	$(ASM) $(ASM_FLAGS) -a=$*.asm.lst $(MACLIBS) -o $@ $^
+	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
 testrcvy: testrcvy.o
 	$(BIND) $(BIND_FLAGS_64) -V -eMAIN -o $@ $^ > $*.bind.lst
