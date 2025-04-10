@@ -38,6 +38,11 @@
     "configuration": {
       "title": "zowe-native-proto-vsce",
       "properties": {
+        "zowe-native-proto-vsce.keepAliveInterval": {
+          "type": "number",
+          "default": 30,
+          "description": "Number of seconds between keep-alive messages to keep connection active. Set to 0 to disable keep-alive."
+        },
         "zowe-native-proto-vsce.logLevel": {
           "type": "string",
           "default": "INFO",
