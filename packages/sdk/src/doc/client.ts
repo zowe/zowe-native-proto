@@ -11,6 +11,12 @@
 
 export interface ClientOptions {
     /**
+     * Number of seconds between keep-alive messages
+     * (default: 30)
+     */
+    keepAliveInterval?: number;
+
+    /**
      * Function called when the connection is closed
      */
     onClose?: () => void | Promise<void>;

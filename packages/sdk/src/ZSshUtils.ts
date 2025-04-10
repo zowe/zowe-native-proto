@@ -32,11 +32,12 @@ export class ZSshUtils {
             privateKey: args.privateKey,
             keyPassphrase: args.privateKey ? args.keyPassphrase : undefined,
             password: args.privateKey ? undefined : args.password,
+            handshakeTimeout: args.handshakeTimeout,
         };
         return new SshSession(sshSessCfg);
     }
 
-    public static buildSshConfig(session: SshSession): ConnectConfig {
+    public static buildSshConfig(session: SshSession, configProps?: ConnectConfig): ConnectConfig {
         return {
             host: session.ISshSession.hostname,
             port: session.ISshSession.port,
@@ -46,7 +47,10 @@ export class ZSshUtils {
                 ? fs.readFileSync(session.ISshSession.privateKey, "utf-8")
                 : undefined,
             passphrase: session.ISshSession.keyPassphrase,
-            debug: (msg: string) => Logger.getAppLogger().trace(msg),
+            readyTimeout: session.ISshSession.handshakeTimeout,
+            // ssh2 debug messages are extremely verbose so log at TRACE level
+            debug: (msg) => Logger.getAppLogger().trace(msg),
+            ...configProps,
         };
     }
 
