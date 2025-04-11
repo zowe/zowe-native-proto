@@ -7,6 +7,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## Recent Changes
 
 - Enhanced SSH profile validation to auto-deploy server when it is missing or out of date. [#44](https://github.com/zowe/zowe-native-proto/issues/44)
+- Added keep-alive messages to keep SSH connection active. Their frequency can be controlled with the "Keep Alive Interval" option. [#260](https://github.com/zowe/zowe-native-proto/issues/260)
 
 ## `0.1.1`
 
