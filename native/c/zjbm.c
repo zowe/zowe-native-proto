@@ -64,7 +64,6 @@ static void init_stat(STAT *stat)
 int ZJBSYMB(ZJB *zjb, const char *symbol, char *value)
 {
   int rc = 0;
-  WTO_BUF buf = {0};
 
   JSYMPARM jsym = {0};
 
@@ -232,9 +231,19 @@ int ZJBMVIEW(ZJB *zjb, ZJB_JOB_INFO **PTR64 job_info, int *entries)
   STAT stat = {0};
   init_stat(&stat);
 
-  stat.statsel1 = statsoji;
+  if (zjb->jobid[0] != 0x00)
+  {
+    stat.statsel1 = statsoji;
+    memcpy(stat.statojbi, zjb->jobid, sizeof((stat.statojbi)));
+  }
+  else
+  {
+    char job_correlator31[64] = {0};
+    memcpy(job_correlator31, zjb->job_correlator, sizeof(zjb->job_correlator));
+    stat.statsel5 = statscor;
+    stat.statjcrp = &job_correlator31[0];
+  }
   stat.stattype = statters;
-  memcpy(stat.statojbi, zjb->jobid, sizeof((stat.statojbi)));
 
   return ZJBMTCOM(zjb, &stat, job_info, entries);
 }

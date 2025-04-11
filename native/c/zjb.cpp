@@ -316,7 +316,7 @@ int zjb_release_by_jobid(ZJB *zjb, string jobid)
   return ZJBMRLS(zjb);
 }
 
-int zjb_submit_dsn(ZJB *zjb, string dsn, string &jobId)
+int zjb_submit_dsn(ZJB *zjb, string dsn, string &jobid)
 {
   ZDS zds = {0};
   string contents;
@@ -327,10 +327,10 @@ int zjb_submit_dsn(ZJB *zjb, string dsn, string &jobId)
     return rc;
   }
 
-  return zjb_submit(zjb, contents, jobId);
+  return zjb_submit(zjb, contents, jobid);
 }
 
-int zjb_submit(ZJB *zjb, string contents, string &jobId)
+int zjb_submit(ZJB *zjb, string contents, string &jobid)
 {
   int rc = 0;
   ZDS zds = {0};
@@ -369,6 +369,7 @@ int zjb_submit(ZJB *zjb, string contents, string &jobId)
   if (rc != 0)
   {
     memcpy(&zjb->diag, &zds.diag, sizeof(ZDIAG));
+    dynfree(&ip);
     return rc;
   }
 
@@ -377,9 +378,32 @@ int zjb_submit(ZJB *zjb, string contents, string &jobId)
   rc = ZJBSYMB(zjb, "SYS_LASTJOBID", cjobid);
 
   if (0 != rc)
+  {
+    dynfree(&ip);
     return rc;
+  }
 
-  jobId = string(cjobid);
+  jobid = string(cjobid);
+
+  if (jobid == "")
+  {
+    rc = dynfree(&ip);
+    strcpy(zjb->diag.service_name, "intrdr");
+    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "job submission failed");
+    zjb->diag.detail_rc = ZJB_RTNCD_SUBMIT_ERROR;
+    return RTNCD_FAILURE;
+  }
+
+  char cjob_correlator[64 + 1] = {0};
+  rc = ZJBSYMB(zjb, "SYS_CORR_LASTJOB", cjob_correlator);
+
+  if (0 != rc)
+  {
+    dynfree(&ip);
+    return rc;
+  }
+
+  memcpy(zjb->job_correlator, cjob_correlator, sizeof(zjb->job_correlator));
 
   rc = dynfree(&ip);
   if (0 != rc)
@@ -455,7 +479,7 @@ int zjb_list_dds_by_jobid(ZJB *zjb, string jobid, vector<ZJobDD> &jobDDs)
   return rc;
 }
 
-int zjb_view_by_jobid(ZJB *zjb, string jobid, ZJob &job)
+int zjb_view(ZJB *zjb, string jobid, ZJob &job)
 {
   int rc = 0;
   ZJB_JOB_INFO *PTR64 job_info = nullptr;
@@ -468,7 +492,10 @@ int zjb_view_by_jobid(ZJB *zjb, string jobid, ZJob &job)
   if (0 == zjb->jobs_max)
     zjb->jobs_max = ZJB_DEFAULT_MAX_JOBS;
 
-  zut_uppercase_pad_truncate(zjb->jobid, jobid, sizeof(zjb->jobid));
+  if (jobid.size() > sizeof(zjb->jobid))
+    zut_uppercase_pad_truncate(zjb->job_correlator, jobid, sizeof(zjb->job_correlator));
+  else
+    zut_uppercase_pad_truncate(zjb->jobid, jobid, sizeof(zjb->jobid));
 
   rc = ZJBMVIEW(zjb, &job_info, &entries);
   if (0 != rc)
@@ -478,7 +505,7 @@ int zjb_view_by_jobid(ZJB *zjb, string jobid, ZJob &job)
 
   if (0 == entries)
   {
-    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "Could not locate job with job id '%s'", jobid.c_str());
+    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "Could not locate job with id '%s'", jobid.c_str());
     zjb->diag.detail_rc = ZJB_RTNCD_JOB_NOT_FOUND;
     return RTNCD_FAILURE;
   }
@@ -537,19 +564,22 @@ void zjb_build_job_response(ZJB_JOB_INFO *PTR64 job_info, int entries, vector<ZJ
 
   for (int i = 0; i < entries; i++)
   {
-    char tempJobName[9] = {0};
-    char tempJobId[9] = {0};
-    char tempJobOwner[9] = {0};
+    char temp_job_name[9] = {0};
+    char temp_jobid[9] = {0};
+    char temp_job_owner[9] = {0};
+    char temp_job_correlator[65] = {0};
 
-    strncpy(tempJobName, (char *)job_info_next[i].statjqtr.sttrname, sizeof(job_info->statjqtr.sttrname));
-    strncpy(tempJobId, (char *)job_info_next[i].statjqtr.sttrjid, sizeof(job_info->statjqtr.sttrjid));
-    strncpy(tempJobOwner, (char *)job_info_next[i].statjqtr.sttrouid, sizeof(job_info->statjqtr.sttrouid));
+    strncpy(temp_job_name, (char *)job_info_next[i].statjqtr.sttrname, sizeof(job_info->statjqtr.sttrname));
+    strncpy(temp_jobid, (char *)job_info_next[i].statjqtr.sttrjid, sizeof(job_info->statjqtr.sttrjid));
+    strncpy(temp_job_owner, (char *)job_info_next[i].statjqtr.sttrouid, sizeof(job_info->statjqtr.sttrouid));
+    strncpy(temp_job_correlator, (char *)job_info_next[i].statjqtr.sttrjcor, sizeof(job_info->statjqtr.sttrjcor));
 
     ZJob zjob = {0};
 
-    string jobname(tempJobName);
-    string jobid(tempJobId);
-    string owner(tempJobOwner);
+    string jobname(temp_job_name);
+    string jobid(temp_jobid);
+    string owner(temp_job_owner);
+    string job_correlator(temp_job_correlator);
 
     union cc
     {
@@ -609,6 +639,7 @@ void zjb_build_job_response(ZJB_JOB_INFO *PTR64 job_info, int entries, vector<ZJ
     zjob.jobname = jobname;
     zjob.jobid = jobid;
     zjob.owner = owner;
+    zjob.job_correlator = job_correlator;
 
     jobs.push_back(zjob);
   }

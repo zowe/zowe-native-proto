@@ -68,6 +68,7 @@ int handle_tool_convert_dsect(ZCLIResult);
 int handle_tool_dynalloc(ZCLIResult);
 int handle_tool_display_symbol(ZCLIResult);
 int handle_tool_search(ZCLIResult);
+int handle_tool_amblist(ZCLIResult);
 int handle_tool_run(ZCLIResult);
 
 // TODO(Kelosky):
@@ -85,6 +86,8 @@ int handle_uss_chown(ZCLIResult);
 int handle_uss_chtag(ZCLIResult);
 int handle_tso_issue(ZCLIResult);
 
+int job_submit_common(ZCLIResult, string, string &, string);
+
 int main(int argc, char *argv[])
 {
   // CLI
@@ -96,11 +99,13 @@ int main(int argc, char *argv[])
   response_format_csv.get_aliases().push_back("--rfc");
   response_format_csv.set_default("false");
   response_format_csv.set_required(false);
+  response_format_csv.set_is_bool(true);
 
   ZCLIOption response_format_bytes("response-format-bytes");
   response_format_bytes.set_description("returns the response as raw bytes");
   response_format_bytes.get_aliases().push_back("--rfb");
   response_format_bytes.set_required(false);
+  response_format_bytes.set_is_bool(true);
 
   ZCLIGroup tso_group("tso");
   tso_group.set_description("TSO operations");
@@ -192,6 +197,7 @@ int main(int argc, char *argv[])
   ZCLIOption data_set_truncate_warn("warn");
   data_set_truncate_warn.set_description("warn if truncated or not found");
   data_set_truncate_warn.set_default("true");
+  data_set_truncate_warn.set_is_bool(true);
   data_set_list.get_options().push_back(data_set_truncate_warn);
 
   data_set_list.set_description("list data sets");
@@ -258,6 +264,7 @@ int main(int argc, char *argv[])
   ZCLIOption job_truncate_warn("warn");
   job_truncate_warn.set_description("warn if trucated or not found");
   job_truncate_warn.set_default("true");
+  job_truncate_warn.set_is_bool(true);
   job_list.get_options().push_back(job_truncate_warn);
 
   job_list.get_options().push_back(response_format_csv);
@@ -269,7 +276,7 @@ int main(int argc, char *argv[])
   job_list_files.set_zcli_verb_handler(handle_job_list_files);
   ZCLIPositional job_jobid("jobid");
   job_jobid.set_required(true);
-  job_jobid.set_description("valid jobid");
+  job_jobid.set_description("valid jobid or job correlator");
   job_list_files.get_positionals().push_back(job_jobid);
   job_list_files.get_options().push_back(response_format_csv);
   job_group.get_verbs().push_back(job_list_files);
@@ -307,10 +314,22 @@ int main(int argc, char *argv[])
   job_submit.get_aliases().push_back("sub");
   job_submit.set_description("submit a job");
   job_submit.set_zcli_verb_handler(handle_job_submit);
+
   ZCLIOption job_jobid_only("only-jobid");
   job_jobid_only.get_aliases().push_back("--oj");
   job_jobid_only.set_description("show only job id on success");
+  job_jobid_only.set_is_bool(true);
   job_submit.get_options().push_back(job_jobid_only);
+
+  ZCLIOption job_job_correlator_only("only-correlator");
+  job_job_correlator_only.get_aliases().push_back("--oc");
+  job_job_correlator_only.set_description("show only job correlator on success");
+  job_job_correlator_only.set_is_bool(true);
+  job_submit.get_options().push_back(job_job_correlator_only);
+
+  job_submit.get_exclusive_options().push_back(job_jobid_only);
+  job_submit.get_exclusive_options().push_back(job_job_correlator_only);
+
   ZCLIPositional job_dsn("dsn");
   job_dsn.set_required(true);
   job_dsn.set_description("dsn containing JCL");
@@ -581,6 +600,20 @@ int main(int argc, char *argv[])
 
   tool_group.get_verbs().push_back(tool_search);
 
+  ZCLIVerb tool_amblist("amblist");
+  tool_amblist.set_description("invoke amblist");
+  tool_amblist.set_zcli_verb_handler(handle_tool_amblist);
+  ZCLIPositional amblist_dsn("dsn");
+  amblist_dsn.set_description("data containing input load modules");
+  amblist_dsn.set_required(true);
+  tool_amblist.get_positionals().push_back(amblist_dsn);
+  ZCLIOption ablist_control("control-statements");
+  ablist_control.set_description("amblist control statements, e.g. listload output=map,member=testprog");
+  ablist_control.set_required(true);
+  ablist_control.get_aliases().push_back("--cs");
+  tool_amblist.get_options().push_back(ablist_control);
+  tool_group.get_verbs().push_back(tool_amblist);
+
   ZCLIVerb tool_run("run");
 
   ZCLIOption dynalloc_pre("dynalloc-pre");
@@ -679,6 +712,7 @@ int handle_job_list(ZCLIResult result)
         fields.push_back(it->retcode);
         fields.push_back(it->jobname);
         fields.push_back(it->status);
+        fields.push_back(it->job_correlator);
         cout << zut_format_as_csv(fields) << endl;
       }
       else
@@ -750,7 +784,8 @@ int handle_job_view_status(ZCLIResult result)
   string jobid(result.get_positional("jobid")->get_value());
 
   const auto emit_csv = result.get_option_value("--response-format-csv") == "true";
-  rc = zjb_view_by_jobid(&zjb, jobid, job);
+
+  rc = zjb_view(&zjb, jobid, job);
 
   if (0 != rc)
   {
@@ -827,30 +862,51 @@ int handle_job_view_jcl(ZCLIResult result)
   return 0;
 }
 
-int handle_job_submit(ZCLIResult result)
+int job_submit_common(ZCLIResult result, string jcl, string &jobid, string identifier)
 {
   int rc = 0;
   ZJB zjb = {0};
-  string dsn(result.get_positional("dsn")->get_value());
-
-  vector<ZJob> jobs;
-  string jobid;
-  rc = zjb_submit_dsn(&zjb, dsn, jobid);
+  rc = zjb_submit(&zjb, jcl, jobid);
 
   if (0 != rc)
   {
-    cerr << "Error: could not submit JCL: '" << dsn << "' rc: '" << rc << "'" << endl;
+    cerr << "Error: could not submit JCL: '" << identifier << "' rc: '" << rc << "'" << endl;
     cerr << "  Details: " << zjb.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
   string only_jobid(result.get_option_value("--only-jobid"));
+  string only_correlator(result.get_option_value("--only-correlator"));
   if ("true" == only_jobid)
     cout << jobid << endl;
+  else if ("true" == only_correlator)
+    cout << string(zjb.job_correlator, sizeof(zjb.job_correlator)) << endl;
   else
-    cout << "Submitted " << dsn << ", " << jobid << endl;
+    cout << "Submitted " << identifier << ", " << jobid << endl;
 
   return RTNCD_SUCCESS;
+
+  return rc;
+}
+
+int handle_job_submit(ZCLIResult result)
+{
+  int rc = 0;
+  ZJB zjb = {0};
+  string dsn(result.get_positional("dsn")->get_value());
+  string jobid;
+
+  ZDS zds = {0};
+  string contents;
+  rc = zds_read_from_dsn(&zds, dsn, contents);
+  if (0 != rc)
+  {
+    cerr << "Error: could not read data set: '" << dsn << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zds.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
+  return job_submit_common(result, contents, jobid, dsn);
 }
 
 int handle_job_submit_uss(ZCLIResult result)
@@ -871,24 +927,9 @@ int handle_job_submit_uss(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  vector<ZJob> jobs;
   string jobid;
-  rc = zjb_submit(&zjb, response, jobid);
 
-  if (0 != rc)
-  {
-    cerr << "Error: could not submit JCL: '" << file << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details: " << zjb.diag.e_msg << endl;
-    return RTNCD_FAILURE;
-  }
-
-  string only_jobid(result.get_option("--only-jobid")->get_value());
-  if ("true" == only_jobid)
-    cout << jobid << endl;
-  else
-    cout << "Submitted " << file << ", " << jobid << endl;
-
-  return RTNCD_SUCCESS;
+  return job_submit_common(result, response, jobid, file);
 }
 
 int handle_job_submit_jcl(ZCLIResult result)
@@ -920,24 +961,10 @@ int handle_job_submit_jcl(ZCLIResult result)
     data = zut_encode(data, "UTF-8", string(encoding_opts.codepage), zjb.diag);
   }
 
-  vector<ZJob> jobs;
   string jobid;
   rc = zjb_submit(&zjb, data, jobid);
 
-  if (0 != rc)
-  {
-    cerr << "Error: could not submit JCL: '" << data << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details: " << zjb.diag.e_msg << endl;
-    return RTNCD_FAILURE;
-  }
-
-  string only_jobid(result.get_option_value("--only-jobid"));
-  if ("true" == only_jobid)
-    cout << jobid << endl;
-  else
-    cout << "Submitted, " << jobid << endl;
-
-  return RTNCD_SUCCESS;
+  return job_submit_common(result, data, jobid, data);
 }
 
 int handle_job_delete(ZCLIResult result)
@@ -2004,6 +2031,59 @@ int handle_tool_search(ZCLIResult result)
       cerr << "Warning: results truncated" << endl;
     }
   }
+
+  return RTNCD_SUCCESS;
+}
+
+int handle_tool_amblist(ZCLIResult result)
+{
+  int rc = 0;
+
+  string dsn(result.get_positional("dsn")->get_value());
+  string statements = " " + result.get_option_value("--control-statements");
+
+  // perform dynalloc
+  vector<string> dds;
+  dds.push_back("alloc dd(syslib) da('" + dsn + "') shr");
+  dds.push_back("alloc dd(sysprint) lrecl(80) recfm(f,b) blksize(80)");
+  dds.push_back("alloc dd(sysin) lrecl(80) recfm(f,b) blksize(80)");
+
+  rc = loop_dynalloc(dds);
+  if (RTNCD_SUCCESS != rc)
+  {
+    return RTNCD_FAILURE;
+  }
+
+  transform(statements.begin(), statements.end(), statements.begin(), ::toupper); // upper case
+
+  // write control statements
+  ZDS zds = {0};
+  zds_write_to_dd(&zds, "sysin", statements);
+  if (0 != rc)
+  {
+    cerr << "Error: could not write to dd: '" << "sysin" << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zds.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
+  // perform search
+  rc = zut_run("AMBLIST");
+  if (RTNCD_SUCCESS != rc)
+  {
+    cerr << "Error: could error invoking ISRSUPC rc: '" << rc << "'" << endl;
+    // NOTE(Kelosky): don't exit here, but proceed to print errors
+  }
+
+  // read output from amblist
+  string output;
+  rc = zds_read_from_dd(&zds, "sysprint", output);
+  if (0 != rc)
+  {
+    cerr << "Error: could not read from dd: '" << "sysprint" << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zds.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+  cout << output << endl;
 
   return RTNCD_SUCCESS;
 }

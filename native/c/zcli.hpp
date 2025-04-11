@@ -32,6 +32,7 @@ using namespace std;
 #define ZCLI_MENU_WIDTH 25
 #define ZCLI_MENU_INDENT "  " // TODO(Kelosky)
 #define ZCLI_FLAG_PREFIX "--"
+#define ZCLI_INVERSE_FLAG_PREFIX "--no-"
 
 // TODO(Kelosky): map instead of vectors for result
 
@@ -75,6 +76,7 @@ class ZCLIFlag : public ZCLIName
 public:
   ZCLIFlag(string n) : ZCLIName(n) {}
   virtual string get_flag_name() { return ZCLI_FLAG_PREFIX + name; };
+  virtual string get_inverse_flag_name() { return ZCLI_INVERSE_FLAG_PREFIX + name; };
 };
 
 class
@@ -86,6 +88,7 @@ private:
   string value;
   vector<string> aliases;
   string default_value;
+  bool is_bool;
   bool default_set;
 
 public:
@@ -107,6 +110,8 @@ public:
     default_value = v;
     default_set = true;
   }
+  bool get_is_bool() { return is_bool; }
+  void set_is_bool(bool v) { is_bool = v; }
   bool default_provided() { return default_set; }
   string get_value() { return value; }
 };
@@ -175,12 +180,15 @@ class ZCLIVerb : public ZCLIName, public ZCLIDescription, public ZCLIOptionProvi
 private:
   zcli_verb_handler cb;
   vector<string> aliases;
+  vector<ZCLIOption> exclusive_options;
 
 public:
   ZCLIVerb(string n) : ZCLIName(n) {}
   void set_zcli_verb_handler(zcli_verb_handler h) { cb = h; }
   zcli_verb_handler get_zcli_verb_handler() { return cb; }
   vector<string> &get_aliases() { return aliases; }
+  vector<ZCLIOption> &get_exclusive_options() { return exclusive_options; }
+
   void help_line()
   {
     string entry = get_name();
@@ -490,7 +498,7 @@ ZCLIOption *ZCLIOptionProvider::get_option(string option_name)
   for (vector<ZCLIOption>::iterator it = options.begin(); it != options.end(); it++)
   {
     vector<string> &aliases = it->get_aliases();
-    if (option_name == it->get_flag_name() || std::find(aliases.begin(), aliases.end(), option_name) != it->get_aliases().end())
+    if (option_name == it->get_flag_name() || option_name == it->get_inverse_flag_name() || std::find(aliases.begin(), aliases.end(), option_name) != it->get_aliases().end())
       return &*it;
   }
   return nullptr;
@@ -597,18 +605,47 @@ int ZCLI::run(int argc, char *argv[])
       }
     }
 
-    if (i + 1 > argc - 1) // index vs count
+    if (option->get_is_bool())
     {
-      cerr << "Missing required value for: " << argv[i] << endl;
-      verb->help(name, group->get_name());
-      return -1;
+      if (i + 1 < argc) // if another parm
+      {
+        string str_argv(argv[i + 1]);
+        transform(str_argv.begin(), str_argv.end(), str_argv.begin(), ::tolower); // upper case
+
+        if (str_argv == "true" || str_argv == "false")
+        {
+          option->set_found(true);
+          option->set_value(str_argv);
+          results.get_options().push_back(*option);
+
+          i++; // advance to next parm
+          continue;
+        }
+      }
+
+      option->set_found(true);
+      if (strncmp(argv[i], ZCLI_INVERSE_FLAG_PREFIX, strlen(ZCLI_INVERSE_FLAG_PREFIX)) == 0)
+        option->set_value("false");
+      else
+        option->set_value("true");
+      results.get_options().push_back(*option);
     }
 
-    option->set_found(true);
-    option->set_value(argv[i + 1]);
-    results.get_options().push_back(*option);
+    else
+    {
+      if (i + 1 >= argc) // if no more parms
+      {
+        cerr << "Missing required value for: " << argv[i] << endl;
+        verb->help(name, group->get_name());
+        return -1;
+      }
 
-    i++; // advance to next parm
+      option->set_found(true);
+      option->set_value(argv[i + 1]);
+      results.get_options().push_back(*option);
+
+      i++; // advance to next parm
+    }
   }
 
   for (vector<ZCLIOption>::iterator it = verb->get_options().begin(); it != verb->get_options().end(); it++)
@@ -635,6 +672,22 @@ int ZCLI::run(int argc, char *argv[])
       cerr << "Required positional missing: '" << it->get_name() << "' on '" << group->get_name() << " " << verb->get_name() << "'" << endl;
       verb->help(name, group->get_name());
       return -1;
+    }
+  }
+
+  bool exclusive_found = false;
+  string last_used_flag;
+  for (vector<ZCLIOption>::iterator it = verb->get_exclusive_options().begin(); it != verb->get_exclusive_options().end(); it++)
+  {
+    if (results.get_option(it->get_flag_name()))
+    {
+      if (exclusive_found)
+      {
+        cerr << "Mutually exclusive option '" << it->get_flag_name() << "' cannot be used with '" << last_used_flag << "'" << endl;
+        return -1;
+      }
+      exclusive_found = true;
+      last_used_flag = it->get_flag_name();
     }
   }
 
