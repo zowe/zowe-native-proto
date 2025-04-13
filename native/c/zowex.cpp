@@ -87,8 +87,8 @@ int handle_tso_issue(ParseResult &);
 
 int main(int argc, char *argv[])
 {
-  ArgumentParser parser(argv[PROCESS_NAME_ARG], "C++ CLI for z/OS resources");
-  Command &rootCommand = parser.getRootCommand();
+  ArgumentParser parser("zowex", "C++ CLI for z/OS resources");
+  Command &root_command = parser.get_root_command();
 
   // --- Global options ---
   root_command.add_keyword_arg("interactive", "--it", "--interactive", "interactive (REPL) mode", ArgType_Flag);
@@ -143,7 +143,7 @@ int main(int argc, char *argv[])
     auto view_cmd = make_shared<Command>("view", "view data set");
     view_cmd->add_positional_arg("dsn", dsn_help, ArgType_Single, true);
     view_cmd->add_keyword_arg("encoding", "--ec", "--encoding", "return contents in given encoding", ArgType_Single);
-    view_cmd->add_keyword_arg("response-format-bytes", "", "--rfb", "returns the response as raw bytes", ArgType_Flag);
+    view_cmd->add_keyword_arg("response-format-bytes", "--rfb", "--response-format-bytes", "returns the response as raw bytes", ArgType_Flag);
     view_cmd->set_handler(handle_data_set_view_dsn);
     data_set_cmd->add_command(view_cmd);
 
@@ -152,8 +152,8 @@ int main(int argc, char *argv[])
     list_cmd->add_positional_arg("dsn", dsn_help, ArgType_Single, true);
     list_cmd->add_keyword_arg("attributes", "-a", "--attributes", "display data set attributes", ArgType_Flag);
     list_cmd->add_keyword_arg("max-entries", "--me", "--max-entries", max_entries_help, ArgType_Single);
-    list_cmd->add_keyword_arg("warn", "", "--warn", warn_help, ArgType_Flag, false, ArgValue(true));
-    list_cmd->add_keyword_arg("response-format-csv", "", "--rfc", "returns the response in CSV format", ArgType_Flag);
+    list_cmd->add_keyword_arg("warn", "-w", "--warn", warn_help, ArgType_Flag, false, ArgValue(true));
+    list_cmd->add_keyword_arg("response-format-csv", "--rfc", "--response-format-csv", "returns the response in CSV format", ArgType_Flag);
     list_cmd->set_handler(handle_data_set_list);
     data_set_cmd->add_command(list_cmd);
 
@@ -161,15 +161,15 @@ int main(int argc, char *argv[])
     list_members_cmd->add_alias("lm");
     list_members_cmd->add_positional_arg("dsn", dsn_help, ArgType_Single, true);
     list_members_cmd->add_keyword_arg("max-entries", "--me", "--max-entries", max_entries_help, ArgType_Single);
-    list_members_cmd->add_keyword_arg("warn", "", "--warn", warn_help, ArgType_Flag, false, ArgValue(true));
+    list_members_cmd->add_keyword_arg("warn", "-w", "--warn", warn_help, ArgType_Flag, false, ArgValue(true));
     list_members_cmd->set_handler(handle_data_set_list_members_dsn);
     data_set_cmd->add_command(list_members_cmd);
 
     auto write_cmd = make_shared<Command>("write", "write to data set");
     write_cmd->add_positional_arg("dsn", dsn_help, ArgType_Single, true);
     write_cmd->add_keyword_arg("encoding", "--ec", "--encoding", "return contents in given encoding", ArgType_Single);
-    write_cmd->add_keyword_arg("etag", "", "--etag", "provide the e-tag for a write response to detect conflicts before save", ArgType_Single, false);
-    write_cmd->add_keyword_arg("etag-only", "", "--etag-only", "only print the e-tag for a write response (when successful)", ArgType_Flag, false);
+    write_cmd->add_keyword_arg("etag", "--et", "--etag", "provide the e-tag for a write response to detect conflicts before save", ArgType_Single, false);
+    write_cmd->add_keyword_arg("etag-only", "--eo", "--etag-only", "only print the e-tag for a write response (when successful)", ArgType_Flag, false);
     write_cmd->set_handler(handle_data_set_write_to_dsn);
     data_set_cmd->add_command(write_cmd);
 
@@ -192,22 +192,22 @@ int main(int argc, char *argv[])
     list_cmd->add_keyword_arg("owner", "-o", "--owner", "filter by owner", ArgType_Single);
     list_cmd->add_keyword_arg("prefix", "-p", "--prefix", "filter by prefix", ArgType_Single);
     list_cmd->add_keyword_arg("max-entries", "--me", "--max-entries", max_entries_help, ArgType_Single);
-    list_cmd->add_keyword_arg("warn", "", "--warn", warn_help, ArgType_Flag, false, ArgValue(true));
-    list_cmd->add_keyword_arg("response-format-csv", "", "--rfc", "returns the response in CSV format", ArgType_Flag);
+    list_cmd->add_keyword_arg("warn", "-w", "--warn", warn_help, ArgType_Flag, false, ArgValue(true));
+    list_cmd->add_keyword_arg("response-format-csv", "--rfc", "--response-format-csv", "returns the response in CSV format", ArgType_Flag);
     list_cmd->set_handler(handle_job_list);
     job_cmd->add_command(list_cmd);
 
     auto list_files_cmd = make_shared<Command>("list-files", "list spool files for jobid");
     list_files_cmd->add_alias("lf");
     list_files_cmd->add_positional_arg("jobid", jobid_help, ArgType_Single, true);
-    list_files_cmd->add_keyword_arg("response-format-csv", "", "--rfc", "returns the response in CSV format", ArgType_Flag);
+    list_files_cmd->add_keyword_arg("response-format-csv", "--rfc", "--response-format-csv", "returns the response in CSV format", ArgType_Flag);
     list_files_cmd->set_handler(handle_job_list_files);
     job_cmd->add_command(list_files_cmd);
 
     auto view_status_cmd = make_shared<Command>("view-status", "view job status");
     view_status_cmd->add_alias("vs");
     view_status_cmd->add_positional_arg("jobid", jobid_help, ArgType_Single, true);
-    view_status_cmd->add_keyword_arg("response-format-csv", "", "--rfc", "returns the response in CSV format", ArgType_Flag);
+    view_status_cmd->add_keyword_arg("response-format-csv", "--rfc", "--response-format-csv", "returns the response in CSV format", ArgType_Flag);
     view_status_cmd->set_handler(handle_job_view_status);
     job_cmd->add_command(view_status_cmd);
 
@@ -216,7 +216,7 @@ int main(int argc, char *argv[])
     view_file_cmd->add_positional_arg("jobid", jobid_help, ArgType_Single, true);
     view_file_cmd->add_positional_arg("key", "valid job dsn key via 'job list-files'", ArgType_Single, true);
     view_file_cmd->add_keyword_arg("encoding", "--ec", "--encoding", "return contents in given encoding", ArgType_Single);
-    view_file_cmd->add_keyword_arg("response-format-bytes", "", "--rfb", "returns the response as raw bytes", ArgType_Flag);
+    view_file_cmd->add_keyword_arg("response-format-bytes", "--rfb", "--response-format-bytes", "returns the response as raw bytes", ArgType_Flag);
     view_file_cmd->set_handler(handle_job_view_file);
     job_cmd->add_command(view_file_cmd);
 
@@ -298,13 +298,13 @@ int main(int argc, char *argv[])
 
     auto create_file_cmd = make_shared<Command>("create-file", "create a USS file");
     create_file_cmd->add_positional_arg("file-path", file_path_help, ArgType_Single, true);
-    create_file_cmd->add_keyword_arg("mode", "", "--mode", mode_help, ArgType_Single, false);
+    create_file_cmd->add_keyword_arg("mode", "-m", "--mode", mode_help, ArgType_Single, false);
     create_file_cmd->set_handler(handle_uss_create_file);
     uss_cmd->add_command(create_file_cmd);
 
     auto create_dir_cmd = make_shared<Command>("create-dir", "create a USS directory");
     create_dir_cmd->add_positional_arg("file-path", file_path_help, ArgType_Single, true);
-    create_dir_cmd->add_keyword_arg("mode", "", "--mode", mode_help, ArgType_Single, false);
+    create_dir_cmd->add_keyword_arg("mode", "-m", "--mode", mode_help, ArgType_Single, false);
     create_dir_cmd->set_handler(handle_uss_create_dir);
     uss_cmd->add_command(create_dir_cmd);
 
@@ -316,15 +316,15 @@ int main(int argc, char *argv[])
     auto view_cmd = make_shared<Command>("view", "view a USS file");
     view_cmd->add_positional_arg("file-path", file_path_help, ArgType_Single, true);
     view_cmd->add_keyword_arg("encoding", "--ec", "--encoding", "return contents in given encoding", ArgType_Single);
-    view_cmd->add_keyword_arg("response-format-bytes", "", "--rfb", "returns the response as raw bytes", ArgType_Flag);
+    view_cmd->add_keyword_arg("response-format-bytes", "--rfb", "--response-format-bytes", "returns the response as raw bytes", ArgType_Flag);
     view_cmd->set_handler(handle_uss_view);
     uss_cmd->add_command(view_cmd);
 
     auto write_cmd = make_shared<Command>("write", "write to a USS file");
     write_cmd->add_positional_arg("file-path", file_path_help, ArgType_Single, true);
     write_cmd->add_keyword_arg("encoding", "--ec", "--encoding", "return contents in given encoding", ArgType_Single);
-    write_cmd->add_keyword_arg("etag", "", "--etag", "provide the e-tag for a write response to detect conflicts before save", ArgType_Single, false);
-    write_cmd->add_keyword_arg("etag-only", "", "--etag-only", "only print the e-tag for a write response (when successful)", ArgType_Flag, false);
+    write_cmd->add_keyword_arg("etag", "--et", "--etag", "provide the e-tag for a write response to detect conflicts before save", ArgType_Single, false);
+    write_cmd->add_keyword_arg("etag-only", "--eo", "--etag-only", "only print the e-tag for a write response (when successful)", ArgType_Flag, false);
     write_cmd->set_handler(handle_uss_write);
     uss_cmd->add_command(write_cmd);
 
@@ -393,7 +393,7 @@ int main(int argc, char *argv[])
     search_cmd->add_positional_arg("dsn", "data set to search", ArgType_Single, true);
     search_cmd->add_positional_arg("string", "string to search for", ArgType_Single, true);
     search_cmd->add_keyword_arg("max-entries", "--me", "--max-entries", "max number of results to return", ArgType_Single);
-    search_cmd->add_keyword_arg("warn", "", "--warn", "warn if truncated or not found", ArgType_Flag, false, ArgValue(true)); // default true
+    search_cmd->add_keyword_arg("warn", "-w", "--warn", "warn if truncated or not found", ArgType_Flag, false, ArgValue(true)); // default true
     search_cmd->set_handler(handle_tool_search);
     tool_cmd->add_command(search_cmd);
 
