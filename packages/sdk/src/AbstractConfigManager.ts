@@ -375,6 +375,7 @@ export abstract class AbstractConfigManager {
         } catch (err) {
             const errorMessage = `${err}`;
 
+            // Check if a validation method is possible
             if (
                 newConfig.privateKey &&
                 !newConfig.password &&
@@ -383,6 +384,7 @@ export abstract class AbstractConfigManager {
                 return undefined;
             }
 
+            // Username is not valid
             if (errorMessage.includes("Invalid username")) {
                 const testUser = await this.showInputBox({
                     title: `Enter user for host: '${newConfig.hostname}'`,
@@ -398,6 +400,7 @@ export abstract class AbstractConfigManager {
                 }
             }
 
+            // No passphrase given or incorrect passphrase
             if (errorMessage.includes("but no passphrase given") || errorMessage.includes("integrity check failed")) {
                 const privateKeyPath = newConfig.privateKey;
 
@@ -424,9 +427,19 @@ export abstract class AbstractConfigManager {
                 newConfig.keyPassphrase = undefined;
                 return undefined;
             }
+
+            // Authentication failure
             if (errorMessage.includes("All configured authentication methods failed")) {
                 const passwordPrompt = askForPassword ? await promptForPassword(newConfig) : undefined;
                 return passwordPrompt ? { ...configModifications, ...passwordPrompt } : undefined;
+            }
+
+            // Handshake timeout error handling
+            if (errorMessage.includes("Timed out while waiting for handshake")) {
+                this.showMessage("Timed out while waiting for handshake", MESSAGE_TYPE.ERROR);
+                newConfig.privateKey = undefined;
+                newConfig.keyPassphrase = undefined;
+                return undefined;
             }
         }
         return configModifications;
