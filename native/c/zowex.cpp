@@ -68,6 +68,7 @@ int handle_tool_convert_dsect(ZCLIResult);
 int handle_tool_dynalloc(ZCLIResult);
 int handle_tool_display_symbol(ZCLIResult);
 int handle_tool_search(ZCLIResult);
+int handle_tool_amblist(ZCLIResult);
 int handle_tool_run(ZCLIResult);
 
 // TODO(Kelosky):
@@ -598,6 +599,20 @@ int main(int argc, char *argv[])
   tool_search.get_options().push_back(data_set_truncate_warn);
 
   tool_group.get_verbs().push_back(tool_search);
+
+  ZCLIVerb tool_amblist("amblist");
+  tool_amblist.set_description("invoke amblist");
+  tool_amblist.set_zcli_verb_handler(handle_tool_amblist);
+  ZCLIPositional amblist_dsn("dsn");
+  amblist_dsn.set_description("data containing input load modules");
+  amblist_dsn.set_required(true);
+  tool_amblist.get_positionals().push_back(amblist_dsn);
+  ZCLIOption ablist_control("control-statements");
+  ablist_control.set_description("amblist control statements, e.g. listload output=map,member=testprog");
+  ablist_control.set_required(true);
+  ablist_control.get_aliases().push_back("--cs");
+  tool_amblist.get_options().push_back(ablist_control);
+  tool_group.get_verbs().push_back(tool_amblist);
 
   ZCLIVerb tool_run("run");
 
@@ -2016,6 +2031,59 @@ int handle_tool_search(ZCLIResult result)
       cerr << "Warning: results truncated" << endl;
     }
   }
+
+  return RTNCD_SUCCESS;
+}
+
+int handle_tool_amblist(ZCLIResult result)
+{
+  int rc = 0;
+
+  string dsn(result.get_positional("dsn")->get_value());
+  string statements = " " + result.get_option_value("--control-statements");
+
+  // perform dynalloc
+  vector<string> dds;
+  dds.push_back("alloc dd(syslib) da('" + dsn + "') shr");
+  dds.push_back("alloc dd(sysprint) lrecl(80) recfm(f,b) blksize(80)");
+  dds.push_back("alloc dd(sysin) lrecl(80) recfm(f,b) blksize(80)");
+
+  rc = loop_dynalloc(dds);
+  if (RTNCD_SUCCESS != rc)
+  {
+    return RTNCD_FAILURE;
+  }
+
+  transform(statements.begin(), statements.end(), statements.begin(), ::toupper); // upper case
+
+  // write control statements
+  ZDS zds = {0};
+  zds_write_to_dd(&zds, "sysin", statements);
+  if (0 != rc)
+  {
+    cerr << "Error: could not write to dd: '" << "sysin" << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zds.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
+  // perform search
+  rc = zut_run("AMBLIST");
+  if (RTNCD_SUCCESS != rc)
+  {
+    cerr << "Error: could error invoking ISRSUPC rc: '" << rc << "'" << endl;
+    // NOTE(Kelosky): don't exit here, but proceed to print errors
+  }
+
+  // read output from amblist
+  string output;
+  rc = zds_read_from_dd(&zds, "sysprint", output);
+  if (0 != rc)
+  {
+    cerr << "Error: could not read from dd: '" << "sysprint" << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zds.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+  cout << output << endl;
 
   return RTNCD_SUCCESS;
 }
