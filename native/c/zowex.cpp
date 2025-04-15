@@ -54,6 +54,7 @@ int handle_console_issue(ZCLIResult);
 int handle_data_set_create_dsn(ZCLIResult);
 int handle_data_set_create_dsn_vb(ZCLIResult);
 int handle_data_set_create_dsn_adata(ZCLIResult);
+int handle_data_set_create_dsn_loadlib(ZCLIResult);
 int handle_data_set_restore(ZCLIResult);
 int handle_data_set_view_dsn(ZCLIResult);
 int handle_data_set_list(ZCLIResult);
@@ -166,6 +167,13 @@ int main(int argc, char *argv[])
   data_set_create_adata.set_zcli_verb_handler(handle_data_set_create_dsn_adata);
   data_set_create_adata.get_positionals().push_back(data_set_dsn);
   data_set_group.get_verbs().push_back(data_set_create_adata);
+
+  ZCLIVerb data_set_create_loadlib("create-loadlib");
+  data_set_create_loadlib.get_aliases().push_back("cre-u");
+  data_set_create_loadlib.set_description("create loadlib data set using defaults: DSORG=PO, RECFM=U, LRECL=0");
+  data_set_create_loadlib.set_zcli_verb_handler(handle_data_set_create_dsn_loadlib);
+  data_set_create_loadlib.get_positionals().push_back(data_set_dsn);
+  data_set_group.get_verbs().push_back(data_set_create_loadlib);
 
   ZCLIVerb data_set_create_member("create-member");
   data_set_create_member.get_aliases().push_back("cre-m");
@@ -1207,6 +1215,23 @@ int handle_data_set_create_dsn_adata(ZCLIResult result)
   ZDS zds = {0};
   string response;
   rc = zds_create_dsn_adata(&zds, dsn, response);
+  if (0 != rc)
+  {
+    cerr << "Error: could not create data set: '" << dsn << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details:\n"
+         << response << endl;
+    return -1;
+  }
+  return handle_data_set_create_member(zds, dsn);
+}
+
+int handle_data_set_create_dsn_loadlib(ZCLIResult result)
+{
+  int rc = 0;
+  string dsn = result.get_positional("dsn")->get_value();
+  ZDS zds = {0};
+  string response;
+  rc = zds_create_dsn_loadlib(&zds, dsn, response);
   if (0 != rc)
   {
     cerr << "Error: could not create data set: '" << dsn << "' rc: '" << rc << "'" << endl;
