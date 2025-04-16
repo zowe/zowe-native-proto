@@ -145,7 +145,7 @@ int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data)
   const auto hasEncoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
   const auto codepage = string(zds->encoding_opts.codepage);
 
-  if (zds->etag != nullptr)
+  if (strlen(zds->etag) > 0)
   {
     ZDS read_ds = {0};
     string current_contents = "";

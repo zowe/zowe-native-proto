@@ -1345,9 +1345,12 @@ int handle_data_set_view_dsn(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  const auto etag = zut_calc_adler32_checksum(response);
-  cout << "etag: " << std::hex << etag << endl;
-  cout << "data: ";
+  if (result.get_option_value("--return-etag") == "true")
+  {
+    const auto etag = zut_calc_adler32_checksum(response);
+    cout << "etag: " << std::hex << etag << endl;
+    cout << "data: ";
+  }
   if (hasEncoding && result.get_option_value("--response-format-bytes") == "true")
   {
     zut_print_string_as_bytes(response);
@@ -1667,8 +1670,11 @@ int handle_uss_view(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  cout << "etag: " << zut_build_etag(file_stats.st_mtime, file_stats.st_size) << endl;
-  cout << "data: ";
+  if (result.get_option_value("--return-etag") == "true")
+  {
+    cout << "etag: " << zut_build_etag(file_stats.st_mtime, file_stats.st_size) << endl;
+    cout << "data: ";
+  }
   if (hasEncoding && result.get_option_value("--response-format-bytes") == "true")
   {
     zut_print_string_as_bytes(response);

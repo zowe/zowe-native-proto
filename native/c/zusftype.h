@@ -41,7 +41,7 @@ typedef struct
   char file_name[1024]; // filename
 
   ZEncode encoding_opts;
-  char *etag;
+  char etag[16];
 
   ZDIAG diag;
 

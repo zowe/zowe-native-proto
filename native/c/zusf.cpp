@@ -248,7 +248,7 @@ int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data)
   const auto hasEncoding = zusf->encoding_opts.data_type == eDataTypeText && strlen(zusf->encoding_opts.codepage) > 0;
   const auto codepage = string(zusf->encoding_opts.codepage);
 
-  if (zusf->etag != nullptr)
+  if (strlen(zusf->etag) > 0)
   {
     const auto current_etag = zut_build_etag(file_stats.st_mtime, file_stats.st_size);
     if (current_etag != zusf->etag)
