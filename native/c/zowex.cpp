@@ -426,6 +426,11 @@ int main(int argc, char *argv[])
   console_name.get_aliases().push_back("--cn");
   console_name.set_description("extended console name");
   console_issue.get_options().push_back(console_name);
+  ZCLIOption console_wait("wait");
+  console_wait.set_default("true");
+  console_wait.set_is_bool(true);
+  console_wait.set_description("wait for responses");
+  console_issue.get_options().push_back(console_wait);
   ZCLIPositional console_command("command");
   console_command.set_required(true);
   console_command.set_description("command to run, e.g. 'D IPLINFO'");
@@ -1067,6 +1072,7 @@ int handle_console_issue(ZCLIResult result)
 
   string console_name(result.get_option_value("--console-name"));
   string command(result.get_positional("command")->get_value());
+  string wait = result.get_option_value("--wait");
 
   rc = zcn_activate(&zcn, string(console_name));
   if (0 != rc)
@@ -1084,16 +1090,18 @@ int handle_console_issue(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  string response = "";
-  rc = zcn_get(&zcn, response);
-  if (0 != rc)
+  if (wait == "true")
   {
-    cerr << "Error: could not get from console: '" << console_name << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details: " << zcn.diag.e_msg << endl;
-    return RTNCD_FAILURE;
+    string response = "";
+    rc = zcn_get(&zcn, response);
+    if (0 != rc)
+    {
+      cerr << "Error: could not get from console: '" << console_name << "' rc: '" << rc << "'" << endl;
+      cerr << "  Details: " << zcn.diag.e_msg << endl;
+      return RTNCD_FAILURE;
+    }
+    cout << response << endl;
   }
-
-  cout << response << endl;
 
   // example issuing command which requires a reply
   // e.g. zoweax console issue --console-name DKELOSKX "SL SET,ID=DK00"
@@ -2095,7 +2103,7 @@ int handle_tool_amblist(ZCLIResult result)
   rc = zut_run("AMBLIST");
   if (RTNCD_SUCCESS != rc)
   {
-    cerr << "Error: could error invoking ISRSUPC rc: '" << rc << "'" << endl;
+    cerr << "Error: could error invoking AMBLIST rc: '" << rc << "'" << endl;
     // NOTE(Kelosky): don't exit here, but proceed to print errors
   }
 
