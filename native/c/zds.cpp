@@ -265,6 +265,15 @@ int zds_create_dsn_adata(ZDS *zds, string dsn, string &response)
   return zut_bpxwdyn(parm, &code, response);
 }
 
+int zds_create_dsn_loadlib(ZDS *zds, string dsn, string &response)
+{
+  int rc = 0;
+  unsigned int code = 0;
+  string parm = "ALLOC DA('" + dsn + "') DSORG(PO) SPACE(5,5) CYL LRECL(0) BLKSIZE(32760) RECFM(U) DIR(5) NEW KEEP DSNTYPE(LIBRARY)";
+
+  return zut_bpxwdyn(parm, &code, response);
+}
+
 #define NUM_DELETE_TEXT_UNITS 2
 int zds_delete_dsn(ZDS *zds, string dsn)
 {
