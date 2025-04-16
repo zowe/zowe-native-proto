@@ -19,6 +19,7 @@
 #include <unistd.h>
 #include <algorithm>
 #include <fstream>
+#include <unistd.h>
 #include "zcn.hpp"
 #include "zut.hpp"
 #include "zcli.hpp"
@@ -54,6 +55,7 @@ int handle_console_issue(ZCLIResult);
 int handle_data_set_create_dsn(ZCLIResult);
 int handle_data_set_create_dsn_vb(ZCLIResult);
 int handle_data_set_create_dsn_adata(ZCLIResult);
+int handle_data_set_create_dsn_loadlib(ZCLIResult);
 int handle_data_set_restore(ZCLIResult);
 int handle_data_set_view_dsn(ZCLIResult);
 int handle_data_set_list(ZCLIResult);
@@ -68,6 +70,7 @@ int handle_tool_convert_dsect(ZCLIResult);
 int handle_tool_dynalloc(ZCLIResult);
 int handle_tool_display_symbol(ZCLIResult);
 int handle_tool_search(ZCLIResult);
+int handle_tool_amblist(ZCLIResult);
 int handle_tool_run(ZCLIResult);
 
 // TODO(Kelosky):
@@ -165,6 +168,13 @@ int main(int argc, char *argv[])
   data_set_create_adata.set_zcli_verb_handler(handle_data_set_create_dsn_adata);
   data_set_create_adata.get_positionals().push_back(data_set_dsn);
   data_set_group.get_verbs().push_back(data_set_create_adata);
+
+  ZCLIVerb data_set_create_loadlib("create-loadlib");
+  data_set_create_loadlib.get_aliases().push_back("cre-u");
+  data_set_create_loadlib.set_description("create loadlib data set using defaults: DSORG=PO, RECFM=U, LRECL=0");
+  data_set_create_loadlib.set_zcli_verb_handler(handle_data_set_create_dsn_loadlib);
+  data_set_create_loadlib.get_positionals().push_back(data_set_dsn);
+  data_set_group.get_verbs().push_back(data_set_create_loadlib);
 
   ZCLIVerb data_set_create_member("create-member");
   data_set_create_member.get_aliases().push_back("cre-m");
@@ -314,6 +324,10 @@ int main(int argc, char *argv[])
   job_submit.set_description("submit a job");
   job_submit.set_zcli_verb_handler(handle_job_submit);
 
+  ZCLIOption job_wait("wait");
+  job_wait.set_description("wait for job status");
+  job_submit.get_options().push_back(job_wait);
+
   ZCLIOption job_jobid_only("only-jobid");
   job_jobid_only.get_aliases().push_back("--oj");
   job_jobid_only.set_description("show only job id on success");
@@ -341,6 +355,10 @@ int main(int argc, char *argv[])
   job_submit_jcl.set_zcli_verb_handler(handle_job_submit_jcl);
   job_submit_jcl.get_options().push_back(job_jobid_only);
   job_submit_jcl.get_options().push_back(encoding_option);
+  job_submit_jcl.get_options().push_back(job_job_correlator_only);
+  job_submit_jcl.get_exclusive_options().push_back(job_jobid_only);
+  job_submit_jcl.get_exclusive_options().push_back(job_job_correlator_only);
+  job_submit_jcl.get_options().push_back(job_wait);
   job_group.get_verbs().push_back(job_submit_jcl);
 
   ZCLIVerb job_submit_uss("submit-uss");
@@ -353,6 +371,10 @@ int main(int argc, char *argv[])
   job_submit_uss.get_positionals().push_back(job_uss_file);
 
   job_submit_uss.get_options().push_back(job_jobid_only);
+  job_submit_uss.get_options().push_back(job_job_correlator_only);
+  job_submit_uss.get_exclusive_options().push_back(job_jobid_only);
+  job_submit_uss.get_exclusive_options().push_back(job_job_correlator_only);
+  job_submit_uss.get_options().push_back(job_wait);
   job_group.get_verbs().push_back(job_submit_uss);
 
   ZCLIVerb job_delete("delete");
@@ -417,6 +439,11 @@ int main(int argc, char *argv[])
   console_name.get_aliases().push_back("--cn");
   console_name.set_description("extended console name");
   console_issue.get_options().push_back(console_name);
+  ZCLIOption console_wait("wait");
+  console_wait.set_default("true");
+  console_wait.set_is_bool(true);
+  console_wait.set_description("wait for responses");
+  console_issue.get_options().push_back(console_wait);
   ZCLIPositional console_command("command");
   console_command.set_required(true);
   console_command.set_description("command to run, e.g. 'D IPLINFO'");
@@ -599,6 +626,20 @@ int main(int argc, char *argv[])
 
   tool_group.get_verbs().push_back(tool_search);
 
+  ZCLIVerb tool_amblist("amblist");
+  tool_amblist.set_description("invoke amblist");
+  tool_amblist.set_zcli_verb_handler(handle_tool_amblist);
+  ZCLIPositional amblist_dsn("dsn");
+  amblist_dsn.set_description("data containing input load modules");
+  amblist_dsn.set_required(true);
+  tool_amblist.get_positionals().push_back(amblist_dsn);
+  ZCLIOption ablist_control("control-statements");
+  ablist_control.set_description("amblist control statements, e.g. listload output=map,member=testprog");
+  ablist_control.set_required(true);
+  ablist_control.get_aliases().push_back("--cs");
+  tool_amblist.get_options().push_back(ablist_control);
+  tool_group.get_verbs().push_back(tool_amblist);
+
   ZCLIVerb tool_run("run");
 
   ZCLIOption dynalloc_pre("dynalloc-pre");
@@ -776,7 +817,7 @@ int handle_job_view_status(ZCLIResult result)
   {
     cerr << "Error: could not view job status for: '" << jobid << "' rc: '" << rc << "'" << endl;
     cerr << "  Details: " << zjb.diag.e_msg << endl;
-    return -1;
+    return RTNCD_FAILURE;
   }
 
   if (emit_csv)
@@ -847,6 +888,29 @@ int handle_job_view_jcl(ZCLIResult result)
   return 0;
 }
 
+int wait_for_status(ZJB *zjb, string status)
+{
+  int rc = 0;
+  ZJob job = {0};
+  string jobid(zjb->jobid, sizeof(zjb->jobid));
+
+  do
+  {
+    rc = zjb_view(zjb, jobid, job);
+
+    sleep(1);
+
+    if (0 != rc)
+    {
+      cerr << "Error: could not view job status for: '" << jobid << "' rc: '" << rc << "'" << endl;
+      cerr << "  Details: " << zjb->diag.e_msg << endl;
+      return RTNCD_FAILURE;
+    }
+
+  } while (job.status != status);
+  return RTNCD_SUCCESS;
+}
+
 int job_submit_common(ZCLIResult result, string jcl, string &jobid, string identifier)
 {
   int rc = 0;
@@ -862,6 +926,9 @@ int job_submit_common(ZCLIResult result, string jcl, string &jobid, string ident
 
   string only_jobid(result.get_option_value("--only-jobid"));
   string only_correlator(result.get_option_value("--only-correlator"));
+  string wait(result.get_option_value("--wait"));
+  transform(wait.begin(), wait.end(), wait.begin(), ::toupper);
+
   if ("true" == only_jobid)
     cout << jobid << endl;
   else if ("true" == only_correlator)
@@ -869,7 +936,18 @@ int job_submit_common(ZCLIResult result, string jcl, string &jobid, string ident
   else
     cout << "Submitted " << identifier << ", " << jobid << endl;
 
-  return RTNCD_SUCCESS;
+#define JOB_STATUS_OUTPUT "OUTPUT"
+#define JOB_STATUS_INPUT "ACTIVE"
+
+  if (wait == JOB_STATUS_OUTPUT || wait == JOB_STATUS_INPUT)
+  {
+    rc = wait_for_status(&zjb, wait);
+  }
+  else
+  {
+    cerr << "Error: cannot wait for unknown status '" << wait << "'" << endl;
+    return RTNCD_FAILURE;
+  }
 
   return rc;
 }
@@ -1044,6 +1122,7 @@ int handle_console_issue(ZCLIResult result)
 
   string console_name(result.get_option_value("--console-name"));
   string command(result.get_positional("command")->get_value());
+  string wait = result.get_option_value("--wait");
 
   rc = zcn_activate(&zcn, string(console_name));
   if (0 != rc)
@@ -1061,16 +1140,18 @@ int handle_console_issue(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  string response = "";
-  rc = zcn_get(&zcn, response);
-  if (0 != rc)
+  if (wait == "true")
   {
-    cerr << "Error: could not get from console: '" << console_name << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details: " << zcn.diag.e_msg << endl;
-    return RTNCD_FAILURE;
+    string response = "";
+    rc = zcn_get(&zcn, response);
+    if (0 != rc)
+    {
+      cerr << "Error: could not get from console: '" << console_name << "' rc: '" << rc << "'" << endl;
+      cerr << "  Details: " << zcn.diag.e_msg << endl;
+      return RTNCD_FAILURE;
+    }
+    cout << response << endl;
   }
-
-  cout << response << endl;
 
   // example issuing command which requires a reply
   // e.g. zoweax console issue --console-name DKELOSKX "SL SET,ID=DK00"
@@ -1192,6 +1273,23 @@ int handle_data_set_create_dsn_adata(ZCLIResult result)
   ZDS zds = {0};
   string response;
   rc = zds_create_dsn_adata(&zds, dsn, response);
+  if (0 != rc)
+  {
+    cerr << "Error: could not create data set: '" << dsn << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details:\n"
+         << response << endl;
+    return -1;
+  }
+  return handle_data_set_create_member(zds, dsn);
+}
+
+int handle_data_set_create_dsn_loadlib(ZCLIResult result)
+{
+  int rc = 0;
+  string dsn = result.get_positional("dsn")->get_value();
+  ZDS zds = {0};
+  string response;
+  rc = zds_create_dsn_loadlib(&zds, dsn, response);
   if (0 != rc)
   {
     cerr << "Error: could not create data set: '" << dsn << "' rc: '" << rc << "'" << endl;
@@ -2016,6 +2114,59 @@ int handle_tool_search(ZCLIResult result)
       cerr << "Warning: results truncated" << endl;
     }
   }
+
+  return RTNCD_SUCCESS;
+}
+
+int handle_tool_amblist(ZCLIResult result)
+{
+  int rc = 0;
+
+  string dsn(result.get_positional("dsn")->get_value());
+  string statements = " " + result.get_option_value("--control-statements");
+
+  // perform dynalloc
+  vector<string> dds;
+  dds.push_back("alloc dd(syslib) da('" + dsn + "') shr");
+  dds.push_back("alloc dd(sysprint) lrecl(80) recfm(f,b) blksize(80)");
+  dds.push_back("alloc dd(sysin) lrecl(80) recfm(f,b) blksize(80)");
+
+  rc = loop_dynalloc(dds);
+  if (RTNCD_SUCCESS != rc)
+  {
+    return RTNCD_FAILURE;
+  }
+
+  transform(statements.begin(), statements.end(), statements.begin(), ::toupper); // upper case
+
+  // write control statements
+  ZDS zds = {0};
+  zds_write_to_dd(&zds, "sysin", statements);
+  if (0 != rc)
+  {
+    cerr << "Error: could not write to dd: '" << "sysin" << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zds.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
+  // perform search
+  rc = zut_run("AMBLIST");
+  if (RTNCD_SUCCESS != rc)
+  {
+    cerr << "Error: could error invoking AMBLIST rc: '" << rc << "'" << endl;
+    // NOTE(Kelosky): don't exit here, but proceed to print errors
+  }
+
+  // read output from amblist
+  string output;
+  rc = zds_read_from_dd(&zds, "sysprint", output);
+  if (0 != rc)
+  {
+    cerr << "Error: could not read from dd: '" << "sysprint" << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zds.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+  cout << output << endl;
 
   return RTNCD_SUCCESS;
 }
