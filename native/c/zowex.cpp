@@ -19,6 +19,7 @@
 #include <unistd.h>
 #include <algorithm>
 #include <fstream>
+#include <unistd.h>
 #include "zcn.hpp"
 #include "zut.hpp"
 #include "zcli.hpp"
@@ -323,6 +324,10 @@ int main(int argc, char *argv[])
   job_submit.set_description("submit a job");
   job_submit.set_zcli_verb_handler(handle_job_submit);
 
+  ZCLIOption job_wait("wait");
+  job_wait.set_description("wait for job status");
+  job_submit.get_options().push_back(job_wait);
+
   ZCLIOption job_jobid_only("only-jobid");
   job_jobid_only.get_aliases().push_back("--oj");
   job_jobid_only.set_description("show only job id on success");
@@ -350,6 +355,10 @@ int main(int argc, char *argv[])
   job_submit_jcl.set_zcli_verb_handler(handle_job_submit_jcl);
   job_submit_jcl.get_options().push_back(job_jobid_only);
   job_submit_jcl.get_options().push_back(encoding_option);
+  job_submit_jcl.get_options().push_back(job_job_correlator_only);
+  job_submit_jcl.get_exclusive_options().push_back(job_jobid_only);
+  job_submit_jcl.get_exclusive_options().push_back(job_job_correlator_only);
+  job_submit_jcl.get_options().push_back(job_wait);
   job_group.get_verbs().push_back(job_submit_jcl);
 
   ZCLIVerb job_submit_uss("submit-uss");
@@ -362,6 +371,10 @@ int main(int argc, char *argv[])
   job_submit_uss.get_positionals().push_back(job_uss_file);
 
   job_submit_uss.get_options().push_back(job_jobid_only);
+  job_submit_uss.get_options().push_back(job_job_correlator_only);
+  job_submit_uss.get_exclusive_options().push_back(job_jobid_only);
+  job_submit_uss.get_exclusive_options().push_back(job_job_correlator_only);
+  job_submit_uss.get_options().push_back(job_wait);
   job_group.get_verbs().push_back(job_submit_uss);
 
   ZCLIVerb job_delete("delete");
@@ -804,7 +817,7 @@ int handle_job_view_status(ZCLIResult result)
   {
     cerr << "Error: could not view job status for: '" << jobid << "' rc: '" << rc << "'" << endl;
     cerr << "  Details: " << zjb.diag.e_msg << endl;
-    return -1;
+    return RTNCD_FAILURE;
   }
 
   if (emit_csv)
@@ -875,6 +888,29 @@ int handle_job_view_jcl(ZCLIResult result)
   return 0;
 }
 
+int wait_for_status(ZJB *zjb, string status)
+{
+  int rc = 0;
+  ZJob job = {0};
+  string jobid(zjb->jobid, sizeof(zjb->jobid));
+
+  do
+  {
+    rc = zjb_view(zjb, jobid, job);
+
+    sleep(1);
+
+    if (0 != rc)
+    {
+      cerr << "Error: could not view job status for: '" << jobid << "' rc: '" << rc << "'" << endl;
+      cerr << "  Details: " << zjb->diag.e_msg << endl;
+      return RTNCD_FAILURE;
+    }
+
+  } while (job.status != status);
+  return RTNCD_SUCCESS;
+}
+
 int job_submit_common(ZCLIResult result, string jcl, string &jobid, string identifier)
 {
   int rc = 0;
@@ -890,6 +926,9 @@ int job_submit_common(ZCLIResult result, string jcl, string &jobid, string ident
 
   string only_jobid(result.get_option_value("--only-jobid"));
   string only_correlator(result.get_option_value("--only-correlator"));
+  string wait(result.get_option_value("--wait"));
+  transform(wait.begin(), wait.end(), wait.begin(), ::toupper);
+
   if ("true" == only_jobid)
     cout << jobid << endl;
   else if ("true" == only_correlator)
@@ -897,7 +936,18 @@ int job_submit_common(ZCLIResult result, string jcl, string &jobid, string ident
   else
     cout << "Submitted " << identifier << ", " << jobid << endl;
 
-  return RTNCD_SUCCESS;
+#define JOB_STATUS_OUTPUT "OUTPUT"
+#define JOB_STATUS_INPUT "ACTIVE"
+
+  if (wait == JOB_STATUS_OUTPUT || wait == JOB_STATUS_INPUT)
+  {
+    rc = wait_for_status(&zjb, wait);
+  }
+  else
+  {
+    cerr << "Error: cannot wait for unknown status '" << wait << "'" << endl;
+    return RTNCD_FAILURE;
+  }
 
   return rc;
 }
