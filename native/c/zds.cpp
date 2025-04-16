@@ -140,12 +140,12 @@ int zds_write_to_dd(ZDS *zds, string ddname, string &data)
   return 0;
 }
 
-int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data, std::string etag_value)
+int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data)
 {
   const auto hasEncoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
   const auto codepage = string(zds->encoding_opts.codepage);
 
-  if (!etag_value.empty())
+  if (zds->etag != nullptr)
   {
     ZDS read_ds = {0};
     string current_contents = "";
@@ -160,7 +160,7 @@ int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data, std::string e
       return RTNCD_FAILURE;
     }
 
-    const auto given_etag = strtoul(etag_value.c_str(), nullptr, 16);
+    const auto given_etag = strtoul(zds->etag, nullptr, 16);
     const auto new_etag = zut_calc_adler32_checksum(current_contents);
 
     if (given_etag != new_etag)
@@ -217,7 +217,12 @@ int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data, std::string e
     return RTNCD_FAILURE;
   }
 
-  cout << std::hex << zut_calc_adler32_checksum(saved_contents) << std::dec << endl;
+  stringstream etag_ss;
+  etag_ss << std::hex << zut_calc_adler32_checksum(saved_contents);
+  string etag_str = etag_ss.str();
+  std::vector<char> etag(etag_str.begin(), etag_str.end());
+  zds->etag = etag.data();
+
   return 0;
 }
 

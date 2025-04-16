@@ -55,6 +55,7 @@ typedef struct
   int32_t len;              // future use
 
   ZEncode encoding_opts;
+  char *etag;
 
   int32_t max_entries;
   int32_t buffer_size;
