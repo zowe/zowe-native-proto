@@ -1519,9 +1519,7 @@ int handle_data_set_write_to_dsn(ZCLIResult result)
   auto *etag_opt = result.get_option("--etag");
   if (etag_opt != nullptr && etag_opt->is_found())
   {
-    string etag_str = etag_opt->get_value();
-    std::vector<char> etag(etag_str.begin(), etag_str.end());
-    zds.etag = etag.data();
+    strcpy(zds.etag, etag_opt->get_value().c_str());
   }
 
   rc = zds_write_to_dsn(&zds, dsn, data);
@@ -1724,9 +1722,7 @@ int handle_uss_write(ZCLIResult result)
   auto *etag_opt = result.get_option("--etag");
   if (etag_opt != nullptr && etag_opt->is_found())
   {
-    string etag_str = etag_opt->get_value();
-    std::vector<char> etag(etag_str.begin(), etag_str.end());
-    zusf.etag = etag.data();
+    strcpy(zusf.etag, etag_opt->get_value().c_str());
   }
 
   rc = zusf_write_to_uss_file(&zusf, file, data);

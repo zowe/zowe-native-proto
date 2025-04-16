@@ -217,11 +217,9 @@ int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data)
     return RTNCD_FAILURE;
   }
 
-  stringstream etag_ss;
-  etag_ss << std::hex << zut_calc_adler32_checksum(saved_contents);
-  string etag_str = etag_ss.str();
-  std::vector<char> etag(etag_str.begin(), etag_str.end());
-  zds->etag = etag.data();
+  stringstream etag_stream;
+  etag_stream << std::hex << zut_calc_adler32_checksum(saved_contents);
+  strcpy(zds->etag, etag_stream.str().c_str());
 
   return 0;
 }

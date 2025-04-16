@@ -296,8 +296,7 @@ int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data)
 
     // Print new e-tag to stdout as response
     string etag_str = zut_build_etag(file_stats.st_mtime, file_stats.st_size);
-    std::vector<char> etag(etag_str.begin(), etag_str.end());
-    zusf->etag = etag.data();
+    strcpy(zusf->etag, etag_str.c_str());
   }
 
   return 0;
