@@ -73,7 +73,7 @@ export class ZClientUtils {
                                     session.privateKey = value;
                                     break;
                                 case "connecttimeout":
-                                    session.handshakeTimeout = Number.parseInt(value);
+                                    session.handshakeTimeout = Number.parseInt(value) * 1000;
                                     break;
                                 default:
                                     break;
