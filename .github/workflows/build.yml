@@ -35,11 +35,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
 
       - run: |
-          gh run download --name zowe-server
-          mkdir packages/cli/bin && cp server.pax.Z packages/cli/bin/
-          mkdir packages/vsce/bin && cp server.pax.Z packages/vsce/bin/
+          gh run download --name zowe-server-bin
+          mkdir packages/cli/bin && cp checksums.asc server.pax.Z packages/cli/bin/
+          mkdir packages/vsce/bin && cp checksums.asc server.pax.Z packages/vsce/bin/
         env:
           GH_TOKEN: ${{ github.token }}
+        shell: bash
 
       - run: npm run package
 

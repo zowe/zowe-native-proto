@@ -138,7 +138,13 @@
     "print": "cpp",
     "stack": "cpp",
     "zwto.h": "c",
-    "ihasaver.h": "c"
+    "ihasaver.h": "c",
+    "zssitype.h": "c",
+    "zjblkup.h": "c",
+    "zjbtype.h": "c",
+    "zjsytype.h": "c",
+    "zstorage.h": "c",
+    "iazsymdf.h": "c"
   },
   "editor.formatOnSave": true,
   "[typescript]": {
