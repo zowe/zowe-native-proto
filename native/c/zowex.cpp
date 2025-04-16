@@ -2103,7 +2103,7 @@ int handle_tool_amblist(ZCLIResult result)
   rc = zut_run("AMBLIST");
   if (RTNCD_SUCCESS != rc)
   {
-    cerr << "Error: could error invoking ISRSUPC rc: '" << rc << "'" << endl;
+    cerr << "Error: could error invoking AMBLIST rc: '" << rc << "'" << endl;
     // NOTE(Kelosky): don't exit here, but proceed to print errors
   }
 
