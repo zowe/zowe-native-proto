@@ -146,6 +146,11 @@ export abstract class AbstractConfigManager {
             return;
         }
 
+        // Attempt connection if private key was provided and it has not been validated
+        if (this.validationResult === undefined && this.selectedProfile.privateKey) {
+            this.validationResult = await this.validateConfig(this.selectedProfile, false);
+        }
+
         if (this.validationResult === undefined) {
             await this.validateFoundPrivateKeys();
         }
@@ -374,7 +379,6 @@ export abstract class AbstractConfigManager {
             await attemptConnection({ ...newConfig, ...configModifications });
         } catch (err) {
             const errorMessage = `${err}`;
-
             // Check if a validation method is possible
             if (
                 newConfig.privateKey &&
@@ -437,8 +441,11 @@ export abstract class AbstractConfigManager {
             // Handshake timeout error handling
             if (errorMessage.includes("Timed out while waiting for handshake")) {
                 this.showMessage("Timed out while waiting for handshake", MESSAGE_TYPE.ERROR);
-                newConfig.privateKey = undefined;
-                newConfig.keyPassphrase = undefined;
+                return undefined;
+            }
+
+            // Malformed Private Key
+            if (errorMessage.includes("Cannot parse privateKey: Malformed OpenSSH private key")) {
                 return undefined;
             }
         }
@@ -452,7 +459,7 @@ export abstract class AbstractConfigManager {
             if (!this.validationResult) {
                 const foundPrivateKeys = await ZClientUtils.findPrivateKeys();
                 for (const privateKey of foundPrivateKeys) {
-                    const testValidation: ISshConfigExt = this.selectedProfile!;
+                    const testValidation: ISshConfigExt = { ...this.selectedProfile };
                     testValidation.privateKey = privateKey;
 
                     const result = await this.validateConfig(testValidation, false);
