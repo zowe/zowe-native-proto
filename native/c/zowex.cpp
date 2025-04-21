@@ -1534,7 +1534,8 @@ int handle_data_set_write_to_dsn(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  if (result.get_option("--etag-only") != nullptr && result.get_option("--etag-only")->is_found())
+  auto *etag_opt2 = result.get_option("--etag-only");
+  if (etag_opt2 != nullptr && etag_opt2->get_value() == "true")
   {
     cout << zds.etag << endl;
   }
@@ -1739,7 +1740,8 @@ int handle_uss_write(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  if (result.get_option("--etag-only") != nullptr && result.get_option("--etag-only")->is_found())
+  auto *etag_opt2 = result.get_option("--etag-only");
+  if (etag_opt2 != nullptr && etag_opt2->get_value() == "true")
   {
     cout << zusf.etag << endl;
   }
