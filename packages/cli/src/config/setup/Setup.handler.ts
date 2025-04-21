@@ -10,7 +10,6 @@
  */
 
 import {
-    Config,
     type ICommandHandler,
     type IConfigLayer,
     type IHandlerParameters,
@@ -212,7 +211,7 @@ export class CliPromptApi extends AbstractConfigManager {
         return process.cwd();
     }
 
-    protected getProfileType(): IProfileTypeConfiguration[] {
+    protected getProfileSchemas(): IProfileTypeConfiguration[] {
         return ImperativeConfig.instance.loadedConfig.profiles;
     }
 }

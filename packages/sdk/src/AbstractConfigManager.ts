@@ -41,7 +41,7 @@ export abstract class AbstractConfigManager {
     protected abstract showMenu(opts: qpOpts): Promise<string | undefined>;
     protected abstract showCustomMenu(opts: qpOpts): Promise<qpItem | undefined>;
     protected abstract getCurrentDir(): string | undefined;
-    protected abstract getProfileType(): IProfileTypeConfiguration[];
+    protected abstract getProfileSchemas(): IProfileTypeConfiguration[];
 
     private migratedConfigs: ISshConfigExt[];
     private filteredMigratedConfigs: ISshConfigExt[];
@@ -123,7 +123,8 @@ export abstract class AbstractConfigManager {
                 });
                 if (validConfig === undefined) return;
 
-                if (setExistingProfile) await this.setProfile(validConfig, foundProfile.name);
+                if (setExistingProfile || Object.keys(validConfig).length > 0)
+                    await this.setProfile(validConfig, foundProfile.name);
                 return { ...foundProfile, profile: { ...foundProfile.profile, ...validConfig } };
             }
         }
@@ -290,7 +291,7 @@ export abstract class AbstractConfigManager {
 
             config.api.layers.activate(user, global);
 
-            config.setSchema(ConfigSchema.buildSchema(this.getProfileType()));
+            config.setSchema(ConfigSchema.buildSchema(this.getProfileSchemas()));
 
             // Note: IConfigBuilderOpts not exported
             // const opts: IConfigBuilderOpts = {
