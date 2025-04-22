@@ -136,6 +136,10 @@ int main(int argc, char *argv[])
   etag_only.set_required(false);
   etag_only.set_description("Only print the e-tag for a write response (when successful)");
 
+  ZCLIOption return_etag("return-etag");
+  return_etag.set_required(false);
+  return_etag.set_description("Display the e-tag for a read response in addition to data");
+
   //
   // data set group
   //
@@ -195,6 +199,7 @@ int main(int argc, char *argv[])
   data_set_view.get_positionals().push_back(data_set_dsn);
   data_set_view.get_options().push_back(encoding_option);
   data_set_view.get_options().push_back(response_format_bytes);
+  data_set_view.get_options().push_back(return_etag);
   data_set_group.get_verbs().push_back(data_set_view);
 
   ZCLIVerb data_set_list("list");
@@ -494,6 +499,7 @@ int main(int argc, char *argv[])
   uss_view.set_zcli_verb_handler(handle_uss_view);
   uss_view.get_options().push_back(encoding_option);
   uss_view.get_options().push_back(response_format_bytes);
+  uss_view.get_options().push_back(return_etag);
   uss_group.get_verbs().push_back(uss_view);
 
   ZCLIVerb uss_write("write");
@@ -1339,9 +1345,12 @@ int handle_data_set_view_dsn(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  const auto etag = zut_calc_adler32_checksum(response);
-  cout << "etag: " << std::hex << etag << endl;
-  cout << "data: ";
+  if (result.get_option_value("--return-etag") == "true")
+  {
+    const auto etag = zut_calc_adler32_checksum(response);
+    cout << "etag: " << std::hex << etag << endl;
+    cout << "data: ";
+  }
   if (hasEncoding && result.get_option_value("--response-format-bytes") == "true")
   {
     zut_print_string_as_bytes(response);
@@ -1510,7 +1519,13 @@ int handle_data_set_write_to_dsn(ZCLIResult result)
     byteSize = data.size();
   }
 
-  rc = zds_write_to_dsn(&zds, dsn, data, result.get_option_value("--etag"));
+  auto *etag_opt = result.get_option("--etag");
+  if (etag_opt != nullptr && etag_opt->is_found())
+  {
+    strcpy(zds.etag, etag_opt->get_value().c_str());
+  }
+
+  rc = zds_write_to_dsn(&zds, dsn, data);
 
   if (0 != rc)
   {
@@ -1519,7 +1534,12 @@ int handle_data_set_write_to_dsn(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  if (result.get_option("--etag-only") == nullptr || !result.get_option("--etag-only")->is_found())
+  auto *etag_opt2 = result.get_option("--etag-only");
+  if (etag_opt2 != nullptr && etag_opt2->get_value() == "true")
+  {
+    cout << zds.etag << endl;
+  }
+  else
   {
     cout << "Wrote data to '" << dsn << "'" << endl;
   }
@@ -1651,8 +1671,11 @@ int handle_uss_view(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  cout << "etag: " << zut_build_etag(file_stats.st_mtime, file_stats.st_size) << endl;
-  cout << "data: ";
+  if (result.get_option_value("--return-etag") == "true")
+  {
+    cout << "etag: " << zut_build_etag(file_stats.st_mtime, file_stats.st_size) << endl;
+    cout << "data: ";
+  }
   if (hasEncoding && result.get_option_value("--response-format-bytes") == "true")
   {
     zut_print_string_as_bytes(response);
@@ -1704,14 +1727,25 @@ int handle_uss_write(ZCLIResult result)
   }
 
   auto *etag_opt = result.get_option("--etag");
-  rc = zusf_write_to_uss_file(&zusf, file, data, etag_opt != nullptr && etag_opt->is_found() ? etag_opt->get_value() : "");
+  if (etag_opt != nullptr && etag_opt->is_found())
+  {
+    strcpy(zusf.etag, etag_opt->get_value().c_str());
+  }
+
+  rc = zusf_write_to_uss_file(&zusf, file, data);
   if (0 != rc)
   {
     cerr << "Error: could not write to USS file: '" << file << "' rc: '" << rc << "'" << endl;
     cerr << "  Details: " << zusf.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
-  if (result.get_option("--etag-only") == nullptr || !result.get_option("--etag-only")->is_found())
+
+  auto *etag_opt2 = result.get_option("--etag-only");
+  if (etag_opt2 != nullptr && etag_opt2->get_value() == "true")
+  {
+    cout << zusf.etag << endl;
+  }
+  else
   {
     cout << "Wrote data to '" << file << "'" << endl;
   }

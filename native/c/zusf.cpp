@@ -235,7 +235,7 @@ int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data, std::string etag)
+int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data)
 {
   struct stat file_stats;
   if (stat(file.c_str(), &file_stats) == -1)
@@ -248,12 +248,12 @@ int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data, std::string et
   const auto hasEncoding = zusf->encoding_opts.data_type == eDataTypeText && strlen(zusf->encoding_opts.codepage) > 0;
   const auto codepage = string(zusf->encoding_opts.codepage);
 
-  if (!etag.empty())
+  if (strlen(zusf->etag) > 0)
   {
     const auto current_etag = zut_build_etag(file_stats.st_mtime, file_stats.st_size);
-    if (current_etag != etag)
+    if (current_etag != zusf->etag)
     {
-      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Etag mismatch: expected %s, actual %s", etag.c_str(), current_etag.c_str());
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Etag mismatch: expected %s, actual %s", zusf->etag, current_etag.c_str());
       return RTNCD_FAILURE;
     }
   }
@@ -295,7 +295,8 @@ int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data, std::string et
     }
 
     // Print new e-tag to stdout as response
-    cout << zut_build_etag(file_stats.st_mtime, file_stats.st_size) << endl;
+    string etag_str = zut_build_etag(file_stats.st_mtime, file_stats.st_size);
+    strcpy(zusf->etag, etag_str.c_str());
   }
 
   return 0;
