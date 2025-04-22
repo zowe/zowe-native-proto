@@ -949,7 +949,7 @@ int job_submit_common(ZCLIResult result, string jcl, string &jobid, string ident
   {
     rc = wait_for_status(&zjb, wait);
   }
-  else
+  else if (wait != "")
   {
     cerr << "Error: cannot wait for unknown status '" << wait << "'" << endl;
     return RTNCD_FAILURE;
