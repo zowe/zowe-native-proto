@@ -50,12 +50,12 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: zowe-server
-          path: packages/cli/bin/server.pax.Z
+          name: zowe-server-bin
+          path: packages/cli/bin/*
 
       - uses: actions/upload-artifact@v4
         with:
-          name: zowe-server-full
+          name: zowe-server-release
           path: dist/server.pax.Z
 
       - name: Clean up on z/OS
