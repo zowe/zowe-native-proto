@@ -499,7 +499,7 @@ int handle_job_list(const ParseResult &result)
   string owner_name(result.find_kw_arg_string("owner"));
   string prefix_name(result.find_kw_arg_string("prefix"));
   string max_entries = result.find_kw_arg_string("max-entries");
-  string warn = result.find_kw_arg_string("warn");
+  bool warn = result.find_kw_arg_bool("warn");
 
   if (max_entries.size() > 0)
   {
@@ -531,7 +531,7 @@ int handle_job_list(const ParseResult &result)
   }
   if (RTNCD_WARNING == rc)
   {
-    if ("true" == warn)
+    if (warn)
     {
       cerr << "Warning: results truncated" << endl;
     }
@@ -543,7 +543,7 @@ int handle_job_list(const ParseResult &result)
     return RTNCD_FAILURE;
   }
 
-  return "false" == warn && rc == RTNCD_WARNING ? RTNCD_SUCCESS : rc;
+  return !warn && rc == RTNCD_WARNING ? RTNCD_SUCCESS : rc;
 }
 
 int handle_job_list_files(const ParseResult &result)
@@ -1166,7 +1166,7 @@ int handle_data_set_list_members_dsn(const ParseResult &result)
   int rc = 0;
   const auto dsn = result.find_pos_arg_string("dsn");
   const auto max_entries = result.get_kw_arg_string("max-entries");
-  const auto warn = result.find_kw_arg_bool("--warn");
+  const auto warn = result.find_kw_arg_bool("warn");
   ZDS zds = {0};
   if (max_entries != nullptr)
   {

@@ -117,7 +117,7 @@ func HandleListDatasetsRequest(conn *utils.StdioConn, params []byte) (result any
 		return nil, err
 	}
 
-	args := []string{"data-set", "list", request.Pattern, "--warn", "false", "--rfc", "true"}
+	args := []string{"data-set", "list", request.Pattern, "--no-warn", "--rfc"}
 	// if len(listRequest.Start) != 0 {
 	// 	args = append(args, "--start", listRequest.Start)
 	// }
@@ -167,7 +167,7 @@ func HandleListDsMembersRequest(conn *utils.StdioConn, params []byte) (result an
 		return nil, err
 	}
 
-	args := []string{"data-set", "list-members", request.Dsname, "--warn", "false"}
+	args := []string{"data-set", "list-members", request.Dsname, "--no-warn"}
 	// if len(listRequest.Start) != 0 {
 	// 	args = append(args, "--start", listRequest.Start)
 	// }

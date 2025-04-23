@@ -1222,17 +1222,23 @@ namespace pparser
         }
         else
         {
-          // unexpected token (neither flag, subcommand, nor expected positional)
-          result.status = ParseResult::ParserStatus_ParseError;
-          std::stringstream ss;
-          ss << "unexpected argument: ";
-          token.print(ss);
-          result.error_message = ss.str();
-          // print error and help for this command to stderr
-          std::cerr << "error: " << result.error_message << "\n\n";
-          generate_help(std::cerr, command_path_prefix);
-          result.exit_code = 1;
-          return result;
+          // Only treat as unexpected if not a string or identifier (quoted or unquoted)
+          if (token.get_kind() != lexer::TokId && token.get_kind() != lexer::TokStrLit)
+          {
+            result.status = ParseResult::ParserStatus_ParseError;
+            std::stringstream ss;
+            ss << "unexpected argument: ";
+            token.print(ss);
+            result.error_message = ss.str();
+            // print error and help for this command to stderr
+            std::cerr << "error: " << result.error_message << "\n\n";
+            generate_help(std::cerr, command_path_prefix);
+            result.exit_code = 1;
+            return result;
+          }
+          // Otherwise, forcibly advance the token and positional argument index to avoid infinite loop
+          current_token_index++;
+          current_positional_arg_index++;
         }
       }
 
@@ -1656,13 +1662,65 @@ namespace pparser
         return error_result;
       }
 
-      // combine args into a single string for the lexer
-      std::stringstream ss;
+      // Convert argv[1..argc-1] to vector<string>
+      std::vector<std::string> args;
       for (int i = 1; i < argc; ++i)
       {
-        ss << argv[i] << " ";
+        args.push_back(std::string(argv[i]));
       }
-      return parse(ss.str());
+      // Mature CLI: treat each argv element as atomic, parse by CLI rules
+      std::vector<lexer::Token> tokens;
+      size_t pos = 0;
+      for (size_t i = 0; i < args.size(); ++i)
+      {
+        const std::string &arg = args[i];
+        if (arg.size() > 2 && arg[0] == '-' && arg[1] == '-')
+        {
+          // Long flag: --flag
+          tokens.push_back(lexer::Token::make_long_flag(arg.c_str() + 2, arg.size() - 2, lexer::Span(pos, pos + arg.size())));
+        }
+        else if (arg.size() > 1 && arg[0] == '-' && arg != "-")
+        {
+          // Short flag: -f or -abc
+          tokens.push_back(lexer::Token::make_short_flag(arg.c_str() + 1, arg.size() - 1, lexer::Span(pos, pos + arg.size())));
+        }
+        else if (
+            (arg.size() >= 2 && ((arg[0] == '"' && arg[arg.size() - 1] == '"') || (arg[0] == '\'' && arg[arg.size() - 1] == '\''))))
+        {
+          // Quoted string literal (remove quotes)
+          tokens.push_back(lexer::Token::make_str_lit(arg.c_str() + 1, arg.size() - 2, lexer::Span(pos, pos + arg.size())));
+        }
+        else
+        {
+          // All other arguments: treat as identifier (positional or value)
+          tokens.push_back(lexer::Token::make_id(arg.c_str(), arg.size(), lexer::Span(pos, pos + arg.size())));
+        }
+        pos += arg.size() + 1;
+      }
+
+      size_t token_index = 0;
+      if (!m_root_cmd)
+      {
+        ParseResult error_result;
+        error_result.status = ParseResult::ParserStatus_ParseError;
+        error_result.error_message = "ArgumentParser is not initialized correctly.";
+        error_result.exit_code = 1;
+        return error_result;
+      }
+      ParseResult result = m_root_cmd->parse(tokens, token_index, "");
+      if (result.status == ParseResult::ParserStatus_Success && token_index < tokens.size())
+      {
+        result.status = ParseResult::ParserStatus_ParseError;
+        std::stringstream ss;
+        ss << "unexpected arguments starting from: ";
+        tokens[token_index].print(ss);
+        result.error_message = ss.str();
+        std::cerr << "error: " << result.error_message << "\n\n";
+        m_root_cmd->generate_help(std::cerr, "");
+        result.exit_code = 1;
+        return result;
+      }
+      return result;
     }
 
     // parse command line arguments from a single string
