@@ -14,6 +14,7 @@ import {
     type IConfigLayer,
     type IHandlerParameters,
     type IHandlerResponseApi,
+    type IProfArgAttrs,
     type IProfileTypeConfiguration,
     ImperativeConfig,
     ImperativeError,
@@ -36,10 +37,59 @@ export default class ServerInstallHandler implements ICommandHandler {
         await profInfo.readProfilesFromDisk();
         const cliPromptApi = new CliPromptApi(profInfo, params.response);
 
-        // Pass false for setProfile in the case of an existing team config profile being selected such that it will not touch the team config unless needed
+        // Get all profiles before selecting a profile
+        const configAllBeforeProfiles = profInfo.getAllProfiles().filter((prof) => prof.profLoc.osLoc.length !== 0);
+        const sshBeforeProfiles = configAllBeforeProfiles.filter((prof) => prof.profType === "ssh");
+
+        const allBeforeMergedProf = [];
+        for (const profile of sshBeforeProfiles) {
+            allBeforeMergedProf.push(profInfo.mergeArgsForProfile(profile));
+        }
+
         const profile = await cliPromptApi.promptForProfile(undefined, false);
 
+        // Get all profiles after selecting a profile
+        const configAllAfterProfiles = profInfo.getAllProfiles().filter((prof) => prof.profLoc.osLoc.length !== 0);
+
+        // Get profiles from before selecting that match the user of the selected profile
+        const beforeMergedSelectedProf = allBeforeMergedProf.find((prof) =>
+            prof.knownArgs.find(
+                (arg) =>
+                    arg.argName === "user" &&
+                    arg.argLoc.jsonLoc ===
+                        `${configAllAfterProfiles.find((find) => find.profName === profile.name).profLoc.jsonLoc}.properties.user`,
+            ),
+        )?.knownArgs;
+
+        // Map all argument names to their jsonLoc
+        const beforeKeys = new Set(
+            beforeMergedSelectedProf?.map((field) => `${field.argName}::${field.argLoc.jsonLoc}`),
+        );
+
+        // Find profile with matching name and type ssh
+        const afterProfiles = configAllAfterProfiles.find(
+            (prof) => prof.profName === profile.name && prof.profType === "ssh",
+        );
+
+        // Get merged args for the found profile
+        const afterMergedSelectedProf = profInfo.mergeArgsForProfile(afterProfiles).knownArgs;
+
+        // Get the difference between the new profiles and the old profiles to set on the Config object
+        const newProperties = afterMergedSelectedProf.filter(
+            (field) => !beforeKeys.has(`${field.argName}::${field.argLoc.jsonLoc}`),
+        );
+
         const Config = ImperativeConfig.instance.config;
+
+        // Set the new fields on the Config object, set as secure if a credential manager is active and the property is secure.
+        for (const property of newProperties) {
+            Config.set(property.argLoc.jsonLoc, property.argValue, { secure: profInfo.isSecured() && property.secure });
+        }
+
+        // biome-ignore lint/suspicious/noExplicitAny: Required `as any` to set profile type
+        (Config as any).mLayers.find(
+            (profile: { path: string }) => profile.path === newProperties[0].argLoc?.osLoc[0],
+        ).properties.profiles[profile.name].type = "ssh";
 
         if (profile && Config.properties.defaults.ssh !== profile.name) {
             const defaultResponse = (
@@ -50,6 +100,7 @@ export default class ServerInstallHandler implements ICommandHandler {
                 .toLocaleLowerCase()
                 .trim();
             if (defaultResponse === "y" || defaultResponse === "") {
+                await profInfo.readProfilesFromDisk();
                 Config.api.profiles.defaultSet("ssh", profile.name);
                 await Config.save();
             }
