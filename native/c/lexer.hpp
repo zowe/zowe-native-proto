@@ -1,6 +1,32 @@
 #ifndef LEXER_HPP
 #define LEXER_HPP
 
+// Compatibility for shared_ptr and enable_shared_from_this for compilers w/
+// separate TR1 folder (C++11 Tech Report 1 standard)
+#if defined(__has_include)
+#if __has_include(<memory>)
+#include <memory>
+#elif __has_include(<tr1/memory>)
+#include <tr1/memory>
+namespace std {
+typedef tr1::shared_ptr shared_ptr;
+typedef tr1::enable_shared_from_this enable_shared_from_this;
+} // namespace std
+#endif
+#else
+// Fallback for specialized compilers w/ standard headers but separation via tr1
+// namespace
+#if defined(__IBMCPP_TR1__)
+#include <memory>
+#else
+#include <tr1/memory>
+namespace std {
+using tr1::enable_shared_from_this;
+using tr1::shared_ptr;
+} // namespace std
+#endif
+#endif
+
 #include <cctype>
 #include <cerrno>
 #include <climits>
@@ -28,8 +54,8 @@ public:
   size_t get_col() const { return m_col; }
 
   void print(std::ostream &os) const {
-    os << (m_filename.empty() ? "<string>" : m_filename) << " (" << m_line << ":"
-       << m_col << ")";
+    os << (m_filename.empty() ? "<string>" : m_filename) << " (" << m_line
+       << ":" << m_col << ")";
   }
 
   std::string m_filename;
@@ -129,7 +155,7 @@ public:
     file.seekg(0, std::ios::beg);
 
     if (size > 0) {
-      file.read(buffer.data(), size);
+      file.read(&buffer[0], size);
       if (!file && !file.eof()) {
         throw std::runtime_error("error reading file: " + filename);
       }
@@ -139,7 +165,7 @@ public:
   }
 
   static Src from_string(const std::string &code_str,
-                           const std::string &filename = "<string>") {
+                         const std::string &filename = "<string>") {
     std::vector<char> chars(code_str.begin(), code_str.end());
     return Src(filename, chars);
   }
@@ -149,7 +175,9 @@ public:
 
   InputIter get_iterator() const { return InputIter(m_filename, m_input); }
 
-  const char *get_code_ptr() const { return m_input.empty() ? nullptr : &m_input[0]; }
+  const char *get_code_ptr() const {
+    return m_input.empty() ? nullptr : &m_input[0];
+  }
 
 private:
   Src(const std::string &filename, const std::vector<char> &code)
@@ -313,9 +341,6 @@ struct StringRef {
   const char *start;
   size_t length;
 
-  StringRef() : start(nullptr), length(0) {}
-  StringRef(const char *s, size_t l) : start(s), length(l) {}
-
   std::string to_string() const {
     if (!start)
       return "";
@@ -383,7 +408,7 @@ public:
   }
 
   static Token make_short_flag(const char *name_ptr, size_t len,
-                             const Span &span) {
+                               const Span &span) {
     Token token(TokFlagShort, span);
     token.m_data.string_ref.start = name_ptr;
     token.m_data.string_ref.length = len;
@@ -391,7 +416,7 @@ public:
   }
 
   static Token make_long_flag(const char *name_ptr, size_t len,
-                            const Span &span) {
+                              const Span &span) {
     Token token(TokFlagLong, span);
     token.m_data.string_ref.start = name_ptr;
     token.m_data.string_ref.length = len;
@@ -405,7 +430,8 @@ public:
     return token;
   }
 
-  static Token make_float_lit(double value, bool has_exponent, const Span &span) {
+  static Token make_float_lit(double value, bool has_exponent,
+                              const Span &span) {
     Token token(TokFloatLit, span);
     token.m_data.float_lit.value = value;
     token.m_data.float_lit.has_exponent = has_exponent;
@@ -415,7 +441,7 @@ public:
   // stores raw string content (pointer between quotes, length).
   // escape sequences are processed on demand by get_str_lit_value().
   static Token make_str_lit(const char *content_start_ptr, size_t content_len,
-                          const Span &span) {
+                            const Span &span) {
     Token token(TokStrLit, span);
     token.m_data.string_ref.start = content_start_ptr;
     token.m_data.string_ref.length = content_len;
@@ -692,7 +718,7 @@ public:
             os << c; // print printable chars directly
           } else {
             // non-printable chars, print unicode replacement character
-            os << u8"\ufffd";
+            os << "\ufffd";
           }
           ptr++;
         }
@@ -963,8 +989,8 @@ private:
           return Token(TokDoubleMinus, Span(start_pos, m_iter.position()));
         } else {
           // case like "--1" or "--_" ? treat as error? or allow as part of long
-          // flag? current lex_long_flag expects ident start. let's treat as error
-          // here.
+          // flag? current lex_long_flag expects ident start. let's treat as
+          // error here.
           throw LexError::invalid_char(
               Location(start_loc.m_filename, start_loc.m_line,
                        start_loc.m_col + 2)); // error after '--'
@@ -985,7 +1011,7 @@ private:
       // comments are handled by eat_whitespace_and_comments
       // check if it starts a path-like identifier
       if (is_ident_cont(peek())) { // if '/' is followed by another identifier
-                                 // character...
+                                   // character...
         return lex_identifier_or_keyword(
             start_pos); // ...treat it as the start of an identifier
       } else {
@@ -1110,8 +1136,8 @@ private:
   // returns token with raw content slice (pointer/length between quotes)
   Token lex_string(size_t span_start) {
     // span_start is position of opening quote "
-    Location start_loc = m_iter.get_location();    // location of "
-    next();                                     // consume the opening quote "
+    Location start_loc = m_iter.get_location();   // location of "
+    next();                                       // consume the opening quote "
     size_t content_start_pos = m_iter.position(); // position after "
 
     while (true) {
@@ -1130,9 +1156,9 @@ private:
         break; // end of string content
       }
 
-      if (c == '\\') {                            // escape sequence
+      if (c == '\\') {                               // escape sequence
         Location escape_loc = m_iter.get_location(); // location of backslash
-        next();                                   // consume backslash
+        next();                                      // consume backslash
         char escaped_char = current();
         if (escaped_char == '\0' ||
             escaped_char == '\n') { // invalid state after backslash
@@ -1161,14 +1187,14 @@ private:
     }
 
     size_t content_end_pos = m_iter.position(); // position of closing quote "
-    next();                                   // consume closing quote "
+    next();                                     // consume closing quote "
     size_t span_end = m_iter.position();
 
     const char *content_start_ptr = m_input_ptr + content_start_pos;
     size_t content_length = content_end_pos - content_start_pos;
 
     return Token::make_str_lit(content_start_ptr, content_length,
-                             Span(span_start, span_end));
+                               Span(span_start, span_end));
   }
 
   // lexes a number (integer or float)
@@ -1188,34 +1214,28 @@ private:
     const int buffer_max_idx =
         sizeof(num_buffer) - 1; // leave space for null terminator
 
-    auto add_to_buffer = [&](char ch) {
-      if (buffer_idx < buffer_max_idx) {
-        num_buffer[buffer_idx++] = ch;
-      } else {
-        // buffer overflow - indicates extremely long literal, likely out of
-        // range anyway throw specific error? or let range check handle it? let
-        // range check handle it for now. don't add more chars. or, dynamically
-        // allocate a larger buffer if truly huge numbers needed? stick to fixed
-        // buffer for pre-c++11 simplicity.
-      }
-    };
-
     // check for base prefixes (0x, 0b)
     if (current() == '0') {
-      add_to_buffer('0');
+      if (buffer_idx < buffer_max_idx) {
+        num_buffer[buffer_idx++] = '0';
+      }
       next();             // consume '0'
       char p = current(); // use current() after consuming '0'
       if (p == 'x' || p == 'x') {
         base = Hex;
-        add_to_buffer(p);
-        next();                            // consume x/x
+        if (buffer_idx < buffer_max_idx) {
+          num_buffer[buffer_idx++] = p;
+        }
+        next();                               // consume x/x
         if (!is_ascii_hex_digit(current())) { // check must follow prefix
           throw LexError::incomplete_int(m_iter.get_location());
         }
       } else if (p == 'b' || p == 'b') {
         base = Bin;
-        add_to_buffer(p);
-        next();                            // consume b/b
+        if (buffer_idx < buffer_max_idx) {
+          num_buffer[buffer_idx++] = p;
+        }
+        next();                               // consume b/b
         if (!is_ascii_bin_digit(current())) { // check must follow prefix
           throw LexError::incomplete_int(m_iter.get_location());
         }
@@ -1239,18 +1259,24 @@ private:
       if (buffer_idx == 0 &&
           start_pos ==
               m_iter.position() - 1) { // add first digit if not already added
-        add_to_buffer(m_input_ptr[start_pos]);
+        if (buffer_idx < buffer_max_idx) {
+          num_buffer[buffer_idx++] = m_input_ptr[start_pos];
+        }
       }
 
       if (current() != '_') {
-        add_to_buffer(current());
+        if (buffer_idx < buffer_max_idx) {
+          num_buffer[buffer_idx++] = current();
+        }
       }
       next();
     }
     // ensure first digit was added if loop didn't run (e.g., single digit
     // number)
     if (buffer_idx == 0 && start_pos == m_iter.position() - 1) {
-      add_to_buffer(m_input_ptr[start_pos]);
+      if (buffer_idx < buffer_max_idx) {
+        num_buffer[buffer_idx++] = m_input_ptr[start_pos];
+      }
     }
 
     // check for float components (only if base is dec)
@@ -1261,13 +1287,17 @@ private:
           is_ascii_dec_digit(peek())) // must have digit after '.'
       {
         is_float = true;
-        add_to_buffer('.'); // add the decimal point
-        next();           // consume .
+        if (buffer_idx < buffer_max_idx) {
+          num_buffer[buffer_idx++] = '.';
+        } // add the decimal point
+        next(); // consume .
 
         // parse fractional part
         while (is_digit_or_underscore(current(), Dec)) {
           if (current() != '_') {
-            add_to_buffer(current());
+            if (buffer_idx < buffer_max_idx) {
+              num_buffer[buffer_idx++] = current();
+            }
           }
           next();
         }
@@ -1290,12 +1320,16 @@ private:
              is_ascii_dec_digit(exp_peek2))) {
           is_float = true; // a number with exponent is always float
           has_exponent = true;
-          add_to_buffer(current()); // add 'e' or 'e'
-          next();                 // consume e/e
+          if (buffer_idx < buffer_max_idx) {
+            num_buffer[buffer_idx++] = current();
+          } // add 'e' or 'e'
+          next(); // consume e/e
 
           // add exponent sign if present
           if (current() == '+' || current() == '-') {
-            add_to_buffer(current());
+            if (buffer_idx < buffer_max_idx) {
+              num_buffer[buffer_idx++] = current();
+            }
             next();
           }
 
@@ -1303,7 +1337,9 @@ private:
           // condition) parse exponent digits
           while (is_digit_or_underscore(current(), Dec)) {
             if (current() != '_') {
-              add_to_buffer(current());
+              if (buffer_idx < buffer_max_idx) {
+                num_buffer[buffer_idx++] = current();
+              }
             }
             next();
           }
@@ -1399,7 +1435,7 @@ private:
   Token lex_short_flag(size_t start_pos) // start_pos is the position of '-'
   {
     Location flag_char_loc = m_iter.get_location(); // loc of char after '-'
-    size_t content_start_pos = m_iter.position();  // position of char after '-'
+    size_t content_start_pos = m_iter.position(); // position of char after '-'
 
     // read the flag content (alphanumeric sequence)
     // short flags are typically single char, but allow sequence for flexibility
@@ -1418,23 +1454,24 @@ private:
       // error occurs, the logic in next_token needs adjustment.
       throw std::runtime_error(
           "internal lexer error: lex_short_flag called incorrectly"); // should
-                                                                    // not
-                                                                    // happen
+                                                                      // not
+                                                                      // happen
     }
 
     const char *flag_start_ptr = m_input_ptr + content_start_pos;
     // use make_flag (which currently creates TokId)
     // the span should include the leading '-'
     return Token::make_short_flag(flag_start_ptr, length,
-                                Span(start_pos, end_pos));
+                                  Span(start_pos, end_pos));
   }
 
   // lexes a long flag (e.g., --version, --file)
   // assumes called when current() is the char *after* '--'
-  Token lex_long_flag(size_t start_pos) // start_pos is the position of first '-'
+  Token
+  lex_long_flag(size_t start_pos) // start_pos is the position of first '-'
   {
     Location name_start_loc = m_iter.get_location(); // loc of char after '--'
-    size_t name_start_pos = m_iter.position();      // position of char after '--'
+    size_t name_start_pos = m_iter.position(); // position of char after '--'
 
     // read the identifier part of the flag name
     // allow '-' within long flag names? e.g. --my-flag
@@ -1459,7 +1496,7 @@ private:
     // so, just return the flag token based on the name.
     // the span should include the leading '--'
     return Token::make_long_flag(name_start_ptr, name_length,
-                               Span(start_pos, name_end_pos));
+                                 Span(start_pos, name_end_pos));
   }
 
   // character navigation helpers (inline wrappers around iterator)
@@ -1472,9 +1509,9 @@ private:
   void next2() { m_iter.next2(); }
 
   // state
-  InputIter m_iter;         // iterator over the input
-  const char *m_input_ptr;    // pointer to start of the input
-  std::vector<Token> m_tokens;  // vector to store the generated tokens
+  InputIter m_iter;            // iterator over the input
+  const char *m_input_ptr;     // pointer to start of the input
+  std::vector<Token> m_tokens; // vector to store the generated tokens
 };
 
 } // namespace lexer

@@ -9,6 +9,7 @@
  *
  */
 
+#include "pparser.hpp"
 #include <iostream>
 #include <vector>
 #include <stdlib.h>
@@ -36,54 +37,54 @@
 using namespace pparser;
 using namespace std;
 
-int handle_job_list(ParseResult &);
-int handle_job_list_files(ParseResult &);
-int handle_job_view_status(ParseResult &);
-int handle_job_view_file(ParseResult &);
-int handle_job_view_jcl(ParseResult &);
-int handle_job_submit(ParseResult &);
-int handle_job_submit_jcl(ParseResult &);
-int handle_job_submit_uss(ParseResult &);
-int handle_job_delete(ParseResult &);
-int handle_job_cancel(ParseResult &);
-int handle_job_hold(ParseResult &);
-int handle_job_release(ParseResult &);
+int handle_job_list(const ParseResult &);
+int handle_job_list_files(const ParseResult &);
+int handle_job_view_status(const ParseResult &);
+int handle_job_view_file(const ParseResult &);
+int handle_job_view_jcl(const ParseResult &);
+int handle_job_submit(const ParseResult &);
+int handle_job_submit_jcl(const ParseResult &);
+int handle_job_submit_uss(const ParseResult &);
+int handle_job_delete(const ParseResult &);
+int handle_job_cancel(const ParseResult &);
+int handle_job_hold(const ParseResult &);
+int handle_job_release(const ParseResult &);
 
-int handle_console_issue(ParseResult &);
+int handle_console_issue(const ParseResult &);
 
-int handle_data_set_create_dsn(ParseResult &);
-int handle_data_set_create_dsn_vb(ParseResult &);
-int handle_data_set_create_dsn_adata(ParseResult &);
-int handle_data_set_restore(ParseResult &);
-int handle_data_set_view_dsn(ParseResult &);
-int handle_data_set_list(ParseResult &);
-int handle_data_set_list_members_dsn(ParseResult &);
-int handle_data_set_write_to_dsn(ParseResult &);
-int handle_data_set_delete_dsn(ParseResult &);
-int handle_data_set_create_member_dsn(ParseResult &);
+int handle_data_set_create_dsn(const ParseResult &);
+int handle_data_set_create_dsn_vb(const ParseResult &);
+int handle_data_set_create_dsn_adata(const ParseResult &);
+int handle_data_set_restore(const ParseResult &);
+int handle_data_set_view_dsn(const ParseResult &);
+int handle_data_set_list(const ParseResult &);
+int handle_data_set_list_members_dsn(const ParseResult &);
+int handle_data_set_write_to_dsn(const ParseResult &);
+int handle_data_set_delete_dsn(const ParseResult &);
+int handle_data_set_create_member_dsn(const ParseResult &);
 
-int handle_log_view(ParseResult &);
+int handle_log_view(const ParseResult &);
 
-int handle_tool_convert_dsect(ParseResult &);
-int handle_tool_dynalloc(ParseResult &);
-int handle_tool_display_symbol(ParseResult &);
-int handle_tool_search(ParseResult &);
-int handle_tool_run(ParseResult &);
+int handle_tool_convert_dsect(const ParseResult &);
+int handle_tool_dynalloc(const ParseResult &);
+int handle_tool_display_symbol(const ParseResult &);
+int handle_tool_search(const ParseResult &);
+int handle_tool_run(const ParseResult &);
 
 // TODO(Kelosky):
 // help w/verbose examples
 // add simple examples to help
 
-int handle_uss_create_file(ParseResult &);
-int handle_uss_create_dir(ParseResult &);
-int handle_uss_list(ParseResult &);
-int handle_uss_view(ParseResult &);
-int handle_uss_write(ParseResult &);
-int handle_uss_delete(ParseResult &);
-int handle_uss_chmod(ParseResult &);
-int handle_uss_chown(ParseResult &);
-int handle_uss_chtag(ParseResult &);
-int handle_tso_issue(ParseResult &);
+int handle_uss_create_file(const ParseResult &);
+int handle_uss_create_dir(const ParseResult &);
+int handle_uss_list(const ParseResult &);
+int handle_uss_view(const ParseResult &);
+int handle_uss_write(const ParseResult &);
+int handle_uss_delete(const ParseResult &);
+int handle_uss_chmod(const ParseResult &);
+int handle_uss_chown(const ParseResult &);
+int handle_uss_chtag(const ParseResult &);
+int handle_tso_issue(const ParseResult &);
 
 int main(int argc, char *argv[])
 {
@@ -94,9 +95,9 @@ int main(int argc, char *argv[])
   root_command.add_keyword_arg("interactive", "--it", "--interactive", "interactive (REPL) mode", ArgType_Flag);
 
   // --- tso group ---
-  auto tso_cmd = make_shared<Command>("tso", "TSO operations");
+  auto tso_cmd = command_ptr(new Command("tso", "TSO operations"));
   {
-    auto issue_cmd = make_shared<Command>("issue", "issue TSO command");
+    auto issue_cmd = command_ptr(new Command("issue", "issue TSO command"));
     issue_cmd->add_positional_arg("command", "command to issue", ArgType_Single, true);
     issue_cmd->set_handler(handle_tso_issue);
     tso_cmd->add_command(issue_cmd);
@@ -104,50 +105,50 @@ int main(int argc, char *argv[])
   root_command.add_command(tso_cmd);
 
   // --- data set group (ds) ---
-  auto data_set_cmd = make_shared<Command>("data-set", "z/OS data set operations");
+  auto data_set_cmd = command_ptr(new Command("data-set", "z/OS data set operations"));
   data_set_cmd->add_alias("ds");
   {
     const string dsn_help = "data set name, optionally with member specified";
     const string max_entries_help = "max number of results to return before error generated";
     const string warn_help = "warn if truncated or not found";
 
-    auto create_cmd = make_shared<Command>("create", "create data set using defaults: dsorg=PO, recfm=FB, lrecl=80");
+    auto create_cmd = command_ptr(new Command("create", "create data set using defaults: dsorg=PO, recfm=FB, lrecl=80"));
     create_cmd->add_alias("cre");
     create_cmd->add_positional_arg("dsn", dsn_help, ArgType_Single, true);
     create_cmd->set_handler(handle_data_set_create_dsn);
     data_set_cmd->add_command(create_cmd);
 
-    auto create_vb_cmd = make_shared<Command>("create-vb", "create VB data set using defaults: dsorg=PO, recfm=VB, lrecl=255");
+    auto create_vb_cmd = command_ptr(new Command("create-vb", "create VB data set using defaults: dsorg=PO, recfm=VB, lrecl=255"));
     create_vb_cmd->add_alias("cre-vb");
     create_vb_cmd->add_positional_arg("dsn", dsn_help, ArgType_Single, true);
     create_vb_cmd->set_handler(handle_data_set_create_dsn_vb);
     data_set_cmd->add_command(create_vb_cmd);
 
-    auto create_adata_cmd = make_shared<Command>("create-adata", "create VB data set using defaults: dsorg=PO, recfm=VB, lrecl=32756");
+    auto create_adata_cmd = command_ptr(new Command("create-adata", "create VB data set using defaults: dsorg=PO, recfm=VB, lrecl=32756"));
     create_adata_cmd->add_alias("cre-a");
     create_adata_cmd->add_positional_arg("dsn", dsn_help, ArgType_Single, true);
     create_adata_cmd->set_handler(handle_data_set_create_dsn_adata);
     data_set_cmd->add_command(create_adata_cmd);
 
-    auto create_member_cmd = make_shared<Command>("create-member", "create member in data set");
+    auto create_member_cmd = command_ptr(new Command("create-member", "create member in data set"));
     create_member_cmd->add_alias("cre-m");
     create_member_cmd->add_positional_arg("dsn", dsn_help, ArgType_Single, true);
     create_member_cmd->set_handler(handle_data_set_create_member_dsn);
     data_set_cmd->add_command(create_member_cmd);
 
-    auto restore_cmd = make_shared<Command>("restore", "restore/recall data set");
+    auto restore_cmd = command_ptr(new Command("restore", "restore/recall data set"));
     restore_cmd->add_positional_arg("dsn", dsn_help, ArgType_Single, true);
     restore_cmd->set_handler(handle_data_set_restore);
     data_set_cmd->add_command(restore_cmd);
 
-    auto view_cmd = make_shared<Command>("view", "view data set");
+    auto view_cmd = command_ptr(new Command("view", "view data set"));
     view_cmd->add_positional_arg("dsn", dsn_help, ArgType_Single, true);
     view_cmd->add_keyword_arg("encoding", "--ec", "--encoding", "return contents in given encoding", ArgType_Single);
     view_cmd->add_keyword_arg("response-format-bytes", "--rfb", "--response-format-bytes", "returns the response as raw bytes", ArgType_Flag);
     view_cmd->set_handler(handle_data_set_view_dsn);
     data_set_cmd->add_command(view_cmd);
 
-    auto list_cmd = make_shared<Command>("list", "list data sets");
+    auto list_cmd = command_ptr(new Command("list", "list data sets"));
     list_cmd->add_alias("ls");
     list_cmd->add_positional_arg("dsn", dsn_help, ArgType_Single, true);
     list_cmd->add_keyword_arg("attributes", "-a", "--attributes", "display data set attributes", ArgType_Flag);
@@ -157,7 +158,7 @@ int main(int argc, char *argv[])
     list_cmd->set_handler(handle_data_set_list);
     data_set_cmd->add_command(list_cmd);
 
-    auto list_members_cmd = make_shared<Command>("list-members", "list data set members");
+    auto list_members_cmd = command_ptr(new Command("list-members", "list data set members"));
     list_members_cmd->add_alias("lm");
     list_members_cmd->add_positional_arg("dsn", dsn_help, ArgType_Single, true);
     list_members_cmd->add_keyword_arg("max-entries", "--me", "--max-entries", max_entries_help, ArgType_Single);
@@ -165,7 +166,7 @@ int main(int argc, char *argv[])
     list_members_cmd->set_handler(handle_data_set_list_members_dsn);
     data_set_cmd->add_command(list_members_cmd);
 
-    auto write_cmd = make_shared<Command>("write", "write to data set");
+    auto write_cmd = command_ptr(new Command("write", "write to data set"));
     write_cmd->add_positional_arg("dsn", dsn_help, ArgType_Single, true);
     write_cmd->add_keyword_arg("encoding", "--ec", "--encoding", "return contents in given encoding", ArgType_Single);
     write_cmd->add_keyword_arg("etag", "--et", "--etag", "provide the e-tag for a write response to detect conflicts before save", ArgType_Single, false);
@@ -173,7 +174,7 @@ int main(int argc, char *argv[])
     write_cmd->set_handler(handle_data_set_write_to_dsn);
     data_set_cmd->add_command(write_cmd);
 
-    auto delete_cmd = make_shared<Command>("delete", "delete data set");
+    auto delete_cmd = command_ptr(new Command("delete", "delete data set"));
     delete_cmd->add_alias("del");
     delete_cmd->add_positional_arg("dsn", dsn_help, ArgType_Single, true);
     delete_cmd->set_handler(handle_data_set_delete_dsn);
@@ -182,13 +183,13 @@ int main(int argc, char *argv[])
   root_command.add_command(data_set_cmd);
 
   // --- jobs group ---
-  auto job_cmd = make_shared<Command>("job", "z/OS job operations");
+  auto job_cmd = command_ptr(new Command("job", "z/OS job operations"));
   {
     const string max_entries_help = "max number of results to return before error generated";
     const string warn_help = "warn if truncated or not found";
     const string jobid_help = "valid job ID";
 
-    auto list_cmd = make_shared<Command>("list", "list jobs");
+    auto list_cmd = command_ptr(new Command("list", "list jobs"));
     list_cmd->add_keyword_arg("owner", "-o", "--owner", "filter by owner", ArgType_Single);
     list_cmd->add_keyword_arg("prefix", "-p", "--prefix", "filter by prefix", ArgType_Single);
     list_cmd->add_keyword_arg("max-entries", "--me", "--max-entries", max_entries_help, ArgType_Single);
@@ -197,21 +198,21 @@ int main(int argc, char *argv[])
     list_cmd->set_handler(handle_job_list);
     job_cmd->add_command(list_cmd);
 
-    auto list_files_cmd = make_shared<Command>("list-files", "list spool files for jobid");
+    auto list_files_cmd = command_ptr(new Command("list-files", "list spool files for jobid"));
     list_files_cmd->add_alias("lf");
     list_files_cmd->add_positional_arg("jobid", jobid_help, ArgType_Single, true);
     list_files_cmd->add_keyword_arg("response-format-csv", "--rfc", "--response-format-csv", "returns the response in CSV format", ArgType_Flag);
     list_files_cmd->set_handler(handle_job_list_files);
     job_cmd->add_command(list_files_cmd);
 
-    auto view_status_cmd = make_shared<Command>("view-status", "view job status");
+    auto view_status_cmd = command_ptr(new Command("view-status", "view job status"));
     view_status_cmd->add_alias("vs");
     view_status_cmd->add_positional_arg("jobid", jobid_help, ArgType_Single, true);
     view_status_cmd->add_keyword_arg("response-format-csv", "--rfc", "--response-format-csv", "returns the response in CSV format", ArgType_Flag);
     view_status_cmd->set_handler(handle_job_view_status);
     job_cmd->add_command(view_status_cmd);
 
-    auto view_file_cmd = make_shared<Command>("view-file", "view job file output");
+    auto view_file_cmd = command_ptr(new Command("view-file", "view job file output"));
     view_file_cmd->add_alias("vf");
     view_file_cmd->add_positional_arg("jobid", jobid_help, ArgType_Single, true);
     view_file_cmd->add_positional_arg("key", "valid job dsn key via 'job list-files'", ArgType_Single, true);
@@ -220,40 +221,40 @@ int main(int argc, char *argv[])
     view_file_cmd->set_handler(handle_job_view_file);
     job_cmd->add_command(view_file_cmd);
 
-    auto view_jcl_cmd = make_shared<Command>("view-jcl", "view job JCL from input job ID");
+    auto view_jcl_cmd = command_ptr(new Command("view-jcl", "view job JCL from input job ID"));
     view_jcl_cmd->add_alias("vj");
     view_jcl_cmd->add_positional_arg("jobid", jobid_help, ArgType_Single, true);
     view_jcl_cmd->set_handler(handle_job_view_jcl);
     job_cmd->add_command(view_jcl_cmd);
 
-    auto submit_cmd = make_shared<Command>("submit", "submit a job");
+    auto submit_cmd = command_ptr(new Command("submit", "submit a job"));
     submit_cmd->add_alias("sub");
     submit_cmd->add_positional_arg("dsn", "dsn containing JCL", ArgType_Single, true);
     submit_cmd->add_keyword_arg("only-jobid", "--oj", "--only-jobid", "show only job ID on success", ArgType_Flag);
     submit_cmd->set_handler(handle_job_submit);
     job_cmd->add_command(submit_cmd);
 
-    auto submit_jcl_cmd = make_shared<Command>("submit-jcl", "submit JCL contents directly");
+    auto submit_jcl_cmd = command_ptr(new Command("submit-jcl", "submit JCL contents directly"));
     submit_jcl_cmd->add_alias("subj");
     submit_jcl_cmd->add_keyword_arg("only-jobid", "--oj", "--only-jobid", "show only job ID on success", ArgType_Flag);
     submit_jcl_cmd->add_keyword_arg("encoding", "--ec", "--encoding", "jcl encoding", ArgType_Single);
     submit_jcl_cmd->set_handler(handle_job_submit_jcl);
     job_cmd->add_command(submit_jcl_cmd);
 
-    auto submit_uss_cmd = make_shared<Command>("submit-uss", "submit a job from uss files");
+    auto submit_uss_cmd = command_ptr(new Command("submit-uss", "submit a job from uss files"));
     submit_uss_cmd->add_alias("sub-u");
     submit_uss_cmd->add_positional_arg("file-path", "uss file containing JCL", ArgType_Single, true);
     submit_uss_cmd->add_keyword_arg("only-jobid", "--oj", "--only-jobid", "show only job ID on success", ArgType_Flag);
     submit_uss_cmd->set_handler(handle_job_submit_uss);
     job_cmd->add_command(submit_uss_cmd);
 
-    auto delete_cmd = make_shared<Command>("delete", "delete a job");
+    auto delete_cmd = command_ptr(new Command("delete", "delete a job"));
     delete_cmd->add_alias("del");
     delete_cmd->add_positional_arg("jobid", jobid_help, ArgType_Single, true);
     delete_cmd->set_handler(handle_job_delete);
     job_cmd->add_command(delete_cmd);
 
-    auto cancel_cmd = make_shared<Command>("cancel", "cancel a job");
+    auto cancel_cmd = command_ptr(new Command("cancel", "cancel a job"));
     cancel_cmd->add_alias("cnl");
     cancel_cmd->add_positional_arg("jobid", jobid_help, ArgType_Single, true);
     cancel_cmd->add_keyword_arg("dump", "-d", "--dump", "dump the cancelled jobs if waiting for conversion, in conversion, or in execution.", ArgType_Flag);
@@ -263,13 +264,13 @@ int main(int argc, char *argv[])
     cancel_cmd->set_handler(handle_job_cancel);
     job_cmd->add_command(cancel_cmd);
 
-    auto hold_cmd = make_shared<Command>("hold", "hold a job");
+    auto hold_cmd = command_ptr(new Command("hold", "hold a job"));
     hold_cmd->add_alias("hld");
     hold_cmd->add_positional_arg("jobid", jobid_help, ArgType_Single, true);
     hold_cmd->set_handler(handle_job_hold);
     job_cmd->add_command(hold_cmd);
 
-    auto release_cmd = make_shared<Command>("release", "release a job");
+    auto release_cmd = command_ptr(new Command("release", "release a job"));
     release_cmd->add_alias("rel");
     release_cmd->add_positional_arg("jobid", jobid_help, ArgType_Single, true);
     release_cmd->set_handler(handle_job_release);
@@ -278,10 +279,10 @@ int main(int argc, char *argv[])
   root_command.add_command(job_cmd);
 
   // --- console group (cn) ---
-  auto console_cmd = make_shared<Command>("console", "z/os console operations");
+  auto console_cmd = command_ptr(new Command("console", "z/os console operations"));
   console_cmd->add_alias("cn");
   {
-    auto issue_cmd = make_shared<Command>("issue", "issue a console command");
+    auto issue_cmd = command_ptr(new Command("issue", "issue a console command"));
     issue_cmd->add_positional_arg("command", "command to run, e.g. 'd iplinfo'", ArgType_Single, true);
     issue_cmd->add_keyword_arg("console-name", "--cn", "--console-name", "extended console name", ArgType_Single, false, ArgValue("zowex"));
     issue_cmd->set_handler(handle_console_issue);
@@ -290,37 +291,37 @@ int main(int argc, char *argv[])
   root_command.add_command(console_cmd);
 
   // --- uss group ---
-  auto uss_cmd = make_shared<Command>("uss", "z/OS USS operations");
+  auto uss_cmd = command_ptr(new Command("uss", "z/OS USS operations"));
   {
     const string file_path_help = "file path";
     const string mode_help = "permissions";
     const string recursive_help = "applies the operation recursively (e.g. for folders w/ inner files)";
 
-    auto create_file_cmd = make_shared<Command>("create-file", "create a USS file");
+    auto create_file_cmd = command_ptr(new Command("create-file", "create a USS file"));
     create_file_cmd->add_positional_arg("file-path", file_path_help, ArgType_Single, true);
     create_file_cmd->add_keyword_arg("mode", "-m", "--mode", mode_help, ArgType_Single, false);
     create_file_cmd->set_handler(handle_uss_create_file);
     uss_cmd->add_command(create_file_cmd);
 
-    auto create_dir_cmd = make_shared<Command>("create-dir", "create a USS directory");
+    auto create_dir_cmd = command_ptr(new Command("create-dir", "create a USS directory"));
     create_dir_cmd->add_positional_arg("file-path", file_path_help, ArgType_Single, true);
     create_dir_cmd->add_keyword_arg("mode", "-m", "--mode", mode_help, ArgType_Single, false);
     create_dir_cmd->set_handler(handle_uss_create_dir);
     uss_cmd->add_command(create_dir_cmd);
 
-    auto list_cmd = make_shared<Command>("list", "list USS files and directories");
+    auto list_cmd = command_ptr(new Command("list", "list USS files and directories"));
     list_cmd->add_positional_arg("file-path", file_path_help, ArgType_Single, true);
     list_cmd->set_handler(handle_uss_list);
     uss_cmd->add_command(list_cmd);
 
-    auto view_cmd = make_shared<Command>("view", "view a USS file");
+    auto view_cmd = command_ptr(new Command("view", "view a USS file"));
     view_cmd->add_positional_arg("file-path", file_path_help, ArgType_Single, true);
     view_cmd->add_keyword_arg("encoding", "--ec", "--encoding", "return contents in given encoding", ArgType_Single);
     view_cmd->add_keyword_arg("response-format-bytes", "--rfb", "--response-format-bytes", "returns the response as raw bytes", ArgType_Flag);
     view_cmd->set_handler(handle_uss_view);
     uss_cmd->add_command(view_cmd);
 
-    auto write_cmd = make_shared<Command>("write", "write to a USS file");
+    auto write_cmd = command_ptr(new Command("write", "write to a USS file"));
     write_cmd->add_positional_arg("file-path", file_path_help, ArgType_Single, true);
     write_cmd->add_keyword_arg("encoding", "--ec", "--encoding", "return contents in given encoding", ArgType_Single);
     write_cmd->add_keyword_arg("etag", "--et", "--etag", "provide the e-tag for a write response to detect conflicts before save", ArgType_Single, false);
@@ -328,27 +329,27 @@ int main(int argc, char *argv[])
     write_cmd->set_handler(handle_uss_write);
     uss_cmd->add_command(write_cmd);
 
-    auto delete_cmd = make_shared<Command>("delete", "delete a USS item");
+    auto delete_cmd = command_ptr(new Command("delete", "delete a USS item"));
     delete_cmd->add_positional_arg("file-path", file_path_help, ArgType_Single, true);
     delete_cmd->add_keyword_arg("recursive", "-r", "--recursive", recursive_help, ArgType_Flag, false);
     delete_cmd->set_handler(handle_uss_delete);
     uss_cmd->add_command(delete_cmd);
 
-    auto chmod_cmd = make_shared<Command>("chmod", "change permissions on a USS file or directory");
+    auto chmod_cmd = command_ptr(new Command("chmod", "change permissions on a USS file or directory"));
     chmod_cmd->add_positional_arg("mode", "new permissions for the file or directory", ArgType_Single, true);
     chmod_cmd->add_positional_arg("file-path", file_path_help, ArgType_Single, true);
     chmod_cmd->add_keyword_arg("recursive", "-r", "--recursive", recursive_help, ArgType_Flag, false);
     chmod_cmd->set_handler(handle_uss_chmod);
     uss_cmd->add_command(chmod_cmd);
 
-    auto chown_cmd = make_shared<Command>("chown", "change owner on a USS file or directory");
+    auto chown_cmd = command_ptr(new Command("chown", "change owner on a USS file or directory"));
     chown_cmd->add_positional_arg("owner", "new owner (or owner:group) for the file or directory", ArgType_Single, true);
     chown_cmd->add_positional_arg("file-path", file_path_help, ArgType_Single, true);
     chown_cmd->add_keyword_arg("recursive", "-r", "--recursive", recursive_help, ArgType_Flag, false);
     chown_cmd->set_handler(handle_uss_chown);
     uss_cmd->add_command(chown_cmd);
 
-    auto chtag_cmd = make_shared<Command>("chtag", "change tags on a USS file");
+    auto chtag_cmd = command_ptr(new Command("chtag", "change tags on a USS file"));
     chtag_cmd->add_positional_arg("codeset", "new codeset for the file", ArgType_Single, true);
     chtag_cmd->add_positional_arg("file-path", file_path_help, ArgType_Single, true);
     chtag_cmd->add_keyword_arg("recursive", "-r", "--recursive", recursive_help, ArgType_Flag, false);
@@ -359,9 +360,9 @@ int main(int argc, char *argv[])
 
   // --- log group ---
   // note: log group was commented out in the original zcli setup
-  // auto log_cmd = make_shared<Command>("log", "log operations");
+  // auto log_cmd = command_ptr(new Command("log", "log operations"));
   // {
-  //     auto view_cmd = make_shared<Command>("view", "view log");
+  //     auto view_cmd = command_ptr(new Command("view", "view log"));
   //     view_cmd->add_keyword_arg("lines", "", "--lines", "number of lines to print", ArgType_Single);
   //     view_cmd->set_handler(handle_log_view);
   //     log_cmd->add_command(view_cmd);
@@ -369,9 +370,9 @@ int main(int argc, char *argv[])
   // root_command.add_command(log_cmd);
 
   // --- tool group ---
-  auto tool_cmd = make_shared<Command>("tool", "tool operations");
+  auto tool_cmd = command_ptr(new Command("tool", "tool operations"));
   {
-    auto convert_dsect_cmd = make_shared<Command>("ccnedsct", "convert dsect to c struct");
+    auto convert_dsect_cmd = command_ptr(new Command("ccnedsct", "convert dsect to c struct"));
     convert_dsect_cmd->add_keyword_arg("adata-dsn", "--ad", "--adata-dsn", "input adata dsn", ArgType_Single, true);
     convert_dsect_cmd->add_keyword_arg("chdr-dsn", "--cd", "--chdr-dsn", "output chdr dsn", ArgType_Single, true);
     convert_dsect_cmd->add_keyword_arg("sysprint", "--sp", "--sysprint", "sysprint output", ArgType_Single, false);
@@ -379,17 +380,17 @@ int main(int argc, char *argv[])
     convert_dsect_cmd->set_handler(handle_tool_convert_dsect);
     tool_cmd->add_command(convert_dsect_cmd);
 
-    auto dynalloc_cmd = make_shared<Command>("bpxwdy2", "dynalloc command");
+    auto dynalloc_cmd = command_ptr(new Command("bpxwdy2", "dynalloc command"));
     dynalloc_cmd->add_positional_arg("parm", "dynalloc parm string", ArgType_Single, true);
     dynalloc_cmd->set_handler(handle_tool_dynalloc);
     tool_cmd->add_command(dynalloc_cmd);
 
-    auto display_symbol_cmd = make_shared<Command>("display-symbol", "display system symbol");
+    auto display_symbol_cmd = command_ptr(new Command("display-symbol", "display system symbol"));
     display_symbol_cmd->add_positional_arg("symbol", "symbol to display", ArgType_Single, true);
     display_symbol_cmd->set_handler(handle_tool_display_symbol);
     tool_cmd->add_command(display_symbol_cmd);
 
-    auto search_cmd = make_shared<Command>("search", "search members for string");
+    auto search_cmd = command_ptr(new Command("search", "search members for string"));
     search_cmd->add_positional_arg("dsn", "data set to search", ArgType_Single, true);
     search_cmd->add_positional_arg("string", "string to search for", ArgType_Single, true);
     search_cmd->add_keyword_arg("max-entries", "--me", "--max-entries", "max number of results to return", ArgType_Single);
@@ -397,7 +398,7 @@ int main(int argc, char *argv[])
     search_cmd->set_handler(handle_tool_search);
     tool_cmd->add_command(search_cmd);
 
-    auto run_cmd = make_shared<Command>("run", "run a program");
+    auto run_cmd = command_ptr(new Command("run", "run a program"));
     run_cmd->add_positional_arg("program", "name of program to run", ArgType_Single, true);
     run_cmd->add_keyword_arg("dynalloc-pre", "--dp", "--dynalloc-pre", "dynalloc pre run statements", ArgType_Single);
     run_cmd->add_keyword_arg("dynalloc-post", "--dt", "--dynalloc-post", "dynalloc post run statements", ArgType_Single);
@@ -410,9 +411,9 @@ int main(int argc, char *argv[])
   root_command.add_command(tool_cmd);
 
   // use parser to parse given arguments
-  parse_result result = parser.parse(argc, argv);
+  auto result = parser.parse(argc, argv);
 
-  if (result.status != parse_result::pparser_status_success)
+  if (result.status != ParseResult::ParserStatus_Success)
   {
     // help was shown by the parser, or error was already printed to stderr by the parser
     return result.exit_code;
@@ -433,8 +434,9 @@ int main(int argc, char *argv[])
 
       getline(cin, command);
 
-      // TODO: if (should_quit(command))
-      // break;
+      if (command == "quit") {
+        break;
+      }
 
       parser.parse(command);
 
@@ -446,14 +448,14 @@ int main(int argc, char *argv[])
         cerr << '\x37' << flush;
       }
 
-    } while (!should_quit(command));
+    } while (command != "quit");
 
     cout << "...terminated" << endl;
 
     return rc;
   }
 
-  return result.exitCode;
+  return result.exit_code;
 }
 
 int loop_dynalloc(vector<string> &list)
@@ -477,7 +479,7 @@ int loop_dynalloc(vector<string> &list)
   return rc;
 }
 
-int handle_job_list(ParseResult &result)
+int handle_job_list(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
@@ -531,7 +533,7 @@ int handle_job_list(ParseResult &result)
   return "false" == warn && rc == RTNCD_WARNING ? RTNCD_SUCCESS : rc;
 }
 
-int handle_job_list_files(ParseResult &result)
+int handle_job_list_files(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
@@ -569,7 +571,7 @@ int handle_job_list_files(ParseResult &result)
   return RTNCD_SUCCESS;
 }
 
-int handle_job_view_status(ParseResult &result)
+int handle_job_view_status(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
@@ -602,7 +604,7 @@ int handle_job_view_status(ParseResult &result)
   return 0;
 }
 
-int handle_job_view_file(ParseResult &result)
+int handle_job_view_file(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
@@ -633,7 +635,7 @@ int handle_job_view_file(ParseResult &result)
   return RTNCD_SUCCESS;
 }
 
-int handle_job_view_jcl(ParseResult &result)
+int handle_job_view_jcl(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
@@ -654,7 +656,7 @@ int handle_job_view_jcl(ParseResult &result)
   return 0;
 }
 
-int handle_job_submit(ParseResult &result)
+int handle_job_submit(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
@@ -679,7 +681,7 @@ int handle_job_submit(ParseResult &result)
   return RTNCD_SUCCESS;
 }
 
-int handle_job_submit_uss(ParseResult &result)
+int handle_job_submit_uss(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
@@ -716,7 +718,7 @@ int handle_job_submit_uss(ParseResult &result)
   return RTNCD_SUCCESS;
 }
 
-int handle_job_submit_jcl(ParseResult &result)
+int handle_job_submit_jcl(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
@@ -764,7 +766,7 @@ int handle_job_submit_jcl(ParseResult &result)
   return RTNCD_SUCCESS;
 }
 
-int handle_job_delete(ParseResult &result)
+int handle_job_delete(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
@@ -784,7 +786,7 @@ int handle_job_delete(ParseResult &result)
   return RTNCD_SUCCESS;
 }
 
-int handle_job_cancel(ParseResult &result)
+int handle_job_cancel(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
@@ -809,7 +811,7 @@ int handle_job_cancel(ParseResult &result)
   return RTNCD_SUCCESS;
 }
 
-int handle_job_hold(ParseResult &result)
+int handle_job_hold(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
@@ -829,7 +831,7 @@ int handle_job_hold(ParseResult &result)
   return RTNCD_SUCCESS;
 }
 
-int handle_job_release(ParseResult &result)
+int handle_job_release(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
@@ -849,7 +851,7 @@ int handle_job_release(ParseResult &result)
   return RTNCD_SUCCESS;
 }
 
-int handle_console_issue(ParseResult &result)
+int handle_console_issue(const ParseResult &result)
 {
   int rc = 0;
   ZCN zcn = {0};
@@ -930,7 +932,7 @@ int handle_data_set_create_member(ZDS zds, string dsn)
   return rc;
 }
 
-int handle_data_set_create_member_dsn(ParseResult &result)
+int handle_data_set_create_member_dsn(const ParseResult &result)
 {
   int rc = 0;
   string dsn = result.find_pos_arg_string("dsn");
@@ -963,7 +965,7 @@ int handle_data_set_create_member_dsn(ParseResult &result)
   return handle_data_set_create_member(zds, dsn + "(" + member_name + ")");
 }
 
-int handle_data_set_create_dsn(ParseResult &result)
+int handle_data_set_create_dsn(const ParseResult &result)
 {
   int rc = 0;
   string dsn = result.find_pos_arg_string("dsn");
@@ -980,7 +982,7 @@ int handle_data_set_create_dsn(ParseResult &result)
   return handle_data_set_create_member(zds, dsn);
 }
 
-int handle_data_set_create_dsn_vb(ParseResult &result)
+int handle_data_set_create_dsn_vb(const ParseResult &result)
 {
   int rc = 0;
   string dsn = result.find_pos_arg_string("dsn");
@@ -997,7 +999,7 @@ int handle_data_set_create_dsn_vb(ParseResult &result)
   return handle_data_set_create_member(zds, dsn);
 }
 
-int handle_data_set_create_dsn_adata(ParseResult &result)
+int handle_data_set_create_dsn_adata(const ParseResult &result)
 {
   int rc = 0;
   string dsn = result.find_pos_arg_string("dsn");
@@ -1014,7 +1016,7 @@ int handle_data_set_create_dsn_adata(ParseResult &result)
   return handle_data_set_create_member(zds, dsn);
 }
 
-int handle_data_set_restore(ParseResult &result)
+int handle_data_set_restore(const ParseResult &result)
 {
   int rc = 0;
   string dsn = result.find_pos_arg_string("dsn");
@@ -1037,7 +1039,7 @@ int handle_data_set_restore(ParseResult &result)
   return rc;
 }
 
-int handle_data_set_view_dsn(ParseResult &result)
+int handle_data_set_view_dsn(const ParseResult &result)
 {
   int rc = 0;
   string dsn = result.find_pos_arg_string("dsn");
@@ -1068,7 +1070,7 @@ int handle_data_set_view_dsn(ParseResult &result)
   return rc;
 }
 
-int handle_data_set_list(ParseResult &result)
+int handle_data_set_list(const ParseResult &result)
 {
   int rc = 0;
   string dsn = result.find_pos_arg_string("dsn");
@@ -1083,7 +1085,7 @@ int handle_data_set_list(ParseResult &result)
 
   const auto max_entries = result.find_kw_arg_string("max-entries");
   const auto warn = result.find_kw_arg_bool("warn");
-  const auto attributes = result.find_kw_arg_string("attributes");
+  const auto attributes = result.find_kw_arg_bool("attributes");
 
   ZDS zds = {0};
   if (max_entries.size() > 0)
@@ -1146,7 +1148,7 @@ int handle_data_set_list(ParseResult &result)
   return !warn && rc == RTNCD_WARNING ? RTNCD_SUCCESS : rc;
 }
 
-int handle_data_set_list_members_dsn(ParseResult &result)
+int handle_data_set_list_members_dsn(const ParseResult &result)
 {
   int rc = 0;
   const auto dsn = result.find_pos_arg_string("dsn");
@@ -1187,12 +1189,12 @@ int handle_data_set_list_members_dsn(ParseResult &result)
   return !warn && rc == RTNCD_WARNING ? RTNCD_SUCCESS : rc;
 }
 
-int handle_data_set_write_to_dsn(ParseResult &result)
+int handle_data_set_write_to_dsn(const ParseResult &result)
 {
   int rc = 0;
   string dsn = result.find_pos_arg_string("dsn");
   ZDS zds = {0};
-  const auto hasEncoding = result.get_kw_arg_string("encoding") != nullptr && zut_prepare_encoding(*result.get_kw_arg_string("encoding"), &zusf.encoding_opts);
+  const auto hasEncoding = result.get_kw_arg_string("encoding") != nullptr && zut_prepare_encoding(*result.get_kw_arg_string("encoding"), &zds.encoding_opts);
 
   string data = "";
   string line = "";
@@ -1238,7 +1240,7 @@ int handle_data_set_write_to_dsn(ParseResult &result)
   return rc;
 }
 
-int handle_data_set_delete_dsn(ParseResult &result)
+int handle_data_set_delete_dsn(const ParseResult &result)
 {
   int rc = 0;
   string dsn = result.find_pos_arg_string("dsn");
@@ -1256,7 +1258,7 @@ int handle_data_set_delete_dsn(ParseResult &result)
   return rc;
 }
 
-int handle_log_view(ParseResult &result)
+int handle_log_view(const ParseResult &result)
 {
   int rc = 0;
   unsigned int code = 0;
@@ -1268,7 +1270,7 @@ int handle_log_view(ParseResult &result)
   return 0;
 }
 
-int handle_uss_create_file(ParseResult &result)
+int handle_uss_create_file(const ParseResult &result)
 {
   int rc = 0;
   const auto file_path = result.find_pos_arg_string("file-path");
@@ -1291,7 +1293,7 @@ int handle_uss_create_file(ParseResult &result)
   return rc;
 }
 
-int handle_uss_create_dir(ParseResult &result)
+int handle_uss_create_dir(const ParseResult &result)
 {
   int rc = 0;
   const auto file_path = result.find_pos_arg_string("file-path");
@@ -1314,7 +1316,7 @@ int handle_uss_create_dir(ParseResult &result)
   return rc;
 }
 
-int handle_uss_list(ParseResult &result)
+int handle_uss_list(const ParseResult &result)
 {
   int rc = 0;
   const auto uss_file = result.find_pos_arg_string("file-path");
@@ -1336,7 +1338,7 @@ int handle_uss_list(ParseResult &result)
   return rc;
 }
 
-int handle_uss_view(ParseResult &result)
+int handle_uss_view(const ParseResult &result)
 {
   int rc = 0;
   string uss_file = result.find_pos_arg_string("file-path");
@@ -1376,12 +1378,12 @@ int handle_uss_view(ParseResult &result)
   return rc;
 }
 
-int handle_uss_write(ParseResult &result)
+int handle_uss_write(const ParseResult &result)
 {
   int rc = 0;
   string file = result.find_pos_arg_string("file-path");
   ZUSF zusf = {0};
-  const auto encoding_prepared = result.get_kw_arg_string("encoding") != nullptr && zut_prepare_encoding(*result.get_kw_arg_string("encoding"), &encoding_opts);
+  const auto encoding_prepared = result.get_kw_arg_string("encoding") != nullptr && zut_prepare_encoding(*result.get_kw_arg_string("encoding"), &zusf.encoding_opts);
 
   string data = "";
   string line = "";
@@ -1427,7 +1429,7 @@ int handle_uss_write(ParseResult &result)
   return rc;
 }
 
-int handle_uss_delete(ParseResult &result)
+int handle_uss_delete(const ParseResult &result)
 {
   auto file_path = result.find_pos_arg_string("file-path");
   const auto recursive = result.find_kw_arg_bool("recursive");
@@ -1443,7 +1445,7 @@ int handle_uss_delete(ParseResult &result)
   return rc;
 }
 
-int handle_uss_chmod(ParseResult &result)
+int handle_uss_chmod(const ParseResult &result)
 {
   int rc = 0;
   const auto mode = result.find_pos_arg_string("mode");
@@ -1464,7 +1466,7 @@ int handle_uss_chmod(ParseResult &result)
   return rc;
 }
 
-int handle_uss_chown(ParseResult &result)
+int handle_uss_chown(const ParseResult &result)
 {
   auto path = result.find_pos_arg_string("file-path");
   const auto owner = result.find_pos_arg_string("owner");
@@ -1483,7 +1485,7 @@ int handle_uss_chown(ParseResult &result)
   return rc;
 }
 
-int handle_uss_chtag(ParseResult &result)
+int handle_uss_chtag(const ParseResult &result)
 {
   auto path = result.find_pos_arg_string("file-path");
   const auto tag = result.find_pos_arg_string("tag");
@@ -1502,7 +1504,7 @@ int handle_uss_chtag(ParseResult &result)
   return rc;
 }
 
-int handle_tso_issue(ParseResult &result)
+int handle_tso_issue(const ParseResult &result)
 {
   int rc = 0;
   const auto command = result.find_pos_arg_string("command");
@@ -1521,7 +1523,7 @@ int handle_tso_issue(ParseResult &result)
   return rc;
 }
 
-int handle_tool_convert_dsect(ParseResult &result)
+int handle_tool_convert_dsect(const ParseResult &result)
 {
   int rc = 0;
   ZCN zcn = {0};
@@ -1579,7 +1581,7 @@ int handle_tool_convert_dsect(ParseResult &result)
   return rc;
 }
 
-int handle_tool_dynalloc(ParseResult &result)
+int handle_tool_dynalloc(const ParseResult &result)
 {
   int rc = 0;
   unsigned int code = 0;
@@ -1601,7 +1603,7 @@ int handle_tool_dynalloc(ParseResult &result)
   return rc;
 }
 
-int handle_tool_display_symbol(ParseResult &result)
+int handle_tool_display_symbol(const ParseResult &result)
 {
   int rc = 0;
   string symbol(result.find_pos_arg_string("symbol"));
@@ -1619,7 +1621,7 @@ int handle_tool_display_symbol(ParseResult &result)
   return RTNCD_SUCCESS;
 }
 
-int handle_tool_run(ParseResult &result)
+int handle_tool_run(const ParseResult &result)
 {
   int rc = 0;
   string program(result.find_pos_arg_string("program"));
@@ -1725,7 +1727,7 @@ int handle_tool_run(ParseResult &result)
   return rc;
 }
 
-int handle_tool_search(ParseResult &result)
+int handle_tool_search(const ParseResult &result)
 {
   int rc = 0;
 

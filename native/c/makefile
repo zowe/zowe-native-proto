@@ -54,7 +54,7 @@ DLL_CPP_FLAGS=-W "c,lp64,langlvl(extended0x),dll,xplink,exportall"\
 DLL_BND_FLAGS=-W "l,lp64,dll,dynam=dll,xplink,map,list"
 
 CPP_FLAGS=-W "c,lp64,langlvl(extended0x),dll,xplink"\
- -c
+ -c -D__IBMCPP_TR1__=1
 
 ASM_FLAGS=-mRENT
 
