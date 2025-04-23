@@ -86,13 +86,64 @@ int handle_uss_chown(const ParseResult &);
 int handle_uss_chtag(const ParseResult &);
 int handle_tso_issue(const ParseResult &);
 
+Command *g_root_command = nullptr;
+ArgumentParser *g_parser = nullptr;
+
+int handle_root(const ParseResult &result)
+{
+  if (result.find_kw_arg_bool("interactive"))
+  {
+    std::cout << "Started, enter command or 'quit' to quit..." << std::endl;
+
+    std::string command;
+    int rc = 0;
+    int is_tty = isatty(fileno(stdout));
+    do
+    {
+      if (is_tty)
+        std::cout << "\r> " << std::flush;
+
+      std::getline(std::cin, command);
+
+      if (command == "quit")
+      {
+        break;
+      }
+
+      g_parser->parse(command);
+
+      if (!is_tty)
+      {
+        std::cout << "[" << rc << "]" << std::endl;
+        // EBCDIC \x37 = ASCII \x04 = End of Transmission (Ctrl+D)
+        std::cout << '\x37' << std::flush;
+        std::cerr << '\x37' << std::flush;
+      }
+
+    } while (command != "quit");
+
+    std::cout << "...terminated" << std::endl;
+
+    return rc;
+  }
+
+  // If not interactive and no subcommand, print help
+  if (g_root_command)
+  {
+    g_root_command->generate_help(std::cout, "");
+  }
+  return 0;
+}
+
 int main(int argc, char *argv[])
 {
-  ArgumentParser parser("zowex", "C++ CLI for z/OS resources");
+  static ArgumentParser parser("zowex", "C++ CLI for z/OS resources");
+  g_parser = &parser;
   Command &root_command = parser.get_root_command();
+  g_root_command = &root_command;
 
   // --- Global options ---
-  root_command.add_keyword_arg("interactive", "--it", "--interactive", "interactive (REPL) mode", ArgType_Flag);
+  root_command.add_keyword_arg("interactive", make_aliases("--it"), "interactive (REPL) mode", ArgType_Flag);
 
   // --- tso group ---
   auto tso_cmd = command_ptr(new Command("tso", "TSO operations"));
@@ -143,34 +194,34 @@ int main(int argc, char *argv[])
 
     auto view_cmd = command_ptr(new Command("view", "view data set"));
     view_cmd->add_positional_arg("dsn", dsn_help, ArgType_Single, true);
-    view_cmd->add_keyword_arg("encoding", "--ec", "--encoding", "return contents in given encoding", ArgType_Single);
-    view_cmd->add_keyword_arg("response-format-bytes", "--rfb", "--response-format-bytes", "returns the response as raw bytes", ArgType_Flag);
+    view_cmd->add_keyword_arg("encoding", make_aliases("--ec"), "return contents in given encoding", ArgType_Single);
+    view_cmd->add_keyword_arg("response-format-bytes", make_aliases("--rfb"), "returns the response as raw bytes", ArgType_Flag);
     view_cmd->set_handler(handle_data_set_view_dsn);
     data_set_cmd->add_command(view_cmd);
 
     auto list_cmd = command_ptr(new Command("list", "list data sets"));
     list_cmd->add_alias("ls");
     list_cmd->add_positional_arg("dsn", dsn_help, ArgType_Single, true);
-    list_cmd->add_keyword_arg("attributes", "-a", "--attributes", "display data set attributes", ArgType_Flag);
-    list_cmd->add_keyword_arg("max-entries", "--me", "--max-entries", max_entries_help, ArgType_Single);
-    list_cmd->add_keyword_arg("warn", "-w", "--warn", warn_help, ArgType_Flag, false, ArgValue(true));
-    list_cmd->add_keyword_arg("response-format-csv", "--rfc", "--response-format-csv", "returns the response in CSV format", ArgType_Flag);
+    list_cmd->add_keyword_arg("attributes", make_aliases("-a"), "display data set attributes", ArgType_Flag);
+    list_cmd->add_keyword_arg("max-entries", make_aliases("--me"), max_entries_help, ArgType_Single);
+    list_cmd->add_keyword_arg("warn", make_aliases("-w"), warn_help, ArgType_Flag, false, ArgValue(true));
+    list_cmd->add_keyword_arg("response-format-csv", make_aliases("--rfc"), "returns the response in CSV format", ArgType_Flag);
     list_cmd->set_handler(handle_data_set_list);
     data_set_cmd->add_command(list_cmd);
 
     auto list_members_cmd = command_ptr(new Command("list-members", "list data set members"));
     list_members_cmd->add_alias("lm");
     list_members_cmd->add_positional_arg("dsn", dsn_help, ArgType_Single, true);
-    list_members_cmd->add_keyword_arg("max-entries", "--me", "--max-entries", max_entries_help, ArgType_Single);
-    list_members_cmd->add_keyword_arg("warn", "-w", "--warn", warn_help, ArgType_Flag, false, ArgValue(true));
+    list_members_cmd->add_keyword_arg("max-entries", make_aliases("--me"), max_entries_help, ArgType_Single);
+    list_members_cmd->add_keyword_arg("warn", make_aliases("-w"), warn_help, ArgType_Flag, false, ArgValue(true));
     list_members_cmd->set_handler(handle_data_set_list_members_dsn);
     data_set_cmd->add_command(list_members_cmd);
 
     auto write_cmd = command_ptr(new Command("write", "write to data set"));
     write_cmd->add_positional_arg("dsn", dsn_help, ArgType_Single, true);
-    write_cmd->add_keyword_arg("encoding", "--ec", "--encoding", "return contents in given encoding", ArgType_Single);
-    write_cmd->add_keyword_arg("etag", "--et", "--etag", "provide the e-tag for a write response to detect conflicts before save", ArgType_Single, false);
-    write_cmd->add_keyword_arg("etag-only", "--eo", "--etag-only", "only print the e-tag for a write response (when successful)", ArgType_Flag, false);
+    write_cmd->add_keyword_arg("encoding", make_aliases("--ec"), "return contents in given encoding", ArgType_Single);
+    write_cmd->add_keyword_arg("etag", make_aliases("--et"), "provide the e-tag for a write response to detect conflicts before save", ArgType_Single, false);
+    write_cmd->add_keyword_arg("etag-only", make_aliases("--eo"), "only print the e-tag for a write response (when successful)", ArgType_Flag, false);
     write_cmd->set_handler(handle_data_set_write_to_dsn);
     data_set_cmd->add_command(write_cmd);
 
@@ -190,25 +241,25 @@ int main(int argc, char *argv[])
     const string jobid_help = "valid job ID";
 
     auto list_cmd = command_ptr(new Command("list", "list jobs"));
-    list_cmd->add_keyword_arg("owner", "-o", "--owner", "filter by owner", ArgType_Single);
-    list_cmd->add_keyword_arg("prefix", "-p", "--prefix", "filter by prefix", ArgType_Single);
-    list_cmd->add_keyword_arg("max-entries", "--me", "--max-entries", max_entries_help, ArgType_Single);
-    list_cmd->add_keyword_arg("warn", "-w", "--warn", warn_help, ArgType_Flag, false, ArgValue(true));
-    list_cmd->add_keyword_arg("response-format-csv", "--rfc", "--response-format-csv", "returns the response in CSV format", ArgType_Flag);
+    list_cmd->add_keyword_arg("owner", make_aliases("-o"), "filter by owner", ArgType_Single);
+    list_cmd->add_keyword_arg("prefix", make_aliases("-p"), "filter by prefix", ArgType_Single);
+    list_cmd->add_keyword_arg("max-entries", make_aliases("--me"), max_entries_help, ArgType_Single);
+    list_cmd->add_keyword_arg("warn", make_aliases("-w"), warn_help, ArgType_Flag, false, ArgValue(true));
+    list_cmd->add_keyword_arg("response-format-csv", make_aliases("--rfc"), "returns the response in CSV format", ArgType_Flag);
     list_cmd->set_handler(handle_job_list);
     job_cmd->add_command(list_cmd);
 
     auto list_files_cmd = command_ptr(new Command("list-files", "list spool files for jobid"));
     list_files_cmd->add_alias("lf");
     list_files_cmd->add_positional_arg("jobid", jobid_help, ArgType_Single, true);
-    list_files_cmd->add_keyword_arg("response-format-csv", "--rfc", "--response-format-csv", "returns the response in CSV format", ArgType_Flag);
+    list_files_cmd->add_keyword_arg("response-format-csv", make_aliases("--rfc"), "returns the response in CSV format", ArgType_Flag);
     list_files_cmd->set_handler(handle_job_list_files);
     job_cmd->add_command(list_files_cmd);
 
     auto view_status_cmd = command_ptr(new Command("view-status", "view job status"));
     view_status_cmd->add_alias("vs");
     view_status_cmd->add_positional_arg("jobid", jobid_help, ArgType_Single, true);
-    view_status_cmd->add_keyword_arg("response-format-csv", "--rfc", "--response-format-csv", "returns the response in CSV format", ArgType_Flag);
+    view_status_cmd->add_keyword_arg("response-format-csv", make_aliases("--rfc"), "returns the response in CSV format", ArgType_Flag);
     view_status_cmd->set_handler(handle_job_view_status);
     job_cmd->add_command(view_status_cmd);
 
@@ -216,8 +267,8 @@ int main(int argc, char *argv[])
     view_file_cmd->add_alias("vf");
     view_file_cmd->add_positional_arg("jobid", jobid_help, ArgType_Single, true);
     view_file_cmd->add_positional_arg("key", "valid job dsn key via 'job list-files'", ArgType_Single, true);
-    view_file_cmd->add_keyword_arg("encoding", "--ec", "--encoding", "return contents in given encoding", ArgType_Single);
-    view_file_cmd->add_keyword_arg("response-format-bytes", "--rfb", "--response-format-bytes", "returns the response as raw bytes", ArgType_Flag);
+    view_file_cmd->add_keyword_arg("encoding", make_aliases("--ec"), "return contents in given encoding", ArgType_Single);
+    view_file_cmd->add_keyword_arg("response-format-bytes", make_aliases("--rfb"), "returns the response as raw bytes", ArgType_Flag);
     view_file_cmd->set_handler(handle_job_view_file);
     job_cmd->add_command(view_file_cmd);
 
@@ -230,21 +281,21 @@ int main(int argc, char *argv[])
     auto submit_cmd = command_ptr(new Command("submit", "submit a job"));
     submit_cmd->add_alias("sub");
     submit_cmd->add_positional_arg("dsn", "dsn containing JCL", ArgType_Single, true);
-    submit_cmd->add_keyword_arg("only-jobid", "--oj", "--only-jobid", "show only job ID on success", ArgType_Flag);
+    submit_cmd->add_keyword_arg("only-jobid", make_aliases("--oj"), "show only job ID on success", ArgType_Flag);
     submit_cmd->set_handler(handle_job_submit);
     job_cmd->add_command(submit_cmd);
 
     auto submit_jcl_cmd = command_ptr(new Command("submit-jcl", "submit JCL contents directly"));
     submit_jcl_cmd->add_alias("subj");
-    submit_jcl_cmd->add_keyword_arg("only-jobid", "--oj", "--only-jobid", "show only job ID on success", ArgType_Flag);
-    submit_jcl_cmd->add_keyword_arg("encoding", "--ec", "--encoding", "jcl encoding", ArgType_Single);
+    submit_jcl_cmd->add_keyword_arg("only-jobid", make_aliases("--oj"), "show only job ID on success", ArgType_Flag);
+    submit_jcl_cmd->add_keyword_arg("encoding", make_aliases("--ec"), "jcl encoding", ArgType_Single);
     submit_jcl_cmd->set_handler(handle_job_submit_jcl);
     job_cmd->add_command(submit_jcl_cmd);
 
     auto submit_uss_cmd = command_ptr(new Command("submit-uss", "submit a job from uss files"));
     submit_uss_cmd->add_alias("sub-u");
     submit_uss_cmd->add_positional_arg("file-path", "uss file containing JCL", ArgType_Single, true);
-    submit_uss_cmd->add_keyword_arg("only-jobid", "--oj", "--only-jobid", "show only job ID on success", ArgType_Flag);
+    submit_uss_cmd->add_keyword_arg("only-jobid", make_aliases("--oj"), "show only job ID on success", ArgType_Flag);
     submit_uss_cmd->set_handler(handle_job_submit_uss);
     job_cmd->add_command(submit_uss_cmd);
 
@@ -257,10 +308,10 @@ int main(int argc, char *argv[])
     auto cancel_cmd = command_ptr(new Command("cancel", "cancel a job"));
     cancel_cmd->add_alias("cnl");
     cancel_cmd->add_positional_arg("jobid", jobid_help, ArgType_Single, true);
-    cancel_cmd->add_keyword_arg("dump", "-d", "--dump", "dump the cancelled jobs if waiting for conversion, in conversion, or in execution.", ArgType_Flag);
-    cancel_cmd->add_keyword_arg("force", "-f", "--force", "force cancel the jobs, even if marked.", ArgType_Flag);
-    cancel_cmd->add_keyword_arg("purge", "-p", "--purge", "purge output of the cancelled jobs.", ArgType_Flag);
-    cancel_cmd->add_keyword_arg("restart", "-r", "--restart", "request that automatic restart management automatically restart the selected jobs after they are cancelled.", ArgType_Flag);
+    cancel_cmd->add_keyword_arg("dump", make_aliases("-d"), "dump the cancelled jobs if waiting for conversion, in conversion, or in execution.", ArgType_Flag);
+    cancel_cmd->add_keyword_arg("force", make_aliases("-f"), "force cancel the jobs, even if marked.", ArgType_Flag);
+    cancel_cmd->add_keyword_arg("purge", make_aliases("-p"), "purge output of the cancelled jobs.", ArgType_Flag);
+    cancel_cmd->add_keyword_arg("restart", make_aliases("-r"), "request that automatic restart management automatically restart the selected jobs after they are cancelled.", ArgType_Flag);
     cancel_cmd->set_handler(handle_job_cancel);
     job_cmd->add_command(cancel_cmd);
 
@@ -284,7 +335,7 @@ int main(int argc, char *argv[])
   {
     auto issue_cmd = command_ptr(new Command("issue", "issue a console command"));
     issue_cmd->add_positional_arg("command", "command to run, e.g. 'd iplinfo'", ArgType_Single, true);
-    issue_cmd->add_keyword_arg("console-name", "--cn", "--console-name", "extended console name", ArgType_Single, false, ArgValue("zowex"));
+    issue_cmd->add_keyword_arg("console-name", make_aliases("--cn"), "extended console name", ArgType_Single, false, ArgValue("zowex"));
     issue_cmd->set_handler(handle_console_issue);
     console_cmd->add_command(issue_cmd);
   }
@@ -299,13 +350,13 @@ int main(int argc, char *argv[])
 
     auto create_file_cmd = command_ptr(new Command("create-file", "create a USS file"));
     create_file_cmd->add_positional_arg("file-path", file_path_help, ArgType_Single, true);
-    create_file_cmd->add_keyword_arg("mode", "-m", "--mode", mode_help, ArgType_Single, false);
+    create_file_cmd->add_keyword_arg("mode", make_aliases("-m"), mode_help, ArgType_Single, false);
     create_file_cmd->set_handler(handle_uss_create_file);
     uss_cmd->add_command(create_file_cmd);
 
     auto create_dir_cmd = command_ptr(new Command("create-dir", "create a USS directory"));
     create_dir_cmd->add_positional_arg("file-path", file_path_help, ArgType_Single, true);
-    create_dir_cmd->add_keyword_arg("mode", "-m", "--mode", mode_help, ArgType_Single, false);
+    create_dir_cmd->add_keyword_arg("mode", make_aliases("-m"), mode_help, ArgType_Single, false);
     create_dir_cmd->set_handler(handle_uss_create_dir);
     uss_cmd->add_command(create_dir_cmd);
 
@@ -316,43 +367,43 @@ int main(int argc, char *argv[])
 
     auto view_cmd = command_ptr(new Command("view", "view a USS file"));
     view_cmd->add_positional_arg("file-path", file_path_help, ArgType_Single, true);
-    view_cmd->add_keyword_arg("encoding", "--ec", "--encoding", "return contents in given encoding", ArgType_Single);
-    view_cmd->add_keyword_arg("response-format-bytes", "--rfb", "--response-format-bytes", "returns the response as raw bytes", ArgType_Flag);
+    view_cmd->add_keyword_arg("encoding", make_aliases("--ec"), "return contents in given encoding", ArgType_Single);
+    view_cmd->add_keyword_arg("response-format-bytes", make_aliases("--rfb"), "returns the response as raw bytes", ArgType_Flag);
     view_cmd->set_handler(handle_uss_view);
     uss_cmd->add_command(view_cmd);
 
     auto write_cmd = command_ptr(new Command("write", "write to a USS file"));
     write_cmd->add_positional_arg("file-path", file_path_help, ArgType_Single, true);
-    write_cmd->add_keyword_arg("encoding", "--ec", "--encoding", "return contents in given encoding", ArgType_Single);
-    write_cmd->add_keyword_arg("etag", "--et", "--etag", "provide the e-tag for a write response to detect conflicts before save", ArgType_Single, false);
-    write_cmd->add_keyword_arg("etag-only", "--eo", "--etag-only", "only print the e-tag for a write response (when successful)", ArgType_Flag, false);
+    write_cmd->add_keyword_arg("encoding", make_aliases("--ec"), "return contents in given encoding", ArgType_Single);
+    write_cmd->add_keyword_arg("etag", make_aliases("--et"), "provide the e-tag for a write response to detect conflicts before save", ArgType_Single, false);
+    write_cmd->add_keyword_arg("etag-only", make_aliases("--eo"), "only print the e-tag for a write response (when successful)", ArgType_Flag, false);
     write_cmd->set_handler(handle_uss_write);
     uss_cmd->add_command(write_cmd);
 
     auto delete_cmd = command_ptr(new Command("delete", "delete a USS item"));
     delete_cmd->add_positional_arg("file-path", file_path_help, ArgType_Single, true);
-    delete_cmd->add_keyword_arg("recursive", "-r", "--recursive", recursive_help, ArgType_Flag, false);
+    delete_cmd->add_keyword_arg("recursive", make_aliases("-r"), recursive_help, ArgType_Flag, false);
     delete_cmd->set_handler(handle_uss_delete);
     uss_cmd->add_command(delete_cmd);
 
     auto chmod_cmd = command_ptr(new Command("chmod", "change permissions on a USS file or directory"));
     chmod_cmd->add_positional_arg("mode", "new permissions for the file or directory", ArgType_Single, true);
     chmod_cmd->add_positional_arg("file-path", file_path_help, ArgType_Single, true);
-    chmod_cmd->add_keyword_arg("recursive", "-r", "--recursive", recursive_help, ArgType_Flag, false);
+    chmod_cmd->add_keyword_arg("recursive", make_aliases("-r"), recursive_help, ArgType_Flag, false);
     chmod_cmd->set_handler(handle_uss_chmod);
     uss_cmd->add_command(chmod_cmd);
 
     auto chown_cmd = command_ptr(new Command("chown", "change owner on a USS file or directory"));
     chown_cmd->add_positional_arg("owner", "new owner (or owner:group) for the file or directory", ArgType_Single, true);
     chown_cmd->add_positional_arg("file-path", file_path_help, ArgType_Single, true);
-    chown_cmd->add_keyword_arg("recursive", "-r", "--recursive", recursive_help, ArgType_Flag, false);
+    chown_cmd->add_keyword_arg("recursive", make_aliases("-r"), recursive_help, ArgType_Flag, false);
     chown_cmd->set_handler(handle_uss_chown);
     uss_cmd->add_command(chown_cmd);
 
     auto chtag_cmd = command_ptr(new Command("chtag", "change tags on a USS file"));
     chtag_cmd->add_positional_arg("codeset", "new codeset for the file", ArgType_Single, true);
     chtag_cmd->add_positional_arg("file-path", file_path_help, ArgType_Single, true);
-    chtag_cmd->add_keyword_arg("recursive", "-r", "--recursive", recursive_help, ArgType_Flag, false);
+    chtag_cmd->add_keyword_arg("recursive", make_aliases("-r"), recursive_help, ArgType_Flag, false);
     chtag_cmd->set_handler(handle_uss_chtag);
     uss_cmd->add_command(chtag_cmd);
   }
@@ -373,10 +424,10 @@ int main(int argc, char *argv[])
   auto tool_cmd = command_ptr(new Command("tool", "tool operations"));
   {
     auto convert_dsect_cmd = command_ptr(new Command("ccnedsct", "convert dsect to c struct"));
-    convert_dsect_cmd->add_keyword_arg("adata-dsn", "--ad", "--adata-dsn", "input adata dsn", ArgType_Single, true);
-    convert_dsect_cmd->add_keyword_arg("chdr-dsn", "--cd", "--chdr-dsn", "output chdr dsn", ArgType_Single, true);
-    convert_dsect_cmd->add_keyword_arg("sysprint", "--sp", "--sysprint", "sysprint output", ArgType_Single, false);
-    convert_dsect_cmd->add_keyword_arg("sysout", "--so", "--sysout", "sysout output", ArgType_Single, false);
+    convert_dsect_cmd->add_keyword_arg("adata-dsn", make_aliases("--ad"), "input adata dsn", ArgType_Single, true);
+    convert_dsect_cmd->add_keyword_arg("chdr-dsn", make_aliases("--cd"), "output chdr dsn", ArgType_Single, true);
+    convert_dsect_cmd->add_keyword_arg("sysprint", make_aliases("--sp"), "sysprint output", ArgType_Single, false);
+    convert_dsect_cmd->add_keyword_arg("sysout", make_aliases("--so"), "sysout output", ArgType_Single, false);
     convert_dsect_cmd->set_handler(handle_tool_convert_dsect);
     tool_cmd->add_command(convert_dsect_cmd);
 
@@ -393,68 +444,30 @@ int main(int argc, char *argv[])
     auto search_cmd = command_ptr(new Command("search", "search members for string"));
     search_cmd->add_positional_arg("dsn", "data set to search", ArgType_Single, true);
     search_cmd->add_positional_arg("string", "string to search for", ArgType_Single, true);
-    search_cmd->add_keyword_arg("max-entries", "--me", "--max-entries", "max number of results to return", ArgType_Single);
-    search_cmd->add_keyword_arg("warn", "-w", "--warn", "warn if truncated or not found", ArgType_Flag, false, ArgValue(true)); // default true
+    search_cmd->add_keyword_arg("max-entries", make_aliases("--me"), "max number of results to return", ArgType_Single);
+    search_cmd->add_keyword_arg("warn", make_aliases("-w"), "warn if truncated or not found", ArgType_Flag, false, ArgValue(true)); // default true
     search_cmd->set_handler(handle_tool_search);
     tool_cmd->add_command(search_cmd);
 
     auto run_cmd = command_ptr(new Command("run", "run a program"));
     run_cmd->add_positional_arg("program", "name of program to run", ArgType_Single, true);
-    run_cmd->add_keyword_arg("dynalloc-pre", "--dp", "--dynalloc-pre", "dynalloc pre run statements", ArgType_Single);
-    run_cmd->add_keyword_arg("dynalloc-post", "--dt", "--dynalloc-post", "dynalloc post run statements", ArgType_Single);
-    run_cmd->add_keyword_arg("in-dd", "--idd", "--in-dd", "input ddname", ArgType_Single);
-    run_cmd->add_keyword_arg("input", "--in", "--input", "input string", ArgType_Single);
-    run_cmd->add_keyword_arg("out-dd", "--odd", "--out-dd", "output ddname", ArgType_Single);
+    run_cmd->add_keyword_arg("dynalloc-pre", make_aliases("--dp"), "dynalloc pre run statements", ArgType_Single);
+    run_cmd->add_keyword_arg("dynalloc-post", make_aliases("--dt"), "dynalloc post run statements", ArgType_Single);
+    run_cmd->add_keyword_arg("in-dd", make_aliases("--idd"), "input ddname", ArgType_Single);
+    run_cmd->add_keyword_arg("input", make_aliases("--in"), "input string", ArgType_Single);
+    run_cmd->add_keyword_arg("out-dd", make_aliases("--odd"), "output ddname", ArgType_Single);
     run_cmd->set_handler(handle_tool_run);
     tool_cmd->add_command(run_cmd);
   }
   root_command.add_command(tool_cmd);
 
+  // Set the root handler to handle interactive/help logic
+  root_command.set_handler(handle_root);
+
   // use parser to parse given arguments
   auto result = parser.parse(argc, argv);
 
-  if (result.status != ParseResult::ParserStatus_Success)
-  {
-    // help was shown by the parser, or error was already printed to stderr by the parser
-    return result.exit_code;
-  }
-
-  // handle interactive mode if requested
-  if (result.find_kw_arg_bool("interactive"))
-  {
-    cout << "Started, enter command or 'quit' to quit..." << endl;
-
-    string command;
-    int rc = 0;
-    int is_tty = isatty(fileno(stdout));
-    do
-    {
-      if (is_tty)
-        cout << "\r> " << flush;
-
-      getline(cin, command);
-
-      if (command == "quit") {
-        break;
-      }
-
-      parser.parse(command);
-
-      if (!is_tty)
-      {
-        cout << "[" << rc << "]" << endl;
-        // EBCDIC \x37 = ASCII \x04 = End of Transmission (Ctrl+D)
-        cout << '\x37' << flush;
-        cerr << '\x37' << flush;
-      }
-
-    } while (command != "quit");
-
-    cout << "...terminated" << endl;
-
-    return rc;
-  }
-
+  // Always return the result's exit code (help/errors handled by parser or handler)
   return result.exit_code;
 }
 
