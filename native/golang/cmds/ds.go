@@ -34,7 +34,7 @@ func HandleReadDatasetRequest(conn *utils.StdioConn, params []byte) (result any,
 	if len(request.Encoding) == 0 {
 		request.Encoding = fmt.Sprintf("IBM-%d", utils.DefaultEncoding)
 	}
-	args := []string{"data-set", "view", request.Dsname, "--encoding", request.Encoding, "--rfb", "true"}
+	args := []string{"data-set", "view", request.Dsname, "--encoding", request.Encoding, "--rfb"}
 	out, err := conn.ExecCmd(args)
 	if err != nil {
 		return nil, fmt.Errorf("Error executing command: %v", err)
