@@ -49,11 +49,13 @@ static void get_ssibssnm(SSIB *ssib)
   CVT *cvt_a = psa_a->flccvt;
   JESCT *jesct_a = cvt_a->cvtjesct;
 
-  zwto_debug("current name: %.4s\n", ssib->ssibssnm);
-  zwto_debug("new name: %.4s\n", jesct_a->jespjesn);
-
   if (NULL != jesct_a->jespjesn)
   {
+    if (0 == strcmp(jesct_a->jespjesn, "JES3"))
+    {
+      zwto_debug("JES3 environment not supported!");
+      return RTNCD_FAILURE;
+    }
     memcpy(ssib->ssibssnm, jesct_a->jespjesn, sizeof(ssib->ssibssnm));
   }
   else
