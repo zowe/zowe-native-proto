@@ -82,8 +82,9 @@ export default class ServerInstallHandler implements ICommandHandler {
         const Config = ImperativeConfig.instance.config;
 
         // Set the new fields on the Config object, set as secure if a credential manager is active and the property is secure.
+        const isSecured = profInfo.isSecured();
         for (const property of newProperties) {
-            Config.set(property.argLoc.jsonLoc, property.argValue, { secure: profInfo.isSecured() && property.secure });
+            Config.set(property.argLoc.jsonLoc, property.argValue, { secure: isSecured && property.secure });
         }
 
         // biome-ignore lint/suspicious/noExplicitAny: Required `as any` to set profile type
