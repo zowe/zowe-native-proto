@@ -154,7 +154,7 @@ int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data)
       memcpy(&read_ds.encoding_opts, &zds->encoding_opts, sizeof(ZEncode));
     }
     const auto read_rc = zds_read_from_dsn(&read_ds, dsn, current_contents);
-    if (read_rc != 0)
+    if (0 != read_rc)
     {
       zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to read contents of data set for e-tag comparison: %s", read_ds.diag.e_msg);
       return RTNCD_FAILURE;
@@ -183,7 +183,7 @@ int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data)
   if (!data.empty())
   {
     auto *fp = fopen(dsname.c_str(), zds->encoding_opts.data_type == eDataTypeBinary ? "wb,recfm=U" : "w");
-    if (fp == nullptr)
+    if (nullptr == fp)
     {
       zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open '%s'", dsname.c_str());
       return RTNCD_FAILURE;
@@ -212,7 +212,7 @@ int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data)
   // Print new e-tag to stdout as response
   string saved_contents = "";
   const auto read_rc = zds_read_from_dsn(zds, dsn, saved_contents);
-  if (read_rc != 0)
+  if (0 != read_rc)
   {
     return RTNCD_FAILURE;
   }

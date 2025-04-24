@@ -23,6 +23,9 @@
 #include "zjsytype.h"
 #include "zmetal.h"
 #include "zjbtype.h"
+#include "ihapsa.h"
+#include "cvt.h"
+#include "iefjesct.h"
 
 // TODO(Kelosky):
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=79-putget-requests
@@ -36,11 +39,34 @@ typedef struct
   unsigned char buffer[SYMBOL_ENTRIES * 16];
 } JSYMBOLO;
 
+typedef struct psa PSA;
+typedef struct cvt CVT;
+typedef struct jesct JESCT;
+
+static void get_ssibssnm(SSIB *ssib)
+{
+  PSA *psa_a = (PSA *)0;
+  CVT *cvt_a = psa_a->flccvt;
+  JESCT *jesct_a = cvt_a->cvtjesct;
+
+  zwto_debug("current name: %.4s\n", ssib->ssibssnm);
+  zwto_debug("new name: %.4s\n", jesct_a->jespjesn);
+
+  if (NULL != jesct_a->jespjesn)
+  {
+    memcpy(ssib->ssibssnm, jesct_a->jespjesn, sizeof(ssib->ssibssnm));
+  }
+  else
+  {
+    memcpy(ssib->ssibssnm, "JES2", sizeof(ssib->ssibssnm));
+  }
+}
+
 static void init_ssib(SSIB *ssib)
 {
   memcpy(ssib->ssibid, "SSIB", sizeof(ssib->ssibid));
   ssib->ssiblen = sizeof(SSIB);
-  memcpy(ssib->ssibssnm, "JES2", sizeof(ssib->ssibssnm));
+  get_ssibssnm(ssib);
 }
 
 static void init_ssob(SSOB *PTR32 ssob, SSIB *PTR32 ssib, void *PTR32 function_depenent_area, int function)

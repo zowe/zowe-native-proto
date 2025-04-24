@@ -422,14 +422,14 @@ size_t zut_iconv(iconv_t cd, ZConvData &data, ZDIAG &diag)
   size_t rc = iconv(cd, &data.input, &input_bytes_remaining, &data.output_iter, &output_bytes_remaining);
 
   // If an error occurred, throw an exception with iconv's return code and errno
-  if (rc == -1)
+  if (-1 == rc)
   {
     diag.e_msg_len = sprintf(diag.e_msg, "[zut_iconv] Error when converting characters. rc=%lu,errno=%d", rc, errno);
     return -1;
   }
 
   // "If the input conversion is stopped... the value pointed to by inbytesleft will be nonzero and errno is set to indicate the condition"
-  if (input_bytes_remaining != 0)
+  if (0 != input_bytes_remaining)
   {
     diag.e_msg_len = sprintf(diag.e_msg, "[zut_iconv] Failed to convert all input bytes. rc=%lu,errno=%d", rc, errno);
     return -1;
@@ -467,7 +467,7 @@ string zut_encode(const string &input_str, const string &from_encoding, const st
   ZConvData data = {input, input_size, max_output_size, &output_buffer[0], output_iter};
   size_t iconv_rc = zut_iconv(cd, data, diag);
   iconv_close(cd);
-  if (iconv_rc == -1)
+  if (-1 == iconv_rc)
   {
     throw std::exception(diag.e_msg);
   }
