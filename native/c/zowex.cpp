@@ -2144,10 +2144,10 @@ int handle_data_set_compress(ZCLIResult result)
 
   // perform dynalloc
   vector<string> dds;
-  dds.push_back("alloc dd(sysut1) da('" + dsn + "') shr");
-  dds.push_back("alloc dd(sysut2) da('" + dsn + "') shr");
-  dds.push_back("alloc dd(sysprint)"); //  lrecl(80) recfm(f,b) blksize(80)");
-  // dds.push_back("alloc dd(sysin)");    //  lrecl(80) recfm(f,b) blksize(80)");
+  dds.push_back("alloc dd(a) da('" + dsn + "') old");
+  dds.push_back("alloc dd(b) da('" + dsn + "') old");
+  dds.push_back("alloc dd(sysprint) lrecl(80) recfm(f,b) blksize(80)");
+  dds.push_back("alloc dd(sysin) lrecl(80) recfm(f,b) blksize(80)");
 
   rc = loop_dynalloc(dds);
   if (RTNCD_SUCCESS != rc)
@@ -2157,13 +2157,13 @@ int handle_data_set_compress(ZCLIResult result)
 
   // write control statements
   ZDS zds = {0};
-  // zds_write_to_dd(&zds, "sysin", "        COPY OUTDD=B,INDD=A");
-  // if (0 != rc)
-  // {
-  //   cerr << "Error: could not write to dd: '" << "sysin" << "' rc: '" << rc << "'" << endl;
-  //   cerr << "  Details: " << zds.diag.e_msg << endl;
-  //   return RTNCD_FAILURE;
-  // }
+  zds_write_to_dd(&zds, "sysin", "        COPY OUTDD=B,INDD=A");
+  if (0 != rc)
+  {
+    cerr << "Error: could not write to dd: '" << "sysin" << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zds.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
 
   // perform search
   rc = zut_run("IEBCOPY");
@@ -2185,9 +2185,9 @@ int handle_data_set_compress(ZCLIResult result)
   cout << output << endl;
 
   vector<string> free_dds;
-  free_dds.push_back("free dd(sysut1)");
-  free_dds.push_back("free dd(sysut2)");
-  // free_dds.push_back("free dd(sysin)");
+  free_dds.push_back("free dd(a)");
+  free_dds.push_back("free dd(b)");
+  free_dds.push_back("free dd(sysin)");
   free_dds.push_back("free dd(sysprint)");
 
   rc = loop_dynalloc(free_dds);

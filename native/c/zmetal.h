@@ -98,18 +98,21 @@ static int test_auth()
 #endif
 
 #if defined(__IBM_METAL__)
-#define LOAD(name, ep)                                         \
-  __asm(                                                       \
-      "*                                                   \n" \
-      " LOAD EPLOC=%1                                      \n" \
-      "*                                                   \n" \
-      " STG 0,%0                                           \n" \
-      "*                                                    "  \
-      : "=m"(ep)                                               \
-      : "m"(name)                                              \
+#define LOAD(name, ep, rc)                                      \
+  __asm(                                                        \
+      "*                                                    \n" \
+      " LOAD EPLOC=%2,"                                         \
+      "ERRET=*+6+4                                          \n" \
+      "*                                                    \n" \
+      " STG 0,%0                                            \n" \
+      " ST  15,%1                                           \n" \
+      "*                                                      " \
+      : "=m"(ep),                                               \
+        "=m"(rc)                                                \
+      : "m"(name)                                               \
       : "r0", "r1", "r14", "r15");
 #else
-#define LOAD(name, ep)
+#define LOAD(name, ep, rc)
 #endif
 
 #if defined(__IBM_METAL__)
@@ -135,12 +138,15 @@ static int test_auth()
  */
 static void *PTR64 load_module(const char name[8])
 {
-  // TODO(Kelosky): ERRET
   void *PTR64 ep = NULL;
+  int rc = 0;
+  unsigned long long p = 0;
   char name_truncated[8 + 1] = {0};
   memset(name_truncated, ' ', sizeof(name_truncated - 1));                                                             // pad with spaces
   memcpy(name_truncated, name, strlen(name) > sizeof(name_truncated) - 1 ? sizeof(name_truncated) - 1 : strlen(name)); // truncate
-  LOAD(name_truncated, ep);
+
+  LOAD(name_truncated, p, rc);
+  memcpy(&ep, &p, sizeof(void *PTR64));
   return ep;
 }
 

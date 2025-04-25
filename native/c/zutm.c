@@ -197,10 +197,10 @@ int ZUTSRCH()
   return rc;
 }
 
-#pragma prolog(ZUTRUN, "&CCN_MAIN SETB 1 \n MYPROLOG")
-#pragma epilog(ZUTRUN, "&CCN_MAIN SETB 1 \n MYEPILOG")
-typedef int (*PGM31)() ATTRIBUTE(amode31);
-typedef int (*PGM64)() ATTRIBUTE(amode64);
+#pragma prolog(ZUTRUN, " ZWEPROLG NEWDSA=(YES,10) ")
+#pragma epilog(ZUTRUN, " ZWEEPILG ")
+typedef int (*PGM31)(void *) ATTRIBUTE(amode31);
+typedef int (*PGM64)(void *) ATTRIBUTE(amode64);
 ;
 int ZUTRUN(const char *program)
 {
@@ -217,14 +217,18 @@ int ZUTRUN(const char *program)
     {
       ifunction &= 0xFFFFFFFFFFFFFFFE; // clear low bit
       PGM64 p64 = (PGM64)ifunction;
-      rc = p64();
+      rc = p64(NULL); // ensure no parms
     }
     else
     {
       ifunction &= 0x000000007FFFFFFF; // clear high bit
       PGM31 p31 = (PGM31)ifunction;
-      rc = p31();
+      rc = p31(NULL); // ensure no parms
     }
+  }
+  else
+  {
+    return RTNCD_FAILURE;
   }
 
   delete_module(program);
