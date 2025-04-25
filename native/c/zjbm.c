@@ -43,32 +43,32 @@ typedef struct psa PSA;
 typedef struct cvt CVT;
 typedef struct jesct JESCT;
 
-static void get_ssibssnm(SSIB *ssib)
+static int get_ssibssnm(SSIB *ssib)
 {
   PSA *psa_a = (PSA *)0;
   CVT *cvt_a = psa_a->flccvt;
   JESCT *jesct_a = cvt_a->cvtjesct;
 
-  if (NULL != jesct_a->jespjesn)
+  // This might be overkill, but just making sure we have an SS name
+  if (NULL == jesct_a->jespjesn)
   {
-    if (0 == strcmp(jesct_a->jespjesn, "JES3"))
-    {
-      zwto_debug("JES3 environment not supported!");
-      return RTNCD_FAILURE;
-    }
-    memcpy(ssib->ssibssnm, jesct_a->jespjesn, sizeof(ssib->ssibssnm));
+    return RTNCD_FAILURE;
   }
-  else
+  // We do not support JES3 (yet)
+  if (0 != jesct_a->jesjesfg & jes3actv)
   {
-    memcpy(ssib->ssibssnm, "JES2", sizeof(ssib->ssibssnm));
+    return RTNCD_FAILURE;
   }
+
+  memcpy(ssib->ssibssnm, jesct_a->jespjesn, sizeof(ssib->ssibssnm));
+  return RTNCD_SUCCESS;
 }
 
-static void init_ssib(SSIB *ssib)
+static int init_ssib(SSIB *ssib)
 {
   memcpy(ssib->ssibid, "SSIB", sizeof(ssib->ssibid));
   ssib->ssiblen = sizeof(SSIB);
-  get_ssibssnm(ssib);
+  return get_ssibssnm(ssib);
 }
 
 static void init_ssob(SSOB *PTR32 ssob, SSIB *PTR32 ssib, void *PTR32 function_depenent_area, int function)
@@ -182,7 +182,12 @@ int ZJBMMOD(ZJB *zjb, int type, int flags)
 
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=sfcd-modify-job-function-call-ssi-function-code-85
   init_ssob(&ssob, &ssib, &ssjm, 85);
-  init_ssib(&ssib);
+  if (0 != init_ssib(&ssib))
+  {
+    strcpy(zjb->diag.service_name, "init_ssib");
+    zjb->diag.detail_rc = ZJB_RTNCD_SERVICE_FAILURE;
+    return RTNCD_FAILURE;
+  }
 
   memcpy(ssjm.ssjmeye, "SSJMPL  ", sizeof(ssjm.ssjmeye));
   ssjm.ssjmlen = ssjmsize;
@@ -318,7 +323,12 @@ int ZJBMTCOM(ZJB *zjb, STAT *PTR64 stat, ZJB_JOB_INFO **PTR64 job_info, int *ent
 
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=sfcd-extended-status-function-call-ssi-function-code-80
   init_ssob(&ssob, &ssib, stat, 80);
-  init_ssib(&ssib);
+  if (0 != init_ssib(&ssib))
+  {
+    strcpy(zjb->diag.service_name, "init_ssib");
+    zjb->diag.detail_rc = ZJB_RTNCD_SERVICE_FAILURE;
+    return RTNCD_FAILURE;
+  }
 
   ssobp = &ssob;
   ssobp = (SSOB * PTR32)((unsigned int)ssobp | 0x80000000);
@@ -437,7 +447,12 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
   STATSEVB *PTR32 statsevbp = NULL;
 
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=sfcd-extended-status-function-call-ssi-function-code-80
-  init_ssib(&ssib);
+  if (0 != init_ssib(&ssib))
+  {
+    strcpy(zjb->diag.service_name, "init_ssib");
+    zjb->diag.detail_rc = ZJB_RTNCD_SERVICE_FAILURE;
+    return RTNCD_FAILURE;
+  }
   init_ssob(&ssob, &ssib, &stat, 80);
   init_stat(&stat);
 
