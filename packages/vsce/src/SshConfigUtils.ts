@@ -175,7 +175,7 @@ export class VscePromptApi extends AbstractConfigManager {
         return ZoweVsCodeExtension.workspaceRoot?.uri.fsPath;
     }
 
-    protected getProfileType(): imperative.IProfileTypeConfiguration[] {
+    protected getProfileSchemas(): imperative.IProfileTypeConfiguration[] {
         const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
         const profCache = zoweExplorerApi.getExplorerExtenderApi().getProfilesCache();
 
