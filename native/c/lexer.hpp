@@ -1003,7 +1003,7 @@ namespace lexer
     }
     static bool is_ident_cont(char c)
     {
-      return is_ident_start(c) || is_ascii_dec_digit(c) || c == '.' || c == '/' || c == '*' || c == '-';
+      return is_ident_start(c) || is_ascii_dec_digit(c) || c == '.' || c == '/' || c == '*' || c == '-' || c == '(' || c == ')';
     }
 
     // combined digit check for lex_number
