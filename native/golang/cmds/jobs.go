@@ -34,7 +34,7 @@ func HandleListJobsRequest(conn *utils.StdioConn, params []byte) (result any, e 
 		args = append(args, "--owner", request.Owner)
 	}
 	if len(request.Prefix) != 0 {
-		args = append(args, "--prefix", "\""+request.Prefix+"\"")
+		args = append(args, "--prefix", request.Prefix)
 	}
 
 	out, err := conn.ExecCmd(args)
