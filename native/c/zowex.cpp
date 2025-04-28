@@ -1228,7 +1228,7 @@ int handle_data_set_create_member_dsn(ZCLIResult result)
   }
 
   rc = zds_list_data_sets(&zds, dsn, entries);
-  if (0 != rc || entries.size() == 0)
+  if (RTNCD_WARNING < rc || entries.size() == 0)
   {
     cout << "Error: could not create data set member: '" << dsn << "' rc: '" << rc << "'" << endl;
     cout << "  Details:\n"
