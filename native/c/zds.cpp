@@ -154,7 +154,7 @@ int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data)
       memcpy(&read_ds.encoding_opts, &zds->encoding_opts, sizeof(ZEncode));
     }
     const auto read_rc = zds_read_from_dsn(&read_ds, dsn, current_contents);
-    if (read_rc != 0)
+    if (0 != read_rc)
     {
       zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to read contents of data set for e-tag comparison: %s", read_ds.diag.e_msg);
       return RTNCD_FAILURE;
@@ -178,23 +178,22 @@ int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data)
   }
 
   const string dsname = "//'" + dsn + "'";
-
   std::string temp = data;
+
+  auto *fp = fopen(dsname.c_str(), zds->encoding_opts.data_type == eDataTypeBinary ? "wb,recfm=U" : "w");
+  if (nullptr == fp)
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open '%s'", dsname.c_str());
+    return RTNCD_FAILURE;
+  }
+
   if (!data.empty())
   {
-    auto *fp = fopen(dsname.c_str(), zds->encoding_opts.data_type == eDataTypeBinary ? "wb,recfm=U" : "w");
-    if (fp == nullptr)
-    {
-      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open '%s'", dsname.c_str());
-      return RTNCD_FAILURE;
-    }
-
     if (hasEncoding)
     {
       try
       {
-        const auto bytes_with_encoding = zut_encode(temp, "UTF-8", codepage, zds->diag);
-        temp = bytes_with_encoding;
+        temp = zut_encode(temp, "UTF-8", codepage, zds->diag);
       }
       catch (std::exception &e)
       {
@@ -204,15 +203,16 @@ int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data)
     }
     if (!temp.empty())
     {
-      const auto bytes_written = fwrite(temp.c_str(), 1u, temp.length(), fp);
+      fwrite(temp.c_str(), 1u, temp.length(), fp);
     }
-    fclose(fp);
   }
+
+  fclose(fp);
 
   // Print new e-tag to stdout as response
   string saved_contents = "";
   const auto read_rc = zds_read_from_dsn(zds, dsn, saved_contents);
-  if (read_rc != 0)
+  if (0 != read_rc)
   {
     return RTNCD_FAILURE;
   }

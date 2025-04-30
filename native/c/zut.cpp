@@ -138,8 +138,8 @@ int zut_hello(string name)
 
 void zut_dump_storage(string title, const void *data, size_t size)
 {
-  ios_base::fmtflags f(cout.flags());
-  printf("--- Dumping storage for '%s' at x'%016llx' ---\n", title.c_str(), data);
+  ios::fmtflags f(cerr.flags());
+  fprintf(stderr, "--- Dumping storage for '%s' at x'%016llx' ---\n", title.c_str(), data);
 
   unsigned char *ptr = (unsigned char *)data;
 
@@ -156,59 +156,59 @@ void zut_dump_storage(string title, const void *data, size_t size)
 
   for (int x = 0; x < lines; x++)
   {
-    printf("%016llx", ptr);
-    cout << " | ";
+    fprintf(stderr, "%016llx", ptr);
+    cerr << " | ";
     for (int y = 0; y < BYTES_PER_LINE; y++)
     {
       unsigned char p = isprint(ptr[y]) ? ptr[y] : unknown;
-      cout << setw(1) << setfill(' ') << p;
+      cerr << setw(1) << setfill(' ') << p;
     }
-    cout << " | ";
+    cerr << " | ";
 
     for (int y = 0; y < BYTES_PER_LINE; y++)
     {
-      std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(ptr[y]);
+      cerr << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(ptr[y]);
 
       if ((y + 1) % 4 == 0)
       {
-        std::cout << " ";
+        cerr << " ";
       }
       if ((y + 1) % 16 == 0)
       {
-        std::cout << "    ";
+        cerr << "    ";
       }
     }
-    cout << endl;
+    cerr << endl;
     ptr = ptr + BYTES_PER_LINE;
   }
 
-  printf("%016llx", ptr);
-  cout << " | ";
+  fprintf(stderr, "%016llx", ptr);
+  cerr << " | ";
   for (int y = 0; y < remainder; y++)
   {
     unsigned char p = isprint(ptr[y]) ? ptr[y] : unknown;
-    cout << setw(1) << setfill(' ') << p;
+    cerr << setw(1) << setfill(' ') << p;
   }
   memset(buf, 0x00, sizeof(buf));
   sprintf(buf, "%.*s", BYTES_PER_LINE - remainder, spaces);
-  cout << buf << " | ";
+  cerr << buf << " | ";
   for (int y = 0; y < remainder; y++)
   {
-    cout << hex << setw(2) << setfill('0') << static_cast<int>(ptr[y]);
+    cerr << hex << setw(2) << setfill('0') << static_cast<int>(ptr[y]);
 
     if ((y + 1) % 4 == 0)
     {
-      std::cout << " ";
+      cerr << " ";
     }
     if ((y + 1) % 16 == 0)
     {
-      std::cout << "    ";
+      cerr << "    ";
     }
   }
-  cout << endl;
-  cout << "--- END ---" << endl;
+  cerr << endl;
+  cerr << "--- END ---" << endl;
 
-  cout.flags(f);
+  cerr.flags(f);
 }
 
 /**
@@ -422,14 +422,14 @@ size_t zut_iconv(iconv_t cd, ZConvData &data, ZDIAG &diag)
   size_t rc = iconv(cd, &data.input, &input_bytes_remaining, &data.output_iter, &output_bytes_remaining);
 
   // If an error occurred, throw an exception with iconv's return code and errno
-  if (rc == -1)
+  if (-1 == rc)
   {
     diag.e_msg_len = sprintf(diag.e_msg, "[zut_iconv] Error when converting characters. rc=%lu,errno=%d", rc, errno);
     return -1;
   }
 
   // "If the input conversion is stopped... the value pointed to by inbytesleft will be nonzero and errno is set to indicate the condition"
-  if (input_bytes_remaining != 0)
+  if (0 != input_bytes_remaining)
   {
     diag.e_msg_len = sprintf(diag.e_msg, "[zut_iconv] Failed to convert all input bytes. rc=%lu,errno=%d", rc, errno);
     return -1;
@@ -467,7 +467,7 @@ string zut_encode(const string &input_str, const string &from_encoding, const st
   ZConvData data = {input, input_size, max_output_size, &output_buffer[0], output_iter};
   size_t iconv_rc = zut_iconv(cd, data, diag);
   iconv_close(cd);
-  if (iconv_rc == -1)
+  if (-1 == iconv_rc)
   {
     throw std::exception(diag.e_msg);
   }

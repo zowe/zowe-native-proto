@@ -163,7 +163,7 @@ private:
 public:
   string get_option_value(string option_name, string default_value = "")
   {
-    if (this->get_option(option_name) == nullptr)
+    if (nullptr == this->get_option(option_name))
     {
       return default_value;
     }
@@ -569,7 +569,7 @@ int ZCLI::run(int argc, char *argv[])
   // look for help
   for (int i = CLI_REMAIN_ARG_START; i < argc; i++)
   {
-    if (string(argv[i]) == "--help" || string(argv[i]) == "-h")
+    if ("--help" == string(argv[i]) || "-h" == string(argv[i]))
     {
       verb->help(name, group->get_name());
       return 0;
