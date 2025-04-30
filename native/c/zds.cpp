@@ -193,8 +193,6 @@ int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data)
     {
       try
       {
-        // const auto bytes_with_encoding = zut_encode(temp, "UTF-8", codepage, zds->diag);
-        // temp = bytes_with_encoding;
         temp = zut_encode(temp, "UTF-8", codepage, zds->diag);
       }
       catch (std::exception &e)
@@ -205,7 +203,6 @@ int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data)
     }
     if (!temp.empty())
     {
-      // const auto bytes_written = fwrite(temp.c_str(), 1u, temp.length(), fp);
       fwrite(temp.c_str(), 1u, temp.length(), fp);
     }
   }

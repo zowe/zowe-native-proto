@@ -57,7 +57,7 @@ static int get_ssibssnm(SSIB *ssib)
   // We do not support JES3 (yet)
   if (0 != jesct_a->jesjesfg & jes3actv)
   {
-    return RTNCD_FAILURE;
+    return ZJB_RTNCD_JES3_NOT_SUPPORTED;
   }
 
   memcpy(ssib->ssibssnm, jesct_a->jespjesn, sizeof(ssib->ssibssnm));
@@ -182,10 +182,19 @@ int ZJBMMOD(ZJB *zjb, int type, int flags)
 
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=sfcd-modify-job-function-call-ssi-function-code-85
   init_ssob(&ssob, &ssib, &ssjm, 85);
-  if (0 != init_ssib(&ssib))
+  rc = init_ssib(&ssib);
+  if (0 != rc)
   {
     strcpy(zjb->diag.service_name, "init_ssib");
-    zjb->diag.detail_rc = ZJB_RTNCD_SERVICE_FAILURE;
+    zjb->diag.detail_rc = rc;
+    if (ZJB_RTNCD_JES3_NOT_SUPPORTED == rc)
+    {
+      zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "JES3 is not supported");
+    }
+    else
+    {
+      zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "Failed to get SSIBSSNM");
+    }
     return RTNCD_FAILURE;
   }
 
