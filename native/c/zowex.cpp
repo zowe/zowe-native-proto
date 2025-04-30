@@ -945,11 +945,11 @@ int job_submit_common(ZCLIResult result, string jcl, string &jobid, string ident
 #define JOB_STATUS_OUTPUT "OUTPUT"
 #define JOB_STATUS_INPUT "ACTIVE"
 
-  if (wait == JOB_STATUS_OUTPUT || wait == JOB_STATUS_INPUT)
+  if (JOB_STATUS_OUTPUT == wait || JOB_STATUS_INPUT == wait)
   {
     rc = wait_for_status(&zjb, wait);
   }
-  else if (wait != "")
+  else if ("" != wait)
   {
     cerr << "Error: cannot wait for unknown status '" << wait << "'" << endl;
     return RTNCD_FAILURE;
@@ -1146,7 +1146,7 @@ int handle_console_issue(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  if (wait == "true")
+  if ("true" == wait)
   {
     string response = "";
     rc = zcn_get(&zcn, response);
@@ -1228,7 +1228,7 @@ int handle_data_set_create_member_dsn(ZCLIResult result)
   }
 
   rc = zds_list_data_sets(&zds, dsn, entries);
-  if (0 != rc || entries.size() == 0)
+  if (RTNCD_WARNING < rc || entries.size() == 0)
   {
     cout << "Error: could not create data set member: '" << dsn << "' rc: '" << rc << "'" << endl;
     cout << "  Details:\n"
@@ -1405,7 +1405,7 @@ int handle_data_set_list(ZCLIResult result)
       }
       else
       {
-        if (attributes == "true")
+        if ("true" == attributes)
         {
           std::cout << left << setw(44) << it->name << " " << it->volser << " " << setw(4) << it->dsorg << endl;
         }
@@ -1582,7 +1582,7 @@ int handle_uss_create_file(ZCLIResult result)
   int rc = 0;
   string file_path = result.get_positional("file-path")->get_value();
   string mode(result.get_option_value("--mode"));
-  if (mode == "")
+  if ("" == mode)
     mode = "644";
 
   ZUSF zusf = {0};
@@ -1605,7 +1605,7 @@ int handle_uss_create_dir(ZCLIResult result)
   int rc = 0;
   string file_path = result.get_positional("file-path")->get_value();
   string mode(result.get_option_value("--mode"));
-  if (mode == "")
+  if ("" == mode)
     mode = "755";
 
   ZUSF zusf = {0};
