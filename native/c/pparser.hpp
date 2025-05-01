@@ -62,6 +62,36 @@ SOFTWARE.
 namespace pparser
 {
 
+  // Levenshtein distance for suggestions
+  // Measures the similarity between strings a and b
+  inline size_t levenshtein_distance(const std::string &a, const std::string &b)
+  {
+    const size_t len_a = a.size();
+    const size_t len_b = b.size();
+    std::vector<size_t> prev(len_b + 1, 0);
+    std::vector<size_t> curr(len_b + 1, 0);
+
+    for (size_t j = 0; j <= len_b; ++j)
+      prev[j] = j;
+
+    for (size_t i = 1; i <= len_a; ++i)
+    {
+      curr[0] = i;
+      for (size_t j = 1; j <= len_b; ++j)
+      {
+        size_t cost = (a[i - 1] == b[j - 1]) ? 0 : 1;
+        size_t del = prev[j] + 1;
+        size_t ins = curr[j - 1] + 1;
+        size_t sub = prev[j - 1] + cost;
+        size_t min_val = del < ins ? del : ins;
+        min_val = min_val < sub ? min_val : sub;
+        curr[j] = min_val;
+      }
+      prev = curr;
+    }
+    return prev[len_b];
+  }
+
   // Helper for environments without initializer_list support
   inline std::vector<std::string> make_aliases(const char *a1 = 0,
                                                const char *a2 = 0,
@@ -925,6 +955,7 @@ namespace pparser
       case lexer::TokTimes:
         if (expect_string)
           return ArgValue("*");
+        break;
       default:
         break;
       }
@@ -978,7 +1009,8 @@ namespace pparser
     ParserStatus status;       // no default initializer
     int exit_code;             // exit code returned by handler or set by parser
     std::string error_message; // error message if status is parse_error
-    std::string command_path;  // full path of the executed command (e.g., "git remote add")
+    std::string command_path;  // full path of the executed command (e.g., "git
+                               // remote add")
 
     // map storing parsed keyword argument values (name -> value)
     std::map<std::string, ArgValue> keyword_values;
@@ -988,7 +1020,8 @@ namespace pparser
     // pointer to the command definition for default value lookup
     const Command *m_command;
 
-    ParseResult() : status(ParserStatus_Success), exit_code(0), m_command(nullptr) {}
+    ParseResult()
+        : status(ParserStatus_Success), exit_code(0), m_command(nullptr) {}
 
     // check if a keyword arg was provided (doesn't check type)
     bool has_kw_arg(const std::string &name) const
@@ -1147,7 +1180,8 @@ namespace pparser
         {
           if (defs[i].name == name)
           {
-            const std::vector<std::string> *def_ptr = defs[i].default_value.get_string_vector();
+            const std::vector<std::string> *def_ptr =
+                defs[i].default_value.get_string_vector();
             return def_ptr ? *def_ptr : std::vector<std::string>();
           }
         }
@@ -1314,7 +1348,8 @@ namespace pparser
         {
           if (defs[i].name == name)
           {
-            const std::vector<std::string> *def_ptr = defs[i].default_value.get_string_vector();
+            const std::vector<std::string> *def_ptr =
+                defs[i].default_value.get_string_vector();
             return def_ptr ? *def_ptr : std::vector<std::string>();
           }
         }
@@ -1323,9 +1358,10 @@ namespace pparser
     }
   };
 
-  inline ParseResult Command::parse(const std::vector<lexer::Token> &tokens,
-                                    size_t &current_token_index,
-                                    const std::string &command_path_prefix) const
+  inline ParseResult
+  Command::parse(const std::vector<lexer::Token> &tokens,
+                 size_t &current_token_index,
+                 const std::string &command_path_prefix) const
   {
     ParseResult result;
     result.m_command = this;
@@ -1392,9 +1428,8 @@ namespace pparser
             if (matched_arg->type != ArgType_Flag)
             {
               result.status = ParseResult::ParserStatus_ParseError;
-              result.error_message =
-                  "option -" + single_flag_char +
-                  " requires a value and cannot be combined.";
+              result.error_message = "option -" + single_flag_char +
+                                     " requires a value and cannot be combined.";
               std::cerr << "error: " << result.error_message << "\n\n";
               generate_help(std::cerr, command_path_prefix);
               result.exit_code = 1;
@@ -1417,7 +1452,47 @@ namespace pparser
           result.error_message = "unknown option: ";
           result.error_message += (is_short_flag_kind ? "-" : "--");
           result.error_message += flag_name_str;
-          std::cerr << "error: " << result.error_message << "\n\n";
+
+          // Suggest similar option
+          size_t best_dist = (size_t)-1;
+          std::string best_match;
+          for (size_t i = 0; i < m_kw_args.size(); ++i)
+          {
+            const ArgumentDef &arg = m_kw_args[i];
+            // Check canonical name
+            size_t dist = pparser::levenshtein_distance(flag_name_str, arg.name);
+            if (dist < best_dist)
+            {
+              best_dist = dist;
+              best_match = "--" + arg.name;
+            }
+            // Check aliases
+            for (size_t j = 0; j < arg.aliases.size(); ++j)
+            {
+              std::string alias = arg.aliases[j];
+              // Remove leading dashes for comparison
+              std::string alias_cmp = alias;
+              while (!alias_cmp.empty() && alias_cmp[0] == '-')
+                alias_cmp = alias_cmp.substr(1);
+              dist = pparser::levenshtein_distance(flag_name_str, alias_cmp);
+              if (dist < best_dist)
+              {
+                best_dist = dist;
+                best_match = alias;
+              }
+            }
+          }
+          std::cerr << "Error: " << result.error_message << "\n";
+
+          if (best_dist != (size_t)-1 && best_dist <= 2)
+          {
+            std::cerr << "Did you mean '" << best_match << "'?\n\n";
+          }
+          else
+          {
+            std::cerr << "\n";
+          }
+
           generate_help(std::cerr, command_path_prefix);
           result.exit_code = 1;
           return result;
@@ -1493,8 +1568,7 @@ namespace pparser
             std::map<std::string, ArgValue>::iterator map_it =
                 result.keyword_values.find(matched_arg->name);
             if (map_it == result.keyword_values.end() ||
-                !map_it->second.is_string_vector() ||
-                map_it->second.is_none())
+                !map_it->second.is_string_vector() || map_it->second.is_none())
             {
               result.keyword_values[matched_arg->name] =
                   ArgValue(std::vector<std::string>());
@@ -1514,11 +1588,10 @@ namespace pparser
               current_token_index++;
 
               // keep consuming values until next flag or end
-              while (current_token_index < tokens.size() &&
-                     tokens[current_token_index].get_kind() !=
-                         lexer::TokFlagShort &&
-                     tokens[current_token_index].get_kind() !=
-                         lexer::TokFlagLong)
+              while (
+                  current_token_index < tokens.size() &&
+                  tokens[current_token_index].get_kind() != lexer::TokFlagShort &&
+                  tokens[current_token_index].get_kind() != lexer::TokFlagLong)
               {
                 const lexer::Token &next_value_token =
                     tokens[current_token_index];
@@ -1603,20 +1676,62 @@ namespace pparser
           // subcommand.
           return sub_result;
         }
+        else if (!m_commands.empty())
+        {
+          // Suggest similar subcommand/group
+          size_t best_dist = (size_t)-1;
+          std::string best_match;
+          for (std::map<std::string, command_ptr>::const_iterator it2 = m_commands.begin();
+               it2 != m_commands.end(); ++it2)
+          {
+            // Check subcommand name
+            size_t dist = pparser::levenshtein_distance(potential_subcommand_or_alias, it2->first);
+            if (dist < best_dist)
+            {
+              best_dist = dist;
+              best_match = it2->first;
+            }
+            // Check aliases
+            const std::vector<std::string> &aliases = it2->second->get_aliases();
+            for (size_t j = 0; j < aliases.size(); ++j)
+            {
+              dist = pparser::levenshtein_distance(potential_subcommand_or_alias, aliases[j]);
+              if (dist < best_dist)
+              {
+                best_dist = dist;
+                best_match = aliases[j];
+              }
+            }
+          }
+          result.status = ParseResult::ParserStatus_ParseError;
+          result.error_message = "unknown command or group: " + potential_subcommand_or_alias;
+          std::cerr << "Error: " << result.error_message << "\n";
+
+          if (best_dist != (size_t)-1 && best_dist <= 2)
+          {
+            std::cerr << "Did you mean '" << best_match << "'?\n\n";
+          }
+          else
+          {
+            std::cerr << "\n";
+          }
+          generate_help(std::cerr, command_path_prefix);
+          result.exit_code = 1;
+          return result;
+        }
       }
 
       // if not a flag/option or subcommand, treat as positional argument
       if (current_positional_arg_index < m_pos_args.size())
       {
-        const ArgumentDef &pos_arg_def =
-            m_pos_args[current_positional_arg_index];
+        const ArgumentDef &pos_arg_def = m_pos_args[current_positional_arg_index];
         ArgValue parsed_value = parse_token_value(token, pos_arg_def.type);
 
         if (parsed_value.is_none())
         {
           result.status = ParseResult::ParserStatus_ParseError;
-          result.error_message = "invalid value for positional argument '" +
-                                 pos_arg_def.name + "'";
+          result.error_message =
+              "invalid value for positional argument '" + pos_arg_def.name + "'";
           std::cerr << "error: " << result.error_message << "\n\n";
           generate_help(std::cerr, command_path_prefix);
           result.exit_code = 1;
@@ -1653,10 +1768,9 @@ namespace pparser
           }
 
           current_token_index++;
-          while (
-              current_token_index < tokens.size() &&
-              !is_flag_token(
-                  tokens, current_token_index) /* && !is_subcommand(...) */)
+          while (current_token_index < tokens.size() &&
+                 !is_flag_token(
+                     tokens, current_token_index) /* && !is_subcommand(...) */)
           {
             // todo: add is_subcommand check more robustly?
             // currently relies on subcommand check earlier in loop
@@ -1664,8 +1778,7 @@ namespace pparser
             // parse subsequent as strings
             ArgValue next_parsed_value =
                 parse_token_value(next_value_token, ArgType_Single);
-            const std::string *next_val_str_ptr =
-                next_parsed_value.get_string();
+            const std::string *next_val_str_ptr = next_parsed_value.get_string();
             if (next_val_str_ptr)
             {
               values.push_back(*next_val_str_ptr);
@@ -1683,8 +1796,10 @@ namespace pparser
       }
       else
       {
-        // Only treat as unexpected if not a string or identifier (quoted or unquoted)
-        if (token.get_kind() != lexer::TokId && token.get_kind() != lexer::TokStrLit)
+        // Only treat as unexpected if not a string or identifier (quoted or
+        // unquoted)
+        if (token.get_kind() != lexer::TokId &&
+            token.get_kind() != lexer::TokStrLit)
         {
           result.status = ParseResult::ParserStatus_ParseError;
           std::stringstream ss;
@@ -1697,7 +1812,8 @@ namespace pparser
           result.exit_code = 1;
           return result;
         }
-        // Otherwise, forcibly advance the token and positional argument index to avoid infinite loop
+        // Otherwise, forcibly advance the token and positional argument index to
+        // avoid infinite loop
         current_token_index++;
         current_positional_arg_index++;
       }
@@ -1727,8 +1843,7 @@ namespace pparser
     // check for required positional arguments
     if (m_pos_args.size() > current_positional_arg_index)
     {
-      for (size_t i = current_positional_arg_index; i < m_pos_args.size();
-           ++i)
+      for (size_t i = current_positional_arg_index; i < m_pos_args.size(); ++i)
       {
         const ArgumentDef &pos_arg_def = m_pos_args[i];
         if (pos_arg_def.required)
@@ -1744,8 +1859,7 @@ namespace pparser
         else
         {
           // add default value for optional missing positional args
-          result.positional_values[pos_arg_def.name] =
-              pos_arg_def.default_value;
+          result.positional_values[pos_arg_def.name] = pos_arg_def.default_value;
         }
       }
     }
@@ -1809,23 +1923,31 @@ namespace pparser
         if (arg.size() > 2 && arg[0] == '-' && arg[1] == '-')
         {
           // Long flag: --flag
-          tokens.push_back(lexer::Token::make_long_flag(arg.c_str() + 2, arg.size() - 2, lexer::Span(pos, pos + arg.size())));
+          tokens.push_back(
+              lexer::Token::make_long_flag(arg.c_str() + 2, arg.size() - 2,
+                                           lexer::Span(pos, pos + arg.size())));
         }
         else if (arg.size() > 1 && arg[0] == '-' && arg != "-")
         {
           // Short flag: -f or -abc
-          tokens.push_back(lexer::Token::make_short_flag(arg.c_str() + 1, arg.size() - 1, lexer::Span(pos, pos + arg.size())));
+          tokens.push_back(
+              lexer::Token::make_short_flag(arg.c_str() + 1, arg.size() - 1,
+                                            lexer::Span(pos, pos + arg.size())));
         }
-        else if (
-            (arg.size() >= 2 && ((arg[0] == '"' && arg[arg.size() - 1] == '"') || (arg[0] == '\'' && arg[arg.size() - 1] == '\''))))
+        else if ((arg.size() >= 2 &&
+                  ((arg[0] == '"' && arg[arg.size() - 1] == '"') ||
+                   (arg[0] == '\'' && arg[arg.size() - 1] == '\''))))
         {
           // Quoted string literal (remove quotes)
-          tokens.push_back(lexer::Token::make_str_lit(arg.c_str() + 1, arg.size() - 2, lexer::Span(pos, pos + arg.size())));
+          tokens.push_back(
+              lexer::Token::make_str_lit(arg.c_str() + 1, arg.size() - 2,
+                                         lexer::Span(pos, pos + arg.size())));
         }
         else
         {
           // All other arguments: treat as identifier (positional or value)
-          tokens.push_back(lexer::Token::make_id(arg.c_str(), arg.size(), lexer::Span(pos, pos + arg.size())));
+          tokens.push_back(lexer::Token::make_id(
+              arg.c_str(), arg.size(), lexer::Span(pos, pos + arg.size())));
         }
         pos += arg.size() + 1;
       }
@@ -1835,12 +1957,14 @@ namespace pparser
       {
         ParseResult error_result;
         error_result.status = ParseResult::ParserStatus_ParseError;
-        error_result.error_message = "ArgumentParser is not initialized correctly.";
+        error_result.error_message =
+            "ArgumentParser is not initialized correctly.";
         error_result.exit_code = 1;
         return error_result;
       }
       ParseResult result = m_root_cmd->parse(tokens, token_index, "");
-      if (result.status == ParseResult::ParserStatus_Success && token_index < tokens.size())
+      if (result.status == ParseResult::ParserStatus_Success &&
+          token_index < tokens.size())
       {
         result.status = ParseResult::ParserStatus_ParseError;
         std::stringstream ss;
