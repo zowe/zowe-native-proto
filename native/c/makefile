@@ -304,6 +304,8 @@ $(OUT_DIR)/zoweax: $(OUT_DIR)/zowex.o $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(
 	ln -sf ../c/$@ ../golang/zoweax
 	@echo 'Copied zoweax to golang/'
 
+zoweax: $(OUT_DIR_CXXLANG) $(OUT_DIR)/zoweax
+
 $(OUT_DIR)/zowex.o: zowex.cpp
 	@echo 'Building $(OUT_DIR)/zowex.o'
 	$(CXX) $(CPP_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
