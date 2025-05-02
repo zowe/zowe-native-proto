@@ -96,8 +96,7 @@ MTL_FLAGS+=-g1
 MTL_FLAGS64+=-g1
 .END
 
-all: libzut.so libzut.a libzds.so libzds.a libzusf.so libzusf.a libzcn.so libzcn.a libzjb.so libzjb.a zowex test
-# all: libzut.so libzut.a libzds.so libzds.a libzusf.so libzusf.a libzcn.so libzcn.a libzjb.so libzjb.a zowex zoweax extattr test
+all: libzut.so libzut.a libzds.so libzds.a libzusf.so libzusf.a libzcn.so libzcn.a libzjb.so libzjb.a zowex zoweax extattr test
 
 #
 # create out directories
@@ -299,13 +298,13 @@ $(OUT_DIR)/zowex: $(OUT_DIR)/zowex.o $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(O
 
 zowex: $(OUT_DIR_CXXLANG) $(OUT_DIR)/zowex
 
-# $(OUT_DIR)/zoweax: $(OUT_DIR)/zowex.o $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(OUT_DIR)/libzjb.a $(OUT_DIR)/libzds.a $(OUT_DIR)/libzusf.a $(OUT_DIR)/libztso.a
-# 	@echo 'Building zoweax'
-# 	$(CXX) $(CPP_BND_FLAGS_AUTH) -o $@ $^ > $*.bind.lst
-# 	ln -sf ../c/$@ ../golang/zoweax
-# 	@echo 'Copied zoweax to golang/'
+$(OUT_DIR)/zoweax: $(OUT_DIR)/zowex.o $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(OUT_DIR)/libzjb.a $(OUT_DIR)/libzds.a $(OUT_DIR)/libzusf.a $(OUT_DIR)/libztso.a
+	@echo 'Building zoweax'
+	$(CXX) $(CPP_BND_FLAGS_AUTH) -o $@ $^ > $*.bind.lst
+	ln -sf ../c/$@ ../golang/zoweax
+	@echo 'Copied zoweax to golang/'
 
-# zoweax: $(OUT_DIR_CXXLANG) $(OUT_DIR)/zoweax
+zoweax: $(OUT_DIR_CXXLANG) $(OUT_DIR)/zoweax
 
 $(OUT_DIR)/zowex.o: zowex.cpp
 	@echo 'Building $(OUT_DIR)/zowex.o'
@@ -325,7 +324,7 @@ test: test.sh
 # Misc targets
 #
 extattr:
-	extattr +ap zoweax
+	extattr +ap $(OUT_DIR)/zoweax
 
 clean:
 	rm -f *.o
