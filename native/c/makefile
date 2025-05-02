@@ -335,4 +335,4 @@ clean:
 	rm -f *.x
 	rm -f *.lst
 	rm -f CEEDUMP.*
-	rm -f $(OUT_DIR)
+	rm -rf $(OUT_DIR)
