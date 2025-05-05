@@ -97,7 +97,7 @@ export default class ServerInstallHandler implements ICommandHandler {
         if (newProperties.length > 0 && newProperties[0].argLoc?.osLoc?.[0]) {
             const segments = profile.name.split(".");
             const profileTypeJsonId = segments.reduce(
-                (all, val, i) => (i === segments.length - 1 ? all + `.${val}.type` : `${all}.${val}.profiles`),
+                (all, val, i) => (i === segments.length - 1 ? `${all}.${val}.type` : `${all}.${val}.profiles`),
                 "profiles",
             );
             Config.set(profileTypeJsonId, "ssh");
