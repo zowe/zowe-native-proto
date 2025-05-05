@@ -96,7 +96,9 @@ export default class ServerInstallHandler implements ICommandHandler {
 
         if (newProperties.length > 0 && newProperties[0].argLoc?.osLoc?.[0]) {
             // biome-ignore lint/suspicious/noExplicitAny: Required `as any` to set profile type
-            const layer = (Config as any).mLayers.find(
+            const segments = profile.name.split(".");
+            const profileTypeJsonId = segments.reduce((all, val, i) => i === segments.length - 1 ? all + `.${val}.type` : all + `.${val}.profiles`, "profiles");
+            Config.set(profileTypeJsonId, "ssh");
                 (profile: { path: string }) => profile.path === newProperties[0].argLoc.osLoc[0],
             );
 
