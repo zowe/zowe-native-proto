@@ -11,6 +11,7 @@
 
 OUT_DIR=build-out
 OUT_DIR_CXXLANG=$(OUT_DIR)/xlclang
+OUT_DIRS=$(OUT_DIR_CXXLANG)
 
 XLC_FLAGS=_CC_ACCEPTABLE_RC=0 _C89_ACCEPTABLE_RC=0 _CXX_ACCEPTABLE_RC=0
 CXX=$(XLC_FLAGS) xlc++
@@ -97,11 +98,12 @@ MTL_FLAGS64+=-g1
 .END
 
 all: libzut.so libzut.a libzds.so libzds.a libzusf.so libzusf.a libzcn.so libzcn.a libzjb.so libzjb.a zowex zoweax extattr test
+xlclang-extenders: $(OUT_DIR_CXXLANG)/zut.o $(OUT_DIR_CXXLANG)/zcn.o
 
 #
 # create out directories
 #
-$(OUT_DIR_CXXLANG):
+$(OUT_DIRS):
 	@echo 'creating $(OUT_DIR_CXXLANG) out directory...'
 	mkdir -p $(OUT_DIR_CXXLANG)
 
@@ -112,7 +114,7 @@ $(OUT_DIR)/zut.o: zut.cpp
 	@echo 'Building $(OUT_DIR)/zut.o'
 	$(CXX) $(DLL_CPP_FLAGS) -qlist=$*.cpp.lst -o $@ $^
 
-$(OUT_DIR_CXXLANG)/zut.o: zut.cpp
+$(OUT_DIR_CXXLANG)/zut.o: $(OUT_DIRS) zut.cpp
 	@echo '$(OUT_DIR_CXXLANG)/zut.o'
 	$(CXXLANG) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -o $@ $^
 
@@ -136,13 +138,13 @@ $(OUT_DIR)/libzut.so: $(OUT_DIR)/zut.o $(OUT_DIR)/zutm.o $(OUT_DIR)/zutm31.o
 	@echo 'Building $(OUT_DIR)/libzut.so'
 	$(CXX) $(DLL_BND_FLAGS) -o $@ $^ > $*.bind.lst
 
-libzut.so: $(OUT_DIR_CXXLANG) $(OUT_DIR)/libzut.so
+libzut.so: $(OUT_DIRS) $(OUT_DIR)/libzut.so
 
 $(OUT_DIR)/libzut.a: $(OUT_DIR)/zut.o $(OUT_DIR)/zutm.o $(OUT_DIR)/zutm31.o
 	@echo 'Building $(OUT_DIR)/libzut.a'
 	ar -rv $@ $^
 
-libzut.a: $(OUT_DIR_CXXLANG) $(OUT_DIR_CXXLANG)/zut.o $(OUT_DIR)/libzut.a
+libzut.a: $(OUT_DIRS) $(OUT_DIR)/libzut.a
 
 #
 # Data sets
@@ -163,13 +165,13 @@ $(OUT_DIR)/libzds.so: $(OUT_DIR)/zds.o $(OUT_DIR)/zdsm.o $(OUT_DIR)/libzut.a
 	$(CXX) $(DLL_BND_FLAGS) -o $@ $^ > $*.bind.lst
 	@echo 'Building $(OUT_DIR)/libzds.so'
 
-libzds.so: $(OUT_DIR_CXXLANG) $(OUT_DIR)/libzds.so
+libzds.so: $(OUT_DIRS) $(OUT_DIR)/libzds.so
 
 $(OUT_DIR)/libzds.a: $(OUT_DIR)/zds.o $(OUT_DIR)/zdsm.o $(OUT_DIR)/libzut.a
 	@echo 'Building $(OUT_DIR)/libzds.a'
 	ar -rv $@ $^
 
-libzds.a: $(OUT_DIR_CXXLANG) $(OUT_DIR)/libzds.a
+libzds.a: $(OUT_DIRS) $(OUT_DIR)/libzds.a
 
 #
 # Jobs
@@ -206,13 +208,13 @@ $(OUT_DIR)/libzjb.so: $(OUT_DIR)/zjb.o $(OUT_DIR)/zjbm.o $(OUT_DIR)/zssi31.o $(O
 	@echo 'Building $(OUT_DIR)/libzjb.so'
 	$(CXX) $(DLL_BND_FLAGS) -o $@ $^ > $*.bind.lst
 
-libzjb.so: $(OUT_DIR_CXXLANG) $(OUT_DIR)/libzjb.so
+libzjb.so: $(OUT_DIRS) $(OUT_DIR)/libzjb.so
 
 $(OUT_DIR)/libzjb.a: $(OUT_DIR)/zjb.o $(OUT_DIR)/zjbm.o $(OUT_DIR)/zssi31.o $(OUT_DIR)/zjbm31.o $(OUT_DIR)/libzds.a $(OUT_DIR)/libzut.a
 	@echo 'Building $(OUT_DIR)/libzjb.a'
 	ar -rv $@ $^
 
-libzjb.a: $(OUT_DIR_CXXLANG) $(OUT_DIR)/libzjb.a
+libzjb.a: $(OUT_DIRS) $(OUT_DIR)/libzjb.a
 
 #
 # Console
@@ -220,7 +222,7 @@ libzjb.a: $(OUT_DIR_CXXLANG) $(OUT_DIR)/libzjb.a
 $(OUT_DIR)/zcn.o: zcn.cpp
 	$(CXX) $(DLL_CPP_FLAGS) -qlist=$*.cpp.lst -o $@ $^
 
-$(OUT_DIR_CXXLANG)/zcn.o: zcn.cpp
+$(OUT_DIR_CXXLANG)/zcn.o: $(OUT_DIRS) zcn.cpp
 	@echo '$(OUT_DIR_CXXLANG)/zcn.o'
 	$(CXXLANG) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -o $@ $^
 
@@ -240,13 +242,13 @@ $(OUT_DIR)/libzcn.so: $(OUT_DIR)/zcn.o $(OUT_DIR)/zcnm.o $(OUT_DIR)/zcnm31.o $(O
 	@echo 'Building $(OUT_DIR)/libzcn.so'
 	$(CXX) $(DLL_BND_FLAGS) -o $@ $^ > $*.bind.lst
 
-libzcn.so: $(OUT_DIR_CXXLANG) $(OUT_DIR_CXXLANG)/zcn.o $(OUT_DIR)/libzcn.so
+libzcn.so: $(OUT_DIRS) $(OUT_DIR)/libzcn.so
 
 $(OUT_DIR)/libzcn.a: $(OUT_DIR)/zcn.o $(OUT_DIR)/zcnm.o $(OUT_DIR)/zcnm31.o $(OUT_DIR)/libzut.a
 	@echo 'Building libzcn.a'
 	ar -rv $@ $^
 
-libzcn.a: $(OUT_DIR_CXXLANG) $(OUT_DIR_CXXLANG)/zcn.o $(OUT_DIR)/libzcn.a
+libzcn.a: $(OUT_DIRS) $(OUT_DIR)/libzcn.a
 
 #
 # USS data
@@ -259,13 +261,13 @@ $(OUT_DIR)/libzusf.so: $(OUT_DIR)/zusf.o $(OUT_DIR)/libzut.a
 	@echo 'Building $(OUT_DIR)/libzusf.so'
 	$(CXX) $(DLL_BND_FLAGS) -o $@ $^ > $*.bind.lst
 
-libzusf.so: $(OUT_DIR_CXXLANG) $(OUT_DIR)/libzusf.so
+libzusf.so: $(OUT_DIRS) $(OUT_DIR)/libzusf.so
 
 $(OUT_DIR)/libzusf.a: $(OUT_DIR)/zusf.o $(OUT_DIR)/libzut.a
 	@echo 'Building $(OUT_DIR)/libzusf.a'
 	ar -rv $@ $^
 
-libzusf.a: $(OUT_DIR_CXXLANG) $(OUT_DIR)/libzusf.a
+libzusf.a: $(OUT_DIRS) $(OUT_DIR)/libzusf.a
 
 #
 # TSO
@@ -278,13 +280,13 @@ $(OUT_DIR)/libztso.so: ztso
 	@echo 'Building $(OUT_DIR)/libztso.so'
 	$(CXX) $(DLL_BND_FLAGS) -o $@ $^ > $*.bind.lst
 
-libztso.so: $(OUT_DIR_CXXLANG) $(OUT_DIR)/libztso.so
+libztso.so: $(OUT_DIRS) $(OUT_DIR)/libztso.so
 
 $(OUT_DIR)/libztso.a: $(OUT_DIR)/ztso.o
 	@echo 'Building $(OUT_DIR)/libztso.a'
 	ar -rv $@ $^
 
-libztso.a: $(OUT_DIR_CXXLANG) $(OUT_DIR)/libztso.a
+libztso.a: $(OUT_DIRS) $(OUT_DIR)/libztso.a
 
 #
 # Test CLI
@@ -296,7 +298,7 @@ $(OUT_DIR)/zowex: $(OUT_DIR)/zowex.o $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(O
 	ln -sf ../c/$@ ../golang/zowex
 	@echo 'Copied zowex to golang/'
 
-zowex: $(OUT_DIR_CXXLANG) $(OUT_DIR)/zowex
+zowex: $(OUT_DIRS) $(OUT_DIR)/zowex
 
 $(OUT_DIR)/zoweax: $(OUT_DIR)/zowex.o $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(OUT_DIR)/libzjb.a $(OUT_DIR)/libzds.a $(OUT_DIR)/libzusf.a $(OUT_DIR)/libztso.a
 	@echo 'Building zoweax'
@@ -304,7 +306,7 @@ $(OUT_DIR)/zoweax: $(OUT_DIR)/zowex.o $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(
 	ln -sf ../c/$@ ../golang/zoweax
 	@echo 'Copied zoweax to golang/'
 
-zoweax: $(OUT_DIR_CXXLANG) $(OUT_DIR)/zoweax
+zoweax: $(OUT_DIRS) $(OUT_DIR)/zoweax
 
 $(OUT_DIR)/zowex.o: zowex.cpp
 	@echo 'Building $(OUT_DIR)/zowex.o'
