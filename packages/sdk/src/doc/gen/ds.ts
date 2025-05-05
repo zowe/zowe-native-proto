@@ -98,6 +98,19 @@ export interface CreateDatasetRequest extends common.CommandRequest {
    */
   dstype: 'default' | 'vb' | 'adata';
 }
+export interface CreateDatasetRequestAttr extends common.CommandRequest {
+  command: "createDatasetAttributes";
+  /**
+   * Dataset name
+   */
+  dsname: string;
+  /**
+   * Type of the dataset to make
+   * Type string `json:"dstype" tstype:"'default' | 'vb' | 'adata'"`
+   * Dataset attributes
+   */
+  attributes: any /* common.DatasetAttr */;
+}
 export interface CreateMemberRequest extends common.CommandRequest {
   command: "createMember";
   /**

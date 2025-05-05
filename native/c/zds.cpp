@@ -9,7 +9,9 @@
  *
  */
 
+#define _OPEN_SYS_ITOA_EXT
 #include <stdio.h>
+#include <stdlib.h>
 #include <cstring>
 #include <fstream>
 #include <iostream>
@@ -240,6 +242,8 @@ typedef struct
   unsigned char info;
 } RECORD_ENTRY;
 
+#include <string>
+
 // TODO(Kelosky): add attributues to ZDS and have other functions populate it
 int zds_create_dsn(ZDS *zds, string dsn, string &response)
 {
@@ -247,6 +251,100 @@ int zds_create_dsn(ZDS *zds, string dsn, string &response)
   unsigned int code = 0;
   string parm = "ALLOC DA('" + dsn + "') DSORG(PO) SPACE(5,5) CYL LRECL(80) RECFM(F,B) DIR(5) NEW KEEP DSNTYPE(LIBRARY)";
 
+  return zut_bpxwdyn(parm, &code, response);
+}
+
+int zds_create_dsn_attr(ZDS *zds, std::string dsn, std::string &response, DS_ATTRIBUTES attributes)
+{
+  int rc = 0;
+  unsigned int code = 0;
+  std::string parm = "ALLOC DA('" + dsn + "')";
+  if (attributes.alcunit.empty())
+  {
+    attributes.alcunit = "CYL"; // Allocation Unit
+  }
+  if (attributes.blksz == 0)
+  {
+    attributes.blksz = 6160; // Block Size
+  }
+  if (attributes.dirblk == 0)
+  {
+    attributes.dirblk = 5; // Directory Blocks
+  }
+  if (attributes.dsorg.empty())
+  {
+    attributes.dsorg = "PO"; // Data Set Organization
+  }
+  if (attributes.primary == 0)
+  {
+    attributes.primary = 1; // Primary Space
+  }
+  if (attributes.recfm.empty())
+  {
+    attributes.recfm = "FB"; // Record Format
+  }
+  if (attributes.lrecl == 0)
+  {
+    attributes.lrecl = 80; // Record Length
+  }
+
+  char numberAsString[6];
+
+  // Required options
+  if (!attributes.dsorg.empty())
+    parm += " DSORG(" + attributes.dsorg + ")";
+
+  if (attributes.primary > 0)
+  {
+    memset(numberAsString, 0, sizeof(numberAsString));
+    parm += " SPACE(" + std::string(itoa(attributes.primary, numberAsString, 10));
+
+    if (attributes.secondary > 0)
+    {
+      memset(numberAsString, 0, sizeof(numberAsString));
+      parm += "," + std::string(itoa(attributes.secondary, numberAsString, 10));
+    }
+
+    parm += ") " + attributes.alcunit;
+  }
+
+  if (attributes.lrecl > 0)
+  {
+    memset(numberAsString, 0, sizeof(numberAsString));
+    parm += " LRECL(" + std::string(itoa(attributes.lrecl, numberAsString, 10)) + ")";
+  }
+
+  if (!attributes.recfm.empty())
+    parm += " RECFM(" + attributes.recfm + ")";
+
+  if (attributes.dirblk > 0)
+  {
+    memset(numberAsString, 0, sizeof(numberAsString));
+    parm += " DIR(" + std::string(itoa(attributes.dirblk, numberAsString, 10)) + ")";
+  }
+
+  parm += " NEW KEEP";
+
+  if (!attributes.dsntype.empty())
+    parm += " DSNTYPE(" + attributes.dsntype + ")";
+  if (!attributes.storclass.empty())
+    parm += " STORCLAS(" + attributes.storclass + ")";
+  if (!attributes.dataclass.empty())
+    parm += " DATACLAS(" + attributes.dataclass + ")";
+  if (!attributes.mgntclass.empty())
+    parm += " MGMTCLAS(" + attributes.mgntclass + ")";
+  if (!attributes.vol.empty())
+    parm += " VOL(" + attributes.vol + ")";
+  if (!attributes.dev.empty())
+    parm += " UNIT(" + attributes.dev + ")";
+
+  if (attributes.blksz > 0)
+  {
+    memset(numberAsString, 0, sizeof(numberAsString));
+    parm += " BLKSIZE(" + std::string(itoa(attributes.blksz, numberAsString, 10)) + ")";
+  }
+
+  cout << parm << endl;
   return zut_bpxwdyn(parm, &code, response);
 }
 

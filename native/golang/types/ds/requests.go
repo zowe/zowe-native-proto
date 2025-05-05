@@ -83,6 +83,17 @@ type CreateDatasetRequest struct {
 	Type string `json:"dstype" tstype:"'default' | 'vb' | 'adata'"`
 }
 
+type CreateDatasetRequestAttr struct {
+	common.CommandRequest `tstype:",extends"`
+	Command               string `json:"command" tstype:"\"createDatasetAttributes\""`
+	// Dataset name
+	Dsname string `json:"dsname"`
+	// Type of the dataset to make
+	// Type string `json:"dstype" tstype:"'default' | 'vb' | 'adata'"`
+	// Dataset attributes
+	Attributes common.DatasetAttr `json:"attributes"`
+}
+
 type CreateMemberRequest struct {
 	common.CommandRequest `tstype:",extends"`
 	Command               string `json:"command" tstype:"\"createMember\""`

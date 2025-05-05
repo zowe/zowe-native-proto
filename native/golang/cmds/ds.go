@@ -256,6 +256,78 @@ func HandleCreateDatasetRequest(conn *utils.StdioConn, jsonData []byte) (result 
 	return
 }
 
+// HandleCreateDatasetRequestAttr handles a CreateDatasetRequest by invoking the `zowex data-set create-attr` command
+func HandleCreateDatasetRequestAttr(conn *utils.StdioConn, jsonData []byte) (result any, e error) {
+	request, err := utils.ParseCommandRequest[ds.CreateDatasetRequestAttr](jsonData)
+	if err != nil {
+		return nil, err
+	}
+
+	args := []string{"data-set", "create-attr", request.Dsname}
+
+	attr := request.Attributes
+
+	// Conditionally add arguments if fields are set
+	if attr.Alcunit != "" {
+		args = append(args, "--alcunit", attr.Alcunit)
+	}
+	if attr.Blksz != 0 {
+		args = append(args, "--blksz", fmt.Sprintf("%d", attr.Blksz))
+	}
+	if attr.Dirblk != 0 {
+		args = append(args, "--dirblk", fmt.Sprintf("%d", attr.Dirblk))
+	}
+	if attr.Dsorg != "" {
+		args = append(args, "--dsorg", attr.Dsorg)
+	}
+	if attr.Primary != 0 {
+		args = append(args, "--primary", fmt.Sprintf("%d", attr.Primary))
+	}
+	if attr.Recfm != "" {
+		args = append(args, "--recfm", attr.Recfm)
+	}
+	if attr.Lrecl != 0 {
+		args = append(args, "--lrecl", fmt.Sprintf("%d", attr.Lrecl))
+	}
+	if attr.Dataclass != "" {
+		args = append(args, "--dataclass", attr.Dataclass)
+	}
+	if attr.Dev != "" {
+		args = append(args, "--dev", attr.Dev)
+	}
+	if attr.Dsntype != "" {
+		args = append(args, "--dsntype", attr.Dsntype)
+	}
+	if attr.Mgntclass != "" {
+		args = append(args, "--mgntclass", attr.Mgntclass)
+	}
+	if attr.Avgblk != 0 {
+		args = append(args, "--avgblk", fmt.Sprintf("%d", attr.Avgblk))
+	}
+	if attr.Secondary != 0 {
+		args = append(args, "--secondary", fmt.Sprintf("%d", attr.Secondary))
+	}
+	if attr.Size != 0 {
+		args = append(args, "--size", fmt.Sprintf("%d", attr.Size))
+	}
+	if attr.Storclass != "" {
+		args = append(args, "--storclass", attr.Storclass)
+	}
+	if attr.Vol != "" {
+		args = append(args, "--vol", attr.Vol)
+	}
+
+	_, err = conn.ExecCmd(args)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to create data set with attributes: %v", err)
+	}
+	result = ds.CreateDatasetResponse{
+		Success: true,
+		Dsname:  request.Dsname,
+	}
+	return
+}
+
 // HandleCreateMemberRequest handles a CreateMemberRequest by invoking the `zowex data-set create-member` command
 func HandleCreateMemberRequest(conn *utils.StdioConn, jsonData []byte) (result any, e error) {
 	request, err := utils.ParseCommandRequest[ds.CreateMemberRequest](jsonData)

@@ -33,6 +33,27 @@ struct ZDSEntry
   bool migr;
 };
 
+typedef struct
+{
+  std::string alcunit;   // Allocation Unit
+  int blksz;             // Block Size
+  int dirblk;            // Directory Blocks
+  std::string dsorg;     // Data Set Organization
+  int primary;           // Primary Space
+  std::string recfm;     // Record Format
+  int lrecl;             // Record Length
+  std::string dataclass; // Data Class
+  std::string dev;       // Device Type
+  std::string dsntype;   // Data Set Type
+  std::string mgntclass; // Management Class
+  std::string dsname;    // Data Set Name
+  int avgblk;            // Average Block Length
+  int secondary;         // Secondary Space
+  int size;              // Size
+  std::string storclass; // Storage Class
+  std::string vol;       // Volume Serial
+} DS_ATTRIBUTES;
+
 /**
  * @brief Read data from a z/OS data set
  *
@@ -83,6 +104,17 @@ int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data);
  * @return int 0 for success; non zero otherwise
  */
 int zds_create_dsn(ZDS *zds, std::string dsn, std::string &response);
+
+/**
+ * @brief Create a data set with attributes
+ *
+ * @param zds data set returned attributes and error information
+ * @param dsn data set name to create
+ * @param response messages from dynamic allocation (which may be present even when successful requests are made)
+ * @param attributes attributes for data set creation
+ * @return int 0 for success; non zero otherwise
+ */
+int zds_create_dsn_attr(ZDS *zds, std::string dsn, std::string &response, DS_ATTRIBUTES attributes);
 
 /**
  * @brief Create a data set
