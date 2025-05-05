@@ -140,12 +140,12 @@ int zds_write_to_dd(ZDS *zds, string ddname, string &data)
   return 0;
 }
 
-int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data, std::string etag_value)
+int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data)
 {
   const auto hasEncoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
   const auto codepage = string(zds->encoding_opts.codepage);
 
-  if (!etag_value.empty())
+  if (strlen(zds->etag) > 0)
   {
     ZDS read_ds = {0};
     string current_contents = "";
@@ -154,13 +154,13 @@ int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data, std::string e
       memcpy(&read_ds.encoding_opts, &zds->encoding_opts, sizeof(ZEncode));
     }
     const auto read_rc = zds_read_from_dsn(&read_ds, dsn, current_contents);
-    if (read_rc != 0)
+    if (0 != read_rc)
     {
       zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to read contents of data set for e-tag comparison: %s", read_ds.diag.e_msg);
       return RTNCD_FAILURE;
     }
 
-    const auto given_etag = strtoul(etag_value.c_str(), nullptr, 16);
+    const auto given_etag = strtoul(zds->etag, nullptr, 16);
     const auto new_etag = zut_calc_adler32_checksum(current_contents);
 
     if (given_etag != new_etag)
@@ -178,23 +178,22 @@ int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data, std::string e
   }
 
   const string dsname = "//'" + dsn + "'";
-
   std::string temp = data;
+
+  auto *fp = fopen(dsname.c_str(), zds->encoding_opts.data_type == eDataTypeBinary ? "wb,recfm=U" : "w");
+  if (nullptr == fp)
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open '%s'", dsname.c_str());
+    return RTNCD_FAILURE;
+  }
+
   if (!data.empty())
   {
-    auto *fp = fopen(dsname.c_str(), zds->encoding_opts.data_type == eDataTypeBinary ? "wb,recfm=U" : "w");
-    if (fp == nullptr)
-    {
-      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open '%s'", dsname.c_str());
-      return RTNCD_FAILURE;
-    }
-
     if (hasEncoding)
     {
       try
       {
-        const auto bytes_with_encoding = zut_encode(temp, "UTF-8", codepage, zds->diag);
-        temp = bytes_with_encoding;
+        temp = zut_encode(temp, "UTF-8", codepage, zds->diag);
       }
       catch (std::exception &e)
       {
@@ -204,20 +203,24 @@ int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data, std::string e
     }
     if (!temp.empty())
     {
-      const auto bytes_written = fwrite(temp.c_str(), 1u, temp.length(), fp);
+      fwrite(temp.c_str(), 1u, temp.length(), fp);
     }
-    fclose(fp);
   }
+
+  fclose(fp);
 
   // Print new e-tag to stdout as response
   string saved_contents = "";
   const auto read_rc = zds_read_from_dsn(zds, dsn, saved_contents);
-  if (read_rc != 0)
+  if (0 != read_rc)
   {
     return RTNCD_FAILURE;
   }
 
-  cout << std::hex << zut_calc_adler32_checksum(saved_contents) << std::dec << endl;
+  stringstream etag_stream;
+  etag_stream << std::hex << zut_calc_adler32_checksum(saved_contents);
+  strcpy(zds->etag, etag_stream.str().c_str());
+
   return 0;
 }
 
@@ -261,6 +264,15 @@ int zds_create_dsn_adata(ZDS *zds, string dsn, string &response)
   int rc = 0;
   unsigned int code = 0;
   string parm = "ALLOC DA('" + dsn + "') DSORG(PO) SPACE(5,5) CYL LRECL(32756) BLKSIZE(32760) RECFM(V,B) DIR(5) NEW KEEP DSNTYPE(LIBRARY)";
+
+  return zut_bpxwdyn(parm, &code, response);
+}
+
+int zds_create_dsn_loadlib(ZDS *zds, string dsn, string &response)
+{
+  int rc = 0;
+  unsigned int code = 0;
+  string parm = "ALLOC DA('" + dsn + "') DSORG(PO) SPACE(5,5) CYL LRECL(0) BLKSIZE(32760) RECFM(U) DIR(5) NEW KEEP DSNTYPE(LIBRARY)";
 
   return zut_bpxwdyn(parm, &code, response);
 }

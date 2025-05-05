@@ -23,6 +23,9 @@
 #include "zjsytype.h"
 #include "zmetal.h"
 #include "zjbtype.h"
+#include "ihapsa.h"
+#include "cvt.h"
+#include "iefjesct.h"
 
 // TODO(Kelosky):
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=79-putget-requests
@@ -36,11 +39,36 @@ typedef struct
   unsigned char buffer[SYMBOL_ENTRIES * 16];
 } JSYMBOLO;
 
-static void init_ssib(SSIB *ssib)
+typedef struct psa PSA;
+typedef struct cvt CVT;
+typedef struct jesct JESCT;
+
+static int get_ssibssnm(SSIB *ssib)
+{
+  PSA *psa_a = (PSA *)0;
+  CVT *cvt_a = psa_a->flccvt;
+  JESCT *jesct_a = cvt_a->cvtjesct;
+
+  // This might be overkill, but just making sure we have an SS name
+  if (NULL == jesct_a->jespjesn)
+  {
+    return RTNCD_FAILURE;
+  }
+  // We do not support JES3 (yet)
+  if (0 != jesct_a->jesjesfg & jes3actv)
+  {
+    return ZJB_RTNCD_JES3_NOT_SUPPORTED;
+  }
+
+  memcpy(ssib->ssibssnm, jesct_a->jespjesn, sizeof(ssib->ssibssnm));
+  return RTNCD_SUCCESS;
+}
+
+static int init_ssib(SSIB *ssib)
 {
   memcpy(ssib->ssibid, "SSIB", sizeof(ssib->ssibid));
   ssib->ssiblen = sizeof(SSIB);
-  memcpy(ssib->ssibssnm, "JES2", sizeof(ssib->ssibssnm));
+  return get_ssibssnm(ssib);
 }
 
 static void init_ssob(SSOB *PTR32 ssob, SSIB *PTR32 ssib, void *PTR32 function_depenent_area, int function)
@@ -64,7 +92,6 @@ static void init_stat(STAT *stat)
 int ZJBSYMB(ZJB *zjb, const char *symbol, char *value)
 {
   int rc = 0;
-  WTO_BUF buf = {0};
 
   JSYMPARM jsym = {0};
 
@@ -155,7 +182,21 @@ int ZJBMMOD(ZJB *zjb, int type, int flags)
 
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=sfcd-modify-job-function-call-ssi-function-code-85
   init_ssob(&ssob, &ssib, &ssjm, 85);
-  init_ssib(&ssib);
+  rc = init_ssib(&ssib);
+  if (0 != rc)
+  {
+    strcpy(zjb->diag.service_name, "init_ssib");
+    zjb->diag.detail_rc = rc;
+    if (ZJB_RTNCD_JES3_NOT_SUPPORTED == rc)
+    {
+      zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "JES3 is not supported");
+    }
+    else
+    {
+      zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "Failed to get SSIBSSNM");
+    }
+    return RTNCD_FAILURE;
+  }
 
   memcpy(ssjm.ssjmeye, "SSJMPL  ", sizeof(ssjm.ssjmeye));
   ssjm.ssjmlen = ssjmsize;
@@ -232,9 +273,19 @@ int ZJBMVIEW(ZJB *zjb, ZJB_JOB_INFO **PTR64 job_info, int *entries)
   STAT stat = {0};
   init_stat(&stat);
 
-  stat.statsel1 = statsoji;
+  if (zjb->jobid[0] != 0x00)
+  {
+    stat.statsel1 = statsoji;
+    memcpy(stat.statojbi, zjb->jobid, sizeof((stat.statojbi)));
+  }
+  else
+  {
+    char job_correlator31[64] = {0};
+    memcpy(job_correlator31, zjb->job_correlator, sizeof(zjb->job_correlator));
+    stat.statsel5 = statscor;
+    stat.statjcrp = &job_correlator31[0];
+  }
   stat.stattype = statters;
-  memcpy(stat.statojbi, zjb->jobid, sizeof((stat.statojbi)));
 
   return ZJBMTCOM(zjb, &stat, job_info, entries);
 }
@@ -281,7 +332,12 @@ int ZJBMTCOM(ZJB *zjb, STAT *PTR64 stat, ZJB_JOB_INFO **PTR64 job_info, int *ent
 
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=sfcd-extended-status-function-call-ssi-function-code-80
   init_ssob(&ssob, &ssib, stat, 80);
-  init_ssib(&ssib);
+  if (0 != init_ssib(&ssib))
+  {
+    strcpy(zjb->diag.service_name, "init_ssib");
+    zjb->diag.detail_rc = ZJB_RTNCD_SERVICE_FAILURE;
+    return RTNCD_FAILURE;
+  }
 
   ssobp = &ssob;
   ssobp = (SSOB * PTR32)((unsigned int)ssobp | 0x80000000);
@@ -400,7 +456,12 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
   STATSEVB *PTR32 statsevbp = NULL;
 
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=sfcd-extended-status-function-call-ssi-function-code-80
-  init_ssib(&ssib);
+  if (0 != init_ssib(&ssib))
+  {
+    strcpy(zjb->diag.service_name, "init_ssib");
+    zjb->diag.detail_rc = ZJB_RTNCD_SERVICE_FAILURE;
+    return RTNCD_FAILURE;
+  }
   init_ssob(&ssob, &ssib, &stat, 80);
   init_stat(&stat);
 

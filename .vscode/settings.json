@@ -95,7 +95,6 @@
     "typeinfo": "cpp",
     "variant": "cpp",
     "algorithm": "cpp",
-    "zattachx.h": "c",
     "charconv": "cpp",
     "xstring": "cpp",
     "xlocinfo": "cpp",
@@ -131,14 +130,9 @@
     "xtree": "cpp",
     "xutility": "cpp",
     "__memory": "c",
-    "zrecovery.h": "c",
-    "ihasdwa.h": "c",
-    "zmetal.h": "c",
-    "string.h": "c",
     "print": "cpp",
     "stack": "cpp",
-    "zwto.h": "c",
-    "ihasaver.h": "c"
+    "*.h": "c"
   },
   "editor.formatOnSave": true,
   "[typescript]": {

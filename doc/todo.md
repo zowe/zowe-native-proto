@@ -4,4 +4,6 @@
 - list system log
 - list system information i.e. system name
 - tso: start, send, get, stop
-- subsytem information
+- subsytem information, IEFJSRC + iefjsqry mapping needed, latter for request=query mapping for iefssi
+- logical parmlib
+- logstream

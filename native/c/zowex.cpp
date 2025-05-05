@@ -20,6 +20,7 @@
 #include <unistd.h>
 #include <algorithm>
 #include <fstream>
+#include <unistd.h>
 #include "zcn.hpp"
 #include "zut.hpp"
 #include "zjb.hpp"
@@ -55,6 +56,7 @@ int handle_console_issue(const ParseResult &);
 int handle_data_set_create_dsn(const ParseResult &);
 int handle_data_set_create_dsn_vb(const ParseResult &);
 int handle_data_set_create_dsn_adata(const ParseResult &);
+int handle_data_set_create_dsn_loadlib(const ParseResult &);
 int handle_data_set_restore(const ParseResult &);
 int handle_data_set_view_dsn(const ParseResult &);
 int handle_data_set_list(const ParseResult &);
@@ -69,6 +71,7 @@ int handle_tool_convert_dsect(const ParseResult &);
 int handle_tool_dynalloc(const ParseResult &);
 int handle_tool_display_symbol(const ParseResult &);
 int handle_tool_search(const ParseResult &);
+int handle_tool_amblist(const ParseResult &);
 int handle_tool_run(const ParseResult &);
 
 // TODO(Kelosky):
@@ -336,6 +339,7 @@ int main(int argc, char *argv[])
     auto issue_cmd = command_ptr(new Command("issue", "issue a console command"));
     issue_cmd->add_positional_arg("command", "command to run, e.g. 'd iplinfo'", ArgType_Single, true);
     issue_cmd->add_keyword_arg("console-name", make_aliases("--cn"), "extended console name", ArgType_Single, false, ArgValue("zowex"));
+    issue_cmd->add_keyword_arg("wait", make_aliases("-w"), "wait for responses", ArgType_Single);
     issue_cmd->set_handler(handle_console_issue);
     console_cmd->add_command(issue_cmd);
   }
@@ -369,6 +373,7 @@ int main(int argc, char *argv[])
     view_cmd->add_positional_arg("file-path", file_path_help, ArgType_Single, true);
     view_cmd->add_keyword_arg("encoding", make_aliases("--ec"), "return contents in given encoding", ArgType_Single);
     view_cmd->add_keyword_arg("response-format-bytes", make_aliases("--rfb"), "returns the response as raw bytes", ArgType_Flag);
+    view_cmd->add_keyword_arg("return-etag", make_aliases("--retet"), "returns the e-tag representing the file contents", ArgType_Flag);
     view_cmd->set_handler(handle_uss_view);
     uss_cmd->add_command(view_cmd);
 
@@ -521,6 +526,7 @@ int handle_job_list(const ParseResult &result)
         fields.push_back(it->retcode);
         fields.push_back(it->jobname);
         fields.push_back(it->status);
+        fields.push_back(it->job_correlator);
         cout << zut_format_as_csv(fields) << endl;
       }
       else
@@ -598,7 +604,7 @@ int handle_job_view_status(const ParseResult &result)
   {
     cerr << "Error: could not view job status for: '" << jobid << "' rc: '" << rc << "'" << endl;
     cerr << "  Details: " << zjb.diag.e_msg << endl;
-    return -1;
+    return RTNCD_FAILURE;
   }
 
   if (emit_csv)
@@ -669,29 +675,88 @@ int handle_job_view_jcl(const ParseResult &result)
   return 0;
 }
 
+int wait_for_status(ZJB *zjb, string status)
+{
+  int rc = 0;
+  ZJob job = {0};
+  string jobid(zjb->jobid, sizeof(zjb->jobid));
+
+  do
+  {
+    rc = zjb_view(zjb, jobid, job);
+
+    sleep(1);
+
+    if (0 != rc)
+    {
+      cerr << "Error: could not view job status for: '" << jobid << "' rc: '" << rc << "'" << endl;
+      cerr << "  Details: " << zjb->diag.e_msg << endl;
+      return RTNCD_FAILURE;
+    }
+
+  } while (job.status != status);
+  return RTNCD_SUCCESS;
+}
+
+int job_submit_common(const ParseResult& result, string jcl, string &jobid, string identifier)
+{
+  int rc = 0;
+  ZJB zjb = {0};
+  rc = zjb_submit(&zjb, jcl, jobid);
+
+  if (0 != rc)
+  {
+    cerr << "Error: could not submit JCL: '" << identifier << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zjb.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
+  bool only_jobid(result.find_kw_arg_bool("only-jobid"));
+  bool only_correlator(result.find_kw_arg_bool("only-correlator"));
+  string wait(result.find_kw_arg_string("wait"));
+  transform(wait.begin(), wait.end(), wait.begin(), ::toupper);
+
+  if (only_jobid)
+    cout << jobid << endl;
+  else if (only_correlator)
+    cout << string(zjb.job_correlator, sizeof(zjb.job_correlator)) << endl;
+  else
+    cout << "Submitted " << identifier << ", " << jobid << endl;
+
+#define JOB_STATUS_OUTPUT "OUTPUT"
+#define JOB_STATUS_INPUT "ACTIVE"
+
+  if (JOB_STATUS_OUTPUT == wait || JOB_STATUS_INPUT == wait)
+  {
+    rc = wait_for_status(&zjb, wait);
+  }
+  else if ("" != wait)
+  {
+    cerr << "Error: cannot wait for unknown status '" << wait << "'" << endl;
+    return RTNCD_FAILURE;
+  }
+
+  return rc;
+}
+
 int handle_job_submit(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
   string dsn(result.find_pos_arg_string("dsn"));
-
-  vector<ZJob> jobs;
   string jobid;
-  rc = zjb_submit_dsn(&zjb, dsn, jobid);
 
+  ZDS zds = {0};
+  string contents;
+  rc = zds_read_from_dsn(&zds, dsn, contents);
   if (0 != rc)
   {
-    cerr << "Error: could not submit JCL: '" << dsn << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details: " << zjb.diag.e_msg << endl;
+    cerr << "Error: could not read data set: '" << dsn << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zds.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
-  if (result.find_kw_arg_bool("only-jobid"))
-    cout << jobid << endl;
-  else
-    cout << "Submitted " << dsn << ", " << jobid << endl;
-
-  return RTNCD_SUCCESS;
+  return job_submit_common(result, contents, jobid, dsn);
 }
 
 int handle_job_submit_uss(const ParseResult &result)
@@ -712,23 +777,9 @@ int handle_job_submit_uss(const ParseResult &result)
     return RTNCD_FAILURE;
   }
 
-  vector<ZJob> jobs;
   string jobid;
-  rc = zjb_submit(&zjb, response, jobid);
 
-  if (0 != rc)
-  {
-    cerr << "Error: could not submit JCL: '" << file << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details: " << zjb.diag.e_msg << endl;
-    return RTNCD_FAILURE;
-  }
-
-  if (result.find_kw_arg_bool("only-jobid"))
-    cout << jobid << endl;
-  else
-    cout << "Submitted " << file << ", " << jobid << endl;
-
-  return RTNCD_SUCCESS;
+  return job_submit_common(result, response, jobid, file);
 }
 
 int handle_job_submit_jcl(const ParseResult &result)
@@ -760,23 +811,10 @@ int handle_job_submit_jcl(const ParseResult &result)
     data = zut_encode(data, "UTF-8", string(encoding_opts.codepage), zjb.diag);
   }
 
-  vector<ZJob> jobs;
   string jobid;
   rc = zjb_submit(&zjb, data, jobid);
 
-  if (0 != rc)
-  {
-    cerr << "Error: could not submit JCL: '" << data << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details: " << zjb.diag.e_msg << endl;
-    return RTNCD_FAILURE;
-  }
-
-  if (result.find_kw_arg_bool("only-jobid"))
-    cout << jobid << endl;
-  else
-    cout << "Submitted, " << jobid << endl;
-
-  return RTNCD_SUCCESS;
+  return job_submit_common(result, data, jobid, data);
 }
 
 int handle_job_delete(const ParseResult &result)
@@ -871,6 +909,7 @@ int handle_console_issue(const ParseResult &result)
 
   string console_name(result.find_kw_arg_string("console-name"));
   string command(result.find_pos_arg_string("command"));
+  string wait = result.find_kw_arg_bool("wait");
 
   rc = zcn_activate(&zcn, console_name);
   if (0 != rc)
@@ -888,16 +927,18 @@ int handle_console_issue(const ParseResult &result)
     return RTNCD_FAILURE;
   }
 
-  string response = "";
-  rc = zcn_get(&zcn, response);
-  if (0 != rc)
+  if ("true" == wait)
   {
-    cerr << "Error: could not get from console: '" << console_name << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details: " << zcn.diag.e_msg << endl;
-    return RTNCD_FAILURE;
+    string response = "";
+    rc = zcn_get(&zcn, response);
+    if (0 != rc)
+    {
+      cerr << "Error: could not get from console: '" << console_name << "' rc: '" << rc << "'" << endl;
+      cerr << "  Details: " << zcn.diag.e_msg << endl;
+      return RTNCD_FAILURE;
+    }
+    cout << response << endl;
   }
-
-  cout << response << endl;
 
   // example issuing command which requires a reply
   // e.g. zoweax console issue --console-name DKELOSKX "SL SET,ID=DK00"
@@ -968,7 +1009,7 @@ int handle_data_set_create_member_dsn(const ParseResult &result)
   }
 
   rc = zds_list_data_sets(&zds, dsn, entries);
-  if (0 != rc || entries.size() == 0)
+  if (RTNCD_WARNING < rc || entries.size() == 0)
   {
     cout << "Error: could not create data set member: '" << dsn << "' rc: '" << rc << "'" << endl;
     cout << "  Details:\n"
@@ -1029,6 +1070,23 @@ int handle_data_set_create_dsn_adata(const ParseResult &result)
   return handle_data_set_create_member(zds, dsn);
 }
 
+int handle_data_set_create_dsn_loadlib(ZCLIResult result)
+{
+  int rc = 0;
+  string dsn = result.find_pos_arg_string("dsn");
+  ZDS zds = {0};
+  string response;
+  rc = zds_create_dsn_loadlib(&zds, dsn, response);
+  if (0 != rc)
+  {
+    cerr << "Error: could not create data set: '" << dsn << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details:\n"
+         << response << endl;
+    return -1;
+  }
+  return handle_data_set_create_member(zds, dsn);
+}
+
 int handle_data_set_restore(const ParseResult &result)
 {
   int rc = 0;
@@ -1068,9 +1126,12 @@ int handle_data_set_view_dsn(const ParseResult &result)
     return RTNCD_FAILURE;
   }
 
-  const auto etag = zut_calc_adler32_checksum(response);
-  cout << "etag: " << hex << etag << endl;
-  cout << "data: ";
+  if (result.find_kw_arg_bool("return-etag"))
+  {
+    const auto etag = zut_calc_adler32_checksum(response);
+    cout << "etag: " << hex << etag << endl;
+    cout << "data: ";
+  }
   if (hasEncoding && result.find_kw_arg_bool("response-format-bytes"))
   {
     zut_print_string_as_bytes(response);
@@ -1236,7 +1297,13 @@ int handle_data_set_write_to_dsn(const ParseResult &result)
     byteSize = data.size();
   }
 
-  rc = zds_write_to_dsn(&zds, dsn, data, result.find_kw_arg_string("etag"));
+  const auto etag = result.find_kw_arg_string("etag");
+  if (!etag.empty())
+  {
+    strcpy(zds.etag, etag);
+  }
+
+  rc = zds_write_to_dsn(&zds, dsn, data);
 
   if (0 != rc)
   {
@@ -1377,8 +1444,10 @@ int handle_uss_view(const ParseResult &result)
     return RTNCD_FAILURE;
   }
 
-  cout << "etag: " << zut_build_etag(file_stats.st_mtime, file_stats.st_size) << endl;
-  cout << "data: ";
+  if (result.find_kw_arg_bool("return-etag")) {
+    cout << "etag: " << zut_build_etag(file_stats.st_mtime, file_stats.st_size) << endl;
+    cout << "data: ";
+  }
   if (hasEncoding && result.find_kw_arg_bool("response-format-bytes"))
   {
     zut_print_string_as_bytes(response);
@@ -1427,7 +1496,10 @@ int handle_uss_write(const ParseResult &result)
   }
 
   const auto etag = result.find_kw_arg_string("etag");
-  rc = zusf_write_to_uss_file(&zusf, file, data, etag);
+  if (etag.length() > 0) {
+    strcpy(zusf.etag, etag.c_str());
+  }
+  rc = zusf_write_to_uss_file(&zusf, file, data);
   if (0 != rc)
   {
     cerr << "Error: could not write to USS file: '" << file << "' rc: '" << rc << "'" << endl;
@@ -1839,4 +1911,57 @@ int handle_tool_search(const ParseResult &result)
   }
 
   return !warn && rc == RTNCD_WARNING ? RTNCD_SUCCESS : rc;
+}
+
+int handle_tool_amblist(ZCLIResult result)
+{
+  int rc = 0;
+
+  string dsn(result.get_positional("dsn")->get_value());
+  string statements = " " + result.get_option_value("--control-statements");
+
+  // perform dynalloc
+  vector<string> dds;
+  dds.push_back("alloc dd(syslib) da('" + dsn + "') shr");
+  dds.push_back("alloc dd(sysprint) lrecl(80) recfm(f,b) blksize(80)");
+  dds.push_back("alloc dd(sysin) lrecl(80) recfm(f,b) blksize(80)");
+
+  rc = loop_dynalloc(dds);
+  if (RTNCD_SUCCESS != rc)
+  {
+    return RTNCD_FAILURE;
+  }
+
+  transform(statements.begin(), statements.end(), statements.begin(), ::toupper); // upper case
+
+  // write control statements
+  ZDS zds = {0};
+  zds_write_to_dd(&zds, "sysin", statements);
+  if (0 != rc)
+  {
+    cerr << "Error: could not write to dd: '" << "sysin" << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zds.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
+  // perform search
+  rc = zut_run("AMBLIST");
+  if (RTNCD_SUCCESS != rc)
+  {
+    cerr << "Error: could error invoking AMBLIST rc: '" << rc << "'" << endl;
+    // NOTE(Kelosky): don't exit here, but proceed to print errors
+  }
+
+  // read output from amblist
+  string output;
+  rc = zds_read_from_dd(&zds, "sysprint", output);
+  if (0 != rc)
+  {
+    cerr << "Error: could not read from dd: '" << "sysprint" << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zds.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+  cout << output << endl;
+
+  return RTNCD_SUCCESS;
 }

@@ -82,7 +82,7 @@ func HandleReadFileRequest(conn *utils.StdioConn, params []byte) (result any, e 
 	if len(request.Encoding) == 0 {
 		request.Encoding = fmt.Sprintf("IBM-%d", utils.DefaultEncoding)
 	}
-	args := []string{"uss", "view", request.Path, "--encoding", request.Encoding, "--rfb"}
+	args := []string{"uss", "view", request.Path, "--encoding", request.Encoding, "--rfb", "--return-etag"}
 	out, err := conn.ExecCmd(args)
 	if err != nil {
 		e = fmt.Errorf("Error executing command: %v", err)
