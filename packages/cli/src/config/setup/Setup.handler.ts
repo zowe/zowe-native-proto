@@ -48,6 +48,13 @@ export default class ServerInstallHandler implements ICommandHandler {
 
         const profile = await cliPromptApi.promptForProfile(undefined, false);
 
+        if (!profile) {
+            params.response.console.error(
+                "Unable to validate config, please check credentials for the selected profile",
+            );
+            return;
+        }
+
         // Get all profiles after selecting a profile
         const configAllAfterProfiles = profInfo.getAllProfiles().filter((prof) => prof.profLoc.osLoc.length !== 0);
 
@@ -57,7 +64,7 @@ export default class ServerInstallHandler implements ICommandHandler {
                 (arg) =>
                     arg.argName === "user" &&
                     arg.argLoc.jsonLoc ===
-                        `${configAllAfterProfiles.find((find) => find.profName === profile.name).profLoc.jsonLoc}.properties.user`,
+                        `${configAllAfterProfiles.find((find) => find.profName === profile.name)?.profLoc?.jsonLoc}.properties.user`,
             ),
         )?.knownArgs;
 
@@ -87,10 +94,14 @@ export default class ServerInstallHandler implements ICommandHandler {
             Config.set(property.argLoc.jsonLoc, property.argValue, { secure: isSecured && property.secure });
         }
 
-        // biome-ignore lint/suspicious/noExplicitAny: Required `as any` to set profile type
-        (Config as any).mLayers.find(
-            (profile: { path: string }) => profile.path === newProperties[0].argLoc?.osLoc[0],
-        ).properties.profiles[profile.name].type = "ssh";
+        if (newProperties.length > 0 && newProperties[0].argLoc?.osLoc?.[0]) {
+            const segments = profile.name.split(".");
+            const profileTypeJsonId = segments.reduce(
+                (all, val, i) => (i === segments.length - 1 ? `${all}.${val}.type` : `${all}.${val}.profiles`),
+                "profiles",
+            );
+            Config.set(profileTypeJsonId, "ssh");
+        }
 
         if (profile && Config.properties.defaults.ssh !== profile.name) {
             const defaultResponse = (
