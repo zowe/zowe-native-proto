@@ -139,7 +139,7 @@ int zut_hello(string name)
 void zut_dump_storage(string title, const void *data, size_t size)
 {
   ios::fmtflags f(cerr.flags());
-  fprintf(stderr, "--- Dumping storage for '%s' at x'%016llx' ---\n", title.c_str(), data);
+  fprintf(stderr, "--- Dumping storage for '%s' at x'%016llx' ---\n", title.c_str(), (unsigned long long)data);
 
   unsigned char *ptr = (unsigned char *)data;
 
@@ -147,7 +147,7 @@ void zut_dump_storage(string title, const void *data, size_t size)
 
   int index = 0;
   bool end = false;
-  char *spaces = "                                ";
+  char spaces[] = "                                ";
   char buf[BYTES_PER_LINE + 1] = {0};
 
   int lines = size / BYTES_PER_LINE;
@@ -156,7 +156,7 @@ void zut_dump_storage(string title, const void *data, size_t size)
 
   for (int x = 0; x < lines; x++)
   {
-    fprintf(stderr, "%016llx", ptr);
+    fprintf(stderr, "%016llx", (unsigned long long)ptr);
     cerr << " | ";
     for (int y = 0; y < BYTES_PER_LINE; y++)
     {
@@ -182,7 +182,7 @@ void zut_dump_storage(string title, const void *data, size_t size)
     ptr = ptr + BYTES_PER_LINE;
   }
 
-  fprintf(stderr, "%016llx", ptr);
+  fprintf(stderr, "%016llx", (unsigned long long)ptr);
   cerr << " | ";
   for (int y = 0; y < remainder; y++)
   {
@@ -469,7 +469,7 @@ string zut_encode(const string &input_str, const string &from_encoding, const st
   iconv_close(cd);
   if (-1 == iconv_rc)
   {
-    throw std::exception(diag.e_msg);
+    throw std::runtime_error(diag.e_msg);
   }
 
   // Copy converted input into a new string and return it to the caller

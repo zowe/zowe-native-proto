@@ -290,9 +290,9 @@ async function getDumps(connection: Client) {
 }
 
 async function artifacts(connection: Client, packageApf: boolean) {
-    const artifactPaths = ["c/zowex", "golang/zowed"];
+    const artifactPaths = ["c/build-out/zowex", "golang/zowed"];
     if (packageApf) {
-        artifactPaths.push("c/zoweax");
+        artifactPaths.push("c/build-out/zoweax");
     }
     const artifactNames = artifactPaths.map((file) => basename(file)).sort();
     const localDirs = packageApf ? ["dist"] : ["packages/cli/bin", "packages/vsce/bin"];

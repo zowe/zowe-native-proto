@@ -9,8 +9,13 @@
 #  Copyright Contributors to the Zowe Project.
 #
 
+OUT_DIR=build-out
+OUT_DIR_CXXLANG=$(OUT_DIR)/xlclang
+OUT_DIRS=$(OUT_DIR_CXXLANG)
+
 XLC_FLAGS=_CC_ACCEPTABLE_RC=0 _C89_ACCEPTABLE_RC=0 _CXX_ACCEPTABLE_RC=0
 CXX=$(XLC_FLAGS) xlc++
+CXXLANG=xlclang++
 CC=$(XLC_FLAGS) xlc
 ASM=as
 
@@ -44,6 +49,10 @@ CPP_BND_FLAGS=-W "l,lp64,xplink,map,list"
 CPP_BND_FLAGS_AUTH=-W "l,lp64,xplink,map,list,ac=1"
 
 C_FLAGS=-W "c,lp64,langlvl(extended),xplink,exportall"\
+ -c \
+ -I./chdsect
+
+CXXLANG_FLAGS=-W "c,lp64"\
  -c \
  -I./chdsect
 
@@ -88,178 +97,220 @@ MTL_FLAGS+=-g1
 MTL_FLAGS64+=-g1
 .END
 
+all: libzut.so libzut.a libzds.so libzds.a libzusf.so libzusf.a libzcn.so libzcn.a libzjb.so libzjb.a zowex zoweax extattr test
+xlclang-extenders: $(OUT_DIR_CXXLANG)/zut.o $(OUT_DIR_CXXLANG)/zcn.o
 
-all: native zowex zoweax extattr test
-native: libzut.so libzut.a libzds.so libzds.a libzusf.so libzusf.a libzcn.so libzcn.a libzjb.so libzjb.a
+#
+# create out directories
+#
+$(OUT_DIRS):
+	@echo 'creating $(OUT_DIR_CXXLANG) out directory...'
+	mkdir -p $(OUT_DIR_CXXLANG)
 
 #
 # Utilities
 #
-zut.o: zut.cpp
-	@echo 'Building zut.o'
+$(OUT_DIR)/zut.o: zut.cpp
+	@echo 'Building $(OUT_DIR)/zut.o'
 	$(CXX) $(DLL_CPP_FLAGS) -qlist=$*.cpp.lst -o $@ $^
 
-zutm.s: zutm.c
-	@echo 'Building zutm.s'
+$(OUT_DIR_CXXLANG)/zut.o: $(OUT_DIRS) zut.cpp
+	@echo '$(OUT_DIR_CXXLANG)/zut.o'
+	$(CXXLANG) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -o $@ $^
+
+$(OUT_DIR)/zutm.s: zutm.c
+	@echo 'Building $(OUT_DIR)/zutm.s'
 	$(CC) $(MTL_FLAGS64) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
 
-zutm.o: zutm.s
-	@echo 'Building zutm.s'
+$(OUT_DIR)/zutm.o: $(OUT_DIR)/zutm.s
+	@echo 'Building $(OUT_DIR)/zutm.s'
 	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
-zutm31.s: zutm31.c
-	@echo 'Building zutm31.s'
+$(OUT_DIR)/zutm31.s: zutm31.c
+	@echo 'Building $(OUT_DIR)/zutm31.s'
 	$(CC) $(MTL_FLAGS) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
 
-zutm31.o: zutm31.s
-	@echo 'Building zutm31.o'
+$(OUT_DIR)/zutm31.o: $(OUT_DIR)/zutm31.s
+	@echo 'Building $(OUT_DIR)/zutm31.o'
 	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
-libzut.so: zut.o zutm.o zutm31.o
-	@echo 'Building libzut.so'
+$(OUT_DIR)/libzut.so: $(OUT_DIR)/zut.o $(OUT_DIR)/zutm.o $(OUT_DIR)/zutm31.o
+	@echo 'Building $(OUT_DIR)/libzut.so'
 	$(CXX) $(DLL_BND_FLAGS) -o $@ $^ > $*.bind.lst
 
-libzut.a: zut.o zutm.o zutm31.o
-	@echo 'Building libzut.a'
+libzut.so: $(OUT_DIRS) $(OUT_DIR)/libzut.so
+
+$(OUT_DIR)/libzut.a: $(OUT_DIR)/zut.o $(OUT_DIR)/zutm.o $(OUT_DIR)/zutm31.o
+	@echo 'Building $(OUT_DIR)/libzut.a'
 	ar -rv $@ $^
+
+libzut.a: $(OUT_DIRS) $(OUT_DIR)/libzut.a
 
 #
 # Data sets
 #
-zdsm.s: zdsm.c
-	@echo 'Building zdsm.s'
+$(OUT_DIR)/zdsm.s: zdsm.c
+	@echo 'Building $(OUT_DIR)/zdsm.s'
 	$(CC) $(MTL_FLAGS64) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
 
-zdsm.o: zdsm.s
-	@echo 'Building zdsm.o'
+$(OUT_DIR)/zdsm.o: $(OUT_DIR)/zdsm.s
+	@echo 'Building $(OUT_DIR)/zdsm.o'
 	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
-zds.o: zds.cpp
-	@echo 'Building zds.o'
+$(OUT_DIR)/zds.o: zds.cpp
+	@echo 'Building $(OUT_DIR)/zds.o'
 	$(CXX) $(DLL_CPP_FLAGS) -qlist=$*.cpp.lst -o $@ $^
 
-libzds.so: zds.o zdsm.o libzut.a
+$(OUT_DIR)/libzds.so: $(OUT_DIR)/zds.o $(OUT_DIR)/zdsm.o $(OUT_DIR)/libzut.a
 	$(CXX) $(DLL_BND_FLAGS) -o $@ $^ > $*.bind.lst
-	@echo 'Building libzds.so'
+	@echo 'Building $(OUT_DIR)/libzds.so'
 
-libzds.a: zds.o zdsm.o libzut.a
-	@echo 'Building libzds.a'
+libzds.so: $(OUT_DIRS) $(OUT_DIR)/libzds.so
+
+$(OUT_DIR)/libzds.a: $(OUT_DIR)/zds.o $(OUT_DIR)/zdsm.o $(OUT_DIR)/libzut.a
+	@echo 'Building $(OUT_DIR)/libzds.a'
 	ar -rv $@ $^
+
+libzds.a: $(OUT_DIRS) $(OUT_DIR)/libzds.a
 
 #
 # Jobs
 #
-zjbm.s: zjbm.c
-	@echo 'Building zjbm.s'
+$(OUT_DIR)/zjbm.s: zjbm.c
+	@echo 'Building $(OUT_DIR)/zjbm.s'
 	$(CC) $(MTL_FLAGS64) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
 
-zjbm.o: zjbm.s
-	@echo 'Building zjbm.o'
+$(OUT_DIR)/zjbm.o: $(OUT_DIR)/zjbm.s
+	@echo 'Building $(OUT_DIR)/zjbm.o'
 	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
-zjb.o: zjb.cpp
-	@echo 'Building zjb.o'
+$(OUT_DIR)/zjb.o: zjb.cpp
+	@echo 'Building $(OUT_DIR)/zjb.o'
 	$(CXX) $(DLL_CPP_FLAGS) -qlist=$*.cpp.lst -o $@ $^
 
-zjbm31.s: zjbm31.c
-	@echo 'Building zjbm31.s'
+$(OUT_DIR)/zjbm31.s: zjbm31.c
+	@echo 'Building $(OUT_DIR)/zjbm31.s'
 	$(CC) $(MTL_FLAGS) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
 
-zjbm31.o: zjbm31.s
-	@echo 'Building zjbm31.o'
+$(OUT_DIR)/zjbm31.o: $(OUT_DIR)/zjbm31.s
+	@echo 'Building $(OUT_DIR)/zjbm31.o'
 	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
-zssi31.s: zssi31.c
-	@echo 'Building zssi31.s'
+$(OUT_DIR)/zssi31.s: zssi31.c
+	@echo 'Building $(OUT_DIR)/zssi31.s'
 	$(CC) $(MTL_FLAGS) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
 
-zssi31.o: zssi31.s
-	@echo 'Building zssi31.o'
+$(OUT_DIR)/zssi31.o: $(OUT_DIR)/zssi31.s
+	@echo 'Building $(OUT_DIR)/zssi31.o'
 	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
-libzjb.so: zjb.o zjbm.o zssi31.o zjbm31.o libzds.a libzut.a
-	@echo 'Building libzjb.so'
+$(OUT_DIR)/libzjb.so: $(OUT_DIR)/zjb.o $(OUT_DIR)/zjbm.o $(OUT_DIR)/zssi31.o $(OUT_DIR)/zjbm31.o $(OUT_DIR)/libzds.a $(OUT_DIR)/libzut.a
+	@echo 'Building $(OUT_DIR)/libzjb.so'
 	$(CXX) $(DLL_BND_FLAGS) -o $@ $^ > $*.bind.lst
 
-libzjb.a: zjb.o zjbm.o zssi31.o zjbm31.o libzds.a libzut.a
-	@echo 'Building libzjb.a'
+libzjb.so: $(OUT_DIRS) $(OUT_DIR)/libzjb.so
+
+$(OUT_DIR)/libzjb.a: $(OUT_DIR)/zjb.o $(OUT_DIR)/zjbm.o $(OUT_DIR)/zssi31.o $(OUT_DIR)/zjbm31.o $(OUT_DIR)/libzds.a $(OUT_DIR)/libzut.a
+	@echo 'Building $(OUT_DIR)/libzjb.a'
 	ar -rv $@ $^
+
+libzjb.a: $(OUT_DIRS) $(OUT_DIR)/libzjb.a
 
 #
 # Console
 #
-zcn.o: zcn.cpp
+$(OUT_DIR)/zcn.o: zcn.cpp
 	$(CXX) $(DLL_CPP_FLAGS) -qlist=$*.cpp.lst -o $@ $^
 
-zcnm.s: zcnm.c
+$(OUT_DIR_CXXLANG)/zcn.o: $(OUT_DIRS) zcn.cpp
+	@echo '$(OUT_DIR_CXXLANG)/zcn.o'
+	$(CXXLANG) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -o $@ $^
+
+$(OUT_DIR)/zcnm.s: zcnm.c
 	$(CC) $(MTL_FLAGS64) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
 
-zcnm.o: zcnm.s
+$(OUT_DIR)/zcnm.o: $(OUT_DIR)/zcnm.s
 	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
-zcnm31.s: zcnm31.c
+$(OUT_DIR)/zcnm31.s: zcnm31.c
 	$(CC) $(MTL_FLAGS) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
 
-zcnm31.o: zcnm31.s
+$(OUT_DIR)/zcnm31.o: $(OUT_DIR)/zcnm31.s
 	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
-libzcn.so: zcn.o zcnm.o zcnm31.o libzut.a
-	@echo 'Building libzcn.so'
+$(OUT_DIR)/libzcn.so: $(OUT_DIR)/zcn.o $(OUT_DIR)/zcnm.o $(OUT_DIR)/zcnm31.o $(OUT_DIR)/libzut.a
+	@echo 'Building $(OUT_DIR)/libzcn.so'
 	$(CXX) $(DLL_BND_FLAGS) -o $@ $^ > $*.bind.lst
 
-libzcn.a: zcn.o zcnm.o zcnm31.o libzut.a
+libzcn.so: $(OUT_DIRS) $(OUT_DIR)/libzcn.so
+
+$(OUT_DIR)/libzcn.a: $(OUT_DIR)/zcn.o $(OUT_DIR)/zcnm.o $(OUT_DIR)/zcnm31.o $(OUT_DIR)/libzut.a
 	@echo 'Building libzcn.a'
 	ar -rv $@ $^
+
+libzcn.a: $(OUT_DIRS) $(OUT_DIR)/libzcn.a
 
 #
 # USS data
 #
-zusf.o: zusf.cpp
-	@echo 'Building zusf.o'
+$(OUT_DIR)/zusf.o: zusf.cpp
+	@echo 'Building $(OUT_DIR)/zusf.o'
 	$(CXX) $(DLL_CPP_FLAGS) -qlist=$*.cpp.lst -o $@ $^
 
-libzusf.so: zusf.o libzut.a
+$(OUT_DIR)/libzusf.so: $(OUT_DIR)/zusf.o $(OUT_DIR)/libzut.a
+	@echo 'Building $(OUT_DIR)/libzusf.so'
 	$(CXX) $(DLL_BND_FLAGS) -o $@ $^ > $*.bind.lst
-	@echo 'Building libzusf.so'
 
-libzusf.a: zusf.o libzut.a
-	@echo 'Building libzusf.a'
+libzusf.so: $(OUT_DIRS) $(OUT_DIR)/libzusf.so
+
+$(OUT_DIR)/libzusf.a: $(OUT_DIR)/zusf.o $(OUT_DIR)/libzut.a
+	@echo 'Building $(OUT_DIR)/libzusf.a'
 	ar -rv $@ $^
+
+libzusf.a: $(OUT_DIRS) $(OUT_DIR)/libzusf.a
 
 #
 # TSO
 #
-ztso.o: ztso.cpp
-	@echo 'Building ztso.o'
+$(OUT_DIR)/ztso.o: ztso.cpp
+	@echo 'Building $(OUT_DIR)/ztso.o'
 	$(CXX) $(DLL_CPP_FLAGS) -qlist=$*.cpp.lst -o $@ $^
 
-libztso.so: ztso
+$(OUT_DIR)/libztso.so: ztso
+	@echo 'Building $(OUT_DIR)/libztso.so'
 	$(CXX) $(DLL_BND_FLAGS) -o $@ $^ > $*.bind.lst
-	@echo 'Building libztso.so'
 
-libztso.a: ztso.o
-	@echo 'Building libztso.a'
+libztso.so: $(OUT_DIRS) $(OUT_DIR)/libztso.so
+
+$(OUT_DIR)/libztso.a: $(OUT_DIR)/ztso.o
+	@echo 'Building $(OUT_DIR)/libztso.a'
 	ar -rv $@ $^
+
+libztso.a: $(OUT_DIRS) $(OUT_DIR)/libztso.a
 
 #
 # Test CLI
 #
 # zowex: zowex.o zcn.o zcnm.o zcnm31.o zut.o zutm.o zutm31.o zjb.o zjbm.o zssi31.o zjbm31.o zds.o
-zowex: zowex.o libzcn.a libzut.a libzjb.a libzds.a libzusf.a libztso.a
+$(OUT_DIR)/zowex: $(OUT_DIR)/zowex.o $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(OUT_DIR)/libzjb.a $(OUT_DIR)/libzds.a $(OUT_DIR)/libzusf.a $(OUT_DIR)/libztso.a
 	@echo 'Building zowex'
 	$(CXX) $(CPP_BND_FLAGS) -o $@ $^ > $*.bind.lst
 	ln -sf ../c/$@ ../golang/zowex
 	@echo 'Copied zowex to golang/'
 
-zoweax: zowex.o libzcn.a libzut.a libzjb.a libzds.a libzusf.a libztso.a
+zowex: $(OUT_DIRS) $(OUT_DIR)/zowex
+
+$(OUT_DIR)/zoweax: $(OUT_DIR)/zowex.o $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(OUT_DIR)/libzjb.a $(OUT_DIR)/libzds.a $(OUT_DIR)/libzusf.a $(OUT_DIR)/libztso.a
 	@echo 'Building zoweax'
 	$(CXX) $(CPP_BND_FLAGS_AUTH) -o $@ $^ > $*.bind.lst
 	ln -sf ../c/$@ ../golang/zoweax
 	@echo 'Copied zoweax to golang/'
 
-zowex.o: zowex.cpp
-	@echo 'Building zowex.o'
-	$(CXX) $(CPP_FLAGS) -qlist=$*.cpp.lst -c $^
+zoweax: $(OUT_DIRS) $(OUT_DIR)/zoweax
+
+$(OUT_DIR)/zowex.o: zowex.cpp
+	@echo 'Building $(OUT_DIR)/zowex.o'
+	$(CXX) $(CPP_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
 
 #
 # Testing utilities
@@ -275,7 +326,7 @@ test: test.sh
 # Misc targets
 #
 extattr:
-	extattr +ap zoweax
+	extattr +ap $(OUT_DIR)/zoweax
 
 clean:
 	rm -f *.o
@@ -286,3 +337,4 @@ clean:
 	rm -f *.x
 	rm -f *.lst
 	rm -f CEEDUMP.*
+	rm -rf $(OUT_DIR)
