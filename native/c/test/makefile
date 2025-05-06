@@ -46,7 +46,9 @@ MACLIBS= -I../../asmmac \
  -ISYS1.MODGEN \
  -ICBC.SCCNSAM
 
-MTL_HEADERS=-I/usr/include/metal
+MTL_HEADERS=-I/usr/include/metal\
+-I../\
+-I../chdsect
 
 CPP_BND_FLAGS=-W "l,lp64,xplink,map,list"
 
@@ -109,16 +111,25 @@ testrcvy: testrcvy.o
 	$(BIND) $(BIND_FLAGS_64) -V -eMAIN -o $@ $^ > $*.bind.lst
 
 testasm1.o: testasm1.s
-	$(ASM) $(ASM_FLAGS) -a=$*.asm.lst $(MACLIBS) -o $@ $^
+	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
 testasm4.o: testasm4.s
-	$(ASM) $(ASM_FLAGS) -a=$*.asm.lst $(MACLIBS) -o $@ $^
+	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
 testasm1: testasm1.o
 	$(BIND) $(BIND_FLAGS) -V -eTESTASM1 -o $@ $^ > $*.bind.lst
 
 testasm4: testasm4.o
 	$(BIND) $(BIND_FLAGS_64) -V -eTESTASM4 -o $@ $^ > $*.bind.lst
+
+main.s: main.c
+	$(CC) $(MTL_FLAGS64) -qlist=$*.mtl.lst $(MTL_HEADERS) -I../chdsect -I../ -o $@ $^
+
+main.o: main.s
+	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
+
+main: main.o
+	$(BIND) $(BIND_FLAGS_64) -V -eMAIN -o $@ $^ > $*.bind.lst
 
 clean:
 	rm -f *.o

@@ -62,7 +62,7 @@ int zds_read_from_dd(ZDS *zds, std::string ddname, std::string &response);
  * @param data data to write
  * @return int 0 for success; non zero otherwise
  */
-int zds_write_to_dd(ZDS *zds, std::string ddname, std::string &data);
+int zds_write_to_dd(ZDS *zds, std::string ddname, std::string data);
 
 /**
  * @brief Write data to a z/OS data set name
