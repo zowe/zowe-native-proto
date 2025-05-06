@@ -144,7 +144,8 @@
     "zjbtype.h": "c",
     "zjsytype.h": "c",
     "zstorage.h": "c",
-    "iazsymdf.h": "c"
+    "iazsymdf.h": "c",
+    "ztype.h": "c"
   },
   "editor.formatOnSave": true,
   "[typescript]": {

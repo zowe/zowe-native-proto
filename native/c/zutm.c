@@ -201,7 +201,7 @@ int ZUTSRCH()
 #pragma epilog(ZUTRUN, " ZWEEPILG ")
 typedef int (*PGM31)(void *) ATTRIBUTE(amode31);
 typedef int (*PGM64)(void *) ATTRIBUTE(amode64);
-;
+
 int ZUTRUN(const char *program)
 {
   int rc = 0;

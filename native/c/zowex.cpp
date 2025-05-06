@@ -2142,10 +2142,34 @@ int handle_data_set_compress(ZCLIResult result)
 
   transform(dsn.begin(), dsn.end(), dsn.begin(), ::toupper); // upper case
 
+  bool is_pds = false;
+
+  string dsn_formatted = "//'" + dsn + "'";
+  FILE *dir = fopen(dsn_formatted.c_str(), "r");
+  if (dir)
+  {
+    fldata_t file_info = {0};
+    char file_name[64] = {0};
+    if (0 == fldata(dir, file_name, &file_info))
+    {
+      if (file_info.__dsorgPDSdir && !file_info.__dsorgPDSE)
+      {
+        is_pds = true;
+      }
+      fclose(dir);
+    }
+  }
+
+  if (!is_pds)
+  {
+    cerr << "Error: data set'" << dsn << "' is not a PDS'" << endl;
+    return RTNCD_FAILURE;
+  }
+
   // perform dynalloc
   vector<string> dds;
-  dds.push_back("alloc dd(a) da('" + dsn + "') old");
-  dds.push_back("alloc dd(b) da('" + dsn + "') old");
+  dds.push_back("alloc dd(a) da('" + dsn + "') shr");
+  dds.push_back("alloc dd(b) da('" + dsn + "') shr");
   dds.push_back("alloc dd(sysprint) lrecl(80) recfm(f,b) blksize(80)");
   dds.push_back("alloc dd(sysin) lrecl(80) recfm(f,b) blksize(80)");
 
@@ -2165,12 +2189,11 @@ int handle_data_set_compress(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  // perform search
+  // perform compress
   rc = zut_run("IEBCOPY");
   if (RTNCD_SUCCESS != rc)
   {
     cerr << "Error: could error invoking IEBCOPY rc: '" << rc << "'" << endl;
-    // NOTE(Kelosky): don't exit here, but proceed to print errors
   }
 
   // read output from amblist
@@ -2180,9 +2203,10 @@ int handle_data_set_compress(ZCLIResult result)
   {
     cerr << "Error: could not read from dd: '" << "sysprint" << "' rc: '" << rc << "'" << endl;
     cerr << "  Details: " << zds.diag.e_msg << endl;
+    cerr << output << endl;
     return RTNCD_FAILURE;
   }
-  cout << output << endl;
+  cout << "Data set '" << dsn << "' compressed" << endl;
 
   vector<string> free_dds;
   free_dds.push_back("free dd(a)");
