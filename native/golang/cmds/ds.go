@@ -34,7 +34,7 @@ func HandleReadDatasetRequest(conn *utils.StdioConn, params []byte) (result any,
 	if len(request.Encoding) == 0 {
 		request.Encoding = fmt.Sprintf("IBM-%d", utils.DefaultEncoding)
 	}
-	args := []string{"data-set", "view", request.Dsname, "--encoding", request.Encoding, "--rfb", "true", "--return-etag", "true"}
+	args := []string{"data-set", "view", request.Dsname, "--encoding", request.Encoding, "--rfb", "--return-etag"}
 	out, err := conn.ExecCmd(args)
 	if err != nil {
 		return nil, fmt.Errorf("Error executing command: %v", err)
@@ -117,7 +117,7 @@ func HandleListDatasetsRequest(conn *utils.StdioConn, params []byte) (result any
 		return nil, err
 	}
 
-	args := []string{"data-set", "list", request.Pattern, "--warn", "false", "--rfc", "true"}
+	args := []string{"data-set", "list", request.Pattern, "--no-warn", "--rfc"}
 	// if len(listRequest.Start) != 0 {
 	// 	args = append(args, "--start", listRequest.Start)
 	// }
@@ -167,7 +167,7 @@ func HandleListDsMembersRequest(conn *utils.StdioConn, params []byte) (result an
 		return nil, err
 	}
 
-	args := []string{"data-set", "list-members", request.Dsname, "--warn", "false"}
+	args := []string{"data-set", "list-members", request.Dsname, "--no-warn"}
 	// if len(listRequest.Start) != 0 {
 	// 	args = append(args, "--start", listRequest.Start)
 	// }

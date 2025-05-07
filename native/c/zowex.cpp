@@ -9,6 +9,7 @@
  *
  */
 
+#include "pparser.hpp"
 #include <iostream>
 #include <vector>
 #include <stdlib.h>
@@ -22,7 +23,6 @@
 #include <unistd.h>
 #include "zcn.hpp"
 #include "zut.hpp"
-#include "zcli.hpp"
 #include "zjb.hpp"
 #include "zds.hpp"
 #include "zusf.hpp"
@@ -30,668 +30,450 @@
 #include "zuttype.h"
 
 #ifndef TO_STRING
-#define TO_STRING(x) static_cast<std::ostringstream &>(           \
-                         (std::ostringstream() << std::dec << x)) \
+#define TO_STRING(x) static_cast<ostringstream &>(      \
+                         (ostringstream() << dec << x)) \
                          .str()
 #endif
 
+using namespace pparser;
 using namespace std;
 
-int handle_job_list(ZCLIResult);
-int handle_job_list_files(ZCLIResult);
-int handle_job_view_status(ZCLIResult);
-int handle_job_view_file(ZCLIResult);
-int handle_job_view_jcl(ZCLIResult);
-int handle_job_submit(ZCLIResult);
-int handle_job_submit_jcl(ZCLIResult);
-int handle_job_submit_uss(ZCLIResult);
-int handle_job_delete(ZCLIResult);
-int handle_job_cancel(ZCLIResult);
-int handle_job_hold(ZCLIResult);
-int handle_job_release(ZCLIResult);
+int handle_job_list(const ParseResult &);
+int handle_job_list_files(const ParseResult &);
+int handle_job_view_status(const ParseResult &);
+int handle_job_view_file(const ParseResult &);
+int handle_job_view_jcl(const ParseResult &);
+int handle_job_submit(const ParseResult &);
+int handle_job_submit_jcl(const ParseResult &);
+int handle_job_submit_uss(const ParseResult &);
+int handle_job_delete(const ParseResult &);
+int handle_job_cancel(const ParseResult &);
+int handle_job_hold(const ParseResult &);
+int handle_job_release(const ParseResult &);
 
-int handle_console_issue(ZCLIResult);
+int handle_console_issue(const ParseResult &);
 
-int handle_data_set_create_dsn(ZCLIResult);
-int handle_data_set_create_dsn_vb(ZCLIResult);
-int handle_data_set_create_dsn_adata(ZCLIResult);
-int handle_data_set_create_dsn_loadlib(ZCLIResult);
-int handle_data_set_restore(ZCLIResult);
-int handle_data_set_view_dsn(ZCLIResult);
-int handle_data_set_list(ZCLIResult);
-int handle_data_set_list_members_dsn(ZCLIResult);
-int handle_data_set_write_to_dsn(ZCLIResult);
-int handle_data_set_delete_dsn(ZCLIResult);
-int handle_data_set_create_member_dsn(ZCLIResult);
+int handle_data_set_create_dsn(const ParseResult &);
+int handle_data_set_create_dsn_vb(const ParseResult &);
+int handle_data_set_create_dsn_adata(const ParseResult &);
+int handle_data_set_create_dsn_loadlib(const ParseResult &);
+int handle_data_set_restore(const ParseResult &);
+int handle_data_set_view_dsn(const ParseResult &);
+int handle_data_set_list(const ParseResult &);
+int handle_data_set_list_members_dsn(const ParseResult &);
+int handle_data_set_write_to_dsn(const ParseResult &);
+int handle_data_set_delete_dsn(const ParseResult &);
+int handle_data_set_create_member_dsn(const ParseResult &);
 
-int handle_log_view(ZCLIResult);
+int handle_log_view(const ParseResult &);
 
-int handle_tool_convert_dsect(ZCLIResult);
-int handle_tool_dynalloc(ZCLIResult);
-int handle_tool_display_symbol(ZCLIResult);
-int handle_tool_search(ZCLIResult);
-int handle_tool_amblist(ZCLIResult);
-int handle_tool_run(ZCLIResult);
+int handle_tool_convert_dsect(const ParseResult &);
+int handle_tool_dynalloc(const ParseResult &);
+int handle_tool_display_symbol(const ParseResult &);
+int handle_tool_search(const ParseResult &);
+int handle_tool_amblist(const ParseResult &);
+int handle_tool_run(const ParseResult &);
 
 // TODO(Kelosky):
 // help w/verbose examples
 // add simple examples to help
 
-int handle_uss_create_file(ZCLIResult);
-int handle_uss_create_dir(ZCLIResult);
-int handle_uss_list(ZCLIResult);
-int handle_uss_view(ZCLIResult);
-int handle_uss_write(ZCLIResult);
-int handle_uss_delete(ZCLIResult);
-int handle_uss_chmod(ZCLIResult);
-int handle_uss_chown(ZCLIResult);
-int handle_uss_chtag(ZCLIResult);
-int handle_tso_issue(ZCLIResult);
+int handle_uss_create_file(const ParseResult &);
+int handle_uss_create_dir(const ParseResult &);
+int handle_uss_list(const ParseResult &);
+int handle_uss_view(const ParseResult &);
+int handle_uss_write(const ParseResult &);
+int handle_uss_delete(const ParseResult &);
+int handle_uss_chmod(const ParseResult &);
+int handle_uss_chown(const ParseResult &);
+int handle_uss_chtag(const ParseResult &);
+int handle_tso_issue(const ParseResult &);
 
-int job_submit_common(ZCLIResult, string, string &, string);
+Command *g_root_command = nullptr;
+ArgumentParser *g_parser = nullptr;
+
+int handle_root(const ParseResult &result)
+{
+  if (result.find_kw_arg_bool("interactive"))
+  {
+    std::cout << "Started, enter command or 'quit' to quit..." << std::endl;
+
+    std::string command;
+    int rc = 0;
+    int is_tty = isatty(fileno(stdout));
+    do
+    {
+      if (is_tty)
+        std::cout << "\r> " << std::flush;
+
+      std::getline(std::cin, command);
+
+      if (command == "quit")
+      {
+        break;
+      }
+
+      g_parser->parse(command);
+
+      if (!is_tty)
+      {
+        std::cout << "[" << rc << "]" << std::endl;
+        // EBCDIC \x37 = ASCII \x04 = End of Transmission (Ctrl+D)
+        std::cout << '\x37' << std::flush;
+        std::cerr << '\x37' << std::flush;
+      }
+
+    } while (command != "quit");
+
+    std::cout << "...terminated" << std::endl;
+
+    return rc;
+  }
+
+  // If not interactive and no subcommand, print help
+  if (g_root_command)
+  {
+    g_root_command->generate_help(std::cout, "");
+  }
+  return 0;
+}
 
 int main(int argc, char *argv[])
 {
-  // CLI
-  ZCLI zcli(argv[PROCESS_NAME_ARG]);
-  zcli.set_interactive_mode(true);
-
-  ZCLIOption response_format_csv("response-format-csv");
-  response_format_csv.set_description("returns the response in CSV format");
-  response_format_csv.get_aliases().push_back("--rfc");
-  response_format_csv.set_default("false");
-  response_format_csv.set_required(false);
-  response_format_csv.set_is_bool(true);
-
-  ZCLIOption response_format_bytes("response-format-bytes");
-  response_format_bytes.set_description("returns the response as raw bytes");
-  response_format_bytes.get_aliases().push_back("--rfb");
-  response_format_bytes.set_required(false);
-  response_format_bytes.set_is_bool(true);
-
-  ZCLIGroup tso_group("tso");
-  tso_group.set_description("TSO operations");
-
-  ZCLIVerb tso_issue("issue");
-  tso_issue.set_description("issue TSO command");
-  tso_issue.set_zcli_verb_handler(handle_tso_issue);
-
-  ZCLIPositional tso_command("command");
-  tso_command.set_required(true);
-  tso_command.set_description("command to issue");
-
-  tso_issue.get_positionals().push_back(tso_command);
-
-  tso_group.get_verbs().push_back(tso_issue);
-
-  ZCLIOption encoding_option("encoding");
-  encoding_option.get_aliases().push_back("--ec");
-  encoding_option.set_description("return contents in given encoding");
-
-  ZCLIOption etag("etag");
-  etag.set_required(false);
-  etag.set_description("Provide the e-tag for a write response to detect conflicts before save");
-
-  ZCLIOption etag_only("etag-only");
-  etag_only.set_required(false);
-  etag_only.set_description("Only print the e-tag for a write response (when successful)");
-
-  ZCLIOption return_etag("return-etag");
-  return_etag.set_required(false);
-  return_etag.set_description("Display the e-tag for a read response in addition to data");
-
-  //
-  // data set group
-  //
-  ZCLIGroup data_set_group("data-set");
-  data_set_group.get_aliases().push_back("ds");
-  data_set_group.set_description("z/OS data set operations");
-
-  ZCLIPositional data_set_dsn("dsn");
-  data_set_dsn.set_description("data set name, optionally with member specified");
-  data_set_dsn.set_required(true);
-
-  // data set verbs
-  ZCLIVerb data_set_create("create");
-  data_set_create.get_aliases().push_back("cre");
-  data_set_create.set_description("create data set using defaults: DSORG=PO, RECFM=FB, LRECL=80");
-  data_set_create.set_zcli_verb_handler(handle_data_set_create_dsn);
-  data_set_create.get_positionals().push_back(data_set_dsn);
-  data_set_group.get_verbs().push_back(data_set_create);
-
-  ZCLIVerb data_set_create_vb("create-vb");
-  data_set_create_vb.get_aliases().push_back("cre-vb");
-  data_set_create_vb.set_description("create VB data set using defaults: DSORG=PO, RECFM=VB, LRECL=255");
-  data_set_create_vb.set_zcli_verb_handler(handle_data_set_create_dsn_vb);
-  data_set_create_vb.get_positionals().push_back(data_set_dsn);
-  data_set_group.get_verbs().push_back(data_set_create_vb);
-
-  ZCLIVerb data_set_create_adata("create-adata");
-  data_set_create_adata.get_aliases().push_back("cre-a");
-  data_set_create_adata.set_description("create VB data set using defaults: DSORG=PO, RECFM=VB, LRECL=32756");
-  data_set_create_adata.set_zcli_verb_handler(handle_data_set_create_dsn_adata);
-  data_set_create_adata.get_positionals().push_back(data_set_dsn);
-  data_set_group.get_verbs().push_back(data_set_create_adata);
-
-  ZCLIVerb data_set_create_loadlib("create-loadlib");
-  data_set_create_loadlib.get_aliases().push_back("cre-u");
-  data_set_create_loadlib.set_description("create loadlib data set using defaults: DSORG=PO, RECFM=U, LRECL=0");
-  data_set_create_loadlib.set_zcli_verb_handler(handle_data_set_create_dsn_loadlib);
-  data_set_create_loadlib.get_positionals().push_back(data_set_dsn);
-  data_set_group.get_verbs().push_back(data_set_create_loadlib);
-
-  ZCLIVerb data_set_create_member("create-member");
-  data_set_create_member.get_aliases().push_back("cre-m");
-  data_set_create_member.set_description("create member in data set");
-  data_set_create_member.set_zcli_verb_handler(handle_data_set_create_member_dsn);
-  data_set_create_member.get_positionals().push_back(data_set_dsn);
-  data_set_group.get_verbs().push_back(data_set_create_member);
-
-  ZCLIVerb data_set_restore("restore");
-  data_set_restore.set_description("restore/recall data set");
-  data_set_restore.set_zcli_verb_handler(handle_data_set_restore);
-  data_set_restore.get_positionals().push_back(data_set_dsn);
-  data_set_group.get_verbs().push_back(data_set_restore);
-
-  ZCLIVerb data_set_view("view");
-  data_set_view.set_description("view data set");
-  data_set_view.set_zcli_verb_handler(handle_data_set_view_dsn);
-  data_set_view.get_positionals().push_back(data_set_dsn);
-  data_set_view.get_options().push_back(encoding_option);
-  data_set_view.get_options().push_back(response_format_bytes);
-  data_set_view.get_options().push_back(return_etag);
-  data_set_group.get_verbs().push_back(data_set_view);
-
-  ZCLIVerb data_set_list("list");
-  ZCLIOption data_set_max_entries("max-entries");
-  data_set_max_entries.get_aliases().push_back("--me");
-  data_set_max_entries.set_description("max number of results to return before error generated");
-  data_set_list.get_options().push_back(data_set_max_entries);
-
-  ZCLIOption data_set_truncate_warn("warn");
-  data_set_truncate_warn.set_description("warn if truncated or not found");
-  data_set_truncate_warn.set_default("true");
-  data_set_truncate_warn.set_is_bool(true);
-  data_set_list.get_options().push_back(data_set_truncate_warn);
-
-  data_set_list.set_description("list data sets");
-  data_set_list.get_aliases().push_back("ls");
-  ZCLIOption data_set_attributes("attributes");
-  data_set_attributes.set_description("display data set attributes");
-  data_set_attributes.get_aliases().push_back("-a");
-  data_set_attributes.set_default("false");
-  data_set_list.get_options().push_back(data_set_attributes);
-  data_set_list.set_zcli_verb_handler(handle_data_set_list);
-  data_set_list.get_positionals().push_back(data_set_dsn);
-  data_set_list.get_options().push_back(response_format_csv);
-  data_set_group.get_verbs().push_back(data_set_list);
-
-  ZCLIVerb data_set_list_members("list-members");
-  data_set_list_members.get_aliases().push_back("lm");
-  data_set_list_members.set_description("list data set members");
-  data_set_list_members.set_zcli_verb_handler(handle_data_set_list_members_dsn);
-  data_set_list_members.get_positionals().push_back(data_set_dsn);
-  data_set_list_members.get_options().push_back(data_set_max_entries);
-  data_set_list_members.get_options().push_back(data_set_truncate_warn);
-  data_set_group.get_verbs().push_back(data_set_list_members);
-
-  ZCLIVerb data_set_write("write");
-  data_set_write.set_description("write to data set");
-  data_set_write.set_zcli_verb_handler(handle_data_set_write_to_dsn);
-  data_set_write.get_positionals().push_back(data_set_dsn);
-  data_set_write.get_options().push_back(encoding_option);
-  data_set_write.get_options().push_back(etag);
-  data_set_write.get_options().push_back(etag_only);
-  data_set_group.get_verbs().push_back(data_set_write);
-
-  ZCLIVerb data_set_delete("delete");
-  data_set_delete.get_aliases().push_back("del");
-  data_set_delete.set_description("delete data set");
-  data_set_delete.set_zcli_verb_handler(handle_data_set_delete_dsn);
-  data_set_delete.get_positionals().push_back(data_set_dsn);
-  data_set_group.get_verbs().push_back(data_set_delete);
-
-  //
-  // jobs group
-  //
-  ZCLIGroup job_group("job");
-  job_group.set_description("z/OS job operations");
-
-  // jobs verbs
-  ZCLIVerb job_list("list");
-  job_list.set_description("list jobs");
-  job_list.set_zcli_verb_handler(handle_job_list);
-  ZCLIOption job_owner("owner");
-  job_owner.get_aliases().push_back("-o");
-  job_owner.set_description("filter by owner");
-  job_list.get_options().push_back(job_owner);
-  ZCLIOption job_prefix("prefix");
-  job_prefix.get_aliases().push_back("-p");
-  job_prefix.set_description("filter by prefix");
-  job_list.get_options().push_back(job_prefix);
-
-  ZCLIOption job_max_entries("max-entries");
-  job_max_entries.get_aliases().push_back("--me");
-  job_max_entries.set_description("max number of results to return before error generated");
-  job_list.get_options().push_back(job_max_entries);
-
-  ZCLIOption job_truncate_warn("warn");
-  job_truncate_warn.set_description("warn if trucated or not found");
-  job_truncate_warn.set_default("true");
-  job_truncate_warn.set_is_bool(true);
-  job_list.get_options().push_back(job_truncate_warn);
-
-  job_list.get_options().push_back(response_format_csv);
-  job_group.get_verbs().push_back(job_list);
-
-  ZCLIVerb job_list_files("list-files");
-  job_list_files.get_aliases().push_back("lf");
-  job_list_files.set_description("list spool files for jobid");
-  job_list_files.set_zcli_verb_handler(handle_job_list_files);
-  ZCLIPositional job_jobid("jobid");
-  job_jobid.set_required(true);
-  job_jobid.set_description("valid jobid or job correlator");
-  job_list_files.get_positionals().push_back(job_jobid);
-  job_list_files.get_options().push_back(response_format_csv);
-  job_group.get_verbs().push_back(job_list_files);
-
-  ZCLIVerb job_view_status("view-status");
-  job_view_status.get_aliases().push_back("vs");
-  job_view_status.set_description("view job status");
-  job_view_status.set_zcli_verb_handler(handle_job_view_status);
-  job_view_status.get_positionals().push_back(job_jobid);
-  job_view_status.get_options().push_back(response_format_csv);
-  job_group.get_verbs().push_back(job_view_status);
-
-  ZCLIVerb job_view_file("view-file");
-  job_view_file.get_aliases().push_back("vf");
-  job_view_file.set_description("view job file output");
-  job_view_file.set_zcli_verb_handler(handle_job_view_file);
-  job_view_file.get_positionals().push_back(job_jobid);
-  job_view_file.get_options().push_back(encoding_option);
-  job_view_file.get_options().push_back(response_format_bytes);
-
-  ZCLIPositional job_dsn_key("key");
-  job_dsn_key.set_required(true);
-  job_dsn_key.set_description("valid job dsn key via 'job list-files'");
-  job_view_file.get_positionals().push_back(job_dsn_key);
-  job_group.get_verbs().push_back(job_view_file);
-
-  ZCLIVerb job_view_jcl("view-jcl");
-  job_view_jcl.get_aliases().push_back("vj");
-  job_view_jcl.set_description("view job jcl from input jobid");
-  job_view_jcl.set_zcli_verb_handler(handle_job_view_jcl);
-  job_view_jcl.get_positionals().push_back(job_jobid);
-  job_group.get_verbs().push_back(job_view_jcl);
-
-  ZCLIVerb job_submit("submit");
-  job_submit.get_aliases().push_back("sub");
-  job_submit.set_description("submit a job");
-  job_submit.set_zcli_verb_handler(handle_job_submit);
-
-  ZCLIOption job_wait("wait");
-  job_wait.set_description("wait for job status");
-  job_submit.get_options().push_back(job_wait);
-
-  ZCLIOption job_jobid_only("only-jobid");
-  job_jobid_only.get_aliases().push_back("--oj");
-  job_jobid_only.set_description("show only job id on success");
-  job_jobid_only.set_is_bool(true);
-  job_submit.get_options().push_back(job_jobid_only);
-
-  ZCLIOption job_job_correlator_only("only-correlator");
-  job_job_correlator_only.get_aliases().push_back("--oc");
-  job_job_correlator_only.set_description("show only job correlator on success");
-  job_job_correlator_only.set_is_bool(true);
-  job_submit.get_options().push_back(job_job_correlator_only);
-
-  job_submit.get_exclusive_options().push_back(job_jobid_only);
-  job_submit.get_exclusive_options().push_back(job_job_correlator_only);
-
-  ZCLIPositional job_dsn("dsn");
-  job_dsn.set_required(true);
-  job_dsn.set_description("dsn containing JCL");
-  job_submit.get_positionals().push_back(job_dsn);
-  job_group.get_verbs().push_back(job_submit);
-
-  ZCLIVerb job_submit_jcl("submit-jcl");
-  job_submit_jcl.get_aliases().push_back("subj");
-  job_submit_jcl.set_description("submit JCL contents directly");
-  job_submit_jcl.set_zcli_verb_handler(handle_job_submit_jcl);
-  job_submit_jcl.get_options().push_back(job_jobid_only);
-  job_submit_jcl.get_options().push_back(encoding_option);
-  job_submit_jcl.get_options().push_back(job_job_correlator_only);
-  job_submit_jcl.get_exclusive_options().push_back(job_jobid_only);
-  job_submit_jcl.get_exclusive_options().push_back(job_job_correlator_only);
-  job_submit_jcl.get_options().push_back(job_wait);
-  job_group.get_verbs().push_back(job_submit_jcl);
-
-  ZCLIVerb job_submit_uss("submit-uss");
-  job_submit_uss.get_aliases().push_back("sub-u");
-  job_submit_uss.set_description("submit a job from USS files");
-  job_submit_uss.set_zcli_verb_handler(handle_job_submit_uss);
-  ZCLIPositional job_uss_file("file-path");
-  job_uss_file.set_required(true);
-  job_uss_file.set_description("USS file containing JCL");
-  job_submit_uss.get_positionals().push_back(job_uss_file);
-
-  job_submit_uss.get_options().push_back(job_jobid_only);
-  job_submit_uss.get_options().push_back(job_job_correlator_only);
-  job_submit_uss.get_exclusive_options().push_back(job_jobid_only);
-  job_submit_uss.get_exclusive_options().push_back(job_job_correlator_only);
-  job_submit_uss.get_options().push_back(job_wait);
-  job_group.get_verbs().push_back(job_submit_uss);
-
-  ZCLIVerb job_delete("delete");
-  job_delete.get_aliases().push_back("del");
-  job_delete.set_description("delete a job");
-  job_delete.set_zcli_verb_handler(handle_job_delete);
-  job_delete.get_positionals().push_back(job_jobid);
-  job_group.get_verbs().push_back(job_delete);
-
-  ZCLIVerb job_cancel("cancel");
-  job_cancel.get_aliases().push_back("cnl");
-  job_cancel.set_description("cancel a job");
-  job_cancel.set_zcli_verb_handler(handle_job_cancel);
-  job_cancel.get_positionals().push_back(job_jobid);
-
-  ZCLIOption job_cancel_dump("dump");
-  job_cancel_dump.get_aliases().push_back("-d");
-  job_cancel_dump.set_description("Dump the cancelled jobs if waiting for conversion, in conversion, or in execution.");
-  job_cancel.get_options().push_back(job_cancel_dump);
-  ZCLIOption job_cancel_force("force");
-  job_cancel_force.get_aliases().push_back("-f");
-  job_cancel_force.set_description("Force cancel the jobs, even if marked.");
-  job_cancel.get_options().push_back(job_cancel_force);
-  ZCLIOption job_cancel_purge("purge");
-  job_cancel_purge.get_aliases().push_back("-p");
-  job_cancel_purge.set_description("Purge output of the cancelled jobs.");
-  job_cancel.get_options().push_back(job_cancel_purge);
-  ZCLIOption job_cancel_restart("restart");
-  job_cancel_restart.get_aliases().push_back("-r");
-  job_cancel_restart.set_description("Request that automatic restart management automatically restart the selected jobs after they are cancelled.");
-  job_cancel.get_options().push_back(job_cancel_restart);
-  job_group.get_verbs().push_back(job_cancel);
-
-  ZCLIVerb job_hold("hold");
-  job_hold.get_aliases().push_back("hld");
-  job_hold.set_description("hold a job");
-  job_hold.set_zcli_verb_handler(handle_job_hold);
-  job_hold.get_positionals().push_back(job_jobid);
-  job_group.get_verbs().push_back(job_hold);
-
-  ZCLIVerb job_release("release");
-  job_release.get_aliases().push_back("rel");
-  job_release.set_description("release a job");
-  job_release.set_zcli_verb_handler(handle_job_release);
-  job_release.get_positionals().push_back(job_jobid);
-  job_group.get_verbs().push_back(job_release);
-
-  //
-  // console group
-  //
-  ZCLIGroup console_group("console");
-  console_group.get_aliases().push_back("cn");
-  console_group.set_description("z/OS console operations");
-
-  // console verbs
-  ZCLIVerb console_issue("issue");
-  console_issue.set_description("issue a console command");
-  console_issue.set_zcli_verb_handler(handle_console_issue);
-  ZCLIOption console_name("console-name");
-  console_name.set_default("zowex");
-  console_name.set_required(true);
-  console_name.get_aliases().push_back("--cn");
-  console_name.set_description("extended console name");
-  console_issue.get_options().push_back(console_name);
-  ZCLIOption console_wait("wait");
-  console_wait.set_default("true");
-  console_wait.set_is_bool(true);
-  console_wait.set_description("wait for responses");
-  console_issue.get_options().push_back(console_wait);
-  ZCLIPositional console_command("command");
-  console_command.set_required(true);
-  console_command.set_description("command to run, e.g. 'D IPLINFO'");
-  console_issue.get_positionals().push_back(console_command);
-  console_group.get_verbs().push_back(console_issue);
-
-  //
-  // uss group
-  //
-  ZCLIGroup uss_group("uss");
-  uss_group.set_description("z/OS USS operations");
-
-  // uss common options and positionals
-  ZCLIPositional uss_file_path("file-path");
-  uss_file_path.set_required(true);
-  uss_file_path.set_description("file path");
-  ZCLIOption uss_file_mode("mode");
-  uss_file_mode.set_required(false);
-  uss_file_mode.set_description("permissions");
-  ZCLIOption uss_recursive("recursive");
-  uss_recursive.get_aliases().push_back("-r");
-  uss_recursive.set_required(false);
-  uss_recursive.set_description("Applies the operation recursively (e.g. for folders w/ inner files)");
-
-  ZCLIVerb uss_create_file("create-file");
-  uss_create_file.set_description("create a USS file");
-  uss_create_file.set_zcli_verb_handler(handle_uss_create_file);
-  uss_create_file.get_positionals().push_back(uss_file_path);
-  uss_create_file.get_options().push_back(uss_file_mode);
-  uss_group.get_verbs().push_back(uss_create_file);
-
-  ZCLIVerb uss_create_dir("create-dir");
-  uss_create_dir.set_description("create a USS directory");
-  uss_create_dir.set_zcli_verb_handler(handle_uss_create_dir);
-  uss_create_dir.get_positionals().push_back(uss_file_path);
-  uss_create_dir.get_options().push_back(uss_file_mode);
-  uss_group.get_verbs().push_back(uss_create_dir);
-
-  ZCLIVerb uss_list("list");
-  uss_list.set_description("list USS files and directories");
-  uss_list.set_zcli_verb_handler(handle_uss_list);
-  uss_list.get_positionals().push_back(uss_file_path);
-  uss_group.get_verbs().push_back(uss_list);
-
-  ZCLIVerb uss_view("view");
-  uss_view.set_description("view a USS file");
-  uss_view.get_positionals().push_back(uss_file_path);
-  uss_view.set_zcli_verb_handler(handle_uss_view);
-  uss_view.get_options().push_back(encoding_option);
-  uss_view.get_options().push_back(response_format_bytes);
-  uss_view.get_options().push_back(return_etag);
-  uss_group.get_verbs().push_back(uss_view);
-
-  ZCLIVerb uss_write("write");
-  uss_write.set_description("write to a USS file");
-  uss_write.set_zcli_verb_handler(handle_uss_write);
-  uss_write.get_positionals().push_back(uss_file_path);
-  uss_write.get_options().push_back(encoding_option);
-  uss_write.get_options().push_back(etag);
-  uss_write.get_options().push_back(etag_only);
-  uss_group.get_verbs().push_back(uss_write);
-
-  ZCLIVerb uss_delete("delete");
-  uss_delete.set_description("delete a USS item");
-  uss_delete.set_zcli_verb_handler(handle_uss_delete);
-  uss_delete.get_positionals().push_back(uss_file_path);
-  uss_delete.get_options().push_back(uss_recursive);
-  uss_group.get_verbs().push_back(uss_delete);
-
-  ZCLIPositional uss_owner("owner");
-  uss_owner.set_required(true);
-  uss_owner.set_description("New owner (or owner:group) for the file or directory");
-
-  ZCLIPositional uss_mode_positional("mode");
-  uss_mode_positional.set_required(true);
-  uss_mode_positional.set_description("new permissions for the file or directory");
-
-  ZCLIVerb uss_chmod("chmod");
-  uss_chmod.set_description("change permissions on a USS file or directory");
-  uss_chmod.set_zcli_verb_handler(handle_uss_chmod);
-  uss_chmod.get_positionals().push_back(uss_mode_positional);
-  uss_chmod.get_positionals().push_back(uss_file_path);
-  uss_chmod.get_options().push_back(uss_recursive);
-  uss_group.get_verbs().push_back(uss_chmod);
-
-  ZCLIVerb uss_chown("chown");
-  uss_chown.set_description("change owner on a USS file or directory");
-  uss_chown.set_zcli_verb_handler(handle_uss_chown);
-  uss_chown.get_positionals().push_back(uss_owner);
-  uss_chown.get_positionals().push_back(uss_file_path);
-  uss_chown.get_options().push_back(uss_recursive);
-  uss_group.get_verbs().push_back(uss_chown);
-
-  ZCLIPositional uss_tag("tag");
-  uss_tag.set_required(true);
-  uss_tag.set_description("new tag for the file");
-
-  ZCLIVerb uss_chtag("chtag");
-  uss_chtag.set_description("change tags on a USS file");
-  uss_chtag.set_zcli_verb_handler(handle_uss_chtag);
-  uss_chtag.get_positionals().push_back(uss_file_path);
-  uss_chtag.get_positionals().push_back(uss_tag);
-  uss_chtag.get_options().push_back(uss_recursive);
-  uss_group.get_verbs().push_back(uss_chtag);
-
-  // log group
-  //
-  ZCLIGroup log_group("log");
-  log_group.set_description("log operations");
-  ZCLIVerb log_view("view");
-  log_view.set_description("view log");
-  log_view.set_zcli_verb_handler(handle_log_view);
-  ZCLIOption log_option_lines("lines");
-  log_option_lines.set_default("100");
-  log_option_lines.set_description("number of lines to print");
-  log_view.get_options().push_back(log_option_lines);
-  log_group.get_verbs().push_back(log_view);
-
-  //
-  // tool group
-  //
-  ZCLIGroup tool_group("tool");
-  tool_group.set_description("tool operations");
-
-  // console verbs
-  ZCLIVerb tool_convert_dsect("ccnedsct");
-  tool_convert_dsect.set_description("convert dsect to c struct");
-  tool_convert_dsect.set_zcli_verb_handler(handle_tool_convert_dsect);
-  ZCLIOption adata_dsn("adata-dsn");
-  adata_dsn.set_description("input adata dsn");
-  adata_dsn.set_required(true);
-  adata_dsn.get_aliases().push_back("--ad");
-  ZCLIOption chdr_name("chdr-dsn");
-  chdr_name.get_aliases().push_back("--cd");
-  chdr_name.set_description("output chdr dsn");
-  chdr_name.set_required(true);
-  ZCLIOption sysprint("sysprint");
-  sysprint.get_aliases().push_back("--sp");
-  sysprint.set_description("sysprint output");
-  ZCLIOption sysout("sysout");
-  sysout.set_description("sysout output");
-  sysout.get_aliases().push_back("--so");
-  tool_convert_dsect.get_options().push_back(adata_dsn);
-  tool_convert_dsect.get_options().push_back(chdr_name);
-  tool_convert_dsect.get_options().push_back(sysprint);
-  tool_convert_dsect.get_options().push_back(sysout);
-  tool_group.get_verbs().push_back(tool_convert_dsect);
-
-  ZCLIVerb tool_dynalloc("bpxwdy2");
-  tool_dynalloc.set_description("dynalloc command");
-  tool_dynalloc.set_zcli_verb_handler(handle_tool_dynalloc);
-  ZCLIPositional dynalloc_parm("parm");
-  dynalloc_parm.set_description("dynalloc parm string");
-  dynalloc_parm.set_required(true);
-  tool_dynalloc.get_positionals().push_back(dynalloc_parm);
-  tool_group.get_verbs().push_back(tool_dynalloc);
-
-  ZCLIVerb tool_display_symbol("display-symbol");
-  tool_display_symbol.set_description("display system symbol");
-  tool_display_symbol.set_zcli_verb_handler(handle_tool_display_symbol);
-  ZCLIPositional symbol_value("symbol");
-  symbol_value.set_description("symbol to display");
-  symbol_value.set_required(true);
-  tool_display_symbol.get_positionals().push_back(symbol_value);
-  tool_group.get_verbs().push_back(tool_display_symbol);
-
-  ZCLIVerb tool_search("search");
-  tool_search.set_description("search members for string");
-  tool_search.set_zcli_verb_handler(handle_tool_search);
-  ZCLIPositional search_dsn("dsn");
-  search_dsn.set_description("data set to search");
-  search_dsn.set_required(true);
-  tool_search.get_positionals().push_back(search_dsn);
-  ZCLIPositional search_value("string");
-  search_value.set_description("string to search for");
-  search_value.set_required(true);
-  tool_search.get_positionals().push_back(search_value);
-
-  tool_search.get_options().push_back(data_set_max_entries);
-  tool_search.get_options().push_back(data_set_truncate_warn);
-
-  tool_group.get_verbs().push_back(tool_search);
-
-  ZCLIVerb tool_amblist("amblist");
-  tool_amblist.set_description("invoke amblist");
-  tool_amblist.set_zcli_verb_handler(handle_tool_amblist);
-  ZCLIPositional amblist_dsn("dsn");
-  amblist_dsn.set_description("data containing input load modules");
-  amblist_dsn.set_required(true);
-  tool_amblist.get_positionals().push_back(amblist_dsn);
-  ZCLIOption ablist_control("control-statements");
-  ablist_control.set_description("amblist control statements, e.g. listload output=map,member=testprog");
-  ablist_control.set_required(true);
-  ablist_control.get_aliases().push_back("--cs");
-  tool_amblist.get_options().push_back(ablist_control);
-  tool_group.get_verbs().push_back(tool_amblist);
-
-  ZCLIVerb tool_run("run");
-
-  ZCLIOption dynalloc_pre("dynalloc-pre");
-  dynalloc_pre.set_description("dynalloc pre run statements");
-  dynalloc_pre.get_aliases().push_back("--dp");
-  tool_run.get_options().push_back(dynalloc_pre);
-
-  ZCLIOption dynalloc_post("dynalloc-post");
-  dynalloc_post.set_description("dynalloc post run statements");
-  dynalloc_post.get_aliases().push_back("--dt");
-  tool_run.get_options().push_back(dynalloc_post);
-
-  ZCLIOption indd("in-dd");
-  indd.set_description("input ddname");
-  indd.get_aliases().push_back("--idd");
-  tool_run.get_options().push_back(indd);
-
-  ZCLIOption input("input");
-  input.set_description("input");
-  input.get_aliases().push_back("--in");
-  tool_run.get_options().push_back(input);
-
-  ZCLIOption outdd("out-dd");
-  outdd.set_description("output ddname");
-  outdd.get_aliases().push_back("--odd");
-  tool_run.get_options().push_back(outdd);
-
-  tool_run.set_description("run a program");
-  tool_run.set_zcli_verb_handler(handle_tool_run);
-  ZCLIPositional run_name("program");
-  run_name.set_description("name of program to run");
-  run_name.set_required(true);
-  tool_run.get_positionals().push_back(run_name);
-  tool_group.get_verbs().push_back(tool_run);
-
-  // add all groups to the CLI
-  zcli.get_groups().push_back(data_set_group);
-  zcli.get_groups().push_back(console_group);
-  zcli.get_groups().push_back(job_group);
-  zcli.get_groups().push_back(uss_group);
-  zcli.get_groups().push_back(tso_group);
-  // zcli.get_groups().push_back(log_group);
-  zcli.get_groups().push_back(tool_group);
-
-  // parse
-  return zcli.parse(argc, argv);
+  static ArgumentParser parser("zowex", "C++ CLI for z/OS resources");
+  g_parser = &parser;
+  Command &root_command = parser.get_root_command();
+  g_root_command = &root_command;
+
+  // --- Global options ---
+  root_command.add_keyword_arg("interactive", make_aliases("--it"), "interactive (REPL) mode", ArgType_Flag);
+
+  // --- tso group ---
+  auto tso_cmd = command_ptr(new Command("tso", "TSO operations"));
+  {
+    auto issue_cmd = command_ptr(new Command("issue", "issue TSO command"));
+    issue_cmd->add_positional_arg("command", "command to issue", ArgType_Single, true);
+    issue_cmd->set_handler(handle_tso_issue);
+    tso_cmd->add_command(issue_cmd);
+  }
+  root_command.add_command(tso_cmd);
+
+  // --- data set group (ds) ---
+  auto data_set_cmd = command_ptr(new Command("data-set", "z/OS data set operations"));
+  data_set_cmd->add_alias("ds");
+  {
+    const string dsn_help = "data set name, optionally with member specified";
+    const string max_entries_help = "max number of results to return before error generated";
+    const string warn_help = "warn if truncated or not found";
+
+    auto create_cmd = command_ptr(new Command("create", "create data set using defaults: dsorg=PO, recfm=FB, lrecl=80"));
+    create_cmd->add_alias("cre");
+    create_cmd->add_positional_arg("dsn", dsn_help, ArgType_Single, true);
+    create_cmd->set_handler(handle_data_set_create_dsn);
+    data_set_cmd->add_command(create_cmd);
+
+    auto create_vb_cmd = command_ptr(new Command("create-vb", "create VB data set using defaults: dsorg=PO, recfm=VB, lrecl=255"));
+    create_vb_cmd->add_alias("cre-vb");
+    create_vb_cmd->add_positional_arg("dsn", dsn_help, ArgType_Single, true);
+    create_vb_cmd->set_handler(handle_data_set_create_dsn_vb);
+    data_set_cmd->add_command(create_vb_cmd);
+
+    auto create_adata_cmd = command_ptr(new Command("create-adata", "create VB data set using defaults: dsorg=PO, recfm=VB, lrecl=32756"));
+    create_adata_cmd->add_alias("cre-a");
+    create_adata_cmd->add_positional_arg("dsn", dsn_help, ArgType_Single, true);
+    create_adata_cmd->set_handler(handle_data_set_create_dsn_adata);
+    data_set_cmd->add_command(create_adata_cmd);
+
+    auto create_member_cmd = command_ptr(new Command("create-member", "create member in data set"));
+    create_member_cmd->add_alias("cre-m");
+    create_member_cmd->add_positional_arg("dsn", dsn_help, ArgType_Single, true);
+    create_member_cmd->set_handler(handle_data_set_create_member_dsn);
+    data_set_cmd->add_command(create_member_cmd);
+
+    auto restore_cmd = command_ptr(new Command("restore", "restore/recall data set"));
+    restore_cmd->add_positional_arg("dsn", dsn_help, ArgType_Single, true);
+    restore_cmd->set_handler(handle_data_set_restore);
+    data_set_cmd->add_command(restore_cmd);
+
+    auto view_cmd = command_ptr(new Command("view", "view data set"));
+    view_cmd->add_positional_arg("dsn", dsn_help, ArgType_Single, true);
+    view_cmd->add_keyword_arg("encoding", make_aliases("--ec"), "return contents in given encoding", ArgType_Single);
+    view_cmd->add_keyword_arg("response-format-bytes", make_aliases("--rfb"), "returns the response as raw bytes", ArgType_Flag);
+    view_cmd->set_handler(handle_data_set_view_dsn);
+    data_set_cmd->add_command(view_cmd);
+
+    auto list_cmd = command_ptr(new Command("list", "list data sets"));
+    list_cmd->add_alias("ls");
+    list_cmd->add_positional_arg("dsn", dsn_help, ArgType_Single, true);
+    list_cmd->add_keyword_arg("attributes", make_aliases("-a"), "display data set attributes", ArgType_Flag);
+    list_cmd->add_keyword_arg("max-entries", make_aliases("--me"), max_entries_help, ArgType_Single);
+    list_cmd->add_keyword_arg("warn", make_aliases("-w"), warn_help, ArgType_Flag, false, ArgValue(true));
+    list_cmd->add_keyword_arg("response-format-csv", make_aliases("--rfc"), "returns the response in CSV format", ArgType_Flag);
+    list_cmd->set_handler(handle_data_set_list);
+    data_set_cmd->add_command(list_cmd);
+
+    auto list_members_cmd = command_ptr(new Command("list-members", "list data set members"));
+    list_members_cmd->add_alias("lm");
+    list_members_cmd->add_positional_arg("dsn", dsn_help, ArgType_Single, true);
+    list_members_cmd->add_keyword_arg("max-entries", make_aliases("--me"), max_entries_help, ArgType_Single);
+    list_members_cmd->add_keyword_arg("warn", make_aliases("-w"), warn_help, ArgType_Flag, false, ArgValue(true));
+    list_members_cmd->set_handler(handle_data_set_list_members_dsn);
+    data_set_cmd->add_command(list_members_cmd);
+
+    auto write_cmd = command_ptr(new Command("write", "write to data set"));
+    write_cmd->add_positional_arg("dsn", dsn_help, ArgType_Single, true);
+    write_cmd->add_keyword_arg("encoding", make_aliases("--ec"), "return contents in given encoding", ArgType_Single);
+    write_cmd->add_keyword_arg("etag", make_aliases("--et"), "provide the e-tag for a write response to detect conflicts before save", ArgType_Single, false);
+    write_cmd->add_keyword_arg("etag-only", make_aliases("--eo"), "only print the e-tag for a write response (when successful)", ArgType_Flag, false);
+    write_cmd->set_handler(handle_data_set_write_to_dsn);
+    data_set_cmd->add_command(write_cmd);
+
+    auto delete_cmd = command_ptr(new Command("delete", "delete data set"));
+    delete_cmd->add_alias("del");
+    delete_cmd->add_positional_arg("dsn", dsn_help, ArgType_Single, true);
+    delete_cmd->set_handler(handle_data_set_delete_dsn);
+    data_set_cmd->add_command(delete_cmd);
+  }
+  root_command.add_command(data_set_cmd);
+
+  // --- jobs group ---
+  auto job_cmd = command_ptr(new Command("job", "z/OS job operations"));
+  {
+    const string max_entries_help = "max number of results to return before error generated";
+    const string warn_help = "warn if truncated or not found";
+    const string jobid_help = "valid job ID";
+
+    auto list_cmd = command_ptr(new Command("list", "list jobs"));
+    list_cmd->add_keyword_arg("owner", make_aliases("-o"), "filter by owner", ArgType_Single);
+    list_cmd->add_keyword_arg("prefix", make_aliases("-p"), "filter by prefix", ArgType_Single);
+    list_cmd->add_keyword_arg("max-entries", make_aliases("--me"), max_entries_help, ArgType_Single);
+    list_cmd->add_keyword_arg("warn", make_aliases("-w"), warn_help, ArgType_Flag, false, ArgValue(true));
+    list_cmd->add_keyword_arg("response-format-csv", make_aliases("--rfc"), "returns the response in CSV format", ArgType_Flag);
+    list_cmd->set_handler(handle_job_list);
+    job_cmd->add_command(list_cmd);
+
+    auto list_files_cmd = command_ptr(new Command("list-files", "list spool files for jobid"));
+    list_files_cmd->add_alias("lf");
+    list_files_cmd->add_positional_arg("jobid", jobid_help, ArgType_Single, true);
+    list_files_cmd->add_keyword_arg("response-format-csv", make_aliases("--rfc"), "returns the response in CSV format", ArgType_Flag);
+    list_files_cmd->set_handler(handle_job_list_files);
+    job_cmd->add_command(list_files_cmd);
+
+    auto view_status_cmd = command_ptr(new Command("view-status", "view job status"));
+    view_status_cmd->add_alias("vs");
+    view_status_cmd->add_positional_arg("jobid", jobid_help, ArgType_Single, true);
+    view_status_cmd->add_keyword_arg("response-format-csv", make_aliases("--rfc"), "returns the response in CSV format", ArgType_Flag);
+    view_status_cmd->set_handler(handle_job_view_status);
+    job_cmd->add_command(view_status_cmd);
+
+    auto view_file_cmd = command_ptr(new Command("view-file", "view job file output"));
+    view_file_cmd->add_alias("vf");
+    view_file_cmd->add_positional_arg("jobid", jobid_help, ArgType_Single, true);
+    view_file_cmd->add_positional_arg("key", "valid job dsn key via 'job list-files'", ArgType_Single, true);
+    view_file_cmd->add_keyword_arg("encoding", make_aliases("--ec"), "return contents in given encoding", ArgType_Single);
+    view_file_cmd->add_keyword_arg("response-format-bytes", make_aliases("--rfb"), "returns the response as raw bytes", ArgType_Flag);
+    view_file_cmd->set_handler(handle_job_view_file);
+    job_cmd->add_command(view_file_cmd);
+
+    auto view_jcl_cmd = command_ptr(new Command("view-jcl", "view job JCL from input job ID"));
+    view_jcl_cmd->add_alias("vj");
+    view_jcl_cmd->add_positional_arg("jobid", jobid_help, ArgType_Single, true);
+    view_jcl_cmd->set_handler(handle_job_view_jcl);
+    job_cmd->add_command(view_jcl_cmd);
+
+    auto submit_cmd = command_ptr(new Command("submit", "submit a job"));
+    submit_cmd->add_alias("sub");
+    submit_cmd->add_positional_arg("dsn", "dsn containing JCL", ArgType_Single, true);
+    submit_cmd->add_keyword_arg("only-jobid", make_aliases("--oj"), "show only job ID on success", ArgType_Flag);
+    submit_cmd->set_handler(handle_job_submit);
+    job_cmd->add_command(submit_cmd);
+
+    auto submit_jcl_cmd = command_ptr(new Command("submit-jcl", "submit JCL contents directly"));
+    submit_jcl_cmd->add_alias("subj");
+    submit_jcl_cmd->add_keyword_arg("only-jobid", make_aliases("--oj"), "show only job ID on success", ArgType_Flag);
+    submit_jcl_cmd->add_keyword_arg("encoding", make_aliases("--ec"), "jcl encoding", ArgType_Single);
+    submit_jcl_cmd->set_handler(handle_job_submit_jcl);
+    job_cmd->add_command(submit_jcl_cmd);
+
+    auto submit_uss_cmd = command_ptr(new Command("submit-uss", "submit a job from uss files"));
+    submit_uss_cmd->add_alias("sub-u");
+    submit_uss_cmd->add_positional_arg("file-path", "uss file containing JCL", ArgType_Single, true);
+    submit_uss_cmd->add_keyword_arg("only-jobid", make_aliases("--oj"), "show only job ID on success", ArgType_Flag);
+    submit_uss_cmd->set_handler(handle_job_submit_uss);
+    job_cmd->add_command(submit_uss_cmd);
+
+    auto delete_cmd = command_ptr(new Command("delete", "delete a job"));
+    delete_cmd->add_alias("del");
+    delete_cmd->add_positional_arg("jobid", jobid_help, ArgType_Single, true);
+    delete_cmd->set_handler(handle_job_delete);
+    job_cmd->add_command(delete_cmd);
+
+    auto cancel_cmd = command_ptr(new Command("cancel", "cancel a job"));
+    cancel_cmd->add_alias("cnl");
+    cancel_cmd->add_positional_arg("jobid", jobid_help, ArgType_Single, true);
+    cancel_cmd->add_keyword_arg("dump", make_aliases("-d"), "dump the cancelled jobs if waiting for conversion, in conversion, or in execution.", ArgType_Flag);
+    cancel_cmd->add_keyword_arg("force", make_aliases("-f"), "force cancel the jobs, even if marked.", ArgType_Flag);
+    cancel_cmd->add_keyword_arg("purge", make_aliases("-p"), "purge output of the cancelled jobs.", ArgType_Flag);
+    cancel_cmd->add_keyword_arg("restart", make_aliases("-r"), "request that automatic restart management automatically restart the selected jobs after they are cancelled.", ArgType_Flag);
+    cancel_cmd->set_handler(handle_job_cancel);
+    job_cmd->add_command(cancel_cmd);
+
+    auto hold_cmd = command_ptr(new Command("hold", "hold a job"));
+    hold_cmd->add_alias("hld");
+    hold_cmd->add_positional_arg("jobid", jobid_help, ArgType_Single, true);
+    hold_cmd->set_handler(handle_job_hold);
+    job_cmd->add_command(hold_cmd);
+
+    auto release_cmd = command_ptr(new Command("release", "release a job"));
+    release_cmd->add_alias("rel");
+    release_cmd->add_positional_arg("jobid", jobid_help, ArgType_Single, true);
+    release_cmd->set_handler(handle_job_release);
+    job_cmd->add_command(release_cmd);
+  }
+  root_command.add_command(job_cmd);
+
+  // --- console group (cn) ---
+  auto console_cmd = command_ptr(new Command("console", "z/os console operations"));
+  console_cmd->add_alias("cn");
+  {
+    auto issue_cmd = command_ptr(new Command("issue", "issue a console command"));
+    issue_cmd->add_positional_arg("command", "command to run, e.g. 'd iplinfo'", ArgType_Single, true);
+    issue_cmd->add_keyword_arg("console-name", make_aliases("--cn"), "extended console name", ArgType_Single, false, ArgValue("zowex"));
+    issue_cmd->add_keyword_arg("wait", make_aliases("-w"), "wait for responses", ArgType_Single);
+    issue_cmd->set_handler(handle_console_issue);
+    console_cmd->add_command(issue_cmd);
+  }
+  root_command.add_command(console_cmd);
+
+  // --- uss group ---
+  auto uss_cmd = command_ptr(new Command("uss", "z/OS USS operations"));
+  {
+    const string file_path_help = "file path";
+    const string mode_help = "permissions";
+    const string recursive_help = "applies the operation recursively (e.g. for folders w/ inner files)";
+
+    auto create_file_cmd = command_ptr(new Command("create-file", "create a USS file"));
+    create_file_cmd->add_positional_arg("file-path", file_path_help, ArgType_Single, true);
+    create_file_cmd->add_keyword_arg("mode", make_aliases("-m"), mode_help, ArgType_Single, false);
+    create_file_cmd->set_handler(handle_uss_create_file);
+    uss_cmd->add_command(create_file_cmd);
+
+    auto create_dir_cmd = command_ptr(new Command("create-dir", "create a USS directory"));
+    create_dir_cmd->add_positional_arg("file-path", file_path_help, ArgType_Single, true);
+    create_dir_cmd->add_keyword_arg("mode", make_aliases("-m"), mode_help, ArgType_Single, false);
+    create_dir_cmd->set_handler(handle_uss_create_dir);
+    uss_cmd->add_command(create_dir_cmd);
+
+    auto list_cmd = command_ptr(new Command("list", "list USS files and directories"));
+    list_cmd->add_positional_arg("file-path", file_path_help, ArgType_Single, true);
+    list_cmd->set_handler(handle_uss_list);
+    uss_cmd->add_command(list_cmd);
+
+    auto view_cmd = command_ptr(new Command("view", "view a USS file"));
+    view_cmd->add_positional_arg("file-path", file_path_help, ArgType_Single, true);
+    view_cmd->add_keyword_arg("encoding", make_aliases("--ec"), "return contents in given encoding", ArgType_Single);
+    view_cmd->add_keyword_arg("response-format-bytes", make_aliases("--rfb"), "returns the response as raw bytes", ArgType_Flag);
+    view_cmd->add_keyword_arg("return-etag", make_aliases("--retet"), "returns the e-tag representing the file contents", ArgType_Flag);
+    view_cmd->set_handler(handle_uss_view);
+    uss_cmd->add_command(view_cmd);
+
+    auto write_cmd = command_ptr(new Command("write", "write to a USS file"));
+    write_cmd->add_positional_arg("file-path", file_path_help, ArgType_Single, true);
+    write_cmd->add_keyword_arg("encoding", make_aliases("--ec"), "return contents in given encoding", ArgType_Single);
+    write_cmd->add_keyword_arg("etag", make_aliases("--et"), "provide the e-tag for a write response to detect conflicts before save", ArgType_Single, false);
+    write_cmd->add_keyword_arg("etag-only", make_aliases("--eo"), "only print the e-tag for a write response (when successful)", ArgType_Flag, false);
+    write_cmd->set_handler(handle_uss_write);
+    uss_cmd->add_command(write_cmd);
+
+    auto delete_cmd = command_ptr(new Command("delete", "delete a USS item"));
+    delete_cmd->add_positional_arg("file-path", file_path_help, ArgType_Single, true);
+    delete_cmd->add_keyword_arg("recursive", make_aliases("-r"), recursive_help, ArgType_Flag, false);
+    delete_cmd->set_handler(handle_uss_delete);
+    uss_cmd->add_command(delete_cmd);
+
+    auto chmod_cmd = command_ptr(new Command("chmod", "change permissions on a USS file or directory"));
+    chmod_cmd->add_positional_arg("mode", "new permissions for the file or directory", ArgType_Single, true);
+    chmod_cmd->add_positional_arg("file-path", file_path_help, ArgType_Single, true);
+    chmod_cmd->add_keyword_arg("recursive", make_aliases("-r"), recursive_help, ArgType_Flag, false);
+    chmod_cmd->set_handler(handle_uss_chmod);
+    uss_cmd->add_command(chmod_cmd);
+
+    auto chown_cmd = command_ptr(new Command("chown", "change owner on a USS file or directory"));
+    chown_cmd->add_positional_arg("owner", "new owner (or owner:group) for the file or directory", ArgType_Single, true);
+    chown_cmd->add_positional_arg("file-path", file_path_help, ArgType_Single, true);
+    chown_cmd->add_keyword_arg("recursive", make_aliases("-r"), recursive_help, ArgType_Flag, false);
+    chown_cmd->set_handler(handle_uss_chown);
+    uss_cmd->add_command(chown_cmd);
+
+    auto chtag_cmd = command_ptr(new Command("chtag", "change tags on a USS file"));
+    chtag_cmd->add_positional_arg("codeset", "new codeset for the file", ArgType_Single, true);
+    chtag_cmd->add_positional_arg("file-path", file_path_help, ArgType_Single, true);
+    chtag_cmd->add_keyword_arg("recursive", make_aliases("-r"), recursive_help, ArgType_Flag, false);
+    chtag_cmd->set_handler(handle_uss_chtag);
+    uss_cmd->add_command(chtag_cmd);
+  }
+  root_command.add_command(uss_cmd);
+
+  // --- log group ---
+  // note: log group was commented out in the original zcli setup
+  // auto log_cmd = command_ptr(new Command("log", "log operations"));
+  // {
+  //     auto view_cmd = command_ptr(new Command("view", "view log"));
+  //     view_cmd->add_keyword_arg("lines", "", "--lines", "number of lines to print", ArgType_Single);
+  //     view_cmd->set_handler(handle_log_view);
+  //     log_cmd->add_command(view_cmd);
+  // }
+  // root_command.add_command(log_cmd);
+
+  // --- tool group ---
+  auto tool_cmd = command_ptr(new Command("tool", "tool operations"));
+  {
+    auto convert_dsect_cmd = command_ptr(new Command("ccnedsct", "convert dsect to c struct"));
+    convert_dsect_cmd->add_keyword_arg("adata-dsn", make_aliases("--ad"), "input adata dsn", ArgType_Single, true);
+    convert_dsect_cmd->add_keyword_arg("chdr-dsn", make_aliases("--cd"), "output chdr dsn", ArgType_Single, true);
+    convert_dsect_cmd->add_keyword_arg("sysprint", make_aliases("--sp"), "sysprint output", ArgType_Single, false);
+    convert_dsect_cmd->add_keyword_arg("sysout", make_aliases("--so"), "sysout output", ArgType_Single, false);
+    convert_dsect_cmd->set_handler(handle_tool_convert_dsect);
+    tool_cmd->add_command(convert_dsect_cmd);
+
+    auto dynalloc_cmd = command_ptr(new Command("bpxwdy2", "dynalloc command"));
+    dynalloc_cmd->add_positional_arg("parm", "dynalloc parm string", ArgType_Single, true);
+    dynalloc_cmd->set_handler(handle_tool_dynalloc);
+    tool_cmd->add_command(dynalloc_cmd);
+
+    auto display_symbol_cmd = command_ptr(new Command("display-symbol", "display system symbol"));
+    display_symbol_cmd->add_positional_arg("symbol", "symbol to display", ArgType_Single, true);
+    display_symbol_cmd->set_handler(handle_tool_display_symbol);
+    tool_cmd->add_command(display_symbol_cmd);
+
+    auto search_cmd = command_ptr(new Command("search", "search members for string"));
+    search_cmd->add_positional_arg("dsn", "data set to search", ArgType_Single, true);
+    search_cmd->add_positional_arg("string", "string to search for", ArgType_Single, true);
+    search_cmd->add_keyword_arg("max-entries", make_aliases("--me"), "max number of results to return", ArgType_Single);
+    search_cmd->add_keyword_arg("warn", make_aliases("-w"), "warn if truncated or not found", ArgType_Flag, false, ArgValue(true)); // default true
+    search_cmd->set_handler(handle_tool_search);
+    tool_cmd->add_command(search_cmd);
+
+    auto run_cmd = command_ptr(new Command("run", "run a program"));
+    run_cmd->add_positional_arg("program", "name of program to run", ArgType_Single, true);
+    run_cmd->add_keyword_arg("dynalloc-pre", make_aliases("--dp"), "dynalloc pre run statements", ArgType_Single);
+    run_cmd->add_keyword_arg("dynalloc-post", make_aliases("--dt"), "dynalloc post run statements", ArgType_Single);
+    run_cmd->add_keyword_arg("in-dd", make_aliases("--idd"), "input ddname", ArgType_Single);
+    run_cmd->add_keyword_arg("input", make_aliases("--in"), "input string", ArgType_Single);
+    run_cmd->add_keyword_arg("out-dd", make_aliases("--odd"), "output ddname", ArgType_Single);
+    run_cmd->set_handler(handle_tool_run);
+    tool_cmd->add_command(run_cmd);
+  }
+  root_command.add_command(tool_cmd);
+
+  // Set the root handler to handle interactive/help logic
+  root_command.set_handler(handle_root);
+
+  // use parser to parse given arguments
+  auto result = parser.parse(argc, argv);
+
+  // Always return the result's exit code (help/errors handled by parser or handler)
+  return result.exit_code;
 }
 
 int loop_dynalloc(vector<string> &list)
@@ -715,14 +497,14 @@ int loop_dynalloc(vector<string> &list)
   return rc;
 }
 
-int handle_job_list(ZCLIResult result)
+int handle_job_list(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
-  string owner_name(result.get_option_value("--owner"));
-  string prefix_name(result.get_option_value("--prefix"));
-  string max_entries = result.get_option_value("--max-entries");
-  string warn = result.get_option_value("--warn");
+  string owner_name(result.find_kw_arg_string("owner"));
+  string prefix_name(result.find_kw_arg_string("prefix"));
+  string max_entries = result.find_kw_arg_string("max-entries");
+  bool warn = result.find_kw_arg_bool("warn");
 
   if (max_entries.size() > 0)
   {
@@ -734,7 +516,7 @@ int handle_job_list(ZCLIResult result)
 
   if (RTNCD_SUCCESS == rc || RTNCD_WARNING == rc)
   {
-    const auto emit_csv = result.get_option_value("--response-format-csv") == "true";
+    const auto emit_csv = result.find_kw_arg_bool("response-format-csv");
     for (vector<ZJob>::iterator it = jobs.begin(); it != jobs.end(); it++)
     {
       if (emit_csv)
@@ -755,7 +537,7 @@ int handle_job_list(ZCLIResult result)
   }
   if (RTNCD_WARNING == rc)
   {
-    if ("true" == warn)
+    if (warn)
     {
       cerr << "Warning: results truncated" << endl;
     }
@@ -767,14 +549,14 @@ int handle_job_list(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  return "false" == warn && rc == RTNCD_WARNING ? RTNCD_SUCCESS : rc;
+  return !warn && rc == RTNCD_WARNING ? RTNCD_SUCCESS : rc;
 }
 
-int handle_job_list_files(ZCLIResult result)
+int handle_job_list_files(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
-  string jobid(result.get_positional("jobid")->get_value());
+  string jobid(result.find_pos_arg_string("jobid"));
 
   vector<ZJobDD> job_dds;
   rc = zjb_list_dds_by_jobid(&zjb, jobid, job_dds);
@@ -786,10 +568,10 @@ int handle_job_list_files(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  const auto emit_csv = result.get_option_value("--response-format-csv") == "true";
+  const auto emit_csv = result.find_kw_arg_bool("response-format-csv");
   for (vector<ZJobDD>::iterator it = job_dds.begin(); it != job_dds.end(); ++it)
   {
-    std::vector<string> fields;
+    vector<string> fields;
     fields.push_back(it->ddn);
     fields.push_back(it->dsn);
     fields.push_back(TO_STRING(it->key));
@@ -808,16 +590,15 @@ int handle_job_list_files(ZCLIResult result)
   return RTNCD_SUCCESS;
 }
 
-int handle_job_view_status(ZCLIResult result)
+int handle_job_view_status(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
   ZJob job = {0};
-  string jobid(result.get_positional("jobid")->get_value());
+  string jobid(result.find_pos_arg_string("jobid"));
 
-  const auto emit_csv = result.get_option_value("--response-format-csv") == "true";
-
-  rc = zjb_view(&zjb, jobid, job);
+  const auto emit_csv = result.find_kw_arg_bool("response-format-csv");
+  rc = zjb_view_by_jobid(&zjb, jobid, job);
 
   if (0 != rc)
   {
@@ -842,17 +623,17 @@ int handle_job_view_status(ZCLIResult result)
   return 0;
 }
 
-int handle_job_view_file(ZCLIResult result)
+int handle_job_view_file(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
-  string jobid(result.get_positional("jobid")->get_value());
-  string key(result.get_positional("key")->get_value());
+  string jobid(result.find_pos_arg_string("jobid"));
+  int key(result.find_pos_arg_int("key"));
 
-  const auto hasEncoding = zut_prepare_encoding(result.get_option_value("--encoding"), &zjb.encoding_opts);
+  const auto hasEncoding = zut_prepare_encoding(result.find_kw_arg_string("encoding"), &zjb.encoding_opts);
 
   string resp;
-  rc = zjb_read_jobs_output_by_jobid_and_key(&zjb, jobid, atoi(key.c_str()), resp);
+  rc = zjb_read_jobs_output_by_jobid_and_key(&zjb, jobid, key, resp);
 
   if (0 != rc)
   {
@@ -861,7 +642,7 @@ int handle_job_view_file(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  if (hasEncoding && result.get_option_value("--response-format-bytes") == "true")
+  if (hasEncoding && result.find_kw_arg_bool("response-format-bytes"))
   {
     zut_print_string_as_bytes(resp);
   }
@@ -873,11 +654,11 @@ int handle_job_view_file(ZCLIResult result)
   return RTNCD_SUCCESS;
 }
 
-int handle_job_view_jcl(ZCLIResult result)
+int handle_job_view_jcl(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
-  string jobid(result.get_positional("jobid")->get_value());
+  string jobid(result.find_pos_arg_string("jobid"));
 
   string resp;
   rc = zjb_read_job_jcl_by_jobid(&zjb, jobid, resp);
@@ -917,7 +698,7 @@ int wait_for_status(ZJB *zjb, string status)
   return RTNCD_SUCCESS;
 }
 
-int job_submit_common(ZCLIResult result, string jcl, string &jobid, string identifier)
+int job_submit_common(const ParseResult& result, string jcl, string &jobid, string identifier)
 {
   int rc = 0;
   ZJB zjb = {0};
@@ -930,14 +711,14 @@ int job_submit_common(ZCLIResult result, string jcl, string &jobid, string ident
     return RTNCD_FAILURE;
   }
 
-  string only_jobid(result.get_option_value("--only-jobid"));
-  string only_correlator(result.get_option_value("--only-correlator"));
-  string wait(result.get_option_value("--wait"));
+  bool only_jobid(result.find_kw_arg_bool("only-jobid"));
+  bool only_correlator(result.find_kw_arg_bool("only-correlator"));
+  string wait(result.find_kw_arg_string("wait"));
   transform(wait.begin(), wait.end(), wait.begin(), ::toupper);
 
-  if ("true" == only_jobid)
+  if (only_jobid)
     cout << jobid << endl;
-  else if ("true" == only_correlator)
+  else if (only_correlator)
     cout << string(zjb.job_correlator, sizeof(zjb.job_correlator)) << endl;
   else
     cout << "Submitted " << identifier << ", " << jobid << endl;
@@ -958,11 +739,11 @@ int job_submit_common(ZCLIResult result, string jcl, string &jobid, string ident
   return rc;
 }
 
-int handle_job_submit(ZCLIResult result)
+int handle_job_submit(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
-  string dsn(result.get_positional("dsn")->get_value());
+  string dsn(result.find_pos_arg_string("dsn"));
   string jobid;
 
   ZDS zds = {0};
@@ -978,11 +759,11 @@ int handle_job_submit(ZCLIResult result)
   return job_submit_common(result, contents, jobid, dsn);
 }
 
-int handle_job_submit_uss(ZCLIResult result)
+int handle_job_submit_uss(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
-  string file(result.get_positional("file-path")->get_value());
+  string file(result.find_pos_arg_string("file-path"));
 
   ZUSF zusf = {0};
   string response;
@@ -1001,7 +782,7 @@ int handle_job_submit_uss(ZCLIResult result)
   return job_submit_common(result, response, jobid, file);
 }
 
-int handle_job_submit_jcl(ZCLIResult result)
+int handle_job_submit_jcl(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
@@ -1009,10 +790,10 @@ int handle_job_submit_jcl(ZCLIResult result)
   string data;
   string line;
 
-  std::istreambuf_iterator<char> begin(std::cin);
-  std::istreambuf_iterator<char> end;
+  istreambuf_iterator<char> begin(cin);
+  istreambuf_iterator<char> end;
 
-  std::vector<char> raw_bytes(begin, end);
+  vector<char> raw_bytes(begin, end);
   data.assign(raw_bytes.begin(), raw_bytes.end());
 
   if (!isatty(fileno(stdout)))
@@ -1023,7 +804,7 @@ int handle_job_submit_jcl(ZCLIResult result)
   raw_bytes.clear();
 
   ZEncode encoding_opts = {0};
-  const auto encoding_prepared = result.get_option("--encoding") != nullptr && zut_prepare_encoding(result.get_option_value("--encoding"), &encoding_opts);
+  const auto encoding_prepared = result.get_kw_arg_string("encoding") != nullptr && zut_prepare_encoding(*result.get_kw_arg_string("encoding"), &encoding_opts);
 
   if (encoding_prepared && encoding_opts.data_type != eDataTypeBinary)
   {
@@ -1036,11 +817,11 @@ int handle_job_submit_jcl(ZCLIResult result)
   return job_submit_common(result, data, jobid, data);
 }
 
-int handle_job_delete(ZCLIResult result)
+int handle_job_delete(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
-  string jobid(result.get_positional("jobid")->get_value());
+  string jobid(result.find_pos_arg_string("jobid"));
 
   rc = zjb_delete_by_jobid(&zjb, jobid);
 
@@ -1056,16 +837,16 @@ int handle_job_delete(ZCLIResult result)
   return RTNCD_SUCCESS;
 }
 
-int handle_job_cancel(ZCLIResult result)
+int handle_job_cancel(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
-  string jobid(result.get_positional("jobid")->get_value());
+  string jobid(result.find_pos_arg_string("jobid"));
 
-  string option_dump(result.get_option_value("--dump"));
-  string option_force(result.get_option_value("--force"));
-  string option_purge(result.get_option_value("--purge"));
-  string option_restart(result.get_option_value("--restart"));
+  string option_dump(result.find_kw_arg_string("dump"));
+  string option_force(result.find_kw_arg_string("force"));
+  string option_purge(result.find_kw_arg_string("purge"));
+  string option_restart(result.find_kw_arg_string("restart"));
 
   rc = zjb_cancel_by_jobid(&zjb, jobid);
 
@@ -1081,11 +862,11 @@ int handle_job_cancel(ZCLIResult result)
   return RTNCD_SUCCESS;
 }
 
-int handle_job_hold(ZCLIResult result)
+int handle_job_hold(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
-  string jobid(result.get_positional("jobid")->get_value());
+  string jobid(result.find_pos_arg_string("jobid"));
 
   rc = zjb_hold_by_jobid(&zjb, jobid);
 
@@ -1101,11 +882,11 @@ int handle_job_hold(ZCLIResult result)
   return RTNCD_SUCCESS;
 }
 
-int handle_job_release(ZCLIResult result)
+int handle_job_release(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
-  string jobid(result.get_positional("jobid")->get_value());
+  string jobid(result.find_pos_arg_string("jobid"));
 
   rc = zjb_release_by_jobid(&zjb, jobid);
 
@@ -1121,16 +902,16 @@ int handle_job_release(ZCLIResult result)
   return RTNCD_SUCCESS;
 }
 
-int handle_console_issue(ZCLIResult result)
+int handle_console_issue(const ParseResult &result)
 {
   int rc = 0;
   ZCN zcn = {0};
 
-  string console_name(result.get_option_value("--console-name"));
-  string command(result.get_positional("command")->get_value());
-  string wait = result.get_option_value("--wait");
+  string console_name(result.find_kw_arg_string("console-name"));
+  string command(result.find_pos_arg_string("command"));
+  string wait = result.find_kw_arg_bool("wait");
 
-  rc = zcn_activate(&zcn, string(console_name));
+  rc = zcn_activate(&zcn, console_name);
   if (0 != rc)
   {
     cerr << "Error: could not activate console: '" << console_name << "' rc: '" << rc << "'" << endl;
@@ -1205,10 +986,10 @@ int handle_data_set_create_member(ZDS zds, string dsn)
   return rc;
 }
 
-int handle_data_set_create_member_dsn(ZCLIResult result)
+int handle_data_set_create_member_dsn(const ParseResult &result)
 {
   int rc = 0;
-  string dsn = result.get_positional("dsn")->get_value();
+  string dsn = result.find_pos_arg_string("dsn");
   ZDS zds = {0};
   string response;
   vector<ZDSEntry> entries;
@@ -1238,10 +1019,10 @@ int handle_data_set_create_member_dsn(ZCLIResult result)
   return handle_data_set_create_member(zds, dsn + "(" + member_name + ")");
 }
 
-int handle_data_set_create_dsn(ZCLIResult result)
+int handle_data_set_create_dsn(const ParseResult &result)
 {
   int rc = 0;
-  string dsn = result.get_positional("dsn")->get_value();
+  string dsn = result.find_pos_arg_string("dsn");
   ZDS zds = {0};
   string response;
   rc = zds_create_dsn(&zds, dsn, response);
@@ -1255,10 +1036,10 @@ int handle_data_set_create_dsn(ZCLIResult result)
   return handle_data_set_create_member(zds, dsn);
 }
 
-int handle_data_set_create_dsn_vb(ZCLIResult result)
+int handle_data_set_create_dsn_vb(const ParseResult &result)
 {
   int rc = 0;
-  string dsn = result.get_positional("dsn")->get_value();
+  string dsn = result.find_pos_arg_string("dsn");
   ZDS zds = {0};
   string response;
   rc = zds_create_dsn_vb(&zds, dsn, response);
@@ -1272,10 +1053,10 @@ int handle_data_set_create_dsn_vb(ZCLIResult result)
   return handle_data_set_create_member(zds, dsn);
 }
 
-int handle_data_set_create_dsn_adata(ZCLIResult result)
+int handle_data_set_create_dsn_adata(const ParseResult &result)
 {
   int rc = 0;
-  string dsn = result.get_positional("dsn")->get_value();
+  string dsn = result.find_pos_arg_string("dsn");
   ZDS zds = {0};
   string response;
   rc = zds_create_dsn_adata(&zds, dsn, response);
@@ -1292,7 +1073,7 @@ int handle_data_set_create_dsn_adata(ZCLIResult result)
 int handle_data_set_create_dsn_loadlib(ZCLIResult result)
 {
   int rc = 0;
-  string dsn = result.get_positional("dsn")->get_value();
+  string dsn = result.find_pos_arg_string("dsn");
   ZDS zds = {0};
   string response;
   rc = zds_create_dsn_loadlib(&zds, dsn, response);
@@ -1306,10 +1087,10 @@ int handle_data_set_create_dsn_loadlib(ZCLIResult result)
   return handle_data_set_create_member(zds, dsn);
 }
 
-int handle_data_set_restore(ZCLIResult result)
+int handle_data_set_restore(const ParseResult &result)
 {
   int rc = 0;
-  string dsn = result.get_positional("dsn")->get_value();
+  string dsn = result.find_pos_arg_string("dsn");
   ZDS zds = {0};
   string response;
   unsigned int code = 0;
@@ -1329,14 +1110,14 @@ int handle_data_set_restore(ZCLIResult result)
   return rc;
 }
 
-int handle_data_set_view_dsn(ZCLIResult result)
+int handle_data_set_view_dsn(const ParseResult &result)
 {
   int rc = 0;
-  string dsn = result.get_positional("dsn")->get_value();
+  string dsn = result.find_pos_arg_string("dsn");
   ZDS zds = {0};
   string response;
 
-  const auto hasEncoding = zut_prepare_encoding(result.get_option_value("--encoding"), &zds.encoding_opts);
+  const auto hasEncoding = zut_prepare_encoding(result.find_kw_arg_string("encoding"), &zds.encoding_opts);
   rc = zds_read_from_dsn(&zds, dsn, response);
   if (0 != rc)
   {
@@ -1345,13 +1126,13 @@ int handle_data_set_view_dsn(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  if (result.get_option_value("--return-etag") == "true")
+  if (result.find_kw_arg_bool("return-etag"))
   {
     const auto etag = zut_calc_adler32_checksum(response);
-    cout << "etag: " << std::hex << etag << endl;
+    cout << "etag: " << hex << etag << endl;
     cout << "data: ";
   }
-  if (hasEncoding && result.get_option_value("--response-format-bytes") == "true")
+  if (hasEncoding && result.find_kw_arg_bool("response-format-bytes"))
   {
     zut_print_string_as_bytes(response);
   }
@@ -1363,10 +1144,10 @@ int handle_data_set_view_dsn(ZCLIResult result)
   return rc;
 }
 
-int handle_data_set_list(ZCLIResult result)
+int handle_data_set_list(const ParseResult &result)
 {
   int rc = 0;
-  string dsn = result.get_positional("dsn")->get_value();
+  string dsn = result.find_pos_arg_string("dsn");
 
   if (dsn.length() > MAX_DS_LENGTH)
   {
@@ -1376,9 +1157,9 @@ int handle_data_set_list(ZCLIResult result)
 
   dsn += ".**";
 
-  string max_entries = result.get_option_value("--max-entries");
-  string warn = result.get_option_value("--warn");
-  string attributes = result.get_option_value("--attributes");
+  const auto max_entries = result.find_kw_arg_string("max-entries");
+  const auto warn = result.find_kw_arg_bool("warn");
+  const auto attributes = result.find_kw_arg_bool("attributes");
 
   ZDS zds = {0};
   if (max_entries.size() > 0)
@@ -1387,7 +1168,7 @@ int handle_data_set_list(ZCLIResult result)
   }
   vector<ZDSEntry> entries;
 
-  const auto emit_csv = result.get_option_value("--response-format-csv") == "true";
+  const auto emit_csv = result.find_kw_arg_bool("response-format-csv");
   rc = zds_list_data_sets(&zds, dsn, entries);
   if (RTNCD_SUCCESS == rc || RTNCD_WARNING == rc)
   {
@@ -1400,25 +1181,25 @@ int handle_data_set_list(ZCLIResult result)
         fields.push_back(it->dsorg);
         fields.push_back(it->volser);
         fields.push_back(it->migr ? "true" : "false");
-        std::cout << zut_format_as_csv(fields) << std::endl;
+        cout << zut_format_as_csv(fields) << endl;
         fields.clear();
       }
       else
       {
-        if ("true" == attributes)
+        if (attributes)
         {
-          std::cout << left << setw(44) << it->name << " " << it->volser << " " << setw(4) << it->dsorg << endl;
+          cout << left << setw(44) << it->name << " " << it->volser << " " << setw(4) << it->dsorg << endl;
         }
         else
         {
-          std::cout << left << setw(44) << it->name << endl;
+          cout << left << setw(44) << it->name << endl;
         }
       }
     }
   }
   if (RTNCD_WARNING == rc)
   {
-    if ("true" == warn)
+    if (warn)
     {
       if (ZDS_RSNCD_MAXED_ENTRIES_REACHED == zds.diag.detail_rc)
       {
@@ -1438,19 +1219,19 @@ int handle_data_set_list(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  return warn == "false" && rc == RTNCD_WARNING ? RTNCD_SUCCESS : rc;
+  return !warn && rc == RTNCD_WARNING ? RTNCD_SUCCESS : rc;
 }
 
-int handle_data_set_list_members_dsn(ZCLIResult result)
+int handle_data_set_list_members_dsn(const ParseResult &result)
 {
   int rc = 0;
-  string dsn = result.get_positional("dsn")->get_value();
-  string max_entries = result.get_option_value("--max-entries");
-  string warn = result.get_option_value("--warn");
+  const auto dsn = result.find_pos_arg_string("dsn");
+  const auto max_entries = result.get_kw_arg_string("max-entries");
+  const auto warn = result.find_kw_arg_bool("warn");
   ZDS zds = {0};
-  if (max_entries.size() > 0)
+  if (max_entries != nullptr)
   {
-    zds.max_entries = atoi(max_entries.c_str());
+    zds.max_entries = atoi(max_entries->c_str());
   }
   vector<ZDSMem> members;
   rc = zds_list_members(&zds, dsn, members);
@@ -1464,7 +1245,7 @@ int handle_data_set_list_members_dsn(ZCLIResult result)
   }
   if (RTNCD_WARNING == rc)
   {
-    if ("true" == warn)
+    if (warn)
     {
       if (ZDS_RSNCD_MAXED_ENTRIES_REACHED == zds.diag.detail_rc)
       {
@@ -1479,27 +1260,24 @@ int handle_data_set_list_members_dsn(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  return rc;
+  return !warn && rc == RTNCD_WARNING ? RTNCD_SUCCESS : rc;
 }
 
-int handle_data_set_write_to_dsn(ZCLIResult result)
+int handle_data_set_write_to_dsn(const ParseResult &result)
 {
   int rc = 0;
-  string dsn = result.get_positional("dsn")->get_value();
+  string dsn = result.find_pos_arg_string("dsn");
   ZDS zds = {0};
-  if (result.get_option("--encoding") != nullptr)
-  {
-    zut_prepare_encoding(result.get_option_value("--encoding"), &zds.encoding_opts);
-  }
+  const auto hasEncoding = result.get_kw_arg_string("encoding") != nullptr && zut_prepare_encoding(*result.get_kw_arg_string("encoding"), &zds.encoding_opts);
 
-  string data;
-  string line;
+  string data = "";
+  string line = "";
   size_t byteSize = 0ul;
 
   if (!isatty(fileno(stdout)))
   {
-    std::istreambuf_iterator<char> begin(std::cin);
-    std::istreambuf_iterator<char> end;
+    istreambuf_iterator<char> begin(cin);
+    istreambuf_iterator<char> end;
 
     vector<char> input(begin, end);
     const auto temp = string(input.begin(), input.end());
@@ -1519,10 +1297,10 @@ int handle_data_set_write_to_dsn(ZCLIResult result)
     byteSize = data.size();
   }
 
-  auto *etag_opt = result.get_option("--etag");
-  if (etag_opt != nullptr && etag_opt->is_found())
+  const auto etag = result.find_kw_arg_string("etag");
+  if (!etag.empty())
   {
-    strcpy(zds.etag, etag_opt->get_value().c_str());
+    strcpy(zds.etag, etag);
   }
 
   rc = zds_write_to_dsn(&zds, dsn, data);
@@ -1534,12 +1312,7 @@ int handle_data_set_write_to_dsn(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  auto *etag_opt2 = result.get_option("--etag-only");
-  if (etag_opt2 != nullptr && etag_opt2->get_value() == "true")
-  {
-    cout << zds.etag << endl;
-  }
-  else
+  if (!result.find_kw_arg_bool("etag-only"))
   {
     cout << "Wrote data to '" << dsn << "'" << endl;
   }
@@ -1547,10 +1320,10 @@ int handle_data_set_write_to_dsn(ZCLIResult result)
   return rc;
 }
 
-int handle_data_set_delete_dsn(ZCLIResult result)
+int handle_data_set_delete_dsn(const ParseResult &result)
 {
   int rc = 0;
-  string dsn = result.get_positional("dsn")->get_value();
+  string dsn = result.find_pos_arg_string("dsn");
   ZDS zds = {0};
   rc = zds_delete_dsn(&zds, dsn);
 
@@ -1565,24 +1338,24 @@ int handle_data_set_delete_dsn(ZCLIResult result)
   return rc;
 }
 
-int handle_log_view(ZCLIResult result)
+int handle_log_view(const ParseResult &result)
 {
   int rc = 0;
   unsigned int code = 0;
   string resp;
 
-  string lines = result.get_option_value("--lines");
+  string lines = result.find_kw_arg_string("lines");
 
   cout << "lines are " << lines << endl;
   return 0;
 }
 
-int handle_uss_create_file(ZCLIResult result)
+int handle_uss_create_file(const ParseResult &result)
 {
   int rc = 0;
-  string file_path = result.get_positional("file-path")->get_value();
-  string mode(result.get_option_value("--mode"));
-  if ("" == mode)
+  const auto file_path = result.find_pos_arg_string("file-path");
+  auto mode = result.find_pos_arg_string("mode");
+  if (mode == "")
     mode = "644";
 
   ZUSF zusf = {0};
@@ -1600,12 +1373,12 @@ int handle_uss_create_file(ZCLIResult result)
   return rc;
 }
 
-int handle_uss_create_dir(ZCLIResult result)
+int handle_uss_create_dir(const ParseResult &result)
 {
   int rc = 0;
-  string file_path = result.get_positional("file-path")->get_value();
-  string mode(result.get_option_value("--mode"));
-  if ("" == mode)
+  const auto file_path = result.find_pos_arg_string("file-path");
+  auto mode = result.find_pos_arg_string("mode");
+  if (mode == "")
     mode = "755";
 
   ZUSF zusf = {0};
@@ -1623,10 +1396,10 @@ int handle_uss_create_dir(ZCLIResult result)
   return rc;
 }
 
-int handle_uss_list(ZCLIResult result)
+int handle_uss_list(const ParseResult &result)
 {
   int rc = 0;
-  string uss_file = result.get_positional("file-path")->get_value();
+  const auto uss_file = result.find_pos_arg_string("file-path");
 
   ZUSF zusf = {0};
   string response;
@@ -1645,15 +1418,15 @@ int handle_uss_list(ZCLIResult result)
   return rc;
 }
 
-int handle_uss_view(ZCLIResult result)
+int handle_uss_view(const ParseResult &result)
 {
   int rc = 0;
-  string uss_file = result.get_positional("file-path")->get_value();
+  string uss_file = result.find_pos_arg_string("file-path");
 
   ZUSF zusf = {0};
-  const auto hasEncoding = result.get_option("--encoding") != nullptr && zut_prepare_encoding(result.get_option_value("--encoding"), &zusf.encoding_opts);
+  const auto hasEncoding = result.get_kw_arg_string("encoding") != nullptr && zut_prepare_encoding(*result.get_kw_arg_string("encoding"), &zusf.encoding_opts);
 
-  struct stat file_stats;
+  struct stat file_stats = {0};
   if (stat(uss_file.c_str(), &file_stats) == -1)
   {
     cerr << "Error: Path " << uss_file << " does not exist";
@@ -1671,12 +1444,11 @@ int handle_uss_view(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  if (result.get_option_value("--return-etag") == "true")
-  {
+  if (result.find_kw_arg_bool("return-etag")) {
     cout << "etag: " << zut_build_etag(file_stats.st_mtime, file_stats.st_size) << endl;
     cout << "data: ";
   }
-  if (hasEncoding && result.get_option_value("--response-format-bytes") == "true")
+  if (hasEncoding && result.find_kw_arg_bool("response-format-bytes"))
   {
     zut_print_string_as_bytes(response);
   }
@@ -1688,15 +1460,12 @@ int handle_uss_view(ZCLIResult result)
   return rc;
 }
 
-int handle_uss_write(ZCLIResult result)
+int handle_uss_write(const ParseResult &result)
 {
   int rc = 0;
-  string file = result.get_positional("file-path")->get_value();
+  string file = result.find_pos_arg_string("file-path");
   ZUSF zusf = {0};
-  if (result.get_option("--encoding") != nullptr)
-  {
-    zut_prepare_encoding(result.get_option_value("--encoding"), &zusf.encoding_opts);
-  }
+  const auto encoding_prepared = result.get_kw_arg_string("encoding") != nullptr && zut_prepare_encoding(*result.get_kw_arg_string("encoding"), &zusf.encoding_opts);
 
   string data = "";
   string line = "";
@@ -1705,8 +1474,8 @@ int handle_uss_write(ZCLIResult result)
   // Use Ctrl/Cmd + D to stop writing data manually
   if (!isatty(fileno(stdout)))
   {
-    std::istreambuf_iterator<char> begin(std::cin);
-    std::istreambuf_iterator<char> end;
+    istreambuf_iterator<char> begin(cin);
+    istreambuf_iterator<char> end;
 
     vector<char> input(begin, end);
     const auto temp = string(input.begin(), input.end());
@@ -1726,12 +1495,10 @@ int handle_uss_write(ZCLIResult result)
     byteSize = data.size();
   }
 
-  auto *etag_opt = result.get_option("--etag");
-  if (etag_opt != nullptr && etag_opt->is_found())
-  {
-    strcpy(zusf.etag, etag_opt->get_value().c_str());
+  const auto etag = result.find_kw_arg_string("etag");
+  if (etag.length() > 0) {
+    strcpy(zusf.etag, etag.c_str());
   }
-
   rc = zusf_write_to_uss_file(&zusf, file, data);
   if (0 != rc)
   {
@@ -1739,13 +1506,7 @@ int handle_uss_write(ZCLIResult result)
     cerr << "  Details: " << zusf.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
-
-  auto *etag_opt2 = result.get_option("--etag-only");
-  if (etag_opt2 != nullptr && etag_opt2->get_value() == "true")
-  {
-    cout << zusf.etag << endl;
-  }
-  else
+  if (!result.find_kw_arg_bool("etag-only"))
   {
     cout << "Wrote data to '" << file << "'" << endl;
   }
@@ -1753,10 +1514,10 @@ int handle_uss_write(ZCLIResult result)
   return rc;
 }
 
-int handle_uss_delete(ZCLIResult result)
+int handle_uss_delete(const ParseResult &result)
 {
-  string file_path = result.get_positional("file-path")->get_value();
-  bool recursive = result.get_option_value("--recursive") == "true";
+  auto file_path = result.find_pos_arg_string("file-path");
+  const auto recursive = result.find_kw_arg_bool("recursive");
 
   ZUSF zusf = {0};
   const auto rc = zusf_delete_uss_item(&zusf, file_path, recursive);
@@ -1769,14 +1530,14 @@ int handle_uss_delete(ZCLIResult result)
   return rc;
 }
 
-int handle_uss_chmod(ZCLIResult result)
+int handle_uss_chmod(const ParseResult &result)
 {
   int rc = 0;
-  string mode(result.get_positional("mode")->get_value());
-  string file_path = result.get_positional("file-path")->get_value();
+  const auto mode = result.find_pos_arg_string("mode");
+  auto file_path = result.find_pos_arg_string("file-path");
 
   ZUSF zusf = {0};
-  rc = zusf_chmod_uss_file_or_dir(&zusf, file_path, mode, result.get_option_value("--recursive") == "true");
+  rc = zusf_chmod_uss_file_or_dir(&zusf, file_path, mode, result.find_kw_arg_bool("recursive"));
   if (0 != rc)
   {
     cerr << "Error: could not chmod USS path: '" << file_path << "' rc: '" << rc << "'" << endl;
@@ -1790,14 +1551,14 @@ int handle_uss_chmod(ZCLIResult result)
   return rc;
 }
 
-int handle_uss_chown(ZCLIResult result)
+int handle_uss_chown(const ParseResult &result)
 {
-  string path = result.get_positional("file-path")->get_value();
-  string owner = result.get_positional("owner")->get_value();
+  auto path = result.find_pos_arg_string("file-path");
+  const auto owner = result.find_pos_arg_string("owner");
 
   ZUSF zusf = {0};
 
-  const auto rc = zusf_chown_uss_file_or_dir(&zusf, path, owner, result.get_option_value("--recursive") == "true");
+  const auto rc = zusf_chown_uss_file_or_dir(&zusf, path, owner, result.find_kw_arg_bool("recursive"));
   if (rc != 0)
   {
     cerr << "Error: could not chown USS path: '" << path << "' rc: '" << rc << "'" << endl;
@@ -1809,13 +1570,13 @@ int handle_uss_chown(ZCLIResult result)
   return rc;
 }
 
-int handle_uss_chtag(ZCLIResult result)
+int handle_uss_chtag(const ParseResult &result)
 {
-  string path = result.get_positional("file-path")->get_value();
-  string tag = result.get_positional("tag")->get_value();
+  auto path = result.find_pos_arg_string("file-path");
+  const auto tag = result.find_pos_arg_string("tag");
 
   ZUSF zusf = {0};
-  const auto rc = zusf_chtag_uss_file_or_dir(&zusf, path, tag, result.get_option_value("--recursive") == "true");
+  const auto rc = zusf_chtag_uss_file_or_dir(&zusf, path, tag, result.find_kw_arg_bool("recursive"));
 
   if (rc != 0)
   {
@@ -1828,11 +1589,11 @@ int handle_uss_chtag(ZCLIResult result)
   return rc;
 }
 
-int handle_tso_issue(ZCLIResult result)
+int handle_tso_issue(const ParseResult &result)
 {
   int rc = 0;
-  string command = result.get_positional("command")->get_value();
-  string response;
+  const auto command = result.find_pos_arg_string("command");
+  string response = "";
 
   rc = ztso_issue(command, response);
 
@@ -1847,7 +1608,7 @@ int handle_tso_issue(ZCLIResult result)
   return rc;
 }
 
-int handle_tool_convert_dsect(ZCLIResult result)
+int handle_tool_convert_dsect(const ParseResult &result)
 {
   int rc = 0;
   ZCN zcn = {0};
@@ -1860,18 +1621,18 @@ int handle_tool_convert_dsect(ZCLIResult result)
   // as -madata --gadata="//'DKELOSKY.TEMP.ADATA(IHAECB)'" ihaecb.s
   // convert --adata (dsn) --out-chdr (dsn) --sysout /tmp/user/sysout.txt --sysprint /tmp/user/sysprint.txt
 
-  string adata_dsn(result.get_option_value("--adata-dsn"));
-  string chdr_dsn(result.get_option_value("--chdr-dsn"));
-  string sysprint(result.get_option_value("--sysprint"));
-  string sysout(result.get_option_value("--sysout"));
+  string adata_dsn(result.find_kw_arg_string("adata-dsn"));
+  string chdr_dsn(result.find_kw_arg_string("chdr-dsn"));
+  string sysprint(result.find_kw_arg_string("sysprint"));
+  string sysout(result.find_kw_arg_string("sysout"));
 
   const char *user = getlogin();
   string struser(user);
   transform(struser.begin(), struser.end(), struser.begin(), ::tolower); // upper case
 
-  if (!result.get_option("--sysprint"))
+  if (result.get_kw_arg_string("sysprint") == nullptr)
     sysprint = "/tmp/" + struser + "_sysprint.txt";
-  if (!result.get_option("--sysout"))
+  if (result.get_kw_arg_string("sysout") == nullptr)
     sysout = "/tmp/" + struser + "_sysout.txt";
 
   cout << adata_dsn << " " << chdr_dsn << " " << sysprint << " " << sysout << endl;
@@ -1905,13 +1666,13 @@ int handle_tool_convert_dsect(ZCLIResult result)
   return rc;
 }
 
-int handle_tool_dynalloc(ZCLIResult result)
+int handle_tool_dynalloc(const ParseResult &result)
 {
   int rc = 0;
   unsigned int code = 0;
   string resp;
 
-  string parm(result.get_positional("parm")->get_value());
+  string parm(result.find_kw_arg_string("parm"));
 
   // alloc da('DKELOSKY.TEMP.ADATA') DSORG(PO) SPACE(5,5) CYL LRECL(80) RECFM(F,b) NEW DIR(5) vol(USER01)
   rc = zut_bpxwdyn(parm, &code, resp);
@@ -1927,10 +1688,10 @@ int handle_tool_dynalloc(ZCLIResult result)
   return rc;
 }
 
-int handle_tool_display_symbol(ZCLIResult result)
+int handle_tool_display_symbol(const ParseResult &result)
 {
   int rc = 0;
-  string symbol(result.get_positional("symbol")->get_value());
+  string symbol(result.find_pos_arg_string("symbol"));
   transform(symbol.begin(), symbol.end(), symbol.begin(), ::toupper); // upper case
   symbol = "&" + symbol;
   string value;
@@ -1945,15 +1706,15 @@ int handle_tool_display_symbol(ZCLIResult result)
   return RTNCD_SUCCESS;
 }
 
-int handle_tool_run(ZCLIResult result)
+int handle_tool_run(const ParseResult &result)
 {
   int rc = 0;
-  string program(result.get_positional("program")->get_value());
-  string dynalloc_pre(result.get_option_value("--dynalloc-pre"));
-  string dynalloc_post(result.get_option_value("--dynalloc-post"));
+  string program(result.find_pos_arg_string("program"));
+  string dynalloc_pre(result.find_kw_arg_string("dynalloc-pre"));
+  string dynalloc_post(result.find_kw_arg_string("dynalloc-post"));
 
   // allocate anything that was requested
-  if (result.get_option("--dynalloc-pre"))
+  if (result.get_kw_arg_string("dynalloc-pre") != nullptr)
   {
     vector<string> dds;
 
@@ -1978,8 +1739,8 @@ int handle_tool_run(ZCLIResult result)
     }
   }
 
-  string indd(result.get_option_value("--in-dd"));
-  if (result.get_option("--in-dd"))
+  const auto indd = result.find_kw_arg_string("in-dd");
+  if (result.get_kw_arg_string("in-dd") != nullptr)
   {
     string ddname = "DD:" + indd;
     ofstream out(ddname.c_str());
@@ -1989,8 +1750,8 @@ int handle_tool_run(ZCLIResult result)
       return RTNCD_FAILURE;
     }
 
-    string input(result.get_option_value("--input"));
-    if (result.get_option("--input"))
+    string input(result.find_kw_arg_string("input"));
+    if (result.get_kw_arg_string("input"))
     {
       out << input << endl;
     }
@@ -2008,8 +1769,8 @@ int handle_tool_run(ZCLIResult result)
     rc = RTNCD_FAILURE; // continue to obtain output
   }
 
-  string outdd(result.get_option_value("--out-dd"));
-  if (result.get_option("--out-dd"))
+  const auto outdd = result.find_kw_arg_string("out-dd");
+  if (result.get_kw_arg_string("out-dd") != nullptr)
   {
     string ddname = "DD:" + outdd;
     ifstream in(ddname.c_str());
@@ -2028,7 +1789,7 @@ int handle_tool_run(ZCLIResult result)
   }
 
   // optionally free everything that was allocated
-  if (result.get_option("--dynalloc-post"))
+  if (result.get_kw_arg_string("dynalloc-post") != nullptr)
   {
     vector<string> dds;
 
@@ -2051,14 +1812,14 @@ int handle_tool_run(ZCLIResult result)
   return rc;
 }
 
-int handle_tool_search(ZCLIResult result)
+int handle_tool_search(const ParseResult &result)
 {
   int rc = 0;
 
-  string pattern(result.get_positional("string")->get_value());
-  string warn = result.get_option_value("--warn");
-  string max_entries = result.get_option_value("--max-entries");
-  string dsn(result.get_positional("dsn")->get_value());
+  string pattern(result.find_pos_arg_string("string"));
+  const auto warn = result.find_kw_arg_bool("warn");
+  string max_entries = result.find_kw_arg_string("max-entries");
+  string dsn(result.find_pos_arg_string("dsn"));
 
   ZDS zds = {0};
   bool results_truncated = false;
@@ -2143,13 +1904,13 @@ int handle_tool_search(ZCLIResult result)
 
   if (results_truncated)
   {
-    if ("true" == warn)
+    if (warn)
     {
       cerr << "Warning: results truncated" << endl;
     }
   }
 
-  return RTNCD_SUCCESS;
+  return !warn && rc == RTNCD_WARNING ? RTNCD_SUCCESS : rc;
 }
 
 int handle_tool_amblist(ZCLIResult result)
