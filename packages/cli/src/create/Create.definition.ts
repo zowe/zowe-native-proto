@@ -15,6 +15,7 @@ import { Constants } from "../Constants";
 import { DataSetMemberDefinition } from "./data-set-member/DataSetMember.definition";
 import { DataSetDefinition } from "./data-set/DataSet.definition";
 import { FileDefinition } from "./uss/File.definition";
+import { DataSetAttrDefinition } from "./data-set-attr/DataSetAttr.definition";
 
 const CreateDefinition: ICommandDefinition = {
     name: "create",
@@ -22,7 +23,7 @@ const CreateDefinition: ICommandDefinition = {
     description: "Create files and directories, data sets, and members",
     type: "group",
     aliases: ["cre"],
-    children: [DataSetDefinition, FileDefinition, DataSetMemberDefinition],
+    children: [DataSetDefinition, FileDefinition, DataSetMemberDefinition, DataSetAttrDefinition],
     passOn: [
         {
             property: "options",
