@@ -1,7 +1,7 @@
 import type { IHandlerParameters } from "@zowe/imperative";
 import type { ZSshClient, ds } from "zowe-native-proto-sdk";
+import type { DatasetAttr } from "zowe-native-proto-sdk/src/doc/gen/common";
 import { SshBaseHandler } from "../../SshBaseHandler";
-import { DatasetAttr } from "zowe-native-proto-sdk/src/doc/gen/common";
 
 export default class CreateDatasetAttrHandler extends SshBaseHandler {
     public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<ds.CreateDatasetResponse> {
@@ -9,9 +9,23 @@ export default class CreateDatasetAttrHandler extends SshBaseHandler {
         const attributes: Partial<DatasetAttr> = {};
 
         const attrKeys: (keyof DatasetAttr)[] = [
-            "alcunit", "blksz", "dirblk", "dsorg", "primary", "recfm",
-            "lrecl", "dataclass", "dev", "dsntype", "mgntclass", "dsname",
-            "avgblk", "secondary", "size", "storclass", "vol"
+            "alcunit",
+            "blksz",
+            "dirblk",
+            "dsorg",
+            "primary",
+            "recfm",
+            "lrecl",
+            "dataclass",
+            "dev",
+            "dsntype",
+            "mgntclass",
+            "dsname",
+            "avgblk",
+            "secondary",
+            "size",
+            "storclass",
+            "vol",
         ];
 
         const args = params.arguments as Record<string, unknown>;
@@ -19,6 +33,7 @@ export default class CreateDatasetAttrHandler extends SshBaseHandler {
         for (const key of attrKeys) {
             const value = args[key];
             if (value !== undefined) {
+                // biome-ignore lint/suspicious/noExplicitAny: as any required for attribute mapping
                 (attributes as any)[key] = value;
             }
         }

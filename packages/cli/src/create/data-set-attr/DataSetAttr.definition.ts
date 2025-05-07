@@ -36,88 +36,88 @@ export const DataSetAttrDefinition: ICommandDefinition = {
         {
             name: "alcunit",
             description: "Allocation Unit",
-            type: "string"
+            type: "string",
         },
         {
             name: "blksz",
             description: "Block Size",
-            type: "number"
+            type: "number",
         },
         {
             name: "dirblk",
             description: "Directory Blocks",
-            type: "number"
+            type: "number",
         },
         {
             name: "dsorg",
             description: "Data Set Organization",
-            type: "string"
+            type: "string",
         },
         {
             name: "primary",
             description: "Primary Space",
-            type: "number"
+            type: "number",
         },
         {
             name: "recfm",
             description: "Record Format",
-            type: "string"
+            type: "string",
         },
         {
             name: "lrecl",
             description: "Record Length",
-            type: "number"
+            type: "number",
         },
         {
             name: "dataclass",
             description: "Data Class",
-            type: "string"
+            type: "string",
         },
         {
             name: "dev",
             description: "Device Type",
-            type: "string"
+            type: "string",
         },
         {
             name: "dsntype",
             description: "Data Set Type",
-            type: "string"
+            type: "string",
         },
         {
             name: "mgntclass",
             description: "Management Class",
-            type: "string"
+            type: "string",
         },
         {
             name: "dsname",
             description: "Data Set Name",
-            type: "string"
+            type: "string",
         },
         {
             name: "avgblk",
             description: "Average Block Length",
-            type: "number"
+            type: "number",
         },
         {
             name: "secondary",
             description: "Secondary Space",
-            type: "number"
+            type: "number",
         },
         {
             name: "size",
             description: "Size",
-            type: "number"
+            type: "number",
         },
         {
             name: "storclass",
             description: "Storage Class",
-            type: "string"
+            type: "string",
         },
         {
             name: "vol",
             description: "Volume Serial",
-            type: "string"
-        }
-    ],    
+            type: "string",
+        },
+    ],
     profile: { optional: ["ssh"] },
 };

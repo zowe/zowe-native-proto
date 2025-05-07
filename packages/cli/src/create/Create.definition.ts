@@ -12,10 +12,10 @@
 import type { ICommandDefinition } from "@zowe/imperative";
 import { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Constants } from "../Constants";
+import { DataSetAttrDefinition } from "./data-set-attr/DataSetAttr.definition";
 import { DataSetMemberDefinition } from "./data-set-member/DataSetMember.definition";
 import { DataSetDefinition } from "./data-set/DataSet.definition";
 import { FileDefinition } from "./uss/File.definition";
-import { DataSetAttrDefinition } from "./data-set-attr/DataSetAttr.definition";
 
 const CreateDefinition: ICommandDefinition = {
     name: "create",
