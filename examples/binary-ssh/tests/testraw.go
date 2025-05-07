@@ -9,21 +9,23 @@ import (
 	"golang.org/x/term"
 )
 
-func uploadRaw(filepath string, chunksize int) {
+func uploadRaw(filepath string, chunksize int, totalsize int) {
 	file, err := os.Create(filepath)
 	if err != nil {
 		panic(err)
 	}
 	defer file.Close()
 	buf := make([]byte, chunksize)
+	received := 0
 	for {
 		n, err := os.Stdin.Read(buf)
 		if n > 0 {
 			if _, werr := file.Write(buf[:n]); werr != nil {
 				panic(werr)
 			}
+			received += n
 		}
-		if err == io.EOF {
+		if err == io.EOF || received >= totalsize {
 			break
 		}
 		if err != nil {
@@ -66,7 +68,8 @@ func main() {
 	chunksize, _ := strconv.Atoi(os.Args[3])
 	switch command {
 	case "upload":
-		uploadRaw(filepath, chunksize)
+		totalsize, _ := strconv.Atoi(os.Args[4])
+		uploadRaw(filepath, chunksize, totalsize)
 		break
 	case "download":
 		downloadRaw(filepath, chunksize)

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"encoding/base64"
 	"io"
 	"os"
@@ -15,21 +14,10 @@ func uploadB64(filepath string, chunksize int) {
 		panic(err)
 	}
 	defer file.Close()
-	scanner := bufio.NewScanner(os.Stdin)
-	for scanner.Scan() {
-		line := scanner.Text()
-		data, err := base64.StdEncoding.DecodeString(line)
-		if len(data) > 0 {
-			if _, werr := file.Write(data); werr != nil {
-				panic(werr)
-			}
-		}
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			panic(err)
-		}
+	decoder := base64.NewDecoder(base64.StdEncoding, os.Stdin)
+	buf := make([]byte, chunksize)
+	if _, err := io.CopyBuffer(file, decoder, buf); err != nil {
+		panic(err)
 	}
 }
 
@@ -39,21 +27,11 @@ func downloadB64(filepath string, chunksize int) {
 		panic(err)
 	}
 	defer file.Close()
+	encoder := base64.NewEncoder(base64.StdEncoding, os.Stdout)
+	defer encoder.Close()
 	buf := make([]byte, chunksize)
-	for {
-		n, err := file.Read(buf)
-		if n > 0 {
-			data := base64.StdEncoding.EncodeToString(buf[:n])
-			if _, werr := os.Stdout.WriteString(data + "\n"); werr != nil {
-				panic(werr)
-			}
-		}
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			panic(err)
-		}
+	if _, err := io.CopyBuffer(encoder, file, buf); err != nil {
+		panic(err)
 	}
 }
 

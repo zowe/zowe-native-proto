@@ -1,7 +1,6 @@
 import { createReadStream, createWriteStream, unlinkSync } from "node:fs";
 import { dirname, parse } from "node:path";
-import { Transform } from "node:stream";
-import { pipeline } from "node:stream/promises";
+import { Base64Decode, Base64Encode } from "base64-stream";
 import { Client } from "ssh2";
 import * as utils from "./utils";
 const userConfig = require("./config.json");
@@ -21,63 +20,44 @@ async function main() {
             reject(err);
         });
     });
-    const b64Encoder = () =>
-        new Transform({
-            transform(chunk, encoding, callback) {
-                this.push(chunk.toString("base64"));
-                this.push("\n");
-                callback();
-            },
-        });
-    const b64Decoder = () =>
-        new Transform({
-            transform(chunk, encoding, callback) {
-                const lines = ((this.lastChunk || "") + chunk.toString()).split("\n");
-                for (let i = 0; i < lines.length - 1; i++) {
-                    if (lines[i].length > 0) {
-                        this.push(Buffer.from(lines[i], "base64"));
-                    }
-                }
-                this.lastChunk = lines.pop();
-                callback();
-            },
-        });
 
     for (let i = 0; i < userConfig.testCount; i++) {
         // 1. Upload
         console.time(`${testPrefix}:upload`);
+        const srcStream = createReadStream(localFile, { highWaterMark: userConfig.chunkSize });
         await new Promise<void>((resolve, reject) => {
             sshClient.exec(
                 `${dirname(remoteFile)}/testb64 upload ${remoteFile} ${userConfig.chunkSize}`,
-                async (err, stream) => {
+                (err, stream) => {
                     if (err) {
                         reject(err);
                         return;
                     }
-                    const srcStream = createReadStream(localFile, { highWaterMark: userConfig.chunkSize });
-                    await pipeline(srcStream, b64Encoder(), stream.stdin);
-                    resolve();
+                    srcStream.pipe(new Base64Encode()).pipe(stream.stdin);
+                    stream.on("exit", resolve);
                 },
             );
         });
+        srcStream.close();
         console.timeEnd(`${testPrefix}:upload`);
 
         // 2. Download
         console.time(`${testPrefix}:download`);
+        const destStream = createWriteStream(tempFile);
         await new Promise<void>((resolve, reject) => {
             sshClient.exec(
                 `${dirname(remoteFile)}/testb64 download ${remoteFile} ${userConfig.chunkSize}`,
-                async (err, stream) => {
+                (err, stream) => {
                     if (err) {
                         reject(err);
                         return;
                     }
-                    const destStream = createWriteStream(tempFile);
-                    await pipeline(stream.stdout, b64Decoder(), destStream);
-                    resolve();
+                    stream.stdout.pipe(new Base64Decode()).pipe(destStream);
+                    stream.on("close", resolve);
                 },
             );
         });
+        destStream.close();
         console.timeEnd(`${testPrefix}:download`);
 
         // 3. Verify
