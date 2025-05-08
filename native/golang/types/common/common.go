@@ -56,7 +56,7 @@ type Dataset struct {
 
 type DatasetAttr struct {
 	Alcunit   string `json:"alcunit"`   // Allocation Unit
-	Blksz     int    `json:"blksz"`     // Block Size
+	Blksize   int    `json:"blksize"`   // Block Size
 	Dirblk    int    `json:"dirblk"`    // Directory Blocks
 	Dsorg     string `json:"dsorg"`     // Data Set Organization
 	Primary   int    `json:"primary"`   // Primary Space

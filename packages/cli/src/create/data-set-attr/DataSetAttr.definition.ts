@@ -39,7 +39,7 @@ export const DataSetAttrDefinition: ICommandDefinition = {
             type: "string",
         },
         {
-            name: "blksz",
+            name: "blksize",
             description: "Block Size",
             type: "number",
         },

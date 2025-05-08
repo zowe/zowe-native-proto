@@ -63,7 +63,7 @@ export interface Dataset {
 }
 export interface DatasetAttr {
   alcunit: string; // Allocation Unit
-  blksz: number /* int */; // Block Size
+  blksize: number /* int */; // Block Size
   dirblk: number /* int */; // Directory Blocks
   dsorg: string; // Data Set Organization
   primary: number /* int */; // Primary Space

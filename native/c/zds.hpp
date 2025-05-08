@@ -36,7 +36,7 @@ struct ZDSEntry
 typedef struct
 {
   std::string alcunit;   // Allocation Unit
-  int blksz;             // Block Size
+  int blksize;           // Block Size
   int dirblk;            // Directory Blocks
   std::string dsorg;     // Data Set Organization
   int primary;           // Primary Space

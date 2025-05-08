@@ -271,8 +271,8 @@ func HandleCreateDatasetRequestAttr(conn *utils.StdioConn, jsonData []byte) (res
 	if attr.Alcunit != "" {
 		args = append(args, "--alcunit", attr.Alcunit)
 	}
-	if attr.Blksz != 0 {
-		args = append(args, "--blksz", fmt.Sprintf("%d", attr.Blksz))
+	if attr.Blksize != 0 {
+		args = append(args, "--blksize", fmt.Sprintf("%d", attr.Blksize))
 	}
 	if attr.Dirblk != 0 {
 		args = append(args, "--dirblk", fmt.Sprintf("%d", attr.Dirblk))

@@ -263,17 +263,17 @@ int zds_create_dsn_attr(ZDS *zds, std::string dsn, std::string &response, DS_ATT
   {
     attributes.alcunit = "CYL"; // Allocation Unit
   }
-  if (attributes.blksz == 0)
+  if (attributes.blksize == 0)
   {
-    attributes.blksz = 6160; // Block Size
-  }
-  if (attributes.dirblk == 0)
-  {
-    attributes.dirblk = 5; // Directory Blocks
+    attributes.blksize = 6160; // Block Size
   }
   if (attributes.dsorg.empty())
   {
     attributes.dsorg = "PO"; // Data Set Organization
+  }
+  if (attributes.dirblk == 0 && attributes.dsorg == "PO")
+  {
+    attributes.dirblk = 5; // Directory Blocks
   }
   if (attributes.primary == 0)
   {
@@ -338,10 +338,10 @@ int zds_create_dsn_attr(ZDS *zds, std::string dsn, std::string &response, DS_ATT
   if (!attributes.dev.empty())
     parm += " UNIT(" + attributes.dev + ")";
 
-  if (attributes.blksz > 0)
+  if (attributes.blksize > 0)
   {
     memset(numberAsString, 0, sizeof(numberAsString));
-    parm += " BLKSIZE(" + std::string(itoa(attributes.blksz, numberAsString, 10)) + ")";
+    parm += " BLKSIZE(" + std::string(itoa(attributes.blksize, numberAsString, 10)) + ")";
   }
 
   cout << parm << endl;

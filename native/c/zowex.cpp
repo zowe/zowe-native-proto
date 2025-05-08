@@ -147,9 +147,9 @@ int main(int argc, char *argv[])
   return_alcunit.set_required(false);
   return_alcunit.set_description("Allocation unit");
 
-  ZCLIOption return_blksz("blksz");
-  return_blksz.set_required(false);
-  return_blksz.set_description("Block size");
+  ZCLIOption return_blksize("blksize");
+  return_blksize.set_required(false);
+  return_blksize.set_description("Block size");
 
   ZCLIOption return_dirblk("dirblk");
   return_dirblk.set_required(false);
@@ -235,7 +235,7 @@ int main(int argc, char *argv[])
   data_set_create_attr.set_description("create data set using attributes");
   data_set_create_attr.set_zcli_verb_handler(handle_data_set_create_dsn_attr);
   data_set_create_attr.get_options().push_back(return_alcunit);
-  data_set_create_attr.get_options().push_back(return_blksz);
+  data_set_create_attr.get_options().push_back(return_blksize);
   data_set_create_attr.get_options().push_back(return_dirblk);
   data_set_create_attr.get_options().push_back(return_dsorg);
   data_set_create_attr.get_options().push_back(return_primary);
@@ -1361,9 +1361,9 @@ int handle_data_set_create_dsn_attr(ZCLIResult result)
   {
     attributes.alcunit = result.get_option("--alcunit")->get_value();
   }
-  if (result.get_option("--blksz"))
+  if (result.get_option("--blksize"))
   {
-    attributes.blksz = std::strtoul(result.get_option("--blksz")->get_value().c_str(), nullptr, 10);
+    attributes.blksize = std::strtoul(result.get_option("--blksize")->get_value().c_str(), nullptr, 10);
   }
   if (result.get_option("--dirblk"))
   {
