@@ -13,8 +13,12 @@
     "ssh2": "^1.16.0"
   },
   "devDependencies": {
+    "@types/base64-stream": "^1.0.5",
     "@types/node": "^22.12.0",
     "@types/ssh2": "^1.15.4",
+    "@zowe/zos-files-for-zowe-sdk": "^8.20.0",
+    "ascii85": "^1.0.2",
+    "base64-stream": "^1.0.0",
     "tsx": "^4.19.2"
   }
 }
