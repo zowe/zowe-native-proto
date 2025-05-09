@@ -261,27 +261,15 @@ int zds_create_dsn_attr(ZDS *zds, std::string dsn, std::string &response, DS_ATT
   std::string parm = "ALLOC DA('" + dsn + "')";
   if (attributes.alcunit.empty())
   {
-    attributes.alcunit = "CYL"; // Allocation Unit
+    attributes.alcunit = "TRACKS"; // Allocation Unit
   }
   if (attributes.blksize == 0)
   {
-    attributes.blksize = 6160; // Block Size
-  }
-  if (attributes.dsorg.empty())
-  {
-    attributes.dsorg = "PO"; // Data Set Organization
-  }
-  if (attributes.dirblk == 0 && attributes.dsorg == "PO")
-  {
-    attributes.dirblk = 5; // Directory Blocks
+    attributes.blksize = 80; // Block Size
   }
   if (attributes.primary == 0)
   {
     attributes.primary = 1; // Primary Space
-  }
-  if (attributes.recfm.empty())
-  {
-    attributes.recfm = "FB"; // Record Format
   }
   if (attributes.lrecl == 0)
   {
