@@ -28,7 +28,7 @@ export abstract class AbstractRpcClient {
                 this.request({ command: "restoreDataset", ...request }),
             deleteDataset: (request: Omit<ds.DeleteDatasetRequest, "command">): Promise<ds.DeleteDatasetResponse> =>
                 this.request({ command: "deleteDataset", ...request }),
-            createDataset: (request: Omit<ds.CreateDatasetRequest, "command">,): Promise<ds.CreateDatasetResponse> =>
+            createDataset: (request: Omit<ds.CreateDatasetRequest, "command">): Promise<ds.CreateDatasetResponse> =>
                 this.request({ command: "createDataset", ...request }),
             createMember: (request: Omit<ds.CreateMemberRequest, "command">): Promise<ds.CreateMemberResponse> =>
                 this.request({ command: "createMember", ...request }),
