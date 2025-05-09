@@ -17,10 +17,10 @@ export const DataSetDefinition: ICommandDefinition = {
     type: "command",
     name: "data-set",
     aliases: ["ds"],
-    summary: "Create a data set",
+    summary: "Create a data set with attributes",
     examples: [
         {
-            description: "Create a data set",
+            description: "Create a data set with attributes",
             options: '"ibmuser.test.cntl"',
         },
     ],
@@ -30,6 +30,98 @@ export const DataSetDefinition: ICommandDefinition = {
             description: "The data set to create",
             type: "string",
             required: true,
+        },
+    ],
+    options: [
+        {
+            name: "template",
+            description: "Template to use the default attributes of. Ex: PARTITIONED (DEFAULT), SEQUENTIAL, CLASSIC, C, BINARY",
+            type: "string",
+        },
+        {
+            name: "alcunit",
+            description: "Allocation Unit",
+            type: "string",
+        },
+        {
+            name: "blksize",
+            description: "Block Size",
+            type: "number",
+        },
+        {
+            name: "dirblk",
+            description: "Directory Blocks",
+            type: "number",
+        },
+        {
+            name: "dsorg",
+            description: "Data Set Organization",
+            type: "string",
+        },
+        {
+            name: "primary",
+            description: "Primary Space",
+            type: "number",
+        },
+        {
+            name: "recfm",
+            description: "Record Format",
+            type: "string",
+        },
+        {
+            name: "lrecl",
+            description: "Record Length",
+            type: "number",
+        },
+        {
+            name: "dataclass",
+            description: "Data Class",
+            type: "string",
+        },
+        {
+            name: "dev",
+            description: "Device Type",
+            type: "string",
+        },
+        {
+            name: "dsntype",
+            description: "Data Set Type",
+            type: "string",
+        },
+        {
+            name: "mgntclass",
+            description: "Management Class",
+            type: "string",
+        },
+        {
+            name: "dsname",
+            description: "Data Set Name",
+            type: "string",
+        },
+        {
+            name: "avgblk",
+            description: "Average Block Length",
+            type: "number",
+        },
+        {
+            name: "secondary",
+            description: "Secondary Space",
+            type: "number",
+        },
+        {
+            name: "size",
+            description: "Size",
+            type: "number",
+        },
+        {
+            name: "storclass",
+            description: "Storage Class",
+            type: "string",
+        },
+        {
+            name: "vol",
+            description: "Volume Serial",
+            type: "string",
         },
     ],
     profile: { optional: ["ssh"] },

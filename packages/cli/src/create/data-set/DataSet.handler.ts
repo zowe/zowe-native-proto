@@ -11,12 +11,69 @@
 
 import type { IHandlerParameters } from "@zowe/imperative";
 import type { ZSshClient, ds } from "zowe-native-proto-sdk";
+import { CreateDefaults } from "@zowe/zos-files-for-zowe-sdk";
+import type { DatasetAttributes } from "zowe-native-proto-sdk/src/doc/gen/common";
 import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class CreateDatasetHandler extends SshBaseHandler {
     public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<ds.CreateDatasetResponse> {
         const dsname = params.arguments.name;
-        const response = await client.ds.createDataset({ dsname, dstype: "default" });
+        let attributes: Partial<DatasetAttributes> = {};
+
+        const attrKeys: (keyof DatasetAttributes)[] = [
+            "alcunit",
+            "blksize",
+            "dirblk",
+            "dsorg",
+            "primary",
+            "recfm",
+            "lrecl",
+            "dataclass",
+            "dev",
+            "dsntype",
+            "mgntclass",
+            "dsname",
+            "avgblk",
+            "secondary",
+            "size",
+            "storclass",
+            "vol",
+        ];
+
+        switch (params.arguments.template?.toLocaleUpperCase()) {
+        case "PARTITIONED":
+            attributes = CreateDefaults.DATA_SET.PARTITIONED;
+            break;
+        case "SEQUENTIAL":
+            attributes = CreateDefaults.DATA_SET.SEQUENTIAL;
+            break;
+        case "DEFAULT":
+            attributes = CreateDefaults.DATA_SET.SEQUENTIAL;
+            break;
+        case "CLASSIC":
+            attributes = CreateDefaults.DATA_SET.CLASSIC;
+            break;
+        case "C":
+            attributes = CreateDefaults.DATA_SET.C;
+            break;
+        case "BINARY":
+            attributes = CreateDefaults.DATA_SET.BINARY;
+            break;
+        default:
+            break
+        }
+
+        const args = params.arguments as Record<string, unknown>;
+
+        for (const key of attrKeys) {
+            const value = args[key];
+            if (value !== undefined) {
+                // biome-ignore lint/suspicious/noExplicitAny: as any required for attribute mapping
+                (attributes as any)[key] = value;
+            }
+        }
+
+        const response = await client.ds.createDataset({ dsname, attributes });
 
         const dsMessage = `Dataset "${dsname}" created`;
         params.response.data.setMessage(dsMessage);

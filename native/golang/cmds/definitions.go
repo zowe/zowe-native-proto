@@ -14,15 +14,14 @@ package cmds
 // initializeDatasetHandlers initializes Data Set (MVS) command handlers
 func initializeDatasetHandlers(disp *CmdDispatcher) {
 	handlers := map[string]CommandHandler{
-		"deleteDataset":           HandleDeleteDatasetRequest,
-		"listDatasets":            HandleListDatasetsRequest,
-		"listDsMembers":           HandleListDsMembersRequest,
-		"readDataset":             HandleReadDatasetRequest,
-		"restoreDataset":          HandleRestoreDatasetRequest,
-		"writeDataset":            HandleWriteDatasetRequest,
-		"createDataset":           HandleCreateDatasetRequest,
-		"createDatasetAttributes": HandleCreateDatasetRequestAttr,
-		"createMember":            HandleCreateMemberRequest,
+		"deleteDataset":  HandleDeleteDatasetRequest,
+		"listDatasets":   HandleListDatasetsRequest,
+		"listDsMembers":  HandleListDsMembersRequest,
+		"readDataset":    HandleReadDatasetRequest,
+		"restoreDataset": HandleRestoreDatasetRequest,
+		"writeDataset":   HandleWriteDatasetRequest,
+		"createDataset":  HandleCreateDatasetRequest,
+		"createMember":   HandleCreateMemberRequest,
 	}
 	registerHandlers(disp, handlers)
 }

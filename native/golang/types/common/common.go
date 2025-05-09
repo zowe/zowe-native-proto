@@ -54,7 +54,7 @@ type Dataset struct {
 	Migr bool `json:"migr"`
 }
 
-type DatasetAttr struct {
+type DatasetAttributes struct {
 	Alcunit   string `json:"alcunit"`   // Allocation Unit
 	Blksize   int    `json:"blksize"`   // Block Size
 	Dirblk    int    `json:"dirblk"`    // Directory Blocks

@@ -103,18 +103,8 @@ int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data);
  * @param response messages from dynamic allocation (which may be present even when successful requests are made)
  * @return int 0 for success; non zero otherwise
  */
-int zds_create_dsn(ZDS *zds, std::string dsn, std::string &response);
 
-/**
- * @brief Create a data set with attributes
- *
- * @param zds data set returned attributes and error information
- * @param dsn data set name to create
- * @param response messages from dynamic allocation (which may be present even when successful requests are made)
- * @param attributes attributes for data set creation
- * @return int 0 for success; non zero otherwise
- */
-int zds_create_dsn_attr(ZDS *zds, std::string dsn, std::string &response, DS_ATTRIBUTES attributes);
+int zds_create_dsn(ZDS *zds, std::string dsn, std::string &response, DS_ATTRIBUTES attributes);
 
 /**
  * @brief Create a data set

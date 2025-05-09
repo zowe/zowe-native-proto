@@ -244,26 +244,6 @@ func HandleCreateDatasetRequest(conn *utils.StdioConn, jsonData []byte) (result 
 	}
 
 	args := []string{"data-set", "create", request.Dsname}
-	_, err = conn.ExecCmd(args)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to create data set: %v", err)
-	}
-
-	result = ds.CreateDatasetResponse{
-		Success: true,
-		Dsname:  request.Dsname,
-	}
-	return
-}
-
-// HandleCreateDatasetRequestAttr handles a CreateDatasetRequest by invoking the `zowex data-set create-attr` command
-func HandleCreateDatasetRequestAttr(conn *utils.StdioConn, jsonData []byte) (result any, e error) {
-	request, err := utils.ParseCommandRequest[ds.CreateDatasetRequestAttr](jsonData)
-	if err != nil {
-		return nil, err
-	}
-
-	args := []string{"data-set", "create-attr", request.Dsname}
 
 	attr := request.Attributes
 

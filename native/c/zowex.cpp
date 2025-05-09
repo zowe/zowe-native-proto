@@ -225,34 +225,27 @@ int main(int argc, char *argv[])
   // data set verbs
   ZCLIVerb data_set_create("create");
   data_set_create.get_aliases().push_back("cre");
-  data_set_create.set_description("create data set using defaults: DSORG=PO, RECFM=FB, LRECL=80");
+  data_set_create.set_description("create data set");
   data_set_create.set_zcli_verb_handler(handle_data_set_create_dsn);
+  data_set_create.get_options().push_back(return_alcunit);
+  data_set_create.get_options().push_back(return_blksize);
+  data_set_create.get_options().push_back(return_dirblk);
+  data_set_create.get_options().push_back(return_dsorg);
+  data_set_create.get_options().push_back(return_primary);
+  data_set_create.get_options().push_back(return_recfm);
+  data_set_create.get_options().push_back(return_lrecl);
+  data_set_create.get_options().push_back(return_dataclass);
+  data_set_create.get_options().push_back(return_dev);
+  data_set_create.get_options().push_back(return_dsntype);
+  data_set_create.get_options().push_back(return_mgntclass);
+  data_set_create.get_options().push_back(return_dsname);
+  data_set_create.get_options().push_back(return_avgblk);
+  data_set_create.get_options().push_back(return_secondary);
+  data_set_create.get_options().push_back(return_size);
+  data_set_create.get_options().push_back(return_storclass);
+  data_set_create.get_options().push_back(return_vol);
   data_set_create.get_positionals().push_back(data_set_dsn);
   data_set_group.get_verbs().push_back(data_set_create);
-
-  ZCLIVerb data_set_create_attr("create-attr");
-  data_set_create_attr.get_aliases().push_back("cre-attr");
-  data_set_create_attr.set_description("create data set using attributes");
-  data_set_create_attr.set_zcli_verb_handler(handle_data_set_create_dsn_attr);
-  data_set_create_attr.get_options().push_back(return_alcunit);
-  data_set_create_attr.get_options().push_back(return_blksize);
-  data_set_create_attr.get_options().push_back(return_dirblk);
-  data_set_create_attr.get_options().push_back(return_dsorg);
-  data_set_create_attr.get_options().push_back(return_primary);
-  data_set_create_attr.get_options().push_back(return_recfm);
-  data_set_create_attr.get_options().push_back(return_lrecl);
-  data_set_create_attr.get_options().push_back(return_dataclass);
-  data_set_create_attr.get_options().push_back(return_dev);
-  data_set_create_attr.get_options().push_back(return_dsntype);
-  data_set_create_attr.get_options().push_back(return_mgntclass);
-  data_set_create_attr.get_options().push_back(return_dsname);
-  data_set_create_attr.get_options().push_back(return_avgblk);
-  data_set_create_attr.get_options().push_back(return_secondary);
-  data_set_create_attr.get_options().push_back(return_size);
-  data_set_create_attr.get_options().push_back(return_storclass);
-  data_set_create_attr.get_options().push_back(return_vol);
-  data_set_create_attr.get_positionals().push_back(data_set_dsn);
-  data_set_group.get_verbs().push_back(data_set_create_attr);
 
   ZCLIVerb data_set_create_vb("create-vb");
   data_set_create_vb.get_aliases().push_back("cre-vb");
@@ -1338,23 +1331,6 @@ int handle_data_set_create_dsn(ZCLIResult result)
   int rc = 0;
   string dsn = result.get_positional("dsn")->get_value();
   ZDS zds = {0};
-  string response;
-  rc = zds_create_dsn(&zds, dsn, response);
-  if (0 != rc)
-  {
-    cerr << "Error: could not create data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details:\n"
-         << response << endl;
-    return RTNCD_FAILURE;
-  }
-  return handle_data_set_create_member(zds, dsn);
-}
-
-int handle_data_set_create_dsn_attr(ZCLIResult result)
-{
-  int rc = 0;
-  string dsn = result.get_positional("dsn")->get_value();
-  ZDS zds = {0};
   DS_ATTRIBUTES attributes = {0};
 
   if (result.get_option("--alcunit"))
@@ -1427,7 +1403,7 @@ int handle_data_set_create_dsn_attr(ZCLIResult result)
   }
 
   string response;
-  rc = zds_create_dsn_attr(&zds, dsn, response, attributes);
+  rc = zds_create_dsn(&zds, dsn, response, attributes);
   if (0 != rc)
   {
     cerr << "Error: could not create data set: '" << dsn << "' rc: '" << rc << "'" << endl;

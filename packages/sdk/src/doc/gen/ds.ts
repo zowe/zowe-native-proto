@@ -82,24 +82,8 @@ export interface RestoreDatasetRequest extends common.CommandRequest {
    */
   dsname: string;
 }
-/**
- * default: DSORG=PO, RECFM=FB, LRECL=80
- * vb: DSORG=PO, RECFM=VB, LRECL=255
- * adata: DSORG=PO, RECFM=VB, LRECL=32756
- */
 export interface CreateDatasetRequest extends common.CommandRequest {
   command: "createDataset";
-  /**
-   * Dataset name
-   */
-  dsname: string;
-  /**
-   * Type of the dataset to make
-   */
-  dstype: 'default' | 'vb' | 'adata';
-}
-export interface CreateDatasetRequestAttr extends common.CommandRequest {
-  command: "createDatasetAttributes";
   /**
    * Dataset name
    */
@@ -109,7 +93,7 @@ export interface CreateDatasetRequestAttr extends common.CommandRequest {
    * Type string `json:"dstype" tstype:"'default' | 'vb' | 'adata'"`
    * Dataset attributes
    */
-  attributes: any /* common.DatasetAttr */;
+  attributes: any /* common.DatasetAttributes */;
 }
 export interface CreateMemberRequest extends common.CommandRequest {
   command: "createMember";

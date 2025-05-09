@@ -61,7 +61,7 @@ export interface Dataset {
    */
   migr: boolean;
 }
-export interface DatasetAttr {
+export interface DatasetAttributes {
   alcunit: string; // Allocation Unit
   blksize: number /* int */; // Block Size
   dirblk: number /* int */; // Directory Blocks
