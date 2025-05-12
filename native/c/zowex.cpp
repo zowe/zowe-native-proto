@@ -2281,6 +2281,21 @@ int handle_data_set_compress(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
+  // https://www.ibm.com/docs/en/zos/3.1.0?topic=reference-examples-application-program-user-interaction-module-uim
+  // https://www.ibm.com/docs/en/zos/3.1.0?topic=commands-compress-command-dfsmsdss
+  // https://www.ibm.com/docs/en/zos/3.1.0?topic=interface-calling-block-structure
+  // ADRXMAIA
+
+  // //STEP0001 EXEC PGM=ADRDSSU
+  // //SYSPRINT DD SYSOUT=*
+  // //SYSIN DD *
+  // COPY DS(INC( -
+  //   USER.PDS  -
+  //  )) -
+  // REPLACEU -
+  // COMPRESS
+  // /*
+
   // perform compress
   rc = zut_run("IEBCOPY");
   if (RTNCD_SUCCESS != rc)
