@@ -10,12 +10,22 @@
  */
 
 import { posix } from "node:path";
+import { Readable, Stream, Writable } from "node:stream";
 import { ImperativeError, Logger } from "@zowe/imperative";
 import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
+import { Base64Decode, Base64Encode } from "base64-stream";
 import { Client, type ClientChannel } from "ssh2";
 import { AbstractRpcClient } from "./AbstractRpcClient";
 import { ZSshUtils } from "./ZSshUtils";
-import type { ClientOptions, CommandRequest, CommandResponse, RpcRequest, RpcResponse, StatusMessage } from "./doc";
+import type {
+    ClientOptions,
+    CommandRequest,
+    CommandResponse,
+    RpcNotification,
+    RpcRequest,
+    RpcResponse,
+    StatusMessage,
+} from "./doc";
 
 type PromiseResolve<T> = (value: T | PromiseLike<T>) => void;
 // biome-ignore lint/suspicious/noExplicitAny: Promise reject type uses any
@@ -31,6 +41,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
     private mSshStream: ClientChannel;
     private mPartialStderr = "";
     private mPartialStdout = "";
+    private mPendingStreamMap: Map<number, Stream> = new Map();
     private mPromiseMap: Map<number, { resolve: PromiseResolve<CommandResponse>; reject: PromiseReject }> = new Map();
     private mRequestId = 0;
 
@@ -87,6 +98,10 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                 params: rest,
                 id: ++this.mRequestId,
             };
+            if ("stream" in request && request.stream instanceof Stream) {
+                this.mPendingStreamMap.set(rpcRequest.id, request.stream);
+                rpcRequest.params.stream = rpcRequest.id;
+            }
             timeoutId = setTimeout(() => {
                 this.mPromiseMap.delete(rpcRequest.id);
                 reject(new ImperativeError({ msg: "Request timed out", errorCode: "ETIMEDOUT" }));
@@ -172,7 +187,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
 
     private requestEnd(data: string, success = true) {
         Logger.getAppLogger().trace("Received response: %s", data);
-        let response: RpcResponse;
+        let response: RpcResponse | RpcNotification;
         try {
             response = JSON.parse(data);
         } catch (err) {
@@ -181,15 +196,26 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
             this.mErrHandler(new Error(errMsg));
             return;
         }
-        if (!this.mPromiseMap.has(response.id)) {
-            const errMsg = `Missing promise for response ID: ${response.id}`;
+        const responseId: number = "id" in response ? response.id : response.params?.id;
+        if (!this.mPromiseMap.has(responseId)) {
+            const errMsg = `Missing promise for response ID: ${responseId}`;
             Logger.getAppLogger().error(errMsg);
             this.mErrHandler(new Error(errMsg));
             return;
         }
+        if ("method" in response) {
+            const pendingStream = this.mPendingStreamMap.get(responseId);
+            if (response.method === "sendStream" && pendingStream instanceof Readable) {
+                this.uploadStream(pendingStream, response.params);
+            } else if (response.method === "receiveStream" && pendingStream instanceof Writable) {
+                this.downloadStream(pendingStream, response.params);
+            }
+            this.mPendingStreamMap.delete(responseId);
+            return;
+        }
         if (response.error != null) {
-            Logger.getAppLogger().error(`Error for response ID: ${response.id}\n${JSON.stringify(response.error)}`);
-            this.mPromiseMap.get(response.id).reject(
+            Logger.getAppLogger().error(`Error for response ID: ${responseId}\n${JSON.stringify(response.error)}`);
+            this.mPromiseMap.get(responseId).reject(
                 new ImperativeError({
                     msg: response.error.message,
                     errorCode: response.error.code.toString(),
@@ -197,8 +223,34 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                 }),
             );
         } else {
-            this.mPromiseMap.get(response.id).resolve({ success, ...response.result });
+            this.mPromiseMap.get(responseId).resolve({ success, ...response.result });
         }
-        this.mPromiseMap.delete(response.id);
+        this.mPromiseMap.delete(responseId);
+    }
+
+    private uploadStream(readStream: Readable, params: { pipePath: string }): Promise<void> {
+        return new Promise((resolve, reject) => {
+            this.mSshClient.exec(`cat > ${params.pipePath}`, (err, stream) => {
+                if (err != null) {
+                    reject(err);
+                    return;
+                }
+                readStream.pipe(new Base64Encode()).pipe(stream.stdin);
+                readStream.on("end", resolve);
+            });
+        });
+    }
+
+    private downloadStream(writeStream: Writable, params: { pipePath: string }): Promise<void> {
+        return new Promise((resolve, reject) => {
+            this.mSshClient.exec(`cat ${params.pipePath}`, (err, stream) => {
+                if (err != null) {
+                    reject(err);
+                    return;
+                }
+                stream.stdout.pipe(new Base64Decode()).pipe(writeStream);
+                stream.stdout.on("end", resolve);
+            });
+        });
     }
 }
