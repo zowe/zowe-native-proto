@@ -342,8 +342,8 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe)
     return RTNCD_FAILURE;
   }
 
-  ofstream out(file.c_str(), zusf->encoding_opts.data_type == eDataTypeBinary ? ios::out | ios::binary : ios::out);
-  if (!out.is_open())
+  int out_fd = open(file.c_str(), O_WRONLY | O_CREAT | O_TRUNC);
+  if (out_fd == -1)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open '%s'", file.c_str());
     return RTNCD_FAILURE;
@@ -357,13 +357,12 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe)
   {
     int decoded_len;
     unsigned char *decoded = unbase64(&buf[0], nread, &decoded_len);
-    std::string temp(decoded, decoded + decoded_len);
+    const char *temp = (const char *)decoded;
     if (hasEncoding)
     {
       try
       {
-        const auto bytes_with_encoding = zut_encode(temp, "UTF-8", codepage, zusf->diag);
-        temp = bytes_with_encoding;
+        temp = zut_encode(temp, &decoded_len, "UTF-8", codepage, zusf->diag);
       }
       catch (std::exception &e)
       {
@@ -371,10 +370,10 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe)
         return RTNCD_FAILURE;
       }
     }
-    out << temp;
+    write(out_fd, temp, decoded_len);
   }
 
-  out.close();
+  close(out_fd);
   close(fifo_fd);
 
   if (stat(file.c_str(), &file_stats) == -1)
