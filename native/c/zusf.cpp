@@ -33,7 +33,7 @@
 #include "zdyn.h"
 #include "zusftype.h"
 #include "zut.hpp"
-#include "zb64.hpp"
+#include "extern/zb64.h"
 #include "iefzb4d2.h"
 #ifndef _XPLATFORM_SOURCE
 #define _XPLATFORM_SOURCE
@@ -355,8 +355,9 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe)
 
   while ((nread = read(fifo_fd, &buf[0], CHUNK_SIZE)) > 0)
   {
-    std::string chunk(&buf[0], nread);
-    std::string temp = base64::base64_decode(chunk);
+    int decoded_len;
+    unsigned char *decoded = unbase64(&buf[0], nread, &decoded_len);
+    std::string temp(decoded, decoded + decoded_len);
     if (hasEncoding)
     {
       try
