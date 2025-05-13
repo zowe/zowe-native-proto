@@ -33,6 +33,7 @@
 #include "zdyn.h"
 #include "zusftype.h"
 #include "zut.hpp"
+#include "zb64.hpp"
 #include "iefzb4d2.h"
 #ifndef _XPLATFORM_SOURCE
 #define _XPLATFORM_SOURCE
@@ -268,16 +269,12 @@ int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data)
     }
 
     std::string temp = data;
-    cout << "Decoded length: " << temp.length() << endl;
-    cout << "decoded: " << temp << std::endl;
     if (hasEncoding)
     {
       try
       {
         const auto bytes_with_encoding = zut_encode(temp, "UTF-8", codepage, zusf->diag);
         temp = bytes_with_encoding;
-        cout << "Converted length: " << temp.length() << endl;
-        cout << "converted: " << temp << std::endl;
       }
       catch (std::exception &e)
       {
@@ -352,42 +349,14 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe)
     return RTNCD_FAILURE;
   }
 
-  Base64Decoder decoder;
   const size_t CHUNK_SIZE = 32768;
   std::vector<char> buf(CHUNK_SIZE);
   ssize_t nread;
 
   while ((nread = read(fifo_fd, &buf[0], CHUNK_SIZE)) > 0)
   {
-    cout << "Read " << nread << " bytes from pipe" << endl;
     std::string chunk(&buf[0], nread);
-    cout << "encoded: " << chunk << std::endl;
-    std::vector<unsigned char> decoded = decoder.decode(chunk);
-    std::string temp(decoded.begin(), decoded.end());
-    cout << "Decoded length: " << temp.length() << endl;
-    cout << "decoded: " << temp << std::endl;
-    if (hasEncoding)
-    {
-      try
-      {
-        const auto bytes_with_encoding = zut_encode(temp, "UTF-8", codepage, zusf->diag);
-        temp = bytes_with_encoding;
-        cout << "Converted length: " << temp.length() << endl;
-        cout << "converted: " << temp << std::endl;
-      }
-      catch (std::exception &e)
-      {
-        zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to convert input data from UTF-8 to %s", codepage.c_str());
-        return RTNCD_FAILURE;
-      }
-    }
-    out << temp;
-  }
-
-  std::vector<unsigned char> final_decoded = decoder.flush();
-  if (!final_decoded.empty())
-  {
-    std::string temp(final_decoded.begin(), final_decoded.end());
+    std::string temp = base64::base64_decode(chunk);
     if (hasEncoding)
     {
       try
