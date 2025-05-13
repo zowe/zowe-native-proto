@@ -153,14 +153,13 @@ func HandleWriteFileRequest(conn *utils.StdioConn, params []byte) (result any, e
 		}()
 
 		out, err := cmd.CombinedOutput()
-		utils.LogError("Command output: %s", string(out))
 		if err != nil {
 			e = fmt.Errorf("[WriteFileRequest] Error piping stdin to command: %s", string(out))
 			conn.LastExitCode = cmd.ProcessState.ExitCode()
 			return
 		}
 	} else {
-		pipePath := fmt.Sprintf("/tmp/zowe-native-proto_%d-%d_fifo", os.Getpid(), request.StreamId)
+		pipePath := fmt.Sprintf("/tmp/zowe-native-proto_%d-%d-%d_fifo", os.Geteuid(), os.Getpid(), request.StreamId)
 		os.Remove(pipePath)
 
 		err := syscall.Mkfifo(pipePath, 0600)
@@ -190,14 +189,11 @@ func HandleWriteFileRequest(conn *utils.StdioConn, params []byte) (result any, e
 		if len(request.Etag) > 0 {
 			args = append(args, "--etag", request.Etag)
 		}
-		utils.LogError("Executing command: %v", args)
 		out, err = conn.ExecCmd(args)
-		utils.LogError("Command output: %s", string(out))
 		if err != nil {
 			return nil, fmt.Errorf("Error executing command: %v", err)
 		}
 
-		utils.LogError("Deleting named pipe: %s", pipePath)
 		err = os.Remove(pipePath)
 		if err != nil {
 			e = fmt.Errorf("[WriteFileRequest] Error deleting named pipe: %v", err)
