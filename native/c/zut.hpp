@@ -45,6 +45,7 @@ uint32_t zut_calc_adler32_checksum(const std::string &input);
 size_t zut_iconv(iconv_t cd, ZConvData &data, ZDIAG &diag);
 std::string zut_build_etag(const size_t mtime, const size_t byte_size);
 std::string zut_encode(const std::string &input_str, const std::string &from_encoding, const std::string &to_encoding, ZDIAG &diag);
+const char *zut_encode(const char *input_str, int *input_size, const std::string &from_encoding, const std::string &to_encoding, ZDIAG &diag);
 std::string zut_format_as_csv(std::vector<std::string> &fields);
 std::string &zut_rtrim(std::string &s, const char *t = " ");
 std::string &zut_ltrim(std::string &s, const char *t = " ");
