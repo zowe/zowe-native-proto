@@ -98,14 +98,17 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                 params: rest,
                 id: ++this.mRequestId,
             };
-            if ("stream" in request && request.stream instanceof Stream) {
-                this.mPendingStreamMap.set(rpcRequest.id, request.stream);
-                rpcRequest.params.stream = rpcRequest.id;
-            }
             timeoutId = setTimeout(() => {
                 this.mPromiseMap.delete(rpcRequest.id);
                 reject(new ImperativeError({ msg: "Request timed out", errorCode: "ETIMEDOUT" }));
             }, this.mResponseTimeout);
+            if ("stream" in request && request.stream instanceof Stream) {
+                this.mPendingStreamMap.set(
+                    rpcRequest.id,
+                    request.stream.on("data", () => timeoutId?.refresh()),
+                );
+                rpcRequest.params.stream = rpcRequest.id;
+            }
             this.mPromiseMap.set(rpcRequest.id, { resolve, reject });
             const requestStr = JSON.stringify(rpcRequest);
             Logger.getAppLogger().trace("Sending request: %s", requestStr);
