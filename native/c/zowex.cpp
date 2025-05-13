@@ -514,6 +514,7 @@ int main(int argc, char *argv[])
   uss_view.get_options().push_back(encoding_option);
   uss_view.get_options().push_back(response_format_bytes);
   uss_view.get_options().push_back(return_etag);
+  uss_view.get_options().push_back(pipe_path);
   uss_group.get_verbs().push_back(uss_view);
 
   ZCLIVerb uss_write("write");
@@ -1675,29 +1676,42 @@ int handle_uss_view(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  string response;
-  rc = zusf_read_from_uss_file(&zusf, uss_file, response);
-  if (0 != rc)
+  auto *pipe_path = result.get_option("--pipe-path");
+  if (pipe_path != nullptr && pipe_path->is_found())
   {
-    cerr << "Error: could not view USS file: '" << uss_file << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details:\n"
-         << zusf.diag.e_msg << endl
-         << response << endl;
-    return RTNCD_FAILURE;
-  }
+    rc = zusf_read_from_uss_file_streamed(&zusf, uss_file, pipe_path->get_value());
 
-  if (result.get_option_value("--return-etag") == "true")
-  {
-    cout << "etag: " << zut_build_etag(file_stats.st_mtime, file_stats.st_size) << endl;
-    cout << "data: ";
-  }
-  if (hasEncoding && result.get_option_value("--response-format-bytes") == "true")
-  {
-    zut_print_string_as_bytes(response);
+    if (result.get_option_value("--return-etag") == "true")
+    {
+      cout << zut_build_etag(file_stats.st_mtime, file_stats.st_size) << endl;
+    }
   }
   else
   {
-    cout << response << endl;
+    string response;
+    rc = zusf_read_from_uss_file(&zusf, uss_file, response);
+    if (0 != rc)
+    {
+      cerr << "Error: could not view USS file: '" << uss_file << "' rc: '" << rc << "'" << endl;
+      cerr << "  Details:\n"
+           << zusf.diag.e_msg << endl
+           << response << endl;
+      return RTNCD_FAILURE;
+    }
+
+    if (result.get_option_value("--return-etag") == "true")
+    {
+      cout << "etag: " << zut_build_etag(file_stats.st_mtime, file_stats.st_size) << endl;
+      cout << "data: ";
+    }
+    if (hasEncoding && result.get_option_value("--response-format-bytes") == "true")
+    {
+      zut_print_string_as_bytes(response);
+    }
+    else
+    {
+      cout << response << endl;
+    }
   }
 
   return rc;
