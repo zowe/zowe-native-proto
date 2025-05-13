@@ -228,6 +228,68 @@ int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
 }
 
 /**
+ * Reads data from a USS file.
+ *
+ * @param zusf pointer to a ZUSF object
+ * @param file name of the USS file
+ * @param pipe name of the output pipe
+ *
+ * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
+ */
+int zusf_read_from_uss_file_streamed(ZUSF *zusf, string file, string pipe)
+{
+  FILE *fp = fopen(file.c_str(), zusf->encoding_opts.data_type == eDataTypeBinary ? "rb" : "r");
+  if (!fp)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open file '%s'", file.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  int fifo_fd = open(pipe.c_str(), O_WRONLY);
+  if (fifo_fd == -1)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open output pipe '%s'", pipe.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  // TODO(traeok): Finish support for encoding auto-detection
+  // char tagged_encoding[16] = {0};
+  // ssize_t xattr_result = getxattr(file.c_str(), "system.filetag", &tagged_encoding);
+
+  const auto hasEncoding = zusf->encoding_opts.data_type == eDataTypeText && strlen(zusf->encoding_opts.codepage) > 0;
+  const auto codepage = string(zusf->encoding_opts.codepage);
+
+  const size_t CHUNK_SIZE = 32768 * 3 / 4;
+  std::vector<char> buf(CHUNK_SIZE);
+  ssize_t nread;
+
+  while ((nread = fread(&buf[0], 1, CHUNK_SIZE, fp)) > 0)
+  {
+    int encoded_len = nread;
+    const char *temp = &buf[0];
+    if (hasEncoding)
+    {
+      try
+      {
+        temp = zut_encode(temp, &encoded_len, codepage, "UTF-8", zusf->diag);
+      }
+      catch (std::exception &e)
+      {
+        zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to convert input data from UTF-8 to %s", codepage.c_str());
+        return RTNCD_FAILURE;
+      }
+    }
+    char *encoded = base64(temp, encoded_len + 1, &encoded_len);
+    write(fifo_fd, encoded, encoded_len);
+  }
+
+  fclose(fp);
+  close(fifo_fd);
+
+  return RTNCD_SUCCESS;
+}
+
+/**
  * Writes data to a USS file.
  *
  * @param zusf pointer to a ZUSF object
@@ -335,17 +397,17 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe)
     }
   }
 
-  int fifo_fd = open(pipe.c_str(), O_RDONLY);
-  if (fifo_fd == -1)
-  {
-    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open input pipe '%s'", pipe.c_str());
-    return RTNCD_FAILURE;
-  }
-
   FILE *fp = fopen(file.c_str(), zusf->encoding_opts.data_type == eDataTypeBinary ? "wb" : "w");
   if (!fp)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open '%s'", file.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  int fifo_fd = open(pipe.c_str(), O_RDONLY);
+  if (fifo_fd == -1)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open input pipe '%s'", pipe.c_str());
     return RTNCD_FAILURE;
   }
 
