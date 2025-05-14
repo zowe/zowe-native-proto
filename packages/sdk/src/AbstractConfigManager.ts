@@ -100,12 +100,10 @@ export abstract class AbstractConfigManager {
         );
 
         if (result.description === "Custom SSH Host") {
-            console.log("test")
             const createNewConfig = await this.createNewProfile(result.label);
             if (!createNewConfig) return undefined;
             this.selectedProfile = createNewConfig;
         } else if (result.label === "$(plus) Add New SSH Host...") {
-            console.log("test")
             const createNewConfig = await this.createNewProfile();
             if (!createNewConfig) return undefined;
             this.selectedProfile = createNewConfig;
@@ -303,7 +301,6 @@ export abstract class AbstractConfigManager {
             const newConfig: IConfig = await ConfigBuilder.build(impConfig, global, opts);
             config.api.layers.merge(newConfig);
             await config.save(false);
-            console.log("test1")
         } catch (err) {}
     }
 
@@ -573,7 +570,7 @@ export abstract class AbstractConfigManager {
                 });
             }
         } else {
-            if (!configApi.profiles.defaultGet("ssh")) configApi.profiles.defaultSet("ssh", selectedConfig?.name!);
+            if (!configApi.profiles.defaultGet("ssh") || !configApi.layers.get().properties.defaults["ssh"]) configApi.profiles.defaultSet("ssh", selectedConfig?.name!);
             configApi.profiles.set(selectedConfig?.name!, config);
         }
 
