@@ -469,9 +469,7 @@ export abstract class AbstractConfigManager {
 
                     if (result) {
                         this.validationResult = {};
-                        if (Object.keys(result).length >= 1) {
-                            this.selectedProfile = { ...this.selectedProfile, ...result };
-                        }
+                        this.selectedProfile = { ...this.selectedProfile, ...result, privateKey };
                         return;
                     }
                 }
