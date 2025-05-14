@@ -13,7 +13,7 @@ import { readFileSync } from "node:fs";
 import * as path from "node:path";
 import { ProfileConstants } from "@zowe/core-for-zowe-sdk";
 import {
-    Config,
+    type Config,
     ConfigBuilder,
     ConfigSchema,
     ConfigUtils,
@@ -274,14 +274,14 @@ export abstract class AbstractConfigManager {
     // Cloned method
     private async createZoweSchema(global: boolean): Promise<void> {
         try {
-            const homeDir = ConfigUtils.getZoweDir()
+            const homeDir = ConfigUtils.getZoweDir();
 
             const user = false;
             const workspaceDir = this.getCurrentDir();
 
             const config = this.mProfilesCache.getTeamConfig();
 
-            if(config.layerExists(global ? homeDir : workspaceDir)) return;
+            if (config.layerExists(global ? homeDir : workspaceDir)) return;
 
             config.api.layers.activate(user, global);
 
@@ -570,7 +570,8 @@ export abstract class AbstractConfigManager {
                 });
             }
         } else {
-            if (!configApi.profiles.defaultGet("ssh") || !configApi.layers.get().properties.defaults["ssh"]) configApi.profiles.defaultSet("ssh", selectedConfig?.name!);
+            if (!configApi.profiles.defaultGet("ssh") || !configApi.layers.get().properties.defaults["ssh"])
+                configApi.profiles.defaultSet("ssh", selectedConfig?.name!);
             configApi.profiles.set(selectedConfig?.name!, config);
         }
 
