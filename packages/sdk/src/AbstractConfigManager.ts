@@ -100,11 +100,13 @@ export abstract class AbstractConfigManager {
         );
 
         if (result.description === "Custom SSH Host") {
-            const createNewConfig = await this.createNewConfig(result.label);
+            console.log("test")
+            const createNewConfig = await this.createNewProfile(result.label);
             if (!createNewConfig) return undefined;
             this.selectedProfile = createNewConfig;
         } else if (result.label === "$(plus) Add New SSH Host...") {
-            const createNewConfig = await this.createNewConfig();
+            console.log("test")
+            const createNewConfig = await this.createNewProfile();
             if (!createNewConfig) return undefined;
             this.selectedProfile = createNewConfig;
         }
@@ -192,15 +194,8 @@ export abstract class AbstractConfigManager {
         };
     }
 
-    private async createNewConfig(knownConfigOpts?: string): Promise<ISshConfigExt | undefined> {
+    private async createNewProfile(knownConfigOpts?: string): Promise<ISshConfigExt | undefined> {
         const SshProfile: ISshConfigExt = {};
-
-        //check if project layer exists, if it doesnt create one, but if no workspace then create it as global
-
-        const workspaceDirPath = this.getCurrentDir();
-        if (workspaceDirPath !== undefined && !this.mProfilesCache.getTeamConfig().layerExists(workspaceDirPath)) {
-            await this.createZoweSchema(false);
-        }
 
         let sshResponse: string | undefined;
 
@@ -281,13 +276,14 @@ export abstract class AbstractConfigManager {
     // Cloned method
     private async createZoweSchema(global: boolean): Promise<void> {
         try {
+            const homeDir = ConfigUtils.getZoweDir()
+
             const user = false;
             const workspaceDir = this.getCurrentDir();
 
-            const config = await Config.load("zowe", {
-                homeDir: ConfigUtils.getZoweDir(),
-                projectDir: workspaceDir,
-            });
+            const config = this.mProfilesCache.getTeamConfig();
+
+            if(config.layerExists(global ? homeDir : workspaceDir)) return;
 
             config.api.layers.activate(user, global);
 
@@ -307,6 +303,7 @@ export abstract class AbstractConfigManager {
             const newConfig: IConfig = await ConfigBuilder.build(impConfig, global, opts);
             config.api.layers.merge(newConfig);
             await config.save(false);
+            console.log("test1")
         } catch (err) {}
     }
 
