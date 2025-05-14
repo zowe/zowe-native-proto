@@ -570,7 +570,7 @@ export abstract class AbstractConfigManager {
                 });
             }
         } else {
-            if (!configApi.profiles.defaultGet("ssh") || !configApi.layers.get().properties.defaults["ssh"])
+            if (!configApi.profiles.defaultGet("ssh") || !configApi.layers.get().properties.defaults.ssh)
                 configApi.profiles.defaultSet("ssh", selectedConfig?.name!);
             configApi.profiles.set(selectedConfig?.name!, config);
         }
