@@ -182,7 +182,7 @@ static void ecbs_wait(
 
     ECBS_WAIT(events, ecbList);
 
-    oEcb.word &= ~(0x80000000);
+    oEcb.word &= ~0x80000000;
     ecbList[ecbListCount - 1] = oEcb.ecb;
   }
 
