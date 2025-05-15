@@ -123,7 +123,7 @@ int zds_read_from_dsn(ZDS *zds, string dsn, string &response)
   return 0;
 }
 
-int zds_write_to_dd(ZDS *zds, string ddname, string &data)
+int zds_write_to_dd(ZDS *zds, string ddname, string data)
 {
   ddname = "DD:" + ddname;
   ofstream out(ddname.c_str());

@@ -69,6 +69,7 @@ int handle_log_view(ZCLIResult);
 int handle_tool_convert_dsect(ZCLIResult);
 int handle_tool_dynalloc(ZCLIResult);
 int handle_tool_display_symbol(ZCLIResult);
+int handle_data_set_compress(ZCLIResult);
 int handle_tool_search(ZCLIResult);
 int handle_tool_amblist(ZCLIResult);
 int handle_tool_run(ZCLIResult);
@@ -243,6 +244,15 @@ int main(int argc, char *argv[])
   data_set_write.get_options().push_back(etag);
   data_set_write.get_options().push_back(etag_only);
   data_set_group.get_verbs().push_back(data_set_write);
+
+  ZCLIVerb data_set_compress("compress");
+  data_set_compress.set_description("compress data set");
+  data_set_compress.set_zcli_verb_handler(handle_data_set_compress);
+  ZCLIPositional compress_dsn("dsn");
+  compress_dsn.set_description("data set to compress");
+  compress_dsn.set_required(true);
+  data_set_compress.get_positionals().push_back(compress_dsn);
+  data_set_group.get_verbs().push_back(data_set_compress);
 
   ZCLIVerb data_set_delete("delete");
   data_set_delete.get_aliases().push_back("del");
@@ -2201,6 +2211,121 @@ int handle_tool_amblist(ZCLIResult result)
     return RTNCD_FAILURE;
   }
   cout << output << endl;
+
+  vector<string> free_dds;
+  free_dds.push_back("free dd(newdd)");
+  free_dds.push_back("free dd(outdd)");
+  free_dds.push_back("free dd(sysin)");
+
+  rc = loop_dynalloc(free_dds);
+  if (RTNCD_SUCCESS != rc)
+  {
+    return RTNCD_FAILURE;
+  }
+
+  return RTNCD_SUCCESS;
+}
+
+int handle_data_set_compress(ZCLIResult result)
+{
+  int rc = 0;
+
+  string dsn(result.get_positional("dsn")->get_value());
+
+  transform(dsn.begin(), dsn.end(), dsn.begin(), ::toupper); // upper case
+
+  bool is_pds = false;
+
+  string dsn_formatted = "//'" + dsn + "'";
+  FILE *dir = fopen(dsn_formatted.c_str(), "r");
+  if (dir)
+  {
+    fldata_t file_info = {0};
+    char file_name[64] = {0};
+    if (0 == fldata(dir, file_name, &file_info))
+    {
+      if (file_info.__dsorgPDSdir && !file_info.__dsorgPDSE)
+      {
+        is_pds = true;
+      }
+      fclose(dir);
+    }
+  }
+
+  if (!is_pds)
+  {
+    cerr << "Error: data set'" << dsn << "' is not a PDS'" << endl;
+    return RTNCD_FAILURE;
+  }
+
+  // perform dynalloc
+  vector<string> dds;
+  dds.push_back("alloc dd(a) da('" + dsn + "') shr");
+  dds.push_back("alloc dd(b) da('" + dsn + "') shr");
+  dds.push_back("alloc dd(sysprint) lrecl(80) recfm(f,b) blksize(80)");
+  dds.push_back("alloc dd(sysin) lrecl(80) recfm(f,b) blksize(80)");
+
+  rc = loop_dynalloc(dds);
+  if (RTNCD_SUCCESS != rc)
+  {
+    return RTNCD_FAILURE;
+  }
+
+  // write control statements
+  ZDS zds = {0};
+  zds_write_to_dd(&zds, "sysin", "        COPY OUTDD=B,INDD=A");
+  if (0 != rc)
+  {
+    cerr << "Error: could not write to dd: '" << "sysin" << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zds.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
+  // https://www.ibm.com/docs/en/zos/3.1.0?topic=reference-examples-application-program-user-interaction-module-uim
+  // https://www.ibm.com/docs/en/zos/3.1.0?topic=commands-compress-command-dfsmsdss
+  // https://www.ibm.com/docs/en/zos/3.1.0?topic=interface-calling-block-structure
+  // ADRXMAIA
+
+  // //STEP0001 EXEC PGM=ADRDSSU
+  // //SYSPRINT DD SYSOUT=*
+  // //SYSIN DD *
+  // COPY DS(INC( -
+  //   USER.PDS  -
+  //  )) -
+  // REPLACEU -
+  // COMPRESS
+  // /*
+
+  // perform compress
+  rc = zut_run("IEBCOPY");
+  if (RTNCD_SUCCESS != rc)
+  {
+    cerr << "Error: could error invoking IEBCOPY rc: '" << rc << "'" << endl;
+  }
+
+  // read output from amblist
+  string output;
+  rc = zds_read_from_dd(&zds, "sysprint", output);
+  if (0 != rc)
+  {
+    cerr << "Error: could not read from dd: '" << "sysprint" << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zds.diag.e_msg << endl;
+    cerr << output << endl;
+    return RTNCD_FAILURE;
+  }
+  cout << "Data set '" << dsn << "' compressed" << endl;
+
+  vector<string> free_dds;
+  free_dds.push_back("free dd(a)");
+  free_dds.push_back("free dd(b)");
+  free_dds.push_back("free dd(sysin)");
+  free_dds.push_back("free dd(sysprint)");
+
+  rc = loop_dynalloc(free_dds);
+  if (RTNCD_SUCCESS != rc)
+  {
+    return RTNCD_FAILURE;
+  }
 
   return RTNCD_SUCCESS;
 }
