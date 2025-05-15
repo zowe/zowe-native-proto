@@ -29,7 +29,7 @@ func HandleListJobsRequest(conn *utils.StdioConn, params []byte) (result any, e 
 		return nil, err
 	}
 
-	args := []string{"job", "list", "--warn", "false", "--rfc", "true"}
+	args := []string{"job", "list", "--no-warn", "--rfc"}
 	if len(request.Owner) != 0 {
 		args = append(args, "--owner", request.Owner)
 	}
@@ -77,7 +77,7 @@ func HandleListSpoolsRequest(conn *utils.StdioConn, params []byte) (result any, 
 		return nil, err
 	}
 
-	args := []string{"job", "list-files", request.JobId, "--rfc", "true"}
+	args := []string{"job", "list-files", request.JobId, "--rfc"}
 
 	out, err := conn.ExecCmd(args)
 	if err != nil {
@@ -122,7 +122,7 @@ func HandleReadSpoolRequest(conn *utils.StdioConn, params []byte) (result any, e
 	if len(request.Encoding) == 0 {
 		request.Encoding = fmt.Sprintf("IBM-%d", utils.DefaultEncoding)
 	}
-	args := []string{"job", "view-file", request.JobId, strconv.Itoa(request.DsnKey), "--encoding", request.Encoding, "--rfb", "true"}
+	args := []string{"job", "view-file", request.JobId, strconv.Itoa(request.DsnKey), "--encoding", request.Encoding, "--rfb"}
 	out, err := conn.ExecCmd(args)
 	if err != nil {
 		e = fmt.Errorf("Failed to read spool: %v", err)
@@ -167,7 +167,7 @@ func HandleGetStatusRequest(conn *utils.StdioConn, params []byte) (result any, e
 		return nil, err
 	}
 
-	args := []string{"job", "view-status", request.JobId, "--rfc", "true"}
+	args := []string{"job", "view-status", request.JobId, "--rfc"}
 	out, err := conn.ExecCmd(args)
 	if err != nil {
 		e = fmt.Errorf("Failed to get status: %v", err)

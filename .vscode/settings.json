@@ -138,5 +138,8 @@
   "[typescript]": {
     "editor.defaultFormatter": "biomejs.biome"
   },
+  "[cpp]": {
+    "editor.defaultFormatter": "ms-vscode.cpptools"
+  },
   "files.eol": "\n"
 }
