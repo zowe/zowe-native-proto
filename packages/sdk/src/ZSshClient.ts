@@ -11,6 +11,7 @@
 
 import { posix } from "node:path";
 import { Readable, Stream, Writable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import { ImperativeError, Logger } from "@zowe/imperative";
 import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Base64Decode, Base64Encode } from "base64-stream";
@@ -37,6 +38,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
     private mErrHandler: ClientOptions["onError"];
     private mResponseTimeout: number;
     private mServerInfo: { checksums?: Record<string, string> };
+    private mServerPath: string;
     private mSshClient: Client;
     private mSshStream: ClientChannel;
     private mPartialStderr = "";
@@ -54,6 +56,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
         const client = new ZSshClient();
         client.mErrHandler = opts.onError ?? console.error;
         client.mResponseTimeout = opts.responseTimeout ? opts.responseTimeout * 1000 : 60e3;
+        client.mServerPath = opts.serverPath ?? ZSshClient.DEFAULT_SERVER_PATH;
         client.mSshClient = new Client();
         client.mSshStream = await new Promise((resolve, reject) => {
             client.mSshClient.on("error", (err) => {
@@ -61,7 +64,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                 reject(err);
             });
             client.mSshClient.on("ready", async () => {
-                const zowedBin = posix.join(opts.serverPath ?? ZSshClient.DEFAULT_SERVER_PATH, "zowed");
+                const zowedBin = posix.join(client.mServerPath, "zowed");
                 const zowedArgs = ["-num-workers", `${opts.numWorkers ?? 10}`];
                 client.execAsync(zowedBin, ...zowedArgs).then(resolve, reject);
             });
@@ -105,7 +108,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
             if ("stream" in request && request.stream instanceof Stream) {
                 this.mPendingStreamMap.set(
                     rpcRequest.id,
-                    request.stream.on("data", () => timeoutId?.refresh()),
+                    request.stream.on("keepAlive", () => timeoutId?.refresh()),
                 );
                 rpcRequest.params.stream = rpcRequest.id;
             }
@@ -238,22 +241,28 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                     reject(err);
                     return;
                 }
-                readStream.pipe(new Base64Encode()).pipe(stream.stdin);
-                readStream.on("end", resolve);
+                readStream.on("data", () => readStream.emit("keepAlive"));
+                pipeline(readStream, new Base64Encode(), stream.stdin).then(resolve, reject);
             });
         });
     }
 
     private downloadStream(writeStream: Writable, params: { pipePath: string }): Promise<void> {
         return new Promise((resolve, reject) => {
-            this.mSshClient.exec(`cat ${params.pipePath}`, (err, stream) => {
-                if (err != null) {
-                    reject(err);
-                    return;
-                }
-                stream.stdout.pipe(new Base64Decode()).pipe(writeStream);
-                stream.stdout.on("end", resolve);
-            });
+            this.mSshClient.exec(
+                // `${this.mServerPath}/zowex --pipe ${params.pipePath}`,
+                // `${this.mServerPath}/zowed -pipe ${params.pipePath}`,
+                `cat ${params.pipePath}`,
+                // { pty: true },
+                async (err, stream) => {
+                    if (err != null) {
+                        reject(err);
+                        return;
+                    }
+                    stream.stdout.on("data", () => writeStream.emit("keepAlive"));
+                    pipeline(stream.stdout, new Base64Decode(), writeStream).then(resolve, reject);
+                },
+            );
         });
     }
 }

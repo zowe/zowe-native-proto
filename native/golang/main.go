@@ -16,6 +16,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"time"
@@ -28,6 +29,7 @@ import (
 // parseOptions parses command-line flags and returns the parsed options
 func parseOptions() t.IoserverOptions {
 	numWorkersFlag := flag.Int("num-workers", 10, "Number of worker threads for concurrent processing")
+	pipeFlag := flag.String("pipe", "", "Path to the named pipe for reading Base64 data")
 	verboseFlag := flag.Bool("verbose", false, "Enable verbose logging")
 
 	flag.Parse()
@@ -38,6 +40,7 @@ func parseOptions() t.IoserverOptions {
 
 	return t.IoserverOptions{
 		NumWorkers: *numWorkersFlag,
+		Pipe:       *pipeFlag,
 		Verbose:    *verboseFlag,
 	}
 }
@@ -46,6 +49,19 @@ func main() {
 	options := parseOptions()
 	utils.InitLogger(false, options.Verbose)
 	utils.SetAutoConvOnUntaggedStdio()
+
+	if options.Pipe != "" {
+		file, err := os.OpenFile(options.Pipe, os.O_RDONLY, 0600)
+		if err != nil {
+			panic(err)
+		}
+		defer file.Close()
+		buf := make([]byte, 32768)
+		if _, err := io.CopyBuffer(os.Stdout, file, buf); err != nil {
+			panic(err)
+		}
+		return
+	}
 
 	// Channel for receiving input from stdin
 	input := make(chan []byte)
