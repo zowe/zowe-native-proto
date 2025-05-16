@@ -135,7 +135,6 @@ func HandleReadFileRequest(conn *utils.StdioConn, params []byte) (result any, e 
 		out, err := conn.ExecCmd(args)
 		elapsed := time.Since(start)
 		utils.LogError("[ReadFileRequest] Command took %v", elapsed)
-		utils.LogError("Received output: %s", string(out))
 		if err != nil {
 			return nil, fmt.Errorf("Error executing command: %v", err)
 		}
@@ -239,7 +238,6 @@ func HandleWriteFileRequest(conn *utils.StdioConn, params []byte) (result any, e
 		out, err = conn.ExecCmd(args)
 		elapsed := time.Since(start)
 		utils.LogError("[WriteFileRequest] Command took %v", elapsed)
-		utils.LogError("Received output: %s", string(out))
 		if err != nil {
 			return nil, fmt.Errorf("Error executing command: %v", err)
 		}

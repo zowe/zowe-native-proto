@@ -51,13 +51,13 @@ func main() {
 	utils.SetAutoConvOnUntaggedStdio()
 
 	if options.Pipe != "" {
-		file, err := os.OpenFile(options.Pipe, os.O_RDONLY, 0600)
+		pipe, err := os.OpenFile(options.Pipe, os.O_RDONLY, os.ModeNamedPipe)
 		if err != nil {
 			panic(err)
 		}
-		defer file.Close()
+		defer pipe.Close()
 		buf := make([]byte, 32768)
-		if _, err := io.CopyBuffer(os.Stdout, file, buf); err != nil {
+		if _, err := io.CopyBuffer(os.Stdout, pipe, buf); err != nil {
 			panic(err)
 		}
 		return

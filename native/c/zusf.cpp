@@ -262,40 +262,36 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, string file, string pipe)
   const auto hasEncoding = zusf->encoding_opts.data_type == eDataTypeText && strlen(zusf->encoding_opts.codepage) > 0;
   const auto codepage = string(zusf->encoding_opts.codepage);
 
-  const size_t CHUNK_SIZE = 32768 * 3 / 4;
-  std::vector<char> buf(CHUNK_SIZE);
+  const size_t chunk_size = FIFO_CHUNK_SIZE * 3 / 4;
+  std::vector<char> buf(chunk_size);
   ssize_t bytes_read;
-  long total_bytes = 0;
 
-  while ((bytes_read = fread(&buf[0], 1, CHUNK_SIZE, fp)) > 0)
+  while ((bytes_read = fread(&buf[0], 1, chunk_size, fp)) > 0)
   {
-    // int chunk_len = bytes_read;
-    // const char *temp = &buf[0];
-    // if (hasEncoding)
-    // {
-    //   try
-    //   {
-    //     temp = zut_encode(temp, &chunk_len, codepage, "UTF-8", zusf->diag);
-    //   }
-    //   catch (std::exception &e)
-    //   {
-    //     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to convert input data from UTF-8 to %s", codepage.c_str());
-    //     return RTNCD_FAILURE;
-    //   }
-    // }
-    // const char *encoded = base64(temp, chunk_len, &chunk_len);
-    int chunk_len;
-    const char *encoded = base64(&buf[0], bytes_read, &chunk_len);
-    ssize_t bytes_wrote = 0;
-    while (bytes_wrote < chunk_len)
+    int chunk_len = bytes_read;
+    const char *chunk = &buf[0];
+    std::vector<char> temp_encoded;
+
+    if (hasEncoding)
     {
-      bytes_wrote += write(fifo_fd, encoded, chunk_len);
+      try
+      {
+        temp_encoded = zut_encode(chunk, chunk_len, codepage, "UTF-8", zusf->diag);
+        chunk = &temp_encoded[0];
+        chunk_len = temp_encoded.size();
+      }
+      catch (std::exception &e)
+      {
+        zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to convert input data from UTF-8 to %s", codepage.c_str());
+        return RTNCD_FAILURE;
+      }
     }
-    total_bytes += bytes_wrote;
+
+    chunk = base64(chunk, chunk_len, &chunk_len);
+    write(fifo_fd, chunk, chunk_len);
     buf.clear();
   }
 
-  cout << "Processed " << total_bytes << endl;
   // write(fifo_fd, "=", 1);
   fclose(fp);
   // while (true)
@@ -435,21 +431,22 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe)
     return RTNCD_FAILURE;
   }
 
-  const size_t CHUNK_SIZE = 32768;
-  std::vector<char> buf(CHUNK_SIZE);
+  std::vector<char> buf(FIFO_CHUNK_SIZE);
   ssize_t bytes_read;
-  long total_bytes = 0;
 
-  while ((bytes_read = read(fifo_fd, &buf[0], CHUNK_SIZE)) > 0)
+  while ((bytes_read = read(fifo_fd, &buf[0], FIFO_CHUNK_SIZE)) > 0)
   {
-    int decoded_len;
-    unsigned char *decoded = unbase64(&buf[0], bytes_read, &decoded_len);
-    const char *temp = (const char *)decoded;
+    int chunk_len;
+    const char *chunk = (char *)unbase64(&buf[0], bytes_read, &chunk_len);
+    std::vector<char> temp_encoded;
+
     if (hasEncoding)
     {
       try
       {
-        temp = zut_encode(temp, &decoded_len, "UTF-8", codepage, zusf->diag);
+        temp_encoded = zut_encode(chunk, chunk_len, "UTF-8", codepage, zusf->diag);
+        chunk = &temp_encoded[0];
+        chunk_len = temp_encoded.size();
       }
       catch (std::exception &e)
       {
@@ -457,12 +454,11 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe)
         return RTNCD_FAILURE;
       }
     }
-    total_bytes += decoded_len;
-    fwrite(temp, 1, decoded_len, fp);
+
+    fwrite(chunk, 1, chunk_len, fp);
     buf.clear();
   }
 
-  cout << "Processed " << total_bytes << endl;
   fclose(fp);
   close(fifo_fd);
 

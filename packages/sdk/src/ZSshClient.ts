@@ -251,8 +251,8 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
         return new Promise((resolve, reject) => {
             this.mSshClient.exec(
                 // `${this.mServerPath}/zowex --pipe ${params.pipePath}`,
-                // `${this.mServerPath}/zowed -pipe ${params.pipePath}`,
-                `cat ${params.pipePath}`,
+                `${this.mServerPath}/zowed -pipe ${params.pipePath}`,
+                // `cat ${params.pipePath}`,
                 // { pty: true },
                 async (err, stream) => {
                     if (err != null) {

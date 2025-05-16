@@ -479,29 +479,30 @@ string zut_encode(const string &input_str, const string &from_encoding, const st
 /**
  * Converts the encoding for a string from one codepage to another.
  * @param input_str input data to convert
+ * @param input_size size of the input data in bytes
  * @param from_encoding current codepage for the input data
  * @param to_encoding desired codepage for the data
  * @param diag diagnostic structure to store error information
  */
-const char *zut_encode(const char *input_str, int *input_size, const string &from_encoding, const string &to_encoding, ZDIAG &diag)
+vector<char> zut_encode(const char *input_str, size_t input_size, const string &from_encoding, const string &to_encoding, ZDIAG &diag)
 {
   iconv_t cd = iconv_open(to_encoding.c_str(), from_encoding.c_str());
   if (cd == (iconv_t)(-1))
   {
     diag.e_msg_len = sprintf(diag.e_msg, "Cannot open converter from %s to %s", from_encoding.c_str(), to_encoding.c_str());
-    return "";
+    return vector<char>();
   }
 
   // maximum possible size assumes UTF-8 data with 4-byte character sequences
-  const size_t max_output_size = *input_size * 4;
+  const size_t max_output_size = input_size * 4;
 
   vector<char> output_buffer(max_output_size, 0);
 
   // Prepare iconv parameters (copy output_buffer ptr to output_iter to cache start and end positions)
-  char *input_buffer = (char *)&input_str[0];
+  char *input = const_cast<char *>(input_str);
   char *output_iter = &output_buffer[0];
 
-  ZConvData data = {input_buffer, *input_size, max_output_size, &output_buffer[0], output_iter};
+  ZConvData data = {input, input_size, max_output_size, &output_buffer[0], output_iter};
   size_t iconv_rc = zut_iconv(cd, data, diag);
   iconv_close(cd);
   if (-1 == iconv_rc)
@@ -509,9 +510,9 @@ const char *zut_encode(const char *input_str, int *input_size, const string &fro
     throw std::runtime_error(diag.e_msg);
   }
 
-  // Copy converted input into a new string and return it to the caller
-  *input_size = output_buffer.size();
-  return output_iter;
+  // Shrink output buffer and return it to the caller
+  output_buffer.resize(data.output_iter - data.output_buffer);
+  return output_buffer;
 }
 
 std::string &zut_rtrim(std::string &s, const char *t)
