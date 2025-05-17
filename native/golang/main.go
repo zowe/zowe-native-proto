@@ -19,6 +19,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"runtime"
 	"time"
 
 	"zowe-native-proto/zowed/cmds"
@@ -56,6 +57,7 @@ func main() {
 			panic(err)
 		}
 		defer pipe.Close()
+		runtime.SetZosAutoConvOnFd(int(pipe.Fd()), 1047)
 		buf := make([]byte, 32768)
 		if _, err := io.CopyBuffer(os.Stdout, pipe, buf); err != nil {
 			panic(err)
