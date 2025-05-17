@@ -14,9 +14,12 @@
 //////////
 // source: common.go
 
-export interface RpcRequest {
+export interface RpcNotification {
   jsonrpc: "2.0";
   method: string;
+  params?: any;
+}
+export interface RpcRequest extends RpcNotification {
   params?: any;
   id: number /* int */;
 }
@@ -24,7 +27,7 @@ export interface RpcResponse {
   jsonrpc: "2.0";
   result?: any;
   error?: ErrorDetails;
-  id?: number /* int */;
+  id: number /* int */;
 }
 export interface CommandRequest {
   /**

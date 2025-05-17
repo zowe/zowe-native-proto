@@ -28,6 +28,8 @@ type ReadFileRequest struct {
 	Encoding string `json:"encoding,omitempty"`
 	// Remote file path to read contents from
 	Path string `json:"fspath"`
+	// Stream to write contents to
+	StreamId int `json:"stream,omitempty" tstype:"Writable"`
 }
 
 type WriteFileRequest struct {
@@ -40,7 +42,9 @@ type WriteFileRequest struct {
 	// Remote file path to write contents to
 	Path string `json:"fspath"`
 	// New contents for the file
-	Data string `json:"data" tstype:"B64String"`
+	Data string `json:"data,omitempty" tstype:"B64String"`
+	// Stream to read contents from
+	StreamId int `json:"stream,omitempty" tstype:"Readable"`
 }
 
 type CreateFileRequest struct {

@@ -20,6 +20,7 @@
 #include <sstream>
 #include <unistd.h>
 #include <map>
+#include <fcntl.h>
 
 using namespace std;
 
@@ -795,6 +796,54 @@ int ZCLI::parse(int argc, char *argv[])
     cout << "...terminated" << endl;
 
     return rc;
+  }
+  else if (argc == 3 && string(argv[1]) == "--pipe")
+  {
+    const char *fifo_path = argv[2];
+    int fifo_fd = open(fifo_path, O_RDONLY);
+    if (fifo_fd == -1)
+    {
+      cerr << "Error opening FIFO: " << strerror(errno) << endl;
+      return RTNCD_FAILURE;
+    }
+
+    const int CHUNK_SIZE = 32768;
+    std::vector<char> buf(CHUNK_SIZE);
+    setvbuf(stdout, &buf[0], _IOFBF, CHUNK_SIZE);
+    ssize_t bytes_read;
+
+    while ((bytes_read = read(fifo_fd, &buf[0], CHUNK_SIZE)) > 0)
+    {
+      ssize_t total_written = 0;
+      while (total_written < bytes_read)
+      {
+        ssize_t bytes_written = write(STDOUT_FILENO, &buf[total_written], bytes_read - total_written);
+        if (bytes_written == -1)
+        {
+          cerr << "Error writing to stdout: " << strerror(errno) << endl;
+          close(fifo_fd);
+          return RTNCD_FAILURE;
+        }
+        total_written += bytes_written;
+      }
+      if (bytes_read > 0 && buf[bytes_read - 1] == '=')
+      {
+        break;
+      }
+    }
+
+    if (bytes_read == -1)
+    {
+      cerr << "Error reading from FIFO: " << strerror(errno) << endl;
+      return RTNCD_FAILURE;
+    }
+    // else if (unlink(fifo_path) == -1)
+    // {
+    //   cerr << "Error removing FIFO: " << strerror(errno) << endl;
+    // }
+
+    close(fifo_fd);
+    return 0;
   }
   else
   {

@@ -43,12 +43,15 @@ async function main() {
         const destStream = createWriteStream(tempFile);
         await new Promise<void>((resolve, reject) => {
             sshClient.exec(
-                `${dirname(remoteFile)}/testb64 download ${remoteFile} ${userConfig.chunkSize}`,
+                // `${dirname(remoteFile)}/testb64 download ${remoteFile} ${userConfig.chunkSize}`,
+                // `${dirname(remoteFile)}/testb64 passthru _ ${userConfig.chunkSize} & (sleep 1 && ${dirname(remoteFile)}/testb64 download ${remoteFile} ${userConfig.chunkSize})`,
+                `${dirname(remoteFile)}/testb64 passthru _ ${userConfig.chunkSize} & (sleep 1 && ${dirname(remoteFile)}/a.out ${remoteFile} ${userConfig.chunkSize})`,
                 (err, stream) => {
                     if (err) {
                         reject(err);
                         return;
                     }
+                    stream.stderr.on("data", (chunk: Buffer) => console.log(chunk.toString()));
                     pipeline(stream.stdout, new Base64Decode(), destStream).then(resolve, reject);
                 },
             );
@@ -68,7 +71,7 @@ async function main() {
     // Tear down
     console.log(statSync(localFile).size, statSync(tempFile).size);
     sshClient.end();
-    unlinkSync(tempFile);
+    // unlinkSync(tempFile);
 }
 
 main();
