@@ -15,8 +15,8 @@
 #include "iggcsina.h"
 #include "zwto.h"
 
-#pragma prolog(ZDSDEL, "&CCN_MAIN SETB 1 \n MYPROLOG")
-#pragma epilog(ZDSDEL, "&CCN_MAIN SETB 1 \n MYEPILOG")
+#pragma prolog(ZDSDEL, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma epilog(ZDSDEL, " ZWEEPILG ")
 void ZDSDEL(ZDS *zds)
 {
   if (zds->csi)
@@ -33,8 +33,8 @@ typedef int (*IGGCSI00)(
     CSIFIELD *PTR32 selection,
     void *PTR32 work_area) ATTRIBUTE(amode31);
 
-#pragma prolog(ZDSCSI00, "&CCN_MAIN SETB 1 \n MYPROLOG")
-#pragma epilog(ZDSCSI00, "&CCN_MAIN SETB 1 \n MYEPILOG")
+#pragma prolog(ZDSCSI00, " ZWEPROLG NEWDSA=(YES,128) ")
+#pragma epilog(ZDSCSI00, " ZWEEPILG ")
 int ZDSCSI00(ZDS *zds, CSIFIELD *selection, void *work_area)
 {
   int rc = 0;

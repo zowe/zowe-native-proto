@@ -57,7 +57,8 @@ ATTACHX_MODEL(attachx_model); // make this copy in static storage
 #define ATTACHX(routine, exit, plist, rc)
 #endif
 
-#pragma prolog(ZUTATTCH, "&CCN_MAIN SETB 1 \n MYPROLOG")
+#pragma prolog(ZUTATTCH, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma epilog(ZUTATTCH, " ZWEEPILG ")
 static void ZUTATTCH()
 {
   // zwto_debug("@TEST");

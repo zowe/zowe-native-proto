@@ -16,8 +16,8 @@
 #include "zcntype.h"
 #include "zecb.h"
 
-#pragma prolog(ZCNACT, "&CCN_MAIN SETB 1 \n MYPROLOG")
-#pragma epilog(ZCNACT, "&CCN_MAIN SETB 1 \n MYEPILOG")
+#pragma prolog(ZCNACT, " ZWEPROLG NEWDSA=(YES,128) ")
+#pragma epilog(ZCNACT, " ZWEEPILG ")
 int ZCNACT(ZCN *zcn)
 {
   int rc = 0;
@@ -44,8 +44,8 @@ int ZCNACT(ZCN *zcn)
   return rc;
 }
 
-#pragma prolog(ZCNPUT, "&CCN_MAIN SETB 1 \n MYPROLOG")
-#pragma epilog(ZCNPUT, "&CCN_MAIN SETB 1 \n MYEPILOG")
+#pragma prolog(ZCNPUT, " ZWEPROLG NEWDSA=(YES,128) ")
+#pragma epilog(ZCNPUT, " ZWEEPILG ")
 int ZCNPUT(ZCN *zcn, const char *command)
 {
   int rc = 0;
@@ -73,8 +73,8 @@ int ZCNPUT(ZCN *zcn, const char *command)
   return rc;
 }
 
-#pragma prolog(ZCNGET, "&CCN_MAIN SETB 1 \n MYPROLOG")
-#pragma epilog(ZCNGET, "&CCN_MAIN SETB 1 \n MYEPILOG")
+#pragma prolog(ZCNGET, " ZWEPROLG NEWDSA=(YES,128) ")
+#pragma epilog(ZCNGET, " ZWEEPILG ")
 int ZCNGET(ZCN *zcn, char *response)
 {
   int rc = 0;
@@ -104,8 +104,8 @@ int ZCNGET(ZCN *zcn, char *response)
   return RTNCD_SUCCESS;
 }
 
-#pragma prolog(ZCNDACT, "&CCN_MAIN SETB 1 \n MYPROLOG")
-#pragma epilog(ZCNDACT, "&CCN_MAIN SETB 1 \n MYEPILOG")
+#pragma prolog(ZCNDACT, " ZWEPROLG NEWDSA=(YES,128) ")
+#pragma epilog(ZCNDACT, " ZWEEPILG ")
 int ZCNDACT(ZCN *zcn)
 {
   int rc = 0;

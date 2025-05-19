@@ -88,7 +88,8 @@ static void init_stat(STAT *stat)
   stat->statlen = statsize;
 }
 
-#pragma prolog(ZJBSYMB, "&CCN_MAIN SETB 1 \n MYPROLOG")
+#pragma prolog(ZJBSYMB, " ZWEPROLG NEWDSA=(YES,128) ")
+#pragma epilog(ZJBSYMB, " ZWEEPILG ")
 int ZJBSYMB(ZJB *zjb, const char *symbol, char *value)
 {
   int rc = 0;
@@ -134,7 +135,8 @@ int ZJBSYMB(ZJB *zjb, const char *symbol, char *value)
 }
 
 // purge a job
-#pragma prolog(ZJBMPRG, "&CCN_MAIN SETB 1 \n MYPROLOG")
+#pragma prolog(ZJBMPRG, " ZWEPROLG NEWDSA=(YES,128) ")
+#pragma epilog(ZJBMPRG, " ZWEEPILG ")
 int ZJBMPRG(ZJB *zjb)
 {
   // purge a job in protected (ssjmpprt) mode
@@ -142,7 +144,8 @@ int ZJBMPRG(ZJB *zjb)
 }
 
 // cancel a job
-#pragma prolog(ZJBMCNL, "&CCN_MAIN SETB 1 \n MYPROLOG")
+#pragma prolog(ZJBMCNL, " ZWEPROLG NEWDSA=(YES,128) ")
+#pragma epilog(ZJBMCNL, " ZWEEPILG ")
 int ZJBMCNL(ZJB *zjb, int flags)
 {
   // cancel a job in protected (ssjmcprt) mode
@@ -151,7 +154,8 @@ int ZJBMCNL(ZJB *zjb, int flags)
 }
 
 // hold a job
-#pragma prolog(ZJBMHLD, "&CCN_MAIN SETB 1 \n MYPROLOG")
+#pragma prolog(ZJBMHLD, " ZWEPROLG NEWDSA=(YES,128) ")
+#pragma epilog(ZJBMHLD, " ZWEEPILG ")
 int ZJBMHLD(ZJB *zjb)
 {
   // Hold a job in protected (ssjmpprt) mode
@@ -159,7 +163,8 @@ int ZJBMHLD(ZJB *zjb)
 }
 
 // release a job
-#pragma prolog(ZJBMRLS, "&CCN_MAIN SETB 1 \n MYPROLOG")
+#pragma prolog(ZJBMRLS, " ZWEPROLG NEWDSA=(YES,128) ")
+#pragma epilog(ZJBMRLS, " ZWEEPILG ")
 int ZJBMRLS(ZJB *zjb)
 {
   // Release a job in protected (ssjmpprt) mode
@@ -167,7 +172,6 @@ int ZJBMRLS(ZJB *zjb)
 }
 
 // modify a job
-#pragma prolog(ZJBMMOD, "&CCN_MAIN SETB 1 \n MYPROLOG")
 int ZJBMMOD(ZJB *zjb, int type, int flags)
 {
   int rc = 0;
@@ -266,8 +270,8 @@ int ZJBMMOD(ZJB *zjb, int type, int flags)
 }
 
 // view job
-#pragma prolog(ZJBMVIEW, "&CCN_MAIN SETB 1 \n MYPROLOG")
-#pragma epilog(ZJBMVIEW, "&CCN_MAIN SETB 1 \n MYEPILOG")
+#pragma prolog(ZJBMVIEW, " ZWEPROLG NEWDSA=(YES,128) ")
+#pragma epilog(ZJBMVIEW, " ZWEEPILG ")
 int ZJBMVIEW(ZJB *zjb, ZJB_JOB_INFO **PTR64 job_info, int *entries)
 {
   STAT stat = {0};
@@ -291,8 +295,8 @@ int ZJBMVIEW(ZJB *zjb, ZJB_JOB_INFO **PTR64 job_info, int *entries)
 }
 
 // list jobs
-#pragma prolog(ZJBMLIST, "&CCN_MAIN SETB 1 \n MYPROLOG")
-#pragma epilog(ZJBMLIST, "&CCN_MAIN SETB 1 \n MYEPILOG")
+#pragma prolog(ZJBMLIST, " ZWEPROLG NEWDSA=(YES,128) ")
+#pragma epilog(ZJBMLIST, " ZWEEPILG ")
 int ZJBMLIST(ZJB *zjb, ZJB_JOB_INFO **PTR64 job_info, int *entries)
 {
   STAT stat = {0};
@@ -432,8 +436,8 @@ int ZJBMTCOM(ZJB *zjb, STAT *PTR64 stat, ZJB_JOB_INFO **PTR64 job_info, int *ent
 #define LOOP_MAX 100
 
 // list data sets for a job
-#pragma prolog(ZJBMLSDS, "&CCN_MAIN SETB 1 \n MYPROLOG")
-#pragma epilog(ZJBMLSDS, "&CCN_MAIN SETB 1 \n MYEPILOG")
+#pragma prolog(ZJBMLSDS, " ZWEPROLG NEWDSA=(YES,128) ")
+#pragma epilog(ZJBMLSDS, " ZWEEPILG ")
 int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
 {
   int rc = 0;

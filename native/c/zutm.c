@@ -58,8 +58,8 @@ typedef int (*BPXWDYN)(
 // * return codes - https://www.ibm.com/docs/en/zos/3.1.0?topic=output-bpxwdyn-return-codes
 // * detail codes (high 4 hex bytes) - https://www.ibm.com/docs/en/zos/3.1.0?topic=codes-interpreting-error-reason-from-dynalloc#erc__mjfig8
 // * parm list - https://www.ibm.com/docs/en/zos/3.1.0?topic=conventions-conventional-mvs-parameter-list
-#pragma prolog(ZUTWDYN, "&CCN_MAIN SETB 1 \n MYPROLOG")
-#pragma epilog(ZUTWDYN, "&CCN_MAIN SETB 1 \n MYEPILOG")
+#pragma prolog(ZUTWDYN, " ZWEPROLG NEWDSA=(YES,128) ")
+#pragma epilog(ZUTWDYN, " ZWEEPILG ")
 int ZUTWDYN(BPXWDYN_PARM *parm, BPXWDYN_RESPONSE *response)
 {
   int rc = 0;
@@ -152,9 +152,8 @@ int ZUTWDYN(BPXWDYN_PARM *parm, BPXWDYN_RESPONSE *response)
 
 typedef struct symbfp SYMBFP;
 typedef int (*ASASYMBF)(SYMBFP) ATTRIBUTE(amode31);
-#pragma prolog(ZUTSYMBP, "&CCN_MAIN SETB 1 \n MYPROLOG")
-#pragma epilog(ZUTSYMBP, "&CCN_MAIN SETB 1 \n MYEPILOG")
-
+#pragma prolog(ZUTSYMBP, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma epilog(ZUTSYMBP, " ZWEEPILG ")
 // symbol examples: https://www.ibm.com/docs/en/zos/3.1.0?topic=symbols-static-system
 // similar tool: https://www.ibm.com/docs/en/zos/3.1.0?topic=descriptions-sysvar-display-static-system-symbols
 // asasymbf callable service: https://www.ibm.com/docs/en/zos/3.1.0?topic=service-calling-asasymbm-asasymbf
@@ -184,8 +183,8 @@ int ZUTSYMBP(SYMBOL_DATA *data)
 }
 
 typedef int (*ISRSUPC)() ATTRIBUTE(amode31);
-#pragma prolog(ZUTSRCH, "&CCN_MAIN SETB 1 \n MYPROLOG")
-#pragma epilog(ZUTSRCH, "&CCN_MAIN SETB 1 \n MYEPILOG")
+#pragma prolog(ZUTSRCH, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma epilog(ZUTSRCH, " ZWEEPILG ")
 int ZUTSRCH()
 {
   int rc = 0;
@@ -197,7 +196,7 @@ int ZUTSRCH()
   return rc;
 }
 
-#pragma prolog(ZUTRUN, " ZWEPROLG NEWDSA=(YES,10) ")
+#pragma prolog(ZUTRUN, " ZWEPROLG NEWDSA=(YES,4) ")
 #pragma epilog(ZUTRUN, " ZWEEPILG ")
 typedef int (*PGM31)(void *) ATTRIBUTE(amode31);
 typedef int (*PGM64)(void *) ATTRIBUTE(amode64);
@@ -243,8 +242,8 @@ typedef struct
 } EDSCT_PARMS;
 
 typedef int (*CCNEDSCT)(EDSCT_PARMS *) ATTRIBUTE(amode31);
-#pragma prolog(ZUTEDSCT, "&CCN_MAIN SETB 1 \n MYPROLOG")
-#pragma epilog(ZUTEDSCT, "&CCN_MAIN SETB 1 \n MYEPILOG")
+#pragma prolog(ZUTEDSCT, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma epilog(ZUTEDSCT, " ZWEEPILG ")
 int ZUTEDSCT()
 {
   int rc = 0;
@@ -257,8 +256,8 @@ int ZUTEDSCT()
 }
 
 // NOTE(Kelosky): this is unused in favor of `getlogin()` but retained for other usages of IAZXJSAB
-#pragma prolog(ZUTMGUSR, "&CCN_MAIN SETB 1 \n MYPROLOG")
-#pragma epilog(ZUTMGUSR, "&CCN_MAIN SETB 1 \n MYEPILOG")
+#pragma prolog(ZUTMGUSR, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma epilog(ZUTMGUSR, " ZWEEPILG ")
 int ZUTMGUSR(char user[8])
 {
   char user31[8] = {0};
@@ -271,16 +270,16 @@ int ZUTMGUSR(char user[8])
   return 0;
 }
 
-#pragma prolog(ZUTMFR64, "&CCN_MAIN SETB 1 \n MYPROLOG")
-#pragma epilog(ZUTMFR64, "&CCN_MAIN SETB 1 \n MYEPILOG")
+#pragma prolog(ZUTMFR64, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma epilog(ZUTMFR64, " ZWEEPILG ")
 int ZUTMFR64(void *PTR64 data)
 {
   storage_free64(data);
   return 0;
 }
 
-#pragma prolog(ZUTMGT64, "&CCN_MAIN SETB 1 \n MYPROLOG")
-#pragma epilog(ZUTMGT64, "&CCN_MAIN SETB 1 \n MYEPILOG")
+#pragma prolog(ZUTMGT64, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma epilog(ZUTMGT64, " ZWEEPILG ")
 int ZUTMGT64(void **PTR64 data, int *len)
 {
   *data = storage_get64(*len);
