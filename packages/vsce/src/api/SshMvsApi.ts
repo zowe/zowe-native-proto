@@ -10,9 +10,9 @@
  */
 
 import { readFileSync, writeFileSync } from "node:fs";
-import * as zosfiles from "@zowe/zos-files-for-zowe-sdk";
+import type * as zosfiles from "@zowe/zos-files-for-zowe-sdk";
 import { Gui, type MainframeInteraction, imperative } from "@zowe/zowe-explorer-api";
-import { type ds, B64String} from "zowe-native-proto-sdk";
+import { B64String, type ds } from "zowe-native-proto-sdk";
 import { SshCommonApi } from "./SshCommonApi";
 
 export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs {
@@ -113,7 +113,6 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         dataSetName: string,
         options?: Partial<zosfiles.ICreateDataSetOptions>,
     ): Promise<zosfiles.IZosFilesResponse> {
-
         const response = await (await this.client).ds.createDataset({
             dsname: dataSetName,
             attributes: options,
