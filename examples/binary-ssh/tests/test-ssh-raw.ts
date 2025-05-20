@@ -1,5 +1,6 @@
 import { createReadStream, createWriteStream, statSync, unlinkSync } from "node:fs";
 import { dirname, parse } from "node:path";
+import { pipeline } from "node:stream/promises";
 import { Client, type PseudoTtyOptions } from "ssh2";
 import * as utils from "./utils";
 const userConfig = require("./config.json");
@@ -13,12 +14,8 @@ async function main() {
     const { localFile, remoteFile, tempFile } = utils.getFilenames(userConfig);
     sshClient.connect({ ...sshConfig, debug: userConfig.verboseSsh ? console.debug : undefined });
     await new Promise<void>((resolve, reject) => {
-        sshClient.on("ready", () => {
-            resolve();
-        });
-        sshClient.on("error", (err) => {
-            reject(err);
-        });
+        sshClient.on("ready", resolve);
+        sshClient.on("error", reject);
     });
 
     for (let i = 0; i < userConfig.testCount; i++) {
@@ -34,12 +31,10 @@ async function main() {
                         reject(err);
                         return;
                     }
-                    srcStream.pipe(stream.stdin);
-                    stream.on("exit", resolve);
+                    pipeline(srcStream, stream.stdin).then(resolve, reject);
                 },
             );
         });
-        srcStream.close();
         console.timeEnd(`${testPrefix}:upload`);
 
         // 2. Download
@@ -54,12 +49,10 @@ async function main() {
                         reject(err);
                         return;
                     }
-                    stream.stdout.pipe(destStream);
-                    stream.on("close", resolve);
+                    pipeline(stream.stdout, destStream).then(resolve, reject);
                 },
             );
         });
-        destStream.close();
         console.timeEnd(`${testPrefix}:download`);
 
         // 3. Verify
@@ -67,7 +60,7 @@ async function main() {
         if (success) {
             console.log(`✅ Checksums match (${i + 1}/${userConfig.testCount})`);
         } else {
-            console.error(`❌ Checksums do not match (${i + 1}/${userConfig.testCount})`);
+            console.error(`❌ Checksums do not match (${i + 1}/${userConfig.testCount}): ${statSync(tempFile).size}`);
         }
     }
 

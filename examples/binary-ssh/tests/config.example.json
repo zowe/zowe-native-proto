@@ -1,5 +1,5 @@
 {
-    "chunkSize": 4096,
+    "chunkSize": 32768,
     "serverPath": "/u/users/ibmuser/zowe-native-proto/golang",
     "testCount": 5,
     "testFile": "resources/test1m.bin",

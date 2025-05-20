@@ -1,4 +1,4 @@
-import { unlinkSync } from "node:fs";
+import { statSync, unlinkSync } from "node:fs";
 import { parse } from "node:path";
 import { promisify } from "node:util";
 import { NodeSSH, type Config as NodeSSHConfig } from "node-ssh";
@@ -31,7 +31,7 @@ async function main() {
         if (success) {
             console.log(`✅ Checksums match (${i + 1}/${userConfig.testCount})`);
         } else {
-            console.error(`❌ Checksums do not match (${i + 1}/${userConfig.testCount})`);
+            console.error(`❌ Checksums do not match (${i + 1}/${userConfig.testCount}): ${statSync(tempFile).size}`);
         }
     }
 

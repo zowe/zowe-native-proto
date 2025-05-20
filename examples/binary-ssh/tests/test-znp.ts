@@ -1,4 +1,4 @@
-import { readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { readFileSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { parse } from "node:path";
 import { B64String, ZSshClient, ZSshUtils } from "zowe-native-proto-sdk/src";
 import * as utils from "./utils";
@@ -38,7 +38,7 @@ async function main() {
         if (success) {
             console.log(`✅ Checksums match (${i + 1}/${userConfig.testCount})`);
         } else {
-            console.error(`❌ Checksums do not match (${i + 1}/${userConfig.testCount})`);
+            console.error(`❌ Checksums do not match (${i + 1}/${userConfig.testCount}): ${statSync(tempFile).size}`);
         }
     }
 
