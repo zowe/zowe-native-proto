@@ -20,7 +20,6 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
-	"time"
 	t "zowe-native-proto/zowed/types/common"
 	uss "zowe-native-proto/zowed/types/uss"
 	utils "zowe-native-proto/zowed/utils"
@@ -130,21 +129,16 @@ func HandleReadFileRequest(conn *utils.StdioConn, params []byte) (result any, e 
 		fmt.Println(string(notify))
 
 		args = append(args, "--pipe-path", pipePath)
-		utils.LogError("Executing command: %v", args)
-		start := time.Now()
 		out, err := conn.ExecCmd(args)
-		elapsed := time.Since(start)
-		utils.LogError("[ReadFileRequest] Command took %v", elapsed)
 		if err != nil {
 			return nil, fmt.Errorf("Error executing command: %v", err)
 		}
 
-		// TODO Wait for signal from client to know when safe to delete pipe
-		// err = os.Remove(pipePath)
-		// if err != nil {
-		// 	e = fmt.Errorf("[ReadFileRequest] Error deleting named pipe: %v", err)
-		// 	return
-		// }
+		err = os.Remove(pipePath)
+		if err != nil {
+			e = fmt.Errorf("[ReadFileRequest] Error deleting named pipe: %v", err)
+			return
+		}
 
 		etag = strings.TrimRight(string(out), "\n")
 	}
@@ -233,11 +227,7 @@ func HandleWriteFileRequest(conn *utils.StdioConn, params []byte) (result any, e
 		fmt.Println(string(notify))
 
 		args = append(args, "--pipe-path", pipePath)
-		utils.LogError("Executing command: %v", args)
-		start := time.Now()
 		out, err = conn.ExecCmd(args)
-		elapsed := time.Since(start)
-		utils.LogError("[WriteFileRequest] Command took %v", elapsed)
 		if err != nil {
 			return nil, fmt.Errorf("Error executing command: %v", err)
 		}

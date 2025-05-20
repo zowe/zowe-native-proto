@@ -38,7 +38,6 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
     private mErrHandler: ClientOptions["onError"];
     private mResponseTimeout: number;
     private mServerInfo: { checksums?: Record<string, string> };
-    private mServerPath: string;
     private mSshClient: Client;
     private mSshStream: ClientChannel;
     private mPartialStderr = "";
@@ -59,7 +58,6 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
         const client = new ZSshClient();
         client.mErrHandler = opts.onError ?? console.error;
         client.mResponseTimeout = opts.responseTimeout ? opts.responseTimeout * 1000 : 60e3;
-        client.mServerPath = opts.serverPath ?? ZSshClient.DEFAULT_SERVER_PATH;
         client.mSshClient = new Client();
         client.mSshStream = await new Promise((resolve, reject) => {
             client.mSshClient.on("error", (err) => {
@@ -67,7 +65,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                 reject(err);
             });
             client.mSshClient.on("ready", async () => {
-                const zowedBin = posix.join(client.mServerPath, "zowed");
+                const zowedBin = posix.join(opts.serverPath ?? ZSshClient.DEFAULT_SERVER_PATH, "zowed");
                 const zowedArgs = ["-num-workers", `${opts.numWorkers ?? 10}`];
                 client.execAsync(zowedBin, ...zowedArgs).then(resolve, reject);
             });
@@ -256,47 +254,14 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
 
     private downloadStream(writeStream: Writable, params: { pipePath: string }): Promise<void> {
         return new Promise((resolve, reject) => {
-            // const tempClient = new Client();
-            // tempClient.on("error", reject);
-            // tempClient.on("ready", () => {
-            //     tempClient.exec(
-            //         // `${this.mServerPath}/zowex --pipe ${params.pipePath}`,
-            //         `cat ${params.pipePath}`,
-            //         (err, stream) => {
-            //             if (err != null) {
-            //                 reject(err);
-            //                 return;
-            //             }
-            //             stream.stdout.on("data", () => writeStream.emit("keepAlive"));
-            //             stream.pipe(stream.stdout).pipe(new Base64Decode()).pipe(writeStream);
-            //             stream.on("exit", () => {
-            //                 setTimeout(() => {
-            //                     tempClient.end();
-            //                     resolve();
-            //                 }, 2000);
-            //             });
-            //             // pipeline(stream.stdout, new Base64Decode(), writeStream)
-            //             //     .then(resolve, reject)
-            //             //     .finally(() => tempClient.end());
-            //         },
-            //     );
-            // });
-            // // biome-ignore lint/suspicious/noExplicitAny: accessing untyped property
-            // tempClient.connect((this.mSshClient as any).config);
-            this.mSshClient.exec(
-                // `${this.mServerPath}/zowex --pipe ${params.pipePath}`,
-                // `${this.mServerPath}/zowed -pipe ${params.pipePath}`,
-                `cat ${params.pipePath}`,
-                // { pty: true },
-                async (err, stream) => {
-                    if (err != null) {
-                        reject(err);
-                        return;
-                    }
-                    stream.stdout.on("data", () => writeStream.emit("keepAlive"));
-                    pipeline(stream.stdout, new Base64Decode(), writeStream).then(resolve, reject);
-                },
-            );
+            this.mSshClient.exec(`cat ${params.pipePath}`, async (err, stream) => {
+                if (err != null) {
+                    reject(err);
+                    return;
+                }
+                stream.stdout.on("data", () => writeStream.emit("keepAlive"));
+                pipeline(stream.stdout, new Base64Decode(), writeStream).then(resolve, reject);
+            });
         });
     }
 }

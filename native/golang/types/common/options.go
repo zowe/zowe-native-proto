@@ -12,9 +12,8 @@
 package types
 
 type IoserverOptions struct {
-	NumWorkers int    `json:"numWorkers,omitempty"`
-	Pipe       string `json:"pipe,omitempty"`
-	Verbose    bool   `json:"verbose,omitempty"`
+	NumWorkers int  `json:"numWorkers,omitempty"`
+	Verbose    bool `json:"verbose,omitempty"`
 }
 
 type ListOptions struct {

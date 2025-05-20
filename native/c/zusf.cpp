@@ -15,9 +15,6 @@
 #ifndef _OPEN_SYS_FILE_EXT
 #define _OPEN_SYS_FILE_EXT 1
 #endif
-#ifndef _XOPEN_SOURCE_EXTENDED
-#define _XOPEN_SOURCE_EXTENDED 1
-#endif
 #include <sys/stat.h>
 #include <stdio.h>
 #include <cstring>
@@ -241,16 +238,16 @@ int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
  */
 int zusf_read_from_uss_file_streamed(ZUSF *zusf, string file, string pipe)
 {
-  FILE *fp = fopen(file.c_str(), zusf->encoding_opts.data_type == eDataTypeBinary ? "rb" : "r");
-  if (!fp)
+  FILE *fin = fopen(file.c_str(), zusf->encoding_opts.data_type == eDataTypeBinary ? "rb" : "r");
+  if (!fin)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open file '%s'", file.c_str());
     return RTNCD_FAILURE;
   }
 
   int fifo_fd = open(pipe.c_str(), O_WRONLY);
-  FILE *fifo_fp = fdopen(fifo_fd, "w");
-  if (!fifo_fp)
+  FILE *fout = fdopen(fifo_fd, "w");
+  if (!fout)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open output pipe '%s'", pipe.c_str());
     return RTNCD_FAILURE;
@@ -267,7 +264,7 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, string file, string pipe)
   std::vector<char> buf(chunk_size);
   ssize_t bytes_read;
 
-  while ((bytes_read = fread(&buf[0], 1, chunk_size, fp)) > 0)
+  while ((bytes_read = fread(&buf[0], 1, chunk_size, fin)) > 0)
   {
     int chunk_len = bytes_read;
     const char *chunk = &buf[0];
@@ -289,25 +286,13 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, string file, string pipe)
     }
 
     chunk = base64(chunk, chunk_len, &chunk_len);
-    fwrite(chunk, 1, chunk_len, fifo_fp);
+    fwrite(chunk, 1, chunk_len, fout);
     buf.clear();
   }
 
-  // write(fifo_fd, "=", 1);
-  fclose(fp);
-  // while (true)
-  // {
-  //   struct stat st;
-  //   if (stat(pipe.c_str(), &st) != 0 && errno == ENOENT)
-  //   {
-  //     break;
-  //   }
-  //   usleep(25000);
-  // }
-  // sleep(2);
-  fflush(fifo_fp);
-  usleep(1);
-  fclose(fifo_fp);
+  fflush(fout);
+  fclose(fin);
+  fclose(fout);
 
   return RTNCD_SUCCESS;
 }
@@ -420,15 +405,16 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe)
     }
   }
 
-  FILE *fp = fopen(file.c_str(), zusf->encoding_opts.data_type == eDataTypeBinary ? "wb" : "w");
-  if (!fp)
+  FILE *fin = fopen(file.c_str(), zusf->encoding_opts.data_type == eDataTypeBinary ? "wb" : "w");
+  if (!fin)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open '%s'", file.c_str());
     return RTNCD_FAILURE;
   }
 
   int fifo_fd = open(pipe.c_str(), O_RDONLY);
-  if (fifo_fd == -1)
+  FILE *fout = fdopen(fifo_fd, "r");
+  if (!fout)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open input pipe '%s'", pipe.c_str());
     return RTNCD_FAILURE;
@@ -437,7 +423,7 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe)
   std::vector<char> buf(FIFO_CHUNK_SIZE);
   ssize_t bytes_read;
 
-  while ((bytes_read = read(fifo_fd, &buf[0], FIFO_CHUNK_SIZE)) > 0)
+  while ((bytes_read = fread(&buf[0], 1, FIFO_CHUNK_SIZE, fin)) > 0)
   {
     int chunk_len;
     const char *chunk = (char *)unbase64(&buf[0], bytes_read, &chunk_len);
@@ -458,12 +444,13 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe)
       }
     }
 
-    fwrite(chunk, 1, chunk_len, fp);
+    fwrite(chunk, 1, chunk_len, fout);
     buf.clear();
   }
 
-  fclose(fp);
-  close(fifo_fd);
+  fflush(fout);
+  fclose(fin);
+  fclose(fout);
 
   if (stat(file.c_str(), &file_stats) == -1)
   {
