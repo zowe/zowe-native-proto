@@ -404,16 +404,16 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe)
     }
   }
 
-  FILE *fin = fopen(file.c_str(), zusf->encoding_opts.data_type == eDataTypeBinary ? "wb" : "w");
-  if (!fin)
+  FILE *fout = fopen(file.c_str(), zusf->encoding_opts.data_type == eDataTypeBinary ? "wb" : "w");
+  if (!fout)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open '%s'", file.c_str());
     return RTNCD_FAILURE;
   }
 
   int fifo_fd = open(pipe.c_str(), O_RDONLY);
-  FILE *fout = fdopen(fifo_fd, "r");
-  if (!fout)
+  FILE *fin = fdopen(fifo_fd, "r");
+  if (!fin)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open input pipe '%s'", pipe.c_str());
     return RTNCD_FAILURE;
