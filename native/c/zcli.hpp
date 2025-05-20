@@ -801,7 +801,8 @@ int ZCLI::parse(int argc, char *argv[])
   {
     const char *fifo_path = argv[2];
     int fifo_fd = open(fifo_path, O_RDONLY);
-    if (fifo_fd == -1)
+    FILE *fifo_fp = fdopen(fifo_fd, "r");
+    if (!fifo_fp)
     {
       cerr << "Error opening FIFO: " << strerror(errno) << endl;
       return RTNCD_FAILURE;
@@ -812,7 +813,7 @@ int ZCLI::parse(int argc, char *argv[])
     setvbuf(stdout, &buf[0], _IOFBF, CHUNK_SIZE);
     ssize_t bytes_read;
 
-    while ((bytes_read = read(fifo_fd, &buf[0], CHUNK_SIZE)) > 0)
+    while ((bytes_read = fread(&buf[0], 1, CHUNK_SIZE, fifo_fp)) > 0)
     {
       ssize_t total_written = 0;
       while (total_written < bytes_read)
@@ -826,10 +827,10 @@ int ZCLI::parse(int argc, char *argv[])
         }
         total_written += bytes_written;
       }
-      if (bytes_read > 0 && buf[bytes_read - 1] == '=')
-      {
-        break;
-      }
+      // if (bytes_read > 0 && buf[bytes_read - 1] == '=')
+      // {
+      //   break;
+      // }
     }
 
     if (bytes_read == -1)
@@ -842,7 +843,7 @@ int ZCLI::parse(int argc, char *argv[])
     //   cerr << "Error removing FIFO: " << strerror(errno) << endl;
     // }
 
-    close(fifo_fd);
+    fclose(fifo_fp);
     return 0;
   }
   else

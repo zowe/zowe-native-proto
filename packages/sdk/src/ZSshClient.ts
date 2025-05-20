@@ -44,7 +44,10 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
     private mPartialStderr = "";
     private mPartialStdout = "";
     private mPendingStreamMap: Map<number, Stream> = new Map();
-    private mPromiseMap: Map<number, { resolve: PromiseResolve<CommandResponse>; reject: PromiseReject }> = new Map();
+    private mPromiseMap: Map<
+        number,
+        { resolve: PromiseResolve<CommandResponse>; reject: PromiseReject; pending: Promise<void>[] }
+    > = new Map();
     private mRequestId = 0;
 
     private constructor() {
@@ -112,7 +115,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                 );
                 rpcRequest.params.stream = rpcRequest.id;
             }
-            this.mPromiseMap.set(rpcRequest.id, { resolve, reject });
+            this.mPromiseMap.set(rpcRequest.id, { resolve, reject, pending: [] });
             const requestStr = JSON.stringify(rpcRequest);
             Logger.getAppLogger().trace("Sending request: %s", requestStr);
             this.mSshStream.stdin.write(`${requestStr}\n`);
@@ -212,9 +215,9 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
         if ("method" in response) {
             const pendingStream = this.mPendingStreamMap.get(responseId);
             if (response.method === "sendStream" && pendingStream instanceof Readable) {
-                this.uploadStream(pendingStream, response.params);
+                this.mPromiseMap.get(responseId).pending.push(this.uploadStream(pendingStream, response.params));
             } else if (response.method === "receiveStream" && pendingStream instanceof Writable) {
-                this.downloadStream(pendingStream, response.params);
+                this.mPromiseMap.get(responseId).pending.push(this.downloadStream(pendingStream, response.params));
             }
             this.mPendingStreamMap.delete(responseId);
             return;
@@ -228,10 +231,14 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                     additionalDetails: response.error.data,
                 }),
             );
+            this.mPromiseMap.delete(responseId);
         } else {
-            this.mPromiseMap.get(responseId).resolve({ success, ...response.result });
+            Promise.all(this.mPromiseMap.get(responseId).pending).then(() => {
+                this.mPromiseMap.get(responseId).resolve({ success, ...response.result });
+                this.mPromiseMap.delete(responseId);
+            });
         }
-        this.mPromiseMap.delete(responseId);
+        // this.mPromiseMap.delete(responseId);
     }
 
     private uploadStream(readStream: Readable, params: { pipePath: string }): Promise<void> {
@@ -249,10 +256,37 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
 
     private downloadStream(writeStream: Writable, params: { pipePath: string }): Promise<void> {
         return new Promise((resolve, reject) => {
+            // const tempClient = new Client();
+            // tempClient.on("error", reject);
+            // tempClient.on("ready", () => {
+            //     tempClient.exec(
+            //         // `${this.mServerPath}/zowex --pipe ${params.pipePath}`,
+            //         `cat ${params.pipePath}`,
+            //         (err, stream) => {
+            //             if (err != null) {
+            //                 reject(err);
+            //                 return;
+            //             }
+            //             stream.stdout.on("data", () => writeStream.emit("keepAlive"));
+            //             stream.pipe(stream.stdout).pipe(new Base64Decode()).pipe(writeStream);
+            //             stream.on("exit", () => {
+            //                 setTimeout(() => {
+            //                     tempClient.end();
+            //                     resolve();
+            //                 }, 2000);
+            //             });
+            //             // pipeline(stream.stdout, new Base64Decode(), writeStream)
+            //             //     .then(resolve, reject)
+            //             //     .finally(() => tempClient.end());
+            //         },
+            //     );
+            // });
+            // // biome-ignore lint/suspicious/noExplicitAny: accessing untyped property
+            // tempClient.connect((this.mSshClient as any).config);
             this.mSshClient.exec(
                 // `${this.mServerPath}/zowex --pipe ${params.pipePath}`,
-                `${this.mServerPath}/zowed -pipe ${params.pipePath}`,
-                // `cat ${params.pipePath}`,
+                // `${this.mServerPath}/zowed -pipe ${params.pipePath}`,
+                `cat ${params.pipePath}`,
                 // { pty: true },
                 async (err, stream) => {
                     if (err != null) {

@@ -249,7 +249,8 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, string file, string pipe)
   }
 
   int fifo_fd = open(pipe.c_str(), O_WRONLY);
-  if (fifo_fd == -1)
+  FILE *fifo_fp = fdopen(fifo_fd, "w");
+  if (!fifo_fp)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open output pipe '%s'", pipe.c_str());
     return RTNCD_FAILURE;
@@ -288,7 +289,7 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, string file, string pipe)
     }
 
     chunk = base64(chunk, chunk_len, &chunk_len);
-    write(fifo_fd, chunk, chunk_len);
+    fwrite(chunk, 1, chunk_len, fifo_fp);
     buf.clear();
   }
 
@@ -304,7 +305,9 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, string file, string pipe)
   //   usleep(25000);
   // }
   // sleep(2);
-  close(fifo_fd);
+  fflush(fifo_fp);
+  usleep(1);
+  fclose(fifo_fp);
 
   return RTNCD_SUCCESS;
 }
