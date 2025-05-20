@@ -287,7 +287,6 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, string file, string pipe)
 
     chunk = base64(chunk, chunk_len, &chunk_len);
     fwrite(chunk, 1, chunk_len, fout);
-    buf.clear();
   }
 
   fflush(fout);
@@ -445,7 +444,6 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe)
     }
 
     fwrite(chunk, 1, chunk_len, fout);
-    buf.clear();
   }
 
   fflush(fout);
