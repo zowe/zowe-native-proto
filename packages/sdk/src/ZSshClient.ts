@@ -45,7 +45,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
     private mPendingStreamMap: Map<number, Stream> = new Map();
     private mPromiseMap: Map<
         number,
-        { resolve: PromiseResolve<CommandResponse>; reject: PromiseReject; pending: Promise<void>[] }
+        { resolve: PromiseResolve<CommandResponse>; reject: PromiseReject; pending?: PromiseLike<void> }
     > = new Map();
     private mRequestId = 0;
 
@@ -113,7 +113,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                 );
                 rpcRequest.params.stream = rpcRequest.id;
             }
-            this.mPromiseMap.set(rpcRequest.id, { resolve, reject, pending: [] });
+            this.mPromiseMap.set(rpcRequest.id, { resolve, reject });
             const requestStr = JSON.stringify(rpcRequest);
             Logger.getAppLogger().trace("Sending request: %s", requestStr);
             this.mSshStream.stdin.write(`${requestStr}\n`);
@@ -213,9 +213,9 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
         if ("method" in response) {
             const pendingStream = this.mPendingStreamMap.get(responseId);
             if (response.method === "sendStream" && pendingStream instanceof Readable) {
-                this.mPromiseMap.get(responseId).pending.push(this.uploadStream(pendingStream, response.params));
+                this.mPromiseMap.get(responseId).pending = this.uploadStream(pendingStream, response.params);
             } else if (response.method === "receiveStream" && pendingStream instanceof Writable) {
-                this.mPromiseMap.get(responseId).pending.push(this.downloadStream(pendingStream, response.params));
+                this.mPromiseMap.get(responseId).pending = this.downloadStream(pendingStream, response.params);
             }
             this.mPendingStreamMap.delete(responseId);
             return;
@@ -231,12 +231,12 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
             );
             this.mPromiseMap.delete(responseId);
         } else {
-            Promise.all(this.mPromiseMap.get(responseId).pending).then(() => {
-                this.mPromiseMap.get(responseId).resolve({ success, ...response.result });
+            const { resolve, pending } = this.mPromiseMap.get(responseId);
+            Promise.resolve(pending).then(() => {
+                resolve({ success, ...response.result });
                 this.mPromiseMap.delete(responseId);
             });
         }
-        // this.mPromiseMap.delete(responseId);
     }
 
     private uploadStream(readStream: Readable, params: { pipePath: string }): Promise<void> {
