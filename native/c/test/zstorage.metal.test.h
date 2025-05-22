@@ -21,7 +21,7 @@ extern "C"
 #endif
 
   void *STBT31(int size);
-  int STFREE(void *data, int size);
+  int STFREE(int *size, void *data);
 
   void *STGET64(int size);
   int STREL(void *);

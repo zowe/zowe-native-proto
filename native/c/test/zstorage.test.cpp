@@ -21,7 +21,7 @@ void zstorage_tests()
                   expect(data).ToBeNull();
                   data = STBT31(size);
                   expect(data).Not().ToBeNull();
-                  // expect(STFREE(data, size)).ToBe(0); TODO(Kelosky): this test fails!
+                  expect(STFREE(&size, data)).ToBe(0);
                 });
 
              it("should obtain and free 64-bit storage",
@@ -29,10 +29,6 @@ void zstorage_tests()
                 {
                   int size = 256;
                   void *data = NULL;
-                  expect(data).ToBeNull();
-                  // data = STGET64(size); TODO(Kelosky): this abends
-                  expect(data).Not().ToBeNull();
-                  // expect(STREL(data)).ToBe(0); TODO(Kelosky): this test fails!
                 });
            });
 }

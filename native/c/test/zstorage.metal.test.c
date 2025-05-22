@@ -11,9 +11,9 @@ void *STBT31(int size)
 
 #pragma prolog(STFREE, " ZWEPROLG NEWDSA=(YES,4) ")
 #pragma epilog(STFREE, " ZWEEPILG ")
-int STFREE(void *data, int size)
+int STFREE(int *size, void *data)
 {
-  storage_release(data, size);
+  storage_release(*size, data);
   return 0;
 }
 

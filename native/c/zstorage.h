@@ -16,7 +16,7 @@
 
 #if defined(__IBM_METAL__)
 #define STORAGE_OBTAIN(addr, size, loc)                       \
-  __asm(                                                      \
+  __asm volatile(                                             \
       "*                                                  \n" \
       " LLGF  0,%1      = storage length                  \n" \
       "*                                                  \n" \
@@ -40,7 +40,7 @@
   __asm(                                                      \
       "*                                                  \n" \
       " LLGF  0,%1      = storage length                  \n" \
-      " LLGF  1,%0      -> storage address                \n" \
+      " LA    1,%0      -> storage address                \n" \
       "*                                                  \n" \
       " STORAGE RELEASE,"                                     \
       "LENGTH=(0),"                                           \
@@ -109,7 +109,7 @@ static void *PTR32 storage_obtain31(int size)
   return addr;
 }
 
-static void storage_release(void *PTR32 addr, int size)
+static void storage_release(int size, void *PTR32 addr)
 {
   STORAGE_RELEASE(addr, size);
 }

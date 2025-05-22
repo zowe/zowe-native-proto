@@ -38,9 +38,18 @@ namespace ztst
     RESULT_CHECK Not();
     RESULT_CHECK() {}  // std::cout << "RESULT_CHECK created" << std::endl; }
     ~RESULT_CHECK() {} // std::cout << "RESULT_CHECK deleted" << std::endl; }
-    void set_result(int r) { int_result = r; }
-    void set_result(string r) { string_result = r; }
-    void set_result(void *r) { pointer_result = r; }
+    void set_result(int r)
+    {
+      int_result = r;
+    }
+    void set_result(string r)
+    {
+      string_result = r;
+    }
+    void set_result(void *r)
+    {
+      pointer_result = r;
+    }
   };
 
   typedef void (*cb)();
