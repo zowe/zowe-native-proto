@@ -49,6 +49,10 @@ export interface ReadDatasetRequest extends common.CommandRequest {
    * Dataset name
    */
   dsname: string;
+  /**
+   * Path to a FIFO pipe for streaming data (optional)
+   */
+  pipePath?: string;
 }
 export interface WriteDatasetRequest extends common.CommandRequest {
   command: "writeDataset";
@@ -68,6 +72,10 @@ export interface WriteDatasetRequest extends common.CommandRequest {
    * Dataset contents
    */
   data: B64String;
+  /**
+   * Path to a FIFO pipe for streaming data (optional)
+   */
+  pipePath?: string;
 }
 export interface DeleteDatasetRequest extends common.CommandRequest {
   command: "deleteDataset";
