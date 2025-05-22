@@ -345,7 +345,7 @@ const static unsigned char unb64[] = {
 // this function, if you want your C string to be fully encoded,
 // you have to pass strlen(str)+1 to as binaryData as I have in the
 // examples.
-char *base64(const void *binaryData, int len, int *flen)
+inline char *base64(const void *binaryData, int len, int *flen)
 {
    // printf("Base64 encoding %d bytes of binary data\n", len);
 
@@ -524,7 +524,7 @@ char *base64(const void *binaryData, int len, int *flen)
    return base64String;
 }
 
-unsigned char *unbase64(const char *ascii, int len, int *flen)
+inline unsigned char *unbase64(const char *ascii, int len, int *flen)
 {
 #ifdef SAFEBASE64
    if (!base64integrity(ascii, len))
@@ -646,7 +646,7 @@ unsigned char *unbase64(const char *ascii, int len, int *flen)
 // piece of data that says it is padded by 2 bytes at the end. Well, you
 // only need to pad by 2 bytes if the number of bits in the original data
 // was not evenly divisible by 6. 0%6==0, so something's clearly wrong here.
-int base64integrity(const char *ascii, int len)
+inline int base64integrity(const char *ascii, int len)
 {
    // The base64 string is somewhat inflated, since each ASCII character
    // represents only a 6-bit value (a sextet). That leaves 2 bits wasted per 8 bits used.
