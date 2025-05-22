@@ -32,10 +32,29 @@ void zjb_tests()
                   string jobid;
                   string jcl = "//IEFBR14$ JOB IZUACCT\n"
                                "//RUNBR14  EXEC PGM=IEFBR14\n";
-                  // zut_uppercase_pad_truncate(buffer, data, sizeof(buffer) - 1);
+
                   int rc = zjb_submit(&zjb, jcl, jobid);
                   expect(rc).ToBe(0);
                   expect(jobid).Not().ToBe("");
+                });
+
+             it("should be able to view a submitted job",
+                []() -> void
+                {
+                  ZJB zjb = {0};
+                  string jobid;
+                  string jcl = "//IEFBR14$ JOB IZUACCT\n"
+                               "//RUNBR14  EXEC PGM=IEFBR14\n";
+
+                  int rc = zjb_submit(&zjb, jcl, jobid);
+                  expect(rc).ToBe(0);
+                  expect(jobid).Not().ToBe("");
+
+                  ZJob zjob;
+
+                  memset(&zjb, 0, sizeof(zjb));
+                  rc = zjb_view(&zjb, "JOB00880", zjob);
+                  expect(zjb_view(&zjb, jobid, zjob)).ToBe(0);
                 });
            });
 }
