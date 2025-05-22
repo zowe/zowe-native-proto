@@ -205,6 +205,7 @@ int main(int argc, char *argv[])
   data_set_view.get_options().push_back(encoding_option);
   data_set_view.get_options().push_back(response_format_bytes);
   data_set_view.get_options().push_back(return_etag);
+  data_set_view.get_options().push_back(pipe_path);
   data_set_group.get_verbs().push_back(data_set_view);
 
   ZCLIVerb data_set_list("list");
@@ -247,6 +248,7 @@ int main(int argc, char *argv[])
   data_set_write.get_options().push_back(encoding_option);
   data_set_write.get_options().push_back(etag);
   data_set_write.get_options().push_back(etag_only);
+  data_set_write.get_options().push_back(pipe_path);
   data_set_group.get_verbs().push_back(data_set_write);
 
   ZCLIVerb data_set_compress("compress");
@@ -1373,30 +1375,51 @@ int handle_data_set_view_dsn(ZCLIResult result)
   int rc = 0;
   string dsn = result.get_positional("dsn")->get_value();
   ZDS zds = {0};
-  string response;
 
   const auto hasEncoding = zut_prepare_encoding(result.get_option_value("--encoding"), &zds.encoding_opts);
-  rc = zds_read_from_dsn(&zds, dsn, response);
-  if (0 != rc)
-  {
-    cerr << "Error: could not read data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details: " << zds.diag.e_msg << endl;
-    return RTNCD_FAILURE;
-  }
 
-  if (result.get_option_value("--return-etag") == "true")
+  auto *pipe_path = result.get_option("--pipe-path");
+  if (pipe_path != nullptr && pipe_path->is_found())
   {
-    const auto etag = zut_calc_adler32_checksum(response);
-    cout << "etag: " << std::hex << etag << endl;
-    cout << "data: ";
-  }
-  if (hasEncoding && result.get_option_value("--response-format-bytes") == "true")
-  {
-    zut_print_string_as_bytes(response);
+    rc = zds_read_from_dsn_streamed(&zds, dsn, pipe_path->get_value());
+
+    if (result.get_option_value("--return-etag") == "true")
+    {
+      string temp_content;
+      // Temporary read to get etag value
+      auto read_rc = zds_read_from_dsn(&zds, dsn, temp_content);
+      if (read_rc == 0)
+      {
+        const auto etag = zut_calc_adler32_checksum(temp_content);
+        cout << std::hex << etag << endl;
+      }
+    }
   }
   else
   {
-    cout << response << endl;
+    string response;
+    rc = zds_read_from_dsn(&zds, dsn, response);
+    if (0 != rc)
+    {
+      cerr << "Error: could not read data set: '" << dsn << "' rc: '" << rc << "'" << endl;
+      cerr << "  Details: " << zds.diag.e_msg << endl;
+      return RTNCD_FAILURE;
+    }
+
+    if (result.get_option_value("--return-etag") == "true")
+    {
+      const auto etag = zut_calc_adler32_checksum(response);
+      cout << "etag: " << std::hex << etag << endl;
+      cout << "data: ";
+    }
+    if (hasEncoding && result.get_option_value("--response-format-bytes") == "true")
+    {
+      zut_print_string_as_bytes(response);
+    }
+    else
+    {
+      cout << response << endl;
+    }
   }
 
   return rc;
@@ -1531,40 +1554,48 @@ int handle_data_set_write_to_dsn(ZCLIResult result)
     zut_prepare_encoding(result.get_option_value("--encoding"), &zds.encoding_opts);
   }
 
-  string data;
-  string line;
-  size_t byteSize = 0ul;
-
-  if (!isatty(fileno(stdout)))
-  {
-    std::istreambuf_iterator<char> begin(std::cin);
-    std::istreambuf_iterator<char> end;
-
-    vector<char> input(begin, end);
-    const auto temp = string(input.begin(), input.end());
-    input.clear();
-    const auto bytes = zut_get_contents_as_bytes(temp);
-
-    data.assign(bytes.begin(), bytes.end());
-    byteSize = bytes.size();
-  }
-  else
-  {
-    while (getline(cin, line))
-    {
-      data += line;
-      data.push_back('\n');
-    }
-    byteSize = data.size();
-  }
-
   auto *etag_opt = result.get_option("--etag");
   if (etag_opt != nullptr && etag_opt->is_found())
   {
     strcpy(zds.etag, etag_opt->get_value().c_str());
   }
 
-  rc = zds_write_to_dsn(&zds, dsn, data);
+  auto *pipe_path = result.get_option("--pipe-path");
+  if (pipe_path != nullptr && pipe_path->is_found())
+  {
+    rc = zds_write_to_dsn_streamed(&zds, dsn, pipe_path->get_value());
+  }
+  else
+  {
+    string data;
+    string line;
+    size_t byteSize = 0ul;
+
+    if (!isatty(fileno(stdout)))
+    {
+      std::istreambuf_iterator<char> begin(std::cin);
+      std::istreambuf_iterator<char> end;
+
+      vector<char> input(begin, end);
+      const auto temp = string(input.begin(), input.end());
+      input.clear();
+      const auto bytes = zut_get_contents_as_bytes(temp);
+
+      data.assign(bytes.begin(), bytes.end());
+      byteSize = bytes.size();
+    }
+    else
+    {
+      while (getline(cin, line))
+      {
+        data += line;
+        data.push_back('\n');
+      }
+      byteSize = data.size();
+    }
+
+    rc = zds_write_to_dsn(&zds, dsn, data);
+  }
 
   if (0 != rc)
   {

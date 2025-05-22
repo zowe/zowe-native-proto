@@ -42,6 +42,8 @@ type ReadDatasetRequest struct {
 	Encoding string `json:"encoding,omitempty"`
 	// Dataset name
 	Dsname string `json:"dsname"`
+	// Path to a FIFO pipe for streaming data (optional)
+	PipePath string `json:"pipePath,omitempty"`
 }
 
 type WriteDatasetRequest struct {
@@ -55,6 +57,8 @@ type WriteDatasetRequest struct {
 	Dsname string `json:"dsname"`
 	// Dataset contents
 	Data string `json:"data" tstype:"B64String"`
+	// Path to a FIFO pipe for streaming data (optional)
+	PipePath string `json:"pipePath,omitempty"`
 }
 
 type DeleteDatasetRequest struct {

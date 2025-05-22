@@ -35,6 +35,25 @@ func HandleReadDatasetRequest(conn *utils.StdioConn, params []byte) (result any,
 		request.Encoding = fmt.Sprintf("IBM-%d", utils.DefaultEncoding)
 	}
 	args := []string{"data-set", "view", request.Dsname, "--encoding", request.Encoding, "--rfb", "true", "--return-etag", "true"}
+
+	// Use streaming if a pipe path is provided
+	if request.PipePath != "" {
+		args = append(args, "--pipe-path", request.PipePath)
+		out, err := conn.ExecCmd(args)
+		if err != nil {
+			return nil, fmt.Errorf("Error executing command: %v", err)
+		}
+
+		// When using a pipe, we only get the etag back
+		result = ds.ReadDatasetResponse{
+			Encoding: request.Encoding,
+			Etag:     strings.TrimRight(string(out), "\n"),
+			Dataset:  request.Dsname,
+			Data:     []byte{}, // No data returned directly when using pipe
+		}
+		return result, nil
+	}
+
 	out, err := conn.ExecCmd(args)
 	if err != nil {
 		return nil, fmt.Errorf("Error executing command: %v", err)
@@ -67,13 +86,6 @@ func HandleWriteDatasetRequest(conn *utils.StdioConn, params []byte) (result any
 		return nil, fmt.Errorf("Missing required parameters: Dsname")
 	}
 
-	decodedBytes, err := base64.StdEncoding.DecodeString(request.Data)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to decode dataset contents: %v", err)
-	}
-
-	byteString := hex.EncodeToString(decodedBytes)
-
 	if len(request.Encoding) == 0 {
 		request.Encoding = fmt.Sprintf("IBM-%d", utils.DefaultEncoding)
 	}
@@ -81,6 +93,30 @@ func HandleWriteDatasetRequest(conn *utils.StdioConn, params []byte) (result any
 	if len(request.Etag) > 0 {
 		args = append(args, "--etag", request.Etag)
 	}
+
+	// Use streaming if a pipe path is provided
+	if request.PipePath != "" {
+		args = append(args, "--pipe-path", request.PipePath)
+		out, err := conn.ExecCmd(args)
+		if err != nil {
+			return nil, fmt.Errorf("Error executing command: %v", err)
+		}
+
+		result = ds.WriteDatasetResponse{
+			Success: true,
+			Dataset: request.Dsname,
+			Etag:    strings.TrimRight(string(out), "\n"),
+		}
+		return result, nil
+	}
+
+	decodedBytes, err := base64.StdEncoding.DecodeString(request.Data)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to decode dataset contents: %v", err)
+	}
+
+	byteString := hex.EncodeToString(decodedBytes)
+
 	cmd := utils.BuildCommand(args)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
