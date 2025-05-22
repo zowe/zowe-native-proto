@@ -348,7 +348,8 @@ int zjb_submit(ZJB *zjb, string contents, string &jobid)
 
   string ddname = "????????"; // system generated DD name
   ip.__ddname = (char *)ddname.c_str();
-  ip.__sysoutname = "INTRDR  "; // https://www.ibm.com/docs/en/zos/3.1.0?topic=control-destination-internal-reader && https://www.ibm.com/docs/en/zos/3.1.0?topic=programming-internal-reader-facility
+  string intrdr = "INTRDR  ";
+  ip.__sysoutname = (char *)intrdr.c_str(); // https://www.ibm.com/docs/en/zos/3.1.0?topic=control-destination-internal-reader && https://www.ibm.com/docs/en/zos/3.1.0?topic=programming-internal-reader-facility
   ip.__lrecl = 80;
   ip.__blksize = 80;
   ip.__sysout = __DEF_CLASS;

@@ -90,7 +90,7 @@ STIMERM_MODEL(stimerm_model); // make this copy in static storage
       " SYSSTATE POP    Restore SYSSTATE                  \n" \
       "*                                                    " \
       : "+m"(plist), "=m"(id)                                 \
-      : "m"(time), "m"(parm), "m"(exit)                       \
+      : "r"(time), "r"(parm), "r"(exit)                       \
       : "r0", "r1", "r2", "r14", "r15");
 #else
 #define STIMERM_SET(time, parm, exit, id, plist)
@@ -130,6 +130,19 @@ STIMERM_MODEL(stimerm_model); // make this copy in static storage
 #endif // __IBM_METAL__
 
 #if defined(__IBM_METAL__)
+#define ECB_POST(ecb)                                         \
+  __asm(                                                      \
+      "*                                                  \n" \
+      " POST %0                                           \n" \
+      "*                                                    " \
+      : "+m"(*ecb)                                            \
+      :                                                       \
+      : "r0", "r1", "r14", "r15");
+#else
+#define ECB_POST(ecb)
+#endif // __IBM_METAL__
+
+#if defined(__IBM_METAL__)
 #define ECB_WAIT(ecb)                                         \
   __asm(                                                      \
       "*                                                  \n" \
@@ -154,6 +167,11 @@ STIMERM_MODEL(stimerm_model); // make this copy in static storage
 #else
 #define ECBS_WAIT(count, list)
 #endif // __IBM_METAL__
+
+static void ecb_post(ECB *ecb)
+{
+  ECB_POST(ecb);
+}
 
 static void ecb_wait(ECB *ecb)
 {
@@ -214,7 +232,7 @@ static void timer(unsigned int time, zcli_stimer cb, void *parameter)
   int id = 0;                        // TODO(Kelosky): return & allow cancel by
   STIMERM_MODEL(dsa_stimerm_model);  // stack var
   dsa_stimerm_model = stimerm_model; // copy model
-  STIMERM_SET(time, parameter, cb, id, dsa_stimerm_model);
+  STIMERM_SET(&time, parameter, cb, id, dsa_stimerm_model);
 }
 
 static int cancel_timers()

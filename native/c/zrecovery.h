@@ -96,7 +96,6 @@ typedef struct sdwarc4 SDWARC4;
       "FRESDWA=YES,"                                          \
       "WKAREA=(%1),"                                          \
       "RECORD=YES                                         \n" \
-      "*                                                  \n" \
       "*                                                    " \
       :                                                       \
       : "r"(retry_routine), "r"(sdwa)                         \
@@ -261,7 +260,7 @@ static int enable_recovery(ZRCVY_ENV *zenv)
   // IEAARR invocation and jump back to where to drop was called
   ieaarr(ZRCVYRTE, zenv, ZRCVYARR, zenv);
 
-  // jump back to main whever drop was called
+  // jump back to main whenever drop was called
   JUMP_ENV(zenv->final_f4sa, zenv->final_r13, 0);
 
   return 0; // NOTE(Kelosky): this never runs
