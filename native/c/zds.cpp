@@ -28,6 +28,7 @@ const size_t MAX_DS_LENGTH = 44u;
 
 using namespace std;
 
+// https://www.ibm.com/docs/en/zos/2.5.0?topic=functions-fldata-retrieve-file-information#fldata__fldat
 string zds_get_recfm(const fldata_t& file_info)
 {
   string recfm = ZDS_RECFM_UNKNOWN;
