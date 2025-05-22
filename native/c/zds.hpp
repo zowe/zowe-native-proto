@@ -18,7 +18,6 @@
 #include "zdstype.h"
 
 extern const size_t MAX_DS_LENGTH;
-extern const size_t FIFO_CHUNK_SIZE;
 
 struct ZDSMem
 {

@@ -14,8 +14,11 @@ package cmds
 import (
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
+	"syscall"
 
 	t "zowe-native-proto/zowed/types/common"
 	"zowe-native-proto/zowed/types/ds"
@@ -34,43 +37,68 @@ func HandleReadDatasetRequest(conn *utils.StdioConn, params []byte) (result any,
 	if len(request.Encoding) == 0 {
 		request.Encoding = fmt.Sprintf("IBM-%d", utils.DefaultEncoding)
 	}
-	args := []string{"data-set", "view", request.Dsname, "--encoding", request.Encoding, "--rfb", "true", "--return-etag", "true"}
+	args := []string{"data-set", "view", request.Dsname, "--encoding", request.Encoding, "--return-etag", "true"}
 
-	// Use streaming if a pipe path is provided
-	if request.PipePath != "" {
-		args = append(args, "--pipe-path", request.PipePath)
+	var etag string
+	var data []byte
+	if request.StreamId == 0 {
+		args = append(args, "--rfb", "true")
+		out, err := conn.ExecCmd(args)
+		if err != nil {
+			e = fmt.Errorf("Error executing command: %v", err)
+			return
+		}
+
+		output := utils.YamlToMap(string(out))
+		etag = output["etag"]
+
+		if len(output) > 0 {
+			data, e = utils.CollectContentsAsBytes(output["data"], true)
+		} else {
+			data = []byte{}
+		}
+	} else {
+		pipePath := fmt.Sprintf("%s/zowe-native-proto_%d-%d-%d_fifo", os.TempDir(), os.Geteuid(), os.Getpid(), request.StreamId)
+		os.Remove(pipePath)
+
+		err := syscall.Mkfifo(pipePath, 0600)
+		if err != nil {
+			e = fmt.Errorf("[ReadDatasetRequest] Error creating named pipe: %v", err)
+			return
+		}
+
+		notify, err := json.Marshal(t.RpcNotification{
+			JsonRPC: "2.0",
+			Method:  "receiveStream",
+			Params: map[string]interface{}{
+				"id":       request.StreamId,
+				"pipePath": pipePath,
+			},
+		})
+		if err != nil {
+			e = fmt.Errorf("[ReadDatasetRequest] Error marshalling notification: %v", err)
+			return
+		}
+		fmt.Println(string(notify))
+
+		args = append(args, "--pipe-path", pipePath)
 		out, err := conn.ExecCmd(args)
 		if err != nil {
 			return nil, fmt.Errorf("Error executing command: %v", err)
 		}
 
-		// When using a pipe, we only get the etag back
-		result = ds.ReadDatasetResponse{
-			Encoding: request.Encoding,
-			Etag:     strings.TrimRight(string(out), "\n"),
-			Dataset:  request.Dsname,
-			Data:     []byte{}, // No data returned directly when using pipe
+		err = os.Remove(pipePath)
+		if err != nil {
+			e = fmt.Errorf("[ReadDatasetRequest] Error deleting named pipe: %v", err)
+			return
 		}
-		return result, nil
-	}
 
-	out, err := conn.ExecCmd(args)
-	if err != nil {
-		return nil, fmt.Errorf("Error executing command: %v", err)
-	}
-
-	output := utils.YamlToMap(string(out))
-
-	var data []byte
-	if len(output) > 0 {
-		data, _ = utils.CollectContentsAsBytes(output["data"], true)
-	} else {
-		data = []byte{}
+		etag = strings.TrimRight(string(out), "\n")
 	}
 
 	result = ds.ReadDatasetResponse{
 		Encoding: request.Encoding,
-		Etag:     output["etag"],
+		Etag:     etag,
 		Dataset:  request.Dsname,
 		Data:     data,
 	}
@@ -94,48 +122,70 @@ func HandleWriteDatasetRequest(conn *utils.StdioConn, params []byte) (result any
 		args = append(args, "--etag", request.Etag)
 	}
 
-	// Use streaming if a pipe path is provided
-	if request.PipePath != "" {
-		args = append(args, "--pipe-path", request.PipePath)
-		out, err := conn.ExecCmd(args)
+	var out []byte
+	if request.StreamId == 0 {
+		decodedBytes, err := base64.StdEncoding.DecodeString(request.Data)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to decode dataset contents: %v", err)
+		}
+
+		byteString := hex.EncodeToString(decodedBytes)
+
+		cmd := utils.BuildCommand(args)
+		stdin, err := cmd.StdinPipe()
+		if err != nil {
+			return nil, fmt.Errorf("Failed to open stdin pipe: %v", err)
+		}
+
+		go func() {
+			defer stdin.Close()
+			_, err = stdin.Write([]byte(byteString))
+			if err != nil {
+				e = fmt.Errorf("Failed to write to stdin pipe: %v", err)
+			}
+		}()
+
+		out, err = cmd.CombinedOutput()
+		if err != nil {
+			e = fmt.Errorf("Failed to pipe stdin to command: %v", string(out))
+			conn.LastExitCode = cmd.ProcessState.ExitCode()
+			return
+		}
+	} else {
+		pipePath := fmt.Sprintf("%s/zowe-native-proto_%d-%d-%d_fifo", os.TempDir(), os.Geteuid(), os.Getpid(), request.StreamId)
+		os.Remove(pipePath)
+
+		err := syscall.Mkfifo(pipePath, 0600)
+		if err != nil {
+			e = fmt.Errorf("[WriteDatasetRequest] Error creating named pipe: %v", err)
+			return
+		}
+
+		notify, err := json.Marshal(t.RpcNotification{
+			JsonRPC: "2.0",
+			Method:  "sendStream",
+			Params: map[string]interface{}{
+				"id":       request.StreamId,
+				"pipePath": pipePath,
+			},
+		})
+		if err != nil {
+			e = fmt.Errorf("[WriteDatasetRequest] Error marshalling notification: %v", err)
+			return
+		}
+		fmt.Println(string(notify))
+
+		args = append(args, "--pipe-path", pipePath)
+		out, err = conn.ExecCmd(args)
 		if err != nil {
 			return nil, fmt.Errorf("Error executing command: %v", err)
 		}
 
-		result = ds.WriteDatasetResponse{
-			Success: true,
-			Dataset: request.Dsname,
-			Etag:    strings.TrimRight(string(out), "\n"),
-		}
-		return result, nil
-	}
-
-	decodedBytes, err := base64.StdEncoding.DecodeString(request.Data)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to decode dataset contents: %v", err)
-	}
-
-	byteString := hex.EncodeToString(decodedBytes)
-
-	cmd := utils.BuildCommand(args)
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		return nil, fmt.Errorf("Failed to open stdin pipe: %v", err)
-	}
-
-	go func() {
-		defer stdin.Close()
-		_, err = stdin.Write([]byte(byteString))
+		err = os.Remove(pipePath)
 		if err != nil {
-			e = fmt.Errorf("Failed to write to stdin pipe: %v", err)
+			e = fmt.Errorf("[WriteDatasetRequest] Error deleting named pipe: %v", err)
+			return
 		}
-	}()
-
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		e = fmt.Errorf("Failed to pipe stdin to command: %v", string(out))
-		conn.LastExitCode = cmd.ProcessState.ExitCode()
-		return
 	}
 
 	result = ds.WriteDatasetResponse{
