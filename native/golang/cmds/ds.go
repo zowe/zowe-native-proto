@@ -272,8 +272,8 @@ func HandleCreateDatasetRequest(conn *utils.StdioConn, jsonData []byte) (result 
 	if attr.Dataclass != "" {
 		args = append(args, "--dataclass", attr.Dataclass)
 	}
-	if attr.Dev != "" {
-		args = append(args, "--dev", attr.Dev)
+	if attr.Unit != "" {
+		args = append(args, "--unit", attr.Unit)
 	}
 	if attr.Dsntype != "" {
 		args = append(args, "--dsntype", attr.Dsntype)

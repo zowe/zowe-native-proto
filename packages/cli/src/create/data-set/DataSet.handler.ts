@@ -12,7 +12,7 @@
 import type { IHandlerParameters } from "@zowe/imperative";
 import { CreateDefaults } from "../CreateDefaults";
 import type { ZSshClient, ds } from "zowe-native-proto-sdk";
-import type { DatasetAttributes } from "zowe-native-proto-sdk/src/doc/gen/common";
+import type { DatasetAttributes } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class CreateDatasetHandler extends SshBaseHandler {
@@ -29,7 +29,7 @@ export default class CreateDatasetHandler extends SshBaseHandler {
             "recfm",
             "lrecl",
             "dataclass",
-            "dev",
+            "unit",
             "dsntype",
             "mgntclass",
             "dsname",

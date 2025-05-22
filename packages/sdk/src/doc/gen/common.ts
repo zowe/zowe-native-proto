@@ -70,7 +70,7 @@ export interface DatasetAttributes {
   recfm: string; // Record Format
   lrecl: number /* int */; // Record Length
   dataclass: string; // Data Class
-  dev: string; // Device Type
+  unit: string; // Device Type
   dsntype: string; // Data Set Type
   mgntclass: string; // Management Class
   dsname: string; // Data Set Name

@@ -63,7 +63,7 @@ type DatasetAttributes struct {
 	Recfm     string `json:"recfm"`     // Record Format
 	Lrecl     int    `json:"lrecl"`     // Record Length
 	Dataclass string `json:"dataclass"` // Data Class
-	Dev       string `json:"dev"`       // Device Type
+	Unit      string `json:"unit"`      // Device Type
 	Dsntype   string `json:"dsntype"`   // Data Set Type
 	Mgntclass string `json:"mgntclass"` // Management Class
 	Dsname    string `json:"dsname"`    // Data Set Name

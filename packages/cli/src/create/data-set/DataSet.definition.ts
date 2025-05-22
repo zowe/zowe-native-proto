@@ -84,7 +84,7 @@ export const DataSetDefinition: ICommandDefinition = {
             type: "string",
         },
         {
-            name: "dev",
+            name: "unit",
             description: "Device Type",
             type: "string",
         },

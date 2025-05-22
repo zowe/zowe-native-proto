@@ -53,7 +53,6 @@ int handle_job_release(ZCLIResult);
 int handle_console_issue(ZCLIResult);
 
 int handle_data_set_create_dsn(ZCLIResult);
-int handle_data_set_create_dsn_attr(ZCLIResult);
 int handle_data_set_create_dsn_vb(ZCLIResult);
 int handle_data_set_create_dsn_adata(ZCLIResult);
 int handle_data_set_create_dsn_loadlib(ZCLIResult);
@@ -176,9 +175,9 @@ int main(int argc, char *argv[])
   return_dataclass.set_required(false);
   return_dataclass.set_description("Data class");
 
-  ZCLIOption return_dev("dev");
-  return_dev.set_required(false);
-  return_dev.set_description("Device type");
+  ZCLIOption return_unit("unit");
+  return_unit.set_required(false);
+  return_unit.set_description("Device type");
 
   ZCLIOption return_dsntype("dsntype");
   return_dsntype.set_required(false);
@@ -236,7 +235,7 @@ int main(int argc, char *argv[])
   data_set_create.get_options().push_back(return_recfm);
   data_set_create.get_options().push_back(return_lrecl);
   data_set_create.get_options().push_back(return_dataclass);
-  data_set_create.get_options().push_back(return_dev);
+  data_set_create.get_options().push_back(return_unit);
   data_set_create.get_options().push_back(return_dsntype);
   data_set_create.get_options().push_back(return_mgntclass);
   data_set_create.get_options().push_back(return_dsname);
@@ -1375,9 +1374,9 @@ int handle_data_set_create_dsn(ZCLIResult result)
   {
     attributes.dataclass = result.get_option("--dataclass")->get_value();
   }
-  if (result.get_option("--dev"))
+  if (result.get_option("--unit"))
   {
-    attributes.dev = result.get_option("--dev")->get_value();
+    attributes.unit = result.get_option("--unit")->get_value();
   }
   if (result.get_option("--dsntype"))
   {
