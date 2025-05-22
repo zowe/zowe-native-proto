@@ -28,7 +28,6 @@
 #include "extern/zb64.h"
 
 const size_t MAX_DS_LENGTH = 44u;
-const size_t FIFO_CHUNK_SIZE = 4096u;
 
 using namespace std;
 
