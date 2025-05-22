@@ -30,8 +30,11 @@ struct ZDSEntry
   std::string name;
   std::string dsorg;
   std::string volser;
+  std::string recfm;
   bool migr;
 };
+
+std::string zds_get_recfm(const fldata_t& file_info);
 
 /**
  * @brief Read data from a z/OS data set
