@@ -74,11 +74,11 @@ STIMERM_MODEL(stimerm_model); // make this copy in static storage
       " SYSSTATE PUSH       Save SYSSTATE                 \n" \
       " SYSSTATE AMODE64=NO                               \n" \
       "*                                                  \n" \
-      " STIMERM SET,BINTVL=%2,"                               \
+      " STIMERM SET,BINTVL=(%2),"                             \
       "WAIT=NO,"                                              \
       "ID=%1,"                                                \
-      "PARM=%3,"                                              \
-      "EXIT=%4,"                                              \
+      "PARM=(%3),"                                            \
+      "EXIT=(%4),"                                            \
       "MF=(E,%0)                                          \n" \
       "*                                                  \n" \
       " TMLH  2,X'8000' Did we switch AMODE??             \n" \
