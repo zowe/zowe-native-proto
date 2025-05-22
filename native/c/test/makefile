@@ -133,6 +133,7 @@ build-out/zut.test.o \
 build-out/zut.o \
 build-out/zutm.o \
 build-out/zutm31.o \
+build-out/zds.test.o \
 build-out/zds.o \
 build-out/zdsm.o \
 build-out/zjb.test.o \
@@ -182,6 +183,9 @@ build-out/zut.test.o: zut.test.cpp
 	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
 
 build-out/zjb.test.o: zjb.test.cpp
+	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
+
+build-out/zds.test.o: zds.test.cpp
 	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
 
 # build-out/testrcvy.s: testrcvy.c
