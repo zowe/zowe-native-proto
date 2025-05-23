@@ -14,10 +14,12 @@ package cmds
 import (
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	t "zowe-native-proto/zowed/types/common"
 	uss "zowe-native-proto/zowed/types/uss"
 	utils "zowe-native-proto/zowed/utils"
@@ -82,27 +84,70 @@ func HandleReadFileRequest(conn *utils.StdioConn, params []byte) (result any, e 
 	if len(request.Encoding) == 0 {
 		request.Encoding = fmt.Sprintf("IBM-%d", utils.DefaultEncoding)
 	}
-	args := []string{"uss", "view", request.Path, "--encoding", request.Encoding, "--rfb", "true", "--return-etag", "true"}
-	out, err := conn.ExecCmd(args)
-	if err != nil {
-		e = fmt.Errorf("Error executing command: %v", err)
-		return
-	}
+	args := []string{"uss", "view", request.Path, "--encoding", request.Encoding, "--return-etag", "true"}
 
-	output := utils.YamlToMap(string(out))
-
+	var etag string
 	var data []byte
-	if len(output) > 0 {
-		data, e = utils.CollectContentsAsBytes(output["data"], true)
+	if request.StreamId == 0 {
+		args = append(args, "--rfb", "true")
+		out, err := conn.ExecCmd(args)
+		if err != nil {
+			e = fmt.Errorf("Error executing command: %v", err)
+			return
+		}
+
+		output := utils.YamlToMap(string(out))
+		etag = output["etag"]
+
+		if len(output) > 0 {
+			data, e = utils.CollectContentsAsBytes(output["data"], true)
+		} else {
+			data = []byte{}
+		}
 	} else {
-		data = []byte{}
+		pipePath := fmt.Sprintf("%s/zowe-native-proto_%d-%d-%d_fifo", os.TempDir(), os.Geteuid(), os.Getpid(), request.StreamId)
+		os.Remove(pipePath)
+
+		err := syscall.Mkfifo(pipePath, 0600)
+		if err != nil {
+			e = fmt.Errorf("[ReadFileRequest] Error creating named pipe: %v", err)
+			return
+		}
+
+		notify, err := json.Marshal(t.RpcNotification{
+			JsonRPC: "2.0",
+			Method:  "receiveStream",
+			Params: map[string]interface{}{
+				"id":       request.StreamId,
+				"pipePath": pipePath,
+			},
+		})
+		if err != nil {
+			e = fmt.Errorf("[ReadFileRequest] Error marshalling notification: %v", err)
+			return
+		}
+		fmt.Println(string(notify))
+
+		args = append(args, "--pipe-path", pipePath)
+		out, err := conn.ExecCmd(args)
+		if err != nil {
+			return nil, fmt.Errorf("Error executing command: %v", err)
+		}
+
+		err = os.Remove(pipePath)
+		if err != nil {
+			e = fmt.Errorf("[ReadFileRequest] Error deleting named pipe: %v", err)
+			return
+		}
+
+		etag = strings.TrimRight(string(out), "\n")
 	}
 
 	result = uss.ReadFileResponse{
 		Encoding: request.Encoding,
-		Etag:     output["etag"],
+		Etag:     etag,
 		Path:     request.Path,
-		Data:     data,
+		Data:     &data,
 	}
 	return
 }
@@ -117,14 +162,6 @@ func HandleWriteFileRequest(conn *utils.StdioConn, params []byte) (result any, e
 		return
 	}
 
-	decodedBytes, err := base64.StdEncoding.DecodeString(request.Data)
-	if err != nil {
-		e = fmt.Errorf("[WriteFileRequest] Error decoding base64 contents: %v", err)
-		return
-	}
-
-	byteString := hex.EncodeToString(decodedBytes)
-
 	if len(request.Encoding) == 0 {
 		request.Encoding = fmt.Sprintf("IBM-%d", utils.DefaultEncoding)
 	}
@@ -132,27 +169,74 @@ func HandleWriteFileRequest(conn *utils.StdioConn, params []byte) (result any, e
 	if len(request.Etag) > 0 {
 		args = append(args, "--etag", request.Etag)
 	}
-	cmd := utils.BuildCommand(args)
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		e = fmt.Errorf("[WriteFileRequest] Error opening stdin pipe: %v", err)
-		return
-	}
 
-	go func() {
-		defer stdin.Close()
-		_, err = stdin.Write([]byte(byteString))
+	var out []byte
+	if request.StreamId == 0 {
+		decodedBytes, err := base64.StdEncoding.DecodeString(request.Data)
 		if err != nil {
-			e = fmt.Errorf("[WriteFileRequest] Error writing to stdin pipe: %v", err)
+			e = fmt.Errorf("[WriteFileRequest] Error decoding base64 contents: %v", err)
 			return
 		}
-	}()
 
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		e = fmt.Errorf("[WriteFileRequest] Error piping stdin to command: %s", string(out))
-		conn.LastExitCode = cmd.ProcessState.ExitCode()
-		return
+		byteString := hex.EncodeToString(decodedBytes)
+
+		cmd := utils.BuildCommand(args)
+		stdin, err := cmd.StdinPipe()
+		if err != nil {
+			e = fmt.Errorf("[WriteFileRequest] Error opening stdin pipe: %v", err)
+			return
+		}
+
+		go func() {
+			defer stdin.Close()
+			_, err = stdin.Write([]byte(byteString))
+			if err != nil {
+				e = fmt.Errorf("[WriteFileRequest] Error writing to stdin pipe: %v", err)
+				return
+			}
+		}()
+
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			e = fmt.Errorf("[WriteFileRequest] Error piping stdin to command: %s", string(out))
+			conn.LastExitCode = cmd.ProcessState.ExitCode()
+			return
+		}
+	} else {
+		pipePath := fmt.Sprintf("%s/zowe-native-proto_%d-%d-%d_fifo", os.TempDir(), os.Geteuid(), os.Getpid(), request.StreamId)
+		os.Remove(pipePath)
+
+		err := syscall.Mkfifo(pipePath, 0600)
+		if err != nil {
+			e = fmt.Errorf("[WriteFileRequest] Error creating named pipe: %v", err)
+			return
+		}
+
+		notify, err := json.Marshal(t.RpcNotification{
+			JsonRPC: "2.0",
+			Method:  "sendStream",
+			Params: map[string]interface{}{
+				"id":       request.StreamId,
+				"pipePath": pipePath,
+			},
+		})
+		if err != nil {
+			e = fmt.Errorf("[WriteFileRequest] Error marshalling notification: %v", err)
+			return
+		}
+		fmt.Println(string(notify))
+
+		args = append(args, "--pipe-path", pipePath)
+		out, err = conn.ExecCmd(args)
+		if err != nil {
+			return nil, fmt.Errorf("Error executing command: %v", err)
+		}
+
+		err = os.Remove(pipePath)
+		if err != nil {
+			e = fmt.Errorf("[WriteFileRequest] Error deleting named pipe: %v", err)
+			return
+		}
 	}
 
 	result = uss.WriteFileResponse{

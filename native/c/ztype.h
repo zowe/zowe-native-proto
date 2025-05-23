@@ -90,4 +90,6 @@ typedef struct _ZEncode
   int64_t data_type;
 } ZEncode;
 
+#define FIFO_CHUNK_SIZE 32768
+
 #endif

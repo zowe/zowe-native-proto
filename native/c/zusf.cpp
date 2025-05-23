@@ -33,6 +33,7 @@
 #include "zdyn.h"
 #include "zusftype.h"
 #include "zut.hpp"
+#include "extern/zb64.h"
 #include "iefzb4d2.h"
 #ifndef _XPLATFORM_SOURCE
 #define _XPLATFORM_SOURCE
@@ -227,6 +228,75 @@ int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
 }
 
 /**
+ * Reads data from a USS file.
+ *
+ * @param zusf pointer to a ZUSF object
+ * @param file name of the USS file
+ * @param pipe name of the output pipe
+ *
+ * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
+ */
+int zusf_read_from_uss_file_streamed(ZUSF *zusf, string file, string pipe)
+{
+  FILE *fin = fopen(file.c_str(), zusf->encoding_opts.data_type == eDataTypeBinary ? "rb" : "r");
+  if (!fin)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open file '%s'", file.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  int fifo_fd = open(pipe.c_str(), O_WRONLY);
+  FILE *fout = fdopen(fifo_fd, "w");
+  if (!fout)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open output pipe '%s'", pipe.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  // TODO(traeok): Finish support for encoding auto-detection
+  // char tagged_encoding[16] = {0};
+  // ssize_t xattr_result = getxattr(file.c_str(), "system.filetag", &tagged_encoding);
+
+  const auto hasEncoding = zusf->encoding_opts.data_type == eDataTypeText && strlen(zusf->encoding_opts.codepage) > 0;
+  const auto codepage = string(zusf->encoding_opts.codepage);
+
+  const size_t chunk_size = FIFO_CHUNK_SIZE * 3 / 4;
+  std::vector<char> buf(chunk_size);
+  ssize_t bytes_read;
+
+  while ((bytes_read = fread(&buf[0], 1, chunk_size, fin)) > 0)
+  {
+    int chunk_len = bytes_read;
+    const char *chunk = &buf[0];
+    std::vector<char> temp_encoded;
+
+    if (hasEncoding)
+    {
+      try
+      {
+        temp_encoded = zut_encode(chunk, chunk_len, codepage, "UTF-8", zusf->diag);
+        chunk = &temp_encoded[0];
+        chunk_len = temp_encoded.size();
+      }
+      catch (std::exception &e)
+      {
+        zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to convert input data from UTF-8 to %s", codepage.c_str());
+        return RTNCD_FAILURE;
+      }
+    }
+
+    chunk = base64(chunk, chunk_len, &chunk_len);
+    fwrite(chunk, 1, chunk_len, fout);
+  }
+
+  fflush(fout);
+  fclose(fin);
+  fclose(fout);
+
+  return RTNCD_SUCCESS;
+}
+
+/**
  * Writes data to a USS file.
  *
  * @param zusf pointer to a ZUSF object
@@ -298,6 +368,97 @@ int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data)
     string etag_str = zut_build_etag(file_stats.st_mtime, file_stats.st_size);
     strcpy(zusf->etag, etag_str.c_str());
   }
+
+  return 0;
+}
+
+/**
+ * Writes data to a USS file.
+ *
+ * @param zusf pointer to a ZUSF object
+ * @param file name of the USS file
+ * @param pipe name of the input pipe
+ *
+ * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
+ */
+int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe)
+{
+  struct stat file_stats;
+  if (stat(file.c_str(), &file_stats) == -1)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Path '%s' does not exist", file.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  // TODO(zFernand0): Avoid overriding existing files
+  const auto hasEncoding = zusf->encoding_opts.data_type == eDataTypeText && strlen(zusf->encoding_opts.codepage) > 0;
+  const auto codepage = string(zusf->encoding_opts.codepage);
+
+  if (strlen(zusf->etag) > 0)
+  {
+    const auto current_etag = zut_build_etag(file_stats.st_mtime, file_stats.st_size);
+    if (current_etag != zusf->etag)
+    {
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Etag mismatch: expected %s, actual %s", zusf->etag, current_etag.c_str());
+      return RTNCD_FAILURE;
+    }
+  }
+
+  FILE *fout = fopen(file.c_str(), zusf->encoding_opts.data_type == eDataTypeBinary ? "wb" : "w");
+  if (!fout)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open '%s'", file.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  int fifo_fd = open(pipe.c_str(), O_RDONLY);
+  FILE *fin = fdopen(fifo_fd, "r");
+  if (!fin)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open input pipe '%s'", pipe.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  std::vector<char> buf(FIFO_CHUNK_SIZE);
+  ssize_t bytes_read;
+
+  while ((bytes_read = fread(&buf[0], 1, FIFO_CHUNK_SIZE, fin)) > 0)
+  {
+    int chunk_len;
+    const char *chunk = (char *)unbase64(&buf[0], bytes_read, &chunk_len);
+    std::vector<char> temp_encoded;
+
+    if (hasEncoding)
+    {
+      try
+      {
+        temp_encoded = zut_encode(chunk, chunk_len, "UTF-8", codepage, zusf->diag);
+        chunk = &temp_encoded[0];
+        chunk_len = temp_encoded.size();
+      }
+      catch (std::exception &e)
+      {
+        zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to convert input data from UTF-8 to %s", codepage.c_str());
+        return RTNCD_FAILURE;
+      }
+    }
+
+    fwrite(chunk, 1, chunk_len, fout);
+  }
+
+  fflush(fout);
+  fclose(fin);
+  fclose(fout);
+
+  if (stat(file.c_str(), &file_stats) == -1)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Path '%s' does not exist", file.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  // Print new e-tag to stdout as response
+  string etag_str = zut_build_etag(file_stats.st_mtime, file_stats.st_size);
+  strcpy(zusf->etag, etag_str.c_str());
 
   return 0;
 }

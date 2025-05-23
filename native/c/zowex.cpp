@@ -141,6 +141,10 @@ int main(int argc, char *argv[])
   return_etag.set_required(false);
   return_etag.set_description("Display the e-tag for a read response in addition to data");
 
+  ZCLIOption pipe_path("pipe-path");
+  pipe_path.set_required(false);
+  pipe_path.set_description("Specify a FIFO pipe path for transferring binary data");
+
   //
   // data set group
   //
@@ -510,6 +514,7 @@ int main(int argc, char *argv[])
   uss_view.get_options().push_back(encoding_option);
   uss_view.get_options().push_back(response_format_bytes);
   uss_view.get_options().push_back(return_etag);
+  uss_view.get_options().push_back(pipe_path);
   uss_group.get_verbs().push_back(uss_view);
 
   ZCLIVerb uss_write("write");
@@ -519,6 +524,7 @@ int main(int argc, char *argv[])
   uss_write.get_options().push_back(encoding_option);
   uss_write.get_options().push_back(etag);
   uss_write.get_options().push_back(etag_only);
+  uss_write.get_options().push_back(pipe_path);
   uss_group.get_verbs().push_back(uss_write);
 
   ZCLIVerb uss_delete("delete");
@@ -1670,29 +1676,42 @@ int handle_uss_view(ZCLIResult result)
     return RTNCD_FAILURE;
   }
 
-  string response;
-  rc = zusf_read_from_uss_file(&zusf, uss_file, response);
-  if (0 != rc)
+  auto *pipe_path = result.get_option("--pipe-path");
+  if (pipe_path != nullptr && pipe_path->is_found())
   {
-    cerr << "Error: could not view USS file: '" << uss_file << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details:\n"
-         << zusf.diag.e_msg << endl
-         << response << endl;
-    return RTNCD_FAILURE;
-  }
+    rc = zusf_read_from_uss_file_streamed(&zusf, uss_file, pipe_path->get_value());
 
-  if (result.get_option_value("--return-etag") == "true")
-  {
-    cout << "etag: " << zut_build_etag(file_stats.st_mtime, file_stats.st_size) << endl;
-    cout << "data: ";
-  }
-  if (hasEncoding && result.get_option_value("--response-format-bytes") == "true")
-  {
-    zut_print_string_as_bytes(response);
+    if (result.get_option_value("--return-etag") == "true")
+    {
+      cout << zut_build_etag(file_stats.st_mtime, file_stats.st_size) << endl;
+    }
   }
   else
   {
-    cout << response << endl;
+    string response;
+    rc = zusf_read_from_uss_file(&zusf, uss_file, response);
+    if (0 != rc)
+    {
+      cerr << "Error: could not view USS file: '" << uss_file << "' rc: '" << rc << "'" << endl;
+      cerr << "  Details:\n"
+           << zusf.diag.e_msg << endl
+           << response << endl;
+      return RTNCD_FAILURE;
+    }
+
+    if (result.get_option_value("--return-etag") == "true")
+    {
+      cout << "etag: " << zut_build_etag(file_stats.st_mtime, file_stats.st_size) << endl;
+      cout << "data: ";
+    }
+    if (hasEncoding && result.get_option_value("--response-format-bytes") == "true")
+    {
+      zut_print_string_as_bytes(response);
+    }
+    else
+    {
+      cout << response << endl;
+    }
   }
 
   return rc;
@@ -1708,41 +1727,49 @@ int handle_uss_write(ZCLIResult result)
     zut_prepare_encoding(result.get_option_value("--encoding"), &zusf.encoding_opts);
   }
 
-  string data = "";
-  string line = "";
-  size_t byteSize = 0ul;
-
-  // Use Ctrl/Cmd + D to stop writing data manually
-  if (!isatty(fileno(stdout)))
-  {
-    std::istreambuf_iterator<char> begin(std::cin);
-    std::istreambuf_iterator<char> end;
-
-    vector<char> input(begin, end);
-    const auto temp = string(input.begin(), input.end());
-    input.clear();
-    const auto bytes = zut_get_contents_as_bytes(temp);
-
-    data.assign(bytes.begin(), bytes.end());
-    byteSize = bytes.size();
-  }
-  else
-  {
-    while (getline(cin, line))
-    {
-      data += line;
-      data.push_back('\n');
-    }
-    byteSize = data.size();
-  }
-
   auto *etag_opt = result.get_option("--etag");
   if (etag_opt != nullptr && etag_opt->is_found())
   {
     strcpy(zusf.etag, etag_opt->get_value().c_str());
   }
 
-  rc = zusf_write_to_uss_file(&zusf, file, data);
+  auto *pipe_path = result.get_option("--pipe-path");
+  if (pipe_path != nullptr && pipe_path->is_found())
+  {
+    rc = zusf_write_to_uss_file_streamed(&zusf, file, pipe_path->get_value());
+  }
+  else
+  {
+    string data = "";
+    string line = "";
+    size_t byteSize = 0ul;
+
+    // Use Ctrl/Cmd + D to stop writing data manually
+    if (!isatty(fileno(stdout)))
+    {
+      std::istreambuf_iterator<char> begin(std::cin);
+      std::istreambuf_iterator<char> end;
+
+      vector<char> input(begin, end);
+      const auto temp = string(input.begin(), input.end());
+      input.clear();
+      const auto bytes = zut_get_contents_as_bytes(temp);
+
+      data.assign(bytes.begin(), bytes.end());
+      byteSize = bytes.size();
+    }
+    else
+    {
+      while (getline(cin, line))
+      {
+        data += line;
+        data.push_back('\n');
+      }
+      byteSize = data.size();
+    }
+    rc = zusf_write_to_uss_file(&zusf, file, data);
+  }
+
   if (0 != rc)
   {
     cerr << "Error: could not write to USS file: '" << file << "' rc: '" << rc << "'" << endl;
