@@ -427,6 +427,7 @@ async function convert(connection: Client, fromType = "utf8", toType = "IBM-1047
                 stream.write(`mv ${files[i]} ${files[i]}.u\n`);
                 stream.write(`iconv -f ${fromType} -t ${toType} ${files[i]}.u > ${files[i]}\n`);
                 stream.write(`chtag -t -c ${toType} ${files[i]}\n`);
+                stream.write(`rm ${files[i]}.u\n`);
             }
             stream.end("exit\n");
 

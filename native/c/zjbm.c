@@ -378,7 +378,7 @@ int ZJBMTCOM(ZJB *zjb, STAT *PTR64 stat, ZJB_JOB_INFO **PTR64 job_info, int *ent
 
   while (statjqp)
   {
-    if (loop_control > zjb->jobs_max)
+    if (loop_control >= zjb->jobs_max)
     {
       zjb->diag.detail_rc = ZJB_RSNCD_MAX_JOBS_REACHED;
       zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "Reached maximum returned jobs requested %d", zjb->jobs_max);
