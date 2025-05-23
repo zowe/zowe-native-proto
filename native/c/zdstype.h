@@ -43,6 +43,16 @@
 #define ZDS_DSORG_PS "PS"      // sequential
 #define ZDS_DSORG_PO "PO"      // partitioned
 
+// Record format constants
+#define ZDS_RECFM_FB "FB"     // Fixed Blocked
+#define ZDS_RECFM_F "F"       // Fixed
+#define ZDS_RECFM_VB "VB"     // Variable Blocked
+#define ZDS_RECFM_V "V"       // Variable
+#define ZDS_RECFM_U "U"       // Undefined
+#define ZDS_RECFM_FBS "FBS"   // Fixed Blocked Spanned
+#define ZDS_RECFM_VBS "VBS"   // Variable Blocked Spanned
+#define ZDS_RECFM_UNKNOWN "?" // Unknown
+
 #if (defined(__IBMCPP__) || defined(__IBMC__))
 #pragma pack(packed)
 #endif

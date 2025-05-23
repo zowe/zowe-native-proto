@@ -1410,6 +1410,7 @@ int handle_data_set_list(ZCLIResult result)
         fields.push_back(it->dsorg);
         fields.push_back(it->volser);
         fields.push_back(it->migr ? "true" : "false");
+        fields.push_back(it->recfm);
         std::cout << zut_format_as_csv(fields) << std::endl;
         fields.clear();
       }
@@ -1417,7 +1418,7 @@ int handle_data_set_list(ZCLIResult result)
       {
         if ("true" == attributes)
         {
-          std::cout << left << setw(44) << it->name << " " << it->volser << " " << setw(4) << it->dsorg << endl;
+          std::cout << left << setw(44) << it->name << " " << it->volser << " " << setw(4) << it->dsorg << " " << setw(6) << it->recfm << endl;
         }
         else
         {
