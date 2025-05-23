@@ -247,7 +247,12 @@ int zds_create_dsn(ZDS *zds, string dsn, string &response)
   unsigned int code = 0;
   string parm = "ALLOC DA('" + dsn + "') DSORG(PO) SPACE(5,5) CYL LRECL(80) RECFM(F,B) DIR(5) NEW KEEP DSNTYPE(LIBRARY)";
 
-  return zut_bpxwdyn(parm, &code, response);
+  rc = zut_bpxwdyn(parm, &code, response);
+  if (RTNCD_SUCCESS == rc)
+  {
+    rc = zut_bpxwdyn("FREE DA('" + dsn + "')", &code, response);
+  }
+  return rc;
 }
 
 int zds_create_dsn_vb(ZDS *zds, string dsn, string &response)
@@ -256,7 +261,12 @@ int zds_create_dsn_vb(ZDS *zds, string dsn, string &response)
   unsigned int code = 0;
   string parm = "ALLOC DA('" + dsn + "') DSORG(PO) SPACE(5,5) CYL LRECL(255) RECFM(V,B) DIR(5) NEW KEEP DSNTYPE(LIBRARY)";
 
-  return zut_bpxwdyn(parm, &code, response);
+  rc = zut_bpxwdyn(parm, &code, response);
+  if (RTNCD_SUCCESS == rc)
+  {
+    rc = zut_bpxwdyn("FREE DA('" + dsn + "')", &code, response);
+  }
+  return rc;
 }
 
 int zds_create_dsn_adata(ZDS *zds, string dsn, string &response)
@@ -265,7 +275,12 @@ int zds_create_dsn_adata(ZDS *zds, string dsn, string &response)
   unsigned int code = 0;
   string parm = "ALLOC DA('" + dsn + "') DSORG(PO) SPACE(5,5) CYL LRECL(32756) BLKSIZE(32760) RECFM(V,B) DIR(5) NEW KEEP DSNTYPE(LIBRARY)";
 
-  return zut_bpxwdyn(parm, &code, response);
+  rc = zut_bpxwdyn(parm, &code, response);
+  if (RTNCD_SUCCESS == rc)
+  {
+    rc = zut_bpxwdyn("FREE DA('" + dsn + "')", &code, response);
+  }
+  return rc;
 }
 
 int zds_create_dsn_loadlib(ZDS *zds, string dsn, string &response)
@@ -274,7 +289,12 @@ int zds_create_dsn_loadlib(ZDS *zds, string dsn, string &response)
   unsigned int code = 0;
   string parm = "ALLOC DA('" + dsn + "') DSORG(PO) SPACE(5,5) CYL LRECL(0) BLKSIZE(32760) RECFM(U) DIR(5) NEW KEEP DSNTYPE(LIBRARY)";
 
-  return zut_bpxwdyn(parm, &code, response);
+  rc = zut_bpxwdyn(parm, &code, response);
+  if (RTNCD_SUCCESS == rc)
+  {
+    rc = zut_bpxwdyn("FREE DA('" + dsn + "')", &code, response);
+  }
+  return rc;
 }
 
 #define NUM_DELETE_TEXT_UNITS 2
