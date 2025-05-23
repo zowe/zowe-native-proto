@@ -62,23 +62,23 @@ export interface Dataset {
   migr: boolean;
 }
 export interface DatasetAttributes {
-  alcunit?: string; // Allocation Unit
-  blksize?: number /* int */; // Block Size
-  dirblk?: number /* int */; // Directory Blocks
-  dsorg?: string; // Data Set Organization
+  alcunit: string; // Allocation Unit
+  blksize: number /* int */; // Block Size
+  dirblk: number /* int */; // Directory Blocks
+  dsorg: string; // Data Set Organization
   primary: number /* int */; // Primary Space
-  recfm?: string; // Record Format
+  recfm: string; // Record Format
   lrecl: number /* int */; // Record Length
-  dataclass?: string; // Data Class
-  unit?: string; // Device Type
-  dsntype?: string; // Data Set Type
-  mgntclass?: string; // Management Class
-  dsname?: string; // Data Set Name
-  avgblk?: number /* int */; // Average Block Length
-  secondary?: number /* int */; // Secondary Space
-  size?: number /* int */; // Size
-  storclass?: string; // Storage Class
-  vol?: string; // Volume Serial
+  dataclass: string; // Data Class
+  unit: string; // Device Type
+  dsntype: string; // Data Set Type
+  mgntclass: string; // Management Class
+  dsname: string; // Data Set Name
+  avgblk: number /* int */; // Average Block Length
+  secondary: number /* int */; // Secondary Space
+  size: number /* int */; // Size
+  storclass: string; // Storage Class
+  vol: string; // Volume Serial
 }
 export interface DsMember {
   /**
