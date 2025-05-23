@@ -248,57 +248,58 @@ func HandleCreateDatasetRequest(conn *utils.StdioConn, jsonData []byte) (result 
 	attr := request.Attributes
 
 	// Conditionally add arguments if fields are set
-	if attr.Alcunit != "" {
-		args = append(args, "--alcunit", attr.Alcunit)
+	if attr.Alcunit != nil && *attr.Alcunit != "" {
+		args = append(args, "--alcunit", *attr.Alcunit)
 	}
-	if attr.Blksize != 0 {
-		args = append(args, "--blksize", fmt.Sprintf("%d", attr.Blksize))
+	if attr.Blksize != nil && *attr.Blksize != 0 {
+		args = append(args, "--blksize", fmt.Sprintf("%d", *attr.Blksize))
 	}
-	if attr.Dirblk != 0 {
-		args = append(args, "--dirblk", fmt.Sprintf("%d", attr.Dirblk))
+	if attr.Dirblk != nil && *attr.Dirblk != 0 {
+		args = append(args, "--dirblk", fmt.Sprintf("%d", *attr.Dirblk))
 	}
-	if attr.Dsorg != "" {
-		args = append(args, "--dsorg", attr.Dsorg)
+	if attr.Dsorg != nil && *attr.Dsorg != "" {
+		args = append(args, "--dsorg", *attr.Dsorg)
 	}
 	if attr.Primary != 0 {
 		args = append(args, "--primary", fmt.Sprintf("%d", attr.Primary))
 	}
-	if attr.Recfm != "" {
-		args = append(args, "--recfm", attr.Recfm)
+	if attr.Recfm != nil && *attr.Recfm != "" {
+		args = append(args, "--recfm", *attr.Recfm)
 	}
 	if attr.Lrecl != 0 {
 		args = append(args, "--lrecl", fmt.Sprintf("%d", attr.Lrecl))
 	}
-	if attr.Dataclass != "" {
-		args = append(args, "--dataclass", attr.Dataclass)
+	if attr.Dataclass != nil && *attr.Dataclass != "" {
+		args = append(args, "--dataclass", *attr.Dataclass)
 	}
-	if attr.Unit != "" {
-		args = append(args, "--unit", attr.Unit)
+	if attr.Unit != nil && *attr.Unit != "" {
+		args = append(args, "--unit", *attr.Unit)
 	}
-	if attr.Dsntype != "" {
-		args = append(args, "--dsntype", attr.Dsntype)
+	if attr.Dsntype != nil && *attr.Dsntype != "" {
+		args = append(args, "--dsntype", *attr.Dsntype)
 	}
-	if attr.Mgntclass != "" {
-		args = append(args, "--mgntclass", attr.Mgntclass)
+	if attr.Mgntclass != nil && *attr.Mgntclass != "" {
+		args = append(args, "--mgntclass", *attr.Mgntclass)
 	}
-	if attr.Avgblk != 0 {
-		args = append(args, "--avgblk", fmt.Sprintf("%d", attr.Avgblk))
+	if attr.Avgblk != nil && *attr.Avgblk != 0 {
+		args = append(args, "--avgblk", fmt.Sprintf("%d", *attr.Avgblk))
 	}
-	if attr.Secondary != 0 {
-		args = append(args, "--secondary", fmt.Sprintf("%d", attr.Secondary))
+	if attr.Secondary != nil && *attr.Secondary != 0 {
+		args = append(args, "--secondary", fmt.Sprintf("%d", *attr.Secondary))
 	}
-	if attr.Size != 0 {
-		args = append(args, "--size", fmt.Sprintf("%d", attr.Size))
+	if attr.Size != nil && *attr.Size != 0 {
+		args = append(args, "--size", fmt.Sprintf("%d", *attr.Size))
 	}
-	if attr.Storclass != "" {
-		args = append(args, "--storclass", attr.Storclass)
+	if attr.Storclass != nil && *attr.Storclass != "" {
+		args = append(args, "--storclass", *attr.Storclass)
 	}
-	if attr.Vol != "" {
-		args = append(args, "--vol", attr.Vol)
+	if attr.Vol != nil && *attr.Vol != "" {
+		args = append(args, "--vol", *attr.Vol)
 	}
+
 	_, err = conn.ExecCmd(args)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create data set: %v", err)
+		return nil, fmt.Errorf("Failed to create data set: %v", args)
 	}
 
 	result = ds.CreateDatasetResponse{
