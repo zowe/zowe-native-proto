@@ -252,10 +252,10 @@ func HandleCreateDatasetRequest(conn *utils.StdioConn, jsonData []byte) (result 
 		args = append(args, "--alcunit", *attr.Alcunit)
 	}
 	if attr.Blksize != nil && *attr.Blksize != 0 {
-		args = append(args, "--blksize", fmt.Sprintf("%d", attr.Blksize))
+		args = append(args, "--blksize", fmt.Sprintf("%d", *attr.Blksize))
 	}
 	if attr.Dirblk != nil && *attr.Dirblk != 0 {
-		args = append(args, "--dirblk", fmt.Sprintf("%d", attr.Dirblk))
+		args = append(args, "--dirblk", fmt.Sprintf("%d", *attr.Dirblk))
 	}
 	if attr.Dsorg != nil && *attr.Dsorg != "" {
 		args = append(args, "--dsorg", *attr.Dsorg)
@@ -282,19 +282,29 @@ func HandleCreateDatasetRequest(conn *utils.StdioConn, jsonData []byte) (result 
 		args = append(args, "--mgntclass", *attr.Mgntclass)
 	}
 	if attr.Avgblk != nil && *attr.Avgblk != 0 {
-		args = append(args, "--avgblk", fmt.Sprintf("%d", attr.Avgblk))
+		args = append(args, "--avgblk", fmt.Sprintf("%d", *attr.Avgblk))
 	}
 	if attr.Secondary != nil && *attr.Secondary != 0 {
-		args = append(args, "--secondary", fmt.Sprintf("%d", attr.Secondary))
+		args = append(args, "--secondary", fmt.Sprintf("%d", *attr.Secondary))
 	}
 	if attr.Size != nil && *attr.Size != 0 {
-		args = append(args, "--size", fmt.Sprintf("%d", attr.Size))
+		args = append(args, "--size", fmt.Sprintf("%d", *attr.Size))
 	}
 	if attr.Storclass != nil && *attr.Storclass != "" {
 		args = append(args, "--storclass", *attr.Storclass)
 	}
 	if attr.Vol != nil && *attr.Vol != "" {
 		args = append(args, "--vol", *attr.Vol)
+	}
+
+	_, err = conn.ExecCmd(args)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to create data set: %v", args)
+	}
+
+	result = ds.CreateDatasetResponse{
+		Success: true,
+		Dsname:  request.Dsname,
 	}
 	return
 }

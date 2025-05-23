@@ -28,7 +28,7 @@ export const CreateDefaults = {
             dirblk: 5,
             recfm: "FB",
             blksize: 6160,
-            lrecl: 80
+            lrecl: 80,
         },
 
         /**
@@ -41,7 +41,7 @@ export const CreateDefaults = {
             primary: 1,
             recfm: "FB",
             blksize: 6160,
-            lrecl: 80
+            lrecl: 80,
         },
 
         /**
@@ -55,7 +55,7 @@ export const CreateDefaults = {
             recfm: "FB",
             blksize: 6160,
             lrecl: 80,
-            dirblk: 25
+            dirblk: 25,
         },
 
         /**
@@ -69,7 +69,7 @@ export const CreateDefaults = {
             recfm: "VB",
             blksize: 32760,
             lrecl: 260,
-            dirblk: 25
+            dirblk: 25,
         },
 
         /**
@@ -83,7 +83,7 @@ export const CreateDefaults = {
             recfm: "U",
             blksize: 27998,
             lrecl: 27998,
-            dirblk: 25
+            dirblk: 25,
         },
 
         /**
@@ -91,8 +91,8 @@ export const CreateDefaults = {
          * @type {ICreateDataSetOptions}
          */
         BLANK: {
-            primary: 1
-        }
+            primary: 1,
+        },
     },
     /**
      * Specifies the defaults used by the Zos Files API to create a VSAM cluster
@@ -101,6 +101,6 @@ export const CreateDefaults = {
     VSAM: {
         dsorg: "INDEXED",
         alcunit: "KB",
-        primary: 840
-    }
+        primary: 840,
+    },
 };

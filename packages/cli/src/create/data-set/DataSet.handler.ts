@@ -10,10 +10,10 @@
  */
 
 import type { IHandlerParameters } from "@zowe/imperative";
-import { CreateDefaults } from "../CreateDefaults";
 import type { ZSshClient, ds } from "zowe-native-proto-sdk";
 import type { DatasetAttributes } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
+import { CreateDefaults } from "../CreateDefaults";
 
 export default class CreateDatasetHandler extends SshBaseHandler {
     public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<ds.CreateDatasetResponse> {

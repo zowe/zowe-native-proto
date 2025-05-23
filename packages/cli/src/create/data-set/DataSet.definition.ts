@@ -39,7 +39,7 @@ export const DataSetDefinition: ICommandDefinition = {
                 "Template to use the default attributes of. Ex: PARTITIONED (DEFAULT), SEQUENTIAL, CLASSIC, C, BINARY",
             type: "string",
             allowableValues: {
-                values: ["PARTITIONED", "SEQUENTIAL", "CLASSIC", "C", "BINARY","DEFAULT"],
+                values: ["PARTITIONED", "SEQUENTIAL", "CLASSIC", "C", "BINARY", "DEFAULT"],
                 caseSensitive: false,
             },
         },
