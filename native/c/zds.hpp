@@ -43,7 +43,7 @@ typedef struct
   std::string recfm;     // Record Format
   int lrecl;             // Record Length
   std::string dataclass; // Data Class
-  std::string dev;       // Device Type
+  std::string unit;      // Device Type
   std::string dsntype;   // Data Set Type
   std::string mgntclass; // Management Class
   std::string dsname;    // Data Set Name
@@ -83,7 +83,7 @@ int zds_read_from_dd(ZDS *zds, std::string ddname, std::string &response);
  * @param data data to write
  * @return int 0 for success; non zero otherwise
  */
-int zds_write_to_dd(ZDS *zds, std::string ddname, std::string &data);
+int zds_write_to_dd(ZDS *zds, std::string ddname, std::string data);
 
 /**
  * @brief Write data to a z/OS data set name

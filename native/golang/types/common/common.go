@@ -55,23 +55,23 @@ type Dataset struct {
 }
 
 type DatasetAttributes struct {
-	Alcunit   string `json:"alcunit"`   // Allocation Unit
-	Blksize   int    `json:"blksize"`   // Block Size
-	Dirblk    int    `json:"dirblk"`    // Directory Blocks
-	Dsorg     string `json:"dsorg"`     // Data Set Organization
-	Primary   int    `json:"primary"`   // Primary Space
-	Recfm     string `json:"recfm"`     // Record Format
-	Lrecl     int    `json:"lrecl"`     // Record Length
-	Dataclass string `json:"dataclass"` // Data Class
-	Dev       string `json:"dev"`       // Device Type
-	Dsntype   string `json:"dsntype"`   // Data Set Type
-	Mgntclass string `json:"mgntclass"` // Management Class
-	Dsname    string `json:"dsname"`    // Data Set Name
-	Avgblk    int    `json:"avgblk"`    // Average Block Length
-	Secondary int    `json:"secondary"` // Secondary Space
-	Size      int    `json:"size"`      // Size
-	Storclass string `json:"storclass"` // Storage Class
-	Vol       string `json:"vol"`       // Volume Serial
+	Alcunit   *string `json:"alcunit"`   // Allocation Unit
+	Blksize   *int    `json:"blksize"`   // Block Size
+	Dirblk    *int    `json:"dirblk"`    // Directory Blocks
+	Dsorg     *string `json:"dsorg"`     // Data Set Organization
+	Primary   int     `json:"primary"`   // Primary Space
+	Recfm     *string `json:"recfm"`     // Record Format
+	Lrecl     int     `json:"lrecl"`     // Record Length
+	Dataclass *string `json:"dataclass"` // Data Class
+	Unit      *string `json:"unit"`      // Device Type
+	Dsntype   *string `json:"dsntype"`   // Data Set Type
+	Mgntclass *string `json:"mgntclass"` // Management Class
+	Dsname    *string `json:"dsname"`    // Data Set Name
+	Avgblk    *int    `json:"avgblk"`    // Average Block Length
+	Secondary *int    `json:"secondary"` // Secondary Space
+	Size      *int    `json:"size"`      // Size
+	Storclass *string `json:"storclass"` // Storage Class
+	Vol       *string `json:"vol"`       // Volume Serial
 }
 
 type DsMember struct {

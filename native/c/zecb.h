@@ -13,6 +13,7 @@
 #define ZECBWAIT_H
 
 #include "ihaecb.h"
+#include "ztype.h"
 #include "zmetal.h"
 
 typedef struct ecb ECB;
@@ -159,33 +160,34 @@ static void ecb_wait(ECB *ecb)
   ECB_WAIT(ecb);
 }
 
-// static void ecbs_wait(
-//     int events, volatile ECB *ecbList[],
-//     int ecbListCount)
-// {
+// TODO(Kelosky): additionl debugging / testing needed if adopted
+static void ecbs_wait(
+    int events, volatile ECB *ecbList[],
+    int ecbListCount)
+{
 
-//   union overEcb {
-//     volatile ECB *__ptr32 ecb;
-//     unsigned int word;
-//   } oEcb = {0};
+  union overEcb
+  {
+    volatile ECB *PTR32 ecb;
+    unsigned int word;
+  } oEcb = {0};
 
-//   if (ecbListCount >= 1)
-//   {
+  if (ecbListCount >= 1)
+  {
 
-//     oEcb.ecb = ecbList[ecbListCount - 1];
-//     oEcb.word |= 0x80000000;
+    oEcb.ecb = ecbList[ecbListCount - 1];
+    oEcb.word |= 0x80000000;
 
-//     ecbList[ecbListCount - 1] = oEcb.ecb;
+    ecbList[ecbListCount - 1] = oEcb.ecb;
 
-//     ECBS_WAIT(events, ecbList);
+    ECBS_WAIT(events, ecbList);
 
-//     oEcb.word &= ~(0x80000000);
-//     ecbList[ecbListCount - 1] = oEcb.ecb;
+    oEcb.word &= ~0x80000000;
+    ecbList[ecbListCount - 1] = oEcb.ecb;
+  }
 
-//   }
-
-//   return;
-// }
+  return;
+}
 
 static void ecbs_wait_on_one(
     volatile ECB *ecbList[],

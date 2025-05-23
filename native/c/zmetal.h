@@ -78,10 +78,10 @@ static int test_auth()
 }
 
 #if defined(__IBM_METAL__)
-#define MODESET_MODE(value)                                     \
-  __asm(                                                        \
-      "*                                                   \n"  \
-      " MODESET MODE=" #value##"                            \n" \
+#define MODESET_MODE(value)                                    \
+  __asm(                                                       \
+      "*                                                   \n" \
+      " MODESET MODE=" #value##"                           \n" \
                                "*                                                    " ::: "r0", "r1", "r14", "r15");
 #else
 #define MODESET_MODE(value)
@@ -98,18 +98,24 @@ static int test_auth()
 #endif
 
 #if defined(__IBM_METAL__)
-#define LOAD(name, ep)                                         \
-  __asm(                                                       \
-      "*                                                   \n" \
-      " LOAD EPLOC=%1                                      \n" \
-      "*                                                   \n" \
-      " STG 0,%0                                           \n" \
-      "*                                                    "  \
-      : "=m"(ep)                                               \
-      : "m"(name)                                              \
-      : "r0", "r1", "r14", "r15");
+#define LOAD(name, ep, rc)                                      \
+  __asm(                                                        \
+      "*                                                    \n" \
+      " SLGR  2,2          Clear for PDSMAN/IEBCOPY         \n" \
+      "*                                                    \n" \
+      " LOAD EPLOC=%2,"                                         \
+      "PLISTVER=MAX,"                                           \
+      "ERRET=*+4                                            \n" \
+      "*                                                    \n" \
+      " STG 0,%0                                            \n" \
+      " ST  15,%1                                           \n" \
+      "*                                                      " \
+      : "=m"(ep),                                               \
+        "=m"(rc)                                                \
+      : "m"(name)                                               \
+      : "r0", "r1", "r2", "r14", "r15");
 #else
-#define LOAD(name, ep)
+#define LOAD(name, ep, rc)
 #endif
 
 #if defined(__IBM_METAL__)
@@ -135,12 +141,21 @@ static int test_auth()
  */
 static void *PTR64 load_module(const char name[8])
 {
-  // TODO(Kelosky): ERRET
-  void *PTR64 ep = NULL;
+  int rc = 0;
+
   char name_truncated[8 + 1] = {0};
   memset(name_truncated, ' ', sizeof(name_truncated - 1));                                                             // pad with spaces
   memcpy(name_truncated, name, strlen(name) > sizeof(name_truncated) - 1 ? sizeof(name_truncated) - 1 : strlen(name)); // truncate
-  LOAD(name_truncated, ep);
+
+  void *PTR64 ep = NULL;
+
+  LOAD(name_truncated, ep, rc);
+
+  if (0 != rc)
+  {
+    return NULL;
+  }
+
   return ep;
 }
 

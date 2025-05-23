@@ -125,7 +125,7 @@ int zds_read_from_dsn(ZDS *zds, string dsn, string &response)
   return 0;
 }
 
-int zds_write_to_dd(ZDS *zds, string ddname, string &data)
+int zds_write_to_dd(ZDS *zds, string ddname, string data)
 {
   ddname = "DD:" + ddname;
   ofstream out(ddname.c_str());
@@ -246,7 +246,7 @@ int zds_create_dsn(ZDS *zds, std::string dsn, std::string &response, DS_ATTRIBUT
 {
   int rc = 0;
   unsigned int code = 0;
-  std::string parm = "ALLOC DA('" + dsn + "')";
+  string parm = "ALLOC DA('" + dsn + "')";
   if (attributes.alcunit.empty())
   {
     attributes.alcunit = "TRACKS"; // Allocation Unit
@@ -311,8 +311,8 @@ int zds_create_dsn(ZDS *zds, std::string dsn, std::string &response, DS_ATTRIBUT
     parm += " MGMTCLAS(" + attributes.mgntclass + ")";
   if (!attributes.vol.empty())
     parm += " VOL(" + attributes.vol + ")";
-  if (!attributes.dev.empty())
-    parm += " UNIT(" + attributes.dev + ")";
+  if (!attributes.unit.empty())
+    parm += " UNIT(" + attributes.unit + ")";
 
   if (attributes.blksize > 0)
   {
@@ -320,6 +320,7 @@ int zds_create_dsn(ZDS *zds, std::string dsn, std::string &response, DS_ATTRIBUT
     parm += " BLKSIZE(" + std::string(itoa(attributes.blksize, numberAsString, 10)) + ")";
   }
 
+  cout << parm << endl;
   return zut_bpxwdyn(parm, &code, response);
 }
 
