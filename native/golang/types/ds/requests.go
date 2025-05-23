@@ -42,6 +42,8 @@ type ReadDatasetRequest struct {
 	Encoding string `json:"encoding,omitempty"`
 	// Dataset name
 	Dsname string `json:"dsname"`
+	// Stream to write contents to
+	StreamId int `json:"stream,omitempty" tstype:"Writable"`
 }
 
 type WriteDatasetRequest struct {
@@ -55,6 +57,8 @@ type WriteDatasetRequest struct {
 	Dsname string `json:"dsname"`
 	// Dataset contents
 	Data string `json:"data" tstype:"B64String"`
+	// Stream to read contents from
+	StreamId int `json:"stream,omitempty" tstype:"Readable"`
 }
 
 type DeleteDatasetRequest struct {
