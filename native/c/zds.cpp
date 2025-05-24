@@ -240,6 +240,16 @@ typedef struct
   unsigned char info;
 } RECORD_ENTRY;
 
+int alloc_and_free(string alloc_dd, string dsn, unsigned int *code, string &resp)
+{
+  int rc = zut_bpxwdyn(alloc_dd, code, resp);
+  if (RTNCD_SUCCESS == rc)
+  {
+    rc = zut_bpxwdyn("FREE DA('" + dsn + "')", code, resp);
+  }
+  return rc;
+}
+
 // TODO(Kelosky): add attributues to ZDS and have other functions populate it
 int zds_create_dsn(ZDS *zds, string dsn, string &response)
 {
@@ -247,7 +257,7 @@ int zds_create_dsn(ZDS *zds, string dsn, string &response)
   unsigned int code = 0;
   string parm = "ALLOC DA('" + dsn + "') DSORG(PO) SPACE(5,5) CYL LRECL(80) RECFM(F,B) DIR(5) NEW KEEP DSNTYPE(LIBRARY)";
 
-  return zut_bpxwdyn(parm, &code, response);
+  return alloc_and_free(parm, dsn, &code, response);
 }
 
 int zds_create_dsn_vb(ZDS *zds, string dsn, string &response)
@@ -256,7 +266,7 @@ int zds_create_dsn_vb(ZDS *zds, string dsn, string &response)
   unsigned int code = 0;
   string parm = "ALLOC DA('" + dsn + "') DSORG(PO) SPACE(5,5) CYL LRECL(255) RECFM(V,B) DIR(5) NEW KEEP DSNTYPE(LIBRARY)";
 
-  return zut_bpxwdyn(parm, &code, response);
+  return alloc_and_free(parm, dsn, &code, response);
 }
 
 int zds_create_dsn_adata(ZDS *zds, string dsn, string &response)
@@ -265,7 +275,7 @@ int zds_create_dsn_adata(ZDS *zds, string dsn, string &response)
   unsigned int code = 0;
   string parm = "ALLOC DA('" + dsn + "') DSORG(PO) SPACE(5,5) CYL LRECL(32756) BLKSIZE(32760) RECFM(V,B) DIR(5) NEW KEEP DSNTYPE(LIBRARY)";
 
-  return zut_bpxwdyn(parm, &code, response);
+  return alloc_and_free(parm, dsn, &code, response);
 }
 
 int zds_create_dsn_loadlib(ZDS *zds, string dsn, string &response)
@@ -274,7 +284,7 @@ int zds_create_dsn_loadlib(ZDS *zds, string dsn, string &response)
   unsigned int code = 0;
   string parm = "ALLOC DA('" + dsn + "') DSORG(PO) SPACE(5,5) CYL LRECL(0) BLKSIZE(32760) RECFM(U) DIR(5) NEW KEEP DSNTYPE(LIBRARY)";
 
-  return zut_bpxwdyn(parm, &code, response);
+  return alloc_and_free(parm, dsn, &code, response);
 }
 
 #define NUM_DELETE_TEXT_UNITS 2
