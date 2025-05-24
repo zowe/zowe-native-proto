@@ -732,9 +732,16 @@ int free_dynalloc_dds(vector<string> &list)
   for (vector<string>::iterator it = list.begin(); it != list.end(); it++)
   {
     string alloc_dd = *it;
-    size_t start = alloc_dd.find("(");
+    size_t start = alloc_dd.find(" ");
     size_t end = alloc_dd.find(")", start);
-    free_dds.push_back("free " + alloc_dd.substr(start - 2, end - start + 3));
+    if (start == string::npos || end == string::npos)
+    {
+      cerr << "Error: Invalid format in DD alloc string: " << alloc_dd << endl;
+    }
+    else
+    {
+      free_dds.push_back("free " + alloc_dd.substr(start + 1, end - start));
+    }
   }
 
   return loop_dynalloc(free_dds);
