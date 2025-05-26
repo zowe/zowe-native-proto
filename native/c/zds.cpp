@@ -816,9 +816,21 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
                   }
 
                   if (!is_end_marker) {
+                    // Extract the first member name from the directory block
+                    memcpy(first_member, &directory_block[2], 8);
+                    first_member[8] = '\0'; // null-terminate
+                    // Remove trailing spaces from member name
+                    for (int i = 7; i >= 0; --i) {
+                      if (first_member[i] == ' ') {
+                        first_member[i] = '\0';
+                      } else {
+                        break;
+                      }
+                    }
+                    
                     // Open a file handle to the first member entry from the entry
-                    string dsn_with_member = dsn + "(" + first_member + ")";
-                    FILE* member_file = fopen(dsn_with_member.c_str(), "rb,recfm=U");
+                    string dsn_with_member = string("//'") + dsn + "(" + first_member + ")'";
+                    FILE* member_file = fopen(dsn_with_member.c_str(), "r,recfm=*");
 
                     if (member_file) {
                       fldata_t member_file_info = {0};
