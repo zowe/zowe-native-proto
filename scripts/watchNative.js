@@ -41,6 +41,7 @@ const conn = new Client()
       ? fs.readFileSync(config.privateKey)
       : undefined,
     password: config.password,
+    keepaliveInterval: 30e3,
   });
 
 function cTask(err, remotePath, stream, resolve) {
@@ -130,6 +131,7 @@ async function deleteFile(remotePath) {
           return reject(err);
         }
 
+        sftp.end();
         resolve();
       });
     });
@@ -171,6 +173,7 @@ async function uploadFile(localPath, remotePath) {
             resolve();
           }
         });
+        sftp.end();
       });
 
       writeStream.on("error", (err) => {
