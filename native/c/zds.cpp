@@ -789,6 +789,49 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
             else if (file_info.__dsorgPO)
             {
               entry.dsorg = ZDS_DSORG_PO;
+              entry.recfm = ZDS_RECFM_UNKNOWN;
+
+              FILE* pds_directory = nullptr;
+              unsigned char directory_block[256];
+              char first_member[9]; // null-terminated 8-character name
+
+              // Parse the PDS directory to get the recfm for all members.
+              // https://www.ibm.com/docs/en/zos/2.4.0?topic=pds-structure
+              pds_directory = fopen(dsn.c_str(), "rb,recfm=U,blksize=256");
+
+              if (pds_directory) {
+                // Read the first 256-byte block.
+                size_t bytes_read = fread(directory_block, 1, 256, pds_directory);
+                fclose(pds_directory);
+
+                // Need at least 2 (count) + 8 (name) bytes to parse a valid entry
+                if (bytes_read >= 10) {
+                  // Check if the first member entry (starting at offset 2) is the end-of-directory marker.
+                  bool is_end_marker = true;
+                  for (int i = 0; i < 8; ++i) {
+                      if (directory_block[2 + i] != 0xFF) {
+                          is_end_marker = false;
+                          break;
+                      }
+                  }
+
+                  if (!is_end_marker) {
+                    // Open a file handle to the first member entry from the entry
+                    string dsn_with_member = dsn + "(" + first_member + ")";
+                    FILE* member_file = fopen(dsn_with_member.c_str(), "rb,recfm=U");
+
+                    if (member_file) {
+                      fldata_t member_file_info = {0};
+                      if (0 == fldata(member_file, nullptr, &member_file_info)) {
+                        // One PDS member's recfm applies to all members in PDS
+                        entry.recfm = zds_get_recfm(member_file_info);
+                      }
+
+                      fclose(member_file);
+                    }
+                  }
+                }
+              }
             }
             else if (file_info.__dsorgVSAM)
             {
