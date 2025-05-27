@@ -78,7 +78,7 @@ type CreateDatasetRequest struct {
 	Dsname string `json:"dsname"`
 
 	// Dataset attributes
-	Attributes common.DatasetAttributes `json:"attributes"`
+	Attributes common.DatasetAttributes `json:"attributes" tstype:"common.DatasetAttributes"`
 }
 
 type CreateMemberRequest struct {

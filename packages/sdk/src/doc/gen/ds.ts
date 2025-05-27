@@ -91,7 +91,7 @@ export interface CreateDatasetRequest extends common.CommandRequest {
   /**
    * Dataset attributes
    */
-  attributes: any /* common.DatasetAttributes */;
+  attributes: common.DatasetAttributes;
 }
 export interface CreateMemberRequest extends common.CommandRequest {
   command: "createMember";
