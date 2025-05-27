@@ -117,7 +117,7 @@ int zds_read_from_dsn(ZDS *zds, string dsn, string &response)
   string dsname = "//'" + dsn + "'";
   const string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary 
     ? "rb,recfm=U" 
-    : "r,recfm=*";
+    : "r";
     
   FILE *fp = fopen(dsname.c_str(), fopen_flags.c_str());
   if (!fp)
@@ -805,7 +805,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
                     // Open a file handle to the first member entry from the entry
                     string dsn_str = string(entry.name);
                     string dsn_with_member = string("//'") + zut_trim(dsn_str) + "(" + first_member + ")'";
-                    FILE* member_file = fopen(dsn_with_member.c_str(), "r,recfm=*");
+                    FILE* member_file = fopen(dsn_with_member.c_str(), "r");
 
                     if (member_file) {
                       fldata_t member_file_info = {0};
