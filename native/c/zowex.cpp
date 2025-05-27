@@ -1412,7 +1412,7 @@ int handle_data_set_create_dsn(ZCLIResult result)
   }
 
   string response;
-  rc = zds_create_dsn(&zds, dsn, response, attributes);
+  rc = zds_create_dsn(&zds, dsn, attributes, response);
   if (0 != rc)
   {
     cerr << "Error: could not create data set: '" << dsn << "' rc: '" << rc << "'" << endl;

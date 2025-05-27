@@ -104,7 +104,7 @@ int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data);
  * @return int 0 for success; non zero otherwise
  */
 
-int zds_create_dsn(ZDS *zds, std::string dsn, std::string &response, DS_ATTRIBUTES attributes);
+int zds_create_dsn(ZDS *zds, std::string dsn, DS_ATTRIBUTES attributes, std::string &response);
 
 /**
  * @brief Create a data set

@@ -89,8 +89,6 @@ export interface CreateDatasetRequest extends common.CommandRequest {
    */
   dsname: string;
   /**
-   * Type of the dataset to make
-   * Type string `json:"dstype" tstype:"'default' | 'vb' | 'adata'"`
    * Dataset attributes
    */
   attributes: any /* common.DatasetAttributes */;

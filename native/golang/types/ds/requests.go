@@ -76,8 +76,7 @@ type CreateDatasetRequest struct {
 	Command               string `json:"command" tstype:"\"createDataset\""`
 	// Dataset name
 	Dsname string `json:"dsname"`
-	// Type of the dataset to make
-	// Type string `json:"dstype" tstype:"'default' | 'vb' | 'adata'"`
+
 	// Dataset attributes
 	Attributes common.DatasetAttributes `json:"attributes"`
 }

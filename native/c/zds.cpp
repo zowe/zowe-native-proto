@@ -242,7 +242,7 @@ typedef struct
   unsigned char info;
 } RECORD_ENTRY;
 
-int zds_create_dsn(ZDS *zds, std::string dsn, std::string &response, DS_ATTRIBUTES attributes)
+int zds_create_dsn(ZDS *zds, std::string dsn, DS_ATTRIBUTES attributes, std::string &response)
 {
   int rc = 0;
   unsigned int code = 0;
