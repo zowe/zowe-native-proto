@@ -68,8 +68,7 @@ export default class CreateDatasetHandler extends SshBaseHandler {
         for (const key of attrKeys) {
             const value = args[key];
             if (value !== undefined) {
-                // biome-ignore lint/suspicious/noExplicitAny: as any required for attribute mapping
-                (attributes as any)[key] = value;
+                attributes = { ...attributes, [key]: value };
             }
         }
 
