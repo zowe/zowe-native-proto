@@ -18,7 +18,8 @@ import { CreateDefaults } from "../CreateDefaults";
 export default class CreateDatasetHandler extends SshBaseHandler {
     public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<ds.CreateDatasetResponse> {
         const dsname = params.arguments.name;
-        let attributes: Partial<DatasetAttributes> = {};
+        // Defaults such that it can be assigned to attributes in createDateset without a partial
+        let attributes: DatasetAttributes = { lrecl:80, primary: 1 };
 
         const attrKeys: (keyof DatasetAttributes)[] = [
             "alcunit",
