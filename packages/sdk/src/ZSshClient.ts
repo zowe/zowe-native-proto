@@ -32,12 +32,6 @@ type PromiseResolve<T> = (value: T | PromiseLike<T>) => void;
 // biome-ignore lint/suspicious/noExplicitAny: Promise reject type uses any
 type PromiseReject = (reason?: any) => void;
 
-interface RpcPromise {
-    resolve: PromiseResolve<CommandResponse>;
-    reject: PromiseReject;
-    pending: PromiseLike<void>[];
-}
-
 export class ZSshClient extends AbstractRpcClient implements Disposable {
     public static readonly DEFAULT_SERVER_PATH = "~/.zowe-server";
 
@@ -49,7 +43,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
     private mPartialStderr = "";
     private mPartialStdout = "";
     private mPendingStreamMap: Map<number, Stream> = new Map();
-    private mPromiseMap: Map<number, RpcPromise> = new Map();
+    private mPromiseMap: Map<number, { resolve: PromiseResolve<CommandResponse>; reject: PromiseReject }> = new Map();
     private mRequestId = 0;
 
     private constructor() {
@@ -64,7 +58,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
         client.mSshClient = new Client();
         client.mSshStream = await new Promise((resolve, reject) => {
             client.mSshClient.on("error", (err) => {
-                Logger.getAppLogger().error("Error connecting to SSH: %s", err.toString());
+                Logger.getAppLogger().error(`Error connecting to SSH: ${err}`);
                 reject(err);
             });
             client.mSshClient.on("ready", async () => {
@@ -116,9 +110,9 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                 );
                 rpcRequest.params.stream = rpcRequest.id;
             }
-            this.mPromiseMap.set(rpcRequest.id, { resolve, reject, pending: [] });
+            this.mPromiseMap.set(rpcRequest.id, { resolve, reject });
             const requestStr = JSON.stringify(rpcRequest);
-            Logger.getAppLogger().trace("Sending request: %s", requestStr);
+            Logger.getAppLogger().trace(`Sending request: ${requestStr}`);
             this.mSshStream.stdin.write(`${requestStr}\n`);
         }).finally(() => clearTimeout(timeoutId));
     }
@@ -127,7 +121,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
         return new Promise((resolve, reject) => {
             this.mSshClient.exec(args.join(" "), (err, stream) => {
                 if (err) {
-                    Logger.getAppLogger().error("Error running SSH command: %s", err.toString());
+                    Logger.getAppLogger().error(`Error running SSH command: ${err}`);
                     reject(err);
                 } else {
                     const onData = (data: Buffer) => {
@@ -149,7 +143,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
     }
 
     private onReady(stream: ClientChannel, data: string): StatusMessage["data"] {
-        Logger.getAppLogger().debug("Received SSH data: %s", data);
+        Logger.getAppLogger().debug(`Received SSH data: ${data}`);
         let response: StatusMessage;
         try {
             response = JSON.parse(data);
@@ -188,58 +182,75 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
     private processResponses(data: string): string {
         const responses = data.split("\n");
         for (let i = 0; i < responses.length - 1; i++) {
-            if (responses[i].length > 0) {
-                this.requestEnd(responses[i]);
+            if (responses[i].length === 0) {
+                continue;
+            }
+
+            Logger.getAppLogger().trace(`Received response: ${responses[i]}`);
+            let response: RpcResponse | RpcNotification;
+            try {
+                response = JSON.parse(responses[i]);
+            } catch (err) {
+                const errMsg = Logger.getAppLogger().error("Invalid JSON response: %s", responses[i]);
+                this.mErrHandler(new Error(errMsg));
+                continue;
+            }
+
+            const responseId: number = "id" in response ? response.id : response.params?.id;
+            if (!this.mPromiseMap.has(responseId)) {
+                const errMsg = Logger.getAppLogger().error("Missing promise for response ID: %d", responseId);
+                this.mErrHandler(new Error(errMsg));
+                continue;
+            }
+
+            if ("method" in response) {
+                this.handleNotification(response);
+            } else {
+                this.handleResponse(response);
             }
         }
         return responses[responses.length - 1];
     }
 
-    private requestEnd(data: string, success = true) {
-        Logger.getAppLogger().trace("Received response: %s", data);
-        let response: RpcResponse | RpcNotification;
-        try {
-            response = JSON.parse(data);
-        } catch (err) {
-            const errMsg = `Invalid JSON response: ${data}`;
-            Logger.getAppLogger().error(errMsg);
-            this.mErrHandler(new Error(errMsg));
-            return;
+    private handleNotification(response: RpcNotification): void {
+        const responseId = response.params?.id as number;
+        const pendingStream = this.mPendingStreamMap.get(responseId);
+        let streamPromise: Promise<void> | undefined;
+        if (response.method === "sendStream" && pendingStream instanceof Readable) {
+            streamPromise = this.uploadStream(pendingStream, response.params);
+        } else if (response.method === "receiveStream" && pendingStream instanceof Writable) {
+            streamPromise = this.downloadStream(pendingStream, response.params);
         }
-        const responseId: number = "id" in response ? response.id : response.params?.id;
-        if (!this.mPromiseMap.has(responseId)) {
-            const errMsg = `Missing promise for response ID: ${responseId}`;
-            Logger.getAppLogger().error(errMsg);
-            this.mErrHandler(new Error(errMsg));
-            return;
-        }
-        if ("method" in response) {
-            const pendingStream = this.mPendingStreamMap.get(responseId);
-            if (response.method === "sendStream" && pendingStream instanceof Readable) {
-                this.mPromiseMap.get(responseId).pending.push(this.uploadStream(pendingStream, response.params));
-            } else if (response.method === "receiveStream" && pendingStream instanceof Writable) {
-                this.mPromiseMap.get(responseId).pending.push(this.downloadStream(pendingStream, response.params));
-            }
+        if (streamPromise != null) {
+            const { resolve } = this.mPromiseMap.get(responseId);
+            this.mPromiseMap.get(responseId).resolve = async (value: CommandResponse) => {
+                await streamPromise;
+                resolve(value);
+            };
             this.mPendingStreamMap.delete(responseId);
-            return;
+        } else {
+            const errMsg = Logger.getAppLogger().error(
+                "Failed to handle RPC notification: %s",
+                JSON.stringify(response),
+            );
+            this.mErrHandler(new Error(errMsg));
         }
+    }
+
+    private handleResponse(response: RpcResponse): void {
         if (response.error != null) {
-            Logger.getAppLogger().error(`Error for response ID: ${responseId}\n${JSON.stringify(response.error)}`);
-            this.mPromiseMap.get(responseId).reject(
+            Logger.getAppLogger().error(`Error for response ID: ${response.id}\n${JSON.stringify(response.error)}`);
+            this.mPromiseMap.get(response.id).reject(
                 new ImperativeError({
                     msg: response.error.message,
                     errorCode: response.error.code.toString(),
                     additionalDetails: response.error.data,
                 }),
             );
-            this.mPromiseMap.delete(responseId);
         } else {
-            const { resolve, pending } = this.mPromiseMap.get(responseId);
-            Promise.all(pending).then(() => {
-                resolve({ success, ...response.result });
-                this.mPromiseMap.delete(responseId);
-            });
+            this.mPromiseMap.get(response.id).resolve(response.result);
         }
+        this.mPromiseMap.delete(response.id);
     }
 
     private async uploadStream(readStream: Readable, params: { pipePath: string }): Promise<void> {
