@@ -352,7 +352,7 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &list)
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=pds-reading-directory-sequentially
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=pdse-reading-directory - long alias names omitted, use DESERV for those
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=pds-directory
-  FILE *fp = fopen(dsn.c_str(), "rb, blksize=256, recfm=u");
+  FILE *fp = fopen(dsn.c_str(), "rb,recfm=u");
 
   const int bufsize = 256;
   char buffer[bufsize] = {0};
@@ -761,7 +761,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
               entry.dsorg = ZDS_DSORG_PO;
               entry.recfm = ZDS_RECFM_UNKNOWN;
 
-              // we need to reopen the directory with RECFM=U and blksize=256 to properly traverse it
+              // we need to reopen the PDS directory with RECFM=U to properly traverse it
               fclose(dir);
               dir_closed = true;
 
@@ -771,7 +771,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
 
               // Parse the PDS directory to get the recfm for all members.
               // https://www.ibm.com/docs/en/zos/2.4.0?topic=pds-structure
-              pds_directory = fopen(dsn.c_str(), "rb,recfm=U,blksize=256");
+              pds_directory = fopen(dsn.c_str(), "rb,recfm=U");
 
               if (pds_directory) {
                 // Read the first 256-byte block.
