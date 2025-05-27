@@ -36,7 +36,7 @@ string zds_get_recfm(const fldata_t& file_info)
   if (file_info.__recfmF)
   {
     recfm = ZDS_RECFM_F;
-    if (file_info.__recfmBlk)
+    if (file_info.__recfmBlk || file_info.__recfmB)
       recfm = file_info.__recfmS ? ZDS_RECFM_FBS : ZDS_RECFM_FB;
     if (file_info.__recfmASA)
       recfm += "A";
@@ -46,7 +46,7 @@ string zds_get_recfm(const fldata_t& file_info)
   else if (file_info.__recfmV)
   {
     recfm = ZDS_RECFM_V;
-    if (file_info.__recfmBlk)
+    if (file_info.__recfmBlk || file_info.__recfmB)
       recfm = file_info.__recfmS ? ZDS_RECFM_VBS : ZDS_RECFM_VB;
     if (file_info.__recfmASA)
       recfm += "A";
@@ -778,6 +778,8 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
         fldata_t file_info = {0};
         char file_name[64] = {0};
 
+        bool dir_closed = false;
+
         if (dir)
         {
           if (0 == fldata(dir, file_name, &file_info))
@@ -791,6 +793,10 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
               entry.dsorg = ZDS_DSORG_PO;
               entry.recfm = ZDS_RECFM_UNKNOWN;
 
+              // we need to reopen the directory with RECFM=U and blksize=256 to properly traverse it
+              fclose(dir);
+              dir_closed = true;
+
               FILE* pds_directory = nullptr;
               unsigned char directory_block[256];
               char first_member[9]; // null-terminated 8-character name
@@ -801,7 +807,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
 
               if (pds_directory) {
                 // Read the first 256-byte block.
-                size_t bytes_read = fread(directory_block, 1, 256, pds_directory);
+                size_t bytes_read = fread(directory_block, 1, sizeof(directory_block), pds_directory);
                 fclose(pds_directory);
 
                 // Need at least 2 (count) + 8 (name) bytes to parse a valid entry
@@ -829,7 +835,8 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
                     }
                     
                     // Open a file handle to the first member entry from the entry
-                    string dsn_with_member = string("//'") + dsn + "(" + first_member + ")'";
+                    string dsn_str = string(entry.name);
+                    string dsn_with_member = string("//'") + zut_trim(dsn_str) + "(" + first_member + ")'";
                     FILE* member_file = fopen(dsn_with_member.c_str(), "r,recfm=*");
 
                     if (member_file) {
@@ -855,7 +862,10 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
               entry.volser = ZDS_VOLSER_UNKNOWN;
             }
             
-            entry.recfm = zds_get_recfm(file_info);
+            if (entry.recfm == ZDS_RECFM_UNKNOWN)
+            {
+              entry.recfm = zds_get_recfm(file_info);
+            }
           }
           else
           {
@@ -863,7 +873,10 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
             entry.volser = ZDS_VOLSER_UNKNOWN;
             entry.recfm = ZDS_RECFM_UNKNOWN;
           }
-          fclose(dir);
+          if (!dir_closed) 
+          {
+            fclose(dir);
+          }
         }
         else
         {
