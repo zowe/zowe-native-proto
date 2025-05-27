@@ -115,25 +115,9 @@ int zds_read_from_dd(ZDS *zds, string ddname, string &response)
 int zds_read_from_dsn(ZDS *zds, string dsn, string &response)
 {
   string dsname = "//'" + dsn + "'";
-  string recfm = "U"; // Default to U if we can't determine
-  
-  if (zds->encoding_opts.data_type != eDataTypeBinary) {
-    // Try to get record format information
-    FILE *fp_check = fopen(dsname.c_str(), "r");
-    if (fp_check) {
-      fldata_t file_info = {0};
-      char file_name[64] = {0};
-      
-      if (0 == fldata(fp_check, file_name, &file_info)) {
-        recfm = zds_get_recfm(file_info);
-      }
-      fclose(fp_check);
-    }
-  }
-
   const string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary 
-    ? "rb,recfm=" + recfm 
-    : "r,recfm=" + recfm;
+    ? "rb,recfm=U" 
+    : "r,recfm=*";
     
   FILE *fp = fopen(dsname.c_str(), fopen_flags.c_str());
   if (!fp)
@@ -230,25 +214,9 @@ int zds_write_to_dsn(ZDS *zds, string dsn, string &data)
   }
 
   const string dsname = "//'" + dsn + "'";
-  string recfm = "U"; // Default to U if we can't determine
-  
-  if (zds->encoding_opts.data_type != eDataTypeBinary) {
-    // Try to get record format information
-    FILE *fp_check = fopen(dsname.c_str(), "r");
-    if (fp_check) {
-      fldata_t file_info = {0};
-      char file_name[64] = {0};
-      
-      if (0 == fldata(fp_check, file_name, &file_info)) {
-        recfm = zds_get_recfm(file_info);
-      }
-      fclose(fp_check);
-    }
-  }
-
   const string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary 
-    ? "wb,recfm=" + recfm 
-    : "w,recfm=" + recfm;
+    ? "wb,recfm=U" 
+    : "w,recfm=*";
     
   auto *fp = fopen(dsname.c_str(), fopen_flags.c_str());
   if (nullptr == fp)
