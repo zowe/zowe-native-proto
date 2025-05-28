@@ -71,16 +71,14 @@ type RestoreDatasetRequest struct {
 	Dsname string `json:"dsname"`
 }
 
-// default: DSORG=PO, RECFM=FB, LRECL=80
-// vb: DSORG=PO, RECFM=VB, LRECL=255
-// adata: DSORG=PO, RECFM=VB, LRECL=32756
 type CreateDatasetRequest struct {
 	common.CommandRequest `tstype:",extends"`
 	Command               string `json:"command" tstype:"\"createDataset\""`
 	// Dataset name
 	Dsname string `json:"dsname"`
-	// Type of the dataset to make
-	Type string `json:"dstype" tstype:"'default' | 'vb' | 'adata'"`
+
+	// Dataset attributes
+	Attributes common.DatasetAttributes `json:"attributes" tstype:"common.DatasetAttributes"`
 }
 
 type CreateMemberRequest struct {
