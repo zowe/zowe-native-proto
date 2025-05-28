@@ -731,6 +731,28 @@ int loop_dynalloc(vector<string> &list)
   return rc;
 }
 
+int free_dynalloc_dds(vector<string> &list)
+{
+  vector<string> free_dds;
+
+  for (vector<string>::iterator it = list.begin(); it != list.end(); it++)
+  {
+    string alloc_dd = *it;
+    size_t start = alloc_dd.find(" ");
+    size_t end = alloc_dd.find(")", start);
+    if (start == string::npos || end == string::npos)
+    {
+      cerr << "Error: Invalid format in DD alloc string: " << alloc_dd << endl;
+    }
+    else
+    {
+      free_dds.push_back("free " + alloc_dd.substr(start + 1, end - start));
+    }
+  }
+
+  return loop_dynalloc(free_dds);
+}
+
 int handle_job_list(ZCLIResult result)
 {
   int rc = 0;
@@ -1330,13 +1352,14 @@ int handle_data_set_restore(ZCLIResult result)
   string response;
   unsigned int code = 0;
 
-  string parm = "alloc da('" + dsn + "') shr";
+  // perform dynalloc
+  vector<string> dds;
+  dds.push_back("alloc da('" + dsn + "') shr");
+  dds.push_back("free da('" + dsn + "')");
 
-  rc = zut_bpxwdyn(parm, &code, response);
-  if (0 != rc)
+  rc = loop_dynalloc(dds);
+  if (RTNCD_SUCCESS != rc)
   {
-    cerr << "Error: bpxwdyn with parm '" << parm << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details: " << response << endl;
     return RTNCD_FAILURE;
   }
 
@@ -1939,6 +1962,12 @@ int handle_tool_convert_dsect(ZCLIResult result)
   cout << "DSECT converted to '" << chdr_dsn << "'" << endl;
   cout << "Copy it via `cp \"//'" + chdr_dsn + "'\" <member>.h`" << endl;
 
+  rc = free_dynalloc_dds(dds);
+  if (RTNCD_SUCCESS != rc)
+  {
+    return RTNCD_FAILURE;
+  }
+
   return rc;
 }
 
@@ -2186,6 +2215,12 @@ int handle_tool_search(ZCLIResult result)
     }
   }
 
+  rc = free_dynalloc_dds(dds);
+  if (RTNCD_SUCCESS != rc)
+  {
+    return RTNCD_FAILURE;
+  }
+
   return RTNCD_SUCCESS;
 }
 
@@ -2239,12 +2274,7 @@ int handle_tool_amblist(ZCLIResult result)
   }
   cout << output << endl;
 
-  vector<string> free_dds;
-  free_dds.push_back("free dd(newdd)");
-  free_dds.push_back("free dd(outdd)");
-  free_dds.push_back("free dd(sysin)");
-
-  rc = loop_dynalloc(free_dds);
+  rc = free_dynalloc_dds(dds);
   if (RTNCD_SUCCESS != rc)
   {
     return RTNCD_FAILURE;
@@ -2342,13 +2372,7 @@ int handle_data_set_compress(ZCLIResult result)
   }
   cout << "Data set '" << dsn << "' compressed" << endl;
 
-  vector<string> free_dds;
-  free_dds.push_back("free dd(a)");
-  free_dds.push_back("free dd(b)");
-  free_dds.push_back("free dd(sysin)");
-  free_dds.push_back("free dd(sysprint)");
-
-  rc = loop_dynalloc(free_dds);
+  rc = free_dynalloc_dds(dds);
   if (RTNCD_SUCCESS != rc)
   {
     return RTNCD_FAILURE;
