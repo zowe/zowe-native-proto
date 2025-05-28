@@ -322,7 +322,6 @@ int zds_create_dsn(ZDS *zds, std::string dsn, DS_ATTRIBUTES attributes, std::str
     parm += " BLKSIZE(" + std::string(itoa(attributes.blksize, numberAsString, 10)) + ")";
   }
 
-  cout << parm << endl;
   return zut_bpxwdyn(parm, &code, response);
 }
 
