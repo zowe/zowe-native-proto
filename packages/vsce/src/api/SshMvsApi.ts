@@ -13,8 +13,8 @@ import { readFileSync, writeFileSync } from "node:fs";
 import type * as zosfiles from "@zowe/zos-files-for-zowe-sdk";
 import { Gui, type MainframeInteraction, imperative } from "@zowe/zowe-explorer-api";
 import { B64String, type ds } from "zowe-native-proto-sdk";
-import { SshCommonApi } from "./SshCommonApi";
 import type * as common from "../../../sdk/lib/doc/gen/common.ts";
+import { SshCommonApi } from "./SshCommonApi";
 
 export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs {
     public async dataSet(filter: string, options?: zosfiles.IListOptions): Promise<zosfiles.IZosFilesResponse> {
@@ -114,7 +114,6 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         dataSetName: string,
         options?: Partial<zosfiles.ICreateDataSetOptions>,
     ): Promise<zosfiles.IZosFilesResponse> {
-
         const datasetAttributes: common.DatasetAttributes = {
             dsname: dataSetName,
             primary: 1,
