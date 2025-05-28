@@ -116,21 +116,9 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
     ): Promise<zosfiles.IZosFilesResponse> {
 
         const datasetAttributes: common.DatasetAttributes = {
-            alcunit: options?.alcunit,
-            blksize: options?.blksize,
-            dirblk: options?.dirblk,
-            dsorg: options?.dsorg,
-            primary: options?.primary || 1,
-            recfm: options?.recfm,
-            lrecl: options?.lrecl || 80,
-            dataclass: options?.dataclass,
-            unit: options?.unit,
-            dsntype: options?.dsntype,
-            mgntclass: options?.mgntclass,
-            dsname: dataSetName,
-            avgblk: options?.avgblk,
-            secondary: options?.secondary,
-            storclass: options?.storclass,
+            primary: 1,
+            lrecl: 80,
+            ...(options || {}),
         };
 
         const response = await (await this.client).ds.createDataset({
