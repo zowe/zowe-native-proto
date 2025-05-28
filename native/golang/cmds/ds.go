@@ -287,8 +287,8 @@ func HandleCreateDatasetRequest(conn *utils.StdioConn, jsonData []byte) (result 
 	if attr.Secondary != nil && *attr.Secondary != 0 {
 		args = append(args, "--secondary", fmt.Sprintf("%d", *attr.Secondary))
 	}
-	if attr.Size != nil && *attr.Size != 0 {
-		args = append(args, "--size", fmt.Sprintf("%d", *attr.Size))
+	if attr.Size != nil && *attr.Size != "" {
+		args = append(args, "--size", *attr.Size)
 	}
 	if attr.Storclass != nil && *attr.Storclass != "" {
 		args = append(args, "--storclass", *attr.Storclass)

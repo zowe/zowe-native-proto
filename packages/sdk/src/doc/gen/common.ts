@@ -79,7 +79,7 @@ export interface DatasetAttributes {
   dsname?: string; // Data Set Name
   avgblk?: number /* int */; // Average Block Length
   secondary?: number /* int */; // Secondary Space
-  size?: number /* int */; // Size
+  size?: string; // Size
   storclass?: string; // Storage Class
   vol?: string; // Volume Serial
 }

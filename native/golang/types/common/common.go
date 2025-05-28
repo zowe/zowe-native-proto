@@ -74,7 +74,7 @@ type DatasetAttributes struct {
 	Dsname    *string `json:"dsname"`    // Data Set Name
 	Avgblk    *int    `json:"avgblk"`    // Average Block Length
 	Secondary *int    `json:"secondary"` // Secondary Space
-	Size      *int    `json:"size"`      // Size
+	Size      *string `json:"size"`      // Size
 	Storclass *string `json:"storclass"` // Storage Class
 	Vol       *string `json:"vol"`       // Volume Serial
 }
