@@ -5,6 +5,7 @@ packages:
     output_path: "../../packages/sdk/src/doc/gen/ds.ts"
     frontmatter: &fm |
       import type * as common from "./common.ts";
+      import type { Readable, Writable } from "node:stream";
       import { type B64String } from "../types";
   - path: "zowe-native-proto/zowed/types/uss"
     output_path: "../../packages/sdk/src/doc/gen/uss.ts"

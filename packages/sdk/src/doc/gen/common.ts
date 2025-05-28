@@ -14,9 +14,12 @@
 //////////
 // source: common.go
 
-export interface RpcRequest {
+export interface RpcNotification {
   jsonrpc: "2.0";
   method: string;
+  params?: any;
+}
+export interface RpcRequest extends RpcNotification {
   params?: any;
   id: number /* int */;
 }
@@ -24,7 +27,7 @@ export interface RpcResponse {
   jsonrpc: "2.0";
   result?: any;
   error?: ErrorDetails;
-  id?: number /* int */;
+  id: number /* int */;
 }
 export interface CommandRequest {
   /**
@@ -60,6 +63,25 @@ export interface Dataset {
    * Dataset migrated
    */
   migr: boolean;
+}
+export interface DatasetAttributes {
+  alcunit?: string; // Allocation Unit
+  blksize?: number /* int */; // Block Size
+  dirblk?: number /* int */; // Directory Blocks
+  dsorg?: string; // Data Set Organization
+  primary: number /* int */; // Primary Space
+  recfm?: string; // Record Format
+  lrecl: number /* int */; // Record Length
+  dataclass?: string; // Data Class
+  unit?: string; // Device Type
+  dsntype?: string; // Data Set Type
+  mgntclass?: string; // Management Class
+  dsname?: string; // Data Set Name
+  avgblk?: number /* int */; // Average Block Length
+  secondary?: number /* int */; // Secondary Space
+  size?: string; // Size
+  storclass?: string; // Storage Class
+  vol?: string; // Volume Serial
 }
 export interface DsMember {
   /**

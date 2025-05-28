@@ -10,6 +10,8 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - `golang`: Reduced startup time for `zowed` by initializing workers in the background. [#237](https://github.com/zowe/zowe-native-proto/pull/237)
 - `golang`: Added verbose option to enable debug logging. [#237](https://github.com/zowe/zowe-native-proto/pull/237)
 - `golang`: Added SHA256 checksums to the ready message to allow checks for outdated server. [#236](https://github.com/zowe/zowe-native-proto/pull/236)
+- `c,golang`: Added support for streaming USS file contents for read and write operations (`zusf_read_from_uss_file_streamed`, `zusf_write_to_uss_file_streamed`). [#311](https://github.com/zowe/zowe-native-proto/pull/311)
+- `c,golang`: Added support for streaming data set contents for read and write operations (`zds_read_from_dsn_streamed`, `zds_write_to_dsn_streamed`). [#326](https://github.com/zowe/zowe-native-proto/pull/326)
 - `c`: Added support for `recfm` (record format) attribute when listing data sets.
 - `c`: Fixed issue where data sets were not opened with the right `recfm` for reading/writing.
 

@@ -14,8 +14,11 @@ package cmds
 import (
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
+	"syscall"
 
 	t "zowe-native-proto/zowed/types/common"
 	"zowe-native-proto/zowed/types/ds"
@@ -34,24 +37,68 @@ func HandleReadDatasetRequest(conn *utils.StdioConn, params []byte) (result any,
 	if len(request.Encoding) == 0 {
 		request.Encoding = fmt.Sprintf("IBM-%d", utils.DefaultEncoding)
 	}
-	args := []string{"data-set", "view", request.Dsname, "--encoding", request.Encoding, "--rfb", "true", "--return-etag", "true"}
-	out, err := conn.ExecCmd(args)
-	if err != nil {
-		return nil, fmt.Errorf("Error executing command: %v", err)
-	}
+	args := []string{"data-set", "view", request.Dsname, "--encoding", request.Encoding, "--return-etag", "true"}
 
-	output := utils.YamlToMap(string(out))
-
+	var etag string
 	var data []byte
-	if len(output) > 0 {
-		data, _ = utils.CollectContentsAsBytes(output["data"], true)
+	if request.StreamId == 0 {
+		args = append(args, "--rfb", "true")
+		out, err := conn.ExecCmd(args)
+		if err != nil {
+			e = fmt.Errorf("Error executing command: %v", err)
+			return
+		}
+
+		output := utils.YamlToMap(string(out))
+		etag = output["etag"]
+
+		if len(output) > 0 {
+			data, e = utils.CollectContentsAsBytes(output["data"], true)
+		} else {
+			data = []byte{}
+		}
 	} else {
-		data = []byte{}
+		pipePath := fmt.Sprintf("%s/zowe-native-proto_%d-%d-%d_fifo", os.TempDir(), os.Geteuid(), os.Getpid(), request.StreamId)
+		os.Remove(pipePath)
+
+		err := syscall.Mkfifo(pipePath, 0600)
+		if err != nil {
+			e = fmt.Errorf("[ReadDatasetRequest] Error creating named pipe: %v", err)
+			return
+		}
+
+		notify, err := json.Marshal(t.RpcNotification{
+			JsonRPC: "2.0",
+			Method:  "receiveStream",
+			Params: map[string]interface{}{
+				"id":       request.StreamId,
+				"pipePath": pipePath,
+			},
+		})
+		if err != nil {
+			e = fmt.Errorf("[ReadDatasetRequest] Error marshalling notification: %v", err)
+			return
+		}
+		fmt.Println(string(notify))
+
+		args = append(args, "--pipe-path", pipePath)
+		out, err := conn.ExecCmd(args)
+		if err != nil {
+			return nil, fmt.Errorf("Error executing command: %v", err)
+		}
+
+		err = os.Remove(pipePath)
+		if err != nil {
+			e = fmt.Errorf("[ReadDatasetRequest] Error deleting named pipe: %v", err)
+			return
+		}
+
+		etag = strings.TrimRight(string(out), "\n")
 	}
 
 	result = ds.ReadDatasetResponse{
 		Encoding: request.Encoding,
-		Etag:     output["etag"],
+		Etag:     etag,
 		Dataset:  request.Dsname,
 		Data:     data,
 	}
@@ -67,13 +114,6 @@ func HandleWriteDatasetRequest(conn *utils.StdioConn, params []byte) (result any
 		return nil, fmt.Errorf("Missing required parameters: Dsname")
 	}
 
-	decodedBytes, err := base64.StdEncoding.DecodeString(request.Data)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to decode dataset contents: %v", err)
-	}
-
-	byteString := hex.EncodeToString(decodedBytes)
-
 	if len(request.Encoding) == 0 {
 		request.Encoding = fmt.Sprintf("IBM-%d", utils.DefaultEncoding)
 	}
@@ -81,25 +121,71 @@ func HandleWriteDatasetRequest(conn *utils.StdioConn, params []byte) (result any
 	if len(request.Etag) > 0 {
 		args = append(args, "--etag", request.Etag)
 	}
-	cmd := utils.BuildCommand(args)
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		return nil, fmt.Errorf("Failed to open stdin pipe: %v", err)
-	}
 
-	go func() {
-		defer stdin.Close()
-		_, err = stdin.Write([]byte(byteString))
+	var out []byte
+	if request.StreamId == 0 {
+		decodedBytes, err := base64.StdEncoding.DecodeString(request.Data)
 		if err != nil {
-			e = fmt.Errorf("Failed to write to stdin pipe: %v", err)
+			return nil, fmt.Errorf("Failed to decode dataset contents: %v", err)
 		}
-	}()
 
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		e = fmt.Errorf("Failed to pipe stdin to command: %v", string(out))
-		conn.LastExitCode = cmd.ProcessState.ExitCode()
-		return
+		byteString := hex.EncodeToString(decodedBytes)
+
+		cmd := utils.BuildCommand(args)
+		stdin, err := cmd.StdinPipe()
+		if err != nil {
+			return nil, fmt.Errorf("Failed to open stdin pipe: %v", err)
+		}
+
+		go func() {
+			defer stdin.Close()
+			_, err = stdin.Write([]byte(byteString))
+			if err != nil {
+				e = fmt.Errorf("Failed to write to stdin pipe: %v", err)
+			}
+		}()
+
+		out, err = cmd.CombinedOutput()
+		if err != nil {
+			e = fmt.Errorf("Failed to pipe stdin to command: %v", string(out))
+			conn.LastExitCode = cmd.ProcessState.ExitCode()
+			return
+		}
+	} else {
+		pipePath := fmt.Sprintf("%s/zowe-native-proto_%d-%d-%d_fifo", os.TempDir(), os.Geteuid(), os.Getpid(), request.StreamId)
+		os.Remove(pipePath)
+
+		err := syscall.Mkfifo(pipePath, 0600)
+		if err != nil {
+			e = fmt.Errorf("[WriteDatasetRequest] Error creating named pipe: %v", err)
+			return
+		}
+
+		notify, err := json.Marshal(t.RpcNotification{
+			JsonRPC: "2.0",
+			Method:  "sendStream",
+			Params: map[string]interface{}{
+				"id":       request.StreamId,
+				"pipePath": pipePath,
+			},
+		})
+		if err != nil {
+			e = fmt.Errorf("[WriteDatasetRequest] Error marshalling notification: %v", err)
+			return
+		}
+		fmt.Println(string(notify))
+
+		args = append(args, "--pipe-path", pipePath)
+		out, err = conn.ExecCmd(args)
+		if err != nil {
+			return nil, fmt.Errorf("Error executing command: %v", err)
+		}
+
+		err = os.Remove(pipePath)
+		if err != nil {
+			e = fmt.Errorf("[WriteDatasetRequest] Error deleting named pipe: %v", err)
+			return
+		}
 	}
 
 	result = ds.WriteDatasetResponse{
@@ -244,9 +330,62 @@ func HandleCreateDatasetRequest(conn *utils.StdioConn, jsonData []byte) (result 
 	}
 
 	args := []string{"data-set", "create", request.Dsname}
+
+	attr := request.Attributes
+
+	// Conditionally add arguments if fields are set
+	if attr.Alcunit != nil && *attr.Alcunit != "" {
+		args = append(args, "--alcunit", *attr.Alcunit)
+	}
+	if attr.Blksize != nil && *attr.Blksize != 0 {
+		args = append(args, "--blksize", fmt.Sprintf("%d", *attr.Blksize))
+	}
+	if attr.Dirblk != nil && *attr.Dirblk != 0 {
+		args = append(args, "--dirblk", fmt.Sprintf("%d", *attr.Dirblk))
+	}
+	if attr.Dsorg != nil && *attr.Dsorg != "" {
+		args = append(args, "--dsorg", *attr.Dsorg)
+	}
+	if attr.Primary != 0 {
+		args = append(args, "--primary", fmt.Sprintf("%d", attr.Primary))
+	}
+	if attr.Recfm != nil && *attr.Recfm != "" {
+		args = append(args, "--recfm", *attr.Recfm)
+	}
+	if attr.Lrecl != 0 {
+		args = append(args, "--lrecl", fmt.Sprintf("%d", attr.Lrecl))
+	}
+	if attr.Dataclass != nil && *attr.Dataclass != "" {
+		args = append(args, "--dataclass", *attr.Dataclass)
+	}
+	if attr.Unit != nil && *attr.Unit != "" {
+		args = append(args, "--unit", *attr.Unit)
+	}
+	if attr.Dsntype != nil && *attr.Dsntype != "" {
+		args = append(args, "--dsntype", *attr.Dsntype)
+	}
+	if attr.Mgntclass != nil && *attr.Mgntclass != "" {
+		args = append(args, "--mgntclass", *attr.Mgntclass)
+	}
+	if attr.Avgblk != nil && *attr.Avgblk != 0 {
+		args = append(args, "--avgblk", fmt.Sprintf("%d", *attr.Avgblk))
+	}
+	if attr.Secondary != nil && *attr.Secondary != 0 {
+		args = append(args, "--secondary", fmt.Sprintf("%d", *attr.Secondary))
+	}
+	if attr.Size != nil && *attr.Size != "" {
+		args = append(args, "--size", *attr.Size)
+	}
+	if attr.Storclass != nil && *attr.Storclass != "" {
+		args = append(args, "--storclass", *attr.Storclass)
+	}
+	if attr.Vol != nil && *attr.Vol != "" {
+		args = append(args, "--vol", *attr.Vol)
+	}
+
 	_, err = conn.ExecCmd(args)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create data set: %v", err)
+		return nil, fmt.Errorf("Failed to create data set: %v", args)
 	}
 
 	result = ds.CreateDatasetResponse{

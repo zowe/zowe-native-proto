@@ -10,9 +10,10 @@
  */
 
 import { readFileSync, writeFileSync } from "node:fs";
-import * as zosfiles from "@zowe/zos-files-for-zowe-sdk";
+import type * as zosfiles from "@zowe/zos-files-for-zowe-sdk";
 import { Gui, type MainframeInteraction, imperative } from "@zowe/zowe-explorer-api";
 import { B64String, type ds } from "zowe-native-proto-sdk";
+import type * as common from "../../../sdk/lib/doc/gen/common.ts";
 import { SshCommonApi } from "./SshCommonApi";
 
 export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs {
@@ -113,21 +114,16 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         dataSetName: string,
         options?: Partial<zosfiles.ICreateDataSetOptions>,
     ): Promise<zosfiles.IZosFilesResponse> {
-        let datasetTyp: ds.CreateDatasetRequest["dstype"];
-        switch (dataSetType) {
-            case zosfiles.CreateDataSetTypeEnum.DATA_SET_C:
-                datasetTyp = "default";
-                break;
-            case zosfiles.CreateDataSetTypeEnum.DATA_SET_CLASSIC:
-                datasetTyp = "adata";
-                break;
-            default:
-                throw new Error("Not yet implemented");
-        }
+        const datasetAttributes: common.DatasetAttributes = {
+            dsname: dataSetName,
+            primary: 1,
+            lrecl: 80,
+            ...(options || {}),
+        };
 
         const response = await (await this.client).ds.createDataset({
             dsname: dataSetName,
-            dstype: datasetTyp,
+            attributes: datasetAttributes,
         });
         return this.buildZosFilesResponse(response, response.success);
     }
