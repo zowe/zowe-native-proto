@@ -49,6 +49,10 @@ export interface ReadDatasetRequest extends common.CommandRequest {
    * Dataset name
    */
   dsname: string;
+  /**
+   * Stream to write contents to
+   */
+  stream?: Writable;
 }
 export interface WriteDatasetRequest extends common.CommandRequest {
   command: "writeDataset";
@@ -68,6 +72,10 @@ export interface WriteDatasetRequest extends common.CommandRequest {
    * Dataset contents
    */
   data: B64String;
+  /**
+   * Stream to read contents from
+   */
+  stream?: Readable;
 }
 export interface DeleteDatasetRequest extends common.CommandRequest {
   command: "deleteDataset";

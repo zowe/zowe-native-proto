@@ -159,4 +159,24 @@ int zds_list_data_sets(ZDS *zds, std::string dsn, std::vector<ZDSEntry> &attribu
 
 int zdsReadDynalloc(std::string, std::string, std::string, std::string &); // NOTE(Kelosky): testing only
 
+/**
+ * @brief Read data from a z/OS data set in streaming mode
+ *
+ * @param zds data set returned attributes and error information
+ * @param dsn data set name from which to read
+ * @param pipe name of the output pipe
+ * @return int 0 for success; non zero otherwise
+ */
+int zds_read_from_dsn_streamed(ZDS *zds, std::string dsn, std::string pipe);
+
+/**
+ * @brief Write data to a z/OS data set in streaming mode
+ *
+ * @param zds data set returned attributes and error information
+ * @param dsn data set name to write to
+ * @param pipe name of the input pipe
+ * @return int 0 for success; non zero otherwise
+ */
+int zds_write_to_dsn_streamed(ZDS *zds, std::string dsn, std::string pipe);
+
 #endif
