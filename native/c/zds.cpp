@@ -9,7 +9,9 @@
  *
  */
 
+#ifndef _OPEN_SYS_ITOA_EXT
 #define _OPEN_SYS_ITOA_EXT
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <cstring>
