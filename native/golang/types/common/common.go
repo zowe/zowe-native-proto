@@ -13,18 +13,23 @@ package types
 
 import "encoding/json"
 
+type RpcNotification struct {
+	JsonRPC string         `json:"jsonrpc" tstype:"\"2.0\""`
+	Method  string         `json:"method"`
+	Params  map[string]any `json:"params,omitempty" tstype:"any"`
+}
+
 type RpcRequest struct {
-	JsonRPC string          `json:"jsonrpc" tstype:"\"2.0\""`
-	Method  string          `json:"method"`
-	Params  json.RawMessage `json:"params,omitempty" tstype:"any"`
-	Id      int             `json:"id"`
+	RpcNotification `tstype:",extends"`
+	Params          json.RawMessage `json:"params,omitempty" tstype:"any"`
+	Id              int             `json:"id"`
 }
 
 type RpcResponse struct {
 	JsonRPC string        `json:"jsonrpc" tstype:"\"2.0\""`
 	Result  any           `json:"result,omitempty"`
 	Error   *ErrorDetails `json:"error,omitempty"`
-	Id      *int          `json:"id,omitempty"`
+	Id      *int          `json:"id,omitempty" tstype:",required"`
 }
 
 type CommandRequest struct {

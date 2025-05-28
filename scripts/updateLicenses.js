@@ -22,6 +22,7 @@ const fs = require("fs");
         "**/out/**",
         "**/grpc-proto/proto/**",
         "**/native/c/chdsect/**",
+        "**/native/c/extern/**",
       ],
     }
   );
