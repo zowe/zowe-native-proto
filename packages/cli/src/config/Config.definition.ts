@@ -10,8 +10,6 @@
  */
 
 import type { ICommandDefinition } from "@zowe/imperative";
-import { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
-import { Constants } from "../Constants";
 import { ConfigSetupDefinition } from "./setup/Setup.definition";
 
 const ConfigDefinition: ICommandDefinition = {

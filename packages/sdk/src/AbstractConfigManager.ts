@@ -11,7 +11,6 @@
 
 import { readFileSync } from "node:fs";
 import * as path from "node:path";
-import { ProfileConstants } from "@zowe/core-for-zowe-sdk";
 import {
     type Config,
     ConfigBuilder,
@@ -285,7 +284,8 @@ export abstract class AbstractConfigManager {
 
             config.api.layers.activate(user, global);
 
-            config.setSchema(ConfigSchema.buildSchema(this.getProfileSchemas()));
+            const profSchemas = this.getProfileSchemas();
+            config.setSchema(ConfigSchema.buildSchema(profSchemas));
 
             // Note: IConfigBuilderOpts not exported
             // const opts: IConfigBuilderOpts = {
@@ -294,9 +294,10 @@ export abstract class AbstractConfigManager {
                 populateProperties: true,
             };
             // Build new config and merge with existing layer
+            const baseProfSchema = profSchemas.find((schema) => schema.type === "base");
             const impConfig: Partial<IImperativeConfig> = {
-                profiles: [ProfileConstants.BaseProfile],
-                baseProfile: ProfileConstants.BaseProfile,
+                profiles: [baseProfSchema],
+                baseProfile: baseProfSchema,
             };
             const newConfig: IConfig = await ConfigBuilder.build(impConfig, global, opts);
             config.api.layers.merge(newConfig);

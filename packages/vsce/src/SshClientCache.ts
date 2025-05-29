@@ -12,7 +12,6 @@
 import * as path from "node:path";
 import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { imperative } from "@zowe/zowe-explorer-api";
-import type { Client } from "ssh2";
 import * as vscode from "vscode";
 import { type ClientOptions, ZSshClient, ZSshUtils } from "zowe-native-proto-sdk";
 import { SshConfigUtils } from "./SshConfigUtils";
