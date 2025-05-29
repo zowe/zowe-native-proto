@@ -284,7 +284,7 @@ func HandleCreateFileRequest(conn *utils.StdioConn, params []byte) (result any, 
 		return
 	}
 
-	result = uss.DeleteFileResponse{
+	result = uss.CreateFileResponse{
 		Success: err == nil,
 		Path:    request.Path,
 	}
