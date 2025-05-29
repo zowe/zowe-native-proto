@@ -35,6 +35,39 @@ const size_t MAX_DS_LENGTH = 44u;
 
 using namespace std;
 
+// https://www.ibm.com/docs/en/zos/2.5.0?topic=functions-fldata-retrieve-file-information#fldata__fldat
+string zds_get_recfm(const fldata_t& file_info)
+{
+  string recfm = ZDS_RECFM_UNKNOWN;
+  
+  if (file_info.__recfmF)
+  {
+    recfm = ZDS_RECFM_F;
+    if (file_info.__recfmBlk || file_info.__recfmB)
+      recfm = file_info.__recfmS ? ZDS_RECFM_FBS : ZDS_RECFM_FB;
+    if (file_info.__recfmASA)
+      recfm += "A";
+    if (file_info.__recfmM)
+      recfm += "M";
+  }
+  else if (file_info.__recfmV)
+  {
+    recfm = ZDS_RECFM_V;
+    if (file_info.__recfmBlk || file_info.__recfmB)
+      recfm = file_info.__recfmS ? ZDS_RECFM_VBS : ZDS_RECFM_VB;
+    if (file_info.__recfmASA)
+      recfm += "A";
+    if (file_info.__recfmM)
+      recfm += "M";
+  }
+  else if (file_info.__recfmU)
+  {
+    recfm = ZDS_RECFM_U;
+  }
+  
+  return recfm;
+}
+
 int zds_read_from_dd(ZDS *zds, string ddname, string &response)
 {
   ddname = "DD:" + ddname;
@@ -67,13 +100,13 @@ int zds_read_from_dd(ZDS *zds, string ddname, string &response)
 
   if (size > 0 && strlen(zds->encoding_opts.codepage) > 0)
   {
-    std::string temp = response;
+    string temp = response;
     try
     {
       const auto bytes_with_encoding = zut_encode(temp, string(zds->encoding_opts.codepage), "UTF-8", zds->diag);
       temp = bytes_with_encoding;
     }
-    catch (std::exception &e)
+    catch (exception &e)
     {
       // TODO: error handling
     }
@@ -88,12 +121,13 @@ int zds_read_from_dd(ZDS *zds, string ddname, string &response)
 
 int zds_read_from_dsn(ZDS *zds, string dsn, string &response)
 {
-  dsn = "//'" + dsn + "'";
-  const std::string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "rb,recfm=U" : "r";
-  FILE *fp = fopen(dsn.c_str(), fopen_flags.c_str());
+  string dsname = "//'" + dsn + "'";
+  const string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "rb" : "r";
+    
+  FILE *fp = fopen(dsname.c_str(), fopen_flags.c_str());
   if (!fp)
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open file '%s'", dsn.c_str());
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open file '%s'", dsname.c_str());
     return RTNCD_FAILURE;
   }
 
@@ -111,13 +145,13 @@ int zds_read_from_dsn(ZDS *zds, string dsn, string &response)
 
   if (total_size > 0 && encodingProvided)
   {
-    std::string temp = response;
+    string temp = response;
     try
     {
       const auto bytes_with_encoding = zut_encode(temp, string(zds->encoding_opts.codepage), "UTF-8", zds->diag);
       temp = bytes_with_encoding;
     }
-    catch (std::exception &e)
+    catch (exception &e)
     {
       // TODO: error handling
     }
@@ -147,7 +181,7 @@ int zds_write_to_dd(ZDS *zds, string ddname, string data)
   return 0;
 }
 
-int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data)
+int zds_write_to_dsn(ZDS *zds, string dsn, string &data)
 {
   const auto hasEncoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
   const auto codepage = string(zds->encoding_opts.codepage);
@@ -174,9 +208,9 @@ int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data)
     {
       ostringstream ss;
       ss << "Etag mismatch: expected ";
-      ss << std::hex << given_etag << std::dec;
+      ss << hex << given_etag << dec;
       ss << ", actual ";
-      ss << std::hex << new_etag << std::dec;
+      ss << hex << new_etag << dec;
 
       const auto error_msg = ss.str();
       zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "%s", error_msg.c_str());
@@ -185,15 +219,16 @@ int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data)
   }
 
   const string dsname = "//'" + dsn + "'";
-  std::string temp = data;
-
-  auto *fp = fopen(dsname.c_str(), zds->encoding_opts.data_type == eDataTypeBinary ? "wb,recfm=U" : "w");
+  const string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "wb" : "w" + string(",recfm=*");
+    
+  auto *fp = fopen(dsname.c_str(), fopen_flags.c_str());
   if (nullptr == fp)
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open '%s'", dsname.c_str());
     return RTNCD_FAILURE;
   }
 
+  string temp = data;
   if (!data.empty())
   {
     if (hasEncoding)
@@ -202,7 +237,7 @@ int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data)
       {
         temp = zut_encode(temp, "UTF-8", codepage, zds->diag);
       }
-      catch (std::exception &e)
+      catch (exception &e)
       {
         zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from UTF-8 to %s", codepage.c_str());
         return RTNCD_FAILURE;
@@ -225,7 +260,7 @@ int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data)
   }
 
   stringstream etag_stream;
-  etag_stream << std::hex << zut_calc_adler32_checksum(saved_contents);
+  etag_stream << hex << zut_calc_adler32_checksum(saved_contents);
   strcpy(zds->etag, etag_stream.str().c_str());
 
   return 0;
@@ -402,7 +437,7 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &list)
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=pds-reading-directory-sequentially
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=pdse-reading-directory - long alias names omitted, use DESERV for those
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=pds-directory
-  FILE *fp = fopen(dsn.c_str(), "rb, blksize=256, recfm=u");
+  FILE *fp = fopen(dsn.c_str(), "rb,recfm=u");
 
   const int bufsize = 256;
   char buffer[bufsize] = {0};
@@ -781,6 +816,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
       if (entry.volser == MIGRAT_VOLUME || entry.volser == ARCIVE_VOLUME)
       {
         entry.migr = true;
+        entry.recfm = ZDS_RECFM_UNKNOWN;
       }
       else
       {
@@ -795,6 +831,8 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
         fldata_t file_info = {0};
         char file_name[64] = {0};
 
+        bool dir_closed = false;
+
         if (dir)
         {
           if (0 == fldata(dir, file_name, &file_info))
@@ -806,6 +844,66 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
             else if (file_info.__dsorgPO)
             {
               entry.dsorg = ZDS_DSORG_PO;
+              entry.recfm = ZDS_RECFM_UNKNOWN;
+
+              // we need to reopen the PDS directory with RECFM=U to properly traverse it
+              fclose(dir);
+              dir_closed = true;
+
+              FILE* pds_directory = nullptr;
+              unsigned char directory_block[256];
+              char first_member[9]; // null-terminated 8-character name
+
+              // Parse the PDS directory to get the recfm for all members.
+              // https://www.ibm.com/docs/en/zos/2.4.0?topic=pds-structure
+              pds_directory = fopen(dsn.c_str(), "rb,recfm=U");
+
+              if (pds_directory) {
+                // Read the first 256-byte block.
+                size_t bytes_read = fread(directory_block, 1, sizeof(directory_block), pds_directory);
+                fclose(pds_directory);
+
+                // Need at least 2 (count) + 8 (name) bytes to parse a valid entry
+                if (bytes_read >= 10) {
+                  // Check if the first member entry (starting at offset 2) is the end-of-directory marker.
+                  bool is_end_marker = true;
+                  for (int i = 0; i < 8; ++i) {
+                      if (directory_block[2 + i] != 0xFF) {
+                          is_end_marker = false;
+                          break;
+                      }
+                  }
+
+                  if (!is_end_marker) {
+                    // Extract the first member name from the directory block
+                    memcpy(first_member, &directory_block[2], 8);
+                    first_member[8] = '\0'; // null-terminate
+                    // Remove trailing spaces from member name
+                    for (int i = 7; i >= 0; --i) {
+                      if (first_member[i] == ' ') {
+                        first_member[i] = '\0';
+                      } else {
+                        break;
+                      }
+                    }
+                    
+                    // Open a file handle to the first member entry from the entry
+                    string dsn_str = string(entry.name);
+                    string dsn_with_member = string("//'") + zut_trim(dsn_str) + "(" + first_member + ")'";
+                    FILE* member_file = fopen(dsn_with_member.c_str(), "r");
+
+                    if (member_file) {
+                      fldata_t member_file_info = {0};
+                      if (0 == fldata(member_file, nullptr, &member_file_info)) {
+                        // One PDS member's recfm applies to all members in PDS
+                        entry.recfm = zds_get_recfm(member_file_info);
+                      }
+
+                      fclose(member_file);
+                    }
+                  }
+                }
+              }
             }
             else if (file_info.__dsorgVSAM)
             {
@@ -816,13 +914,26 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
               entry.dsorg = ZDS_DSORG_UNKNOWN;
               entry.volser = ZDS_VOLSER_UNKNOWN;
             }
+            
+            if (entry.recfm == ZDS_RECFM_UNKNOWN)
+            {
+              entry.recfm = zds_get_recfm(file_info);
+            }
           }
           else
           {
             entry.dsorg = ZDS_DSORG_UNKNOWN;
             entry.volser = ZDS_VOLSER_UNKNOWN;
+            entry.recfm = ZDS_RECFM_UNKNOWN;
           }
-          fclose(dir);
+          if (!dir_closed) 
+          {
+            fclose(dir);
+          }
+        }
+        else
+        {
+          entry.recfm = ZDS_RECFM_UNKNOWN;
         }
       }
 
@@ -1060,8 +1171,9 @@ int zds_write_to_dsn_streamed(ZDS *zds, string dsn, string pipe)
 
   const auto hasEncoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
   const auto codepage = string(zds->encoding_opts.codepage);
+  const auto fopen_flags = (zds->encoding_opts.data_type == eDataTypeBinary ? "wb" : "w") + string(",recfm=*");
 
-  FILE *fout = fopen(dsname.c_str(), zds->encoding_opts.data_type == eDataTypeBinary ? "wb,recfm=U" : "w");
+  FILE *fout = fopen(dsname.c_str(), fopen_flags.c_str());
   if (!fout)
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open '%s'", dsname.c_str());

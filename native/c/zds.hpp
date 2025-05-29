@@ -30,6 +30,7 @@ struct ZDSEntry
   std::string name;
   std::string dsorg;
   std::string volser;
+  std::string recfm;
   bool migr;
 };
 
@@ -53,6 +54,8 @@ typedef struct
   std::string storclass; // Storage Class
   std::string vol;       // Volume Serial
 } DS_ATTRIBUTES;
+
+std::string zds_get_recfm(const fldata_t& file_info);
 
 /**
  * @brief Read data from a z/OS data set
