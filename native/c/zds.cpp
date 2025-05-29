@@ -9,7 +9,11 @@
  *
  */
 
+#ifndef _OPEN_SYS_ITOA_EXT
+#define _OPEN_SYS_ITOA_EXT
+#endif
 #include <stdio.h>
+#include <stdlib.h>
 #include <cstring>
 #include <fstream>
 #include <iostream>
@@ -23,6 +27,9 @@
 #include "zut.hpp"
 #include "iefzb4d2.h"
 #include "zdsm.h"
+#include <fcntl.h>
+#include <stdlib.h>
+#include "extern/zb64.h"
 
 const size_t MAX_DS_LENGTH = 44u;
 
@@ -240,14 +247,96 @@ typedef struct
   unsigned char info;
 } RECORD_ENTRY;
 
+int alloc_and_free(string alloc_dd, string dsn, unsigned int *code, string &resp)
+{
+  int rc = zut_bpxwdyn(alloc_dd, code, resp);
+  if (RTNCD_SUCCESS == rc)
+  {
+    rc = zut_bpxwdyn("FREE DA('" + dsn + "')", code, resp);
+  }
+  return rc;
+}
+
 // TODO(Kelosky): add attributues to ZDS and have other functions populate it
-int zds_create_dsn(ZDS *zds, string dsn, string &response)
+int zds_create_dsn(ZDS *zds, std::string dsn, DS_ATTRIBUTES attributes, std::string &response)
 {
   int rc = 0;
   unsigned int code = 0;
-  string parm = "ALLOC DA('" + dsn + "') DSORG(PO) SPACE(5,5) CYL LRECL(80) RECFM(F,B) DIR(5) NEW KEEP DSNTYPE(LIBRARY)";
+  string parm = "ALLOC DA('" + dsn + "')";
+  if (attributes.alcunit.empty())
+  {
+    attributes.alcunit = "TRACKS"; // Allocation Unit
+  }
+  if (attributes.blksize == 0)
+  {
+    attributes.blksize = 80; // Block Size
+  }
+  if (attributes.primary == 0)
+  {
+    attributes.primary = 1; // Primary Space
+  }
+  if (attributes.lrecl == 0)
+  {
+    attributes.lrecl = 80; // Record Length
+  }
 
-  return zut_bpxwdyn(parm, &code, response);
+  char numberAsString[6];
+
+  // Required options
+  if (!attributes.dsorg.empty())
+    parm += " DSORG(" + attributes.dsorg + ")";
+
+  if (attributes.primary > 0)
+  {
+    memset(numberAsString, 0, sizeof(numberAsString));
+    parm += " SPACE(" + std::string(itoa(attributes.primary, numberAsString, 10));
+
+    if (attributes.secondary > 0)
+    {
+      memset(numberAsString, 0, sizeof(numberAsString));
+      parm += "," + std::string(itoa(attributes.secondary, numberAsString, 10));
+    }
+
+    parm += ") " + attributes.alcunit;
+  }
+
+  if (attributes.lrecl > 0)
+  {
+    memset(numberAsString, 0, sizeof(numberAsString));
+    parm += " LRECL(" + std::string(itoa(attributes.lrecl, numberAsString, 10)) + ")";
+  }
+
+  if (!attributes.recfm.empty())
+    parm += " RECFM(" + attributes.recfm + ")";
+
+  if (attributes.dirblk > 0)
+  {
+    memset(numberAsString, 0, sizeof(numberAsString));
+    parm += " DIR(" + std::string(itoa(attributes.dirblk, numberAsString, 10)) + ")";
+  }
+
+  parm += " NEW KEEP";
+
+  if (!attributes.dsntype.empty())
+    parm += " DSNTYPE(" + attributes.dsntype + ")";
+  if (!attributes.storclass.empty())
+    parm += " STORCLAS(" + attributes.storclass + ")";
+  if (!attributes.dataclass.empty())
+    parm += " DATACLAS(" + attributes.dataclass + ")";
+  if (!attributes.mgntclass.empty())
+    parm += " MGMTCLAS(" + attributes.mgntclass + ")";
+  if (!attributes.vol.empty())
+    parm += " VOL(" + attributes.vol + ")";
+  if (!attributes.unit.empty())
+    parm += " UNIT(" + attributes.unit + ")";
+
+  if (attributes.blksize > 0)
+  {
+    memset(numberAsString, 0, sizeof(numberAsString));
+    parm += " BLKSIZE(" + std::string(itoa(attributes.blksize, numberAsString, 10)) + ")";
+  }
+
+  return alloc_and_free(parm, dsn, &code, response);
 }
 
 int zds_create_dsn_vb(ZDS *zds, string dsn, string &response)
@@ -256,7 +345,7 @@ int zds_create_dsn_vb(ZDS *zds, string dsn, string &response)
   unsigned int code = 0;
   string parm = "ALLOC DA('" + dsn + "') DSORG(PO) SPACE(5,5) CYL LRECL(255) RECFM(V,B) DIR(5) NEW KEEP DSNTYPE(LIBRARY)";
 
-  return zut_bpxwdyn(parm, &code, response);
+  return alloc_and_free(parm, dsn, &code, response);
 }
 
 int zds_create_dsn_adata(ZDS *zds, string dsn, string &response)
@@ -265,7 +354,7 @@ int zds_create_dsn_adata(ZDS *zds, string dsn, string &response)
   unsigned int code = 0;
   string parm = "ALLOC DA('" + dsn + "') DSORG(PO) SPACE(5,5) CYL LRECL(32756) BLKSIZE(32760) RECFM(V,B) DIR(5) NEW KEEP DSNTYPE(LIBRARY)";
 
-  return zut_bpxwdyn(parm, &code, response);
+  return alloc_and_free(parm, dsn, &code, response);
 }
 
 int zds_create_dsn_loadlib(ZDS *zds, string dsn, string &response)
@@ -274,7 +363,7 @@ int zds_create_dsn_loadlib(ZDS *zds, string dsn, string &response)
   unsigned int code = 0;
   string parm = "ALLOC DA('" + dsn + "') DSORG(PO) SPACE(5,5) CYL LRECL(0) BLKSIZE(32760) RECFM(U) DIR(5) NEW KEEP DSNTYPE(LIBRARY)";
 
-  return zut_bpxwdyn(parm, &code, response);
+  return alloc_and_free(parm, dsn, &code, response);
 }
 
 #define NUM_DELETE_TEXT_UNITS 2
@@ -852,4 +941,186 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
   ZDSDEL(zds);
 
   return rc;
+}
+
+/**
+ * Reads data from a data set in streaming mode.
+ *
+ * @param zds pointer to a ZDS object
+ * @param dsn name of the data set
+ * @param pipe name of the output pipe
+ *
+ * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
+ */
+int zds_read_from_dsn_streamed(ZDS *zds, string dsn, string pipe)
+{
+  dsn = "//'" + dsn + "'";
+  const std::string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "rb,recfm=U" : "r";
+  FILE *fin = fopen(dsn.c_str(), fopen_flags.c_str());
+  if (!fin)
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open file '%s'", dsn.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  int fifo_fd = open(pipe.c_str(), O_WRONLY);
+  FILE *fout = fdopen(fifo_fd, "w");
+  if (!fout)
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open output pipe '%s'", pipe.c_str());
+    fclose(fin);
+    return RTNCD_FAILURE;
+  }
+
+  const auto hasEncoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
+  const auto codepage = string(zds->encoding_opts.codepage);
+
+  const size_t chunk_size = FIFO_CHUNK_SIZE * 3 / 4;
+  std::vector<char> buf(chunk_size);
+  ssize_t bytes_read;
+
+  while ((bytes_read = fread(&buf[0], 1, chunk_size, fin)) > 0)
+  {
+    int chunk_len = bytes_read;
+    const char *chunk = &buf[0];
+    std::vector<char> temp_encoded;
+
+    if (hasEncoding)
+    {
+      try
+      {
+        temp_encoded = zut_encode(chunk, chunk_len, codepage, "UTF-8", zds->diag);
+        chunk = &temp_encoded[0];
+        chunk_len = temp_encoded.size();
+      }
+      catch (std::exception &e)
+      {
+        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to UTF-8", codepage.c_str());
+        fclose(fin);
+        fclose(fout);
+        return RTNCD_FAILURE;
+      }
+    }
+
+    chunk = base64(chunk, chunk_len, &chunk_len);
+    fwrite(chunk, 1, chunk_len, fout);
+  }
+
+  fflush(fout);
+  fclose(fin);
+  fclose(fout);
+
+  return RTNCD_SUCCESS;
+}
+
+/**
+ * Writes data to a data set in streaming mode.
+ *
+ * @param zds pointer to a ZDS object
+ * @param dsn name of the data set
+ * @param pipe name of the input pipe
+ *
+ * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
+ */
+int zds_write_to_dsn_streamed(ZDS *zds, string dsn, string pipe)
+{
+  string dsname = "//'" + dsn + "'";
+  if (strlen(zds->etag) > 0)
+  {
+    // Get current data set content for etag check
+    ZDS read_ds = {0};
+    string current_contents = "";
+    if (zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0)
+    {
+      memcpy(&read_ds.encoding_opts, &zds->encoding_opts, sizeof(ZEncode));
+    }
+    const auto read_rc = zds_read_from_dsn(&read_ds, dsn, current_contents);
+    if (0 != read_rc)
+    {
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to read contents of data set for e-tag comparison: %s", read_ds.diag.e_msg);
+      return RTNCD_FAILURE;
+    }
+
+    const auto given_etag = strtoul(zds->etag, nullptr, 16);
+    const auto new_etag = zut_calc_adler32_checksum(current_contents);
+
+    if (given_etag != new_etag)
+    {
+      ostringstream ss;
+      ss << "Etag mismatch: expected ";
+      ss << std::hex << given_etag << std::dec;
+      ss << ", actual ";
+      ss << std::hex << new_etag << std::dec;
+
+      const auto error_msg = ss.str();
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "%s", error_msg.c_str());
+      return RTNCD_FAILURE;
+    }
+  }
+
+  const auto hasEncoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
+  const auto codepage = string(zds->encoding_opts.codepage);
+
+  FILE *fout = fopen(dsname.c_str(), zds->encoding_opts.data_type == eDataTypeBinary ? "wb,recfm=U" : "w");
+  if (!fout)
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open '%s'", dsname.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  int fifo_fd = open(pipe.c_str(), O_RDONLY);
+  FILE *fin = fdopen(fifo_fd, "r");
+  if (!fin)
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open input pipe '%s'", pipe.c_str());
+    fclose(fout);
+    return RTNCD_FAILURE;
+  }
+
+  std::vector<char> buf(FIFO_CHUNK_SIZE);
+  ssize_t bytes_read;
+
+  while ((bytes_read = fread(&buf[0], 1, FIFO_CHUNK_SIZE, fin)) > 0)
+  {
+    int chunk_len;
+    const char *chunk = (char *)unbase64(&buf[0], bytes_read, &chunk_len);
+    std::vector<char> temp_encoded;
+
+    if (hasEncoding)
+    {
+      try
+      {
+        temp_encoded = zut_encode(chunk, chunk_len, "UTF-8", codepage, zds->diag);
+        chunk = &temp_encoded[0];
+        chunk_len = temp_encoded.size();
+      }
+      catch (std::exception &e)
+      {
+        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from UTF-8 to %s", codepage.c_str());
+        fclose(fin);
+        fclose(fout);
+        return RTNCD_FAILURE;
+      }
+    }
+
+    fwrite(chunk, 1, chunk_len, fout);
+  }
+
+  fflush(fout);
+  fclose(fin);
+  fclose(fout);
+
+  // Update the etag
+  string saved_contents = "";
+  const auto read_rc = zds_read_from_dsn(zds, dsn, saved_contents);
+  if (0 != read_rc)
+  {
+    return RTNCD_FAILURE;
+  }
+
+  stringstream etag_stream;
+  etag_stream << std::hex << zut_calc_adler32_checksum(saved_contents);
+  strcpy(zds->etag, etag_stream.str().c_str());
+
+  return RTNCD_SUCCESS;
 }

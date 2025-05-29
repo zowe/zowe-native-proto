@@ -36,15 +36,12 @@ describe("ZSshClient", () => {
     };
     const rpcResponseBad: RpcResponse = {
         jsonrpc: "2.0",
-        error: {
-            code: 0,
-            message: "bad rpc",
-        },
+        error: { code: 0, message: "bad rpc" },
         id: 1,
     };
     const rpcResponseGood: RpcResponse = {
         jsonrpc: "2.0",
-        result: {},
+        result: { success: true },
         id: 1,
     };
 
@@ -224,7 +221,7 @@ describe("ZSshClient", () => {
             const client: ZSshClient = new (ZSshClient as any)();
             (client as any).mSshStream = { stdin: { write: writeMock } };
             const response = client.request(request);
-            (client as any).requestEnd(JSON.stringify(rpcResponseGood));
+            (client as any).processResponses(`${JSON.stringify(rpcResponseGood)}\n`);
             assert.deepEqual(await response, { success: true });
             assert.deepEqual(writeMock.mock.calls[0].arguments, [`${JSON.stringify(rpcRequest)}\n`]);
         });
@@ -235,7 +232,7 @@ describe("ZSshClient", () => {
             const client: ZSshClient = new (ZSshClient as any)();
             (client as any).mSshStream = { stdin: { write: writeMock } };
             const response = client.request(request);
-            (client as any).requestEnd(JSON.stringify(rpcResponseBad));
+            (client as any).processResponses(`${JSON.stringify(rpcResponseBad)}\n`);
             assert.rejects(response, { message: rpcResponseBad.error?.message });
             assert.deepEqual(writeMock.mock.calls[0].arguments, [`${JSON.stringify(rpcRequest)}\n`]);
         });

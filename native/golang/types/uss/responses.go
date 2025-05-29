@@ -29,8 +29,8 @@ type ReadFileResponse struct {
 	Etag string `json:"etag"`
 	// Remote file path
 	Path string `json:"fspath"`
-	// File contents
-	Data []byte `json:"data" tstype:"B64String"`
+	// File contents (omitted if streaming)
+	Data *[]byte `json:"data,omitempty" tstype:"B64String"`
 }
 
 type WriteFileResponse struct {
