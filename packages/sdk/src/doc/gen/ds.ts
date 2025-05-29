@@ -49,6 +49,10 @@ export interface ReadDatasetRequest extends common.CommandRequest {
    * Dataset name
    */
   dsname: string;
+  /**
+   * Stream to write contents to
+   */
+  stream?: Writable;
 }
 export interface WriteDatasetRequest extends common.CommandRequest {
   command: "writeDataset";
@@ -68,6 +72,10 @@ export interface WriteDatasetRequest extends common.CommandRequest {
    * Dataset contents
    */
   data: B64String;
+  /**
+   * Stream to read contents from
+   */
+  stream?: Readable;
 }
 export interface DeleteDatasetRequest extends common.CommandRequest {
   command: "deleteDataset";
@@ -83,11 +91,6 @@ export interface RestoreDatasetRequest extends common.CommandRequest {
    */
   dsname: string;
 }
-/**
- * default: DSORG=PO, RECFM=FB, LRECL=80
- * vb: DSORG=PO, RECFM=VB, LRECL=255
- * adata: DSORG=PO, RECFM=VB, LRECL=32756
- */
 export interface CreateDatasetRequest extends common.CommandRequest {
   command: "createDataset";
   /**
@@ -95,9 +98,9 @@ export interface CreateDatasetRequest extends common.CommandRequest {
    */
   dsname: string;
   /**
-   * Type of the dataset to make
+   * Dataset attributes
    */
-  dstype: 'default' | 'vb' | 'adata';
+  attributes: common.DatasetAttributes;
 }
 export interface CreateMemberRequest extends common.CommandRequest {
   command: "createMember";

@@ -14,7 +14,6 @@ import {
     type IConfigLayer,
     type IHandlerParameters,
     type IHandlerResponseApi,
-    type IProfArgAttrs,
     type IProfileTypeConfiguration,
     ImperativeConfig,
     ImperativeError,

@@ -141,6 +141,75 @@ int main(int argc, char *argv[])
   return_etag.set_required(false);
   return_etag.set_description("Display the e-tag for a read response in addition to data");
 
+  // data set attributes options
+  ZCLIOption return_alcunit("alcunit");
+  return_alcunit.set_required(false);
+  return_alcunit.set_description("Allocation unit");
+
+  ZCLIOption return_blksize("blksize");
+  return_blksize.set_required(false);
+  return_blksize.set_description("Block size");
+
+  ZCLIOption return_dirblk("dirblk");
+  return_dirblk.set_required(false);
+  return_dirblk.set_description("Directory blocks");
+
+  ZCLIOption return_dsorg("dsorg");
+  return_dsorg.set_required(false);
+  return_dsorg.set_description("Data set organization");
+
+  ZCLIOption return_primary("primary");
+  return_primary.set_required(false);
+  return_primary.set_description("Primary space");
+
+  ZCLIOption return_recfm("recfm");
+  return_recfm.set_required(false);
+  return_recfm.set_description("Record format");
+
+  ZCLIOption return_lrecl("lrecl");
+  return_lrecl.set_required(false);
+  return_lrecl.set_description("Record length");
+
+  ZCLIOption return_dataclass("dataclass");
+  return_dataclass.set_required(false);
+  return_dataclass.set_description("Data class");
+
+  ZCLIOption return_unit("unit");
+  return_unit.set_required(false);
+  return_unit.set_description("Device type");
+
+  ZCLIOption return_dsntype("dsntype");
+  return_dsntype.set_required(false);
+  return_dsntype.set_description("Data set type");
+
+  ZCLIOption return_mgntclass("mgntclass");
+  return_mgntclass.set_required(false);
+  return_mgntclass.set_description("Management class");
+
+  ZCLIOption return_dsname("dsname");
+  return_dsname.set_required(false);
+  return_dsname.set_description("Data set name");
+
+  ZCLIOption return_avgblk("avgblk");
+  return_avgblk.set_required(false);
+  return_avgblk.set_description("Average block length");
+
+  ZCLIOption return_secondary("secondary");
+  return_secondary.set_required(false);
+  return_secondary.set_description("Secondary space");
+
+  ZCLIOption return_size("size");
+  return_size.set_required(false);
+  return_size.set_description("Size");
+
+  ZCLIOption return_storclass("storclass");
+  return_storclass.set_required(false);
+  return_storclass.set_description("Storage class");
+
+  ZCLIOption return_vol("vol");
+  return_vol.set_required(false);
+  return_vol.set_description("Volume serial");
+
   ZCLIOption pipe_path("pipe-path");
   pipe_path.set_required(false);
   pipe_path.set_description("Specify a FIFO pipe path for transferring binary data");
@@ -159,8 +228,25 @@ int main(int argc, char *argv[])
   // data set verbs
   ZCLIVerb data_set_create("create");
   data_set_create.get_aliases().push_back("cre");
-  data_set_create.set_description("create data set using defaults: DSORG=PO, RECFM=FB, LRECL=80");
+  data_set_create.set_description("create data set");
   data_set_create.set_zcli_verb_handler(handle_data_set_create_dsn);
+  data_set_create.get_options().push_back(return_alcunit);
+  data_set_create.get_options().push_back(return_blksize);
+  data_set_create.get_options().push_back(return_dirblk);
+  data_set_create.get_options().push_back(return_dsorg);
+  data_set_create.get_options().push_back(return_primary);
+  data_set_create.get_options().push_back(return_recfm);
+  data_set_create.get_options().push_back(return_lrecl);
+  data_set_create.get_options().push_back(return_dataclass);
+  data_set_create.get_options().push_back(return_unit);
+  data_set_create.get_options().push_back(return_dsntype);
+  data_set_create.get_options().push_back(return_mgntclass);
+  data_set_create.get_options().push_back(return_dsname);
+  data_set_create.get_options().push_back(return_avgblk);
+  data_set_create.get_options().push_back(return_secondary);
+  data_set_create.get_options().push_back(return_size);
+  data_set_create.get_options().push_back(return_storclass);
+  data_set_create.get_options().push_back(return_vol);
   data_set_create.get_positionals().push_back(data_set_dsn);
   data_set_group.get_verbs().push_back(data_set_create);
 
@@ -205,6 +291,7 @@ int main(int argc, char *argv[])
   data_set_view.get_options().push_back(encoding_option);
   data_set_view.get_options().push_back(response_format_bytes);
   data_set_view.get_options().push_back(return_etag);
+  data_set_view.get_options().push_back(pipe_path);
   data_set_group.get_verbs().push_back(data_set_view);
 
   ZCLIVerb data_set_list("list");
@@ -247,6 +334,7 @@ int main(int argc, char *argv[])
   data_set_write.get_options().push_back(encoding_option);
   data_set_write.get_options().push_back(etag);
   data_set_write.get_options().push_back(etag_only);
+  data_set_write.get_options().push_back(pipe_path);
   data_set_group.get_verbs().push_back(data_set_write);
 
   ZCLIVerb data_set_compress("compress");
@@ -1281,8 +1369,79 @@ int handle_data_set_create_dsn(ZCLIResult result)
   int rc = 0;
   string dsn = result.get_positional("dsn")->get_value();
   ZDS zds = {0};
+  DS_ATTRIBUTES attributes = {0};
+
+  if (result.get_option("--alcunit"))
+  {
+    attributes.alcunit = result.get_option("--alcunit")->get_value();
+  }
+  if (result.get_option("--blksize"))
+  {
+    attributes.blksize = std::strtoul(result.get_option("--blksize")->get_value().c_str(), nullptr, 10);
+  }
+  if (result.get_option("--dirblk"))
+  {
+    attributes.dirblk = std::strtoul(result.get_option("--dirblk")->get_value().c_str(), nullptr, 10);
+  }
+  if (result.get_option("--dsorg"))
+  {
+    attributes.dsorg = result.get_option("--dsorg")->get_value();
+  }
+  if (result.get_option("--primary"))
+  {
+    attributes.primary = std::strtoul(result.get_option("--primary")->get_value().c_str(), nullptr, 10);
+  }
+  if (result.get_option("--recfm"))
+  {
+    attributes.recfm = result.get_option("--recfm")->get_value();
+  }
+  if (result.get_option("--lrecl"))
+  {
+    attributes.lrecl = std::strtoul(result.get_option("--lrecl")->get_value().c_str(), nullptr, 10);
+  }
+  if (result.get_option("--dataclass"))
+  {
+    attributes.dataclass = result.get_option("--dataclass")->get_value();
+  }
+  if (result.get_option("--unit"))
+  {
+    attributes.unit = result.get_option("--unit")->get_value();
+  }
+  if (result.get_option("--dsntype"))
+  {
+    attributes.dsntype = result.get_option("--dsntype")->get_value();
+  }
+  if (result.get_option("--mgntclass"))
+  {
+    attributes.mgntclass = result.get_option("--mgntclass")->get_value();
+  }
+  if (result.get_option("--dsname"))
+  {
+    attributes.dsname = result.get_option("--dsname")->get_value();
+  }
+  if (result.get_option("--avgblk"))
+  {
+    attributes.avgblk = std::strtoul(result.get_option("--avgblk")->get_value().c_str(), nullptr, 10);
+  }
+  if (result.get_option("--secondary"))
+  {
+    attributes.secondary = std::strtoul(result.get_option("--secondary")->get_value().c_str(), nullptr, 10);
+  }
+  if (result.get_option("--size"))
+  {
+    attributes.size = std::strtoul(result.get_option("--size")->get_value().c_str(), nullptr, 10);
+  }
+  if (result.get_option("--storclass"))
+  {
+    attributes.storclass = result.get_option("--storclass")->get_value();
+  }
+  if (result.get_option("--vol"))
+  {
+    attributes.vol = result.get_option("--vol")->get_value();
+  }
+
   string response;
-  rc = zds_create_dsn(&zds, dsn, response);
+  rc = zds_create_dsn(&zds, dsn, attributes, response);
   if (0 != rc)
   {
     cerr << "Error: could not create data set: '" << dsn << "' rc: '" << rc << "'" << endl;
@@ -1373,30 +1532,51 @@ int handle_data_set_view_dsn(ZCLIResult result)
   int rc = 0;
   string dsn = result.get_positional("dsn")->get_value();
   ZDS zds = {0};
-  string response;
 
   const auto hasEncoding = zut_prepare_encoding(result.get_option_value("--encoding"), &zds.encoding_opts);
-  rc = zds_read_from_dsn(&zds, dsn, response);
-  if (0 != rc)
-  {
-    cerr << "Error: could not read data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details: " << zds.diag.e_msg << endl;
-    return RTNCD_FAILURE;
-  }
 
-  if (result.get_option_value("--return-etag") == "true")
+  auto *pipe_path = result.get_option("--pipe-path");
+  if (pipe_path != nullptr && pipe_path->is_found())
   {
-    const auto etag = zut_calc_adler32_checksum(response);
-    cout << "etag: " << std::hex << etag << endl;
-    cout << "data: ";
-  }
-  if (hasEncoding && result.get_option_value("--response-format-bytes") == "true")
-  {
-    zut_print_string_as_bytes(response);
+    rc = zds_read_from_dsn_streamed(&zds, dsn, pipe_path->get_value());
+
+    if (result.get_option_value("--return-etag") == "true")
+    {
+      string temp_content;
+      // Temporary read to get etag value
+      auto read_rc = zds_read_from_dsn(&zds, dsn, temp_content);
+      if (read_rc == 0)
+      {
+        const auto etag = zut_calc_adler32_checksum(temp_content);
+        cout << std::hex << etag << endl;
+      }
+    }
   }
   else
   {
-    cout << response << endl;
+    string response;
+    rc = zds_read_from_dsn(&zds, dsn, response);
+    if (0 != rc)
+    {
+      cerr << "Error: could not read data set: '" << dsn << "' rc: '" << rc << "'" << endl;
+      cerr << "  Details: " << zds.diag.e_msg << endl;
+      return RTNCD_FAILURE;
+    }
+
+    if (result.get_option_value("--return-etag") == "true")
+    {
+      const auto etag = zut_calc_adler32_checksum(response);
+      cout << "etag: " << std::hex << etag << endl;
+      cout << "data: ";
+    }
+    if (hasEncoding && result.get_option_value("--response-format-bytes") == "true")
+    {
+      zut_print_string_as_bytes(response);
+    }
+    else
+    {
+      cout << response << endl;
+    }
   }
 
   return rc;
@@ -1439,6 +1619,7 @@ int handle_data_set_list(ZCLIResult result)
         fields.push_back(it->dsorg);
         fields.push_back(it->volser);
         fields.push_back(it->migr ? "true" : "false");
+        fields.push_back(it->recfm);
         std::cout << zut_format_as_csv(fields) << std::endl;
         fields.clear();
       }
@@ -1446,7 +1627,7 @@ int handle_data_set_list(ZCLIResult result)
       {
         if ("true" == attributes)
         {
-          std::cout << left << setw(44) << it->name << " " << it->volser << " " << setw(4) << it->dsorg << endl;
+          std::cout << left << setw(44) << it->name << " " << it->volser << " " << setw(4) << it->dsorg << " " << setw(6) << it->recfm << endl;
         }
         else
         {
@@ -1531,40 +1712,48 @@ int handle_data_set_write_to_dsn(ZCLIResult result)
     zut_prepare_encoding(result.get_option_value("--encoding"), &zds.encoding_opts);
   }
 
-  string data;
-  string line;
-  size_t byteSize = 0ul;
-
-  if (!isatty(fileno(stdout)))
-  {
-    std::istreambuf_iterator<char> begin(std::cin);
-    std::istreambuf_iterator<char> end;
-
-    vector<char> input(begin, end);
-    const auto temp = string(input.begin(), input.end());
-    input.clear();
-    const auto bytes = zut_get_contents_as_bytes(temp);
-
-    data.assign(bytes.begin(), bytes.end());
-    byteSize = bytes.size();
-  }
-  else
-  {
-    while (getline(cin, line))
-    {
-      data += line;
-      data.push_back('\n');
-    }
-    byteSize = data.size();
-  }
-
   auto *etag_opt = result.get_option("--etag");
   if (etag_opt != nullptr && etag_opt->is_found())
   {
     strcpy(zds.etag, etag_opt->get_value().c_str());
   }
 
-  rc = zds_write_to_dsn(&zds, dsn, data);
+  auto *pipe_path = result.get_option("--pipe-path");
+  if (pipe_path != nullptr && pipe_path->is_found())
+  {
+    rc = zds_write_to_dsn_streamed(&zds, dsn, pipe_path->get_value());
+  }
+  else
+  {
+    string data;
+    string line;
+    size_t byteSize = 0ul;
+
+    if (!isatty(fileno(stdout)))
+    {
+      std::istreambuf_iterator<char> begin(std::cin);
+      std::istreambuf_iterator<char> end;
+
+      vector<char> input(begin, end);
+      const auto temp = string(input.begin(), input.end());
+      input.clear();
+      const auto bytes = zut_get_contents_as_bytes(temp);
+
+      data.assign(bytes.begin(), bytes.end());
+      byteSize = bytes.size();
+    }
+    else
+    {
+      while (getline(cin, line))
+      {
+        data += line;
+        data.push_back('\n');
+      }
+      byteSize = data.size();
+    }
+
+    rc = zds_write_to_dsn(&zds, dsn, data);
+  }
 
   if (0 != rc)
   {

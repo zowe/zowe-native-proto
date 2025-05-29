@@ -11,7 +11,6 @@
 
 import { ConfigUtils, type ICommandHandler, type IHandlerParameters } from "@zowe/imperative";
 import { ZSshClient, ZSshUtils } from "zowe-native-proto-sdk";
-import { Constants } from "../../Constants";
 
 export default class ServerUninstallHandler implements ICommandHandler {
     public async process(params: IHandlerParameters): Promise<void> {

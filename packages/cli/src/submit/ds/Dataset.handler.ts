@@ -9,7 +9,6 @@
  *
  */
 
-import { text } from "node:stream/consumers";
 import type { IHandlerParameters } from "@zowe/imperative";
 import type { ZSshClient, jobs } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
