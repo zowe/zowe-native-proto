@@ -239,12 +239,23 @@ func HandleWriteFileRequest(conn *utils.StdioConn, params []byte) (result any, e
 		}
 	}
 
+	tokens := strings.Fields(strings.TrimSpace(string(out)))
+	etag := ""
+	created := false
+	if len(tokens) > 0 {
+		etag = tokens[0]
+	}
+	if len(tokens) > 1 && tokens[1] == "true" {
+		created = true
+	}
+
 	result = uss.WriteFileResponse{
 		GenericFileResponse: uss.GenericFileResponse{
 			Success: true,
 			Path:    request.Path,
 		},
-		Etag: strings.TrimRight(string(out), "\n"),
+		Etag:    etag,
+		Created: created, // <- new field
 	}
 	return
 }
@@ -273,7 +284,7 @@ func HandleCreateFileRequest(conn *utils.StdioConn, params []byte) (result any, 
 		return
 	}
 
-	result = uss.DeleteFileResponse{
+	result = uss.CreateFileResponse{
 		Success: err == nil,
 		Path:    request.Path,
 	}

@@ -36,6 +36,7 @@ type ReadFileResponse struct {
 type WriteFileResponse struct {
 	GenericFileResponse `tstype:",extends"`
 	Etag                string `json:"etag"`
+	Created             bool   `json:"created"`
 }
 
 type ListFilesResponse struct {
