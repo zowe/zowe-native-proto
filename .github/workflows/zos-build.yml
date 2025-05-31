@@ -30,7 +30,7 @@ jobs:
             sshProfile:
               host: ${{ secrets.SSH_MARIST_RACF_HOST }}
               port: 65522
-              username: "${{ secrets.SSH_MARIST_USERNAME }}"
+              user: "${{ secrets.SSH_MARIST_USERNAME }}"
               password: "${{ secrets.SSH_MARIST_RACF_PASSWORD }}"
             deployDir: "/ZOWE/tmp/zowe-native-proto"
             goBuildEnv: "GOCACHE=/ZOWE/tmp/.go-cache GOTMPDIR=/ZOWE/tmp"
