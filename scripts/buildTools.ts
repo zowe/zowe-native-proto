@@ -307,7 +307,7 @@ async function upload(connection: Client) {
                 mkdirps.push(
                     new Promise<void>((resolve, reject) => {
                         sftpcon.mkdir(dir, (err) => {
-                            if ((err as any)?.code !== 4) {
+                            if (err && (err as any).code !== 4) {
                                 reject(err);
                             } else {
                                 resolve();
