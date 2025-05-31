@@ -12,7 +12,7 @@
 import * as fs from "node:fs";
 import { basename, resolve } from "node:path";
 import * as readline from "node:readline/promises";
-import { pipeline, Transform, type TransformCallback } from "node:stream";
+import { PassThrough, pipeline, Transform, type TransformCallback } from "node:stream";
 import { Client, type ClientCallback, type SFTPWrapper } from "ssh2";
 
 let config: Record<string, any>;
@@ -560,14 +560,20 @@ async function rmdir(connection: Client) {
 async function uploadFile(sftpcon: SFTPWrapper, from: string, to: string) {
     await new Promise<void>((finish) => {
         DEBUG_MODE() && console.log(`Uploading '${from}' to ${to}`);
-        pipeline(fs.createReadStream(from), new AsciiToEbcdicTransform(), sftpcon.createWriteStream(to), (err) => {
-            if (err) {
-                console.log("Upload err");
-                console.log(from, to);
-                throw err;
-            }
-            finish();
-        });
+        const shouldConvert = !to.includes(goDeployDirectory);
+        pipeline(
+            fs.createReadStream(from),
+            shouldConvert ? new AsciiToEbcdicTransform() : new PassThrough(),
+            sftpcon.createWriteStream(to),
+            (err) => {
+                if (err) {
+                    console.log("Upload err");
+                    console.log(from, to);
+                    throw err;
+                }
+                finish();
+            },
+        );
     });
 }
 
