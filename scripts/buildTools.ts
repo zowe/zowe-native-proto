@@ -11,7 +11,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { pipeline, Transform, type TransformCallback } from "node:stream";
+import { PassThrough, pipeline, Transform, type TransformCallback } from "node:stream";
 import * as yaml from "js-yaml";
 import { Client, type ClientCallback, type SFTPWrapper } from "ssh2";
 import { type IProfile, ProfileInfo } from "@zowe/imperative";
@@ -302,21 +302,17 @@ async function upload(connection: Client) {
             }
 
             const filteredDirs = args[1] ? dirs.filter((dir) => args.some((arg) => arg.startsWith(dir))) : dirs;
-            const mkdirps = [];
-            for (const dir of [deployDirs.root, ...filteredDirs]) {
-                mkdirps.push(
-                    new Promise<void>((resolve, reject) => {
-                        sftpcon.mkdir(dir, (err) => {
-                            if (err && (err as any).code !== 4) {
-                                reject(err);
-                            } else {
-                                resolve();
-                            }
-                        });
-                    }),
-                );
+            for (const dir of ["", ...filteredDirs]) {
+                await new Promise<void>((resolve, reject) => {
+                    sftpcon.mkdir(`${deployDirs.root}/${dir}`, (err) => {
+                        if (err && (err as any).code !== 4) {
+                            reject(err);
+                        } else {
+                            resolve();
+                        }
+                    });
+                });
             }
-            await Promise.all(mkdirps);
 
             const uploads = [];
             for (let i = 0; i < files.length; i++) {
@@ -447,14 +443,20 @@ async function rmdir(connection: Client) {
 async function uploadFile(sftpcon: SFTPWrapper, from: string, to: string) {
     await new Promise<void>((finish) => {
         DEBUG_MODE() && console.log(`Uploading '${from}' to ${to}`);
-        pipeline(fs.createReadStream(from), new AsciiToEbcdicTransform(), sftpcon.createWriteStream(to), (err) => {
-            if (err) {
-                console.log("Upload err");
-                console.log(from, to);
-                throw err;
-            }
-            finish();
-        });
+        const shouldConvert = !to.includes(deployDirs.goDir);
+        pipeline(
+            fs.createReadStream(from),
+            shouldConvert ? new AsciiToEbcdicTransform() : new PassThrough(),
+            sftpcon.createWriteStream(to),
+            (err) => {
+                if (err) {
+                    console.log("Upload err");
+                    console.log(from, to);
+                    throw err;
+                }
+                finish();
+            },
+        );
     });
 }
 
