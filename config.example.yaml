@@ -1,0 +1,4 @@
+default:
+  sshProfile: ssh
+  deployDir: ~/zowe-native-proto
+  goBuildEnv: ""

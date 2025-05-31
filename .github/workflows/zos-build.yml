@@ -25,15 +25,15 @@ jobs:
 
       - name: Set up Credentials
         run: |
-          cat << EOF > config.local.json
-          {
-            "host": "${{ secrets.SSH_MARIST_RACF_HOST }}",
-            "port": 65522,
-            "username": "${{ secrets.SSH_MARIST_USERNAME }}",
-            "password": "${{ secrets.SSH_MARIST_RACF_PASSWORD }}",
-            "deployDirectory": "/ZOWE/tmp/zowe-native-proto",
-            "goEnv": "GOCACHE=/ZOWE/tmp/.go-cache GOTMPDIR=/ZOWE/tmp"
-          }
+          cat << EOF > config.yaml
+          default:
+            sshProfile:
+              host: ${{ secrets.SSH_MARIST_RACF_HOST }}
+              port: 65522
+              username: "${{ secrets.SSH_MARIST_USERNAME }}"
+              password: "${{ secrets.SSH_MARIST_RACF_PASSWORD }}"
+            deployDir: "/ZOWE/tmp/zowe-native-proto"
+            goBuildEnv: "GOCACHE=/ZOWE/tmp/.go-cache GOTMPDIR=/ZOWE/tmp"
           EOF
 
       - name: Install Dependencies
@@ -44,7 +44,7 @@ jobs:
         with:
           command: npm run z:all
           max_attempts: 3
-          new_command_on_retry: npm run z:build && npm run z:artifacts:all
+          new_command_on_retry: npm run z:rebuild && npm run z:package
           retry_on_exit_code: 11 # Ignore transient SIGSEGV error on Go build
           timeout_minutes: 10
 
