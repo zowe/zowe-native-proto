@@ -4,28 +4,35 @@
 
 Run `npm install` to install project dependencies.
 
-Create your own `config.local.json` adjacent to `config.default.jsonc` with something like:
+Create a config file by copying `config.example.yaml` to `config.yaml`. Update the following properties:
 
-```json
-{
-  "host": "my.mainframe.net",
-  "username": "ibmuser",
-  "password": "ibmpass",
-  "deployDirectory": "/u/users/ibmuser/zowe-native-proto"
-}
+- `sshProfile` - Name of Zowe SSH profile used to connect to z/OS
+  - If you don't have profiles, run `zowe config init` to create a team configuration file
+  - Alternatively, you can define properties inline in the config - see the example YAML below
+- `deployDir` - USS directory where source files are uploaded and binaries are built
+- `goBuildEnv` (optional) - Environment variables to set for the `go build` command
+
+For a quick start, run `npm run all` to upload source files, build native binaries on z/OS, download build artifacts, and build client packages.
+
+**Tip:** You can define additional profiles in `config.yaml` and use them by setting the environment variable `ZOWE_NATIVE_PROFILE=<profileName>`. For example:
+
+```yaml
+another_one:
+  sshProfile:
+    host: my.mainframe.net
+    user: ibmuser
+    password: ibmpass
+  deployDirectory: /u/users/ibmuser/zowe-native-proto
 ```
-
-**Tip:** You can use a `privateKey` instead of `password` in the config.
 
 ## Deploy & Build
 
 ### z/OS
 
-- `npm run z:init` - create project folder structure on z/OS (only needed once)
-- `npm run z:deploy` - deploy source files to z/OS
-  - **Tip:** You can deploy just one file or directory like this: `npm run z:deploy c/zowex.cpp`
-- `npm run z:build` - build native binaries on z/OS
-  - **Tip:** You can deploy and build at the same time with `npm run z:deploy:build`
+- `npm run z:upload` - deploy source files to z/OS
+  - **Tip:** You can deploy just one file or directory like this: `npm run z:upload c/zowex.cpp`
+- `npm run z:rebuild` - build native binaries on z/OS
+  - **Tip:** You can deploy and build at the same time with `npm run z:build`
 - `npm run watch:native` - detect and upload changes to native code
 
 ## Client
@@ -33,7 +40,7 @@ Create your own `config.local.json` adjacent to `config.default.jsonc` with some
 - `npm run z:artifacts` - download binaries to package with clients
   - **Tip:** You can skip this step by defining `serverPath` property in your SSH profile in `zowe.config.json` to point to a dev build
 - `npm run build` - build all projects in the `packages` folder
-  - **Tip:** You can run incremental builds with `npm run watch:client` for client code only, or `npm run watch` at the root to watch all code
+  - **Tip:** You can run incremental builds with `npm run watch` for client code only, or `npm run watch:all` at the root to watch all code
 - `npm run package` - create CLI and VSCE artifacts in `dist` folder
 
 ## Test
