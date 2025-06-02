@@ -46,6 +46,7 @@ typedef struct
   ZDIAG diag;
 
   bool created;
+  char _pad[3];
 } ZUSF;
 
 #if (defined(__IBMCPP__) || defined(__IBMC__))

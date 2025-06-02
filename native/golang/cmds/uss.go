@@ -239,14 +239,16 @@ func HandleWriteFileRequest(conn *utils.StdioConn, params []byte) (result any, e
 		}
 	}
 
-	tokens := strings.Fields(strings.TrimSpace(string(out)))
-	etag := ""
-	created := false
-	if len(tokens) > 0 {
-		etag = tokens[0]
+	output := utils.YamlToMap(string(out))
+
+	var etag string
+	if etagValue, exists := output["etag"]; exists {
+		etag = fmt.Sprintf("%v", etagValue)
 	}
-	if len(tokens) > 1 && tokens[1] == "true" {
-		created = true
+
+	var created string = "false" // default value
+	if createdValue, exists := output["created"]; exists {
+		created = fmt.Sprintf("%v", createdValue)
 	}
 
 	result = uss.WriteFileResponse{
@@ -255,7 +257,7 @@ func HandleWriteFileRequest(conn *utils.StdioConn, params []byte) (result any, e
 			Path:    request.Path,
 		},
 		Etag:    etag,
-		Created: created, // <- new field
+		Created: created,
 	}
 	return
 }

@@ -1992,7 +1992,8 @@ int handle_uss_write(ZCLIResult result)
   auto *etag_opt2 = result.get_option("--etag-only");
   if (etag_opt2 != nullptr && etag_opt2->get_value() == "true")
   {
-    cout << zusf.etag << ' ' << (zusf.created ? "true" : "false") << endl;
+    cout << "etag: " << zusf.etag << '\n'
+         << "created: " << (zusf.created ? "true" : "false") << '\n';
   }
   else
   {
