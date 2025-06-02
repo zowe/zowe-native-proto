@@ -5,7 +5,7 @@
   "scripts": {
     "all": "npm run z:build && concurrently \"npm run z:artifacts\" \"npm run build\"",
     "build": "npm run build --workspaces && npm run license",
-    "build:all": "concurrently \"npm run z:build:types\" \"npm run build\"",
+    "build:all": "npm run z:build:types && npm run build",
     "build:types": "cd native/golang && go run github.com/gzuidhof/tygo generate && npm run license",
     "clean": "npm run clean --workspaces",
     "download": "gh run download --name zowe-server-bin && node scripts/moveArtifacts.js",
@@ -18,7 +18,7 @@
     "tools": "tsx scripts/buildTools.ts",
     "watch": "npm run watch --workspaces",
     "watch:all": "concurrently \"npm run z:watch\" \"npm run watch\"",
-    "z:all": "npm run z:build && npm run z:package",
+    "z:all": "npm run z:rebuild && npm run z:package",
     "z:artifacts": "tsx scripts/buildTools.ts artifacts",
     "z:build": "tsx scripts/buildTools.ts build",
     "z:clean": "tsx scripts/buildTools.ts clean",

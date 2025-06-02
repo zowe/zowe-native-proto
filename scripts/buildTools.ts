@@ -481,14 +481,18 @@ async function loadConfig(): Promise<IConfig> {
         process.exit(1);
     }
 
-    const profile = process.env.ZOWE_NATIVE_PROFILE ?? "default";
-    const allConfigs: any = yaml.load(fs.readFileSync(configPath, "utf-8"));
-    if (allConfigs[profile] == null) {
-        console.error(`Could not find profile "${profile}" in config.yaml. See the README for instructions.`);
+    const configYaml: any = yaml.load(fs.readFileSync(configPath, "utf-8"));
+    let activeProfile = configYaml.activeProfile;
+    const profileArgIdx = args.findIndex((arg) => arg.startsWith("--profile="));
+    if (profileArgIdx !== -1) {
+        activeProfile = args.splice(profileArgIdx, 1)[0].split("=").pop();
+    }
+    if (configYaml.profiles?.[activeProfile] == null) {
+        console.error(`Could not find profile "${activeProfile}" in config.yaml. See the README for instructions.`);
         process.exit(1);
     }
 
-    const config: IConfig = allConfigs[profile];
+    const config: IConfig = configYaml.profiles[activeProfile];
     if (typeof config.sshProfile === "string") {
         const profInfo = new ProfileInfo("zowe");
         await profInfo.readProfilesFromDisk();
@@ -537,7 +541,6 @@ async function main() {
                 await bin(sshClient);
                 break;
             case "build":
-                await upload(sshClient);
                 await build(sshClient, config.goBuildEnv);
                 break;
             case "clean":
@@ -556,6 +559,7 @@ async function main() {
                 await artifacts(sshClient, true);
                 break;
             case "rebuild":
+                await upload(sshClient);
                 await build(sshClient, config.goBuildEnv);
                 break;
             case "upload":
