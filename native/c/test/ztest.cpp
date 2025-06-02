@@ -9,14 +9,14 @@ void ztst::RESULT_CHECK::ToBe(int val)
   {
     if (int_result == val)
     {
-      throw runtime_error("expected '" + to_string(val) + "' NOT to be '" + to_string(int_result) + "'");
+      throw runtime_error("expected int '" + to_string(int_result) + "' NOT to be '" + to_string(val) + "'");
     }
   }
   else
   {
     if (int_result != val)
     {
-      throw runtime_error("expected '" + to_string(val) + "' to be '" + to_string(int_result) + "'");
+      throw runtime_error("expected int '" + to_string(int_result) + "' to be '" + to_string(val) + "'");
     }
   }
 }
@@ -27,14 +27,14 @@ void ztst::RESULT_CHECK::ToBe(string val)
   {
     if (string_result != val)
     {
-      throw runtime_error("expected '" + val + "' to be '" + string_result + "'");
+      throw runtime_error("expected string '" + string_result + "' to be '" + val + "'");
     }
   }
   else
   {
     if (string_result == val)
     {
-      throw runtime_error("expected '" + val + "' NOT to be '" + string_result + "'");
+      throw runtime_error("expected string '" + string_result + "' NOT to be '" + val + "'");
     }
   }
 }
@@ -47,7 +47,7 @@ void ztst::RESULT_CHECK::ToBeNull()
     {
       stringstream ss;
       ss << pointer_result;
-      throw runtime_error("expected '" + ss.str() + "' to be null");
+      throw runtime_error("expected pointer '" + ss.str() + "' to be null");
     }
   }
   else
@@ -63,8 +63,13 @@ void ztst::RESULT_CHECK::ToBeNull()
 
 ztst::RESULT_CHECK ztst::RESULT_CHECK::Not()
 {
-  inverse = true;
-  return *this;
+  RESULT_CHECK copy;
+  copy.set_inverse(true);
+  copy.pointer_result = pointer_result;
+  copy.int_result = int_result;
+  copy.string_result = string_result;
+  set_inverse(false);
+  return copy;
 }
 
 struct TEST_CASE
@@ -113,6 +118,7 @@ ztst::RESULT_CHECK ztst::expect(int val)
 {
   ztst::RESULT_CHECK result;
   result.set_result(val);
+  result.set_inverse(false);
   return result;
 }
 
@@ -120,6 +126,7 @@ ztst::RESULT_CHECK ztst::expect(string val)
 {
   ztst::RESULT_CHECK result;
   result.set_result(val);
+  result.set_inverse(false);
   return result;
 }
 
@@ -127,6 +134,7 @@ ztst::RESULT_CHECK ztst::expect(void *val)
 {
   ztst::RESULT_CHECK result;
   result.set_result(val);
+  result.set_inverse(false);
   return result;
 }
 
