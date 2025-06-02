@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	t "zowe-native-proto/zowed/types/common"
@@ -246,9 +247,11 @@ func HandleWriteFileRequest(conn *utils.StdioConn, params []byte) (result any, e
 		etag = fmt.Sprintf("%v", etagValue)
 	}
 
-	var created string = "false" // default value
+	var created bool = false // default value
 	if createdValue, exists := output["created"]; exists {
-		created = fmt.Sprintf("%v", createdValue)
+		if parsedBool, err := strconv.ParseBool(fmt.Sprintf("%v", createdValue)); err == nil {
+			created = parsedBool
+		}
 	}
 
 	result = uss.WriteFileResponse{
