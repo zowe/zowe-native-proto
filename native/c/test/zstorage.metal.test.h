@@ -20,10 +20,10 @@ extern "C"
 {
 #endif
 
-  void *STBT31(int size);
+  void *STBT31(int *size);
   int STFREE(int *size, void *data);
 
-  void *STGET64(int size);
+  void *STGET64(int *size);
   int STREL(void *);
 
 #if defined(__cplusplus)
