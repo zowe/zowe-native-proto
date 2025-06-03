@@ -398,8 +398,7 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe)
   {
     if (stat(file.c_str(), &file_stats) == -1)
     {
-      zusf->diag.e_msg_len = std::sprintf(zusf->diag.e_msg, "Etag supplied for non-existent file '%s'", file.c_str());
-      return RTNCD_FAILURE;
+      zusf->diag.e_msg_len = std::sprintf(zusf->diag.e_msg, "Warning: Etag supplied for non-existent file '%s'", file.c_str());
     }
     const std::string currentTag = zut_build_etag(file_stats.st_mtime, file_stats.st_size);
     if (currentTag != zusf->etag)

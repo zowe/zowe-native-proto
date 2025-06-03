@@ -247,7 +247,7 @@ func HandleWriteFileRequest(conn *utils.StdioConn, params []byte) (result any, e
 		etag = fmt.Sprintf("%v", etagValue)
 	}
 
-	var created bool = false // default value
+	var created bool = false
 	if createdValue, exists := output["created"]; exists {
 		if parsedBool, err := strconv.ParseBool(fmt.Sprintf("%v", createdValue)); err == nil {
 			created = parsedBool
