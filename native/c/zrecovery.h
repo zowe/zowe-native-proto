@@ -106,6 +106,7 @@ typedef struct sdwarc4 SDWARC4;
 
 /**
  * TODO(Kelosky): features
+ * - test for TRAP(ON,NOSPIE)
  * - abend counter
  * - VRA data wrappers
  * - get abend info, code, psw, bea, load module, and offset

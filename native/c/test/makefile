@@ -75,7 +75,6 @@ CXXLANG_FLAGS=-W "c,lp64"\
 
 CXXLANG_BND_FLAGS=-W "l,lp64"
 
-
 ASM_FLAGS=-mRENT
 
 # make -DBuildType=DEBUG
@@ -140,7 +139,11 @@ build-out/zjb.test.o \
 build-out/zjb.o \
 build-out/zjbm.o \
 build-out/zjbm31.o \
-build-out/zssi31.o
+build-out/zssi31.o \
+build-out/zrecovery.test.o \
+build-out/zrecovery.metal.test.o \
+build-out/zmetal.test.o \
+build-out/zmetal.metal.test.o
 	$(OCXX) $(CXXLANG_BND_FLAGS) -o $@ $^ > $*.bind.lst
 
 build-out/zut.o:
@@ -187,6 +190,24 @@ build-out/zjb.test.o: zjb.test.cpp
 
 build-out/zds.test.o: zds.test.cpp
 	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
+
+build-out/zrecovery.test.o: zrecovery.test.cpp
+	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
+
+build-out/zrecovery.metal.test.s: zrecovery.metal.test.c
+	$(CC) $(MTL_FLAGS64) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
+
+build-out/zrecovery.metal.test.o: build-out/zrecovery.metal.test.s
+	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
+
+build-out/zmetal.test.o: zmetal.test.cpp
+	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
+
+build-out/zmetal.metal.test.s: zmetal.metal.test.c
+	$(CC) $(MTL_FLAGS64) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
+
+build-out/zmetal.metal.test.o: build-out/zmetal.metal.test.s
+	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
 # build-out/testrcvy.s: testrcvy.c
 # 	$(CC) $(MTL_FLAGS64) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^

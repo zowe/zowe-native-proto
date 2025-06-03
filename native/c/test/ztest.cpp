@@ -105,6 +105,7 @@ void ztst::describe(std::string description, ztst::cb suite)
   ts.description = description;
   ztst_suites.push_back(ts);
   ztst_suite_index++;
+  cout << description << endl;
   suite();
 }
 
@@ -122,6 +123,14 @@ void ztst::it(string description, ztst::cb test)
     tc.success = false;
     tc.fail_message = e.what();
   }
+
+  string icon = tc.success ? "PASS " : "FAIL ";
+  cout << "  " << icon << tc.description << endl;
+  if (!tc.success)
+  {
+    cout << "    " << tc.fail_message << endl;
+  }
+
   ztst_suites[ztst_suite_index].tests.push_back(tc);
 }
 
@@ -155,32 +164,33 @@ void ztst::report()
   int tests_total = 0;
   int tests_fail = 0;
 
-  cout << "======== TESTS ========" << endl;
+  cout << "======== TESTS SUMMARY ========" << endl;
 
   for (vector<TEST_SUITE>::iterator it = ztst_suites.begin(); it != ztst_suites.end(); it++)
   {
-    cout << it->description << endl;
+    // cout << it->description << endl;
     for (vector<TEST_CASE>::iterator iit = it->tests.begin(); iit != it->tests.end(); iit++)
     {
       tests_total++;
-      string icon = iit->success ? "PASS " : "FAIL ";
-      cout << "  " << icon << iit->description << endl;
+      // string icon = iit->success ? "PASS " : "FAIL ";
+      // cout << "  " << icon << iit->description << endl;
       if (!iit->success)
       {
-        cout << "    " << iit->fail_message << endl;
+        // cout << "    " << iit->fail_message << endl;
         suite_fail++;
         tests_fail++;
       }
     }
   }
 
-  cout << endl;
+  // cout << endl;
   cout << "Total Suites: " << ztst_suites.size() - suite_fail << " passed, " << suite_fail << " failed, " << ztst_suites.size() << " total" << endl;
   cout << "Tests:      : " << tests_total - tests_fail << " passed, " << tests_fail << " failed, " << tests_total << " total" << endl;
 }
 
 void ztst::tests(ztst::cb tests)
 {
+  cout << "======== TESTS ========" << endl;
   tests();
   report();
 }

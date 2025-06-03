@@ -10,30 +10,25 @@
  */
 
 #include <iostream>
-#include "zstorage.test.hpp"
-#include "zut.test.hpp"
-#include "zjb.test.hpp"
-#include "zds.test.hpp"
-#include "zrecovery.test.hpp"
-#include "zmetal.test.hpp"
+#include <stdexcept>
+
 #include "ztest.hpp"
+#include "zrecovery.metal.test.h"
 
 using namespace std;
 using namespace ztst;
 
-int main()
+void zrecovery_tests()
 {
 
-  tests(
-      []() -> void
-      {
-        zstorage_tests();
-        zut_tests();
-        zjb_tests();
-        zds_tests();
-        zrecovery_tests();
-        zmetal_tests();
-      });
-
-  return 0;
+  describe("zrecovery tests",
+           []() -> void
+           {
+             it("should recovery from an abend",
+                []()
+                {
+                  int rc = ZRCVYEN();
+                  expect(rc).ToBe(0);
+                });
+           });
 }

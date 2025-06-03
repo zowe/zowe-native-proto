@@ -10,30 +10,25 @@
  */
 
 #include <iostream>
-#include "zstorage.test.hpp"
-#include "zut.test.hpp"
-#include "zjb.test.hpp"
-#include "zds.test.hpp"
-#include "zrecovery.test.hpp"
-#include "zmetal.test.hpp"
+#include <stdexcept>
+
 #include "ztest.hpp"
+#include "zmetal.metal.test.h"
 
 using namespace std;
 using namespace ztst;
 
-int main()
+void zmetal_tests()
 {
 
-  tests(
-      []() -> void
-      {
-        zstorage_tests();
-        zut_tests();
-        zjb_tests();
-        zds_tests();
-        zrecovery_tests();
-        zmetal_tests();
-      });
-
-  return 0;
+  describe("zmetal tests",
+           []() -> void
+           {
+             it("should obtain and free 31-bit storage",
+                []()
+                {
+                  int rc = ZMETAL1();
+                  expect(rc).ToBe(0);
+                });
+           });
 }
