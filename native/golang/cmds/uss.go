@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	t "zowe-native-proto/zowed/types/common"
@@ -239,12 +240,27 @@ func HandleWriteFileRequest(conn *utils.StdioConn, params []byte) (result any, e
 		}
 	}
 
+	output := utils.YamlToMap(string(out))
+
+	var etag string
+	if etagValue, exists := output["etag"]; exists {
+		etag = fmt.Sprintf("%v", etagValue)
+	}
+
+	var created bool = false
+	if createdValue, exists := output["created"]; exists {
+		if parsedBool, err := strconv.ParseBool(fmt.Sprintf("%v", createdValue)); err == nil {
+			created = parsedBool
+		}
+	}
+
 	result = uss.WriteFileResponse{
 		GenericFileResponse: uss.GenericFileResponse{
 			Success: true,
 			Path:    request.Path,
 		},
-		Etag: strings.TrimRight(string(out), "\n"),
+		Etag:    etag,
+		Created: created,
 	}
 	return
 }
@@ -273,7 +289,7 @@ func HandleCreateFileRequest(conn *utils.StdioConn, params []byte) (result any, 
 		return
 	}
 
-	result = uss.DeleteFileResponse{
+	result = uss.CreateFileResponse{
 		Success: err == nil,
 		Path:    request.Path,
 	}
