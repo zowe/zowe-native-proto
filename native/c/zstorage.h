@@ -1,7 +1,4 @@
 /**
- * @file zstorage.h
- * @brief Storage management functions and macros for IBM Z Metal environment.
- *
  * This program and the accompanying materials are made available under the terms of the
  * Eclipse Public License v2.0 which accompanies this distribution, and is available at
  * https://www.eclipse.org/legal/epl-v20.html
@@ -33,7 +30,7 @@
  * @param loc Location code for the storage (e.g., 24, 31).
  */
 #define STORAGE_OBTAIN(addr, size, loc)                       \
-  __asm volatile(                                             \
+  __asm(                                                      \
       "*                                                  \n" \
       " LLGF  0,%1      = storage length                  \n" \
       "*                                                  \n" \
