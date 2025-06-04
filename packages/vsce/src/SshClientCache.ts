@@ -17,6 +17,32 @@ import { type ClientOptions, ZSshClient, ZSshUtils } from "zowe-native-proto-sdk
 import { SshConfigUtils } from "./SshConfigUtils";
 import { deployWithProgress } from "./Utilities";
 
+type Disposable<T> = T & { [Symbol.dispose]: () => void };
+
+// biome-ignore lint/complexity/noStaticOnlyClass: Mutex is intended to be static
+class Mutex {
+    private static mMap: Map<string, Disposable<imperative.DeferredPromise<void>>> = new Map();
+
+    public static async lock(key: string): Promise<Disposable<imperative.DeferredPromise<void>>> {
+        let lock = Mutex.mMap.get(key);
+        await lock?.promise;
+        lock = new imperative.DeferredPromise<void>() as Disposable<imperative.DeferredPromise<void>>;
+        lock[Symbol.dispose] = () => Mutex.unlock(lock);
+        Mutex.mMap.set(key, lock);
+        return lock;
+    }
+
+    public static unlock(lock: imperative.DeferredPromise<void>): void {
+        lock.resolve();
+        for (const [k, v] of Mutex.mMap.entries()) {
+            if (v === lock) {
+                Mutex.mMap.delete(k);
+                break;
+            }
+        }
+    }
+}
+
 export class SshClientCache extends vscode.Disposable {
     private static mInstance: SshClientCache;
     private mClientMap: Map<string, ZSshClient> = new Map();
@@ -42,6 +68,7 @@ export class SshClientCache extends vscode.Disposable {
 
     public async connect(profile: imperative.IProfileLoaded, restart = false): Promise<ZSshClient> {
         const clientId = this.getClientId(profile.profile!);
+        using _lock = await Mutex.lock(clientId);
         if (restart) {
             this.end(clientId);
         }
