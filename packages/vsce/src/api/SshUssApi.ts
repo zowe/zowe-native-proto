@@ -21,7 +21,7 @@ export class SshUssApi extends SshCommonApi implements MainframeInteraction.IUss
             fspath: ussFilePath,
         });
         return this.buildZosFilesResponse({
-            items: response.items.map((item) => ({ name: item.name, mode: item.isDir ? "d" : "-" })),
+            items: response.items.map((item) => ({ name: item.name, mode: item.mode })),
             returnedRows: response.returnedRows,
         });
     }

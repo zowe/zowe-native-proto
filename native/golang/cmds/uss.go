@@ -48,6 +48,7 @@ func HandleListFilesRequest(_conn *utils.StdioConn, params []byte) (result any, 
 		ussResponse.Items[0] = t.UssItem{
 			Name:  filepath.Base(dirPath),
 			IsDir: false,
+			Mode:  fileInfo.Mode().String(),
 		}
 		ussResponse.ReturnedRows = 1
 	} else {
@@ -62,6 +63,7 @@ func HandleListFilesRequest(_conn *utils.StdioConn, params []byte) (result any, 
 			ussResponse.Items[i] = t.UssItem{
 				Name:  entry.Name(),
 				IsDir: entry.IsDir(),
+				Mode:  entry.Type().String(),
 			}
 		}
 

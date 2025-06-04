@@ -98,6 +98,10 @@ export interface UssItem {
    * Whether the item is a directory
    */
   isDir: boolean;
+  /**
+   * The permission string of the item
+   */
+  mode: string;
 }
 export interface Job {
   /**

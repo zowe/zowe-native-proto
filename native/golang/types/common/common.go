@@ -89,6 +89,8 @@ type UssItem struct {
 	Name string `json:"name"`
 	// Whether the item is a directory
 	IsDir bool `json:"isDir"`
+	// The permission string of the item
+	Mode string `json:"mode"`
 }
 
 type Job struct {
