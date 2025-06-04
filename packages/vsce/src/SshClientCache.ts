@@ -17,35 +17,21 @@ import { type ClientOptions, ZSshClient, ZSshUtils } from "zowe-native-proto-sdk
 import { SshConfigUtils } from "./SshConfigUtils";
 import { deployWithProgress } from "./Utilities";
 
-type Disposable<T> = T & { [Symbol.dispose]: () => void };
-
-// biome-ignore lint/complexity/noStaticOnlyClass: Mutex is intended to be static
-class Mutex {
-    private static mMap: Map<string, Disposable<imperative.DeferredPromise<void>>> = new Map();
-
-    public static async lock(key: string): Promise<Disposable<imperative.DeferredPromise<void>>> {
-        let lock = Mutex.mMap.get(key);
-        await lock?.promise;
-        lock = new imperative.DeferredPromise<void>() as Disposable<imperative.DeferredPromise<void>>;
-        lock[Symbol.dispose] = () => Mutex.unlock(lock);
-        Mutex.mMap.set(key, lock);
-        return lock;
+class Mutex extends imperative.DeferredPromise<void> implements Disposable {
+    constructor(private onDispose?: () => void) {
+        super();
     }
 
-    public static unlock(lock: imperative.DeferredPromise<void>): void {
-        lock.resolve();
-        for (const [k, v] of Mutex.mMap.entries()) {
-            if (v === lock) {
-                Mutex.mMap.delete(k);
-                break;
-            }
-        }
+    public [Symbol.dispose](): void {
+        this.resolve();
+        this.onDispose?.();
     }
 }
 
 export class SshClientCache extends vscode.Disposable {
     private static mInstance: SshClientCache;
     private mClientMap: Map<string, ZSshClient> = new Map();
+    private mMutexMap: Map<string, Mutex> = new Map();
 
     private constructor(private mContext: vscode.ExtensionContext) {
         super(() => this.dispose());
@@ -68,7 +54,7 @@ export class SshClientCache extends vscode.Disposable {
 
     public async connect(profile: imperative.IProfileLoaded, restart = false): Promise<ZSshClient> {
         const clientId = this.getClientId(profile.profile!);
-        using _lock = await Mutex.lock(clientId);
+        using _lock = await this.lockForProfile(clientId);
         if (restart) {
             this.end(clientId);
         }
@@ -125,6 +111,13 @@ export class SshClientCache extends vscode.Disposable {
 
     private getClientId(profile: imperative.IProfile): string {
         return `${profile.host}:${profile.port ?? 22}`;
+    }
+
+    private async lockForProfile(clientId: string): Promise<Mutex> {
+        await this.mMutexMap.get(clientId)?.promise;
+        const lock = new Mutex(() => this.mMutexMap.delete(clientId));
+        this.mMutexMap.set(clientId, lock);
+        return lock;
     }
 
     private buildClient(session: SshSession, clientId: string, opts: ClientOptions): Promise<ZSshClient> {
