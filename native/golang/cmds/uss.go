@@ -57,14 +57,23 @@ func HandleListFilesRequest(_conn *utils.StdioConn, params []byte) (result any, 
 			e = fmt.Errorf("Failed to read directory: %v", err)
 			return
 		}
-		ussResponse.Items = make([]t.UssItem, len(entries))
+		// ., .., and the remaining items in the list
+		ussResponse.Items = make([]t.UssItem, len(entries)+2)
+		ussResponse.Items[0] = t.UssItem{Name: ".", IsDir: true, Mode: fileInfo.Mode().String()}
+		dirUp, err := filepath.Abs(filepath.Join(dirPath, ".."))
+		if err != nil {
+			parentStats, _ := os.Stat(dirUp)
+			ussResponse.Items[1] = t.UssItem{Name: "..", IsDir: true, Mode: parentStats.Mode().String()}
+		} else {
+			ussResponse.Items[1] = t.UssItem{Name: "..", IsDir: true, Mode: fileInfo.Mode().String()}
+		}
 
 		for i, entry := range entries {
 			info, err := entry.Info()
 			if err != nil {
 				continue
 			}
-			ussResponse.Items[i] = t.UssItem{
+			ussResponse.Items[i+2] = t.UssItem{
 				Name:  entry.Name(),
 				IsDir: entry.IsDir(),
 				Mode:  info.Mode().String(),
