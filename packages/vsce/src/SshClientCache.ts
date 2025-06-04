@@ -113,7 +113,10 @@ export class SshClientCache extends vscode.Disposable {
         return `${profile.host}:${profile.port ?? 22}`;
     }
 
-    private async lockForProfile(clientId: string): Promise<Mutex> {
+    private async lockForProfile(clientId: string): Promise<Mutex | undefined> {
+        if (this.mClientMap.has(clientId)) {
+            return;
+        }
         await this.mMutexMap.get(clientId)?.promise;
         const lock = new Mutex(() => this.mMutexMap.delete(clientId));
         this.mMutexMap.set(clientId, lock);
