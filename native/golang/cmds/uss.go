@@ -60,10 +60,14 @@ func HandleListFilesRequest(_conn *utils.StdioConn, params []byte) (result any, 
 		ussResponse.Items = make([]t.UssItem, len(entries))
 
 		for i, entry := range entries {
+			info, err := entry.Info()
+			if err != nil {
+				continue
+			}
 			ussResponse.Items[i] = t.UssItem{
 				Name:  entry.Name(),
 				IsDir: entry.IsDir(),
-				Mode:  entry.Type().String(),
+				Mode:  info.Mode().String(),
 			}
 		}
 
