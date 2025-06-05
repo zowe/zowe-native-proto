@@ -11,7 +11,7 @@
 
 export type B64String = string & { __brand: "B64String" };
 
-export enum UssFileType {
+export enum UssItemType {
     File = 1,
     Directory = 2,
     Symlink = 3,

@@ -26,20 +26,29 @@ import (
 	utils "zowe-native-proto/zowed/utils"
 )
 
+const (
+	TypeFile uint32 = 1 + iota
+	TypeDirectory
+	TypeSymlink
+	TypeNamedPipe
+	TypeSocket
+	TypeCharDevice
+)
+
 func fileTypeToEnum(typ os.FileMode) uint32 {
 	switch {
 	case typ.IsDir():
-		return t.TypeDirectory
+		return TypeDirectory
 	case typ&fs.ModeSymlink != 0:
-		return t.TypeSymlink
+		return TypeSymlink
 	case typ&fs.ModeNamedPipe != 0:
-		return t.TypeNamedPipe
+		return TypeNamedPipe
 	case typ&fs.ModeSocket != 0:
-		return t.TypeSocket
+		return TypeSocket
 	case typ&fs.ModeCharDevice != 0:
-		return t.TypeCharDevice
+		return TypeCharDevice
 	default:
-		return t.TypeFile
+		return TypeFile
 	}
 }
 
@@ -77,13 +86,13 @@ func HandleListFilesRequest(_conn *utils.StdioConn, params []byte) (result any, 
 		}
 		// ., .., and the remaining items in the list
 		ussResponse.Items = make([]t.UssItem, len(entries)+2)
-		ussResponse.Items[0] = t.UssItem{Name: ".", Type: t.TypeDirectory, Mode: fileInfo.Mode().String()}
+		ussResponse.Items[0] = t.UssItem{Name: ".", Type: TypeDirectory, Mode: fileInfo.Mode().String()}
 		dirUp, err := filepath.Abs(filepath.Join(dirPath, ".."))
 		if err != nil {
 			parentStats, _ := os.Stat(dirUp)
-			ussResponse.Items[1] = t.UssItem{Name: "..", Type: t.TypeDirectory, Mode: parentStats.Mode().String()}
+			ussResponse.Items[1] = t.UssItem{Name: "..", Type: TypeDirectory, Mode: parentStats.Mode().String()}
 		} else {
-			ussResponse.Items[1] = t.UssItem{Name: "..", Type: t.TypeDirectory, Mode: fileInfo.Mode().String()}
+			ussResponse.Items[1] = t.UssItem{Name: "..", Type: TypeDirectory, Mode: fileInfo.Mode().String()}
 		}
 
 		for i, entry := range entries {

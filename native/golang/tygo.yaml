@@ -1,6 +1,8 @@
 packages:
   - path: "zowe-native-proto/zowed/types/common"
     output_path: "../../packages/sdk/src/doc/gen/common.ts"
+    frontmatter: |
+      import type * as t from "../types";
   - path: "zowe-native-proto/zowed/types/ds"
     output_path: "../../packages/sdk/src/doc/gen/ds.ts"
     frontmatter: &fm |
@@ -9,8 +11,7 @@ packages:
       import { type B64String } from "../types";
   - path: "zowe-native-proto/zowed/types/uss"
     output_path: "../../packages/sdk/src/doc/gen/uss.ts"
-    frontmatter: &fm |
-      import type * as common from "./common.ts";
+    frontmatter: *fm
   - path: "zowe-native-proto/zowed/types/jobs"
     output_path: "../../packages/sdk/src/doc/gen/jobs.ts"
     frontmatter: *fm
