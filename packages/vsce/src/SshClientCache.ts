@@ -15,9 +15,9 @@ import { imperative } from "@zowe/zowe-explorer-api";
 import * as vscode from "vscode";
 import { type ClientOptions, ZSshClient, ZSshUtils } from "zowe-native-proto-sdk";
 import { SshConfigUtils } from "./SshConfigUtils";
-import { deployWithProgress } from "./Utilities";
+import { deployWithProgress, getVsceConfig } from "./Utilities";
 
-class Mutex extends imperative.DeferredPromise<void> implements Disposable {
+class AsyncMutex extends imperative.DeferredPromise<void> implements Disposable {
     constructor(private onDispose?: () => void) {
         super();
     }
@@ -31,7 +31,7 @@ class Mutex extends imperative.DeferredPromise<void> implements Disposable {
 export class SshClientCache extends vscode.Disposable {
     private static mInstance: SshClientCache;
     private mClientMap: Map<string, ZSshClient> = new Map();
-    private mMutexMap: Map<string, Mutex> = new Map();
+    private mMutexMap: Map<string, AsyncMutex> = new Map();
 
     private constructor(private mContext: vscode.ExtensionContext) {
         super(() => this.dispose());
@@ -54,21 +54,18 @@ export class SshClientCache extends vscode.Disposable {
 
     public async connect(profile: imperative.IProfileLoaded, restart = false): Promise<ZSshClient> {
         const clientId = this.getClientId(profile.profile!);
-        using _lock = await this.lockForProfile(clientId);
+        await this.mMutexMap.get(clientId)?.promise;
         if (restart) {
             this.end(clientId);
         }
 
         if (!this.mClientMap.has(clientId)) {
+            using _lock = this.acquireProfileLock(clientId);
             const session = ZSshUtils.buildSession(profile.profile!);
             const serverPath = SshConfigUtils.getServerPath(profile.profile);
             const localDir = path.join(this.mContext.extensionPath, "bin");
-            const keepAliveInterval = vscode.workspace
-                .getConfiguration("zowe-native-proto-vsce")
-                .get<number>("keepAliveInterval");
-            const autoUpdate = vscode.workspace
-                .getConfiguration("zowe-native-proto-vsce")
-                .get("serverAutoUpdate", true);
+            const keepAliveInterval = getVsceConfig().get<number>("keepAliveInterval");
+            const autoUpdate = getVsceConfig().get("serverAutoUpdate", true);
 
             let newClient: ZSshClient | undefined;
             try {
@@ -113,12 +110,8 @@ export class SshClientCache extends vscode.Disposable {
         return `${profile.host}:${profile.port ?? 22}`;
     }
 
-    private async lockForProfile(clientId: string): Promise<Mutex | undefined> {
-        if (this.mClientMap.has(clientId)) {
-            return;
-        }
-        await this.mMutexMap.get(clientId)?.promise;
-        const lock = new Mutex(() => this.mMutexMap.delete(clientId));
+    private acquireProfileLock(clientId: string): AsyncMutex {
+        const lock = new AsyncMutex(() => this.mMutexMap.delete(clientId));
         this.mMutexMap.set(clientId, lock);
         return lock;
     }
