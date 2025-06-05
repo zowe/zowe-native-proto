@@ -84,11 +84,20 @@ type DsMember struct {
 	Name string `json:"name"`
 }
 
+const (
+	TypeFile uint32 = 1 + iota
+	TypeDirectory
+	TypeSymlink
+	TypeNamedPipe
+	TypeSocket
+	TypeCharDevice
+)
+
 type UssItem struct {
 	// File name
 	Name string `json:"name"`
 	// Whether the item is a directory
-	IsDir bool `json:"isDir"`
+	Type uint32 `json:"itemType", tstype:"common.UssItemType"`
 	// The permission string of the item
 	Mode string `json:"mode"`
 }

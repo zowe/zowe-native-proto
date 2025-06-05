@@ -16,6 +16,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -24,6 +25,23 @@ import (
 	uss "zowe-native-proto/zowed/types/uss"
 	utils "zowe-native-proto/zowed/utils"
 )
+
+func fileTypeToEnum(typ os.FileMode) uint32 {
+	switch {
+	case typ.IsDir():
+		return t.TypeDirectory
+	case typ&fs.ModeSymlink != 0:
+		return t.TypeSymlink
+	case typ&fs.ModeNamedPipe != 0:
+		return t.TypeNamedPipe
+	case typ&fs.ModeSocket != 0:
+		return t.TypeSocket
+	case typ&fs.ModeCharDevice != 0:
+		return t.TypeCharDevice
+	default:
+		return t.TypeFile
+	}
+}
 
 // HandleListFilesRequest handles a ListFilesRequest by invoking built-in functions from Go's `os` module.
 func HandleListFilesRequest(_conn *utils.StdioConn, params []byte) (result any, e error) {
@@ -46,9 +64,9 @@ func HandleListFilesRequest(_conn *utils.StdioConn, params []byte) (result any, 
 	if !fileInfo.IsDir() {
 		ussResponse.Items = make([]t.UssItem, 1)
 		ussResponse.Items[0] = t.UssItem{
-			Name:  filepath.Base(dirPath),
-			IsDir: false,
-			Mode:  fileInfo.Mode().String(),
+			Name: filepath.Base(dirPath),
+			Type: fileTypeToEnum(fileInfo.Mode().Type()),
+			Mode: fileInfo.Mode().String(),
 		}
 		ussResponse.ReturnedRows = 1
 	} else {
@@ -59,13 +77,13 @@ func HandleListFilesRequest(_conn *utils.StdioConn, params []byte) (result any, 
 		}
 		// ., .., and the remaining items in the list
 		ussResponse.Items = make([]t.UssItem, len(entries)+2)
-		ussResponse.Items[0] = t.UssItem{Name: ".", IsDir: true, Mode: fileInfo.Mode().String()}
+		ussResponse.Items[0] = t.UssItem{Name: ".", Type: t.TypeDirectory, Mode: fileInfo.Mode().String()}
 		dirUp, err := filepath.Abs(filepath.Join(dirPath, ".."))
 		if err != nil {
 			parentStats, _ := os.Stat(dirUp)
-			ussResponse.Items[1] = t.UssItem{Name: "..", IsDir: true, Mode: parentStats.Mode().String()}
+			ussResponse.Items[1] = t.UssItem{Name: "..", Type: t.TypeDirectory, Mode: parentStats.Mode().String()}
 		} else {
-			ussResponse.Items[1] = t.UssItem{Name: "..", IsDir: true, Mode: fileInfo.Mode().String()}
+			ussResponse.Items[1] = t.UssItem{Name: "..", Type: t.TypeDirectory, Mode: fileInfo.Mode().String()}
 		}
 
 		for i, entry := range entries {
@@ -74,9 +92,9 @@ func HandleListFilesRequest(_conn *utils.StdioConn, params []byte) (result any, 
 				continue
 			}
 			ussResponse.Items[i+2] = t.UssItem{
-				Name:  entry.Name(),
-				IsDir: entry.IsDir(),
-				Mode:  info.Mode().String(),
+				Name: entry.Name(),
+				Type: fileTypeToEnum(info.Mode().Type()),
+				Mode: info.Mode().String(),
 			}
 		}
 
