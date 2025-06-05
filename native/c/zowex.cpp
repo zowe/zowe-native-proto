@@ -2189,7 +2189,7 @@ int handle_tool_display_symbol(ZCLIResult result)
   transform(symbol.begin(), symbol.end(), symbol.begin(), ::toupper); // upper case
   symbol = "&" + symbol;
   string value;
-  rc = zut_substitute_sybmol(symbol, value);
+  rc = zut_substitute_symbol(symbol, value);
   if (0 != rc)
   {
     cerr << "Error: asasymbf with parm '" << symbol << "' rc: '" << rc << "'" << endl;
