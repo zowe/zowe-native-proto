@@ -244,6 +244,7 @@ build-out/zmetal.metal.test.o: build-out/zmetal.metal.test.s
 #
 test: test.sh
 	chmod +x test.sh
+	_CEE_RUNOPTS="TRAP(ON,NOSPIE)" ./build-out/runner
 
 clean:
 	rm -f *.o

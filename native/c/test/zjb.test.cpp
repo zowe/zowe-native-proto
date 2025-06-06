@@ -70,25 +70,25 @@ void zjb_tests()
                   expect(rc).ToBe(0);
                 });
 
-             //  it("should be able to delete a submitted job",
-             //     []() -> void
-             //     {
-             //       ZJB zjb = {0};
-             //       string jobid;
-             //       string jcl = "//IEFBR14$ JOB IZUACCT\n"
-             //                    "//RUNBR14  EXEC PGM=IEFBR14\n";
+             it("should be able to delete a submitted job",
+                []() -> void
+                {
+                  ZJB zjb = {0};
+                  string jobid;
+                  string jcl = "//IEFBR14$ JOB IZUACCT\n"
+                               "//RUNBR14  EXEC PGM=IEFBR14\n";
 
-             //       int rc = zjb_submit(&zjb, jcl, jobid);
-             //       expect(rc).ToBe(0);
-             //       expect(jobid).Not().ToBe("");
+                  int rc = zjb_submit(&zjb, jcl, jobid);
+                  expect(rc).ToBe(0);
+                  expect(jobid).Not().ToBe("");
 
-             //       ZJob zjob;
+                  ZJob zjob;
 
-             //       string correlator = string(zjb.job_correlator, 64);
+                  string correlator = string(zjb.job_correlator, 64);
 
-             //       memset(&zjb, 0, sizeof(zjb));
-             //       rc = zjb_delete_by_jobid(&zjb, correlator);
-             //       expect(rc).ToBe(0);
-             //     });
+                  memset(&zjb, 0, sizeof(zjb));
+                  rc = zjb_delete(&zjb, correlator);
+                  expect(rc).ToBe(0);
+                });
            });
 }
