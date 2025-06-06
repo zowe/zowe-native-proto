@@ -46,19 +46,19 @@ using namespace std;
 // NOTE(Kelosky): see struct __S99struc via 'showinc' compiler option in <stdio.h>
 // NOTE(Kelosky): In the future, to allocate the logical SYSLOG concatenation for a system specify the following data set name (in DALDSNAM).
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=allocation-specifying-data-set-name-daldsnam
-int zjb_read_jobs_output_by_jobid_and_key(ZJB *zjb, string jobid, int key, string &response)
+int zjb_read_jobs_output_by_key(ZJB *zjb, string jobid, int key, string &response)
 {
   int rc = 0;
   string job_dsn;
 
-  rc = zjb_get_job_dsn_by_jobid_and_key(zjb, jobid, key, job_dsn);
+  rc = zjb_get_job_dsn_by_key(zjb, jobid, key, job_dsn);
   if (0 != rc)
     return rc;
 
   return zjb_read_job_content_by_dsn(zjb, job_dsn, response);
 }
 
-int zjb_get_job_dsn_by_jobid_and_key(ZJB *zjb, string jobid, int key, string &job_dsn)
+int zjb_get_job_dsn_by_key(ZJB *zjb, string jobid, int key, string &job_dsn)
 {
   int rc = 0;
 

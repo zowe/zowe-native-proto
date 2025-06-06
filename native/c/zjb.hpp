@@ -88,9 +88,9 @@ int zjb_list_dds(ZJB *zjb, std::string jobid, std::vector<ZJobDD> &job_dds);
  * @param response return job file output
  * @return int 0 for success; non zero otherwise
  */
-int zjb_read_jobs_output_by_jobid_and_key(ZJB *zjb, std::string jobid, int key, std::string &response);
+int zjb_read_jobs_output_by_key(ZJB *zjb, std::string jobid, int key, std::string &response);
 
-int zjb_get_job_dsn_by_jobid_and_key(ZJB *zjb, std::string, int, std::string &);
+int zjb_get_job_dsn_by_key(ZJB *zjb, std::string, int, std::string &);
 int zjb_read_job_content_by_dsn(ZJB *zjb, std::string job_dsn, std::string &response);
 
 /**

@@ -978,7 +978,7 @@ int handle_job_view_file(ZCLIResult result)
   const auto hasEncoding = zut_prepare_encoding(result.get_option_value("--encoding"), &zjb.encoding_opts);
 
   string resp;
-  rc = zjb_read_jobs_output_by_jobid_and_key(&zjb, jobid, atoi(key.c_str()), resp);
+  rc = zjb_read_jobs_output_by_key(&zjb, jobid, atoi(key.c_str()), resp);
 
   if (0 != rc)
   {
@@ -1006,7 +1006,7 @@ int handle_job_view_jcl(ZCLIResult result)
   string jobid(result.get_positional("jobid")->get_value());
 
   string resp;
-  rc = zjb_read_job_jcl_by_jobid(&zjb, jobid, resp);
+  rc = zjb_read_job_jcl(&zjb, jobid, resp);
 
   if (0 != rc)
   {
