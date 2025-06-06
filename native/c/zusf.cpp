@@ -187,10 +187,10 @@ int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response, ListOptio
 
       vector<string> fields;
       string name =entry->d_name;
-      if (name.at(0) == '.' && !options.all) {
+      if (name.at(0) == '.' && !options.all_files) {
         continue;
       }
-      
+
       fields.push_back(entry->d_name);
       if (options.long_format) {
         string mode;

@@ -23,7 +23,7 @@
 #include "zusftype.h"
 
 typedef struct _ListOptions {
-    bool all;
+    bool all_files;
     bool long_format;
 } ListOptions;
 

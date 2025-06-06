@@ -573,7 +573,7 @@ int main(int argc, char *argv[])
   ZCLIOption uss_file_list_all("all");
   uss_file_list_all.get_aliases().push_back("-a");
   uss_file_list_all.set_required(false);
-  uss_file_list_all.set_description("whether to list hidden files (default: false)");
+  uss_file_list_all.set_description("whether to show all files or visible files only (default: false - hidden files are not shown)");
   ZCLIOption uss_file_list_long_format("long");
   uss_file_list_long_format.get_aliases().push_back("-l");
   uss_file_list_long_format.set_required(false);
@@ -1869,7 +1869,7 @@ int handle_uss_list(ZCLIResult result)
   ZUSF zusf = {0};
   string response;
   ListOptions options;
-  options.all = result.get_option_value("--all") == "true";
+  options.all_files = result.get_option_value("--all") == "true";
   options.long_format = result.get_option_value("--long") == "true";
   rc = zusf_list_uss_file_path(&zusf, uss_file, response, options);
   if (0 != rc)
