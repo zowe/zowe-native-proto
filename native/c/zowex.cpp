@@ -903,7 +903,7 @@ int handle_job_list_files(ZCLIResult result)
   string jobid(result.get_positional("jobid")->get_value());
 
   vector<ZJobDD> job_dds;
-  rc = zjb_list_dds_by_jobid(&zjb, jobid, job_dds);
+  rc = zjb_list_dds(&zjb, jobid, job_dds);
 
   if (0 != rc)
   {

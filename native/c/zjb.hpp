@@ -73,17 +73,18 @@ int zjb_view(ZJB *zjb, std::string jobid, ZJob &job);
  * @brief Return a list of job file information from an input jobid
  *
  * @param zjb job returned attributes and error information
+ * @param jobid jobid or job correlator used to search
  * @param job_dds populated list returned containing job file information array
  * @return int 0 for success; non zero otherwise
  */
-int zjb_list_dds_by_jobid(ZJB *zjb, std::string, std::vector<ZJobDD> &job_dds);
+int zjb_list_dds(ZJB *zjb, std::string jobid, std::vector<ZJobDD> &job_dds);
 
 /**
  * @brief Return output from a specific job file
  *
  * @param zjb job returned attributes and error information
  * @param jobid jobid coresponding to the key to locate
- * @param key data set key returned from zjb_list_dds_by_jobid, e.g. JESMSGLG is usually 2
+ * @param key data set key returned from zjb_list_dds, e.g. JESMSGLG is usually 2
  * @param response return job file output
  * @return int 0 for success; non zero otherwise
  */

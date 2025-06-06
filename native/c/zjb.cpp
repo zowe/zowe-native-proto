@@ -64,7 +64,7 @@ int zjb_get_job_dsn_by_jobid_and_key(ZJB *zjb, string jobid, int key, string &jo
 
   vector<ZJobDD> list;
 
-  rc = zjb_list_dds_by_jobid(zjb, jobid, list);
+  rc = zjb_list_dds(zjb, jobid, list);
   if (0 != rc)
     return rc;
 
@@ -96,7 +96,7 @@ int zjb_read_job_jcl_by_jobid(ZJB *zjb, string jobid, string &response)
 
   vector<ZJobDD> list;
 
-  rc = zjb_list_dds_by_jobid(zjb, jobid, list);
+  rc = zjb_list_dds(zjb, jobid, list);
   if (0 != rc)
     return rc;
 
@@ -431,7 +431,7 @@ int zjb_submit(ZJB *zjb, string contents, string &jobid)
   return RTNCD_SUCCESS;
 }
 
-int zjb_list_dds_by_jobid(ZJB *zjb, string jobid, vector<ZJobDD> &jobDDs)
+int zjb_list_dds(ZJB *zjb, string jobid, vector<ZJobDD> &jobDDs)
 {
   int rc = 0;
   STATSEVB *PTR64 sysoutInfo = nullptr;
@@ -442,7 +442,10 @@ int zjb_list_dds_by_jobid(ZJB *zjb, string jobid, vector<ZJobDD> &jobDDs)
   if (0 == zjb->dds_max)
     zjb->dds_max = ZJB_DEFAULT_MAX_DDS;
 
-  zut_uppercase_pad_truncate(zjb->jobid, jobid, sizeof(zjb->jobid));
+  if (jobid.size() > sizeof(zjb->jobid))
+    zut_uppercase_pad_truncate(zjb->job_correlator, jobid, sizeof(zjb->job_correlator));
+  else
+    zut_uppercase_pad_truncate(zjb->jobid, jobid, sizeof(zjb->jobid));
 
   rc = ZJBMLSDS(zjb, &sysoutInfo, &entries);
   if (0 != rc)

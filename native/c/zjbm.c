@@ -264,7 +264,7 @@ int ZJBMMOD(ZJB *zjb, int type, int flags)
     zjb->diag.service_rsn = ssjm.ssjmretn;
     zjb->diag.service_rsn_secondary = ssjm.ssjmret2;
     // Understanding reason codes from this SSOB: https://www.ibm.com/docs/en/zos/3.1.0?topic=85-output-parameters
-    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "IEFSSREQ rc was: '%d' SSOBRTN was: '%d', SSJMRETN was: '%d', SSJMRET2 was: '%d'", rc, ssob.ssobretn, ssjm.ssjmretn, ssjm.ssjmret2);
+    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "IEFSSREQ rc was: '%d' SSOBRETN was: '%d', SSJMRETN was: '%d', SSJMRET2 was: '%d'", rc, ssob.ssobretn, ssjm.ssjmretn, ssjm.ssjmret2);
     return RTNCD_FAILURE;
   }
 
@@ -300,6 +300,7 @@ int ZJBMVIEW(ZJB *zjb, ZJB_JOB_INFO **PTR64 job_info, int *entries)
     stat.statsel5 = statscor;
     stat.statjcrp = &job_correlator31[0];
   }
+
   stat.stattype = statters;
 
   return ZJBMTCOM(zjb, &stat, job_info, entries);
@@ -374,7 +375,7 @@ int ZJBMTCOM(ZJB *zjb, STAT *PTR64 stat, ZJB_JOB_INFO **PTR64 job_info, int *ent
     }
     else
     {
-      zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "IEFSSREQ rc was: '%d' SSOBRTN was: '%d', STATREAS was: '%d', STATREA2 was: '%d'", rc, ssob.ssobretn, stat->statreas, stat->statrea2); // STATREAS contains the reason
+      zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "IEFSSREQ rc was: '%d' SSOBRETN was: '%d', STATREAS was: '%d', STATREA2 was: '%d'", rc, ssob.ssobretn, stat->statreas, stat->statrea2); // STATREAS contains the reason
     }
     storage_free64(statjqtrsp);
     stat->stattype = statmem; // free storage
@@ -480,15 +481,26 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
   init_ssob(&ssob, &ssib, &stat, 80);
   init_stat(&stat);
 
-  stat.statsel1 = statsjbi;
-  stat.stattype = statoutv;
+  if (zjb->jobid[0] != 0x00)
+  {
+    stat.statsel1 = statsjbi;
+    memcpy(stat.statjbil, zjb->jobid, sizeof((stat.statjbil)));
+    memcpy(stat.statjbih, zjb->jobid, sizeof((stat.statjbih)));
+  }
+  else
+  {
+    // TODO(Kelosky): this is a workaround.  Ultimately we need to provide something in the following link to get the verbose output directly: https://www.ibm.com/docs/en/zos/3.1.0?topic=80-use-information-verbose-requests
+    // unforunately, we cannot easily obtain one of these items from a job correlator alone without calling through another IEFSSREQ
+    stat.statsel1 = statsjbi;
+    memcpy(stat.statjbil, zjb->job_correlator, sizeof((stat.statjbil)));
+    memcpy(stat.statjbih, zjb->job_correlator, sizeof((stat.statjbih)));
+  }
 
-  memcpy(stat.statjbil, zjb->jobid, sizeof((stat.statjbil)));
-  memcpy(stat.statjbih, zjb->jobid, sizeof((stat.statjbih)));
+  stat.stattype = statoutv;
 
   ssobp = &ssob;
   ssobp = (SSOB * PTR32)((unsigned int)ssobp | 0x80000000);
-  rc = iefssreq(&ssobp); // TODO(Kelosky): recovery, abends if jobid doesnt exist for example
+  rc = iefssreq(&ssobp); // TODO(Kelosky): recovery
 
   if (0 != rc || 0 != ssob.ssobretn)
   {
@@ -496,7 +508,7 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
     zjb->diag.service_rc = ssob.ssobretn;
     zjb->diag.service_rsn = stat.statreas;
     zjb->diag.service_rsn_secondary = stat.statrea2;
-    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "IEFSSREQ rc was: '%d' SSOBRTN was: '%d', STATREAS was: '%d', STATREA2 was: '%d'", rc, ssob.ssobretn, stat.statreas, stat.statrea2); // STATREAS contains the reason
+    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "IEFSSREQ rc was: '%d' SSOBRETN was: '%d', STATREAS was: '%d', STATREA2 was: '%d'", rc, ssob.ssobretn, stat.statreas, stat.statrea2); // STATREAS contains the reason
     storage_free64(statsetrsp);
     return RTNCD_FAILURE;
   }
