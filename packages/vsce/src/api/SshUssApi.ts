@@ -38,11 +38,12 @@ export class SshUssApi extends SshCommonApi implements MainframeInteraction.IUss
             fspath: ussFilePath,
             encoding: options.binary ? "binary" : options.encoding,
         });
+        const data = B64String.decodeBytes(response.data as B64String);
         if (options.file != null) {
             imperative.IO.createDirsSyncFromFilePath(options.file);
-            writeFileSync(options.file, B64String.decodeBytes(response.data));
+            writeFileSync(options.file, data);
         } else if (options.stream != null) {
-            options.stream.write(B64String.decodeBytes(response.data));
+            options.stream.write(data);
             options.stream.end();
         }
         return this.buildZosFilesResponse({ etag: response.etag });

@@ -10,12 +10,23 @@
  */
 
 import { posix } from "node:path";
+import { Readable, Stream, Writable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import { ImperativeError, Logger } from "@zowe/imperative";
 import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
+import { Base64Decode, Base64Encode } from "base64-stream";
 import { Client, type ClientChannel } from "ssh2";
 import { AbstractRpcClient } from "./AbstractRpcClient";
 import { ZSshUtils } from "./ZSshUtils";
-import type { ClientOptions, CommandRequest, CommandResponse, RpcRequest, RpcResponse, StatusMessage } from "./doc";
+import type {
+    ClientOptions,
+    CommandRequest,
+    CommandResponse,
+    RpcNotification,
+    RpcRequest,
+    RpcResponse,
+    StatusMessage,
+} from "./doc";
 
 type PromiseResolve<T> = (value: T | PromiseLike<T>) => void;
 // biome-ignore lint/suspicious/noExplicitAny: Promise reject type uses any
@@ -31,6 +42,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
     private mSshStream: ClientChannel;
     private mPartialStderr = "";
     private mPartialStdout = "";
+    private mPendingStreamMap: Map<number, Stream> = new Map();
     private mPromiseMap: Map<number, { resolve: PromiseResolve<CommandResponse>; reject: PromiseReject }> = new Map();
     private mRequestId = 0;
 
@@ -46,7 +58,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
         client.mSshClient = new Client();
         client.mSshStream = await new Promise((resolve, reject) => {
             client.mSshClient.on("error", (err) => {
-                Logger.getAppLogger().error("Error connecting to SSH: %s", err.toString());
+                Logger.getAppLogger().error(`Error connecting to SSH: ${err}`);
                 reject(err);
             });
             client.mSshClient.on("ready", async () => {
@@ -91,9 +103,16 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                 this.mPromiseMap.delete(rpcRequest.id);
                 reject(new ImperativeError({ msg: "Request timed out", errorCode: "ETIMEDOUT" }));
             }, this.mResponseTimeout);
+            if ("stream" in request && request.stream instanceof Stream) {
+                this.mPendingStreamMap.set(
+                    rpcRequest.id,
+                    request.stream.on("keepAlive", () => timeoutId?.refresh()),
+                );
+                rpcRequest.params.stream = rpcRequest.id;
+            }
             this.mPromiseMap.set(rpcRequest.id, { resolve, reject });
             const requestStr = JSON.stringify(rpcRequest);
-            Logger.getAppLogger().trace("Sending request: %s", requestStr);
+            Logger.getAppLogger().trace(`Sending request: ${requestStr}`);
             this.mSshStream.stdin.write(`${requestStr}\n`);
         }).finally(() => clearTimeout(timeoutId));
     }
@@ -102,7 +121,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
         return new Promise((resolve, reject) => {
             this.mSshClient.exec(args.join(" "), (err, stream) => {
                 if (err) {
-                    Logger.getAppLogger().error("Error running SSH command: %s", err.toString());
+                    Logger.getAppLogger().error(`Error running SSH command: ${err}`);
                     reject(err);
                 } else {
                     const onData = (data: Buffer) => {
@@ -124,7 +143,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
     }
 
     private onReady(stream: ClientChannel, data: string): StatusMessage["data"] {
-        Logger.getAppLogger().debug("Received SSH data: %s", data);
+        Logger.getAppLogger().debug(`Received SSH data: ${data}`);
         let response: StatusMessage;
         try {
             response = JSON.parse(data);
@@ -163,30 +182,62 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
     private processResponses(data: string): string {
         const responses = data.split("\n");
         for (let i = 0; i < responses.length - 1; i++) {
-            if (responses[i].length > 0) {
-                this.requestEnd(responses[i]);
+            if (responses[i].length === 0) {
+                continue;
+            }
+
+            Logger.getAppLogger().trace(`Received response: ${responses[i]}`);
+            let response: RpcResponse | RpcNotification;
+            try {
+                response = JSON.parse(responses[i]);
+            } catch (err) {
+                const errMsg = Logger.getAppLogger().error("Invalid JSON response: %s", responses[i]);
+                this.mErrHandler(new Error(errMsg));
+                continue;
+            }
+
+            const responseId: number = "id" in response ? response.id : response.params?.id;
+            if (!this.mPromiseMap.has(responseId)) {
+                const errMsg = Logger.getAppLogger().error("Missing promise for response ID: %d", responseId);
+                this.mErrHandler(new Error(errMsg));
+                continue;
+            }
+
+            if ("method" in response) {
+                this.handleNotification(response);
+            } else {
+                this.handleResponse(response);
             }
         }
         return responses[responses.length - 1];
     }
 
-    private requestEnd(data: string, success = true) {
-        Logger.getAppLogger().trace("Received response: %s", data);
-        let response: RpcResponse;
-        try {
-            response = JSON.parse(data);
-        } catch (err) {
-            const errMsg = `Invalid JSON response: ${data}`;
-            Logger.getAppLogger().error(errMsg);
-            this.mErrHandler(new Error(errMsg));
-            return;
+    private handleNotification(response: RpcNotification): void {
+        const responseId = response.params?.id as number;
+        const pendingStream = this.mPendingStreamMap.get(responseId);
+        let streamPromise: Promise<void> | undefined;
+        if (response.method === "sendStream" && pendingStream instanceof Readable) {
+            streamPromise = this.uploadStream(pendingStream, response.params);
+        } else if (response.method === "receiveStream" && pendingStream instanceof Writable) {
+            streamPromise = this.downloadStream(pendingStream, response.params);
         }
-        if (!this.mPromiseMap.has(response.id)) {
-            const errMsg = `Missing promise for response ID: ${response.id}`;
-            Logger.getAppLogger().error(errMsg);
+        if (streamPromise != null) {
+            const { resolve } = this.mPromiseMap.get(responseId);
+            this.mPromiseMap.get(responseId).resolve = async (value: CommandResponse) => {
+                await streamPromise;
+                resolve(value);
+            };
+            this.mPendingStreamMap.delete(responseId);
+        } else {
+            const errMsg = Logger.getAppLogger().error(
+                "Failed to handle RPC notification: %s",
+                JSON.stringify(response),
+            );
             this.mErrHandler(new Error(errMsg));
-            return;
         }
+    }
+
+    private handleResponse(response: RpcResponse): void {
         if (response.error != null) {
             Logger.getAppLogger().error(`Error for response ID: ${response.id}\n${JSON.stringify(response.error)}`);
             this.mPromiseMap.get(response.id).reject(
@@ -197,8 +248,24 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                 }),
             );
         } else {
-            this.mPromiseMap.get(response.id).resolve({ success, ...response.result });
+            this.mPromiseMap.get(response.id).resolve(response.result);
         }
         this.mPromiseMap.delete(response.id);
+    }
+
+    private async uploadStream(readStream: Readable, params: { pipePath: string }): Promise<void> {
+        const sshStream = await new Promise<ClientChannel>((resolve, reject) => {
+            this.mSshClient.exec(`cat > ${params.pipePath}`, (err, stream) => (err ? reject(err) : resolve(stream)));
+        });
+        readStream.on("data", () => readStream.emit("keepAlive"));
+        return pipeline(readStream, new Base64Encode(), sshStream.stdin);
+    }
+
+    private async downloadStream(writeStream: Writable, params: { pipePath: string }): Promise<void> {
+        const sshStream = await new Promise<ClientChannel>((resolve, reject) => {
+            this.mSshClient.exec(`cat ${params.pipePath}`, (err, stream) => (err ? reject(err) : resolve(stream)));
+        });
+        sshStream.stdout.on("data", () => writeStream.emit("keepAlive"));
+        return pipeline(sshStream.stdout, new Base64Decode(), writeStream);
     }
 }

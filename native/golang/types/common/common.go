@@ -13,18 +13,23 @@ package types
 
 import "encoding/json"
 
+type RpcNotification struct {
+	JsonRPC string         `json:"jsonrpc" tstype:"\"2.0\""`
+	Method  string         `json:"method"`
+	Params  map[string]any `json:"params,omitempty" tstype:"any"`
+}
+
 type RpcRequest struct {
-	JsonRPC string          `json:"jsonrpc" tstype:"\"2.0\""`
-	Method  string          `json:"method"`
-	Params  json.RawMessage `json:"params,omitempty" tstype:"any"`
-	Id      int             `json:"id"`
+	RpcNotification `tstype:",extends"`
+	Params          json.RawMessage `json:"params,omitempty" tstype:"any"`
+	Id              int             `json:"id"`
 }
 
 type RpcResponse struct {
 	JsonRPC string        `json:"jsonrpc" tstype:"\"2.0\""`
 	Result  any           `json:"result,omitempty"`
 	Error   *ErrorDetails `json:"error,omitempty"`
-	Id      *int          `json:"id,omitempty"`
+	Id      *int          `json:"id,omitempty" tstype:",required"`
 }
 
 type CommandRequest struct {
@@ -52,6 +57,26 @@ type Dataset struct {
 	Volser string `json:"volser"`
 	// Dataset migrated
 	Migr bool `json:"migr"`
+}
+
+type DatasetAttributes struct {
+	Alcunit   *string `json:"alcunit"`   // Allocation Unit
+	Blksize   *int    `json:"blksize"`   // Block Size
+	Dirblk    *int    `json:"dirblk"`    // Directory Blocks
+	Dsorg     *string `json:"dsorg"`     // Data Set Organization
+	Primary   int     `json:"primary"`   // Primary Space
+	Recfm     *string `json:"recfm"`     // Record Format
+	Lrecl     int     `json:"lrecl"`     // Record Length
+	Dataclass *string `json:"dataclass"` // Data Class
+	Unit      *string `json:"unit"`      // Device Type
+	Dsntype   *string `json:"dsntype"`   // Data Set Type
+	Mgntclass *string `json:"mgntclass"` // Management Class
+	Dsname    *string `json:"dsname"`    // Data Set Name
+	Avgblk    *int    `json:"avgblk"`    // Average Block Length
+	Secondary *int    `json:"secondary"` // Secondary Space
+	Size      *string `json:"size"`      // Size
+	Storclass *string `json:"storclass"` // Storage Class
+	Vol       *string `json:"vol"`       // Volume Serial
 }
 
 type DsMember struct {

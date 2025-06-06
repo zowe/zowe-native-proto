@@ -1,12 +1,13 @@
 {
   "name": "zowe-native-proto",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "scripts": {
     "build": "npm run build --workspaces && npm run license",
     "build:all": "npm run build:types && npm run build",
     "build:types": "cd native/golang && go run github.com/gzuidhof/tygo generate && npm run license",
     "clean": "npm run clean --workspaces",
+    "download": "gh run download --name zowe-server-bin && node scripts/moveArtifacts.js",
     "license": "node scripts/updateLicenses.js",
     "lint": "npm run lint --workspaces",
     "lint:go": "cd native/golang && golangci-lint run",
