@@ -123,7 +123,7 @@ int zusf_create_uss_file_or_dir(ZUSF *zusf, string file, string mode, bool creat
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response, bool attributes)
+int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response, ListOptions options)
 {
   // TODO(zFernand0): Handle `*` and other bash-expansion rules
   struct stat file_stats;
@@ -143,7 +143,7 @@ int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response, bool attr
     const auto file_name = file.substr(file.find_last_of("/") + 1);
     vector<string> fields;
     fields.push_back(file_name);
-    if (attributes)
+    if (options.long_format)
     {
       string mode;
       mode += (S_ISDIR(file_stats.st_mode) ? "d" : "-");
@@ -186,8 +186,13 @@ int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response, bool attr
       stat(child_path.c_str(), &child_stats);
 
       vector<string> fields;
+      string name =entry->d_name;
+      if (name.at(0) == '.' && !options.all) {
+        continue;
+      }
+      
       fields.push_back(entry->d_name);
-      if (attributes) {
+      if (options.long_format) {
         string mode;
         mode += (S_ISDIR(child_stats.st_mode) ? "d" : "-");
         mode += (child_stats.st_mode & S_IRUSR ? "r" : "-");

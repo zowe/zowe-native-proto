@@ -22,8 +22,13 @@
 #include "zusf.hpp"
 #include "zusftype.h"
 
+typedef struct _ListOptions {
+    bool all;
+    bool long_format;
+} ListOptions;
+
 int zusf_create_uss_file_or_dir(ZUSF *zusf, std::string file, std::string mode, bool createDir);
-int zusf_list_uss_file_path(ZUSF *zusf, std::string file, std::string &response, bool attributes = false);
+int zusf_list_uss_file_path(ZUSF *zusf, std::string file, std::string &response, ListOptions options = ListOptions{});
 int zusf_read_from_uss_file(ZUSF *zusf, std::string file, std::string &response);
 int zusf_read_from_uss_file_streamed(ZUSF *zusf, std::string file, std::string pipe);
 int zusf_write_to_uss_file(ZUSF *zusf, std::string file, std::string &data);
