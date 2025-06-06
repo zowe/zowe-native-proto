@@ -90,7 +90,7 @@ int zjb_get_job_dsn_by_jobid_and_key(ZJB *zjb, string jobid, int key, string &jo
   return RTNCD_SUCCESS;
 }
 
-int zjb_read_job_jcl_by_jobid(ZJB *zjb, string jobid, string &response)
+int zjb_read_job_jcl(ZJB *zjb, string jobid, string &response)
 {
   int rc = 0;
 
