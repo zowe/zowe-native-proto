@@ -60,11 +60,17 @@ namespace ztst
     }
   };
 
+  struct TEST_OPTIONS
+  {
+    bool remove_signal_handling;
+  };
+
   typedef void (*cb)();
 
   void describe(string description, cb suite);
 
   void it(string description, cb test);
+  void it(string description, cb test, TEST_OPTIONS &opts);
 
   RESULT_CHECK expect(int val);
   RESULT_CHECK expect(string val);

@@ -12,7 +12,10 @@
 #include <string>
 #include <vector>
 #include <sstream>
+#define _POSIX_SOURCE
+#include <signal.h>
 #include "ztest.hpp"
+#include <setjmp.h>
 
 void ztst::RESULT_CHECK::ToBe(int val)
 {
@@ -96,8 +99,10 @@ struct TEST_SUITE
   vector<TEST_CASE> tests;
 };
 
-vector<TEST_SUITE> ztst_suites;
+vector<TEST_SUITE>
+    ztst_suites;
 int ztst_suite_index = -1;
+jmp_buf ztst_jmp_buf = {0};
 
 void ztst::describe(std::string description, ztst::cb suite)
 {
@@ -109,22 +114,84 @@ void ztst::describe(std::string description, ztst::cb suite)
   suite();
 }
 
+#if defined(__cplusplus) && (defined(__IBMCPP__) || defined(__IBMC__))
+extern "OS"
+{
+#elif defined(__cplusplus)
+extern "C"
+{
+#endif
+
+  static void SIGHAND(int code, siginfo_t *info, void *context)
+  {
+    // cout << "Unexpected error: " << info->si_signo << " " << info->si_errno << " " << info->si_code << endl;
+    longjmp(ztst_jmp_buf, 1);
+  }
+
+#if defined(__cplusplus)
+}
+#endif
+
 void ztst::it(string description, ztst::cb test)
+{
+  TEST_OPTIONS opts = {0};
+  it(description, test, opts);
+}
+
+void ztst::it(string description, ztst::cb test, TEST_OPTIONS &opts)
 {
   TEST_CASE tc = {0};
   tc.description = description;
-  try
+
+  bool abend = false;
+  struct sigaction sa = {0};
+  sa.sa_sigaction = SIGHAND;
+  sa.sa_flags = SA_SIGINFO;
+
+  if (!opts.remove_signal_handling)
   {
-    test();
-    tc.success = true;
-  }
-  catch (const exception &e)
-  {
-    tc.success = false;
-    tc.fail_message = e.what();
+    sigaction(SIGABND, &sa, NULL);
+    sigaction(SIGABRT, &sa, NULL);
+    sigaction(SIGILL, &sa, NULL);
   }
 
-  string icon = tc.success ? "PASS " : "FAIL ";
+  if (0 != setjmp(ztst_jmp_buf))
+  {
+
+    abend = true;
+  }
+
+  if (!abend)
+  {
+
+    try
+    {
+      test();
+      tc.success = true;
+    }
+    catch (const exception &e)
+    {
+      tc.success = false;
+      tc.fail_message = e.what();
+    }
+  }
+
+  if (!opts.remove_signal_handling)
+  {
+    sa.sa_flags = 0;
+    sa.sa_handler = SIG_DFL;
+    sigaction(SIGABND, &sa, NULL);
+    sigaction(SIGABRT, &sa, NULL);
+    sigaction(SIGILL, &sa, NULL);
+  }
+
+  string icon = tc.success ? "PASS  " : "FAIL  ";
+  if (abend)
+  {
+    icon = "ABEND ";
+    tc.success = false;
+    tc.fail_message = "unexpected ABEND occured.  Add `TEST_OPTIONS.remove_signal_handling = false` to `it(...)` to capture abend dump";
+  }
   cout << "  " << icon << tc.description << endl;
   if (!tc.success)
   {
@@ -168,22 +235,17 @@ void ztst::report()
 
   for (vector<TEST_SUITE>::iterator it = ztst_suites.begin(); it != ztst_suites.end(); it++)
   {
-    // cout << it->description << endl;
     for (vector<TEST_CASE>::iterator iit = it->tests.begin(); iit != it->tests.end(); iit++)
     {
       tests_total++;
-      // string icon = iit->success ? "PASS " : "FAIL ";
-      // cout << "  " << icon << iit->description << endl;
       if (!iit->success)
       {
-        // cout << "    " << iit->fail_message << endl;
         suite_fail++;
         tests_fail++;
       }
     }
   }
 
-  // cout << endl;
   cout << "Total Suites: " << ztst_suites.size() - suite_fail << " passed, " << suite_fail << " failed, " << ztst_suites.size() << " total" << endl;
   cout << "Tests:      : " << tests_total - tests_fail << " passed, " << tests_fail << " failed, " << tests_total << " total" << endl;
 }
