@@ -570,6 +570,9 @@ int main(int argc, char *argv[])
   ZCLIOption uss_file_mode("mode");
   uss_file_mode.set_required(false);
   uss_file_mode.set_description("permissions");
+  ZCLIOption uss_file_attributes("attributes");
+  uss_file_attributes.set_required(false);
+  uss_file_attributes.set_description("whether to list attributes");
   ZCLIOption uss_recursive("recursive");
   uss_recursive.get_aliases().push_back("-r");
   uss_recursive.set_required(false);
@@ -593,6 +596,7 @@ int main(int argc, char *argv[])
   uss_list.set_description("list USS files and directories");
   uss_list.set_zcli_verb_handler(handle_uss_list);
   uss_list.get_positionals().push_back(uss_file_path);
+  uss_list.get_options().push_back(uss_file_attributes);
   uss_group.get_verbs().push_back(uss_list);
 
   ZCLIVerb uss_view("view");
@@ -1858,7 +1862,7 @@ int handle_uss_list(ZCLIResult result)
 
   ZUSF zusf = {0};
   string response;
-  rc = zusf_list_uss_file_path(&zusf, uss_file, response);
+  rc = zusf_list_uss_file_path(&zusf, uss_file, response, result.get_option_value("--attributes") == "true");
   if (0 != rc)
   {
     cerr << "Error: could not list USS files: '" << uss_file << "' rc: '" << rc << "'" << endl;

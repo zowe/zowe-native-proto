@@ -15,8 +15,11 @@
 #ifndef _OPEN_SYS_FILE_EXT
 #define _OPEN_SYS_FILE_EXT 1
 #endif
+#include <sys/types.h>
 #include <sys/stat.h>
+#include <dirent.h>
 #include <stdio.h>
+#include <string.h>
 #include <cstring>
 #include <fcntl.h>
 #include <fstream>
@@ -39,8 +42,7 @@
 #define _XPLATFORM_SOURCE
 #endif
 #include <sys/xattr.h>
-#include <dirent.h>
-// #include "zusfm.h"
+#include <vector>
 
 using namespace std;
 
@@ -121,7 +123,7 @@ int zusf_create_uss_file_or_dir(ZUSF *zusf, string file, string mode, bool creat
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response)
+int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response, bool attributes)
 {
   // TODO(zFernand0): Handle `*` and other bash-expansion rules
   struct stat file_stats;
@@ -131,11 +133,32 @@ int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response)
     return RTNCD_FAILURE;
   }
 
+  // TODO: Hide hidden paths by default
+  // TODO(zFernand0): Add option to list full file paths
+  // TODO(zFernand0): Add option to list file tags
+
   if (S_ISREG(file_stats.st_mode))
   {
     response.clear();
-    response += file.substr(file.find_last_of("/") + 1);
-    response.push_back('\n');
+    const auto file_name = file.substr(file.find_last_of("/") + 1);
+    vector<string> fields;
+    fields.push_back(file_name);
+    if (attributes)
+    {
+      string mode;
+      mode += (S_ISDIR(file_stats.st_mode) ? "d" : "-");
+      mode += (file_stats.st_mode & S_IRUSR ? "r" : "-");
+      mode += (file_stats.st_mode & S_IWUSR ? "w" : "-");
+      mode += (file_stats.st_mode & S_IXUSR ? "x" : "-");
+      mode += (file_stats.st_mode & S_IRGRP ? "r" : "-");
+      mode += (file_stats.st_mode & S_IWGRP ? "w" : "-");
+      mode += (file_stats.st_mode & S_IXGRP ? "x" : "-");
+      mode += (file_stats.st_mode & S_IROTH ? "r" : "-");
+      mode += (file_stats.st_mode & S_IWOTH ? "w" : "-");
+      mode += (file_stats.st_mode & S_IXOTH ? "x" : "-");
+      fields.push_back(mode);
+    }
+    response = zut_format_as_csv(fields) + "\n";
     return RTNCD_SUCCESS;
   }
 
@@ -156,15 +179,30 @@ int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response)
   response.clear();
   while ((entry = readdir(dir)) != nullptr)
   {
-    // TODO(zFernand0): Skip hidden files
     if ((strcmp(entry->d_name, ".") != 0) && (strcmp(entry->d_name, "..") != 0))
     {
-      // TODO(zFernand0): Add option to list full file paths
-      // TODO(zFernand0): Add option to list file tags
-      response += entry->d_name;
-      response.push_back('\n');
+      string child_path = file[file.length() - 1] == '/' ? file + string(entry->d_name) : file + string("/") + string(entry->d_name);
+      struct stat child_stats;
+      stat(child_path.c_str(), &child_stats);
+
+      vector<string> fields;
+      fields.push_back(entry->d_name);
+      if (attributes) {
+        string mode;
+        mode += (S_ISDIR(child_stats.st_mode) ? "d" : "-");
+        mode += (child_stats.st_mode & S_IRUSR ? "r" : "-");
+        mode += (child_stats.st_mode & S_IWUSR ? "w" : "-");
+        mode += (child_stats.st_mode & S_IXUSR ? "x" : "-");
+        mode += (child_stats.st_mode & S_IRGRP ? "r" : "-");
+        mode += (child_stats.st_mode & S_IWGRP ? "w" : "-");
+        mode += (child_stats.st_mode & S_IXGRP ? "x" : "-");
+        mode += (child_stats.st_mode & S_IROTH ? "r" : "-");
+        mode += (child_stats.st_mode & S_IWOTH ? "w" : "-");
+        mode += (child_stats.st_mode & S_IXOTH ? "x" : "-");
+        fields.push_back(mode);
+      }
+      response += zut_format_as_csv(fields) + "\n";
     }
-    // TODO(zFernand0): Sort in alphabetical order
   }
   closedir(dir);
 
