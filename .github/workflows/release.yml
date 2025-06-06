@@ -79,7 +79,7 @@ jobs:
           new-version: ${{ inputs.version }}
 
       - name: Publish to Artifactory
-        if: !inputs.dry-run
+        if: ${{ !inputs.dry-run }}
         run: |
           jfrog rt u --detailed-summary dist/*.tgz libs-snapshot-local/org/zowe/zowe-native-proto/CLI/$TRAIN/zowe-native-proto-cli-$NEW_VERSION_SUFFIX.tgz
           jfrog rt u --detailed-summary dist/*.vsix libs-snapshot-local/org/zowe/zowe-native-proto/VSCode/$TRAIN/zowe-native-proto-vsce-$NEW_VERSION_SUFFIX.vsix
