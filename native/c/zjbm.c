@@ -236,11 +236,22 @@ int ZJBMMOD(ZJB *zjb, int type, int flags)
     // ssjm.ssjmtsdn = ddname to spin
   }
 
-  ssjm.ssjmsel1 = ssjm.ssjmsel1 | ssjmsoji;
+  if (zjb->jobid[0] != 0x00)
+  {
+    ssjm.ssjmsel1 = ssjm.ssjmsel1 | ssjmsoji;
+    memcpy(ssjm.ssjmojbi, zjb->jobid, sizeof(ssjm.ssjmojbi));
+  }
+  else
+  {
+    char job_correlator31[64] = {0};
+    memcpy(job_correlator31, zjb->job_correlator, sizeof(zjb->job_correlator));
+    ssjm.ssjmsel5 = ssjmscor;
+    ssjm.ssjmjcrp = &job_correlator31[0];
+  }
+
   ssjm.ssjmsel2 = ssjm.ssjmsel2 | ssjmsjob; // batch jobs
   ssjm.ssjmsel2 = ssjm.ssjmsel2 | ssjmsstc; // stcs
   ssjm.ssjmsel2 = ssjm.ssjmsel2 | ssjmstsu; // time sharing users
-  memcpy(ssjm.ssjmojbi, zjb->jobid, sizeof(ssjm.ssjmojbi));
 
   ssobp = &ssob;
   ssobp = (SSOB * PTR32)((unsigned int)ssobp | 0x80000000);

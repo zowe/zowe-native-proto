@@ -1168,7 +1168,7 @@ int handle_job_delete(ZCLIResult result)
   ZJB zjb = {0};
   string jobid(result.get_positional("jobid")->get_value());
 
-  rc = zjb_delete_by_jobid(&zjb, jobid);
+  rc = zjb_delete(&zjb, jobid);
 
   if (0 != rc)
   {
@@ -1193,7 +1193,7 @@ int handle_job_cancel(ZCLIResult result)
   string option_purge(result.get_option_value("--purge"));
   string option_restart(result.get_option_value("--restart"));
 
-  rc = zjb_cancel_by_jobid(&zjb, jobid);
+  rc = zjb_cancel(&zjb, jobid);
 
   if (0 != rc)
   {
@@ -1213,7 +1213,7 @@ int handle_job_hold(ZCLIResult result)
   ZJB zjb = {0};
   string jobid(result.get_positional("jobid")->get_value());
 
-  rc = zjb_hold_by_jobid(&zjb, jobid);
+  rc = zjb_hold(&zjb, jobid);
 
   if (0 != rc)
   {
@@ -1233,7 +1233,7 @@ int handle_job_release(ZCLIResult result)
   ZJB zjb = {0};
   string jobid(result.get_positional("jobid")->get_value());
 
-  rc = zjb_release_by_jobid(&zjb, jobid);
+  rc = zjb_release(&zjb, jobid);
 
   if (0 != rc)
   {

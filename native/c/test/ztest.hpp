@@ -35,8 +35,6 @@ namespace ztst
     void ToBe(string);
     void ToBeNull();
     RESULT_CHECK Not();
-    // RESULT_CHECK() { std::cout << "RESULT_CHECK created" << std::endl; }
-    // ~RESULT_CHECK() { std::cout << "RESULT_CHECK deleted" << std::endl; }
     RESULT_CHECK() {}
     ~RESULT_CHECK() {}
 

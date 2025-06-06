@@ -292,27 +292,39 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, string jobdsn, string &response)
   return rc;
 }
 
-int zjb_delete_by_jobid(ZJB *zjb, string jobid)
+int zjb_delete(ZJB *zjb, string jobid)
 {
-  zut_uppercase_pad_truncate(zjb->jobid, jobid, sizeof(zjb->jobid));
+  if (jobid.size() > sizeof(zjb->jobid))
+    zut_uppercase_pad_truncate(zjb->job_correlator, jobid, sizeof(zjb->job_correlator));
+  else
+    zut_uppercase_pad_truncate(zjb->jobid, jobid, sizeof(zjb->jobid));
   return ZJBMPRG(zjb);
 }
 
-int zjb_cancel_by_jobid(ZJB *zjb, string jobid)
+int zjb_cancel(ZJB *zjb, string jobid)
 {
-  zut_uppercase_pad_truncate(zjb->jobid, jobid, sizeof(zjb->jobid));
+  if (jobid.size() > sizeof(zjb->jobid))
+    zut_uppercase_pad_truncate(zjb->job_correlator, jobid, sizeof(zjb->job_correlator));
+  else
+    zut_uppercase_pad_truncate(zjb->jobid, jobid, sizeof(zjb->jobid));
   return ZJBMCNL(zjb, 0);
 }
 
-int zjb_hold_by_jobid(ZJB *zjb, string jobid)
+int zjb_hold(ZJB *zjb, string jobid)
 {
-  zut_uppercase_pad_truncate(zjb->jobid, jobid, sizeof(zjb->jobid));
+  if (jobid.size() > sizeof(zjb->jobid))
+    zut_uppercase_pad_truncate(zjb->job_correlator, jobid, sizeof(zjb->job_correlator));
+  else
+    zut_uppercase_pad_truncate(zjb->jobid, jobid, sizeof(zjb->jobid));
   return ZJBMHLD(zjb);
 }
 
-int zjb_release_by_jobid(ZJB *zjb, string jobid)
+int zjb_release(ZJB *zjb, string jobid)
 {
-  zut_uppercase_pad_truncate(zjb->jobid, jobid, sizeof(zjb->jobid));
+  if (jobid.size() > sizeof(zjb->jobid))
+    zut_uppercase_pad_truncate(zjb->job_correlator, jobid, sizeof(zjb->job_correlator));
+  else
+    zut_uppercase_pad_truncate(zjb->jobid, jobid, sizeof(zjb->jobid));
   return ZJBMRLS(zjb);
 }
 

@@ -129,33 +129,33 @@ int zjb_submit_dsn(ZJB *zjb, std::string dsn, std::string &jobId);
  * @param jobid jobid to delete, i.e. JOB00123 or J123
  * @return int 0 for success; non zero otherwise
  */
-int zjb_delete_by_jobid(ZJB *zjb, std::string jobid);
+int zjb_delete(ZJB *zjb, std::string jobid);
 
 /**
  * @brief Cancel a job using input jobid
  *
  * @param zjb job returned attributes and error information
- * @param jobid jobid to cancel, i.e. JOB00123 or J123
+ * @param jobid jobid or job correlator used to cancel, i.e. JOB00123 or J123
  * @return int 0 for success; non zero otherwise
  */
-int zjb_cancel_by_jobid(ZJB *zjb, std::string jobid);
+int zjb_cancel(ZJB *zjb, std::string jobid);
 
 /**
  * @brief Hold a job using input jobid
  *
  * @param zjb job returned attributes and error information
- * @param jobid jobid to hold, i.e. JOB00123 or J123
+ * @param jobid jobid or job correlator used to hold, i.e. JOB00123 or J123
  * @return int 0 for success; non zero otherwise
  */
-int zjb_hold_by_jobid(ZJB *zjb, std::string jobid);
+int zjb_hold(ZJB *zjb, std::string jobid);
 
 /**
  * @brief Release a job using input jobid
  *
  * @param zjb job returned attributes and error information
- * @param jobid jobid to release, i.e. JOB00123 or J123
+ * @param jobid jobid or job correlator used to release, i.e. JOB00123 or J123
  * @return int 0 for success; non zero otherwise
  */
-int zjb_release_by_jobid(ZJB *zjb, std::string jobid);
+int zjb_release(ZJB *zjb, std::string jobid);
 
 #endif
