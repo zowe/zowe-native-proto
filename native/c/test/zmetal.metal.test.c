@@ -9,14 +9,20 @@
  *
  */
 
-#include "zwto.h" // Placeholder for any necessary header
 #include "zmetal.metal.test.h"
-#include "zmetal.h" // Placeholder for any necessary header
+#include "zmetal.h"
 
-#pragma prolog(ZMETAL1, " ZWEPROLG NEWDSA=(YES,4) ")
-#pragma epilog(ZMETAL1, " ZWEEPILG ")
-int ZMETAL1()
+#pragma prolog(ZMTLLOAD, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma epilog(ZMTLLOAD, " ZWEEPILG ")
+void *ZMTLLOAD(const char *name)
 {
-    // Example implementation
-    return 0;
+    void *ep = load_module(name);
+    return ep;
+}
+
+#pragma prolog(ZMTLDEL, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma epilog(ZMTLDEL, " ZWEEPILG ")
+int ZMTLDEL(const char *name)
+{
+    return delete_module(name);
 }

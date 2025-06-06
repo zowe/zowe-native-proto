@@ -24,11 +24,30 @@ void zmetal_tests()
   describe("zmetal tests",
            []() -> void
            {
-             it("should obtain and free 31-bit storage",
+             it("should load a program",
                 []()
                 {
-                  int rc = ZMETAL1();
+                  string name = "IEFBR14";
+                  void *ep = ZMTLLOAD(name.c_str());
+                  expect(ep).Not().ToBeNull();
+                  int rc = ZMTLDEL(name.c_str());
                   expect(rc).ToBe(0);
+                });
+
+             it("should not load a program that does not exist",
+                []()
+                {
+                  string name = "IEFBR15";
+                  void *ep = ZMTLLOAD(name.c_str());
+                  expect(ep).ToBeNull();
+                });
+
+             it("should not delete a program that does not exist",
+                []()
+                {
+                  string name = "IEFBR15";
+                  int rc = ZMTLDEL(name.c_str());
+                  expect(rc).ToBe(4);
                 });
            });
 }

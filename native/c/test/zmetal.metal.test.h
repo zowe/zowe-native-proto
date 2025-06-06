@@ -20,7 +20,8 @@ extern "C"
 {
 #endif
 
-  int ZMETAL1(void);
+  void *ZMTLLOAD(const char *);
+  int ZMTLDEL(const char *);
 
 #if defined(__cplusplus)
 }
