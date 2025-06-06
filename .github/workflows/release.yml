@@ -69,6 +69,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
 
       - name: Run Octorelease
+        if: ${{ env.TRAIN == 'Release' }}
         uses: zowe-actions/octorelease@v1
         env:
           GIT_COMMITTER_NAME: ${{ secrets.ZOWE_ROBOT_USER }}
@@ -79,6 +80,10 @@ jobs:
           config-dir: .github
           dry-run: ${{ inputs.dry-run }}
           new-version: ${{ inputs.version }}
+
+      - name: Run NPM Package
+        if: ${{ env.TRAIN == 'Nightly'}}
+        run: npm run package
 
       - name: Publish to Artifactory
         if: ${{ !inputs.dry-run }}
