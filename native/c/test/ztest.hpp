@@ -18,7 +18,6 @@
 
 using namespace std;
 
-// TODO(Kelosky): handle signal handlers
 // TODO(Kelosky): handle test not run
 // TODO(Kelosky): handle running individual test and/or suite
 

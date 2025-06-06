@@ -124,7 +124,6 @@ extern "C"
 
   static void SIGHAND(int code, siginfo_t *info, void *context)
   {
-    // cout << "Unexpected error: " << info->si_signo << " " << info->si_errno << " " << info->si_code << endl;
     longjmp(ztst_jmp_buf, 1);
   }
 
