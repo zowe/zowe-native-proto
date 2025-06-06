@@ -88,7 +88,9 @@ type UssItem struct {
 	// File name
 	Name string `json:"name"`
 	// Whether the item is a directory
-	IsDir bool `json:"isDir"`
+	Type uint32 `json:"itemType" tstype:"t.UssItemType"`
+	// The permission string of the item
+	Mode string `json:"mode"`
 }
 
 type Job struct {
