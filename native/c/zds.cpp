@@ -414,7 +414,7 @@ int zds_delete_dsn(ZDS *zds, string dsn)
   {
     strcpy(zds->diag.service_name, "remove");
     zds->diag.service_rc = rc;
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not delete data set '%s', rc: '%d'", dsn.c_str());
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not delete data set '%s', rc: '%d'", dsn.c_str(), rc);
     zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
     return RTNCD_FAILURE;
   }

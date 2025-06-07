@@ -98,14 +98,14 @@ MTL_FLAGS+=-g1
 MTL_FLAGS64+=-g1
 .END
 
-all: libzut.so libzut.a libzds.so libzds.a libzusf.so libzusf.a libzcn.so libzcn.a libzjb.so libzjb.a zowex zoweax extattr test
-xlclang-extenders: $(OUT_DIR_CXXLANG)/zut.o $(OUT_DIR_CXXLANG)/zcn.o
+all: libzut.so libzut.a libzds.so libzds.a libzusf.so libzusf.a libzcn.so libzcn.a libzjb.so libzjb.a zowex zoweax extattr
+xlclang-extenders: $(OUT_DIR_CXXLANG)/zut.o $(OUT_DIR_CXXLANG)/zds.o $(OUT_DIR_CXXLANG)/zjb.o $(OUT_DIR_CXXLANG)/zcn.o
 
 #
-# create out directories
+# Out directories
 #
 $(OUT_DIRS):
-	@echo 'creating $(OUT_DIR_CXXLANG) out directory...'
+	@echo 'Creating $(OUT_DIR_CXXLANG)'
 	mkdir -p $(OUT_DIR_CXXLANG)
 
 #
@@ -114,6 +114,14 @@ $(OUT_DIRS):
 $(OUT_DIR)/zut.o: zut.cpp
 	@echo 'Building $(OUT_DIR)/zut.o'
 	$(CXX) $(DLL_CPP_FLAGS) -qlist=$*.cpp.lst -o $@ $^
+
+$(OUT_DIR_CXXLANG)/zds.o: $(OUT_DIRS) zds.cpp
+	@echo '$(OUT_DIR_CXXLANG)/zds.o'
+	$(CXXLANG) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -o $@ $^
+
+$(OUT_DIR_CXXLANG)/zjb.o: $(OUT_DIRS) zjb.cpp
+	@echo '$(OUT_DIR_CXXLANG)/zjb.o'
+	$(CXXLANG) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -o $@ $^
 
 $(OUT_DIR_CXXLANG)/zut.o: $(OUT_DIRS) zut.cpp
 	@echo '$(OUT_DIR_CXXLANG)/zut.o'
@@ -312,12 +320,6 @@ zoweax: $(OUT_DIRS) $(OUT_DIR)/zoweax
 $(OUT_DIR)/zowex.o: zowex.cpp
 	@echo 'Building $(OUT_DIR)/zowex.o'
 	$(CXX) $(CPP_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
-
-#
-# Testing utilities
-#
-test: test.sh
-	chmod +x test.sh
 
 #
 # TODO(Kelosky): makefile for chdsect (must have ADATA in data set)
