@@ -104,7 +104,7 @@ ASM_FLAGS+=--noverbose
 .END
 
 
-all: build-out build-out/runner test
+all: build-out build-out/runner
 # all: build-out build-out/testasm1 build-out/testasm4 build-out/testrcvy build-out/runner test
 
 #

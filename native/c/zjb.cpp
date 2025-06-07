@@ -292,6 +292,27 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, string jobdsn, string &response)
   return rc;
 }
 
+int zjb_wait(ZJB *zjb, string status)
+{
+  int rc = 0;
+  ZJob job = {0};
+  string jobid(zjb->jobid, sizeof(zjb->jobid));
+
+  do
+  {
+    rc = zjb_view(zjb, jobid, job);
+
+    sleep(1);
+
+    if (0 != rc)
+    {
+      return RTNCD_FAILURE;
+    }
+
+  } while (job.status != status);
+  return RTNCD_SUCCESS;
+}
+
 int zjb_delete(ZJB *zjb, string jobid)
 {
   if (jobid.size() > sizeof(zjb->jobid))

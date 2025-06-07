@@ -94,6 +94,15 @@ int zjb_get_job_dsn_by_key(ZJB *zjb, std::string, int, std::string &);
 int zjb_read_job_content_by_dsn(ZJB *zjb, std::string job_dsn, std::string &response);
 
 /**
+ * @brief Wait for a job to reach a specific status
+ *
+ * @param zjb job returned attributes and error information
+ * @param status job status to wait for
+ * @return int 0 for success; non zero otherwise
+ */
+int zjb_wait(ZJB *zjb, std::string status);
+
+/**
  * @brief Return JCL for a job by input jobid
  *
  * @param zjb job returned attributes and error information

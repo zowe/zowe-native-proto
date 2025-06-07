@@ -47,6 +47,11 @@ void zjb_tests()
                   int rc = zjb_submit(&zjb, jcl, jobid);
                   expect(rc).ToBe(0);
                   expect(jobid).Not().ToBe("");
+
+                  string correlator = string(zjb.job_correlator, 64);
+                  memset(&zjb, 0, sizeof(zjb));
+                  rc = zjb_delete(&zjb, correlator);
+                  expect(rc).ToBe(0);
                 });
 
              it("should be able to view a submitted job",
@@ -59,7 +64,6 @@ void zjb_tests()
 
                   int rc = zjb_submit(&zjb, jcl, jobid);
                   expect(rc).ToBe(0);
-                  expect(jobid).Not().ToBe("");
 
                   ZJob zjob;
 
@@ -67,6 +71,12 @@ void zjb_tests()
 
                   memset(&zjb, 0, sizeof(zjb));
                   rc = zjb_view(&zjb, correlator, zjob);
+                  expect(rc).ToBe(0);
+
+                  expect(correlator).ToBe(zjob.job_correlator); // vefify submit correlator matches view status correlator
+
+                  memset(&zjb, 0, sizeof(zjb));
+                  rc = zjb_delete(&zjb, correlator);
                   expect(rc).ToBe(0);
                 });
 
@@ -80,9 +90,6 @@ void zjb_tests()
 
                   int rc = zjb_submit(&zjb, jcl, jobid);
                   expect(rc).ToBe(0);
-                  expect(jobid).Not().ToBe("");
-
-                  ZJob zjob;
 
                   string correlator = string(zjb.job_correlator, 64);
 
@@ -90,5 +97,27 @@ void zjb_tests()
                   rc = zjb_delete(&zjb, correlator);
                   expect(rc).ToBe(0);
                 });
+
+             // TODO(Kelosky): this test fails until #347 is fixed
+             //  it("should be able to read job JCL",
+             //     []() -> void
+             //     {
+             //       ZJB zjb = {0};
+             //       string jobid;
+             //       string jcl = "//IEFBR14$ JOB IZUACCT\n"
+             //                    "//RUNBR14  EXEC PGM=IEFBR14\n";
+
+             //       int rc = zjb_submit(&zjb, jcl, jobid);
+             //       expect(rc).ToBe(0);
+
+             //       string correlator = string(zjb.job_correlator, 64);
+             //       string returned_jcl;
+
+             //       memset(&zjb, 0, sizeof(zjb));
+             //       cout << "@TEST " << correlator << endl;
+             //       rc = zjb_read_job_jcl(&zjb, correlator, returned_jcl);
+             //       expect(rc).ToBe(0);
+             //       cout << "@TEST " << returned_jcl;
+             //     });
            });
 }

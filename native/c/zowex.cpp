@@ -1020,29 +1020,6 @@ int handle_job_view_jcl(ZCLIResult result)
   return 0;
 }
 
-int wait_for_status(ZJB *zjb, string status)
-{
-  int rc = 0;
-  ZJob job = {0};
-  string jobid(zjb->jobid, sizeof(zjb->jobid));
-
-  do
-  {
-    rc = zjb_view(zjb, jobid, job);
-
-    sleep(1);
-
-    if (0 != rc)
-    {
-      cerr << "Error: could not view job status for: '" << jobid << "' rc: '" << rc << "'" << endl;
-      cerr << "  Details: " << zjb->diag.e_msg << endl;
-      return RTNCD_FAILURE;
-    }
-
-  } while (job.status != status);
-  return RTNCD_SUCCESS;
-}
-
 int job_submit_common(ZCLIResult result, string jcl, string &jobid, string identifier)
 {
   int rc = 0;
@@ -1073,7 +1050,13 @@ int job_submit_common(ZCLIResult result, string jcl, string &jobid, string ident
 
   if (JOB_STATUS_OUTPUT == wait || JOB_STATUS_INPUT == wait)
   {
-    rc = wait_for_status(&zjb, wait);
+    rc = zjb_wait(&zjb, wait);
+    if (0 != rc)
+    {
+      cerr << "Error: could not wait for job status: '" << wait << "' rc: '" << rc << "'" << endl;
+      cerr << "  Details: " << zjb.diag.e_msg << endl;
+      return RTNCD_FAILURE;
+    }
   }
   else if ("" != wait)
   {
