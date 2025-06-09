@@ -127,6 +127,9 @@ int ZDSRECFM(ZDS *zds, const char *dsn, const char *volser, char *recfm_buf,
     vol_upper[i] = ' ';
   }
 
+  // We're using OBTAIN through CAMLST SEARCH to get the DSCBs, see here for more info:
+  // https://www.ibm.com/docs/en/zos/3.1.0?topic=obtain-reading-dscb-by-data-set-name
+
   // OBTAIN by data set name
   params.function_code = 0xC1;
   // Search for a format-1 or format-8 DSCB
