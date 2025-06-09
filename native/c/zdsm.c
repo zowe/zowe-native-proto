@@ -98,9 +98,11 @@ typedef int (*IGWASMS)(
 int ZDSRECFM(ZDS *zds, const char *dsn, const char *volser, char *recfm_buf,
              int recfm_buf_len)
 {
-  int rc;
-  char dsn_upper[45] = {0};
-  char vol_upper[7] = {0};
+  int rc = RTNCD_FAILURE;
+  char dsn_upper[45];
+  char vol_upper[7];
+  memset(dsn_upper, 0x40, sizeof(dsn_upper));
+  memset(vol_upper, 0x40, sizeof(vol_upper));
 
   struct DSCBFormat1 dscb = {0};
   struct ObtainCamlstSearchParams params = {0};
@@ -113,27 +115,20 @@ int ZDSRECFM(ZDS *zds, const char *dsn, const char *volser, char *recfm_buf,
   {
     dsn_upper[i] = toupper(dsn[i]);
   }
-  for (; i < 44; i++)
-  {
-    dsn_upper[i] = ' ';
-  }
 
   for (i = 0; i < 6 && volser[i]; i++)
   {
     vol_upper[i] = toupper(volser[i]);
-  }
-  for (; i < 6; i++)
-  {
-    vol_upper[i] = ' ';
   }
 
   // We're using OBTAIN through CAMLST SEARCH to get the DSCBs, see here for more info:
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=obtain-reading-dscb-by-data-set-name
 
   // OBTAIN by data set name
-  params.function_code = 0xC1;
-  // Search for a format-1 or format-8 DSCB
-  params.option_flags = OPTION_EADSCB | OPTION_NOQUEUE;
+  params.function_code = (unsigned char)0xC1u;
+  params.number_dscbs = (unsigned char)12u;
+  // Allow lookup of format-1 or format-8 DSCB
+  params.option_flags = OPTION_EADSCB;
   params.dsname_ptr = dsn_upper;
   params.volume_ptr = vol_upper;
   params.workarea_ptr = &dscb;
@@ -157,7 +152,8 @@ int ZDSRECFM(ZDS *zds, const char *dsn, const char *volser, char *recfm_buf,
     return RTNCD_FAILURE;
   }
 
-  if (dscb.ds1fmtid != '1' && dscb.ds1fmtid != '8')
+  // '1' or '8' in EBCDIC
+  if (dscb.ds1fmtid != 0xF1 && dscb.ds1fmtid != 0xF8)
   {
     strcpy(zds->diag.service_name, "OBTAIN");
     zds->diag.e_msg_len = sprintf(

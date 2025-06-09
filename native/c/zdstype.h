@@ -101,8 +101,9 @@ typedef struct DSCBFormat1
 typedef struct ObtainCamlstSearchParams
 {
   unsigned char function_code;
+  unsigned char reserved;
   unsigned char option_flags; // Contains bits for EADSCB, NOQUEUE, etc.
-  unsigned short reserved;    // For alignment
+  unsigned char number_dscbs;
   char *dsname_ptr;
   char *volume_ptr;
   void *workarea_ptr;
