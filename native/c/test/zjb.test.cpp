@@ -98,7 +98,6 @@ void zjb_tests()
                   expect(rc).ToBe(0);
                 });
 
-             // TODO(Kelosky): this test fails until #347 is fixed
              it("should be able to read job JCL",
                 []() -> void
                 {

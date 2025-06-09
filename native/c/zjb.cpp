@@ -473,7 +473,6 @@ int zjb_list_dds(ZJB *zjb, string jobid, vector<ZJobDD> &jobDDs)
   rc = ZJBMLSDS(zjb, &sysoutInfo, &entries);
   if (RTNCD_SUCCESS != rc && RTNCD_WARNING != rc)
   {
-    ZUTMFR64(sysoutInfo);
     return rc;
   }
 

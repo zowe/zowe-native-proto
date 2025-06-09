@@ -509,8 +509,9 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
   }
   else
   {
-    stat.statsel5 = statscor;
     char job_correlator31[64] = {0};
+    memcpy(job_correlator31, zjb->job_correlator, sizeof(zjb->job_correlator));
+    stat.statsel5 = statscor;
     stat.statjcrp = &job_correlator31[0];
   }
 
@@ -540,6 +541,8 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
 
   rc = iefssreq(&ssobp); // TODO(Kelosky): recovery
 
+  // zwto_debug("@TEST4 statnrjq %llx stat.stattrsa %llx stat.statjobf %llx", stat.statnrjq, stat.stattrsa, stat.statjobf);
+
   if (0 != rc || 0 != ssob.ssobretn)
   {
     strcpy(zjb->diag.service_name, "IEFSSREQ");
@@ -553,11 +556,6 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
   statjqp = (STATJQ * PTR32) stat.statjobf;
   statvop = (STATVO * PTR32) statjqp->stjqsvrb;
 
-  STATSEVB *statsetrsp = storage_get64(zjb->buffer_size);
-  *sysoutInfo = statsetrsp;
-
-  int total_size = 0;
-
   if (NULL == statjqp)
   {
     statjqp = stat.stattrsa;
@@ -567,8 +565,15 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
   {
     zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "No jobs found matching '%.8s'", zjb->jobid);
     zjb->diag.detail_rc = ZJB_RTNCD_JOB_NOT_FOUND;
+    stat.stattype = statmem; // free storage
+    rc = iefssreq(&ssobp);   // TODO(Kelosky): recovery
     return RTNCD_FAILURE;
   }
+
+  STATSEVB *statsetrsp = storage_get64(zjb->buffer_size);
+  *sysoutInfo = statsetrsp;
+
+  int total_size = 0;
 
   while (statjqp)
   {
