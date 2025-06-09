@@ -22,7 +22,7 @@ zusf_py_module = Extension('_zusf_py',
                            ],
                            )
 
-setup (name = 'zusf_py',
+setup(name = 'zusf_py',
        version = '0.1',
        author      = "SWIG Docs",
        description = """Simple swig example for uss list""",
