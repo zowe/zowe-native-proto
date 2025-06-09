@@ -139,7 +139,7 @@ int ZDSRECFM(ZDS *zds, const char *dsn, const char *volser, char *recfm_buf,
         " SVC   27 \n\t"
         " ST    15,%0 \n\t"
         : "=m"(rc)
-        : "r"(&list)
+        : "r"(&params)
         : "r1", "r15");
 #endif
 

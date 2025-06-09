@@ -98,7 +98,7 @@ typedef struct DSCBFormat1
   char ds1optcd;     // Option Code
 } DSCBFormat1;
 
-struct ObtainCamlstSearchParams
+typedef struct ObtainCamlstSearchParams
 {
   unsigned char function_code;
   unsigned char option_flags; // Contains bits for EADSCB, NOQUEUE, etc.
@@ -106,7 +106,7 @@ struct ObtainCamlstSearchParams
   char *dsname_ptr;
   char *volume_ptr;
   void *workarea_ptr;
-};
+} ObtainCamlstSearchParams;
 
 #if (defined(__IBMCPP__) || defined(__IBMC__))
 #pragma pack(reset)
