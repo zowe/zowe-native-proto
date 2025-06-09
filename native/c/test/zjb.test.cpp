@@ -14,7 +14,7 @@
 
 #include "ztest.hpp"
 #include "zjb.hpp"
-// #include "zstorage.metal.test.h"
+#include <unistd.h>
 
 using namespace std;
 using namespace ztst;
@@ -99,25 +99,24 @@ void zjb_tests()
                 });
 
              // TODO(Kelosky): this test fails until #347 is fixed
-             //  it("should be able to read job JCL",
-             //     []() -> void
-             //     {
-             //       ZJB zjb = {0};
-             //       string jobid;
-             //       string jcl = "//IEFBR14$ JOB IZUACCT\n"
-             //                    "//RUNBR14  EXEC PGM=IEFBR14\n";
+             it("should be able to read job JCL",
+                []() -> void
+                {
+                  ZJB zjb = {0};
+                  string jobid;
+                  string jcl = "//IEFBR14$ JOB IZUACCT\n"
+                               "//RUNBR14  EXEC PGM=IEFBR14\n";
 
-             //       int rc = zjb_submit(&zjb, jcl, jobid);
-             //       expect(rc).ToBe(0);
+                  int rc = zjb_submit(&zjb, jcl, jobid);
+                  expect(rc).ToBe(0);
 
-             //       string correlator = string(zjb.job_correlator, 64);
-             //       string returned_jcl;
+                  string correlator = string(zjb.job_correlator, 64);
+                  string returned_jcl;
 
-             //       memset(&zjb, 0, sizeof(zjb));
-             //       cout << "@TEST " << correlator << endl;
-             //       rc = zjb_read_job_jcl(&zjb, correlator, returned_jcl);
-             //       expect(rc).ToBe(0);
-             //       cout << "@TEST " << returned_jcl;
-             //     });
+                  memset(&zjb, 0, sizeof(zjb));
+                  sleep(1); // wait for job to complete
+                  rc = zjb_read_job_jcl(&zjb, correlator, returned_jcl);
+                  expect(rc).ToBe(0);
+                });
            });
 }
