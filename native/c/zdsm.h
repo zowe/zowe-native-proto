@@ -29,7 +29,9 @@ extern "C"
   int ZDSSMSAT(ZDS *zds, const char *dsn);
   int ZDSCSI00(ZDS *zds, CSIFIELD *selection, void *work_area);
   void ZDSDEL(ZDS *zds);
-
+  int ZDSRECFM(ZDS *zds, const char *dsn, const char *volser, char *recfm_buf,
+                 int recfm_buf_len);
+                 
 #if defined(__cplusplus)
 }
 #endif

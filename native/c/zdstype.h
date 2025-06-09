@@ -76,6 +76,38 @@ typedef struct
 
 } ZDS;
 
+// Note(traeok): Not a full representation of DSCB Format-1/8, just the fields we need
+// https://www.ibm.com/docs/en/SSLTBW_2.2.0/pdf/dgt3s310.pdf, page 26
+typedef struct DSCBFormat1
+{
+  char ds1dsnam[44]; // Data set name
+  char ds1fmtid;     // Format Identifier
+  char ds1dssn[6];   // Data set serial number
+  uint16_t ds1volsq; // Volume sequence number
+  char ds1credt[3];  // Creation date
+  char ds1expdt[3];  // Expiration date
+  uint8_t ds1noepv;  // Number of extents on volume
+  uint8_t ds1nobdb;  // Number of bytes used in last directory block
+  uint8_t ds1flag1;  // Flags byte
+  char ds1syscd[13]; // System code
+  char ds1refd[3];   // Date last referenced
+  uint8_t ds1smsfg;  // System managed storage indicators
+  char ds1scext[3];  // Secondary space extension
+  uint16_t ds1dsorg; // Data set organization
+  char ds1recfm;     // Record format
+  char ds1optcd;     // Option Code
+} DSCBFormat1;
+
+struct ObtainCamlstSearchParams
+{
+  unsigned char function_code;
+  unsigned char option_flags; // Contains bits for EADSCB, NOQUEUE, etc.
+  unsigned short reserved;    // For alignment
+  char *dsname_ptr;
+  char *volume_ptr;
+  void *workarea_ptr;
+};
+
 #if (defined(__IBMCPP__) || defined(__IBMC__))
 #pragma pack(reset)
 #endif
