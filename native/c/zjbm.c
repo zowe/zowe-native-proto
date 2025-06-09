@@ -331,20 +331,54 @@ int ZJBMLIST(ZJB *zjb, ZJB_JOB_INFO **PTR64 job_info, int *entries)
   return ZJBMTCOM(zjb, &stat, job_info, entries);
 }
 
+int ZJBMGJQ(ZJB *zjb, SSOB *ssobp, STAT *statp, STATJQ *PTR32 *PTR32 statjqp)
+{
+  int rc = 0;
+
+  SSOB *PTR32 ssobp2 = NULL;
+
+  ssobp2 = ssobp;
+  ssobp2 = (SSOB * PTR32)((unsigned int)ssobp2 | 0x80000000);
+  rc = iefssreq(&ssobp2); // TODO(Kelosky): recovery
+
+  if (0 != rc || 0 != ssobp->ssobretn)
+  {
+    ZJBMEMSG(zjb, statp, ssobp, rc);
+    statp->stattype = statmem; // free storage
+    rc = iefssreq(&ssobp2);
+    return RTNCD_FAILURE;
+  }
+
+  *statjqp = (STATJQ * PTR32) statp->statjobf;
+
+  return RTNCD_SUCCESS;
+}
+
+int ZJBMEMSG(ZJB *zjb, STAT *PTR64 stat, SSOB *PTR64 ssobp, int rc)
+{
+  strcpy(zjb->diag.service_name, "IEFSSREQ");
+  zjb->diag.detail_rc = ZJB_RTNCD_SERVICE_FAILURE;
+  zjb->diag.service_rc = ssobp->ssobretn;
+  zjb->diag.service_rsn = stat->statreas;
+  zjb->diag.service_rsn_secondary = stat->statrea2;
+#define STATLERR 8
+  if (STATLERR == ssobp->ssobretn && statrojb == stat->statreas) // skip if invalid job id
+  {
+    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "Job ID '%.8s' was not valid", stat->statojbi); // STATREAS contains the reason
+  }
+  else
+  {
+    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "IEFSSREQ rc was: '%d' SSOBRETN was: '%d', STATREAS was: '%d', STATREA2 was: '%d'", rc, ssobp->ssobretn, stat->statreas, stat->statrea2); // STATREAS contains the reason
+  }
+}
+
 int ZJBMTCOM(ZJB *zjb, STAT *PTR64 stat, ZJB_JOB_INFO **PTR64 job_info, int *entries)
 {
   int rc = 0;
-  int loop_control = 0;
-
-  ZJB_JOB_INFO *statjqtrsp = storage_get64(zjb->buffer_size);
 
   SSOB *PTR32 ssobp = NULL;
   SSOB ssob = {0};
   SSIB ssib = {0};
-  STATJQ *PTR32 statjqp = NULL;
-  STATJQHD *PTR32 statjqhdp = NULL;
-  STATJQTR *PTR32 statjqtrp = NULL;
-  WTO_BUF buf = {0};
 
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=sfcd-extended-status-function-call-ssi-function-code-80
   init_ssob(&ssob, &ssib, stat, 80);
@@ -359,34 +393,24 @@ int ZJBMTCOM(ZJB *zjb, STAT *PTR64 stat, ZJB_JOB_INFO **PTR64 job_info, int *ent
   ssobp = (SSOB * PTR32)((unsigned int)ssobp | 0x80000000);
   rc = iefssreq(&ssobp); // TODO(Kelosky): recovery
 
-#define STATLERR 8
-
   if (0 != rc || 0 != ssob.ssobretn)
   {
-
-    strcpy(zjb->diag.service_name, "IEFSSREQ");
-    zjb->diag.detail_rc = ZJB_RTNCD_SERVICE_FAILURE;
-    zjb->diag.service_rc = ssob.ssobretn;
-    zjb->diag.service_rsn = stat->statreas;
-    zjb->diag.service_rsn_secondary = stat->statrea2;
-    if (STATLERR == ssob.ssobretn && statrojb == stat->statreas) // skip if invalid job id
-    {
-      zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "Job ID '%.8s' was not valid", stat->statojbi); // STATREAS contains the reason
-    }
-    else
-    {
-      zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "IEFSSREQ rc was: '%d' SSOBRETN was: '%d', STATREAS was: '%d', STATREA2 was: '%d'", rc, ssob.ssobretn, stat->statreas, stat->statrea2); // STATREAS contains the reason
-    }
-    storage_free64(statjqtrsp);
+    ZJBMEMSG(zjb, stat, &ssob, rc);
     stat->stattype = statmem; // free storage
     rc = iefssreq(&ssobp);
     return RTNCD_FAILURE;
   }
 
-  statjqp = (STATJQ * PTR32) stat->statjobf;
+  STATJQ *PTR32 statjqp = (STATJQ * PTR32) stat->statjobf;
+
+  ZJB_JOB_INFO *statjqtrsp = storage_get64(zjb->buffer_size);
   *job_info = statjqtrsp;
 
+  STATJQHD *PTR32 statjqhdp = NULL;
+  STATJQTR *PTR32 statjqtrp = NULL;
+
   int total_size = 0;
+  int loop_control = 0;
 
   while (statjqp)
   {
@@ -429,9 +453,6 @@ int ZJBMTCOM(ZJB *zjb, STAT *PTR64 stat, ZJB_JOB_INFO **PTR64 job_info, int *ent
       zjb->diag.detail_rc = ZJB_RTNCD_INSUFFICIENT_BUFFER;
     }
 
-    // NOTE(Kelosky): rather than interpret job phase ourselves, this service provides text status of job phase
-    // however, it does not match z/osmf results
-    // iaztlkup(&ssob, statjqp);
     statjqp = (STATJQ * PTR32) statjqp->stjqnext;
 
     loop_control++;
@@ -454,8 +475,6 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
 {
   int rc = 0;
   int loop_control = 0;
-
-  STATSEVB *statsetrsp = storage_get64(zjb->buffer_size);
 
   // return rc
   SSOB *PTR32 ssobp = NULL;
@@ -481,25 +500,44 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
   init_ssob(&ssob, &ssib, &stat, 80);
   init_stat(&stat);
 
+  stat.stattype = statters;
+
   if (zjb->jobid[0] != 0x00)
   {
-    stat.statsel1 = statsjbi;
-    memcpy(stat.statjbil, zjb->jobid, sizeof((stat.statjbil)));
-    memcpy(stat.statjbih, zjb->jobid, sizeof((stat.statjbih)));
+    stat.statsel1 = statsoji;
+    memcpy(stat.statojbi, zjb->jobid, sizeof((stat.statojbi)));
   }
   else
   {
-    // TODO(Kelosky): this is a workaround.  Ultimately we need to provide something in the following link to get the verbose output directly: https://www.ibm.com/docs/en/zos/3.1.0?topic=80-use-information-verbose-requests
-    // unforunately, we cannot easily obtain one of these items from a job correlator alone without calling through another IEFSSREQ
-    stat.statsel1 = statsjbi;
-    memcpy(stat.statjbil, zjb->job_correlator, sizeof((stat.statjbil)));
-    memcpy(stat.statjbih, zjb->job_correlator, sizeof((stat.statjbih)));
+    stat.statsel5 = statscor;
+    char job_correlator31[64] = {0};
+    stat.statjcrp = &job_correlator31[0];
   }
 
-  stat.stattype = statoutv;
+  rc = ZJBMGJQ(zjb, &ssob, &stat, &statjqp);
+
+  if (0 != rc)
+  {
+    return rc;
+  }
+  stat.statsel1 = 0;
+  stat.statsel5 = 0;
 
   ssobp = &ssob;
   ssobp = (SSOB * PTR32)((unsigned int)ssobp | 0x80000000);
+
+  if (NULL == statjqp)
+  {
+    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "No jobs found matching '%.64s'", zjb->job_correlator);
+    zjb->diag.detail_rc = ZJB_RTNCD_JOB_NOT_FOUND;
+    stat.stattype = statmem; // free storage
+    rc = iefssreq(&ssobp);   // TODO(Kelosky): recovery
+    return RTNCD_FAILURE;
+  }
+
+  stat.stattrsa = statjqp;
+  stat.stattype = statoutv;
+
   rc = iefssreq(&ssobp); // TODO(Kelosky): recovery
 
   if (0 != rc || 0 != ssob.ssobretn)
@@ -509,15 +547,28 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
     zjb->diag.service_rsn = stat.statreas;
     zjb->diag.service_rsn_secondary = stat.statrea2;
     zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "IEFSSREQ rc was: '%d' SSOBRETN was: '%d', STATREAS was: '%d', STATREA2 was: '%d'", rc, ssob.ssobretn, stat.statreas, stat.statrea2); // STATREAS contains the reason
-    storage_free64(statsetrsp);
     return RTNCD_FAILURE;
   }
 
   statjqp = (STATJQ * PTR32) stat.statjobf;
   statvop = (STATVO * PTR32) statjqp->stjqsvrb;
+
+  STATSEVB *statsetrsp = storage_get64(zjb->buffer_size);
   *sysoutInfo = statsetrsp;
 
   int total_size = 0;
+
+  if (NULL == statjqp)
+  {
+    statjqp = stat.stattrsa;
+  }
+
+  if (NULL == statjqp)
+  {
+    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "No jobs found matching '%.8s'", zjb->jobid);
+    zjb->diag.detail_rc = ZJB_RTNCD_JOB_NOT_FOUND;
+    return RTNCD_FAILURE;
+  }
 
   while (statjqp)
   {
@@ -526,12 +577,13 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
 
     while (statvop)
     {
-      if (loop_control > zjb->dds_max)
+
+      if (loop_control >= zjb->dds_max)
       {
         stat.stattype = statmem; // free storage
         rc = iefssreq(&ssobp);   // TODO(Kelosky): recovery
         zjb->diag.detail_rc = ZJB_RSNCD_MAX_JOBS_REACHED;
-        zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "max jobs reached of %d", zjb->dds_max);
+        zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "max DDs reached '%d', results truncated", zjb->dds_max);
         return RTNCD_WARNING;
       }
 
