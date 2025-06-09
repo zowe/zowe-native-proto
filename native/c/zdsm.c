@@ -18,8 +18,8 @@
 #include <string.h>
 
 // OBTAIN option parameters for CAMLST
-const unsigned char OPTION_EADSCB = 0x10;  // EADSCB=OK
-const unsigned char OPTION_NOQUEUE = 0x80; // NOQUEUE=OK
+const unsigned char OPTION_EADSCB = 0x08;  // EADSCB=OK
+const unsigned char OPTION_NOQUEUE = 0x04; // NOQUEUE=OK
 
 #pragma prolog(ZDSDEL, " ZWEPROLG NEWDSA=(YES,4) ")
 #pragma epilog(ZDSDEL, " ZWEEPILG ")
@@ -102,8 +102,8 @@ int ZDSRECFM(ZDS *zds, const char *dsn, const char *volser, char *recfm_buf,
   char dsn_upper[45] = {0};
   char vol_upper[7] = {0};
 
-  struct DSCBFormat1 dscb;
-  struct ObtainCamlstSearchParams params;
+  struct DSCBFormat1 dscb = {0};
+  struct ObtainCamlstSearchParams params = {0};
   memset(&params, 0, sizeof(params));
   memset(&dscb, 0, sizeof(dscb));
 
