@@ -98,7 +98,9 @@ int zjb_read_job_jcl(ZJB *zjb, string jobid, string &response)
 
   rc = zjb_list_dds(zjb, jobid, list);
   if (0 != rc)
+  {
     return rc;
+  }
 
   rc = RTNCD_FAILURE; // assume failure
 
@@ -302,7 +304,7 @@ int zjb_wait(ZJB *zjb, string status)
   {
     rc = zjb_view(zjb, jobid, job);
 
-    sleep(1);
+    sleep(1); // TODO(Kelosky): make this interval smaller
 
     if (0 != rc)
     {
@@ -469,14 +471,17 @@ int zjb_list_dds(ZJB *zjb, string jobid, vector<ZJobDD> &jobDDs)
     zut_uppercase_pad_truncate(zjb->jobid, jobid, sizeof(zjb->jobid));
 
   rc = ZJBMLSDS(zjb, &sysoutInfo, &entries);
-  if (0 != rc)
+  if (RTNCD_SUCCESS != rc && RTNCD_WARNING != rc)
+  {
+    ZUTMFR64(sysoutInfo);
     return rc;
+  }
 
   if (0 == entries)
   {
     ZUTMFR64(sysoutInfo);
-    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "Could not locate job '%s'", jobid.c_str());
-    zjb->diag.detail_rc = ZJB_RTNCD_JOB_NOT_FOUND;
+    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "no output DDs found for '%s'", jobid.c_str());
+    zjb->diag.detail_rc = ZJB_RTNCD_VERBOSE_INFO_NOT_FOUND;
     return RTNCD_WARNING;
   }
 
