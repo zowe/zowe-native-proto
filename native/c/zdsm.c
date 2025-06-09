@@ -18,8 +18,8 @@
 #include <string.h>
 
 // OBTAIN option parameters for CAMLST
-const unsigned char OPTION_EADSCB = 0b00010000;  // EADSCB=OK
-const unsigned char OPTION_NOQUEUE = 0b10000000; // NOQUEUE=OK
+const unsigned char OPTION_EADSCB = 0x10;  // EADSCB=OK
+const unsigned char OPTION_NOQUEUE = 0x80; // NOQUEUE=OK
 
 #pragma prolog(ZDSDEL, " ZWEPROLG NEWDSA=(YES,4) ")
 #pragma epilog(ZDSDEL, " ZWEEPILG ")
