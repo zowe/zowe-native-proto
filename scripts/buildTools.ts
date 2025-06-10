@@ -99,6 +99,9 @@ function startSpinner(text = "Loading...") {
 }
 
 function stopSpinner(spinner: NodeJS.Timeout | null, text = "Done!") {
+    if (DEBUG_MODE() || process.env.CI!= null) {
+        return;
+    }
     spinner && clearInterval(spinner);
     process.stdout.write(`\x1b[2K\r${text}\n`);
 }
@@ -384,7 +387,7 @@ async function runCommandInShell(connection: Client, command: string, pty = fals
             });
             stream.on("exit", (exitCode: number) => {
                 if (exitCode !== 0) {
-                    const fullError = `\nError: runCommand connection.exec error: \n ${error || data}`;
+                    const fullError = `\nError: runCommand connection.exec error - stream.on exit: \n ${error || data}`;
                     stopSpinner(spinner, fullError);
                     process.exitCode = fullError.includes("SIGSEGV: segmentation violation") ? 11 : exitCode;
                     reject(fullError);

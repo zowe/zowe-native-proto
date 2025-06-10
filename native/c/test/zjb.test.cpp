@@ -117,5 +117,12 @@ void zjb_tests()
                   rc = zjb_read_job_jcl(&zjb, correlator, returned_jcl);
                   expect(rc).ToBe(0);
                 });
+
+             it("should fail",
+                []() -> void
+                {
+                  int rc = 1;
+                  expect(rc).ToBe(0);
+                });
            });
 }
