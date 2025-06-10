@@ -18,8 +18,8 @@
 #include <string.h>
 
 // OBTAIN option parameters for CAMLST
-const unsigned char OPTION_EADSCB = 0x08;  // EADSCB=OK
-const unsigned char OPTION_NOQUEUE = 0x04; // NOQUEUE=OK
+const int OPTION_EADSCB = 0x08;  // EADSCB=OK
+const int OPTION_NOQUEUE = 0x04; // NOQUEUE=OK
 
 #pragma prolog(ZDSDEL, " ZWEPROLG NEWDSA=(YES,4) ")
 #pragma epilog(ZDSDEL, " ZWEEPILG ")
@@ -102,82 +102,57 @@ typedef int (*IGWASMS)(
 int ZDSRECFM(ZDS *zds, const char *dsn, const char *volser, char *recfm_buf,
              int recfm_buf_len)
 {
-  int rc = RTNCD_FAILURE;
-  char dsn_upper[45];
-  char vol_upper[7];
-  memset(dsn_upper, 0x40, sizeof(dsn_upper));
-  memset(vol_upper, 0x40, sizeof(vol_upper));
-
   struct DSCBFormat1 *dscb = NULL;
-  // workarea: 140-byte array (0x8C) * total possible DSCBs to iterate
-  char workarea[0x8C * MAX_DSCBS] = {0};
-  struct ObtainCamlstSearchParams params = {0};
+  // workarea: 140-byte array to store format-1 DSCB
+  char workarea[0x8C];
+  struct ObtainParams params;
   memset(&params, 0, sizeof(params));
   memset(&dscb, 0, sizeof(dscb));
-
-  int i;
-  // Prepare the data set name and volume serial in uppercase for comparison
-  for (i = 0; i < 44 && dsn[i]; i++)
-  {
-    dsn_upper[i] = toupper(dsn[i]);
-  }
-
-  for (i = 0; i < 6 && volser[i]; i++)
-  {
-    vol_upper[i] = toupper(volser[i]);
-  }
+  memset(&workarea, 0, sizeof(workarea));
 
   // We're using OBTAIN through CAMLST SEARCH to get the DSCBs, see here for more info:
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=obtain-reading-dscb-by-data-set-name
 
   // OBTAIN by data set name
-  params.function_code = (unsigned char)0xC1u;
-  params.number_dscbs = (unsigned char)MAX_DSCBS;
+  params.function_code = 0xC100;
+  params.number_dscbs = 0;
   // Allow lookup of format-1 or format-8 DSCB
   params.option_flags = OPTION_EADSCB;
-  params.dsname_ptr = dsn_upper;
-  params.volume_ptr = vol_upper;
-  params.workarea_ptr = &workarea;
-#if defined(__IBM_METAL__)
-  __asm(" LR    1,%1 \n\t"
-        " SVC   27 \n\t"
-        " ST    15,%0 \n\t"
-        : "=m"(rc)
-        : "r"(&params)
-        : "r1", "r15");
-#endif
+  char dsname[44] = {0};
+  memset(dsname, ' ', sizeof(dsname));
+  memcpy(dsname, dsn, strlen(dsn));
+  params.listname_addrx.dsname_ptr = dsname;
+  char volume[6] = {0};
+  memset(volume, ' ', sizeof(volume));
+  memcpy(volume, volser, strlen(volser));
+  params.listname_addrx.volume_ptr = volume;
+  params.listname_addrx.workarea_ptr = workarea;
 
-  if (rc != 0)
+  int rc = obtain_camlst(params);
+  if (rc != 0) 
   {
     strcpy(zds->diag.service_name, "OBTAIN");
     zds->diag.e_msg_len =
-        sprintf(zds->diag.e_msg, "OBTAIN SVC failed for %s on %s with rc=%d",
-                dsn, volser, rc);
-    zds->diag.service_rc = rc;
+        sprintf(zds->diag.e_msg, "OBTAIN SVC failed for %s on %s with rc=%d, workarea_ptr=%p",
+                dsn, volser, rc, workarea);
+    zds->diag.service_rc = 0;
     zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
     return RTNCD_FAILURE;
   }
 
-  for (int i = 0; i < 12; i++)
+  struct DSCBFormat1 cur_dscb;
+  memcpy(&cur_dscb, workarea, sizeof(cur_dscb));
+  // '1' or '8' in EBCDIC
+  if (cur_dscb.ds1fmtid == '1' || cur_dscb.ds1fmtid == '8')
   {
-    struct DSCBFormat1 *cur_dscb = (struct DSCBFormat1 *)&workarea[i * 0x8C];
-    if (cur_dscb == NULL)
-    {
-      break;
-    }
-    // '1' or '8' in EBCDIC
-    if (cur_dscb->ds1fmtid == 0xF1 || cur_dscb->ds1fmtid == 0xF8)
-    {
-      dscb = cur_dscb;
-      break;
-    }
+    dscb = &cur_dscb;
   }
 
   if (dscb == NULL)
   {
     strcpy(zds->diag.service_name, "OBTAIN");
     zds->diag.e_msg_len = sprintf(
-        zds->diag.e_msg, "Could not find Format-1 or Format-8 DSCB, OBTAIN rc=%d", rc);
+        zds->diag.e_msg, "Could not find Format-1 or Format-8 DSCB, OBTAIN rc=%d, cur_dscb->ds1dsnam=%s, cur_dscb->ds1fmtid=%c", rc, cur_dscb.ds1dsnam, cur_dscb.ds1fmtid);
     zds->diag.detail_rc = ZDS_RTNCD_UNEXPECTED_ERROR;
     return RTNCD_FAILURE;
   }

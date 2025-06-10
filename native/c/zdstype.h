@@ -81,33 +81,26 @@ typedef struct
 typedef struct DSCBFormat1
 {
   char ds1dsnam[44]; // Data set name
-  char ds1fmtid;     // Format Identifier
-  char ds1dssn[6];   // Data set serial number
-  uint16_t ds1volsq; // Volume sequence number
-  char ds1credt[3];  // Creation date
-  char ds1expdt[3];  // Expiration date
-  uint8_t ds1noepv;  // Number of extents on volume
-  uint8_t ds1nobdb;  // Number of bytes used in last directory block
-  uint8_t ds1flag1;  // Flags byte
-  char ds1syscd[13]; // System code
-  char ds1refd[3];   // Date last referenced
-  uint8_t ds1smsfg;  // System managed storage indicators
-  char ds1scext[3];  // Secondary space extension
-  uint16_t ds1dsorg; // Data set organization
-  char ds1recfm;     // Record format
-  char ds1optcd;     // Option Code
+  char ds1fmtid;     // Format Identifier (0x2C)
+  char ds1dssn[6];   // Data set serial number (0x2D)
+  uint16_t ds1volsq; // Volume sequence number (0x33)
+  char ds1credt[3];  // Creation date (0x35)
+  char ds1expdt[3];  // Expiration date (0x38)
+  uint8_t ds1noepv;  // Number of extents on volume (0x3B)
+  uint8_t ds1nobdb;  // Number of bytes used in last directory block (0x3C)
+  uint8_t ds1flag1;  // Flags byte (0x3D)
+  char ds1syscd[13]; // System code (0x3E)
+  char ds1refd[3];   // Date last referenced (0x4B)
+  uint8_t ds1smsfg;  // System managed storage indicators (0x4F)
+  char ds1scext[3];  // Secondary space extension (0x50)
+  uint16_t ds1dsorg; // Data set organization (0x52)
+  char ds1recfm;     // Record format (0x54)
+  char ds1optcd;     // Option Code (0x55)
+  char ds1blkl[2];   // Block length (Type F unblocked records), or maximum block size (F blocked, U or V records) (0x56)
+  char ds1lrecl[2];  // Logical record length (0x58)
+  char ds1keyl;      // Key length (0 to 255) (0x59)
+  char ds1rkp[2];    // Relative key position (0x5A)
 } DSCBFormat1;
-
-typedef struct ObtainCamlstSearchParams
-{
-  unsigned char function_code;
-  unsigned char reserved;
-  unsigned char option_flags; // Contains bits for EADSCB, NOQUEUE, etc.
-  unsigned char number_dscbs;
-  char *dsname_ptr;
-  char *volume_ptr;
-  void *workarea_ptr;
-} ObtainCamlstSearchParams;
 
 #if (defined(__IBMCPP__) || defined(__IBMC__))
 #pragma pack(reset)

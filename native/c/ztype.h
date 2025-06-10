@@ -74,6 +74,21 @@ typedef struct
 
 } ZDIAG;
 
+typedef struct CamlstSearchParams
+{
+  char *PTR32 dsname_ptr;
+  char *PTR32 volume_ptr;
+  void *PTR32 workarea_ptr;
+} CamlstSearchParams;
+
+typedef struct ObtainParams
+{
+  int function_code: 16;
+  int option_flags: 8; // Contains bits for EADSCB, NOQUEUE, etc.
+  int number_dscbs: 8;
+  CamlstSearchParams listname_addrx;
+} ObtainParams;
+
 #if (defined(__IBMCPP__) || defined(__IBMC__))
 #pragma pack(reset)
 #endif
