@@ -93,6 +93,10 @@ typedef int (*IGWASMS)(
 #pragma prolog(ZDSRECFM, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(ZDSRECFM, " ZWEEPILG ")
 
+#ifndef MAX_DSCBS
+#define MAX_DSCBS 12
+#endif
+
 // Obtain the record format for a data set, given its name and volser
 // https://www.ibm.com/docs/en/SSLTBW_2.2.0/pdf/dgt3s310.pdf
 int ZDSRECFM(ZDS *zds, const char *dsn, const char *volser, char *recfm_buf,
@@ -104,7 +108,9 @@ int ZDSRECFM(ZDS *zds, const char *dsn, const char *volser, char *recfm_buf,
   memset(dsn_upper, 0x40, sizeof(dsn_upper));
   memset(vol_upper, 0x40, sizeof(vol_upper));
 
-  struct DSCBFormat1 dscb = {0};
+  struct DSCBFormat1 *dscb = NULL;
+  // workarea: 140-byte array (0x8C) * total possible DSCBs to iterate
+  char workarea[0x8C * MAX_DSCBS] = {0};
   struct ObtainCamlstSearchParams params = {0};
   memset(&params, 0, sizeof(params));
   memset(&dscb, 0, sizeof(dscb));
@@ -131,7 +137,7 @@ int ZDSRECFM(ZDS *zds, const char *dsn, const char *volser, char *recfm_buf,
   params.option_flags = OPTION_EADSCB;
   params.dsname_ptr = dsn_upper;
   params.volume_ptr = vol_upper;
-  params.workarea_ptr = &dscb;
+  params.workarea_ptr = &workarea;
 #if defined(__IBM_METAL__)
   __asm(" LR    1,%1 \n\t"
         " SVC   27 \n\t"
@@ -152,13 +158,22 @@ int ZDSRECFM(ZDS *zds, const char *dsn, const char *volser, char *recfm_buf,
     return RTNCD_FAILURE;
   }
 
-  // '1' or '8' in EBCDIC
-  if (dscb.ds1fmtid != 0xF1 && dscb.ds1fmtid != 0xF8)
+  for (int i = 0; i < 12; i++)
+  {
+    struct DSCBFormat1 *cur_dscb = (struct DSCBFormat1 *)&workarea[i * 0x8C];
+    // '1' or '8' in EBCDIC
+    if (dscb->ds1fmtid == 0xF1 || dscb->ds1fmtid == 0xF8)
+    {
+      dscb = cur_dscb;
+      break;
+    }
+  }
+
+  if (dscb == NULL)
   {
     strcpy(zds->diag.service_name, "OBTAIN");
     zds->diag.e_msg_len = sprintf(
-        zds->diag.e_msg, "Expected Format-1 or Format-8 DSCB but got Format-%c",
-        dscb.ds1fmtid);
+        zds->diag.e_msg, "Could not find Format-1 or Format-8 DSCB, OBTAIN rc=%d", rc);
     zds->diag.detail_rc = ZDS_RTNCD_UNEXPECTED_ERROR;
     return RTNCD_FAILURE;
   }
@@ -167,28 +182,28 @@ int ZDSRECFM(ZDS *zds, const char *dsn, const char *volser, char *recfm_buf,
   int len = 0;
   char main_fmt = 0;
 
-  if ((dscb.ds1recfm & 0xC0) == 0x40)
+  if ((dscb->ds1recfm & 0xC0) == 0x40)
   {
     temp_recfm[len++] = 'F';
     main_fmt = 'F';
   }
-  else if ((dscb.ds1recfm & 0xC0) == 0x80)
+  else if ((dscb->ds1recfm & 0xC0) == 0x80)
   {
     temp_recfm[len++] = 'V';
     main_fmt = 'V';
   }
-  else if ((dscb.ds1recfm & 0xC0) == 0x20)
+  else if ((dscb->ds1recfm & 0xC0) == 0x20)
   {
     temp_recfm[len++] = 'U';
     main_fmt = 'U';
   }
 
-  if (dscb.ds1recfm & 0x10)
+  if (dscb->ds1recfm & 0x10)
   {
     temp_recfm[len++] = 'B';
   }
 
-  if (dscb.ds1recfm & 0x08)
+  if (dscb->ds1recfm & 0x08)
   {
     if (main_fmt == 'F' || main_fmt == 'V')
     {
@@ -196,12 +211,12 @@ int ZDSRECFM(ZDS *zds, const char *dsn, const char *volser, char *recfm_buf,
     }
   }
 
-  if (dscb.ds1recfm & 0x04)
+  if (dscb->ds1recfm & 0x04)
   {
     temp_recfm[len++] = 'A';
   }
 
-  if (dscb.ds1recfm & 0x02)
+  if (dscb->ds1recfm & 0x02)
   {
     temp_recfm[len++] = 'M';
   }
