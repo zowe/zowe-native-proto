@@ -987,6 +987,7 @@ int handle_job_view_status(ZCLIResult result)
     fields.push_back(job.retcode);
     fields.push_back(job.jobname);
     fields.push_back(job.status);
+    fields.push_back(job.job_correlator);
     cout << zut_format_as_csv(fields) << endl;
   }
   else

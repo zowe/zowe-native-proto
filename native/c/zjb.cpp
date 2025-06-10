@@ -526,8 +526,6 @@ int zjb_view(ZJB *zjb, string jobid, ZJob &job)
   ZJB_JOB_INFO *PTR64 job_info = nullptr;
   int entries = 0;
 
-  ///
-
   if (0 == zjb->buffer_size)
     zjb->buffer_size = ZJB_DEFAULT_BUFFER_SIZE;
   if (0 == zjb->jobs_max)
