@@ -132,7 +132,7 @@ int ZDSRECFM(ZDS *zds, const char *dsn, const char *volser, char *recfm_buf,
 
   // OBTAIN by data set name
   params.function_code = (unsigned char)0xC1u;
-  params.number_dscbs = (unsigned char)12u;
+  params.number_dscbs = (unsigned char)MAX_DSCBS;
   // Allow lookup of format-1 or format-8 DSCB
   params.option_flags = OPTION_EADSCB;
   params.dsname_ptr = dsn_upper;
@@ -161,8 +161,12 @@ int ZDSRECFM(ZDS *zds, const char *dsn, const char *volser, char *recfm_buf,
   for (int i = 0; i < 12; i++)
   {
     struct DSCBFormat1 *cur_dscb = (struct DSCBFormat1 *)&workarea[i * 0x8C];
+    if (cur_dscb == NULL)
+    {
+      break;
+    }
     // '1' or '8' in EBCDIC
-    if (dscb->ds1fmtid == 0xF1 || dscb->ds1fmtid == 0xF8)
+    if (cur_dscb->ds1fmtid == 0xF1 || cur_dscb->ds1fmtid == 0xF8)
     {
       dscb = cur_dscb;
       break;
