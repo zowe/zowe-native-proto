@@ -6,6 +6,9 @@ on:
     branches:
       - main
 
+permissions:
+  pull-requests: write
+
 jobs:
   build-client:
     runs-on: ${{ matrix.os }}-latest
@@ -45,16 +48,29 @@ jobs:
       - run: npm run package
 
       - uses: actions/upload-artifact@v4
+        id: cli-artifact-upload
         if: ${{ matrix.os == 'ubuntu' }}
         with:
           name: zowe-native-proto-cli
           path: dist/*.tgz
 
       - uses: actions/upload-artifact@v4
+        id: vsce-artifact-upload
         if: ${{ matrix.os == 'ubuntu' }}
         with:
           name: zowe-native-proto-vsce
           path: dist/*.vsix
+
+      - name: Comment on PR
+        if: ${{ github.event_name == 'pull_request' && matrix.os == 'ubuntu' && github.event.pull_request.head.repo.full_name == github.repository }}
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: Client artifacts
+          number: ${{ github.event.pull_request.number }}
+          message: |
+            Client artifacts:
+             - CLI Plug-in: ${{ steps.cli-artifact-upload.outputs.artifact-url }}
+             - VSCode Extension: ${{ steps.vsce-artifact-upload.outputs.artifact-url }}
 
   build-native:
     runs-on: ubuntu-latest
