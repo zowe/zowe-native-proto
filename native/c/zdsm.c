@@ -103,8 +103,9 @@ int ZDSRECFM(ZDS *zds, const char *dsn, const char *volser, char *recfm_buf,
              int recfm_buf_len)
 {
   struct DSCBFormat1 *dscb = NULL;
-  // workarea: 140-byte array to store format-1 DSCB
-  char workarea[0x8C];
+  // workarea: each DSCB is 140 bytes, we need enough space for format-1 DSCB, format-8 DSCB and max possible format-3 DSCBs (10)
+  // adding 140 bytes for the workarea itself
+  char workarea[0x8C * (MAX_DSCBS + 1)];
   struct ObtainParams params;
   memset(&params, 0, sizeof(params));
   memset(&dscb, 0, sizeof(dscb));
@@ -115,7 +116,7 @@ int ZDSRECFM(ZDS *zds, const char *dsn, const char *volser, char *recfm_buf,
 
   // OBTAIN by data set name
   params.function_code = 0xC100;
-  params.number_dscbs = 0;
+  params.number_dscbs = MAX_DSCBS;
   // Allow lookup of format-1 or format-8 DSCB
   params.option_flags = OPTION_EADSCB;
   char dsname[44] = {0};
@@ -129,7 +130,7 @@ int ZDSRECFM(ZDS *zds, const char *dsn, const char *volser, char *recfm_buf,
   params.listname_addrx.workarea_ptr = workarea;
 
   int rc = obtain_camlst(params);
-  if (rc != 0) 
+  if (rc != 0)
   {
     strcpy(zds->diag.service_name, "OBTAIN");
     zds->diag.e_msg_len =
