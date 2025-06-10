@@ -329,7 +329,7 @@ int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data)
 
   int stat_result = stat(file.c_str(), &file_stats);
   if (stat_result == -1 && errno != ENOENT)
-    return -1;
+    return RTNCD_FAILURE;
   zusf->created = stat_result == -1;
 
   std::string temp = data;
@@ -404,14 +404,10 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe)
     }
   }
 
-  if (stat(file.c_str(), &file_stats) == -1 && errno == ENOENT)
-  {
-    zusf->created = true;
-  }
-  else
-  {
-    zusf->created = false;
-  }
+  int stat_result = stat(file.c_str(), &file_stats);
+  if (stat_result == -1 && errno != ENOENT)
+    return RTNCD_FAILURE;
+  zusf->created = stat_result == -1;
 
   FILE *fout = fopen(file.c_str(), zusf->encoding_opts.data_type == eDataTypeBinary ? "wb" : "w");
   if (!fout)
