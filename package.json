@@ -22,6 +22,7 @@
     "z:artifacts": "npm run tools -- artifacts",
     "z:artifacts:all": "npm run z:artifacts && npm run z:package",
     "z:build": "npm run tools -- build",
+    "z:test": "npm run tools -- test",
     "z:clean": "npm run tools -- clean",
     "z:delete": "npm run tools -- delete",
     "z:deploy": "npm run tools -- deploy",

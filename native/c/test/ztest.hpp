@@ -73,9 +73,9 @@ namespace ztst
   RESULT_CHECK expect(string val);
   RESULT_CHECK expect(void *val);
 
-  void report();
+  int report();
 
-  void tests(cb tests);
+  int tests(cb tests);
 }
 
 #endif

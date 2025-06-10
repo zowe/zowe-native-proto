@@ -36,6 +36,7 @@ try {
 const localDeployDir = "./../native"; // from here
 const deployDirectory = config.deployDirectory; // to here
 const cDeployDirectory = `${config.deployDirectory}/c`; // to here
+const cTestDeployDirectory = `${cDeployDirectory}/test`; // to here
 const goDeployDirectory = `${config.deployDirectory}/golang`; // to here
 
 const args = process.argv.slice(2);
@@ -141,6 +142,9 @@ connection.on("ready", async () => {
                 break;
             case "build":
                 await build(connection);
+                break;
+            case "test":
+                await test(connection);
                 break;
             default:
                 console.log("Unsupported command\nUsage init|deploy|deploy-build [<file1>,<file2>,...|dir]");
@@ -542,6 +546,16 @@ async function build(connection: Client) {
         ),
     );
     console.log("Build complete!");
+}
+
+async function test(connection: Client) {
+    console.log("Testing native/c ...");
+    const response = await runCommandInShell(
+        connection,
+        `cd ${cTestDeployDirectory} && _CEE_RUNOPTS="TRAP(ON,NOSPIE)" ./build-out/runner\n`,
+    );
+    DEBUG_MODE() && console.log(response);
+    console.log("Testing complete!");
 }
 
 async function clean(connection: Client) {

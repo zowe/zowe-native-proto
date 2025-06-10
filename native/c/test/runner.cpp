@@ -24,7 +24,7 @@ using namespace ztst;
 int main()
 {
 
-  tests(
+  int rc = tests(
       []() -> void
       {
         zstorage_tests();
@@ -35,5 +35,5 @@ int main()
         zmetal_tests();
       });
 
-  return 0;
+  return rc;
 }

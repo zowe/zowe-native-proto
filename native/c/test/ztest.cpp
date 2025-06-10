@@ -224,8 +224,9 @@ ztst::RESULT_CHECK ztst::expect(void *val)
   return result;
 }
 
-void ztst::report()
+int ztst::report()
 {
+  int rc = 0;
   int suite_fail = 0;
   int tests_total = 0;
   int tests_fail = 0;
@@ -247,11 +248,13 @@ void ztst::report()
 
   cout << "Total Suites: " << ztst_suites.size() - suite_fail << " passed, " << suite_fail << " failed, " << ztst_suites.size() << " total" << endl;
   cout << "Tests:      : " << tests_total - tests_fail << " passed, " << tests_fail << " failed, " << tests_total << " total" << endl;
+  return tests_fail > 0 ? 1 : 0;
 }
 
-void ztst::tests(ztst::cb tests)
+int ztst::tests(ztst::cb tests)
 {
   cout << "======== TESTS ========" << endl;
   tests();
-  report();
+  int rc = ztst::report();
+  return rc;
 }
