@@ -327,14 +327,10 @@ int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data)
     }
   }
 
-  if (stat(file.c_str(), &file_stats) == -1 && errno == ENOENT)
-  {
-    zusf->created = true;
-  }
-  else
-  {
-    zusf->created = false;
-  }
+  int stat_result = stat(file.c_str(), &file_stats);
+  if (stat_result == -1 && errno != ENOENT)
+    return -1;
+  zusf->created = stat_result == -1;
 
   std::string temp = data;
   if (hasEncoding)
@@ -372,7 +368,7 @@ int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data)
     return RTNCD_FAILURE;
   }
 
-  const std::string new_tag = zut_build_etag(new_stats.st_mtime, new_stats.st_size);
+  const string new_tag = zut_build_etag(new_stats.st_mtime, new_stats.st_size);
   std::strcpy(zusf->etag, new_tag.c_str());
 
   return RTNCD_SUCCESS; // success
@@ -400,7 +396,7 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe)
     {
       zusf->diag.e_msg_len = std::sprintf(zusf->diag.e_msg, "Warning: Etag supplied for non-existent file '%s'", file.c_str());
     }
-    const std::string currentTag = zut_build_etag(file_stats.st_mtime, file_stats.st_size);
+    const string currentTag = zut_build_etag(file_stats.st_mtime, file_stats.st_size);
     if (currentTag != zusf->etag)
     {
       zusf->diag.e_msg_len = std::sprintf(zusf->diag.e_msg, "Etag mismatch: expected %s, actual %s", zusf->etag, currentTag.c_str());
@@ -429,7 +425,7 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe)
   if (!fin)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open input pipe '%s'", pipe.c_str());
-    std::fclose(fout);
+    fclose(fout);
     return RTNCD_FAILURE;
   }
 
