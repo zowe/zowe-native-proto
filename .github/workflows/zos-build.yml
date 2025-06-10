@@ -9,6 +9,9 @@ on:
     branches:
       - main
 
+permissions:
+  pull-requests: write
+
 jobs:
   build-server:
     runs-on: ubuntu-latest
