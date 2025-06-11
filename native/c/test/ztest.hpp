@@ -21,19 +21,33 @@ using namespace std;
 // TODO(Kelosky): handle test not run
 // TODO(Kelosky): handle running individual test and/or suite
 
+#define Expect(x) []() -> RESULT_CHECK { EXPECT_CONTEXT ctx = {__LINE__, __FILE__}; return expect(x, ctx); }()
+#define ExpectWithContext(x, context) [&]() -> RESULT_CHECK { EXPECT_CONTEXT ctx = {__LINE__, __FILE__, string(context)}; return expect(x, ctx); }()
+
 namespace ztst
 {
+
+  struct EXPECT_CONTEXT
+  {
+    int line_number;
+    string file_name;
+    string message;
+    bool initialized;
+  };
+
   class RESULT_CHECK
   {
     int int_result;
     string string_result;
     bool inverse;
     void *pointer_result;
+    EXPECT_CONTEXT ctx;
 
   public:
     void ToBe(int);
     void ToBe(string);
     void ToBeNull();
+    string append_error_details();
     RESULT_CHECK Not();
     RESULT_CHECK() {}
     ~RESULT_CHECK() {}
@@ -43,14 +57,22 @@ namespace ztst
       inverse = v;
     }
 
+    void set_context(EXPECT_CONTEXT &c)
+    {
+      ctx = c;
+      ctx.initialized = true;
+    }
+
     void set_result(int r)
     {
       int_result = r;
     }
+
     void set_result(string r)
     {
       string_result = r;
     }
+
     void set_result(void *r)
     {
       pointer_result = r;
@@ -70,6 +92,7 @@ namespace ztst
   void it(string description, cb test, TEST_OPTIONS &opts);
 
   RESULT_CHECK expect(int val);
+  RESULT_CHECK expect(int val, EXPECT_CONTEXT &ctx);
   RESULT_CHECK expect(string val);
   RESULT_CHECK expect(void *val);
 

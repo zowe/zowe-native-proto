@@ -17,20 +17,36 @@
 #include "ztest.hpp"
 #include <setjmp.h>
 
+string ztst::RESULT_CHECK::append_error_details()
+{
+  string error = "";
+  if (ctx.initialized)
+  {
+    error += "\n    at " + ctx.file_name + ":" + to_string(ctx.line_number);
+    if (ctx.message.size() > 0)
+      error += "   (" + ctx.message + ")";
+  }
+  return error;
+}
+
 void ztst::RESULT_CHECK::ToBe(int val)
 {
   if (inverse)
   {
     if (int_result == val)
     {
-      throw runtime_error("expected int '" + to_string(int_result) + "' NOT to be '" + to_string(val) + "'");
+      string error = "expected int '" + to_string(int_result) + "' NOT to be '" + to_string(val) + "'";
+      error += append_error_details();
+      throw runtime_error(error);
     }
   }
   else
   {
     if (int_result != val)
     {
-      throw runtime_error("expected int '" + to_string(int_result) + "' to be '" + to_string(val) + "'");
+      string error = "expected int '" + to_string(int_result) + "' to be '" + to_string(val) + "'";
+      error += append_error_details();
+      throw runtime_error(error);
     }
   }
 }
@@ -41,14 +57,18 @@ void ztst::RESULT_CHECK::ToBe(string val)
   {
     if (string_result != val)
     {
-      throw runtime_error("expected string '" + string_result + "' to be '" + val + "'");
+      string error = "expected string '" + string_result + "' to be '" + val + "'";
+      error += append_error_details();
+      throw runtime_error(error);
     }
   }
   else
   {
     if (string_result == val)
     {
-      throw runtime_error("expected string '" + string_result + "' NOT to be '" + val + "'");
+      string error = "expected string '" + string_result + "' NOT to be '" + val + "'";
+      error += append_error_details();
+      throw runtime_error(error);
     }
   }
 }
@@ -61,7 +81,9 @@ void ztst::RESULT_CHECK::ToBeNull()
     {
       stringstream ss;
       ss << pointer_result;
-      throw runtime_error("expected pointer '" + ss.str() + "' to be null");
+      string error = "expected pointer '" + ss.str() + "' to be null";
+      error += append_error_details();
+      throw runtime_error(error);
     }
   }
   else
@@ -70,7 +92,9 @@ void ztst::RESULT_CHECK::ToBeNull()
     {
       stringstream ss;
       ss << pointer_result;
-      throw runtime_error("expected '" + ss.str() + "' NOT to be null");
+      string error = "expected '" + ss.str() + "' NOT to be null";
+      error += append_error_details();
+      throw runtime_error(error);
     }
   }
 }
@@ -204,6 +228,15 @@ ztst::RESULT_CHECK ztst::expect(int val)
 {
   ztst::RESULT_CHECK result;
   result.set_result(val);
+  result.set_inverse(false);
+  return result;
+}
+
+ztst::RESULT_CHECK ztst::expect(int val, EXPECT_CONTEXT &ctx)
+{
+  ztst::RESULT_CHECK result;
+  result.set_result(val);
+  result.set_context(ctx);
   result.set_inverse(false);
   return result;
 }

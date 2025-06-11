@@ -118,11 +118,18 @@ void zjb_tests()
                   expect(rc).ToBe(0);
                 });
 
-             it("should fail",
+             it("should pass the test",
                 []() -> void
                 {
                   int rc = 1;
-                  expect(rc).ToBe(0);
+
+                  // expect(0).ToBe(1);
+
+                  ZJB zjb = {0};
+                  sprintf(zjb.diag.e_msg, "Failed to submit job");
+
+                  Expect(0).Not().ToBe(3);
+                  ExpectWithContext(5, zjb.diag.e_msg).ToBe(3);
                 });
            });
 }
