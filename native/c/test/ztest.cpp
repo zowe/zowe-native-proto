@@ -24,7 +24,7 @@ string ztst::RESULT_CHECK::append_error_details()
   {
     error += "\n    at " + ctx.file_name + ":" + to_string(ctx.line_number);
     if (ctx.message.size() > 0)
-      error += "   (" + ctx.message + ")";
+      error += " (" + ctx.message + ")";
   }
   return error;
 }
