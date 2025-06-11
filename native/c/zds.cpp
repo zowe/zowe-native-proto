@@ -1099,7 +1099,7 @@ int zds_read_from_dsn_streamed(ZDS *zds, string dsn, string pipe)
 
   const size_t chunk_size = FIFO_CHUNK_SIZE * 3 / 4;
   std::vector<char> buf(chunk_size);
-  ssize_t bytes_read;
+  size_t bytes_read;
 
   while ((bytes_read = fread(&buf[0], 1, chunk_size, fin)) > 0)
   {
@@ -1201,7 +1201,7 @@ int zds_write_to_dsn_streamed(ZDS *zds, string dsn, string pipe)
   }
 
   std::vector<char> buf(FIFO_CHUNK_SIZE);
-  ssize_t bytes_read;
+  size_t bytes_read;
 
   while ((bytes_read = fread(&buf[0], 1, FIFO_CHUNK_SIZE, fin)) > 0)
   {
@@ -1226,7 +1226,7 @@ int zds_write_to_dsn_streamed(ZDS *zds, string dsn, string pipe)
       }
     }
 
-    ssize_t bytes_written = fwrite(chunk, 1, chunk_len, fout);
+    size_t bytes_written = fwrite(chunk, 1, chunk_len, fout);
     if (bytes_written != chunk_len)
     {
       zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to write to '%s' (possibly out of space)", dsname.c_str());
