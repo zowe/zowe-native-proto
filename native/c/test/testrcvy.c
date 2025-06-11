@@ -13,6 +13,7 @@
 #include "zmetal.h"
 #include "zrecovery.h"
 #include "zwto.h"
+#include "zecb.h"
 
 #pragma prolog(ABEXIT, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(ABEXIT, " ZWEEPILG ")
@@ -45,6 +46,23 @@ int main()
   int val = SOMEFUNC();
 
   zwto_debug("@TEST main");
+
+  ECB e1 = {0};
+  ecb_post(&e1);
+  ecb_wait(&e1);
+
+  // timer(1 * 100, SOMEFUNC, NULL);
+
+  // zwto_debug("@TEST waiting for 3 seconds");
+  // time_wait(1 * 100 * 3);
+  // zwto_debug("@TEST waiting complete");
+
+  timer(1 * 100, SOMEFUNC, NULL);
+
+  zwto_debug("@TEST waiting for 3 seconds");
+  time_wait(1 * 100 * 3);
+  // cancel_timers();
+  zwto_debug("@TEST waiting complete");
 
   if (0 == enable_recovery(&zenv))
   {
