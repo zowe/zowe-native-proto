@@ -278,7 +278,7 @@ int ZJBMMOD(ZJB *zjb, int type, int flags)
     }
     else
     {
-      zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "No jobs found matching correlator '%.8s'", zjb->jobid);
+      zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "No jobs found matching correlator '%.64s'", zjb->job_correlator);
     }
     zjb->diag.detail_rc = ZJB_RTNCD_JOB_NOT_FOUND;
     return RTNCD_FAILURE;
@@ -574,7 +574,7 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
     }
     else
     {
-      zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "No jobs found matching correlator '%.8s'", zjb->jobid);
+      zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "No jobs found matching correlator '%.64s'", zjb->job_correlator);
     }
     zjb->diag.detail_rc = ZJB_RTNCD_JOB_NOT_FOUND;
     stat.stattype = statmem; // free storage
