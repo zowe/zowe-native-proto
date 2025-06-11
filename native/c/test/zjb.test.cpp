@@ -51,8 +51,9 @@ void zjb_tests()
 
                   string correlator = string(zjb.job_correlator, 64);
                   memset(&zjb, 0, sizeof(zjb));
-                  // rc = zjb_delete(&zjb, correlator);
-                  // ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
+                  sleep(1); // wait for job to complete
+                  rc = zjb_delete(&zjb, correlator);
+                  ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
                 });
 
              it("should be able to view a submitted job",
@@ -79,7 +80,6 @@ void zjb_tests()
                   memset(&zjb, 0, sizeof(zjb));
                   rc = zjb_delete(&zjb, correlator);
                   ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
-                  cout << "@TEST deleted a job successfully with rc " << rc << endl;
                 });
 
              it("should be able to delete a submitted job",
