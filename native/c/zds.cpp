@@ -36,10 +36,10 @@ const size_t MAX_DS_LENGTH = 44u;
 using namespace std;
 
 // https://www.ibm.com/docs/en/zos/2.5.0?topic=functions-fldata-retrieve-file-information#fldata__fldat
-string zds_get_recfm(const fldata_t& file_info)
+string zds_get_recfm(const fldata_t &file_info)
 {
   string recfm = ZDS_RECFM_UNKNOWN;
-  
+
   if (file_info.__recfmF)
   {
     recfm = ZDS_RECFM_F;
@@ -64,7 +64,7 @@ string zds_get_recfm(const fldata_t& file_info)
   {
     recfm = ZDS_RECFM_U;
   }
-  
+
   return recfm;
 }
 
@@ -123,7 +123,7 @@ int zds_read_from_dsn(ZDS *zds, string dsn, string &response)
 {
   string dsname = "//'" + dsn + "'";
   const string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "rb" : "r";
-    
+
   FILE *fp = fopen(dsname.c_str(), fopen_flags.c_str());
   if (!fp)
   {
@@ -220,7 +220,7 @@ int zds_write_to_dsn(ZDS *zds, string dsn, string &data)
 
   const string dsname = "//'" + dsn + "'";
   const string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "wb" : "w" + string(",recfm=*");
-    
+
   auto *fp = fopen(dsname.c_str(), fopen_flags.c_str());
   if (nullptr == fp)
   {
@@ -850,7 +850,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
               fclose(dir);
               dir_closed = true;
 
-              FILE* pds_directory = nullptr;
+              FILE *pds_directory = nullptr;
               unsigned char directory_block[256];
               char first_member[9]; // null-terminated 8-character name
 
@@ -858,43 +858,54 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
               // https://www.ibm.com/docs/en/zos/2.4.0?topic=pds-structure
               pds_directory = fopen(dsn.c_str(), "rb,recfm=U");
 
-              if (pds_directory) {
+              if (pds_directory)
+              {
                 // Read the first 256-byte block.
                 size_t bytes_read = fread(directory_block, 1, sizeof(directory_block), pds_directory);
                 fclose(pds_directory);
 
                 // Need at least 2 (count) + 8 (name) bytes to parse a valid entry
-                if (bytes_read >= 10) {
+                if (bytes_read >= 10)
+                {
                   // Check if the first member entry (starting at offset 2) is the end-of-directory marker.
                   bool is_end_marker = true;
-                  for (int i = 0; i < 8; ++i) {
-                      if (directory_block[2 + i] != 0xFF) {
-                          is_end_marker = false;
-                          break;
-                      }
+                  for (int i = 0; i < 8; ++i)
+                  {
+                    if (directory_block[2 + i] != 0xFF)
+                    {
+                      is_end_marker = false;
+                      break;
+                    }
                   }
 
-                  if (!is_end_marker) {
+                  if (!is_end_marker)
+                  {
                     // Extract the first member name from the directory block
                     memcpy(first_member, &directory_block[2], 8);
                     first_member[8] = '\0'; // null-terminate
                     // Remove trailing spaces from member name
-                    for (int i = 7; i >= 0; --i) {
-                      if (first_member[i] == ' ') {
+                    for (int i = 7; i >= 0; --i)
+                    {
+                      if (first_member[i] == ' ')
+                      {
                         first_member[i] = '\0';
-                      } else {
+                      }
+                      else
+                      {
                         break;
                       }
                     }
-                    
+
                     // Open a file handle to the first member entry from the entry
                     string dsn_str = string(entry.name);
                     string dsn_with_member = string("//'") + zut_trim(dsn_str) + "(" + first_member + ")'";
-                    FILE* member_file = fopen(dsn_with_member.c_str(), "r");
+                    FILE *member_file = fopen(dsn_with_member.c_str(), "r");
 
-                    if (member_file) {
+                    if (member_file)
+                    {
                       fldata_t member_file_info = {0};
-                      if (0 == fldata(member_file, nullptr, &member_file_info)) {
+                      if (0 == fldata(member_file, nullptr, &member_file_info))
+                      {
                         // One PDS member's recfm applies to all members in PDS
                         entry.recfm = zds_get_recfm(member_file_info);
                       }
@@ -914,7 +925,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
               entry.dsorg = ZDS_DSORG_UNKNOWN;
               entry.volser = ZDS_VOLSER_UNKNOWN;
             }
-            
+
             if (entry.recfm == ZDS_RECFM_UNKNOWN)
             {
               entry.recfm = zds_get_recfm(file_info);
@@ -926,7 +937,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
             entry.volser = ZDS_VOLSER_UNKNOWN;
             entry.recfm = ZDS_RECFM_UNKNOWN;
           }
-          if (!dir_closed) 
+          if (!dir_closed)
           {
             fclose(dir);
           }
@@ -1088,7 +1099,7 @@ int zds_read_from_dsn_streamed(ZDS *zds, string dsn, string pipe)
 
   const size_t chunk_size = FIFO_CHUNK_SIZE * 3 / 4;
   std::vector<char> buf(chunk_size);
-  ssize_t bytes_read;
+  size_t bytes_read;
 
   while ((bytes_read = fread(&buf[0], 1, chunk_size, fin)) > 0)
   {
@@ -1190,7 +1201,7 @@ int zds_write_to_dsn_streamed(ZDS *zds, string dsn, string pipe)
   }
 
   std::vector<char> buf(FIFO_CHUNK_SIZE);
-  ssize_t bytes_read;
+  size_t bytes_read;
 
   while ((bytes_read = fread(&buf[0], 1, FIFO_CHUNK_SIZE, fin)) > 0)
   {
@@ -1215,7 +1226,14 @@ int zds_write_to_dsn_streamed(ZDS *zds, string dsn, string pipe)
       }
     }
 
-    fwrite(chunk, 1, chunk_len, fout);
+    size_t bytes_written = fwrite(chunk, 1, chunk_len, fout);
+    if (bytes_written != chunk_len)
+    {
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to write to '%s' (possibly out of space)", dsname.c_str());
+      fclose(fin);
+      fclose(fout);
+      return RTNCD_FAILURE;
+    }
   }
 
   fflush(fout);
