@@ -54,7 +54,7 @@ module.exports = {
         [
             "@octorelease/github",
             {
-                assets: process.env.TRAIN == "Release" ? ["dist/*.pax.Z", "dist/*.tgz", "dist/*.vsix"] : []
+                assets: ["dist/*.pax.Z", "dist/*.tgz", "dist/*.vsix"]
             },
         ],
         "@octorelease/git",
