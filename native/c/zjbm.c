@@ -272,7 +272,14 @@ int ZJBMMOD(ZJB *zjb, int type, int flags)
 
   if (0 == ssjm.ssjmnsjf)
   {
-    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "No jobs found matching jobid '%.8s'", zjb->jobid);
+    if (zjb->jobid[0] != 0x00)
+    {
+      zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "No jobs found matching jobid '%.8s' or insufficient permission", zjb->jobid);
+    }
+    else
+    {
+      zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "No jobs found matching correlator '%.8s' or insufficient permission", zjb->jobid);
+    }
     zjb->diag.detail_rc = ZJB_RTNCD_JOB_NOT_FOUND;
     return RTNCD_FAILURE;
   }
@@ -561,7 +568,14 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
 
   if (NULL == statjqp)
   {
-    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "No jobs found matching jobid '%.8s'", zjb->jobid);
+    if (zjb->jobid[0] != 0x00)
+    {
+      zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "No jobs found matching jobid '%.8s'", zjb->jobid);
+    }
+    else
+    {
+      zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "No jobs found matching correlator '%.8s'", zjb->jobid);
+    }
     zjb->diag.detail_rc = ZJB_RTNCD_JOB_NOT_FOUND;
     stat.stattype = statmem; // free storage
     rc = iefssreq(&ssobp);   // TODO(Kelosky): recovery
