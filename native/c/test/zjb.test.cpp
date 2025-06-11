@@ -33,7 +33,8 @@ void zjb_tests()
                   string prefix = "*"; // any prefix
                   zjb.jobs_max = 1;    // limit to one
                   vector<ZJob> jobs;
-                  expect(zjb_list_by_owner(&zjb, owner, prefix, jobs)).ToBe(RTNCD_WARNING); // expect truncated list returned
+                  int rc = zjb_list_by_owner(&zjb, owner, prefix, jobs);
+                  ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_WARNING); // expect truncated list returned
                 });
 
              it("should be able to submit JCL",
@@ -45,13 +46,13 @@ void zjb_tests()
                                "//RUNBR14  EXEC PGM=IEFBR14\n";
 
                   int rc = zjb_submit(&zjb, jcl, jobid);
-                  expect(rc).ToBe(0);
-                  expect(jobid).Not().ToBe("");
+                  ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
+                  Expect(jobid).Not().ToBe("");
 
                   string correlator = string(zjb.job_correlator, 64);
                   memset(&zjb, 0, sizeof(zjb));
                   rc = zjb_delete(&zjb, correlator);
-                  expect(rc).ToBe(0);
+                  ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
                 });
 
              it("should be able to view a submitted job",
@@ -63,7 +64,7 @@ void zjb_tests()
                                "//RUNBR14  EXEC PGM=IEFBR14\n";
 
                   int rc = zjb_submit(&zjb, jcl, jobid);
-                  expect(rc).ToBe(0);
+                  ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
 
                   ZJob zjob;
 
@@ -71,13 +72,13 @@ void zjb_tests()
 
                   memset(&zjb, 0, sizeof(zjb));
                   rc = zjb_view(&zjb, correlator, zjob);
-                  expect(rc).ToBe(0);
+                  ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
 
-                  expect(correlator).ToBe(zjob.job_correlator); // vefify submit correlator matches view status correlator
+                  Expect(correlator).ToBe(zjob.job_correlator); // vefify submit correlator matches view status correlator
 
                   memset(&zjb, 0, sizeof(zjb));
                   rc = zjb_delete(&zjb, correlator);
-                  expect(rc).ToBe(0);
+                  ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
                 });
 
              it("should be able to delete a submitted job",
@@ -89,13 +90,13 @@ void zjb_tests()
                                "//RUNBR14  EXEC PGM=IEFBR14\n";
 
                   int rc = zjb_submit(&zjb, jcl, jobid);
-                  expect(rc).ToBe(0);
+                  ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
 
                   string correlator = string(zjb.job_correlator, 64);
 
                   memset(&zjb, 0, sizeof(zjb));
                   rc = zjb_delete(&zjb, correlator);
-                  expect(rc).ToBe(0);
+                  ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
                 });
 
              it("should be able to read job JCL",
@@ -107,7 +108,7 @@ void zjb_tests()
                                "//RUNBR14  EXEC PGM=IEFBR14\n";
 
                   int rc = zjb_submit(&zjb, jcl, jobid);
-                  expect(rc).ToBe(0);
+                  ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
 
                   string correlator = string(zjb.job_correlator, 64);
                   string returned_jcl;
@@ -115,21 +116,7 @@ void zjb_tests()
                   memset(&zjb, 0, sizeof(zjb));
                   sleep(1); // wait for job to complete
                   rc = zjb_read_job_jcl(&zjb, correlator, returned_jcl);
-                  expect(rc).ToBe(0);
-                });
-
-             it("should pass the test",
-                []() -> void
-                {
-                  int rc = 1;
-
-                  // expect(0).ToBe(1);
-
-                  ZJB zjb = {0};
-                  sprintf(zjb.diag.e_msg, "Failed to submit job");
-
-                  Expect(0).Not().ToBe(3);
-                  ExpectWithContext(5, zjb.diag.e_msg).ToBe(3);
+                  ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
                 });
            });
 }

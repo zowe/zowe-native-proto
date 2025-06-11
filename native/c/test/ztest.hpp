@@ -21,7 +21,7 @@ using namespace std;
 // TODO(Kelosky): handle test not run
 // TODO(Kelosky): handle running individual test and/or suite
 
-#define Expect(x) []() -> RESULT_CHECK { EXPECT_CONTEXT ctx = {__LINE__, __FILE__}; return expect(x, ctx); }()
+#define Expect(x) [&]() -> RESULT_CHECK { EXPECT_CONTEXT ctx = {__LINE__, __FILE__}; return expect(x, ctx); }()
 #define ExpectWithContext(x, context) [&]() -> RESULT_CHECK { EXPECT_CONTEXT ctx = {__LINE__, __FILE__, string(context)}; return expect(x, ctx); }()
 
 namespace ztst
@@ -94,7 +94,9 @@ namespace ztst
   RESULT_CHECK expect(int val);
   RESULT_CHECK expect(int val, EXPECT_CONTEXT &ctx);
   RESULT_CHECK expect(string val);
+  RESULT_CHECK expect(string val, EXPECT_CONTEXT &ctx);
   RESULT_CHECK expect(void *val);
+  RESULT_CHECK expect(void *val, EXPECT_CONTEXT &ctx);
 
   int report();
 

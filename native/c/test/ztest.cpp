@@ -234,26 +234,38 @@ ztst::RESULT_CHECK ztst::expect(int val)
 
 ztst::RESULT_CHECK ztst::expect(int val, EXPECT_CONTEXT &ctx)
 {
-  ztst::RESULT_CHECK result;
-  result.set_result(val);
+  RESULT_CHECK result = expect(val);
   result.set_context(ctx);
-  result.set_inverse(false);
   return result;
 }
 
 ztst::RESULT_CHECK ztst::expect(string val)
 {
-  ztst::RESULT_CHECK result;
+  RESULT_CHECK result;
   result.set_result(val);
   result.set_inverse(false);
   return result;
 }
 
+ztst::RESULT_CHECK ztst::expect(string val, EXPECT_CONTEXT &ctx)
+{
+  RESULT_CHECK result = expect(val);
+  result.set_context(ctx);
+  return result;
+}
+
 ztst::RESULT_CHECK ztst::expect(void *val)
 {
-  ztst::RESULT_CHECK result;
+  RESULT_CHECK result;
   result.set_result(val);
   result.set_inverse(false);
+  return result;
+}
+
+ztst::RESULT_CHECK ztst::expect(void *val, EXPECT_CONTEXT &ctx)
+{
+  RESULT_CHECK result = expect(val);
+  result.set_context(ctx);
   return result;
 }
 
