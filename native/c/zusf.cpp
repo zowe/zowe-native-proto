@@ -312,13 +312,9 @@ int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data)
   const auto codepage = string(zusf->encoding_opts.codepage);
   struct stat file_stats;
 
-  if (strlen(zusf->etag) > 0)
+  int stat_result = stat(file.c_str(), &file_stats);
+  if (strlen(zusf->etag) > 0 && stat_result != -1)
   {
-    if (stat(file.c_str(), &file_stats) == -1)
-    {
-      zusf->diag.e_msg_len = std::sprintf(zusf->diag.e_msg, "Etag supplied for non-existent file '%s'", file.c_str());
-      return RTNCD_FAILURE;
-    }
     const auto current_etag = zut_build_etag(file_stats.st_mtime, file_stats.st_size);
     if (current_etag != zusf->etag)
     {
@@ -326,8 +322,6 @@ int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data)
       return RTNCD_FAILURE;
     }
   }
-
-  int stat_result = stat(file.c_str(), &file_stats);
   if (stat_result == -1 && errno != ENOENT)
     return RTNCD_FAILURE;
   zusf->created = stat_result == -1;
@@ -390,21 +384,16 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe)
   const auto hasEncoding = zusf->encoding_opts.data_type == eDataTypeText && strlen(zusf->encoding_opts.codepage) > 0;
   const auto codepage = string(zusf->encoding_opts.codepage);
 
-  if (std::strlen(zusf->etag) > 0)
+  int stat_result = stat(file.c_str(), &file_stats);
+  if (strlen(zusf->etag) > 0 && stat_result != -1)
   {
-    if (stat(file.c_str(), &file_stats) == -1)
+    const auto current_etag = zut_build_etag(file_stats.st_mtime, file_stats.st_size);
+    if (current_etag != zusf->etag)
     {
-      zusf->diag.e_msg_len = std::sprintf(zusf->diag.e_msg, "Warning: Etag supplied for non-existent file '%s'", file.c_str());
-    }
-    const string currentTag = zut_build_etag(file_stats.st_mtime, file_stats.st_size);
-    if (currentTag != zusf->etag)
-    {
-      zusf->diag.e_msg_len = std::sprintf(zusf->diag.e_msg, "Etag mismatch: expected %s, actual %s", zusf->etag, currentTag.c_str());
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Etag mismatch: expected %s, actual %s", zusf->etag, current_etag.c_str());
       return RTNCD_FAILURE;
     }
   }
-
-  int stat_result = stat(file.c_str(), &file_stats);
   if (stat_result == -1 && errno != ENOENT)
     return RTNCD_FAILURE;
   zusf->created = stat_result == -1;
