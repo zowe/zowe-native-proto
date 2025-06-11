@@ -39,6 +39,7 @@
 using namespace std;
 
 int handle_console_issue_new(const parser::ParseResult &result);
+int handle_tso_issue_new(const parser::ParseResult &result);
 
 // Old handler declarations - will be migrated in subsequent phases
 /*
@@ -105,7 +106,7 @@ int main(int argc, char *argv[])
   auto console_cmd = std::make_shared<parser::Command>("console", "z/OS console operations");
   console_cmd->add_alias("cn");
 
-  // Issue subcommand
+  // Console Issue subcommand
   auto issue_cmd = std::make_shared<parser::Command>("issue", "issue a console command");
   issue_cmd->add_keyword_arg("console-name",
                              parser::make_aliases("--cn", "--console-name"),
@@ -123,6 +124,18 @@ int main(int argc, char *argv[])
   arg_parser.get_root_command().add_command(console_cmd);
 
   // TODO: Update to support interactive mode
+  // TSO command group
+  auto tso_cmd = std::make_shared<parser::Command>("tso", "TSO operations");
+
+  // TSO issue subcommand
+  auto tso_issue_cmd = std::make_shared<parser::Command>("issue", "issue TSO command");
+  tso_issue_cmd->add_positional_arg("command", "command to issue", parser::ArgType_Single, true);
+  tso_issue_cmd->set_handler(handle_tso_issue_new);
+
+  tso_cmd->add_command(tso_issue_cmd);
+  arg_parser.get_root_command().add_command(tso_cmd);
+
+  // Parse and execute
   parser::ParseResult result = arg_parser.parse(argc, argv);
   return result.exit_code;
 
@@ -887,6 +900,25 @@ int handle_console_issue_new(const parser::ParseResult &result)
     cerr << "  Details: " << zcn.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
+  return rc;
+}
+
+int handle_tso_issue_new(const parser::ParseResult &result)
+{
+  int rc = 0;
+  string command = result.find_pos_arg_string("command");
+  string response;
+
+  rc = ztso_issue(command, response);
+
+  if (0 != rc)
+  {
+    cerr << "Error running command, rc '" << rc << "'" << endl;
+    cerr << "  Details: " << response << endl;
+  }
+
+  cout << response;
+
   return rc;
 }
 
