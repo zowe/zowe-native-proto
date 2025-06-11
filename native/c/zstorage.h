@@ -6,15 +6,29 @@
  * SPDX-License-Identifier: EPL-2.0
  *
  * Copyright Contributors to the Zowe Project.
- *
  */
 
 #ifndef ZSTORAGE_H
 #define ZSTORAGE_H
+/**
+ * @file zstorage.h
+ * @brief Storage management functions and macros for IBM Z Metal environment.
+ *
+ * This file contains storage management functions and macros for IBM Z Metal environment.
+ */
+
 #include <stdio.h>
 #include "zmetal.h"
 
 #if defined(__IBM_METAL__)
+/**
+ * @def STORAGE_OBTAIN(addr, size, loc)
+ * @brief Macro to obtain storage in the IBM Z Metal environment.
+ *
+ * @param addr Pointer to the storage address.
+ * @param size Size of the storage to obtain.
+ * @param loc Location code for the storage (e.g., 24, 31).
+ */
 #define STORAGE_OBTAIN(addr, size, loc)                       \
   __asm(                                                      \
       "*                                                  \n" \
@@ -36,11 +50,18 @@
 #endif
 
 #if defined(__IBM_METAL__)
+/**
+ * @def STORAGE_RELEASE(addr, size)
+ * @brief Macro to release storage in the IBM Z Metal environment.
+ *
+ * @param addr Pointer to the storage address.
+ * @param size Size of the storage to release.
+ */
 #define STORAGE_RELEASE(addr, size)                           \
   __asm(                                                      \
       "*                                                  \n" \
       " LLGF  0,%1      = storage length                  \n" \
-      " LLGF  1,%0      -> storage address                \n" \
+      " LA    1,%0      -> storage address                \n" \
       "*                                                  \n" \
       " STORAGE RELEASE,"                                     \
       "LENGTH=(0),"                                           \
@@ -56,6 +77,13 @@
 #endif
 
 #if defined(__IBM_METAL__)
+/**
+ * @def IARST64_GET(size, areaaddr)
+ * @brief Macro to get a 64-bit storage area in the IBM Z Metal environment.
+ *
+ * @param size Size of the storage area to get.
+ * @param areaaddr Pointer to the storage area address.
+ */
 #define IARST64_GET(size, areaaddr)                           \
   __asm(                                                      \
       "*                                                  \n" \
@@ -79,6 +107,13 @@
 #endif
 
 #if defined(__IBM_METAL__)
+/**
+ * @def IARST64_FREE(areaaddr, temp)
+ * @brief Macro to free a 64-bit storage area in the IBM Z Metal environment.
+ *
+ * @param areaaddr Pointer to the storage area address.
+ * @param temp Temporary storage for the address.
+ */
 #define IARST64_FREE(areaaddr, temp)                          \
   __asm(                                                      \
       "*                                                  \n" \
@@ -95,6 +130,12 @@
 #define IARST64_FREE(areaaddr, temp)
 #endif
 
+/**
+ * @brief Obtain storage for 24-bit addressing.
+ *
+ * @param size Size of the storage to obtain.
+ * @return Pointer to the obtained storage address.
+ */
 static void *PTR32 storage_obtain24(int size)
 {
   void *PTR32 addr = NULL;
@@ -102,6 +143,12 @@ static void *PTR32 storage_obtain24(int size)
   return addr;
 }
 
+/**
+ * @brief Obtain storage for 31-bit addressing.
+ *
+ * @param size Size of the storage to obtain.
+ * @return Pointer to the obtained storage address.
+ */
 static void *PTR32 storage_obtain31(int size)
 {
   void *PTR32 addr = NULL;
@@ -109,23 +156,39 @@ static void *PTR32 storage_obtain31(int size)
   return addr;
 }
 
-static void storage_release(void *PTR32 addr, int size)
+/**
+ * @brief Release storage.
+ *
+ * @param size Size of the storage to release.
+ * @param addr Pointer to the storage address.
+ */
+static void storage_release(int size, void *PTR32 addr)
 {
   STORAGE_RELEASE(addr, size);
 }
 
+/**
+ * @brief Get 64-bit storage area.
+ *
+ * @param size Size of the storage area to get.
+ * @return Pointer to the obtained storage area address.
+ */
 static void *PTR64 storage_get64(int size)
 {
   void *PTR64 storage = NULL;
-
   IARST64_GET(size, storage);
   return storage;
 }
 
+/**
+ * @brief Free 64-bit storage area.
+ *
+ * @param storage Pointer to the storage area address.
+ */
 static void storage_free64(void *PTR64 storage)
 {
   void *PTR64 temp = storage;
   IARST64_FREE(storage, temp);
 }
 
-#endif
+#endif // ZSTORAGE_H

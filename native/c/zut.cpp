@@ -138,7 +138,6 @@ int zut_hello(string name)
 
 void zut_dump_storage(string title, const void *data, size_t size)
 {
-  ios::fmtflags f(cerr.flags());
   fprintf(stderr, "--- Dumping storage for '%s' at x'%016llx' ---\n", title.c_str(), (unsigned long long)data);
 
   unsigned char *ptr = (unsigned char *)data;
@@ -157,58 +156,57 @@ void zut_dump_storage(string title, const void *data, size_t size)
   for (int x = 0; x < lines; x++)
   {
     fprintf(stderr, "%016llx", (unsigned long long)ptr);
-    cerr << " | ";
+    fprintf(stderr, " | ");
     for (int y = 0; y < BYTES_PER_LINE; y++)
     {
       unsigned char p = isprint(ptr[y]) ? ptr[y] : unknown;
-      cerr << setw(1) << setfill(' ') << p;
+      fprintf(stderr, "%c", p);
     }
-    cerr << " | ";
+    fprintf(stderr, " | ");
 
     for (int y = 0; y < BYTES_PER_LINE; y++)
     {
-      cerr << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(ptr[y]);
+      // cerr << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(ptr[y]);
+      fprintf(stderr, "%02x", (unsigned char)ptr[y]);
 
       if ((y + 1) % 4 == 0)
       {
-        cerr << " ";
+        fprintf(stderr, " ");
       }
       if ((y + 1) % 16 == 0)
       {
-        cerr << "    ";
+        fprintf(stderr, "    ");
       }
     }
-    cerr << endl;
+    fprintf(stderr, "\n");
     ptr = ptr + BYTES_PER_LINE;
   }
 
   fprintf(stderr, "%016llx", (unsigned long long)ptr);
-  cerr << " | ";
+  fprintf(stderr, " | ");
   for (int y = 0; y < remainder; y++)
   {
     unsigned char p = isprint(ptr[y]) ? ptr[y] : unknown;
-    cerr << setw(1) << setfill(' ') << p;
+    fprintf(stderr, "%c", p);
   }
   memset(buf, 0x00, sizeof(buf));
-  sprintf(buf, "%.*s", BYTES_PER_LINE - remainder, spaces);
-  cerr << buf << " | ";
+  sprintf(buf, "%.*s | ", BYTES_PER_LINE - remainder, spaces);
+  fprintf(stderr, "%s", buf);
   for (int y = 0; y < remainder; y++)
   {
-    cerr << hex << setw(2) << setfill('0') << static_cast<int>(ptr[y]);
+    // cerr << hex << setw(2) << setfill('0') << static_cast<int>(ptr[y]);
+    fprintf(stderr, "%02x", (unsigned char)ptr[y]);
 
     if ((y + 1) % 4 == 0)
     {
-      cerr << " ";
+      fprintf(stderr, " ");
     }
     if ((y + 1) % 16 == 0)
     {
-      cerr << "    ";
+      fprintf(stderr, "    ");
     }
   }
-  cerr << endl;
-  cerr << "--- END ---" << endl;
-
-  cerr.flags(f);
+  fprintf(stderr, "\n--- END ---\n");
 }
 
 /**
