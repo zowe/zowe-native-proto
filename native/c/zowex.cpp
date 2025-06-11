@@ -39,7 +39,9 @@
 using namespace std;
 
 int handle_console_issue(const parser::ParseResult &result);
+
 int handle_tso_issue(const parser::ParseResult &result);
+
 int handle_data_set_create(const parser::ParseResult &result);
 int handle_data_set_create_vb(const parser::ParseResult &result);
 int handle_data_set_create_adata(const parser::ParseResult &result);
@@ -52,6 +54,13 @@ int handle_data_set_delete(const parser::ParseResult &result);
 int handle_data_set_restore(const parser::ParseResult &result);
 int handle_data_set_compress(const parser::ParseResult &result);
 int handle_data_set_create_member(const parser::ParseResult &result);
+
+int handle_tool_convert_dsect(const parser::ParseResult &result);
+int handle_tool_dynalloc(const parser::ParseResult &result);
+int handle_tool_display_symbol(const parser::ParseResult &result);
+int handle_tool_search(const parser::ParseResult &result);
+int handle_tool_amblist(const parser::ParseResult &result);
+int handle_tool_run(const parser::ParseResult &result);
 
 // Old handler declarations - will be migrated in subsequent phases
 /*
@@ -295,6 +304,80 @@ int main(int argc, char *argv[])
   data_set_cmd->add_command(ds_compress_cmd);
 
   arg_parser.get_root_command().add_command(data_set_cmd);
+
+  // Tool command group
+  auto tool_cmd = std::make_shared<parser::Command>("tool", "tool operations");
+
+  // Convert DSECT subcommand
+  auto tool_convert_dsect_cmd = std::make_shared<parser::Command>("ccnedsct", "convert dsect to c struct");
+  tool_convert_dsect_cmd->add_keyword_arg("adata-dsn",
+                                          parser::make_aliases("--adata-dsn", "--ad"),
+                                          "input adata dsn", parser::ArgType_Single, true);
+  tool_convert_dsect_cmd->add_keyword_arg("chdr-dsn",
+                                          parser::make_aliases("--chdr-dsn", "--cd"),
+                                          "output chdr dsn", parser::ArgType_Single, true);
+  tool_convert_dsect_cmd->add_keyword_arg("sysprint",
+                                          parser::make_aliases("--sysprint", "--sp"),
+                                          "sysprint output", parser::ArgType_Single, false);
+  tool_convert_dsect_cmd->add_keyword_arg("sysout",
+                                          parser::make_aliases("--sysout", "--so"),
+                                          "sysout output", parser::ArgType_Single, false);
+  tool_convert_dsect_cmd->set_handler(handle_tool_convert_dsect);
+  tool_cmd->add_command(tool_convert_dsect_cmd);
+
+  // Dynalloc subcommand
+  auto tool_dynalloc_cmd = std::make_shared<parser::Command>("bpxwdy2", "dynalloc command");
+  tool_dynalloc_cmd->add_positional_arg("parm", "dynalloc parm string", parser::ArgType_Single, true);
+  tool_dynalloc_cmd->set_handler(handle_tool_dynalloc);
+  tool_cmd->add_command(tool_dynalloc_cmd);
+
+  // Display symbol subcommand
+  auto tool_display_symbol_cmd = std::make_shared<parser::Command>("display-symbol", "display system symbol");
+  tool_display_symbol_cmd->add_positional_arg("symbol", "symbol to display", parser::ArgType_Single, true);
+  tool_display_symbol_cmd->set_handler(handle_tool_display_symbol);
+  tool_cmd->add_command(tool_display_symbol_cmd);
+
+  // Search subcommand
+  auto tool_search_cmd = std::make_shared<parser::Command>("search", "search members for string");
+  tool_search_cmd->add_positional_arg("dsn", "data set to search", parser::ArgType_Single, true);
+  tool_search_cmd->add_positional_arg("string", "string to search for", parser::ArgType_Single, true);
+  tool_search_cmd->add_keyword_arg("max-entries", parser::make_aliases("--max-entries", "--me"), "max number of results to return before warning generated", parser::ArgType_Single, false);
+  tool_search_cmd->add_keyword_arg("warn", parser::make_aliases("--warn"), "warn if truncated or not found", parser::ArgType_Flag, false, parser::ArgValue(true));
+  tool_search_cmd->set_handler(handle_tool_search);
+  tool_cmd->add_command(tool_search_cmd);
+
+  // Amblist subcommand
+  auto tool_amblist_cmd = std::make_shared<parser::Command>("amblist", "invoke amblist");
+  tool_amblist_cmd->add_positional_arg("dsn", "data containing input load modules", parser::ArgType_Single, true);
+  tool_amblist_cmd->add_keyword_arg("control-statements",
+                                    parser::make_aliases("--control-statements", "--cs"),
+                                    "amblist control statements, e.g. listload output=map,member=testprog",
+                                    parser::ArgType_Single, true);
+  tool_amblist_cmd->set_handler(handle_tool_amblist);
+  tool_cmd->add_command(tool_amblist_cmd);
+
+  // Run subcommand
+  auto tool_run_cmd = std::make_shared<parser::Command>("run", "run a program");
+  tool_run_cmd->add_positional_arg("program", "name of program to run", parser::ArgType_Single, true);
+  tool_run_cmd->add_keyword_arg("dynalloc-pre",
+                                parser::make_aliases("--dynalloc-pre", "--dp"),
+                                "dynalloc pre run statements", parser::ArgType_Single, false);
+  tool_run_cmd->add_keyword_arg("dynalloc-post",
+                                parser::make_aliases("--dynalloc-post", "--dt"),
+                                "dynalloc post run statements", parser::ArgType_Single, false);
+  tool_run_cmd->add_keyword_arg("in-dd",
+                                parser::make_aliases("--in-dd", "--idd"),
+                                "input ddname", parser::ArgType_Single, false);
+  tool_run_cmd->add_keyword_arg("input",
+                                parser::make_aliases("--input", "--in"),
+                                "input", parser::ArgType_Single, false);
+  tool_run_cmd->add_keyword_arg("out-dd",
+                                parser::make_aliases("--out-dd", "--odd"),
+                                "output ddname", parser::ArgType_Single, false);
+  tool_run_cmd->set_handler(handle_tool_run);
+  tool_cmd->add_command(tool_run_cmd);
+
+  arg_parser.get_root_command().add_command(tool_cmd);
 
   // Parse and execute
   parser::ParseResult result = arg_parser.parse(argc, argv);
@@ -1801,6 +1884,475 @@ int handle_data_set_compress(const parser::ParseResult &result)
   }
 
   return RTNCD_SUCCESS;
+}
+
+int handle_tool_convert_dsect(const parser::ParseResult &result)
+{
+  int rc = 0;
+  ZCN zcn = {0};
+  unsigned int code = 0;
+  string resp;
+
+  string adata_dsn = result.find_kw_arg_string("adata-dsn");
+  string chdr_dsn = result.find_kw_arg_string("chdr-dsn");
+  string sysprint = result.find_kw_arg_string("sysprint");
+  string sysout = result.find_kw_arg_string("sysout");
+
+  const char *user = getlogin();
+  string struser(user);
+  transform(struser.begin(), struser.end(), struser.begin(), ::tolower);
+
+  if (sysprint.empty())
+    sysprint = "/tmp/" + struser + "_sysprint.txt";
+  if (sysout.empty())
+    sysout = "/tmp/" + struser + "_sysout.txt";
+
+  cout << adata_dsn << " " << chdr_dsn << " " << sysprint << " " << sysout << endl;
+
+  vector<string> dds;
+  dds.push_back("alloc fi(sysprint) path('" + sysprint + "') pathopts(owronly,ocreat,otrunc) pathmode(sirusr,siwusr,sirgrp) filedata(text) msg(2)");
+  dds.push_back("alloc fi(sysout) path('" + sysout + "') pathopts(owronly,ocreat,otrunc) pathmode(sirusr,siwusr,sirgrp) filedata(text) msg(2)");
+  dds.push_back("alloc fi(sysadata) da('" + adata_dsn + "') shr msg(2)");
+  dds.push_back("alloc fi(edcdsect) da('" + chdr_dsn + "') shr msg(2)");
+
+  for (vector<string>::iterator it = dds.begin(); it != dds.end(); it++)
+  {
+    rc = zut_bpxwdyn(*it, &code, resp);
+    if (0 != rc)
+    {
+      cerr << "Error: bpxwdyn failed with '" << *it << "' rc: '" << rc << "'" << endl;
+      cerr << "  Details: " << resp << endl;
+      return RTNCD_FAILURE;
+    }
+  }
+
+  rc = zut_convert_dsect();
+  if (0 != rc)
+  {
+    cerr << "Error: convert failed with rc: '" << rc << "'" << endl;
+    cout << "  See '" << sysprint << "' and '" << sysout << "' for more details" << endl;
+    return RTNCD_FAILURE;
+  }
+
+  cout << "DSECT converted to '" << chdr_dsn << "'" << endl;
+  cout << "Copy it via `cp \"//'" + chdr_dsn + "'\" <member>.h`" << endl;
+
+  // Free dynalloc dds
+  vector<string> free_dds;
+  for (vector<string>::iterator it = dds.begin(); it != dds.end(); it++)
+  {
+    string alloc_dd = *it;
+    size_t start = alloc_dd.find(" ");
+    size_t end = alloc_dd.find(")", start);
+    if (start == string::npos || end == string::npos)
+    {
+      cerr << "Error: Invalid format in DD alloc string: " << alloc_dd << endl;
+    }
+    else
+    {
+      free_dds.push_back("free " + alloc_dd.substr(start + 1, end - start));
+    }
+  }
+
+  for (vector<string>::iterator it = free_dds.begin(); it != free_dds.end(); it++)
+  {
+    rc = zut_bpxwdyn(*it, &code, resp);
+    if (0 != rc)
+    {
+      cerr << "Error: bpxwdyn failed with '" << *it << "' rc: '" << rc << "'" << endl;
+      cerr << "  Details: " << resp << endl;
+      return RTNCD_FAILURE;
+    }
+  }
+
+  return rc;
+}
+
+int handle_tool_dynalloc(const parser::ParseResult &result)
+{
+  int rc = 0;
+  unsigned int code = 0;
+  string resp;
+
+  string parm = result.find_pos_arg_string("parm");
+
+  rc = zut_bpxwdyn(parm, &code, resp);
+  if (0 != rc)
+  {
+    cerr << "Error: bpxwdyn with parm '" << parm << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << resp << endl;
+    return RTNCD_FAILURE;
+  }
+
+  cout << resp << endl;
+
+  return rc;
+}
+
+int handle_tool_display_symbol(const parser::ParseResult &result)
+{
+  int rc = 0;
+  string symbol = result.find_pos_arg_string("symbol");
+  transform(symbol.begin(), symbol.end(), symbol.begin(), ::toupper);
+  symbol = "&" + symbol;
+  string value;
+  rc = zut_substitute_sybmol(symbol, value);
+  if (0 != rc)
+  {
+    cerr << "Error: asasymbf with parm '" << symbol << "' rc: '" << rc << "'" << endl;
+    return RTNCD_FAILURE;
+  }
+  cout << value << endl;
+
+  return RTNCD_SUCCESS;
+}
+
+int handle_tool_search(const parser::ParseResult &result)
+{
+  int rc = 0;
+
+  string pattern = result.find_pos_arg_string("string");
+  string warn = result.find_kw_arg_string("warn");
+  string max_entries = result.find_kw_arg_string("max-entries");
+  string dsn = result.find_pos_arg_string("dsn");
+
+  ZDS zds = {0};
+  bool results_truncated = false;
+
+  if (!max_entries.empty())
+  {
+    zds.max_entries = atoi(max_entries.c_str());
+  }
+
+  // List members in a data set
+  vector<ZDSMem> members;
+  rc = zds_list_members(&zds, dsn, members);
+
+  // Note if results are truncated
+  if (RTNCD_WARNING == rc)
+  {
+    if (ZDS_RSNCD_MAXED_ENTRIES_REACHED == zds.diag.detail_rc)
+    {
+      results_truncated = true;
+    }
+  }
+
+  // Note failure if we can't list
+  if (RTNCD_SUCCESS != rc && RTNCD_WARNING != rc)
+  {
+    cerr << "Error: could not read data set: '" << dsn << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zds.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
+  // Perform dynalloc
+  vector<string> dds;
+  dds.push_back("alloc dd(newdd) da('" + dsn + "') shr");
+  dds.push_back("alloc dd(outdd)");
+  dds.push_back("alloc dd(sysin)");
+
+  for (vector<string>::iterator it = dds.begin(); it != dds.end(); it++)
+  {
+    unsigned int code = 0;
+    string response;
+    rc = zut_bpxwdyn(*it, &code, response);
+    if (0 != rc)
+    {
+      cerr << "Error: bpxwdyn failed with '" << *it << "' rc: '" << rc << "'" << endl;
+      cerr << "  Details: " << response << endl;
+      return RTNCD_FAILURE;
+    }
+  }
+
+  // Build super c selection criteria
+  string data = " SRCHFOR '" + pattern + "'\n";
+
+  for (vector<ZDSMem>::iterator it = members.begin(); it != members.end(); ++it)
+  {
+    data += " SELECT " + it->name + "\n";
+  }
+
+  // Write control statements
+  zds_write_to_dd(&zds, "sysin", data);
+  if (0 != rc)
+  {
+    cerr << "Error: could not write to dd: '" << "sysin" << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zds.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
+  // Perform search
+  rc = zut_search("parms are unused for now but can be passed to super c, e.g. ANYC (any case)");
+  if (rc != RTNCD_SUCCESS ||
+      rc != ZUT_RTNCD_SEARCH_SUCCESS ||
+      rc != RTNCD_WARNING ||
+      rc != ZUT_RTNCD_SEARCH_WARNING)
+  {
+    cerr << "Error: could error invoking ISRSUPC rc: '" << rc << "'" << endl;
+  }
+
+  // Read output from super c
+  string output;
+  rc = zds_read_from_dd(&zds, "outdd", output);
+  if (0 != rc)
+  {
+    cerr << "Error: could not read from dd: '" << "outdd" << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zds.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+  cout << output << endl;
+
+  if (results_truncated)
+  {
+    if (warn == "true")
+    {
+      cerr << "Warning: results truncated" << endl;
+    }
+  }
+
+  // Free dynalloc dds
+  vector<string> free_dds;
+  for (vector<string>::iterator it = dds.begin(); it != dds.end(); it++)
+  {
+    string alloc_dd = *it;
+    size_t start = alloc_dd.find(" ");
+    size_t end = alloc_dd.find(")", start);
+    if (start == string::npos || end == string::npos)
+    {
+      cerr << "Error: Invalid format in DD alloc string: " << alloc_dd << endl;
+    }
+    else
+    {
+      free_dds.push_back("free " + alloc_dd.substr(start + 1, end - start));
+    }
+  }
+
+  for (vector<string>::iterator it = free_dds.begin(); it != free_dds.end(); it++)
+  {
+    unsigned int code = 0;
+    string response;
+    rc = zut_bpxwdyn(*it, &code, response);
+    if (0 != rc)
+    {
+      cerr << "Error: bpxwdyn failed with '" << *it << "' rc: '" << rc << "'" << endl;
+      cerr << "  Details: " << response << endl;
+      return RTNCD_FAILURE;
+    }
+  }
+
+  return RTNCD_SUCCESS;
+}
+
+int handle_tool_amblist(const parser::ParseResult &result)
+{
+  int rc = 0;
+
+  string dsn = result.find_pos_arg_string("dsn");
+  string statements = " " + result.find_kw_arg_string("control-statements");
+
+  // Perform dynalloc
+  vector<string> dds;
+  dds.push_back("alloc dd(syslib) da('" + dsn + "') shr");
+  dds.push_back("alloc dd(sysprint) lrecl(80) recfm(f,b) blksize(80)");
+  dds.push_back("alloc dd(sysin) lrecl(80) recfm(f,b) blksize(80)");
+
+  for (vector<string>::iterator it = dds.begin(); it != dds.end(); it++)
+  {
+    unsigned int code = 0;
+    string response;
+    rc = zut_bpxwdyn(*it, &code, response);
+    if (0 != rc)
+    {
+      cerr << "Error: bpxwdyn failed with '" << *it << "' rc: '" << rc << "'" << endl;
+      cerr << "  Details: " << response << endl;
+      return RTNCD_FAILURE;
+    }
+  }
+
+  transform(statements.begin(), statements.end(), statements.begin(), ::toupper);
+
+  // Write control statements
+  ZDS zds = {0};
+  zds_write_to_dd(&zds, "sysin", statements);
+  if (0 != rc)
+  {
+    cerr << "Error: could not write to dd: '" << "sysin" << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zds.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
+  // Perform search
+  rc = zut_run("AMBLIST");
+  if (RTNCD_SUCCESS != rc)
+  {
+    cerr << "Error: could error invoking AMBLIST rc: '" << rc << "'" << endl;
+  }
+
+  // Read output from amblist
+  string output;
+  rc = zds_read_from_dd(&zds, "sysprint", output);
+  if (0 != rc)
+  {
+    cerr << "Error: could not read from dd: '" << "sysprint" << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zds.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+  cout << output << endl;
+
+  // Free dynalloc dds
+  vector<string> free_dds;
+  for (vector<string>::iterator it = dds.begin(); it != dds.end(); it++)
+  {
+    string alloc_dd = *it;
+    size_t start = alloc_dd.find(" ");
+    size_t end = alloc_dd.find(")", start);
+    if (start == string::npos || end == string::npos)
+    {
+      cerr << "Error: Invalid format in DD alloc string: " << alloc_dd << endl;
+    }
+    else
+    {
+      free_dds.push_back("free " + alloc_dd.substr(start + 1, end - start));
+    }
+  }
+
+  for (vector<string>::iterator it = free_dds.begin(); it != free_dds.end(); it++)
+  {
+    unsigned int code = 0;
+    string response;
+    rc = zut_bpxwdyn(*it, &code, response);
+    if (0 != rc)
+    {
+      cerr << "Error: bpxwdyn failed with '" << *it << "' rc: '" << rc << "'" << endl;
+      cerr << "  Details: " << response << endl;
+      return RTNCD_FAILURE;
+    }
+  }
+
+  return RTNCD_SUCCESS;
+}
+
+int handle_tool_run(const parser::ParseResult &result)
+{
+  int rc = 0;
+  string program = result.find_pos_arg_string("program");
+  string dynalloc_pre = result.find_kw_arg_string("dynalloc-pre");
+  string dynalloc_post = result.find_kw_arg_string("dynalloc-post");
+
+  // Allocate anything that was requested
+  if (result.has_kw_arg("dynalloc-pre"))
+  {
+    vector<string> dds;
+
+    ifstream in(dynalloc_pre.c_str());
+    if (!in.is_open())
+    {
+      cerr << "Error: could not open '" << dynalloc_pre << "'" << endl;
+      return RTNCD_FAILURE;
+    }
+
+    string line;
+    while (getline(in, line))
+    {
+      dds.push_back(line);
+    }
+    in.close();
+
+    for (vector<string>::iterator it = dds.begin(); it != dds.end(); it++)
+    {
+      unsigned int code = 0;
+      string response;
+      rc = zut_bpxwdyn(*it, &code, response);
+      if (0 != rc)
+      {
+        cerr << "Error: bpxwdyn failed with '" << *it << "' rc: '" << rc << "'" << endl;
+        cerr << "  Details: " << response << endl;
+        return RTNCD_FAILURE;
+      }
+    }
+  }
+
+  string indd = result.find_kw_arg_string("in-dd");
+  if (result.has_kw_arg("in-dd"))
+  {
+    string ddname = "DD:" + indd;
+    ofstream out(ddname.c_str());
+    if (!out.is_open())
+    {
+      cerr << "Error: could not open input '" << ddname << "'" << endl;
+      return RTNCD_FAILURE;
+    }
+
+    string input = result.find_kw_arg_string("input");
+    if (result.has_kw_arg("input"))
+    {
+      out << input << endl;
+    }
+
+    out.close();
+  }
+
+  transform(program.begin(), program.end(), program.begin(), ::toupper);
+
+  rc = zut_run(program);
+
+  if (0 != rc)
+  {
+    cerr << "Error: program '" << program << "' ended with rc: '" << rc << "'" << endl;
+    rc = RTNCD_FAILURE;
+  }
+
+  string outdd = result.find_kw_arg_string("out-dd");
+  if (result.has_kw_arg("out-dd"))
+  {
+    string ddname = "DD:" + outdd;
+    ifstream in(ddname.c_str());
+    if (!in.is_open())
+    {
+      cerr << "Error: could not open output '" << ddname << "'" << endl;
+      return RTNCD_FAILURE;
+    }
+
+    string line;
+    while (getline(in, line))
+    {
+      cout << line << endl;
+    }
+    in.close();
+  }
+
+  // Optionally free everything that was allocated
+  if (result.has_kw_arg("dynalloc-post"))
+  {
+    vector<string> dds;
+
+    ifstream in(dynalloc_post.c_str());
+    if (!in.is_open())
+    {
+      cerr << "Error: could not open '" << dynalloc_post << "'" << endl;
+    }
+
+    string line;
+    while (getline(in, line))
+    {
+      dds.push_back(line);
+    }
+    in.close();
+
+    for (vector<string>::iterator it = dds.begin(); it != dds.end(); it++)
+    {
+      unsigned int code = 0;
+      string response;
+      rc = zut_bpxwdyn(*it, &code, response);
+      if (0 != rc)
+      {
+        cerr << "Error: bpxwdyn failed with '" << *it << "' rc: '" << rc << "'" << endl;
+        cerr << "  Details: " << response << endl;
+      }
+    }
+  }
+
+  return rc;
 }
 
 // Old handler implementations - will be migrated in subsequent phases
