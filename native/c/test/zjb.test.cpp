@@ -78,6 +78,7 @@ void zjb_tests()
                   Expect(correlator).ToBe(zjob.job_correlator); // vefify submit correlator matches view status correlator
 
                   memset(&zjb, 0, sizeof(zjb));
+                  sleep(1); // wait for job to complete
                   rc = zjb_delete(&zjb, correlator);
                   ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
                 });
