@@ -22,7 +22,8 @@
 #include <unistd.h>
 #include "zcn.hpp"
 #include "zut.hpp"
-#include "zcli.hpp"
+// #include "zcli.hpp"
+#include "parser.hpp"
 #include "zjb.hpp"
 #include "zds.hpp"
 #include "zusf.hpp"
@@ -37,6 +38,10 @@
 
 using namespace std;
 
+int handle_console_issue_new(const parser::ParseResult &result);
+
+// Old handler declarations - will be migrated in subsequent phases
+/*
 int handle_job_list(ZCLIResult);
 int handle_job_list_files(ZCLIResult);
 int handle_job_view_status(ZCLIResult);
@@ -90,10 +95,38 @@ int handle_uss_chtag(ZCLIResult);
 int handle_tso_issue(ZCLIResult);
 
 int job_submit_common(ZCLIResult, string, string &, string);
+*/
 
 int main(int argc, char *argv[])
 {
-  // CLI
+  parser::ArgumentParser arg_parser(argv[0], "Zowe Native Protocol CLI - Modernizing mainframe access");
+
+  // Console command group
+  auto console_cmd = std::make_shared<parser::Command>("console", "z/OS console operations");
+  console_cmd->add_alias("cn");
+
+  // Issue subcommand
+  auto issue_cmd = std::make_shared<parser::Command>("issue", "issue a console command");
+  issue_cmd->add_keyword_arg("console-name",
+                             parser::make_aliases("--cn", "--console-name"),
+                             "extended console name", parser::ArgType_Single, true,
+                             parser::ArgValue(std::string("zowex")));
+  issue_cmd->add_keyword_arg("wait",
+                             parser::make_aliases("--wait"),
+                             "wait for responses", parser::ArgType_Flag, false,
+                             parser::ArgValue(true));
+  issue_cmd->add_positional_arg("command", "command to run, e.g. 'D IPLINFO'",
+                                parser::ArgType_Single, true);
+  issue_cmd->set_handler(handle_console_issue_new);
+
+  console_cmd->add_command(issue_cmd);
+  arg_parser.get_root_command().add_command(console_cmd);
+
+  // TODO: Update to support interactive mode
+  parser::ParseResult result = arg_parser.parse(argc, argv);
+  return result.exit_code;
+
+  /* OLD CLI CODE - will be removed in later phases
   ZCLI zcli(argv[PROCESS_NAME_ARG]);
   zcli.set_interactive_mode(true);
 
@@ -806,8 +839,59 @@ int main(int argc, char *argv[])
 
   // parse
   return zcli.parse(argc, argv);
+  */
 }
 
+int handle_console_issue_new(const parser::ParseResult &result)
+{
+  int rc = 0;
+  ZCN zcn = {0};
+
+  string console_name = result.find_kw_arg_string("console-name");
+  string command = result.find_pos_arg_string("command");
+  bool wait = result.find_kw_arg_bool("wait");
+
+  rc = zcn_activate(&zcn, console_name);
+  if (0 != rc)
+  {
+    cerr << "Error: could not activate console: '" << console_name << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zcn.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
+  rc = zcn_put(&zcn, command);
+  if (0 != rc)
+  {
+    cerr << "Error: could not write to console: '" << console_name << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zcn.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
+  if (wait)
+  {
+    string response = "";
+    rc = zcn_get(&zcn, response);
+    if (0 != rc)
+    {
+      cerr << "Error: could not get from console: '" << console_name << "' rc: '" << rc << "'" << endl;
+      cerr << "  Details: " << zcn.diag.e_msg << endl;
+      return RTNCD_FAILURE;
+    }
+    cout << response << endl;
+  }
+
+  rc = zcn_deactivate(&zcn);
+  if (0 != rc)
+  {
+    cerr << "Error: could not deactivate console: '" << console_name << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zcn.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+  return rc;
+}
+
+// Old handler implementations - will be migrated in subsequent phases
+/*
 int loop_dynalloc(vector<string> &list)
 {
   int rc = 0;
@@ -2581,3 +2665,4 @@ int handle_data_set_compress(ZCLIResult result)
 
   return RTNCD_SUCCESS;
 }
+*/
