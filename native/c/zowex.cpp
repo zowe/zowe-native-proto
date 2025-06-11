@@ -62,6 +62,16 @@ int handle_tool_search(const parser::ParseResult &result);
 int handle_tool_amblist(const parser::ParseResult &result);
 int handle_tool_run(const parser::ParseResult &result);
 
+int handle_uss_create_file(const parser::ParseResult &result);
+int handle_uss_create_dir(const parser::ParseResult &result);
+int handle_uss_list(const parser::ParseResult &result);
+int handle_uss_view(const parser::ParseResult &result);
+int handle_uss_write(const parser::ParseResult &result);
+int handle_uss_delete(const parser::ParseResult &result);
+int handle_uss_chmod(const parser::ParseResult &result);
+int handle_uss_chown(const parser::ParseResult &result);
+int handle_uss_chtag(const parser::ParseResult &result);
+
 // Old handler declarations - will be migrated in subsequent phases
 /*
 int handle_job_list(ZCLIResult);
@@ -378,6 +388,108 @@ int main(int argc, char *argv[])
   tool_cmd->add_command(tool_run_cmd);
 
   arg_parser.get_root_command().add_command(tool_cmd);
+
+  // USS command group
+  auto uss_cmd = std::make_shared<parser::Command>("uss", "z/OS USS operations");
+
+  // Common encoding/etag/pipe-path option helpers (reuse from data-set group)
+  auto make_uss_encoding_option = []()
+  {
+    return parser::make_aliases("--encoding", "--ec");
+  };
+  auto make_uss_etag_option = []()
+  {
+    return parser::make_aliases("--etag");
+  };
+  auto make_uss_etag_only_option = []()
+  {
+    return parser::make_aliases("--etag-only");
+  };
+  auto make_uss_return_etag_option = []()
+  {
+    return parser::make_aliases("--return-etag");
+  };
+  auto make_uss_pipe_path_option = []()
+  {
+    return parser::make_aliases("--pipe-path");
+  };
+  auto make_uss_response_format_bytes_option = []()
+  {
+    return parser::make_aliases("--response-format-bytes", "--rfb");
+  };
+
+  // Create-file subcommand
+  auto uss_create_file_cmd = std::make_shared<parser::Command>("create-file", "create a USS file");
+  uss_create_file_cmd->add_positional_arg("file-path", "file path", parser::ArgType_Single, true);
+  uss_create_file_cmd->add_keyword_arg("mode", parser::make_aliases("--mode"), "permissions", parser::ArgType_Single, false);
+  uss_create_file_cmd->set_handler(handle_uss_create_file);
+  uss_cmd->add_command(uss_create_file_cmd);
+
+  // Create-dir subcommand
+  auto uss_create_dir_cmd = std::make_shared<parser::Command>("create-dir", "create a USS directory");
+  uss_create_dir_cmd->add_positional_arg("file-path", "file path", parser::ArgType_Single, true);
+  uss_create_dir_cmd->add_keyword_arg("mode", parser::make_aliases("--mode"), "permissions", parser::ArgType_Single, false);
+  uss_create_dir_cmd->set_handler(handle_uss_create_dir);
+  uss_cmd->add_command(uss_create_dir_cmd);
+
+  // List subcommand
+  auto uss_list_cmd = std::make_shared<parser::Command>("list", "list USS files and directories");
+  uss_list_cmd->add_positional_arg("file-path", "file path", parser::ArgType_Single, true);
+  uss_list_cmd->set_handler(handle_uss_list);
+  uss_cmd->add_command(uss_list_cmd);
+
+  // View subcommand
+  auto uss_view_cmd = std::make_shared<parser::Command>("view", "view a USS file");
+  uss_view_cmd->add_positional_arg("file-path", "file path", parser::ArgType_Single, true);
+  uss_view_cmd->add_keyword_arg("encoding", make_uss_encoding_option(), "return contents in given encoding", parser::ArgType_Single, false);
+  uss_view_cmd->add_keyword_arg("response-format-bytes", make_uss_response_format_bytes_option(), "returns the response as raw bytes", parser::ArgType_Flag, false, parser::ArgValue(false));
+  uss_view_cmd->add_keyword_arg("return-etag", make_uss_return_etag_option(), "Display the e-tag for a read response in addition to data", parser::ArgType_Flag, false, parser::ArgValue(false));
+  uss_view_cmd->add_keyword_arg("pipe-path", make_uss_pipe_path_option(), "Specify a FIFO pipe path for transferring binary data", parser::ArgType_Single, false);
+  uss_view_cmd->set_handler(handle_uss_view);
+  uss_cmd->add_command(uss_view_cmd);
+
+  // Write subcommand
+  auto uss_write_cmd = std::make_shared<parser::Command>("write", "write to a USS file");
+  uss_write_cmd->add_positional_arg("file-path", "file path", parser::ArgType_Single, true);
+  uss_write_cmd->add_keyword_arg("encoding", make_uss_encoding_option(), "encoding for input data", parser::ArgType_Single, false);
+  uss_write_cmd->add_keyword_arg("etag", make_uss_etag_option(), "Provide the e-tag for a write response to detect conflicts before save", parser::ArgType_Single, false);
+  uss_write_cmd->add_keyword_arg("etag-only", make_uss_etag_only_option(), "Only print the e-tag for a write response (when successful)", parser::ArgType_Flag, false, parser::ArgValue(false));
+  uss_write_cmd->add_keyword_arg("pipe-path", make_uss_pipe_path_option(), "Specify a FIFO pipe path for transferring binary data", parser::ArgType_Single, false);
+  uss_write_cmd->set_handler(handle_uss_write);
+  uss_cmd->add_command(uss_write_cmd);
+
+  // Delete subcommand
+  auto uss_delete_cmd = std::make_shared<parser::Command>("delete", "delete a USS item");
+  uss_delete_cmd->add_positional_arg("file-path", "file path", parser::ArgType_Single, true);
+  uss_delete_cmd->add_keyword_arg("recursive", parser::make_aliases("--recursive", "-r"), "Applies the operation recursively (e.g. for folders w/ inner files)", parser::ArgType_Flag, false, parser::ArgValue(false));
+  uss_delete_cmd->set_handler(handle_uss_delete);
+  uss_cmd->add_command(uss_delete_cmd);
+
+  // Chmod subcommand
+  auto uss_chmod_cmd = std::make_shared<parser::Command>("chmod", "change permissions on a USS file or directory");
+  uss_chmod_cmd->add_positional_arg("mode", "new permissions for the file or directory", parser::ArgType_Single, true);
+  uss_chmod_cmd->add_positional_arg("file-path", "file path", parser::ArgType_Single, true);
+  uss_chmod_cmd->add_keyword_arg("recursive", parser::make_aliases("--recursive", "-r"), "Applies the operation recursively (e.g. for folders w/ inner files)", parser::ArgType_Flag, false, parser::ArgValue(false));
+  uss_chmod_cmd->set_handler(handle_uss_chmod);
+  uss_cmd->add_command(uss_chmod_cmd);
+
+  // Chown subcommand
+  auto uss_chown_cmd = std::make_shared<parser::Command>("chown", "change owner on a USS file or directory");
+  uss_chown_cmd->add_positional_arg("owner", "New owner (or owner:group) for the file or directory", parser::ArgType_Single, true);
+  uss_chown_cmd->add_positional_arg("file-path", "file path", parser::ArgType_Single, true);
+  uss_chown_cmd->add_keyword_arg("recursive", parser::make_aliases("--recursive", "-r"), "Applies the operation recursively (e.g. for folders w/ inner files)", parser::ArgType_Flag, false, parser::ArgValue(false));
+  uss_chown_cmd->set_handler(handle_uss_chown);
+  uss_cmd->add_command(uss_chown_cmd);
+
+  // Chtag subcommand
+  auto uss_chtag_cmd = std::make_shared<parser::Command>("chtag", "change tags on a USS file");
+  uss_chtag_cmd->add_positional_arg("file-path", "file path", parser::ArgType_Single, true);
+  uss_chtag_cmd->add_positional_arg("tag", "new tag for the file", parser::ArgType_Single, true);
+  uss_chtag_cmd->add_keyword_arg("recursive", parser::make_aliases("--recursive", "-r"), "Applies the operation recursively (e.g. for folders w/ inner files)", parser::ArgType_Flag, false, parser::ArgValue(false));
+  uss_chtag_cmd->set_handler(handle_uss_chtag);
+  uss_cmd->add_command(uss_chtag_cmd);
+
+  arg_parser.get_root_command().add_command(uss_cmd);
 
   // Parse and execute
   parser::ParseResult result = arg_parser.parse(argc, argv);
@@ -2351,6 +2463,299 @@ int handle_tool_run(const parser::ParseResult &result)
       }
     }
   }
+
+  return rc;
+}
+
+// Phase 7: USS handler implementations
+int handle_uss_create_file(const parser::ParseResult &result)
+{
+  int rc = 0;
+  string file_path = result.find_pos_arg_string("file-path");
+  string mode = result.find_kw_arg_string("mode");
+  if (mode.empty())
+    mode = "644";
+
+  ZUSF zusf = {0};
+  rc = zusf_create_uss_file_or_dir(&zusf, file_path, mode, false);
+  if (0 != rc)
+  {
+    cerr << "Error: could not create USS file: '" << file_path << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details:\n"
+         << zusf.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
+  cout << "USS file '" << file_path << "' created" << endl;
+
+  return rc;
+}
+
+int handle_uss_create_dir(const parser::ParseResult &result)
+{
+  int rc = 0;
+  string file_path = result.find_pos_arg_string("file-path");
+  string mode = result.find_kw_arg_string("mode");
+  if (mode.empty())
+    mode = "755";
+
+  ZUSF zusf = {0};
+  rc = zusf_create_uss_file_or_dir(&zusf, file_path, mode, true);
+  if (0 != rc)
+  {
+    cerr << "Error: could not create USS directory: '" << file_path << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details:\n"
+         << zusf.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
+  cout << "USS directory '" << file_path << "' created" << endl;
+
+  return rc;
+}
+
+int handle_uss_list(const parser::ParseResult &result)
+{
+  int rc = 0;
+  string uss_file = result.find_pos_arg_string("file-path");
+
+  ZUSF zusf = {0};
+  string response;
+  rc = zusf_list_uss_file_path(&zusf, uss_file, response);
+  if (0 != rc)
+  {
+    cerr << "Error: could not list USS files: '" << uss_file << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details:\n"
+         << zusf.diag.e_msg << endl
+         << response << endl;
+    return RTNCD_FAILURE;
+  }
+
+  cout << response;
+
+  return rc;
+}
+
+int handle_uss_view(const parser::ParseResult &result)
+{
+  int rc = 0;
+  string uss_file = result.find_pos_arg_string("file-path");
+
+  ZUSF zusf = {0};
+  if (result.has_kw_arg("encoding"))
+  {
+    zut_prepare_encoding(result.find_kw_arg_string("encoding"), &zusf.encoding_opts);
+  }
+
+  struct stat file_stats;
+  if (stat(uss_file.c_str(), &file_stats) == -1)
+  {
+    cerr << "Error: Path " << uss_file << " does not exist" << endl;
+    return RTNCD_FAILURE;
+  }
+
+  bool has_pipe_path = result.has_kw_arg("pipe-path");
+  string pipe_path = result.find_kw_arg_string("pipe-path");
+
+  if (has_pipe_path && !pipe_path.empty())
+  {
+    rc = zusf_read_from_uss_file_streamed(&zusf, uss_file, pipe_path);
+
+    if (result.find_kw_arg_bool("return-etag"))
+    {
+      cout << zut_build_etag(file_stats.st_mtime, file_stats.st_size) << endl;
+    }
+  }
+  else
+  {
+    string response;
+    rc = zusf_read_from_uss_file(&zusf, uss_file, response);
+    if (0 != rc)
+    {
+      cerr << "Error: could not view USS file: '" << uss_file << "' rc: '" << rc << "'" << endl;
+      cerr << "  Details:\n"
+           << zusf.diag.e_msg << endl
+           << response << endl;
+      return RTNCD_FAILURE;
+    }
+
+    if (result.find_kw_arg_bool("return-etag"))
+    {
+      cout << "etag: " << zut_build_etag(file_stats.st_mtime, file_stats.st_size) << endl;
+      cout << "data: ";
+    }
+
+    bool has_encoding = result.has_kw_arg("encoding");
+    bool response_format_bytes = result.find_kw_arg_bool("response-format-bytes");
+
+    if (has_encoding && response_format_bytes)
+    {
+      zut_print_string_as_bytes(response);
+    }
+    else
+    {
+      cout << response << endl;
+    }
+  }
+
+  return rc;
+}
+
+int handle_uss_write(const parser::ParseResult &result)
+{
+  int rc = 0;
+  string file = result.find_pos_arg_string("file-path");
+  ZUSF zusf = {0};
+
+  if (result.has_kw_arg("encoding"))
+  {
+    zut_prepare_encoding(result.find_kw_arg_string("encoding"), &zusf.encoding_opts);
+  }
+
+  if (result.has_kw_arg("etag"))
+  {
+    string etag_value = result.find_kw_arg_string("etag");
+    if (!etag_value.empty())
+    {
+      strcpy(zusf.etag, etag_value.c_str());
+    }
+  }
+
+  bool has_pipe_path = result.has_kw_arg("pipe-path");
+  string pipe_path = result.find_kw_arg_string("pipe-path");
+
+  if (has_pipe_path && !pipe_path.empty())
+  {
+    rc = zusf_write_to_uss_file_streamed(&zusf, file, pipe_path);
+  }
+  else
+  {
+    string data = "";
+    string line = "";
+
+    if (!isatty(fileno(stdout)))
+    {
+      std::istreambuf_iterator<char> begin(std::cin);
+      std::istreambuf_iterator<char> end;
+
+      vector<char> input(begin, end);
+      const auto temp = string(input.begin(), input.end());
+      input.clear();
+      const auto bytes = zut_get_contents_as_bytes(temp);
+
+      data.assign(bytes.begin(), bytes.end());
+    }
+    else
+    {
+      while (getline(cin, line))
+      {
+        data += line;
+        data.push_back('\n');
+      }
+    }
+    rc = zusf_write_to_uss_file(&zusf, file, data);
+  }
+
+  if (0 != rc)
+  {
+    cerr << "Error: could not write to USS file: '" << file << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << zusf.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
+  if (result.find_kw_arg_bool("etag-only"))
+  {
+    cout << zusf.etag << endl;
+  }
+  else
+  {
+    cout << "Wrote data to '" << file << "'" << endl;
+  }
+
+  return rc;
+}
+
+int handle_uss_delete(const parser::ParseResult &result)
+{
+  string file_path = result.find_pos_arg_string("file-path");
+  bool recursive = result.find_kw_arg_bool("recursive");
+
+  ZUSF zusf = {0};
+  const auto rc = zusf_delete_uss_item(&zusf, file_path, recursive);
+
+  if (rc != 0)
+  {
+    cerr << "Failed to delete USS item " << file_path << ":\n " << zusf.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
+  cout << "USS item '" << file_path << "' deleted" << endl;
+
+  return rc;
+}
+
+int handle_uss_chmod(const parser::ParseResult &result)
+{
+  int rc = 0;
+  string mode = result.find_pos_arg_string("mode");
+  string file_path = result.find_pos_arg_string("file-path");
+  bool recursive = result.find_kw_arg_bool("recursive");
+
+  ZUSF zusf = {0};
+  rc = zusf_chmod_uss_file_or_dir(&zusf, file_path, mode, recursive);
+  if (0 != rc)
+  {
+    cerr << "Error: could not chmod USS path: '" << file_path << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details:\n"
+         << zusf.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
+  cout << "USS path '" << file_path << "' modified: '" << mode << "'" << endl;
+
+  return rc;
+}
+
+int handle_uss_chown(const parser::ParseResult &result)
+{
+  string path = result.find_pos_arg_string("file-path");
+  string owner = result.find_pos_arg_string("owner");
+  bool recursive = result.find_kw_arg_bool("recursive");
+
+  ZUSF zusf = {0};
+
+  const auto rc = zusf_chown_uss_file_or_dir(&zusf, path, owner, recursive);
+  if (rc != 0)
+  {
+    cerr << "Error: could not chown USS path: '" << path << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details:\n"
+         << zusf.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
+  cout << "USS path '" << path << "' owner changed to '" << owner << "'" << endl;
+
+  return rc;
+}
+
+int handle_uss_chtag(const parser::ParseResult &result)
+{
+  string path = result.find_pos_arg_string("file-path");
+  string tag = result.find_pos_arg_string("tag");
+  bool recursive = result.find_kw_arg_bool("recursive");
+
+  ZUSF zusf = {0};
+  const auto rc = zusf_chtag_uss_file_or_dir(&zusf, path, tag, recursive);
+
+  if (rc != 0)
+  {
+    cerr << "Error: could not chtag USS path: '" << path << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details:\n"
+         << zusf.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
+  cout << "USS path '" << path << "' tag changed to '" << tag << "'" << endl;
 
   return rc;
 }
