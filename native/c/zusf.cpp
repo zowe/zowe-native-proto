@@ -439,11 +439,20 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe)
       catch (std::exception &e)
       {
         zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to convert input data from UTF-8 to %s", codepage.c_str());
+        fclose(fin);
+        fclose(fout);
         return RTNCD_FAILURE;
       }
     }
 
-    fwrite(chunk, 1, chunk_len, fout);
+    ssize_t bytes_written = fwrite(chunk, 1, chunk_len, fout);
+    if (bytes_written != chunk_len)
+    {
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to write to '%s' (possibly out of space)", file.c_str());
+      fclose(fin);
+      fclose(fout);
+      return RTNCD_FAILURE;
+    }
   }
 
   fflush(fout);
