@@ -13,9 +13,14 @@ import { Readable, type Stream, Writable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { Base64Decode, Base64Encode } from "base64-stream";
 import type { Client, ClientChannel } from "ssh2";
-import { B64String, type CommandRequest, type CommandResponse, type RpcNotification, type RpcRequest } from "./doc";
-
-export type StreamMode = "r" | "w";
+import {
+    B64String,
+    type CommandRequest,
+    type CommandResponse,
+    type RpcNotification,
+    type RpcRequest,
+    type StreamMode,
+} from "./doc";
 
 export class RpcStreamManager {
     private readonly CHUNK_SIZE = 32768;
@@ -53,13 +58,16 @@ export class RpcStreamManager {
             let bytesRead = 0;
             request.stream.once("readable", () => {
                 let chunk: Buffer;
-                while ((chunk = request.stream.read()) != null) {
-                    chunks.push(chunk);
-                    bytesRead += chunk.length;
-                    if (bytesRead > this.CHUNK_SIZE) {
-                        break;
+                do {
+                    chunk = request.stream.read();
+                    if (chunk != null) {
+                        chunks.push(chunk);
+                        bytesRead += chunk.length;
+                        if (bytesRead > this.CHUNK_SIZE) {
+                            break;
+                        }
                     }
-                }
+                } while (chunk != null);
                 if (bytesRead > 0) {
                     if (bytesRead <= this.CHUNK_SIZE) {
                         request.data = B64String.encode(Buffer.concat(chunks));

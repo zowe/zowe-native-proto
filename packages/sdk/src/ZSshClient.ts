@@ -15,7 +15,7 @@ import { ImperativeError, Logger } from "@zowe/imperative";
 import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Client, type ClientChannel } from "ssh2";
 import { AbstractRpcClient } from "./AbstractRpcClient";
-import { RpcStreamManager, StreamMode } from "./RpcStreamManager";
+import { RpcStreamManager } from "./RpcStreamManager";
 import { ZSshUtils } from "./ZSshUtils";
 import type {
     ClientOptions,
@@ -25,6 +25,7 @@ import type {
     RpcRequest,
     RpcResponse,
     StatusMessage,
+    StreamMode,
 } from "./doc";
 
 type PromiseResolve<T> = (value: T | PromiseLike<T>) => void;

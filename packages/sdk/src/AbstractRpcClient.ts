@@ -10,11 +10,9 @@
  */
 
 import type { Stream } from "node:stream";
-import type { CommandRequest, CommandResponse, cmds, ds, jobs, uss } from "./doc";
+import type { CommandRequest, CommandResponse, StreamMode, cmds, ds, jobs, uss } from "./doc";
 
 export abstract class AbstractRpcClient {
-    // protected readonly STREAM_MODE = Symbol("streamMode");
-
     public abstract request<Req extends CommandRequest, Resp extends CommandResponse>(request: Req): Promise<Resp>;
 
     protected abstract requestStreamed<Req extends CommandRequest, Resp extends CommandResponse>(
