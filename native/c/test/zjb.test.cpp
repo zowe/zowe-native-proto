@@ -50,7 +50,6 @@ void zjb_tests()
                   Expect(jobid).Not().ToBe("");
 
                   string correlator = string(zjb.job_correlator, 64);
-                  cout << "@TEST debug: submitted jobid: " << jobid << " correlator: " << correlator << endl;
                   memset(&zjb, 0, sizeof(zjb));
                   rc = zjb_delete(&zjb, correlator);
                   ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
