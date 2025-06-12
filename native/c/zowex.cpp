@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <fstream>
 #include <unistd.h>
+#include <cstring>
 #include "zcn.hpp"
 #include "zut.hpp"
 #include "parser.hpp"
@@ -141,7 +142,7 @@ int main(int argc, char *argv[])
   data_set_cmd->add_alias("ds");
 
   // Common data set options that are reused
-  auto encoding_option =  make_aliases("--encoding", "--ec");
+  auto encoding_option = make_aliases("--encoding", "--ec");
   auto etag_option = make_aliases("--etag");
   auto etag_only_option = make_aliases("--etag-only");
   auto return_etag_option = make_aliases("--return-etag");
@@ -347,7 +348,7 @@ int main(int argc, char *argv[])
   auto uss_etag_only_option = make_aliases("--etag-only");
   auto uss_return_etag_option = make_aliases("--return-etag");
   auto uss_pipe_path_option = make_aliases("--pipe-path");
-  auto uss_response_format_bytes_option =make_aliases("--response-format-bytes", "--rfb");
+  auto uss_response_format_bytes_option = make_aliases("--response-format-bytes", "--rfb");
 
   // Create-file subcommand
   auto uss_create_file_cmd = command_ptr(new Command("create-file", "create a USS file"));
@@ -534,17 +535,28 @@ int main(int argc, char *argv[])
 
   arg_parser.get_root_command().add_command(job_cmd);
 
-  // Parse and execute
-  ParseResult result = arg_parser.parse(argc, argv);
+  // Check for interactive mode before parsing to avoid help text
+  bool is_interactive = false;
+  for (int i = 1; i < argc; i++)
+  {
+    if (strcmp(argv[i], "--interactive") == 0 || strcmp(argv[i], "--it") == 0)
+    {
+      is_interactive = true;
+      break;
+    }
+  }
 
-  // Check if interactive mode was requested
-  if (result.status == ParseResult::ParserStatus_Success &&
-      result.find_kw_arg_bool("interactive"))
+  // If interactive mode is requested, start it directly
+  if (is_interactive)
   {
     return run_interactive_mode(arg_parser, argv[0]);
   }
-
-  return result.exit_code;
+  else
+  {
+    // Parse and execute
+    ParseResult result = arg_parser.parse(argc, argv);
+    return result.exit_code;
+  }
 }
 
 int handle_console_issue(const ParseResult &result)
