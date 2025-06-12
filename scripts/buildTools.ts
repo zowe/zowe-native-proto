@@ -36,6 +36,7 @@ try {
 const localDeployDir = "./../native"; // from here
 const deployDirectory = config.deployDirectory; // to here
 const cDeployDirectory = `${config.deployDirectory}/c`; // to here
+const cTestDeployDirectory = `${cDeployDirectory}/test`; // to here
 const goDeployDirectory = `${config.deployDirectory}/golang`; // to here
 
 const args = process.argv.slice(2);
@@ -98,6 +99,9 @@ function startSpinner(text = "Loading...") {
 }
 
 function stopSpinner(spinner: NodeJS.Timeout | null, text = "Done!") {
+    if (DEBUG_MODE() || process.env.CI!= null) {
+        return;
+    }
     spinner && clearInterval(spinner);
     process.stdout.write(`\x1b[2K\r${text}\n`);
 }
@@ -141,6 +145,9 @@ connection.on("ready", async () => {
                 break;
             case "build":
                 await build(connection);
+                break;
+            case "test":
+                await test(connection);
                 break;
             default:
                 console.log("Unsupported command\nUsage init|deploy|deploy-build [<file1>,<file2>,...|dir]");
@@ -380,7 +387,7 @@ async function runCommandInShell(connection: Client, command: string, pty = fals
             });
             stream.on("exit", (exitCode: number) => {
                 if (exitCode !== 0) {
-                    const fullError = `\nError: runCommand connection.exec error: \n ${error || data}`;
+                    const fullError = `\nError: runCommand connection.exec error - stream.on exit: \n ${error || data}`;
                     stopSpinner(spinner, fullError);
                     process.exitCode = fullError.includes("SIGSEGV: segmentation violation") ? 11 : exitCode;
                     reject(fullError);
@@ -460,6 +467,7 @@ async function convert(connection: Client, fromType = "utf8", toType = "IBM-1047
                 stream.write(`mv ${files[i]} ${files[i]}.u\n`);
                 stream.write(`iconv -f ${fromType} -t ${toType} ${files[i]}.u > ${files[i]}\n`);
                 stream.write(`chtag -t -c ${toType} ${files[i]}\n`);
+                stream.write(`rm ${files[i]}.u\n`);
             }
             stream.end("exit\n");
 
@@ -541,6 +549,16 @@ async function build(connection: Client) {
         ),
     );
     console.log("Build complete!");
+}
+
+async function test(connection: Client) {
+    console.log("Testing native/c ...");
+    const response = await runCommandInShell(
+        connection,
+        `cd ${cTestDeployDirectory} && _CEE_RUNOPTS="TRAP(ON,NOSPIE)" ./build-out/runner\n`,
+    );
+    DEBUG_MODE() && console.log(response);
+    console.log("Testing complete!");
 }
 
 async function clean(connection: Client) {

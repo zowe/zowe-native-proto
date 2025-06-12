@@ -297,7 +297,7 @@ int main(int argc, char *argv[])
   ZCLIVerb data_set_list("list");
   ZCLIOption data_set_max_entries("max-entries");
   data_set_max_entries.get_aliases().push_back("--me");
-  data_set_max_entries.set_description("max number of results to return before error generated");
+  data_set_max_entries.set_description("max number of results to return before warning generated");
   data_set_list.get_options().push_back(data_set_max_entries);
 
   ZCLIOption data_set_truncate_warn("warn");
@@ -374,7 +374,7 @@ int main(int argc, char *argv[])
 
   ZCLIOption job_max_entries("max-entries");
   job_max_entries.get_aliases().push_back("--me");
-  job_max_entries.set_description("max number of results to return before error generated");
+  job_max_entries.set_description("max number of results to return before warning generated");
   job_list.get_options().push_back(job_max_entries);
 
   ZCLIOption job_truncate_warn("warn");
@@ -395,6 +395,16 @@ int main(int argc, char *argv[])
   job_jobid.set_description("valid jobid or job correlator");
   job_list_files.get_positionals().push_back(job_jobid);
   job_list_files.get_options().push_back(response_format_csv);
+  ZCLIOption job_list_files_max_entries("max-entries");
+  job_list_files_max_entries.get_aliases().push_back("--me");
+  job_list_files_max_entries.set_description("max number of files to return before warning generated");
+  ZCLIOption job_list_files_warn("warn");
+  job_list_files_warn.set_description("warn if trucated or not found");
+  job_list_files_warn.set_default("true");
+  job_list_files_warn.set_is_bool(true);
+  job_list_files.get_options().push_back(job_list_files_warn);
+  job_list_files.get_options().push_back(job_list_files_max_entries);
+
   job_group.get_verbs().push_back(job_list_files);
 
   ZCLIVerb job_view_status("view-status");
@@ -902,36 +912,54 @@ int handle_job_list_files(ZCLIResult result)
   ZJB zjb = {0};
   string jobid(result.get_positional("jobid")->get_value());
 
-  vector<ZJobDD> job_dds;
-  rc = zjb_list_dds_by_jobid(&zjb, jobid, job_dds);
+  string max_entries = result.get_option_value("--max-entries");
+  string warn = result.get_option_value("--warn");
 
-  if (0 != rc)
+  if (max_entries.size() > 0)
   {
-    cerr << "Error: could not list jobs for: '" << jobid << "' rc: '" << rc << "'" << endl;
+    zjb.dds_max = atoi(max_entries.c_str());
+  }
+
+  vector<ZJobDD> job_dds;
+  rc = zjb_list_dds(&zjb, jobid, job_dds);
+  if (RTNCD_SUCCESS == rc || RTNCD_WARNING == rc)
+  {
+    const auto emit_csv = result.get_option_value("--response-format-csv") == "true";
+    for (vector<ZJobDD>::iterator it = job_dds.begin(); it != job_dds.end(); ++it)
+    {
+      std::vector<string> fields;
+      fields.push_back(it->ddn);
+      fields.push_back(it->dsn);
+      fields.push_back(TO_STRING(it->key));
+      fields.push_back(it->stepname);
+      fields.push_back(it->procstep);
+      if (emit_csv)
+      {
+        cout << zut_format_as_csv(fields) << endl;
+      }
+      else
+      {
+        cout << left << setw(9) << it->ddn << " " << it->dsn << " " << setw(4) << it->key << " " << it->stepname << " " << it->procstep << endl;
+      }
+    }
+  }
+
+  if (RTNCD_WARNING == rc)
+  {
+    if ("true" == warn)
+    {
+      cerr << "Warning: " << zjb.diag.e_msg << endl;
+    }
+  }
+
+  if (RTNCD_SUCCESS != rc && RTNCD_WARNING != rc)
+  {
+    cerr << "Error: could not list files for: '" << jobid << "' rc: '" << rc << "'" << endl;
     cerr << "  Details: " << zjb.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
-  const auto emit_csv = result.get_option_value("--response-format-csv") == "true";
-  for (vector<ZJobDD>::iterator it = job_dds.begin(); it != job_dds.end(); ++it)
-  {
-    std::vector<string> fields;
-    fields.push_back(it->ddn);
-    fields.push_back(it->dsn);
-    fields.push_back(TO_STRING(it->key));
-    fields.push_back(it->stepname);
-    fields.push_back(it->procstep);
-    if (emit_csv)
-    {
-      cout << zut_format_as_csv(fields) << endl;
-    }
-    else
-    {
-      cout << left << setw(9) << it->ddn << " " << it->dsn << " " << setw(4) << it->key << " " << it->stepname << " " << it->procstep << endl;
-    }
-  }
-
-  return RTNCD_SUCCESS;
+  return "false" == warn && rc == RTNCD_WARNING ? RTNCD_SUCCESS : rc;
 }
 
 int handle_job_view_status(ZCLIResult result)
@@ -959,6 +987,7 @@ int handle_job_view_status(ZCLIResult result)
     fields.push_back(job.retcode);
     fields.push_back(job.jobname);
     fields.push_back(job.status);
+    fields.push_back(job.job_correlator);
     cout << zut_format_as_csv(fields) << endl;
   }
   else
@@ -978,7 +1007,7 @@ int handle_job_view_file(ZCLIResult result)
   const auto hasEncoding = zut_prepare_encoding(result.get_option_value("--encoding"), &zjb.encoding_opts);
 
   string resp;
-  rc = zjb_read_jobs_output_by_jobid_and_key(&zjb, jobid, atoi(key.c_str()), resp);
+  rc = zjb_read_jobs_output_by_key(&zjb, jobid, atoi(key.c_str()), resp);
 
   if (0 != rc)
   {
@@ -1006,7 +1035,7 @@ int handle_job_view_jcl(ZCLIResult result)
   string jobid(result.get_positional("jobid")->get_value());
 
   string resp;
-  rc = zjb_read_job_jcl_by_jobid(&zjb, jobid, resp);
+  rc = zjb_read_job_jcl(&zjb, jobid, resp);
 
   if (0 != rc)
   {
@@ -1018,29 +1047,6 @@ int handle_job_view_jcl(ZCLIResult result)
   cout << resp;
 
   return 0;
-}
-
-int wait_for_status(ZJB *zjb, string status)
-{
-  int rc = 0;
-  ZJob job = {0};
-  string jobid(zjb->jobid, sizeof(zjb->jobid));
-
-  do
-  {
-    rc = zjb_view(zjb, jobid, job);
-
-    sleep(1);
-
-    if (0 != rc)
-    {
-      cerr << "Error: could not view job status for: '" << jobid << "' rc: '" << rc << "'" << endl;
-      cerr << "  Details: " << zjb->diag.e_msg << endl;
-      return RTNCD_FAILURE;
-    }
-
-  } while (job.status != status);
-  return RTNCD_SUCCESS;
 }
 
 int job_submit_common(ZCLIResult result, string jcl, string &jobid, string identifier)
@@ -1073,7 +1079,13 @@ int job_submit_common(ZCLIResult result, string jcl, string &jobid, string ident
 
   if (JOB_STATUS_OUTPUT == wait || JOB_STATUS_INPUT == wait)
   {
-    rc = wait_for_status(&zjb, wait);
+    rc = zjb_wait(&zjb, wait);
+    if (0 != rc)
+    {
+      cerr << "Error: could not wait for job status: '" << wait << "' rc: '" << rc << "'" << endl;
+      cerr << "  Details: " << zjb.diag.e_msg << endl;
+      return RTNCD_FAILURE;
+    }
   }
   else if ("" != wait)
   {
@@ -1168,7 +1180,7 @@ int handle_job_delete(ZCLIResult result)
   ZJB zjb = {0};
   string jobid(result.get_positional("jobid")->get_value());
 
-  rc = zjb_delete_by_jobid(&zjb, jobid);
+  rc = zjb_delete(&zjb, jobid);
 
   if (0 != rc)
   {
@@ -1193,7 +1205,7 @@ int handle_job_cancel(ZCLIResult result)
   string option_purge(result.get_option_value("--purge"));
   string option_restart(result.get_option_value("--restart"));
 
-  rc = zjb_cancel_by_jobid(&zjb, jobid);
+  rc = zjb_cancel(&zjb, jobid);
 
   if (0 != rc)
   {
@@ -1213,7 +1225,7 @@ int handle_job_hold(ZCLIResult result)
   ZJB zjb = {0};
   string jobid(result.get_positional("jobid")->get_value());
 
-  rc = zjb_hold_by_jobid(&zjb, jobid);
+  rc = zjb_hold(&zjb, jobid);
 
   if (0 != rc)
   {
@@ -1233,7 +1245,7 @@ int handle_job_release(ZCLIResult result)
   ZJB zjb = {0};
   string jobid(result.get_positional("jobid")->get_value());
 
-  rc = zjb_release_by_jobid(&zjb, jobid);
+  rc = zjb_release(&zjb, jobid);
 
   if (0 != rc)
   {
