@@ -22,7 +22,6 @@
 #include <unistd.h>
 #include "zcn.hpp"
 #include "zut.hpp"
-// #include "zcli.hpp"
 #include "parser.hpp"
 #include "zjb.hpp"
 #include "zds.hpp"
@@ -142,9 +141,19 @@ int handle_tso_issue(ZCLIResult);
 int job_submit_common(ZCLIResult, string, string &, string);
 */
 
+bool should_quit(const std::string &input);
+void parse_input(const std::string &input, std::vector<std::string> &values);
+int run_interactive_mode(parser::ArgumentParser &arg_parser, const std::string &program_name);
+
 int main(int argc, char *argv[])
 {
   parser::ArgumentParser arg_parser(argv[0], "Zowe Native Protocol CLI - Modernizing mainframe access");
+
+  // Add interactive mode flag to root command
+  arg_parser.get_root_command().add_keyword_arg("interactive",
+                                                parser::make_aliases("--interactive", "--it"),
+                                                "interactive (REPL) mode", parser::ArgType_Flag, false,
+                                                parser::ArgValue(false));
 
   // Console command group
   auto console_cmd = std::make_shared<parser::Command>("console", "z/OS console operations");
@@ -167,7 +176,6 @@ int main(int argc, char *argv[])
   console_cmd->add_command(issue_cmd);
   arg_parser.get_root_command().add_command(console_cmd);
 
-  // TODO: Update to support interactive mode
   // TSO command group
   auto tso_cmd = std::make_shared<parser::Command>("tso", "TSO operations");
 
@@ -632,722 +640,15 @@ int main(int argc, char *argv[])
 
   // Parse and execute
   parser::ParseResult result = arg_parser.parse(argc, argv);
+
+  // Check if interactive mode was requested
+  if (result.status == parser::ParseResult::ParserStatus_Success &&
+      result.find_kw_arg_bool("interactive"))
+  {
+    return run_interactive_mode(arg_parser, argv[0]);
+  }
+
   return result.exit_code;
-
-  /* OLD CLI CODE - will be removed in later phases
-  ZCLI zcli(argv[PROCESS_NAME_ARG]);
-  zcli.set_interactive_mode(true);
-
-  ZCLIOption response_format_csv("response-format-csv");
-  response_format_csv.set_description("returns the response in CSV format");
-  response_format_csv.get_aliases().push_back("--rfc");
-  response_format_csv.set_default("false");
-  response_format_csv.set_required(false);
-  response_format_csv.set_is_bool(true);
-
-  ZCLIOption response_format_bytes("response-format-bytes");
-  response_format_bytes.set_description("returns the response as raw bytes");
-  response_format_bytes.get_aliases().push_back("--rfb");
-  response_format_bytes.set_required(false);
-  response_format_bytes.set_is_bool(true);
-
-  ZCLIGroup tso_group("tso");
-  tso_group.set_description("TSO operations");
-
-  ZCLIVerb tso_issue("issue");
-  tso_issue.set_description("issue TSO command");
-  tso_issue.set_zcli_verb_handler(handle_tso_issue);
-
-  ZCLIPositional tso_command("command");
-  tso_command.set_required(true);
-  tso_command.set_description("command to issue");
-
-  tso_issue.get_positionals().push_back(tso_command);
-
-  tso_group.get_verbs().push_back(tso_issue);
-
-  ZCLIOption encoding_option("encoding");
-  encoding_option.get_aliases().push_back("--ec");
-  encoding_option.set_description("return contents in given encoding");
-
-  ZCLIOption etag("etag");
-  etag.set_required(false);
-  etag.set_description("Provide the e-tag for a write response to detect conflicts before save");
-
-  ZCLIOption etag_only("etag-only");
-  etag_only.set_required(false);
-  etag_only.set_description("Only print the e-tag for a write response (when successful)");
-
-  ZCLIOption return_etag("return-etag");
-  return_etag.set_required(false);
-  return_etag.set_description("Display the e-tag for a read response in addition to data");
-
-  // data set attributes options
-  ZCLIOption return_alcunit("alcunit");
-  return_alcunit.set_required(false);
-  return_alcunit.set_description("Allocation unit");
-
-  ZCLIOption return_blksize("blksize");
-  return_blksize.set_required(false);
-  return_blksize.set_description("Block size");
-
-  ZCLIOption return_dirblk("dirblk");
-  return_dirblk.set_required(false);
-  return_dirblk.set_description("Directory blocks");
-
-  ZCLIOption return_dsorg("dsorg");
-  return_dsorg.set_required(false);
-  return_dsorg.set_description("Data set organization");
-
-  ZCLIOption return_primary("primary");
-  return_primary.set_required(false);
-  return_primary.set_description("Primary space");
-
-  ZCLIOption return_recfm("recfm");
-  return_recfm.set_required(false);
-  return_recfm.set_description("Record format");
-
-  ZCLIOption return_lrecl("lrecl");
-  return_lrecl.set_required(false);
-  return_lrecl.set_description("Record length");
-
-  ZCLIOption return_dataclass("dataclass");
-  return_dataclass.set_required(false);
-  return_dataclass.set_description("Data class");
-
-  ZCLIOption return_unit("unit");
-  return_unit.set_required(false);
-  return_unit.set_description("Device type");
-
-  ZCLIOption return_dsntype("dsntype");
-  return_dsntype.set_required(false);
-  return_dsntype.set_description("Data set type");
-
-  ZCLIOption return_mgntclass("mgntclass");
-  return_mgntclass.set_required(false);
-  return_mgntclass.set_description("Management class");
-
-  ZCLIOption return_dsname("dsname");
-  return_dsname.set_required(false);
-  return_dsname.set_description("Data set name");
-
-  ZCLIOption return_avgblk("avgblk");
-  return_avgblk.set_required(false);
-  return_avgblk.set_description("Average block length");
-
-  ZCLIOption return_secondary("secondary");
-  return_secondary.set_required(false);
-  return_secondary.set_description("Secondary space");
-
-  ZCLIOption return_size("size");
-  return_size.set_required(false);
-  return_size.set_description("Size");
-
-  ZCLIOption return_storclass("storclass");
-  return_storclass.set_required(false);
-  return_storclass.set_description("Storage class");
-
-  ZCLIOption return_vol("vol");
-  return_vol.set_required(false);
-  return_vol.set_description("Volume serial");
-
-  ZCLIOption pipe_path("pipe-path");
-  pipe_path.set_required(false);
-  pipe_path.set_description("Specify a FIFO pipe path for transferring binary data");
-
-  //
-  // data set group
-  //
-  ZCLIGroup data_set_group("data-set");
-  data_set_group.get_aliases().push_back("ds");
-  data_set_group.set_description("z/OS data set operations");
-
-  ZCLIPositional data_set_dsn("dsn");
-  data_set_dsn.set_description("data set name, optionally with member specified");
-  data_set_dsn.set_required(true);
-
-  // data set verbs
-  ZCLIVerb data_set_create("create");
-  data_set_create.get_aliases().push_back("cre");
-  data_set_create.set_description("create data set");
-  data_set_create.set_zcli_verb_handler(handle_data_set_create_dsn);
-  data_set_create.get_options().push_back(return_alcunit);
-  data_set_create.get_options().push_back(return_blksize);
-  data_set_create.get_options().push_back(return_dirblk);
-  data_set_create.get_options().push_back(return_dsorg);
-  data_set_create.get_options().push_back(return_primary);
-  data_set_create.get_options().push_back(return_recfm);
-  data_set_create.get_options().push_back(return_lrecl);
-  data_set_create.get_options().push_back(return_dataclass);
-  data_set_create.get_options().push_back(return_unit);
-  data_set_create.get_options().push_back(return_dsntype);
-  data_set_create.get_options().push_back(return_mgntclass);
-  data_set_create.get_options().push_back(return_dsname);
-  data_set_create.get_options().push_back(return_avgblk);
-  data_set_create.get_options().push_back(return_secondary);
-  data_set_create.get_options().push_back(return_size);
-  data_set_create.get_options().push_back(return_storclass);
-  data_set_create.get_options().push_back(return_vol);
-  data_set_create.get_positionals().push_back(data_set_dsn);
-  data_set_group.get_verbs().push_back(data_set_create);
-
-  ZCLIVerb data_set_create_vb("create-vb");
-  data_set_create_vb.get_aliases().push_back("cre-vb");
-  data_set_create_vb.set_description("create VB data set using defaults: DSORG=PO, RECFM=VB, LRECL=255");
-  data_set_create_vb.set_zcli_verb_handler(handle_data_set_create_dsn_vb);
-  data_set_create_vb.get_positionals().push_back(data_set_dsn);
-  data_set_group.get_verbs().push_back(data_set_create_vb);
-
-  ZCLIVerb data_set_create_adata("create-adata");
-  data_set_create_adata.get_aliases().push_back("cre-a");
-  data_set_create_adata.set_description("create VB data set using defaults: DSORG=PO, RECFM=VB, LRECL=32756");
-  data_set_create_adata.set_zcli_verb_handler(handle_data_set_create_dsn_adata);
-  data_set_create_adata.get_positionals().push_back(data_set_dsn);
-  data_set_group.get_verbs().push_back(data_set_create_adata);
-
-  ZCLIVerb data_set_create_loadlib("create-loadlib");
-  data_set_create_loadlib.get_aliases().push_back("cre-u");
-  data_set_create_loadlib.set_description("create loadlib data set using defaults: DSORG=PO, RECFM=U, LRECL=0");
-  data_set_create_loadlib.set_zcli_verb_handler(handle_data_set_create_dsn_loadlib);
-  data_set_create_loadlib.get_positionals().push_back(data_set_dsn);
-  data_set_group.get_verbs().push_back(data_set_create_loadlib);
-
-  ZCLIVerb data_set_create_member("create-member");
-  data_set_create_member.get_aliases().push_back("cre-m");
-  data_set_create_member.set_description("create member in data set");
-  data_set_create_member.set_zcli_verb_handler(handle_data_set_create_member_dsn);
-  data_set_create_member.get_positionals().push_back(data_set_dsn);
-  data_set_group.get_verbs().push_back(data_set_create_member);
-
-  ZCLIVerb data_set_restore("restore");
-  data_set_restore.set_description("restore/recall data set");
-  data_set_restore.set_zcli_verb_handler(handle_data_set_restore);
-  data_set_restore.get_positionals().push_back(data_set_dsn);
-  data_set_group.get_verbs().push_back(data_set_restore);
-
-  ZCLIVerb data_set_view("view");
-  data_set_view.set_description("view data set");
-  data_set_view.set_zcli_verb_handler(handle_data_set_view_dsn);
-  data_set_view.get_positionals().push_back(data_set_dsn);
-  data_set_view.get_options().push_back(encoding_option);
-  data_set_view.get_options().push_back(response_format_bytes);
-  data_set_view.get_options().push_back(return_etag);
-  data_set_view.get_options().push_back(pipe_path);
-  data_set_group.get_verbs().push_back(data_set_view);
-
-  ZCLIVerb data_set_list("list");
-  ZCLIOption data_set_max_entries("max-entries");
-  data_set_max_entries.get_aliases().push_back("--me");
-  data_set_max_entries.set_description("max number of results to return before warning generated");
-  data_set_list.get_options().push_back(data_set_max_entries);
-
-  ZCLIOption data_set_truncate_warn("warn");
-  data_set_truncate_warn.set_description("warn if truncated or not found");
-  data_set_truncate_warn.set_default("true");
-  data_set_truncate_warn.set_is_bool(true);
-  data_set_list.get_options().push_back(data_set_truncate_warn);
-
-  data_set_list.set_description("list data sets");
-  data_set_list.get_aliases().push_back("ls");
-  ZCLIOption data_set_attributes("attributes");
-  data_set_attributes.set_description("display data set attributes");
-  data_set_attributes.get_aliases().push_back("-a");
-  data_set_attributes.set_default("false");
-  data_set_list.get_options().push_back(data_set_attributes);
-  data_set_list.set_zcli_verb_handler(handle_data_set_list);
-  data_set_list.get_positionals().push_back(data_set_dsn);
-  data_set_list.get_options().push_back(response_format_csv);
-  data_set_group.get_verbs().push_back(data_set_list);
-
-  ZCLIVerb data_set_list_members("list-members");
-  data_set_list_members.get_aliases().push_back("lm");
-  data_set_list_members.set_description("list data set members");
-  data_set_list_members.set_zcli_verb_handler(handle_data_set_list_members_dsn);
-  data_set_list_members.get_positionals().push_back(data_set_dsn);
-  data_set_list_members.get_options().push_back(data_set_max_entries);
-  data_set_list_members.get_options().push_back(data_set_truncate_warn);
-  data_set_group.get_verbs().push_back(data_set_list_members);
-
-  ZCLIVerb data_set_write("write");
-  data_set_write.set_description("write to data set");
-  data_set_write.set_zcli_verb_handler(handle_data_set_write_to_dsn);
-  data_set_write.get_positionals().push_back(data_set_dsn);
-  data_set_write.get_options().push_back(encoding_option);
-  data_set_write.get_options().push_back(etag);
-  data_set_write.get_options().push_back(etag_only);
-  data_set_write.get_options().push_back(pipe_path);
-  data_set_group.get_verbs().push_back(data_set_write);
-
-  ZCLIVerb data_set_compress("compress");
-  data_set_compress.set_description("compress data set");
-  data_set_compress.set_zcli_verb_handler(handle_data_set_compress);
-  ZCLIPositional compress_dsn("dsn");
-  compress_dsn.set_description("data set to compress");
-  compress_dsn.set_required(true);
-  data_set_compress.get_positionals().push_back(compress_dsn);
-  data_set_group.get_verbs().push_back(data_set_compress);
-
-  ZCLIVerb data_set_delete("delete");
-  data_set_delete.get_aliases().push_back("del");
-  data_set_delete.set_description("delete data set");
-  data_set_delete.set_zcli_verb_handler(handle_data_set_delete_dsn);
-  data_set_delete.get_positionals().push_back(data_set_dsn);
-  data_set_group.get_verbs().push_back(data_set_delete);
-
-  //
-  // jobs group
-  //
-  ZCLIGroup job_group("job");
-  job_group.set_description("z/OS job operations");
-
-  // jobs verbs
-  ZCLIVerb job_list("list");
-  job_list.set_description("list jobs");
-  job_list.set_zcli_verb_handler(handle_job_list);
-  ZCLIOption job_owner("owner");
-  job_owner.get_aliases().push_back("-o");
-  job_owner.set_description("filter by owner");
-  job_list.get_options().push_back(job_owner);
-  ZCLIOption job_prefix("prefix");
-  job_prefix.get_aliases().push_back("-p");
-  job_prefix.set_description("filter by prefix");
-  job_list.get_options().push_back(job_prefix);
-
-  ZCLIOption job_max_entries("max-entries");
-  job_max_entries.get_aliases().push_back("--me");
-  job_max_entries.set_description("max number of results to return before warning generated");
-  job_list.get_options().push_back(job_max_entries);
-
-  ZCLIOption job_truncate_warn("warn");
-  job_truncate_warn.set_description("warn if trucated or not found");
-  job_truncate_warn.set_default("true");
-  job_truncate_warn.set_is_bool(true);
-  job_list.get_options().push_back(job_truncate_warn);
-
-  job_list.get_options().push_back(response_format_csv);
-  job_group.get_verbs().push_back(job_list);
-
-  ZCLIVerb job_list_files("list-files");
-  job_list_files.get_aliases().push_back("lf");
-  job_list_files.set_description("list spool files for jobid");
-  job_list_files.set_zcli_verb_handler(handle_job_list_files);
-  ZCLIPositional job_jobid("jobid");
-  job_jobid.set_required(true);
-  job_jobid.set_description("valid jobid or job correlator");
-  job_list_files.get_positionals().push_back(job_jobid);
-  job_list_files.get_options().push_back(response_format_csv);
-  ZCLIOption job_list_files_max_entries("max-entries");
-  job_list_files_max_entries.get_aliases().push_back("--me");
-  job_list_files_max_entries.set_description("max number of files to return before warning generated");
-  ZCLIOption job_list_files_warn("warn");
-  job_list_files_warn.set_description("warn if trucated or not found");
-  job_list_files_warn.set_default("true");
-  job_list_files_warn.set_is_bool(true);
-  job_list_files.get_options().push_back(job_list_files_warn);
-  job_list_files.get_options().push_back(job_list_files_max_entries);
-
-  job_group.get_verbs().push_back(job_list_files);
-
-  ZCLIVerb job_view_status("view-status");
-  job_view_status.get_aliases().push_back("vs");
-  job_view_status.set_description("view job status");
-  job_view_status.set_zcli_verb_handler(handle_job_view_status);
-  job_view_status.get_positionals().push_back(job_jobid);
-  job_view_status.get_options().push_back(response_format_csv);
-  job_group.get_verbs().push_back(job_view_status);
-
-  ZCLIVerb job_view_file("view-file");
-  job_view_file.get_aliases().push_back("vf");
-  job_view_file.set_description("view job file output");
-  job_view_file.set_zcli_verb_handler(handle_job_view_file);
-  job_view_file.get_positionals().push_back(job_jobid);
-  job_view_file.get_options().push_back(encoding_option);
-  job_view_file.get_options().push_back(response_format_bytes);
-
-  ZCLIPositional job_dsn_key("key");
-  job_dsn_key.set_required(true);
-  job_dsn_key.set_description("valid job dsn key via 'job list-files'");
-  job_view_file.get_positionals().push_back(job_dsn_key);
-  job_group.get_verbs().push_back(job_view_file);
-
-  ZCLIVerb job_view_jcl("view-jcl");
-  job_view_jcl.get_aliases().push_back("vj");
-  job_view_jcl.set_description("view job jcl from input jobid");
-  job_view_jcl.set_zcli_verb_handler(handle_job_view_jcl);
-  job_view_jcl.get_positionals().push_back(job_jobid);
-  job_group.get_verbs().push_back(job_view_jcl);
-
-  ZCLIVerb job_submit("submit");
-  job_submit.get_aliases().push_back("sub");
-  job_submit.set_description("submit a job");
-  job_submit.set_zcli_verb_handler(handle_job_submit);
-
-  ZCLIOption job_wait("wait");
-  job_wait.set_description("wait for job status");
-  job_submit.get_options().push_back(job_wait);
-
-  ZCLIOption job_jobid_only("only-jobid");
-  job_jobid_only.get_aliases().push_back("--oj");
-  job_jobid_only.set_description("show only job id on success");
-  job_jobid_only.set_is_bool(true);
-  job_submit.get_options().push_back(job_jobid_only);
-
-  ZCLIOption job_job_correlator_only("only-correlator");
-  job_job_correlator_only.get_aliases().push_back("--oc");
-  job_job_correlator_only.set_description("show only job correlator on success");
-  job_job_correlator_only.set_is_bool(true);
-  job_submit.get_options().push_back(job_job_correlator_only);
-
-  job_submit.get_exclusive_options().push_back(job_jobid_only);
-  job_submit.get_exclusive_options().push_back(job_job_correlator_only);
-
-  ZCLIPositional job_dsn("dsn");
-  job_dsn.set_required(true);
-  job_dsn.set_description("dsn containing JCL");
-  job_submit.get_positionals().push_back(job_dsn);
-  job_group.get_verbs().push_back(job_submit);
-
-  ZCLIVerb job_submit_jcl("submit-jcl");
-  job_submit_jcl.get_aliases().push_back("subj");
-  job_submit_jcl.set_description("submit JCL contents directly");
-  job_submit_jcl.set_zcli_verb_handler(handle_job_submit_jcl);
-  job_submit_jcl.get_options().push_back(job_jobid_only);
-  job_submit_jcl.get_options().push_back(encoding_option);
-  job_submit_jcl.get_options().push_back(job_job_correlator_only);
-  job_submit_jcl.get_exclusive_options().push_back(job_jobid_only);
-  job_submit_jcl.get_exclusive_options().push_back(job_job_correlator_only);
-  job_submit_jcl.get_options().push_back(job_wait);
-  job_group.get_verbs().push_back(job_submit_jcl);
-
-  ZCLIVerb job_submit_uss("submit-uss");
-  job_submit_uss.get_aliases().push_back("sub-u");
-  job_submit_uss.set_description("submit a job from USS files");
-  job_submit_uss.set_zcli_verb_handler(handle_job_submit_uss);
-  ZCLIPositional job_uss_file("file-path");
-  job_uss_file.set_required(true);
-  job_uss_file.set_description("USS file containing JCL");
-  job_submit_uss.get_positionals().push_back(job_uss_file);
-
-  job_submit_uss.get_options().push_back(job_jobid_only);
-  job_submit_uss.get_options().push_back(job_job_correlator_only);
-  job_submit_uss.get_exclusive_options().push_back(job_jobid_only);
-  job_submit_uss.get_exclusive_options().push_back(job_job_correlator_only);
-  job_submit_uss.get_options().push_back(job_wait);
-  job_group.get_verbs().push_back(job_submit_uss);
-
-  ZCLIVerb job_delete("delete");
-  job_delete.get_aliases().push_back("del");
-  job_delete.set_description("delete a job");
-  job_delete.set_zcli_verb_handler(handle_job_delete);
-  job_delete.get_positionals().push_back(job_jobid);
-  job_group.get_verbs().push_back(job_delete);
-
-  ZCLIVerb job_cancel("cancel");
-  job_cancel.get_aliases().push_back("cnl");
-  job_cancel.set_description("cancel a job");
-  job_cancel.set_zcli_verb_handler(handle_job_cancel);
-  job_cancel.get_positionals().push_back(job_jobid);
-
-  ZCLIOption job_cancel_dump("dump");
-  job_cancel_dump.get_aliases().push_back("-d");
-  job_cancel_dump.set_description("Dump the cancelled jobs if waiting for conversion, in conversion, or in execution.");
-  job_cancel.get_options().push_back(job_cancel_dump);
-  ZCLIOption job_cancel_force("force");
-  job_cancel_force.get_aliases().push_back("-f");
-  job_cancel_force.set_description("Force cancel the jobs, even if marked.");
-  job_cancel.get_options().push_back(job_cancel_force);
-  ZCLIOption job_cancel_purge("purge");
-  job_cancel_purge.get_aliases().push_back("-p");
-  job_cancel_purge.set_description("Purge output of the cancelled jobs.");
-  job_cancel.get_options().push_back(job_cancel_purge);
-  ZCLIOption job_cancel_restart("restart");
-  job_cancel_restart.get_aliases().push_back("-r");
-  job_cancel_restart.set_description("Request that automatic restart management automatically restart the selected jobs after they are cancelled.");
-  job_cancel.get_options().push_back(job_cancel_restart);
-  job_group.get_verbs().push_back(job_cancel);
-
-  ZCLIVerb job_hold("hold");
-  job_hold.get_aliases().push_back("hld");
-  job_hold.set_description("hold a job");
-  job_hold.set_zcli_verb_handler(handle_job_hold);
-  job_hold.get_positionals().push_back(job_jobid);
-  job_group.get_verbs().push_back(job_hold);
-
-  ZCLIVerb job_release("release");
-  job_release.get_aliases().push_back("rel");
-  job_release.set_description("release a job");
-  job_release.set_zcli_verb_handler(handle_job_release);
-  job_release.get_positionals().push_back(job_jobid);
-  job_group.get_verbs().push_back(job_release);
-
-  //
-  // console group
-  //
-  ZCLIGroup console_group("console");
-  console_group.get_aliases().push_back("cn");
-  console_group.set_description("z/OS console operations");
-
-  // console verbs
-  ZCLIVerb console_issue("issue");
-  console_issue.set_description("issue a console command");
-  console_issue.set_zcli_verb_handler(handle_console_issue);
-  ZCLIOption console_name("console-name");
-  console_name.set_default("zowex");
-  console_name.set_required(true);
-  console_name.get_aliases().push_back("--cn");
-  console_name.set_description("extended console name");
-  console_issue.get_options().push_back(console_name);
-  ZCLIOption console_wait("wait");
-  console_wait.set_default("true");
-  console_wait.set_is_bool(true);
-  console_wait.set_description("wait for responses");
-  console_issue.get_options().push_back(console_wait);
-  ZCLIPositional console_command("command");
-  console_command.set_required(true);
-  console_command.set_description("command to run, e.g. 'D IPLINFO'");
-  console_issue.get_positionals().push_back(console_command);
-  console_group.get_verbs().push_back(console_issue);
-
-  //
-  // uss group
-  //
-  ZCLIGroup uss_group("uss");
-  uss_group.set_description("z/OS USS operations");
-
-  // uss common options and positionals
-  ZCLIPositional uss_file_path("file-path");
-  uss_file_path.set_required(true);
-  uss_file_path.set_description("file path");
-  ZCLIOption uss_file_mode("mode");
-  uss_file_mode.set_required(false);
-  uss_file_mode.set_description("permissions");
-  ZCLIOption uss_recursive("recursive");
-  uss_recursive.get_aliases().push_back("-r");
-  uss_recursive.set_required(false);
-  uss_recursive.set_description("Applies the operation recursively (e.g. for folders w/ inner files)");
-
-  ZCLIVerb uss_create_file("create-file");
-  uss_create_file.set_description("create a USS file");
-  uss_create_file.set_zcli_verb_handler(handle_uss_create_file);
-  uss_create_file.get_positionals().push_back(uss_file_path);
-  uss_create_file.get_options().push_back(uss_file_mode);
-  uss_group.get_verbs().push_back(uss_create_file);
-
-  ZCLIVerb uss_create_dir("create-dir");
-  uss_create_dir.set_description("create a USS directory");
-  uss_create_dir.set_zcli_verb_handler(handle_uss_create_dir);
-  uss_create_dir.get_positionals().push_back(uss_file_path);
-  uss_create_dir.get_options().push_back(uss_file_mode);
-  uss_group.get_verbs().push_back(uss_create_dir);
-
-  ZCLIVerb uss_list("list");
-  uss_list.set_description("list USS files and directories");
-  uss_list.set_zcli_verb_handler(handle_uss_list);
-  uss_list.get_positionals().push_back(uss_file_path);
-  uss_group.get_verbs().push_back(uss_list);
-
-  ZCLIVerb uss_view("view");
-  uss_view.set_description("view a USS file");
-  uss_view.get_positionals().push_back(uss_file_path);
-  uss_view.set_zcli_verb_handler(handle_uss_view);
-  uss_view.get_options().push_back(encoding_option);
-  uss_view.get_options().push_back(response_format_bytes);
-  uss_view.get_options().push_back(return_etag);
-  uss_view.get_options().push_back(pipe_path);
-  uss_group.get_verbs().push_back(uss_view);
-
-  ZCLIVerb uss_write("write");
-  uss_write.set_description("write to a USS file");
-  uss_write.set_zcli_verb_handler(handle_uss_write);
-  uss_write.get_positionals().push_back(uss_file_path);
-  uss_write.get_options().push_back(encoding_option);
-  uss_write.get_options().push_back(etag);
-  uss_write.get_options().push_back(etag_only);
-  uss_write.get_options().push_back(pipe_path);
-  uss_group.get_verbs().push_back(uss_write);
-
-  ZCLIVerb uss_delete("delete");
-  uss_delete.set_description("delete a USS item");
-  uss_delete.set_zcli_verb_handler(handle_uss_delete);
-  uss_delete.get_positionals().push_back(uss_file_path);
-  uss_delete.get_options().push_back(uss_recursive);
-  uss_group.get_verbs().push_back(uss_delete);
-
-  ZCLIPositional uss_owner("owner");
-  uss_owner.set_required(true);
-  uss_owner.set_description("New owner (or owner:group) for the file or directory");
-
-  ZCLIPositional uss_mode_positional("mode");
-  uss_mode_positional.set_required(true);
-  uss_mode_positional.set_description("new permissions for the file or directory");
-
-  ZCLIVerb uss_chmod("chmod");
-  uss_chmod.set_description("change permissions on a USS file or directory");
-  uss_chmod.set_zcli_verb_handler(handle_uss_chmod);
-  uss_chmod.get_positionals().push_back(uss_mode_positional);
-  uss_chmod.get_positionals().push_back(uss_file_path);
-  uss_chmod.get_options().push_back(uss_recursive);
-  uss_group.get_verbs().push_back(uss_chmod);
-
-  ZCLIVerb uss_chown("chown");
-  uss_chown.set_description("change owner on a USS file or directory");
-  uss_chown.set_zcli_verb_handler(handle_uss_chown);
-  uss_chown.get_positionals().push_back(uss_owner);
-  uss_chown.get_positionals().push_back(uss_file_path);
-  uss_chown.get_options().push_back(uss_recursive);
-  uss_group.get_verbs().push_back(uss_chown);
-
-  ZCLIPositional uss_tag("tag");
-  uss_tag.set_required(true);
-  uss_tag.set_description("new tag for the file");
-
-  ZCLIVerb uss_chtag("chtag");
-  uss_chtag.set_description("change tags on a USS file");
-  uss_chtag.set_zcli_verb_handler(handle_uss_chtag);
-  uss_chtag.get_positionals().push_back(uss_file_path);
-  uss_chtag.get_positionals().push_back(uss_tag);
-  uss_chtag.get_options().push_back(uss_recursive);
-  uss_group.get_verbs().push_back(uss_chtag);
-
-  // log group
-  //
-  ZCLIGroup log_group("log");
-  log_group.set_description("log operations");
-  ZCLIVerb log_view("view");
-  log_view.set_description("view log");
-  log_view.set_zcli_verb_handler(handle_log_view);
-  ZCLIOption log_option_lines("lines");
-  log_option_lines.set_default("100");
-  log_option_lines.set_description("number of lines to print");
-  log_view.get_options().push_back(log_option_lines);
-  log_group.get_verbs().push_back(log_view);
-
-  //
-  // tool group
-  //
-  ZCLIGroup tool_group("tool");
-  tool_group.set_description("tool operations");
-
-  // console verbs
-  ZCLIVerb tool_convert_dsect("ccnedsct");
-  tool_convert_dsect.set_description("convert dsect to c struct");
-  tool_convert_dsect.set_zcli_verb_handler(handle_tool_convert_dsect);
-  ZCLIOption adata_dsn("adata-dsn");
-  adata_dsn.set_description("input adata dsn");
-  adata_dsn.set_required(true);
-  adata_dsn.get_aliases().push_back("--ad");
-  ZCLIOption chdr_name("chdr-dsn");
-  chdr_name.get_aliases().push_back("--cd");
-  chdr_name.set_description("output chdr dsn");
-  chdr_name.set_required(true);
-  ZCLIOption sysprint("sysprint");
-  sysprint.get_aliases().push_back("--sp");
-  sysprint.set_description("sysprint output");
-  ZCLIOption sysout("sysout");
-  sysout.set_description("sysout output");
-  sysout.get_aliases().push_back("--so");
-  tool_convert_dsect.get_options().push_back(adata_dsn);
-  tool_convert_dsect.get_options().push_back(chdr_name);
-  tool_convert_dsect.get_options().push_back(sysprint);
-  tool_convert_dsect.get_options().push_back(sysout);
-  tool_group.get_verbs().push_back(tool_convert_dsect);
-
-  ZCLIVerb tool_dynalloc("bpxwdy2");
-  tool_dynalloc.set_description("dynalloc command");
-  tool_dynalloc.set_zcli_verb_handler(handle_tool_dynalloc);
-  ZCLIPositional dynalloc_parm("parm");
-  dynalloc_parm.set_description("dynalloc parm string");
-  dynalloc_parm.set_required(true);
-  tool_dynalloc.get_positionals().push_back(dynalloc_parm);
-  tool_group.get_verbs().push_back(tool_dynalloc);
-
-  ZCLIVerb tool_display_symbol("display-symbol");
-  tool_display_symbol.set_description("display system symbol");
-  tool_display_symbol.set_zcli_verb_handler(handle_tool_display_symbol);
-  ZCLIPositional symbol_value("symbol");
-  symbol_value.set_description("symbol to display");
-  symbol_value.set_required(true);
-  tool_display_symbol.get_positionals().push_back(symbol_value);
-  tool_group.get_verbs().push_back(tool_display_symbol);
-
-  ZCLIVerb tool_search("search");
-  tool_search.set_description("search members for string");
-  tool_search.set_zcli_verb_handler(handle_tool_search);
-  ZCLIPositional search_dsn("dsn");
-  search_dsn.set_description("data set to search");
-  search_dsn.set_required(true);
-  tool_search.get_positionals().push_back(search_dsn);
-  ZCLIPositional search_value("string");
-  search_value.set_description("string to search for");
-  search_value.set_required(true);
-  tool_search.get_positionals().push_back(search_value);
-
-  tool_search.get_options().push_back(data_set_max_entries);
-  tool_search.get_options().push_back(data_set_truncate_warn);
-
-  tool_group.get_verbs().push_back(tool_search);
-
-  ZCLIVerb tool_amblist("amblist");
-  tool_amblist.set_description("invoke amblist");
-  tool_amblist.set_zcli_verb_handler(handle_tool_amblist);
-  ZCLIPositional amblist_dsn("dsn");
-  amblist_dsn.set_description("data containing input load modules");
-  amblist_dsn.set_required(true);
-  tool_amblist.get_positionals().push_back(amblist_dsn);
-  ZCLIOption ablist_control("control-statements");
-  ablist_control.set_description("amblist control statements, e.g. listload output=map,member=testprog");
-  ablist_control.set_required(true);
-  ablist_control.get_aliases().push_back("--cs");
-  tool_amblist.get_options().push_back(ablist_control);
-  tool_group.get_verbs().push_back(tool_amblist);
-
-  ZCLIVerb tool_run("run");
-
-  ZCLIOption dynalloc_pre("dynalloc-pre");
-  dynalloc_pre.set_description("dynalloc pre run statements");
-  dynalloc_pre.get_aliases().push_back("--dp");
-  tool_run.get_options().push_back(dynalloc_pre);
-
-  ZCLIOption dynalloc_post("dynalloc-post");
-  dynalloc_post.set_description("dynalloc post run statements");
-  dynalloc_post.get_aliases().push_back("--dt");
-  tool_run.get_options().push_back(dynalloc_post);
-
-  ZCLIOption indd("in-dd");
-  indd.set_description("input ddname");
-  indd.get_aliases().push_back("--idd");
-  tool_run.get_options().push_back(indd);
-
-  ZCLIOption input("input");
-  input.set_description("input");
-  input.get_aliases().push_back("--in");
-  tool_run.get_options().push_back(input);
-
-  ZCLIOption outdd("out-dd");
-  outdd.set_description("output ddname");
-  outdd.get_aliases().push_back("--odd");
-  tool_run.get_options().push_back(outdd);
-
-  tool_run.set_description("run a program");
-  tool_run.set_zcli_verb_handler(handle_tool_run);
-  ZCLIPositional run_name("program");
-  run_name.set_description("name of program to run");
-  run_name.set_required(true);
-  tool_run.get_positionals().push_back(run_name);
-  tool_group.get_verbs().push_back(tool_run);
-
-  // add all groups to the CLI
-  zcli.get_groups().push_back(data_set_group);
-  zcli.get_groups().push_back(console_group);
-  zcli.get_groups().push_back(job_group);
-  zcli.get_groups().push_back(uss_group);
-  zcli.get_groups().push_back(tso_group);
-  // zcli.get_groups().push_back(log_group);
-  zcli.get_groups().push_back(tool_group);
-
-  // parse
-  return zcli.parse(argc, argv);
-  */
 }
 
 int handle_console_issue(const parser::ParseResult &result)
@@ -3199,4 +2500,122 @@ int free_dynalloc_dds(vector<string> &list)
   }
 
   return loop_dynalloc(free_dds);
+}
+
+bool should_quit(const std::string &input)
+{
+  return (input == "quit" || input == "exit" ||
+          input == "QUIT" || input == "EXIT");
+}
+
+void parse_input(const std::string &input, std::vector<std::string> &values)
+{
+  std::istringstream iss(input);
+  std::vector<std::string> args;
+
+  std::string arg;
+  std::string temp;
+  bool quoted = false;
+
+  while (std::getline(iss, arg, ' '))
+  {
+    args.push_back(arg);
+  }
+
+  for (std::vector<std::string>::iterator it = args.begin(); it != args.end(); it++)
+  {
+    if (it->empty())
+      continue; // skip empty tokens
+
+    quoted = quoted || it->at(0) == '"';
+
+    if (quoted)
+    {
+      if (!temp.empty())
+      {
+        temp += ' ';
+      }
+
+      temp += *it;
+
+      if (it->at(it->size() - 1) == '"')
+      {
+        size_t pos = 0;
+        while ((pos = temp.find("\\\"", pos)) != std::string::npos)
+        {
+          temp.replace(pos++, 2, "\"");
+        }
+
+        values.push_back(temp.substr(1, temp.length() - 2));
+        temp = "";
+        quoted = false;
+      }
+    }
+    else
+    {
+      values.push_back(*it);
+    }
+  }
+}
+
+int run_interactive_mode(parser::ArgumentParser &arg_parser, const std::string &program_name)
+{
+  std::cout << "Started, enter command or 'quit' to quit..." << std::endl;
+
+  std::string command;
+  int rc = 0;
+  int is_tty = isatty(fileno(stdout));
+
+  do
+  {
+    if (is_tty)
+      std::cout << "\r> " << std::flush;
+
+    std::getline(std::cin, command);
+
+    if (should_quit(command))
+      break;
+
+    // Parse the input line into tokens
+    std::vector<std::string> entries;
+    parse_input(command, entries);
+
+    if (entries.empty())
+      continue; // skip empty lines
+
+    // Build command line string from parsed entries
+    std::string command_line;
+    for (size_t i = 0; i < entries.size(); ++i)
+    {
+      if (i > 0)
+        command_line += " ";
+
+      // Quote arguments that contain spaces
+      if (entries[i].find(' ') != std::string::npos)
+      {
+        command_line += "\"" + entries[i] + "\"";
+      }
+      else
+      {
+        command_line += entries[i];
+      }
+    }
+
+    // Parse and execute the command
+    parser::ParseResult result = arg_parser.parse(command_line);
+    rc = result.exit_code;
+
+    if (!is_tty)
+    {
+      std::cout << "[" << rc << "]" << std::endl;
+      // EBCDIC \x37 = ASCII \x04 = End of Transmission (Ctrl+D)
+      std::cout << '\x37' << std::flush;
+      std::cerr << '\x37' << std::flush;
+    }
+
+  } while (!should_quit(command));
+
+  std::cout << "...terminated" << std::endl;
+
+  return rc;
 }
