@@ -12,33 +12,7 @@
 #ifndef LEXER_HPP
 #define LEXER_HPP
 
-// Compatibility for shared_ptr and enable_shared_from_this for compilers w/
-// separate TR1 folder (C++11 Tech Report 1 standard)
-#if defined(__has_include)
-#if __has_include(<memory>)
-#include <memory>
-#elif __has_include(<tr1/memory>)
-#include <tr1/memory>
-namespace std
-{
-  typedef tr1::shared_ptr shared_ptr;
-  typedef tr1::enable_shared_from_this enable_shared_from_this;
-} // namespace std
-#endif
-#else
-// Fallback for specialized compilers w/ standard headers but separation via tr1
-// namespace
-#if defined(__IBMCPP_TR1__)
-#include <memory>
-#else
-#include <tr1/memory>
-namespace std
-{
-  using tr1::enable_shared_from_this;
-  using tr1::shared_ptr;
-} // namespace std
-#endif
-#endif
+#include "compat.hpp"
 
 #include <cctype>
 #include <cerrno>
@@ -238,39 +212,22 @@ namespace lexer
     InvalidFloat
   };
 
+// Macro to reduce boilerplate for error factory methods
+#define DECLARE_LEX_ERROR(name, kind) \
+  static LexError name(const Location &loc) { return LexError(loc, LexErrorKind::kind); }
+
   class LexError : public std::exception
   {
   public:
     LexError(const Location &loc, LexErrorKind kind) : m_loc(loc), m_kind(kind) {}
 
-    static LexError invalid_char(const Location &loc)
-    {
-      return LexError(loc, LexErrorKind::InvalidChar);
-    }
-    static LexError unclosed_string(const Location &loc)
-    {
-      return LexError(loc, LexErrorKind::UnclosedString);
-    }
-    static LexError unknown_escape(const Location &loc)
-    {
-      return LexError(loc, LexErrorKind::UnknownEscape);
-    }
-    static LexError int_out_of_range(const Location &loc)
-    {
-      return LexError(loc, LexErrorKind::IntOutOfRange);
-    }
-    static LexError incomplete_int(const Location &loc)
-    {
-      return LexError(loc, LexErrorKind::IncompleteInt);
-    }
-    static LexError float_out_of_range(const Location &loc)
-    {
-      return LexError(loc, LexErrorKind::FloatOutOfRange);
-    }
-    static LexError invalid_float(const Location &loc)
-    {
-      return LexError(loc, LexErrorKind::InvalidFloat);
-    }
+    DECLARE_LEX_ERROR(invalid_char, InvalidChar)
+    DECLARE_LEX_ERROR(unclosed_string, UnclosedString)
+    DECLARE_LEX_ERROR(unknown_escape, UnknownEscape)
+    DECLARE_LEX_ERROR(int_out_of_range, IntOutOfRange)
+    DECLARE_LEX_ERROR(incomplete_int, IncompleteInt)
+    DECLARE_LEX_ERROR(float_out_of_range, FloatOutOfRange)
+    DECLARE_LEX_ERROR(invalid_float, InvalidFloat)
 
     const Location &get_location() const { return m_loc; }
     LexErrorKind get_kind() const { return m_kind; }
@@ -684,245 +641,255 @@ namespace lexer
     // print token to stream
     void print(std::ostream &os) const
     {
-      // cached map for keyword/symbol lookup
-      static std::map<TokenKind, std::string> simple_tokens;
-      if (simple_tokens.empty())
-      { // initialize on first call
-        simple_tokens[TokEof] = "<eof>";
-        simple_tokens[TokIf] = "if";
-        simple_tokens[TokElse] = "else";
-        simple_tokens[TokFor] = "for";
-        simple_tokens[TokIn] = "in";
-        simple_tokens[TokWhile] = "while";
-        simple_tokens[TokBreak] = "break";
-        simple_tokens[TokReturn] = "return";
-        simple_tokens[TokInt] = "int";
-        simple_tokens[TokBool] = "bool";
-        simple_tokens[TokString] = "string";
-        simple_tokens[TokAnd] = "and";
-        simple_tokens[TokOr] = "or";
-        simple_tokens[TokNot] = "not";
-        simple_tokens[TokTrue] = "true";
-        simple_tokens[TokFalse] = "false";
-        simple_tokens[TokAssign] = "=";
-        simple_tokens[TokPlus] = "+";
-        simple_tokens[TokMinus] = "-";
-        simple_tokens[TokDoubleMinus] = "--";
-        simple_tokens[TokTimes] = "*";
-        simple_tokens[TokDivide] = "/";
-        simple_tokens[TokModulo] = "%";
-        simple_tokens[TokShl] = "<<";
-        simple_tokens[TokShr] = ">>";
-        simple_tokens[TokLess] = "<";
-        simple_tokens[TokGreater] = ">";
-        simple_tokens[TokLessEq] = "<=";
-        simple_tokens[TokGreaterEq] = ">=";
-        simple_tokens[TokEq] = "==";
-        simple_tokens[TokNotEq] = "!=";
-        simple_tokens[TokLParen] = "(";
-        simple_tokens[TokRParen] = ")";
-        simple_tokens[TokLBrace] = "{";
-        simple_tokens[TokRBrace] = "}";
-        simple_tokens[TokLBracket] = "[";
-        simple_tokens[TokRBracket] = "]";
-        simple_tokens[TokSemi] = ";";
-        simple_tokens[TokColon] = ":";
-        simple_tokens[TokComma] = ",";
-        simple_tokens[TokDot] = ".";
-      }
-
-      // handle flag tokens
-      if (m_kind == TokFlagShort)
-      {
-        os << "-";
-        if (m_data.string_ref.start)
-          os.write(m_data.string_ref.start, m_data.string_ref.length);
-        else
-          os << "<null_short_flag>";
+      if (print_flag_token(os) || print_simple_token(os))
         return;
-      }
-      if (m_kind == TokFlagLong)
-      {
-        os << "--";
-        if (m_data.string_ref.start)
-          os.write(m_data.string_ref.start, m_data.string_ref.length);
-        else
-          os << "<null_long_flag>";
-        return;
-      }
 
-      // handle simple tokens first using the map
-      auto it = simple_tokens.find(m_kind);
-      if (it != simple_tokens.end())
-      {
-        os << it->second;
-        return;
-      }
-
-      // handle complex tokens
       switch (m_kind)
       {
-      case TokId: // includes flags if using TokId for them
-        if (m_data.string_ref.start)
-        {
-          os.write(m_data.string_ref.start, m_data.string_ref.length);
-        }
-        else
-        {
-          os << "<null_id>"; // should not happen
-        }
+      case TokId:
+        print_string_ref(os, m_data.string_ref, "<null_id>");
         break;
       case TokStrLit:
-        os << "\"";
-        // print raw content, processing escapes for display purposes
-        if (m_data.string_ref.start)
-        {
-          const char *ptr = m_data.string_ref.start;
-          const char *end = ptr + m_data.string_ref.length;
-          while (ptr < end)
-          {
-            char c = *ptr;
-            if (c == '\\')
-            {
-              ptr++; // look at the escaped char
-              if (ptr < end)
-              {
-                switch (*ptr)
-                {
-                case 'n':
-                  os << "\\n";
-                  break;
-                case 'r':
-                  os << "\\r";
-                  break;
-                case 't':
-                  os << "\\t";
-                  break;
-                case '\\':
-                  os << "\\\\";
-                  break;
-                case '"':
-                  os << "\\\"";
-                  break; // show the escaped quote
-                case '0':
-                  os << "\\0";
-                  break;
-                default: // print unknown escapes literally for representation
-                  // check if printable, otherwise use hex?
-                  if (std::isprint(static_cast<unsigned char>(*ptr)))
-                  {
-                    os << '\\' << *ptr;
-                  }
-                  else
-                  {
-                    // simple fallback: print original backslash only
-                    os << '\\';
-                    // decrement ptr so the non-printable char is handled below
-                    ptr--;
-                  }
-                  break;
-                }
-              }
-              else
-              {
-                os << '\\'; // dangling backslash at end of content
-              }
-            }
-            else if (c == '"')
-            { // should not happen in raw content, but escape
-              // if found
-              os << "\\\"";
-            }
-            else if (c == '\n')
-            { // represent newline visually
-              os << "\\n";
-            }
-            else if (c == '\r')
-            {
-              os << "\\r";
-            }
-            else if (c == '\t')
-            {
-              os << "\\t";
-            }
-            else if (std::isprint(static_cast<unsigned char>(c)))
-            {
-              os << c; // print printable chars directly
-            }
-            else
-            {
-              // non-printable chars, print EBCDIC substitution character
-              os << "\x3F";
-            }
-            ptr++;
-          }
-        }
-        os << "\"";
+        print_string_literal(os);
         break;
       case TokIntLit:
-        if (m_data.int_lit.base == Hex)
-        {
-          std::ios_base::fmtflags original_flags = os.flags();
-          os << "0x" << std::hex << m_data.int_lit.value;
-          os.flags(original_flags);
-        }
-        else if (m_data.int_lit.base == Bin)
-        {
-          os << "0b";
-          if (m_data.int_lit.value == 0)
-          {
-            os << "0";
-          }
-          else
-          {
-            // simple binary printing for positive numbers up to 63 bits
-            bool leading_zeros = true;
-            for (int i = 63; i >= 0; --i)
-            {
-              if ((m_data.int_lit.value >> i) & 1)
-              {
-                leading_zeros = false;
-                os << '1';
-              }
-              else if (!leading_zeros)
-              {
-                os << '0';
-              }
-            }
-            if (leading_zeros)
-              os << '0'; // should only happen for value 0, handled above
-          }
-        }
-        else // dec
-        {
-          os << m_data.int_lit.value;
-        }
+        print_integer_literal(os);
         break;
       case TokFloatLit:
-      {
-        std::ios_base::fmtflags original_flags = os.flags();
-        std::streamsize original_precision = os.precision();
-
-        // preserve default float format unless scientific notation was used
-        if (m_data.float_lit.has_exponent)
-        {
-          os.setf(std::ios::scientific, std::ios::floatfield);
-        }
-        // else: use default formatting (often avoids trailing zeros vs fixed)
-
-        os << m_data.float_lit.value;
-
-        os.flags(original_flags);
-        os.precision(original_precision);
-      }
-      break;
-      default: // note: should not happen if all kinds are covered
+        print_float_literal(os);
+        break;
+      default:
         os << "<unknown token_kind: " << static_cast<int>(m_kind) << ">";
         break;
       }
     }
 
   private:
+    // Helper methods for printing tokens
+    static const char *get_simple_token_str(TokenKind kind)
+    {
+      switch (kind)
+      {
+      case TokEof:
+        return "<eof>";
+      case TokIf:
+        return "if";
+      case TokElse:
+        return "else";
+      case TokFor:
+        return "for";
+      case TokIn:
+        return "in";
+      case TokWhile:
+        return "while";
+      case TokBreak:
+        return "break";
+      case TokReturn:
+        return "return";
+      case TokInt:
+        return "int";
+      case TokBool:
+        return "bool";
+      case TokString:
+        return "string";
+      case TokAnd:
+        return "and";
+      case TokOr:
+        return "or";
+      case TokNot:
+        return "not";
+      case TokTrue:
+        return "true";
+      case TokFalse:
+        return "false";
+      case TokAssign:
+        return "=";
+      case TokPlus:
+        return "+";
+      case TokMinus:
+        return "-";
+      case TokDoubleMinus:
+        return "--";
+      case TokTimes:
+        return "*";
+      case TokDivide:
+        return "/";
+      case TokModulo:
+        return "%";
+      case TokShl:
+        return "<<";
+      case TokShr:
+        return ">>";
+      case TokLess:
+        return "<";
+      case TokGreater:
+        return ">";
+      case TokLessEq:
+        return "<=";
+      case TokGreaterEq:
+        return ">=";
+      case TokEq:
+        return "==";
+      case TokNotEq:
+        return "!=";
+      case TokLParen:
+        return "(";
+      case TokRParen:
+        return ")";
+      case TokLBrace:
+        return "{";
+      case TokRBrace:
+        return "}";
+      case TokLBracket:
+        return "[";
+      case TokRBracket:
+        return "]";
+      case TokSemi:
+        return ";";
+      case TokColon:
+        return ":";
+      case TokComma:
+        return ",";
+      case TokDot:
+        return ".";
+      default:
+        return NULL;
+      }
+    }
+
+    bool print_flag_token(std::ostream &os) const
+    {
+      if (m_kind == TokFlagShort)
+      {
+        os << "-";
+        print_string_ref(os, m_data.string_ref, "<null_short_flag>");
+        return true;
+      }
+      if (m_kind == TokFlagLong)
+      {
+        os << "--";
+        print_string_ref(os, m_data.string_ref, "<null_long_flag>");
+        return true;
+      }
+      return false;
+    }
+
+    bool print_simple_token(std::ostream &os) const
+    {
+      const char *str = get_simple_token_str(m_kind);
+      if (str)
+      {
+        os << str;
+        return true;
+      }
+      return false;
+    }
+
+    static void print_string_ref(std::ostream &os, const StringRef &ref, const char *null_fallback)
+    {
+      if (ref.start)
+        os.write(ref.start, ref.length);
+      else
+        os << null_fallback;
+    }
+
+    void print_string_literal(std::ostream &os) const
+    {
+      os << "\"";
+      if (m_data.string_ref.start)
+      {
+        const char *ptr = m_data.string_ref.start;
+        const char *end = ptr + m_data.string_ref.length;
+        while (ptr < end)
+        {
+          char c = *ptr++;
+          if (c == '\\' && ptr < end)
+          {
+            switch (*ptr++)
+            {
+            case 'n':
+              os << "\\n";
+              break;
+            case 'r':
+              os << "\\r";
+              break;
+            case 't':
+              os << "\\t";
+              break;
+            case '\\':
+              os << "\\\\";
+              break;
+            case '"':
+              os << "\\\"";
+              break;
+            case '0':
+              os << "\\0";
+              break;
+            default:
+              os << '\\' << *(ptr - 1);
+              break;
+            }
+          }
+          else if (c == '"')
+            os << "\\\"";
+          else if (c == '\n')
+            os << "\\n";
+          else if (c == '\r')
+            os << "\\r";
+          else if (c == '\t')
+            os << "\\t";
+          else if (std::isprint(static_cast<unsigned char>(c)))
+            os << c;
+          else
+            os << "\x3F";
+        }
+      }
+      os << "\"";
+    }
+
+    void print_integer_literal(std::ostream &os) const
+    {
+      if (m_data.int_lit.base == Hex)
+      {
+        std::ios_base::fmtflags flags = os.flags();
+        os << "0x" << std::hex << m_data.int_lit.value;
+        os.flags(flags);
+      }
+      else if (m_data.int_lit.base == Bin)
+      {
+        os << "0b";
+        if (m_data.int_lit.value == 0)
+          os << "0";
+        else
+        {
+          bool leading = true;
+          for (int i = 63; i >= 0; --i)
+          {
+            if ((m_data.int_lit.value >> i) & 1)
+            {
+              leading = false;
+              os << '1';
+            }
+            else if (!leading)
+              os << '0';
+          }
+        }
+      }
+      else
+        os << m_data.int_lit.value;
+    }
+
+    void print_float_literal(std::ostream &os) const
+    {
+      std::ios_base::fmtflags flags = os.flags();
+      std::streamsize precision = os.precision();
+      if (m_data.float_lit.has_exponent)
+        os.setf(std::ios::scientific, std::ios::floatfield);
+      os << m_data.float_lit.value;
+      os.flags(flags);
+      os.precision(precision);
+    }
+
     // helper to copy data based on kind (used by copy ctor and assignment)
     // this should be safe now, as it relies on the (trivial) copy/assignment
     // of the member structs (IntLit, FloatLit, StringRef).

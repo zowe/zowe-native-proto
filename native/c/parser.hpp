@@ -25,27 +25,6 @@
 #include <string>
 #include <vector>
 
-// Detect whether shared_ptr is in std::tr1 or std
-#if defined(_MSC_VER) && (_MSC_VER < 1700)
-// MSVC before VS2012: shared_ptr is in std::tr1
-#define PARSER_USE_TR1_SHARED_PTR
-#elif defined(__GNUC__) && !defined(__clang__)
-// GCC: check libstdc++ version
-#if defined(__GLIBCXX__)
-#if __GLIBCXX__ < 20110325
-// Before GCC 4.3, shared_ptr is in std::tr1
-#define PARSER_USE_TR1_SHARED_PTR
-#endif
-#endif
-#elif defined(__has_include)
-#if __has_include(<tr1/memory>)
-#include <tr1/memory>
-#define PARSER_USE_TR1_SHARED_PTR
-#endif
-#elif defined(__IBMCPP_TR1__)
-#define PARSER_USE_TR1_SHARED_PTR
-#endif
-
 namespace parser
 {
 
@@ -98,7 +77,7 @@ namespace parser
   }
 
   class Command;
-#if defined(PARSER_USE_TR1_SHARED_PTR)
+#if defined(COMPAT_USE_TR1_SHARED_PTR)
   typedef std::tr1::shared_ptr<Command> command_ptr;
   typedef std::tr1::enable_shared_from_this<Command> enable_shared_command;
 #else
@@ -1016,67 +995,53 @@ namespace parser
       return keyword_values.find(name) != keyword_values.end();
     }
 
+  private:
+    // Template helpers for getter methods
+    template <typename T>
+    const T *get_arg_value_ptr(const std::map<std::string, ArgValue> &values,
+                               const std::string &name,
+                               const T *(ArgValue::*getter)() const) const
+    {
+      std::map<std::string, ArgValue>::const_iterator it = values.find(name);
+      return (it != values.end()) ? (it->second.*getter)() : NULL;
+    }
+
+  public:
     // getters returning pointers, nullptr if missing or wrong type
     const bool *get_kw_arg_bool(const std::string &name) const
     {
-      std::map<std::string, ArgValue>::const_iterator it =
-          keyword_values.find(name);
-      if (it != keyword_values.end())
-      {
-        return it->second.get_bool();
-      }
-      return nullptr;
+      return get_arg_value_ptr(keyword_values, name, &ArgValue::get_bool);
     }
 
     const long long *get_kw_arg_int(const std::string &name) const
     {
-      std::map<std::string, ArgValue>::const_iterator it =
-          keyword_values.find(name);
-      if (it != keyword_values.end())
-      {
-        return it->second.get_int();
-      }
-      return nullptr;
+      return get_arg_value_ptr(keyword_values, name, &ArgValue::get_int);
     }
 
     const double *get_kw_arg_double(const std::string &name) const
     {
-      std::map<std::string, ArgValue>::const_iterator it =
-          keyword_values.find(name);
-      if (it != keyword_values.end())
-      {
-        return it->second.get_double();
-      }
-      return nullptr;
+      return get_arg_value_ptr(keyword_values, name, &ArgValue::get_double);
     }
 
     const std::string *get_kw_arg_string(const std::string &name) const
     {
-      std::map<std::string, ArgValue>::const_iterator it =
-          keyword_values.find(name);
-      if (it != keyword_values.end())
-      {
-        return it->second.get_string();
-      }
-      return nullptr;
+      return get_arg_value_ptr(keyword_values, name, &ArgValue::get_string);
     }
 
-    const std::vector<std::string> *
-    get_kw_arg_list(const std::string &name) const
+    const std::vector<std::string> *get_kw_arg_list(const std::string &name) const
     {
-      std::map<std::string, ArgValue>::const_iterator it =
-          keyword_values.find(name);
-      if (it != keyword_values.end())
-      {
-        return it->second.get_string_vector();
-      }
-      return nullptr;
+      return get_arg_value_ptr(keyword_values, name, &ArgValue::get_string_vector);
     }
 
-    // getters returning value or the argument's default if missing/wrong type
-    bool find_kw_arg_bool(const std::string &name) const
+  private:
+    // Template helper for find methods with default values
+    template <typename T>
+    T find_arg_with_default(const std::string &name,
+                            const T *(ParseResult::*getter)(const std::string &) const,
+                            const T *(ArgValue::*def_getter)() const,
+                            const T &fallback) const
     {
-      const bool *ptr = get_kw_arg_bool(name);
+      const T *ptr = (this->*getter)(name);
       if (ptr)
         return *ptr;
       if (m_command)
@@ -1086,94 +1051,39 @@ namespace parser
         {
           if (defs[i].name == name)
           {
-            const bool *def_ptr = defs[i].default_value.get_bool();
-            return def_ptr ? *def_ptr : false;
+            const T *def_ptr = (defs[i].default_value.*def_getter)();
+            return def_ptr ? *def_ptr : fallback;
           }
         }
       }
-      return false;
+      return fallback;
+    }
+
+  public:
+    // getters returning value or the argument's default if missing/wrong type
+    bool find_kw_arg_bool(const std::string &name) const
+    {
+      return find_arg_with_default(name, &ParseResult::get_kw_arg_bool, &ArgValue::get_bool, false);
     }
 
     long long find_kw_arg_int(const std::string &name) const
     {
-      const long long *ptr = get_kw_arg_int(name);
-      if (ptr)
-        return *ptr;
-      if (m_command)
-      {
-        const std::vector<ArgumentDef> &defs = m_command->get_keyword_args();
-        for (size_t i = 0; i < defs.size(); ++i)
-        {
-          if (defs[i].name == name)
-          {
-            const long long *def_ptr = defs[i].default_value.get_int();
-            return def_ptr ? *def_ptr : 0;
-          }
-        }
-      }
-      return 0;
+      return find_arg_with_default(name, &ParseResult::get_kw_arg_int, &ArgValue::get_int, (long long)0);
     }
 
     double find_kw_arg_double(const std::string &name) const
     {
-      const double *ptr = get_kw_arg_double(name);
-      if (ptr)
-        return *ptr;
-      if (m_command)
-      {
-        const std::vector<ArgumentDef> &defs = m_command->get_keyword_args();
-        for (size_t i = 0; i < defs.size(); ++i)
-        {
-          if (defs[i].name == name)
-          {
-            const double *def_ptr = defs[i].default_value.get_double();
-            return def_ptr ? *def_ptr : 0.0;
-          }
-        }
-      }
-      return 0.0;
+      return find_arg_with_default(name, &ParseResult::get_kw_arg_double, &ArgValue::get_double, 0.0);
     }
 
     std::string find_kw_arg_string(const std::string &name) const
     {
-      const std::string *ptr = get_kw_arg_string(name);
-      if (ptr)
-        return *ptr;
-      if (m_command)
-      {
-        const std::vector<ArgumentDef> &defs = m_command->get_keyword_args();
-        for (size_t i = 0; i < defs.size(); ++i)
-        {
-          if (defs[i].name == name)
-          {
-            const std::string *def_ptr = defs[i].default_value.get_string();
-            return def_ptr ? *def_ptr : "";
-          }
-        }
-      }
-      return "";
+      return find_arg_with_default(name, &ParseResult::get_kw_arg_string, &ArgValue::get_string, std::string(""));
     }
 
-    // returns a copy of the vector or the argument's default if missing
     std::vector<std::string> find_kw_arg_list(const std::string &name) const
     {
-      const std::vector<std::string> *ptr = get_kw_arg_list(name);
-      if (ptr)
-        return *ptr;
-      if (m_command)
-      {
-        const std::vector<ArgumentDef> &defs = m_command->get_keyword_args();
-        for (size_t i = 0; i < defs.size(); ++i)
-        {
-          if (defs[i].name == name)
-          {
-            const std::vector<std::string> *def_ptr =
-                defs[i].default_value.get_string_vector();
-            return def_ptr ? *def_ptr : std::vector<std::string>();
-          }
-        }
-      }
-      return std::vector<std::string>();
+      return find_arg_with_default(name, &ParseResult::get_kw_arg_list, &ArgValue::get_string_vector, std::vector<std::string>());
     }
 
     // --- Positional Argument Getters (by Name) ---
@@ -1187,64 +1097,38 @@ namespace parser
     // getters returning pointers, nullptr if missing or wrong type
     const bool *get_pos_arg_bool(const std::string &name) const
     {
-      std::map<std::string, ArgValue>::const_iterator it =
-          positional_values.find(name);
-      if (it != positional_values.end())
-      {
-        return it->second.get_bool();
-      }
-      return nullptr;
+      return get_arg_value_ptr(positional_values, name, &ArgValue::get_bool);
     }
 
     const long long *get_pos_arg_int(const std::string &name) const
     {
-      std::map<std::string, ArgValue>::const_iterator it =
-          positional_values.find(name);
-      if (it != positional_values.end())
-      {
-        return it->second.get_int();
-      }
-      return nullptr;
+      return get_arg_value_ptr(positional_values, name, &ArgValue::get_int);
     }
 
     const double *get_pos_arg_double(const std::string &name) const
     {
-      std::map<std::string, ArgValue>::const_iterator it =
-          positional_values.find(name);
-      if (it != positional_values.end())
-      {
-        return it->second.get_double();
-      }
-      return nullptr;
+      return get_arg_value_ptr(positional_values, name, &ArgValue::get_double);
     }
 
     const std::string *get_pos_arg_string(const std::string &name) const
     {
-      std::map<std::string, ArgValue>::const_iterator it =
-          positional_values.find(name);
-      if (it != positional_values.end())
-      {
-        return it->second.get_string();
-      }
-      return nullptr;
+      return get_arg_value_ptr(positional_values, name, &ArgValue::get_string);
     }
 
-    const std::vector<std::string> *
-    get_pos_arg_list(const std::string &name) const
+    const std::vector<std::string> *get_pos_arg_list(const std::string &name) const
     {
-      std::map<std::string, ArgValue>::const_iterator it =
-          positional_values.find(name);
-      if (it != positional_values.end())
-      {
-        return it->second.get_string_vector();
-      }
-      return nullptr;
+      return get_arg_value_ptr(positional_values, name, &ArgValue::get_string_vector);
     }
 
-    // getters returning value or the argument's default if missing/wrong type
-    bool find_pos_arg_bool(const std::string &name) const
+  private:
+    // Template helper for positional find methods
+    template <typename T>
+    T find_pos_arg_with_default(const std::string &name,
+                                const T *(ParseResult::*getter)(const std::string &) const,
+                                const T *(ArgValue::*def_getter)() const,
+                                const T &fallback) const
     {
-      const bool *ptr = get_pos_arg_bool(name);
+      const T *ptr = (this->*getter)(name);
       if (ptr)
         return *ptr;
       if (m_command)
@@ -1254,94 +1138,39 @@ namespace parser
         {
           if (defs[i].name == name)
           {
-            const bool *def_ptr = defs[i].default_value.get_bool();
-            return def_ptr ? *def_ptr : false;
+            const T *def_ptr = (defs[i].default_value.*def_getter)();
+            return def_ptr ? *def_ptr : fallback;
           }
         }
       }
-      return false;
+      return fallback;
+    }
+
+  public:
+    // Simplified positional getters returning value or default
+    bool find_pos_arg_bool(const std::string &name) const
+    {
+      return find_pos_arg_with_default(name, &ParseResult::get_pos_arg_bool, &ArgValue::get_bool, false);
     }
 
     long long find_pos_arg_int(const std::string &name) const
     {
-      const long long *ptr = get_pos_arg_int(name);
-      if (ptr)
-        return *ptr;
-      if (m_command)
-      {
-        const std::vector<ArgumentDef> &defs = m_command->get_positional_args();
-        for (size_t i = 0; i < defs.size(); ++i)
-        {
-          if (defs[i].name == name)
-          {
-            const long long *def_ptr = defs[i].default_value.get_int();
-            return def_ptr ? *def_ptr : 0;
-          }
-        }
-      }
-      return 0;
+      return find_pos_arg_with_default(name, &ParseResult::get_pos_arg_int, &ArgValue::get_int, (long long)0);
     }
 
     double find_pos_arg_double(const std::string &name) const
     {
-      const double *ptr = get_pos_arg_double(name);
-      if (ptr)
-        return *ptr;
-      if (m_command)
-      {
-        const std::vector<ArgumentDef> &defs = m_command->get_positional_args();
-        for (size_t i = 0; i < defs.size(); ++i)
-        {
-          if (defs[i].name == name)
-          {
-            const double *def_ptr = defs[i].default_value.get_double();
-            return def_ptr ? *def_ptr : 0.0;
-          }
-        }
-      }
-      return 0.0;
+      return find_pos_arg_with_default(name, &ParseResult::get_pos_arg_double, &ArgValue::get_double, 0.0);
     }
 
     std::string find_pos_arg_string(const std::string &name) const
     {
-      const std::string *ptr = get_pos_arg_string(name);
-      if (ptr)
-        return *ptr;
-      if (m_command)
-      {
-        const std::vector<ArgumentDef> &defs = m_command->get_positional_args();
-        for (size_t i = 0; i < defs.size(); ++i)
-        {
-          if (defs[i].name == name)
-          {
-            const std::string *def_ptr = defs[i].default_value.get_string();
-            return def_ptr ? *def_ptr : "";
-          }
-        }
-      }
-      return "";
+      return find_pos_arg_with_default(name, &ParseResult::get_pos_arg_string, &ArgValue::get_string, std::string(""));
     }
 
-    // returns a copy of the vector or the argument's default if missing
     std::vector<std::string> find_pos_arg_list(const std::string &name) const
     {
-      const std::vector<std::string> *ptr = get_pos_arg_list(name);
-      if (ptr)
-        return *ptr;
-      if (m_command)
-      {
-        const std::vector<ArgumentDef> &defs = m_command->get_positional_args();
-        for (size_t i = 0; i < defs.size(); ++i)
-        {
-          if (defs[i].name == name)
-          {
-            const std::vector<std::string> *def_ptr =
-                defs[i].default_value.get_string_vector();
-            return def_ptr ? *def_ptr : std::vector<std::string>();
-          }
-        }
-      }
-      return std::vector<std::string>();
+      return find_pos_arg_with_default(name, &ParseResult::get_pos_arg_list, &ArgValue::get_string_vector, std::vector<std::string>());
     }
   };
 
@@ -2159,7 +1988,6 @@ namespace parser
     os << "}\n";
     os << "complete -F _parser_complete_" << prog_name << " " << prog_name << "\n";
   }
-
 } // namespace parser
 
 #endif // PARSER_HPP
