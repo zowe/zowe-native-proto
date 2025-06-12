@@ -10,6 +10,7 @@
  */
 
 #include <iostream>
+#include <memory>
 #include <vector>
 #include <stdlib.h>
 #include <string>
@@ -35,614 +36,509 @@
                          .str()
 #endif
 
+using namespace parser;
 using namespace std;
 
-int handle_console_issue(const parser::ParseResult &result);
+int free_dynalloc_dds(vector<string> &list);
 
-int handle_tso_issue(const parser::ParseResult &result);
+int handle_console_issue(const ParseResult &result);
 
-int handle_data_set_create(const parser::ParseResult &result);
-int handle_data_set_create_vb(const parser::ParseResult &result);
-int handle_data_set_create_adata(const parser::ParseResult &result);
-int handle_data_set_create_loadlib(const parser::ParseResult &result);
-int handle_data_set_view(const parser::ParseResult &result);
-int handle_data_set_list(const parser::ParseResult &result);
-int handle_data_set_list_members(const parser::ParseResult &result);
-int handle_data_set_write(const parser::ParseResult &result);
-int handle_data_set_delete(const parser::ParseResult &result);
-int handle_data_set_restore(const parser::ParseResult &result);
-int handle_data_set_compress(const parser::ParseResult &result);
-int handle_data_set_create_member(const parser::ParseResult &result);
+int handle_tso_issue(const ParseResult &result);
 
-int handle_tool_convert_dsect(const parser::ParseResult &result);
-int handle_tool_dynalloc(const parser::ParseResult &result);
-int handle_tool_display_symbol(const parser::ParseResult &result);
-int handle_tool_search(const parser::ParseResult &result);
-int handle_tool_amblist(const parser::ParseResult &result);
-int handle_tool_run(const parser::ParseResult &result);
+int handle_data_set_create(const ParseResult &result);
+int handle_data_set_create_vb(const ParseResult &result);
+int handle_data_set_create_adata(const ParseResult &result);
+int handle_data_set_create_loadlib(const ParseResult &result);
+int handle_data_set_view(const ParseResult &result);
+int handle_data_set_list(const ParseResult &result);
+int handle_data_set_list_members(const ParseResult &result);
+int handle_data_set_write(const ParseResult &result);
+int handle_data_set_delete(const ParseResult &result);
+int handle_data_set_restore(const ParseResult &result);
+int handle_data_set_compress(const ParseResult &result);
+int handle_data_set_create_member(const ParseResult &result);
 
-int handle_uss_create_file(const parser::ParseResult &result);
-int handle_uss_create_dir(const parser::ParseResult &result);
-int handle_uss_list(const parser::ParseResult &result);
-int handle_uss_view(const parser::ParseResult &result);
-int handle_uss_write(const parser::ParseResult &result);
-int handle_uss_delete(const parser::ParseResult &result);
-int handle_uss_chmod(const parser::ParseResult &result);
-int handle_uss_chown(const parser::ParseResult &result);
-int handle_uss_chtag(const parser::ParseResult &result);
+int handle_tool_convert_dsect(const ParseResult &result);
+int handle_tool_dynalloc(const ParseResult &result);
+int handle_tool_display_symbol(const ParseResult &result);
+int handle_tool_search(const ParseResult &result);
+int handle_tool_amblist(const ParseResult &result);
+int handle_tool_run(const ParseResult &result);
 
-int handle_job_list(const parser::ParseResult &result);
-int handle_job_list_files(const parser::ParseResult &result);
-int handle_job_view_status(const parser::ParseResult &result);
-int handle_job_view_file(const parser::ParseResult &result);
-int handle_job_view_jcl(const parser::ParseResult &result);
-int handle_job_submit(const parser::ParseResult &result);
-int handle_job_submit_jcl(const parser::ParseResult &result);
-int handle_job_submit_uss(const parser::ParseResult &result);
-int handle_job_delete(const parser::ParseResult &result);
-int handle_job_cancel(const parser::ParseResult &result);
-int handle_job_hold(const parser::ParseResult &result);
-int handle_job_release(const parser::ParseResult &result);
+int handle_uss_create_file(const ParseResult &result);
+int handle_uss_create_dir(const ParseResult &result);
+int handle_uss_list(const ParseResult &result);
+int handle_uss_view(const ParseResult &result);
+int handle_uss_write(const ParseResult &result);
+int handle_uss_delete(const ParseResult &result);
+int handle_uss_chmod(const ParseResult &result);
+int handle_uss_chown(const ParseResult &result);
+int handle_uss_chtag(const ParseResult &result);
 
-// Old handler declarations - will be migrated in subsequent phases
-/*
-int handle_job_list(ZCLIResult);
-int handle_job_list_files(ZCLIResult);
-int handle_job_view_status(ZCLIResult);
-int handle_job_view_file(ZCLIResult);
-int handle_job_view_jcl(ZCLIResult);
-int handle_job_submit(ZCLIResult);
-int handle_job_submit_jcl(ZCLIResult);
-int handle_job_submit_uss(ZCLIResult);
-int handle_job_delete(ZCLIResult);
-int handle_job_cancel(ZCLIResult);
-int handle_job_hold(ZCLIResult);
-int handle_job_release(ZCLIResult);
+int handle_job_list(const ParseResult &result);
+int handle_job_list_files(const ParseResult &result);
+int handle_job_view_status(const ParseResult &result);
+int handle_job_view_file(const ParseResult &result);
+int handle_job_view_jcl(const ParseResult &result);
+int handle_job_submit(const ParseResult &result);
+int handle_job_submit_jcl(const ParseResult &result);
+int handle_job_submit_uss(const ParseResult &result);
+int handle_job_delete(const ParseResult &result);
+int handle_job_cancel(const ParseResult &result);
+int handle_job_hold(const ParseResult &result);
+int handle_job_release(const ParseResult &result);
 
-int handle_console_issue(ZCLIResult);
-
-int handle_data_set_create_dsn(ZCLIResult);
-int handle_data_set_create_dsn_vb(ZCLIResult);
-int handle_data_set_create_dsn_adata(ZCLIResult);
-int handle_data_set_create_dsn_loadlib(ZCLIResult);
-int handle_data_set_restore(ZCLIResult);
-int handle_data_set_view_dsn(ZCLIResult);
-int handle_data_set_list(ZCLIResult);
-int handle_data_set_list_members_dsn(ZCLIResult);
-int handle_data_set_write_to_dsn(ZCLIResult);
-int handle_data_set_delete_dsn(ZCLIResult);
-int handle_data_set_create_member_dsn(ZCLIResult);
-
-int handle_log_view(ZCLIResult);
-
-int handle_tool_convert_dsect(ZCLIResult);
-int handle_tool_dynalloc(ZCLIResult);
-int handle_tool_display_symbol(ZCLIResult);
-int handle_data_set_compress(ZCLIResult);
-int handle_tool_search(ZCLIResult);
-int handle_tool_amblist(ZCLIResult);
-int handle_tool_run(ZCLIResult);
-
-// TODO(Kelosky):
-// help w/verbose examples
-// add simple examples to help
-
-int handle_uss_create_file(ZCLIResult);
-int handle_uss_create_dir(ZCLIResult);
-int handle_uss_list(ZCLIResult);
-int handle_uss_view(ZCLIResult);
-int handle_uss_write(ZCLIResult);
-int handle_uss_delete(ZCLIResult);
-int handle_uss_chmod(ZCLIResult);
-int handle_uss_chown(ZCLIResult);
-int handle_uss_chtag(ZCLIResult);
-int handle_tso_issue(ZCLIResult);
-
-int job_submit_common(ZCLIResult, string, string &, string);
-*/
+int loop_dynalloc(vector<string> &list);
 
 bool should_quit(const std::string &input);
 void parse_input(const std::string &input, std::vector<std::string> &values);
-int run_interactive_mode(parser::ArgumentParser &arg_parser, const std::string &program_name);
+int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_name);
 
 int main(int argc, char *argv[])
 {
-  parser::ArgumentParser arg_parser(argv[0], "Zowe Native Protocol CLI - Modernizing mainframe access");
+  ArgumentParser arg_parser(argv[0], "Zowe Native Protocol CLI - Modernizing mainframe access");
 
   // Add interactive mode flag to root command
   arg_parser.get_root_command().add_keyword_arg("interactive",
-                                                parser::make_aliases("--interactive", "--it"),
-                                                "interactive (REPL) mode", parser::ArgType_Flag, false,
-                                                parser::ArgValue(false));
+                                                make_aliases("--interactive", "--it"),
+                                                "interactive (REPL) mode", ArgType_Flag, false,
+                                                ArgValue(false));
 
   // Console command group
-  auto console_cmd = std::make_shared<parser::Command>("console", "z/OS console operations");
+  auto console_cmd = command_ptr(new Command("console", "z/OS console operations"));
   console_cmd->add_alias("cn");
 
   // Console Issue subcommand
-  auto issue_cmd = std::make_shared<parser::Command>("issue", "issue a console command");
+  auto issue_cmd = command_ptr(new Command("issue", "issue a console command"));
   issue_cmd->add_keyword_arg("console-name",
-                             parser::make_aliases("--cn", "--console-name"),
-                             "extended console name", parser::ArgType_Single, true,
-                             parser::ArgValue(std::string("zowex")));
+                             make_aliases("--cn", "--console-name"),
+                             "extended console name", ArgType_Single, true,
+                             ArgValue(std::string("zowex")));
   issue_cmd->add_keyword_arg("wait",
-                             parser::make_aliases("--wait"),
-                             "wait for responses", parser::ArgType_Flag, false,
-                             parser::ArgValue(true));
+                             make_aliases("--wait"),
+                             "wait for responses", ArgType_Flag, false,
+                             ArgValue(true));
   issue_cmd->add_positional_arg("command", "command to run, e.g. 'D IPLINFO'",
-                                parser::ArgType_Single, true);
+                                ArgType_Single, true);
   issue_cmd->set_handler(handle_console_issue);
 
   console_cmd->add_command(issue_cmd);
   arg_parser.get_root_command().add_command(console_cmd);
 
   // TSO command group
-  auto tso_cmd = std::make_shared<parser::Command>("tso", "TSO operations");
+  auto tso_cmd = command_ptr(new Command("tso", "TSO operations"));
 
   // TSO issue subcommand
-  auto tso_issue_cmd = std::make_shared<parser::Command>("issue", "issue TSO command");
-  tso_issue_cmd->add_positional_arg("command", "command to issue", parser::ArgType_Single, true);
+  auto tso_issue_cmd = command_ptr(new Command("issue", "issue TSO command"));
+  tso_issue_cmd->add_positional_arg("command", "command to issue", ArgType_Single, true);
   tso_issue_cmd->set_handler(handle_tso_issue);
 
   tso_cmd->add_command(tso_issue_cmd);
   arg_parser.get_root_command().add_command(tso_cmd);
 
   // Data set command group
-  auto data_set_cmd = std::make_shared<parser::Command>("data-set", "z/OS data set operations");
+  auto data_set_cmd = command_ptr(new Command("data-set", "z/OS data set operations"));
   data_set_cmd->add_alias("ds");
 
   // Common data set options that are reused
-  auto make_encoding_option = []()
-  {
-    return parser::make_aliases("--encoding", "--ec");
-  };
-  auto make_etag_option = []()
-  {
-    return parser::make_aliases("--etag");
-  };
-  auto make_etag_only_option = []()
-  {
-    return parser::make_aliases("--etag-only");
-  };
-  auto make_return_etag_option = []()
-  {
-    return parser::make_aliases("--return-etag");
-  };
-  auto make_pipe_path_option = []()
-  {
-    return parser::make_aliases("--pipe-path");
-  };
-  auto make_response_format_csv_option = []()
-  {
-    return parser::make_aliases("--response-format-csv", "--rfc");
-  };
-  auto make_response_format_bytes_option = []()
-  {
-    return parser::make_aliases("--response-format-bytes", "--rfb");
-  };
+  auto encoding_option =  make_aliases("--encoding", "--ec");
+  auto etag_option = make_aliases("--etag");
+  auto etag_only_option = make_aliases("--etag-only");
+  auto return_etag_option = make_aliases("--return-etag");
+  auto pipe_path_option = make_aliases("--pipe-path");
+  auto response_format_csv_option = make_aliases("--response-format-csv", "--rfc");
+  auto response_format_bytes_option = make_aliases("--response-format-bytes", "--rfb");
 
   // Create subcommand
-  auto ds_create_cmd = std::make_shared<parser::Command>("create", "create data set");
+  auto ds_create_cmd = command_ptr(new Command("create", "create data set"));
   ds_create_cmd->add_alias("cre");
-  ds_create_cmd->add_positional_arg("dsn", "data set name, optionally with member specified", parser::ArgType_Single, true);
+  ds_create_cmd->add_positional_arg("dsn", "data set name, optionally with member specified", ArgType_Single, true);
 
   // Data set creation attributes
-  ds_create_cmd->add_keyword_arg("alcunit", parser::make_aliases("--alcunit"), "Allocation unit", parser::ArgType_Single, false);
-  ds_create_cmd->add_keyword_arg("blksize", parser::make_aliases("--blksize"), "Block size", parser::ArgType_Single, false);
-  ds_create_cmd->add_keyword_arg("dirblk", parser::make_aliases("--dirblk"), "Directory blocks", parser::ArgType_Single, false);
-  ds_create_cmd->add_keyword_arg("dsorg", parser::make_aliases("--dsorg"), "Data set organization", parser::ArgType_Single, false);
-  ds_create_cmd->add_keyword_arg("primary", parser::make_aliases("--primary"), "Primary space", parser::ArgType_Single, false);
-  ds_create_cmd->add_keyword_arg("recfm", parser::make_aliases("--recfm"), "Record format", parser::ArgType_Single, false);
-  ds_create_cmd->add_keyword_arg("lrecl", parser::make_aliases("--lrecl"), "Record length", parser::ArgType_Single, false);
-  ds_create_cmd->add_keyword_arg("dataclass", parser::make_aliases("--dataclass"), "Data class", parser::ArgType_Single, false);
-  ds_create_cmd->add_keyword_arg("unit", parser::make_aliases("--unit"), "Device type", parser::ArgType_Single, false);
-  ds_create_cmd->add_keyword_arg("dsntype", parser::make_aliases("--dsntype"), "Data set type", parser::ArgType_Single, false);
-  ds_create_cmd->add_keyword_arg("mgntclass", parser::make_aliases("--mgntclass"), "Management class", parser::ArgType_Single, false);
-  ds_create_cmd->add_keyword_arg("dsname", parser::make_aliases("--dsname"), "Data set name", parser::ArgType_Single, false);
-  ds_create_cmd->add_keyword_arg("avgblk", parser::make_aliases("--avgblk"), "Average block length", parser::ArgType_Single, false);
-  ds_create_cmd->add_keyword_arg("secondary", parser::make_aliases("--secondary"), "Secondary space", parser::ArgType_Single, false);
-  ds_create_cmd->add_keyword_arg("size", parser::make_aliases("--size"), "Size", parser::ArgType_Single, false);
-  ds_create_cmd->add_keyword_arg("storclass", parser::make_aliases("--storclass"), "Storage class", parser::ArgType_Single, false);
-  ds_create_cmd->add_keyword_arg("vol", parser::make_aliases("--vol"), "Volume serial", parser::ArgType_Single, false);
+  ds_create_cmd->add_keyword_arg("alcunit", make_aliases("--alcunit"), "Allocation unit", ArgType_Single, false);
+  ds_create_cmd->add_keyword_arg("blksize", make_aliases("--blksize"), "Block size", ArgType_Single, false);
+  ds_create_cmd->add_keyword_arg("dirblk", make_aliases("--dirblk"), "Directory blocks", ArgType_Single, false);
+  ds_create_cmd->add_keyword_arg("dsorg", make_aliases("--dsorg"), "Data set organization", ArgType_Single, false);
+  ds_create_cmd->add_keyword_arg("primary", make_aliases("--primary"), "Primary space", ArgType_Single, false);
+  ds_create_cmd->add_keyword_arg("recfm", make_aliases("--recfm"), "Record format", ArgType_Single, false);
+  ds_create_cmd->add_keyword_arg("lrecl", make_aliases("--lrecl"), "Record length", ArgType_Single, false);
+  ds_create_cmd->add_keyword_arg("dataclass", make_aliases("--dataclass"), "Data class", ArgType_Single, false);
+  ds_create_cmd->add_keyword_arg("unit", make_aliases("--unit"), "Device type", ArgType_Single, false);
+  ds_create_cmd->add_keyword_arg("dsntype", make_aliases("--dsntype"), "Data set type", ArgType_Single, false);
+  ds_create_cmd->add_keyword_arg("mgntclass", make_aliases("--mgntclass"), "Management class", ArgType_Single, false);
+  ds_create_cmd->add_keyword_arg("dsname", make_aliases("--dsname"), "Data set name", ArgType_Single, false);
+  ds_create_cmd->add_keyword_arg("avgblk", make_aliases("--avgblk"), "Average block length", ArgType_Single, false);
+  ds_create_cmd->add_keyword_arg("secondary", make_aliases("--secondary"), "Secondary space", ArgType_Single, false);
+  ds_create_cmd->add_keyword_arg("size", make_aliases("--size"), "Size", ArgType_Single, false);
+  ds_create_cmd->add_keyword_arg("storclass", make_aliases("--storclass"), "Storage class", ArgType_Single, false);
+  ds_create_cmd->add_keyword_arg("vol", make_aliases("--vol"), "Volume serial", ArgType_Single, false);
   ds_create_cmd->set_handler(handle_data_set_create);
   data_set_cmd->add_command(ds_create_cmd);
 
   // Create-vb subcommand
-  auto ds_create_vb_cmd = std::make_shared<parser::Command>("create-vb", "create VB data set using defaults: DSORG=PO, RECFM=VB, LRECL=255");
+  auto ds_create_vb_cmd = command_ptr(new Command("create-vb", "create VB data set using defaults: DSORG=PO, RECFM=VB, LRECL=255"));
   ds_create_vb_cmd->add_alias("cre-vb");
-  ds_create_vb_cmd->add_positional_arg("dsn", "data set name, optionally with member specified", parser::ArgType_Single, true);
+  ds_create_vb_cmd->add_positional_arg("dsn", "data set name, optionally with member specified", ArgType_Single, true);
   ds_create_vb_cmd->set_handler(handle_data_set_create_vb);
   data_set_cmd->add_command(ds_create_vb_cmd);
 
   // Create-adata subcommand
-  auto ds_create_adata_cmd = std::make_shared<parser::Command>("create-adata", "create VB data set using defaults: DSORG=PO, RECFM=VB, LRECL=32756");
+  auto ds_create_adata_cmd = command_ptr(new Command("create-adata", "create VB data set using defaults: DSORG=PO, RECFM=VB, LRECL=32756"));
   ds_create_adata_cmd->add_alias("cre-a");
-  ds_create_adata_cmd->add_positional_arg("dsn", "data set name, optionally with member specified", parser::ArgType_Single, true);
+  ds_create_adata_cmd->add_positional_arg("dsn", "data set name, optionally with member specified", ArgType_Single, true);
   ds_create_adata_cmd->set_handler(handle_data_set_create_adata);
   data_set_cmd->add_command(ds_create_adata_cmd);
 
   // Create-loadlib subcommand
-  auto ds_create_loadlib_cmd = std::make_shared<parser::Command>("create-loadlib", "create loadlib data set using defaults: DSORG=PO, RECFM=U, LRECL=0");
+  auto ds_create_loadlib_cmd = command_ptr(new Command("create-loadlib", "create loadlib data set using defaults: DSORG=PO, RECFM=U, LRECL=0"));
   ds_create_loadlib_cmd->add_alias("cre-u");
-  ds_create_loadlib_cmd->add_positional_arg("dsn", "data set name, optionally with member specified", parser::ArgType_Single, true);
+  ds_create_loadlib_cmd->add_positional_arg("dsn", "data set name, optionally with member specified", ArgType_Single, true);
   ds_create_loadlib_cmd->set_handler(handle_data_set_create_loadlib);
   data_set_cmd->add_command(ds_create_loadlib_cmd);
 
   // Create-member subcommand
-  auto ds_create_member_cmd = std::make_shared<parser::Command>("create-member", "create member in data set");
+  auto ds_create_member_cmd = command_ptr(new Command("create-member", "create member in data set"));
   ds_create_member_cmd->add_alias("cre-m");
-  ds_create_member_cmd->add_positional_arg("dsn", "data set name with member specified", parser::ArgType_Single, true);
+  ds_create_member_cmd->add_positional_arg("dsn", "data set name with member specified", ArgType_Single, true);
   ds_create_member_cmd->set_handler(handle_data_set_create_member);
   data_set_cmd->add_command(ds_create_member_cmd);
 
   // View subcommand
-  auto ds_view_cmd = std::make_shared<parser::Command>("view", "view data set");
-  ds_view_cmd->add_positional_arg("dsn", "data set name, optionally with member specified", parser::ArgType_Single, true);
-  ds_view_cmd->add_keyword_arg("encoding", make_encoding_option(), "return contents in given encoding", parser::ArgType_Single, false);
-  ds_view_cmd->add_keyword_arg("response-format-bytes", make_response_format_bytes_option(), "returns the response as raw bytes", parser::ArgType_Flag, false, parser::ArgValue(false));
-  ds_view_cmd->add_keyword_arg("return-etag", make_return_etag_option(), "Display the e-tag for a read response in addition to data", parser::ArgType_Flag, false, parser::ArgValue(false));
-  ds_view_cmd->add_keyword_arg("pipe-path", make_pipe_path_option(), "Specify a FIFO pipe path for transferring binary data", parser::ArgType_Single, false);
+  auto ds_view_cmd = command_ptr(new Command("view", "view data set"));
+  ds_view_cmd->add_positional_arg("dsn", "data set name, optionally with member specified", ArgType_Single, true);
+  ds_view_cmd->add_keyword_arg("encoding", encoding_option, "return contents in given encoding", ArgType_Single, false);
+  ds_view_cmd->add_keyword_arg("response-format-bytes", response_format_bytes_option, "returns the response as raw bytes", ArgType_Flag, false, ArgValue(false));
+  ds_view_cmd->add_keyword_arg("return-etag", return_etag_option, "Display the e-tag for a read response in addition to data", ArgType_Flag, false, ArgValue(false));
+  ds_view_cmd->add_keyword_arg("pipe-path", pipe_path_option, "Specify a FIFO pipe path for transferring binary data", ArgType_Single, false);
   ds_view_cmd->set_handler(handle_data_set_view);
   data_set_cmd->add_command(ds_view_cmd);
 
   // List subcommand
-  auto ds_list_cmd = std::make_shared<parser::Command>("list", "list data sets");
+  auto ds_list_cmd = command_ptr(new Command("list", "list data sets"));
   ds_list_cmd->add_alias("ls");
-  ds_list_cmd->add_positional_arg("dsn", "data set name pattern", parser::ArgType_Single, true);
-  ds_list_cmd->add_keyword_arg("attributes", parser::make_aliases("--attributes", "-a"), "display data set attributes", parser::ArgType_Flag, false, parser::ArgValue(false));
-  ds_list_cmd->add_keyword_arg("max-entries", parser::make_aliases("--max-entries", "--me"), "max number of results to return before warning generated", parser::ArgType_Single, false);
-  ds_list_cmd->add_keyword_arg("warn", parser::make_aliases("--warn"), "warn if truncated or not found", parser::ArgType_Flag, false, parser::ArgValue(true));
-  ds_list_cmd->add_keyword_arg("response-format-csv", make_response_format_csv_option(), "returns the response in CSV format", parser::ArgType_Flag, false, parser::ArgValue(false));
+  ds_list_cmd->add_positional_arg("dsn", "data set name pattern", ArgType_Single, true);
+  ds_list_cmd->add_keyword_arg("attributes", make_aliases("--attributes", "-a"), "display data set attributes", ArgType_Flag, false, ArgValue(false));
+  ds_list_cmd->add_keyword_arg("max-entries", make_aliases("--max-entries", "--me"), "max number of results to return before warning generated", ArgType_Single, false);
+  ds_list_cmd->add_keyword_arg("warn", make_aliases("--warn"), "warn if truncated or not found", ArgType_Flag, false, ArgValue(true));
+  ds_list_cmd->add_keyword_arg("response-format-csv", response_format_csv_option, "returns the response in CSV format", ArgType_Flag, false, ArgValue(false));
   ds_list_cmd->set_handler(handle_data_set_list);
   data_set_cmd->add_command(ds_list_cmd);
 
   // List-members subcommand
-  auto ds_list_members_cmd = std::make_shared<parser::Command>("list-members", "list data set members");
+  auto ds_list_members_cmd = command_ptr(new Command("list-members", "list data set members"));
   ds_list_members_cmd->add_alias("lm");
-  ds_list_members_cmd->add_positional_arg("dsn", "data set name", parser::ArgType_Single, true);
-  ds_list_members_cmd->add_keyword_arg("max-entries", parser::make_aliases("--max-entries", "--me"), "max number of results to return before warning generated", parser::ArgType_Single, false);
-  ds_list_members_cmd->add_keyword_arg("warn", parser::make_aliases("--warn"), "warn if truncated or not found", parser::ArgType_Flag, false, parser::ArgValue(true));
+  ds_list_members_cmd->add_positional_arg("dsn", "data set name", ArgType_Single, true);
+  ds_list_members_cmd->add_keyword_arg("max-entries", make_aliases("--max-entries", "--me"), "max number of results to return before warning generated", ArgType_Single, false);
+  ds_list_members_cmd->add_keyword_arg("warn", make_aliases("--warn"), "warn if truncated or not found", ArgType_Flag, false, ArgValue(true));
   ds_list_members_cmd->set_handler(handle_data_set_list_members);
   data_set_cmd->add_command(ds_list_members_cmd);
 
   // Write subcommand
-  auto ds_write_cmd = std::make_shared<parser::Command>("write", "write to data set");
-  ds_write_cmd->add_positional_arg("dsn", "data set name, optionally with member specified", parser::ArgType_Single, true);
-  ds_write_cmd->add_keyword_arg("encoding", make_encoding_option(), "encoding for input data", parser::ArgType_Single, false);
-  ds_write_cmd->add_keyword_arg("etag", make_etag_option(), "Provide the e-tag for a write response to detect conflicts before save", parser::ArgType_Single, false);
-  ds_write_cmd->add_keyword_arg("etag-only", make_etag_only_option(), "Only print the e-tag for a write response (when successful)", parser::ArgType_Flag, false, parser::ArgValue(false));
-  ds_write_cmd->add_keyword_arg("pipe-path", make_pipe_path_option(), "Specify a FIFO pipe path for transferring binary data", parser::ArgType_Single, false);
+  auto ds_write_cmd = command_ptr(new Command("write", "write to data set"));
+  ds_write_cmd->add_positional_arg("dsn", "data set name, optionally with member specified", ArgType_Single, true);
+  ds_write_cmd->add_keyword_arg("encoding", encoding_option, "encoding for input data", ArgType_Single, false);
+  ds_write_cmd->add_keyword_arg("etag", etag_option, "Provide the e-tag for a write response to detect conflicts before save", ArgType_Single, false);
+  ds_write_cmd->add_keyword_arg("etag-only", etag_only_option, "Only print the e-tag for a write response (when successful)", ArgType_Flag, false, ArgValue(false));
+  ds_write_cmd->add_keyword_arg("pipe-path", pipe_path_option, "Specify a FIFO pipe path for transferring binary data", ArgType_Single, false);
   ds_write_cmd->set_handler(handle_data_set_write);
   data_set_cmd->add_command(ds_write_cmd);
 
   // Delete subcommand
-  auto ds_delete_cmd = std::make_shared<parser::Command>("delete", "delete data set");
+  auto ds_delete_cmd = command_ptr(new Command("delete", "delete data set"));
   ds_delete_cmd->add_alias("del");
-  ds_delete_cmd->add_positional_arg("dsn", "data set name, optionally with member specified", parser::ArgType_Single, true);
+  ds_delete_cmd->add_positional_arg("dsn", "data set name, optionally with member specified", ArgType_Single, true);
   ds_delete_cmd->set_handler(handle_data_set_delete);
   data_set_cmd->add_command(ds_delete_cmd);
 
   // Restore subcommand
-  auto ds_restore_cmd = std::make_shared<parser::Command>("restore", "restore/recall data set");
-  ds_restore_cmd->add_positional_arg("dsn", "data set name", parser::ArgType_Single, true);
+  auto ds_restore_cmd = command_ptr(new Command("restore", "restore/recall data set"));
+  ds_restore_cmd->add_positional_arg("dsn", "data set name", ArgType_Single, true);
   ds_restore_cmd->set_handler(handle_data_set_restore);
   data_set_cmd->add_command(ds_restore_cmd);
 
   // Compress subcommand
-  auto ds_compress_cmd = std::make_shared<parser::Command>("compress", "compress data set");
-  ds_compress_cmd->add_positional_arg("dsn", "data set to compress", parser::ArgType_Single, true);
+  auto ds_compress_cmd = command_ptr(new Command("compress", "compress data set"));
+  ds_compress_cmd->add_positional_arg("dsn", "data set to compress", ArgType_Single, true);
   ds_compress_cmd->set_handler(handle_data_set_compress);
   data_set_cmd->add_command(ds_compress_cmd);
 
   arg_parser.get_root_command().add_command(data_set_cmd);
 
   // Tool command group
-  auto tool_cmd = std::make_shared<parser::Command>("tool", "tool operations");
+  auto tool_cmd = command_ptr(new Command("tool", "tool operations"));
 
   // Convert DSECT subcommand
-  auto tool_convert_dsect_cmd = std::make_shared<parser::Command>("ccnedsct", "convert dsect to c struct");
+  auto tool_convert_dsect_cmd = command_ptr(new Command("ccnedsct", "convert dsect to c struct"));
   tool_convert_dsect_cmd->add_keyword_arg("adata-dsn",
-                                          parser::make_aliases("--adata-dsn", "--ad"),
-                                          "input adata dsn", parser::ArgType_Single, true);
+                                          make_aliases("--adata-dsn", "--ad"),
+                                          "input adata dsn", ArgType_Single, true);
   tool_convert_dsect_cmd->add_keyword_arg("chdr-dsn",
-                                          parser::make_aliases("--chdr-dsn", "--cd"),
-                                          "output chdr dsn", parser::ArgType_Single, true);
+                                          make_aliases("--chdr-dsn", "--cd"),
+                                          "output chdr dsn", ArgType_Single, true);
   tool_convert_dsect_cmd->add_keyword_arg("sysprint",
-                                          parser::make_aliases("--sysprint", "--sp"),
-                                          "sysprint output", parser::ArgType_Single, false);
+                                          make_aliases("--sysprint", "--sp"),
+                                          "sysprint output", ArgType_Single, false);
   tool_convert_dsect_cmd->add_keyword_arg("sysout",
-                                          parser::make_aliases("--sysout", "--so"),
-                                          "sysout output", parser::ArgType_Single, false);
+                                          make_aliases("--sysout", "--so"),
+                                          "sysout output", ArgType_Single, false);
   tool_convert_dsect_cmd->set_handler(handle_tool_convert_dsect);
   tool_cmd->add_command(tool_convert_dsect_cmd);
 
   // Dynalloc subcommand
-  auto tool_dynalloc_cmd = std::make_shared<parser::Command>("bpxwdy2", "dynalloc command");
-  tool_dynalloc_cmd->add_positional_arg("parm", "dynalloc parm string", parser::ArgType_Single, true);
+  auto tool_dynalloc_cmd = command_ptr(new Command("bpxwdy2", "dynalloc command"));
+  tool_dynalloc_cmd->add_positional_arg("parm", "dynalloc parm string", ArgType_Single, true);
   tool_dynalloc_cmd->set_handler(handle_tool_dynalloc);
   tool_cmd->add_command(tool_dynalloc_cmd);
 
   // Display symbol subcommand
-  auto tool_display_symbol_cmd = std::make_shared<parser::Command>("display-symbol", "display system symbol");
-  tool_display_symbol_cmd->add_positional_arg("symbol", "symbol to display", parser::ArgType_Single, true);
+  auto tool_display_symbol_cmd = command_ptr(new Command("display-symbol", "display system symbol"));
+  tool_display_symbol_cmd->add_positional_arg("symbol", "symbol to display", ArgType_Single, true);
   tool_display_symbol_cmd->set_handler(handle_tool_display_symbol);
   tool_cmd->add_command(tool_display_symbol_cmd);
 
   // Search subcommand
-  auto tool_search_cmd = std::make_shared<parser::Command>("search", "search members for string");
-  tool_search_cmd->add_positional_arg("dsn", "data set to search", parser::ArgType_Single, true);
-  tool_search_cmd->add_positional_arg("string", "string to search for", parser::ArgType_Single, true);
-  tool_search_cmd->add_keyword_arg("max-entries", parser::make_aliases("--max-entries", "--me"), "max number of results to return before warning generated", parser::ArgType_Single, false);
-  tool_search_cmd->add_keyword_arg("warn", parser::make_aliases("--warn"), "warn if truncated or not found", parser::ArgType_Flag, false, parser::ArgValue(true));
+  auto tool_search_cmd = command_ptr(new Command("search", "search members for string"));
+  tool_search_cmd->add_positional_arg("dsn", "data set to search", ArgType_Single, true);
+  tool_search_cmd->add_positional_arg("string", "string to search for", ArgType_Single, true);
+  tool_search_cmd->add_keyword_arg("max-entries", make_aliases("--max-entries", "--me"), "max number of results to return before warning generated", ArgType_Single, false);
+  tool_search_cmd->add_keyword_arg("warn", make_aliases("--warn"), "warn if truncated or not found", ArgType_Flag, false, ArgValue(true));
   tool_search_cmd->set_handler(handle_tool_search);
   tool_cmd->add_command(tool_search_cmd);
 
   // Amblist subcommand
-  auto tool_amblist_cmd = std::make_shared<parser::Command>("amblist", "invoke amblist");
-  tool_amblist_cmd->add_positional_arg("dsn", "data containing input load modules", parser::ArgType_Single, true);
+  auto tool_amblist_cmd = command_ptr(new Command("amblist", "invoke amblist"));
+  tool_amblist_cmd->add_positional_arg("dsn", "data containing input load modules", ArgType_Single, true);
   tool_amblist_cmd->add_keyword_arg("control-statements",
-                                    parser::make_aliases("--control-statements", "--cs"),
+                                    make_aliases("--control-statements", "--cs"),
                                     "amblist control statements, e.g. listload output=map,member=testprog",
-                                    parser::ArgType_Single, true);
+                                    ArgType_Single, true);
   tool_amblist_cmd->set_handler(handle_tool_amblist);
   tool_cmd->add_command(tool_amblist_cmd);
 
   // Run subcommand
-  auto tool_run_cmd = std::make_shared<parser::Command>("run", "run a program");
-  tool_run_cmd->add_positional_arg("program", "name of program to run", parser::ArgType_Single, true);
+  auto tool_run_cmd = command_ptr(new Command("run", "run a program"));
+  tool_run_cmd->add_positional_arg("program", "name of program to run", ArgType_Single, true);
   tool_run_cmd->add_keyword_arg("dynalloc-pre",
-                                parser::make_aliases("--dynalloc-pre", "--dp"),
-                                "dynalloc pre run statements", parser::ArgType_Single, false);
+                                make_aliases("--dynalloc-pre", "--dp"),
+                                "dynalloc pre run statements", ArgType_Single, false);
   tool_run_cmd->add_keyword_arg("dynalloc-post",
-                                parser::make_aliases("--dynalloc-post", "--dt"),
-                                "dynalloc post run statements", parser::ArgType_Single, false);
+                                make_aliases("--dynalloc-post", "--dt"),
+                                "dynalloc post run statements", ArgType_Single, false);
   tool_run_cmd->add_keyword_arg("in-dd",
-                                parser::make_aliases("--in-dd", "--idd"),
-                                "input ddname", parser::ArgType_Single, false);
+                                make_aliases("--in-dd", "--idd"),
+                                "input ddname", ArgType_Single, false);
   tool_run_cmd->add_keyword_arg("input",
-                                parser::make_aliases("--input", "--in"),
-                                "input", parser::ArgType_Single, false);
+                                make_aliases("--input", "--in"),
+                                "input", ArgType_Single, false);
   tool_run_cmd->add_keyword_arg("out-dd",
-                                parser::make_aliases("--out-dd", "--odd"),
-                                "output ddname", parser::ArgType_Single, false);
+                                make_aliases("--out-dd", "--odd"),
+                                "output ddname", ArgType_Single, false);
   tool_run_cmd->set_handler(handle_tool_run);
   tool_cmd->add_command(tool_run_cmd);
 
   arg_parser.get_root_command().add_command(tool_cmd);
 
   // USS command group
-  auto uss_cmd = std::make_shared<parser::Command>("uss", "z/OS USS operations");
+  auto uss_cmd = command_ptr(new Command("uss", "z/OS USS operations"));
 
   // Common encoding/etag/pipe-path option helpers (reuse from data-set group)
-  auto make_uss_encoding_option = []()
-  {
-    return parser::make_aliases("--encoding", "--ec");
-  };
-  auto make_uss_etag_option = []()
-  {
-    return parser::make_aliases("--etag");
-  };
-  auto make_uss_etag_only_option = []()
-  {
-    return parser::make_aliases("--etag-only");
-  };
-  auto make_uss_return_etag_option = []()
-  {
-    return parser::make_aliases("--return-etag");
-  };
-  auto make_uss_pipe_path_option = []()
-  {
-    return parser::make_aliases("--pipe-path");
-  };
-  auto make_uss_response_format_bytes_option = []()
-  {
-    return parser::make_aliases("--response-format-bytes", "--rfb");
-  };
+  auto uss_encoding_option = make_aliases("--encoding", "--ec");
+  auto uss_etag_option = make_aliases("--etag");
+  auto uss_etag_only_option = make_aliases("--etag-only");
+  auto uss_return_etag_option = make_aliases("--return-etag");
+  auto uss_pipe_path_option = make_aliases("--pipe-path");
+  auto uss_response_format_bytes_option =make_aliases("--response-format-bytes", "--rfb");
 
   // Create-file subcommand
-  auto uss_create_file_cmd = std::make_shared<parser::Command>("create-file", "create a USS file");
-  uss_create_file_cmd->add_positional_arg("file-path", "file path", parser::ArgType_Single, true);
-  uss_create_file_cmd->add_keyword_arg("mode", parser::make_aliases("--mode"), "permissions", parser::ArgType_Single, false);
+  auto uss_create_file_cmd = command_ptr(new Command("create-file", "create a USS file"));
+  uss_create_file_cmd->add_positional_arg("file-path", "file path", ArgType_Single, true);
+  uss_create_file_cmd->add_keyword_arg("mode", make_aliases("--mode"), "permissions", ArgType_Single, false);
   uss_create_file_cmd->set_handler(handle_uss_create_file);
   uss_cmd->add_command(uss_create_file_cmd);
 
   // Create-dir subcommand
-  auto uss_create_dir_cmd = std::make_shared<parser::Command>("create-dir", "create a USS directory");
-  uss_create_dir_cmd->add_positional_arg("file-path", "file path", parser::ArgType_Single, true);
-  uss_create_dir_cmd->add_keyword_arg("mode", parser::make_aliases("--mode"), "permissions", parser::ArgType_Single, false);
+  auto uss_create_dir_cmd = command_ptr(new Command("create-dir", "create a USS directory"));
+  uss_create_dir_cmd->add_positional_arg("file-path", "file path", ArgType_Single, true);
+  uss_create_dir_cmd->add_keyword_arg("mode", make_aliases("--mode"), "permissions", ArgType_Single, false);
   uss_create_dir_cmd->set_handler(handle_uss_create_dir);
   uss_cmd->add_command(uss_create_dir_cmd);
 
   // List subcommand
-  auto uss_list_cmd = std::make_shared<parser::Command>("list", "list USS files and directories");
-  uss_list_cmd->add_positional_arg("file-path", "file path", parser::ArgType_Single, true);
+  auto uss_list_cmd = command_ptr(new Command("list", "list USS files and directories"));
+  uss_list_cmd->add_positional_arg("file-path", "file path", ArgType_Single, true);
   uss_list_cmd->set_handler(handle_uss_list);
   uss_cmd->add_command(uss_list_cmd);
 
   // View subcommand
-  auto uss_view_cmd = std::make_shared<parser::Command>("view", "view a USS file");
-  uss_view_cmd->add_positional_arg("file-path", "file path", parser::ArgType_Single, true);
-  uss_view_cmd->add_keyword_arg("encoding", make_uss_encoding_option(), "return contents in given encoding", parser::ArgType_Single, false);
-  uss_view_cmd->add_keyword_arg("response-format-bytes", make_uss_response_format_bytes_option(), "returns the response as raw bytes", parser::ArgType_Flag, false, parser::ArgValue(false));
-  uss_view_cmd->add_keyword_arg("return-etag", make_uss_return_etag_option(), "Display the e-tag for a read response in addition to data", parser::ArgType_Flag, false, parser::ArgValue(false));
-  uss_view_cmd->add_keyword_arg("pipe-path", make_uss_pipe_path_option(), "Specify a FIFO pipe path for transferring binary data", parser::ArgType_Single, false);
+  auto uss_view_cmd = command_ptr(new Command("view", "view a USS file"));
+  uss_view_cmd->add_positional_arg("file-path", "file path", ArgType_Single, true);
+  uss_view_cmd->add_keyword_arg("encoding", uss_encoding_option, "return contents in given encoding", ArgType_Single, false);
+  uss_view_cmd->add_keyword_arg("response-format-bytes", uss_response_format_bytes_option, "returns the response as raw bytes", ArgType_Flag, false, ArgValue(false));
+  uss_view_cmd->add_keyword_arg("return-etag", uss_return_etag_option, "Display the e-tag for a read response in addition to data", ArgType_Flag, false, ArgValue(false));
+  uss_view_cmd->add_keyword_arg("pipe-path", uss_pipe_path_option, "Specify a FIFO pipe path for transferring binary data", ArgType_Single, false);
   uss_view_cmd->set_handler(handle_uss_view);
   uss_cmd->add_command(uss_view_cmd);
 
   // Write subcommand
-  auto uss_write_cmd = std::make_shared<parser::Command>("write", "write to a USS file");
-  uss_write_cmd->add_positional_arg("file-path", "file path", parser::ArgType_Single, true);
-  uss_write_cmd->add_keyword_arg("encoding", make_uss_encoding_option(), "encoding for input data", parser::ArgType_Single, false);
-  uss_write_cmd->add_keyword_arg("etag", make_uss_etag_option(), "Provide the e-tag for a write response to detect conflicts before save", parser::ArgType_Single, false);
-  uss_write_cmd->add_keyword_arg("etag-only", make_uss_etag_only_option(), "Only print the e-tag for a write response (when successful)", parser::ArgType_Flag, false, parser::ArgValue(false));
-  uss_write_cmd->add_keyword_arg("pipe-path", make_uss_pipe_path_option(), "Specify a FIFO pipe path for transferring binary data", parser::ArgType_Single, false);
+  auto uss_write_cmd = command_ptr(new Command("write", "write to a USS file"));
+  uss_write_cmd->add_positional_arg("file-path", "file path", ArgType_Single, true);
+  uss_write_cmd->add_keyword_arg("encoding", uss_encoding_option, "encoding for input data", ArgType_Single, false);
+  uss_write_cmd->add_keyword_arg("etag", uss_etag_option, "Provide the e-tag for a write response to detect conflicts before save", ArgType_Single, false);
+  uss_write_cmd->add_keyword_arg("etag-only", uss_etag_only_option, "Only print the e-tag for a write response (when successful)", ArgType_Flag, false, ArgValue(false));
+  uss_write_cmd->add_keyword_arg("pipe-path", uss_pipe_path_option, "Specify a FIFO pipe path for transferring binary data", ArgType_Single, false);
   uss_write_cmd->set_handler(handle_uss_write);
   uss_cmd->add_command(uss_write_cmd);
 
   // Delete subcommand
-  auto uss_delete_cmd = std::make_shared<parser::Command>("delete", "delete a USS item");
-  uss_delete_cmd->add_positional_arg("file-path", "file path", parser::ArgType_Single, true);
-  uss_delete_cmd->add_keyword_arg("recursive", parser::make_aliases("--recursive", "-r"), "Applies the operation recursively (e.g. for folders w/ inner files)", parser::ArgType_Flag, false, parser::ArgValue(false));
+  auto uss_delete_cmd = command_ptr(new Command("delete", "delete a USS item"));
+  uss_delete_cmd->add_positional_arg("file-path", "file path", ArgType_Single, true);
+  uss_delete_cmd->add_keyword_arg("recursive", make_aliases("--recursive", "-r"), "Applies the operation recursively (e.g. for folders w/ inner files)", ArgType_Flag, false, ArgValue(false));
   uss_delete_cmd->set_handler(handle_uss_delete);
   uss_cmd->add_command(uss_delete_cmd);
 
   // Chmod subcommand
-  auto uss_chmod_cmd = std::make_shared<parser::Command>("chmod", "change permissions on a USS file or directory");
-  uss_chmod_cmd->add_positional_arg("mode", "new permissions for the file or directory", parser::ArgType_Single, true);
-  uss_chmod_cmd->add_positional_arg("file-path", "file path", parser::ArgType_Single, true);
-  uss_chmod_cmd->add_keyword_arg("recursive", parser::make_aliases("--recursive", "-r"), "Applies the operation recursively (e.g. for folders w/ inner files)", parser::ArgType_Flag, false, parser::ArgValue(false));
+  auto uss_chmod_cmd = command_ptr(new Command("chmod", "change permissions on a USS file or directory"));
+  uss_chmod_cmd->add_positional_arg("mode", "new permissions for the file or directory", ArgType_Single, true);
+  uss_chmod_cmd->add_positional_arg("file-path", "file path", ArgType_Single, true);
+  uss_chmod_cmd->add_keyword_arg("recursive", make_aliases("--recursive", "-r"), "Applies the operation recursively (e.g. for folders w/ inner files)", ArgType_Flag, false, ArgValue(false));
   uss_chmod_cmd->set_handler(handle_uss_chmod);
   uss_cmd->add_command(uss_chmod_cmd);
 
   // Chown subcommand
-  auto uss_chown_cmd = std::make_shared<parser::Command>("chown", "change owner on a USS file or directory");
-  uss_chown_cmd->add_positional_arg("owner", "New owner (or owner:group) for the file or directory", parser::ArgType_Single, true);
-  uss_chown_cmd->add_positional_arg("file-path", "file path", parser::ArgType_Single, true);
-  uss_chown_cmd->add_keyword_arg("recursive", parser::make_aliases("--recursive", "-r"), "Applies the operation recursively (e.g. for folders w/ inner files)", parser::ArgType_Flag, false, parser::ArgValue(false));
+  auto uss_chown_cmd = command_ptr(new Command("chown", "change owner on a USS file or directory"));
+  uss_chown_cmd->add_positional_arg("owner", "New owner (or owner:group) for the file or directory", ArgType_Single, true);
+  uss_chown_cmd->add_positional_arg("file-path", "file path", ArgType_Single, true);
+  uss_chown_cmd->add_keyword_arg("recursive", make_aliases("--recursive", "-r"), "Applies the operation recursively (e.g. for folders w/ inner files)", ArgType_Flag, false, ArgValue(false));
   uss_chown_cmd->set_handler(handle_uss_chown);
   uss_cmd->add_command(uss_chown_cmd);
 
   // Chtag subcommand
-  auto uss_chtag_cmd = std::make_shared<parser::Command>("chtag", "change tags on a USS file");
-  uss_chtag_cmd->add_positional_arg("file-path", "file path", parser::ArgType_Single, true);
-  uss_chtag_cmd->add_positional_arg("tag", "new tag for the file", parser::ArgType_Single, true);
-  uss_chtag_cmd->add_keyword_arg("recursive", parser::make_aliases("--recursive", "-r"), "Applies the operation recursively (e.g. for folders w/ inner files)", parser::ArgType_Flag, false, parser::ArgValue(false));
+  auto uss_chtag_cmd = command_ptr(new Command("chtag", "change tags on a USS file"));
+  uss_chtag_cmd->add_positional_arg("file-path", "file path", ArgType_Single, true);
+  uss_chtag_cmd->add_positional_arg("tag", "new tag for the file", ArgType_Single, true);
+  uss_chtag_cmd->add_keyword_arg("recursive", make_aliases("--recursive", "-r"), "Applies the operation recursively (e.g. for folders w/ inner files)", ArgType_Flag, false, ArgValue(false));
   uss_chtag_cmd->set_handler(handle_uss_chtag);
   uss_cmd->add_command(uss_chtag_cmd);
 
   arg_parser.get_root_command().add_command(uss_cmd);
 
   // Job command group
-  auto job_cmd = std::make_shared<parser::Command>("job", "z/OS job operations");
-
-  // Common job option helpers
-  auto make_response_format_csv_option = []()
-  {
-    return parser::make_aliases("--response-format-csv", "--rfc");
-  };
-  auto make_response_format_bytes_option = []()
-  {
-    return parser::make_aliases("--response-format-bytes", "--rfb");
-  };
-  auto make_encoding_option = []()
-  {
-    return parser::make_aliases("--encoding", "--ec");
-  };
+  auto job_cmd = command_ptr(new Command("job", "z/OS job operations"));
 
   // List subcommand
-  auto job_list_cmd = std::make_shared<parser::Command>("list", "list jobs");
-  job_list_cmd->add_keyword_arg("owner", parser::make_aliases("--owner", "-o"), "filter by owner", parser::ArgType_Single, false);
-  job_list_cmd->add_keyword_arg("prefix", parser::make_aliases("--prefix", "-p"), "filter by prefix", parser::ArgType_Single, false);
-  job_list_cmd->add_keyword_arg("max-entries", parser::make_aliases("--max-entries", "--me"), "max number of results to return before warning generated", parser::ArgType_Single, false);
-  job_list_cmd->add_keyword_arg("warn", parser::make_aliases("--warn"), "warn if truncated or not found", parser::ArgType_Flag, false, parser::ArgValue(true));
-  job_list_cmd->add_keyword_arg("response-format-csv", make_response_format_csv_option(), "returns the response in CSV format", parser::ArgType_Flag, false, parser::ArgValue(false));
+  auto job_list_cmd = command_ptr(new Command("list", "list jobs"));
+  job_list_cmd->add_keyword_arg("owner", make_aliases("--owner", "-o"), "filter by owner", ArgType_Single, false);
+  job_list_cmd->add_keyword_arg("prefix", make_aliases("--prefix", "-p"), "filter by prefix", ArgType_Single, false);
+  job_list_cmd->add_keyword_arg("max-entries", make_aliases("--max-entries", "--me"), "max number of results to return before warning generated", ArgType_Single, false);
+  job_list_cmd->add_keyword_arg("warn", make_aliases("--warn"), "warn if truncated or not found", ArgType_Flag, false, ArgValue(true));
+  job_list_cmd->add_keyword_arg("response-format-csv", response_format_csv_option, "returns the response in CSV format", ArgType_Flag, false, ArgValue(false));
   job_list_cmd->set_handler(handle_job_list);
   job_cmd->add_command(job_list_cmd);
 
   // List-files subcommand
-  auto job_list_files_cmd = std::make_shared<parser::Command>("list-files", "list spool files for jobid");
+  auto job_list_files_cmd = command_ptr(new Command("list-files", "list spool files for jobid"));
   job_list_files_cmd->add_alias("lf");
-  job_list_files_cmd->add_positional_arg("jobid", "valid jobid or job correlator", parser::ArgType_Single, true);
-  job_list_files_cmd->add_keyword_arg("max-entries", parser::make_aliases("--max-entries", "--me"), "max number of files to return before warning generated", parser::ArgType_Single, false);
-  job_list_files_cmd->add_keyword_arg("warn", parser::make_aliases("--warn"), "warn if truncated or not found", parser::ArgType_Flag, false, parser::ArgValue(true));
-  job_list_files_cmd->add_keyword_arg("response-format-csv", make_response_format_csv_option(), "returns the response in CSV format", parser::ArgType_Flag, false, parser::ArgValue(false));
+  job_list_files_cmd->add_positional_arg("jobid", "valid jobid or job correlator", ArgType_Single, true);
+  job_list_files_cmd->add_keyword_arg("max-entries", make_aliases("--max-entries", "--me"), "max number of files to return before warning generated", ArgType_Single, false);
+  job_list_files_cmd->add_keyword_arg("warn", make_aliases("--warn"), "warn if truncated or not found", ArgType_Flag, false, ArgValue(true));
+  job_list_files_cmd->add_keyword_arg("response-format-csv", response_format_csv_option, "returns the response in CSV format", ArgType_Flag, false, ArgValue(false));
   job_list_files_cmd->set_handler(handle_job_list_files);
   job_cmd->add_command(job_list_files_cmd);
 
   // View-status subcommand
-  auto job_view_status_cmd = std::make_shared<parser::Command>("view-status", "view job status");
+  auto job_view_status_cmd = command_ptr(new Command("view-status", "view job status"));
   job_view_status_cmd->add_alias("vs");
-  job_view_status_cmd->add_positional_arg("jobid", "valid jobid or job correlator", parser::ArgType_Single, true);
-  job_view_status_cmd->add_keyword_arg("response-format-csv", make_response_format_csv_option(), "returns the response in CSV format", parser::ArgType_Flag, false, parser::ArgValue(false));
+  job_view_status_cmd->add_positional_arg("jobid", "valid jobid or job correlator", ArgType_Single, true);
+  job_view_status_cmd->add_keyword_arg("response-format-csv", response_format_csv_option, "returns the response in CSV format", ArgType_Flag, false, ArgValue(false));
   job_view_status_cmd->set_handler(handle_job_view_status);
   job_cmd->add_command(job_view_status_cmd);
 
   // View-file subcommand
-  auto job_view_file_cmd = std::make_shared<parser::Command>("view-file", "view job file output");
+  auto job_view_file_cmd = command_ptr(new Command("view-file", "view job file output"));
   job_view_file_cmd->add_alias("vf");
-  job_view_file_cmd->add_positional_arg("jobid", "valid jobid or job correlator", parser::ArgType_Single, true);
-  job_view_file_cmd->add_positional_arg("key", "valid job dsn key via 'job list-files'", parser::ArgType_Single, true);
-  job_view_file_cmd->add_keyword_arg("encoding", make_encoding_option(), "return contents in given encoding", parser::ArgType_Single, false);
-  job_view_file_cmd->add_keyword_arg("response-format-bytes", make_response_format_bytes_option(), "returns the response as raw bytes", parser::ArgType_Flag, false, parser::ArgValue(false));
+  job_view_file_cmd->add_positional_arg("jobid", "valid jobid or job correlator", ArgType_Single, true);
+  job_view_file_cmd->add_positional_arg("key", "valid job dsn key via 'job list-files'", ArgType_Single, true);
+  job_view_file_cmd->add_keyword_arg("encoding", encoding_option, "return contents in given encoding", ArgType_Single, false);
+  job_view_file_cmd->add_keyword_arg("response-format-bytes", response_format_bytes_option, "returns the response as raw bytes", ArgType_Flag, false, ArgValue(false));
   job_view_file_cmd->set_handler(handle_job_view_file);
   job_cmd->add_command(job_view_file_cmd);
 
   // View-jcl subcommand
-  auto job_view_jcl_cmd = std::make_shared<parser::Command>("view-jcl", "view job jcl from input jobid");
+  auto job_view_jcl_cmd = command_ptr(new Command("view-jcl", "view job jcl from input jobid"));
   job_view_jcl_cmd->add_alias("vj");
-  job_view_jcl_cmd->add_positional_arg("jobid", "valid jobid or job correlator", parser::ArgType_Single, true);
+  job_view_jcl_cmd->add_positional_arg("jobid", "valid jobid or job correlator", ArgType_Single, true);
   job_view_jcl_cmd->set_handler(handle_job_view_jcl);
   job_cmd->add_command(job_view_jcl_cmd);
 
   // Submit subcommand
-  auto job_submit_cmd = std::make_shared<parser::Command>("submit", "submit a job");
+  auto job_submit_cmd = command_ptr(new Command("submit", "submit a job"));
   job_submit_cmd->add_alias("sub");
-  job_submit_cmd->add_positional_arg("dsn", "dsn containing JCL", parser::ArgType_Single, true);
-  job_submit_cmd->add_keyword_arg("wait", parser::make_aliases("--wait"), "wait for job status", parser::ArgType_Single, false);
-  job_submit_cmd->add_keyword_arg("only-jobid", parser::make_aliases("--only-jobid", "--oj"), "show only job id on success", parser::ArgType_Flag, false, parser::ArgValue(false));
-  job_submit_cmd->add_keyword_arg("only-correlator", parser::make_aliases("--only-correlator", "--oc"), "show only job correlator on success", parser::ArgType_Flag, false, parser::ArgValue(false));
+  job_submit_cmd->add_positional_arg("dsn", "dsn containing JCL", ArgType_Single, true);
+  job_submit_cmd->add_keyword_arg("wait", make_aliases("--wait"), "wait for job status", ArgType_Single, false);
+  job_submit_cmd->add_keyword_arg("only-jobid", make_aliases("--only-jobid", "--oj"), "show only job id on success", ArgType_Flag, false, ArgValue(false));
+  job_submit_cmd->add_keyword_arg("only-correlator", make_aliases("--only-correlator", "--oc"), "show only job correlator on success", ArgType_Flag, false, ArgValue(false));
   job_submit_cmd->set_handler(handle_job_submit);
   job_cmd->add_command(job_submit_cmd);
 
   // Submit-jcl subcommand
-  auto job_submit_jcl_cmd = std::make_shared<parser::Command>("submit-jcl", "submit JCL contents directly");
+  auto job_submit_jcl_cmd = command_ptr(new Command("submit-jcl", "submit JCL contents directly"));
   job_submit_jcl_cmd->add_alias("subj");
-  job_submit_jcl_cmd->add_keyword_arg("wait", parser::make_aliases("--wait"), "wait for job status", parser::ArgType_Single, false);
-  job_submit_jcl_cmd->add_keyword_arg("only-jobid", parser::make_aliases("--only-jobid", "--oj"), "show only job id on success", parser::ArgType_Flag, false, parser::ArgValue(false));
-  job_submit_jcl_cmd->add_keyword_arg("only-correlator", parser::make_aliases("--only-correlator", "--oc"), "show only job correlator on success", parser::ArgType_Flag, false, parser::ArgValue(false));
-  job_submit_jcl_cmd->add_keyword_arg("encoding", make_encoding_option(), "encoding for input data", parser::ArgType_Single, false);
+  job_submit_jcl_cmd->add_keyword_arg("wait", make_aliases("--wait"), "wait for job status", ArgType_Single, false);
+  job_submit_jcl_cmd->add_keyword_arg("only-jobid", make_aliases("--only-jobid", "--oj"), "show only job id on success", ArgType_Flag, false, ArgValue(false));
+  job_submit_jcl_cmd->add_keyword_arg("only-correlator", make_aliases("--only-correlator", "--oc"), "show only job correlator on success", ArgType_Flag, false, ArgValue(false));
+  job_submit_jcl_cmd->add_keyword_arg("encoding", encoding_option, "encoding for input data", ArgType_Single, false);
   job_submit_jcl_cmd->set_handler(handle_job_submit_jcl);
   job_cmd->add_command(job_submit_jcl_cmd);
 
   // Submit-uss subcommand
-  auto job_submit_uss_cmd = std::make_shared<parser::Command>("submit-uss", "submit a job from USS files");
+  auto job_submit_uss_cmd = command_ptr(new Command("submit-uss", "submit a job from USS files"));
   job_submit_uss_cmd->add_alias("sub-u");
-  job_submit_uss_cmd->add_positional_arg("file-path", "USS file containing JCL", parser::ArgType_Single, true);
-  job_submit_uss_cmd->add_keyword_arg("wait", parser::make_aliases("--wait"), "wait for job status", parser::ArgType_Single, false);
-  job_submit_uss_cmd->add_keyword_arg("only-jobid", parser::make_aliases("--only-jobid", "--oj"), "show only job id on success", parser::ArgType_Flag, false, parser::ArgValue(false));
-  job_submit_uss_cmd->add_keyword_arg("only-correlator", parser::make_aliases("--only-correlator", "--oc"), "show only job correlator on success", parser::ArgType_Flag, false, parser::ArgValue(false));
+  job_submit_uss_cmd->add_positional_arg("file-path", "USS file containing JCL", ArgType_Single, true);
+  job_submit_uss_cmd->add_keyword_arg("wait", make_aliases("--wait"), "wait for job status", ArgType_Single, false);
+  job_submit_uss_cmd->add_keyword_arg("only-jobid", make_aliases("--only-jobid", "--oj"), "show only job id on success", ArgType_Flag, false, ArgValue(false));
+  job_submit_uss_cmd->add_keyword_arg("only-correlator", make_aliases("--only-correlator", "--oc"), "show only job correlator on success", ArgType_Flag, false, ArgValue(false));
   job_submit_uss_cmd->set_handler(handle_job_submit_uss);
   job_cmd->add_command(job_submit_uss_cmd);
 
   // Delete subcommand
-  auto job_delete_cmd = std::make_shared<parser::Command>("delete", "delete a job");
+  auto job_delete_cmd = command_ptr(new Command("delete", "delete a job"));
   job_delete_cmd->add_alias("del");
-  job_delete_cmd->add_positional_arg("jobid", "valid jobid or job correlator", parser::ArgType_Single, true);
+  job_delete_cmd->add_positional_arg("jobid", "valid jobid or job correlator", ArgType_Single, true);
   job_delete_cmd->set_handler(handle_job_delete);
   job_cmd->add_command(job_delete_cmd);
 
   // Cancel subcommand
-  auto job_cancel_cmd = std::make_shared<parser::Command>("cancel", "cancel a job");
+  auto job_cancel_cmd = command_ptr(new Command("cancel", "cancel a job"));
   job_cancel_cmd->add_alias("cnl");
-  job_cancel_cmd->add_positional_arg("jobid", "valid jobid or job correlator", parser::ArgType_Single, true);
-  job_cancel_cmd->add_keyword_arg("dump", parser::make_aliases("--dump", "-d"), "Dump the cancelled jobs if waiting for conversion, in conversion, or in execution", parser::ArgType_Flag, false, parser::ArgValue(false));
-  job_cancel_cmd->add_keyword_arg("force", parser::make_aliases("--force", "-f"), "Force cancel the jobs, even if marked", parser::ArgType_Flag, false, parser::ArgValue(false));
-  job_cancel_cmd->add_keyword_arg("purge", parser::make_aliases("--purge", "-p"), "Purge output of the cancelled jobs", parser::ArgType_Flag, false, parser::ArgValue(false));
-  job_cancel_cmd->add_keyword_arg("restart", parser::make_aliases("--restart", "-r"), "Request that automatic restart management automatically restart the selected jobs after they are cancelled", parser::ArgType_Flag, false, parser::ArgValue(false));
+  job_cancel_cmd->add_positional_arg("jobid", "valid jobid or job correlator", ArgType_Single, true);
+  job_cancel_cmd->add_keyword_arg("dump", make_aliases("--dump", "-d"), "Dump the cancelled jobs if waiting for conversion, in conversion, or in execution", ArgType_Flag, false, ArgValue(false));
+  job_cancel_cmd->add_keyword_arg("force", make_aliases("--force", "-f"), "Force cancel the jobs, even if marked", ArgType_Flag, false, ArgValue(false));
+  job_cancel_cmd->add_keyword_arg("purge", make_aliases("--purge", "-p"), "Purge output of the cancelled jobs", ArgType_Flag, false, ArgValue(false));
+  job_cancel_cmd->add_keyword_arg("restart", make_aliases("--restart", "-r"), "Request that automatic restart management automatically restart the selected jobs after they are cancelled", ArgType_Flag, false, ArgValue(false));
   job_cancel_cmd->set_handler(handle_job_cancel);
   job_cmd->add_command(job_cancel_cmd);
 
   // Hold subcommand
-  auto job_hold_cmd = std::make_shared<parser::Command>("hold", "hold a job");
+  auto job_hold_cmd = command_ptr(new Command("hold", "hold a job"));
   job_hold_cmd->add_alias("hld");
-  job_hold_cmd->add_positional_arg("jobid", "valid jobid or job correlator", parser::ArgType_Single, true);
+  job_hold_cmd->add_positional_arg("jobid", "valid jobid or job correlator", ArgType_Single, true);
   job_hold_cmd->set_handler(handle_job_hold);
   job_cmd->add_command(job_hold_cmd);
 
   // Release subcommand
-  auto job_release_cmd = std::make_shared<parser::Command>("release", "release a job");
+  auto job_release_cmd = command_ptr(new Command("release", "release a job"));
   job_release_cmd->add_alias("rel");
-  job_release_cmd->add_positional_arg("jobid", "valid jobid or job correlator", parser::ArgType_Single, true);
+  job_release_cmd->add_positional_arg("jobid", "valid jobid or job correlator", ArgType_Single, true);
   job_release_cmd->set_handler(handle_job_release);
   job_cmd->add_command(job_release_cmd);
 
   arg_parser.get_root_command().add_command(job_cmd);
 
   // Parse and execute
-  parser::ParseResult result = arg_parser.parse(argc, argv);
+  ParseResult result = arg_parser.parse(argc, argv);
 
   // Check if interactive mode was requested
-  if (result.status == parser::ParseResult::ParserStatus_Success &&
+  if (result.status == ParseResult::ParserStatus_Success &&
       result.find_kw_arg_bool("interactive"))
   {
     return run_interactive_mode(arg_parser, argv[0]);
@@ -651,7 +547,7 @@ int main(int argc, char *argv[])
   return result.exit_code;
 }
 
-int handle_console_issue(const parser::ParseResult &result)
+int handle_console_issue(const ParseResult &result)
 {
   int rc = 0;
   ZCN zcn = {0};
@@ -699,7 +595,7 @@ int handle_console_issue(const parser::ParseResult &result)
   return rc;
 }
 
-int handle_tso_issue(const parser::ParseResult &result)
+int handle_tso_issue(const ParseResult &result)
 {
   int rc = 0;
   string command = result.find_pos_arg_string("command");
@@ -718,7 +614,7 @@ int handle_tso_issue(const parser::ParseResult &result)
   return rc;
 }
 
-int handle_data_set_create(const parser::ParseResult &result)
+int handle_data_set_create(const ParseResult &result)
 {
   int rc = 0;
   string dsn = result.find_pos_arg_string("dsn");
@@ -857,7 +753,7 @@ int handle_data_set_create(const parser::ParseResult &result)
   return rc;
 }
 
-int handle_data_set_create_vb(const parser::ParseResult &result)
+int handle_data_set_create_vb(const ParseResult &result)
 {
   int rc = 0;
   string dsn = result.find_pos_arg_string("dsn");
@@ -896,7 +792,7 @@ int handle_data_set_create_vb(const parser::ParseResult &result)
   return rc;
 }
 
-int handle_data_set_create_adata(const parser::ParseResult &result)
+int handle_data_set_create_adata(const ParseResult &result)
 {
   int rc = 0;
   string dsn = result.find_pos_arg_string("dsn");
@@ -935,7 +831,7 @@ int handle_data_set_create_adata(const parser::ParseResult &result)
   return rc;
 }
 
-int handle_data_set_create_loadlib(const parser::ParseResult &result)
+int handle_data_set_create_loadlib(const ParseResult &result)
 {
   int rc = 0;
   string dsn = result.find_pos_arg_string("dsn");
@@ -974,7 +870,7 @@ int handle_data_set_create_loadlib(const parser::ParseResult &result)
   return rc;
 }
 
-int handle_data_set_create_member(const parser::ParseResult &result)
+int handle_data_set_create_member(const ParseResult &result)
 {
   int rc = 0;
   string dsn = result.find_pos_arg_string("dsn");
@@ -1018,7 +914,7 @@ int handle_data_set_create_member(const parser::ParseResult &result)
   return rc;
 }
 
-int handle_data_set_view(const parser::ParseResult &result)
+int handle_data_set_view(const ParseResult &result)
 {
   int rc = 0;
   string dsn = result.find_pos_arg_string("dsn");
@@ -1081,7 +977,7 @@ int handle_data_set_view(const parser::ParseResult &result)
   return rc;
 }
 
-int handle_data_set_list(const parser::ParseResult &result)
+int handle_data_set_list(const ParseResult &result)
 {
   int rc = 0;
   string dsn = result.find_pos_arg_string("dsn");
@@ -1160,7 +1056,7 @@ int handle_data_set_list(const parser::ParseResult &result)
   return (!warn && rc == RTNCD_WARNING) ? RTNCD_SUCCESS : rc;
 }
 
-int handle_data_set_list_members(const parser::ParseResult &result)
+int handle_data_set_list_members(const ParseResult &result)
 {
   int rc = 0;
   string dsn = result.find_pos_arg_string("dsn");
@@ -1202,7 +1098,7 @@ int handle_data_set_list_members(const parser::ParseResult &result)
   return rc;
 }
 
-int handle_data_set_write(const parser::ParseResult &result)
+int handle_data_set_write(const ParseResult &result)
 {
   int rc = 0;
   string dsn = result.find_pos_arg_string("dsn");
@@ -1277,7 +1173,7 @@ int handle_data_set_write(const parser::ParseResult &result)
   return rc;
 }
 
-int handle_data_set_delete(const parser::ParseResult &result)
+int handle_data_set_delete(const ParseResult &result)
 {
   int rc = 0;
   string dsn = result.find_pos_arg_string("dsn");
@@ -1295,7 +1191,7 @@ int handle_data_set_delete(const parser::ParseResult &result)
   return rc;
 }
 
-int handle_data_set_restore(const parser::ParseResult &result)
+int handle_data_set_restore(const ParseResult &result)
 {
   int rc = 0;
   string dsn = result.find_pos_arg_string("dsn");
@@ -1319,7 +1215,7 @@ int handle_data_set_restore(const parser::ParseResult &result)
   return rc;
 }
 
-int handle_data_set_compress(const parser::ParseResult &result)
+int handle_data_set_compress(const ParseResult &result)
 {
   int rc = 0;
   string dsn = result.find_pos_arg_string("dsn");
@@ -1398,7 +1294,7 @@ int handle_data_set_compress(const parser::ParseResult &result)
   return RTNCD_SUCCESS;
 }
 
-int handle_tool_convert_dsect(const parser::ParseResult &result)
+int handle_tool_convert_dsect(const ParseResult &result)
 {
   int rc = 0;
   ZCN zcn = {0};
@@ -1450,7 +1346,7 @@ int handle_tool_convert_dsect(const parser::ParseResult &result)
   return rc;
 }
 
-int handle_tool_dynalloc(const parser::ParseResult &result)
+int handle_tool_dynalloc(const ParseResult &result)
 {
   int rc = 0;
   unsigned int code = 0;
@@ -1471,7 +1367,7 @@ int handle_tool_dynalloc(const parser::ParseResult &result)
   return rc;
 }
 
-int handle_tool_display_symbol(const parser::ParseResult &result)
+int handle_tool_display_symbol(const ParseResult &result)
 {
   int rc = 0;
   string symbol = result.find_pos_arg_string("symbol");
@@ -1489,7 +1385,7 @@ int handle_tool_display_symbol(const parser::ParseResult &result)
   return RTNCD_SUCCESS;
 }
 
-int handle_tool_search(const parser::ParseResult &result)
+int handle_tool_search(const ParseResult &result)
 {
   int rc = 0;
 
@@ -1591,7 +1487,7 @@ int handle_tool_search(const parser::ParseResult &result)
   return RTNCD_SUCCESS;
 }
 
-int handle_tool_amblist(const parser::ParseResult &result)
+int handle_tool_amblist(const ParseResult &result)
 {
   int rc = 0;
 
@@ -1646,7 +1542,7 @@ int handle_tool_amblist(const parser::ParseResult &result)
   return RTNCD_SUCCESS;
 }
 
-int handle_tool_run(const parser::ParseResult &result)
+int handle_tool_run(const ParseResult &result)
 {
   int rc = 0;
   string program = result.find_pos_arg_string("program");
@@ -1752,7 +1648,7 @@ int handle_tool_run(const parser::ParseResult &result)
   return rc;
 }
 
-int handle_uss_create_file(const parser::ParseResult &result)
+int handle_uss_create_file(const ParseResult &result)
 {
   int rc = 0;
   string file_path = result.find_pos_arg_string("file-path");
@@ -1775,7 +1671,7 @@ int handle_uss_create_file(const parser::ParseResult &result)
   return rc;
 }
 
-int handle_uss_create_dir(const parser::ParseResult &result)
+int handle_uss_create_dir(const ParseResult &result)
 {
   int rc = 0;
   string file_path = result.find_pos_arg_string("file-path");
@@ -1798,7 +1694,7 @@ int handle_uss_create_dir(const parser::ParseResult &result)
   return rc;
 }
 
-int handle_uss_list(const parser::ParseResult &result)
+int handle_uss_list(const ParseResult &result)
 {
   int rc = 0;
   string uss_file = result.find_pos_arg_string("file-path");
@@ -1820,7 +1716,7 @@ int handle_uss_list(const parser::ParseResult &result)
   return rc;
 }
 
-int handle_uss_view(const parser::ParseResult &result)
+int handle_uss_view(const ParseResult &result)
 {
   int rc = 0;
   string uss_file = result.find_pos_arg_string("file-path");
@@ -1885,7 +1781,7 @@ int handle_uss_view(const parser::ParseResult &result)
   return rc;
 }
 
-int handle_uss_write(const parser::ParseResult &result)
+int handle_uss_write(const ParseResult &result)
 {
   int rc = 0;
   string file = result.find_pos_arg_string("file-path");
@@ -1959,7 +1855,7 @@ int handle_uss_write(const parser::ParseResult &result)
   return rc;
 }
 
-int handle_uss_delete(const parser::ParseResult &result)
+int handle_uss_delete(const ParseResult &result)
 {
   string file_path = result.find_pos_arg_string("file-path");
   bool recursive = result.find_kw_arg_bool("recursive");
@@ -1978,7 +1874,7 @@ int handle_uss_delete(const parser::ParseResult &result)
   return rc;
 }
 
-int handle_uss_chmod(const parser::ParseResult &result)
+int handle_uss_chmod(const ParseResult &result)
 {
   int rc = 0;
   string mode = result.find_pos_arg_string("mode");
@@ -2000,7 +1896,7 @@ int handle_uss_chmod(const parser::ParseResult &result)
   return rc;
 }
 
-int handle_uss_chown(const parser::ParseResult &result)
+int handle_uss_chown(const ParseResult &result)
 {
   string path = result.find_pos_arg_string("file-path");
   string owner = result.find_pos_arg_string("owner");
@@ -2022,7 +1918,7 @@ int handle_uss_chown(const parser::ParseResult &result)
   return rc;
 }
 
-int handle_uss_chtag(const parser::ParseResult &result)
+int handle_uss_chtag(const ParseResult &result)
 {
   string path = result.find_pos_arg_string("file-path");
   string tag = result.find_pos_arg_string("tag");
@@ -2044,7 +1940,7 @@ int handle_uss_chtag(const parser::ParseResult &result)
   return rc;
 }
 
-int job_submit_common(const parser::ParseResult &result, string jcl, string &jobid, string identifier)
+int job_submit_common(const ParseResult &result, string jcl, string &jobid, string identifier)
 {
   int rc = 0;
   ZJB zjb = {0};
@@ -2091,7 +1987,7 @@ int job_submit_common(const parser::ParseResult &result, string jcl, string &job
   return rc;
 }
 
-int handle_job_list(const parser::ParseResult &result)
+int handle_job_list(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
@@ -2146,7 +2042,7 @@ int handle_job_list(const parser::ParseResult &result)
   return (!warn && rc == RTNCD_WARNING) ? RTNCD_SUCCESS : rc;
 }
 
-int handle_job_list_files(const parser::ParseResult &result)
+int handle_job_list_files(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
@@ -2201,7 +2097,7 @@ int handle_job_list_files(const parser::ParseResult &result)
   return (!warn && rc == RTNCD_WARNING) ? RTNCD_SUCCESS : rc;
 }
 
-int handle_job_view_status(const parser::ParseResult &result)
+int handle_job_view_status(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
@@ -2236,7 +2132,7 @@ int handle_job_view_status(const parser::ParseResult &result)
   return 0;
 }
 
-int handle_job_view_file(const parser::ParseResult &result)
+int handle_job_view_file(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
@@ -2273,7 +2169,7 @@ int handle_job_view_file(const parser::ParseResult &result)
   return RTNCD_SUCCESS;
 }
 
-int handle_job_view_jcl(const parser::ParseResult &result)
+int handle_job_view_jcl(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
@@ -2294,7 +2190,7 @@ int handle_job_view_jcl(const parser::ParseResult &result)
   return 0;
 }
 
-int handle_job_submit(const parser::ParseResult &result)
+int handle_job_submit(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
@@ -2314,7 +2210,7 @@ int handle_job_submit(const parser::ParseResult &result)
   return job_submit_common(result, contents, jobid, dsn);
 }
 
-int handle_job_submit_uss(const parser::ParseResult &result)
+int handle_job_submit_uss(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
@@ -2337,7 +2233,7 @@ int handle_job_submit_uss(const parser::ParseResult &result)
   return job_submit_common(result, response, jobid, file);
 }
 
-int handle_job_submit_jcl(const parser::ParseResult &result)
+int handle_job_submit_jcl(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
@@ -2372,7 +2268,7 @@ int handle_job_submit_jcl(const parser::ParseResult &result)
   return job_submit_common(result, data, jobid, data);
 }
 
-int handle_job_delete(const parser::ParseResult &result)
+int handle_job_delete(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
@@ -2392,7 +2288,7 @@ int handle_job_delete(const parser::ParseResult &result)
   return RTNCD_SUCCESS;
 }
 
-int handle_job_cancel(const parser::ParseResult &result)
+int handle_job_cancel(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
@@ -2419,7 +2315,7 @@ int handle_job_cancel(const parser::ParseResult &result)
   return RTNCD_SUCCESS;
 }
 
-int handle_job_hold(const parser::ParseResult &result)
+int handle_job_hold(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
@@ -2439,7 +2335,7 @@ int handle_job_hold(const parser::ParseResult &result)
   return RTNCD_SUCCESS;
 }
 
-int handle_job_release(const parser::ParseResult &result)
+int handle_job_release(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
@@ -2558,7 +2454,7 @@ void parse_input(const std::string &input, std::vector<std::string> &values)
   }
 }
 
-int run_interactive_mode(parser::ArgumentParser &arg_parser, const std::string &program_name)
+int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_name)
 {
   std::cout << "Started, enter command or 'quit' to quit..." << std::endl;
 
@@ -2602,7 +2498,7 @@ int run_interactive_mode(parser::ArgumentParser &arg_parser, const std::string &
     }
 
     // Parse and execute the command
-    parser::ParseResult result = arg_parser.parse(command_line);
+    ParseResult result = arg_parser.parse(command_line);
     rc = result.exit_code;
 
     if (!is_tty)

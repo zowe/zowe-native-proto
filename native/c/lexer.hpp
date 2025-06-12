@@ -851,8 +851,8 @@ namespace lexer
             }
             else
             {
-              // non-printable chars, print unicode replacement character
-              os << u8"\ufffd";
+              // non-printable chars, print EBCDIC substitution character
+              os << "\x3F";
             }
             ptr++;
           }
