@@ -29,7 +29,7 @@ func HandleListJobsRequest(conn *utils.StdioConn, params []byte) (result any, e 
 		return nil, err
 	}
 
-	args := []string{"job", "list", "--warn", "false", "--rfc"}
+	args := []string{"job", "list", "--no-warn", "--rfc"}
 	if len(request.Owner) != 0 {
 		args = append(args, "--owner", request.Owner)
 	}
