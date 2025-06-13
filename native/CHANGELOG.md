@@ -4,6 +4,10 @@ All notable changes to the native code for "zowe-native-proto" are documented in
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+
+- `c`": Fixed issue where canceled jobs displayed ad "CC nnnn" instead of the string "CANCELED". [#169](https://github.com/zowe/zowe-native-proto/issues/169)
+
 ## `0.1.2`
 
 - `golang`: `zowed` now prints a ready message once it can accept input over stdin. [#221](https://github.com/zowe/zowe-native-proto/pull/221)
