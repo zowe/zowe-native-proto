@@ -3,7 +3,7 @@
   "version": "0.1.2",
   "private": true,
   "scripts": {
-    "all": "npm run z:build && concurrently \"npm run z:artifacts\" \"npm run build\"",
+    "all": "npm run z:rebuild && concurrently \"npm run z:artifacts\" \"npm run build\"",
     "build": "npm run build --workspaces && npm run license",
     "build:all": "npm run build:types && npm run build",
     "build:types": "cd native/golang && go run github.com/gzuidhof/tygo generate && npm run license",
