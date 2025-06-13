@@ -305,7 +305,7 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, string file, string pipe)
 
   const size_t chunk_size = FIFO_CHUNK_SIZE * 3 / 4;
   std::vector<char> buf(chunk_size);
-  ssize_t bytes_read;
+  size_t bytes_read;
 
   while ((bytes_read = fread(&buf[0], 1, chunk_size, fin)) > 0)
   {
@@ -463,7 +463,7 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe)
   }
 
   std::vector<char> buf(FIFO_CHUNK_SIZE);
-  ssize_t bytes_read;
+  size_t bytes_read;
 
   while ((bytes_read = fread(&buf[0], 1, FIFO_CHUNK_SIZE, fin)) > 0)
   {
@@ -482,11 +482,20 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe)
       catch (std::exception &e)
       {
         zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to convert input data from UTF-8 to %s", codepage.c_str());
+        fclose(fin);
+        fclose(fout);
         return RTNCD_FAILURE;
       }
     }
 
-    fwrite(chunk, 1, chunk_len, fout);
+    size_t bytes_written = fwrite(chunk, 1, chunk_len, fout);
+    if (bytes_written != chunk_len)
+    {
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to write to '%s' (possibly out of space)", file.c_str());
+      fclose(fin);
+      fclose(fout);
+      return RTNCD_FAILURE;
+    }
   }
 
   fflush(fout);

@@ -144,7 +144,7 @@ static void *PTR64 load_module(const char name[8])
   int rc = 0;
 
   char name_truncated[8 + 1] = {0};
-  memset(name_truncated, ' ', sizeof(name_truncated - 1));                                                             // pad with spaces
+  memset(name_truncated, ' ', sizeof(name_truncated) - 1);                                                             // pad with spaces
   memcpy(name_truncated, name, strlen(name) > sizeof(name_truncated) - 1 ? sizeof(name_truncated) - 1 : strlen(name)); // truncate
 
   void *PTR64 ep = NULL;
@@ -193,7 +193,7 @@ static int delete_module(const char name[8])
 {
   int rc = 0;
   char name_truncated[9] = {0};
-  memset(name_truncated, ' ', sizeof(name_truncated - 1));                                                             // pad with spaces
+  memset(name_truncated, ' ', sizeof(name_truncated) - 1);                                                             // pad with spaces
   memcpy(name_truncated, name, strlen(name) > sizeof(name_truncated) - 1 ? sizeof(name_truncated) - 1 : strlen(name)); // truncate
   DELETE(name_truncated, rc);
   return rc;
