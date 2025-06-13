@@ -53,6 +53,7 @@ export class RpcStreamManager {
     }
 
     private handleReadStream(request: CommandRequest & { stream: Readable; data?: B64String }): Promise<void> {
+        const b64ChunkSize = (this.CHUNK_SIZE * 3) / 4;
         return new Promise((resolve) => {
             const chunks: Buffer[] = [];
             let bytesRead = 0;
@@ -63,13 +64,13 @@ export class RpcStreamManager {
                     if (chunk != null) {
                         chunks.push(chunk);
                         bytesRead += chunk.length;
-                        if (bytesRead > this.CHUNK_SIZE) {
+                        if (bytesRead > b64ChunkSize) {
                             break;
                         }
                     }
                 } while (chunk != null);
                 if (bytesRead > 0) {
-                    if (bytesRead <= this.CHUNK_SIZE) {
+                    if (bytesRead <= b64ChunkSize) {
                         request.data = B64String.encode(Buffer.concat(chunks));
                         request.stream = undefined;
                     } else {
@@ -87,6 +88,8 @@ export class RpcStreamManager {
     ): void {
         if ("data" in response && response.data != null) {
             request.stream.end(B64String.decodeBytes(response.data));
+            // TODO clean up request from pending stream map
+            // this.mPendingStreamMap.delete(request.id);
         }
     }
 
