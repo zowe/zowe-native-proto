@@ -97,7 +97,8 @@ func main() {
 			if len(line) > 0 {
 				// Process each line (it should be a complete JSON request)
 				input <- line
-			} else if err != nil {
+			}
+			if err != nil {
 				if err == io.EOF {
 					break
 				}
