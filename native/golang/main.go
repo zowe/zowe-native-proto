@@ -16,6 +16,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"time"
@@ -84,17 +85,24 @@ func main() {
 	}
 	readyJson, err := json.Marshal(readyMsg)
 	if err != nil {
-		log.Fatalln("Failed to marshal ready message:", err)
+		utils.LogFatal("Failed to marshal ready message: %s", err)
 	}
 	fmt.Println(string(readyJson))
 
 	// Start goroutine to read from stdin
 	go func() {
-		scanner := bufio.NewScanner(os.Stdin)
-		for scanner.Scan() {
-			line := scanner.Text()
-			// Process each line (it should be a complete JSON request)
-			input <- []byte(line)
+		reader := bufio.NewReader(os.Stdin)
+		for {
+			line, err := reader.ReadBytes('\n')
+			if len(line) > 0 {
+				// Process each line (it should be a complete JSON request)
+				input <- line
+			} else if err != nil {
+				if err == io.EOF {
+					break
+				}
+				utils.LogFatal("Error reading from stdin: %s", err)
+			}
 		}
 		// Close the input channel once stdin is closed
 		close(input)
