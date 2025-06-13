@@ -25,7 +25,6 @@ int ZRCVYEN()
   else
   {
   }
-  zwto_debug("@TEST outside of if/else");
 
   disable_recovery(&zenv);
   return 0;
