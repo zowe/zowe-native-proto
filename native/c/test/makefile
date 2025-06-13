@@ -135,6 +135,7 @@ build-out/zutm31.o \
 build-out/zds.test.o \
 build-out/zds.o \
 build-out/zdsm.o \
+build-out/zam.o \
 build-out/zjb.test.o \
 build-out/zjb.o \
 build-out/zjbm.o \
@@ -160,6 +161,9 @@ build-out/zds.o:
 
 build-out/zdsm.o:
 	cp ../build-out/zdsm.o build-out/zdsm.o
+
+build-out/zam.o:
+	cp ../build-out/zam.o build-out/zam.o
 
 build-out/zjb.o:
 	cp ../build-out/xlclang/zjb.o build-out/zjb.o
