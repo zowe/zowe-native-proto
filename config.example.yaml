@@ -7,7 +7,7 @@ profiles:
     # sshProfile:
     #   host: example.com
     #   port: 22
-    #   username: ibmuser
+    #   user: ibmuser
     #   privateKey: /Users/ibmuser/.ssh/id_rsa
     deployDir: ~/zowe-native-proto
     goBuildEnv: ""

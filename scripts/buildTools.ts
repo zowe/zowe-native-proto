@@ -632,8 +632,30 @@ async function download(sftpcon: SFTPWrapper, from: string, to: string) {
 async function loadConfig(): Promise<IConfig> {
     const configPath = path.join(__dirname, "..", "config.yaml");
     if (!fs.existsSync(configPath)) {
-        console.error("Could not find config.yaml. See the README for instructions.");
-        process.exit(1);
+        const oldConfigPath = path.join(__dirname, "..", "config.local.json");
+        if (fs.existsSync(oldConfigPath)) {
+            const configJson = JSON.parse(fs.readFileSync(oldConfigPath, "utf-8"));
+            const yamlLines = ["activeProfile: default", "", "profiles:", "  default:", "    sshProfile:"];
+            yamlLines.push(`      host: ${configJson.host}`);
+            if (configJson.port) {
+                yamlLines.push(`      port: ${configJson.port}`);
+            }
+            yamlLines.push(`      user: ${configJson.username}`);
+            if (configJson.password) {
+                yamlLines.push(`      password: ${configJson.password}`);
+            } else if (configJson.privateKey) {
+                yamlLines.push(`      privateKey: ${configJson.privateKey}`);
+            }
+            yamlLines.push(`    deployDir: ${configJson.deployDirectory}`);
+            yamlLines.push(`    goBuildEnv: "${configJson.goEnv || ""}"`);
+            fs.writeFileSync(configPath, `${yamlLines.join("\n")}\n`, "utf-8");
+            console.warn(
+                `Warning: Detected old config format in config.local.json. It has been migrated to a config.yaml file.\n\n${yamlLines.join("\n")}\n`,
+            );
+        } else {
+            console.error("Could not find config.yaml. See the README for instructions.");
+            process.exit(1);
+        }
     }
 
     const configYaml: any = yaml.load(fs.readFileSync(configPath, "utf-8"));
