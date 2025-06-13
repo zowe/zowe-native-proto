@@ -159,7 +159,7 @@ To dump storage in LE, use:
 
 ```
 
-By default, output is printed to `STDERR`; however, you may provide alternative callback functions via a function pointer in place of the default `zut_debug_message`.
+By default, output is printed to `STDERR` when using `zut_debug_message()`; however, you may provide alternative callback functions via a function pointer in place of the default `zut_debug_message`.
 
 ### Metal C
 
@@ -174,4 +174,4 @@ You must ensure `zut_alloc_debug()` is called to allocate an output DD for log m
 
 ```
 
-By default, output is printed to `/tmp/zowex_debug.txt; however, you may provide a Metal C compatible alternative.
+By default, output is printed to `/tmp/zowex_debug.txt` when using `ZUTDBGMG()`; however, you may provide a Metal C compatible alternative.
