@@ -287,7 +287,7 @@ int ZUTMGT64(void **PTR64 data, int *len)
   return 0;
 }
 
-int ZUTDBGMS(const char *msg)
+int ZUTDBGMG(const char *msg)
 {
   IO_CTRL *sysprintIoc = open_output_assert("ZOWEXDBG", 132, 132, dcbrecf + dcbrecbr);
   char writeBuf[132] = {0};
