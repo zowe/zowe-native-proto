@@ -1,0 +1,13 @@
+activeProfile: default
+
+profiles:
+  default:
+    sshProfile: ssh
+    # To define SSH config inline rather than loading from a Zowe profile, uncomment below:
+    # sshProfile:
+    #   host: example.com
+    #   port: 22
+    #   user: ibmuser
+    #   privateKey: /Users/ibmuser/.ssh/id_rsa
+    deployDir: ~/zowe-native-proto
+    goBuildEnv: ""
