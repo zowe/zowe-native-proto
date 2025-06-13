@@ -484,7 +484,6 @@ int zut_alloc_debug()
   string zowexdbg = "/tmp/zowex_debug.txt";
 
   string alloc = "alloc fi(zowexdbg) path('" + zowexdbg + "') pathopts(owronly,ocreat) pathmode(sirusr,siwusr,sirgrp) filedata(text) msg(2)";
-  // string alloc = "alloc fi(sysprint) path('" + sysprint + "') pathopts(owronly,ocreat,otrunc) pathmode(sirusr,siwusr,sirgrp) filedata(text) msg(2)";
   rc = zut_bpxwdyn(alloc, &code, response);
 
   return rc;
