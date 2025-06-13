@@ -1,6 +1,6 @@
 {
   "name": "zowe-native-proto",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "scripts": {
     "all": "npm run z:build && concurrently \"npm run z:artifacts\" \"npm run build\"",
@@ -18,13 +18,14 @@
     "tools": "tsx scripts/buildTools.ts",
     "watch": "npm run watch --workspaces",
     "watch:all": "concurrently \"npm run z:watch\" \"npm run watch\"",
-    "z:all": "npm run z:rebuild && npm run z:package",
+    "z:all": "npm run z:rebuild && npm run z:test && npm run z:package",
     "z:artifacts": "tsx scripts/buildTools.ts artifacts",
     "z:build": "tsx scripts/buildTools.ts build",
     "z:clean": "tsx scripts/buildTools.ts clean",
     "z:delete": "tsx scripts/buildTools.ts delete",
     "z:package": "npm run z:artifacts && tsx scripts/buildTools.ts package",
     "z:rebuild": "tsx scripts/buildTools.ts rebuild",
+    "z:test": "tsx scripts/buildTools.ts test",
     "z:upload": "tsx scripts/buildTools.ts upload",
     "z:watch": "node scripts/watchNative.js"
   },

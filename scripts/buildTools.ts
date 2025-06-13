@@ -24,7 +24,7 @@ interface IConfig {
 
 const localDeployDir = "./../native";
 const args = process.argv.slice(2);
-let deployDirs: { root: string; cDir: string; goDir: string };
+let deployDirs: { root: string; cDir: string; cTestDir: string; goDir: string };
 
 const asciiToEbcdicMap =
     // biome-ignore format: the array should not be formatted
@@ -79,6 +79,9 @@ function startSpinner(text = "Loading...") {
 }
 
 function stopSpinner(spinner: NodeJS.Timeout | null, text = "Done!") {
+    if (DEBUG_MODE() || process.env.CI != null) {
+        return;
+    }
     spinner && clearInterval(spinner);
     process.stdout.write(`\x1b[2K\r${text}\n`);
 }
@@ -249,7 +252,7 @@ async function runCommandInShell(connection: Client, command: string, pty = fals
             });
             stream.on("exit", (exitCode: number) => {
                 if (exitCode !== 0) {
-                    const fullError = `\nError: runCommand connection.exec error: \n ${error || data}`;
+                    const fullError = `\nError: runCommand connection.exec error - stream.on exit: \n ${error || data}`;
                     stopSpinner(spinner, fullError);
                     process.exitCode = fullError.includes("SIGSEGV: segmentation violation") ? 11 : exitCode;
                     reject(fullError);
@@ -343,6 +346,7 @@ async function convert(connection: Client, fromType = "utf8", toType = "IBM-1047
                 stream.write(`mv ${files[i]} ${files[i]}.u\n`);
                 stream.write(`iconv -f ${fromType} -t ${toType} ${files[i]}.u > ${files[i]}\n`);
                 stream.write(`chtag -t -c ${toType} ${files[i]}\n`);
+                stream.write(`rm ${files[i]}.u\n`);
             }
             stream.end("exit\n");
 
@@ -424,6 +428,16 @@ async function build(connection: Client, goBuildEnv?: string) {
         ),
     );
     console.log("Build complete!");
+}
+
+async function test(connection: Client) {
+    console.log("Testing native/c ...");
+    const response = await runCommandInShell(
+        connection,
+        `cd ${deployDirs.cTestDir} && _CEE_RUNOPTS="TRAP(ON,NOSPIE)" ./build-out/runner\n`,
+    );
+    DEBUG_MODE() && console.log(response);
+    console.log("Testing complete!");
 }
 
 async function clean(connection: Client) {
@@ -528,6 +542,7 @@ async function main() {
     deployDirs = {
         root: config.deployDir,
         cDir: `${config.deployDir}/c`,
+        cTestDir: `${config.deployDir}/c/test`,
         goDir: `${config.deployDir}/golang`,
     };
     const sshClient = await buildSshClient(config.sshProfile as IProfile);
@@ -561,6 +576,9 @@ async function main() {
             case "rebuild":
                 await upload(sshClient);
                 await build(sshClient, config.goBuildEnv);
+                break;
+            case "test":
+                await test(sshClient);
                 break;
             case "upload":
                 await upload(sshClient);
