@@ -7,8 +7,7 @@ Run `npm install` to install project dependencies.
 Create a config file by copying `config.example.yaml` to `config.yaml`. Update the following properties:
 
 - `sshProfile` - Name of Zowe SSH profile used to connect to z/OS
-  - If you don't have profiles, run `zowe config init` to create a team configuration file
-  - Alternatively, you can define properties inline in the config - see the example YAML below
+  - **Tip:** If you don't have profiles, run `zowe config init` to create a team configuration file
 - `deployDir` - USS directory where source files are uploaded and binaries are built
 - `goBuildEnv` (optional) - Environment variables to set for the `go build` command
 
