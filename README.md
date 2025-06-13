@@ -14,34 +14,29 @@ Create a config file by copying `config.example.yaml` to `config.yaml`. Update t
 
 For a quick start, run `npm run all` to upload source files, build native binaries on z/OS, download build artifacts, and build client packages.
 
-**Tip:** You can define additional profiles in `config.yaml` and use them by setting the environment variable `ZOWE_NATIVE_PROFILE=<profileName>`. For example:
-
-```yaml
-another_one:
-  sshProfile:
-    host: my.mainframe.net
-    user: ibmuser
-    password: ibmpass
-  deployDirectory: /u/users/ibmuser/zowe-native-proto
-```
+**Tip:** If you don't have a z/OS build environment, you can skip building the native binaries and download them from GitHub with `npm run download` (this requires the GitHub CLI). Then run `npm run build` to build client packages.
 
 ## Deploy & Build
 
 ### z/OS
 
 - `npm run z:upload` - deploy source files to z/OS
-  - **Tip:** You can deploy just one file or directory like this: `npm run z:upload c/zowex.cpp`
-- `npm run z:rebuild` - build native binaries on z/OS
-  - **Tip:** You can deploy and build at the same time with `npm run z:build`
-- `npm run watch:native` - detect and upload changes to native code
+  - **Tip:** You can deploy just one file or directory like this: `npm run z:upload -- c/zowex.cpp`
+- `npm run z:build` - build native binaries on z/OS
+  - **Tip:** You can deploy and build at the same time with `npm run z:rebuild`
+- `npm run z:watch` - detect and upload changes to native code
 
-## Client
+**Tip:** To deploy to a different LPAR, you can define additional profiles in `config.yaml` and use them by changing the `activeProfile` property.
+
+### Client
 
 - `npm run z:artifacts` - download binaries to package with clients
-  - **Tip:** You can skip this step by defining `serverPath` property in your SSH profile in `zowe.config.json` to point to a dev build
 - `npm run build` - build all projects in the `packages` folder
   - **Tip:** You can run incremental builds with `npm run watch` for client code only, or `npm run watch:all` at the root to watch all code
 - `npm run package` - create CLI and VSCE artifacts in `dist` folder
+  - **Tip:** You can run `npm run z:package` to also create a server PAX artifact
+
+**Tip:** To test a dev build of the server, you can define `serverPath` property in your SSH profile in `zowe.config.json` to point to the dev build (default location is `~/zowe-native-proto/golang`).
 
 ## Test
 
