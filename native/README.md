@@ -168,7 +168,7 @@ You must ensure `zut_alloc_debug()` is called to allocate an output DD for log m
 ```c
 #include "zdbg.h"
 
-  int data = 3;
+  ZJB zjb = {0};
 
   zut_dump_storage("ZJB", zjb, sizeof(ZJB), ZUTDBGMG);
 
