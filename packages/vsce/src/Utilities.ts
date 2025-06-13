@@ -19,6 +19,8 @@ import { SshClientCache } from "./SshClientCache";
 import { VscePromptApi } from "./SshConfigUtils";
 import { SshConfigUtils } from "./SshConfigUtils";
 
+const EXTENSION_NAME = "zowe-native-proto-vsce";
+
 export function deployWithProgress(session: SshSession, serverPath: string, localDir: string): Thenable<void> {
     return Gui.withProgress(
         {
@@ -34,10 +36,14 @@ export function deployWithProgress(session: SshSession, serverPath: string, loca
     );
 }
 
+export function getVsceConfig(): vscode.WorkspaceConfiguration {
+    return vscode.workspace.getConfiguration(EXTENSION_NAME);
+}
+
 export function initLogger(context: vscode.ExtensionContext): void {
     const loggerConfigPath = path.join(context.extensionPath, "log4jsconfig.json");
     const loggerConfig = JSON.parse(fs.readFileSync(loggerConfigPath, "utf-8"));
-    const logLevel = vscode.workspace.getConfiguration("zowe-native-proto-vsce").get<string>("logLevel");
+    const logLevel = getVsceConfig().get<string>("logLevel");
 
     for (const appenderName of Object.keys(loggerConfig.log4jsConfig.appenders)) {
         loggerConfig.log4jsConfig.appenders[appenderName].filename = path.join(
@@ -56,7 +62,7 @@ export function initLogger(context: vscode.ExtensionContext): void {
 export function registerCommands(context: vscode.ExtensionContext): vscode.Disposable[] {
     const profCache = ZoweVsCodeExtension.getZoweExplorerApi().getExplorerExtenderApi().getProfilesCache();
     return [
-        vscode.commands.registerCommand("zowe-native-proto-vsce.connect", async (profName?: string) => {
+        vscode.commands.registerCommand(`${EXTENSION_NAME}.connect`, async (profName?: string) => {
             imperative.Logger.getAppLogger().trace("Running connect command for profile %s", profName);
             const vscePromptApi = new VscePromptApi(await profCache.getProfileInfo());
             const profile = await vscePromptApi.promptForProfile(profName);
@@ -72,7 +78,7 @@ export function registerCommands(context: vscode.ExtensionContext): vscode.Dispo
             imperative.Logger.getAppLogger().info(infoMsg);
             await Gui.showMessage(infoMsg);
         }),
-        vscode.commands.registerCommand("zowe-native-proto-vsce.restart", async (profName?: string) => {
+        vscode.commands.registerCommand(`${EXTENSION_NAME}.restart`, async (profName?: string) => {
             imperative.Logger.getAppLogger().trace("Running restart command for profile %s", profName);
             const vscePromptApi = new VscePromptApi(await profCache.getProfileInfo());
             const profile = await vscePromptApi.promptForProfile(profName);
@@ -86,7 +92,7 @@ export function registerCommands(context: vscode.ExtensionContext): vscode.Dispo
             const statusMsg = Gui.setStatusBarMessage("Restarted Zowe SSH server");
             setTimeout(() => statusMsg.dispose(), 5000);
         }),
-        vscode.commands.registerCommand("zowe-native-proto-vsce.showLog", async () => {
+        vscode.commands.registerCommand(`${EXTENSION_NAME}.showLog`, async () => {
             imperative.Logger.getAppLogger().trace("Running showLog command");
             await vscode.commands.executeCommand(
                 "vscode.open",
@@ -94,7 +100,7 @@ export function registerCommands(context: vscode.ExtensionContext): vscode.Dispo
             );
             await vscode.commands.executeCommand("workbench.action.files.setActiveEditorReadonlyInSession");
         }),
-        vscode.commands.registerCommand("zowe-native-proto-vsce.uninstall", async (profName?: string) => {
+        vscode.commands.registerCommand(`${EXTENSION_NAME}.uninstall`, async (profName?: string) => {
             imperative.Logger.getAppLogger().trace("Running uninstall command for profile %s", profName);
             const vscePromptApi = new VscePromptApi(await profCache.getProfileInfo());
             const profile = await vscePromptApi.promptForProfile(profName);

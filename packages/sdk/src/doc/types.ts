@@ -11,6 +11,14 @@
 
 export type B64String = string & { __brand: "B64String" };
 
+export enum UssItemType {
+    File = 1,
+    Directory = 2,
+    Symlink = 3,
+    NamedPipe = 4,
+    Socket = 5,
+}
+
 export namespace B64String {
     export function decode(data: B64String): string {
         return B64String.decodeBytes(data).toString();
