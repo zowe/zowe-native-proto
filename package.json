@@ -27,7 +27,7 @@
     "z:rebuild": "tsx scripts/buildTools.ts rebuild",
     "z:test": "tsx scripts/buildTools.ts test",
     "z:upload": "tsx scripts/buildTools.ts upload",
-    "z:watch": "node scripts/watchNative.js"
+    "z:watch": "tsx scripts/buildTools.ts watch"
   },
   "keywords": [],
   "author": "",

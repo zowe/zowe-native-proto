@@ -12,8 +12,9 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { PassThrough, pipeline, Transform, type TransformCallback } from "node:stream";
+import * as chokidar from "chokidar";
 import * as yaml from "js-yaml";
-import { Client, type ClientCallback, type SFTPWrapper } from "ssh2";
+import { Client, type ClientCallback, type ClientChannel, type SFTPWrapper } from "ssh2";
 import { type IProfile, ProfileInfo } from "@zowe/imperative";
 
 interface IConfig {
@@ -454,6 +455,146 @@ async function rmdir(connection: Client) {
     console.log("Removal complete");
 }
 
+async function watch(connection: Client) {
+    function cTask(err: Error, stream: ClientChannel, resolve: any) {
+        if (err) {
+            console.error("Failed to start shell:", err);
+            resolve();
+            return;
+        }
+
+        const cmd = `cd ${deployDirs.cDir}\nmake 1> /dev/null\nexit\n`;
+        stream.write(cmd);
+
+        let errText = "";
+        stream
+            .on("end", () => {
+                if (errText.length === 0) {
+                    console.log("\n\t[tasks -> c] make succeeded ✔");
+                } else {
+                    console.log("\n\t[tasks -> c] make failed ✘\nerror: \n", errText);
+                }
+                resolve();
+            })
+            .on("data", (_data: any) => {})
+            .stderr.on("data", (data) => {
+                const str = data.toString().trim();
+                if (/IGD\d{5}I /.test(str)) return;
+                errText += str;
+            });
+    }
+
+    function golangTask(err: Error, stream: ClientChannel, resolve: any) {
+        if (err) {
+            console.error("Failed to start shell:", err);
+            resolve();
+            return;
+        }
+
+        const cmd = `cd ${deployDirs.goDir} && go build -ldflags="-s -w"\nexit\n`;
+        stream.write(cmd);
+
+        let errText = "";
+        stream
+            .on("end", () => {
+                if (errText.length === 0) {
+                    console.log("\n\t[tasks -> golang] go build succeeded ✔");
+                } else {
+                    console.log("\n\t[tasks -> golang] go build failed ✘\nerror: \n", errText);
+                }
+                resolve();
+            })
+            .on("data", (_data: any) => {})
+            .stderr.on("data", (data) => {
+                errText += data;
+            });
+    }
+
+    async function deleteFile(remotePath: string) {
+        return new Promise<void>((resolve, reject) => {
+            connection.sftp((err, sftp) => {
+                sftp.unlink(remotePath, (err) => {
+                    if (err) {
+                        return reject(err);
+                    }
+
+                    sftp.end();
+                    resolve();
+                });
+            });
+        });
+    }
+
+    async function uploadFile2(localPath: string, remotePath: string) {
+        return new Promise<void>((resolve, reject) => {
+            connection.sftp((err, sftp) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+
+                process.stdout.write(` -> ${remotePath} `);
+                uploadFile(sftp, path.resolve(__dirname, `${localDeployDir}/${localPath}`), remotePath)
+                    .then(() => {
+                        connection.shell(false, (err, stream) => {
+                            // If the uploaded file is in the `c` directory, run `make`
+                            if (localPath.split(path.sep)[0] === "c") {
+                                cTask(err, stream, resolve);
+                            } else if (localPath.split(path.sep)[0] === "golang") {
+                                // Run `go build` when a Golang file has changed
+                                golangTask(err, stream, resolve);
+                            } else {
+                                console.log();
+                                resolve();
+                            }
+                        });
+                        sftp.end();
+                    })
+                    .catch((err) => {
+                        reject(err);
+                    });
+            });
+        });
+    }
+
+    const watcher = chokidar.watch(["c/makefile", "c/**/*.{c,cpp,h,hpp,s,sh}", "golang/**"], {
+        cwd: path.resolve(__dirname, localDeployDir),
+        ignoreInitial: true,
+        persistent: true,
+    });
+
+    watcher.on("add", async (filePath, _stats) => {
+        process.stdout.write(`${new Date().toLocaleString()} [+] ${filePath}`);
+        try {
+            await uploadFile2(filePath, `${deployDirs.root}/${filePath.replaceAll(path.sep, path.posix.sep)}`);
+        } catch (err) {
+            console.error(" ✘", err);
+        }
+    });
+
+    watcher.on("change", async (filePath, _stats) => {
+        process.stdout.write(`${new Date().toLocaleString()} [~] ${filePath}`);
+        try {
+            await uploadFile2(filePath, `${deployDirs.root}/${filePath.replaceAll(path.sep, path.posix.sep)}`);
+        } catch (err) {
+            console.error(" ✘", err);
+        }
+    });
+
+    watcher.on("unlink", async (filePath) => {
+        process.stdout.write(`${new Date().toLocaleString()} [-] ${filePath}`);
+        try {
+            await deleteFile(`${deployDirs.root}/${filePath.replaceAll(path.sep, path.posix.sep)}`);
+            console.log(" ✔");
+        } catch (err) {
+            console.error(" ✘", err);
+        }
+    });
+
+    console.log("watching for changes...");
+    return new Promise(() => {});
+}
+
 async function uploadFile(sftpcon: SFTPWrapper, from: string, to: string) {
     await new Promise<void>((finish) => {
         DEBUG_MODE() && console.log(`Uploading '${from}' to ${to}`);
@@ -533,6 +674,7 @@ async function buildSshClient(sshProfile: IProfile): Promise<Client> {
             ...sshProfile,
             username: sshProfile.user,
             privateKey: sshProfile.privateKey ? fs.readFileSync(sshProfile.privateKey) : undefined,
+            keepaliveInterval: 30e3,
         });
     });
 }
@@ -582,6 +724,9 @@ async function main() {
                 break;
             case "upload":
                 await upload(sshClient);
+                break;
+            case "watch":
+                await watch(sshClient);
                 break;
             default:
                 console.error(`Unsupported command "${args[0]}". See README for instructions.`);
