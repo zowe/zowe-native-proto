@@ -117,14 +117,6 @@ $(OUT_DIR)/zut.o: zut.cpp
 	@echo 'Building $(OUT_DIR)/zut.o'
 	$(CXX) $(DLL_CPP_FLAGS) -qlist=$*.cpp.lst -o $@ $^
 
-$(OUT_DIR_CXXLANG)/zds.o: $(OUT_DIRS) zds.cpp
-	@echo '$(OUT_DIR_CXXLANG)/zds.o'
-	$(CXXLANG) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -o $@ $^
-
-$(OUT_DIR_CXXLANG)/zjb.o: $(OUT_DIRS) zjb.cpp
-	@echo '$(OUT_DIR_CXXLANG)/zjb.o'
-	$(CXXLANG) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -o $@ $^
-
 $(OUT_DIR_CXXLANG)/zut.o: $(OUT_DIRS) zut.cpp
 	@echo '$(OUT_DIR_CXXLANG)/zut.o'
 	$(CXXLANG) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -o $@ $^
@@ -145,13 +137,13 @@ $(OUT_DIR)/zutm31.o: $(OUT_DIR)/zutm31.s
 	@echo 'Building $(OUT_DIR)/zutm31.o'
 	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
-$(OUT_DIR)/libzut.so: $(OUT_DIR)/zut.o $(OUT_DIR)/zutm.o $(OUT_DIR)/zutm31.o
+$(OUT_DIR)/libzut.so: $(OUT_DIR)/zut.o $(OUT_DIR)/zutm.o $(OUT_DIR)/zam.o $(OUT_DIR)/zutm31.o
 	@echo 'Building $(OUT_DIR)/libzut.so'
 	$(CXX) $(DLL_BND_FLAGS) -o $@ $^ > $*.bind.lst
 
 libzut.so: $(OUT_DIRS) $(OUT_DIR)/libzut.so
 
-$(OUT_DIR)/libzut.a: $(OUT_DIR)/zut.o $(OUT_DIR)/zutm.o $(OUT_DIR)/zutm31.o
+$(OUT_DIR)/libzut.a: $(OUT_DIR)/zut.o $(OUT_DIR)/zutm.o $(OUT_DIR)/zam.o $(OUT_DIR)/zutm31.o
 	@echo 'Building $(OUT_DIR)/libzut.a'
 	ar -rv $@ $^
 
@@ -160,6 +152,14 @@ libzut.a: $(OUT_DIRS) $(OUT_DIR)/libzut.a
 #
 # Data sets
 #
+$(OUT_DIR)/zam.s: zam.c
+	@echo 'Building $(OUT_DIR)/zam.s'
+	$(CC) $(MTL_FLAGS) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
+
+$(OUT_DIR)/zam.o: $(OUT_DIR)/zam.s
+	@echo 'Building $(OUT_DIR)/zdsm.o'
+	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
+
 $(OUT_DIR)/zdsm.s: zdsm.c
 	@echo 'Building $(OUT_DIR)/zdsm.s'
 	$(CC) $(MTL_FLAGS64) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
@@ -172,13 +172,17 @@ $(OUT_DIR)/zds.o: zds.cpp
 	@echo 'Building $(OUT_DIR)/zds.o'
 	$(CXX) $(DLL_CPP_FLAGS) -qlist=$*.cpp.lst -o $@ $^
 
-$(OUT_DIR)/libzds.so: $(OUT_DIR)/zds.o $(OUT_DIR)/zdsm.o $(OUT_DIR)/libzut.a
+$(OUT_DIR_CXXLANG)/zds.o: $(OUT_DIRS) zds.cpp
+	@echo '$(OUT_DIR_CXXLANG)/zds.o'
+	$(CXXLANG) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -o $@ $^
+
+$(OUT_DIR)/libzds.so: $(OUT_DIR)/zds.o $(OUT_DIR)/zdsm.o $(OUT_DIR)/zam.o $(OUT_DIR)/libzut.a
 	$(CXX) $(DLL_BND_FLAGS) -o $@ $^ > $*.bind.lst
 	@echo 'Building $(OUT_DIR)/libzds.so'
 
 libzds.so: $(OUT_DIRS) $(OUT_DIR)/libzds.so
 
-$(OUT_DIR)/libzds.a: $(OUT_DIR)/zds.o $(OUT_DIR)/zdsm.o $(OUT_DIR)/libzut.a
+$(OUT_DIR)/libzds.a: $(OUT_DIR)/zds.o $(OUT_DIR)/zdsm.o $(OUT_DIR)/zam.o $(OUT_DIR)/libzut.a
 	@echo 'Building $(OUT_DIR)/libzds.a'
 	ar -rv $@ $^
 
@@ -198,6 +202,10 @@ $(OUT_DIR)/zjbm.o: $(OUT_DIR)/zjbm.s
 $(OUT_DIR)/zjb.o: zjb.cpp
 	@echo 'Building $(OUT_DIR)/zjb.o'
 	$(CXX) $(DLL_CPP_FLAGS) -qlist=$*.cpp.lst -o $@ $^
+
+$(OUT_DIR_CXXLANG)/zjb.o: $(OUT_DIRS) zjb.cpp
+	@echo '$(OUT_DIR_CXXLANG)/zjb.o'
+	$(CXXLANG) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -o $@ $^
 
 $(OUT_DIR)/zjbm31.s: zjbm31.c
 	@echo 'Building $(OUT_DIR)/zjbm31.s'
