@@ -658,10 +658,6 @@ void zjb_build_job_response(ZJB_JOB_INFO *PTR64 job_info, int entries, vector<ZJ
         result.push_back(zut_get_hex_char(byte3));
         zjob.retcode = result;
       }
-      else if ((unsigned char)job_info_next[i].statjqtr.sttrxind == sttrxjcl)
-      {
-        zjob.retcode = "JCL ERROR";
-      }
       else
       {
         mycc.full &= 0x00000FFF; // clear uneeded bits
@@ -673,6 +669,16 @@ void zjb_build_job_response(ZJB_JOB_INFO *PTR64 job_info, int entries, vector<ZJ
     else
     {
       // leave service text as-is
+    }
+
+    // handle special cases
+    if ((unsigned char)job_info_next[i].statjqtr.sttrxind == sttrxjcl)
+    {
+      zjob.retcode = "JCL ERROR";
+    }
+    else if ((unsigned char)job_info_next[i].statjqtr.sttrxind == sttrxcan)
+    {
+      zjob.retcode = "CANCELED";
     }
 
     zjob.jobname = jobname;

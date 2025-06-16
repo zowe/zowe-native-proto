@@ -6,6 +6,7 @@
  * SPDX-License-Identifier: EPL-2.0
  *
  * Copyright Contributors to the Zowe Project.
+ *
  */
 
 #ifndef ZUT_HPP
@@ -60,14 +61,6 @@ int zut_substitute_sybmol(std::string symbol, std::string &result);
  * @return Return code (0 for success, non-zero for error)
  */
 int zut_bpxwdyn(std::string command, unsigned int *rc, std::string &result);
-
-/**
- * @brief Dump a memory region to output for debugging
- * @param label Label for the dump
- * @param addr Pointer to the memory region
- * @param size Size of the memory region in bytes
- */
-void zut_dump_storage(std::string label, const void *addr, size_t size);
 
 /**
  * @brief Print a hello message
@@ -191,5 +184,20 @@ std::string &zut_ltrim(std::string &s, const char *t = " ");
  * @return Reference to the trimmed string
  */
 std::string &zut_trim(std::string &s, const char *t = " ");
+
+/**
+ * @brief Function to dynamically allocate output debug DD
+ *
+ * @return int rc Return code (0 for success, non-zero for error)
+ */
+int zut_alloc_debug();
+
+/**
+ * @brief Default debug message function for zut_dump_storage
+ *
+ * @param message Message to be printed
+ * @return int rc Return code (0 for success, non-zero for error)
+ */
+int zut_debug_message(const char *message);
 
 #endif // ZUT_HPP
