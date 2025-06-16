@@ -477,7 +477,7 @@ int zjb_list_dds(ZJB *zjb, string jobid, vector<ZJobDD> &jobDDs)
   }
 
   // NOTE(Kelosky): if we didn't get any errors and we have no entries, we will look up the job status and see if it's "INPUT".  In this case,
-  // the SYSOUT data sets may not be vieawable via the SSI API.  In that case, we'll attempt to find the JESMSGLG and JESJCL data sets as documented here:
+  // the SYSOUT data sets may not be vieawable via the SSI API.  So, we'll attempt to find the JESMSGLG and JESJCL data sets as documented here:
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=allocation-specifying-data-set-name-daldsnam
   if (0 == entries)
   {
