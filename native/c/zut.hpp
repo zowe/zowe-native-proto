@@ -51,7 +51,7 @@ int zut_run(std::string input);
  * @param result Reference to a string where the result will be stored
  * @return Return code (0 for success, non-zero for error)
  */
-int zut_substitute_sybmol(std::string symbol, std::string &result);
+int zut_substitute_symbol(std::string symbol, std::string &result);
 
 /**
  * @brief Invoke BPXWDYN service with the given parameters
