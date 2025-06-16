@@ -11,5 +11,5 @@ export _CC_EXTRA_ARGS=1
 export _CXX_EXTRA_ARGS=1
 export _C89_EXTRA_ARGS=1
 
-swig -python -c++ zusf_py.i
+swig -c++ -python zds_py.i
 python setup.py build_ext --inplace

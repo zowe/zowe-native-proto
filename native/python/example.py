@@ -1,3 +1,6 @@
-import zusf_py
-result = zusf_py.list_uss_dir('/tmp')
-print(result)
+import zds_py
+
+entries = zds_py.list_data_sets("SYS1.PARMLIB.*")
+
+for x in entries:
+    print(x.name)
