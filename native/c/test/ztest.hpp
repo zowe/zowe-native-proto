@@ -44,6 +44,7 @@ namespace ztst
     EXPECT_CONTEXT ctx;
 
   public:
+    void ToBeGreaterThan(int);
     void ToBe(int);
     void ToBe(string);
     void ToBeNull();
