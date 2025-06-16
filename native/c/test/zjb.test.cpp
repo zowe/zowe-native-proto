@@ -19,6 +19,8 @@
 using namespace std;
 using namespace ztst;
 
+#define SLEEPY_TIME 1
+
 void zjb_tests()
 {
 
@@ -51,7 +53,7 @@ void zjb_tests()
 
                   string correlator = string(zjb.job_correlator, 64);
                   memset(&zjb, 0, sizeof(zjb));
-                  sleep(1); // wait for job to complete
+                  sleep(SLEEPY_TIME); // wait for job to complete
                   rc = zjb_delete(&zjb, correlator);
                   ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
                 });
@@ -78,7 +80,7 @@ void zjb_tests()
                   Expect(zjob.job_correlator).ToBe(correlator); // vefify submit correlator matches view status correlator
 
                   memset(&zjb, 0, sizeof(zjb));
-                  sleep(1); // wait for job to complete
+                  sleep(SLEEPY_TIME); // wait for job to complete
                   rc = zjb_delete(&zjb, correlator);
                   ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
                 });
@@ -97,7 +99,7 @@ void zjb_tests()
                   string correlator = string(zjb.job_correlator, 64);
 
                   memset(&zjb, 0, sizeof(zjb));
-                  sleep(1); // wait for job to complete
+                  sleep(SLEEPY_TIME); // wait for job to complete
                   rc = zjb_delete(&zjb, correlator);
                   ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
                 });
@@ -117,8 +119,39 @@ void zjb_tests()
                   string returned_jcl;
 
                   memset(&zjb, 0, sizeof(zjb));
-                  sleep(1); // wait for job to complete
+                  sleep(SLEEPY_TIME); // wait for job to complete
                   rc = zjb_read_job_jcl(&zjb, correlator, returned_jcl);
+                  ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
+                });
+
+             it("should be able to list and view SYSOUT files for INPUT jobs",
+                []() -> void
+                {
+                  ZJB zjb = {0};
+                  string jobid;
+                  string jcl = "//IEFBR14$ JOB IZUACCT,TYPRUN=HOLD\n"
+                               "//RUNBR14  EXEC PGM=IEFBR14\n";
+
+                  int rc = zjb_submit(&zjb, jcl, jobid);
+                  ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
+
+                  string correlator = string(zjb.job_correlator, 64);
+
+                  memset(&zjb, 0, sizeof(zjb));
+                  sleep(SLEEPY_TIME); // wait for job to complete
+                  vector<ZJobDD> dds;
+                  rc = zjb_list_dds(&zjb, correlator, dds);
+                  ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
+                  Expect(dds.size()).ToBeGreaterThan(0); // expect at least one DD returned
+
+                  memset(&zjb, 0, sizeof(zjb));
+                  string content;
+                  rc = zjb_read_jobs_output_by_key(&zjb, correlator, dds[0].key, content);
+                  ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
+                  Expect(content).Not().ToBe(""); // expect some content returned
+
+                  memset(&zjb, 0, sizeof(zjb));
+                  rc = zjb_delete(&zjb, correlator);
                   ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
                 });
 
@@ -136,7 +169,7 @@ void zjb_tests()
                   string correlator = string(zjb.job_correlator, 64);
 
                   memset(&zjb, 0, sizeof(zjb));
-                  sleep(1); // wait for job to complete
+                  sleep(SLEEPY_TIME); // wait for job to complete
                   rc = zjb_cancel(&zjb, correlator);
                   ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
 
@@ -149,7 +182,6 @@ void zjb_tests()
                   Expect(zjob.retcode).ToBe("CANCELED");
 
                   memset(&zjb, 0, sizeof(zjb));
-                  sleep(1); // wait for job to complete
                   rc = zjb_delete(&zjb, correlator);
                   ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
                 });

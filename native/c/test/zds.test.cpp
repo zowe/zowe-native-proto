@@ -25,15 +25,15 @@ void zds_tests()
   describe("zds tests",
            []() -> void
            {
-             //  it("should be able to list a job",
-             //     []() -> void
-             //     {
-             //       ZJB zjb = {0};
-             //       string owner = "*";  // all owners
-             //       string prefix = "*"; // any prefix
-             //       zjb.jobs_max = 1;    // limit to one
-             //       vector<ZJob> jobs;
-             //       expect(zjb_list_by_owner(&zjb, owner, prefix, jobs)).ToBe(RTNCD_WARNING); // expect truncated list returned
-             //     });
+             it("should list data sets in a DSN",
+                []() -> void
+                {
+                  int rc = 0;
+                  ZDS zds = {0};
+                  vector<ZDSEntry> entries;
+                  string dsn = "SYS1.MACLIB";
+                  rc = zds_list_data_sets(&zds, dsn, entries);
+                  ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
+                });
            });
 }

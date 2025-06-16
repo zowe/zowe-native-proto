@@ -104,8 +104,8 @@ ASM_FLAGS+=--noverbose
 .END
 
 
-all: build-out build-out/runner
-# all: build-out build-out/testasm1 build-out/testasm4 build-out/testrcvy build-out/runner test
+all: clean build-out build-out/runner
+
 
 #
 # Output directories
@@ -117,7 +117,6 @@ build-out:
 #
 # Testing utilities
 #
-
 build-out/runner.o: runner.cpp
 	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
 
