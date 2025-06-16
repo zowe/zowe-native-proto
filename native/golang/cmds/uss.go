@@ -86,9 +86,16 @@ func HandleReadFileRequest(conn *utils.StdioConn, params []byte) (result any, e 
 	}
 	args := []string{"uss", "view", request.Path, "--encoding", request.Encoding, "--return-etag", "true"}
 
+	shouldStream := request.StreamId != 0
+	if shouldStream {
+		if stats, err := os.Stat(request.Path); err == nil {
+			shouldStream = stats.Size() > 32768
+		}
+	}
+
 	var etag string
 	var data []byte
-	if request.StreamId == 0 {
+	if !shouldStream {
 		args = append(args, "--rfb", "true")
 		out, err := conn.ExecCmd(args)
 		if err != nil {
