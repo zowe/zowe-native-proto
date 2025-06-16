@@ -19,7 +19,7 @@
 using namespace std;
 using namespace ztst;
 
-#define SLEEPY_TIME 1
+#define SLEEPY_TIME 0
 
 void zjb_tests()
 {
