@@ -186,6 +186,4 @@ int zds_read_from_dsn_streamed(ZDS *zds, std::string dsn, std::string pipe);
  */
 int zds_write_to_dsn_streamed(ZDS *zds, std::string dsn, std::string pipe);
 
-int file_print_func(const char *fmt);
-
 #endif

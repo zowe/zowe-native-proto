@@ -666,11 +666,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
 
   do
   {
-    zut_dump_storage("selection_criteria: \n", selection_criteria, 512, file_print_func);
-    zut_dump_storage("\n before: \n", csi_work_area, 512, file_print_func);
     rc = ZDSCSI00(zds, selection_criteria, csi_work_area);
-
-    zut_dump_storage("\n alias: \n", csi_work_area, 512, file_print_func);
 
     if (0 != rc)
     {
@@ -1255,41 +1251,4 @@ int zds_write_to_dsn_streamed(ZDS *zds, string dsn, string pipe)
   strcpy(zds->etag, etag_stream.str().c_str());
 
   return RTNCD_SUCCESS;
-}
-
-int file_print_func(const char *fmt)
-{
-  // Convert EBCDIC to ASCII
-  char ascii_buffer[2048];
-  size_t inlen = strlen(fmt);
-  size_t outlen = sizeof(ascii_buffer) - 1;
-
-  iconv_t cd = iconv_open("ISO8859-1", "IBM-1047"); // EBCDIC to ASCII
-  if (cd == (iconv_t)-1)
-  {
-    perror("iconv_open failed");
-    return -1;
-  }
-
-  char *inptr = (char *)fmt;
-  char *outptr = ascii_buffer;
-
-  if (iconv(cd, &inptr, &inlen, &outptr, &outlen) == (size_t)-1)
-  {
-    perror("iconv failed");
-    iconv_close(cd);
-    return -1;
-  }
-
-  *outptr = '\0'; // Null terminate
-  iconv_close(cd);
-
-  // Now write ASCII to file
-  FILE *file = fopen("memory_dump.txt", "a");
-  if (!file)
-    return -1;
-
-  int result = fprintf(file, "%s", ascii_buffer);
-  fclose(file);
-  return result;
 }
