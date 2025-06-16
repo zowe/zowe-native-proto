@@ -16,6 +16,7 @@
 #include <vector>
 #include <string>
 #include "zdstype.h"
+#include <iconv.h>
 
 extern const size_t MAX_DS_LENGTH;
 
@@ -55,7 +56,7 @@ typedef struct
   std::string vol;       // Volume Serial
 } DS_ATTRIBUTES;
 
-std::string zds_get_recfm(const fldata_t& file_info);
+std::string zds_get_recfm(const fldata_t &file_info);
 
 /**
  * @brief Read data from a z/OS data set
@@ -158,7 +159,10 @@ int zds_delete_dsn(ZDS *zds, std::string dsn);
  */
 int zds_list_members(ZDS *zds, std::string dsn, std::vector<ZDSMem> &members);
 
-int zds_list_data_sets(ZDS *zds, std::string dsn, std::vector<ZDSEntry> &attributes);
+extern "C"
+{
+  int zds_list_data_sets(ZDS *zds, std::string dsn, std::vector<ZDSEntry> &attributes);
+}
 
 int zdsReadDynalloc(std::string, std::string, std::string, std::string &); // NOTE(Kelosky): testing only
 
@@ -181,5 +185,7 @@ int zds_read_from_dsn_streamed(ZDS *zds, std::string dsn, std::string pipe);
  * @return int 0 for success; non zero otherwise
  */
 int zds_write_to_dsn_streamed(ZDS *zds, std::string dsn, std::string pipe);
+
+int file_print_func(const char *fmt);
 
 #endif
