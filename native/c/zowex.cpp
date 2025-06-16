@@ -2009,7 +2009,7 @@ int handle_uss_write(ZCLIResult result)
   }
   else
   {
-    cout << "Wrote data to '" << file << "'" << (zusf.created ? "(created new file)" : "(overwrote existing)") << endl;
+    cout << "Wrote data to '" << file << "'" << (zusf.created ? " (created new file)" : " (overwrote existing)") << endl;
   }
 
   return rc;
