@@ -24,12 +24,11 @@ void zrecovery_tests()
   describe("zrecovery tests",
            []() -> void
            {
-             TEST_OPTIONS opts = {0};
-             opts.remove_signal_handling = false;
-
-             it("should recovery from an abend", []() -> void
+             it("should recover from an abend",
+                []() -> void
                 {
                   int rc = ZRCVYEN();
-                expect(rc).ToBe(0); }, opts);
+                  Expect(rc).ToBe(0);
+                });
            });
 }

@@ -21,8 +21,16 @@
 using namespace std;
 using namespace ztst;
 
-int main()
+string matcher = "";
+
+int main(int argc, char *argv[])
 {
+
+  if (argc > 1)
+  {
+    cout << "Running tests matching: " << argv[1] << endl;
+    matcher = argv[1];
+  }
 
   int rc = tests(
       []() -> void

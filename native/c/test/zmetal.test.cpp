@@ -29,9 +29,9 @@ void zmetal_tests()
                 {
                   string name = "IEFBR14";
                   void *ep = ZMTLLOAD(name.c_str());
-                  expect(ep).Not().ToBeNull();
+                  Expect(ep).Not().ToBeNull();
                   int rc = ZMTLDEL(name.c_str());
-                  expect(rc).ToBe(0);
+                  Expect(rc).ToBe(0);
                 });
 
              it("should not load a program that does not exist",
@@ -39,7 +39,7 @@ void zmetal_tests()
                 {
                   string name = "IEFBR15";
                   void *ep = ZMTLLOAD(name.c_str());
-                  expect(ep).ToBeNull();
+                  Expect(ep).ToBeNull();
                 });
 
              it("should not delete a program that does not exist",
@@ -47,7 +47,7 @@ void zmetal_tests()
                 {
                   string name = "IEFBR15";
                   int rc = ZMTLDEL(name.c_str());
-                  expect(rc).ToBe(4);
+                  Expect(rc).ToBe(4);
                 });
            });
 }

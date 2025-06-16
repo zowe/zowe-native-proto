@@ -59,6 +59,12 @@ func LogError(format string, args ...any) {
 	}
 }
 
+// LogFatal logs a fatal error to the log file and aborts
+func LogFatal(format string, args ...any) {
+	LogError(format, args...)
+	log.Fatalf(format, args...)
+}
+
 // PrintErrorResponse prints a JSON-serialized error response to stderr and logs the error to the log file
 func PrintErrorResponse(details t.ErrorDetails, rpcId *int) {
 	LogError(details.Message)
