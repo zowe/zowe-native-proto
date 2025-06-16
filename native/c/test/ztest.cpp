@@ -17,6 +17,8 @@
 #include "ztest.hpp"
 #include <setjmp.h>
 
+using namespace std;
+
 string ztst::RESULT_CHECK::append_error_details()
 {
   string error = "";
@@ -187,6 +189,11 @@ void ztst::it(string description, ztst::cb test, TEST_OPTIONS &opts)
 {
   TEST_CASE tc = {0};
   tc.description = description;
+
+  if (matcher != "" && matcher != description)
+  {
+    return;
+  }
 
   bool abend = false;
   struct sigaction sa = {0};
