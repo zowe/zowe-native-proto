@@ -293,9 +293,6 @@ int ZUTDBGMG(const char *msg)
   char writeBuf[132] = {0};
   memset(writeBuf, ' ', sizeof(132));
   int len = snprintf(writeBuf, 132, "%s", msg);
-  // zwto_debug("%d", len);             // @TEST
-  // zwto_debug("%s", msg);             // @TEST
-  // zwto_debug("%.*s", 132, writeBuf); // @TEST
 
   writeSync(sysprintIoc, writeBuf);
   close_assert(sysprintIoc);
