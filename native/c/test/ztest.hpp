@@ -16,13 +16,13 @@
 #include <stdexcept>
 #include <vector>
 
-using namespace std;
-
 // TODO(Kelosky): handle test not run
 // TODO(Kelosky): handle running individual test and/or suite
 
 #define Expect(x) [&]() -> RESULT_CHECK { EXPECT_CONTEXT ctx = {__LINE__, __FILE__}; return expect(x, ctx); }()
-#define ExpectWithContext(x, context) [&]() -> RESULT_CHECK { EXPECT_CONTEXT ctx = {__LINE__, __FILE__, string(context)}; return expect(x, ctx); }()
+#define ExpectWithContext(x, context) [&]() -> RESULT_CHECK { EXPECT_CONTEXT ctx = {__LINE__, __FILE__, std::string(context)}; return expect(x, ctx); }()
+
+extern std::string matcher;
 
 namespace ztst
 {
@@ -30,24 +30,25 @@ namespace ztst
   struct EXPECT_CONTEXT
   {
     int line_number;
-    string file_name;
-    string message;
+    std::string file_name;
+    std::string message;
     bool initialized;
   };
 
   class RESULT_CHECK
   {
     int int_result;
-    string string_result;
+    std::string string_result;
     bool inverse;
     void *pointer_result;
     EXPECT_CONTEXT ctx;
 
   public:
+    void ToBeGreaterThan(int);
     void ToBe(int);
-    void ToBe(string);
+    void ToBe(std::string);
     void ToBeNull();
-    string append_error_details();
+    std::string append_error_details();
     RESULT_CHECK Not();
     RESULT_CHECK() {}
     ~RESULT_CHECK() {}
@@ -68,7 +69,7 @@ namespace ztst
       int_result = r;
     }
 
-    void set_result(string r)
+    void set_result(std::string r)
     {
       string_result = r;
     }
@@ -86,15 +87,15 @@ namespace ztst
 
   typedef void (*cb)();
 
-  void describe(string description, cb suite);
+  void describe(std::string description, cb suite);
 
-  void it(string description, cb test);
-  void it(string description, cb test, TEST_OPTIONS &opts);
+  void it(std::string description, cb test);
+  void it(std::string description, cb test, TEST_OPTIONS &opts);
 
   RESULT_CHECK expect(int val);
   RESULT_CHECK expect(int val, EXPECT_CONTEXT &ctx);
-  RESULT_CHECK expect(string val);
-  RESULT_CHECK expect(string val, EXPECT_CONTEXT &ctx);
+  RESULT_CHECK expect(std::string val);
+  RESULT_CHECK expect(std::string val, EXPECT_CONTEXT &ctx);
   RESULT_CHECK expect(void *val);
   RESULT_CHECK expect(void *val, EXPECT_CONTEXT &ctx);
 
