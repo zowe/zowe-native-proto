@@ -21,8 +21,6 @@
 using namespace std;
 using namespace ztst;
 
-#define SLEEPY_TIME 0
-
 void wait_for_conversion(string correlator)
 {
   int index = 0;
