@@ -15,6 +15,8 @@
 #include "ztest.hpp"
 #include "zjb.hpp"
 #include <unistd.h>
+#include <thread>
+#include <chrono>
 
 using namespace std;
 using namespace ztst;
@@ -79,11 +81,25 @@ void zjb_tests()
 
                   // Expect(zjob.correlator).ToBe(correlator); // vefify submit correlator matches view status correlator
 
-                  for (int i = 0; i < 500; i++)
+                  int index = 0;
+                  while (true)
                   {
                     memset(&zjb, 0, sizeof(zjb));
                     rc = zjb_view(&zjb, correlator, zjob);
-                    cout << "@TEST " << __FILE__ << ":" << __LINE__ << " index: " << i << " jobname " << zjob.jobname << " jobid " << zjob.jobid << " status " << zjob.status << " owner " << zjob.owner << " full status " << zjob.full_status << " retcode " << zjob.retcode << " correlator " << zjob.correlator << "\n";
+                    if (index >= 100)
+                    {
+                      break;
+                    }
+                    if (zjob.status == "INPUT")
+                    {
+                      this_thread::sleep_for(chrono::milliseconds(100)); // wait for job to complete
+                    }
+                    else
+                    {
+                      break;
+                    }
+                    cout << "@TEST " << __FILE__ << ":" << __LINE__ << " index: " << index << " jobname " << zjob.jobname << " jobid " << zjob.jobid << " status " << zjob.status << " owner " << zjob.owner << " full status " << zjob.full_status << " retcode " << zjob.retcode << " correlator " << zjob.correlator << "\n";
+                    index++;
                   }
 
                   memset(&zjb, 0, sizeof(zjb));
