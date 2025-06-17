@@ -557,7 +557,8 @@ async function test(connection: Client) {
         connection,
         `cd ${cTestDeployDirectory} _CEE_RUNOPTS="TRAP(ON,NOSPIE)" ./build-out/runner ${args[1] ?? ""}\n`,
     );
-    DEBUG_MODE() && console.log(response);
+    console.log(response);
+    // DEBUG_MODE() && console.log(response);
     console.log("Testing complete!");
 }
 
