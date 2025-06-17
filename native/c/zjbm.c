@@ -522,6 +522,8 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
     stat.statjcrp = &job_correlator31[0];
   }
 
+  // NOTE(Kelosky): we first locate the STATJQ via jobid or job correlator because verbose data which containts SYSOUT info
+  // cannot be obtained directly from the jobid or job correlator as documented by the JES SSI API.
   rc = ZJBMGJQ(zjb, &ssob, &stat, &statjqp);
 
   if (0 != rc)
@@ -612,8 +614,6 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
 
         statsvhdp = (STATSVHD * PTR32)((unsigned char *PTR32)statvop + statvop->stvoohdr);
         statsevbp = (STATSEVB * PTR32)((unsigned char *PTR32)statsvhdp + sizeof(STATSVHD));
-
-        STATSEO2 *PTR32 statseo2 = (STATSEO2 * PTR32)((unsigned char *PTR32)statsevbp + statsevbp->stvslen);
 
         memcpy(statsetrsp, statsevbp, sizeof(STATSEVB));
         statsetrsp++;

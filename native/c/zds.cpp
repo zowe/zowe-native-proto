@@ -515,9 +515,7 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &list)
   return 0;
 }
 
-#if (defined(__IBMCPP__) || defined(__IBMC__))
-#pragma pack(packed)
-#endif
+#pragma pack(1)
 
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=format-work-area-table
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=format-work-area-picture
@@ -594,9 +592,7 @@ typedef struct
   ZDS_CSI_ENTRY entry;
 } ZDS_CSI_WORK_AREA;
 
-#if (defined(__IBMCPP__) || defined(__IBMC__))
-#pragma pack(reset)
-#endif
+#pragma pack() // restore default packing
 
 #define BUFF_SIZE 1024
 #define FIELD_LEN 8
