@@ -25,7 +25,7 @@ struct ZJob
   std::string status;
   std::string full_status;
   std::string retcode;
-  std::string job_correlator;
+  std::string correlator;
 };
 
 struct ZJobDD

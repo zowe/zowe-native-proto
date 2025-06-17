@@ -451,14 +451,14 @@ int main(int argc, char *argv[])
   job_jobid_only.set_is_bool(true);
   job_submit.get_options().push_back(job_jobid_only);
 
-  ZCLIOption job_job_correlator_only("only-correlator");
-  job_job_correlator_only.get_aliases().push_back("--oc");
-  job_job_correlator_only.set_description("show only job correlator on success");
-  job_job_correlator_only.set_is_bool(true);
-  job_submit.get_options().push_back(job_job_correlator_only);
+  ZCLIOption job_correlator_only("only-correlator");
+  job_correlator_only.get_aliases().push_back("--oc");
+  job_correlator_only.set_description("show only job correlator on success");
+  job_correlator_only.set_is_bool(true);
+  job_submit.get_options().push_back(job_correlator_only);
 
   job_submit.get_exclusive_options().push_back(job_jobid_only);
-  job_submit.get_exclusive_options().push_back(job_job_correlator_only);
+  job_submit.get_exclusive_options().push_back(job_correlator_only);
 
   ZCLIPositional job_dsn("dsn");
   job_dsn.set_required(true);
@@ -472,9 +472,9 @@ int main(int argc, char *argv[])
   job_submit_jcl.set_zcli_verb_handler(handle_job_submit_jcl);
   job_submit_jcl.get_options().push_back(job_jobid_only);
   job_submit_jcl.get_options().push_back(encoding_option);
-  job_submit_jcl.get_options().push_back(job_job_correlator_only);
+  job_submit_jcl.get_options().push_back(job_correlator_only);
   job_submit_jcl.get_exclusive_options().push_back(job_jobid_only);
-  job_submit_jcl.get_exclusive_options().push_back(job_job_correlator_only);
+  job_submit_jcl.get_exclusive_options().push_back(job_correlator_only);
   job_submit_jcl.get_options().push_back(job_wait);
   job_group.get_verbs().push_back(job_submit_jcl);
 
@@ -488,9 +488,9 @@ int main(int argc, char *argv[])
   job_submit_uss.get_positionals().push_back(job_uss_file);
 
   job_submit_uss.get_options().push_back(job_jobid_only);
-  job_submit_uss.get_options().push_back(job_job_correlator_only);
+  job_submit_uss.get_options().push_back(job_correlator_only);
   job_submit_uss.get_exclusive_options().push_back(job_jobid_only);
-  job_submit_uss.get_exclusive_options().push_back(job_job_correlator_only);
+  job_submit_uss.get_exclusive_options().push_back(job_correlator_only);
   job_submit_uss.get_options().push_back(job_wait);
   job_group.get_verbs().push_back(job_submit_uss);
 
@@ -880,7 +880,7 @@ int handle_job_list(ZCLIResult result)
         fields.push_back(it->retcode);
         fields.push_back(it->jobname);
         fields.push_back(it->status);
-        fields.push_back(it->job_correlator);
+        fields.push_back(it->correlator);
         cout << zut_format_as_csv(fields) << endl;
       }
       else
@@ -987,7 +987,7 @@ int handle_job_view_status(ZCLIResult result)
     fields.push_back(job.retcode);
     fields.push_back(job.jobname);
     fields.push_back(job.status);
-    fields.push_back(job.job_correlator);
+    fields.push_back(job.correlator);
     cout << zut_format_as_csv(fields) << endl;
   }
   else
@@ -1070,7 +1070,7 @@ int job_submit_common(ZCLIResult result, string jcl, string &jobid, string ident
   if ("true" == only_jobid)
     cout << jobid << endl;
   else if ("true" == only_correlator)
-    cout << string(zjb.job_correlator, sizeof(zjb.job_correlator)) << endl;
+    cout << string(zjb.correlator, sizeof(zjb.correlator)) << endl;
   else
     cout << "Submitted " << identifier << ", " << jobid << endl;
 
