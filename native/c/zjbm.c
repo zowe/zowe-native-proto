@@ -26,6 +26,7 @@
 #include "ihapsa.h"
 #include "cvt.h"
 #include "iefjesct.h"
+#include "zdbg.h"
 
 // TODO(Kelosky):
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=79-putget-requests
@@ -182,7 +183,6 @@ int ZJBMMOD(ZJB *zjb, int type, int flags)
   SSOB ssob = {0};
   SSIB ssib = {0};
   SSJM ssjm = {0};
-  SSJF *ssjfp = NULL;
 
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=sfcd-modify-job-function-call-ssi-function-code-85
   init_ssob(&ssob, &ssib, &ssjm, 85);
@@ -268,7 +268,7 @@ int ZJBMMOD(ZJB *zjb, int type, int flags)
     return RTNCD_FAILURE;
   }
 
-  ssjfp = (SSJF *)ssjm.ssjmsjf8; // NOTE(Kelosky): in the future we can return a list of SSJFs, for now, if none returned, the job was not found
+  zut_dump_storage("SSJM", &ssjm, sizeof(SSJM), ZUTDBGMG); //@TEST
 
   if (0 == ssjm.ssjmnsjf)
   {

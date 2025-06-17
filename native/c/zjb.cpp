@@ -34,6 +34,7 @@
 #include "zjbtype.h"
 #include "zdstype.h"
 #include "zdyn.h"
+#include "zdbg.h"
 
 typedef struct iazbtokp IAZBTOKP;
 
@@ -565,7 +566,9 @@ int zjb_view(ZJB *zjb, string jobid, ZJob &job)
   ZJB_JOB_INFO *PTR64 job_info = nullptr;
   int entries = 0;
 
-  zut_alloc_debug();
+  zut_alloc_debug(); //@TEST
+
+  zut_dump_storage("title", &rc, sizeof(int), zut_debug_message);
 
   if (0 == zjb->buffer_size)
     zjb->buffer_size = ZJB_DEFAULT_BUFFER_SIZE;
