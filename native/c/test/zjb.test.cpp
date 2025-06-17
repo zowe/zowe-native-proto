@@ -79,6 +79,13 @@ void zjb_tests()
 
                   Expect(zjob.correlator).ToBe(correlator); // vefify submit correlator matches view status correlator
 
+                  cout << "@TEST line:76 jobname " << zjob.jobname << " jobid " << zjob.jobid << " status " << zjob.status << " owner " << zjob.owner << " full status " << zjob.full_status << " retcode " << zjob.retcode << " correlator " << zjob.correlator << "\n";
+
+                  sleep(1);
+                  memset(&zjb, 0, sizeof(zjb));
+                  rc = zjb_view(&zjb, correlator, zjob);
+                  cout << "@TEST now job is " << zjob.owner << endl;
+
                   memset(&zjb, 0, sizeof(zjb));
                   sleep(SLEEPY_TIME); // wait for job to complete
                   rc = zjb_delete(&zjb, correlator);
