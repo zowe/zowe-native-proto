@@ -1,14 +1,6 @@
 %module zds_py
 
 %{
-#ifndef SWIGEXPORT
-#define SWIGEXPORT
-#endif
-#undef SWIGEXPORT
-#define SWIGEXPORT
-#undef SWIGSTDCALL
-#define SWIGSTDCALL
-
 #include "zds_py.hpp"
 %}
 
