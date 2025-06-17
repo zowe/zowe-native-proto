@@ -79,7 +79,7 @@ void zjb_tests()
 
                   // Expect(zjob.correlator).ToBe(correlator); // vefify submit correlator matches view status correlator
 
-                  for (int i = 0; i < 50; i++)
+                  for (int i = 0; i < 500; i++)
                   {
                     memset(&zjb, 0, sizeof(zjb));
                     rc = zjb_view(&zjb, correlator, zjob);
