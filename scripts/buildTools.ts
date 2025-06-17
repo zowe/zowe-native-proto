@@ -80,7 +80,6 @@ class AsciiToEbcdicTransform extends Transform {
 
 function DEBUG_MODE() {
     return process.env.ZOWE_NATIVE_DEBUG?.toUpperCase() === "TRUE" || process.env.ZOWE_NATIVE_DEBUG === "1";
-
 }
 
 function startSpinner(text = "Loading...") {
@@ -558,8 +557,7 @@ async function test(connection: Client) {
         connection,
         `cd ${cTestDeployDirectory} _CEE_RUNOPTS="TRAP(ON,NOSPIE)" ./build-out/runner ${args[1] ?? ""}\n`,
     );
-    console.log(response);
-    // DEBUG_MODE() && console.log(response);
+    DEBUG_MODE() && console.log(response);
     console.log("Testing complete!");
 }
 

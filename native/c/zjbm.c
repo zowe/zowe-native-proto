@@ -26,7 +26,6 @@
 #include "ihapsa.h"
 #include "cvt.h"
 #include "iefjesct.h"
-#include "zdbg.h"
 
 // TODO(Kelosky):
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=79-putget-requests
@@ -267,8 +266,6 @@ int ZJBMMOD(ZJB *zjb, int type, int flags)
     zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "IEFSSREQ rc was: '%d' SSOBRETN was: '%d', SSJMRETN was: '%d', SSJMRET2 was: '%d'", rc, ssob.ssobretn, ssjm.ssjmretn, ssjm.ssjmret2);
     return RTNCD_FAILURE;
   }
-
-  zut_dump_storage("SSJM", &ssjm, sizeof(SSJM), ZUTDBGMG); //@TEST
 
   if (0 == ssjm.ssjmnsjf)
   {
