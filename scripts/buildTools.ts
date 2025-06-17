@@ -557,7 +557,7 @@ async function test(connection: Client) {
     console.log("Testing native/c ...");
     const response = await runCommandInShell(
         connection,
-        `cd ${cTestDeployDirectory} && rm -f /tmp/zowex_debug.txt && _CEE_RUNOPTS="TRAP(ON,NOSPIE)" ./build-out/runner ${args[1] ?? ""} || cat /tmp/zowex_debug.txt\n`,
+        `cd ${cTestDeployDirectory} && rm -f /tmp/zowex_debug.txt && _CEE_RUNOPTS="TRAP(ON,NOSPIE)" ./build-out/runner ${args[1] ?? ""} || [ -f /tmp/zowex_debug.txt ] cat /tmp/zowex_debug.txt\n`, // @TEST
     );
     DEBUG_MODE() && console.log(response);
     console.log("Testing complete!");
