@@ -220,6 +220,8 @@ void zjb_tests()
                   memset(&zjb, 0, sizeof(zjb));
                   rc = zjb_view(&zjb, correlator, zjob);
 
+                  cout << "Job status: " << zjob.status << " " << zjob.owner << " " << zjob.jobid << " " << zjob.jobname << " " << zjob.full_status << endl;
+
                   ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
 
                   Expect(zjob.retcode).ToBe("CANCELED");
