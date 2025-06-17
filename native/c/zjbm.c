@@ -268,8 +268,6 @@ int ZJBMMOD(ZJB *zjb, int type, int flags)
     return RTNCD_FAILURE;
   }
 
-  zut_dump_storage("SSJM", &ssjm, sizeof(SSJM), ZUTDBGMG); //@TEST
-
   if (0 == ssjm.ssjmnsjf)
   {
     if (zjb->jobid[0] != 0x00)
@@ -278,6 +276,7 @@ int ZJBMMOD(ZJB *zjb, int type, int flags)
     }
     else
     {
+      zut_dump_storage("SSJM", &ssjm, sizeof(SSJM), ZUTDBGMG); //@TEST
       zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "No jobs found matching correlator '%.64s'", zjb->correlator);
     }
     zjb->diag.detail_rc = ZJB_RTNCD_JOB_NOT_FOUND;
