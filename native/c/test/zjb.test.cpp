@@ -219,9 +219,9 @@ void zjb_tests()
 
                   ZJob zjob;
 
+                  memset(&zjb, 0, sizeof(zjb));
                   rc = zjb_view(&zjb, correlator, zjob);
 
-                  memset(&zjb, 0, sizeof(zjb));
                   ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
 
                   Expect(zjob.retcode).ToBe("CANCELED");
