@@ -23,7 +23,17 @@ void zds_tests()
 {
 
   describe("zds tests",
-           []() -> void {
-
+           []() -> void
+           {
+             it("should list data sets in a DSN",
+                []() -> void
+                {
+                  int rc = 0;
+                  ZDS zds = {0};
+                  vector<ZDSEntry> entries;
+                  string dsn = "SYS1.MACLIB";
+                  rc = zds_list_data_sets(&zds, dsn, entries);
+                  ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
+                });
            });
 }
