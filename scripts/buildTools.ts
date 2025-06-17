@@ -79,7 +79,6 @@ class AsciiToEbcdicTransform extends Transform {
 }
 
 function DEBUG_MODE() {
-    return true; // @TEST
     return process.env.ZOWE_NATIVE_DEBUG?.toUpperCase() === "TRUE" || process.env.ZOWE_NATIVE_DEBUG === "1";
 
 }
