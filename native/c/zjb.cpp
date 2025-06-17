@@ -566,7 +566,7 @@ int zjb_view(ZJB *zjb, string jobid, ZJob &job)
   ZJB_JOB_INFO *PTR64 job_info = nullptr;
   int entries = 0;
 
-  zut_alloc_debug(); //@TEST
+  // zut_alloc_debug(); //@TEST
 
   // zut_dump_storage("title", &rc, sizeof(int), zut_debug_message); // @TEST
 
