@@ -220,6 +220,7 @@ void zjb_tests()
                   ZJob zjob;
 
                   wait_for_conversion(correlator, "CONVERSION");
+                  wait_for_conversion(correlator, "AWAIT MAIN SELECT");
 
                   memset(&zjb, 0, sizeof(zjb));
                   rc = zjb_view(&zjb, correlator, zjob);

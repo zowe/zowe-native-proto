@@ -710,6 +710,8 @@ void zjb_build_job_response(ZJB_JOB_INFO *PTR64 job_info, int entries, vector<ZJ
       zjob.retcode = "CANCELED";
     }
 
+    printf("@TEST code is %02x", (unsigned char)job_info_next[i].statjqtr.sttrxind);
+
     zjob.jobname = jobname;
     zjob.jobid = jobid;
     zjob.owner = owner;
