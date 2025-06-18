@@ -10,12 +10,21 @@ static void e2a_inplace(std::string &s)
     s.pop_back();
 }
 
+static void a2e_inplace(std::string &s)
+{
+    if (s.empty())
+        return;
+    s.push_back('\0');
+    __a2e_s(&s[0]);
+    s.pop_back();
+}
+
 std::vector<ZJob> list_jobs_by_owner(std::string owner_name)
 {
     std::vector<ZJob> jobs;
     ZJB zjb = {0};
 
-    __a2e_s(&owner_name[0]);
+    a2e_inplace(owner_name);
     int rc = zjb_list_by_owner(&zjb, owner_name, "", jobs);
 
     if (rc != 0 && rc != RTNCD_WARNING)
@@ -40,4 +49,161 @@ std::vector<ZJob> list_jobs_by_owner(std::string owner_name)
     }
 
     return jobs;
+}
+
+ZJob get_job_status(std::string jobid)
+{
+    ZJob job = {0};
+    ZJB zjb = {0};
+
+    a2e_inplace(jobid);
+    int rc = zjb_view(&zjb, jobid, job);
+
+    if (rc != 0)
+    {
+        std::string diag(zjb.diag.e_msg, zjb.diag.e_msg_len);
+        diag.push_back('\0');
+        e2a_inplace(diag);
+        diag.pop_back();
+        std::cerr << "ZJB get_job_status failed, rc=" << rc
+                  << ", diag=\"" << diag << "\"\n";
+    }
+    else
+    {
+        e2a_inplace(job.jobname);
+        e2a_inplace(job.jobid);
+        e2a_inplace(job.owner);
+        e2a_inplace(job.status);
+        e2a_inplace(job.full_status);
+        e2a_inplace(job.retcode);
+        e2a_inplace(job.job_correlator);
+    }
+
+    return job;
+}
+
+std::vector<ZJobDD> list_spool_files(std::string jobid)
+{
+    std::vector<ZJobDD> jobDDs;
+    ZJB zjb = {0};
+
+    a2e_inplace(jobid);
+    int rc = zjb_list_dds(&zjb, jobid, jobDDs);
+
+    if (rc != 0 && rc != RTNCD_WARNING)
+    {
+        std::string diag(zjb.diag.e_msg, zjb.diag.e_msg_len);
+        diag.push_back('\0');
+        e2a_inplace(diag);
+        diag.pop_back();
+        std::cerr << "ZJB list_spool_files failed, rc=" << rc
+                  << ", diag=\"" << diag << "\"\n";
+    }
+
+    for (auto &dd : jobDDs)
+    {
+        e2a_inplace(dd.jobid);
+        e2a_inplace(dd.ddn);
+        e2a_inplace(dd.dsn);
+        e2a_inplace(dd.stepname);
+        e2a_inplace(dd.procstep);
+    }
+
+    return jobDDs;
+}
+
+std::string read_spool_file(std::string jobid, int key)
+{
+    std::string response;
+    ZJB zjb = {0};
+
+    a2e_inplace(jobid);
+    int rc = zjb_read_jobs_output_by_key(&zjb, jobid, key, response);
+
+    if (rc != 0)
+    {
+        std::string diag(zjb.diag.e_msg, zjb.diag.e_msg_len);
+        diag.push_back('\0');
+        e2a_inplace(diag);
+        diag.pop_back();
+        std::cerr << "ZJB read_spool_file failed, rc=" << rc
+                  << ", diag=\"" << diag << "\"\n";
+    }
+    else
+    {
+        e2a_inplace(response);
+    }
+
+    return response;
+}
+
+std::string get_job_jcl(std::string jobid)
+{
+    std::string response;
+    ZJB zjb = {0};
+
+    a2e_inplace(jobid);
+    int rc = zjb_read_job_jcl(&zjb, jobid, response);
+
+    if (rc != 0)
+    {
+        std::string diag(zjb.diag.e_msg, zjb.diag.e_msg_len);
+        diag.push_back('\0');
+        e2a_inplace(diag);
+        diag.pop_back();
+        std::cerr << "ZJB get_job_jcl failed, rc=" << rc
+                  << ", diag=\"" << diag << "\"\n";
+    }
+    else
+    {
+        e2a_inplace(response);
+    }
+
+    return response;
+}
+
+std::string submit_job(std::string jcl_content)
+{
+    std::string jobid;
+    ZJB zjb = {0};
+
+    a2e_inplace(jcl_content);
+    int rc = zjb_submit(&zjb, jcl_content, jobid);
+
+    if (rc != 0)
+    {
+        std::string diag(zjb.diag.e_msg, zjb.diag.e_msg_len);
+        diag.push_back('\0');
+        e2a_inplace(diag);
+        diag.pop_back();
+        std::cerr << "ZJB submit_job failed, rc=" << rc
+                  << ", diag=\"" << diag << "\"\n";
+    }
+    else
+    {
+        e2a_inplace(jobid);
+    }
+
+    return jobid;
+}
+
+bool delete_job(std::string jobid)
+{
+    ZJB zjb = {0};
+
+    a2e_inplace(jobid);
+    int rc = zjb_delete(&zjb, jobid);
+
+    if (rc != 0)
+    {
+        std::string diag(zjb.diag.e_msg, zjb.diag.e_msg_len);
+        diag.push_back('\0');
+        e2a_inplace(diag);
+        diag.pop_back();
+        std::cerr << "ZJB delete_job failed, rc=" << rc
+                  << ", diag=\"" << diag << "\"\n";
+        return false;
+    }
+
+    return true;
 }

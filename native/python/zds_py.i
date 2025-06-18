@@ -19,3 +19,27 @@ struct ZDSEntry {
     std::string recfm;
     bool migr;
 };
+
+struct ZDSMem {
+    std::string name;
+};
+
+struct DS_ATTRIBUTES {
+    std::string alcunit;
+    int blksize;
+    int dirblk;
+    std::string dsorg;
+    int primary;
+    std::string recfm;
+    int lrecl;
+    std::string dataclass;
+    std::string unit;
+    std::string dsntype;
+    std::string mgntclass;
+    std::string dsname;
+    int avgblk;
+    int secondary;
+    int size;
+    std::string storclass;
+    std::string vol;
+};
