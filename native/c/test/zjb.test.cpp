@@ -30,6 +30,8 @@ void wait_for_conversion(string correlator, string status)
     ZJob zjob = {0};
     int rc = zjb_view(&zjb, correlator, zjob);
 
+    cout << "@TEST index is " << index << " status is " << zjob.status << " full status " << zjob.full_status << endl;
+
     if (rc != RTNCD_SUCCESS)
     {
       string error = "Error: could not view job: '" + correlator + "' rc: " + to_string(rc) + "\n'  " + string(zjb.diag.e_msg) + "'";
