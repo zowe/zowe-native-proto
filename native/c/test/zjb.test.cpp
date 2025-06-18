@@ -30,7 +30,7 @@ void wait_for_conversion(string correlator, string status)
     ZJob zjob = {0};
     int rc = zjb_view(&zjb, correlator, zjob);
 
-    cout << "@TEST index is " << index << " status is " << zjob.status << " full status " << zjob.full_status << endl;
+    cout << "@TEST index is " << index << " status is " << zjob.status << " full status " << zjob.full_status << " comparing " << status << endl;
 
     if (rc != RTNCD_SUCCESS)
     {
@@ -42,7 +42,7 @@ void wait_for_conversion(string correlator, string status)
     {
       break;
     }
-    if (zjob.status == status)
+    if (zjob.full_status == status)
     {
       this_thread::sleep_for(chrono::milliseconds(10 * 5)); // wait for job to exit INPUT
     }
