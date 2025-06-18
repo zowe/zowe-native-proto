@@ -70,6 +70,27 @@ Total Suites: 5 passed, 1 failed, 6 total
 Tests:      : 13 passed, 1 failed, 14 total
 ```
 
+#### Debugging
+
+By default, LE or Metal C abends will signal for program termination.  When this occurs, a message may appear:
+
+```txt
+    unexpected ABEND occured.  Add `TEST_OPTIONS.remove_signal_handling = false` to `it(...)` to capture abend dump
+```
+
+In this situation, no CEEDUMP is captured.  To disable this behavior, disable signal handling by passing a `TEST_OPTIONS` object as a parameter to `it()`, e.g.:
+
+```c
+             TEST_OPTIONS opts = {0};
+             opts.remove_signal_handling = true;
+
+             it("should recover from an abend", []() -> void
+                {
+                  int rc = ZRCVYEN();
+                Expect(rc).ToBe(0); }, opts);
+           });
+```
+
 #### API
 
 The testing infrastructure provides the following APIs

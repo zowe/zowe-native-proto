@@ -7,6 +7,9 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## Recent Changes
 
 - `c`: Fixed issue where canceled jobs displayed as "CC nnnn" instead of the string "CANCELED". [#169](https://github.com/zowe/zowe-native-proto/issues/169)
+- `c`: Fixed issue where input job SYSOUT files could not be listed or displayed". [#196](https://github.com/zowe/zowe-native-proto/issues/196)
+- `native`: Fixed issue where `zowed` failed to process RPC requests larger than 64 KB. [#364](https://github.com/zowe/zowe-native-proto/pull/364)
+
 
 ## `0.1.2`
 
