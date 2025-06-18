@@ -167,7 +167,7 @@ export interface ReadFileResponse extends common.CommandResponse {
 }
 export interface WriteFileResponse extends GenericFileResponse {
   etag: string;
-  created: string;
+  created: boolean;
 }
 export interface ListFilesResponse extends common.CommandResponse {
   items: common.UssItem[];
