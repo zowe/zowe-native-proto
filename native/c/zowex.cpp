@@ -2492,11 +2492,10 @@ int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_
       continue; // skip empty lines
 
     // Build command line string from parsed entries
-    std::string command_line;
+    std::string command_line = program_name;
     for (size_t i = 0; i < entries.size(); ++i)
     {
-      if (i > 0)
-        command_line += " ";
+      command_line += " ";
 
       // Quote arguments that contain spaces
       if (entries[i].find(' ') != std::string::npos)
