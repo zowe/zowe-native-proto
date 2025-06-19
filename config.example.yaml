@@ -2,12 +2,19 @@ activeProfile: default
 
 profiles:
   default:
+    # Name of Zowe SSH profile used to connect to z/OS
+    # If you don't have Zowe profiles, run `zowe config init` to create a team configuration file.
+    # Or uncomment the section below to define SSH config inline rather than using a Zowe profile.
     sshProfile: ssh
-    # To define SSH config inline rather than loading from a Zowe profile, uncomment below:
     # sshProfile:
     #   host: example.com
     #   port: 22
     #   user: ibmuser
     #   privateKey: /Users/ibmuser/.ssh/id_rsa
+    #   # password: password  # Use password instead of private key
+
+    # USS directory on z/OS where native code is built
     deployDir: ~/zowe-native-proto
-    goBuildEnv: ""
+
+    # Environment variables to set for the `go build` command
+    # goBuildEnv: 'GOINSECURE="*" GOPROXY=direct'  # Allow fetching Go dependencies
