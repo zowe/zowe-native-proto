@@ -71,7 +71,7 @@ To test server changes without having to download artifacts and re-deploy them e
   }
 ```
 
-To package client components with native binaries bundled, run `npm run z:artifacts && npm run package` to generate packages in the `dist` directory.
+To package client components with native binaries bundled, run `npm run z:artifacts && npm run package` which generates packages in the `dist` directory.
 
 > [!TIP]
 > See the list below for more useful scripts like `watch` for incremental build.
