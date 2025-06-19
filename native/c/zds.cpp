@@ -801,7 +801,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
       {
         string symbol(IPL_VOLUME_SYMBOL);
         string value;
-        int rc = zut_substitute_sybmol(symbol, value);
+        int rc = zut_substitute_symbol(symbol, value);
         if (0 == rc)
         {
           entry.volser = value;
