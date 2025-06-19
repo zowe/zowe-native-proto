@@ -53,7 +53,7 @@ See the [native readme](./native/README.md) for more details about building the 
 
 ### Quickstart
 
-Run `npm run z:rebuild` to rebuild server code after editing files in the `native` folder.
+Run `npm run z:rebuild` to rebuild server code after editing files in the `native` folder. See [Troubleshooting](./doc/troubleshooting.md) to debug common build issues.
 
 Run `npm run build` to rebuild client code after editing files in the `packages` folder.
 
