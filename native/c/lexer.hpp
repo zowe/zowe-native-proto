@@ -294,48 +294,12 @@ namespace lexer
   {
     TokEof,
 
-    TokIf,
-    TokElse,
-    TokFor,
-    TokIn,
-    TokWhile,
-    TokBreak,
-    TokReturn,
-    TokInt,
-    TokBool,
-    TokString,
-    TokAnd,
-    TokOr,
-    TokNot,
     TokTrue,
     TokFalse,
 
-    TokAssign,
-    TokPlus,
     TokMinus,
     TokDoubleMinus,
     TokTimes,
-    TokDivide,
-    TokModulo,
-    TokShl,
-    TokShr,
-    TokLess,
-    TokGreater,
-    TokLessEq,
-    TokGreaterEq,
-    TokEq,
-    TokNotEq,
-
-    TokLParen,
-    TokRParen,
-    TokLBrace,
-    TokRBrace,
-    TokLBracket,
-    TokRBracket,
-    TokSemi,
-    TokColon,
-    TokComma,
-    TokDot,
 
     TokId,
     TokIntLit,
@@ -672,86 +636,28 @@ namespace lexer
       {
       case TokEof:
         return "<eof>";
-      case TokIf:
-        return "if";
-      case TokElse:
-        return "else";
-      case TokFor:
-        return "for";
-      case TokIn:
-        return "in";
-      case TokWhile:
-        return "while";
-      case TokBreak:
-        return "break";
-      case TokReturn:
-        return "return";
-      case TokInt:
-        return "int";
-      case TokBool:
-        return "bool";
-      case TokString:
-        return "string";
-      case TokAnd:
-        return "and";
-      case TokOr:
-        return "or";
-      case TokNot:
-        return "not";
       case TokTrue:
         return "true";
       case TokFalse:
         return "false";
-      case TokAssign:
-        return "=";
-      case TokPlus:
-        return "+";
       case TokMinus:
         return "-";
       case TokDoubleMinus:
         return "--";
       case TokTimes:
         return "*";
-      case TokDivide:
-        return "/";
-      case TokModulo:
-        return "%";
-      case TokShl:
-        return "<<";
-      case TokShr:
-        return ">>";
-      case TokLess:
-        return "<";
-      case TokGreater:
-        return ">";
-      case TokLessEq:
-        return "<=";
-      case TokGreaterEq:
-        return ">=";
-      case TokEq:
-        return "==";
-      case TokNotEq:
-        return "!=";
-      case TokLParen:
-        return "(";
-      case TokRParen:
-        return ")";
-      case TokLBrace:
-        return "{";
-      case TokRBrace:
-        return "}";
-      case TokLBracket:
-        return "[";
-      case TokRBracket:
-        return "]";
-      case TokSemi:
-        return ";";
-      case TokColon:
-        return ":";
-      case TokComma:
-        return ",";
-      case TokDot:
-        return ".";
+      case TokId:
+        return "<id>";
+      case TokIntLit:
+        return "<int_lit>";
+      case TokFloatLit:
+        return "<float_lit>";
+      case TokStrLit:
+        return "<str_lit>";
+      case TokFlagShort:
+        return "<short_flag>";
+      case TokFlagLong:
+        return "<long_flag>";
       default:
         return NULL;
       }
@@ -1075,45 +981,9 @@ namespace lexer
         return Token(TokEof, Span(start_pos, start_pos));
 
       // single-character tokens that are unambiguous
-      case '+':
-        next();
-        return Token(TokPlus, Span(start_pos, m_iter.position()));
       case '*':
         next();
         return Token(TokTimes, Span(start_pos, m_iter.position()));
-      case '%':
-        next();
-        return Token(TokModulo, Span(start_pos, m_iter.position()));
-      case '(':
-        next();
-        return Token(TokLParen, Span(start_pos, m_iter.position()));
-      case ')':
-        next();
-        return Token(TokRParen, Span(start_pos, m_iter.position()));
-      case '{':
-        next();
-        return Token(TokLBrace, Span(start_pos, m_iter.position()));
-      case '}':
-        next();
-        return Token(TokRBrace, Span(start_pos, m_iter.position()));
-      case '[':
-        next();
-        return Token(TokLBracket, Span(start_pos, m_iter.position()));
-      case ']':
-        next();
-        return Token(TokRBracket, Span(start_pos, m_iter.position()));
-      case ';':
-        next();
-        return Token(TokSemi, Span(start_pos, m_iter.position()));
-      case ':':
-        next();
-        return Token(TokColon, Span(start_pos, m_iter.position()));
-      case ',':
-        next();
-        return Token(TokComma, Span(start_pos, m_iter.position()));
-      case '.':
-        next();
-        return Token(TokDot, Span(start_pos, m_iter.position()));
 
       // potentially multi-character tokens
       case '-':
@@ -1138,69 +1008,6 @@ namespace lexer
         {
           return Token(TokMinus, Span(start_pos, m_iter.position()));
         }
-
-      case '/': // division, start of comment, or start of path-like identifier
-        // comments are handled by eat_whitespace_and_comments
-        // check if it starts a path-like identifier
-        if (is_ident_cont(peek()))
-        { // if '/' is followed by another identifier
-          // character...
-          return lex_identifier_or_keyword(
-              start_pos); // ...treat it as the start of an identifier
-        }
-        else
-        {
-          // otherwise, it's the division operator
-          next();
-          return Token(TokDivide, Span(start_pos, m_iter.position()));
-        }
-
-      case '<':
-        next();
-        if (current() == '<')
-        {
-          next();
-          return Token(TokShl, Span(start_pos, m_iter.position()));
-        }
-        if (current() == '=')
-        {
-          next();
-          return Token(TokLessEq, Span(start_pos, m_iter.position()));
-        }
-        return Token(TokLess, Span(start_pos, m_iter.position()));
-
-      case '>':
-        next();
-        if (current() == '>')
-        {
-          next();
-          return Token(TokShr, Span(start_pos, m_iter.position()));
-        }
-        if (current() == '=')
-        {
-          next();
-          return Token(TokGreaterEq, Span(start_pos, m_iter.position()));
-        }
-        return Token(TokGreater, Span(start_pos, m_iter.position()));
-
-      case '=':
-        next();
-        if (current() == '=')
-        {
-          next();
-          return Token(TokEq, Span(start_pos, m_iter.position()));
-        }
-        return Token(TokAssign, Span(start_pos, m_iter.position()));
-
-      case '!':
-        next();
-        if (current() == '=')
-        {
-          next();
-          return Token(TokNotEq, Span(start_pos, m_iter.position()));
-        }
-        // assume '!' is TokNot if not followed by '='
-        return Token(TokNot, Span(start_pos, m_iter.position()));
 
       // string literals
       case '"':
@@ -1256,7 +1063,7 @@ namespace lexer
         TokenKind kind;
       };
       static const keyword keywords[] = {
-          {"if", 2, TokIf}, {"else", 4, TokElse}, {"for", 3, TokFor}, {"in", 2, TokIn}, {"while", 5, TokWhile}, {"break", 5, TokBreak}, {"return", 6, TokReturn}, {"int", 3, TokInt}, {"bool", 4, TokBool}, {"string", 6, TokString}, {"and", 3, TokAnd}, {"or", 2, TokOr}, {"not", 3, TokNot}, {"true", 4, TokTrue}, {"false", 5, TokFalse}, {nullptr, 0, TokEof} // sentinel
+          {"true", 4, TokTrue}, {"false", 5, TokFalse}, {nullptr, 0, TokEof} // sentinel
       };
 
       for (int i = 0; keywords[i].name != nullptr; ++i)
