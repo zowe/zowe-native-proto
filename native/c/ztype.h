@@ -83,9 +83,10 @@ typedef struct CamlstSearchParams
 
 typedef struct ObtainParams
 {
-  int function_code : 16;
-  int option_flags : 8; // Contains bits for EADSCB, NOQUEUE, etc.
-  int number_dscbs : 8;
+  unsigned char reserved; // should be defined as (193) 0xC1 according to dump of parameter list
+  unsigned char number_dscbs;
+  unsigned char option_flags;
+  unsigned char unk_pad;
   CamlstSearchParams listname_addrx;
 } ObtainParams;
 

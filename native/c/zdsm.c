@@ -18,8 +18,9 @@
 #include <string.h>
 
 // OBTAIN option parameters for CAMLST
-const int OPTION_EADSCB = 0x08;  // EADSCB=OK
-const int OPTION_NOQUEUE = 0x04; // NOQUEUE=OK
+const unsigned char OPTION_EADSCB = 0x08;  // EADSCB=OK
+const unsigned char OPTION_NOQUEUE = 0x04; // NOQUEUE=OK
+const unsigned char MAX_DSCBS = 12;
 
 #pragma prolog(ZDSDEL, " ZWEPROLG NEWDSA=(YES,4) ")
 #pragma epilog(ZDSDEL, " ZWEEPILG ")
@@ -93,10 +94,6 @@ typedef int (*IGWASMS)(
 #pragma prolog(ZDSRECFM, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(ZDSRECFM, " ZWEEPILG ")
 
-#ifndef MAX_DSCBS
-#define MAX_DSCBS 12
-#endif
-
 // Obtain the record format for a data set, given its name and volser
 // Full PDF for advanced services: https://www.ibm.com/docs/en/SSLTBW_2.2.0/pdf/dgt3s310.pdf
 // Doc page: https://www.ibm.com/docs/en/zos/3.1.0?topic=macros-reading-dscbs-from-vtoc-using-obtain
@@ -116,7 +113,7 @@ int ZDSRECFM(ZDS *zds, const char *dsn, const char *volser, char *recfm_buf,
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=obtain-reading-dscb-by-data-set-name
 
   // OBTAIN by data set name
-  params.function_code = 0xC100;
+  params.reserved = 0xC1;
   params.number_dscbs = MAX_DSCBS;
   // Allow lookup of format-1 or format-8 DSCB
   params.option_flags = OPTION_EADSCB;
