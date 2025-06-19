@@ -70,6 +70,27 @@ Total Suites: 5 passed, 1 failed, 6 total
 Tests:      : 13 passed, 1 failed, 14 total
 ```
 
+#### Debugging
+
+By default, LE or Metal C abends will signal for program termination.  When this occurs, a message may appear:
+
+```txt
+    unexpected ABEND occured.  Add `TEST_OPTIONS.remove_signal_handling = false` to `it(...)` to capture abend dump
+```
+
+In this situation, no CEEDUMP is captured.  To disable this behavior, disable signal handling by passing a `TEST_OPTIONS` object as a parameter to `it()`, e.g.:
+
+```c
+             TEST_OPTIONS opts = {0};
+             opts.remove_signal_handling = true;
+
+             it("should recover from an abend", []() -> void
+                {
+                  int rc = ZRCVYEN();
+                Expect(rc).ToBe(0); }, opts);
+           });
+```
+
 #### API
 
 The testing infrastructure provides the following APIs
@@ -141,3 +162,37 @@ You can add temporary debugging messages within Metal C code which will issue `W
 and must not appear in distributed versions of `zowex`.
 
 To see these debugging messages within z/OS UNIX, set the environment variable `export _BPXK_JOBLOG=STDERR`.  Then add debug messages via `zwto_debug(...)` found within `zwto.h` in the same format as C `printf` format strings, e.g. `zwto_debug("return code was %d", rc);`.
+
+### Dumping Storage
+
+Raw storage address contents can be printed to the console or a file to help with debugging scenarios.  This can be achieved using the `zdbg.h` header file.
+
+### LE C/C++
+
+To dump storage in LE, use:
+
+```c
+#include "zdbg.h"
+
+  int data = 3;
+
+  zut_dump_storage(title, &data, sizeof(data), zut_debug_message);
+
+```
+
+By default, output is printed to `STDERR` when using `zut_debug_message()`; however, you may provide alternative callback functions via a function pointer in place of the default `zut_debug_message`.
+
+### Metal C
+
+You must ensure `zut_alloc_debug()` is called to allocate an output DD for log messages.  Then in Metal C, use
+
+```c
+#include "zdbg.h"
+
+  ZJB zjb = {0};
+
+  zut_dump_storage("ZJB", zjb, sizeof(ZJB), ZUTDBGMG);
+
+```
+
+By default, output is printed to `/tmp/zowex_debug.txt` when using `ZUTDBGMG()`; however, you may provide a Metal C compatible alternative.
