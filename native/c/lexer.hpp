@@ -859,31 +859,27 @@ namespace lexer
     Lexer(const Src &source)
         : m_iter(source.get_iterator()), m_input_ptr(source.get_code_ptr())
     {
-      size_t estimated_tokens = source.get_code().size() / 5;
-      if (estimated_tokens > 10)
-      { // avoid tiny allocations
+      size_t estimated_tokens = source.get_code().size() / 4;
+      if (estimated_tokens > 8)
+      {
         m_tokens.reserve(estimated_tokens);
       }
     }
 
-    // helper functions for character classification
-    // todo: using direct checks can be slightly faster if locale is not a
-    // concern..
-    static bool is_ascii_dec_digit(char c) { return c >= '0' && c <= '9'; }
     static bool is_ascii_hex_digit(char c)
     {
-      return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') ||
-             (c >= 'a' && c <= 'f');
+      return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
     }
+
     static bool is_ascii_bin_digit(char c) { return c == '0' || c == '1'; }
-    // using std::isalpha for broader identifier start definition (factors in
-    // locale) sticking with std::isalpha unless pure ascii is
-    // guaranteed/required.
+
     static bool is_ident_start(char c)
     {
-      return std::isalpha(static_cast<unsigned char>(c)) || c == '$' ||
-             c == '_' || c == '/' || c == '*';
+      unsigned char uc = static_cast<unsigned char>(c);
+      return (uc >= 'A' && uc <= 'Z') || (uc >= 'a' && uc <= 'z') ||
+             c == '$' || c == '_' || c == '/' || c == '*';
     }
+
     static bool is_ident_cont(char c)
     {
       return is_ident_start(c) || is_ascii_dec_digit(c) || c == '.' || c == '/' ||
@@ -929,41 +925,32 @@ namespace lexer
     {
       while (true)
       {
-        char c = current(); // cache current char
-        switch (c)
+        char c = current();
+
+        // Fast path for common whitespace
+        if (c == ' ' || c == '\t' || c == '\n' || c == '\r')
         {
-        // whitespace
-        case ' ':
-        case '\t':
-        case '\n':
-        case '\r':
           next();
-          break;
-
-        // comments (single line //)
-        case '/':
-          if (peek() == '/')
-          {
-            next2(); // consume //
-            while (true)
-            {
-              char comm_c = current();
-              if (comm_c == '\n' || comm_c == '\0')
-                break;
-              next();
-            }
-          }
-          else
-          {
-            // not a comment, maybe division
-            return;
-          }
-          break;
-
-        // end of whitespace/comment section
-        default:
-          return;
+          continue;
         }
+
+        // Check for comments at end of line in format `# <comment>`
+        if (c == '#' && peek() == ' ')
+        {
+          // consume # to end of line
+          next();
+          while (true)
+          {
+            char comm_c = current();
+            if (comm_c == '\n' || comm_c == '\0')
+              break;
+            next();
+          }
+          continue;
+        }
+
+        // No more whitespace or comments
+        return;
       }
     }
 
@@ -1052,27 +1039,16 @@ namespace lexer
       size_t length = end_pos - start_pos;
       const char *id_start_ptr = m_input_ptr + start_pos;
 
-      // check if the identifier slice matches a keyword
-      // keyword lookup: using std::map requires temporary string.
-      // optimization: use a structure that can check char*/len directly.
-      // simple linear scan for small keyword sets (pre-c++11 friendly):
-      struct keyword
+      if (length == 4 && id_start_ptr[0] == 't' && id_start_ptr[1] == 'r' &&
+          id_start_ptr[2] == 'u' && id_start_ptr[3] == 'e')
       {
-        const char *name;
-        size_t len;
-        TokenKind kind;
-      };
-      static const keyword keywords[] = {
-          {"true", 4, TokTrue}, {"false", 5, TokFalse}, {nullptr, 0, TokEof} // sentinel
-      };
-
-      for (int i = 0; keywords[i].name != nullptr; ++i)
+        return Token(TokTrue, Span(start_pos, end_pos));
+      }
+      if (length == 5 && id_start_ptr[0] == 'f' && id_start_ptr[1] == 'a' &&
+          id_start_ptr[2] == 'l' && id_start_ptr[3] == 's' &&
+          id_start_ptr[4] == 'e')
       {
-        if (keywords[i].len == length &&
-            memcmp(id_start_ptr, keywords[i].name, length) == 0)
-        {
-          return Token(keywords[i].kind, Span(start_pos, end_pos));
-        }
+        return Token(TokFalse, Span(start_pos, end_pos));
       }
 
       // not a keyword, it's an identifier
@@ -1162,7 +1138,7 @@ namespace lexer
       bool is_float = false;
       bool has_exponent = false;
 
-      char num_buffer[64];
+      char num_buffer[128];
       int buffer_idx = 0;
       const int buffer_max_idx = sizeof(num_buffer) - 1;
 
