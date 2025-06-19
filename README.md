@@ -15,19 +15,16 @@
 
 ## Setup
 
-Clone this repository and run `npm install` to install project dependencies.
-
-Create a config file by copying `config.example.yaml` to `config.yaml`. Update the properties in the file for your environment.
-
-For a quick start, run `npm run all` which performs the following tasks:
-
-1. `z:upload` - Upload source files
-2. `z:build` - Build native binaries on z/OS
-3. `z:artifacts` - Download build artifacts
-4. `build` - Build client packages locally
+1. Clone this repository and run `npm install` to install project dependencies.
+2. Create a config file by copying `config.example.yaml` to `config.yaml`. Update the properties in the file for your environment.
+3. For a quick start, run `npm run all` which performs the following tasks:
+   1. `z:upload` - Upload source files<br/>
+   2. `z:build` - Build native binaries on z/OS<br/>
+   3. `z:artifacts` - Download build artifacts<br/>
+   4. `build` - Build client packages locally
 
 > [!TIP]
-> If you don't have a z/OS build environment, you can download prebuilt binaries with `npm run download` (this requires the GitHub CLI). Then skip to Step 4 and run `npm run build` to build client packages.
+> If you don't have a z/OS build environment, you can download prebuilt binaries with `npm run download` (this requires the GitHub CLI). Then skip to Step 3.4 and run `npm run build` to build client packages.
 
 ## Usage
 
@@ -57,7 +54,7 @@ Run `npm run z:rebuild` to rebuild server code after editing files in the `nativ
 
 Run `npm run build` to rebuild client code after editing files in the `packages` folder.
 
-To test server changes without having to download artifacts and re-deploy them each time, you can define `serverPath` property in your SSH profile in `zowe.config.json`. It should point to the `<deployDir>/golang` folder that contains the `zowed` binary - see example below.
+To test server changes without having to download artifacts and re-deploy them each time, you can define `serverPath` property in your SSH profile in `zowe.config.json`. It should point to the `<deployDir>/golang` folder that contains the `zowed` binary. See example below.
 
 ```json
   "profiles": {

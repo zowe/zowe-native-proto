@@ -11,7 +11,7 @@ For private keys, confirm that you can ssh into the LPAR/zVDT using it.
 
 ## FSUM9383 Configuration file `/etc/startup.mk' not found
 
-You should be able to find the startup.mk file in `/samples`
+You should be able to find the `startup.mk` file in `/samples`
 
 - `cp /samples/startup.mk /etc/startup.mk` <br/>
   _source:_ https://www.ibm.com/support/pages/fsum9383-configuration-file-etcstartupmk-not-found
@@ -20,7 +20,7 @@ You should be able to find the startup.mk file in `/samples`
 
 One workaround is to add `CBC.SCCNCMP` to your system LINKLIST concatenation. Below is an example of doing this via SYSVIEW commands.
 
-:warning: These commands could ruin your system. :warning:
+:warning: These commands could ruin your system if the linklist is corrupted. Do not modify the linklist unless you know what you are doing. :warning:
 
 ```
 linklist
@@ -32,5 +32,5 @@ set asid 1
 linkupd *
 ```
 
-Note 1: You may need to run `linkact zowex` after an IPL.<br/>
-Note 2: You may need to replace `*` with your mask character. For example, `linkact zowex =`
+Note 1: You may need to run `linkact zowex` after an IPL if your linklist has been reset.<br/>
+Note 2: Depending on your z/OS configuration, you may need to replace `*` with your mask character. For example, `linkact zowex =`
