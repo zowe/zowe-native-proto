@@ -211,7 +211,7 @@ void zjb_tests()
                   string correlator = string(zjb.correlator, 64);
 
                   // wait_for_conversion(correlator, "INPUT");
-                  sleep(1);
+                  // sleep(1);
 
                   memset(&zjb, 0, sizeof(zjb));
                   rc = zjb_cancel(&zjb, correlator);
@@ -226,7 +226,7 @@ void zjb_tests()
                   memset(&zjb, 0, sizeof(zjb));
                   rc = zjb_view(&zjb, correlator, zjob);
 
-                  cout << "Job status: " << zjob.status << " " << zjob.owner << " " << zjob.jobid << " " << zjob.jobname << " " << zjob.full_status << endl;
+                  cout << "Job status: " << zjob.status << " " << zjob.owner << " " << zjob.jobid << " " << zjob.jobname << " " << zjob.full_status << " " << zjob.retcode << " " << zjob.correlator << endl;
 
                   ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
 
