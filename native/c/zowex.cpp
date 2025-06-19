@@ -1857,11 +1857,12 @@ int handle_uss_write(const ParseResult &result)
 
   if (result.find_kw_arg_bool("etag-only"))
   {
-    cout << zusf.etag << endl;
+    cout << "etag: " << zusf.etag << '\n'
+         << "created: " << (zusf.created ? "true" : "false") << '\n';
   }
   else
   {
-    cout << "Wrote data to '" << file << "'" << endl;
+    cout << "Wrote data to '" << file << "'" << (zusf.created ? " (created new file)" : " (overwrote existing)") << endl;
   }
 
   return rc;
