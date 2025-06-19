@@ -134,14 +134,14 @@ static int test_auth()
 #endif
 
 #if defined(__IBM_METAL__)
-#define OBTAIN(params, rc)  \
-  __asm(                    \
-      " LA 1,0(%1)      \n" \
-      " SVC 27          \n" \
-      " ST 15,%0        \n" \
-      : "=m"(rc)            \
-      : "r"(&params)        \
-      : "r0", "r15");     
+#define OBTAIN(params, rc)          \
+  __asm(                            \
+      " LA   1,%1               \n" \
+      " OBTAIN (1)              \n" \
+      " ST   15,%0              \n" \
+      : "=m"(rc)                    \
+      : "m"(params)                 \
+      : "r0", "r1", "r14", "r15");
 #else
 #define OBTAIN(params, rc)
 #endif
