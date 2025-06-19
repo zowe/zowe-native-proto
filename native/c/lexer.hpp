@@ -866,9 +866,11 @@ namespace lexer
       }
     }
 
+    static bool is_ascii_dec_digit(char c) { return c >= '0' && c <= '9'; }
+
     static bool is_ascii_hex_digit(char c)
     {
-      return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+      return is_ascii_dec_digit(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
     }
 
     static bool is_ascii_bin_digit(char c) { return c == '0' || c == '1'; }
