@@ -98,7 +98,8 @@ typedef int (*IGWASMS)(
 #endif
 
 // Obtain the record format for a data set, given its name and volser
-// https://www.ibm.com/docs/en/SSLTBW_2.2.0/pdf/dgt3s310.pdf
+// Full PDF for advanced services: https://www.ibm.com/docs/en/SSLTBW_2.2.0/pdf/dgt3s310.pdf
+// Doc page: https://www.ibm.com/docs/en/zos/3.1.0?topic=macros-reading-dscbs-from-vtoc-using-obtain
 int ZDSRECFM(ZDS *zds, const char *dsn, const char *volser, char *recfm_buf,
              int recfm_buf_len)
 {
