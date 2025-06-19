@@ -414,7 +414,7 @@ int zds_delete_dsn(ZDS *zds, string dsn)
   {
     strcpy(zds->diag.service_name, "remove");
     zds->diag.service_rc = rc;
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not delete data set '%s', rc: '%d'", dsn.c_str());
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not delete data set '%s', rc: '%d'", dsn.c_str(), rc);
     zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
     return RTNCD_FAILURE;
   }
@@ -515,9 +515,7 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &list)
   return 0;
 }
 
-#if (defined(__IBMCPP__) || defined(__IBMC__))
-#pragma pack(packed)
-#endif
+#pragma pack(1)
 
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=format-work-area-table
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=format-work-area-picture
@@ -594,9 +592,7 @@ typedef struct
   ZDS_CSI_ENTRY entry;
 } ZDS_CSI_WORK_AREA;
 
-#if (defined(__IBMCPP__) || defined(__IBMC__))
-#pragma pack(reset)
-#endif
+#pragma pack() // restore default packing
 
 #define BUFF_SIZE 1024
 #define FIELD_LEN 8
@@ -854,21 +850,28 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
               entry.dsorg = ZDS_DSORG_UNKNOWN;
               entry.volser = ZDS_VOLSER_UNKNOWN;
             }
-          }
 
-          if (!entry.migr && entry.volser != ZDS_VOLSER_UNKNOWN)
-          {
-            char recfm_buf[8] = {0};
-            if (ZDSRECFM(zds, entry.name.c_str(), entry.volser.c_str(), recfm_buf,
-                         sizeof(recfm_buf)) == RTNCD_SUCCESS)
+            if (!entry.migr && entry.volser != ZDS_VOLSER_UNKNOWN)
             {
-              entry.recfm = recfm_buf;
-            }
-            else
-            {
-              entry.recfm = ZDS_RECFM_UNKNOWN;
+              char recfm_buf[8] = {0};
+              if (ZDSRECFM(zds, entry.name.c_str(), entry.volser.c_str(), recfm_buf,
+                           sizeof(recfm_buf)) == RTNCD_SUCCESS)
+              {
+                entry.recfm = recfm_buf;
+              }
+              else
+              {
+                entry.recfm = ZDS_RECFM_UNKNOWN;
+              }
             }
           }
+          else
+          {
+            entry.dsorg = ZDS_DSORG_UNKNOWN;
+            entry.volser = ZDS_VOLSER_UNKNOWN;
+            entry.recfm = ZDS_RECFM_UNKNOWN;
+          }
+          fclose(dir);
         }
         else
         {
@@ -1029,7 +1032,7 @@ int zds_read_from_dsn_streamed(ZDS *zds, string dsn, string pipe)
 
   const size_t chunk_size = FIFO_CHUNK_SIZE * 3 / 4;
   std::vector<char> buf(chunk_size);
-  ssize_t bytes_read;
+  size_t bytes_read;
 
   while ((bytes_read = fread(&buf[0], 1, chunk_size, fin)) > 0)
   {
@@ -1131,7 +1134,7 @@ int zds_write_to_dsn_streamed(ZDS *zds, string dsn, string pipe)
   }
 
   std::vector<char> buf(FIFO_CHUNK_SIZE);
-  ssize_t bytes_read;
+  size_t bytes_read;
 
   while ((bytes_read = fread(&buf[0], 1, FIFO_CHUNK_SIZE, fin)) > 0)
   {
@@ -1156,7 +1159,14 @@ int zds_write_to_dsn_streamed(ZDS *zds, string dsn, string pipe)
       }
     }
 
-    fwrite(chunk, 1, chunk_len, fout);
+    size_t bytes_written = fwrite(chunk, 1, chunk_len, fout);
+    if (bytes_written != chunk_len)
+    {
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to write to '%s' (possibly out of space)", dsname.c_str());
+      fclose(fin);
+      fclose(fout);
+      return RTNCD_FAILURE;
+    }
   }
 
   fflush(fout);

@@ -46,25 +46,25 @@ using namespace std;
 // NOTE(Kelosky): see struct __S99struc via 'showinc' compiler option in <stdio.h>
 // NOTE(Kelosky): In the future, to allocate the logical SYSLOG concatenation for a system specify the following data set name (in DALDSNAM).
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=allocation-specifying-data-set-name-daldsnam
-int zjb_read_jobs_output_by_jobid_and_key(ZJB *zjb, string jobid, int key, string &response)
+int zjb_read_jobs_output_by_key(ZJB *zjb, string jobid, int key, string &response)
 {
   int rc = 0;
   string job_dsn;
 
-  rc = zjb_get_job_dsn_by_jobid_and_key(zjb, jobid, key, job_dsn);
+  rc = zjb_get_job_dsn_by_key(zjb, jobid, key, job_dsn);
   if (0 != rc)
     return rc;
 
   return zjb_read_job_content_by_dsn(zjb, job_dsn, response);
 }
 
-int zjb_get_job_dsn_by_jobid_and_key(ZJB *zjb, string jobid, int key, string &job_dsn)
+int zjb_get_job_dsn_by_key(ZJB *zjb, string jobid, int key, string &job_dsn)
 {
   int rc = 0;
 
   vector<ZJobDD> list;
 
-  rc = zjb_list_dds_by_jobid(zjb, jobid, list);
+  rc = zjb_list_dds(zjb, jobid, list);
   if (0 != rc)
     return rc;
 
@@ -90,15 +90,17 @@ int zjb_get_job_dsn_by_jobid_and_key(ZJB *zjb, string jobid, int key, string &jo
   return RTNCD_SUCCESS;
 }
 
-int zjb_read_job_jcl_by_jobid(ZJB *zjb, string jobid, string &response)
+int zjb_read_job_jcl(ZJB *zjb, string jobid, string &response)
 {
   int rc = 0;
 
   vector<ZJobDD> list;
 
-  rc = zjb_list_dds_by_jobid(zjb, jobid, list);
+  rc = zjb_list_dds(zjb, jobid, list);
   if (0 != rc)
+  {
     return rc;
+  }
 
   rc = RTNCD_FAILURE; // assume failure
 
@@ -292,27 +294,60 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, string jobdsn, string &response)
   return rc;
 }
 
-int zjb_delete_by_jobid(ZJB *zjb, string jobid)
+int zjb_wait(ZJB *zjb, string status)
 {
-  zut_uppercase_pad_truncate(zjb->jobid, jobid, sizeof(zjb->jobid));
+  int rc = 0;
+  ZJob job = {0};
+  string jobid(zjb->jobid, sizeof(zjb->jobid));
+
+  do
+  {
+    rc = zjb_view(zjb, jobid, job);
+
+    sleep(1); // TODO(Kelosky): make this interval smaller
+
+    if (0 != rc)
+    {
+      return RTNCD_FAILURE;
+    }
+
+  } while (job.status != status);
+  return RTNCD_SUCCESS;
+}
+
+int zjb_delete(ZJB *zjb, string jobid)
+{
+  if (jobid.size() > sizeof(zjb->jobid))
+    zut_uppercase_pad_truncate(zjb->job_correlator, jobid, sizeof(zjb->job_correlator));
+  else
+    zut_uppercase_pad_truncate(zjb->jobid, jobid, sizeof(zjb->jobid));
   return ZJBMPRG(zjb);
 }
 
-int zjb_cancel_by_jobid(ZJB *zjb, string jobid)
+int zjb_cancel(ZJB *zjb, string jobid)
 {
-  zut_uppercase_pad_truncate(zjb->jobid, jobid, sizeof(zjb->jobid));
+  if (jobid.size() > sizeof(zjb->jobid))
+    zut_uppercase_pad_truncate(zjb->job_correlator, jobid, sizeof(zjb->job_correlator));
+  else
+    zut_uppercase_pad_truncate(zjb->jobid, jobid, sizeof(zjb->jobid));
   return ZJBMCNL(zjb, 0);
 }
 
-int zjb_hold_by_jobid(ZJB *zjb, string jobid)
+int zjb_hold(ZJB *zjb, string jobid)
 {
-  zut_uppercase_pad_truncate(zjb->jobid, jobid, sizeof(zjb->jobid));
+  if (jobid.size() > sizeof(zjb->jobid))
+    zut_uppercase_pad_truncate(zjb->job_correlator, jobid, sizeof(zjb->job_correlator));
+  else
+    zut_uppercase_pad_truncate(zjb->jobid, jobid, sizeof(zjb->jobid));
   return ZJBMHLD(zjb);
 }
 
-int zjb_release_by_jobid(ZJB *zjb, string jobid)
+int zjb_release(ZJB *zjb, string jobid)
 {
-  zut_uppercase_pad_truncate(zjb->jobid, jobid, sizeof(zjb->jobid));
+  if (jobid.size() > sizeof(zjb->jobid))
+    zut_uppercase_pad_truncate(zjb->job_correlator, jobid, sizeof(zjb->job_correlator));
+  else
+    zut_uppercase_pad_truncate(zjb->jobid, jobid, sizeof(zjb->jobid));
   return ZJBMRLS(zjb);
 }
 
@@ -348,7 +383,8 @@ int zjb_submit(ZJB *zjb, string contents, string &jobid)
 
   string ddname = "????????"; // system generated DD name
   ip.__ddname = (char *)ddname.c_str();
-  ip.__sysoutname = "INTRDR  "; // https://www.ibm.com/docs/en/zos/3.1.0?topic=control-destination-internal-reader && https://www.ibm.com/docs/en/zos/3.1.0?topic=programming-internal-reader-facility
+  string intrdr = "INTRDR  ";
+  ip.__sysoutname = (char *)intrdr.c_str(); // https://www.ibm.com/docs/en/zos/3.1.0?topic=control-destination-internal-reader && https://www.ibm.com/docs/en/zos/3.1.0?topic=programming-internal-reader-facility
   ip.__lrecl = 80;
   ip.__blksize = 80;
   ip.__sysout = __DEF_CLASS;
@@ -418,7 +454,7 @@ int zjb_submit(ZJB *zjb, string contents, string &jobid)
   return RTNCD_SUCCESS;
 }
 
-int zjb_list_dds_by_jobid(ZJB *zjb, string jobid, vector<ZJobDD> &jobDDs)
+int zjb_list_dds(ZJB *zjb, string jobid, vector<ZJobDD> &jobDDs)
 {
   int rc = 0;
   STATSEVB *PTR64 sysoutInfo = nullptr;
@@ -429,17 +465,53 @@ int zjb_list_dds_by_jobid(ZJB *zjb, string jobid, vector<ZJobDD> &jobDDs)
   if (0 == zjb->dds_max)
     zjb->dds_max = ZJB_DEFAULT_MAX_DDS;
 
-  zut_uppercase_pad_truncate(zjb->jobid, jobid, sizeof(zjb->jobid));
+  if (jobid.size() > sizeof(zjb->jobid))
+    zut_uppercase_pad_truncate(zjb->job_correlator, jobid, sizeof(zjb->job_correlator));
+  else
+    zut_uppercase_pad_truncate(zjb->jobid, jobid, sizeof(zjb->jobid));
 
   rc = ZJBMLSDS(zjb, &sysoutInfo, &entries);
-  if (0 != rc)
+  if (RTNCD_SUCCESS != rc && RTNCD_WARNING != rc)
+  {
     return rc;
+  }
 
+  // NOTE(Kelosky): if we didn't get any errors and we have no entries, we will look up the job status and see if it's "INPUT".  In this case,
+  // the SYSOUT data sets may not be vieawable via the SSI API.  So, we'll attempt to find the JESMSGLG and JESJCL data sets as documented here:
+  // https://www.ibm.com/docs/en/zos/3.1.0?topic=allocation-specifying-data-set-name-daldsnam
   if (0 == entries)
   {
+    ZJob job = {0};
+    int view_rc = zjb_view(zjb, jobid, job);
+    if (RTNCD_SUCCESS == view_rc)
+    {
+      if (job.status == "INPUT")
+      {
+        ZJobDD jesmsglg = {0};
+        jesmsglg.jobid = job.jobid;
+        jesmsglg.ddn = "JESMSGLG";
+        jesmsglg.dsn = job.owner + '.' + job.jobname + '.' + job.jobid + '.' + jesmsglg.ddn;
+
+// NOTE(Kelosky): these keys are not documented to indiciate whether they are always set to these exact values.  However,
+// since we are handling this as a special case, we will match this number that we set and reference by the DSN without the actual keys.
+#define JESMSGLG_KEY 2
+        jesmsglg.key = JESMSGLG_KEY;
+        jobDDs.push_back(jesmsglg);
+        ZJobDD jesjcl = {0};
+        jesjcl.jobid = job.jobid;
+        jesjcl.ddn = "JESJCL";
+        jesjcl.dsn = job.owner + '.' + job.jobname + '.' + job.jobid + '.' + jesjcl.ddn;
+#define JESJCL_KEY 3
+        jesjcl.key = JESJCL_KEY;
+        jobDDs.push_back(jesjcl);
+        ZUTMFR64(sysoutInfo);
+        return rc;
+      }
+    }
+
     ZUTMFR64(sysoutInfo);
-    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "Could not locate job '%s'", jobid.c_str());
-    zjb->diag.detail_rc = ZJB_RTNCD_JOB_NOT_FOUND;
+    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "no output DDs found for '%s'", jobid.c_str());
+    zjb->diag.detail_rc = ZJB_RTNCD_VERBOSE_INFO_NOT_FOUND;
     return RTNCD_WARNING;
   }
 
@@ -484,8 +556,6 @@ int zjb_view(ZJB *zjb, string jobid, ZJob &job)
   int rc = 0;
   ZJB_JOB_INFO *PTR64 job_info = nullptr;
   int entries = 0;
-
-  ///
 
   if (0 == zjb->buffer_size)
     zjb->buffer_size = ZJB_DEFAULT_BUFFER_SIZE;
@@ -619,10 +689,6 @@ void zjb_build_job_response(ZJB_JOB_INFO *PTR64 job_info, int entries, vector<ZJ
         result.push_back(zut_get_hex_char(byte3));
         zjob.retcode = result;
       }
-      else if ((unsigned char)job_info_next[i].statjqtr.sttrxind == sttrxjcl)
-      {
-        zjob.retcode = "JCL ERROR";
-      }
       else
       {
         mycc.full &= 0x00000FFF; // clear uneeded bits
@@ -634,6 +700,16 @@ void zjb_build_job_response(ZJB_JOB_INFO *PTR64 job_info, int entries, vector<ZJ
     else
     {
       // leave service text as-is
+    }
+
+    // handle special cases
+    if ((unsigned char)job_info_next[i].statjqtr.sttrxind == sttrxjcl)
+    {
+      zjob.retcode = "JCL ERROR";
+    }
+    else if ((unsigned char)job_info_next[i].statjqtr.sttrxind == sttrxcan)
+    {
+      zjob.retcode = "CANCELED";
     }
 
     zjob.jobname = jobname;

@@ -73,34 +73,44 @@ int zjb_view(ZJB *zjb, std::string jobid, ZJob &job);
  * @brief Return a list of job file information from an input jobid
  *
  * @param zjb job returned attributes and error information
+ * @param jobid jobid or job correlator used to search
  * @param job_dds populated list returned containing job file information array
  * @return int 0 for success; non zero otherwise
  */
-int zjb_list_dds_by_jobid(ZJB *zjb, std::string, std::vector<ZJobDD> &job_dds);
+int zjb_list_dds(ZJB *zjb, std::string jobid, std::vector<ZJobDD> &job_dds);
 
 /**
  * @brief Return output from a specific job file
  *
  * @param zjb job returned attributes and error information
  * @param jobid jobid coresponding to the key to locate
- * @param key data set key returned from zjb_list_dds_by_jobid, e.g. JESMSGLG is usually 2
+ * @param key data set key returned from zjb_list_dds, e.g. JESMSGLG is usually 2
  * @param response return job file output
  * @return int 0 for success; non zero otherwise
  */
-int zjb_read_jobs_output_by_jobid_and_key(ZJB *zjb, std::string jobid, int key, std::string &response);
+int zjb_read_jobs_output_by_key(ZJB *zjb, std::string jobid, int key, std::string &response);
 
-int zjb_get_job_dsn_by_jobid_and_key(ZJB *zjb, std::string, int, std::string &);
+int zjb_get_job_dsn_by_key(ZJB *zjb, std::string, int, std::string &);
 int zjb_read_job_content_by_dsn(ZJB *zjb, std::string job_dsn, std::string &response);
+
+/**
+ * @brief Wait for a job to reach a specific status
+ *
+ * @param zjb job returned attributes and error information
+ * @param status job status to wait for
+ * @return int 0 for success; non zero otherwise
+ */
+int zjb_wait(ZJB *zjb, std::string status);
 
 /**
  * @brief Return JCL for a job by input jobid
  *
  * @param zjb job returned attributes and error information
- * @param jobid jobid coresponding to the key to locate
+ * @param jobid jobid or job correlator coresponding to the key to locate
  * @param response return JCL
  * @return int 0 for success; non zero otherwise
  */
-int zjb_read_job_jcl_by_jobid(ZJB *zjb, std::string jobid, std::string &response);
+int zjb_read_job_jcl(ZJB *zjb, std::string jobid, std::string &response);
 
 /**
  * @brief Submit a job with the given JCL
@@ -129,33 +139,33 @@ int zjb_submit_dsn(ZJB *zjb, std::string dsn, std::string &jobId);
  * @param jobid jobid to delete, i.e. JOB00123 or J123
  * @return int 0 for success; non zero otherwise
  */
-int zjb_delete_by_jobid(ZJB *zjb, std::string jobid);
+int zjb_delete(ZJB *zjb, std::string jobid);
 
 /**
  * @brief Cancel a job using input jobid
  *
  * @param zjb job returned attributes and error information
- * @param jobid jobid to cancel, i.e. JOB00123 or J123
+ * @param jobid jobid or job correlator used to cancel, i.e. JOB00123 or J123
  * @return int 0 for success; non zero otherwise
  */
-int zjb_cancel_by_jobid(ZJB *zjb, std::string jobid);
+int zjb_cancel(ZJB *zjb, std::string jobid);
 
 /**
  * @brief Hold a job using input jobid
  *
  * @param zjb job returned attributes and error information
- * @param jobid jobid to hold, i.e. JOB00123 or J123
+ * @param jobid jobid or job correlator used to hold, i.e. JOB00123 or J123
  * @return int 0 for success; non zero otherwise
  */
-int zjb_hold_by_jobid(ZJB *zjb, std::string jobid);
+int zjb_hold(ZJB *zjb, std::string jobid);
 
 /**
  * @brief Release a job using input jobid
  *
  * @param zjb job returned attributes and error information
- * @param jobid jobid to release, i.e. JOB00123 or J123
+ * @param jobid jobid or job correlator used to release, i.e. JOB00123 or J123
  * @return int 0 for success; non zero otherwise
  */
-int zjb_release_by_jobid(ZJB *zjb, std::string jobid);
+int zjb_release(ZJB *zjb, std::string jobid);
 
 #endif

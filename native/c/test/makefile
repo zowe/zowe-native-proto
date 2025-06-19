@@ -10,6 +10,7 @@
 #
 CXX=xlc++
 CC=xlc
+OCXX=xlclang++
 
 # https://www.ibm.com/docs/en/hla-and-tf/1.6?topic=options-assembler
 # https://www.ibm.com/docs/en/zos/3.1.0?topic=descriptions-as-use-hlasm-assembler-produce-object-files
@@ -64,8 +65,15 @@ DLL_CPP_FLAGS=-W "c,lp64,langlvl(extended0x),dll,xplink,exportall"\
 
 DLL_BND_FLAGS=-W "l,lp64,dll,dynam=dll,xplink,map,list"
 
-CPP_FLAGS=-W "c,lp64,langlvl(extended0x),dll,xplink"\
+CPP_FLAGS=-W "c,lp64,langlvl(extended0x),xplink"\
  -c
+
+CXXLANG_FLAGS=-W "c,lp64"\
+ -c \
+ -I../ \
+ -I./chdsect
+
+CXXLANG_BND_FLAGS=-W "l,lp64"
 
 ASM_FLAGS=-mRENT
 
@@ -77,8 +85,8 @@ CPP_BND_FLAGS+=$(DEBUGGER_FLAGS)
 CPP_BND_FLAGS_AUTH+=$(DEBUGGER_FLAGS)
 C_FLAGS+=$(DEBUGGER_FLAGS)
 DLL_BND_FLAGS+=$(DEBUGGER_FLAGS)
-DLL_CPP_FLAGS+=$(DEBUGGER_FLAGS) -qSHOWINC
-CPP_FLAGS+=$(DEBUGGER_FLAGS) -qSHOWINC
+# DLL_CPP_FLAGS+=$(DEBUGGER_FLAGS) -qSHOWINC
+# CPP_FLAGS+=$(DEBUGGER_FLAGS) -qSHOWINC
 MTL_FLAGS+=$(DEBUGGER_FLAGS) -qSHOWINC
 MTL_FLAGS64+=$(DEBUGGER_FLAGS) -qSHOWINC
 ASM_FLAGS+=--verbose
@@ -89,47 +97,157 @@ CPP_BND_FLAGS_AUTH+=$(PRODUCTION_FLAGS)
 C_FLAGS+=$(PRODUCTION_FLAGS)
 DLL_BND_FLAGS+=$(PRODUCTION_FLAGS)
 DLL_CPP_FLAGS+=$(PRODUCTION_FLAGS) -qNOSHOWINC
-CPP_FLAGS+=$(PRODUCTION_FLAGS) -qNOSHOWINC
+# CPP_FLAGS+=$(PRODUCTION_FLAGS) -qNOSHOWINC
 MTL_FLAGS+=$(PRODUCTION_FLAGS) -qNOSHOWINC
 MTL_FLAGS64+=$(PRODUCTION_FLAGS) -qNOSHOWINC
 ASM_FLAGS+=--noverbose
 .END
 
 
-all: testrcvy testasm1 testasm4
+all: clean build-out build-out/runner
+
+
+#
+# Output directories
+#
+build-out:
+	@echo 'Creating build-out'
+	mkdir -p build-out
 
 #
 # Testing utilities
 #
-testrcvy.s: testrcvy.c
-	$(CC) $(MTL_FLAGS64) -qlist=$*.mtl.lst $(MTL_HEADERS) -I../chdsect -I../ -o $@ $^
+build-out/runner.o: runner.cpp
+	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
 
-testrcvy.o: testrcvy.s
+build-out/ztest.o: ztest.cpp
+	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
+
+build-out/runner: build-out/runner.o \
+build-out/ztest.o \
+build-out/zstorage.test.o \
+build-out/zstorage.metal.test.o \
+build-out/zut.test.o \
+build-out/zut.o \
+build-out/zutm.o \
+build-out/zutm31.o \
+build-out/zds.test.o \
+build-out/zds.o \
+build-out/zdsm.o \
+build-out/zam.o \
+build-out/zjb.test.o \
+build-out/zjb.o \
+build-out/zjbm.o \
+build-out/zjbm31.o \
+build-out/zssi31.o \
+build-out/zrecovery.test.o \
+build-out/zrecovery.metal.test.o \
+build-out/zmetal.test.o \
+build-out/zmetal.metal.test.o
+	$(OCXX) $(CXXLANG_BND_FLAGS) -o $@ $^ > $*.bind.lst
+
+build-out/zut.o:
+	cp ../build-out/xlclang/zut.o build-out/zut.o
+
+build-out/zutm.o:
+	cp ../build-out/zutm.o build-out/zutm.o
+
+build-out/zutm31.o:
+	cp ../build-out/zutm31.o build-out/zutm31.o
+
+build-out/zds.o:
+	cp ../build-out/xlclang/zds.o build-out/zds.o
+
+build-out/zdsm.o:
+	cp ../build-out/zdsm.o build-out/zdsm.o
+
+build-out/zam.o:
+	cp ../build-out/zam.o build-out/zam.o
+
+build-out/zjb.o:
+	cp ../build-out/xlclang/zjb.o build-out/zjb.o
+
+build-out/zjbm.o:
+	cp ../build-out/zjbm.o build-out/zjbm.o
+
+build-out/zjbm31.o:
+	cp ../build-out/zjbm31.o build-out/zjbm31.o
+
+build-out/zssi31.o:
+	cp ../build-out/zssi31.o build-out/zssi31.o
+
+build-out/zstorage.test.o: zstorage.test.cpp
+	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
+
+build-out/zstorage.metal.test.s: zstorage.metal.test.c
+	$(CC) $(MTL_FLAGS64) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
+
+build-out/zstorage.metal.test.o: build-out/zstorage.metal.test.s
 	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
-testrcvy: testrcvy.o
-	$(BIND) $(BIND_FLAGS_64) -V -eMAIN -o $@ $^ > $*.bind.lst
+build-out/zut.test.o: zut.test.cpp
+	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
 
-testasm1.o: testasm1.s
+build-out/zjb.test.o: zjb.test.cpp
+	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
+
+build-out/zds.test.o: zds.test.cpp
+	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
+
+build-out/zrecovery.test.o: zrecovery.test.cpp
+	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
+
+build-out/zrecovery.metal.test.s: zrecovery.metal.test.c
+	$(CC) $(MTL_FLAGS64) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
+
+build-out/zrecovery.metal.test.o: build-out/zrecovery.metal.test.s
 	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
-testasm4.o: testasm4.s
+build-out/zmetal.test.o: zmetal.test.cpp
+	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
+
+build-out/zmetal.metal.test.s: zmetal.metal.test.c
+	$(CC) $(MTL_FLAGS64) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
+
+build-out/zmetal.metal.test.o: build-out/zmetal.metal.test.s
 	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
-testasm1: testasm1.o
-	$(BIND) $(BIND_FLAGS) -V -eTESTASM1 -o $@ $^ > $*.bind.lst
+# build-out/testrcvy.s: testrcvy.c
+# 	$(CC) $(MTL_FLAGS64) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
 
-testasm4: testasm4.o
-	$(BIND) $(BIND_FLAGS_64) -V -eTESTASM4 -o $@ $^ > $*.bind.lst
+# build-out/testrcvy.o: build-out/testrcvy.s
+# 	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
-main.s: main.c
-	$(CC) $(MTL_FLAGS64) -qlist=$*.mtl.lst $(MTL_HEADERS) -I../chdsect -I../ -o $@ $^
+# build-out/testrcvy: build-out/testrcvy.o
+# 	$(BIND) $(BIND_FLAGS_64) -V -eMAIN -o $@ $^ > $*.bind.lst
 
-main.o: main.s
-	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
+# build-out/testasm1.o: testasm1.s
+# 	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
-main: main.o
-	$(BIND) $(BIND_FLAGS_64) -V -eMAIN -o $@ $^ > $*.bind.lst
+# build-out/testasm1: build-out/testasm1.o
+# 	$(BIND) $(BIND_FLAGS) -V -eTESTASM1 -o $@ $^ > $*.bind.lst
+
+# build-out/testasm4.o: testasm4.s
+# 	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
+
+# build-out/testasm4: build-out/testasm4.o
+# 	$(BIND) $(BIND_FLAGS_64) -V -eTESTASM4 -o $@ $^ > $*.bind.lst
+
+# build-out/main.s: main.c
+# 	$(CC) $(MTL_FLAGS64) -qlist=$*.mtl.lst $(MTL_HEADERS) -I../chdsect -I../ -o $@ $^
+
+# build-out/main.o: build-out/main.s
+# 	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
+
+# build-out/main: build-out/main.o
+# 	$(BIND) $(BIND_FLAGS_64) -V -eMAIN -o $@ $^ > $*.bind.lst
+
+#
+# Testing utilities
+#
+test: test.sh
+	chmod +x test.sh
+	_CEE_RUNOPTS="TRAP(ON,NOSPIE)" ./build-out/runner
 
 clean:
 	rm -f *.o
@@ -140,3 +258,4 @@ clean:
 	rm -f *.x
 	rm -f *.lst
 	rm -f CEEDUMP.*
+	rm -rf build-out

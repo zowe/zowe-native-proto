@@ -136,81 +136,6 @@ int zut_hello(string name)
   return 0;
 }
 
-void zut_dump_storage(string title, const void *data, size_t size)
-{
-  ios::fmtflags f(cerr.flags());
-  fprintf(stderr, "--- Dumping storage for '%s' at x'%016llx' ---\n", title.c_str(), (unsigned long long)data);
-
-  unsigned char *ptr = (unsigned char *)data;
-
-#define BYTES_PER_LINE 32
-
-  int index = 0;
-  bool end = false;
-  char spaces[] = "                                ";
-  char buf[BYTES_PER_LINE + 1] = {0};
-
-  int lines = size / BYTES_PER_LINE;
-  int remainder = size % BYTES_PER_LINE;
-  char unknown = '.';
-
-  for (int x = 0; x < lines; x++)
-  {
-    fprintf(stderr, "%016llx", (unsigned long long)ptr);
-    cerr << " | ";
-    for (int y = 0; y < BYTES_PER_LINE; y++)
-    {
-      unsigned char p = isprint(ptr[y]) ? ptr[y] : unknown;
-      cerr << setw(1) << setfill(' ') << p;
-    }
-    cerr << " | ";
-
-    for (int y = 0; y < BYTES_PER_LINE; y++)
-    {
-      cerr << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(ptr[y]);
-
-      if ((y + 1) % 4 == 0)
-      {
-        cerr << " ";
-      }
-      if ((y + 1) % 16 == 0)
-      {
-        cerr << "    ";
-      }
-    }
-    cerr << endl;
-    ptr = ptr + BYTES_PER_LINE;
-  }
-
-  fprintf(stderr, "%016llx", (unsigned long long)ptr);
-  cerr << " | ";
-  for (int y = 0; y < remainder; y++)
-  {
-    unsigned char p = isprint(ptr[y]) ? ptr[y] : unknown;
-    cerr << setw(1) << setfill(' ') << p;
-  }
-  memset(buf, 0x00, sizeof(buf));
-  sprintf(buf, "%.*s", BYTES_PER_LINE - remainder, spaces);
-  cerr << buf << " | ";
-  for (int y = 0; y < remainder; y++)
-  {
-    cerr << hex << setw(2) << setfill('0') << static_cast<int>(ptr[y]);
-
-    if ((y + 1) % 4 == 0)
-    {
-      cerr << " ";
-    }
-    if ((y + 1) % 16 == 0)
-    {
-      cerr << "    ";
-    }
-  }
-  cerr << endl;
-  cerr << "--- END ---" << endl;
-
-  cerr.flags(f);
-}
-
 /**
  * Get char value from hex byte, e.g. 0x0E -> 'E'
  */
@@ -549,4 +474,23 @@ string zut_format_as_csv(std::vector<string> &fields)
   }
 
   return formatted;
+}
+
+int zut_alloc_debug()
+{
+  int rc = 0;
+  unsigned int code = 0;
+  string response;
+  string zowexdbg = "/tmp/zowex_debug.txt";
+
+  string alloc = "alloc fi(zowexdbg) path('" + zowexdbg + "') pathopts(owronly,ocreat) pathmode(sirusr,siwusr,sirgrp) filedata(text) msg(2)";
+  rc = zut_bpxwdyn(alloc, &code, response);
+
+  return rc;
+}
+
+int zut_debug_message(const char *message)
+{
+  fprintf(stderr, "%s", message);
+  return 0;
 }
