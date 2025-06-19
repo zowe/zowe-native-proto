@@ -87,7 +87,7 @@ void zjb_tests()
                   string correlator = string(zjb.correlator, 64);
                   memset(&zjb, 0, sizeof(zjb));
 
-                  wait_for_conversion(correlator, "INPUT");
+                  // wait_for_conversion(correlator, "INPUT");
 
                   rc = zjb_delete(&zjb, correlator);
                   ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
@@ -114,7 +114,7 @@ void zjb_tests()
 
                   Expect(zjob.correlator).ToBe(correlator); // vefify submit correlator matches view status correlator
 
-                  wait_for_conversion(correlator, "INPUT");
+                  // wait_for_conversion(correlator, "INPUT");
 
                   memset(&zjb, 0, sizeof(zjb));
                   rc = zjb_delete(&zjb, correlator);
@@ -135,7 +135,7 @@ void zjb_tests()
 
                   string correlator = string(zjb.correlator, 64);
 
-                  wait_for_conversion(correlator, "INPUT");
+                  // wait_for_conversion(correlator, "INPUT");
 
                   memset(&zjb, 0, sizeof(zjb));
                   rc = zjb_delete(&zjb, correlator);
@@ -157,7 +157,7 @@ void zjb_tests()
                   string correlator = string(zjb.correlator, 64);
                   string returned_jcl;
 
-                  wait_for_conversion(correlator, "INPUT");
+                  // wait_for_conversion(correlator, "INPUT");
 
                   memset(&zjb, 0, sizeof(zjb));
                   rc = zjb_read_job_jcl(&zjb, correlator, returned_jcl);
@@ -178,7 +178,7 @@ void zjb_tests()
 
                   string correlator = string(zjb.correlator, 64);
 
-                  wait_for_conversion(correlator, "INPUT");
+                  // wait_for_conversion(correlator, "INPUT");
 
                   vector<ZJobDD> dds;
                   memset(&zjb, 0, sizeof(zjb));
