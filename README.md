@@ -1,54 +1,111 @@
-# zowe-native-proto
+# Zowe Native Protocol
+
+## Prerequisites
+
+### Local
+
+- Node.js & npm - required to build client packages
+- Golang - optional but recommended for type generation and linting
+
+### z/OS
+
+- [IBM C/C++ for z/OS](https://www.ibm.com/products/xl-cpp-compiler-zos) - `xlclang` and `xlclang++`
+- [GNU Make for z/OS](https://github.com/zopencommunity/makeport) - `make` a.k.a. `gmake` (native `make` is not supported)
+- [IBM Open Enterprise SDK for Go](https://www.ibm.com/products/open-enterprise-sdk-go-zos) - Golang for z/OS
 
 ## Setup
 
-Run `npm install` to install project dependencies.
+1. Clone this repository and run `npm install` to install project dependencies.
+2. Create a config file by copying `config.example.yaml` to `config.yaml`. Update the properties in the file for your environment.
+3. For a quick start, run `npm run all` which performs the following tasks:
+   1. `z:upload` - Upload source files<br/>
+   2. `z:build` - Build native binaries on z/OS<br/>
+   3. `z:artifacts` - Download build artifacts<br/>
+   4. `build` - Build client packages locally
 
-Create your own `config.local.json` adjacent to `config.default.jsonc` with something like:
+> [!TIP]
+> If you don't have a z/OS build environment, you can download prebuilt binaries with `npm run download` (this requires the GitHub CLI). Then skip to Step 3.4 and run `npm run build` to build client packages.
+
+## Usage
+
+### VS Code extension
+
+To run the VS Code extension, open the repository in VS Code and launch the "Run Extension" debug task. Then you can use SSH profiles in Zowe Explorer.
+
+See the [VSCE readme](./packages/vsce/README.md) for more details about using the VS Code extension.
+
+### Zowe CLI plug-in
+
+To install the CLI plug-in from source, run `zowe plugins install ./packages/cli`. Then run `zowe zssh --help` to see available commands.
+
+See the [CLI readme](./packages/cli/README.md) for more details about using the CLI plug-in.
+
+### Native binaries
+
+To run the `zowex` CLI on z/OS, connect to USS shell (OMVS) and `cd` to `c/build-out` inside the deploy directory. Then run `zowex`, or `zoweax` for commands that require APF authorization.
+
+See the [native readme](./native/README.md) for more details about building the native components.
+
+## Development
+
+### Quickstart
+
+Run `npm run z:rebuild` to rebuild server code after editing files in the `native` folder. See [Troubleshooting](./doc/troubleshooting.md) to debug common build issues.
+
+Run `npm run build` to rebuild client code after editing files in the `packages` folder.
+
+To test server changes without having to download artifacts and re-deploy them each time, you can define `serverPath` property in your SSH profile in `zowe.config.json`. It should point to the `<deployDir>/golang` folder that contains the `zowed` binary. See example below.
 
 ```json
-{
-  "host": "my.mainframe.net",
-  "username": "ibmuser",
-  "password": "ibmpass",
-  "deployDirectory": "/u/users/ibmuser/zowe-native-proto"
-}
+  "profiles": {
+    "ssh_dev": {
+      "type": "ssh",
+      "properties": {
+        ...
+        "serverPath": "~/zowe-native-proto/golang"
+      }
+    }
+  }
 ```
 
-**Tip:** You can use a `privateKey` instead of `password` in the config.
+To package client components with native binaries bundled, run `npm run z:artifacts && npm run package` which generates packages in the `dist` directory.
 
-## Deploy & Build
+> [!TIP]
+> See the list below for more useful scripts like `watch` for incremental build.
 
-### z/OS
+### NPM Scripts
 
-- `npm run z:init` - create project folder structure on z/OS (only needed once)
-- `npm run z:deploy` - deploy source files to z/OS
-  - **Tip:** You can deploy just one file or directory like this: `npm run z:deploy c/zowex.cpp`
-- `npm run z:build` - build native binaries on z/OS
-  - **Tip:** You can deploy and build at the same time with `npm run z:deploy:build`
-- `npm run watch:native` - detect and upload changes to native code
+We use a custom build tool for interacting with z/OS that defines the following NPM scripts:
 
-## Client
+| Command       | Description                                                                 |
+| ------------- | --------------------------------------------------------------------------- |
+| `z:artifacts` | Download native binaries and package them with clients                      |
+| `z:build`     | Run `make` and `go build` on z/OS to build native binaries                  |
+| `z:clean`     | Run `make clean` on z/OS to clean build targets                             |
+| `z:delete`    | Delete all files from deploy directory                                      |
+| `z:package`   | Create server PAX artifact in `dist` directory                              |
+| `z:rebuild`   | Upload and Build combined in one command                                    |
+| `z:test`      | Run automated tests for native components on z/OS                           |
+| `z:upload`    | Upload source files from `native` directory to z/OS <sup>1</sup>            |
+| `z:watch`     | Detect changes to files in `native` directory and upload/build <sup>2</sup> |
 
-- `npm run z:artifacts` - download binaries to package with clients
-  - **Tip:** You can skip this step by defining `serverPath` property in your SSH profile in `zowe.config.json` to point to a dev build
-- `npm run build` - build all projects in the `packages` folder
-  - **Tip:** You can run incremental builds with `npm run watch:client` for client code only, or `npm run watch` at the root to watch all code
-- `npm run package` - create CLI and VSCE artifacts in `dist` folder
+1. To deploy a single file or directory: `npm run z:upload -- c/zowex.cpp`
+2. To watch server and client code at the same time: `npm run watch:all`
 
-## Test
-
-### z/OS
-
-On z/OS system, `cd` to C deploy dir and run `zowex` to invoke the C++ CLI binary or `test.sh` to test a number of commands.
-
-To test I/O server, `cd` to Go deploy dir and run `zowed`, then type a JSON command like `{"jsonrpc": "2.0", "method": "listFiles", "params": {"fspath": "/tmp"}, "id": 1}` and press Enter.
-
-### Client
-
-To install the CLI plug-in from source, run `zowe plugins install ./packages/cli`. To run the VS Code extension, launch the debug task in VS Code.
-
-The `dist` folder contains artifacts that can be shared: a TGZ for CLI plug-in and VSIX for VS Code extension.
+> [!TIP]
+> To deploy and build on a different LPAR, you can define additional profiles in `config.yaml` and use them by changing the `activeProfile` property. For example:
+>
+> ```yaml
+> activeProfile: another
+>
+> profiles:
+>   default:
+>     # Profile properties...
+>
+>   another:
+>     sshProfile: ssh2
+>     deployDir: /tmp/zowe-native-proto
+> ```
 
 ## Architecture
 
@@ -81,40 +138,3 @@ graph LR
   click ioserver "https://github.com/zowe/zowe-native-proto/blob/main/doc/server/ioserver_architecture.md"
   click zowex "https://github.com/zowe/zowe-native-proto/blob/main/doc/server/zowex_architecture.md"
 ```
-
-## Troubleshooting
-
-### go: FSUM7351 not found
-
-Ensure go is part of PATH
-
-### Client connection error - Error: All configured authentication methods failed
-
-Check that your username and password are correct.<br/>
-For private keys, confirm that you can ssh into the LPAR/zVDT using it.
-
-### FSUM9383 Configuration file `/etc/startup.mk' not found
-
-You should be able to find the startup.mk file in `/samples`
-
-- `cp /samples/startup.mk /etc/startup.mk` <br/>
-  _source:_ https://www.ibm.com/support/pages/fsum9383-configuration-file-etcstartupmk-not-found
-
-### Building zut.o - FSUM3221 xlc++: Cannot spawn program /usr/lpp/cbclib/xlc/exe/ccndrvr
-
-One workaround is to add `CBC.SCCNCMP` to your system LINKLIST concatenation. Below is an example of doing this via SYSVIEW commands.
-
-:warning: These commands could ruin your system. :warning:
-
-```
-linklist
-linkdef zowex from current
-linklist zowex
-add CBC.SCCNCMP
-linkact zowex
-set asid 1
-linkupd *
-```
-
-Note 1: You may need to run `linkact zowex` after an IPL.<br/>
-Note 2: You may need to replace `*` with your mask character. For example, `linkact zowex =`
