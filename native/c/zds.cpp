@@ -38,7 +38,7 @@ using namespace std;
 // https://www.ibm.com/docs/en/zos/2.5.0?topic=functions-fldata-retrieve-file-information#fldata__fldat
 string zds_get_recfm(const fldata_t &file_info)
 {
-  string recfm = ZDS_RECFM_UNKNOWN;
+  string recfm = ZDS_RECFM_U;
 
   if (file_info.__recfmF)
   {
@@ -814,7 +814,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
       if (entry.volser == MIGRAT_VOLUME || entry.volser == ARCIVE_VOLUME)
       {
         entry.migr = true;
-        entry.recfm = ZDS_RECFM_UNKNOWN;
+        entry.recfm = ZDS_RECFM_U;
       }
       else
       {
@@ -861,7 +861,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
               }
               else
               {
-                entry.recfm = ZDS_RECFM_UNKNOWN;
+                entry.recfm = ZDS_RECFM_U;
               }
             }
           }
@@ -869,7 +869,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
           {
             entry.dsorg = ZDS_DSORG_UNKNOWN;
             entry.volser = ZDS_VOLSER_UNKNOWN;
-            entry.recfm = ZDS_RECFM_UNKNOWN;
+            entry.recfm = ZDS_RECFM_U;
           }
           fclose(dir);
         }
@@ -877,7 +877,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
         {
           entry.dsorg = ZDS_DSORG_UNKNOWN;
           entry.volser = ZDS_VOLSER_UNKNOWN;
-          entry.recfm = ZDS_RECFM_UNKNOWN;
+          entry.recfm = ZDS_RECFM_U;
         }
         fclose(dir);
       }

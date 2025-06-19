@@ -13,6 +13,7 @@
 #include "iggcsina.h"
 #include "zdstype.h"
 #include "zmetal.h"
+#include "zdbg.h"
 #include "zwto.h"
 #include <ctype.h>
 #include <string.h>
@@ -20,7 +21,10 @@
 // OBTAIN option parameters for CAMLST
 const unsigned char OPTION_EADSCB = 0x08;  // EADSCB=OK
 const unsigned char OPTION_NOQUEUE = 0x04; // NOQUEUE=OK
-const unsigned char MAX_DSCBS = 12;
+
+#ifndef MAX_DSCBS
+#define MAX_DSCBS 12
+#endif
 
 #pragma prolog(ZDSDEL, " ZWEPROLG NEWDSA=(YES,4) ")
 #pragma epilog(ZDSDEL, " ZWEEPILG ")
@@ -100,14 +104,10 @@ typedef int (*IGWASMS)(
 int ZDSRECFM(ZDS *zds, const char *dsn, const char *volser, char *recfm_buf,
              int recfm_buf_len)
 {
-  struct DSCBFormat1 *dscb = NULL;
   // workarea: each DSCB is 140 bytes, we need enough space for format-1 DSCB, format-8 DSCB and max possible format-3 DSCBs (10)
   // adding 140 bytes for the workarea itself
-  char workarea[0x8C * (MAX_DSCBS + 1)];
-  struct ObtainParams params;
-  memset(&params, 0, sizeof(params));
-  memset(&dscb, 0, sizeof(dscb));
-  memset(&workarea, 0, sizeof(workarea));
+  char workarea[sizeof(IndexableDSCBFormat1) * MAX_DSCBS];
+  ObtainParams params = {0};
 
   // We're using OBTAIN through CAMLST SEARCH to get the DSCBs, see here for more info:
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=obtain-reading-dscb-by-data-set-name
@@ -115,8 +115,8 @@ int ZDSRECFM(ZDS *zds, const char *dsn, const char *volser, char *recfm_buf,
   // OBTAIN by data set name
   params.reserved = 0xC1;
   params.number_dscbs = MAX_DSCBS;
-  // Allow lookup of format-1 or format-8 DSCB
   params.option_flags = OPTION_EADSCB;
+  // Allow lookup of format-1 or format-8 DSCB
   char dsname[44] = {0};
   memset(dsname, ' ', sizeof(dsname));
   memcpy(dsname, dsn, strlen(dsn));
@@ -139,76 +139,73 @@ int ZDSRECFM(ZDS *zds, const char *dsn, const char *volser, char *recfm_buf,
     return RTNCD_FAILURE;
   }
 
-  struct DSCBFormat1 cur_dscb;
-  memcpy(&cur_dscb, workarea, sizeof(cur_dscb));
-  // '1' or '8' in EBCDIC
-  if (cur_dscb.ds1fmtid == '1' || cur_dscb.ds1fmtid == '8')
-  {
-    dscb = &cur_dscb;
-  }
+  IndexableDSCBFormat1 indexable_dscb = {0};
+  for (int i = 0; i < MAX_DSCBS - 1; i++) {
+    memcpy(&indexable_dscb, workarea + (i * (sizeof(IndexableDSCBFormat1) - 1)), sizeof(indexable_dscb));
+    // The returned DSCB does not include the key, but we can infer the returned variables by re-aligning the struct
+    DSCBFormat1* dscb = (DSCBFormat1*)&indexable_dscb;
 
-  if (dscb == NULL)
-  {
-    strcpy(zds->diag.service_name, "OBTAIN");
-    zds->diag.e_msg_len = sprintf(
-        zds->diag.e_msg, "Could not find Format-1 or Format-8 DSCB, OBTAIN rc=%d, cur_dscb->ds1dsnam=%s, cur_dscb->ds1fmtid=%c", rc, cur_dscb.ds1dsnam, cur_dscb.ds1fmtid);
-    zds->diag.detail_rc = ZDS_RTNCD_UNEXPECTED_ERROR;
-    return RTNCD_FAILURE;
-  }
-
-  char temp_recfm[8] = {0};
-  int len = 0;
-  char main_fmt = 0;
-
-  if ((dscb->ds1recfm & 0xC0) == 0x40)
-  {
-    temp_recfm[len++] = 'F';
-    main_fmt = 'F';
-  }
-  else if ((dscb->ds1recfm & 0xC0) == 0x80)
-  {
-    temp_recfm[len++] = 'V';
-    main_fmt = 'V';
-  }
-  else if ((dscb->ds1recfm & 0xC0) == 0x20)
-  {
-    temp_recfm[len++] = 'U';
-    main_fmt = 'U';
-  }
-
-  if (dscb->ds1recfm & 0x10)
-  {
-    temp_recfm[len++] = 'B';
-  }
-
-  if (dscb->ds1recfm & 0x08)
-  {
-    if (main_fmt == 'F' || main_fmt == 'V')
+    // '1' or '8' in EBCDIC
+    if (dscb == NULL || (dscb->ds1fmtid != '1' && dscb->ds1fmtid != '8'))
     {
-      temp_recfm[len++] = 'S';
+      continue;
     }
+
+    char temp_recfm[8] = {0};
+    int len = 0;
+    char main_fmt = 0;
+
+    if ((dscb->ds1recfm & 0xC0) == 0x40)
+    {
+      temp_recfm[len++] = 'F';
+      main_fmt = 'F';
+    }
+    else if ((dscb->ds1recfm & 0xC0) == 0x80)
+    {
+      temp_recfm[len++] = 'V';
+      main_fmt = 'V';
+    }
+    else if ((dscb->ds1recfm & 0xC0) == 0x20)
+    {
+      temp_recfm[len++] = 'U';
+      main_fmt = 'U';
+    }
+
+    if (dscb->ds1recfm & 0x10)
+    {
+      temp_recfm[len++] = 'B';
+    }
+
+    if (dscb->ds1recfm & 0x08)
+    {
+      if (main_fmt == 'F' || main_fmt == 'V')
+      {
+        temp_recfm[len++] = 'S';
+      }
+    }
+
+    if (dscb->ds1recfm & 0x04)
+    {
+      temp_recfm[len++] = 'A';
+    }
+
+    if (dscb->ds1recfm & 0x02)
+    {
+      temp_recfm[len++] = 'M';
+    }
+
+    if (len == 0)
+    {
+      temp_recfm[len++] = 'U';
+    }
+
+    memcpy(recfm_buf, temp_recfm, len);
+    return RTNCD_SUCCESS;
   }
 
-  if (dscb->ds1recfm & 0x04)
-  {
-    temp_recfm[len++] = 'A';
-  }
-
-  if (dscb->ds1recfm & 0x02)
-  {
-    temp_recfm[len++] = 'M';
-  }
-
-  if (len == 0)
-  {
-    temp_recfm[len++] = '?';
-  }
-
-  if (recfm_buf_len > 0)
-  {
-    strncpy(recfm_buf, temp_recfm, recfm_buf_len - 1);
-    recfm_buf[recfm_buf_len - 1] = '\0';
-  }
-
-  return RTNCD_SUCCESS;
+  strcpy(zds->diag.service_name, "OBTAIN");
+  zds->diag.e_msg_len = sprintf(
+      zds->diag.e_msg, "Could not find Format-1 or Format-8 DSCB, OBTAIN rc=%d, sizeof(dscb)=%d", rc, sizeof(IndexableDSCBFormat1));
+  zds->diag.detail_rc = ZDS_RTNCD_UNEXPECTED_ERROR;
+  return RTNCD_FAILURE;
 }

@@ -74,22 +74,6 @@ typedef struct
 
 } ZDIAG;
 
-typedef struct CamlstSearchParams
-{
-  char *PTR32 dsname_ptr;
-  char *PTR32 volume_ptr;
-  void *PTR32 workarea_ptr;
-} CamlstSearchParams;
-
-typedef struct ObtainParams
-{
-  unsigned char reserved; // should be defined as (193) 0xC1 according to dump of parameter list
-  unsigned char number_dscbs;
-  unsigned char option_flags;
-  unsigned char unk_pad;
-  CamlstSearchParams listname_addrx;
-} ObtainParams;
-
 #if (defined(__IBMCPP__) || defined(__IBMC__))
 #pragma pack(reset)
 #endif

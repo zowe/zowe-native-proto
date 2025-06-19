@@ -133,19 +133,6 @@ static int test_auth()
 #define DELETE(name, rc)
 #endif
 
-#if defined(__IBM_METAL__)
-#define OBTAIN(params, rc)          \
-  __asm(                            \
-      " LA   1,%1               \n" \
-      " OBTAIN (1)              \n" \
-      " ST   15,%0              \n" \
-      : "=m"(rc)                    \
-      : "m"(params)                 \
-      : "r0", "r1", "r14", "r15");
-#else
-#define OBTAIN(params, rc)
-#endif
-
 /**
  * @brief Load a module into a 64-bit pointer
  *
@@ -209,19 +196,6 @@ static int delete_module(const char name[8])
   memset(name_truncated, ' ', sizeof(name_truncated) - 1);                                                             // pad with spaces
   memcpy(name_truncated, name, strlen(name) > sizeof(name_truncated) - 1 ? sizeof(name_truncated) - 1 : strlen(name)); // truncate
   DELETE(name_truncated, rc);
-  return rc;
-}
-
-/**
- * @brief Use the OBTAIN routine through CAMLST to access the VTOC and Data Set Control Blocks (DCSBs)
- *
- * @param name name of module to delete after a successful load
- * @return int 0 for success; non zero otherwise
- */
-static int obtain_camlst(struct ObtainParams params)
-{
-  int rc = 0;
-  OBTAIN(params, rc);
   return rc;
 }
 
