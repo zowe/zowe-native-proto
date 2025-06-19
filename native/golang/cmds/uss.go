@@ -16,6 +16,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -25,6 +26,32 @@ import (
 	uss "zowe-native-proto/zowed/types/uss"
 	utils "zowe-native-proto/zowed/utils"
 )
+
+const (
+	TypeFile uint32 = 1 + iota
+	TypeDirectory
+	TypeSymlink
+	TypeNamedPipe
+	TypeSocket
+	TypeCharDevice
+)
+
+func fileTypeToEnum(typ os.FileMode) uint32 {
+	switch {
+	case typ.IsDir():
+		return TypeDirectory
+	case typ&fs.ModeSymlink != 0:
+		return TypeSymlink
+	case typ&fs.ModeNamedPipe != 0:
+		return TypeNamedPipe
+	case typ&fs.ModeSocket != 0:
+		return TypeSocket
+	case typ&fs.ModeCharDevice != 0:
+		return TypeCharDevice
+	default:
+		return TypeFile
+	}
+}
 
 // HandleListFilesRequest handles a ListFilesRequest by invoking built-in functions from Go's `os` module.
 func HandleListFilesRequest(_conn *utils.StdioConn, params []byte) (result any, e error) {
@@ -47,8 +74,9 @@ func HandleListFilesRequest(_conn *utils.StdioConn, params []byte) (result any, 
 	if !fileInfo.IsDir() {
 		ussResponse.Items = make([]t.UssItem, 1)
 		ussResponse.Items[0] = t.UssItem{
-			Name:  filepath.Base(dirPath),
-			IsDir: false,
+			Name: filepath.Base(dirPath),
+			Type: fileTypeToEnum(fileInfo.Mode().Type()),
+			Mode: fileInfo.Mode().String(),
 		}
 		ussResponse.ReturnedRows = 1
 	} else {
@@ -57,12 +85,26 @@ func HandleListFilesRequest(_conn *utils.StdioConn, params []byte) (result any, 
 			e = fmt.Errorf("Failed to read directory: %v", err)
 			return
 		}
-		ussResponse.Items = make([]t.UssItem, len(entries))
+		// ., .., and the remaining items in the list
+		ussResponse.Items = make([]t.UssItem, len(entries)+2)
+		ussResponse.Items[0] = t.UssItem{Name: ".", Type: TypeDirectory, Mode: fileInfo.Mode().String()}
+		dirUp, err := filepath.Abs(filepath.Join(dirPath, ".."))
+		if err != nil {
+			parentStats, _ := os.Stat(dirUp)
+			ussResponse.Items[1] = t.UssItem{Name: "..", Type: TypeDirectory, Mode: parentStats.Mode().String()}
+		} else {
+			ussResponse.Items[1] = t.UssItem{Name: "..", Type: TypeDirectory, Mode: fileInfo.Mode().String()}
+		}
 
 		for i, entry := range entries {
-			ussResponse.Items[i] = t.UssItem{
-				Name:  entry.Name(),
-				IsDir: entry.IsDir(),
+			info, err := entry.Info()
+			if err != nil {
+				continue
+			}
+			ussResponse.Items[i+2] = t.UssItem{
+				Name: entry.Name(),
+				Type: fileTypeToEnum(info.Mode().Type()),
+				Mode: info.Mode().String(),
 			}
 		}
 

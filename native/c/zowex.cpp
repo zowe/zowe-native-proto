@@ -367,6 +367,8 @@ int main(int argc, char *argv[])
   // List subcommand
   auto uss_list_cmd = command_ptr(new Command("list", "list USS files and directories"));
   uss_list_cmd->add_positional_arg("file-path", "file path", ArgType_Single, true);
+  uss_list_cmd->add_keyword_arg("all", make_aliases("--all"), "list all files and directories", ArgType_Flag, false, ArgValue(false));
+  uss_list_cmd->add_keyword_arg("long", make_aliases("--long"), "list long format", ArgType_Flag, false, ArgValue(false));
   uss_list_cmd->set_handler(handle_uss_list);
   uss_cmd->add_command(uss_list_cmd);
 
@@ -1386,7 +1388,7 @@ int handle_tool_display_symbol(const ParseResult &result)
   transform(symbol.begin(), symbol.end(), symbol.begin(), ::toupper);
   symbol = "&" + symbol;
   string value;
-  rc = zut_substitute_sybmol(symbol, value);
+  rc = zut_substitute_symbol(symbol, value);
   if (0 != rc)
   {
     cerr << "Error: asasymbf with parm '" << symbol << "' rc: '" << rc << "'" << endl;
@@ -1711,9 +1713,13 @@ int handle_uss_list(const ParseResult &result)
   int rc = 0;
   string uss_file = result.find_pos_arg_string("file-path");
 
+  ListOptions list_options = {0};
+  list_options.all_files = result.find_kw_arg_bool("all");
+  list_options.long_format = result.find_kw_arg_bool("long");
+
   ZUSF zusf = {0};
   string response;
-  rc = zusf_list_uss_file_path(&zusf, uss_file, response);
+  rc = zusf_list_uss_file_path(&zusf, uss_file, response, list_options);
   if (0 != rc)
   {
     cerr << "Error: could not list USS files: '" << uss_file << "' rc: '" << rc << "'" << endl;
