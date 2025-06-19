@@ -866,8 +866,6 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
             }
             else
             {
-              std::cout << "ZDSRECFM failed for " << entry.name << " on " << entry.volser << std::endl;
-              std::cout << "Details: " << zds->diag.e_msg << std::endl;
               entry.recfm = ZDS_RECFM_UNKNOWN;
             }
           }
