@@ -1,6 +1,8 @@
 packages:
   - path: "zowe-native-proto/zowed/types/common"
     output_path: "../../packages/sdk/src/doc/gen/common.ts"
+    frontmatter: |
+      import type * as t from "../types";
   - path: "zowe-native-proto/zowed/types/ds"
     output_path: "../../packages/sdk/src/doc/gen/ds.ts"
     frontmatter: &fm |
