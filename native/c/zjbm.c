@@ -248,9 +248,9 @@ int ZJBMMOD(ZJB *zjb, int type, int flags)
     ssjm.ssjmjcrp = &correlator31[0];
   }
 
-  ssjm.ssjmsel2 = ssjm.ssjmsel2 | ssjmsjob; // batch jobs
-  ssjm.ssjmsel2 = ssjm.ssjmsel2 | ssjmsstc; // stcs
-  ssjm.ssjmsel2 = ssjm.ssjmsel2 | ssjmstsu; // time sharing users
+  // ssjm.ssjmsel2 = ssjm.ssjmsel2 | ssjmsjob; // batch jobs
+  // ssjm.ssjmsel2 = ssjm.ssjmsel2 | ssjmsstc; // stcs
+  // ssjm.ssjmsel2 = ssjm.ssjmsel2 | ssjmstsu; // time sharing users
 
   ssobp = &ssob;
   ssobp = (SSOB * PTR32)((unsigned int)ssobp | 0x80000000);
