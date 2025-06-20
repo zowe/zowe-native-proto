@@ -580,6 +580,14 @@ int main(int argc, char *argv[])
   ZCLIOption uss_file_mode("mode");
   uss_file_mode.set_required(false);
   uss_file_mode.set_description("permissions");
+  ZCLIOption uss_file_list_all("all");
+  uss_file_list_all.get_aliases().push_back("-a");
+  uss_file_list_all.set_required(false);
+  uss_file_list_all.set_description("whether to show all files or visible files only (default: false - hidden files are not shown)");
+  ZCLIOption uss_file_list_long_format("long");
+  uss_file_list_long_format.get_aliases().push_back("-l");
+  uss_file_list_long_format.set_required(false);
+  uss_file_list_long_format.set_description("whether to display the long format in list output (including permissions, ownership, etc.) (default: false)");
   ZCLIOption uss_recursive("recursive");
   uss_recursive.get_aliases().push_back("-r");
   uss_recursive.set_required(false);
@@ -603,6 +611,8 @@ int main(int argc, char *argv[])
   uss_list.set_description("list USS files and directories");
   uss_list.set_zcli_verb_handler(handle_uss_list);
   uss_list.get_positionals().push_back(uss_file_path);
+  uss_list.get_options().push_back(uss_file_list_all);
+  uss_list.get_options().push_back(uss_file_list_long_format);
   uss_group.get_verbs().push_back(uss_list);
 
   ZCLIVerb uss_view("view");
@@ -1870,7 +1880,10 @@ int handle_uss_list(ZCLIResult result)
 
   ZUSF zusf = {0};
   string response;
-  rc = zusf_list_uss_file_path(&zusf, uss_file, response);
+  ListOptions options;
+  options.all_files = result.get_option_value("--all") == "true";
+  options.long_format = result.get_option_value("--long") == "true";
+  rc = zusf_list_uss_file_path(&zusf, uss_file, response, options);
   if (0 != rc)
   {
     cerr << "Error: could not list USS files: '" << uss_file << "' rc: '" << rc << "'" << endl;
@@ -2004,11 +2017,12 @@ int handle_uss_write(ZCLIResult result)
   auto *etag_opt2 = result.get_option("--etag-only");
   if (etag_opt2 != nullptr && etag_opt2->get_value() == "true")
   {
-    cout << zusf.etag << endl;
+    cout << "etag: " << zusf.etag << '\n'
+         << "created: " << (zusf.created ? "true" : "false") << '\n';
   }
   else
   {
-    cout << "Wrote data to '" << file << "'" << endl;
+    cout << "Wrote data to '" << file << "'" << (zusf.created ? " (created new file)" : " (overwrote existing)") << endl;
   }
 
   return rc;
@@ -2201,7 +2215,7 @@ int handle_tool_display_symbol(ZCLIResult result)
   transform(symbol.begin(), symbol.end(), symbol.begin(), ::toupper); // upper case
   symbol = "&" + symbol;
   string value;
-  rc = zut_substitute_sybmol(symbol, value);
+  rc = zut_substitute_symbol(symbol, value);
   if (0 != rc)
   {
     cerr << "Error: asasymbf with parm '" << symbol << "' rc: '" << rc << "'" << endl;
