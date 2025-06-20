@@ -140,7 +140,7 @@ int ZJBSYMB(ZJB *zjb, const char *symbol, char *value)
 int ZJBMPRG(ZJB *zjb)
 {
   // purge a job in protected (ssjmpprt) mode
-  return ZJBMMOD(zjb, ssjmprg, 0);
+  return ZJBMMOD(zjb, ssjmprg, ssjmpprt);
 }
 
 // cancel a job
@@ -150,7 +150,7 @@ int ZJBMCNL(ZJB *zjb, int flags)
 {
   // cancel a job in protected (ssjmcprt) mode
   int options = ssjmcprt | flags;
-  return ZJBMMOD(zjb, ssjmcanc, 0);
+  return ZJBMMOD(zjb, ssjmcanc, ssjmcprt);
 }
 
 // hold a job

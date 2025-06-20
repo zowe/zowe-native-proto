@@ -84,11 +84,16 @@ void zjb_tests()
                   ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
                   Expect(jobid).Not().ToBe("");
 
+                  ZJob zjob;
                   string correlator = string(zjb.correlator, 64);
+
                   memset(&zjb, 0, sizeof(zjb));
+                  rc = zjb_view(&zjb, correlator, zjob);
+                  cout << "@TEST: " << zjob.correlator << " " << zjob.full_status << " " << zjob.jobid << " " << zjob.jobname << " " << zjob.owner << " " << zjob.retcode << " " << zjob.status << endl;
 
                   // wait_for_conversion(correlator, "INPUT");
 
+                  memset(&zjb, 0, sizeof(zjb));
                   rc = zjb_delete(&zjb, correlator);
                   ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
                 });
@@ -105,7 +110,6 @@ void zjb_tests()
                   ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
 
                   ZJob zjob;
-
                   string correlator = string(zjb.correlator, 64);
 
                   memset(&zjb, 0, sizeof(zjb));
