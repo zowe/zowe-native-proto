@@ -391,16 +391,16 @@ namespace parser
                              bool required = false,
                              ArgValue default_value = ArgValue())
     {
-      // prevent adding another argument named "help" or starting with "no_"
+      // prevent adding another argument named "help" or starting with "no-"
       if (name == "help")
       {
         throw std::invalid_argument(
             "argument name 'help' is reserved for the automatic help flag.");
       }
-      if (name.rfind("no_", 0) == 0)
+      if (name.rfind("no-", 0) == 0)
       {
         throw std::invalid_argument(
-            "argument name cannot start with 'no_'. this prefix is reserved for "
+            "argument name cannot start with 'no-'. this prefix is reserved for "
             "automatic negation flags.");
       }
       for (size_t i = 0; i < aliases.size(); ++i)
@@ -461,8 +461,8 @@ namespace parser
       // Only add --no-<flag> for boolean flags with a true default
       if (type == ArgType_Flag && default_bool && *default_bool == true)
       {
-        std::string no_flag_name = "no_" + name;
-        std::string no_flag_long_alias = "--no-" + name;
+        std::string no_flag_name = "no-" + name;
+        std::string no_flag_long_alias = "--n" + name;
         std::string no_flag_help = "disable the --" + name + " flag.";
 
         // ensure the generated --no- name/alias doesn't conflict

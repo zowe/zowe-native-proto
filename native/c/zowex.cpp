@@ -113,7 +113,7 @@ int main(int argc, char *argv[])
   auto issue_cmd = command_ptr(new Command("issue", "issue a console command"));
   issue_cmd->add_keyword_arg("console-name",
                              make_aliases("--cn", "--console-name"),
-                             "extended console name", ArgType_Single, true,
+                             "extended console name", ArgType_Single, false,
                              ArgValue(std::string("zowex")));
   issue_cmd->add_keyword_arg("wait",
                              make_aliases("--wait"),
@@ -567,6 +567,7 @@ int handle_console_issue(const ParseResult &result)
   ZCN zcn = {0};
 
   string console_name = result.find_kw_arg_string("console-name");
+  cout << "console name " << console_name << endl;
   string command = result.find_pos_arg_string("command");
   bool wait = result.find_kw_arg_bool("wait");
 
