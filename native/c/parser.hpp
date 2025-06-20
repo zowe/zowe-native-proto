@@ -803,6 +803,9 @@ namespace parser
       }
     }
 
+    void set_name(const std::string& new_name) {
+      m_name = new_name;
+    }
   private:
     // private copy constructor and assignment operator to prevent copying
     Command(const Command &);
@@ -1708,6 +1711,13 @@ namespace parser
           m_root_cmd(command_ptr(new Command(prog_name, description))) {}
 
     ~ArgumentParser() = default;
+
+    void update_program_name(const std::string& new_program_name) {
+      m_program_name = new_program_name;
+      if (m_root_cmd) {
+        m_root_cmd->set_name(new_program_name);
+      }
+    }
 
     // get a reference to the root command to add arguments or subcommands
     Command &get_root_command() { return *m_root_cmd; }

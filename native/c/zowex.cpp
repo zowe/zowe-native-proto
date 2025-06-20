@@ -92,7 +92,6 @@ int handle_job_release(const ParseResult &result);
 int loop_dynalloc(vector<string> &list);
 
 bool should_quit(const std::string &input);
-void parse_input(const std::string &input, std::vector<std::string> &values);
 int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_name);
 
 int main(int argc, char *argv[])
@@ -1565,7 +1564,7 @@ int handle_tool_run(const ParseResult &result)
   string dynalloc_post = result.find_kw_arg_string("dynalloc-post");
 
   // Allocate anything that was requested
-  if (result.has_kw_arg("dynalloc-pre"))
+  if (dynalloc_pre.length() > 0)
   {
     vector<string> dds;
 
@@ -1591,7 +1590,7 @@ int handle_tool_run(const ParseResult &result)
   }
 
   string indd = result.find_kw_arg_string("in-dd");
-  if (result.has_kw_arg("in-dd"))
+  if (indd.length() > 0)
   {
     string ddname = "DD:" + indd;
     ofstream out(ddname.c_str());
@@ -1621,7 +1620,7 @@ int handle_tool_run(const ParseResult &result)
   }
 
   string outdd = result.find_kw_arg_string("out-dd");
-  if (result.has_kw_arg("out-dd"))
+  if (outdd.length() > 0)
   {
     string ddname = "DD:" + outdd;
     ifstream in(ddname.c_str());
@@ -1640,7 +1639,7 @@ int handle_tool_run(const ParseResult &result)
   }
 
   // Optionally free everything that was allocated
-  if (result.has_kw_arg("dynalloc-post"))
+  if (dynalloc_post.length() > 0)
   {
     vector<string> dds;
 
@@ -2424,58 +2423,10 @@ bool should_quit(const std::string &input)
           input == "QUIT" || input == "EXIT");
 }
 
-void parse_input(const std::string &input, std::vector<std::string> &values)
-{
-  std::istringstream iss(input);
-  std::vector<std::string> args;
-
-  std::string arg;
-  std::string temp;
-  bool quoted = false;
-
-  while (std::getline(iss, arg, ' '))
-  {
-    args.push_back(arg);
-  }
-
-  for (std::vector<std::string>::iterator it = args.begin(); it != args.end(); it++)
-  {
-    if (it->empty())
-      continue; // skip empty tokens
-
-    quoted = quoted || it->at(0) == '"';
-
-    if (quoted)
-    {
-      if (!temp.empty())
-      {
-        temp += ' ';
-      }
-
-      temp += *it;
-
-      if (it->at(it->size() - 1) == '"')
-      {
-        size_t pos = 0;
-        while ((pos = temp.find("\\\"", pos)) != std::string::npos)
-        {
-          temp.replace(pos++, 2, "\"");
-        }
-
-        values.push_back(temp.substr(1, temp.length() - 2));
-        temp = "";
-        quoted = false;
-      }
-    }
-    else
-    {
-      values.push_back(*it);
-    }
-  }
-}
-
 int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_name)
 {
+  arg_parser.update_program_name(program_name);
+
   std::cout << "Started, enter command or 'quit' to quit..." << std::endl;
 
   std::string command;
@@ -2492,32 +2443,8 @@ int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_
     if (should_quit(command))
       break;
 
-    // Parse the input line into tokens
-    std::vector<std::string> entries;
-    parse_input(command, entries);
-
-    if (entries.empty())
-      continue; // skip empty lines
-
-    // Build command line string from parsed entries
-    std::string command_line = program_name;
-    for (size_t i = 0; i < entries.size(); ++i)
-    {
-      command_line += " ";
-
-      // Quote arguments that contain spaces
-      if (entries[i].find(' ') != std::string::npos)
-      {
-        command_line += "\"" + entries[i] + "\"";
-      }
-      else
-      {
-        command_line += entries[i];
-      }
-    }
-
     // Parse and execute the command
-    ParseResult result = arg_parser.parse(command_line);
+    ParseResult result = arg_parser.parse(command);
     rc = result.exit_code;
 
     if (!is_tty)
