@@ -9,6 +9,9 @@
  *
  */
 
+// NOTE(Kelosky): this instructs LE to establish ESTAEX recovery for error handling
+#pragma runopts("TRAP(ON,NOSPIE)")
+
 #include <iostream>
 #include <vector>
 #include <stdlib.h>
