@@ -182,7 +182,6 @@ int ZJBMMOD(ZJB *zjb, int type, int flags)
   SSOB ssob = {0};
   SSIB ssib = {0};
   SSJM ssjm = {0};
-  SSJF *ssjfp = NULL;
 
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=sfcd-modify-job-function-call-ssi-function-code-85
   init_ssob(&ssob, &ssib, &ssjm, 85);
@@ -238,20 +237,21 @@ int ZJBMMOD(ZJB *zjb, int type, int flags)
 
   if (zjb->jobid[0] != 0x00)
   {
-    ssjm.ssjmsel1 = ssjm.ssjmsel1 | ssjmsoji;
-    memcpy(ssjm.ssjmojbi, zjb->jobid, sizeof(ssjm.ssjmojbi));
+    ssjm.ssjmsel1 = ssjm.ssjmsel1 | ssjmsjbi; //@TEST
+    memcpy(ssjm.ssjmjbil, zjb->jobid, sizeof(ssjm.ssjmjbil));
+    memcpy(ssjm.ssjmjbih, zjb->jobid, sizeof(ssjm.ssjmjbih));
   }
   else
   {
-    char job_correlator31[64] = {0};
-    memcpy(job_correlator31, zjb->job_correlator, sizeof(zjb->job_correlator));
+    char correlator31[64] = {0};
+    memcpy(correlator31, zjb->correlator, sizeof(zjb->correlator));
     ssjm.ssjmsel5 = ssjmscor;
-    ssjm.ssjmjcrp = &job_correlator31[0];
+    ssjm.ssjmjcrp = &correlator31[0];
   }
 
-  ssjm.ssjmsel2 = ssjm.ssjmsel2 | ssjmsjob; // batch jobs
-  ssjm.ssjmsel2 = ssjm.ssjmsel2 | ssjmsstc; // stcs
-  ssjm.ssjmsel2 = ssjm.ssjmsel2 | ssjmstsu; // time sharing users
+  // ssjm.ssjmsel2 = ssjm.ssjmsel2 | ssjmsjob; // batch jobs
+  // ssjm.ssjmsel2 = ssjm.ssjmsel2 | ssjmsstc; // stcs
+  // ssjm.ssjmsel2 = ssjm.ssjmsel2 | ssjmstsu; // time sharing users
 
   ssobp = &ssob;
   ssobp = (SSOB * PTR32)((unsigned int)ssobp | 0x80000000);
@@ -268,8 +268,6 @@ int ZJBMMOD(ZJB *zjb, int type, int flags)
     return RTNCD_FAILURE;
   }
 
-  ssjfp = (SSJF *)ssjm.ssjmsjf8; // NOTE(Kelosky): in the future we can return a list of SSJFs, for now, if none returned, the job was not found
-
   if (0 == ssjm.ssjmnsjf)
   {
     if (zjb->jobid[0] != 0x00)
@@ -278,7 +276,7 @@ int ZJBMMOD(ZJB *zjb, int type, int flags)
     }
     else
     {
-      zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "No jobs found matching correlator '%.64s'", zjb->job_correlator);
+      zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "No jobs found matching correlator '%.64s'", zjb->correlator);
     }
     zjb->diag.detail_rc = ZJB_RTNCD_JOB_NOT_FOUND;
     return RTNCD_FAILURE;
@@ -302,10 +300,10 @@ int ZJBMVIEW(ZJB *zjb, ZJB_JOB_INFO **PTR64 job_info, int *entries)
   }
   else
   {
-    char job_correlator31[64] = {0};
-    memcpy(job_correlator31, zjb->job_correlator, sizeof(zjb->job_correlator));
+    char correlator31[64] = {0};
+    memcpy(correlator31, zjb->correlator, sizeof(zjb->correlator));
     stat.statsel5 = statscor;
-    stat.statjcrp = &job_correlator31[0];
+    stat.statjcrp = &correlator31[0];
   }
 
   stat.stattype = statters;
@@ -516,10 +514,10 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
   }
   else
   {
-    char job_correlator31[64] = {0};
-    memcpy(job_correlator31, zjb->job_correlator, sizeof(zjb->job_correlator));
+    char correlator31[64] = {0};
+    memcpy(correlator31, zjb->correlator, sizeof(zjb->correlator));
     stat.statsel5 = statscor;
-    stat.statjcrp = &job_correlator31[0];
+    stat.statjcrp = &correlator31[0];
   }
 
   // NOTE(Kelosky): we first locate the STATJQ via jobid or job correlator because verbose data which containts SYSOUT info
@@ -538,7 +536,7 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
 
   if (NULL == statjqp)
   {
-    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "No jobs found matching correlator '%.64s'", zjb->job_correlator);
+    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "No jobs found matching correlator '%.64s'", zjb->correlator);
     zjb->diag.detail_rc = ZJB_RTNCD_JOB_NOT_FOUND;
     stat.stattype = statmem; // free storage
     rc = iefssreq(&ssobp);   // TODO(Kelosky): recovery
@@ -576,7 +574,7 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
     }
     else
     {
-      zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "No jobs found matching correlator '%.64s'", zjb->job_correlator);
+      zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "No jobs found matching correlator '%.64s'", zjb->correlator);
     }
     zjb->diag.detail_rc = ZJB_RTNCD_JOB_NOT_FOUND;
     stat.stattype = statmem; // free storage

@@ -15,11 +15,44 @@
 #include "ztest.hpp"
 #include "zjb.hpp"
 #include <unistd.h>
+#include <thread>
+#include <chrono>
 
 using namespace std;
 using namespace ztst;
 
-#define SLEEPY_TIME 1
+void wait_for_conversion(string correlator, string status)
+{
+  int index = 0;
+  while (true)
+  {
+    ZJB zjb = {0};
+    ZJob zjob = {0};
+    int rc = zjb_view(&zjb, correlator, zjob);
+
+    cout << "@TEST index is " << index << " status is " << zjob.status << " full status " << zjob.full_status << " comparing " << status << endl;
+
+    if (rc != RTNCD_SUCCESS)
+    {
+      string error = "Error: could not view job: '" + correlator + "' rc: " + to_string(rc) + "\n'  " + string(zjb.diag.e_msg) + "'";
+      throw runtime_error(error);
+    }
+
+    if (index >= 1000)
+    {
+      break;
+    }
+    if (zjob.full_status == status)
+    {
+      this_thread::sleep_for(chrono::milliseconds(10 * 5)); // wait for job to exit INPUT
+    }
+    else
+    {
+      break;
+    }
+    index++;
+  }
+}
 
 void zjb_tests()
 {
@@ -51,10 +84,18 @@ void zjb_tests()
                   ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
                   Expect(jobid).Not().ToBe("");
 
-                  string correlator = string(zjb.job_correlator, 64);
+                  ZJob zjob;
+                  string correlator = string(zjb.correlator, 64);
+
                   memset(&zjb, 0, sizeof(zjb));
-                  sleep(SLEEPY_TIME); // wait for job to complete
-                  rc = zjb_delete(&zjb, correlator);
+                  rc = zjb_view(&zjb, correlator, zjob);
+                  cout << "@TEST: " << zjob.correlator << " " << zjob.full_status << " " << zjob.jobid << " " << zjob.jobname << " " << zjob.owner << " " << zjob.retcode << " " << zjob.status << endl;
+
+                  // wait_for_conversion(correlator, "INPUT");
+                  // sleep(2);
+
+                  memset(&zjb, 0, sizeof(zjb));
+                  rc = zjb_delete(&zjb, jobid);
                   ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
                 });
 
@@ -70,18 +111,19 @@ void zjb_tests()
                   ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
 
                   ZJob zjob;
-
-                  string correlator = string(zjb.job_correlator, 64);
+                  string correlator = string(zjb.correlator, 64);
 
                   memset(&zjb, 0, sizeof(zjb));
                   rc = zjb_view(&zjb, correlator, zjob);
                   ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
 
-                  Expect(zjob.job_correlator).ToBe(correlator); // vefify submit correlator matches view status correlator
+                  Expect(zjob.correlator).ToBe(correlator); // vefify submit correlator matches view status correlator
+
+                  // wait_for_conversion(correlator, "INPUT");
 
                   memset(&zjb, 0, sizeof(zjb));
-                  sleep(SLEEPY_TIME); // wait for job to complete
                   rc = zjb_delete(&zjb, correlator);
+
                   ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
                 });
 
@@ -96,11 +138,13 @@ void zjb_tests()
                   int rc = zjb_submit(&zjb, jcl, jobid);
                   ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
 
-                  string correlator = string(zjb.job_correlator, 64);
+                  string correlator = string(zjb.correlator, 64);
+
+                  // wait_for_conversion(correlator, "INPUT");
 
                   memset(&zjb, 0, sizeof(zjb));
-                  sleep(SLEEPY_TIME); // wait for job to complete
                   rc = zjb_delete(&zjb, correlator);
+
                   ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
                 });
 
@@ -115,12 +159,14 @@ void zjb_tests()
                   int rc = zjb_submit(&zjb, jcl, jobid);
                   ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
 
-                  string correlator = string(zjb.job_correlator, 64);
+                  string correlator = string(zjb.correlator, 64);
                   string returned_jcl;
 
+                  // wait_for_conversion(correlator, "INPUT");
+
                   memset(&zjb, 0, sizeof(zjb));
-                  sleep(SLEEPY_TIME); // wait for job to complete
                   rc = zjb_read_job_jcl(&zjb, correlator, returned_jcl);
+
                   ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
                 });
 
@@ -135,17 +181,18 @@ void zjb_tests()
                   int rc = zjb_submit(&zjb, jcl, jobid);
                   ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
 
-                  string correlator = string(zjb.job_correlator, 64);
+                  string correlator = string(zjb.correlator, 64);
 
-                  memset(&zjb, 0, sizeof(zjb));
-                  sleep(SLEEPY_TIME); // wait for job to complete
+                  // wait_for_conversion(correlator, "INPUT");
+
                   vector<ZJobDD> dds;
+                  memset(&zjb, 0, sizeof(zjb));
                   rc = zjb_list_dds(&zjb, correlator, dds);
                   ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
                   Expect(dds.size()).ToBeGreaterThan(0); // expect at least one DD returned
 
-                  memset(&zjb, 0, sizeof(zjb));
                   string content;
+                  memset(&zjb, 0, sizeof(zjb));
                   rc = zjb_read_jobs_output_by_key(&zjb, correlator, dds[0].key, content);
                   ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
                   Expect(content).Not().ToBe(""); // expect some content returned
@@ -166,17 +213,26 @@ void zjb_tests()
                   int rc = zjb_submit(&zjb, jcl, jobid);
                   ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
 
-                  string correlator = string(zjb.job_correlator, 64);
+                  string correlator = string(zjb.correlator, 64);
+
+                  // wait_for_conversion(correlator, "INPUT");
+                  // sleep(1);
 
                   memset(&zjb, 0, sizeof(zjb));
-                  sleep(SLEEPY_TIME); // wait for job to complete
                   rc = zjb_cancel(&zjb, correlator);
+
                   ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
 
                   ZJob zjob;
 
+                  // wait_for_conversion(correlator, "CONVERSION");
+                  // wait_for_conversion(correlator, "AWAIT MAIN SELECT");
+
                   memset(&zjb, 0, sizeof(zjb));
                   rc = zjb_view(&zjb, correlator, zjob);
+
+                  cout << "Job status: " << zjob.status << " " << zjob.owner << " " << zjob.jobid << " " << zjob.jobname << " " << zjob.full_status << " " << zjob.retcode << " " << zjob.correlator << endl;
+
                   ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
 
                   Expect(zjob.retcode).ToBe("CANCELED");
