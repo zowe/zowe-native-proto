@@ -92,10 +92,10 @@ void zjb_tests()
                   cout << "@TEST: " << zjob.correlator << " " << zjob.full_status << " " << zjob.jobid << " " << zjob.jobname << " " << zjob.owner << " " << zjob.retcode << " " << zjob.status << endl;
 
                   // wait_for_conversion(correlator, "INPUT");
-                  sleep(2);
+                  // sleep(2);
 
                   memset(&zjb, 0, sizeof(zjb));
-                  rc = zjb_delete(&zjb, correlator);
+                  rc = zjb_delete(&zjb, jobid);
                   ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
                 });
 

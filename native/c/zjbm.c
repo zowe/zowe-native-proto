@@ -237,8 +237,9 @@ int ZJBMMOD(ZJB *zjb, int type, int flags)
 
   if (zjb->jobid[0] != 0x00)
   {
-    ssjm.ssjmsel1 = ssjm.ssjmsel1 | ssjmsoji;
-    memcpy(ssjm.ssjmojbi, zjb->jobid, sizeof(ssjm.ssjmojbi));
+    ssjm.ssjmsel1 = ssjm.ssjmsel1 | ssjmsjbi; //@TEST
+    memcpy(ssjm.ssjmjbil, zjb->jobid, sizeof(ssjm.ssjmjbil));
+    memcpy(ssjm.ssjmjbih, zjb->jobid, sizeof(ssjm.ssjmjbih));
   }
   else
   {
