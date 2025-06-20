@@ -138,5 +138,13 @@
   "[typescript]": {
     "editor.defaultFormatter": "biomejs.biome"
   },
-  "files.eol": "\n"
+  "files.eol": "\n",
+  "files.associations": {
+    "*.i": "swig"
+  },
+  "[swig]": {
+    "editor.formatOnSave": false,
+    "editor.formatOnPaste": false,
+    "editor.formatOnType": false
+  }
 }
