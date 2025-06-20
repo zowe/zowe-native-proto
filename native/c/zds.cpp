@@ -30,6 +30,10 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include "extern/zb64.h"
+#include <unistd.h>
+
+#include "zwto.h"
+#include "zdbg.h"
 
 const size_t MAX_DS_LENGTH = 44u;
 
@@ -414,7 +418,7 @@ int zds_delete_dsn(ZDS *zds, string dsn)
   {
     strcpy(zds->diag.service_name, "remove");
     zds->diag.service_rc = rc;
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not delete data set '%s', rc: '%d'", dsn.c_str(), rc);
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not delete data set '%s', rc: '%d'", dsn.c_str());
     zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
     return RTNCD_FAILURE;
   }
@@ -515,6 +519,7 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &list)
   return 0;
 }
 
+#pragma pack(1)
 #pragma pack(1)
 
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=format-work-area-table
@@ -664,8 +669,6 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
   {
     rc = ZDSCSI00(zds, selection_criteria, csi_work_area);
 
-    // zut_dump_storage("alias", csi_work_area, 512);
-
     if (0 != rc)
     {
       free(area);
@@ -685,16 +688,6 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
       ZDSDEL(zds);
       zds->diag.detail_rc = ZDS_RTNCD_UNEXPECTED_ERROR;
       zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Unexpected work area field response preset len %d and return len %d are not equal", number_fields, number_of_fields);
-      return RTNCD_FAILURE;
-    }
-
-    if (CATALOG_TYPE != csi_work_area->catalog.type)
-    {
-      free(area);
-      ZDSDEL(zds);
-      zds->diag.detail_rc = ZDS_RTNCD_PARSING_ERROR;
-      zds->diag.service_rc = ZDS_RTNCD_CATALOG_ERROR;
-      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Unexpected type '%x' ", csi_work_area->catalog.type);
       return RTNCD_FAILURE;
     }
 
@@ -726,6 +719,16 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
       zds->diag.service_rc = ZDS_RTNCD_CATALOG_ERROR;
       zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Not found in catalog, flag '%x' ", csi_work_area->catalog.flag);
       return RTNCD_WARNING;
+    }
+
+    if (CATALOG_TYPE != csi_work_area->catalog.type)
+    {
+      free(area);
+      ZDSDEL(zds);
+      zds->diag.detail_rc = ZDS_RTNCD_PARSING_ERROR;
+      zds->diag.service_rc = ZDS_RTNCD_CATALOG_ERROR;
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Unexpected type '%x' ", csi_work_area->catalog.type);
+      return RTNCD_FAILURE;
     }
 
     int work_area_total = csi_work_area->header.used_size;
