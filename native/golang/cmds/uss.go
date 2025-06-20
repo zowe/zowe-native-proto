@@ -127,12 +127,12 @@ func HandleReadFileRequest(conn *utils.StdioConn, params []byte) (result any, e 
 	if len(request.Encoding) == 0 {
 		request.Encoding = fmt.Sprintf("IBM-%d", utils.DefaultEncoding)
 	}
-	args := []string{"uss", "view", request.Path, "--encoding", request.Encoding, "--return-etag", "true"}
+	args := []string{"uss", "view", request.Path, "--encoding", request.Encoding, "--return-etag"}
 
 	var etag string
 	var data []byte
 	if request.StreamId == 0 {
-		args = append(args, "--rfb", "true")
+		args = append(args, "--rfb")
 		out, err := conn.ExecCmd(args)
 		if err != nil {
 			e = fmt.Errorf("Error executing command: %v", err)
@@ -208,7 +208,7 @@ func HandleWriteFileRequest(conn *utils.StdioConn, params []byte) (result any, e
 	if len(request.Encoding) == 0 {
 		request.Encoding = fmt.Sprintf("IBM-%d", utils.DefaultEncoding)
 	}
-	args := []string{"uss", "write", request.Path, "--encoding", request.Encoding, "--etag-only", "true"}
+	args := []string{"uss", "write", request.Path, "--encoding", request.Encoding, "--etag-only"}
 	if len(request.Etag) > 0 {
 		args = append(args, "--etag", request.Etag)
 	}
@@ -350,7 +350,7 @@ func HandleDeleteFileRequest(conn *utils.StdioConn, params []byte) (result any, 
 
 	args := []string{"uss", "delete", request.Path}
 	if request.Recursive {
-		args = append(args, "-r", "true")
+		args = append(args, "-r")
 	}
 	_, err = conn.ExecCmd(args)
 	if err != nil {
@@ -377,7 +377,7 @@ func HandleChownFileRequest(conn *utils.StdioConn, params []byte) (result any, e
 
 	args := []string{"uss", "chown", request.Owner, request.Path}
 	if request.Recursive {
-		args = append(args, "-r", "true")
+		args = append(args, "-r")
 	}
 	_, err = conn.ExecCmd(args)
 	if err != nil {
@@ -404,7 +404,7 @@ func HandleChmodFileRequest(conn *utils.StdioConn, params []byte) (result any, e
 
 	args := []string{"uss", "chmod", request.Mode, request.Path}
 	if request.Recursive {
-		args = append(args, "-r", "true")
+		args = append(args, "-r")
 	}
 	_, err = conn.ExecCmd(args)
 	if err != nil {
@@ -431,7 +431,7 @@ func HandleChtagFileRequest(conn *utils.StdioConn, params []byte) (result any, e
 
 	args := []string{"uss", "chtag", request.Tag, request.Path}
 	if request.Recursive {
-		args = append(args, "-r", "true")
+		args = append(args, "-r")
 	}
 	_, err = conn.ExecCmd(args)
 	if err != nil {
