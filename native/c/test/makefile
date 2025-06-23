@@ -20,7 +20,9 @@ BIND=ld
 # https://www.ibm.com/docs/en/zos/3.1.0?topic=bor-binder-options
 # https://www.ibm.com/docs/en/zos/3.1.0?topic=descriptions-ld-link-object-files
 BIND_FLAGS = -bRMODE=ANY
+BIND_FLAGS_AUTH = -bRMODE=ANY,AC=1
 BIND_FLAGS_64 = -bRMODE=ANY -bAMODE=64
+BIND_FLAGS_64_AUTH = -bRMODE=ANY -bAMODE=64 -bAC=1
 
 MTL_OPTS=metal,\
  langlvl(extended),\
@@ -221,11 +223,11 @@ build-out/zmetal.metal.test.o: build-out/zmetal.metal.test.s
 # build-out/testrcvy: build-out/testrcvy.o
 # 	$(BIND) $(BIND_FLAGS_64) -V -eMAIN -o $@ $^ > $*.bind.lst
 
-# build-out/testasm1.o: testasm1.s
-# 	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
+build-out/testasm1.o: testasm1.s
+	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
-# build-out/testasm1: build-out/testasm1.o
-# 	$(BIND) $(BIND_FLAGS) -V -eTESTASM1 -o $@ $^ > $*.bind.lst
+build-out/testasm1: build-out/testasm1.o
+	$(BIND) $(BIND_FLAGS_AUTH) -V -eTESTASM1 -o $@ $^ > $*.bind.lst
 
 # build-out/testasm4.o: testasm4.s
 # 	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^

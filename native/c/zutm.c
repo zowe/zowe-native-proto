@@ -287,6 +287,13 @@ int ZUTMGT64(void **PTR64 data, int *len)
   return 0;
 }
 
+#pragma prolog(ZUTMGKEY, " ZWEPROLG NEWDSA=(YES,1) ")
+#pragma epilog(ZUTMGKEY, " ZWEEPILG ")
+unsigned char ZUTMGKEY()
+{
+  return get_key();
+}
+
 int ZUTDBGMG(const char *msg)
 {
   IO_CTRL *sysprintIoc = open_output_assert("ZOWEXDBG", 132, 132, dcbrecf + dcbrecbr);
