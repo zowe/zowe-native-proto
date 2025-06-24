@@ -243,8 +243,8 @@ int ZJBMMOD(ZJB* zjb, int type, int flags) {
     return RTNCD_FAILURE;
   }
 
-  // zwto_debug("@TEST ssjmsjf8 %llx and flag is %02x", ssjm.ssjmsjf8, ssjm.ssjmofg1);
   if (0 == ssjm.ssjmnsjf) {
+    zwto_debug("@TEST ssjmsjf8 %llx and flag is %02x", ssjm.ssjmnsjf8, ssjm.ssjmofg1);
     if (zjb->jobid[0] != 0x00) {
       zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "No jobs found matching jobid '%.8s'", zjb->jobid);
     } else {
@@ -266,8 +266,6 @@ int ZJBMVIEW(ZJB* zjb, ZJB_JOB_INFO** PTR64 job_info, int* entries) {
 
   if (zjb->jobid[0] != 0x00) {
     stat.statsel1 = statsjbi;
-    // stat.statsel1 = statsoji;
-    // memcpy(stat.stat, zjb->jobid, sizeof((stat.statojbi)));
     memcpy(stat.statjbil, zjb->jobid, sizeof((stat.statojbi)));
     memcpy(stat.statjbih, zjb->jobid, sizeof((stat.statojbi)));
   } else {
