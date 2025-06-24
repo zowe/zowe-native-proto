@@ -134,7 +134,7 @@ int ZDSRECFM(ZDS *zds, const char *dsn, const char *volser, char *recfm_buf,
     zds->diag.e_msg_len =
         sprintf(zds->diag.e_msg, "OBTAIN SVC failed for %s on %s with rc=%d, workarea_ptr=%p",
                 dsn, volser, rc, workarea);
-    zds->diag.service_rc = 0;
+    zds->diag.service_rc = rc;
     zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
     return RTNCD_FAILURE;
   }
