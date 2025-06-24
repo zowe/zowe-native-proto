@@ -85,6 +85,7 @@ void zjb_tests() {
 
       memset(&zjb, 0, sizeof(zjb));
       rc = zjb_delete(&zjb, correlator);
+      cout << "@TEST delete job rc was " << rc << endl;
       // ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
       sleep(2);
 

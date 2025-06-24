@@ -214,8 +214,9 @@ int ZJBMMOD(ZJB* zjb, int type, int flags) {
   }
 
   if (zjb->jobid[0] != 0x00) {
-    ssjm.ssjmsel1 = ssjm.ssjmsel1 | ssjmsoji; //@TEST
-    memcpy(ssjm.ssjmojbi, zjb->jobid, sizeof(ssjm.ssjmojbi));
+    ssjm.ssjmsel1 = ssjmsjbi;
+    memcpy(ssjm.ssjmjbil, zjb->jobid, sizeof((ssjm.ssjmojbi)));
+    memcpy(ssjm.ssjmjbih, zjb->jobid, sizeof((ssjm.ssjmojbi)));
   } else {
     char correlator31[64] = {0};
     memcpy(correlator31, zjb->correlator, sizeof(zjb->correlator));
