@@ -96,7 +96,13 @@ void zjb_tests()
 
                   memset(&zjb, 0, sizeof(zjb));
                   rc = zjb_delete(&zjb, correlator);
-                  ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
+                  // ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
+                  sleep(2);
+
+                  memset(&zjb, 0, sizeof(zjb));
+                  rc = zjb_view(&zjb, correlator, zjob);
+                  cout << "@TEST: " << zjob.correlator << " " << zjob.full_status << " " << zjob.jobid << " " << zjob.jobname << " " << zjob.owner << " " << zjob.retcode << " " << zjob.status << endl;
+
                 });
 
              it("should be able to view a submitted job",

@@ -267,7 +267,7 @@ int ZJBMMOD(ZJB *zjb, int type, int flags)
     return RTNCD_FAILURE;
   }
 
-  zwto_debug("@TEST ssjmsjf8 %llx and flag is %02x", ssjm.ssjmsjf8, ssjm.ssjmofg1);
+  // zwto_debug("@TEST ssjmsjf8 %llx and flag is %02x", ssjm.ssjmsjf8, ssjm.ssjmofg1);
   if (0 == ssjm.ssjmnsjf)
   {
     if (zjb->jobid[0] != 0x00)
