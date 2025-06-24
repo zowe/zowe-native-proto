@@ -1025,10 +1025,12 @@ int handle_data_set_list(const ParseResult &result)
       if (emit_csv)
       {
         fields.push_back(it->name);
-        fields.push_back(it->dsorg);
-        fields.push_back(it->volser);
-        fields.push_back(it->migr ? "true" : "false");
-        fields.push_back(it->recfm);
+        if (attributes) {
+          fields.push_back(it->dsorg);
+          fields.push_back(it->volser);
+          fields.push_back(it->migr ? "true" : "false");
+          fields.push_back(it->recfm);
+        }
         cout << zut_format_as_csv(fields) << endl;
         fields.clear();
       }
