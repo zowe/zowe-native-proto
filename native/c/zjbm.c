@@ -244,7 +244,6 @@ int ZJBMMOD(ZJB* zjb, int type, int flags) {
   }
 
   if (0 == ssjm.ssjmnsjf) {
-    zwto_debug("@TEST ssjmsjf8 %llx and flag is %02x", ssjm.ssjmnsjf8, ssjm.ssjmofg1);
     if (zjb->jobid[0] != 0x00) {
       zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "No jobs found matching jobid '%.8s'", zjb->jobid);
     } else {
