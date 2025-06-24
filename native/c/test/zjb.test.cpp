@@ -88,7 +88,7 @@ void zjb_tests()
                   string correlator = string(zjb.correlator, 64);
 
                   memset(&zjb, 0, sizeof(zjb));
-                  rc = zjb_view(&zjb, correlator, zjob);
+                  rc = zjb_view(&zjb, jobid, zjob);
                   cout << "@TEST: " << zjob.correlator << " " << zjob.full_status << " " << zjob.jobid << " " << zjob.jobname << " " << zjob.owner << " " << zjob.retcode << " " << zjob.status << endl;
 
                   // wait_for_conversion(correlator, "INPUT");
