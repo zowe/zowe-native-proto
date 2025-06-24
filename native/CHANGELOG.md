@@ -13,6 +13,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - `c`: Added `--long` option to the `zowex uss list` command to return the long format for list output, containing additional file metadata. [#341](https://github.com/zowe/zowe-native-proto/pull/341)
 - `c`: Added `--all` option to the `zowex uss list` command to show hidden files when listing a UNIX directory. [#341](https://github.com/zowe/zowe-native-proto/pull/341)
 - `c`: Added `ListOptions` parameter to the `zusf_list_uss_file_path` function to support listing the long format and hidden files. [#341](https://github.com/zowe/zowe-native-proto/pull/341)
+- `c`: Fixed issue where the record format (`recfm` attribute) was listed as unknown for a Partitioned Data Set (PDS) with no members. Now, the record format for all data sets is retrieved through the Volume Table of Contents. [#351](https://github.com/zowe/zowe-native-proto/pull/351)
 
 ## `0.1.2`
 
