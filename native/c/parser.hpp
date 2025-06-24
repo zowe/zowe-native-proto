@@ -878,6 +878,14 @@ namespace parser
     {
       lexer::TokenKind kind = token.get_kind();
 
+      // Coerce identifier/strlit values for flags to boolean values
+      if (expected_type == ArgType_Flag && (kind == lexer::TokId || kind == lexer::TokStrLit))
+      {
+        std::string s_val = (kind == lexer::TokId) ? token.get_id_value()
+                                                  : token.get_str_lit_value();
+        return ArgValue(s_val == "true");
+      }
+
       // allow broader range of tokens to be interpreted as strings if expected
       bool expect_string =
           (expected_type == ArgType_Single || expected_type == ArgType_Multiple ||
@@ -900,18 +908,16 @@ namespace parser
           return ArgValue(token.get_str_lit_value());
         break;
       case lexer::TokTrue:
-        if (expected_type == ArgType_Single ||
-            expected_type == ArgType_Positional)
-          return ArgValue(true);
-        else if (expect_string)
+        if (expect_string)
           return ArgValue("true");
+        else
+          return ArgValue(true);
         break;
       case lexer::TokFalse:
-        if (expected_type == ArgType_Single ||
-            expected_type == ArgType_Positional)
-          return ArgValue(false);
-        else if (expect_string)
+        if (expect_string)
           return ArgValue("false");
+        else
+          return ArgValue(false);
         break;
       case lexer::TokStrLit:
         if (expect_string)
@@ -1332,7 +1338,24 @@ namespace parser
         // handle argument value based on type
         if (matched_arg->type == ArgType_Flag)
         {
-          result.keyword_values[matched_arg->name] = ArgValue(true);
+          // default to true
+          ArgValue flag_value(true);
+
+          // check for an optional value (e.g., --flag false)
+          if (current_token_index < tokens.size() &&
+              !is_flag_token(tokens, current_token_index))
+          {
+            const lexer::Token &value_token = tokens[current_token_index];
+            ArgValue parsed_value =
+                parse_token_value(value_token, ArgType_Flag);
+
+            if (!parsed_value.is_none())
+            {
+              flag_value = parsed_value;
+              current_token_index++; // consume the value token if one exists
+            }
+          }
+          result.keyword_values[matched_arg->name] = flag_value;
         }
         else
         {
