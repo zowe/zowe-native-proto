@@ -95,7 +95,7 @@ void zjb_tests()
                   // sleep(2);
 
                   memset(&zjb, 0, sizeof(zjb));
-                  rc = zjb_delete(&zjb, jobid);
+                  rc = zjb_delete(&zjb, correlator);
                   ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
                 });
 

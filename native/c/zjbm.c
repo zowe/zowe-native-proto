@@ -237,9 +237,8 @@ int ZJBMMOD(ZJB *zjb, int type, int flags)
 
   if (zjb->jobid[0] != 0x00)
   {
-    ssjm.ssjmsel1 = ssjm.ssjmsel1 | ssjmsjbi; //@TEST
-    memcpy(ssjm.ssjmjbil, zjb->jobid, sizeof(ssjm.ssjmjbil));
-    memcpy(ssjm.ssjmjbih, zjb->jobid, sizeof(ssjm.ssjmjbih));
+    ssjm.ssjmsel1 = ssjm.ssjmsel1 | ssjmsoji; //@TEST
+    memcpy(ssjm.ssjmojbi, zjb->jobid, sizeof(ssjm.ssjmojbi));
   }
   else
   {
@@ -254,7 +253,7 @@ int ZJBMMOD(ZJB *zjb, int type, int flags)
   // ssjm.ssjmsel2 = ssjm.ssjmsel2 | ssjmstsu; // time sharing users
 
   ssobp = &ssob;
-  ssobp = (SSOB * PTR32)((unsigned int)ssobp | 0x80000000);
+  ssobp = (SSOB *PTR32)((unsigned int)ssobp | 0x80000000);
   rc = iefssreq(&ssobp); // TODO(Kelosky): recovery
 
   if (0 != rc || 0 != ssob.ssobretn)
@@ -268,6 +267,7 @@ int ZJBMMOD(ZJB *zjb, int type, int flags)
     return RTNCD_FAILURE;
   }
 
+    zwto_debug("@TEST ssjmsjf8 %llx and flag is %02x", ssjm.ssjmsjf8, ssjm.ssjmofg1);
   if (0 == ssjm.ssjmnsjf)
   {
     if (zjb->jobid[0] != 0x00)
@@ -343,7 +343,7 @@ int ZJBMGJQ(ZJB *zjb, SSOB *ssobp, STAT *statp, STATJQ *PTR32 *PTR32 statjqp)
   SSOB *PTR32 ssobp2 = NULL;
 
   ssobp2 = ssobp;
-  ssobp2 = (SSOB * PTR32)((unsigned int)ssobp2 | 0x80000000);
+  ssobp2 = (SSOB *PTR32)((unsigned int)ssobp2 | 0x80000000);
   rc = iefssreq(&ssobp2); // TODO(Kelosky): recovery
 
   if (0 != rc || 0 != ssobp->ssobretn)
@@ -354,7 +354,7 @@ int ZJBMGJQ(ZJB *zjb, SSOB *ssobp, STAT *statp, STATJQ *PTR32 *PTR32 statjqp)
     return RTNCD_FAILURE;
   }
 
-  *statjqp = (STATJQ * PTR32) statp->statjobf;
+  *statjqp = (STATJQ *PTR32)statp->statjobf;
 
   return RTNCD_SUCCESS;
 }
@@ -395,7 +395,7 @@ int ZJBMTCOM(ZJB *zjb, STAT *PTR64 stat, ZJB_JOB_INFO **PTR64 job_info, int *ent
   }
 
   ssobp = &ssob;
-  ssobp = (SSOB * PTR32)((unsigned int)ssobp | 0x80000000);
+  ssobp = (SSOB *PTR32)((unsigned int)ssobp | 0x80000000);
   rc = iefssreq(&ssobp); // TODO(Kelosky): recovery
 
   if (0 != rc || 0 != ssob.ssobretn)
@@ -406,7 +406,7 @@ int ZJBMTCOM(ZJB *zjb, STAT *PTR64 stat, ZJB_JOB_INFO **PTR64 job_info, int *ent
     return RTNCD_FAILURE;
   }
 
-  STATJQ *PTR32 statjqp = (STATJQ * PTR32) stat->statjobf;
+  STATJQ *PTR32 statjqp = (STATJQ *PTR32)stat->statjobf;
 
   ZJB_JOB_INFO *statjqtrsp = storage_get64(zjb->buffer_size);
   *job_info = statjqtrsp;
@@ -435,8 +435,8 @@ int ZJBMTCOM(ZJB *zjb, STAT *PTR64 stat, ZJB_JOB_INFO **PTR64 job_info, int *ent
     {
       *entries = *entries + 1;
 
-      statjqhdp = (STATJQHD * PTR32)((unsigned char *PTR32)statjqp + statjqp->stjqohdr);
-      statjqtrp = (STATJQTR * PTR32)((unsigned char *PTR32)statjqhdp + sizeof(STATJQHD));
+      statjqhdp = (STATJQHD *PTR32)((unsigned char *PTR32)statjqp + statjqp->stjqohdr);
+      statjqtrp = (STATJQTR *PTR32)((unsigned char *PTR32)statjqhdp + sizeof(STATJQHD));
 
       memcpy(statjqtrsp, statjqtrp, sizeof(STATJQTR));
       int rc = iaztlkup(&ssob, statjqtrsp, zjb);
@@ -458,7 +458,7 @@ int ZJBMTCOM(ZJB *zjb, STAT *PTR64 stat, ZJB_JOB_INFO **PTR64 job_info, int *ent
       zjb->diag.detail_rc = ZJB_RTNCD_INSUFFICIENT_BUFFER;
     }
 
-    statjqp = (STATJQ * PTR32) statjqp->stjqnext;
+    statjqp = (STATJQ *PTR32)statjqp->stjqnext;
 
     loop_control++;
   }
@@ -532,7 +532,7 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
   stat.statsel5 = 0;
 
   ssobp = &ssob;
-  ssobp = (SSOB * PTR32)((unsigned int)ssobp | 0x80000000);
+  ssobp = (SSOB *PTR32)((unsigned int)ssobp | 0x80000000);
 
   if (NULL == statjqp)
   {
@@ -558,8 +558,8 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
     return RTNCD_FAILURE;
   }
 
-  statjqp = (STATJQ * PTR32) stat.statjobf;
-  statvop = (STATVO * PTR32) statjqp->stjqsvrb;
+  statjqp = (STATJQ *PTR32)stat.statjobf;
+  statvop = (STATVO *PTR32)statjqp->stjqsvrb;
 
   if (NULL == statjqp)
   {
@@ -589,8 +589,8 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
 
   while (statjqp)
   {
-    statjqhdp = (STATJQHD * PTR32)((unsigned char *PTR32)statjqp + statjqp->stjqohdr);
-    statjqtrp = (STATJQTR * PTR32)((unsigned char *PTR32)statjqhdp + sizeof(STATJQHD));
+    statjqhdp = (STATJQHD *PTR32)((unsigned char *PTR32)statjqp + statjqp->stjqohdr);
+    statjqtrp = (STATJQTR *PTR32)((unsigned char *PTR32)statjqhdp + sizeof(STATJQHD));
 
     while (statvop)
     {
@@ -610,8 +610,8 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
       {
         *entries = *entries + 1;
 
-        statsvhdp = (STATSVHD * PTR32)((unsigned char *PTR32)statvop + statvop->stvoohdr);
-        statsevbp = (STATSEVB * PTR32)((unsigned char *PTR32)statsvhdp + sizeof(STATSVHD));
+        statsvhdp = (STATSVHD *PTR32)((unsigned char *PTR32)statvop + statvop->stvoohdr);
+        statsevbp = (STATSEVB *PTR32)((unsigned char *PTR32)statsvhdp + sizeof(STATSVHD));
 
         memcpy(statsetrsp, statsevbp, sizeof(STATSEVB));
         statsetrsp++;
@@ -621,12 +621,12 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
         zjb->diag.detail_rc = ZJB_RTNCD_INSUFFICIENT_BUFFER;
       }
 
-      statvop = (STATVO * PTR32) statvop->stvojnxt;
+      statvop = (STATVO *PTR32)statvop->stvojnxt;
 
       loop_control++;
     }
 
-    statjqp = (STATJQ * PTR32) statjqp->stjqnext;
+    statjqp = (STATJQ *PTR32)statjqp->stjqnext;
   }
 
   zjb->buffer_size_needed = total_size;
