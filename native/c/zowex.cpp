@@ -2156,7 +2156,7 @@ int handle_job_view_file(const ParseResult &result)
   int rc = 0;
   ZJB zjb = {0};
   string jobid = result.find_pos_arg_string("jobid");
-  string key = result.find_pos_arg_string("key");
+  int key = result.find_pos_arg_int("key");
 
   if (result.has_kw_arg("encoding"))
   {
@@ -2164,7 +2164,7 @@ int handle_job_view_file(const ParseResult &result)
   }
 
   string resp;
-  rc = zjb_read_jobs_output_by_key(&zjb, jobid, atoi(key.c_str()), resp);
+  rc = zjb_read_jobs_output_by_key(&zjb, jobid, key, resp);
 
   if (0 != rc)
   {
