@@ -20,8 +20,4 @@ void create_member(std::string dsn);
 
 std::vector<ZDSMem> list_members(std::string dsn);
 
-std::string read_member(std::string dsn, std::string member, std::string codepage = "");
-
-std::string write_member(std::string dsn, std::string member, std::string data, std::string codepage = "", std::string etag = "");
-
 #endif
