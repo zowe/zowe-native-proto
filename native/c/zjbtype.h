@@ -23,6 +23,7 @@
 #define ZJB_RTNCD_UNEXPECTED_ERROR -6
 #define ZJB_RTNCD_JES3_NOT_SUPPORTED -7
 #define ZJB_RTNCD_VERBOSE_INFO_NOT_FOUND -8
+#define ZJB_RTNCD_CORRELATOR_NOT_FOUND -9
 
 #define ZJB_RSNCD_MAX_JOBS_REACHED -1
 
@@ -38,7 +39,8 @@
 
 // NOTE(Kelosky): struct is padded to nearest double word boundary; ensure
 // proper alignment for fields
-typedef struct {
+typedef struct
+{
   char eye[3];              // future use
   unsigned char version[1]; // future use
   int32_t len;              // future use

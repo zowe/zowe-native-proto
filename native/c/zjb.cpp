@@ -41,7 +41,7 @@ void zjb_build_job_response(ZJB_JOB_INFO *PTR64, int, std::vector<ZJob> &);
 
 using namespace std;
 
-#define BTOKLEN                                                                \
+#define BTOKLEN \
   (293 - 254) // 293 is the full length, minus the max optional buffer area for
               // logs (less 254)
 
@@ -50,7 +50,8 @@ using namespace std;
 // concatenation for a system specify the following data set name (in DALDSNAM).
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=allocation-specifying-data-set-name-daldsnam
 int zjb_read_jobs_output_by_key(ZJB *zjb, string jobid, int key,
-                                string &response) {
+                                string &response)
+{
   int rc = 0;
   string job_dsn;
 
@@ -61,7 +62,8 @@ int zjb_read_jobs_output_by_key(ZJB *zjb, string jobid, int key,
   return zjb_read_job_content_by_dsn(zjb, job_dsn, response);
 }
 
-int zjb_get_job_dsn_by_key(ZJB *zjb, string jobid, int key, string &job_dsn) {
+int zjb_get_job_dsn_by_key(ZJB *zjb, string jobid, int key, string &job_dsn)
+{
   int rc = 0;
 
   vector<ZJobDD> list;
@@ -72,15 +74,18 @@ int zjb_get_job_dsn_by_key(ZJB *zjb, string jobid, int key, string &job_dsn) {
 
   rc = RTNCD_FAILURE; // assume failure
 
-  for (vector<ZJobDD>::iterator it = list.begin(); it != list.end(); ++it) {
-    if (key == it->key) {
+  for (vector<ZJobDD>::iterator it = list.begin(); it != list.end(); ++it)
+  {
+    if (key == it->key)
+    {
       job_dsn = it->dsn;
       rc = 0;
       break;
     }
   }
 
-  if (0 != rc) {
+  if (0 != rc)
+  {
     zjb->diag.e_msg_len = sprintf(
         zjb->diag.e_msg, "Could not locate data set key '%d' on job '%s'", key,
         jobid.c_str());
@@ -91,13 +96,15 @@ int zjb_get_job_dsn_by_key(ZJB *zjb, string jobid, int key, string &job_dsn) {
   return RTNCD_SUCCESS;
 }
 
-int zjb_read_job_jcl(ZJB *zjb, string jobid, string &response) {
+int zjb_read_job_jcl(ZJB *zjb, string jobid, string &response)
+{
   int rc = 0;
 
   vector<ZJobDD> list;
 
   rc = zjb_list_dds(zjb, jobid, list);
-  if (0 != rc) {
+  if (0 != rc)
+  {
     return rc;
   }
 
@@ -107,13 +114,15 @@ int zjb_read_job_jcl(ZJB *zjb, string jobid, string &response) {
   vector<string> args;
   string arg;
 
-  while (getline(iss, arg, '.')) {
+  while (getline(iss, arg, '.'))
+  {
     args.push_back(arg);
   }
 
 #define MIN_SIZE 3 // HLQ + next + next
 
-  if (args.size() < MIN_SIZE) {
+  if (args.size() < MIN_SIZE)
+  {
     zjb->diag.e_msg_len =
         sprintf(zjb->diag.e_msg, "Unexpected data set name '%s' for jobid %s",
                 list[0].dsn.c_str(), jobid.c_str());
@@ -128,7 +137,8 @@ int zjb_read_job_jcl(ZJB *zjb, string jobid, string &response) {
 
 #define NUM_TEXT_UNITS 5
 
-int zjb_read_job_content_by_dsn(ZJB *zjb, string jobdsn, string &response) {
+int zjb_read_job_content_by_dsn(ZJB *zjb, string jobdsn, string &response)
+{
   int rc = 0;
   unsigned char *p = nullptr;
   ZDS zds = {0};
@@ -228,7 +238,8 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, string jobdsn, string &response) {
   memcpy(s99tunit_x[i].s99tunit.s99tulng, &plen, sizeof(plen));
 
   // these need to be contiguous and can point to non contiguous storage
-  for (int j = 0; j <= i; j++) {
+  for (int j = 0; j <= i; j++)
+  {
     s99tupl[j].s99tuptr = (void *PTR32) & s99tunit_x[j];
   }
 
@@ -257,7 +268,8 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, string jobdsn, string &response) {
   rc = svc99(s99parms);
 
   // TODO(Kelosky): parse s99parmsx->__S99ENMSG and free
-  if (0 != rc && 0 != s99parms->__S99ERROR) {
+  if (0 != rc && 0 != s99parms->__S99ERROR)
+  {
     strcpy(zjb->diag.service_name, "svc99");
     zjb->diag.service_rc = rc;
     zjb->diag.e_msg_len =
@@ -286,7 +298,8 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, string jobdsn, string &response) {
 
   free(parms);
 
-  if (0 != rc) {
+  if (0 != rc)
+  {
     memcpy(&zjb->diag, &zds.diag, sizeof(ZDIAG));
     return rc;
   }
@@ -297,7 +310,8 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, string jobdsn, string &response) {
   ip.__ddname = cddname; // e.g. SYS00001
   rc = dynfree(&ip);
 
-  if (0 != rc) {
+  if (0 != rc)
+  {
     strcpy(zjb->diag.service_name, "dynfree");
     zjb->diag.service_rc = rc;
     zjb->diag.e_msg_len =
@@ -309,17 +323,20 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, string jobdsn, string &response) {
   return rc;
 }
 
-int zjb_wait(ZJB *zjb, string status) {
+int zjb_wait(ZJB *zjb, string status)
+{
   int rc = 0;
   ZJob job = {0};
   string jobid(zjb->jobid, sizeof(zjb->jobid));
 
-  do {
+  do
+  {
     rc = zjb_view(zjb, jobid, job);
 
     sleep(1); // TODO(Kelosky): make this interval smaller
 
-    if (0 != rc) {
+    if (0 != rc)
+    {
       return RTNCD_FAILURE;
     }
 
@@ -327,7 +344,8 @@ int zjb_wait(ZJB *zjb, string status) {
   return RTNCD_SUCCESS;
 }
 
-int zjb_delete(ZJB *zjb, string jobid) {
+int zjb_delete(ZJB *zjb, string jobid)
+{
   if (jobid.size() > sizeof(zjb->jobid))
     zut_uppercase_pad_truncate(zjb->correlator, jobid, sizeof(zjb->correlator));
   else
@@ -335,7 +353,8 @@ int zjb_delete(ZJB *zjb, string jobid) {
   return ZJBMPRG(zjb);
 }
 
-int zjb_cancel(ZJB *zjb, string jobid) {
+int zjb_cancel(ZJB *zjb, string jobid)
+{
   if (jobid.size() > sizeof(zjb->jobid))
     zut_uppercase_pad_truncate(zjb->correlator, jobid, sizeof(zjb->correlator));
   else
@@ -343,7 +362,8 @@ int zjb_cancel(ZJB *zjb, string jobid) {
   return ZJBMCNL(zjb, 0);
 }
 
-int zjb_hold(ZJB *zjb, string jobid) {
+int zjb_hold(ZJB *zjb, string jobid)
+{
   if (jobid.size() > sizeof(zjb->jobid))
     zut_uppercase_pad_truncate(zjb->correlator, jobid, sizeof(zjb->correlator));
   else
@@ -351,7 +371,8 @@ int zjb_hold(ZJB *zjb, string jobid) {
   return ZJBMHLD(zjb);
 }
 
-int zjb_release(ZJB *zjb, string jobid) {
+int zjb_release(ZJB *zjb, string jobid)
+{
   if (jobid.size() > sizeof(zjb->jobid))
     zut_uppercase_pad_truncate(zjb->correlator, jobid, sizeof(zjb->correlator));
   else
@@ -359,11 +380,13 @@ int zjb_release(ZJB *zjb, string jobid) {
   return ZJBMRLS(zjb);
 }
 
-int zjb_submit_dsn(ZJB *zjb, string dsn, string &jobid) {
+int zjb_submit_dsn(ZJB *zjb, string dsn, string &jobid)
+{
   ZDS zds = {0};
   string contents;
   const auto rc = zds_read_from_dsn(&zds, dsn, contents);
-  if (rc != 0) {
+  if (rc != 0)
+  {
     memcpy(&zjb->diag, &zds.diag, sizeof(ZDIAG));
     return rc;
   }
@@ -371,13 +394,15 @@ int zjb_submit_dsn(ZJB *zjb, string dsn, string &jobid) {
   return zjb_submit(zjb, contents, jobid);
 }
 
-int zjb_submit(ZJB *zjb, string contents, string &jobid) {
+int zjb_submit(ZJB *zjb, string contents, string &jobid)
+{
   int rc = 0;
   ZDS zds = {0};
 
   __dyn_t ip;
   rc = dyninit(&ip);
-  if (0 != rc) {
+  if (0 != rc)
+  {
     strcpy(zjb->diag.service_name, "dyninit");
     zjb->diag.service_rc = rc;
     zjb->diag.e_msg_len =
@@ -401,7 +426,8 @@ int zjb_submit(ZJB *zjb, string contents, string &jobid) {
 
   rc = dynalloc(&ip);
 
-  if (0 != rc) {
+  if (0 != rc)
+  {
     strcpy(zjb->diag.service_name, "dynalloc");
     zjb->diag.service_rc = rc;
     zjb->diag.e_msg_len =
@@ -411,7 +437,8 @@ int zjb_submit(ZJB *zjb, string contents, string &jobid) {
   }
 
   rc = zds_write_to_dd(&zds, ddname, contents);
-  if (rc != 0) {
+  if (rc != 0)
+  {
     memcpy(&zjb->diag, &zds.diag, sizeof(ZDIAG));
     dynfree(&ip);
     return rc;
@@ -421,14 +448,16 @@ int zjb_submit(ZJB *zjb, string contents, string &jobid) {
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=iazsymbl-jes-system-symbols
   rc = ZJBSYMB(zjb, "SYS_LASTJOBID", cjobid);
 
-  if (0 != rc) {
+  if (0 != rc)
+  {
     dynfree(&ip);
     return rc;
   }
 
   jobid = string(cjobid);
 
-  if (jobid == "") {
+  if (jobid == "")
+  {
     rc = dynfree(&ip);
     strcpy(zjb->diag.service_name, "intrdr");
     zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "job submission failed");
@@ -439,7 +468,8 @@ int zjb_submit(ZJB *zjb, string contents, string &jobid) {
   char c_correlator[64 + 1] = {0};
   rc = ZJBSYMB(zjb, "SYS_CORR_LASTJOB", c_correlator);
 
-  if (0 != rc) {
+  if (0 != rc)
+  {
     dynfree(&ip);
     return rc;
   }
@@ -447,7 +477,8 @@ int zjb_submit(ZJB *zjb, string contents, string &jobid) {
   memcpy(zjb->correlator, c_correlator, sizeof(zjb->correlator));
 
   rc = dynfree(&ip);
-  if (0 != rc) {
+  if (0 != rc)
+  {
     strcpy(zjb->diag.service_name, "dynfree");
     zjb->diag.service_rc = rc;
     zjb->diag.e_msg_len =
@@ -459,7 +490,8 @@ int zjb_submit(ZJB *zjb, string contents, string &jobid) {
   return RTNCD_SUCCESS;
 }
 
-int zjb_list_dds(ZJB *zjb, string jobid, vector<ZJobDD> &jobDDs) {
+int zjb_list_dds(ZJB *zjb, string jobid, vector<ZJobDD> &jobDDs)
+{
   int rc = 0;
   STATSEVB *PTR64 sysoutInfo = nullptr;
   int entries = 0;
@@ -475,7 +507,8 @@ int zjb_list_dds(ZJB *zjb, string jobid, vector<ZJobDD> &jobDDs) {
     zut_uppercase_pad_truncate(zjb->jobid, jobid, sizeof(zjb->jobid));
 
   rc = ZJBMLSDS(zjb, &sysoutInfo, &entries);
-  if (RTNCD_SUCCESS != rc && RTNCD_WARNING != rc) {
+  if (RTNCD_SUCCESS != rc && RTNCD_WARNING != rc)
+  {
     return rc;
   }
 
@@ -484,11 +517,14 @@ int zjb_list_dds(ZJB *zjb, string jobid, vector<ZJobDD> &jobDDs) {
   // data sets may not be vieawable via the SSI API.  So, we'll attempt to find
   // the JESMSGLG and JESJCL data sets as documented here:
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=allocation-specifying-data-set-name-daldsnam
-  if (0 == entries) {
+  if (0 == entries)
+  {
     ZJob job = {0};
     int view_rc = zjb_view(zjb, jobid, job);
-    if (RTNCD_SUCCESS == view_rc) {
-      if (job.status == "INPUT") {
+    if (RTNCD_SUCCESS == view_rc)
+    {
+      if (job.status == "INPUT")
+      {
         ZJobDD jesmsglg = {0};
         jesmsglg.jobid = job.jobid;
         jesmsglg.ddn = "JESMSGLG";
@@ -524,7 +560,8 @@ int zjb_list_dds(ZJB *zjb, string jobid, vector<ZJobDD> &jobDDs) {
 
   STATSEVB *PTR64 sysoutInfoNext = sysoutInfo;
 
-  for (int i = 0; i < entries; i++) {
+  for (int i = 0; i < entries; i++)
+  {
     char tempDDn[9] = {0};
     char tempsn[9] = {0};
     char temppn[9] = {0};
@@ -561,7 +598,8 @@ int zjb_list_dds(ZJB *zjb, string jobid, vector<ZJobDD> &jobDDs) {
   return rc;
 }
 
-int zjb_view(ZJB *zjb, string jobid, ZJob &job) {
+int zjb_view(ZJB *zjb, string jobid, ZJob &job)
+{
   int rc = 0;
   ZJB_JOB_INFO *PTR64 job_info = nullptr;
   int entries = 0;
@@ -577,14 +615,27 @@ int zjb_view(ZJB *zjb, string jobid, ZJob &job) {
     zut_uppercase_pad_truncate(zjb->jobid, jobid, sizeof(zjb->jobid));
 
   rc = ZJBMVIEW(zjb, &job_info, &entries);
-  if (0 != rc) {
+  if (0 != rc)
+  {
     return rc;
   }
 
-  if (0 == entries) {
-    zjb->diag.e_msg_len = sprintf(
-        zjb->diag.e_msg, "Could not locate job with id '%s'", jobid.c_str());
-    zjb->diag.detail_rc = ZJB_RTNCD_JOB_NOT_FOUND;
+  if (0 == entries)
+  {
+    if (zjb->jobid[0] != 0x00)
+    {
+      zjb->diag.detail_rc = ZJB_RTNCD_JOB_NOT_FOUND;
+      zjb->diag.e_msg_len = sprintf(
+          zjb->diag.e_msg, "No jobs found matching jobid '%.8s'", zjb->jobid);
+    }
+    else
+    {
+      zjb->diag.detail_rc = ZJB_RTNCD_CORRELATOR_NOT_FOUND;
+      zjb->diag.e_msg_len =
+          sprintf(zjb->diag.e_msg, "No jobs found matching correlator '%.64s'",
+                  zjb->correlator);
+    }
+
     return RTNCD_FAILURE;
   }
 
@@ -598,17 +649,20 @@ int zjb_view(ZJB *zjb, string jobid, ZJob &job) {
   return RTNCD_SUCCESS;
 }
 
-int zjb_list_by_owner(ZJB *zjb, string owner_name, vector<ZJob> &jobs) {
+int zjb_list_by_owner(ZJB *zjb, string owner_name, vector<ZJob> &jobs)
+{
   return zjb_list_by_owner(zjb, owner_name, "", jobs);
 }
 
 int zjb_list_by_owner(ZJB *zjb, string owner_name, string prefix_name,
-                      vector<ZJob> &jobs) {
+                      vector<ZJob> &jobs)
+{
   int rc = 0;
   ZJB_JOB_INFO *PTR64 job_info = nullptr;
   int entries = 0;
 
-  if ("" == owner_name) {
+  if ("" == owner_name)
+  {
     char *name = getlogin();
     owner_name = string(name);
   }
@@ -624,7 +678,8 @@ int zjb_list_by_owner(ZJB *zjb, string owner_name, string prefix_name,
                              sizeof(zjb->prefix_name));
 
   rc = ZJBMLIST(zjb, &job_info, &entries);
-  if (RTNCD_SUCCESS != rc && RTNCD_WARNING != rc) {
+  if (RTNCD_SUCCESS != rc && RTNCD_WARNING != rc)
+  {
     return rc;
   }
 
@@ -636,10 +691,12 @@ int zjb_list_by_owner(ZJB *zjb, string owner_name, string prefix_name,
 }
 
 void zjb_build_job_response(ZJB_JOB_INFO *PTR64 job_info, int entries,
-                            vector<ZJob> &jobs) {
+                            vector<ZJob> &jobs)
+{
   ZJB_JOB_INFO *PTR64 job_info_next = job_info;
 
-  for (int i = 0; i < entries; i++) {
+  for (int i = 0; i < entries; i++)
+  {
     char temp_job_name[9] = {0};
     char temp_jobid[9] = {0};
     char temp_job_owner[9] = {0};
@@ -661,7 +718,8 @@ void zjb_build_job_response(ZJB_JOB_INFO *PTR64 job_info, int entries,
     string owner(temp_job_owner);
     string correlator(temp_correlator);
 
-    union cc {
+    union cc
+    {
       int full;
       unsigned char parts[4];
     } mycc = {0};
@@ -672,14 +730,20 @@ void zjb_build_job_response(ZJB_JOB_INFO *PTR64 job_info, int entries,
 
     zjob.retcode = ZJB_UNKNOWN_RC;
 
-    if ("AWAIT MAIN SELECT" == zjob.full_status) {
+    if ("AWAIT MAIN SELECT" == zjob.full_status)
+    {
       zjob.status = "INPUT";
-    } else if ("EXECUTING" == zjob.full_status) {
+    }
+    else if ("EXECUTING" == zjob.full_status)
+    {
       zjob.status = "ACTIVE";
-    } else if ("AWAITING OUTPUT" == zjob.full_status) {
+    }
+    else if ("AWAITING OUTPUT" == zjob.full_status)
+    {
       zjob.status = "OUTPUT";
 
-      if ((unsigned char)job_info_next[i].statjqtr.sttrxind & sttrxab) {
+      if ((unsigned char)job_info_next[i].statjqtr.sttrxind & sttrxab)
+      {
         // for an abend, these are the bits which contain the code
         mycc.full &= 0x00FFF000; // clear uneeded bits
         unsigned char byte1 = mycc.parts[1] >> 4;
@@ -691,20 +755,27 @@ void zjb_build_job_response(ZJB_JOB_INFO *PTR64 job_info, int entries,
         result.push_back(zut_get_hex_char(byte2));
         result.push_back(zut_get_hex_char(byte3));
         zjob.retcode = result;
-      } else {
+      }
+      else
+      {
         mycc.full &= 0x00000FFF; // clear uneeded bits
         stringstream sscc;
         sscc << setw(4) << setfill('0') << mycc.full; // format to 4 characters
-        zjob.retcode = "CC " + sscc.str(); // make it look like z/OSMF
+        zjob.retcode = "CC " + sscc.str();            // make it look like z/OSMF
       }
-    } else {
+    }
+    else
+    {
       // leave service text as-is
     }
 
     // handle special cases
-    if ((unsigned char)job_info_next[i].statjqtr.sttrxind == sttrxjcl) {
+    if ((unsigned char)job_info_next[i].statjqtr.sttrxind == sttrxjcl)
+    {
       zjob.retcode = "JCL ERROR";
-    } else if ((unsigned char)job_info_next[i].statjqtr.sttrxind == sttrxcan) {
+    }
+    else if ((unsigned char)job_info_next[i].statjqtr.sttrxind == sttrxcan)
+    {
       zjob.retcode = "CANCELED";
     }
 
