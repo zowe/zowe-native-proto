@@ -53,6 +53,8 @@
          USING &CCN_LITN,15
 *
          STORAGE RELEASE,                                              +
+               CALLRKY=YES,                                            +
+               SP=132,                                                 +
                LENGTH=&DSA_SZ,                                         +
                ADDR=(1)
 *
