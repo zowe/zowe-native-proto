@@ -243,8 +243,9 @@ int ZJBMMOD(ZJB *zjb, int type, int flags)
 
   if (zjb->jobid[0] != 0x00)
   {
-    ssjm.ssjmsel1 = ssjm.ssjmsel1 | ssjmsoji;
-    memcpy(ssjm.ssjmojbi, zjb->jobid, sizeof(ssjm.ssjmojbi));
+    ssjm.ssjmsel1 = ssjm.ssjmsel1 | ssjmsjbi;
+    memcpy(ssjm.ssjmjbil, zjb->jobid, sizeof(ssjm.ssjmjbil));
+    memcpy(ssjm.ssjmjbih, zjb->jobid, sizeof(ssjm.ssjmjbih));
   }
   else
   {
@@ -314,8 +315,9 @@ int ZJBMVIEW(ZJB *zjb, ZJB_JOB_INFO **PTR64 job_info, int *entries)
 
   if (zjb->jobid[0] != 0x00)
   {
-    stat.statsel1 = statsoji;
-    memcpy(stat.statojbi, zjb->jobid, sizeof((stat.statojbi)));
+    stat.statsel1 = stat.statsel1 | statsjbi;
+    memcpy(stat.statjbil, zjb->jobid, sizeof(stat.statjbil));
+    memcpy(stat.statjbih, zjb->jobid, sizeof(stat.statjbih));
   }
   else
   {
@@ -544,8 +546,9 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
 
   if (zjb->jobid[0] != 0x00)
   {
-    stat.statsel1 = statsoji;
-    memcpy(stat.statojbi, zjb->jobid, sizeof((stat.statojbi)));
+    stat.statsel1 = stat.statsel1 | statsjbi;
+    memcpy(stat.statjbil, zjb->jobid, sizeof(stat.statjbil));
+    memcpy(stat.statjbih, zjb->jobid, sizeof(stat.statjbih));
   }
   else
   {
