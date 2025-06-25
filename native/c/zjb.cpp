@@ -29,6 +29,7 @@
 #include "zjb.hpp"
 #include "zjbm.h"
 #include "zssitype.h"
+#include "ztype.h"
 #include "zut.hpp"
 #include "zutm.h"
 #include "zjbtype.h"
@@ -83,8 +84,8 @@ int zjb_get_job_dsn_by_key(ZJB *zjb, string jobid, int key, string &job_dsn)
   if (0 != rc)
   {
     zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "Could not locate data set key '%d' on job '%s'", key, jobid.c_str());
-    zjb->diag.detail_rc = ZJB_RTNCD_JOB_NOT_FOUND;
-    return RTNCD_FAILURE;
+    zjb->diag.detail_rc = ZJB_RTNCD_JOB_DSN_KEY_NOT_FOUND;
+    return RTNCD_WARNING;
   }
 
   return RTNCD_SUCCESS;
