@@ -281,6 +281,20 @@ static void mode_nzero()
 #define GET_KEY(key)
 #endif
 
+#if defined(__IBM_METAL__)
+#define SET_KEY(key)                                 \
+  __asm(                                             \
+      "*                                         \n" \
+      " IC   2,%0  Load                          \n" \
+      " SPKA 0(2)                                \n" \
+      "*                                          "  \
+      :                                              \
+      : "m"(key)                                     \
+      : "r2");
+#else
+#define SET_KEY(key)
+#endif
+
 static unsigned long long int get_r0()
 {
   unsigned long long int reg = 0;
@@ -375,6 +389,11 @@ static unsigned char get_key()
   unsigned char key = {0};
   GET_KEY(key);
   return key;
+}
+
+static void set_key(unsigned char key)
+{
+  SET_KEY(key);
 }
 
 static void set_prev_r0(unsigned long long int reg)
