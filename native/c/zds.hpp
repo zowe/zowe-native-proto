@@ -16,7 +16,6 @@
 #include <vector>
 #include <string>
 #include "zdstype.h"
-#include <iconv.h>
 
 extern const size_t MAX_DS_LENGTH;
 
