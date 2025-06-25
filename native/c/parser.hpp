@@ -462,7 +462,6 @@ namespace parser
       if (type == ArgType_Flag && default_bool && *default_bool == true)
       {
         std::string no_flag_name = "no-" + name;
-        std::string no_flag_long_alias = "--n" + name;
         std::string no_flag_help = "disable the --" + name + " flag.";
 
         // ensure the generated --no- name/alias doesn't conflict
@@ -478,25 +477,9 @@ namespace parser
                                       no_flag_name +
                                       "' conflicts with an existing argument.");
         }
-        for (std::vector<ArgumentDef>::const_iterator it2 = m_kw_args.begin();
-             it2 != m_kw_args.end(); ++it2)
-        {
-          const ArgumentDef &existing_arg = *it2;
-          for (size_t j = 0; j < existing_arg.aliases.size(); ++j)
-          {
-            if (existing_arg.aliases[j] == no_flag_long_alias)
-            {
-              throw std::invalid_argument(
-                  "automatic negation flag alias '" + no_flag_long_alias +
-                  "' conflicts with an existing argument.");
-            }
-          }
-        }
 
         // add the negation argument definition
-        std::vector<std::string> no_flag_aliases;
-        no_flag_aliases.push_back(no_flag_long_alias);
-        m_kw_args.push_back(ArgumentDef(no_flag_name, no_flag_aliases,
+        m_kw_args.push_back(ArgumentDef(no_flag_name, make_aliases(),
                                         no_flag_help, ArgType_Flag, false,
                                         ArgValue(false), false));
       }
