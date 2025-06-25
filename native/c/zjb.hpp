@@ -1,7 +1,7 @@
 /**
- * This program and the accompanying materials are made available under the terms of the
- * Eclipse Public License v2.0 which accompanies this distribution, and is available at
- * https://www.eclipse.org/legal/epl-v20.html
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License v2.0 which accompanies this distribution,
+ * and is available at https://www.eclipse.org/legal/epl-v20.html
  *
  * SPDX-License-Identifier: EPL-2.0
  *
@@ -12,24 +12,22 @@
 #ifndef ZJB_HPP
 #define ZJB_HPP
 
-#include <iostream>
-#include <vector>
-#include <string>
 #include "zjbtype.h"
+#include <iostream>
+#include <string>
+#include <vector>
 
-struct ZJob
-{
+struct ZJob {
   std::string jobname;
   std::string jobid;
   std::string owner;
   std::string status;
   std::string full_status;
   std::string retcode;
-  std::string job_correlator;
+  std::string correlator;
 };
 
-struct ZJobDD
-{
+struct ZJobDD {
   std::string jobid;
   std::string ddn;
   std::string dsn;
@@ -42,22 +40,27 @@ struct ZJobDD
  * @brief Return a list of jobs from an input or default owner
  *
  * @param zjb job returned attributes and error information
- * @param owner_name owner name of the job to query, defaults to currnet user if == "", may use wild cards, i.e. "IBMUS*"
+ * @param owner_name owner name of the job to query, defaults to currnet user if
+ * == "", may use wild cards, i.e. "IBMUS*"
  * @param jobs populated list returned containing job information array
  * @return int 0 for success; non zero otherwise
  */
-int zjb_list_by_owner(ZJB *zjb, std::string owner_name, std::vector<ZJob> &jobs);
+int zjb_list_by_owner(ZJB *zjb, std::string owner_name,
+                      std::vector<ZJob> &jobs);
 
 /**
  * @brief Return a list of jobs from an input or default owner
  *
  * @param zjb job returned attributes and error information
- * @param owner_name owner name of the job to query, defaults to currnet user if == "", may use wild cards, i.e. "IBMUS*"
- * @param prefix job prefix, defaults to "*" if == "", may use wild cards, i.e. "IBMUS*"
+ * @param owner_name owner name of the job to query, defaults to currnet user if
+ * == "", may use wild cards, i.e. "IBMUS*"
+ * @param prefix job prefix, defaults to "*" if == "", may use wild cards, i.e.
+ * "IBMUS*"
  * @param jobs populated list returned containing job information array
  * @return int 0 for success; non zero otherwise
  */
-int zjb_list_by_owner(ZJB *zjb, std::string owner_name, std::string prefix_name, std::vector<ZJob> &jobs);
+int zjb_list_by_owner(ZJB *zjb, std::string owner_name, std::string prefix_name,
+                      std::vector<ZJob> &jobs);
 
 /**
  * @brief Return a job status struct from input jobid
@@ -84,14 +87,17 @@ int zjb_list_dds(ZJB *zjb, std::string jobid, std::vector<ZJobDD> &job_dds);
  *
  * @param zjb job returned attributes and error information
  * @param jobid jobid coresponding to the key to locate
- * @param key data set key returned from zjb_list_dds, e.g. JESMSGLG is usually 2
+ * @param key data set key returned from zjb_list_dds, e.g. JESMSGLG is usually
+ * 2
  * @param response return job file output
  * @return int 0 for success; non zero otherwise
  */
-int zjb_read_jobs_output_by_key(ZJB *zjb, std::string jobid, int key, std::string &response);
+int zjb_read_jobs_output_by_key(ZJB *zjb, std::string jobid, int key,
+                                std::string &response);
 
 int zjb_get_job_dsn_by_key(ZJB *zjb, std::string, int, std::string &);
-int zjb_read_job_content_by_dsn(ZJB *zjb, std::string job_dsn, std::string &response);
+int zjb_read_job_content_by_dsn(ZJB *zjb, std::string job_dsn,
+                                std::string &response);
 
 /**
  * @brief Wait for a job to reach a specific status

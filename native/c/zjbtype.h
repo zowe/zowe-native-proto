@@ -1,7 +1,7 @@
 /**
- * This program and the accompanying materials are made available under the terms of the
- * Eclipse Public License v2.0 which accompanies this distribution, and is available at
- * https://www.eclipse.org/legal/epl-v20.html
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License v2.0 which accompanies this distribution,
+ * and is available at https://www.eclipse.org/legal/epl-v20.html
  *
  * SPDX-License-Identifier: EPL-2.0
  *
@@ -12,8 +12,8 @@
 #ifndef ZJBTYPE_H
 #define ZJBTYPE_H
 
-#include <stdint.h>
 #include "ztype.h"
+#include <stdint.h>
 
 // RTNCD_CODE_SUCCESS ztype.h         -1
 #define ZJB_RTNCD_SERVICE_FAILURE -2
@@ -36,9 +36,9 @@
 #pragma pack(packed)
 #endif
 
-// NOTE(Kelosky): struct is padded to nearest double word boundary; ensure proper alignment for fields
-typedef struct
-{
+// NOTE(Kelosky): struct is padded to nearest double word boundary; ensure
+// proper alignment for fields
+typedef struct {
   char eye[3];              // future use
   unsigned char version[1]; // future use
   int32_t len;              // future use
@@ -49,15 +49,17 @@ typedef struct
   int32_t dds_max;
   int32_t buffer_size;
 
-  int32_t buffer_size_needed; // total amount of buffer size needed to satisfy request
+  int32_t buffer_size_needed; // total amount of buffer size needed to satisfy
+                              // request
   unsigned char reserve_1[4];
 
-  char job_correlator[64]; // job correlator
-  char jobid[8];           // job id
-  char owner_name[8];      // owner name used, upper cased/padded/truncated
-  char prefix_name[8];     // prefix used, upper cased/padded/truncated
+  char correlator[64]; // job correlator
+  char jobid[8];       // job id
+  char owner_name[8];  // owner name used, upper cased/padded/truncated
+  char prefix_name[8]; // prefix used, upper cased/padded/truncated
 
-  ZEncode encoding_opts; // User-specified, desired encoding options for spool contents
+  ZEncode encoding_opts; // User-specified, desired encoding options for spool
+                         // contents
 
   ZDIAG diag;
 
