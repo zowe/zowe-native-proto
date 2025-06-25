@@ -36,7 +36,7 @@
 #include "zdyn.h"
 #include "zusftype.h"
 #include "zut.hpp"
-#include "../../examples/base64/base64_ebcdic_fixed.h"
+#include "extern/zb64.h"
 #include "iefzb4d2.h"
 #ifndef _XPLATFORM_SOURCE
 #define _XPLATFORM_SOURCE
@@ -309,14 +309,8 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, string file, string pipe)
 
   while ((bytes_read = fread(&buf[0], 1, chunk_size, fin)) > 0)
   {
-    // Convert to string for EBCDIC-aware Base64 decoding
-    std::string input_str(&buf[0], bytes_read);
-    std::string decoded_str = base64_ebcdic_fixed::decode(input_str);
-    int chunk_len = decoded_str.length();
-    // Copy decoded data to ensure it remains valid throughout the loop
-    std::vector<char> decoded_buf(decoded_str.begin(), decoded_str.end());
-    const char *chunk = &decoded_buf[0];
-
+    int chunk_len = bytes_read;
+    const char *chunk = &buf[0];
     std::vector<char> temp_encoded;
 
     if (hasEncoding)
@@ -334,10 +328,8 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, string file, string pipe)
       }
     }
 
-    // Convert to string for EBCDIC-aware Base64 encoding
-    std::string input_str(chunk, chunk_len);
-    std::string encoded_str = base64_ebcdic_fixed::encode(input_str);
-    fwrite(encoded_str.c_str(), 1, encoded_str.length(), fout);
+    chunk = base64(chunk, chunk_len, &chunk_len);
+    fwrite(chunk, 1, chunk_len, fout);
   }
 
   fflush(fout);
@@ -470,14 +462,8 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe)
 
   while ((bytes_read = fread(&buf[0], 1, FIFO_CHUNK_SIZE, fin)) > 0)
   {
-    // Convert to string for EBCDIC-aware Base64 decoding
-    std::string input_str(&buf[0], bytes_read);
-    std::string decoded_str = base64_ebcdic_fixed::decode(input_str);
-    int chunk_len = decoded_str.length();
-    // Copy decoded data to ensure it remains valid throughout the loop
-    std::vector<char> decoded_buf(decoded_str.begin(), decoded_str.end());
-    const char *chunk = &decoded_buf[0];
-
+    int chunk_len;
+    const char *chunk = (char *)unbase64(&buf[0], bytes_read, &chunk_len);
     std::vector<char> temp_encoded;
 
     if (hasEncoding)
@@ -497,10 +483,14 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe)
       }
     }
 
-    // Convert to string for EBCDIC-aware Base64 encoding
-    std::string input_str(chunk, chunk_len);
-    std::string encoded_str = base64_ebcdic_fixed::encode(input_str);
-    fwrite(encoded_str.c_str(), 1, encoded_str.length(), fout);
+    size_t bytes_written = fwrite(chunk, 1, chunk_len, fout);
+    if (bytes_written != chunk_len)
+    {
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to write to '%s' (possibly out of space)", file.c_str());
+      fclose(fin);
+      fclose(fout);
+      return RTNCD_FAILURE;
+    }
   }
 
   fflush(fout);
