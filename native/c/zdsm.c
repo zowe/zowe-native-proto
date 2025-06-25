@@ -155,12 +155,12 @@ int ZDSRECFM(ZDS *zds, const char *dsn, const char *volser, char *recfm_buf,
     int len = 0;
     char main_fmt = 0;
 
-    if ((dscb->ds1recfm & 0xC0) == 0x40)
+    if ((dscb->ds1recfm & 0xC0) == 0x80)
     {
       temp_recfm[len++] = 'F';
       main_fmt = 'F';
     }
-    else if ((dscb->ds1recfm & 0xC0) == 0x80)
+    else if ((dscb->ds1recfm & 0xC0) == 0x40)
     {
       temp_recfm[len++] = 'V';
       main_fmt = 'V';

@@ -96,7 +96,7 @@ int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_
 
 int main(int argc, char *argv[])
 {
-  ArgumentParser arg_parser(argv[0], "Zowe Native Protocol CLI - Modernizing mainframe access");
+  ArgumentParser arg_parser(argv[0], "Zowe Native Protocol CLI");
 
   // Add interactive mode flag to root command
   arg_parser.get_root_command().add_keyword_arg("interactive",
