@@ -12,13 +12,14 @@ import os
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse
 from typing import Optional
+import sys
 import ssl
 import yaml
 import uvicorn
 from zowe_apiml_onboarding_enabler_python.registration import PythonEnabler
 
-# Import your SWIG-generated Python bindings
-import zds  # This would be your SWIG-generated module
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import zds_py as zds
 
 base_directory = os.path.dirname(os.path.abspath(__file__))
 config_file_path = os.path.join(base_directory, 'config/service-configuration.yml')
