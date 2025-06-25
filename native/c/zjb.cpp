@@ -643,6 +643,9 @@ void zjb_build_job_response(ZJB_JOB_INFO *PTR64 job_info, int entries, vector<ZJ
 
     ZJob zjob = {0};
 
+
+    printf("@TEST phase text is %02x", job_info_next[i].statjqtr.sttrphaz);
+
     string jobname(temp_job_name);
     string jobid(temp_jobid);
     string owner(temp_job_owner);

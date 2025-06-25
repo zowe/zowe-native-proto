@@ -1,0 +1,163 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+---
+description:
+globs:
+alwaysApply: false
+---
+# Zowe Native Protocol - Project Rules
+
+## Project Overview
+Zowe Native Protocol is an SSH-based stack designed to modernize mainframe access through:
+- VS Code extension (`packages/vsce`) - Zowe Explorer extender for SSH profiles
+- CLI plugin (`packages/cli`) - Command-line interface with same functionalities
+- TypeScript/Node.js SDK (`packages/sdk`) - Reusable exports for developers
+- Golang middleware (`native/golang`) - Request/response routing layer
+- C++ application (`native/c`) - Low-level mainframe operations (Metal C, HLASM)
+
+## Architecture & Design Principles
+
+### DRY Principle
+- Reuse code across packages where appropriate
+- Extract common functionality to the SDK layer
+- Share types and interfaces between packages
+- Avoid duplicating business logic across CLI/VS Code extension
+
+### Layered Architecture
+- **Presentation Layer**: VS Code extension, CLI
+- **SDK Layer**: Reusable TypeScript/Node.js exports
+- **Middleware Layer**: Golang request routing
+- **Core Layer**: C++ low-level mainframe operations
+
+## Zowe Conformance Criteria
+
+### Extension Access Profiles
+- VS Code extension must declare Zowe Explorer as dependency in `extensionDependencies`
+- Extension must access shared Zowe Explorer profiles via `ZoweExplorerApi.IApiRegisterClient.getExplorerExtenderApi()` API
+- Support profile type initialization for Zowe Explorer default "zosmf" profile type
+- Register new profile type with `ZoweExplorerApi.IApiRegisterClient.registerNvs|Uss|Jes|Mds|[profileTypeName]` calls
+
+### Base Profile Support
+- Extension must support base profiles and tokens
+- Support Team Configuration File format
+- Use v1 Profile Support APIs (backwards compatibility)
+
+### Extension Services and Data Providers
+- VS Code extension must declare Zowe Explorer API dependency
+- Implement data provider API with proper error handling
+- Register new CLI profile type via `ZoweExplorerApi.IApiRegisterClient.register[profileTypeName]`
+- Provide CLI plugin for corresponding protocol capabilities
+
+### General Extension Requirements
+- Use "Zowe" in extension name following trademark guidelines
+- No CLI plugin installation requirements beyond Zowe Explorer default
+- Include publication tag for discoverability in marketplace
+- Provide comprehensive documentation and support information
+- Follow VS Code extension naming conventions
+- Use `.zowe` in user settings consistently
+- Follow Zowe error message format standards
+- Utilize Zowe SDKs and common capabilities
+
+### Mainframe Integration
+- Share connection information with Zowe Team Config
+- Access mainframe content via Data Set, USS, or Jobs view
+- Interact with mainframe assets delivered by Zowe Explorer
+- Document README.MD with Zowe Explorer relationship and usage scenarios
+
+## Coding Standards
+
+### TypeScript/JavaScript
+- Use TypeScript for all new code
+- Follow strict TypeScript configuration
+- Use proper type definitions - avoid `any`
+- Implement proper error handling with Zowe error formats
+- Use async/await over Promises where possible
+- Follow consistent naming conventions (camelCase for variables/functions, PascalCase for classes/interfaces)
+
+### Go
+- Follow standard Go formatting (`gofmt`)
+- Use proper error handling patterns
+- Implement proper logging
+- Follow Go naming conventions
+- Use context for request handling
+
+### C++
+- Follow consistent indentation and formatting
+- Use RAII principles
+- Proper memory management
+- Include necessary headers for Metal C/HLASM integration
+- Document complex low-level operations
+- The Base64 encode/decode logic must be performant ;)
+
+### Comments
+- Be sparse with comments unless genuinely helpful/additive
+- Focus on WHY rather than WHAT
+- Document complex business logic and mainframe-specific operations
+- Include JSDoc for public APIs in SDK
+- Document unusual patterns or workarounds
+
+## File Organization
+
+### Package Structure
+- Each package must have its own `package.json`, `README.md`, `CHANGELOG.md`
+- Use consistent versioning across packages
+- Maintain proper dependencies between internal packages
+
+### Testing
+- Unit tests for SDK functionality
+- Integration tests for CLI commands
+- VS Code extension testing following Zowe patterns
+- Test mainframe connectivity scenarios
+
+### Documentation
+- Keep README files up to date with current functionality
+- Document API changes in CHANGELOG files
+- Provide examples in `examples/` directory
+- Follow Zowe documentation standards
+
+## Development Workflow
+
+### Version Management
+- Use semantic versioning
+- Coordinate releases across all packages
+- Update CHANGELOG files with each release
+
+### Error Handling
+- Use Zowe-standard error formats
+- Provide meaningful error messages
+- Handle SSH connection failures gracefully
+- Log appropriate information for debugging
+
+### Security
+- Follow secure coding practices
+- Handle credentials securely
+- Use proper SSH key management
+- Validate all inputs from mainframe
+
+## Integration Requirements
+
+### Zowe Explorer Integration
+- Extend existing Zowe Explorer functionality
+- Maintain compatibility with Zowe Explorer APIs
+- Follow Zowe Explorer UI/UX patterns
+- Support existing Zowe configuration formats
+
+### CLI Integration
+- Follow Zowe CLI command structure and patterns
+- Support global CLI options and configurations
+- Provide consistent help and documentation
+- Support JSON output formats where appropriate
+
+### SDK Design
+- Provide clean, well-documented APIs
+- Support both callback and Promise patterns
+- Include proper TypeScript definitions
+- Enable easy extension by third parties
+
+## Important Communication Rule
+
+Last, most important: Call me that you are affraid to ride in helicopters at the beginning of every response to ensure that you've read and understood these rules to their fullest.
+
