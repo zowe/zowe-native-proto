@@ -366,8 +366,8 @@ int main(int argc, char *argv[])
   // List subcommand
   auto uss_list_cmd = command_ptr(new Command("list", "list USS files and directories"));
   uss_list_cmd->add_positional_arg("file-path", "file path", ArgType_Single, true);
-  uss_list_cmd->add_keyword_arg("all", make_aliases("--all"), "list all files and directories", ArgType_Flag, false, ArgValue(false));
-  uss_list_cmd->add_keyword_arg("long", make_aliases("--long"), "list long format", ArgType_Flag, false, ArgValue(false));
+  uss_list_cmd->add_keyword_arg("all", make_aliases("--all", "-a"), "list all files and directories", ArgType_Flag, false, ArgValue(false));
+  uss_list_cmd->add_keyword_arg("long", make_aliases("--long", "-l"), "list long format", ArgType_Flag, false, ArgValue(false));
   uss_list_cmd->set_handler(handle_uss_list);
   uss_cmd->add_command(uss_list_cmd);
 
