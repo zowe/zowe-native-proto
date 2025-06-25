@@ -243,7 +243,7 @@ int ZJBMMOD(ZJB *zjb, int type, int flags)
 
   if (zjb->jobid[0] != 0x00)
   {
-    ssjm.ssjmsel1 = ssjm.ssjmsel1 | ssjmsjbi;
+    ssjm.ssjmsel1 = ssjm.ssjmsel1 | ssjmsjbi; // real lookup
     memcpy(ssjm.ssjmjbil, zjb->jobid, sizeof(ssjm.ssjmjbil));
     memcpy(ssjm.ssjmjbih, zjb->jobid, sizeof(ssjm.ssjmjbih));
   }
@@ -315,7 +315,7 @@ int ZJBMVIEW(ZJB *zjb, ZJB_JOB_INFO **PTR64 job_info, int *entries)
 
   if (zjb->jobid[0] != 0x00)
   {
-    stat.statsel1 = stat.statsel1 | statsjbi;
+    stat.statsel1 = stat.statsel1 | statsjbi; // real lookup
     memcpy(stat.statjbil, zjb->jobid, sizeof(stat.statjbil));
     memcpy(stat.statjbih, zjb->jobid, sizeof(stat.statjbih));
   }
@@ -546,7 +546,7 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
 
   if (zjb->jobid[0] != 0x00)
   {
-    stat.statsel1 = stat.statsel1 | statsjbi;
+    stat.statsel1 = stat.statsel1 | statsjbi; // real lookup
     memcpy(stat.statjbil, zjb->jobid, sizeof(stat.statjbil));
     memcpy(stat.statjbih, zjb->jobid, sizeof(stat.statjbih));
   }
