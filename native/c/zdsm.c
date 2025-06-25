@@ -99,7 +99,7 @@ typedef int (*IGWASMS)(
 #pragma epilog(ZDSRECFM, " ZWEEPILG ")
 
 // Obtain the record format for a data set, given its name and volser
-// Full PDF for advanced services: https://www.ibm.com/docs/en/SSLTBW_2.2.0/pdf/dgt3s310.pdf
+// Full PDF for DFSMSdfp advanced services: https://www.ibm.com/docs/en/SSLTBW_2.5.0/pdf/idas300_v2r5.pdf
 // Doc page: https://www.ibm.com/docs/en/zos/3.1.0?topic=macros-reading-dscbs-from-vtoc-using-obtain
 int ZDSRECFM(ZDS *zds, const char *dsn, const char *volser, char *recfm_buf,
              int recfm_buf_len)
@@ -155,41 +155,51 @@ int ZDSRECFM(ZDS *zds, const char *dsn, const char *volser, char *recfm_buf,
     int len = 0;
     char main_fmt = 0;
 
-    if ((dscb->ds1recfm & 0xC0) == 0x40)
+    // Bitmasks translated from binary to hex from "DFSMSdfp advanced services" PDF, Chapter 1 page 7 (PDF page 39)
+    // Fixed: First bit is set
+    if ((dscb->ds1recfm & 0xC0) == 0x80)
     {
       temp_recfm[len++] = 'F';
       main_fmt = 'F';
     }
-    else if ((dscb->ds1recfm & 0xC0) == 0x80)
+    // Variable: Second bit is set
+    else if ((dscb->ds1recfm & 0xC0) == 0x40)
     {
       temp_recfm[len++] = 'V';
       main_fmt = 'V';
     }
-    else if ((dscb->ds1recfm & 0xC0) == 0x20)
+    // Undefined: First and second bits are set
+    else if ((dscb->ds1recfm & 0xC0) == 0xC0)
     {
       temp_recfm[len++] = 'U';
       main_fmt = 'U';
     }
 
-    if (dscb->ds1recfm & 0x10)
+    // Blocked records: Fourth bit is set
+    if ((dscb->ds1recfm & 0x10) > 0)
     {
       temp_recfm[len++] = 'B';
     }
 
-    if (dscb->ds1recfm & 0x08)
+    // Sequential: Fifth bit is set
+    if ((dscb->ds1recfm & 0x08) > 0)
     {
+      // Fixed length: standard blocks, no truncated or unfilled tracks
+      // Variable length: spanned records
       if (main_fmt == 'F' || main_fmt == 'V')
       {
         temp_recfm[len++] = 'S';
       }
     }
 
-    if (dscb->ds1recfm & 0x04)
+    // ANSI control characters/ASA: Sixth bit is set
+    if ((dscb->ds1recfm & 0x04) > 0)
     {
       temp_recfm[len++] = 'A';
     }
 
-    if (dscb->ds1recfm & 0x02)
+    // Machine-control characters: Seventh bit is set
+    if ((dscb->ds1recfm & 0x02) > 0)
     {
       temp_recfm[len++] = 'M';
     }
