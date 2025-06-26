@@ -407,17 +407,12 @@ static unsigned char get_key()
   return key;
 }
 
-static unsigned long long int get_psw()
+static unsigned long long int get_raw_psw()
 {
   unsigned long long int psw = 0;
   GET_PSW(psw);
   // zwto_debug("a %08x b %08x", a, b);
   return psw;
-}
-
-static void set_key(unsigned char key)
-{
-  SET_KEY(key);
 }
 
 typedef struct
@@ -438,9 +433,21 @@ typedef struct
   unsigned int pgmmask : 4; // condition code
   unsigned int z2 : 7;      // always 0
   unsigned int ea : 1;      // extended addressing mode b'00' = 24, b'01' = 31, b'11' = 64
+
   unsigned int ba : 1;      // basic addressing mode
   unsigned int unused : 31; // future use
 } PSW;
+
+static void get_psw(PSW *psw)
+{
+  unsigned long long int psw_raw = get_raw_psw();
+  memcpy(psw, &psw_raw, sizeof(PSW));
+}
+
+static void set_key(unsigned char key)
+{
+  SET_KEY(key);
+}
 
 static void set_prev_r0(unsigned long long int reg)
 {
