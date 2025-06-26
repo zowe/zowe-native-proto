@@ -193,6 +193,13 @@ std::string &zut_trim(std::string &s, const char *t = " ");
 int zut_alloc_debug();
 
 /**
+ * @brief Get current PSW key
+ *
+ * @return unsigned char The current PSW key
+ */
+unsigned char zut_get_key();
+
+/**
  * @brief Default debug message function for zut_dump_storage
  *
  * @param message Message to be printed

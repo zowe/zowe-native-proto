@@ -1982,7 +1982,7 @@ int job_submit_common(const ParseResult &result, string jcl, string &jobid, stri
   if (only_jobid)
     cout << jobid << endl;
   else if (only_correlator)
-    cout << string(zjb.job_correlator, sizeof(zjb.job_correlator)) << endl;
+    cout << string(zjb.correlator, sizeof(zjb.correlator)) << endl;
   else
     cout << "Submitted " << identifier << ", " << jobid << endl;
 
@@ -2037,7 +2037,7 @@ int handle_job_list(const ParseResult &result)
         fields.push_back(it->retcode);
         fields.push_back(it->jobname);
         fields.push_back(it->status);
-        fields.push_back(it->job_correlator);
+        fields.push_back(it->correlator);
         cout << zut_format_as_csv(fields) << endl;
       }
       else
@@ -2143,7 +2143,7 @@ int handle_job_view_status(const ParseResult &result)
     fields.push_back(job.retcode);
     fields.push_back(job.jobname);
     fields.push_back(job.status);
-    fields.push_back(job.job_correlator);
+    fields.push_back(job.correlator);
     cout << zut_format_as_csv(fields) << endl;
   }
   else

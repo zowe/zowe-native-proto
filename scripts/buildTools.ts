@@ -435,9 +435,9 @@ async function test(connection: Client) {
     console.log("Testing native/c ...");
     const response = await runCommandInShell(
         connection,
-        `cd ${deployDirs.cTestDir} && _CEE_RUNOPTS="TRAP(ON,NOSPIE)" ./build-out/runner ${args[1] ?? ""} \n`,
+        `cd ${deployDirs.cTestDir} && _CEE_RUNOPTS="TRAP(ON,NOSPIE)" _BPXK_JOBLOG=STDERR ./build-out/runner ${args[1] ?? ""} \n`,
     );
-    DEBUG_MODE() && console.log(response);
+    console.log(response);
     console.log("Testing complete!");
 }
 

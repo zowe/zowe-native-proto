@@ -267,6 +267,20 @@ static void mode_nzero()
 #define SET_PREV_REG64(reg, offset)
 #endif
 
+#if defined(__IBM_METAL__)
+#define GET_KEY(key)                                 \
+  __asm(                                             \
+      "*                                         \n" \
+      " IPK (2)                                  \n" \
+      " STC  2,%0  Save                          \n" \
+      "*                                          "  \
+      : "=m"(key)                                    \
+      :                                              \
+      : "r2");
+#else
+#define GET_KEY(key)
+#endif
+
 static unsigned long long int get_r0()
 {
   unsigned long long int reg = 0;
@@ -354,6 +368,13 @@ static unsigned long long int get_prev_r2()
   unsigned long long int reg = 0;
   GET_PREV_REG64(reg, 40);
   return reg;
+}
+
+static unsigned char get_key()
+{
+  unsigned char key = {0};
+  GET_KEY(key);
+  return key;
 }
 
 static void set_prev_r0(unsigned long long int reg)
