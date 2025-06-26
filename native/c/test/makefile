@@ -104,7 +104,7 @@ ASM_FLAGS+=--noverbose
 .END
 
 
-all: clean build-out build-out/runner
+all: clean build-out build-out/ztest_runner
 
 
 #
