@@ -301,6 +301,10 @@ static int extract_text(unsigned int alet, unsigned char *offset, int len, char 
 
 int zcnm1get(ZCN *zcn, char *resp)
 {
+  PSW psw = {0};
+  get_psw(&psw);
+  int mode_switch = psw.p ? 1 : 0;
+
   CLEAR_ARS();
 
   MCSOPMSG_MODEL(dsa_mcsopmsg_model);
@@ -315,11 +319,13 @@ int zcnm1get(ZCN *zcn, char *resp)
   // while there are records
   while (0 == zcn->diag.service_rc)
   {
-    mode_sup();
+    if (mode_switch)
+      mode_sup();
     CLEAR_ARS();
     MCSOPMSG_GETMSG(zcn->id, area, alet, cart, zcn->diag.service_rc, zcn->diag.service_rsn, dsa_mcsopmsg_model);
     CLEAR_ARS();
-    mode_prob();
+    if (mode_switch)
+      mode_prob();
 
     strcpy(zcn->diag.service_name, "MCSOPMSG_GETMSG");
 
