@@ -14,6 +14,8 @@ import ssl
 import yaml
 import json
 import warnings
+import hashlib
+import time
 from flask import Flask, jsonify, request
 from zowe_apiml_onboarding_enabler_python.registration import PythonEnabler
 
@@ -181,7 +183,6 @@ def list_data_sets():
         return jsonify(response)
 
     except Exception as e:
-
         error_msg = str(e)
         return (
             jsonify(
@@ -261,7 +262,6 @@ def list_data_set_members(data_set_name):
         return jsonify(response)
 
     except Exception as e:
-
         error_msg = str(e)
         return (
             jsonify(
@@ -293,7 +293,6 @@ def read_data_set_or_member(data_set_name, member_name=None):
         volser: Volume serial (currently not implemented in C++ function)
     """
     try:
-
         encoding = request.args.get("encoding", "")
         return_etag = request.args.get("return-etag", "false").lower()
         response_format_bytes = request.args.get(
@@ -302,10 +301,8 @@ def read_data_set_or_member(data_set_name, member_name=None):
         volser = request.args.get("volser")
 
         if member_name:
-
             full_dsn = f"{data_set_name}({member_name})"
         else:
-
             full_dsn = data_set_name
 
         if not data_set_name:
@@ -326,14 +323,10 @@ def read_data_set_or_member(data_set_name, member_name=None):
             response["memberName"] = member_name
 
         if return_etag == "true":
-
-            import hashlib
-
             etag = hashlib.md5(content.encode()).hexdigest()
             response["etag"] = etag
 
         if response_format_bytes == "true":
-
             response["records"] = [ord(c) for c in content]
             response["format"] = "bytes"
         else:
@@ -345,7 +338,6 @@ def read_data_set_or_member(data_set_name, member_name=None):
         return jsonify(response)
 
     except Exception as e:
-
         error_msg = str(e)
         return (
             jsonify(
@@ -371,7 +363,6 @@ def list_uss_files():
         long: Show long format with detailed attributes (optional, default: false)
     """
     try:
-
         path = request.args.get("path")
         all_files = request.args.get("all", "false").lower()
         long_format = request.args.get("long", "false").lower()
@@ -393,9 +384,6 @@ def list_uss_files():
             )
 
         try:
-
-            import json
-
             parsed_output = json.loads(uss_output)
             if isinstance(parsed_output, list):
                 items = parsed_output
@@ -428,7 +416,6 @@ def list_uss_files():
         return jsonify(response)
 
     except Exception as e:
-
         error_msg = str(e)
         return (
             jsonify(
@@ -457,7 +444,6 @@ def read_uss_file(file_path):
         response-format-bytes: Return as bytes format (optional, default: false)
     """
     try:
-
         encoding = request.args.get("encoding", "")
         return_etag = request.args.get("return-etag", "false").lower()
         response_format_bytes = request.args.get(
@@ -475,10 +461,6 @@ def read_uss_file(file_path):
         response = {"records": content, "filePath": file_path}
 
         if return_etag == "true":
-
-            import hashlib
-            import time
-
             etag_content = f"{file_path}:{len(content)}:{int(time.time())}"
             etag = hashlib.md5(etag_content.encode()).hexdigest()
             response["etag"] = etag
@@ -493,7 +475,6 @@ def read_uss_file(file_path):
         return jsonify(response)
 
     except Exception as e:
-
         error_msg = str(e)
         return (
             jsonify(
@@ -521,7 +502,6 @@ def get_job_status_by_name_and_id(jobname, jobid):
         step-data: Include step data (optional, default: N)
     """
     try:
-
         step_data = request.args.get("step-data", "N").upper()
 
         if not jobname or not jobid:
@@ -557,7 +537,6 @@ def get_job_status_by_name_and_id(jobname, jobid):
         return jsonify(response)
 
     except Exception as e:
-
         error_msg = str(e)
         return (
             jsonify(
@@ -584,7 +563,6 @@ def get_job_status_by_correlator(correlator):
         step-data: Include step data (optional, default: N)
     """
     try:
-
         step_data = request.args.get("step-data", "N").upper()
 
         if not correlator:
@@ -619,7 +597,6 @@ def get_job_status_by_correlator(correlator):
         return jsonify(response)
 
     except Exception as e:
-
         error_msg = str(e)
         return (
             jsonify(
@@ -647,7 +624,6 @@ def list_jobs():
         response-format-csv: Return CSV format (optional, default: false)
     """
     try:
-
         owner = request.args.get("owner", "*")
         prefix = request.args.get("prefix", "")
         max_entries = request.args.get("max-entries")
@@ -666,7 +642,6 @@ def list_jobs():
 
         for job in jobs:
             if response_format_csv == "true":
-
                 job_info = {
                     "jobid": job.jobid if hasattr(job, "jobid") else "",
                     "retcode": job.retcode if hasattr(job, "retcode") else "",
@@ -677,7 +652,6 @@ def list_jobs():
                     ),
                 }
             else:
-
                 job_info = {
                     "jobname": job.jobname if hasattr(job, "jobname") else "",
                     "jobid": job.jobid if hasattr(job, "jobid") else "",
@@ -722,7 +696,6 @@ def list_jobs():
         return jsonify(response)
 
     except Exception as e:
-
         error_msg = str(e)
         return (
             jsonify(
@@ -752,7 +725,6 @@ def list_job_files_by_name_and_id(jobname, jobid):
         response-format-csv: Return CSV format (optional, default: false)
     """
     try:
-
         max_entries = request.args.get("max-entries")
         warn = request.args.get("warn", "true").lower()
         response_format_csv = request.args.get("response-format-csv", "false").lower()
@@ -767,7 +739,6 @@ def list_job_files_by_name_and_id(jobname, jobid):
 
         for dd in spool_files:
             if response_format_csv == "true":
-
                 file_info = {
                     "ddn": dd.ddn if hasattr(dd, "ddn") else "",
                     "dsn": dd.dsn if hasattr(dd, "dsn") else "",
@@ -776,7 +747,6 @@ def list_job_files_by_name_and_id(jobname, jobid):
                     "procstep": dd.procstep if hasattr(dd, "procstep") else "",
                 }
             else:
-
                 file_info = {
                     "ddname": dd.ddn if hasattr(dd, "ddn") else "",
                     "dsname": dd.dsn if hasattr(dd, "dsn") else "",
@@ -809,14 +779,11 @@ def list_job_files_by_name_and_id(jobname, jobid):
 
         if response_format_csv == "true":
             response["format"] = "csv"
-
         if warnings_list and warn == "true":
             response["warnings"] = warnings_list
-
         return jsonify(response)
 
     except Exception as e:
-
         error_msg = str(e)
         return (
             jsonify(
@@ -859,7 +826,6 @@ def list_job_files_by_correlator(correlator):
 
         for dd in spool_files:
             if response_format_csv == "true":
-
                 file_info = {
                     "ddn": dd.ddn if hasattr(dd, "ddn") else "",
                     "dsn": dd.dsn if hasattr(dd, "dsn") else "",
@@ -868,7 +834,6 @@ def list_job_files_by_correlator(correlator):
                     "procstep": dd.procstep if hasattr(dd, "procstep") else "",
                 }
             else:
-
                 file_info = {
                     "ddname": dd.ddn if hasattr(dd, "ddn") else "",
                     "dsname": dd.dsn if hasattr(dd, "dsn") else "",
@@ -879,7 +844,6 @@ def list_job_files_by_correlator(correlator):
                     "jobid": dd.jobid if hasattr(dd, "jobid") else "",
                     "uri": f"https://{request.host}/zosmf/restjobs/jobs/{correlator}/files/{dd.key if hasattr(dd, 'key') else 0}/records",
                 }
-
             results.append(file_info)
 
         if max_entries and max_entries.isdigit():
@@ -907,7 +871,6 @@ def list_job_files_by_correlator(correlator):
         return jsonify(response)
 
     except Exception as e:
-
         error_msg = str(e)
         return (
             jsonify(
@@ -939,7 +902,6 @@ def read_job_file_by_name_and_id(jobname, jobid, file_id):
         response-format-bytes: Return as bytes format (optional, default: false)
     """
     try:
-
         encoding = request.args.get("encoding", "")
         response_format_bytes = request.args.get(
             "response-format-bytes", "false"
@@ -972,7 +934,6 @@ def read_job_file_by_name_and_id(jobname, jobid, file_id):
             ]
 
         if response_format_bytes == "true":
-
             response["records"] = [ord(c) for c in content]
             response["format"] = "bytes"
         else:
@@ -981,7 +942,6 @@ def read_job_file_by_name_and_id(jobname, jobid, file_id):
         return jsonify(response)
 
     except Exception as e:
-
         error_msg = str(e)
         return (
             jsonify(
@@ -1010,7 +970,6 @@ def read_job_file_by_correlator(correlator, file_id):
         response-format-bytes: Return as bytes format (optional, default: false)
     """
     try:
-
         encoding = request.args.get("encoding", "")
         response_format_bytes = request.args.get(
             "response-format-bytes", "false"
@@ -1039,16 +998,13 @@ def read_job_file_by_correlator(correlator, file_id):
             ]
 
         if response_format_bytes == "true":
-
             response["records"] = [ord(c) for c in content]
             response["format"] = "bytes"
         else:
             response["format"] = "text"
-
         return jsonify(response)
 
     except Exception as e:
-
         error_msg = str(e)
         return (
             jsonify(
@@ -1077,7 +1033,6 @@ def read_job_jcl_by_name_and_id(jobname, jobid):
         response-format-bytes: Return as bytes format (optional, default: false)
     """
     try:
-
         encoding = request.args.get("encoding", "")
         response_format_bytes = request.args.get(
             "response-format-bytes", "false"
@@ -1102,7 +1057,6 @@ def read_job_jcl_by_name_and_id(jobname, jobid):
             ]
 
         if response_format_bytes == "true":
-
             response["records"] = [ord(c) for c in jcl_content]
             response["format"] = "bytes"
         else:
@@ -1111,7 +1065,6 @@ def read_job_jcl_by_name_and_id(jobname, jobid):
         return jsonify(response)
 
     except Exception as e:
-
         error_msg = str(e)
         return (
             jsonify(
@@ -1139,7 +1092,6 @@ def read_job_jcl_by_correlator(correlator):
         response-format-bytes: Return as bytes format (optional, default: false)
     """
     try:
-
         encoding = request.args.get("encoding", "")
         response_format_bytes = request.args.get(
             "response-format-bytes", "false"
@@ -1149,7 +1101,6 @@ def read_job_jcl_by_correlator(correlator):
             return jsonify({"error": "correlator is required"}), 400
 
         jcl_content = zjb.get_job_jcl(correlator)
-
         response = {
             "records": jcl_content,
             "job-correlator": correlator,
@@ -1163,7 +1114,6 @@ def read_job_jcl_by_correlator(correlator):
             ]
 
         if response_format_bytes == "true":
-
             response["records"] = [ord(c) for c in jcl_content]
             response["format"] = "bytes"
         else:
@@ -1172,7 +1122,6 @@ def read_job_jcl_by_correlator(correlator):
         return jsonify(response)
 
     except Exception as e:
-
         error_msg = str(e)
         return (
             jsonify(
