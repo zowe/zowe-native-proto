@@ -1,7 +1,7 @@
 /**
- * This program and the accompanying materials are made available under the
- * terms of the Eclipse Public License v2.0 which accompanies this distribution,
- * and is available at https://www.eclipse.org/legal/epl-v20.html
+ * This program and the accompanying materials are made available under the terms of the
+ * Eclipse Public License v2.0 which accompanies this distribution, and is available at
+ * https://www.eclipse.org/legal/epl-v20.html
  *
  * SPDX-License-Identifier: EPL-2.0
  *
@@ -9,31 +9,31 @@
  *
  */
 
-#include "zjb.hpp"
+#include <iostream>
+#include <sstream>
+#include <string>
+#include <fstream>
+#include <cstring>
+#include <vector>
+#include <iomanip>
+#include <stdio.h>
+#include <istream>
+#include <ctype.h>
+#include <algorithm>
+#include <unistd.h>
 #include "iazbtokp.h"
 #include "iefzb4d0.h"
 #include "iefzb4d2.h"
-#include "zds.hpp"
-#include "zdstype.h"
-#include "zdyn.h"
-#include "zjbm.h"
-#include "zjbtype.h"
 #include "zmetal.h"
+#include "zds.hpp"
+#include "zjb.hpp"
+#include "zjbm.h"
 #include "zssitype.h"
 #include "zut.hpp"
 #include "zutm.h"
-#include <algorithm>
-#include <cstring>
-#include <ctype.h>
-#include <fstream>
-#include <iomanip>
-#include <iostream>
-#include <istream>
-#include <sstream>
-#include <stdio.h>
-#include <string>
-#include <unistd.h>
-#include <vector>
+#include "zjbtype.h"
+#include "zdstype.h"
+#include "zdyn.h"
 
 typedef struct iazbtokp IAZBTOKP;
 
@@ -41,16 +41,12 @@ void zjb_build_job_response(ZJB_JOB_INFO *PTR64, int, std::vector<ZJob> &);
 
 using namespace std;
 
-#define BTOKLEN \
-  (293 - 254) // 293 is the full length, minus the max optional buffer area for
-              // logs (less 254)
+#define BTOKLEN (293 - 254) // 293 is the full length, minus the max optional buffer area for logs (less 254)
 
-// NOTE(Kelosky): see struct __S99struc via 'showinc' compiler option in
-// <stdio.h> NOTE(Kelosky): In the future, to allocate the logical SYSLOG
-// concatenation for a system specify the following data set name (in DALDSNAM).
+// NOTE(Kelosky): see struct __S99struc via 'showinc' compiler option in <stdio.h>
+// NOTE(Kelosky): In the future, to allocate the logical SYSLOG concatenation for a system specify the following data set name (in DALDSNAM).
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=allocation-specifying-data-set-name-daldsnam
-int zjb_read_jobs_output_by_key(ZJB *zjb, string jobid, int key,
-                                string &response)
+int zjb_read_jobs_output_by_key(ZJB *zjb, string jobid, int key, string &response)
 {
   int rc = 0;
   string job_dsn;
@@ -86,9 +82,7 @@ int zjb_get_job_dsn_by_key(ZJB *zjb, string jobid, int key, string &job_dsn)
 
   if (0 != rc)
   {
-    zjb->diag.e_msg_len = sprintf(
-        zjb->diag.e_msg, "Could not locate data set key '%d' on job '%s'", key,
-        jobid.c_str());
+    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "Could not locate data set key '%d' on job '%s'", key, jobid.c_str());
     zjb->diag.detail_rc = ZJB_RTNCD_JOB_NOT_FOUND;
     return RTNCD_FAILURE;
   }
@@ -123,9 +117,7 @@ int zjb_read_job_jcl(ZJB *zjb, string jobid, string &response)
 
   if (args.size() < MIN_SIZE)
   {
-    zjb->diag.e_msg_len =
-        sprintf(zjb->diag.e_msg, "Unexpected data set name '%s' for jobid %s",
-                list[0].dsn.c_str(), jobid.c_str());
+    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "Unexpected data set name '%s' for jobid %s", list[0].dsn.c_str(), jobid.c_str());
     zjb->diag.detail_rc = ZJB_RTNCD_UNEXPECTED_ERROR;
     return RTNCD_FAILURE;
   }
@@ -144,24 +136,16 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, string jobdsn, string &response)
   ZDS zds = {0};
 
   // calculate total size needed, obtain, & clear
-  int total_size_needed = sizeof(IAZBTOKP) +
-                          (sizeof(S99TUNIT_X) * NUM_TEXT_UNITS) +
-                          (sizeof(S99TUPL) * NUM_TEXT_UNITS) +
-                          sizeof(__S99parms) + sizeof(__S99rbx_t);
+  int total_size_needed = sizeof(IAZBTOKP) + (sizeof(S99TUNIT_X) * NUM_TEXT_UNITS) + (sizeof(S99TUPL) * NUM_TEXT_UNITS) + sizeof(__S99parms) + sizeof(__S99rbx_t);
   unsigned char *parms = (unsigned char *)__malloc31(total_size_needed);
   memset(parms, 0x00, total_size_needed);
 
   // carve up storage to needed structs
   IAZBTOKP *PTR32 iazbtokp = (IAZBTOKP * PTR32) parms;
   S99TUNIT_X *PTR32 s99tunit_x = (S99TUNIT_X * PTR32)(parms + sizeof(IAZBTOKP));
-  S99TUPL *PTR32 s99tupl = (S99TUPL * PTR32)(
-      parms + sizeof(IAZBTOKP) + (sizeof(S99TUNIT_X) * NUM_TEXT_UNITS));
-  __S99parms *PTR32 s99parms = (__S99parms * PTR32)(
-      parms + sizeof(IAZBTOKP) + (sizeof(S99TUNIT_X) * NUM_TEXT_UNITS) +
-      (sizeof(S99TUPL) * NUM_TEXT_UNITS));
-  __S99rbx_t *PTR32 s99parmsx = (__S99rbx_t * PTR32)(
-      parms + sizeof(IAZBTOKP) + (sizeof(S99TUNIT_X) * NUM_TEXT_UNITS) +
-      (sizeof(S99TUPL) * NUM_TEXT_UNITS) + sizeof(__S99parms));
+  S99TUPL *PTR32 s99tupl = (S99TUPL * PTR32)(parms + sizeof(IAZBTOKP) + (sizeof(S99TUNIT_X) * NUM_TEXT_UNITS));
+  __S99parms *PTR32 s99parms = (__S99parms * PTR32)(parms + sizeof(IAZBTOKP) + (sizeof(S99TUNIT_X) * NUM_TEXT_UNITS) + (sizeof(S99TUPL) * NUM_TEXT_UNITS));
+  __S99rbx_t *PTR32 s99parmsx = (__S99rbx_t * PTR32)(parms + sizeof(IAZBTOKP) + (sizeof(S99TUNIT_X) * NUM_TEXT_UNITS) + (sizeof(S99TUPL) * NUM_TEXT_UNITS) + sizeof(__S99parms));
 
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=allocation-building-browse-token-dalbrtkn
   short int len = sizeof(iazbtokp->btokid);
@@ -210,16 +194,12 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, string jobdsn, string &response)
 
   i++;
   dynkey = dalbrtkn;
-  numparms =
-      7; // "# must be 7" //
-         // https://www.ibm.com/docs/en/zos/3.1.0?topic=njdaf-spool-data-set-browse-token-specification-key-006e
+  numparms = 7; // "# must be 7" // https://www.ibm.com/docs/en/zos/3.1.0?topic=njdaf-spool-data-set-browse-token-specification-key-006e
   plen = BTOKLEN;
   memcpy(s99tunit_x[i].s99tunit.s99tukey, &dynkey, sizeof(dynkey));
   memcpy(s99tunit_x[i].s99tunit.s99tunum, &numparms, sizeof(numparms));
   memcpy(s99tunit_x[i].s99tunit.s99tulng, &plen, sizeof(plen)); //
-  memcpy(s99tunit_x[i].s99tunit.s99tulng, iazbtokp,
-         BTOKLEN); // NOTE(Kelosky): not using s99tupar for data, iazbtokp
-                   // starts with half word of the "FIRST" parm.
+  memcpy(s99tunit_x[i].s99tunit.s99tulng, iazbtokp, BTOKLEN);   // NOTE(Kelosky): not using s99tupar for data, iazbtokp starts with half word of the "FIRST" parm.
 
   i++;
   dynkey = daluassr;
@@ -249,8 +229,7 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, string jobdsn, string &response)
 
   memcpy(s99parmsx->__S99EID, "S99RBX", sizeof(s99parmsx->__S99EID));
   s99parmsx->__S99EVER = s99rbxvr;
-  s99parmsx->__S99EOPTS =
-      s99parmsx->__S99EOPTS | s99ermsg; // IEFDB476 can free message blocks
+  s99parmsx->__S99EOPTS = s99parmsx->__S99EOPTS | s99ermsg; // IEFDB476 can free message blocks
   s99parmsx->__S99ESUBP = 0;
   s99parmsx->__S99EMGSV = s99parmsx->__S99EMGSV | s99xinfo;
 
@@ -260,8 +239,7 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, string jobdsn, string &response)
   s99parms->__S99VERB = s99vrbal; // allocation
   s99parms->__S99FLAG1 = 0x4000;  // s99nocnv;
   s99parms->__S99TXTPP = s99tupl;
-  // s99parms->__S99S99X = s99parmsx; // TODO(Kelosky): reenable when we look at
-  // s99parmsx->__S99ENMSG and free
+  // s99parms->__S99S99X = s99parmsx; // TODO(Kelosky): reenable when we look at s99parmsx->__S99ENMSG and free
 
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=list-coding-dynamic-allocation-request
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=guide-dynamic-allocation
@@ -272,11 +250,7 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, string jobdsn, string &response)
   {
     strcpy(zjb->diag.service_name, "svc99");
     zjb->diag.service_rc = rc;
-    zjb->diag.e_msg_len =
-        sprintf(zjb->diag.e_msg,
-                "Could not allocate job spool file '%s', rc: '%d' s99error: "
-                "'%d' s99info: '%d'",
-                jobdsn.c_str(), rc, s99parms->__S99ERROR, s99parms->__S99INFO);
+    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "Could not allocate job spool file '%s', rc: '%d' s99error: '%d' s99info: '%d'", jobdsn.c_str(), rc, s99parms->__S99ERROR, s99parms->__S99INFO);
     zjb->diag.detail_rc = ZJB_RTNCD_SERVICE_FAILURE;
     free(parms);
     return RTNCD_FAILURE;
@@ -290,9 +264,7 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, string jobdsn, string &response)
   string ddname = string(cddname);
 
   zds.encoding_opts.data_type = zjb->encoding_opts.data_type;
-  memcpy((void *)&zds.encoding_opts.codepage,
-         (const void *)&zjb->encoding_opts.codepage,
-         sizeof(zjb->encoding_opts.codepage));
+  memcpy((void *)&zds.encoding_opts.codepage, (const void *)&zjb->encoding_opts.codepage, sizeof(zjb->encoding_opts.codepage));
 
   rc = zds_read_from_dd(&zds, ddname, response);
 
@@ -314,8 +286,7 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, string jobdsn, string &response)
   {
     strcpy(zjb->diag.service_name, "dynfree");
     zjb->diag.service_rc = rc;
-    zjb->diag.e_msg_len =
-        sprintf(zjb->diag.e_msg, "dynfree failed with %d", rc);
+    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "dynfree failed with %d", rc);
     zjb->diag.detail_rc = ZJB_RTNCD_SERVICE_FAILURE;
     return RTNCD_FAILURE;
   }
@@ -405,8 +376,7 @@ int zjb_submit(ZJB *zjb, string contents, string &jobid)
   {
     strcpy(zjb->diag.service_name, "dyninit");
     zjb->diag.service_rc = rc;
-    zjb->diag.e_msg_len =
-        sprintf(zjb->diag.e_msg, "dyninit failed with %d", rc);
+    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "dyninit failed with %d", rc);
     zjb->diag.detail_rc = ZJB_RTNCD_SERVICE_FAILURE;
     return RTNCD_FAILURE;
   }
@@ -414,11 +384,7 @@ int zjb_submit(ZJB *zjb, string contents, string &jobid)
   string ddname = "????????"; // system generated DD name
   ip.__ddname = (char *)ddname.c_str();
   string intrdr = "INTRDR  ";
-  ip.__sysoutname =
-      (char *)intrdr
-          .c_str(); // https://www.ibm.com/docs/en/zos/3.1.0?topic=control-destination-internal-reader
-                    // &&
-                    // https://www.ibm.com/docs/en/zos/3.1.0?topic=programming-internal-reader-facility
+  ip.__sysoutname = (char *)intrdr.c_str(); // https://www.ibm.com/docs/en/zos/3.1.0?topic=control-destination-internal-reader && https://www.ibm.com/docs/en/zos/3.1.0?topic=programming-internal-reader-facility
   ip.__lrecl = 80;
   ip.__blksize = 80;
   ip.__sysout = __DEF_CLASS;
@@ -430,8 +396,7 @@ int zjb_submit(ZJB *zjb, string contents, string &jobid)
   {
     strcpy(zjb->diag.service_name, "dynalloc");
     zjb->diag.service_rc = rc;
-    zjb->diag.e_msg_len =
-        sprintf(zjb->diag.e_msg, "dynalloc failed with %d", rc);
+    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "dynalloc failed with %d", rc);
     zjb->diag.detail_rc = ZJB_RTNCD_SERVICE_FAILURE;
     return RTNCD_FAILURE;
   }
@@ -465,8 +430,8 @@ int zjb_submit(ZJB *zjb, string contents, string &jobid)
     return RTNCD_FAILURE;
   }
 
-  char c_correlator[64 + 1] = {0};
-  rc = ZJBSYMB(zjb, "SYS_CORR_LASTJOB", c_correlator);
+  char ccorrelator[64 + 1] = {0};
+  rc = ZJBSYMB(zjb, "SYS_CORR_LASTJOB", ccorrelator);
 
   if (0 != rc)
   {
@@ -474,15 +439,14 @@ int zjb_submit(ZJB *zjb, string contents, string &jobid)
     return rc;
   }
 
-  memcpy(zjb->correlator, c_correlator, sizeof(zjb->correlator));
+  memcpy(zjb->correlator, ccorrelator, sizeof(zjb->correlator));
 
   rc = dynfree(&ip);
   if (0 != rc)
   {
     strcpy(zjb->diag.service_name, "dynfree");
     zjb->diag.service_rc = rc;
-    zjb->diag.e_msg_len =
-        sprintf(zjb->diag.e_msg, "dynfree failed with %d", rc);
+    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "dynfree failed with %d", rc);
     zjb->diag.detail_rc = ZJB_RTNCD_SERVICE_FAILURE;
     return RTNCD_FAILURE;
   }
@@ -512,10 +476,8 @@ int zjb_list_dds(ZJB *zjb, string jobid, vector<ZJobDD> &jobDDs)
     return rc;
   }
 
-  // NOTE(Kelosky): if we didn't get any errors and we have no entries, we will
-  // look up the job status and see if it's "INPUT".  In this case, the SYSOUT
-  // data sets may not be vieawable via the SSI API.  So, we'll attempt to find
-  // the JESMSGLG and JESJCL data sets as documented here:
+  // NOTE(Kelosky): if we didn't get any errors and we have no entries, we will look up the job status and see if it's "INPUT".  In this case,
+  // the SYSOUT data sets may not be vieawable via the SSI API.  So, we'll attempt to find the JESMSGLG and JESJCL data sets as documented here:
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=allocation-specifying-data-set-name-daldsnam
   if (0 == entries)
   {
@@ -528,21 +490,17 @@ int zjb_list_dds(ZJB *zjb, string jobid, vector<ZJobDD> &jobDDs)
         ZJobDD jesmsglg = {0};
         jesmsglg.jobid = job.jobid;
         jesmsglg.ddn = "JESMSGLG";
-        jesmsglg.dsn = job.owner + '.' + job.jobname + '.' + job.jobid + '.' +
-                       jesmsglg.ddn;
+        jesmsglg.dsn = job.owner + '.' + job.jobname + '.' + job.jobid + '.' + jesmsglg.ddn;
 
-// NOTE(Kelosky): these keys are not documented to indiciate whether they are
-// always set to these exact values.  However, since we are handling this as a
-// special case, we will match this number that we set and reference by the DSN
-// without the actual keys.
+// NOTE(Kelosky): these keys are not documented to indiciate whether they are always set to these exact values.  However,
+// since we are handling this as a special case, we will match this number that we set and reference by the DSN without the actual keys.
 #define JESMSGLG_KEY 2
         jesmsglg.key = JESMSGLG_KEY;
         jobDDs.push_back(jesmsglg);
         ZJobDD jesjcl = {0};
         jesjcl.jobid = job.jobid;
         jesjcl.ddn = "JESJCL";
-        jesjcl.dsn =
-            job.owner + '.' + job.jobname + '.' + job.jobid + '.' + jesjcl.ddn;
+        jesjcl.dsn = job.owner + '.' + job.jobname + '.' + job.jobid + '.' + jesjcl.ddn;
 #define JESJCL_KEY 3
         jesjcl.key = JESJCL_KEY;
         jobDDs.push_back(jesjcl);
@@ -552,8 +510,7 @@ int zjb_list_dds(ZJB *zjb, string jobid, vector<ZJobDD> &jobDDs)
     }
 
     ZUTMFR64(sysoutInfo);
-    zjb->diag.e_msg_len =
-        sprintf(zjb->diag.e_msg, "no output DDs found for '%s'", jobid.c_str());
+    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "no output DDs found for '%s'", jobid.c_str());
     zjb->diag.detail_rc = ZJB_RTNCD_VERBOSE_INFO_NOT_FOUND;
     return RTNCD_WARNING;
   }
@@ -567,14 +524,10 @@ int zjb_list_dds(ZJB *zjb, string jobid, vector<ZJobDD> &jobDDs)
     char temppn[9] = {0};
     char tempDSN[45] = {0};
 
-    strncpy(tempDDn, (char *)sysoutInfoNext[i].stvsddnd,
-            sizeof(sysoutInfo->stvsddnd));
-    strncpy(tempsn, (char *)sysoutInfoNext[i].stvsstpd,
-            sizeof(sysoutInfo->stvsstpd));
-    strncpy(temppn, (char *)sysoutInfoNext[i].stvsprcd,
-            sizeof(sysoutInfo->stvsprcd));
-    strncpy(tempDSN, (char *)sysoutInfoNext[i].stvsdsn,
-            sizeof(sysoutInfo->stvsdsn));
+    strncpy(tempDDn, (char *)sysoutInfoNext[i].stvsddnd, sizeof(sysoutInfo->stvsddnd));
+    strncpy(tempsn, (char *)sysoutInfoNext[i].stvsstpd, sizeof(sysoutInfo->stvsstpd));
+    strncpy(temppn, (char *)sysoutInfoNext[i].stvsprcd, sizeof(sysoutInfo->stvsprcd));
+    strncpy(tempDSN, (char *)sysoutInfoNext[i].stvsdsn, sizeof(sysoutInfo->stvsdsn));
 
     string ddn(tempDDn);
     string stepname(tempsn);
@@ -622,20 +575,8 @@ int zjb_view(ZJB *zjb, string jobid, ZJob &job)
 
   if (0 == entries)
   {
-    if (zjb->jobid[0] != 0x00)
-    {
-      zjb->diag.detail_rc = ZJB_RTNCD_JOB_NOT_FOUND;
-      zjb->diag.e_msg_len = sprintf(
-          zjb->diag.e_msg, "No jobs found matching jobid '%.8s'", zjb->jobid);
-    }
-    else
-    {
-      zjb->diag.detail_rc = ZJB_RTNCD_CORRELATOR_NOT_FOUND;
-      zjb->diag.e_msg_len =
-          sprintf(zjb->diag.e_msg, "No jobs found matching correlator '%.64s'",
-                  zjb->correlator);
-    }
-
+    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "Could not locate job with id '%s'", jobid.c_str());
+    zjb->diag.detail_rc = ZJB_RTNCD_JOB_NOT_FOUND;
     return RTNCD_FAILURE;
   }
 
@@ -654,8 +595,7 @@ int zjb_list_by_owner(ZJB *zjb, string owner_name, vector<ZJob> &jobs)
   return zjb_list_by_owner(zjb, owner_name, "", jobs);
 }
 
-int zjb_list_by_owner(ZJB *zjb, string owner_name, string prefix_name,
-                      vector<ZJob> &jobs)
+int zjb_list_by_owner(ZJB *zjb, string owner_name, string prefix_name, vector<ZJob> &jobs)
 {
   int rc = 0;
   ZJB_JOB_INFO *PTR64 job_info = nullptr;
@@ -672,10 +612,8 @@ int zjb_list_by_owner(ZJB *zjb, string owner_name, string prefix_name,
   if (0 == zjb->jobs_max)
     zjb->jobs_max = ZJB_DEFAULT_MAX_JOBS;
 
-  zut_uppercase_pad_truncate(zjb->owner_name, owner_name,
-                             sizeof(zjb->owner_name));
-  zut_uppercase_pad_truncate(zjb->prefix_name, prefix_name,
-                             sizeof(zjb->prefix_name));
+  zut_uppercase_pad_truncate(zjb->owner_name, owner_name, sizeof(zjb->owner_name));
+  zut_uppercase_pad_truncate(zjb->prefix_name, prefix_name, sizeof(zjb->prefix_name));
 
   rc = ZJBMLIST(zjb, &job_info, &entries);
   if (RTNCD_SUCCESS != rc && RTNCD_WARNING != rc)
@@ -690,8 +628,7 @@ int zjb_list_by_owner(ZJB *zjb, string owner_name, string prefix_name,
   return rc;
 }
 
-void zjb_build_job_response(ZJB_JOB_INFO *PTR64 job_info, int entries,
-                            vector<ZJob> &jobs)
+void zjb_build_job_response(ZJB_JOB_INFO *PTR64 job_info, int entries, vector<ZJob> &jobs)
 {
   ZJB_JOB_INFO *PTR64 job_info_next = job_info;
 
@@ -702,14 +639,10 @@ void zjb_build_job_response(ZJB_JOB_INFO *PTR64 job_info, int entries,
     char temp_job_owner[9] = {0};
     char temp_correlator[65] = {0};
 
-    strncpy(temp_job_name, (char *)job_info_next[i].statjqtr.sttrname,
-            sizeof(job_info->statjqtr.sttrname));
-    strncpy(temp_jobid, (char *)job_info_next[i].statjqtr.sttrjid,
-            sizeof(job_info->statjqtr.sttrjid));
-    strncpy(temp_job_owner, (char *)job_info_next[i].statjqtr.sttrouid,
-            sizeof(job_info->statjqtr.sttrouid));
-    strncpy(temp_correlator, (char *)job_info_next[i].statjqtr.sttrjcor,
-            sizeof(job_info->statjqtr.sttrjcor));
+    strncpy(temp_job_name, (char *)job_info_next[i].statjqtr.sttrname, sizeof(job_info->statjqtr.sttrname));
+    strncpy(temp_jobid, (char *)job_info_next[i].statjqtr.sttrjid, sizeof(job_info->statjqtr.sttrjid));
+    strncpy(temp_job_owner, (char *)job_info_next[i].statjqtr.sttrouid, sizeof(job_info->statjqtr.sttrouid));
+    strncpy(temp_correlator, (char *)job_info_next[i].statjqtr.sttrjcor, sizeof(job_info->statjqtr.sttrjcor));
 
     ZJob zjob = {0};
 
