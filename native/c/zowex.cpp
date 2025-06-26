@@ -32,7 +32,9 @@
 #include "zuttype.h"
 
 #ifndef TO_STRING
-#define TO_STRING(x) static_cast<std::ostringstream &>((std::ostringstream() << std::dec << x)).str()
+#define TO_STRING(x) static_cast<std::ostringstream &>(           \
+                         (std::ostringstream() << std::dec << x)) \
+                         .str()
 #endif
 
 using namespace parser;
@@ -97,8 +99,10 @@ int main(int argc, char *argv[])
   ArgumentParser arg_parser(argv[0], "Zowe Native Protocol CLI");
 
   // Add interactive mode flag to root command
-  arg_parser.get_root_command().add_keyword_arg("interactive", make_aliases("--interactive", "--it"),
-                                                "interactive (REPL) mode", ArgType_Flag, false, ArgValue(false));
+  arg_parser.get_root_command().add_keyword_arg("interactive",
+                                                make_aliases("--interactive", "--it"),
+                                                "interactive (REPL) mode", ArgType_Flag, false,
+                                                ArgValue(false));
 
   // Console command group
   auto console_cmd = command_ptr(new Command("console", "z/OS console operations"));
@@ -106,10 +110,16 @@ int main(int argc, char *argv[])
 
   // Console Issue subcommand
   auto issue_cmd = command_ptr(new Command("issue", "issue a console command"));
-  issue_cmd->add_keyword_arg("console-name", make_aliases("--cn", "--console-name"), "extended console name",
-                             ArgType_Single, false, ArgValue(std::string("zowex")));
-  issue_cmd->add_keyword_arg("wait", make_aliases("--wait"), "wait for responses", ArgType_Flag, false, ArgValue(true));
-  issue_cmd->add_positional_arg("command", "command to run, e.g. 'D IPLINFO'", ArgType_Single, true);
+  issue_cmd->add_keyword_arg("console-name",
+                             make_aliases("--cn", "--console-name"),
+                             "extended console name", ArgType_Single, false,
+                             ArgValue(std::string("zowex")));
+  issue_cmd->add_keyword_arg("wait",
+                             make_aliases("--wait"),
+                             "wait for responses", ArgType_Flag, false,
+                             ArgValue(true));
+  issue_cmd->add_positional_arg("command", "command to run, e.g. 'D IPLINFO'",
+                                ArgType_Single, true);
   issue_cmd->set_handler(handle_console_issue);
 
   console_cmd->add_command(issue_cmd);
@@ -166,28 +176,23 @@ int main(int argc, char *argv[])
   data_set_cmd->add_command(ds_create_cmd);
 
   // Create-vb subcommand
-  auto ds_create_vb_cmd =
-      command_ptr(new Command("create-vb", "create VB data set using defaults: DSORG=PO, RECFM=VB, LRECL=255"));
+  auto ds_create_vb_cmd = command_ptr(new Command("create-vb", "create VB data set using defaults: DSORG=PO, RECFM=VB, LRECL=255"));
   ds_create_vb_cmd->add_alias("cre-vb");
   ds_create_vb_cmd->add_positional_arg("dsn", "data set name, optionally with member specified", ArgType_Single, true);
   ds_create_vb_cmd->set_handler(handle_data_set_create_vb);
   data_set_cmd->add_command(ds_create_vb_cmd);
 
   // Create-adata subcommand
-  auto ds_create_adata_cmd =
-      command_ptr(new Command("create-adata", "create VB data set using defaults: DSORG=PO, RECFM=VB, LRECL=32756"));
+  auto ds_create_adata_cmd = command_ptr(new Command("create-adata", "create VB data set using defaults: DSORG=PO, RECFM=VB, LRECL=32756"));
   ds_create_adata_cmd->add_alias("cre-a");
-  ds_create_adata_cmd->add_positional_arg("dsn", "data set name, optionally with member specified", ArgType_Single,
-                                          true);
+  ds_create_adata_cmd->add_positional_arg("dsn", "data set name, optionally with member specified", ArgType_Single, true);
   ds_create_adata_cmd->set_handler(handle_data_set_create_adata);
   data_set_cmd->add_command(ds_create_adata_cmd);
 
   // Create-loadlib subcommand
-  auto ds_create_loadlib_cmd =
-      command_ptr(new Command("create-loadlib", "create loadlib data set using defaults: DSORG=PO, RECFM=U, LRECL=0"));
+  auto ds_create_loadlib_cmd = command_ptr(new Command("create-loadlib", "create loadlib data set using defaults: DSORG=PO, RECFM=U, LRECL=0"));
   ds_create_loadlib_cmd->add_alias("cre-u");
-  ds_create_loadlib_cmd->add_positional_arg("dsn", "data set name, optionally with member specified", ArgType_Single,
-                                            true);
+  ds_create_loadlib_cmd->add_positional_arg("dsn", "data set name, optionally with member specified", ArgType_Single, true);
   ds_create_loadlib_cmd->set_handler(handle_data_set_create_loadlib);
   data_set_cmd->add_command(ds_create_loadlib_cmd);
 
@@ -202,13 +207,9 @@ int main(int argc, char *argv[])
   auto ds_view_cmd = command_ptr(new Command("view", "view data set"));
   ds_view_cmd->add_positional_arg("dsn", "data set name, optionally with member specified", ArgType_Single, true);
   ds_view_cmd->add_keyword_arg("encoding", encoding_option, "return contents in given encoding", ArgType_Single, false);
-  ds_view_cmd->add_keyword_arg("response-format-bytes", response_format_bytes_option,
-                               "returns the response as raw bytes", ArgType_Flag, false, ArgValue(false));
-  ds_view_cmd->add_keyword_arg("return-etag", return_etag_option,
-                               "Display the e-tag for a read response in addition to data", ArgType_Flag, false,
-                               ArgValue(false));
-  ds_view_cmd->add_keyword_arg("pipe-path", pipe_path_option, "Specify a FIFO pipe path for transferring binary data",
-                               ArgType_Single, false);
+  ds_view_cmd->add_keyword_arg("response-format-bytes", response_format_bytes_option, "returns the response as raw bytes", ArgType_Flag, false, ArgValue(false));
+  ds_view_cmd->add_keyword_arg("return-etag", return_etag_option, "Display the e-tag for a read response in addition to data", ArgType_Flag, false, ArgValue(false));
+  ds_view_cmd->add_keyword_arg("pipe-path", pipe_path_option, "Specify a FIFO pipe path for transferring binary data", ArgType_Single, false);
   ds_view_cmd->set_handler(handle_data_set_view);
   data_set_cmd->add_command(ds_view_cmd);
 
@@ -216,14 +217,10 @@ int main(int argc, char *argv[])
   auto ds_list_cmd = command_ptr(new Command("list", "list data sets"));
   ds_list_cmd->add_alias("ls");
   ds_list_cmd->add_positional_arg("dsn", "data set name pattern", ArgType_Single, true);
-  ds_list_cmd->add_keyword_arg("attributes", make_aliases("--attributes", "-a"), "display data set attributes",
-                               ArgType_Flag, false, ArgValue(false));
-  ds_list_cmd->add_keyword_arg("max-entries", make_aliases("--max-entries", "--me"),
-                               "max number of results to return before warning generated", ArgType_Single, false);
-  ds_list_cmd->add_keyword_arg("warn", make_aliases("--warn"), "warn if truncated or not found", ArgType_Flag, false,
-                               ArgValue(true));
-  ds_list_cmd->add_keyword_arg("response-format-csv", response_format_csv_option, "returns the response in CSV format",
-                               ArgType_Flag, false, ArgValue(false));
+  ds_list_cmd->add_keyword_arg("attributes", make_aliases("--attributes", "-a"), "display data set attributes", ArgType_Flag, false, ArgValue(false));
+  ds_list_cmd->add_keyword_arg("max-entries", make_aliases("--max-entries", "--me"), "max number of results to return before warning generated", ArgType_Single, false);
+  ds_list_cmd->add_keyword_arg("warn", make_aliases("--warn"), "warn if truncated or not found", ArgType_Flag, false, ArgValue(true));
+  ds_list_cmd->add_keyword_arg("response-format-csv", response_format_csv_option, "returns the response in CSV format", ArgType_Flag, false, ArgValue(false));
   ds_list_cmd->set_handler(handle_data_set_list);
   data_set_cmd->add_command(ds_list_cmd);
 
@@ -231,11 +228,8 @@ int main(int argc, char *argv[])
   auto ds_list_members_cmd = command_ptr(new Command("list-members", "list data set members"));
   ds_list_members_cmd->add_alias("lm");
   ds_list_members_cmd->add_positional_arg("dsn", "data set name", ArgType_Single, true);
-  ds_list_members_cmd->add_keyword_arg("max-entries", make_aliases("--max-entries", "--me"),
-                                       "max number of results to return before warning generated", ArgType_Single,
-                                       false);
-  ds_list_members_cmd->add_keyword_arg("warn", make_aliases("--warn"), "warn if truncated or not found", ArgType_Flag,
-                                       false, ArgValue(true));
+  ds_list_members_cmd->add_keyword_arg("max-entries", make_aliases("--max-entries", "--me"), "max number of results to return before warning generated", ArgType_Single, false);
+  ds_list_members_cmd->add_keyword_arg("warn", make_aliases("--warn"), "warn if truncated or not found", ArgType_Flag, false, ArgValue(true));
   ds_list_members_cmd->set_handler(handle_data_set_list_members);
   data_set_cmd->add_command(ds_list_members_cmd);
 
@@ -243,14 +237,9 @@ int main(int argc, char *argv[])
   auto ds_write_cmd = command_ptr(new Command("write", "write to data set"));
   ds_write_cmd->add_positional_arg("dsn", "data set name, optionally with member specified", ArgType_Single, true);
   ds_write_cmd->add_keyword_arg("encoding", encoding_option, "encoding for input data", ArgType_Single, false);
-  ds_write_cmd->add_keyword_arg("etag", etag_option,
-                                "Provide the e-tag for a write response to detect conflicts before save",
-                                ArgType_Single, false);
-  ds_write_cmd->add_keyword_arg("etag-only", etag_only_option,
-                                "Only print the e-tag for a write response (when successful)", ArgType_Flag, false,
-                                ArgValue(false));
-  ds_write_cmd->add_keyword_arg("pipe-path", pipe_path_option, "Specify a FIFO pipe path for transferring binary data",
-                                ArgType_Single, false);
+  ds_write_cmd->add_keyword_arg("etag", etag_option, "Provide the e-tag for a write response to detect conflicts before save", ArgType_Single, false);
+  ds_write_cmd->add_keyword_arg("etag-only", etag_only_option, "Only print the e-tag for a write response (when successful)", ArgType_Flag, false, ArgValue(false));
+  ds_write_cmd->add_keyword_arg("pipe-path", pipe_path_option, "Specify a FIFO pipe path for transferring binary data", ArgType_Single, false);
   ds_write_cmd->set_handler(handle_data_set_write);
   data_set_cmd->add_command(ds_write_cmd);
 
@@ -280,14 +269,18 @@ int main(int argc, char *argv[])
 
   // Convert DSECT subcommand
   auto tool_convert_dsect_cmd = command_ptr(new Command("ccnedsct", "convert dsect to c struct"));
-  tool_convert_dsect_cmd->add_keyword_arg("adata-dsn", make_aliases("--adata-dsn", "--ad"), "input adata dsn",
-                                          ArgType_Single, true);
-  tool_convert_dsect_cmd->add_keyword_arg("chdr-dsn", make_aliases("--chdr-dsn", "--cd"), "output chdr dsn",
-                                          ArgType_Single, true);
-  tool_convert_dsect_cmd->add_keyword_arg("sysprint", make_aliases("--sysprint", "--sp"), "sysprint output",
-                                          ArgType_Single, false);
-  tool_convert_dsect_cmd->add_keyword_arg("sysout", make_aliases("--sysout", "--so"), "sysout output", ArgType_Single,
-                                          false);
+  tool_convert_dsect_cmd->add_keyword_arg("adata-dsn",
+                                          make_aliases("--adata-dsn", "--ad"),
+                                          "input adata dsn", ArgType_Single, true);
+  tool_convert_dsect_cmd->add_keyword_arg("chdr-dsn",
+                                          make_aliases("--chdr-dsn", "--cd"),
+                                          "output chdr dsn", ArgType_Single, true);
+  tool_convert_dsect_cmd->add_keyword_arg("sysprint",
+                                          make_aliases("--sysprint", "--sp"),
+                                          "sysprint output", ArgType_Single, false);
+  tool_convert_dsect_cmd->add_keyword_arg("sysout",
+                                          make_aliases("--sysout", "--so"),
+                                          "sysout output", ArgType_Single, false);
   tool_convert_dsect_cmd->set_handler(handle_tool_convert_dsect);
   tool_cmd->add_command(tool_convert_dsect_cmd);
 
@@ -307,17 +300,16 @@ int main(int argc, char *argv[])
   auto tool_search_cmd = command_ptr(new Command("search", "search members for string"));
   tool_search_cmd->add_positional_arg("dsn", "data set to search", ArgType_Single, true);
   tool_search_cmd->add_positional_arg("string", "string to search for", ArgType_Single, true);
-  tool_search_cmd->add_keyword_arg("max-entries", make_aliases("--max-entries", "--me"),
-                                   "max number of results to return before warning generated", ArgType_Single, false);
-  tool_search_cmd->add_keyword_arg("warn", make_aliases("--warn"), "warn if truncated or not found", ArgType_Flag,
-                                   false, ArgValue(true));
+  tool_search_cmd->add_keyword_arg("max-entries", make_aliases("--max-entries", "--me"), "max number of results to return before warning generated", ArgType_Single, false);
+  tool_search_cmd->add_keyword_arg("warn", make_aliases("--warn"), "warn if truncated or not found", ArgType_Flag, false, ArgValue(true));
   tool_search_cmd->set_handler(handle_tool_search);
   tool_cmd->add_command(tool_search_cmd);
 
   // Amblist subcommand
   auto tool_amblist_cmd = command_ptr(new Command("amblist", "invoke amblist"));
   tool_amblist_cmd->add_positional_arg("dsn", "data containing input load modules", ArgType_Single, true);
-  tool_amblist_cmd->add_keyword_arg("control-statements", make_aliases("--control-statements", "--cs"),
+  tool_amblist_cmd->add_keyword_arg("control-statements",
+                                    make_aliases("--control-statements", "--cs"),
                                     "amblist control statements, e.g. listload output=map,member=testprog",
                                     ArgType_Single, true);
   tool_amblist_cmd->set_handler(handle_tool_amblist);
@@ -326,13 +318,21 @@ int main(int argc, char *argv[])
   // Run subcommand
   auto tool_run_cmd = command_ptr(new Command("run", "run a program"));
   tool_run_cmd->add_positional_arg("program", "name of program to run", ArgType_Single, true);
-  tool_run_cmd->add_keyword_arg("dynalloc-pre", make_aliases("--dynalloc-pre", "--dp"), "dynalloc pre run statements",
-                                ArgType_Single, false);
-  tool_run_cmd->add_keyword_arg("dynalloc-post", make_aliases("--dynalloc-post", "--dt"),
+  tool_run_cmd->add_keyword_arg("dynalloc-pre",
+                                make_aliases("--dynalloc-pre", "--dp"),
+                                "dynalloc pre run statements", ArgType_Single, false);
+  tool_run_cmd->add_keyword_arg("dynalloc-post",
+                                make_aliases("--dynalloc-post", "--dt"),
                                 "dynalloc post run statements", ArgType_Single, false);
-  tool_run_cmd->add_keyword_arg("in-dd", make_aliases("--in-dd", "--idd"), "input ddname", ArgType_Single, false);
-  tool_run_cmd->add_keyword_arg("input", make_aliases("--input", "--in"), "input", ArgType_Single, false);
-  tool_run_cmd->add_keyword_arg("out-dd", make_aliases("--out-dd", "--odd"), "output ddname", ArgType_Single, false);
+  tool_run_cmd->add_keyword_arg("in-dd",
+                                make_aliases("--in-dd", "--idd"),
+                                "input ddname", ArgType_Single, false);
+  tool_run_cmd->add_keyword_arg("input",
+                                make_aliases("--input", "--in"),
+                                "input", ArgType_Single, false);
+  tool_run_cmd->add_keyword_arg("out-dd",
+                                make_aliases("--out-dd", "--odd"),
+                                "output ddname", ArgType_Single, false);
   tool_run_cmd->set_handler(handle_tool_run);
   tool_cmd->add_command(tool_run_cmd);
 
@@ -366,25 +366,18 @@ int main(int argc, char *argv[])
   // List subcommand
   auto uss_list_cmd = command_ptr(new Command("list", "list USS files and directories"));
   uss_list_cmd->add_positional_arg("file-path", "file path", ArgType_Single, true);
-  uss_list_cmd->add_keyword_arg("all", make_aliases("--all", "-a"), "list all files and directories", ArgType_Flag,
-                                false, ArgValue(false));
-  uss_list_cmd->add_keyword_arg("long", make_aliases("--long", "-l"), "list long format", ArgType_Flag, false,
-                                ArgValue(false));
+  uss_list_cmd->add_keyword_arg("all", make_aliases("--all", "-a"), "list all files and directories", ArgType_Flag, false, ArgValue(false));
+  uss_list_cmd->add_keyword_arg("long", make_aliases("--long", "-l"), "list long format", ArgType_Flag, false, ArgValue(false));
   uss_list_cmd->set_handler(handle_uss_list);
   uss_cmd->add_command(uss_list_cmd);
 
   // View subcommand
   auto uss_view_cmd = command_ptr(new Command("view", "view a USS file"));
   uss_view_cmd->add_positional_arg("file-path", "file path", ArgType_Single, true);
-  uss_view_cmd->add_keyword_arg("encoding", uss_encoding_option, "return contents in given encoding", ArgType_Single,
-                                false);
-  uss_view_cmd->add_keyword_arg("response-format-bytes", uss_response_format_bytes_option,
-                                "returns the response as raw bytes", ArgType_Flag, false, ArgValue(false));
-  uss_view_cmd->add_keyword_arg("return-etag", uss_return_etag_option,
-                                "Display the e-tag for a read response in addition to data", ArgType_Flag, false,
-                                ArgValue(false));
-  uss_view_cmd->add_keyword_arg("pipe-path", uss_pipe_path_option,
-                                "Specify a FIFO pipe path for transferring binary data", ArgType_Single, false);
+  uss_view_cmd->add_keyword_arg("encoding", uss_encoding_option, "return contents in given encoding", ArgType_Single, false);
+  uss_view_cmd->add_keyword_arg("response-format-bytes", uss_response_format_bytes_option, "returns the response as raw bytes", ArgType_Flag, false, ArgValue(false));
+  uss_view_cmd->add_keyword_arg("return-etag", uss_return_etag_option, "Display the e-tag for a read response in addition to data", ArgType_Flag, false, ArgValue(false));
+  uss_view_cmd->add_keyword_arg("pipe-path", uss_pipe_path_option, "Specify a FIFO pipe path for transferring binary data", ArgType_Single, false);
   uss_view_cmd->set_handler(handle_uss_view);
   uss_cmd->add_command(uss_view_cmd);
 
@@ -392,23 +385,16 @@ int main(int argc, char *argv[])
   auto uss_write_cmd = command_ptr(new Command("write", "write to a USS file"));
   uss_write_cmd->add_positional_arg("file-path", "file path", ArgType_Single, true);
   uss_write_cmd->add_keyword_arg("encoding", uss_encoding_option, "encoding for input data", ArgType_Single, false);
-  uss_write_cmd->add_keyword_arg("etag", uss_etag_option,
-                                 "Provide the e-tag for a write response to detect conflicts before save",
-                                 ArgType_Single, false);
-  uss_write_cmd->add_keyword_arg("etag-only", uss_etag_only_option,
-                                 "Only print the e-tag for a write response (when successful)", ArgType_Flag, false,
-                                 ArgValue(false));
-  uss_write_cmd->add_keyword_arg("pipe-path", uss_pipe_path_option,
-                                 "Specify a FIFO pipe path for transferring binary data", ArgType_Single, false);
+  uss_write_cmd->add_keyword_arg("etag", uss_etag_option, "Provide the e-tag for a write response to detect conflicts before save", ArgType_Single, false);
+  uss_write_cmd->add_keyword_arg("etag-only", uss_etag_only_option, "Only print the e-tag for a write response (when successful)", ArgType_Flag, false, ArgValue(false));
+  uss_write_cmd->add_keyword_arg("pipe-path", uss_pipe_path_option, "Specify a FIFO pipe path for transferring binary data", ArgType_Single, false);
   uss_write_cmd->set_handler(handle_uss_write);
   uss_cmd->add_command(uss_write_cmd);
 
   // Delete subcommand
   auto uss_delete_cmd = command_ptr(new Command("delete", "delete a USS item"));
   uss_delete_cmd->add_positional_arg("file-path", "file path", ArgType_Single, true);
-  uss_delete_cmd->add_keyword_arg("recursive", make_aliases("--recursive", "-r"),
-                                  "Applies the operation recursively (e.g. for folders w/ inner files)", ArgType_Flag,
-                                  false, ArgValue(false));
+  uss_delete_cmd->add_keyword_arg("recursive", make_aliases("--recursive", "-r"), "Applies the operation recursively (e.g. for folders w/ inner files)", ArgType_Flag, false, ArgValue(false));
   uss_delete_cmd->set_handler(handle_uss_delete);
   uss_cmd->add_command(uss_delete_cmd);
 
@@ -416,20 +402,15 @@ int main(int argc, char *argv[])
   auto uss_chmod_cmd = command_ptr(new Command("chmod", "change permissions on a USS file or directory"));
   uss_chmod_cmd->add_positional_arg("mode", "new permissions for the file or directory", ArgType_Single, true);
   uss_chmod_cmd->add_positional_arg("file-path", "file path", ArgType_Single, true);
-  uss_chmod_cmd->add_keyword_arg("recursive", make_aliases("--recursive", "-r"),
-                                 "Applies the operation recursively (e.g. for folders w/ inner files)", ArgType_Flag,
-                                 false, ArgValue(false));
+  uss_chmod_cmd->add_keyword_arg("recursive", make_aliases("--recursive", "-r"), "Applies the operation recursively (e.g. for folders w/ inner files)", ArgType_Flag, false, ArgValue(false));
   uss_chmod_cmd->set_handler(handle_uss_chmod);
   uss_cmd->add_command(uss_chmod_cmd);
 
   // Chown subcommand
   auto uss_chown_cmd = command_ptr(new Command("chown", "change owner on a USS file or directory"));
-  uss_chown_cmd->add_positional_arg("owner", "New owner (or owner:group) for the file or directory", ArgType_Single,
-                                    true);
+  uss_chown_cmd->add_positional_arg("owner", "New owner (or owner:group) for the file or directory", ArgType_Single, true);
   uss_chown_cmd->add_positional_arg("file-path", "file path", ArgType_Single, true);
-  uss_chown_cmd->add_keyword_arg("recursive", make_aliases("--recursive", "-r"),
-                                 "Applies the operation recursively (e.g. for folders w/ inner files)", ArgType_Flag,
-                                 false, ArgValue(false));
+  uss_chown_cmd->add_keyword_arg("recursive", make_aliases("--recursive", "-r"), "Applies the operation recursively (e.g. for folders w/ inner files)", ArgType_Flag, false, ArgValue(false));
   uss_chown_cmd->set_handler(handle_uss_chown);
   uss_cmd->add_command(uss_chown_cmd);
 
@@ -437,9 +418,7 @@ int main(int argc, char *argv[])
   auto uss_chtag_cmd = command_ptr(new Command("chtag", "change tags on a USS file"));
   uss_chtag_cmd->add_positional_arg("file-path", "file path", ArgType_Single, true);
   uss_chtag_cmd->add_positional_arg("tag", "new tag for the file", ArgType_Single, true);
-  uss_chtag_cmd->add_keyword_arg("recursive", make_aliases("--recursive", "-r"),
-                                 "Applies the operation recursively (e.g. for folders w/ inner files)", ArgType_Flag,
-                                 false, ArgValue(false));
+  uss_chtag_cmd->add_keyword_arg("recursive", make_aliases("--recursive", "-r"), "Applies the operation recursively (e.g. for folders w/ inner files)", ArgType_Flag, false, ArgValue(false));
   uss_chtag_cmd->set_handler(handle_uss_chtag);
   uss_cmd->add_command(uss_chtag_cmd);
 
@@ -452,12 +431,9 @@ int main(int argc, char *argv[])
   auto job_list_cmd = command_ptr(new Command("list", "list jobs"));
   job_list_cmd->add_keyword_arg("owner", make_aliases("--owner", "-o"), "filter by owner", ArgType_Single, false);
   job_list_cmd->add_keyword_arg("prefix", make_aliases("--prefix", "-p"), "filter by prefix", ArgType_Single, false);
-  job_list_cmd->add_keyword_arg("max-entries", make_aliases("--max-entries", "--me"),
-                                "max number of results to return before warning generated", ArgType_Single, false);
-  job_list_cmd->add_keyword_arg("warn", make_aliases("--warn"), "warn if truncated or not found", ArgType_Flag, false,
-                                ArgValue(true));
-  job_list_cmd->add_keyword_arg("response-format-csv", response_format_csv_option, "returns the response in CSV format",
-                                ArgType_Flag, false, ArgValue(false));
+  job_list_cmd->add_keyword_arg("max-entries", make_aliases("--max-entries", "--me"), "max number of results to return before warning generated", ArgType_Single, false);
+  job_list_cmd->add_keyword_arg("warn", make_aliases("--warn"), "warn if truncated or not found", ArgType_Flag, false, ArgValue(true));
+  job_list_cmd->add_keyword_arg("response-format-csv", response_format_csv_option, "returns the response in CSV format", ArgType_Flag, false, ArgValue(false));
   job_list_cmd->set_handler(handle_job_list);
   job_cmd->add_command(job_list_cmd);
 
@@ -465,12 +441,9 @@ int main(int argc, char *argv[])
   auto job_list_files_cmd = command_ptr(new Command("list-files", "list spool files for jobid"));
   job_list_files_cmd->add_alias("lf");
   job_list_files_cmd->add_positional_arg("jobid", "valid jobid or job correlator", ArgType_Single, true);
-  job_list_files_cmd->add_keyword_arg("max-entries", make_aliases("--max-entries", "--me"),
-                                      "max number of files to return before warning generated", ArgType_Single, false);
-  job_list_files_cmd->add_keyword_arg("warn", make_aliases("--warn"), "warn if truncated or not found", ArgType_Flag,
-                                      false, ArgValue(true));
-  job_list_files_cmd->add_keyword_arg("response-format-csv", response_format_csv_option,
-                                      "returns the response in CSV format", ArgType_Flag, false, ArgValue(false));
+  job_list_files_cmd->add_keyword_arg("max-entries", make_aliases("--max-entries", "--me"), "max number of files to return before warning generated", ArgType_Single, false);
+  job_list_files_cmd->add_keyword_arg("warn", make_aliases("--warn"), "warn if truncated or not found", ArgType_Flag, false, ArgValue(true));
+  job_list_files_cmd->add_keyword_arg("response-format-csv", response_format_csv_option, "returns the response in CSV format", ArgType_Flag, false, ArgValue(false));
   job_list_files_cmd->set_handler(handle_job_list_files);
   job_cmd->add_command(job_list_files_cmd);
 
@@ -478,8 +451,7 @@ int main(int argc, char *argv[])
   auto job_view_status_cmd = command_ptr(new Command("view-status", "view job status"));
   job_view_status_cmd->add_alias("vs");
   job_view_status_cmd->add_positional_arg("jobid", "valid jobid or job correlator", ArgType_Single, true);
-  job_view_status_cmd->add_keyword_arg("response-format-csv", response_format_csv_option,
-                                       "returns the response in CSV format", ArgType_Flag, false, ArgValue(false));
+  job_view_status_cmd->add_keyword_arg("response-format-csv", response_format_csv_option, "returns the response in CSV format", ArgType_Flag, false, ArgValue(false));
   job_view_status_cmd->set_handler(handle_job_view_status);
   job_cmd->add_command(job_view_status_cmd);
 
@@ -488,10 +460,8 @@ int main(int argc, char *argv[])
   job_view_file_cmd->add_alias("vf");
   job_view_file_cmd->add_positional_arg("jobid", "valid jobid or job correlator", ArgType_Single, true);
   job_view_file_cmd->add_positional_arg("key", "valid job dsn key via 'job list-files'", ArgType_Single, true);
-  job_view_file_cmd->add_keyword_arg("encoding", encoding_option, "return contents in given encoding", ArgType_Single,
-                                     false);
-  job_view_file_cmd->add_keyword_arg("response-format-bytes", response_format_bytes_option,
-                                     "returns the response as raw bytes", ArgType_Flag, false, ArgValue(false));
+  job_view_file_cmd->add_keyword_arg("encoding", encoding_option, "return contents in given encoding", ArgType_Single, false);
+  job_view_file_cmd->add_keyword_arg("response-format-bytes", response_format_bytes_option, "returns the response as raw bytes", ArgType_Flag, false, ArgValue(false));
   job_view_file_cmd->set_handler(handle_job_view_file);
   job_cmd->add_command(job_view_file_cmd);
 
@@ -507,10 +477,8 @@ int main(int argc, char *argv[])
   job_submit_cmd->add_alias("sub");
   job_submit_cmd->add_positional_arg("dsn", "dsn containing JCL", ArgType_Single, true);
   job_submit_cmd->add_keyword_arg("wait", make_aliases("--wait"), "wait for job status", ArgType_Single, false);
-  job_submit_cmd->add_keyword_arg("only-jobid", make_aliases("--only-jobid", "--oj"), "show only job id on success",
-                                  ArgType_Flag, false, ArgValue(false));
-  job_submit_cmd->add_keyword_arg("only-correlator", make_aliases("--only-correlator", "--oc"),
-                                  "show only job correlator on success", ArgType_Flag, false, ArgValue(false));
+  job_submit_cmd->add_keyword_arg("only-jobid", make_aliases("--only-jobid", "--oj"), "show only job id on success", ArgType_Flag, false, ArgValue(false));
+  job_submit_cmd->add_keyword_arg("only-correlator", make_aliases("--only-correlator", "--oc"), "show only job correlator on success", ArgType_Flag, false, ArgValue(false));
   job_submit_cmd->set_handler(handle_job_submit);
   job_cmd->add_command(job_submit_cmd);
 
@@ -518,10 +486,8 @@ int main(int argc, char *argv[])
   auto job_submit_jcl_cmd = command_ptr(new Command("submit-jcl", "submit JCL contents directly"));
   job_submit_jcl_cmd->add_alias("subj");
   job_submit_jcl_cmd->add_keyword_arg("wait", make_aliases("--wait"), "wait for job status", ArgType_Single, false);
-  job_submit_jcl_cmd->add_keyword_arg("only-jobid", make_aliases("--only-jobid", "--oj"), "show only job id on success",
-                                      ArgType_Flag, false, ArgValue(false));
-  job_submit_jcl_cmd->add_keyword_arg("only-correlator", make_aliases("--only-correlator", "--oc"),
-                                      "show only job correlator on success", ArgType_Flag, false, ArgValue(false));
+  job_submit_jcl_cmd->add_keyword_arg("only-jobid", make_aliases("--only-jobid", "--oj"), "show only job id on success", ArgType_Flag, false, ArgValue(false));
+  job_submit_jcl_cmd->add_keyword_arg("only-correlator", make_aliases("--only-correlator", "--oc"), "show only job correlator on success", ArgType_Flag, false, ArgValue(false));
   job_submit_jcl_cmd->add_keyword_arg("encoding", encoding_option, "encoding for input data", ArgType_Single, false);
   job_submit_jcl_cmd->set_handler(handle_job_submit_jcl);
   job_cmd->add_command(job_submit_jcl_cmd);
@@ -531,10 +497,8 @@ int main(int argc, char *argv[])
   job_submit_uss_cmd->add_alias("sub-u");
   job_submit_uss_cmd->add_positional_arg("file-path", "USS file containing JCL", ArgType_Single, true);
   job_submit_uss_cmd->add_keyword_arg("wait", make_aliases("--wait"), "wait for job status", ArgType_Single, false);
-  job_submit_uss_cmd->add_keyword_arg("only-jobid", make_aliases("--only-jobid", "--oj"), "show only job id on success",
-                                      ArgType_Flag, false, ArgValue(false));
-  job_submit_uss_cmd->add_keyword_arg("only-correlator", make_aliases("--only-correlator", "--oc"),
-                                      "show only job correlator on success", ArgType_Flag, false, ArgValue(false));
+  job_submit_uss_cmd->add_keyword_arg("only-jobid", make_aliases("--only-jobid", "--oj"), "show only job id on success", ArgType_Flag, false, ArgValue(false));
+  job_submit_uss_cmd->add_keyword_arg("only-correlator", make_aliases("--only-correlator", "--oc"), "show only job correlator on success", ArgType_Flag, false, ArgValue(false));
   job_submit_uss_cmd->set_handler(handle_job_submit_uss);
   job_cmd->add_command(job_submit_uss_cmd);
 
@@ -549,17 +513,10 @@ int main(int argc, char *argv[])
   auto job_cancel_cmd = command_ptr(new Command("cancel", "cancel a job"));
   job_cancel_cmd->add_alias("cnl");
   job_cancel_cmd->add_positional_arg("jobid", "valid jobid or job correlator", ArgType_Single, true);
-  job_cancel_cmd->add_keyword_arg("dump", make_aliases("--dump", "-d"),
-                                  "Dump the cancelled jobs if waiting for conversion, in conversion, or in execution",
-                                  ArgType_Flag, false, ArgValue(false));
-  job_cancel_cmd->add_keyword_arg("force", make_aliases("--force", "-f"), "Force cancel the jobs, even if marked",
-                                  ArgType_Flag, false, ArgValue(false));
-  job_cancel_cmd->add_keyword_arg("purge", make_aliases("--purge", "-p"), "Purge output of the cancelled jobs",
-                                  ArgType_Flag, false, ArgValue(false));
-  job_cancel_cmd->add_keyword_arg(
-      "restart", make_aliases("--restart", "-r"),
-      "Request that automatic restart management automatically restart the selected jobs after they are cancelled",
-      ArgType_Flag, false, ArgValue(false));
+  job_cancel_cmd->add_keyword_arg("dump", make_aliases("--dump", "-d"), "Dump the cancelled jobs if waiting for conversion, in conversion, or in execution", ArgType_Flag, false, ArgValue(false));
+  job_cancel_cmd->add_keyword_arg("force", make_aliases("--force", "-f"), "Force cancel the jobs, even if marked", ArgType_Flag, false, ArgValue(false));
+  job_cancel_cmd->add_keyword_arg("purge", make_aliases("--purge", "-p"), "Purge output of the cancelled jobs", ArgType_Flag, false, ArgValue(false));
+  job_cancel_cmd->add_keyword_arg("restart", make_aliases("--restart", "-r"), "Request that automatic restart management automatically restart the selected jobs after they are cancelled", ArgType_Flag, false, ArgValue(false));
   job_cancel_cmd->set_handler(handle_job_cancel);
   job_cmd->add_command(job_cancel_cmd);
 
@@ -781,7 +738,8 @@ int handle_data_set_create(const ParseResult &result)
   if (0 != rc)
   {
     cerr << "Error: could not create data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details:\n" << response << endl;
+    cerr << "  Details:\n"
+         << response << endl;
     return RTNCD_FAILURE;
   }
 
@@ -819,7 +777,8 @@ int handle_data_set_create_vb(const ParseResult &result)
   if (0 != rc)
   {
     cerr << "Error: could not create data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details:\n" << response << endl;
+    cerr << "  Details:\n"
+         << response << endl;
     return RTNCD_FAILURE;
   }
 
@@ -857,7 +816,8 @@ int handle_data_set_create_adata(const ParseResult &result)
   if (0 != rc)
   {
     cerr << "Error: could not create data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details:\n" << response << endl;
+    cerr << "  Details:\n"
+         << response << endl;
     return RTNCD_FAILURE;
   }
 
@@ -895,7 +855,8 @@ int handle_data_set_create_loadlib(const ParseResult &result)
   if (0 != rc)
   {
     cerr << "Error: could not create data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details:\n" << response << endl;
+    cerr << "  Details:\n"
+         << response << endl;
     return RTNCD_FAILURE;
   }
 
@@ -943,7 +904,8 @@ int handle_data_set_create_member(const ParseResult &result)
     if (RTNCD_WARNING < rc || entries.size() == 0)
     {
       cout << "Error: could not create data set member: '" << dataset_name << "' rc: '" << rc << "'" << endl;
-      cout << "  Details:\n" << zds.diag.e_msg << endl;
+      cout << "  Details:\n"
+           << zds.diag.e_msg << endl;
       return RTNCD_FAILURE;
     }
 
@@ -1077,8 +1039,7 @@ int handle_data_set_list(const ParseResult &result)
       {
         if (attributes)
         {
-          cout << left << setw(44) << it->name << " " << it->volser << " " << setw(4) << it->dsorg << " " << setw(6)
-               << it->recfm << endl;
+          cout << left << setw(44) << it->name << " " << it->volser << " " << setw(4) << it->dsorg << " " << setw(6) << it->recfm << endl;
         }
         else
         {
@@ -1374,10 +1335,8 @@ int handle_tool_convert_dsect(const ParseResult &result)
   cout << adata_dsn << " " << chdr_dsn << " " << sysprint << " " << sysout << endl;
 
   vector<string> dds;
-  dds.push_back("alloc fi(sysprint) path('" + sysprint +
-                "') pathopts(owronly,ocreat,otrunc) pathmode(sirusr,siwusr,sirgrp) filedata(text) msg(2)");
-  dds.push_back("alloc fi(sysout) path('" + sysout +
-                "') pathopts(owronly,ocreat,otrunc) pathmode(sirusr,siwusr,sirgrp) filedata(text) msg(2)");
+  dds.push_back("alloc fi(sysprint) path('" + sysprint + "') pathopts(owronly,ocreat,otrunc) pathmode(sirusr,siwusr,sirgrp) filedata(text) msg(2)");
+  dds.push_back("alloc fi(sysout) path('" + sysout + "') pathopts(owronly,ocreat,otrunc) pathmode(sirusr,siwusr,sirgrp) filedata(text) msg(2)");
   dds.push_back("alloc fi(sysadata) da('" + adata_dsn + "') shr msg(2)");
   dds.push_back("alloc fi(edcdsect) da('" + chdr_dsn + "') shr msg(2)");
 
@@ -1512,7 +1471,10 @@ int handle_tool_search(const ParseResult &result)
 
   // Perform search
   rc = zut_search("parms are unused for now but can be passed to super c, e.g. ANYC (any case)");
-  if (rc != RTNCD_SUCCESS || rc != ZUT_RTNCD_SEARCH_SUCCESS || rc != RTNCD_WARNING || rc != ZUT_RTNCD_SEARCH_WARNING)
+  if (rc != RTNCD_SUCCESS ||
+      rc != ZUT_RTNCD_SEARCH_SUCCESS ||
+      rc != RTNCD_WARNING ||
+      rc != ZUT_RTNCD_SEARCH_WARNING)
   {
     cerr << "Error: could error invoking ISRSUPC rc: '" << rc << "'" << endl;
   }
@@ -1716,7 +1678,8 @@ int handle_uss_create_file(const ParseResult &result)
   if (0 != rc)
   {
     cerr << "Error: could not create USS file: '" << file_path << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details:\n" << zusf.diag.e_msg << endl;
+    cerr << "  Details:\n"
+         << zusf.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
@@ -1738,7 +1701,8 @@ int handle_uss_create_dir(const ParseResult &result)
   if (0 != rc)
   {
     cerr << "Error: could not create USS directory: '" << file_path << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details:\n" << zusf.diag.e_msg << endl;
+    cerr << "  Details:\n"
+         << zusf.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
@@ -1762,7 +1726,9 @@ int handle_uss_list(const ParseResult &result)
   if (0 != rc)
   {
     cerr << "Error: could not list USS files: '" << uss_file << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details:\n" << zusf.diag.e_msg << endl << response << endl;
+    cerr << "  Details:\n"
+         << zusf.diag.e_msg << endl
+         << response << endl;
     return RTNCD_FAILURE;
   }
 
@@ -1808,7 +1774,9 @@ int handle_uss_view(const ParseResult &result)
     if (0 != rc)
     {
       cerr << "Error: could not view USS file: '" << uss_file << "' rc: '" << rc << "'" << endl;
-      cerr << "  Details:\n" << zusf.diag.e_msg << endl << response << endl;
+      cerr << "  Details:\n"
+           << zusf.diag.e_msg << endl
+           << response << endl;
       return RTNCD_FAILURE;
     }
 
@@ -1898,12 +1866,12 @@ int handle_uss_write(const ParseResult &result)
 
   if (result.find_kw_arg_bool("etag-only"))
   {
-    cout << "etag: " << zusf.etag << '\n' << "created: " << (zusf.created ? "true" : "false") << '\n';
+    cout << "etag: " << zusf.etag << '\n'
+         << "created: " << (zusf.created ? "true" : "false") << '\n';
   }
   else
   {
-    cout << "Wrote data to '" << file << "'" << (zusf.created ? " (created new file)" : " (overwrote existing)")
-         << endl;
+    cout << "Wrote data to '" << file << "'" << (zusf.created ? " (created new file)" : " (overwrote existing)") << endl;
   }
 
   return rc;
@@ -1940,7 +1908,8 @@ int handle_uss_chmod(const ParseResult &result)
   if (0 != rc)
   {
     cerr << "Error: could not chmod USS path: '" << file_path << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details:\n" << zusf.diag.e_msg << endl;
+    cerr << "  Details:\n"
+         << zusf.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
@@ -1961,7 +1930,8 @@ int handle_uss_chown(const ParseResult &result)
   if (rc != 0)
   {
     cerr << "Error: could not chown USS path: '" << path << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details:\n" << zusf.diag.e_msg << endl;
+    cerr << "  Details:\n"
+         << zusf.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
@@ -1982,7 +1952,8 @@ int handle_uss_chtag(const ParseResult &result)
   if (rc != 0)
   {
     cerr << "Error: could not chtag USS path: '" << path << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details:\n" << zusf.diag.e_msg << endl;
+    cerr << "  Details:\n"
+         << zusf.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
@@ -2125,8 +2096,7 @@ int handle_job_list_files(const ParseResult &result)
       }
       else
       {
-        cout << left << setw(9) << it->ddn << " " << it->dsn << " " << setw(4) << it->key << " " << it->stepname << " "
-             << it->procstep << endl;
+        cout << left << setw(9) << it->ddn << " " << it->dsn << " " << setw(4) << it->key << " " << it->stepname << " " << it->procstep << endl;
       }
     }
   }
@@ -2274,7 +2244,9 @@ int handle_job_submit_uss(const ParseResult &result)
   if (0 != rc)
   {
     cerr << "Error: could not view USS file: '" << file << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details:\n" << zusf.diag.e_msg << endl << response << endl;
+    cerr << "  Details:\n"
+         << zusf.diag.e_msg << endl
+         << response << endl;
     return RTNCD_FAILURE;
   }
 
@@ -2305,8 +2277,7 @@ int handle_job_submit_jcl(const ParseResult &result)
   raw_bytes.clear();
 
   ZEncode encoding_opts = {0};
-  bool encoding_prepared =
-      result.has_kw_arg("encoding") && zut_prepare_encoding(result.find_kw_arg_string("encoding"), &encoding_opts);
+  bool encoding_prepared = result.has_kw_arg("encoding") && zut_prepare_encoding(result.find_kw_arg_string("encoding"), &encoding_opts);
 
   if (encoding_prepared && encoding_opts.data_type != eDataTypeBinary)
   {
@@ -2451,7 +2422,8 @@ int free_dynalloc_dds(vector<string> &list)
 
 bool should_quit(const std::string &input)
 {
-  return (input == "quit" || input == "exit" || input == "QUIT" || input == "EXIT");
+  return (input == "quit" || input == "exit" ||
+          input == "QUIT" || input == "EXIT");
 }
 
 int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_name)
