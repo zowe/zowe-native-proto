@@ -1,25 +1,6 @@
 #include "zds_py.hpp"
 #include <unistd.h>
-#include <string>
 #include <stdexcept>
-
-static void e2a_inplace(std::string &s)
-{
-    if (s.empty())
-        return;
-    s.push_back('\0');
-    __e2a_s(&s[0]);
-    s.pop_back();
-}
-
-static void a2e_inplace(std::string &s)
-{
-    if (s.empty())
-        return;
-    s.push_back('\0');
-    __a2e_s(&s[0]);
-    s.pop_back();
-}
 
 /**
  * Dataset Functions
@@ -46,15 +27,6 @@ void create_dataset(std::string dsn, DS_ATTRIBUTES attributes)
     a2e_inplace(attrs_copy.vol);
 
     int rc = zds_create_dsn(&zds, dsn, attrs_copy, response);
-
-    if (rc != 0)
-    {
-        std::string diag(zds.diag.e_msg, zds.diag.e_msg_len);
-        diag.push_back('\0');
-        e2a_inplace(diag);
-        diag.pop_back();
-        throw std::runtime_error(diag);
-    }
 }
 
 std::vector<ZDSEntry> list_datasets(std::string dsn)
@@ -90,22 +62,13 @@ std::string read_dataset(std::string dsn, std::string codepage)
 
     if (!codepage.empty())
     {
-        zds.encoding_opts.data_type = eDataTypeText;
+        zds.encoding_opts.data_type = codepage == "binary" ? eDataTypeBinary : eDataTypeText;
         strncpy(zds.encoding_opts.codepage, codepage.c_str(), sizeof(zds.encoding_opts.codepage) - 1);
     }
 
     a2e_inplace(dsn);
     std::string response;
     int rc = zds_read_from_dsn(&zds, dsn, response);
-
-    if (rc != 0)
-    {
-        std::string diag(zds.diag.e_msg, zds.diag.e_msg_len);
-        diag.push_back('\0');
-        e2a_inplace(diag);
-        diag.pop_back();
-        throw std::runtime_error(diag);
-    }
 
     e2a_inplace(response);
     return response;
@@ -117,7 +80,7 @@ std::string write_dataset(std::string dsn, std::string data, std::string codepag
 
     if (!codepage.empty())
     {
-        zds.encoding_opts.data_type = eDataTypeText;
+        zds.encoding_opts.data_type = codepage == "binary" ? eDataTypeBinary : eDataTypeText;
         strncpy(zds.encoding_opts.codepage, codepage.c_str(), sizeof(zds.encoding_opts.codepage) - 1);
     }
 
@@ -130,15 +93,6 @@ std::string write_dataset(std::string dsn, std::string data, std::string codepag
     a2e_inplace(data);
     int rc = zds_write_to_dsn(&zds, dsn, data);
 
-    if (rc != 0)
-    {
-        std::string diag(zds.diag.e_msg, zds.diag.e_msg_len);
-        diag.push_back('\0');
-        e2a_inplace(diag);
-        diag.pop_back();
-        throw std::runtime_error(diag);
-    }
-
     std::string new_etag(zds.etag);
     e2a_inplace(new_etag);
     return new_etag;
@@ -147,18 +101,8 @@ std::string write_dataset(std::string dsn, std::string data, std::string codepag
 void delete_dataset(std::string dsn)
 {
     ZDS zds = {0};
-
     a2e_inplace(dsn);
     int rc = zds_delete_dsn(&zds, dsn);
-
-    if (rc != 0)
-    {
-        std::string diag(zds.diag.e_msg, zds.diag.e_msg_len);
-        diag.push_back('\0');
-        e2a_inplace(diag);
-        diag.pop_back();
-        throw std::runtime_error(diag);
-    }
 }
 
 /**
@@ -168,21 +112,10 @@ void delete_dataset(std::string dsn)
 void create_member(std::string dsn)
 {
     ZDS zds = {0};
-
     a2e_inplace(dsn);
-
     std::string empty_data = "";
     a2e_inplace(empty_data);
     int rc = zds_write_to_dsn(&zds, dsn, empty_data);
-
-    if (rc != 0)
-    {
-        std::string diag(zds.diag.e_msg, zds.diag.e_msg_len);
-        diag.push_back('\0');
-        e2a_inplace(diag);
-        diag.pop_back();
-        throw std::runtime_error(diag);
-    }
 }
 
 std::vector<ZDSMem> list_members(std::string dsn)
