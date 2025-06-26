@@ -287,7 +287,7 @@ static void mode_nzero()
 #define SET_KEY(key)                                 \
   __asm(                                             \
       "*                                         \n" \
-      " IC 2,%0                                  \n" \
+      " L    2,%0                                \n" \
       " SPKA 0(2)                                \n" \
       "*                                          "  \
       :                                              \
@@ -411,7 +411,6 @@ static unsigned long long int get_raw_psw()
 {
   unsigned long long int psw = 0;
   GET_PSW(psw);
-  // zwto_debug("a %08x b %08x", a, b);
   return psw;
 }
 

@@ -72,11 +72,11 @@ int zcnm1act(ZCN *zcn)
 
   strcpy(zcn->diag.service_name, "MCSOPER_ACTIVATE");
 
-  if (mode_switch)
-    mode_sup();
+  // if (mode_switch)
+  mode_sup();
   MCSOPER_ACTIVATE(zcn->id, zcn->console_name, *e, zcn->alet, a, zcn->diag.service_rc, zcn->diag.service_rsn, dsa_mcsoper_model);
-  if (mode_switch)
-    mode_prob();
+  // if (mode_switch)
+  mode_prob();
 
   if (0 != zcn->diag.service_rc)
     zcn->diag.detail_rc = ZCN_RTNCD_SERVICE_FAILURE; // if the service failed, note in RC
@@ -142,12 +142,16 @@ int zcnm1put(ZCN *zcn, const char *command)
   strcpy(zcn->diag.service_name, "MGCRE");
 
   if (mode_switch)
+  {
     mode_sup();
+  }
   set_key(key_zero);
   MGCRE(zcn->id, commandBuffer, cart, authcmdxp, dsa_mgcre_model);
-  if (mode_switch)
-    mode_prob();
   set_key(key);
+  if (mode_switch)
+  {
+    mode_prob();
+  }
 
   zcn->diag.service_rc = 0;
   zcn->diag.service_rsn = 0;
@@ -320,12 +324,16 @@ int zcnm1get(ZCN *zcn, char *resp)
   while (0 == zcn->diag.service_rc)
   {
     if (mode_switch)
+    {
       mode_sup();
+    }
     CLEAR_ARS();
     MCSOPMSG_GETMSG(zcn->id, area, alet, cart, zcn->diag.service_rc, zcn->diag.service_rsn, dsa_mcsopmsg_model);
     CLEAR_ARS();
     if (mode_switch)
+    {
       mode_prob();
+    }
 
     strcpy(zcn->diag.service_name, "MCSOPMSG_GETMSG");
 
@@ -434,10 +442,14 @@ int zcnm1dea(ZCN *zcn)
 
   strcpy(zcn->diag.service_name, "MCSOPER_DEACTIVATE");
   if (mode_switch)
+  {
     mode_sup();
+  }
   MCSOPER_DEACTIVATE(zcn->id, zcn->diag.service_rc, zcn->diag.service_rsn, dsa_mcsoper_model);
   if (mode_switch)
+  {
     mode_prob();
+  }
 
   if (0 != zcn->diag.service_rc)
     zcn->diag.detail_rc = ZCN_RTNCD_SERVICE_FAILURE; // if the service failed, note in RC
