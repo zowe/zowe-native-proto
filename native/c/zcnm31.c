@@ -62,7 +62,7 @@ int zcnm1act(ZCN *zcn)
 {
   PSW psw = {0};
   get_psw(&psw);
-  int mode_switch = psw.p ? 0 : 1;
+  int mode_switch = psw.p ? 1 : 0;
 
   MSOPER_MODEL(dsa_mcsoper_model);
   dsa_mcsoper_model = mcsoper_model;
@@ -120,7 +120,7 @@ int zcnm1put(ZCN *zcn, const char *command)
 {
   PSW psw = {0};
   get_psw(&psw);
-  int mode_switch = psw.p ? 0 : 1;
+  int mode_switch = psw.p ? 1 : 0;
   unsigned char key = get_key();
   unsigned char key_zero = 0;
 
@@ -421,7 +421,7 @@ int zcnm1dea(ZCN *zcn)
 {
   PSW psw = {0};
   get_psw(&psw);
-  int mode_switch = psw.p ? 0 : 1;
+  int mode_switch = psw.p ? 1 : 0;
 
   MSOPER_MODEL(dsa_mcsoper_model);
   dsa_mcsoper_model = mcsoper_model;
