@@ -1,0 +1,18 @@
+Language: Cpp
+# Allman-style braces
+BreakBeforeBraces: Allman
+# 2-space indentation
+IndentWidth: 2
+UseTab: Never
+# Pointer alignment
+PointerAlignment: Right
+# Other options to match observed style
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+AllowShortBlocksOnASingleLine: false
+ColumnLimit: 0
+Standard: Cpp11
+TabWidth: 2
+AccessModifierOffset: -2
+SortIncludes: false
