@@ -51,7 +51,7 @@ void zjb_tests()
              ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
              Expect(jobid).Not().ToBe("");
 
-             string correlator = string(zjb.job_correlator, 64);
+             string correlator = string(zjb.correlator, 64);
              memset(&zjb, 0, sizeof(zjb));
              sleep(SLEEPY_TIME); // wait for job to complete
              rc = zjb_delete(&zjb, correlator);
@@ -71,13 +71,13 @@ void zjb_tests()
 
              ZJob zjob;
 
-             string correlator = string(zjb.job_correlator, 64);
+             string correlator = string(zjb.correlator, 64);
 
              memset(&zjb, 0, sizeof(zjb));
              rc = zjb_view(&zjb, correlator, zjob);
              ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
 
-             Expect(zjob.job_correlator).ToBe(correlator); // vefify submit correlator matches view status correlator
+             Expect(zjob.correlator).ToBe(correlator); // vefify submit correlator matches view status correlator
 
              memset(&zjb, 0, sizeof(zjb));
              sleep(SLEEPY_TIME); // wait for job to complete
@@ -96,7 +96,7 @@ void zjb_tests()
              int rc = zjb_submit(&zjb, jcl, jobid);
              ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
 
-             string correlator = string(zjb.job_correlator, 64);
+             string correlator = string(zjb.correlator, 64);
 
              memset(&zjb, 0, sizeof(zjb));
              sleep(SLEEPY_TIME); // wait for job to complete
@@ -115,7 +115,7 @@ void zjb_tests()
              int rc = zjb_submit(&zjb, jcl, jobid);
              ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
 
-             string correlator = string(zjb.job_correlator, 64);
+             string correlator = string(zjb.correlator, 64);
              string returned_jcl;
 
              memset(&zjb, 0, sizeof(zjb));
@@ -135,7 +135,7 @@ void zjb_tests()
              int rc = zjb_submit(&zjb, jcl, jobid);
              ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
 
-             string correlator = string(zjb.job_correlator, 64);
+             string correlator = string(zjb.correlator, 64);
 
              memset(&zjb, 0, sizeof(zjb));
              sleep(SLEEPY_TIME); // wait for job to complete
@@ -166,7 +166,7 @@ void zjb_tests()
              int rc = zjb_submit(&zjb, jcl, jobid);
              ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
 
-             string correlator = string(zjb.job_correlator, 64);
+             string correlator = string(zjb.correlator, 64);
 
              memset(&zjb, 0, sizeof(zjb));
              sleep(SLEEPY_TIME); // wait for job to complete
