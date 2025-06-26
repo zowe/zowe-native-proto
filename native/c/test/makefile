@@ -117,13 +117,13 @@ build-out:
 #
 # Testing utilities
 #
-build-out/runner.o: runner.cpp
+build-out/ztest_runner.o: ztest_runner.cpp
 	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
 
 build-out/ztest.o: ztest.cpp
 	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
 
-build-out/runner: build-out/runner.o \
+build-out/ztest_runner: build-out/ztest_runner.o \
 build-out/ztest.o \
 build-out/zstorage.test.o \
 build-out/zstorage.metal.test.o \
@@ -247,7 +247,7 @@ build-out/zmetal.metal.test.o: build-out/zmetal.metal.test.s
 #
 test: test.sh
 	chmod +x test.sh
-	_CEE_RUNOPTS="TRAP(ON,NOSPIE)" ./build-out/runner
+	_CEE_RUNOPTS="TRAP(ON,NOSPIE)" ./build-out/ztest_runner
 
 clean:
 	rm -f *.o
