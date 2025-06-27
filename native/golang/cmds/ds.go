@@ -203,7 +203,7 @@ func HandleListDatasetsRequest(conn *utils.StdioConn, params []byte) (result any
 		return nil, err
 	}
 
-	args := []string{"data-set", "list", request.Pattern, "--no-warn", "--rfc"}
+	args := []string{"data-set", "list", request.Pattern, "-a", "--no-warn", "--rfc"}
 	// if len(listRequest.Start) != 0 {
 	// 	args = append(args, "--start", listRequest.Start)
 	// }
