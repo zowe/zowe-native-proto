@@ -2,7 +2,7 @@ eureka:
   ssl: true
   host: localhost
   ipAddress: 127.0.0.1
-  port: 7554
+  port: 10011
   servicePath: '/eureka'
   maxRetries: 30
   requestRetryDelay: 1000
@@ -38,9 +38,7 @@ instance:
     apiml.service.description: 'Sample API services to demonstrate Python Onboarding Enabler'
 
 ssl:
-  certificate: keystore/localhost/localhost.keystore.cer
-  keystore: keystore/localhost/localhost.keystore.key
-  caFile: keystore/localhost/localhost.pem
+  certificate: ../../keystore/localhost/localhost.keystore.cer
+  keystore: ../../keystore/localhost/localhost.keystore.key
+  caFile: ../../keystore/localhost/localhost.pem
   keyPassword: password
-  verifySsl: false
-
