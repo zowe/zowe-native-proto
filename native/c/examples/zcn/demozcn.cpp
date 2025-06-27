@@ -11,9 +11,7 @@ int main()
 
   int rc = 0;
 
-  std::cout << "Starting..." << std::endl;
-
-  printf("Current key is %02x\n", zut_get_key());
+  printf("Starting, current key is %02x\n", zut_get_key());
 
   rc = zcn_activate(&zcn, "DKELOSKY");
   if (0 != rc)
@@ -22,18 +20,25 @@ int main()
     return -1;
   }
 
-  printf("Now key is %02x\n", zut_get_key());
+  printf("Console activated, now key is %02x\n", zut_get_key());
 
-  std::cout << "Console activated" << std::endl;
-
-  rc = zcn_deactivate(&zcn);
+  rc = zcn_put(&zcn, "D IPLINFO");
   if (0 != rc)
   {
     std::cerr << "Error: Dectivating console failed with " << rc << " and " << std::string(zcn.diag.e_msg) << std::endl;
     return -1;
   }
 
-  std::cout << "Completed!" << std::endl;
+  printf("Console put, now key is %02x\n", zut_get_key());
+
+  rc = zcn_deactivate(&zcn);
+  if (0 != rc)
+  {
+    std::cerr << "Error: Putting to console failed with " << rc << " and " << std::string(zcn.diag.e_msg) << std::endl;
+    return -1;
+  }
+
+  printf("Console deactivate, now key is %02x\n", zut_get_key());
 
   return 0;
 }

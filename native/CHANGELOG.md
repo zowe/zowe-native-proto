@@ -6,6 +6,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
+- `c`: Fixed S0C4 where supervisor state, key 4 caller invokes `zcn_put` while running in SUPERVISOR state. [#392](https://github.com/zowe/zowe-native-proto/issues/392)
 - `c`: Fixed S0C4 where supervisor state, key 4 caller invokes `zcn` APIs and several miscellaneous issues. [#389](https://github.com/zowe/zowe-native-proto/issues/389)
 - `c`: Fixed issue where canceled jobs displayed as "CC nnnn" instead of the string "CANCELED". [#169](https://github.com/zowe/zowe-native-proto/issues/169)
 - `c`: Fixed issue where input job SYSOUT files could not be listed or displayed". [#196](https://github.com/zowe/zowe-native-proto/issues/196)
