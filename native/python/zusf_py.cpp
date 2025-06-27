@@ -38,7 +38,7 @@ std::string read_uss_file(const std::string &file, const std::string &codepage)
 
     if (!codepage.empty())
     {
-        ctx.encoding_opts.data_type = eDataTypeText;
+        ctx.encoding_opts.data_type = codepage == "binary" ? eDataTypeBinary : eDataTypeText;
         strncpy(ctx.encoding_opts.codepage, codepage.c_str(), sizeof(ctx.encoding_opts.codepage) - 1);
     }
 
@@ -57,7 +57,7 @@ void read_uss_file_streamed(const std::string &file, const std::string &pipe, co
 
     if (!codepage.empty())
     {
-        ctx.encoding_opts.data_type = eDataTypeText;
+        ctx.encoding_opts.data_type = codepage == "binary" ? eDataTypeBinary : eDataTypeText;
         strncpy(ctx.encoding_opts.codepage, codepage.c_str(), sizeof(ctx.encoding_opts.codepage) - 1);
     }
 
@@ -74,7 +74,7 @@ std::string write_uss_file(const std::string &file, const std::string &data, con
 
     if (!codepage.empty())
     {
-        ctx.encoding_opts.data_type = eDataTypeText;
+        ctx.encoding_opts.data_type = codepage == "binary" ? eDataTypeBinary : eDataTypeText;
         strncpy(ctx.encoding_opts.codepage, codepage.c_str(), sizeof(ctx.encoding_opts.codepage) - 1);
     }
 
@@ -99,7 +99,7 @@ std::string write_uss_file_streamed(const std::string &file, const std::string &
 
     if (!codepage.empty())
     {
-        ctx.encoding_opts.data_type = eDataTypeText;
+        ctx.encoding_opts.data_type = codepage == "binary" ? eDataTypeBinary : eDataTypeText;
         strncpy(ctx.encoding_opts.codepage, codepage.c_str(), sizeof(ctx.encoding_opts.codepage) - 1);
     }
 

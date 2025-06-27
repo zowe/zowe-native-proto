@@ -5,6 +5,7 @@
 #include <vector>
 #include "../c/zdstype.h"
 #include "../c/zds.hpp"
+#include "conversion.h"
 
 void create_dataset(std::string dsn, DS_ATTRIBUTES attributes);
 

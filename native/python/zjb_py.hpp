@@ -5,6 +5,7 @@
 #include "../c/ztype.h"
 #include <string>
 #include <vector>
+#include "conversion.h"
 
 std::vector<ZJob> list_jobs_by_owner(std::string owner_name);
 
