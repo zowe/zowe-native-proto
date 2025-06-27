@@ -10,6 +10,7 @@ node_modules
 out
 typedoc
 zowe-native-proto-package
+native/python/app/keystore
 
 # Files
 .DS_Store
@@ -19,3 +20,4 @@ native/golang/zowed*
 tsconfig.tsbuildinfo
 zowe.config.json
 zowe.schema.json
+native/python/app/config/service-configuration.yml
