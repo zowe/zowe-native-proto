@@ -7,6 +7,14 @@
 %include "std_string.i"
 %include "std_vector.i"
 
+%feature("docstring") create_dataset "Create a new dataset with specified attributes.";
+%feature("docstring") list_datasets "List datasets matching the given pattern.";
+%feature("docstring") read_dataset "Read content from a dataset with optional encoding.";
+%feature("docstring") write_dataset "Write data to a dataset with optional encoding and etag validation.";
+%feature("docstring") delete_dataset "Delete the specified dataset.";
+%feature("docstring") create_member "Create a new member in a partitioned dataset.";
+%feature("docstring") list_members "List all members in a partitioned dataset.";
+
 %include "zds_py.hpp"
 
 %template(ZDSMemVector) std::vector<ZDSMem>;

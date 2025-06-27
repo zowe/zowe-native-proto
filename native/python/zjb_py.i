@@ -7,6 +7,14 @@
 %include "std_string.i"
 %include "std_vector.i"
 
+%feature("docstring") list_jobs_by_owner "List all jobs owned by the specified user.";
+%feature("docstring") get_job_status "Get the current status of a job by job ID.";
+%feature("docstring") list_spool_files "List all spool files (DD statements) for a job.";
+%feature("docstring") read_spool_file "Read the content of a specific spool file by job ID and key.";
+%feature("docstring") get_job_jcl "Retrieve the JCL content for a job.";
+%feature("docstring") submit_job "Submit JCL content and return the assigned job ID.";
+%feature("docstring") delete_job "Delete a job from the system and return success status.";
+
 %include "zjb_py.hpp"
 
 %template(ZJobVector) std::vector<ZJob>;
