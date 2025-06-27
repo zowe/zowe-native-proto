@@ -72,11 +72,15 @@ int zcnm1act(ZCN *zcn)
 
   strcpy(zcn->diag.service_name, "MCSOPER_ACTIVATE");
 
-  // if (mode_switch)
-  mode_sup();
+  if (mode_switch)
+  {
+    mode_sup();
+  }
   MCSOPER_ACTIVATE(zcn->id, zcn->console_name, *e, zcn->alet, a, zcn->diag.service_rc, zcn->diag.service_rsn, dsa_mcsoper_model);
-  // if (mode_switch)
-  mode_prob();
+  if (mode_switch)
+  {
+    mode_prob();
+  }
 
   if (0 != zcn->diag.service_rc)
     zcn->diag.detail_rc = ZCN_RTNCD_SERVICE_FAILURE; // if the service failed, note in RC
