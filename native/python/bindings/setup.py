@@ -7,7 +7,7 @@ setup.py file for SWIG example
 from distutils.core import setup, Extension
 import os
 
-C_PATH = "../c"
+C_PATH = "../../c"
 chdsect = os.path.abspath(f"{C_PATH}/chdsect")
 ztype = os.path.abspath(C_PATH)
 

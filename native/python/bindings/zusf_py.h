@@ -3,7 +3,7 @@
 
 #include <string>
 #include <stdexcept>
-#include "../c/zusf.hpp"
+#include "../../c/zusf.hpp"
 
 void create_uss_file(const std::string &file, const std::string &mode);
 

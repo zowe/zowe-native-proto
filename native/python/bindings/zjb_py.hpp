@@ -1,8 +1,8 @@
 #ifndef ZJB_PY_HPP
 #define ZJB_PY_HPP
 
-#include "../c/zjb.hpp"
-#include "../c/ztype.h"
+#include "../../c/zjb.hpp"
+#include "../../c/ztype.h"
 #include <string>
 #include <vector>
 #include "conversion.h"
