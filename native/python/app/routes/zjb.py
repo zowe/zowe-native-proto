@@ -4,7 +4,10 @@ Handles job status checking, listing, spool file operations, and JCL reading.
 """
 
 from flask import Blueprint, jsonify, request
-from config import zjb
+import os
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from bindings import zjb_py as zjb
 
 zjb_bp = Blueprint('zjb', __name__)
 

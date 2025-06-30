@@ -7,7 +7,10 @@ import json
 import hashlib
 import time
 from flask import Blueprint, jsonify, request
-from config import zusf
+import os
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from bindings import zusf_py as zusf
 
 zusf_bp = Blueprint('zusf', __name__)
 
