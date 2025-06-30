@@ -37,12 +37,12 @@ func HandleReadDatasetRequest(conn *utils.StdioConn, params []byte) (result any,
 	if len(request.Encoding) == 0 {
 		request.Encoding = fmt.Sprintf("IBM-%d", utils.DefaultEncoding)
 	}
-	args := []string{"data-set", "view", request.Dsname, "--encoding", request.Encoding, "--return-etag", "true"}
+	args := []string{"data-set", "view", request.Dsname, "--encoding", request.Encoding, "--return-etag"}
 
 	var etag string
 	var data []byte
 	if request.StreamId == 0 {
-		args = append(args, "--rfb", "true")
+		args = append(args, "--rfb")
 		out, err := conn.ExecCmd(args)
 		if err != nil {
 			e = fmt.Errorf("Error executing command: %v", err)
@@ -117,7 +117,7 @@ func HandleWriteDatasetRequest(conn *utils.StdioConn, params []byte) (result any
 	if len(request.Encoding) == 0 {
 		request.Encoding = fmt.Sprintf("IBM-%d", utils.DefaultEncoding)
 	}
-	args := []string{"data-set", "write", request.Dsname, "--encoding", request.Encoding, "--etag-only", "true"}
+	args := []string{"data-set", "write", request.Dsname, "--encoding", request.Encoding, "--etag-only"}
 	if len(request.Etag) > 0 {
 		args = append(args, "--etag", request.Etag)
 	}
@@ -203,7 +203,7 @@ func HandleListDatasetsRequest(conn *utils.StdioConn, params []byte) (result any
 		return nil, err
 	}
 
-	args := []string{"data-set", "list", request.Pattern, "--warn", "false", "--rfc", "true"}
+	args := []string{"data-set", "list", request.Pattern, "-a", "--no-warn", "--rfc"}
 	// if len(listRequest.Start) != 0 {
 	// 	args = append(args, "--start", listRequest.Start)
 	// }
@@ -253,7 +253,7 @@ func HandleListDsMembersRequest(conn *utils.StdioConn, params []byte) (result an
 		return nil, err
 	}
 
-	args := []string{"data-set", "list-members", request.Dsname, "--warn", "false"}
+	args := []string{"data-set", "list-members", request.Dsname, "--no-warn"}
 	// if len(listRequest.Start) != 0 {
 	// 	args = append(args, "--start", listRequest.Start)
 	// }

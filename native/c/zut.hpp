@@ -51,7 +51,7 @@ int zut_run(std::string input);
  * @param result Reference to a string where the result will be stored
  * @return Return code (0 for success, non-zero for error)
  */
-int zut_substitute_sybmol(std::string symbol, std::string &result);
+int zut_substitute_symbol(std::string symbol, std::string &result);
 
 /**
  * @brief Invoke BPXWDYN service with the given parameters
@@ -191,6 +191,13 @@ std::string &zut_trim(std::string &s, const char *t = " ");
  * @return int rc Return code (0 for success, non-zero for error)
  */
 int zut_alloc_debug();
+
+/**
+ * @brief Get current PSW key
+ *
+ * @return unsigned char The current PSW key
+ */
+unsigned char zut_get_key();
 
 /**
  * @brief Default debug message function for zut_dump_storage
