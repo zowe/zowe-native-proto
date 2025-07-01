@@ -1,7 +1,7 @@
 %module zusf_py
 
 %{
-#include "zusf_py.h"
+#include "zusf_py.hpp"
 %}
 
 %include "exception.i"
