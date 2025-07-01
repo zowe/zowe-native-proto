@@ -5,17 +5,17 @@
 #include <vector>
 #include "../../c/zdstype.h"
 #include "../../c/zds.hpp"
-#include "conversion.h"
+#include "conversion.hpp"
 
-void create_dataset(std::string dsn, DS_ATTRIBUTES attributes);
+void create_data_set(std::string dsn, DS_ATTRIBUTES attributes);
 
-std::vector<ZDSEntry> list_datasets(std::string dsn);
+std::vector<ZDSEntry> list_data_sets(std::string dsn);
 
-std::string read_dataset(std::string dsn, std::string codepage = "");
+std::string read_data_set(std::string dsn, std::string codepage = "");
 
-std::string write_dataset(std::string dsn, std::string data, std::string codepage = "", std::string etag = "");
+std::string write_data_set(std::string dsn, std::string data, std::string codepage = "", std::string etag = "");
 
-void delete_dataset(std::string dsn);
+void delete_data_set(std::string dsn);
 
 void create_member(std::string dsn);
 

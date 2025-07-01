@@ -1,11 +1,11 @@
-#include "zusf_py.h"
+#include "zusf_py.hpp"
 
 void create_uss_file(const std::string &file, const std::string &mode)
 {
     ZUSF ctx = {0};
     if (zusf_create_uss_file_or_dir(&ctx, file, mode, false) != 0)
     {
-        std::string error_msg = ctx.diag.e_msg;
+        std::string error_msg = (ctx.diag.e_msg);
         throw std::runtime_error(error_msg);
     }
 }

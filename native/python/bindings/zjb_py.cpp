@@ -9,6 +9,15 @@ std::vector<ZJob> list_jobs_by_owner(std::string owner_name)
     a2e_inplace(owner_name);
     int rc = zjb_list_by_owner(&zjb, owner_name, "", jobs);
 
+    if (rc != 0)
+    {
+        std::string diag(zjb.diag.e_msg, zjb.diag.e_msg_len);
+        diag.push_back('\0');
+        e2a_inplace(diag);
+        diag.pop_back();
+        throw std::runtime_error(diag);
+    }
+
     for (auto &job : jobs)
     {
         e2a_inplace(job.jobname);
@@ -31,6 +40,15 @@ ZJob get_job_status(std::string jobid)
     a2e_inplace(jobid);
     int rc = zjb_view(&zjb, jobid, job);
 
+    if (rc != 0)
+    {
+        std::string diag(zjb.diag.e_msg, zjb.diag.e_msg_len);
+        diag.push_back('\0');
+        e2a_inplace(diag);
+        diag.pop_back();
+        throw std::runtime_error(diag);
+    }
+
     e2a_inplace(job.jobname);
     e2a_inplace(job.jobid);
     e2a_inplace(job.owner);
@@ -49,6 +67,15 @@ std::vector<ZJobDD> list_spool_files(std::string jobid)
 
     a2e_inplace(jobid);
     int rc = zjb_list_dds(&zjb, jobid, jobDDs);
+
+    if (rc != 0)
+    {
+        std::string diag(zjb.diag.e_msg, zjb.diag.e_msg_len);
+        diag.push_back('\0');
+        e2a_inplace(diag);
+        diag.pop_back();
+        throw std::runtime_error(diag);
+    }
 
     for (auto &dd : jobDDs)
     {
@@ -70,6 +97,15 @@ std::string read_spool_file(std::string jobid, int key)
     a2e_inplace(jobid);
     int rc = zjb_read_jobs_output_by_key(&zjb, jobid, key, response);
 
+    if (rc != 0)
+    {
+        std::string diag(zjb.diag.e_msg, zjb.diag.e_msg_len);
+        diag.push_back('\0');
+        e2a_inplace(diag);
+        diag.pop_back();
+        throw std::runtime_error(diag);
+    }
+
     e2a_inplace(response);
 
     return response;
@@ -83,6 +119,15 @@ std::string get_job_jcl(std::string jobid)
     a2e_inplace(jobid);
     int rc = zjb_read_job_jcl(&zjb, jobid, response);
 
+    if (rc != 0)
+    {
+        std::string diag(zjb.diag.e_msg, zjb.diag.e_msg_len);
+        diag.push_back('\0');
+        e2a_inplace(diag);
+        diag.pop_back();
+        throw std::runtime_error(diag);
+    }
+
     e2a_inplace(response);
 
     return response;
@@ -95,6 +140,15 @@ std::string submit_job(std::string jcl_content)
 
     a2e_inplace(jcl_content);
     int rc = zjb_submit(&zjb, jcl_content, jobid);
+
+    if (rc != 0)
+    {
+        std::string diag(zjb.diag.e_msg, zjb.diag.e_msg_len);
+        diag.push_back('\0');
+        e2a_inplace(diag);
+        diag.pop_back();
+        throw std::runtime_error(diag);
+    }
     e2a_inplace(jobid);
     return jobid;
 }
@@ -105,6 +159,15 @@ bool delete_job(std::string jobid)
 
     a2e_inplace(jobid);
     int rc = zjb_delete(&zjb, jobid);
+
+    if (rc != 0)
+    {
+        std::string diag(zjb.diag.e_msg, zjb.diag.e_msg_len);
+        diag.push_back('\0');
+        e2a_inplace(diag);
+        diag.pop_back();
+        throw std::runtime_error(diag);
+    }
 
     return true;
 }
