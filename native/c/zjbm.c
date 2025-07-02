@@ -120,13 +120,12 @@ int ZJBSYMB(ZJB *zjb, const char *symbol, char *value)
   {
     // TODO(Kelosky): read jsymerad for errors
     strcpy(zjb->diag.service_name, "iazsymbl");
-    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "IAZSYMBL RC was: '%d', JSYMRETN was: '%d', JSYMREAS: %d", rc,
-                                  jsym.jsymretn, jsym.jsymreas);
+    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "IAZSYMBL RC was: '%d', JSYMRETN was: '%d', JSYMREAS: %d", rc, jsym.jsymretn, jsym.jsymreas);
     zjb->diag.detail_rc = ZJB_RTNCD_SERVICE_FAILURE;
     return RTNCD_FAILURE;
   }
 
-  p = (unsigned char *)&jsymbolOutput.jsymbolTable;                             // --> table
+  p = (unsigned char *)&jsymbolOutput.jsymbolTable;                               // --> table
   JSYENTRY *jsymbolEntry = (JSYENTRY *)(p + jsymbolOutput.jsymbolTable.jsytent1); // --> first entry
 
   p = p + jsymbolEntry->jsyevalo;
@@ -183,6 +182,7 @@ int ZJBMMOD(ZJB *zjb, int type, int flags)
   SSOB ssob = {0};
   SSIB ssib = {0};
   SSJM ssjm = {0};
+  SSJF *ssjfp = NULL;
 
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=sfcd-modify-job-function-call-ssi-function-code-85
   init_ssob(&ssob, &ssib, &ssjm, 85);
@@ -218,357 +218,453 @@ int ZJBMMOD(ZJB *zjb, int type, int flags)
   {
     ssjm.ssjmcflg = ssjm.ssjmcflg | flags;
   }
+  else if (ssjmhold == type) // hold
+  {
+    // no flags needed
+  }
+  else if (ssjmrls == type) // release
+  {
+    // no flags needed
+  }
+  else if (ssjmrst == type) // restart
+  {                         // TODO(zFernand0): not implemented
+    ssjm.ssjmeflg = ssjm.ssjmeflg | flags;
+  }
+  else if (ssjmspin == type) // spin
+  {                          // TODO(zFernand0): not implemented
+    ssjm.ssjmtsfl = ssjm.ssjmtsfl | flags;
+    // ssjm.ssjmtsdn = ddname to spin
+  }
 
-  memcpy(ssjm.ssjmjbid, zjb->header.jobid, 8);
+  if (zjb->jobid[0] != 0x00)
+  {
+    ssjm.ssjmsel1 = ssjm.ssjmsel1 | ssjmsjbi; // real lookup
+    memcpy(ssjm.ssjmjbil, zjb->jobid, sizeof(ssjm.ssjmjbil));
+    memcpy(ssjm.ssjmjbih, zjb->jobid, sizeof(ssjm.ssjmjbih));
+  }
+  else
+  {
+    char correlator31[64] = {0};
+    memcpy(correlator31, zjb->correlator, sizeof(zjb->correlator));
+    ssjm.ssjmsel5 = ssjmscor;
+    ssjm.ssjmjcrp = &correlator31[0];
+  }
+
+  ssjm.ssjmsel2 = ssjm.ssjmsel2 | ssjmsjob; // batch jobs
+  ssjm.ssjmsel2 = ssjm.ssjmsel2 | ssjmsstc; // stcs
+  ssjm.ssjmsel2 = ssjm.ssjmsel2 | ssjmstsu; // time sharing users
 
   ssobp = &ssob;
+  ssobp = (SSOB * PTR32)((unsigned int)ssobp | 0x80000000);
+  rc = iefssreq(&ssobp); // TODO(Kelosky): recovery
 
-  rc = iazssji(&ssobp);
-
-  if (0 != rc)
+  if (0 != rc || 0 != ssob.ssobretn)
   {
-    strcpy(zjb->diag.service_name, "iazssji");
-    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "IAZSSJI RC was: '%d', SSOB return code was: '%d', SSJM return code was: '%d'", rc,
-                                  ssob.ssobretc, ssjm.ssjmretn);
-    zjb->diag.detail_rc = ZJB_RTNCD_SERVICE_FAILURE;
+    strcpy(zjb->diag.service_name, "IEFSSREQ");
+    zjb->diag.service_rc = ssob.ssobretn;
+    zjb->diag.service_rsn = ssjm.ssjmretn;
+    zjb->diag.service_rsn_secondary = ssjm.ssjmret2;
+    // Understanding reason codes from this SSOB: https://www.ibm.com/docs/en/zos/3.1.0?topic=85-output-parameters
+    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "IEFSSREQ rc was: '%d' SSOBRETN was: '%d', SSJMRETN was: '%d', SSJMRET2 was: '%d'", rc, ssob.ssobretn, ssjm.ssjmretn, ssjm.ssjmret2);
+    return RTNCD_FAILURE;
+  }
+
+  ssjfp = (SSJF *)ssjm.ssjmsjf8; // NOTE(Kelosky): in the future we can return a list of SSJFs, for now, if none returned, the job was not found
+
+  if (0 == ssjm.ssjmnsjf)
+  {
+    if (zjb->jobid[0] != 0x00)
+    {
+      zjb->diag.detail_rc = ZJB_RTNCD_JOB_NOT_FOUND;
+      zjb->diag.e_msg_len = sprintf(
+          zjb->diag.e_msg, "No jobs found matching jobid '%.8s'", zjb->jobid);
+    }
+    else
+    {
+      zjb->diag.detail_rc = ZJB_RTNCD_CORRELATOR_NOT_FOUND;
+      zjb->diag.e_msg_len =
+          sprintf(zjb->diag.e_msg, "No jobs found matching correlator '%.64s'",
+                  zjb->correlator);
+    }
     return RTNCD_FAILURE;
   }
 
   return RTNCD_SUCCESS;
 }
 
-// view a single job
+// view job
 #pragma prolog(ZJBMVIEW, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(ZJBMVIEW, " ZWEEPILG ")
 int ZJBMVIEW(ZJB *zjb, ZJB_JOB_INFO **PTR64 job_info, int *entries)
 {
-  int rc = 0;
-
-  SSOB *PTR32 ssobp = NULL;
-  SSOB ssob = {0};
-  SSIB ssib = {0};
   STAT stat = {0};
-
-  init_ssob(&ssob, &ssib, &stat, 83); // get job queue info
-  rc = init_ssib(&ssib);
-  if (0 != rc)
-  {
-    strcpy(zjb->diag.service_name, "init_ssib");
-    zjb->diag.detail_rc = rc;
-    if (ZJB_RTNCD_JES3_NOT_SUPPORTED == rc)
-    {
-      zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "JES3 is not supported");
-    }
-    else
-    {
-      zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "Failed to get SSIBSSNM");
-    }
-    return RTNCD_FAILURE;
-  }
-
   init_stat(&stat);
 
-  STATJQ *PTR32 statjqp = NULL;
-  rc = ZJBMGJQ(zjb, &ssob, &stat, &statjqp);
-  if (0 != rc)
+  if (zjb->jobid[0] != 0x00)
   {
-    return rc;
+    stat.statsel1 = stat.statsel1 | statsjbi; // real lookup
+    memcpy(stat.statjbil, zjb->jobid, sizeof(stat.statjbil));
+    memcpy(stat.statjbih, zjb->jobid, sizeof(stat.statjbih));
+  }
+  else
+  {
+    char correlator31[64] = {0};
+    memcpy(correlator31, zjb->correlator, sizeof(zjb->correlator));
+    stat.statsel5 = statscor;
+    stat.statjcrp = &correlator31[0];
   }
 
-  rc = ZJBMTCOM(zjb, &stat, job_info, entries);
+  stat.stattype = statters;
 
-  return rc;
+  return ZJBMTCOM(zjb, &stat, job_info, entries);
 }
 
-// list all jobs
+// list jobs
 #pragma prolog(ZJBMLIST, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(ZJBMLIST, " ZWEEPILG ")
 int ZJBMLIST(ZJB *zjb, ZJB_JOB_INFO **PTR64 job_info, int *entries)
 {
-  int rc = 0;
-
-  SSOB *PTR32 ssobp = NULL;
-  SSOB ssob = {0};
-  SSIB ssib = {0};
   STAT stat = {0};
-
-  init_ssob(&ssob, &ssib, &stat, 83); // get job queue info
-  rc = init_ssib(&ssib);
-  if (0 != rc)
-  {
-    strcpy(zjb->diag.service_name, "init_ssib");
-    zjb->diag.detail_rc = rc;
-    if (ZJB_RTNCD_JES3_NOT_SUPPORTED == rc)
-    {
-      zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "JES3 is not supported");
-    }
-    else
-    {
-      zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "Failed to get SSIBSSNM");
-    }
-    return RTNCD_FAILURE;
-  }
-
   init_stat(&stat);
 
-  STATJQ *PTR32 statjqp = NULL;
-  rc = ZJBMGJQ(zjb, &ssob, &stat, &statjqp);
-  if (0 != rc)
+  stat.statsel1 = statsown;
+  stat.stattype = statters;
+  memcpy(stat.statownr, zjb->owner_name, sizeof((stat.statownr)));
+
+  if (0 == strcmp(zjb->prefix_name, "        "))
   {
-    return rc;
+    // do nothing
+  }
+  else
+  {
+    stat.statsel1 |= statsjbn; // add job name filter
+    memcpy(stat.statjobn, zjb->prefix_name, sizeof((stat.statjobn)));
   }
 
-  rc = ZJBMTCOM(zjb, &stat, job_info, entries);
-
-  return rc;
+  return ZJBMTCOM(zjb, &stat, job_info, entries);
 }
 
 int ZJBMGJQ(ZJB *zjb, SSOB *ssobp, STAT *statp, STATJQ *PTR32 *PTR32 statjqp)
 {
   int rc = 0;
 
-  // Now invoke the service
-  statp->statfmem = statfmjq;
-  statp->statflg1 = 0;
-  statp->statflg2 = 0;
-  statp->statflg3 = 0;
-  statp->statflg4 = 0;
+  SSOB *PTR32 ssobp2 = NULL;
 
-  if (0 != strlen(zjb->header.jobid))
+  ssobp2 = ssobp;
+  ssobp2 = (SSOB * PTR32)((unsigned int)ssobp2 | 0x80000000);
+  rc = iefssreq(&ssobp2); // TODO(Kelosky): recovery
+
+  if (0 != rc || 0 != ssobp->ssobretn)
   {
-    statp->statflg1 = statp->statflg1 | statjobi;
-    memcpy(statp->statjobn, zjb->header.jobid, 8);
+    ZJBMEMSG(zjb, statp, ssobp, rc);
+    statp->stattype = statmem; // free storage
+    rc = iefssreq(&ssobp2);
+    return RTNCD_FAILURE;
   }
 
-  rc = iazssjm(ssobp);
-
-  if (0 != rc)
-  {
-    rc = ZJBMEMSG(zjb, statp, ssobp, rc);
-    return rc;
-  }
-
-  *statjqp = (STATJQ *PTR32)statp->statptr1;
+  *statjqp = (STATJQ * PTR32) statp->statjobf;
 
   return RTNCD_SUCCESS;
 }
 
 int ZJBMEMSG(ZJB *zjb, STAT *PTR64 stat, SSOB *PTR64 ssobp, int rc)
 {
-  strcpy(zjb->diag.service_name, "iazssjm");
-  zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "IAZSSJM RC was: '%d', SSOB return code was: '%d', STAT return code was: '%d'", rc,
-                                ssobp->ssobretc, stat->statretc);
+  strcpy(zjb->diag.service_name, "IEFSSREQ");
   zjb->diag.detail_rc = ZJB_RTNCD_SERVICE_FAILURE;
-
-  // write our message to the screen / log for reference
-  // TODO(Kelosky): may want to remove this when stable
-  char msg[100] = {0};
-  sprintf(msg, "IAZSSJM RC: '%d', SSOB: '%d', STAT: '%d'", rc, ssobp->ssobretc, stat->statretc);
-  wto31(msg);
-
-  return RTNCD_FAILURE;
+  zjb->diag.service_rc = ssobp->ssobretn;
+  zjb->diag.service_rsn = stat->statreas;
+  zjb->diag.service_rsn_secondary = stat->statrea2;
+#define STATLERR 8
+  if (STATLERR == ssobp->ssobretn && statrojb == stat->statreas) // skip if invalid job id
+  {
+    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "Job ID '%.8s' was not valid", stat->statojbi); // STATREAS contains the reason
+  }
+  else
+  {
+    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "IEFSSREQ rc was: '%d' SSOBRETN was: '%d', STATREAS was: '%d', STATREA2 was: '%d'", rc, ssobp->ssobretn, stat->statreas, stat->statrea2); // STATREAS contains the reason
+  }
 }
 
 int ZJBMTCOM(ZJB *zjb, STAT *PTR64 stat, ZJB_JOB_INFO **PTR64 job_info, int *entries)
 {
   int rc = 0;
 
-  STATJQSE *statjqse = NULL;
-  STATJQE *statjqe = NULL;
-  STATJQE *statjqe_start = NULL;
+  SSOB *PTR32 ssobp = NULL;
+  SSOB ssob = {0};
+  SSIB ssib = {0};
 
-  char *p = NULL;
-
-  char user[9] = {0};
-  char class[2] = {0};
-
-  // ptr to extended offsets list and other information about returned job queue entries
-  STATJQ *PTR32 statjq = (STATJQ *PTR32)stat->statptr1;
-
-  *entries = statjq->statjqnr;
-
-  ZJB_JOB_INFO *PTR64 jinfos = (ZJB_JOB_INFO *PTR64)CALLOC64(*entries, sizeof(ZJB_JOB_INFO));
-
-  if (!jinfos)
+  // https://www.ibm.com/docs/en/zos/3.1.0?topic=sfcd-extended-status-function-call-ssi-function-code-80
+  init_ssob(&ssob, &ssib, stat, 80);
+  if (0 != init_ssib(&ssib))
   {
-    strcpy(zjb->diag.service_name, "CALLOC64");
-    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "Memory failure allocating jobs information");
+    strcpy(zjb->diag.service_name, "init_ssib");
     zjb->diag.detail_rc = ZJB_RTNCD_SERVICE_FAILURE;
     return RTNCD_FAILURE;
   }
 
-  p = (char *)statjq;                                  // get ptr to structure
-  statjqse = (STATJQSE *)(p + statjq->statjqof);      // ptr to extended offsets
-  statjqe_start = (STATJQE *)(p + statjqse->jqesttof); // ptr to table entries
-  statjqe = statjqe_start;
+  ssobp = &ssob;
+  ssobp = (SSOB * PTR32)((unsigned int)ssobp | 0x80000000);
+  rc = iefssreq(&ssobp); // TODO(Kelosky): recovery
 
-  for (int i = 0; i < *entries; i++)
+  if (0 != rc || 0 != ssob.ssobretn)
   {
-    ZJB_JOB_INFO *job_entry = &jinfos[i];
-
-    memcpy(job_entry->jobname, statjqe->jqejname, 8);
-    memcpy(job_entry->jobid, statjqe->jqejbid, 8);
-
-    // Remove EBCDIC trailing spaces and null terminate
-    for (int j = 7; j >= 0; j--)
-    {
-      if (job_entry->jobname[j] != ' ')
-      {
-        job_entry->jobname[j + 1] = '\0';
-        break;
-      }
-    }
-
-    for (int j = 7; j >= 0; j--)
-    {
-      if (job_entry->jobid[j] != ' ')
-      {
-        job_entry->jobid[j + 1] = '\0';
-        break;
-      }
-    }
-
-    memcpy(user, statjqe->jqeuseid, 8);
-    for (int j = 7; j >= 0; j--)
-    {
-      if (user[j] != ' ')
-      {
-        user[j + 1] = '\0';
-        break;
-      }
-    }
-    strcpy(job_entry->owner, user);
-
-    memcpy(class, &statjqe->jqeclass, 1);
-    class[1] = '\0';
-    strcpy(job_entry->class, class);
-
-    strcpy(job_entry->status, get_job_status(statjqe->jqestc));
-
-    switch (statjqe->jqetype)
-    {
-    case jqetjob:
-      strcpy(job_entry->type, "JOB");
-      break;
-    case jqetstc:
-      strcpy(job_entry->type, "STC");
-      break;
-    case jqettsu:
-      strcpy(job_entry->type, "TSU");
-      break;
-    default:
-      strcpy(job_entry->type, "UNK");
-      break;
-    }
-
-    statjqe = (STATJQE *)((char *)statjqe + statjqe->jqelen);
+    ZJBMEMSG(zjb, stat, &ssob, rc);
+    stat->stattype = statmem; // free storage
+    rc = iefssreq(&ssobp);
+    return RTNCD_FAILURE;
   }
 
-  *job_info = jinfos;
+  STATJQ *PTR32 statjqp = (STATJQ * PTR32) stat->statjobf;
+
+  ZJB_JOB_INFO *statjqtrsp = storage_get64(zjb->buffer_size);
+  *job_info = statjqtrsp;
+
+  STATJQHD *PTR32 statjqhdp = NULL;
+  STATJQTR *PTR32 statjqtrp = NULL;
+
+  int total_size = 0;
+  int loop_control = 0;
+
+  while (statjqp)
+  {
+    if (loop_control >= zjb->jobs_max)
+    {
+      zjb->diag.detail_rc = ZJB_RSNCD_MAX_JOBS_REACHED;
+      zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "Reached maximum returned jobs requested %d", zjb->jobs_max);
+      stat->stattype = statmem; // free storage
+      rc = iefssreq(&ssobp);
+      return RTNCD_WARNING;
+      break;
+    }
+
+    total_size += (int)sizeof(ZJB_JOB_INFO);
+
+    if (total_size <= zjb->buffer_size)
+    {
+      *entries = *entries + 1;
+
+      statjqhdp = (STATJQHD * PTR32)((unsigned char *PTR32)statjqp + statjqp->stjqohdr);
+      statjqtrp = (STATJQTR * PTR32)((unsigned char *PTR32)statjqhdp + sizeof(STATJQHD));
+
+      memcpy(statjqtrsp, statjqtrp, sizeof(STATJQTR));
+      int rc = iaztlkup(&ssob, statjqtrsp, zjb);
+      if (0 != rc)
+      {
+        strcpy(zjb->diag.service_name, "iaztlkup");
+        // For information about the reason code, look for `tlkretcd` in "native/c/chdsect/iaztlkdf.h"
+        // https://www.ibm.com/docs/en/zos/3.1.0?topic=80-text-lookup-service-iaztlkup
+        zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "IAZTLKUP RC: '%d' reason: '%d'", statjqtrsp->statjqtr.sttrjid, rc, zjb->diag.detail_rc);
+        zjb->diag.detail_rc = ZJB_RTNCD_SERVICE_FAILURE;
+        storage_free64(statjqtrsp);
+        return RTNCD_FAILURE;
+      }
+
+      statjqtrsp++;
+    }
+    else
+    {
+      zjb->diag.detail_rc = ZJB_RTNCD_INSUFFICIENT_BUFFER;
+    }
+
+    statjqp = (STATJQ * PTR32) statjqp->stjqnext;
+
+    loop_control++;
+  }
+
+  zjb->buffer_size_needed = total_size;
+
+  stat->stattype = statmem; // free storage
+  rc = iefssreq(&ssobp);    // TODO(Kelosky): recovery
 
   return RTNCD_SUCCESS;
 }
 
+#define LOOP_MAX 100
+
+// list data sets for a job
 #pragma prolog(ZJBMLSDS, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(ZJBMLSDS, " ZWEEPILG ")
 int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
 {
   int rc = 0;
+  int loop_control = 0;
 
+  // return rc
   SSOB *PTR32 ssobp = NULL;
   SSOB ssob = {0};
   SSIB ssib = {0};
   STAT stat = {0};
 
-  init_ssob(&ssob, &ssib, &stat, 83); // get job queue info
-  rc = init_ssib(&ssib);
-  if (0 != rc)
+  STATJQ *PTR32 statjqp = NULL;
+  STATJQHD *PTR32 statjqhdp = NULL;
+  STATJQTR *PTR32 statjqtrp = NULL;
+
+  STATVO *PTR32 statvop = NULL;
+  STATSVHD *PTR32 statsvhdp = NULL;
+  STATSEVB *PTR32 statsevbp = NULL;
+
+  // https://www.ibm.com/docs/en/zos/3.1.0?topic=sfcd-extended-status-function-call-ssi-function-code-80
+  if (0 != init_ssib(&ssib))
   {
     strcpy(zjb->diag.service_name, "init_ssib");
-    zjb->diag.detail_rc = rc;
-    if (ZJB_RTNCD_JES3_NOT_SUPPORTED == rc)
-    {
-      zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "JES3 is not supported");
-    }
-    else
-    {
-      zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "Failed to get SSIBSSNM");
-    }
-    return RTNCD_FAILURE;
-  }
-
-  init_stat(&stat);
-
-  // Now invoke the service
-  stat.statfmem = statfmse;
-  stat.statflg1 = 0;
-  stat.statflg2 = 0;
-  stat.statflg3 = 0;
-  stat.statflg4 = 0;
-
-  if (0 != strlen(zjb->header.jobid))
-  {
-    stat.statflg1 = stat.statflg1 | statjobi;
-    memcpy(stat.statjobn, zjb->header.jobid, 8);
-  }
-
-  ssobp = &ssob;
-
-  rc = iazssjm(ssobp);
-
-  if (0 != rc)
-  {
-    rc = ZJBMEMSG(zjb, &stat, ssobp, rc);
-    return rc;
-  }
-
-  STATSE *PTR32 statse = (STATSE *PTR32)stat.statptr1; // ptr to sysout information
-
-  *entries = statse->statseno;
-
-  STATSEVB *PTR64 dses = (STATSEVB *PTR64)CALLOC64(*entries, sizeof(STATSEVB));
-
-  if (!dses)
-  {
-    strcpy(zjb->diag.service_name, "CALLOC64");
-    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "Memory failure allocating sysout information");
     zjb->diag.detail_rc = ZJB_RTNCD_SERVICE_FAILURE;
     return RTNCD_FAILURE;
   }
+  init_ssob(&ssob, &ssib, &stat, 80);
+  init_stat(&stat);
 
-  char *p = (char *)statse;                         // get ptr to statse structure
-  STATSESO *statseso = (STATSESO *)(p + statse->statseof); // ptr to extended offsets
-  STATSEVB *statsevb_start = (STATSEVB *)(p + statseso->sesttof); // ptr to variable table entries
-  STATSEVB *statsevb = statsevb_start;
+  stat.stattype = statters;
 
-  for (int i = 0; i < *entries; i++)
+  if (zjb->jobid[0] != 0x00)
   {
-    STATSEVB *sysout_entry = &dses[i];
-
-    memcpy(sysout_entry, statsevb, sizeof(STATSEVB));
-
-    // move to next
-    statsevb = (STATSEVB *)((char *)statsevb + statsevb->sevblen);
+    stat.statsel1 = stat.statsel1 | statsjbi; // real lookup
+    memcpy(stat.statjbil, zjb->jobid, sizeof(stat.statjbil));
+    memcpy(stat.statjbih, zjb->jobid, sizeof(stat.statjbih));
+  }
+  else
+  {
+    char correlator31[64] = {0};
+    memcpy(correlator31, zjb->correlator, sizeof(zjb->correlator));
+    stat.statsel5 = statscor;
+    stat.statjcrp = &correlator31[0];
   }
 
-  *sysoutInfo = dses;
+  // NOTE(Kelosky): we first locate the STATJQ via jobid or job correlator because verbose data which containts SYSOUT info
+  // cannot be obtained directly from the jobid or job correlator as documented by the JES SSI API.
+  rc = ZJBMGJQ(zjb, &ssob, &stat, &statjqp);
+
+  if (0 != rc)
+  {
+    return rc;
+  }
+  stat.statsel1 = 0;
+  stat.statsel5 = 0;
+
+  ssobp = &ssob;
+  ssobp = (SSOB * PTR32)((unsigned int)ssobp | 0x80000000);
+
+  if (NULL == statjqp)
+  {
+
+    if (zjb->jobid[0] != 0x00)
+    {
+      zjb->diag.detail_rc = ZJB_RTNCD_JOB_NOT_FOUND;
+      zjb->diag.e_msg_len = sprintf(
+          zjb->diag.e_msg, "No jobs found matching jobid '%.8s'", zjb->jobid);
+    }
+    else
+    {
+      zjb->diag.detail_rc = ZJB_RTNCD_CORRELATOR_NOT_FOUND;
+      zjb->diag.e_msg_len =
+          sprintf(zjb->diag.e_msg, "No jobs found matching correlator '%.64s'",
+                  zjb->correlator);
+    }
+
+    stat.stattype = statmem; // free storage
+    rc = iefssreq(&ssobp);   // TODO(Kelosky): recovery
+    return RTNCD_FAILURE;
+  }
+
+  stat.stattrsa = statjqp;
+  stat.stattype = statoutv;
+
+  rc = iefssreq(&ssobp); // TODO(Kelosky): recovery
+
+  if (0 != rc || 0 != ssob.ssobretn)
+  {
+    strcpy(zjb->diag.service_name, "IEFSSREQ");
+    zjb->diag.service_rc = ssob.ssobretn;
+    zjb->diag.service_rsn = stat.statreas;
+    zjb->diag.service_rsn_secondary = stat.statrea2;
+    zjb->diag.e_msg_len =
+        sprintf(zjb->diag.e_msg,
+                "IEFSSREQ rc was: '%d' SSOBRETN was: '%d', STATREAS was: '%d', "
+                "STATREA2 was: '%d'",
+                rc, ssob.ssobretn, stat.statreas,
+                stat.statrea2); // STATREAS contains the reason
+    return RTNCD_FAILURE;
+  }
+
+  statjqp = (STATJQ * PTR32) stat.statjobf;
+  statvop = (STATVO * PTR32) statjqp->stjqsvrb;
+
+  if (NULL == statjqp)
+  {
+    statjqp = stat.stattrsa;
+  }
+
+  if (NULL == statjqp)
+  {
+    if (zjb->jobid[0] != 0x00)
+    {
+      zjb->diag.detail_rc = ZJB_RTNCD_JOB_NOT_FOUND;
+      zjb->diag.e_msg_len = sprintf(
+          zjb->diag.e_msg, "No jobs found matching jobid '%.8s'", zjb->jobid);
+    }
+    else
+    {
+      zjb->diag.detail_rc = ZJB_RTNCD_CORRELATOR_NOT_FOUND;
+      zjb->diag.e_msg_len =
+          sprintf(zjb->diag.e_msg, "No jobs found matching correlator '%.64s'",
+                  zjb->correlator);
+    }
+    zjb->diag.detail_rc = ZJB_RTNCD_JOB_NOT_FOUND;
+    stat.stattype = statmem; // free storage
+    rc = iefssreq(&ssobp);   // TODO(Kelosky): recovery
+    return RTNCD_FAILURE;
+  }
+
+  STATSEVB *statsetrsp = storage_get64(zjb->buffer_size);
+  *sysoutInfo = statsetrsp;
+
+  int total_size = 0;
+
+  while (statjqp)
+  {
+    statjqhdp = (STATJQHD * PTR32)((unsigned char *PTR32)statjqp + statjqp->stjqohdr);
+    statjqtrp = (STATJQTR * PTR32)((unsigned char *PTR32)statjqhdp + sizeof(STATJQHD));
+
+    while (statvop)
+    {
+
+      if (loop_control >= zjb->dds_max)
+      {
+        stat.stattype = statmem; // free storage
+        rc = iefssreq(&ssobp);   // TODO(Kelosky): recovery
+        zjb->diag.detail_rc = ZJB_RSNCD_MAX_JOBS_REACHED;
+        zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "max DDs reached '%d', results truncated", zjb->dds_max);
+        return RTNCD_WARNING;
+      }
+
+      total_size += (int)sizeof(STATSEVB);
+
+      if (total_size <= zjb->buffer_size)
+      {
+        *entries = *entries + 1;
+
+        statsvhdp = (STATSVHD * PTR32)((unsigned char *PTR32)statvop + statvop->stvoohdr);
+        statsevbp = (STATSEVB * PTR32)((unsigned char *PTR32)statsvhdp + sizeof(STATSVHD));
+
+        memcpy(statsetrsp, statsevbp, sizeof(STATSEVB));
+        statsetrsp++;
+      }
+      else
+      {
+        zjb->diag.detail_rc = ZJB_RTNCD_INSUFFICIENT_BUFFER;
+      }
+
+      statvop = (STATVO * PTR32) statvop->stvojnxt;
+
+      loop_control++;
+    }
+
+    statjqp = (STATJQ * PTR32) statjqp->stjqnext;
+  }
+
+  zjb->buffer_size_needed = total_size;
+
+  stat.stattype = statmem; // free storage
+  rc = iefssreq(&ssobp);   // TODO(Kelosky): recovery
 
   return RTNCD_SUCCESS;
-}
-
-char *get_job_status(unsigned char status_code)
-{
-  switch (status_code)
-  {
-  case jqsrecv:
-    return "INPUT";
-  case jqshold:
-    return "HELD";
-  case jqsexec:
-    return "ACTIVE";
-  case jqsout:
-    return "OUTPUT";
-  default:
-    return "UNKNOWN";
-  }
 }

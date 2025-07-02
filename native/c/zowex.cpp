@@ -1005,7 +1005,7 @@ int handle_data_set_list(const ParseResult &result)
   dsn += ".**";
 
   string max_entries = result.find_kw_arg_string("max-entries");
-  bool warn = result.find_kw_arg_bool("warn");
+  bool warn = result.find_kw_arg_bool("warn") && !result.find_kw_arg_bool("no-warn");
   bool attributes = result.find_kw_arg_bool("attributes");
 
   ZDS zds = {0};
@@ -1025,7 +1025,8 @@ int handle_data_set_list(const ParseResult &result)
       if (emit_csv)
       {
         fields.push_back(it->name);
-        if (attributes) {
+        if (attributes)
+        {
           fields.push_back(it->dsorg);
           fields.push_back(it->volser);
           fields.push_back(it->migr ? "true" : "false");
@@ -2015,7 +2016,7 @@ int handle_job_list(const ParseResult &result)
   string owner_name = result.find_kw_arg_string("owner");
   string prefix_name = result.find_kw_arg_string("prefix");
   string max_entries = result.find_kw_arg_string("max-entries");
-  bool warn = result.find_kw_arg_bool("warn");
+  bool warn = result.find_kw_arg_bool("warn") && !result.find_kw_arg_bool("no-warn");
 
   if (!max_entries.empty())
   {

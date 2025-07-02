@@ -1,64 +1,18 @@
----
 Language: Cpp
-BasedOnStyle: LLVM
+# Allman-style braces
+BreakBeforeBraces: Allman
+# 2-space indentation
 IndentWidth: 2
-TabWidth: 2
 UseTab: Never
-ColumnLimit: 120
-BreakBeforeBraces: Attach
-AllowShortIfStatementsOnASingleLine: false
-AllowShortBlocksOnASingleLine: Empty
+# Pointer alignment
+PointerAlignment: Right
+# Other options to match observed style
 AllowShortFunctionsOnASingleLine: None
-AlignPointerRight: false
-PointerAlignment: Left
-SpaceAfterCStyleCast: false
-SpaceBeforeParens: ControlStatements
-SpaceInEmptyParentheses: false
-SpacesInParentheses: false
-SpacesInCStyleCastParentheses: false
-AlignConsecutiveDeclarations: false
-AlignConsecutiveAssignments: false
-BinPackParameters: true
-BinPackArguments: true
-AllowAllParametersOfDeclarationOnNextLine: true
-AlwaysBreakAfterReturnType: None
-BreakBeforeBinaryOperators: None
-BreakBeforeTernaryOperators: true
-BreakConstructorInitializers: BeforeColon
-BreakInheritanceList: BeforeColon
-CompactNamespaces: false
-ConstructorInitializerAllOnOneLineOrOnePerLine: false
-ConstructorInitializerIndentWidth: 2
-ContinuationIndentWidth: 2
-Cpp11BracedListStyle: true
-DerivePointerAlignment: false
-ExperimentalAutoDetectBinPacking: false
-FixNamespaceComments: true
-ForEachMacros: []
-IncludeBlocks: Preserve
-IndentCaseLabels: false
-IndentPPDirectives: None
-IndentWrappedFunctionNames: false
-KeepEmptyLinesAtTheStartOfBlocks: true
-MaxEmptyLinesToKeep: 2
-NamespaceIndentation: None
-PenaltyBreakAssignment: 2
-PenaltyBreakBeforeFirstCallParameter: 1
-PenaltyBreakComment: 300
-PenaltyBreakFirstLessLess: 120
-PenaltyBreakString: 1000
-PenaltyExcessCharacter: 1000000
-PenaltyReturnTypeOnItsOwnLine: 200
-ReflowComments: true
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+AllowShortBlocksOnASingleLine: false
+ColumnLimit: 0
+Standard: Cpp11
+TabWidth: 2
+AccessModifierOffset: -2
 SortIncludes: false
-SortUsingDeclarations: true
-SpaceAfterTemplateKeyword: true
-SpaceBeforeAssignmentOperators: true
-SpaceBeforeCtorInitializerColon: true
-SpaceBeforeInheritanceColon: true
-SpaceBeforeRangeBasedForLoopColon: true
-SpaceInEmptyBlock: false
-SpacesBeforeTrailingComments: 1
-Standard: c++11
----
-
