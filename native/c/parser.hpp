@@ -1721,10 +1721,7 @@ Command::parse(const std::vector<lexer::Token> &tokens,
         result.exit_code = 1;
         return result;
       }
-      // Otherwise, forcibly advance the token and positional argument index to
-      // avoid infinite loop
       current_token_index++;
-      current_positional_arg_index++;
     }
   }
 
