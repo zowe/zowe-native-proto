@@ -52,14 +52,13 @@ export class ZClientUtils {
             if (config.type === sshConfig.LineType.DIRECTIVE) {
                 const session: ISshConfigExt = {};
                 // If it has multiple names, take the first
-                session.name =typeof config.value === "object" ? config.value[0].val : config.value as string;
+                session.name = (typeof config.value === "object" ? config.value[0].val : config.value as string);
 
                 if (Array.isArray((config as sshConfig.Section).config)) {
                     for (const subConfig of (config as sshConfig.Section).config) {
                         if (typeof subConfig === "object" && "param" in subConfig && "value" in subConfig) {
                             const param = (subConfig as sshConfig.Directive).param.toLowerCase();
                             const value = subConfig.value as string;
-                            // const value = typeof subConfig.value === "object" ? subConfig.value : subConfig[0].value;
 
                             switch (param) {
                                 case "hostname":
