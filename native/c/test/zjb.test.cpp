@@ -190,6 +190,9 @@ void zjb_tests()
       // wait_for_conversion(correlator, "INPUT");
 
 
+      ZJob zjob;
+      string correlator = string(zjb.correlator, 64);
+
       memset(&zjb, 0, sizeof(zjb));
       rc = zjb_view(&zjb, jobid, zjob);
       cout << "@TEST: " << jobid << " " << zjob.correlator << " " << zjob.full_status << " " << zjob.jobid << " "
