@@ -27,7 +27,7 @@ using namespace ztst;
 void zusf_tests()
 {
   describe("zusf_chmod_uss_file_or_dir tests",
-           []() -> void
+           [&]() -> void
            {
              // Setup test environment
              ZUSF zusf;
