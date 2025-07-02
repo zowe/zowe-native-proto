@@ -21,37 +21,49 @@
 using namespace std;
 using namespace ztst;
 
-void wait_for_conversion(string correlator, string status) {
+void wait_for_conversion(string correlator, string status)
+{
   int index = 0;
-  while (true) {
+  while (true)
+  {
     ZJB zjb = {0};
     ZJob zjob = {0};
     int rc = zjb_view(&zjb, correlator, zjob);
+    const int max_retries = 1000;
 
     cout << "@TEST index is " << index << " status is " << zjob.status << " full status " << zjob.full_status
          << " comparing " << status << endl;
 
-    if (rc != RTNCD_SUCCESS) {
+    if (rc != RTNCD_SUCCESS)
+    {
       string error =
-        "Error: could not view job: '" + correlator + "' rc: " + to_string(rc) + "\n'  " + string(zjb.diag.e_msg) + "'";
+          "Error: could not view job: '" + correlator + "' rc: " + to_string(rc) + "\n'  " + string(zjb.diag.e_msg) + "'";
       throw runtime_error(error);
     }
 
-    if (index >= 1000) {
-      break;
+    if (index >= max_retries)
+    {
+      string error =
+          "Error: for job: '" + correlator + "' reached max retries of " + to_string(max_retries);
+      throw runtime_error(error);
     }
-    if (zjob.full_status == status) {
+    if (zjob.full_status == status)
+    {
       this_thread::sleep_for(chrono::milliseconds(10 * 5)); // wait for job to exit INPUT
-    } else {
+    }
+    else
+    {
       break;
     }
     index++;
   }
 }
 
-void zjb_tests() {
+void zjb_tests()
+{
 
-  describe("zjb tests", []() -> void {
+  describe("zjb tests", []() -> void
+           {
     it("should be able to list a job", []() -> void {
       ZJB zjb = {0};
       string owner = "*";  // all owners
@@ -82,6 +94,10 @@ void zjb_tests() {
 
       // wait_for_conversion(correlator, "INPUT");
       // sleep(2);
+
+      memset(&zjb, 0, sizeof(zjb));
+      rc = zjb_cancel(&zjb, correlator);
+      cout << "@TEST cancel job rc was " << rc << " with message " << string(zjb.diag.e_msg) << endl;
 
       memset(&zjb, 0, sizeof(zjb));
       rc = zjb_delete(&zjb, jobid);
@@ -227,6 +243,5 @@ void zjb_tests() {
       memset(&zjb, 0, sizeof(zjb));
       rc = zjb_delete(&zjb, correlator);
       ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
-    });
-  });
+    }); });
 }
