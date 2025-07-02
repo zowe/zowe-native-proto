@@ -212,6 +212,12 @@ void zjb_tests()
       Expect(content).Not().ToBe(""); // expect some content returned
 
       memset(&zjb, 0, sizeof(zjb));
+      rc = zjb_view(&zjb, jobid, zjob);
+      cout << "@TEST: " << jobid << " " << zjob.correlator << " " << zjob.full_status << " " << zjob.jobid << " "
+           << zjob.jobname << " " << zjob.owner << " " << zjob.retcode << " " << zjob.status << endl;
+
+
+      memset(&zjb, 0, sizeof(zjb));
       rc = zjb_delete(&zjb, correlator);
       ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
     });
