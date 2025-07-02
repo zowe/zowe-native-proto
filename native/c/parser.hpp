@@ -1630,7 +1630,7 @@ Command::parse(const std::vector<lexer::Token> &tokens,
       // fall through to positional argument processing
     }
 
-    // if not a flag/option or subcommand, treat as positional argument
+    // if not a flag/option or subcommand, treat as positional argument if we're still looking for one
     if (current_positional_arg_index < m_pos_args.size())
     {
       const ArgumentDef &pos_arg_def = m_pos_args[current_positional_arg_index];
@@ -1721,6 +1721,8 @@ Command::parse(const std::vector<lexer::Token> &tokens,
         result.exit_code = 1;
         return result;
       }
+      // Consume the token if its not a flag, subcommand, or positional argument
+      // as its not relevant to the command
       current_token_index++;
     }
   }
