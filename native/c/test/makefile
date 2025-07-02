@@ -223,11 +223,11 @@ build-out/zmetal.metal.test.o: build-out/zmetal.metal.test.s
 # build-out/testrcvy: build-out/testrcvy.o
 # 	$(BIND) $(BIND_FLAGS_64) -V -eMAIN -o $@ $^ > $*.bind.lst
 
-build-out/testasm1.o: testasm1.s
-	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
+# build-out/testasm1.o: testasm1.s
+# 	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
-build-out/testasm1: build-out/testasm1.o
-	$(BIND) $(BIND_FLAGS_AUTH) -V -eTESTASM1 -o $@ $^ > $*.bind.lst
+# build-out/testasm1: build-out/testasm1.o
+# 	$(BIND) $(BIND_FLAGS_AUTH) -V -eTESTASM1 -o $@ $^ > $*.bind.lst
 
 # build-out/testasm4.o: testasm4.s
 # 	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
