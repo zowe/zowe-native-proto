@@ -189,6 +189,13 @@ void zjb_tests()
 
       // wait_for_conversion(correlator, "INPUT");
 
+
+      memset(&zjb, 0, sizeof(zjb));
+      rc = zjb_view(&zjb, jobid, zjob);
+      cout << "@TEST: " << jobid << " " << zjob.correlator << " " << zjob.full_status << " " << zjob.jobid << " "
+           << zjob.jobname << " " << zjob.owner << " " << zjob.retcode << " " << zjob.status << endl;
+
+
       vector<ZJobDD> dds;
       memset(&zjb, 0, sizeof(zjb));
       rc = zjb_list_dds(&zjb, correlator, dds);
