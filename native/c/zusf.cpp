@@ -712,13 +712,13 @@ int zusf_chtag_uss_file_or_dir(ZUSF *zusf, string file, string tag, bool recursi
   const auto is_dir = S_ISDIR(file_stats.st_mode);
   if (!is_dir)
   {
-    attrib64_t attr;
+    attrib_t attr;
     memset(&attr, 0, sizeof(attr));
     attr.att_filetagchg = 1;
     attr.att_filetag.ft_ccsid = ccsid;
     attr.att_filetag.ft_txtflag = int(ccsid != 65535);
 
-    const auto rc = __chattr64((char *)file.c_str(), &attr, sizeof(attr));
+    const auto rc = __chattr((char *)file.c_str(), &attr, sizeof(attr));
     if (rc != 0)
     {
       zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to update attributes for path '%s'", file.c_str());

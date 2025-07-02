@@ -276,6 +276,10 @@ $(OUT_DIR)/zusf.o: zusf.cpp
 	@echo 'Building $(OUT_DIR)/zusf.o'
 	$(CXX) $(DLL_CPP_FLAGS) -qlist=$*.cpp.lst -o $@ $^
 
+$(OUT_DIR_CXXLANG)/zusf.o: $(OUT_DIRS) zusf.cpp
+	@echo '$(OUT_DIR_CXXLANG)/zusf.o'
+	$(CXXLANG) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -o $@ $^
+
 $(OUT_DIR)/libzusf.so: $(OUT_DIR)/zusf.o $(OUT_DIR)/libzut.a
 	@echo 'Building $(OUT_DIR)/libzusf.so'
 	$(CXX) $(DLL_BND_FLAGS) -o $@ $^ > $*.bind.lst
