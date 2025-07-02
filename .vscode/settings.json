@@ -144,15 +144,5 @@
   "[typescript]": {
     "editor.defaultFormatter": "biomejs.biome"
   },
-  "[c]": {
-    "editor.defaultFormatter": "ms-vscode.cpptools",
-    "editor.formatOnSave": true
-  },
-  "[cpp]": {
-    "editor.defaultFormatter": "ms-vscode.cpptools",
-    "editor.formatOnSave": true
-  },
-  "C_Cpp.formatting": "clangFormat",
-  "C_Cpp.clang_format_style": "file",
   "files.eol": "\n"
 }
