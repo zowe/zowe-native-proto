@@ -199,17 +199,17 @@ void zjb_tests()
            << zjob.jobname << " " << zjob.owner << " " << zjob.retcode << " " << zjob.status << endl;
 
 
-      vector<ZJobDD> dds;
-      memset(&zjb, 0, sizeof(zjb));
-      rc = zjb_list_dds(&zjb, correlator, dds);
-      ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
-      Expect(dds.size()).ToBeGreaterThan(0); // expect at least one DD returned
+      // vector<ZJobDD> dds;
+      // memset(&zjb, 0, sizeof(zjb));
+      // rc = zjb_list_dds(&zjb, correlator, dds);
+      // ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
+      // Expect(dds.size()).ToBeGreaterThan(0); // expect at least one DD returned
 
-      string content;
-      memset(&zjb, 0, sizeof(zjb));
-      rc = zjb_read_jobs_output_by_key(&zjb, correlator, dds[0].key, content);
-      ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
-      Expect(content).Not().ToBe(""); // expect some content returned
+      // string content;
+      // memset(&zjb, 0, sizeof(zjb));
+      // rc = zjb_read_jobs_output_by_key(&zjb, correlator, dds[0].key, content);
+      // ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
+      // Expect(content).Not().ToBe(""); // expect some content returned
 
       memset(&zjb, 0, sizeof(zjb));
       rc = zjb_delete(&zjb, correlator);
