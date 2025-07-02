@@ -185,7 +185,7 @@ void zjb_tests()
       int rc = zjb_submit(&zjb, jcl, jobid);
       ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
 
-      string correlator = string(zjb.correlator, 64);
+      // string correlator = string(zjb.correlator, 64);
 
       // wait_for_conversion(correlator, "INPUT");
 
