@@ -309,14 +309,19 @@ int ztst::report()
 
   for (vector<TEST_SUITE>::iterator it = ztst_suites.begin(); it != ztst_suites.end(); it++)
   {
+    bool suite_success = true;
     for (vector<TEST_CASE>::iterator iit = it->tests.begin(); iit != it->tests.end(); iit++)
     {
       tests_total++;
       if (!iit->success)
       {
-        suite_fail++;
+        suite_success = false;
         tests_fail++;
       }
+    }
+    if (!suite_success)
+    {
+      suite_fail++;
     }
   }
 
