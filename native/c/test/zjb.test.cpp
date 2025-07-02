@@ -193,10 +193,10 @@ void zjb_tests()
       ZJob zjob;
       string correlator = string(zjb.correlator, 64);
 
-      // memset(&zjb, 0, sizeof(zjb));
-      // rc = zjb_view(&zjb, jobid, zjob);
-      // cout << "@TEST: " << jobid << " " << zjob.correlator << " " << zjob.full_status << " " << zjob.jobid << " "
-      //      << zjob.jobname << " " << zjob.owner << " " << zjob.retcode << " " << zjob.status << endl;
+      memset(&zjb, 0, sizeof(zjb));
+      rc = zjb_view(&zjb, jobid, zjob);
+      cout << "@TEST: " << jobid << " " << zjob.correlator << " " << zjob.full_status << " " << zjob.jobid << " "
+           << zjob.jobname << " " << zjob.owner << " " << zjob.retcode << " " << zjob.status << endl;
 
 
       vector<ZJobDD> dds;
@@ -204,6 +204,10 @@ void zjb_tests()
       rc = zjb_list_dds(&zjb, correlator, dds);
       ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
       Expect(dds.size()).ToBeGreaterThan(0); // expect at least one DD returned
+      memset(&zjb, 0, sizeof(zjb));
+      rc = zjb_view(&zjb, jobid, zjob);
+      cout << "@TEST: " << jobid << " " << zjob.correlator << " " << zjob.full_status << " " << zjob.jobid << " "
+           << zjob.jobname << " " << zjob.owner << " " << zjob.retcode << " " << zjob.status << endl;
 
       string content;
       memset(&zjb, 0, sizeof(zjb));
@@ -211,10 +215,10 @@ void zjb_tests()
       ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
       Expect(content).Not().ToBe(""); // expect some content returned
 
-      // memset(&zjb, 0, sizeof(zjb));
-      // rc = zjb_view(&zjb, jobid, zjob);
-      // cout << "@TEST: " << jobid << " " << zjob.correlator << " " << zjob.full_status << " " << zjob.jobid << " "
-      //      << zjob.jobname << " " << zjob.owner << " " << zjob.retcode << " " << zjob.status << endl;
+      memset(&zjb, 0, sizeof(zjb));
+      rc = zjb_view(&zjb, jobid, zjob);
+      cout << "@TEST: " << jobid << " " << zjob.correlator << " " << zjob.full_status << " " << zjob.jobid << " "
+           << zjob.jobname << " " << zjob.owner << " " << zjob.retcode << " " << zjob.status << endl;
 
 
       memset(&zjb, 0, sizeof(zjb));
