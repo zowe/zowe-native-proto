@@ -1,13 +1,9 @@
 #!/bin/bash
 set -e
 
-SWIG_PATH=$(type -p swig || true)
-if [ -z "$SWIG_PATH" ]; then
-  echo "ERROR: swig not found."
-  echo "Please install swig and re-run this script."
-  exit 1
-fi
-SWIG_DIR=$(dirname "$SWIG_PATH")
+SWIG_PATH=$(type swig)
+# Take the last string after splitting into space
+SWIG_DIR=$(dirname $(echo "$SWIG_PATH" | awk '{print $NF}'))
 # Use SWIG_LIB if it is set, otherwise assume it is in SWIG_DIR
 export SWIG_LIB=${SWIG_LIB:-$SWIG_DIR/swig_lib}
 
