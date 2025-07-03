@@ -59,10 +59,14 @@ int zjb_list_by_owner(ZJB *zjb, std::string owner_name, std::vector<ZJob> &jobs)
  * @param jobs populated list returned containing job information array
  * @return int 0 for success; non zero otherwise
  */
+#ifdef SWIG
 extern "C"
 {
-  int zjb_list_by_owner(ZJB *zjb, std::string owner_name, std::string prefix_name, std::vector<ZJob> &jobs);
+#endif
+int zjb_list_by_owner(ZJB *zjb, std::string owner_name, std::string prefix_name, std::vector<ZJob> &jobs);
+#ifdef SWIG
 }
+#endif
 /**
  * @brief Return a job status struct from input jobid
  *

@@ -1,3 +1,14 @@
+/**
+ * This program and the accompanying materials are made available under the terms of the
+ * Eclipse Public License v2.0 which accompanies this distribution, and is available at
+ * https://www.eclipse.org/legal/epl-v20.html
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ *
+ * Copyright Contributors to the Zowe Project.
+ *
+ */
+
 #include "zjb_py.hpp"
 #include <iostream>
 
@@ -36,7 +47,7 @@ std::vector<ZJob> list_jobs_by_owner(std::string owner_name)
         e2a_inplace(job.status);
         e2a_inplace(job.full_status);
         e2a_inplace(job.retcode);
-        e2a_inplace(job.job_correlator);
+        e2a_inplace(job.correlator);
     }
 
     return jobs;
