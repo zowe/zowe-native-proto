@@ -21,43 +21,7 @@
 using namespace std;
 using namespace ztst;
 
-void sleep_on_status(string status, string jobid)
-{
-  int index = 0;
-  while (true)
-  {
-    ZJB zjb = {0};
-    ZJob zjob = {0};
-    int rc = zjb_view(&zjb, jobid, zjob);
-    const int max_retries = 1000;
-
-    cout << "@TEST index is " << index << " status is " << zjob.status << " full status " << zjob.full_status
-         << " comparing " << status << endl;
-
-    if (rc != RTNCD_SUCCESS)
-    {
-      string error =
-          "Error: could not view job: '" + jobid + "' rc: " + to_string(rc) + "\n'  " + string(zjb.diag.e_msg) + "'";
-      throw runtime_error(error);
-    }
-
-    if (index >= max_retries)
-    {
-      string error =
-          "Error: for job: '" + jobid + "' reached max retries of " + to_string(max_retries);
-      throw runtime_error(error);
-    }
-    if (zjob.full_status == status)
-    {
-      this_thread::sleep_for(chrono::milliseconds(10 * 5)); // wait for job to exit INPUT
-    }
-    else
-    {
-      break;
-    }
-    index++;
-  }
-}
+void sleep_on_status(string status, string jobid);
 
 void zjb_tests()
 {
@@ -151,7 +115,7 @@ void zjb_tests()
       string correlator = string(zjb.correlator, sizeof(zjb.correlator));
       string returned_jcl;
 
-      // sleep_on_status(correlator, "INPUT");
+      sleep_on_status(correlator, "INPUT");
 
       memset(&zjb, 0, sizeof(zjb));
       rc = zjb_read_job_jcl(&zjb, correlator, returned_jcl);
@@ -169,6 +133,8 @@ void zjb_tests()
       ZJob zjob;
       string correlator = string(zjb.correlator, sizeof(zjb.correlator));
 
+      sleep_on_status(correlator, "INPUT");
+
       vector<ZJobDD> dds;
       memset(&zjb, 0, sizeof(zjb));
       rc = zjb_list_dds(&zjb, correlator, dds);
@@ -180,12 +146,6 @@ void zjb_tests()
       rc = zjb_read_jobs_output_by_key(&zjb, correlator, dds[0].key, content);
       ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
       Expect(content).Not().ToBe(""); // expect some content returned
-
-      memset(&zjb, 0, sizeof(zjb));
-      rc = zjb_view(&zjb, jobid, zjob);
-      cout << "@TEST: " << jobid << " " << zjob.correlator << " " << zjob.full_status << " " << zjob.jobid << " "
-           << zjob.jobname << " " << zjob.owner << " " << zjob.retcode << " " << zjob.status << endl;
-
 
       memset(&zjb, 0, sizeof(zjb));
       rc = zjb_delete(&zjb, correlator);
@@ -200,6 +160,8 @@ void zjb_tests()
       ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
 
       string correlator = string(zjb.correlator, sizeof(zjb.correlator));
+
+      sleep_on_status(correlator, "INPUT");
 
       memset(&zjb, 0, sizeof(zjb));
       rc = zjb_cancel(&zjb, correlator);
@@ -219,4 +181,42 @@ void zjb_tests()
       rc = zjb_delete(&zjb, correlator);
       ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
     }); });
+}
+
+void sleep_on_status(string status, string jobid)
+{
+  int index = 0;
+  while (true)
+  {
+    ZJB zjb = {0};
+    ZJob zjob = {0};
+    int rc = zjb_view(&zjb, jobid, zjob);
+    const int max_retries = 1000;
+
+    cout << "@TEST index is " << index << " status is " << zjob.status << " full status " << zjob.full_status
+         << " comparing " << status << endl;
+
+    if (rc != RTNCD_SUCCESS)
+    {
+      string error =
+          "Error: could not view job: '" + jobid + "' rc: " + to_string(rc) + "\n'  " + string(zjb.diag.e_msg) + "'";
+      throw runtime_error(error);
+    }
+
+    if (index >= max_retries)
+    {
+      string error =
+          "Error: for job: '" + jobid + "' reached max retries of " + to_string(max_retries);
+      throw runtime_error(error);
+    }
+    if (zjob.full_status == status)
+    {
+      this_thread::sleep_for(chrono::milliseconds(10 * 5)); // wait for job to exit INPUT
+    }
+    else
+    {
+      break;
+    }
+    index++;
+  }
 }
