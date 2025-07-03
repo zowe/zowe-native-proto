@@ -193,9 +193,6 @@ void sleep_on_status(string status, string jobid)
     int rc = zjb_view(&zjb, jobid, zjob);
     const int max_retries = 1000;
 
-    cout << "@TEST index is " << index << " status is " << zjob.status << " full status " << zjob.full_status
-         << " comparing " << status << endl;
-
     if (rc != RTNCD_SUCCESS)
     {
       string error =
