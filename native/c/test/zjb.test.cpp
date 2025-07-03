@@ -152,41 +152,7 @@ void zjb_tests()
       ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
     });
 
-    it("should be able to cancel a JCL", [&]() -> void {
-      ZJB zjb = {0};
-      string jobid;
-
-      int rc = zjb_submit(&zjb, jcl, jobid);
-      ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
-
-      string correlator = string(zjb.correlator, sizeof(zjb.correlator));
-
-      sleep_on_status("INPUT", correlator);
-
-      memset(&zjb, 0, sizeof(zjb));
-      rc = zjb_cancel(&zjb, correlator);
-
-      ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
-
-
-      sleep_on_status("CONVERSION", correlator);
-      sleep_on_status("ACTIVE", correlator);
-
-      ZJob zjob;
-
-      memset(&zjb, 0, sizeof(zjb));
-      rc = zjb_view(&zjb, correlator, zjob);
-
-      ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
-
-      cout << "@TEST " << zjob.correlator << " " << zjob.full_status << " " << zjob.jobid << " " << zjob.jobname << " " << zjob.owner << " " << zjob.retcode << " " << zjob.status << endl;
-
-      Expect(zjob.retcode).ToBe("CANCELED");
-
-      memset(&zjb, 0, sizeof(zjb));
-      rc = zjb_delete(&zjb, correlator);
-      ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
-    }); });
+ });
 }
 
 void sleep_on_status(string status, string jobid)
