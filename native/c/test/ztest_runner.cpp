@@ -14,8 +14,10 @@
 #include "zut.test.hpp"
 #include "zjb.test.hpp"
 #include "zds.test.hpp"
+#include "zcn.test.hpp"
 #include "zrecovery.test.hpp"
 #include "zmetal.test.hpp"
+#include "zusf.test.hpp"
 #include "ztest.hpp"
 
 using namespace std;
@@ -35,12 +37,14 @@ int main(int argc, char *argv[])
   int rc = tests(
       []() -> void
       {
-        // zstorage_tests();
-        // zut_tests();
+        zut_tests();
         zjb_tests();
-        // zds_tests();
-        // zrecovery_tests();
-        // zmetal_tests();
+        zds_tests();
+        zcn_tests();
+        zstorage_tests();
+        zrecovery_tests();
+        zmetal_tests();
+        zusf_tests();
       });
 
   return rc;

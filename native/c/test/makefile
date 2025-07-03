@@ -142,10 +142,16 @@ build-out/zjb.o \
 build-out/zjbm.o \
 build-out/zjbm31.o \
 build-out/zssi31.o \
+build-out/zcn.test.o \
+build-out/zcn.o \
+build-out/zcnm.o \
+build-out/zcnm31.o \
 build-out/zrecovery.test.o \
 build-out/zrecovery.metal.test.o \
 build-out/zmetal.test.o \
-build-out/zmetal.metal.test.o
+build-out/zmetal.metal.test.o \
+build-out/zusf.test.o \
+build-out/zusf.o
 	$(OCXX) $(CXXLANG_BND_FLAGS) -o $@ $^ > $*.bind.lst
 
 build-out/zut.o:
@@ -178,6 +184,18 @@ build-out/zjbm31.o:
 build-out/zssi31.o:
 	cp ../build-out/zssi31.o build-out/zssi31.o
 
+build-out/zcn.o:
+	cp ../build-out/xlclang/zcn.o build-out/zcn.o
+
+build-out/zcnm.o:
+	cp ../build-out/zcnm.o build-out/zcnm.o
+
+build-out/zcnm31.o:
+	cp ../build-out/zcnm31.o build-out/zcnm31.o
+
+build-out/zusf.o:
+	cp ../build-out/xlclang/zusf.o build-out/zusf.o
+
 build-out/zstorage.test.o: zstorage.test.cpp
 	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
 
@@ -194,6 +212,9 @@ build-out/zjb.test.o: zjb.test.cpp
 	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
 
 build-out/zds.test.o: zds.test.cpp
+	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
+
+build-out/zcn.test.o: zcn.test.cpp
 	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
 
 build-out/zrecovery.test.o: zrecovery.test.cpp
@@ -213,6 +234,9 @@ build-out/zmetal.metal.test.s: zmetal.metal.test.c
 
 build-out/zmetal.metal.test.o: build-out/zmetal.metal.test.s
 	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
+
+build-out/zusf.test.o: zusf.test.cpp
+	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
 
 # build-out/testrcvy.s: testrcvy.c
 # 	$(CC) $(MTL_FLAGS64) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^

@@ -186,13 +186,15 @@ int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response, ListOptio
       stat(child_path.c_str(), &child_stats);
 
       vector<string> fields;
-      string name =entry->d_name;
-      if (name.at(0) == '.' && !options.all_files) {
+      string name = entry->d_name;
+      if (name.at(0) == '.' && !options.all_files)
+      {
         continue;
       }
 
       fields.push_back(entry->d_name);
-      if (options.long_format) {
+      if (options.long_format)
+      {
         string mode;
         mode += (S_ISDIR(child_stats.st_mode) ? "d" : "-");
         mode += (child_stats.st_mode & S_IRUSR ? "r" : "-");
@@ -519,7 +521,7 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe)
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zusf_chmod_uss_file_or_dir(ZUSF *zusf, string file, string mode, bool recursive)
+int zusf_chmod_uss_file_or_dir(ZUSF *zusf, string file, mode_t mode, bool recursive)
 {
   // TODO(zFernand0): Add recursive option for directories
   struct stat file_stats;
@@ -535,7 +537,7 @@ int zusf_chmod_uss_file_or_dir(ZUSF *zusf, string file, string mode, bool recurs
     return RTNCD_FAILURE;
   }
 
-  chmod(file.c_str(), strtol(mode.c_str(), nullptr, 8));
+  chmod(file.c_str(), mode);
   if (recursive && S_ISDIR(file_stats.st_mode))
   {
     DIR *dir;
@@ -710,13 +712,13 @@ int zusf_chtag_uss_file_or_dir(ZUSF *zusf, string file, string tag, bool recursi
   const auto is_dir = S_ISDIR(file_stats.st_mode);
   if (!is_dir)
   {
-    attrib64_t attr;
+    attrib_t attr;
     memset(&attr, 0, sizeof(attr));
     attr.att_filetagchg = 1;
     attr.att_filetag.ft_ccsid = ccsid;
     attr.att_filetag.ft_txtflag = int(ccsid != 65535);
 
-    const auto rc = __chattr64((char *)file.c_str(), &attr, sizeof(attr));
+    const auto rc = __chattr((char *)file.c_str(), &attr, sizeof(attr));
     if (rc != 0)
     {
       zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to update attributes for path '%s'", file.c_str());
