@@ -168,6 +168,9 @@ void zjb_tests()
 
       ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
 
+
+      sleep_on_status("CONVERSION", correlator);
+
       ZJob zjob;
 
       memset(&zjb, 0, sizeof(zjb));
