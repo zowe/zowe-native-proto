@@ -175,7 +175,7 @@ void zjb_tests()
 
       ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
 
-      cout << "@TEST " << zjob.correlator << " " < zjob.full_status << " " << zjob.jobid << " " << zjob.jobname << " " << zjob.owner << " " << zjob.retcode << " " << zjob.status << endl;
+      cout << "@TEST " << zjob.correlator << " " << zjob.full_status << " " << zjob.jobid << " " << zjob.jobname << " " << zjob.owner << " " << zjob.retcode << " " << zjob.status << endl;
 
       Expect(zjob.retcode).ToBe("CANCELED");
 
