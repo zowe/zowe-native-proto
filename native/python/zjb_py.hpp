@@ -18,5 +18,6 @@
 #include <vector>
 
 std::vector<ZJob> list_jobs_by_owner(std::string owner_name);
+std::vector<ZJob> list_jobs_by_owner(std::string owner_name, std::string prefix);
 
 #endif
