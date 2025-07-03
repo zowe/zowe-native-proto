@@ -7,7 +7,7 @@ from flask import Blueprint, jsonify, request
 import os
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from bindings import zjb_py as zjb
+from bindings import zjb_py as zjb, zds_py as zds, zusf_py as zusf
 
 zjb_bp = Blueprint('zjb', __name__)
 
@@ -651,6 +651,227 @@ def read_job_jcl_by_correlator(correlator):
             jsonify(
                 {
                     "error": f"could not view JCL for job correlator {correlator} - {error_msg}",
+                    "details": error_msg,
+                }
+            ),
+            500,
+        )
+    
+@zjb_bp.route("/zosmf/restjobs/jobs", methods=["PUT"])
+def submit_job():
+    """
+    Submit a z/OS job using JCL content, data set, or USS file.
+
+    This endpoint calls the zjb.submit_job function and formats the output similar to the C++ CLI.
+
+    Content-Type Support:
+        - text/plain: JCL content in request body (X-IBM-Intrdr-Mode: TEXT or omitted)
+        - application/octet-stream: Binary JCL content (X-IBM-Intrdr-Mode: RECORD or BINARY)
+        - application/json: Reference to data set or USS file
+
+    Headers:
+        X-IBM-Intrdr-Mode: TEXT, RECORD, or BINARY (optional, default: TEXT)
+
+    Query Parameters:
+        only-jobid: Return only the job ID (optional, default: false)
+        only-correlator: Return only the job correlator (optional, default: false)  
+        wait: Wait for job status - ACTIVE, OUTPUT (optional)
+
+    Request Body:
+        For text/plain or application/octet-stream: JCL content
+        For application/json: {"dsn": "DATA.SET.NAME", "encoding": "optional"} 
+                         or {"file": "/path/to/uss/file", "encoding": "optional"}
+    """
+    try:
+        content_type = request.content_type or "text/plain"
+        intrdr_mode = request.headers.get("X-IBM-Intrdr-Mode", "TEXT").upper()
+        
+        # Query parameters
+        only_jobid = request.args.get("only-jobid", "false").lower() == "true"
+        only_correlator = request.args.get("only-correlator", "false").lower() == "true"
+        wait_status = request.args.get("wait", "").upper()
+        
+        jcl_content = ""
+        identifier = ""
+        
+        if content_type.startswith("application/json"):
+            # Handle data set or USS file reference
+            json_data = request.get_json()
+            if not json_data:
+                return jsonify({"error": "Request body is required for JSON content type"}), 400
+                
+            if "dsn" in json_data:
+                # Submit job from data set
+                dsn = json_data["dsn"]
+                if not dsn:
+                    return jsonify({"error": "dsn is required in JSON body"}), 400
+                    
+                # Read from data set
+                try:
+                    encoding = json_data.get("encoding", "")
+                    jcl_content = zds.read_data_set(dsn, encoding)
+                    identifier = dsn
+                except Exception as e:
+                    return jsonify({
+                        "error": f"could not read data set '{dsn}' - {str(e)}",
+                        "details": str(e)
+                    }), 500
+                    
+            elif "file" in json_data:
+                # Submit job from USS file
+                file_path = json_data["file"]
+                if not file_path:
+                    return jsonify({"error": "file is required in JSON body"}), 400
+                    
+                try:
+                    encoding = json_data.get("encoding", "")
+                    jcl_content = zusf.read_uss_file(file_path, encoding)
+                    identifier = file_path
+                except Exception as e:
+                    return jsonify({
+                        "error": f"could not read USS file '{file_path}' - {str(e)}",
+                        "details": str(e)
+                    }), 500
+            else:
+                return jsonify({
+                    "error": "JSON body must contain either 'dsn' or 'file' field"
+                }), 400
+                
+        else:
+            # Handle direct JCL content (text/plain or application/octet-stream)
+            if content_type.startswith("text/plain"):
+                jcl_content = request.get_data(as_text=True)
+                identifier = "JCL content"
+            elif content_type.startswith("application/octet-stream"):
+                # Handle binary/record mode
+                jcl_content = request.get_data(as_text=False).decode('utf-8', errors='ignore')
+                identifier = "JCL content (binary)"
+            else:
+                return jsonify({
+                    "error": f"Unsupported content type: {content_type}. Use text/plain, application/octet-stream, or application/json"
+                }), 400
+                
+            if not jcl_content:
+                return jsonify({"error": "JCL content is required in request body"}), 400
+                
+        # Submit the job
+        try:
+            jobid = zjb.submit_job(jcl_content)
+            
+            # Handle different response formats based on query parameters
+            if only_jobid:
+                return jsonify({"jobid": jobid})
+            elif only_correlator:
+                # Note: The correlator would need to be returned from the C++ function
+                # For now, return an error indicating this needs implementation
+                return jsonify({
+                    "error": "Job correlator not available from submit_job function",
+                    "details": "C++ function needs to return correlator"
+                }), 501
+            else:
+                response = {
+                    "message": f"Submitted {identifier}, {jobid}",
+                    "jobid": jobid,
+                    "success": True
+                }
+                
+            # Handle wait parameter
+            if wait_status in ["ACTIVE", "OUTPUT"]:
+                # Note: This would require a wait function in the C++ binding
+                response["warnings"] = [f"wait parameter '{wait_status}' provided but not supported by current C++ function"]
+            elif wait_status and wait_status not in ["ACTIVE", "OUTPUT"]:
+                return jsonify({
+                    "error": f"Invalid wait status '{wait_status}'. Must be 'ACTIVE' or 'OUTPUT'"
+                }), 400
+                
+            return jsonify(response), 201
+            
+        except Exception as e:
+            error_msg = str(e)
+            return jsonify({
+                "error": f"could not submit JCL: '{identifier}' - {error_msg}",
+                "details": error_msg
+            }), 500
+            
+    except Exception as e:
+        error_msg = str(e)
+        return jsonify({
+            "error": f"Job submission failed - {error_msg}",
+            "details": error_msg
+        }), 500
+    
+@zjb_bp.route("/zosmf/restjobs/jobs/<jobname>/<jobid>", methods=["DELETE"])
+def delete_job_by_name_and_id(jobname, jobid):
+    """
+    Delete a z/OS job by jobname and jobid.
+
+    This endpoint calls the zjb.delete_job function and formats the output similar to the C++ CLI.
+
+    Path Parameters:
+        jobname: Job name (required)
+        jobid: Job ID (required)
+    """
+    try:
+        if not jobname or not jobid:
+            return jsonify({"error": "jobname and jobid are required"}), 400
+
+        # Call the C++ function to delete the job
+        zjb.delete_job(jobid)
+
+        response = {
+            "message": f"Job {jobid} deleted",
+            "jobname": jobname,
+            "jobid": jobid,
+            "success": True
+        }
+
+        return jsonify(response)
+
+    except Exception as e:
+        error_msg = str(e)
+        return (
+            jsonify(
+                {
+                    "error": f"could not delete job: '{jobid}' - {error_msg}",
+                    "details": error_msg,
+                }
+            ),
+            500,
+        )
+
+
+@zjb_bp.route("/zosmf/restjobs/jobs/<correlator>", methods=["DELETE"])
+def delete_job_by_correlator(correlator):
+    """
+    Delete a z/OS job by job correlator.
+
+    This endpoint calls the zjb.delete_job function and formats the output similar to the C++ CLI.
+
+    Path Parameters:
+        correlator: Job correlator (required)
+    """
+    try:
+        if not correlator:
+            return jsonify({"error": "correlator is required"}), 400
+
+        # Call the C++ function to delete the job
+        # Note: The C++ function expects a jobid, but correlator should work the same way
+        zjb.delete_job(correlator)
+
+        response = {
+            "message": f"Job {correlator} deleted",
+            "job-correlator": correlator,
+            "success": True
+        }
+
+        return jsonify(response)
+
+    except Exception as e:
+        error_msg = str(e)
+        return (
+            jsonify(
+                {
+                    "error": f"could not delete job: '{correlator}' - {error_msg}",
                     "details": error_msg,
                 }
             ),

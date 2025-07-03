@@ -18,7 +18,7 @@ def list_data_sets():
     """
     List the z/OS data sets on a system.
 
-    This endpoint calls the zds.list_datasets function and formats the output similar to the C++ CLI.
+    This endpoint calls the zds.list_data_sets function and formats the output similar to the C++ CLI.
 
     Query Parameters:
         dslevel: Data set name pattern (required) - will have ".**" appended like CLI
@@ -47,7 +47,7 @@ def list_data_sets():
 
         dsn = dslevel + ".**"
 
-        entries = zds.list_datasets(dsn)
+        entries = zds.list_data_sets(dsn)
 
         results = []
         warnings_list = []
@@ -193,7 +193,7 @@ def read_data_set_or_member(data_set_name, member_name=None):
     """
     Read the contents of a z/OS data set or member.
 
-    This endpoint calls the zds.read_dataset function and formats the output similar to the C++ CLI.
+    This endpoint calls the zds.read_data_set function and formats the output similar to the C++ CLI.
 
     Path Parameters:
         data_set_name: Name of the dataset to read from (required)
@@ -221,7 +221,7 @@ def read_data_set_or_member(data_set_name, member_name=None):
         if not data_set_name:
             return jsonify({"error": "data set name is required"}), 400
 
-        content = zds.read_dataset(full_dsn, encoding)
+        content = zds.read_data_set(full_dsn, encoding)
 
         warnings_list = []
 
@@ -334,7 +334,7 @@ def write_data_set_or_member(full_path):
                 "volser parameter provided but not supported by current C++ function"
             )
 
-        new_etag = zds.write_dataset(full_dsn, data, encoding, etag)
+        new_etag = zds.write_data_set(full_dsn, data, encoding, etag)
 
         if etag_only == "true":
             response = {"etag": new_etag}
@@ -408,7 +408,7 @@ def create_member(data_set_name, member_name):
     
 
 @zds_bp.route("/zosmf/restfiles/ds/<path:data_set_name>", methods=["POST"])
-def create_dataset(data_set_name):
+def create_data_set(data_set_name):
     """
     Create a new z/OS data set.
     
@@ -459,7 +459,7 @@ def create_dataset(data_set_name):
                 except ValueError:
                     return jsonify({"error": f"Invalid numeric value for {param}: {value}"}), 400
 
-        zds.create_dataset(data_set_name, attributes)
+        zds.create_data_set(data_set_name, attributes)
         
         if "(" in data_set_name and data_set_name.endswith(")"):
             start = data_set_name.find("(")
@@ -501,7 +501,7 @@ def create_dataset(data_set_name):
 @zds_bp.route("/zosmf/restfiles/ds/<path:data_set_name>", methods=["DELETE"])
 @zds_bp.route("/zosmf/restfiles/ds/-(<volume>)/<path:data_set_name>", methods=["DELETE"])
 @zds_bp.route("/zosmf/restfiles/ds/<path:data_set_name>(<member_name>)", methods=["DELETE"])
-def delete_dataset(data_set_name, volume=None, member_name=None):
+def delete_data_set(data_set_name, volume=None, member_name=None):
     """
     Delete a z/OS data set or member.
     
@@ -525,7 +525,7 @@ def delete_dataset(data_set_name, volume=None, member_name=None):
         else:
             full_dsn = data_set_name
 
-        zds.delete_dataset(full_dsn)
+        zds.delete_data_set(full_dsn)
         
         if member_name:
             response = {
