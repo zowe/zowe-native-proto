@@ -170,6 +170,7 @@ void zjb_tests()
 
 
       sleep_on_status("CONVERSION", correlator);
+      sleep_on_status("ACTIVE", correlator);
 
       ZJob zjob;
 
