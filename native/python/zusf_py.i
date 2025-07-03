@@ -31,4 +31,4 @@
 %feature("docstring") chtag_uss_item "Change file tag of a USS file or directory.";
 
 %include "std_string.i"
-%include "zusf_py.h"
+%include "zusf_py.hpp"
