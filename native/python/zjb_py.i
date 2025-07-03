@@ -35,13 +35,13 @@
 %template(ZJobDDVector) std::vector<ZJobDD>;
 
 struct ZJob {
-    std::string jobname;
-    std::string jobid;
-    std::string owner;
-    std::string status;
-    std::string full_status;
-    std::string retcode;
-    std::string job_correlator;
+	std::string jobname;
+	std::string jobid;
+	std::string owner;
+	std::string status;
+	std::string full_status;
+	std::string retcode;
+	std::string correlator;
 };
 
 struct ZJobDD

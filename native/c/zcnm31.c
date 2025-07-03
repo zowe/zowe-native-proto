@@ -60,17 +60,27 @@ MSOPER_MODEL(mcsoper_model);
 
 int zcnm1act(ZCN *zcn)
 {
+  PSW psw = {0};
+  get_psw(&psw);
+  int mode_switch = psw.p ? 1 : 0;
+
   MSOPER_MODEL(dsa_mcsoper_model);
   dsa_mcsoper_model = mcsoper_model;
 
   unsigned int *PTR32 e = (unsigned int *PTR32)zcn->ecb;
   unsigned int *PTR32 a = (unsigned int *PTR32)zcn->area;
 
-  mode_sup();
-  MCSOPER_ACTIVATE(zcn->id, zcn->console_name, *e, zcn->alet, a, zcn->diag.service_rc, zcn->diag.service_rsn, dsa_mcsoper_model);
-  mode_prob();
-
   strcpy(zcn->diag.service_name, "MCSOPER_ACTIVATE");
+
+  if (mode_switch)
+  {
+    mode_sup();
+  }
+  MCSOPER_ACTIVATE(zcn->id, zcn->console_name, *e, zcn->alet, a, zcn->diag.service_rc, zcn->diag.service_rsn, dsa_mcsoper_model);
+  if (mode_switch)
+  {
+    mode_prob();
+  }
 
   if (0 != zcn->diag.service_rc)
     zcn->diag.detail_rc = ZCN_RTNCD_SERVICE_FAILURE; // if the service failed, note in RC
@@ -112,6 +122,12 @@ MGCRE_MODEL(mgcre_model);
 // NOTE(Kelosky): this piece is permitted in AMODE64 - for consistency, it remains here
 int zcnm1put(ZCN *zcn, const char *command)
 {
+  PSW psw = {0};
+  get_psw(&psw);
+  int mode_switch = psw.p ? 1 : 0;
+  unsigned char key = get_key();
+  unsigned char key_zero = 0;
+
   MGCRE_MODEL(dsa_mgcre_model);
   dsa_mgcre_model = mgcre_model;
 
@@ -127,13 +143,19 @@ int zcnm1put(ZCN *zcn, const char *command)
   commandBuffer.commandLen = sprintf(commandBuffer.command, "%s", command);
   char cart[8] = "ZOWECART";
 
-  mode_sup();
-  mode_zero();
-  MGCRE(zcn->id, commandBuffer, cart, authcmdxp, dsa_mgcre_model);
-  mode_nzero();
-  mode_prob();
-
   strcpy(zcn->diag.service_name, "MGCRE");
+
+  if (mode_switch)
+  {
+    mode_sup();
+  }
+  set_key(key_zero);
+  MGCRE(zcn->id, commandBuffer, cart, authcmdxp, dsa_mgcre_model);
+  set_key(key);
+  if (mode_switch)
+  {
+    mode_prob();
+  }
 
   zcn->diag.service_rc = 0;
   zcn->diag.service_rsn = 0;
@@ -287,6 +309,10 @@ static int extract_text(unsigned int alet, unsigned char *offset, int len, char 
 
 int zcnm1get(ZCN *zcn, char *resp)
 {
+  PSW psw = {0};
+  get_psw(&psw);
+  int mode_switch = psw.p ? 1 : 0;
+
   CLEAR_ARS();
 
   MCSOPMSG_MODEL(dsa_mcsopmsg_model);
@@ -301,11 +327,17 @@ int zcnm1get(ZCN *zcn, char *resp)
   // while there are records
   while (0 == zcn->diag.service_rc)
   {
-    mode_sup();
+    if (mode_switch)
+    {
+      mode_sup();
+    }
     CLEAR_ARS();
     MCSOPMSG_GETMSG(zcn->id, area, alet, cart, zcn->diag.service_rc, zcn->diag.service_rsn, dsa_mcsopmsg_model);
     CLEAR_ARS();
-    mode_prob();
+    if (mode_switch)
+    {
+      mode_prob();
+    }
 
     strcpy(zcn->diag.service_name, "MCSOPMSG_GETMSG");
 
@@ -405,13 +437,23 @@ int zcnm1get(ZCN *zcn, char *resp)
 
 int zcnm1dea(ZCN *zcn)
 {
+  PSW psw = {0};
+  get_psw(&psw);
+  int mode_switch = psw.p ? 1 : 0;
+
   MSOPER_MODEL(dsa_mcsoper_model);
   dsa_mcsoper_model = mcsoper_model;
 
-  mode_sup();
-  MCSOPER_DEACTIVATE(zcn->id, zcn->diag.service_rc, zcn->diag.service_rsn, dsa_mcsoper_model);
-  mode_prob();
   strcpy(zcn->diag.service_name, "MCSOPER_DEACTIVATE");
+  if (mode_switch)
+  {
+    mode_sup();
+  }
+  MCSOPER_DEACTIVATE(zcn->id, zcn->diag.service_rc, zcn->diag.service_rsn, dsa_mcsoper_model);
+  if (mode_switch)
+  {
+    mode_prob();
+  }
 
   if (0 != zcn->diag.service_rc)
     zcn->diag.detail_rc = ZCN_RTNCD_SERVICE_FAILURE; // if the service failed, note in RC

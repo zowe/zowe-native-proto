@@ -1,6 +1,7 @@
 {
   "recommendations": [
     "amodio.tsl-problem-matcher",
-    "biomejs.biome"
+    "biomejs.biome",
+    "llvm-vs-code-extensions.vscode-clangd"
   ]
 }
