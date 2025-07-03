@@ -134,6 +134,12 @@
     "stack": "cpp",
     "*.h": "c"
   },
+  "[c]": {
+    "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
+  },
+  "[cpp]": {
+    "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
+  },
   "editor.formatOnSave": true,
   "[typescript]": {
     "editor.defaultFormatter": "biomejs.biome"

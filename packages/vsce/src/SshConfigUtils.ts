@@ -21,12 +21,12 @@ import {
     type qpItem,
     type qpOpts,
 } from "zowe-native-proto-sdk";
+import { getVsceConfig } from "./Utilities";
 
 // biome-ignore lint/complexity/noStaticOnlyClass: Utilities class has static methods
 export class SshConfigUtils {
     public static getServerPath(profile?: imperative.IProfile): string {
-        const serverPathMap: Record<string, string> =
-            vscode.workspace.getConfiguration("zowe-native-proto-vsce").get("serverInstallPath") ?? {};
+        const serverPathMap: Record<string, string> = getVsceConfig().get("serverInstallPath") ?? {};
         return (
             (profile && serverPathMap[profile?.host]) ??
             process.env.ZOWE_OPT_SERVER_PATH ??

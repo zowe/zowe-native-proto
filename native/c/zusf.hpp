@@ -19,16 +19,23 @@
 #include <vector>
 #include <string>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include "zusf.hpp"
 #include "zusftype.h"
 
+typedef struct _ListOptions
+{
+  bool all_files;
+  bool long_format;
+} ListOptions;
+
 int zusf_create_uss_file_or_dir(ZUSF *zusf, std::string file, std::string mode, bool createDir);
-int zusf_list_uss_file_path(ZUSF *zusf, std::string file, std::string &response);
+int zusf_list_uss_file_path(ZUSF *zusf, std::string file, std::string &response, ListOptions options = ListOptions{});
 int zusf_read_from_uss_file(ZUSF *zusf, std::string file, std::string &response);
 int zusf_read_from_uss_file_streamed(ZUSF *zusf, std::string file, std::string pipe);
 int zusf_write_to_uss_file(ZUSF *zusf, std::string file, std::string &data);
 int zusf_write_to_uss_file_streamed(ZUSF *zusf, std::string file, std::string pipe);
-int zusf_chmod_uss_file_or_dir(ZUSF *zusf, std::string file, std::string mode, bool recursive);
+int zusf_chmod_uss_file_or_dir(ZUSF *zusf, std::string file, mode_t mode, bool recursive);
 int zusf_delete_uss_item(ZUSF *zusf, std::string file, bool recursive);
 int zusf_chown_uss_file_or_dir(ZUSF *zusf, std::string file, std::string owner, bool recursive);
 short zusf_get_id_from_user_or_group(std::string user_or_group, bool is_user);

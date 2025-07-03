@@ -16,14 +16,42 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	t "zowe-native-proto/zowed/types/common"
 	uss "zowe-native-proto/zowed/types/uss"
 	utils "zowe-native-proto/zowed/utils"
 )
+
+const (
+	TypeFile uint32 = 1 + iota
+	TypeDirectory
+	TypeSymlink
+	TypeNamedPipe
+	TypeSocket
+	TypeCharDevice
+)
+
+func fileTypeToEnum(typ os.FileMode) uint32 {
+	switch {
+	case typ.IsDir():
+		return TypeDirectory
+	case typ&fs.ModeSymlink != 0:
+		return TypeSymlink
+	case typ&fs.ModeNamedPipe != 0:
+		return TypeNamedPipe
+	case typ&fs.ModeSocket != 0:
+		return TypeSocket
+	case typ&fs.ModeCharDevice != 0:
+		return TypeCharDevice
+	default:
+		return TypeFile
+	}
+}
 
 // HandleListFilesRequest handles a ListFilesRequest by invoking built-in functions from Go's `os` module.
 func HandleListFilesRequest(_conn *utils.StdioConn, params []byte) (result any, e error) {
@@ -46,8 +74,9 @@ func HandleListFilesRequest(_conn *utils.StdioConn, params []byte) (result any, 
 	if !fileInfo.IsDir() {
 		ussResponse.Items = make([]t.UssItem, 1)
 		ussResponse.Items[0] = t.UssItem{
-			Name:  filepath.Base(dirPath),
-			IsDir: false,
+			Name: filepath.Base(dirPath),
+			Type: fileTypeToEnum(fileInfo.Mode().Type()),
+			Mode: fileInfo.Mode().String(),
 		}
 		ussResponse.ReturnedRows = 1
 	} else {
@@ -56,12 +85,26 @@ func HandleListFilesRequest(_conn *utils.StdioConn, params []byte) (result any, 
 			e = fmt.Errorf("Failed to read directory: %v", err)
 			return
 		}
-		ussResponse.Items = make([]t.UssItem, len(entries))
+		// ., .., and the remaining items in the list
+		ussResponse.Items = make([]t.UssItem, len(entries)+2)
+		ussResponse.Items[0] = t.UssItem{Name: ".", Type: TypeDirectory, Mode: fileInfo.Mode().String()}
+		dirUp, err := filepath.Abs(filepath.Join(dirPath, ".."))
+		if err != nil {
+			parentStats, _ := os.Stat(dirUp)
+			ussResponse.Items[1] = t.UssItem{Name: "..", Type: TypeDirectory, Mode: parentStats.Mode().String()}
+		} else {
+			ussResponse.Items[1] = t.UssItem{Name: "..", Type: TypeDirectory, Mode: fileInfo.Mode().String()}
+		}
 
 		for i, entry := range entries {
-			ussResponse.Items[i] = t.UssItem{
-				Name:  entry.Name(),
-				IsDir: entry.IsDir(),
+			info, err := entry.Info()
+			if err != nil {
+				continue
+			}
+			ussResponse.Items[i+2] = t.UssItem{
+				Name: entry.Name(),
+				Type: fileTypeToEnum(info.Mode().Type()),
+				Mode: info.Mode().String(),
 			}
 		}
 
@@ -84,12 +127,12 @@ func HandleReadFileRequest(conn *utils.StdioConn, params []byte) (result any, e 
 	if len(request.Encoding) == 0 {
 		request.Encoding = fmt.Sprintf("IBM-%d", utils.DefaultEncoding)
 	}
-	args := []string{"uss", "view", request.Path, "--encoding", request.Encoding, "--return-etag", "true"}
+	args := []string{"uss", "view", request.Path, "--encoding", request.Encoding, "--return-etag"}
 
 	var etag string
 	var data []byte
 	if request.StreamId == 0 {
-		args = append(args, "--rfb", "true")
+		args = append(args, "--rfb")
 		out, err := conn.ExecCmd(args)
 		if err != nil {
 			e = fmt.Errorf("Error executing command: %v", err)
@@ -165,7 +208,7 @@ func HandleWriteFileRequest(conn *utils.StdioConn, params []byte) (result any, e
 	if len(request.Encoding) == 0 {
 		request.Encoding = fmt.Sprintf("IBM-%d", utils.DefaultEncoding)
 	}
-	args := []string{"uss", "write", request.Path, "--encoding", request.Encoding, "--etag-only", "true"}
+	args := []string{"uss", "write", request.Path, "--encoding", request.Encoding, "--etag-only"}
 	if len(request.Etag) > 0 {
 		args = append(args, "--etag", request.Etag)
 	}
@@ -239,12 +282,27 @@ func HandleWriteFileRequest(conn *utils.StdioConn, params []byte) (result any, e
 		}
 	}
 
+	output := utils.YamlToMap(string(out))
+
+	var etag string
+	if etagValue, exists := output["etag"]; exists {
+		etag = fmt.Sprintf("%v", etagValue)
+	}
+
+	var created bool = false
+	if createdValue, exists := output["created"]; exists {
+		if parsedBool, err := strconv.ParseBool(fmt.Sprintf("%v", createdValue)); err == nil {
+			created = parsedBool
+		}
+	}
+
 	result = uss.WriteFileResponse{
 		GenericFileResponse: uss.GenericFileResponse{
 			Success: true,
 			Path:    request.Path,
 		},
-		Etag: strings.TrimRight(string(out), "\n"),
+		Etag:    etag,
+		Created: created,
 	}
 	return
 }
@@ -273,7 +331,7 @@ func HandleCreateFileRequest(conn *utils.StdioConn, params []byte) (result any, 
 		return
 	}
 
-	result = uss.DeleteFileResponse{
+	result = uss.CreateFileResponse{
 		Success: err == nil,
 		Path:    request.Path,
 	}
@@ -292,7 +350,7 @@ func HandleDeleteFileRequest(conn *utils.StdioConn, params []byte) (result any, 
 
 	args := []string{"uss", "delete", request.Path}
 	if request.Recursive {
-		args = append(args, "-r", "true")
+		args = append(args, "-r")
 	}
 	_, err = conn.ExecCmd(args)
 	if err != nil {
@@ -319,7 +377,7 @@ func HandleChownFileRequest(conn *utils.StdioConn, params []byte) (result any, e
 
 	args := []string{"uss", "chown", request.Owner, request.Path}
 	if request.Recursive {
-		args = append(args, "-r", "true")
+		args = append(args, "-r")
 	}
 	_, err = conn.ExecCmd(args)
 	if err != nil {
@@ -346,7 +404,7 @@ func HandleChmodFileRequest(conn *utils.StdioConn, params []byte) (result any, e
 
 	args := []string{"uss", "chmod", request.Mode, request.Path}
 	if request.Recursive {
-		args = append(args, "-r", "true")
+		args = append(args, "-r")
 	}
 	_, err = conn.ExecCmd(args)
 	if err != nil {
@@ -373,7 +431,7 @@ func HandleChtagFileRequest(conn *utils.StdioConn, params []byte) (result any, e
 
 	args := []string{"uss", "chtag", request.Tag, request.Path}
 	if request.Recursive {
-		args = append(args, "-r", "true")
+		args = append(args, "-r")
 	}
 	_, err = conn.ExecCmd(args)
 	if err != nil {

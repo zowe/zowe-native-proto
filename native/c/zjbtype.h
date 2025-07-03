@@ -23,6 +23,7 @@
 #define ZJB_RTNCD_UNEXPECTED_ERROR -6
 #define ZJB_RTNCD_JES3_NOT_SUPPORTED -7
 #define ZJB_RTNCD_VERBOSE_INFO_NOT_FOUND -8
+#define ZJB_RTNCD_CORRELATOR_NOT_FOUND -9
 
 #define ZJB_RSNCD_MAX_JOBS_REACHED -1
 
@@ -52,10 +53,10 @@ typedef struct
   int32_t buffer_size_needed; // total amount of buffer size needed to satisfy request
   unsigned char reserve_1[4];
 
-  char job_correlator[64]; // job correlator
-  char jobid[8];           // job id
-  char owner_name[8];      // owner name used, upper cased/padded/truncated
-  char prefix_name[8];     // prefix used, upper cased/padded/truncated
+  char correlator[64]; // job correlator
+  char jobid[8];       // job id
+  char owner_name[8];  // owner name used, upper cased/padded/truncated
+  char prefix_name[8]; // prefix used, upper cased/padded/truncated
 
   ZEncode encoding_opts; // User-specified, desired encoding options for spool contents
 
