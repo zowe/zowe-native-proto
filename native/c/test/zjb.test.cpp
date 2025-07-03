@@ -57,7 +57,7 @@ void zjb_tests()
       ZJob zjob;
       string correlator = string(zjb.correlator, sizeof(zjb.correlator));
 
-      sleep_on_status("INPUT", jobid);
+      sleep_on_status("INPUT", correlator);
 
       memset(&zjb, 0, sizeof(zjb));
       rc = zjb_delete(&zjb, correlator);
@@ -80,7 +80,7 @@ void zjb_tests()
 
       Expect(zjob.correlator).ToBe(correlator); // vefify submit correlator matches view status correlator
 
-      sleep_on_status("INPUT", jobid);
+      sleep_on_status("INPUT", correlator);
 
       memset(&zjb, 0, sizeof(zjb));
       rc = zjb_delete(&zjb, correlator);
@@ -97,7 +97,7 @@ void zjb_tests()
 
       string correlator = string(zjb.correlator, sizeof(zjb.correlator));
 
-      sleep_on_status("INPUT", jobid);
+      sleep_on_status("INPUT", correlator);
 
       memset(&zjb, 0, sizeof(zjb));
       rc = zjb_delete(&zjb, correlator);
@@ -115,7 +115,7 @@ void zjb_tests()
       string correlator = string(zjb.correlator, sizeof(zjb.correlator));
       string returned_jcl;
 
-      sleep_on_status(correlator, "INPUT");
+      sleep_on_status("INPUT", correlator);
 
       memset(&zjb, 0, sizeof(zjb));
       rc = zjb_read_job_jcl(&zjb, correlator, returned_jcl);
@@ -133,7 +133,7 @@ void zjb_tests()
       ZJob zjob;
       string correlator = string(zjb.correlator, sizeof(zjb.correlator));
 
-      sleep_on_status(correlator, "INPUT");
+      sleep_on_status("INPUT", correlator);
 
       vector<ZJobDD> dds;
       memset(&zjb, 0, sizeof(zjb));
@@ -161,7 +161,7 @@ void zjb_tests()
 
       string correlator = string(zjb.correlator, sizeof(zjb.correlator));
 
-      sleep_on_status(correlator, "INPUT");
+      sleep_on_status("INPUT", correlator);
 
       memset(&zjb, 0, sizeof(zjb));
       rc = zjb_cancel(&zjb, correlator);
