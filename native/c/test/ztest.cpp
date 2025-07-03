@@ -134,8 +134,6 @@ ztst::RESULT_CHECK ztst::RESULT_CHECK::Not()
   return copy;
 }
 
-
-
 vector<ztst::TEST_SUITE> ztst::ztst_suites;
 int ztst::ztst_suite_index = -1;
 jmp_buf ztst::ztst_jmp_buf = {0};
@@ -158,7 +156,7 @@ extern "C"
 {
 #endif
 
-  static void SIGHAND(int code, void *info, void *context)
+  static void SIGHAND(int code, siginfo_t *info, void *context)
   {
     longjmp(ztst::ztst_jmp_buf, 1);
   }
