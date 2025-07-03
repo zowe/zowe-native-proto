@@ -9,22 +9,14 @@
  *
  */
 
-#include "zwto.h"
-#include "zmetal.h"
+#ifndef ZJB_PY_HPP
+#define ZJB_PY_HPP
 
-#pragma prolog(main, " ZWEPROLG NEWDSA=(YES,128) ")
-#pragma epilog(main, " ZWEEPILG ")
+#include "../c/zjb.hpp"
+#include "../c/ztype.h"
+#include <string>
+#include <vector>
 
-void test()
-{
-  zwto_debug("test called");
-}
+std::vector<ZJob> list_jobs_by_owner(std::string owner_name);
 
-int main()
-{
-  PSW psw = {0};
-  get_psw(&psw);
-  int mode_switch = psw.p ? 0 : 1;
-
-  return 0;
-}
+#endif
