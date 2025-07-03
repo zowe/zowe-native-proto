@@ -29,6 +29,7 @@
 #include "zjb.hpp"
 #include "zjbm.h"
 #include "zssitype.h"
+#include "ztype.h"
 #include "zut.hpp"
 #include "zutm.h"
 #include "zjbtype.h"
@@ -83,8 +84,8 @@ int zjb_get_job_dsn_by_key(ZJB *zjb, string jobid, int key, string &job_dsn)
   if (0 != rc)
   {
     zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "Could not locate data set key '%d' on job '%s'", key, jobid.c_str());
-    zjb->diag.detail_rc = ZJB_RTNCD_JOB_NOT_FOUND;
-    return RTNCD_FAILURE;
+    zjb->diag.detail_rc = ZJB_RTNCD_JOB_DSN_KEY_NOT_FOUND;
+    return RTNCD_WARNING;
   }
 
   return RTNCD_SUCCESS;
@@ -485,28 +486,25 @@ int zjb_list_dds(ZJB *zjb, string jobid, vector<ZJobDD> &jobDDs)
     int view_rc = zjb_view(zjb, jobid, job);
     if (RTNCD_SUCCESS == view_rc)
     {
-      if (job.status == "INPUT")
-      {
-        ZJobDD jesmsglg = {0};
-        jesmsglg.jobid = job.jobid;
-        jesmsglg.ddn = "JESMSGLG";
-        jesmsglg.dsn = job.owner + '.' + job.jobname + '.' + job.jobid + '.' + jesmsglg.ddn;
+      ZJobDD jesmsglg = {0};
+      jesmsglg.jobid = job.jobid;
+      jesmsglg.ddn = "JESMSGLG";
+      jesmsglg.dsn = job.owner + '.' + job.jobname + '.' + job.jobid + '.' + jesmsglg.ddn;
 
 // NOTE(Kelosky): these keys are not documented to indiciate whether they are always set to these exact values.  However,
 // since we are handling this as a special case, we will match this number that we set and reference by the DSN without the actual keys.
 #define JESMSGLG_KEY 2
-        jesmsglg.key = JESMSGLG_KEY;
-        jobDDs.push_back(jesmsglg);
-        ZJobDD jesjcl = {0};
-        jesjcl.jobid = job.jobid;
-        jesjcl.ddn = "JESJCL";
-        jesjcl.dsn = job.owner + '.' + job.jobname + '.' + job.jobid + '.' + jesjcl.ddn;
+      jesmsglg.key = JESMSGLG_KEY;
+      jobDDs.push_back(jesmsglg);
+      ZJobDD jesjcl = {0};
+      jesjcl.jobid = job.jobid;
+      jesjcl.ddn = "JESJCL";
+      jesjcl.dsn = job.owner + '.' + job.jobname + '.' + job.jobid + '.' + jesjcl.ddn;
 #define JESJCL_KEY 3
-        jesjcl.key = JESJCL_KEY;
-        jobDDs.push_back(jesjcl);
-        ZUTMFR64(sysoutInfo);
-        return rc;
-      }
+      jesjcl.key = JESJCL_KEY;
+      jobDDs.push_back(jesjcl);
+      ZUTMFR64(sysoutInfo);
+      return rc;
     }
 
     ZUTMFR64(sysoutInfo);
@@ -700,6 +698,7 @@ void zjb_build_job_response(ZJB_JOB_INFO *PTR64 job_info, int entries, vector<ZJ
     else
     {
       // leave service text as-is
+      zjob.status = zjob.full_status;
     }
 
     // handle special cases
