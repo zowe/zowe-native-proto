@@ -14,9 +14,9 @@
 #include <vector>
 #include <stdlib.h>
 #include <string>
-#include <sstream>
 #include <cstdlib>
 #include <stdio.h>
+#include <sys/types.h>
 #include <unistd.h>
 #include <algorithm>
 #include <fstream>
@@ -1899,12 +1899,32 @@ int handle_uss_delete(const ParseResult &result)
 int handle_uss_chmod(const ParseResult &result)
 {
   int rc = 0;
-  string mode = result.find_pos_arg_string("mode");
+  int mode = result.find_pos_arg_int("mode");
+  if (mode == 0 && !result.find_pos_arg_string("mode").empty())
+  {
+    cerr << "Error: invalid mode provided.\nExamples of valid modes: 777, 0644" << endl;
+    return RTNCD_FAILURE;
+  }
+
   string file_path = result.find_pos_arg_string("file-path");
   bool recursive = result.find_kw_arg_bool("recursive");
 
+  // Convert mode from decimal to octal
+  mode_t chmod_mode = 0;
+  int temp_mode = mode;
+  int multiplier = 1;
+
+  // Convert decimal representation of octal to actual octal value
+  // e.g. user inputs 777 -> converted to correct value for chmod
+  while (temp_mode > 0)
+  {
+    chmod_mode += (temp_mode % 10) * multiplier;
+    temp_mode /= 10;
+    multiplier *= 8;
+  }
+
   ZUSF zusf = {0};
-  rc = zusf_chmod_uss_file_or_dir(&zusf, file_path, mode, recursive);
+  rc = zusf_chmod_uss_file_or_dir(&zusf, file_path, chmod_mode, recursive);
   if (0 != rc)
   {
     cerr << "Error: could not chmod USS path: '" << file_path << "' rc: '" << rc << "'" << endl;

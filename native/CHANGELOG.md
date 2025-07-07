@@ -18,6 +18,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - `c`: Fixed issue where the record format (`recfm` attribute) was listed as unknown for a Partitioned Data Set (PDS) with no members. Now, the record format for all data sets is retrieved through the Volume Table of Contents. [#351](https://github.com/zowe/zowe-native-proto/pull/351)
 - `c`: Added CLI parser and lexer library for use in `zowex`. For an example of how to use the new CLI parser library, refer to the sample CLI code in `examples/native-cli/testcli.cpp`.
 - `c`: Fixed an issue where the zowex `ds list` command always printed data set attributes when passing the argument `--response-format-csv`, even if the attributes argument was `false`.
+- `c`: Fixed an issue where the `zusf_chmod_uss_file_or_dir` function did not handle invalid input before passing the mode to the `chmod` C standard library function. [#399](https://github.com/zowe/zowe-native-proto/pull/399)
 
 ## `0.1.2`
 

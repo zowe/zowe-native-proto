@@ -57,8 +57,10 @@ typedef struct
 
 std::string zds_get_recfm(const fldata_t &file_info);
 
-extern "C"
+#ifdef SWIG
+extern "C" 
 {
+#endif
   /**
    * @brief Read data from a z/OS data set
    *
@@ -110,7 +112,9 @@ extern "C"
   int zds_list_members(ZDS *zds, std::string dsn, std::vector<ZDSMem> &members);
 
   int zds_list_data_sets(ZDS *zds, std::string dsn, std::vector<ZDSEntry> &attributes);
+#ifdef SWIG
 }
+#endif
 
 /**
  * @brief Read data from a DDNAME
@@ -161,6 +165,16 @@ int zds_create_dsn_adata(ZDS *zds, std::string dsn, std::string &response);
  * @return int 0 for success; non zero otherwise
  */
 int zds_create_dsn_loadlib(ZDS *zds, std::string dsn, std::string &response);
+
+/**
+ * @brief Delete a data set
+ *
+ * @param zds data set returned attributes and error information
+ * @param dsn data set name to delete to
+ * @return int 0 for success; non zero otherwise
+ */
+int zds_delete_dsn(ZDS *zds, std::string dsn);
+
 
 int zdsReadDynalloc(std::string, std::string, std::string, std::string &); // NOTE(Kelosky): testing only
 
