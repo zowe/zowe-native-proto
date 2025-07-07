@@ -20,7 +20,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"syscall"
 	t "zowe-native-proto/zowed/types/common"
 	uss "zowe-native-proto/zowed/types/uss"
@@ -129,16 +128,10 @@ func HandleReadFileRequest(conn *utils.StdioConn, params []byte) (result any, e 
 	}
 	args := []string{"uss", "view", request.Path, "--encoding", request.Encoding, "--return-etag"}
 
-	shouldStream := request.StreamId != 0
-	if shouldStream {
-		if stats, err := os.Stat(request.Path); err == nil {
-			shouldStream = stats.Size() > 32768
-		}
-	}
-
 	var etag string
 	var data []byte
-	if !shouldStream {
+	var size int
+	if request.StreamId == 0 {
 		args = append(args, "--rfb", "true")
 		out, err := conn.ExecCmd(args)
 		if err != nil {
@@ -190,14 +183,17 @@ func HandleReadFileRequest(conn *utils.StdioConn, params []byte) (result any, e 
 			return
 		}
 
-		etag = strings.TrimRight(string(out), "\n")
+		output := utils.YamlToMap(string(out))
+		etag = output["etag"]
+		size, _ = strconv.Atoi(output["size"])
 	}
 
 	result = uss.ReadFileResponse{
-		Encoding: request.Encoding,
-		Etag:     etag,
-		Path:     request.Path,
-		Data:     &data,
+		Encoding:   request.Encoding,
+		Etag:       etag,
+		Path:       request.Path,
+		Data:       &data,
+		ContentLen: &size,
 	}
 	return
 }

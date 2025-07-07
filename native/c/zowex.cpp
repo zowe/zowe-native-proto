@@ -1760,12 +1760,14 @@ int handle_uss_view(const ParseResult &result)
 
   if (has_pipe_path && !pipe_path.empty())
   {
-    rc = zusf_read_from_uss_file_streamed(&zusf, uss_file, pipe_path);
+    size_t content_len;
+    rc = zusf_read_from_uss_file_streamed(&zusf, uss_file, pipe_path, &content_len);
 
     if (result.find_kw_arg_bool("return-etag"))
     {
-      cout << zut_build_etag(file_stats.st_mtime, file_stats.st_size) << endl;
+      cout << "etag: " << zut_build_etag(file_stats.st_mtime, file_stats.st_size) << endl;
     }
+    cout << "size: " << content_len << endl;
   }
   else
   {

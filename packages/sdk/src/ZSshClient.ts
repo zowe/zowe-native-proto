@@ -216,20 +216,26 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
         return responses[responses.length - 1];
     }
 
-    private handleNotification(response: RpcNotification): void {
-        const responseId = response.params?.id as number;
-        const streamPromise = this.mStreamMgr.handleNotification(response);
+    private handleNotification(notif: RpcNotification): void {
+        const responseId = notif.params?.id as number;
+        const streamPromise = this.mStreamMgr.handleNotification(notif);
         if (streamPromise != null) {
-            const { resolve } = this.mPromiseMap.get(responseId);
-            this.mPromiseMap.get(responseId).resolve = async (value: CommandResponse) => {
-                await streamPromise;
-                resolve(value);
+            const { reject, resolve } = this.mPromiseMap.get(responseId);
+            this.mPromiseMap.get(responseId).resolve = async (response: CommandResponse) => {
+                const contentLen = await streamPromise;
+                if ("contentLen" in response && response.contentLen != null && response.contentLen !== contentLen) {
+                    const errMsg = Logger.getAppLogger().error(
+                        "Content length mismatch: expected %d, got %d",
+                        response.contentLen,
+                        contentLen,
+                    );
+                    reject(new Error(errMsg));
+                    return;
+                }
+                resolve(response);
             };
         } else {
-            const errMsg = Logger.getAppLogger().error(
-                "Failed to handle RPC notification: %s",
-                JSON.stringify(response),
-            );
+            const errMsg = Logger.getAppLogger().error("Failed to handle RPC notification: %s", JSON.stringify(notif));
             this.mErrHandler(new Error(errMsg));
         }
     }

@@ -53,7 +53,7 @@ export class RpcStreamManager {
     }
 
     private handleReadStream(request: CommandRequest & { stream: Readable; data?: B64String }): Promise<void> {
-        const b64ChunkSize = (this.CHUNK_SIZE * 3) / 4;
+        const maxBufferSize = (this.CHUNK_SIZE * 3) / 4;
         return new Promise((resolve) => {
             const chunks: Buffer[] = [];
             let bytesRead = 0;
@@ -64,13 +64,13 @@ export class RpcStreamManager {
                     if (chunk != null) {
                         chunks.push(chunk);
                         bytesRead += chunk.length;
-                        if (bytesRead > b64ChunkSize) {
+                        if (bytesRead > maxBufferSize) {
                             break;
                         }
                     }
                 } while (chunk != null);
                 if (bytesRead > 0) {
-                    if (bytesRead <= b64ChunkSize) {
+                    if (bytesRead <= maxBufferSize) {
                         request.data = B64String.encode(Buffer.concat(chunks));
                         request.stream = undefined;
                     } else {
@@ -93,10 +93,10 @@ export class RpcStreamManager {
         }
     }
 
-    public handleNotification(response: RpcNotification): Promise<void> {
+    public handleNotification(response: RpcNotification): Promise<number> {
         const responseId = response.params?.id as number;
         const pendingStream = this.mPendingStreamMap.get(responseId);
-        let streamPromise: Promise<void> | undefined;
+        let streamPromise: Promise<number> | undefined;
         if (response.method === "sendStream" && pendingStream instanceof Readable) {
             streamPromise = this.uploadStream(pendingStream, response.params);
         } else if (response.method === "receiveStream" && pendingStream instanceof Writable) {
@@ -116,11 +116,16 @@ export class RpcStreamManager {
         return pipeline(readStream, new Base64Encode(), sshStream.stdin);
     }
 
-    private async downloadStream(writeStream: Writable, params: { pipePath: string }): Promise<void> {
+    private async downloadStream(writeStream: Writable, params: { pipePath: string }): Promise<number> {
         const sshStream = await new Promise<ClientChannel>((resolve, reject) => {
             this.mSshClient.exec(`cat ${params.pipePath}`, (err, stream) => (err ? reject(err) : resolve(stream)));
         });
-        sshStream.stdout.on("data", () => writeStream.emit("keepAlive"));
-        return pipeline(sshStream.stdout, new Base64Decode(), writeStream);
+        let bytesRead = 0;
+        sshStream.stdout.on("data", (chunk: Buffer) => {
+            bytesRead += chunk.byteLength;
+            writeStream.emit("keepAlive");
+        });
+        await pipeline(sshStream.stdout, new Base64Decode(), writeStream);
+        return bytesRead;
     }
 }
