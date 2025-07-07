@@ -62,6 +62,7 @@ int zjb_list_by_owner(ZJB *zjb, std::string owner_name, std::vector<ZJob> &jobs)
 #ifdef SWIG
 extern "C"
 {
+#endif
   int zjb_list_by_owner(ZJB *zjb, std::string owner_name, std::string prefix_name, std::vector<ZJob> &jobs);
 
   /**
@@ -145,7 +146,9 @@ extern "C"
    * @return int 0 for success; non zero otherwise
    */
   int zjb_delete(ZJB *zjb, std::string jobid);
+#ifdef SWIG
 }
+#endif
 /**
  * @brief Cancel a job using input jobid
  *
