@@ -51,7 +51,8 @@ export class ZClientUtils {
         for (const config of parsedConfig) {
             if (config.type === sshConfig.LineType.DIRECTIVE) {
                 const session: ISshConfigExt = {};
-                session.name = config.value as string;
+                // If it has multiple names, take the first
+                session.name = typeof config.value === "object" ? config.value[0].val : (config.value as string);
 
                 if (Array.isArray((config as sshConfig.Section).config)) {
                     for (const subConfig of (config as sshConfig.Section).config) {
