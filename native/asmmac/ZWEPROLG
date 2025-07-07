@@ -98,6 +98,8 @@
 *
          STORAGE OBTAIN,                                               +
                LENGTH=(3),                                             +
+               CALLRKY=YES,                                            +
+               SP=132,                                                 +
                BNDRY=PAGE,                                             +
                COND=NO
 .*

@@ -238,15 +238,16 @@ int ZJBMMOD(ZJB *zjb, int type, int flags)
 
   if (zjb->jobid[0] != 0x00)
   {
-    ssjm.ssjmsel1 = ssjm.ssjmsel1 | ssjmsoji;
-    memcpy(ssjm.ssjmojbi, zjb->jobid, sizeof(ssjm.ssjmojbi));
+    ssjm.ssjmsel1 = ssjm.ssjmsel1 | ssjmsjbi; // real lookup
+    memcpy(ssjm.ssjmjbil, zjb->jobid, sizeof(ssjm.ssjmjbil));
+    memcpy(ssjm.ssjmjbih, zjb->jobid, sizeof(ssjm.ssjmjbih));
   }
   else
   {
-    char job_correlator31[64] = {0};
-    memcpy(job_correlator31, zjb->job_correlator, sizeof(zjb->job_correlator));
+    char correlator31[64] = {0};
+    memcpy(correlator31, zjb->correlator, sizeof(zjb->correlator));
     ssjm.ssjmsel5 = ssjmscor;
-    ssjm.ssjmjcrp = &job_correlator31[0];
+    ssjm.ssjmjcrp = &correlator31[0];
   }
 
   ssjm.ssjmsel2 = ssjm.ssjmsel2 | ssjmsjob; // batch jobs
@@ -274,13 +275,17 @@ int ZJBMMOD(ZJB *zjb, int type, int flags)
   {
     if (zjb->jobid[0] != 0x00)
     {
-      zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "No jobs found matching jobid '%.8s'", zjb->jobid);
+      zjb->diag.detail_rc = ZJB_RTNCD_JOB_NOT_FOUND;
+      zjb->diag.e_msg_len = sprintf(
+          zjb->diag.e_msg, "No jobs found matching jobid '%.8s'", zjb->jobid);
     }
     else
     {
-      zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "No jobs found matching correlator '%.64s'", zjb->job_correlator);
+      zjb->diag.detail_rc = ZJB_RTNCD_CORRELATOR_NOT_FOUND;
+      zjb->diag.e_msg_len =
+          sprintf(zjb->diag.e_msg, "No jobs found matching correlator '%.64s'",
+                  zjb->correlator);
     }
-    zjb->diag.detail_rc = ZJB_RTNCD_JOB_NOT_FOUND;
     return RTNCD_FAILURE;
   }
 
@@ -297,15 +302,16 @@ int ZJBMVIEW(ZJB *zjb, ZJB_JOB_INFO **PTR64 job_info, int *entries)
 
   if (zjb->jobid[0] != 0x00)
   {
-    stat.statsel1 = statsoji;
-    memcpy(stat.statojbi, zjb->jobid, sizeof((stat.statojbi)));
+    stat.statsel1 = stat.statsel1 | statsjbi; // real lookup
+    memcpy(stat.statjbil, zjb->jobid, sizeof(stat.statjbil));
+    memcpy(stat.statjbih, zjb->jobid, sizeof(stat.statjbih));
   }
   else
   {
-    char job_correlator31[64] = {0};
-    memcpy(job_correlator31, zjb->job_correlator, sizeof(zjb->job_correlator));
+    char correlator31[64] = {0};
+    memcpy(correlator31, zjb->correlator, sizeof(zjb->correlator));
     stat.statsel5 = statscor;
-    stat.statjcrp = &job_correlator31[0];
+    stat.statjcrp = &correlator31[0];
   }
 
   stat.stattype = statters;
@@ -511,17 +517,20 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
 
   if (zjb->jobid[0] != 0x00)
   {
-    stat.statsel1 = statsoji;
-    memcpy(stat.statojbi, zjb->jobid, sizeof((stat.statojbi)));
+    stat.statsel1 = stat.statsel1 | statsjbi; // real lookup
+    memcpy(stat.statjbil, zjb->jobid, sizeof(stat.statjbil));
+    memcpy(stat.statjbih, zjb->jobid, sizeof(stat.statjbih));
   }
   else
   {
-    char job_correlator31[64] = {0};
-    memcpy(job_correlator31, zjb->job_correlator, sizeof(zjb->job_correlator));
+    char correlator31[64] = {0};
+    memcpy(correlator31, zjb->correlator, sizeof(zjb->correlator));
     stat.statsel5 = statscor;
-    stat.statjcrp = &job_correlator31[0];
+    stat.statjcrp = &correlator31[0];
   }
 
+  // NOTE(Kelosky): we first locate the STATJQ via jobid or job correlator because verbose data which containts SYSOUT info
+  // cannot be obtained directly from the jobid or job correlator as documented by the JES SSI API.
   rc = ZJBMGJQ(zjb, &ssob, &stat, &statjqp);
 
   if (0 != rc)
@@ -536,8 +545,21 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
 
   if (NULL == statjqp)
   {
-    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "No jobs found matching correlator '%.64s'", zjb->job_correlator);
-    zjb->diag.detail_rc = ZJB_RTNCD_JOB_NOT_FOUND;
+
+    if (zjb->jobid[0] != 0x00)
+    {
+      zjb->diag.detail_rc = ZJB_RTNCD_JOB_NOT_FOUND;
+      zjb->diag.e_msg_len = sprintf(
+          zjb->diag.e_msg, "No jobs found matching jobid '%.8s'", zjb->jobid);
+    }
+    else
+    {
+      zjb->diag.detail_rc = ZJB_RTNCD_CORRELATOR_NOT_FOUND;
+      zjb->diag.e_msg_len =
+          sprintf(zjb->diag.e_msg, "No jobs found matching correlator '%.64s'",
+                  zjb->correlator);
+    }
+
     stat.stattype = statmem; // free storage
     rc = iefssreq(&ssobp);   // TODO(Kelosky): recovery
     return RTNCD_FAILURE;
@@ -554,7 +576,12 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
     zjb->diag.service_rc = ssob.ssobretn;
     zjb->diag.service_rsn = stat.statreas;
     zjb->diag.service_rsn_secondary = stat.statrea2;
-    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "IEFSSREQ rc was: '%d' SSOBRETN was: '%d', STATREAS was: '%d', STATREA2 was: '%d'", rc, ssob.ssobretn, stat.statreas, stat.statrea2); // STATREAS contains the reason
+    zjb->diag.e_msg_len =
+        sprintf(zjb->diag.e_msg,
+                "IEFSSREQ rc was: '%d' SSOBRETN was: '%d', STATREAS was: '%d', "
+                "STATREA2 was: '%d'",
+                rc, ssob.ssobretn, stat.statreas,
+                stat.statrea2); // STATREAS contains the reason
     return RTNCD_FAILURE;
   }
 
@@ -570,11 +597,16 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
   {
     if (zjb->jobid[0] != 0x00)
     {
-      zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "No jobs found matching jobid '%.8s'", zjb->jobid);
+      zjb->diag.detail_rc = ZJB_RTNCD_JOB_NOT_FOUND;
+      zjb->diag.e_msg_len = sprintf(
+          zjb->diag.e_msg, "No jobs found matching jobid '%.8s'", zjb->jobid);
     }
     else
     {
-      zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "No jobs found matching correlator '%.64s'", zjb->job_correlator);
+      zjb->diag.detail_rc = ZJB_RTNCD_CORRELATOR_NOT_FOUND;
+      zjb->diag.e_msg_len =
+          sprintf(zjb->diag.e_msg, "No jobs found matching correlator '%.64s'",
+                  zjb->correlator);
     }
     zjb->diag.detail_rc = ZJB_RTNCD_JOB_NOT_FOUND;
     stat.stattype = statmem; // free storage
@@ -612,8 +644,6 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
 
         statsvhdp = (STATSVHD * PTR32)((unsigned char *PTR32)statvop + statvop->stvoohdr);
         statsevbp = (STATSEVB * PTR32)((unsigned char *PTR32)statsvhdp + sizeof(STATSVHD));
-
-        STATSEO2 *PTR32 statseo2 = (STATSEO2 * PTR32)((unsigned char *PTR32)statsevbp + statsevbp->stvslen);
 
         memcpy(statsetrsp, statsevbp, sizeof(STATSEVB));
         statsetrsp++;

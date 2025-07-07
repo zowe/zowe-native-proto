@@ -318,7 +318,7 @@ int zjb_wait(ZJB *zjb, string status)
 int zjb_delete(ZJB *zjb, string jobid)
 {
   if (jobid.size() > sizeof(zjb->jobid))
-    zut_uppercase_pad_truncate(zjb->job_correlator, jobid, sizeof(zjb->job_correlator));
+    zut_uppercase_pad_truncate(zjb->correlator, jobid, sizeof(zjb->correlator));
   else
     zut_uppercase_pad_truncate(zjb->jobid, jobid, sizeof(zjb->jobid));
   return ZJBMPRG(zjb);
@@ -327,7 +327,7 @@ int zjb_delete(ZJB *zjb, string jobid)
 int zjb_cancel(ZJB *zjb, string jobid)
 {
   if (jobid.size() > sizeof(zjb->jobid))
-    zut_uppercase_pad_truncate(zjb->job_correlator, jobid, sizeof(zjb->job_correlator));
+    zut_uppercase_pad_truncate(zjb->correlator, jobid, sizeof(zjb->correlator));
   else
     zut_uppercase_pad_truncate(zjb->jobid, jobid, sizeof(zjb->jobid));
   return ZJBMCNL(zjb, 0);
@@ -336,7 +336,7 @@ int zjb_cancel(ZJB *zjb, string jobid)
 int zjb_hold(ZJB *zjb, string jobid)
 {
   if (jobid.size() > sizeof(zjb->jobid))
-    zut_uppercase_pad_truncate(zjb->job_correlator, jobid, sizeof(zjb->job_correlator));
+    zut_uppercase_pad_truncate(zjb->correlator, jobid, sizeof(zjb->correlator));
   else
     zut_uppercase_pad_truncate(zjb->jobid, jobid, sizeof(zjb->jobid));
   return ZJBMHLD(zjb);
@@ -345,7 +345,7 @@ int zjb_hold(ZJB *zjb, string jobid)
 int zjb_release(ZJB *zjb, string jobid)
 {
   if (jobid.size() > sizeof(zjb->jobid))
-    zut_uppercase_pad_truncate(zjb->job_correlator, jobid, sizeof(zjb->job_correlator));
+    zut_uppercase_pad_truncate(zjb->correlator, jobid, sizeof(zjb->correlator));
   else
     zut_uppercase_pad_truncate(zjb->jobid, jobid, sizeof(zjb->jobid));
   return ZJBMRLS(zjb);
@@ -430,8 +430,8 @@ int zjb_submit(ZJB *zjb, string contents, string &jobid)
     return RTNCD_FAILURE;
   }
 
-  char cjob_correlator[64 + 1] = {0};
-  rc = ZJBSYMB(zjb, "SYS_CORR_LASTJOB", cjob_correlator);
+  char ccorrelator[64 + 1] = {0};
+  rc = ZJBSYMB(zjb, "SYS_CORR_LASTJOB", ccorrelator);
 
   if (0 != rc)
   {
@@ -439,7 +439,7 @@ int zjb_submit(ZJB *zjb, string contents, string &jobid)
     return rc;
   }
 
-  memcpy(zjb->job_correlator, cjob_correlator, sizeof(zjb->job_correlator));
+  memcpy(zjb->correlator, ccorrelator, sizeof(zjb->correlator));
 
   rc = dynfree(&ip);
   if (0 != rc)
@@ -466,7 +466,7 @@ int zjb_list_dds(ZJB *zjb, string jobid, vector<ZJobDD> &jobDDs)
     zjb->dds_max = ZJB_DEFAULT_MAX_DDS;
 
   if (jobid.size() > sizeof(zjb->jobid))
-    zut_uppercase_pad_truncate(zjb->job_correlator, jobid, sizeof(zjb->job_correlator));
+    zut_uppercase_pad_truncate(zjb->correlator, jobid, sizeof(zjb->correlator));
   else
     zut_uppercase_pad_truncate(zjb->jobid, jobid, sizeof(zjb->jobid));
 
@@ -476,8 +476,39 @@ int zjb_list_dds(ZJB *zjb, string jobid, vector<ZJobDD> &jobDDs)
     return rc;
   }
 
+  // NOTE(Kelosky): if we didn't get any errors and we have no entries, we will look up the job status and see if it's "INPUT".  In this case,
+  // the SYSOUT data sets may not be vieawable via the SSI API.  So, we'll attempt to find the JESMSGLG and JESJCL data sets as documented here:
+  // https://www.ibm.com/docs/en/zos/3.1.0?topic=allocation-specifying-data-set-name-daldsnam
   if (0 == entries)
   {
+    ZJob job = {0};
+    int view_rc = zjb_view(zjb, jobid, job);
+    if (RTNCD_SUCCESS == view_rc)
+    {
+      if (job.status == "INPUT")
+      {
+        ZJobDD jesmsglg = {0};
+        jesmsglg.jobid = job.jobid;
+        jesmsglg.ddn = "JESMSGLG";
+        jesmsglg.dsn = job.owner + '.' + job.jobname + '.' + job.jobid + '.' + jesmsglg.ddn;
+
+// NOTE(Kelosky): these keys are not documented to indiciate whether they are always set to these exact values.  However,
+// since we are handling this as a special case, we will match this number that we set and reference by the DSN without the actual keys.
+#define JESMSGLG_KEY 2
+        jesmsglg.key = JESMSGLG_KEY;
+        jobDDs.push_back(jesmsglg);
+        ZJobDD jesjcl = {0};
+        jesjcl.jobid = job.jobid;
+        jesjcl.ddn = "JESJCL";
+        jesjcl.dsn = job.owner + '.' + job.jobname + '.' + job.jobid + '.' + jesjcl.ddn;
+#define JESJCL_KEY 3
+        jesjcl.key = JESJCL_KEY;
+        jobDDs.push_back(jesjcl);
+        ZUTMFR64(sysoutInfo);
+        return rc;
+      }
+    }
+
     ZUTMFR64(sysoutInfo);
     zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "no output DDs found for '%s'", jobid.c_str());
     zjb->diag.detail_rc = ZJB_RTNCD_VERBOSE_INFO_NOT_FOUND;
@@ -532,7 +563,7 @@ int zjb_view(ZJB *zjb, string jobid, ZJob &job)
     zjb->jobs_max = ZJB_DEFAULT_MAX_JOBS;
 
   if (jobid.size() > sizeof(zjb->jobid))
-    zut_uppercase_pad_truncate(zjb->job_correlator, jobid, sizeof(zjb->job_correlator));
+    zut_uppercase_pad_truncate(zjb->correlator, jobid, sizeof(zjb->correlator));
   else
     zut_uppercase_pad_truncate(zjb->jobid, jobid, sizeof(zjb->jobid));
 
@@ -606,19 +637,19 @@ void zjb_build_job_response(ZJB_JOB_INFO *PTR64 job_info, int entries, vector<ZJ
     char temp_job_name[9] = {0};
     char temp_jobid[9] = {0};
     char temp_job_owner[9] = {0};
-    char temp_job_correlator[65] = {0};
+    char temp_correlator[65] = {0};
 
     strncpy(temp_job_name, (char *)job_info_next[i].statjqtr.sttrname, sizeof(job_info->statjqtr.sttrname));
     strncpy(temp_jobid, (char *)job_info_next[i].statjqtr.sttrjid, sizeof(job_info->statjqtr.sttrjid));
     strncpy(temp_job_owner, (char *)job_info_next[i].statjqtr.sttrouid, sizeof(job_info->statjqtr.sttrouid));
-    strncpy(temp_job_correlator, (char *)job_info_next[i].statjqtr.sttrjcor, sizeof(job_info->statjqtr.sttrjcor));
+    strncpy(temp_correlator, (char *)job_info_next[i].statjqtr.sttrjcor, sizeof(job_info->statjqtr.sttrjcor));
 
     ZJob zjob = {0};
 
     string jobname(temp_job_name);
     string jobid(temp_jobid);
     string owner(temp_job_owner);
-    string job_correlator(temp_job_correlator);
+    string correlator(temp_correlator);
 
     union cc
     {
@@ -684,7 +715,7 @@ void zjb_build_job_response(ZJB_JOB_INFO *PTR64 job_info, int entries, vector<ZJ
     zjob.jobname = jobname;
     zjob.jobid = jobid;
     zjob.owner = owner;
-    zjob.job_correlator = job_correlator;
+    zjob.correlator = correlator;
 
     jobs.push_back(zjob);
   }

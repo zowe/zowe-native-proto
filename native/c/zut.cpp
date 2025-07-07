@@ -35,7 +35,12 @@ int zut_run(string program)
   return ZUTRUN(program.c_str());
 }
 
-int zut_substitute_sybmol(string pattern, string &result)
+unsigned char zut_get_key()
+{
+  return ZUTMGKEY();
+}
+
+int zut_substitute_symbol(string pattern, string &result)
 {
   SYMBOL_DATA *parms = (SYMBOL_DATA *)__malloc31(sizeof(SYMBOL_DATA));
   memset(parms, 0x00, sizeof(SYMBOL_DATA));
@@ -134,79 +139,6 @@ int zut_hello(string name)
   // #endif
 
   return 0;
-}
-
-void zut_dump_storage(string title, const void *data, size_t size)
-{
-  fprintf(stderr, "--- Dumping storage for '%s' at x'%016llx' ---\n", title.c_str(), (unsigned long long)data);
-
-  unsigned char *ptr = (unsigned char *)data;
-
-#define BYTES_PER_LINE 32
-
-  int index = 0;
-  bool end = false;
-  char spaces[] = "                                ";
-  char buf[BYTES_PER_LINE + 1] = {0};
-
-  int lines = size / BYTES_PER_LINE;
-  int remainder = size % BYTES_PER_LINE;
-  char unknown = '.';
-
-  for (int x = 0; x < lines; x++)
-  {
-    fprintf(stderr, "%016llx", (unsigned long long)ptr);
-    fprintf(stderr, " | ");
-    for (int y = 0; y < BYTES_PER_LINE; y++)
-    {
-      unsigned char p = isprint(ptr[y]) ? ptr[y] : unknown;
-      fprintf(stderr, "%c", p);
-    }
-    fprintf(stderr, " | ");
-
-    for (int y = 0; y < BYTES_PER_LINE; y++)
-    {
-      // cerr << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(ptr[y]);
-      fprintf(stderr, "%02x", (unsigned char)ptr[y]);
-
-      if ((y + 1) % 4 == 0)
-      {
-        fprintf(stderr, " ");
-      }
-      if ((y + 1) % 16 == 0)
-      {
-        fprintf(stderr, "    ");
-      }
-    }
-    fprintf(stderr, "\n");
-    ptr = ptr + BYTES_PER_LINE;
-  }
-
-  fprintf(stderr, "%016llx", (unsigned long long)ptr);
-  fprintf(stderr, " | ");
-  for (int y = 0; y < remainder; y++)
-  {
-    unsigned char p = isprint(ptr[y]) ? ptr[y] : unknown;
-    fprintf(stderr, "%c", p);
-  }
-  memset(buf, 0x00, sizeof(buf));
-  sprintf(buf, "%.*s | ", BYTES_PER_LINE - remainder, spaces);
-  fprintf(stderr, "%s", buf);
-  for (int y = 0; y < remainder; y++)
-  {
-    // cerr << hex << setw(2) << setfill('0') << static_cast<int>(ptr[y]);
-    fprintf(stderr, "%02x", (unsigned char)ptr[y]);
-
-    if ((y + 1) % 4 == 0)
-    {
-      fprintf(stderr, " ");
-    }
-    if ((y + 1) % 16 == 0)
-    {
-      fprintf(stderr, "    ");
-    }
-  }
-  fprintf(stderr, "\n--- END ---\n");
 }
 
 /**
@@ -547,4 +479,23 @@ string zut_format_as_csv(std::vector<string> &fields)
   }
 
   return formatted;
+}
+
+int zut_alloc_debug()
+{
+  int rc = 0;
+  unsigned int code = 0;
+  string response;
+  string zowexdbg = "/tmp/zowex_debug.txt";
+
+  string alloc = "alloc fi(zowexdbg) path('" + zowexdbg + "') pathopts(owronly,ocreat) pathmode(sirusr,siwusr,sirgrp) filedata(text) msg(2)";
+  rc = zut_bpxwdyn(alloc, &code, response);
+
+  return rc;
+}
+
+int zut_debug_message(const char *message)
+{
+  fprintf(stderr, "%s", message);
+  return 0;
 }

@@ -10,41 +10,22 @@
  */
 
 import * as fs from "node:fs";
-import { basename, resolve } from "node:path";
-import * as readline from "node:readline/promises";
+import * as path from "node:path";
 import { PassThrough, pipeline, Transform, type TransformCallback } from "node:stream";
-import { Client, type ClientCallback, type SFTPWrapper } from "ssh2";
+import * as chokidar from "chokidar";
+import * as yaml from "js-yaml";
+import { Client, type ClientCallback, type ClientChannel, type SFTPWrapper } from "ssh2";
+import { type IProfile, ProfileInfo } from "@zowe/imperative";
 
-let config: Record<string, any>;
-
-try {
-    console.log(resolve(__dirname, "./../config.local.json"));
-    config = JSON.parse(fs.readFileSync(resolve(__dirname, "./../config.local.json")).toString());
-} catch (e) {
-    console.log("You must create config.local.json (model from config.default.jsonc) in same directory");
+interface IConfig {
+    sshProfile: string | IProfile;
+    deployDir: string;
+    goBuildEnv?: string;
 }
 
-const host = config.host;
-const port = config.port ?? 22;
-const username = config.username;
-let privateKey: Buffer | undefined;
-const password = config.password;
-try {
-    privateKey = fs.readFileSync(config.privateKey);
-} catch (e) {}
-
-const localDeployDir = "./../native"; // from here
-const deployDirectory = config.deployDirectory; // to here
-const cDeployDirectory = `${config.deployDirectory}/c`; // to here
-const cTestDeployDirectory = `${cDeployDirectory}/test`; // to here
-const goDeployDirectory = `${config.deployDirectory}/golang`; // to here
-
+const localDeployDir = "./../native";
 const args = process.argv.slice(2);
-
-const line = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-});
+let deployDirs: { root: string; cDir: string; cTestDir: string; goDir: string };
 
 const asciiToEbcdicMap =
     // biome-ignore format: the array should not be formatted
@@ -99,93 +80,11 @@ function startSpinner(text = "Loading...") {
 }
 
 function stopSpinner(spinner: NodeJS.Timeout | null, text = "Done!") {
-    if (DEBUG_MODE() || process.env.CI!= null) {
+    if (DEBUG_MODE() || process.env.CI != null) {
         return;
     }
     spinner && clearInterval(spinner);
     process.stdout.write(`\x1b[2K\r${text}\n`);
-}
-
-const connection = new Client();
-
-connection.on("ready", async () => {
-    try {
-        switch (args[0]) {
-            case "init":
-                await init(connection);
-                break;
-            case "deploy":
-                await deploy(connection);
-                break;
-            case "deploy:build":
-            case "deploy-build":
-                await deploy(connection);
-                await build(connection);
-                break;
-            case "get-listings":
-                await getListings(connection);
-                break;
-            case "get-dumps":
-                await getDumps(connection);
-                break;
-            case "artifacts":
-                await artifacts(connection, false);
-                break;
-            case "package":
-                await artifacts(connection, true);
-                break;
-            case "clean":
-                await clean(connection);
-                break;
-            case "delete":
-                await rmdir(connection);
-                break;
-            case "bin":
-                await bin(connection);
-                break;
-            case "build":
-                await build(connection);
-                break;
-            case "test":
-                await test(connection);
-                break;
-            default:
-                console.log("Unsupported command\nUsage init|deploy|deploy-build [<file1>,<file2>,...|dir]");
-                break;
-        }
-    } catch (err) {
-        console.error(err);
-        process.exit(process.exitCode ?? 1);
-    }
-
-    line.close();
-    connection.end();
-});
-
-connection.on("close", () => {
-    console.log("Client connection is closed");
-});
-
-connection.on("error", (err) => {
-    console.error("Client connection errored");
-    console.log(err);
-    process.exit(1);
-});
-
-if (!privateKey) {
-    connection.connect({
-        host,
-        port,
-        username,
-        password,
-    });
-} else {
-    connection.connect({
-        host,
-        port,
-        username,
-        privateKey,
-    });
 }
 
 function getAllServerFiles() {
@@ -218,14 +117,14 @@ function getServerFiles(dir = "") {
             } else {
                 let stats: fs.Stats;
                 try {
-                    stats = fs.statSync(resolve(__dirname, `${localDeployDir}/${arg}`));
+                    stats = fs.statSync(path.resolve(__dirname, `${localDeployDir}/${arg}`));
                 } catch (e) {
                     console.log(`Error: input '${arg}' is not found`);
                     process.exit(1);
                 }
 
                 if (stats.isDirectory()) {
-                    const files = fs.readdirSync(resolve(__dirname, `${localDeployDir}/${arg}`), {
+                    const files = fs.readdirSync(path.resolve(__dirname, `${localDeployDir}/${arg}`), {
                         withFileTypes: true,
                     });
                     for (const entry of files) {
@@ -245,7 +144,7 @@ function getServerFiles(dir = "") {
     }
 
     const filesList: string[] = [];
-    const files = fs.readdirSync(resolve(__dirname, `${localDeployDir}/${dir}`), {
+    const files = fs.readdirSync(path.resolve(__dirname, `${localDeployDir}/${dir}`), {
         withFileTypes: true,
     });
 
@@ -261,7 +160,7 @@ function getServerFiles(dir = "") {
 function getDirs(next = "") {
     const dirs: string[] = [];
 
-    const readDirs = fs.readdirSync(resolve(__dirname, `${localDeployDir}/${next}`), { withFileTypes: true });
+    const readDirs = fs.readdirSync(path.resolve(__dirname, `${localDeployDir}/${next}`), { withFileTypes: true });
     for (const dir of readDirs) {
         if (dir.isDirectory()) {
             const newDir = `${dir.name}/`;
@@ -272,41 +171,6 @@ function getDirs(next = "") {
     return dirs;
 }
 
-async function init(connection: Client) {
-    const dirs = getDirs();
-
-    return new Promise<void>((finish) => {
-        console.log("Making directories...");
-        const dirs = getDirs();
-
-        connection.shell(false, (err, stream) => {
-            if (err) {
-                console.log(`Error: runCommand connection.exec error ${err}`);
-                throw err;
-            }
-
-            stream.write(`mkdir -p ${deployDirectory}\n`);
-            stream.write(`cd ${deployDirectory}\n`);
-            for (let i = 0; i < dirs.length; i++) {
-                console.log(`Creating ${dirs[i]}...`);
-                stream.write(`mkdir -p ${dirs[i]}\n`);
-            }
-            stream.end("exit\n");
-
-            stream.on("close", () => {
-                console.log("Directories created!");
-                finish();
-            });
-            stream.on("data", (part: Buffer) => {
-                console.log(part.toString());
-            });
-            stream.stderr.on("data", (data: Buffer) => {
-                console.log(data.toString());
-            });
-        });
-    });
-}
-
 async function getListings(connection: Client) {
     if (args[1]) {
         await convert(connection, "IBM-1047", "utf8", [...args.slice(1)]);
@@ -314,14 +178,14 @@ async function getListings(connection: Client) {
         return;
     }
 
-    const resp = (await runCommandInShell(connection, `cd ${cDeployDirectory}\nls *.lst`)).trim().split("\n");
+    const resp = (await runCommandInShell(connection, `cd ${deployDirs.cDir}\nls *.lst`)).trim().split("\n");
 
     await convert(connection, "IBM-1047", "utf8", resp);
     await retrieve(connection, resp, "listings");
 }
 
 async function getDumps(connection: Client) {
-    const resp = (await runCommandInShell(connection, `cd ${cDeployDirectory}\nls CEEDUMP.*`)).trim().split("\n");
+    const resp = (await runCommandInShell(connection, `cd ${deployDirs.cDir}\nls CEEDUMP.*`)).trim().split("\n");
 
     await convert(connection, "IBM-1047", "utf8", resp);
     await retrieve(connection, resp, "dumps");
@@ -332,17 +196,19 @@ async function artifacts(connection: Client, packageApf: boolean) {
     if (packageApf) {
         artifactPaths.push("c/build-out/zoweax");
     }
-    const artifactNames = artifactPaths.map((file) => basename(file)).sort();
+    const artifactNames = artifactPaths.map((file) => path.basename(file)).sort();
     const localDirs = packageApf ? ["dist"] : ["packages/cli/bin", "packages/vsce/bin"];
     const localFiles = ["server.pax.Z", "checksums.asc"];
     const [paxFile, checksumFile] = localFiles;
-    const prePaxCmds = artifactPaths.map((file) => `cp ${file} ${basename(file)} && chmod 700 ${basename(file)}`);
+    const prePaxCmds = artifactPaths.map(
+        (file) => `cp ${file} ${path.basename(file)} && chmod 700 ${path.basename(file)}`,
+    );
     const postPaxCmd = `rm ${artifactNames.join(" ")}`;
     const e2aPipe = (file: string) => `iconv -f IBM-1047 -t ISO8859-1 > ${file} && chtag -tc ISO8859-1 ${file}`;
     await runCommandInShell(
         connection,
         [
-            `cd ${deployDirectory}`,
+            `cd ${deployDirs.root}`,
             ...prePaxCmds,
             `_BPXK_AUTOCVT=OFF sha256 -r ${artifactNames.join(" ")} | ${e2aPipe(checksumFile)}`,
             `pax -wvz -o saveext -f ${paxFile} ${artifactNames.join(" ")} ${checksumFile}`,
@@ -350,14 +216,14 @@ async function artifacts(connection: Client, packageApf: boolean) {
         ].join("\n"),
     );
     for (const localDir of localDirs) {
-        fs.mkdirSync(resolve(__dirname, `./../${localDir}`), { recursive: true });
+        fs.mkdirSync(path.resolve(__dirname, `./../${localDir}`), { recursive: true });
         for (const localFile of localFiles) {
             if (localDirs.indexOf(localDir) === 0) {
                 await retrieve(connection, [localFile], localDir);
             } else {
                 fs.cpSync(
-                    resolve(__dirname, `./../${localDirs[0]}/${localFile}`),
-                    resolve(__dirname, `./../${localDir}/${localFile}`),
+                    path.resolve(__dirname, `./../${localDirs[0]}/${localFile}`),
+                    path.resolve(__dirname, `./../${localDir}/${localFile}`),
                 );
             }
         }
@@ -414,10 +280,10 @@ async function retrieve(connection: Client, files: string[], targetDir: string) 
             }
 
             for (let i = 0; i < files.length; i++) {
-                const absTargetDir = resolve(__dirname, `./../${targetDir}`);
+                const absTargetDir = path.resolve(__dirname, `./../${targetDir}`);
                 if (!fs.existsSync(`${absTargetDir}`)) fs.mkdirSync(`${absTargetDir}`);
                 const to = `${absTargetDir}/${files[i]}`;
-                const from = `${deployDirectory}/${files[i]}`;
+                const from = `${deployDirs.root}/${files[i]}`;
                 // console.log(`from '${from}' to'${to}'`)
                 await download(sftpcon, from, to);
             }
@@ -427,9 +293,10 @@ async function retrieve(connection: Client, files: string[], targetDir: string) 
     });
 }
 
-async function deploy(connection: Client) {
+async function upload(connection: Client) {
     return new Promise<void>((finish) => {
         const spinner = startSpinner("Deploying files...");
+        const dirs = getDirs();
         const files = getAllServerFiles();
 
         connection.sftp(async (err, sftpcon) => {
@@ -438,10 +305,23 @@ async function deploy(connection: Client) {
                 throw err;
             }
 
+            const filteredDirs = args[1] ? dirs.filter((dir) => args.some((arg) => arg.startsWith(dir))) : dirs;
+            for (const dir of ["", ...filteredDirs]) {
+                await new Promise<void>((resolve, reject) => {
+                    sftpcon.mkdir(`${deployDirs.root}/${dir}`, (err) => {
+                        if (err && (err as any).code !== 4) {
+                            reject(err);
+                        } else {
+                            resolve();
+                        }
+                    });
+                });
+            }
+
             const uploads = [];
             for (let i = 0; i < files.length; i++) {
-                const from = resolve(__dirname, `${localDeployDir}/${files[i]}`);
-                const to = `${deployDirectory}/${files[i]}`;
+                const from = path.resolve(__dirname, `${localDeployDir}/${files[i]}`);
+                const to = `${deployDirs.root}/${files[i]}`;
                 uploads.push(uploadFile(sftpcon, from, to));
             }
             await Promise.all(uploads);
@@ -462,7 +342,7 @@ async function convert(connection: Client, fromType = "utf8", toType = "IBM-1047
                 throw err;
             }
 
-            stream.write(`cd ${deployDirectory}\n`);
+            stream.write(`cd ${deployDirs.root}\n`);
             for (let i = 0; i < files.length; i++) {
                 stream.write(`mv ${files[i]} ${files[i]}.u\n`);
                 stream.write(`iconv -f ${fromType} -t ${toType} ${files[i]}.u > ${files[i]}\n`);
@@ -506,7 +386,7 @@ async function bin(connection: Client) {
             // Print the binary data as a string of UTF-8 characters
             // const enc = Buffer.from(greeting).toString("base64")
             // console.log(enc.toString("hex"))
-            stream.write(`cd ${goDeployDirectory}\n`, "ascii");
+            stream.write(`cd ${deployDirs.goDir}\n`, "ascii");
             stream.write("./ping\n", "ascii");
             stream.write(bufferEncoded, "ascii");
             stream.end(); // "", "ascii");
@@ -533,18 +413,18 @@ async function bin(connection: Client) {
     });
 }
 
-async function build(connection: Client) {
+async function build(connection: Client, goBuildEnv?: string) {
     console.log("Building native/c ...");
     const response = await runCommandInShell(
         connection,
-        `cd ${cDeployDirectory} && make ${DEBUG_MODE() ? "-DBuildType=DEBUG" : ""}\n`,
+        `cd ${deployDirs.cDir} && make ${DEBUG_MODE() ? "-DBuildType=DEBUG" : ""}\n`,
     );
     DEBUG_MODE() && console.log(response);
     console.log("Building native/golang ...");
     console.log(
         await runCommandInShell(
             connection,
-            `cd ${goDeployDirectory} &&${config.goEnv ? ` ${config.goEnv}` : ""} go build${DEBUG_MODE() ? "" : ' -ldflags="-s -w"'}\n`,
+            `cd ${deployDirs.goDir} &&${goBuildEnv ? ` ${goBuildEnv}` : ""} go build${DEBUG_MODE() ? "" : ' -ldflags="-s -w"'}\n`,
             true,
         ),
     );
@@ -555,7 +435,7 @@ async function test(connection: Client) {
     console.log("Testing native/c ...");
     const response = await runCommandInShell(
         connection,
-        `cd ${cTestDeployDirectory} && _CEE_RUNOPTS="TRAP(ON,NOSPIE)" ./build-out/runner\n`,
+        `cd ${deployDirs.cTestDir} && _CEE_RUNOPTS="TRAP(ON,NOSPIE)" ./build-out/ztest_runner ${args[1] ?? ""} \n`,
     );
     DEBUG_MODE() && console.log(response);
     console.log("Testing complete!");
@@ -563,22 +443,162 @@ async function test(connection: Client) {
 
 async function clean(connection: Client) {
     console.log("Cleaning dir ...");
-    const resp = await runCommandInShell(connection, `cd ${cDeployDirectory} && make clean\n`);
+    const resp = await runCommandInShell(connection, `cd ${deployDirs.cDir} && make clean\n`);
     console.log(resp);
     console.log("Clean complete");
 }
 
 async function rmdir(connection: Client) {
     console.log("Removing dir ...");
-    const resp = await runCommandInShell(connection, `rm -rf ${deployDirectory}\n`);
+    const resp = await runCommandInShell(connection, `rm -rf ${deployDirs.root}\n`);
     console.log(resp);
     console.log("Removal complete");
+}
+
+async function watch(connection: Client) {
+    function cTask(err: Error, stream: ClientChannel, resolve: any) {
+        if (err) {
+            console.error("Failed to start shell:", err);
+            resolve();
+            return;
+        }
+
+        const cmd = `cd ${deployDirs.cDir}\nmake 1> /dev/null\nexit\n`;
+        stream.write(cmd);
+
+        let errText = "";
+        stream
+            .on("end", () => {
+                if (errText.length === 0) {
+                    console.log("\n\t[tasks -> c] make succeeded ✔");
+                } else {
+                    console.log("\n\t[tasks -> c] make failed ✘\nerror: \n", errText);
+                }
+                resolve();
+            })
+            .on("data", (_data: any) => {})
+            .stderr.on("data", (data) => {
+                const str = data.toString().trim();
+                if (/IGD\d{5}I /.test(str)) return;
+                errText += str;
+            });
+    }
+
+    function golangTask(err: Error, stream: ClientChannel, resolve: any) {
+        if (err) {
+            console.error("Failed to start shell:", err);
+            resolve();
+            return;
+        }
+
+        const cmd = `cd ${deployDirs.goDir} && go build -ldflags="-s -w"\nexit\n`;
+        stream.write(cmd);
+
+        let errText = "";
+        stream
+            .on("end", () => {
+                if (errText.length === 0) {
+                    console.log("\n\t[tasks -> golang] go build succeeded ✔");
+                } else {
+                    console.log("\n\t[tasks -> golang] go build failed ✘\nerror: \n", errText);
+                }
+                resolve();
+            })
+            .on("data", (_data: any) => {})
+            .stderr.on("data", (data) => {
+                errText += data;
+            });
+    }
+
+    async function deleteFile(remotePath: string) {
+        return new Promise<void>((resolve, reject) => {
+            connection.sftp((err, sftp) => {
+                sftp.unlink(remotePath, (err) => {
+                    if (err) {
+                        return reject(err);
+                    }
+
+                    sftp.end();
+                    resolve();
+                });
+            });
+        });
+    }
+
+    async function uploadFile2(localPath: string, remotePath: string) {
+        return new Promise<void>((resolve, reject) => {
+            connection.sftp((err, sftp) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+
+                process.stdout.write(` -> ${remotePath} `);
+                uploadFile(sftp, path.resolve(__dirname, `${localDeployDir}/${localPath}`), remotePath)
+                    .then(() => {
+                        connection.shell(false, (err, stream) => {
+                            // If the uploaded file is in the `c` directory, run `make`
+                            if (localPath.split(path.sep)[0] === "c") {
+                                cTask(err, stream, resolve);
+                            } else if (localPath.split(path.sep)[0] === "golang") {
+                                // Run `go build` when a Golang file has changed
+                                golangTask(err, stream, resolve);
+                            } else {
+                                console.log();
+                                resolve();
+                            }
+                        });
+                        sftp.end();
+                    })
+                    .catch((err) => {
+                        reject(err);
+                    });
+            });
+        });
+    }
+
+    const watcher = chokidar.watch(["c/makefile", "c/**/*.{c,cpp,h,hpp,s,sh}", "golang/**"], {
+        cwd: path.resolve(__dirname, localDeployDir),
+        ignoreInitial: true,
+        persistent: true,
+    });
+
+    watcher.on("add", async (filePath, _stats) => {
+        process.stdout.write(`${new Date().toLocaleString()} [+] ${filePath}`);
+        try {
+            await uploadFile2(filePath, `${deployDirs.root}/${filePath.replaceAll(path.sep, path.posix.sep)}`);
+        } catch (err) {
+            console.error(" ✘", err);
+        }
+    });
+
+    watcher.on("change", async (filePath, _stats) => {
+        process.stdout.write(`${new Date().toLocaleString()} [~] ${filePath}`);
+        try {
+            await uploadFile2(filePath, `${deployDirs.root}/${filePath.replaceAll(path.sep, path.posix.sep)}`);
+        } catch (err) {
+            console.error(" ✘", err);
+        }
+    });
+
+    watcher.on("unlink", async (filePath) => {
+        process.stdout.write(`${new Date().toLocaleString()} [-] ${filePath}`);
+        try {
+            await deleteFile(`${deployDirs.root}/${filePath.replaceAll(path.sep, path.posix.sep)}`);
+            console.log(" ✔");
+        } catch (err) {
+            console.error(" ✘", err);
+        }
+    });
+
+    console.log("watching for changes...");
+    return new Promise(() => {});
 }
 
 async function uploadFile(sftpcon: SFTPWrapper, from: string, to: string) {
     await new Promise<void>((finish) => {
         DEBUG_MODE() && console.log(`Uploading '${from}' to ${to}`);
-        const shouldConvert = !to.includes(goDeployDirectory);
+        const shouldConvert = !to.includes(deployDirs.goDir);
         pipeline(
             fs.createReadStream(from),
             shouldConvert ? new AsciiToEbcdicTransform() : new PassThrough(),
@@ -608,3 +628,138 @@ async function download(sftpcon: SFTPWrapper, from: string, to: string) {
         });
     });
 }
+
+async function loadConfig(): Promise<IConfig> {
+    const configPath = path.join(__dirname, "..", "config.yaml");
+    if (!fs.existsSync(configPath)) {
+        const oldConfigPath = path.join(__dirname, "..", "config.local.json");
+        if (fs.existsSync(oldConfigPath)) {
+            const configJson = JSON.parse(fs.readFileSync(oldConfigPath, "utf-8"));
+            const yamlLines = ["activeProfile: default", "", "profiles:", "  default:", "    sshProfile:"];
+            yamlLines.push(`      host: ${configJson.host}`);
+            if (configJson.port) {
+                yamlLines.push(`      port: ${configJson.port}`);
+            }
+            yamlLines.push(`      user: ${configJson.username}`);
+            if (configJson.password) {
+                yamlLines.push(`      password: ${configJson.password}`);
+            } else if (configJson.privateKey) {
+                yamlLines.push(`      privateKey: ${configJson.privateKey}`);
+            }
+            yamlLines.push(`    deployDir: ${configJson.deployDirectory}`);
+            yamlLines.push(`    goBuildEnv: "${configJson.goEnv || ""}"`);
+            fs.writeFileSync(configPath, `${yamlLines.join("\n")}\n`, "utf-8");
+            console.warn(
+                `Warning: Detected old config format in config.local.json. It has been migrated to a config.yaml file.\n\n${yamlLines.join("\n")}\n`,
+            );
+        } else {
+            console.error("Could not find config.yaml. See the README for instructions.");
+            process.exit(1);
+        }
+    }
+
+    const configYaml: any = yaml.load(fs.readFileSync(configPath, "utf-8"));
+    let activeProfile = configYaml.activeProfile;
+    const profileArgIdx = args.findIndex((arg) => arg.startsWith("--profile="));
+    if (profileArgIdx !== -1) {
+        activeProfile = args.splice(profileArgIdx, 1)[0].split("=").pop();
+    }
+    if (configYaml.profiles?.[activeProfile] == null) {
+        console.error(`Could not find profile "${activeProfile}" in config.yaml. See the README for instructions.`);
+        process.exit(1);
+    }
+
+    const config: IConfig = configYaml.profiles[activeProfile];
+    if (typeof config.sshProfile === "string") {
+        const profInfo = new ProfileInfo("zowe");
+        await profInfo.readProfilesFromDisk();
+        const profAttrs = profInfo.getAllProfiles("ssh").find((prof) => prof.profName === config.sshProfile);
+        const mergedArgs = profInfo.mergeArgsForProfile(profAttrs, { getSecureVals: true });
+        config.sshProfile = mergedArgs.knownArgs.reduce((prof, arg) => ({ ...prof, [arg.argName]: arg.argValue }), {});
+    }
+    config.deployDir = config.deployDir.replace(/^~/, ".");
+    return config;
+}
+
+async function buildSshClient(sshProfile: IProfile): Promise<Client> {
+    const client = new Client();
+    return new Promise((resolve, reject) => {
+        client.on("close", () => {
+            console.log("Client connection is closed");
+        });
+        client.on("error", (err) => {
+            console.error("Client connection errored");
+            reject(err);
+        });
+        client.on("ready", () => resolve(client));
+        client.connect({
+            ...sshProfile,
+            username: sshProfile.user,
+            privateKey: sshProfile.privateKey ? fs.readFileSync(sshProfile.privateKey) : undefined,
+            keepaliveInterval: 30e3,
+        });
+    });
+}
+
+async function main() {
+    const config = await loadConfig();
+    deployDirs = {
+        root: config.deployDir,
+        cDir: `${config.deployDir}/c`,
+        cTestDir: `${config.deployDir}/c/test`,
+        goDir: `${config.deployDir}/golang`,
+    };
+    const sshClient = await buildSshClient(config.sshProfile as IProfile);
+
+    try {
+        switch (args[0]) {
+            case "artifacts":
+                await artifacts(sshClient, false);
+                break;
+            case "bin":
+                await bin(sshClient);
+                break;
+            case "build":
+                await build(sshClient, config.goBuildEnv);
+                break;
+            case "clean":
+                await clean(sshClient);
+                break;
+            case "delete":
+                await rmdir(sshClient);
+                break;
+            case "get-dumps":
+                await getDumps(sshClient);
+                break;
+            case "get-listings":
+                await getListings(sshClient);
+                break;
+            case "package":
+                await artifacts(sshClient, true);
+                break;
+            case "rebuild":
+                await upload(sshClient);
+                await build(sshClient, config.goBuildEnv);
+                break;
+            case "test":
+                await test(sshClient);
+                break;
+            case "upload":
+                await upload(sshClient);
+                break;
+            case "watch":
+                await watch(sshClient);
+                break;
+            default:
+                console.error(`Unsupported command "${args[0]}". See README for instructions.`);
+                break;
+        }
+    } finally {
+        sshClient.end();
+    }
+}
+
+main().catch((err) => {
+    console.error(err);
+    process.exit(process.exitCode ?? 1);
+});

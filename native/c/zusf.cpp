@@ -15,8 +15,11 @@
 #ifndef _OPEN_SYS_FILE_EXT
 #define _OPEN_SYS_FILE_EXT 1
 #endif
+#include <sys/types.h>
 #include <sys/stat.h>
+#include <dirent.h>
 #include <stdio.h>
+#include <string.h>
 #include <cstring>
 #include <fcntl.h>
 #include <fstream>
@@ -39,8 +42,7 @@
 #define _XPLATFORM_SOURCE
 #endif
 #include <sys/xattr.h>
-#include <dirent.h>
-// #include "zusfm.h"
+#include <vector>
 
 using namespace std;
 
@@ -121,7 +123,7 @@ int zusf_create_uss_file_or_dir(ZUSF *zusf, string file, string mode, bool creat
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response)
+int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response, ListOptions options)
 {
   // TODO(zFernand0): Handle `*` and other bash-expansion rules
   struct stat file_stats;
@@ -131,11 +133,32 @@ int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response)
     return RTNCD_FAILURE;
   }
 
+  // TODO: Hide hidden paths by default
+  // TODO(zFernand0): Add option to list full file paths
+  // TODO(zFernand0): Add option to list file tags
+
   if (S_ISREG(file_stats.st_mode))
   {
     response.clear();
-    response += file.substr(file.find_last_of("/") + 1);
-    response.push_back('\n');
+    const auto file_name = file.substr(file.find_last_of("/") + 1);
+    vector<string> fields;
+    fields.push_back(file_name);
+    if (options.long_format)
+    {
+      string mode;
+      mode += (S_ISDIR(file_stats.st_mode) ? "d" : "-");
+      mode += (file_stats.st_mode & S_IRUSR ? "r" : "-");
+      mode += (file_stats.st_mode & S_IWUSR ? "w" : "-");
+      mode += (file_stats.st_mode & S_IXUSR ? "x" : "-");
+      mode += (file_stats.st_mode & S_IRGRP ? "r" : "-");
+      mode += (file_stats.st_mode & S_IWGRP ? "w" : "-");
+      mode += (file_stats.st_mode & S_IXGRP ? "x" : "-");
+      mode += (file_stats.st_mode & S_IROTH ? "r" : "-");
+      mode += (file_stats.st_mode & S_IWOTH ? "w" : "-");
+      mode += (file_stats.st_mode & S_IXOTH ? "x" : "-");
+      fields.push_back(mode);
+    }
+    response = zut_format_as_csv(fields) + "\n";
     return RTNCD_SUCCESS;
   }
 
@@ -156,15 +179,37 @@ int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response)
   response.clear();
   while ((entry = readdir(dir)) != nullptr)
   {
-    // TODO(zFernand0): Skip hidden files
     if ((strcmp(entry->d_name, ".") != 0) && (strcmp(entry->d_name, "..") != 0))
     {
-      // TODO(zFernand0): Add option to list full file paths
-      // TODO(zFernand0): Add option to list file tags
-      response += entry->d_name;
-      response.push_back('\n');
+      string child_path = file[file.length() - 1] == '/' ? file + string(entry->d_name) : file + string("/") + string(entry->d_name);
+      struct stat child_stats;
+      stat(child_path.c_str(), &child_stats);
+
+      vector<string> fields;
+      string name = entry->d_name;
+      if (name.at(0) == '.' && !options.all_files)
+      {
+        continue;
+      }
+
+      fields.push_back(entry->d_name);
+      if (options.long_format)
+      {
+        string mode;
+        mode += (S_ISDIR(child_stats.st_mode) ? "d" : "-");
+        mode += (child_stats.st_mode & S_IRUSR ? "r" : "-");
+        mode += (child_stats.st_mode & S_IWUSR ? "w" : "-");
+        mode += (child_stats.st_mode & S_IXUSR ? "x" : "-");
+        mode += (child_stats.st_mode & S_IRGRP ? "r" : "-");
+        mode += (child_stats.st_mode & S_IWGRP ? "w" : "-");
+        mode += (child_stats.st_mode & S_IXGRP ? "x" : "-");
+        mode += (child_stats.st_mode & S_IROTH ? "r" : "-");
+        mode += (child_stats.st_mode & S_IWOTH ? "w" : "-");
+        mode += (child_stats.st_mode & S_IXOTH ? "x" : "-");
+        fields.push_back(mode);
+      }
+      response += zut_format_as_csv(fields) + "\n";
     }
-    // TODO(zFernand0): Sort in alphabetical order
   }
   closedir(dir);
 
@@ -307,18 +352,13 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, string file, string pipe)
  */
 int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data)
 {
-  struct stat file_stats;
-  if (stat(file.c_str(), &file_stats) == -1)
-  {
-    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Path '%s' does not exist", file.c_str());
-    return RTNCD_FAILURE;
-  }
-
   // TODO(zFernand0): Avoid overriding existing files
   const auto hasEncoding = zusf->encoding_opts.data_type == eDataTypeText && strlen(zusf->encoding_opts.codepage) > 0;
   const auto codepage = string(zusf->encoding_opts.codepage);
+  struct stat file_stats;
 
-  if (strlen(zusf->etag) > 0)
+  int stat_result = stat(file.c_str(), &file_stats);
+  if (strlen(zusf->etag) > 0 && stat_result != -1)
   {
     const auto current_etag = zut_build_etag(file_stats.st_mtime, file_stats.st_size);
     if (current_etag != zusf->etag)
@@ -327,49 +367,50 @@ int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data)
       return RTNCD_FAILURE;
     }
   }
+  if (stat_result == -1 && errno != ENOENT)
+    return RTNCD_FAILURE;
+  zusf->created = stat_result == -1;
 
-  if (!data.empty())
+  std::string temp = data;
+  if (hasEncoding)
   {
-    ofstream out(file.c_str(), zusf->encoding_opts.data_type == eDataTypeBinary ? ios::out | ios::binary : ios::out);
-    if (!out.is_open())
+    try
     {
-      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open '%s'", file.c_str());
+      const auto bytes_with_encoding = zut_encode(temp, "UTF-8", codepage, zusf->diag);
+      temp = bytes_with_encoding;
+    }
+    catch (std::exception &e)
+    {
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to convert input data from UTF-8 to %s", codepage.c_str());
       return RTNCD_FAILURE;
     }
-
-    std::string temp = data;
-    if (hasEncoding)
-    {
-      try
-      {
-        const auto bytes_with_encoding = zut_encode(temp, "UTF-8", codepage, zusf->diag);
-        temp = bytes_with_encoding;
-      }
-      catch (std::exception &e)
-      {
-        zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to convert input data from UTF-8 to %s", codepage.c_str());
-        return RTNCD_FAILURE;
-      }
-    }
-    if (!temp.empty())
-    {
-      out << temp;
-    }
-    out.close();
-
-    struct stat file_stats;
-    if (stat(file.c_str(), &file_stats) == -1)
-    {
-      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Path '%s' does not exist", file.c_str());
-      return RTNCD_FAILURE;
-    }
-
-    // Print new e-tag to stdout as response
-    string etag_str = zut_build_etag(file_stats.st_mtime, file_stats.st_size);
-    strcpy(zusf->etag, etag_str.c_str());
+  }
+  const char *mode = (zusf->encoding_opts.data_type == eDataTypeBinary) ? "wb" : "w";
+  FILE *fp = std::fopen(file.c_str(), mode);
+  if (!fp)
+  {
+    zusf->diag.e_msg_len = std::sprintf(zusf->diag.e_msg, "Could not open '%s' for writing", file.c_str());
+    return RTNCD_FAILURE;
   }
 
-  return 0;
+  if (!temp.empty())
+    std::fwrite(temp.data(), 1, temp.size(), fp);
+  std::fclose(fp);
+
+  struct stat new_stats;
+  if (stat(file.c_str(), &new_stats) == -1)
+  {
+    zusf->diag.e_msg_len = std::sprintf(
+        zusf->diag.e_msg,
+        "Could not stat file '%s' after writing",
+        file.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  const string new_tag = zut_build_etag(new_stats.st_mtime, new_stats.st_size);
+  std::strcpy(zusf->etag, new_tag.c_str());
+
+  return RTNCD_SUCCESS; // success
 }
 
 /**
@@ -383,18 +424,13 @@ int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data)
  */
 int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe)
 {
-  struct stat file_stats;
-  if (stat(file.c_str(), &file_stats) == -1)
-  {
-    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Path '%s' does not exist", file.c_str());
-    return RTNCD_FAILURE;
-  }
-
   // TODO(zFernand0): Avoid overriding existing files
+  struct stat file_stats;
   const auto hasEncoding = zusf->encoding_opts.data_type == eDataTypeText && strlen(zusf->encoding_opts.codepage) > 0;
   const auto codepage = string(zusf->encoding_opts.codepage);
 
-  if (strlen(zusf->etag) > 0)
+  int stat_result = stat(file.c_str(), &file_stats);
+  if (strlen(zusf->etag) > 0 && stat_result != -1)
   {
     const auto current_etag = zut_build_etag(file_stats.st_mtime, file_stats.st_size);
     if (current_etag != zusf->etag)
@@ -403,6 +439,9 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe)
       return RTNCD_FAILURE;
     }
   }
+  if (stat_result == -1 && errno != ENOENT)
+    return RTNCD_FAILURE;
+  zusf->created = stat_result == -1;
 
   FILE *fout = fopen(file.c_str(), zusf->encoding_opts.data_type == eDataTypeBinary ? "wb" : "w");
   if (!fout)
@@ -416,6 +455,7 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe)
   if (!fin)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open input pipe '%s'", pipe.c_str());
+    fclose(fout);
     return RTNCD_FAILURE;
   }
 
@@ -469,7 +509,7 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe)
   string etag_str = zut_build_etag(file_stats.st_mtime, file_stats.st_size);
   strcpy(zusf->etag, etag_str.c_str());
 
-  return 0;
+  return RTNCD_SUCCESS;
 }
 
 /**
@@ -481,7 +521,7 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe)
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zusf_chmod_uss_file_or_dir(ZUSF *zusf, string file, string mode, bool recursive)
+int zusf_chmod_uss_file_or_dir(ZUSF *zusf, string file, mode_t mode, bool recursive)
 {
   // TODO(zFernand0): Add recursive option for directories
   struct stat file_stats;
@@ -497,7 +537,7 @@ int zusf_chmod_uss_file_or_dir(ZUSF *zusf, string file, string mode, bool recurs
     return RTNCD_FAILURE;
   }
 
-  chmod(file.c_str(), strtol(mode.c_str(), nullptr, 8));
+  chmod(file.c_str(), mode);
   if (recursive && S_ISDIR(file_stats.st_mode))
   {
     DIR *dir;
@@ -672,13 +712,13 @@ int zusf_chtag_uss_file_or_dir(ZUSF *zusf, string file, string tag, bool recursi
   const auto is_dir = S_ISDIR(file_stats.st_mode);
   if (!is_dir)
   {
-    attrib64_t attr;
+    attrib_t attr;
     memset(&attr, 0, sizeof(attr));
     attr.att_filetagchg = 1;
     attr.att_filetag.ft_ccsid = ccsid;
     attr.att_filetag.ft_txtflag = int(ccsid != 65535);
 
-    const auto rc = __chattr64((char *)file.c_str(), &attr, sizeof(attr));
+    const auto rc = __chattr((char *)file.c_str(), &attr, sizeof(attr));
     if (rc != 0)
     {
       zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to update attributes for path '%s'", file.c_str());

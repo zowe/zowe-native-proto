@@ -17,6 +17,8 @@
 #include "ztest.hpp"
 #include <setjmp.h>
 
+using namespace std;
+
 string ztst::RESULT_CHECK::append_error_details()
 {
   string error = "";
@@ -45,6 +47,28 @@ void ztst::RESULT_CHECK::ToBe(int val)
     if (int_result != val)
     {
       string error = "expected int '" + to_string(int_result) + "' to be '" + to_string(val) + "'";
+      error += append_error_details();
+      throw runtime_error(error);
+    }
+  }
+}
+
+void ztst::RESULT_CHECK::ToBeGreaterThan(int val)
+{
+  if (inverse)
+  {
+    if (int_result > val)
+    {
+      string error = "expected int '" + to_string(int_result) + "' to NOT to be greater than '" + to_string(val) + "'";
+      error += append_error_details();
+      throw runtime_error(error);
+    }
+  }
+  else
+  {
+    if (int_result <= val)
+    {
+      string error = "expected int '" + to_string(int_result) + "' to be greater than '" + to_string(val) + "'";
       error += append_error_details();
       throw runtime_error(error);
     }
@@ -110,30 +134,16 @@ ztst::RESULT_CHECK ztst::RESULT_CHECK::Not()
   return copy;
 }
 
-struct TEST_CASE
-{
-  bool success;
-  string description;
-  string fail_message;
-};
-
-struct TEST_SUITE
-{
-  string description;
-  vector<TEST_CASE> tests;
-};
-
-vector<TEST_SUITE>
-    ztst_suites;
-int ztst_suite_index = -1;
-jmp_buf ztst_jmp_buf = {0};
+vector<ztst::TEST_SUITE> ztst::ztst_suites;
+int ztst::ztst_suite_index = -1;
+jmp_buf ztst::ztst_jmp_buf = {0};
 
 void ztst::describe(std::string description, ztst::cb suite)
 {
   TEST_SUITE ts = {0};
   ts.description = description;
-  ztst_suites.push_back(ts);
-  ztst_suite_index++;
+  ztst::ztst_suites.push_back(ts);
+  ztst::ztst_suite_index++;
   cout << description << endl;
   suite();
 }
@@ -148,12 +158,17 @@ extern "C"
 
   static void SIGHAND(int code, siginfo_t *info, void *context)
   {
-    longjmp(ztst_jmp_buf, 1);
+    longjmp(ztst::ztst_jmp_buf, 1);
   }
 
 #if defined(__cplusplus)
 }
 #endif
+
+void ztst::signal_handler(int code, siginfo_t *info, void *context)
+{
+  longjmp(ztst::ztst_jmp_buf, 1);
+}
 
 void ztst::it(string description, ztst::cb test)
 {
@@ -165,6 +180,11 @@ void ztst::it(string description, ztst::cb test, TEST_OPTIONS &opts)
 {
   TEST_CASE tc = {0};
   tc.description = description;
+
+  if (matcher != "" && matcher != description)
+  {
+    return;
+  }
 
   bool abend = false;
   struct sigaction sa = {0};
@@ -221,7 +241,7 @@ void ztst::it(string description, ztst::cb test, TEST_OPTIONS &opts)
     cout << "    " << tc.fail_message << endl;
   }
 
-  ztst_suites[ztst_suite_index].tests.push_back(tc);
+  ztst::ztst_suites[ztst::ztst_suite_index].tests.push_back(tc);
 }
 
 ztst::RESULT_CHECK ztst::expect(int val)
@@ -278,7 +298,7 @@ int ztst::report()
 
   cout << "======== TESTS SUMMARY ========" << endl;
 
-  for (vector<TEST_SUITE>::iterator it = ztst_suites.begin(); it != ztst_suites.end(); it++)
+  for (vector<TEST_SUITE>::iterator it = ztst::ztst_suites.begin(); it != ztst::ztst_suites.end(); it++)
   {
     for (vector<TEST_CASE>::iterator iit = it->tests.begin(); iit != it->tests.end(); iit++)
     {
@@ -291,7 +311,7 @@ int ztst::report()
     }
   }
 
-  cout << "Total Suites: " << ztst_suites.size() - suite_fail << " passed, " << suite_fail << " failed, " << ztst_suites.size() << " total" << endl;
+  cout << "Total Suites: " << ztst::ztst_suites.size() - suite_fail << " passed, " << suite_fail << " failed, " << ztst::ztst_suites.size() << " total" << endl;
   cout << "Tests:      : " << tests_total - tests_fail << " passed, " << tests_fail << " failed, " << tests_total << " total" << endl;
   return tests_fail > 0 ? 1 : 0;
 }
