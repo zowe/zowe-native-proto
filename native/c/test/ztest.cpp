@@ -31,6 +31,7 @@ string ztst::RESULT_CHECK::append_error_details()
   return error;
 }
 
+// template<typename T>
 void ztst::RESULT_CHECK::ToBe(int val)
 {
   if (inverse)
@@ -75,27 +76,27 @@ void ztst::RESULT_CHECK::ToBeGreaterThan(int val)
   }
 }
 
-void ztst::RESULT_CHECK::ToBe(string val)
-{
-  if (!inverse)
-  {
-    if (string_result != val)
-    {
-      string error = "expected string '" + string_result + "' to be '" + val + "'";
-      error += append_error_details();
-      throw runtime_error(error);
-    }
-  }
-  else
-  {
-    if (string_result == val)
-    {
-      string error = "expected string '" + string_result + "' NOT to be '" + val + "'";
-      error += append_error_details();
-      throw runtime_error(error);
-    }
-  }
-}
+// void ztst::RESULT_CHECK::ToBe(string val)
+// {
+//   if (!inverse)
+//   {
+//     if (string_result != val)
+//     {
+//       string error = "expected string '" + string_result + "' to be '" + val + "'";
+//       error += append_error_details();
+//       throw runtime_error(error);
+//     }
+//   }
+//   else
+//   {
+//     if (string_result == val)
+//     {
+//       string error = "expected string '" + string_result + "' NOT to be '" + val + "'";
+//       error += append_error_details();
+//       throw runtime_error(error);
+//     }
+//   }
+// }
 
 void ztst::RESULT_CHECK::ToBeNull()
 {
@@ -148,150 +149,13 @@ void ztst::describe(std::string description, ztst::cb suite)
   suite();
 }
 
-#if defined(__cplusplus) && (defined(__IBMCPP__) || defined(__IBMC__))
-extern "OS"
-{
-#elif defined(__cplusplus)
-extern "C"
-{
-#endif
-
-  static void SIGHAND(int code, siginfo_t *info, void *context)
-  {
-    longjmp(ztst::ztst_jmp_buf, 1);
-  }
-
-#if defined(__cplusplus)
-}
-#endif
-
 void ztst::signal_handler(int code, siginfo_t *info, void *context)
 {
   longjmp(ztst::ztst_jmp_buf, 1);
 }
 
-void ztst::it(string description, ztst::cb test)
-{
-  TEST_OPTIONS opts = {0};
-  it(description, test, opts);
-}
-
-void ztst::it(string description, ztst::cb test, TEST_OPTIONS &opts)
-{
-  TEST_CASE tc = {0};
-  tc.description = description;
-
-  if (matcher != "" && matcher != description)
-  {
-    return;
-  }
-
-  bool abend = false;
-  struct sigaction sa = {0};
-  sa.sa_sigaction = SIGHAND;
-  sa.sa_flags = SA_SIGINFO;
-
-  if (!opts.remove_signal_handling)
-  {
-    sigaction(SIGABND, &sa, NULL);
-    sigaction(SIGABRT, &sa, NULL);
-    sigaction(SIGILL, &sa, NULL);
-  }
-
-  if (0 != setjmp(ztst_jmp_buf))
-  {
-
-    abend = true;
-  }
-
-  if (!abend)
-  {
-
-    try
-    {
-      test();
-      tc.success = true;
-    }
-    catch (const exception &e)
-    {
-      tc.success = false;
-      tc.fail_message = e.what();
-    }
-  }
-
-  if (!opts.remove_signal_handling)
-  {
-    sa.sa_flags = 0;
-    sa.sa_handler = SIG_DFL;
-    sigaction(SIGABND, &sa, NULL);
-    sigaction(SIGABRT, &sa, NULL);
-    sigaction(SIGILL, &sa, NULL);
-  }
-
-  string icon = tc.success ? "PASS  " : "FAIL  ";
-  if (abend)
-  {
-    icon = "ABEND ";
-    tc.success = false;
-    tc.fail_message = "unexpected ABEND occured.  Add `TEST_OPTIONS.remove_signal_handling = false` to `it(...)` to capture abend dump";
-  }
-  cout << "  " << icon << tc.description << endl;
-  if (!tc.success)
-  {
-    cout << "    " << tc.fail_message << endl;
-  }
-
-  ztst::ztst_suites[ztst::ztst_suite_index].tests.push_back(tc);
-}
-
-ztst::RESULT_CHECK ztst::expect(int val)
-{
-  ztst::RESULT_CHECK result;
-  result.set_result(val);
-  result.set_inverse(false);
-  return result;
-}
-
-ztst::RESULT_CHECK ztst::expect(int val, EXPECT_CONTEXT &ctx)
-{
-  RESULT_CHECK result = expect(val);
-  result.set_context(ctx);
-  return result;
-}
-
-ztst::RESULT_CHECK ztst::expect(string val)
-{
-  RESULT_CHECK result;
-  result.set_result(val);
-  result.set_inverse(false);
-  return result;
-}
-
-ztst::RESULT_CHECK ztst::expect(string val, EXPECT_CONTEXT &ctx)
-{
-  RESULT_CHECK result = expect(val);
-  result.set_context(ctx);
-  return result;
-}
-
-ztst::RESULT_CHECK ztst::expect(void *val)
-{
-  RESULT_CHECK result;
-  result.set_result(val);
-  result.set_inverse(false);
-  return result;
-}
-
-ztst::RESULT_CHECK ztst::expect(void *val, EXPECT_CONTEXT &ctx)
-{
-  RESULT_CHECK result = expect(val);
-  result.set_context(ctx);
-  return result;
-}
-
 int ztst::report()
 {
-  int rc = 0;
   int suite_fail = 0;
   int tests_total = 0;
   int tests_fail = 0;
