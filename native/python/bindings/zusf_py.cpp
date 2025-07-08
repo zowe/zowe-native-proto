@@ -132,7 +132,7 @@ void chmod_uss_item(const std::string &file, const std::string &mode, bool recur
 {
     ZUSF ctx = {0};
     mode_t octal_mode = std::stoi(mode, nullptr, 8);
-    if (zusf_chmod_uss_file_or_dir(&ctx, file, mode, recursive) != 0)
+    if (zusf_chmod_uss_file_or_dir(&ctx, file, octal_mode, recursive) != 0)
     {
         std::string error_msg = ctx.diag.e_msg;
         throw std::runtime_error(error_msg);
