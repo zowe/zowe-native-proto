@@ -299,13 +299,21 @@ func HandleWriteFileRequest(conn *utils.StdioConn, params []byte) (result any, e
 		}
 	}
 
+	var size int
+	if sizeValue, exists := output["size"]; exists {
+		if parsedInt, err := strconv.Atoi(fmt.Sprintf("%v", sizeValue)); err == nil {
+			size = parsedInt
+		}
+	}
+
 	result = uss.WriteFileResponse{
 		GenericFileResponse: uss.GenericFileResponse{
 			Success: true,
 			Path:    request.Path,
 		},
-		Etag:    etag,
-		Created: created,
+		Etag:       etag,
+		Created:    created,
+		ContentLen: &size,
 	}
 	return
 }

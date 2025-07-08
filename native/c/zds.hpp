@@ -55,7 +55,7 @@ typedef struct
   std::string vol;       // Volume Serial
 } DS_ATTRIBUTES;
 
-std::string zds_get_recfm(const fldata_t& file_info);
+std::string zds_get_recfm(const fldata_t &file_info);
 
 /**
  * @brief Read data from a z/OS data set
@@ -168,9 +168,10 @@ int zdsReadDynalloc(std::string, std::string, std::string, std::string &); // NO
  * @param zds data set returned attributes and error information
  * @param dsn data set name from which to read
  * @param pipe name of the output pipe
+ * @param content_len pointer where the length of the data set contents will be stored
  * @return int 0 for success; non zero otherwise
  */
-int zds_read_from_dsn_streamed(ZDS *zds, std::string dsn, std::string pipe);
+int zds_read_from_dsn_streamed(ZDS *zds, std::string dsn, std::string pipe, size_t *content_len);
 
 /**
  * @brief Write data to a z/OS data set in streaming mode
@@ -178,8 +179,9 @@ int zds_read_from_dsn_streamed(ZDS *zds, std::string dsn, std::string pipe);
  * @param zds data set returned attributes and error information
  * @param dsn data set name to write to
  * @param pipe name of the input pipe
+ * @param content_len pointer where the length of the data set contents will be stored
  * @return int 0 for success; non zero otherwise
  */
-int zds_write_to_dsn_streamed(ZDS *zds, std::string dsn, std::string pipe);
+int zds_write_to_dsn_streamed(ZDS *zds, std::string dsn, std::string pipe, size_t *content_len);
 
 #endif

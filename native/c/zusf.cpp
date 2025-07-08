@@ -278,7 +278,7 @@ int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
  * @param zusf pointer to a ZUSF object
  * @param file name of the USS file
  * @param pipe name of the output pipe
- * @param content_len pointer to an integer where the length of the file contents will be stored
+ * @param content_len pointer where the length of the file contents will be stored
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
@@ -421,10 +421,11 @@ int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data)
  * @param zusf pointer to a ZUSF object
  * @param file name of the USS file
  * @param pipe name of the input pipe
+ * @param content_len pointer where the length of the file contents will be stored
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe)
+int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe, size_t *content_len)
 {
   // TODO(zFernand0): Avoid overriding existing files
   struct stat file_stats;
@@ -495,6 +496,7 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe)
       fclose(fout);
       return RTNCD_FAILURE;
     }
+    *content_len += chunk_len;
   }
 
   fflush(fout);

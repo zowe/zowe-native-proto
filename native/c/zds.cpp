@@ -1004,10 +1004,11 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
  * @param zds pointer to a ZDS object
  * @param dsn name of the data set
  * @param pipe name of the output pipe
+ * @param content_len pointer where the length of the data set contents will be stored
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zds_read_from_dsn_streamed(ZDS *zds, string dsn, string pipe)
+int zds_read_from_dsn_streamed(ZDS *zds, string dsn, string pipe, size_t *content_len)
 {
   dsn = "//'" + dsn + "'";
   const std::string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "rb,recfm=U" : "r";
@@ -1074,10 +1075,11 @@ int zds_read_from_dsn_streamed(ZDS *zds, string dsn, string pipe)
  * @param zds pointer to a ZDS object
  * @param dsn name of the data set
  * @param pipe name of the input pipe
+ * @param content_len pointer where the length of the data set contents will be stored
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zds_write_to_dsn_streamed(ZDS *zds, string dsn, string pipe)
+int zds_write_to_dsn_streamed(ZDS *zds, string dsn, string pipe, size_t *content_len)
 {
   string dsname = "//'" + dsn + "'";
   if (strlen(zds->etag) > 0)

@@ -34,7 +34,7 @@ int zusf_list_uss_file_path(ZUSF *zusf, std::string file, std::string &response,
 int zusf_read_from_uss_file(ZUSF *zusf, std::string file, std::string &response);
 int zusf_read_from_uss_file_streamed(ZUSF *zusf, std::string file, std::string pipe, size_t *content_len);
 int zusf_write_to_uss_file(ZUSF *zusf, std::string file, std::string &data);
-int zusf_write_to_uss_file_streamed(ZUSF *zusf, std::string file, std::string pipe);
+int zusf_write_to_uss_file_streamed(ZUSF *zusf, std::string file, std::string pipe, size_t *content_len);
 int zusf_chmod_uss_file_or_dir(ZUSF *zusf, std::string file, mode_t mode, bool recursive);
 int zusf_delete_uss_item(ZUSF *zusf, std::string file, bool recursive);
 int zusf_chown_uss_file_or_dir(ZUSF *zusf, std::string file, std::string owner, bool recursive);
