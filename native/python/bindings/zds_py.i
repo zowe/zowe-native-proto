@@ -35,11 +35,11 @@
 %template(ZDSEntryVector) std::vector<ZDSEntry>;
 
 struct ZDSEntry {
-    std::string name;
-    std::string dsorg;
-    std::string volser;
-    std::string recfm;
-    bool migr;
+	std::string name;
+	std::string dsorg;
+	std::string volser;
+	std::string recfm;
+	bool migr;
 };
 
 struct ZDSMem {

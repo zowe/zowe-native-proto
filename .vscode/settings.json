@@ -132,19 +132,21 @@
     "__memory": "c",
     "print": "cpp",
     "stack": "cpp",
-    "*.h": "c"
+    "*.h": "c",
+    "*.i": "swig",
+  },
+  "[c]": {
+    "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
+  },
+  "[cpp]": {
+    "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
   },
   "editor.formatOnSave": true,
   "[typescript]": {
     "editor.defaultFormatter": "biomejs.biome"
   },
   "files.eol": "\n",
-  "files.associations": {
-    "*.i": "swig"
-  },
   "[swig]": {
-    "editor.formatOnSave": false,
-    "editor.formatOnPaste": false,
-    "editor.formatOnType": false
+    "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd",
   }
 }

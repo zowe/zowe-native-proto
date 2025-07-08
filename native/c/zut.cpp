@@ -35,6 +35,11 @@ int zut_run(string program)
   return ZUTRUN(program.c_str());
 }
 
+unsigned char zut_get_key()
+{
+  return ZUTMGKEY();
+}
+
 int zut_substitute_symbol(string pattern, string &result)
 {
   SYMBOL_DATA *parms = (SYMBOL_DATA *)__malloc31(sizeof(SYMBOL_DATA));
