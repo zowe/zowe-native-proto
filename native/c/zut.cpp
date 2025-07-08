@@ -377,6 +377,11 @@ size_t zut_iconv(iconv_t cd, ZConvData &data, ZDIAG &diag)
  */
 string zut_encode(const string &input_str, const string &from_encoding, const string &to_encoding, ZDIAG &diag)
 {
+  if(from_encoding == to_encoding)
+  {
+    return input_str;
+  }
+
   iconv_t cd = iconv_open(to_encoding.c_str(), from_encoding.c_str());
   if (cd == (iconv_t)(-1))
   {
@@ -416,6 +421,11 @@ string zut_encode(const string &input_str, const string &from_encoding, const st
  */
 vector<char> zut_encode(const char *input_str, size_t input_size, const string &from_encoding, const string &to_encoding, ZDIAG &diag)
 {
+  if(from_encoding == to_encoding)
+  {
+    return std::vector<char>(input_str, input_str + input_size);
+  }
+
   iconv_t cd = iconv_open(to_encoding.c_str(), from_encoding.c_str());
   if (cd == (iconv_t)(-1))
   {
