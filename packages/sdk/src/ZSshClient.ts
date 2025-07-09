@@ -226,8 +226,8 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                 if ("contentLen" in response && response.contentLen != null && response.contentLen !== contentLen) {
                     const errMsg = Logger.getAppLogger().error(
                         "Content length mismatch: expected %d, got %d",
-                        response.contentLen,
                         contentLen,
+                        response.contentLen,
                     );
                     reject(new Error(errMsg));
                     return;
