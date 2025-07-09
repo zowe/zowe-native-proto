@@ -437,7 +437,7 @@ async function test(connection: Client) {
         connection,
         `cd ${deployDirs.cTestDir} && _CEE_RUNOPTS="TRAP(ON,NOSPIE)" ./build-out/ztest_runner ${args[1] ?? ""} \n`,
     );
-    DEBUG_MODE() && console.log(response);
+    console.log(response);
     console.log("Testing complete!");
 }
 
