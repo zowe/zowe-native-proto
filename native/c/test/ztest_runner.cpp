@@ -37,11 +37,11 @@ int main(int argc, char *argv[])
   int rc = tests(
       []() -> void
       {
-        zstorage_tests();
         zut_tests();
         zjb_tests();
         zds_tests();
         zcn_tests();
+        zstorage_tests();
         zrecovery_tests();
         zmetal_tests();
         zusf_tests();
