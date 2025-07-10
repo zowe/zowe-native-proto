@@ -1058,6 +1058,7 @@ int zds_read_from_dsn_streamed(ZDS *zds, string dsn, string pipe, size_t *conten
       }
     }
 
+    *content_len += chunk_len;
     chunk = base64(chunk, chunk_len, &chunk_len);
     fwrite(chunk, 1, chunk_len, fout);
   }
@@ -1142,6 +1143,7 @@ int zds_write_to_dsn_streamed(ZDS *zds, string dsn, string pipe, size_t *content
   {
     int chunk_len;
     const char *chunk = (char *)unbase64(&buf[0], bytes_read, &chunk_len);
+    *content_len += chunk_len;
     std::vector<char> temp_encoded;
 
     if (hasEncoding)
