@@ -34,7 +34,5 @@
   "peerDependencies": {
     "@zowe/imperative": "^8.0.0"
   },
-  "bundleDependencies": [
-    "zowe-native-proto-sdk"
-  ]
+  "bundleDependencies": true
 }

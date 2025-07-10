@@ -33,6 +33,7 @@ void zut_dump_storage(const char *title, const void *data, int size, zut_print_f
   char buf[1024] = {0};
   len += sprintf(buf + len, "--- Dumping storage for '%s' at x'%016llx' ---\n", title, (unsigned long long)data);
   cb_print(buf);
+  memset(buf, 0, sizeof(buf));
   len = 0;
 
   unsigned char *ptr = (unsigned char *)data;
@@ -73,6 +74,7 @@ void zut_dump_storage(const char *title, const void *data, int size, zut_print_f
     }
     len += sprintf(buf + len, "\n");
     cb_print(buf);
+    memset(buf, 0, sizeof(buf));
     len = 0;
     ptr = ptr + BYTES_PER_LINE;
   }
@@ -102,10 +104,12 @@ void zut_dump_storage(const char *title, const void *data, int size, zut_print_f
   }
   len += sprintf(buf + len, "\n");
   cb_print(buf);
+  memset(buf, 0, sizeof(buf));
   len = 0;
 
   len += sprintf(buf + len, "--- END ---\n");
   cb_print(buf);
+  memset(buf, 0, sizeof(buf));
   len = 0;
 }
 
