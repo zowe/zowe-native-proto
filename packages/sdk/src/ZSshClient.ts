@@ -162,7 +162,8 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                 });
             }
             if (data.includes("FOTS1681")) {
-                // non-fatal chdir error, return and wait for ready message
+                // non-fatal chdir error, display the error but continue waiting for ready message
+                this.mErrHandler(new Error(errMsg));
                 return;
             }
             throw new Error(errMsg);
