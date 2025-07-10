@@ -9,7 +9,6 @@
  *
  */
 
-#include <iostream>
 #include "ztest.hpp"
 
 using namespace std;
@@ -18,27 +17,52 @@ using namespace ztst;
 void more_tests()
 {
   describe("more test suite",
-            []() -> void
-            {
-              it("more test",
+           []() -> void
+           {
+             it("should pass with more tests",
                 [&]() -> void
                 {
                   expect(3).ToBe(3);
-                  // Expect(3).ToBe(3);
-
                   expect(3).ToBe(5);
-                  // Expect(3).ToBe(5);
-
                 });
 
-                it("even more test",
+             it("this test to fail",
                 [&]() -> void
                 {
                   // EXPECT_CONTEXT ctx = {0};
                   // ctx.message = "extra error messages";
                   // expect(3, ctx).ToBe(7);
                   ExpectWithContext(3, "extra error messages").ToBe(7);
-
                 });
-            });
+
+             it("should be greater than",
+                [&]() -> void
+                {
+                  // EXPECT_CONTEXT ctx = {0};
+                  // ctx.message = "extra error messages";
+                  // expect(3, ctx).ToBe(7);
+                  Expect(3).ToBeGreaterThan(2);
+                });
+
+             it("should be less than",
+                [&]() -> void
+                {
+                  Expect(3).Not().ToBeGreaterThan(4);
+                });
+
+             it("should be null",
+                [&]() -> void
+                {
+                  int *ptr = nullptr;
+                  Expect(ptr).ToBeNull();
+                });
+
+             it("should not be null",
+                [&]() -> void
+                {
+                  int *ptr = new int(1);
+
+                  Expect(ptr).Not().ToBeNull();
+                });
+           });
 }

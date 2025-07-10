@@ -20,6 +20,8 @@
 #include <type_traits>
 #include <cxxabi.h>
 #include <typeinfo>
+#include <sstream>
+#include <cstring> // Required for memset
 
 // TODO(Kelosky): handle test not run
 // TODO(Kelosky): handle running individual test and/or suite
@@ -105,17 +107,14 @@ inline void signal_handler(int code, siginfo_t *info, void *context)
   longjmp(g.get_jmp_buf(), 1);
 }
 
-// TODO(Kelosky): this is going to be a template class
 template <class T>
 class RESULT_CHECK
 {
   T result;
   bool inverse;
-  void *pointer_result;
   EXPECT_CONTEXT ctx;
 
 public:
-  void ToBeGreaterThan(int);
   void ToBe(T val)
   {
     int status;
@@ -128,7 +127,11 @@ public:
     {
       if (result == val)
       {
-        std::string error = std::string("expected ") + name + " '" + std::to_string(result) + "' NOT to be '" + std::to_string(val) + "'";
+        std::stringstream ss;
+        ss << result;
+        std::stringstream ss2;
+        ss2 << val;
+        std::string error = std::string("expected ") + name + " '" + ss.str() + "' NOT to be '" + ss2.str() + "'";
         error += append_error_details();
         throw std::runtime_error(error);
       }
@@ -137,18 +140,89 @@ public:
     {
       if (result != val)
       {
-        std::string error = std::string("expected ") + name + " '" + std::to_string(result) + "' to be '" + std::to_string(val) + "'";
+        std::stringstream ss;
+        ss << result;
+        std::stringstream ss2;
+        ss2 << val;
+        std::string error = std::string("expected ") + name + " '" + ss.str() + "' to be '" + ss2.str() + "'";
         error += append_error_details();
         throw std::runtime_error(error);
       }
     }
   }
 
-  // void ToBe(std::string);
-  // template<typename T>
-  // void ToBe();
-  void ToBeNull();
-  // std::string append_error_details();
+  template <typename U = T>
+  typename std::enable_if<std::is_pointer<U>::value>::type
+  ToBeNull()
+  {
+    if (!inverse)
+    {
+      if (NULL != result)
+      {
+        std::stringstream ss;
+        ss << result;
+        std::string error = "expected pointer '" + ss.str() + "' to be null";
+        error += append_error_details();
+        throw std::runtime_error(error);
+      }
+    }
+    else
+    {
+      if (NULL == result)
+      {
+        std::stringstream ss;
+        ss << result;
+        std::string error = "expected '" + ss.str() + "' NOT to be null";
+        error += append_error_details();
+        throw std::runtime_error(error);
+      }
+    }
+  }
+
+  template <typename U = T>
+  typename std::enable_if<std::is_arithmetic<U>::value>::type
+  ToBeGreaterThan(U val)
+  {
+    if (inverse)
+    {
+      if (result > val)
+      {
+        int status;
+        char *demangled = abi::__cxa_demangle(typeid(T).name(), nullptr, nullptr, &status);
+        std::string type_name = (status == 0) ? demangled : typeid(T).name();
+        if (demangled)
+          free(demangled);
+
+        std::stringstream ss;
+        ss << result;
+        std::stringstream ss2;
+        ss2 << val;
+        std::string error = "expected " + type_name + " '" + ss.str() + "' to NOT to be greater than '" + ss2.str() + "'";
+        error += append_error_details();
+        throw std::runtime_error(error);
+      }
+    }
+    else
+    {
+      if (result <= val)
+      {
+        int status;
+        char *demangled = abi::__cxa_demangle(typeid(T).name(), nullptr, nullptr, &status);
+        std::string type_name = (status == 0) ? demangled : typeid(T).name();
+        if (demangled)
+          free(demangled);
+
+        std::stringstream ss;
+        ss << result;
+        std::stringstream ss2;
+        ss2 << val;
+        std::string error = "expected " + type_name + " '" + ss.str() + "' to be greater than '" + ss2.str() + "'";
+        error += append_error_details();
+        throw std::runtime_error(error);
+      }
+    }
+  }
+
   std::string append_error_details()
   {
     std::string error = "";
@@ -165,7 +239,6 @@ public:
   {
     RESULT_CHECK copy;
     copy.set_inverse(true);
-    copy.pointer_result = pointer_result;
     copy.result = result;
     set_inverse(false);
     copy.set_context(ctx);
@@ -185,23 +258,12 @@ public:
 
   void set_context(EXPECT_CONTEXT &c)
   {
-    std::cout << "@TEST determine if initialized " << std::endl;
     ctx = c;
   }
 
   void set_result(T r)
   {
     result = r;
-  }
-
-  // void set_result(std::string r)
-  // {
-  //   string_result = r;
-  // }
-
-  void set_result(void *r)
-  {
-    pointer_result = r;
   }
 };
 
@@ -251,7 +313,8 @@ void it(std::string description, Callable test, TEST_OPTIONS &opts)
   }
 
   bool abend = false;
-  struct sigaction sa = {{0}, 0, 0};
+  struct sigaction sa;
+  memset(&sa, 0, sizeof(struct sigaction));
   sa.sa_sigaction = signal_handler;
   sa.sa_flags = SA_SIGINFO;
 
