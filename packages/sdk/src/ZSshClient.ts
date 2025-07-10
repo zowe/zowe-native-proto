@@ -125,16 +125,19 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                     reject(err);
                 } else {
                     const onData = (data: Buffer) => {
+                        const removeListeners = () => {
+                            stream.stderr.removeListener("data", onData);
+                            stream.stdout.removeListener("data", onData);
+                        };
                         try {
                             this.mServerInfo = this.getServerStatus(stream, data.toString());
                             if (this.mServerInfo) {
+                                removeListeners();
                                 resolve(stream);
                             }
                         } catch (err) {
+                            removeListeners();
                             reject(err);
-                        } finally {
-                            stream.stderr.removeListener("data", onData);
-                            stream.stdout.removeListener("data", onData);
                         }
                     };
                     stream.stderr.on("data", onData);
