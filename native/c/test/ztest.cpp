@@ -76,27 +76,27 @@ void ztst::RESULT_CHECK::ToBeGreaterThan(int val)
   }
 }
 
-// void ztst::RESULT_CHECK::ToBe(string val)
-// {
-//   if (!inverse)
-//   {
-//     if (string_result != val)
-//     {
-//       string error = "expected string '" + string_result + "' to be '" + val + "'";
-//       error += append_error_details();
-//       throw runtime_error(error);
-//     }
-//   }
-//   else
-//   {
-//     if (string_result == val)
-//     {
-//       string error = "expected string '" + string_result + "' NOT to be '" + val + "'";
-//       error += append_error_details();
-//       throw runtime_error(error);
-//     }
-//   }
-// }
+void ztst::RESULT_CHECK::ToBe(string val)
+{
+  if (!inverse)
+  {
+    if (string_result != val)
+    {
+      string error = "expected string '" + string_result + "' to be '" + val + "'";
+      error += append_error_details();
+      throw runtime_error(error);
+    }
+  }
+  else
+  {
+    if (string_result == val)
+    {
+      string error = "expected string '" + string_result + "' NOT to be '" + val + "'";
+      error += append_error_details();
+      throw runtime_error(error);
+    }
+  }
+}
 
 void ztst::RESULT_CHECK::ToBeNull()
 {
@@ -135,60 +135,10 @@ ztst::RESULT_CHECK ztst::RESULT_CHECK::Not()
   return copy;
 }
 
-vector<ztst::TEST_SUITE> ztst::ztst_suites;
-int ztst::ztst_suite_index = -1;
-jmp_buf ztst::ztst_jmp_buf = {0};
+// vector<ztst::TEST_SUITE> ztst::ztst_suites;
+// int ztst::ztst_suite_index = -1;
+// jmp_buf ztst::ztst_jmp_buf = {0};
 
-void ztst::describe(std::string description, ztst::cb suite)
-{
-  TEST_SUITE ts = {0};
-  ts.description = description;
-  ztst::ztst_suites.push_back(ts);
-  ztst::ztst_suite_index++;
-  cout << description << endl;
-  suite();
-}
 
-void ztst::signal_handler(int code, siginfo_t *info, void *context)
-{
-  longjmp(ztst::ztst_jmp_buf, 1);
-}
 
-int ztst::report()
-{
-  int suite_fail = 0;
-  int tests_total = 0;
-  int tests_fail = 0;
 
-  cout << "======== TESTS SUMMARY ========" << endl;
-
-  for (vector<TEST_SUITE>::iterator it = ztst::ztst_suites.begin(); it != ztst::ztst_suites.end(); it++)
-  {
-    bool suite_success = true;
-    for (vector<TEST_CASE>::iterator iit = it->tests.begin(); iit != it->tests.end(); iit++)
-    {
-      tests_total++;
-      if (!iit->success)
-      {
-        suite_success = false;
-        tests_fail++;
-      }
-    }
-    if (!suite_success)
-    {
-      suite_fail++;
-    }
-  }
-
-  cout << "Total Suites: " << ztst::ztst_suites.size() - suite_fail << " passed, " << suite_fail << " failed, " << ztst::ztst_suites.size() << " total" << endl;
-  cout << "Tests:      : " << tests_total - tests_fail << " passed, " << tests_fail << " failed, " << tests_total << " total" << endl;
-  return tests_fail > 0 ? 1 : 0;
-}
-
-int ztst::tests(ztst::cb tests)
-{
-  cout << "======== TESTS ========" << endl;
-  tests();
-  int rc = ztst::report();
-  return rc;
-}

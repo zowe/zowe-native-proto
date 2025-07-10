@@ -26,9 +26,11 @@
 #define ExpectWithContext(x, context) [&]() -> RESULT_CHECK { EXPECT_CONTEXT ctx = {__LINE__, __FILE__, std::string(context), true}; return expect(x, ctx); }()
 
 extern std::string matcher;
+// std::string matcher = "hello";
 
 namespace ztst
 {
+
 struct TEST_CASE
 {
   bool success;
@@ -42,12 +44,6 @@ struct TEST_SUITE
   std::vector<TEST_CASE> tests;
 };
 
-extern std::vector<TEST_SUITE> ztst_suites;
-extern int ztst_suite_index;
-extern jmp_buf ztst_jmp_buf;
-
-void signal_handler(int code, siginfo_t *info, void *context);
-
 struct EXPECT_CONTEXT
 {
   int line_number;
@@ -55,6 +51,37 @@ struct EXPECT_CONTEXT
   std::string message;
   bool initialized;
 };
+
+class Globals {
+
+private:
+  std::vector<TEST_SUITE> suites;
+  int suite_index = -1;
+  jmp_buf jump_buf = {0};
+
+  Globals() {}
+  ~Globals() {}
+  Globals(const Globals&) = delete;
+  Globals& operator=(const Globals&) = delete;
+
+public:
+  static Globals& get_instance() {
+    static Globals instance;
+    return instance;
+  }
+
+  std::vector<TEST_SUITE> &get_suites() { return suites; }
+  int get_suite_index() { return suite_index; }
+  void set_suite_index(int si) { suite_index = si; }
+  void increment_suite_index() { set_suite_index(get_suite_index() + 1); }
+  jmp_buf &get_jmp_buf() { return jump_buf; }
+};
+
+inline void signal_handler(int code, siginfo_t *info, void *context)
+{
+  Globals &g = Globals::get_instance();
+  longjmp(g.get_jmp_buf(), 1);
+}
 
 // TODO(Kelosky): this is going to be a template class
 // template<class T>
@@ -116,20 +143,16 @@ struct TEST_OPTIONS
 
 typedef void (*cb)();
 
-void describe(std::string description, cb suite);
-void it(std::string description, cb test);
-void it(std::string description, cb test, TEST_OPTIONS &opts);
-
-// Overloads for capturing lambdas
 template <typename Callable,
           typename = typename std::enable_if<
               std::is_same<void, decltype(std::declval<Callable>()())>::value>::type>
 void describe(std::string description, Callable suite)
 {
+  Globals &g = Globals::get_instance();
   TEST_SUITE ts;
   ts.description = description;
-  ztst_suites.push_back(ts);
-  ztst_suite_index++;
+  g.get_suites().push_back(ts);
+  g.increment_suite_index();
   std::cout << description << std::endl;
   suite();
 }
@@ -151,6 +174,8 @@ void it(std::string description, Callable test, TEST_OPTIONS &opts)
   TEST_CASE tc = {0};
   tc.description = description;
 
+  Globals &g = Globals::get_instance();
+
   if (matcher != "" && matcher != description)
   {
     return;
@@ -170,7 +195,7 @@ void it(std::string description, Callable test, TEST_OPTIONS &opts)
     sigaction(SIGILL, &sa, NULL);
   }
 
-  if (0 != setjmp(ztst_jmp_buf))
+  if (0 != setjmp(g.get_jmp_buf()))
   {
     abend = true;
   }
@@ -213,7 +238,7 @@ void it(std::string description, Callable test, TEST_OPTIONS &opts)
     std::cout << "    " << tc.fail_message << std::endl;
   }
 
-  ztst_suites[ztst_suite_index].tests.push_back(tc);
+  g.get_suites()[g.get_suite_index()].tests.push_back(tc);
 }
 
 template<typename T>
@@ -226,9 +251,47 @@ RESULT_CHECK expect(T val, EXPECT_CONTEXT  ctx ={0})
   return result;
 }
 
-int report();
+inline int report()
+{
+  int suite_fail = 0;
+  int tests_total = 0;
+  int tests_fail = 0;
 
-int tests(cb tests);
+  Globals &g = Globals::get_instance();
+
+  std::cout << "======== TESTS SUMMARY ========" << std::endl;
+
+  for (std::vector<TEST_SUITE>::iterator it = g.get_suites().begin(); it != g.get_suites().end(); it++)
+  {
+    bool suite_success = true;
+    for (std::vector<TEST_CASE>::iterator iit = it->tests.begin(); iit != it->tests.end(); iit++)
+    {
+      tests_total++;
+      if (!iit->success)
+      {
+        suite_success = false;
+        tests_fail++;
+      }
+    }
+    if (!suite_success)
+    {
+      suite_fail++;
+    }
+  }
+
+  std::cout << "Total Suites: " << g.get_suites().size() - suite_fail << " passed, " << suite_fail << " failed, " << g.get_suites().size() << " total" << std::endl;
+  std::cout << "Tests:      : " << tests_total - tests_fail << " passed, " << tests_fail << " failed, " << tests_total << " total" << std::endl;
+  return tests_fail > 0 ? 1 : 0;
+}
+
+inline int tests(ztst::cb tests)
+{
+  std::cout << "======== TESTS ========" << std::endl;
+  tests();
+  int rc = report();
+  return rc;
+}
+
 
 } // namespace ztst
 
