@@ -12,6 +12,10 @@
 #ifndef ZTEST_HPP
 #define ZTEST_HPP
 
+#ifdef __APPLE__
+#define _DARWIN_C_SOURCE
+#endif
+
 #define _POSIX_SOURCE
 #include <iostream>
 #include <vector>
@@ -24,6 +28,7 @@
 #include <cstring> // Required for memset
 #include <chrono>
 #include <iomanip>
+#include <fstream>
 
 // TODO(Kelosky): handle test not run
 // TODO(Kelosky): handle running individual test and/or suite
@@ -441,11 +446,138 @@ inline int report()
   return tests_fail > 0 ? 1 : 0;
 }
 
+inline void escape_xml(std::string &data)
+{
+  std::string::size_type pos = 0;
+  for (;;)
+  {
+    pos = data.find_first_of("\"&'<>", pos);
+    if (pos == std::string::npos)
+      break;
+
+    std::string replacement;
+    switch (data[pos])
+    {
+    case '\"':
+      replacement = "&quot;";
+      break;
+    case '&':
+      replacement = "&amp;";
+      break;
+    case '\'':
+      replacement = "&apos;";
+      break;
+    case '<':
+      replacement = "&lt;";
+      break;
+    case '>':
+      replacement = "&gt;";
+      break;
+    default:
+      break;
+    }
+
+    data.replace(pos, 1, replacement);
+    pos += replacement.length();
+  }
+}
+
+inline void report_xml(const std::string &filename = "test-results.xml")
+{
+  Globals &g = Globals::get_instance();
+  std::ofstream xml_file(filename);
+
+  int total_tests = 0;
+  int total_failures = 0;
+  std::chrono::microseconds total_time(0);
+
+  // Count totals first
+  for (const auto &suite : g.get_suites())
+  {
+    for (const auto &test : suite.tests)
+    {
+      total_tests++;
+      if (!test.success)
+        total_failures++;
+      total_time += std::chrono::duration_cast<std::chrono::microseconds>(
+          test.end_time - test.start_time);
+    }
+  }
+
+  // XML Header
+  xml_file << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
+  xml_file << "<testsuites tests=\"" << total_tests
+           << "\" failures=\"" << total_failures
+           << "\" time=\"" << std::fixed << std::setprecision(3)
+           << total_time.count() / 1000000.0 << "\">\n";
+
+  // Process each test suite
+  for (const auto &suite : g.get_suites())
+  {
+    int suite_tests = 0;
+    int suite_failures = 0;
+    std::chrono::microseconds suite_time(0);
+
+    // Count suite totals
+    for (const auto &test : suite.tests)
+    {
+      suite_tests++;
+      if (!test.success)
+        suite_failures++;
+      suite_time += std::chrono::duration_cast<std::chrono::microseconds>(
+          test.end_time - test.start_time);
+    }
+
+    std::string suite_name = suite.description;
+    escape_xml(suite_name);
+
+    // Write suite header
+    xml_file << "  <testsuite name=\"" << suite_name
+             << "\" tests=\"" << suite_tests
+             << "\" failures=\"" << suite_failures
+             << "\" time=\"" << std::fixed << std::setprecision(3)
+             << suite_time.count() / 1000000.0 << "\">\n";
+
+    // Process each test case
+    for (const auto &test : suite.tests)
+    {
+      std::string test_name = test.description;
+      std::string failure_message = test.fail_message;
+      escape_xml(test_name);
+      escape_xml(failure_message);
+
+      auto test_time = std::chrono::duration_cast<std::chrono::microseconds>(
+          test.end_time - test.start_time);
+
+      xml_file << "    <testcase name=\"" << test_name
+               << "\" time=\"" << std::fixed << std::setprecision(3)
+               << test_time.count() / 1000000.0 << "\"";
+
+      if (!test.success)
+      {
+        xml_file << ">\n";
+        xml_file << "      <failure message=\"" << failure_message << "\"/>\n";
+        xml_file << "    </testcase>\n";
+      }
+      else
+      {
+        xml_file << "/>\n";
+      }
+    }
+
+    xml_file << "  </testsuite>\n";
+  }
+
+  xml_file << "</testsuites>\n";
+  xml_file.close();
+}
+
 inline int tests(ztst::cb tests)
 {
   std::cout << "======== TESTS ========" << std::endl;
   tests();
   int rc = report();
+  report_xml(); // Generate XML report by default
   return rc;
 }
 

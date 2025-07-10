@@ -71,8 +71,6 @@ CPP_FLAGS=-W "c,lp64,langlvl(extended0x),xplink"\
  -c
 
 CXXLANG_FLAGS=-W "c,lp64"\
- -std=c++14 \
- -Wc++1z-extensions \
  -c \
  -I../ \
  -I./chdsect
