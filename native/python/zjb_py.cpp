@@ -40,7 +40,7 @@ std::vector<ZJob> list_jobs_by_owner(std::string owner_name)
   __a2e_s(&owner_name[0]);
   int rc = zjb_list_by_owner(&zjb, owner_name, "", jobs);
 
-  if (rc != 0 && rc != RTNCD_WARNING)
+  if (0 != rc && rc != RTNCD_WARNING)
   {
     std::string diag(zjb.diag.e_msg, zjb.diag.e_msg_len);
     diag.push_back('\0');
@@ -73,7 +73,7 @@ std::vector<ZJob> list_jobs_by_owner(std::string owner_name, std::string prefix)
     __a2e_s(&prefix[0]);
     int rc = zjb_list_by_owner(&zjb, owner_name, prefix, jobs);
 
-    if (rc != 0)
+    if (0 != rc)
     {
         std::string diag(zjb.diag.e_msg, zjb.diag.e_msg_len);
         diag.push_back('\0');
