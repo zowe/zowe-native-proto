@@ -18,15 +18,16 @@
 #include <setjmp.h>
 #include <signal.h>
 #include <type_traits>
+#include <cxxabi.h>
+#include <typeinfo>
 
 // TODO(Kelosky): handle test not run
 // TODO(Kelosky): handle running individual test and/or suite
 
-#define Expect(x) [&]() -> RESULT_CHECK { EXPECT_CONTEXT ctx = {__LINE__, __FILE__}; return expect(x, ctx); }()
-#define ExpectWithContext(x, context) [&]() -> RESULT_CHECK { EXPECT_CONTEXT ctx = {__LINE__, __FILE__, std::string(context), true}; return expect(x, ctx); }()
+#define Expect(x) [&]() -> RESULT_CHECK<decltype(x)> { EXPECT_CONTEXT ctx = {__LINE__, __FILE__}; return expect(x, ctx); }()
+#define ExpectWithContext(x, context) [&]() -> RESULT_CHECK<decltype(x)> { EXPECT_CONTEXT ctx = {__LINE__, __FILE__, std::string(context), true}; return expect(x, ctx); }()
 
 extern std::string matcher;
-// std::string matcher = "hello";
 
 namespace ztst
 {
@@ -52,29 +53,50 @@ struct EXPECT_CONTEXT
   bool initialized;
 };
 
-class Globals {
+class Globals
+{
 
 private:
   std::vector<TEST_SUITE> suites;
   int suite_index = -1;
   jmp_buf jump_buf = {0};
 
-  Globals() {}
-  ~Globals() {}
-  Globals(const Globals&) = delete;
-  Globals& operator=(const Globals&) = delete;
+  Globals()
+  {
+  }
+  ~Globals()
+  {
+  }
+  Globals(const Globals &) = delete;
+  Globals &operator=(const Globals &) = delete;
 
 public:
-  static Globals& get_instance() {
+  static Globals &get_instance()
+  {
     static Globals instance;
     return instance;
   }
 
-  std::vector<TEST_SUITE> &get_suites() { return suites; }
-  int get_suite_index() { return suite_index; }
-  void set_suite_index(int si) { suite_index = si; }
-  void increment_suite_index() { set_suite_index(get_suite_index() + 1); }
-  jmp_buf &get_jmp_buf() { return jump_buf; }
+  std::vector<TEST_SUITE> &get_suites()
+  {
+    return suites;
+  }
+  int get_suite_index()
+  {
+    return suite_index;
+  }
+  void set_suite_index(int si)
+  {
+    suite_index = si;
+  }
+  void increment_suite_index()
+  {
+    set_suite_index(get_suite_index() + 1);
+  }
+  jmp_buf &get_jmp_buf()
+  {
+    return jump_buf;
+  }
 };
 
 inline void signal_handler(int code, siginfo_t *info, void *context)
@@ -84,24 +106,71 @@ inline void signal_handler(int code, siginfo_t *info, void *context)
 }
 
 // TODO(Kelosky): this is going to be a template class
-// template<class T>
+template <class T>
 class RESULT_CHECK
 {
-  int int_result;
-  std::string string_result;
+  T result;
   bool inverse;
   void *pointer_result;
   EXPECT_CONTEXT ctx;
 
 public:
   void ToBeGreaterThan(int);
-  void ToBe(int);
-  void ToBe(std::string);
+  void ToBe(T val)
+  {
+    int status;
+    char *demangled = abi::__cxa_demangle(typeid(T).name(), nullptr, nullptr, &status);
+    std::string name = (status == 0) ? demangled : typeid(T).name();
+    if (demangled)
+      free(demangled);
+
+    if (inverse)
+    {
+      if (result == val)
+      {
+        std::string error = std::string("expected ") + name + " '" + std::to_string(result) + "' NOT to be '" + std::to_string(val) + "'";
+        error += append_error_details();
+        throw std::runtime_error(error);
+      }
+    }
+    else
+    {
+      if (result != val)
+      {
+        std::string error = std::string("expected ") + name + " '" + std::to_string(result) + "' to be '" + std::to_string(val) + "'";
+        error += append_error_details();
+        throw std::runtime_error(error);
+      }
+    }
+  }
+
+  // void ToBe(std::string);
   // template<typename T>
   // void ToBe();
   void ToBeNull();
-  std::string append_error_details();
-  RESULT_CHECK Not();
+  // std::string append_error_details();
+  std::string append_error_details()
+  {
+    std::string error = "";
+    if (ctx.initialized)
+    {
+      error += "\n    at " + ctx.file_name + ":" + std::to_string(ctx.line_number);
+      if (ctx.message.size() > 0)
+        error += " (" + ctx.message + ")";
+    }
+    return error;
+  }
+
+  RESULT_CHECK Not()
+  {
+    RESULT_CHECK copy;
+    copy.set_inverse(true);
+    copy.pointer_result = pointer_result;
+    copy.result = result;
+    set_inverse(false);
+    copy.set_context(ctx);
+    return copy;
+  }
   RESULT_CHECK()
   {
   }
@@ -120,15 +189,15 @@ public:
     ctx = c;
   }
 
-  void set_result(int r)
+  void set_result(T r)
   {
-    int_result = r;
+    result = r;
   }
 
-  void set_result(std::string r)
-  {
-    string_result = r;
-  }
+  // void set_result(std::string r)
+  // {
+  //   string_result = r;
+  // }
 
   void set_result(void *r)
   {
@@ -241,10 +310,10 @@ void it(std::string description, Callable test, TEST_OPTIONS &opts)
   g.get_suites()[g.get_suite_index()].tests.push_back(tc);
 }
 
-template<typename T>
-RESULT_CHECK expect(T val, EXPECT_CONTEXT  ctx ={0})
+template <typename T>
+RESULT_CHECK<T> expect(T val, EXPECT_CONTEXT ctx = {0})
 {
-  RESULT_CHECK result;
+  RESULT_CHECK<T> result;
   result.set_result(val);
   result.set_inverse(false);
   result.set_context(ctx);
@@ -291,7 +360,6 @@ inline int tests(ztst::cb tests)
   int rc = report();
   return rc;
 }
-
 
 } // namespace ztst
 

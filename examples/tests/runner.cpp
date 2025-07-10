@@ -18,9 +18,6 @@ using namespace ztst;
 
 // @TEST TODO(Kelosky): fix this global variable
 std::string matcher = "";
-// std::vector<TEST_SUITE> ztst_suites;
-// int ztst_suite_index = -1;
-// jmp_buf ztst_jmp_buf = {0};
 
 int main()
 {
@@ -33,10 +30,11 @@ int main()
                    it("test",
                       [&]() -> void
                       {
+                        // expect(1).ToBe(1);
                         Expect(1).ToBe(1);
                       });
 
-                    more_tests();
+                   more_tests();
                  });
       });
 }

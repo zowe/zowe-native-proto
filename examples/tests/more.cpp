@@ -23,15 +23,20 @@ void more_tests()
               it("more test",
                 [&]() -> void
                 {
-                  Expect(3).ToBe(3);
+                  expect(3).ToBe(3);
+                  // Expect(3).ToBe(3);
 
-                  Expect(3).ToBe(5);
+                  expect(3).ToBe(5);
+                  // Expect(3).ToBe(5);
 
                 });
 
                 it("even more test",
                 [&]() -> void
                 {
+                  // EXPECT_CONTEXT ctx = {0};
+                  // ctx.message = "extra error messages";
+                  // expect(3, ctx).ToBe(7);
                   ExpectWithContext(3, "extra error messages").ToBe(7);
 
                 });
