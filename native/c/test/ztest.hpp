@@ -29,6 +29,9 @@
 #include <chrono>
 #include <iomanip>
 #include <fstream>
+#include <unistd.h>
+#include <cstdlib>
+#include <regex>
 
 // TODO(Kelosky): handle test not run
 // TODO(Kelosky): handle running individual test and/or suite
@@ -40,6 +43,114 @@ extern std::string matcher;
 
 namespace ztst
 {
+
+// Forward declarations
+class Globals;
+
+struct TEST_OPTIONS
+{
+  bool remove_signal_handling;
+};
+
+inline std::string get_indent(int level)
+{
+  return std::string(level * 2, ' ');
+}
+
+// Forward declaration of signal handler
+inline void signal_handler(int code, siginfo_t *info, void *context);
+
+// ANSI color codes
+struct Colors
+{
+  const char *green;
+  const char *red;
+  const char *yellow;
+  const char *reset;
+  const char *check; // Unicode check mark or ASCII alternative
+  const char *cross; // Unicode X or ASCII alternative
+  const char *warn;  // Unicode warning or ASCII alternative
+  const char *arrow; // Unicode corner arrow or ASCII alternative
+
+  Colors()
+  {
+    bool use_color = false;
+    bool use_unicode = false;
+
+    // Check if colors are explicitly forced on
+    if (getenv("FORCE_COLOR") != nullptr)
+    {
+      use_color = true;
+    }
+    else
+    {
+      // Check if we're on z/OS - disable colors by default
+#if defined(__MVS__) || defined(__NATIVE_EBCDIC__)
+      use_color = false;
+#else
+      // Check if colors are explicitly disabled
+      if (getenv("NO_COLOR") != nullptr)
+      {
+        use_color = false;
+      }
+      // Check if we're in a terminal that supports color
+      else if (const char *term = getenv("TERM"))
+      {
+        use_color = isatty(STDOUT_FILENO) &&
+                    (strstr(term, "xterm") != nullptr ||
+                     strstr(term, "vt100") != nullptr ||
+                     strstr(term, "ansi") != nullptr ||
+                     strstr(term, "color") != nullptr ||
+                     strstr(term, "linux") != nullptr);
+      }
+      // Check if we're in a CI environment that supports color
+      else if (getenv("CI") != nullptr || getenv("GITHUB_ACTIONS") != nullptr)
+      {
+        use_color = true;
+      }
+#endif
+    }
+
+    // Check if we can use Unicode characters
+    const char *lang = getenv("LANG");
+    if (lang && (strstr(lang, "UTF-8") != nullptr || strstr(lang, "UTF8") != nullptr))
+    {
+      use_unicode = true;
+    }
+
+    if (use_color)
+    {
+      green = "\x1B[32m";
+      red = "\x1B[31m";
+      yellow = "\x1B[33m";
+      reset = "\x1B[0m";
+    }
+    else
+    {
+      green = "";
+      red = "";
+      yellow = "";
+      reset = "";
+    }
+
+    if (use_unicode)
+    {
+      check = "✓";
+      cross = "✗";
+      warn = "!";
+      arrow = "└─";
+    }
+    else
+    {
+      check = "+";
+      cross = "-";
+      warn = "!";
+      arrow = "|-";
+    }
+  }
+};
+
+static Colors colors;
 
 struct TEST_CASE
 {
@@ -54,6 +165,7 @@ struct TEST_SUITE
 {
   std::string description;
   std::vector<TEST_CASE> tests;
+  int nesting_level;
 };
 
 struct EXPECT_CONTEXT
@@ -70,6 +182,7 @@ class Globals
 private:
   std::vector<TEST_SUITE> suites;
   int suite_index = -1;
+  int current_nesting = 0;
   jmp_buf jump_buf = {0};
 
   Globals()
@@ -80,6 +193,135 @@ private:
   }
   Globals(const Globals &) = delete;
   Globals &operator=(const Globals &) = delete;
+
+  static void setup_signal_handlers(struct sigaction &sa)
+  {
+    memset(&sa, 0, sizeof(struct sigaction));
+    sa.sa_sigaction = signal_handler;
+    sa.sa_flags = SA_SIGINFO;
+
+#if defined(__IBMCPP__) || defined(__IBMC__)
+    sigaction(SIGABND, &sa, NULL);
+#endif
+    sigaction(SIGABRT, &sa, NULL);
+    sigaction(SIGILL, &sa, NULL);
+  }
+
+  static void reset_signal_handlers(struct sigaction &sa)
+  {
+    sa.sa_flags = 0;
+    sa.sa_handler = SIG_DFL;
+#if defined(__IBMCPP__) || defined(__IBMC__)
+    sigaction(SIGABND, &sa, NULL);
+#endif
+    sigaction(SIGABRT, &sa, NULL);
+    sigaction(SIGILL, &sa, NULL);
+  }
+
+  template <typename Callable>
+  static void execute_test(Callable &test, TEST_CASE &tc, bool &abend)
+  {
+    try
+    {
+      test();
+      tc.success = true;
+    }
+    catch (const std::exception &e)
+    {
+      tc.success = false;
+      tc.fail_message = e.what();
+    }
+  }
+
+  static std::pair<std::string, const char *> format_test_status(const TEST_CASE &tc, bool abend)
+  {
+    std::string icon;
+    const char *color;
+
+    if (tc.success)
+    {
+      icon = std::string(colors.check) + " PASS"; // Single space after status character
+      color = colors.green;
+    }
+    else if (abend)
+    {
+      icon = std::string(colors.warn) + " ABEND"; // Single space after status character
+      color = colors.yellow;
+    }
+    else
+    {
+      icon = std::string(colors.cross) + " FAIL"; // Single space after status character
+      color = colors.red;
+    }
+    return std::make_pair(icon, color);
+  }
+
+  static void print_test_output(const TEST_CASE &tc, const std::string &description,
+                                int current_nesting, const std::string &icon,
+                                const char *color)
+  {
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(
+        tc.end_time - tc.start_time);
+
+    // Print exactly current_nesting * 2 spaces
+    for (int i = 0; i < current_nesting * 2; i++)
+    {
+      std::cout << " ";
+    }
+
+    if (color[0] != '\0')
+    { // Only use color if it's enabled
+      std::cout << color << icon << colors.reset << " ";
+    }
+    else
+    {
+      std::cout << icon << " ";
+    }
+    std::cout << description;
+
+    if (duration.count() >= 100)
+    {
+      std::cout << " (" << std::fixed << std::setprecision(3)
+                << duration.count() / 1000.0 << "ms)";
+    }
+    std::cout << std::endl;
+
+    if (!tc.success)
+    {
+      print_failure_details(tc, current_nesting, color);
+    }
+  }
+
+  static void print_failure_details(const TEST_CASE &tc, int current_nesting,
+                                    const char *color)
+  {
+    std::string main_error = tc.fail_message;
+    std::string context = "";
+
+    size_t pos = main_error.find("\n");
+    if (pos != std::string::npos)
+    {
+      context = main_error.substr(pos);
+      main_error = main_error.substr(0, pos);
+    }
+
+    // Print exactly current_nesting * 2 spaces
+    for (int i = 0; i < current_nesting * 2; i++)
+    {
+      std::cout << " ";
+    }
+    std::cout << color << colors.arrow << colors.reset << " " << main_error << std::endl;
+
+    if (!context.empty())
+    {
+      // Print exactly (current_nesting * 2 + 2) spaces for context
+      for (int i = 0; i < current_nesting * 2 + 2; i++)
+      {
+        std::cout << " ";
+      }
+      std::cout << context.substr(1) << std::endl;
+    }
+  }
 
 public:
   static Globals &get_instance()
@@ -108,8 +350,91 @@ public:
   {
     return jump_buf;
   }
+  void increment_nesting()
+  {
+    current_nesting++;
+  }
+  void decrement_nesting()
+  {
+    if (current_nesting > 0)
+      current_nesting--;
+  }
+  int get_nesting()
+  {
+    return current_nesting;
+  }
+
+  template <typename Callable,
+            typename = typename std::enable_if<
+                std::is_same<void, decltype(std::declval<Callable>()())>::value>::type>
+  void run_test(std::string description, Callable test, TEST_OPTIONS &opts)
+  {
+    TEST_CASE tc = {0};
+    tc.description = description;
+
+    int current_nesting = get_nesting();
+
+    if (matcher != "")
+    {
+      try
+      {
+        std::regex pattern(matcher);
+        if (!std::regex_search(description, pattern))
+        {
+          return;
+        }
+      }
+      catch (const std::regex_error &e)
+      {
+        // If regex is invalid, fall back to exact string match
+        if (matcher != description)
+        {
+          return;
+        }
+      }
+    }
+
+    bool abend = false;
+    struct sigaction sa;
+
+    if (!opts.remove_signal_handling)
+    {
+      setup_signal_handlers(sa);
+    }
+
+    tc.start_time = std::chrono::high_resolution_clock::now();
+
+    if (0 != setjmp(get_jmp_buf()))
+    {
+      abend = true;
+    }
+
+    if (!abend)
+    {
+      execute_test(test, tc, abend);
+    }
+
+    tc.end_time = std::chrono::high_resolution_clock::now();
+
+    if (!opts.remove_signal_handling)
+    {
+      reset_signal_handlers(sa);
+    }
+
+    if (abend)
+    {
+      tc.success = false;
+      tc.fail_message = "unexpected ABEND occured. Add `TEST_OPTIONS.remove_signal_handling = false` to `it(...)` to capture abend dump";
+    }
+
+    auto status = format_test_status(tc, abend);
+    print_test_output(tc, description, current_nesting, status.first, status.second);
+
+    get_suites()[get_suite_index()].tests.push_back(tc);
+  }
 };
 
+// Signal handler needs to be after Globals class definition
 inline void signal_handler(int code, siginfo_t *info, void *context)
 {
   Globals &g = Globals::get_instance();
@@ -237,7 +562,7 @@ public:
     std::string error = "";
     if (ctx.initialized)
     {
-      error += "\n    at " + ctx.file_name + ":" + std::to_string(ctx.line_number);
+      error = "\n" + std::string(2, ' ') + "at " + ctx.file_name + ":" + std::to_string(ctx.line_number);
       if (ctx.message.size() > 0)
         error += " (" + ctx.message + ")";
     }
@@ -276,11 +601,6 @@ public:
   }
 };
 
-struct TEST_OPTIONS
-{
-  bool remove_signal_handling;
-};
-
 typedef void (*cb)();
 
 template <typename Callable,
@@ -291,10 +611,19 @@ void describe(std::string description, Callable suite)
   Globals &g = Globals::get_instance();
   TEST_SUITE ts;
   ts.description = description;
+  ts.nesting_level = g.get_nesting();
   g.get_suites().push_back(ts);
   g.increment_suite_index();
-  std::cout << description << std::endl;
+
+  // Add newline only if we're not at the root level
+  if (ts.nesting_level > 0)
+  {
+    std::cout << "\n";
+  }
+  std::cout << get_indent(ts.nesting_level) << description << std::endl;
+  g.increment_nesting();
   suite();
+  g.decrement_nesting();
 }
 
 template <typename Callable,
@@ -311,81 +640,7 @@ template <typename Callable,
               std::is_same<void, decltype(std::declval<Callable>()())>::value>::type>
 void it(std::string description, Callable test, TEST_OPTIONS &opts)
 {
-  TEST_CASE tc = {0};
-  tc.description = description;
-
-  Globals &g = Globals::get_instance();
-
-  if (matcher != "" && matcher != description)
-  {
-    return;
-  }
-
-  bool abend = false;
-  struct sigaction sa;
-  memset(&sa, 0, sizeof(struct sigaction));
-  sa.sa_sigaction = signal_handler;
-  sa.sa_flags = SA_SIGINFO;
-
-  if (!opts.remove_signal_handling)
-  {
-#if defined(__IBMCPP__) || defined(__IBMC__)
-    sigaction(SIGABND, &sa, NULL);
-#endif
-    sigaction(SIGABRT, &sa, NULL);
-    sigaction(SIGILL, &sa, NULL);
-  }
-
-  tc.start_time = std::chrono::high_resolution_clock::now();
-
-  if (0 != setjmp(g.get_jmp_buf()))
-  {
-    abend = true;
-  }
-
-  if (!abend)
-  {
-    try
-    {
-      test();
-      tc.success = true;
-    }
-    catch (const std::exception &e)
-    {
-      tc.success = false;
-      tc.fail_message = e.what();
-    }
-  }
-
-  tc.end_time = std::chrono::high_resolution_clock::now();
-
-  if (!opts.remove_signal_handling)
-  {
-    sa.sa_flags = 0;
-    sa.sa_handler = SIG_DFL;
-#if defined(__IBMCPP__) || defined(__IBMC__)
-    sigaction(SIGABND, &sa, NULL);
-#endif
-    sigaction(SIGABRT, &sa, NULL);
-    sigaction(SIGILL, &sa, NULL);
-  }
-
-  std::string icon = tc.success ? "PASS  " : "FAIL  ";
-  if (abend)
-  {
-    icon = "ABEND ";
-    tc.success = false;
-    tc.fail_message = "unexpected ABEND occured.  Add `TEST_OPTIONS.remove_signal_handling = false` to `it(...)` to capture abend dump";
-  }
-
-  auto duration = std::chrono::duration_cast<std::chrono::microseconds>(tc.end_time - tc.start_time);
-  std::cout << "  " << icon << tc.description << " (" << duration.count() / 1000.0 << "ms)" << std::endl;
-  if (!tc.success)
-  {
-    std::cout << "    " << tc.fail_message << std::endl;
-  }
-
-  g.get_suites()[g.get_suite_index()].tests.push_back(tc);
+  Globals::get_instance().run_test(description, test, opts);
 }
 
 template <typename T>
@@ -430,13 +685,13 @@ inline int report()
 
   const int width = 13;
   std::cout << std::left << std::setw(width) << "Suites:"
-            << g.get_suites().size() - suite_fail << " passed, "
-            << suite_fail << " failed, "
+            << colors.green << g.get_suites().size() - suite_fail << " passed" << colors.reset << ", "
+            << colors.red << suite_fail << " failed" << colors.reset << ", "
             << g.get_suites().size() << " total" << std::endl;
 
   std::cout << std::left << std::setw(width) << "Tests:"
-            << tests_total - tests_fail << " passed, "
-            << tests_fail << " failed, "
+            << colors.green << tests_total - tests_fail << " passed" << colors.reset << ", "
+            << colors.red << tests_fail << " failed" << colors.reset << ", "
             << tests_total << " total" << std::endl;
 
   std::cout << std::left << std::setw(width) << "Time:"
@@ -577,7 +832,7 @@ inline int tests(ztst::cb tests)
   std::cout << "======== TESTS ========" << std::endl;
   tests();
   int rc = report();
-  report_xml(); // Generate XML report by default
+  report_xml();
   return rc;
 }
 

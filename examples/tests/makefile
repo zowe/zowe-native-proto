@@ -24,9 +24,6 @@ $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
 # Object files
-$(BUILD_DIR)/ztest.o: ../../native/c/test/ztest.cpp | $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) $(INCLUDE) -c $< -o $@
-
 $(BUILD_DIR)/more.o: more.cpp | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -c $< -o $@
 
@@ -34,7 +31,7 @@ $(BUILD_DIR)/runner.o: runner.cpp | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -c $< -o $@
 
 # Link the runner executable
-$(BUILD_DIR)/runner: $(BUILD_DIR)/runner.o $(BUILD_DIR)/more.o $(BUILD_DIR)/ztest.o
+$(BUILD_DIR)/runner: $(BUILD_DIR)/runner.o $(BUILD_DIR)/more.o
 	$(CXX) -o $@ $^
 
 # Clean build artifacts

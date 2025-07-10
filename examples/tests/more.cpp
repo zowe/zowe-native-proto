@@ -19,6 +19,26 @@ void more_tests()
   describe("more test suite",
            []() -> void
            {
+             describe("nested describe",
+                      []() -> void
+                      {
+                        it("should pass with more tests",
+                           [&]() -> void
+                           {
+                             expect(3).ToBe(3);
+                           });
+                        it("should pass with more tests",
+                           [&]() -> void
+                           {
+                             expect(3).ToBe(3);
+                           });
+                        it("should fail",
+                           [&]() -> void
+                           {
+                             ExpectWithContext(3, "extra error messages").ToBe(5);
+                           });
+                      });
+
              it("should pass with more tests",
                 [&]() -> void
                 {
