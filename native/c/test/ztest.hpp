@@ -22,6 +22,8 @@
 #include <typeinfo>
 #include <sstream>
 #include <cstring> // Required for memset
+#include <chrono>
+#include <iomanip>
 
 // TODO(Kelosky): handle test not run
 // TODO(Kelosky): handle running individual test and/or suite
@@ -39,6 +41,8 @@ struct TEST_CASE
   bool success;
   std::string description;
   std::string fail_message;
+  std::chrono::high_resolution_clock::time_point start_time;
+  std::chrono::high_resolution_clock::time_point end_time;
 };
 
 struct TEST_SUITE
@@ -327,6 +331,8 @@ void it(std::string description, Callable test, TEST_OPTIONS &opts)
     sigaction(SIGILL, &sa, NULL);
   }
 
+  tc.start_time = std::chrono::high_resolution_clock::now();
+
   if (0 != setjmp(g.get_jmp_buf()))
   {
     abend = true;
@@ -346,6 +352,8 @@ void it(std::string description, Callable test, TEST_OPTIONS &opts)
     }
   }
 
+  tc.end_time = std::chrono::high_resolution_clock::now();
+
   if (!opts.remove_signal_handling)
   {
     sa.sa_flags = 0;
@@ -364,7 +372,9 @@ void it(std::string description, Callable test, TEST_OPTIONS &opts)
     tc.success = false;
     tc.fail_message = "unexpected ABEND occured.  Add `TEST_OPTIONS.remove_signal_handling = false` to `it(...)` to capture abend dump";
   }
-  std::cout << "  " << icon << tc.description << std::endl;
+
+  auto duration = std::chrono::duration_cast<std::chrono::microseconds>(tc.end_time - tc.start_time);
+  std::cout << "  " << icon << tc.description << " (" << duration.count() / 1000.0 << "ms)" << std::endl;
   if (!tc.success)
   {
     std::cout << "    " << tc.fail_message << std::endl;
@@ -388,10 +398,11 @@ inline int report()
   int suite_fail = 0;
   int tests_total = 0;
   int tests_fail = 0;
+  std::chrono::microseconds total_duration(0);
 
   Globals &g = Globals::get_instance();
 
-  std::cout << "======== TESTS SUMMARY ========" << std::endl;
+  std::cout << "\n======== TESTS SUMMARY ========" << std::endl;
 
   for (std::vector<TEST_SUITE>::iterator it = g.get_suites().begin(); it != g.get_suites().end(); it++)
   {
@@ -404,6 +415,7 @@ inline int report()
         suite_success = false;
         tests_fail++;
       }
+      total_duration += std::chrono::duration_cast<std::chrono::microseconds>(iit->end_time - iit->start_time);
     }
     if (!suite_success)
     {
@@ -411,8 +423,21 @@ inline int report()
     }
   }
 
-  std::cout << "Total Suites: " << g.get_suites().size() - suite_fail << " passed, " << suite_fail << " failed, " << g.get_suites().size() << " total" << std::endl;
-  std::cout << "Tests:      : " << tests_total - tests_fail << " passed, " << tests_fail << " failed, " << tests_total << " total" << std::endl;
+  const int width = 13;
+  std::cout << std::left << std::setw(width) << "Suites:"
+            << g.get_suites().size() - suite_fail << " passed, "
+            << suite_fail << " failed, "
+            << g.get_suites().size() << " total" << std::endl;
+
+  std::cout << std::left << std::setw(width) << "Tests:"
+            << tests_total - tests_fail << " passed, "
+            << tests_fail << " failed, "
+            << tests_total << " total" << std::endl;
+
+  std::cout << std::left << std::setw(width) << "Time:"
+            << std::fixed << std::setprecision(3)
+            << total_duration.count() / 1000.0 << "ms" << std::endl;
+
   return tests_fail > 0 ? 1 : 0;
 }
 
