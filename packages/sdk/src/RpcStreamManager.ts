@@ -23,7 +23,6 @@ import {
     type StreamMode,
 } from "./doc";
 
-
 export class RpcStreamManager {
     private readonly CHUNK_SIZE = 32768;
 
