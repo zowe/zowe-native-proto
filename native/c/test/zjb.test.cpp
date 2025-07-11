@@ -28,25 +28,26 @@ void zjb_tests()
 
   describe("zjb tests", []() -> void
            {
+             string jcl = "//IEFBR14$ JOB IZUACCT\n"
+                          "//RUNBR14  EXEC PGM=IEFBR14\n";
 
-      string jcl = "//IEFBR14$ JOB IZUACCT\n"
-                   "//RUNBR14  EXEC PGM=IEFBR14\n";
+             string hold_jcl = "//IEFBR14$ JOB IZUACCT,TYPRUN=HOLD\n"
+                               "//RUNBR14  EXEC PGM=IEFBR14\n";
 
-      string hold_jcl = "//IEFBR14$ JOB IZUACCT,TYPRUN=HOLD\n"
-                   "//RUNBR14  EXEC PGM=IEFBR14\n";
+             it("should be able to list a job", [&]() -> void
+                {
+                  ZJB zjb = {0};
+                  string owner = "*";  // all owners
+                  string prefix = "*"; // any prefix
+                  zjb.jobs_max = 1;    // limit to one
+                  vector<ZJob> jobs;
+                  int rc = zjb_list_by_owner(&zjb, owner, prefix, jobs);
+                  ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_WARNING); // expect truncated list returned
+                  Expect(jobs.size()).ToBe(zjb.jobs_max);                    // expect one job returned
+                });
 
-    it("should be able to list a job", [&]() -> void {
-      ZJB zjb = {0};
-      string owner = "*";  // all owners
-      string prefix = "*"; // any prefix
-      zjb.jobs_max = 1;    // limit to one
-      vector<ZJob> jobs;
-      int rc = zjb_list_by_owner(&zjb, owner, prefix, jobs);
-      ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_WARNING); // expect truncated list returned
-      Expect(jobs.size()).ToBe(zjb.jobs_max); // expect one job returned
-    });
-
-    it("should be able to submit JCL", [&]() -> void {
+             it("should be able to submit JCL", [&]() -> void
+                {
       ZJB zjb = {0};
       string jobid;
 
@@ -61,10 +62,10 @@ void zjb_tests()
 
       memset(&zjb, 0, sizeof(zjb));
       rc = zjb_delete(&zjb, correlator);
-      ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
-    });
+      ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS); });
 
-    it("should be able to view a submitted job", [&]() -> void {
+             it("should be able to view a submitted job", [&]() -> void
+                {
       ZJB zjb = {0};
       string jobid;
 
@@ -85,10 +86,10 @@ void zjb_tests()
       memset(&zjb, 0, sizeof(zjb));
       rc = zjb_delete(&zjb, correlator);
 
-      ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
-    });
+      ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS); });
 
-    it("should be able to delete a submitted job", [&]() -> void {
+             it("should be able to delete a submitted job", [&]() -> void
+                {
       ZJB zjb = {0};
       string jobid;
 
@@ -102,10 +103,10 @@ void zjb_tests()
       memset(&zjb, 0, sizeof(zjb));
       rc = zjb_delete(&zjb, correlator);
 
-      ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
-    });
+      ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS); });
 
-    it("should be able to read job JCL", [&]() -> void {
+             it("should be able to read job JCL", [&]() -> void
+                {
       ZJB zjb = {0};
       string jobid;
 
@@ -120,10 +121,10 @@ void zjb_tests()
       memset(&zjb, 0, sizeof(zjb));
       rc = zjb_read_job_jcl(&zjb, correlator, returned_jcl);
 
-      ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
-    });
+      ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS); });
 
-    it("should be able to list and view SYSOUT files for INPUT jobs", [&]() -> void {
+             it("should be able to list and view SYSOUT files for INPUT jobs", [&]() -> void
+                {
       ZJB zjb = {0};
       string jobid;
 
@@ -149,10 +150,8 @@ void zjb_tests()
 
       memset(&zjb, 0, sizeof(zjb));
       rc = zjb_delete(&zjb, correlator);
-      ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
-    });
-
- });
+      ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS); });
+           });
 }
 
 void sleep_on_status(string status, string jobid)
@@ -165,7 +164,7 @@ void sleep_on_status(string status, string jobid)
     int rc = zjb_view(&zjb, jobid, zjob);
     const int max_retries = 1000;
 
-    if (rc != RTNCD_SUCCESS)
+    if (RTNCD_SUCCESS != rc)
     {
       string error =
           "Error: could not view job: '" + jobid + "' rc: " + to_string(rc) + "\n'  " + string(zjb.diag.e_msg) + "'";

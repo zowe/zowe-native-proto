@@ -128,7 +128,7 @@ int ZDSRECFM(ZDS *zds, const char *dsn, const char *volser, char *recfm_buf,
   params.listname_addrx.workarea_ptr = workarea;
 
   int rc = obtain_camlst(params);
-  if (rc != 0)
+  if (0 != rc)
   {
     strcpy(zds->diag.service_name, "OBTAIN");
     zds->diag.e_msg_len =
@@ -140,10 +140,11 @@ int ZDSRECFM(ZDS *zds, const char *dsn, const char *volser, char *recfm_buf,
   }
 
   IndexableDSCBFormat1 indexable_dscb = {0};
-  for (int i = 0; i < MAX_DSCBS - 1; i++) {
+  for (int i = 0; i < MAX_DSCBS - 1; i++)
+  {
     memcpy(&indexable_dscb, workarea + (i * (sizeof(IndexableDSCBFormat1) - 1)), sizeof(indexable_dscb));
     // The returned DSCB does not include the key, but we can infer the returned variables by re-aligning the struct
-    DSCBFormat1* dscb = (DSCBFormat1*)&indexable_dscb;
+    DSCBFormat1 *dscb = (DSCBFormat1 *)&indexable_dscb;
 
     // '1' or '8' in EBCDIC
     if (dscb == NULL || (dscb->ds1fmtid != '1' && dscb->ds1fmtid != '8'))
