@@ -30,7 +30,7 @@ std::vector<ZDSEntry> list_data_sets(std::string dsn)
   __a2e_s(&dsn[0]);
   int rc = zds_list_data_sets(&zds, dsn, entries);
 
-  if (rc != 0)
+  if (0 != rc)
   {
     std::string diag(zds.diag.e_msg, zds.diag.e_msg_len);
     diag.push_back('\0');
