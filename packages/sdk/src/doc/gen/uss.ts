@@ -164,6 +164,10 @@ export interface ReadFileResponse extends common.CommandResponse {
    * File contents (omitted if streaming)
    */
   data?: B64String;
+  /**
+   * Length of file contents in bytes (only used for streaming)
+   */
+  contentLength?: number /* int */;
 }
 export interface WriteFileResponse extends GenericFileResponse {
   etag: string;

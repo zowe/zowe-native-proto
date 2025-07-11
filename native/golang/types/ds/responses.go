@@ -21,6 +21,8 @@ type WriteDatasetResponse struct {
 	Dataset string `json:"dataset"`
 	// Returned e-tag for the data set
 	Etag string `json:"etag"`
+	// Length of dataset contents in bytes (only used for streaming)
+	ContentLen *int `json:"contentLen,omitempty"`
 }
 
 type RestoreDatasetResponse struct {
@@ -37,8 +39,10 @@ type ReadDatasetResponse struct {
 	Etag string `json:"etag"`
 	// Dataset name
 	Dataset string `json:"dataset"`
-	// Dataset contents
+	// Dataset contents (omitted if streaming)
 	Data []byte `json:"data" tstype:"B64String"`
+	// Length of dataset contents in bytes (only used for streaming)
+	ContentLen *int `json:"contentLen,omitempty"`
 }
 
 type ListDatasetsResponse struct {

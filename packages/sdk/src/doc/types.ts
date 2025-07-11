@@ -29,6 +29,8 @@ export namespace B64String {
     }
 
     export function encode(data: Uint8Array | string): B64String {
-        return (typeof data === "string" ? Buffer.from(data) : data).toString("base64") as B64String;
+        return Buffer.from(data).toString("base64") as B64String;
     }
 }
+
+export type StreamMode = "r" | "w";
