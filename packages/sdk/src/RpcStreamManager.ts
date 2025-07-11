@@ -11,7 +11,7 @@
 
 import { Readable, type Stream, Writable } from "node:stream";
 import { pipeline } from "node:stream/promises";
-import { Base64Decode, Base64Encode } from "base64-stream";
+import { Base64Encode } from "base64-stream";
 import type { Client, ClientChannel } from "ssh2";
 import {
     B64String,
@@ -21,6 +21,7 @@ import {
     type RpcRequest,
     type StreamMode,
 } from "./doc";
+import { CountingBase64Decode } from "./CountingBase64Decode";
 
 export class RpcStreamManager {
     private readonly CHUNK_SIZE = 32768;
@@ -114,7 +115,7 @@ export class RpcStreamManager {
         });
         let totalBytes = 0;
         readStream.on("data", (chunk: Buffer) => {
-            totalBytes += chunk.byteLength;
+            totalBytes += chunk.length;
             readStream.emit("keepAlive");
         });
         await pipeline(readStream, new Base64Encode(), sshStream.stdin);
@@ -125,12 +126,11 @@ export class RpcStreamManager {
         const sshStream = await new Promise<ClientChannel>((resolve, reject) => {
             this.mSshClient.exec(`cat ${params.pipePath}`, (err, stream) => (err ? reject(err) : resolve(stream)));
         });
-        let totalBytes = 0;
-        sshStream.stdout.on("data", (chunk: Buffer) => {
-            totalBytes += chunk.byteLength;
-            writeStream.emit("keepAlive");
-        });
-        await pipeline(sshStream.stdout, new Base64Decode(), writeStream);
-        return totalBytes;
+        sshStream.stdout.on("data", () => writeStream.emit("keepAlive"));
+
+        const decoder = new CountingBase64Decode();
+        await pipeline(sshStream.stdout, decoder, writeStream);
+
+        return decoder.bytesWritten;
     }
 }
