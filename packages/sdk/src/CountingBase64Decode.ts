@@ -35,7 +35,6 @@ export class CountingBase64Decode extends Base64Decode {
         if (chunk != null) {
             this.mBytesWritten += chunk.length;
         }
-
         return super.push(chunk, encoding);
     }
 }

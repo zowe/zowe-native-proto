@@ -13,6 +13,7 @@ import { Readable, type Stream, Writable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { Base64Encode } from "base64-stream";
 import type { Client, ClientChannel } from "ssh2";
+import { CountingBase64Decode } from "./CountingBase64Decode";
 import {
     B64String,
     type CommandRequest,
@@ -21,7 +22,7 @@ import {
     type RpcRequest,
     type StreamMode,
 } from "./doc";
-import { CountingBase64Decode } from "./CountingBase64Decode";
+
 
 export class RpcStreamManager {
     private readonly CHUNK_SIZE = 32768;
