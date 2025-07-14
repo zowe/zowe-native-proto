@@ -1471,9 +1471,9 @@ int handle_tool_search(const ParseResult &result)
 
   // Perform search
   rc = zut_search("parms are unused for now but can be passed to super c, e.g. ANYC (any case)");
-  if (RTNCD_SUCCESS != rc ||
-      RTNCD_WARNING != rc ||
-      ZUT_RTNCD_SEARCH_SUCCESS != rc ||
+  if (RTNCD_SUCCESS != rc &&
+      RTNCD_WARNING != rc &&
+      ZUT_RTNCD_SEARCH_SUCCESS != rc &&
       ZUT_RTNCD_SEARCH_WARNING != rc)
   {
     cerr << "Error: could error invoking ISRSUPC rc: '" << rc << "'" << endl;
