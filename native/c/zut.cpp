@@ -481,6 +481,19 @@ string zut_format_as_csv(std::vector<string> &fields)
   return formatted;
 }
 
+/**
+ * Converts an integer to a string using sprintf.
+ *
+ * @param value the integer value to convert
+ * @return the string representation of the integer
+ */
+string zut_int_to_string(int value)
+{
+  char buffer[32];
+  sprintf(buffer, "%d", value);
+  return string(buffer);
+}
+
 int zut_alloc_debug()
 {
   int rc = 0;

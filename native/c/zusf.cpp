@@ -244,19 +244,32 @@ int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
   response.assign(raw_data.begin(), raw_data.end());
   in.close();
 
-  // TODO(traeok): Finish support for encoding auto-detection
-  // char tagged_encoding[16] = {0};
-  // ssize_t xattr_result = getxattr(file.c_str(), "system.filetag", &tagged_encoding);
-
-  const auto encodingProvided = zusf->encoding_opts.data_type == eDataTypeText && strlen(zusf->encoding_opts.codepage) > 0;
-
-  if (size > 0 && encodingProvided)
+  // Use file tag encoding if available, otherwise fall back to provided encoding
+  string encoding_to_use;
+  bool has_encoding = false;
+  
+  if (zusf->encoding_opts.data_type == eDataTypeText)
   {
-    // const encoding = encodingProvided ? string(zusf->encoding_opts.codepage) : string(tagged_encoding);
+    // Try to get the file's CCSID first
+    int file_ccsid = zusf_get_file_ccsid(zusf, file);
+    if (file_ccsid > 0 && file_ccsid != 65535) // Valid CCSID and not binary
+    {
+      encoding_to_use = zut_int_to_string(file_ccsid);
+      has_encoding = true;
+    }
+    else if (strlen(zusf->encoding_opts.codepage) > 0)
+    {
+      encoding_to_use = string(zusf->encoding_opts.codepage);
+      has_encoding = true;
+    }
+  }
+
+  if (size > 0 && has_encoding)
+  {
     std::string temp = response;
     try
     {
-      const auto bytes_with_encoding = zut_encode(temp, string(zusf->encoding_opts.codepage), "UTF-8", zusf->diag);
+      const auto bytes_with_encoding = zut_encode(temp, encoding_to_use, "UTF-8", zusf->diag);
       temp = bytes_with_encoding;
     }
     catch (std::exception &e)
@@ -298,12 +311,25 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, string file, string pipe)
     return RTNCD_FAILURE;
   }
 
-  // TODO(traeok): Finish support for encoding auto-detection
-  // char tagged_encoding[16] = {0};
-  // ssize_t xattr_result = getxattr(file.c_str(), "system.filetag", &tagged_encoding);
-
-  const auto hasEncoding = zusf->encoding_opts.data_type == eDataTypeText && strlen(zusf->encoding_opts.codepage) > 0;
-  const auto codepage = string(zusf->encoding_opts.codepage);
+  // Use file tag encoding if available, otherwise fall back to provided encoding
+  string encoding_to_use;
+  bool has_encoding = false;
+  
+  if (zusf->encoding_opts.data_type == eDataTypeText)
+  {
+    // Try to get the file's CCSID first
+    int file_ccsid = zusf_get_file_ccsid(zusf, file);
+    if (file_ccsid > 0 && file_ccsid != 65535) // Valid CCSID, not binary
+    {
+      encoding_to_use = zut_int_to_string(file_ccsid);
+      has_encoding = true;
+    }
+    else if (strlen(zusf->encoding_opts.codepage) > 0)
+    {
+      encoding_to_use = string(zusf->encoding_opts.codepage);
+      has_encoding = true;
+    }
+  }
 
   const size_t chunk_size = FIFO_CHUNK_SIZE * 3 / 4;
   std::vector<char> buf(chunk_size);
@@ -315,17 +341,17 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, string file, string pipe)
     const char *chunk = &buf[0];
     std::vector<char> temp_encoded;
 
-    if (hasEncoding)
+    if (has_encoding)
     {
       try
       {
-        temp_encoded = zut_encode(chunk, chunk_len, codepage, "UTF-8", zusf->diag);
+        temp_encoded = zut_encode(chunk, chunk_len, encoding_to_use, "UTF-8", zusf->diag);
         chunk = &temp_encoded[0];
         chunk_len = temp_encoded.size();
       }
       catch (std::exception &e)
       {
-        zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to convert input data from UTF-8 to %s", codepage.c_str());
+        zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to convert input data from %s to UTF-8", encoding_to_use.c_str());
         return RTNCD_FAILURE;
       }
     }
@@ -353,8 +379,6 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, string file, string pipe)
 int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data)
 {
   // TODO(zFernand0): Avoid overriding existing files
-  const auto hasEncoding = zusf->encoding_opts.data_type == eDataTypeText && strlen(zusf->encoding_opts.codepage) > 0;
-  const auto codepage = string(zusf->encoding_opts.codepage);
   struct stat file_stats;
 
   int stat_result = stat(file.c_str(), &file_stats);
@@ -371,17 +395,37 @@ int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data)
     return RTNCD_FAILURE;
   zusf->created = stat_result == -1;
 
+  // Use file tag encoding if available, otherwise fall back to provided encoding
+  string encoding_to_use;
+  bool has_encoding = false;
+  
+  if (zusf->encoding_opts.data_type == eDataTypeText)
+  {
+    // Try to get the file's CCSID first
+    int file_ccsid = zusf_get_file_ccsid(zusf, file);
+    if (file_ccsid > 0 && file_ccsid != 65535) // Valid CCSID and not binary
+    {
+      encoding_to_use = zut_int_to_string(file_ccsid);
+      has_encoding = true;
+    }
+    else if (strlen(zusf->encoding_opts.codepage) > 0)
+    {
+      encoding_to_use = string(zusf->encoding_opts.codepage);
+      has_encoding = true;
+    }
+  }
+
   std::string temp = data;
-  if (hasEncoding)
+  if (has_encoding)
   {
     try
     {
-      const auto bytes_with_encoding = zut_encode(temp, "UTF-8", codepage, zusf->diag);
+      const auto bytes_with_encoding = zut_encode(temp, "UTF-8", encoding_to_use, zusf->diag);
       temp = bytes_with_encoding;
     }
     catch (std::exception &e)
     {
-      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to convert input data from UTF-8 to %s", codepage.c_str());
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to convert input data from UTF-8 to %s", encoding_to_use.c_str());
       return RTNCD_FAILURE;
     }
   }
@@ -426,8 +470,26 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe)
 {
   // TODO(zFernand0): Avoid overriding existing files
   struct stat file_stats;
-  const auto hasEncoding = zusf->encoding_opts.data_type == eDataTypeText && strlen(zusf->encoding_opts.codepage) > 0;
-  const auto codepage = string(zusf->encoding_opts.codepage);
+  
+  // Use file tag encoding if available, otherwise fall back to provided encoding
+  string encoding_to_use;
+  bool has_encoding = false;
+  
+  if (zusf->encoding_opts.data_type == eDataTypeText)
+  {
+    // Try to get the file's CCSID first
+    int file_ccsid = zusf_get_file_ccsid(zusf, file);
+    if (file_ccsid > 0 && file_ccsid != 65535) // Valid CCSID and not binary
+    {
+      encoding_to_use = zut_int_to_string(file_ccsid);
+      has_encoding = true;
+    }
+    else if (strlen(zusf->encoding_opts.codepage) > 0)
+    {
+      encoding_to_use = string(zusf->encoding_opts.codepage);
+      has_encoding = true;
+    }
+  }
 
   int stat_result = stat(file.c_str(), &file_stats);
   if (strlen(zusf->etag) > 0 && stat_result != -1)
@@ -468,17 +530,17 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe)
     const char *chunk = (char *)unbase64(&buf[0], bytes_read, &chunk_len);
     std::vector<char> temp_encoded;
 
-    if (hasEncoding)
+    if (has_encoding)
     {
       try
       {
-        temp_encoded = zut_encode(chunk, chunk_len, "UTF-8", codepage, zusf->diag);
+        temp_encoded = zut_encode(chunk, chunk_len, "UTF-8", encoding_to_use, zusf->diag);
         chunk = &temp_encoded[0];
         chunk_len = temp_encoded.size();
       }
       catch (std::exception &e)
       {
-        zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to convert input data from UTF-8 to %s", codepage.c_str());
+        zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to convert input data from UTF-8 to %s", encoding_to_use.c_str());
         fclose(fin);
         fclose(fout);
         return RTNCD_FAILURE;
@@ -752,4 +814,30 @@ int zusf_chtag_uss_file_or_dir(ZUSF *zusf, string file, string tag, bool recursi
     }
   }
   return 0;
+}
+
+/**
+ * Gets the CCSID of a USS file.
+ *
+ * @param zusf pointer to a ZUSF object
+ * @param file name of the USS file
+ *
+ * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
+ */
+int zusf_get_file_ccsid(ZUSF *zusf, string file)
+{
+  struct stat file_stats;
+  if (stat(file.c_str(), &file_stats) == -1)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Path '%s' does not exist", file.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  if (S_ISDIR(file_stats.st_mode))
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Path '%s' is a directory", file.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  return file_stats.st_tag.ft_ccsid;
 }

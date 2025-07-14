@@ -40,5 +40,6 @@ int zusf_delete_uss_item(ZUSF *zusf, std::string file, bool recursive);
 int zusf_chown_uss_file_or_dir(ZUSF *zusf, std::string file, std::string owner, bool recursive);
 short zusf_get_id_from_user_or_group(std::string user_or_group, bool is_user);
 int zusf_chtag_uss_file_or_dir(ZUSF *zusf, std::string file, std::string tag, bool recursive);
+int zusf_get_file_ccsid(ZUSF *zusf, std::string file);
 
 #endif
