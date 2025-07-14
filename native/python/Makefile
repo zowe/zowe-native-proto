@@ -23,7 +23,7 @@ swig-wrappers:
 	@echo '\nGenerating SWIG wrappers'
 	$(SWIG) -python -c++ zusf_py.i
 	$(SWIG) -python -c++ zjb_py.i
-	$(SWIG) -c++ -python zds_py.i
+	$(SWIG) -python -c++ zds_py.i
 
 # Build Python extensions
 build: swig-wrappers
