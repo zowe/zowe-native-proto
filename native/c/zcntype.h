@@ -23,7 +23,7 @@
 #define ZCN_DEFAULT_BUFFER_SIZE 4096
 
 #if (defined(__IBMCPP__) || defined(__IBMC__))
-#pragma pack(packed)
+#pragma pack(1)
 #endif
 
 #define ZCN_EYE "ZCN"

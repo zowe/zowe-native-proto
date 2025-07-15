@@ -53,7 +53,7 @@
 #define ZDS_RECFM_VBS "VBS"   // Variable Blocked Spanned
 
 #if (defined(__IBMCPP__) || defined(__IBMC__))
-#pragma pack(packed)
+#pragma pack(1)
 #endif
 
 // NOTE(Kelosky): struct is padded to nearest double word boundary; ensure proper alignment for fields

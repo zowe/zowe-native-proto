@@ -37,7 +37,7 @@
 #define ZJB_UNKNOWN_RC ""
 
 #if (defined(__IBMCPP__) || defined(__IBMC__))
-#pragma pack(packed)
+#pragma pack(1)
 #endif
 
 // NOTE(Kelosky): struct is padded to nearest double word boundary; ensure proper alignment for fields
