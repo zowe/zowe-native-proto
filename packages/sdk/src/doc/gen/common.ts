@@ -96,6 +96,26 @@ export interface UssItem {
    */
   name: string;
   /**
+   * Number of links to the item
+   */
+  links: number /* int */;
+  /**
+   * Owner of the item
+   */
+  owner: string;
+  /**
+   * Group of the item
+   */
+  group: string;
+  /**
+   * Size of the item
+   */
+  size: number /* int */;
+  /**
+   * The filetag of the item
+   */
+  filetag?: string;
+  /**
    * Whether the item is a directory
    */
   itemType: t.UssItemType;

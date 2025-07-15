@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
@@ -54,61 +53,35 @@ func fileTypeToEnum(typ os.FileMode) uint32 {
 }
 
 // HandleListFilesRequest handles a ListFilesRequest by invoking built-in functions from Go's `os` module.
-func HandleListFilesRequest(_conn *utils.StdioConn, params []byte) (result any, e error) {
+func HandleListFilesRequest(conn *utils.StdioConn, params []byte) (result any, e error) {
 	request, err := utils.ParseCommandRequest[uss.ListFilesRequest](params)
 	if err != nil {
 		return nil, err
 	}
 
-	dirPath := request.Path
-
-	fileInfo, err := os.Stat(dirPath)
+	out, err := conn.ExecCmd([]string{"uss", "list", request.Path, "-al"})
 	if err != nil {
-		e = fmt.Errorf("Failed to stat directory: %v", err)
-		return
+		return nil, fmt.Errorf("Error executing command: %v", err)
 	}
 
 	ussResponse := uss.ListFilesResponse{}
 
-	// If the path is not a directory, return a single file item
-	if !fileInfo.IsDir() {
-		ussResponse.Items = make([]t.UssItem, 1)
-		ussResponse.Items[0] = t.UssItem{
-			Name: filepath.Base(dirPath),
-			Type: fileTypeToEnum(fileInfo.Mode().Type()),
-			Mode: fileInfo.Mode().String(),
+	rawResponse := strings.TrimSpace(string(out))
+	lines := strings.Split(rawResponse, "\n")
+	ussResponse.Items = make([]t.UssItem, len(lines))
+	for i, line := range lines {
+		fields := strings.Split(line, ",")
+		links, _ := strconv.Atoi(fields[1])
+		size, _ := strconv.Atoi(fields[4])
+		ussResponse.Items[i] = t.UssItem{
+			Mode:  fields[0],
+			Links: links,
+			Owner: fields[2],
+			Group: fields[3],
+			Size:  size,
+			Tag:   fields[5],
+			Name:  fields[6],
 		}
-		ussResponse.ReturnedRows = 1
-	} else {
-		entries, err := os.ReadDir(dirPath)
-		if err != nil {
-			e = fmt.Errorf("Failed to read directory: %v", err)
-			return
-		}
-		// ., .., and the remaining items in the list
-		ussResponse.Items = make([]t.UssItem, len(entries)+2)
-		ussResponse.Items[0] = t.UssItem{Name: ".", Type: TypeDirectory, Mode: fileInfo.Mode().String()}
-		dirUp, err := filepath.Abs(filepath.Join(dirPath, ".."))
-		if err != nil {
-			parentStats, _ := os.Stat(dirUp)
-			ussResponse.Items[1] = t.UssItem{Name: "..", Type: TypeDirectory, Mode: parentStats.Mode().String()}
-		} else {
-			ussResponse.Items[1] = t.UssItem{Name: "..", Type: TypeDirectory, Mode: fileInfo.Mode().String()}
-		}
-
-		for i, entry := range entries {
-			info, err := entry.Info()
-			if err != nil {
-				continue
-			}
-			ussResponse.Items[i+2] = t.UssItem{
-				Name: entry.Name(),
-				Type: fileTypeToEnum(info.Mode().Type()),
-				Mode: info.Mode().String(),
-			}
-		}
-
-		ussResponse.ReturnedRows = len(ussResponse.Items)
 	}
 
 	return ussResponse, nil
