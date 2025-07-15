@@ -15,8 +15,6 @@
 #ifndef _POSIX_SOURCE
 #define _POSIX_SOURCE
 #endif
-#include <iostream>
-#include <vector>
 #include <string>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -41,5 +39,6 @@ int zusf_chown_uss_file_or_dir(ZUSF *zusf, std::string file, std::string owner, 
 short zusf_get_id_from_user_or_group(std::string user_or_group, bool is_user);
 int zusf_chtag_uss_file_or_dir(ZUSF *zusf, std::string file, std::string tag, bool recursive);
 int zusf_get_file_ccsid(ZUSF *zusf, std::string file);
+std::string zusf_get_ccsid_display_name(int ccsid);
 
 #endif
