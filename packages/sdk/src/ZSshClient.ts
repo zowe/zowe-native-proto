@@ -50,10 +50,14 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
         super();
     }
 
+    private static defaultErrHandler(err: Error): void {
+        Logger.getAppLogger().error(err.toString());
+    }
+
     public static async create(session: SshSession, opts: ClientOptions = {}): Promise<ZSshClient> {
         Logger.getAppLogger().debug("Starting SSH client");
         const client = new ZSshClient();
-        client.mErrHandler = opts.onError ?? console.error;
+        client.mErrHandler = opts.onError ?? ZSshClient.defaultErrHandler;
         client.mResponseTimeout = opts.responseTimeout ? opts.responseTimeout * 1000 : 60e3;
         client.mSshClient = new Client();
         client.mSshStream = await new Promise((resolve, reject) => {
@@ -125,24 +129,29 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                     reject(err);
                 } else {
                     const onData = (data: Buffer) => {
-                        try {
-                            this.mServerInfo = this.onReady(stream, data.toString());
-                            resolve(stream);
-                        } catch (err) {
-                            reject(err);
-                        } finally {
+                        const removeListeners = () => {
                             stream.stderr.removeListener("data", onData);
                             stream.stdout.removeListener("data", onData);
+                        };
+                        try {
+                            this.mServerInfo = this.getServerStatus(stream, data.toString());
+                            if (this.mServerInfo) {
+                                removeListeners();
+                                resolve(stream);
+                            }
+                        } catch (err) {
+                            removeListeners();
+                            reject(err);
                         }
                     };
-                    stream.stderr.once("data", onData);
-                    stream.stdout.once("data", onData);
+                    stream.stderr.on("data", onData);
+                    stream.stdout.on("data", onData);
                 }
             });
         });
     }
 
-    private onReady(stream: ClientChannel, data: string): StatusMessage["data"] {
+    private getServerStatus(stream: ClientChannel, data: string): StatusMessage["data"] | undefined {
         Logger.getAppLogger().debug(`Received SSH data: ${data}`);
         let response: StatusMessage;
         try {
@@ -156,9 +165,14 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                     additionalDetails: data,
                 });
             }
+            if (data.includes("FOTS1681")) {
+                // non-fatal chdir error, display the error but continue waiting for ready message
+                this.mErrHandler(new Error(errMsg));
+                return;
+            }
             throw new Error(errMsg);
         }
-        if (response.status === "ready") {
+        if (response?.status === "ready") {
             stream.stderr.on("data", this.onErrData.bind(this));
             stream.stdout.on("data", this.onOutData.bind(this));
             Logger.getAppLogger().debug("Client is ready");
