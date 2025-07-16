@@ -740,7 +740,22 @@ string zusf_get_ccsid_display_name(int ccsid)
 string zusf_build_mode_string(mode_t mode)
 {
   string mode_str;
-  mode_str += (S_ISDIR(mode) ? "d" : "-");
+  
+  // Determine file type character
+  if (S_ISDIR(mode)) {
+    mode_str += "d";          // directory
+  } else if (S_ISLNK(mode)) {
+    mode_str += "l";          // symbolic link
+  } else if (S_ISFIFO(mode)) {
+    mode_str += "p";          // named pipe (FIFO)
+  } else if (S_ISSOCK(mode)) {
+    mode_str += "s";          // socket
+  } else if (S_ISCHR(mode)) {
+    mode_str += "c";          // character device
+  } else {
+    mode_str += "-";          // regular file or unknown
+  }
+  
   mode_str += (mode & S_IRUSR ? "r" : "-");
   mode_str += (mode & S_IWUSR ? "w" : "-");
   mode_str += (mode & S_IXUSR ? "x" : "-");
@@ -898,9 +913,7 @@ int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response, ListOptio
     return RTNCD_FAILURE;
   }
 
-  // TODO: Hide hidden paths by default
   // TODO(zFernand0): Add option to list full file paths
-  // TODO(zFernand0): Add option to list file tags
 
   if (S_ISREG(file_stats.st_mode))
   {
