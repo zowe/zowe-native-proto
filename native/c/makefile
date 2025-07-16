@@ -126,6 +126,10 @@ $(OUT_DIR)/zut.o: zut.cpp
 	@echo 'Building $(OUT_DIR)/zut.o'
 	$(CXX) $(DLL_CPP_FLAGS) -qlist=$*.cpp.lst -o $@ $^
 
+$(OUT_DIR)/modp_b64.o: extern/modp_b64.cc
+	@echo 'Building $(OUT_DIR)/modp_b64.o'
+	$(CXX) $(DLL_CPP_FLAGS) -qlist=$*.cc.lst -o $@ $^
+
 $(OUT_DIR_CXXLANG)/zut.o: $(OUT_DIRS) zut.cpp
 	@echo '$(OUT_DIR_CXXLANG)/zut.o'
 	$(CXXLANG) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -o $@ $^
@@ -150,13 +154,13 @@ $(OUT_DIR)/zutm31.o: $(OUT_DIR)/zutm31.s
 	@echo 'Building $(OUT_DIR)/zutm31.o'
 	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
-$(OUT_DIR)/libzut.so: $(OUT_DIR)/zut.o $(OUT_DIR)/zutm.o $(OUT_DIR)/zam.o $(OUT_DIR)/zutm31.o
+$(OUT_DIR)/libzut.so: $(OUT_DIR)/zut.o $(OUT_DIR)/zutm.o $(OUT_DIR)/zam.o $(OUT_DIR)/zutm31.o $(OUT_DIR)/modp_b64.o
 	@echo 'Building $(OUT_DIR)/libzut.so'
 	$(CXX) $(DLL_BND_FLAGS) -o $@ $^ > $*.bind.lst
 
 libzut.so: $(OUT_DIRS) $(OUT_DIR)/libzut.so
 
-$(OUT_DIR)/libzut.a: $(OUT_DIR)/zut.o $(OUT_DIR)/zutm.o $(OUT_DIR)/zam.o $(OUT_DIR)/zutm31.o
+$(OUT_DIR)/libzut.a: $(OUT_DIR)/zut.o $(OUT_DIR)/zutm.o $(OUT_DIR)/zam.o $(OUT_DIR)/zutm31.o $(OUT_DIR)/modp_b64.o
 	@echo 'Building $(OUT_DIR)/libzut.a'
 	ar -rv $@ $^
 
