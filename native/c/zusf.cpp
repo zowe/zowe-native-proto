@@ -703,8 +703,6 @@ static map<int, string> create_ccsid_display_table()
   return table;
 }
 
-static const map<int, string> CCSID_DISPLAY_TABLE = create_ccsid_display_table();
-
 /**
  * Gets the display name for a CCSID.
  * @param ccsid the CCSID value
@@ -712,13 +710,16 @@ static const map<int, string> CCSID_DISPLAY_TABLE = create_ccsid_display_table()
  */
 string zusf_get_ccsid_display_name(int ccsid)
 {
+  static const map<int, string> CCSID_DISPLAY_TABLE = create_ccsid_display_table();
+
   // Special case for invalid/unset CCSID
   if (ccsid <= 0)
   {
     return "untagged";
   }
 
-  // O(log n) lookup in map
+  // O(log n) lookup in map - ideally we could use an unordered_map (hash table) for constant-time access,
+  // but its still in the TR1 namespace for xlc ._.
   const auto it = CCSID_DISPLAY_TABLE.find(ccsid);
   if (it != CCSID_DISPLAY_TABLE.end())
   {
