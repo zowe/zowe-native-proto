@@ -75,8 +75,7 @@ int zds_read_from_dd(ZDS *zds, string ddname, string &response)
   ifstream in(ddname.c_str());
   if (!in.is_open())
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open file '%s'", ddname.c_str());
-    return RTNCD_FAILURE;
+    return zut_set_file_error(zds->diag, "open", ddname);
   }
 
   int index = 0;
@@ -93,30 +92,18 @@ int zds_read_from_dd(ZDS *zds, string ddname, string &response)
   }
   in.close();
 
-  const size_t size = response.size() + 1;
-  string bytes;
-  bytes.reserve(size);
-  memcpy((char *)bytes.data(), response.c_str(), size);
+  const size_t size = response.size();
 
-  if (size > 0 && strlen(zds->encoding_opts.codepage) > 0)
+  if (size > 0)
   {
-    string temp = response;
-    try
+    int rc = zut_convert_if_needed(response, &zds->encoding_opts, zds->diag);
+    if (rc != RTNCD_SUCCESS)
     {
-      const auto bytes_with_encoding = zut_encode(temp, string(zds->encoding_opts.codepage), "UTF-8", zds->diag);
-      temp = bytes_with_encoding;
-    }
-    catch (exception &e)
-    {
-      // TODO: error handling
-    }
-    if (!temp.empty())
-    {
-      response = temp;
+      return rc;
     }
   }
 
-  return 0;
+  return RTNCD_SUCCESS;
 }
 
 int zds_read_from_dsn(ZDS *zds, string dsn, string &response)
@@ -127,41 +114,22 @@ int zds_read_from_dsn(ZDS *zds, string dsn, string &response)
   FILE *fp = fopen(dsname.c_str(), fopen_flags.c_str());
   if (!fp)
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open file '%s'", dsname.c_str());
-    return RTNCD_FAILURE;
+    return zut_set_file_error(zds->diag, "open", dsname);
   }
 
-  size_t bytes_read = 0;
-  size_t total_size = 0;
-  char buffer[4096] = {0};
-  while ((bytes_read = fread(buffer, 1, sizeof(buffer), fp)) > 0)
-  {
-    total_size += bytes_read;
-    response.append(buffer, bytes_read);
-  }
+  size_t total_size = zut_read_file_binary(fp, response);
   fclose(fp);
 
-  const auto encodingProvided = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
-
-  if (total_size > 0 && encodingProvided)
+  if (total_size > 0)
   {
-    string temp = response;
-    try
+    int rc = zut_convert_if_needed(response, &zds->encoding_opts, zds->diag);
+    if (rc != RTNCD_SUCCESS)
     {
-      const auto bytes_with_encoding = zut_encode(temp, string(zds->encoding_opts.codepage), "UTF-8", zds->diag);
-      temp = bytes_with_encoding;
-    }
-    catch (exception &e)
-    {
-      // TODO: error handling
-    }
-    if (!temp.empty())
-    {
-      response = temp;
+      return rc;
     }
   }
 
-  return 0;
+  return RTNCD_SUCCESS;
 }
 
 int zds_write_to_dd(ZDS *zds, string ddname, string data)
