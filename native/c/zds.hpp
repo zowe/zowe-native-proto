@@ -55,7 +55,7 @@ typedef struct
   std::string vol;       // Volume Serial
 } DS_ATTRIBUTES;
 
-std::string zds_get_recfm(const fldata_t& file_info);
+std::string zds_get_recfm(const fldata_t &file_info);
 
 /**
  * @brief Read data from a z/OS data set
@@ -158,7 +158,14 @@ int zds_delete_dsn(ZDS *zds, std::string dsn);
  */
 int zds_list_members(ZDS *zds, std::string dsn, std::vector<ZDSMem> &members);
 
-int zds_list_data_sets(ZDS *zds, std::string dsn, std::vector<ZDSEntry> &attributes);
+#ifdef SWIG
+extern "C" 
+{
+#endif
+  int zds_list_data_sets(ZDS *zds, std::string dsn, std::vector<ZDSEntry> &attributes);
+#ifdef SWIG
+}
+#endif
 
 int zdsReadDynalloc(std::string, std::string, std::string, std::string &); // NOTE(Kelosky): testing only
 

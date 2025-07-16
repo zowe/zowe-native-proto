@@ -1472,10 +1472,10 @@ int handle_tool_search(const ParseResult &result)
 
   // Perform search
   rc = zut_search("parms are unused for now but can be passed to super c, e.g. ANYC (any case)");
-  if (rc != RTNCD_SUCCESS ||
-      rc != ZUT_RTNCD_SEARCH_SUCCESS ||
-      rc != RTNCD_WARNING ||
-      rc != ZUT_RTNCD_SEARCH_WARNING)
+  if (RTNCD_SUCCESS != rc &&
+      RTNCD_WARNING != rc &&
+      ZUT_RTNCD_SEARCH_SUCCESS != rc &&
+      ZUT_RTNCD_SEARCH_WARNING != rc)
   {
     cerr << "Error: could error invoking ISRSUPC rc: '" << rc << "'" << endl;
   }
@@ -1932,7 +1932,7 @@ int handle_uss_delete(const ParseResult &result)
   ZUSF zusf = {0};
   const auto rc = zusf_delete_uss_item(&zusf, file_path, recursive);
 
-  if (rc != 0)
+  if (0 != rc)
   {
     cerr << "Failed to delete USS item " << file_path << ":\n " << zusf.diag.e_msg << endl;
     return RTNCD_FAILURE;
@@ -1994,7 +1994,7 @@ int handle_uss_chown(const ParseResult &result)
   ZUSF zusf = {0};
 
   const auto rc = zusf_chown_uss_file_or_dir(&zusf, path, owner, recursive);
-  if (rc != 0)
+  if (0 != rc)
   {
     cerr << "Error: could not chown USS path: '" << path << "' rc: '" << rc << "'" << endl;
     cerr << "  Details:\n"
@@ -2016,7 +2016,7 @@ int handle_uss_chtag(const ParseResult &result)
   ZUSF zusf = {0};
   const auto rc = zusf_chtag_uss_file_or_dir(&zusf, path, tag, recursive);
 
-  if (rc != 0)
+  if (0 != rc)
   {
     cerr << "Error: could not chtag USS path: '" << path << "' rc: '" << rc << "'" << endl;
     cerr << "  Details:\n"
