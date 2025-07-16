@@ -120,6 +120,10 @@ export interface UssItem {
    */
   itemType: t.UssItemType;
   /**
+   * Date of the item
+   */
+  date: string;
+  /**
    * The permission string of the item
    */
   mode: string;

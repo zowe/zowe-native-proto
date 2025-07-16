@@ -59,7 +59,7 @@ func HandleListFilesRequest(conn *utils.StdioConn, params []byte) (result any, e
 		return nil, err
 	}
 
-	out, err := conn.ExecCmd([]string{"uss", "list", request.Path, "-al"})
+	out, err := conn.ExecCmd([]string{"uss", "list", request.Path, "-al", "--rfc"})
 	if err != nil {
 		return nil, fmt.Errorf("Error executing command: %v", err)
 	}
@@ -80,7 +80,8 @@ func HandleListFilesRequest(conn *utils.StdioConn, params []byte) (result any, e
 			Group: fields[3],
 			Size:  size,
 			Tag:   fields[5],
-			Name:  fields[6],
+			Date:  fields[6],
+			Name:  fields[7],
 		}
 	}
 

@@ -99,6 +99,8 @@ type UssItem struct {
 	Tag string `json:"filetag,omitempty"`
 	// Whether the item is a directory
 	Type uint32 `json:"itemType" tstype:"t.UssItemType"`
+	// Date of the item
+	Date string `json:"date"`
 	// The permission string of the item
 	Mode string `json:"mode"`
 }
