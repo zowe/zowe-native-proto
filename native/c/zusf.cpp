@@ -48,24 +48,41 @@
 using namespace std;
 
 /**
- * Formats a file timestamp in ls-style format (e.g., "May 22 17:23").
+ * Formats a file timestamp.
  *
  * @param mtime the modification time from stat
+ * @param use_csv_format whether to use CSV format (ISO time in UTC) or ls-style format (local time)
  * @return formatted time string
  */
-string zusf_format_ls_time(time_t mtime)
+string zusf_format_ls_time(time_t mtime, bool use_csv_format)
 {
   char time_buf[32] = {0};
-  struct tm *tm_info = localtime(&mtime);
-
-  if (tm_info != nullptr)
+  
+  if (use_csv_format)
   {
-    // Format: "MMM DD HH:MM" (e.g., "May 22 17:23")
-    strftime(time_buf, sizeof(time_buf), "%b %e %H:%M", tm_info);
+    // CSV format: ISO time in UTC (2024-01-31T05:30:00)
+    struct tm *tm_info = gmtime(&mtime);
+    if (tm_info != nullptr)
+    {
+      strftime(time_buf, sizeof(time_buf), "%Y-%m-%dT%H:%M:%S", tm_info);
+    }
+    else
+    {
+      strcpy(time_buf, "1970-01-01T00:00:00"); // Fallback if time conversion fails
+    }
   }
   else
   {
-    strcpy(time_buf, "            "); // Fallback if time conversion fails
+    // ls-style format: local time (May 22 17:23)
+    struct tm *tm_info = localtime(&mtime);
+    if (tm_info != nullptr)
+    {
+      strftime(time_buf, sizeof(time_buf), "%b %e %H:%M", tm_info);
+    }
+    else
+    {
+      strcpy(time_buf, "            "); // Fallback if time conversion fails
+    }
   }
 
   return string(time_buf);
@@ -858,12 +875,18 @@ string zusf_format_file_entry(ZUSF *zusf, const struct stat &file_stats, const s
   const string mode = zusf_build_mode_string(file_stats.st_mode);
   const auto ccsid = zusf_get_ccsid_display_name(file_stats.st_tag.ft_ccsid);
   const auto tag_flag = (file_stats.st_tag.ft_txtflag) ? "T=on" : "T=off";
-  const string time_str = zusf_format_ls_time(file_stats.st_mtime);
+  const string time_str = zusf_format_ls_time(file_stats.st_mtime, use_csv_format);
 
   if (use_csv_format)
   {
     vector<string> fields;
+    
+    // Return both octal and symbolic formats for zowed
+    mode_t perms = file_stats.st_mode & 0777;
+    char octal_mode[8];
+    sprintf(octal_mode, "%o", perms);
     fields.push_back(mode);
+    fields.push_back(string(octal_mode));
     fields.push_back(zut_int_to_string(file_stats.st_nlink));
     fields.push_back(zusf_get_owner_from_uid(file_stats.st_uid));
     fields.push_back(zusf_get_group_from_gid(file_stats.st_gid));
@@ -875,7 +898,7 @@ string zusf_format_file_entry(ZUSF *zusf, const struct stat &file_stats, const s
   }
   else
   {
-    // ls-style format: "- untagged    T=off -rw-r--r--   1 TRAE     GRPOMVS  2772036 May 22 17:23 hw.txt"
+    // ls-style format: "- untagged    T=off -rw-r--r--   1 TRAE     XMPLGRP  2772036 May 22 17:23 hw.txt"
     stringstream ss;
     const auto tagged = ccsid != "untagged";
     const auto tag_prefix = tagged ? "t" : "-";
