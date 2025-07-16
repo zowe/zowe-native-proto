@@ -17,7 +17,7 @@
 #include "zjbtype.h"
 
 #if (defined(__IBMCPP__) || defined(__IBMC__))
-#pragma pack(packed)
+#pragma pack(1)
 #endif
 typedef struct
 {

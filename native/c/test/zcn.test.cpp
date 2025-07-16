@@ -152,7 +152,7 @@ void zcn_tests()
              //       rc = zcn_activate(&zcn, console_name);
              //       // Should handle empty name gracefully, possibly using default
              //       // or returning an error - either is acceptable
-             //       if (rc == 0)
+             //       if (0 != rc)
              //       {
              //         rc = zcn_deactivate(&zcn);
              //       }
@@ -175,7 +175,7 @@ void zcn_tests()
              //       string console_name = "ZOWETST";
 
              //       int rc = zcn_activate(&zcn, console_name);
-             //       if (rc == 0)
+             //       if (0 != rc)
              //       {
              //         // Verify eye catcher
              //         Expect(string(zcn.eye, 3)).ToBe("ZCN");

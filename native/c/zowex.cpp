@@ -1476,10 +1476,10 @@ int handle_tool_search(const ParseResult &result)
 
   // Perform search
   rc = zut_search("parms are unused for now but can be passed to super c, e.g. ANYC (any case)");
-  if (rc != RTNCD_SUCCESS ||
-      rc != ZUT_RTNCD_SEARCH_SUCCESS ||
-      rc != RTNCD_WARNING ||
-      rc != ZUT_RTNCD_SEARCH_WARNING)
+  if (RTNCD_SUCCESS != rc &&
+      RTNCD_WARNING != rc &&
+      ZUT_RTNCD_SEARCH_SUCCESS != rc &&
+      ZUT_RTNCD_SEARCH_WARNING != rc)
   {
     cerr << "Error: could error invoking ISRSUPC rc: '" << rc << "'" << endl;
   }
@@ -1674,12 +1674,34 @@ int handle_uss_create_file(const ParseResult &result)
 {
   int rc = 0;
   string file_path = result.find_pos_arg_string("file-path");
-  string mode = result.find_kw_arg_string("mode");
-  if (mode.empty())
-    mode = "644";
+
+  int mode = result.find_kw_arg_int("mode");
+  if (result.find_kw_arg_string("mode").empty())
+  {
+    mode = 644;
+  }
+  else if (mode == 0 && result.find_kw_arg_string("mode") != "0")
+  {
+    cerr << "Error: invalid mode provided.\nExamples of valid modes: 777, 0644" << endl;
+    return RTNCD_FAILURE;
+  }
+
+  // Convert mode from decimal to octal
+  mode_t cf_mode = 0;
+  int temp_mode = mode;
+  int multiplier = 1;
+
+  // Convert decimal representation of octal to actual octal value
+  // e.g. user inputs 777 -> converted to correct value for chmod
+  while (temp_mode > 0)
+  {
+    cf_mode += (temp_mode % 10) * multiplier;
+    temp_mode /= 10;
+    multiplier *= 8;
+  }
 
   ZUSF zusf = {0};
-  rc = zusf_create_uss_file_or_dir(&zusf, file_path, mode, false);
+  rc = zusf_create_uss_file_or_dir(&zusf, file_path, cf_mode, false);
   if (0 != rc)
   {
     cerr << "Error: could not create USS file: '" << file_path << "' rc: '" << rc << "'" << endl;
@@ -1697,12 +1719,34 @@ int handle_uss_create_dir(const ParseResult &result)
 {
   int rc = 0;
   string file_path = result.find_pos_arg_string("file-path");
-  string mode = result.find_kw_arg_string("mode");
-  if (mode.empty())
-    mode = "755";
+
+  int mode = result.find_kw_arg_int("mode");
+  if (result.find_kw_arg_string("mode").empty()) 
+  {
+    mode = 755;
+  } 
+  else if (mode == 0 && result.find_kw_arg_string("mode") != "0")
+  {
+    cerr << "Error: invalid mode provided.\nExamples of valid modes: 777, 0644" << endl;
+    return RTNCD_FAILURE;
+  }
+
+  // Convert mode from decimal to octal
+  mode_t cf_mode = 0;
+  int temp_mode = mode;
+  int multiplier = 1;
+
+  // Convert decimal representation of octal to actual octal value
+  // e.g. user inputs 777 -> converted to correct value for chmod
+  while (temp_mode > 0)
+  {
+    cf_mode += (temp_mode % 10) * multiplier;
+    temp_mode /= 10;
+    multiplier *= 8;
+  }
 
   ZUSF zusf = {0};
-  rc = zusf_create_uss_file_or_dir(&zusf, file_path, mode, true);
+  rc = zusf_create_uss_file_or_dir(&zusf, file_path, cf_mode, true);
   if (0 != rc)
   {
     cerr << "Error: could not create USS directory: '" << file_path << "' rc: '" << rc << "'" << endl;
@@ -1895,7 +1939,7 @@ int handle_uss_delete(const ParseResult &result)
   ZUSF zusf = {0};
   const auto rc = zusf_delete_uss_item(&zusf, file_path, recursive);
 
-  if (rc != 0)
+  if (0 != rc)
   {
     cerr << "Failed to delete USS item " << file_path << ":\n " << zusf.diag.e_msg << endl;
     return RTNCD_FAILURE;
@@ -1957,7 +2001,7 @@ int handle_uss_chown(const ParseResult &result)
   ZUSF zusf = {0};
 
   const auto rc = zusf_chown_uss_file_or_dir(&zusf, path, owner, recursive);
-  if (rc != 0)
+  if (0 != rc)
   {
     cerr << "Error: could not chown USS path: '" << path << "' rc: '" << rc << "'" << endl;
     cerr << "  Details:\n"
@@ -1979,7 +2023,7 @@ int handle_uss_chtag(const ParseResult &result)
   ZUSF zusf = {0};
   const auto rc = zusf_chtag_uss_file_or_dir(&zusf, path, tag, recursive);
 
-  if (rc != 0)
+  if (0 != rc)
   {
     cerr << "Error: could not chtag USS path: '" << path << "' rc: '" << rc << "'" << endl;
     cerr << "  Details:\n"
