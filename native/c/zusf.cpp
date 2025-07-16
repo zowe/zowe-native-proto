@@ -56,7 +56,7 @@ using namespace std;
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zusf_create_uss_file_or_dir(ZUSF *zusf, string file, string mode, bool createDir)
+int zusf_create_uss_file_or_dir(ZUSF *zusf, string file, mode_t mode, bool createDir)
 {
   struct stat file_stats;
   if (stat(file.c_str(), &file_stats) != -1)
@@ -105,7 +105,7 @@ int zusf_create_uss_file_or_dir(ZUSF *zusf, string file, string mode, bool creat
     if (out.is_open())
     {
       out.close();
-      chmod(file.c_str(), strtol(mode.c_str(), nullptr, 8));
+      chmod(file.c_str(), mode);
       return RTNCD_SUCCESS;
     }
   }
