@@ -357,7 +357,7 @@ int zjb_submit_dsn(ZJB *zjb, string dsn, string &jobid)
   ZDS zds = {0};
   string contents;
   const auto rc = zds_read_from_dsn(&zds, dsn, contents);
-  if (rc != 0)
+  if (0 != rc)
   {
     memcpy(&zjb->diag, &zds.diag, sizeof(ZDIAG));
     return rc;
@@ -403,7 +403,7 @@ int zjb_submit(ZJB *zjb, string contents, string &jobid)
   }
 
   rc = zds_write_to_dd(&zds, ddname, contents);
-  if (rc != 0)
+  if (0 != rc)
   {
     memcpy(&zjb->diag, &zds.diag, sizeof(ZDIAG));
     dynfree(&ip);
