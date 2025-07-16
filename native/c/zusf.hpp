@@ -30,7 +30,8 @@ typedef struct _ListOptions
 } ListOptions;
 
 int zusf_create_uss_file_or_dir(ZUSF *zusf, std::string file, mode_t mode, bool createDir);
-int zusf_list_uss_file_path(ZUSF *zusf, std::string file, std::string &response, ListOptions options = ListOptions{});
+std::string zusf_format_file_entry(ZUSF *zusf, const struct stat &file_stats, const std::string &file_path, const std::string &display_name, ListOptions options, bool use_csv_format);
+int zusf_list_uss_file_path(ZUSF *zusf, std::string file, std::string &response, ListOptions options = ListOptions{}, bool use_csv_format = false);
 int zusf_read_from_uss_file(ZUSF *zusf, std::string file, std::string &response);
 int zusf_read_from_uss_file_streamed(ZUSF *zusf, std::string file, std::string pipe);
 int zusf_write_to_uss_file(ZUSF *zusf, std::string file, std::string &data);
@@ -44,5 +45,6 @@ int zusf_get_file_ccsid(ZUSF *zusf, std::string file);
 std::string zusf_get_ccsid_display_name(int ccsid);
 const char *zusf_get_owner_from_uid(uid_t uid);
 const char *zusf_get_group_from_gid(gid_t gid);
+std::string zusf_format_ls_time(time_t mtime);
 
 #endif

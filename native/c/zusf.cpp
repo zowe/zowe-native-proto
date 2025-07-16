@@ -41,8 +41,61 @@
 #define _XPLATFORM_SOURCE
 #endif
 #include <sys/xattr.h>
+#include <time.h>
+#include <iomanip>
+#include <sstream>
 
 using namespace std;
+
+/**
+ * Formats a file timestamp in ls-style format (e.g., "May 22 17:23").
+ *
+ * @param mtime the modification time from stat
+ * @return formatted time string
+ */
+string zusf_format_ls_time(time_t mtime)
+{
+  char time_buf[32] = {0};
+  struct tm *tm_info = localtime(&mtime);
+
+  if (tm_info != nullptr)
+  {
+    // Format: "MMM DD HH:MM" (e.g., "May 22 17:23")
+    strftime(time_buf, sizeof(time_buf), "%b %e %H:%M", tm_info);
+  }
+  else
+  {
+    strcpy(time_buf, "            "); // Fallback if time conversion fails
+  }
+
+  return string(time_buf);
+}
+
+/**
+ * Gets the CCSID of a USS file.
+ *
+ * @param zusf pointer to a ZUSF object
+ * @param file name of the USS file
+ *
+ * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
+ */
+int zusf_get_file_ccsid(ZUSF *zusf, string file)
+{
+  struct stat file_stats;
+  if (stat(file.c_str(), &file_stats) == -1)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Path '%s' does not exist", file.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  if (S_ISDIR(file_stats.st_mode))
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Path '%s' is a directory", file.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  return file_stats.st_tag.ft_ccsid;
+}
 
 // CCSID -> display name conversion table (based on output from `iconv -l`)
 static map<int, string> create_ccsid_display_table()
@@ -768,15 +821,73 @@ int zusf_create_uss_file_or_dir(ZUSF *zusf, string file, mode_t mode, bool creat
 }
 
 /**
+ * Formats file information for listing output.
+ *
+ * @param zusf pointer to a ZUSF object
+ * @param file_stats stat structure for the file
+ * @param file_path full path to the file (for CCSID lookup)
+ * @param display_name name to display in the listing
+ * @param options listing options (all_files, long_format)
+ * @param use_csv_format whether to use CSV format or ls-style format
+ *
+ * @return formatted string for the file entry
+ */
+string zusf_format_file_entry(ZUSF *zusf, const struct stat &file_stats, const string &file_path, const string &display_name, ListOptions options, bool use_csv_format)
+{
+  if (!options.long_format)
+  {
+    return display_name + "\n";
+  }
+
+  const string mode = zusf_build_mode_string(file_stats.st_mode);
+  const auto ccsid = zusf_get_ccsid_display_name(file_stats.st_tag.ft_ccsid);
+  const auto tag_flag = (file_stats.st_tag.ft_txtflag) ? "T=on" : "T=off";
+  const string time_str = zusf_format_ls_time(file_stats.st_mtime);
+
+  if (use_csv_format)
+  {
+    vector<string> fields;
+    fields.push_back(mode);
+    fields.push_back(zut_int_to_string(file_stats.st_nlink));
+    fields.push_back(zusf_get_owner_from_uid(file_stats.st_uid));
+    fields.push_back(zusf_get_group_from_gid(file_stats.st_gid));
+    fields.push_back(zut_int_to_string(file_stats.st_size));
+    fields.push_back(ccsid);
+    fields.push_back(time_str);
+    fields.push_back(display_name);
+    return zut_format_as_csv(fields) + "\n";
+  }
+  else
+  {
+    // ls-style format: "- untagged    T=off -rw-r--r--   1 TRAE     GRPOMVS  2772036 May 22 17:23 hw.txt"
+    stringstream ss;
+    const auto tagged = ccsid != "untagged";
+    const auto tag_prefix = tagged ? "t" : "-";
+    ss << tag_prefix << " " << left << setw(12) << ccsid
+       << " " << setw(5) << tag_flag
+       << " " << mode
+       << " " << right << setw(3) << file_stats.st_nlink
+       << " " << left << setw(8) << zusf_get_owner_from_uid(file_stats.st_uid)
+       << " " << setw(8) << zusf_get_group_from_gid(file_stats.st_gid)
+       << " " << right << setw(8) << file_stats.st_size
+       << " " << time_str
+       << " " << display_name << "\n";
+    return ss.str();
+  }
+}
+
+/**
  * Lists the USS file path.
  *
  * @param zusf pointer to a ZUSF object
  * @param file name of the USS file or directory
  * @param response reference to a string where the read data will be stored
+ * @param options listing options (all_files, long_format)
+ * @param use_csv_format whether to use CSV format or ls-style format
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response, ListOptions options)
+int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response, ListOptions options, bool use_csv_format)
 {
   // TODO(zFernand0): Handle `*` and other bash-expansion rules
   struct stat file_stats;
@@ -793,20 +904,7 @@ int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response, ListOptio
   if (S_ISREG(file_stats.st_mode))
   {
     const auto file_name = file.substr(file.find_last_of("/") + 1);
-    vector<string> fields;
-    if (options.long_format)
-    {
-      const string mode = zusf_build_mode_string(file_stats.st_mode);
-      const auto ccsid = zusf_get_ccsid_display_name(zusf_get_file_ccsid(zusf, file));
-      fields.push_back(mode);
-      fields.push_back(zut_int_to_string(file_stats.st_nlink));
-      fields.push_back(zusf_get_owner_from_uid(file_stats.st_uid));
-      fields.push_back(zusf_get_group_from_gid(file_stats.st_gid));
-      fields.push_back(zut_int_to_string(file_stats.st_size));
-      fields.push_back(ccsid);
-      fields.push_back(file_name);
-    }
-    response = zut_format_as_csv(fields) + "\n";
+    response = zusf_format_file_entry(zusf, file_stats, file, file_name, options, use_csv_format);
     return RTNCD_SUCCESS;
   }
 
@@ -823,39 +921,38 @@ int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response, ListOptio
     return RTNCD_FAILURE;
   }
 
+  // Collect all directory entries first
+  vector<string> entry_names;
   struct dirent *entry;
-  response.clear();
   while ((entry = readdir(dir)) != nullptr)
   {
     if ((strcmp(entry->d_name, ".") != 0) && (strcmp(entry->d_name, "..") != 0))
     {
-      string child_path = file[file.length() - 1] == '/' ? file + string(entry->d_name) : file + string("/") + string(entry->d_name);
-      struct stat child_stats;
-      stat(child_path.c_str(), &child_stats);
-
-      vector<string> fields;
       string name = entry->d_name;
+      // Skip hidden files if not requested
       if (name.at(0) == '.' && !options.all_files)
       {
         continue;
       }
-
-      if (options.long_format)
-      {
-        const string mode = zusf_build_mode_string(child_stats.st_mode);
-        const auto ccsid = zusf_get_ccsid_display_name(child_stats.st_tag.ft_ccsid);
-        fields.push_back(mode);
-        fields.push_back(zut_int_to_string(child_stats.st_nlink));
-        fields.push_back(zusf_get_owner_from_uid(child_stats.st_uid));
-        fields.push_back(zusf_get_group_from_gid(child_stats.st_gid));
-        fields.push_back(zut_int_to_string(child_stats.st_size));
-        fields.push_back(ccsid);
-      }
-      fields.push_back(name);
-      response += zut_format_as_csv(fields) + "\n";
+      entry_names.push_back(name);
     }
   }
   closedir(dir);
+
+  // Sort entries alphabetically
+  sort(entry_names.begin(), entry_names.end());
+
+  // Process sorted entries
+  response.clear();
+  for (auto i = 0u; i < entry_names.size(); i++)
+  {
+    const auto name = entry_names.at(i);
+    string child_path = file[file.length() - 1] == '/' ? file + name : file + "/" + name;
+    struct stat child_stats;
+    stat(child_path.c_str(), &child_stats);
+
+    response += zusf_format_file_entry(zusf, child_stats, child_path, name, options, use_csv_format);
+  }
 
   return RTNCD_SUCCESS;
 }
@@ -1470,30 +1567,4 @@ int zusf_chtag_uss_file_or_dir(ZUSF *zusf, string file, string tag, bool recursi
     }
   }
   return 0;
-}
-
-/**
- * Gets the CCSID of a USS file.
- *
- * @param zusf pointer to a ZUSF object
- * @param file name of the USS file
- *
- * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
- */
-int zusf_get_file_ccsid(ZUSF *zusf, string file)
-{
-  struct stat file_stats;
-  if (stat(file.c_str(), &file_stats) == -1)
-  {
-    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Path '%s' does not exist", file.c_str());
-    return RTNCD_FAILURE;
-  }
-
-  if (S_ISDIR(file_stats.st_mode))
-  {
-    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Path '%s' is a directory", file.c_str());
-    return RTNCD_FAILURE;
-  }
-
-  return file_stats.st_tag.ft_ccsid;
 }
