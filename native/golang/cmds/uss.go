@@ -52,6 +52,71 @@ func fileTypeToEnum(typ os.FileMode) uint32 {
 	}
 }
 
+// parseUnixMode converts a UNIX mode string (e.g., "-rwxrwxrwx") to os.FileMode
+func parseUnixMode(modeStr string) os.FileMode {
+	if len(modeStr) < 10 {
+		return 0
+	}
+
+	var mode os.FileMode
+
+	switch modeStr[0] {
+	case 'd':
+		mode |= os.ModeDir
+	case 'l':
+		mode |= os.ModeSymlink
+	case 'p':
+		mode |= os.ModeNamedPipe
+	case 's':
+		mode |= os.ModeSocket
+	case 'c':
+		mode |= os.ModeCharDevice
+	case 'b':
+		mode |= os.ModeDevice
+		// '-' for regular file, no special mode needed
+	}
+
+	// Parse permission bits from characters 1-9
+	perms := modeStr[1:10]
+	var perm os.FileMode
+
+	// Owner permissions (characters 1-3)
+	if perms[0] == 'r' {
+		perm |= 0400
+	}
+	if perms[1] == 'w' {
+		perm |= 0200
+	}
+	if perms[2] == 'x' {
+		perm |= 0100
+	}
+
+	// Group permissions (characters 4-6)
+	if perms[3] == 'r' {
+		perm |= 0040
+	}
+	if perms[4] == 'w' {
+		perm |= 0020
+	}
+	if perms[5] == 'x' {
+		perm |= 0010
+	}
+
+	// Other permissions (characters 7-9)
+	if perms[6] == 'r' {
+		perm |= 0004
+	}
+	if perms[7] == 'w' {
+		perm |= 0002
+	}
+	if perms[8] == 'x' {
+		perm |= 0001
+	}
+
+	mode |= perm
+	return mode
+}
+
 // HandleListFilesRequest handles a ListFilesRequest by invoking built-in functions from Go's `os` module.
 func HandleListFilesRequest(conn *utils.StdioConn, params []byte) (result any, e error) {
 	request, err := utils.ParseCommandRequest[uss.ListFilesRequest](params)
@@ -73,6 +138,7 @@ func HandleListFilesRequest(conn *utils.StdioConn, params []byte) (result any, e
 		fields := strings.Split(line, ",")
 		links, _ := strconv.Atoi(fields[1])
 		size, _ := strconv.Atoi(fields[4])
+		fileMode := parseUnixMode(fields[0])
 		ussResponse.Items[i] = t.UssItem{
 			Mode:  fields[0],
 			Links: links,
@@ -82,6 +148,7 @@ func HandleListFilesRequest(conn *utils.StdioConn, params []byte) (result any, e
 			Tag:   fields[5],
 			Date:  fields[6],
 			Name:  fields[7],
+			Type:  fileTypeToEnum(fileMode),
 		}
 	}
 
