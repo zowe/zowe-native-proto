@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef BASE64_EBCDIC_FIXED_H
-#define BASE64_EBCDIC_FIXED_H
+#ifndef ZBASE64_H
+#define ZBASE64_H
 
 #include <string>
 #include <vector>
@@ -29,73 +29,6 @@ static const char encode_table_ascii[64] = {
     'o', 'p', 'q', 'r', 's', 't', 'u', 'v',
     'w', 'x', 'y', 'z', '0', '1', '2', '3',
     '4', '5', '6', '7', '8', '9', '+', '/'};
-
-// Create decode table by building it programmatically
-static unsigned char create_ebcdic_decode_table()
-{
-  static unsigned char table[256];
-  static bool initialized = false;
-
-  if (!initialized)
-  {
-    // Initialize all to invalid
-    for (int i = 0; i < 256; ++i)
-    {
-      table[i] = 255;
-    }
-
-    // A-I: EBCDIC 193-201 -> Base64 0-8
-    for (int i = 0; i < 9; ++i)
-    {
-      table[193 + i] = i;
-    }
-
-    // J-R: EBCDIC 209-217 -> Base64 9-17
-    for (int i = 0; i < 9; ++i)
-    {
-      table[209 + i] = 9 + i;
-    }
-
-    // S-Z: EBCDIC 226-233 -> Base64 18-25
-    for (int i = 0; i < 8; ++i)
-    {
-      table[226 + i] = 18 + i;
-    }
-
-    // a-i: EBCDIC 129-137 -> Base64 26-34
-    for (int i = 0; i < 9; ++i)
-    {
-      table[129 + i] = 26 + i;
-    }
-
-    // j-r: EBCDIC 145-153 -> Base64 35-43
-    for (int i = 0; i < 9; ++i)
-    {
-      table[145 + i] = 35 + i;
-    }
-
-    // s-z: EBCDIC 162-169 -> Base64 44-51
-    for (int i = 0; i < 8; ++i)
-    {
-      table[162 + i] = 44 + i;
-    }
-
-    // 0-9: EBCDIC 240-249 -> Base64 52-61
-    for (int i = 0; i < 10; ++i)
-    {
-      table[240 + i] = 52 + i;
-    }
-
-    // Special characters
-    table[78] = 62;   // + -> 62
-    table[97] = 63;   // / -> 63 (Note: this conflicts with 'a' in some EBCDIC variants)
-    table[126] = 254; // = -> padding marker
-
-    initialized = true;
-  }
-
-  return 0; // dummy return
-}
 
 // Get the decode table
 static const unsigned char *get_ebcdic_decode_table()
@@ -334,4 +267,4 @@ inline std::string decode(const std::string &input)
 
 } // namespace zbase64
 
-#endif // BASE64_EBCDIC_FIXED_H
+#endif // ZBASE64_H
