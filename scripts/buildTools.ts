@@ -25,7 +25,7 @@ interface IConfig {
 
 const localDeployDir = "./../native";
 const args = process.argv.slice(2);
-let deployDirs: { root: string; cDir: string; cTestDir: string; goDir: string };
+let deployDirs: { root: string; cDir: string; cTestDir: string; goDir: string; pythonDir: string };
 
 const asciiToEbcdicMap =
     // biome-ignore format: the array should not be formatted
@@ -431,6 +431,13 @@ async function build(connection: Client, goBuildEnv?: string) {
     console.log("Build complete!");
 }
 
+async function buildPython(connection: Client) {
+    console.log("Building native/python ...");
+    const response = await runCommandInShell(connection, `cd ${deployDirs.pythonDir} && make\n`);
+    DEBUG_MODE() && console.log(response);
+    console.log("Build complete!");
+}
+
 async function test(connection: Client) {
     console.log("Testing native/c ...");
     const response = await runCommandInShell(
@@ -708,6 +715,7 @@ async function main() {
         cDir: `${config.deployDir}/c`,
         cTestDir: `${config.deployDir}/c/test`,
         goDir: `${config.deployDir}/golang`,
+        pythonDir: `${config.deployDir}/python`,
     };
     const sshClient = await buildSshClient(config.sshProfile as IProfile);
 
@@ -721,6 +729,9 @@ async function main() {
                 break;
             case "build":
                 await build(sshClient, config.goBuildEnv);
+                break;
+            case "build:python":
+                await buildPython(sshClient);
                 break;
             case "clean":
                 await clean(sshClient);
