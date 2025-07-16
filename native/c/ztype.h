@@ -88,6 +88,7 @@ typedef struct _ZEncode
 {
   char codepage[16];
   int64_t data_type;
+  char target_encoding[16];
 } ZEncode;
 
 #define FIFO_CHUNK_SIZE 32768

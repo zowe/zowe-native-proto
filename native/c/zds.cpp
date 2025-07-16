@@ -151,14 +151,15 @@ int zds_write_to_dd(ZDS *zds, string ddname, string data)
 
 int zds_write_to_dsn(ZDS *zds, string dsn, string &data)
 {
-  const auto hasEncoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
+  const auto has_encoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
   const auto codepage = string(zds->encoding_opts.codepage);
 
+  // Validate etag if provided
   if (strlen(zds->etag) > 0)
   {
     ZDS read_ds = {0};
     string current_contents = "";
-    if (hasEncoding)
+    if (has_encoding)
     {
       memcpy(&read_ds.encoding_opts, &zds->encoding_opts, sizeof(ZEncode));
     }
@@ -169,19 +170,9 @@ int zds_write_to_dsn(ZDS *zds, string dsn, string &data)
       return RTNCD_FAILURE;
     }
 
-    const auto given_etag = strtoul(zds->etag, nullptr, 16);
-    const auto new_etag = zut_calc_adler32_checksum(current_contents);
-
-    if (given_etag != new_etag)
+    const auto validation_rc = zut_validate_etag_content(zds->etag, current_contents, zds->diag);
+    if (validation_rc != RTNCD_SUCCESS)
     {
-      ostringstream ss;
-      ss << "Etag mismatch: expected ";
-      ss << hex << given_etag << dec;
-      ss << ", actual ";
-      ss << hex << new_etag << dec;
-
-      const auto error_msg = ss.str();
-      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "%s", error_msg.c_str());
       return RTNCD_FAILURE;
     }
   }
@@ -197,29 +188,24 @@ int zds_write_to_dsn(ZDS *zds, string dsn, string &data)
   }
 
   string temp = data;
-  if (!data.empty())
+  if (!data.empty() && has_encoding)
   {
-    if (hasEncoding)
+    const auto conversion_rc = zut_convert_data_for_write(temp, "UTF-8", codepage, zds->diag);
+    if (conversion_rc != RTNCD_SUCCESS)
     {
-      try
-      {
-        temp = zut_encode(temp, "UTF-8", codepage, zds->diag);
-      }
-      catch (exception &e)
-      {
-        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from UTF-8 to %s", codepage.c_str());
-        return RTNCD_FAILURE;
-      }
+      fclose(fp);
+      return RTNCD_FAILURE;
     }
-    if (!temp.empty())
-    {
-      fwrite(temp.c_str(), 1u, temp.length(), fp);
-    }
+  }
+
+  if (!temp.empty())
+  {
+    fwrite(temp.c_str(), 1u, temp.length(), fp);
   }
 
   fclose(fp);
 
-  // Print new e-tag to stdout as response
+  // Generate new etag
   string saved_contents = "";
   const auto read_rc = zds_read_from_dsn(zds, dsn, saved_contents);
   if (0 != read_rc)
@@ -227,9 +213,11 @@ int zds_write_to_dsn(ZDS *zds, string dsn, string &data)
     return RTNCD_FAILURE;
   }
 
-  stringstream etag_stream;
-  etag_stream << hex << zut_calc_adler32_checksum(saved_contents);
-  strcpy(zds->etag, etag_stream.str().c_str());
+  const auto etag_rc = zut_generate_etag_content(saved_contents, zds->etag, sizeof(zds->etag));
+  if (etag_rc != RTNCD_SUCCESS)
+  {
+    return RTNCD_FAILURE;
+  }
 
   return 0;
 }
@@ -995,7 +983,7 @@ int zds_read_from_dsn_streamed(ZDS *zds, string dsn, string pipe)
     return RTNCD_FAILURE;
   }
 
-  const auto hasEncoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
+  const auto has_encoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
   const auto codepage = string(zds->encoding_opts.codepage);
 
   const size_t chunk_size = FIFO_CHUNK_SIZE * 3 / 4;
@@ -1008,7 +996,7 @@ int zds_read_from_dsn_streamed(ZDS *zds, string dsn, string pipe)
     const char *chunk = &buf[0];
     std::vector<char> temp_encoded;
 
-    if (hasEncoding)
+    if (has_encoding)
     {
       try
       {
@@ -1081,7 +1069,7 @@ int zds_write_to_dsn_streamed(ZDS *zds, string dsn, string pipe)
     }
   }
 
-  const auto hasEncoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
+  const auto has_encoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
   const auto codepage = string(zds->encoding_opts.codepage);
   const auto fopen_flags = (zds->encoding_opts.data_type == eDataTypeBinary ? "wb" : "w") + string(",recfm=*");
 
@@ -1110,7 +1098,7 @@ int zds_write_to_dsn_streamed(ZDS *zds, string dsn, string pipe)
     const char *chunk = (char *)unbase64(&buf[0], bytes_read, &chunk_len);
     std::vector<char> temp_encoded;
 
-    if (hasEncoding)
+    if (has_encoding)
     {
       try
       {

@@ -1095,12 +1095,13 @@ int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data)
   struct stat file_stats;
 
   int stat_result = stat(file.c_str(), &file_stats);
+  
+  // Validate etag if provided and file exists
   if (strlen(zusf->etag) > 0 && stat_result != -1)
   {
-    const auto current_etag = zut_build_etag(file_stats.st_mtime, file_stats.st_size);
-    if (current_etag != zusf->etag)
+    const auto validation_rc = zut_validate_etag_file_stat(zusf->etag, file, zusf->diag);
+    if (validation_rc != RTNCD_SUCCESS)
     {
-      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Etag mismatch: expected %s, actual %s", zusf->etag, current_etag.c_str());
       return RTNCD_FAILURE;
     }
   }
@@ -1131,17 +1132,13 @@ int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data)
   std::string temp = data;
   if (has_encoding)
   {
-    try
+    const auto conversion_rc = zut_convert_data_for_write(temp, "UTF-8", encoding_to_use, zusf->diag);
+    if (conversion_rc != RTNCD_SUCCESS)
     {
-      const auto bytes_with_encoding = zut_encode(temp, "UTF-8", encoding_to_use, zusf->diag);
-      temp = bytes_with_encoding;
-    }
-    catch (std::exception &e)
-    {
-      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to convert input data from UTF-8 to %s", encoding_to_use.c_str());
       return RTNCD_FAILURE;
     }
   }
+  
   const char *mode = (zusf->encoding_opts.data_type == eDataTypeBinary) ? "wb" : "w";
   FILE *fp = std::fopen(file.c_str(), mode);
   if (!fp)
@@ -1154,18 +1151,13 @@ int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data)
     std::fwrite(temp.data(), 1, temp.size(), fp);
   std::fclose(fp);
 
-  struct stat new_stats;
-  if (stat(file.c_str(), &new_stats) == -1)
+  // Generate new etag
+  const auto etag_rc = zut_generate_etag_file_stat(file, zusf->etag, sizeof(zusf->etag));
+  if (etag_rc != RTNCD_SUCCESS)
   {
-    zusf->diag.e_msg_len = std::sprintf(
-        zusf->diag.e_msg,
-        "Could not stat file '%s' after writing",
-        file.c_str());
+    zusf->diag.e_msg_len = std::sprintf(zusf->diag.e_msg, "Could not generate etag for file '%s'", file.c_str());
     return RTNCD_FAILURE;
   }
-
-  const string new_tag = zut_build_etag(new_stats.st_mtime, new_stats.st_size);
-  std::strcpy(zusf->etag, new_tag.c_str());
 
   return RTNCD_SUCCESS; // success
 }

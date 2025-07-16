@@ -251,4 +251,50 @@ int zut_convert_if_needed(std::string &data, const ZEncode *encoding_opts, ZDIAG
  */
 int zut_set_file_error(ZDIAG &diag, const char *operation_name, const std::string &file_path);
 
+/**
+ * @brief Validate etag using content-based checksum (Adler32)
+ * @param given_etag The etag string provided by the caller
+ * @param current_content The current content to validate against
+ * @param diag Reference to diagnostic information structure
+ * @return RTNCD_SUCCESS if valid, RTNCD_FAILURE if mismatch
+ */
+int zut_validate_etag_content(const char *given_etag, const std::string &current_content, ZDIAG &diag);
+
+/**
+ * @brief Validate etag using file stat information
+ * @param given_etag The etag string provided by the caller
+ * @param file_path Path to the file to check
+ * @param diag Reference to diagnostic information structure
+ * @return RTNCD_SUCCESS if valid, RTNCD_FAILURE if mismatch
+ */
+int zut_validate_etag_file_stat(const char *given_etag, const std::string &file_path, ZDIAG &diag);
+
+/**
+ * @brief Convert data from UTF-8 to target encoding for writing
+ * @param data Reference to data string to convert (modified in place)
+ * @param source_encoding Source encoding name (defaults to "UTF-8")
+ * @param target_encoding Target encoding name
+ * @param diag Reference to diagnostic information structure
+ * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
+ */
+int zut_convert_data_for_write(std::string &data, const std::string &source_encoding, const std::string &target_encoding, ZDIAG &diag);
+
+/**
+ * @brief Generate etag using content-based checksum (Adler32)
+ * @param content The content to generate etag for
+ * @param etag_buffer Buffer to store the generated etag string
+ * @param buffer_size Size of the etag buffer
+ * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
+ */
+int zut_generate_etag_content(const std::string &content, char *etag_buffer, size_t buffer_size);
+
+/**
+ * @brief Generate etag using file stat information
+ * @param file_path Path to the file
+ * @param etag_buffer Buffer to store the generated etag string
+ * @param buffer_size Size of the etag buffer
+ * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
+ */
+int zut_generate_etag_file_stat(const std::string &file_path, char *etag_buffer, size_t buffer_size);
+
 #endif // ZUT_HPP
