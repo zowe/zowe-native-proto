@@ -100,9 +100,9 @@ export interface UssItem {
    */
   links: number /* int */;
   /**
-   * Owner of the item
+   * User (owner) of the item
    */
-  owner: string;
+  user: string;
   /**
    * Group of the item
    */
@@ -120,9 +120,9 @@ export interface UssItem {
    */
   itemType: t.UssItemType;
   /**
-   * Date of the item
+   * Modification date of the item
    */
-  date: string;
+  mtime: string;
   /**
    * The permission string of the item
    */

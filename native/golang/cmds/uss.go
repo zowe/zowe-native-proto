@@ -142,7 +142,7 @@ func HandleListFilesRequest(conn *utils.StdioConn, params []byte) (result any, e
 		ussResponse.Items[i] = t.UssItem{
 			Mode:  fields[0],
 			Links: links,
-			Owner: fields[2],
+			User:  fields[2],
 			Group: fields[3],
 			Size:  size,
 			Tag:   fields[5],

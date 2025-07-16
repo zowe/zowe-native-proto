@@ -89,8 +89,8 @@ type UssItem struct {
 	Name string `json:"name"`
 	// Number of links to the item
 	Links int `json:"links"`
-	// Owner of the item
-	Owner string `json:"owner"`
+	// User (owner) of the item
+	User string `json:"user"`
 	// Group of the item
 	Group string `json:"group"`
 	// Size of the item
@@ -99,8 +99,8 @@ type UssItem struct {
 	Tag string `json:"filetag,omitempty"`
 	// Whether the item is a directory
 	Type uint32 `json:"itemType" tstype:"t.UssItemType"`
-	// Date of the item
-	Date string `json:"date"`
+	// Modification date of the item
+	Date string `json:"mtime"`
 	// The permission string of the item
 	Mode string `json:"mode"`
 }
