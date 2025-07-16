@@ -67,6 +67,7 @@ namespace ztst
 
   public:
     void ToBeGreaterThan(int);
+    void ToBeGreaterThanOrEqualTo(int);
     void ToBe(int);
     void ToBe(std::string);
     void ToBeNull();
