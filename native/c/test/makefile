@@ -152,8 +152,7 @@ build-out/zrecovery.metal.test.o \
 build-out/zmetal.test.o \
 build-out/zmetal.metal.test.o \
 build-out/zusf.test.o \
-build-out/zusf.o \
-build-out/modp_b64.o
+build-out/zusf.o
 	$(OCXX) $(CXXLANG_BND_FLAGS) -o $@ $^ > $*.bind.lst
 
 build-out/zut.o:
@@ -197,9 +196,6 @@ build-out/zcnm31.o:
 
 build-out/zusf.o:
 	cp ../build-out/xlclang/zusf.o build-out/zusf.o
-
-build-out/modp_b64.o:
-	cp ../build-out/modp_b64.o build-out/modp_b64.o
 
 build-out/zbase64.test.o: zbase64.test.cpp
 	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@

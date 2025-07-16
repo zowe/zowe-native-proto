@@ -17,7 +17,7 @@
 #include <unistd.h> // For __e2a_s function
 
 #include "ztest.hpp"
-#include "../extern/zb64.h"
+#include "../zbase64.h"
 
 using namespace std;
 using namespace ztst;
@@ -40,10 +40,8 @@ void zbase64_tests()
                 []() -> void
                 {
                   std::string input = e2a_convert("");
-                  int flen = 0;
-                  char *result = base64(input.c_str(), input.length(), &flen);
-                  std::string result_str(result, flen);
-                  free(result);
+                  std::vector<char> result = zbase64::encode(input.c_str(), input.length());
+                  std::string result_str(result.begin(), result.end());
                   Expect(result_str).ToBe("");
                 });
 
@@ -51,10 +49,8 @@ void zbase64_tests()
                 []() -> void
                 {
                   std::string input = e2a_convert("Hello World");
-                  int flen = 0;
-                  char *result = base64(input.c_str(), input.length(), &flen);
-                  std::string result_str(result, flen);
-                  free(result);
+                  std::vector<char> result = zbase64::encode(input.c_str(), input.length());
+                  std::string result_str(result.begin(), result.end());
                   Expect(result_str).ToBe("SGVsbG8gV29ybGQ=");
                 });
 
@@ -62,10 +58,8 @@ void zbase64_tests()
                 []() -> void
                 {
                   std::string input = e2a_convert("f");
-                  int flen = 0;
-                  char *result = base64(input.c_str(), input.length(), &flen);
-                  std::string result_str(result, flen);
-                  free(result);
+                  std::vector<char> result = zbase64::encode(input.c_str(), input.length());
+                  std::string result_str(result.begin(), result.end());
                   Expect(result_str).ToBe("Zg==");
                 });
 
@@ -73,10 +67,8 @@ void zbase64_tests()
                 []() -> void
                 {
                   std::string input = e2a_convert("fo");
-                  int flen = 0;
-                  char *result = base64(input.c_str(), input.length(), &flen);
-                  std::string result_str(result, flen);
-                  free(result);
+                  std::vector<char> result = zbase64::encode(input.c_str(), input.length());
+                  std::string result_str(result.begin(), result.end());
                   Expect(result_str).ToBe("Zm8=");
                 });
 
@@ -84,10 +76,8 @@ void zbase64_tests()
                 []() -> void
                 {
                   std::string input = e2a_convert("foo");
-                  int flen = 0;
-                  char *result = base64(input.c_str(), input.length(), &flen);
-                  std::string result_str(result, flen);
-                  free(result);
+                  std::vector<char> result = zbase64::encode(input.c_str(), input.length());
+                  std::string result_str(result.begin(), result.end());
                   Expect(result_str).ToBe("Zm9v");
                 });
 
@@ -95,10 +85,8 @@ void zbase64_tests()
                 []() -> void
                 {
                   std::string input = e2a_convert("foob");
-                  int flen = 0;
-                  char *result = base64(input.c_str(), input.length(), &flen);
-                  std::string result_str(result, flen);
-                  free(result);
+                  std::vector<char> result = zbase64::encode(input.c_str(), input.length());
+                  std::string result_str(result.begin(), result.end());
                   Expect(result_str).ToBe("Zm9vYg==");
                 });
 
@@ -106,10 +94,8 @@ void zbase64_tests()
                 []() -> void
                 {
                   std::string input = e2a_convert("fooba");
-                  int flen = 0;
-                  char *result = base64(input.c_str(), input.length(), &flen);
-                  std::string result_str(result, flen);
-                  free(result);
+                  std::vector<char> result = zbase64::encode(input.c_str(), input.length());
+                  std::string result_str(result.begin(), result.end());
                   Expect(result_str).ToBe("Zm9vYmE=");
                 });
 
@@ -117,10 +103,8 @@ void zbase64_tests()
                 []() -> void
                 {
                   std::string input = e2a_convert("foobar");
-                  int flen = 0;
-                  char *result = base64(input.c_str(), input.length(), &flen);
-                  std::string result_str(result, flen);
-                  free(result);
+                  std::vector<char> result = zbase64::encode(input.c_str(), input.length());
+                  std::string result_str(result.begin(), result.end());
                   Expect(result_str).ToBe("Zm9vYmFy");
                 });
 
@@ -128,10 +112,8 @@ void zbase64_tests()
                 []() -> void
                 {
                   std::vector<char> input = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05};
-                  int flen = 0;
-                  char *result = base64(input.data(), input.size(), &flen);
-                  std::string result_str(result, flen);
-                  free(result);
+                  std::vector<char> result = zbase64::encode(input.data(), input.size());
+                  std::string result_str(result.begin(), result.end());
                   Expect(result_str).ToBe("AAECAwQF");
                 });
 
@@ -143,10 +125,9 @@ void zbase64_tests()
                   {
                     input.push_back(static_cast<char>(i));
                   }
-                  int flen = 0;
-                  char *result = base64(input.data(), input.size(), &flen);
-                  free(result);
-                  Expect(flen).ToBe(344); // (256 + 2) / 3 * 4 = 344
+                  std::vector<char> result = zbase64::encode(input.data(), input.size());
+                  size_t expected_size = zbase64::encoded_size(256);
+                  Expect(result.size()).ToBe(expected_size);
                 });
 
              it("should handle large input",
@@ -157,10 +138,9 @@ void zbase64_tests()
                   size_t converted_len = 0;
                   converted_len = __e2a_s(const_cast<char *>(input.c_str()));
 
-                  int flen = 0;
-                  char *result = base64(input.c_str(), input.length(), &flen);
-                  free(result);
-                  Expect(flen).ToBe(13336); // (10000 + 2) / 3 * 4 = 13336
+                  std::vector<char> result = zbase64::encode(input.c_str(), input.length());
+                  size_t expected_size = zbase64::encoded_size(10000);
+                  Expect(result.size()).ToBe(expected_size);
                 });
            });
 
@@ -171,10 +151,8 @@ void zbase64_tests()
                 []() -> void
                 {
                   std::string input = "";
-                  int flen = 0;
-                  unsigned char *result = unbase64(input.c_str(), input.length(), &flen);
-                  std::string result_str(reinterpret_cast<char *>(result), flen);
-                  free(result);
+                  std::vector<char> result = zbase64::decode(input.c_str(), input.length());
+                  std::string result_str(result.begin(), result.end());
                   Expect(result_str).ToBe(e2a_convert(""));
                 });
 
@@ -182,10 +160,8 @@ void zbase64_tests()
                 []() -> void
                 {
                   std::string input = "SGVsbG8gV29ybGQ=";
-                  int flen = 0;
-                  unsigned char *result = unbase64(input.c_str(), input.length(), &flen);
-                  std::string result_str(reinterpret_cast<char *>(result), flen);
-                  free(result);
+                  std::vector<char> result = zbase64::decode(input.c_str(), input.length());
+                  std::string result_str(result.begin(), result.end());
                   Expect(result_str).ToBe(e2a_convert("Hello World"));
                 });
 
@@ -193,10 +169,8 @@ void zbase64_tests()
                 []() -> void
                 {
                   std::string input = "Zg==";
-                  int flen = 0;
-                  unsigned char *result = unbase64(input.c_str(), input.length(), &flen);
-                  std::string result_str(reinterpret_cast<char *>(result), flen);
-                  free(result);
+                  std::vector<char> result = zbase64::decode(input.c_str(), input.length());
+                  std::string result_str(result.begin(), result.end());
                   Expect(result_str).ToBe(e2a_convert("f"));
                 });
 
@@ -204,10 +178,8 @@ void zbase64_tests()
                 []() -> void
                 {
                   std::string input = "Zm8=";
-                  int flen = 0;
-                  unsigned char *result = unbase64(input.c_str(), input.length(), &flen);
-                  std::string result_str(reinterpret_cast<char *>(result), flen);
-                  free(result);
+                  std::vector<char> result = zbase64::decode(input.c_str(), input.length());
+                  std::string result_str(result.begin(), result.end());
                   Expect(result_str).ToBe(e2a_convert("fo"));
                 });
 
@@ -215,10 +187,8 @@ void zbase64_tests()
                 []() -> void
                 {
                   std::string input = "Zm9v";
-                  int flen = 0;
-                  unsigned char *result = unbase64(input.c_str(), input.length(), &flen);
-                  std::string result_str(reinterpret_cast<char *>(result), flen);
-                  free(result);
+                  std::vector<char> result = zbase64::decode(input.c_str(), input.length());
+                  std::string result_str(result.begin(), result.end());
                   Expect(result_str).ToBe(e2a_convert("foo"));
                 });
 
@@ -226,10 +196,8 @@ void zbase64_tests()
                 []() -> void
                 {
                   std::string input = "Zm9vYg==";
-                  int flen = 0;
-                  unsigned char *result = unbase64(input.c_str(), input.length(), &flen);
-                  std::string result_str(reinterpret_cast<char *>(result), flen);
-                  free(result);
+                  std::vector<char> result = zbase64::decode(input.c_str(), input.length());
+                  std::string result_str(result.begin(), result.end());
                   Expect(result_str).ToBe(e2a_convert("foob"));
                 });
 
@@ -237,10 +205,8 @@ void zbase64_tests()
                 []() -> void
                 {
                   std::string input = "Zm9vYmE=";
-                  int flen = 0;
-                  unsigned char *result = unbase64(input.c_str(), input.length(), &flen);
-                  std::string result_str(reinterpret_cast<char *>(result), flen);
-                  free(result);
+                  std::vector<char> result = zbase64::decode(input.c_str(), input.length());
+                  std::string result_str(result.begin(), result.end());
                   Expect(result_str).ToBe(e2a_convert("fooba"));
                 });
 
@@ -248,26 +214,21 @@ void zbase64_tests()
                 []() -> void
                 {
                   std::string input = "Zm9vYmFy";
-                  int flen = 0;
-                  unsigned char *result = unbase64(input.c_str(), input.length(), &flen);
-                  std::string result_str(reinterpret_cast<char *>(result), flen);
-                  free(result);
+                  std::vector<char> result = zbase64::decode(input.c_str(), input.length());
+                  std::string result_str(result.begin(), result.end());
                   Expect(result_str).ToBe(e2a_convert("foobar"));
                 });
 
              it("should handle binary data with null bytes",
                 []() -> void
                 {
-                  std::string input = e2a_convert("AAECAwQF");
-                  int flen = 0;
-                  unsigned char *result = unbase64(input.c_str(), input.length(), &flen);
-                  std::vector<char> result_vec(reinterpret_cast<char *>(result), reinterpret_cast<char *>(result) + flen);
-                  free(result);
+                  std::string input = "AAECAwQF";
+                  std::vector<char> result = zbase64::decode(input.c_str(), input.length());
                   std::vector<char> expected = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05};
-                  Expect(result_vec.size()).ToBe(expected.size());
+                  Expect(result.size()).ToBe(expected.size());
                   for (size_t i = 0; i < expected.size(); i++)
                   {
-                    Expect(static_cast<unsigned char>(result_vec[i])).ToBe(static_cast<unsigned char>(expected[i]));
+                    Expect(static_cast<unsigned char>(result[i])).ToBe(static_cast<unsigned char>(expected[i]));
                   }
                 });
 
@@ -275,20 +236,34 @@ void zbase64_tests()
                 []() -> void
                 {
                   std::string input = e2a_convert("ABC@"); // @ is not valid base64
-                  int flen = 0;
-                  unsigned char *result = unbase64(input.c_str(), input.length(), &flen);
-                  // With SAFEBASE64 defined, invalid input should return NULL
-                  Expect(result).ToBe(nullptr);
+                  try
+                  {
+                    std::vector<char> result = zbase64::decode(input.c_str(), input.length());
+                    // Should not reach here
+                    Expect(false).ToBe(true);
+                  }
+                  catch (const std::invalid_argument &)
+                  {
+                    // Expected behavior - invalid input throws exception
+                    Expect(true).ToBe(true);
+                  }
                 });
 
              it("should handle invalid input length",
                 []() -> void
                 {
                   std::string input = e2a_convert("ABC"); // Not multiple of 4
-                  int flen = 0;
-                  unsigned char *result = unbase64(input.c_str(), input.length(), &flen);
-                  // With SAFEBASE64 defined, invalid input should return NULL
-                  Expect(result).ToBe(nullptr);
+                  try
+                  {
+                    std::vector<char> result = zbase64::decode(input.c_str(), input.length());
+                    // Should not reach here
+                    Expect(false).ToBe(true);
+                  }
+                  catch (const std::invalid_argument &)
+                  {
+                    // Expected behavior - invalid input throws exception
+                    Expect(true).ToBe(true);
+                  }
                 });
            });
 
@@ -301,16 +276,11 @@ void zbase64_tests()
                   std::string original = e2a_convert("Hello World");
 
                   // Encode
-                  int encode_len = 0;
-                  char *encoded = base64(original.c_str(), original.length(), &encode_len);
+                  std::vector<char> encoded = zbase64::encode(original.c_str(), original.length());
 
                   // Decode
-                  int decode_len = 0;
-                  unsigned char *decoded = unbase64(encoded, encode_len, &decode_len);
-                  std::string decoded_str(reinterpret_cast<char *>(decoded), decode_len);
-
-                  free(encoded);
-                  free(decoded);
+                  std::vector<char> decoded = zbase64::decode(encoded.data(), encoded.size());
+                  std::string decoded_str(decoded.begin(), decoded.end());
 
                   Expect(decoded_str).ToBe(original);
                 });
@@ -321,16 +291,11 @@ void zbase64_tests()
                   std::string original = e2a_convert("");
 
                   // Encode
-                  int encode_len = 0;
-                  char *encoded = base64(original.c_str(), original.length(), &encode_len);
+                  std::vector<char> encoded = zbase64::encode(original.c_str(), original.length());
 
                   // Decode
-                  int decode_len = 0;
-                  unsigned char *decoded = unbase64(encoded, encode_len, &decode_len);
-                  std::string decoded_str(reinterpret_cast<char *>(decoded), decode_len);
-
-                  free(encoded);
-                  free(decoded);
+                  std::vector<char> decoded = zbase64::decode(encoded.data(), encoded.size());
+                  std::string decoded_str(decoded.begin(), decoded.end());
 
                   Expect(decoded_str).ToBe(original);
                 });
@@ -341,16 +306,11 @@ void zbase64_tests()
                   std::string original = e2a_convert("A");
 
                   // Encode
-                  int encode_len = 0;
-                  char *encoded = base64(original.c_str(), original.length(), &encode_len);
+                  std::vector<char> encoded = zbase64::encode(original.c_str(), original.length());
 
                   // Decode
-                  int decode_len = 0;
-                  unsigned char *decoded = unbase64(encoded, encode_len, &decode_len);
-                  std::string decoded_str(reinterpret_cast<char *>(decoded), decode_len);
-
-                  free(encoded);
-                  free(decoded);
+                  std::vector<char> decoded = zbase64::decode(encoded.data(), encoded.size());
+                  std::string decoded_str(decoded.begin(), decoded.end());
 
                   Expect(decoded_str).ToBe(original);
                 });
@@ -365,21 +325,15 @@ void zbase64_tests()
                   }
 
                   // Encode
-                  int encode_len = 0;
-                  char *encoded = base64(original.data(), original.size(), &encode_len);
+                  std::vector<char> encoded = zbase64::encode(original.data(), original.size());
 
                   // Decode
-                  int decode_len = 0;
-                  unsigned char *decoded = unbase64(encoded, encode_len, &decode_len);
-                  std::vector<char> decoded_vec(reinterpret_cast<char *>(decoded), reinterpret_cast<char *>(decoded) + decode_len);
+                  std::vector<char> decoded = zbase64::decode(encoded.data(), encoded.size());
 
-                  free(encoded);
-                  free(decoded);
-
-                  Expect(decoded_vec.size()).ToBe(original.size());
+                  Expect(decoded.size()).ToBe(original.size());
                   for (size_t i = 0; i < original.size(); i++)
                   {
-                    Expect(static_cast<unsigned char>(decoded_vec[i])).ToBe(static_cast<unsigned char>(original[i]));
+                    Expect(static_cast<unsigned char>(decoded[i])).ToBe(static_cast<unsigned char>(original[i]));
                   }
                 });
 
@@ -395,16 +349,11 @@ void zbase64_tests()
                   converted_len = __e2a_s(const_cast<char *>(original.c_str()));
 
                   // Encode
-                  int encode_len = 0;
-                  char *encoded = base64(original.c_str(), original.length(), &encode_len);
+                  std::vector<char> encoded = zbase64::encode(original.c_str(), original.length());
 
                   // Decode
-                  int decode_len = 0;
-                  unsigned char *decoded = unbase64(encoded, encode_len, &decode_len);
-                  std::string decoded_str(reinterpret_cast<char *>(decoded), decode_len);
-
-                  free(encoded);
-                  free(decoded);
+                  std::vector<char> decoded = zbase64::decode(encoded.data(), encoded.size());
+                  std::string decoded_str(decoded.begin(), decoded.end());
 
                   Expect(decoded_str).ToBe(original);
                 });
@@ -415,16 +364,11 @@ void zbase64_tests()
                   std::string original = e2a_convert("!@#$%^&*()_+-=[]{}|;':\",./<>?");
 
                   // Encode
-                  int encode_len = 0;
-                  char *encoded = base64(original.c_str(), original.length(), &encode_len);
+                  std::vector<char> encoded = zbase64::encode(original.c_str(), original.length());
 
                   // Decode
-                  int decode_len = 0;
-                  unsigned char *decoded = unbase64(encoded, encode_len, &decode_len);
-                  std::string decoded_str(reinterpret_cast<char *>(decoded), decode_len);
-
-                  free(encoded);
-                  free(decoded);
+                  std::vector<char> decoded = zbase64::decode(encoded.data(), encoded.size());
+                  std::string decoded_str(decoded.begin(), decoded.end());
 
                   Expect(decoded_str).ToBe(original);
                 });
@@ -438,16 +382,11 @@ void zbase64_tests()
                   original += e2a_convert("World");
 
                   // Encode
-                  int encode_len = 0;
-                  char *encoded = base64(original.c_str(), original.length(), &encode_len);
+                  std::vector<char> encoded = zbase64::encode(original.c_str(), original.length());
 
                   // Decode
-                  int decode_len = 0;
-                  unsigned char *decoded = unbase64(encoded, encode_len, &decode_len);
-                  std::string decoded_str(reinterpret_cast<char *>(decoded), decode_len);
-
-                  free(encoded);
-                  free(decoded);
+                  std::vector<char> decoded = zbase64::decode(encoded.data(), encoded.size());
+                  std::string decoded_str(decoded.begin(), decoded.end());
 
                   Expect(decoded_str).ToBe(original);
                 });
@@ -464,16 +403,11 @@ void zbase64_tests()
                   size_t input_len = input_ascii.length();
 
                   // Encode
-                  int encode_len = 0;
-                  char *encoded = base64(input_ascii.c_str(), input_len, &encode_len);
+                  std::vector<char> encoded = zbase64::encode(input_ascii.c_str(), input_len);
 
                   // Decode
-                  int decode_len = 0;
-                  unsigned char *decoded = unbase64(encoded, encode_len, &decode_len);
-                  std::string result(reinterpret_cast<char *>(decoded), decode_len);
-
-                  free(encoded);
-                  free(decoded);
+                  std::vector<char> decoded = zbase64::decode(encoded.data(), encoded.size());
+                  std::string result(decoded.begin(), decoded.end());
 
                   Expect(result).ToBe(input_ascii);
                 });
@@ -489,13 +423,11 @@ void zbase64_tests()
                     size_t converted_len = 0;
                     converted_len = __e2a_s(const_cast<char *>(input.c_str()));
 
-                    int flen = 0;
-                    char *result = base64(input.c_str(), input.length(), &flen);
-                    free(result);
+                    std::vector<char> result = zbase64::encode(input.c_str(), input.length());
 
                     // Expected size is (input_size + 2) / 3 * 4
-                    int expected_size = ((input_size + 2) / 3) * 4;
-                    Expect(flen).ToBe(expected_size);
+                    size_t expected_size = zbase64::encoded_size(input_size);
+                    Expect(result.size()).ToBe(expected_size);
                   }
                 });
 
@@ -516,40 +448,16 @@ void zbase64_tests()
                   }
 
                   // Encode
-                  int encode_len = 0;
-                  char *encoded = base64(original.data(), original.size(), &encode_len);
+                  std::vector<char> encoded = zbase64::encode(original.data(), original.size());
 
                   // Decode
-                  int decode_len = 0;
-                  unsigned char *decoded = unbase64(encoded, encode_len, &decode_len);
-                  std::vector<char> decoded_vec(reinterpret_cast<char *>(decoded), reinterpret_cast<char *>(decoded) + decode_len);
+                  std::vector<char> decoded = zbase64::decode(encoded.data(), encoded.size());
 
-                  free(encoded);
-                  free(decoded);
-
-                  Expect(decoded_vec.size()).ToBe(original.size());
+                  Expect(decoded.size()).ToBe(original.size());
                   for (size_t i = 0; i < original.size(); i++)
                   {
-                    Expect(decoded_vec[i]).ToBe(original[i]);
+                    Expect(decoded[i]).ToBe(original[i]);
                   }
-                });
-
-             it("should validate base64 integrity",
-                []() -> void
-                {
-                  // Test valid base64 strings
-                  std::string valid1 = e2a_convert("SGVsbG8=");
-                  Expect(base64integrity(valid1.c_str(), valid1.length())).ToBe(1);
-
-                  std::string valid2 = e2a_convert("SGVsbG8gV29ybGQ=");
-                  Expect(base64integrity(valid2.c_str(), valid2.length())).ToBe(1);
-
-                  // Test invalid base64 strings
-                  std::string invalid1 = e2a_convert("SGVsbG8"); // Not multiple of 4
-                  Expect(base64integrity(invalid1.c_str(), invalid1.length())).ToBe(0);
-
-                  std::string invalid2 = e2a_convert("SGVs@G8="); // Invalid character
-                  Expect(base64integrity(invalid2.c_str(), invalid2.length())).ToBe(0);
                 });
            });
 }
