@@ -15,7 +15,7 @@ import { ImperativeError, Logger } from "@zowe/imperative";
 import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Client, type ClientChannel } from "ssh2";
 import { AbstractRpcClient } from "./AbstractRpcClient";
-import { RpcStreamManager } from "./RpcStreamManager";
+import { RpcNotificationManager } from "./RpcNotificationManager";
 import { ZSshUtils } from "./ZSshUtils";
 import type {
     ClientOptions,
@@ -25,7 +25,6 @@ import type {
     RpcRequest,
     RpcResponse,
     StatusMessage,
-    StreamMode,
 } from "./doc";
 
 type PromiseResolve<T> = (value: T | PromiseLike<T>) => void;
@@ -36,11 +35,11 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
     public static readonly DEFAULT_SERVER_PATH = "~/.zowe-server";
 
     private mErrHandler: ClientOptions["onError"];
+    private mNotifMgr: RpcNotificationManager;
     private mResponseTimeout: number;
     private mServerInfo: { checksums?: Record<string, string> };
     private mSshClient: Client;
     private mSshStream: ClientChannel;
-    private mStreamMgr: RpcStreamManager;
     private mPartialStderr = "";
     private mPartialStdout = "";
     private mPromiseMap: Map<number, { resolve: PromiseResolve<CommandResponse>; reject: PromiseReject }> = new Map();
@@ -77,7 +76,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
             const keepAliveMsec = opts.keepAliveInterval != null ? opts.keepAliveInterval * 1000 : 30e3;
             client.mSshClient.connect(ZSshUtils.buildSshConfig(session, { keepaliveInterval: keepAliveMsec }));
         });
-        client.mStreamMgr = new RpcStreamManager(client.mSshClient);
+        client.mNotifMgr = new RpcNotificationManager(client.mSshClient);
         return client;
     }
 
@@ -109,20 +108,13 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                 reject(new ImperativeError({ msg: "Request timed out", errorCode: "ETIMEDOUT" }));
             }, this.mResponseTimeout);
             if ("stream" in request && request.stream instanceof Stream) {
-                this.mStreamMgr.registerStream(rpcRequest, request.stream, timeoutId);
+                this.mNotifMgr.registerStream(rpcRequest, request.stream, timeoutId);
             }
             this.mPromiseMap.set(rpcRequest.id, { resolve, reject });
             const requestStr = JSON.stringify(rpcRequest);
             Logger.getAppLogger().trace(`Sending request: ${requestStr}`);
             this.mSshStream.stdin.write(`${requestStr}\n`);
         }).finally(() => clearTimeout(timeoutId));
-    }
-
-    protected requestStreamed<T extends CommandResponse>(
-        request: CommandRequest & { stream?: Stream },
-        mode: StreamMode,
-    ): Promise<T> {
-        return this.mStreamMgr.handleRequest(request, this.request.bind(this), mode);
     }
 
     private execAsync(...args: string[]): Promise<ClientChannel> {
@@ -232,21 +224,17 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
 
     private handleNotification(notif: RpcNotification): void {
         const responseId = notif.params?.id as number;
-        const streamPromise = this.mStreamMgr.handleNotification(notif);
+        const streamPromise = this.mNotifMgr.handleNotification(notif);
         if (streamPromise != null) {
             const { reject, resolve } = this.mPromiseMap.get(responseId);
             this.mPromiseMap.get(responseId).resolve = async (response: CommandResponse) => {
                 const contentLen = await streamPromise;
-                if ("contentLen" in response && response.contentLen != null && response.contentLen !== contentLen) {
-                    const errMsg = Logger.getAppLogger().error(
-                        "Content length mismatch: expected %d, got %d",
-                        contentLen,
-                        response.contentLen,
-                    );
-                    reject(new Error(errMsg));
-                    return;
+                try {
+                    this.expectContentLengthMatches(response, contentLen);
+                    resolve(response);
+                } catch (err) {
+                    reject(err);
                 }
-                resolve(response);
             };
         } else {
             const errMsg = Logger.getAppLogger().error("Failed to handle RPC notification: %s", JSON.stringify(notif));
@@ -268,5 +256,16 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
             this.mPromiseMap.get(response.id).resolve(response.result);
         }
         this.mPromiseMap.delete(response.id);
+    }
+
+    private expectContentLengthMatches(response: CommandResponse, expectedLen: number): void {
+        if ("contentLen" in response && response.contentLen != null && response.contentLen !== expectedLen) {
+            const errMsg = Logger.getAppLogger().error(
+                "Content length mismatch: expected %d, got %d",
+                expectedLen,
+                response.contentLen,
+            );
+            throw new Error(errMsg);
+        }
     }
 }

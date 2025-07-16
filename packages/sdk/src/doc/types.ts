@@ -32,5 +32,3 @@ export namespace B64String {
         return Buffer.from(data).toString("base64") as B64String;
     }
 }
-
-export type StreamMode = "r" | "w";

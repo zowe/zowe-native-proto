@@ -9,16 +9,10 @@
  *
  */
 
-import type { Stream } from "node:stream";
-import type { CommandRequest, CommandResponse, StreamMode, cmds, ds, jobs, uss } from "./doc";
+import type { CommandRequest, CommandResponse, cmds, ds, jobs, uss } from "./doc";
 
 export abstract class AbstractRpcClient {
     public abstract request<Req extends CommandRequest, Resp extends CommandResponse>(request: Req): Promise<Resp>;
-
-    protected abstract requestStreamed<Req extends CommandRequest, Resp extends CommandResponse>(
-        request: Req & { stream?: Stream },
-        mode: StreamMode,
-    ): Promise<Resp>;
 
     public get ds() {
         return {
@@ -27,9 +21,9 @@ export abstract class AbstractRpcClient {
             listDsMembers: (request: Omit<ds.ListDsMembersRequest, "command">): Promise<ds.ListDsMembersResponse> =>
                 this.request({ command: "listDsMembers", ...request }),
             readDataset: (request: Omit<ds.ReadDatasetRequest, "command">): Promise<ds.ReadDatasetResponse> =>
-                this.requestStreamed({ command: "readDataset", ...request }, "w"),
+                this.request({ command: "readDataset", ...request }),
             writeDataset: (request: Omit<ds.WriteDatasetRequest, "command">): Promise<ds.WriteDatasetResponse> =>
-                this.requestStreamed({ command: "writeDataset", ...request }, "r"),
+                this.request({ command: "writeDataset", ...request }),
             restoreDataset: (request: Omit<ds.RestoreDatasetRequest, "command">): Promise<ds.RestoreDatasetResponse> =>
                 this.request({ command: "restoreDataset", ...request }),
             deleteDataset: (request: Omit<ds.DeleteDatasetRequest, "command">): Promise<ds.DeleteDatasetResponse> =>
@@ -75,9 +69,9 @@ export abstract class AbstractRpcClient {
             listFiles: (request: Omit<uss.ListFilesRequest, "command">): Promise<uss.ListFilesResponse> =>
                 this.request({ command: "listFiles", ...request }),
             readFile: (request: Omit<uss.ReadFileRequest, "command">): Promise<uss.ReadFileResponse> =>
-                this.requestStreamed({ command: "readFile", ...request }, "w"),
+                this.request({ command: "readFile", ...request }),
             writeFile: (request: Omit<uss.WriteFileRequest, "command">): Promise<uss.WriteFileResponse> =>
-                this.requestStreamed({ command: "writeFile", ...request }, "r"),
+                this.request({ command: "writeFile", ...request }),
             deleteFile: (request: Omit<uss.DeleteFileRequest, "command">): Promise<uss.DeleteFileResponse> =>
                 this.request({ command: "deleteFile", ...request }),
             createFile: (request: Omit<uss.CreateFileRequest, "command">): Promise<uss.CreateFileResponse> =>

@@ -167,11 +167,21 @@ export interface ReadFileResponse extends common.CommandResponse {
   /**
    * Length of file contents in bytes (only used for streaming)
    */
-  contentLength?: number /* int */;
+  contentLen?: number /* int */;
 }
 export interface WriteFileResponse extends GenericFileResponse {
+  /**
+   * Returned e-tag for the file
+   */
   etag: string;
+  /**
+   * Whether new file was created
+   */
   created: boolean;
+  /**
+   * Length of file contents in bytes (only used for streaming)
+   */
+  contentLen?: number /* int */;
 }
 export interface ListFilesResponse extends common.CommandResponse {
   items: common.UssItem[];
