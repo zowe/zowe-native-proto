@@ -92,7 +92,7 @@ int zusf_create_uss_file_or_dir(ZUSF *zusf, string file, mode_t mode, bool creat
         }
       }
     }
-    const auto rc = mkdir(file.c_str(), strtol(mode.c_str(), nullptr, 8));
+    const auto rc = mkdir(file.c_str(), mode);
     if (0 != rc)
     {
       zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to create directory '%s', errno: %d", file.c_str(), errno);

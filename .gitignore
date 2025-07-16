@@ -19,3 +19,4 @@ native/golang/zowed*
 tsconfig.tsbuildinfo
 zowe.config.json
 zowe.schema.json
+test.py
