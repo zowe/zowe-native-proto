@@ -9,22 +9,17 @@
  *
  */
 
-#include "zwto.h"
-#include "zmetal.h"
+#include "zusf_py.h"
 
-#pragma prolog(main, " ZWEPROLG NEWDSA=(YES,128) ")
-#pragma epilog(main, " ZWEEPILG ")
-
-void test()
+std::string list_uss_dir(const std::string &path)
 {
-  zwto_debug("test called");
-}
-
-int main()
-{
-  PSW psw = {0};
-  get_psw(&psw);
-  int mode_switch = psw.p ? 0 : 1;
-
-  return 0;
+  ZUSF ctx = {0};
+  std::string out;
+  int rc = zusf_list_uss_file_path(&ctx, path.c_str(), out);
+  if (0 != rc)
+  {
+    std::string error_msg = ctx.diag.e_msg;
+    throw std::runtime_error(error_msg);
+  }
+  return out;
 }
