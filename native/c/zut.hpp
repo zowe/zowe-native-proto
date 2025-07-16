@@ -106,6 +106,15 @@ int zut_convert_dsect();
 bool zut_prepare_encoding(const std::string &encoding_value, ZEncode *opts);
 
 /**
+ * @brief Initialize encoding options with default values
+ * @param opts Pointer to encoding options structure to initialize
+ * @param source_encoding Source encoding (codepage/CCSID)
+ * @param target_encoding Target encoding (defaults to UTF-8 if empty)
+ * @param data_type Data type (eDataTypeText or eDataTypeBinary)
+ */
+void zut_init_encoding(ZEncode *opts, const std::string &source_encoding = "", const std::string &target_encoding = "UTF-8", DataType data_type = eDataTypeText);
+
+/**
  * @brief Print a string as a sequence of bytes
  * @param input The string to print
  */
@@ -213,5 +222,33 @@ unsigned char zut_get_key();
  * @return int rc Return code (0 for success, non-zero for error)
  */
 int zut_debug_message(const char *message);
+
+/**
+ * @brief Read binary data from a file using a buffered approach
+ * @param fp File pointer to read from
+ * @param response Reference to string where data will be appended
+ * @return Total bytes read
+ */
+size_t zut_read_file_binary(FILE *fp, std::string &response);
+
+/**
+ * @brief Convert text data from source encoding to target encoding if encoding is provided
+ * @param data Reference to the data string (will be modified in place)
+ * @param encoding_opts Pointer to encoding options structure (uses UTF-8 as default target if not specified)
+ * @param diag Reference to diagnostic information structure
+ * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
+ */
+int zut_convert_if_needed(std::string &data, const ZEncode *encoding_opts, ZDIAG &diag);
+
+
+
+/**
+ * @brief Set diagnostic error message for file operation failure
+ * @param diag Reference to diagnostic information structure
+ * @param operation_name Name of the operation that failed
+ * @param file_path Path to the file that caused the error
+ * @return RTNCD_FAILURE (for convenience in return statements)
+ */
+int zut_set_file_error(ZDIAG &diag, const char *operation_name, const std::string &file_path);
 
 #endif // ZUT_HPP

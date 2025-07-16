@@ -512,3 +512,82 @@ int zut_debug_message(const char *message)
   fprintf(stderr, "%s", message);
   return 0;
 }
+
+size_t zut_read_file_binary(FILE *fp, string &response)
+{
+  size_t bytes_read = 0;
+  size_t total_size = 0;
+  char buffer[4096] = {0};
+  
+  while ((bytes_read = fread(buffer, 1, sizeof(buffer), fp)) > 0)
+  {
+    total_size += bytes_read;
+    response.append(buffer, bytes_read);
+  }
+  
+  return total_size;
+}
+
+int zut_convert_if_needed(string &data, const ZEncode *encoding_opts, ZDIAG &diag)
+{
+  if (data.empty() || !encoding_opts || encoding_opts->data_type != eDataTypeText || strlen(encoding_opts->codepage) == 0)
+  {
+    return RTNCD_SUCCESS;
+  }
+
+  // Use UTF-8 as default target encoding if not specified
+  string target_encoding = (strlen(encoding_opts->target_encoding) > 0) ? 
+                          string(encoding_opts->target_encoding) : 
+                          string("UTF-8");
+
+  try
+  {
+    string temp = zut_encode(data, string(encoding_opts->codepage), target_encoding, diag);
+    if (!temp.empty())
+    {
+      data = temp;
+    }
+    return RTNCD_SUCCESS;
+  }
+  catch (exception &e)
+  {
+    diag.e_msg_len = sprintf(diag.e_msg, "Failed to convert input data from %s to %s", 
+                            encoding_opts->codepage, target_encoding.c_str());
+    return RTNCD_FAILURE;
+  }
+}
+
+int zut_set_file_error(ZDIAG &diag, const char *operation_name, const string &file_path)
+{
+  diag.e_msg_len = sprintf(diag.e_msg, "Could not %s file '%s'", operation_name, file_path.c_str());
+  return RTNCD_FAILURE;
+}
+
+void zut_init_encoding(ZEncode *opts, const string &source_encoding, const string &target_encoding, DataType data_type)
+{
+  if (!opts)
+  {
+    return;
+  }
+
+  memset(opts, 0, sizeof(ZEncode));
+  
+  opts->data_type = data_type;
+  
+  if (!source_encoding.empty())
+  {
+    strncpy(opts->codepage, source_encoding.c_str(), sizeof(opts->codepage) - 1);
+    opts->codepage[sizeof(opts->codepage) - 1] = '\0';
+  }
+  
+  if (!target_encoding.empty())
+  {
+    strncpy(opts->target_encoding, target_encoding.c_str(), sizeof(opts->target_encoding) - 1);
+    opts->target_encoding[sizeof(opts->target_encoding) - 1] = '\0';
+  }
+  else
+  {
+    // Default to UTF-8 if no target encoding is specified
+    strcpy(opts->target_encoding, "UTF-8");
+  }
+}
