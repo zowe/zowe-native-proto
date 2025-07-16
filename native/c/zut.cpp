@@ -559,7 +559,7 @@ int zut_convert_if_needed(string &data, const ZEncode *encoding_opts, ZDIAG &dia
 
 int zut_set_file_error(ZDIAG &diag, const char *operation_name, const string &file_path)
 {
-  diag.e_msg_len = sprintf(diag.e_msg, "Could not %s file '%s'", operation_name, file_path.c_str());
+  diag.e_msg_len = sprintf(diag.e_msg, "Could not %s '%s'", operation_name, file_path.c_str());
   return RTNCD_FAILURE;
 }
 

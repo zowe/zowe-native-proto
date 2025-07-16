@@ -969,63 +969,28 @@ int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response, ListOptio
  */
 int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
 {
+  // Note(traeok): Must disable `_BPXK_AUTOCVT` to avoid automatic encoding conversion during file read
+  // Restored later using `setenv`  
   const auto bpxk_autocvt = getenv("_BPXK_AUTOCVT");
   setenv("_BPXK_AUTOCVT", "OFF", 1);
 
   FILE *fp = fopen(file.c_str(), "rb");
   if (!fp)
   {
-    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open file '%s'", file.c_str());
     setenv("_BPXK_AUTOCVT", bpxk_autocvt, 1);
-    return RTNCD_FAILURE;
+    return zut_set_file_error(zusf->diag, "open file", file);
   }
 
-  size_t bytes_read = 0;
-  size_t total_size = 0;
-  char buffer[4096] = {0};
-  while ((bytes_read = fread(buffer, 1, sizeof(buffer), fp)) > 0)
-  {
-    total_size += bytes_read;
-    response.append(buffer, bytes_read);
-  }
+  size_t total_size = zut_read_file_binary(fp, response);
   fclose(fp);
 
-  // Use file tag encoding if available, otherwise fall back to provided encoding
-  string encoding_to_use;
-  bool has_encoding = false;
-
-  if (zusf->encoding_opts.data_type == eDataTypeText && strlen(zusf->encoding_opts.codepage) > 0)
+  if (total_size > 0)
   {
-    encoding_to_use = string(zusf->encoding_opts.codepage);
-    has_encoding = true;
-  }
-  else
-  {
-    // Try to get the file's CCSID first
-    int file_ccsid = zusf_get_file_ccsid(zusf, file);
-    if (file_ccsid > 0 && file_ccsid != 65535) // Valid CCSID and not binary
+    int rc = zusf_convert_if_needed(response, file, &zusf->encoding_opts, zusf->diag);
+    if (rc != RTNCD_SUCCESS)
     {
-      encoding_to_use = zusf_get_ccsid_display_name(file_ccsid);
-      has_encoding = true;
-    }
-  }
-
-  cout << "encoding_to_use: " << encoding_to_use << endl;
-  cout << "size: " << total_size << endl;
-  cout << "response before encoding: " << endl;
-  zut_print_string_as_bytes(response);
-
-  if (total_size > 0 && has_encoding)
-  {
-    try
-    {
-      response = zut_encode(response, encoding_to_use, "UTF-8", zusf->diag);
-    }
-    catch (std::exception &e)
-    {
-      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to convert input data from %s to UTF-8", encoding_to_use.c_str());
       setenv("_BPXK_AUTOCVT", bpxk_autocvt, 1);
-      return RTNCD_FAILURE;
+      return rc;
     }
   }
 
@@ -1574,4 +1539,46 @@ int zusf_chtag_uss_file_or_dir(ZUSF *zusf, string file, string tag, bool recursi
     }
   }
   return 0;
+}
+
+int zusf_convert_if_needed(string &data, const string &file_path, const ZEncode *encoding_opts, ZDIAG &diag)
+{
+  if (data.empty())
+  {
+    return RTNCD_SUCCESS;
+  }
+
+  if (encoding_opts && encoding_opts->data_type == eDataTypeText && strlen(encoding_opts->codepage) > 0)
+  {
+    return zut_convert_if_needed(data, encoding_opts, diag);
+  }
+
+  // Fallback: Try to detect file CCSID and create temporary encoding options
+  ZUSF temp_zusf = {0};
+  int file_ccsid = zusf_get_file_ccsid(&temp_zusf, file_path);
+  if (file_ccsid > 0 && file_ccsid != 65535) // Valid CCSID and not binary
+  {
+    ZEncode temp_encoding = {0};
+    
+    // Set up temporary encoding options with detected CCSID
+    temp_encoding.data_type = eDataTypeText;
+    string ccsid_name = zusf_get_ccsid_display_name(file_ccsid);
+    strncpy(temp_encoding.codepage, ccsid_name.c_str(), sizeof(temp_encoding.codepage) - 1);
+    temp_encoding.codepage[sizeof(temp_encoding.codepage) - 1] = '\0';
+    
+    // Copy target encoding from original options if available, otherwise use UTF-8 default
+    if (encoding_opts && strlen(encoding_opts->target_encoding) > 0)
+    {
+      strncpy(temp_encoding.target_encoding, encoding_opts->target_encoding, sizeof(temp_encoding.target_encoding) - 1);
+      temp_encoding.target_encoding[sizeof(temp_encoding.target_encoding) - 1] = '\0';
+    }
+    else
+    {
+      strcpy(temp_encoding.target_encoding, "UTF-8");
+    }
+    
+    return zut_convert_if_needed(data, &temp_encoding, diag);
+  }
+
+  return RTNCD_SUCCESS;
 }

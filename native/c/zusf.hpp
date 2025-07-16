@@ -47,4 +47,14 @@ const char *zusf_get_owner_from_uid(uid_t uid);
 const char *zusf_get_group_from_gid(gid_t gid);
 std::string zusf_format_ls_time(time_t mtime);
 
+/**
+ * @brief Convert USS file data from source to target encoding using file tags or provided encoding
+ * @param data Reference to the data string (modified in-place)
+ * @param file_path Path to the file (for CCSID detection)
+ * @param encoding_opts Pointer to encoding options structure (uses UTF-8 as default target if not specified)
+ * @param diag Reference to diagnostic information structure
+ * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
+ */
+int zusf_convert_if_needed(std::string &data, const std::string &file_path, const ZEncode *encoding_opts, ZDIAG &diag);
+
 #endif
