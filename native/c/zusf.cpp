@@ -968,61 +968,67 @@ int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response, ListOptio
  */
 int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
 {
-  ifstream in(file.c_str(), zusf->encoding_opts.data_type == eDataTypeBinary ? ifstream::in | ifstream::binary : ifstream::in);
-  if (!in.is_open())
+  const auto bpxk_autocvt = getenv("_BPXK_AUTOCVT");
+  setenv("_BPXK_AUTOCVT", "OFF", 1);
+
+  FILE *fp = fopen(file.c_str(), "rb");
+  if (!fp)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open file '%s'", file.c_str());
+    setenv("_BPXK_AUTOCVT", bpxk_autocvt, 1);
     return RTNCD_FAILURE;
   }
 
-  in.seekg(0, ios::end);
-  size_t size = in.tellg();
-  in.seekg(0, ios::beg);
-
-  vector<char> raw_data(size);
-  in.read(&raw_data[0], size);
-
-  response.assign(raw_data.begin(), raw_data.end());
-  in.close();
+  size_t bytes_read = 0;
+  size_t total_size = 0;
+  char buffer[4096] = {0};
+  while ((bytes_read = fread(buffer, 1, sizeof(buffer), fp)) > 0)
+  {
+    total_size += bytes_read;
+    response.append(buffer, bytes_read);
+  }
+  fclose(fp);
 
   // Use file tag encoding if available, otherwise fall back to provided encoding
   string encoding_to_use;
   bool has_encoding = false;
 
-  if (zusf->encoding_opts.data_type == eDataTypeText)
+  if (zusf->encoding_opts.data_type == eDataTypeText && strlen(zusf->encoding_opts.codepage) > 0)
+  {
+    encoding_to_use = string(zusf->encoding_opts.codepage);
+    has_encoding = true;
+  }
+  else
   {
     // Try to get the file's CCSID first
     int file_ccsid = zusf_get_file_ccsid(zusf, file);
     if (file_ccsid > 0 && file_ccsid != 65535) // Valid CCSID and not binary
     {
-      encoding_to_use = zut_int_to_string(file_ccsid);
-      has_encoding = true;
-    }
-    else if (strlen(zusf->encoding_opts.codepage) > 0)
-    {
-      encoding_to_use = string(zusf->encoding_opts.codepage);
+      encoding_to_use = zusf_get_ccsid_display_name(file_ccsid);
       has_encoding = true;
     }
   }
 
-  if (size > 0 && has_encoding)
+  cout << "encoding_to_use: " << encoding_to_use << endl;
+  cout << "size: " << total_size << endl;
+  cout << "response before encoding: " << endl;
+  zut_print_string_as_bytes(response);
+
+  if (total_size > 0 && has_encoding)
   {
-    std::string temp = response;
     try
     {
-      const auto bytes_with_encoding = zut_encode(temp, encoding_to_use, "UTF-8", zusf->diag);
-      temp = bytes_with_encoding;
+      response = zut_encode(response, encoding_to_use, "UTF-8", zusf->diag);
     }
     catch (std::exception &e)
     {
-      // TODO: error handling
-    }
-    if (!temp.empty())
-    {
-      response = temp;
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to convert input data from %s to UTF-8", encoding_to_use.c_str());
+      setenv("_BPXK_AUTOCVT", bpxk_autocvt, 1);
+      return RTNCD_FAILURE;
     }
   }
 
+  setenv("_BPXK_AUTOCVT", bpxk_autocvt, 1);
   return RTNCD_SUCCESS;
 }
 

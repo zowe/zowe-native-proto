@@ -120,6 +120,10 @@ export interface UssItem {
    */
   itemType: t.UssItemType;
   /**
+   * Whether the item is a directory
+   */
+  date: string;
+  /**
    * The permission string of the item
    */
   mode: string;
