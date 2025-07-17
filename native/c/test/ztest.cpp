@@ -75,6 +75,28 @@ void ztst::RESULT_CHECK::ToBeGreaterThan(int val)
   }
 }
 
+void ztst::RESULT_CHECK::ToBeGreaterThanOrEqualTo(int val)
+{
+  if (inverse)
+  {
+    if (int_result >= val)
+    {
+      string error = "expected int '" + to_string(int_result) + "' to NOT to be greater than or equal to '" + to_string(val) + "'";
+      error += append_error_details();
+      throw runtime_error(error);
+    }
+  }
+  else
+  {
+    if (int_result < val)
+    {
+      string error = "expected int '" + to_string(int_result) + "' to be greater than or equal to '" + to_string(val) + "'";
+      error += append_error_details();
+      throw runtime_error(error);
+    }
+  }
+}
+
 void ztst::RESULT_CHECK::ToBe(string val)
 {
   if (!inverse)

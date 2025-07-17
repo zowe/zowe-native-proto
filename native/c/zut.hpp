@@ -162,6 +162,13 @@ std::vector<char> zut_encode(const char *input_str, size_t input_size, const std
 std::string zut_format_as_csv(std::vector<std::string> &fields);
 
 /**
+ * @brief Convert an integer to a string using sprintf
+ * @param value The integer value to convert
+ * @return The string representation of the integer
+ */
+std::string zut_int_to_string(int value);
+
+/**
  * @brief Trim whitespace from the right end of a string
  * @param s String to trim
  * @param t Characters to trim (default is space)
