@@ -103,7 +103,7 @@ describe("ZSshClient", () => {
                 sshStream.stderr.emit("data", "");
                 return this;
             });
-            mock.method(ZSshClient.prototype as any, "onReady", () => {
+            mock.method(ZSshClient.prototype as any, "getServerStatus", () => {
                 throw sshError;
             });
             assert.rejects(ZSshClient.create(new SshSession(fakeSession)), sshError);
@@ -300,7 +300,7 @@ describe("ZSshClient", () => {
             const sshStream = { stdin: { write: mock.fn() }, stdout: { on: mock.fn() }, stderr: fakeStderr };
             const client: ZSshClient = new (ZSshClient as any)();
             (client as any).mSshStream = sshStream;
-            (client as any).onReady(sshStream, readyMessage);
+            (client as any).getServerStatus(sshStream, readyMessage);
             const response = client.request(request);
             fakeStderr.emit("data", `${JSON.stringify(rpcResponseBad)}\n`);
             assert.rejects(response, { message: rpcResponseBad.error?.message });
@@ -312,7 +312,7 @@ describe("ZSshClient", () => {
             const sshStream = { stdin: { write: mock.fn() }, stdout: fakeStdout, stderr: { on: mock.fn() } };
             const client: ZSshClient = new (ZSshClient as any)();
             (client as any).mSshStream = sshStream;
-            (client as any).onReady(sshStream, readyMessage);
+            (client as any).getServerStatus(sshStream, readyMessage);
             const response = client.request(request);
             fakeStdout.emit("data", `${JSON.stringify(rpcResponseGood)}\n`);
             assert.deepEqual(await response, { success: true });
@@ -327,7 +327,7 @@ describe("ZSshClient", () => {
                 throw err;
             };
             (client as any).mSshStream = sshStream;
-            (client as any).onReady(sshStream, readyMessage);
+            (client as any).getServerStatus(sshStream, readyMessage);
             client.request(request);
             assert.throws(() => fakeStdout.emit("data", "bad json\n"), "Invalid JSON response");
         });
@@ -341,7 +341,7 @@ describe("ZSshClient", () => {
                 throw err;
             };
             (client as any).mSshStream = sshStream;
-            (client as any).onReady(sshStream, readyMessage);
+            (client as any).getServerStatus(sshStream, readyMessage);
             client.request(request);
             assert.throws(
                 () => fakeStdout.emit("data", `${JSON.stringify({ ...rpcResponseGood, id: -1 })}\n`),

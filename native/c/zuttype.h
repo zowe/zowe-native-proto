@@ -19,7 +19,7 @@
 #define ZUT_RTNCD_SEARCH_WARNING 6
 
 #if (defined(__IBMCPP__) || defined(__IBMC__))
-#pragma pack(packed)
+#pragma pack(1)
 #endif
 
 // NOTE(Kelosky): struct is padded to nearest double word boundary; ensure proper alignment for fields

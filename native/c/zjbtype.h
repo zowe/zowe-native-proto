@@ -23,9 +23,12 @@
 #define ZJB_RTNCD_UNEXPECTED_ERROR -6
 #define ZJB_RTNCD_JES3_NOT_SUPPORTED -7
 #define ZJB_RTNCD_VERBOSE_INFO_NOT_FOUND -8
-#define ZJB_RTNCD_CORRELATOR_NOT_FOUND -9
+#define ZJB_RTNCD_JOB_DSN_KEY_NOT_FOUND -9
+#define ZJB_RTNCD_CORRELATOR_NOT_FOUND -10
 
 #define ZJB_RSNCD_MAX_JOBS_REACHED -1
+#define ZJB_RSNCD_JOBID_NOT_FOUND -2
+#define ZJB_RSNCD_CORRELATOR_NOT_FOUND -3
 
 #define ZJB_DEFAULT_BUFFER_SIZE 128000
 #define ZJB_DEFAULT_MAX_JOBS 100
@@ -34,7 +37,7 @@
 #define ZJB_UNKNOWN_RC ""
 
 #if (defined(__IBMCPP__) || defined(__IBMC__))
-#pragma pack(packed)
+#pragma pack(1)
 #endif
 
 // NOTE(Kelosky): struct is padded to nearest double word boundary; ensure proper alignment for fields

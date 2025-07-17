@@ -1,4 +1,4 @@
-#pragma pack(packed)
+#pragma pack(1)
 
 #ifndef __stat__
 #define __stat__
