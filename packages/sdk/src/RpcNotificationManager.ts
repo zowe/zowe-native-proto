@@ -11,10 +11,11 @@
 
 import { Readable, type Stream, Writable } from "node:stream";
 import { pipeline } from "node:stream/promises";
+import { Logger } from "@zowe/imperative";
 import { Base64Encode } from "base64-stream";
 import type { Client, ClientChannel } from "ssh2";
 import { CountingBase64Decode } from "./CountingBase64Decode";
-import type { RpcNotification, RpcRequest } from "./doc";
+import type { CommandResponse, RpcNotification, RpcPromise, RpcRequest } from "./doc";
 
 export class RpcNotificationManager {
     private mPendingStreamMap: Map<number, Stream> = new Map();
@@ -29,22 +30,26 @@ export class RpcNotificationManager {
         request.params.stream = request.id;
     }
 
-    public handleNotification(response: RpcNotification): Promise<number> {
-        const responseId = response.params?.id as number;
-        const pendingStream = this.mPendingStreamMap.get(responseId);
-        let streamPromise: Promise<number> | undefined;
-        if (response.method === "sendStream" && pendingStream instanceof Readable) {
-            streamPromise = this.uploadStream(pendingStream, response.params);
-        } else if (response.method === "receiveStream" && pendingStream instanceof Writable) {
-            streamPromise = this.downloadStream(pendingStream, response.params);
+    public handleNotification(notif: RpcNotification, promise?: RpcPromise): void {
+        switch (notif.method) {
+            case "sendStream":
+                this.finishStream(promise, this.uploadStream(notif.params));
+                break;
+            case "receiveStream":
+                this.finishStream(promise, this.downloadStream(notif.params));
+                break;
+            default:
+                throw new Error(`Unknown RPC notification type: ${notif.method}`);
         }
-        if (streamPromise != null) {
-            this.mPendingStreamMap.delete(responseId);
-        }
-        return streamPromise;
     }
 
-    private async uploadStream(readStream: Readable, params: { pipePath: string }): Promise<number> {
+    private async uploadStream(params: { id: number; pipePath: string }): Promise<number> {
+        const readStream = this.mPendingStreamMap.get(params.id);
+        if (readStream == null || !(readStream instanceof Readable)) {
+            throw new Error(`No stream found for request ID: ${params.id}`);
+        }
+        this.mPendingStreamMap.delete(params.id);
+
         const sshStream = await new Promise<ClientChannel>((resolve, reject) => {
             this.mSshClient.exec(`cat > ${params.pipePath}`, (err, stream) => (err ? reject(err) : resolve(stream)));
         });
@@ -53,17 +58,49 @@ export class RpcNotificationManager {
             totalBytes += chunk.length;
             readStream.emit("keepAlive");
         });
+
         await pipeline(readStream, new Base64Encode(), sshStream.stdin);
         return totalBytes;
     }
 
-    private async downloadStream(writeStream: Writable, params: { pipePath: string }): Promise<number> {
+    private async downloadStream(params: { id: number; pipePath: string }): Promise<number> {
+        const writeStream = this.mPendingStreamMap.get(params.id);
+        if (writeStream == null || !(writeStream instanceof Writable)) {
+            throw new Error(`No stream found for request ID: ${params.id}`);
+        }
+        this.mPendingStreamMap.delete(params.id);
+
         const sshStream = await new Promise<ClientChannel>((resolve, reject) => {
             this.mSshClient.exec(`cat ${params.pipePath}`, (err, stream) => (err ? reject(err) : resolve(stream)));
         });
         sshStream.stdout.on("data", () => writeStream.emit("keepAlive"));
         const decoder = new CountingBase64Decode();
+
         await pipeline(sshStream.stdout, decoder, writeStream);
         return decoder.bytesWritten;
+    }
+
+    private finishStream(rpcPromise: RpcPromise, streamPromise: Promise<number>): void {
+        const { reject, resolve } = rpcPromise;
+        rpcPromise.resolve = async (response: CommandResponse) => {
+            const contentLen = await streamPromise;
+            try {
+                this.expectContentLengthMatches(response, contentLen);
+                resolve(response);
+            } catch (err) {
+                reject(err);
+            }
+        };
+    }
+
+    private expectContentLengthMatches(response: CommandResponse, expectedLen: number): void {
+        if ("contentLen" in response && response.contentLen != null && response.contentLen !== expectedLen) {
+            const errMsg = Logger.getAppLogger().error(
+                "Content length mismatch: expected %d, got %d",
+                expectedLen,
+                response.contentLen,
+            );
+            throw new Error(errMsg);
+        }
     }
 }

@@ -22,14 +22,11 @@ import type {
     CommandRequest,
     CommandResponse,
     RpcNotification,
+    RpcPromise,
     RpcRequest,
     RpcResponse,
     StatusMessage,
 } from "./doc";
-
-type PromiseResolve<T> = (value: T | PromiseLike<T>) => void;
-// biome-ignore lint/suspicious/noExplicitAny: Promise reject type uses any
-type PromiseReject = (reason?: any) => void;
 
 export class ZSshClient extends AbstractRpcClient implements Disposable {
     public static readonly DEFAULT_SERVER_PATH = "~/.zowe-server";
@@ -42,7 +39,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
     private mSshStream: ClientChannel;
     private mPartialStderr = "";
     private mPartialStdout = "";
-    private mPromiseMap: Map<number, { resolve: PromiseResolve<CommandResponse>; reject: PromiseReject }> = new Map();
+    private mPromiseMap: Map<number, RpcPromise> = new Map();
     private mRequestId = 0;
 
     private constructor() {
@@ -224,20 +221,10 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
 
     private handleNotification(notif: RpcNotification): void {
         const responseId = notif.params?.id as number;
-        const streamPromise = this.mNotifMgr.handleNotification(notif);
-        if (streamPromise != null) {
-            const { reject, resolve } = this.mPromiseMap.get(responseId);
-            this.mPromiseMap.get(responseId).resolve = async (response: CommandResponse) => {
-                const contentLen = await streamPromise;
-                try {
-                    this.expectContentLengthMatches(response, contentLen);
-                    resolve(response);
-                } catch (err) {
-                    reject(err);
-                }
-            };
-        } else {
-            const errMsg = Logger.getAppLogger().error("Failed to handle RPC notification: %s", JSON.stringify(notif));
+        try {
+            this.mNotifMgr.handleNotification(notif, this.mPromiseMap.get(responseId));
+        } catch (err) {
+            const errMsg = Logger.getAppLogger().error("Failed to handle RPC notification: %s", err);
             this.mErrHandler(new Error(errMsg));
         }
     }
@@ -256,16 +243,5 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
             this.mPromiseMap.get(response.id).resolve(response.result);
         }
         this.mPromiseMap.delete(response.id);
-    }
-
-    private expectContentLengthMatches(response: CommandResponse, expectedLen: number): void {
-        if ("contentLen" in response && response.contentLen != null && response.contentLen !== expectedLen) {
-            const errMsg = Logger.getAppLogger().error(
-                "Content length mismatch: expected %d, got %d",
-                expectedLen,
-                response.contentLen,
-            );
-            throw new Error(errMsg);
-        }
     }
 }
