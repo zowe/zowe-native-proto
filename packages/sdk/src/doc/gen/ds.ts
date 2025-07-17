@@ -71,7 +71,7 @@ export interface WriteDatasetRequest extends common.CommandRequest {
   /**
    * Dataset contents
    */
-  data: B64String;
+  data?: B64String;
   /**
    * Stream to read contents from
    */

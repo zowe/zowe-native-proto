@@ -10,10 +10,9 @@
  */
 
 import { createReadStream, createWriteStream } from "node:fs";
-import { Readable } from "node:stream";
 import type * as zosfiles from "@zowe/zos-files-for-zowe-sdk";
 import { type MainframeInteraction, type Types, imperative } from "@zowe/zowe-explorer-api";
-import { UssItemType, type uss } from "zowe-native-proto-sdk";
+import { B64String, UssItemType, type uss } from "zowe-native-proto-sdk";
 import { SshCommonApi } from "./SshCommonApi";
 
 export class SshUssApi extends SshCommonApi implements MainframeInteraction.IUss {
@@ -58,7 +57,7 @@ export class SshUssApi extends SshCommonApi implements MainframeInteraction.IUss
             response = await (await this.client).uss.writeFile({
                 fspath: filePath,
                 encoding: options?.binary ? "binary" : options?.encoding,
-                stream: Readable.from(buffer),
+                data: B64String.encode(buffer),
                 etag: options?.etag,
             });
         } catch (err) {

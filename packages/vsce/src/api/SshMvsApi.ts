@@ -9,7 +9,7 @@
  *
  */
 
-import { readFileSync, writeFileSync } from "node:fs";
+import { createReadStream, createWriteStream } from "node:fs";
 import type * as zosfiles from "@zowe/zos-files-for-zowe-sdk";
 import { Gui, type MainframeInteraction, imperative } from "@zowe/zowe-explorer-api";
 import { B64String, type ds } from "zowe-native-proto-sdk";
@@ -59,17 +59,16 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         dataSetName: string,
         options: zosfiles.IDownloadSingleOptions,
     ): Promise<zosfiles.IZosFilesResponse> {
+        let writeStream = options.stream;
+        if (options.file != null) {
+            imperative.IO.createDirsSyncFromFilePath(options.file);
+            writeStream = createWriteStream(options.file);
+        }
         const response = await (await this.client).ds.readDataset({
             dsname: dataSetName,
             encoding: options.binary ? "binary" : options.encoding,
+            stream: writeStream,
         });
-        if (options.file != null) {
-            imperative.IO.createDirsSyncFromFilePath(options.file);
-            writeFileSync(options.file, B64String.decodeBytes(response.data));
-        } else if (options.stream != null) {
-            options.stream.write(B64String.decodeBytes(response.data));
-            options.stream.end();
-        }
         return this.buildZosFilesResponse({ etag: response.etag });
     }
 
@@ -103,7 +102,7 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         const response = await (await this.client).ds.writeDataset({
             dsname: dataSetName,
             encoding: options?.encoding,
-            data: B64String.encode(readFileSync(inputFilePath)),
+            stream: createReadStream(inputFilePath),
             etag: options?.etag,
         });
         return this.buildZosFilesResponse({ etag: response.etag });
