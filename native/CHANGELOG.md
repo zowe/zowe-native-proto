@@ -19,6 +19,10 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - `c`: Added CLI parser and lexer library for use in `zowex`. For an example of how to use the new CLI parser library, refer to the sample CLI code in `examples/native-cli/testcli.cpp`.
 - `c`: Fixed an issue where the zowex `ds list` command always printed data set attributes when passing the argument `--response-format-csv`, even if the attributes argument was `false`.
 - `c`: Fixed an issue where the `zusf_chmod_uss_file_or_dir` function did not handle invalid input before passing the mode to the `chmod` C standard library function. [#399](https://github.com/zowe/zowe-native-proto/pull/399)
+- `c`: Updated `zowex uss list` command to provide same attributes as output from the `ls -l` UNIX command when the `--long` flag is specified. [#346](https://github.com/zowe/zowe-native-proto/issues/346)
+- `c`: Updated `zowex uss list` command to match format of the `ls -l` UNIX command. [#383](https://github.com/zowe/zowe-native-proto/issues/383)
+- `c`: Added `response-format-csv` option to the `zowex uss list` command to print the file attributes in CSV format. [#346](https://github.com/zowe/zowe-native-proto/issues/346)
+- `golang`: Added additional data points to the USS item response for the `HandleListFilesRequest` command handler. [#346](https://github.com/zowe/zowe-native-proto/issues/346)
 
 ## `0.1.2`
 
