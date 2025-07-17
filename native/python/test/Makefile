@@ -51,8 +51,8 @@ test-zusf: $(TEST_ZUSF_UTF8)
 
 # Clean and utility targets
 .PHONY: clean-results rebuild help
-clean-results:
-	@rm -f test_results*.txt
+clean:
+	@rm -f test_results*.txt $(TEST_ZDS_UTF8) $(TEST_ZJB_UTF8) $(TEST_ZUSF_UTF8)
 
 rebuild: test
 
@@ -62,5 +62,5 @@ help:
 	@echo "  test-zds    - Run dataset tests only"
 	@echo "  test-zjb    - Run job tests only"
 	@echo "  test-zusf   - Run USS tests only"
-	@echo "  clean-results - Remove all test result files"
+	@echo "  clean 		 - Remove all test result files"
 	@echo "  help        - Show this help message"
