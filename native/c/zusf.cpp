@@ -57,7 +57,7 @@ using namespace std;
 string zusf_format_ls_time(time_t mtime, bool use_csv_format)
 {
   char time_buf[32] = {0};
-  
+
   if (use_csv_format)
   {
     // CSV format: ISO time in UTC (2024-01-31T05:30:00)
@@ -757,22 +757,33 @@ string zusf_get_ccsid_display_name(int ccsid)
 string zusf_build_mode_string(mode_t mode)
 {
   string mode_str;
-  
+
   // Determine file type character
-  if (S_ISDIR(mode)) {
-    mode_str += "d";          // directory
-  } else if (S_ISLNK(mode)) {
-    mode_str += "l";          // symbolic link
-  } else if (S_ISFIFO(mode)) {
-    mode_str += "p";          // named pipe (FIFO)
-  } else if (S_ISSOCK(mode)) {
-    mode_str += "s";          // socket
-  } else if (S_ISCHR(mode)) {
-    mode_str += "c";          // character device
-  } else {
-    mode_str += "-";          // regular file or unknown
+  if (S_ISDIR(mode))
+  {
+    mode_str += "d"; // directory
   }
-  
+  else if (S_ISLNK(mode))
+  {
+    mode_str += "l"; // symbolic link
+  }
+  else if (S_ISFIFO(mode))
+  {
+    mode_str += "p"; // named pipe (FIFO)
+  }
+  else if (S_ISSOCK(mode))
+  {
+    mode_str += "s"; // socket
+  }
+  else if (S_ISCHR(mode))
+  {
+    mode_str += "c"; // character device
+  }
+  else
+  {
+    mode_str += "-"; // regular file or unknown
+  }
+
   mode_str += (mode & S_IRUSR ? "r" : "-");
   mode_str += (mode & S_IWUSR ? "w" : "-");
   mode_str += (mode & S_IXUSR ? "x" : "-");
@@ -880,7 +891,7 @@ string zusf_format_file_entry(ZUSF *zusf, const struct stat &file_stats, const s
   if (use_csv_format)
   {
     vector<string> fields;
-    
+
     // Return both octal and symbolic formats for zowed
     mode_t perms = file_stats.st_mode & 0777;
     char octal_mode[8];
@@ -1005,6 +1016,8 @@ int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response, ListOptio
  */
 int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
 {
+  const auto bpxk_autocvt = getenv("_BPXK_AUTOCVT");
+  setenv("_BPXK_AUTOCVT", "OFF", 1);
   ifstream in(file.c_str(), zusf->encoding_opts.data_type == eDataTypeBinary ? ifstream::in | ifstream::binary : ifstream::in);
   if (!in.is_open())
   {
@@ -1021,6 +1034,8 @@ int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
 
   response.assign(raw_data.begin(), raw_data.end());
   in.close();
+
+  setenv("_BPXK_AUTOCVT", bpxk_autocvt, 1);
 
   // Use file tag encoding if available, otherwise fall back to provided encoding
   string encoding_to_use;
