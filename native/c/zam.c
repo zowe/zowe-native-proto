@@ -79,7 +79,7 @@ IO_CTRL *open_output_assert(char *ddname, int lrecl, int blkSize, unsigned char 
   IHADCB *dcb = &ioc->dcb;
   int rc = 0;
   rc = open_output(dcb);
-  if (rc)
+  if (0 != rc)
     s0c3_abend(OPEN_OUTPUT_ASSERT_RC);
   if (!(dcbofopn & dcb->dcboflgs))
     s0c3_abend(OPEN_OUTPUT_ASSERT_FAIL);
@@ -93,7 +93,7 @@ IO_CTRL *open_input_assert(char *ddname, int lrecl, int blkSize, unsigned char r
   IHADCB *dcb = &ioc->dcb;
   int rc = 0;
   rc = open_input(dcb);
-  if (rc)
+  if (0 != rc)
     s0c3_abend(OPEN_INPUT_ASSERT_RC);
   if (!(dcbofopn & dcb->dcboflgs))
     s0c3_abend(OPEN_INPUT_ASSERT_FAIL);
@@ -104,7 +104,7 @@ void close_assert(IO_CTRL *ioc)
 {
   IHADCB *dcb = &ioc->dcb;
   int rc = close_dcb(dcb);
-  if (rc)
+  if (0 != rc)
     s0c3_abend(CLOSE_ASSERT_RC);
 
   // free DCBE / file control if obtained
@@ -195,7 +195,7 @@ int writeSync(IO_CTRL *ioc, char *buffer)
   int rc = 0;
   WRITE_PL *wpl = &ioc->decb;
   rc = write_dcb(&ioc->dcb, wpl, buffer);
-  if (rc)
+  if (0 != rc)
   {
     return rc;
   }
@@ -229,7 +229,7 @@ int readSync(IO_CTRL *ioc, char *buffer)
       {
         return -1;
       }
-      if (rc)
+      if (0 != rc)
       {
         return rc;
       }

@@ -9,22 +9,14 @@
  *
  */
 
-#include "zwto.h"
-#include "zmetal.h"
+#ifndef ZDS_PY_HPP
+#define ZDS_PY_HPP
 
-#pragma prolog(main, " ZWEPROLG NEWDSA=(YES,128) ")
-#pragma epilog(main, " ZWEEPILG ")
+#include <string>
+#include <vector>
+#include "../c/zdstype.h"
+#include "../c/zds.hpp"
 
-void test()
-{
-  zwto_debug("test called");
-}
+std::vector<ZDSEntry> list_data_sets(std::string dsn);
 
-int main()
-{
-  PSW psw = {0};
-  get_psw(&psw);
-  int mode_switch = psw.p ? 0 : 1;
-
-  return 0;
-}
+#endif
