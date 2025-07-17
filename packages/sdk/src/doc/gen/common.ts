@@ -116,10 +116,6 @@ export interface UssItem {
    */
   filetag?: string;
   /**
-   * Whether the item is a directory
-   */
-  itemType: t.UssItemType;
-  /**
    * Modification date of the item
    */
   mtime: string;

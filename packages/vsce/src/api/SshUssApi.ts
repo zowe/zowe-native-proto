@@ -12,7 +12,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import type * as zosfiles from "@zowe/zos-files-for-zowe-sdk";
 import { type MainframeInteraction, type Types, imperative } from "@zowe/zowe-explorer-api";
-import { B64String, UssItemType, type uss } from "zowe-native-proto-sdk";
+import { B64String, type uss } from "zowe-native-proto-sdk";
 import { SshCommonApi } from "./SshCommonApi";
 
 export class SshUssApi extends SshCommonApi implements MainframeInteraction.IUss {
@@ -129,7 +129,7 @@ export class SshUssApi extends SshCommonApi implements MainframeInteraction.IUss
         if (!ussItem.success || ussItem.apiResponse?.items.length !== 1) {
             throw new Error("File no longer exists");
         }
-        const isDir = ussItem.apiResponse.items[0].itemType === UssItemType.Directory;
+        const isDir = ussItem.apiResponse.items[0].mode.startsWith("d");
         let success = false;
         if (attributes.tag) {
             const response = await (await this.client).uss.chtagFile({

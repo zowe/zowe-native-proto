@@ -16,7 +16,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/fs"
 	"os"
 	"strconv"
 	"strings"
@@ -34,23 +33,6 @@ const (
 	TypeSocket
 	TypeCharDevice
 )
-
-func fileTypeToEnum(typ os.FileMode) uint32 {
-	switch {
-	case typ.IsDir():
-		return TypeDirectory
-	case typ&fs.ModeSymlink != 0:
-		return TypeSymlink
-	case typ&fs.ModeNamedPipe != 0:
-		return TypeNamedPipe
-	case typ&fs.ModeSocket != 0:
-		return TypeSocket
-	case typ&fs.ModeCharDevice != 0:
-		return TypeCharDevice
-	default:
-		return TypeFile
-	}
-}
 
 // HandleListFilesRequest handles a ListFilesRequest by invoking built-in functions from Go's `os` module.
 func HandleListFilesRequest(conn *utils.StdioConn, params []byte) (result any, e error) {
@@ -83,7 +65,6 @@ func HandleListFilesRequest(conn *utils.StdioConn, params []byte) (result any, e
 			Tag:   fields[6],
 			Date:  fields[7],
 			Name:  fields[8],
-			Type:  fileTypeToEnum(os.FileMode(fileMode)),
 		}
 	}
 
