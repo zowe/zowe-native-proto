@@ -18,6 +18,7 @@
 #include "zrecovery.test.hpp"
 #include "zmetal.test.hpp"
 #include "zusf.test.hpp"
+#include "zbase64.test.hpp"
 #include "ztest.hpp"
 
 using namespace std;
@@ -45,6 +46,7 @@ int main(int argc, char *argv[])
         zrecovery_tests();
         zmetal_tests();
         zusf_tests();
+        zbase64_tests();
       });
 
   return rc;
