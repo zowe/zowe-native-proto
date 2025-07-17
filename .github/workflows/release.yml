@@ -85,9 +85,16 @@ jobs:
         if: ${{ env.TRAIN == 'Nightly'}}
         run: npm run package
 
-      - name: Publish to Artifactory
-        if: ${{ !inputs.dry-run }}
+      - name: Publish Snapshot to Artifactory
+        if: ${{ !inputs.dry-run && env.TRAIN == 'Nightly' }}
         run: |
           jfrog rt u --detailed-summary dist/*.tgz libs-snapshot-local/org/zowe/zowe-native-proto/CLI/$TRAIN/zowe-native-proto-cli-$NEW_VERSION_SUFFIX.tgz
           jfrog rt u --detailed-summary dist/*.vsix libs-snapshot-local/org/zowe/zowe-native-proto/VSCode/$TRAIN/zowe-native-proto-vsce-$NEW_VERSION_SUFFIX.vsix
           jfrog rt u --detailed-summary dist/*.pax.Z libs-snapshot-local/org/zowe/zowe-native-proto/Server/$TRAIN/zowe-server-$NEW_VERSION_SUFFIX.pax.Z
+
+      - name: Publish Release to Artifactory
+        if: ${{ !inputs.dry-run && env.TRAIN == 'Release' }}
+        run: |
+          jfrog rt u --detailed-summary dist/*.tgz libs-release-local/org/zowe/zowe-native-proto/$NEW_VERSION/zowe-native-proto-cli-$NEW_VERSION_SUFFIX.tgz
+          jfrog rt u --detailed-summary dist/*.vsix libs-release-local/org/zowe/zowe-native-proto/$NEW_VERSION/zowe-native-proto-vsce-$NEW_VERSION_SUFFIX.vsix
+          jfrog rt u --detailed-summary dist/*.pax.Z libs-release-local/org/zowe/zowe-native-proto/$NEW_VERSION/zowe-server-$NEW_VERSION_SUFFIX.pax.Z
