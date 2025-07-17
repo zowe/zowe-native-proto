@@ -892,12 +892,7 @@ string zusf_format_file_entry(ZUSF *zusf, const struct stat &file_stats, const s
   {
     vector<string> fields;
 
-    // Return both octal and symbolic formats for zowed
-    mode_t perms = file_stats.st_mode & 0777;
-    char octal_mode[8];
-    sprintf(octal_mode, "%o", perms);
     fields.push_back(mode);
-    fields.push_back(string(octal_mode));
     fields.push_back(zut_int_to_string(file_stats.st_nlink));
     fields.push_back(zusf_get_owner_from_uid(file_stats.st_uid));
     fields.push_back(zusf_get_group_from_gid(file_stats.st_gid));

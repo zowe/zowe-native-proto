@@ -53,18 +53,17 @@ func HandleListFilesRequest(conn *utils.StdioConn, params []byte) (result any, e
 	ussResponse.Items = make([]t.UssItem, len(lines))
 	for i, line := range lines {
 		fields := strings.Split(line, ",")
-		links, _ := strconv.Atoi(fields[2])
-		size, _ := strconv.Atoi(fields[5])
-		fileMode, _ := strconv.Atoi(fields[1])
+		links, _ := strconv.Atoi(fields[1])
+		size, _ := strconv.Atoi(fields[4])
 		ussResponse.Items[i] = t.UssItem{
 			Mode:  fields[0],
 			Links: links,
-			User:  fields[3],
-			Group: fields[4],
+			User:  fields[2],
+			Group: fields[3],
 			Size:  size,
-			Tag:   fields[6],
-			Date:  fields[7],
-			Name:  fields[8],
+			Tag:   fields[5],
+			Date:  fields[6],
+			Name:  fields[7],
 		}
 	}
 
