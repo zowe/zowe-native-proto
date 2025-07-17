@@ -122,11 +122,7 @@ build-out:
 build-out/ztest_runner.o: ztest_runner.cpp
 	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
 
-build-out/ztest.o: ztest.cpp
-	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
-
 build-out/ztest_runner: build-out/ztest_runner.o \
-build-out/ztest.o \
 build-out/zbase64.test.o \
 build-out/zstorage.test.o \
 build-out/zstorage.metal.test.o \
