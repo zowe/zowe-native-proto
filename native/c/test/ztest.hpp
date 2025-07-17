@@ -36,8 +36,8 @@
 // TODO(Kelosky): handle test not run
 // TODO(Kelosky): handle running individual test and/or suite
 
-#define Expect(x) [&]() -> RESULT_CHECK<decltype(x)> { EXPECT_CONTEXT ctx = {__LINE__, __FILE__}; return expect(x, ctx); }()
-#define ExpectWithContext(x, context) [&]() -> RESULT_CHECK<decltype(x)> { EXPECT_CONTEXT ctx = {__LINE__, __FILE__, std::string(context), true}; return expect(x, ctx); }()
+#define Expect(x) [&]() -> RESULT_CHECK<typename std::remove_reference<decltype(x)>::type> { EXPECT_CONTEXT ctx = {__LINE__, __FILE__}; return expect(x, ctx); }()
+#define ExpectWithContext(x, context) [&]() -> RESULT_CHECK<typename std::remove_reference<decltype(x)>::type> { EXPECT_CONTEXT ctx = {__LINE__, __FILE__, std::string(context), true}; return expect(x, ctx); }()
 
 extern std::string matcher;
 
