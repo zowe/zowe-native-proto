@@ -4,7 +4,7 @@ All notable changes to the Client code for "zowe-native-proto-sdk" are documente
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## Recent Changes
+## `0.1.3`
 
 - The `mode` property for a list files response now contains the UNIX permissions of the corresponding file/folder. [#341](https://github.com/zowe/zowe-native-proto/pull/341)
 - Fixed an issue where a non-fatal `chdir` error (OpenSSH code `FOTS1681`) prevented the clients from handling the middleware's ready message. Now, the SSH client waits for the ready message from the `zowed` middleware before returning the new client connection.
