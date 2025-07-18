@@ -27,6 +27,7 @@ import type {
     RpcResponse,
     StatusMessage,
 } from "./doc";
+import { statSync } from "node:fs";
 
 export class ZSshClient extends AbstractRpcClient implements Disposable {
     public static readonly DEFAULT_SERVER_PATH = "~/.zowe-server";
@@ -90,7 +91,10 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
         return this.mServerInfo?.checksums;
     }
 
-    public async request<T extends CommandResponse>(request: CommandRequest): Promise<T> {
+    public async request<T extends CommandResponse>(
+        request: CommandRequest,
+        percentCallback: (percent: number) => void,
+    ): Promise<T> {
         let timeoutId: NodeJS.Timeout;
         return new Promise<T>((resolve, reject) => {
             const { command, ...rest } = request;
@@ -105,7 +109,12 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                 reject(new ImperativeError({ msg: "Request timed out", errorCode: "ETIMEDOUT" }));
             }, this.mResponseTimeout);
             if ("stream" in request && request.stream instanceof Stream) {
-                this.mNotifMgr.registerStream(rpcRequest, request.stream, timeoutId);
+                // biome-ignore lint/suspicious/noExplicitAny: Needed to access path
+                const localFile = (request.stream as any).path;
+                this.mNotifMgr.registerStream(rpcRequest, request.stream, timeoutId, {
+                    callback: percentCallback,
+                    fsize: localFile ? statSync(localFile).size : undefined,
+                });
             }
             this.mPromiseMap.set(rpcRequest.id, { resolve, reject });
             const requestStr = JSON.stringify(rpcRequest);

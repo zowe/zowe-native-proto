@@ -12,7 +12,10 @@
 import type { CommandRequest, CommandResponse, cmds, ds, jobs, uss } from "./doc";
 
 export abstract class AbstractRpcClient {
-    public abstract request<Req extends CommandRequest, Resp extends CommandResponse>(request: Req): Promise<Resp>;
+    public abstract request<Req extends CommandRequest, Resp extends CommandResponse>(
+        request: Req,
+        percentCallback?: (percent: number) => void,
+    ): Promise<Resp>;
 
     public get ds() {
         return {
@@ -70,8 +73,10 @@ export abstract class AbstractRpcClient {
                 this.request({ command: "listFiles", ...request }),
             readFile: (request: Omit<uss.ReadFileRequest, "command">): Promise<uss.ReadFileResponse> =>
                 this.request({ command: "readFile", ...request }),
-            writeFile: (request: Omit<uss.WriteFileRequest, "command">): Promise<uss.WriteFileResponse> =>
-                this.request({ command: "writeFile", ...request }),
+            writeFile: (
+                request: Omit<uss.WriteFileRequest, "command">,
+                percentCallback?: (percent: number) => void,
+            ): Promise<uss.WriteFileResponse> => this.request({ command: "writeFile", ...request }, percentCallback),
             deleteFile: (request: Omit<uss.DeleteFileRequest, "command">): Promise<uss.DeleteFileResponse> =>
                 this.request({ command: "deleteFile", ...request }),
             createFile: (request: Omit<uss.CreateFileRequest, "command">): Promise<uss.CreateFileResponse> =>

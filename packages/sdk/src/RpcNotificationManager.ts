@@ -9,7 +9,7 @@
  *
  */
 
-import { Readable, type Stream, Writable } from "node:stream";
+import { Readable, type Stream, Transform, Writable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { Logger } from "@zowe/imperative";
 import { Base64Encode } from "base64-stream";
@@ -17,16 +17,23 @@ import type { Client, ClientChannel } from "ssh2";
 import { CountingBase64Decode } from "./CountingBase64Decode";
 import type { CommandResponse, RpcNotification, RpcPromise, RpcRequest } from "./doc";
 
+type callbackInfo = {
+    callback?: (percent: number) => void;
+    fsize?: number;
+};
+
 export class RpcNotificationManager {
-    private mPendingStreamMap: Map<number, Stream> = new Map();
+    private mPendingStreamMap: Map<number, { stream: Stream; callbackInfo?: callbackInfo }> = new Map();
 
     public constructor(private mSshClient: Client) {}
 
-    public registerStream(request: RpcRequest, stream: Stream, timeoutId?: NodeJS.Timeout): void {
-        this.mPendingStreamMap.set(
-            request.id,
-            stream.on("keepAlive", () => timeoutId?.refresh()),
-        );
+    public registerStream(
+        request: RpcRequest,
+        stream: Stream,
+        timeoutId?: NodeJS.Timeout,
+        callbackInfo?: callbackInfo,
+    ): void {
+        this.mPendingStreamMap.set(request.id, { stream, callbackInfo });
         request.params.stream = request.id;
     }
 
@@ -44,30 +51,43 @@ export class RpcNotificationManager {
     }
 
     private async uploadStream(params: { id: number; pipePath: string }): Promise<number> {
-        const readStream = this.mPendingStreamMap.get(params.id);
-        if (readStream == null || !(readStream instanceof Readable)) {
+        const { stream: readStream, callbackInfo } = this.mPendingStreamMap.get(params.id)!;
+        if (!(readStream instanceof Readable)) {
             throw new Error(`No stream found for request ID: ${params.id}`);
         }
+        if (!callbackInfo?.callback || !callbackInfo.fsize) {
+            throw new Error(`Progress info callback missing for request ID: ${params.id}`);
+        }
         this.mPendingStreamMap.delete(params.id);
+        callbackInfo.callback(0);
 
         const sshStream = await new Promise<ClientChannel>((resolve, reject) => {
             this.mSshClient.exec(`cat > ${params.pipePath}`, (err, stream) => (err ? reject(err) : resolve(stream)));
         });
+
         let totalBytes = 0;
-        readStream.on("data", (chunk: Buffer) => {
-            totalBytes += chunk.length;
-            readStream.emit("keepAlive");
+
+        const progressTransform = new Transform({
+            transform(chunk: Buffer, _, callback) {
+                totalBytes += chunk.length;
+                const percent = Math.min(100, Math.round((totalBytes / callbackInfo.fsize!) * 100))
+                callbackInfo.callback!(percent);
+                readStream.emit("keepAlive");
+                callback(null, chunk);
+            },
         });
 
-        await pipeline(readStream, new Base64Encode(), sshStream.stdin);
+        await pipeline(readStream, progressTransform, new Base64Encode(), sshStream.stdin);
+
         return totalBytes;
     }
 
     private async downloadStream(params: { id: number; pipePath: string }): Promise<number> {
-        const writeStream = this.mPendingStreamMap.get(params.id);
+        const { stream: writeStream } = this.mPendingStreamMap.get(params.id)!;
         if (writeStream == null || !(writeStream instanceof Writable)) {
             throw new Error(`No stream found for request ID: ${params.id}`);
         }
+
         this.mPendingStreamMap.delete(params.id);
 
         const sshStream = await new Promise<ClientChannel>((resolve, reject) => {
