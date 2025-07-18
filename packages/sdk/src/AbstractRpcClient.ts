@@ -71,8 +71,10 @@ export abstract class AbstractRpcClient {
         return {
             listFiles: (request: Omit<uss.ListFilesRequest, "command">): Promise<uss.ListFilesResponse> =>
                 this.request({ command: "listFiles", ...request }),
-            readFile: (request: Omit<uss.ReadFileRequest, "command">): Promise<uss.ReadFileResponse> =>
-                this.request({ command: "readFile", ...request }),
+            readFile: (
+                request: Omit<uss.ReadFileRequest, "command">,
+                percentCallback?: (percent: number) => void,
+            ): Promise<uss.ReadFileResponse> => this.request({ command: "readFile", ...request }, percentCallback),
             writeFile: (
                 request: Omit<uss.WriteFileRequest, "command">,
                 percentCallback?: (percent: number) => void,

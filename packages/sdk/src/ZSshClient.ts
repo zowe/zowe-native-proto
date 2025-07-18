@@ -28,6 +28,7 @@ import type {
     StatusMessage,
 } from "./doc";
 import { statSync } from "node:fs";
+import { ReadStream, WriteStream } from "fs";
 
 export class ZSshClient extends AbstractRpcClient implements Disposable {
     public static readonly DEFAULT_SERVER_PATH = "~/.zowe-server";
@@ -93,7 +94,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
 
     public async request<T extends CommandResponse>(
         request: CommandRequest,
-        percentCallback: (percent: number) => void,
+        percentCallback?: (percent: number) => void,
     ): Promise<T> {
         let timeoutId: NodeJS.Timeout;
         return new Promise<T>((resolve, reject) => {
@@ -113,7 +114,14 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                 const localFile = (request.stream as any).path;
                 this.mNotifMgr.registerStream(rpcRequest, request.stream, timeoutId, {
                     callback: percentCallback,
-                    fsize: localFile ? statSync(localFile).size : undefined,
+                    // If stream is a ReadStream use the size of the localFile in bytes
+                    // If stream is a WriteStream, set undefined because the size progress will be provided by a notification
+                    fsize:
+                        request.stream instanceof ReadStream
+                            ? localFile
+                                ? statSync(localFile).size
+                                : undefined
+                            : undefined,
                 });
             }
             this.mPromiseMap.set(rpcRequest.id, { resolve, reject });

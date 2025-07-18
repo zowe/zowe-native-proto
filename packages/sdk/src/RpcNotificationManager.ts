@@ -45,6 +45,9 @@ export class RpcNotificationManager {
             case "receiveStream":
                 this.finishStream(promise, this.downloadStream(notif.params));
                 break;
+            case "updateProgress":
+                this.mPendingStreamMap.get(notif.params.id)?.callbackInfo?.callback?.(notif.params.progress);
+                break;
             default:
                 throw new Error(`Unknown RPC notification type: ${notif.method}`);
         }
