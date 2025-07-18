@@ -44,16 +44,20 @@
 #define ZDS_DSORG_PO "PO"      // partitioned
 
 // Record format constants
-#define ZDS_RECFM_FB "FB"     // Fixed Blocked
-#define ZDS_RECFM_F "F"       // Fixed
-#define ZDS_RECFM_VB "VB"     // Variable Blocked
-#define ZDS_RECFM_V "V"       // Variable
-#define ZDS_RECFM_U "U"       // Undefined
-#define ZDS_RECFM_FBS "FBS"   // Fixed Blocked Spanned
-#define ZDS_RECFM_VBS "VBS"   // Variable Blocked Spanned
+#define ZDS_RECFM_FB "FB"   // Fixed Blocked
+#define ZDS_RECFM_F "F"     // Fixed
+#define ZDS_RECFM_VB "VB"   // Variable Blocked
+#define ZDS_RECFM_V "V"     // Variable
+#define ZDS_RECFM_U "U"     // Undefined
+#define ZDS_RECFM_FBS "FBS" // Fixed Blocked Spanned
+#define ZDS_RECFM_VBS "VBS" // Variable Blocked Spanned
 
 #if (defined(__IBMCPP__) || defined(__IBMC__))
+#if defined(SWIG)
+#pragma pack(1)
+#else
 #pragma pack(packed)
+#endif
 #endif
 
 // NOTE(Kelosky): struct is padded to nearest double word boundary; ensure proper alignment for fields
@@ -116,7 +120,8 @@ typedef struct DSCBFormat1
   char ds1end;       // End of DSCB-1 (0x8C)
 } DSCBFormat1;
 
-typedef struct IndexableDSCBFormat1 {
+typedef struct IndexableDSCBFormat1
+{
   char ds1dsnam[44]; // Data set name (used as key)
   DSCBFormat1 dscb1; // Contents of DSCB-1
 } IndexableDSCBFormat1;
