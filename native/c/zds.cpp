@@ -29,7 +29,7 @@
 #include "zdsm.h"
 #include <fcntl.h>
 #include <stdlib.h>
-#include "extern/zb64.h"
+#include "zbase64.h"
 
 const size_t MAX_DS_LENGTH = 44u;
 
@@ -1057,8 +1057,8 @@ int zds_read_from_dsn_streamed(ZDS *zds, string dsn, string pipe, size_t *conten
     }
 
     *content_len += chunk_len;
-    chunk = base64(chunk, chunk_len, &chunk_len);
-    fwrite(chunk, 1, chunk_len, fout);
+    temp_encoded = zbase64::encode(chunk, chunk_len);
+    fwrite(&temp_encoded[0], 1, temp_encoded.size(), fout);
   }
 
   fflush(fout);
@@ -1139,10 +1139,10 @@ int zds_write_to_dsn_streamed(ZDS *zds, string dsn, string pipe, size_t *content
 
   while ((bytes_read = fread(&buf[0], 1, FIFO_CHUNK_SIZE, fin)) > 0)
   {
-    int chunk_len;
-    const char *chunk = (char *)unbase64(&buf[0], bytes_read, &chunk_len);
+    std::vector<char> temp_encoded = zbase64::decode(&buf[0], bytes_read);
+    const char *chunk = &temp_encoded[0];
+    int chunk_len = temp_encoded.size();
     *content_len += chunk_len;
-    std::vector<char> temp_encoded;
 
     if (hasEncoding)
     {
