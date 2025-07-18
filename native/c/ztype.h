@@ -44,7 +44,11 @@
 #endif
 
 #if (defined(__IBMCPP__) || defined(__IBMC__))
+#if defined(SWIG)
 #pragma pack(1)
+#else
+#pragma pack(packed)
+#endif
 #endif
 
 // NOTE(Kelosky): struct is padded to nearest double word boundary; ensure proper alignment for fields

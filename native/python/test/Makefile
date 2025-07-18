@@ -5,12 +5,13 @@ TEST_ZUSF := test_zusf.py
 TEST_ZDS_UTF8 := test_zds_utf8.py
 TEST_ZJB_UTF8 := test_zjb_utf8.py
 TEST_ZUSF_UTF8 := test_zusf_utf8.py
+PY_ENV := export PYTHONIOENCODING=utf-8 && ./venv
+PIP := $(PY_ENV)/bin/pip
+PYTEST := $(PY_ENV)/bin/pytest
 
-.PHONY: all
 all: test
 
-.PHONY: test
-test:
+test: setup
 	@echo "=== Test Results - $$(date) ===" | tee $(RESULTS_FILE)
 	@echo | tee -a $(RESULTS_FILE)
 	@$(MAKE) test-zds 2>&1 | tee -a $(RESULTS_FILE)
@@ -19,42 +20,39 @@ test:
 	@echo | tee -a $(RESULTS_FILE)
 	@echo "=== Test Completed - $$(date) ===" | tee -a $(RESULTS_FILE)
 	@echo "Results saved to: $(RESULTS_FILE)"
+	@$(MAKE) teardown
 
-# Convert EBCDIC to UTF-8
-$(TEST_ZDS_UTF8): $(TEST_ZDS)
-	@iconv -f IBM-1047 -t UTF-8 $(TEST_ZDS) > $(TEST_ZDS_UTF8)
-	@chtag -t -c UTF-8 $(TEST_ZDS_UTF8)
-
-$(TEST_ZJB_UTF8): $(TEST_ZJB)
-	@iconv -f IBM-1047 -t UTF-8 $(TEST_ZJB) > $(TEST_ZJB_UTF8)
-	@chtag -t -c UTF-8 $(TEST_ZJB_UTF8)
-
-$(TEST_ZUSF_UTF8): $(TEST_ZUSF)
-	@iconv -f IBM-1047 -t UTF-8 $(TEST_ZUSF) > $(TEST_ZUSF_UTF8)
-	@chtag -t -c UTF-8 $(TEST_ZUSF_UTF8)
+# Pattern rule to convert EBCDIC to UTF-8
+%_utf8.py: %.py
+	@iconv -f IBM-1047 -t UTF-8 $< > $@
+	@chtag -t -c UTF-8 $@
 
 # Individual test targets
-.PHONY: test-zds
 test-zds: $(TEST_ZDS_UTF8)
 	@echo "Running dataset tests..."
-	@export PYTHONIOENCODING=utf-8 && pytest $(TEST_ZDS_UTF8) -v
+	@$(PYTEST) $(TEST_ZDS_UTF8) -v
 
-.PHONY: test-zjb
 test-zjb: $(TEST_ZJB_UTF8)
 	@echo "Running job tests..."
-	@export PYTHONIOENCODING=utf-8 && pytest $(TEST_ZJB_UTF8) -v
+	@$(PYTEST) $(TEST_ZJB_UTF8) -v
 
-.PHONY: test-zusf
 test-zusf: $(TEST_ZUSF_UTF8)
 	@echo "Running USS tests..."
-	@export PYTHONIOENCODING=utf-8 && pytest $(TEST_ZUSF_UTF8) -v
+	@$(PYTEST) $(TEST_ZUSF_UTF8) -v
 
-# Clean and utility targets
-.PHONY: clean-results rebuild help
+# Utility targets
+setup:
+	@iconv -f IBM-1047 -t UTF-8 requirements.txt > requirements_utf8.txt
+	@chtag -t -c UTF-8 requirements_utf8.txt
+	@python -m venv venv
+	@$(PIP) install -r requirements_utf8.txt
+
+teardown:
+	@rm -rf __pycache__ venv requirements_utf8.txt
+
 clean:
+	$(MAKE) teardown
 	@rm -f test_results*.txt $(TEST_ZDS_UTF8) $(TEST_ZJB_UTF8) $(TEST_ZUSF_UTF8)
-
-rebuild: test
 
 help:
 	@echo "Available targets:"
@@ -64,3 +62,5 @@ help:
 	@echo "  test-zusf   - Run USS tests only"
 	@echo "  clean 		 - Remove all test result files"
 	@echo "  help        - Show this help message"
+
+.PHONY: all test-zds test-zjb test-zusf clean-results help clean setup teardown

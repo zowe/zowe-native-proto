@@ -25,7 +25,14 @@ interface IConfig {
 
 const localDeployDir = "./../native";
 const args = process.argv.slice(2);
-let deployDirs: { root: string; cDir: string; cTestDir: string; goDir: string; pythonDir: string };
+let deployDirs: {
+    root: string;
+    cDir: string;
+    cTestDir: string;
+    goDir: string;
+    pythonDir: string;
+    pythonTestDir: string;
+};
 
 const asciiToEbcdicMap =
     // biome-ignore format: the array should not be formatted
@@ -448,17 +455,28 @@ async function test(connection: Client) {
     console.log("Testing complete!");
 }
 
+async function testPython(connection: Client) {
+    console.log("Testing native/python ...");
+    const response = await runCommandInShell(connection, `cd ${deployDirs.pythonTestDir} && make\n`);
+    console.log(response);
+    console.log("Testing complete!");
+}
+
 async function clean(connection: Client) {
-    console.log("Cleaning dir ...");
-    const resp = await runCommandInShell(connection, `cd ${deployDirs.cDir} && make clean\n`);
-    console.log(resp);
+    console.log("Cleaning native/c ...");
+    console.log(await runCommandInShell(connection, `cd ${deployDirs.cDir} && make clean\n`));
+    console.log("Cleaning native/c/test ...");
+    console.log(await runCommandInShell(connection, `cd ${deployDirs.cTestDir} && make clean\n`));
+    console.log("Cleaning native/python ...");
+    console.log(await runCommandInShell(connection, `cd ${deployDirs.pythonDir} && make clean\n`));
+    console.log("Cleaning native/python/test ...");
+    console.log(await runCommandInShell(connection, `cd ${deployDirs.pythonTestDir} && make clean\n`));
     console.log("Clean complete");
 }
 
 async function rmdir(connection: Client) {
-    console.log("Removing dir ...");
-    const resp = await runCommandInShell(connection, `rm -rf ${deployDirs.root}\n`);
-    console.log(resp);
+    console.log("Removing ROOT directory ...");
+    console.log(await runCommandInShell(connection, `rm -rf ${deployDirs.root}\n`));
     console.log("Removal complete");
 }
 
@@ -716,6 +734,7 @@ async function main() {
         cTestDir: `${config.deployDir}/c/test`,
         goDir: `${config.deployDir}/golang`,
         pythonDir: `${config.deployDir}/python`,
+        pythonTestDir: `${config.deployDir}/python/test`,
     };
     const sshClient = await buildSshClient(config.sshProfile as IProfile);
 
@@ -732,6 +751,9 @@ async function main() {
                 break;
             case "build:python":
                 await buildPython(sshClient);
+                break;
+            case "test:python":
+                await testPython(sshClient);
                 break;
             case "clean":
                 await clean(sshClient);
