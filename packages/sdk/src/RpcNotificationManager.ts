@@ -17,6 +17,8 @@ import type { Client, ClientChannel } from "ssh2";
 import { CountingBase64Decode } from "./CountingBase64Decode";
 import type { CommandResponse, RpcNotification, RpcPromise, RpcRequest } from "./doc";
 
+type StreamMode = "r" | "w";
+
 export class RpcNotificationManager {
     private mPendingStreamMap: Map<number, Stream> = new Map();
 
@@ -33,10 +35,10 @@ export class RpcNotificationManager {
     public handleNotification(notif: RpcNotification, promise?: RpcPromise): void {
         switch (notif.method) {
             case "sendStream":
-                this.finishStream(promise, this.uploadStream(notif.params));
+                this.linkStreamToPromise(promise, this.uploadStream(notif.params), "r");
                 break;
             case "receiveStream":
-                this.finishStream(promise, this.downloadStream(notif.params));
+                this.linkStreamToPromise(promise, this.downloadStream(notif.params), "w");
                 break;
             default:
                 throw new Error(`Unknown RPC notification type: ${notif.method}`);
@@ -80,12 +82,12 @@ export class RpcNotificationManager {
         return decoder.bytesWritten;
     }
 
-    private finishStream(rpcPromise: RpcPromise, streamPromise: Promise<number>): void {
+    private linkStreamToPromise(rpcPromise: RpcPromise, streamPromise: Promise<number>, mode: StreamMode): void {
         const { reject, resolve } = rpcPromise;
         rpcPromise.resolve = async (response: CommandResponse) => {
             const contentLen = await streamPromise;
             try {
-                this.expectContentLengthMatches(response, contentLen);
+                this.expectContentLengthMatches(response, contentLen, mode);
                 resolve(response);
             } catch (err) {
                 reject(err);
@@ -93,12 +95,14 @@ export class RpcNotificationManager {
         };
     }
 
-    private expectContentLengthMatches(response: CommandResponse, expectedLen: number): void {
-        if ("contentLen" in response && response.contentLen != null && response.contentLen !== expectedLen) {
+    private expectContentLengthMatches(response: CommandResponse, clientLen: number, mode: StreamMode): void {
+        if ("contentLen" in response && response.contentLen != null && response.contentLen !== clientLen) {
+            const expectedLen = mode === "r" ? clientLen : response.contentLen;
+            const actualLen = mode === "r" ? response.contentLen : clientLen;
             const errMsg = Logger.getAppLogger().error(
                 "Content length mismatch: expected %d, got %d",
                 expectedLen,
-                response.contentLen,
+                actualLen,
             );
             throw new Error(errMsg);
         }
