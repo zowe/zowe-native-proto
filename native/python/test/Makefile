@@ -19,7 +19,7 @@ test: setup
 	@$(MAKE) test-zusf 2>&1 | tee -a $(RESULTS_FILE)
 	@echo | tee -a $(RESULTS_FILE)
 	@echo "=== Test Completed - $$(date) ===" | tee -a $(RESULTS_FILE)
-	@echo "Results saved to: $(RESULTS_FILE)"
+	@echo "Results saved to: $(PWD)/$(RESULTS_FILE)"
 	@$(MAKE) teardown
 
 # Pattern rule to convert EBCDIC to UTF-8
@@ -50,8 +50,7 @@ setup:
 teardown:
 	@rm -rf __pycache__ venv requirements_utf8.txt
 
-clean:
-	$(MAKE) teardown
+clean: teardown
 	@rm -f test_results*.txt $(TEST_ZDS_UTF8) $(TEST_ZJB_UTF8) $(TEST_ZUSF_UTF8)
 
 help:
@@ -60,7 +59,9 @@ help:
 	@echo "  test-zds    - Run dataset tests only"
 	@echo "  test-zjb    - Run job tests only"
 	@echo "  test-zusf   - Run USS tests only"
-	@echo "  clean 		 - Remove all test result files"
+	@echo "  clean       - Remove all test result files"
+	@echo "  setup       - Setup the test environment"
+	@echo "  teardown    - Teardown the test environment"
 	@echo "  help        - Show this help message"
 
 .PHONY: all test-zds test-zjb test-zusf clean-results help clean setup teardown
