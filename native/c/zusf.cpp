@@ -332,8 +332,14 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, string file, string pipe, size_
     }
 
     *content_len += chunk_len;
-    temp_encoded = zbase64::encode(chunk, chunk_len);
+    temp_encoded = zbase64::encode(chunk, chunk_len, false);
     fwrite(&temp_encoded[0], 1, temp_encoded.size(), fout);
+  }
+
+  const auto padding = *content_len % 4;
+  if (padding > 0)
+  {
+    fwrite("===", 1, 4 - padding, fout);
   }
 
   fflush(fout);
