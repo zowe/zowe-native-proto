@@ -9,6 +9,8 @@
  *
  */
 
+import type { CommandResponse } from "./gen/common";
+
 export type B64String = string & { __brand: "B64String" };
 
 export enum UssItemType {
@@ -29,6 +31,11 @@ export namespace B64String {
     }
 
     export function encode(data: Uint8Array | string): B64String {
-        return (typeof data === "string" ? Buffer.from(data) : data).toString("base64") as B64String;
+        return Buffer.from(data).toString("base64") as B64String;
     }
 }
+
+type PromiseResolve<T> = (value: T | PromiseLike<T>) => void;
+// biome-ignore lint/suspicious/noExplicitAny: Promise reject type uses any
+type PromiseReject = (reason?: any) => void;
+export type RpcPromise = { resolve: PromiseResolve<CommandResponse>; reject: PromiseReject };

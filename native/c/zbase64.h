@@ -97,10 +97,20 @@ static const unsigned char *get_ebcdic_decode_table()
   return table;
 }
 
-// Fast inline function to calculate encoded size
-inline size_t encoded_size(size_t input_size)
+// Fast inline function to calculate encoded size with optional padding
+inline size_t encoded_size(size_t input_size, bool with_padding = true)
 {
-  return ((input_size + 2) / 3) * 4;
+  if (with_padding)
+  {
+    return ((input_size + 2) / 3) * 4;
+  }
+  else
+  {
+    // Without padding, calculate exact size needed
+    const size_t full_blocks = input_size / 3;
+    const size_t remaining = input_size % 3;
+    return (full_blocks * 4) + (remaining > 0 ? remaining + 1 : 0);
+  }
 }
 
 // Fast inline function to calculate maximum decoded size
@@ -110,14 +120,14 @@ inline size_t max_decoded_size(size_t input_size)
 }
 
 // High-performance encode function (produces ASCII Base64 output)
-inline std::vector<char> encode(const char *input, size_t input_len)
+inline std::vector<char> encode(const char *input, size_t input_len, bool with_padding = true)
 {
   if (input_len == 0)
   {
     return std::vector<char>();
   }
 
-  const size_t output_len = encoded_size(input_len);
+  const size_t output_len = encoded_size(input_len, with_padding);
 
   std::vector<char> output;
   output.resize(output_len); // Pre-allocate exact size
@@ -168,17 +178,25 @@ inline std::vector<char> encode(const char *input, size_t input_len)
 
     dst[0] = encode_table_ascii[(combined >> 18) & 0x3F];
     dst[1] = encode_table_ascii[(combined >> 12) & 0x3F];
-    dst[2] = (remaining > 1) ? encode_table_ascii[(combined >> 6) & 0x3F] : '=';
-    dst[3] = '=';
+
+    if (with_padding)
+    {
+      dst[2] = (remaining > 1) ? encode_table_ascii[(combined >> 6) & 0x3F] : '=';
+      dst[3] = '=';
+    }
+    else if (remaining > 1)
+    {
+      dst[2] = encode_table_ascii[(combined >> 6) & 0x3F];
+    }
   }
 
   return output;
 }
 
 // Convenience overload for string input
-inline std::string encode(const std::string &input)
+inline std::string encode(const std::string &input, bool with_padding = true)
 {
-  std::vector<char> result = encode(&input[0], input.size());
+  std::vector<char> result = encode(&input[0], input.size(), with_padding);
   return std::string(result.begin(), result.end());
 }
 

@@ -278,10 +278,11 @@ int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
  * @param zusf pointer to a ZUSF object
  * @param file name of the USS file
  * @param pipe name of the output pipe
+ * @param content_len pointer where the length of the file contents will be stored
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zusf_read_from_uss_file_streamed(ZUSF *zusf, string file, string pipe)
+int zusf_read_from_uss_file_streamed(ZUSF *zusf, string file, string pipe, size_t *content_len)
 {
   FILE *fin = fopen(file.c_str(), zusf->encoding_opts.data_type == eDataTypeBinary ? "rb" : "r");
   if (!fin)
@@ -330,8 +331,15 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, string file, string pipe)
       }
     }
 
-    temp_encoded = zbase64::encode(chunk, chunk_len);
+    *content_len += chunk_len;
+    temp_encoded = zbase64::encode(chunk, chunk_len, false);
     fwrite(&temp_encoded[0], 1, temp_encoded.size(), fout);
+  }
+
+  const auto padding = *content_len % 4;
+  if (padding > 0)
+  {
+    fwrite("===", 1, 4 - padding, fout);
   }
 
   fflush(fout);
@@ -419,10 +427,11 @@ int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data)
  * @param zusf pointer to a ZUSF object
  * @param file name of the USS file
  * @param pipe name of the input pipe
+ * @param content_len pointer where the length of the file contents will be stored
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe)
+int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe, size_t *content_len)
 {
   // TODO(zFernand0): Avoid overriding existing files
   struct stat file_stats;
@@ -467,6 +476,7 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe)
     std::vector<char> temp_encoded = zbase64::decode(&buf[0], bytes_read);
     const char *chunk = &temp_encoded[0];
     int chunk_len = temp_encoded.size();
+    *content_len += chunk_len;
 
     if (hasEncoding)
     {
