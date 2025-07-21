@@ -51,7 +51,9 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
     }
 
     private static defaultErrHandler(err: Error): void {
-        Logger.getAppLogger().error(err.toString());
+        const errMsg = err.toString();
+        console.error(errMsg);
+        Logger.getAppLogger().error(errMsg);
     }
 
     public static async create(session: SshSession, opts: ClientOptions = {}): Promise<ZSshClient> {
