@@ -1,5 +1,7 @@
 # Zowe Native Protocol
 
+Open-source native protocol for z/OS mainframe operations with SSH-based communication and zero server-side runtime dependencies.
+
 ## Prerequisites
 
 ### Local
