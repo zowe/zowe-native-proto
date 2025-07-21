@@ -42,6 +42,7 @@
 #else
 #pragma pack(packed)
 #endif
+#endif
 
 // NOTE(Kelosky): struct is padded to nearest double word boundary; ensure proper alignment for fields
 typedef struct
