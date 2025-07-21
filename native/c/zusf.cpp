@@ -1229,6 +1229,11 @@ int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data)
     std::fwrite(temp.data(), 1, temp.size(), fp);
   std::fclose(fp);
 
+  if (zusf->created)
+  {
+    zusf_chtag_uss_file_or_dir(zusf, file, encoding_to_use, false);
+  }
+
   struct stat new_stats;
   if (stat(file.c_str(), &new_stats) == -1)
   {
