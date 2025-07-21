@@ -20,7 +20,7 @@ export class SshUssApi extends SshCommonApi implements MainframeInteraction.IUss
         const response = await (await this.client).uss.listFiles({
             fspath: ussFilePath,
             all: true,
-            long: true,
+            long: true
         });
         return this.buildZosFilesResponse({
             items: response.items,
