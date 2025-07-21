@@ -1,6 +1,6 @@
 # Zowe Native Protocol
 
-Open-source native protocol for efficient z/OS mainframe operations over SSH with zero server-side configuration required.
+An open-source, native protocol for z/OS mainframe operations via SSH with minimal server-side configuration.
 
 ## Prerequisites
 
