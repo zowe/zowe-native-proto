@@ -41,7 +41,14 @@ func HandleListFilesRequest(conn *utils.StdioConn, params []byte) (result any, e
 		return nil, err
 	}
 
-	out, err := conn.ExecCmd([]string{"uss", "list", request.Path, "-al", "--rfc"})
+	args := []string{"uss", "list", request.Path, "--rfc"}
+	if request.All {
+		args = append(args, "-a")
+	}
+	if request.Long {
+		args = append(args, "-l")
+	}
+	out, err := conn.ExecCmd(args)
 	if err != nil {
 		return nil, fmt.Errorf("Error executing command: %v", err)
 	}
@@ -52,18 +59,24 @@ func HandleListFilesRequest(conn *utils.StdioConn, params []byte) (result any, e
 	lines := strings.Split(rawResponse, "\n")
 	ussResponse.Items = make([]t.UssItem, len(lines))
 	for i, line := range lines {
-		fields := strings.Split(line, ",")
-		links, _ := strconv.Atoi(fields[1])
-		size, _ := strconv.Atoi(fields[4])
-		ussResponse.Items[i] = t.UssItem{
-			Mode:  fields[0],
-			Links: links,
-			User:  fields[2],
-			Group: fields[3],
-			Size:  size,
-			Tag:   fields[5],
-			Date:  fields[6],
-			Name:  fields[7],
+		if request.Long {
+			fields := strings.Split(line, ",")
+			links, _ := strconv.Atoi(fields[1])
+			size, _ := strconv.Atoi(fields[4])
+			ussResponse.Items[i] = t.UssItem{
+				Mode:  fields[0],
+				Links: links,
+				User:  fields[2],
+				Group: fields[3],
+				Size:  size,
+				Tag:   fields[5],
+				Date:  fields[6],
+				Name:  fields[7],
+			}
+		} else {
+			ussResponse.Items[i] = t.UssItem{
+				Name: line,
+			}
 		}
 	}
 

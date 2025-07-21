@@ -38,6 +38,22 @@ export const ListUssFilesDefinition: ICommandDefinition = {
             options: '"/u/users/ibmuser/" --rff name',
         },
     ],
+    options: [
+        {
+            name: "all",
+            description: "Show all files",
+            type: "boolean",
+            required: false,
+            aliases: ["a"],
+        },
+        {
+            name: "long",
+            description: "Show long format",
+            type: "boolean",
+            required: false,
+            aliases: ["l"],
+        },
+    ],
     positionals: [
         {
             name: "directory",
