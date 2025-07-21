@@ -35,7 +35,7 @@
 #include "zdyn.h"
 #include "zusftype.h"
 #include "zut.hpp"
-#include "extern/zb64.h"
+#include "zbase64.h"
 #include "iefzb4d2.h"
 #ifndef _XPLATFORM_SOURCE
 #define _XPLATFORM_SOURCE
@@ -1144,8 +1144,8 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, string file, string pipe)
       }
     }
 
-    chunk = base64(chunk, chunk_len, &chunk_len);
-    fwrite(chunk, 1, chunk_len, fout);
+    temp_encoded = zbase64::encode(chunk, chunk_len);
+    fwrite(&temp_encoded[0], 1, temp_encoded.size(), fout);
   }
 
   fflush(fout);
@@ -1314,9 +1314,9 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe)
 
   while ((bytes_read = fread(&buf[0], 1, FIFO_CHUNK_SIZE, fin)) > 0)
   {
-    int chunk_len;
-    const char *chunk = (char *)unbase64(&buf[0], bytes_read, &chunk_len);
-    std::vector<char> temp_encoded;
+    std::vector<char> temp_encoded = zbase64::decode(&buf[0], bytes_read);
+    const char *chunk = &temp_encoded[0];
+    int chunk_len = temp_encoded.size();
 
     if (has_encoding)
     {
