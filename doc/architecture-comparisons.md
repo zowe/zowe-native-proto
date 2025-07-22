@@ -25,7 +25,7 @@ graph TB
 
     subgraph "z/OS Server Side"
         subgraph "API Mediation Layer"
-            ZOWEA["Gateway<br/>(-)<br/>-"]
+            ZOWEA["Gateway"]
         end
         subgraph "SSH Server Process"
             ZOWED["zowed<br/>(Go I/O Server)<br/>JSON-RPC Middleware"]
@@ -61,6 +61,8 @@ graph TB
 
     style SSH fill:#e1f5fe
     style ZOWED fill:#f3e5f5
+    style ZOWEP fill:#ffff00
+    style ZOWEP2 fill:#ffff00
     style ZOWEX fill:#e8f5e8
     style SDK fill:#fff3e0
 ```
