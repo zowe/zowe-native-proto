@@ -17,9 +17,9 @@ jobs:
           fetch-depth: 0
 
       - name: Check Changelog Updated
-        id: checkchangelogupdated
         uses: awharn/check_changelog_action@v1
         with:
-          header: "## TBD Release"
+          header: "## Recent Changes"
           file: "CHANGELOG.md"
-          lerna: false
+          lerna: true
+          ignoreFiles: "__tests__|package.json|package-lock.json|*.md"
