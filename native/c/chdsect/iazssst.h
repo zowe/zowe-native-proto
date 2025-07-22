@@ -1,4 +1,8 @@
+#if defined(SWIG)
+#pragma pack(1)
+#else
 #pragma pack(packed)
+#endif
 
 #ifndef __stat__
 #define __stat__
