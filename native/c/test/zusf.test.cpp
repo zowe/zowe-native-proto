@@ -15,6 +15,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <string.h>
+#include <pwd.h>
+#include <grp.h>
+#include <time.h>
 
 #include "ztest.hpp"
 #include "zusf.hpp"
@@ -269,6 +272,547 @@ void zusf_tests()
                   // Test very negative CCSID
                   string result2 = zusf_get_ccsid_display_name(-999);
                   Expect(result2).ToBe("untagged");
+                });
+           });
+
+  describe("zusf_format_ls_time tests",
+           [&]() -> void
+           {
+             it("should format time in ls-style format by default",
+                [&]() -> void
+                {
+                  // Use a known timestamp: January 1, 2024 12:00:00 UTC
+                  time_t test_time = 1704110400; // 2024-01-01 12:00:00 UTC
+
+                  string result = zusf_format_ls_time(test_time, false);
+
+                  // Should be in format like "Jan  1 12:00" (but will be in local time)
+                  // We'll just check that it contains expected elements
+                  Expect(result.length()).ToBeGreaterThan(0);
+                  Expect(result.length()).ToBeLessThan(20); // Should be reasonable length
+                });
+
+             it("should format time in CSV/ISO format when requested",
+                [&]() -> void
+                {
+                  // Use a known timestamp: January 1, 2024 12:00:00 UTC
+                  time_t test_time = 1704110400; // 2024-01-01 12:00:00 UTC
+
+                  string result = zusf_format_ls_time(test_time, true);
+
+                  // Should be in format "2024-01-01T12:00:00"
+                  Expect(result).ToBe("2024-01-01T12:00:00");
+                });
+
+             it("should handle zero timestamp in CSV format",
+                [&]() -> void
+                {
+                  time_t test_time = 0; // Unix epoch
+
+                  string result = zusf_format_ls_time(test_time, true);
+
+                  // Should be in format "1970-01-01T00:00:00"
+                  Expect(result).ToBe("1970-01-01T00:00:00");
+                });
+
+             it("should handle negative timestamp gracefully",
+                [&]() -> void
+                {
+                  time_t test_time = -1; // Invalid time
+
+                  string result = zusf_format_ls_time(test_time, true);
+
+                  // Should fallback to epoch time
+                  Expect(result).ToBe("1970-01-01T00:00:00");
+                });
+
+             it("should handle very large timestamp",
+                [&]() -> void
+                {
+                  // Use year 2038 (close to 32-bit time_t limit)
+                  time_t test_time = 2147483647; // 2038-01-19 03:14:07 UTC
+
+                  string result = zusf_format_ls_time(test_time, true);
+
+                  // Should format correctly
+                  Expect(result).ToBe("2038-01-19T03:14:07");
+                });
+           });
+
+  describe("zusf_get_owner_from_uid tests",
+           [&]() -> void
+           {
+             it("should return username for current user UID",
+                [&]() -> void
+                {
+                  uid_t current_uid = getuid();
+                  const char *result = zusf_get_owner_from_uid(current_uid);
+
+                  // Should return a valid username (not null)
+                  Expect(result).Not().ToBeNull();
+
+                  // Should match what getpwuid returns
+                  struct passwd *pwd = getpwuid(current_uid);
+                  if (pwd != nullptr)
+                  {
+                    Expect(string(result)).ToBe(string(pwd->pw_name));
+                  }
+                });
+
+             it("should return null for invalid UID",
+                [&]() -> void
+                {
+                  // Use a UID that's very unlikely to exist
+                  uid_t invalid_uid = 99999;
+                  const char *result = zusf_get_owner_from_uid(invalid_uid);
+
+                  // Should return null for non-existent UID
+                  Expect(result).ToBeNull();
+                });
+           });
+
+  describe("zusf_get_group_from_gid tests",
+           [&]() -> void
+           {
+             it("should return group name for current user GID",
+                [&]() -> void
+                {
+                  gid_t current_gid = getgid();
+                  const char *result = zusf_get_group_from_gid(current_gid);
+
+                  // Should return a valid group name (not null)
+                  Expect(result).Not().ToBeNull();
+
+                  // Should match what getgrgid returns
+                  struct group *grp = getgrgid(current_gid);
+                  if (grp != nullptr)
+                  {
+                    Expect(string(result)).ToBe(string(grp->gr_name));
+                  }
+                });
+
+             it("should return null for invalid GID",
+                [&]() -> void
+                {
+                  // Use a GID that's very unlikely to exist
+                  gid_t invalid_gid = 99999;
+                  const char *result = zusf_get_group_from_gid(invalid_gid);
+
+                  // Should return null for non-existent GID
+                  Expect(result).ToBeNull();
+                });
+
+             it("should handle root GID (0)",
+                [&]() -> void
+                {
+                  gid_t root_gid = 0;
+                  const char *result = zusf_get_group_from_gid(root_gid);
+
+                  // May or may not exist depending on system, but should handle gracefully
+                  // If it exists, commonly "root" or "wheel"
+                  if (result != nullptr)
+                  {
+                    Expect(strlen(result)).ToBeGreaterThan(0);
+                  }
+                });
+           });
+
+  describe("zusf_format_file_entry tests",
+           [&]() -> void
+           {
+             ZUSF zusf;
+             memset(&zusf, 0, sizeof(zusf));
+
+             const string test_file = "/tmp/zusf_format_test_file.txt";
+             const string test_dir = "/tmp/zusf_format_test_dir";
+
+             it("should format short listing for regular file",
+                [&]() -> void
+                {
+                  // Create test file
+                  unlink(test_file.c_str());
+                  ofstream file(test_file);
+                  file << "test content";
+                  file.close();
+
+                  struct stat file_stats;
+                  stat(test_file.c_str(), &file_stats);
+
+                  ListOptions options = {false, false}; // not all files, not long format
+                  string result = zusf_format_file_entry(&zusf, file_stats, test_file, "testfile.txt", options, false);
+
+                  // Short format should just be filename + newline
+                  Expect(result).ToBe("testfile.txt\n");
+
+                  // Cleanup
+                  unlink(test_file.c_str());
+                });
+
+             it("should format long listing for regular file in ls-style",
+                [&]() -> void
+                {
+                  // Create test file
+                  unlink(test_file.c_str());
+                  ofstream file(test_file);
+                  file << "test content";
+                  file.close();
+                  chmod(test_file.c_str(), 0644);
+
+                  struct stat file_stats;
+                  stat(test_file.c_str(), &file_stats);
+
+                  ListOptions options = {false, true}; // not all files, long format
+                  string result = zusf_format_file_entry(&zusf, file_stats, test_file, "testfile.txt", options, false);
+
+                  // Long format should contain permissions, size, time, filename
+                  Expect(result).ToContain("-rw-r--r--");   // permissions
+                  Expect(result).ToContain("testfile.txt"); // filename
+                  Expect(result).ToContain("12");           // file size (test content = 12 bytes)
+                  Expect(result.back()).ToBe('\n');         // should end with newline
+
+                  // Cleanup
+                  unlink(test_file.c_str());
+                });
+
+             it("should format long listing for regular file in CSV format",
+                [&]() -> void
+                {
+                  // Create test file
+                  unlink(test_file.c_str());
+                  ofstream file(test_file);
+                  file << "test content";
+                  file.close();
+                  chmod(test_file.c_str(), 0644);
+
+                  struct stat file_stats;
+                  stat(test_file.c_str(), &file_stats);
+
+                  ListOptions options = {false, true}; // not all files, long format
+                  string result = zusf_format_file_entry(&zusf, file_stats, test_file, "testfile.txt", options, true);
+
+                  // CSV format should have comma-separated values
+                  Expect(result).ToContain(",");            // should have commas
+                  Expect(result).ToContain("-rw-r--r--");   // permissions
+                  Expect(result).ToContain("testfile.txt"); // filename
+                  Expect(result).ToContain("12");           // file size
+                  Expect(result.back()).ToBe('\n');         // should end with newline
+
+                  // Should contain exactly 7 commas (8 fields total)
+                  int comma_count = 0;
+                  for (char c : result)
+                  {
+                    if (c == ',')
+                      comma_count++;
+                  }
+                  Expect(comma_count).ToBe(7);
+
+                  // Cleanup
+                  unlink(test_file.c_str());
+                });
+
+             it("should format directory entry correctly",
+                [&]() -> void
+                {
+                  // Create test directory
+                  rmdir(test_dir.c_str());
+                  mkdir(test_dir.c_str(), 0755);
+
+                  struct stat dir_stats;
+                  stat(test_dir.c_str(), &dir_stats);
+
+                  ListOptions options = {false, true}; // not all files, long format
+                  string result = zusf_format_file_entry(&zusf, dir_stats, test_dir, "testdir", options, false);
+
+                  // Directory should start with 'd'
+                  Expect(result).ToContain("drwxr-xr-x"); // directory permissions
+                  Expect(result).ToContain("testdir");    // directory name
+
+                  // Cleanup
+                  rmdir(test_dir.c_str());
+                });
+
+             it("should handle files with different CCSID tags",
+                [&]() -> void
+                {
+                  // Create test file
+                  unlink(test_file.c_str());
+                  ofstream file(test_file);
+                  file << "test content";
+                  file.close();
+
+                  struct stat file_stats;
+                  stat(test_file.c_str(), &file_stats);
+
+                  ListOptions options = {false, true}; // long format
+                  string result = zusf_format_file_entry(&zusf, file_stats, test_file, "testfile.txt", options, false);
+
+                  // Should contain CCSID information (could be "untagged" or a specific CCSID)
+                  bool has_ccsid_info = result.find("untagged") != string::npos ||
+                                        result.find("IBM-") != string::npos ||
+                                        result.find("UTF-8") != string::npos ||
+                                        result.find("binary") != string::npos;
+                  Expect(has_ccsid_info).ToBe(true);
+
+                  // Cleanup
+                  unlink(test_file.c_str());
+                });
+           });
+
+  describe("zusf_list_uss_file_path tests",
+           [&]() -> void
+           {
+             ZUSF zusf;
+             memset(&zusf, 0, sizeof(zusf));
+
+             const string test_file = "/tmp/zusf_list_test_file.txt";
+             const string test_dir = "/tmp/zusf_list_test_dir";
+             const string nonexistent_path = "/tmp/nonexistent_path_for_list";
+
+             it("should fail for nonexistent path",
+                [&]() -> void
+                {
+                  string response;
+                  ListOptions options = {false, false};
+
+                  int result = zusf_list_uss_file_path(&zusf, nonexistent_path, response, options, false);
+
+                  Expect(result).ToBe(RTNCD_FAILURE);
+                  Expect(string(zusf.diag.e_msg)).ToContain("does not exist");
+                });
+
+             it("should list single file successfully",
+                [&]() -> void
+                {
+                  // Create test file
+                  unlink(test_file.c_str());
+                  ofstream file(test_file);
+                  file << "test content for listing";
+                  file.close();
+
+                  string response;
+                  ListOptions options = {false, false}; // short format
+
+                  int result = zusf_list_uss_file_path(&zusf, test_file, response, options, false);
+
+                  Expect(result).ToBe(RTNCD_SUCCESS);
+                  Expect(response).ToContain("zusf_list_test_file.txt");
+
+                  // Cleanup
+                  unlink(test_file.c_str());
+                });
+
+             it("should list single file in long format",
+                [&]() -> void
+                {
+                  // Create test file
+                  unlink(test_file.c_str());
+                  ofstream file(test_file);
+                  file << "test content for long listing";
+                  file.close();
+
+                  string response;
+                  ListOptions options = {false, true}; // long format
+
+                  int result = zusf_list_uss_file_path(&zusf, test_file, response, options, false);
+
+                  Expect(result).ToBe(RTNCD_SUCCESS);
+                  Expect(response).ToContain("zusf_list_test_file.txt");
+                  Expect(response).ToContain("-rw-"); // file permissions
+
+                  // Cleanup
+                  unlink(test_file.c_str());
+                });
+
+             it("should list directory contents",
+                [&]() -> void
+                {
+                  // Create test directory
+                  rmdir(test_dir.c_str());
+                  mkdir(test_dir.c_str(), 0755);
+
+                  // Create files in directory
+                  string file1 = test_dir + "/file1.txt";
+                  string file2 = test_dir + "/file2.txt";
+                  string subdir = test_dir + "/subdir";
+
+                  ofstream f1(file1);
+                  f1 << "content1";
+                  f1.close();
+
+                  ofstream f2(file2);
+                  f2 << "content2";
+                  f2.close();
+
+                  mkdir(subdir.c_str(), 0755);
+
+                  string response;
+                  ListOptions options = {false, false}; // short format
+
+                  int result = zusf_list_uss_file_path(&zusf, test_dir, response, options, false);
+
+                  Expect(result).ToBe(RTNCD_SUCCESS);
+                  Expect(response).ToContain("file1.txt");
+                  Expect(response).ToContain("file2.txt");
+                  Expect(response).ToContain("subdir");
+
+                  // Files should be listed in alphabetical order
+                  size_t pos1 = response.find("file1.txt");
+                  size_t pos2 = response.find("file2.txt");
+                  Expect(pos1).ToBeLessThan(pos2);
+
+                  // Cleanup
+                  unlink(file1.c_str());
+                  unlink(file2.c_str());
+                  rmdir(subdir.c_str());
+                  rmdir(test_dir.c_str());
+                });
+
+             it("should list directory contents in long format",
+                [&]() -> void
+                {
+                  // Create test directory
+                  rmdir(test_dir.c_str());
+                  mkdir(test_dir.c_str(), 0755);
+
+                  // Create file in directory
+                  string file1 = test_dir + "/testfile.txt";
+                  ofstream f1(file1);
+                  f1 << "test content";
+                  f1.close();
+
+                  string response;
+                  ListOptions options = {false, true}; // long format
+
+                  int result = zusf_list_uss_file_path(&zusf, test_dir, response, options, false);
+
+                  Expect(result).ToBe(RTNCD_SUCCESS);
+                  Expect(response).ToContain("testfile.txt");
+                  Expect(response).ToContain("-rw-"); // file permissions
+
+                  // Cleanup
+                  unlink(file1.c_str());
+                  rmdir(test_dir.c_str());
+                });
+
+             it("should handle hidden files based on all_files option",
+                [&]() -> void
+                {
+                  // Create test directory
+                  rmdir(test_dir.c_str());
+                  mkdir(test_dir.c_str(), 0755);
+
+                  // Create regular and hidden files
+                  string regular_file = test_dir + "/regular.txt";
+                  string hidden_file = test_dir + "/.hidden.txt";
+
+                  ofstream f1(regular_file);
+                  f1 << "regular content";
+                  f1.close();
+
+                  ofstream f2(hidden_file);
+                  f2 << "hidden content";
+                  f2.close();
+
+                  // Test without all_files option
+                  string response1;
+                  ListOptions options1 = {false, false}; // no all_files
+                  int result1 = zusf_list_uss_file_path(&zusf, test_dir, response1, options1, false);
+
+                  Expect(result1).ToBe(RTNCD_SUCCESS);
+                  Expect(response1).ToContain("regular.txt");
+                  Expect(response1).Not().ToContain(".hidden.txt");
+
+                  // Test with all_files option
+                  string response2;
+                  ListOptions options2 = {true, false}; // with all_files
+                  int result2 = zusf_list_uss_file_path(&zusf, test_dir, response2, options2, false);
+
+                  Expect(result2).ToBe(RTNCD_SUCCESS);
+                  Expect(response2).ToContain("regular.txt");
+                  Expect(response2).ToContain(".hidden.txt");
+
+                  // Cleanup
+                  unlink(regular_file.c_str());
+                  unlink(hidden_file.c_str());
+                  rmdir(test_dir.c_str());
+                });
+
+             it("should handle CSV format output",
+                [&]() -> void
+                {
+                  // Create test file
+                  unlink(test_file.c_str());
+                  ofstream file(test_file);
+                  file << "csv test content";
+                  file.close();
+
+                  string response;
+                  ListOptions options = {false, true}; // long format
+
+                  int result = zusf_list_uss_file_path(&zusf, test_file, response, options, true); // CSV format
+
+                  Expect(result).ToBe(RTNCD_SUCCESS);
+
+                  // CSV format should have commas
+                  Expect(response).ToContain(",");
+                  Expect(response).ToContain("zusf_list_test_file.txt");
+
+                  // Should have proper number of fields (8 fields = 7 commas)
+                  int comma_count = 0;
+                  for (char c : response)
+                  {
+                    if (c == ',')
+                      comma_count++;
+                  }
+                  Expect(comma_count).ToBe(7);
+
+                  // Cleanup
+                  unlink(test_file.c_str());
+                });
+
+             it("should handle empty directory",
+                [&]() -> void
+                {
+                  // Create empty test directory
+                  rmdir(test_dir.c_str());
+                  mkdir(test_dir.c_str(), 0755);
+
+                  string response;
+                  ListOptions options = {false, false};
+
+                  int result = zusf_list_uss_file_path(&zusf, test_dir, response, options, false);
+
+                  Expect(result).ToBe(RTNCD_SUCCESS);
+                  Expect(response).ToBe(""); // Should be empty for empty directory
+
+                  // Cleanup
+                  rmdir(test_dir.c_str());
+                });
+
+             it("should handle directory with only hidden files when all_files is false",
+                [&]() -> void
+                {
+                  // Create test directory
+                  rmdir(test_dir.c_str());
+                  mkdir(test_dir.c_str(), 0755);
+
+                  // Create only hidden files
+                  string hidden_file = test_dir + "/.hidden1.txt";
+                  ofstream f1(hidden_file);
+                  f1 << "hidden content";
+                  f1.close();
+
+                  string response;
+                  ListOptions options = {false, false}; // no all_files
+
+                  int result = zusf_list_uss_file_path(&zusf, test_dir, response, options, false);
+
+                  Expect(result).ToBe(RTNCD_SUCCESS);
+                  Expect(response).ToBe(""); // Should be empty since no visible files
+
+                  // Cleanup
+                  unlink(hidden_file.c_str());
+                  rmdir(test_dir.c_str());
                 });
            });
 }
