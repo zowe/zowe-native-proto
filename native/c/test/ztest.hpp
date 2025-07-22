@@ -601,6 +601,74 @@ public:
     }
   }
 
+  template <typename U = T>
+  typename std::enable_if<std::is_arithmetic<U>::value>::type
+  ToBeLessThan(U val)
+  {
+    if (inverse)
+    {
+      if (result < val)
+      {
+        int status;
+        char *demangled = abi::__cxa_demangle(typeid(T).name(), nullptr, nullptr, &status);
+        std::string type_name = (status == 0) ? demangled : typeid(T).name();
+        if (demangled)
+          free(demangled);
+
+        std::stringstream ss;
+        ss << result;
+        std::stringstream ss2;
+        ss2 << val;
+        std::string error = "expected " + type_name + " '" + ss.str() + "' to NOT be less than '" + ss2.str() + "'";
+        error += append_error_details();
+        throw std::runtime_error(error);
+      }
+    }
+    else
+    {
+      if (result >= val)
+      {
+        int status;
+        char *demangled = abi::__cxa_demangle(typeid(T).name(), nullptr, nullptr, &status);
+        std::string type_name = (status == 0) ? demangled : typeid(T).name();
+        if (demangled)
+          free(demangled);
+
+        std::stringstream ss;
+        ss << result;
+        std::stringstream ss2;
+        ss2 << val;
+        std::string error = "expected " + type_name + " '" + ss.str() + "' to be less than '" + ss2.str() + "'";
+        error += append_error_details();
+        throw std::runtime_error(error);
+      }
+    }
+  }
+
+  template <typename U = T>
+  typename std::enable_if<std::is_same<U, std::string>::value>::type
+  ToContain(const std::string &substring)
+  {
+    if (inverse)
+    {
+      if (result.find(substring) != std::string::npos)
+      {
+        std::string error = "expected string '" + result + "' to NOT contain '" + substring + "'";
+        error += append_error_details();
+        throw std::runtime_error(error);
+      }
+    }
+    else
+    {
+      if (result.find(substring) == std::string::npos)
+      {
+        std::string error = "expected string '" + result + "' to contain '" + substring + "'";
+        error += append_error_details();
+        throw std::runtime_error(error);
+      }
+    }
+  }
+
   std::string append_error_details()
   {
     std::string error = "";
