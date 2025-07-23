@@ -28,8 +28,9 @@ export class SshUssApi extends SshCommonApi implements MainframeInteraction.IUss
         });
     }
 
-    public isFileTagBinOrAscii(ussFilePath: string): Promise<boolean> {
-        return Promise.resolve(false);
+    public async isFileTagBinOrAscii(ussFilePath: string): Promise<boolean> {
+        const tag = await this.getTag(ussFilePath);
+        return tag === "binary" || tag === "IBM-1047";
     }
 
     public async getContents(
