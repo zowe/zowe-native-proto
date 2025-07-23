@@ -83,7 +83,7 @@ struct ZShmContext
 };
 
 // Cleanup shared memory
-inline void cleanup_shared_memory(int shm_id, ZSharedRegion *shm_ptr)
+inline void cleanup_shared_memory(int shm_id, ZSharedRegion *shm_ptr, const char *file_path = nullptr)
 {
   // Note: shm_id is now a file descriptor
   if (shm_ptr)
@@ -94,10 +94,15 @@ inline void cleanup_shared_memory(int shm_id, ZSharedRegion *shm_ptr)
   {
     close(shm_id);
   }
+  // Clean up the file if path is provided
+  if (file_path && strlen(file_path) > 0)
+  {
+    unlink(file_path);
+  }
 }
 
 // Create a new shared memory segment
-inline int create_shared_memory(ZSharedRegion **shm_ptr)
+inline int create_shared_memory(ZSharedRegion **shm_ptr, char *file_path_out = nullptr)
 {
   char temp_path[256];
   snprintf(temp_path, sizeof(temp_path), "/tmp/zowe_shm_%d", getpid());
@@ -150,8 +155,11 @@ inline int create_shared_memory(ZSharedRegion **shm_ptr)
 
   pthread_mutexattr_destroy(&mutex_attr);
 
-  // Unlink the file for automatic cleanup
-  unlink(temp_path);
+  // Store the file path for later cleanup instead of unlinking immediately
+  if (file_path_out)
+  {
+    strcpy(file_path_out, temp_path);
+  }
 
   return fd;
 }
@@ -177,10 +185,9 @@ inline int attach_shared_memory(int fd, ZSharedRegion **shm_ptr)
   return 0;
 }
 
-// Legacy function for backward compatibility - now creates shared memory
-inline int init_shared_memory(ZSharedRegion **shm_ptr)
+inline int init_shared_memory(ZSharedRegion **shm_ptr, char *file_path_out = nullptr)
 {
-  return create_shared_memory(shm_ptr);
+  return create_shared_memory(shm_ptr, file_path_out);
 }
 
 inline void print_shared_memory_status(ZSharedRegion *shm_ptr)

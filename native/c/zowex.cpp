@@ -2507,9 +2507,10 @@ int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_
 
   // Initialize shared memory
   ZSharedRegion *shm_ptr = nullptr;
+  char shm_file_path[256] = {0};
 
   // Create new shared memory for this process (each process gets its own)
-  int shm_id = init_shared_memory(&shm_ptr);
+  int shm_id = init_shared_memory(&shm_ptr, shm_file_path);
   if (shm_id == -1)
   {
     cerr << "Failed to initialize shared memory" << endl;
@@ -2517,7 +2518,7 @@ int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_
   }
 
   std::cout << "Started, enter command or 'quit' to quit..." << std::endl;
-  std::cout << "Shared memory initialized (ID: " << shm_id << ")" << std::endl;
+  std::cout << "Shared memory initialized. Path: " << shm_file_path << std::endl;
   std::cout << "Shared memory address: " << std::hex << "0x" << reinterpret_cast<uintptr_t>(shm_ptr) << std::dec << std::endl;
   print_shared_memory_status(shm_ptr);
 
@@ -2596,7 +2597,7 @@ int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_
   std::cout << "...terminated" << std::endl;
 
   // Clean up this process's shared memory
-  cleanup_shared_memory(shm_id, shm_ptr);
+  cleanup_shared_memory(shm_id, shm_ptr, shm_file_path);
 
   return rc;
 }
