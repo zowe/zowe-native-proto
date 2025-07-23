@@ -29,7 +29,7 @@
 #include "zds.hpp"
 #include "zusf.hpp"
 #include "ztso.hpp"
-#include "zshmem.hpp"
+#include "zshmem.h"
 #include "zuttype.h"
 
 #ifndef TO_STRING
@@ -2506,7 +2506,7 @@ int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_
   arg_parser.update_program_name(program_name);
 
   // Initialize shared memory
-  SharedMemoryData *shm_ptr = nullptr;
+  ZSharedRegion *shm_ptr = nullptr;
 
   // Create new shared memory for this process (each process gets its own)
   int shm_id = init_shared_memory(&shm_ptr);
@@ -2517,7 +2517,7 @@ int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_
   }
 
   std::cout << "Started, enter command or 'quit' to quit..." << std::endl;
-  std::cout << "Shared memory initialized (ID: " << shm_id << ", Key: 0x" << std::hex << generate_unique_shm_key() << std::dec << ")" << std::endl;
+  std::cout << "Shared memory initialized (ID: " << shm_id << ")" << std::endl;
   std::cout << "Shared memory address: " << std::hex << "0x" << reinterpret_cast<uintptr_t>(shm_ptr) << std::dec << std::endl;
   print_shared_memory_status(shm_ptr);
 
