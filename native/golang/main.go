@@ -75,6 +75,20 @@ func main() {
 		}()
 	}
 
+	// Start a goroutine to periodically log shared memory information
+	go func() {
+		time.Sleep(2 * time.Second) // Wait for workers to initialize
+		
+		// Run initial test
+		workerPool.TestSharedMemoryAccess()
+		
+		// Then log periodically
+		for {
+			workerPool.LogAllWorkersSharedMemory()
+			time.Sleep(10 * time.Second) // Log every 10 seconds
+		}
+	}()
+
 	// Print ready message to stdout as JSON
 	data := make(map[string]any)
 	data["checksums"] = utils.LoadChecksums()

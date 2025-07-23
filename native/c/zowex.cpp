@@ -29,6 +29,7 @@
 #include "zds.hpp"
 #include "zusf.hpp"
 #include "ztso.hpp"
+#include "zshmem.hpp"
 #include "zuttype.h"
 
 #ifndef TO_STRING
@@ -1721,10 +1722,10 @@ int handle_uss_create_dir(const ParseResult &result)
   string file_path = result.find_pos_arg_string("file-path");
 
   int mode = result.find_kw_arg_int("mode");
-  if (result.find_kw_arg_string("mode").empty()) 
+  if (result.find_kw_arg_string("mode").empty())
   {
     mode = 755;
-  } 
+  }
   else if (mode == 0 && result.find_kw_arg_string("mode") != "0")
   {
     cerr << "Error: invalid mode provided.\nExamples of valid modes: 777, 0644" << endl;
@@ -2504,7 +2505,21 @@ int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_
 {
   arg_parser.update_program_name(program_name);
 
+  // Initialize shared memory
+  SharedMemoryData *shm_ptr = nullptr;
+
+  // Create new shared memory for this process (each process gets its own)
+  int shm_id = init_shared_memory(&shm_ptr);
+  if (shm_id == -1)
+  {
+    cerr << "Failed to initialize shared memory" << endl;
+    return RTNCD_FAILURE;
+  }
+
   std::cout << "Started, enter command or 'quit' to quit..." << std::endl;
+  std::cout << "Shared memory initialized (ID: " << shm_id << ", Key: 0x" << std::hex << generate_unique_shm_key() << std::dec << ")" << std::endl;
+  std::cout << "Shared memory address: " << std::hex << "0x" << reinterpret_cast<uintptr_t>(shm_ptr) << std::dec << std::endl;
+  print_shared_memory_status(shm_ptr);
 
   std::string command;
   int rc = 0;
@@ -2519,6 +2534,50 @@ int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_
 
     if (should_quit(command))
       break;
+
+    // Check for special shared memory commands
+    if (command.find("shm-status") == 0)
+    {
+      print_shared_memory_status(shm_ptr);
+      continue;
+    }
+    else if (command.find("animal-inc") == 0)
+    {
+      increment_animal_count(shm_ptr);
+      cout << "Animal count incremented" << endl;
+      continue;
+    }
+    else if (command.find("animal-dec") == 0)
+    {
+      decrement_animal_count(shm_ptr);
+      cout << "Animal count decremented" << endl;
+      continue;
+    }
+    else if (command.find("set-data ") == 0)
+    {
+      string data = command.substr(9); // Extract data after "set-data "
+      set_raw_data(shm_ptr, data.c_str(), min(data.length(), sizeof(shm_ptr->raw_data) - 1));
+      cout << "Raw data updated" << endl;
+      continue;
+    }
+    else if (command.find("shm-remove") == 0)
+    {
+      cout << "Removing shared memory segment..." << endl;
+      cleanup_shared_memory(shm_id, shm_ptr);
+      cout << "Shared memory removed. Exiting..." << endl;
+      return RTNCD_SUCCESS;
+    }
+    else if (command.find("shm-help") == 0)
+    {
+      cout << "Shared memory commands:" << endl;
+      cout << "  shm-status    - Show current shared memory status" << endl;
+      cout << "  animal-inc    - Increment animal count" << endl;
+      cout << "  animal-dec    - Decrement animal count" << endl;
+      cout << "  set-data <text> - Set raw data to <text>" << endl;
+      cout << "  shm-remove    - Remove shared memory and exit" << endl;
+      cout << "  shm-help      - Show this help" << endl;
+      continue;
+    }
 
     // Parse and execute the command
     ParseResult result = arg_parser.parse(command);
@@ -2535,6 +2594,9 @@ int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_
   } while (!should_quit(command));
 
   std::cout << "...terminated" << std::endl;
+
+  // Clean up this process's shared memory
+  cleanup_shared_memory(shm_id, shm_ptr);
 
   return rc;
 }
