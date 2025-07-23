@@ -15,7 +15,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"strconv"
+	"io"
 	"strings"
 	"sync"
 	"syscall"
@@ -24,6 +24,8 @@ import (
 	"zowe-native-proto/zowed/cmds"
 	t "zowe-native-proto/zowed/types/common"
 	"zowe-native-proto/zowed/utils"
+
+	"golang.org/x/sys/unix"
 )
 
 // Worker represents a worker that processes command requests
@@ -34,8 +36,9 @@ type Worker struct {
 	Conn         utils.StdioConn
 	ResponseMu   *sync.Mutex // Mutex to synchronize response printing
 	Ready        bool        // Indicates if the worker is ready to process requests
-	ShmID        int         // Shared memory ID
-	ShmAddr      uintptr     // Shared memory address
+	ShmPath      string      // Shared memory file path
+	ShmFD        int         // Shared memory file descriptor (opened by Go)
+	ShmData      []byte      // Memory-mapped shared memory
 }
 
 // WorkerPool manages a pool of workers
@@ -222,8 +225,14 @@ func initializeWorker(worker *Worker, pool *WorkerPool) {
 	reader := bufio.NewReader(workerStdout)
 
 	// Read the startup message
-	if _, err = reader.ReadBytes('\n'); err != nil {
-		panic(err)
+	for {
+		if _, err = reader.ReadBytes('\n'); err != nil {
+			if err == io.EOF {
+				continue
+			}
+			panic(err)
+		}
+		break
 	}
 
 	// Read shared memory ID line
@@ -232,34 +241,39 @@ func initializeWorker(worker *Worker, pool *WorkerPool) {
 		panic(err)
 	}
 
-	// Parse shared memory ID from "Shared memory initialized (ID: 12345, Key: 0x12348000)"
-	shmIDStr := string(shmIDLine)
-	if idx := strings.Index(shmIDStr, "ID: "); idx != -1 {
-		start := idx + 4
-		end := strings.Index(shmIDStr[start:], ",")
-		if end != -1 {
-			if shmID, err := strconv.Atoi(shmIDStr[start : start+end]); err == nil {
-				worker.ShmID = shmID
-			}
+	// Parse shared memory file path from "Shared memory initialized (Path: /tmp/zowex_shm_XXXXXX)"
+	shmPath := string(shmIDLine)
+	if idx := strings.Index(shmPath, "Path: "); idx != -1 {
+		start := idx + 6
+		worker.ShmPath = shmPath[start:]
+		fmt.Printf("Shared memory Path: %s\n", worker.ShmPath)
+	}
+	worker.ShmPath = strings.TrimSpace(worker.ShmPath)
+	// Open the shared memory file
+	if worker.ShmPath != "" {
+		fd, err := syscall.Open(worker.ShmPath, syscall.O_RDWR, 0600)
+		if err != nil {
+			fmt.Printf("Worker %d: Failed to open shared memory file %s: %v\n", worker.ID, worker.ShmPath, err)
+		} else {
+			worker.ShmFD = int(fd)
+			fmt.Printf("Worker %d: Successfully opened shared memory file %s (FD: %d)\n", worker.ID, worker.ShmPath, worker.ShmFD)
 		}
 	}
-	fmt.Printf("Shared memory ID: %d\n", worker.ShmID)
 
-	// Read shared memory address line
-	shmAddrLine, err := reader.ReadBytes('\n')
-	if err != nil {
-		panic(err)
-	}
-
-	// Parse shared memory address from "Shared memory address: 0x12345678"
-	shmAddrStr := string(shmAddrLine)
-	if idx := strings.Index(shmAddrStr, "0x"); idx != -1 {
-		addrHex := strings.TrimSpace(shmAddrStr[idx+2:])
-		if addr, err := strconv.ParseUint(addrHex, 16, 64); err == nil {
-			worker.ShmAddr = uintptr(addr)
+	// Map the shared memory using the file descriptor
+	if worker.ShmFD > 0 {
+		// Use unix.Mmap for memory mapping
+		data, err := unix.Mmap(worker.ShmFD, 0, 4168, unix.PROT_READ|unix.PROT_WRITE, unix.MAP_SHARED)
+		if err != nil {
+			fmt.Printf("Worker %d: Failed to mmap shared memory: %v\n", worker.ID, err)
+		} else {
+			worker.ShmData = data
+			fmt.Printf("Worker %d: Successfully mapped %d bytes\n", worker.ID, len(worker.ShmData))
 		}
 	}
-	fmt.Printf("Shared memory address: %d\n", worker.ShmAddr)
+
+	// Skip the shared memory address line (not needed with mmap)
+	reader.ReadBytes('\n')
 
 	// Read the remaining status lines (animal count and raw data)
 	reader.ReadBytes('\n') // Animal count line
@@ -285,41 +299,28 @@ func (wp *WorkerPool) GetAvailableWorkersCount() int32 {
 	return wp.ReadyCount
 }
 
-// SharedMemoryData represents the structure of shared memory from zowex
-type SharedMemoryData struct {
-	Mutex       [40]byte   // pthread_mutex_t (size varies by platform, using generous size)
-	AnimalCount int32      // int animal_count
-	RawData     [4096]byte // char raw_data[4096]
-}
-
-// GetAnimalCountFromSharedMemory reads the animal count from shared memory using syscalls
+// GetAnimalCountFromSharedMemory reads the animal count from memory-mapped shared memory
 func (w *Worker) GetAnimalCountFromSharedMemory() (int32, error) {
-	if w.ShmID == 0 {
-		return 0, fmt.Errorf("shared memory not initialized")
+	if w.ShmData == nil {
+		return 0, fmt.Errorf("shared memory not mapped")
 	}
 
-	// Attach to shared memory using syscall
-	addr, _, errno := syscall.Syscall(syscall.SYS_SHMAT, uintptr(w.ShmID), 0, 0)
-	if errno != 0 {
-		return 0, fmt.Errorf("failed to attach to shared memory: %v", errno)
+	// The animal count is at offset 68 and is 4 bytes in size (after the 68-byte mutex structure)
+	if len(w.ShmData) < 72 {
+		return 0, fmt.Errorf("shared memory too small")
 	}
-	defer func() {
-		// Detach from shared memory
-		syscall.Syscall(syscall.SYS_SHMDT, addr, 0, 0)
-	}()
 
-	// Cast to our shared memory structure
-	shmData := (*SharedMemoryData)(unsafe.Pointer(addr))
+	// Read the 4 bytes at w.ShmData + 0x68 as an int32
+	animalCount := *(*int32)(unsafe.Pointer(&w.ShmData[68]))
 
-	// Read the animal count (offset after mutex)
-	return shmData.AnimalCount, nil
+	return animalCount, nil
 }
 
 // LogSharedMemoryInfo logs information about the worker's shared memory
 func (w *Worker) LogSharedMemoryInfo() {
 	if count, err := w.GetAnimalCountFromSharedMemory(); err == nil {
-		fmt.Printf("Worker %d: Shared memory ID=%d, Address=0x%x, Animal count=%d\n",
-			w.ID, w.ShmID, w.ShmAddr, count)
+		fmt.Printf("Worker %d: Shared memory Path=%s, Animal count=%d\n",
+			w.ID, w.ShmPath, count)
 	} else {
 		fmt.Printf("Worker %d: Failed to read shared memory: %v\n", w.ID, err)
 	}
@@ -346,7 +347,7 @@ func (wp *WorkerPool) TestSharedMemoryAccess() {
 
 	fmt.Println("=== Testing Shared Memory Access ===")
 	for _, worker := range wp.Workers {
-		if worker.Ready && worker.ShmID != 0 {
+		if worker.Ready && worker.ShmFD != 0 {
 			if count, err := worker.GetAnimalCountFromSharedMemory(); err == nil {
 				fmt.Printf("Worker %d successfully read animal count: %d\n", worker.ID, count)
 			} else {
