@@ -10,7 +10,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from bindings import zds_py as zds
 
-zds_bp = Blueprint('zds', __name__)
+zds_bp = Blueprint('zds', __name__, url_prefix='/pythonservice')
 
 
 @zds_bp.route("/zosmf/restfiles/ds", methods=["GET"])
