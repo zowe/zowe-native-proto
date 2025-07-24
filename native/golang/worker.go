@@ -268,6 +268,7 @@ func initializeWorker(worker *Worker, pool *WorkerPool) {
 			fmt.Printf("Worker %d: Failed to mmap shared memory: %v\n", worker.ID, err)
 		} else {
 			worker.ShmData = data
+			workerConn.SharedMem = data
 			fmt.Printf("Worker %d: Successfully mapped %d bytes\n", worker.ID, len(worker.ShmData))
 		}
 	}

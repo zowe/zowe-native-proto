@@ -70,7 +70,7 @@ DLL_CPP_FLAGS=-W "c,lp64,langlvl(extended0x),dll,xplink,exportall"\
 DLL_BND_FLAGS=-W "l,lp64,dll,dynam=dll,xplink,map,list"
 
 CPP_FLAGS=-W "c,lp64,langlvl(extended0x),dll,xplink"\
- -c -D__IBMCPP_TR1__=1
+ -c -D__IBMCPP_TR1__=1 -D_XOPEN_SOURCE=600 -D_XPG4=1 -D__UU
 
 ASM_FLAGS=-mRENT
 
@@ -297,7 +297,7 @@ libzcn.a: $(OUT_DIRS) $(OUT_DIR)/libzcn.a
 #
 # USS data
 #
-$(OUT_DIR)/zusf.o: zusf.cpp
+$(OUT_DIR)/zusf.o: zusf.cpp zshmem.cpp
 	@echo 'Building $(OUT_DIR)/zusf.o'
 	$(CXX) $(DLL_CPP_FLAGS) -qlist=$*.cpp.lst -o $@ $^
 

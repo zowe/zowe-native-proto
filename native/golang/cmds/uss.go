@@ -21,6 +21,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"syscall"
+	"time"
+	"unsafe"
 	t "zowe-native-proto/zowed/types/common"
 	uss "zowe-native-proto/zowed/types/uss"
 	utils "zowe-native-proto/zowed/utils"
@@ -172,11 +174,33 @@ func HandleReadFileRequest(conn *utils.StdioConn, params []byte) (result any, e 
 		fmt.Println(string(notify))
 
 		args = append(args, "--pipe-path", pipePath)
+
+		done := false
+		// Start a goroutine to periodically log shared memory information
+		go func() {
+			for {
+				if done {
+					break
+				}
+				percent := *(*int32)(unsafe.Pointer(&conn.SharedMem[68]))
+				json.Marshal(t.RpcNotification{
+					JsonRPC: "2.0",
+					Method:  "updateProgress",
+					Params: map[string]interface{}{
+						"id":       request.StreamId,
+						"progress": percent,
+					},
+				})
+				time.Sleep(2 * time.Second) // Log every 2 seconds
+			}
+		}()
+
 		out, err := conn.ExecCmd(args)
 		if err != nil {
 			return nil, fmt.Errorf("Error executing command: %v", err)
 		}
 
+		done = true
 		err = os.Remove(pipePath)
 		if err != nil {
 			e = fmt.Errorf("[ReadFileRequest] Error deleting named pipe: %v", err)

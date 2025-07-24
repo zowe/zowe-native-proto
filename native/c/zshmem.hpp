@@ -11,6 +11,7 @@
 
 #ifndef ZSHMEM_H
 #define ZSHMEM_H
+#include <stdio.h>
 
 #define _XOPEN_SOURCE 600
 #define __SUSV3_XSI 1
@@ -23,11 +24,13 @@
 #define __UU
 #endif
 
+#define _ISOC99_SOURCE
+
 #include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
 #include <errno.h>
 
+#include <sys/types.h>
 #include <le/pthread.h>
 #include <sys/mman.h>
 #include <le/sys/stat.h>
@@ -38,15 +41,31 @@
 using namespace std;
 
 #ifndef _PTHREAD_H
-struct pthread_mutex_t
-{
-  char __data[68];
-};
+#ifndef __pthread_mutex_t
+#define __pthread_mutex_t  1
+#ifndef __OE_7
+    typedef struct {
+              unsigned long __m;
+    } pthread_mutex_t;
+#else
+    typedef union {
+              unsigned long __m;
+              double     __d[8];
+    } pthread_mutex_t;
+#endif
+#endif
 
-struct pthread_mutexattr_t
-{
-  char __data[16];
-};
+#ifndef __pthread_mutexattr_t
+#define __pthread_mutexattr_t  1
+typedef struct {
+    #ifndef _LP64
+            char __[0x04];
+    #else
+            char __[0x08];
+    #endif
+} pthread_mutexattr_t;
+#endif
+
 
 // pthread function declarations
 extern "C"
@@ -68,7 +87,7 @@ extern "C"
 typedef struct SharedMemory
 {
   pthread_mutex_t mutex;
-  int animal_count;
+  int progress;
   char raw_data[4096];
 } ZSharedRegion;
 
@@ -80,6 +99,28 @@ struct ZShmContext
   int fd;
   char file_path[256];
   size_t size;
+};
+
+
+class ZShared {
+  ZShared() {
+
+  }
+
+  ~ZShared() {
+    // TODO: clean up memory region
+  }
+
+  static ZShared* _instance;
+public:
+  ZSharedRegion* region;
+  static ZShared* instance() {
+    if (_instance == nullptr) {
+      _instance = new ZShared();
+    }
+
+    return _instance;
+  }
 };
 
 // Cleanup shared memory
@@ -105,7 +146,7 @@ inline void cleanup_shared_memory(int shm_id, ZSharedRegion *shm_ptr, const char
 inline int create_shared_memory(ZSharedRegion **shm_ptr, char *file_path_out = nullptr)
 {
   char temp_path[256];
-  snprintf(temp_path, sizeof(temp_path), "/tmp/zowe_shm_%d", getpid());
+  sprintf(temp_path, "/tmp/zowe_shm_%d", getpid());
 
   int fd = open(temp_path, O_CREAT | O_RDWR | O_EXCL, 0600);
   if (fd == -1)
@@ -134,6 +175,7 @@ inline int create_shared_memory(ZSharedRegion **shm_ptr, char *file_path_out = n
   }
 
   *shm_ptr = static_cast<ZSharedRegion *>(addr);
+  ZShared::instance()->region = *shm_ptr;
 
   // Initialize mutex and data
   pthread_mutexattr_t mutex_attr;
@@ -149,7 +191,7 @@ inline int create_shared_memory(ZSharedRegion **shm_ptr, char *file_path_out = n
     return -1;
   }
 
-  (*shm_ptr)->animal_count = 0;
+  (*shm_ptr)->progress = 0;
   memset((*shm_ptr)->raw_data, 0, sizeof((*shm_ptr)->raw_data));
   strcpy((*shm_ptr)->raw_data, "Initial shared data");
 
@@ -192,21 +234,21 @@ inline int init_shared_memory(ZSharedRegion **shm_ptr, char *file_path_out = nul
 
 inline void print_shared_memory_status(ZSharedRegion *shm_ptr)
 {
-  cout << "Animal count: " << shm_ptr->animal_count << endl;
+  cout << "Animal count: " << shm_ptr->progress << endl;
   cout << "Raw data: " << shm_ptr->raw_data << endl;
 }
 
-inline void increment_animal_count(ZSharedRegion *shm_ptr)
+inline void increment_progress(ZSharedRegion *shm_ptr)
 {
   pthread_mutex_lock(&shm_ptr->mutex);
-  shm_ptr->animal_count++;
+  shm_ptr->progress++;
   pthread_mutex_unlock(&shm_ptr->mutex);
 }
 
-inline void decrement_animal_count(ZSharedRegion *shm_ptr)
+inline void decrement_progress(ZSharedRegion *shm_ptr)
 {
   pthread_mutex_lock(&shm_ptr->mutex);
-  shm_ptr->animal_count--;
+  shm_ptr->progress--;
   pthread_mutex_unlock(&shm_ptr->mutex);
 }
 
@@ -217,6 +259,14 @@ inline void set_raw_data(ZSharedRegion *shm_ptr, const char *data, size_t len)
   strncpy(shm_ptr->raw_data, data, copy_len);
   shm_ptr->raw_data[copy_len] = '\0';
   pthread_mutex_unlock(&shm_ptr->mutex);
+}
+
+inline void set_progress(int progress)
+{
+  auto* shared_memory_map = ZShared::instance()->region;
+  pthread_mutex_lock(&shared_memory_map->mutex);
+  shared_memory_map->progress = progress;
+  pthread_mutex_unlock(&shared_memory_map->mutex);
 }
 
 inline int test_shared_memory()
@@ -230,12 +280,11 @@ inline int test_shared_memory()
   }
 
   // Test the mutex operations
-  increment_animal_count(shm_ptr);
+  increment_progress(shm_ptr);
   set_raw_data(shm_ptr, "Hello from pthread test", 23);
   print_shared_memory_status(shm_ptr);
 
   cleanup_shared_memory(shm_id, shm_ptr);
   return 0;
 }
-
 #endif

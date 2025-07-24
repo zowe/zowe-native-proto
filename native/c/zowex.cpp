@@ -29,7 +29,7 @@
 #include "zds.hpp"
 #include "zusf.hpp"
 #include "ztso.hpp"
-#include "zshmem.h"
+#include "zshmem.hpp"
 #include "zuttype.h"
 
 #ifndef TO_STRING
@@ -2503,6 +2503,7 @@ bool should_quit(const std::string &input)
 
 int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_name)
 {
+  using namespace zshmem;
   arg_parser.update_program_name(program_name);
 
   // Initialize shared memory
@@ -2536,46 +2537,18 @@ int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_
     if (should_quit(command))
       break;
 
-    // Check for special shared memory commands
-    if (command.find("shm-status") == 0)
-    {
-      print_shared_memory_status(shm_ptr);
-      continue;
-    }
-    else if (command.find("animal-inc") == 0)
-    {
-      increment_animal_count(shm_ptr);
-      cout << "Animal count incremented" << endl;
-      continue;
-    }
-    else if (command.find("animal-dec") == 0)
-    {
-      decrement_animal_count(shm_ptr);
-      cout << "Animal count decremented" << endl;
-      continue;
-    }
-    else if (command.find("set-data ") == 0)
+
+    if (command.find("set-data ") == 0)
     {
       string data = command.substr(9); // Extract data after "set-data "
       set_raw_data(shm_ptr, data.c_str(), min(data.length(), sizeof(shm_ptr->raw_data) - 1));
       cout << "Raw data updated" << endl;
       continue;
     }
-    else if (command.find("shm-remove") == 0)
-    {
-      cout << "Removing shared memory segment..." << endl;
-      cleanup_shared_memory(shm_id, shm_ptr);
-      cout << "Shared memory removed. Exiting..." << endl;
-      return RTNCD_SUCCESS;
-    }
     else if (command.find("shm-help") == 0)
     {
       cout << "Shared memory commands:" << endl;
-      cout << "  shm-status    - Show current shared memory status" << endl;
-      cout << "  animal-inc    - Increment animal count" << endl;
-      cout << "  animal-dec    - Decrement animal count" << endl;
       cout << "  set-data <text> - Set raw data to <text>" << endl;
-      cout << "  shm-remove    - Remove shared memory and exit" << endl;
       cout << "  shm-help      - Show this help" << endl;
       continue;
     }
