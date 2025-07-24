@@ -9,7 +9,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from bindings import zjb_py as zjb, zds_py as zds, zusf_py as zusf
 
-zjb_bp = Blueprint('zjb', __name__)
+zjb_bp = Blueprint('zjb', __name__, url_prefix='/pythonservice')
 
 
 @zjb_bp.route("/zosmf/restjobs/jobs/<jobname>/<jobid>", methods=["GET"])

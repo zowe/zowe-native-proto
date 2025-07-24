@@ -15,7 +15,15 @@ _SWIG_ENV= \
 	export _C89_EXTRA_ARGS=1;
 
 # Determine SWIG path and directory
-_SWIG_LIB=export SWIG_LIB=$${SWIG_LIB:-$$(dirname $$(type swig | awk '{print $$NF}'))/swig_lib};
+_SWIG_LIB = \
+	if [ -n "$$SWIG_LIB" ]; then \
+		export SWIG_LIB="$$SWIG_LIB"; \
+	elif SWIGLIB_PATH=$$(swig -swiglib 2>/dev/null) && [ -d "$$SWIGLIB_PATH" ]; then \
+		export SWIG_LIB="$$SWIGLIB_PATH"; \
+	else \
+		export SWIG_LIB="$$(dirname $$(type swig | awk '{print $$NF}'))/swig_lib"; \
+	fi;
+
 SWIG=$(_SWIG_ENV) $(_SWIG_LIB) swig
 
 # Generate SWIG wrappers
@@ -33,7 +41,7 @@ build: swig-wrappers
 # Run SWIG extenders in the C directory
 swig-extenders:
 	@echo '\nBuilding SWIG extenders'
-	$(MAKE) -c ../c swig-extenders
+	$(MAKE) -c ../../c swig-extenders
 
 # Clean generated files
 clean:
@@ -44,6 +52,6 @@ clean:
 	rm -f *.so
 	rm -f *.py[co]
 	rm -rf build/
-	rm -rf ../c/build-out/swig
+	rm -rf ../../c/build-out/swig
 
 .PHONY: all swig-wrappers swig-extenders build clean

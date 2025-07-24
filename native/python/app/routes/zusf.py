@@ -12,7 +12,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from bindings import zusf_py as zusf
 
-zusf_bp = Blueprint('zusf', __name__)
+zusf_bp = Blueprint('zusf', __name__, url_prefix='/pythonservice')
 
 
 @zusf_bp.route("/zosmf/restfiles/fs", methods=["GET"])

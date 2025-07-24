@@ -12,7 +12,10 @@ import os
 import sys
 import ssl
 import yaml
-import warnings
+
+if sys.platform == "zos":
+    os.environ["AIOHTTP_NO_EXTENSIONS"] = "1"
+
 from flask import Flask, jsonify
 from zowe_apiml_onboarding_enabler_python.registration import PythonEnabler
 
@@ -21,9 +24,6 @@ from routes import zds_bp, zusf_bp, zjb_bp
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-warnings.filterwarnings("ignore", message="Unverified HTTPS request")
-ssl._create_default_https_context = ssl._create_unverified_context
-
 base_directory = os.path.dirname(os.path.abspath(__file__))
 config_file_path = os.path.join(base_directory, "config/service-configuration.yml")
 
@@ -31,6 +31,9 @@ enabler = PythonEnabler(config_file=config_file_path)
 ssl_config = enabler.ssl_config
 cert_file = os.path.abspath(os.path.join(base_directory, ssl_config.get("certificate")))
 key_file = os.path.abspath(os.path.join(base_directory, ssl_config.get("keystore")))
+
+ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+ssl_context.load_cert_chain(certfile=cert_file, keyfile=key_file)
 
 app = Flask(__name__)
 
@@ -113,4 +116,4 @@ def internal_error(error):
 
 if __name__ == "__main__":
     enabler.register()
-    app.run(host="0.0.0.0", port=10018, ssl_context=(cert_file, key_file), debug=False)
+    app.run(host="0.0.0.0", port=10018, ssl_context=ssl_context, debug=False)

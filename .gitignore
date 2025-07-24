@@ -21,3 +21,6 @@ tsconfig.tsbuildinfo
 zowe.config.json
 zowe.schema.json
 native/python/app/config/service-configuration.yml
+native/python/app/keystore/*.cer
+native/python/app/keystore/*.key
+native/python/app/keystore/*.pem
