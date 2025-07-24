@@ -1,5 +1,5 @@
 #!/bin/bash
-# Usage: ./generate-certs.sh [zosmfProfile] [certName]
+# Usage: ./generate-certs.sh [zosmfProfile] [certName] [serverCert] [caCerts...]
 set -e
 
 function zowe() {
@@ -8,8 +8,11 @@ function zowe() {
 
 zosmfProfile=${1:-$(npx -y zowe config list defaults | grep "zosmf:" | awk '{print $NF}')}
 certName=${2:-$zosmfProfile}
-certLabel=ROOTSTAR
-caLabels=("DigiCert CA" "DigiCert Global Root CA")
+certLabel=${3:-ROOTSTAR}
+caLabels=("${@:4}")
+if [ "$#" -lt 4 ]; then
+  caLabels=("DigiCert CA" "DigiCert Global Root CA")
+fi
 datasetHlq=$(ZOWE_SHOW_SECURE_ARGS=true zowe zosmf check status --show-inputs-only | grep "user:" | awk '{print $NF}')
 keyPassword=password
 opensslBin=${OPENSSL_BIN:-openssl}
