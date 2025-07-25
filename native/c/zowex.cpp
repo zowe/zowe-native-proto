@@ -2503,7 +2503,6 @@ bool should_quit(const std::string &input)
 
 int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_name)
 {
-  using namespace zshmem;
   arg_parser.update_program_name(program_name);
 
   // Initialize shared memory
@@ -2536,7 +2535,6 @@ int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_
 
     if (should_quit(command))
       break;
-
 
     if (command.find("set-data ") == 0)
     {
