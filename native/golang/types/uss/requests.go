@@ -17,7 +17,12 @@ type ListFilesRequest struct {
 	common.CommandRequest `tstype:",extends"`
 	Command               string `json:"command" tstype:"\"listFiles\""`
 	// Directory to list files for
-	Path               string `json:"fspath"`
+	Path string `json:"fspath"`
+	// Whether to include hidden files
+	All bool `json:"all,omitempty"`
+	// Whether to return the long format with all attributes
+	Long bool `json:"long,omitempty"`
+	// List options
 	common.ListOptions `tstype:",extends"`
 }
 

@@ -19,14 +19,23 @@ export default class ListUssFilesHandler extends SshBaseHandler {
         const directory = params.arguments.directory;
         const response = await client.uss.listFiles({
             fspath: directory,
+            all: params.arguments.all,
+            long: params.arguments.long,
         });
-        params.response.data.setMessage("Listed files in uss directory %s", directory);
-        params.response.format.output({
-            output: response.items,
-            format: "table",
-            // fields: ["name", "size", "owner", "group", "permissions"]
-            fields: ["name"],
-        });
+        params.response.data.setObj(response);
+        if (params.arguments.long) {
+            params.response.format.output({
+                output: response.items,
+                format: "table",
+                fields: ["filetag", "mode", "links", "user", "group", "size", "mtime", "name"],
+            });
+        } else {
+            params.response.format.output({
+                output: response.items,
+                format: "table",
+                fields: ["name"],
+            });
+        }
         return response;
     }
 }
