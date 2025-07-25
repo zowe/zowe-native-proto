@@ -46,5 +46,5 @@ export const UploadFileToUssFileDefinition: ICommandDefinition = {
             type: "boolean",
         },
     ],
-    profile: { optional: ["zssh"] },
+    profile: { optional: ["ssh"] },
 };

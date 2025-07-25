@@ -4,6 +4,10 @@ All notable changes to the "zowe-native-proto-vsce" extension will be documented
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+
+- Adopted streaming for API methods that upload/download data sets and USS files. [#358](https://github.com/zowe/zowe-native-proto/pull/358)
+
 ## `0.1.2`
 
 - Enhanced SSH profile validation to auto-deploy server when it is missing or out of date. [#44](https://github.com/zowe/zowe-native-proto/issues/44)

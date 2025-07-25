@@ -71,7 +71,7 @@ export interface WriteDatasetRequest extends common.CommandRequest {
   /**
    * Dataset contents
    */
-  data: B64String;
+  data?: B64String;
   /**
    * Stream to read contents from
    */
@@ -126,6 +126,10 @@ export interface WriteDatasetResponse extends common.CommandResponse {
    * Returned e-tag for the data set
    */
   etag: string;
+  /**
+   * Length of dataset contents in bytes (only used for streaming)
+   */
+  contentLen?: number /* int */;
 }
 export interface RestoreDatasetResponse extends common.CommandResponse {
   /**
@@ -147,9 +151,13 @@ export interface ReadDatasetResponse extends common.CommandResponse {
    */
   dataset: string;
   /**
-   * Dataset contents
+   * Dataset contents (omitted if streaming)
    */
   data: B64String;
+  /**
+   * Length of dataset contents in bytes (only used for streaming)
+   */
+  contentLen?: number /* int */;
 }
 export interface ListDatasetsResponse extends common.CommandResponse {
   /**
