@@ -765,12 +765,13 @@ public:
         positional_usage += "...";
     }
 
-    if (!m_kw_args.empty())
-      os << " [options]";
     if (!m_commands.empty())
       os << " <command>";
 
     os << positional_usage;
+
+    if (!m_kw_args.empty())
+      os << " [options]";
 
     os << "\n\n";
 
