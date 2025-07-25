@@ -284,6 +284,12 @@ int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
  */
 int zusf_read_from_uss_file_streamed(ZUSF *zusf, string file, string pipe, size_t *content_len)
 {
+  if (content_len == nullptr)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "content_len must be a valid size_t pointer");
+    return RTNCD_FAILURE;
+  }
+
   FILE *fin = fopen(file.c_str(), zusf->encoding_opts.data_type == eDataTypeBinary ? "rb" : "r");
   if (!fin)
   {
@@ -434,6 +440,12 @@ int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data)
 int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe, size_t *content_len)
 {
   // TODO(zFernand0): Avoid overriding existing files
+  if (content_len == nullptr)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "content_len must be a valid size_t pointer");
+    return RTNCD_FAILURE;
+  }
+
   struct stat file_stats;
   const auto hasEncoding = zusf->encoding_opts.data_type == eDataTypeText && strlen(zusf->encoding_opts.codepage) > 0;
   const auto codepage = string(zusf->encoding_opts.codepage);

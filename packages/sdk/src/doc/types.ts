@@ -35,7 +35,7 @@ export namespace B64String {
     }
 }
 
-type PromiseResolve<T> = (value: T | PromiseLike<T>) => void;
-// biome-ignore lint/suspicious/noExplicitAny: Promise reject type uses any
-type PromiseReject = (reason?: any) => void;
+type PromiseExecutorParams<T> = Parameters<ConstructorParameters<typeof Promise<T>>[0]>;
+type PromiseResolve<T> = PromiseExecutorParams<T>[0];
+type PromiseReject = PromiseExecutorParams<unknown>[1];
 export type RpcPromise = { resolve: PromiseResolve<CommandResponse>; reject: PromiseReject };

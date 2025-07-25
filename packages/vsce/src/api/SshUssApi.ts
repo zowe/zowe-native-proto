@@ -39,6 +39,9 @@ export class SshUssApi extends SshCommonApi implements MainframeInteraction.IUss
             imperative.IO.createDirsSyncFromFilePath(options.file);
             writeStream = createWriteStream(options.file);
         }
+        if (writeStream == null) {
+            throw new Error("Failed to get contents: No stream or file path provided");
+        }
         const response = await (await this.client).uss.readFile({
             fspath: ussFilePath,
             encoding: options.binary ? "binary" : options.encoding,

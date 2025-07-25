@@ -99,12 +99,9 @@ export class RpcNotificationManager {
         if ("contentLen" in response && response.contentLen != null && response.contentLen !== clientLen) {
             const expectedLen = mode === "r" ? clientLen : response.contentLen;
             const actualLen = mode === "r" ? response.contentLen : clientLen;
-            const errMsg = Logger.getAppLogger().error(
-                "Content length mismatch: expected %d, got %d",
-                expectedLen,
-                actualLen,
+            throw new Error(
+                Logger.getAppLogger().error("Content length mismatch: expected %d, got %d", expectedLen, actualLen),
             );
-            throw new Error(errMsg);
         }
     }
 }

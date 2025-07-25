@@ -22,18 +22,11 @@ export class CountingBase64Decode extends Base64Decode {
     }
 
     /**
-     * Reset the byte counter to zero
-     */
-    public resetCounter(): void {
-        this.mBytesWritten = 0;
-    }
-
-    /**
      * Override the push method to count bytes as they are written
      */
     public push(chunk: Buffer | string | Uint8Array | null, encoding?: BufferEncoding): boolean {
         if (chunk != null) {
-            this.mBytesWritten += chunk.length;
+            this.mBytesWritten += typeof chunk === "string" ? Buffer.byteLength(chunk, encoding) : chunk.length;
         }
         return super.push(chunk, encoding);
     }
