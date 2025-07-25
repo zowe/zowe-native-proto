@@ -25,7 +25,11 @@
 #define ZUSF_DEFAULT_MAX_DDS 100
 
 #if (defined(__IBMCPP__) || defined(__IBMC__))
+#if defined(SWIG)
+#pragma pack(1)
+#else
 #pragma pack(packed)
+#endif
 #endif
 
 // NOTE(zFernand0): Figure out how to visualize the struct in memory
