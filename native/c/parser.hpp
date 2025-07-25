@@ -1797,7 +1797,7 @@ Command::parse(const std::vector<lexer::Token> &tokens,
 class ArgumentParser
 {
 public:
-  ArgumentParser(std::string prog_name, std::string description = "")
+  explicit ArgumentParser(std::string prog_name, std::string description = "")
       : m_program_name(prog_name), m_program_desc(description),
         m_root_cmd(command_ptr(new Command(prog_name, description)))
   {
