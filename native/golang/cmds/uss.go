@@ -20,6 +20,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"sync/atomic"
 	"syscall"
 	"time"
 	"unsafe"
@@ -183,9 +184,7 @@ func HandleReadFileRequest(conn *utils.StdioConn, params []byte) (result any, e 
 					break
 				}
 
-				slice := unsafe.Slice((*byte)(conn.SharedMem), 0x44)
-				utils.LogError("Slice: % x", slice)
-				percent := *(*int32)(unsafe.Pointer(uintptr(conn.SharedMem) + 0x40))
+				percent := atomic.LoadInt32((*int32)(unsafe.Pointer(&conn.SharedMem[0])))
 				utils.LogError("Download: %d%%", percent)
 
 				progress, _ := json.Marshal(t.RpcNotification{

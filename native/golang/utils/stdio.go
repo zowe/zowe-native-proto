@@ -20,7 +20,6 @@ import (
 	"log"
 	"strconv"
 	"strings"
-	"unsafe"
 )
 
 type StdioConn struct {
@@ -28,7 +27,7 @@ type StdioConn struct {
 	Stdout       io.ReadCloser
 	Stderr       io.ReadCloser
 	LastExitCode int
-	SharedMem    unsafe.Pointer
+	SharedMem    []byte
 }
 
 func (conn *StdioConn) ExecCmd(args []string) (stdout []byte, stderr error) {

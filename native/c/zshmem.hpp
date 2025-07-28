@@ -31,7 +31,6 @@
 #include <errno.h>
 
 #include <sys/types.h>
-#include <le/pthread.h>
 #include <sys/mman.h>
 #include <le/sys/stat.h>
 #include <le/fcntl.h>
@@ -40,57 +39,12 @@
 #include <fstream>
 using namespace std;
 
-#ifndef _PTHREAD_H
-#ifndef __pthread_mutex_t
-#define __pthread_mutex_t 1
-#ifndef __OE_7
-typedef struct
-{
-  unsigned long __m;
-} pthread_mutex_t;
-#else
-typedef union
-{
-  unsigned long __m;
-  double __d[8];
-} pthread_mutex_t;
-#endif
-#endif
-
-#ifndef __pthread_mutexattr_t
-#define __pthread_mutexattr_t 1
-typedef struct
-{
-#ifndef _LP64
-  char __[0x04];
-#else
-  char __[0x08];
-#endif
-} pthread_mutexattr_t;
-#endif
-
-// pthread function declarations
-extern "C"
-{
-  int pthread_mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t *attr);
-  int pthread_mutex_destroy(pthread_mutex_t *mutex);
-  int pthread_mutex_lock(pthread_mutex_t *mutex);
-  int pthread_mutex_unlock(pthread_mutex_t *mutex);
-  int pthread_mutexattr_init(pthread_mutexattr_t *attr);
-  int pthread_mutexattr_destroy(pthread_mutexattr_t *attr);
-  int pthread_mutexattr_setpshared(pthread_mutexattr_t *attr, int pshared);
-}
-
-// pthread constants
-#define PTHREAD_PROCESS_SHARED 8
-#endif
 
 // Shared memory structure for inter-process communication
 #pragma pack(1)
 typedef struct SharedMemory
 {
-  pthread_mutex_t mutex;
-  int progress;
+  _Atomic int progress;
 } ZSharedRegion;
 #pragma pack(reset)
 
@@ -187,28 +141,6 @@ inline int create_shared_memory(ZSharedRegion **shm_ptr, char *file_path_out = n
   *shm_ptr = static_cast<ZSharedRegion *>(addr);
   ZShared::instance()->region = *shm_ptr;
 
-  pthread_mutex_t mutex;
-
-  // Initialize mutex and data
-  pthread_mutexattr_t mutex_attr;
-  pthread_mutexattr_init(&mutex_attr);
-  pthread_mutexattr_setpshared(&mutex_attr, PTHREAD_PROCESS_SHARED);
-
-  if (pthread_mutex_init(&mutex, &mutex_attr) != 0)
-  {
-    cerr << "Error: could not initialize mutex: " << strerror(errno) << endl;
-    pthread_mutexattr_destroy(&mutex_attr);
-    cleanup_shared_memory(fd, *shm_ptr);
-    unlink(temp_path);
-    return -1;
-  }
-
-  memcpy((void *)&ZShared::instance()->region->mutex, (void *)&mutex, sizeof(pthread_mutex_t));
-
-  (*shm_ptr)->progress = 2;
-
-  pthread_mutexattr_destroy(&mutex_attr);
-
   // Store the file path for later cleanup instead of unlinking immediately
   if (file_path_out)
   {
@@ -251,16 +183,12 @@ inline void print_shared_memory_status(ZSharedRegion *shm_ptr)
 
 inline void increment_progress(ZSharedRegion *shm_ptr)
 {
-  pthread_mutex_lock(&shm_ptr->mutex);
   shm_ptr->progress++;
-  pthread_mutex_unlock(&shm_ptr->mutex);
 }
 
 inline void decrement_progress(ZSharedRegion *shm_ptr)
 {
-  pthread_mutex_lock(&shm_ptr->mutex);
   shm_ptr->progress--;
-  pthread_mutex_unlock(&shm_ptr->mutex);
 }
 
 inline void set_progress(int progress)
@@ -271,11 +199,9 @@ inline void set_progress(int progress)
   }
 
   auto *shared_memory_map = ZShared::instance()->region;
-  pthread_mutex_lock(&shared_memory_map->mutex);
   shared_memory_map->progress = progress;
   stream << "set_progress: " << progress << endl;
-  stream << "map: set_progress: " << shared_memory_map->progress << endl;
-  pthread_mutex_unlock(&shared_memory_map->mutex);
+  stream << "- C++ read from shared memory: " << shared_memory_map->progress << endl;
   stream.close();
 }
 

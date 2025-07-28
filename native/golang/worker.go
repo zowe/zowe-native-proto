@@ -19,7 +19,6 @@ import (
 	"strings"
 	"sync"
 	"syscall"
-	"unsafe"
 
 	"zowe-native-proto/zowed/cmds"
 	t "zowe-native-proto/zowed/types/common"
@@ -34,11 +33,10 @@ type Worker struct {
 	RequestQueue chan []byte
 	Dispatcher   *cmds.CmdDispatcher
 	Conn         utils.StdioConn
-	ResponseMu   *sync.Mutex    // Mutex to synchronize response printing
-	Ready        bool           // Indicates if the worker is ready to process requests
-	ShmPath      string         // Shared memory file path
-	ShmFD        int            // Shared memory file descriptor (opened by Go)
-	ShmData      unsafe.Pointer // Memory-mapped shared memory
+	ResponseMu   *sync.Mutex // Mutex to synchronize response printing
+	Ready        bool        // Indicates if the worker is ready to process requests
+	ShmPath      string      // Shared memory file path
+	ShmFD        int         // Shared memory file descriptor (opened by Go)
 }
 
 // WorkerPool manages a pool of workers
@@ -260,8 +258,7 @@ func initializeWorker(worker *Worker, pool *WorkerPool) {
 		if err != nil {
 			fmt.Printf("Worker %d: Failed to mmap shared memory: %v\n", worker.ID, err)
 		} else {
-			worker.ShmData = unsafe.Pointer(&data[0])
-			workerConn.SharedMem = worker.ShmData
+			workerConn.SharedMem = data
 			// fmt.Printf("Worker %d: Successfully mapped %d bytes\n", worker.ID, len(worker.ShmData))
 		}
 	}
