@@ -174,15 +174,20 @@ inline int create_shared_memory(ZSharedRegion **shm_ptr, char *file_path_out = n
     return -1;
   }
 
+  // Zero-initialize the shared memory region
+  memset(addr, 0, SHM_SIZE);
+
   *shm_ptr = static_cast<ZSharedRegion *>(addr);
   ZShared::instance()->region = *shm_ptr;
+
+  pthread_mutex_t mutex;
 
   // Initialize mutex and data
   pthread_mutexattr_t mutex_attr;
   pthread_mutexattr_init(&mutex_attr);
   pthread_mutexattr_setpshared(&mutex_attr, PTHREAD_PROCESS_SHARED);
 
-  if (pthread_mutex_init(&(*shm_ptr)->mutex, &mutex_attr) != 0)
+  if (pthread_mutex_init(&mutex, &mutex_attr) != 0)
   {
     cerr << "Error: could not initialize mutex: " << strerror(errno) << endl;
     pthread_mutexattr_destroy(&mutex_attr);
@@ -190,6 +195,8 @@ inline int create_shared_memory(ZSharedRegion **shm_ptr, char *file_path_out = n
     unlink(temp_path);
     return -1;
   }
+
+  memcpy((void*)&ZShared::instance()->region->mutex, (void*)&mutex, sizeof(pthread_mutex_t));
 
   (*shm_ptr)->progress = 0;
   memset((*shm_ptr)->raw_data, 0, sizeof((*shm_ptr)->raw_data));

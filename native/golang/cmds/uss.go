@@ -182,8 +182,11 @@ func HandleReadFileRequest(conn *utils.StdioConn, params []byte) (result any, e 
 				if done {
 					break
 				}
+
 				percent := *(*int32)(unsafe.Pointer(&conn.SharedMem[68]))
-				json.Marshal(t.RpcNotification{
+				utils.LogError("Download %d%%", percent)
+
+				progress, _ := json.Marshal(t.RpcNotification{
 					JsonRPC: "2.0",
 					Method:  "updateProgress",
 					Params: map[string]interface{}{
@@ -191,7 +194,8 @@ func HandleReadFileRequest(conn *utils.StdioConn, params []byte) (result any, e 
 						"progress": percent,
 					},
 				})
-				time.Sleep(2 * time.Second) // Log every 2 seconds
+				fmt.Println(string(progress))
+				time.Sleep(500 * time.Millisecond) // Log every 500ms
 			}
 		}()
 

@@ -2519,8 +2519,7 @@ int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_
 
   std::cout << "Started, enter command or 'quit' to quit..." << std::endl;
   std::cout << "Shared memory initialized. Path: " << shm_file_path << std::endl;
-  std::cout << "Shared memory address: " << std::hex << "0x" << reinterpret_cast<uintptr_t>(shm_ptr) << std::dec << std::endl;
-  print_shared_memory_status(shm_ptr);
+  // print_shared_memory_status(shm_ptr);
 
   std::string command;
   int rc = 0;

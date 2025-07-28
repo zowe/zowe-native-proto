@@ -17,14 +17,12 @@ import type { Client, ClientChannel } from "ssh2";
 import { CountingBase64Decode } from "./CountingBase64Decode";
 import type { CommandResponse, RpcNotification, RpcPromise, RpcRequest } from "./doc";
 
-
 type callbackInfo = {
     callback?: (percent: number) => void;
     fsize?: number;
 };
 
 type StreamMode = "r" | "w";
-
 
 export class RpcNotificationManager {
     private mPendingStreamMap: Map<number, { stream: Stream; callbackInfo?: callbackInfo }> = new Map();
@@ -77,7 +75,7 @@ export class RpcNotificationManager {
         const progressTransform = new Transform({
             transform(chunk: Buffer, _, callback) {
                 totalBytes += chunk.length;
-                const percent = Math.min(100, Math.round((totalBytes / callbackInfo.fsize!) * 100))
+                const percent = Math.min(100, Math.round((totalBytes / callbackInfo.fsize!) * 100));
                 callbackInfo.callback!(percent);
                 readStream.emit("keepAlive");
                 callback(null, chunk);

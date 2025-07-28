@@ -223,32 +223,25 @@ func initializeWorker(worker *Worker, pool *WorkerPool) {
 
 	// Wait for the instance of `zowex` to be ready and capture shared memory info
 	reader := bufio.NewReader(workerStdout)
-
+	totalOut := ""
 	// Read the startup message
 	for {
-		if _, err = reader.ReadBytes('\n'); err != nil {
+		if out, err := reader.ReadBytes('\n'); len(out) > 0 || err != nil {
 			if err == io.EOF {
 				continue
 			}
-			panic(err)
+			str := string(out)
+			totalOut = totalOut + str
+			fmt.Println("Received input from worker", str)
+			// Parse shared memory file path from "Shared memory initialized (Path: /tmp/zowex_shm_XXXXXX)"
+			if idx := strings.Index(totalOut, "Path: "); idx != -1 {
+				start := idx + 6
+				worker.ShmPath = strings.TrimSpace(totalOut[start:])
+				break
+			}
 		}
-		break
 	}
 
-	// Read shared memory ID line
-	shmIDLine, err := reader.ReadBytes('\n')
-	if err != nil {
-		panic(err)
-	}
-
-	// Parse shared memory file path from "Shared memory initialized (Path: /tmp/zowex_shm_XXXXXX)"
-	shmPath := string(shmIDLine)
-	if idx := strings.Index(shmPath, "Path: "); idx != -1 {
-		start := idx + 6
-		worker.ShmPath = shmPath[start:]
-		fmt.Printf("Shared memory Path: %s\n", worker.ShmPath)
-	}
-	worker.ShmPath = strings.TrimSpace(worker.ShmPath)
 	// Open the shared memory file
 	if worker.ShmPath != "" {
 		fd, err := syscall.Open(worker.ShmPath, syscall.O_RDWR, 0600)
@@ -272,13 +265,6 @@ func initializeWorker(worker *Worker, pool *WorkerPool) {
 			fmt.Printf("Worker %d: Successfully mapped %d bytes\n", worker.ID, len(worker.ShmData))
 		}
 	}
-
-	// Skip the shared memory address line (not needed with mmap)
-	reader.ReadBytes('\n')
-
-	// Read the remaining status lines (animal count and raw data)
-	reader.ReadBytes('\n') // Animal count line
-	reader.ReadBytes('\n') // Raw data line
 
 	// Set up the connection for the worker
 	worker.Conn = workerConn
