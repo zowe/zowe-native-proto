@@ -2518,7 +2518,7 @@ int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_
   }
 
   std::cout << "Started, enter command or 'quit' to quit..." << std::endl;
-  std::cout << "Shared memory initialized. Path: " << shm_file_path << std::endl;
+  std::cout << "Shared memory initialized. Size: 0x" << std::hex << sizeof(ZSharedRegion) << std::dec << " Path: " << shm_file_path << std::endl;
   // print_shared_memory_status(shm_ptr);
 
   std::string command;
@@ -2534,21 +2534,6 @@ int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_
 
     if (should_quit(command))
       break;
-
-    if (command.find("set-data ") == 0)
-    {
-      string data = command.substr(9); // Extract data after "set-data "
-      set_raw_data(shm_ptr, data.c_str(), min(data.length(), sizeof(shm_ptr->raw_data) - 1));
-      cout << "Raw data updated" << endl;
-      continue;
-    }
-    else if (command.find("shm-help") == 0)
-    {
-      cout << "Shared memory commands:" << endl;
-      cout << "  set-data <text> - Set raw data to <text>" << endl;
-      cout << "  shm-help      - Show this help" << endl;
-      continue;
-    }
 
     // Parse and execute the command
     ParseResult result = arg_parser.parse(command);

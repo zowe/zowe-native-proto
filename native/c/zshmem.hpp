@@ -42,30 +42,32 @@ using namespace std;
 
 #ifndef _PTHREAD_H
 #ifndef __pthread_mutex_t
-#define __pthread_mutex_t  1
+#define __pthread_mutex_t 1
 #ifndef __OE_7
-    typedef struct {
-              unsigned long __m;
-    } pthread_mutex_t;
+typedef struct
+{
+  unsigned long __m;
+} pthread_mutex_t;
 #else
-    typedef union {
-              unsigned long __m;
-              double     __d[8];
-    } pthread_mutex_t;
+typedef union
+{
+  unsigned long __m;
+  double __d[8];
+} pthread_mutex_t;
 #endif
 #endif
 
 #ifndef __pthread_mutexattr_t
-#define __pthread_mutexattr_t  1
-typedef struct {
-    #ifndef _LP64
-            char __[0x04];
-    #else
-            char __[0x08];
-    #endif
+#define __pthread_mutexattr_t 1
+typedef struct
+{
+#ifndef _LP64
+  char __[0x04];
+#else
+  char __[0x08];
+#endif
 } pthread_mutexattr_t;
 #endif
-
 
 // pthread function declarations
 extern "C"
@@ -84,12 +86,13 @@ extern "C"
 #endif
 
 // Shared memory structure for inter-process communication
+#pragma pack(1)
 typedef struct SharedMemory
 {
   pthread_mutex_t mutex;
   int progress;
-  char raw_data[4096];
 } ZSharedRegion;
+#pragma pack(reset)
 
 #define SHM_SIZE sizeof(ZSharedRegion)
 
@@ -101,21 +104,25 @@ struct ZShmContext
   size_t size;
 };
 
-
-class ZShared {
-  ZShared() {
-
+class ZShared
+{
+  ZShared()
+  {
   }
 
-  ~ZShared() {
+  ~ZShared()
+  {
     // TODO: clean up memory region
   }
 
-  static ZShared* _instance;
+  static ZShared *_instance;
+
 public:
-  ZSharedRegion* region;
-  static ZShared* instance() {
-    if (_instance == nullptr) {
+  ZSharedRegion *region;
+  static ZShared *instance()
+  {
+    if (_instance == nullptr)
+    {
       _instance = new ZShared();
     }
 
@@ -196,11 +203,9 @@ inline int create_shared_memory(ZSharedRegion **shm_ptr, char *file_path_out = n
     return -1;
   }
 
-  memcpy((void*)&ZShared::instance()->region->mutex, (void*)&mutex, sizeof(pthread_mutex_t));
+  memcpy((void *)&ZShared::instance()->region->mutex, (void *)&mutex, sizeof(pthread_mutex_t));
 
   (*shm_ptr)->progress = 0;
-  memset((*shm_ptr)->raw_data, 0, sizeof((*shm_ptr)->raw_data));
-  strcpy((*shm_ptr)->raw_data, "Initial shared data");
 
   pthread_mutexattr_destroy(&mutex_attr);
 
@@ -242,7 +247,6 @@ inline int init_shared_memory(ZSharedRegion **shm_ptr, char *file_path_out = nul
 inline void print_shared_memory_status(ZSharedRegion *shm_ptr)
 {
   cout << "Animal count: " << shm_ptr->progress << endl;
-  cout << "Raw data: " << shm_ptr->raw_data << endl;
 }
 
 inline void increment_progress(ZSharedRegion *shm_ptr)
@@ -259,18 +263,9 @@ inline void decrement_progress(ZSharedRegion *shm_ptr)
   pthread_mutex_unlock(&shm_ptr->mutex);
 }
 
-inline void set_raw_data(ZSharedRegion *shm_ptr, const char *data, size_t len)
-{
-  pthread_mutex_lock(&shm_ptr->mutex);
-  size_t copy_len = min(len, sizeof(shm_ptr->raw_data) - 1);
-  strncpy(shm_ptr->raw_data, data, copy_len);
-  shm_ptr->raw_data[copy_len] = '\0';
-  pthread_mutex_unlock(&shm_ptr->mutex);
-}
-
 inline void set_progress(int progress)
 {
-  auto* shared_memory_map = ZShared::instance()->region;
+  auto *shared_memory_map = ZShared::instance()->region;
   pthread_mutex_lock(&shared_memory_map->mutex);
   shared_memory_map->progress = progress;
   pthread_mutex_unlock(&shared_memory_map->mutex);
@@ -288,7 +283,6 @@ inline int test_shared_memory()
 
   // Test the mutex operations
   increment_progress(shm_ptr);
-  set_raw_data(shm_ptr, "Hello from pthread test", 23);
   print_shared_memory_status(shm_ptr);
 
   cleanup_shared_memory(shm_id, shm_ptr);
