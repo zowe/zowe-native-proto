@@ -306,13 +306,13 @@ func (w *Worker) GetAnimalCountFromSharedMemory() (int32, error) {
 		return 0, fmt.Errorf("shared memory not mapped")
 	}
 
-	// The animal count is at offset 68 and is 4 bytes in size (after the 68-byte mutex structure)
+	// The animal count is at offset 64 and is 4 bytes in size (after the 68-byte mutex structure)
 	if len(w.ShmData) < 72 {
 		return 0, fmt.Errorf("shared memory too small")
 	}
 
-	// Read the 4 bytes at w.ShmData + 0x68 as an int32
-	animalCount := *(*int32)(unsafe.Pointer(&w.ShmData[68]))
+	// Read the 4 bytes at w.ShmData + 0x64 as an int32
+	animalCount := *(*int32)(unsafe.Pointer(&w.ShmData[64]))
 
 	return animalCount, nil
 }
