@@ -29,7 +29,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <le/sys/stat.h>
@@ -39,12 +38,11 @@
 #include <fstream>
 using namespace std;
 
-
 // Shared memory structure for inter-process communication
 #pragma pack(1)
 typedef struct SharedMemory
 {
-  _Atomic int progress;
+  int progress;
 } ZSharedRegion;
 #pragma pack(reset)
 
@@ -194,7 +192,8 @@ inline void decrement_progress(ZSharedRegion *shm_ptr)
 inline void set_progress(int progress)
 {
   ofstream stream("./zowe-native-proto/golang/zowex_progress.log", ios_base::out | ios_base::app);
-  if(!stream.good()){
+  if (!stream.good())
+  {
     return;
   }
 
