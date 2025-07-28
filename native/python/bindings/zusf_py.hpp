@@ -20,7 +20,7 @@ void create_uss_file(const std::string &file, const std::string &mode);
 
 void create_uss_dir(const std::string &file, const std::string &mode);
 
-std::string list_uss_dir(const std::string &path);
+std::string list_uss_dir(const std::string &path, ListOptions options = ListOptions{});
 
 std::string read_uss_file(const std::string &file, const std::string &codepage = "");
 

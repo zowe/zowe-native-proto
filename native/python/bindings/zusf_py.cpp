@@ -33,11 +33,11 @@ void create_uss_dir(const std::string &file, const std::string &mode)
   }
 }
 
-std::string list_uss_dir(const std::string &path)
+std::string list_uss_dir(const std::string &path, ListOptions options)
 {
   ZUSF ctx = {0};
   std::string out;
-  if (zusf_list_uss_file_path(&ctx, path.c_str(), out) != 0)
+  if (zusf_list_uss_file_path(&ctx, path.c_str(), out, options) != 0)
   {
     std::string error_msg = ctx.diag.e_msg;
     throw std::runtime_error(error_msg);

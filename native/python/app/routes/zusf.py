@@ -20,7 +20,7 @@ def list_uss_files():
     """
     List USS (Unix System Services) files and directories.
 
-    This endpoint calls the zds.list_uss_dir function and formats the output similar to the C++ CLI.
+    This endpoint calls the zusf.list_uss_dir function with optional ListOptions.
 
     Query Parameters:
         path: USS file or directory path (required)
@@ -29,54 +29,46 @@ def list_uss_files():
     """
     try:
         path = request.args.get("path")
-        all_files = request.args.get("all", "false").lower()
-        long_format = request.args.get("long", "false").lower()
+        all_files = request.args.get("all", "false").lower() == "true"
+        long_format = request.args.get("long", "false").lower() == "true"
 
         if not path:
             return jsonify({"error": "path parameter is required"}), 400
 
-        uss_output = zusf.list_uss_dir(path)
+        if all_files or long_format:
+            options = zusf.ListOptions()
+            options.all_files = all_files
+            options.long_format = long_format
+            uss_output = zusf.list_uss_dir(path, options)
+        else:
+            # Use C++ default parameters {false, false}
+            uss_output = zusf.list_uss_dir(path)
 
-        warnings_list = []
-
-        if all_files == "true":
-            warnings_list.append(
-                "all parameter provided but not supported by current C++ function"
-            )
-        if long_format == "true":
-            warnings_list.append(
-                "long parameter provided but not supported by current C++ function"
-            )
-
-        try:
-            parsed_output = json.loads(uss_output)
-            if isinstance(parsed_output, list):
-                items = parsed_output
-            else:
-                items = [parsed_output]
-        except (json.JSONDecodeError, ValueError):
-            # Fallback to simple line-by-line parsing
-            lines = uss_output.strip().split("\n") if uss_output else []
-            items = []
+        # Parse the CSV output from the C++ function
+        items = []
+        if uss_output and uss_output.strip():
+            lines = uss_output.strip().split("\n")
             for line in lines:
                 if line.strip():
-                    # Basic parsing for non-JSON output
-                    items.append({"name": line.strip(), "type": "unknown"})
+                    fields = line.strip().split(",")
+                    if fields:
+                        item = {
+                            "name": fields[0].strip('"'),
+                        }
+                        
+                        if long_format and len(fields) > 1:
+                            mode_str = fields[1].strip('"')
+                            item["mode"] = mode_str
+                        
+                        items.append(item)
 
-        response = {"items": items, "returnedRows": len(items), "path": path}
-
-        if long_format == "true":
-            response["format"] = "long"
-        else:
-            response["format"] = "short"
-
-        if all_files == "true":
-            response["showHidden"] = True
-        else:
-            response["showHidden"] = False
-
-        if warnings_list:
-            response["warnings"] = warnings_list
+        response = {
+            "items": items, 
+            "returnedRows": len(items), 
+            "path": path,
+            "format": "long" if long_format else "short",
+            "showHidden": all_files
+        }
 
         return jsonify(response)
 
