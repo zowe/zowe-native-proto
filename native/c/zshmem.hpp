@@ -37,7 +37,7 @@
 #include <le/fcntl.h>
 #include <le/unistd.h>
 #include <iostream>
-
+#include <fstream>
 using namespace std;
 
 #ifndef _PTHREAD_H
@@ -205,7 +205,7 @@ inline int create_shared_memory(ZSharedRegion **shm_ptr, char *file_path_out = n
 
   memcpy((void *)&ZShared::instance()->region->mutex, (void *)&mutex, sizeof(pthread_mutex_t));
 
-  (*shm_ptr)->progress = 0;
+  (*shm_ptr)->progress = 2;
 
   pthread_mutexattr_destroy(&mutex_attr);
 
@@ -265,10 +265,18 @@ inline void decrement_progress(ZSharedRegion *shm_ptr)
 
 inline void set_progress(int progress)
 {
+  ofstream stream("./zowe-native-proto/golang/zowex_progress.log", ios_base::out | ios_base::app);
+  if(!stream.good()){
+    return;
+  }
+
   auto *shared_memory_map = ZShared::instance()->region;
   pthread_mutex_lock(&shared_memory_map->mutex);
   shared_memory_map->progress = progress;
+  stream << "set_progress: " << progress << endl;
+  stream << "map: set_progress: " << shared_memory_map->progress << endl;
   pthread_mutex_unlock(&shared_memory_map->mutex);
+  stream.close();
 }
 
 inline int test_shared_memory()

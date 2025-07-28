@@ -34,11 +34,11 @@ type Worker struct {
 	RequestQueue chan []byte
 	Dispatcher   *cmds.CmdDispatcher
 	Conn         utils.StdioConn
-	ResponseMu   *sync.Mutex // Mutex to synchronize response printing
-	Ready        bool        // Indicates if the worker is ready to process requests
-	ShmPath      string      // Shared memory file path
-	ShmFD        int         // Shared memory file descriptor (opened by Go)
-	ShmData      []byte      // Memory-mapped shared memory
+	ResponseMu   *sync.Mutex    // Mutex to synchronize response printing
+	Ready        bool           // Indicates if the worker is ready to process requests
+	ShmPath      string         // Shared memory file path
+	ShmFD        int            // Shared memory file descriptor (opened by Go)
+	ShmData      unsafe.Pointer // Memory-mapped shared memory
 }
 
 // WorkerPool manages a pool of workers
@@ -256,21 +256,18 @@ func initializeWorker(worker *Worker, pool *WorkerPool) {
 	// Map the shared memory using the file descriptor
 	if worker.ShmFD > 0 {
 		// Use unix.Mmap for memory mapping
-		data, err := unix.Mmap(worker.ShmFD, 0, 4168, unix.PROT_READ|unix.PROT_WRITE, unix.MAP_SHARED)
+		data, err := unix.Mmap(worker.ShmFD, 0, 68, unix.PROT_READ|unix.PROT_WRITE, unix.MAP_SHARED)
 		if err != nil {
 			fmt.Printf("Worker %d: Failed to mmap shared memory: %v\n", worker.ID, err)
 		} else {
-			worker.ShmData = data
-			workerConn.SharedMem = data
-			fmt.Printf("Worker %d: Successfully mapped %d bytes\n", worker.ID, len(worker.ShmData))
+			worker.ShmData = unsafe.Pointer(&data[0])
+			workerConn.SharedMem = worker.ShmData
+			// fmt.Printf("Worker %d: Successfully mapped %d bytes\n", worker.ID, len(worker.ShmData))
 		}
 	}
 
 	// Set up the connection for the worker
 	worker.Conn = workerConn
-
-	// Log shared memory information
-	worker.LogSharedMemoryInfo()
 
 	// Start the worker
 	go worker.Start()
@@ -284,63 +281,4 @@ func (wp *WorkerPool) GetAvailableWorkersCount() int32 {
 	wp.ReadyMu.Lock()
 	defer wp.ReadyMu.Unlock()
 	return wp.ReadyCount
-}
-
-// GetAnimalCountFromSharedMemory reads the animal count from memory-mapped shared memory
-func (w *Worker) GetAnimalCountFromSharedMemory() (int32, error) {
-	if w.ShmData == nil {
-		return 0, fmt.Errorf("shared memory not mapped")
-	}
-
-	// The animal count is at offset 0x40 and is 4 bytes in size (after the 68-byte mutex structure)
-	if len(w.ShmData) < 0x48 {
-		return 0, fmt.Errorf("shared memory too small")
-	}
-
-	// Read the 4 bytes at w.ShmData + 0x40 as an int32
-	animalCount := *(*int32)(unsafe.Pointer(&w.ShmData[0x40]))
-
-	return animalCount, nil
-}
-
-// LogSharedMemoryInfo logs information about the worker's shared memory
-func (w *Worker) LogSharedMemoryInfo() {
-	if count, err := w.GetAnimalCountFromSharedMemory(); err == nil {
-		fmt.Printf("Worker %d: Shared memory Path=%s, Animal count=%d\n",
-			w.ID, w.ShmPath, count)
-	} else {
-		fmt.Printf("Worker %d: Failed to read shared memory: %v\n", w.ID, err)
-	}
-}
-
-// LogAllWorkersSharedMemory logs shared memory information for all ready workers
-func (wp *WorkerPool) LogAllWorkersSharedMemory() {
-	wp.ReadyMu.Lock()
-	defer wp.ReadyMu.Unlock()
-
-	fmt.Println("=== Shared Memory Status for All Workers ===")
-	for _, worker := range wp.Workers {
-		if worker.Ready {
-			worker.LogSharedMemoryInfo()
-		}
-	}
-	fmt.Println("============================================")
-}
-
-// TestSharedMemoryAccess demonstrates reading from shared memory
-func (wp *WorkerPool) TestSharedMemoryAccess() {
-	wp.ReadyMu.Lock()
-	defer wp.ReadyMu.Unlock()
-
-	fmt.Println("=== Testing Shared Memory Access ===")
-	for _, worker := range wp.Workers {
-		if worker.Ready && worker.ShmFD != 0 {
-			if count, err := worker.GetAnimalCountFromSharedMemory(); err == nil {
-				fmt.Printf("Worker %d successfully read animal count: %d\n", worker.ID, count)
-			} else {
-				fmt.Printf("Worker %d failed to read shared memory: %v\n", worker.ID, err)
-			}
-		}
-	}
-	fmt.Println("====================================")
 }

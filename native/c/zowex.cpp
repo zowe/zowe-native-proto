@@ -2516,8 +2516,10 @@ int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_
     cerr << "Failed to initialize shared memory" << endl;
     return RTNCD_FAILURE;
   }
+  const auto progress = *reinterpret_cast<int32_t*>((uintptr_t)shm_ptr + 0x40);
 
   std::cout << "Started, enter command or 'quit' to quit..." << std::endl;
+  std::cout << "Progress: " << progress << std::endl;
   std::cout << "Shared memory initialized. Size: 0x" << std::hex << sizeof(ZSharedRegion) << std::dec << " Path: " << shm_file_path << std::endl;
   // print_shared_memory_status(shm_ptr);
 
