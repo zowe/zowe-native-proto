@@ -12,6 +12,7 @@
 #ifndef ZSHMEM_H
 #define ZSHMEM_H
 #include <stdio.h>
+#include <builtins.h>
 
 #define _XOPEN_SOURCE 600
 #define __SUSV3_XSI 1
@@ -42,7 +43,7 @@ using namespace std;
 #pragma pack(1)
 typedef struct SharedMemory
 {
-  volatile int progress;
+  unsigned int progress;
 } ZSharedRegion;
 #pragma pack(reset)
 
@@ -189,7 +190,7 @@ inline void decrement_progress(ZSharedRegion *shm_ptr)
   shm_ptr->progress--;
 }
 
-inline void set_progress(int progress)
+inline void set_progress(unsigned int progress)
 {
   ofstream stream("./zowe-native-proto/golang/zowex_progress.log", ios_base::out | ios_base::app);
   if (!stream.good())
@@ -198,7 +199,19 @@ inline void set_progress(int progress)
   }
 
   auto *shared_memory_map = ZShared::instance()->region;
-  shared_memory_map->progress = progress;
+  static int plo_lock = 0;
+
+  unsigned int current_value;
+  int cc;
+
+  do
+  {
+    current_value = shared_memory_map->progress;
+    // Using __plo_CS (Compare and Swap) to atomically set the progress value
+    cc = __plo_CS(&plo_lock, &current_value, progress, &shared_memory_map->progress);
+    // cc == 0 means successful swap, cc == 1 means operands not equal (retry needed)
+  } while (cc == 1);
+
   stream << "set_progress: " << progress << endl;
   stream << "- C++ read from shared memory: " << shared_memory_map->progress << endl;
   stream.close();
