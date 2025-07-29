@@ -97,7 +97,20 @@ int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_
 
 int main(int argc, char *argv[])
 {
-  ZLOG_TRACE("Starting zowex");
+  char arg_buf[1024];
+  if (argc > 1)
+  {
+    for (int i = 1; i < argc; i++)
+    {
+      snprintf(arg_buf, sizeof(arg_buf), "%s", argv[i]);
+    }
+    ZLOG_TRACE("Starting zowex instance with args: %s", arg_buf);
+  }
+  else
+  {
+    ZLOG_TRACE("Starting zowex instance with no args");
+  }
+
   ArgumentParser arg_parser(argv[0], "Zowe Native Protocol CLI");
 
   // Add interactive mode flag to root command
