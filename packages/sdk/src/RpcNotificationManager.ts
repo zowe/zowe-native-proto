@@ -93,8 +93,6 @@ export class RpcNotificationManager {
             throw new Error(`No stream found for request ID: ${params.id}`);
         }
 
-        this.mPendingStreamMap.delete(params.id);
-
         const sshStream = await new Promise<ClientChannel>((resolve, reject) => {
             this.mSshClient.exec(`cat ${params.pipePath}`, (err, stream) => (err ? reject(err) : resolve(stream)));
         });
@@ -102,6 +100,7 @@ export class RpcNotificationManager {
         const decoder = new CountingBase64Decode();
 
         await pipeline(sshStream.stdout, decoder, writeStream);
+        this.mPendingStreamMap.delete(params.id);
         return decoder.bytesWritten;
     }
 
