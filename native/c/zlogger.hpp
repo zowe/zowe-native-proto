@@ -5,21 +5,14 @@
 #include <cstdarg>
 #include <string>
 #include <vector>
-#include <memory>
 #include <ctime>
 #include <iostream>
 #include <fstream>
-#include <mutex>
 #include <sys/stat.h>
 #include <cstdlib>
 #include <algorithm>
 #include <cctype>
 #include "singleton.hpp"
-
-#ifdef _WIN32
-#include <direct.h>
-#define mkdir(path, mode) _mkdir(path)
-#endif
 
 /**
  * Log levels supported by ZLogger
@@ -44,13 +37,12 @@ private:
   std::string filename_;
   LogLevel level_;
   std::ofstream file_;
-  std::mutex mutex_;
 
 public:
-  FileTransport(const std::string &filename, LogLevel level = LogLevel::INFO)
+  explicit FileTransport(const std::string &filename, LogLevel level = LogLevel::INFO)
       : filename_(filename), level_(level)
   {
-    file_.open(filename_, std::ios::app);
+    file_.open(filename_.c_str(), std::ios::app);
     if (!file_.is_open())
     {
       std::cerr << "Failed to open log file: " << filename_ << std::endl;
@@ -65,34 +57,33 @@ public:
     }
   }
 
-  bool shouldLog(LogLevel level) const
+  bool should_log(LogLevel level) const
   {
     return level >= level_ && level != LogLevel::OFF;
   }
 
   void write(LogLevel level, const std::string &message)
   {
-    if (!shouldLog(level) || !file_.is_open())
+    if (!should_log(level) || !file_.is_open())
     {
       return;
     }
 
-    std::lock_guard<std::mutex> lock(mutex_);
     file_ << message << std::endl;
     file_.flush();
   }
 
-  void setLevel(LogLevel level)
+  void set_level(LogLevel level)
   {
     level_ = level;
   }
 
-  LogLevel getLevel() const
+  LogLevel get_level() const
   {
     return level_;
   }
 
-  const std::string &getFilename() const
+  const std::string &get_filename() const
   {
     return filename_;
   }
@@ -107,8 +98,7 @@ class ZLogger : public Singleton<ZLogger>
 
 private:
   LogLevel default_level_;
-  std::vector<std::unique_ptr<FileTransport>> transports_;
-  std::mutex logger_mutex_;
+  std::vector<FileTransport *> transports_;
 
 protected:
   ZLogger()
@@ -118,17 +108,17 @@ protected:
     const char *env_level = std::getenv("ZOWEX_LOG_LEVEL");
     if (env_level)
     {
-      setLevelFromString(env_level);
+      set_level_from_str(env_level);
     }
 
     // Create logs directory if it doesn't exist
-    createLogsDirectory();
+    create_logs_dir();
 
     // Add default file transport
-    addFileTransport("logs/zowex.log", default_level_);
+    add_file_transport("logs/zowex.log", default_level_);
   }
 
-  void createLogsDirectory()
+  void create_logs_dir()
   {
     struct stat st = {0};
     if (stat("logs", &st) == -1)
@@ -137,7 +127,7 @@ protected:
     }
   }
 
-  void setLevelFromString(const std::string &level_str)
+  void set_level_from_str(const std::string &level_str)
   {
     std::string upper_level = level_str;
     std::transform(upper_level.begin(), upper_level.end(), upper_level.begin(), ::toupper);
@@ -172,7 +162,7 @@ protected:
     }
   }
 
-  std::string formatMessage(LogLevel level, const char *format, va_list args)
+  std::string format_msg(LogLevel level, const char *format, va_list args)
   {
     // Get current timestamp
     time_t now = time(0);
@@ -181,7 +171,7 @@ protected:
     strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", timeinfo);
 
     // Get log level string
-    const char *level_str = getLevelString(level);
+    const char *level_str = get_level_str(level);
 
     // Format the user message
     char buffer[4096];
@@ -194,7 +184,7 @@ protected:
     return std::string(final_message);
   }
 
-  const char *getLevelString(LogLevel level)
+  const char *get_level_str(LogLevel level)
   {
     switch (level)
     {
@@ -219,16 +209,15 @@ public:
   /**
    * Set the default log level for the logger
    */
-  void setLogLevel(LogLevel level)
+  void set_log_level(LogLevel level)
   {
-    std::lock_guard<std::mutex> lock(logger_mutex_);
     default_level_ = level;
   }
 
   /**
    * Get the current default log level
    */
-  LogLevel getLogLevel() const
+  LogLevel get_log_level() const
   {
     return default_level_;
   }
@@ -236,18 +225,16 @@ public:
   /**
    * Add a file transport with specified filename and log level
    */
-  void addFileTransport(const std::string &filename, LogLevel level = LogLevel::INFO)
+  void add_file_transport(const std::string &filename, LogLevel level = LogLevel::INFO)
   {
-    std::lock_guard<std::mutex> lock(logger_mutex_);
-    transports_.push_back(std::make_unique<FileTransport>(filename, level));
+    transports_.push_back(new FileTransport(filename, level));
   }
 
   /**
    * Remove all file transports
    */
-  void clearTransports()
+  void clear_transports()
   {
-    std::lock_guard<std::mutex> lock(logger_mutex_);
     transports_.clear();
   }
 
@@ -263,13 +250,12 @@ public:
 
     va_list args;
     va_start(args, format);
-    std::string message = formatMessage(level, format, args);
+    std::string message = format_msg(level, format, args);
     va_end(args);
 
-    std::lock_guard<std::mutex> lock(logger_mutex_);
-    for (auto &transport : transports_)
+    for (auto i = 0; i < transports_.size(); i++)
     {
-      transport->write(level, message);
+      transports_[i]->write(level, message);
     }
   }
 
@@ -280,13 +266,12 @@ public:
   {
     va_list args;
     va_start(args, format);
-    std::string message = formatMessage(LogLevel::TRACE, format, args);
+    std::string message = format_msg(LogLevel::TRACE, format, args);
     va_end(args);
 
-    std::lock_guard<std::mutex> lock(logger_mutex_);
-    for (auto &transport : transports_)
+    for (auto i = 0; i < transports_.size(); i++)
     {
-      transport->write(LogLevel::TRACE, message);
+      transports_[i]->write(LogLevel::TRACE, message);
     }
   }
 
@@ -294,13 +279,12 @@ public:
   {
     va_list args;
     va_start(args, format);
-    std::string message = formatMessage(LogLevel::DEBUG, format, args);
+    std::string message = format_msg(LogLevel::DEBUG, format, args);
     va_end(args);
 
-    std::lock_guard<std::mutex> lock(logger_mutex_);
-    for (auto &transport : transports_)
+    for (auto i = 0; i < transports_.size(); i++)
     {
-      transport->write(LogLevel::DEBUG, message);
+      transports_[i]->write(LogLevel::DEBUG, message);
     }
   }
 
@@ -308,13 +292,12 @@ public:
   {
     va_list args;
     va_start(args, format);
-    std::string message = formatMessage(LogLevel::INFO, format, args);
+    std::string message = format_msg(LogLevel::INFO, format, args);
     va_end(args);
 
-    std::lock_guard<std::mutex> lock(logger_mutex_);
-    for (auto &transport : transports_)
+    for (auto i = 0; i < transports_.size(); i++)
     {
-      transport->write(LogLevel::INFO, message);
+      transports_[i]->write(LogLevel::INFO, message);
     }
   }
 
@@ -322,13 +305,12 @@ public:
   {
     va_list args;
     va_start(args, format);
-    std::string message = formatMessage(LogLevel::WARN, format, args);
+    std::string message = format_msg(LogLevel::WARN, format, args);
     va_end(args);
 
-    std::lock_guard<std::mutex> lock(logger_mutex_);
-    for (auto &transport : transports_)
+    for (auto i = 0; i < transports_.size(); i++)
     {
-      transport->write(LogLevel::WARN, message);
+      transports_[i]->write(LogLevel::WARN, message);
     }
   }
 
@@ -336,13 +318,12 @@ public:
   {
     va_list args;
     va_start(args, format);
-    std::string message = formatMessage(LogLevel::ERROR, format, args);
+    std::string message = format_msg(LogLevel::ERROR, format, args);
     va_end(args);
 
-    std::lock_guard<std::mutex> lock(logger_mutex_);
-    for (auto &transport : transports_)
+    for (auto i = 0; i < transports_.size(); i++)
     {
-      transport->write(LogLevel::ERROR, message);
+      transports_[i]->write(LogLevel::ERROR, message);
     }
   }
 
@@ -350,13 +331,12 @@ public:
   {
     va_list args;
     va_start(args, format);
-    std::string message = formatMessage(LogLevel::FATAL, format, args);
+    std::string message = format_msg(LogLevel::FATAL, format, args);
     va_end(args);
 
-    std::lock_guard<std::mutex> lock(logger_mutex_);
-    for (auto &transport : transports_)
+    for (auto i = 0; i < transports_.size(); i++)
     {
-      transport->write(LogLevel::FATAL, message);
+      transports_[i]->write(LogLevel::FATAL, message);
     }
   }
 };
@@ -364,11 +344,11 @@ public:
 /**
  * Convenience macros for easier logging usage
  */
-#define ZLOG_TRACE(...) ZLogger::getInstance().trace(__VA_ARGS__)
-#define ZLOG_DEBUG(...) ZLogger::getInstance().debug(__VA_ARGS__)
-#define ZLOG_INFO(...) ZLogger::getInstance().info(__VA_ARGS__)
-#define ZLOG_WARN(...) ZLogger::getInstance().warn(__VA_ARGS__)
-#define ZLOG_ERROR(...) ZLogger::getInstance().error(__VA_ARGS__)
-#define ZLOG_FATAL(...) ZLogger::getInstance().fatal(__VA_ARGS__)
+#define ZLOG_TRACE(...) ZLogger::get_instance().trace(__VA_ARGS__)
+#define ZLOG_DEBUG(...) ZLogger::get_instance().debug(__VA_ARGS__)
+#define ZLOG_INFO(...) ZLogger::get_instance().info(__VA_ARGS__)
+#define ZLOG_WARN(...) ZLogger::get_instance().warn(__VA_ARGS__)
+#define ZLOG_ERROR(...) ZLogger::get_instance().error(__VA_ARGS__)
+#define ZLOG_FATAL(...) ZLogger::get_instance().fatal(__VA_ARGS__)
 
 #endif // ZLOGGER_HPP

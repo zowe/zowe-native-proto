@@ -30,6 +30,7 @@
 #include "zusf.hpp"
 #include "ztso.hpp"
 #include "zuttype.h"
+#include "zlogger.hpp"
 
 #ifndef TO_STRING
 #define TO_STRING(x) static_cast<std::ostringstream &>(           \
@@ -96,6 +97,7 @@ int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_
 
 int main(int argc, char *argv[])
 {
+  ZLOG_TRACE("Starting zowex");
   ArgumentParser arg_parser(argv[0], "Zowe Native Protocol CLI");
 
   // Add interactive mode flag to root command
@@ -1716,10 +1718,10 @@ int handle_uss_create_dir(const ParseResult &result)
   string file_path = result.find_pos_arg_string("file-path");
 
   int mode = result.find_kw_arg_int("mode");
-  if (result.find_kw_arg_string("mode").empty()) 
+  if (result.find_kw_arg_string("mode").empty())
   {
     mode = 755;
-  } 
+  }
   else if (mode == 0 && result.find_kw_arg_string("mode") != "0")
   {
     cerr << "Error: invalid mode provided.\nExamples of valid modes: 777, 0644" << endl;
