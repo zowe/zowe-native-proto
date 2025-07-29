@@ -30,7 +30,7 @@ export class SshUssApi extends SshCommonApi implements MainframeInteraction.IUss
 
     public async isFileTagBinOrAscii(ussFilePath: string): Promise<boolean> {
         const tag = await this.getTag(ussFilePath);
-        return tag === "binary" || tag === "IBM-1047";
+        return tag === "binary" || tag === "ISO8859-1";
     }
 
     public async getContents(

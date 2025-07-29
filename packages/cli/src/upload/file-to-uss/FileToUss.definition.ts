@@ -51,6 +51,7 @@ export const UploadFileToUssFileDefinition: ICommandDefinition = {
             description: "The encoding for uploading a USS file.",
             defaultValue: null,
             type: "string",
+            conflictsWith: ["binary"],
         },
     ],
     profile: { optional: ["ssh"] },
