@@ -982,8 +982,8 @@ int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response, ListOptio
   }
   closedir(dir);
 
-  // Sort entries alphabetically
-  sort(entry_names.begin(), entry_names.end());
+  // Sort entries alphabetically using C string comparison
+  sort(entry_names.begin(), entry_names.end(), zut_string_compare_c);
 
   // Process sorted entries
   response.clear();

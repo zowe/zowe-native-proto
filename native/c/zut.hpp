@@ -24,11 +24,11 @@
  */
 typedef struct ZConvData
 {
-    char *input;            /**< Pointer to input buffer. */
-    size_t input_size;      /**< Size of input buffer. */
-    size_t max_output_size; /**< Maximum size of output buffer. */
-    char *output_buffer;    /**< Pointer to output buffer. */
-    char *output_iter;      /**< Pointer to current position in output buffer. */
+  char *input;            /**< Pointer to input buffer. */
+  size_t input_size;      /**< Size of input buffer. */
+  size_t max_output_size; /**< Maximum size of output buffer. */
+  char *output_buffer;    /**< Pointer to output buffer. */
+  char *output_iter;      /**< Pointer to current position in output buffer. */
 } ZConvData;
 
 /**
@@ -213,5 +213,13 @@ unsigned char zut_get_key();
  * @return int rc Return code (0 for success, non-zero for error)
  */
 int zut_debug_message(const char *message);
+
+/**
+ * @brief String comparison function using C strcmp for sorting
+ * @param a First string to compare
+ * @param b Second string to compare
+ * @return True if a should come before b in sorted order, false otherwise
+ */
+bool zut_string_compare_c(const std::string &a, const std::string &b);
 
 #endif // ZUT_HPP
