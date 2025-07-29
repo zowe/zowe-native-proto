@@ -561,12 +561,10 @@ int main(int argc, char *argv[])
     if (strcmp(argv[i], "--interactive") == 0 || strcmp(argv[i], "--it") == 0)
     {
       is_interactive = true;
-      break;
     }
     else if (strcmp(argv[i], "--version") == 0 || strcmp(argv[i], "-v") == 0)
     {
       is_version = true;
-      break;
     }
   }
 
@@ -577,10 +575,14 @@ int main(int argc, char *argv[])
     cout << "Version: " << PACKAGE_VERSION << endl;
     cout << "Build Date: " << BUILD_DATE << " " << BUILD_TIME << endl;
     cout << "Copyright Contributors to the Zowe Project." << endl;
-    return 0;
+    if (!is_interactive)
+    {
+      return 0;
+    }
   }
   // If interactive mode is requested, start it directly
-  else if (is_interactive)
+
+  if (is_interactive)
   {
     return run_interactive_mode(arg_parser, argv[0]);
   }
