@@ -37,6 +37,14 @@
                          .str()
 #endif
 
+// Version information
+#ifndef PACKAGE_VERSION
+#define PACKAGE_VERSION "unknown"
+#endif
+
+#define BUILD_DATE __DATE__
+#define BUILD_TIME __TIME__
+
 using namespace parser;
 using namespace std;
 
@@ -75,6 +83,8 @@ int handle_uss_delete(const ParseResult &result);
 int handle_uss_chmod(const ParseResult &result);
 int handle_uss_chown(const ParseResult &result);
 int handle_uss_chtag(const ParseResult &result);
+
+int handle_version(const ParseResult &result);
 
 int handle_job_list(const ParseResult &result);
 int handle_job_list_files(const ParseResult &result);
@@ -536,8 +546,16 @@ int main(int argc, char *argv[])
 
   arg_parser.get_root_command().add_command(job_cmd);
 
-  // Check for interactive mode before parsing to avoid help text
+  // Version command
+  auto version_cmd = command_ptr(new Command("version", "display version information"));
+  version_cmd->add_alias("--version");
+  version_cmd->add_alias("-v");
+  version_cmd->set_handler(handle_version);
+  arg_parser.get_root_command().add_command(version_cmd);
+
+  // Check for version or interactive mode before parsing to avoid help text
   bool is_interactive = false;
+  bool is_version = false;
   for (int i = 1; i < argc; i++)
   {
     if (strcmp(argv[i], "--interactive") == 0 || strcmp(argv[i], "--it") == 0)
@@ -545,10 +563,24 @@ int main(int argc, char *argv[])
       is_interactive = true;
       break;
     }
+    else if (strcmp(argv[i], "--version") == 0 || strcmp(argv[i], "-v") == 0)
+    {
+      is_version = true;
+      break;
+    }
   }
 
+  // If version is requested, handle it directly
+  if (is_version)
+  {
+    cout << "Zowe Native Protocol CLI (zowex)" << endl;
+    cout << "Version: " << PACKAGE_VERSION << endl;
+    cout << "Build Date: " << BUILD_DATE << " " << BUILD_TIME << endl;
+    cout << "Copyright Contributors to the Zowe Project." << endl;
+    return 0;
+  }
   // If interactive mode is requested, start it directly
-  if (is_interactive)
+  else if (is_interactive)
   {
     return run_interactive_mode(arg_parser, argv[0]);
   }
@@ -1716,10 +1748,10 @@ int handle_uss_create_dir(const ParseResult &result)
   string file_path = result.find_pos_arg_string("file-path");
 
   int mode = result.find_kw_arg_int("mode");
-  if (result.find_kw_arg_string("mode").empty()) 
+  if (result.find_kw_arg_string("mode").empty())
   {
     mode = 755;
-  } 
+  }
   else if (mode == 0 && result.find_kw_arg_string("mode") != "0")
   {
     cerr << "Error: invalid mode provided.\nExamples of valid modes: 777, 0644" << endl;
@@ -2482,6 +2514,15 @@ int free_dynalloc_dds(vector<string> &list)
   }
 
   return loop_dynalloc(free_dds);
+}
+
+int handle_version(const ParseResult &result)
+{
+  cout << "Zowe Native Protocol CLI (zowex)" << endl;
+  cout << "Version: " << PACKAGE_VERSION << endl;
+  cout << "Build Date: " << BUILD_DATE << " " << BUILD_TIME << endl;
+  cout << "Copyright Contributors to the Zowe Project." << endl;
+  return 0;
 }
 
 bool should_quit(const std::string &input)
