@@ -21,6 +21,9 @@
 #include "zutm31.h"
 #include "zecb.h"
 #include "zam.h"
+#include "ihapsa.h"
+#include "ikjtcb.h"
+#include "iezjscb.h"
 
 #define ZUT_BPXWDYN_SERVICE_FAILURE -2
 
@@ -64,6 +67,7 @@ typedef int (*BPXWDYN)(
 int ZUTWDYN(BPXWDYN_PARM *parm, BPXWDYN_RESPONSE *response)
 {
   int rc = 0;
+  ZUTAOFF();
 
   // load our service
   BPXWDYN dynalloc = (BPXWDYN)load_module31("BPXWDY2"); // EP which doesn't require R0 == 0
@@ -161,6 +165,7 @@ typedef int (*ASASYMBF)(SYMBFP) ATTRIBUTE(amode31);
 int ZUTSYMBP(SYMBOL_DATA *data)
 {
   int rc = 0;
+  ZUTAOFF();
 
   SYMBFP parms = {0};
 
@@ -189,6 +194,7 @@ typedef int (*ISRSUPC)() ATTRIBUTE(amode31);
 int ZUTSRCH()
 {
   int rc = 0;
+  ZUTAOFF();
 
   ISRSUPC search = (ISRSUPC)load_module31("ISRSUPC");
   rc = search();
@@ -205,6 +211,7 @@ typedef int (*PGM64)(void *) ATTRIBUTE(amode64);
 int ZUTRUN(const char *program)
 {
   int rc = 0;
+  ZUTAOFF();
 
   void *p = load_module(program);
 
@@ -248,6 +255,8 @@ typedef int (*CCNEDSCT)(EDSCT_PARMS *) ATTRIBUTE(amode31);
 int ZUTEDSCT()
 {
   int rc = 0;
+  ZUTAOFF();
+
   CCNEDSCT convert = (CCNEDSCT)load_module31("CCNEDSCT");
   EDSCT_PARMS p = {0};
   p.len = sprintf(p.parms, "PPCOND,EQUATE(DEF),BITF0XL,HDRSKIP,UNIQ,LP64,LEGACY,SECT(ALL)");
@@ -292,6 +301,33 @@ int ZUTMGT64(void **PTR64 data, int *len)
 unsigned char ZUTMGKEY()
 {
   return get_key();
+}
+
+typedef struct psa PSA;
+typedef struct tcb TCB;
+typedef struct iezjscb IEZJSCB;
+
+void ZUTAOFF()
+{
+  PSA *psa = (PSA *)0;
+  TCB *PTR32 tcb = psa->psatold;
+  IEZJSCB *PTR32 jscb = NULL;
+  memcpy(&jscb, &tcb->tcbjscb, sizeof(tcb->tcbjscb));
+  jscb = (IEZJSCB * PTR32)((unsigned int)jscb & 0x00FFFFFF);
+
+  if (0 == test_auth())
+  {
+    PSW psw = {0};
+    get_psw(&psw);
+    int mode_switch = psw.p ? 1 : 0;
+    unsigned char key = get_key();
+    unsigned char key_zero = 0;
+    mode_sup();
+    set_key(key_zero);
+    jscb->jscbopts &= (0xFF - jscbauth);
+    set_key(key);
+    mode_prob();
+  }
 }
 
 int ZUTDBGMG(const char *msg)
