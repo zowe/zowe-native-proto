@@ -1716,10 +1716,10 @@ int handle_uss_create_dir(const ParseResult &result)
   string file_path = result.find_pos_arg_string("file-path");
 
   int mode = result.find_kw_arg_int("mode");
-  if (result.find_kw_arg_string("mode").empty()) 
+  if (result.find_kw_arg_string("mode").empty())
   {
     mode = 755;
-  } 
+  }
   else if (mode == 0 && result.find_kw_arg_string("mode") != "0")
   {
     cerr << "Error: invalid mode provided.\nExamples of valid modes: 777, 0644" << endl;
@@ -2209,6 +2209,7 @@ int handle_job_view_status(const ParseResult &result)
     fields.push_back(job.jobname);
     fields.push_back(job.status);
     fields.push_back(job.correlator);
+    fields.push_back(job.full_status);
     cout << zut_format_as_csv(fields) << endl;
   }
   else
