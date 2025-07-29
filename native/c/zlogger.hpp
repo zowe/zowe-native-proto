@@ -120,10 +120,12 @@ protected:
 
   void create_logs_dir()
   {
-    struct stat st = {0};
-    if (stat("logs", &st) == -1)
+    if (mkdir("logs", 0750) == -1)
     {
-      mkdir("logs", 0755);
+      if (errno != EEXIST)
+      {
+        std::cerr << "Failed to create logs directory: " << strerror(errno) << std::endl;
+      }
     }
   }
 
