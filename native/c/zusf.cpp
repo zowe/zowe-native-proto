@@ -906,11 +906,14 @@ string zusf_format_file_entry(ZUSF *zusf, const struct stat &file_stats, const s
   {
     // ls-style format: "- untagged    T=off -rw-r--r--   1 TRAE     XMPLGRP  2772036 May 22 17:23 hw.txt"
     stringstream ss;
-    const auto tagged = ccsid != "untagged";
+    const auto is_directory = S_ISDIR(file_stats.st_mode);
+    const auto tagged = !is_directory && ccsid != "untagged";
     const auto tag_prefix = tagged ? "t" : "-";
-    ss << tag_prefix << " " << left << setw(12) << ccsid
-       << " " << setw(5) << tag_flag
-       << " " << mode
+
+    ss << (is_directory ? "" : tag_prefix) << "  " << left << setw(12);
+    ss << (is_directory ? "" : ccsid);
+    ss << " " << setw(5) << (is_directory ? "" : tag_flag)
+       << (is_directory ? "   " : "  ") << mode
        << " " << right << setw(3) << file_stats.st_nlink
        << " " << left << setw(8) << zusf_get_owner_from_uid(file_stats.st_uid)
        << " " << setw(8) << zusf_get_group_from_gid(file_stats.st_gid)
