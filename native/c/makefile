@@ -104,7 +104,7 @@ MTL_FLAGS+=-g1
 MTL_FLAGS64+=-g1
 .END
 
-all: libzut.so libzut.a libzds.so libzds.a libzusf.so libzusf.a libzcn.so libzcn.a libzjb.so libzjb.a zowex zoweax extattr xlclang-extenders tests
+all: libzut.so libzut.a libzds.so libzds.a libzusf.so libzusf.a libzcn.so libzcn.a libzjb.so libzjb.a libzlogger.so libzlogger.a zowex zoweax extattr xlclang-extenders tests
 xlclang-extenders: $(OUT_DIR_CXXLANG)/zut.o $(OUT_DIR_CXXLANG)/zds.o $(OUT_DIR_CXXLANG)/zjb.o $(OUT_DIR_CXXLANG)/zcn.o $(OUT_DIR_CXXLANG)/zusf.o
 # SWIG extenders: compile C++ files with SWIG macro defined for Python bindings
 swig-extenders: $(OUT_DIR_SWIG)/zut.o $(OUT_DIR_SWIG)/zds.o $(OUT_DIR_SWIG)/zjb.o $(OUT_DIR_SWIG)/zcn.o $(OUT_DIR_SWIG)/zusf.o $(OUT_DIR_SWIG)/ztso.o
@@ -320,6 +320,35 @@ $(OUT_DIR)/libzusf.a: $(OUT_DIR)/zusf.o $(OUT_DIR)/libzut.a
 	ar -rv $@ $^
 
 libzusf.a: $(OUT_DIRS) $(OUT_DIR)/libzusf.a
+
+#
+# Logger Core
+#
+$(OUT_DIR)/zlogger_core.o: zlogger_core.c
+	@echo 'Building $(OUT_DIR)/zlogger_core.o'
+	$(CC) $(C_FLAGS) -qlist=$*.c.lst -o $@ $^
+
+$(OUT_DIR)/zlogger_metal.o: zlogger_metal.c
+	@echo 'Building $(OUT_DIR)/zlogger_metal.o'
+	$(CC) $(C_FLAGS) -qlist=$*.c.lst -o $@ $^
+
+$(OUT_DIR)/libzlogger.so: $(OUT_DIR)/zlogger_core.o $(OUT_DIR)/zlogger_metal.o
+	@echo 'Building $(OUT_DIR)/libzlogger.so'
+	$(CXX) $(DLL_BND_FLAGS) -o $@ $^ > $*.bind.lst
+
+libzlogger.so: $(OUT_DIRS) $(OUT_DIR)/libzlogger.so
+
+$(OUT_DIR)/libzlogger.a: $(OUT_DIR)/zlogger_core.o $(OUT_DIR)/zlogger_metal.o
+	@echo 'Building $(OUT_DIR)/libzlogger.a'
+	ar -rv $@ $^
+
+libzlogger.a: $(OUT_DIRS) $(OUT_DIR)/libzlogger.a
+
+$(OUT_DIR)/zlogger_test: examples/zlogger_test.cpp $(OUT_DIR)/libzlogger.a
+	@echo 'Building $(OUT_DIR)/zlogger_test'
+	$(CXX) $(CPP_BND_FLAGS) -I. -o $@ $^
+
+zlogger_test: $(OUT_DIRS) $(OUT_DIR)/zlogger_test
 
 #
 # TSO

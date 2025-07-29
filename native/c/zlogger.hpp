@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <cctype>
 #include "singleton.hpp"
+#include "zlogger_core.h"
 
 /**
  * Log levels supported by ZLogger
@@ -114,8 +115,17 @@ protected:
     // Create logs directory if it doesn't exist
     create_logs_dir();
 
-    // Add default file transport
-    add_file_transport("logs/zowex.log", default_level_);
+    // Initialize the C logger core for multi-process safety
+    zlog_level_t c_level = static_cast<zlog_level_t>(static_cast<int>(default_level_));
+    if (zlog_init("logs/zowex.log", c_level) == 0)
+    {
+      // C core initialized successfully, we'll use it for actual logging
+    }
+    else
+    {
+      // Fall back to file transport if C core fails
+      add_file_transport("logs/zowex.log", default_level_);
+    }
   }
 
   void create_logs_dir()
@@ -250,7 +260,23 @@ public:
       return;
     }
 
+    // Try to use C core first for multi-process safety
+    zlog_level_t c_level = static_cast<zlog_level_t>(static_cast<int>(level));
     va_list args;
+    va_start(args, format);
+
+    // Use C core if available
+    char buffer[4096];
+    vsnprintf(buffer, sizeof(buffer), format, args);
+    va_end(args);
+
+    if (zlog_write_msg(c_level, buffer) == 0)
+    {
+      // Successfully logged through C core
+      return;
+    }
+
+    // Fall back to file transports if C core fails
     va_start(args, format);
     std::string message = format_msg(level, format, args);
     va_end(args);
