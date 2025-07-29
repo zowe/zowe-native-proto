@@ -42,7 +42,7 @@ using namespace std;
 #pragma pack(1)
 typedef struct SharedMemory
 {
-  int progress;
+  volatile int progress;
 } ZSharedRegion;
 #pragma pack(reset)
 

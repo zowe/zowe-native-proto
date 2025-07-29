@@ -330,12 +330,10 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, string file, string pipe, size_
     const char *chunk = &buf[0];
     std::vector<char> temp_encoded;
 
-    // stream << "raw_bytes_read: " << raw_bytes_read << endl;
-    // stream << "total_len: " << total_len << endl;
-    const auto progress = (int)((double)raw_bytes_read / (double)total_len * 100);
+    const auto progress = (int)((double)raw_bytes_read / total_len * 100);
     stream << "Progress: " << progress << endl;
     set_progress(progress);
-    msync(ZShared::instance()->region,sizeof(ZSharedRegion),MS_SYNC);
+    msync(ZShared::instance()->region, sizeof(ZSharedRegion), MS_SYNC);
 
     if (hasEncoding)
     {
