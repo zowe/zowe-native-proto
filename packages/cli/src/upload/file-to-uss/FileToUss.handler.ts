@@ -38,7 +38,7 @@ export default class UploadFileToUssFileHandler extends SshBaseHandler {
         const response = await client.uss.writeFile({
             data,
             fspath: params.arguments.ussFile,
-            encoding: binary ? "binary" : params.arguments.encoding,
+            encoding: binary ? "binary" : encoding,
         });
         const uploadSource: string = `local file '${params.arguments.file}'`;
         const successMsg = params.response.console.log(
