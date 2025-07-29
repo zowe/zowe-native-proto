@@ -322,11 +322,17 @@ void ZUTAOFF()
     int mode_switch = psw.p ? 1 : 0;
     unsigned char key = get_key();
     unsigned char key_zero = 0;
-    mode_sup();
+    if (mode_switch)
+    {
+      mode_sup();
+    }
     set_key(key_zero);
     jscb->jscbopts &= (0xFF - jscbauth);
     set_key(key);
-    mode_prob();
+    if (mode_switch)
+    {
+      mode_prob();
+    }
   }
 }
 
