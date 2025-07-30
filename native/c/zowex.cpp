@@ -2243,6 +2243,7 @@ int handle_job_view_status(const ParseResult &result)
     fields.push_back(job.jobname);
     fields.push_back(job.status);
     fields.push_back(job.correlator);
+    fields.push_back(job.full_status);
     cout << zut_format_as_csv(fields) << endl;
   }
   else
