@@ -605,7 +605,7 @@ async function watch(connection: Client) {
         });
     }
 
-    const watcher = chokidar.watch(["c/makefile", "c/**/*.{c,cpp,h,hpp,s,sh}", "golang/**"], {
+    const watcher = chokidar.watch(["c/Makefile", "c/**/*.{c,cpp,h,hpp,s,sh}", "golang/**"], {
         cwd: path.resolve(__dirname, localDeployDir),
         ignoreInitial: true,
         persistent: true,
