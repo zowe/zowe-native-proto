@@ -1634,7 +1634,7 @@ int zusf_chtag_uss_file_or_dir(ZUSF *zusf, string file, string tag, bool recursi
     memset(&attr, 0, sizeof(attr));
     attr.att_filetagchg = 1;
     attr.att_filetag.ft_ccsid = ccsid;
-    attr.att_filetag.ft_txtflag = int(ccsid != 65535);
+    attr.att_filetag.ft_txtflag = int(ccsid != 65535 && ccsid != 0);
 
     const auto rc = __chattr((char *)file.c_str(), &attr, sizeof(attr));
     if (0 != rc)
