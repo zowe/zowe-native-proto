@@ -721,6 +721,38 @@ static map<int, string> create_ccsid_display_table()
 }
 
 /**
+ * Gets the CCSID from a display name.
+ * @param display_name the display name string
+ * @return CCSID value, or -1 if not found
+ */
+int zusf_get_ccsid_from_display_name(const string &display_name)
+{
+  static const map<int, string> CCSID_DISPLAY_TABLE = create_ccsid_display_table();
+
+  // Handle special cases
+  if (display_name == "untagged")
+  {
+    return 0;
+  }
+  if (display_name == "binary")
+  {
+    return 65535;
+  }
+
+  // Search through the table for a matching display name
+  for (map<int, string>::const_iterator it = CCSID_DISPLAY_TABLE.begin();
+       it != CCSID_DISPLAY_TABLE.end(); ++it)
+  {
+    if (it->second == display_name)
+    {
+      return it->first;
+    }
+  }
+
+  return -1; // Not found
+}
+
+/**
  * Gets the display name for a CCSID.
  * @param ccsid the CCSID value
  * @return display name string for the CCSID, or the CCSID number as a string if not found
@@ -1574,10 +1606,26 @@ int zusf_chtag_uss_file_or_dir(ZUSF *zusf, string file, string tag, bool recursi
     return RTNCD_FAILURE;
   }
 
-  const auto ccsid = strtol(tag.c_str(), nullptr, 10);
-  if (ccsid == LONG_MAX || ccsid == LONG_MIN)
+  int ccsid;
+
+  // First try to parse as a numeric CCSID
+  char *endptr;
+  const auto parsed_ccsid = strtol(tag.c_str(), &endptr, 10);
+
+  // If the entire string was consumed and it's a valid range, it's a numeric CCSID
+  if (*endptr == '\0' && parsed_ccsid != LONG_MAX && parsed_ccsid != LONG_MIN)
   {
-    // TODO(traeok): Get CCSID from encoding name
+    ccsid = parsed_ccsid;
+  }
+  else
+  {
+    // Try to get CCSID from display name
+    ccsid = zusf_get_ccsid_from_display_name(tag);
+    if (ccsid == -1)
+    {
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Invalid tag '%s' - not a valid CCSID or display name", tag.c_str());
+      return RTNCD_FAILURE;
+    }
   }
   const auto is_dir = S_ISDIR(file_stats.st_mode);
   if (!is_dir)

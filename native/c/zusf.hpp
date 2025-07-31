@@ -43,6 +43,7 @@ short zusf_get_id_from_user_or_group(std::string user_or_group, bool is_user);
 int zusf_chtag_uss_file_or_dir(ZUSF *zusf, std::string file, std::string tag, bool recursive);
 int zusf_get_file_ccsid(ZUSF *zusf, std::string file);
 std::string zusf_get_ccsid_display_name(int ccsid);
+int zusf_get_ccsid_from_display_name(const std::string &display_name);
 const char *zusf_get_owner_from_uid(uid_t uid);
 const char *zusf_get_group_from_gid(gid_t gid);
 std::string zusf_format_ls_time(time_t mtime, bool use_csv_format = false);

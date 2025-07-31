@@ -2011,6 +2011,17 @@ int handle_uss_chtag(const ParseResult &result)
 {
   string path = result.find_pos_arg_string("file-path");
   string tag = result.find_pos_arg_string("tag");
+  if (tag.empty())
+  {
+    tag = zut_int_to_string(result.find_pos_arg_int("tag"));
+  }
+
+  if (tag.empty())
+  {
+    cerr << "Error: no tag provided" << endl;
+    return RTNCD_FAILURE;
+  }
+
   bool recursive = result.find_kw_arg_bool("recursive");
 
   ZUSF zusf = {0};
