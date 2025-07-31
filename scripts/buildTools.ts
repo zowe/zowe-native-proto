@@ -415,7 +415,7 @@ async function bin(connection: Client) {
 }
 
 async function build(connection: Client, { goBuildEnv, preBuildCmd }: IConfig) {
-    preBuildCmd = preBuildCmd ? `${preBuildCmd} &&` : "";
+    preBuildCmd = preBuildCmd ? `${preBuildCmd} && ` : "";
     console.log("Building native/c ...");
     const response = await runCommandInShell(
         connection,
