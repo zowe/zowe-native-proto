@@ -66,7 +66,7 @@ func main() {
 
 	// Set up signal handling for graceful shutdown
 	sigchan := make(chan os.Signal, 1)
-	signal.Notify(sigchan, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(sigchan, syscall.SIGHUP, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGABRT, syscall.SIGTERM)
 	go func() {
 		<-sigchan
 		workerPool.Shutdown()
