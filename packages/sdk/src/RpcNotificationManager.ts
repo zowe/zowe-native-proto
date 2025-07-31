@@ -16,11 +16,13 @@ import { Base64Encode } from "base64-stream";
 import type { Client, ClientChannel } from "ssh2";
 import { CountingBase64Decode } from "./CountingBase64Decode";
 import type { CommandResponse, RpcNotification, RpcPromise, RpcRequest } from "./doc";
+import type { ReadDatasetResponse } from "./doc/gen/ds";
+import type { ReadFileResponse } from "./doc/gen/uss";
 
 type StreamMode = "r" | "w";
 
 export class RpcNotificationManager {
-    private mPendingStreamMap: Map<number, Stream> = new Map();
+    private readonly mPendingStreamMap: Map<number, Stream> = new Map();
 
     public constructor(private mSshClient: Client) {}
 
@@ -97,11 +99,14 @@ export class RpcNotificationManager {
 
     private expectContentLengthMatches(response: CommandResponse, clientLen: number, mode: StreamMode): void {
         if ("contentLen" in response && response.contentLen != null && response.contentLen !== clientLen) {
+            const resourceName = (response as ReadDatasetResponse).dataset ?? (response as ReadFileResponse).fspath;
+            let errMsg = "Content length mismatch";
+            if (resourceName != null) {
+                errMsg += ` for ${resourceName}`;
+            }
             const expectedLen = mode === "r" ? clientLen : response.contentLen;
             const actualLen = mode === "r" ? response.contentLen : clientLen;
-            throw new Error(
-                Logger.getAppLogger().error("Content length mismatch: expected %d, got %d", expectedLen, actualLen),
-            );
+            throw new Error(Logger.getAppLogger().error("%s: expected %d, got %d", errMsg, expectedLen, actualLen));
         }
     }
 }

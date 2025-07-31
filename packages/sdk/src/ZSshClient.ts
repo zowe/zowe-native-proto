@@ -39,7 +39,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
     private mSshStream: ClientChannel;
     private mPartialStderr = "";
     private mPartialStdout = "";
-    private mPromiseMap: Map<number, RpcPromise> = new Map();
+    private readonly mPromiseMap: Map<number, RpcPromise> = new Map();
     private mRequestId = 0;
 
     private constructor() {
