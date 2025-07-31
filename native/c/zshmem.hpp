@@ -36,7 +36,7 @@
 #include <le/fcntl.h>
 #include <le/unistd.h>
 #include <iostream>
-#include <fstream>
+
 using namespace std;
 
 // Shared memory structure for inter-process communication
@@ -177,12 +177,6 @@ inline int init_shared_memory(ZSharedRegion **shm_ptr, char *file_path_out = nul
 
 inline void set_progress(unsigned int progress)
 {
-  ofstream stream("./zowe-native-proto/golang/zowex_progress.log", ios_base::out | ios_base::app);
-  if (!stream.good())
-  {
-    return;
-  }
-
   auto *shared_memory_map = ZShared::instance()->region;
   static int plo_lock = 0;
 
@@ -196,10 +190,6 @@ inline void set_progress(unsigned int progress)
     cc = __plo_CS(&plo_lock, &current_value, progress, &shared_memory_map->progress);
     // cc == 0 means successful swap, cc == 1 means operands not equal (retry needed)
   } while (cc == 1);
-
-  stream << "set_progress: " << progress << endl;
-  stream << "- C++ read from shared memory: " << shared_memory_map->progress << endl;
-  stream.close();
 }
 
 #endif

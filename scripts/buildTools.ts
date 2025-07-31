@@ -247,7 +247,7 @@ async function runCommandInShell(connection: Client, command: string, pty = fals
             });
             stream.on("data", (part: Buffer) => {
                 data += part.toString();
-                console.log(data);
+                console.log(part);
             });
             stream.stderr.on("data", (err: Buffer) => {
                 error += err.toString();
@@ -427,7 +427,7 @@ async function build(connection: Client, { goBuildEnv, preBuildCmd }: IConfig) {
     console.log(
         await runCommandInShell(
             connection,
-            `${preBuildCmd}cd ${deployDirs.goDir} &&${goBuildEnv ? ` ${goBuildEnv}` : ""} go build${DEBUG_MODE() ? "" : ' -ldflags="-s -w"'} -v\n`,
+            `${preBuildCmd}cd ${deployDirs.goDir} &&${goBuildEnv ? ` ${goBuildEnv}` : ""} go build${DEBUG_MODE() ? "" : ' -ldflags="-s -w"'} -x\n`,
             true,
         ),
     );
