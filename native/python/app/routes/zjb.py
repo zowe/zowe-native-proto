@@ -49,12 +49,11 @@ def get_job_status_by_name_and_id(jobname, jobid):
             "retcode": job_info.retcode if hasattr(job_info, "retcode") else "",
             "type": "JOB",
             "url": f"https://{request.host}/zosmf/restjobs/jobs/{jobname}/{jobid}",
+            "job-correlator": job_info.correlator,
         }
 
         if hasattr(job_info, "full_status") and job_info.full_status:
             response["phase-name"] = job_info.full_status
-        if hasattr(job_info, "job_correlator") and job_info.job_correlator:
-            response["job-correlator"] = job_info.job_correlator
 
         if warnings_list:
             response["warnings"] = warnings_list
@@ -173,7 +172,7 @@ def list_jobs():
                     "jobname": job.jobname if hasattr(job, "jobname") else "",
                     "status": job.status if hasattr(job, "status") else "",
                     "job-correlator": (
-                        job.job_correlator if hasattr(job, "job_correlator") else ""
+                        job.correlator if hasattr(job, "correlator") else ""
                     ),
                 }
             else:
@@ -190,8 +189,8 @@ def list_jobs():
                     job_info["retcode"] = job.retcode
                 if hasattr(job, "full_status") and job.full_status:
                     job_info["phase-name"] = job.full_status
-                if hasattr(job, "job_correlator") and job.job_correlator:
-                    job_info["job-correlator"] = job.job_correlator
+                if hasattr(job, "correlator") and job.correlator:
+                    job_info["job-correlator"] = job.correlator
 
             results.append(job_info)
 
@@ -833,45 +832,6 @@ def delete_job_by_name_and_id(jobname, jobid):
             jsonify(
                 {
                     "error": f"could not delete job: '{jobid}' - {error_msg}",
-                    "details": error_msg,
-                }
-            ),
-            500,
-        )
-
-
-@zjb_bp.route("/zosmf/restjobs/jobs/<correlator>", methods=["DELETE"])
-def delete_job_by_correlator(correlator):
-    """
-    Delete a z/OS job by job correlator.
-
-    This endpoint calls the zjb.delete_job function and formats the output similar to the C++ CLI.
-
-    Path Parameters:
-        correlator: Job correlator (required)
-    """
-    try:
-        if not correlator:
-            return jsonify({"error": "correlator is required"}), 400
-
-        # Call the C++ function to delete the job
-        # Note: The C++ function expects a jobid, but correlator should work the same way
-        zjb.delete_job(correlator)
-
-        response = {
-            "message": f"Job {correlator} deleted",
-            "job-correlator": correlator,
-            "success": True
-        }
-
-        return jsonify(response)
-
-    except Exception as e:
-        error_msg = str(e)
-        return (
-            jsonify(
-                {
-                    "error": f"could not delete job: '{correlator}' - {error_msg}",
                     "details": error_msg,
                 }
             ),

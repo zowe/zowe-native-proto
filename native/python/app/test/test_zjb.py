@@ -1,494 +1,341 @@
 """
-Simplified test suite for zJB (z/OS Job) Flask routes.
-Tests core functionality for job operations.
+Integration tests for zJB (z/OS Job) Flask routes using pytest.
+Tests all endpoints against the actual z/OS system.
+
+Run with: pytest test_zjb_integration.py -v
 """
 
-import pytest
+import requests
 import json
-import sys
-import os
-from unittest.mock import patch, MagicMock
-from flask import Flask
+import pytest
+import urllib3
 
-# Add the parent directory to the Python path to import from routes/
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from routes import zjb_bp
+# Disable SSL warnings for testing
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
-@pytest.fixture
-def app():
-    """Create a Flask test application."""
-    app = Flask(__name__)
-    app.register_blueprint(zjb_bp)
-    app.config['TESTING'] = True
-    return app
+@pytest.fixture(scope="session")
+def base_url():
+    """Base URL for the zJB service"""
+    return "https://b025.lvn.broadcom.net:10190"
 
 
-@pytest.fixture
-def client(app):
-    """Create a test client for the Flask application."""
-    return app.test_client()
+@pytest.fixture(scope="session")
+def session():
+    """HTTP session with SSL verification disabled"""
+    session = requests.Session()
+    session.verify = False
+    return session
 
 
-@pytest.fixture
-def mock_job_info():
-    """Create a mock job info object."""
-    job = MagicMock()
-    job.jobname = "TESTJOB"
-    job.jobid = "JOB12345"
-    job.owner = "TESTUSER"
-    job.status = "OUTPUT"
-    job.retcode = "CC 0000"
-    job.job_correlator = "CORR123"
-    job.full_status = "COMPLETED"
-    return job
+@pytest.fixture(scope="session")
+def test_config():
+    """Static test configuration data"""
+    return {
+        "test_dataset": "TEST.JCL",
+        "test_uss_file": "/tmp/test.jcl",
+        "test_jcl_content": """//PYTEST   JOB  CLASS=A,MSGCLASS=H,NOTIFY=&SYSUID
+//STEP1    EXEC PGM=IEFBR14
+//"""
+    }
 
 
-@pytest.fixture
-def mock_spool_file():
-    """Create a mock spool file object."""
-    spool = MagicMock()
-    spool.ddn = "SYSPRINT"
-    spool.dsn = "TESTJOB.SYSPRINT"
-    spool.key = 101
-    spool.stepname = "STEP1"
-    spool.procstep = "PROC1"
-    return spool
-
-
-class TestGetJobStatusByNameAndId:
-    """Test cases for the get_job_status_by_name_and_id endpoint."""
+@pytest.fixture(scope="session")
+def submitted_job(base_url, session, test_config):
+    """Submit a real job and return its attributes for testing"""
+    url = f"{base_url}/pythonservice/zosmf/restjobs/jobs"
+    headers = {"Content-Type": "text/plain"}
     
-    @patch('routes.zjb_routes.zjb.get_job_status')
-    def test_get_job_status_success(self, mock_get_job_status, client, mock_job_info):
-        """Test successful job status retrieval by name and ID."""
-        mock_get_job_status.return_value = mock_job_info
+    # Submit the test job
+    response = session.put(url, data=test_config["test_jcl_content"], headers=headers)
+    
+    submit_data = response.json()
+    jobid = submit_data["jobid"]
+    
+    # Get job status to extract all attributes
+    status_url = f"{base_url}/pythonservice/zosmf/restjobs/jobs/{jobid}"
+    status_response = session.get(status_url)
+    submitted_job_info = status_response.json()
+    
+    # Return the actual job attributes
+    job_attributes = {
+        "jobname": submitted_job_info["jobname"],
+        "jobid": submitted_job_info["jobid"],
+        "owner": submitted_job_info["owner"],
+        "job_correlator": submitted_job_info.get("job-correlator", ""),
+        "status": submitted_job_info.get("status", "")
+    }
+    
+    yield job_attributes
+    
+    # Cleanup - try to delete the job (ignore errors)
+    try:
+        delete_url = f"{base_url}/pythonservice/zosmf/restjobs/jobs/{job_attributes['jobname']}/{job_attributes['jobid']}"
+        session.delete(delete_url)
+    except:
+        pass  # Ignore cleanup errors
+
+
+class TestZJBRoutes:
+    """Test class for zJB routes"""
+    
+    def test_get_job_status_by_name_and_id(self, base_url, session, submitted_job):
+        """Test GET /zosmf/restjobs/jobs/<jobname>/<jobid> - Get job status by name and ID"""
+        jobname = submitted_job["jobname"]
+        jobid = submitted_job["jobid"]
+        url = f"{base_url}/pythonservice/zosmf/restjobs/jobs/{jobname}/{jobid}"
         
-        response = client.get('/zosmf/restjobs/jobs/TESTJOB/JOB12345')
+        response = session.get(url)
         
         assert response.status_code == 200
-        data = json.loads(response.data)
-        assert data['jobname'] == 'TESTJOB'
-        assert data['jobid'] == 'JOB12345'
-        assert data['status'] == 'OUTPUT'
-        assert data['retcode'] == 'CC 0000'
-        assert data['type'] == 'JOB'
-        mock_get_job_status.assert_called_once_with('JOB12345')
+        data = response.json()
+        assert "jobname" in data
+        assert "jobid" in data
+        assert "status" in data
+        assert "type" in data
+        assert data["type"] == "JOB"
     
-    def test_get_job_status_missing_params(self, client):
-        """Test job status retrieval with missing parameters."""
-        response = client.get('/zosmf/restjobs/jobs//')
+    def test_get_job_status_by_correlator(self, base_url, session, submitted_job):
+        """Test GET /zosmf/restjobs/jobs/<correlator> - Get job status by correlator"""
+        correlator = submitted_job["job_correlator"]
+        url = f"{base_url}/pythonservice/zosmf/restjobs/jobs/{correlator}"
         
-        assert response.status_code == 404  # Route not found
-    
-    @patch('routes.zjb_routes.zjb.get_job_status')
-    def test_get_job_status_exception(self, mock_get_job_status, client):
-        """Test handling of exceptions during job status retrieval."""
-        mock_get_job_status.side_effect = Exception("Job not found")
-        
-        response = client.get('/zosmf/restjobs/jobs/TESTJOB/JOB12345')
-        
-        assert response.status_code == 500
-        data = json.loads(response.data)
-        assert 'could not get job status' in data['error']
-
-
-class TestGetJobStatusByCorrelator:
-    """Test cases for the get_job_status_by_correlator endpoint."""
-    
-    @patch('routes.zjb_routes.zjb.get_job_status')
-    def test_get_job_status_by_correlator_success(self, mock_get_job_status, client, mock_job_info):
-        """Test successful job status retrieval by correlator."""
-        mock_get_job_status.return_value = mock_job_info
-        
-        response = client.get('/zosmf/restjobs/jobs/CORR123')
+        response = session.get(url)
         
         assert response.status_code == 200
-        data = json.loads(response.data)
-        assert data['jobname'] == 'TESTJOB'
-        assert data['jobid'] == 'JOB12345'
-        assert data['job-correlator'] == 'CORR123'
-        assert data['type'] == 'JOB'
-        mock_get_job_status.assert_called_once_with('CORR123')
+        data = response.json()
+        assert "jobname" in data
+        assert "job-correlator" in data
+        assert "status" in data
+        assert "type" in data
+        assert data["type"] == "JOB"
     
-    @patch('routes.zjb_routes.zjb.get_job_status')
-    def test_get_job_status_by_correlator_exception(self, mock_get_job_status, client):
-        """Test handling of exceptions during job status retrieval by correlator."""
-        mock_get_job_status.side_effect = Exception("Correlator not found")
+    def test_list_jobs(self, base_url, session, submitted_job):
+        """Test GET /zosmf/restjobs/jobs - List jobs"""
+        url = f"{base_url}/pythonservice/zosmf/restjobs/jobs"
+        params = {"owner": submitted_job["owner"]}
         
-        response = client.get('/zosmf/restjobs/jobs/CORR123')
-        
-        assert response.status_code == 500
-        data = json.loads(response.data)
-        assert 'could not get job status' in data['error']
-
-
-class TestListJobs:
-    """Test cases for the list_jobs endpoint."""
-    
-    @patch('routes.zjb_routes.zjb.list_jobs_by_owner')
-    def test_list_jobs_success(self, mock_list_jobs, client, mock_job_info):
-        """Test successful job listing."""
-        mock_list_jobs.return_value = [mock_job_info]
-        
-        response = client.get('/zosmf/restjobs/jobs?owner=TESTUSER')
+        response = session.get(url, params=params)
         
         assert response.status_code == 200
-        data = json.loads(response.data)
-        assert data['returnedRows'] == 1
-        assert data['owner'] == 'TESTUSER'
-        assert data['items'][0]['jobname'] == 'TESTJOB'
-        assert data['items'][0]['type'] == 'JOB'
-        mock_list_jobs.assert_called_once_with('TESTUSER')
+        data = response.json()
+        assert "returnedRows" in data
+        assert "owner" in data
+        assert "items" in data
+        assert isinstance(data["items"], list)
+        assert data["returnedRows"] == len(data["items"])
+        assert data["owner"] == submitted_job["owner"]
     
-    @patch('routes.zjb_routes.zjb.list_jobs_by_owner')
-    def test_list_jobs_default_owner(self, mock_list_jobs, client, mock_job_info):
-        """Test job listing with default owner."""
-        mock_list_jobs.return_value = [mock_job_info]
+    def test_list_job_files_by_name_and_id(self, base_url, session, submitted_job):
+        """Test GET /zosmf/restjobs/jobs/<jobname>/<jobid>/files - List job files by name and ID"""
+        jobname = submitted_job["jobname"]
+        jobid = submitted_job["jobid"]
+        url = f"{base_url}/pythonservice/zosmf/restjobs/jobs/{jobname}/{jobid}/files"
         
-        response = client.get('/zosmf/restjobs/jobs')
+        response = session.get(url)
         
         assert response.status_code == 200
-        data = json.loads(response.data)
-        assert data['owner'] == '*'
-        mock_list_jobs.assert_called_once_with('*')
+        data = response.json()
+        assert "returnedRows" in data
+        assert "jobname" in data
+        assert "jobid" in data
+        assert "items" in data
+        assert data["jobname"] == jobname
+        assert data["jobid"] == jobid
+        assert isinstance(data["items"], list)
     
-    @patch('routes.zjb_routes.zjb.list_jobs_by_owner')
-    def test_list_jobs_exception(self, mock_list_jobs, client):
-        """Test handling of exceptions during job listing."""
-        mock_list_jobs.side_effect = Exception("System error")
+    def test_list_job_files_by_correlator(self, base_url, session, submitted_job):
+        """Test GET /zosmf/restjobs/jobs/<correlator>/files - List job files by correlator"""
+        correlator = submitted_job["job_correlator"]
+        url = f"{base_url}/pythonservice/zosmf/restjobs/jobs/{correlator}/files"
         
-        response = client.get('/zosmf/restjobs/jobs')
-        
-        assert response.status_code == 500
-        data = json.loads(response.data)
-        assert 'could not list jobs' in data['error']
-
-
-class TestListJobFilesByNameAndId:
-    """Test cases for the list_job_files_by_name_and_id endpoint."""
-    
-    @patch('routes.zjb_routes.zjb.list_spool_files')
-    def test_list_job_files_success(self, mock_list_spool_files, client, mock_spool_file):
-        """Test successful job file listing by name and ID."""
-        mock_list_spool_files.return_value = [mock_spool_file]
-        
-        response = client.get('/zosmf/restjobs/jobs/TESTJOB/JOB12345/files')
+        response = session.get(url)
         
         assert response.status_code == 200
-        data = json.loads(response.data)
-        assert data['returnedRows'] == 1
-        assert data['jobname'] == 'TESTJOB'
-        assert data['jobid'] == 'JOB12345'
-        assert data['items'][0]['ddname'] == 'SYSPRINT'
-        assert data['items'][0]['id'] == 101
-        mock_list_spool_files.assert_called_once_with('JOB12345')
+        data = response.json()
+        assert "returnedRows" in data
+        assert "job-correlator" in data
+        assert "items" in data
+        assert data["job-correlator"] == correlator
+        assert isinstance(data["items"], list)
     
-    @patch('routes.zjb_routes.zjb.list_spool_files')
-    def test_list_job_files_exception(self, mock_list_spool_files, client):
-        """Test handling of exceptions during job file listing."""
-        mock_list_spool_files.side_effect = Exception("Job not found")
+    def test_read_job_file_by_name_and_id(self, base_url, session, submitted_job):
+        """Test GET /zosmf/restjobs/jobs/<jobname>/<jobid>/files/<id>/records - Read job file by name and ID"""
+        jobname = submitted_job["jobname"]
+        jobid = submitted_job["jobid"]
+        file = session.get(f"{base_url}/pythonservice/zosmf/restjobs/jobs/{jobid}/files").json()
+        file_id = file["items"][0]['id']
+        url = f"{base_url}/pythonservice/zosmf/restjobs/jobs/{jobname}/{jobid}/files/{file_id}/records"
         
-        response = client.get('/zosmf/restjobs/jobs/TESTJOB/JOB12345/files')
-        
-        assert response.status_code == 500
-        data = json.loads(response.data)
-        assert 'could not list files' in data['error']
-
-
-class TestListJobFilesByCorrelator:
-    """Test cases for the list_job_files_by_correlator endpoint."""
-    
-    @patch('routes.zjb_routes.zjb.list_spool_files')
-    def test_list_job_files_by_correlator_success(self, mock_list_spool_files, client, mock_spool_file):
-        """Test successful job file listing by correlator."""
-        mock_list_spool_files.return_value = [mock_spool_file]
-        
-        response = client.get('/zosmf/restjobs/jobs/CORR123/files')
+        response = session.get(url)
         
         assert response.status_code == 200
-        data = json.loads(response.data)
-        assert data['returnedRows'] == 1
-        assert data['job-correlator'] == 'CORR123'
-        assert data['items'][0]['ddname'] == 'SYSPRINT'
-        mock_list_spool_files.assert_called_once_with('CORR123')
+        data = response.json()
+        assert "records" in data
+        assert "jobname" in data
+        assert "jobid" in data
+        assert "id" in data
+        assert "format" in data
+        assert data["jobname"] == jobname
+        assert data["jobid"] == jobid
+        assert data["id"] == file_id
     
-    @patch('routes.zjb_routes.zjb.list_spool_files')
-    def test_list_job_files_by_correlator_exception(self, mock_list_spool_files, client):
-        """Test handling of exceptions during job file listing by correlator."""
-        mock_list_spool_files.side_effect = Exception("Correlator not found")
+    def test_read_job_file_by_correlator(self, base_url, session, submitted_job):
+        """Test GET /zosmf/restjobs/jobs/<correlator>/files/<id>/records - Read job file by correlator"""
+        correlator = submitted_job["job_correlator"]
+        file = session.get(f"{base_url}/pythonservice/zosmf/restjobs/jobs/{correlator}/files").json()
+        file_id = file["items"][0]['id']
+        url = f"{base_url}/pythonservice/zosmf/restjobs/jobs/{correlator}/files/{file_id}/records"
         
-        response = client.get('/zosmf/restjobs/jobs/CORR123/files')
-        
-        assert response.status_code == 500
-        data = json.loads(response.data)
-        assert 'could not list files' in data['error']
-
-
-class TestReadJobFileByNameAndId:
-    """Test cases for the read_job_file_by_name_and_id endpoint."""
-    
-    @patch('routes.zjb_routes.zjb.read_spool_file')
-    def test_read_job_file_success(self, mock_read_spool_file, client):
-        """Test successful job file reading by name and ID."""
-        mock_read_spool_file.return_value = "Job output content"
-        
-        response = client.get('/zosmf/restjobs/jobs/TESTJOB/JOB12345/files/101/records')
+        response = session.get(url)
         
         assert response.status_code == 200
-        data = json.loads(response.data)
-        assert data['records'] == "Job output content"
-        assert data['jobname'] == 'TESTJOB'
-        assert data['jobid'] == 'JOB12345'
-        assert data['id'] == 101
-        assert data['format'] == 'text'
-        mock_read_spool_file.assert_called_once_with('JOB12345', 101)
+        data = response.json()
+        assert "records" in data
+        assert "job-correlator" in data
+        assert "id" in data
+        assert "format" in data
+        assert data["job-correlator"] == correlator
+        assert data["id"] == file_id
     
-    def test_read_job_file_invalid_file_id(self, client):
-        """Test job file reading with invalid file ID."""
-        response = client.get('/zosmf/restjobs/jobs/TESTJOB/JOB12345/files/invalid/records')
+    def test_read_job_jcl_by_name_and_id(self, base_url, session, submitted_job):
+        """Test GET /zosmf/restjobs/jobs/<jobname>/<jobid>/files/JCL/records - Read JCL by name and ID"""
+        jobname = submitted_job["jobname"]
+        jobid = submitted_job["jobid"]
+        url = f"{base_url}/pythonservice/zosmf/restjobs/jobs/{jobname}/{jobid}/files/JCL/records"
+        
+        response = session.get(url)
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert "records" in data
+        assert "jobname" in data
+        assert "jobid" in data
+        assert "ddname" in data
+        assert "type" in data
+        assert data["jobname"] == jobname
+        assert data["jobid"] == jobid
+        assert data["ddname"] == "JCL"
+        assert data["type"] == "JCL"
+    
+    def test_read_job_jcl_by_correlator(self, base_url, session, submitted_job):
+        """Test GET /zosmf/restjobs/jobs/<correlator>/files/JCL/records - Read JCL by correlator"""
+        correlator = submitted_job["job_correlator"]
+        url = f"{base_url}/pythonservice/zosmf/restjobs/jobs/{correlator}/files/JCL/records"
+        
+        response = session.get(url)
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert "records" in data
+        assert "job-correlator" in data
+        assert "ddname" in data
+        assert "type" in data
+        assert data["job-correlator"] == correlator
+        assert data["ddname"] == "JCL"
+        assert data["type"] == "JCL"
+    
+    def test_submit_job_text_content(self, base_url, session, test_config):
+        """Test PUT /zosmf/restjobs/jobs - Submit job with text content"""
+        url = f"{base_url}/pythonservice/zosmf/restjobs/jobs"
+        headers = {"Content-Type": "text/plain"}
+        
+        response = session.put(url, data=test_config["test_jcl_content"], headers=headers)
+        
+        assert response.status_code == 201
+        data = response.json()
+        assert "jobid" in data
+        assert "success" in data
+        assert "message" in data
+        assert data["success"] == True
+        assert "JOB" in data["jobid"]
+    
+    def test_submit_job_from_dataset(self, base_url, session, test_config):
+        """Test PUT /zosmf/restjobs/jobs - Submit job from data set"""
+        url = f"{base_url}/pythonservice/zosmf/restjobs/jobs"
+        headers = {"Content-Type": "application/json"}
+        payload = {"dsn": test_config["test_dataset"]}
+        
+        response = session.put(url, json=payload, headers=headers)
+        
+        assert response.status_code == 201
+        data = response.json()
+        assert "jobid" in data
+        assert "success" in data
+        assert "message" in data
+        assert data["success"] == True
+        assert "JOB" in data["jobid"]
+    
+    def test_submit_job_from_uss_file(self, base_url, session, test_config):
+        """Test PUT /zosmf/restjobs/jobs - Submit job from USS file"""
+        url = f"{base_url}/pythonservice/zosmf/restjobs/jobs"
+        headers = {"Content-Type": "application/json"}
+        payload = {"file": test_config["test_uss_file"]}
+        
+        response = session.put(url, json=payload, headers=headers)
+        
+        assert response.status_code == 201
+        data = response.json()
+        assert "jobid" in data
+        assert "success" in data
+        assert "message" in data
+        assert data["success"] == True
+        assert "JOB" in data["jobid"]
+    
+    def test_delete_job_by_name_and_id(self, base_url, session, submitted_job):
+        """Test DELETE /zosmf/restjobs/jobs/<jobname>/<jobid> - Delete job by name and ID"""
+        jobname = submitted_job["jobname"]
+        jobid = submitted_job["jobid"]
+        url = f"{base_url}/pythonservice/zosmf/restjobs/jobs/{jobname}/{jobid}"
+        
+        response = session.delete(url)
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert "jobname" in data
+        assert "jobid" in data
+        assert "success" in data
+        assert "message" in data
+        assert data["jobname"] == jobname
+        assert data["jobid"] == jobid
+        assert data["success"] == True
+        assert "deleted" in data["message"].lower()
+    
+    def test_list_jobs_default_owner(self, base_url, session):
+        """Test GET /zosmf/restjobs/jobs with default owner"""
+        url = f"{base_url}/pythonservice/zosmf/restjobs/jobs"
+        
+        response = session.get(url)
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert "returnedRows" in data
+        assert "owner" in data
+        assert "items" in data
+        assert data["owner"] == "*"
+        assert isinstance(data["items"], list)
+    
+    def test_invalid_file_id(self, base_url, session, submitted_job):
+        """Test error handling for invalid file ID"""
+        jobname = submitted_job["jobname"]
+        jobid = submitted_job["jobid"]
+        url = f"{base_url}/pythonservice/zosmf/restjobs/jobs/{jobname}/{jobid}/files/invalid/records"
+        
+        response = session.get(url)
         
         assert response.status_code == 400
-        data = json.loads(response.data)
-        assert 'file_id must be a number' in data['error']
+        data = response.json()
+        assert "error" in data
+        assert "file_id must be a number" in data["error"]
     
-    @patch('routes.zjb_routes.zjb.read_spool_file')
-    def test_read_job_file_exception(self, mock_read_spool_file, client):
-        """Test handling of exceptions during job file reading."""
-        mock_read_spool_file.side_effect = Exception("File not found")
+    def test_submit_job_empty_content(self, base_url, session):
+        """Test error handling for empty JCL content"""
+        url = f"{base_url}/pythonservice/zosmf/restjobs/jobs"
+        headers = {"Content-Type": "text/plain"}
         
-        response = client.get('/zosmf/restjobs/jobs/TESTJOB/JOB12345/files/101/records')
-        
-        assert response.status_code == 500
-        data = json.loads(response.data)
-        assert 'could not view job file' in data['error']
-
-
-class TestReadJobFileByCorrelator:
-    """Test cases for the read_job_file_by_correlator endpoint."""
-    
-    @patch('routes.zjb_routes.zjb.read_spool_file')
-    def test_read_job_file_by_correlator_success(self, mock_read_spool_file, client):
-        """Test successful job file reading by correlator."""
-        mock_read_spool_file.return_value = "Job output content"
-        
-        response = client.get('/zosmf/restjobs/jobs/CORR123/files/101/records')
-        
-        assert response.status_code == 200
-        data = json.loads(response.data)
-        assert data['records'] == "Job output content"
-        assert data['job-correlator'] == 'CORR123'
-        assert data['id'] == 101
-        assert data['format'] == 'text'
-        mock_read_spool_file.assert_called_once_with('CORR123', 101)
-    
-    @patch('routes.zjb_routes.zjb.read_spool_file')
-    def test_read_job_file_by_correlator_exception(self, mock_read_spool_file, client):
-        """Test handling of exceptions during job file reading by correlator."""
-        mock_read_spool_file.side_effect = Exception("File not found")
-        
-        response = client.get('/zosmf/restjobs/jobs/CORR123/files/101/records')
-        
-        assert response.status_code == 500
-        data = json.loads(response.data)
-        assert 'could not view job file' in data['error']
-
-
-class TestReadJobJCLByNameAndId:
-    """Test cases for the read_job_jcl_by_name_and_id endpoint."""
-    
-    @patch('routes.zjb_routes.zjb.get_job_jcl')
-    def test_read_job_jcl_success(self, mock_get_job_jcl, client):
-        """Test successful JCL reading by name and ID."""
-        mock_get_job_jcl.return_value = "//TESTJOB JOB\n//STEP1 EXEC PGM=IEFBR14"
-        
-        response = client.get('/zosmf/restjobs/jobs/TESTJOB/JOB12345/files/JCL/records')
-        
-        assert response.status_code == 200
-        data = json.loads(response.data)
-        assert data['records'] == "//TESTJOB JOB\n//STEP1 EXEC PGM=IEFBR14"
-        assert data['jobname'] == 'TESTJOB'
-        assert data['jobid'] == 'JOB12345'
-        assert data['ddname'] == 'JCL'
-        assert data['type'] == 'JCL'
-        mock_get_job_jcl.assert_called_once_with('JOB12345')
-    
-    @patch('routes.zjb_routes.zjb.get_job_jcl')
-    def test_read_job_jcl_exception(self, mock_get_job_jcl, client):
-        """Test handling of exceptions during JCL reading."""
-        mock_get_job_jcl.side_effect = Exception("JCL not found")
-        
-        response = client.get('/zosmf/restjobs/jobs/TESTJOB/JOB12345/files/JCL/records')
-        
-        assert response.status_code == 500
-        data = json.loads(response.data)
-        assert 'could not view JCL' in data['error']
-
-
-class TestReadJobJCLByCorrelator:
-    """Test cases for the read_job_jcl_by_correlator endpoint."""
-    
-    @patch('routes.zjb_routes.zjb.get_job_jcl')
-    def test_read_job_jcl_by_correlator_success(self, mock_get_job_jcl, client):
-        """Test successful JCL reading by correlator."""
-        mock_get_job_jcl.return_value = "//TESTJOB JOB\n//STEP1 EXEC PGM=IEFBR14"
-        
-        response = client.get('/zosmf/restjobs/jobs/CORR123/files/JCL/records')
-        
-        assert response.status_code == 200
-        data = json.loads(response.data)
-        assert data['records'] == "//TESTJOB JOB\n//STEP1 EXEC PGM=IEFBR14"
-        assert data['job-correlator'] == 'CORR123'
-        assert data['ddname'] == 'JCL'
-        assert data['type'] == 'JCL'
-        mock_get_job_jcl.assert_called_once_with('CORR123')
-    
-    @patch('routes.zjb_routes.zjb.get_job_jcl')
-    def test_read_job_jcl_by_correlator_exception(self, mock_get_job_jcl, client):
-        """Test handling of exceptions during JCL reading by correlator."""
-        mock_get_job_jcl.side_effect = Exception("JCL not found")
-        
-        response = client.get('/zosmf/restjobs/jobs/CORR123/files/JCL/records')
-        
-        assert response.status_code == 500
-        data = json.loads(response.data)
-        assert 'could not view JCL' in data['error']
-
-
-class TestSubmitJob:
-    """Test cases for the submit_job endpoint."""
-    
-    @patch('routes.zjb_routes.zjb.submit_job')
-    def test_submit_job_text_content(self, mock_submit_job, client):
-        """Test successful job submission with text content."""
-        mock_submit_job.return_value = "JOB12345"
-        
-        response = client.put('/zosmf/restjobs/jobs',
-                            data="//TESTJOB JOB\n//STEP1 EXEC PGM=IEFBR14",
-                            content_type='text/plain')
-        
-        assert response.status_code == 201
-        data = json.loads(response.data)
-        assert data['jobid'] == 'JOB12345'
-        assert data['success'] == True
-        assert 'Submitted JCL content' in data['message']
-        mock_submit_job.assert_called_once_with("//TESTJOB JOB\n//STEP1 EXEC PGM=IEFBR14")
-    
-    @patch('routes.zjb_routes.zjb.submit_job')
-    @patch('routes.zjb_routes.zds.read_data_set')
-    def test_submit_job_from_dataset(self, mock_read_data_set, mock_submit_job, client):
-        """Test successful job submission from data set."""
-        mock_read_data_set.return_value = "//TESTJOB JOB\n//STEP1 EXEC PGM=IEFBR14"
-        mock_submit_job.return_value = "JOB12345"
-        
-        response = client.put('/zosmf/restjobs/jobs',
-                            json={"dsn": "USER.TEST.JCL"},
-                            content_type='application/json')
-        
-        assert response.status_code == 201
-        data = json.loads(response.data)
-        assert data['jobid'] == 'JOB12345'
-        assert data['success'] == True
-        mock_read_data_set.assert_called_once_with("USER.TEST.JCL", "")
-        mock_submit_job.assert_called_once_with("//TESTJOB JOB\n//STEP1 EXEC PGM=IEFBR14")
-    
-    @patch('routes.zjb_routes.zjb.submit_job')
-    @patch('routes.zjb_routes.zusf.read_uss_file')
-    def test_submit_job_from_uss_file(self, mock_read_uss_file, mock_submit_job, client):
-        """Test successful job submission from USS file."""
-        mock_read_uss_file.return_value = "//TESTJOB JOB\n//STEP1 EXEC PGM=IEFBR14"
-        mock_submit_job.return_value = "JOB12345"
-        
-        response = client.put('/zosmf/restjobs/jobs',
-                            json={"file": "/tmp/test.jcl"},
-                            content_type='application/json')
-        
-        assert response.status_code == 201
-        data = json.loads(response.data)
-        assert data['jobid'] == 'JOB12345'
-        assert data['success'] == True
-        mock_read_uss_file.assert_called_once_with("/tmp/test.jcl", "")
-        mock_submit_job.assert_called_once_with("//TESTJOB JOB\n//STEP1 EXEC PGM=IEFBR14")
-    
-    def test_submit_job_no_content(self, client):
-        """Test job submission with no content."""
-        response = client.put('/zosmf/restjobs/jobs',
-                            data="",
-                            content_type='text/plain')
+        response = session.put(url, data="", headers=headers)
         
         assert response.status_code == 400
-        data = json.loads(response.data)
-        assert 'JCL content is required' in data['error']
-    
-    @patch('routes.zjb_routes.zjb.submit_job')
-    def test_submit_job_exception(self, mock_submit_job, client):
-        """Test handling of exceptions during job submission."""
-        mock_submit_job.side_effect = Exception("Submission failed")
-        
-        response = client.put('/zosmf/restjobs/jobs',
-                            data="//TESTJOB JOB\n//STEP1 EXEC PGM=IEFBR14",
-                            content_type='text/plain')
-        
-        assert response.status_code == 500
-        data = json.loads(response.data)
-        assert 'could not submit JCL' in data['error']
-
-
-class TestDeleteJobByNameAndId:
-    """Test cases for the delete_job_by_name_and_id endpoint."""
-    
-    @patch('routes.zjb_routes.zjb.delete_job')
-    def test_delete_job_success(self, mock_delete_job, client):
-        """Test successful job deletion by name and ID."""
-        response = client.delete('/zosmf/restjobs/jobs/TESTJOB/JOB12345')
-        
-        assert response.status_code == 200
-        data = json.loads(response.data)
-        assert data['jobname'] == 'TESTJOB'
-        assert data['jobid'] == 'JOB12345'
-        assert data['success'] == True
-        assert 'deleted' in data['message']
-        mock_delete_job.assert_called_once_with('JOB12345')
-    
-    @patch('routes.zjb_routes.zjb.delete_job')
-    def test_delete_job_exception(self, mock_delete_job, client):
-        """Test handling of exceptions during job deletion."""
-        mock_delete_job.side_effect = Exception("Deletion failed")
-        
-        response = client.delete('/zosmf/restjobs/jobs/TESTJOB/JOB12345')
-        
-        assert response.status_code == 500
-        data = json.loads(response.data)
-        assert 'could not delete job' in data['error']
-
-
-class TestDeleteJobByCorrelator:
-    """Test cases for the delete_job_by_correlator endpoint."""
-    
-    @patch('routes.zjb_routes.zjb.delete_job')
-    def test_delete_job_by_correlator_success(self, mock_delete_job, client):
-        """Test successful job deletion by correlator."""
-        response = client.delete('/zosmf/restjobs/jobs/CORR123')
-        
-        assert response.status_code == 200
-        data = json.loads(response.data)
-        assert data['job-correlator'] == 'CORR123'
-        assert data['success'] == True
-        assert 'deleted' in data['message']
-        mock_delete_job.assert_called_once_with('CORR123')
-    
-    @patch('routes.zjb_routes.zjb.delete_job')
-    def test_delete_job_by_correlator_exception(self, mock_delete_job, client):
-        """Test handling of exceptions during job deletion by correlator."""
-        mock_delete_job.side_effect = Exception("Deletion failed")
-        
-        response = client.delete('/zosmf/restjobs/jobs/CORR123')
-        
-        assert response.status_code == 500
-        data = json.loads(response.data)
-        assert 'could not delete job' in data['error']
-
-
-if __name__ == '__main__':
-    pytest.main([__file__])
+        data = response.json()
+        assert "error" in data
+        assert "JCL content is required" in data["error"]

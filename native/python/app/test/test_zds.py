@@ -1,338 +1,373 @@
 """
-Simplified test suite for zDS (z/OS Data Set) Flask routes.
-Tests core functionality for data set operations.
+Integration tests for zDS (z/OS Data Set) Flask routes using pytest.
+Tests all endpoints against the actual z/OS system.
+
+Run with: pytest test_zds_integration.py -v
 """
 
+import requests
 import pytest
-import json
-import sys
-import os
-from unittest.mock import patch, MagicMock
-from flask import Flask
+import urllib3
 
-# Add the parent directory to the Python path to import from routes/
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from routes import zds_bp
+# Disable SSL warnings for testing
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
-@pytest.fixture
-def app():
-    """Create a Flask test application."""
-    app = Flask(__name__)
-    app.register_blueprint(zds_bp)
-    app.config['TESTING'] = True
-    return app
+@pytest.fixture(scope="session")
+def base_url():
+    """Base URL for the zDS service"""
+    return "https://b025.lvn.broadcom.net:10190"
 
 
-@pytest.fixture
-def client(app):
-    """Create a test client for the Flask application."""
-    return app.test_client()
+@pytest.fixture(scope="session")
+def session():
+    """HTTP session with SSL verification disabled"""
+    session = requests.Session()
+    session.verify = False
+    return session
 
 
-@pytest.fixture
-def mock_dataset_entry():
-    """Create a mock dataset entry object."""
-    entry = MagicMock()
-    entry.name = "USER.TEST.DATASET"
-    entry.dsorg = "PS"
-    entry.volser = "VOL001"
-    entry.recfm = "FB"
-    entry.migr = False
-    return entry
+@pytest.fixture(scope="session")
+def test_config():
+    """Test configuration data"""
+    return {
+        "dataset_prefix": "TEST",
+        "test_dataset": "TEST.DATASET",
+        "test_pds": "TEST.USER.TESTPDS",
+        "test_member": "TESTMEM",
+        "test_content": "This is test content for integration testing."
+    }
 
 
-@pytest.fixture
-def mock_member_entry():
-    """Create a mock member entry object."""
-    member = MagicMock()
-    member.name = "MEMBER01"
-    return member
-
-
-class TestListDataSets:
-    """Test cases for the list_data_sets endpoint."""
+@pytest.fixture(scope="session")
+def test_dataset(base_url, session, test_config):
+    """Create test dataset for the session"""
+    dataset_name = test_config["test_dataset"]
+    url = f"{base_url}/pythonservice/zosmf/restfiles/ds/{dataset_name}"
+    params = {
+        "dsorg": "PS",
+        "lrecl": "80",
+        "primary": "1",
+        "secondary": "1"
+    }
     
-    @patch('routes.zds_routes.zds.list_data_sets')
-    def test_list_data_sets_success(self, mock_list_data_sets, client, mock_dataset_entry):
-        """Test successful listing of data sets."""
-        mock_list_data_sets.return_value = [mock_dataset_entry]
+    # Create dataset
+    response = session.post(url, params=params)
+    if response.status_code not in [200, 201]:
+        pytest.skip(f"Could not create test dataset: {response.text}")
+    
+    yield dataset_name
+    
+    # Cleanup - delete dataset
+    try:
+        session.delete(url)
+    except:
+        pass  # Ignore cleanup errors
+
+
+@pytest.fixture(scope="session")
+def test_pds(base_url, session, test_config):
+    """Create test PDS for the session"""
+    pds_name = test_config["test_pds"]
+    url = f"{base_url}/pythonservice/zosmf/restfiles/ds/{pds_name}"
+    params = {
+        "dsorg": "PO",
+        "recfm": "FB",
+        "lrecl": "80",
+        "primary": "1",
+        "secondary": "1",
+        "dirblk": "10"
+    }
+    
+    # Create PDS
+    response = session.post(url, params=params)
+    if response.status_code not in [200, 201]:
+        pytest.skip(f"Could not create test PDS: {response.text}")
+    
+    yield pds_name
+    
+    # Cleanup - delete PDS
+    try:
+        session.delete(url)
+    except:
+        pass  # Ignore cleanup errors
+
+
+class TestZDSRoutes:
+    """Test class for zDS routes"""
+    
+    def test_list_data_sets(self, base_url, session, test_config):
+        """Test GET /zosmf/restfiles/ds - List data sets"""
+        url = f"{base_url}/pythonservice/zosmf/restfiles/ds"
+        params = {"dslevel": test_config["dataset_prefix"]}
         
-        response = client.get('/zosmf/restfiles/ds?dslevel=USER.TEST')
+        response = session.get(url, params=params)
         
         assert response.status_code == 200
-        data = json.loads(response.data)
-        assert data['returnedRows'] == 1
-        assert data['items'][0]['name'] == 'USER.TEST.DATASET'
-        mock_list_data_sets.assert_called_once_with('USER.TEST.**')
+        data = response.json()
+        assert "items" in data
+        assert "returnedRows" in data
+        assert isinstance(data["items"], list)
+        assert data["returnedRows"] == len(data["items"])
     
-    @patch('routes.zds_routes.zds.list_data_sets')
-    def test_list_data_sets_with_attributes(self, mock_list_data_sets, client, mock_dataset_entry):
-        """Test listing data sets with detailed attributes."""
-        mock_list_data_sets.return_value = [mock_dataset_entry]
+    def test_create_data_set(self, base_url, session):
+        """Test POST /zosmf/restfiles/ds/<name> - Create data set"""
+        dataset_name = "TEST.USER.PYTEST01"
+        url = f"{base_url}/pythonservice/zosmf/restfiles/ds/{dataset_name}"
+        params = {
+            "dsorg": "PS",
+            "lrecl": "80",
+            "primary": "1",
+            "secondary": "1"
+        }
         
-        response = client.get('/zosmf/restfiles/ds?dslevel=USER.TEST&attributes=true')
+        response = session.post(url, params=params)
+        
+        assert response.status_code == 201
+        data = response.json()
+        assert "message" in data
+        assert "datasetName" in data
+        assert data["datasetName"] == dataset_name
+        assert "created" in data["message"].lower()
+        
+        # Cleanup
+        session.delete(url)
+    
+    def test_write_data_set(self, base_url, session, test_dataset, test_config):
+        """Test PUT /zosmf/restfiles/ds/<name> - Write to data set"""
+        url = f"{base_url}/pythonservice/zosmf/restfiles/ds/{test_dataset}"
+        headers = {"Content-Type": "application/json"}
+        payload = {"records": test_config["test_content"]}
+        response = session.put(url, json=payload, headers=headers)
         
         assert response.status_code == 200
-        data = json.loads(response.data)
-        assert data['items'][0]['dsorg'] == 'PS'
-        assert data['items'][0]['volser'] == 'VOL001'
+        data = response.json()
+        assert "message" in data
+        assert "etag" in data
+        assert data["datasetName"] == test_dataset
     
-    def test_list_data_sets_missing_dslevel(self, client):
-        """Test listing data sets without dslevel parameter."""
-        response = client.get('/zosmf/restfiles/ds')
+    def test_read_data_set(self, base_url, session, test_dataset, test_config):
+        """Test GET /zosmf/restfiles/ds/<name> - Read data set"""
+        # First write some data
+        write_url = f"{base_url}/pythonservice/zosmf/restfiles/ds/{test_dataset}"
+        headers = {"Content-Type": "application/json"}
+        payload = {"records": test_config["test_content"]}
+        session.put(write_url, json=payload, headers=headers)
         
+        # Now read it
+        url = f"{base_url}/pythonservice/zosmf/restfiles/ds/{test_dataset}"
+        response = session.get(url)
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert "records" in data
+        assert "datasetName" in data
+        assert data["datasetName"] == test_dataset
+        assert "format" in data
+    
+    def test_create_pds(self, base_url, session):
+        """Test POST /zosmf/restfiles/ds/<name> - Create PDS"""
+        pds_name = "TEST.USER.PYTEST02"
+        url = f"{base_url}/pythonservice/zosmf/restfiles/ds/{pds_name}"
+        params = {
+            "dsorg": "PO",
+            "recfm": "FB",
+            "lrecl": "80",
+            "primary": "1",
+            "secondary": "1",
+            "dirblk": "10"
+        }
+        
+        response = session.post(url, params=params)
+        
+        assert response.status_code == 201
+        data = response.json()
+        assert "message" in data
+        assert "datasetName" in data
+        assert data["datasetName"] == pds_name
+        
+        # Cleanup
+        session.delete(url)
+    
+    def test_create_member(self, base_url, session, test_pds, test_config):
+        """Test POST /zosmf/restfiles/ds/<dataset>/<member> - Create member"""
+        member_name = test_config["test_member"]
+        url = f"{base_url}/pythonservice/zosmf/restfiles/ds/{test_pds}/{member_name}"
+        
+        response = session.post(url)
+        
+        assert response.status_code == 201
+        data = response.json()
+        assert "message" in data
+        assert "memberName" in data
+        assert data["memberName"] == member_name
+        assert data["datasetName"] == test_pds
+    
+    def test_list_members(self, base_url, session, test_pds, test_config):
+        """Test GET /zosmf/restfiles/ds/<dataset>/member - List members"""
+        # First create a member
+        member_name = test_config["test_member"]
+        create_url = f"{base_url}/pythonservice/zosmf/restfiles/ds/{test_pds}/{member_name}"
+        session.post(create_url)
+        
+        # Now list members
+        url = f"{base_url}/pythonservice/zosmf/restfiles/ds/{test_pds}/member"
+        response = session.get(url)
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert "items" in data
+        assert "returnedRows" in data
+        assert "datasetName" in data
+        assert data["datasetName"] == test_pds
+        
+        # Should find our test member
+        member_names = [item["name"] for item in data["items"]]
+        assert member_name in member_names
+    
+    def test_write_member(self, base_url, session, test_pds, test_config):
+        """Test PUT /zosmf/restfiles/ds/<dataset>(<member>) - Write to member"""
+        member_name = test_config["test_member"]
+        
+        # First create the member
+        create_url = f"{base_url}/pythonservice/zosmf/restfiles/ds/{test_pds}/{member_name}"
+        session.post(create_url)
+        
+        # Now write to it
+        url = f"{base_url}/pythonservice/zosmf/restfiles/ds/{test_pds}({member_name})"
+        headers = {"Content-Type": "application/json"}
+        payload = {"records": test_config["test_content"]}
+        
+        response = session.put(url, json=payload, headers=headers)
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert "message" in data
+        assert member_name in data["datasetName"]
+    
+    def test_read_member(self, base_url, session, test_pds, test_config):
+        """Test GET /zosmf/restfiles/ds/<dataset>(<member>) - Read member"""
+        member_name = test_config["test_member"]
+        
+        # First create and write to the member
+        create_url = f"{base_url}/pythonservice/zosmf/restfiles/ds/{test_pds}/{member_name}"
+        session.post(create_url)
+        
+        write_url = f"{base_url}/pythonservice/zosmf/restfiles/ds/{test_pds}({member_name})"
+        headers = {"Content-Type": "application/json"}
+        payload = {"records": test_config["test_content"]}
+        session.put(write_url, json=payload, headers=headers)
+        
+        # Now read it
+        url = f"{base_url}/pythonservice/zosmf/restfiles/ds/{test_pds}({member_name})"
+        response = session.get(url)
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert "records" in data
+        assert "memberName" in data
+        assert data["memberName"] == member_name
+        assert data["datasetName"] == test_pds
+    
+    def test_delete_member(self, base_url, session, test_pds, test_config):
+        """Test DELETE /zosmf/restfiles/ds/<dataset>(<member>) - Delete member"""
+        member_name = test_config["test_member"]
+        
+        # First create the member
+        create_url = f"{base_url}/pythonservice/zosmf/restfiles/ds/{test_pds}/{member_name}"
+        session.post(create_url)
+        
+        # Now delete it
+        url = f"{base_url}/pythonservice/zosmf/restfiles/ds/{test_pds}({member_name})"
+        response = session.delete(url)
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert "message" in data
+        assert "memberName" in data
+        assert data["memberName"] == member_name
+        assert "deleted" in data["message"].lower()
+    
+    def test_delete_data_set(self, base_url, session):
+        """Test DELETE /zosmf/restfiles/ds/<name> - Delete data set"""
+        # First create a dataset
+        dataset_name = "TEST.USER.PYTEST03"
+        create_url = f"{base_url}/pythonservice/zosmf/restfiles/ds/{dataset_name}"
+        params = {
+            "dsorg": "PS",
+            "recfm": "FB",
+            "lrecl": "80",
+            "primary": "1",
+            "secondary": "1"
+        }
+        session.post(create_url, params=params)
+        
+        # Now delete it
+        url = f"{base_url}/pythonservice/zosmf/restfiles/ds/{dataset_name}"
+        response = session.delete(url)
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert "message" in data
+        assert "datasetName" in data
+        assert data["datasetName"] == dataset_name
+        assert "deleted" in data["message"].lower()
+    
+    def test_list_data_sets_with_attributes(self, base_url, session, test_config):
+        """Test GET /zosmf/restfiles/ds with attributes parameter"""
+        url = f"{base_url}/pythonservice/zosmf/restfiles/ds"
+        params = {
+            "dslevel": test_config["dataset_prefix"],
+            "attributes": "true"
+        }
+        
+        response = session.get(url, params=params)
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert "items" in data
+        
+        if data["items"]:
+            first_item = data["items"][0]
+            expected_fields = ["name", "volser", "dsorg", "recfm", "migr"]
+            for field in expected_fields:
+                assert field in first_item
+    
+    def test_read_data_set_with_etag(self, base_url, session, test_dataset, test_config):
+        """Test GET /zosmf/restfiles/ds with ETag parameter"""
+        # First write some data
+        write_url = f"{base_url}/pythonservice/zosmf/restfiles/ds/{test_dataset}"
+        headers = {"Content-Type": "application/json"}
+        payload = {"records": test_config["test_content"]}
+        session.put(write_url, json=payload, headers=headers)
+        
+        # Now read with ETag
+        url = f"{base_url}/pythonservice/zosmf/restfiles/ds/{test_dataset}"
+        params = {"return-etag": "true"}
+        
+        response = session.get(url, params=params)
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert "etag" in data
+        assert len(data["etag"]) == 32  # MD5 hash length
+    
+    def test_invalid_dslevel(self, base_url, session):
+        """Test error handling for invalid dslevel parameter"""
+        url = f"{base_url}/pythonservice/zosmf/restfiles/ds"
+        
+        # Test missing dslevel
+        response = session.get(url)
         assert response.status_code == 400
-        data = json.loads(response.data)
-        assert 'dslevel parameter is required' in data['error']
-    
-    @patch('routes.zds_routes.zds.list_data_sets')
-    def test_list_data_sets_exception(self, mock_list_data_sets, client):
-        """Test handling of exceptions during data set listing."""
-        mock_list_data_sets.side_effect = Exception("System error")
+        data = response.json()
+        assert "error" in data
+        assert "dslevel parameter is required" in data["error"]
         
-        response = client.get('/zosmf/restfiles/ds?dslevel=USER.TEST')
-        
-        assert response.status_code == 500
-        data = json.loads(response.data)
-        assert 'could not list data set' in data['error']
-
-
-class TestListDataSetMembers:
-    """Test cases for the list_data_set_members endpoint."""
-    
-    @patch('routes.zds_routes.zds.list_members')
-    def test_list_members_success(self, mock_list_members, client, mock_member_entry):
-        """Test successful listing of data set members."""
-        mock_list_members.return_value = [mock_member_entry]
-        
-        response = client.get('/zosmf/restfiles/ds/USER.TEST.PDS/member')
-        
-        assert response.status_code == 200
-        data = json.loads(response.data)
-        assert data['returnedRows'] == 1
-        assert data['datasetName'] == 'USER.TEST.PDS'
-        assert data['items'][0]['name'] == 'MEMBER01'
-        mock_list_members.assert_called_once_with('USER.TEST.PDS')
-    
-    @patch('routes.zds_routes.zds.list_members')
-    def test_list_members_exception(self, mock_list_members, client):
-        """Test handling of exceptions during member listing."""
-        mock_list_members.side_effect = Exception("Data set not found")
-        
-        response = client.get('/zosmf/restfiles/ds/USER.TEST.PDS/member')
-        
-        assert response.status_code == 500
-        data = json.loads(response.data)
-        assert 'could not read data set' in data['error']
-
-
-class TestReadDataSetOrMember:
-    """Test cases for the read_data_set_or_member endpoint."""
-    
-    @patch('routes.zds_routes.zds.read_data_set')
-    def test_read_data_set_success(self, mock_read_data_set, client):
-        """Test successful reading of a data set."""
-        mock_read_data_set.return_value = "DATA SET CONTENT"
-        
-        response = client.get('/zosmf/restfiles/ds/USER.TEST.PS')
-        
-        assert response.status_code == 200
-        data = json.loads(response.data)
-        assert data['records'] == "DATA SET CONTENT"
-        assert data['datasetName'] == 'USER.TEST.PS'
-        assert data['format'] == 'text'
-        mock_read_data_set.assert_called_once_with('USER.TEST.PS', '')
-    
-    @patch('routes.zds_routes.zds.read_data_set')
-    def test_read_member_success(self, mock_read_data_set, client):
-        """Test successful reading of a data set member."""
-        mock_read_data_set.return_value = "MEMBER CONTENT"
-        
-        response = client.get('/zosmf/restfiles/ds/USER.TEST.PDS(MEMBER01)')
-        
-        assert response.status_code == 200
-        data = json.loads(response.data)
-        assert data['records'] == "MEMBER CONTENT"
-        assert data['datasetName'] == 'USER.TEST.PDS'
-        assert data['memberName'] == 'MEMBER01'
-        mock_read_data_set.assert_called_once_with('USER.TEST.PDS(MEMBER01)', '')
-    
-    @patch('routes.zds_routes.zds.read_data_set')
-    def test_read_data_set_exception(self, mock_read_data_set, client):
-        """Test handling of exceptions during data set reading."""
-        mock_read_data_set.side_effect = Exception("Data set not found")
-        
-        response = client.get('/zosmf/restfiles/ds/USER.TEST.PS')
-        
-        assert response.status_code == 500
-        data = json.loads(response.data)
-        assert 'could not read data set' in data['error']
-
-
-class TestWriteDataSetOrMember:
-    """Test cases for the write_data_set_or_member endpoint."""
-    
-    @patch('routes.zds_routes.zds.write_data_set')
-    def test_write_data_set_success(self, mock_write_data_set, client):
-        """Test writing to data set with JSON records."""
-        mock_write_data_set.return_value = "etag123"
-        
-        response = client.put('/zosmf/restfiles/ds/USER.TEST.PS',
-                            json={"records": "NEW CONTENT"},
-                            content_type='application/json')
-        
-        assert response.status_code == 200
-        data = json.loads(response.data)
-        assert data['datasetName'] == 'USER.TEST.PS'
-        assert data['etag'] == "etag123"
-        mock_write_data_set.assert_called_once_with('USER.TEST.PS', 'NEW CONTENT', '', '')
-    
-    @patch('routes.zds_routes.zds.write_data_set')
-    def test_write_member_success(self, mock_write_data_set, client):
-        """Test writing to data set member."""
-        mock_write_data_set.return_value = "etag456"
-        
-        response = client.put('/zosmf/restfiles/ds/USER.TEST.PDS(*MEMBER01*)',
-                            json={"records": "MEMBER CONTENT"},
-                            content_type='application/json')
-        
-        assert response.status_code == 200
-        data = json.loads(response.data)
-        assert data['datasetName'] == 'USER.TEST.PDS'
-        assert data['memberName'] == 'MEMBER01'
-        mock_write_data_set.assert_called_once_with('USER.TEST.PDS(MEMBER01)', 'MEMBER CONTENT', '', '')
-    
-    def test_write_data_set_no_data(self, client):
-        """Test writing to data set with no data."""
-        response = client.put('/zosmf/restfiles/ds/USER.TEST.PS',
-                            json={},
-                            content_type='application/json')
-        
+        # Test dslevel too long (>44 characters)
+        long_dslevel = "A" * 45
+        params = {"dslevel": long_dslevel}
+        response = session.get(url, params=params)
         assert response.status_code == 400
-        data = json.loads(response.data)
-        assert 'request body cannot be empty' in data['error']
-    
-    @patch('routes.zds_routes.zds.write_data_set')
-    def test_write_data_set_exception(self, mock_write_data_set, client):
-        """Test handling of exceptions during data set writing."""
-        mock_write_data_set.side_effect = Exception("Write failed")
-        
-        response = client.put('/zosmf/restfiles/ds/USER.TEST.PS',
-                            json={"records": "CONTENT"},
-                            content_type='application/json')
-        
-        assert response.status_code == 500
-        data = json.loads(response.data)
-        assert 'could not write to data set' in data['error']
-
-
-class TestCreateMember:
-    """Test cases for the create_member endpoint."""
-    
-    @patch('routes.zds_routes.zds.create_member')
-    def test_create_member_success(self, mock_create_member, client):
-        """Test successful creation of a data set member."""
-        response = client.post('/zosmf/restfiles/ds/USER.TEST.PDS/NEWMEMBER')
-        
-        assert response.status_code == 201
-        data = json.loads(response.data)
-        assert data['datasetName'] == 'USER.TEST.PDS'
-        assert data['memberName'] == 'NEWMEMBER'
-        mock_create_member.assert_called_once_with('USER.TEST.PDS(NEWMEMBER)')
-    
-    @patch('routes.zds_routes.zds.create_member')
-    def test_create_member_exception(self, mock_create_member, client):
-        """Test handling of exceptions during member creation."""
-        mock_create_member.side_effect = Exception("Creation failed")
-        
-        response = client.post('/zosmf/restfiles/ds/USER.TEST.PDS/NEWMEMBER')
-        
-        assert response.status_code == 500
-        data = json.loads(response.data)
-        assert 'could not create member' in data['error']
-
-
-class TestCreateDataSet:
-    """Test cases for the create_data_set endpoint."""
-    
-    @patch('routes.zds_routes.zds.create_data_set')
-    @patch('routes.zds_routes.zds.DS_ATTRIBUTES')
-    def test_create_data_set_success(self, mock_ds_attributes, mock_create_data_set, client):
-        """Test successful creation of a data set."""
-        mock_attributes = MagicMock()
-        mock_ds_attributes.return_value = mock_attributes
-        
-        response = client.post('/zosmf/restfiles/ds/USER.TEST.NEWDS')
-        
-        assert response.status_code == 201
-        data = json.loads(response.data)
-        assert data['datasetName'] == 'USER.TEST.NEWDS'
-        mock_create_data_set.assert_called_once_with('USER.TEST.NEWDS', mock_attributes)
-    
-    @patch('routes.zds_routes.zds.create_data_set')
-    @patch('routes.zds_routes.zds.DS_ATTRIBUTES')
-    def test_create_data_set_with_attributes(self, mock_ds_attributes, mock_create_data_set, client):
-        """Test creation of data set with specific attributes."""
-        mock_attributes = MagicMock()
-        mock_ds_attributes.return_value = mock_attributes
-        
-        response = client.post('/zosmf/restfiles/ds/USER.TEST.NEWDS?dsorg=PS&lrecl=80')
-        
-        assert response.status_code == 201
-        mock_create_data_set.assert_called_once_with('USER.TEST.NEWDS', mock_attributes)
-    
-    @patch('routes.zds_routes.zds.create_data_set')
-    @patch('routes.zds_routes.zds.DS_ATTRIBUTES')
-    def test_create_data_set_exception(self, mock_ds_attributes, mock_create_data_set, client):
-        """Test handling of exceptions during data set creation."""
-        mock_attributes = MagicMock()
-        mock_ds_attributes.return_value = mock_attributes
-        mock_create_data_set.side_effect = Exception("Creation failed")
-        
-        response = client.post('/zosmf/restfiles/ds/USER.TEST.NEWDS')
-        
-        assert response.status_code == 500
-        data = json.loads(response.data)
-        assert 'could not create data set' in data['error']
-
-
-class TestDeleteDataSet:
-    """Test cases for the delete_data_set endpoint."""
-    
-    @patch('routes.zds_routes.zds.delete_data_set')
-    def test_delete_data_set_success(self, mock_delete_data_set, client):
-        """Test successful deletion of a data set."""
-        response = client.delete('/zosmf/restfiles/ds/USER.TEST.OLDDS')
-        
-        assert response.status_code == 200
-        data = json.loads(response.data)
-        assert data['datasetName'] == 'USER.TEST.OLDDS'
-        mock_delete_data_set.assert_called_once_with('USER.TEST.OLDDS')
-    
-    @patch('routes.zds_routes.zds.delete_data_set')
-    def test_delete_member_success(self, mock_delete_data_set, client):
-        """Test successful deletion of a data set member."""
-        response = client.delete('/zosmf/restfiles/ds/USER.TEST.PDS(OLDMEMBER)')
-        
-        assert response.status_code == 200
-        data = json.loads(response.data)
-        assert data['datasetName'] == 'USER.TEST.PDS'
-        assert data['memberName'] == 'OLDMEMBER'
-        mock_delete_data_set.assert_called_once_with('USER.TEST.PDS(OLDMEMBER)')
-    
-    @patch('routes.zds_routes.zds.delete_data_set')
-    def test_delete_data_set_exception(self, mock_delete_data_set, client):
-        """Test handling of exceptions during data set deletion."""
-        mock_delete_data_set.side_effect = Exception("Deletion failed")
-        
-        response = client.delete('/zosmf/restfiles/ds/USER.TEST.OLDDS')
-        
-        assert response.status_code == 500
-        data = json.loads(response.data)
-        assert 'could not delete data set' in data['error']
-
-
-if __name__ == '__main__':
-    pytest.main([__file__])
+        data = response.json()
+        assert "error" in data
+        assert "exceeds 44 character length limit" in data["error"]
