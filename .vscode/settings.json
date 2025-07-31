@@ -132,7 +132,8 @@
     "__memory": "c",
     "print": "cpp",
     "stack": "cpp",
-    "*.h": "c"
+    "*.h": "c",
+    "*.i": "swig",
   },
   "[c]": {
     "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
@@ -144,5 +145,8 @@
   "[typescript]": {
     "editor.defaultFormatter": "biomejs.biome"
   },
-  "files.eol": "\n"
+  "files.eol": "\n",
+  "[swig]": {
+    "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd",
+  }
 }

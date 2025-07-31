@@ -35,7 +35,7 @@
 #include "zdyn.h"
 #include "zusftype.h"
 #include "zut.hpp"
-#include "extern/zb64.h"
+#include "zbase64.h"
 #include "iefzb4d2.h"
 #ifndef _XPLATFORM_SOURCE
 #define _XPLATFORM_SOURCE
@@ -793,14 +793,14 @@ int zusf_create_uss_file_or_dir(ZUSF *zusf, string file, mode_t mode, bool creat
       if (!exists)
       {
         const auto rc = zusf_create_uss_file_or_dir(zusf, parent_path, mode, true);
-        if (rc != 0)
+        if (0 != rc)
         {
           return rc;
         }
       }
     }
     const auto rc = mkdir(file.c_str(), mode);
-    if (rc != 0)
+    if (0 != rc)
     {
       zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to create directory '%s', errno: %d", file.c_str(), errno);
     }
@@ -1069,8 +1069,8 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, string file, string pipe)
       }
     }
 
-    chunk = base64(chunk, chunk_len, &chunk_len);
-    fwrite(chunk, 1, chunk_len, fout);
+    temp_encoded = zbase64::encode(chunk, chunk_len);
+    fwrite(&temp_encoded[0], 1, temp_encoded.size(), fout);
   }
 
   fflush(fout);
@@ -1231,9 +1231,9 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe)
 
   while ((bytes_read = fread(&buf[0], 1, FIFO_CHUNK_SIZE, fin)) > 0)
   {
-    int chunk_len;
-    const char *chunk = (char *)unbase64(&buf[0], bytes_read, &chunk_len);
-    std::vector<char> temp_encoded;
+    std::vector<char> temp_encoded = zbase64::decode(&buf[0], bytes_read);
+    const char *chunk = &temp_encoded[0];
+    int chunk_len = temp_encoded.size();
 
     if (has_encoding)
     {
@@ -1324,7 +1324,7 @@ int zusf_chmod_uss_file_or_dir(ZUSF *zusf, string file, mode_t mode, bool recurs
         stat(child_path.c_str(), &file_stats);
 
         const auto rc = zusf_chmod_uss_file_or_dir(zusf, child_path, mode, S_ISDIR(file_stats.st_mode));
-        if (rc != 0)
+        if (0 != rc)
         {
           return rc;
         }
@@ -1369,7 +1369,7 @@ int zusf_delete_uss_item(ZUSF *zusf, string file, bool recursive)
         stat(child_path.c_str(), &file_stats);
 
         const auto rc = zusf_delete_uss_item(zusf, child_path, S_ISDIR(file_stats.st_mode));
-        if (rc != 0)
+        if (0 != rc)
         {
           return rc;
         }
@@ -1379,7 +1379,7 @@ int zusf_delete_uss_item(ZUSF *zusf, string file, bool recursive)
   }
 
   const auto rc = is_dir ? rmdir(file.c_str()) : remove(file.c_str());
-  if (rc != 0)
+  if (0 != rc)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not delete '%s', rc: %d", file.c_str(), errno);
     return RTNCD_FAILURE;
@@ -1438,7 +1438,7 @@ int zusf_chown_uss_file_or_dir(ZUSF *zusf, string file, string owner, bool recur
   const auto gid = group.empty() ? file_stats.st_gid : zusf_get_id_from_user_or_group(group, false);
   const auto rc = chown(file.c_str(), uid, gid);
 
-  if (rc != 0)
+  if (0 != rc)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "chmod failed for path '%s', errno %d", file.c_str(), errno);
     return RTNCD_FAILURE;
@@ -1463,7 +1463,7 @@ int zusf_chown_uss_file_or_dir(ZUSF *zusf, string file, string owner, bool recur
         stat(child_path.c_str(), &file_stats);
 
         const auto rc = zusf_chown_uss_file_or_dir(zusf, child_path, owner, S_ISDIR(file_stats.st_mode));
-        if (rc != 0)
+        if (0 != rc)
         {
           return rc;
         }
@@ -1498,7 +1498,7 @@ int zusf_chtag_uss_file_or_dir(ZUSF *zusf, string file, string tag, bool recursi
     attr.att_filetag.ft_txtflag = int(ccsid != 65535);
 
     const auto rc = __chattr((char *)file.c_str(), &attr, sizeof(attr));
-    if (rc != 0)
+    if (0 != rc)
     {
       zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to update attributes for path '%s'", file.c_str());
       return RTNCD_FAILURE;
@@ -1523,7 +1523,7 @@ int zusf_chtag_uss_file_or_dir(ZUSF *zusf, string file, string tag, bool recursi
         stat(child_path.c_str(), &file_stats);
 
         const auto rc = zusf_chtag_uss_file_or_dir(zusf, child_path, tag, S_ISDIR(file_stats.st_mode));
-        if (rc != 0)
+        if (0 != rc)
         {
           return rc;
         }

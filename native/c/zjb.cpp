@@ -357,7 +357,7 @@ int zjb_submit_dsn(ZJB *zjb, string dsn, string &jobid)
   ZDS zds = {0};
   string contents;
   const auto rc = zds_read_from_dsn(&zds, dsn, contents);
-  if (rc != 0)
+  if (0 != rc)
   {
     memcpy(&zjb->diag, &zds.diag, sizeof(ZDIAG));
     return rc;
@@ -403,7 +403,7 @@ int zjb_submit(ZJB *zjb, string contents, string &jobid)
   }
 
   rc = zds_write_to_dd(&zds, ddname, contents);
-  if (rc != 0)
+  if (0 != rc)
   {
     memcpy(&zjb->diag, &zds.diag, sizeof(ZDIAG));
     dynfree(&ip);
@@ -709,6 +709,10 @@ void zjb_build_job_response(ZJB_JOB_INFO *PTR64 job_info, int entries, vector<ZJ
     else if ((unsigned char)job_info_next[i].statjqtr.sttrxind == sttrxcan)
     {
       zjob.retcode = "CANCELED";
+    }
+    else if ((unsigned char)job_info_next[i].statjqtr.sttrxind == sttrxsec)
+    {
+      zjob.retcode = "SEC ERROR";
     }
 
     zjob.jobname = jobname;

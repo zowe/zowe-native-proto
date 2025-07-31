@@ -11,7 +11,8 @@
 
 OUT_DIR=build-out
 OUT_DIR_CXXLANG=$(OUT_DIR)/xlclang
-OUT_DIRS=$(OUT_DIR_CXXLANG)
+OUT_DIR_SWIG=$(OUT_DIR)/swig
+OUT_DIRS=$(OUT_DIR_CXXLANG) $(OUT_DIR_SWIG)
 
 XLC_FLAGS=_CC_ACCEPTABLE_RC=0 _C89_ACCEPTABLE_RC=0 _CXX_ACCEPTABLE_RC=0
 CXX=$(XLC_FLAGS) xlc++
@@ -57,6 +58,11 @@ CXXLANG_FLAGS=-W "c,lp64"\
  -c \
  -I./chdsect
 
+SWIG_FLAGS=-W "c,lp64,define(SWIG)"\
+ -c \
+ -I./chdsect \
+ -DSWIG
+
 DLL_CPP_FLAGS=-W "c,lp64,langlvl(extended0x),dll,xplink,exportall"\
  -c \
  -I./chdsect
@@ -100,6 +106,8 @@ MTL_FLAGS64+=-g1
 
 all: libzut.so libzut.a libzds.so libzds.a libzusf.so libzusf.a libzcn.so libzcn.a libzjb.so libzjb.a zowex zoweax extattr xlclang-extenders tests
 xlclang-extenders: $(OUT_DIR_CXXLANG)/zut.o $(OUT_DIR_CXXLANG)/zds.o $(OUT_DIR_CXXLANG)/zjb.o $(OUT_DIR_CXXLANG)/zcn.o $(OUT_DIR_CXXLANG)/zusf.o
+# SWIG extenders: compile C++ files with SWIG macro defined for Python bindings
+swig-extenders: $(OUT_DIR_SWIG)/zut.o $(OUT_DIR_SWIG)/zds.o $(OUT_DIR_SWIG)/zjb.o $(OUT_DIR_SWIG)/zcn.o $(OUT_DIR_SWIG)/zusf.o $(OUT_DIR_SWIG)/ztso.o
 tests:
 	 $(MAKE) -c test
 
@@ -109,6 +117,7 @@ tests:
 $(OUT_DIRS):
 	@echo 'Creating $(OUT_DIR_CXXLANG)'
 	mkdir -p $(OUT_DIR_CXXLANG)
+	mkdir -p $(OUT_DIR_SWIG)
 
 #
 # Utilities
@@ -120,6 +129,10 @@ $(OUT_DIR)/zut.o: zut.cpp
 $(OUT_DIR_CXXLANG)/zut.o: $(OUT_DIRS) zut.cpp
 	@echo '$(OUT_DIR_CXXLANG)/zut.o'
 	$(CXXLANG) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -o $@ $^
+
+$(OUT_DIR_SWIG)/zut.o: $(OUT_DIRS) zut.cpp
+	@echo 'Building $(OUT_DIR_SWIG)/zut.o with SWIG macro'
+	$(CXXLANG) $(SWIG_FLAGS) -qlist=$*.cpp.lst -o $@ $^
 
 $(OUT_DIR)/zutm.s: zutm.c
 	@echo 'Building $(OUT_DIR)/zutm.s'
@@ -176,6 +189,10 @@ $(OUT_DIR_CXXLANG)/zds.o: $(OUT_DIRS) zds.cpp
 	@echo '$(OUT_DIR_CXXLANG)/zds.o'
 	$(CXXLANG) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -o $@ $^
 
+$(OUT_DIR_SWIG)/zds.o: $(OUT_DIRS) zds.cpp
+	@echo 'Building $(OUT_DIR_SWIG)/zds.o with SWIG macro'
+	$(CXXLANG) $(SWIG_FLAGS) -qlist=$*.cpp.lst -o $@ $^
+
 $(OUT_DIR)/libzds.so: $(OUT_DIR)/zds.o $(OUT_DIR)/zdsm.o $(OUT_DIR)/zam.o $(OUT_DIR)/libzut.a
 	$(CXX) $(DLL_BND_FLAGS) -o $@ $^ > $*.bind.lst
 	@echo 'Building $(OUT_DIR)/libzds.so'
@@ -206,6 +223,10 @@ $(OUT_DIR)/zjb.o: zjb.cpp
 $(OUT_DIR_CXXLANG)/zjb.o: $(OUT_DIRS) zjb.cpp
 	@echo '$(OUT_DIR_CXXLANG)/zjb.o'
 	$(CXXLANG) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -o $@ $^
+
+$(OUT_DIR_SWIG)/zjb.o: $(OUT_DIRS) zjb.cpp
+	@echo 'Building $(OUT_DIR_SWIG)/zjb.o with SWIG macro'
+	$(CXXLANG) $(SWIG_FLAGS) -qlist=$*.cpp.lst -o $@ $^
 
 $(OUT_DIR)/zjbm31.s: zjbm31.c
 	@echo 'Building $(OUT_DIR)/zjbm31.s'
@@ -245,6 +266,10 @@ $(OUT_DIR_CXXLANG)/zcn.o: $(OUT_DIRS) zcn.cpp
 	@echo '$(OUT_DIR_CXXLANG)/zcn.o'
 	$(CXXLANG) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -o $@ $^
 
+$(OUT_DIR_SWIG)/zcn.o: $(OUT_DIRS) zcn.cpp
+	@echo 'Building $(OUT_DIR_SWIG)/zcn.o with SWIG macro'
+	$(CXXLANG) $(SWIG_FLAGS) -qlist=$*.cpp.lst -o $@ $^
+
 $(OUT_DIR)/zcnm.s: zcnm.c
 	$(CC) $(MTL_FLAGS64) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
 
@@ -279,6 +304,10 @@ $(OUT_DIR)/zusf.o: zusf.cpp
 $(OUT_DIR_CXXLANG)/zusf.o: $(OUT_DIRS) zusf.cpp
 	@echo '$(OUT_DIR_CXXLANG)/zusf.o'
 	$(CXXLANG) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -o $@ $^
+	
+$(OUT_DIR_SWIG)/zusf.o: $(OUT_DIRS) zusf.cpp
+	@echo 'Building $(OUT_DIR_SWIG)/zusf.o with SWIG macro'
+	$(CXXLANG) $(SWIG_FLAGS) -qlist=$*.cpp.lst -o $@ $^
 
 $(OUT_DIR)/libzusf.so: $(OUT_DIR)/zusf.o $(OUT_DIR)/libzut.a
 	@echo 'Building $(OUT_DIR)/libzusf.so'
@@ -298,6 +327,10 @@ libzusf.a: $(OUT_DIRS) $(OUT_DIR)/libzusf.a
 $(OUT_DIR)/ztso.o: ztso.cpp
 	@echo 'Building $(OUT_DIR)/ztso.o'
 	$(CXX) $(DLL_CPP_FLAGS) -qlist=$*.cpp.lst -o $@ $^
+
+$(OUT_DIR_SWIG)/ztso.o: $(OUT_DIRS) ztso.cpp
+	@echo 'Building $(OUT_DIR_SWIG)/ztso.o with SWIG macro'
+	$(CXXLANG) $(SWIG_FLAGS) -qlist=$*.cpp.lst -o $@ $^
 
 $(OUT_DIR)/libztso.so: ztso
 	@echo 'Building $(OUT_DIR)/libztso.so'
@@ -333,7 +366,14 @@ zoweax: $(OUT_DIRS) $(OUT_DIR)/zoweax
 
 $(OUT_DIR)/zowex.o: zowex.cpp
 	@echo 'Building $(OUT_DIR)/zowex.o'
-	$(CXX) $(CPP_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
+	@if [ -f ../package.json ]; then \
+		PACKAGE_VERSION=$$(grep '"version"' ../package.json | sed 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/'); \
+		echo "Extracted version: $$PACKAGE_VERSION"; \
+		$(CXX) $(CPP_FLAGS) -DPACKAGE_VERSION="\"$$PACKAGE_VERSION\"" -qlist=$*.cpp.lst -c $^ -o $@; \
+	else \
+		echo "package.json not found, building without version"; \
+		$(CXX) $(CPP_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@; \
+	fi
 
 #
 # TODO(Kelosky): makefile for chdsect (must have ADATA in data set)

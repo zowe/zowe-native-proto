@@ -49,6 +49,10 @@ struct ZJobDD
  */
 int zjb_list_by_owner(ZJB *zjb, std::string owner_name, std::vector<ZJob> &jobs);
 
+#ifdef SWIG
+extern "C"
+{
+#endif
 /**
  * @brief Return a list of jobs from an input or default owner
  *
@@ -142,7 +146,9 @@ int zjb_submit_dsn(ZJB *zjb, std::string dsn, std::string &jobId);
  * @return int 0 for success; non zero otherwise
  */
 int zjb_delete(ZJB *zjb, std::string jobid);
-
+#ifdef SWIG
+}
+#endif
 /**
  * @brief Cancel a job using input jobid
  *
