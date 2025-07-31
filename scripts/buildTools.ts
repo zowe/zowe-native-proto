@@ -743,7 +743,7 @@ async function main() {
                 break;
             case "rebuild":
                 await upload(sshClient);
-                await build(sshClient, config.goBuildEnv);
+                await build(sshClient, config);
                 break;
             case "test":
                 await test(sshClient);
