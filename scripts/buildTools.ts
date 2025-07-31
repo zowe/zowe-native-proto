@@ -247,6 +247,7 @@ async function runCommandInShell(connection: Client, command: string, pty = fals
             });
             stream.on("data", (part: Buffer) => {
                 data += part.toString();
+                console.log(data);
             });
             stream.stderr.on("data", (err: Buffer) => {
                 error += err.toString();
