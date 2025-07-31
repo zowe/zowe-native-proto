@@ -4,7 +4,7 @@ All notable changes to the native code for "zowe-native-proto" are documented in
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## Recent Changes
+## `0.1.4`
 
 - `c`: Fixed an issue where the CLI help text showed the `[options]` placeholder in the usage example before the positional arguments, which is not a supported syntax. Now, the usage text shows the `[options]` placeholder after the positional arguments for the given command.
 - `c`: Added `zowex version` command to print the latest build information for the `zowex` executable. The version output contains the build date and the package version. [#366](https://github.com/zowe/zowe-native-proto/issues/366)
