@@ -185,7 +185,6 @@ func HandleReadFileRequest(conn *utils.StdioConn, params []byte) (result any, e 
 				}
 
 				percent := atomic.LoadInt32((*int32)(unsafe.Pointer(&conn.SharedMem[0])))
-				utils.LogError("Download: %d%%", percent)
 
 				progress, _ := json.Marshal(t.RpcNotification{
 					JsonRPC: "2.0",

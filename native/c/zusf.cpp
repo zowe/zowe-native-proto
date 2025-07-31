@@ -38,7 +38,6 @@
 #include "zut.hpp"
 #include "zbase64.h"
 #include "iefzb4d2.h"
-#include <fstream>
 
 #ifndef _XPLATFORM_SOURCE
 #define _XPLATFORM_SOURCE
@@ -319,10 +318,6 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, string file, string pipe, size_
   size_t bytes_read;
   size_t raw_bytes_read = 0;
 
-  ofstream stream("./zowe-native-proto/golang/zowex_progress.log", ios_base::out | ios_base::app);
-  if(!stream.good()){
-    return -1;
-  }
   while ((bytes_read = fread(&buf[0], 1, chunk_size, fin)) > 0)
   {
     int chunk_len = bytes_read;
@@ -331,7 +326,6 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, string file, string pipe, size_
     std::vector<char> temp_encoded;
 
     const auto progress = (int)((double)raw_bytes_read / total_len * 100);
-    stream << "Progress: " << progress << endl;
     set_progress(progress);
     msync(ZShared::instance()->region, sizeof(ZSharedRegion), MS_SYNC);
 
@@ -364,7 +358,6 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, string file, string pipe, size_
   fflush(fout);
   fclose(fin);
   fclose(fout);
-  stream.close();
   return RTNCD_SUCCESS;
 }
 

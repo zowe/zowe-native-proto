@@ -175,21 +175,6 @@ inline int init_shared_memory(ZSharedRegion **shm_ptr, char *file_path_out = nul
   return create_shared_memory(shm_ptr, file_path_out);
 }
 
-inline void print_shared_memory_status(ZSharedRegion *shm_ptr)
-{
-  cout << "Animal count: " << shm_ptr->progress << endl;
-}
-
-inline void increment_progress(ZSharedRegion *shm_ptr)
-{
-  shm_ptr->progress++;
-}
-
-inline void decrement_progress(ZSharedRegion *shm_ptr)
-{
-  shm_ptr->progress--;
-}
-
 inline void set_progress(unsigned int progress)
 {
   ofstream stream("./zowe-native-proto/golang/zowex_progress.log", ios_base::out | ios_base::app);
@@ -217,21 +202,4 @@ inline void set_progress(unsigned int progress)
   stream.close();
 }
 
-inline int test_shared_memory()
-{
-  ZSharedRegion *shm_ptr = nullptr;
-  int shm_id = init_shared_memory(&shm_ptr);
-
-  if (shm_id == -1)
-  {
-    return -1;
-  }
-
-  // Test the mutex operations
-  increment_progress(shm_ptr);
-  print_shared_memory_status(shm_ptr);
-
-  cleanup_shared_memory(shm_id, shm_ptr);
-  return 0;
-}
 #endif
