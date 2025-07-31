@@ -415,20 +415,18 @@ async function bin(connection: Client) {
 }
 
 async function build(connection: Client, { goBuildEnv, preBuildCmd }: IConfig) {
-    if (preBuildCmd) {
-        console.log(await runCommandInShell(connection, `${preBuildCmd}\n`));
-    }
+    preBuildCmd = preBuildCmd ? `${preBuildCmd} &&` : "";
     console.log("Building native/c ...");
     const response = await runCommandInShell(
         connection,
-        `cd ${deployDirs.cDir} && make ${DEBUG_MODE() ? "-DBuildType=DEBUG" : ""}\n`,
+        `${preBuildCmd}cd ${deployDirs.cDir} && make ${DEBUG_MODE() ? "-DBuildType=DEBUG" : ""}\n`,
     );
     DEBUG_MODE() && console.log(response);
     console.log("Building native/golang ...");
     console.log(
         await runCommandInShell(
             connection,
-            `cd ${deployDirs.goDir} &&${goBuildEnv ? ` ${goBuildEnv}` : ""} go build${DEBUG_MODE() ? "" : ' -ldflags="-s -w"'}\n`,
+            `${preBuildCmd}cd ${deployDirs.goDir} &&${goBuildEnv ? ` ${goBuildEnv}` : ""} go build${DEBUG_MODE() ? "" : ' -ldflags="-s -w"'}\n`,
             true,
         ),
     );
