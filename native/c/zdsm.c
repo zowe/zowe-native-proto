@@ -176,6 +176,12 @@ int ZDSRECFM(ZDS *zds, const char *dsn, const char *volser, char *recfm_buf,
       main_fmt = 'U';
     }
 
+    // Track-overflow records: Third bit is set
+    if ((dscb->ds1recfm & 0x20) > 0)
+    {
+      temp_recfm[len++] = 'T';
+    }
+
     // Blocked records: Fourth bit is set
     if ((dscb->ds1recfm & 0x10) > 0)
     {
