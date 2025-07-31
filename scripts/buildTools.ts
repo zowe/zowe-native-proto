@@ -21,6 +21,7 @@ interface IConfig {
     sshProfile: string | IProfile;
     deployDir: string;
     goBuildEnv?: string;
+    preBuildCmd?: string;
 }
 
 const localDeployDir = "./../native";
@@ -413,7 +414,10 @@ async function bin(connection: Client) {
     });
 }
 
-async function build(connection: Client, goBuildEnv?: string) {
+async function build(connection: Client, { goBuildEnv, preBuildCmd }: IConfig) {
+    if (preBuildCmd) {
+        console.log(await runCommandInShell(connection, `${preBuildCmd}\n`));
+    }
     console.log("Building native/c ...");
     const response = await runCommandInShell(
         connection,
@@ -720,7 +724,7 @@ async function main() {
                 await bin(sshClient);
                 break;
             case "build":
-                await build(sshClient, config.goBuildEnv);
+                await build(sshClient, config);
                 break;
             case "clean":
                 await clean(sshClient);

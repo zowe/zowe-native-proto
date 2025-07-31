@@ -39,7 +39,8 @@ jobs:
                 user: "${{ secrets.SSH_MARIST_USERNAME }}"
                 password: "${{ secrets.SSH_MARIST_RACF_PASSWORD }}"
               deployDir: "/ZOWE/tmp/zowe-native-proto"
-              goBuildEnv: 'GOCACHE=/ZOWE/tmp/.go-cache GOTMPDIR=/ZOWE/tmp GIT_SSL_NO_VERIFY=true GOINSECURE="*" GOPROXY=direct'
+              goBuildEnv: 'GOCACHE=/ZOWE/tmp/.go-cache GOINSECURE="*" GOPROXY=direct GOTMPDIR=/ZOWE/tmp'
+              preBuildCmd: ". ~/.custom_profile"
           EOF
 
       - name: Install Dependencies
