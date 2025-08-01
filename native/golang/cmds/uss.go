@@ -109,7 +109,6 @@ func HandleListFilesRequest(_conn *utils.StdioConn, params []byte) (result any, 
 				Mode: info.Mode().String(),
 			}
 		}
-
 		ussResponse.ReturnedRows = len(ussResponse.Items)
 	}
 
