@@ -27,6 +27,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - `c`: Fixed an issue where the zowex `ds list` command always printed data set attributes when passing the argument `--response-format-csv`, even if the attributes argument was `false`.
 - `c`: Fixed an issue where the `zusf_chmod_uss_file_or_dir` function did not handle invalid input before passing the mode to the `chmod` C standard library function. [#399](https://github.com/zowe/zowe-native-proto/pull/399)
 - `c`: Refactored the Base64 encoder and decoder to remove external dependency. [#385](https://github.com/zowe/zowe-native-proto/issues/385)
+- `native`: Added `contentLen` property to RPC responses for reading/writing data sets and USS files. [#358](https://github.com/zowe/zowe-native-proto/pull/358)
 
 ## `0.1.2`
 

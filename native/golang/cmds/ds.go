@@ -17,6 +17,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -41,6 +42,7 @@ func HandleReadDatasetRequest(conn *utils.StdioConn, params []byte) (result any,
 
 	var etag string
 	var data []byte
+	var size int
 	if request.StreamId == 0 {
 		args = append(args, "--rfb")
 		out, err := conn.ExecCmd(args)
@@ -93,14 +95,17 @@ func HandleReadDatasetRequest(conn *utils.StdioConn, params []byte) (result any,
 			return
 		}
 
-		etag = strings.TrimRight(string(out), "\n")
+		output := utils.YamlToMap(string(out))
+		etag = output["etag"]
+		size, _ = strconv.Atoi(output["size"])
 	}
 
 	result = ds.ReadDatasetResponse{
-		Encoding: request.Encoding,
-		Etag:     etag,
-		Dataset:  request.Dsname,
-		Data:     data,
+		Encoding:   request.Encoding,
+		Etag:       etag,
+		Dataset:    request.Dsname,
+		Data:       data,
+		ContentLen: &size,
 	}
 	return
 }
@@ -188,10 +193,25 @@ func HandleWriteDatasetRequest(conn *utils.StdioConn, params []byte) (result any
 		}
 	}
 
+	output := utils.YamlToMap(string(out))
+
+	var etag string
+	if etagValue, exists := output["etag"]; exists {
+		etag = fmt.Sprintf("%v", etagValue)
+	}
+
+	var size int
+	if sizeValue, exists := output["size"]; exists {
+		if parsedInt, err := strconv.Atoi(fmt.Sprintf("%v", sizeValue)); err == nil {
+			size = parsedInt
+		}
+	}
+
 	result = ds.WriteDatasetResponse{
-		Success: true,
-		Dataset: request.Dsname,
-		Etag:    strings.TrimRight(string(out), "\n"),
+		Success:    true,
+		Dataset:    request.Dsname,
+		Etag:       etag,
+		ContentLen: &size,
 	}
 	return
 }

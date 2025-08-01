@@ -978,7 +978,8 @@ int handle_data_set_view(const ParseResult &result)
 
   if (has_pipe_path && !pipe_path.empty())
   {
-    rc = zds_read_from_dsn_streamed(&zds, dsn, pipe_path);
+    size_t content_len = 0;
+    rc = zds_read_from_dsn_streamed(&zds, dsn, pipe_path, &content_len);
 
     if (result.find_kw_arg_bool("return-etag"))
     {
@@ -987,8 +988,9 @@ int handle_data_set_view(const ParseResult &result)
       if (read_rc == 0)
       {
         const auto etag = zut_calc_adler32_checksum(temp_content);
-        cout << std::hex << etag << endl;
+        cout << "etag: " << std::hex << etag << endl;
       }
+      cout << "size: " << content_len << endl;
     }
   }
   else
@@ -1171,10 +1173,11 @@ int handle_data_set_write(const ParseResult &result)
 
   bool has_pipe_path = result.has_kw_arg("pipe-path");
   string pipe_path = result.find_kw_arg_string("pipe-path");
+  size_t content_len = 0;
 
   if (has_pipe_path && !pipe_path.empty())
   {
-    rc = zds_write_to_dsn_streamed(&zds, dsn, pipe_path);
+    rc = zds_write_to_dsn_streamed(&zds, dsn, pipe_path, &content_len);
   }
   else
   {
@@ -1214,7 +1217,9 @@ int handle_data_set_write(const ParseResult &result)
 
   if (result.find_kw_arg_bool("etag-only"))
   {
-    cout << zds.etag << endl;
+    cout << "etag: " << zds.etag << endl;
+    if (content_len > 0)
+      cout << "size: " << content_len << endl;
   }
   else
   {
@@ -1838,12 +1843,14 @@ int handle_uss_view(const ParseResult &result)
 
   if (has_pipe_path && !pipe_path.empty())
   {
-    rc = zusf_read_from_uss_file_streamed(&zusf, uss_file, pipe_path);
+    size_t content_len = 0;
+    rc = zusf_read_from_uss_file_streamed(&zusf, uss_file, pipe_path, &content_len);
 
     if (result.find_kw_arg_bool("return-etag"))
     {
-      cout << zut_build_etag(file_stats.st_mtime, file_stats.st_size) << endl;
+      cout << "etag: " << zut_build_etag(file_stats.st_mtime, file_stats.st_size) << endl;
     }
+    cout << "size: " << content_len << endl;
   }
   else
   {
@@ -1902,10 +1909,11 @@ int handle_uss_write(const ParseResult &result)
 
   bool has_pipe_path = result.has_kw_arg("pipe-path");
   string pipe_path = result.find_kw_arg_string("pipe-path");
+  size_t content_len = 0;
 
   if (has_pipe_path && !pipe_path.empty())
   {
-    rc = zusf_write_to_uss_file_streamed(&zusf, file, pipe_path);
+    rc = zusf_write_to_uss_file_streamed(&zusf, file, pipe_path, &content_len);
   }
   else
   {
@@ -1944,8 +1952,10 @@ int handle_uss_write(const ParseResult &result)
 
   if (result.find_kw_arg_bool("etag-only"))
   {
-    cout << "etag: " << zusf.etag << '\n'
-         << "created: " << (zusf.created ? "true" : "false") << '\n';
+    cout << "etag: " << zusf.etag << endl
+         << "created: " << (zusf.created ? "true" : "false") << endl;
+    if (content_len > 0)
+      cout << "size: " << content_len << endl;
   }
   else
   {
