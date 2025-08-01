@@ -378,6 +378,7 @@ int main(int argc, char *argv[])
   uss_list_cmd->add_positional_arg("file-path", "file path", ArgType_Single, true);
   uss_list_cmd->add_keyword_arg("all", make_aliases("--all", "-a"), "list all files and directories", ArgType_Flag, false, ArgValue(false));
   uss_list_cmd->add_keyword_arg("long", make_aliases("--long", "-l"), "list long format", ArgType_Flag, false, ArgValue(false));
+  uss_list_cmd->add_keyword_arg("response-format-csv", response_format_csv_option, "returns the response in CSV format", ArgType_Flag, false, ArgValue(false));
   uss_list_cmd->set_handler(handle_uss_list);
   uss_cmd->add_command(uss_list_cmd);
 
@@ -1798,9 +1799,11 @@ int handle_uss_list(const ParseResult &result)
   list_options.all_files = result.find_kw_arg_bool("all");
   list_options.long_format = result.find_kw_arg_bool("long");
 
+  const auto use_csv_format = result.find_kw_arg_bool("response-format-csv");
+
   ZUSF zusf = {0};
   string response;
-  rc = zusf_list_uss_file_path(&zusf, uss_file, response, list_options);
+  rc = zusf_list_uss_file_path(&zusf, uss_file, response, list_options, use_csv_format);
   if (0 != rc)
   {
     cerr << "Error: could not list USS files: '" << uss_file << "' rc: '" << rc << "'" << endl;
@@ -2042,6 +2045,17 @@ int handle_uss_chtag(const ParseResult &result)
 {
   string path = result.find_pos_arg_string("file-path");
   string tag = result.find_pos_arg_string("tag");
+  if (tag.empty())
+  {
+    tag = zut_int_to_string(result.find_pos_arg_int("tag"));
+  }
+
+  if (tag.empty())
+  {
+    cerr << "Error: no tag provided" << endl;
+    return RTNCD_FAILURE;
+  }
+
   bool recursive = result.find_kw_arg_bool("recursive");
 
   ZUSF zusf = {0};

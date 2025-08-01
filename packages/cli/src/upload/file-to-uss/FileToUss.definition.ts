@@ -45,6 +45,14 @@ export const UploadFileToUssFileDefinition: ICommandDefinition = {
             description: "Upload content in binary mode.",
             type: "boolean",
         },
+        {
+            name: "encoding",
+            aliases: ["ec"],
+            description: "The encoding for uploading a USS file.",
+            defaultValue: null,
+            type: "string",
+            conflictsWith: ["binary"],
+        },
     ],
-    profile: { optional: ["zssh"] },
+    profile: { optional: ["ssh"] },
 };
