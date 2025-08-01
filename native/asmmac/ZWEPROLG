@@ -16,7 +16,7 @@
 .*
 .*  Usage:
 .*
-.*       ZWEPROLG NEWDSA=[YES|NO],[#KBs]   e.g. NEWDSA=(YES,1024)
+.*       ZWEPROLG NEWDSA=([YES|NO],[#KBs],[subpool])
 .*
 .*  Commonly referenced symbols:
 .*    &CCN_RHIGH
@@ -34,10 +34,12 @@
 .*
          COPY  CCNZGBL
          GBLA  &DSA_SZ
+         GBLA  &DSA_SP
 .*
 &MACNM   SETC  '&SYSMAC(0)'
 .*
 &DSA_SZ  SETA  0
+&DSA_SP  SETA  132
 &IS_64   SETB  (&CCN_LP64)
 &IS_AR   SETB  ('CCN_ASCM' EQ 'AR')
 &KB#     SETA  1024
@@ -69,12 +71,18 @@
          AIF   ('&NEWDSA(1)' EQ 'NO').CONT100
          AGO   .ERR010
 .*
-.*       Get DSA path
+.*       Set DSA size
 .*
 .CONT040 ANOP ,
 &GETDSA  SETB  1
-         AIF   ('&NEWDSA(2)' EQ '').CONT100
+         AIF   ('&NEWDSA(2)' EQ '').CONT060
 &KB#     SETA  &NEWDSA(2)
+.*
+.*       Set DSA subpool
+.*
+.CONT060 ANOP ,
+         AIF   ('&NEWDSA(3)' EQ '').CONT100
+&DSA_SP  SETA  &NEWDSA(3)
 .*
 .*       Save input regs
 .*
@@ -99,7 +107,7 @@
          STORAGE OBTAIN,                                               +
                LENGTH=(3),                                             +
                CALLRKY=YES,                                            +
-               SP=132,                                                 +
+               SP=&DSA_SP.,                                            +
                BNDRY=PAGE,                                             +
                COND=NO
 .*

@@ -287,7 +287,7 @@ static void mode_nzero()
 #define SET_KEY(key)                                 \
   __asm(                                             \
       "*                                         \n" \
-      " L    2,%0                                \n" \
+      " IC   2,%0                                \n" \
       " SPKA 0(2)                                \n" \
       "*                                          "  \
       :                                              \
