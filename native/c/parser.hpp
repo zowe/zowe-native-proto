@@ -13,6 +13,7 @@
 #define PARSER_HPP
 
 #include "lexer.hpp"
+#include "zlogger.hpp"
 #include <algorithm>
 #include <cstdlib>
 #include <cstring>
@@ -1253,6 +1254,9 @@ Command::parse(const std::vector<lexer::Token> &tokens,
                size_t &current_token_index,
                const std::string &command_path_prefix) const
 {
+  ZLOG_TRACE("Command::parse entry: command='%s', prefix='%s', tokens=%zu, current_index=%zu",
+             m_name.c_str(), command_path_prefix.c_str(), tokens.size(), current_token_index);
+
   ParseResult result;
   result.m_command = this;
   result.command_path = command_path_prefix + m_name;
@@ -1278,6 +1282,9 @@ Command::parse(const std::vector<lexer::Token> &tokens,
     const lexer::Token &token = tokens[current_token_index];
     lexer::TokenKind kind = token.get_kind();
 
+    ZLOG_TRACE("Processing token[%zu]: kind=%d, current_pos_arg_index=%zu",
+               current_token_index, (int)kind, current_positional_arg_index);
+
     // check for keyword arguments/flags (TokFlagShort, TokFlagLong)
     if (kind == lexer::TokFlagShort || kind == lexer::TokFlagLong)
     {
@@ -1285,8 +1292,12 @@ Command::parse(const std::vector<lexer::Token> &tokens,
           token.get_id_value(); // get name without dashes
       bool is_short_flag_kind = (kind == lexer::TokFlagShort);
 
+      ZLOG_TRACE("Processing flag: '%s', short=%s",
+                 flag_name_str.c_str(), is_short_flag_kind ? "true" : "false");
+
       if (is_short_flag_kind && flag_name_str.length() > 1)
       {
+        ZLOG_TRACE("Processing combined short flags: '%s'", flag_name_str.c_str());
         current_token_index++;
 
         for (size_t i = 0; i < flag_name_str.length(); ++i)
@@ -1335,6 +1346,9 @@ Command::parse(const std::vector<lexer::Token> &tokens,
 
       const ArgumentDef *matched_arg =
           find_keyword_arg(flag_name_str, is_short_flag_kind);
+
+      ZLOG_TRACE("Flag lookup result: '%s' -> %s",
+                 flag_name_str.c_str(), matched_arg ? "found" : "not found");
 
       if (!matched_arg)
       {
@@ -1391,6 +1405,7 @@ Command::parse(const std::vector<lexer::Token> &tokens,
       // if this is the specifically marked help flag, handle it immediately.
       if (matched_arg->is_help_flag)
       {
+        ZLOG_TRACE("Help flag detected, showing help and exiting");
         generate_help(std::cout, command_path_prefix);
         result.status = ParseResult::ParserStatus_HelpRequested;
         result.exit_code = 0; // help request is a successful exit
@@ -1399,6 +1414,9 @@ Command::parse(const std::vector<lexer::Token> &tokens,
 
       current_token_index++; // consume the flag token itself
       keyword_args_seen[matched_arg->name] = true;
+
+      ZLOG_TRACE("Processing argument value for '%s', type=%d",
+                 matched_arg->name.c_str(), (int)matched_arg->type);
 
       // handle argument value based on type
       if (matched_arg->type == ArgType_Flag)
@@ -1537,6 +1555,7 @@ Command::parse(const std::vector<lexer::Token> &tokens,
     if (kind == lexer::TokId)
     {
       std::string potential_subcommand_or_alias = token.get_id_value();
+      ZLOG_TRACE("Checking for subcommand: '%s'", potential_subcommand_or_alias.c_str());
       command_ptr matched_subcommand;
 
       // first, check if it's a direct name match
@@ -1575,6 +1594,7 @@ Command::parse(const std::vector<lexer::Token> &tokens,
       // if a subcommand (by name or alias) was found
       if (matched_subcommand)
       {
+        ZLOG_TRACE("Subcommand '%s' matched, delegating parse", potential_subcommand_or_alias.c_str());
         current_token_index++; // consume the subcommand/alias token
         ParseResult sub_result = matched_subcommand->parse(
             tokens, current_token_index, result.command_path + " ");
@@ -1635,6 +1655,8 @@ Command::parse(const std::vector<lexer::Token> &tokens,
     if (current_positional_arg_index < m_pos_args.size())
     {
       const ArgumentDef &pos_arg_def = m_pos_args[current_positional_arg_index];
+      ZLOG_TRACE("Processing positional argument[%zu]: '%s'",
+                 current_positional_arg_index, pos_arg_def.name.c_str());
       ArgValue parsed_value = parse_token_value(token, pos_arg_def.type);
 
       if (parsed_value.is_none())
@@ -1778,7 +1800,9 @@ Command::parse(const std::vector<lexer::Token> &tokens,
   // over.
   if (m_handler && result.status == ParseResult::ParserStatus_Success)
   {
+    ZLOG_TRACE("Executing handler for command '%s'", m_name.c_str());
     result.exit_code = m_handler(result);
+    ZLOG_TRACE("Handler returned exit code: %d", result.exit_code);
   }
 
   // If this command is a group (has subcommands), has no handler, and parsing
@@ -1786,11 +1810,14 @@ Command::parse(const std::vector<lexer::Token> &tokens,
   if (!m_handler && !m_commands.empty() &&
       result.status == ParseResult::ParserStatus_Success)
   {
+    ZLOG_TRACE("Command group with no handler, showing help");
     generate_help(std::cout, command_path_prefix);
     result.status = ParseResult::ParserStatus_HelpRequested;
     result.exit_code = 0;
   }
 
+  ZLOG_TRACE("Command::parse exit: command='%s', status=%d, exit_code=%d",
+             m_name.c_str(), (int)result.status, result.exit_code);
   return result;
 }
 
@@ -1823,8 +1850,11 @@ public:
   // parse command line arguments from main(argc, argv)
   ParseResult parse(int argc, char *argv[])
   {
+    ZLOG_TRACE("ArgumentParser::parse(argc=%d) entry", argc);
+
     if (argc < 1)
     {
+      ZLOG_TRACE("ArgumentParser::parse: invalid argc < 1");
       ParseResult error_result;
       error_result.status = ParseResult::ParserStatus_ParseError;
       error_result.error_message = "invalid arguments provided (argc < 1)";
@@ -1841,6 +1871,7 @@ public:
 
     // Use lexer to parse each argument appropriately
     std::vector<lexer::Token> tokens;
+    ZLOG_TRACE("Converting %zu arguments to tokens", args.size());
     size_t pos = 0;
     for (size_t i = 0; i < args.size(); ++i)
     {
@@ -1942,6 +1973,8 @@ public:
       error_result.exit_code = 1;
       return error_result;
     }
+
+    ZLOG_TRACE("Starting parse with %zu tokens", tokens.size());
     ParseResult result = m_root_cmd->parse(tokens, token_index, "");
     if (result.status == ParseResult::ParserStatus_Success &&
         token_index < tokens.size())
@@ -1962,6 +1995,8 @@ public:
   // parse command line arguments from a single string
   ParseResult parse(const std::string &command_line)
   {
+    ZLOG_TRACE("ArgumentParser::parse(string='%s') entry", command_line.c_str());
+
     if (!m_root_cmd)
     {
       ParseResult error_result;
@@ -1983,6 +2018,7 @@ public:
         tokens.pop_back();
       }
 
+      ZLOG_TRACE("Lexer produced %zu tokens for string parse", tokens.size());
       size_t token_index = 0;
       ParseResult result = m_root_cmd->parse(tokens, token_index, "");
 
