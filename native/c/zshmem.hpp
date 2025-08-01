@@ -65,7 +65,6 @@ class ZShared
 
   ~ZShared()
   {
-    // TODO: clean up memory region
   }
 
   static ZShared *_instance;
