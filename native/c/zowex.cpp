@@ -29,6 +29,7 @@
 #include "zds.hpp"
 #include "zusf.hpp"
 #include "ztso.hpp"
+#include "zshmem.hpp"
 #include "zuttype.h"
 
 #ifndef TO_STRING
@@ -2548,7 +2549,23 @@ int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_
 {
   arg_parser.update_program_name(program_name);
 
+  // Initialize shared memory
+  ZSharedRegion *shm_ptr = nullptr;
+  char shm_file_path[256] = {0};
+
+  // Create new shared memory for this process (each process gets its own)
+  int shm_id = init_shared_memory(&shm_ptr, shm_file_path);
+  if (shm_id == -1)
+  {
+    cerr << "Failed to initialize shared memory" << endl;
+    return RTNCD_FAILURE;
+  }
+  const auto progress = *reinterpret_cast<int32_t*>((uintptr_t)shm_ptr + 0x40);
+
   std::cout << "Started, enter command or 'quit' to quit..." << std::endl;
+  std::cout << "Progress: " << progress << std::endl;
+  std::cout << "Shared memory initialized. Size: 0x" << std::hex << sizeof(ZSharedRegion) << std::dec << " Path: " << shm_file_path << std::endl;
+  // print_shared_memory_status(shm_ptr);
 
   std::string command;
   int rc = 0;
@@ -2579,6 +2596,9 @@ int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_
   } while (!should_quit(command));
 
   std::cout << "...terminated" << std::endl;
+
+  // Clean up this process's shared memory
+  cleanup_shared_memory(shm_id, shm_ptr, shm_file_path);
 
   return rc;
 }

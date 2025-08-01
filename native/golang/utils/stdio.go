@@ -27,6 +27,7 @@ type StdioConn struct {
 	Stdout       io.ReadCloser
 	Stderr       io.ReadCloser
 	LastExitCode int
+	SharedMem    []byte
 }
 
 func (conn *StdioConn) ExecCmd(args []string) (stdout []byte, stderr error) {

@@ -15,12 +15,16 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
 	"strings"
 	"sync"
+	"syscall"
 
 	"zowe-native-proto/zowed/cmds"
 	t "zowe-native-proto/zowed/types/common"
 	"zowe-native-proto/zowed/utils"
+
+	"golang.org/x/sys/unix"
 )
 
 // Worker represents a worker that processes command requests
@@ -31,6 +35,8 @@ type Worker struct {
 	Conn         utils.StdioConn
 	ResponseMu   *sync.Mutex // Mutex to synchronize response printing
 	Ready        bool        // Indicates if the worker is ready to process requests
+	ShmPath      string      // Shared memory file path
+	ShmFD        int         // Shared memory file descriptor (opened by Go)
 }
 
 // WorkerPool manages a pool of workers
@@ -213,9 +219,48 @@ func initializeWorker(worker *Worker, pool *WorkerPool) {
 		panic(err)
 	}
 
-	// Wait for the instance of `zowex` to be ready
-	if _, err = bufio.NewReader(workerStdout).ReadBytes('\n'); err != nil {
-		panic(err)
+	// Wait for the instance of `zowex` to be ready and capture shared memory info
+	reader := bufio.NewReader(workerStdout)
+	totalOut := ""
+	// Read the startup message
+	for {
+		if out, err := reader.ReadBytes('\n'); len(out) > 0 || err != nil {
+			if err == io.EOF {
+				continue
+			}
+			str := string(out)
+			totalOut = totalOut + str
+			fmt.Println("Received input from worker", str)
+			// Parse shared memory file path from "Shared memory initialized (Path: /tmp/zowex_shm_XXXXXX)"
+			if idx := strings.Index(totalOut, "Path: "); idx != -1 {
+				start := idx + 6
+				worker.ShmPath = strings.TrimSpace(totalOut[start:])
+				break
+			}
+		}
+	}
+
+	// Open the shared memory file
+	if worker.ShmPath != "" {
+		fd, err := syscall.Open(worker.ShmPath, syscall.O_RDWR, 0600)
+		if err != nil {
+			fmt.Printf("Worker %d: Failed to open shared memory file %s: %v\n", worker.ID, worker.ShmPath, err)
+		} else {
+			worker.ShmFD = int(fd)
+			fmt.Printf("Worker %d: Successfully opened shared memory file %s (FD: %d)\n", worker.ID, worker.ShmPath, worker.ShmFD)
+		}
+	}
+
+	// Map the shared memory using the file descriptor
+	if worker.ShmFD > 0 {
+		// Use unix.Mmap for memory mapping
+		data, err := unix.Mmap(worker.ShmFD, 0, 68, unix.PROT_READ|unix.PROT_WRITE, unix.MAP_SHARED)
+		if err != nil {
+			fmt.Printf("Worker %d: Failed to mmap shared memory: %v\n", worker.ID, err)
+		} else {
+			workerConn.SharedMem = data
+			// fmt.Printf("Worker %d: Successfully mapped %d bytes\n", worker.ID, len(worker.ShmData))
+		}
 	}
 
 	// Set up the connection for the worker
@@ -233,4 +278,19 @@ func (wp *WorkerPool) GetAvailableWorkersCount() int32 {
 	wp.ReadyMu.Lock()
 	defer wp.ReadyMu.Unlock()
 	return wp.ReadyCount
+}
+
+// Shutdown gracefully terminates all workers in the pool
+func (wp *WorkerPool) Shutdown() {
+	for _, worker := range wp.Workers {
+		// Send the quit command to the zowex process
+		if _, err := worker.Conn.Stdin.Write([]byte("quit\n")); err != nil {
+			utils.LogDebug("Failed to send quit command to worker %d: %s", worker.ID, err)
+		}
+
+		// Close the stdin of the zowex process
+		if err := worker.Conn.Stdin.Close(); err != nil {
+			utils.LogDebug("Failed to close stdin for worker %d: %s", worker.ID, err)
+		}
+	}
 }
