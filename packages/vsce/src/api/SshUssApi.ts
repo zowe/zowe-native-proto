@@ -114,6 +114,13 @@ export class SshUssApi extends SshCommonApi implements MainframeInteraction.IUss
         throw new Error("Not yet implemented");
     }
 
+    public async getTag(ussPath: string): Promise<string> {
+        const response = await (await this.client).uss.listFiles({
+            fspath: ussPath,
+        });
+        return response.items[0].filetag ?? "untagged";
+    }
+
     public async updateAttributes(
         ussPath: string,
         attributes: Partial<Types.FileAttributes>,

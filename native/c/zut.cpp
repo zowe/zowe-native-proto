@@ -17,6 +17,7 @@
 #include <string>
 #include <iomanip>
 #include <algorithm>
+#include <sys/stat.h>
 #include "zut.hpp"
 #include "zutm.h"
 #include "zutm31.h"
@@ -481,6 +482,19 @@ string zut_format_as_csv(std::vector<string> &fields)
   return formatted;
 }
 
+/**
+ * Converts an integer to a string using sprintf.
+ *
+ * @param value the integer value to convert
+ * @return the string representation of the integer
+ */
+string zut_int_to_string(int value)
+{
+  char buffer[32];
+  sprintf(buffer, "%d", value);
+  return string(buffer);
+}
+
 int zut_alloc_debug()
 {
   int rc = 0;
@@ -498,4 +512,200 @@ int zut_debug_message(const char *message)
 {
   fprintf(stderr, "%s", message);
   return 0;
+}
+
+size_t zut_read_file_binary(FILE *fp, string &response)
+{
+  size_t bytes_read = 0;
+  size_t total_size = 0;
+  char buffer[4096] = {0};
+  
+  while ((bytes_read = fread(buffer, 1, sizeof(buffer), fp)) > 0)
+  {
+    total_size += bytes_read;
+    response.append(buffer, bytes_read);
+  }
+  
+  return total_size;
+}
+
+int zut_convert_if_needed(string &data, const ZEncode *encoding_opts, ZDIAG &diag)
+{
+  if (data.empty() || !encoding_opts || encoding_opts->data_type != eDataTypeText || strlen(encoding_opts->codepage) == 0)
+  {
+    return RTNCD_SUCCESS;
+  }
+
+  // Use UTF-8 as default target encoding if not specified
+  string target_encoding = (strlen(encoding_opts->target_encoding) > 0) ? 
+                          string(encoding_opts->target_encoding) : 
+                          string("UTF-8");
+
+  try
+  {
+    string temp = zut_encode(data, string(encoding_opts->codepage), target_encoding, diag);
+    if (!temp.empty())
+    {
+      data = temp;
+    }
+    return RTNCD_SUCCESS;
+  }
+  catch (exception &e)
+  {
+    diag.e_msg_len = sprintf(diag.e_msg, "Failed to convert input data from %s to %s", 
+                            encoding_opts->codepage, target_encoding.c_str());
+    return RTNCD_FAILURE;
+  }
+}
+
+int zut_set_file_error(ZDIAG &diag, const char *operation_name, const string &file_path)
+{
+  diag.e_msg_len = sprintf(diag.e_msg, "Could not %s '%s'", operation_name, file_path.c_str());
+  return RTNCD_FAILURE;
+}
+
+void zut_init_encoding(ZEncode *opts, const string &source_encoding, const string &target_encoding, DataType data_type)
+{
+  if (!opts)
+  {
+    return;
+  }
+
+  memset(opts, 0, sizeof(ZEncode));
+  
+  opts->data_type = data_type;
+  
+  if (!source_encoding.empty())
+  {
+    strncpy(opts->codepage, source_encoding.c_str(), sizeof(opts->codepage) - 1);
+    opts->codepage[sizeof(opts->codepage) - 1] = '\0';
+  }
+  
+  if (!target_encoding.empty())
+  {
+    strncpy(opts->target_encoding, target_encoding.c_str(), sizeof(opts->target_encoding) - 1);
+    opts->target_encoding[sizeof(opts->target_encoding) - 1] = '\0';
+  }
+  else
+  {
+    // Default to UTF-8 if no target encoding is specified
+    strcpy(opts->target_encoding, "UTF-8");
+  }
+}
+
+int zut_validate_etag_content(const char *given_etag, const string &current_content, ZDIAG &diag)
+{
+  if (!given_etag || strlen(given_etag) == 0)
+  {
+    return RTNCD_SUCCESS; // No etag to validate
+  }
+
+  const auto given_etag_value = strtoul(given_etag, nullptr, 16);
+  const auto current_etag = zut_calc_adler32_checksum(current_content);
+
+  if (given_etag_value != current_etag)
+  {
+    ostringstream ss;
+    ss << "Etag mismatch: expected ";
+    ss << hex << given_etag_value << dec;
+    ss << ", actual ";
+    ss << hex << current_etag << dec;
+
+    const auto error_msg = ss.str();
+    diag.e_msg_len = sprintf(diag.e_msg, "%s", error_msg.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  return RTNCD_SUCCESS;
+}
+
+int zut_validate_etag_file_stat(const char *given_etag, const string &file_path, ZDIAG &diag)
+{
+  if (!given_etag || strlen(given_etag) == 0)
+  {
+    return RTNCD_SUCCESS; // No etag to validate
+  }
+
+  struct stat file_stats;
+  if (stat(file_path.c_str(), &file_stats) == -1)
+  {
+    diag.e_msg_len = sprintf(diag.e_msg, "Cannot stat file '%s' for etag validation", file_path.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  const auto current_etag = zut_build_etag(file_stats.st_mtime, file_stats.st_size);
+  if (current_etag != given_etag)
+  {
+    diag.e_msg_len = sprintf(diag.e_msg, "Etag mismatch: expected %s, actual %s", given_etag, current_etag.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  return RTNCD_SUCCESS;
+}
+
+int zut_convert_data_for_write(string &data, const string &source_encoding, const string &target_encoding, ZDIAG &diag)
+{
+  if (data.empty() || source_encoding.empty() || target_encoding.empty())
+  {
+    return RTNCD_SUCCESS; // Nothing to convert
+  }
+
+  try
+  {
+    string temp = zut_encode(data, source_encoding, target_encoding, diag);
+    if (!temp.empty())
+    {
+      data = temp;
+    }
+    return RTNCD_SUCCESS;
+  }
+  catch (exception &e)
+  {
+    diag.e_msg_len = sprintf(diag.e_msg, "Failed to convert input data from %s to %s", 
+                            source_encoding.c_str(), target_encoding.c_str());
+    return RTNCD_FAILURE;
+  }
+}
+
+int zut_generate_etag_content(const string &content, char *etag_buffer, size_t buffer_size)
+{
+  if (!etag_buffer || buffer_size == 0)
+  {
+    return RTNCD_FAILURE;
+  }
+
+  stringstream etag_stream;
+  etag_stream << hex << zut_calc_adler32_checksum(content);
+  
+  const string etag_str = etag_stream.str();
+  if (etag_str.length() >= buffer_size)
+  {
+    return RTNCD_FAILURE; // Buffer too small
+  }
+
+  strcpy(etag_buffer, etag_str.c_str());
+  return RTNCD_SUCCESS;
+}
+
+int zut_generate_etag_file_stat(const string &file_path, char *etag_buffer, size_t buffer_size)
+{
+  if (!etag_buffer || buffer_size == 0)
+  {
+    return RTNCD_FAILURE;
+  }
+
+  struct stat file_stats;
+  if (stat(file_path.c_str(), &file_stats) == -1)
+  {
+    return RTNCD_FAILURE;
+  }
+
+  const string etag_str = zut_build_etag(file_stats.st_mtime, file_stats.st_size);
+  if (etag_str.length() >= buffer_size)
+  {
+    return RTNCD_FAILURE; // Buffer too small
+  }
+
+  strcpy(etag_buffer, etag_str.c_str());
+  return RTNCD_SUCCESS;
 }
