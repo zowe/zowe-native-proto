@@ -50,9 +50,9 @@ jobs:
         uses: nick-fields/retry@v3
         with:
           command: npm run z:all
-          max_attempts: 3
+          max_attempts: 5
           retry_on_exit_code: 11 # Ignore transient SIGSEGV error on Go build
-          timeout_minutes: 10
+          timeout_minutes: 45
 
       - uses: actions/upload-artifact@v4
         with:
