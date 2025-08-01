@@ -427,7 +427,7 @@ async function build(connection: Client, { goBuildEnv, preBuildCmd }: IConfig) {
     console.log(
         await runCommandInShell(
             connection,
-            `${preBuildCmd}cd ${deployDirs.goDir} &&${goBuildEnv ? ` ${goBuildEnv}` : ""} go build${DEBUG_MODE() ? "" : ' -ldflags="-s -w"'} -x\n`,
+            `${preBuildCmd}cd ${deployDirs.goDir} &&${goBuildEnv ? ` ${goBuildEnv}` : ""} go build${DEBUG_MODE() ? "" : ' -ldflags="-s -w"'} -x\nexit $?\n`,
             true,
         ),
     );
