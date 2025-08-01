@@ -22,7 +22,7 @@
     "configurationModule": "lib/imperative.js"
   },
   "dependencies": {
-    "@zowe/zos-uss-for-zowe-sdk": "^8.11.0",
+    "@zowe/zos-uss-for-zowe-sdk": "^8.24.0",
     "terminal-kit": "^3.1.2",
     "zowe-native-proto-sdk": "0.1.3"
   },

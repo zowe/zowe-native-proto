@@ -64,6 +64,9 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
             imperative.IO.createDirsSyncFromFilePath(options.file);
             writeStream = createWriteStream(options.file);
         }
+        if (writeStream == null) {
+            throw new Error("Failed to get contents: No stream or file path provided");
+        }
         const response = await (await this.client).ds.readDataset({
             dsname: dataSetName,
             encoding: options.binary ? "binary" : options.encoding,

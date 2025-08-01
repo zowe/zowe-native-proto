@@ -392,7 +392,14 @@ zoweax: $(OUT_DIRS) $(OUT_DIR)/zoweax
 
 $(OUT_DIR)/zowex.o: zowex.cpp
 	@echo 'Building $(OUT_DIR)/zowex.o'
-	$(CXX) $(CPP_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
+	@if [ -f ../package.json ]; then \
+		PACKAGE_VERSION=$$(grep '"version"' ../package.json | sed 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/'); \
+		echo "Extracted version: $$PACKAGE_VERSION"; \
+		$(CXX) $(CPP_FLAGS) -DPACKAGE_VERSION="\"$$PACKAGE_VERSION\"" -qlist=$*.cpp.lst -c $^ -o $@; \
+	else \
+		echo "package.json not found, building without version"; \
+		$(CXX) $(CPP_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@; \
+	fi
 
 #
 # TODO(Kelosky): makefile for chdsect (must have ADATA in data set)

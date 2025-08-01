@@ -1008,6 +1008,12 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
  */
 int zds_read_from_dsn_streamed(ZDS *zds, string dsn, string pipe, size_t *content_len)
 {
+  if (content_len == nullptr)
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "content_len must be a valid size_t pointer");
+    return RTNCD_FAILURE;
+  }
+
   dsn = "//'" + dsn + "'";
   const std::string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "rb,recfm=U" : "r";
   FILE *fin = fopen(dsn.c_str(), fopen_flags.c_str());
@@ -1086,6 +1092,12 @@ int zds_read_from_dsn_streamed(ZDS *zds, string dsn, string pipe, size_t *conten
  */
 int zds_write_to_dsn_streamed(ZDS *zds, string dsn, string pipe, size_t *content_len)
 {
+  if (content_len == nullptr)
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "content_len must be a valid size_t pointer");
+    return RTNCD_FAILURE;
+  }
+
   string dsname = "//'" + dsn + "'";
   if (strlen(zds->etag) > 0)
   {

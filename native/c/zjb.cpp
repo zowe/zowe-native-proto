@@ -710,6 +710,10 @@ void zjb_build_job_response(ZJB_JOB_INFO *PTR64 job_info, int entries, vector<ZJ
     {
       zjob.retcode = "CANCELED";
     }
+    else if ((unsigned char)job_info_next[i].statjqtr.sttrxind == sttrxsec)
+    {
+      zjob.retcode = "SEC ERROR";
+    }
 
     zjob.jobname = jobname;
     zjob.jobid = jobid;

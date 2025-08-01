@@ -135,7 +135,7 @@ func HandleReadFileRequest(conn *utils.StdioConn, params []byte) (result any, e 
 	var data []byte
 	var size int
 	if request.StreamId == 0 {
-		args = append(args, "--rfb", "true")
+		args = append(args, "--rfb")
 		out, err := conn.ExecCmd(args)
 		if err != nil {
 			e = fmt.Errorf("Error executing command: %v", err)
