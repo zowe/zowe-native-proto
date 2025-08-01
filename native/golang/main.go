@@ -19,6 +19,8 @@ import (
 	"io"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"zowe-native-proto/zowed/cmds"
@@ -60,6 +62,16 @@ func main() {
 
 	// Initialize workers in background
 	workerPool := CreateWorkerPool(options.NumWorkers, requestQueue, dispatcher)
+	defer workerPool.Shutdown()
+
+	// Set up signal handling for graceful shutdown
+	sigchan := make(chan os.Signal, 1)
+	signal.Notify(sigchan, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-sigchan
+		workerPool.Shutdown()
+		os.Exit(0)
+	}()
 
 	// Log available worker count at initialization when verbose is enabled
 	if utils.IsVerboseLogging() {

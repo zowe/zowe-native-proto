@@ -15,7 +15,7 @@
 #ifndef _OPEN_SYS_FILE_EXT
 #define _OPEN_SYS_FILE_EXT 1
 #endif
-#include <sys/types.h>
+#include "zshmem.hpp"
 #include <sys/stat.h>
 #include <dirent.h>
 #include <stdio.h>
@@ -38,12 +38,12 @@
 #include "zut.hpp"
 #include "zbase64.h"
 #include "iefzb4d2.h"
+
 #ifndef _XPLATFORM_SOURCE
 #define _XPLATFORM_SOURCE
 #endif
 #include <sys/xattr.h>
 #include <vector>
-
 using namespace std;
 
 /**
@@ -299,6 +299,13 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, string file, string pipe, size_
     return RTNCD_FAILURE;
   }
 
+  struct stat st;
+  if (stat(file.c_str(), &st) != 0) {
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not stat file '%s'", file.c_str());
+      return RTNCD_FAILURE;
+  }
+  size_t total_len = st.st_size;
+
   // TODO(traeok): Finish support for encoding auto-detection
   // char tagged_encoding[16] = {0};
   // ssize_t xattr_result = getxattr(file.c_str(), "system.filetag", &tagged_encoding);
@@ -309,12 +316,18 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, string file, string pipe, size_
   const size_t chunk_size = FIFO_CHUNK_SIZE * 3 / 4;
   std::vector<char> buf(chunk_size);
   size_t bytes_read;
+  size_t raw_bytes_read = 0;
 
   while ((bytes_read = fread(&buf[0], 1, chunk_size, fin)) > 0)
   {
     int chunk_len = bytes_read;
+    raw_bytes_read += chunk_len;
     const char *chunk = &buf[0];
     std::vector<char> temp_encoded;
+
+    const auto progress = (int)((double)raw_bytes_read / total_len * 100);
+    set_progress(progress);
+    msync(ZShared::instance()->region, sizeof(ZSharedRegion), MS_SYNC);
 
     if (hasEncoding)
     {
@@ -345,7 +358,6 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, string file, string pipe, size_
   fflush(fout);
   fclose(fin);
   fclose(fout);
-
   return RTNCD_SUCCESS;
 }
 

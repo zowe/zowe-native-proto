@@ -9,6 +9,8 @@
  *
  */
 
+import { ReadStream } from "node:fs";
+import { statSync } from "node:fs";
 import { posix } from "node:path";
 import { Stream } from "node:stream";
 import { ImperativeError, Logger } from "@zowe/imperative";
@@ -27,8 +29,6 @@ import type {
     RpcResponse,
     StatusMessage,
 } from "./doc";
-import { statSync } from "node:fs";
-import { ReadStream, WriteStream } from "fs";
 
 export class ZSshClient extends AbstractRpcClient implements Disposable {
     public static readonly DEFAULT_SERVER_PATH = "~/.zowe-server";

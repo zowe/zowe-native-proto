@@ -21,6 +21,7 @@ interface IConfig {
     sshProfile: string | IProfile;
     deployDir: string;
     goBuildEnv?: string;
+    preBuildCmd?: string;
 }
 
 const localDeployDir = "./../native";
@@ -413,18 +414,19 @@ async function bin(connection: Client) {
     });
 }
 
-async function build(connection: Client, goBuildEnv?: string) {
+async function build(connection: Client, { goBuildEnv, preBuildCmd }: IConfig) {
+    preBuildCmd = preBuildCmd ? `${preBuildCmd} && ` : "";
     console.log("Building native/c ...");
     const response = await runCommandInShell(
         connection,
-        `cd ${deployDirs.cDir} && make ${DEBUG_MODE() ? "-DBuildType=DEBUG" : ""}\n`,
+        `${preBuildCmd}cd ${deployDirs.cDir} && make ${DEBUG_MODE() ? "-DBuildType=DEBUG" : ""}\n`,
     );
     DEBUG_MODE() && console.log(response);
     console.log("Building native/golang ...");
     console.log(
         await runCommandInShell(
             connection,
-            `cd ${deployDirs.goDir} &&${goBuildEnv ? ` ${goBuildEnv}` : ""} go build${DEBUG_MODE() ? "" : ' -ldflags="-s -w"'}\n`,
+            `${preBuildCmd}cd ${deployDirs.goDir} &&${goBuildEnv ? ` ${goBuildEnv}` : ""} go build${DEBUG_MODE() ? "" : ' -ldflags="-s -w"'}\nexit $?\n`,
             true,
         ),
     );
@@ -720,7 +722,7 @@ async function main() {
                 await bin(sshClient);
                 break;
             case "build":
-                await build(sshClient, config.goBuildEnv);
+                await build(sshClient, config);
                 break;
             case "clean":
                 await clean(sshClient);
@@ -739,7 +741,7 @@ async function main() {
                 break;
             case "rebuild":
                 await upload(sshClient);
-                await build(sshClient, config.goBuildEnv);
+                await build(sshClient, config);
                 break;
             case "test":
                 await test(sshClient);
