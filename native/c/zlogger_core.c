@@ -10,6 +10,7 @@
  */
 
 #include "zlogger_core.h"
+#include "zlogger_metal.h"
 #include <stdarg.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -156,6 +157,11 @@ int zlog_init(const char *log_file_path, zlog_level_t min_level)
     return -1;
   }
 
+#ifdef __IBM_METAL__
+  /* In Metal C environment, initialize Metal C logger */
+  return zlog_metal_init(log_file_path, (int)min_level);
+#endif
+
   if (zlog_acquire_lock(&g_logger_state.lock_word) != 0)
   {
     return -1;
@@ -230,6 +236,11 @@ int zlog_write_msg(zlog_level_t level, const char *message)
   {
     return 0;
   }
+
+#ifdef __IBM_METAL__
+  /* In Metal C environment, use Metal C logger directly */
+  return zlog_metal_write((int)level, message);
+#endif
 
   /* Acquire lock for thread/process safety */
   if (zlog_acquire_lock(&g_logger_state.lock_word) != 0)

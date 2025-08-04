@@ -328,27 +328,17 @@ $(OUT_DIR)/zlogger_core.o: zlogger_core.c
 	@echo 'Building $(OUT_DIR)/zlogger_core.o'
 	$(CC) $(C_FLAGS) -qlist=$*.c.lst -o $@ $^
 
-$(OUT_DIR)/zlogger_metal.o: zlogger_metal.c
-	@echo 'Building $(OUT_DIR)/zlogger_metal.o'
-	$(CC) $(C_FLAGS) -qlist=$*.c.lst -o $@ $^
-
-$(OUT_DIR)/libzlogger.so: $(OUT_DIR)/zlogger_core.o $(OUT_DIR)/zlogger_metal.o
+$(OUT_DIR)/libzlogger.so: $(OUT_DIR)/zlogger_core.o
 	@echo 'Building $(OUT_DIR)/libzlogger.so'
 	$(CXX) $(DLL_BND_FLAGS) -o $@ $^ > $*.bind.lst
 
 libzlogger.so: $(OUT_DIRS) $(OUT_DIR)/libzlogger.so
 
-$(OUT_DIR)/libzlogger.a: $(OUT_DIR)/zlogger_core.o $(OUT_DIR)/zlogger_metal.o
+$(OUT_DIR)/libzlogger.a: $(OUT_DIR)/zlogger_core.o
 	@echo 'Building $(OUT_DIR)/libzlogger.a'
 	ar -rv $@ $^
 
 libzlogger.a: $(OUT_DIRS) $(OUT_DIR)/libzlogger.a
-
-$(OUT_DIR)/zlogger_test: examples/zlogger_test.cpp $(OUT_DIR)/libzlogger.a
-	@echo 'Building $(OUT_DIR)/zlogger_test'
-	$(CXX) $(CPP_BND_FLAGS) -I. -o $@ $^
-
-zlogger_test: $(OUT_DIRS) $(OUT_DIR)/zlogger_test
 
 #
 # TSO
@@ -377,7 +367,7 @@ libztso.a: $(OUT_DIRS) $(OUT_DIR)/libztso.a
 # Test CLI
 #
 # zowex: zowex.o zcn.o zcnm.o zcnm31.o zut.o zutm.o zutm31.o zjb.o zjbm.o zssi31.o zjbm31.o zds.o
-$(OUT_DIR)/zowex: $(OUT_DIR)/zowex.o $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(OUT_DIR)/libzjb.a $(OUT_DIR)/libzds.a $(OUT_DIR)/libzusf.a $(OUT_DIR)/libztso.a
+$(OUT_DIR)/zowex: $(OUT_DIR)/zowex.o $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(OUT_DIR)/libzjb.a $(OUT_DIR)/libzds.a $(OUT_DIR)/libzusf.a $(OUT_DIR)/libztso.a $(OUT_DIR)/libzlogger.a
 	@echo 'Building zowex'
 	$(CXX) $(CPP_BND_FLAGS) -o $@ $^ > $*.bind.lst
 	ln -sf ../c/$@ ../golang/zowex
@@ -385,7 +375,7 @@ $(OUT_DIR)/zowex: $(OUT_DIR)/zowex.o $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(O
 
 zowex: $(OUT_DIRS) $(OUT_DIR)/zowex
 
-$(OUT_DIR)/zoweax: $(OUT_DIR)/zowex.o $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(OUT_DIR)/libzjb.a $(OUT_DIR)/libzds.a $(OUT_DIR)/libzusf.a $(OUT_DIR)/libztso.a
+$(OUT_DIR)/zoweax: $(OUT_DIR)/zowex.o $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(OUT_DIR)/libzjb.a $(OUT_DIR)/libzds.a $(OUT_DIR)/libzusf.a $(OUT_DIR)/libztso.a $(OUT_DIR)/libzlogger.a
 	@echo 'Building zoweax'
 	$(CXX) $(CPP_BND_FLAGS_AUTH) -o $@ $^ > $*.bind.lst
 	ln -sf ../c/$@ ../golang/zoweax

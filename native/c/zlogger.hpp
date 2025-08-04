@@ -70,6 +70,7 @@ public:
       return;
     }
 
+    std::cout << "Writing to file: " << message << std::endl;
     file_ << message << std::endl;
     file_.flush();
   }
@@ -224,6 +225,23 @@ public:
   void set_log_level(LogLevel level)
   {
     default_level_ = level;
+    // Also update the C core level
+    zlog_set_level(static_cast<zlog_level_t>(static_cast<int>(level)));
+  }
+
+  /**
+   * Initialize logger with specific DD path (called after DD allocation)
+   */
+  void initialize_with_dd_path(const std::string &log_path)
+  {
+    // Re-initialize the C logger core with the correct path
+    zlog_cleanup(); // Clean up any existing initialization
+    zlog_level_t c_level = static_cast<zlog_level_t>(static_cast<int>(default_level_));
+    if (zlog_init(log_path.c_str(), c_level) != 0)
+    {
+      // Fall back to file transport if C core fails
+      add_file_transport(log_path, default_level_);
+    }
   }
 
   /**
@@ -292,7 +310,23 @@ public:
    */
   void trace(const char *format, ...)
   {
+    // Try to use C core first for multi-process safety
+    zlog_level_t c_level = static_cast<zlog_level_t>(static_cast<int>(LogLevel::TRACE));
     va_list args;
+    va_start(args, format);
+
+    // Use C core if available
+    char buffer[4096];
+    vsnprintf(buffer, sizeof(buffer), format, args);
+    va_end(args);
+
+    if (zlog_write_msg(c_level, buffer) == 0)
+    {
+      // Successfully logged through C core
+      return;
+    }
+
+    // Fall back to file transports if C core fails
     va_start(args, format);
     std::string message = format_msg(LogLevel::TRACE, format, args);
     va_end(args);
