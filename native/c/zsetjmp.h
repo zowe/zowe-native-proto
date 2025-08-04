@@ -48,8 +48,6 @@ typedef struct
 
 } ZSETJMP_ENV;
 
-typedef void (*ROUTINE)(ZSETJMP_ENV *);
-
 #pragma prolog(ZLONGJMP, " ZWEPROLG NEWDSA=NO ")
 #pragma epilog(ZLONGJMP, " ZWEEPILG ")
 static void ZLONGJMP(ZSETJMP_ENV *zenv)
@@ -74,7 +72,7 @@ static int zsetjmp(ZSETJMP_ENV *zenv)
   memcpy(&zenv->f4sa, save_area, sizeof(SAVF4SA));
   zenv->r13 = r13;
 
-  return 0; // NOTE(Kelosky): this never runs
+  return 0;
 }
 
 #endif
