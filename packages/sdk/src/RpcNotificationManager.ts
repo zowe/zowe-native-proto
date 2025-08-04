@@ -9,25 +9,20 @@
  *
  */
 
-import { Readable, type Stream, Transform, Writable } from "node:stream";
+import { Readable, type Stream, Writable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { Logger } from "@zowe/imperative";
-import { Base64Encode } from "base64-stream";
+import { Base64Decode, Base64Encode } from "base64-stream";
 import type { Client, ClientChannel } from "ssh2";
-import { CountingBase64Decode } from "./CountingBase64Decode";
-import type { CommandResponse, RpcNotification, RpcPromise, RpcRequest } from "./doc";
+import type { CallbackInfo, CommandResponse, RpcNotification, RpcPromise, RpcRequest } from "./doc";
 import type { ReadDatasetResponse } from "./doc/gen/ds";
 import type { ReadFileResponse } from "./doc/gen/uss";
-
-type callbackInfo = {
-    callback?: (percent: number) => void;
-    fsize?: number;
-};
+import { ProgressTransform } from "./ProgressTransform";
 
 type StreamMode = "r" | "w";
 
 export class RpcNotificationManager {
-    private mPendingStreamMap: Map<number, { stream: Stream; callbackInfo?: callbackInfo }> = new Map();
+    private mPendingStreamMap: Map<number, { stream: Stream; callbackInfo?: CallbackInfo }> = new Map();
 
     public constructor(private mSshClient: Client) {}
 
@@ -35,7 +30,7 @@ export class RpcNotificationManager {
         request: RpcRequest,
         stream: Stream,
         timeoutId?: NodeJS.Timeout,
-        callbackInfo?: callbackInfo,
+        callbackInfo?: CallbackInfo,
     ): void {
         this.mPendingStreamMap.set(request.id, {
             stream: stream.on("keepAlive", () => timeoutId?.refresh()),
@@ -52,9 +47,6 @@ export class RpcNotificationManager {
             case "receiveStream":
                 this.linkStreamToPromise(promise, this.downloadStream(notif.params), "w");
                 break;
-            case "updateProgress":
-                this.mPendingStreamMap.get(notif.params.id)?.callbackInfo?.callback?.(notif.params.progress);
-                break;
             default:
                 throw new Error(`Unknown RPC notification type: ${notif.method}`);
         }
@@ -65,47 +57,37 @@ export class RpcNotificationManager {
         if (!(readStream instanceof Readable)) {
             throw new Error(`No stream found for request ID: ${params.id}`);
         }
-        if (!callbackInfo?.callback || !callbackInfo.fsize) {
+        if (!callbackInfo?.callback || !callbackInfo.totalBytes) {
             throw new Error(`Progress info callback missing for request ID: ${params.id}`);
         }
         this.mPendingStreamMap.delete(params.id);
-        callbackInfo?.callback(0);
 
         const sshStream = await new Promise<ClientChannel>((resolve, reject) => {
             this.mSshClient.exec(`cat > ${params.pipePath}`, (err, stream) => (err ? reject(err) : resolve(stream)));
         });
-        let totalBytes = 0;
-        const progressTransform = new Transform({
-            transform(chunk: Buffer, _, callback) {
-                totalBytes += chunk.length;
-                if (callbackInfo != null) {
-                    const percent = Math.min(100, Math.round((totalBytes / callbackInfo.fsize) * 100));
-                    callbackInfo.callback(percent);
-                }
-                readStream.emit("keepAlive");
-                callback(null, chunk);
-            },
-        });
+        const progressTransform = new ProgressTransform(callbackInfo, () => readStream.emit("keepAlive"));
 
         await pipeline(readStream, progressTransform, new Base64Encode(), sshStream.stdin);
-        return totalBytes;
+        return progressTransform.bytesProcessed;
     }
 
-    private async downloadStream(params: { id: number; pipePath: string }): Promise<number> {
-        const { stream: writeStream } = this.mPendingStreamMap.get(params.id)!;
+    private async downloadStream(params: { id: number; pipePath: string; contentLen?: number }): Promise<number> {
+        const { stream: writeStream, callbackInfo } = this.mPendingStreamMap.get(params.id)!;
         if (writeStream == null || !(writeStream instanceof Writable)) {
             throw new Error(`No stream found for request ID: ${params.id}`);
+        }
+        this.mPendingStreamMap.delete(params.id);
+        if (callbackInfo != null && params.contentLen != null) {
+            callbackInfo.totalBytes = params.contentLen;
         }
 
         const sshStream = await new Promise<ClientChannel>((resolve, reject) => {
             this.mSshClient.exec(`cat ${params.pipePath}`, (err, stream) => (err ? reject(err) : resolve(stream)));
         });
-        sshStream.stdout.on("data", () => writeStream.emit("keepAlive"));
-        const decoder = new CountingBase64Decode();
+        const progressTransform = new ProgressTransform(callbackInfo, () => writeStream.emit("keepAlive"));
 
-        await pipeline(sshStream.stdout, decoder, writeStream);
-        this.mPendingStreamMap.delete(params.id);
-        return decoder.bytesWritten;
+        await pipeline(sshStream.stdout, new Base64Decode(), progressTransform, writeStream);
+        return progressTransform.bytesProcessed;
     }
 
     private linkStreamToPromise(rpcPromise: RpcPromise, streamPromise: Promise<number>, mode: StreamMode): void {

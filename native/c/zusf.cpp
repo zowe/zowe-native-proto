@@ -306,11 +306,13 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, string file, string pipe, size_
   }
 
   struct stat st;
-  if (stat(file.c_str(), &st) != 0) {
-      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not stat file '%s'", file.c_str());
-      return RTNCD_FAILURE;
+  if (stat(file.c_str(), &st) != 0)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not stat file '%s'", file.c_str());
+    return RTNCD_FAILURE;
   }
-  size_t total_len = st.st_size;
+  set_content_length(st.st_size);
+  msync(ZShared::instance()->region, sizeof(ZSharedRegion), MS_SYNC);
 
   // TODO(traeok): Finish support for encoding auto-detection
   // char tagged_encoding[16] = {0};
@@ -322,18 +324,12 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, string file, string pipe, size_
   const size_t chunk_size = FIFO_CHUNK_SIZE * 3 / 4;
   std::vector<char> buf(chunk_size);
   size_t bytes_read;
-  size_t raw_bytes_read = 0;
 
   while ((bytes_read = fread(&buf[0], 1, chunk_size, fin)) > 0)
   {
     int chunk_len = bytes_read;
-    raw_bytes_read += chunk_len;
     const char *chunk = &buf[0];
     std::vector<char> temp_encoded;
-
-    const auto progress = (int)((double)raw_bytes_read / total_len * 100);
-    set_progress(progress);
-    msync(ZShared::instance()->region, sizeof(ZSharedRegion), MS_SYNC);
 
     if (hasEncoding)
     {

@@ -112,7 +112,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                     callback: percentCallback,
                     // If stream is a ReadStream use the size of the localFile in bytes
                     // If stream is a WriteStream, set undefined because the size progress will be provided by a notification
-                    fsize: "contentLen" in request ? (request.contentLen as number) : undefined,
+                    totalBytes: "contentLen" in request ? (request.contentLen as number) : undefined,
                 });
             }
             this.mPromiseMap.set(rpcRequest.id, { resolve, reject });

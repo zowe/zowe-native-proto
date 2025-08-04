@@ -43,7 +43,8 @@ using namespace std;
 #pragma pack(1)
 typedef struct SharedMemory
 {
-  unsigned int progress;
+  unsigned int sync_bit;
+  unsigned long long content_len;
 } ZSharedRegion;
 #pragma pack(reset)
 
@@ -174,19 +175,28 @@ inline int init_shared_memory(ZSharedRegion **shm_ptr, char *file_path_out = nul
   return create_shared_memory(shm_ptr, file_path_out);
 }
 
-inline void set_progress(unsigned int progress)
+inline void set_content_length(uint64_t content_len)
 {
   auto *shared_memory_map = ZShared::instance()->region;
-  static int plo_lock = 0;
-
-  unsigned int current_value;
+  unsigned long long current_value;
+  unsigned int sync_bit;
   int cc;
 
+  static int plo_lock = 0;
   do
   {
-    current_value = shared_memory_map->progress;
-    // Using __plo_CS (Compare and Swap) to atomically set the progress value
-    cc = __plo_CS(&plo_lock, &current_value, progress, &shared_memory_map->progress);
+    current_value = shared_memory_map->content_len;
+    // Using __plo_CS (Compare and Swap) to atomically set the content length
+    cc = __plo_CSGR(&plo_lock, &current_value, content_len, &shared_memory_map->content_len);
+    // cc == 0 means successful swap, cc == 1 means operands not equal (retry needed)
+  } while (cc == 1);
+
+  static int plo_lock2 = 0;
+  do
+  {
+    sync_bit = shared_memory_map->sync_bit;
+    // Using __plo_CS (Compare and Swap) to atomically set the sync bit
+    cc = __plo_CS(&plo_lock2, &sync_bit, 1, &shared_memory_map->sync_bit);
     // cc == 0 means successful swap, cc == 1 means operands not equal (retry needed)
   } while (cc == 1);
 }
