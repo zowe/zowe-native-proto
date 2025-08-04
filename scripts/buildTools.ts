@@ -468,6 +468,16 @@ async function buildPython(connection: Client) {
     console.log("Build complete!");
 }
 
+async function make(connection: Client) {
+    const targets = args.filter((arg, idx) => idx > 0 && !arg.startsWith("--")).join(" ");
+    console.log(`Running make ${targets || "all"}...`);
+    const response = await runCommandInShell(
+        connection,
+        `cd ${deployDirs.cDir} && make ${targets} ${DEBUG_MODE() ? "-DBuildType=DEBUG" : ""}\n`,
+    );
+    console.log(response);
+}
+
 async function test(connection: Client) {
     console.log("Testing native/c ...");
     const response = await runCommandInShell(
@@ -789,6 +799,9 @@ async function main() {
                 break;
             case "get-listings":
                 await getListings(sshClient);
+                break;
+            case "make":
+                await make(sshClient);
                 break;
             case "package":
                 await artifacts(sshClient, true);
