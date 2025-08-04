@@ -297,6 +297,15 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, string file, string pipe, size_
     return RTNCD_FAILURE;
   }
 
+  struct stat st;
+  if (stat(file.c_str(), &st) != 0)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not stat file '%s'", file.c_str());
+    return RTNCD_FAILURE;
+  }
+  set_content_length((uint64_t)st.st_size);
+  msync(ZShared::instance()->region, sizeof(ZSharedRegion), MS_SYNC);
+
   int fifo_fd = open(pipe.c_str(), O_WRONLY);
   FILE *fout = fdopen(fifo_fd, "w");
   if (!fout)
@@ -304,15 +313,6 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, string file, string pipe, size_
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open output pipe '%s'", pipe.c_str());
     return RTNCD_FAILURE;
   }
-
-  struct stat st;
-  if (stat(file.c_str(), &st) != 0)
-  {
-    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not stat file '%s'", file.c_str());
-    return RTNCD_FAILURE;
-  }
-  set_content_length(st.st_size);
-  msync(ZShared::instance()->region, sizeof(ZSharedRegion), MS_SYNC);
 
   // TODO(traeok): Finish support for encoding auto-detection
   // char tagged_encoding[16] = {0};

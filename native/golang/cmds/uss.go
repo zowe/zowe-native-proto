@@ -161,24 +161,23 @@ func HandleReadFileRequest(conn *utils.StdioConn, params []byte) (result any, e 
 
 		// Start a goroutine to obtain content length and send notification
 		go func() {
-			timeout := time.After(10 * time.Second)
-			ticker := time.NewTicker(time.Millisecond)
-			defer ticker.Stop()
+			startTime := time.Now()
+			timeout := 10 * time.Second
 
 			for {
-				select {
-				case <-timeout:
-					utils.LogError("[ReadFileRequest] Timeout waiting for sync bit after 10 seconds")
-					return
-				case <-ticker.C:
-					syncBit := atomic.LoadInt32((*int32)(unsafe.Pointer(&conn.SharedMem[0])))
-					if syncBit != 0 {
-						goto syncBitReady
-					}
+				syncBit := atomic.LoadInt32((*int32)(unsafe.Pointer(&conn.SharedMem[0])))
+				if syncBit != 0 {
+					break
 				}
+
+				if time.Since(startTime) >= timeout {
+					utils.LogError("[ReadFileRequest] Timeout waiting for sync bit after 10 seconds, syncBit: %d", syncBit)
+					return
+				}
+
+				time.Sleep(time.Millisecond)
 			}
 
-		syncBitReady:
 			contentLen := atomic.LoadInt64((*int64)(unsafe.Pointer(&conn.SharedMem[4])))
 			atomic.StoreInt32((*int32)(unsafe.Pointer(&conn.SharedMem[0])), 0)
 
