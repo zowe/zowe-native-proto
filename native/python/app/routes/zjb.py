@@ -1,839 +1,376 @@
 """
-zJB (z/OS Job) related routes for the Flask application.
-Handles job status checking, listing, spool file operations, and JCL reading.
+Integration tests for zJB (z/OS Job) Flask routes using pytest.
+Tests all endpoints against the actual z/OS system.
+
+Run with: pytest test_zjb_integration.py -v
 """
 
-from flask import Blueprint, jsonify, request
-import os
-import sys
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from bindings import zjb_py as zjb, zds_py as zds, zusf_py as zusf
+import requests
+import json
+import pytest
+import urllib3
 
-zjb_bp = Blueprint('zjb', __name__, url_prefix='/pythonservice')
-
-
-@zjb_bp.route("/zosmf/restjobs/jobs/<jobname>/<jobid>", methods=["GET"])
-def get_job_status_by_name_and_id(jobname, jobid):
-    """
-    Get the status of a z/OS job by jobname and jobid.
-
-    This endpoint calls the zjb.get_job_status function and formats the output similar to the C++ CLI.
-
-    Path Parameters:
-        jobname: Job name (required)
-        jobid: Job ID (required)
-
-    Query Parameters:
-        step-data: Include step data (optional, default: N)
-    """
-    try:
-        step_data = request.args.get("step-data", "N").upper()
-
-        if not jobname or not jobid:
-            return jsonify({"error": "jobname and jobid are required"}), 400
-
-        job_info = zjb.get_job_status(jobid)
-
-        warnings_list = []
-
-        if step_data == "Y":
-            warnings_list.append(
-                "step-data parameter provided but not supported by current C++ function"
-            )
-
-        response = {
-            "jobname": job_info.jobname if hasattr(job_info, "jobname") else jobname,
-            "jobid": job_info.jobid if hasattr(job_info, "jobid") else jobid,
-            "owner": job_info.owner if hasattr(job_info, "owner") else "",
-            "status": job_info.status if hasattr(job_info, "status") else "",
-            "retcode": job_info.retcode if hasattr(job_info, "retcode") else "",
-            "type": "JOB",
-            "url": f"https://{request.host}/zosmf/restjobs/jobs/{jobname}/{jobid}",
-            "job-correlator": job_info.correlator,
-        }
-
-        if hasattr(job_info, "full_status") and job_info.full_status:
-            response["phase-name"] = job_info.full_status
-
-        if warnings_list:
-            response["warnings"] = warnings_list
-
-        return jsonify(response)
-
-    except Exception as e:
-        error_msg = str(e)
-        return (
-            jsonify(
-                {
-                    "error": f"could not get job status for {jobname}/{jobid} - {error_msg}",
-                    "details": error_msg,
-                }
-            ),
-            500,
-        )
+# Disable SSL warnings for testing
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
-@zjb_bp.route("/zosmf/restjobs/jobs/<correlator>", methods=["GET"])
-def get_job_status_by_correlator(correlator):
-    """
-    Get the status of a z/OS job by job correlator.
-
-    This endpoint calls the zjb.get_job_status function and formats the output similar to the C++ CLI.
-
-    Path Parameters:
-        correlator: Job correlator (required)
-
-    Query Parameters:
-        step-data: Include step data (optional, default: N)
-    """
-    try:
-        step_data = request.args.get("step-data", "N").upper()
-
-        if not correlator:
-            return jsonify({"error": "correlator is required"}), 400
-
-        job_info = zjb.get_job_status(correlator)
-
-        warnings_list = []
-
-        if step_data == "Y":
-            warnings_list.append(
-                "step-data parameter provided but not supported by current C++ function"
-            )
-
-        response = {
-            "jobname": job_info.jobname if hasattr(job_info, "jobname") else "",
-            "jobid": job_info.jobid if hasattr(job_info, "jobid") else "",
-            "owner": job_info.owner if hasattr(job_info, "owner") else "",
-            "status": job_info.status if hasattr(job_info, "status") else "",
-            "retcode": job_info.retcode if hasattr(job_info, "retcode") else "",
-            "job-correlator": correlator,
-            "type": "JOB",
-            "url": f"https://{request.host}/zosmf/restjobs/jobs/{correlator}",
-        }
-
-        if hasattr(job_info, "full_status") and job_info.full_status:
-            response["phase-name"] = job_info.full_status
-
-        if warnings_list:
-            response["warnings"] = warnings_list
-
-        return jsonify(response)
-
-    except Exception as e:
-        error_msg = str(e)
-        return (
-            jsonify(
-                {
-                    "error": f"could not get job status for correlator {correlator} - {error_msg}",
-                    "details": error_msg,
-                }
-            ),
-            500,
-        )
+@pytest.fixture(scope="session")
+def base_url():
+    """Base URL for the zJB service"""
+    return "https://b025.lvn.broadcom.net:10190"
 
 
-@zjb_bp.route("/zosmf/restjobs/jobs", methods=["GET"])
-def list_jobs():
-    """
-    List z/OS jobs with optional filtering.
-
-    This endpoint calls the zjb.list_jobs_by_owner function and formats the output similar to the C++ CLI.
-
-    Query Parameters:
-        owner: Job owner name (optional, defaults to current user)
-        prefix: Job name prefix filter (optional)
-        max-entries: Maximum number of jobs to return (optional)
-        warn: Show warnings (optional, default: true)
-        response-format-csv: Return CSV format (optional, default: false)
-    """
-    try:
-        owner = request.args.get("owner", "*")
-        prefix = request.args.get("prefix", "")
-        max_entries = request.args.get("max-entries")
-        warn = request.args.get("warn", "true").lower()
-        response_format_csv = request.args.get("response-format-csv", "false").lower()
-
-        jobs = zjb.list_jobs_by_owner(owner)
-
-        results = []
-        warnings_list = []
-
-        if prefix:
-            warnings_list.append(
-                "prefix parameter provided but not supported by current C++ function"
-            )
-
-        for job in jobs:
-            if response_format_csv == "true":
-                job_info = {
-                    "jobid": job.jobid if hasattr(job, "jobid") else "",
-                    "retcode": job.retcode if hasattr(job, "retcode") else "",
-                    "jobname": job.jobname if hasattr(job, "jobname") else "",
-                    "status": job.status if hasattr(job, "status") else "",
-                    "job-correlator": (
-                        job.correlator if hasattr(job, "correlator") else ""
-                    ),
-                }
-            else:
-                job_info = {
-                    "jobname": job.jobname if hasattr(job, "jobname") else "",
-                    "jobid": job.jobid if hasattr(job, "jobid") else "",
-                    "owner": job.owner if hasattr(job, "owner") else owner,
-                    "status": job.status if hasattr(job, "status") else "",
-                    "type": "JOB",
-                    "url": f"https://{request.host}/zosmf/restjobs/jobs/{job.jobname if hasattr(job, 'jobname') else 'UNKNOWN'}/{job.jobid if hasattr(job, 'jobid') else 'UNKNOWN'}",
-                }
-
-                if hasattr(job, "retcode") and job.retcode:
-                    job_info["retcode"] = job.retcode
-                if hasattr(job, "full_status") and job.full_status:
-                    job_info["phase-name"] = job.full_status
-                if hasattr(job, "correlator") and job.correlator:
-                    job_info["job-correlator"] = job.correlator
-
-            results.append(job_info)
-
-        if max_entries and max_entries.isdigit():
-            max_count = int(max_entries)
-            if len(results) > max_count:
-                results = results[:max_count]
-                if warn == "true":
-                    warnings_list.append("results truncated")
-
-        if len(results) == 0 and warn == "true":
-            warnings_list.append("no jobs found")
-
-        if response_format_csv == "true":
-            response = {
-                "items": results,
-                "returnedRows": len(results),
-                "format": "csv",
-                "owner": owner,
-            }
-        else:
-            response = {"items": results, "returnedRows": len(results), "owner": owner}
-
-        if warnings_list and warn == "true":
-            response["warnings"] = warnings_list
-
-        return jsonify(response)
-
-    except Exception as e:
-        error_msg = str(e)
-        return (
-            jsonify(
-                {
-                    "error": f"could not list jobs for owner '{owner}' - {error_msg}",
-                    "details": error_msg,
-                }
-            ),
-            500,
-        )
+@pytest.fixture(scope="session")
+def session():
+    """HTTP session with SSL verification disabled"""
+    session = requests.Session()
+    session.verify = False
+    return session
 
 
-@zjb_bp.route("/zosmf/restjobs/jobs/<jobname>/<jobid>/files", methods=["GET"])
-def list_job_files_by_name_and_id(jobname, jobid):
-    """
-    List the spool files for a z/OS job by jobname and jobid.
+@pytest.fixture(scope="session")
+def test_config():
+    """Static test configuration data"""
+    return {
+        "test_dataset": "TEST.JCL",
+        "test_uss_file": "/tmp/test.jcl",
+        "test_jcl_content": """//PYTEST   JOB  CLASS=A,MSGCLASS=H,NOTIFY=&SYSUID
+//STEP1    EXEC PGM=IEFBR14
+//"""
+    }
 
-    This endpoint calls the zjb.list_spool_files function and formats the output similar to the C++ CLI.
+@pytest.fixture(scope="session")
+def test_data_set_jcl(base_url, session, test_config):
+    ds = test_config["test_dataset"]
+    url = f"{base_url}/pythonservice/zosmf/restfiles/ds/{ds}"
+    params = {
+        "dsorg": "PS",      
+        "recfm": "FB",      
+        "lrecl": "80",
+        "primary": "10",
+        "secondary": "5",
+        "blksize": "3200"
+    }
+    response = session.post(url, params=params, verify=False)
 
-    Path Parameters:
-        jobname: Job name (required)
-        jobid: Job ID (required)
+    headers = {"Content-Type": "application/json"}
+    payload = {"records": test_config["test_jcl_content"]}
+    response = session.put(url, json=payload, headers=headers)
 
-    Query Parameters:
-        max-entries: Maximum number of files to return (optional)
-        warn: Show warnings (optional, default: true)
-        response-format-csv: Return CSV format (optional, default: false)
-    """
-    try:
-        max_entries = request.args.get("max-entries")
-        warn = request.args.get("warn", "true").lower()
-        response_format_csv = request.args.get("response-format-csv", "false").lower()
+    yield ds
 
-        if not jobname or not jobid:
-            return jsonify({"error": "jobname and jobid are required"}), 400
+    session.delete(url)
 
-        spool_files = zjb.list_spool_files(jobid)
+@pytest.fixture(scope="session")
+def test_uss_jcl(base_url, session, test_config):
+    uss = test_config["test_uss_file"]
+    url = f"{base_url}/pythonservice/zosmf/restfiles/fs/{uss}"
+    create_payload = {"type": "file", "mode": "644"}
+    session.post(url, json=create_payload, headers={"Content-Type": "application/json"})
 
-        results = []
-        warnings_list = []
+    write_payload = {"records": test_config["test_jcl_content"]}
+    session.put(url, json=write_payload, headers={"Content-Type": "application/json"})
 
-        for dd in spool_files:
-            if response_format_csv == "true":
-                file_info = {
-                    "ddn": dd.ddn if hasattr(dd, "ddn") else "",
-                    "dsn": dd.dsn if hasattr(dd, "dsn") else "",
-                    "key": dd.key if hasattr(dd, "key") else 0,
-                    "stepname": dd.stepname if hasattr(dd, "stepname") else "",
-                    "procstep": dd.procstep if hasattr(dd, "procstep") else "",
-                }
-            else:
-                file_info = {
-                    "ddname": dd.ddn if hasattr(dd, "ddn") else "",
-                    "dsname": dd.dsn if hasattr(dd, "dsn") else "",
-                    "id": dd.key if hasattr(dd, "key") else 0,
-                    "stepname": dd.stepname if hasattr(dd, "stepname") else "",
-                    "procstep": dd.procstep if hasattr(dd, "procstep") else "",
-                    "jobname": jobname,
-                    "jobid": jobid,
-                    "uri": f"https://{request.host}/zosmf/restjobs/jobs/{jobname}/{jobid}/files/{dd.key if hasattr(dd, 'key') else 0}/records",
-                }
+    yield uss
 
-            results.append(file_info)
+    session.delete(url)
 
-        if max_entries and max_entries.isdigit():
-            max_count = int(max_entries)
-            if len(results) > max_count:
-                results = results[:max_count]
-                if warn == "true":
-                    warnings_list.append("results truncated")
-
-        if len(results) == 0 and warn == "true":
-            warnings_list.append("no spool files found")
-
-        response = {
-            "items": results,
-            "returnedRows": len(results),
-            "jobname": jobname,
-            "jobid": jobid,
-        }
-
-        if response_format_csv == "true":
-            response["format"] = "csv"
-        if warnings_list and warn == "true":
-            response["warnings"] = warnings_list
-        return jsonify(response)
-
-    except Exception as e:
-        error_msg = str(e)
-        return (
-            jsonify(
-                {
-                    "error": f"could not list files for job {jobname}/{jobid} - {error_msg}",
-                    "details": error_msg,
-                }
-            ),
-            500,
-        )
+@pytest.fixture(scope="session")
+def submitted_job(base_url, session, test_config):
+    """Submit a real job and return its attributes for testing"""
+    url = f"{base_url}/pythonservice/zosmf/restjobs/jobs"
+    headers = {"Content-Type": "text/plain"}
     
-@zjb_bp.route("/zosmf/restjobs/jobs/<correlator>/files", methods=["GET"])
-def list_job_files_by_correlator(correlator):
-    """
-    List the spool files for a z/OS job by job correlator.
-
-    This endpoint calls the zjb.list_spool_files function and formats the output similar to the C++ CLI.
-
-    Path Parameters:
-        correlator: Job correlator (required)
-
-    Query Parameters:
-        max-entries: Maximum number of files to return (optional)
-        warn: Show warnings (optional, default: true)
-        response-format-csv: Return CSV format (optional, default: false)
-    """
-    try:
-        max_entries = request.args.get("max-entries")
-        warn = request.args.get("warn", "true").lower()
-        response_format_csv = request.args.get("response-format-csv", "false").lower()
-
-        if not correlator:
-            return jsonify({"error": "correlator is required"}), 400
-
-        spool_files = zjb.list_spool_files(correlator)
-
-        results = []
-        warnings_list = []
-
-        for dd in spool_files:
-            if response_format_csv == "true":
-                file_info = {
-                    "ddn": dd.ddn if hasattr(dd, "ddn") else "",
-                    "dsn": dd.dsn if hasattr(dd, "dsn") else "",
-                    "key": dd.key if hasattr(dd, "key") else 0,
-                    "stepname": dd.stepname if hasattr(dd, "stepname") else "",
-                    "procstep": dd.procstep if hasattr(dd, "procstep") else "",
-                }
-            else:
-                file_info = {
-                    "ddname": dd.ddn if hasattr(dd, "ddn") else "",
-                    "dsname": dd.dsn if hasattr(dd, "dsn") else "",
-                    "id": dd.key if hasattr(dd, "key") else 0,
-                    "stepname": dd.stepname if hasattr(dd, "stepname") else "",
-                    "procstep": dd.procstep if hasattr(dd, "procstep") else "",
-                    "jobname": dd.jobname if hasattr(dd, "jobname") else "",
-                    "jobid": dd.jobid if hasattr(dd, "jobid") else "",
-                    "uri": f"https://{request.host}/zosmf/restjobs/jobs/{correlator}/files/{dd.key if hasattr(dd, 'key') else 0}/records",
-                }
-            results.append(file_info)
-
-        if max_entries and max_entries.isdigit():
-            max_count = int(max_entries)
-            if len(results) > max_count:
-                results = results[:max_count]
-                if warn == "true":
-                    warnings_list.append("results truncated")
-
-        if len(results) == 0 and warn == "true":
-            warnings_list.append("no spool files found")
-
-        response = {
-            "items": results,
-            "returnedRows": len(results),
-            "job-correlator": correlator,
-        }
-
-        if response_format_csv == "true":
-            response["format"] = "csv"
-
-        if warnings_list and warn == "true":
-            response["warnings"] = warnings_list
-
-        return jsonify(response)
-
-    except Exception as e:
-        error_msg = str(e)
-        return (
-            jsonify(
-                {
-                    "error": f"could not list files for job correlator {correlator} - {error_msg}",
-                    "details": error_msg,
-                }
-            ),
-            500,
-        )
-
-
-@zjb_bp.route(
-    "/zosmf/restjobs/jobs/<jobname>/<jobid>/files/<file_id>/records", methods=["GET"]
-)
-def read_job_file_by_name_and_id(jobname, jobid, file_id):
-    """
-    Read the contents of a specific spool file for a z/OS job by jobname, jobid and file ID.
-
-    This endpoint calls the zjb.read_spool_file function and formats the output similar to the C++ CLI.
-
-    Path Parameters:
-        jobname: Job name (required)
-        jobid: Job ID (required)
-        file_id: Spool file ID/key (required)
-
-    Query Parameters:
-        encoding: Encoding for text conversion (optional)
-        response-format-bytes: Return as bytes format (optional, default: false)
-    """
-    try:
-        encoding = request.args.get("encoding", "")
-        response_format_bytes = request.args.get(
-            "response-format-bytes", "false"
-        ).lower()
-
-        if not jobname or not jobid or not file_id:
-            return jsonify({"error": "jobname, jobid, and file_id are required"}), 400
-
-        try:
-            key = int(file_id)
-        except ValueError:
-            return jsonify({"error": f"file_id must be a number, got: {file_id}"}), 400
-
-        if zjb is None:
-            return jsonify({"error": "zjb module not available"}), 500
-
-        content = zjb.read_spool_file(jobid, key)
-
-        response = {
-            "records": content,
-            "jobname": jobname,
-            "jobid": jobid,
-            "ddname": f"DD{key:03d}",
-            "id": key,
-        }
-
-        if encoding:
-            response["warnings"] = [
-                "encoding parameter provided but handled by C++ function internally"
-            ]
-
-        if response_format_bytes == "true":
-            response["records"] = [ord(c) for c in content]
-            response["format"] = "bytes"
-        else:
-            response["format"] = "text"
-
-        return jsonify(response)
-
-    except Exception as e:
-        error_msg = str(e)
-        return (
-            jsonify(
-                {
-                    "error": f"could not view job file for {jobname}/{jobid} with key {file_id} - {error_msg}",
-                    "details": error_msg,
-                }
-            ),
-            500,
-        )
-
-
-@zjb_bp.route("/zosmf/restjobs/jobs/<correlator>/files/<file_id>/records", methods=["GET"])
-def read_job_file_by_correlator(correlator, file_id):
-    """
-    Read the contents of a specific spool file for a z/OS job by correlator and file ID.
-
-    This endpoint calls the zjb.read_spool_file function and formats the output similar to the C++ CLI.
-
-    Path Parameters:
-        correlator: Job correlator (required)
-        file_id: Spool file ID/key (required)
-
-    Query Parameters:
-        encoding: Encoding for text conversion (optional)
-        response-format-bytes: Return as bytes format (optional, default: false)
-    """
-    try:
-        encoding = request.args.get("encoding", "")
-        response_format_bytes = request.args.get(
-            "response-format-bytes", "false"
-        ).lower()
-
-        if not correlator or not file_id:
-            return jsonify({"error": "correlator and file_id are required"}), 400
-
-        try:
-            key = int(file_id)
-        except ValueError:
-            return jsonify({"error": f"file_id must be a number, got: {file_id}"}), 400
-
-        content = zjb.read_spool_file(correlator, key)
-
-        response = {
-            "records": content,
-            "job-correlator": correlator,
-            "ddname": f"DD{key:03d}",
-            "id": key,
-        }
-
-        if encoding:
-            response["warnings"] = [
-                "encoding parameter provided but handled by C++ function internally"
-            ]
-
-        if response_format_bytes == "true":
-            response["records"] = [ord(c) for c in content]
-            response["format"] = "bytes"
-        else:
-            response["format"] = "text"
-        return jsonify(response)
-
-    except Exception as e:
-        error_msg = str(e)
-        return (
-            jsonify(
-                {
-                    "error": f"could not view job file for correlator {correlator} with key {file_id} - {error_msg}",
-                    "details": error_msg,
-                }
-            ),
-            500,
-        )
-
-
-@zjb_bp.route("/zosmf/restjobs/jobs/<jobname>/<jobid>/files/JCL/records", methods=["GET"])
-def read_job_jcl_by_name_and_id(jobname, jobid):
-    """
-    Read the JCL records for a z/OS job by jobname and jobid.
-
-    This endpoint calls the zjb.get_job_jcl function and formats the output similar to the C++ CLI.
-
-    Path Parameters:
-        jobname: Job name (required)
-        jobid: Job ID (required)
-
-    Query Parameters:
-        encoding: Encoding for text conversion (optional)
-        response-format-bytes: Return as bytes format (optional, default: false)
-    """
-    try:
-        encoding = request.args.get("encoding", "")
-        response_format_bytes = request.args.get(
-            "response-format-bytes", "false"
-        ).lower()
-
-        if not jobname or not jobid:
-            return jsonify({"error": "jobname and jobid are required"}), 400
-
-        jcl_content = zjb.get_job_jcl(jobid)
-
-        response = {
-            "records": jcl_content,
-            "jobname": jobname,
-            "jobid": jobid,
-            "ddname": "JCL",
-            "type": "JCL",
-        }
-
-        if encoding:
-            response["warnings"] = [
-                "encoding parameter provided but handled by C++ function internally"
-            ]
-
-        if response_format_bytes == "true":
-            response["records"] = [ord(c) for c in jcl_content]
-            response["format"] = "bytes"
-        else:
-            response["format"] = "text"
-
-        return jsonify(response)
-
-    except Exception as e:
-        error_msg = str(e)
-        return (
-            jsonify(
-                {
-                    "error": f"could not view JCL for job {jobname}/{jobid} - {error_msg}",
-                    "details": error_msg,
-                }
-            ),
-            500,
-        )
-
-
-@zjb_bp.route("/zosmf/restjobs/jobs/<correlator>/files/JCL/records", methods=["GET"])
-def read_job_jcl_by_correlator(correlator):
-    """
-    Read the JCL records for a z/OS job by job correlator.
-
-    This endpoint calls the zjb.get_job_jcl function and formats the output similar to the C++ CLI.
-
-    Path Parameters:
-        correlator: Job correlator (required)
-
-    Query Parameters:
-        encoding: Encoding for text conversion (optional)
-        response-format-bytes: Return as bytes format (optional, default: false)
-    """
-    try:
-        encoding = request.args.get("encoding", "")
-        response_format_bytes = request.args.get(
-            "response-format-bytes", "false"
-        ).lower()
-
-        if not correlator:
-            return jsonify({"error": "correlator is required"}), 400
-
-        jcl_content = zjb.get_job_jcl(correlator)
-        response = {
-            "records": jcl_content,
-            "job-correlator": correlator,
-            "ddname": "JCL",
-            "type": "JCL",
-        }
-
-        if encoding:
-            response["warnings"] = [
-                "encoding parameter provided but handled by C++ function internally"
-            ]
-
-        if response_format_bytes == "true":
-            response["records"] = [ord(c) for c in jcl_content]
-            response["format"] = "bytes"
-        else:
-            response["format"] = "text"
-
-        return jsonify(response)
-
-    except Exception as e:
-        error_msg = str(e)
-        return (
-            jsonify(
-                {
-                    "error": f"could not view JCL for job correlator {correlator} - {error_msg}",
-                    "details": error_msg,
-                }
-            ),
-            500,
-        )
+    # Submit the test job
+    response = session.put(url, data=test_config["test_jcl_content"], headers=headers)
     
-@zjb_bp.route("/zosmf/restjobs/jobs", methods=["PUT"])
-def submit_job():
-    """
-    Submit a z/OS job using JCL content, data set, or USS file.
-
-    This endpoint calls the zjb.submit_job function and formats the output similar to the C++ CLI.
-
-    Content-Type Support:
-        - text/plain: JCL content in request body (X-IBM-Intrdr-Mode: TEXT or omitted)
-        - application/octet-stream: Binary JCL content (X-IBM-Intrdr-Mode: RECORD or BINARY)
-        - application/json: Reference to data set or USS file
-
-    Headers:
-        X-IBM-Intrdr-Mode: TEXT, RECORD, or BINARY (optional, default: TEXT)
-
-    Query Parameters:
-        only-jobid: Return only the job ID (optional, default: false)
-        only-correlator: Return only the job correlator (optional, default: false)  
-        wait: Wait for job status - ACTIVE, OUTPUT (optional)
-
-    Request Body:
-        For text/plain or application/octet-stream: JCL content
-        For application/json: {"dsn": "DATA.SET.NAME", "encoding": "optional"} 
-                         or {"file": "/path/to/uss/file", "encoding": "optional"}
-    """
-    try:
-        content_type = request.content_type or "text/plain"
-        intrdr_mode = request.headers.get("X-IBM-Intrdr-Mode", "TEXT").upper()
-        
-        # Query parameters
-        only_jobid = request.args.get("only-jobid", "false").lower() == "true"
-        only_correlator = request.args.get("only-correlator", "false").lower() == "true"
-        wait_status = request.args.get("wait", "").upper()
-        
-        jcl_content = ""
-        identifier = ""
-        
-        if content_type.startswith("application/json"):
-            # Handle data set or USS file reference
-            json_data = request.get_json()
-            if not json_data:
-                return jsonify({"error": "Request body is required for JSON content type"}), 400
-                
-            if "dsn" in json_data:
-                # Submit job from data set
-                dsn = json_data["dsn"]
-                if not dsn:
-                    return jsonify({"error": "dsn is required in JSON body"}), 400
-                    
-                # Read from data set
-                try:
-                    encoding = json_data.get("encoding", "")
-                    jcl_content = zds.read_data_set(dsn, encoding)
-                    identifier = dsn
-                except Exception as e:
-                    return jsonify({
-                        "error": f"could not read data set '{dsn}' - {str(e)}",
-                        "details": str(e)
-                    }), 500
-                    
-            elif "file" in json_data:
-                # Submit job from USS file
-                file_path = json_data["file"]
-                if not file_path:
-                    return jsonify({"error": "file is required in JSON body"}), 400
-                    
-                try:
-                    encoding = json_data.get("encoding", "")
-                    jcl_content = zusf.read_uss_file(file_path, encoding)
-                    identifier = file_path
-                except Exception as e:
-                    return jsonify({
-                        "error": f"could not read USS file '{file_path}' - {str(e)}",
-                        "details": str(e)
-                    }), 500
-            else:
-                return jsonify({
-                    "error": "JSON body must contain either 'dsn' or 'file' field"
-                }), 400
-                
-        else:
-            # Handle direct JCL content (text/plain or application/octet-stream)
-            if content_type.startswith("text/plain"):
-                jcl_content = request.get_data(as_text=True)
-                identifier = "JCL content"
-            elif content_type.startswith("application/octet-stream"):
-                # Handle binary/record mode
-                jcl_content = request.get_data(as_text=False).decode('utf-8', errors='ignore')
-                identifier = "JCL content (binary)"
-            else:
-                return jsonify({
-                    "error": f"Unsupported content type: {content_type}. Use text/plain, application/octet-stream, or application/json"
-                }), 400
-                
-            if not jcl_content:
-                return jsonify({"error": "JCL content is required in request body"}), 400
-                
-        # Submit the job
-        try:
-            jobid = zjb.submit_job(jcl_content)
-            
-            # Handle different response formats based on query parameters
-            if only_jobid:
-                return jsonify({"jobid": jobid})
-            elif only_correlator:
-                # Note: The correlator would need to be returned from the C++ function
-                # For now, return an error indicating this needs implementation
-                return jsonify({
-                    "error": "Job correlator not available from submit_job function",
-                    "details": "C++ function needs to return correlator"
-                }), 501
-            else:
-                response = {
-                    "message": f"Submitted {identifier}, {jobid}",
-                    "jobid": jobid,
-                    "success": True
-                }
-                
-            # Handle wait parameter
-            if wait_status in ["ACTIVE", "OUTPUT"]:
-                # Note: This would require a wait function in the C++ binding
-                response["warnings"] = [f"wait parameter '{wait_status}' provided but not supported by current C++ function"]
-            elif wait_status and wait_status not in ["ACTIVE", "OUTPUT"]:
-                return jsonify({
-                    "error": f"Invalid wait status '{wait_status}'. Must be 'ACTIVE' or 'OUTPUT'"
-                }), 400
-                
-            return jsonify(response), 201
-            
-        except Exception as e:
-            error_msg = str(e)
-            return jsonify({
-                "error": f"could not submit JCL: '{identifier}' - {error_msg}",
-                "details": error_msg
-            }), 500
-            
-    except Exception as e:
-        error_msg = str(e)
-        return jsonify({
-            "error": f"Job submission failed - {error_msg}",
-            "details": error_msg
-        }), 500
+    submit_data = response.json()
+    jobid = submit_data["jobid"]
     
-@zjb_bp.route("/zosmf/restjobs/jobs/<jobname>/<jobid>", methods=["DELETE"])
-def delete_job_by_name_and_id(jobname, jobid):
-    """
-    Delete a z/OS job by jobname and jobid.
-
-    This endpoint calls the zjb.delete_job function and formats the output similar to the C++ CLI.
-
-    Path Parameters:
-        jobname: Job name (required)
-        jobid: Job ID (required)
-    """
+    # Get job status to extract all attributes
+    status_url = f"{base_url}/pythonservice/zosmf/restjobs/jobs/{jobid}"
+    status_response = session.get(status_url)
+    submitted_job_info = status_response.json()
+    
+    # Return the actual job attributes
+    job_attributes = {
+        "jobname": submitted_job_info["jobname"],
+        "jobid": submitted_job_info["jobid"],
+        "owner": submitted_job_info["owner"],
+        "job_correlator": submitted_job_info.get("job-correlator", ""),
+        "status": submitted_job_info.get("status", "")
+    }
+    
+    yield job_attributes
+    
+    # Cleanup - try to delete the job (ignore errors)
     try:
-        if not jobname or not jobid:
-            return jsonify({"error": "jobname and jobid are required"}), 400
+        delete_url = f"{base_url}/pythonservice/zosmf/restjobs/jobs/{job_attributes['jobname']}/{job_attributes['jobid']}"
+        session.delete(delete_url)
+    except:
+        pass  # Ignore cleanup errors
 
-        # Call the C++ function to delete the job
-        zjb.delete_job(jobid)
 
-        response = {
-            "message": f"Job {jobid} deleted",
-            "jobname": jobname,
-            "jobid": jobid,
-            "success": True
-        }
-
-        return jsonify(response)
-
-    except Exception as e:
-        error_msg = str(e)
-        return (
-            jsonify(
-                {
-                    "error": f"could not delete job: '{jobid}' - {error_msg}",
-                    "details": error_msg,
-                }
-            ),
-            500,
-        )
+class TestZJBRoutes:
+    """Test class for zJB routes"""
+    
+    def test_get_job_status_by_name_and_id(self, base_url, session, submitted_job):
+        """Test GET /zosmf/restjobs/jobs/<jobname>/<jobid> - Get job status by name and ID"""
+        jobname = submitted_job["jobname"]
+        jobid = submitted_job["jobid"]
+        url = f"{base_url}/pythonservice/zosmf/restjobs/jobs/{jobname}/{jobid}"
+        
+        response = session.get(url)
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert "jobname" in data
+        assert "jobid" in data
+        assert "status" in data
+        assert "type" in data
+        assert data["type"] == "JOB"
+    
+    def test_get_job_status_by_correlator(self, base_url, session, submitted_job):
+        """Test GET /zosmf/restjobs/jobs/<correlator> - Get job status by correlator"""
+        correlator = submitted_job["job_correlator"]
+        url = f"{base_url}/pythonservice/zosmf/restjobs/jobs/{correlator}"
+        
+        response = session.get(url)
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert "jobname" in data
+        assert "job-correlator" in data
+        assert "status" in data
+        assert "type" in data
+        assert data["type"] == "JOB"
+    
+    def test_list_jobs(self, base_url, session, submitted_job):
+        """Test GET /zosmf/restjobs/jobs - List jobs"""
+        url = f"{base_url}/pythonservice/zosmf/restjobs/jobs"
+        params = {"owner": submitted_job["owner"]}
+        
+        response = session.get(url, params=params)
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert "returnedRows" in data
+        assert "owner" in data
+        assert "items" in data
+        assert isinstance(data["items"], list)
+        assert data["returnedRows"] == len(data["items"])
+        assert data["owner"] == submitted_job["owner"]
+    
+    def test_list_job_files_by_name_and_id(self, base_url, session, submitted_job):
+        """Test GET /zosmf/restjobs/jobs/<jobname>/<jobid>/files - List job files by name and ID"""
+        jobname = submitted_job["jobname"]
+        jobid = submitted_job["jobid"]
+        url = f"{base_url}/pythonservice/zosmf/restjobs/jobs/{jobname}/{jobid}/files"
+        
+        response = session.get(url)
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert "returnedRows" in data
+        assert "jobname" in data
+        assert "jobid" in data
+        assert "items" in data
+        assert data["jobname"] == jobname
+        assert data["jobid"] == jobid
+        assert isinstance(data["items"], list)
+    
+    def test_list_job_files_by_correlator(self, base_url, session, submitted_job):
+        """Test GET /zosmf/restjobs/jobs/<correlator>/files - List job files by correlator"""
+        correlator = submitted_job["job_correlator"]
+        url = f"{base_url}/pythonservice/zosmf/restjobs/jobs/{correlator}/files"
+        
+        response = session.get(url)
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert "returnedRows" in data
+        assert "job-correlator" in data
+        assert "items" in data
+        assert data["job-correlator"] == correlator
+        assert isinstance(data["items"], list)
+    
+    def test_read_job_file_by_name_and_id(self, base_url, session, submitted_job):
+        """Test GET /zosmf/restjobs/jobs/<jobname>/<jobid>/files/<id>/records - Read job file by name and ID"""
+        jobname = submitted_job["jobname"]
+        jobid = submitted_job["jobid"]
+        file = session.get(f"{base_url}/pythonservice/zosmf/restjobs/jobs/{jobid}/files").json()
+        file_id = file["items"][0]['id']
+        url = f"{base_url}/pythonservice/zosmf/restjobs/jobs/{jobname}/{jobid}/files/{file_id}/records"
+        
+        response = session.get(url)
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert "records" in data
+        assert "jobname" in data
+        assert "jobid" in data
+        assert "id" in data
+        assert "format" in data
+        assert data["jobname"] == jobname
+        assert data["jobid"] == jobid
+        assert data["id"] == file_id
+    
+    def test_read_job_file_by_correlator(self, base_url, session, submitted_job):
+        """Test GET /zosmf/restjobs/jobs/<correlator>/files/<id>/records - Read job file by correlator"""
+        correlator = submitted_job["job_correlator"]
+        file = session.get(f"{base_url}/pythonservice/zosmf/restjobs/jobs/{correlator}/files").json()
+        file_id = file["items"][0]['id']
+        url = f"{base_url}/pythonservice/zosmf/restjobs/jobs/{correlator}/files/{file_id}/records"
+        
+        response = session.get(url)
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert "records" in data
+        assert "job-correlator" in data
+        assert "id" in data
+        assert "format" in data
+        assert data["job-correlator"] == correlator
+        assert data["id"] == file_id
+    
+    def test_read_job_jcl_by_name_and_id(self, base_url, session, submitted_job):
+        """Test GET /zosmf/restjobs/jobs/<jobname>/<jobid>/files/JCL/records - Read JCL by name and ID"""
+        jobname = submitted_job["jobname"]
+        jobid = submitted_job["jobid"]
+        url = f"{base_url}/pythonservice/zosmf/restjobs/jobs/{jobname}/{jobid}/files/JCL/records"
+        
+        response = session.get(url)
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert "records" in data
+        assert "jobname" in data
+        assert "jobid" in data
+        assert "ddname" in data
+        assert "type" in data
+        assert data["jobname"] == jobname
+        assert data["jobid"] == jobid
+        assert data["ddname"] == "JCL"
+        assert data["type"] == "JCL"
+    
+    def test_read_job_jcl_by_correlator(self, base_url, session, submitted_job):
+        """Test GET /zosmf/restjobs/jobs/<correlator>/files/JCL/records - Read JCL by correlator"""
+        correlator = submitted_job["job_correlator"]
+        url = f"{base_url}/pythonservice/zosmf/restjobs/jobs/{correlator}/files/JCL/records"
+        
+        response = session.get(url)
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert "records" in data
+        assert "job-correlator" in data
+        assert "ddname" in data
+        assert "type" in data
+        assert data["job-correlator"] == correlator
+        assert data["ddname"] == "JCL"
+        assert data["type"] == "JCL"
+    
+    def test_submit_job_text_content(self, base_url, session, test_config):
+        """Test PUT /zosmf/restjobs/jobs - Submit job with text content"""
+        url = f"{base_url}/pythonservice/zosmf/restjobs/jobs"
+        headers = {"Content-Type": "text/plain"}
+        
+        response = session.put(url, data=test_config["test_jcl_content"], headers=headers)
+        
+        assert response.status_code == 201
+        data = response.json()
+        assert "jobid" in data
+        assert "success" in data
+        assert "message" in data
+        assert data["success"] == True
+        assert "JOB" in data["jobid"]
+    
+    def test_submit_job_from_dataset(self, base_url, session, test_data_set_jcl):
+        """Test PUT /zosmf/restjobs/jobs - Submit job from data set"""
+        url = f"{base_url}/pythonservice/zosmf/restjobs/jobs"
+        headers = {"Content-Type": "application/json"}
+        payload = {"dsn": test_data_set_jcl}
+        
+        response = session.put(url, json=payload, headers=headers)
+        
+        assert response.status_code == 201
+        data = response.json()
+        assert "jobid" in data
+        assert "success" in data
+        assert "message" in data
+        assert data["success"] == True
+        assert "JOB" in data["jobid"]
+    
+    def test_submit_job_from_uss_file(self, base_url, session, test_uss_jcl):
+        """Test PUT /zosmf/restjobs/jobs - Submit job from USS file"""
+        url = f"{base_url}/pythonservice/zosmf/restjobs/jobs"
+        headers = {"Content-Type": "application/json"}
+        payload = {"file": test_uss_jcl}
+        
+        response = session.put(url, json=payload, headers=headers)
+        
+        assert response.status_code == 201
+        data = response.json()
+        assert "jobid" in data
+        assert "success" in data
+        assert "message" in data
+        assert data["success"] == True
+        assert "JOB" in data["jobid"]
+    
+    def test_delete_job_by_name_and_id(self, base_url, session, submitted_job):
+        """Test DELETE /zosmf/restjobs/jobs/<jobname>/<jobid> - Delete job by name and ID"""
+        jobname = submitted_job["jobname"]
+        jobid = submitted_job["jobid"]
+        url = f"{base_url}/pythonservice/zosmf/restjobs/jobs/{jobname}/{jobid}"
+        
+        response = session.delete(url)
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert "jobname" in data
+        assert "jobid" in data
+        assert "success" in data
+        assert "message" in data
+        assert data["jobname"] == jobname
+        assert data["jobid"] == jobid
+        assert data["success"] == True
+        assert "deleted" in data["message"].lower()
+    
+    def test_list_jobs_default_owner(self, base_url, session):
+        """Test GET /zosmf/restjobs/jobs with default owner"""
+        url = f"{base_url}/pythonservice/zosmf/restjobs/jobs"
+        
+        response = session.get(url)
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert "returnedRows" in data
+        assert "owner" in data
+        assert "items" in data
+        assert data["owner"] == "*"
+        assert isinstance(data["items"], list)
+    
+    def test_invalid_file_id(self, base_url, session, submitted_job):
+        """Test error handling for invalid file ID"""
+        jobname = submitted_job["jobname"]
+        jobid = submitted_job["jobid"]
+        url = f"{base_url}/pythonservice/zosmf/restjobs/jobs/{jobname}/{jobid}/files/invalid/records"
+        
+        response = session.get(url)
+        
+        assert response.status_code == 400
+        data = response.json()
+        assert "error" in data
+        assert "file_id must be a number" in data["error"]
+    
+    def test_submit_job_empty_content(self, base_url, session):
+        """Test error handling for empty JCL content"""
+        url = f"{base_url}/pythonservice/zosmf/restjobs/jobs"
+        headers = {"Content-Type": "text/plain"}
+        
+        response = session.put(url, data="", headers=headers)
+        
+        assert response.status_code == 400
+        data = response.json()
+        assert "error" in data
+        assert "JCL content is required" in data["error"]
