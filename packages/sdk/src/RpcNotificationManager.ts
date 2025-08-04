@@ -37,7 +37,10 @@ export class RpcNotificationManager {
         timeoutId?: NodeJS.Timeout,
         callbackInfo?: callbackInfo,
     ): void {
-        this.mPendingStreamMap.set(request.id, { stream, callbackInfo });
+        this.mPendingStreamMap.set(request.id, {
+            stream: stream.on("keepAlive", () => timeoutId?.refresh()),
+            callbackInfo,
+        });
         request.params.stream = request.id;
     }
 
@@ -66,26 +69,25 @@ export class RpcNotificationManager {
             throw new Error(`Progress info callback missing for request ID: ${params.id}`);
         }
         this.mPendingStreamMap.delete(params.id);
-        callbackInfo.callback(0);
+        callbackInfo?.callback(0);
 
         const sshStream = await new Promise<ClientChannel>((resolve, reject) => {
             this.mSshClient.exec(`cat > ${params.pipePath}`, (err, stream) => (err ? reject(err) : resolve(stream)));
         });
-
         let totalBytes = 0;
-
         const progressTransform = new Transform({
             transform(chunk: Buffer, _, callback) {
                 totalBytes += chunk.length;
-                const percent = Math.min(100, Math.round((totalBytes / callbackInfo.fsize!) * 100));
-                callbackInfo.callback!(percent);
+                if (callbackInfo != null) {
+                    const percent = Math.min(100, Math.round((totalBytes / callbackInfo.fsize) * 100));
+                    callbackInfo.callback(percent);
+                }
                 readStream.emit("keepAlive");
                 callback(null, chunk);
             },
         });
 
         await pipeline(readStream, progressTransform, new Base64Encode(), sshStream.stdin);
-
         return totalBytes;
     }
 
