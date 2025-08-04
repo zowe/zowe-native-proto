@@ -227,7 +227,7 @@ static void time_wait(unsigned int interval)
 
 typedef void (*zcli_stimer)(void *);
 // NOTE(Kelosky): seems unworkable in LE, should use LE timer equivalent
-static void timer(unsigned int time, zcli_stimer cb, void *parameter)
+static void timer(unsigned int time, zcli_stimer *PTR32 cb, void *parameter)
 {
   int id = 0;                        // TODO(Kelosky): return & allow cancel by
   STIMERM_MODEL(dsa_stimerm_model);  // stack var
