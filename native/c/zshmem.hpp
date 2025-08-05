@@ -43,7 +43,7 @@ using namespace std;
 #pragma pack(1)
 typedef struct SharedMemory
 {
-  unsigned int atomic_flag;
+  unsigned int atomic_flag; // 0 = not ready, 1 = ready
   volatile uint64_t content_len;
 } ZSharedRegion;
 #pragma pack(reset)
