@@ -23,6 +23,14 @@ export interface ListFilesRequest extends common.CommandRequest, common.ListOpti
    * Directory to list files for
    */
   fspath: string;
+  /**
+   * Whether to include hidden files
+   */
+  all?: boolean;
+  /**
+   * Whether to return the long format with all attributes
+   */
+  long?: boolean;
 }
 export interface ReadFileRequest extends common.CommandRequest {
   command: "readFile";

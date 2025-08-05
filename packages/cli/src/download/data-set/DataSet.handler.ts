@@ -19,10 +19,12 @@ import { SshBaseHandler } from "../../SshBaseHandler";
 export default class DownloadDataSetHandler extends SshBaseHandler {
     public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<ds.ReadDatasetResponse> {
         const match = params.arguments.dataSet.match(/\(([^)]+)\)/);
-        const localFilePath: string = path.join(
-            params.arguments.directory ?? process.cwd(),
-            `${match ? match[1] : params.arguments.dataSet}.txt`,
-        );
+        const localFilePath: string =
+            params.arguments.file ??
+            path.join(
+                params.arguments.directory ?? process.cwd(),
+                `${match ? match[1] : params.arguments.dataSet}.txt`,
+            );
         IO.createDirsSyncFromFilePath(localFilePath);
 
         const response = await client.ds.readDataset({

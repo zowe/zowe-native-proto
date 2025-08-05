@@ -87,8 +87,18 @@ type DsMember struct {
 type UssItem struct {
 	// File name
 	Name string `json:"name"`
-	// Whether the item is a directory
-	Type uint32 `json:"itemType" tstype:"t.UssItemType"`
+	// Number of links to the item
+	Links int `json:"links"`
+	// User (owner) of the item
+	User string `json:"user"`
+	// Group of the item
+	Group string `json:"group"`
+	// Size of the item
+	Size int `json:"size"`
+	// The filetag of the item
+	Tag string `json:"filetag,omitempty"`
+	// Modification date of the item
+	Date string `json:"mtime"`
 	// The permission string of the item
 	Mode string `json:"mode"`
 }
