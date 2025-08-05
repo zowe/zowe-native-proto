@@ -104,7 +104,7 @@ MTL_FLAGS+=-g1
 MTL_FLAGS64+=-g1
 .END
 
-all: libzut.so libzut.a libzds.so libzds.a libzusf.so libzusf.a libzcn.so libzcn.a libzjb.so libzjb.a zowex zoweax extattr xlclang-extenders tests
+all: libzut.so libzut.a libzds.so libzds.a libzusf.so libzusf.a libzcn.so libzcn.a libzjb.so libzjb.a zowex zoweax extattr
 xlclang-extenders: $(OUT_DIR_CXXLANG)/zut.o $(OUT_DIR_CXXLANG)/zds.o $(OUT_DIR_CXXLANG)/zjb.o $(OUT_DIR_CXXLANG)/zcn.o $(OUT_DIR_CXXLANG)/zusf.o $(OUT_DIR_CXXLANG)/zshmem.o
 # SWIG extenders: compile C++ files with SWIG macro defined for Python bindings
 swig-extenders: $(OUT_DIR_SWIG)/zut.o $(OUT_DIR_SWIG)/zds.o $(OUT_DIR_SWIG)/zjb.o $(OUT_DIR_SWIG)/zcn.o $(OUT_DIR_SWIG)/zusf.o $(OUT_DIR_SWIG)/ztso.o

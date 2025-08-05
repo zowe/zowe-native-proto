@@ -424,7 +424,7 @@ describe("ZSshClient", () => {
             const notification = {
                 jsonrpc: "2.0",
                 method: "sendStream",
-                params: { id: 1, pipePath: "/tmp/test" },
+                params: { id: 1, pipePath: "/dev/null" },
             };
             const fakeStdout = new EventEmitter();
             const sshStream = { stdin: { write: mock.fn() }, stdout: fakeStdout, stderr: { on: mock.fn() } };
@@ -445,7 +445,7 @@ describe("ZSshClient", () => {
             const notification = {
                 jsonrpc: "2.0",
                 method: "sendStream",
-                params: { id: 1, pipePath: "/tmp/test" },
+                params: { id: 1, pipePath: "/dev/null" },
             };
             const fakeStdout = new EventEmitter();
             const sshStream = { stdin: { write: mock.fn() }, stdout: fakeStdout, stderr: { on: mock.fn() } };

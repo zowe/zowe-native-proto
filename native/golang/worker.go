@@ -266,14 +266,14 @@ func (wp *WorkerPool) GetAvailableWorkersCount() int32 {
 // Shutdown gracefully terminates all workers in the pool
 func (wp *WorkerPool) Shutdown() {
 	for _, worker := range wp.Workers {
-		// Send the quit command to the zowex process
+		// Send the quit command to the zowex process; only log errors as we're already shutting down
 		if _, err := worker.Conn.Stdin.Write([]byte("quit\n")); err != nil {
 			utils.LogDebug("Failed to send quit command to worker %d: %s", worker.ID, err)
 		}
-
-		// Close the stdin of the zowex process
-		if err := worker.Conn.Stdin.Close(); err != nil {
-			utils.LogDebug("Failed to close stdin for worker %d: %s", worker.ID, err)
+    
+		// Close the stdio connections for the zowex process
+		if err := worker.Conn.Close(); err != nil {
+			utils.LogDebug("Failed to close stdio connections for worker %d: %s", worker.ID, err)
 		}
 	}
 }

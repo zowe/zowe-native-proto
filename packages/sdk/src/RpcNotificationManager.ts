@@ -24,7 +24,7 @@ type StreamMode = "r" | "w";
 export class RpcNotificationManager {
     private mPendingStreamMap: Map<number, { stream: Stream; callbackInfo?: CallbackInfo }> = new Map();
 
-    public constructor(private mSshClient: Client) {}
+    public constructor(private readonly mSshClient: Client) {}
 
     public registerStream(
         request: RpcRequest,
