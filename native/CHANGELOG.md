@@ -4,11 +4,12 @@ All notable changes to the native code for "zowe-native-proto" are documented in
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## Recent Changes
+## `0.1.4`
 
 - `c`: Fixed an issue where the CLI help text showed the `[options]` placeholder in the usage example before the positional arguments, which is not a supported syntax. Now, the usage text shows the `[options]` placeholder after the positional arguments for the given command.
 - `c`: Added `zowex version` command to print the latest build information for the `zowex` executable. The version output contains the build date and the package version. [#366](https://github.com/zowe/zowe-native-proto/issues/366)
 - `c`: Added `full_status` variable from job output to the CSV output for the `zowex job view-status --rfc` command. [#450](https://github.com/zowe/zowe-native-proto/pull/450)
+- `golang`: If the `zowed` process abnormally terminates due to a SIGINT or SIGTERM signal, the worker processes are now gracefully terminated. [#372](https://github.com/zowe/zowe-native-proto/issues/372)
 
 ## `0.1.3`
 
