@@ -66,15 +66,6 @@ func main() {
 	defer workerPool.Shutdown()
 
 	// Set up signal handling for graceful shutdown
-	sigchan := make(chan os.Signal, 1)
-	signal.Notify(sigchan, syscall.SIGINT, syscall.SIGTERM)
-	go func() {
-		<-sigchan
-		workerPool.Shutdown()
-		os.Exit(0)
-	}()
-
-	// Set up signal handling for graceful shutdown
 	var shutdownOnce sync.Once
 	sigchan := make(chan os.Signal, 1)
 	signal.Notify(sigchan, syscall.SIGHUP, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGABRT, syscall.SIGTERM)
