@@ -17,6 +17,24 @@ import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class UploadFileToUssFileHandler extends SshBaseHandler {
     public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<uss.WriteFileResponse> {
+        let encoding = params.arguments.encoding;
+        const binary = params.arguments.binary;
+        if (encoding == null && binary == null) {
+            try {
+                const fileResp = await client.uss.listFiles({
+                    fspath: params.arguments.ussFile,
+                    all: true,
+                    long: true,
+                });
+                if (fileResp.success && fileResp.items.length > 0) {
+                    const file = fileResp.items[0];
+                    encoding = file.filetag;
+                }
+            } catch (error) {
+                // Ignore as the file may not exist yet
+            }
+        }
+
         const task: ITaskWithStatus = {
             percentComplete: 0,
             statusMessage: "Uploading...",
@@ -27,7 +45,7 @@ export default class UploadFileToUssFileHandler extends SshBaseHandler {
             {
                 stream: fs.createReadStream(params.arguments.file),
                 fspath: params.arguments.ussFile,
-                encoding: params.arguments.binary ? "binary" : params.arguments.encoding,
+                encoding: binary ? "binary" : encoding,
                 contentLen: fs.statSync(params.arguments.file).size,
             },
             (percent: number): void => {
