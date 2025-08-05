@@ -17,6 +17,7 @@
 #include "zmetal.h"
 #include "ihasdwa.h"
 #include "ihasaver.h"
+#include "zsetjmp.h"
 
 typedef struct sdwa SDWA;
 typedef struct savf4sa SAVF4SA;
@@ -44,25 +45,6 @@ typedef struct sdwarc4 SDWARC4;
       : "r0", "r1", "r14", "r15");
 #else
 #define IEAARR(routine, parm, arr, arr_parm)
-#endif
-
-#if defined(__IBM_METAL__)
-#define JUMP_ENV(f4sa, r13, rc)                                   \
-  __asm(                                                          \
-      "*                                                      \n" \
-      " LA   15,%0            -> F4SA                         \n" \
-      " LG   13,%1            = prev R13                      \n" \
-      " LMG  14,14,8(15)      Restore R14                     \n" \
-      " LMG  0,12,24(15)      Restore R0-R12                  \n" \
-      " LGHI 15," #rc "       Set RC                          \n" \
-      " BR   14               Branch and never return         \n" \
-      "*                                                        " \
-      :                                                           \
-      : "m"(f4sa),                                                \
-        "m"(r13)                                                  \
-      :);
-#else
-#define JUMP_ENV(f4sa, r13, rc)
 #endif
 
 #if defined(__IBM_METAL__)

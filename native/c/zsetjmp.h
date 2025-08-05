@@ -66,7 +66,8 @@ static void zlongjmp(ZSETJMP_ENV *zenv)
 static int zsetjmp(ZSETJMP_ENV *zenv) ATTRIBUTE(noinline);
 static int zsetjmp(ZSETJMP_ENV *zenv)
 {
-  unsigned long long int r13 = get_prev_r13();
+  unsigned long long int r13 = 0;
+  GET_STACK_ENV(r13); // NOTE(Kelosky): this is the same as get_prev_r13() but will be inlined
   unsigned char *save_area = (unsigned char *)r13;
 
   memcpy(&zenv->f4sa, save_area, sizeof(SAVF4SA));
