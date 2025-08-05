@@ -4,6 +4,11 @@ All notable changes to the Client code for "zowe-native-proto-sdk" are documente
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+
+- Added support for listing the long format for USS files with the `long` request option. When provided, the SDK returns additional file attributes, including permissions, file tag, file size, number of links, owner, and group. [#346](https://github.com/zowe/zowe-native-proto/issues/346)
+- Added support for listing all USS files with the `all` request option. When provided, the SDK includes hidden files in the list response. [#421](https://github.com/zowe/zowe-native-proto/pull/421)
+
 ## `0.1.3`
 
 - The `mode` property for a list files response now contains the UNIX permissions of the corresponding file/folder. [#341](https://github.com/zowe/zowe-native-proto/pull/341)

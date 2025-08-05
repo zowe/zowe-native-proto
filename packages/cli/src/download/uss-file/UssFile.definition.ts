@@ -58,6 +58,14 @@ export const DownloadUssFileDefinition: ICommandDefinition = {
             defaultValue: null,
             type: "string",
         },
+        {
+            name: "file",
+            aliases: ["f"],
+            description: "The full file path for the downloaded content.",
+            defaultValue: null,
+            type: "string",
+            conflictsWith: ["directory"],
+        },
     ],
     profile: { optional: ["ssh"] },
 };
