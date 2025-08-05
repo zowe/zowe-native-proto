@@ -36,7 +36,7 @@ export namespace B64String {
 }
 
 export type CallbackInfo = {
-    callback?: (percent: number) => void;
+    callback: (percent: number) => void;
     totalBytes?: number;
 };
 

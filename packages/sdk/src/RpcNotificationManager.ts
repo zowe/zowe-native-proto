@@ -57,9 +57,6 @@ export class RpcNotificationManager {
         if (!(readStream instanceof Readable)) {
             throw new Error(`No stream found for request ID: ${params.id}`);
         }
-        if (!callbackInfo?.callback || !callbackInfo.totalBytes) {
-            throw new Error(`Progress info callback missing for request ID: ${params.id}`);
-        }
         this.mPendingStreamMap.delete(params.id);
 
         const sshStream = await new Promise<ClientChannel>((resolve, reject) => {

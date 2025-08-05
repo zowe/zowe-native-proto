@@ -37,7 +37,7 @@ export class ProgressTransform extends Transform {
     public _transform(chunk: Buffer | string, encoding: BufferEncoding, callback: TransformCallback): void {
         if (chunk != null) {
             this.mBytesProcessed += typeof chunk === "string" ? Buffer.byteLength(chunk, encoding) : chunk.length;
-            if (this.mCallbackInfo != null) {
+            if (this.mCallbackInfo != null && this.mCallbackInfo.totalBytes > 0) {
                 const percent = Math.min(100, Math.round((this.mBytesProcessed / this.mCallbackInfo.totalBytes) * 100));
                 if (percent !== this.mPercentReported) {
                     this.mCallbackInfo.callback(percent);
