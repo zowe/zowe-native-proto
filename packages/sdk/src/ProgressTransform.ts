@@ -14,6 +14,7 @@ import type { CallbackInfo } from "./doc/types";
 
 export class ProgressTransform extends Transform {
     private mBytesProcessed = 0;
+    private mPercentReported = 0;
 
     public constructor(
         private mCallbackInfo?: CallbackInfo,
@@ -38,7 +39,10 @@ export class ProgressTransform extends Transform {
             this.mBytesProcessed += typeof chunk === "string" ? Buffer.byteLength(chunk, encoding) : chunk.length;
             if (this.mCallbackInfo != null) {
                 const percent = Math.min(100, Math.round((this.mBytesProcessed / this.mCallbackInfo.totalBytes) * 100));
-                this.mCallbackInfo.callback(percent);
+                if (percent !== this.mPercentReported) {
+                    this.mCallbackInfo.callback(percent);
+                    this.mPercentReported = percent;
+                }
             }
         }
         this.onDataCallback?.();
