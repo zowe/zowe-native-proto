@@ -29,12 +29,19 @@ void PERCEXIT(void *perc_exit_data)
   zwto_debug("@TEST called to percolate");
 }
 
-#pragma prolog(SOMEFUNC, " ZWEPROLG NEWDSA=(YES,8),SAVE=BAKR ")
+#pragma prolog(SOMEFUNC, " ZWEPROLG NEWDSA=(YES,8),SAVE=BAKR,SAM64=YES")
 #pragma epilog(SOMEFUNC, " ZWEEPILG ")
-void SOMEFUNC(void *parameter) ATTRIBUTE(amode31);
+// void SOMEFUNC(void *parameter);
 void SOMEFUNC(void *parameter)
 {
   zwto_debug("@TEST called some func");
+
+  // PSW psw = {0};
+  // get_psw(&psw);
+  // if (psw.ba)
+  //   zwto_debug("@TEST1 ba mode");
+  // if (psw.ea)
+  //   zwto_debug("@TEST1 ea mode");
   // return 0;
 }
 
@@ -43,6 +50,13 @@ int main()
   ZRCVY_ENV zenv = {0};
   zenv.abexit = ABEXIT;
   zenv.perc_exit = PERCEXIT;
+
+  // PSW psw = {0};
+  // get_psw(&psw);
+  // if (psw.ba)
+  //   zwto_debug("@TEST ba mode");
+  // if (psw.ea)
+  //   zwto_debug("@TEST ea mode");
 
   // int val = SOMEFUNC();
 
@@ -58,12 +72,19 @@ int main()
   // time_wait(1 * 100 * 3);
   // zwto_debug("@TEST waiting complete");
 
-  timer(1 * 100, SOMEFUNC, NULL);
+  // timer(1 * 100, SOMEFUNC, NULL);
 
-  zwto_debug("@TEST waiting for 3 seconds");
-  time_wait(1 * 100 * 3);
-  cancel_timers();
-  zwto_debug("@TEST waiting complete");
+  // zwto_debug("@TEST waiting for 5 seconds");
+  // time_wait(1 * 100 * 5);
+
+  // get_psw(&psw);
+  // if (psw.ba)
+  //   zwto_debug("@TEST2 ba mode");
+  // if (psw.ea)
+  //   zwto_debug("@TEST2 ea mode");
+
+  // cancel_timers();
+  // zwto_debug("@TEST waiting complete");
 
   if (0 == enable_recovery(&zenv))
   {

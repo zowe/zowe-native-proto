@@ -226,7 +226,7 @@ int ZRCVYARR(SDWA sdwa)
 static void ZRCVYRTE(ZRCVY_ENV *zenv) ATTRIBUTE(noinline);
 static void ZRCVYRTE(ZRCVY_ENV *zenv)
 {
-  get_r14_by_ref(&zenv->arr_return);
+  GET_ENTRY_REG64(zenv->arr_return, 8); // NOTE(Kelosky): this is the same as get_r14_by_ref() but will be inlined
   JUMP_ENV(zenv->f4sa, zenv->r13, 0);
 }
 
@@ -235,7 +235,8 @@ static int disable_recovery(ZRCVY_ENV *zenv) ATTRIBUTE(noinline);
 static int disable_recovery(ZRCVY_ENV *zenv)
 {
   // get main stack regs and stack pointer
-  unsigned long long int r13 = get_prev_r13();
+  unsigned long long int r13 = 0;
+  GET_STACK_ENV(r13); // NOTE(Kelosky): this is the same as get_prev_r13() but will be inlined
   unsigned char *save_area = (unsigned char *)r13;
   memcpy(&zenv->final_f4sa, save_area, sizeof(SAVF4SA));
   zenv->final_r13 = r13;
@@ -250,7 +251,8 @@ static int disable_recovery(ZRCVY_ENV *zenv)
 static int enable_recovery(ZRCVY_ENV *zenv) ATTRIBUTE(noinline);
 static int enable_recovery(ZRCVY_ENV *zenv)
 {
-  unsigned long long int r13 = get_prev_r13();
+  unsigned long long int r13 = 0;
+  GET_STACK_ENV(r13); // NOTE(Kelosky): this is the same as get_prev_r13() but will be inlined
   unsigned char *save_area = (unsigned char *)r13;
 
   memcpy(&zenv->f4sa, save_area, sizeof(SAVF4SA));
@@ -259,7 +261,12 @@ static int enable_recovery(ZRCVY_ENV *zenv)
   // here we call a router routine which will route back to main line code
   // eventually, whenever we call to drop recovery, we then fall through after this
   // IEAARR invocation and jump back to where to drop was called
-  ieaarr(ZRCVYRTE, zenv, ZRCVYARR, zenv);
+  // ieaarr(ZRCVYRTE, zenv, ZRCVYARR, zenv);
+  IEAARR(
+      ZRCVYRTE,
+      &zenv,
+      ZRCVYARR,
+      zenv);
 
   // jump back to main whenever drop was called
   JUMP_ENV(zenv->final_f4sa, zenv->final_r13, 0);
