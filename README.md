@@ -85,6 +85,7 @@ We use a custom build tool for interacting with z/OS that defines the following 
 | `z:build`     | Run `make` and `go build` on z/OS to build native binaries                  |
 | `z:clean`     | Run `make clean` on z/OS to clean build targets                             |
 | `z:delete`    | Delete all files from deploy directory                                      |
+| `z:make`      | Execute the specified Make targets on z/OS                                  |
 | `z:package`   | Create server PAX artifact in `dist` directory                              |
 | `z:rebuild`   | Upload and Build combined in one command                                    |
 | `z:test`      | Run automated tests for native components on z/OS                           |
