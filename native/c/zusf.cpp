@@ -304,7 +304,6 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, string file, string pipe, size_
     return RTNCD_FAILURE;
   }
   set_content_length((uint64_t)st.st_size);
-  msync(ZShared::instance()->region, sizeof(ZSharedRegion), MS_SYNC);
 
   int fifo_fd = open(pipe.c_str(), O_WRONLY);
   FILE *fout = fdopen(fifo_fd, "w");

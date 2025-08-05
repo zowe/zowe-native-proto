@@ -15,7 +15,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"io"
+	"os"
 	"strings"
 	"sync"
 	"syscall"
@@ -196,7 +196,8 @@ func CreateWorkerPool(numWorkers int, requestQueue chan []byte, dispatcher *cmds
 // initializeWorker initializes a worker for forwarding `zowex` requests/responses
 func initializeWorker(worker *Worker, pool *WorkerPool) {
 	// Create a separate `zowex` process in interactive mode for each worker
-	workerCmd := utils.BuildCommand([]string{"--it"})
+	worker.ShmPath = fmt.Sprintf("%s/zowe-native-proto_%d-%d-%d_shm", os.TempDir(), os.Geteuid(), os.Getpid(), worker.ID)
+	workerCmd := utils.BuildCommand([]string{"--it", "--shm-file", worker.ShmPath})
 	workerStdin, err := workerCmd.StdinPipe()
 	if err != nil {
 		panic(err)
@@ -219,25 +220,9 @@ func initializeWorker(worker *Worker, pool *WorkerPool) {
 		panic(err)
 	}
 
-	// Wait for the instance of `zowex` to be ready and capture shared memory info
-	reader := bufio.NewReader(workerStdout)
-	totalOut := ""
-	// Read the startup message
-	for {
-		if out, err := reader.ReadBytes('\n'); len(out) > 0 || err != nil {
-			if err == io.EOF {
-				continue
-			}
-			str := string(out)
-			totalOut = totalOut + str
-			fmt.Println("Received input from worker", str)
-			// Parse shared memory file path from "Shared memory initialized (Path: /tmp/zowex_shm_XXXXXX)"
-			if idx := strings.Index(totalOut, "Path: "); idx != -1 {
-				start := idx + 6
-				worker.ShmPath = strings.TrimSpace(totalOut[start:])
-				break
-			}
-		}
+	// Wait for the instance of `zowex` to be ready
+	if _, err = bufio.NewReader(workerStdout).ReadBytes('\n'); err != nil {
+		panic(err)
 	}
 
 	// Open the shared memory file

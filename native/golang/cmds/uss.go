@@ -165,13 +165,13 @@ func HandleReadFileRequest(conn *utils.StdioConn, params []byte) (result any, e 
 			timeout := 10 * time.Second
 
 			for {
-				syncBit := atomic.LoadInt32((*int32)(unsafe.Pointer(&conn.SharedMem[0])))
-				if syncBit != 0 {
+				atomicFlag := atomic.LoadInt32((*int32)(unsafe.Pointer(&conn.SharedMem[0])))
+				if atomicFlag != 0 {
 					break
 				}
 
 				if time.Since(startTime) >= timeout {
-					utils.LogError("[ReadFileRequest] Timeout waiting for sync bit after 10 seconds, syncBit: %d", syncBit)
+					utils.LogError("[ReadFileRequest] Timeout waiting for atomic flag after 10 seconds")
 					return
 				}
 
