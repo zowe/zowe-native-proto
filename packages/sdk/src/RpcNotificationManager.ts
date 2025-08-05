@@ -24,7 +24,7 @@ type StreamMode = "r" | "w";
 export class RpcNotificationManager {
     private readonly mPendingStreamMap: Map<number, Stream> = new Map();
 
-    public constructor(private mSshClient: Client) {}
+    public constructor(private readonly mSshClient: Client) {}
 
     public registerStream(request: RpcRequest, stream: Stream, timeoutId?: NodeJS.Timeout): void {
         this.mPendingStreamMap.set(

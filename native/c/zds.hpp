@@ -70,7 +70,7 @@ extern "C"
  * @param encoding The desired encoding for the data set (optional)
  * @return int 0 for success; non zero otherwise
  */
-int zds_read_from_dsn(ZDS *zds, std::string dsn, std::string &response);
+int zds_read_from_dsn(ZDS *zds, const std::string &dsn, std::string &response);
 
 /**
  * @brief Write data to a z/OS data set name
@@ -80,7 +80,7 @@ int zds_read_from_dsn(ZDS *zds, std::string dsn, std::string &response);
  * @param data data to write
  * @return int 0 for success; non zero otherwise
  */
-int zds_write_to_dsn(ZDS *zds, std::string dsn, std::string &data);
+int zds_write_to_dsn(ZDS *zds, const std::string &dsn, std::string &data);
 
 /**
  * @brief Create a data set
@@ -134,7 +134,7 @@ int zds_read_from_dd(ZDS *zds, std::string ddname, std::string &response);
  * @param data data to write
  * @return int 0 for success; non zero otherwise
  */
-int zds_write_to_dd(ZDS *zds, std::string ddname, std::string data);
+int zds_write_to_dd(ZDS *zds, std::string ddname, const std::string &data);
 
 /**
  * @brief Create a data set
@@ -144,7 +144,7 @@ int zds_write_to_dd(ZDS *zds, std::string ddname, std::string data);
  * @param response messages from dynamic allocation (which may be present even when successful requests are made)
  * @return int 0 for success; non zero otherwise
  */
-int zds_create_dsn_vb(ZDS *zds, std::string dsn, std::string &response);
+int zds_create_dsn_vb(ZDS *zds, const std::string &dsn, std::string &response);
 
 /**
  * @brief Create an ADATA data set
@@ -154,7 +154,7 @@ int zds_create_dsn_vb(ZDS *zds, std::string dsn, std::string &response);
  * @param response messages from dynamic allocation (which may be present even when successful requests are made)
  * @return int 0 for success; non zero otherwise
  */
-int zds_create_dsn_adata(ZDS *zds, std::string dsn, std::string &response);
+int zds_create_dsn_adata(ZDS *zds, const std::string &dsn, std::string &response);
 
 /**
  * @brief Create a loadlib data set
@@ -164,7 +164,7 @@ int zds_create_dsn_adata(ZDS *zds, std::string dsn, std::string &response);
  * @param response messages from dynamic allocation (which may be present even when successful requests are made)
  * @return int 0 for success; non zero otherwise
  */
-int zds_create_dsn_loadlib(ZDS *zds, std::string dsn, std::string &response);
+int zds_create_dsn_loadlib(ZDS *zds, const std::string &dsn, std::string &response);
 
 /**
  * @brief Delete a data set
@@ -186,7 +186,7 @@ int zdsReadDynalloc(std::string, std::string, std::string, std::string &); // NO
  * @param content_len pointer where the length of the data set contents will be stored
  * @return int 0 for success; non zero otherwise
  */
-int zds_read_from_dsn_streamed(ZDS *zds, std::string dsn, std::string pipe, size_t *content_len);
+int zds_read_from_dsn_streamed(ZDS *zds, const std::string &dsn, const std::string &pipe, size_t *content_len);
 
 /**
  * @brief Write data to a z/OS data set in streaming mode
@@ -197,6 +197,6 @@ int zds_read_from_dsn_streamed(ZDS *zds, std::string dsn, std::string pipe, size
  * @param content_len pointer where the length of the data set contents will be stored
  * @return int 0 for success; non zero otherwise
  */
-int zds_write_to_dsn_streamed(ZDS *zds, std::string dsn, std::string pipe, size_t *content_len);
+int zds_write_to_dsn_streamed(ZDS *zds, const std::string &dsn, const std::string &pipe, size_t *content_len);
 
 #endif

@@ -56,7 +56,7 @@ using namespace std;
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zusf_create_uss_file_or_dir(ZUSF *zusf, string file, mode_t mode, bool createDir)
+int zusf_create_uss_file_or_dir(ZUSF *zusf, const string &file, mode_t mode, bool createDir)
 {
   struct stat file_stats;
   if (stat(file.c_str(), &file_stats) != -1)
@@ -225,7 +225,7 @@ int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response, ListOptio
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
+int zusf_read_from_uss_file(ZUSF *zusf, const string &file, string &response)
 {
   ifstream in(file.c_str(), zusf->encoding_opts.data_type == eDataTypeBinary ? ifstream::in | ifstream::binary : ifstream::in);
   if (!in.is_open())
@@ -282,7 +282,7 @@ int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zusf_read_from_uss_file_streamed(ZUSF *zusf, string file, string pipe, size_t *content_len)
+int zusf_read_from_uss_file_streamed(ZUSF *zusf, const string &file, const string &pipe, size_t *content_len)
 {
   if (content_len == nullptr)
   {
@@ -364,7 +364,7 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, string file, string pipe, size_
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data)
+int zusf_write_to_uss_file(ZUSF *zusf, const string &file, string &data)
 {
   // TODO(zFernand0): Avoid overriding existing files
   const auto hasEncoding = zusf->encoding_opts.data_type == eDataTypeText && strlen(zusf->encoding_opts.codepage) > 0;
@@ -437,7 +437,7 @@ int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data)
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe, size_t *content_len)
+int zusf_write_to_uss_file_streamed(ZUSF *zusf, const string &file, const string &pipe, size_t *content_len)
 {
   // TODO(zFernand0): Avoid overriding existing files
   if (content_len == nullptr)
@@ -643,7 +643,7 @@ int zusf_delete_uss_item(ZUSF *zusf, string file, bool recursive)
   return 0;
 }
 
-short zusf_get_id_from_user_or_group(string user_or_group, bool is_user)
+short zusf_get_id_from_user_or_group(const string &user_or_group, bool is_user)
 {
   const auto is_numeric = user_or_group.find_first_not_of("0123456789") == std::string::npos;
   if (is_numeric)
@@ -660,7 +660,7 @@ short zusf_get_id_from_user_or_group(string user_or_group, bool is_user)
   return -1;
 }
 
-int zusf_chown_uss_file_or_dir(ZUSF *zusf, string file, string owner, bool recursive)
+int zusf_chown_uss_file_or_dir(ZUSF *zusf, string file, const string &owner, bool recursive)
 {
   struct stat file_stats;
   if (stat(file.c_str(), &file_stats) == -1)
