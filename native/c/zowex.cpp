@@ -9,7 +9,7 @@
  *
  */
 
-#pragma runopts(trap(on, nospie))
+#pragma runopts("TRAP(ON,NOSPIE)")
 
 #include <iostream>
 #include <memory>
