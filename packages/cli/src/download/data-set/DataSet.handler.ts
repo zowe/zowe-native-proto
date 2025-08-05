@@ -27,19 +27,18 @@ export default class DownloadDataSetHandler extends SshBaseHandler {
             );
         IO.createDirsSyncFromFilePath(localFilePath);
 
+        params.response.console.log(
+            "Downloading data set '%s' to local file '%s'",
+            params.arguments.dataSet,
+            localFilePath,
+        );
         const response = await client.ds.readDataset({
             stream: fs.createWriteStream(localFilePath),
             dsname: params.arguments.dataSet,
             encoding: params.arguments.binary ? "binary" : params.arguments.encoding,
         });
 
-        params.response.console.log(
-            "Downloading data set '%s' to local file '%s'",
-            params.arguments.dataSet,
-            localFilePath,
-        );
         params.response.data.setMessage("Successfully downloaded content to %s", localFilePath);
-
         return response;
     }
 }

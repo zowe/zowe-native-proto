@@ -45,19 +45,18 @@ export default class DownloadUssFileHandler extends SshBaseHandler {
             }
         }
 
+        params.response.console.log(
+            "Downloading USS file '%s' to local file '%s'",
+            params.arguments.filePath,
+            localFilePath,
+        );
         const response = await client.uss.readFile({
             stream: fs.createWriteStream(localFilePath),
             fspath: params.arguments.filePath,
             encoding: binary ? "binary" : encoding,
         });
 
-        params.response.console.log(
-            "Downloading USS file '%s' to local file '%s'",
-            params.arguments.filePath,
-            localFilePath,
-        );
         params.response.data.setMessage("Successfully downloaded content to %s", localFilePath);
-
         return response;
     }
 }
