@@ -103,7 +103,7 @@ int handle_job_release(const ParseResult &result);
 int loop_dynalloc(vector<string> &list);
 
 bool should_quit(const std::string &input);
-int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_name);
+int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_name, const char *shm_file_path);
 
 int main(int argc, char *argv[])
 {
@@ -557,6 +557,7 @@ int main(int argc, char *argv[])
   // Check for version or interactive mode before parsing to avoid help text
   bool is_interactive = false;
   bool is_version = false;
+  const char *shm_file_path = nullptr;
   for (int i = 1; i < argc; i++)
   {
     if (strcmp(argv[i], "--interactive") == 0 || strcmp(argv[i], "--it") == 0)
@@ -566,6 +567,14 @@ int main(int argc, char *argv[])
     else if (strcmp(argv[i], "--version") == 0 || strcmp(argv[i], "-v") == 0)
     {
       is_version = true;
+    }
+    else if (strcmp(argv[i], "--shm-file") == 0)
+    {
+      if (i + 1 < argc)
+      {
+        shm_file_path = argv[i + 1];
+        i++; // Skip the next argument since we consumed it
+      }
     }
   }
 
@@ -585,7 +594,7 @@ int main(int argc, char *argv[])
 
   if (is_interactive)
   {
-    return run_interactive_mode(arg_parser, argv[0]);
+    return run_interactive_mode(arg_parser, argv[0], shm_file_path);
   }
   else
   {
@@ -2545,27 +2554,26 @@ bool should_quit(const std::string &input)
           input == "QUIT" || input == "EXIT");
 }
 
-int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_name)
+int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_name, const char *shm_file_path)
 {
   arg_parser.update_program_name(program_name);
 
   // Initialize shared memory
+  int shm_id;
   ZSharedRegion *shm_ptr = nullptr;
-  char shm_file_path[256] = {0};
 
-  // Create new shared memory for this process (each process gets its own)
-  int shm_id = init_shared_memory(&shm_ptr, shm_file_path);
-  if (shm_id == -1)
+  if (shm_file_path != nullptr)
   {
-    cerr << "Failed to initialize shared memory" << endl;
-    return RTNCD_FAILURE;
+    // Create new shared memory for this process (each process gets its own)
+    shm_id = init_shared_memory(&shm_ptr, shm_file_path);
+    if (shm_id == -1)
+    {
+      cerr << "Failed to initialize shared memory" << endl;
+      return RTNCD_FAILURE;
+    }
   }
-  const auto progress = *reinterpret_cast<int32_t*>((uintptr_t)shm_ptr + 0x40);
 
   std::cout << "Started, enter command or 'quit' to quit..." << std::endl;
-  std::cout << "Progress: " << progress << std::endl;
-  std::cout << "Shared memory initialized. Size: 0x" << std::hex << sizeof(ZSharedRegion) << std::dec << " Path: " << shm_file_path << std::endl;
-  // print_shared_memory_status(shm_ptr);
 
   std::string command;
   int rc = 0;
@@ -2598,7 +2606,10 @@ int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_
   std::cout << "...terminated" << std::endl;
 
   // Clean up this process's shared memory
-  cleanup_shared_memory(shm_id, shm_ptr, shm_file_path);
+  if (shm_file_path != nullptr)
+  {
+    cleanup_shared_memory(shm_id, shm_ptr, shm_file_path);
+  }
 
   return rc;
 }

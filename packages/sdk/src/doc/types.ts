@@ -35,6 +35,11 @@ export namespace B64String {
     }
 }
 
+export type CallbackInfo = {
+    callback: (percent: number) => void;
+    totalBytes?: number;
+};
+
 type PromiseExecutorParams<T> = Parameters<ConstructorParameters<typeof Promise<T>>[0]>;
 type PromiseResolve<T> = PromiseExecutorParams<T>[0];
 type PromiseReject = PromiseExecutorParams<unknown>[1];

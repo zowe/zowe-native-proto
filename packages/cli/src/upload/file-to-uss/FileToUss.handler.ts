@@ -28,6 +28,7 @@ export default class UploadFileToUssFileHandler extends SshBaseHandler {
                 stream: fs.createReadStream(params.arguments.file),
                 fspath: params.arguments.ussFile,
                 encoding: params.arguments.binary ? "binary" : params.arguments.encoding,
+                contentLen: fs.statSync(params.arguments.file).size,
             },
             (percent: number): void => {
                 task.percentComplete = percent;

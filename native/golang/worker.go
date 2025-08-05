@@ -15,7 +15,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"io"
+	"os"
 	"strings"
 	"sync"
 	"syscall"
@@ -196,7 +196,8 @@ func CreateWorkerPool(numWorkers int, requestQueue chan []byte, dispatcher *cmds
 // initializeWorker initializes a worker for forwarding `zowex` requests/responses
 func initializeWorker(worker *Worker, pool *WorkerPool) {
 	// Create a separate `zowex` process in interactive mode for each worker
-	workerCmd := utils.BuildCommand([]string{"--it"})
+	worker.ShmPath = fmt.Sprintf("%s/zowe-native-proto_%d-%d-%d_shm", os.TempDir(), os.Geteuid(), os.Getpid(), worker.ID)
+	workerCmd := utils.BuildCommand([]string{"--it", "--shm-file", worker.ShmPath})
 	workerStdin, err := workerCmd.StdinPipe()
 	if err != nil {
 		panic(err)
@@ -219,35 +220,18 @@ func initializeWorker(worker *Worker, pool *WorkerPool) {
 		panic(err)
 	}
 
-	// Wait for the instance of `zowex` to be ready and capture shared memory info
-	reader := bufio.NewReader(workerStdout)
-	totalOut := ""
-	// Read the startup message
-	for {
-		if out, err := reader.ReadBytes('\n'); len(out) > 0 || err != nil {
-			if err == io.EOF {
-				continue
-			}
-			str := string(out)
-			totalOut = totalOut + str
-			fmt.Println("Received input from worker", str)
-			// Parse shared memory file path from "Shared memory initialized (Path: /tmp/zowex_shm_XXXXXX)"
-			if idx := strings.Index(totalOut, "Path: "); idx != -1 {
-				start := idx + 6
-				worker.ShmPath = strings.TrimSpace(totalOut[start:])
-				break
-			}
-		}
+	// Wait for the instance of `zowex` to be ready
+	if _, err = bufio.NewReader(workerStdout).ReadBytes('\n'); err != nil {
+		panic(err)
 	}
 
 	// Open the shared memory file
 	if worker.ShmPath != "" {
 		fd, err := syscall.Open(worker.ShmPath, syscall.O_RDWR, 0600)
 		if err != nil {
-			fmt.Printf("Worker %d: Failed to open shared memory file %s: %v\n", worker.ID, worker.ShmPath, err)
+			utils.LogError("Worker %d: Failed to open shared memory file %s: %v\n", worker.ID, worker.ShmPath, err)
 		} else {
 			worker.ShmFD = int(fd)
-			fmt.Printf("Worker %d: Successfully opened shared memory file %s (FD: %d)\n", worker.ID, worker.ShmPath, worker.ShmFD)
 		}
 	}
 
@@ -256,10 +240,9 @@ func initializeWorker(worker *Worker, pool *WorkerPool) {
 		// Use unix.Mmap for memory mapping
 		data, err := unix.Mmap(worker.ShmFD, 0, 68, unix.PROT_READ|unix.PROT_WRITE, unix.MAP_SHARED)
 		if err != nil {
-			fmt.Printf("Worker %d: Failed to mmap shared memory: %v\n", worker.ID, err)
+			utils.LogError("Worker %d: Failed to mmap shared memory: %v\n", worker.ID, err)
 		} else {
 			workerConn.SharedMem = data
-			// fmt.Printf("Worker %d: Successfully mapped %d bytes\n", worker.ID, len(worker.ShmData))
 		}
 	}
 

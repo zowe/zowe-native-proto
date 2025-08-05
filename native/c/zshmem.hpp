@@ -43,7 +43,8 @@ using namespace std;
 #pragma pack(1)
 typedef struct SharedMemory
 {
-  unsigned int progress;
+  unsigned int atomic_flag; // 0 = not ready, 1 = ready
+  volatile uint64_t content_len;
 } ZSharedRegion;
 #pragma pack(reset)
 
@@ -102,12 +103,9 @@ inline void cleanup_shared_memory(int shm_id, ZSharedRegion *shm_ptr, const char
 }
 
 // Create a new shared memory segment
-inline int create_shared_memory(ZSharedRegion **shm_ptr, char *file_path_out = nullptr)
+inline int init_shared_memory(ZSharedRegion **shm_ptr, const char *file_path = nullptr)
 {
-  char temp_path[256];
-  sprintf(temp_path, "/tmp/zowe_shm_%d", getpid());
-
-  int fd = open(temp_path, O_CREAT | O_RDWR | O_EXCL, 0600);
+  int fd = open(file_path, O_CREAT | O_RDWR | O_EXCL, 0600);
   if (fd == -1)
   {
     cerr << "Error: could not create shared memory file: " << strerror(errno) << endl;
@@ -119,7 +117,7 @@ inline int create_shared_memory(ZSharedRegion **shm_ptr, char *file_path_out = n
   {
     cerr << "Error: could not size shared memory file: " << strerror(errno) << endl;
     close(fd);
-    unlink(temp_path);
+    unlink(file_path);
     return -1;
   }
 
@@ -129,7 +127,7 @@ inline int create_shared_memory(ZSharedRegion **shm_ptr, char *file_path_out = n
   {
     cerr << "Error: could not map shared memory: " << strerror(errno) << endl;
     close(fd);
-    unlink(temp_path);
+    unlink(file_path);
     return -1;
   }
 
@@ -139,56 +137,34 @@ inline int create_shared_memory(ZSharedRegion **shm_ptr, char *file_path_out = n
   *shm_ptr = static_cast<ZSharedRegion *>(addr);
   ZShared::instance()->region = *shm_ptr;
 
-  // Store the file path for later cleanup instead of unlinking immediately
-  if (file_path_out)
-  {
-    strcpy(file_path_out, temp_path);
-  }
-
   return fd;
 }
 
-// Attach to an existing shared memory segment (for worker processes)
-inline int attach_shared_memory(int fd, ZSharedRegion **shm_ptr)
+inline void set_content_length(uint64_t content_len)
 {
-  if (fd <= 0)
+  if (ZShared::instance()->region == nullptr)
   {
-    cerr << "Error: invalid file descriptor: " << fd << endl;
-    return -1;
+    return;
   }
 
-  // Map the existing file
-  void *addr = mmap(nullptr, SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-  if (addr == MAP_FAILED)
-  {
-    cerr << "Error: could not attach to shared memory segment " << fd << ": " << strerror(errno) << endl;
-    return -1;
-  }
-
-  *shm_ptr = static_cast<ZSharedRegion *>(addr);
-  return 0;
-}
-
-inline int init_shared_memory(ZSharedRegion **shm_ptr, char *file_path_out = nullptr)
-{
-  return create_shared_memory(shm_ptr, file_path_out);
-}
-
-inline void set_progress(unsigned int progress)
-{
   auto *shared_memory_map = ZShared::instance()->region;
   static int plo_lock = 0;
 
   unsigned int current_value;
+  unsigned int new_value = 1;
   int cc;
+
+  shared_memory_map->content_len = content_len;
 
   do
   {
-    current_value = shared_memory_map->progress;
-    // Using __plo_CS (Compare and Swap) to atomically set the progress value
-    cc = __plo_CS(&plo_lock, &current_value, progress, &shared_memory_map->progress);
+    current_value = shared_memory_map->atomic_flag;
+    // Using __plo_CS (Compare and Swap) to atomically set the atomic flag
+    cc = __plo_CS(&plo_lock, &current_value, new_value, &shared_memory_map->atomic_flag);
     // cc == 0 means successful swap, cc == 1 means operands not equal (retry needed)
   } while (cc == 1);
+
+  msync(ZShared::instance()->region, sizeof(ZSharedRegion), MS_SYNC);
 }
 
 #endif

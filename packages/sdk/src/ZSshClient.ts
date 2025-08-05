@@ -9,8 +9,6 @@
  *
  */
 
-import { ReadStream } from "node:fs";
-import { statSync } from "node:fs";
 import { posix } from "node:path";
 import { Stream } from "node:stream";
 import { ImperativeError, Logger } from "@zowe/imperative";
@@ -110,18 +108,11 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                 reject(new ImperativeError({ msg: "Request timed out", errorCode: "ETIMEDOUT" }));
             }, this.mResponseTimeout);
             if ("stream" in request && request.stream instanceof Stream) {
-                // biome-ignore lint/suspicious/noExplicitAny: Needed to access path
-                const localFile = (request.stream as any).path;
                 this.mNotifMgr.registerStream(rpcRequest, request.stream, timeoutId, {
                     callback: percentCallback,
                     // If stream is a ReadStream use the size of the localFile in bytes
                     // If stream is a WriteStream, set undefined because the size progress will be provided by a notification
-                    fsize:
-                        request.stream instanceof ReadStream
-                            ? localFile
-                                ? statSync(localFile).size
-                                : undefined
-                            : undefined,
+                    totalBytes: "contentLen" in request ? (request.contentLen as number) : undefined,
                 });
             }
             this.mPromiseMap.set(rpcRequest.id, { resolve, reject });

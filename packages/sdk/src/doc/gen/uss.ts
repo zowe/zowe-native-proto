@@ -61,6 +61,10 @@ export interface WriteFileRequest extends common.CommandRequest {
    * Stream to read contents from
    */
   stream?: Readable;
+  /**
+   * Length of file contents in bytes (only used for streaming)
+   */
+  contentLen?: number /* int */;
 }
 export interface CreateFileRequest extends common.CommandRequest {
   command: "createFile";
