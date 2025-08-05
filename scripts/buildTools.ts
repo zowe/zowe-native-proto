@@ -461,11 +461,15 @@ async function build(connection: Client, goBuildEnv?: string) {
     console.log("Build complete!");
 }
 
-async function buildPython(connection: Client) {
-    console.log("Building native/python ...");
-    const response = await runCommandInShell(connection, `cd ${deployDirs.pythonDir} && make\n`);
-    DEBUG_MODE() && console.log(response);
-    console.log("Build complete!");
+async function make(connection: Client, inDir?: string) {
+    const pwd = inDir ?? deployDirs.cDir;
+    const targets = args.filter((arg, idx) => idx > 0 && !arg.startsWith("--")).join(" ");
+    console.log(`Running "make ${targets || "all"}"${inDir ? ` in ${pwd}` : ""}...`);
+    const response = await runCommandInShell(
+        connection,
+        `cd ${pwd} && make ${targets} ${DEBUG_MODE() ? "-DBuildType=DEBUG" : ""}\n`,
+    );
+    console.log(response);
 }
 
 async function test(connection: Client) {
@@ -474,13 +478,6 @@ async function test(connection: Client) {
         connection,
         `cd ${deployDirs.cTestDir} && _CEE_RUNOPTS="TRAP(ON,NOSPIE)" ./build-out/ztest_runner ${args[1] ?? ""} \n`,
     );
-    console.log(response);
-    console.log("Testing complete!");
-}
-
-async function testPython(connection: Client) {
-    console.log("Testing native/python ...");
-    const response = await runCommandInShell(connection, `cd ${deployDirs.pythonTestDir} && make\n`);
     console.log(response);
     console.log("Testing complete!");
 }
@@ -773,10 +770,10 @@ async function main() {
                 await build(sshClient, config.goBuildEnv);
                 break;
             case "build:python":
-                await buildPython(sshClient);
+                await make(sshClient, deployDirs.pythonDir);
                 break;
             case "test:python":
-                await testPython(sshClient);
+                await make(sshClient, deployDirs.pythonTestDir);
                 break;
             case "clean":
                 await clean(sshClient);
@@ -789,6 +786,9 @@ async function main() {
                 break;
             case "get-listings":
                 await getListings(sshClient);
+                break;
+            case "make":
+                await make(sshClient);
                 break;
             case "package":
                 await artifacts(sshClient, true);
