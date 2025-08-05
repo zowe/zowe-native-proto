@@ -110,22 +110,11 @@ int main(int argc, char *argv[])
   }
   else
   {
-    cerr << "Failed to get current working directory. Using relative path for log file." << endl;
     log_path_str = "logs/zowex.log";
   }
 
   unsigned int code = 0;
   string resp;
-  string dynalloc_str = "alloc fi(ZWXLOGDD) path('" + log_path_str + "') pathopts(OWRONLY,OCREAT,OAPPEND) pathmode(SIRWXU) filedata(TEXT)";
-  int rc = zut_bpxwdyn(dynalloc_str, &code, resp);
-  if (rc != 0)
-  {
-    cerr << "Failed to allocate ZWXLOGDD for logging: " << resp << endl;
-  }
-
-  // Initialize logger after DD allocation and set to TRACE level
-  ZLogger::get_instance().initialize_with_dd_path(log_path_str);
-  ZLogger::get_instance().set_log_level(LogLevel::TRACE);
 
   char arg_buf[1024];
   if (argc > 1)

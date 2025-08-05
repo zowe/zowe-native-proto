@@ -104,7 +104,7 @@ MTL_FLAGS+=-g1
 MTL_FLAGS64+=-g1
 .END
 
-all: libzut.so libzut.a libzds.so libzds.a libzusf.so libzusf.a libzcn.so libzcn.a libzjb.so libzjb.a libzlogger.so libzlogger.a zowex zoweax extattr xlclang-extenders tests
+all: libzut.so libzut.a libzds.so libzds.a libzusf.so libzusf.a libzcn.so libzcn.a libzjb.so libzjb.a zowex zoweax extattr xlclang-extenders tests
 xlclang-extenders: $(OUT_DIR_CXXLANG)/zut.o $(OUT_DIR_CXXLANG)/zds.o $(OUT_DIR_CXXLANG)/zjb.o $(OUT_DIR_CXXLANG)/zcn.o $(OUT_DIR_CXXLANG)/zusf.o
 # SWIG extenders: compile C++ files with SWIG macro defined for Python bindings
 swig-extenders: $(OUT_DIR_SWIG)/zut.o $(OUT_DIR_SWIG)/zds.o $(OUT_DIR_SWIG)/zjb.o $(OUT_DIR_SWIG)/zcn.o $(OUT_DIR_SWIG)/zusf.o $(OUT_DIR_SWIG)/ztso.o
@@ -150,13 +150,24 @@ $(OUT_DIR)/zutm31.o: $(OUT_DIR)/zutm31.s
 	@echo 'Building $(OUT_DIR)/zutm31.o'
 	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
-$(OUT_DIR)/libzut.so: $(OUT_DIR)/zut.o $(OUT_DIR)/zutm.o $(OUT_DIR)/zam.o $(OUT_DIR)/zutm31.o
+#
+# Metal C Logger
+#
+$(OUT_DIR)/zlogger_metal.s: zlogger_metal.c
+	@echo 'Building $(OUT_DIR)/zlogger_metal.s'
+	$(CC) $(MTL_FLAGS64) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
+
+$(OUT_DIR)/zlogger_metal.o: $(OUT_DIR)/zlogger_metal.s
+	@echo 'Building $(OUT_DIR)/zlogger_metal.o'
+	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
+
+$(OUT_DIR)/libzut.so: $(OUT_DIR)/zut.o $(OUT_DIR)/zutm.o $(OUT_DIR)/zam.o $(OUT_DIR)/zutm31.o $(OUT_DIR)/zlogger_metal.o
 	@echo 'Building $(OUT_DIR)/libzut.so'
 	$(CXX) $(DLL_BND_FLAGS) -o $@ $^ > $*.bind.lst
 
 libzut.so: $(OUT_DIRS) $(OUT_DIR)/libzut.so
 
-$(OUT_DIR)/libzut.a: $(OUT_DIR)/zut.o $(OUT_DIR)/zutm.o $(OUT_DIR)/zam.o $(OUT_DIR)/zutm31.o
+$(OUT_DIR)/libzut.a: $(OUT_DIR)/zut.o $(OUT_DIR)/zutm.o $(OUT_DIR)/zam.o $(OUT_DIR)/zutm31.o $(OUT_DIR)/zlogger_metal.o
 	@echo 'Building $(OUT_DIR)/libzut.a'
 	ar -rv $@ $^
 
@@ -322,25 +333,6 @@ $(OUT_DIR)/libzusf.a: $(OUT_DIR)/zusf.o $(OUT_DIR)/libzut.a
 libzusf.a: $(OUT_DIRS) $(OUT_DIR)/libzusf.a
 
 #
-# Logger Core
-#
-$(OUT_DIR)/zlogger_core.o: zlogger_core.c
-	@echo 'Building $(OUT_DIR)/zlogger_core.o'
-	$(CC) $(C_FLAGS) -qlist=$*.c.lst -o $@ $^
-
-$(OUT_DIR)/libzlogger.so: $(OUT_DIR)/zlogger_core.o
-	@echo 'Building $(OUT_DIR)/libzlogger.so'
-	$(CXX) $(DLL_BND_FLAGS) -o $@ $^ > $*.bind.lst
-
-libzlogger.so: $(OUT_DIRS) $(OUT_DIR)/libzlogger.so
-
-$(OUT_DIR)/libzlogger.a: $(OUT_DIR)/zlogger_core.o
-	@echo 'Building $(OUT_DIR)/libzlogger.a'
-	ar -rv $@ $^
-
-libzlogger.a: $(OUT_DIRS) $(OUT_DIR)/libzlogger.a
-
-#
 # TSO
 #
 $(OUT_DIR)/ztso.o: ztso.cpp
@@ -357,7 +349,7 @@ $(OUT_DIR)/libztso.so: ztso
 
 libztso.so: $(OUT_DIRS) $(OUT_DIR)/libztso.so
 
-$(OUT_DIR)/libztso.a: $(OUT_DIR)/ztso.o
+$(OUT_DIR)/libztso.a: $(OUT_DIR)/ztso.o $(OUT_DIR)/libzut.a
 	@echo 'Building $(OUT_DIR)/libztso.a'
 	ar -rv $@ $^
 
@@ -367,7 +359,7 @@ libztso.a: $(OUT_DIRS) $(OUT_DIR)/libztso.a
 # Test CLI
 #
 # zowex: zowex.o zcn.o zcnm.o zcnm31.o zut.o zutm.o zutm31.o zjb.o zjbm.o zssi31.o zjbm31.o zds.o
-$(OUT_DIR)/zowex: $(OUT_DIR)/zowex.o $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(OUT_DIR)/libzjb.a $(OUT_DIR)/libzds.a $(OUT_DIR)/libzusf.a $(OUT_DIR)/libztso.a $(OUT_DIR)/libzlogger.a
+$(OUT_DIR)/zowex: $(OUT_DIR)/zowex.o $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(OUT_DIR)/libzjb.a $(OUT_DIR)/libzds.a $(OUT_DIR)/libzusf.a $(OUT_DIR)/libztso.a
 	@echo 'Building zowex'
 	$(CXX) $(CPP_BND_FLAGS) -o $@ $^ > $*.bind.lst
 	ln -sf ../c/$@ ../golang/zowex
@@ -375,7 +367,7 @@ $(OUT_DIR)/zowex: $(OUT_DIR)/zowex.o $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(O
 
 zowex: $(OUT_DIRS) $(OUT_DIR)/zowex
 
-$(OUT_DIR)/zoweax: $(OUT_DIR)/zowex.o $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(OUT_DIR)/libzjb.a $(OUT_DIR)/libzds.a $(OUT_DIR)/libzusf.a $(OUT_DIR)/libztso.a $(OUT_DIR)/libzlogger.a
+$(OUT_DIR)/zoweax: $(OUT_DIR)/zowex.o $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(OUT_DIR)/libzjb.a $(OUT_DIR)/libzds.a $(OUT_DIR)/libzusf.a $(OUT_DIR)/libztso.a
 	@echo 'Building zoweax'
 	$(CXX) $(CPP_BND_FLAGS_AUTH) -o $@ $^ > $*.bind.lst
 	ln -sf ../c/$@ ../golang/zoweax

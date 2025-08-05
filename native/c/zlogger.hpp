@@ -4,92 +4,23 @@
 #include <cstdio>
 #include <cstdarg>
 #include <string>
-#include <vector>
-#include <ctime>
-#include <iostream>
-#include <fstream>
-#include <sys/stat.h>
 #include <cstdlib>
 #include <algorithm>
 #include <cctype>
+#include <iostream>
 #include "singleton.hpp"
-#include "zlogger_core.h"
+#include "zlogger_metal.h"
 
-/**
- * Log levels supported by ZLogger
- */
-enum class LogLevel
-{
-  TRACE = 0,
-  DEBUG = 1,
-  INFO = 2,
-  WARN = 3,
-  ERROR = 4,
-  FATAL = 5,
-  OFF = 6
-};
+#ifdef __MVS__
+#include <sys/stat.h>
+#include <errno.h>
+#else
+#include <sys/stat.h>
+#include <unistd.h>
+#include <errno.h>
+#endif
 
-/**
- * File transport for logging to specific files with their own log levels
- */
-class FileTransport
-{
-private:
-  std::string filename_;
-  LogLevel level_;
-  std::ofstream file_;
-
-public:
-  explicit FileTransport(const std::string &filename, LogLevel level = LogLevel::INFO)
-      : filename_(filename), level_(level)
-  {
-    file_.open(filename_.c_str(), std::ios::app);
-    if (!file_.is_open())
-    {
-      std::cerr << "Failed to open log file: " << filename_ << std::endl;
-    }
-  }
-
-  ~FileTransport()
-  {
-    if (file_.is_open())
-    {
-      file_.close();
-    }
-  }
-
-  bool should_log(LogLevel level) const
-  {
-    return level >= level_ && level != LogLevel::OFF;
-  }
-
-  void write(LogLevel level, const std::string &message)
-  {
-    if (!should_log(level) || !file_.is_open())
-    {
-      return;
-    }
-
-    std::cout << "Writing to file: " << message << std::endl;
-    file_ << message << std::endl;
-    file_.flush();
-  }
-
-  void set_level(LogLevel level)
-  {
-    level_ = level;
-  }
-
-  LogLevel get_level() const
-  {
-    return level_;
-  }
-
-  const std::string &get_filename() const
-  {
-    return filename_;
-  }
-};
+typedef zlog_level_t LogLevel;
 
 /**
  * ZLogger singleton class for centralized logging
@@ -100,11 +31,11 @@ class ZLogger : public Singleton<ZLogger>
 
 private:
   LogLevel default_level_;
-  std::vector<FileTransport *> transports_;
+  bool metal_c_initialized_;
 
 protected:
   ZLogger()
-      : default_level_(LogLevel::INFO)
+      : default_level_(ZLOGLEVEL_INFO), metal_c_initialized_(false)
   {
     // Check environment variable for log level
     const char *env_level = std::getenv("ZOWEX_LOG_LEVEL");
@@ -116,20 +47,23 @@ protected:
     // Create logs directory if it doesn't exist
     create_logs_dir();
 
-    // Initialize the C logger core for multi-process safety
-    zlog_level_t c_level = static_cast<zlog_level_t>(static_cast<int>(default_level_));
-    if (zlog_init("logs/zowex.log", c_level) == 0)
+    std::cout << "ZLogger: calling ZLGINIT" << std::endl;
+
+    // Initialize Metal C logger with default path
+    if (ZLGINIT("logs/zowex.log", default_level_) == 0)
     {
-      // C core initialized successfully, we'll use it for actual logging
+      metal_c_initialized_ = true;
+      trace("ZLogger: Metal C DD logging initialized successfully.");
     }
     else
     {
-      // Fall back to file transport if C core fails
-      add_file_transport("logs/zowex.log", default_level_);
+      metal_c_initialized_ = false;
+      // Log to stderr if Metal C init fails
+      std::cerr << "ZLogger: Metal C initialization failed" << std::endl;
     }
   }
 
-  void create_logs_dir()
+  auto create_logs_dir() -> void
   {
     if (mkdir("logs", 0750) == -1)
     {
@@ -140,81 +74,38 @@ protected:
     }
   }
 
-  void set_level_from_str(const std::string &level_str)
+  auto set_level_from_str(const std::string &level_str) -> void
   {
     std::string upper_level = level_str;
     std::transform(upper_level.begin(), upper_level.end(), upper_level.begin(), ::toupper);
 
     if (upper_level == "TRACE")
     {
-      default_level_ = LogLevel::TRACE;
+      default_level_ = ZLOGLEVEL_TRACE;
     }
     else if (upper_level == "DEBUG")
     {
-      default_level_ = LogLevel::DEBUG;
+      default_level_ = ZLOGLEVEL_DEBUG;
     }
     else if (upper_level == "INFO")
     {
-      default_level_ = LogLevel::INFO;
+      default_level_ = ZLOGLEVEL_INFO;
     }
     else if (upper_level == "WARN" || upper_level == "WARNING")
     {
-      default_level_ = LogLevel::WARN;
+      default_level_ = ZLOGLEVEL_WARN;
     }
     else if (upper_level == "ERROR")
     {
-      default_level_ = LogLevel::ERROR;
+      default_level_ = ZLOGLEVEL_ERROR;
     }
     else if (upper_level == "FATAL")
     {
-      default_level_ = LogLevel::FATAL;
+      default_level_ = ZLOGLEVEL_FATAL;
     }
     else if (upper_level == "OFF")
     {
-      default_level_ = LogLevel::OFF;
-    }
-  }
-
-  std::string format_msg(LogLevel level, const char *format, va_list args)
-  {
-    // Get current timestamp
-    time_t now = time(0);
-    char timestamp[100];
-    struct tm *timeinfo = localtime(&now);
-    strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", timeinfo);
-
-    // Get log level string
-    const char *level_str = get_level_str(level);
-
-    // Format the user message
-    char buffer[4096];
-    vsnprintf(buffer, sizeof(buffer), format, args);
-
-    // Combine timestamp, level, and message
-    char final_message[4096 + 200];
-    snprintf(final_message, sizeof(final_message), "[%s] [%s] %s", timestamp, level_str, buffer);
-
-    return std::string(final_message);
-  }
-
-  const char *get_level_str(LogLevel level)
-  {
-    switch (level)
-    {
-    case LogLevel::TRACE:
-      return "TRACE";
-    case LogLevel::DEBUG:
-      return "DEBUG";
-    case LogLevel::INFO:
-      return "INFO";
-    case LogLevel::WARN:
-      return "WARN";
-    case LogLevel::ERROR:
-      return "ERROR";
-    case LogLevel::FATAL:
-      return "FATAL";
-    default:
-      return "UNKNOWN";
+      default_level_ = ZLOGLEVEL_OFF;
     }
   }
 
@@ -222,184 +113,161 @@ public:
   /**
    * Set the default log level for the logger
    */
-  void set_log_level(LogLevel level)
+  auto set_log_level(LogLevel level) -> void
   {
     default_level_ = level;
-    // Also update the C core level
-    zlog_set_level(static_cast<zlog_level_t>(static_cast<int>(level)));
+    if (metal_c_initialized_)
+    {
+      ZLGSTLVL(level);
+    }
   }
 
   /**
    * Initialize logger with specific DD path (called after DD allocation)
    */
-  void initialize_with_dd_path(const std::string &log_path)
+  auto initialize_with_dd_path(const std::string &log_path) -> void
   {
-    // Re-initialize the C logger core with the correct path
-    zlog_cleanup(); // Clean up any existing initialization
-    zlog_level_t c_level = static_cast<zlog_level_t>(static_cast<int>(default_level_));
-    if (zlog_init(log_path.c_str(), c_level) != 0)
+    // Cleanup existing Metal C logger
+    if (metal_c_initialized_)
     {
-      // Fall back to file transport if C core fails
-      add_file_transport(log_path, default_level_);
+      ZLGCLEAN();
     }
+
+    // Re-initialize with new path
+    // if (zlg_init(log_path.c_str(), default_level_) == 0)
+    // {
+    //   metal_c_initialized_ = true;
+    // }
+    // else
+    // {
+    //   metal_c_initialized_ = false;
+    // }
   }
 
   /**
    * Get the current default log level
    */
-  LogLevel get_log_level() const
+  auto get_log_level() const -> LogLevel
   {
     return default_level_;
   }
 
   /**
-   * Add a file transport with specified filename and log level
-   */
-  void add_file_transport(const std::string &filename, LogLevel level = LogLevel::INFO)
-  {
-    transports_.push_back(new FileTransport(filename, level));
-  }
-
-  /**
-   * Remove all file transports
-   */
-  void clear_transports()
-  {
-    transports_.clear();
-  }
-
-  /**
    * Log a message at the specified level
    */
-  void log(LogLevel level, const char *format, ...)
+  auto log(LogLevel level, const char *format, ...) -> void
   {
-    if (level == LogLevel::OFF)
+    if (level == ZLOGLEVEL_OFF || !metal_c_initialized_)
     {
       return;
     }
 
-    // Try to use C core first for multi-process safety
-    zlog_level_t c_level = static_cast<zlog_level_t>(static_cast<int>(level));
     va_list args;
     va_start(args, format);
-
-    // Use C core if available
     char buffer[4096];
     vsnprintf(buffer, sizeof(buffer), format, args);
     va_end(args);
 
-    if (zlog_write_msg(c_level, buffer) == 0)
-    {
-      // Successfully logged through C core
-      return;
-    }
-
-    // Fall back to file transports if C core fails
-    va_start(args, format);
-    std::string message = format_msg(level, format, args);
-    va_end(args);
-
-    for (auto i = 0; i < transports_.size(); i++)
-    {
-      transports_[i]->write(level, message);
-    }
+    ZLGWRITE(level, buffer);
   }
 
   /**
    * Log helper functions for each level
    */
-  void trace(const char *format, ...)
+  auto trace(const char *format, ...) -> void
   {
-    // Try to use C core first for multi-process safety
-    zlog_level_t c_level = static_cast<zlog_level_t>(static_cast<int>(LogLevel::TRACE));
+    if (!metal_c_initialized_)
+    {
+      return;
+    }
+
     va_list args;
     va_start(args, format);
-
-    // Use C core if available
     char buffer[4096];
     vsnprintf(buffer, sizeof(buffer), format, args);
     va_end(args);
 
-    if (zlog_write_msg(c_level, buffer) == 0)
+    ZLGWRITE(ZLOGLEVEL_TRACE, buffer);
+  }
+
+  auto debug(const char *format, ...) -> void
+  {
+    if (!metal_c_initialized_)
     {
-      // Successfully logged through C core
       return;
     }
 
-    // Fall back to file transports if C core fails
-    va_start(args, format);
-    std::string message = format_msg(LogLevel::TRACE, format, args);
-    va_end(args);
-
-    for (auto i = 0; i < transports_.size(); i++)
-    {
-      transports_[i]->write(LogLevel::TRACE, message);
-    }
-  }
-
-  void debug(const char *format, ...)
-  {
     va_list args;
     va_start(args, format);
-    std::string message = format_msg(LogLevel::DEBUG, format, args);
+    char buffer[4096];
+    vsnprintf(buffer, sizeof(buffer), format, args);
     va_end(args);
 
-    for (auto i = 0; i < transports_.size(); i++)
-    {
-      transports_[i]->write(LogLevel::DEBUG, message);
-    }
+    ZLGWRITE(ZLOGLEVEL_DEBUG, buffer);
   }
 
-  void info(const char *format, ...)
+  auto info(const char *format, ...) -> void
   {
+    if (!metal_c_initialized_)
+    {
+      return;
+    }
+
     va_list args;
     va_start(args, format);
-    std::string message = format_msg(LogLevel::INFO, format, args);
+    char buffer[4096];
+    vsnprintf(buffer, sizeof(buffer), format, args);
     va_end(args);
 
-    for (auto i = 0; i < transports_.size(); i++)
-    {
-      transports_[i]->write(LogLevel::INFO, message);
-    }
+    ZLGWRITE(ZLOGLEVEL_INFO, buffer);
   }
 
-  void warn(const char *format, ...)
+  auto warn(const char *format, ...) -> void
   {
+    if (!metal_c_initialized_)
+    {
+      return;
+    }
+
     va_list args;
     va_start(args, format);
-    std::string message = format_msg(LogLevel::WARN, format, args);
+    char buffer[4096];
+    vsnprintf(buffer, sizeof(buffer), format, args);
     va_end(args);
 
-    for (auto i = 0; i < transports_.size(); i++)
-    {
-      transports_[i]->write(LogLevel::WARN, message);
-    }
+    ZLGWRITE(ZLOGLEVEL_WARN, buffer);
   }
 
-  void error(const char *format, ...)
+  auto error(const char *format, ...) -> void
   {
+    if (!metal_c_initialized_)
+    {
+      return;
+    }
+
     va_list args;
     va_start(args, format);
-    std::string message = format_msg(LogLevel::ERROR, format, args);
+    char buffer[4096];
+    vsnprintf(buffer, sizeof(buffer), format, args);
     va_end(args);
 
-    for (auto i = 0; i < transports_.size(); i++)
-    {
-      transports_[i]->write(LogLevel::ERROR, message);
-    }
+    ZLGWRITE(ZLOGLEVEL_ERROR, buffer);
   }
 
-  void fatal(const char *format, ...)
+  auto fatal(const char *format, ...) -> void
   {
+    if (!metal_c_initialized_)
+    {
+      return;
+    }
+
     va_list args;
     va_start(args, format);
-    std::string message = format_msg(LogLevel::FATAL, format, args);
+    char buffer[4096];
+    vsnprintf(buffer, sizeof(buffer), format, args);
     va_end(args);
 
-    for (auto i = 0; i < transports_.size(); i++)
-    {
-      transports_[i]->write(LogLevel::FATAL, message);
-    }
+    ZLGWRITE(ZLOGLEVEL_FATAL, buffer);
   }
 };
 

@@ -9,21 +9,11 @@
  *
  */
 
+#include "dcbd.h"
 #include "zlogger_metal.h"
-
-#ifndef __IBM_METAL__
-/* Include the full C logger core when not in Metal C */
-#include "zlogger_core.h"
-#endif
-
-#ifdef __IBM_METAL__
-
-/* Metal C implementation - Full implementation using WTO and DD I/O */
-
+#include "zam.h"
 #include "zwto.h"
-#include "zmetal.h"
 
-/* Global state for Metal C logger */
 static struct
 {
   char dd_name[8];    /* DD name for log file */
@@ -32,22 +22,22 @@ static struct
   int initialized;    /* Initialization flag */
   int use_wto;        /* Whether to use WTO for logging */
   int use_dd;         /* Whether DD is available for file I/O */
+  IO_CTRL *log_io;    /* BSAM I/O control block for log DD */
 } g_metal_logger = {0};
 
-/* Level strings for Metal C */
 static const char *g_level_strings[] = {
     "TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL", "OFF"};
 
 /**
  * Get current timestamp for Metal C using z/OS STCK instruction
  */
-static void zlog_metal_get_timestamp(char *buffer, int buffer_size)
+static void ZLGTIME(char *buffer, int buffer_size)
 {
 #if defined(__IBM_METAL__)
   /* Use z/OS STCK (Store Clock) instruction for high-precision timestamp */
   unsigned long long clock_value = 0;
 
-  __asm("STCK %0" : "=m"(clock_value) : :);
+  __asm(" STCK %0" : "=m"(clock_value) : : "cc");
 
   /* Convert STCK value to a simple readable format */
   /* STCK returns microseconds since 1900-01-01 00:00:00 GMT */
@@ -63,12 +53,12 @@ static void zlog_metal_get_timestamp(char *buffer, int buffer_size)
 /**
  * Write message using WTO (Write To Operator)
  */
-static int zlog_metal_write_wto(int level, const char *message)
+static int ZLGWRWTO(int level, const char *message)
 {
   WTO_BUF wto_buf = {0};
 
   /* Format WTO message with level prefix */
-  const char *level_str = (level >= ZLOG_METAL_TRACE && level <= ZLOG_METAL_OFF)
+  const char *level_str = (level >= ZLOGLEVEL_TRACE && level <= ZLOGLEVEL_OFF)
                               ? g_level_strings[level]
                               : "UNKNOWN";
 
@@ -83,102 +73,119 @@ static int zlog_metal_write_wto(int level, const char *message)
   return wto(&wto_buf);
 }
 
-/* DCB for ZWXLOGDD - would normally be in DSECT or CSECT */
-static struct
-{
-  char dcb_area[176];    /* DCB area - 176 bytes for z/OS DCB */
-  char record_area[133]; /* Record area for output record */
-  int dcb_open;          /* Flag indicating if DCB is open */
-} dd_control = {0};
+/* Record area for output formatting */
+static char g_output_record[133] = {0};
 
 /**
- * Write message to DD using QSAM-style I/O
- * This implementation uses inline assembly for QSAM PUT macro
+ * Write message to DD using BSAM I/O
  */
-static int zlog_metal_write_dd(int level, const char *message)
+static int ZLGWRDD(int level, const char *message)
 {
-  /* For Metal C, we need to use QSAM macros via inline assembly */
+  if (!g_metal_logger.log_io)
+  {
+    /* DD not available or not opened */
+    return -1;
+  }
 
-#if defined(__IBM_METAL__)
-  /* Simple record-based output to ZWXLOGDD */
-  /* This is a working implementation using basic z/OS I/O services */
+  /* Additional safety checks for Metal C */
+  if (!message)
+  {
+    return -1;
+  }
 
   /* Format the message as a fixed-length record */
-  char output_record[133];
-  int msg_len = strlen(message);
-  if (msg_len > 132)
-    msg_len = 132; /* Leave room for newline */
+  unsigned long long msg_len = strlen(message);
+  if (msg_len > 131)
+    msg_len = 131; /* Leave room for newline and null terminator */
 
-  memset(output_record, ' ', sizeof(output_record));
-  memcpy(output_record, message, msg_len);
-  output_record[132] = '\n'; /* Add newline at end */
+  /* Initialize record with spaces and ensure null termination */
+  memset(g_output_record, ' ', 132);
+  g_output_record[132] = '\0'; /* Null terminate the buffer */
 
-  /* Attempt to write using z/OS file services */
-  /* This would use QSAM PUT in a full implementation */
-  /* For now, we'll try a simplified write approach */
+  /* Copy message data safely */
+  if (msg_len > 0)
+  {
+    memcpy(g_output_record, message, msg_len);
+  }
+  g_output_record[131] = '\n'; /* Add newline before null terminator */
 
-  /* TODO: Full QSAM implementation would look like:
-   *
-   * 1. First time: OPEN the DCB
-   * if (!dd_control.dcb_open) {
-   *   __asm(
-   *     " OPEN (%0,OUTPUT)      Open DCB for output \n"
-   *     :
-   *     : "r"(&dd_control.dcb_area)
-   *     : "r0", "r1", "r14", "r15"
-   *   );
-   *   dd_control.dcb_open = 1;
-   * }
-   *
-   * 2. PUT the record
-   * __asm(
-   *   " PUT  %0,(%1)          Write record to DCB \n"
-   *   :
-   *   : "r"(&dd_control.dcb_area), "r"(output_record)
-   *   : "r0", "r1", "r14", "r15"
-   * );
-   */
+  /* Write using BSAM synchronous write with additional safety check */
+  int write_rc = writeSync(g_metal_logger.log_io, g_output_record);
 
-  /* For this implementation, fall back to WTO since full QSAM */
-  /* requires more complex DCB setup and linkage conventions */
-  return zlog_metal_write_wto(level, message);
-#else
-  return -1;
-#endif
+  return (write_rc == 0) ? 0 : -1;
 }
 
-int zlog_metal_init(const char *log_file_path, int min_level)
+int ZLGINIT(const char *log_file_path, int min_level)
 {
   if (!log_file_path)
   {
     return -1;
   }
 
-  /* Initialize Metal C logger state */
-  strncpy(g_metal_logger.log_path, log_file_path, sizeof(g_metal_logger.log_path) - 1);
-  g_metal_logger.log_path[sizeof(g_metal_logger.log_path) - 1] = '\0';
+  /* Prevent double initialization which could cause S0C4 */
+  if (g_metal_logger.initialized)
+  {
+    return 0; /* Already initialized */
+  }
+
+  /* Initialize Metal C logger state with proper bounds checking */
+  size_t path_len = strlen(log_file_path);
+  if (path_len >= sizeof(g_metal_logger.log_path))
+  {
+    path_len = sizeof(g_metal_logger.log_path) - 1;
+  }
+  memset(g_metal_logger.log_path, 0, sizeof(g_metal_logger.log_path));
+  strncpy(g_metal_logger.log_path, log_file_path, path_len);
+  g_metal_logger.log_path[path_len] = '\0';
+
   g_metal_logger.min_level = min_level;
 
   /* In Metal C, we'll use WTO as primary logging mechanism */
   g_metal_logger.use_wto = 1;
 
-  /* Try to set up DD for file logging */
-  /* Note: In Metal C, DD allocation typically happens outside the Metal C program */
-  /* We assume DD is already allocated by the calling program */
+  /* Try to set up DD for file logging using BSAM */
+  memset(g_metal_logger.dd_name, 0, sizeof(g_metal_logger.dd_name));
   strncpy(g_metal_logger.dd_name, "ZWXLOGDD", sizeof(g_metal_logger.dd_name) - 1);
-  g_metal_logger.use_dd = 1; /* Assume DD is available */
 
+  /* Attempt to open the DD for output using BSAM */
+  /* Initialize to NULL before attempting open */
+  g_metal_logger.log_io = NULL;
+
+  /* Try to open DD - open_output_assert should return NULL on failure */
+  g_metal_logger.log_io = open_output_assert("ZWXLOGDD", 132, 132, dcbrecf + dcbrecbr);
+
+  if (g_metal_logger.log_io)
+  {
+    g_metal_logger.use_dd = 1;
+    /* Log success via DD itself - but only after confirming it works */
+    ZLGWRDD(ZLOGLEVEL_INFO, "Metal C logger DD opened successfully");
+  }
+  else
+  {
+    g_metal_logger.use_dd = 0;
+    /* Log failure via WTO */
+    ZLGWRWTO(ZLOGLEVEL_WARN, "Metal C logger DD open failed, using WTO only");
+  }
+
+  /* Set initialized flag only after everything is properly set up */
   g_metal_logger.initialized = 1;
 
   /* Log initialization message */
-  zlog_metal_write_wto(ZLOG_METAL_INFO, "Metal C logger initialized");
+  if (g_metal_logger.use_dd)
+  {
+    ZLGWRDD(ZLOGLEVEL_INFO, "Metal C logger initialized with DD support");
+  }
+  else
+  {
+    ZLGWRWTO(ZLOGLEVEL_INFO, "Metal C logger initialized with WTO only");
+  }
 
   return 0;
 }
 
-int zlog_metal_write(int level, const char *message)
+int ZLGWRITE(int level, const char *message)
 {
-  char formatted_msg[ZLOG_METAL_MAX_MSG];
+  char formatted_msg[ZLOG_MAX_MSG];
   char timestamp[32];
   const char *level_str;
   int result = 0;
@@ -189,14 +196,14 @@ int zlog_metal_write(int level, const char *message)
   }
 
   /* Check if we should log this level */
-  if (level < g_metal_logger.min_level || level == ZLOG_METAL_OFF)
+  if (level < g_metal_logger.min_level || level == ZLOGLEVEL_OFF)
   {
     return 0;
   }
 
   /* Get timestamp and level string */
-  zlog_metal_get_timestamp(timestamp, sizeof(timestamp));
-  level_str = (level >= ZLOG_METAL_TRACE && level <= ZLOG_METAL_OFF)
+  ZLGTIME(timestamp, sizeof(timestamp));
+  level_str = (level >= ZLOGLEVEL_TRACE && level <= ZLOGLEVEL_OFF)
                   ? g_level_strings[level]
                   : "UNKNOWN";
 
@@ -207,7 +214,7 @@ int zlog_metal_write(int level, const char *message)
   /* Try DD writing first if available */
   if (g_metal_logger.use_dd)
   {
-    result = zlog_metal_write_dd(level, formatted_msg);
+    result = ZLGWRDD(level, formatted_msg);
     if (result == 0)
     {
       return 0; /* Successfully wrote to DD */
@@ -217,15 +224,15 @@ int zlog_metal_write(int level, const char *message)
   /* Fall back to WTO */
   if (g_metal_logger.use_wto)
   {
-    result = zlog_metal_write_wto(level, formatted_msg);
+    result = ZLGWRWTO(level, formatted_msg);
   }
 
   return result;
 }
 
-int zlog_metal_write_formatted(int level, const char *prefix, const char *message, const char *suffix)
+int ZLGWRFMT(int level, const char *prefix, const char *message, const char *suffix)
 {
-  char formatted_msg[ZLOG_METAL_MAX_MSG];
+  char formatted_msg[ZLOG_MAX_MSG];
   int pos = 0;
 
   if (!message)
@@ -236,12 +243,12 @@ int zlog_metal_write_formatted(int level, const char *prefix, const char *messag
   /* Simple string concatenation since Metal C has limited printf */
   if (prefix)
   {
-    int prefix_len = strlen(prefix);
-    if (pos + prefix_len < ZLOG_METAL_MAX_MSG - 1)
+    unsigned long long prefix_len = strlen(prefix);
+    if (pos + prefix_len < ZLOG_MAX_MSG - 1)
     {
       strcpy(formatted_msg + pos, prefix);
       pos += prefix_len;
-      if (pos < ZLOG_METAL_MAX_MSG - 2)
+      if (pos < ZLOG_MAX_MSG - 2)
       {
         formatted_msg[pos] = ' ';
         pos++;
@@ -249,22 +256,22 @@ int zlog_metal_write_formatted(int level, const char *prefix, const char *messag
     }
   }
 
-  int msg_len = strlen(message);
-  if (pos + msg_len < ZLOG_METAL_MAX_MSG - 1)
+  unsigned long long msg_len = strlen(message);
+  if (pos + msg_len < ZLOG_MAX_MSG - 1)
   {
     strcpy(formatted_msg + pos, message);
     pos += msg_len;
   }
 
-  if (suffix && pos < ZLOG_METAL_MAX_MSG - 1)
+  if (suffix && pos < ZLOG_MAX_MSG - 1)
   {
-    if (pos < ZLOG_METAL_MAX_MSG - 2)
+    if (pos < ZLOG_MAX_MSG - 2)
     {
       formatted_msg[pos] = ' ';
       pos++;
     }
-    int suffix_len = strlen(suffix);
-    if (pos + suffix_len < ZLOG_METAL_MAX_MSG - 1)
+    unsigned long long suffix_len = strlen(suffix);
+    if (pos + suffix_len < ZLOG_MAX_MSG - 1)
     {
       strcpy(formatted_msg + pos, suffix);
       pos += suffix_len;
@@ -273,124 +280,52 @@ int zlog_metal_write_formatted(int level, const char *prefix, const char *messag
 
   formatted_msg[pos] = '\0';
 
-  return zlog_metal_write(level, formatted_msg);
+  return ZLGWRITE(level, formatted_msg);
 }
 
-void zlog_metal_set_level(int level)
+void ZLGSTLVL(int level)
 {
   if (g_metal_logger.initialized)
   {
     g_metal_logger.min_level = level;
     /* Log level change */
-    zlog_metal_write_wto(ZLOG_METAL_INFO, "Log level changed");
+    ZLGWRWTO(ZLOGLEVEL_INFO, "Log level changed");
   }
 }
 
-int zlog_metal_get_level(void)
+int ZLGGTLVL(void)
 {
   if (g_metal_logger.initialized)
   {
     return g_metal_logger.min_level;
   }
-  return ZLOG_METAL_OFF;
+  return ZLOGLEVEL_OFF;
 }
 
-void zlog_metal_cleanup(void)
+void ZLGCLEAN(void)
 {
   if (g_metal_logger.initialized)
   {
-    zlog_metal_write_wto(ZLOG_METAL_INFO, "Metal C logger cleanup");
+    /* Log cleanup message before closing */
+    if (g_metal_logger.use_dd && g_metal_logger.log_io)
+    {
+      ZLGWRDD(ZLOGLEVEL_INFO, "Metal C logger cleanup - closing DD");
+    }
+    else
+    {
+      ZLGWRWTO(ZLOGLEVEL_INFO, "Metal C logger cleanup");
+    }
+
+#if defined(__IBM_METAL__)
+    /* Close the DD if it was opened */
+    if (g_metal_logger.log_io)
+    {
+      close_assert(g_metal_logger.log_io);
+      g_metal_logger.log_io = NULL;
+    }
+#endif
 
     /* Reset state */
     memset(&g_metal_logger, 0, sizeof(g_metal_logger));
   }
 }
-
-#else
-
-/* Non-Metal C implementation - bridges to the C core */
-
-int zlog_metal_init(const char *log_file_path, int min_level)
-{
-  /* Convert Metal C level to core level */
-  zlog_level_t core_level = (zlog_level_t)min_level;
-  return zlog_init(log_file_path, core_level);
-}
-
-int zlog_metal_write(int level, const char *message)
-{
-  /* Convert Metal C level to core level and write */
-  zlog_level_t core_level = (zlog_level_t)level;
-  return zlog_write_msg(core_level, message);
-}
-
-int zlog_metal_write_formatted(int level, const char *prefix, const char *message, const char *suffix)
-{
-  char formatted_msg[ZLOG_METAL_MAX_MSG];
-  int pos = 0;
-
-  if (!message)
-  {
-    return -1;
-  }
-
-  /* Format the message */
-  if (prefix)
-  {
-    int prefix_len = strlen(prefix);
-    if (pos + prefix_len < ZLOG_METAL_MAX_MSG - 1)
-    {
-      strcpy(formatted_msg + pos, prefix);
-      pos += prefix_len;
-      if (pos < ZLOG_METAL_MAX_MSG - 2)
-      {
-        formatted_msg[pos] = ' ';
-        pos++;
-      }
-    }
-  }
-
-  int msg_len = strlen(message);
-  if (pos + msg_len < ZLOG_METAL_MAX_MSG - 1)
-  {
-    strcpy(formatted_msg + pos, message);
-    pos += msg_len;
-  }
-
-  if (suffix && pos < ZLOG_METAL_MAX_MSG - 1)
-  {
-    if (pos < ZLOG_METAL_MAX_MSG - 2)
-    {
-      formatted_msg[pos] = ' ';
-      pos++;
-    }
-    int suffix_len = strlen(suffix);
-    if (pos + suffix_len < ZLOG_METAL_MAX_MSG - 1)
-    {
-      strcpy(formatted_msg + pos, suffix);
-      pos += suffix_len;
-    }
-  }
-
-  formatted_msg[pos] = '\0';
-
-  return zlog_metal_write(level, formatted_msg);
-}
-
-void zlog_metal_set_level(int level)
-{
-  zlog_level_t core_level = (zlog_level_t)level;
-  zlog_set_level(core_level);
-}
-
-int zlog_metal_get_level(void)
-{
-  return (int)zlog_get_level();
-}
-
-void zlog_metal_cleanup(void)
-{
-  zlog_cleanup();
-}
-
-#endif /* __IBM_METAL__ */

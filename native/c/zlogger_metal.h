@@ -17,25 +17,23 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Log levels for Metal C - must match zlogger_core.h */
 typedef enum
 {
-  ZLOG_METAL_TRACE = 0,
-  ZLOG_METAL_DEBUG = 1,
-  ZLOG_METAL_INFO = 2,
-  ZLOG_METAL_WARN = 3,
-  ZLOG_METAL_ERROR = 4,
-  ZLOG_METAL_FATAL = 5,
-  ZLOG_METAL_OFF = 6
-} zlog_metal_level_t;
+  ZLOGLEVEL_TRACE = 0,
+  ZLOGLEVEL_DEBUG = 1,
+  ZLOGLEVEL_INFO = 2,
+  ZLOGLEVEL_WARN = 3,
+  ZLOGLEVEL_ERROR = 4,
+  ZLOGLEVEL_FATAL = 5,
+  ZLOGLEVEL_OFF = 6
+} zlog_level_t;
 
-/* Maximum message length for Metal C */
-#define ZLOG_METAL_MAX_MSG 1024
+#define ZLOG_MAX_MSG 1024
 
-#ifdef __IBM_METAL__
-
-/* External C functions callable from Metal C */
-#ifdef __cplusplus
+#if defined(__cplusplus) && (defined(__IBMCPP__) || defined(__IBMC__))
+extern "OS"
+{
+#elif defined(__cplusplus)
 extern "C"
 {
 #endif
@@ -46,7 +44,7 @@ extern "C"
    * @param min_level Minimum log level
    * @return 0 on success, -1 on error
    */
-  int zlog_metal_init(const char *log_file_path, int min_level);
+  int ZLGINIT(const char *log_file_path, int min_level);
 
   /**
    * Write a pre-formatted message from Metal C
@@ -54,7 +52,7 @@ extern "C"
    * @param message Pre-formatted message string
    * @return 0 on success, -1 on error
    */
-  int zlog_metal_write(int level, const char *message);
+  int ZLGWRITE(int level, const char *message);
 
   /**
    * Format and write a message from Metal C with simple formatting
@@ -65,44 +63,42 @@ extern "C"
    * @param suffix Optional suffix (can be NULL)
    * @return 0 on success, -1 on error
    */
-  int zlog_metal_write_formatted(int level, const char *prefix, const char *message, const char *suffix);
+  int ZLGWRFMT(int level, const char *prefix, const char *message, const char *suffix);
 
   /**
    * Set log level from Metal C
    * @param level New minimum log level
    */
-  void zlog_metal_set_level(int level);
+  void ZLGSTLVL(int level);
 
   /**
    * Get current log level from Metal C
    * @return Current minimum log level
    */
-  int zlog_metal_get_level(void);
+  int ZLGGTLVL(void);
 
   /**
    * Cleanup logger from Metal C
    */
-  void zlog_metal_cleanup(void);
+  void ZLGCLEAN(void);
 
-#ifdef __cplusplus
+#if defined(__cplusplus)
 }
 #endif
 
 /* Convenience macros for Metal C logging */
-#define ZLOG_METAL_TRACE_MSG(msg) zlog_metal_write(ZLOG_METAL_TRACE, msg)
-#define ZLOG_METAL_DEBUG_MSG(msg) zlog_metal_write(ZLOG_METAL_DEBUG, msg)
-#define ZLOG_METAL_INFO_MSG(msg) zlog_metal_write(ZLOG_METAL_INFO, msg)
-#define ZLOG_METAL_WARN_MSG(msg) zlog_metal_write(ZLOG_METAL_WARN, msg)
-#define ZLOG_METAL_ERROR_MSG(msg) zlog_metal_write(ZLOG_METAL_ERROR, msg)
-#define ZLOG_METAL_FATAL_MSG(msg) zlog_metal_write(ZLOG_METAL_FATAL, msg)
+#define ZLOGTMSG(msg) zlgwrite(ZLOGLEVEL_TRACE, msg)
+#define ZLOGDMSG(msg) zlgwrite(ZLOGLEVEL_DEBUG, msg)
+#define ZLOGIMSG(msg) zlgwrite(ZLOGLEVEL_INFO, msg)
+#define ZLOGWMSG(msg) zlgwrite(ZLOGLEVEL_WARN, msg)
+#define ZLOGEMSG(msg) zlgwrite(ZLOGLEVEL_ERROR, msg)
+#define ZLOGFMSG(msg) zlgwrite(ZLOGLEVEL_FATAL, msg)
 
-#define ZLOG_METAL_TRACE_FMT(prefix, msg, suffix) zlog_metal_write_formatted(ZLOG_METAL_TRACE, prefix, msg, suffix)
-#define ZLOG_METAL_DEBUG_FMT(prefix, msg, suffix) zlog_metal_write_formatted(ZLOG_METAL_DEBUG, prefix, msg, suffix)
-#define ZLOG_METAL_INFO_FMT(prefix, msg, suffix) zlog_metal_write_formatted(ZLOG_METAL_INFO, prefix, msg, suffix)
-#define ZLOG_METAL_WARN_FMT(prefix, msg, suffix) zlog_metal_write_formatted(ZLOG_METAL_WARN, prefix, msg, suffix)
-#define ZLOG_METAL_ERROR_FMT(prefix, msg, suffix) zlog_metal_write_formatted(ZLOG_METAL_ERROR, prefix, msg, suffix)
-#define ZLOG_METAL_FATAL_FMT(prefix, msg, suffix) zlog_metal_write_formatted(ZLOG_METAL_FATAL, prefix, msg, suffix)
-
-#endif /* __IBM_METAL__ */
+#define ZLOGTFMT(prefix, msg, suffix) zlgwrfmt(ZLOGLEVEL_TRACE, prefix, msg, suffix)
+#define ZLOGDFMT(prefix, msg, suffix) zlgwrfmt(ZLOGLEVEL_DEBUG, prefix, msg, suffix)
+#define ZLOGIFMT(prefix, msg, suffix) zlgwrfmt(ZLOGLEVEL_INFO, prefix, msg, suffix)
+#define ZLOGWFMT(prefix, msg, suffix) zlgwrfmt(ZLOGLEVEL_WARN, prefix, msg, suffix)
+#define ZLOGEFMT(prefix, msg, suffix) zlgwrfmt(ZLOGLEVEL_ERROR, prefix, msg, suffix)
+#define ZLOGFFMT(prefix, msg, suffix) zlgwrfmt(ZLOGLEVEL_FATAL, prefix, msg, suffix)
 
 #endif /* ZLOGGER_METAL_H */
