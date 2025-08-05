@@ -20,6 +20,8 @@
 void SOMEFUNC(void *PTR32 parameter)
 {
   zwto_debug("@TEST called some func");
+  ECB *e1 = (ECB *)parameter;
+  ecb_post(e1);
 }
 
 int main()
@@ -34,11 +36,11 @@ int main()
 
   zwto_debug("@TEST main");
 
-  // ECB e1 = {0};
+  ECB e1 = {0};
   // ecb_post(&e1);
-  // ecb_wait(&e1);
+  timer(1 * 100, SOMEFUNC, &e1);
 
-  timer(1 * 100, SOMEFUNC, NULL);
+  ecb_wait(&e1);
 
   zwto_debug("@TEST waiting for 3 seconds");
   time_wait(1 * 100 * 3);
