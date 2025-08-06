@@ -12,10 +12,12 @@
 #include "dcbd.h"
 #include "zlogger_metal.h"
 #include "zam.h"
+#include "zstorage.h"
 #include "zutm.h"
 #include "zwto.h"
+#include "znts.h"
 
-static struct
+typedef struct zlogger_metal_s
 {
   char log_path[256]; /* Log file path */
   int min_level;      /* Minimum log level */
@@ -23,7 +25,34 @@ static struct
   int use_wto;        /* Whether to use WTO for logging */
   int use_dd;         /* Whether DD is available for file I/O */
   IO_CTRL *log_io;    /* BSAM I/O control block for log DD */
-} g_metal_logger = {0};
+} zlogger_metal_t;
+
+static zlogger_metal_t *get_metal_logger()
+{
+  zlogger_metal_t *logger_data = NULL;
+  int token_length = 0;
+
+  ZNT_NAME name = {"ZWXLOGGER"};
+  ZNT_TOKEN token = {0};
+
+  /* Try to retrieve existing logger from named token */
+  int rc = znts_retrieve(3, &name, &token);
+
+  if (rc != 0 || logger_data == NULL)
+  {
+    /* Create new logger instance */
+    logger_data = (zlogger_metal_t *)storage_obtain31(sizeof(zlogger_metal_t));
+    if (logger_data)
+    {
+      memset(logger_data, 0, sizeof(zlogger_metal_t));
+
+      /* Store in named token for future access */
+      znts_create(3, &name, &token, 0);
+    }
+  }
+
+  return logger_data;
+}
 
 static const char *g_level_strings[] = {
     "TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL", "OFF"};
@@ -81,7 +110,8 @@ static char g_output_record[133] = {0};
  */
 static int ZLGWRDD(int level, const char *message)
 {
-  if (!g_metal_logger.log_io)
+  zlogger_metal_t *logger = get_metal_logger();
+  if (!logger || !logger->log_io)
   {
     /* DD not available or not opened */
     return -1;
@@ -110,37 +140,66 @@ static int ZLGWRDD(int level, const char *message)
   g_output_record[131] = '\n'; /* Add newline before null terminator */
 
   /* Write using BSAM synchronous write with additional safety check */
-  int write_rc = writeSync(g_metal_logger.log_io, g_output_record);
+  int write_rc = writeSync(logger->log_io, g_output_record);
 
   return (write_rc == 0) ? 0 : -1;
 }
 
-int ZLGINIT(const char *log_file_path, int min_level)
+#pragma prolog(ZLGINIT, " ZWEPROLG NEWDSA=(YES,512)")
+#pragma epilog(ZLGINIT, " ZWEEPILG ")
+int ZLGINIT(const char *log_file_path, int *min_level)
 {
+  zwto_debug("[>] ZLGINIT called");
   if (!log_file_path)
   {
     return -1;
   }
 
-  if (g_metal_logger.initialized)
+  zlogger_metal_t *logger = get_metal_logger();
+  if (!logger)
+  {
+    return -1;
+  }
+
+  if (logger->initialized)
   {
     return 0;
   }
+  zwto_debug("[*] log_file_path: %s", log_file_path);
+  if (min_level)
+  {
+    zwto_debug("[*] min_level: %d", *min_level);
+  }
 
-  memset(&g_metal_logger, 0, sizeof(g_metal_logger));
+  zwto_debug("[*] logger: %p", logger);
+  // memset(&g_metal_logger, 0, sizeof(g_metal_logger));
 
-  const size_t path_len = strlen(log_file_path) < sizeof(g_metal_logger.log_path) - 1 ? strlen(log_file_path) : sizeof(g_metal_logger.log_path) - 1;
-  memcpy(g_metal_logger.log_path, log_file_path, path_len);
+  const size_t path_len = strlen(log_file_path) < sizeof(logger->log_path) - 1 ? strlen(log_file_path) : sizeof(logger->log_path) - 1;
+  zwto_debug("[*] path_len: %zu", path_len);
+  zwto_debug("[*] logger->log_path before copy: %s", logger->log_path);
 
-  g_metal_logger.min_level = min_level;
-  g_metal_logger.use_wto = 1;
+  /* Print all bytes in logger before the call */
+  zwto_debug("[*] logger bytes (%zu bytes):", sizeof(*logger));
+  for (size_t i = 0; i < sizeof(*logger); i++)
+  {
+    zwto_debug("[*] byte[%zu] = 0x%02X", i, ((unsigned char *)logger)[i]);
+  }
+  zwto_debug("[*] copying log_file_path to logger->log_path");
+  strcpy(logger->log_path, log_file_path);
+  zwto_debug("[*] strcpy complete. pointer: %p", logger->log_path);
+  zwto_debug("[*] logger->log_path: %s", logger->log_path);
+
+  logger->min_level = *min_level;
+  logger->use_wto = 1;
 
   char alloc_cmd[372] = {0};
   int cmd_len = sprintf(alloc_cmd,
                         "alloc file(ZWXLOGDD) path('%.260s') pathopts(owronly,ocreat) pathmode(sirusr,siwusr,sirgrp) filedata(text)",
-                        g_metal_logger.log_path);
+                        logger->log_path);
+  zwto_debug("[*] alloc_cmd: %s", alloc_cmd);
   if (cmd_len >= sizeof(alloc_cmd) || cmd_len < 0)
   {
+    zwto_debug("[-] alloc_cmd too long");
     return -1;
   }
 
@@ -152,16 +211,19 @@ int ZLGINIT(const char *log_file_path, int min_level)
 
   bparm->len = sprintf(bparm->str, "%s", alloc_cmd);
   int rc = ZUTWDYN(bparm, response);
+  zwto_debug("[*] ZUTWDYN rc: %d", rc);
 
   if (rc != 0)
   {
+    zwto_debug("[-] ZUTWDYN failed");
     free(p);
     return rc;
   }
 
-  g_metal_logger.log_io = open_output_assert("ZWXLOGDD", 132, 132, dcbrecf + dcbrecbr);
-  g_metal_logger.use_dd = (g_metal_logger.log_io != NULL) ? 1 : 0;
-  g_metal_logger.initialized = 1;
+  logger->log_io = open_output_assert("ZWXLOGDD", 132, 132, dcbrecf + dcbrecbr);
+  logger->use_dd = (logger->log_io != NULL) ? 1 : 0;
+  logger->initialized = 1;
+  zwto_debug("[<] ZLGINIT success");
   free(p);
   return 0;
 }
@@ -173,13 +235,14 @@ int ZLGWRITE(int level, const char *message)
   const char *level_str;
   int result = 0;
 
-  if (!g_metal_logger.initialized || !message)
+  zlogger_metal_t *logger = get_metal_logger();
+  if (!logger || !logger->initialized || !message)
   {
     return -1;
   }
 
   /* Check if we should log this level */
-  if (level < g_metal_logger.min_level || level == ZLOGLEVEL_OFF)
+  if (level < logger->min_level || level == ZLOGLEVEL_OFF)
   {
     return 0;
   }
@@ -195,7 +258,7 @@ int ZLGWRITE(int level, const char *message)
           timestamp, level_str, message);
 
   /* Try DD writing first if available */
-  if (g_metal_logger.use_dd)
+  if (logger->use_dd)
   {
     result = ZLGWRDD(level, formatted_msg);
     if (result == 0)
@@ -205,7 +268,7 @@ int ZLGWRITE(int level, const char *message)
   }
 
   /* Fall back to WTO */
-  if (g_metal_logger.use_wto)
+  if (logger->use_wto)
   {
     result = ZLGWRWTO(level, formatted_msg);
   }
@@ -268,27 +331,31 @@ int ZLGWRFMT(int level, const char *prefix, const char *message, const char *suf
 
 void ZLGSTLVL(int level)
 {
-  if (g_metal_logger.initialized)
+  zlogger_metal_t *logger = get_metal_logger();
+  if (logger && logger->initialized)
   {
-    g_metal_logger.min_level = level;
+    logger->min_level = level;
   }
 }
 
 int ZLGGTLVL(void)
 {
-  if (g_metal_logger.initialized)
+  zlogger_metal_t *logger = get_metal_logger();
+  if (logger && logger->initialized)
   {
-    return g_metal_logger.min_level;
+    return logger->min_level;
   }
   return ZLOGLEVEL_OFF;
 }
 
 void ZLGCLEAN(void)
 {
-  if (g_metal_logger.initialized)
+  zlogger_metal_t *logger = get_metal_logger();
+  ZNT_NAME name = {"ZWXLOGGER"};
+  if (logger && logger->initialized)
   {
     /* Log cleanup message before closing */
-    if (g_metal_logger.use_dd && g_metal_logger.log_io)
+    if (logger->use_dd && logger->log_io)
     {
       ZLGWRDD(ZLOGLEVEL_INFO, "Metal C logger cleanup - closing DD");
     }
@@ -299,14 +366,15 @@ void ZLGCLEAN(void)
 
 #if defined(__IBM_METAL__)
     /* Close the DD if it was opened */
-    if (g_metal_logger.log_io)
+    if (logger->log_io)
     {
-      close_assert(g_metal_logger.log_io);
-      g_metal_logger.log_io = NULL;
+      close_assert(logger->log_io);
+      logger->log_io = NULL;
     }
 #endif
 
-    /* Reset state */
-    memset(&g_metal_logger, 0, sizeof(g_metal_logger));
+    /* Reset state and delete named token */
+    memset(logger, 0, sizeof(*logger));
+    znts_delete(3, &name);
   }
 }

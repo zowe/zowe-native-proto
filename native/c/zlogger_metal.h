@@ -44,7 +44,7 @@ extern "C"
    * @param min_level Minimum log level
    * @return 0 on success, -1 on error
    */
-  int ZLGINIT(const char *log_file_path, int min_level);
+  int ZLGINIT(const char *log_file_path, int *min_level);
 
   /**
    * Write a pre-formatted message from Metal C

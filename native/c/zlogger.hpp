@@ -30,7 +30,7 @@ class ZLogger : public Singleton<ZLogger>
   friend class Singleton<ZLogger>;
 
 private:
-  LogLevel default_level_;
+  int default_level_;
   bool metal_c_initialized_;
 
 protected:
@@ -43,6 +43,10 @@ protected:
     {
       set_level_from_str(env_level);
     }
+    else
+    {
+      std::cout << "[*] ZOWEX_LOG_LEVEL not set, using default level: " << default_level_ << std::endl;
+    }
 
     // Create logs directory if it doesn't exist
     create_logs_dir();
@@ -50,7 +54,7 @@ protected:
     std::cout << "ZLogger: calling ZLGINIT" << std::endl;
 
     // Initialize Metal C logger with default path
-    if (ZLGINIT("logs/zowex.log", default_level_) == 0)
+    if (ZLGINIT("logs/zowex.log", &default_level_) == 0)
     {
       metal_c_initialized_ = true;
       trace("ZLogger: Metal C DD logging initialized successfully.");
@@ -107,6 +111,7 @@ protected:
     {
       default_level_ = ZLOGLEVEL_OFF;
     }
+    std::cout << "[*] default_level_: " << default_level_ << std::endl;
   }
 
 public:
@@ -147,7 +152,7 @@ public:
   /**
    * Get the current default log level
    */
-  auto get_log_level() const -> LogLevel
+  auto get_log_level() const -> int
   {
     return default_level_;
   }
