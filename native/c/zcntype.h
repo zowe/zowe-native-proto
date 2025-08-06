@@ -41,7 +41,7 @@ typedef struct
   unsigned char version[1]; // future use
   int32_t len;              // future use
 
-  unsigned int *PTR64 ecb; // save and set to NULL to prevent waiting, int used for avoid unnecessary includes
+  unsigned int *PTR64 ecb; // save and set to NULL to prevent waiting, int used to avoid unnecessary includes
 
   int32_t buffer_size;
   int32_t buffer_size_needed; // total ammount of buffer size needed to satisfy request
