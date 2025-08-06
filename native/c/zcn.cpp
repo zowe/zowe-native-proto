@@ -68,7 +68,7 @@ int zcn_get(ZCN *zcn, string &response)
     zcn->buffer_size = ZCN_DEFAULT_BUFFER_SIZE;
   *zcn->ecb = 0; // reset ECB if follow up call
 
-  if (0 == zcn->timeout)
+  if (zcn->timeout <= 0)
     zcn->timeout = ZCN_DEFAULT_TIMEOUT;
   if (zcn->timeout > ZCN_MAX_TIMEOUT)
     zcn->timeout = ZCN_MAX_TIMEOUT;
