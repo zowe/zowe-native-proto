@@ -10,33 +10,35 @@
  */
 
 import * as fs from "node:fs";
+import * as path from "node:path";
 import type { IHandlerParameters } from "@zowe/imperative";
 import { IO } from "@zowe/imperative";
 import { B64String, type ZSshClient, type jobs } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
-import path = require("node:path");
 
 export default class DownloadJobJclHandler extends SshBaseHandler {
     public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<jobs.ReadSpoolResponse> {
-        const response = await client.jobs.readSpool({
-            spoolId: params.arguments.dsnKey,
-            jobId: params.arguments.jobId,
-            encoding: params.arguments.encoding,
-        });
-        const content = B64String.decode(response.data);
         const localFilePath: string = path.join(
             params.arguments.directory ?? process.cwd(),
             `${params.arguments.jobId}.txt`,
         );
-
         params.response.console.log(
             "Downloading spool '%s' from job ID '%s' to local file '%s'",
             params.arguments.dsnKey,
             params.arguments.jobId,
             localFilePath,
         );
+
+        const response = await client.jobs.readSpool({
+            spoolId: params.arguments.dsnKey,
+            jobId: params.arguments.jobId,
+            encoding: params.arguments.encoding,
+        });
+
+        const content = B64String.decode(response.data);
         IO.createDirsSyncFromFilePath(localFilePath);
         fs.writeFileSync(localFilePath, content, params.arguments.binary ? "binary" : "utf8");
+
         params.response.data.setMessage("Successfully downloaded content to %s", localFilePath);
         return response;
     }

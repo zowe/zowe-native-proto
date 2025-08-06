@@ -9,16 +9,18 @@
  *
  */
 
-import { readFileSync, writeFileSync } from "node:fs";
+import { createReadStream, createWriteStream } from "node:fs";
 import type * as zosfiles from "@zowe/zos-files-for-zowe-sdk";
 import { type MainframeInteraction, type Types, imperative } from "@zowe/zowe-explorer-api";
-import { B64String, UssItemType, type uss } from "zowe-native-proto-sdk";
+import { B64String, type uss } from "zowe-native-proto-sdk";
 import { SshCommonApi } from "./SshCommonApi";
 
 export class SshUssApi extends SshCommonApi implements MainframeInteraction.IUss {
     public async fileList(ussFilePath: string): Promise<zosfiles.IZosFilesResponse> {
         const response = await (await this.client).uss.listFiles({
             fspath: ussFilePath,
+            all: true,
+            long: true,
         });
         return this.buildZosFilesResponse({
             items: response.items,
@@ -26,26 +28,28 @@ export class SshUssApi extends SshCommonApi implements MainframeInteraction.IUss
         });
     }
 
-    public isFileTagBinOrAscii(ussFilePath: string): Promise<boolean> {
-        return Promise.resolve(false);
+    public async isFileTagBinOrAscii(ussFilePath: string): Promise<boolean> {
+        const tag = await this.getTag(ussFilePath);
+        return tag === "binary" || tag === "ISO8859-1";
     }
 
     public async getContents(
         ussFilePath: string,
         options: zosfiles.IDownloadSingleOptions,
     ): Promise<zosfiles.IZosFilesResponse> {
+        let writeStream = options.stream;
+        if (options.file != null) {
+            imperative.IO.createDirsSyncFromFilePath(options.file);
+            writeStream = createWriteStream(options.file);
+        }
+        if (writeStream == null) {
+            throw new Error("Failed to get contents: No stream or file path provided");
+        }
         const response = await (await this.client).uss.readFile({
             fspath: ussFilePath,
             encoding: options.binary ? "binary" : options.encoding,
+            stream: writeStream,
         });
-        const data = B64String.decodeBytes(response.data as B64String);
-        if (options.file != null) {
-            imperative.IO.createDirsSyncFromFilePath(options.file);
-            writeFileSync(options.file, data);
-        } else if (options.stream != null) {
-            options.stream.write(data);
-            options.stream.end();
-        }
         return this.buildZosFilesResponse({ etag: response.etag });
     }
 
@@ -79,7 +83,7 @@ export class SshUssApi extends SshCommonApi implements MainframeInteraction.IUss
         const response = await (await this.client).uss.writeFile({
             fspath: ussFilePath,
             encoding: options?.encoding,
-            data: B64String.encode(readFileSync(inputFilePath)),
+            stream: createReadStream(inputFilePath),
             etag: options?.etag,
         });
         return this.buildZosFilesResponse({ etag: response.etag });
@@ -114,6 +118,15 @@ export class SshUssApi extends SshCommonApi implements MainframeInteraction.IUss
         throw new Error("Not yet implemented");
     }
 
+    public async getTag(ussPath: string): Promise<string> {
+        const response = await (await this.client).uss.listFiles({
+            fspath: ussPath,
+            all: true,
+            long: true,
+        });
+        return response.items[0].filetag ?? "untagged";
+    }
+
     public async updateAttributes(
         ussPath: string,
         attributes: Partial<Types.FileAttributes>,
@@ -122,7 +135,7 @@ export class SshUssApi extends SshCommonApi implements MainframeInteraction.IUss
         if (!ussItem.success || ussItem.apiResponse?.items.length !== 1) {
             throw new Error("File no longer exists");
         }
-        const isDir = ussItem.apiResponse.items[0].itemType === UssItemType.Directory;
+        const isDir = ussItem.apiResponse.items[0].mode.startsWith("d");
         let success = false;
         if (attributes.tag) {
             const response = await (await this.client).uss.chtagFile({

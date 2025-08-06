@@ -4,6 +4,14 @@ All notable changes to the Client code for "zowe-native-proto-cli" are documente
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+
+- Added support for listing the long format for USS files with the `long` request option. When provided, the CLI plug-in prints additional file attributes, including permissions, file tag, file size, number of links, owner, and group. [#346](https://github.com/zowe/zowe-native-proto/issues/346)
+- Added support for listing all USS files with the `all` request option. When provided, the CLI plug-in includes hidden files in the list response. [#421](https://github.com/zowe/zowe-native-proto/pull/421)
+- Added support for the `encoding` option to the `zssh upload uss` and the `zssh upload ds` commands. When the `encoding` option is provided, the command uses the option value as the target encoding for the uploaded content. [#427](https://github.com/zowe/zowe-native-proto/issues/427)
+- Added support for the `file` option to the `zssh download uss` and `zssh download ds` commands. When the `file` option is provided, the command uses the option value as the destination file path for the downloaded content. [#428](https://github.com/zowe/zowe-native-proto/issues/428)
+- Adopted streaming for commands that upload/download data sets and USS files. [#358](https://github.com/zowe/zowe-native-proto/pull/358)
+
 ## `0.1.1`
 
 - Fixed issue where a jobs list request returns unexpected results whenever a search query does not match any jobs. [#217](https://github.com/zowe/zowe-native-proto/pull/217)

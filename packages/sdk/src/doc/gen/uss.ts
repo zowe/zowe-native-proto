@@ -23,6 +23,14 @@ export interface ListFilesRequest extends common.CommandRequest, common.ListOpti
    * Directory to list files for
    */
   fspath: string;
+  /**
+   * Whether to include hidden files
+   */
+  all?: boolean;
+  /**
+   * Whether to return the long format with all attributes
+   */
+  long?: boolean;
 }
 export interface ReadFileRequest extends common.CommandRequest {
   command: "readFile";
@@ -164,10 +172,24 @@ export interface ReadFileResponse extends common.CommandResponse {
    * File contents (omitted if streaming)
    */
   data?: B64String;
+  /**
+   * Length of file contents in bytes (only used for streaming)
+   */
+  contentLen?: number /* int */;
 }
 export interface WriteFileResponse extends GenericFileResponse {
+  /**
+   * Returned e-tag for the file
+   */
   etag: string;
+  /**
+   * Whether new file was created
+   */
   created: boolean;
+  /**
+   * Length of file contents in bytes (only used for streaming)
+   */
+  contentLen?: number /* int */;
 }
 export interface ListFilesResponse extends common.CommandResponse {
   items: common.UssItem[];

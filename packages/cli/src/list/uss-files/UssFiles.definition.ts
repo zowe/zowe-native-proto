@@ -37,6 +37,35 @@ export const ListUssFilesDefinition: ICommandDefinition = {
             description: 'List USS files in the directory "/u/users/ibmuser/" and show only the file name',
             options: '"/u/users/ibmuser/" --rff name',
         },
+        {
+            description: 'List all USS files (including hidden files) in the directory "/u/users/ibmuser/"',
+            options: '"/u/users/ibmuser/" --all',
+        },
+        {
+            description:
+                'List USS files in long format, showing detailed information in the directory "/u/users/ibmuser/"',
+            options: '"/u/users/ibmuser/" --long',
+        },
+        {
+            description: 'List all USS files in long format in the directory "/u/users/ibmuser/"',
+            options: '"/u/users/ibmuser/" --all --long',
+        },
+    ],
+    options: [
+        {
+            name: "all",
+            description: "Show all files",
+            type: "boolean",
+            required: false,
+            aliases: ["a"],
+        },
+        {
+            name: "long",
+            description: "Show long format",
+            type: "boolean",
+            required: false,
+            aliases: ["l"],
+        },
     ],
     positionals: [
         {
