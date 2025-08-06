@@ -73,6 +73,14 @@ int ZCNPUT(ZCN *zcn, const char *command)
   return rc;
 }
 
+#pragma prolog(ZCNTIMER, " ZWEPROLG NEWDSA=(YES,8),SAVE=BAKR,SAM64=YES")
+#pragma epilog(ZCNTIMER, " ZWEEPILG ")
+static void ZCNTIMER(void *PTR32 parameter)
+{
+  ECB *e = (ECB *)parameter;
+  ecb_post(e);
+}
+
 #pragma prolog(ZCNGET, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(ZCNGET, " ZWEEPILG ")
 int ZCNGET(ZCN *zcn, char *response)
@@ -89,7 +97,13 @@ int ZCNGET(ZCN *zcn, char *response)
   }
 
   if (zcn->ecb)
+  {
+    int timeout = zcn->timeout * 100; // covert milliseconds to seconds
+    timer(timeout, ZCNTIMER, (ECB * PTR32) zcn->ecb);
     ecb_wait((ECB * PTR32) zcn->ecb);
+    cancel_timers();
+  }
+
   ZCN zcn31 = {0};
   memcpy(&zcn31, zcn, sizeof(ZCN));
   rc = zcnm1get(&zcn31, response);

@@ -19,7 +19,8 @@
 #pragma epilog(SOMEFUNC, " ZWEEPILG ")
 void SOMEFUNC(void *PTR32 parameter)
 {
-  zwto_debug("@TEST called some func");
+  // int *p = (int *)parameter;
+  zwto_debug("@TEST called some func"); //  %llx why %d", parameter, *((int *)parameter));
   ECB *e1 = (ECB *)parameter;
   ecb_post(e1);
 }
@@ -36,11 +37,15 @@ int main()
 
   zwto_debug("@TEST main");
 
+  int p = 10;
+
   ECB e1 = {0};
   // ecb_post(&e1);
   timer(1 * 100, SOMEFUNC, &e1);
 
+  zwto_debug("@TEST waiting on ECB");
   ecb_wait(&e1);
+  zwto_debug("@TEST waiting on ECB done");
 
   zwto_debug("@TEST waiting for 3 seconds");
   time_wait(1 * 100 * 3);

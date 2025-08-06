@@ -68,6 +68,11 @@ int zcn_get(ZCN *zcn, string &response)
     zcn->buffer_size = ZCN_DEFAULT_BUFFER_SIZE;
   *zcn->ecb = 0; // reset ECB if follow up call
 
+  if (0 == zcn->timeout)
+    zcn->timeout = ZCN_DEFAULT_TIMEOUT;
+  if (zcn->timeout > ZCN_MAX_TIMEOUT)
+    zcn->timeout = ZCN_MAX_TIMEOUT;
+
   char *resp31 = (char *)__malloc31(zcn->buffer_size);
   memset(resp31, 0x00, zcn->buffer_size);
 

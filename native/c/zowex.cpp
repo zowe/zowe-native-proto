@@ -130,6 +130,9 @@ int main(int argc, char *argv[])
                              make_aliases("--wait"),
                              "wait for responses", ArgType_Flag, false,
                              ArgValue(true));
+  issue_cmd->add_keyword_arg("timeout",
+                             make_aliases("--timeout"),
+                             "timeout in seconds", ArgType_Single, false, ArgValue("5"));
   issue_cmd->add_positional_arg("command", "command to run, e.g. 'D IPLINFO'",
                                 ArgType_Single, true);
   issue_cmd->set_handler(handle_console_issue);
@@ -603,9 +606,15 @@ int handle_console_issue(const ParseResult &result)
   ZCN zcn = {0};
 
   string console_name = result.find_kw_arg_string("console-name");
-  cout << "console name " << console_name << endl;
+  string timeout = result.find_kw_arg_string("timeout");
+
   string command = result.find_pos_arg_string("command");
   bool wait = result.find_kw_arg_bool("wait");
+
+  if (!timeout.empty())
+  {
+    zcn.timeout = atoi(timeout.c_str());
+  }
 
   rc = zcn_activate(&zcn, console_name);
   if (0 != rc)

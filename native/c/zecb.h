@@ -77,7 +77,7 @@ STIMERM_MODEL(stimerm_model); // make this copy in static storage
       " STIMERM SET,BINTVL=(%2),"                             \
       "WAIT=NO,"                                              \
       "ID=%1,"                                                \
-      "PARM=(%3),"                                            \
+      "PARM=%3,"                                              \
       "EXIT=(%4),"                                            \
       "MF=(E,%0)                                          \n" \
       "*                                                  \n" \
@@ -90,7 +90,7 @@ STIMERM_MODEL(stimerm_model); // make this copy in static storage
       " SYSSTATE POP    Restore SYSSTATE                  \n" \
       "*                                                    " \
       : "+m"(plist), "=m"(id)                                 \
-      : "r"(time), "r"(parm), "r"(exit)                       \
+      : "r"(time), "m"(parm), "r"(exit)                       \
       : "r0", "r1", "r2", "r14", "r15");
 #else
 #define STIMERM_SET(time, parm, exit, id, plist)
