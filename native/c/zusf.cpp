@@ -1073,17 +1073,20 @@ int zusf_read_from_uss_file(ZUSF *zusf, const string &file, string &response)
 
   if (zusf->encoding_opts.data_type == eDataTypeText)
   {
-    // Try to get the file's CCSID first
-    int file_ccsid = zusf_get_file_ccsid(zusf, file);
-    if (file_ccsid > 0 && file_ccsid != 65535) // Valid CCSID and not binary
-    {
-      encoding_to_use = zut_int_to_string(file_ccsid);
-      has_encoding = true;
-    }
-    else if (strlen(zusf->encoding_opts.codepage) > 0)
+    if (strlen(zusf->encoding_opts.codepage) > 0)
     {
       encoding_to_use = string(zusf->encoding_opts.codepage);
       has_encoding = true;
+    }
+    else
+    {
+      // Use tagged encoding if valid CCSID and not UTF-8 or binary
+      int file_ccsid = zusf_get_file_ccsid(zusf, file);
+      if (file_ccsid > 0 && file_ccsid != 1208 && file_ccsid != 65535)
+      {
+        encoding_to_use = zut_int_to_string(file_ccsid);
+        has_encoding = true;
+      }
     }
   }
 
@@ -1147,17 +1150,20 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, const string &file, const strin
 
   if (zusf->encoding_opts.data_type == eDataTypeText)
   {
-    // Try to get the file's CCSID first
-    int file_ccsid = zusf_get_file_ccsid(zusf, file);
-    if (file_ccsid > 0 && file_ccsid != 65535) // Valid CCSID, not binary
-    {
-      encoding_to_use = zut_int_to_string(file_ccsid);
-      has_encoding = true;
-    }
-    else if (strlen(zusf->encoding_opts.codepage) > 0)
+    if (strlen(zusf->encoding_opts.codepage) > 0)
     {
       encoding_to_use = string(zusf->encoding_opts.codepage);
       has_encoding = true;
+    }
+    else
+    {
+      // Use tagged encoding if valid CCSID and not UTF-8 or binary
+      int file_ccsid = zusf_get_file_ccsid(zusf, file);
+      if (file_ccsid > 0 && file_ccsid != 1208 && file_ccsid != 65535)
+      {
+        encoding_to_use = zut_int_to_string(file_ccsid);
+        has_encoding = true;
+      }
     }
   }
 
@@ -1238,17 +1244,20 @@ int zusf_write_to_uss_file(ZUSF *zusf, const string &file, string &data)
 
   if (zusf->encoding_opts.data_type == eDataTypeText)
   {
-    // Try to get the file's CCSID first
-    int file_ccsid = zusf_get_file_ccsid(zusf, file);
-    if (file_ccsid > 0 && file_ccsid != 65535) // Valid CCSID and not binary
-    {
-      encoding_to_use = zut_int_to_string(file_ccsid);
-      has_encoding = true;
-    }
-    else if (strlen(zusf->encoding_opts.codepage) > 0)
+    if (strlen(zusf->encoding_opts.codepage) > 0)
     {
       encoding_to_use = string(zusf->encoding_opts.codepage);
       has_encoding = true;
+    }
+    else
+    {
+      // Use tagged encoding if valid CCSID and not UTF-8 or binary
+      int file_ccsid = zusf_get_file_ccsid(zusf, file);
+      if (file_ccsid > 0 && file_ccsid != 1208 && file_ccsid != 65535)
+      {
+        encoding_to_use = zut_int_to_string(file_ccsid);
+        has_encoding = true;
+      }
     }
   }
 
@@ -1326,17 +1335,20 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, const string &file, const string
 
   if (zusf->encoding_opts.data_type == eDataTypeText)
   {
-    // Try to get the file's CCSID first
-    int file_ccsid = zusf_get_file_ccsid(zusf, file);
-    if (file_ccsid > 0 && file_ccsid != 65535) // Valid CCSID and not binary
-    {
-      encoding_to_use = zut_int_to_string(file_ccsid);
-      has_encoding = true;
-    }
-    else if (strlen(zusf->encoding_opts.codepage) > 0)
+    if (strlen(zusf->encoding_opts.codepage) > 0)
     {
       encoding_to_use = string(zusf->encoding_opts.codepage);
       has_encoding = true;
+    }
+    else
+    {
+      // Use tagged encoding if valid CCSID and not UTF-8 or binary
+      int file_ccsid = zusf_get_file_ccsid(zusf, file);
+      if (file_ccsid > 0 && file_ccsid != 1208 && file_ccsid != 65535)
+      {
+        encoding_to_use = zut_int_to_string(file_ccsid);
+        has_encoding = true;
+      }
     }
   }
 
