@@ -86,6 +86,8 @@ int handle_uss_chtag(const ParseResult &result);
 
 int handle_version(const ParseResult &result);
 
+int handle_root_command(const ParseResult &result);
+
 int handle_job_list(const ParseResult &result);
 int handle_job_list_files(const ParseResult &result);
 int handle_job_view_status(const ParseResult &result);
@@ -102,17 +104,21 @@ int handle_job_release(const ParseResult &result);
 int loop_dynalloc(vector<string> &list);
 
 bool should_quit(const std::string &input);
-int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_name);
+int run_interactive_mode();
 
+std::tr1::shared_ptr<ArgumentParser> arg_parser;
 int main(int argc, char *argv[])
 {
-  ArgumentParser arg_parser(argv[0], "Zowe Native Protocol CLI");
-
-  // Add interactive mode flag to root command
-  arg_parser.get_root_command().add_keyword_arg("interactive",
+  arg_parser = std::tr1::shared_ptr<ArgumentParser>(new ArgumentParser(argv[0], "Zowe Native Protocol CLI"));
+  arg_parser->get_root_command().add_keyword_arg("interactive",
                                                 make_aliases("--interactive", "--it"),
                                                 "interactive (REPL) mode", ArgType_Flag, false,
                                                 ArgValue(false));
+  arg_parser->get_root_command().add_keyword_arg("version",
+                                                make_aliases("--version", "-v"),
+                                                "display version information", ArgType_Flag, false,
+                                                ArgValue(false));
+  arg_parser->get_root_command().set_handler(handle_root_command);
 
   // Console command group
   auto console_cmd = command_ptr(new Command("console", "z/OS console operations"));
@@ -133,7 +139,7 @@ int main(int argc, char *argv[])
   issue_cmd->set_handler(handle_console_issue);
 
   console_cmd->add_command(issue_cmd);
-  arg_parser.get_root_command().add_command(console_cmd);
+  arg_parser->get_root_command().add_command(console_cmd);
 
   // TSO command group
   auto tso_cmd = command_ptr(new Command("tso", "TSO operations"));
@@ -144,7 +150,7 @@ int main(int argc, char *argv[])
   tso_issue_cmd->set_handler(handle_tso_issue);
 
   tso_cmd->add_command(tso_issue_cmd);
-  arg_parser.get_root_command().add_command(tso_cmd);
+  arg_parser->get_root_command().add_command(tso_cmd);
 
   // Data set command group
   auto data_set_cmd = command_ptr(new Command("data-set", "z/OS data set operations"));
@@ -272,7 +278,7 @@ int main(int argc, char *argv[])
   ds_compress_cmd->set_handler(handle_data_set_compress);
   data_set_cmd->add_command(ds_compress_cmd);
 
-  arg_parser.get_root_command().add_command(data_set_cmd);
+  arg_parser->get_root_command().add_command(data_set_cmd);
 
   // Tool command group
   auto tool_cmd = command_ptr(new Command("tool", "tool operations"));
@@ -346,7 +352,7 @@ int main(int argc, char *argv[])
   tool_run_cmd->set_handler(handle_tool_run);
   tool_cmd->add_command(tool_run_cmd);
 
-  arg_parser.get_root_command().add_command(tool_cmd);
+  arg_parser->get_root_command().add_command(tool_cmd);
 
   // USS command group
   auto uss_cmd = command_ptr(new Command("uss", "z/OS USS operations"));
@@ -433,7 +439,7 @@ int main(int argc, char *argv[])
   uss_chtag_cmd->set_handler(handle_uss_chtag);
   uss_cmd->add_command(uss_chtag_cmd);
 
-  arg_parser.get_root_command().add_command(uss_cmd);
+  arg_parser->get_root_command().add_command(uss_cmd);
 
   // Job command group
   auto job_cmd = command_ptr(new Command("job", "z/OS job operations"));
@@ -545,54 +551,18 @@ int main(int argc, char *argv[])
   job_release_cmd->set_handler(handle_job_release);
   job_cmd->add_command(job_release_cmd);
 
-  arg_parser.get_root_command().add_command(job_cmd);
+  arg_parser->get_root_command().add_command(job_cmd);
 
   // Version command
   auto version_cmd = command_ptr(new Command("version", "display version information"));
   version_cmd->add_alias("--version");
   version_cmd->add_alias("-v");
   version_cmd->set_handler(handle_version);
-  arg_parser.get_root_command().add_command(version_cmd);
+  arg_parser->get_root_command().add_command(version_cmd);
 
-  // Check for version or interactive mode before parsing to avoid help text
-  bool is_interactive = false;
-  bool is_version = false;
-  for (int i = 1; i < argc; i++)
-  {
-    if (strcmp(argv[i], "--interactive") == 0 || strcmp(argv[i], "--it") == 0)
-    {
-      is_interactive = true;
-    }
-    else if (strcmp(argv[i], "--version") == 0 || strcmp(argv[i], "-v") == 0)
-    {
-      is_version = true;
-    }
-  }
-
-  // If version is requested, handle it directly
-  if (is_version)
-  {
-    cout << "Zowe Native Protocol CLI (zowex)" << endl;
-    cout << "Version: " << PACKAGE_VERSION << endl;
-    cout << "Build Date: " << BUILD_DATE << " " << BUILD_TIME << endl;
-    cout << "Copyright Contributors to the Zowe Project." << endl;
-    if (!is_interactive)
-    {
-      return 0;
-    }
-  }
-  // If interactive mode is requested, start it directly
-
-  if (is_interactive)
-  {
-    return run_interactive_mode(arg_parser, argv[0]);
-  }
-  else
-  {
-    // Parse and execute
-    ParseResult result = arg_parser.parse(argc, argv);
-    return result.exit_code;
-  }
+  // Parse and execute through normal command handling
+  ParseResult result = arg_parser->parse(argc, argv);
+  return result.exit_code;
 }
 
 int handle_console_issue(const ParseResult &result)
@@ -2542,16 +2512,35 @@ int handle_version(const ParseResult &result)
   return 0;
 }
 
+int handle_root_command(const ParseResult &result)
+{
+  const auto is_interactive = result.find_kw_arg_bool("interactive");
+  if (result.find_kw_arg_bool("version")) {
+    const auto version_rc = handle_version(result);
+    if (!is_interactive) {
+      return version_rc;
+    }
+  }
+
+  if (is_interactive)
+  {
+    return run_interactive_mode();
+  }
+  
+  // If no interactive mode and no subcommands were invoked, show help
+
+  result.m_command->generate_help(std::cout);
+  return 0;
+}
+
 bool should_quit(const std::string &input)
 {
   return (input == "quit" || input == "exit" ||
           input == "QUIT" || input == "EXIT");
 }
 
-int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_name)
+int run_interactive_mode()
 {
-  arg_parser.update_program_name(program_name);
-
   std::cout << "Started, enter command or 'quit' to quit..." << std::endl;
 
   std::string command;
@@ -2569,7 +2558,7 @@ int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_
       break;
 
     // Parse and execute the command
-    ParseResult result = arg_parser.parse(command);
+    ParseResult result = arg_parser->parse(command);
     rc = result.exit_code;
 
     if (!is_tty)
