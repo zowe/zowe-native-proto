@@ -12,11 +12,11 @@
 #include "dcbd.h"
 #include "zlogger_metal.h"
 #include "zam.h"
+#include "zutm.h"
 #include "zwto.h"
 
 static struct
 {
-  char dd_name[8];    /* DD name for log file */
   char log_path[256]; /* Log file path */
   int min_level;      /* Minimum log level */
   int initialized;    /* Initialization flag */
@@ -42,7 +42,7 @@ static void ZLGTIME(char *buffer, int buffer_size)
   /* Convert STCK value to a simple readable format */
   /* STCK returns microseconds since 1900-01-01 00:00:00 GMT */
   /* For simplicity, we'll just show the lower bits as a hex timestamp */
-  snprintf(buffer, buffer_size, "%016llX", clock_value);
+  sprintf(buffer, "%016llX", clock_value);
 #else
   /* Fallback for non-Metal C compilation */
   strncpy(buffer, "TIMESTAMP", buffer_size - 1);
@@ -55,15 +55,15 @@ static void ZLGTIME(char *buffer, int buffer_size)
  */
 static int ZLGWRWTO(int level, const char *message)
 {
-  WTO_BUF wto_buf = {0};
+  /* Ensure WTO_BUF is aligned on fullword boundary for Metal C */
+  WTO_BUF wto_buf __attribute__((aligned(4))) = {0};
 
   /* Format WTO message with level prefix */
   const char *level_str = (level >= ZLOGLEVEL_TRACE && level <= ZLOGLEVEL_OFF)
                               ? g_level_strings[level]
                               : "UNKNOWN";
 
-  wto_buf.len = snprintf(wto_buf.msg, sizeof(wto_buf.msg),
-                         "ZOWEX %s: %.100s", level_str, message);
+  wto_buf.len = sprintf(wto_buf.msg, "ZOWEX %s: %.100s", level_str, message);
 
   if (wto_buf.len >= sizeof(wto_buf.msg))
   {
@@ -122,64 +122,47 @@ int ZLGINIT(const char *log_file_path, int min_level)
     return -1;
   }
 
-  /* Prevent double initialization which could cause S0C4 */
   if (g_metal_logger.initialized)
   {
-    return 0; /* Already initialized */
+    return 0;
   }
 
-  /* Initialize Metal C logger state with proper bounds checking */
-  size_t path_len = strlen(log_file_path);
-  if (path_len >= sizeof(g_metal_logger.log_path))
-  {
-    path_len = sizeof(g_metal_logger.log_path) - 1;
-  }
-  memset(g_metal_logger.log_path, 0, sizeof(g_metal_logger.log_path));
-  strncpy(g_metal_logger.log_path, log_file_path, path_len);
-  g_metal_logger.log_path[path_len] = '\0';
+  memset(&g_metal_logger, 0, sizeof(g_metal_logger));
+
+  const size_t path_len = strlen(log_file_path) < sizeof(g_metal_logger.log_path) - 1 ? strlen(log_file_path) : sizeof(g_metal_logger.log_path) - 1;
+  memcpy(g_metal_logger.log_path, log_file_path, path_len);
 
   g_metal_logger.min_level = min_level;
-
-  /* In Metal C, we'll use WTO as primary logging mechanism */
   g_metal_logger.use_wto = 1;
 
-  /* Try to set up DD for file logging using BSAM */
-  memset(g_metal_logger.dd_name, 0, sizeof(g_metal_logger.dd_name));
-  strncpy(g_metal_logger.dd_name, "ZWXLOGDD", sizeof(g_metal_logger.dd_name) - 1);
+  char alloc_cmd[372] = {0};
+  int cmd_len = sprintf(alloc_cmd,
+                        "alloc file(ZWXLOGDD) path('%.260s') pathopts(owronly,ocreat) pathmode(sirusr,siwusr,sirgrp) filedata(text)",
+                        g_metal_logger.log_path);
+  if (cmd_len >= sizeof(alloc_cmd) || cmd_len < 0)
+  {
+    return -1;
+  }
 
-  /* Attempt to open the DD for output using BSAM */
-  /* Initialize to NULL before attempting open */
-  g_metal_logger.log_io = NULL;
+  unsigned char *p = (unsigned char *)__malloc31(sizeof(BPXWDYN_PARM) + sizeof(BPXWDYN_RESPONSE));
+  memset(p, 0x00, sizeof(BPXWDYN_PARM) + sizeof(BPXWDYN_RESPONSE));
 
-  /* Try to open DD - open_output_assert should return NULL on failure */
+  BPXWDYN_PARM *bparm = (BPXWDYN_PARM *)p;
+  BPXWDYN_RESPONSE *response = (BPXWDYN_RESPONSE *)(p + sizeof(BPXWDYN_PARM));
+
+  bparm->len = sprintf(bparm->str, "%s", alloc_cmd);
+  int rc = ZUTWDYN(bparm, response);
+
+  if (rc != 0)
+  {
+    free(p);
+    return rc;
+  }
+
   g_metal_logger.log_io = open_output_assert("ZWXLOGDD", 132, 132, dcbrecf + dcbrecbr);
-
-  if (g_metal_logger.log_io)
-  {
-    g_metal_logger.use_dd = 1;
-    /* Log success via DD itself - but only after confirming it works */
-    ZLGWRDD(ZLOGLEVEL_INFO, "Metal C logger DD opened successfully");
-  }
-  else
-  {
-    g_metal_logger.use_dd = 0;
-    /* Log failure via WTO */
-    ZLGWRWTO(ZLOGLEVEL_WARN, "Metal C logger DD open failed, using WTO only");
-  }
-
-  /* Set initialized flag only after everything is properly set up */
+  g_metal_logger.use_dd = (g_metal_logger.log_io != NULL) ? 1 : 0;
   g_metal_logger.initialized = 1;
-
-  /* Log initialization message */
-  if (g_metal_logger.use_dd)
-  {
-    ZLGWRDD(ZLOGLEVEL_INFO, "Metal C logger initialized with DD support");
-  }
-  else
-  {
-    ZLGWRWTO(ZLOGLEVEL_INFO, "Metal C logger initialized with WTO only");
-  }
-
+  free(p);
   return 0;
 }
 
@@ -208,8 +191,8 @@ int ZLGWRITE(int level, const char *message)
                   : "UNKNOWN";
 
   /* Format complete message */
-  snprintf(formatted_msg, sizeof(formatted_msg), "[%s] [%s] %s",
-           timestamp, level_str, message);
+  sprintf(formatted_msg, "[%s] [%s] %s",
+          timestamp, level_str, message);
 
   /* Try DD writing first if available */
   if (g_metal_logger.use_dd)
@@ -288,8 +271,6 @@ void ZLGSTLVL(int level)
   if (g_metal_logger.initialized)
   {
     g_metal_logger.min_level = level;
-    /* Log level change */
-    ZLGWRWTO(ZLOGLEVEL_INFO, "Log level changed");
   }
 }
 

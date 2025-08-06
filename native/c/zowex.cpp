@@ -99,9 +99,7 @@ int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_
 
 int main(int argc, char *argv[])
 {
-  mkdir("logs", 0755);
-
-  char cwd[PATH_MAX];
+  char cwd[PATH_MAX] = {0};
   string log_path_str;
 
   if (getcwd(cwd, sizeof(cwd)) != NULL)
