@@ -24,12 +24,18 @@ graph TB
     end
 
     subgraph "z/OS Server Side"
+        subgraph "API Mediation Layer"
+            ZOWEA["Gateway"]
+        end
         subgraph "SSH Server Process"
             ZOWED["zowed<br/>(Go I/O Server)<br/>JSON-RPC Middleware"]
+            ZOWEP["python-bi<br/>(Python Service)<br/>REST/Flask Middleware"]
         end
 
         subgraph "Native Backend"
-            ZOWEX["zowex<br/>(C++ Binary)<br/>Metal C + HLASM"]
+            ZOWEX2["zowex<br/>(Executable Binary)<br/>Metal C + HLASM"]
+            ZOWEP2["python-bi<br/>(Python Bindings)<br/>Backend"]
+            ZOWEX["zowex<br/>(C++ Modules)<br/>Metal C + HLASM"]
         end
 
         subgraph "z/OS System Services"
@@ -41,8 +47,13 @@ graph TB
     end
 
     SDK <--> SSH
+    SDK <--> ZOWEA
     SSH <--> ZOWED
-    ZOWED <--> ZOWEX
+    ZOWEA <--> ZOWEP
+    ZOWEP <--> ZOWEP2
+    ZOWEP2 <--> ZOWEX
+    ZOWED <--> ZOWEX2
+    ZOWEX2 <--> ZOWEX
     ZOWEX --> DS
     ZOWEX --> USS
     ZOWEX --> JES
@@ -50,6 +61,8 @@ graph TB
 
     style SSH fill:#e1f5fe
     style ZOWED fill:#f3e5f5
+    style ZOWEP fill:#ffff00
+    style ZOWEP2 fill:#ffff00
     style ZOWEX fill:#e8f5e8
     style SDK fill:#fff3e0
 ```
