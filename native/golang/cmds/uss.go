@@ -100,6 +100,7 @@ func HandleReadFileRequest(conn *utils.StdioConn, params []byte) (result any, e 
 
 	var etag string
 	var data []byte
+	var size int
 	if request.StreamId == 0 {
 		args = append(args, "--rfb")
 		out, err := conn.ExecCmd(args)
@@ -152,14 +153,17 @@ func HandleReadFileRequest(conn *utils.StdioConn, params []byte) (result any, e 
 			return
 		}
 
-		etag = strings.TrimRight(string(out), "\n")
+		output := utils.YamlToMap(string(out))
+		etag = output["etag"]
+		size, _ = strconv.Atoi(output["size"])
 	}
 
 	result = uss.ReadFileResponse{
-		Encoding: request.Encoding,
-		Etag:     etag,
-		Path:     request.Path,
-		Data:     &data,
+		Encoding:   request.Encoding,
+		Etag:       etag,
+		Path:       request.Path,
+		Data:       &data,
+		ContentLen: &size,
 	}
 	return
 }
@@ -265,13 +269,21 @@ func HandleWriteFileRequest(conn *utils.StdioConn, params []byte) (result any, e
 		}
 	}
 
+	var size int
+	if sizeValue, exists := output["size"]; exists {
+		if parsedInt, err := strconv.Atoi(fmt.Sprintf("%v", sizeValue)); err == nil {
+			size = parsedInt
+		}
+	}
+
 	result = uss.WriteFileResponse{
 		GenericFileResponse: uss.GenericFileResponse{
 			Success: true,
 			Path:    request.Path,
 		},
-		Etag:    etag,
-		Created: created,
+		Etag:       etag,
+		Created:    created,
+		ContentLen: &size,
 	}
 	return
 }

@@ -9,7 +9,7 @@
  *
  */
 
-import { readFileSync, writeFileSync } from "node:fs";
+import { createReadStream, createWriteStream } from "node:fs";
 import type * as zosfiles from "@zowe/zos-files-for-zowe-sdk";
 import { type MainframeInteraction, type Types, imperative } from "@zowe/zowe-explorer-api";
 import { B64String, type uss } from "zowe-native-proto-sdk";
@@ -37,18 +37,19 @@ export class SshUssApi extends SshCommonApi implements MainframeInteraction.IUss
         ussFilePath: string,
         options: zosfiles.IDownloadSingleOptions,
     ): Promise<zosfiles.IZosFilesResponse> {
+        let writeStream = options.stream;
+        if (options.file != null) {
+            imperative.IO.createDirsSyncFromFilePath(options.file);
+            writeStream = createWriteStream(options.file);
+        }
+        if (writeStream == null) {
+            throw new Error("Failed to get contents: No stream or file path provided");
+        }
         const response = await (await this.client).uss.readFile({
             fspath: ussFilePath,
             encoding: options.binary ? "binary" : options.encoding,
+            stream: writeStream,
         });
-        const data = B64String.decodeBytes(response.data as B64String);
-        if (options.file != null) {
-            imperative.IO.createDirsSyncFromFilePath(options.file);
-            writeFileSync(options.file, data);
-        } else if (options.stream != null) {
-            options.stream.write(data);
-            options.stream.end();
-        }
         return this.buildZosFilesResponse({ etag: response.etag });
     }
 
@@ -82,7 +83,7 @@ export class SshUssApi extends SshCommonApi implements MainframeInteraction.IUss
         const response = await (await this.client).uss.writeFile({
             fspath: ussFilePath,
             encoding: options?.encoding,
-            data: B64String.encode(readFileSync(inputFilePath)),
+            stream: createReadStream(inputFilePath),
             etag: options?.etag,
         });
         return this.buildZosFilesResponse({ etag: response.etag });

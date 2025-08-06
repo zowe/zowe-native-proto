@@ -67,5 +67,5 @@ export const UploadFileToDataSetDefinition: ICommandDefinition = {
             type: "string",
         },
     ],
-    profile: { optional: ["zssh"] },
+    profile: { optional: ["ssh"] },
 };
