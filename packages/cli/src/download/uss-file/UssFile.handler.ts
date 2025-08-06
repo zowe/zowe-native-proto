@@ -19,14 +19,37 @@ import { posix } from "node:path";
 
 export default class DownloadUssFileHandler extends SshBaseHandler {
     public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<uss.ReadFileResponse> {
+        let encoding = params.arguments.encoding;
+        const binary = params.arguments.binary;
+        if (encoding == null && binary == null) {
+            try {
+                const fileResp = await client.uss.listFiles({
+                    fspath: params.arguments.filePath,
+                    all: true,
+                    long: true,
+                });
+                if (fileResp.success && fileResp.items.length > 0) {
+                    const file = fileResp.items[0];
+                    encoding = file.filetag;
+                }
+            } catch (error) {
+                params.response.console.error(
+                    "Failed to auto-detect file encoding for %s: %s",
+                    params.arguments.filePath,
+                    error,
+                );
+            }
+        }
+
         const response = await client.uss.readFile({
             fspath: params.arguments.filePath,
-            encoding: params.arguments.binary ? "binary" : params.arguments.encoding,
+            encoding: binary ? "binary" : encoding,
         });
         const content = B64String.decode(response.data);
 
         const baseName = posix.basename(params.arguments.filePath);
-        const localFilePath: string = path.join(params.arguments.directory ?? process.cwd(), baseName);
+        const localFilePath: string =
+            params.arguments.file ?? path.join(params.arguments.directory ?? process.cwd(), baseName);
 
         params.response.console.log(
             "Downloading USS file '%s' to local file '%s'",

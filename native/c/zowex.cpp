@@ -40,6 +40,14 @@
                          .str()
 #endif
 
+// Version information
+#ifndef PACKAGE_VERSION
+#define PACKAGE_VERSION "unknown"
+#endif
+
+#define BUILD_DATE __DATE__
+#define BUILD_TIME __TIME__
+
 using namespace parser;
 using namespace std;
 
@@ -78,6 +86,8 @@ int handle_uss_delete(const ParseResult &result);
 int handle_uss_chmod(const ParseResult &result);
 int handle_uss_chown(const ParseResult &result);
 int handle_uss_chtag(const ParseResult &result);
+
+int handle_version(const ParseResult &result);
 
 int handle_job_list(const ParseResult &result);
 int handle_job_list_files(const ParseResult &result);
@@ -400,6 +410,7 @@ int main(int argc, char *argv[])
   uss_list_cmd->add_positional_arg("file-path", "file path", ArgType_Single, true);
   uss_list_cmd->add_keyword_arg("all", make_aliases("--all", "-a"), "list all files and directories", ArgType_Flag, false, ArgValue(false));
   uss_list_cmd->add_keyword_arg("long", make_aliases("--long", "-l"), "list long format", ArgType_Flag, false, ArgValue(false));
+  uss_list_cmd->add_keyword_arg("response-format-csv", response_format_csv_option, "returns the response in CSV format", ArgType_Flag, false, ArgValue(false));
   uss_list_cmd->set_handler(handle_uss_list);
   uss_cmd->add_command(uss_list_cmd);
 
@@ -568,18 +579,42 @@ int main(int argc, char *argv[])
 
   arg_parser.get_root_command().add_command(job_cmd);
 
-  // Check for interactive mode before parsing to avoid help text
+  // Version command
+  auto version_cmd = command_ptr(new Command("version", "display version information"));
+  version_cmd->add_alias("--version");
+  version_cmd->add_alias("-v");
+  version_cmd->set_handler(handle_version);
+  arg_parser.get_root_command().add_command(version_cmd);
+
+  // Check for version or interactive mode before parsing to avoid help text
   bool is_interactive = false;
+  bool is_version = false;
   for (int i = 1; i < argc; i++)
   {
     if (strcmp(argv[i], "--interactive") == 0 || strcmp(argv[i], "--it") == 0)
     {
       is_interactive = true;
-      break;
+    }
+    else if (strcmp(argv[i], "--version") == 0 || strcmp(argv[i], "-v") == 0)
+    {
+      is_version = true;
     }
   }
 
+  // If version is requested, handle it directly
+  if (is_version)
+  {
+    cout << "Zowe Native Protocol CLI (zowex)" << endl;
+    cout << "Version: " << PACKAGE_VERSION << endl;
+    cout << "Build Date: " << BUILD_DATE << " " << BUILD_TIME << endl;
+    cout << "Copyright Contributors to the Zowe Project." << endl;
+    if (!is_interactive)
+    {
+      return 0;
+    }
+  }
   // If interactive mode is requested, start it directly
+
   if (is_interactive)
   {
     return run_interactive_mode(arg_parser, argv[0]);
@@ -1796,9 +1831,11 @@ int handle_uss_list(const ParseResult &result)
   list_options.all_files = result.find_kw_arg_bool("all");
   list_options.long_format = result.find_kw_arg_bool("long");
 
+  const auto use_csv_format = result.find_kw_arg_bool("response-format-csv");
+
   ZUSF zusf = {0};
   string response;
-  rc = zusf_list_uss_file_path(&zusf, uss_file, response, list_options);
+  rc = zusf_list_uss_file_path(&zusf, uss_file, response, list_options, use_csv_format);
   if (0 != rc)
   {
     cerr << "Error: could not list USS files: '" << uss_file << "' rc: '" << rc << "'" << endl;
@@ -2040,6 +2077,17 @@ int handle_uss_chtag(const ParseResult &result)
 {
   string path = result.find_pos_arg_string("file-path");
   string tag = result.find_pos_arg_string("tag");
+  if (tag.empty())
+  {
+    tag = zut_int_to_string(result.find_pos_arg_int("tag"));
+  }
+
+  if (tag.empty())
+  {
+    cerr << "Error: no tag provided" << endl;
+    return RTNCD_FAILURE;
+  }
+
   bool recursive = result.find_kw_arg_bool("recursive");
 
   ZUSF zusf = {0};
@@ -2241,6 +2289,7 @@ int handle_job_view_status(const ParseResult &result)
     fields.push_back(job.jobname);
     fields.push_back(job.status);
     fields.push_back(job.correlator);
+    fields.push_back(job.full_status);
     cout << zut_format_as_csv(fields) << endl;
   }
   else
@@ -2514,6 +2563,15 @@ int free_dynalloc_dds(vector<string> &list)
   }
 
   return loop_dynalloc(free_dds);
+}
+
+int handle_version(const ParseResult &result)
+{
+  cout << "Zowe Native Protocol CLI (zowex)" << endl;
+  cout << "Version: " << PACKAGE_VERSION << endl;
+  cout << "Build Date: " << BUILD_DATE << " " << BUILD_TIME << endl;
+  cout << "Copyright Contributors to the Zowe Project." << endl;
+  return 0;
 }
 
 bool should_quit(const std::string &input)

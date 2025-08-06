@@ -57,6 +57,7 @@ extern "C"
   int ZUTRUN(const char *);
   int ZUTDBGMG(const char *);
   unsigned char ZUTMGKEY();
+  void ZUTAOFF();
 
 #if defined(__cplusplus)
 }
