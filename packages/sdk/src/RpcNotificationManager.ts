@@ -22,7 +22,7 @@ import type { ReadFileResponse } from "./doc/gen/uss";
 type StreamMode = "r" | "w";
 
 export class RpcNotificationManager {
-    private mPendingStreamMap: Map<number, { stream: Stream; callbackInfo?: CallbackInfo }> = new Map();
+    private readonly mPendingStreamMap: Map<number, { stream: Stream; callbackInfo?: CallbackInfo }> = new Map();
 
     public constructor(private readonly mSshClient: Client) {}
 
@@ -54,7 +54,7 @@ export class RpcNotificationManager {
 
     private async uploadStream(params: { id: number; pipePath: string }): Promise<number> {
         const { stream: readStream, callbackInfo } = this.mPendingStreamMap.get(params.id)!;
-        if (!(readStream instanceof Readable)) {
+        if (readStream == null || !(readStream instanceof Readable)) {
             throw new Error(`No stream found for request ID: ${params.id}`);
         }
         this.mPendingStreamMap.delete(params.id);

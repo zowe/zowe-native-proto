@@ -18,15 +18,22 @@
 .*
 .*       ZWEEPILG
 .*
+.*  Todo:
+.*       - skip free if not &CCN_MAIN
+.*
 &NAME    ZWEEPILG ,
 .*
          COPY  CCNZGBL
-         GBLA  &DSA_SZ
+         GBLA  &ZG_DSASZ
+         GBLA  &ZG_DSASP
+         GBLB  &ZG_SAVE
+         GBLB  &ZG_BAKR
+         GBLB  &ZG_SAM64
 .*
 &MACNM   SETC  '&SYSMAC(0)'
 
-&IS_64   SETB  (&CCN_LP64)
-&IS_AR   SETB  ('CCN_ASCM' EQ 'AR')
+&IS_64   SETB  (&CCN_LP64 OR &ZG_SAM64)
+&IS_AR   SETB  ('&CCN_ASCM' EQ 'AR')
 .*
 .*       Set 31 or 64 bit instructions
 .*
@@ -37,50 +44,61 @@
 &LRx     SETC  'LGR'
 .CONT020 ANOP  ,
 .*
-         AIF   (&DSA_SZ EQ 0).CONT600
-         &LRx  1,13
+         AIF   (&ZG_DSASZ EQ 0).CONT600
+         AIF   (NOT &ZG_BAKR).CONT300
+         &LRx  2,15            Preserve R15
+         LHI   0,3             Code #3 = MSTA
+         ESTA  0,0
+         AGO   .CONT400
+.CONT300 ANOP ,
+         &LRx  1,13            -> Dynamic storage
 .*
          AIF   (&IS_64).LOAD64
-         L     13,4(,13)
-         ST    15,16(,13)
+         L     13,4(,13)       Get previous save area
+         ST    15,16(,13)      Save R15 contents there
          AGO   .CONT400
 .LOAD64  ANOP  ,
-         LG    13,128(,13)
-         STG   15,16(,13)
+         LG    13,128(,13)     Get previous save area
+         STG   15,16(,13)      Save R15 contents there
 .CONT400 ANOP  ,
 *
-         LARL  15,&CCN_LITN
+         LARL  15,&CCN_LITN    -> Literals
          USING &CCN_LITN,15
 *
          STORAGE RELEASE,                                              +
                CALLRKY=YES,                                            +
-               SP=132,                                                 +
-               LENGTH=&DSA_SZ,                                         +
+               SP=&ZG_DSASP.,                                          +
+               LENGTH=&ZG_DSASZ,                                       +
                ADDR=(1)
 *
          DROP  15
 .*
+         AIF   (NOT &ZG_BAKR).CONT500
+         &LRx  15,2            Restore R15
+         PR    ,               Return to caller
+         AGO   .EXIT
+.*
 .*       Restore R15 from SA if we released storage
 .*
-         AIF   (&IS_64).CONT500
-*
-         L     15,16(,13)
-         AGO   .CONT600
 .CONT500 ANOP
-         LG    15,16(,13)
+         AIF   (&IS_64).CONT540
+         L     15,16(,13)      Restore R15 from SA
+         AGO   .CONT600
+.CONT540 ANOP
+         LG    15,16(,13)      Restore R15 from SA
 .*
 .*       Exit linkage
 .*
 .CONT600 ANOP
          AIF   (&IS_64).ULINK64
-         L     14,12(,13)
-         LM    1,12,24(13)
+         L     14,12(,13)      Restore R14 from save area
+         LM    1,12,24(13)     Restore remaining regs
          AGO   .CONT800
 .ULINK64 ANOP
-         LG    14,8(,13)
-         LMG   1,12,32(13)
+         LG    14,8(,13)       Restore R14 from save area
+         LMG   1,12,32(13)     Restore remaining regs
 .CONT800 ANOP
-         BR    14
+         BR    14              Return to caller
 .*
 .* Common exit
 .*

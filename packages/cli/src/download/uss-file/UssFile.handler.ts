@@ -18,28 +18,6 @@ import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class DownloadUssFileHandler extends SshBaseHandler {
     public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<uss.ReadFileResponse> {
-        let encoding = params.arguments.encoding;
-        const binary = params.arguments.binary;
-        if (encoding == null && binary == null) {
-            try {
-                const fileResp = await client.uss.listFiles({
-                    fspath: params.arguments.filePath,
-                    all: true,
-                    long: true,
-                });
-                if (fileResp.success && fileResp.items.length > 0) {
-                    const file = fileResp.items[0];
-                    encoding = file.filetag;
-                }
-            } catch (error) {
-                params.response.console.error(
-                    "Failed to auto-detect file encoding for %s: %s",
-                    params.arguments.filePath,
-                    error,
-                );
-            }
-        }
-
         const task: ITaskWithStatus = {
             percentComplete: 0,
             statusMessage: "Downloading...",
@@ -55,7 +33,7 @@ export default class DownloadUssFileHandler extends SshBaseHandler {
             {
                 stream: fs.createWriteStream(localFilePath),
                 fspath: params.arguments.filePath,
-                encoding: binary ? "binary" : encoding,
+                encoding: params.arguments.binary ? "binary" : params.arguments.encoding,
             },
             (percent: number): void => {
                 task.percentComplete = percent;

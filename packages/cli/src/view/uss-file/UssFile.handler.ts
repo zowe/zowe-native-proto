@@ -15,31 +15,9 @@ import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class ViewUssFileHandler extends SshBaseHandler {
     public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<uss.ReadFileResponse> {
-        let encoding = params.arguments.encoding;
-        const binary = params.arguments.binary;
-        if (encoding == null && binary == null) {
-            try {
-                const fileResp = await client.uss.listFiles({
-                    fspath: params.arguments.filePath,
-                    all: true,
-                    long: true,
-                });
-                if (fileResp.success && fileResp.items.length > 0) {
-                    const file = fileResp.items[0];
-                    encoding = file.filetag;
-                }
-            } catch (error) {
-                params.response.console.error(
-                    "Failed to auto-detect file encoding for %s: %s",
-                    params.arguments.filePath,
-                    error,
-                );
-            }
-        }
-
         const response = await client.uss.readFile({
             fspath: params.arguments.filePath,
-            encoding: binary ? "binary" : encoding,
+            encoding: params.arguments.binary ? "binary" : params.arguments.encoding,
         });
         const content = B64String.decode(response.data);
         params.response.data.setMessage(

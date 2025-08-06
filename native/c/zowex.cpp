@@ -9,6 +9,8 @@
  *
  */
 
+#pragma runopts("TRAP(ON,NOSPIE)")
+
 #include <iostream>
 #include <memory>
 #include <vector>
