@@ -10,40 +10,36 @@
  */
 
 import { posix } from "node:path";
-import { Readable, Stream, Writable } from "node:stream";
-import { pipeline } from "node:stream/promises";
+import { Stream } from "node:stream";
 import { ImperativeError, Logger } from "@zowe/imperative";
 import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
-import { Base64Decode, Base64Encode } from "base64-stream";
 import { Client, type ClientChannel } from "ssh2";
 import { AbstractRpcClient } from "./AbstractRpcClient";
+import { RpcNotificationManager } from "./RpcNotificationManager";
 import { ZSshUtils } from "./ZSshUtils";
 import type {
     ClientOptions,
     CommandRequest,
     CommandResponse,
     RpcNotification,
+    RpcPromise,
     RpcRequest,
     RpcResponse,
     StatusMessage,
 } from "./doc";
 
-type PromiseResolve<T> = (value: T | PromiseLike<T>) => void;
-// biome-ignore lint/suspicious/noExplicitAny: Promise reject type uses any
-type PromiseReject = (reason?: any) => void;
-
 export class ZSshClient extends AbstractRpcClient implements Disposable {
     public static readonly DEFAULT_SERVER_PATH = "~/.zowe-server";
 
     private mErrHandler: ClientOptions["onError"];
+    private mNotifMgr: RpcNotificationManager;
     private mResponseTimeout: number;
     private mServerInfo: { checksums?: Record<string, string> };
     private mSshClient: Client;
     private mSshStream: ClientChannel;
     private mPartialStderr = "";
     private mPartialStdout = "";
-    private mPendingStreamMap: Map<number, Stream> = new Map();
-    private mPromiseMap: Map<number, { resolve: PromiseResolve<CommandResponse>; reject: PromiseReject }> = new Map();
+    private readonly mPromiseMap: Map<number, RpcPromise> = new Map();
     private mRequestId = 0;
 
     private constructor() {
@@ -79,6 +75,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
             const keepAliveMsec = opts.keepAliveInterval != null ? opts.keepAliveInterval * 1000 : 30e3;
             client.mSshClient.connect(ZSshUtils.buildSshConfig(session, { keepaliveInterval: keepAliveMsec }));
         });
+        client.mNotifMgr = new RpcNotificationManager(client.mSshClient);
         return client;
     }
 
@@ -110,11 +107,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                 reject(new ImperativeError({ msg: "Request timed out", errorCode: "ETIMEDOUT" }));
             }, this.mResponseTimeout);
             if ("stream" in request && request.stream instanceof Stream) {
-                this.mPendingStreamMap.set(
-                    rpcRequest.id,
-                    request.stream.on("keepAlive", () => timeoutId?.refresh()),
-                );
-                rpcRequest.params.stream = rpcRequest.id;
+                this.mNotifMgr.registerStream(rpcRequest, request.stream, timeoutId);
             }
             this.mPromiseMap.set(rpcRequest.id, { resolve, reject });
             const requestStr = JSON.stringify(rpcRequest);
@@ -228,27 +221,12 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
         return responses[responses.length - 1];
     }
 
-    private handleNotification(response: RpcNotification): void {
-        const responseId = response.params?.id as number;
-        const pendingStream = this.mPendingStreamMap.get(responseId);
-        let streamPromise: Promise<void> | undefined;
-        if (response.method === "sendStream" && pendingStream instanceof Readable) {
-            streamPromise = this.uploadStream(pendingStream, response.params);
-        } else if (response.method === "receiveStream" && pendingStream instanceof Writable) {
-            streamPromise = this.downloadStream(pendingStream, response.params);
-        }
-        if (streamPromise != null) {
-            const { resolve } = this.mPromiseMap.get(responseId);
-            this.mPromiseMap.get(responseId).resolve = async (value: CommandResponse) => {
-                await streamPromise;
-                resolve(value);
-            };
-            this.mPendingStreamMap.delete(responseId);
-        } else {
-            const errMsg = Logger.getAppLogger().error(
-                "Failed to handle RPC notification: %s",
-                JSON.stringify(response),
-            );
+    private handleNotification(notif: RpcNotification): void {
+        const responseId = notif.params?.id as number;
+        try {
+            this.mNotifMgr.handleNotification(notif, this.mPromiseMap.get(responseId));
+        } catch (err) {
+            const errMsg = Logger.getAppLogger().error("Failed to handle RPC notification: %s", err);
             this.mErrHandler(new Error(errMsg));
         }
     }
@@ -267,21 +245,5 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
             this.mPromiseMap.get(response.id).resolve(response.result);
         }
         this.mPromiseMap.delete(response.id);
-    }
-
-    private async uploadStream(readStream: Readable, params: { pipePath: string }): Promise<void> {
-        const sshStream = await new Promise<ClientChannel>((resolve, reject) => {
-            this.mSshClient.exec(`cat > ${params.pipePath}`, (err, stream) => (err ? reject(err) : resolve(stream)));
-        });
-        readStream.on("data", () => readStream.emit("keepAlive"));
-        return pipeline(readStream, new Base64Encode(), sshStream.stdin);
-    }
-
-    private async downloadStream(writeStream: Writable, params: { pipePath: string }): Promise<void> {
-        const sshStream = await new Promise<ClientChannel>((resolve, reject) => {
-            this.mSshClient.exec(`cat ${params.pipePath}`, (err, stream) => (err ? reject(err) : resolve(stream)));
-        });
-        sshStream.stdout.on("data", () => writeStream.emit("keepAlive"));
-        return pipeline(sshStream.stdout, new Base64Decode(), writeStream);
     }
 }

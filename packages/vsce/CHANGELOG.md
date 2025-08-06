@@ -7,6 +7,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## Recent Changes
 
 - Implemented the `getTag` function in the `SshUssApi` class to return the tag of a UNIX file. Now, the VS Code extension automatically detects the file tag before the file is opened, and the detected encoding is shown in the "Open with Encoding" menu in Zowe Explorer. [#346](https://github.com/zowe/zowe-native-proto/issues/346)
+- Adopted streaming for API methods that upload/download data sets and USS files. [#358](https://github.com/zowe/zowe-native-proto/pull/358)
 
 ## `0.1.2`
 

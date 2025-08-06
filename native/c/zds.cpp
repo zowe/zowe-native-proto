@@ -119,7 +119,7 @@ int zds_read_from_dd(ZDS *zds, string ddname, string &response)
   return 0;
 }
 
-int zds_read_from_dsn(ZDS *zds, string dsn, string &response)
+int zds_read_from_dsn(ZDS *zds, const string &dsn, string &response)
 {
   string dsname = "//'" + dsn + "'";
   const string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "rb" : "r";
@@ -164,7 +164,7 @@ int zds_read_from_dsn(ZDS *zds, string dsn, string &response)
   return 0;
 }
 
-int zds_write_to_dd(ZDS *zds, string ddname, string data)
+int zds_write_to_dd(ZDS *zds, string ddname, const string &data)
 {
   ddname = "DD:" + ddname;
   ofstream out(ddname.c_str());
@@ -181,7 +181,7 @@ int zds_write_to_dd(ZDS *zds, string ddname, string data)
   return 0;
 }
 
-int zds_write_to_dsn(ZDS *zds, string dsn, string &data)
+int zds_write_to_dsn(ZDS *zds, const string &dsn, string &data)
 {
   const auto hasEncoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
   const auto codepage = string(zds->encoding_opts.codepage);
@@ -282,7 +282,7 @@ typedef struct
   unsigned char info;
 } RECORD_ENTRY;
 
-int alloc_and_free(string alloc_dd, string dsn, unsigned int *code, string &resp)
+int alloc_and_free(const string &alloc_dd, const string &dsn, unsigned int *code, string &resp)
 {
   int rc = zut_bpxwdyn(alloc_dd, code, resp);
   if (RTNCD_SUCCESS == rc)
@@ -374,7 +374,7 @@ int zds_create_dsn(ZDS *zds, std::string dsn, DS_ATTRIBUTES attributes, std::str
   return alloc_and_free(parm, dsn, &code, response);
 }
 
-int zds_create_dsn_vb(ZDS *zds, string dsn, string &response)
+int zds_create_dsn_vb(ZDS *zds, const string &dsn, string &response)
 {
   int rc = 0;
   unsigned int code = 0;
@@ -383,7 +383,7 @@ int zds_create_dsn_vb(ZDS *zds, string dsn, string &response)
   return alloc_and_free(parm, dsn, &code, response);
 }
 
-int zds_create_dsn_adata(ZDS *zds, string dsn, string &response)
+int zds_create_dsn_adata(ZDS *zds, const string &dsn, string &response)
 {
   int rc = 0;
   unsigned int code = 0;
@@ -392,7 +392,7 @@ int zds_create_dsn_adata(ZDS *zds, string dsn, string &response)
   return alloc_and_free(parm, dsn, &code, response);
 }
 
-int zds_create_dsn_loadlib(ZDS *zds, string dsn, string &response)
+int zds_create_dsn_loadlib(ZDS *zds, const string &dsn, string &response)
 {
   int rc = 0;
   unsigned int code = 0;
@@ -1002,17 +1002,24 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
  * @param zds pointer to a ZDS object
  * @param dsn name of the data set
  * @param pipe name of the output pipe
+ * @param content_len pointer where the length of the data set contents will be stored
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zds_read_from_dsn_streamed(ZDS *zds, string dsn, string pipe)
+int zds_read_from_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, size_t *content_len)
 {
-  dsn = "//'" + dsn + "'";
+  if (content_len == nullptr)
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "content_len must be a valid size_t pointer");
+    return RTNCD_FAILURE;
+  }
+
+  string dsname = "//'" + dsn + "'";
   const std::string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "rb,recfm=U" : "r";
-  FILE *fin = fopen(dsn.c_str(), fopen_flags.c_str());
+  FILE *fin = fopen(dsname.c_str(), fopen_flags.c_str());
   if (!fin)
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open file '%s'", dsn.c_str());
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open file '%s'", dsname.c_str());
     return RTNCD_FAILURE;
   }
 
@@ -1055,8 +1062,15 @@ int zds_read_from_dsn_streamed(ZDS *zds, string dsn, string pipe)
       }
     }
 
-    temp_encoded = zbase64::encode(chunk, chunk_len);
+    *content_len += chunk_len;
+    temp_encoded = zbase64::encode(chunk, chunk_len, false);
     fwrite(&temp_encoded[0], 1, temp_encoded.size(), fout);
+  }
+
+  const auto padding = 4 - (*content_len % 4);
+  if (padding > 0)
+  {
+    fwrite("===", 1, padding, fout);
   }
 
   fflush(fout);
@@ -1072,11 +1086,18 @@ int zds_read_from_dsn_streamed(ZDS *zds, string dsn, string pipe)
  * @param zds pointer to a ZDS object
  * @param dsn name of the data set
  * @param pipe name of the input pipe
+ * @param content_len pointer where the length of the data set contents will be stored
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zds_write_to_dsn_streamed(ZDS *zds, string dsn, string pipe)
+int zds_write_to_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, size_t *content_len)
 {
+  if (content_len == nullptr)
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "content_len must be a valid size_t pointer");
+    return RTNCD_FAILURE;
+  }
+
   string dsname = "//'" + dsn + "'";
   if (strlen(zds->etag) > 0)
   {
@@ -1139,6 +1160,7 @@ int zds_write_to_dsn_streamed(ZDS *zds, string dsn, string pipe)
     std::vector<char> temp_encoded = zbase64::decode(&buf[0], bytes_read);
     const char *chunk = &temp_encoded[0];
     int chunk_len = temp_encoded.size();
+    *content_len += chunk_len;
 
     if (hasEncoding)
     {
