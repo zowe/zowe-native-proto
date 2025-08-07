@@ -302,7 +302,7 @@ export abstract class AbstractConfigManager {
             const newConfig: IConfig = await ConfigBuilder.build(impConfig, global, opts);
             config.api.layers.merge(newConfig);
             await config.save(false);
-        } catch (_err) {}
+        } catch {}
     }
 
     private async validateConfig(newConfig: ISshConfigExt, askForPassword = true): Promise<ISshConfigExt | undefined> {
