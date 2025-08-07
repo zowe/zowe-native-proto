@@ -51,19 +51,31 @@ protected:
     // Create logs directory if it doesn't exist
     create_logs_dir();
 
-    std::cout << "ZLogger: calling ZLGINIT" << std::endl;
+    // Get current working directory
+    char cwd[260] = {0};
+    std::string log_path_str;
 
-    // Initialize Metal C logger with default path
-    if (ZLGINIT("logs/zowex.log", &default_level_) == 0)
+    if (getcwd(cwd, sizeof(cwd)) != NULL)
     {
-      metal_c_initialized_ = true;
-      trace("ZLogger: Metal C DD logging initialized successfully.");
+      log_path_str = std::string(cwd) + "/logs/zowex.log";
     }
     else
     {
+      log_path_str = "logs/zowex.log";
+    }
+
+    std::cout << "ZLogger: calling ZLGINIT" << std::endl;
+
+    // Initialize Metal C logger with default path
+    if (ZLGINIT(log_path_str.c_str(), &default_level_) == 0)
+    {
+      std::cout << "ZLogger: ZLGINIT success" << std::endl;
+      metal_c_initialized_ = true;
+    }
+    else
+    {
+      std::cout << "ZLogger: ZLGINIT failed" << std::endl;
       metal_c_initialized_ = false;
-      // Log to stderr if Metal C init fails
-      std::cerr << "ZLogger: Metal C initialization failed" << std::endl;
     }
   }
 
@@ -167,13 +179,15 @@ public:
       return;
     }
 
+    int level_value = level;
+
     va_list args;
     va_start(args, format);
     char buffer[4096];
     vsnprintf(buffer, sizeof(buffer), format, args);
     va_end(args);
 
-    ZLGWRITE(level, buffer);
+    ZLGWRITE(&level_value, buffer);
   }
 
   /**
@@ -181,6 +195,7 @@ public:
    */
   auto trace(const char *format, ...) -> void
   {
+    std::cout << "ZLogger: trace called" << std::endl;
     if (!metal_c_initialized_)
     {
       return;
@@ -192,7 +207,8 @@ public:
     vsnprintf(buffer, sizeof(buffer), format, args);
     va_end(args);
 
-    ZLGWRITE(ZLOGLEVEL_TRACE, buffer);
+    int level_value = ZLOGLEVEL_TRACE;
+    ZLGWRITE(&level_value, buffer);
   }
 
   auto debug(const char *format, ...) -> void
@@ -208,7 +224,8 @@ public:
     vsnprintf(buffer, sizeof(buffer), format, args);
     va_end(args);
 
-    ZLGWRITE(ZLOGLEVEL_DEBUG, buffer);
+    int level_value = ZLOGLEVEL_DEBUG;
+    ZLGWRITE(&level_value, buffer);
   }
 
   auto info(const char *format, ...) -> void
@@ -224,7 +241,8 @@ public:
     vsnprintf(buffer, sizeof(buffer), format, args);
     va_end(args);
 
-    ZLGWRITE(ZLOGLEVEL_INFO, buffer);
+    int level_value = ZLOGLEVEL_INFO;
+    ZLGWRITE(&level_value, buffer);
   }
 
   auto warn(const char *format, ...) -> void
@@ -240,7 +258,8 @@ public:
     vsnprintf(buffer, sizeof(buffer), format, args);
     va_end(args);
 
-    ZLGWRITE(ZLOGLEVEL_WARN, buffer);
+    int level_value = ZLOGLEVEL_WARN;
+    ZLGWRITE(&level_value, buffer);
   }
 
   auto error(const char *format, ...) -> void
@@ -256,7 +275,8 @@ public:
     vsnprintf(buffer, sizeof(buffer), format, args);
     va_end(args);
 
-    ZLGWRITE(ZLOGLEVEL_ERROR, buffer);
+    int level_value = ZLOGLEVEL_ERROR;
+    ZLGWRITE(&level_value, buffer);
   }
 
   auto fatal(const char *format, ...) -> void
@@ -272,7 +292,8 @@ public:
     vsnprintf(buffer, sizeof(buffer), format, args);
     va_end(args);
 
-    ZLGWRITE(ZLOGLEVEL_FATAL, buffer);
+    int level_value = ZLOGLEVEL_FATAL;
+    ZLGWRITE(&level_value, buffer);
   }
 };
 

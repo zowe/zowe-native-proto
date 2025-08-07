@@ -52,7 +52,7 @@ extern "C"
    * @param message Pre-formatted message string
    * @return 0 on success, -1 on error
    */
-  int ZLGWRITE(int level, const char *message);
+  int ZLGWRITE(int *level, const char *message);
 
   /**
    * Format and write a message from Metal C with simple formatting

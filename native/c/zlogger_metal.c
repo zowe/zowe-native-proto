@@ -41,7 +41,7 @@ static zlogger_metal_t *get_metal_logger()
   if (rc != 0 || logger_data == NULL)
   {
     /* Create new logger instance */
-    logger_data = (zlogger_metal_t *)storage_obtain31(sizeof(zlogger_metal_t));
+    logger_data = (zlogger_metal_t *)storage_get64(sizeof(zlogger_metal_t));
     if (logger_data)
     {
       memset(logger_data, 0, sizeof(zlogger_metal_t));
@@ -110,19 +110,23 @@ static char g_output_record[133] = {0};
  */
 static int ZLGWRDD(int level, const char *message)
 {
+  zwto_debug("[>] ZLGWRDD called: level: %d, message: %s", level, message);
   zlogger_metal_t *logger = get_metal_logger();
   if (!logger || !logger->log_io)
   {
     /* DD not available or not opened */
+    zwto_debug("[-] ZLGWRDD: DD not available or not opened");
     return -1;
   }
 
   /* Additional safety checks for Metal C */
   if (!message)
   {
+    zwto_debug("[-] ZLGWRDD: message is NULL");
     return -1;
   }
 
+  zwto_debug("[*] ZLGWRDD: message: %s", message);
   /* Format the message as a fixed-length record */
   unsigned long long msg_len = strlen(message);
   if (msg_len > 131)
@@ -138,6 +142,7 @@ static int ZLGWRDD(int level, const char *message)
     memcpy(g_output_record, message, msg_len);
   }
   g_output_record[131] = '\n'; /* Add newline before null terminator */
+  zwto_debug("[*] ZLGWRDD: g_output_record: %s", g_output_record);
 
   /* Write using BSAM synchronous write with additional safety check */
   int write_rc = writeSync(logger->log_io, g_output_record);
@@ -171,31 +176,15 @@ int ZLGINIT(const char *log_file_path, int *min_level)
     zwto_debug("[*] min_level: %d", *min_level);
   }
 
-  zwto_debug("[*] logger: %p", logger);
-  // memset(&g_metal_logger, 0, sizeof(g_metal_logger));
-
-  const size_t path_len = strlen(log_file_path) < sizeof(logger->log_path) - 1 ? strlen(log_file_path) : sizeof(logger->log_path) - 1;
-  zwto_debug("[*] path_len: %zu", path_len);
-  zwto_debug("[*] logger->log_path before copy: %s", logger->log_path);
-
-  /* Print all bytes in logger before the call */
-  zwto_debug("[*] logger bytes (%zu bytes):", sizeof(*logger));
-  for (size_t i = 0; i < sizeof(*logger); i++)
-  {
-    zwto_debug("[*] byte[%zu] = 0x%02X", i, ((unsigned char *)logger)[i]);
-  }
-  zwto_debug("[*] copying log_file_path to logger->log_path");
   strcpy(logger->log_path, log_file_path);
-  zwto_debug("[*] strcpy complete. pointer: %p", logger->log_path);
-  zwto_debug("[*] logger->log_path: %s", logger->log_path);
 
   logger->min_level = *min_level;
   logger->use_wto = 1;
 
-  char alloc_cmd[372] = {0};
+  char alloc_cmd[364] = {0};
   int cmd_len = sprintf(alloc_cmd,
-                        "alloc file(ZWXLOGDD) path('%.260s') pathopts(owronly,ocreat) pathmode(sirusr,siwusr,sirgrp) filedata(text)",
-                        logger->log_path);
+                        "alloc file(ZWXLOGDD) path('%.256s') pathopts(owronly,ocreat) %s",
+                        logger->log_path, "pathmode(sirusr,siwusr,sirgrp) filedata(text)");
   zwto_debug("[*] alloc_cmd: %s", alloc_cmd);
   if (cmd_len >= sizeof(alloc_cmd) || cmd_len < 0)
   {
@@ -203,7 +192,8 @@ int ZLGINIT(const char *log_file_path, int *min_level)
     return -1;
   }
 
-  unsigned char *p = (unsigned char *)__malloc31(sizeof(BPXWDYN_PARM) + sizeof(BPXWDYN_RESPONSE));
+  int size = sizeof(BPXWDYN_PARM) + sizeof(BPXWDYN_RESPONSE);
+  unsigned char *p = (unsigned char *)storage_obtain31(size);
   memset(p, 0x00, sizeof(BPXWDYN_PARM) + sizeof(BPXWDYN_RESPONSE));
 
   BPXWDYN_PARM *bparm = (BPXWDYN_PARM *)p;
@@ -216,51 +206,57 @@ int ZLGINIT(const char *log_file_path, int *min_level)
   if (rc != 0)
   {
     zwto_debug("[-] ZUTWDYN failed");
-    free(p);
+    storage_release(size, p);
     return rc;
   }
 
   logger->log_io = open_output_assert("ZWXLOGDD", 132, 132, dcbrecf + dcbrecbr);
   logger->use_dd = (logger->log_io != NULL) ? 1 : 0;
   logger->initialized = 1;
-  zwto_debug("[<] ZLGINIT success");
-  free(p);
+  zwto_debug("[<] ZLGINIT success, use_dd: %d", logger->use_dd);
+  storage_release(size, p);
   return 0;
 }
 
-int ZLGWRITE(int level, const char *message)
+int ZLGWRITE(int *level, const char *message)
 {
-  char formatted_msg[ZLOG_MAX_MSG];
-  char timestamp[32];
-  const char *level_str;
+  char formatted_msg[ZLOG_MAX_MSG] = {0};
+  char timestamp[32] = {0};
+  zwto_debug("[>] ZLGWRITE called: level: %d, message: %s", *level, message);
+  const char *level_str = NULL;
   int result = 0;
 
   zlogger_metal_t *logger = get_metal_logger();
   if (!logger || !logger->initialized || !message)
   {
+    zwto_debug("[-] ZLGWRITE: logger is NULL or not initialized or message is NULL");
     return -1;
   }
 
   /* Check if we should log this level */
-  if (level < logger->min_level || level == ZLOGLEVEL_OFF)
+  if (*level < logger->min_level || *level == ZLOGLEVEL_OFF)
   {
+    zwto_debug("[-] ZLGWRITE: level is less than min_level or level is OFF");
     return 0;
   }
 
   /* Get timestamp and level string */
   ZLGTIME(timestamp, sizeof(timestamp));
-  level_str = (level >= ZLOGLEVEL_TRACE && level <= ZLOGLEVEL_OFF)
-                  ? g_level_strings[level]
+  level_str = (*level >= ZLOGLEVEL_TRACE && *level <= ZLOGLEVEL_OFF)
+                  ? g_level_strings[*level]
                   : "UNKNOWN";
+  zwto_debug("[*] ZLGWRITE: level_str: %s", level_str);
 
   /* Format complete message */
   sprintf(formatted_msg, "[%s] [%s] %s",
           timestamp, level_str, message);
 
+  zwto_debug("[*] ZLGWRITE: formatted_msg: %s", formatted_msg);
   /* Try DD writing first if available */
   if (logger->use_dd)
   {
-    result = ZLGWRDD(level, formatted_msg);
+    zwto_debug("[*] ZLGWRITE: using DD");
+    result = ZLGWRDD(*level, formatted_msg);
     if (result == 0)
     {
       return 0; /* Successfully wrote to DD */
@@ -270,7 +266,8 @@ int ZLGWRITE(int level, const char *message)
   /* Fall back to WTO */
   if (logger->use_wto)
   {
-    result = ZLGWRWTO(level, formatted_msg);
+    zwto_debug("[*] ZLGWRITE: using WTO");
+    result = ZLGWRWTO(*level, formatted_msg);
   }
 
   return result;
@@ -326,7 +323,7 @@ int ZLGWRFMT(int level, const char *prefix, const char *message, const char *suf
 
   formatted_msg[pos] = '\0';
 
-  return ZLGWRITE(level, formatted_msg);
+  return ZLGWRITE(&level, formatted_msg);
 }
 
 void ZLGSTLVL(int level)

@@ -15,6 +15,8 @@
 #define NTS_RC_EXISTS 8
 #define NTS_RC_ERROR 12
 
+// IRST64
+
 typedef struct
 {
   unsigned char value[16];

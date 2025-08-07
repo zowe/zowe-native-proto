@@ -109,34 +109,10 @@ int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_
 
 int main(int argc, char *argv[])
 {
-  char cwd[PATH_MAX] = {0};
-  string log_path_str;
-
-  if (getcwd(cwd, sizeof(cwd)) != NULL)
-  {
-    log_path_str = string(cwd) + "/logs/zowex.log";
-  }
-  else
-  {
-    log_path_str = "logs/zowex.log";
-  }
-
   unsigned int code = 0;
   string resp;
 
-  char arg_buf[1024];
-  if (argc > 1)
-  {
-    for (int i = 1; i < argc; i++)
-    {
-      snprintf(arg_buf, sizeof(arg_buf), "%s", argv[i]);
-    }
-    ZLOG_TRACE("Starting zowex instance with args: %s", arg_buf);
-  }
-  else
-  {
-    ZLOG_TRACE("Starting zowex instance with no args");
-  }
+  ZLOG_TRACE("Starting zowex...");
 
   ArgumentParser arg_parser(argv[0], "Zowe Native Protocol CLI");
 
