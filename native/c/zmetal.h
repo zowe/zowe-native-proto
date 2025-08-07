@@ -301,6 +301,7 @@ static void mode_nzero()
 #define SET_KEY(key)                                 \
   __asm(                                             \
       "*                                         \n" \
+      " SLR  2,2          Clear                  \n" \
       " IC   2,%0         Get key value          \n" \
       " SPKA 0(2)         Set key in PSW         \n" \
       "*                                          "  \
@@ -457,9 +458,9 @@ static void get_psw(PSW *psw)
   memcpy(psw, &psw_raw, sizeof(PSW));
 }
 
-static void set_key(unsigned char key)
+static void set_key(unsigned char *key)
 {
-  SET_KEY(key);
+  SET_KEY(*key);
 }
 
 static void set_prev_r0(unsigned long long int reg)

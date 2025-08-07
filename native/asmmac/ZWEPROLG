@@ -70,6 +70,7 @@
 .*       Set 31 or 64 bit instructions
 .*
          AIF   (&IS_64).INST64
+&EREGx   SETC  'EREG'
 &LHIx    SETC  'LHI '
 &MHIx    SETC  'MHI '
 &LRxx    SETC  'LR  '
@@ -78,12 +79,13 @@
 &SLRx    SETC  'SLR '
          AGO   .CONT000
 .INST64  ANOP  ,
-&LHIx    SETC  'LGHI'
-&MHIx    SETC  'MGHI'
-&LRxx    SETC  'LGR '
-&Lxxx    SETC  'LGF '
-&ARxx    SETC  'AGR '
-&SLRx    SETC  'SLGR'
+&EREGx   SETC  'EREGG'
+&LHIx    SETC  'LGHI '
+&MHIx    SETC  'MGHI '
+&LRxx    SETC  'LGR  '
+&Lxxx    SETC  'LGF  '
+&ARxx    SETC  'AGR  '
+&SLRx    SETC  'SLGR '
 .CONT000 ANOP  ,
 .*
 .*       Validate and handle SAVE= paramters
@@ -127,8 +129,8 @@
 .*       Set DSA subpool
 .*
 .CONT260 ANOP ,
-         AIF   ('&NEWDSA(3)' EQ '').CONT300
-&ZG_DSASP  SETA  &NEWDSA(3)
+          AIF   ('&NEWDSA(3)' EQ '').CONT300
+&ZG_DSASP SETA  &NEWDSA(3)
 .*
 .*       Save input regs
 .*
@@ -199,7 +201,9 @@
          LMG   0,3,24(13)        Restore input registers
          AGO   .CONT620
 .CONT600 ANOP
-         MSTA  14                Save storage address (R15) in MSTA
+         MSTA   14               Save storage address (R15) in MSTA
+         &EREGx 14,14            Restore R14
+         &EREGx 0,3              Restore input registers
 .CONT620 ANOP
          &LRxx 13,15
          DROP  15

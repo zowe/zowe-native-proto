@@ -326,9 +326,9 @@ void ZUTAOFF()
     {
       mode_sup();
     }
-    set_key(key_zero);
+    set_key(&key_zero);
     jscb->jscbopts &= (0xFF - jscbauth);
-    set_key(key);
+    set_key(&key);
     if (mode_switch)
     {
       mode_prob();
