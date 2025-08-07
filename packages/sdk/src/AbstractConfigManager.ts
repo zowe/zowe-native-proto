@@ -27,8 +27,8 @@ import {
     type ProfileInfo,
 } from "@zowe/imperative";
 import { Client, type ClientChannel } from "ssh2";
+import { type inputBoxOpts, MESSAGE_TYPE, type qpItem, type qpOpts } from "./doc";
 import { type ISshConfigExt, ZClientUtils } from "./ZClientUtils";
-import { MESSAGE_TYPE, type inputBoxOpts, type qpItem, type qpOpts } from "./doc";
 
 export type ProgressCallback = (percent: number) => void;
 export abstract class AbstractConfigManager {
@@ -302,7 +302,7 @@ export abstract class AbstractConfigManager {
             const newConfig: IConfig = await ConfigBuilder.build(impConfig, global, opts);
             config.api.layers.merge(newConfig);
             await config.save(false);
-        } catch (err) {}
+        } catch {}
     }
 
     private async validateConfig(newConfig: ISshConfigExt, askForPassword = true): Promise<ISshConfigExt | undefined> {
