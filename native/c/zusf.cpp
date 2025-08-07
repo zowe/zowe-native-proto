@@ -1386,10 +1386,12 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, const string &file, const string
 
   std::vector<char> buf(FIFO_CHUNK_SIZE);
   size_t bytes_read;
+  std::vector<char> temp_encoded;
+  std::vector<char> left_over;
 
   while ((bytes_read = fread(&buf[0], 1, FIFO_CHUNK_SIZE, fin)) > 0)
   {
-    std::vector<char> temp_encoded = zbase64::decode(&buf[0], bytes_read);
+    temp_encoded = zbase64::decode(&buf[0], bytes_read, &left_over);
     const char *chunk = &temp_encoded[0];
     int chunk_len = temp_encoded.size();
     *content_len += chunk_len;
@@ -1419,6 +1421,7 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, const string &file, const string
       fclose(fout);
       return RTNCD_FAILURE;
     }
+    temp_encoded.clear();
   }
 
   fflush(fout);

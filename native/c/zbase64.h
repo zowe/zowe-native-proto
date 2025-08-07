@@ -109,6 +109,35 @@ inline size_t max_decoded_size(size_t input_size)
   return (input_size / 4) * 3;
 }
 
+inline size_t load_leftover(const char *input, size_t input_len, std::vector<char> *left_over, std::vector<char> *combined_input)
+{
+  // Handle leftover data combination
+  size_t total_size = left_over->size() + input_len;
+  combined_input->resize(total_size);
+
+  std::memcpy(&(*combined_input)[0], &(*left_over)[0], left_over->size());
+  std::memcpy(&(*combined_input)[0] + left_over->size(), input, input_len);
+
+  left_over->clear();
+  return total_size;
+}
+
+inline size_t store_leftover(const char *combined_input, size_t input_len, std::vector<char> *left_over, int byte_multiple)
+{
+  // Calculate how many bytes are leftover
+  size_t extra_count = input_len % byte_multiple;
+  size_t total_bytes = input_len - extra_count;
+
+  // Copy leftover bytes to be processed later
+  if (left_over != nullptr && extra_count > 0)
+  {
+    left_over->resize(extra_count);
+    std::memcpy(&(*left_over)[0], combined_input + total_bytes, extra_count);
+  }
+
+  return total_bytes;
+}
+
 // High-performance encode function (produces ASCII Base64 output)
 inline std::vector<char> encode(const char *input, size_t input_len)
 {
@@ -181,34 +210,16 @@ inline std::vector<char> encode(const char *input, size_t input_len, std::vector
   std::vector<char> temp_combined;
   if (left_over != nullptr && left_over->size() > 0)
   {
-    // Handle leftover data combination
-    size_t total_size = left_over->size() + input_len;
-    temp_combined.resize(total_size);
-
-    std::memcpy(&temp_combined[0], &(*left_over)[0], left_over->size());
-    std::memcpy(&temp_combined[0] + left_over->size(), input, input_len);
-
+    input_len = load_leftover(input, input_len, left_over, &temp_combined);
     combined_input = &temp_combined[0];
-    input_len = total_size;
-    left_over->clear();
   }
   else if (input_len == 0)
   {
     return std::vector<char>();
   }
 
-  // Calculate how many bytes are leftover
-  size_t extra_count = input_len % 3;
-  size_t total_bytes = input_len - extra_count;
-
-  // Copy leftover bytes to be encoded later
-  if (left_over != nullptr && extra_count > 0)
-  {
-    left_over->resize(extra_count);
-    std::memcpy(&(*left_over)[0], combined_input + total_bytes, extra_count);
-  }
-
   // Encode only the complete part (multiple of 3 bytes)
+  size_t total_bytes = store_leftover(combined_input, input_len, left_over, 3);
   return encode(combined_input, total_bytes);
 }
 
@@ -293,6 +304,25 @@ inline std::vector<char> decode(const char *input, size_t input_len)
   }
 
   return output;
+}
+
+inline std::vector<char> decode(const char *input, size_t input_len, std::vector<char> *left_over)
+{
+  const char *combined_input = input;
+  std::vector<char> temp_combined;
+  if (left_over != nullptr && left_over->size() > 0)
+  {
+    input_len = load_leftover(input, input_len, left_over, &temp_combined);
+    combined_input = &temp_combined[0];
+  }
+  else if (input_len == 0)
+  {
+    return std::vector<char>();
+  }
+
+  // Decode only the complete part (multiple of 4 bytes)
+  size_t total_bytes = store_leftover(combined_input, input_len, left_over, 4);
+  return decode(combined_input, total_bytes);
 }
 
 // Convenience overload for string input
