@@ -100,7 +100,7 @@ static const unsigned char *get_ebcdic_decode_table()
 // Fast inline function to calculate encoded size
 inline size_t encoded_size(size_t input_size)
 {
-  return ((input_size + 2) / 3) * 4;
+  return (input_size + 2) / 3 * 4;
 }
 
 // Fast inline function to calculate maximum decoded size
@@ -216,7 +216,7 @@ inline std::vector<char> encode(const char *input, size_t input_len, std::vector
   }
   else if (input_len == 0)
   {
-    return std::vector<char>();
+    return temp_combined;
   }
 
   // Encode only the complete part (multiple of 3 bytes)
@@ -319,7 +319,7 @@ inline std::vector<char> decode(const char *input, size_t input_len, std::vector
   }
   else if (input_len == 0)
   {
-    return std::vector<char>();
+    return temp_combined;
   }
 
   // Decode only the complete part (multiple of 4 bytes)
