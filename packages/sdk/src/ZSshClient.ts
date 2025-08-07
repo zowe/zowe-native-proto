@@ -152,7 +152,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
         let response: StatusMessage;
         try {
             response = JSON.parse(data);
-        } catch (_err) {
+        } catch {
             const errMsg = Logger.getAppLogger().error("Error starting Zowe server: %s", data);
             if (data.includes("FSUM7351")) {
                 throw new ImperativeError({
