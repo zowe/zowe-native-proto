@@ -611,7 +611,7 @@ int handle_console_issue(const ParseResult &result)
   string command = result.find_pos_arg_string("command");
   bool wait = result.find_kw_arg_bool("wait");
 
-  if (timeout > -1)
+  if (timeout > 0)
   {
     zcn.timeout = timeout;
   }
