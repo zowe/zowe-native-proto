@@ -1069,7 +1069,7 @@ int zds_read_from_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, 
     temp_encoded.clear();
   }
 
-  if (left_over.size() > 0)
+  if (!left_over.empty())
   {
     temp_encoded = zbase64::encode(&left_over[0], left_over.size());
     fwrite(&temp_encoded[0], 1, temp_encoded.size(), fout);

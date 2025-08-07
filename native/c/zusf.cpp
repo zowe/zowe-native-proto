@@ -1199,7 +1199,7 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, const string &file, const strin
     temp_encoded.clear();
   }
 
-  if (left_over.size() > 0)
+  if (!left_over.empty())
   {
     temp_encoded = zbase64::encode(&left_over[0], left_over.size());
     fwrite(&temp_encoded[0], 1, temp_encoded.size(), fout);
