@@ -15,6 +15,7 @@
 #include "zcnm31.h"
 #include "zcntype.h"
 #include "zecb.h"
+#include "zrecovery.h"
 
 #pragma prolog(ZCNACT, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(ZCNACT, " ZWEEPILG ")
@@ -81,11 +82,27 @@ static void ZCNTIMER(void *PTR32 parameter)
   ecb_post(e);
 }
 
+#pragma prolog(ZCNMABEX, " ZWEPROLG NEWDSA=(YES,8) ")
+#pragma epilog(ZCNMABEX, " ZWEEPILG ")
+static void ZCNMABEX(SDWA *sdwa, void *abexit_data)
+{
+  ECB *PTR32 e = (ECB * PTR32) abexit_data;
+  if (e)
+  {
+    ecb_post(e);
+    cancel_timers();
+  }
+}
+
 #pragma prolog(ZCNGET, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(ZCNGET, " ZWEEPILG ")
 int ZCNGET(ZCN *zcn, char *response)
 {
   int rc = 0;
+
+  ZRCVY_ENV zenv = {0};
+  zenv.abexit = ZCNMABEX;
+  zenv.abexit_data = (void *PTR64)zcn->ecb;
 
   rc = test_auth();
   if (0 != rc)
@@ -104,10 +121,18 @@ int ZCNGET(ZCN *zcn, char *response)
     cancel_timers();
   }
 
-  ZCN zcn31 = {0};
-  memcpy(&zcn31, zcn, sizeof(ZCN));
-  rc = zcnm1get(&zcn31, response);
-  memcpy(zcn, &zcn31, sizeof(ZCN));
+  if (0 == enable_recovery(&zenv))
+  {
+    ZCN zcn31 = {0};
+    memcpy(&zcn31, zcn, sizeof(ZCN));
+    rc = zcnm1get(&zcn31, response);
+    memcpy(zcn, &zcn31, sizeof(ZCN));
+  }
+  else
+  {
+    zcn->diag.e_msg_len = sprintf(zcn->diag.e_msg, "Unexpected abend occurred"); // TODO(Kelosky): surface abend information
+    return RTNCD_FAILURE;
+  }
 
   if (0 != rc)
   {

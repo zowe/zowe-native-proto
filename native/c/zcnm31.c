@@ -313,6 +313,8 @@ int zcnm1get(ZCN *zcn, char *resp)
   get_psw(&psw);
   int mode_switch = psw.p ? 1 : 0;
 
+  __asm(" EXRL 0,* "); // @TEST
+
   CLEAR_ARS();
 
   MCSOPMSG_MODEL(dsa_mcsopmsg_model);
