@@ -177,15 +177,19 @@ inline std::vector<char> encode(const char *input, size_t input_len)
 
 inline std::vector<char> encode(const char *input, size_t input_len, std::vector<char> *left_over)
 {
-  char *temp_input = const_cast<char *>(input);
+  const char *combined_input = input;
+  std::vector<char> temp_combined;
   if (left_over != nullptr && left_over->size() > 0)
   {
-    std::vector<char> combined_input;
-    combined_input.reserve(left_over->size() + input_len);
-    combined_input.insert(combined_input.end(), left_over->begin(), left_over->end());
-    combined_input.insert(combined_input.end(), input, input + input_len);
-    temp_input = &combined_input[0];
-    input_len = combined_input.size();
+    // Handle leftover data combination
+    size_t total_size = left_over->size() + input_len;
+    temp_combined.resize(total_size);
+
+    std::memcpy(&temp_combined[0], &(*left_over)[0], left_over->size());
+    std::memcpy(&temp_combined[0] + left_over->size(), input, input_len);
+
+    combined_input = &temp_combined[0];
+    input_len = total_size;
     left_over->clear();
   }
   else if (input_len == 0)
@@ -197,18 +201,15 @@ inline std::vector<char> encode(const char *input, size_t input_len, std::vector
   size_t extra_count = input_len % 3;
   size_t total_bytes = input_len - extra_count;
 
-  // Copy leftover bytes to the left_over parameter
+  // Copy leftover bytes to be encoded later
   if (left_over != nullptr && extra_count > 0)
   {
     left_over->resize(extra_count);
-    for (size_t i = 0; i < extra_count; i++)
-    {
-      (*left_over)[i] = temp_input[total_bytes + i];
-    }
+    std::memcpy(&(*left_over)[0], combined_input + total_bytes, extra_count);
   }
 
   // Encode only the complete part (multiple of 3 bytes)
-  return encode(temp_input, total_bytes);
+  return encode(combined_input, total_bytes);
 }
 
 // Convenience overload for string input
