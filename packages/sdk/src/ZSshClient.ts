@@ -200,7 +200,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
             let response: RpcResponse | RpcNotification;
             try {
                 response = JSON.parse(responses[i]);
-            } catch (_err) {
+            } catch {
                 const errMsg = Logger.getAppLogger().error("Invalid JSON response: %s", responses[i]);
                 this.mErrHandler(new Error(errMsg));
                 continue;
