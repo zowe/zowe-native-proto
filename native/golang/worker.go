@@ -238,7 +238,7 @@ func initializeWorker(worker *Worker, pool *WorkerPool) {
 	// Map the shared memory using the file descriptor
 	if worker.ShmFD > 0 {
 		// Use unix.Mmap for memory mapping
-		data, err := unix.Mmap(worker.ShmFD, 0, 68, unix.PROT_READ|unix.PROT_WRITE, unix.MAP_SHARED)
+		data, err := unix.Mmap(worker.ShmFD, 0, 12, unix.PROT_READ|unix.PROT_WRITE, unix.MAP_SHARED)
 		if err != nil {
 			utils.LogFatal("Worker %d: Failed to mmap shared memory: %v\n", worker.ID, err)
 		} else {

@@ -147,7 +147,7 @@ func HandleReadFileRequest(conn *utils.StdioConn, params []byte) (result any, e 
 					return
 				}
 
-				time.Sleep(time.Millisecond)
+				time.Sleep(250 * time.Millisecond)
 			}
 
 			contentLen := atomic.LoadInt64((*int64)(unsafe.Pointer(&conn.SharedMem[4])))
