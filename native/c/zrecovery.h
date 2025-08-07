@@ -125,16 +125,24 @@ typedef struct sdwarc4 SDWARC4;
   __asm(                                                      \
       "*                                                  \n" \
       " LA   1,%0                 -> SDWA                 \n" \
+      " LARL 2,*+L'*              -> NSI                  \n" \
+      "*                                                  \n" \
+      " PUSH USING                                        \n" \
+      " DROP ,                                            \n" \
+      " USING *,2                                         \n" \
       "*                                                  \n" \
       " VRADATA KEY=" #key ","                                \
       "SDWAREG=1,"                                            \
       "DATA=%1,"                                              \
       "LENADDR=%2,"                                           \
-      "VRAREG=(2,NOTSET)                                  \n" \
+      "VRAREG=(14,NOTSET)                                 \n" \
+      "*                                                  \n" \
+      " DROP 2                                            \n" \
+      " POP USING                                         \n" \
       "*                                                    " \
       :                                                       \
       : "m"(sdwa), "m"(data), "m"(len)                        \
-      : "r1", "r2");
+      : "r1", "r2", "r14");
 #else
 #define VRADATA_DATA(sdwa, key, data, len)
 #endif
@@ -221,6 +229,22 @@ static void ZRCVYRTY(ZRCVY_ENV zenv)
   JUMP_ENV(zenv.f4sa, zenv.r13, 4); // TODO(Kelosky): document non-zero return code
 }
 
+static void vradata_init(SDWA *PTR64 sdwa)
+{
+  VRADATA_INIT(*sdwa);
+}
+
+static void vradata_dae(SDWA *PTR64 sdwa)
+{
+  VRADATA_KEY_ONLY(*sdwa, VRADAE);
+}
+
+static void vradata_ebcdic(SDWA *PTR64 sdwa, void *PTR64 data, short *PTR64 len) ATTRIBUTE(noinline);
+static void vradata_ebcdic(SDWA *PTR64 sdwa, void *PTR64 data, short *PTR64 len)
+{
+  VRADATA_DATA(*sdwa, VRAEBC, *(unsigned char *)data, *len);
+}
+
 #pragma prolog(ZRCVYARR, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(ZRCVYARR, " ZWEEPILG ")
 int ZRCVYARR(SDWA sdwa)
@@ -256,12 +280,19 @@ int ZRCVYARR(SDWA sdwa)
     return RTNCD_PERCOLATE; // TODO(Kelosky): for now percolate, user SETRP if SDWA, call recovery routine if provided
   }
 
+  // SDWARRL  Recovery Routine Label
+  // SDWACIDB Component BASE
+  // SDWACID  Component ID
+  // SDWASC   Subcomponent
+  // SDWAMDAT Assembly date
+  // SDWAMVRS Maintenance level
+
   // TODO(Kelosky): capture diag info here
-  short int len = 5;
-  char *data = "TEST";
-  VRADATA_INIT(sdwa);
-  VRADATA_KEY_ONLY(sdwa, VRADAE);
-  VRADATA_DATA(sdwa, VRADAE, data, len);
+  // short int len = 5;
+  // char *data = "TEST";
+  vradata_init(&sdwa);
+  vradata_dae(&sdwa);
+  vradata_ebcdic(&sdwa, data, &len);
 
   if (zenv->abexit)
     zenv->abexit(&sdwa, zenv->abexit_data);

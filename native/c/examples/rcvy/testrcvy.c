@@ -33,6 +33,7 @@ void PERCEXIT(void *perc_exit_data)
 
 int main()
 {
+
   ZRCVY_ENV zenv = {0};
   zenv.abexit = ABEXIT;
   zenv.perc_exit = PERCEXIT;
