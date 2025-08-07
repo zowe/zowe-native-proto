@@ -42,18 +42,18 @@ export class SshJesApi extends SshCommonApi implements MainframeInteraction.IJes
         } as zosjobs.IJob;
     }
 
-    public async getSpoolFiles(jobname: string, jobid: string): Promise<zosjobs.IJobFile[]> {
+    public async getSpoolFiles(_jobname: string, jobid: string): Promise<zosjobs.IJobFile[]> {
         const response = await (await this.client).jobs.listSpools({
             jobId: jobid.toUpperCase(),
         });
         return response.items as unknown as zosjobs.IJobFile[];
     }
 
-    public async downloadSpoolContent(parms: zosjobs.IDownloadAllSpoolContentParms): Promise<void> {
+    public async downloadSpoolContent(_parms: zosjobs.IDownloadAllSpoolContentParms): Promise<void> {
         throw new Error("Not yet implemented");
     }
 
-    public async getSpoolContentById(jobname: string, jobid: string, spoolId: number): Promise<string> {
+    public async getSpoolContentById(_jobname: string, jobid: string, spoolId: number): Promise<string> {
         const response = await (await this.client).jobs.readSpool({
             spoolId,
             jobId: jobid.toUpperCase(),
@@ -77,8 +77,8 @@ export class SshJesApi extends SshCommonApi implements MainframeInteraction.IJes
 
     public async submitJcl(
         jcl: string,
-        internalReaderRecfm?: string,
-        internalReaderLrecl?: string,
+        _internalReaderRecfm?: string,
+        _internalReaderLrecl?: string,
     ): Promise<zosjobs.IJob> {
         const response = await (await this.client).jobs.submitJcl({
             jcl: B64String.encode(jcl),
@@ -94,7 +94,7 @@ export class SshJesApi extends SshCommonApi implements MainframeInteraction.IJes
         return { jobid: response.jobId } as unknown as zosjobs.IJob;
     }
 
-    public async deleteJob(jobname: string, jobid: string): Promise<void> {
+    public async deleteJob(_jobname: string, jobid: string): Promise<void> {
         const response = await (await this.client).jobs.deleteJob({
             jobId: jobid,
         });
