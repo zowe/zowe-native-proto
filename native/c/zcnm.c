@@ -98,7 +98,7 @@ int ZCNGET(ZCN *zcn, char *response)
 
   if (zcn->ecb)
   {
-    int timeout = zcn->timeout * 100; // covert milliseconds to seconds
+    int timeout = zcn->timeout * 100; // convert to seconds
     timer(timeout, ZCNTIMER, (ECB * PTR32) zcn->ecb);
     ecb_wait((ECB * PTR32) zcn->ecb);
     cancel_timers();
