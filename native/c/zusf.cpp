@@ -1181,12 +1181,13 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, const string &file, const strin
   const size_t chunk_size = FIFO_CHUNK_SIZE * 3 / 4;
   std::vector<char> buf(chunk_size);
   size_t bytes_read;
+  std::vector<char> temp_encoded;
+  std::vector<char> left_over;
 
   while ((bytes_read = fread(&buf[0], 1, chunk_size, fin)) > 0)
   {
     int chunk_len = bytes_read;
     const char *chunk = &buf[0];
-    std::vector<char> temp_encoded;
 
     if (has_encoding)
     {
@@ -1204,14 +1205,15 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, const string &file, const strin
     }
 
     *content_len += chunk_len;
-    temp_encoded = zbase64::encode(chunk, chunk_len, false);
+    temp_encoded = zbase64::encode(chunk, chunk_len, &left_over);
     fwrite(&temp_encoded[0], 1, temp_encoded.size(), fout);
+    temp_encoded.clear();
   }
 
-  const auto padding = 4 - (*content_len % 4);
-  if (padding > 0)
+  if (!left_over.empty())
   {
-    fwrite("===", 1, padding, fout);
+    temp_encoded = zbase64::encode(&left_over[0], left_over.size());
+    fwrite(&temp_encoded[0], 1, temp_encoded.size(), fout);
   }
 
   fflush(fout);
@@ -1394,10 +1396,12 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, const string &file, const string
 
   std::vector<char> buf(FIFO_CHUNK_SIZE);
   size_t bytes_read;
+  std::vector<char> temp_encoded;
+  std::vector<char> left_over;
 
   while ((bytes_read = fread(&buf[0], 1, FIFO_CHUNK_SIZE, fin)) > 0)
   {
-    std::vector<char> temp_encoded = zbase64::decode(&buf[0], bytes_read);
+    temp_encoded = zbase64::decode(&buf[0], bytes_read, &left_over);
     const char *chunk = &temp_encoded[0];
     int chunk_len = temp_encoded.size();
     *content_len += chunk_len;
@@ -1427,6 +1431,7 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, const string &file, const string
       fclose(fout);
       return RTNCD_FAILURE;
     }
+    temp_encoded.clear();
   }
 
   fflush(fout);
