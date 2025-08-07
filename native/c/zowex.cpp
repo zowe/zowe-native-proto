@@ -24,6 +24,8 @@
 #include <fstream>
 #include <unistd.h>
 #include <cstring>
+#include <sys/stat.h>
+#include <limits.h>
 #include "zcn.hpp"
 #include "zut.hpp"
 #include "parser.hpp"
@@ -32,6 +34,7 @@
 #include "zusf.hpp"
 #include "ztso.hpp"
 #include "zuttype.h"
+#include "zlogger.hpp"
 
 #ifndef TO_STRING
 #define TO_STRING(x) static_cast<std::ostringstream &>(           \
@@ -108,6 +111,11 @@ int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_
 
 int main(int argc, char *argv[])
 {
+  unsigned int code = 0;
+  string resp;
+
+  ZLOG_TRACE("Starting zowex...");
+
   ArgumentParser arg_parser(argv[0], "Zowe Native Protocol CLI");
 
   // Add interactive mode flag to root command
