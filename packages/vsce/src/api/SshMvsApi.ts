@@ -11,13 +11,13 @@
 
 import { createReadStream, createWriteStream } from "node:fs";
 import type * as zosfiles from "@zowe/zos-files-for-zowe-sdk";
-import { Gui, type MainframeInteraction, imperative } from "@zowe/zowe-explorer-api";
+import { Gui, imperative, type MainframeInteraction } from "@zowe/zowe-explorer-api";
 import { B64String, type ds } from "zowe-native-proto-sdk";
 import type * as common from "../../../sdk/lib/doc/gen/common.ts";
 import { SshCommonApi } from "./SshCommonApi";
 
 export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs {
-    public async dataSet(filter: string, options?: zosfiles.IListOptions): Promise<zosfiles.IZosFilesResponse> {
+    public async dataSet(filter: string, _options?: zosfiles.IListOptions): Promise<zosfiles.IZosFilesResponse> {
         try {
             const response = await (await this.client).ds.listDatasets({
                 pattern: filter,
@@ -45,7 +45,10 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         }
     }
 
-    public async allMembers(dataSetName: string, options?: zosfiles.IListOptions): Promise<zosfiles.IZosFilesResponse> {
+    public async allMembers(
+        dataSetName: string,
+        _options?: zosfiles.IListOptions,
+    ): Promise<zosfiles.IZosFilesResponse> {
         const response = await (await this.client).ds.listDsMembers({
             dsname: dataSetName,
         });
@@ -112,7 +115,7 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
     }
 
     public async createDataSet(
-        dataSetType: zosfiles.CreateDataSetTypeEnum,
+        _dataSetType: zosfiles.CreateDataSetTypeEnum,
         dataSetName: string,
         options?: Partial<zosfiles.ICreateDataSetOptions>,
     ): Promise<zosfiles.IZosFilesResponse> {
@@ -132,7 +135,7 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
 
     public async createDataSetMember(
         dataSetName: string,
-        options?: zosfiles.IUploadOptions,
+        _options?: zosfiles.IUploadOptions,
     ): Promise<zosfiles.IZosFilesResponse> {
         let response: ds.CreateMemberResponse = { success: false, dsname: dataSetName };
         try {
@@ -150,36 +153,36 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
     }
 
     public async allocateLikeDataSet(
-        dataSetName: string,
-        likeDataSetName: string,
+        _dataSetName: string,
+        _likeDataSetName: string,
     ): Promise<zosfiles.IZosFilesResponse> {
         throw new Error("Not yet implemented");
     }
 
     public async copyDataSetMember(
-        { dsn: fromDataSetName, member: fromMemberName }: zosfiles.IDataSet,
-        { dsn: toDataSetName, member: toMemberName }: zosfiles.IDataSet,
-        options?: { replace?: boolean },
+        { dsn: _fromDataSetName, member: _fromMemberName }: zosfiles.IDataSet,
+        { dsn: _toDataSetName, member: _toMemberName }: zosfiles.IDataSet,
+        _options?: { replace?: boolean },
     ): Promise<zosfiles.IZosFilesResponse> {
         throw new Error("Not yet implemented");
     }
 
     public async renameDataSet(
-        currentDataSetName: string,
-        newDataSetName: string,
+        _currentDataSetName: string,
+        _newDataSetName: string,
     ): Promise<zosfiles.IZosFilesResponse> {
         throw new Error("Not yet implemented");
     }
 
     public async renameDataSetMember(
-        dataSetName: string,
-        currentMemberName: string,
-        newMemberName: string,
+        _dataSetName: string,
+        _currentMemberName: string,
+        _newMemberName: string,
     ): Promise<zosfiles.IZosFilesResponse> {
         throw new Error("Not yet implemented");
     }
 
-    public async hMigrateDataSet(dataSetName: string): Promise<zosfiles.IZosFilesResponse> {
+    public async hMigrateDataSet(_dataSetName: string): Promise<zosfiles.IZosFilesResponse> {
         throw new Error("Not yet implemented");
     }
 
@@ -201,7 +204,7 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
 
     public async deleteDataSet(
         dataSetName: string,
-        options?: zosfiles.IDeleteDatasetOptions,
+        _options?: zosfiles.IDeleteDatasetOptions,
     ): Promise<zosfiles.IZosFilesResponse> {
         const response = await (await this.client).ds.deleteDataset({
             dsname: dataSetName,

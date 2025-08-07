@@ -15,8 +15,6 @@ import { ImperativeError, Logger } from "@zowe/imperative";
 import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Client, type ClientChannel } from "ssh2";
 import { AbstractRpcClient } from "./AbstractRpcClient";
-import { RpcNotificationManager } from "./RpcNotificationManager";
-import { ZSshUtils } from "./ZSshUtils";
 import type {
     ClientOptions,
     CommandRequest,
@@ -27,6 +25,8 @@ import type {
     RpcResponse,
     StatusMessage,
 } from "./doc";
+import { RpcNotificationManager } from "./RpcNotificationManager";
+import { ZSshUtils } from "./ZSshUtils";
 
 export class ZSshClient extends AbstractRpcClient implements Disposable {
     public static readonly DEFAULT_SERVER_PATH = "~/.zowe-server";
@@ -40,6 +40,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
     private mPartialStderr = "";
     private mPartialStdout = "";
     private readonly mPromiseMap: Map<number, RpcPromise> = new Map();
+    // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Linter Error: this.mRequestId is used
     private mRequestId = 0;
 
     private constructor() {
@@ -151,7 +152,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
         let response: StatusMessage;
         try {
             response = JSON.parse(data);
-        } catch (err) {
+        } catch (_err) {
             const errMsg = Logger.getAppLogger().error("Error starting Zowe server: %s", data);
             if (data.includes("FSUM7351")) {
                 throw new ImperativeError({
@@ -199,7 +200,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
             let response: RpcResponse | RpcNotification;
             try {
                 response = JSON.parse(responses[i]);
-            } catch (err) {
+            } catch (_err) {
                 const errMsg = Logger.getAppLogger().error("Invalid JSON response: %s", responses[i]);
                 this.mErrHandler(new Error(errMsg));
                 continue;

@@ -11,7 +11,7 @@
 
 import { createReadStream, createWriteStream } from "node:fs";
 import type * as zosfiles from "@zowe/zos-files-for-zowe-sdk";
-import { type MainframeInteraction, type Types, imperative } from "@zowe/zowe-explorer-api";
+import { imperative, type MainframeInteraction, type Types } from "@zowe/zowe-explorer-api";
 import { B64String, type uss } from "zowe-native-proto-sdk";
 import { SshCommonApi } from "./SshCommonApi";
 
@@ -90,9 +90,9 @@ export class SshUssApi extends SshCommonApi implements MainframeInteraction.IUss
     }
 
     public async uploadDirectory(
-        inputDirectoryPath: string,
-        ussDirectoryPath: string,
-        options: zosfiles.IUploadOptions,
+        _inputDirectoryPath: string,
+        _ussDirectoryPath: string,
+        _options: zosfiles.IUploadOptions,
     ): Promise<zosfiles.IZosFilesResponse> {
         throw new Error("Not yet implemented");
     }
@@ -114,7 +114,7 @@ export class SshUssApi extends SshCommonApi implements MainframeInteraction.IUss
         return this.buildZosFilesResponse(response, response.success);
     }
 
-    public async rename(currentUssPath: string, newUssPath: string): Promise<zosfiles.IZosFilesResponse> {
+    public async rename(_currentUssPath: string, _newUssPath: string): Promise<zosfiles.IZosFilesResponse> {
         throw new Error("Not yet implemented");
     }
 
