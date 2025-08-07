@@ -15,9 +15,9 @@ import { afterEach, before, beforeEach, describe, it, mock } from "node:test";
 import { Logger } from "@zowe/imperative";
 import { type ISshSession, SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Client, type ClientCallback, type ConnectConfig } from "ssh2";
+import type { CommandRequest, RpcRequest, RpcResponse } from "../src/doc";
 import { ZSshClient } from "../src/ZSshClient";
 import { ZSshUtils } from "../src/ZSshUtils";
-import type { CommandRequest, RpcRequest, RpcResponse } from "../src/doc";
 
 mock.module("ssh2", require("./mocks/ssh2.mock"));
 

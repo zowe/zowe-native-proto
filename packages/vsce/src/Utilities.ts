@@ -12,12 +12,11 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
-import { Gui, ZoweVsCodeExtension, imperative } from "@zowe/zowe-explorer-api";
+import { Gui, imperative, ZoweVsCodeExtension } from "@zowe/zowe-explorer-api";
 import * as vscode from "vscode";
 import { ZSshUtils } from "zowe-native-proto-sdk";
 import { SshClientCache } from "./SshClientCache";
-import { VscePromptApi } from "./SshConfigUtils";
-import { SshConfigUtils } from "./SshConfigUtils";
+import { SshConfigUtils, VscePromptApi } from "./SshConfigUtils";
 
 const EXTENSION_NAME = "zowe-native-proto-vsce";
 

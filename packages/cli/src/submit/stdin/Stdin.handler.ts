@@ -11,7 +11,7 @@
 
 import { buffer } from "node:stream/consumers";
 import type { IHandlerParameters } from "@zowe/imperative";
-import { B64String, type ZSshClient, type jobs } from "zowe-native-proto-sdk";
+import { B64String, type jobs, type ZSshClient } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class SubmitJclHandler extends SshBaseHandler {

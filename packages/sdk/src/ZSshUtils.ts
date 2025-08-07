@@ -73,7 +73,7 @@ export class ZSshUtils {
 
             // Create the progress callback for tracking the upload progress
             const progressCallback = onProgress
-                ? (progress: number, chunk: number, total: number) => {
+                ? (progress: number, _chunk: number, total: number) => {
                       const percentage = Math.floor((progress / total) * 100); // Calculate percentage
                       const increment = percentage - previousPercentage;
 
