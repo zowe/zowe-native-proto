@@ -41,7 +41,7 @@ export class ZClientUtils {
         let fileContent: string;
         try {
             fileContent = readFileSync(filePath, "utf-8");
-        } catch (_error) {
+        } catch {
             return [];
         }
 
