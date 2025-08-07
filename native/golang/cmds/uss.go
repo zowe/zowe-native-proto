@@ -135,7 +135,7 @@ func HandleReadFileRequest(conn *utils.StdioConn, params []byte) (result any, e 
 		go func() {
 			startTime := time.Now()
 			timeout := 10 * time.Second
-
+			sleepDuration := 1
 			for {
 				atomicFlag := atomic.LoadInt32((*int32)(unsafe.Pointer(&conn.SharedMem[0])))
 				if atomicFlag != 0 {
@@ -147,7 +147,13 @@ func HandleReadFileRequest(conn *utils.StdioConn, params []byte) (result any, e 
 					return
 				}
 
-				time.Sleep(250 * time.Millisecond)
+				if sleepDuration < 250 {
+					sleepDuration *= 2
+					if sleepDuration > 250 {
+						sleepDuration = 250
+					}
+				}
+				time.Sleep(time.Duration(sleepDuration) * time.Millisecond)
 			}
 
 			contentLen := atomic.LoadInt64((*int64)(unsafe.Pointer(&conn.SharedMem[4])))
