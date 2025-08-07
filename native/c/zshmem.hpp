@@ -84,7 +84,7 @@ public:
 };
 
 // Cleanup shared memory
-inline void cleanup_shared_memory(int shm_id, ZSharedRegion *shm_ptr, const char *file_path = nullptr)
+inline void cleanup_shared_memory(int shm_id, ZSharedRegion *shm_ptr, const char *file_path)
 {
   // Note: shm_id is now a file descriptor
   if (shm_ptr)
@@ -103,7 +103,7 @@ inline void cleanup_shared_memory(int shm_id, ZSharedRegion *shm_ptr, const char
 }
 
 // Create a new shared memory segment
-inline int init_shared_memory(ZSharedRegion **shm_ptr, const char *file_path = nullptr)
+inline int init_shared_memory(ZSharedRegion **shm_ptr, const char *file_path)
 {
   int fd = open(file_path, O_CREAT | O_RDWR | O_EXCL, 0600);
   if (fd == -1)

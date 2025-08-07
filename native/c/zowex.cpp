@@ -107,21 +107,20 @@ int handle_job_release(const ParseResult &result);
 int loop_dynalloc(vector<string> &list);
 
 bool should_quit(const std::string &input);
-
-int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_name, const char *shm_file_path);
+int run_interactive_mode(const std::string &shm_file_path);
 
 std::tr1::shared_ptr<ArgumentParser> arg_parser;
 int main(int argc, char *argv[])
 {
   arg_parser = std::tr1::shared_ptr<ArgumentParser>(new ArgumentParser(argv[0], "Zowe Native Protocol CLI"));
   arg_parser->get_root_command().add_keyword_arg("interactive",
-                                                make_aliases("--interactive", "--it"),
-                                                "interactive (REPL) mode", ArgType_Flag, false,
-                                                ArgValue(false));
+                                                 make_aliases("--interactive", "--it"),
+                                                 "interactive (REPL) mode", ArgType_Flag, false,
+                                                 ArgValue(false));
   arg_parser->get_root_command().add_keyword_arg("version",
-                                                make_aliases("--version", "-v"),
-                                                "display version information", ArgType_Flag, false,
-                                                ArgValue(false));
+                                                 make_aliases("--version", "-v"),
+                                                 "display version information", ArgType_Flag, false,
+                                                 ArgValue(false));
   arg_parser->get_root_command().set_handler(handle_root_command);
 
   // Console command group
@@ -564,54 +563,9 @@ int main(int argc, char *argv[])
   version_cmd->set_handler(handle_version);
   arg_parser->get_root_command().add_command(version_cmd);
 
-  // Check for version or interactive mode before parsing to avoid help text
-  bool is_interactive = false;
-  bool is_version = false;
-  const char *shm_file_path = nullptr;
-  for (int i = 1; i < argc; i++)
-  {
-    if (strcmp(argv[i], "--interactive") == 0 || strcmp(argv[i], "--it") == 0)
-    {
-      is_interactive = true;
-    }
-    else if (strcmp(argv[i], "--version") == 0 || strcmp(argv[i], "-v") == 0)
-    {
-      is_version = true;
-    }
-    else if (strcmp(argv[i], "--shm-file") == 0)
-    {
-      if (i + 1 < argc)
-      {
-        shm_file_path = argv[i + 1];
-        i++; // Skip the next argument since we consumed it
-      }
-    }
-  }
-
-  // If version is requested, handle it directly
-  if (is_version)
-  {
-    cout << "Zowe Native Protocol CLI (zowex)" << endl;
-    cout << "Version: " << PACKAGE_VERSION << endl;
-    cout << "Build Date: " << BUILD_DATE << " " << BUILD_TIME << endl;
-    cout << "Copyright Contributors to the Zowe Project." << endl;
-    if (!is_interactive)
-    {
-      return 0;
-    }
-  }
-  // If interactive mode is requested, start it directly
-
-  if (is_interactive)
-  {
-    return run_interactive_mode(arg_parser, argv[0], shm_file_path);
-  }
-  else
-  {
-    // Parse and execute
-    ParseResult result = arg_parser.parse(argc, argv);
-    return result.exit_code;
-  }
+  // Parse and execute through normal command handling
+  ParseResult result = arg_parser->parse(argc, argv);
+  return result.exit_code;
 }
 
 int handle_console_issue(const ParseResult &result)
@@ -2574,18 +2528,20 @@ int handle_version(const ParseResult &result)
 int handle_root_command(const ParseResult &result)
 {
   const auto is_interactive = result.find_kw_arg_bool("interactive");
-  if (result.find_kw_arg_bool("version")) {
+  if (result.find_kw_arg_bool("version"))
+  {
     const auto version_rc = handle_version(result);
-    if (!is_interactive) {
+    if (!is_interactive)
+    {
       return version_rc;
     }
   }
 
   if (is_interactive)
   {
-    return run_interactive_mode();
+    return run_interactive_mode(result.find_kw_arg_string("shm-file"));
   }
-  
+
   // If no interactive mode and no subcommands were invoked, show help
 
   result.m_command->generate_help(std::cout);
@@ -2598,18 +2554,16 @@ bool should_quit(const std::string &input)
           input == "QUIT" || input == "EXIT");
 }
 
-int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_name, const char *shm_file_path)
+int run_interactive_mode(const std::string &shm_file_path)
 {
-  arg_parser.update_program_name(program_name);
-
   // Initialize shared memory
   int shm_id;
   ZSharedRegion *shm_ptr = nullptr;
 
-  if (shm_file_path != nullptr)
+  if (!shm_file_path.empty())
   {
     // Create new shared memory for this process (each process gets its own)
-    shm_id = init_shared_memory(&shm_ptr, shm_file_path);
+    shm_id = init_shared_memory(&shm_ptr, shm_file_path.c_str());
     if (shm_id == -1)
     {
       cerr << "Failed to initialize shared memory" << endl;
@@ -2650,9 +2604,9 @@ int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_
   std::cout << "...terminated" << std::endl;
 
   // Clean up this process's shared memory
-  if (shm_file_path != nullptr)
+  if (!shm_file_path.empty())
   {
-    cleanup_shared_memory(shm_id, shm_ptr, shm_file_path);
+    cleanup_shared_memory(shm_id, shm_ptr, shm_file_path.c_str());
   }
 
   return rc;
