@@ -229,7 +229,7 @@ func initializeWorker(worker *Worker, pool *WorkerPool) {
 	if worker.ShmPath != "" {
 		fd, err := syscall.Open(worker.ShmPath, syscall.O_RDWR, 0600)
 		if err != nil {
-			utils.LogError("Worker %d: Failed to open shared memory file %s: %v\n", worker.ID, worker.ShmPath, err)
+			utils.LogFatal("Worker %d: Failed to open shared memory file %s: %v\n", worker.ID, worker.ShmPath, err)
 		} else {
 			worker.ShmFD = int(fd)
 		}
@@ -240,7 +240,7 @@ func initializeWorker(worker *Worker, pool *WorkerPool) {
 		// Use unix.Mmap for memory mapping
 		data, err := unix.Mmap(worker.ShmFD, 0, 68, unix.PROT_READ|unix.PROT_WRITE, unix.MAP_SHARED)
 		if err != nil {
-			utils.LogError("Worker %d: Failed to mmap shared memory: %v\n", worker.ID, err)
+			utils.LogFatal("Worker %d: Failed to mmap shared memory: %v\n", worker.ID, err)
 		} else {
 			workerConn.SharedMem = data
 		}
@@ -270,7 +270,7 @@ func (wp *WorkerPool) Shutdown() {
 		if _, err := worker.Conn.Stdin.Write([]byte("quit\n")); err != nil {
 			utils.LogDebug("Failed to send quit command to worker %d: %s", worker.ID, err)
 		}
-    
+
 		// Close the stdio connections for the zowex process
 		if err := worker.Conn.Close(); err != nil {
 			utils.LogDebug("Failed to close stdio connections for worker %d: %s", worker.ID, err)
