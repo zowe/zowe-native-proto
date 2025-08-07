@@ -132,7 +132,7 @@ int main(int argc, char *argv[])
                              ArgValue(true));
   issue_cmd->add_keyword_arg("timeout",
                              make_aliases("--timeout"),
-                             "timeout in seconds", ArgType_Single, false, ArgValue("5"));
+                             "timeout in seconds", ArgType_Single, false);
   issue_cmd->add_positional_arg("command", "command to run, e.g. 'D IPLINFO'",
                                 ArgType_Single, true);
   issue_cmd->set_handler(handle_console_issue);
@@ -606,14 +606,14 @@ int handle_console_issue(const ParseResult &result)
   ZCN zcn = {0};
 
   string console_name = result.find_kw_arg_string("console-name");
-  string timeout = result.find_kw_arg_string("timeout");
+  int timeout = result.find_kw_arg_int("timeout");
 
   string command = result.find_pos_arg_string("command");
   bool wait = result.find_kw_arg_bool("wait");
 
-  if (!timeout.empty())
+  if (timeout > -1)
   {
-    zcn.timeout = atoi(timeout.c_str());
+    zcn.timeout = timeout;
   }
 
   rc = zcn_activate(&zcn, console_name);
@@ -1052,14 +1052,14 @@ int handle_data_set_list(const ParseResult &result)
 
   dsn += ".**";
 
-  string max_entries = result.find_kw_arg_string("max-entries");
+  int max_entries = result.find_kw_arg_int("max-entries");
   bool warn = result.find_kw_arg_bool("warn") && !result.find_kw_arg_bool("no-warn");
   bool attributes = result.find_kw_arg_bool("attributes");
 
   ZDS zds = {0};
-  if (!max_entries.empty())
+  if (max_entries > 0)
   {
-    zds.max_entries = atoi(max_entries.c_str());
+    zds.max_entries = max_entries;
   }
   vector<ZDSEntry> entries;
 
@@ -1125,13 +1125,13 @@ int handle_data_set_list_members(const ParseResult &result)
 {
   int rc = 0;
   string dsn = result.find_pos_arg_string("dsn");
-  string max_entries = result.find_kw_arg_string("max-entries");
+  int max_entries = result.find_kw_arg_int("max-entries");
   bool warn = result.find_kw_arg_bool("warn");
 
   ZDS zds = {0};
-  if (!max_entries.empty())
+  if (max_entries > 0)
   {
-    zds.max_entries = atoi(max_entries.c_str());
+    zds.max_entries = max_entries;
   }
   vector<ZDSMem> members;
   rc = zds_list_members(&zds, dsn, members);
@@ -1459,15 +1459,15 @@ int handle_tool_search(const ParseResult &result)
 
   string pattern = result.find_pos_arg_string("string");
   string warn = result.find_kw_arg_string("warn");
-  string max_entries = result.find_kw_arg_string("max-entries");
+  int max_entries = result.find_kw_arg_int("max-entries");
   string dsn = result.find_pos_arg_string("dsn");
 
   ZDS zds = {0};
   bool results_truncated = false;
 
-  if (!max_entries.empty())
+  if (max_entries > 0)
   {
-    zds.max_entries = atoi(max_entries.c_str());
+    zds.max_entries = max_entries;
   }
 
   // List members in a data set
@@ -2148,12 +2148,12 @@ int handle_job_list(const ParseResult &result)
   ZJB zjb = {0};
   string owner_name = result.find_kw_arg_string("owner");
   string prefix_name = result.find_kw_arg_string("prefix");
-  string max_entries = result.find_kw_arg_string("max-entries");
+  int max_entries = result.find_kw_arg_int("max-entries");
   bool warn = result.find_kw_arg_bool("warn") && !result.find_kw_arg_bool("no-warn");
 
-  if (!max_entries.empty())
+  if (max_entries > 0)
   {
-    zjb.jobs_max = atoi(max_entries.c_str());
+    zjb.jobs_max = max_entries;
   }
 
   vector<ZJob> jobs;
@@ -2202,12 +2202,12 @@ int handle_job_list_files(const ParseResult &result)
   int rc = 0;
   ZJB zjb = {0};
   string jobid = result.find_pos_arg_string("jobid");
-  string max_entries = result.find_kw_arg_string("max-entries");
+  int max_entries = result.find_kw_arg_int("max-entries");
   bool warn = result.find_kw_arg_bool("warn");
 
-  if (!max_entries.empty())
+  if (max_entries > 0)
   {
-    zjb.dds_max = atoi(max_entries.c_str());
+    zjb.dds_max = max_entries;
   }
 
   vector<ZJobDD> job_dds;
