@@ -79,7 +79,6 @@ int ZCNPUT(ZCN *zcn, const char *command)
 static void ZCNTIMER(void *PTR32 parameter)
 {
   ECB *e = (ECB *)parameter;
-<<<<<<< HEAD
   ecb_post(e, ZCN_POST_TIMEOUT);
 }
 
@@ -93,9 +92,6 @@ static void ZCNMABEX(SDWA *sdwa, void *abexit_data)
     ecb_post(e, ZCN_POST_ABEND);
     cancel_timers();
   }
-=======
-  ecb_post(e);
->>>>>>> main
 }
 
 #pragma prolog(ZCNGET, " ZWEPROLG NEWDSA=(YES,128) ")
