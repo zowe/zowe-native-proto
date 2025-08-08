@@ -19,16 +19,17 @@ permissions:
   pull-requests: write
 
 jobs:
-  build-native:
+  build:
     if: ${{ inputs.version }}
     uses: ./.github/workflows/zos-build.yml
     with:
       version: ${{ inputs.version }}
+    secrets: inherit
 
   release:
     runs-on: ubuntu-latest
-    needs: build-native
-    if: always() && (needs.build-native.result == 'success' || needs.build-native.result == 'skipped')
+    needs: build
+    if: always() && (needs.build.result == 'success' || needs.build.result == 'skipped')
 
     steps:
       - name: Checkout

@@ -11,9 +11,15 @@ on:
   workflow_call:
     inputs:
       version:
-        description: "Semantic version of the build (e.g., 0.1.0)"
         required: false
         type: string
+    secrets:
+      SSH_MARIST_RACF_HOST:
+        required: true
+      SSH_MARIST_RACF_PASSWORD:
+        required: true
+      SSH_MARIST_USERNAME:
+        required: true
 
 permissions:
   pull-requests: write
