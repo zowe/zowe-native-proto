@@ -64,7 +64,36 @@ static const char *g_level_strings[] = {
     "TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL", "OFF"};
 
 /**
+ * Convert STCK value to UNIX timestamp format
+ * STCK returns time-of-day clock value as microseconds since 1900-01-01 00:00:00 GMT
+ * UNIX timestamp is seconds since 1970-01-01 00:00:00 GMT
+ */
+static unsigned long long stck_to_unix_seconds(unsigned long long stck_value)
+{
+  /* STCK stores time in bit 51 = microseconds, so shift right 12 bits to get microseconds */
+  unsigned long long microseconds_since_1900 = stck_value >> 12;
+
+  /* Convert microseconds to seconds since 1900 */
+  unsigned long long seconds_since_1900 = microseconds_since_1900 / 1000000ULL;
+
+  /* Difference between 1900 and 1970 epochs */
+  /* 70 years * 365 days = 25550 days + 17 leap days = 25567 days */
+  /* 25567 days * 86400 seconds/day = 2208988800 seconds */
+  const unsigned long long EPOCH_DIFF_SECONDS = 2208988800ULL;
+
+  /* Convert to UNIX timestamp (seconds since 1970) */
+  if (seconds_since_1900 >= EPOCH_DIFF_SECONDS)
+  {
+    return seconds_since_1900 - EPOCH_DIFF_SECONDS;
+  }
+
+  /* Should not happen for dates after 1970 */
+  return 0;
+}
+
+/**
  * Get current timestamp for Metal C using z/OS STCK instruction
+ * Format as readable UNIX timestamp: YYYY-MM-DD HH:MM:SS
  */
 static void ZLGTIME(char *buffer, int buffer_size)
 {
@@ -74,10 +103,91 @@ static void ZLGTIME(char *buffer, int buffer_size)
 
   __asm(" STCK %0" : "=m"(clock_value) : : "cc");
 
-  /* Convert STCK value to a simple readable format */
-  /* STCK returns microseconds since 1900-01-01 00:00:00 GMT */
-  /* For simplicity, we'll just show the lower bits as a hex timestamp */
-  sprintf(buffer, "%016llX", clock_value);
+  /* Convert STCK to UNIX timestamp */
+  unsigned long long unix_seconds = stck_to_unix_seconds(clock_value);
+
+  /* Safety check - if conversion gives unreasonable result, use simple fallback */
+  if (unix_seconds == 0 || unix_seconds > 4000000000ULL)
+  { /* Year 2096+ is unreasonable */
+    /* Fallback to simple hex format */
+    sprintf(buffer, "STCK:%016llX", clock_value);
+    return;
+  }
+
+  /* Convert to broken-down time components */
+  const unsigned long long SECONDS_PER_DAY = 86400ULL;
+  const unsigned long long SECONDS_PER_HOUR = 3600ULL;
+  const unsigned long long SECONDS_PER_MINUTE = 60ULL;
+
+  /* Days since Unix epoch (1970-01-01) */
+  unsigned long long days = unix_seconds / SECONDS_PER_DAY;
+  unsigned long long remaining_seconds = unix_seconds % SECONDS_PER_DAY;
+
+  /* Simple and reliable date calculation */
+  /* Start from 1970 and count forward year by year */
+  unsigned long long year = 1970;
+  unsigned long long remaining_days = days;
+
+  /* Count years */
+  while (1)
+  {
+    unsigned long long days_in_year = 365;
+    /* Check for leap year */
+    if ((year % 4 == 0) && ((year % 100 != 0) || (year % 400 == 0)))
+    {
+      days_in_year = 366;
+    }
+
+    if (remaining_days < days_in_year)
+    {
+      break; /* We found our year */
+    }
+
+    remaining_days -= days_in_year;
+    year++;
+  }
+
+  /* Now remaining_days is the day of year (0-based) */
+  /* Calculate month and day */
+  unsigned long long days_in_month[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+
+  /* Adjust February for leap year */
+  if ((year % 4 == 0) && ((year % 100 != 0) || (year % 400 == 0)))
+  {
+    days_in_month[1] = 29;
+  }
+
+  /* Find the correct month */
+  unsigned long long month = 1;
+  unsigned long long day = remaining_days + 1; /* Convert to 1-based */
+
+  unsigned long long month_index = 0;
+  while (month_index < 12 && day > days_in_month[month_index])
+  {
+    day -= days_in_month[month_index];
+    month_index++;
+  }
+  month = month_index + 1;
+
+  /* Safety bounds checking */
+  if (month < 1)
+    month = 1;
+  if (month > 12)
+    month = 12;
+  if (day < 1)
+    day = 1;
+  if (day > 31)
+    day = 31;
+
+  /* Calculate hour, minute, second */
+  unsigned long long hour = remaining_seconds / SECONDS_PER_HOUR;
+  remaining_seconds %= SECONDS_PER_HOUR;
+  unsigned long long minute = remaining_seconds / SECONDS_PER_MINUTE;
+  unsigned long long second = remaining_seconds % SECONDS_PER_MINUTE;
+
+  /* Format as YYYY-MM-DD HH:MM:SS */
+  sprintf(buffer, "%04llu-%02llu-%02llu %02llu:%02llu:%02llu",
+          year, month, day, hour, minute, second);
 #else
   /* Fallback for non-Metal C compilation */
   strncpy(buffer, "TIMESTAMP", buffer_size - 1);
