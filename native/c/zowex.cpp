@@ -113,13 +113,13 @@ int main(int argc, char *argv[])
 {
   arg_parser = std::tr1::shared_ptr<ArgumentParser>(new ArgumentParser(argv[0], "Zowe Native Protocol CLI"));
   arg_parser->get_root_command().add_keyword_arg("interactive",
-                                                make_aliases("--interactive", "--it"),
-                                                "interactive (REPL) mode", ArgType_Flag, false,
-                                                ArgValue(false));
+                                                 make_aliases("--interactive", "--it"),
+                                                 "interactive (REPL) mode", ArgType_Flag, false,
+                                                 ArgValue(false));
   arg_parser->get_root_command().add_keyword_arg("version",
-                                                make_aliases("--version", "-v"),
-                                                "display version information", ArgType_Flag, false,
-                                                ArgValue(false));
+                                                 make_aliases("--version", "-v"),
+                                                 "display version information", ArgType_Flag, false,
+                                                 ArgValue(false));
   arg_parser->get_root_command().set_handler(handle_root_command);
 
   // Console command group
@@ -2536,9 +2536,11 @@ int handle_version(const ParseResult &result)
 int handle_root_command(const ParseResult &result)
 {
   const auto is_interactive = result.find_kw_arg_bool("interactive");
-  if (result.find_kw_arg_bool("version")) {
+  if (result.find_kw_arg_bool("version"))
+  {
     const auto version_rc = handle_version(result);
-    if (!is_interactive) {
+    if (!is_interactive)
+    {
       return version_rc;
     }
   }
@@ -2547,7 +2549,7 @@ int handle_root_command(const ParseResult &result)
   {
     return run_interactive_mode();
   }
-  
+
   // If no interactive mode and no subcommands were invoked, show help
 
   result.m_command->generate_help(std::cout);

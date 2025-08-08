@@ -15,6 +15,7 @@
 #include "zcnm31.h"
 #include "zcntype.h"
 #include "zecb.h"
+#include "zrecovery.h"
 
 #pragma prolog(ZCNACT, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(ZCNACT, " ZWEEPILG ")
@@ -78,7 +79,19 @@ int ZCNPUT(ZCN *zcn, const char *command)
 static void ZCNTIMER(void *PTR32 parameter)
 {
   ECB *e = (ECB *)parameter;
-  ecb_post(e);
+  ecb_post(e, ZCN_POST_TIMEOUT);
+}
+
+#pragma prolog(ZCNMABEX, " ZWEPROLG NEWDSA=(YES,8) ")
+#pragma epilog(ZCNMABEX, " ZWEEPILG ")
+static void ZCNMABEX(SDWA *sdwa, void *abexit_data)
+{
+  ECB *PTR32 e = (ECB * PTR32) abexit_data;
+  if (e)
+  {
+    ecb_post(e, ZCN_POST_ABEND);
+    cancel_timers();
+  }
 }
 
 #pragma prolog(ZCNGET, " ZWEPROLG NEWDSA=(YES,128) ")
@@ -86,6 +99,10 @@ static void ZCNTIMER(void *PTR32 parameter)
 int ZCNGET(ZCN *zcn, char *response)
 {
   int rc = 0;
+
+  ZRCVY_ENV zenv = {0};
+  zenv.abexit = ZCNMABEX;
+  zenv.abexit_data = (void *PTR64)zcn->ecb;
 
   rc = test_auth();
   if (0 != rc)
