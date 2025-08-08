@@ -305,17 +305,6 @@ async function upload(connection: Client) {
     return new Promise<void>((finish) => {
         const spinner = startSpinner("Deploying files...");
 
-        // Copy package.json to native directory for version information
-        const packageJsonSource = path.resolve(__dirname, "../package.json");
-        const packageJsonDest = path.resolve(__dirname, "../native/package.json");
-        try {
-            if (fs.existsSync(packageJsonSource)) {
-                fs.copyFileSync(packageJsonSource, packageJsonDest);
-            }
-        } catch (error) {
-            console.warn("Warning: Could not copy package.json:", error);
-        }
-
         const dirs = getDirs();
         const files = getAllServerFiles();
 
@@ -338,23 +327,15 @@ async function upload(connection: Client) {
                 });
             }
 
-            const uploads = [];
+            const pendingUploads = [
+                uploadFile(sftpcon, path.resolve(__dirname, "../package.json"), `${deployDirs.root}/package.json`),
+            ];
             for (let i = 0; i < files.length; i++) {
                 const from = path.resolve(__dirname, `${localDeployDir}/${files[i]}`);
                 const to = `${deployDirs.root}/${files[i]}`;
-                uploads.push(uploadFile(sftpcon, from, to));
+                pendingUploads.push(uploadFile(sftpcon, from, to));
             }
-            await Promise.all(uploads);
-
-            // Clean up package.json from native directory
-            try {
-                const packageJsonDest = path.resolve(__dirname, "../native/package.json");
-                if (fs.existsSync(packageJsonDest)) {
-                    fs.unlinkSync(packageJsonDest);
-                }
-            } catch (error) {
-                console.warn("Warning: Could not clean up package.json:", error);
-            }
+            await Promise.all(pendingUploads);
 
             stopSpinner(spinner, "Deploy complete!");
             finish();
