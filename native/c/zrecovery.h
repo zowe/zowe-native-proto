@@ -280,6 +280,7 @@ int ZRCVYARR(SDWA sdwa)
     return RTNCD_PERCOLATE; // TODO(Kelosky): for now percolate, user SETRP if SDWA, call recovery routine if provided
   }
 
+  // TODO(Kelosky): capture serviceability here
   // SDWARRL  Recovery Routine Label
   // SDWACIDB Component BASE
   // SDWACID  Component ID
@@ -288,11 +289,8 @@ int ZRCVYARR(SDWA sdwa)
   // SDWAMVRS Maintenance level
 
   // TODO(Kelosky): capture diag info here
-  // short int len = 5;
-  // char *data = "TEST";
   vradata_init(&sdwa);
   vradata_dae(&sdwa);
-  vradata_ebcdic(&sdwa, data, &len);
 
   if (zenv->abexit)
     zenv->abexit(&sdwa, zenv->abexit_data);
