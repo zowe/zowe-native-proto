@@ -8,6 +8,12 @@ on:
   push:
     branches:
       - main
+  workflow_call:
+    inputs:
+      version:
+        description: "Semantic version of the build (e.g., 0.1.0)"
+        required: false
+        type: string
 
 permissions:
   pull-requests: write
@@ -44,6 +50,10 @@ jobs:
 
       - name: Install Dependencies
         run: npm ci --workspaces=false
+
+      - name: Set Build Version
+        if: ${{ inputs.version }}
+        run: npm pkg set version=${{ inputs.version }}
 
       - name: Build on z/OS
         uses: nick-fields/retry@v3
