@@ -38,17 +38,23 @@ static zlogger_metal_t *get_metal_logger()
   /* Try to retrieve existing logger from named token */
   int rc = znts_retrieve(3, &name, &token);
 
-  if (rc != 0 || logger_data == NULL)
+  if (rc == 4)
   {
-    /* Create new logger instance */
+    /* Named/token pair doesn't exist - create new logger instance */
     logger_data = (zlogger_metal_t *)storage_get64(sizeof(zlogger_metal_t));
     if (logger_data)
     {
       memset(logger_data, 0, sizeof(zlogger_metal_t));
 
-      /* Store in named token for future access */
-      znts_create(3, &name, &token, 0);
+      /* Store logger_data address as the token for znts_create */
+      memcpy(&token, &logger_data, sizeof(void *));
+      int create_rc = znts_create(3, &name, &token, 0);
     }
+  }
+  else if (rc == 0)
+  {
+    /* Token exists - retrieve logger_data from token */
+    memcpy(&logger_data, &token, sizeof(void *));
   }
 
   return logger_data;
@@ -102,50 +108,59 @@ static int ZLGWRWTO(int level, const char *message)
   return wto(&wto_buf);
 }
 
-/* Record area for output formatting */
-static char g_output_record[133] = {0};
-
 /**
  * Write message to DD using BSAM I/O
  */
+#pragma prolog(ZLGWRDD, " ZWEPROLG NEWDSA=(YES,512)")
+#pragma epilog(ZLGWRDD, " ZWEEPILG ")
 static int ZLGWRDD(int level, const char *message)
 {
-  zwto_debug("[>] ZLGWRDD called: level: %d, message: %s", level, message);
   zlogger_metal_t *logger = get_metal_logger();
   if (!logger || !logger->log_io)
   {
     /* DD not available or not opened */
-    zwto_debug("[-] ZLGWRDD: DD not available or not opened");
     return -1;
   }
 
   /* Additional safety checks for Metal C */
   if (!message)
   {
-    zwto_debug("[-] ZLGWRDD: message is NULL");
     return -1;
   }
 
-  zwto_debug("[*] ZLGWRDD: message: %s", message);
-  /* Format the message as a fixed-length record */
+  /* Format the message as a fixed-length record using local buffer */
+  char writeBuf[132] = {0};
   unsigned long long msg_len = strlen(message);
-  if (msg_len > 131)
-    msg_len = 131; /* Leave room for newline and null terminator */
+  if (msg_len > 130)
+    msg_len = 130; /* Leave room for newline */
 
-  /* Initialize record with spaces and ensure null termination */
-  memset(g_output_record, ' ', 132);
-  g_output_record[132] = '\0'; /* Null terminate the buffer */
+  /* Initialize record with spaces like ZUTDBGMG */
+  memset(writeBuf, ' ', 132);
 
   /* Copy message data safely */
   if (msg_len > 0)
   {
-    memcpy(g_output_record, message, msg_len);
+    memcpy(writeBuf, message, msg_len);
   }
-  g_output_record[131] = '\n'; /* Add newline before null terminator */
-  zwto_debug("[*] ZLGWRDD: g_output_record: %s", g_output_record);
+  writeBuf[msg_len] = '\n'; /* Add newline after message */
 
-  /* Write using BSAM synchronous write with additional safety check */
-  int write_rc = writeSync(logger->log_io, g_output_record);
+  /* Write using BSAM synchronous write - writeSync already calls check() */
+  int write_rc = writeSync(logger->log_io, writeBuf);
+
+  /* Force immediate writing to USS file by closing and reopening DCB */
+  /* Per IBM docs: BSAM buffers writes beyond program buffering for USS files */
+  if (write_rc == 0)
+  {
+    /* Close DCB to force flush to USS file */
+    close_assert(logger->log_io);
+    /* Reopen DCB for next write */
+    logger->log_io = open_output_assert("ZWXLOGDD", 132, 132, dcbrecf + dcbrecbr);
+    if (!logger->log_io)
+    {
+      logger->use_dd = 0;
+      return -1;
+    }
+  }
 
   return (write_rc == 0) ? 0 : -1;
 }
@@ -154,10 +169,18 @@ static int ZLGWRDD(int level, const char *message)
 #pragma epilog(ZLGINIT, " ZWEEPILG ")
 int ZLGINIT(const char *log_file_path, int *min_level)
 {
-  zwto_debug("[>] ZLGINIT called");
   if (!log_file_path)
   {
     return -1;
+  }
+
+  /* Check if token exists and delete it to force re-creation */
+  ZNT_NAME name = {"ZWXLOGGER"};
+  ZNT_TOKEN token = {0};
+  int retrieve_rc = znts_retrieve(3, &name, &token);
+  if (retrieve_rc == 0)
+  {
+    int delete_rc = znts_delete(3, &name);
   }
 
   zlogger_metal_t *logger = get_metal_logger();
@@ -170,11 +193,6 @@ int ZLGINIT(const char *log_file_path, int *min_level)
   {
     return 0;
   }
-  zwto_debug("[*] log_file_path: %s", log_file_path);
-  if (min_level)
-  {
-    zwto_debug("[*] min_level: %d", *min_level);
-  }
 
   strcpy(logger->log_path, log_file_path);
 
@@ -183,12 +201,10 @@ int ZLGINIT(const char *log_file_path, int *min_level)
 
   char alloc_cmd[364] = {0};
   int cmd_len = sprintf(alloc_cmd,
-                        "alloc file(ZWXLOGDD) path('%.256s') pathopts(owronly,ocreat) %s",
+                        "alloc file(ZWXLOGDD) path('%.256s') pathopts(owronly,ocreat,osync) %s",
                         logger->log_path, "pathmode(sirusr,siwusr,sirgrp) filedata(text)");
-  zwto_debug("[*] alloc_cmd: %s", alloc_cmd);
   if (cmd_len >= sizeof(alloc_cmd) || cmd_len < 0)
   {
-    zwto_debug("[-] alloc_cmd too long");
     return -1;
   }
 
@@ -201,11 +217,9 @@ int ZLGINIT(const char *log_file_path, int *min_level)
 
   bparm->len = sprintf(bparm->str, "%s", alloc_cmd);
   int rc = ZUTWDYN(bparm, response);
-  zwto_debug("[*] ZUTWDYN rc: %d", rc);
 
   if (rc != 0)
   {
-    zwto_debug("[-] ZUTWDYN failed");
     storage_release(size, p);
     return rc;
   }
@@ -213,30 +227,28 @@ int ZLGINIT(const char *log_file_path, int *min_level)
   logger->log_io = open_output_assert("ZWXLOGDD", 132, 132, dcbrecf + dcbrecbr);
   logger->use_dd = (logger->log_io != NULL) ? 1 : 0;
   logger->initialized = 1;
-  zwto_debug("[<] ZLGINIT success, use_dd: %d", logger->use_dd);
   storage_release(size, p);
   return 0;
 }
 
+#pragma prolog(ZLGWRITE, " ZWEPROLG NEWDSA=(YES,512)")
+#pragma epilog(ZLGWRITE, " ZWEEPILG ")
 int ZLGWRITE(int *level, const char *message)
 {
   char formatted_msg[ZLOG_MAX_MSG] = {0};
   char timestamp[32] = {0};
-  zwto_debug("[>] ZLGWRITE called: level: %d, message: %s", *level, message);
   const char *level_str = NULL;
   int result = 0;
 
   zlogger_metal_t *logger = get_metal_logger();
   if (!logger || !logger->initialized || !message)
   {
-    zwto_debug("[-] ZLGWRITE: logger is NULL or not initialized or message is NULL");
     return -1;
   }
 
   /* Check if we should log this level */
   if (*level < logger->min_level || *level == ZLOGLEVEL_OFF)
   {
-    zwto_debug("[-] ZLGWRITE: level is less than min_level or level is OFF");
     return 0;
   }
 
@@ -245,17 +257,14 @@ int ZLGWRITE(int *level, const char *message)
   level_str = (*level >= ZLOGLEVEL_TRACE && *level <= ZLOGLEVEL_OFF)
                   ? g_level_strings[*level]
                   : "UNKNOWN";
-  zwto_debug("[*] ZLGWRITE: level_str: %s", level_str);
 
   /* Format complete message */
   sprintf(formatted_msg, "[%s] [%s] %s",
           timestamp, level_str, message);
 
-  zwto_debug("[*] ZLGWRITE: formatted_msg: %s", formatted_msg);
   /* Try DD writing first if available */
   if (logger->use_dd)
   {
-    zwto_debug("[*] ZLGWRITE: using DD");
     result = ZLGWRDD(*level, formatted_msg);
     if (result == 0)
     {
@@ -266,13 +275,14 @@ int ZLGWRITE(int *level, const char *message)
   /* Fall back to WTO */
   if (logger->use_wto)
   {
-    zwto_debug("[*] ZLGWRITE: using WTO");
     result = ZLGWRWTO(*level, formatted_msg);
   }
 
   return result;
 }
 
+#pragma prolog(ZLGWRFMT, " ZWEPROLG NEWDSA=(YES,512)")
+#pragma epilog(ZLGWRFMT, " ZWEEPILG ")
 int ZLGWRFMT(int level, const char *prefix, const char *message, const char *suffix)
 {
   char formatted_msg[ZLOG_MAX_MSG];
@@ -326,6 +336,8 @@ int ZLGWRFMT(int level, const char *prefix, const char *message, const char *suf
   return ZLGWRITE(&level, formatted_msg);
 }
 
+#pragma prolog(ZLGSTLVL, " ZWEPROLG NEWDSA=(YES,512)")
+#pragma epilog(ZLGSTLVL, " ZWEEPILG ")
 void ZLGSTLVL(int level)
 {
   zlogger_metal_t *logger = get_metal_logger();
@@ -335,6 +347,8 @@ void ZLGSTLVL(int level)
   }
 }
 
+#pragma prolog(ZLGGTLVL, " ZWEPROLG NEWDSA=(YES,512)")
+#pragma epilog(ZLGGTLVL, " ZWEEPILG ")
 int ZLGGTLVL(void)
 {
   zlogger_metal_t *logger = get_metal_logger();
@@ -345,6 +359,8 @@ int ZLGGTLVL(void)
   return ZLOGLEVEL_OFF;
 }
 
+#pragma prolog(ZLGCLEAN, " ZWEPROLG NEWDSA=(YES,512)")
+#pragma epilog(ZLGCLEAN, " ZWEEPILG ")
 void ZLGCLEAN(void)
 {
   zlogger_metal_t *logger = get_metal_logger();
@@ -367,6 +383,21 @@ void ZLGCLEAN(void)
     {
       close_assert(logger->log_io);
       logger->log_io = NULL;
+    }
+
+    /* Free the DD allocation to ensure proper cleanup */
+    if (logger->use_dd)
+    {
+      int size = sizeof(BPXWDYN_PARM) + sizeof(BPXWDYN_RESPONSE);
+      unsigned char *p = (unsigned char *)storage_obtain31(size);
+      if (p)
+      {
+        memset(p, 0x00, size);
+        BPXWDYN_PARM *bparm = (BPXWDYN_PARM *)p;
+        bparm->len = sprintf(bparm->str, "free file(ZWXLOGDD)");
+        ZUTWDYN(bparm, (BPXWDYN_RESPONSE *)(p + sizeof(BPXWDYN_PARM)));
+        storage_release(size, p);
+      }
     }
 #endif
 

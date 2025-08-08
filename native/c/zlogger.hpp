@@ -1,3 +1,14 @@
+/**
+ * This program and the accompanying materials are made available under the terms of the
+ * Eclipse Public License v2.0 which accompanies this distribution, and is available at
+ * https://www.eclipse.org/legal/epl-v20.html
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ *
+ * Copyright Contributors to the Zowe Project.
+ *
+ */
+
 #ifndef ZLOGGER_HPP
 #define ZLOGGER_HPP
 
@@ -43,10 +54,6 @@ protected:
     {
       set_level_from_str(env_level);
     }
-    else
-    {
-      std::cout << "[*] ZOWEX_LOG_LEVEL not set, using default level: " << default_level_ << std::endl;
-    }
 
     // Create logs directory if it doesn't exist
     create_logs_dir();
@@ -64,19 +71,8 @@ protected:
       log_path_str = "logs/zowex.log";
     }
 
-    std::cout << "ZLogger: calling ZLGINIT" << std::endl;
-
     // Initialize Metal C logger with default path
-    if (ZLGINIT(log_path_str.c_str(), &default_level_) == 0)
-    {
-      std::cout << "ZLogger: ZLGINIT success" << std::endl;
-      metal_c_initialized_ = true;
-    }
-    else
-    {
-      std::cout << "ZLogger: ZLGINIT failed" << std::endl;
-      metal_c_initialized_ = false;
-    }
+    metal_c_initialized_ = ZLGINIT(log_path_str.c_str(), &default_level_) == 0;
   }
 
   auto create_logs_dir() -> void
@@ -123,7 +119,6 @@ protected:
     {
       default_level_ = ZLOGLEVEL_OFF;
     }
-    std::cout << "[*] default_level_: " << default_level_ << std::endl;
   }
 
 public:
@@ -172,22 +167,31 @@ public:
   /**
    * Log a message at the specified level
    */
-  auto log(LogLevel level, const char *format, ...) -> void
+  /**
+   * Internal logging function that takes va_list
+   */
+  auto vlog(LogLevel level, const char *format, va_list args) -> void
   {
-    if (level == ZLOGLEVEL_OFF || !metal_c_initialized_)
+    if (level == ZLOGLEVEL_OFF || level < default_level_ || !metal_c_initialized_)
     {
       return;
     }
 
     int level_value = level;
+    char buffer[4096] = {0};
+    vsnprintf(buffer, sizeof(buffer), format, args);
+    ZLGWRITE(&level_value, buffer);
+  }
 
+  /**
+   * Main logging function with variadic arguments
+   */
+  auto log(LogLevel level, const char *format, ...) -> void
+  {
     va_list args;
     va_start(args, format);
-    char buffer[4096];
-    vsnprintf(buffer, sizeof(buffer), format, args);
+    vlog(level, format, args);
     va_end(args);
-
-    ZLGWRITE(&level_value, buffer);
   }
 
   /**
@@ -195,105 +199,56 @@ public:
    */
   auto trace(const char *format, ...) -> void
   {
-    std::cout << "ZLogger: trace called" << std::endl;
-    if (!metal_c_initialized_)
-    {
-      return;
-    }
-
     va_list args;
     va_start(args, format);
-    char buffer[4096];
-    vsnprintf(buffer, sizeof(buffer), format, args);
+    vlog(ZLOGLEVEL_TRACE, format, args);
     va_end(args);
-
-    int level_value = ZLOGLEVEL_TRACE;
-    ZLGWRITE(&level_value, buffer);
   }
 
   auto debug(const char *format, ...) -> void
   {
-    if (!metal_c_initialized_)
-    {
-      return;
-    }
-
     va_list args;
     va_start(args, format);
-    char buffer[4096];
-    vsnprintf(buffer, sizeof(buffer), format, args);
+    vlog(ZLOGLEVEL_DEBUG, format, args);
     va_end(args);
-
-    int level_value = ZLOGLEVEL_DEBUG;
-    ZLGWRITE(&level_value, buffer);
   }
 
   auto info(const char *format, ...) -> void
   {
-    if (!metal_c_initialized_)
-    {
-      return;
-    }
-
     va_list args;
     va_start(args, format);
-    char buffer[4096];
-    vsnprintf(buffer, sizeof(buffer), format, args);
+    vlog(ZLOGLEVEL_INFO, format, args);
     va_end(args);
-
-    int level_value = ZLOGLEVEL_INFO;
-    ZLGWRITE(&level_value, buffer);
   }
 
   auto warn(const char *format, ...) -> void
   {
-    if (!metal_c_initialized_)
-    {
-      return;
-    }
-
     va_list args;
     va_start(args, format);
-    char buffer[4096];
-    vsnprintf(buffer, sizeof(buffer), format, args);
+    vlog(ZLOGLEVEL_WARN, format, args);
     va_end(args);
-
-    int level_value = ZLOGLEVEL_WARN;
-    ZLGWRITE(&level_value, buffer);
   }
 
   auto error(const char *format, ...) -> void
   {
-    if (!metal_c_initialized_)
-    {
-      return;
-    }
-
     va_list args;
     va_start(args, format);
-    char buffer[4096];
-    vsnprintf(buffer, sizeof(buffer), format, args);
+    vlog(ZLOGLEVEL_ERROR, format, args);
     va_end(args);
-
-    int level_value = ZLOGLEVEL_ERROR;
-    ZLGWRITE(&level_value, buffer);
   }
 
   auto fatal(const char *format, ...) -> void
   {
-    if (!metal_c_initialized_)
-    {
-      return;
-    }
-
     va_list args;
     va_start(args, format);
-    char buffer[4096];
-    vsnprintf(buffer, sizeof(buffer), format, args);
+    vlog(ZLOGLEVEL_FATAL, format, args);
     va_end(args);
+  }
 
-    int level_value = ZLOGLEVEL_FATAL;
-    ZLGWRITE(&level_value, buffer);
+  auto fatal(const char *format, int exit_code) -> void
+  {
+    log(ZLOGLEVEL_FATAL, format);
+    std::exit(exit_code);
   }
 };
 
