@@ -45,6 +45,7 @@ int main()
 
   zwto_debug("@TEST waiting on ECB");
   ecb_wait(&e1);
+
   zwto_debug("@TEST waiting on ECB done, code: %x", e1.ecbcc);
   zwto_debug("@TEST waiting on ECB done, code: %x", e1.ecbbyte3);
 

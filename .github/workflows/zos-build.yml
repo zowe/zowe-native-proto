@@ -8,6 +8,18 @@ on:
   push:
     branches:
       - main
+  workflow_call:
+    inputs:
+      version:
+        required: false
+        type: string
+    secrets:
+      SSH_MARIST_RACF_HOST:
+        required: true
+      SSH_MARIST_RACF_PASSWORD:
+        required: true
+      SSH_MARIST_USERNAME:
+        required: true
 
 permissions:
   pull-requests: write
@@ -44,6 +56,10 @@ jobs:
 
       - name: Install Dependencies
         run: npm ci --workspaces=false
+
+      - name: Set Build Version
+        if: ${{ inputs.version }}
+        run: npm pkg set version=${{ inputs.version }}
 
       - name: Build on z/OS
         uses: nick-fields/retry@v3
