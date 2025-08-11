@@ -15,19 +15,6 @@
 #include <string.h>
 #include "zmetal.h"
 
-/* Named Token Service function codes */
-#define NTS_CREATE_TOKEN 1
-#define NTS_RETRIEVE_TOKEN 2
-#define NTS_DELETE_TOKEN 3
-
-/* Named Token Service return codes */
-#define NTS_RC_OK 0
-#define NTS_RC_NOT_FOUND 4
-#define NTS_RC_EXISTS 8
-#define NTS_RC_ERROR 12
-
-// IRST64
-
 typedef struct
 {
   unsigned char value[16];
@@ -100,7 +87,12 @@ extern "C"
     iean4cr_fn iean4cr = NULL;
 
     IEAN4CR(&iean4cr);
-    return iean4cr(&level, name, token, &persist, &rc);
+    if (iean4cr)
+    {
+      return iean4cr(&level, name, token, &persist, &rc);
+    }
+
+    return rc;
   }
 
   static int znts_retrieve(
@@ -111,7 +103,12 @@ extern "C"
     iean4rt_fn iean4rt = NULL;
 
     IEAN4RT(&iean4rt);
-    return iean4rt(&level, name, token, &rc);
+    if (iean4rt)
+    {
+      return iean4rt(&level, name, token, &rc);
+    }
+
+    return rc;
   }
 
   static int znts_delete(
@@ -121,7 +118,12 @@ extern "C"
     iean4dl_fn iean4dl = NULL;
 
     IEAN4DL(&iean4dl);
-    return iean4dl(&level, name, &rc);
+    if (iean4dl)
+    {
+      return iean4dl(&level, name, &rc);
+    }
+
+    return rc;
   }
 
 #if defined(__cplusplus)
