@@ -167,6 +167,7 @@ $(OUT_DIR)/zutm31.o: $(OUT_DIR)/zutm31.s
 #
 # Metal C Logger
 #
+.IF DEFINED(LOG_FLAGS)
 $(OUT_DIR)/zlogger_metal.s: zlogger_metal.c
 	@echo 'Building $(OUT_DIR)/zlogger_metal.s'
 	$(CC) $(MTL_FLAGS64) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
@@ -175,13 +176,18 @@ $(OUT_DIR)/zlogger_metal.o: $(OUT_DIR)/zlogger_metal.s
 	@echo 'Building $(OUT_DIR)/zlogger_metal.o'
 	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
-$(OUT_DIR)/libzut.so: $(OUT_DIR)/zut.o $(OUT_DIR)/zutm.o $(OUT_DIR)/zam.o $(OUT_DIR)/zutm31.o $(OUT_DIR)/zlogger_metal.o
+LIBZUT_LOGGER_OBJ=$(OUT_DIR)/zlogger_metal.o
+.ELSE
+LIBZUT_LOGGER_OBJ=
+.END
+
+$(OUT_DIR)/libzut.so: $(OUT_DIR)/zut.o $(OUT_DIR)/zutm.o $(OUT_DIR)/zam.o $(OUT_DIR)/zutm31.o $(LIBZUT_LOGGER_OBJ)
 	@echo 'Building $(OUT_DIR)/libzut.so'
 	$(CXX) $(DLL_BND_FLAGS) -o $@ $^ > $*.bind.lst
 
 libzut.so: $(OUT_DIRS) $(OUT_DIR)/libzut.so
 
-$(OUT_DIR)/libzut.a: $(OUT_DIR)/zut.o $(OUT_DIR)/zutm.o $(OUT_DIR)/zam.o $(OUT_DIR)/zutm31.o $(OUT_DIR)/zlogger_metal.o
+$(OUT_DIR)/libzut.a: $(OUT_DIR)/zut.o $(OUT_DIR)/zutm.o $(OUT_DIR)/zam.o $(OUT_DIR)/zutm31.o $(LIBZUT_LOGGER_OBJ)
 	@echo 'Building $(OUT_DIR)/libzut.a'
 	ar -rv $@ $^
 
