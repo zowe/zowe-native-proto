@@ -155,7 +155,7 @@ static void ZRCVYRTY(ZRCVY_ENV zenv)
 
 #pragma prolog(ZRCVYARR, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(ZRCVYARR, " ZWEEPILG ")
-int ZRCVYARR(SDWA sdwa)
+static int ZRCVYARR(SDWA sdwa)
 {
   unsigned long long int r0 = get_prev_r0(); // if r0 = 12, NO_SDWA
   unsigned long long int r2 = get_prev_r2();

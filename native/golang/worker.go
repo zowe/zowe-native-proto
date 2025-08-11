@@ -15,12 +15,16 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
+	"syscall"
 
 	"zowe-native-proto/zowed/cmds"
 	t "zowe-native-proto/zowed/types/common"
 	"zowe-native-proto/zowed/utils"
+
+	"golang.org/x/sys/unix"
 )
 
 // Worker represents a worker that processes command requests
@@ -31,6 +35,8 @@ type Worker struct {
 	Conn         utils.StdioConn
 	ResponseMu   *sync.Mutex // Mutex to synchronize response printing
 	Ready        bool        // Indicates if the worker is ready to process requests
+	ShmPath      string      // Shared memory file path
+	ShmFD        int         // Shared memory file descriptor (opened by Go)
 }
 
 // WorkerPool manages a pool of workers
@@ -190,7 +196,8 @@ func CreateWorkerPool(numWorkers int, requestQueue chan []byte, dispatcher *cmds
 // initializeWorker initializes a worker for forwarding `zowex` requests/responses
 func initializeWorker(worker *Worker, pool *WorkerPool) {
 	// Create a separate `zowex` process in interactive mode for each worker
-	workerCmd := utils.BuildCommand([]string{"--it"})
+	worker.ShmPath = fmt.Sprintf("%s/zowe-native-proto_%d-%d-%d_shm", os.TempDir(), os.Geteuid(), os.Getpid(), worker.ID)
+	workerCmd := utils.BuildCommand([]string{"--it", "--shm-file", worker.ShmPath})
 	workerStdin, err := workerCmd.StdinPipe()
 	if err != nil {
 		panic(err)
@@ -216,6 +223,27 @@ func initializeWorker(worker *Worker, pool *WorkerPool) {
 	// Wait for the instance of `zowex` to be ready
 	if _, err = bufio.NewReader(workerStdout).ReadBytes('\n'); err != nil {
 		panic(err)
+	}
+
+	// Open the shared memory file
+	if worker.ShmPath != "" {
+		fd, err := syscall.Open(worker.ShmPath, syscall.O_RDWR, 0600)
+		if err != nil {
+			utils.LogFatal("Worker %d: Failed to open shared memory file %s: %v\n", worker.ID, worker.ShmPath, err)
+		} else {
+			worker.ShmFD = int(fd)
+		}
+	}
+
+	// Map the shared memory using the file descriptor
+	if worker.ShmFD > 0 {
+		// Use unix.Mmap for memory mapping
+		data, err := unix.Mmap(worker.ShmFD, 0, 12, unix.PROT_READ|unix.PROT_WRITE, unix.MAP_SHARED)
+		if err != nil {
+			utils.LogFatal("Worker %d: Failed to mmap shared memory: %v\n", worker.ID, err)
+		} else {
+			workerConn.SharedMem = data
+		}
 	}
 
 	// Set up the connection for the worker
