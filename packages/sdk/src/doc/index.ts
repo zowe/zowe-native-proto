@@ -9,11 +9,11 @@
  *
  */
 
+export * from "./client";
+export * as cmds from "./gen/cmds";
 export * from "./gen/common";
 export * as ds from "./gen/ds";
-export * as uss from "./gen/uss";
 export * as jobs from "./gen/jobs";
-export * as cmds from "./gen/cmds";
-export * from "./client";
-export * from "./types";
+export * as uss from "./gen/uss";
 export * from "./gui";
+export * from "./types";

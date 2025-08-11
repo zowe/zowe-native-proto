@@ -21,6 +21,7 @@ interface IConfig {
     sshProfile: string | IProfile;
     deployDir: string;
     goBuildEnv?: string;
+    preBuildCmd?: string;
 }
 
 const localDeployDir = "./../native";
@@ -304,17 +305,6 @@ async function upload(connection: Client) {
     return new Promise<void>((finish) => {
         const spinner = startSpinner("Deploying files...");
 
-        // Copy package.json to native directory for version information
-        const packageJsonSource = path.resolve(__dirname, "../package.json");
-        const packageJsonDest = path.resolve(__dirname, "../native/package.json");
-        try {
-            if (fs.existsSync(packageJsonSource)) {
-                fs.copyFileSync(packageJsonSource, packageJsonDest);
-            }
-        } catch (error) {
-            console.warn("Warning: Could not copy package.json:", error);
-        }
-
         const dirs = getDirs();
         const files = getAllServerFiles();
 
@@ -337,23 +327,15 @@ async function upload(connection: Client) {
                 });
             }
 
-            const uploads = [];
+            const pendingUploads = [
+                uploadFile(sftpcon, path.resolve(__dirname, "../package.json"), `${deployDirs.root}/package.json`),
+            ];
             for (let i = 0; i < files.length; i++) {
                 const from = path.resolve(__dirname, `${localDeployDir}/${files[i]}`);
                 const to = `${deployDirs.root}/${files[i]}`;
-                uploads.push(uploadFile(sftpcon, from, to));
+                pendingUploads.push(uploadFile(sftpcon, from, to));
             }
-            await Promise.all(uploads);
-
-            // Clean up package.json from native directory
-            try {
-                const packageJsonDest = path.resolve(__dirname, "../native/package.json");
-                if (fs.existsSync(packageJsonDest)) {
-                    fs.unlinkSync(packageJsonDest);
-                }
-            } catch (error) {
-                console.warn("Warning: Could not clean up package.json:", error);
-            }
+            await Promise.all(pendingUploads);
 
             stopSpinner(spinner, "Deploy complete!");
             finish();
@@ -443,18 +425,19 @@ async function bin(connection: Client) {
     });
 }
 
-async function build(connection: Client, goBuildEnv?: string) {
+async function build(connection: Client, { goBuildEnv, preBuildCmd }: IConfig) {
+    preBuildCmd = preBuildCmd ? `${preBuildCmd} && ` : "";
     console.log("Building native/c ...");
     const response = await runCommandInShell(
         connection,
-        `cd ${deployDirs.cDir} && make ${DEBUG_MODE() ? "-DBuildType=DEBUG" : ""}\n`,
+        `${preBuildCmd}cd ${deployDirs.cDir} && make ${DEBUG_MODE() ? "-DBuildType=DEBUG" : ""}\n`,
     );
     DEBUG_MODE() && console.log(response);
     console.log("Building native/golang ...");
     console.log(
         await runCommandInShell(
             connection,
-            `cd ${deployDirs.goDir} &&${goBuildEnv ? ` ${goBuildEnv}` : ""} go build${DEBUG_MODE() ? "" : ' -ldflags="-s -w"'}\n`,
+            `${preBuildCmd}cd ${deployDirs.goDir} &&${goBuildEnv ? ` ${goBuildEnv}` : ""} go build${DEBUG_MODE() ? "" : ' -ldflags="-s -w"'}\nexit $?\n`,
             true,
         ),
     );
@@ -767,7 +750,7 @@ async function main() {
                 await bin(sshClient);
                 break;
             case "build":
-                await build(sshClient, config.goBuildEnv);
+                await build(sshClient, config);
                 break;
             case "build:python":
                 await make(sshClient, deployDirs.pythonDir);
@@ -795,7 +778,7 @@ async function main() {
                 break;
             case "rebuild":
                 await upload(sshClient);
-                await build(sshClient, config.goBuildEnv);
+                await build(sshClient, config);
                 break;
             case "test":
                 await test(sshClient);

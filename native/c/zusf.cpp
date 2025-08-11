@@ -15,6 +15,7 @@
 #ifndef _OPEN_SYS_FILE_EXT
 #define _OPEN_SYS_FILE_EXT 1
 #endif
+#include "zshmem.hpp"
 #include <algorithm>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -37,10 +38,12 @@
 #include "zut.hpp"
 #include "zbase64.h"
 #include "iefzb4d2.h"
+
 #ifndef _XPLATFORM_SOURCE
 #define _XPLATFORM_SOURCE
 #endif
 #include <sys/xattr.h>
+#include <vector>
 #include <time.h>
 #include <iomanip>
 #include <sstream>
@@ -838,7 +841,7 @@ string zusf_build_mode_string(mode_t mode)
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zusf_create_uss_file_or_dir(ZUSF *zusf, string file, mode_t mode, bool createDir)
+int zusf_create_uss_file_or_dir(ZUSF *zusf, const string &file, mode_t mode, bool createDir)
 {
   struct stat file_stats;
   if (stat(file.c_str(), &file_stats) != -1)
@@ -1044,7 +1047,7 @@ int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response, ListOptio
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
+int zusf_read_from_uss_file(ZUSF *zusf, const string &file, string &response)
 {
   const auto bpxk_autocvt = getenv("_BPXK_AUTOCVT");
   setenv("_BPXK_AUTOCVT", "OFF", 1);
@@ -1073,17 +1076,20 @@ int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
 
   if (zusf->encoding_opts.data_type == eDataTypeText)
   {
-    // Try to get the file's CCSID first
-    int file_ccsid = zusf_get_file_ccsid(zusf, file);
-    if (file_ccsid > 0 && file_ccsid != 65535) // Valid CCSID and not binary
-    {
-      encoding_to_use = zut_int_to_string(file_ccsid);
-      has_encoding = true;
-    }
-    else if (strlen(zusf->encoding_opts.codepage) > 0)
+    if (strlen(zusf->encoding_opts.codepage) > 0)
     {
       encoding_to_use = string(zusf->encoding_opts.codepage);
       has_encoding = true;
+    }
+    else
+    {
+      // Use tagged encoding if valid CCSID and not UTF-8 or binary
+      int file_ccsid = zusf_get_file_ccsid(zusf, file);
+      if (file_ccsid > 0 && file_ccsid != 1208 && file_ccsid != 65535)
+      {
+        encoding_to_use = zut_int_to_string(file_ccsid);
+        has_encoding = true;
+      }
     }
   }
 
@@ -1114,17 +1120,32 @@ int zusf_read_from_uss_file(ZUSF *zusf, string file, string &response)
  * @param zusf pointer to a ZUSF object
  * @param file name of the USS file
  * @param pipe name of the output pipe
+ * @param content_len pointer where the length of the file contents will be stored
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zusf_read_from_uss_file_streamed(ZUSF *zusf, string file, string pipe)
+int zusf_read_from_uss_file_streamed(ZUSF *zusf, const string &file, const string &pipe, size_t *content_len)
 {
+  if (content_len == nullptr)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "content_len must be a valid size_t pointer");
+    return RTNCD_FAILURE;
+  }
+
   FILE *fin = fopen(file.c_str(), zusf->encoding_opts.data_type == eDataTypeBinary ? "rb" : "r");
   if (!fin)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open file '%s'", file.c_str());
     return RTNCD_FAILURE;
   }
+
+  struct stat st;
+  if (stat(file.c_str(), &st) != 0)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not stat file '%s'", file.c_str());
+    return RTNCD_FAILURE;
+  }
+  set_content_length((uint64_t)st.st_size);
 
   int fifo_fd = open(pipe.c_str(), O_WRONLY);
   FILE *fout = fdopen(fifo_fd, "w");
@@ -1140,29 +1161,33 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, string file, string pipe)
 
   if (zusf->encoding_opts.data_type == eDataTypeText)
   {
-    // Try to get the file's CCSID first
-    int file_ccsid = zusf_get_file_ccsid(zusf, file);
-    if (file_ccsid > 0 && file_ccsid != 65535) // Valid CCSID, not binary
-    {
-      encoding_to_use = zut_int_to_string(file_ccsid);
-      has_encoding = true;
-    }
-    else if (strlen(zusf->encoding_opts.codepage) > 0)
+    if (strlen(zusf->encoding_opts.codepage) > 0)
     {
       encoding_to_use = string(zusf->encoding_opts.codepage);
       has_encoding = true;
+    }
+    else
+    {
+      // Use tagged encoding if valid CCSID and not UTF-8 or binary
+      int file_ccsid = zusf_get_file_ccsid(zusf, file);
+      if (file_ccsid > 0 && file_ccsid != 1208 && file_ccsid != 65535)
+      {
+        encoding_to_use = zut_int_to_string(file_ccsid);
+        has_encoding = true;
+      }
     }
   }
 
   const size_t chunk_size = FIFO_CHUNK_SIZE * 3 / 4;
   std::vector<char> buf(chunk_size);
   size_t bytes_read;
+  std::vector<char> temp_encoded;
+  std::vector<char> left_over;
 
   while ((bytes_read = fread(&buf[0], 1, chunk_size, fin)) > 0)
   {
     int chunk_len = bytes_read;
     const char *chunk = &buf[0];
-    std::vector<char> temp_encoded;
 
     if (has_encoding)
     {
@@ -1179,14 +1204,21 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, string file, string pipe)
       }
     }
 
-    temp_encoded = zbase64::encode(chunk, chunk_len);
+    *content_len += chunk_len;
+    temp_encoded = zbase64::encode(chunk, chunk_len, &left_over);
+    fwrite(&temp_encoded[0], 1, temp_encoded.size(), fout);
+    temp_encoded.clear();
+  }
+
+  if (!left_over.empty())
+  {
+    temp_encoded = zbase64::encode(&left_over[0], left_over.size());
     fwrite(&temp_encoded[0], 1, temp_encoded.size(), fout);
   }
 
   fflush(fout);
   fclose(fin);
   fclose(fout);
-
   return RTNCD_SUCCESS;
 }
 
@@ -1199,7 +1231,7 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, string file, string pipe)
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data)
+int zusf_write_to_uss_file(ZUSF *zusf, const string &file, string &data)
 {
   // TODO(zFernand0): Avoid overriding existing files
   struct stat file_stats;
@@ -1224,17 +1256,20 @@ int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data)
 
   if (zusf->encoding_opts.data_type == eDataTypeText)
   {
-    // Try to get the file's CCSID first
-    int file_ccsid = zusf_get_file_ccsid(zusf, file);
-    if (file_ccsid > 0 && file_ccsid != 65535) // Valid CCSID and not binary
-    {
-      encoding_to_use = zut_int_to_string(file_ccsid);
-      has_encoding = true;
-    }
-    else if (strlen(zusf->encoding_opts.codepage) > 0)
+    if (strlen(zusf->encoding_opts.codepage) > 0)
     {
       encoding_to_use = string(zusf->encoding_opts.codepage);
       has_encoding = true;
+    }
+    else
+    {
+      // Use tagged encoding if valid CCSID and not UTF-8 or binary
+      int file_ccsid = zusf_get_file_ccsid(zusf, file);
+      if (file_ccsid > 0 && file_ccsid != 1208 && file_ccsid != 65535)
+      {
+        encoding_to_use = zut_int_to_string(file_ccsid);
+        has_encoding = true;
+      }
     }
   }
 
@@ -1291,12 +1326,19 @@ int zusf_write_to_uss_file(ZUSF *zusf, string file, string &data)
  * @param zusf pointer to a ZUSF object
  * @param file name of the USS file
  * @param pipe name of the input pipe
+ * @param content_len pointer where the length of the file contents will be stored
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
  */
-int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe)
+int zusf_write_to_uss_file_streamed(ZUSF *zusf, const string &file, const string &pipe, size_t *content_len)
 {
   // TODO(zFernand0): Avoid overriding existing files
+  if (content_len == nullptr)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "content_len must be a valid size_t pointer");
+    return RTNCD_FAILURE;
+  }
+
   struct stat file_stats;
 
   // Use file tag encoding if available, otherwise fall back to provided encoding
@@ -1305,17 +1347,20 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe)
 
   if (zusf->encoding_opts.data_type == eDataTypeText)
   {
-    // Try to get the file's CCSID first
-    int file_ccsid = zusf_get_file_ccsid(zusf, file);
-    if (file_ccsid > 0 && file_ccsid != 65535) // Valid CCSID and not binary
-    {
-      encoding_to_use = zut_int_to_string(file_ccsid);
-      has_encoding = true;
-    }
-    else if (strlen(zusf->encoding_opts.codepage) > 0)
+    if (strlen(zusf->encoding_opts.codepage) > 0)
     {
       encoding_to_use = string(zusf->encoding_opts.codepage);
       has_encoding = true;
+    }
+    else
+    {
+      // Use tagged encoding if valid CCSID and not UTF-8 or binary
+      int file_ccsid = zusf_get_file_ccsid(zusf, file);
+      if (file_ccsid > 0 && file_ccsid != 1208 && file_ccsid != 65535)
+      {
+        encoding_to_use = zut_int_to_string(file_ccsid);
+        has_encoding = true;
+      }
     }
   }
 
@@ -1351,12 +1396,15 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe)
 
   std::vector<char> buf(FIFO_CHUNK_SIZE);
   size_t bytes_read;
+  std::vector<char> temp_encoded;
+  std::vector<char> left_over;
 
   while ((bytes_read = fread(&buf[0], 1, FIFO_CHUNK_SIZE, fin)) > 0)
   {
-    std::vector<char> temp_encoded = zbase64::decode(&buf[0], bytes_read);
+    temp_encoded = zbase64::decode(&buf[0], bytes_read, &left_over);
     const char *chunk = &temp_encoded[0];
     int chunk_len = temp_encoded.size();
+    *content_len += chunk_len;
 
     if (has_encoding)
     {
@@ -1383,6 +1431,7 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, string file, string pipe)
       fclose(fout);
       return RTNCD_FAILURE;
     }
+    temp_encoded.clear();
   }
 
   fflush(fout);
@@ -1523,7 +1572,7 @@ const char *zusf_get_group_from_gid(gid_t gid)
   return meta ? meta->gr_name : nullptr;
 }
 
-short zusf_get_id_from_user_or_group(string user_or_group, bool is_user)
+short zusf_get_id_from_user_or_group(const string &user_or_group, bool is_user)
 {
   const auto is_numeric = user_or_group.find_first_not_of("0123456789") == std::string::npos;
   if (is_numeric)
@@ -1540,7 +1589,7 @@ short zusf_get_id_from_user_or_group(string user_or_group, bool is_user)
   return -1;
 }
 
-int zusf_chown_uss_file_or_dir(ZUSF *zusf, string file, string owner, bool recursive)
+int zusf_chown_uss_file_or_dir(ZUSF *zusf, string file, const string &owner, bool recursive)
 {
   struct stat file_stats;
   if (stat(file.c_str(), &file_stats) == -1)

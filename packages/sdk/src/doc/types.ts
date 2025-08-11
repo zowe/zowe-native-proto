@@ -9,6 +9,8 @@
  *
  */
 
+import type { CommandResponse } from "./gen/common";
+
 export type B64String = string & { __brand: "B64String" };
 export namespace B64String {
     export function decode(data: B64String): string {
@@ -20,6 +22,16 @@ export namespace B64String {
     }
 
     export function encode(data: Uint8Array | string): B64String {
-        return (typeof data === "string" ? Buffer.from(data) : data).toString("base64") as B64String;
+        return Buffer.from(data).toString("base64") as B64String;
     }
 }
+
+export type CallbackInfo = {
+    callback: (percent: number) => void;
+    totalBytes?: number;
+};
+
+type PromiseExecutorParams<T> = Parameters<ConstructorParameters<typeof Promise<T>>[0]>;
+type PromiseResolve<T> = PromiseExecutorParams<T>[0];
+type PromiseReject = PromiseExecutorParams<unknown>[1];
+export type RpcPromise = { resolve: PromiseResolve<CommandResponse>; reject: PromiseReject };

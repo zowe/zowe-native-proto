@@ -4,6 +4,14 @@ All notable changes to the native code for "zowe-native-proto" are documented in
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+
+- `native`: Added `timeout` for `zowex console issue` to prevent indefinite hang when no messages are returned. [#470](https://github.com/zowe/zowe-native-proto/pull/470)
+- `native`: Added `contentLen` property to RPC responses for reading/writing data sets and USS files. [#358](https://github.com/zowe/zowe-native-proto/pull/358)
+- `native`: Fixed file tag being prioritized over user-specified codepage when reading/writing USS files. [#467](https://github.com/zowe/zowe-native-proto/pull/467)
+- `native`: Fixed issue where `max-entries` argument was incorrectly parsed as a string rather than an integer. [#469](https://github.com/zowe/zowe-native-proto/issues/469)
+- `native`: The `zowex` root command now has a command handler to make adding new options easier. [#468](https://github.com/zowe/zowe-native-proto/pull/468)
+
 ## `0.1.4`
 
 - `c`: Fixed an issue where the CLI help text showed the `[options]` placeholder in the usage example before the positional arguments, which is not a supported syntax. Now, the usage text shows the `[options]` placeholder after the positional arguments for the given command.

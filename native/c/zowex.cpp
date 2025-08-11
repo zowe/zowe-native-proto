@@ -9,6 +9,8 @@
  *
  */
 
+#pragma runopts("TRAP(ON,NOSPIE)")
+
 #include <iostream>
 #include <memory>
 #include <vector>
@@ -31,6 +33,7 @@
 #include "zds.hpp"
 #include "zusf.hpp"
 #include "ztso.hpp"
+#include "zshmem.hpp"
 #include "zuttype.h"
 #include "zlogger.hpp"
 
@@ -89,6 +92,8 @@ int handle_uss_chtag(const ParseResult &result);
 
 int handle_version(const ParseResult &result);
 
+int handle_root_command(const ParseResult &result);
+
 int handle_job_list(const ParseResult &result);
 int handle_job_list_files(const ParseResult &result);
 int handle_job_view_status(const ParseResult &result);
@@ -105,22 +110,24 @@ int handle_job_release(const ParseResult &result);
 int loop_dynalloc(vector<string> &list);
 
 bool should_quit(const std::string &input);
-int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_name);
+int run_interactive_mode(const std::string &shm_file_path);
 
+std::tr1::shared_ptr<ArgumentParser> arg_parser;
 int main(int argc, char *argv[])
 {
-  unsigned int code = 0;
-  string resp;
-
-  ZLOG_TRACE("Starting zowex...");
-
-  ArgumentParser arg_parser(argv[0], "Zowe Native Protocol CLI");
-
-  // Add interactive mode flag to root command
-  arg_parser.get_root_command().add_keyword_arg("interactive",
-                                                make_aliases("--interactive", "--it"),
-                                                "interactive (REPL) mode", ArgType_Flag, false,
-                                                ArgValue(false));
+  arg_parser = std::tr1::shared_ptr<ArgumentParser>(new ArgumentParser(argv[0], "Zowe Native Protocol CLI"));
+  arg_parser->get_root_command().add_keyword_arg("interactive",
+                                                 make_aliases("--interactive", "--it"),
+                                                 "interactive (REPL) mode", ArgType_Flag, false,
+                                                 ArgValue(false));
+  arg_parser->get_root_command().add_keyword_arg("version",
+                                                 make_aliases("--version", "-v"),
+                                                 "display version information", ArgType_Flag, false,
+                                                 ArgValue(false));
+  arg_parser->get_root_command().add_keyword_arg("shm-file",
+                                                 make_aliases("--shm-file"),
+                                                 "shared memory file path", ArgType_Single, false);
+  arg_parser->get_root_command().set_handler(handle_root_command);
 
   // Console command group
   auto console_cmd = command_ptr(new Command("console", "z/OS console operations"));
@@ -136,12 +143,15 @@ int main(int argc, char *argv[])
                              make_aliases("--wait"),
                              "wait for responses", ArgType_Flag, false,
                              ArgValue(true));
+  issue_cmd->add_keyword_arg("timeout",
+                             make_aliases("--timeout"),
+                             "timeout in seconds", ArgType_Single, false);
   issue_cmd->add_positional_arg("command", "command to run, e.g. 'D IPLINFO'",
                                 ArgType_Single, true);
   issue_cmd->set_handler(handle_console_issue);
 
   console_cmd->add_command(issue_cmd);
-  arg_parser.get_root_command().add_command(console_cmd);
+  arg_parser->get_root_command().add_command(console_cmd);
 
   // TSO command group
   auto tso_cmd = command_ptr(new Command("tso", "TSO operations"));
@@ -152,7 +162,7 @@ int main(int argc, char *argv[])
   tso_issue_cmd->set_handler(handle_tso_issue);
 
   tso_cmd->add_command(tso_issue_cmd);
-  arg_parser.get_root_command().add_command(tso_cmd);
+  arg_parser->get_root_command().add_command(tso_cmd);
 
   // Data set command group
   auto data_set_cmd = command_ptr(new Command("data-set", "z/OS data set operations"));
@@ -280,7 +290,7 @@ int main(int argc, char *argv[])
   ds_compress_cmd->set_handler(handle_data_set_compress);
   data_set_cmd->add_command(ds_compress_cmd);
 
-  arg_parser.get_root_command().add_command(data_set_cmd);
+  arg_parser->get_root_command().add_command(data_set_cmd);
 
   // Tool command group
   auto tool_cmd = command_ptr(new Command("tool", "tool operations"));
@@ -354,7 +364,7 @@ int main(int argc, char *argv[])
   tool_run_cmd->set_handler(handle_tool_run);
   tool_cmd->add_command(tool_run_cmd);
 
-  arg_parser.get_root_command().add_command(tool_cmd);
+  arg_parser->get_root_command().add_command(tool_cmd);
 
   // USS command group
   auto uss_cmd = command_ptr(new Command("uss", "z/OS USS operations"));
@@ -441,7 +451,7 @@ int main(int argc, char *argv[])
   uss_chtag_cmd->set_handler(handle_uss_chtag);
   uss_cmd->add_command(uss_chtag_cmd);
 
-  arg_parser.get_root_command().add_command(uss_cmd);
+  arg_parser->get_root_command().add_command(uss_cmd);
 
   // Job command group
   auto job_cmd = command_ptr(new Command("job", "z/OS job operations"));
@@ -553,54 +563,18 @@ int main(int argc, char *argv[])
   job_release_cmd->set_handler(handle_job_release);
   job_cmd->add_command(job_release_cmd);
 
-  arg_parser.get_root_command().add_command(job_cmd);
+  arg_parser->get_root_command().add_command(job_cmd);
 
   // Version command
   auto version_cmd = command_ptr(new Command("version", "display version information"));
   version_cmd->add_alias("--version");
   version_cmd->add_alias("-v");
   version_cmd->set_handler(handle_version);
-  arg_parser.get_root_command().add_command(version_cmd);
+  arg_parser->get_root_command().add_command(version_cmd);
 
-  // Check for version or interactive mode before parsing to avoid help text
-  bool is_interactive = false;
-  bool is_version = false;
-  for (int i = 1; i < argc; i++)
-  {
-    if (strcmp(argv[i], "--interactive") == 0 || strcmp(argv[i], "--it") == 0)
-    {
-      is_interactive = true;
-    }
-    else if (strcmp(argv[i], "--version") == 0 || strcmp(argv[i], "-v") == 0)
-    {
-      is_version = true;
-    }
-  }
-
-  // If version is requested, handle it directly
-  if (is_version)
-  {
-    cout << "Zowe Native Protocol CLI (zowex)" << endl;
-    cout << "Version: " << PACKAGE_VERSION << endl;
-    cout << "Build Date: " << BUILD_DATE << " " << BUILD_TIME << endl;
-    cout << "Copyright Contributors to the Zowe Project." << endl;
-    if (!is_interactive)
-    {
-      return 0;
-    }
-  }
-  // If interactive mode is requested, start it directly
-
-  if (is_interactive)
-  {
-    return run_interactive_mode(arg_parser, argv[0]);
-  }
-  else
-  {
-    // Parse and execute
-    ParseResult result = arg_parser.parse(argc, argv);
-    return result.exit_code;
-  }
+  // Parse and execute through normal command handling
+  ParseResult result = arg_parser->parse(argc, argv);
+  return result.exit_code;
 }
 
 int handle_console_issue(const ParseResult &result)
@@ -609,9 +583,15 @@ int handle_console_issue(const ParseResult &result)
   ZCN zcn = {0};
 
   string console_name = result.find_kw_arg_string("console-name");
-  cout << "console name " << console_name << endl;
+  int timeout = result.find_kw_arg_int("timeout");
+
   string command = result.find_pos_arg_string("command");
   bool wait = result.find_kw_arg_bool("wait");
+
+  if (timeout > 0)
+  {
+    zcn.timeout = timeout;
+  }
 
   rc = zcn_activate(&zcn, console_name);
   if (0 != rc)
@@ -987,7 +967,8 @@ int handle_data_set_view(const ParseResult &result)
 
   if (has_pipe_path && !pipe_path.empty())
   {
-    rc = zds_read_from_dsn_streamed(&zds, dsn, pipe_path);
+    size_t content_len = 0;
+    rc = zds_read_from_dsn_streamed(&zds, dsn, pipe_path, &content_len);
 
     if (result.find_kw_arg_bool("return-etag"))
     {
@@ -996,8 +977,9 @@ int handle_data_set_view(const ParseResult &result)
       if (read_rc == 0)
       {
         const auto etag = zut_calc_adler32_checksum(temp_content);
-        cout << std::hex << etag << endl;
+        cout << "etag: " << std::hex << etag << endl;
       }
+      cout << "size: " << content_len << endl;
     }
   }
   else
@@ -1047,14 +1029,14 @@ int handle_data_set_list(const ParseResult &result)
 
   dsn += ".**";
 
-  string max_entries = result.find_kw_arg_string("max-entries");
+  int max_entries = result.find_kw_arg_int("max-entries");
   bool warn = result.find_kw_arg_bool("warn") && !result.find_kw_arg_bool("no-warn");
   bool attributes = result.find_kw_arg_bool("attributes");
 
   ZDS zds = {0};
-  if (!max_entries.empty())
+  if (max_entries > 0)
   {
-    zds.max_entries = atoi(max_entries.c_str());
+    zds.max_entries = max_entries;
   }
   vector<ZDSEntry> entries;
 
@@ -1120,13 +1102,13 @@ int handle_data_set_list_members(const ParseResult &result)
 {
   int rc = 0;
   string dsn = result.find_pos_arg_string("dsn");
-  string max_entries = result.find_kw_arg_string("max-entries");
+  int max_entries = result.find_kw_arg_int("max-entries");
   bool warn = result.find_kw_arg_bool("warn");
 
   ZDS zds = {0};
-  if (!max_entries.empty())
+  if (max_entries > 0)
   {
-    zds.max_entries = atoi(max_entries.c_str());
+    zds.max_entries = max_entries;
   }
   vector<ZDSMem> members;
   rc = zds_list_members(&zds, dsn, members);
@@ -1180,10 +1162,11 @@ int handle_data_set_write(const ParseResult &result)
 
   bool has_pipe_path = result.has_kw_arg("pipe-path");
   string pipe_path = result.find_kw_arg_string("pipe-path");
+  size_t content_len = 0;
 
   if (has_pipe_path && !pipe_path.empty())
   {
-    rc = zds_write_to_dsn_streamed(&zds, dsn, pipe_path);
+    rc = zds_write_to_dsn_streamed(&zds, dsn, pipe_path, &content_len);
   }
   else
   {
@@ -1223,7 +1206,9 @@ int handle_data_set_write(const ParseResult &result)
 
   if (result.find_kw_arg_bool("etag-only"))
   {
-    cout << zds.etag << endl;
+    cout << "etag: " << zds.etag << endl;
+    if (content_len > 0)
+      cout << "size: " << content_len << endl;
   }
   else
   {
@@ -1451,15 +1436,15 @@ int handle_tool_search(const ParseResult &result)
 
   string pattern = result.find_pos_arg_string("string");
   string warn = result.find_kw_arg_string("warn");
-  string max_entries = result.find_kw_arg_string("max-entries");
+  int max_entries = result.find_kw_arg_int("max-entries");
   string dsn = result.find_pos_arg_string("dsn");
 
   ZDS zds = {0};
   bool results_truncated = false;
 
-  if (!max_entries.empty())
+  if (max_entries > 0)
   {
-    zds.max_entries = atoi(max_entries.c_str());
+    zds.max_entries = max_entries;
   }
 
   // List members in a data set
@@ -1849,12 +1834,14 @@ int handle_uss_view(const ParseResult &result)
 
   if (has_pipe_path && !pipe_path.empty())
   {
-    rc = zusf_read_from_uss_file_streamed(&zusf, uss_file, pipe_path);
+    size_t content_len = 0;
+    rc = zusf_read_from_uss_file_streamed(&zusf, uss_file, pipe_path, &content_len);
 
     if (result.find_kw_arg_bool("return-etag"))
     {
-      cout << zut_build_etag(file_stats.st_mtime, file_stats.st_size) << endl;
+      cout << "etag: " << zut_build_etag(file_stats.st_mtime, file_stats.st_size) << endl;
     }
+    cout << "size: " << content_len << endl;
   }
   else
   {
@@ -1913,10 +1900,11 @@ int handle_uss_write(const ParseResult &result)
 
   bool has_pipe_path = result.has_kw_arg("pipe-path");
   string pipe_path = result.find_kw_arg_string("pipe-path");
+  size_t content_len = 0;
 
   if (has_pipe_path && !pipe_path.empty())
   {
-    rc = zusf_write_to_uss_file_streamed(&zusf, file, pipe_path);
+    rc = zusf_write_to_uss_file_streamed(&zusf, file, pipe_path, &content_len);
   }
   else
   {
@@ -1955,8 +1943,10 @@ int handle_uss_write(const ParseResult &result)
 
   if (result.find_kw_arg_bool("etag-only"))
   {
-    cout << "etag: " << zusf.etag << '\n'
-         << "created: " << (zusf.created ? "true" : "false") << '\n';
+    cout << "etag: " << zusf.etag << endl
+         << "created: " << (zusf.created ? "true" : "false") << endl;
+    if (content_len > 0)
+      cout << "size: " << content_len << endl;
   }
   else
   {
@@ -2135,12 +2125,12 @@ int handle_job_list(const ParseResult &result)
   ZJB zjb = {0};
   string owner_name = result.find_kw_arg_string("owner");
   string prefix_name = result.find_kw_arg_string("prefix");
-  string max_entries = result.find_kw_arg_string("max-entries");
+  int max_entries = result.find_kw_arg_int("max-entries");
   bool warn = result.find_kw_arg_bool("warn") && !result.find_kw_arg_bool("no-warn");
 
-  if (!max_entries.empty())
+  if (max_entries > 0)
   {
-    zjb.jobs_max = atoi(max_entries.c_str());
+    zjb.jobs_max = max_entries;
   }
 
   vector<ZJob> jobs;
@@ -2189,12 +2179,12 @@ int handle_job_list_files(const ParseResult &result)
   int rc = 0;
   ZJB zjb = {0};
   string jobid = result.find_pos_arg_string("jobid");
-  string max_entries = result.find_kw_arg_string("max-entries");
+  int max_entries = result.find_kw_arg_int("max-entries");
   bool warn = result.find_kw_arg_bool("warn");
 
-  if (!max_entries.empty())
+  if (max_entries > 0)
   {
-    zjb.dds_max = atoi(max_entries.c_str());
+    zjb.dds_max = max_entries;
   }
 
   vector<ZJobDD> job_dds;
@@ -2550,15 +2540,51 @@ int handle_version(const ParseResult &result)
   return 0;
 }
 
+int handle_root_command(const ParseResult &result)
+{
+  const auto is_interactive = result.find_kw_arg_bool("interactive");
+  if (result.find_kw_arg_bool("version"))
+  {
+    const auto version_rc = handle_version(result);
+    if (!is_interactive)
+    {
+      return version_rc;
+    }
+  }
+
+  if (is_interactive)
+  {
+    return run_interactive_mode(result.find_kw_arg_string("shm-file"));
+  }
+
+  // If no interactive mode and no subcommands were invoked, show help
+
+  result.m_command->generate_help(std::cout);
+  return 0;
+}
+
 bool should_quit(const std::string &input)
 {
   return (input == "quit" || input == "exit" ||
           input == "QUIT" || input == "EXIT");
 }
 
-int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_name)
+int run_interactive_mode(const std::string &shm_file_path)
 {
-  arg_parser.update_program_name(program_name);
+  // Initialize shared memory
+  int shm_id;
+  ZSharedRegion *shm_ptr = nullptr;
+
+  if (!shm_file_path.empty())
+  {
+    // Create new shared memory for this process (each process gets its own)
+    shm_id = init_shared_memory(&shm_ptr, shm_file_path.c_str());
+    if (shm_id == -1)
+    {
+      cerr << "Failed to initialize shared memory" << endl;
+      return RTNCD_FAILURE;
+    }
+  }
 
   std::cout << "Started, enter command or 'quit' to quit..." << std::endl;
 
@@ -2577,7 +2603,7 @@ int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_
       break;
 
     // Parse and execute the command
-    ParseResult result = arg_parser.parse(command);
+    ParseResult result = arg_parser->parse(command);
     rc = result.exit_code;
 
     if (!is_tty)
@@ -2591,6 +2617,12 @@ int run_interactive_mode(ArgumentParser &arg_parser, const std::string &program_
   } while (!should_quit(command));
 
   std::cout << "...terminated" << std::endl;
+
+  // Clean up this process's shared memory
+  if (!shm_file_path.empty())
+  {
+    cleanup_shared_memory(shm_id, shm_ptr, shm_file_path.c_str());
+  }
 
   return rc;
 }

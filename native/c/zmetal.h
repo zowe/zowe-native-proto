@@ -241,12 +241,26 @@ static void mode_nzero()
 #endif
 
 #if defined(__IBM_METAL__)
+#define GET_ENTRY_REG64(reg, offset)                           \
+  __asm(                                                       \
+      "*                                                   \n" \
+      " LG     1," #offset "(,13)   Offset to reg          \n" \
+      " STG    1,%0                 Save reg               \n" \
+      "*                                                    "  \
+      : "=m"(reg)                                              \
+      :                                                        \
+      : "r1");
+#else
+#define GET_ENTRY_REG64(reg, offset)
+#endif
+
+#if defined(__IBM_METAL__)
 #define GET_PREV_REG64(reg, offset)                            \
   __asm(                                                       \
       "*                                                   \n" \
-      " LG     1,128(,13)                                  \n" \
-      " LG     1," #offset "(,1)                           \n" \
-      " STG    1,%0                                        \n" \
+      " LG     1,128(,13)           -> Prev SA             \n" \
+      " LG     1," #offset "(,1)    Offset to reg          \n" \
+      " STG    1,%0                 Save reg               \n" \
       "*                                                    "  \
       : "=m"(reg)                                              \
       :                                                        \
@@ -259,8 +273,8 @@ static void mode_nzero()
 #define SET_PREV_REG64(reg, offset)                            \
   __asm(                                                       \
       "*                                                   \n" \
-      " LG     1,128(,13)                                  \n" \
-      " STG    1," #offset "(,1)                           \n" \
+      " LG     1,128(,13)           -> Prev SA             \n" \
+      " STG    1," #offset "(,1)    Offset to reg          \n" \
       "*                                                    "  \
       :                                                        \
       : "m"(reg)                                               \
@@ -273,8 +287,8 @@ static void mode_nzero()
 #define GET_KEY(key)                                 \
   __asm(                                             \
       "*                                         \n" \
-      " IPK (2)                                  \n" \
-      " STC  2,%0  Save                          \n" \
+      " IPK (2)    Get key from PSW              \n" \
+      " STC  2,%0  Save key                      \n" \
       "*                                          "  \
       : "=m"(key)                                    \
       :                                              \
@@ -287,8 +301,9 @@ static void mode_nzero()
 #define SET_KEY(key)                                 \
   __asm(                                             \
       "*                                         \n" \
-      " IC   2,%0                                \n" \
-      " SPKA 0(2)                                \n" \
+      " SLR  2,2          Clear                  \n" \
+      " IC   2,%0         Get key value          \n" \
+      " SPKA 0(2)         Set key in PSW         \n" \
       "*                                          "  \
       :                                              \
       : "m"(key)                                     \
@@ -298,14 +313,14 @@ static void mode_nzero()
 #endif
 
 #if defined(__IBM_METAL__)
-#define GET_PSW(psw)                              \
-  __asm(                                          \
-      "*                                    \n"   \
-      " EPSW 0,1   Create stack entry       \n"   \
-      " STM 0,1,%0   Create stack entry       \n" \
-      "*                                      "   \
-      : "=m"(psw)                                 \
-      :                                           \
+#define GET_PSW(psw)                             \
+  __asm(                                         \
+      "*                                     \n" \
+      " EPSW 0,1    Create stack entry       \n" \
+      " STM 0,1,%0  Create stack entry       \n" \
+      "*                                      "  \
+      : "=m"(psw)                                \
+      :                                          \
       : "r0", "r1");
 #else
 #define GET_PSW(psw)
@@ -443,9 +458,9 @@ static void get_psw(PSW *psw)
   memcpy(psw, &psw_raw, sizeof(PSW));
 }
 
-static void set_key(unsigned char key)
+static void set_key(unsigned char *key)
 {
-  SET_KEY(key);
+  SET_KEY(*key);
 }
 
 static void set_prev_r0(unsigned long long int reg)

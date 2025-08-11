@@ -69,6 +69,10 @@ export interface WriteFileRequest extends common.CommandRequest {
    * Stream to read contents from
    */
   stream?: Readable;
+  /**
+   * Length of file contents in bytes (only used for streaming)
+   */
+  contentLen?: number /* int */;
 }
 export interface CreateFileRequest extends common.CommandRequest {
   command: "createFile";
@@ -172,10 +176,24 @@ export interface ReadFileResponse extends common.CommandResponse {
    * File contents (omitted if streaming)
    */
   data?: B64String;
+  /**
+   * Length of file contents in bytes (only used for streaming)
+   */
+  contentLen?: number /* int */;
 }
 export interface WriteFileResponse extends GenericFileResponse {
+  /**
+   * Returned e-tag for the file
+   */
   etag: string;
+  /**
+   * Whether new file was created
+   */
   created: boolean;
+  /**
+   * Length of file contents in bytes (only used for streaming)
+   */
+  contentLen?: number /* int */;
 }
 export interface ListFilesResponse extends common.CommandResponse {
   items: common.UssItem[];

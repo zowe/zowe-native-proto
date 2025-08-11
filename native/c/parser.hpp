@@ -691,7 +691,7 @@ public:
 
   // generate help text for this command and its subcommands
   void generate_help(std::ostream &os,
-                     const std::string &command_path_prefix) const
+                     const std::string &command_path_prefix = "") const
   {
     // calculate max widths for alignment
     size_t max_pos_arg_width = 0;
@@ -1603,9 +1603,10 @@ Command::parse(const std::vector<lexer::Token> &tokens,
         // subcommand.
         return sub_result;
       }
-      else if (!m_commands.empty() && current_positional_arg_index == 0)
+      else if (!m_commands.empty() && current_positional_arg_index == 0 && !m_handler)
       {
         // Only treat as unknown subcommand if we haven't started processing positional args
+        // AND this command has no handler (is purely a command group)
         // Suggest similar subcommand/group
         size_t best_dist = (size_t)-1;
         std::string best_match;
@@ -1824,6 +1825,7 @@ Command::parse(const std::vector<lexer::Token> &tokens,
 class ArgumentParser
 {
 public:
+  ArgumentParser() = default;
   explicit ArgumentParser(std::string prog_name, std::string description = "")
       : m_program_name(prog_name), m_program_desc(description),
         m_root_cmd(command_ptr(new Command(prog_name, description)))
@@ -1845,6 +1847,12 @@ public:
   Command &get_root_command()
   {
     return *m_root_cmd;
+  }
+
+  // get the program name
+  const std::string &get_program_name() const
+  {
+    return m_program_name;
   }
 
   // parse command line arguments from main(argc, argv)
@@ -2079,10 +2087,6 @@ public:
   }
 
 private:
-  // prevent copying
-  ArgumentParser(const ArgumentParser &);
-  ArgumentParser &operator=(const ArgumentParser &);
-
   std::string m_program_name;
   std::string m_program_desc;
   command_ptr m_root_cmd;

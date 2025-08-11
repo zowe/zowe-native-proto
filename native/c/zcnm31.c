@@ -149,9 +149,9 @@ int zcnm1put(ZCN *zcn, const char *command)
   {
     mode_sup();
   }
-  set_key(key_zero);
+  set_key(&key_zero);
   MGCRE(zcn->id, commandBuffer, cart, authcmdxp, dsa_mgcre_model);
-  set_key(key);
+  set_key(&key);
   if (mode_switch)
   {
     mode_prob();

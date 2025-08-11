@@ -10,56 +10,39 @@
  */
 
 import * as fs from "node:fs";
-import type { IHandlerParameters } from "@zowe/imperative";
-import { IO } from "@zowe/imperative";
-import { B64String, type ZSshClient, type uss } from "zowe-native-proto-sdk";
+import * as path from "node:path";
+import { type IHandlerParameters, IO, type ITaskWithStatus, TaskStage } from "@zowe/imperative";
+import type { uss, ZSshClient } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
-import path = require("node:path");
-import { posix } from "node:path";
 
 export default class DownloadUssFileHandler extends SshBaseHandler {
     public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<uss.ReadFileResponse> {
-        let encoding = params.arguments.encoding;
-        const binary = params.arguments.binary;
-        if (encoding == null && binary == null) {
-            try {
-                const fileResp = await client.uss.listFiles({
-                    fspath: params.arguments.filePath,
-                    all: true,
-                    long: true,
-                });
-                if (fileResp.success && fileResp.items.length > 0) {
-                    const file = fileResp.items[0];
-                    encoding = file.filetag;
-                }
-            } catch (error) {
-                params.response.console.error(
-                    "Failed to auto-detect file encoding for %s: %s",
-                    params.arguments.filePath,
-                    error,
-                );
-            }
-        }
-
-        const response = await client.uss.readFile({
-            fspath: params.arguments.filePath,
-            encoding: binary ? "binary" : encoding,
-        });
-        const content = B64String.decode(response.data);
-
-        const baseName = posix.basename(params.arguments.filePath);
+        const task: ITaskWithStatus = {
+            percentComplete: 0,
+            statusMessage: "Downloading...",
+            stageName: TaskStage.IN_PROGRESS,
+        };
+        const baseName = path.posix.basename(params.arguments.filePath);
         const localFilePath: string =
             params.arguments.file ?? path.join(params.arguments.directory ?? process.cwd(), baseName);
-
-        params.response.console.log(
-            "Downloading USS file '%s' to local file '%s'",
-            params.arguments.filePath,
-            localFilePath,
-        );
         IO.createDirsSyncFromFilePath(localFilePath);
-        fs.writeFileSync(localFilePath, content, params.arguments.binary ? "binary" : "utf8");
-        params.response.data.setMessage("Successfully downloaded content to %s", localFilePath);
 
+        params.response.progress.startBar({ task });
+        const response = await client.uss.readFile(
+            {
+                stream: fs.createWriteStream(localFilePath),
+                fspath: params.arguments.filePath,
+                encoding: params.arguments.binary ? "binary" : params.arguments.encoding,
+            },
+            (percent: number): void => {
+                task.percentComplete = percent;
+            },
+        );
+
+        task.stageName = TaskStage.COMPLETE;
+        params.response.progress.endBar();
+
+        params.response.data.setMessage("Successfully downloaded content to %s", localFilePath);
         return response;
     }
 }
