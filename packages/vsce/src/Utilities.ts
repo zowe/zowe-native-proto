@@ -73,7 +73,7 @@ export function registerCommands(context: vscode.ExtensionContext): vscode.Dispo
             await deployWithProgress(sshSession, serverPath, localDir);
 
             await SshConfigUtils.showSessionInTree(profile.name!, true);
-            const infoMsg = `Installed Zowe SSH server on ${profile.profile?.host ?? profile.name}`;
+            const infoMsg = `Installed Zowe SSH server on ${profile.profile.host ?? profile.name}`;
             imperative.Logger.getAppLogger().info(infoMsg);
             await Gui.showMessage(infoMsg);
         }),
