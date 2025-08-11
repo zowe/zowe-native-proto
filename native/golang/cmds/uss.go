@@ -19,7 +19,10 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"syscall"
+	"time"
+	"unsafe"
 	t "zowe-native-proto/zowed/types/common"
 	uss "zowe-native-proto/zowed/types/uss"
 	utils "zowe-native-proto/zowed/utils"
@@ -78,6 +81,7 @@ func HandleListFilesRequest(conn *utils.StdioConn, params []byte) (result any, e
 				Name: line,
 			}
 		}
+		ussResponse.ReturnedRows = len(ussResponse.Items)
 	}
 
 	return ussResponse, nil
@@ -127,19 +131,49 @@ func HandleReadFileRequest(conn *utils.StdioConn, params []byte) (result any, e 
 			return
 		}
 
-		notify, err := json.Marshal(t.RpcNotification{
-			JsonRPC: "2.0",
-			Method:  "receiveStream",
-			Params: map[string]interface{}{
-				"id":       request.StreamId,
-				"pipePath": pipePath,
-			},
-		})
-		if err != nil {
-			e = fmt.Errorf("[ReadFileRequest] Error marshalling notification: %v", err)
-			return
-		}
-		fmt.Println(string(notify))
+		// Start a goroutine to obtain content length and send notification
+		go func() {
+			startTime := time.Now()
+			timeout := 10 * time.Second
+			sleepDuration := 1
+			for {
+				atomicFlag := atomic.LoadInt32((*int32)(unsafe.Pointer(&conn.SharedMem[0])))
+				if atomicFlag != 0 {
+					break
+				}
+
+				if time.Since(startTime) >= timeout {
+					utils.LogError("[ReadFileRequest] Timeout waiting for atomic flag after 10 seconds")
+					return
+				}
+
+				if sleepDuration < 250 {
+					sleepDuration *= 2
+					if sleepDuration > 250 {
+						sleepDuration = 250
+					}
+				}
+				time.Sleep(time.Duration(sleepDuration) * time.Millisecond)
+			}
+
+			contentLen := atomic.LoadInt64((*int64)(unsafe.Pointer(&conn.SharedMem[4])))
+			atomic.StoreInt32((*int32)(unsafe.Pointer(&conn.SharedMem[0])), 0)
+
+			notify, err := json.Marshal(t.RpcNotification{
+				JsonRPC: "2.0",
+				Method:  "receiveStream",
+				Params: map[string]interface{}{
+					"id":         request.StreamId,
+					"pipePath":   pipePath,
+					"contentLen": contentLen,
+				},
+			})
+			if err != nil {
+				utils.LogError("[ReadFileRequest] Error marshalling notification: %v", err)
+				return
+			}
+			fmt.Println(string(notify))
+		}()
 
 		args = append(args, "--pipe-path", pipePath)
 		out, err := conn.ExecCmd(args)

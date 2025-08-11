@@ -63,6 +63,7 @@ func main() {
 
 	// Initialize workers in background
 	workerPool := CreateWorkerPool(options.NumWorkers, requestQueue, dispatcher)
+	defer workerPool.Shutdown()
 
 	// Set up signal handling for graceful shutdown
 	var shutdownOnce sync.Once

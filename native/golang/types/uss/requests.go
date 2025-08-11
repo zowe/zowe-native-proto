@@ -50,6 +50,8 @@ type WriteFileRequest struct {
 	Data string `json:"data,omitempty" tstype:"B64String"`
 	// Stream to read contents from
 	StreamId int `json:"stream,omitempty" tstype:"Readable"`
+	// Length of file contents in bytes (only used for streaming)
+	ContentLen *int `json:"contentLen,omitempty"`
 }
 
 type CreateFileRequest struct {
