@@ -137,28 +137,6 @@ public:
   }
 
   /**
-   * Initialize logger with specific DD path (called after DD allocation)
-   */
-  auto initialize_with_dd_path(const std::string &log_path) -> void
-  {
-    // Cleanup existing Metal C logger
-    if (metal_c_initialized_)
-    {
-      ZLGCLEAN();
-    }
-
-    // Re-initialize with new path
-    // if (zlg_init(log_path.c_str(), default_level_) == 0)
-    // {
-    //   metal_c_initialized_ = true;
-    // }
-    // else
-    // {
-    //   metal_c_initialized_ = false;
-    // }
-  }
-
-  /**
    * Get the current default log level
    */
   auto get_log_level() const -> int
