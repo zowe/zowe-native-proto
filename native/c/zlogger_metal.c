@@ -100,8 +100,7 @@ static void ZLGTIME(char *buffer, int buffer_size)
 #if defined(__IBM_METAL__)
   /* Use z/OS STCK (Store Clock) instruction for high-precision timestamp */
   unsigned long long clock_value = 0;
-
-  __asm(" STCK %0" : "=m"(clock_value) : : "cc");
+  __stck(&clock_value);
 
   /* Convert STCK to UNIX timestamp */
   unsigned long long unix_seconds = stck_to_unix_seconds(clock_value);
