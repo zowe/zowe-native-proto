@@ -74,8 +74,13 @@ CPP_FLAGS=-W "c,lp64,langlvl(extended0x),dll,xplink"\
 
 ASM_FLAGS=-mRENT
 
+.IF $(ZLOG_ENABLE) == 1
+LOG_FLAGS=-DZLOG_ENABLE
+.END
+
 # make -DBuildType=DEBUG
 .IF $(BuildType) == DEBUG
+LOG_FLAGS=-DZLOG_ENABLE
 # -g generates debugging information
 DEBUGGER_FLAGS=-qSOURCE -g9
 OTHER_C_FLAGS=-qSHOWINC -qSHOWMACROS
@@ -102,6 +107,15 @@ ASM_FLAGS+=--noverbose
 # Still investigating why we need `-g1` for the MetalC flags :'(
 MTL_FLAGS+=-g1
 MTL_FLAGS64+=-g1
+.END
+
+# Apply LOG_FLAGS to all relevant compilation flags if logging is enabled
+.IF DEFINED(LOG_FLAGS)
+C_FLAGS+=$(LOG_FLAGS)
+DLL_CPP_FLAGS+=$(LOG_FLAGS)
+CPP_FLAGS+=$(LOG_FLAGS)
+MTL_FLAGS+=$(LOG_FLAGS)
+MTL_FLAGS64+=$(LOG_FLAGS)
 .END
 
 all: libzut.so libzut.a libzds.so libzds.a libzusf.so libzusf.a libzcn.so libzcn.a libzjb.so libzjb.a zowex zoweax extattr

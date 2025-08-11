@@ -48,6 +48,7 @@ protected:
   ZLogger()
       : default_level_(ZLOGLEVEL_INFO), metal_c_initialized_(false)
   {
+#ifdef ZLOG_ENABLE
     // Check environment variable for log level
     const char *env_level = std::getenv("ZOWEX_LOG_LEVEL");
     if (env_level)
@@ -73,6 +74,7 @@ protected:
 
     // Initialize Metal C logger with default path
     metal_c_initialized_ = ZLGINIT(log_path_str.c_str(), &default_level_) == 0;
+#endif
   }
 
   auto create_logs_dir() -> void
@@ -254,12 +256,24 @@ public:
 
 /**
  * Convenience macros for easier logging usage
+ * These macros are gated by ZLOG_ENABLE - if not defined during compilation,
+ * all logging operations become no-ops with zero overhead.
  */
+#ifdef ZLOG_ENABLE
 #define ZLOG_TRACE(...) ZLogger::get_instance().trace(__VA_ARGS__)
 #define ZLOG_DEBUG(...) ZLogger::get_instance().debug(__VA_ARGS__)
 #define ZLOG_INFO(...) ZLogger::get_instance().info(__VA_ARGS__)
 #define ZLOG_WARN(...) ZLogger::get_instance().warn(__VA_ARGS__)
 #define ZLOG_ERROR(...) ZLogger::get_instance().error(__VA_ARGS__)
 #define ZLOG_FATAL(...) ZLogger::get_instance().fatal(__VA_ARGS__)
+#else
+/* When ZLOG_ENABLE is not defined, logging macros become no-ops */
+#define ZLOG_TRACE(...) ((void)0)
+#define ZLOG_DEBUG(...) ((void)0)
+#define ZLOG_INFO(...) ((void)0)
+#define ZLOG_WARN(...) ((void)0)
+#define ZLOG_ERROR(...) ((void)0)
+#define ZLOG_FATAL(...) ((void)0)
+#endif /* ZLOG_ENABLE */
 
 #endif // ZLOGGER_HPP

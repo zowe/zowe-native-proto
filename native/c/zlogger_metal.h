@@ -86,19 +86,39 @@ extern "C"
 }
 #endif
 
-/* Convenience macros for Metal C logging */
-#define ZLOGTMSG(msg) zlgwrite(ZLOGLEVEL_TRACE, msg)
-#define ZLOGDMSG(msg) zlgwrite(ZLOGLEVEL_DEBUG, msg)
-#define ZLOGIMSG(msg) zlgwrite(ZLOGLEVEL_INFO, msg)
-#define ZLOGWMSG(msg) zlgwrite(ZLOGLEVEL_WARN, msg)
-#define ZLOGEMSG(msg) zlgwrite(ZLOGLEVEL_ERROR, msg)
-#define ZLOGFMSG(msg) zlgwrite(ZLOGLEVEL_FATAL, msg)
+/* Convenience macros for Metal C logging
+ * These macros are gated by ZLOG_ENABLE - if not defined during compilation,
+ * all logging operations become no-ops with zero overhead.
+ */
+#ifdef ZLOG_ENABLE
+#define ZLOGTMSG(msg) ZLGWRITE(&((int){ZLOGLEVEL_TRACE}), msg)
+#define ZLOGDMSG(msg) ZLGWRITE(&((int){ZLOGLEVEL_DEBUG}), msg)
+#define ZLOGIMSG(msg) ZLGWRITE(&((int){ZLOGLEVEL_INFO}), msg)
+#define ZLOGWMSG(msg) ZLGWRITE(&((int){ZLOGLEVEL_WARN}), msg)
+#define ZLOGEMSG(msg) ZLGWRITE(&((int){ZLOGLEVEL_ERROR}), msg)
+#define ZLOGFMSG(msg) ZLGWRITE(&((int){ZLOGLEVEL_FATAL}), msg)
 
-#define ZLOGTFMT(prefix, msg, suffix) zlgwrfmt(ZLOGLEVEL_TRACE, prefix, msg, suffix)
-#define ZLOGDFMT(prefix, msg, suffix) zlgwrfmt(ZLOGLEVEL_DEBUG, prefix, msg, suffix)
-#define ZLOGIFMT(prefix, msg, suffix) zlgwrfmt(ZLOGLEVEL_INFO, prefix, msg, suffix)
-#define ZLOGWFMT(prefix, msg, suffix) zlgwrfmt(ZLOGLEVEL_WARN, prefix, msg, suffix)
-#define ZLOGEFMT(prefix, msg, suffix) zlgwrfmt(ZLOGLEVEL_ERROR, prefix, msg, suffix)
-#define ZLOGFFMT(prefix, msg, suffix) zlgwrfmt(ZLOGLEVEL_FATAL, prefix, msg, suffix)
+#define ZLOGTFMT(prefix, msg, suffix) ZLGWRFMT(ZLOGLEVEL_TRACE, prefix, msg, suffix)
+#define ZLOGDFMT(prefix, msg, suffix) ZLGWRFMT(ZLOGLEVEL_DEBUG, prefix, msg, suffix)
+#define ZLOGIFMT(prefix, msg, suffix) ZLGWRFMT(ZLOGLEVEL_INFO, prefix, msg, suffix)
+#define ZLOGWFMT(prefix, msg, suffix) ZLGWRFMT(ZLOGLEVEL_WARN, prefix, msg, suffix)
+#define ZLOGEFMT(prefix, msg, suffix) ZLGWRFMT(ZLOGLEVEL_ERROR, prefix, msg, suffix)
+#define ZLOGFFMT(prefix, msg, suffix) ZLGWRFMT(ZLOGLEVEL_FATAL, prefix, msg, suffix)
+#else
+/* When ZLOG_ENABLE is not defined, logging macros become no-ops */
+#define ZLOGTMSG(msg) ((void)0)
+#define ZLOGDMSG(msg) ((void)0)
+#define ZLOGIMSG(msg) ((void)0)
+#define ZLOGWMSG(msg) ((void)0)
+#define ZLOGEMSG(msg) ((void)0)
+#define ZLOGFMSG(msg) ((void)0)
+
+#define ZLOGTFMT(prefix, msg, suffix) ((void)0)
+#define ZLOGDFMT(prefix, msg, suffix) ((void)0)
+#define ZLOGIFMT(prefix, msg, suffix) ((void)0)
+#define ZLOGWFMT(prefix, msg, suffix) ((void)0)
+#define ZLOGEFMT(prefix, msg, suffix) ((void)0)
+#define ZLOGFFMT(prefix, msg, suffix) ((void)0)
+#endif /* ZLOG_ENABLE */
 
 #endif /* ZLOGGER_METAL_H */
