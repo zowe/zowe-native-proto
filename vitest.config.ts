@@ -23,9 +23,9 @@ export default defineConfig({
         coverage: {
             provider: "v8",
             reporter: ["text", "lcov", "html"],
-            exclude: ["lib/**", "test/**", "**/*.d.ts", "**/*.test.ts", "**/node_modules/**"],
+            exclude: ["lib/**", "tests/**", "**/*.d.ts", "**/*.test.ts", "**/node_modules/**"],
         },
-        include: ["test/**/*.test.ts"],
+        include: ["tests/**/*.test.ts"],
         testTimeout: 10000,
         hookTimeout: 10000,
         clearMocks: true,
