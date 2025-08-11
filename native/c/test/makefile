@@ -106,7 +106,7 @@ ASM_FLAGS+=--noverbose
 .END
 
 
-all: clean build-out build-out/ztest_runner
+all: build-out build-out/ztest_runner
 
 
 #
@@ -148,7 +148,8 @@ build-out/zrecovery.metal.test.o \
 build-out/zmetal.test.o \
 build-out/zmetal.metal.test.o \
 build-out/zusf.test.o \
-build-out/zusf.o
+build-out/zusf.o \
+build-out/zowex.test.o
 	$(OCXX) $(CXXLANG_BND_FLAGS) -o $@ $^ > $*.bind.lst
 
 build-out/zut.o:
@@ -236,6 +237,9 @@ build-out/zmetal.metal.test.o: build-out/zmetal.metal.test.s
 	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
 build-out/zusf.test.o: zusf.test.cpp
+	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
+
+build-out/zowex.test.o: zowex.test.cpp
 	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
 
 # build-out/testrcvy.s: testrcvy.c

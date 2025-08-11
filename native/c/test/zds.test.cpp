@@ -35,5 +35,15 @@ void zds_tests()
                   rc = zds_list_data_sets(&zds, dsn, entries);
                   ExpectWithContext(rc, zds.diag.e_msg).ToBe(0);
                 });
+             it("should list data set members",
+                []() -> void
+                {
+                  int rc = 0;
+                  ZDS zds = {0};
+                  vector<ZDSMem> members;
+                  string dsn = "SYS1.MACLIB";
+                  rc = zds_list_members(&zds, dsn, members);
+                  ExpectWithContext(rc, zds.diag.e_msg).ToBeGreaterThan(0); // zero or warning
+                });
            });
 }
