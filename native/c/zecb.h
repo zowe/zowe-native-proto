@@ -130,16 +130,18 @@ STIMERM_MODEL(stimerm_model); // make this copy in static storage
 #endif // __IBM_METAL__
 
 #if defined(__IBM_METAL__)
-#define ECB_POST(ecb)                                         \
+#define ECB_POST(ecb, code)                                   \
   __asm(                                                      \
       "*                                                  \n" \
-      " POST %0                                           \n" \
+      " L    15,%1                                        \n" \
+      "*                                                  \n" \
+      " POST %0,(15)                                      \n" \
       "*                                                    " \
       : "+m"(*ecb)                                            \
-      :                                                       \
+      : "m"(code)                                             \
       : "r0", "r1", "r14", "r15");
 #else
-#define ECB_POST(ecb)
+#define ECB_POST(ecb, code)
 #endif // __IBM_METAL__
 
 #if defined(__IBM_METAL__)
@@ -168,9 +170,9 @@ STIMERM_MODEL(stimerm_model); // make this copy in static storage
 #define ECBS_WAIT(count, list)
 #endif // __IBM_METAL__
 
-static void ecb_post(ECB *ecb)
+static void ecb_post(ECB *ecb, int code)
 {
-  ECB_POST(ecb);
+  ECB_POST(ecb, code);
 }
 
 static void ecb_wait(ECB *ecb)
