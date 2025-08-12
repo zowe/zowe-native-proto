@@ -124,6 +124,7 @@ int main(int argc, char *argv[])
   arg_parser->get_root_command().add_keyword_arg("shm-file",
                                                  make_aliases("--shm-file"),
                                                  "shared memory file path", ArgType_Single, false);
+
   arg_parser->get_root_command().set_handler(handle_root_command);
 
   // Console command group
