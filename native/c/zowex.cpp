@@ -31,6 +31,7 @@
 #include "zds.hpp"
 #include "zusf.hpp"
 #include "ztso.hpp"
+#include "zshmem.hpp"
 #include "zuttype.h"
 
 #ifndef TO_STRING
@@ -106,7 +107,7 @@ int handle_job_release(const ParseResult &result);
 int loop_dynalloc(vector<string> &list);
 
 bool should_quit(const std::string &input);
-int run_interactive_mode();
+int run_interactive_mode(const std::string &shm_file_path);
 
 std::tr1::shared_ptr<ArgumentParser> arg_parser;
 int main(int argc, char *argv[])
@@ -120,6 +121,10 @@ int main(int argc, char *argv[])
                                                  make_aliases("--version", "-v"),
                                                  "display version information", ArgType_Flag, false,
                                                  ArgValue(false));
+  arg_parser->get_root_command().add_keyword_arg("shm-file",
+                                                 make_aliases("--shm-file"),
+                                                 "shared memory file path", ArgType_Single, false);
+
   arg_parser->get_root_command().set_handler(handle_root_command);
 
   // Console command group
@@ -2547,7 +2552,7 @@ int handle_root_command(const ParseResult &result)
 
   if (is_interactive)
   {
-    return run_interactive_mode();
+    return run_interactive_mode(result.find_kw_arg_string("shm-file"));
   }
 
   // If no interactive mode and no subcommands were invoked, show help
@@ -2562,8 +2567,23 @@ bool should_quit(const std::string &input)
           input == "QUIT" || input == "EXIT");
 }
 
-int run_interactive_mode()
+int run_interactive_mode(const std::string &shm_file_path)
 {
+  // Initialize shared memory
+  int shm_id;
+  ZSharedRegion *shm_ptr = nullptr;
+
+  if (!shm_file_path.empty())
+  {
+    // Create new shared memory for this process (each process gets its own)
+    shm_id = init_shared_memory(&shm_ptr, shm_file_path.c_str());
+    if (shm_id == -1)
+    {
+      cerr << "Failed to initialize shared memory" << endl;
+      return RTNCD_FAILURE;
+    }
+  }
+
   std::cout << "Started, enter command or 'quit' to quit..." << std::endl;
 
   std::string command;
@@ -2595,6 +2615,12 @@ int run_interactive_mode()
   } while (!should_quit(command));
 
   std::cout << "...terminated" << std::endl;
+
+  // Clean up this process's shared memory
+  if (!shm_file_path.empty())
+  {
+    cleanup_shared_memory(shm_id, shm_ptr, shm_file_path.c_str());
+  }
 
   return rc;
 }

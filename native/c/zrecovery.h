@@ -247,7 +247,7 @@ static void vradata_ebcdic(SDWA *PTR64 sdwa, void *PTR64 data, short *PTR64 len)
 
 #pragma prolog(ZRCVYARR, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(ZRCVYARR, " ZWEEPILG ")
-int ZRCVYARR(SDWA sdwa)
+static int ZRCVYARR(SDWA sdwa)
 {
   unsigned long long int r0 = get_prev_r0(); // if r0 = 12, NO_SDWA
   unsigned long long int r2 = get_prev_r2();
