@@ -301,7 +301,8 @@ export abstract class AbstractConfigManager {
             };
             const newConfig: IConfig = await ConfigBuilder.build(impConfig, global, opts);
             config.api.layers.merge(newConfig);
-            await config.save(false);
+            // Use api.layers.write() instead of save() to avoid keyring prompts on MacOS
+            config.api.layers.write();
         } catch {}
     }
 
@@ -576,7 +577,11 @@ export abstract class AbstractConfigManager {
             configApi.profiles.set(selectedConfig?.name!, config);
         }
 
-        await this.mProfilesCache.getTeamConfig().save();
+        if (config.secure.length > 0) {
+            await this.mProfilesCache.getTeamConfig().save();
+        } else {
+            this.mProfilesCache.getTeamConfig().api.layers.write();
+        }
     }
 
     private async getNewProfileName(
