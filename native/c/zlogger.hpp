@@ -41,23 +41,18 @@ class ZLogger : public Singleton<ZLogger>
   friend class Singleton<ZLogger>;
 
 private:
-  int default_level_;
-  bool metal_c_initialized_;
+  bool m_initialized;
 
 protected:
   ZLogger()
-      : default_level_(ZLOGLEVEL_INFO), metal_c_initialized_(false)
+      : m_initialized(false)
   {
 #ifdef ZLOG_ENABLE
-    // Check environment variable for log level
-    const char *env_level = std::getenv("ZOWEX_LOG_LEVEL");
-    if (env_level)
-    {
-      set_level_from_str(env_level);
-    }
-
     // Create logs directory if it doesn't exist
-    create_logs_dir();
+    if (!create_logs_dir())
+    {
+      return;
+    }
 
     // Get current working directory
     char cwd[260] = {0};
@@ -69,58 +64,76 @@ protected:
     }
     else
     {
+      // Fallback to relative path if CWD cannot be deduced
       log_path_str = "logs/zowex.log";
     }
 
+    // Check environment variable for log level
+    const char *env_level = std::getenv("ZOWEX_LOG_LEVEL");
+    int initial_level = ZLOGLEVEL_INFO;
+    if (env_level)
+    {
+      initial_level = get_level_from_str(env_level);
+    }
     // Initialize Metal C logger with default path
-    metal_c_initialized_ = ZLGINIT(log_path_str.c_str(), &default_level_) == 0;
+    m_initialized = ZLGINIT(log_path_str.c_str(), &initial_level) == 0;
+    if (!m_initialized)
+    {
+      std::cerr << "Failed to initialize Metal C logger" << std::endl;
+      return;
+    }
 #endif
   }
 
-  auto create_logs_dir() -> void
+  auto create_logs_dir() -> bool
   {
     if (mkdir("logs", 0750) == -1)
     {
       if (errno != EEXIST)
       {
         std::cerr << "Failed to create logs directory: " << strerror(errno) << std::endl;
+        return false;
       }
     }
+    return true;
   }
 
-  auto set_level_from_str(const std::string &level_str) -> void
+  auto get_level_from_str(const std::string &level_str) -> int
   {
     std::string upper_level = level_str;
     std::transform(upper_level.begin(), upper_level.end(), upper_level.begin(), ::toupper);
 
+    int new_level = ZLOGLEVEL_INFO;
     if (upper_level == "TRACE")
     {
-      default_level_ = ZLOGLEVEL_TRACE;
+      new_level = ZLOGLEVEL_TRACE;
     }
     else if (upper_level == "DEBUG")
     {
-      default_level_ = ZLOGLEVEL_DEBUG;
+      new_level = ZLOGLEVEL_DEBUG;
     }
     else if (upper_level == "INFO")
     {
-      default_level_ = ZLOGLEVEL_INFO;
+      new_level = ZLOGLEVEL_INFO;
     }
     else if (upper_level == "WARN" || upper_level == "WARNING")
     {
-      default_level_ = ZLOGLEVEL_WARN;
+      new_level = ZLOGLEVEL_WARN;
     }
     else if (upper_level == "ERROR")
     {
-      default_level_ = ZLOGLEVEL_ERROR;
+      new_level = ZLOGLEVEL_ERROR;
     }
     else if (upper_level == "FATAL")
     {
-      default_level_ = ZLOGLEVEL_FATAL;
+      new_level = ZLOGLEVEL_FATAL;
     }
     else if (upper_level == "OFF")
     {
-      default_level_ = ZLOGLEVEL_OFF;
+      new_level = ZLOGLEVEL_OFF;
     }
+
+    return new_level;
   }
 
 public:
@@ -129,11 +142,13 @@ public:
    */
   auto set_log_level(LogLevel level) -> void
   {
-    default_level_ = level;
-    if (metal_c_initialized_)
+    if (!m_initialized)
     {
-      ZLGSTLVL(level);
+      return;
     }
+
+    int level_value = level;
+    ZLGSTLVL(&level_value);
   }
 
   /**
@@ -141,7 +156,7 @@ public:
    */
   auto get_log_level() const -> int
   {
-    return default_level_;
+    return ZLGGTLVL();
   }
 
   /**
@@ -152,7 +167,7 @@ public:
    */
   auto vlog(LogLevel level, const char *format, va_list args) -> void
   {
-    if (level == ZLOGLEVEL_OFF || level < default_level_ || !metal_c_initialized_)
+    if (level == ZLOGLEVEL_OFF || level < get_log_level() || !m_initialized)
     {
       return;
     }
