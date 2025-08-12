@@ -4,7 +4,7 @@ All notable changes to the "zowe-native-proto-vsce" extension will be documented
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## Recent Changes
+## `0.1.6`
 
 - Fixed regression where USS download operations would fail because of a missing callback function. [#482](https://github.com/zowe/zowe-native-proto/issues/482)
 

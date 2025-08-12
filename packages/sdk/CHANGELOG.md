@@ -4,7 +4,7 @@ All notable changes to the Client code for "zowe-native-proto-sdk" are documente
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## Recent Changes
+## `0.1.6`
 
 - Fixed a TypeError in `ZSshClient.request` that caused stream operations to fail if a callback was not provided for progress updates. [#482](https://github.com/zowe/zowe-native-proto/issues/482)
 
