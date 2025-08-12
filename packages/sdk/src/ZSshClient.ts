@@ -111,7 +111,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                 reject(new ImperativeError({ msg: "Request timed out", errorCode: "ETIMEDOUT" }));
             }, this.mResponseTimeout);
             if ("stream" in request && request.stream instanceof Stream) {
-                this.mNotifMgr.registerStream(rpcRequest, request.stream, timeoutId, {
+                this.mNotifMgr.registerStream(rpcRequest, request.stream, timeoutId, percentCallback && {
                     callback: percentCallback,
                     // If stream is a ReadStream use the size of the localFile in bytes
                     // If stream is a WriteStream, set undefined because the size progress will be provided by a notification
