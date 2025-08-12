@@ -975,7 +975,7 @@ int handle_data_set_view(const ParseResult &result)
       if (read_rc == 0)
       {
         const auto etag = zut_calc_adler32_checksum(temp_content);
-        cout << "etag: " << std::hex << etag << endl;
+        cout << "etag: " << std::hex << etag << std::dec << endl;
       }
       cout << "size: " << content_len << endl;
     }
@@ -994,7 +994,7 @@ int handle_data_set_view(const ParseResult &result)
     if (result.find_kw_arg_bool("return-etag"))
     {
       const auto etag = zut_calc_adler32_checksum(response);
-      cout << "etag: " << std::hex << etag << endl;
+      cout << "etag: " << std::hex << etag << std::dec << endl;
       cout << "data: ";
     }
 
