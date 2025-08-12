@@ -4,7 +4,7 @@ All notable changes to the native code for "zowe-native-proto" are documented in
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## Recent Changes
+## `0.1.5`
 
 - `native`: Added completion code for `POST` so that users of the library code may determine if a timeout has occurred.
 - `native`: Added `timeout` for `zowex console issue` to prevent indefinite hang when no messages are returned. [#470](https://github.com/zowe/zowe-native-proto/pull/470)
