@@ -1207,7 +1207,7 @@ int zds_write_to_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, s
   }
 
   stringstream etag_stream;
-  etag_stream << std::hex << zut_calc_adler32_checksum(saved_contents);
+  etag_stream << std::hex << zut_calc_adler32_checksum(saved_contents) << std::dec;
   strcpy(zds->etag, etag_stream.str().c_str());
 
   return RTNCD_SUCCESS;
