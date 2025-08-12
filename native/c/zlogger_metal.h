@@ -69,7 +69,7 @@ extern "C"
    * Set log level from Metal C
    * @param level New minimum log level
    */
-  void ZLGSTLVL(int level);
+  void ZLGSTLVL(int *level);
 
   /**
    * Get current log level from Metal C

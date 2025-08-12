@@ -10,12 +10,18 @@
  */
 
 #include "dcbd.h"
+#include "ieantasm.h"
 #include "zlogger_metal.h"
 #include "zam.h"
 #include "zstorage.h"
 #include "zutm.h"
 #include "zwto.h"
 #include "znts.h"
+
+#ifndef __IBM_METAL__
+// Stub for all other platforms to work around IntelliSense error ("use of undeclared identifier 'ieant___primary___level'")
+#define ieant___primary___level 3
+#endif
 
 typedef struct zlogger_metal_s
 {
@@ -36,7 +42,7 @@ static zlogger_metal_t *get_metal_logger()
   ZNT_TOKEN token = {0};
 
   /* Try to retrieve existing logger from named token */
-  int rc = znts_retrieve(3, &name, &token);
+  int rc = znts_retrieve(ieant___primary___level, &name, &token);
 
   if (rc == 4)
   {
@@ -48,7 +54,7 @@ static zlogger_metal_t *get_metal_logger()
 
       /* Store logger_data address as the token for znts_create */
       memcpy(&token, &logger_data, sizeof(void *));
-      int create_rc = znts_create(3, &name, &token, 0);
+      int create_rc = znts_create(ieant___primary___level, &name, &token, 0);
     }
   }
   else if (rc == 0)
@@ -200,7 +206,7 @@ static void ZLGTIME(char *buffer, int buffer_size)
 static int ZLGWRWTO(int level, const char *message)
 {
   /* Ensure WTO_BUF is aligned on fullword boundary for Metal C */
-  WTO_BUF wto_buf __attribute__((aligned(4))) = {0};
+  WTO_BUF wto_buf ATTRIBUTE(aligned(4)) = {0};
 
   /* Format WTO message with level prefix */
   const char *level_str = (level >= ZLOGLEVEL_TRACE && level <= ZLOGLEVEL_OFF)
@@ -286,10 +292,10 @@ int ZLGINIT(const char *log_file_path, int *min_level)
   /* Check if token exists and delete it to force re-creation */
   ZNT_NAME name = {"ZWXLOGGER"};
   ZNT_TOKEN token = {0};
-  int retrieve_rc = znts_retrieve(3, &name, &token);
+  int retrieve_rc = znts_retrieve(ieant___primary___level, &name, &token);
   if (retrieve_rc == 0)
   {
-    int delete_rc = znts_delete(3, &name);
+    int delete_rc = znts_delete(ieant___primary___level, &name);
   }
 
   zlogger_metal_t *logger = get_metal_logger();
@@ -447,12 +453,16 @@ int ZLGWRFMT(int level, const char *prefix, const char *message, const char *suf
 
 #pragma prolog(ZLGSTLVL, " ZWEPROLG NEWDSA=(YES,512)")
 #pragma epilog(ZLGSTLVL, " ZWEEPILG ")
-void ZLGSTLVL(int level)
+void ZLGSTLVL(int *level)
 {
+  if (!level)
+  {
+    return;
+  }
   zlogger_metal_t *logger = get_metal_logger();
   if (logger && logger->initialized)
   {
-    logger->min_level = level;
+    logger->min_level = *level;
   }
 }
 
@@ -512,6 +522,6 @@ void ZLGCLEAN(void)
 
     /* Reset state and delete named token */
     memset(logger, 0, sizeof(*logger));
-    znts_delete(3, &name);
+    znts_delete(ieant___primary___level, &name);
   }
 }
