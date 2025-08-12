@@ -11,6 +11,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - Added support for listing all USS files with the `all` request option. When provided, the SDK includes hidden files in the list response. [#421](https://github.com/zowe/zowe-native-proto/pull/421)
 - Refactored handling of RPC notifications to be managed by a separate class `RpcNotificationManager`. [#358](https://github.com/zowe/zowe-native-proto/pull/358)
 - Added content length validation for streamed requests. [#358](https://github.com/zowe/zowe-native-proto/pull/358)
+- Removed unnecessary prompt to unlock keyring on MacOS when connecting to a new host with a private key. [#453](https://github.com/zowe/zowe-native-proto/issues/453)
 
 ## `0.1.3`
 
