@@ -10,16 +10,38 @@ The C++ application includes a ZLogger singleton class for centralized logging. 
 
 `ZLOG_ENABLE` is defined when building in debug mode with `make -DBuildType=DEBUG`. You can exclusively enable logging by passing it directly to the make command: `make -DZLOG_ENABLE=1`
 
+Once enabled, you can insert log statements into your source code by making calls to the logger class:
+
+````cpp
+int main() {
+  ZLogger::get_instance().trace("This is a trace message: %s", "details here");
+}
+```
+
+Or, you can use the macros:
+
+```cpp
+ZLOG_TRACE("This is also a trace message");
+```
+
+Metal C has a similar set of macros in the format `ZLOGXMSG`:
+
+```c
+ZLOGDMSG("Debug message");
+```
+
+Where `X` is the desired log level for the message (outlined below in the "Log Levels" section).
+
 #### Log Levels
 
 The logger supports the following log levels (in order of verbosity):
 
-- `TRACE` - Most verbose, includes all debugging information
-- `DEBUG` - Debugging information
-- `INFO` - General informational messages (default)
-- `WARN` - Warning messages
-- `ERROR` - Error messages
-- `FATAL` - Fatal errors that may cause program termination
+- `TRACE` (T) - Most verbose, includes all debugging information
+- `DEBUG` (D) - Debugging information
+- `INFO` (I) - General informational messages (default)
+- `WARN` (W) - Warning messages
+- `ERROR` (E) - Error messages
+- `FATAL` (F) - Fatal errors that may cause program termination
 - `OFF` - Disable all logging
 
 #### Configuration
@@ -223,3 +245,4 @@ You must ensure `zut_alloc_debug()` is called to allocate an output DD for log m
 ```
 
 By default, output is printed to `/tmp/zowex_debug.txt` when using `ZUTDBGMG()`; however, you may provide a Metal C compatible alternative.
+````
