@@ -40,7 +40,7 @@ type ReadDatasetResponse struct {
 	// Dataset name
 	Dataset string `json:"dataset"`
 	// Dataset contents (omitted if streaming)
-	Data []byte `json:"data" tstype:"B64String"`
+	Data *[]byte `json:"data" tstype:"B64String"`
 	// Length of dataset contents in bytes (only used for streaming)
 	ContentLen *int `json:"contentLen,omitempty"`
 }
