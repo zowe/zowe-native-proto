@@ -4,6 +4,14 @@ All notable changes to the "zowe-native-proto-vsce" extension will be documented
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## `0.1.7`
+
+- Fixed regression in performance where opening data sets and USS files in the editor could be slow. [#488](https://github.com/zowe/zowe-native-proto/pull/488)
+
+## `0.1.6`
+
+- Fixed regression where USS download operations would fail because of a missing callback function. [#482](https://github.com/zowe/zowe-native-proto/issues/482)
+
 ## `0.1.5`
 
 - Implemented the `getTag` function in the `SshUssApi` class to return the tag of a UNIX file. Now, the VS Code extension automatically detects the file tag before the file is opened, and the detected encoding is shown in the "Open with Encoding" menu in Zowe Explorer. [#346](https://github.com/zowe/zowe-native-proto/issues/346)

@@ -1,6 +1,6 @@
 {
   "name": "zowe-native-proto-sdk",
-  "version": "0.1.5",
+  "version": "0.1.7",
   "main": "lib/index.js",
   "scripts": {
     "build": "tsc -b",

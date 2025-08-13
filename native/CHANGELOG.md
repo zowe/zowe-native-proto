@@ -4,6 +4,16 @@ All notable changes to the native code for "zowe-native-proto" are documented in
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## `0.1.7`
+
+- Updated CLI parser `find_kw_arg_bool` function to take in an optional boolean `check_for_negation` that, when `true`, looks for a negated option value. [#485](https://github.com/zowe/zowe-native-proto/issues/485)
+- Fixed issue where listing data set members did not check for the negated option value. Now, the command handler passes the `check_for_negation` option to the `find_kw_arg_bool` function to check the value of the negated, equivalent option. [#485](https://github.com/zowe/zowe-native-proto/issues/485)
+- `golang`: Fixed inconsistent type of the `data` property between the `ReadDatasetResponse` and `ReadFileResponse` types. [#488](https://github.com/zowe/zowe-native-proto/pull/488)
+
+## `0.1.6`
+
+- `native`: Fixed regression where data set download operations would fail due to a content length mismatch, due to the content length being printed as hexadecimal rather than decimal. [#482](https://github.com/zowe/zowe-native-proto/issues/482)
+
 ## `0.1.5`
 
 - `native`: Added completion code for `POST` so that users of the library code may determine if a timeout has occurred.
