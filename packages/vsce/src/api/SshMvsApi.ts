@@ -73,8 +73,13 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         const response = await (await this.client).ds.readDataset({
             dsname: dataSetName,
             encoding: options.binary ? "binary" : options.encoding,
-            stream: writeStream,
+            // Pass stream if file is provided, otherwise use buffer to read into memory
+            stream: options.file ? writeStream : undefined,
         });
+        if (options.stream != null) {
+            options.stream.write(B64String.decode(response.data));
+            options.stream.end();
+        }
         return this.buildZosFilesResponse({ etag: response.etag });
     }
 

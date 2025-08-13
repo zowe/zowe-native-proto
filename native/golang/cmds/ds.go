@@ -104,7 +104,7 @@ func HandleReadDatasetRequest(conn *utils.StdioConn, params []byte) (result any,
 		Encoding:   request.Encoding,
 		Etag:       etag,
 		Dataset:    request.Dsname,
-		Data:       data,
+		Data:       &data,
 		ContentLen: &size,
 	}
 	return
