@@ -248,7 +248,7 @@ export abstract class AbstractConfigManager {
                     const portNumber = Number.parseInt(unquotedValue, 10);
                     if (Number.isNaN(portNumber)) {
                         this.showMessage(
-                            `Invalid value for flag --${flag}. Port must be a valid number.`,
+                            `Invalid value for flag -${flag}. Port must be a valid number.`,
                             MESSAGE_TYPE.ERROR,
                         );
                         return undefined;
@@ -261,7 +261,7 @@ export abstract class AbstractConfigManager {
                 // Validate if quotes are required
                 if (/\s/.test(unquotedValue) && !/^["'].*["']$/.test(value)) {
                     this.showMessage(
-                        `Invalid value for flag --${flag}. Values with spaces must be quoted.`,
+                        `Invalid value for flag -${flag}. Values with spaces must be quoted.`,
                         MESSAGE_TYPE.ERROR,
                     );
                     return undefined;
@@ -308,55 +308,6 @@ export abstract class AbstractConfigManager {
 
     private async validateConfig(newConfig: ISshConfigExt, askForPassword = true): Promise<ISshConfigExt | undefined> {
         const configModifications: ISshConfigExt | undefined = {};
-        const attemptConnection = async (config: ISshConfigExt): Promise<boolean> => {
-            return new Promise((resolve, reject) => {
-                const sshClient = new Client();
-                const testConfig = { ...config };
-
-                if (testConfig.privateKey && typeof testConfig.privateKey === "string") {
-                    testConfig.privateKey = readFileSync(path.normalize(testConfig.privateKey), "utf8");
-                }
-
-                sshClient
-                    .connect({ ...testConfig, passphrase: testConfig.keyPassphrase })
-                    .on("error", reject)
-                    .on("ready", () => {
-                        sshClient.shell((err, stream: ClientChannel) => {
-                            if (err) return reject(err);
-                            stream.on("data", (data: Buffer | string) => {
-                                if (data.toString().startsWith("FOTS1668")) reject(new Error(data.toString()));
-                            });
-                            stream.on("end", () => resolve(true));
-                            sshClient.end();
-                        });
-                    });
-            });
-        };
-
-        const promptForPassword = async (config: ISshConfigExt): Promise<ISshConfigExt | undefined> => {
-            for (let attempts = 0; attempts < 3; attempts++) {
-                const testPassword = await this.showInputBox({
-                    title: `${configModifications.user ?? config.user}@${config.hostname}'s password:`,
-                    password: true,
-                    placeHolder: "Enter your password",
-                });
-
-                if (!testPassword) return undefined;
-
-                try {
-                    await attemptConnection({ ...config, ...configModifications, password: testPassword });
-                    return { password: testPassword };
-                } catch (error) {
-                    if (`${error}`.includes("FOTS1668")) {
-                        this.showMessage("Password Expired on Target System", MESSAGE_TYPE.ERROR);
-                        return undefined;
-                    }
-                    this.showMessage(`Password Authentication Failed (${attempts + 1}/3)`, MESSAGE_TYPE.ERROR);
-                }
-            }
-            return undefined;
-        };
-
         try {
             const privateKeyPath = newConfig.privateKey;
 
@@ -369,14 +320,16 @@ export abstract class AbstractConfigManager {
             }
 
             if ((!privateKeyPath || !readFileSync(path.normalize(privateKeyPath), "utf-8")) && !newConfig.password) {
-                const passwordPrompt = askForPassword ? await promptForPassword(newConfig) : undefined;
+                const passwordPrompt = askForPassword
+                    ? await this.promptForPassword(newConfig, configModifications)
+                    : undefined;
                 return passwordPrompt ? { ...configModifications, ...passwordPrompt } : undefined;
             }
 
-            await attemptConnection({ ...newConfig, ...configModifications });
+            await this.attemptConnection({ ...newConfig, ...configModifications });
         } catch (err) {
             const errorMessage = `${err}`;
-            // Check if a validation method is possible
+
             if (
                 newConfig.privateKey &&
                 !newConfig.password &&
@@ -385,7 +338,6 @@ export abstract class AbstractConfigManager {
                 return undefined;
             }
 
-            // Username is not valid
             if (errorMessage.includes("Invalid username")) {
                 const testUser = await this.showInputBox({
                     title: `Enter user for host: '${newConfig.hostname}'`,
@@ -394,17 +346,15 @@ export abstract class AbstractConfigManager {
 
                 if (!testUser) return undefined;
                 try {
-                    await attemptConnection({ ...newConfig, user: testUser });
+                    await this.attemptConnection({ ...newConfig, user: testUser });
                     return { user: testUser };
                 } catch {
                     return undefined;
                 }
             }
 
-            // No passphrase given or incorrect passphrase
             if (errorMessage.includes("but no passphrase given") || errorMessage.includes("integrity check failed")) {
                 const privateKeyPath = newConfig.privateKey;
-
                 for (let attempts = 0; attempts < 3; attempts++) {
                     const testKeyPassphrase = await this.showInputBox({
                         title: `Enter passphrase for key '${privateKeyPath}'`,
@@ -413,7 +363,7 @@ export abstract class AbstractConfigManager {
                     });
 
                     try {
-                        await attemptConnection({
+                        await this.attemptConnection({
                             ...newConfig,
                             ...configModifications,
                             keyPassphrase: testKeyPassphrase,
@@ -429,24 +379,75 @@ export abstract class AbstractConfigManager {
                 return undefined;
             }
 
-            // Authentication failure
             if (errorMessage.includes("All configured authentication methods failed")) {
-                const passwordPrompt = askForPassword ? await promptForPassword(newConfig) : undefined;
+                const passwordPrompt = askForPassword
+                    ? await this.promptForPassword(newConfig, configModifications)
+                    : undefined;
                 return passwordPrompt ? { ...configModifications, ...passwordPrompt } : undefined;
             }
 
-            // Handshake timeout error handling
             if (errorMessage.includes("Timed out while waiting for handshake")) {
                 this.showMessage("Timed out while waiting for handshake", MESSAGE_TYPE.ERROR);
                 return undefined;
             }
 
-            // Malformed Private Key
             if (errorMessage.includes("Cannot parse privateKey: Malformed OpenSSH private key")) {
                 return undefined;
             }
         }
         return configModifications;
+    }
+
+    private async attemptConnection(config: ISshConfigExt): Promise<boolean> {
+        return new Promise((resolve, reject) => {
+            const sshClient = new Client();
+            const testConfig = { ...config };
+
+            if (testConfig.privateKey && typeof testConfig.privateKey === "string") {
+                testConfig.privateKey = readFileSync(path.normalize(testConfig.privateKey), "utf8");
+            }
+
+            sshClient
+                .connect({ ...testConfig, passphrase: testConfig.keyPassphrase })
+                .on("error", reject)
+                .on("ready", () => {
+                    sshClient.shell((err, stream: ClientChannel) => {
+                        if (err) return reject(err);
+                        stream.on("data", (data: Buffer | string) => {
+                            if (data.toString().startsWith("FOTS1668")) reject(new Error(data.toString()));
+                        });
+                        stream.on("end", () => resolve(true));
+                        sshClient.end();
+                    });
+                });
+        });
+    }
+
+    private async promptForPassword(
+        config: ISshConfigExt,
+        configModifications: ISshConfigExt,
+    ): Promise<ISshConfigExt | undefined> {
+        for (let attempts = 0; attempts < 3; attempts++) {
+            const testPassword = await this.showInputBox({
+                title: `${configModifications.user ?? config.user}@${config.hostname}'s password:`,
+                password: true,
+                placeHolder: "Enter your password",
+            });
+
+            if (!testPassword) return undefined;
+
+            try {
+                await this.attemptConnection({ ...config, ...configModifications, password: testPassword });
+                return { password: testPassword };
+            } catch (error) {
+                if (`${error}`.includes("FOTS1668")) {
+                    this.showMessage("Password Expired on Target System", MESSAGE_TYPE.ERROR);
+                    return undefined;
+                }
+                this.showMessage(`Password Authentication Failed (${attempts + 1}/3)`, MESSAGE_TYPE.ERROR);
+            }
+        }
+        return undefined;
     }
 
     private async validateFoundPrivateKeys() {
