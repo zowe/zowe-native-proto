@@ -968,8 +968,7 @@ private:
     return uc != ' ' && iscntrl(uc) == 0;
   }
 
-  static bool
-  is_ident_cont(char c)
+  static bool is_ident_cont(char c)
   {
     return is_ident_start(c);
   }
