@@ -4,12 +4,22 @@ All notable changes to the Client code for "zowe-native-proto-sdk" are documente
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## Recent Changes
+## `0.1.7`
 
+- Fixed inconsistent type of the `data` property between the `ReadDatasetResponse` and `ReadFileResponse` types. [#488](https://github.com/zowe/zowe-native-proto/pull/488)
+
+## `0.1.6`
+
+- Fixed a TypeError in `ZSshClient.request` that caused stream operations to fail if a callback was not provided for progress updates. [#482](https://github.com/zowe/zowe-native-proto/issues/482)
+
+## `0.1.5`
+
+- Added support for progress messages for USS files downloaded and uploaded via the CLI plug-in. [#426](https://github.com/zowe/zowe-native-proto/pull/426)
 - Added support for listing the long format for USS files with the `long` request option. When provided, the SDK returns additional file attributes, including permissions, file tag, file size, number of links, owner, and group. [#346](https://github.com/zowe/zowe-native-proto/issues/346)
 - Added support for listing all USS files with the `all` request option. When provided, the SDK includes hidden files in the list response. [#421](https://github.com/zowe/zowe-native-proto/pull/421)
 - Refactored handling of RPC notifications to be managed by a separate class `RpcNotificationManager`. [#358](https://github.com/zowe/zowe-native-proto/pull/358)
 - Added content length validation for streamed requests. [#358](https://github.com/zowe/zowe-native-proto/pull/358)
+- Removed unnecessary prompt to unlock keyring on MacOS when connecting to a new host with a private key. [#453](https://github.com/zowe/zowe-native-proto/issues/453)
 
 ## `0.1.3`
 

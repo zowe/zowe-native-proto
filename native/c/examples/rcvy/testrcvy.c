@@ -20,6 +20,8 @@
 void ABEXIT(SDWA *sdwa, void *abexit_data)
 {
   zwto_debug("@TEST called on abend");
+  int *i = (int *)abexit_data;
+  zwto_debug("@TEST abexit_data %d", *i);
 }
 
 #pragma prolog(PERCEXIT, " ZWEPROLG NEWDSA=(YES,128) ")
@@ -31,9 +33,12 @@ void PERCEXIT(void *perc_exit_data)
 
 int main()
 {
+
   ZRCVY_ENV zenv = {0};
   zenv.abexit = ABEXIT;
   zenv.perc_exit = PERCEXIT;
+  int i = 7;
+  zenv.abexit_data = &i;
 
   zwto_debug("@TEST main");
 

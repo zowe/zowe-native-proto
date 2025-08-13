@@ -31,6 +31,7 @@
 #include "zds.hpp"
 #include "zusf.hpp"
 #include "ztso.hpp"
+#include "zshmem.hpp"
 #include "zuttype.h"
 
 #ifndef TO_STRING
@@ -57,6 +58,7 @@ int handle_console_issue(const ParseResult &result);
 int handle_tso_issue(const ParseResult &result);
 
 int handle_data_set_create(const ParseResult &result);
+int handle_data_set_create_fb(const ParseResult &result);
 int handle_data_set_create_vb(const ParseResult &result);
 int handle_data_set_create_adata(const ParseResult &result);
 int handle_data_set_create_loadlib(const ParseResult &result);
@@ -106,20 +108,24 @@ int handle_job_release(const ParseResult &result);
 int loop_dynalloc(vector<string> &list);
 
 bool should_quit(const std::string &input);
-int run_interactive_mode();
+int run_interactive_mode(const std::string &shm_file_path);
 
 std::tr1::shared_ptr<ArgumentParser> arg_parser;
 int main(int argc, char *argv[])
 {
   arg_parser = std::tr1::shared_ptr<ArgumentParser>(new ArgumentParser(argv[0], "Zowe Native Protocol CLI"));
   arg_parser->get_root_command().add_keyword_arg("interactive",
-                                                make_aliases("--interactive", "--it"),
-                                                "interactive (REPL) mode", ArgType_Flag, false,
-                                                ArgValue(false));
+                                                 make_aliases("--interactive", "--it"),
+                                                 "interactive (REPL) mode", ArgType_Flag, false,
+                                                 ArgValue(false));
   arg_parser->get_root_command().add_keyword_arg("version",
-                                                make_aliases("--version", "-v"),
-                                                "display version information", ArgType_Flag, false,
-                                                ArgValue(false));
+                                                 make_aliases("--version", "-v"),
+                                                 "display version information", ArgType_Flag, false,
+                                                 ArgValue(false));
+  arg_parser->get_root_command().add_keyword_arg("shm-file",
+                                                 make_aliases("--shm-file"),
+                                                 "shared memory file path", ArgType_Single, false);
+
   arg_parser->get_root_command().set_handler(handle_root_command);
 
   // Console command group
@@ -181,7 +187,7 @@ int main(int argc, char *argv[])
   ds_create_cmd->add_keyword_arg("dirblk", make_aliases("--dirblk"), "Directory blocks", ArgType_Single, false);
   ds_create_cmd->add_keyword_arg("dsorg", make_aliases("--dsorg"), "Data set organization", ArgType_Single, false);
   ds_create_cmd->add_keyword_arg("primary", make_aliases("--primary"), "Primary space", ArgType_Single, false);
-  ds_create_cmd->add_keyword_arg("recfm", make_aliases("--recfm"), "Record format", ArgType_Single, false);
+  ds_create_cmd->add_keyword_arg("recfm", make_aliases("--recfm"), "Record format", ArgType_Single, false, ArgValue(std::string("FB")));
   ds_create_cmd->add_keyword_arg("lrecl", make_aliases("--lrecl"), "Record length", ArgType_Single, false);
   ds_create_cmd->add_keyword_arg("dataclass", make_aliases("--dataclass"), "Data class", ArgType_Single, false);
   ds_create_cmd->add_keyword_arg("unit", make_aliases("--unit"), "Device type", ArgType_Single, false);
@@ -195,6 +201,13 @@ int main(int argc, char *argv[])
   ds_create_cmd->add_keyword_arg("vol", make_aliases("--vol"), "Volume serial", ArgType_Single, false);
   ds_create_cmd->set_handler(handle_data_set_create);
   data_set_cmd->add_command(ds_create_cmd);
+
+  // Create-fb subcommand
+  auto ds_create_fb_cmd = command_ptr(new Command("create-fb", "create FB data set using defaults: DSORG=PO, RECFM=FB, LRECL=80 "));
+  ds_create_fb_cmd->add_alias("cre-fb");
+  ds_create_fb_cmd->add_positional_arg("dsn", "data set name, optionally with member specified", ArgType_Single, true);
+  ds_create_fb_cmd->set_handler(handle_data_set_create_fb);
+  data_set_cmd->add_command(ds_create_fb_cmd);
 
   // Create-vb subcommand
   auto ds_create_vb_cmd = command_ptr(new Command("create-vb", "create VB data set using defaults: DSORG=PO, RECFM=VB, LRECL=255"));
@@ -644,6 +657,40 @@ int handle_tso_issue(const ParseResult &result)
   return rc;
 }
 
+int process_data_set_create_result(ZDS *zds, int rc, string dsn, string response)
+{
+  if (0 != rc)
+  {
+    cerr << "Error: could not create data set: '" << dsn << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details:\n"
+         << response << endl;
+    return RTNCD_FAILURE;
+  }
+
+  // Handle member creation if specified
+  size_t start = dsn.find_first_of('(');
+  size_t end = dsn.find_last_of(')');
+  if (start != string::npos && end != string::npos && end > start)
+  {
+    string member_name = dsn.substr(start + 1, end - start - 1);
+    string data = "";
+    rc = zds_write_to_dsn(zds, dsn, data);
+    if (0 != rc)
+    {
+      cout << "Error: could not write to data set: '" << dsn << "' rc: '" << rc << "'" << endl;
+      cout << "  Details: " << zds->diag.e_msg << endl;
+      return RTNCD_FAILURE;
+    }
+    cout << "Data set and/or member created: '" << dsn << "'" << endl;
+  }
+  else
+  {
+    cout << "Data set created: '" << dsn << "'" << endl;
+  }
+
+  return rc;
+}
+
 int handle_data_set_create(const ParseResult &result)
 {
   int rc = 0;
@@ -751,36 +798,17 @@ int handle_data_set_create(const ParseResult &result)
 
   string response;
   rc = zds_create_dsn(&zds, dsn, attributes, response);
-  if (0 != rc)
-  {
-    cerr << "Error: could not create data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details:\n"
-         << response << endl;
-    return RTNCD_FAILURE;
-  }
+  return process_data_set_create_result(&zds, rc, dsn, response);
+}
 
-  // Handle member creation if specified
-  size_t start = dsn.find_first_of('(');
-  size_t end = dsn.find_last_of(')');
-  if (start != string::npos && end != string::npos && end > start)
-  {
-    string member_name = dsn.substr(start + 1, end - start - 1);
-    string data = "";
-    rc = zds_write_to_dsn(&zds, dsn, data);
-    if (0 != rc)
-    {
-      cout << "Error: could not write to data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-      cout << "  Details: " << zds.diag.e_msg << endl;
-      return RTNCD_FAILURE;
-    }
-    cout << "Data set and/or member created: '" << dsn << "'" << endl;
-  }
-  else
-  {
-    cout << "Data set created: '" << dsn << "'" << endl;
-  }
-
-  return rc;
+int handle_data_set_create_fb(const ParseResult &result)
+{
+  int rc = 0;
+  string dsn = result.find_pos_arg_string("dsn");
+  ZDS zds = {0};
+  string response;
+  rc = zds_create_dsn_fb(&zds, dsn, response);
+  return process_data_set_create_result(&zds, rc, dsn, response);
 }
 
 int handle_data_set_create_vb(const ParseResult &result)
@@ -790,36 +818,7 @@ int handle_data_set_create_vb(const ParseResult &result)
   ZDS zds = {0};
   string response;
   rc = zds_create_dsn_vb(&zds, dsn, response);
-  if (0 != rc)
-  {
-    cerr << "Error: could not create data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details:\n"
-         << response << endl;
-    return RTNCD_FAILURE;
-  }
-
-  // Handle member creation if specified
-  size_t start = dsn.find_first_of('(');
-  size_t end = dsn.find_last_of(')');
-  if (start != string::npos && end != string::npos && end > start)
-  {
-    string member_name = dsn.substr(start + 1, end - start - 1);
-    string data = "";
-    rc = zds_write_to_dsn(&zds, dsn, data);
-    if (0 != rc)
-    {
-      cout << "Error: could not write to data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-      cout << "  Details: " << zds.diag.e_msg << endl;
-      return RTNCD_FAILURE;
-    }
-    cout << "Data set and/or member created: '" << dsn << "'" << endl;
-  }
-  else
-  {
-    cout << "Data set created: '" << dsn << "'" << endl;
-  }
-
-  return rc;
+  return process_data_set_create_result(&zds, rc, dsn, response);
 }
 
 int handle_data_set_create_adata(const ParseResult &result)
@@ -829,36 +828,7 @@ int handle_data_set_create_adata(const ParseResult &result)
   ZDS zds = {0};
   string response;
   rc = zds_create_dsn_adata(&zds, dsn, response);
-  if (0 != rc)
-  {
-    cerr << "Error: could not create data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details:\n"
-         << response << endl;
-    return RTNCD_FAILURE;
-  }
-
-  // Handle member creation if specified
-  size_t start = dsn.find_first_of('(');
-  size_t end = dsn.find_last_of(')');
-  if (start != string::npos && end != string::npos && end > start)
-  {
-    string member_name = dsn.substr(start + 1, end - start - 1);
-    string data = "";
-    rc = zds_write_to_dsn(&zds, dsn, data);
-    if (0 != rc)
-    {
-      cout << "Error: could not write to data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-      cout << "  Details: " << zds.diag.e_msg << endl;
-      return RTNCD_FAILURE;
-    }
-    cout << "Data set and/or member created: '" << dsn << "'" << endl;
-  }
-  else
-  {
-    cout << "Data set created: '" << dsn << "'" << endl;
-  }
-
-  return rc;
+  return process_data_set_create_result(&zds, rc, dsn, response);
 }
 
 int handle_data_set_create_loadlib(const ParseResult &result)
@@ -868,36 +838,7 @@ int handle_data_set_create_loadlib(const ParseResult &result)
   ZDS zds = {0};
   string response;
   rc = zds_create_dsn_loadlib(&zds, dsn, response);
-  if (0 != rc)
-  {
-    cerr << "Error: could not create data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details:\n"
-         << response << endl;
-    return RTNCD_FAILURE;
-  }
-
-  // Handle member creation if specified
-  size_t start = dsn.find_first_of('(');
-  size_t end = dsn.find_last_of(')');
-  if (start != string::npos && end != string::npos && end > start)
-  {
-    string member_name = dsn.substr(start + 1, end - start - 1);
-    string data = "";
-    rc = zds_write_to_dsn(&zds, dsn, data);
-    if (0 != rc)
-    {
-      cout << "Error: could not write to data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-      cout << "  Details: " << zds.diag.e_msg << endl;
-      return RTNCD_FAILURE;
-    }
-    cout << "Data set and/or member created: '" << dsn << "'" << endl;
-  }
-  else
-  {
-    cout << "Data set created: '" << dsn << "'" << endl;
-  }
-
-  return rc;
+  return process_data_set_create_result(&zds, rc, dsn, response);
 }
 
 int handle_data_set_create_member(const ParseResult &result)
@@ -970,7 +911,7 @@ int handle_data_set_view(const ParseResult &result)
       if (read_rc == 0)
       {
         const auto etag = zut_calc_adler32_checksum(temp_content);
-        cout << "etag: " << std::hex << etag << endl;
+        cout << "etag: " << std::hex << etag << std::dec << endl;
       }
       cout << "size: " << content_len << endl;
     }
@@ -989,7 +930,7 @@ int handle_data_set_view(const ParseResult &result)
     if (result.find_kw_arg_bool("return-etag"))
     {
       const auto etag = zut_calc_adler32_checksum(response);
-      cout << "etag: " << std::hex << etag << endl;
+      cout << "etag: " << std::hex << etag << std::dec << endl;
       cout << "data: ";
     }
 
@@ -1023,7 +964,7 @@ int handle_data_set_list(const ParseResult &result)
   dsn += ".**";
 
   int max_entries = result.find_kw_arg_int("max-entries");
-  bool warn = result.find_kw_arg_bool("warn") && !result.find_kw_arg_bool("no-warn");
+  bool warn = result.find_kw_arg_bool("warn", true);
   bool attributes = result.find_kw_arg_bool("attributes");
 
   ZDS zds = {0};
@@ -1096,7 +1037,7 @@ int handle_data_set_list_members(const ParseResult &result)
   int rc = 0;
   string dsn = result.find_pos_arg_string("dsn");
   int max_entries = result.find_kw_arg_int("max-entries");
-  bool warn = result.find_kw_arg_bool("warn");
+  bool warn = result.find_kw_arg_bool("warn", true);
 
   ZDS zds = {0};
   if (max_entries > 0)
@@ -2119,7 +2060,7 @@ int handle_job_list(const ParseResult &result)
   string owner_name = result.find_kw_arg_string("owner");
   string prefix_name = result.find_kw_arg_string("prefix");
   int max_entries = result.find_kw_arg_int("max-entries");
-  bool warn = result.find_kw_arg_bool("warn") && !result.find_kw_arg_bool("no-warn");
+  bool warn = result.find_kw_arg_bool("warn", true);
 
   if (max_entries > 0)
   {
@@ -2173,7 +2114,7 @@ int handle_job_list_files(const ParseResult &result)
   ZJB zjb = {0};
   string jobid = result.find_pos_arg_string("jobid");
   int max_entries = result.find_kw_arg_int("max-entries");
-  bool warn = result.find_kw_arg_bool("warn");
+  bool warn = result.find_kw_arg_bool("warn", true);
 
   if (max_entries > 0)
   {
@@ -2536,18 +2477,20 @@ int handle_version(const ParseResult &result)
 int handle_root_command(const ParseResult &result)
 {
   const auto is_interactive = result.find_kw_arg_bool("interactive");
-  if (result.find_kw_arg_bool("version")) {
+  if (result.find_kw_arg_bool("version"))
+  {
     const auto version_rc = handle_version(result);
-    if (!is_interactive) {
+    if (!is_interactive)
+    {
       return version_rc;
     }
   }
 
   if (is_interactive)
   {
-    return run_interactive_mode();
+    return run_interactive_mode(result.find_kw_arg_string("shm-file"));
   }
-  
+
   // If no interactive mode and no subcommands were invoked, show help
 
   result.m_command->generate_help(std::cout);
@@ -2560,8 +2503,23 @@ bool should_quit(const std::string &input)
           input == "QUIT" || input == "EXIT");
 }
 
-int run_interactive_mode()
+int run_interactive_mode(const std::string &shm_file_path)
 {
+  // Initialize shared memory
+  int shm_id;
+  ZSharedRegion *shm_ptr = nullptr;
+
+  if (!shm_file_path.empty())
+  {
+    // Create new shared memory for this process (each process gets its own)
+    shm_id = init_shared_memory(&shm_ptr, shm_file_path.c_str());
+    if (shm_id == -1)
+    {
+      cerr << "Failed to initialize shared memory" << endl;
+      return RTNCD_FAILURE;
+    }
+  }
+
   std::cout << "Started, enter command or 'quit' to quit..." << std::endl;
 
   std::string command;
@@ -2593,6 +2551,12 @@ int run_interactive_mode()
   } while (!should_quit(command));
 
   std::cout << "...terminated" << std::endl;
+
+  // Clean up this process's shared memory
+  if (!shm_file_path.empty())
+  {
+    cleanup_shared_memory(shm_id, shm_ptr, shm_file_path.c_str());
+  }
 
   return rc;
 }

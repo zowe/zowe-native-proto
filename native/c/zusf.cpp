@@ -15,6 +15,7 @@
 #ifndef _OPEN_SYS_FILE_EXT
 #define _OPEN_SYS_FILE_EXT 1
 #endif
+#include "zshmem.hpp"
 #include <algorithm>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -37,10 +38,12 @@
 #include "zut.hpp"
 #include "zbase64.h"
 #include "iefzb4d2.h"
+
 #ifndef _XPLATFORM_SOURCE
 #define _XPLATFORM_SOURCE
 #endif
 #include <sys/xattr.h>
+#include <vector>
 #include <time.h>
 #include <iomanip>
 #include <sstream>
@@ -1136,6 +1139,14 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, const string &file, const strin
     return RTNCD_FAILURE;
   }
 
+  struct stat st;
+  if (stat(file.c_str(), &st) != 0)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not stat file '%s'", file.c_str());
+    return RTNCD_FAILURE;
+  }
+  set_content_length((uint64_t)st.st_size);
+
   int fifo_fd = open(pipe.c_str(), O_WRONLY);
   FILE *fout = fdopen(fifo_fd, "w");
   if (!fout)
@@ -1208,7 +1219,6 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, const string &file, const strin
   fflush(fout);
   fclose(fin);
   fclose(fout);
-
   return RTNCD_SUCCESS;
 }
 

@@ -150,6 +150,7 @@ build-out/zmetal.metal.test.o \
 build-out/zusf.test.o \
 build-out/zusf.o \
 build-out/zowex.test.o
+build-out/zshmem.o
 	$(OCXX) $(CXXLANG_BND_FLAGS) -o $@ $^ > $*.bind.lst
 
 build-out/zut.o:
@@ -193,6 +194,9 @@ build-out/zcnm31.o:
 
 build-out/zusf.o:
 	cp ../build-out/xlclang/zusf.o build-out/zusf.o
+
+build-out/zshmem.o:
+	cp ../build-out/xlclang/zshmem.o build-out/zshmem.o
 
 build-out/zbase64.test.o: zbase64.test.cpp
 	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
