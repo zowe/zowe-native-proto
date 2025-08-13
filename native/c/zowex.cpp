@@ -58,6 +58,7 @@ int handle_console_issue(const ParseResult &result);
 int handle_tso_issue(const ParseResult &result);
 
 int handle_data_set_create(const ParseResult &result);
+int handle_data_set_create_fb(const ParseResult &result);
 int handle_data_set_create_vb(const ParseResult &result);
 int handle_data_set_create_adata(const ParseResult &result);
 int handle_data_set_create_loadlib(const ParseResult &result);
@@ -186,7 +187,7 @@ int main(int argc, char *argv[])
   ds_create_cmd->add_keyword_arg("dirblk", make_aliases("--dirblk"), "Directory blocks", ArgType_Single, false);
   ds_create_cmd->add_keyword_arg("dsorg", make_aliases("--dsorg"), "Data set organization", ArgType_Single, false);
   ds_create_cmd->add_keyword_arg("primary", make_aliases("--primary"), "Primary space", ArgType_Single, false);
-  ds_create_cmd->add_keyword_arg("recfm", make_aliases("--recfm"), "Record format", ArgType_Single, false);
+  ds_create_cmd->add_keyword_arg("recfm", make_aliases("--recfm"), "Record format", ArgType_Single, false, ArgValue(std::string("FB")));
   ds_create_cmd->add_keyword_arg("lrecl", make_aliases("--lrecl"), "Record length", ArgType_Single, false);
   ds_create_cmd->add_keyword_arg("dataclass", make_aliases("--dataclass"), "Data class", ArgType_Single, false);
   ds_create_cmd->add_keyword_arg("unit", make_aliases("--unit"), "Device type", ArgType_Single, false);
@@ -200,6 +201,13 @@ int main(int argc, char *argv[])
   ds_create_cmd->add_keyword_arg("vol", make_aliases("--vol"), "Volume serial", ArgType_Single, false);
   ds_create_cmd->set_handler(handle_data_set_create);
   data_set_cmd->add_command(ds_create_cmd);
+
+  // Create-fb subcommand
+  auto ds_create_fb_cmd = command_ptr(new Command("create-fb", "create FB data set using defaults: DSORG=PO, RECFM=FB, LRECL=80 "));
+  ds_create_fb_cmd->add_alias("cre-fb");
+  ds_create_fb_cmd->add_positional_arg("dsn", "data set name, optionally with member specified", ArgType_Single, true);
+  ds_create_fb_cmd->set_handler(handle_data_set_create_fb);
+  data_set_cmd->add_command(ds_create_fb_cmd);
 
   // Create-vb subcommand
   auto ds_create_vb_cmd = command_ptr(new Command("create-vb", "create VB data set using defaults: DSORG=PO, RECFM=VB, LRECL=255"));
@@ -756,6 +764,45 @@ int handle_data_set_create(const ParseResult &result)
 
   string response;
   rc = zds_create_dsn(&zds, dsn, attributes, response);
+  if (0 != rc)
+  {
+    cerr << "Error: could not create data set: '" << dsn << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details:\n"
+         << response << endl;
+    return RTNCD_FAILURE;
+  }
+
+  // Handle member creation if specified
+  size_t start = dsn.find_first_of('(');
+  size_t end = dsn.find_last_of(')');
+  if (start != string::npos && end != string::npos && end > start)
+  {
+    string member_name = dsn.substr(start + 1, end - start - 1);
+    string data = "";
+    rc = zds_write_to_dsn(&zds, dsn, data);
+    if (0 != rc)
+    {
+      cout << "Error: could not write to data set: '" << dsn << "' rc: '" << rc << "'" << endl;
+      cout << "  Details: " << zds.diag.e_msg << endl;
+      return RTNCD_FAILURE;
+    }
+    cout << "Data set and/or member created: '" << dsn << "'" << endl;
+  }
+  else
+  {
+    cout << "Data set created: '" << dsn << "'" << endl;
+  }
+
+  return rc;
+}
+
+int handle_data_set_create_fb(const ParseResult &result)
+{
+  int rc = 0;
+  string dsn = result.find_pos_arg_string("dsn");
+  ZDS zds = {0};
+  string response;
+  rc = zds_create_dsn_fb(&zds, dsn, response);
   if (0 != rc)
   {
     cerr << "Error: could not create data set: '" << dsn << "' rc: '" << rc << "'" << endl;
