@@ -4,6 +4,10 @@ All notable changes to the native code for "zowe-native-proto" are documented in
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+
+- Fixed issue where special characters '#' and '@' were detected as invalid characters in a data set name when provided to `zowex` commands. [#491](https://github.com/zowe/zowe-native-proto/issues/491)
+
 ## `0.1.7`
 
 - Updated CLI parser `find_kw_arg_bool` function to take in an optional boolean `check_for_negation` that, when `true`, looks for a negated option value. [#485](https://github.com/zowe/zowe-native-proto/issues/485)
