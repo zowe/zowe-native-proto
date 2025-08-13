@@ -687,6 +687,8 @@ int process_data_set_create_result(ZDS *zds, int rc, string dsn, string response
   {
     cout << "Data set created: '" << dsn << "'" << endl;
   }
+
+  return rc;
 }
 
 int handle_data_set_create(const ParseResult &result)
