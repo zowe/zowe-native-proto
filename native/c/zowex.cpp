@@ -657,6 +657,38 @@ int handle_tso_issue(const ParseResult &result)
   return rc;
 }
 
+int process_data_set_create_result(ZDS *zds, int rc, string dsn, string response)
+{
+  if (0 != rc)
+  {
+    cerr << "Error: could not create data set: '" << dsn << "' rc: '" << rc << "'" << endl;
+    cerr << "  Details:\n"
+         << response << endl;
+    return RTNCD_FAILURE;
+  }
+
+  // Handle member creation if specified
+  size_t start = dsn.find_first_of('(');
+  size_t end = dsn.find_last_of(')');
+  if (start != string::npos && end != string::npos && end > start)
+  {
+    string member_name = dsn.substr(start + 1, end - start - 1);
+    string data = "";
+    rc = zds_write_to_dsn(zds, dsn, data);
+    if (0 != rc)
+    {
+      cout << "Error: could not write to data set: '" << dsn << "' rc: '" << rc << "'" << endl;
+      cout << "  Details: " << zds->diag.e_msg << endl;
+      return RTNCD_FAILURE;
+    }
+    cout << "Data set and/or member created: '" << dsn << "'" << endl;
+  }
+  else
+  {
+    cout << "Data set created: '" << dsn << "'" << endl;
+  }
+}
+
 int handle_data_set_create(const ParseResult &result)
 {
   int rc = 0;
@@ -764,36 +796,7 @@ int handle_data_set_create(const ParseResult &result)
 
   string response;
   rc = zds_create_dsn(&zds, dsn, attributes, response);
-  if (0 != rc)
-  {
-    cerr << "Error: could not create data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details:\n"
-         << response << endl;
-    return RTNCD_FAILURE;
-  }
-
-  // Handle member creation if specified
-  size_t start = dsn.find_first_of('(');
-  size_t end = dsn.find_last_of(')');
-  if (start != string::npos && end != string::npos && end > start)
-  {
-    string member_name = dsn.substr(start + 1, end - start - 1);
-    string data = "";
-    rc = zds_write_to_dsn(&zds, dsn, data);
-    if (0 != rc)
-    {
-      cout << "Error: could not write to data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-      cout << "  Details: " << zds.diag.e_msg << endl;
-      return RTNCD_FAILURE;
-    }
-    cout << "Data set and/or member created: '" << dsn << "'" << endl;
-  }
-  else
-  {
-    cout << "Data set created: '" << dsn << "'" << endl;
-  }
-
-  return rc;
+  return process_data_set_create_result(&zds, rc, dsn, response);
 }
 
 int handle_data_set_create_fb(const ParseResult &result)
@@ -803,36 +806,7 @@ int handle_data_set_create_fb(const ParseResult &result)
   ZDS zds = {0};
   string response;
   rc = zds_create_dsn_fb(&zds, dsn, response);
-  if (0 != rc)
-  {
-    cerr << "Error: could not create data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details:\n"
-         << response << endl;
-    return RTNCD_FAILURE;
-  }
-
-  // Handle member creation if specified
-  size_t start = dsn.find_first_of('(');
-  size_t end = dsn.find_last_of(')');
-  if (start != string::npos && end != string::npos && end > start)
-  {
-    string member_name = dsn.substr(start + 1, end - start - 1);
-    string data = "";
-    rc = zds_write_to_dsn(&zds, dsn, data);
-    if (0 != rc)
-    {
-      cout << "Error: could not write to data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-      cout << "  Details: " << zds.diag.e_msg << endl;
-      return RTNCD_FAILURE;
-    }
-    cout << "Data set and/or member created: '" << dsn << "'" << endl;
-  }
-  else
-  {
-    cout << "Data set created: '" << dsn << "'" << endl;
-  }
-
-  return rc;
+  return process_data_set_create_result(&zds, rc, dsn, response);
 }
 
 int handle_data_set_create_vb(const ParseResult &result)
@@ -842,36 +816,7 @@ int handle_data_set_create_vb(const ParseResult &result)
   ZDS zds = {0};
   string response;
   rc = zds_create_dsn_vb(&zds, dsn, response);
-  if (0 != rc)
-  {
-    cerr << "Error: could not create data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details:\n"
-         << response << endl;
-    return RTNCD_FAILURE;
-  }
-
-  // Handle member creation if specified
-  size_t start = dsn.find_first_of('(');
-  size_t end = dsn.find_last_of(')');
-  if (start != string::npos && end != string::npos && end > start)
-  {
-    string member_name = dsn.substr(start + 1, end - start - 1);
-    string data = "";
-    rc = zds_write_to_dsn(&zds, dsn, data);
-    if (0 != rc)
-    {
-      cout << "Error: could not write to data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-      cout << "  Details: " << zds.diag.e_msg << endl;
-      return RTNCD_FAILURE;
-    }
-    cout << "Data set and/or member created: '" << dsn << "'" << endl;
-  }
-  else
-  {
-    cout << "Data set created: '" << dsn << "'" << endl;
-  }
-
-  return rc;
+  return process_data_set_create_result(&zds, rc, dsn, response);
 }
 
 int handle_data_set_create_adata(const ParseResult &result)
@@ -881,36 +826,7 @@ int handle_data_set_create_adata(const ParseResult &result)
   ZDS zds = {0};
   string response;
   rc = zds_create_dsn_adata(&zds, dsn, response);
-  if (0 != rc)
-  {
-    cerr << "Error: could not create data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details:\n"
-         << response << endl;
-    return RTNCD_FAILURE;
-  }
-
-  // Handle member creation if specified
-  size_t start = dsn.find_first_of('(');
-  size_t end = dsn.find_last_of(')');
-  if (start != string::npos && end != string::npos && end > start)
-  {
-    string member_name = dsn.substr(start + 1, end - start - 1);
-    string data = "";
-    rc = zds_write_to_dsn(&zds, dsn, data);
-    if (0 != rc)
-    {
-      cout << "Error: could not write to data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-      cout << "  Details: " << zds.diag.e_msg << endl;
-      return RTNCD_FAILURE;
-    }
-    cout << "Data set and/or member created: '" << dsn << "'" << endl;
-  }
-  else
-  {
-    cout << "Data set created: '" << dsn << "'" << endl;
-  }
-
-  return rc;
+  return process_data_set_create_result(&zds, rc, dsn, response);
 }
 
 int handle_data_set_create_loadlib(const ParseResult &result)
@@ -920,36 +836,7 @@ int handle_data_set_create_loadlib(const ParseResult &result)
   ZDS zds = {0};
   string response;
   rc = zds_create_dsn_loadlib(&zds, dsn, response);
-  if (0 != rc)
-  {
-    cerr << "Error: could not create data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details:\n"
-         << response << endl;
-    return RTNCD_FAILURE;
-  }
-
-  // Handle member creation if specified
-  size_t start = dsn.find_first_of('(');
-  size_t end = dsn.find_last_of(')');
-  if (start != string::npos && end != string::npos && end > start)
-  {
-    string member_name = dsn.substr(start + 1, end - start - 1);
-    string data = "";
-    rc = zds_write_to_dsn(&zds, dsn, data);
-    if (0 != rc)
-    {
-      cout << "Error: could not write to data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-      cout << "  Details: " << zds.diag.e_msg << endl;
-      return RTNCD_FAILURE;
-    }
-    cout << "Data set and/or member created: '" << dsn << "'" << endl;
-  }
-  else
-  {
-    cout << "Data set created: '" << dsn << "'" << endl;
-  }
-
-  return rc;
+  return process_data_set_create_result(&zds, rc, dsn, response);
 }
 
 int handle_data_set_create_member(const ParseResult &result)
