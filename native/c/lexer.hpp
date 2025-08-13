@@ -968,7 +968,7 @@ private:
   {
     unsigned char uc = static_cast<unsigned char>(c);
     return (uc >= 'A' && uc <= 'Z') || (uc >= 'a' && uc <= 'z') ||
-           c == '$' || c == '_' || c == '/' || c == '*';
+           c == '$' || c == '_' || c == '/' || c == '*' || c == '#' || c == '@';
   }
 
   static bool is_ident_cont(char c)
