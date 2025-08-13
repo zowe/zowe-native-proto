@@ -63,7 +63,7 @@ jobs:
           DATESTAMP=$(date +"%Y-%m-%d-%H%M%S")
           NEW_VERSION=$([ -z "${{ inputs.version }}" ] && jq -r '.version' package.json || echo "${{ inputs.version }}")
           NEW_VERSION_SUFFIX=$([ -z "${{ inputs.version }}" ] && echo "$NEW_VERSION-$DATESTAMP" || echo "$NEW_VERSION")
-          TRAIN=$([ -z "${{ inputs.version }}"] && echo "Nightly" || echo "Release")
+          TRAIN=$([ -z "${{ inputs.version }}" ] && echo "Nightly" || echo "Release")
           echo "RUN_ID=$(echo $RUN_ID)" >> $GITHUB_ENV
           echo "NEW_VERSION_SUFFIX=$(echo $NEW_VERSION_SUFFIX)" >> $GITHUB_ENV
           echo "TRAIN=$(echo $TRAIN)" >> $GITHUB_ENV
