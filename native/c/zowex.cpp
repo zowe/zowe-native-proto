@@ -1028,7 +1028,7 @@ int handle_data_set_list(const ParseResult &result)
   dsn += ".**";
 
   int max_entries = result.find_kw_arg_int("max-entries");
-  bool warn = result.find_kw_arg_bool("warn") && !result.find_kw_arg_bool("no-warn");
+  bool warn = result.find_kw_arg_bool("warn", true);
   bool attributes = result.find_kw_arg_bool("attributes");
 
   ZDS zds = {0};
@@ -1101,7 +1101,7 @@ int handle_data_set_list_members(const ParseResult &result)
   int rc = 0;
   string dsn = result.find_pos_arg_string("dsn");
   int max_entries = result.find_kw_arg_int("max-entries");
-  bool warn = result.find_kw_arg_bool("warn");
+  bool warn = result.find_kw_arg_bool("warn", true);
 
   ZDS zds = {0};
   if (max_entries > 0)
@@ -2124,7 +2124,7 @@ int handle_job_list(const ParseResult &result)
   string owner_name = result.find_kw_arg_string("owner");
   string prefix_name = result.find_kw_arg_string("prefix");
   int max_entries = result.find_kw_arg_int("max-entries");
-  bool warn = result.find_kw_arg_bool("warn") && !result.find_kw_arg_bool("no-warn");
+  bool warn = result.find_kw_arg_bool("warn", true);
 
   if (max_entries > 0)
   {
@@ -2178,7 +2178,7 @@ int handle_job_list_files(const ParseResult &result)
   ZJB zjb = {0};
   string jobid = result.find_pos_arg_string("jobid");
   int max_entries = result.find_kw_arg_int("max-entries");
-  bool warn = result.find_kw_arg_bool("warn");
+  bool warn = result.find_kw_arg_bool("warn", true);
 
   if (max_entries > 0)
   {
