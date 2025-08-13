@@ -6,7 +6,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
-- Fixed issue where special characters '#' and '@' were detected as invalid characters in a data set name when provided to `zowex` commands. [#491](https://github.com/zowe/zowe-native-proto/issues/491)
+- Fixed issue where special characters were detected as invalid characters when provided to `zowex` commands. [#491](https://github.com/zowe/zowe-native-proto/issues/491)
 
 ## `0.1.7`
 
