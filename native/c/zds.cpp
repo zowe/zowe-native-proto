@@ -440,7 +440,7 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &list)
   int total_entries = 0;
 
   if (0 == zds->max_entries)
-    zds->max_entries = ZDS_DEFAULT_MAX_ENTRIES;
+    zds->max_entries = ZDS_DEFAULT_MAX_MEMBER_ENTRIES;
 
   RECORD rec = {0};
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=pds-reading-directory-sequentially

@@ -12,7 +12,6 @@
 #ifndef ZDS_HPP
 #define ZDS_HPP
 
-#include <iostream>
 #include <vector>
 #include <string>
 #include "zdstype.h"
