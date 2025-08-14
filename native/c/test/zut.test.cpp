@@ -44,7 +44,7 @@ void zut_tests()
                 });
            });
 
-  describe("zut_encode tests (EBCDIC-aware)",
+  describe("zut_encode tests",
            []() -> void
            {
              it("should return input unchanged when source and target encodings are the same",
