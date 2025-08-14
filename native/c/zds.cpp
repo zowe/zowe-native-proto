@@ -374,6 +374,15 @@ int zds_create_dsn(ZDS *zds, std::string dsn, DS_ATTRIBUTES attributes, std::str
   return alloc_and_free(parm, dsn, &code, response);
 }
 
+int zds_create_dsn_fb(ZDS *zds, const string &dsn, string &response)
+{
+  int rc = 0;
+  unsigned int code = 0;
+  string parm = "ALLOC DA('" + dsn + "') DSORG(PO) SPACE(5,5) CYL LRECL(80) RECFM(F,B) DIR(5) NEW KEEP DSNTYPE(LIBRARY)";
+
+  return alloc_and_free(parm, dsn, &code, response);
+}
+
 int zds_create_dsn_vb(ZDS *zds, const string &dsn, string &response)
 {
   int rc = 0;

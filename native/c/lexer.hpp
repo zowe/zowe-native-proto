@@ -16,11 +16,9 @@
 
 #include <cctype>
 #include <cerrno>
-#include <climits>
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
-#include <map>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -967,14 +965,12 @@ private:
   static bool is_ident_start(char c)
   {
     unsigned char uc = static_cast<unsigned char>(c);
-    return (uc >= 'A' && uc <= 'Z') || (uc >= 'a' && uc <= 'z') ||
-           c == '$' || c == '_' || c == '/' || c == '*';
+    return uc != ' ' && iscntrl(uc) == 0;
   }
 
   static bool is_ident_cont(char c)
   {
-    return is_ident_start(c) || is_ascii_dec_digit(c) || c == '.' || c == '/' ||
-           c == '*' || c == '-' || c == '(' || c == ')';
+    return is_ident_start(c);
   }
 
   // combined digit check for lex_number
