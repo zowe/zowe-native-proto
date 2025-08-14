@@ -115,6 +115,19 @@ int run_interactive_mode(const std::string &shm_file_path);
 std::tr1::shared_ptr<ArgumentParser> arg_parser;
 int main(int argc, char *argv[])
 {
+#ifdef ZLOG_ENABLE
+  string args = "";
+  for (int i = 0; i < argc; i++)
+  {
+    args += argv[i];
+    if (i < argc - 1)
+    {
+      args += " ";
+    }
+  }
+  ZLOG_TRACE("Starting zowex with args: %s", args.c_str());
+#endif
+
   arg_parser = std::tr1::shared_ptr<ArgumentParser>(new ArgumentParser(argv[0], "Zowe Native Protocol CLI"));
   arg_parser->get_root_command().add_keyword_arg("interactive",
                                                  make_aliases("--interactive", "--it"),
