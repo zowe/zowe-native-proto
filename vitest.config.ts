@@ -22,7 +22,7 @@ export default defineConfig({
         environment: "node",
         coverage: {
             provider: "v8",
-            reporter: ["text", "lcov", "html"],
+            reporter: ["text", "lcov", "html", "json"],
             exclude: ["lib/**", "tests/**", "**/*.d.ts", "**/*.test.ts", "**/node_modules/**"],
         },
         include: ["tests/**/*.test.ts"],
