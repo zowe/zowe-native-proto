@@ -46,6 +46,10 @@ export interface ReadSpoolRequest extends common.CommandRequest {
    */
   encoding?: string;
   /**
+   * Source encoding of the spool file content (optional, defaults to UTF-8)
+   */
+  sourceEncoding?: string;
+  /**
    * Spool ID to read under the given job ID
    */
   spoolId: number /* int */;
@@ -88,6 +92,10 @@ export interface SubmitJclRequest extends common.CommandRequest {
    * Desired encoding for the spool file (optional)
    */
   encoding?: string;
+  /**
+   * Source encoding of the JCL content (optional, defaults to UTF-8)
+   */
+  sourceEncoding?: string;
   /**
    * JCL contents to submit as a job
    */

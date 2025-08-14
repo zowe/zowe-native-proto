@@ -101,6 +101,9 @@ func HandleReadFileRequest(conn *utils.StdioConn, params []byte) (result any, e 
 		request.Encoding = fmt.Sprintf("IBM-%d", utils.DefaultEncoding)
 	}
 	args := []string{"uss", "view", request.Path, "--encoding", request.Encoding, "--return-etag"}
+	if len(request.SourceEncoding) > 0 {
+		args = append(args, "--source-encoding", request.SourceEncoding)
+	}
 
 	var etag string
 	var data []byte
@@ -216,6 +219,9 @@ func HandleWriteFileRequest(conn *utils.StdioConn, params []byte) (result any, e
 		request.Encoding = fmt.Sprintf("IBM-%d", utils.DefaultEncoding)
 	}
 	args := []string{"uss", "write", request.Path, "--encoding", request.Encoding, "--etag-only"}
+	if len(request.SourceEncoding) > 0 {
+		args = append(args, "--source-encoding", request.SourceEncoding)
+	}
 	if len(request.Etag) > 0 {
 		args = append(args, "--etag", request.Etag)
 	}

@@ -45,6 +45,13 @@ export const ViewJobFileDefinition: ICommandDefinition = {
             type: "string",
             required: false,
         },
+        {
+            name: "source-encoding",
+            aliases: ["sec"],
+            description: "The source encoding of the spool file content (defaults to UTF-8).",
+            type: "string",
+            required: false,
+        },
     ],
     profile: { optional: ["ssh"] },
 };

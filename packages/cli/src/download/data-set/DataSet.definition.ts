@@ -53,6 +53,13 @@ export const DownloadDataSetDefinition: ICommandDefinition = {
             type: "string",
         },
         {
+            name: "source-encoding",
+            aliases: ["sec"],
+            description: "The source encoding of the z/OS data set content (defaults to UTF-8).",
+            defaultValue: null,
+            type: "string",
+        },
+        {
             name: "directory",
             aliases: ["d"],
             description: "The directory for the downloaded data set.",

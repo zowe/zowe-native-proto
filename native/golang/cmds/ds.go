@@ -39,6 +39,9 @@ func HandleReadDatasetRequest(conn *utils.StdioConn, params []byte) (result any,
 		request.Encoding = fmt.Sprintf("IBM-%d", utils.DefaultEncoding)
 	}
 	args := []string{"data-set", "view", request.Dsname, "--encoding", request.Encoding, "--return-etag"}
+	if len(request.SourceEncoding) > 0 {
+		args = append(args, "--source-encoding", request.SourceEncoding)
+	}
 
 	var etag string
 	var data []byte
@@ -123,6 +126,9 @@ func HandleWriteDatasetRequest(conn *utils.StdioConn, params []byte) (result any
 		request.Encoding = fmt.Sprintf("IBM-%d", utils.DefaultEncoding)
 	}
 	args := []string{"data-set", "write", request.Dsname, "--encoding", request.Encoding, "--etag-only"}
+	if len(request.SourceEncoding) > 0 {
+		args = append(args, "--source-encoding", request.SourceEncoding)
+	}
 	if len(request.Etag) > 0 {
 		args = append(args, "--etag", request.Etag)
 	}
