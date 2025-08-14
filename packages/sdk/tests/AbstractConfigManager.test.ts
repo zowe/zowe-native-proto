@@ -9,8 +9,7 @@
  *
  */
 
-import { MESSAGE_TYPE, type inputBoxOpts, type qpItem, type qpOpts } from "../src/doc";
-import { AbstractConfigManager, type ProgressCallback } from "../src/AbstractConfigManager";
+import { EventEmitter } from "node:stream";
 import {
     ConfigBuilder,
     ConfigSchema,
@@ -20,9 +19,12 @@ import {
     type ProfileInfo,
 } from "@zowe/imperative";
 import { ZoweVsCodeExtension } from "@zowe/zowe-explorer-api";
-import { type ISshConfigExt, ZClientUtils } from "../src/ZClientUtils";
 import type { Config } from "node-ssh";
-import { normalize } from "path";
+import { Client, type ClientCallback, type ConnectConfig } from "ssh2";
+import type { MockInstance } from "vitest";
+import { AbstractConfigManager, type ProgressCallback } from "../src/AbstractConfigManager";
+import { type inputBoxOpts, MESSAGE_TYPE, type qpItem, type qpOpts } from "../src/doc";
+import { type ISshConfigExt, ZClientUtils } from "../src/ZClientUtils";
 
 vi.mock("path", () => ({
     normalize: vi.fn(() => (p: string) => p),
@@ -79,6 +81,37 @@ const migratedSshConfigs: ISshConfigExt[] = [
         port: 22,
         privateKey: "/Users/users/.ssh/id_rsa",
         user: "zoweUser4",
+    },
+];
+
+const migratedSshConfigsValidation: ISshConfigExt[] = [
+    {
+        hostname: "lpar3.com",
+        name: "SSHlpar3",
+        port: 22,
+        privateKey: "/Users/users/.ssh/id_rsa",
+        user: "zoweUser3",
+    },
+    {
+        hostname: "lpar4.com",
+        name: "SSHlpar4",
+        port: 22,
+        privateKey: "/Users/users/.ssh/id_rsa",
+        user: "zoweUser4",
+    },
+    {
+        hostname: "lpar1.com",
+        name: "SSHlpar4",
+        port: 22,
+        privateKey: "/Users/users/.ssh/id_rsa",
+        user: "user1",
+    },
+    {
+        hostname: "lpar1.com",
+        name: "SSHlpar4",
+        port: 22,
+        privateKey: "/Users/users/.ssh/id_rsa",
+        user: "user2",
     },
 ];
 
@@ -542,243 +575,752 @@ describe("AbstractConfigManager", async () => {
                 expect(mockLayers.write).toHaveBeenCalled();
             });
         });
-        describe("validateConfig", () => {
-            it("should return an empty object for a valid profile", async () => {
-                vi.spyOn(testManager as any, "attemptConnection").mockResolvedValue(true);
-                expect(
-                    await (testManager as any).validateConfig(
-                        { name: "ssh1", hostname: "lpar1.com", port: 22, user: "user1", privateKey: "/path/to/id_rsa" },
-                        false,
-                    ),
-                ).toStrictEqual({});
-            });
-
-            it("should return a password for a partial profile", async () => {
-                vi.spyOn(testManager, "showInputBox").mockResolvedValueOnce("user1").mockResolvedValueOnce("password1");
-                vi.spyOn(testManager as any, "attemptConnection").mockResolvedValue(true);
-                vi.spyOn(testManager as any, "promptForPassword").mockResolvedValue({ password: "password1" });
-
-                expect(
-                    await (testManager as any).validateConfig({ name: "ssh1", hostname: "lpar1.com", port: 22 }, true),
-                ).toStrictEqual({ password: "password1", user: "user1" });
-            });
-
-            it("should return undefined for partial profile when no password prompt allowed", async () => {
-                vi.spyOn(testManager, "showInputBox");
-                vi.spyOn(testManager as any, "attemptConnection").mockResolvedValue(true);
-                expect(
-                    await (testManager as any).validateConfig(
-                        { name: "ssh1", hostname: "lpar1.com", port: 22, user: "user1" },
-                        false,
-                    ),
-                ).toBeUndefined();
-            });
-
-            it("should handle invalid username and return new user", async () => {
-                vi.spyOn(testManager, "showInputBox").mockResolvedValueOnce("goodUser");
-                vi.spyOn(testManager as any, "attemptConnection")
-                    .mockRejectedValueOnce("Invalid username")
-                    .mockResolvedValueOnce(true);
-
-                expect(
-                    await (testManager as any).validateConfig(
-                        {
-                            name: "ssh1",
-                            hostname: "lpar1.com",
-                            port: 22,
-                            privateKey: "/path/to/id_rsa",
-                            user: "badUser",
-                        },
-                        true,
-                    ),
-                ).toStrictEqual({ user: "goodUser" });
-            });
-
-            it("should return undefined if Invalid username and no new user provided", async () => {
-                vi.spyOn(testManager, "showInputBox").mockResolvedValueOnce(undefined);
-                vi.spyOn(testManager as any, "attemptConnection").mockRejectedValueOnce("Invalid username");
-
-                expect(
-                    await (testManager as any).validateConfig(
-                        {
-                            name: "ssh1",
-                            hostname: "lpar1.com",
-                            port: 22,
-                            privateKey: "/path/to/id_rsa",
-                            user: "badUser",
-                        },
-                        true,
-                    ),
-                ).toBeUndefined();
-            });
-
-            it("should handle passphrase errors and return keyPassphrase", async () => {
-                vi.spyOn(testManager, "showInputBox").mockResolvedValueOnce("goodPass");
-                vi.spyOn(testManager as any, "attemptConnection")
-                    .mockRejectedValueOnce("but no passphrase given")
-                    .mockResolvedValueOnce(true);
-
-                expect(
-                    await (testManager as any).validateConfig(
-                        { name: "ssh1", hostname: "lpar1.com", port: 22, privateKey: "/path/to/id_rsa", user: "user1" },
-                        true,
-                    ),
-                ).toStrictEqual({ keyPassphrase: "goodPass" });
-            });
-
-            it("should retry passphrase on integrity check failed", async () => {
-                const msgSpy = vi.spyOn(testManager, "showMessage");
-                vi.spyOn(testManager, "showInputBox")
-                    .mockResolvedValueOnce("badPass")
-                    .mockResolvedValueOnce("goodPass");
-                vi.spyOn(testManager as any, "attemptConnection")
-                    .mockRejectedValueOnce("integrity check failed")
-                    .mockRejectedValueOnce("integrity check failed")
-                    .mockResolvedValueOnce(true);
-
-                expect(
-                    await (testManager as any).validateConfig(
-                        { name: "ssh1", hostname: "lpar1.com", port: 22, privateKey: "/path/to/id_rsa", user: "user1" },
-                        true,
-                    ),
-                ).toStrictEqual({ keyPassphrase: "goodPass" });
-
-                expect(msgSpy).toHaveBeenCalledWith(
-                    expect.stringContaining("Passphrase Authentication Failed"),
-                    expect.anything(),
-                );
-            });
-
-            it("should handle All configured authentication methods failed with password prompt", async () => {
-                vi.spyOn(testManager as any, "attemptConnection").mockRejectedValue(
-                    "All configured authentication methods failed",
-                );
-                vi.spyOn(testManager as any, "promptForPassword").mockResolvedValue({ password: "pass123" });
-
-                expect(
-                    await (testManager as any).validateConfig(
-                        { name: "ssh1", hostname: "lpar1.com", port: 22, user: "user1" },
-                        true,
-                    ),
-                ).toStrictEqual({ password: "pass123" });
-            });
-
-            it("should return undefined for handshake timeout", async () => {
-                const msgSpy = vi.spyOn(testManager, "showMessage");
-                vi.spyOn(testManager as any, "attemptConnection").mockRejectedValue(
-                    new Error("Timed out while waiting for handshake"),
-                );
-
-                expect(
-                    await (testManager as any).validateConfig(
-                        { name: "ssh1", hostname: "lpar1.com", port: 22, user: "user1", password: "badPassword" },
-                        true,
-                    ),
-                ).toBeUndefined();
-                expect(msgSpy).toHaveBeenCalledWith("Timed out while waiting for handshake", MESSAGE_TYPE.ERROR);
-            });
-
-            it("should return undefined for malformed private key", async () => {
-                vi.spyOn(testManager as any, "attemptConnection").mockRejectedValue(
-                    "Cannot parse privateKey: Malformed OpenSSH private key",
-                );
-
-                expect(
-                    await (testManager as any).validateConfig(
-                        { name: "ssh1", hostname: "lpar1.com", port: 22, user: "user1", privateKey: "/path/to/id_rsa" },
-                        true,
-                    ),
-                ).toBeUndefined();
-            });
-            it("should return undefined for privateKey with no password if 'All configured authentication methods failed'", async () => {
-                vi.spyOn(testManager as any, "attemptConnection").mockRejectedValue(
-                    new Error("All configured authentication methods failed"),
-                );
-
-                const config = {
-                    name: "ssh1",
-                    hostname: "lpar1.com",
-                    port: 22,
-                    user: "user1",
-                    privateKey: "/path/to/key",
-                };
-                const result = await (testManager as any).validateConfig(config, false);
-
-                expect(result).toBeUndefined();
-            });
-            it("should return undefined if attemptConnection fails for new user", async () => {
-                vi.spyOn(testManager, "showInputBox").mockResolvedValue("newUser");
-                vi.spyOn(testManager as any, "attemptConnection").mockRejectedValue(new Error("Invalid username"));
-
-                const result = await (testManager as any).validateConfig(
-                    { name: "ssh1", hostname: "lpar1.com", port: 22, user: "badUser", privateKey: "/path/to/id_rsa" },
-                    true,
-                );
-
-                expect(result).toBeUndefined();
-            });
-
-            it("should clear privateKey and keyPassphrase after 3 failed passphrase attempts", async () => {
-                vi.spyOn(testManager, "showInputBox").mockResolvedValue("wrongPass"); // always fails
-                vi.spyOn(testManager as any, "attemptConnection").mockRejectedValue(
-                    new Error("integrity check failed"),
-                );
-                vi.spyOn(testManager, "showMessage").mockImplementation(() => {});
-
-                const config = {
-                    name: "ssh1",
-                    hostname: "lpar1.com",
-                    port: 22,
-                    user: "user1",
-                    privateKey: "/path/to/key",
-                };
-                const result = await (testManager as any).validateConfig(config, true);
-
-                expect(result).toBeUndefined();
-                expect(config.privateKey).toBeUndefined();
-                expect((config as any).keyPassphrase).toBeUndefined();
-            });
-
-            it("should call promptForPassword when password missing and askForPassword is true", async () => {
-                vi.spyOn(testManager as any, "attemptConnection").mockImplementation(() => {
-                    throw new Error("All configured authentication methods failed");
-                });
-                vi.spyOn(testManager as any, "promptForPassword").mockResolvedValue({ password: "pw123" });
-
-                const result = await (testManager as any).validateConfig(
-                    {
-                        name: "ssh1",
-                        hostname: "lpar1.com",
-                        port: 22,
-                        user: "user1",
-                        // Setting password to exit check
-                        password: "badPw",
-                        privateKey: undefined,
-                    },
-                    true,
-                );
-
-                expect(result).toStrictEqual({ password: "pw123" });
-            });
-            it("should call promptForPassword when password missing and askForPassword is false", async () => {
-                vi.spyOn(testManager as any, "attemptConnection").mockImplementation(() => {
-                    throw new Error("All configured authentication methods failed");
-                });
-
-                const result = await (testManager as any).validateConfig(
-                    {
-                        name: "ssh1",
-                        hostname: "lpar1.com",
-                        port: 22,
-                        user: "user1",
-                        // Setting password to exit check
-                        password: "badPw",
-                        privateKey: undefined,
-                    },
+    });
+    describe("validateConfig", () => {
+        it("should return an empty object for a valid profile", async () => {
+            vi.spyOn(testManager as any, "attemptConnection").mockResolvedValue(true);
+            expect(
+                await (testManager as any).validateConfig(
+                    { name: "ssh1", hostname: "lpar1.com", port: 22, user: "user1", privateKey: "/path/to/id_rsa" },
                     false,
-                );
+                ),
+            ).toStrictEqual({});
+        });
 
-                expect(result).toBeUndefined();
+        it("should return a password for a partial profile", async () => {
+            vi.spyOn(testManager, "showInputBox").mockResolvedValueOnce("user1").mockResolvedValueOnce("password1");
+            vi.spyOn(testManager as any, "attemptConnection").mockResolvedValue(true);
+            vi.spyOn(testManager as any, "promptForPassword").mockResolvedValue({ password: "password1" });
+
+            expect(
+                await (testManager as any).validateConfig({ name: "ssh1", hostname: "lpar1.com", port: 22 }, true),
+            ).toStrictEqual({ password: "password1", user: "user1" });
+        });
+
+        it("should return undefined for partial profile when no password prompt allowed", async () => {
+            vi.spyOn(testManager, "showInputBox");
+            vi.spyOn(testManager as any, "attemptConnection").mockResolvedValue(true);
+            expect(
+                await (testManager as any).validateConfig(
+                    { name: "ssh1", hostname: "lpar1.com", port: 22, user: "user1" },
+                    false,
+                ),
+            ).toBeUndefined();
+        });
+
+        it("should handle invalid username and return new user", async () => {
+            vi.spyOn(testManager, "showInputBox").mockResolvedValueOnce("goodUser");
+            vi.spyOn(testManager as any, "attemptConnection")
+                .mockRejectedValueOnce("Invalid username")
+                .mockResolvedValueOnce(true);
+
+            expect(
+                await (testManager as any).validateConfig(
+                    {
+                        name: "ssh1",
+                        hostname: "lpar1.com",
+                        port: 22,
+                        privateKey: "/path/to/id_rsa",
+                        user: "badUser",
+                    },
+                    true,
+                ),
+            ).toStrictEqual({ user: "goodUser" });
+        });
+
+        it("should return undefined if Invalid username and no new user provided", async () => {
+            vi.spyOn(testManager, "showInputBox").mockResolvedValueOnce(undefined);
+            vi.spyOn(testManager as any, "attemptConnection").mockRejectedValueOnce("Invalid username");
+
+            expect(
+                await (testManager as any).validateConfig(
+                    {
+                        name: "ssh1",
+                        hostname: "lpar1.com",
+                        port: 22,
+                        privateKey: "/path/to/id_rsa",
+                        user: "badUser",
+                    },
+                    true,
+                ),
+            ).toBeUndefined();
+        });
+
+        it("should handle passphrase errors and return keyPassphrase", async () => {
+            vi.spyOn(testManager, "showInputBox").mockResolvedValueOnce("goodPass");
+            vi.spyOn(testManager as any, "attemptConnection")
+                .mockRejectedValueOnce("but no passphrase given")
+                .mockResolvedValueOnce(true);
+
+            expect(
+                await (testManager as any).validateConfig(
+                    { name: "ssh1", hostname: "lpar1.com", port: 22, privateKey: "/path/to/id_rsa", user: "user1" },
+                    true,
+                ),
+            ).toStrictEqual({ keyPassphrase: "goodPass" });
+        });
+
+        it("should retry passphrase on integrity check failed", async () => {
+            const msgSpy = vi.spyOn(testManager, "showMessage");
+            vi.spyOn(testManager, "showInputBox").mockResolvedValueOnce("badPass").mockResolvedValueOnce("goodPass");
+            vi.spyOn(testManager as any, "attemptConnection")
+                .mockRejectedValueOnce("integrity check failed")
+                .mockRejectedValueOnce("integrity check failed")
+                .mockResolvedValueOnce(true);
+
+            expect(
+                await (testManager as any).validateConfig(
+                    { name: "ssh1", hostname: "lpar1.com", port: 22, privateKey: "/path/to/id_rsa", user: "user1" },
+                    true,
+                ),
+            ).toStrictEqual({ keyPassphrase: "goodPass" });
+
+            expect(msgSpy).toHaveBeenCalledWith(
+                expect.stringContaining("Passphrase Authentication Failed"),
+                expect.anything(),
+            );
+        });
+
+        it("should handle All configured authentication methods failed with password prompt", async () => {
+            vi.spyOn(testManager as any, "attemptConnection").mockRejectedValue(
+                "All configured authentication methods failed",
+            );
+            vi.spyOn(testManager as any, "promptForPassword").mockResolvedValue({ password: "pass123" });
+
+            expect(
+                await (testManager as any).validateConfig(
+                    { name: "ssh1", hostname: "lpar1.com", port: 22, user: "user1" },
+                    true,
+                ),
+            ).toStrictEqual({ password: "pass123" });
+        });
+
+        it("should return undefined for handshake timeout", async () => {
+            const msgSpy = vi.spyOn(testManager, "showMessage");
+            vi.spyOn(testManager as any, "attemptConnection").mockRejectedValue(
+                new Error("Timed out while waiting for handshake"),
+            );
+
+            expect(
+                await (testManager as any).validateConfig(
+                    { name: "ssh1", hostname: "lpar1.com", port: 22, user: "user1", password: "badPassword" },
+                    true,
+                ),
+            ).toBeUndefined();
+            expect(msgSpy).toHaveBeenCalledWith("Timed out while waiting for handshake", MESSAGE_TYPE.ERROR);
+        });
+
+        it("should return undefined for malformed private key", async () => {
+            vi.spyOn(testManager as any, "attemptConnection").mockRejectedValue(
+                "Cannot parse privateKey: Malformed OpenSSH private key",
+            );
+
+            expect(
+                await (testManager as any).validateConfig(
+                    { name: "ssh1", hostname: "lpar1.com", port: 22, user: "user1", privateKey: "/path/to/id_rsa" },
+                    true,
+                ),
+            ).toBeUndefined();
+        });
+        it("should return undefined for privateKey with no password if 'All configured authentication methods failed'", async () => {
+            vi.spyOn(testManager as any, "attemptConnection").mockRejectedValue(
+                new Error("All configured authentication methods failed"),
+            );
+
+            const config = {
+                name: "ssh1",
+                hostname: "lpar1.com",
+                port: 22,
+                user: "user1",
+                privateKey: "/path/to/key",
+            };
+            const result = await (testManager as any).validateConfig(config, false);
+
+            expect(result).toBeUndefined();
+        });
+        it("should return undefined if attemptConnection fails for new user", async () => {
+            vi.spyOn(testManager, "showInputBox").mockResolvedValue("newUser");
+            vi.spyOn(testManager as any, "attemptConnection").mockRejectedValue(new Error("Invalid username"));
+
+            const result = await (testManager as any).validateConfig(
+                { name: "ssh1", hostname: "lpar1.com", port: 22, user: "badUser", privateKey: "/path/to/id_rsa" },
+                true,
+            );
+
+            expect(result).toBeUndefined();
+        });
+
+        it("should clear privateKey and keyPassphrase after 3 failed passphrase attempts", async () => {
+            vi.spyOn(testManager, "showInputBox").mockResolvedValue("wrongPass"); // always fails
+            vi.spyOn(testManager as any, "attemptConnection").mockRejectedValue(new Error("integrity check failed"));
+            vi.spyOn(testManager, "showMessage").mockImplementation(() => {});
+
+            const config = {
+                name: "ssh1",
+                hostname: "lpar1.com",
+                port: 22,
+                user: "user1",
+                privateKey: "/path/to/key",
+            };
+            const result = await (testManager as any).validateConfig(config, true);
+
+            expect(result).toBeUndefined();
+            expect(config.privateKey).toBeUndefined();
+            expect((config as any).keyPassphrase).toBeUndefined();
+        });
+
+        it("should call promptForPassword when password missing and askForPassword is true", async () => {
+            vi.spyOn(testManager as any, "attemptConnection").mockImplementation(() => {
+                throw new Error("All configured authentication methods failed");
+            });
+            vi.spyOn(testManager as any, "promptForPassword").mockResolvedValue({ password: "pw123" });
+
+            const result = await (testManager as any).validateConfig(
+                {
+                    name: "ssh1",
+                    hostname: "lpar1.com",
+                    port: 22,
+                    user: "user1",
+                    // Setting password to exit check
+                    password: "badPw",
+                    privateKey: undefined,
+                },
+                true,
+            );
+
+            expect(result).toStrictEqual({ password: "pw123" });
+        });
+        it("should call promptForPassword when password missing and askForPassword is false", async () => {
+            vi.spyOn(testManager as any, "attemptConnection").mockImplementation(() => {
+                throw new Error("All configured authentication methods failed");
+            });
+
+            const result = await (testManager as any).validateConfig(
+                {
+                    name: "ssh1",
+                    hostname: "lpar1.com",
+                    port: 22,
+                    user: "user1",
+                    // Setting password to exit check
+                    password: "badPw",
+                    privateKey: undefined,
+                },
+                false,
+            );
+
+            expect(result).toBeUndefined();
+        });
+    });
+    describe("attemptConnection", async () => {
+        let eventEmitter: any;
+        it("123", async () => {
+            vi.spyOn(Client.prototype, "connect").mockImplementation(function (_config: ConnectConfig) {
+                this.emit("ready");
+                return this;
+            });
+            vi.spyOn(Client.prototype, "shell").mockImplementation((callback: ClientCallback) => {
+                eventEmitter = new EventEmitter() as any;
+                callback(undefined, eventEmitter);
+                eventEmitter.emit("end");
+                return this;
+            });
+            expect(
+                await (testManager as any).attemptConnection({
+                    name: "testProf",
+                    privateKey: "/path/to/id_rsa",
+                    port: 22,
+                    user: "user1",
+                }),
+            ).toBeTruthy();
+        });
+        it("456", async () => {
+            vi.spyOn(Client.prototype, "connect").mockImplementation(function (_config: ConnectConfig) {
+                this.emit("ready");
+                return this;
+            });
+            vi.spyOn(Client.prototype, "shell").mockImplementation((callback: ClientCallback) => {
+                eventEmitter = new EventEmitter() as any;
+                callback(undefined, eventEmitter);
+                eventEmitter.emit("data", "FOTS1668");
+                return this;
+            });
+            await expect(
+                (testManager as any).attemptConnection({
+                    name: "testProf",
+                    privateKey: "/path/to/id_rsa",
+                    port: 22,
+                    user: "user1",
+                }),
+            ).rejects.toThrow("FOTS1668");
+        });
+    });
+    describe("promptForPassword", async () => {
+        it("returns undefined if user cancels input immediately", async () => {
+            testManager.showInputBox = vi.fn().mockResolvedValue(undefined);
+            (testManager as any).attemptConnection = vi.fn();
+
+            const result = await (testManager as any).promptForPassword({ user: "user1", hostname: "host" }, {});
+            expect(result).toBeUndefined();
+            expect((testManager as any).attemptConnection).not.toHaveBeenCalled();
+        });
+
+        it("returns password if attemptConnection succeeds on first try", async () => {
+            testManager.showInputBox = vi.fn().mockResolvedValue("password123");
+            (testManager as any).attemptConnection = vi.fn().mockResolvedValue(true);
+            testManager.showMessage = vi.fn();
+
+            const result = await (testManager as any).promptForPassword({ user: "user1", hostname: "host" }, {});
+            expect(result).toEqual({ password: "password123" });
+            expect((testManager as any).attemptConnection).toHaveBeenCalledTimes(1);
+            expect(testManager.showMessage).not.toHaveBeenCalled();
+        });
+
+        it("retries up to 3 times and shows error messages on failure", async () => {
+            testManager.showInputBox = vi.fn().mockResolvedValue("wrongpass");
+            (testManager as any).attemptConnection = vi.fn().mockRejectedValue(new Error("Auth Failed"));
+            testManager.showMessage = vi.fn();
+
+            const result = await (testManager as any).promptForPassword({ user: "user1", hostname: "host" }, {});
+            expect(result).toBeUndefined();
+            expect((testManager as any).attemptConnection).toHaveBeenCalledTimes(3);
+            expect(testManager.showMessage).toHaveBeenCalledTimes(3);
+            expect(testManager.showMessage).toHaveBeenCalledWith(
+                "Password Authentication Failed (1/3)",
+                MESSAGE_TYPE.ERROR,
+            );
+        });
+
+        it("returns undefined and shows expired message if error contains FOTS1668", async () => {
+            testManager.showInputBox = vi.fn().mockResolvedValue("expiredPass");
+            (testManager as any).attemptConnection = vi.fn().mockRejectedValue(new Error("FOTS1668: password expired"));
+            testManager.showMessage = vi.fn();
+
+            const result = await (testManager as any).promptForPassword({ user: "user1", hostname: "host" }, {});
+            expect(result).toBeUndefined();
+            expect(testManager.showMessage).toHaveBeenCalledWith(
+                "Password Expired on Target System",
+                MESSAGE_TYPE.ERROR,
+            );
+            expect((testManager as any).attemptConnection).toHaveBeenCalledTimes(1);
+        });
+    });
+    describe("validateFoundPrivateKeys", () => {
+        const baseProfile = { port: 22, user: "user1", hostname: "lpar1.com" };
+        const expectedProfileWithKey = { ...baseProfile, privateKey: "/path/to/id_dsa" };
+        const expectedProfileWithRsaKey = { ...baseProfile, privateKey: "/Users/users/.ssh/id_rsa" };
+
+        let findPrivateKeysSpy: MockInstance;
+        let validateConfigSpy: MockInstance;
+
+        beforeEach(() => {
+            // Reset test manager state
+            (testManager as any).selectedProfile = { ...baseProfile };
+            (testManager as any).validationResult = undefined;
+            (testManager as any).migratedConfigs = undefined;
+
+            // Create fresh spies for each test
+            findPrivateKeysSpy = vi.spyOn(ZClientUtils, "findPrivateKeys");
+            validateConfigSpy = vi.spyOn(testManager as any, "validateConfig");
+        });
+        it("should modify a profile with a found private key", async () => {
+            const mockPrivateKeys = ["/path/to/id_rsa", "/path/to/id_ecdsa", "/path/to/id_dsa"];
+
+            findPrivateKeysSpy.mockResolvedValue(mockPrivateKeys);
+            validateConfigSpy
+                .mockReturnValueOnce(undefined)
+                .mockReturnValueOnce(undefined)
+                .mockReturnValueOnce({ privateKey: "/path/to/id_dsa" });
+
+            await (testManager as any).validateFoundPrivateKeys();
+
+            expect((testManager as any).validationResult).toStrictEqual({});
+            expect((testManager as any).selectedProfile).toStrictEqual(expectedProfileWithKey);
+            expect(validateConfigSpy).toHaveBeenCalledTimes(3);
+        });
+
+        it("should validate with private keys found with two matching hostname configs", async () => {
+            findPrivateKeysSpy.mockResolvedValue([]);
+            (testManager as any).migratedConfigs = migratedSshConfigsValidation;
+            validateConfigSpy.mockReturnValueOnce({});
+
+            await (testManager as any).validateFoundPrivateKeys();
+
+            expect((testManager as any).validationResult).toStrictEqual({});
+            expect((testManager as any).selectedProfile).toStrictEqual(expectedProfileWithRsaKey);
+            expect(validateConfigSpy).toHaveBeenCalledTimes(1);
+        });
+
+        it("should validate with private keys found with one matching hostname config", async () => {
+            findPrivateKeysSpy.mockResolvedValue([]);
+            (testManager as any).migratedConfigs = migratedSshConfigsValidation.slice(0, -1);
+            validateConfigSpy.mockReturnValueOnce({ privateKey: "/Users/users/.ssh/id_rsa" });
+
+            await (testManager as any).validateFoundPrivateKeys();
+
+            expect((testManager as any).validationResult).toStrictEqual({});
+            expect((testManager as any).selectedProfile).toStrictEqual(expectedProfileWithRsaKey);
+            expect(validateConfigSpy).toHaveBeenCalledTimes(1);
+        });
+    });
+    describe("setProfile", () => {
+        let testManager: TestAbstractConfigManager;
+        let mockTeamConfig: any;
+        let mockConfigApi: any;
+        let mockLayers: any;
+        let mockProfiles: any;
+
+        beforeEach(async () => {
+            mockLayers = {
+                activate: vi.fn(),
+                merge: vi.fn(),
+                write: vi.fn(),
+                get: vi.fn().mockReturnValue({ properties: { defaults: { ssh: null } } }),
+            };
+            mockProfiles = {
+                defaultGet: vi.fn(),
+                defaultSet: vi.fn(),
+                set: vi.fn(),
+                getProfileNameFromPath: vi.fn(),
+            };
+            mockConfigApi = { layers: mockLayers, profiles: mockProfiles };
+            mockTeamConfig = {
+                layerExists: vi.fn(),
+                api: mockConfigApi,
+                setSchema: vi.fn(),
+                save: vi.fn(),
+            };
+            testManager = new TestAbstractConfigManager(profCache);
+            vi.spyOn((testManager as any).mProfilesCache, "getTeamConfig").mockReturnValue(mockTeamConfig);
+            // Mock methods that may or may not exist on mProfilesCache
+            const mockMergeArgsForProfile = vi.fn().mockReturnValue({ knownArgs: [] });
+            const mockUpdateProperty = vi.fn();
+            const mockIsSecured = vi.fn().mockReturnValue(false);
+
+            // Add methods to mProfilesCache if they don't exist
+            (testManager as any).mProfilesCache.mergeArgsForProfile = mockMergeArgsForProfile;
+            (testManager as any).mProfilesCache.updateProperty = mockUpdateProperty;
+            (testManager as any).mProfilesCache.isSecured = mockIsSecured;
+
+            vi.spyOn(testManager as any, "fetchDefaultProfile").mockReturnValue({ name: "default" });
+            vi.spyOn(testManager as any, "showMenu").mockResolvedValue("Yes");
+        });
+
+        it("should create profile with keyPassphrase and mark it as secure", async () => {
+            const config = {
+                user: "user1",
+                host: "example.com",
+                keyPassphrase: "passphrase123",
+                name: "testProfile",
+            };
+
+            await (testManager as any).setProfile(config);
+
+            expect(mockConfigApi.profiles.set).toHaveBeenCalledWith(
+                "testProfile",
+                expect.objectContaining({
+                    secure: ["keyPassphrase"],
+                }),
+            );
+            expect(mockTeamConfig.save).toHaveBeenCalled();
+        });
+
+        it("should mark both password and keyPassphrase as secure when both are present", async () => {
+            const config = {
+                user: "user1",
+                host: "example.com",
+                password: "secret123",
+                keyPassphrase: "passphrase123",
+                name: "testProfile",
+            };
+
+            await (testManager as any).setProfile(config);
+
+            expect(mockConfigApi.profiles.set).toHaveBeenCalledWith(
+                "testProfile",
+                expect.objectContaining({
+                    secure: ["password", "keyPassphrase"],
+                }),
+            );
+        });
+
+        it("should call layers.write() when no secure properties are present", async () => {
+            const config = {
+                user: "user1",
+                host: "example.com",
+                port: 22,
+                name: "testProfile",
+            };
+
+            await (testManager as any).setProfile(config);
+
+            expect(mockConfigApi.layers.write).toHaveBeenCalled();
+            expect(mockTeamConfig.save).not.toHaveBeenCalled();
+        });
+
+        it("should set default SSH profile when no default exists", async () => {
+            mockConfigApi.profiles.defaultGet.mockReturnValue(null);
+            mockLayers.get.mockReturnValue({ properties: { defaults: { ssh: null } } });
+
+            const config = {
+                user: "user1",
+                host: "example.com",
+                name: "firstProfile",
+            };
+
+            await (testManager as any).setProfile(config);
+
+            expect(mockConfigApi.profiles.defaultSet).toHaveBeenCalledWith("ssh", "firstProfile");
+        });
+
+        it("should prompt user when modifying shared configuration", async () => {
+            const config = {
+                user: "updatedUser",
+                host: "example.com",
+                name: "existingProfile",
+            };
+
+            (testManager as any).mProfilesCache.mergeArgsForProfile.mockReturnValue({
+                knownArgs: [{ argName: "user", argLoc: { jsonLoc: "profiles.baseProfile.properties.user" } }],
+            });
+            mockConfigApi.profiles.getProfileNameFromPath.mockReturnValue("baseProfile"); // Different from profile being updated
+
+            await (testManager as any).setProfile(config, "existingProfile");
+
+            expect((testManager as any).showMenu).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    title: expect.stringContaining('Property: "user" found in a possibly shared configuration'),
+                }),
+            );
+        });
+
+        it("should force update when user chooses 'No' for shared configuration", async () => {
+            vi.spyOn(testManager as any, "showMenu").mockResolvedValue("No");
+
+            const config = {
+                user: "updatedUser",
+                name: "existingProfile",
+            };
+
+            (testManager as any).mProfilesCache.mergeArgsForProfile.mockReturnValue({
+                knownArgs: [{ argName: "user", argLoc: { jsonLoc: "profiles.baseProfile.properties.user" } }],
+            });
+            mockConfigApi.profiles.getProfileNameFromPath.mockReturnValue("baseProfile");
+
+            await (testManager as any).setProfile(config, "existingProfile");
+
+            expect((testManager as any).mProfilesCache.updateProperty).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    forceUpdate: true,
+                }),
+            );
+        });
+    });
+    describe("getNewProfileName", async () => {
+        let testManager: TestAbstractConfigManager;
+        let mockTeamConfig: any;
+        let mockConfigApi: any;
+
+        beforeEach(async () => {
+            // Set up the mock config API
+            mockConfigApi = {
+                layerExists: vi.fn(),
+                layerActive: vi.fn(() => ({
+                    properties: {
+                        profiles: {
+                            testProfile: { host: "host.example.com", user: "testuser" },
+                        },
+                    },
+                })),
+                setSchema: vi.fn(),
+                save: vi.fn(),
+            };
+
+            mockTeamConfig = {
+                ...mockConfigApi,
+                api: mockConfigApi,
+            };
+
+            testManager = new TestAbstractConfigManager(profCache);
+
+            // Mock mProfilesCache methods
+            (testManager as any).mProfilesCache.mergeArgsForProfile = vi.fn().mockReturnValue({ knownArgs: [] });
+            (testManager as any).mProfilesCache.updateProperty = vi.fn();
+            (testManager as any).mProfilesCache.isSecured = vi.fn().mockReturnValue(false);
+
+            // Mock helper methods
+            vi.spyOn(testManager as any, "fetchDefaultProfile").mockReturnValue({ name: "default" });
+            vi.spyOn(testManager as any, "showMenu").mockResolvedValue("Yes");
+        });
+
+        it("should generate name from hostname if name is missing", async () => {
+            const profile: ISshConfigExt = { hostname: "host.example.com" };
+            const result = await (testManager as any).getNewProfileName(profile, mockTeamConfig);
+            expect(result!.name).toBe("host_example_com");
+        });
+
+        it("should return same profile if name exists and is unique", async () => {
+            const profile: ISshConfigExt = { name: "unique", hostname: "host" };
+            const result = await (testManager as any).getNewProfileName(profile, mockTeamConfig);
+            expect(result!.name).toBe("unique");
+            expect(testManager.showMenu).not.toHaveBeenCalled();
+        });
+
+        it("should return profile if existing name found and user confirms overwrite", async () => {
+            mockTeamConfig.layerActive = vi.fn(() => ({
+                properties: { profiles: { duplicate: {} } },
+            }));
+            (testManager as any).showMenu.mockResolvedValueOnce("Yes");
+
+            const profile: ISshConfigExt = { name: "duplicate", hostname: "host" };
+            const result = await (testManager as any).getNewProfileName(profile, mockTeamConfig);
+
+            expect(testManager.showMenu).toHaveBeenCalled();
+            expect(result!.name).toBe("duplicate");
+        });
+
+        it("should enter loop if existing name found and user says No, then accept unique name", async () => {
+            mockTeamConfig.layerActive = vi.fn(() => ({
+                properties: { profiles: { duplicate: {} } },
+            }));
+            (testManager as any).showMenu.mockResolvedValueOnce("No");
+            (testManager as any).showInputBox.mockResolvedValueOnce("newName");
+
+            const profile: ISshConfigExt = { name: "duplicate", hostname: "host" };
+            const result = await (testManager as any).getNewProfileName(profile, mockTeamConfig);
+
+            expect(testManager.showMenu).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    placeholder: expect.stringContaining("already exists"),
+                }),
+            );
+            expect(result!.name).toBe("newName");
+        });
+        it("should call showMenu and accept overwrite when user selects 'Yes'", async () => {
+            // Make the duplicate name exist in the config
+            mockTeamConfig.layerActive = vi.fn(() => ({
+                properties: { profiles: { duplicate: { host: "something" } } },
+            }));
+            (testManager as any).showMenu.mockResolvedValueOnce("No").mockResolvedValueOnce("Yes");
+            vi.spyOn(testManager, "showInputBox").mockResolvedValue("duplicate");
+            const profile: ISshConfigExt = { name: "duplicate", hostname: "host.example.com" };
+            const result = await (testManager as any).getNewProfileName(profile, mockTeamConfig);
+            expect(testManager.showMenu).toHaveBeenCalledWith(
+                expect.objectContaining({ placeholder: expect.stringContaining("duplicate") }),
+            );
+            expect(result!.name).toBe("duplicate");
+        });
+    });
+    describe("getMergedAttrs", () => {
+        let testManager: TestAbstractConfigManager;
+
+        beforeEach(() => {
+            testManager = new TestAbstractConfigManager(profCache);
+
+            // Default mocks for mProfilesCache
+            (testManager as any).mProfilesCache = {
+                mergeArgsForProfile: vi.fn(),
+                getAllProfiles: vi.fn(),
+            };
+        });
+
+        it("should return empty object if prof is null", () => {
+            const result = (testManager as any).getMergedAttrs(null);
+            expect(result).toEqual({});
+            expect((testManager as any).mProfilesCache.mergeArgsForProfile).not.toHaveBeenCalled();
+        });
+
+        it("should return empty object when prof is a string but not found", () => {
+            (testManager as any).mProfilesCache.getAllProfiles.mockReturnValue([]);
+            (testManager as any).mProfilesCache.mergeArgsForProfile.mockReturnValue({ knownArgs: [] });
+
+            const result = (testManager as any).getMergedAttrs("missing");
+            expect(result).toEqual({});
+        });
+
+        it("should merge attributes when prof is an object", () => {
+            const profObj = { profName: "objProfile" };
+            const mergedArgs = {
+                knownArgs: [{ argName: "port", argValue: 22 }],
+            };
+
+            (testManager as any).mProfilesCache.mergeArgsForProfile.mockReturnValue(mergedArgs);
+
+            const result = (testManager as any).getMergedAttrs(profObj);
+
+            expect((testManager as any).mProfilesCache.mergeArgsForProfile).toHaveBeenCalledWith(profObj, {
+                getSecureVals: true,
+            });
+            expect(result).toEqual({ port: 22 });
+        });
+    });
+    describe("fetchAllSshProfiles", () => {
+        let testManager: TestAbstractConfigManager;
+
+        beforeEach(() => {
+            testManager = new TestAbstractConfigManager(profCache);
+
+            (testManager as any).mProfilesCache = {
+                getAllProfiles: vi.fn(),
+            };
+
+            vi.spyOn(testManager as any, "getMergedAttrs").mockReturnValue({ host: "example.com" });
+        });
+
+        it("should return loaded SSH profiles with merged attributes", () => {
+            const mockProfiles = [{ profName: "ssh1" }, { profName: "ssh2" }];
+            (testManager as any).mProfilesCache.getAllProfiles.mockReturnValue(mockProfiles);
+
+            const result = (testManager as any).fetchAllSshProfiles();
+
+            expect((testManager as any).mProfilesCache.getAllProfiles).toHaveBeenCalledWith("ssh");
+            expect((testManager as any).getMergedAttrs).toHaveBeenCalledTimes(mockProfiles.length);
+
+            expect(result).toEqual([
+                {
+                    message: "",
+                    name: "ssh1",
+                    type: "ssh",
+                    profile: { host: "example.com" },
+                    failNotFound: false,
+                },
+                {
+                    message: "",
+                    name: "ssh2",
+                    type: "ssh",
+                    profile: { host: "example.com" },
+                    failNotFound: false,
+                },
+            ]);
+        });
+    });
+    describe("fetchDefaultProfile", () => {
+        let testManager: TestAbstractConfigManager;
+
+        beforeEach(() => {
+            testManager = new TestAbstractConfigManager(profCache);
+
+            (testManager as any).mProfilesCache = {
+                getDefaultProfile: vi.fn(),
+            };
+
+            vi.spyOn(testManager as any, "getMergedAttrs").mockReturnValue({ host: "example.com" });
+        });
+
+        it("should return the default SSH profile with merged attributes", () => {
+            const mockDefaultProfile = { profName: "default" };
+            (testManager as any).mProfilesCache.getDefaultProfile.mockReturnValue(mockDefaultProfile);
+
+            const result = (testManager as any).fetchDefaultProfile();
+
+            expect((testManager as any).mProfilesCache.getDefaultProfile).toHaveBeenCalledWith("ssh");
+            expect((testManager as any).getMergedAttrs).toHaveBeenCalledWith(mockDefaultProfile);
+
+            expect(result).toEqual({
+                message: "",
+                name: "default",
+                type: "ssh",
+                profile: { host: "example.com" },
+                failNotFound: false,
             });
         });
     });

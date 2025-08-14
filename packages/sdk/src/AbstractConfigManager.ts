@@ -408,7 +408,6 @@ export abstract class AbstractConfigManager {
             }
 
             sshClient
-                .connect({ ...testConfig, passphrase: testConfig.keyPassphrase })
                 .on("error", reject)
                 .on("ready", () => {
                     sshClient.shell((err, stream: ClientChannel) => {
@@ -419,7 +418,8 @@ export abstract class AbstractConfigManager {
                         stream.on("end", () => resolve(true));
                         sshClient.end();
                     });
-                });
+                })
+                .connect({ ...testConfig, passphrase: testConfig.keyPassphrase });
         });
     }
 
