@@ -39,6 +39,7 @@
 #define Expect(x) [&]() -> RESULT_CHECK<typename std::remove_reference<decltype(x)>::type> { EXPECT_CONTEXT ctx = {__LINE__, __FILE__}; return expect(x, ctx); }()
 #define ExpectWithContext(x, context) [&]() -> RESULT_CHECK<typename std::remove_reference<decltype(x)>::type> { EXPECT_CONTEXT ctx = {__LINE__, __FILE__, std::string(context), true}; return expect(x, ctx); }()
 #define TestLog(message) Globals::get_instance().test_log(message)
+#define TrimChars(str) Globals::get_instance().trim_chars(str)
 
 extern std::string matcher;
 
@@ -361,7 +362,12 @@ public:
   {
     return current_nesting;
   }
-
+  std::string &trim_chars(std::string &str, const std::string &chars = " \t\n\r\f\v")
+  {
+    str.erase(0, str.find_first_not_of(chars));
+    str.erase(str.find_last_not_of(chars) + 1);
+    return str;
+  }
   void pad_nesting(int level)
   {
     for (int i = 0; i < level * 2; i++)
@@ -687,7 +693,9 @@ public:
     {
       error = "\n" + std::string(2, ' ') + "at " + ctx.file_name + ":" + std::to_string(ctx.line_number);
       if (ctx.message.size() > 0)
-        error += " (" + ctx.message + ")";
+      {
+        error += " (" + TrimChars(ctx.message) + ")";
+      }
     }
     return error;
   }

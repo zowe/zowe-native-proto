@@ -9,20 +9,13 @@
  *
  */
 
-#include <iostream>
 #include <stdexcept>
 #include "ztest.hpp"
+#include "ztype.h"
 #include "zowex.test.hpp"
 
 using namespace std;
 using namespace ztst;
-
-std::string &trim_chars(std::string &str, const std::string &chars = " \t\n\r\f\v")
-{
-  str.erase(0, str.find_first_not_of(chars));
-  str.erase(str.find_last_not_of(chars) + 1);
-  return str;
-}
 
 int execute_command_with_output(const std::string &command, std::string &output)
 {
@@ -69,13 +62,14 @@ void zowex_tests()
                                       {
                                         string user;
                                         execute_command_with_output("whoami", user);
-                                        string data_set = trim_chars(user) + ".temp.temp.temp.temp.temp.temp.tmp";
+                                        string data_set = TrimChars(user) + ".temp.temp.temp.temp.temp.temp.tmp";
                                         string response;
-                                        TestLog("Test data set: " + data_set);
-                                        execute_command_with_output("zowex data-set delete " + data_set, response);
-                                        int rc = execute_command_with_output("zowex data-set create-fb " + data_set, response);
-                                        Expect(rc).ToBe(0);
-                                        execute_command_with_output("zowex data-set delete " + data_set, response);
+                                        string del_command = "zowex data-set delete " + data_set;
+                                        execute_command_with_output(del_command, response);
+                                        string command = "zowex data-set create-fb " + data_set;
+                                        int rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        execute_command_with_output(del_command, response);
                                       });
                                  });
                         describe("data set list tests",
@@ -86,16 +80,30 @@ void zowex_tests()
                                       {
                                         string data_set = "SYS1.MACLIB";
                                         string response;
-                                        int rc = execute_command_with_output("zowex data-set list " + data_set, response);
-                                        Expect(rc).ToBe(0);
+                                        string command = "zowex data-set list " + data_set;
+                                        TestLog("Running: " + command);
+                                        int rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
                                       });
                                    it("should list a member of a data set",
                                       []()
                                       {
                                         string data_set = "SYS1.MACLIB";
                                         string response;
-                                        int rc = execute_command_with_output("zowex data-set list " + data_set + "--no-warn --me 1", response);
-                                        Expect(rc).ToBe(0);
+                                        string command = "zowex data-set lm " + data_set + " --no-warn --me 1";
+                                        TestLog("Running: " + command);
+                                        int rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                      });
+                                   it("should warn when listing members of a data set with many members",
+                                      []()
+                                      {
+                                        string data_set = "SYS1.MACLIB";
+                                        string response;
+                                        string command = "zowex data-set lm " + data_set + " --me 1";
+                                        TestLog("Running: " + command);
+                                        int rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(RTNCD_WARNING);
                                       });
                                  });
                       });
