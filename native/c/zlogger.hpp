@@ -48,40 +48,7 @@ protected:
       : m_initialized(false)
   {
 #ifdef ZLOG_ENABLE
-    // Create logs directory if it doesn't exist
-    if (!create_logs_dir())
-    {
-      return;
-    }
-
-    // Get current working directory
-    char cwd[260] = {0};
-    std::string log_path_str;
-
-    if (getcwd(cwd, sizeof(cwd)) != NULL)
-    {
-      log_path_str = std::string(cwd) + "/logs/zowex.log";
-    }
-    else
-    {
-      // Fallback to relative path if CWD cannot be deduced
-      log_path_str = "logs/zowex.log";
-    }
-
-    // Check environment variable for log level
-    const char *env_level = std::getenv("ZOWEX_LOG_LEVEL");
-    int initial_level = ZLOGLEVEL_INFO;
-    if (env_level)
-    {
-      initial_level = get_level_from_str(env_level);
-    }
-    // Initialize Metal C logger with default path
-    m_initialized = ZLGINIT(log_path_str.c_str(), &initial_level) == 0;
-    if (!m_initialized)
-    {
-      std::cerr << "Failed to initialize Metal C logger" << std::endl;
-      return;
-    }
+    initialize();
 #endif
   }
 
@@ -138,6 +105,48 @@ protected:
 
 public:
   /**
+   * Initialize the logger
+   * This function is called by the singleton constructor and should not be called directly unless for re-initialization
+   */
+  auto initialize() -> void
+  {
+    // Create logs directory if it doesn't exist
+    if (!create_logs_dir())
+    {
+      return;
+    }
+
+    // Get current working directory
+    char cwd[260] = {0};
+    std::string log_path_str;
+
+    if (getcwd(cwd, sizeof(cwd)) != NULL)
+    {
+      log_path_str = std::string(cwd) + "/logs/zowex.log";
+    }
+    else
+    {
+      // Fallback to relative path if CWD cannot be deduced
+      log_path_str = "logs/zowex.log";
+    }
+
+    // Check environment variable for log level
+    const char *env_level = std::getenv("ZOWEX_LOG_LEVEL");
+    int initial_level = ZLOGLEVEL_INFO;
+    if (env_level)
+    {
+      initial_level = get_level_from_str(env_level);
+    }
+    // Initialize Metal C logger with default path
+    m_initialized = ZLGINIT(log_path_str.c_str(), &initial_level) == 0;
+    if (!m_initialized)
+    {
+      std::cerr << "Failed to initialize Metal C logger" << std::endl;
+      return;
+    }
+  }
+
+  /**
    * Set the default log level for the logger
    */
   auto set_log_level(LogLevel level) -> void
@@ -156,6 +165,10 @@ public:
    */
   auto get_log_level() const -> int
   {
+    if (!m_initialized)
+    {
+      return ZLOGLEVEL_OFF;
+    }
     return ZLGGTLVL();
   }
 
