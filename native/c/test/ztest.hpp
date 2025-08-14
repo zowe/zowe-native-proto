@@ -38,6 +38,7 @@
 
 #define Expect(x) [&]() -> RESULT_CHECK<typename std::remove_reference<decltype(x)>::type> { EXPECT_CONTEXT ctx = {__LINE__, __FILE__}; return expect(x, ctx); }()
 #define ExpectWithContext(x, context) [&]() -> RESULT_CHECK<typename std::remove_reference<decltype(x)>::type> { EXPECT_CONTEXT ctx = {__LINE__, __FILE__, std::string(context), true}; return expect(x, ctx); }()
+#define TestLog(message) Globals::get_instance().test_log(message)
 
 extern std::string matcher;
 
@@ -306,10 +307,7 @@ private:
     }
 
     // Print exactly current_nesting * 2 spaces
-    for (int i = 0; i < current_nesting * 2; i++)
-    {
-      std::cout << " ";
-    }
+    Globals::get_instance().pad_nesting(current_nesting);
     std::cout << color << colors.arrow << colors.reset << " " << main_error << std::endl;
 
     if (!context.empty())
@@ -362,6 +360,19 @@ public:
   int get_nesting()
   {
     return current_nesting;
+  }
+
+  void pad_nesting(int level)
+  {
+    for (int i = 0; i < level * 2; i++)
+    {
+      std::cout << " ";
+    }
+  }
+  void test_log(const std::string &message)
+  {
+    pad_nesting(get_nesting());
+    std::cout << "[TEST_INFO] " << message << std::endl;
   }
 
   template <typename Callable,
@@ -727,11 +738,6 @@ void describe(std::string description, Callable suite)
   g.get_suites().push_back(ts);
   g.increment_suite_index();
 
-  // Add newline only if we're not at the root level
-  if (ts.nesting_level > 0)
-  {
-    std::cout << "\n";
-  }
   std::cout << get_indent(ts.nesting_level) << description << std::endl;
   g.increment_nesting();
   suite();

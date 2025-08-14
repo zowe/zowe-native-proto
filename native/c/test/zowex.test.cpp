@@ -26,7 +26,7 @@ std::string &trim_chars(std::string &str, const std::string &chars = " \t\n\r\f\
 
 int execute_command_with_output(const std::string &command, std::string &output)
 {
-  FILE *pipe = popen(command.c_str(), "r");
+  FILE *pipe = popen((command + " 2>&1").c_str(), "r");
   if (!pipe)
   {
     throw std::runtime_error("Failed to open pipe");
@@ -61,18 +61,43 @@ void zowex_tests()
              describe("data set tests",
                       []() -> void
                       {
-                        it("should create a data set",
-                           []()
-                           {
-                             string user;
-                             execute_command_with_output("whoami", user);
-                             string data_set = trim_chars(user) + ".test.temp.jcl";
-                             string response;
-                             cout << "@TEST user: " << user << endl;
-                             cout << "@TEST data_set: " << data_set << endl;
-                             int rc = execute_command_with_output("zowex data-set create-fb " + data_set, response);
-                             Expect(rc).ToBe(0);
-                           });
+                        describe("data set create tests",
+                                 []() -> void
+                                 {
+                                   it("should create a fb data set",
+                                      []()
+                                      {
+                                        string user;
+                                        execute_command_with_output("whoami", user);
+                                        string data_set = trim_chars(user) + ".temp.temp.temp.temp.temp.temp.tmp";
+                                        string response;
+                                        TestLog("Test data set: " + data_set);
+                                        execute_command_with_output("zowex data-set delete " + data_set, response);
+                                        int rc = execute_command_with_output("zowex data-set create-fb " + data_set, response);
+                                        Expect(rc).ToBe(0);
+                                        execute_command_with_output("zowex data-set delete " + data_set, response);
+                                      });
+                                 });
+                        describe("data set list tests",
+                                 []() -> void
+                                 {
+                                   it("should list a data set",
+                                      []()
+                                      {
+                                        string data_set = "SYS1.MACLIB";
+                                        string response;
+                                        int rc = execute_command_with_output("zowex data-set list " + data_set, response);
+                                        Expect(rc).ToBe(0);
+                                      });
+                                   it("should list a member of a data set",
+                                      []()
+                                      {
+                                        string data_set = "SYS1.MACLIB";
+                                        string response;
+                                        int rc = execute_command_with_output("zowex data-set list " + data_set + "--no-warn --me 1", response);
+                                        Expect(rc).ToBe(0);
+                                      });
+                                 });
                       });
            });
 }
