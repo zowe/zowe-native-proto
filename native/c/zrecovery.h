@@ -69,7 +69,7 @@ typedef struct sdwarc4 SDWARC4;
 #endif
 
 #if defined(__IBM_METAL__)
-#define SETRP(rc, retry_routine, sdwa)                        \
+#define SETRP_RETRY(rc, retry_routine, sdwa)                  \
   __asm(                                                      \
       "*                                                  \n" \
       " SETRP RC=" #rc ","                                    \
@@ -83,7 +83,68 @@ typedef struct sdwarc4 SDWARC4;
       : "r"(retry_routine), "r"(sdwa)                         \
       : "r0", "r1", "r14", "r15");
 #else
-#define SETRP(rc, retry_routine, sdwa)
+#define SETRP_RETRY(rc, retry_routine, sdwa)
+#endif
+
+#if defined(__IBM_METAL__)
+#define VRADATA_INIT(sdwa)                                    \
+  __asm(                                                      \
+      "*                                                  \n" \
+      " LA   1,%0                 -> SDWA                 \n" \
+      "*                                                  \n" \
+      " VRADATA VRAINIT=SDWAVRA,"                             \
+      "SDWAREG=1,"                                            \
+      "VRAREG=(2,NOTSET)                                  \n" \
+      "*                                                    " \
+      :                                                       \
+      : "m"(sdwa)                                             \
+      : "r1", "r2");
+#else
+#define VRADATA_INIT(sdwa)
+#endif
+
+#if defined(__IBM_METAL__)
+#define VRADATA_KEY_ONLY(sdwa, key)                           \
+  __asm(                                                      \
+      "*                                                  \n" \
+      " LA   1,%0                 -> SDWA                 \n" \
+      "*                                                  \n" \
+      " VRADATA KEY=" #key ","                                \
+      "SDWAREG=1,"                                            \
+      "VRAREG=(2,NOTSET)                                  \n" \
+      "*                                                    " \
+      :                                                       \
+      : "m"(sdwa)                                             \
+      : "r1", "r2");
+#else
+#define VRADATA_KEY_ONLY(sdwa, key)
+#endif
+
+#if defined(__IBM_METAL__)
+#define VRADATA_DATA(sdwa, key, data, len)                    \
+  __asm(                                                      \
+      "*                                                  \n" \
+      " LA   1,%0                 -> SDWA                 \n" \
+      " LARL 2,*+L'*              -> NSI                  \n" \
+      "*                                                  \n" \
+      " PUSH USING                                        \n" \
+      " DROP ,                                            \n" \
+      " USING *,2                                         \n" \
+      "*                                                  \n" \
+      " VRADATA KEY=" #key ","                                \
+      "SDWAREG=1,"                                            \
+      "DATA=%1,"                                              \
+      "LENADDR=%2,"                                           \
+      "VRAREG=(14,NOTSET)                                 \n" \
+      "*                                                  \n" \
+      " DROP 2                                            \n" \
+      " POP USING                                         \n" \
+      "*                                                    " \
+      :                                                       \
+      : "m"(sdwa), "m"(data), "m"(len)                        \
+      : "r1", "r2", "r14");
+#else
+#define VRADATA_DATA(sdwa, key, data, len)
 #endif
 
 /**
@@ -99,11 +160,14 @@ typedef struct sdwarc4 SDWARC4;
 
 #define NO_SDWA 12
 
-typedef void (*ABEND_EXIT)(SDWA *, void *); // called to enrich VRA data
-typedef void (*PERCOLATE_EXIT)(void *);     // called only for percolated abends, may be called manually in "retry" logic
+typedef void (*PTR64 ABEND_EXIT)(SDWA *, void *); // called to enrich VRA data
+typedef void (*PTR64 PERCOLATE_EXIT)(void *);     // called only for percolated abends, may be called manually in "retry" logic
 
 typedef struct
 {
+  ////////////////////////////////////////////////////////////////////////////////
+  // NOTE(Kelosky): beginning of fields are not part of the programming interface
+  ////////////////////////////////////////////////////////////////////////////////
 
   // return address to IEAARR
   unsigned long long int arr_return;
@@ -118,11 +182,19 @@ typedef struct
   unsigned long long int final_r13;
   SAVF4SA final_f4sa;
 
+  ////////////////////////////////////////////////////////////////////////////////
+  // NOTE(Kelosky): end of fields are part of the programming interface
+  ////////////////////////////////////////////////////////////////////////////////
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // NOTE(Kelosky): beginning of fields are part of the programming interface
+  ////////////////////////////////////////////////////////////////////////////////
+
   ABEND_EXIT abexit;
-  void *abexit_data;
+  void *PTR64 abexit_data;
 
   PERCOLATE_EXIT perc_exit;
-  void *perc_exit_data;
+  void *PTR64 perc_exit_data;
 
   int max_retries;
 
@@ -131,12 +203,16 @@ typedef struct
   unsigned int request_dump : 1;
   unsigned int unconditional_percolate : 1;
 
+  ////////////////////////////////////////////////////////////////////////////////
+  // NOTE(Kelosky): end of fields are part of the programming interface
+  ////////////////////////////////////////////////////////////////////////////////
+
 } ZRCVY_ENV;
 
-typedef void (*ROUTINE)(ZRCVY_ENV *);
-typedef int (*RECOVERY_ROUTINE)(SDWA);
+typedef void (*PTR64 ROUTINE)(ZRCVY_ENV *);
+typedef int (*PTR64 RECOVERY_ROUTINE)(SDWA);
 
-static void ieaarr(ROUTINE routine, void *routine_parm, RECOVERY_ROUTINE arr, void *arr_parm)
+static void ieaarr(ROUTINE routine, void *PTR64 routine_parm, RECOVERY_ROUTINE arr, void *PTR64 arr_parm)
 {
   IEAARR(
       routine,
@@ -153,9 +229,25 @@ static void ZRCVYRTY(ZRCVY_ENV zenv)
   JUMP_ENV(zenv.f4sa, zenv.r13, 4); // TODO(Kelosky): document non-zero return code
 }
 
+static void vradata_init(SDWA *PTR64 sdwa)
+{
+  VRADATA_INIT(*sdwa);
+}
+
+static void vradata_dae(SDWA *PTR64 sdwa)
+{
+  VRADATA_KEY_ONLY(*sdwa, VRADAE);
+}
+
+static void vradata_ebcdic(SDWA *PTR64 sdwa, void *PTR64 data, short *PTR64 len) ATTRIBUTE(noinline);
+static void vradata_ebcdic(SDWA *PTR64 sdwa, void *PTR64 data, short *PTR64 len)
+{
+  VRADATA_DATA(*sdwa, VRAEBC, *(unsigned char *)data, *len);
+}
+
 #pragma prolog(ZRCVYARR, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(ZRCVYARR, " ZWEEPILG ")
-int ZRCVYARR(SDWA sdwa)
+static int ZRCVYARR(SDWA sdwa)
 {
   unsigned long long int r0 = get_prev_r0(); // if r0 = 12, NO_SDWA
   unsigned long long int r2 = get_prev_r2();
@@ -188,13 +280,23 @@ int ZRCVYARR(SDWA sdwa)
     return RTNCD_PERCOLATE; // TODO(Kelosky): for now percolate, user SETRP if SDWA, call recovery routine if provided
   }
 
+  // TODO(Kelosky): capture serviceability here
+  // SDWARRL  Recovery Routine Label
+  // SDWACIDB Component BASE
+  // SDWACID  Component ID
+  // SDWASC   Subcomponent
+  // SDWAMDAT Assembly date
+  // SDWAMVRS Maintenance level
+
   // TODO(Kelosky): capture diag info here
+  vradata_init(&sdwa);
+  vradata_dae(&sdwa);
 
   if (zenv->abexit)
     zenv->abexit(&sdwa, zenv->abexit_data);
 
   RETRY_ROUTINE retry_function = ZRCVYRTY;
-  SETRP(
+  SETRP_RETRY(
       4, // RTNCD_RETRY
       retry_function,
       &sdwa);
@@ -205,8 +307,8 @@ int ZRCVYARR(SDWA sdwa)
 // router back to main routine
 #pragma prolog(ZRCVYRTE, " ZWEPROLG NEWDSA=NO ")
 #pragma epilog(ZRCVYRTE, " ZWEEPILG ")
-static void ZRCVYRTE(ZRCVY_ENV *zenv) ATTRIBUTE(noinline);
-static void ZRCVYRTE(ZRCVY_ENV *zenv)
+static void ZRCVYRTE(ZRCVY_ENV *PTR64 zenv) ATTRIBUTE(noinline);
+static void ZRCVYRTE(ZRCVY_ENV *PTR64 zenv)
 {
   GET_ENTRY_REG64(zenv->arr_return, 8); // NOTE(Kelosky): this is the same as get_r14_by_ref() but will be inlined
   JUMP_ENV(zenv->f4sa, zenv->r13, 0);
@@ -230,8 +332,8 @@ static int disable_recovery(ZRCVY_ENV *zenv)
 // NOTE(Kelosky): this function may "return twice" like setjmp()
 // NOTE(Kelosky): we must not have this function inline so to save and return to the mainline
 #pragma reachable(enable_recovery)
-static int enable_recovery(ZRCVY_ENV *zenv) ATTRIBUTE(noinline);
-static int enable_recovery(ZRCVY_ENV *zenv)
+static int enable_recovery(ZRCVY_ENV *PTR64 zenv) ATTRIBUTE(noinline);
+static int enable_recovery(ZRCVY_ENV *PTR64 zenv)
 {
   unsigned long long int r13 = 0;
   GET_STACK_ENV(r13); // NOTE(Kelosky): this is the same as get_prev_r13() but will be inlined

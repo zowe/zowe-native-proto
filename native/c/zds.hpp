@@ -12,7 +12,6 @@
 #ifndef ZDS_HPP
 #define ZDS_HPP
 
-#include <iostream>
 #include <vector>
 #include <string>
 #include "zdstype.h"
@@ -58,7 +57,7 @@ typedef struct
 std::string zds_get_recfm(const fldata_t &file_info);
 
 #ifdef SWIG
-extern "C" 
+extern "C"
 {
 #endif
 /**
@@ -135,6 +134,16 @@ int zds_read_from_dd(ZDS *zds, std::string ddname, std::string &response);
  * @return int 0 for success; non zero otherwise
  */
 int zds_write_to_dd(ZDS *zds, std::string ddname, const std::string &data);
+
+/**
+ * @brief Create a data set
+ *
+ * @param zds data set returned attributes and error information
+ * @param dsn data set name to create
+ * @param response messages from dynamic allocation (which may be present even when successful requests are made)
+ * @return int 0 for success; non zero otherwise
+ */
+int zds_create_dsn_fb(ZDS *zds, const std::string &dsn, std::string &response);
 
 /**
  * @brief Create a data set

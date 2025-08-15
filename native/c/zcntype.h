@@ -24,6 +24,9 @@
 #define ZCN_DEFAULT_TIMEOUT 5
 #define ZCN_MAX_TIMEOUT 30
 
+#define ZCN_POST_TIMEOUT 1
+#define ZCN_POST_ABEND 2
+
 #if (defined(__IBMCPP__) || defined(__IBMC__))
 #if defined(SWIG)
 #pragma pack(1)
