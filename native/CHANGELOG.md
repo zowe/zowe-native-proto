@@ -7,6 +7,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## Recent Changes
 
 - `c`: Fixed issue where the `zowex ds lm` command always returned non-zero exit code for warnings and ignored the `--no-warn` flag. [#498](https://github.com/zowe/zowe-native-proto/issues/498)
+- `native`: Fixed issue where the `zowex ds ls` command could hang when listing data sets that the system cannot open. [#496](https://github.com/zowe/zowe-native-proto/issues/496)
 
 ## `0.1.8`
 
