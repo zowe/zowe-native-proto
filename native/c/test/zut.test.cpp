@@ -240,5 +240,32 @@ void zut_tests()
                     expect(result[i]).ToBe(binary_input[i]);
                   }
                 });
+
+             it("should handle UTF-8 to EBCDIC conversion",
+                []() -> void
+                {
+                  ZDIAG diag = {0};
+
+                  // Create UTF-8 "Hello, world!" using known byte values
+                  // UTF-8 bytes for "Hello, world!": 0x48 0x65 0x6C 0x6C 0x6F 0x2C 0x20 0x77 0x6F 0x72 0x6C 0x64 0x21
+                  vector<char> utf8_hello_world = {0x48, 0x65, 0x6C, 0x6C, 0x6F, 0x2C, 0x20, 0x77, 0x6F, 0x72, 0x6C, 0x64, 0x21};
+
+                  // Convert UTF-8 to EBCDIC (IBM-1047)
+                  vector<char> ebcdic_result = zut_encode(utf8_hello_world.data(), utf8_hello_world.size(), "UTF-8", "IBM-1047", diag);
+
+                  expect(diag.e_msg_len).ToBe(0);
+                  expect(ebcdic_result.size()).ToBe(13); // "Hello, world!" is 13 characters
+
+                  // Convert back to UTF-8 to verify round-trip
+                  vector<char> utf8_roundtrip = zut_encode(ebcdic_result.data(), ebcdic_result.size(), "IBM-1047", "UTF-8", diag);
+                  expect(diag.e_msg_len).ToBe(0);
+                  expect(utf8_roundtrip.size()).ToBe(13);
+
+                  // Verify original UTF-8 bytes are preserved
+                  for (size_t i = 0; i < utf8_hello_world.size(); i++)
+                  {
+                    expect(utf8_roundtrip[i]).ToBe(utf8_hello_world[i]);
+                  }
+                });
            });
 }
