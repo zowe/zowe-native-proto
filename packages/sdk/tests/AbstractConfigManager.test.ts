@@ -250,6 +250,43 @@ describe("AbstractConfigManager", async () => {
                         setupProfileCreationMocks();
                     });
 
+                    it("should handle creating new profile with valid input with createNewProfile and getNewProfileName functionality", async () => {
+                        const profileWithName = {
+                            user: "user1",
+                            name: "nameValue",
+                            port: 222,
+                            privateKey: "/path/to/id_dsa",
+                            hostname: "example1.com",
+                        };
+                        vi.spyOn(testManager, "showCustomMenu").mockResolvedValueOnce({
+                            label: "$(plus) Add New SSH Host...",
+                        });
+                        vi.spyOn(testManager, "showInputBox").mockResolvedValue(
+                            `ssh ${profileWithName.user}@e${profileWithName.hostname} -p ${profileWithName.port} -i ${profileWithName.privateKey}`,
+                        );
+                        vi.spyOn(testManager as any, "getNewProfileName").mockReturnValue(profileWithName);
+                        vi.spyOn(testManager as any, "attemptConnection").mockResolvedValue(true);
+                        const setSpy = vi.spyOn(testManager as any, "setProfile").mockImplementation(() => {});
+                        expect(await testManager.promptForProfile()).toStrictEqual({
+                            name: profileWithName.name,
+                            message: "",
+                            failNotFound: false,
+                            type: "ssh",
+                            profile: {
+                                host: profileWithName.hostname,
+                                port: profileWithName.port,
+                                privateKey: profileWithName.privateKey,
+                                user: profileWithName.user,
+                                name: profileWithName.name,
+                                password: undefined,
+                                handshakeTimeout: undefined,
+                                keyPassphrase: undefined,
+                            },
+                        });
+
+                        expect(setSpy).toHaveBeenCalledWith(profileWithName);
+                    });
+
                     it("should handle creating new profile with valid input", async () => {
                         vi.spyOn(testManager, "showCustomMenu").mockResolvedValueOnce({
                             label: "$(plus) Add New SSH Host...",
@@ -813,7 +850,7 @@ describe("AbstractConfigManager", async () => {
     });
     describe("attemptConnection", async () => {
         let eventEmitter: any;
-        it("123", async () => {
+        it("should attempt connection and have a truthy result", async () => {
             vi.spyOn(Client.prototype, "connect").mockImplementation(function (_config: ConnectConfig) {
                 this.emit("ready");
                 return this;
@@ -833,7 +870,7 @@ describe("AbstractConfigManager", async () => {
                 }),
             ).toBeTruthy();
         });
-        it("456", async () => {
+        it("should throw an error on connection attempt", async () => {
             vi.spyOn(Client.prototype, "connect").mockImplementation(function (_config: ConnectConfig) {
                 this.emit("ready");
                 return this;
