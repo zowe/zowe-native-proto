@@ -74,7 +74,11 @@ func PrintErrorResponse(details t.ErrorDetails, rpcId *int) {
 		Error:   &details,
 		Id:      rpcId,
 	}
-	out, _ := json.Marshal(errResponse)
+	out, err := json.Marshal(errResponse)
+	if err != nil {
+		LogError("Error marshalling error response: %v", err)
+		return
+	}
 	fmt.Fprintln(os.Stderr, string(out))
 }
 
@@ -85,7 +89,7 @@ func InitLogger(truncate bool, verbose bool) {
 	if truncate {
 		access = os.O_TRUNC
 	}
-	file, err := os.OpenFile(os.Args[0]+".log", access|os.O_CREATE|os.O_WRONLY, 0644)
+	file, err := os.OpenFile(os.Args[0]+".log", access|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		log.Fatalln("Failed to initialize logger:", err)
 		return
