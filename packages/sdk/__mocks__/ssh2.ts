@@ -16,4 +16,5 @@ export class Client extends EventEmitter {
     public connect(_config: ConnectConfig) {}
     public end() {}
     public exec(_command: string, _callback: ClientCallback) {}
+    public shell(_callback: ClientCallback) {}
 }
