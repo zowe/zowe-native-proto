@@ -17,6 +17,19 @@
 using namespace std;
 using namespace ztst;
 
+// Helper function to convert string to hex format
+string string_to_hex(const string &input)
+{
+  string hex_output;
+  for (char c : input)
+  {
+    char hex_byte[3];
+    sprintf(hex_byte, "%02x", static_cast<unsigned char>(c));
+    hex_output += hex_byte;
+  }
+  return hex_output;
+}
+
 int execute_command_with_output(const std::string &command, std::string &output)
 {
   // string env_command = "_BPXK_AUTOCVT=ON _CEE_RUNOPTS=\"$_CEE_RUNOPTS FILETAG(AUTOCVT,AUTOTAG) POSIX(ON)\" _TAG_REDIR_ERR=txt _TAG_REDIR_IN=txt _TAG_REDIR_OUT=txt " + command;
@@ -138,13 +151,14 @@ void zowex_tests()
                                         // #if defined(__IBMC__) || defined(__IBMCPP__)
                                         // #pragma convert("1047")
                                         // #endif
-                                        string jcl = "//IEFBR14$ JOB (IZUACCT),TEST,REGION=0m\\n//RUN EXEC PGM=IEFBR14";
+                                        string jcl = "//IEFBR14$ JOB (IZUACCT),TEST,REGION=0m\n//RUN EXEC PGM=IEFBR14";
 
                                         // #if defined(__IBMC__) || defined(__IBMCPP__)
                                         // #pragma convert(pop)
                                         // #endif
-                                        // write to the data set
-                                        string write_command = "printf \"" + jcl + "\" | zowex data-set write " + data_set_member;
+                                        // Convert JCL to hex format and write to the data set
+                                        string hex_jcl = string_to_hex(jcl);
+                                        string write_command = "printf \"" + hex_jcl + "\" | zowex data-set write " + data_set_member;
                                         rc = execute_command_with_output(write_command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
 
