@@ -53,9 +53,13 @@ func LogError(format string, args ...any) {
 
 	// If log file size exceeds 10MB, truncate and reopen the file
 	if info.Size() > 10*1024*1024 {
-		logFile.Close()
+		if err := logFile.Close(); err != nil {
+			log.Fatalln("Failed to close log file:", err)
+		}
 		InitLogger(true, verboseLogging)
-		_, _ = logFile.WriteString("Log file truncated due to size limit\n")
+		if _, err := logFile.WriteString("Log file truncated due to size limit\n"); err != nil {
+			log.Fatalln("Failed to write to log file:", err)
+		}
 	}
 }
 

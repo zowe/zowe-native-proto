@@ -101,7 +101,11 @@ func HandleReadDatasetRequest(conn *utils.StdioConn, params []byte) (result any,
 
 		output := utils.YamlToMap(string(out))
 		etag = output["etag"]
-		size, _ = strconv.Atoi(output["size"])
+		size, err = strconv.Atoi(output["size"])
+		if err != nil {
+			e = fmt.Errorf("[ReadDatasetRequest] Error converting %s to number: %v", output["size"], err)
+			return
+		}
 	}
 
 	result = ds.ReadDatasetResponse{
