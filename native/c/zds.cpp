@@ -828,65 +828,37 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
         entry.migr = false;
       }
 
-      // attempt to obtain fldata in all cases and set default data
+      // attempt to load dsorg and recfm from vtoc if not migrated
       if (!entry.migr)
       {
-        string dsn = "//'" + entry.name + "'";
-        FILE *dir = fopen(dsn.c_str(), "r");
-        fldata_t file_info = {0};
-        char file_name[64] = {0};
-
-        if (dir)
+        char dsorg_buf[2] = {0};
+        int rc = ZDSDSORG(zds, entry.name.c_str(), entry.volser.c_str(), dsorg_buf, sizeof(dsorg_buf));
+        if (rc == RTNCD_SUCCESS)
         {
-          if (0 == fldata(dir, file_name, &file_info))
-          {
-            if (file_info.__dsorgPS)
-            {
-              entry.dsorg = ZDS_DSORG_PS;
-            }
-            else if (file_info.__dsorgPO)
-            {
-              entry.dsorg = ZDS_DSORG_PO;
-            }
-            else if (file_info.__dsorgVSAM)
-            {
-              entry.dsorg = ZDS_DSORG_VSAM;
-            }
-            else
-            {
-              entry.dsorg = ZDS_DSORG_UNKNOWN;
-              entry.volser = ZDS_VOLSER_UNKNOWN;
-            }
-
-            if (!entry.migr && entry.volser != ZDS_VOLSER_UNKNOWN)
-            {
-              char recfm_buf[8] = {0};
-              if (ZDSRECFM(zds, entry.name.c_str(), entry.volser.c_str(), recfm_buf,
-                           sizeof(recfm_buf)) == RTNCD_SUCCESS)
-              {
-                entry.recfm = recfm_buf;
-              }
-              else
-              {
-                entry.recfm = ZDS_RECFM_U;
-              }
-            }
-          }
-          else
-          {
-            entry.dsorg = ZDS_DSORG_UNKNOWN;
-            entry.volser = ZDS_VOLSER_UNKNOWN;
-            entry.recfm = ZDS_RECFM_U;
-          }
-          fclose(dir);
+          entry.dsorg = dsorg_buf;
         }
         else
         {
           entry.dsorg = ZDS_DSORG_UNKNOWN;
+        }
+        if (entry.dsorg != ZDS_DSORG_UNKNOWN)
+        {
+          char recfm_buf[8] = {0};
+          if (ZDSRECFM(zds, entry.name.c_str(), entry.volser.c_str(), recfm_buf,
+                       sizeof(recfm_buf)) == RTNCD_SUCCESS)
+          {
+            entry.recfm = recfm_buf;
+          }
+          else
+          {
+            entry.recfm = ZDS_RECFM_U;
+          }
+        }
+        else
+        {
           entry.volser = ZDS_VOLSER_UNKNOWN;
           entry.recfm = ZDS_RECFM_U;
         }
-        fclose(dir);
       }
 
       switch (f->type)
