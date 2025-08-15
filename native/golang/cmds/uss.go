@@ -133,7 +133,7 @@ func HandleReadFileRequest(conn *utils.StdioConn, params []byte) (result any, e 
 		pipePath := fmt.Sprintf("%s/zowe-native-proto_%d-%d-%d_fifo", os.TempDir(), os.Geteuid(), os.Getpid(), request.StreamId)
 		err := os.Remove(pipePath)
 		if err != nil && !os.IsNotExist(err) {
-			e = fmt.Errorf("[ReadDatasetRequest] Error deleting named pipe: %v", err)
+			e = fmt.Errorf("[ReadFileRequest] Error deleting named pipe: %v", err)
 			return
 		}
 
@@ -272,7 +272,7 @@ func HandleWriteFileRequest(conn *utils.StdioConn, params []byte) (result any, e
 		pipePath := fmt.Sprintf("%s/zowe-native-proto_%d-%d-%d_fifo", os.TempDir(), os.Geteuid(), os.Getpid(), request.StreamId)
 		err := os.Remove(pipePath)
 		if err != nil && !os.IsNotExist(err) {
-			e = fmt.Errorf("[ReadDatasetRequest] Error deleting named pipe: %v", err)
+			e = fmt.Errorf("[WriteFileRequest] Error deleting named pipe: %v", err)
 			return
 		}
 
