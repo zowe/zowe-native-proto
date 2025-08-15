@@ -148,14 +148,8 @@ void zowex_tests()
                                         rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
 
-                                        // #if defined(__IBMC__) || defined(__IBMCPP__)
-                                        // #pragma convert("1047")
-                                        // #endif
                                         string jcl = "//IEFBR14$ JOB (IZUACCT),TEST,REGION=0m\n//RUN EXEC PGM=IEFBR14";
 
-                                        // #if defined(__IBMC__) || defined(__IBMCPP__)
-                                        // #pragma convert(pop)
-                                        // #endif
                                         // Convert JCL to hex format and write to the data set
                                         string hex_jcl = string_to_hex(jcl);
                                         string write_command = "printf \"" + hex_jcl + "\" | zowex data-set write " + data_set_member;
@@ -166,6 +160,7 @@ void zowex_tests()
                                         string read_command = "zowex data-set view " + data_set_member;
                                         rc = execute_command_with_output(read_command, response);
                                         TestLog("Response: " + response);
+                                        cout << "@TEST response: '" << response << "'" << endl;
                                         ExpectWithContext(rc, response).ToBe(0);
 
                                         // delete the data set

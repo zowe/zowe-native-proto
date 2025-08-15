@@ -943,7 +943,7 @@ int handle_data_set_view(const ParseResult &result)
     }
     else
     {
-      cout << response << endl;
+      cout << response;
     }
   }
 
