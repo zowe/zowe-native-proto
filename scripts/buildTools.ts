@@ -327,9 +327,12 @@ async function upload(connection: Client) {
                 });
             }
 
-            const pendingUploads = [
-                uploadFile(sftpcon, path.resolve(__dirname, "../package.json"), `${deployDirs.root}/package.json`),
-            ];
+            const pendingUploads = [];
+            if (args[1] == null) {
+                pendingUploads.push(
+                    uploadFile(sftpcon, path.resolve(__dirname, "../package.json"), `${deployDirs.root}/package.json`),
+                );
+            }
             for (let i = 0; i < files.length; i++) {
                 const from = path.resolve(__dirname, `${localDeployDir}/${files[i]}`);
                 const to = `${deployDirs.root}/${files[i]}`;

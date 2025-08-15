@@ -1071,7 +1071,7 @@ int handle_data_set_list_members(const ParseResult &result)
     return RTNCD_FAILURE;
   }
 
-  return rc;
+  return (!warn && rc == RTNCD_WARNING) ? RTNCD_SUCCESS : rc;
 }
 
 int handle_data_set_write(const ParseResult &result)
