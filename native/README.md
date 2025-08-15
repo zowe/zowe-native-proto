@@ -4,15 +4,65 @@
 
 The following sections relate to the non-golang portions of the `native` codebase.
 
+### Logging
+
+The C++ application includes a ZLogger singleton class for centralized logging. When `ZLOG_ENABLE` is defined during compilation, the logger automatically creates a `logs/` directory in the current working directory and writes log output to `logs/zowex.log`. If the current working directory cannot be determined, it falls back to `logs/zowex.log` in the relative path.
+
+`ZLOG_ENABLE` is defined when building in debug mode with `make -DBuildType=DEBUG`. You can exclusively enable logging by passing it directly to the make command: `make -DZLOG_ENABLE=1`
+
+Once enabled, you can insert log statements into your source code by making calls to the logger class:
+
+````cpp
+int main() {
+  ZLogger::get_instance().trace("This is a trace message: %s", "details here");
+}
+```
+
+Or, you can use the macros:
+
+```cpp
+ZLOG_TRACE("This is also a trace message");
+```
+
+Metal C has a similar set of macros in the format `ZLOGXMSG`:
+
+```c
+ZLOGDMSG("Debug message");
+```
+
+Where `X` is the desired log level for the message (outlined below in the "Log Levels" section).
+
+#### Log Levels
+
+The logger supports the following log levels (in order of verbosity):
+
+- `TRACE` (T) - Most verbose, includes all debugging information
+- `DEBUG` (D) - Debugging information
+- `INFO` (I) - General informational messages (default)
+- `WARN` (W) - Warning messages
+- `ERROR` (E) - Error messages
+- `FATAL` (F) - Fatal errors that may cause program termination
+- `OFF` - Disable all logging
+
+#### Configuration
+
+Set the log level for zowex using the `ZOWEX_LOG_LEVEL` environment variable:
+
+```bash
+# Start zowex in interactive mode with log level "TRACE"
+ZOWEX_LOG_LEVEL=TRACE ./zowex --it
+```
+
+To modify the log level programmatically in C++ code, use the `ZLogger::set_log_level` function. To change the log level in Metal C code, use the `ZLGSTLVL` function defined in `zlogger_metal.h`. Both functions take an integer from the enum `zlog_level_t` (also redefined as `LogLevel` in the C++ header file).
+
 ### Testing
 
-Longer term, we may be able to make use of [Catch2](https://github.com/catchorg/Catch2).  However, with our testing of Metal C code, we are exploring custom-written infrastructure with the ability to handle abends or other z-specific scenarios. So, in the near term, we will use custom testing infrastructure found in `native/c/test`:
+Longer term, we may be able to make use of [Catch2](https://github.com/catchorg/Catch2). However, with our testing of Metal C code, we are exploring custom-written infrastructure with the ability to handle abends or other z-specific scenarios. So, in the near term, we will use custom testing infrastructure found in `native/c/test`:
 
 - `ztest.hpp`
 - `ztest.cpp`
 
 This infrastructure requires `xlclang` compiler to enable "new" language features (lambdas) in order to provide a ~[Jest](https://jestjs.io/) testing syntax.
-
 
 #### Format
 
@@ -61,7 +111,6 @@ zjb tests
 07.29.29 JOB01916  IRR010I  USERID DKELOSKY IS ASSIGNED TO THIS JOB.
 ```
 
-
 Summary results are printed upon completion, e.g.:
 
 ```txt
@@ -72,13 +121,13 @@ Tests:      : 13 passed, 1 failed, 14 total
 
 #### Debugging
 
-By default, LE or Metal C abends will signal for program termination.  When this occurs, a message may appear:
+By default, LE or Metal C abends will signal for program termination. When this occurs, a message may appear:
 
 ```txt
     unexpected ABEND occured.  Add `TEST_OPTIONS.remove_signal_handling = false` to `it(...)` to capture abend dump
 ```
 
-In this situation, no CEEDUMP is captured.  To disable this behavior, disable signal handling by passing a `TEST_OPTIONS` object as a parameter to `it()`, e.g.:
+In this situation, no CEEDUMP is captured. To disable this behavior, disable signal handling by passing a `TEST_OPTIONS` object as a parameter to `it()`, e.g.:
 
 ```c
              TEST_OPTIONS opts = {0};
@@ -97,22 +146,22 @@ The testing infrastructure provides the following APIs
 
 ##### describe(name, fn)
 
-`describe(name, fn)` creates a block that groups related tests.  One top level `describe()` must exist and nesting is not yet supported.
+`describe(name, fn)` creates a block that groups related tests. One top level `describe()` must exist and nesting is not yet supported.
 
 ##### `it(name, fn)
 
-`it(name, fn)` is a test case contained within a `describe()` block.  Individual tests and assertions are achieved with `expect()` calls and are contained within the `fn` provided by the second operand.
+`it(name, fn)` is a test case contained within a `describe()` block. Individual tests and assertions are achieved with `expect()` calls and are contained within the `fn` provided by the second operand.
 
 ##### expect(value)
 
-The `expect()` function is used to test a value (`int`, `string`, `pointer`, etc...) which returns a `RESULT_CHECK` object.  To assert that a result matches an expected value,
+The `expect()` function is used to test a value (`int`, `string`, `pointer`, etc...) which returns a `RESULT_CHECK` object. To assert that a result matches an expected value,
 use the `ToBe()` function on the `RESULT_CHECK` object.
 
-Multiple `expect()` functions can exist within a `test()` to test multiple scenarios.  However, if an `expect()` fails, the remaining `expect()` calls in a `test()` are skipped.
+Multiple `expect()` functions can exist within a `test()` to test multiple scenarios. However, if an `expect()` fails, the remaining `expect()` calls in a `test()` are skipped.
 
 ###### Expect(value) && ExpectWithContext(value, context)
 
-`Expect(value)` and `ExpectWithContext(value, context)` are two C macros (`#define`s) which provide extra information whenever an `expect` fails.  These provide the source filename and line number for which `expect` failed.  `ExpectWithContext()` allows providing a second parameter to provide extra debugging information alongside a failed test.
+`Expect(value)` and `ExpectWithContext(value, context)` are two C macros (`#define`s) which provide extra information whenever an `expect` fails. These provide the source filename and line number for which `expect` failed. `ExpectWithContext()` allows providing a second parameter to provide extra debugging information alongside a failed test.
 
 For example:
 
@@ -130,11 +179,11 @@ Produces:
 
 ##### ToBe(value)
 
-Use `.ToBe()` to compare values set in `RESULT_CHECK` through `expect`.  If the expected value and checked value do not match, an exception is thrown and the test fails.
+Use `.ToBe()` to compare values set in `RESULT_CHECK` through `expect`. If the expected value and checked value do not match, an exception is thrown and the test fails.
 
 ##### Not()
 
-Use `.Not()` to inverse compare values behavior.  `Not()` returns a `RESULT_CHECK` object which is then checked vai `ToBE()`.
+Use `.Not()` to inverse compare values behavior. `Not()` returns a `RESULT_CHECK` object which is then checked vai `ToBE()`.
 
 ### Creating a CHDR from a DSECT
 
@@ -150,7 +199,7 @@ To create a C header from an HLASM DSECT:
 
 ### Recovery
 
-In order to use `ESTAEX`-type recovery, Language Environment (LE) must be enabled with `TRAP(ON,NOSPIE)`.  Otherwise, `ESPIE` recovery will gain control in an
+In order to use `ESTAEX`-type recovery, Language Environment (LE) must be enabled with `TRAP(ON,NOSPIE)`. Otherwise, `ESPIE` recovery will gain control in an
 abend scenario and bypass any established `ESTAEX`.
 
 - `_CEE_RUNOPTS` https://www.ibm.com/docs/en/zos/3.1.0?topic=options-how-specify-runtime
@@ -158,14 +207,14 @@ abend scenario and bypass any established `ESTAEX`.
 
 ### Debugging Metal C
 
-You can add temporary debugging messages within Metal C code which will issue `WTO` messages with a message prefix of `ZWEX0001I`.  These messages may be used in development only
+You can add temporary debugging messages within Metal C code which will issue `WTO` messages with a message prefix of `ZWEX0001I`. These messages may be used in development only
 and must not appear in distributed versions of `zowex`.
 
-To see these debugging messages within z/OS UNIX, set the environment variable `export _BPXK_JOBLOG=STDERR`.  Then add debug messages via `zwto_debug(...)` found within `zwto.h` in the same format as C `printf` format strings, e.g. `zwto_debug("return code was %d", rc);`.
+To see these debugging messages within z/OS UNIX, set the environment variable `export _BPXK_JOBLOG=STDERR`. Then add debug messages via `zwto_debug(...)` found within `zwto.h` in the same format as C `printf` format strings, e.g. `zwto_debug("return code was %d", rc);`.
 
 ### Dumping Storage
 
-Raw storage address contents can be printed to the console or a file to help with debugging scenarios.  This can be achieved using the `zdbg.h` header file.
+Raw storage address contents can be printed to the console or a file to help with debugging scenarios. This can be achieved using the `zdbg.h` header file.
 
 ### LE C/C++
 
@@ -184,7 +233,7 @@ By default, output is printed to `STDERR` when using `zut_debug_message()`; howe
 
 ### Metal C
 
-You must ensure `zut_alloc_debug()` is called to allocate an output DD for log messages.  Then in Metal C, use
+You must ensure `zut_alloc_debug()` is called to allocate an output DD for log messages. Then in Metal C, use
 
 ```c
 #include "zdbg.h"
@@ -196,3 +245,4 @@ You must ensure `zut_alloc_debug()` is called to allocate an output DD for log m
 ```
 
 By default, output is printed to `/tmp/zowex_debug.txt` when using `ZUTDBGMG()`; however, you may provide a Metal C compatible alternative.
+````
