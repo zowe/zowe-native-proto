@@ -52,7 +52,7 @@ export class SshUssApi extends SshCommonApi implements MainframeInteraction.IUss
             stream: options.file ? writeStream : undefined,
         });
         if (options.stream != null) {
-            options.stream.write(B64String.decode(response.data));
+            options.stream.write(B64String.decode(response.data!));
             options.stream.end();
         }
         return this.buildZosFilesResponse({ etag: response.etag });

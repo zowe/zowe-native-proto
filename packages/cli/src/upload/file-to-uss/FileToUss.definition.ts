@@ -53,6 +53,14 @@ export const UploadFileToUssFileDefinition: ICommandDefinition = {
             type: "string",
             conflictsWith: ["binary"],
         },
+        {
+            name: "source-encoding",
+            aliases: ["sec"],
+            description: "The source encoding of the local file content (defaults to UTF-8).",
+            defaultValue: null,
+            type: "string",
+            conflictsWith: ["binary"],
+        },
     ],
     profile: { optional: ["ssh"] },
 };

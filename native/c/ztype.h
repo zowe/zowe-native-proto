@@ -91,6 +91,7 @@ enum DataType
 typedef struct _ZEncode
 {
   char codepage[16];
+  char source_codepage[16];
   int64_t data_type;
 } ZEncode;
 
