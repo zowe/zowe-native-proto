@@ -2302,9 +2302,6 @@ int handle_job_submit_uss(const ParseResult &result)
 
 int handle_job_submit_jcl(const ParseResult &result)
 {
-  int rc = 0;
-  ZJB zjb = {0};
-
   string data;
   string line;
 
@@ -2330,8 +2327,6 @@ int handle_job_submit_jcl(const ParseResult &result)
   }
 
   string jobid;
-  rc = zjb_submit(&zjb, data, jobid);
-
   return job_submit_common(result, data, jobid, data);
 }
 
