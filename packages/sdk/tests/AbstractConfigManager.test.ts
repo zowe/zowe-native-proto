@@ -250,7 +250,7 @@ describe("AbstractConfigManager", async () => {
                         setupProfileCreationMocks();
                     });
 
-                    it("should handle creating new profile with valid input with createNewProfile and getNewProfileName functionality", async () => {
+                    it("should handle creating new profile with valid input with createNewProfile and validateConfig functionality", async () => {
                         const profileWithName = {
                             user: "user1",
                             name: "nameValue",
