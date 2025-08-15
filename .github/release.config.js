@@ -2,7 +2,8 @@ module.exports = {
     branches: [
         {
             name: "main",
-            level: "minor"
+            level: "minor",
+            prerelease: "",
         }
     ],
     plugins: [

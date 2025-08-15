@@ -1136,8 +1136,14 @@ private:
 
 public:
   // getters returning value or the argument's default if missing/wrong type
-  bool find_kw_arg_bool(const std::string &name) const
+  bool find_kw_arg_bool(const std::string &name, bool check_for_negation = false) const
   {
+    if (check_for_negation)
+    {
+      const bool *ptr = get_kw_arg_bool(std::string("no-") + name);
+      if (ptr)
+        return !*ptr;
+    }
     return find_arg_with_default(name, &ParseResult::get_kw_arg_bool, &ArgValue::get_bool, false);
   }
 
