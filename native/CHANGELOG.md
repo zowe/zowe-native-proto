@@ -4,7 +4,7 @@ All notable changes to the native code for "zowe-native-proto" are documented in
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## Recent Changes
+## `0.1.8`
 
 - `native`: Added default value for `--recfm` so that when no options are specified the data set will not contain errors. [#493](https://github.com/zowe/zowe-native-proto/issues/493)
 - Fixed issue where special characters were detected as invalid characters when provided to `zowex` commands. [#491](https://github.com/zowe/zowe-native-proto/issues/491)
