@@ -1,0 +1,18 @@
+packages:
+  - path: "zowe-native-proto/zowed/types/common"
+    output_path: "../../../packages/sdk/src/doc/gen/common.ts"
+  - path: "zowe-native-proto/zowed/types/ds"
+    output_path: "../../../packages/sdk/src/doc/gen/ds.ts"
+    frontmatter: &fm |
+      import type { Readable, Writable } from "node:stream";
+      import type { B64String } from "../types";
+      import type * as common from "./common.ts";
+  - path: "zowe-native-proto/zowed/types/uss"
+    output_path: "../../../packages/sdk/src/doc/gen/uss.ts"
+    frontmatter: *fm
+  - path: "zowe-native-proto/zowed/types/jobs"
+    output_path: "../../../packages/sdk/src/doc/gen/jobs.ts"
+    frontmatter: *fm
+  - path: "zowe-native-proto/zowed/types/cmds"
+    output_path: "../../../packages/sdk/src/doc/gen/cmds.ts"
+    frontmatter: *fm

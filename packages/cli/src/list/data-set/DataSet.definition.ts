@@ -20,7 +20,7 @@ export const ListDataSetDefinition: ICommandDefinition = {
     description:
         "List all data sets that match a DSLEVEL pattern (see help below). \n" +
         "The following values can be used with the --response-format-filter (--rff) argument to " +
-        "display more data from the data sets:" +
+        "display more data from the data sets: " +
         "volume, unit, referred, ext, used, recfm, lrecl, blksz, dsorg, and dsname.",
     examples: [
         {
