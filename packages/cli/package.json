@@ -1,6 +1,6 @@
 {
   "name": "zowe-native-proto-cli",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "main": "lib/index.js",
   "scripts": {
     "build": "tsc -b",
@@ -24,7 +24,7 @@
   "dependencies": {
     "@zowe/zos-uss-for-zowe-sdk": "^8.24.0",
     "terminal-kit": "^3.1.2",
-    "zowe-native-proto-sdk": "0.1.7"
+    "zowe-native-proto-sdk": "0.1.8"
   },
   "devDependencies": {
     "@types/node": "^22.10.7",
