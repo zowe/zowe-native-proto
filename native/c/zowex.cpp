@@ -2329,18 +2329,7 @@ int handle_job_submit_jcl(const ParseResult &result)
     data = zut_encode(data, "UTF-8", string(encoding_opts.codepage), zjb.diag);
   }
 
-  int rc = 0;
-  rc = zjb_submit(&zjb, data, jobid);
-  if (rc != RTNCD_SUCCESS)
-  {
-    cerr << "Error: could not submit job: '" << jobid << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details: " << zjb.diag.e_msg << endl;
-    return rc;
-  }
-
-  cout << "Submitted " << jobid << endl;
-
-  return rc;
+  return job_submit_common(result, data, jobid, "JCL");
 }
 
 int handle_job_delete(const ParseResult &result)
