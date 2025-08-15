@@ -32,7 +32,6 @@ string string_to_hex(const string &input)
 
 int execute_command_with_output(const std::string &command, std::string &output)
 {
-  // string env_command = "_BPXK_AUTOCVT=ON _CEE_RUNOPTS=\"$_CEE_RUNOPTS FILETAG(AUTOCVT,AUTOTAG) POSIX(ON)\" _TAG_REDIR_ERR=txt _TAG_REDIR_IN=txt _TAG_REDIR_OUT=txt " + command;
   output = "";
   TestLog("Running: " + command);
 
@@ -52,6 +51,8 @@ int execute_command_with_output(const std::string &command, std::string &output)
   return WEXITSTATUS(exit_code);
 }
 
+const string zowex_command = "./../build-out/zowex";
+
 void zowex_tests()
 {
 
@@ -64,9 +65,24 @@ void zowex_tests()
                         it("should list jobs",
                            []()
                            {
-                             int rc = system("zowex job list > /dev/null 2>&1");
-                             Expect(rc).ToBe(0);
+                             int rc = 0;
+                             string response;
+                             rc = execute_command_with_output(zowex_command + " job list", response);
+                             ExpectWithContext(rc, response).ToBe(0);
                            });
+                        it("should submit a job", []()
+                           {
+                           int rc = 0;
+                           string stdout_output, stderr_output;
+                           string jcl = "//IEFBR14$ JOB (IZUACCT),TEST,REGION=0M\n//RUN EXEC PGM=IEFBR14";
+
+                           // Convert JCL to hex format and write to the data set
+                           string hex_jcl = string_to_hex(jcl);
+                           string submit_command = "printf \"" + hex_jcl + "\" | " + zowex_command + " job submit-jcl --only-jobid";
+                           TestLog("Running: " + submit_command);
+                           rc = ztst::execute_command(submit_command, stdout_output, stderr_output);
+                           ExpectWithContext(rc, stderr_output).ToBe(0);
+                           Expect(TrimChars(stdout_output)).Not().ToBe(""); });
                       });
              describe("data set tests",
                       []() -> void
@@ -82,9 +98,9 @@ void zowex_tests()
                                         execute_command_with_output("whoami", user);
                                         string data_set = TrimChars(user) + ".temp.temp.temp.temp.temp.temp.tmp";
                                         string response;
-                                        string del_command = "zowex data-set delete " + data_set;
+                                        string del_command = zowex_command + " data-set delete " + data_set;
                                         execute_command_with_output(del_command, response);
-                                        string command = "zowex data-set create-fb " + data_set;
+                                        string command = zowex_command + " data-set create-fb " + data_set;
                                         rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
                                         execute_command_with_output(del_command, response);
@@ -99,7 +115,7 @@ void zowex_tests()
                                         int rc = 0;
                                         string data_set = "SYS1.MACLIB";
                                         string response;
-                                        string command = "zowex data-set list " + data_set;
+                                        string command = zowex_command + " data-set list " + data_set;
                                         rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
                                       });
@@ -108,7 +124,7 @@ void zowex_tests()
                                       {
                                         string data_set = "SYS1.MACLIB";
                                         string response;
-                                        string command = "zowex data-set lm " + data_set + " --no-warn --me 1";
+                                        string command = zowex_command + " data-set lm " + data_set + " --no-warn --me 1";
                                         TestLog("Running: " + command);
                                         int rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
@@ -119,7 +135,7 @@ void zowex_tests()
                                         int rc = 0;
                                         string data_set = "SYS1.MACLIB";
                                         string response;
-                                        string command = "zowex data-set lm " + data_set + " --me 1";
+                                        string command = zowex_command + " data-set lm " + data_set + " --me 1";
                                         rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(RTNCD_WARNING);
                                       });
@@ -139,24 +155,24 @@ void zowex_tests()
                                         string response;
 
                                         // delete the data set if it exists
-                                        string del_command = "zowex data-set delete " + data_set;
+                                        string del_command = zowex_command + " data-set delete " + data_set;
                                         execute_command_with_output(del_command, response);
 
                                         // create the data set
-                                        string command = "zowex data-set create-fb " + data_set;
+                                        string command = zowex_command + " data-set create-fb " + data_set;
                                         rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
 
-                                        string jcl = "//IEFBR14$ JOB (IZUACCT),TEST,REGION=0m\n//RUN EXEC PGM=IEFBR14";
+                                        string jcl = "//IEFBR14$ JOB (IZUACCT),TEST,REGION=0M\n//RUN EXEC PGM=IEFBR14";
 
                                         // Convert JCL to hex format and write to the data set
                                         string hex_jcl = string_to_hex(jcl);
-                                        string write_command = "printf \"" + hex_jcl + "\" | zowex data-set write " + data_set_member;
+                                        string write_command = "printf \"" + hex_jcl + "\" | " + zowex_command + " data-set write " + data_set_member;
                                         rc = execute_command_with_output(write_command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
 
                                         // read from the data set
-                                        string read_command = "zowex data-set view " + data_set_member;
+                                        string read_command = zowex_command + " data-set view " + data_set_member;
                                         rc = execute_command_with_output(read_command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
                                         Expect(TrimChars(response)).ToBe(jcl);
