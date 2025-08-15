@@ -159,12 +159,11 @@ void zowex_tests()
                                         // read from the data set
                                         string read_command = "zowex data-set view " + data_set_member;
                                         rc = execute_command_with_output(read_command, response);
-                                        TestLog("Response: " + response);
-                                        cout << "@TEST response: '" << response << "'" << endl;
                                         ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(TrimChars(response)).ToBe(jcl);
 
                                         // delete the data set
-                                        // execute_command_with_output(del_command, response);
+                                        execute_command_with_output(del_command, response);
                                       });
                                  });
                       });
