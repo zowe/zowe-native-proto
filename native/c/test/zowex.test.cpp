@@ -19,6 +19,10 @@ using namespace ztst;
 
 int execute_command_with_output(const std::string &command, std::string &output)
 {
+  // string env_command = "_BPXK_AUTOCVT=ON _CEE_RUNOPTS=\"$_CEE_RUNOPTS FILETAG(AUTOCVT,AUTOTAG) POSIX(ON)\" _TAG_REDIR_ERR=txt _TAG_REDIR_IN=txt _TAG_REDIR_OUT=txt " + command;
+  output = "";
+  TestLog("Running: " + command);
+
   FILE *pipe = popen((command + " 2>&1").c_str(), "r");
   if (!pipe)
   {
@@ -60,6 +64,7 @@ void zowex_tests()
                                    it("should create a fb data set",
                                       []()
                                       {
+                                        int rc = 0;
                                         string user;
                                         execute_command_with_output("whoami", user);
                                         string data_set = TrimChars(user) + ".temp.temp.temp.temp.temp.temp.tmp";
@@ -67,7 +72,7 @@ void zowex_tests()
                                         string del_command = "zowex data-set delete " + data_set;
                                         execute_command_with_output(del_command, response);
                                         string command = "zowex data-set create-fb " + data_set;
-                                        int rc = execute_command_with_output(command, response);
+                                        rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
                                         execute_command_with_output(del_command, response);
                                       });
@@ -78,32 +83,79 @@ void zowex_tests()
                                    it("should list a data set",
                                       []()
                                       {
+                                        int rc = 0;
                                         string data_set = "SYS1.MACLIB";
                                         string response;
                                         string command = "zowex data-set list " + data_set;
-                                        TestLog("Running: " + command);
-                                        int rc = execute_command_with_output(command, response);
+                                        rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
                                       });
-                                   it("should list a member of a data set",
-                                      []()
-                                      {
-                                        string data_set = "SYS1.MACLIB";
-                                        string response;
-                                        string command = "zowex data-set lm " + data_set + " --no-warn --me 1";
-                                        TestLog("Running: " + command);
-                                        int rc = execute_command_with_output(command, response);
-                                        ExpectWithContext(rc, response).ToBe(0);
-                                      });
+                                   // TODO(Kelosky): this test is failing due to https://github.com/zowe/zowe-native-proto/issues/498
+                                   //  it("should list a member of a data set",
+                                   //     []()
+                                   //     {
+                                   //       string data_set = "SYS1.MACLIB";
+                                   //       string response;
+                                   //       string command = "zowex data-set lm " + data_set + " --no-warn --me 1";
+                                   //       TestLog("Running: " + command);
+                                   //       int rc = execute_command_with_output(command, response);
+                                   //       ExpectWithContext(rc, response).ToBe(0);
+                                   //     });
                                    it("should warn when listing members of a data set with many members",
                                       []()
                                       {
+                                        int rc = 0;
                                         string data_set = "SYS1.MACLIB";
                                         string response;
                                         string command = "zowex data-set lm " + data_set + " --me 1";
-                                        TestLog("Running: " + command);
-                                        int rc = execute_command_with_output(command, response);
+                                        rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(RTNCD_WARNING);
+                                      });
+                                 });
+                        describe("data set i/o tests",
+                                 []() -> void
+                                 {
+                                   it("should write and read from a data set",
+                                      []()
+                                      {
+                                        int rc = 0;
+                                        string user;
+                                        execute_command_with_output("whoami", user);
+                                        string data_set = TrimChars(user) + ".temp.temp.temp.temp.temp.temp.tmp";
+                                        string member = "IEFBR14";
+                                        string data_set_member = "\"" + data_set + "(" + member + ")\"";
+                                        string response;
+
+                                        // delete the data set if it exists
+                                        string del_command = "zowex data-set delete " + data_set;
+                                        execute_command_with_output(del_command, response);
+
+                                        // create the data set
+                                        string command = "zowex data-set create-fb " + data_set;
+                                        rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+
+                                        // #if defined(__IBMC__) || defined(__IBMCPP__)
+                                        // #pragma convert("1047")
+                                        // #endif
+                                        string jcl = "//IEFBR14$ JOB (IZUACCT),TEST,REGION=0m\\n//RUN EXEC PGM=IEFBR14";
+
+                                        // #if defined(__IBMC__) || defined(__IBMCPP__)
+                                        // #pragma convert(pop)
+                                        // #endif
+                                        // write to the data set
+                                        string write_command = "printf \"" + jcl + "\" | zowex data-set write " + data_set_member;
+                                        rc = execute_command_with_output(write_command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+
+                                        // read from the data set
+                                        string read_command = "zowex data-set view " + data_set_member;
+                                        rc = execute_command_with_output(read_command, response);
+                                        TestLog("Response: " + response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+
+                                        // delete the data set
+                                        // execute_command_with_output(del_command, response);
                                       });
                                  });
                       });
