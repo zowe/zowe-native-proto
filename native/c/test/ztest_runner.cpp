@@ -19,6 +19,7 @@
 #include "zmetal.test.hpp"
 #include "zusf.test.hpp"
 #include "zbase64.test.hpp"
+#include "zowex.test.hpp"
 #include "ztest.hpp"
 
 using namespace std;
@@ -47,6 +48,7 @@ int main(int argc, char *argv[])
         zmetal_tests();
         zusf_tests();
         zbase64_tests();
+        zowex_tests();
       });
 
   return rc;
