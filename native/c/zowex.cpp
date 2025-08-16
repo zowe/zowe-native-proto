@@ -9,6 +9,7 @@
  *
  */
 
+#include "ztype.h"
 #pragma runopts("TRAP(ON,NOSPIE)")
 
 #include <iostream>
@@ -2302,9 +2303,8 @@ int handle_job_submit_uss(const ParseResult &result)
 
 int handle_job_submit_jcl(const ParseResult &result)
 {
-  int rc = 0;
   ZJB zjb = {0};
-
+  string jobid;
   string data;
   string line;
 
@@ -2329,10 +2329,7 @@ int handle_job_submit_jcl(const ParseResult &result)
     data = zut_encode(data, "UTF-8", string(encoding_opts.codepage), zjb.diag);
   }
 
-  string jobid;
-  rc = zjb_submit(&zjb, data, jobid);
-
-  return job_submit_common(result, data, jobid, data);
+  return job_submit_common(result, data, jobid, "JCL");
 }
 
 int handle_job_delete(const ParseResult &result)
