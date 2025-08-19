@@ -610,8 +610,6 @@ typedef struct
 void load_dsorg_from_dscb(DSCBFormat1 *dscb, string *dsorg)
 {
   // Bitmasks translated from binary to hex from "DFSMSdfp advanced services" PDF, Chapter 1 page 7 (PDF page 39)
-  *dsorg = "";
-
   // PS: 0100 000x ...
   if ((dscb->ds1dsorg & 0xF000) == 0x4000)
   {
@@ -648,8 +646,6 @@ void load_dsorg_from_dscb(DSCBFormat1 *dscb, string *dsorg)
 void load_recfm_from_dscb(DSCBFormat1 *dscb, string *recfm)
 {
   // Bitmasks translated from binary to hex from "DFSMSdfp advanced services" PDF, Chapter 1 page 7 (PDF page 39)
-  *recfm = "";
-
   // Fixed: First bit is set
   if ((dscb->ds1recfm & 0xC0) == 0x80)
   {
