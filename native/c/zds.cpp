@@ -613,17 +613,17 @@ void load_dsorg_from_dscb(DSCBFormat1 *dscb, string *dsorg)
   *dsorg = "";
 
   // PS: 0100 000x ...
-  if (((dscb->ds1dsorg >> 8) & 0xF0) == 0x40)
+  if ((dscb->ds1dsorg & 0xF000) == 0x4000)
   {
     *dsorg = ZDS_DSORG_PS;
   }
   // DA: 0010 000x ...
-  else if (((dscb->ds1dsorg >> 8) & 0xF0) == 0x20)
+  else if ((dscb->ds1dsorg & 0xF000) == 0x2000)
   {
     *dsorg = ZDS_DSORG_DA;
   }
   // PO: 0000 001x ...
-  else if (((dscb->ds1dsorg >> 8) & 0x0E) == 0x2)
+  else if ((dscb->ds1dsorg & 0x0E00) == 0x0200)
   {
     *dsorg = ZDS_DSORG_PO;
   }
@@ -634,7 +634,7 @@ void load_dsorg_from_dscb(DSCBFormat1 *dscb, string *dsorg)
   }
 
   // Unmovable: Last bit of first half is set
-  if (((dscb->ds1dsorg >> 8) & 0x01) == 0x1)
+  if ((dscb->ds1dsorg & 0x0100) == 0x0100)
   {
     *dsorg += 'U';
   }
