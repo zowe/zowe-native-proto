@@ -23,6 +23,7 @@
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen"
     },
+    // Use Node version 22
     {
       "name": "Debug Vitest",
       "type": "node",
@@ -30,10 +31,11 @@
       "program": "${workspaceFolder}/node_modules/vitest/vitest.mjs",
       "console": "integratedTerminal",
       "autoAttachChildProcesses": true,
-      "args": ["run"],
+      // Uncomment to only run the focused test file
+      "args": ["run" /*"${file}"*/],
       "skipFiles": ["<node_internals>/**", "**/node_modules/**"],
       "cwd": "${workspaceFolder}/packages/sdk",
-      "runtimeExecutable": "/Users/<User>/.nvm/versions/node/<V22.12.0 or Above>/bin/node"
+      "runtimeVersion": "22"
     }
   ]
 }

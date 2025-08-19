@@ -320,9 +320,7 @@ export abstract class AbstractConfigManager {
             }
 
             if ((!privateKeyPath || !readFileSync(path.normalize(privateKeyPath), "utf-8")) && !newConfig.password) {
-                const passwordPrompt = askForPassword
-                    ? await this.promptForPassword(newConfig, configModifications)
-                    : undefined;
+                const passwordPrompt = askForPassword && (await this.promptForPassword(newConfig, configModifications));
                 return passwordPrompt ? { ...configModifications, ...passwordPrompt } : undefined;
             }
 
@@ -403,7 +401,7 @@ export abstract class AbstractConfigManager {
             const sshClient = new Client();
             const testConfig = { ...config };
 
-            if (testConfig.privateKey && typeof testConfig.privateKey === "string") {
+            if (typeof testConfig.privateKey === "string") {
                 testConfig.privateKey = readFileSync(path.normalize(testConfig.privateKey), "utf8");
             }
 
