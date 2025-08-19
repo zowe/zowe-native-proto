@@ -633,6 +633,7 @@ void load_dsorg_from_dscb(DSCBFormat1 *dscb, string *dsorg)
     *dsorg = ZDS_DSORG_VSAM;
   }
 
+  // Unmovable: Last bit of first half is set
   if (((dscb->ds1dsorg >> 8) & 0x01) == 0x1)
   {
     *dsorg += 'U';
