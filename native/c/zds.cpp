@@ -30,6 +30,7 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include "zbase64.h"
+#include "zdsm.h"
 
 const size_t MAX_DS_LENGTH = 44u;
 
@@ -831,34 +832,28 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
       // attempt to load dsorg and recfm from vtoc if not migrated
       if (!entry.migr)
       {
-        char dsorg_buf[2] = {0};
-        int rc = ZDSDSORG(zds, entry.name.c_str(), entry.volser.c_str(), dsorg_buf, sizeof(dsorg_buf));
+        DSCBFormat1 *dscb = (DSCBFormat1 *)__malloc31(sizeof(DSCBFormat1));
+        memset(dscb, 0x00, sizeof(DSCBFormat1));
+        int rc = ZDSDSCB1(zds, entry.name.c_str(), entry.volser.c_str(), dscb);
+
         if (rc == RTNCD_SUCCESS)
         {
+          char dsorg_buf[4] = {0};
+          ZDSDSORG(dscb, dsorg_buf, sizeof(dsorg_buf));
           entry.dsorg = dsorg_buf;
+
+          char recfm_buf[8] = {0};
+          ZDSRECFM(dscb, recfm_buf, sizeof(recfm_buf));
+          entry.recfm = recfm_buf;
         }
         else
         {
           entry.dsorg = ZDS_DSORG_UNKNOWN;
-        }
-        if (entry.dsorg != ZDS_DSORG_UNKNOWN)
-        {
-          char recfm_buf[8] = {0};
-          if (ZDSRECFM(zds, entry.name.c_str(), entry.volser.c_str(), recfm_buf,
-                       sizeof(recfm_buf)) == RTNCD_SUCCESS)
-          {
-            entry.recfm = recfm_buf;
-          }
-          else
-          {
-            entry.recfm = ZDS_RECFM_U;
-          }
-        }
-        else
-        {
           entry.volser = ZDS_VOLSER_UNKNOWN;
           entry.recfm = ZDS_RECFM_U;
         }
+
+        free(dscb);
       }
 
       switch (f->type)
