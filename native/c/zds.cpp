@@ -615,6 +615,11 @@ void load_dsorg_from_dscb(DSCBFormat1 *dscb, string *dsorg)
   {
     *dsorg = ZDS_DSORG_PS;
   }
+  // DA: 0010 000x ...
+  else if (((dscb->ds1dsorg >> 8) & 0xF0) == 0x20)
+  {
+    *dsorg = ZDS_DSORG_DA;
+  }
   // PO: 0000 001x ...
   else if (((dscb->ds1dsorg >> 8) & 0x0E) == 0x2)
   {

@@ -43,6 +43,7 @@
 #define ZDS_DSORG_VSAM "VS"    // VSAM
 #define ZDS_DSORG_PS "PS"      // sequential
 #define ZDS_DSORG_PO "PO"      // partitioned
+#define ZDS_DSORG_DA "DA"      // direct access
 
 // Record format constants
 #define ZDS_RECFM_FB "FB"   // Fixed Blocked
