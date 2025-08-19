@@ -607,7 +607,7 @@ typedef struct
 #define BUFF_SIZE 1024
 #define FIELD_LEN 8
 
-void load_dsorg_from_dscb(DSCBFormat1 *dscb, string *dsorg)
+void load_dsorg_from_dscb(const DSCBFormat1 *dscb, string *dsorg)
 {
   // Bitmasks translated from binary to hex from "DFSMSdfp advanced services" PDF, Chapter 1 page 7 (PDF page 39)
   // PS: 0100 000x ...
@@ -643,7 +643,7 @@ void load_dsorg_from_dscb(DSCBFormat1 *dscb, string *dsorg)
   }
 }
 
-void load_recfm_from_dscb(DSCBFormat1 *dscb, string *recfm)
+void load_recfm_from_dscb(const DSCBFormat1 *dscb, string *recfm)
 {
   // Bitmasks translated from binary to hex from "DFSMSdfp advanced services" PDF, Chapter 1 page 7 (PDF page 39)
   // Fixed: First bit is set
@@ -721,7 +721,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
     return RTNCD_FAILURE;
   }
 
-  unsigned char *area = (unsigned char *)__malloc31(zds->buffer_size);
+  auto *area = (unsigned char *)__malloc31(zds->buffer_size);
   memset(area, 0x00, zds->buffer_size);
 
   CSIFIELD *selection_criteria = (CSIFIELD *)area;
@@ -894,7 +894,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
       {
         string symbol(IPL_VOLUME_SYMBOL);
         string value;
-        int rc = zut_substitute_symbol(symbol, value);
+        rc = zut_substitute_symbol(symbol, value);
         if (0 == rc)
         {
           entry.volser = value;
@@ -917,9 +917,9 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
       // attempt to load dsorg and recfm from vtoc if not migrated
       if (!entry.migr)
       {
-        DSCBFormat1 *dscb = (DSCBFormat1 *)__malloc31(sizeof(DSCBFormat1));
+        auto *dscb = (DSCBFormat1 *)__malloc31(sizeof(DSCBFormat1));
         memset(dscb, 0x00, sizeof(DSCBFormat1));
-        int rc = ZDSDSCB1(zds, entry.name.c_str(), entry.volser.c_str(), dscb);
+        rc = ZDSDSCB1(zds, entry.name.c_str(), entry.volser.c_str(), dscb);
 
         if (rc == RTNCD_SUCCESS)
         {

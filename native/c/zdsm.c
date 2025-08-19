@@ -143,7 +143,7 @@ int ZDSDSCB1(ZDS *zds, const char *dsn, const char *volser, DSCBFormat1 *dscb)
   {
     memcpy(&indexable_dscb, workarea + (i * (sizeof(IndexableDSCBFormat1) - 1)), sizeof(indexable_dscb));
     // The returned DSCB does not include the key, but we can infer the returned variables by re-aligning the struct
-    DSCBFormat1 *temp_dscb = (DSCBFormat1 *)&indexable_dscb;
+    const DSCBFormat1 *temp_dscb = (DSCBFormat1 *)&indexable_dscb;
 
     // Look for either Format-1 or Format-8 DSCB
     if (temp_dscb == NULL || (temp_dscb->ds1fmtid != '1' && temp_dscb->ds1fmtid != '8'))
