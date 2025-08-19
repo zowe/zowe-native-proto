@@ -607,32 +607,34 @@ typedef struct
 #define BUFF_SIZE 1024
 #define FIELD_LEN 8
 
+#define DS1DSGPS_MASK 0x4000 // PS: Bit 2 is set
+#define DS1DSGDA_MASK 0x2000 // DA: Bit 3 is set
+#define DS1DSGPO_MASK 0x0200 // PO: Bit 7 is set
+#define DS1DSGU_MASK 0x0100  // Unmovable: Bit 8 is set
+#define DS1ACBM_MASK 0x0008  // VSAM: Bit 13 is set
+
 void load_dsorg_from_dscb(const DSCBFormat1 *dscb, string *dsorg)
 {
   // Bitmasks translated from binary to hex from "DFSMSdfp advanced services" PDF, Chapter 1 page 7 (PDF page 39)
-  // PS: 0100 000x ...
-  if ((dscb->ds1dsorg & 0xF000) == 0x4000)
+  if (dscb->ds1dsorg & DS1DSGPS_MASK)
   {
     *dsorg = ZDS_DSORG_PS;
   }
-  // DA: 0010 000x ...
-  else if ((dscb->ds1dsorg & 0xF000) == 0x2000)
+  else if (dscb->ds1dsorg & DS1DSGDA_MASK)
   {
     *dsorg = ZDS_DSORG_DA;
   }
-  // PO: 0000 001x ...
-  else if ((dscb->ds1dsorg & 0x0E00) == 0x0200)
+  else if (dscb->ds1dsorg & DS1DSGPO_MASK)
   {
     *dsorg = ZDS_DSORG_PO;
   }
-  // VSAM: ... 000x 10xx
-  else if ((dscb->ds1dsorg & 0x0C) == 0x8)
+  else if (dscb->ds1dsorg & DS1ACBM_MASK)
   {
     *dsorg = ZDS_DSORG_VSAM;
   }
 
   // Unmovable: Last bit of first half is set
-  if ((dscb->ds1dsorg & 0x0100) == 0x0100)
+  if (dscb->ds1dsorg & DS1DSGU_MASK)
   {
     *dsorg += 'U';
   }
