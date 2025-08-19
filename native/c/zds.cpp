@@ -607,6 +607,81 @@ typedef struct
 #define BUFF_SIZE 1024
 #define FIELD_LEN 8
 
+void load_dsorg_from_dscb(DSCBFormat1 *dscb, string *dsorg)
+{
+  // Bitmasks translated from binary to hex from "DFSMSdfp advanced services" PDF, Chapter 1 page 7 (PDF page 39)
+  // PS: 0100 000x ...
+  if (((dscb->ds1dsorg >> 8) & 0xF0) == 0x40)
+  {
+    *dsorg = ZDS_DSORG_PS;
+  }
+  // PO: 0000 001x ...
+  else if (((dscb->ds1dsorg >> 8) & 0x0E) == 0x2)
+  {
+    *dsorg = ZDS_DSORG_PO;
+  }
+  // VSAM: ... 000x 10xx
+  else if ((dscb->ds1dsorg & 0x0C) == 0x8)
+  {
+    *dsorg = ZDS_DSORG_VSAM;
+  }
+  else
+  {
+    *dsorg = ZDS_DSORG_UNKNOWN;
+  }
+}
+
+void load_recfm_from_dscb(DSCBFormat1 *dscb, string *recfm)
+{
+  // Bitmasks translated from binary to hex from "DFSMSdfp advanced services" PDF, Chapter 1 page 7 (PDF page 39)
+  *recfm = "";
+
+  // Fixed: First bit is set
+  if ((dscb->ds1recfm & 0xC0) == 0x80)
+  {
+    *recfm = ZDS_RECFM_F;
+  }
+  // Variable: Second bit is set
+  else if ((dscb->ds1recfm & 0xC0) == 0x40)
+  {
+    *recfm = ZDS_RECFM_V;
+  }
+  // Undefined: First and second bits are set
+  else if ((dscb->ds1recfm & 0xC0) == 0xC0)
+  {
+    *recfm = ZDS_RECFM_U;
+  }
+
+  // Blocked records: Fourth bit is set
+  if ((dscb->ds1recfm & 0x10) > 0)
+  {
+    *recfm += 'B';
+  }
+
+  // Sequential: Fifth bit is set
+  if ((dscb->ds1recfm & 0x08) > 0 && recfm[0] != ZDS_RECFM_U)
+  {
+    *recfm += 'S';
+  }
+
+  // ANSI control characters/ASA: Sixth bit is set
+  if ((dscb->ds1recfm & 0x04) > 0)
+  {
+    *recfm += 'A';
+  }
+
+  // Machine-control characters: Seventh bit is set
+  if ((dscb->ds1recfm & 0x02) > 0)
+  {
+    *recfm += 'M';
+  }
+
+  if (recfm->empty())
+  {
+    *recfm = ZDS_RECFM_U;
+  }
+}
+
 int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
 {
   int rc = 0;
@@ -838,13 +913,8 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
 
         if (rc == RTNCD_SUCCESS)
         {
-          char dsorg_buf[4] = {0};
-          ZDSDSORG(dscb, dsorg_buf, sizeof(dsorg_buf));
-          entry.dsorg = dsorg_buf;
-
-          char recfm_buf[8] = {0};
-          ZDSRECFM(dscb, recfm_buf, sizeof(recfm_buf));
-          entry.recfm = recfm_buf;
+          load_dsorg_from_dscb(dscb, &entry.dsorg);
+          load_recfm_from_dscb(dscb, &entry.recfm);
         }
         else
         {

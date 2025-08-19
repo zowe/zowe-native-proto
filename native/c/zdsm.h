@@ -31,8 +31,6 @@ extern "C"
   int ZDSCSI00(ZDS *zds, CSIFIELD *selection, void *work_area);
   void ZDSDEL(ZDS *zds);
   int ZDSDSCB1(ZDS *zds, const char *dsn, const char *volser, DSCBFormat1 *dscb);
-  void ZDSDSORG(DSCBFormat1 *dscb, char *dsorg_buf, int dsorg_buf_len);
-  void ZDSRECFM(DSCBFormat1 *dscb, char *recfm_buf, int recfm_buf_len);
 
 #if defined(__cplusplus)
 }
