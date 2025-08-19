@@ -7,6 +7,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## Recent Changes
 
 - `c`: Fixed issue where the `zowex ds lm` command always returned non-zero exit code for warnings and ignored the `--no-warn` flag. [#498](https://github.com/zowe/zowe-native-proto/issues/498)
+- `c`: Fixed issue where the `zowex job submit-jcl` command submitted the given JCL contents twice, causing two jobs to be created.
 - `native`: Added support for providing a source encoding option for read and write operations on data sets and USS files.
 
 ## `0.1.8`
