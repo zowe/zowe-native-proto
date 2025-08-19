@@ -610,6 +610,8 @@ typedef struct
 void load_dsorg_from_dscb(DSCBFormat1 *dscb, string *dsorg)
 {
   // Bitmasks translated from binary to hex from "DFSMSdfp advanced services" PDF, Chapter 1 page 7 (PDF page 39)
+  *dsorg = "";
+
   // PS: 0100 000x ...
   if (((dscb->ds1dsorg >> 8) & 0xF0) == 0x40)
   {
@@ -630,7 +632,13 @@ void load_dsorg_from_dscb(DSCBFormat1 *dscb, string *dsorg)
   {
     *dsorg = ZDS_DSORG_VSAM;
   }
-  else
+
+  if (((dscb->ds1dsorg >> 8) & 0x01) == 0x1)
+  {
+    *dsorg += 'U';
+  }
+
+  if (dsorg->empty())
   {
     *dsorg = ZDS_DSORG_UNKNOWN;
   }
