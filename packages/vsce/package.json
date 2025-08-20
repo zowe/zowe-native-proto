@@ -56,13 +56,6 @@
             "FATAL"
           ]
         },
-        "zowe-native-proto-vsce.numWorkers": {
-          "type": "number",
-          "default": 3,
-          "minimum": 1,
-          "maximum": 50,
-          "description": "Number of worker threads for the Zowe SSH server. Each worker creates a TSO address space."
-        },
         "zowe-native-proto-vsce.serverAutoUpdate": {
           "type": "boolean",
           "default": true,
@@ -74,6 +67,13 @@
           "additionalProperties": {
             "type": "string"
           }
+        },
+        "zowe-native-proto-vsce.workerCount": {
+          "type": "number",
+          "default": 3,
+          "minimum": 1,
+          "maximum": 50,
+          "description": "Number of worker threads for the Zowe SSH server. Each worker runs as a separate process in its own address space."
         }
       }
     }

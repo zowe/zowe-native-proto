@@ -64,9 +64,10 @@ export class SshClientCache extends vscode.Disposable {
             const session = ZSshUtils.buildSession(profile.profile!);
             const serverPath = SshConfigUtils.getServerPath(profile.profile);
             const localDir = path.join(this.mContext.extensionPath, "bin");
-            const keepAliveInterval = getVsceConfig().get<number>("keepAliveInterval");
-            const numWorkers = getVsceConfig().get<number>("numWorkers");
-            const autoUpdate = getVsceConfig().get("serverAutoUpdate", true);
+            const vsceConfig = getVsceConfig();
+            const keepAliveInterval = vsceConfig.get<number>("keepAliveInterval");
+            const numWorkers = vsceConfig.get<number>("workerCount");
+            const autoUpdate = vsceConfig.get("serverAutoUpdate", true);
 
             let newClient: ZSshClient | undefined;
             try {
