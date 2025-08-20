@@ -507,27 +507,27 @@ export abstract class AbstractConfigManager {
         });
     }
 
-    private async setProfile(selectedConfig: ISshConfigExt | undefined, updatedProfile?: string): Promise<void> {
+    private async setProfile(selectedConfig: ISshConfigExt, updatedProfile?: string): Promise<void> {
         const configApi = this.mProfilesCache.getTeamConfig().api;
         // Create the base config object
         const config: IConfigProfile = {
             type: "ssh",
             properties: {
-                user: selectedConfig?.user,
-                host: selectedConfig?.hostname,
-                privateKey: selectedConfig?.privateKey,
-                port: selectedConfig?.port || 22,
-                keyPassphrase: selectedConfig?.keyPassphrase,
-                password: selectedConfig?.password,
+                user: selectedConfig.user,
+                host: selectedConfig.hostname,
+                privateKey: selectedConfig.privateKey,
+                port: selectedConfig.port || 22,
+                keyPassphrase: selectedConfig.keyPassphrase,
+                password: selectedConfig.password,
             },
             secure: [],
         };
         //if password or KP is defined, make them secure
-        if (selectedConfig?.password) config.secure.push("password" as never);
-        if (selectedConfig?.keyPassphrase) config.secure.push("keyPassphrase" as never);
+        if (selectedConfig.password) config.secure.push("password" as never);
+        if (selectedConfig.keyPassphrase) config.secure.push("keyPassphrase" as never);
 
         if (updatedProfile) {
-            for (const key of Object.keys(selectedConfig!)) {
+            for (const key of Object.keys(selectedConfig)) {
                 const validKey = key as keyof ISshConfigExt;
 
                 // Get the location of the property being modified
@@ -565,15 +565,15 @@ export abstract class AbstractConfigManager {
                     profileName: updatedProfile,
                     profileType: "ssh",
                     property: validKey,
-                    value: selectedConfig![validKey],
+                    value: selectedConfig[validKey],
                     forceUpdate: allowBaseModification !== "Yes",
                     setSecure: this.mProfilesCache.isSecured(),
                 });
             }
         } else {
             if (!configApi.profiles.defaultGet("ssh") || !configApi.layers.get().properties.defaults.ssh)
-                configApi.profiles.defaultSet("ssh", selectedConfig?.name!);
-            configApi.profiles.set(selectedConfig?.name!, config);
+                configApi.profiles.defaultSet("ssh", selectedConfig.name!);
+            configApi.profiles.set(selectedConfig.name!, config);
         }
 
         if (config.secure.length > 0) {
