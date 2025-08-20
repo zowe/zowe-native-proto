@@ -118,7 +118,7 @@ MTL_FLAGS+=$(LOG_FLAGS)
 MTL_FLAGS64+=$(LOG_FLAGS)
 .END
 
-all: libzut.so libzut.a libzds.so libzds.a libzusf.so libzusf.a libzcn.so libzcn.a libzjb.so libzjb.a zowex zoweax extattr
+all: libzut.so libzut.a libzds.so libzds.a libzusf.so libzusf.a libzcn.so libzcn.a libzjb.so libzjb.a zowex zoweax
 xlclang-extenders: $(OUT_DIR_CXXLANG)/zut.o $(OUT_DIR_CXXLANG)/zds.o $(OUT_DIR_CXXLANG)/zjb.o $(OUT_DIR_CXXLANG)/zcn.o $(OUT_DIR_CXXLANG)/zusf.o $(OUT_DIR_CXXLANG)/zshmem.o
 # SWIG extenders: compile C++ files with SWIG macro defined for Python bindings
 swig-extenders: $(OUT_DIR_SWIG)/zut.o $(OUT_DIR_SWIG)/zds.o $(OUT_DIR_SWIG)/zjb.o $(OUT_DIR_SWIG)/zcn.o $(OUT_DIR_SWIG)/zusf.o $(OUT_DIR_SWIG)/ztso.o
@@ -404,8 +404,12 @@ libztso.a: $(OUT_DIRS) $(OUT_DIR)/libztso.a
 #
 # Test CLI
 #
+# Define object files for CLI modules
+ZCLI_OBJS = $(OUT_DIR)/zcli.o $(OUT_DIR)/zcli_console.o $(OUT_DIR)/zcli_ds.o $(OUT_DIR)/zcli_job.o $(OUT_DIR)/zcli_tool.o $(OUT_DIR)/zcli_tso.o $(OUT_DIR)/zcli_uss.o
+ZOWE_LIBS = $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(OUT_DIR)/libzjb.a $(OUT_DIR)/libzds.a $(OUT_DIR)/libzusf.a $(OUT_DIR)/libztso.a $(OUT_DIR)/libzshmem.a
+
 # zowex: zowex.o zcn.o zcnm.o zcnm31.o zut.o zutm.o zutm31.o zjb.o zjbm.o zssi31.o zjbm31.o zds.o
-$(OUT_DIR)/zowex: $(OUT_DIR)/zowex.o $(OUT_DIR)/zcli.o $(OUT_DIR)/zcli_console.o $(OUT_DIR)/zcli_ds.o $(OUT_DIR)/zcli_job.o $(OUT_DIR)/zcli_tool.o $(OUT_DIR)/zcli_tso.o $(OUT_DIR)/zcli_uss.o $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(OUT_DIR)/libzjb.a $(OUT_DIR)/libzds.a $(OUT_DIR)/libzusf.a $(OUT_DIR)/libztso.a $(OUT_DIR)/libzshmem.a
+$(OUT_DIR)/zowex: $(OUT_DIR)/zowex.o $(ZCLI_OBJS) $(ZOWE_LIBS)
 	@echo 'Building zowex'
 	$(CXX) $(CPP_BND_FLAGS) -o $@ $^ > $*.bind.lst
 	ln -sf ../c/$@ ../golang/zowex
@@ -413,9 +417,10 @@ $(OUT_DIR)/zowex: $(OUT_DIR)/zowex.o $(OUT_DIR)/zcli.o $(OUT_DIR)/zcli_console.o
 
 zowex: $(OUT_DIRS) $(OUT_DIR)/zowex
 
-$(OUT_DIR)/zoweax: $(OUT_DIR)/zowex.o $(OUT_DIR)/zcli.o $(OUT_DIR)/zcli_console.o $(OUT_DIR)/zcli_ds.o $(OUT_DIR)/zcli_job.o $(OUT_DIR)/zcli_tool.o $(OUT_DIR)/zcli_tso.o $(OUT_DIR)/zcli_uss.o $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(OUT_DIR)/libzjb.a $(OUT_DIR)/libzds.a $(OUT_DIR)/libzusf.a $(OUT_DIR)/libztso.a $(OUT_DIR)/libzshmem.a
+$(OUT_DIR)/zoweax: $(OUT_DIR)/zowex.o $(ZCLI_OBJS) $(ZOWE_LIBS)
 	@echo 'Building zoweax'
 	$(CXX) $(CPP_BND_FLAGS_AUTH) -o $@ $^ > $*.bind.lst
+	extattr +ap $@
 	ln -sf ../c/$@ ../golang/zoweax
 	@echo 'Copied zoweax to golang/'
 
@@ -447,9 +452,6 @@ $(OUT_DIR)/zcli_%.o: zcli_%.cpp
 #
 # Misc targets
 #
-extattr:
-	extattr +ap $(OUT_DIR)/zoweax
-
 clean:
 	rm -f *.o
 	rm -f *.dbg
