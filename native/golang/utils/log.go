@@ -91,7 +91,7 @@ func PrintErrorResponse(details t.ErrorDetails, rpcId *int) {
 func InitLogger(truncate bool, verbose bool) {
 	verboseLogging = verbose
 	logsDir := filepath.Dir(os.Args[0]) + "/logs"
-	err := os.Mkdir(logsDir, 0700)
+	err := os.MkdirAll(logsDir, 0700)
 	if err != nil {
 		log.Fatalln("Failed to create logs directory:", err)
 		return
