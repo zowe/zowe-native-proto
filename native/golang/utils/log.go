@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	t "zowe-native-proto/zowed/types/common"
 )
 
@@ -81,11 +82,19 @@ func PrintErrorResponse(details t.ErrorDetails, rpcId *int) {
 // InitLogger initializes the logger
 func InitLogger(truncate bool, verbose bool) {
 	verboseLogging = verbose
+	logsDir := filepath.Dir(os.Args[0]) + "/logs"
+	err := os.Mkdir(logsDir, 0700)
+	if err != nil {
+		log.Fatalln("Failed to create logs directory:", err)
+		return
+	}
+
+	logFilePath := logsDir + "/" + filepath.Base(os.Args[0]) + ".log"
 	access := os.O_APPEND
 	if truncate {
 		access = os.O_TRUNC
 	}
-	file, err := os.OpenFile(os.Args[0]+".log", access|os.O_CREATE|os.O_WRONLY, 0644)
+	file, err := os.OpenFile(logFilePath, access|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Fatalln("Failed to initialize logger:", err)
 		return
