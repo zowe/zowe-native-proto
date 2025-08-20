@@ -64,9 +64,13 @@ func HandleReadDatasetRequest(conn *utils.StdioConn, params []byte) (result any,
 		}
 	} else {
 		pipePath := fmt.Sprintf("%s/zowe-native-proto_%d-%d-%d_fifo", os.TempDir(), os.Geteuid(), os.Getpid(), request.StreamId)
-		os.Remove(pipePath)
+		err := os.Remove(pipePath)
+		if err != nil && !os.IsNotExist(err) {
+			e = fmt.Errorf("[ReadDatasetRequest] Error deleting named pipe: %v", err)
+			return
+		}
 
-		err := syscall.Mkfifo(pipePath, 0600)
+		err = syscall.Mkfifo(pipePath, 0600)
 		if err != nil {
 			e = fmt.Errorf("[ReadDatasetRequest] Error creating named pipe: %v", err)
 			return
@@ -100,7 +104,11 @@ func HandleReadDatasetRequest(conn *utils.StdioConn, params []byte) (result any,
 
 		output := utils.YamlToMap(string(out))
 		etag = output["etag"]
-		size, _ = strconv.Atoi(output["size"])
+		size, err = strconv.Atoi(output["size"])
+		if err != nil {
+			e = fmt.Errorf("[ReadDatasetRequest] Error converting %s to number: %v", output["size"], err)
+			return
+		}
 	}
 
 	result = ds.ReadDatasetResponse{
@@ -164,9 +172,13 @@ func HandleWriteDatasetRequest(conn *utils.StdioConn, params []byte) (result any
 		}
 	} else {
 		pipePath := fmt.Sprintf("%s/zowe-native-proto_%d-%d-%d_fifo", os.TempDir(), os.Geteuid(), os.Getpid(), request.StreamId)
-		os.Remove(pipePath)
+		err := os.Remove(pipePath)
+		if err != nil && !os.IsNotExist(err) {
+			e = fmt.Errorf("[WriteDatasetRequest] Error deleting named pipe: %v", err)
+			return
+		}
 
-		err := syscall.Mkfifo(pipePath, 0600)
+		err = syscall.Mkfifo(pipePath, 0600)
 		if err != nil {
 			e = fmt.Errorf("[WriteDatasetRequest] Error creating named pipe: %v", err)
 			return
