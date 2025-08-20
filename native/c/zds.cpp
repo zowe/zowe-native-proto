@@ -219,7 +219,7 @@ int zds_write_to_dsn(ZDS *zds, const string &dsn, string &data)
   }
 
   const string dsname = "//'" + dsn + "'";
-  const string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "wb" : "w" + string(",recfm=*");
+  const string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "r+b" : "r+" + string(",recfm=*");
 
   auto *fp = fopen(dsname.c_str(), fopen_flags.c_str());
   if (nullptr == fp)
@@ -1145,7 +1145,7 @@ int zds_write_to_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, s
 
   const auto hasEncoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
   const auto codepage = string(zds->encoding_opts.codepage);
-  const auto fopen_flags = (zds->encoding_opts.data_type == eDataTypeBinary ? "wb" : "w") + string(",recfm=*");
+  const auto fopen_flags = (zds->encoding_opts.data_type == eDataTypeBinary ? "r+b" : "r+") + string(",recfm=*");
 
   FILE *fout = fopen(dsname.c_str(), fopen_flags.c_str());
   if (!fout)
