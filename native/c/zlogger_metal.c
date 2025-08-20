@@ -317,7 +317,7 @@ int ZLGINIT(const char *log_file_path, int *min_level)
   char alloc_cmd[364] = {0};
   int cmd_len = sprintf(alloc_cmd,
                         "alloc file(ZWXLOGDD) path('%.256s') pathopts(owronly,ocreat,osync) %s",
-                        logger->log_path, "pathmode(sirusr,siwusr,sirgrp) filedata(text)");
+                        logger->log_path, "pathmode(sirusr,siwusr) filedata(text)");
   if (cmd_len >= sizeof(alloc_cmd) || cmd_len < 0)
   {
     return -1;

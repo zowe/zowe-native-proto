@@ -1,4 +1,3 @@
-Language: Cpp
 # Allman-style braces
 BreakBeforeBraces: Allman
 # 2-space indentation
