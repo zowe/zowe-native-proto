@@ -60,30 +60,3 @@ int handle_console_issue(const ParseResult &result)
   }
   return rc;
 }
-
-void register_console(command_ptr root_cmd)
-{
-  // Console command group
-  auto console_cmd = command_ptr(new Command("console", "z/OS console operations"));
-  console_cmd->add_alias("cn");
-
-  // Console Issue subcommand
-  auto issue_cmd = command_ptr(new Command("issue", "issue a console command"));
-  issue_cmd->add_keyword_arg("console-name",
-                             make_aliases("--cn", "--console-name"),
-                             "extended console name", ArgType_Single, false,
-                             ArgValue(std::string("zowex")));
-  issue_cmd->add_keyword_arg("wait",
-                             make_aliases("--wait"),
-                             "wait for responses", ArgType_Flag, false,
-                             ArgValue(true));
-  issue_cmd->add_keyword_arg("timeout",
-                             make_aliases("--timeout"),
-                             "timeout in seconds", ArgType_Single, false);
-  issue_cmd->add_positional_arg("command", "command to run, e.g. 'D IPLINFO'",
-                                ArgType_Single, true);
-  issue_cmd->set_handler(handle_console_issue);
-
-  console_cmd->add_command(issue_cmd);
-  root_cmd->add_command(console_cmd);
-}

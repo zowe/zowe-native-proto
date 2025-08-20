@@ -70,12 +70,12 @@ int handle_console_issue(const ParseResult &result);
 int handle_tso_issue(const ParseResult &result);
 
 // Registration methods
-void register_console(command_ptr root_cmd);
-void register_ds(command_ptr root_cmd);
-void register_job(command_ptr root_cmd);
-void register_tso(command_ptr root_cmd);
-void register_tool(command_ptr root_cmd);
-void register_uss(command_ptr root_cmd);
+void register_console_group(Command &root_cmd);
+void register_ds_group(Command &root_cmd);
+void register_job_group(Command &root_cmd);
+void register_tso_group(Command &root_cmd);
+void register_tool_group(Command &root_cmd);
+void register_uss_group(Command &root_cmd);
 
 // Common utility methods
 int loop_dynalloc(vector<string> &list);
