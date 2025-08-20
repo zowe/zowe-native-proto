@@ -23,7 +23,6 @@
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen"
     },
-    // Use Node version 22
     {
       "name": "Debug Vitest",
       "type": "node",

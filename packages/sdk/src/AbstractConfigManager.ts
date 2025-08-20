@@ -248,7 +248,7 @@ export abstract class AbstractConfigManager {
                     const portNumber = Number.parseInt(unquotedValue, 10);
                     if (Number.isNaN(portNumber)) {
                         this.showMessage(
-                            `Invalid value for flag -${flag}. Port must be a valid number.`,
+                            `Invalid value for flag ${flag.length > 1 ? "-" : ""}-${flag}. Port must be a valid number.`,
                             MESSAGE_TYPE.ERROR,
                         );
                         return undefined;
@@ -261,7 +261,7 @@ export abstract class AbstractConfigManager {
                 // Validate if quotes are required
                 if (/\s/.test(unquotedValue) && !/^["'].*["']$/.test(value)) {
                     this.showMessage(
-                        `Invalid value for flag -${flag}. Values with spaces must be quoted.`,
+                        `Invalid value for flag ${flag.length > 1 ? "-" : ""}-${flag}. Values with spaces must be quoted.`,
                         MESSAGE_TYPE.ERROR,
                     );
                     return undefined;
