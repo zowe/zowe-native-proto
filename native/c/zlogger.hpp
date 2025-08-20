@@ -54,7 +54,7 @@ protected:
 
   auto create_logs_dir() -> bool
   {
-    if (mkdir("logs", 0750) == -1)
+    if (mkdir("logs", 0700) == -1)
     {
       if (errno != EEXIST)
       {
