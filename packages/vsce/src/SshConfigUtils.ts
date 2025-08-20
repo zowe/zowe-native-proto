@@ -154,7 +154,7 @@ export class VscePromptApi extends AbstractConfigManager {
                 if (selection) {
                     if (selection.label.startsWith(">")) {
                         resolve({
-                            label: selection.label.replace(">", "").trim(),
+                            label: selection.label.slice(1).trim(),
                             description: "Custom SSH Host",
                         });
                     } else {
