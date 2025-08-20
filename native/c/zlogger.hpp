@@ -21,13 +21,13 @@
 #include <iostream>
 #include "singleton.hpp"
 #include "zlogger_metal.h"
+#include <unistd.h>
 
 #ifdef __MVS__
 #include <sys/stat.h>
 #include <errno.h>
 #else
 #include <sys/stat.h>
-#include <unistd.h>
 #include <errno.h>
 #endif
 

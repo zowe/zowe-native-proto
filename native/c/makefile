@@ -405,7 +405,7 @@ libztso.a: $(OUT_DIRS) $(OUT_DIR)/libztso.a
 # Test CLI
 #
 # zowex: zowex.o zcn.o zcnm.o zcnm31.o zut.o zutm.o zutm31.o zjb.o zjbm.o zssi31.o zjbm31.o zds.o
-$(OUT_DIR)/zowex: $(OUT_DIR)/zowex.o $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(OUT_DIR)/libzjb.a $(OUT_DIR)/libzds.a $(OUT_DIR)/libzusf.a $(OUT_DIR)/libztso.a $(OUT_DIR)/libzshmem.a
+$(OUT_DIR)/zowex: $(OUT_DIR)/zowex.o $(OUT_DIR)/zcli.o $(OUT_DIR)/zcli_ds.o $(OUT_DIR)/zcli_job.o $(OUT_DIR)/zcli_uss.o $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(OUT_DIR)/libzjb.a $(OUT_DIR)/libzds.a $(OUT_DIR)/libzusf.a $(OUT_DIR)/libztso.a $(OUT_DIR)/libzshmem.a
 	@echo 'Building zowex'
 	$(CXX) $(CPP_BND_FLAGS) -o $@ $^ > $*.bind.lst
 	ln -sf ../c/$@ ../golang/zowex
@@ -413,7 +413,7 @@ $(OUT_DIR)/zowex: $(OUT_DIR)/zowex.o $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(O
 
 zowex: $(OUT_DIRS) $(OUT_DIR)/zowex
 
-$(OUT_DIR)/zoweax: $(OUT_DIR)/zowex.o $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(OUT_DIR)/libzjb.a $(OUT_DIR)/libzds.a $(OUT_DIR)/libzusf.a $(OUT_DIR)/libztso.a $(OUT_DIR)/libzshmem.a
+$(OUT_DIR)/zoweax: $(OUT_DIR)/zowex.o $(OUT_DIR)/zcli.o $(OUT_DIR)/zcli_ds.o $(OUT_DIR)/zcli_job.o $(OUT_DIR)/zcli_uss.o $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(OUT_DIR)/libzjb.a $(OUT_DIR)/libzds.a $(OUT_DIR)/libzusf.a $(OUT_DIR)/libztso.a $(OUT_DIR)/libzshmem.a
 	@echo 'Building zoweax'
 	$(CXX) $(CPP_BND_FLAGS_AUTH) -o $@ $^ > $*.bind.lst
 	ln -sf ../c/$@ ../golang/zoweax
@@ -431,6 +431,22 @@ $(OUT_DIR)/zowex.o: zowex.cpp
 		echo "package.json not found, building without version"; \
 		$(CXX) $(CPP_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@; \
 	fi
+
+$(OUT_DIR)/zcli.o: zcli.cpp
+	@echo 'Building $(OUT_DIR)/zcli.o'
+	$(CXX) $(CPP_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
+
+$(OUT_DIR)/zcli_ds.o: zcli_ds.cpp
+	@echo 'Building $(OUT_DIR)/zcli_ds.o'
+	$(CXX) $(CPP_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
+
+$(OUT_DIR)/zcli_job.o: zcli_job.cpp
+	@echo 'Building $(OUT_DIR)/zcli_job.o'
+	$(CXX) $(CPP_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
+
+$(OUT_DIR)/zcli_uss.o: zcli_uss.cpp
+	@echo 'Building $(OUT_DIR)/zcli_uss.o'
+	$(CXX) $(CPP_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
 
 #
 # TODO(Kelosky): makefile for chdsect (must have ADATA in data set)
