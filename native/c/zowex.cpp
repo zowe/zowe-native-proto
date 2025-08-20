@@ -43,9 +43,6 @@ using namespace std;
 int handle_version(const ParseResult &result);
 int handle_root_command(const ParseResult &result);
 
-int loop_dynalloc(vector<string> &list);
-int free_dynalloc_dds(vector<string> &list);
-
 bool should_quit(const std::string &input);
 int run_interactive_mode(const std::string &shm_file_path);
 
@@ -126,7 +123,6 @@ int handle_root_command(const ParseResult &result)
   }
 
   // If no interactive mode and no subcommands were invoked, show help
-
   result.m_command->generate_help(std::cout);
   return 0;
 }
