@@ -6,7 +6,7 @@
     "all": "npm run z:rebuild && concurrently \"npm run z:artifacts\" \"npm run build\"",
     "build": "npm run build --workspaces && npm run license",
     "build:all": "npm run build:types && npm run build",
-    "build:types": "cd native/golang && go run github.com/gzuidhof/tygo generate && npm run license",
+    "build:types": "cd native/golang/tools && go run github.com/gzuidhof/tygo generate && npm run license packages/sdk/src/doc/gen",
     "clean": "npm run clean --workspaces",
     "download": "gh run download --name zowe-server-bin && node scripts/moveArtifacts.js",
     "license": "node scripts/updateLicenses.js",
@@ -55,6 +55,7 @@
     "rimraf": "^6.0.1",
     "ssh2": "^1.16.0",
     "tsx": "^4.19.3",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "jest-mock-vscode": "^4.6.0"
   }
 }
