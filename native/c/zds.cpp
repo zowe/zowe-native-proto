@@ -1195,7 +1195,6 @@ int zds_write_to_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, s
   }
 
   string dsname = "//'" + dsn + "'";
-  const bool is_member = dsname.find('(') != string::npos;
   if (strlen(zds->ddname) > 0)
   {
     dsname = "//DD:" + string(zds->ddname);
