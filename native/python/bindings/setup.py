@@ -17,6 +17,9 @@ zusf_py_module = Extension("_zusf_py",
                            sources=["zusf_py_wrap.cxx", "zusf_py.cpp", f"{C_PATH}/zusf.cpp", f"{C_PATH}/zut.cpp"],
                            language="c++",
                            include_dirs=[chdsect],
+                           extra_objects=[
+                               f"{swig_build_path}/zshmem.o",
+                           ],
                            libraries=["zut"],
                            library_dirs=[build_out_path],
                            )

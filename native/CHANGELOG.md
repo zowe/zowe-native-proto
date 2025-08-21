@@ -4,6 +4,50 @@ All notable changes to the native code for "zowe-native-proto" are documented in
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+
+- `c`: Fixed issue where the `zowex ds lm` command always returned non-zero exit code for warnings and ignored the `--no-warn` flag. [#498](https://github.com/zowe/zowe-native-proto/issues/498)
+- `c`: Fixed issue where the `zowex job submit-jcl` command submitted the given JCL contents twice, causing two jobs to be created. [#508](https://github.com/zowe/zowe-native-proto/issues/508)
+- `c`: Implemented a logger for Metal C and C++ source code for diagnostics, debug information, and printing dumps. When enabled, log messages are written to a log file named `zowex.log` in a new `logs` folder, relative to the location of the `zowex` binary. [#107](https://github.com/zowe/zowe-native-proto/issues/107)
+- `golang`: Moved location of log file inside "logs" directory to be consistent with `zowex`. [#514](https://github.com/zowe/zowe-native-proto/pull/514)
+- `c`: Fixed issue where the `zowex ds write` command automatically created a data set when it did not exist. [#292](https://github.com/zowe/zowe-native-proto/issues/292)
+
+## `0.1.8`
+
+- `native`: Added default value for `--recfm` so that when no options are specified the data set will not contain errors. [#493](https://github.com/zowe/zowe-native-proto/issues/493)
+- Fixed issue where special characters were detected as invalid characters when provided to `zowex` commands. [#491](https://github.com/zowe/zowe-native-proto/issues/491)
+- `native`: Increase default max returned entries in `zowex ds list` from 100 to 5000. This helps with [#487](https://github.com/zowe/zowe-native-proto/issues/487) but does not fix it. In the future, users should be able to specify on the Zowe Clients the max number of entries.
+
+## `0.1.7`
+
+- Updated CLI parser `find_kw_arg_bool` function to take in an optional boolean `check_for_negation` that, when `true`, looks for a negated option value. [#485](https://github.com/zowe/zowe-native-proto/issues/485)
+- Fixed issue where listing data set members did not check for the negated option value. Now, the command handler passes the `check_for_negation` option to the `find_kw_arg_bool` function to check the value of the negated, equivalent option. [#485](https://github.com/zowe/zowe-native-proto/issues/485)
+- `golang`: Fixed inconsistent type of the `data` property between the `ReadDatasetResponse` and `ReadFileResponse` types. [#488](https://github.com/zowe/zowe-native-proto/pull/488)
+
+## `0.1.6`
+
+- `native`: Fixed regression where data set download operations would fail due to a content length mismatch, due to the content length being printed as hexadecimal rather than decimal. [#482](https://github.com/zowe/zowe-native-proto/issues/482)
+
+## `0.1.5`
+
+- `native`: Added completion code for `POST` so that users of the library code may determine if a timeout has occurred.
+- `native`: Added `timeout` for `zowex console issue` to prevent indefinite hang when no messages are returned. [#470](https://github.com/zowe/zowe-native-proto/pull/470)
+- `native`: Added `contentLen` property to RPC responses for reading/writing data sets and USS files. [#358](https://github.com/zowe/zowe-native-proto/pull/358)
+- `native`: Fixed file tag being prioritized over user-specified codepage when reading/writing USS files. [#467](https://github.com/zowe/zowe-native-proto/pull/467)
+- `native`: Fixed issue where `max-entries` argument was incorrectly parsed as a string rather than an integer. [#469](https://github.com/zowe/zowe-native-proto/issues/469)
+- `native`: The `zowex` root command now has a command handler to make adding new options easier. [#468](https://github.com/zowe/zowe-native-proto/pull/468)
+
+## `0.1.4`
+
+- `c`: Fixed an issue where the CLI help text showed the `[options]` placeholder in the usage example before the positional arguments, which is not a supported syntax. Now, the usage text shows the `[options]` placeholder after the positional arguments for the given command.
+- `c`: Added `zowex version` command to print the latest build information for the `zowex` executable. The version output contains the build date and the package version. [#366](https://github.com/zowe/zowe-native-proto/issues/366)
+- `c`: Added `full_status` variable from job output to the CSV output for the `zowex job view-status --rfc` command. [#450](https://github.com/zowe/zowe-native-proto/pull/450)
+- `golang`: If the `zowed` process abnormally terminates due to a SIGINT or SIGTERM signal, the worker processes are now gracefully terminated. [#372](https://github.com/zowe/zowe-native-proto/issues/372)
+- `c`: Updated `zowex uss list` command to provide same attributes as output from the `ls -l` UNIX command when the `--long` flag is specified. [#346](https://github.com/zowe/zowe-native-proto/issues/346)
+- `c`: Updated `zowex uss list` command to match format of the `ls -l` UNIX command. [#383](https://github.com/zowe/zowe-native-proto/issues/383)
+- `c`: Added `response-format-csv` option to the `zowex uss list` command to print the file attributes in CSV format. [#346](https://github.com/zowe/zowe-native-proto/issues/346)
+- `golang`: Added additional data points to the USS item response for the `HandleListFilesRequest` command handler. [#346](https://github.com/zowe/zowe-native-proto/issues/346)
+
 ## `0.1.3`
 
 - `c`: Fixed S0C4 where supervisor state, key 4 caller invokes `zcn_put` while running in SUPERVISOR state. [#392](https://github.com/zowe/zowe-native-proto/issues/392)

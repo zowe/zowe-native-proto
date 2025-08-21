@@ -10,7 +10,7 @@
  */
 
 import { type SshSession, ZosUssProfile } from "@zowe/zos-uss-for-zowe-sdk";
-import type { MainframeInteraction, imperative } from "@zowe/zowe-explorer-api";
+import type { imperative, MainframeInteraction } from "@zowe/zowe-explorer-api";
 import * as vscode from "vscode";
 import { type ZSshClient, ZSshUtils } from "zowe-native-proto-sdk";
 import { SshClientCache } from "../SshClientCache";

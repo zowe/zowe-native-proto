@@ -11,15 +11,14 @@
 
 import * as fs from "node:fs";
 import type { IHandlerParameters } from "@zowe/imperative";
-import { B64String, type ZSshClient } from "zowe-native-proto-sdk";
+import type { ZSshClient } from "zowe-native-proto-sdk";
 import type { ds } from "zowe-native-proto-sdk/src/doc";
 import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class UploadFileToDataSetHandler extends SshBaseHandler {
     public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<ds.WriteDatasetResponse> {
-        const data = B64String.encode(fs.readFileSync(params.arguments.file));
         const response = await client.ds.writeDataset({
-            data,
+            stream: fs.createReadStream(params.arguments.file),
             dsname: params.arguments.dataSet,
             encoding: params.arguments.binary ? "binary" : params.arguments.encoding,
         });

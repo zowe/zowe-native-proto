@@ -64,7 +64,7 @@ std::string read_uss_file(const std::string &file, const std::string &codepage)
   return response;
 }
 
-void read_uss_file_streamed(const std::string &file, const std::string &pipe, const std::string &codepage)
+void read_uss_file_streamed(const std::string &file, const std::string &pipe, const std::string &codepage, size_t *content_len)
 {
   ZUSF ctx = {0};
 
@@ -74,7 +74,7 @@ void read_uss_file_streamed(const std::string &file, const std::string &pipe, co
     strncpy(ctx.encoding_opts.codepage, codepage.c_str(), sizeof(ctx.encoding_opts.codepage) - 1);
   }
 
-  if (zusf_read_from_uss_file_streamed(&ctx, file, pipe) != 0)
+  if (zusf_read_from_uss_file_streamed(&ctx, file, pipe, content_len) != 0)
   {
     std::string error_msg = ctx.diag.e_msg;
     throw std::runtime_error(error_msg);
@@ -106,7 +106,7 @@ std::string write_uss_file(const std::string &file, const std::string &data, con
   return std::string(ctx.etag);
 }
 
-std::string write_uss_file_streamed(const std::string &file, const std::string &pipe, const std::string &codepage, const std::string &etag)
+std::string write_uss_file_streamed(const std::string &file, const std::string &pipe, const std::string &codepage, const std::string &etag, size_t *content_len)
 {
   ZUSF ctx = {0};
 
@@ -121,7 +121,7 @@ std::string write_uss_file_streamed(const std::string &file, const std::string &
     strncpy(ctx.etag, etag.c_str(), sizeof(ctx.etag) - 1);
   }
 
-  if (zusf_write_to_uss_file_streamed(&ctx, file, pipe) != 0)
+  if (zusf_write_to_uss_file_streamed(&ctx, file, pipe, content_len) != 0)
   {
     std::string error_msg = ctx.diag.e_msg;
     throw std::runtime_error(error_msg);

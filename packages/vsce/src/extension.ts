@@ -9,11 +9,11 @@
  *
  */
 
-import { ZoweVsCodeExtension, imperative } from "@zowe/zowe-explorer-api";
+import { imperative, ZoweVsCodeExtension } from "@zowe/zowe-explorer-api";
 import * as vscode from "vscode";
+import { SshCommandApi, SshJesApi, SshMvsApi, SshUssApi } from "./api";
 import { SshClientCache } from "./SshClientCache";
 import { initLogger, registerCommands } from "./Utilities";
-import { SshCommandApi, SshJesApi, SshMvsApi, SshUssApi } from "./api";
 
 // This method is called when your extension is activated
 export function activate(context: vscode.ExtensionContext) {

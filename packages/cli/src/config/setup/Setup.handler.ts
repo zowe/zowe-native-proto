@@ -14,18 +14,18 @@ import {
     type IConfigLayer,
     type IHandlerParameters,
     type IHandlerResponseApi,
-    type IProfileTypeConfiguration,
     ImperativeConfig,
     ImperativeError,
+    type IProfileTypeConfiguration,
     ProfileInfo,
     TextUtils,
 } from "@zowe/imperative";
 import * as termkit from "terminal-kit";
 import {
     AbstractConfigManager,
+    type inputBoxOpts,
     MESSAGE_TYPE,
     type ProgressCallback,
-    type inputBoxOpts,
     type qpItem,
     type qpOpts,
 } from "zowe-native-proto-sdk";
@@ -155,7 +155,7 @@ export class CliPromptApi extends AbstractConfigManager {
         });
     }
 
-    protected async withProgress<T>(message: string, task: (progress: ProgressCallback) => Promise<T>): Promise<T> {
+    protected async withProgress<T>(_message: string, task: (progress: ProgressCallback) => Promise<T>): Promise<T> {
         return await task(() => {});
     }
 
@@ -189,7 +189,7 @@ export class CliPromptApi extends AbstractConfigManager {
                 selectedIndex++;
             }
 
-            this.term.getCursorLocation((error, x, y) => {
+            this.term.getCursorLocation((error, _x, y) => {
                 if (error) {
                     console.error("Error getting cursor location:", error);
                     resolve(undefined);

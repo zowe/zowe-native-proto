@@ -21,6 +21,7 @@ interface IConfig {
     sshProfile: string | IProfile;
     deployDir: string;
     goBuildEnv?: string;
+    preBuildCmd?: string;
 }
 
 const localDeployDir = "./../native";
@@ -303,6 +304,7 @@ async function retrieve(connection: Client, files: string[], targetDir: string) 
 async function upload(connection: Client) {
     return new Promise<void>((finish) => {
         const spinner = startSpinner("Deploying files...");
+
         const dirs = getDirs();
         const files = getAllServerFiles();
 
@@ -325,13 +327,19 @@ async function upload(connection: Client) {
                 });
             }
 
-            const uploads = [];
+            const pendingUploads = [];
+            if (args[1] == null) {
+                pendingUploads.push(
+                    uploadFile(sftpcon, path.resolve(__dirname, "../package.json"), `${deployDirs.root}/package.json`),
+                );
+            }
             for (let i = 0; i < files.length; i++) {
                 const from = path.resolve(__dirname, `${localDeployDir}/${files[i]}`);
                 const to = `${deployDirs.root}/${files[i]}`;
-                uploads.push(uploadFile(sftpcon, from, to));
+                pendingUploads.push(uploadFile(sftpcon, from, to));
             }
-            await Promise.all(uploads);
+            await Promise.all(pendingUploads);
+
             stopSpinner(spinner, "Deploy complete!");
             finish();
         });
@@ -420,29 +428,34 @@ async function bin(connection: Client) {
     });
 }
 
-async function build(connection: Client, goBuildEnv?: string) {
+async function build(connection: Client, { goBuildEnv, preBuildCmd }: IConfig) {
+    preBuildCmd = preBuildCmd ? `${preBuildCmd} && ` : "";
     console.log("Building native/c ...");
     const response = await runCommandInShell(
         connection,
-        `cd ${deployDirs.cDir} && make ${DEBUG_MODE() ? "-DBuildType=DEBUG" : ""}\n`,
+        `${preBuildCmd}cd ${deployDirs.cDir} && make ${DEBUG_MODE() ? "-DBuildType=DEBUG" : ""}\n`,
     );
     DEBUG_MODE() && console.log(response);
     console.log("Building native/golang ...");
     console.log(
         await runCommandInShell(
             connection,
-            `cd ${deployDirs.goDir} &&${goBuildEnv ? ` ${goBuildEnv}` : ""} go build${DEBUG_MODE() ? "" : ' -ldflags="-s -w"'}\n`,
+            `${preBuildCmd}cd ${deployDirs.goDir} &&${goBuildEnv ? ` ${goBuildEnv}` : ""} go build${DEBUG_MODE() ? "" : ' -ldflags="-s -w"'}\nexit $?\n`,
             true,
         ),
     );
     console.log("Build complete!");
 }
 
-async function buildPython(connection: Client) {
-    console.log("Building native/python ...");
-    const response = await runCommandInShell(connection, `cd ${deployDirs.pythonDir} && make\n`);
-    DEBUG_MODE() && console.log(response);
-    console.log("Build complete!");
+async function make(connection: Client, inDir?: string) {
+    const pwd = inDir ?? deployDirs.cDir;
+    const targets = args.filter((arg, idx) => idx > 0 && !arg.startsWith("--")).join(" ");
+    console.log(`Running "make ${targets || "all"}"${inDir ? ` in ${pwd}` : ""}...`);
+    const response = await runCommandInShell(
+        connection,
+        `cd ${pwd} && make ${targets} ${DEBUG_MODE() ? "-DBuildType=DEBUG" : ""}\n`,
+    );
+    console.log(response);
 }
 
 async function test(connection: Client) {
@@ -451,13 +464,6 @@ async function test(connection: Client) {
         connection,
         `cd ${deployDirs.cTestDir} && _CEE_RUNOPTS="TRAP(ON,NOSPIE)" ./build-out/ztest_runner ${args[1] ?? ""} \n`,
     );
-    console.log(response);
-    console.log("Testing complete!");
-}
-
-async function testPython(connection: Client) {
-    console.log("Testing native/python ...");
-    const response = await runCommandInShell(connection, `cd ${deployDirs.pythonTestDir} && make\n`);
     console.log(response);
     console.log("Testing complete!");
 }
@@ -481,14 +487,14 @@ async function rmdir(connection: Client) {
 }
 
 async function watch(connection: Client) {
-    function cTask(err: Error, stream: ClientChannel, resolve: any) {
+    function makeTask(err: Error, stream: ClientChannel, resolve: any, inDir?: string) {
         if (err) {
             console.error("Failed to start shell:", err);
             resolve();
             return;
         }
 
-        const cmd = `cd ${deployDirs.cDir}\nmake 1> /dev/null\nexit\n`;
+        const cmd = `cd ${inDir ?? deployDirs.cDir}\nmake 1> /dev/null\nexit\n`;
         stream.write(cmd);
 
         let errText = "";
@@ -564,10 +570,13 @@ async function watch(connection: Client) {
                         connection.shell(false, (err, stream) => {
                             // If the uploaded file is in the `c` directory, run `make`
                             if (localPath.split(path.sep)[0] === "c") {
-                                cTask(err, stream, resolve);
+                                makeTask(err, stream, resolve);
                             } else if (localPath.split(path.sep)[0] === "golang") {
                                 // Run `go build` when a Golang file has changed
                                 golangTask(err, stream, resolve);
+                            } else if (localPath.split(path.sep)[0] === "python") {
+                                // Run `make` when a Python file has changed
+                                makeTask(err, stream, resolve, deployDirs.pythonDir);
                             } else {
                                 console.log();
                                 resolve();
@@ -582,7 +591,7 @@ async function watch(connection: Client) {
         });
     }
 
-    const watcher = chokidar.watch(["c/makefile", "c/**/*.{c,cpp,h,hpp,s,sh}", "golang/**"], {
+    const watcher = chokidar.watch(["c/makefile", "c/**/*.{c,cpp,h,hpp,s,sh}", "golang/**", "python/**"], {
         cwd: path.resolve(__dirname, localDeployDir),
         ignoreInitial: true,
         persistent: true,
@@ -733,8 +742,8 @@ async function main() {
         cDir: `${config.deployDir}/c`,
         cTestDir: `${config.deployDir}/c/test`,
         goDir: `${config.deployDir}/golang`,
-        pythonDir: `${config.deployDir}/python`,
-        pythonTestDir: `${config.deployDir}/python/test`,
+        pythonDir: `${config.deployDir}/python/bindings`,
+        pythonTestDir: `${config.deployDir}/python/bindings/test`,
     };
     const sshClient = await buildSshClient(config.sshProfile as IProfile);
 
@@ -747,13 +756,13 @@ async function main() {
                 await bin(sshClient);
                 break;
             case "build":
-                await build(sshClient, config.goBuildEnv);
+                await build(sshClient, config);
                 break;
             case "build:python":
-                await buildPython(sshClient);
+                await make(sshClient, deployDirs.pythonDir);
                 break;
             case "test:python":
-                await testPython(sshClient);
+                await make(sshClient, deployDirs.pythonTestDir);
                 break;
             case "clean":
                 await clean(sshClient);
@@ -767,12 +776,15 @@ async function main() {
             case "get-listings":
                 await getListings(sshClient);
                 break;
+            case "make":
+                await make(sshClient);
+                break;
             case "package":
                 await artifacts(sshClient, true);
                 break;
             case "rebuild":
                 await upload(sshClient);
-                await build(sshClient, config.goBuildEnv);
+                await build(sshClient, config);
                 break;
             case "test":
                 await test(sshClient);

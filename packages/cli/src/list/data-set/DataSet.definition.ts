@@ -20,7 +20,7 @@ export const ListDataSetDefinition: ICommandDefinition = {
     description:
         "List all data sets that match a DSLEVEL pattern (see help below). \n" +
         "The following values can be used with the --response-format-filter (--rff) argument to " +
-        "display more data from the data sets:" +
+        "display more data from the data sets: " +
         "volume, unit, referred, ext, used, recfm, lrecl, blksz, dsorg, and dsname.",
     examples: [
         {
@@ -32,7 +32,6 @@ export const ListDataSetDefinition: ICommandDefinition = {
         {
             name: "pattern",
             description:
-                // biome-ignore lint/style/useTemplate: We want to prevent having a 500 character line : )
                 "The pattern or patterns to match data sets against. Also known as 'DSLEVEL', it " +
                 "is somewhat similar to the concept of a 'glob' (but not identical)." +
                 " The following special sequences can be used in the pattern:\n" +

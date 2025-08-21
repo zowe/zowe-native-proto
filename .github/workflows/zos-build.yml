@@ -8,6 +8,18 @@ on:
   push:
     branches:
       - main
+  workflow_call:
+    inputs:
+      version:
+        required: false
+        type: string
+    secrets:
+      SSH_MARIST_RACF_HOST:
+        required: true
+      SSH_MARIST_RACF_PASSWORD:
+        required: true
+      SSH_MARIST_USERNAME:
+        required: true
 
 permissions:
   pull-requests: write
@@ -17,7 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     concurrency:
       group: ${{ github.workflow }}
-    timeout-minutes: 10
+    timeout-minutes: 20
 
     steps:
       - uses: actions/checkout@v4
@@ -39,11 +51,16 @@ jobs:
                 user: "${{ secrets.SSH_MARIST_USERNAME }}"
                 password: "${{ secrets.SSH_MARIST_RACF_PASSWORD }}"
               deployDir: "/ZOWE/tmp/zowe-native-proto"
-              goBuildEnv: "GOCACHE=/ZOWE/tmp/.go-cache GOTMPDIR=/ZOWE/tmp"
+              goBuildEnv: 'GOCACHE=/ZOWE/tmp/.go-cache GOINSECURE="*" GOPATH=/ZOWE/tmp/go-pkg GOPROXY=direct GOTMPDIR=/ZOWE/tmp'
+              preBuildCmd: ". ~/.custom_profile"
           EOF
 
       - name: Install Dependencies
         run: npm ci --workspaces=false
+
+      - name: Set Build Version
+        if: ${{ inputs.version }}
+        run: npm pkg set version=${{ inputs.version }}
 
       - name: Build on z/OS
         uses: nick-fields/retry@v3
@@ -51,7 +68,7 @@ jobs:
           command: npm run z:all
           max_attempts: 3
           retry_on_exit_code: 11 # Ignore transient SIGSEGV error on Go build
-          timeout_minutes: 10
+          timeout_minutes: 15
 
       - uses: actions/upload-artifact@v4
         with:

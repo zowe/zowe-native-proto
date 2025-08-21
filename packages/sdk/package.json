@@ -1,12 +1,13 @@
 {
   "name": "zowe-native-proto-sdk",
-  "version": "0.1.3",
+  "version": "0.1.8",
   "main": "lib/index.js",
   "scripts": {
     "build": "tsc -b",
     "clean": "tsc -b --clean",
-    "lint": "npx @biomejs/biome check --write src test",
-    "test": "c8 tsx --experimental-test-module-mocks --test test/**/*.test.ts",
+    "lint": "npx @biomejs/biome check --write src tests",
+    "test": "vitest run --coverage",
+    "test:ui": "vitest --ui --coverage",
     "typedoc": "typedoc src/index.ts --out ../../doc/typedoc",
     "watch": "tsc -b -w"
   },

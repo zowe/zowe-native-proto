@@ -10,18 +10,33 @@
  */
 
 import * as fs from "node:fs";
-import type { IHandlerParameters } from "@zowe/imperative";
-import { B64String, type ZSshClient, type uss } from "zowe-native-proto-sdk";
+import { type IHandlerParameters, type ITaskWithStatus, TaskStage } from "@zowe/imperative";
+import type { uss, ZSshClient } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class UploadFileToUssFileHandler extends SshBaseHandler {
     public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<uss.WriteFileResponse> {
-        const data = B64String.encode(fs.readFileSync(params.arguments.file));
-        const response = await client.uss.writeFile({
-            data,
-            fspath: params.arguments.ussFile,
-            encoding: params.arguments.binary ? "binary" : params.arguments.encoding,
-        });
+        const task: ITaskWithStatus = {
+            percentComplete: 0,
+            statusMessage: "Uploading...",
+            stageName: TaskStage.IN_PROGRESS,
+        };
+        params.response.progress.startBar({ task });
+        const response = await client.uss.writeFile(
+            {
+                stream: fs.createReadStream(params.arguments.file),
+                fspath: params.arguments.ussFile,
+                encoding: params.arguments.binary ? "binary" : params.arguments.encoding,
+                contentLen: fs.statSync(params.arguments.file).size,
+            },
+            (percent: number): void => {
+                task.percentComplete = percent;
+            },
+        );
+
+        task.stageName = TaskStage.COMPLETE;
+        params.response.progress.endBar();
+
         const uploadSource: string = `local file '${params.arguments.file}'`;
         const successMsg = params.response.console.log(
             "Uploaded from %s to %s ",

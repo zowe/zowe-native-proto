@@ -16,7 +16,7 @@ import type { MainframeInteraction } from "@zowe/zowe-explorer-api";
 import { SshCommonApi } from "./SshCommonApi";
 
 export class SshCommandApi extends SshCommonApi implements MainframeInteraction.ICommand {
-    public async issueTsoCommandWithParms?(command: string, parms?: IStartTsoParms): Promise<IIssueResponse> {
+    public async issueTsoCommandWithParms?(_command: string, _parms?: IStartTsoParms): Promise<IIssueResponse> {
         throw new Error("Method not implemented.");
     }
     public async issueMvsCommand?(command: string, consoleName?: string): Promise<IConsoleResponse> {
@@ -39,7 +39,7 @@ export class SshCommandApi extends SshCommonApi implements MainframeInteraction.
             };
         }
     }
-    public async issueUnixCommand?(command: string, cwd: string, sshSession?: SshSession): Promise<string> {
+    public async issueUnixCommand?(_command: string, _cwd: string, _sshSession?: SshSession): Promise<string> {
         throw new Error("Method not implemented.");
     }
     public sshProfileRequired?(): boolean {

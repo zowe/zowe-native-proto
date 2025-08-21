@@ -77,7 +77,7 @@ STIMERM_MODEL(stimerm_model); // make this copy in static storage
       " STIMERM SET,BINTVL=(%2),"                             \
       "WAIT=NO,"                                              \
       "ID=%1,"                                                \
-      "PARM=(%3),"                                            \
+      "PARM=%3,"                                              \
       "EXIT=(%4),"                                            \
       "MF=(E,%0)                                          \n" \
       "*                                                  \n" \
@@ -90,7 +90,7 @@ STIMERM_MODEL(stimerm_model); // make this copy in static storage
       " SYSSTATE POP    Restore SYSSTATE                  \n" \
       "*                                                    " \
       : "+m"(plist), "=m"(id)                                 \
-      : "r"(time), "r"(parm), "r"(exit)                       \
+      : "r"(time), "m"(parm), "r"(exit)                       \
       : "r0", "r1", "r2", "r14", "r15");
 #else
 #define STIMERM_SET(time, parm, exit, id, plist)
@@ -130,16 +130,18 @@ STIMERM_MODEL(stimerm_model); // make this copy in static storage
 #endif // __IBM_METAL__
 
 #if defined(__IBM_METAL__)
-#define ECB_POST(ecb)                                         \
+#define ECB_POST(ecb, code)                                   \
   __asm(                                                      \
       "*                                                  \n" \
-      " POST %0                                           \n" \
+      " L    15,%1                                        \n" \
+      "*                                                  \n" \
+      " POST %0,(15)                                      \n" \
       "*                                                    " \
       : "+m"(*ecb)                                            \
-      :                                                       \
+      : "m"(code)                                             \
       : "r0", "r1", "r14", "r15");
 #else
-#define ECB_POST(ecb)
+#define ECB_POST(ecb, code)
 #endif // __IBM_METAL__
 
 #if defined(__IBM_METAL__)
@@ -168,9 +170,9 @@ STIMERM_MODEL(stimerm_model); // make this copy in static storage
 #define ECBS_WAIT(count, list)
 #endif // __IBM_METAL__
 
-static void ecb_post(ECB *ecb)
+static void ecb_post(ECB *ecb, int code)
 {
-  ECB_POST(ecb);
+  ECB_POST(ecb, code);
 }
 
 static void ecb_wait(ECB *ecb)
@@ -225,9 +227,9 @@ static void time_wait(unsigned int interval)
   return;
 }
 
-typedef void (*zcli_stimer)(void *);
+typedef void (*PTR32 zcli_stimer)(void *PTR32);
 // NOTE(Kelosky): seems unworkable in LE, should use LE timer equivalent
-static void timer(unsigned int time, zcli_stimer cb, void *parameter)
+static void timer(unsigned int time, zcli_stimer cb, void *PTR32 parameter)
 {
   int id = 0;                        // TODO(Kelosky): return & allow cancel by
   STIMERM_MODEL(dsa_stimerm_model);  // stack var

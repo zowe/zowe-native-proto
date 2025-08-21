@@ -30,13 +30,19 @@ type ReadFileResponse struct {
 	// Remote file path
 	Path string `json:"fspath"`
 	// File contents (omitted if streaming)
-	Data *[]byte `json:"data,omitempty" tstype:"B64String"`
+	Data *[]byte `json:"data" tstype:"B64String"`
+	// Length of file contents in bytes (only used for streaming)
+	ContentLen *int `json:"contentLen,omitempty"`
 }
 
 type WriteFileResponse struct {
 	GenericFileResponse `tstype:",extends"`
-	Etag                string `json:"etag"`
-	Created             bool   `json:"created"`
+	// Returned e-tag for the file
+	Etag string `json:"etag"`
+	// Whether new file was created
+	Created bool `json:"created"`
+	// Length of file contents in bytes (only used for streaming)
+	ContentLen *int `json:"contentLen,omitempty"`
 }
 
 type ListFilesResponse struct {

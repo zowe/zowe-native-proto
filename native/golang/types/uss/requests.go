@@ -17,7 +17,12 @@ type ListFilesRequest struct {
 	common.CommandRequest `tstype:",extends"`
 	Command               string `json:"command" tstype:"\"listFiles\""`
 	// Directory to list files for
-	Path               string `json:"fspath"`
+	Path string `json:"fspath"`
+	// Whether to include hidden files
+	All bool `json:"all,omitempty"`
+	// Whether to return the long format with all attributes
+	Long bool `json:"long,omitempty"`
+	// List options
 	common.ListOptions `tstype:",extends"`
 }
 
@@ -45,6 +50,8 @@ type WriteFileRequest struct {
 	Data string `json:"data,omitempty" tstype:"B64String"`
 	// Stream to read contents from
 	StreamId int `json:"stream,omitempty" tstype:"Readable"`
+	// Length of file contents in bytes (only used for streaming)
+	ContentLen *int `json:"contentLen,omitempty"`
 }
 
 type CreateFileRequest struct {

@@ -27,6 +27,7 @@ type StdioConn struct {
 	Stdout       io.ReadCloser
 	Stderr       io.ReadCloser
 	LastExitCode int
+	SharedMem    []byte
 }
 
 func (conn *StdioConn) ExecCmd(args []string) (stdout []byte, stderr error) {
@@ -60,7 +61,11 @@ func readUntilEot(reader *bufio.Reader, data chan<- []byte) {
 			_, _ = reader.Discard(1)
 			break
 		}
-		line, _ := reader.ReadBytes('\n')
+		line, err := reader.ReadBytes('\n')
+		if err != nil {
+			LogError("Error reading from stdio pipe: %v", err)
+			break
+		}
 		tempData = append(tempData, line...)
 	}
 

@@ -17,6 +17,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -41,6 +42,7 @@ func HandleReadDatasetRequest(conn *utils.StdioConn, params []byte) (result any,
 
 	var etag string
 	var data []byte
+	var size int
 	if request.StreamId == 0 {
 		args = append(args, "--rfb")
 		out, err := conn.ExecCmd(args)
@@ -59,9 +61,13 @@ func HandleReadDatasetRequest(conn *utils.StdioConn, params []byte) (result any,
 		}
 	} else {
 		pipePath := fmt.Sprintf("%s/zowe-native-proto_%d-%d-%d_fifo", os.TempDir(), os.Geteuid(), os.Getpid(), request.StreamId)
-		os.Remove(pipePath)
+		err := os.Remove(pipePath)
+		if err != nil && !os.IsNotExist(err) {
+			e = fmt.Errorf("[ReadDatasetRequest] Error deleting named pipe: %v", err)
+			return
+		}
 
-		err := syscall.Mkfifo(pipePath, 0600)
+		err = syscall.Mkfifo(pipePath, 0600)
 		if err != nil {
 			e = fmt.Errorf("[ReadDatasetRequest] Error creating named pipe: %v", err)
 			return
@@ -93,14 +99,21 @@ func HandleReadDatasetRequest(conn *utils.StdioConn, params []byte) (result any,
 			return
 		}
 
-		etag = strings.TrimRight(string(out), "\n")
+		output := utils.YamlToMap(string(out))
+		etag = output["etag"]
+		size, err = strconv.Atoi(output["size"])
+		if err != nil {
+			e = fmt.Errorf("[ReadDatasetRequest] Error converting %s to number: %v", output["size"], err)
+			return
+		}
 	}
 
 	result = ds.ReadDatasetResponse{
-		Encoding: request.Encoding,
-		Etag:     etag,
-		Dataset:  request.Dsname,
-		Data:     data,
+		Encoding:   request.Encoding,
+		Etag:       etag,
+		Dataset:    request.Dsname,
+		Data:       &data,
+		ContentLen: &size,
 	}
 	return
 }
@@ -153,9 +166,13 @@ func HandleWriteDatasetRequest(conn *utils.StdioConn, params []byte) (result any
 		}
 	} else {
 		pipePath := fmt.Sprintf("%s/zowe-native-proto_%d-%d-%d_fifo", os.TempDir(), os.Geteuid(), os.Getpid(), request.StreamId)
-		os.Remove(pipePath)
+		err := os.Remove(pipePath)
+		if err != nil && !os.IsNotExist(err) {
+			e = fmt.Errorf("[WriteDatasetRequest] Error deleting named pipe: %v", err)
+			return
+		}
 
-		err := syscall.Mkfifo(pipePath, 0600)
+		err = syscall.Mkfifo(pipePath, 0600)
 		if err != nil {
 			e = fmt.Errorf("[WriteDatasetRequest] Error creating named pipe: %v", err)
 			return
@@ -188,10 +205,25 @@ func HandleWriteDatasetRequest(conn *utils.StdioConn, params []byte) (result any
 		}
 	}
 
+	output := utils.YamlToMap(string(out))
+
+	var etag string
+	if etagValue, exists := output["etag"]; exists {
+		etag = fmt.Sprintf("%v", etagValue)
+	}
+
+	var size int
+	if sizeValue, exists := output["size"]; exists {
+		if parsedInt, err := strconv.Atoi(fmt.Sprintf("%v", sizeValue)); err == nil {
+			size = parsedInt
+		}
+	}
+
 	result = ds.WriteDatasetResponse{
-		Success: true,
-		Dataset: request.Dsname,
-		Etag:    strings.TrimRight(string(out), "\n"),
+		Success:    true,
+		Dataset:    request.Dsname,
+		Etag:       etag,
+		ContentLen: &size,
 	}
 	return
 }

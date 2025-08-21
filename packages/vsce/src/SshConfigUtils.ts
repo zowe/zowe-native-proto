@@ -10,16 +10,16 @@
  */
 
 import { ProfileConstants } from "@zowe/core-for-zowe-sdk";
-import { Gui, type IZoweTree, type IZoweTreeNode, ZoweVsCodeExtension, type imperative } from "@zowe/zowe-explorer-api";
+import { Gui, type IZoweTree, type IZoweTreeNode, type imperative, ZoweVsCodeExtension } from "@zowe/zowe-explorer-api";
 import * as vscode from "vscode";
 import {
     AbstractConfigManager,
+    type inputBoxOpts,
     MESSAGE_TYPE,
     type ProgressCallback,
-    ZSshClient,
-    type inputBoxOpts,
     type qpItem,
     type qpOpts,
+    ZSshClient,
 } from "zowe-native-proto-sdk";
 import { getVsceConfig } from "./Utilities";
 
@@ -154,7 +154,7 @@ export class VscePromptApi extends AbstractConfigManager {
                 if (selection) {
                     if (selection.label.startsWith(">")) {
                         resolve({
-                            label: selection.label.replace(">", "").trim(),
+                            label: selection.label.slice(1).trim(),
                             description: "Custom SSH Host",
                         });
                     } else {

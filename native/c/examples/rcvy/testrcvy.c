@@ -20,6 +20,8 @@
 void ABEXIT(SDWA *sdwa, void *abexit_data)
 {
   zwto_debug("@TEST called on abend");
+  int *i = (int *)abexit_data;
+  zwto_debug("@TEST abexit_data %d", *i);
 }
 
 #pragma prolog(PERCEXIT, " ZWEPROLG NEWDSA=(YES,128) ")
@@ -29,45 +31,21 @@ void PERCEXIT(void *perc_exit_data)
   zwto_debug("@TEST called to percolate");
 }
 
-#pragma prolog(SOMEFUNC, " ZWEPROLG NEWDSA=(YES,128) ")
-#pragma epilog(SOMEFUNC, " ZWEEPILG ")
-int SOMEFUNC()
-{
-  zwto_debug("@TEST called some func");
-  return 0;
-}
-
 int main()
 {
+
   ZRCVY_ENV zenv = {0};
   zenv.abexit = ABEXIT;
   zenv.perc_exit = PERCEXIT;
-
-  int val = SOMEFUNC();
+  int i = 7;
+  zenv.abexit_data = &i;
 
   zwto_debug("@TEST main");
-
-  ECB e1 = {0};
-  ecb_post(&e1);
-  ecb_wait(&e1);
-
-  // timer(1 * 100, SOMEFUNC, NULL);
-
-  // zwto_debug("@TEST waiting for 3 seconds");
-  // time_wait(1 * 100 * 3);
-  // zwto_debug("@TEST waiting complete");
-
-  timer(1 * 100, SOMEFUNC, NULL);
-
-  zwto_debug("@TEST waiting for 3 seconds");
-  time_wait(1 * 100 * 3);
-  // cancel_timers();
-  zwto_debug("@TEST waiting complete");
 
   if (0 == enable_recovery(&zenv))
   {
     zwto_debug("@TEST in if");
-    // s0c3_abend(2);
+    s0c3_abend(2);
   }
   else
   {

@@ -16,12 +16,13 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/fs"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"syscall"
+	"time"
+	"unsafe"
 	t "zowe-native-proto/zowed/types/common"
 	uss "zowe-native-proto/zowed/types/uss"
 	utils "zowe-native-proto/zowed/utils"
@@ -36,78 +37,58 @@ const (
 	TypeCharDevice
 )
 
-func fileTypeToEnum(typ os.FileMode) uint32 {
-	switch {
-	case typ.IsDir():
-		return TypeDirectory
-	case typ&fs.ModeSymlink != 0:
-		return TypeSymlink
-	case typ&fs.ModeNamedPipe != 0:
-		return TypeNamedPipe
-	case typ&fs.ModeSocket != 0:
-		return TypeSocket
-	case typ&fs.ModeCharDevice != 0:
-		return TypeCharDevice
-	default:
-		return TypeFile
-	}
-}
-
 // HandleListFilesRequest handles a ListFilesRequest by invoking built-in functions from Go's `os` module.
-func HandleListFilesRequest(_conn *utils.StdioConn, params []byte) (result any, e error) {
+func HandleListFilesRequest(conn *utils.StdioConn, params []byte) (result any, e error) {
 	request, err := utils.ParseCommandRequest[uss.ListFilesRequest](params)
 	if err != nil {
 		return nil, err
 	}
 
-	dirPath := request.Path
-
-	fileInfo, err := os.Stat(dirPath)
+	args := []string{"uss", "list", request.Path, "--rfc"}
+	if request.All {
+		args = append(args, "-a")
+	}
+	if request.Long {
+		args = append(args, "-l")
+	}
+	out, err := conn.ExecCmd(args)
 	if err != nil {
-		e = fmt.Errorf("Failed to stat directory: %v", err)
-		return
+		return nil, fmt.Errorf("Error executing command: %v", err)
 	}
 
 	ussResponse := uss.ListFilesResponse{}
 
-	// If the path is not a directory, return a single file item
-	if !fileInfo.IsDir() {
-		ussResponse.Items = make([]t.UssItem, 1)
-		ussResponse.Items[0] = t.UssItem{
-			Name: filepath.Base(dirPath),
-			Type: fileTypeToEnum(fileInfo.Mode().Type()),
-			Mode: fileInfo.Mode().String(),
-		}
-		ussResponse.ReturnedRows = 1
-	} else {
-		entries, err := os.ReadDir(dirPath)
-		if err != nil {
-			e = fmt.Errorf("Failed to read directory: %v", err)
-			return
-		}
-		// ., .., and the remaining items in the list
-		ussResponse.Items = make([]t.UssItem, len(entries)+2)
-		ussResponse.Items[0] = t.UssItem{Name: ".", Type: TypeDirectory, Mode: fileInfo.Mode().String()}
-		dirUp, err := filepath.Abs(filepath.Join(dirPath, ".."))
-		if err != nil {
-			parentStats, _ := os.Stat(dirUp)
-			ussResponse.Items[1] = t.UssItem{Name: "..", Type: TypeDirectory, Mode: parentStats.Mode().String()}
-		} else {
-			ussResponse.Items[1] = t.UssItem{Name: "..", Type: TypeDirectory, Mode: fileInfo.Mode().String()}
-		}
-
-		for i, entry := range entries {
-			info, err := entry.Info()
+	rawResponse := strings.TrimSpace(string(out))
+	lines := strings.Split(rawResponse, "\n")
+	ussResponse.Items = make([]t.UssItem, len(lines))
+	for i, line := range lines {
+		if request.Long {
+			fields := strings.Split(line, ",")
+			links, err := strconv.Atoi(fields[1])
 			if err != nil {
-				continue
+				err = fmt.Errorf("Error converting %s to number: %v", fields[1], err)
+				return nil, err
 			}
-			ussResponse.Items[i+2] = t.UssItem{
-				Name: entry.Name(),
-				Type: fileTypeToEnum(info.Mode().Type()),
-				Mode: info.Mode().String(),
+			size, err := strconv.Atoi(fields[4])
+			if err != nil {
+				err = fmt.Errorf("Error converting %s to number: %v", fields[4], err)
+				return nil, err
+			}
+			ussResponse.Items[i] = t.UssItem{
+				Mode:  fields[0],
+				Links: links,
+				User:  fields[2],
+				Group: fields[3],
+				Size:  size,
+				Tag:   fields[5],
+				Date:  fields[6],
+				Name:  fields[7],
+			}
+		} else {
+			ussResponse.Items[i] = t.UssItem{
+				Name: line,
 			}
 		}
-
 		ussResponse.ReturnedRows = len(ussResponse.Items)
 	}
 
@@ -131,6 +112,7 @@ func HandleReadFileRequest(conn *utils.StdioConn, params []byte) (result any, e 
 
 	var etag string
 	var data []byte
+	var size int
 	if request.StreamId == 0 {
 		args = append(args, "--rfb")
 		out, err := conn.ExecCmd(args)
@@ -149,27 +131,61 @@ func HandleReadFileRequest(conn *utils.StdioConn, params []byte) (result any, e 
 		}
 	} else {
 		pipePath := fmt.Sprintf("%s/zowe-native-proto_%d-%d-%d_fifo", os.TempDir(), os.Geteuid(), os.Getpid(), request.StreamId)
-		os.Remove(pipePath)
+		err := os.Remove(pipePath)
+		if err != nil && !os.IsNotExist(err) {
+			e = fmt.Errorf("[ReadFileRequest] Error deleting named pipe: %v", err)
+			return
+		}
 
-		err := syscall.Mkfifo(pipePath, 0600)
+		err = syscall.Mkfifo(pipePath, 0600)
 		if err != nil {
 			e = fmt.Errorf("[ReadFileRequest] Error creating named pipe: %v", err)
 			return
 		}
 
-		notify, err := json.Marshal(t.RpcNotification{
-			JsonRPC: "2.0",
-			Method:  "receiveStream",
-			Params: map[string]interface{}{
-				"id":       request.StreamId,
-				"pipePath": pipePath,
-			},
-		})
-		if err != nil {
-			e = fmt.Errorf("[ReadFileRequest] Error marshalling notification: %v", err)
-			return
-		}
-		fmt.Println(string(notify))
+		// Start a goroutine to obtain content length and send notification
+		go func() {
+			startTime := time.Now()
+			timeout := 10 * time.Second
+			sleepDuration := 1
+			for {
+				atomicFlag := atomic.LoadInt32((*int32)(unsafe.Pointer(&conn.SharedMem[0])))
+				if atomicFlag != 0 {
+					break
+				}
+
+				if time.Since(startTime) >= timeout {
+					utils.LogError("[ReadFileRequest] Timeout waiting for atomic flag after 10 seconds")
+					return
+				}
+
+				if sleepDuration < 250 {
+					sleepDuration *= 2
+					if sleepDuration > 250 {
+						sleepDuration = 250
+					}
+				}
+				time.Sleep(time.Duration(sleepDuration) * time.Millisecond)
+			}
+
+			contentLen := atomic.LoadInt64((*int64)(unsafe.Pointer(&conn.SharedMem[4])))
+			atomic.StoreInt32((*int32)(unsafe.Pointer(&conn.SharedMem[0])), 0)
+
+			notify, err := json.Marshal(t.RpcNotification{
+				JsonRPC: "2.0",
+				Method:  "receiveStream",
+				Params: map[string]interface{}{
+					"id":         request.StreamId,
+					"pipePath":   pipePath,
+					"contentLen": contentLen,
+				},
+			})
+			if err != nil {
+				utils.LogError("[ReadFileRequest] Error marshalling notification: %v", err)
+				return
+			}
+			fmt.Println(string(notify))
+		}()
 
 		args = append(args, "--pipe-path", pipePath)
 		out, err := conn.ExecCmd(args)
@@ -183,14 +199,21 @@ func HandleReadFileRequest(conn *utils.StdioConn, params []byte) (result any, e 
 			return
 		}
 
-		etag = strings.TrimRight(string(out), "\n")
+		output := utils.YamlToMap(string(out))
+		etag = output["etag"]
+		size, err = strconv.Atoi(output["size"])
+		if err != nil {
+			e = fmt.Errorf("[ReadFileRequest] Error converting %s to number: %v", output["size"], err)
+			return
+		}
 	}
 
 	result = uss.ReadFileResponse{
-		Encoding: request.Encoding,
-		Etag:     etag,
-		Path:     request.Path,
-		Data:     &data,
+		Encoding:   request.Encoding,
+		Etag:       etag,
+		Path:       request.Path,
+		Data:       &data,
+		ContentLen: &size,
 	}
 	return
 }
@@ -247,9 +270,13 @@ func HandleWriteFileRequest(conn *utils.StdioConn, params []byte) (result any, e
 		}
 	} else {
 		pipePath := fmt.Sprintf("%s/zowe-native-proto_%d-%d-%d_fifo", os.TempDir(), os.Geteuid(), os.Getpid(), request.StreamId)
-		os.Remove(pipePath)
+		err := os.Remove(pipePath)
+		if err != nil && !os.IsNotExist(err) {
+			e = fmt.Errorf("[WriteFileRequest] Error deleting named pipe: %v", err)
+			return
+		}
 
-		err := syscall.Mkfifo(pipePath, 0600)
+		err = syscall.Mkfifo(pipePath, 0600)
 		if err != nil {
 			e = fmt.Errorf("[WriteFileRequest] Error creating named pipe: %v", err)
 			return
@@ -296,13 +323,21 @@ func HandleWriteFileRequest(conn *utils.StdioConn, params []byte) (result any, e
 		}
 	}
 
+	var size int
+	if sizeValue, exists := output["size"]; exists {
+		if parsedInt, err := strconv.Atoi(fmt.Sprintf("%v", sizeValue)); err == nil {
+			size = parsedInt
+		}
+	}
+
 	result = uss.WriteFileResponse{
 		GenericFileResponse: uss.GenericFileResponse{
 			Success: true,
 			Path:    request.Path,
 		},
-		Etag:    etag,
-		Created: created,
+		Etag:       etag,
+		Created:    created,
+		ContentLen: &size,
 	}
 	return
 }

@@ -377,6 +377,11 @@ size_t zut_iconv(iconv_t cd, ZConvData &data, ZDIAG &diag)
  */
 string zut_encode(const string &input_str, const string &from_encoding, const string &to_encoding, ZDIAG &diag)
 {
+  if(from_encoding == to_encoding)
+  {
+    return input_str;
+  }
+
   iconv_t cd = iconv_open(to_encoding.c_str(), from_encoding.c_str());
   if (cd == (iconv_t)(-1))
   {
@@ -416,6 +421,11 @@ string zut_encode(const string &input_str, const string &from_encoding, const st
  */
 vector<char> zut_encode(const char *input_str, size_t input_size, const string &from_encoding, const string &to_encoding, ZDIAG &diag)
 {
+  if(from_encoding == to_encoding)
+  {
+    return std::vector<char>(input_str, input_str + input_size);
+  }
+
   iconv_t cd = iconv_open(to_encoding.c_str(), from_encoding.c_str());
   if (cd == (iconv_t)(-1))
   {
@@ -481,6 +491,19 @@ string zut_format_as_csv(std::vector<string> &fields)
   return formatted;
 }
 
+/**
+ * Converts an integer to a string using sprintf.
+ *
+ * @param value the integer value to convert
+ * @return the string representation of the integer
+ */
+string zut_int_to_string(int value)
+{
+  char buffer[32];
+  sprintf(buffer, "%d", value);
+  return string(buffer);
+}
+
 int zut_alloc_debug()
 {
   int rc = 0;
@@ -498,4 +521,9 @@ int zut_debug_message(const char *message)
 {
   fprintf(stderr, "%s", message);
   return 0;
+}
+
+bool zut_string_compare_c(const std::string &a, const std::string &b)
+{
+  return strcmp(a.c_str(), b.c_str()) < 0;
 }

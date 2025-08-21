@@ -21,6 +21,11 @@
 #define ZCN_RTNCD_INSUFFICIENT_BUFFER -4
 
 #define ZCN_DEFAULT_BUFFER_SIZE 4096
+#define ZCN_DEFAULT_TIMEOUT 5
+#define ZCN_MAX_TIMEOUT 30
+
+#define ZCN_POST_TIMEOUT 1
+#define ZCN_POST_ABEND 2
 
 #if (defined(__IBMCPP__) || defined(__IBMC__))
 #if defined(SWIG)
@@ -39,7 +44,7 @@ typedef struct
   unsigned char version[1]; // future use
   int32_t len;              // future use
 
-  unsigned int *PTR64 ecb; // save and set to NULL to prevent waiting
+  unsigned int *PTR64 ecb; // save and set to NULL to prevent waiting, int used to avoid unnecessary includes
 
   int32_t buffer_size;
   int32_t buffer_size_needed; // total ammount of buffer size needed to satisfy request
@@ -48,7 +53,7 @@ typedef struct
 
   int16_t unused;       // non-zero if reply found in control
   int16_t reply_id_len; // non-zero if reply found in control
-  unsigned char reserve_1[4];
+  int timeout;          // timeout in seconds
 
   char reply_id[8]; // if reply_id_len is non-zero
 

@@ -1,12 +1,12 @@
 {
   "name": "zowe-native-proto",
-  "version": "0.1.3",
+  "version": "0.1.8",
   "private": true,
   "scripts": {
     "all": "npm run z:rebuild && concurrently \"npm run z:artifacts\" \"npm run build\"",
     "build": "npm run build --workspaces && npm run license",
     "build:all": "npm run build:types && npm run build",
-    "build:types": "cd native/golang && go run github.com/gzuidhof/tygo generate && npm run license",
+    "build:types": "cd native/golang/tools && go run github.com/gzuidhof/tygo generate && npm run license packages/sdk/src/doc/gen",
     "clean": "npm run clean --workspaces",
     "download": "gh run download --name zowe-server-bin && node scripts/moveArtifacts.js",
     "license": "node scripts/updateLicenses.js",
@@ -24,9 +24,10 @@
     "z:build:python": "tsx scripts/buildTools.ts build:python",
     "z:clean": "tsx scripts/buildTools.ts clean",
     "z:delete": "tsx scripts/buildTools.ts delete",
+    "z:make": "tsx scripts/buildTools.ts make",
     "z:package": "npm run z:artifacts && tsx scripts/buildTools.ts package",
     "z:rebuild": "tsx scripts/buildTools.ts rebuild",
-    "z:test": "tsx scripts/buildTools.ts test",
+    "z:test": "npm run z:make xlclang-extenders tests && tsx scripts/buildTools.ts test",
     "z:test:python": "tsx scripts/buildTools.ts test:python",
     "z:upload": "tsx scripts/buildTools.ts upload",
     "z:watch": "tsx scripts/buildTools.ts watch"
@@ -38,27 +39,23 @@
     "packages/*"
   ],
   "devDependencies": {
-    "@biomejs/biome": "^1.9.4",
+    "@biomejs/biome": "^2.1.3",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.13.4",
     "@types/ssh2": "^1.15.4",
-    "@zowe/cli": "^8.17.0",
-    "@zowe/imperative": "^8.17.0",
-    "@zowe/secrets-for-zowe-sdk": "^8.10.4",
-    "c8": "^10.1.3",
+    "@vitest/coverage-v8": "^3.2.4",
+    "@vitest/ui": "^3.2.4",
+    "@zowe/cli": "^8.24.0",
+    "@zowe/imperative": "^8.24.0",
+    "@zowe/secrets-for-zowe-sdk": "^8.24.2",
     "chokidar": "^3",
     "concurrently": "^9.1.2",
     "husky": "^9.1.7",
     "js-yaml": "^4.1.0",
     "rimraf": "^6.0.1",
     "ssh2": "^1.16.0",
-    "tsx": "^4.19.3"
-  },
-  "c8": {
-    "reporter": [
-      "json",
-      "lcov",
-      "text"
-    ]
+    "tsx": "^4.19.3",
+    "vitest": "^3.2.4",
+    "jest-mock-vscode": "^4.6.0"
   }
 }
