@@ -722,19 +722,11 @@ int handle_data_set_create(const ParseResult &result)
   }
   if (result.has_kw_arg("blksize"))
   {
-    string blksize_str = result.find_kw_arg_string("blksize");
-    if (!blksize_str.empty())
-    {
-      attributes.blksize = std::strtoul(blksize_str.c_str(), nullptr, 10);
-    }
+    attributes.blksize = result.find_kw_arg_int("blksize");
   }
   if (result.has_kw_arg("dirblk"))
   {
-    string dirblk_str = result.find_kw_arg_string("dirblk");
-    if (!dirblk_str.empty())
-    {
-      attributes.dirblk = std::strtoul(dirblk_str.c_str(), nullptr, 10);
-    }
+    attributes.dirblk = result.find_kw_arg_int("dirblk");
   }
   if (result.has_kw_arg("dsorg"))
   {
@@ -742,11 +734,7 @@ int handle_data_set_create(const ParseResult &result)
   }
   if (result.has_kw_arg("primary"))
   {
-    string primary_str = result.find_kw_arg_string("primary");
-    if (!primary_str.empty())
-    {
-      attributes.primary = std::strtoul(primary_str.c_str(), nullptr, 10);
-    }
+    attributes.primary = result.find_kw_arg_int("primary");
   }
   if (result.has_kw_arg("recfm"))
   {
@@ -754,11 +742,7 @@ int handle_data_set_create(const ParseResult &result)
   }
   if (result.has_kw_arg("lrecl"))
   {
-    string lrecl_str = result.find_kw_arg_string("lrecl");
-    if (!lrecl_str.empty())
-    {
-      attributes.lrecl = std::strtoul(lrecl_str.c_str(), nullptr, 10);
-    }
+    attributes.lrecl = result.find_kw_arg_int("lrecl");
   }
   if (result.has_kw_arg("dataclass"))
   {
@@ -782,27 +766,15 @@ int handle_data_set_create(const ParseResult &result)
   }
   if (result.has_kw_arg("avgblk"))
   {
-    string avgblk_str = result.find_kw_arg_string("avgblk");
-    if (!avgblk_str.empty())
-    {
-      attributes.avgblk = std::strtoul(avgblk_str.c_str(), nullptr, 10);
-    }
+    attributes.avgblk = result.find_kw_arg_int("avgblk");
   }
   if (result.has_kw_arg("secondary"))
   {
-    string secondary_str = result.find_kw_arg_string("secondary");
-    if (!secondary_str.empty())
-    {
-      attributes.secondary = std::strtoul(secondary_str.c_str(), nullptr, 10);
-    }
+    attributes.secondary = result.find_kw_arg_int("secondary");
   }
   if (result.has_kw_arg("size"))
   {
-    string size_str = result.find_kw_arg_string("size");
-    if (!size_str.empty())
-    {
-      attributes.size = std::strtoul(size_str.c_str(), nullptr, 10);
-    }
+    attributes.size = result.find_kw_arg_int("size");
   }
   if (result.has_kw_arg("storclass"))
   {
