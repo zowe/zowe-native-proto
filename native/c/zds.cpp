@@ -318,9 +318,13 @@ int zds_create_dsn(ZDS *zds, std::string dsn, DS_ATTRIBUTES attributes, std::str
   int rc = 0;
   unsigned int code = 0;
   string parm = "ALLOC DA('" + dsn + "')";
-  if (attributes.alcunit.empty())
+  if (attributes.alcunit.empty() || attributes.alcunit == "TRK")
   {
     attributes.alcunit = "TRACKS"; // Allocation Unit
+  }
+  else if (attributes.alcunit == "CYLINDERS")
+  {
+    attributes.alcunit = "CYL"; // Allocation Unit
   }
   if (attributes.blksize == 0)
   {
