@@ -192,6 +192,7 @@ int main(int argc, char *argv[])
   auto pipe_path_option = make_aliases("--pipe-path");
   auto response_format_csv_option = make_aliases("--response-format-csv", "--rfc");
   auto response_format_bytes_option = make_aliases("--response-format-bytes", "--rfb");
+  auto volser_option = make_aliases("--volser", "--vs");
 
   // Create subcommand
   auto ds_create_cmd = command_ptr(new Command("create", "create data set"));
@@ -261,6 +262,7 @@ int main(int argc, char *argv[])
   ds_view_cmd->add_keyword_arg("response-format-bytes", response_format_bytes_option, "returns the response as raw bytes", ArgType_Flag, false, ArgValue(false));
   ds_view_cmd->add_keyword_arg("return-etag", return_etag_option, "Display the e-tag for a read response in addition to data", ArgType_Flag, false, ArgValue(false));
   ds_view_cmd->add_keyword_arg("pipe-path", pipe_path_option, "Specify a FIFO pipe path for transferring binary data", ArgType_Single, false);
+  ds_view_cmd->add_keyword_arg("volser", volser_option, "Specify volume serial where the data set resides", ArgType_Single, false);
   ds_view_cmd->set_handler(handle_data_set_view);
   data_set_cmd->add_command(ds_view_cmd);
 
@@ -291,6 +293,7 @@ int main(int argc, char *argv[])
   ds_write_cmd->add_keyword_arg("etag", etag_option, "Provide the e-tag for a write response to detect conflicts before save", ArgType_Single, false);
   ds_write_cmd->add_keyword_arg("etag-only", etag_only_option, "Only print the e-tag for a write response (when successful)", ArgType_Flag, false, ArgValue(false));
   ds_write_cmd->add_keyword_arg("pipe-path", pipe_path_option, "Specify a FIFO pipe path for transferring binary data", ArgType_Single, false);
+  ds_write_cmd->add_keyword_arg("volser", volser_option, "Specify volume serial where the data set resides", ArgType_Single, false);
   ds_write_cmd->set_handler(handle_data_set_write);
   data_set_cmd->add_command(ds_write_cmd);
 
@@ -907,10 +910,26 @@ int handle_data_set_view(const ParseResult &result)
   int rc = 0;
   string dsn = result.find_pos_arg_string("dsn");
   ZDS zds = {0};
+  vector<string> dds;
 
   if (result.has_kw_arg("encoding"))
   {
     zut_prepare_encoding(result.find_kw_arg_string("encoding"), &zds.encoding_opts);
+  }
+
+  if (result.has_kw_arg("volser"))
+  {
+    string volser_value = result.find_kw_arg_string("volser");
+    if (!volser_value.empty())
+    {
+      dds.push_back("alloc dd(input) da('" + dsn + "') shr vol(" + volser_value + ")");
+      rc = loop_dynalloc(dds);
+      if (0 != rc)
+      {
+        return RTNCD_FAILURE;
+      }
+      strcpy(zds.ddname, "INPUT");
+    }
   }
 
   bool has_pipe_path = result.has_kw_arg("pipe-path");
@@ -962,6 +981,11 @@ int handle_data_set_view(const ParseResult &result)
     {
       cout << response << endl;
     }
+  }
+
+  if (dds.size() > 0)
+  {
+    free_dynalloc_dds(dds);
   }
 
   return rc;
@@ -1096,6 +1120,7 @@ int handle_data_set_write(const ParseResult &result)
   int rc = 0;
   string dsn = result.find_pos_arg_string("dsn");
   ZDS zds = {0};
+  vector<string> dds;
 
   if (result.has_kw_arg("encoding"))
   {
@@ -1108,6 +1133,21 @@ int handle_data_set_write(const ParseResult &result)
     if (!etag_value.empty())
     {
       strcpy(zds.etag, etag_value.c_str());
+    }
+  }
+
+  if (result.has_kw_arg("volser"))
+  {
+    string volser_value = result.find_kw_arg_string("volser");
+    if (!volser_value.empty())
+    {
+      dds.push_back("alloc dd(output) da('" + dsn + "') shr vol(" + volser_value + ")");
+      rc = loop_dynalloc(dds);
+      if (0 != rc)
+      {
+        return RTNCD_FAILURE;
+      }
+      strcpy(zds.ddname, "OUTPUT");
     }
   }
 
@@ -1146,6 +1186,11 @@ int handle_data_set_write(const ParseResult &result)
     }
 
     rc = zds_write_to_dsn(&zds, dsn, data);
+  }
+
+  if (dds.size() > 0)
+  {
+    free_dynalloc_dds(dds);
   }
 
   if (0 != rc)

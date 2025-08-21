@@ -40,6 +40,8 @@ type ReadDatasetRequest struct {
 	Command               string `json:"command" tstype:"\"readDataset\""`
 	// Desired encoding for the dataset (optional)
 	Encoding string `json:"encoding,omitempty"`
+	// Volume serial for the data set (optional)
+	Volume string `json:"volume,omitempty"`
 	// Dataset name
 	Dsname string `json:"dsname"`
 	// Stream to write contents to
@@ -53,6 +55,8 @@ type WriteDatasetRequest struct {
 	Encoding string `json:"encoding,omitempty"`
 	// Last e-tag for the data set (optional, omit to overwrite)
 	Etag string `json:"etag,omitempty"`
+	// Volume serial for the data set (optional)
+	Volume string `json:"volume,omitempty"`
 	// Dataset name
 	Dsname string `json:"dsname"`
 	// Dataset contents

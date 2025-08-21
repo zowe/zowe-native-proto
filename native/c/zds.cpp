@@ -122,12 +122,16 @@ int zds_read_from_dd(ZDS *zds, string ddname, string &response)
 int zds_read_from_dsn(ZDS *zds, const string &dsn, string &response)
 {
   string dsname = "//'" + dsn + "'";
+  if (strlen(zds->ddname) > 0)
+  {
+    dsname = "//DD:" + string(zds->ddname);
+  }
   const string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "rb" : "r";
 
   FILE *fp = fopen(dsname.c_str(), fopen_flags.c_str());
   if (!fp)
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open file '%s'", dsname.c_str());
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open dsn '%s'", dsname.c_str());
     return RTNCD_FAILURE;
   }
 
@@ -171,7 +175,7 @@ int zds_write_to_dd(ZDS *zds, string ddname, const string &data)
 
   if (!out.is_open())
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open '%s'", ddname.c_str());
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open file '%s'", ddname.c_str());
     return RTNCD_FAILURE;
   }
 
@@ -218,13 +222,18 @@ int zds_write_to_dsn(ZDS *zds, const string &dsn, string &data)
     }
   }
 
-  const string dsname = "//'" + dsn + "'";
-  const string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "r+b" : "r+" + string(",recfm=*");
+  string dsname = "//'" + dsn + "'";
+  const bool is_member = dsname.find('(') != string::npos;
+  if (strlen(zds->ddname) > 0)
+  {
+    dsname = "//DD:" + string(zds->ddname);
+  }
+  const auto fopen_flags = is_member ? string("w") : string("r+") + (zds->encoding_opts.data_type == eDataTypeBinary ? "b" : "") + string(",recfm=*");
 
   auto *fp = fopen(dsname.c_str(), fopen_flags.c_str());
   if (nullptr == fp)
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open '%s'", dsname.c_str());
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open dsn '%s'", dsname.c_str());
     return RTNCD_FAILURE;
   }
 
@@ -1024,11 +1033,15 @@ int zds_read_from_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, 
   }
 
   string dsname = "//'" + dsn + "'";
+  if (strlen(zds->ddname) > 0)
+  {
+    dsname = "//DD:" + string(zds->ddname);
+  }
   const std::string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "rb,recfm=U" : "r";
   FILE *fin = fopen(dsname.c_str(), fopen_flags.c_str());
   if (!fin)
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open file '%s'", dsname.c_str());
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open dsn '%s'", dsname.c_str());
     return RTNCD_FAILURE;
   }
 
@@ -1110,6 +1123,12 @@ int zds_write_to_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, s
   }
 
   string dsname = "//'" + dsn + "'";
+  const bool is_member = dsname.find('(') != string::npos;
+  if (strlen(zds->ddname) > 0)
+  {
+    dsname = "//DD:" + string(zds->ddname);
+  }
+
   if (strlen(zds->etag) > 0)
   {
     // Get current data set content for etag check
@@ -1145,12 +1164,12 @@ int zds_write_to_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, s
 
   const auto hasEncoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
   const auto codepage = string(zds->encoding_opts.codepage);
-  const auto fopen_flags = (zds->encoding_opts.data_type == eDataTypeBinary ? "r+b" : "r+") + string(",recfm=*");
+  const auto fopen_flags = is_member ? string("w") : string("r+") + (zds->encoding_opts.data_type == eDataTypeBinary ? "b" : "") + string(",recfm=*");
 
   FILE *fout = fopen(dsname.c_str(), fopen_flags.c_str());
   if (!fout)
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open '%s'", dsname.c_str());
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open dsn '%s'", dsname.c_str());
     return RTNCD_FAILURE;
   }
 

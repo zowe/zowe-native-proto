@@ -67,6 +67,12 @@ export const DownloadDataSetDefinition: ICommandDefinition = {
             type: "string",
             conflictsWith: ["directory"],
         },
+        {
+            name: "volume-serial",
+            aliases: ["vs"],
+            description: "The volume serial (VOLSER) where the data set resides.",
+            type: "string",
+        },
     ],
     profile: { optional: ["ssh"] },
 };

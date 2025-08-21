@@ -70,6 +70,7 @@ typedef struct
 
   ZEncode encoding_opts;
   char etag[8];
+  char ddname[8];
 
   int32_t max_entries;
   int32_t buffer_size;

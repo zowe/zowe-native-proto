@@ -46,6 +46,10 @@ export interface ReadDatasetRequest extends common.CommandRequest {
    */
   encoding?: string;
   /**
+   * Volume serial for the data set (optional)
+   */
+  volume?: string;
+  /**
    * Dataset name
    */
   dsname: string;
@@ -64,6 +68,10 @@ export interface WriteDatasetRequest extends common.CommandRequest {
    * Last e-tag for the data set (optional, omit to overwrite)
    */
   etag?: string;
+  /**
+   * Volume serial for the data set (optional)
+   */
+  volume?: string;
   /**
    * Dataset name
    */
