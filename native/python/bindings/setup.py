@@ -4,8 +4,9 @@
 setup.py file for SWIG example
 """
 
-from distutils.core import setup, Extension
+from setuptools import setup, Extension
 import os
+import sys
 
 C_PATH = "../../c"
 chdsect = os.path.abspath(f"{C_PATH}/chdsect")
@@ -56,8 +57,44 @@ zjb_py_module = Extension("_zjb_py",
                            include_dirs=[chdsect, ztype],
                            )
 
+# Parse environment variable for selective building
+def get_modules_to_build():
+    """Determine which modules to build based on ZBIND_MODULES environment variable."""
+    modules_env = os.environ.get('ZBIND_MODULES', '')
+
+    if modules_env:
+        modules_to_build = set(modules_env.split(','))
+        # Clean up any whitespace
+        modules_to_build = {m.strip() for m in modules_to_build if m.strip()}
+    else:
+        # If no specific modules requested, build all
+        modules_to_build = {'zusf', 'zds', 'zjb'}
+
+    return modules_to_build
+
+# Determine which modules to build
+modules_to_build = get_modules_to_build()
+
+# Select extensions and py_modules based on what's requested
+ext_modules = []
+py_modules = []
+
+if 'zusf' in modules_to_build:
+    ext_modules.append(zusf_py_module)
+    py_modules.append("zusf_py")
+
+if 'zds' in modules_to_build:
+    ext_modules.append(zds_py_module)
+    py_modules.append("zds_py")
+
+if 'zjb' in modules_to_build:
+    ext_modules.append(zjb_py_module)
+    py_modules.append("zjb_py")
+
+print(f"Building modules: {', '.join(modules_to_build)}")
+
 setup(name = "zbind",
        description = """Simple swig example""",
-       ext_modules = [zusf_py_module, zds_py_module, zjb_py_module],
-       py_modules = ["zusf_py", "zds_py", "zjb_py"],
+       ext_modules = ext_modules,
+       py_modules = py_modules,
        )
