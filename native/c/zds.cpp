@@ -30,6 +30,7 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include "zbase64.h"
+#include "zdsm.h"
 
 const size_t MAX_DS_LENGTH = 44u;
 
@@ -625,6 +626,93 @@ typedef struct
 #define BUFF_SIZE 1024
 #define FIELD_LEN 8
 
+#define DS1DSGPS_MASK 0x4000 // PS: Bit 2 is set
+#define DS1DSGDA_MASK 0x2000 // DA: Bit 3 is set
+#define DS1DSGPO_MASK 0x0200 // PO: Bit 7 is set
+#define DS1DSGU_MASK 0x0100  // Unmovable: Bit 8 is set
+#define DS1ACBM_MASK 0x0008  // VSAM: Bit 13 is set
+
+void load_dsorg_from_dscb(const DSCBFormat1 *dscb, string *dsorg)
+{
+  // Bitmasks translated from binary to hex from "DFSMSdfp advanced services" PDF, Chapter 1 page 7 (PDF page 39)
+  if (dscb->ds1dsorg & DS1DSGPS_MASK)
+  {
+    *dsorg = ZDS_DSORG_PS;
+  }
+  else if (dscb->ds1dsorg & DS1DSGDA_MASK)
+  {
+    *dsorg = ZDS_DSORG_DA;
+  }
+  else if (dscb->ds1dsorg & DS1DSGPO_MASK)
+  {
+    *dsorg = ZDS_DSORG_PO;
+  }
+  else if (dscb->ds1dsorg & DS1ACBM_MASK)
+  {
+    *dsorg = ZDS_DSORG_VSAM;
+  }
+
+  // Unmovable: Last bit of first half is set
+  if (dscb->ds1dsorg & DS1DSGU_MASK)
+  {
+    *dsorg += 'U';
+  }
+
+  if (dsorg->empty())
+  {
+    *dsorg = ZDS_DSORG_UNKNOWN;
+  }
+}
+
+void load_recfm_from_dscb(const DSCBFormat1 *dscb, string *recfm)
+{
+  // Bitmasks translated from binary to hex from "DFSMSdfp advanced services" PDF, Chapter 1 page 7 (PDF page 39)
+  // Fixed: First bit is set
+  if ((dscb->ds1recfm & 0xC0) == 0x80)
+  {
+    *recfm = ZDS_RECFM_F;
+  }
+  // Variable: Second bit is set
+  else if ((dscb->ds1recfm & 0xC0) == 0x40)
+  {
+    *recfm = ZDS_RECFM_V;
+  }
+  // Undefined: First and second bits are set
+  else if ((dscb->ds1recfm & 0xC0) == 0xC0)
+  {
+    *recfm = ZDS_RECFM_U;
+  }
+
+  // Blocked records: Fourth bit is set
+  if ((dscb->ds1recfm & 0x10) > 0)
+  {
+    *recfm += 'B';
+  }
+
+  // Sequential: Fifth bit is set
+  if ((dscb->ds1recfm & 0x08) > 0 && recfm[0] != ZDS_RECFM_U)
+  {
+    *recfm += 'S';
+  }
+
+  // ANSI control characters/ASA: Sixth bit is set
+  if ((dscb->ds1recfm & 0x04) > 0)
+  {
+    *recfm += 'A';
+  }
+
+  // Machine-control characters: Seventh bit is set
+  if ((dscb->ds1recfm & 0x02) > 0)
+  {
+    *recfm += 'M';
+  }
+
+  if (recfm->empty())
+  {
+    *recfm = ZDS_RECFM_U;
+  }
+}
+
 int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
 {
   int rc = 0;
@@ -654,7 +742,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
     return RTNCD_FAILURE;
   }
 
-  unsigned char *area = (unsigned char *)__malloc31(zds->buffer_size);
+  auto *area = (unsigned char *)__malloc31(zds->buffer_size);
   memset(area, 0x00, zds->buffer_size);
 
   CSIFIELD *selection_criteria = (CSIFIELD *)area;
@@ -827,7 +915,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
       {
         string symbol(IPL_VOLUME_SYMBOL);
         string value;
-        int rc = zut_substitute_symbol(symbol, value);
+        rc = zut_substitute_symbol(symbol, value);
         if (0 == rc)
         {
           entry.volser = value;
@@ -847,57 +935,17 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
         entry.migr = false;
       }
 
-      // attempt to obtain fldata in all cases and set default data
+      // attempt to load dsorg and recfm from vtoc if not migrated
       if (!entry.migr)
       {
-        string dsn = "//'" + entry.name + "'";
-        FILE *dir = fopen(dsn.c_str(), "r");
-        fldata_t file_info = {0};
-        char file_name[64] = {0};
+        auto *dscb = (DSCBFormat1 *)__malloc31(sizeof(DSCBFormat1));
+        memset(dscb, 0x00, sizeof(DSCBFormat1));
+        rc = ZDSDSCB1(zds, entry.name.c_str(), entry.volser.c_str(), dscb);
 
-        if (dir)
+        if (rc == RTNCD_SUCCESS)
         {
-          if (0 == fldata(dir, file_name, &file_info))
-          {
-            if (file_info.__dsorgPS)
-            {
-              entry.dsorg = ZDS_DSORG_PS;
-            }
-            else if (file_info.__dsorgPO)
-            {
-              entry.dsorg = ZDS_DSORG_PO;
-            }
-            else if (file_info.__dsorgVSAM)
-            {
-              entry.dsorg = ZDS_DSORG_VSAM;
-            }
-            else
-            {
-              entry.dsorg = ZDS_DSORG_UNKNOWN;
-              entry.volser = ZDS_VOLSER_UNKNOWN;
-            }
-
-            if (!entry.migr && entry.volser != ZDS_VOLSER_UNKNOWN)
-            {
-              char recfm_buf[8] = {0};
-              if (ZDSRECFM(zds, entry.name.c_str(), entry.volser.c_str(), recfm_buf,
-                           sizeof(recfm_buf)) == RTNCD_SUCCESS)
-              {
-                entry.recfm = recfm_buf;
-              }
-              else
-              {
-                entry.recfm = ZDS_RECFM_U;
-              }
-            }
-          }
-          else
-          {
-            entry.dsorg = ZDS_DSORG_UNKNOWN;
-            entry.volser = ZDS_VOLSER_UNKNOWN;
-            entry.recfm = ZDS_RECFM_U;
-          }
-          fclose(dir);
+          load_dsorg_from_dscb(dscb, &entry.dsorg);
+          load_recfm_from_dscb(dscb, &entry.recfm);
         }
         else
         {
@@ -905,7 +953,8 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
           entry.volser = ZDS_VOLSER_UNKNOWN;
           entry.recfm = ZDS_RECFM_U;
         }
-        fclose(dir);
+
+        free(dscb);
       }
 
       switch (f->type)
