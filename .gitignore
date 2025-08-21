@@ -22,3 +22,4 @@ zowe.schema.json
 native/python/app/config/service-configuration.yml
 native/python/app/keystore/*
 !native/python/app/keystore/*.sh
+native/python/bindings/test/fixtures/env.yml
