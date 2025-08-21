@@ -131,7 +131,7 @@ int zds_read_from_dsn(ZDS *zds, const string &dsn, string &response)
   FILE *fp = fopen(dsname.c_str(), fopen_flags.c_str());
   if (!fp)
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open dsn '%s'", dsname.c_str());
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open dsn '%s'", dsn.c_str());
     return RTNCD_FAILURE;
   }
 
@@ -233,7 +233,7 @@ int zds_write_to_dsn(ZDS *zds, const string &dsn, string &data)
   auto *fp = fopen(dsname.c_str(), fopen_flags.c_str());
   if (nullptr == fp)
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open dsn '%s'", dsname.c_str());
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open dsn '%s'", dsn.c_str());
     return RTNCD_FAILURE;
   }
 
@@ -1041,7 +1041,7 @@ int zds_read_from_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, 
   FILE *fin = fopen(dsname.c_str(), fopen_flags.c_str());
   if (!fin)
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open dsn '%s'", dsname.c_str());
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open dsn '%s'", dsn.c_str());
     return RTNCD_FAILURE;
   }
 
@@ -1169,7 +1169,7 @@ int zds_write_to_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, s
   FILE *fout = fopen(dsname.c_str(), fopen_flags.c_str());
   if (!fout)
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open dsn '%s'", dsname.c_str());
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open dsn '%s'", dsn.c_str());
     return RTNCD_FAILURE;
   }
 
