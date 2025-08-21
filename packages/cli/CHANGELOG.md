@@ -4,6 +4,10 @@ All notable changes to the Client code for "zowe-native-proto-cli" are documente
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+
+- Added support for `--volume-serial` option when uploading/downloading data sets. [#439](https://github.com/zowe/zowe-native-proto/issues/439)
+
 ## `0.1.5`
 
 - Added support for progress messages for USS files downloaded and uploaded via the CLI plug-in. [#426](https://github.com/zowe/zowe-native-proto/pull/426)
@@ -12,7 +16,6 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - Added support for the `encoding` option to the `zssh upload uss` and the `zssh upload ds` commands. When the `encoding` option is provided, the command uses the option value as the target encoding for the uploaded content. [#427](https://github.com/zowe/zowe-native-proto/issues/427)
 - Added support for the `file` option to the `zssh download uss` and `zssh download ds` commands. When the `file` option is provided, the command uses the option value as the destination file path for the downloaded content. [#428](https://github.com/zowe/zowe-native-proto/issues/428)
 - Adopted streaming for commands that upload/download data sets and USS files. [#358](https://github.com/zowe/zowe-native-proto/pull/358)
-- Added support for `--volume-serial` option when uploading/downloading data sets. [#439](https://github.com/zowe/zowe-native-proto/issues/439)
 
 ## `0.1.1`
 
