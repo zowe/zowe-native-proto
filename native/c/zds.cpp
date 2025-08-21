@@ -68,6 +68,19 @@ string zds_get_recfm(const fldata_t &file_info)
   return recfm;
 }
 
+bool zds_dataset_exists(const string &dsn)
+{
+  const auto member_idx = dsn.find('(');
+  const string dsn_without_member = member_idx == string::npos ? dsn : dsn.substr(0, member_idx);
+  FILE *fp = fopen(("//'" + dsn_without_member + "'").c_str(), "r");
+  if (fp)
+  {
+    fclose(fp);
+    return true;
+  }
+  return false;
+}
+
 int zds_read_from_dd(ZDS *zds, string ddname, string &response)
 {
   ddname = "DD:" + ddname;
@@ -183,6 +196,12 @@ int zds_write_to_dd(ZDS *zds, string ddname, const string &data)
 
 int zds_write_to_dsn(ZDS *zds, const string &dsn, string &data)
 {
+  if (!zds_dataset_exists(dsn))
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not access '%s'", dsn.c_str());
+    return RTNCD_FAILURE;
+  }
+
   const auto hasEncoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
   const auto codepage = string(zds->encoding_opts.codepage);
 
@@ -219,7 +238,7 @@ int zds_write_to_dsn(ZDS *zds, const string &dsn, string &data)
   }
 
   const string dsname = "//'" + dsn + "'";
-  const string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "r+b" : "r+" + string(",recfm=*");
+  const string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "wb" : "w" + string(",recfm=*");
 
   auto *fp = fopen(dsname.c_str(), fopen_flags.c_str());
   if (nullptr == fp)
@@ -1108,6 +1127,11 @@ int zds_write_to_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, s
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "content_len must be a valid size_t pointer");
     return RTNCD_FAILURE;
   }
+  else if (!zds_dataset_exists(dsn))
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not access '%s'", dsn.c_str());
+    return RTNCD_FAILURE;
+  }
 
   string dsname = "//'" + dsn + "'";
   if (strlen(zds->etag) > 0)
@@ -1145,7 +1169,7 @@ int zds_write_to_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, s
 
   const auto hasEncoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
   const auto codepage = string(zds->encoding_opts.codepage);
-  const auto fopen_flags = (zds->encoding_opts.data_type == eDataTypeBinary ? "r+b" : "r+") + string(",recfm=*");
+  const auto fopen_flags = (zds->encoding_opts.data_type == eDataTypeBinary ? "wb" : "w") + string(",recfm=*");
 
   FILE *fout = fopen(dsname.c_str(), fopen_flags.c_str());
   if (!fout)
