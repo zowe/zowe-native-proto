@@ -38,11 +38,12 @@
 #define ZDS_VOLSER_GDG "??????"
 #define ZDS_VOLSER_UNKNOWN "------"
 
-#define ZDS_DSORG_UNKNOWN "--" // library
-#define ZDS_DSORG_PDSE "PO-E"  // library
+#define ZDS_DSORG_UNKNOWN "--" // Unknown
+#define ZDS_DSORG_PDSE "PO-E"  // Library
 #define ZDS_DSORG_VSAM "VS"    // VSAM
-#define ZDS_DSORG_PS "PS"      // sequential
-#define ZDS_DSORG_PO "PO"      // partitioned
+#define ZDS_DSORG_PS "PS"      // Sequential
+#define ZDS_DSORG_PO "PO"      // Partitioned
+#define ZDS_DSORG_DA "DA"      // Direct Access
 
 // Record format constants
 #define ZDS_RECFM_FB "FB"   // Fixed Blocked

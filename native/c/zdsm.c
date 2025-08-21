@@ -95,14 +95,13 @@ typedef int (*IGWASMS)(
     int *ds_type // 1 for PDSE, 2 for HFS
     ) ATTRIBUTE(amode31);
 
-#pragma prolog(ZDSRECFM, " ZWEPROLG NEWDSA=(YES,128) ")
-#pragma epilog(ZDSRECFM, " ZWEEPILG ")
+#pragma prolog(ZDSDSCB1, " ZWEPROLG NEWDSA=(YES,128) ")
+#pragma epilog(ZDSDSCB1, " ZWEEPILG ")
 
-// Obtain the record format for a data set, given its name and volser
+// Obtain the Data Set Control Block 1 for a data set, given its name and volser
 // Full PDF for DFSMSdfp advanced services: https://www.ibm.com/docs/en/SSLTBW_2.5.0/pdf/idas300_v2r5.pdf
 // Doc page: https://www.ibm.com/docs/en/zos/3.1.0?topic=macros-reading-dscbs-from-vtoc-using-obtain
-int ZDSRECFM(ZDS *zds, const char *dsn, const char *volser, char *recfm_buf,
-             int recfm_buf_len)
+int ZDSDSCB1(ZDS *zds, const char *dsn, const char *volser, DSCBFormat1 *dscb)
 {
   // workarea: each DSCB is 140 bytes, we need enough space for format-1 DSCB, format-8 DSCB and max possible format-3 DSCBs (10)
   // adding 140 bytes for the workarea itself
@@ -144,73 +143,15 @@ int ZDSRECFM(ZDS *zds, const char *dsn, const char *volser, char *recfm_buf,
   {
     memcpy(&indexable_dscb, workarea + (i * (sizeof(IndexableDSCBFormat1) - 1)), sizeof(indexable_dscb));
     // The returned DSCB does not include the key, but we can infer the returned variables by re-aligning the struct
-    DSCBFormat1 *dscb = (DSCBFormat1 *)&indexable_dscb;
+    const DSCBFormat1 *temp_dscb = (DSCBFormat1 *)&indexable_dscb;
 
-    // '1' or '8' in EBCDIC
-    if (dscb == NULL || (dscb->ds1fmtid != '1' && dscb->ds1fmtid != '8'))
+    // Look for either Format-1 or Format-8 DSCB
+    if (temp_dscb == NULL || (temp_dscb->ds1fmtid != '1' && temp_dscb->ds1fmtid != '8'))
     {
       continue;
     }
 
-    char temp_recfm[8] = {0};
-    int len = 0;
-    char main_fmt = 0;
-
-    // Bitmasks translated from binary to hex from "DFSMSdfp advanced services" PDF, Chapter 1 page 7 (PDF page 39)
-    // Fixed: First bit is set
-    if ((dscb->ds1recfm & 0xC0) == 0x80)
-    {
-      temp_recfm[len++] = 'F';
-      main_fmt = 'F';
-    }
-    // Variable: Second bit is set
-    else if ((dscb->ds1recfm & 0xC0) == 0x40)
-    {
-      temp_recfm[len++] = 'V';
-      main_fmt = 'V';
-    }
-    // Undefined: First and second bits are set
-    else if ((dscb->ds1recfm & 0xC0) == 0xC0)
-    {
-      temp_recfm[len++] = 'U';
-      main_fmt = 'U';
-    }
-
-    // Blocked records: Fourth bit is set
-    if ((dscb->ds1recfm & 0x10) > 0)
-    {
-      temp_recfm[len++] = 'B';
-    }
-
-    // Sequential: Fifth bit is set
-    if ((dscb->ds1recfm & 0x08) > 0)
-    {
-      // Fixed length: standard blocks, no truncated or unfilled tracks
-      // Variable length: spanned records
-      if (main_fmt == 'F' || main_fmt == 'V')
-      {
-        temp_recfm[len++] = 'S';
-      }
-    }
-
-    // ANSI control characters/ASA: Sixth bit is set
-    if ((dscb->ds1recfm & 0x04) > 0)
-    {
-      temp_recfm[len++] = 'A';
-    }
-
-    // Machine-control characters: Seventh bit is set
-    if ((dscb->ds1recfm & 0x02) > 0)
-    {
-      temp_recfm[len++] = 'M';
-    }
-
-    if (len == 0)
-    {
-      temp_recfm[len++] = 'U';
-    }
-
-    memcpy(recfm_buf, temp_recfm, len);
+    memcpy(dscb, temp_dscb, sizeof(DSCBFormat1));
     return RTNCD_SUCCESS;
   }
 
