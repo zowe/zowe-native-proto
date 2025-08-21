@@ -219,7 +219,8 @@ int zds_write_to_dsn(ZDS *zds, const string &dsn, string &data)
   }
 
   const string dsname = "//'" + dsn + "'";
-  const string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "r+b" : "r+" + string(",recfm=*");
+  const bool is_member = dsname.find('(') != string::npos;
+  const string fopen_flags = (is_member ? string("w") : string("r+")) + (zds->encoding_opts.data_type == eDataTypeBinary ? "b" : "") + string(",recfm=*");
 
   auto *fp = fopen(dsname.c_str(), fopen_flags.c_str());
   if (nullptr == fp)
@@ -1145,7 +1146,8 @@ int zds_write_to_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, s
 
   const auto hasEncoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
   const auto codepage = string(zds->encoding_opts.codepage);
-  const auto fopen_flags = (zds->encoding_opts.data_type == eDataTypeBinary ? "r+b" : "r+") + string(",recfm=*");
+  const bool is_member = dsname.find('(') != string::npos;
+  const auto fopen_flags = (is_member ? string("w") : string("r+")) + (zds->encoding_opts.data_type == eDataTypeBinary ? "b" : "") + string(",recfm=*");
 
   FILE *fout = fopen(dsname.c_str(), fopen_flags.c_str());
   if (!fout)
