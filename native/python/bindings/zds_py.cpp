@@ -40,7 +40,7 @@ void create_data_set(std::string dsn, DS_ATTRIBUTES attributes)
   int rc = zds_create_dsn(&zds, dsn, attrs_copy, response);
   if (rc != 0)
   {
-    std::string diag(zds.diag.e_msg, zds.diag.e_msg_len);
+    std::string diag(response, response.length());
     diag.push_back('\0');
     e2a_inplace(diag);
     diag.pop_back();

@@ -1,18 +1,25 @@
 import pytest
 import sys
 import os
+import yaml
 
 # Add parent directory to path for importing job module
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import zjb_py as jb
+
+FIXTURES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures")
+ENV_FIXTURE_PATH = os.path.join(FIXTURES_PATH, "env.yml")
 
 class TestJobFunctions:
     """Tests for z/OS job management functions."""
     
     def setup_method(self):
         """Setup test fixtures before each test method."""
-        # Use current user for testing
-        self.test_owner = "TESTUSER"  # Replace with actual test user
+        # Load environment variables from fixture
+        with open(ENV_FIXTURE_PATH, "r") as env_yml:
+            env_parsed = yaml.safe_load(env_yml)
+            self.OWNER = env_parsed["OWNER"]
+
         self.submitted_jobs = []  # Track jobs we submit for cleanup
 
     def teardown_method(self):

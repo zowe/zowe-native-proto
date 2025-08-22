@@ -11,4 +11,4 @@
 
 #include "zshmem.hpp"
 
-ZShared* ZShared::_instance = nullptr;
+ZShared *ZShared::_instance = nullptr;

@@ -1,15 +1,25 @@
 import pytest
-
+import os
+import yaml
 import sys
 sys.path.insert(0, '../')
 import zds_py as ds
+
+FIXTURES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures")
+ENV_FIXTURE_PATH = os.path.join(FIXTURES_PATH, "env.yml")
 
 class TestDatasetFunctions:
     """Combined tests for all dataset functions."""
     
     def setup_method(self):
         """Setup test fixtures before each test method."""
-        self.test_dsn_base = "TEST.DATASET"
+        # Load environment variables from fixture
+        with open(ENV_FIXTURE_PATH, "r") as env_yml:
+            env_parsed = yaml.safe_load(env_yml)
+            self.DSN_PREFIX = env_parsed["DSN_PREFIX"]
+
+        # Set up test dataset base name
+        self.test_dsn_base = self.DSN_PREFIX
         self.created_datasets = []
 
     def teardown_method(self):
