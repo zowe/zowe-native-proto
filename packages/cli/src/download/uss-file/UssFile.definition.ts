@@ -52,7 +52,7 @@ export const DownloadUssFileDefinition: ICommandDefinition = {
             type: "string",
         },
         {
-            name: "source-encoding",
+            name: "local-encoding",
             aliases: ["sec"],
             description: "The source encoding of the USS file content (defaults to UTF-8).",
             defaultValue: null,

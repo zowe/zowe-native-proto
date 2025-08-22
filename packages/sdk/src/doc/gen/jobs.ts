@@ -18,238 +18,237 @@ import type * as common from "./common.ts";
 // source: requests.go
 
 export interface ListJobsRequest extends common.CommandRequest, common.ListOptions {
-  command: "listJobs";
-  /**
-   * Filter jobs by matching job owner (optional)
-   */
-  owner?: string;
-  /**
-   * Filter jobs by prefix (optional)
-   */
-  prefix?: string;
-  /**
-   * Filter jobs by status (optional)
-   */
-  status?: string;
+    command: "listJobs";
+    /**
+     * Filter jobs by matching job owner (optional)
+     */
+    owner?: string;
+    /**
+     * Filter jobs by prefix (optional)
+     */
+    prefix?: string;
+    /**
+     * Filter jobs by status (optional)
+     */
+    status?: string;
 }
 export interface ListSpoolsRequest extends common.CommandRequest {
-  command: "listSpools";
-  /**
-   * Job ID to list spools for
-   */
-  jobId: string;
+    command: "listSpools";
+    /**
+     * Job ID to list spools for
+     */
+    jobId: string;
 }
 export interface ReadSpoolRequest extends common.CommandRequest {
-  command: "readSpool";
-  /**
-   * Desired encoding for the spool file (optional)
-   */
-  encoding?: string;
-  /**
-   * Source encoding of the spool file content (optional, defaults to UTF-8)
-   */
-  sourceEncoding?: string;
-  /**
-   * Spool ID to read under the given job ID
-   */
-  spoolId: number /* int */;
-  /**
-   * Job ID with spools to read from
-   */
-  jobId: string;
+    command: "readSpool";
+    /**
+     * Desired encoding for the spool file (optional)
+     */
+    encoding?: string;
+    /**
+     * Source encoding of the spool file content (optional, defaults to UTF-8)
+     */
+    localEncoding?: string;
+    /**
+     * Spool ID to read under the given job ID
+     */
+    spoolId: number /* int */;
+    /**
+     * Job ID with spools to read from
+     */
+    jobId: string;
 }
 export interface GetJclRequest extends common.CommandRequest {
-  command: "getJcl";
-  /**
-   * Job ID to get JCL for
-   */
-  jobId: string;
+    command: "getJcl";
+    /**
+     * Job ID to get JCL for
+     */
+    jobId: string;
 }
 export interface GetJobStatusRequest extends common.CommandRequest {
-  command: "getJobStatus";
-  /**
-   * Job ID to get status for
-   */
-  jobId: string;
+    command: "getJobStatus";
+    /**
+     * Job ID to get status for
+     */
+    jobId: string;
 }
 export interface SubmitJobRequest extends common.CommandRequest {
-  command: "submitJob";
-  /**
-   * Dataset name w/ contents to submit as JCL
-   */
-  dsname: string;
+    command: "submitJob";
+    /**
+     * Dataset name w/ contents to submit as JCL
+     */
+    dsname: string;
 }
 export interface SubmitUssRequest extends common.CommandRequest {
-  command: "submitUss";
-  /**
-   * File path w/ contents to submit as JCL
-   */
-  fspath: string;
+    command: "submitUss";
+    /**
+     * File path w/ contents to submit as JCL
+     */
+    fspath: string;
 }
 export interface SubmitJclRequest extends common.CommandRequest {
-  command: "submitJcl";
-  /**
-   * Desired encoding for the spool file (optional)
-   */
-  encoding?: string;
-  /**
-   * Source encoding of the JCL content (optional, defaults to UTF-8)
-   */
-  sourceEncoding?: string;
-  /**
-   * JCL contents to submit as a job
-   */
-  jcl: B64String;
+    command: "submitJcl";
+    /**
+     * Desired encoding for the spool file (optional)
+     */
+    encoding?: string;
+    /**
+     * Source encoding of the JCL content (optional, defaults to UTF-8)
+     */
+    localEncoding?: string;
+    /**
+     * JCL contents to submit as a job
+     */
+    jcl: B64String;
 }
 export interface CancelJobRequest extends common.CommandRequest {
-  command: "cancelJob";
-  /**
-   * Job ID to cancel
-   */
-  jobId: string;
+    command: "cancelJob";
+    /**
+     * Job ID to cancel
+     */
+    jobId: string;
 }
 export interface DeleteJobRequest extends common.CommandRequest {
-  command: "deleteJob";
-  /**
-   * Job ID to cancel
-   */
-  jobId: string;
+    command: "deleteJob";
+    /**
+     * Job ID to cancel
+     */
+    jobId: string;
 }
 export interface HoldJobRequest extends common.CommandRequest {
-  command: "holdJob";
-  /**
-   * Job ID to hold
-   */
-  jobId: string;
+    command: "holdJob";
+    /**
+     * Job ID to hold
+     */
+    jobId: string;
 }
 export interface ReleaseJobRequest extends common.CommandRequest {
-  command: "releaseJob";
-  /**
-   * Job ID to release
-   */
-  jobId: string;
+    command: "releaseJob";
+    /**
+     * Job ID to release
+     */
+    jobId: string;
 }
 
 //////////
 // source: responses.go
 
 export interface ListJobsResponse extends common.CommandResponse {
-  /**
-   * List of returned jobs
-   */
-  items: common.Job[];
+    /**
+     * List of returned jobs
+     */
+    items: common.Job[];
 }
 export interface ListSpoolsResponse extends common.CommandResponse {
-  /**
-   * List of returned spools
-   */
-  items: common.Spool[];
+    /**
+     * List of returned spools
+     */
+    items: common.Spool[];
 }
 export interface GetJclResponse extends common.CommandResponse {
-  /**
-   * Job ID for the returned JCL
-   */
-  jobId: string;
-  /**
-   * JCL contents
-   */
-  data: string;
+    /**
+     * Job ID for the returned JCL
+     */
+    jobId: string;
+    /**
+     * JCL contents
+     */
+    data: string;
 }
 export interface ReadSpoolResponse extends common.CommandResponse {
-  /**
-   * Desired encoding for the spool file (optional)
-   */
-  encoding?: string;
-  /**
-   * Spool ID matching the returned spool contents
-   */
-  spoolId: number /* int */;
-  /**
-   * Job ID associated with the returned spool
-   */
-  jobId: string;
-  /**
-   * Spool contents
-   */
-  data: B64String;
+    /**
+     * Desired encoding for the spool file (optional)
+     */
+    encoding?: string;
+    /**
+     * Spool ID matching the returned spool contents
+     */
+    spoolId: number /* int */;
+    /**
+     * Job ID associated with the returned spool
+     */
+    jobId: string;
+    /**
+     * Spool contents
+     */
+    data: B64String;
 }
-export interface GetJobStatusResponse extends common.CommandResponse, common.Job {
-}
+export interface GetJobStatusResponse extends common.CommandResponse, common.Job {}
 export interface SubmitJobResponse extends common.CommandResponse {
-  /**
-   * Whether the job was successfully submitted
-   */
-  success: boolean;
-  /**
-   * The job ID of the newly-submitted job
-   */
-  jobId: string;
-  /**
-   * The data set name where the JCL was read from
-   */
-  dsname: string;
+    /**
+     * Whether the job was successfully submitted
+     */
+    success: boolean;
+    /**
+     * The job ID of the newly-submitted job
+     */
+    jobId: string;
+    /**
+     * The data set name where the JCL was read from
+     */
+    dsname: string;
 }
 export interface SubmitUssResponse extends common.CommandResponse {
-  /**
-   * Whether the job was successfully submitted
-   */
-  success: boolean;
-  /**
-   * The job ID of the newly-submitted job
-   */
-  jobId: string;
-  /**
-   * The USS file where the JCL was read from
-   */
-  fspath: string;
+    /**
+     * Whether the job was successfully submitted
+     */
+    success: boolean;
+    /**
+     * The job ID of the newly-submitted job
+     */
+    jobId: string;
+    /**
+     * The USS file where the JCL was read from
+     */
+    fspath: string;
 }
 export interface SubmitJclResponse extends common.CommandResponse {
-  /**
-   * Whether the JCL was successfully submitted
-   */
-  success: boolean;
-  /**
-   * The ID of the new job
-   */
-  jobId: string;
+    /**
+     * Whether the JCL was successfully submitted
+     */
+    success: boolean;
+    /**
+     * The ID of the new job
+     */
+    jobId: string;
 }
 export interface DeleteJobResponse extends common.CommandResponse {
-  /**
-   * Whether the job was successfully deleted
-   */
-  success: boolean;
-  /**
-   * The ID for the job that was deletede
-   */
-  jobId: string;
+    /**
+     * Whether the job was successfully deleted
+     */
+    success: boolean;
+    /**
+     * The ID for the job that was deletede
+     */
+    jobId: string;
 }
 export interface CancelJobResponse extends common.CommandResponse {
-  /**
-   * Whether the job was successfully cancelled
-   */
-  success: boolean;
-  /**
-   * The ID for the job that was cancelled
-   */
-  jobId: string;
+    /**
+     * Whether the job was successfully cancelled
+     */
+    success: boolean;
+    /**
+     * The ID for the job that was cancelled
+     */
+    jobId: string;
 }
 export interface HoldJobResponse extends common.CommandResponse {
-  /**
-   * Whether the job was successfully held
-   */
-  success: boolean;
-  /**
-   * The ID for the job that was held
-   */
-  jobId: string;
+    /**
+     * Whether the job was successfully held
+     */
+    success: boolean;
+    /**
+     * The ID for the job that was held
+     */
+    jobId: string;
 }
 export interface ReleaseJobResponse extends common.CommandResponse {
-  /**
-   * Whether the job was successfully released
-   */
-  success: boolean;
-  /**
-   * The ID for the job that was released
-   */
-  jobId: string;
+    /**
+     * Whether the job was successfully released
+     */
+    success: boolean;
+    /**
+     * The ID for the job that was released
+     */
+    jobId: string;
 }

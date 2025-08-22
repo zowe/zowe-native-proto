@@ -33,7 +33,7 @@ export default class DownloadJobJclHandler extends SshBaseHandler {
             spoolId: params.arguments.dsnKey,
             jobId: params.arguments.jobId,
             encoding: params.arguments.encoding,
-            sourceEncoding: params.arguments.sourceEncoding,
+            localEncoding: params.arguments.localEncoding,
         });
 
         const content = B64String.decode(response.data);

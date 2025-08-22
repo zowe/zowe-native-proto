@@ -186,7 +186,7 @@ int main(int argc, char *argv[])
 
   // Common data set options that are reused
   auto encoding_option = make_aliases("--encoding", "--ec");
-  auto source_encoding_option = make_aliases("--source-encoding", "--sec");
+  auto source_encoding_option = make_aliases("--local-encoding", "--sec");
   auto etag_option = make_aliases("--etag");
   auto etag_only_option = make_aliases("--etag-only");
   auto return_etag_option = make_aliases("--return-etag");
@@ -259,7 +259,7 @@ int main(int argc, char *argv[])
   auto ds_view_cmd = command_ptr(new Command("view", "view data set"));
   ds_view_cmd->add_positional_arg("dsn", "data set name, optionally with member specified", ArgType_Single, true);
   ds_view_cmd->add_keyword_arg("encoding", encoding_option, "return contents in given encoding", ArgType_Single, false);
-  ds_view_cmd->add_keyword_arg("source-encoding", source_encoding_option, "source encoding of the data set content (defaults to UTF-8)", ArgType_Single, false);
+  ds_view_cmd->add_keyword_arg("local-encoding", source_encoding_option, "source encoding of the data set content (defaults to UTF-8)", ArgType_Single, false);
   ds_view_cmd->add_keyword_arg("response-format-bytes", response_format_bytes_option, "returns the response as raw bytes", ArgType_Flag, false, ArgValue(false));
   ds_view_cmd->add_keyword_arg("return-etag", return_etag_option, "Display the e-tag for a read response in addition to data", ArgType_Flag, false, ArgValue(false));
   ds_view_cmd->add_keyword_arg("pipe-path", pipe_path_option, "Specify a FIFO pipe path for transferring binary data", ArgType_Single, false);
@@ -290,7 +290,7 @@ int main(int argc, char *argv[])
   auto ds_write_cmd = command_ptr(new Command("write", "write to data set"));
   ds_write_cmd->add_positional_arg("dsn", "data set name, optionally with member specified", ArgType_Single, true);
   ds_write_cmd->add_keyword_arg("encoding", encoding_option, "encoding for input data", ArgType_Single, false);
-  ds_write_cmd->add_keyword_arg("source-encoding", source_encoding_option, "source encoding of the input data (defaults to UTF-8)", ArgType_Single, false);
+  ds_write_cmd->add_keyword_arg("local-encoding", source_encoding_option, "source encoding of the input data (defaults to UTF-8)", ArgType_Single, false);
   ds_write_cmd->add_keyword_arg("etag", etag_option, "Provide the e-tag for a write response to detect conflicts before save", ArgType_Single, false);
   ds_write_cmd->add_keyword_arg("etag-only", etag_only_option, "Only print the e-tag for a write response (when successful)", ArgType_Flag, false, ArgValue(false));
   ds_write_cmd->add_keyword_arg("pipe-path", pipe_path_option, "Specify a FIFO pipe path for transferring binary data", ArgType_Single, false);
@@ -397,7 +397,7 @@ int main(int argc, char *argv[])
 
   // Common encoding/etag/pipe-path option helpers (reuse from data-set group)
   auto uss_encoding_option = make_aliases("--encoding", "--ec");
-  auto uss_source_encoding_option = make_aliases("--source-encoding", "--sec");
+  auto uss_source_encoding_option = make_aliases("--local-encoding", "--sec");
   auto uss_etag_option = make_aliases("--etag");
   auto uss_etag_only_option = make_aliases("--etag-only");
   auto uss_return_etag_option = make_aliases("--return-etag");
@@ -431,7 +431,7 @@ int main(int argc, char *argv[])
   auto uss_view_cmd = command_ptr(new Command("view", "view a USS file"));
   uss_view_cmd->add_positional_arg("file-path", "file path", ArgType_Single, true);
   uss_view_cmd->add_keyword_arg("encoding", uss_encoding_option, "return contents in given encoding", ArgType_Single, false);
-  uss_view_cmd->add_keyword_arg("source-encoding", uss_source_encoding_option, "source encoding of the USS file content (defaults to UTF-8)", ArgType_Single, false);
+  uss_view_cmd->add_keyword_arg("local-encoding", uss_source_encoding_option, "source encoding of the USS file content (defaults to UTF-8)", ArgType_Single, false);
   uss_view_cmd->add_keyword_arg("response-format-bytes", uss_response_format_bytes_option, "returns the response as raw bytes", ArgType_Flag, false, ArgValue(false));
   uss_view_cmd->add_keyword_arg("return-etag", uss_return_etag_option, "Display the e-tag for a read response in addition to data", ArgType_Flag, false, ArgValue(false));
   uss_view_cmd->add_keyword_arg("pipe-path", uss_pipe_path_option, "Specify a FIFO pipe path for transferring binary data", ArgType_Single, false);
@@ -442,7 +442,7 @@ int main(int argc, char *argv[])
   auto uss_write_cmd = command_ptr(new Command("write", "write to a USS file"));
   uss_write_cmd->add_positional_arg("file-path", "file path", ArgType_Single, true);
   uss_write_cmd->add_keyword_arg("encoding", uss_encoding_option, "encoding for input data", ArgType_Single, false);
-  uss_write_cmd->add_keyword_arg("source-encoding", uss_source_encoding_option, "source encoding of the input data (defaults to UTF-8)", ArgType_Single, false);
+  uss_write_cmd->add_keyword_arg("local-encoding", uss_source_encoding_option, "source encoding of the input data (defaults to UTF-8)", ArgType_Single, false);
   uss_write_cmd->add_keyword_arg("etag", uss_etag_option, "Provide the e-tag for a write response to detect conflicts before save", ArgType_Single, false);
   uss_write_cmd->add_keyword_arg("etag-only", uss_etag_only_option, "Only print the e-tag for a write response (when successful)", ArgType_Flag, false, ArgValue(false));
   uss_write_cmd->add_keyword_arg("pipe-path", uss_pipe_path_option, "Specify a FIFO pipe path for transferring binary data", ArgType_Single, false);
@@ -519,7 +519,7 @@ int main(int argc, char *argv[])
   job_view_file_cmd->add_positional_arg("jobid", "valid jobid or job correlator", ArgType_Single, true);
   job_view_file_cmd->add_positional_arg("key", "valid job dsn key via 'job list-files'", ArgType_Single, true);
   job_view_file_cmd->add_keyword_arg("encoding", encoding_option, "return contents in given encoding", ArgType_Single, false);
-  job_view_file_cmd->add_keyword_arg("source-encoding", source_encoding_option, "source encoding of the spool file content (defaults to UTF-8)", ArgType_Single, false);
+  job_view_file_cmd->add_keyword_arg("local-encoding", source_encoding_option, "source encoding of the spool file content (defaults to UTF-8)", ArgType_Single, false);
   job_view_file_cmd->add_keyword_arg("response-format-bytes", response_format_bytes_option, "returns the response as raw bytes", ArgType_Flag, false, ArgValue(false));
   job_view_file_cmd->set_handler(handle_job_view_file);
   job_cmd->add_command(job_view_file_cmd);
@@ -548,7 +548,7 @@ int main(int argc, char *argv[])
   job_submit_jcl_cmd->add_keyword_arg("only-jobid", make_aliases("--only-jobid", "--oj"), "show only job id on success", ArgType_Flag, false, ArgValue(false));
   job_submit_jcl_cmd->add_keyword_arg("only-correlator", make_aliases("--only-correlator", "--oc"), "show only job correlator on success", ArgType_Flag, false, ArgValue(false));
   job_submit_jcl_cmd->add_keyword_arg("encoding", encoding_option, "encoding for input data", ArgType_Single, false);
-  job_submit_jcl_cmd->add_keyword_arg("source-encoding", source_encoding_option, "source encoding of the JCL content (defaults to UTF-8)", ArgType_Single, false);
+  job_submit_jcl_cmd->add_keyword_arg("local-encoding", source_encoding_option, "source encoding of the JCL content (defaults to UTF-8)", ArgType_Single, false);
   job_submit_jcl_cmd->set_handler(handle_job_submit_jcl);
   job_cmd->add_command(job_submit_jcl_cmd);
 
@@ -920,9 +920,9 @@ int handle_data_set_view(const ParseResult &result)
   {
     zut_prepare_encoding(result.find_kw_arg_string("encoding"), &zds.encoding_opts);
   }
-  if (result.has_kw_arg("source-encoding"))
+  if (result.has_kw_arg("local-encoding"))
   {
-    const auto source_encoding = result.find_kw_arg_string("source-encoding");
+    const auto source_encoding = result.find_kw_arg_string("local-encoding");
     if (source_encoding.size() < sizeof(zds.encoding_opts.source_codepage))
     {
       memcpy(zds.encoding_opts.source_codepage, source_encoding.data(), source_encoding.length() + 1);
@@ -1117,9 +1117,9 @@ int handle_data_set_write(const ParseResult &result)
   {
     zut_prepare_encoding(result.find_kw_arg_string("encoding"), &zds.encoding_opts);
   }
-  if (result.has_kw_arg("source-encoding"))
+  if (result.has_kw_arg("local-encoding"))
   {
-    const auto source_encoding = result.find_kw_arg_string("source-encoding");
+    const auto source_encoding = result.find_kw_arg_string("local-encoding");
     if (source_encoding.size() < sizeof(zds.encoding_opts.source_codepage))
     {
       memcpy(zds.encoding_opts.source_codepage, source_encoding.data(), source_encoding.length() + 1);
@@ -1796,9 +1796,9 @@ int handle_uss_view(const ParseResult &result)
   {
     zut_prepare_encoding(result.find_kw_arg_string("encoding"), &zusf.encoding_opts);
   }
-  if (result.has_kw_arg("source-encoding"))
+  if (result.has_kw_arg("local-encoding"))
   {
-    const auto source_encoding = result.find_kw_arg_string("source-encoding");
+    const auto source_encoding = result.find_kw_arg_string("local-encoding");
     if (source_encoding.size() < sizeof(zusf.encoding_opts.source_codepage))
     {
       memcpy(zusf.encoding_opts.source_codepage, source_encoding.data(), source_encoding.length() + 1);
@@ -1871,9 +1871,9 @@ int handle_uss_write(const ParseResult &result)
   {
     zut_prepare_encoding(result.find_kw_arg_string("encoding"), &zusf.encoding_opts);
   }
-  if (result.has_kw_arg("source-encoding"))
+  if (result.has_kw_arg("local-encoding"))
   {
-    const auto source_encoding = result.find_kw_arg_string("source-encoding");
+    const auto source_encoding = result.find_kw_arg_string("local-encoding");
     if (source_encoding.size() < sizeof(zusf.encoding_opts.source_codepage))
     {
       memcpy(zusf.encoding_opts.source_codepage, source_encoding.data(), source_encoding.length() + 1);
@@ -2267,9 +2267,9 @@ int handle_job_view_file(const ParseResult &result)
   {
     zut_prepare_encoding(result.find_kw_arg_string("encoding"), &zjb.encoding_opts);
   }
-  if (result.has_kw_arg("source-encoding"))
+  if (result.has_kw_arg("local-encoding"))
   {
-    const auto source_encoding = result.find_kw_arg_string("source-encoding");
+    const auto source_encoding = result.find_kw_arg_string("local-encoding");
     if (source_encoding.size() < sizeof(zjb.encoding_opts.source_codepage))
     {
       memcpy(zjb.encoding_opts.source_codepage, source_encoding.data(), source_encoding.length() + 1);
@@ -2388,9 +2388,9 @@ int handle_job_submit_jcl(const ParseResult &result)
   ZEncode encoding_opts = {0};
   bool encoding_prepared = result.has_kw_arg("encoding") && zut_prepare_encoding(result.find_kw_arg_string("encoding"), &encoding_opts);
 
-  if (result.has_kw_arg("source-encoding"))
+  if (result.has_kw_arg("local-encoding"))
   {
-    const auto source_encoding = result.find_kw_arg_string("source-encoding");
+    const auto source_encoding = result.find_kw_arg_string("local-encoding");
     if (source_encoding.size() < sizeof(encoding_opts.source_codepage))
     {
       memcpy(encoding_opts.source_codepage, source_encoding.data(), source_encoding.length() + 1);

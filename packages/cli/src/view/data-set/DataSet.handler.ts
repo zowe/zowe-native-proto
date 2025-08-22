@@ -18,7 +18,7 @@ export default class ViewDataSetHandler extends SshBaseHandler {
         const response = await client.ds.readDataset({
             dsname: params.arguments.dataSet,
             encoding: params.arguments.binary ? "binary" : params.arguments.encoding,
-            sourceEncoding: params.arguments.sourceEncoding,
+            localEncoding: params.arguments.localEncoding,
         });
         const content = B64String.decode(response.data);
         params.response.data.setMessage(

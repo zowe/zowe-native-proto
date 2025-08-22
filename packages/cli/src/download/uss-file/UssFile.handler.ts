@@ -33,7 +33,7 @@ export default class DownloadUssFileHandler extends SshBaseHandler {
                 stream: fs.createWriteStream(localFilePath),
                 fspath: params.arguments.filePath,
                 encoding: params.arguments.binary ? "binary" : params.arguments.encoding,
-                sourceEncoding: params.arguments.sourceEncoding,
+                localEncoding: params.arguments.localEncoding,
             },
             (percent: number): void => {
                 task.percentComplete = percent;

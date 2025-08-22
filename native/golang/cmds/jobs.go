@@ -123,8 +123,8 @@ func HandleReadSpoolRequest(conn *utils.StdioConn, params []byte) (result any, e
 		request.Encoding = fmt.Sprintf("IBM-%d", utils.DefaultEncoding)
 	}
 	args := []string{"job", "view-file", request.JobId, strconv.Itoa(request.DsnKey), "--encoding", request.Encoding, "--rfb"}
-	if len(request.SourceEncoding) > 0 {
-		args = append(args, "--source-encoding", request.SourceEncoding)
+	if len(request.localEncoding) > 0 {
+		args = append(args, "--local-encoding", request.localEncoding)
 	}
 	out, err := conn.ExecCmd(args)
 	if err != nil {
@@ -316,8 +316,8 @@ func HandleSubmitJclRequest(conn *utils.StdioConn, params []byte) (result any, e
 	}
 
 	cmdArgs := []string{"job", "submit-jcl", "--only-jobid", "--encoding", request.Encoding}
-	if len(request.SourceEncoding) > 0 {
-		cmdArgs = append(cmdArgs, "--source-encoding", request.SourceEncoding)
+	if len(request.localEncoding) > 0 {
+		cmdArgs = append(cmdArgs, "--local-encoding", request.localEncoding)
 	}
 	cmd := utils.BuildCommand(cmdArgs)
 	stdin, err := cmd.StdinPipe()
