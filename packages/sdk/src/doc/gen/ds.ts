@@ -46,6 +46,10 @@ export interface ReadDatasetRequest extends common.CommandRequest {
    */
   encoding?: string;
   /**
+   * Source encoding of the dataset content (optional, defaults to UTF-8)
+   */
+  localEncoding?: string;
+  /**
    * Dataset name
    */
   dsname: string;
@@ -60,6 +64,10 @@ export interface WriteDatasetRequest extends common.CommandRequest {
    * Desired encoding for the dataset (optional)
    */
   encoding?: string;
+  /**
+   * Source encoding of the dataset content (optional, defaults to UTF-8)
+   */
+  localEncoding?: string;
   /**
    * Last e-tag for the data set (optional, omit to overwrite)
    */
@@ -153,7 +161,7 @@ export interface ReadDatasetResponse extends common.CommandResponse {
   /**
    * Dataset contents (omitted if streaming)
    */
-  data: B64String;
+  data?: B64String;
   /**
    * Length of dataset contents in bytes (only used for streaming)
    */

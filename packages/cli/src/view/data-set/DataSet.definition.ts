@@ -52,6 +52,13 @@ export const ViewDataSetDefinition: ICommandDefinition = {
             defaultValue: null,
             type: "string",
         },
+        {
+            name: "local-encoding",
+            aliases: ["lec"],
+            description: "The source encoding of the z/OS data set content (defaults to UTF-8).",
+            defaultValue: null,
+            type: "string",
+        },
     ],
     profile: { optional: ["ssh"] },
 };

@@ -51,6 +51,13 @@ export const ViewUssFileDefinition: ICommandDefinition = {
             defaultValue: null,
             type: "string",
         },
+        {
+            name: "local-encoding",
+            aliases: ["lec"],
+            description: "The source encoding of the USS file content (defaults to UTF-8).",
+            defaultValue: null,
+            type: "string",
+        },
     ],
     profile: { optional: ["ssh"] },
 };
