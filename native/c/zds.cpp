@@ -527,8 +527,9 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &list)
           }
         }
 
-        list.emplace_back();
-        list.back().name = string(name);
+        ZDSMem mem = {0};
+        mem.name = string(name);
+        list.push_back(mem);
 
         data = data + sizeof(entry) + (info * 2); // skip number of half words
         len = sizeof(entry) + (info * 2);

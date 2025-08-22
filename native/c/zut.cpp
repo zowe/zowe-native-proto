@@ -305,7 +305,7 @@ vector<uint8_t> zut_get_contents_as_bytes(const string &hex_string)
   for (auto i = 0u; i < hex_string.size(); i += 2u)
   {
     const auto byte_str = hex_string.substr(i, 2);
-    bytes.emplace_back(strtoul(byte_str.c_str(), nullptr, 16));
+    bytes.push_back(strtoul(byte_str.c_str(), nullptr, 16));
   }
 
   return bytes;

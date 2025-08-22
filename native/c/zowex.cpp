@@ -2481,7 +2481,7 @@ int free_dynalloc_dds(vector<string> &list)
     }
     else
     {
-      free_dds.emplace_back("free " + alloc_dd.substr(start + 1, end - start));
+      free_dds.push_back("free " + alloc_dd.substr(start + 1, end - start));
     }
   }
 
