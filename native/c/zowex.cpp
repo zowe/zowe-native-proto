@@ -923,7 +923,7 @@ int handle_data_set_view(const ParseResult &result)
   if (result.has_kw_arg("local-encoding"))
   {
     const auto source_encoding = result.find_kw_arg_string("local-encoding");
-    if (source_encoding.size() < sizeof(zds.encoding_opts.source_codepage))
+    if (!source_encoding.empty() && source_encoding.size() < sizeof(zds.encoding_opts.source_codepage))
     {
       memcpy(zds.encoding_opts.source_codepage, source_encoding.data(), source_encoding.length() + 1);
     }
@@ -1120,7 +1120,7 @@ int handle_data_set_write(const ParseResult &result)
   if (result.has_kw_arg("local-encoding"))
   {
     const auto source_encoding = result.find_kw_arg_string("local-encoding");
-    if (source_encoding.size() < sizeof(zds.encoding_opts.source_codepage))
+    if (!source_encoding.empty() && source_encoding.size() < sizeof(zds.encoding_opts.source_codepage))
     {
       memcpy(zds.encoding_opts.source_codepage, source_encoding.data(), source_encoding.length() + 1);
     }
@@ -1799,7 +1799,7 @@ int handle_uss_view(const ParseResult &result)
   if (result.has_kw_arg("local-encoding"))
   {
     const auto source_encoding = result.find_kw_arg_string("local-encoding");
-    if (source_encoding.size() < sizeof(zusf.encoding_opts.source_codepage))
+    if (!source_encoding.empty() && source_encoding.size() < sizeof(zusf.encoding_opts.source_codepage))
     {
       memcpy(zusf.encoding_opts.source_codepage, source_encoding.data(), source_encoding.length() + 1);
     }
@@ -1874,7 +1874,7 @@ int handle_uss_write(const ParseResult &result)
   if (result.has_kw_arg("local-encoding"))
   {
     const auto source_encoding = result.find_kw_arg_string("local-encoding");
-    if (source_encoding.size() < sizeof(zusf.encoding_opts.source_codepage))
+    if (!source_encoding.empty() && source_encoding.size() < sizeof(zusf.encoding_opts.source_codepage))
     {
       memcpy(zusf.encoding_opts.source_codepage, source_encoding.data(), source_encoding.length() + 1);
     }
@@ -2270,7 +2270,7 @@ int handle_job_view_file(const ParseResult &result)
   if (result.has_kw_arg("local-encoding"))
   {
     const auto source_encoding = result.find_kw_arg_string("local-encoding");
-    if (source_encoding.size() < sizeof(zjb.encoding_opts.source_codepage))
+    if (!source_encoding.empty() && source_encoding.size() < sizeof(zjb.encoding_opts.source_codepage))
     {
       memcpy(zjb.encoding_opts.source_codepage, source_encoding.data(), source_encoding.length() + 1);
     }
@@ -2391,7 +2391,7 @@ int handle_job_submit_jcl(const ParseResult &result)
   if (result.has_kw_arg("local-encoding"))
   {
     const auto source_encoding = result.find_kw_arg_string("local-encoding");
-    if (source_encoding.size() < sizeof(encoding_opts.source_codepage))
+    if (!source_encoding.empty() && source_encoding.size() < sizeof(encoding_opts.source_codepage))
     {
       memcpy(encoding_opts.source_codepage, source_encoding.data(), source_encoding.length() + 1);
     }
