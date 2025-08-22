@@ -32,7 +32,7 @@ type ReadFileRequest struct {
 	// Desired encoding for the file (optional)
 	Encoding string `json:"encoding,omitempty"`
 	// Source encoding of the file content (optional, defaults to UTF-8)
-	SourceEncoding string `json:"sourceEncoding,omitempty"`
+	LocalEncoding string `json:"localEncoding,omitempty"`
 	// Remote file path to read contents from
 	Path string `json:"fspath"`
 	// Stream to write contents to
@@ -45,7 +45,7 @@ type WriteFileRequest struct {
 	// Desired encoding for the file (optional)
 	Encoding string `json:"encoding,omitempty"`
 	// Source encoding of the file content (optional, defaults to UTF-8)
-	SourceEncoding string `json:"sourceEncoding,omitempty"`
+	LocalEncoding string `json:"localEncoding,omitempty"`
 	// E-tag for the file to detect conflicts during save (optional)
 	Etag string `json:"etag,omitempty"`
 	// Remote file path to write contents to

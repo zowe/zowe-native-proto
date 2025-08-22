@@ -18,184 +18,184 @@ import type * as common from "./common.ts";
 // source: requests.go
 
 export interface ListDatasetsRequest extends common.CommandRequest, common.ListOptions, common.ListDatasetOptions {
-    command: "listDatasets";
-    /**
-     * Pattern to match against dataset names
-     */
-    pattern: string;
-    /**
-     * Whether to include attributes in the response
-     */
-    attributes?: boolean;
+  command: "listDatasets";
+  /**
+   * Pattern to match against dataset names
+   */
+  pattern: string;
+  /**
+   * Whether to include attributes in the response
+   */
+  attributes?: boolean;
 }
 export interface ListDsMembersRequest extends common.CommandRequest, common.ListOptions, common.ListDatasetOptions {
-    command: "listDsMembers";
-    /**
-     * Dataset name
-     */
-    dsname: string;
-    /**
-     * Whether to include attributes in the response
-     */
-    attributes?: boolean;
+  command: "listDsMembers";
+  /**
+   * Dataset name
+   */
+  dsname: string;
+  /**
+   * Whether to include attributes in the response
+   */
+  attributes?: boolean;
 }
 export interface ReadDatasetRequest extends common.CommandRequest {
-    command: "readDataset";
-    /**
-     * Desired encoding for the dataset (optional)
-     */
-    encoding?: string;
-    /**
-     * Source encoding of the dataset content (optional, defaults to UTF-8)
-     */
-    localEncoding?: string;
-    /**
-     * Dataset name
-     */
-    dsname: string;
-    /**
-     * Stream to write contents to
-     */
-    stream?: Writable;
+  command: "readDataset";
+  /**
+   * Desired encoding for the dataset (optional)
+   */
+  encoding?: string;
+  /**
+   * Source encoding of the dataset content (optional, defaults to UTF-8)
+   */
+  localEncoding?: string;
+  /**
+   * Dataset name
+   */
+  dsname: string;
+  /**
+   * Stream to write contents to
+   */
+  stream?: Writable;
 }
 export interface WriteDatasetRequest extends common.CommandRequest {
-    command: "writeDataset";
-    /**
-     * Desired encoding for the dataset (optional)
-     */
-    encoding?: string;
-    /**
-     * Source encoding of the dataset content (optional, defaults to UTF-8)
-     */
-    localEncoding?: string;
-    /**
-     * Last e-tag for the data set (optional, omit to overwrite)
-     */
-    etag?: string;
-    /**
-     * Dataset name
-     */
-    dsname: string;
-    /**
-     * Dataset contents
-     */
-    data?: B64String;
-    /**
-     * Stream to read contents from
-     */
-    stream?: Readable;
+  command: "writeDataset";
+  /**
+   * Desired encoding for the dataset (optional)
+   */
+  encoding?: string;
+  /**
+   * Source encoding of the dataset content (optional, defaults to UTF-8)
+   */
+  localEncoding?: string;
+  /**
+   * Last e-tag for the data set (optional, omit to overwrite)
+   */
+  etag?: string;
+  /**
+   * Dataset name
+   */
+  dsname: string;
+  /**
+   * Dataset contents
+   */
+  data?: B64String;
+  /**
+   * Stream to read contents from
+   */
+  stream?: Readable;
 }
 export interface DeleteDatasetRequest extends common.CommandRequest {
-    command: "deleteDataset";
-    /**
-     * Dataset name
-     */
-    dsname: string;
+  command: "deleteDataset";
+  /**
+   * Dataset name
+   */
+  dsname: string;
 }
 export interface RestoreDatasetRequest extends common.CommandRequest {
-    command: "restoreDataset";
-    /**
-     * Dataset name
-     */
-    dsname: string;
+  command: "restoreDataset";
+  /**
+   * Dataset name
+   */
+  dsname: string;
 }
 export interface CreateDatasetRequest extends common.CommandRequest {
-    command: "createDataset";
-    /**
-     * Dataset name
-     */
-    dsname: string;
-    /**
-     * Dataset attributes
-     */
-    attributes: common.DatasetAttributes;
+  command: "createDataset";
+  /**
+   * Dataset name
+   */
+  dsname: string;
+  /**
+   * Dataset attributes
+   */
+  attributes: common.DatasetAttributes;
 }
 export interface CreateMemberRequest extends common.CommandRequest {
-    command: "createMember";
-    /**
-     * Dataset name
-     */
-    dsname: string;
+  command: "createMember";
+  /**
+   * Dataset name
+   */
+  dsname: string;
 }
 
 //////////
 // source: responses.go
 
 export interface WriteDatasetResponse extends common.CommandResponse {
-    /**
-     * Whether the new data was stored successfully
-     */
-    success: boolean;
-    /**
-     * Dataset name
-     */
-    dataset: string;
-    /**
-     * Returned e-tag for the data set
-     */
-    etag: string;
-    /**
-     * Length of dataset contents in bytes (only used for streaming)
-     */
-    contentLen?: number /* int */;
+  /**
+   * Whether the new data was stored successfully
+   */
+  success: boolean;
+  /**
+   * Dataset name
+   */
+  dataset: string;
+  /**
+   * Returned e-tag for the data set
+   */
+  etag: string;
+  /**
+   * Length of dataset contents in bytes (only used for streaming)
+   */
+  contentLen?: number /* int */;
 }
 export interface RestoreDatasetResponse extends common.CommandResponse {
-    /**
-     * Whether the dataset was restored successfully
-     */
-    success: boolean;
+  /**
+   * Whether the dataset was restored successfully
+   */
+  success: boolean;
 }
 export interface ReadDatasetResponse extends common.CommandResponse {
-    /**
-     * Desired encoding for the dataset (optional)
-     */
-    encoding?: string;
-    /**
-     * Returned e-tag for the data set
-     */
-    etag: string;
-    /**
-     * Dataset name
-     */
-    dataset: string;
-    /**
-     * Dataset contents (omitted if streaming)
-     */
-    data?: B64String;
-    /**
-     * Length of dataset contents in bytes (only used for streaming)
-     */
-    contentLen?: number /* int */;
+  /**
+   * Desired encoding for the dataset (optional)
+   */
+  encoding?: string;
+  /**
+   * Returned e-tag for the data set
+   */
+  etag: string;
+  /**
+   * Dataset name
+   */
+  dataset: string;
+  /**
+   * Dataset contents (omitted if streaming)
+   */
+  data?: B64String;
+  /**
+   * Length of dataset contents in bytes (only used for streaming)
+   */
+  contentLen?: number /* int */;
 }
 export interface ListDatasetsResponse extends common.CommandResponse {
-    /**
-     * List of returned datasets
-     */
-    items: common.Dataset[];
-    /**
-     * Number of rows returned
-     */
-    returnedRows: number /* int */;
+  /**
+   * List of returned datasets
+   */
+  items: common.Dataset[];
+  /**
+   * Number of rows returned
+   */
+  returnedRows: number /* int */;
 }
 export interface ListDsMembersResponse extends common.CommandResponse {
-    /**
-     * List of returned dataset members
-     */
-    items: common.DsMember[];
-    /**
-     * Number of rows returned
-     */
-    returnedRows: number /* int */;
+  /**
+   * List of returned dataset members
+   */
+  items: common.DsMember[];
+  /**
+   * Number of rows returned
+   */
+  returnedRows: number /* int */;
 }
 export interface GenericDatasetResponse extends common.CommandResponse {
-    /**
-     * Whether the dataset operation was successful
-     */
-    success: boolean;
-    /**
-     * Dataset name
-     */
-    dsname: string;
+  /**
+   * Whether the dataset operation was successful
+   */
+  success: boolean;
+  /**
+   * Dataset name
+   */
+  dsname: string;
 }
 export type CreateDatasetResponse = GenericDatasetResponse;
 export type CreateMemberResponse = GenericDatasetResponse;

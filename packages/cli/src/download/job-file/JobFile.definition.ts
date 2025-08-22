@@ -47,7 +47,7 @@ export const DownloadJobFileDefinition: ICommandDefinition = {
         },
         {
             name: "local-encoding",
-            aliases: ["sec"],
+            aliases: ["lec"],
             description: "The source encoding of the spool file content (defaults to UTF-8).",
             type: "string",
             required: false,

@@ -38,7 +38,7 @@ type ReadSpoolRequest struct {
 	// Desired encoding for the spool file (optional)
 	Encoding string `json:"encoding,omitempty"`
 	// Source encoding of the spool file content (optional, defaults to UTF-8)
-	SourceEncoding string `json:"sourceEncoding,omitempty"`
+	LocalEncoding string `json:"localEncoding,omitempty"`
 	// Spool ID to read under the given job ID
 	DsnKey int `json:"spoolId"`
 	// Job ID with spools to read from
@@ -79,7 +79,7 @@ type SubmitJclRequest struct {
 	// Desired encoding for the spool file (optional)
 	Encoding string `json:"encoding,omitempty"`
 	// Source encoding of the JCL content (optional, defaults to UTF-8)
-	SourceEncoding string `json:"sourceEncoding,omitempty"`
+	LocalEncoding string `json:"localEncoding,omitempty"`
 	// JCL contents to submit as a job
 	Jcl string `json:"jcl" tstype:"B64String"`
 }

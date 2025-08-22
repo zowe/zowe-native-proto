@@ -41,7 +41,7 @@ type ReadDatasetRequest struct {
 	// Desired encoding for the dataset (optional)
 	Encoding string `json:"encoding,omitempty"`
 	// Source encoding of the dataset content (optional, defaults to UTF-8)
-	SourceEncoding string `json:"sourceEncoding,omitempty"`
+	LocalEncoding string `json:"localEncoding,omitempty"`
 	// Dataset name
 	Dsname string `json:"dsname"`
 	// Stream to write contents to
@@ -54,7 +54,7 @@ type WriteDatasetRequest struct {
 	// Desired encoding for the dataset (optional)
 	Encoding string `json:"encoding,omitempty"`
 	// Source encoding of the dataset content (optional, defaults to UTF-8)
-	SourceEncoding string `json:"sourceEncoding,omitempty"`
+	LocalEncoding string `json:"localEncoding,omitempty"`
 	// Last e-tag for the data set (optional, omit to overwrite)
 	Etag string `json:"etag,omitempty"`
 	// Dataset name
