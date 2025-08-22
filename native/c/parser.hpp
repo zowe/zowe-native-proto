@@ -66,6 +66,7 @@ inline std::vector<std::string> make_aliases(const char *a1 = 0,
                                              const char *a4 = 0)
 {
   std::vector<std::string> v;
+  v.reserve(4);
   if (a1)
     v.push_back(a1);
   if (a2)
@@ -1018,6 +1019,7 @@ private:
     if (!help_exists)
     {
       std::vector<std::string> help_aliases;
+      help_aliases.reserve(2);
       help_aliases.push_back("-h");
       help_aliases.push_back("--help");
       m_kw_args.push_back(
