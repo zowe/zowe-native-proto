@@ -1096,14 +1096,16 @@ int zusf_read_from_uss_file(ZUSF *zusf, const string &file, string &response)
   if (size > 0 && has_encoding)
   {
     std::string temp = response;
+    const auto source_encoding = strlen(zusf->encoding_opts.source_codepage) > 0 ? string(zusf->encoding_opts.source_codepage) : "UTF-8";
     try
     {
-      const auto bytes_with_encoding = zut_encode(temp, encoding_to_use, "UTF-8", zusf->diag);
+      const auto bytes_with_encoding = zut_encode(temp, encoding_to_use, source_encoding, zusf->diag);
       temp = bytes_with_encoding;
     }
     catch (std::exception &e)
     {
-      // TODO: error handling
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), encoding_to_use.c_str());
+      return RTNCD_FAILURE;
     }
     if (!temp.empty())
     {
@@ -1191,15 +1193,16 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, const string &file, const strin
 
     if (has_encoding)
     {
+      const auto source_encoding = strlen(zusf->encoding_opts.source_codepage) > 0 ? string(zusf->encoding_opts.source_codepage) : "UTF-8";
       try
       {
-        temp_encoded = zut_encode(chunk, chunk_len, encoding_to_use, "UTF-8", zusf->diag);
+        temp_encoded = zut_encode(chunk, chunk_len, encoding_to_use, source_encoding, zusf->diag);
         chunk = &temp_encoded[0];
         chunk_len = temp_encoded.size();
       }
       catch (std::exception &e)
       {
-        zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to convert input data from %s to UTF-8", encoding_to_use.c_str());
+        zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to convert input data from %s to %s", encoding_to_use.c_str(), source_encoding.c_str());
         return RTNCD_FAILURE;
       }
     }
@@ -1276,14 +1279,15 @@ int zusf_write_to_uss_file(ZUSF *zusf, const string &file, string &data)
   std::string temp = data;
   if (has_encoding)
   {
+    const auto source_encoding = strlen(zusf->encoding_opts.source_codepage) > 0 ? string(zusf->encoding_opts.source_codepage) : "UTF-8";
     try
     {
-      const auto bytes_with_encoding = zut_encode(temp, "UTF-8", encoding_to_use, zusf->diag);
+      const auto bytes_with_encoding = zut_encode(temp, source_encoding, encoding_to_use, zusf->diag);
       temp = bytes_with_encoding;
     }
     catch (std::exception &e)
     {
-      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to convert input data from UTF-8 to %s", encoding_to_use.c_str());
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), encoding_to_use.c_str());
       return RTNCD_FAILURE;
     }
   }
@@ -1408,15 +1412,16 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, const string &file, const string
 
     if (has_encoding)
     {
+      const auto source_encoding = strlen(zusf->encoding_opts.source_codepage) > 0 ? string(zusf->encoding_opts.source_codepage) : "UTF-8";
       try
       {
-        temp_encoded = zut_encode(chunk, chunk_len, "UTF-8", encoding_to_use, zusf->diag);
+        temp_encoded = zut_encode(chunk, chunk_len, source_encoding, encoding_to_use, zusf->diag);
         chunk = &temp_encoded[0];
         chunk_len = temp_encoded.size();
       }
       catch (std::exception &e)
       {
-        zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to convert input data from UTF-8 to %s", encoding_to_use.c_str());
+        zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), encoding_to_use.c_str());
         fclose(fin);
         fclose(fout);
         return RTNCD_FAILURE;

@@ -46,6 +46,10 @@ export interface ReadDatasetRequest extends common.CommandRequest {
    */
   encoding?: string;
   /**
+   * Source encoding of the dataset content (optional, defaults to UTF-8)
+   */
+  localEncoding?: string;
+  /**
    * Volume serial for the data set (optional)
    */
   volume?: string;
@@ -64,6 +68,10 @@ export interface WriteDatasetRequest extends common.CommandRequest {
    * Desired encoding for the dataset (optional)
    */
   encoding?: string;
+  /**
+   * Source encoding of the dataset content (optional, defaults to UTF-8)
+   */
+  localEncoding?: string;
   /**
    * Last e-tag for the data set (optional, omit to overwrite)
    */

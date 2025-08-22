@@ -67,6 +67,13 @@ export const UploadFileToDataSetDefinition: ICommandDefinition = {
             type: "string",
         },
         {
+            name: "local-encoding",
+            aliases: ["lec"],
+            description: "The source encoding of the local file content (defaults to UTF-8).",
+            defaultValue: null,
+            type: "string",
+        },
+        {
             name: "volume-serial",
             aliases: ["vs"],
             description: "The volume serial (VOLSER) where the data set resides.",
