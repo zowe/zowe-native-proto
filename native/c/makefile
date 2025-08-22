@@ -56,17 +56,17 @@ C_FLAGS=-W "c,lp64,langlvl(extended),xplink,exportall"\
 
 CXXLANG_FLAGS=-W "c,lp64"\
  -c \
- -I./chdsect \
- -DNO_SHMEM
+ -I./chdsect
 
 SWIG_FLAGS=-W "c,lp64,define(SWIG)"\
  -c \
  -I./chdsect \
- -DSWIG -DNO_SHMEM
+ -DSWIG
 
 DLL_CPP_FLAGS=-W "c,lp64,langlvl(extended0x),dll,xplink,exportall"\
  -c \
- -I./chdsect
+ -I./chdsect \
+ -DZSHMEM_ENABLE
 
 DLL_BND_FLAGS=-W "l,lp64,dll,dynam=dll,xplink,map,list"
 
