@@ -21,6 +21,7 @@ export default class UploadFileToDataSetHandler extends SshBaseHandler {
             stream: fs.createReadStream(params.arguments.file),
             dsname: params.arguments.dataSet,
             encoding: params.arguments.binary ? "binary" : params.arguments.encoding,
+            localEncoding: params.arguments.localEncoding,
         });
         const uploadSource = `local file '${params.arguments.file}'`;
         const successMsg = params.response.console.log(

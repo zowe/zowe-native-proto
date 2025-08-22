@@ -115,14 +115,16 @@ int zds_read_from_dd(ZDS *zds, string ddname, string &response)
   if (size > 0 && strlen(zds->encoding_opts.codepage) > 0)
   {
     string temp = response;
+    const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
     try
     {
-      const auto bytes_with_encoding = zut_encode(temp, string(zds->encoding_opts.codepage), "UTF-8", zds->diag);
+      const auto bytes_with_encoding = zut_encode(temp, string(zds->encoding_opts.codepage), source_encoding, zds->diag);
       temp = bytes_with_encoding;
     }
     catch (exception &e)
     {
-      // TODO: error handling
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), zds->encoding_opts.codepage);
+      return RTNCD_FAILURE;
     }
     if (!temp.empty())
     {
@@ -160,14 +162,16 @@ int zds_read_from_dsn(ZDS *zds, const string &dsn, string &response)
   if (total_size > 0 && encodingProvided)
   {
     string temp = response;
+    const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
     try
     {
-      const auto bytes_with_encoding = zut_encode(temp, string(zds->encoding_opts.codepage), "UTF-8", zds->diag);
+      const auto bytes_with_encoding = zut_encode(temp, string(zds->encoding_opts.codepage), source_encoding, zds->diag);
       temp = bytes_with_encoding;
     }
     catch (exception &e)
     {
-      // TODO: error handling
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), zds->encoding_opts.codepage);
+      return RTNCD_FAILURE;
     }
     if (!temp.empty())
     {
@@ -253,13 +257,14 @@ int zds_write_to_dsn(ZDS *zds, const string &dsn, string &data)
   {
     if (hasEncoding)
     {
+      const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
       try
       {
-        temp = zut_encode(temp, "UTF-8", codepage, zds->diag);
+        temp = zut_encode(temp, source_encoding, codepage, zds->diag);
       }
       catch (exception &e)
       {
-        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from UTF-8 to %s", codepage.c_str());
+        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), codepage.c_str());
         return RTNCD_FAILURE;
       }
     }
@@ -1125,15 +1130,16 @@ int zds_read_from_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, 
 
     if (hasEncoding)
     {
+      const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
       try
       {
-        temp_encoded = zut_encode(chunk, chunk_len, codepage, "UTF-8", zds->diag);
+        temp_encoded = zut_encode(chunk, chunk_len, codepage, source_encoding, zds->diag);
         chunk = &temp_encoded[0];
         chunk_len = temp_encoded.size();
       }
       catch (std::exception &e)
       {
-        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to UTF-8", codepage.c_str());
+        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", codepage.c_str(), source_encoding.c_str());
         fclose(fin);
         fclose(fout);
         return RTNCD_FAILURE;
@@ -1250,15 +1256,16 @@ int zds_write_to_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, s
 
     if (hasEncoding)
     {
+      const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
       try
       {
-        temp_encoded = zut_encode(chunk, chunk_len, "UTF-8", codepage, zds->diag);
+        temp_encoded = zut_encode(chunk, chunk_len, source_encoding, codepage, zds->diag);
         chunk = &temp_encoded[0];
         chunk_len = temp_encoded.size();
       }
       catch (std::exception &e)
       {
-        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from UTF-8 to %s", codepage.c_str());
+        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), codepage.c_str());
         fclose(fin);
         fclose(fout);
         return RTNCD_FAILURE;
