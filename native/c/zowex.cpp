@@ -186,7 +186,7 @@ int main(int argc, char *argv[])
 
   // Common data set options that are reused
   auto encoding_option = make_aliases("--encoding", "--ec");
-  auto source_encoding_option = make_aliases("--local-encoding", "--sec");
+  auto source_encoding_option = make_aliases("--local-encoding", "--lec");
   auto etag_option = make_aliases("--etag");
   auto etag_only_option = make_aliases("--etag-only");
   auto return_etag_option = make_aliases("--return-etag");
@@ -397,7 +397,7 @@ int main(int argc, char *argv[])
 
   // Common encoding/etag/pipe-path option helpers (reuse from data-set group)
   auto uss_encoding_option = make_aliases("--encoding", "--ec");
-  auto uss_source_encoding_option = make_aliases("--local-encoding", "--sec");
+  auto uss_source_encoding_option = make_aliases("--local-encoding", "--lec");
   auto uss_etag_option = make_aliases("--etag");
   auto uss_etag_only_option = make_aliases("--etag-only");
   auto uss_return_etag_option = make_aliases("--return-etag");
