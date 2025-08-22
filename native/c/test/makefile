@@ -212,7 +212,7 @@ build-out/zusf.o:
 	cp ../build-out/xlclang/zusf.o build-out/zusf.o
 
 build-out/zshmem.o:
-	cp ../build-out/xlclang/zshmem.o build-out/zshmem.o
+	cp ../build-out/zshmem.o build-out/zshmem.o
 
 build-out/zbase64.test.o: zbase64.test.cpp
 	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@

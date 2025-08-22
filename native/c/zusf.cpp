@@ -15,7 +15,9 @@
 #ifndef _OPEN_SYS_FILE_EXT
 #define _OPEN_SYS_FILE_EXT 1
 #endif
+#ifdef ZSHMEM_ENABLE
 #include "zshmem.hpp"
+#endif
 #include <algorithm>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -1147,7 +1149,10 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, const string &file, const strin
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not stat file '%s'", file.c_str());
     return RTNCD_FAILURE;
   }
+
+#ifdef ZSHMEM_ENABLE
   set_content_length((uint64_t)st.st_size);
+#endif
 
   int fifo_fd = open(pipe.c_str(), O_WRONLY);
   FILE *fout = fdopen(fifo_fd, "w");
