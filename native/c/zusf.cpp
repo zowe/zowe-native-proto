@@ -1096,9 +1096,9 @@ int zusf_read_from_uss_file(ZUSF *zusf, const string &file, string &response)
   if (size > 0 && has_encoding)
   {
     std::string temp = response;
+    const auto source_encoding = strlen(zusf->encoding_opts.source_codepage) > 0 ? string(zusf->encoding_opts.source_codepage) : "UTF-8";
     try
     {
-      const auto source_encoding = strlen(zusf->encoding_opts.source_codepage) > 0 ? string(zusf->encoding_opts.source_codepage) : "UTF-8";
       const auto bytes_with_encoding = zut_encode(temp, encoding_to_use, source_encoding, zusf->diag);
       temp = bytes_with_encoding;
     }
