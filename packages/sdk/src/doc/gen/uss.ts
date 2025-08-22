@@ -39,6 +39,10 @@ export interface ReadFileRequest extends common.CommandRequest {
    */
   encoding?: string;
   /**
+   * Source encoding of the file content (optional, defaults to UTF-8)
+   */
+  localEncoding?: string;
+  /**
    * Remote file path to read contents from
    */
   fspath: string;
@@ -53,6 +57,10 @@ export interface WriteFileRequest extends common.CommandRequest {
    * Desired encoding for the file (optional)
    */
   encoding?: string;
+  /**
+   * Source encoding of the file content (optional, defaults to UTF-8)
+   */
+  localEncoding?: string;
   /**
    * E-tag for the file to detect conflicts during save (optional)
    */
@@ -175,7 +183,7 @@ export interface ReadFileResponse extends common.CommandResponse {
   /**
    * File contents (omitted if streaming)
    */
-  data: B64String;
+  data?: B64String;
   /**
    * Length of file contents in bytes (only used for streaming)
    */
