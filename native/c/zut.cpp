@@ -294,6 +294,8 @@ void zut_print_string_as_bytes(string &input)
 vector<uint8_t> zut_get_contents_as_bytes(const string &hex_string)
 {
   vector<uint8_t> bytes;
+  bytes.reserve(hex_string.length() / 2);
+
   // If the hex string is not zero-padded, return an empty vector
   if (hex_string.length() % 2 != 0)
   {
@@ -303,8 +305,7 @@ vector<uint8_t> zut_get_contents_as_bytes(const string &hex_string)
   for (auto i = 0u; i < hex_string.size(); i += 2u)
   {
     const auto byte_str = hex_string.substr(i, 2);
-    const uint8_t byte = strtoul(byte_str.c_str(), nullptr, 16);
-    bytes.push_back(byte);
+    bytes.emplace_back(strtoul(byte_str.c_str(), nullptr, 16));
   }
 
   return bytes;
@@ -377,7 +378,7 @@ size_t zut_iconv(iconv_t cd, ZConvData &data, ZDIAG &diag)
  */
 string zut_encode(const string &input_str, const string &from_encoding, const string &to_encoding, ZDIAG &diag)
 {
-  if(from_encoding == to_encoding)
+  if (from_encoding == to_encoding)
   {
     return input_str;
   }
@@ -421,7 +422,7 @@ string zut_encode(const string &input_str, const string &from_encoding, const st
  */
 vector<char> zut_encode(const char *input_str, size_t input_size, const string &from_encoding, const string &to_encoding, ZDIAG &diag)
 {
-  if(from_encoding == to_encoding)
+  if (from_encoding == to_encoding)
   {
     return std::vector<char>(input_str, input_str + input_size);
   }

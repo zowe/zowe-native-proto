@@ -462,6 +462,8 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &list)
   if (0 == zds->max_entries)
     zds->max_entries = ZDS_DEFAULT_MAX_MEMBER_ENTRIES;
 
+  list.reserve(zds->max_entries);
+
   RECORD rec = {0};
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=pds-reading-directory-sequentially
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=pdse-reading-directory - long alias names omitted, use DESERV for those
@@ -525,9 +527,8 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &list)
           }
         }
 
-        ZDSMem mem = {0};
-        mem.name = string(name);
-        list.push_back(mem);
+        list.emplace_back();
+        list.back().name = string(name);
 
         data = data + sizeof(entry) + (info * 2); // skip number of half words
         len = sizeof(entry) + (info * 2);
