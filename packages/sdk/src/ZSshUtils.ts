@@ -58,7 +58,10 @@ export class ZSshUtils {
         session: SshSession,
         serverPath: string,
         localDir: string,
-        onProgress?: (increment: number) => void, // Callback to report incremental progress
+        options?: {
+            onProgress?: (increment: number) => void; // Callback to report incremental progress
+            onError?: (error: Error, context: string) => Promise<boolean>; // Callback to handle errors, returns true to continue/retry
+        }
     ): Promise<void> {
         Logger.getAppLogger().debug(`Installing server to ${session.ISshSession.hostname} at path: ${serverPath}`);
         const remoteDir = serverPath.replace(/^~/, ".");
@@ -72,13 +75,13 @@ export class ZSshUtils {
             let previousPercentage = 0;
 
             // Create the progress callback for tracking the upload progress
-            const progressCallback = onProgress
+            const progressCallback = options?.onProgress
                 ? (progress: number, _chunk: number, total: number) => {
                       const percentage = Math.floor((progress / total) * 100); // Calculate percentage
                       const increment = percentage - previousPercentage;
 
                       if (increment > 0) {
-                          onProgress(increment);
+                          options.onProgress!(increment);
                           previousPercentage = percentage;
                       }
                   }
@@ -91,9 +94,20 @@ export class ZSshUtils {
                     { step: progressCallback },
                 );
             } catch (err) {
-                const errMsg = `Failed to upload server PAX file${err.code ? ` with RC ${err.code}` : ""}: ${err}`;
+                const error = err instanceof Error ? err : new Error(String(err));
+                const errMsg = `Failed to upload server PAX file${(err as SftpError).code ? ` with RC ${(err as SftpError).code}` : ""}: ${err}`;
                 Logger.getAppLogger().error(errMsg);
-                throw new Error(errMsg);
+                
+                if (options?.onError) {
+                    const shouldContinue = await options.onError(new Error(errMsg), "upload");
+                    if (!shouldContinue) {
+                        throw new Error(errMsg);
+                    }
+                    // If shouldContinue is true, the error handler might have resolved the issue
+                    // or the user chose to continue despite the error
+                } else {
+                    throw new Error(errMsg);
+                }
             }
 
             const result = await ssh.execCommand(`pax -rzf ${ZSshUtils.SERVER_PAX_FILE}`, { cwd: remoteDir });
@@ -102,26 +116,90 @@ export class ZSshUtils {
             } else {
                 const errMsg = `Failed to extract server binaries with RC ${result.code}: ${result.stderr}`;
                 Logger.getAppLogger().error(errMsg);
-                throw new Error(errMsg);
+                
+                if (options?.onError) {
+                    const shouldContinue = await options.onError(new Error(errMsg), "extract");
+                    if (!shouldContinue) {
+                        throw new Error(errMsg);
+                    }
+                } else {
+                    throw new Error(errMsg);
+                }
             }
-            await promisify(sftp.unlink.bind(sftp))(path.posix.join(remoteDir, ZSshUtils.SERVER_PAX_FILE));
+            
+            try {
+                await promisify(sftp.unlink.bind(sftp))(path.posix.join(remoteDir, ZSshUtils.SERVER_PAX_FILE));
+            } catch (err) {
+                const error = err instanceof Error ? err : new Error(String(err));
+                const errMsg = `Failed to cleanup server PAX file: ${err}`;
+                Logger.getAppLogger().warn(errMsg);
+                
+                if (options?.onError) {
+                    await options.onError(new Error(errMsg), "cleanup");
+                    // Don't throw for cleanup errors, just log them
+                } else {
+                    // Non-fatal cleanup error, just log it
+                    Logger.getAppLogger().debug("Cleanup error is non-fatal, continuing...");
+                }
+            }
         });
     }
 
-    public static async uninstallServer(session: SshSession, serverPath: string): Promise<void> {
+    public static async uninstallServer(
+        session: SshSession, 
+        serverPath: string,
+        options?: {
+            onError?: (error: Error, context: string) => Promise<boolean>; // Callback to handle errors, returns true to continue/retry
+        }
+    ): Promise<void> {
         Logger.getAppLogger().debug(`Uninstalling server from ${session.ISshSession.hostname} at path: ${serverPath}`);
         const remoteDir = serverPath.replace(/^~/, ".");
         return ZSshUtils.sftp(session, async (sftp, _ssh) => {
             for (const file of ZSshUtils.SERVER_BIN_FILES) {
-                await promisify(sftp.unlink.bind(sftp))(path.posix.join(remoteDir, file)).catch((err: SftpError) => {
-                    if (err.code !== 2) throw err;
-                    Logger.getAppLogger().info(`Remote file does not exist: ${serverPath}/${file}`);
-                });
+                try {
+                    await promisify(sftp.unlink.bind(sftp))(path.posix.join(remoteDir, file));
+                } catch (err) {
+                    const sftpErr = err as SftpError;
+                    if (sftpErr.code === 2) {
+                        // File not found - this is expected and not an error
+                        Logger.getAppLogger().info(`Remote file does not exist: ${serverPath}/${file}`);
+                    } else {
+                        const errMsg = `Failed to remove server file ${file}: ${err}`;
+                        Logger.getAppLogger().error(errMsg);
+                        
+                        if (options?.onError) {
+                            const shouldContinue = await options.onError(new Error(errMsg), "unlink");
+                            if (!shouldContinue) {
+                                throw new Error(errMsg);
+                            }
+                        } else {
+                            throw new Error(errMsg);
+                        }
+                    }
+                }
             }
-            await promisify(sftp.rmdir.bind(sftp))(remoteDir).catch((err: SftpError) => {
-                if (err.code !== 4) throw err;
-                Logger.getAppLogger().info(`Remote directory does not exist: ${serverPath}`);
-            });
+            
+            try {
+                await promisify(sftp.rmdir.bind(sftp))(remoteDir);
+            } catch (err) {
+                const sftpErr = err as SftpError;
+                if (sftpErr.code === 4) {
+                    // Directory not found - this is expected and not an error
+                    Logger.getAppLogger().info(`Remote directory does not exist: ${serverPath}`);
+                } else {
+                    const errMsg = `Failed to remove server directory: ${err}`;
+                    Logger.getAppLogger().error(errMsg);
+                    
+                    if (options?.onError) {
+                        const shouldContinue = await options.onError(new Error(errMsg), "rmdir");
+                        if (!shouldContinue) {
+                            throw new Error(errMsg);
+                        }
+                    } else {
+                        throw new Error(errMsg);
+                    }
+                }
+            }
         });
     }
 

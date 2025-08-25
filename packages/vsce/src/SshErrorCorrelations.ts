@@ -156,7 +156,7 @@ function registerFileSystemErrors(correlator: ErrorCorrelator): void {
     const fileSystemErrors: ErrorCorrelation[] = [
         {
             errorCode: "FSUM6260",
-            matches: [/write error on file ".*"/, "FSUM6260"],
+            matches: [/write error on file ".*"/, "FSUM6260", "Failed to upload server PAX file with RC 4: Error: Failure"],
             summary:
                 "Failed to write to file. The file may be read-only, the disk may be full, or there may be permission issues.",
             tips: [
