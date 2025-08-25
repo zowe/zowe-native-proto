@@ -9,7 +9,12 @@
  *
  */
 
-import { ZoweVsCodeExtension, type ZoweExplorerApiType, type ErrorCorrelation } from "@zowe/zowe-explorer-api";
+import {
+    type ErrorCorrelation,
+    type ErrorCorrelator,
+    type ZoweExplorerApiType,
+    ZoweVsCodeExtension,
+} from "@zowe/zowe-explorer-api";
 
 /**
  * Registers all SSH-specific error correlations with the Zowe Explorer ErrorCorrelator
@@ -31,9 +36,7 @@ export function registerSshErrorCorrelations(): void {
     registerFileSystemErrors(errorCorrelator);
 }
 
-function registerConnectionFailures(correlator: {
-    addCorrelation: (api: ZoweExplorerApiType, profileType: string, correlation: ErrorCorrelation) => void;
-}): void {
+function registerConnectionFailures(correlator: ErrorCorrelator): void {
     const connectionFailures: ErrorCorrelation[] = [
         {
             errorCode: "FOTS4241",
@@ -93,9 +96,7 @@ function registerConnectionFailures(correlator: {
     });
 }
 
-function registerMemoryFailures(correlator: {
-    addCorrelation: (api: ZoweExplorerApiType, profileType: string, correlation: ErrorCorrelation) => void;
-}): void {
+function registerMemoryFailures(correlator: ErrorCorrelator): void {
     const memoryFailures: ErrorCorrelation[] = [
         {
             errorCode: "FOTS4314",
@@ -151,9 +152,7 @@ function registerMemoryFailures(correlator: {
     });
 }
 
-function registerFileSystemErrors(correlator: {
-    addCorrelation: (api: ZoweExplorerApiType, profileType: string, correlation: ErrorCorrelation) => void;
-}): void {
+function registerFileSystemErrors(correlator: ErrorCorrelator): void {
     const fileSystemErrors: ErrorCorrelation[] = [
         {
             errorCode: "FSUM6260",

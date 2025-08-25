@@ -9,39 +9,8 @@
  *
  */
 
-import { ZoweVsCodeExtension, type ZoweExplorerApiType } from "@zowe/zowe-explorer-api";
+import { type ZoweExplorerApiType, ZoweVsCodeExtension } from "@zowe/zowe-explorer-api";
 import * as vscode from "vscode";
-
-interface ErrorCorrelatorDisplayOptions {
-    profileType?: string;
-    additionalContext?: string;
-    allowRetry?: boolean;
-    templateArgs?: Record<string, string>;
-}
-
-interface ErrorCorrelatorCorrelateOptions {
-    profileType?: string;
-    templateArgs?: Record<string, string>;
-}
-
-interface ErrorCorrelatedResult {
-    message: string;
-    correlationFound: boolean;
-    initial: Error | string;
-}
-
-interface ErrorCorrelatorInterface {
-    displayError: (
-        apiType: ZoweExplorerApiType,
-        error: Error | string,
-        opts: ErrorCorrelatorDisplayOptions,
-    ) => Promise<{ userResponse: string | undefined }>;
-    correlateError: (
-        apiType: ZoweExplorerApiType,
-        error: Error | string,
-        opts: ErrorCorrelatorCorrelateOptions,
-    ) => ErrorCorrelatedResult;
-}
 
 /**
  * Handles and displays an SSH error using error correlation if available
@@ -63,7 +32,7 @@ export async function handleSshError(
     if (zoweExplorerApi) {
         const extenderApi = zoweExplorerApi.getExplorerExtenderApi();
         if (extenderApi?.getErrorCorrelator) {
-            const errorCorrelator = extenderApi.getErrorCorrelator() as ErrorCorrelatorInterface | undefined;
+            const errorCorrelator = extenderApi.getErrorCorrelator();
             if (errorCorrelator) {
                 const result = await errorCorrelator.displayError(apiType, error, {
                     profileType: "ssh",
@@ -153,7 +122,7 @@ export function correlateSshError(
     if (zoweExplorerApi) {
         const extenderApi = zoweExplorerApi.getExplorerExtenderApi();
         if (extenderApi?.getErrorCorrelator) {
-            const errorCorrelator = extenderApi.getErrorCorrelator() as ErrorCorrelatorInterface | undefined;
+            const errorCorrelator = extenderApi.getErrorCorrelator();
             if (errorCorrelator) {
                 return errorCorrelator.correlateError(apiType, error, {
                     profileType,
