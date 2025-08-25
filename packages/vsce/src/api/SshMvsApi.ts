@@ -32,9 +32,6 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
                 returnedRows: response.returnedRows,
             });
         } catch (err) {
-            if (err instanceof imperative.ImperativeError) {
-                Gui.errorMessage(`Failed to list data sets: ${err.additionalDetails.replace("Error: ", "")}`);
-            }
             return this.buildZosFilesResponse(
                 {
                     items: [],
