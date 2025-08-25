@@ -50,6 +50,10 @@ export interface ReadDatasetRequest extends common.CommandRequest {
    */
   localEncoding?: string;
   /**
+   * Volume serial for the data set (optional)
+   */
+  volume?: string;
+  /**
    * Dataset name
    */
   dsname: string;
@@ -72,6 +76,10 @@ export interface WriteDatasetRequest extends common.CommandRequest {
    * Last e-tag for the data set (optional, omit to overwrite)
    */
   etag?: string;
+  /**
+   * Volume serial for the data set (optional)
+   */
+  volume?: string;
   /**
    * Dataset name
    */
@@ -161,7 +169,7 @@ export interface ReadDatasetResponse extends common.CommandResponse {
   /**
    * Dataset contents (omitted if streaming)
    */
-  data?: B64String;
+  data: B64String;
   /**
    * Length of dataset contents in bytes (only used for streaming)
    */

@@ -30,7 +30,7 @@ type ReadFileResponse struct {
 	// Remote file path
 	Path string `json:"fspath"`
 	// File contents (omitted if streaming)
-	Data *[]byte `json:"data" tstype:"B64String"`
+	Data *[]byte `json:"data" tstype:"B64String,required"`
 	// Length of file contents in bytes (only used for streaming)
 	ContentLen *int `json:"contentLen,omitempty"`
 }
