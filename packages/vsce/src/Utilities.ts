@@ -29,8 +29,11 @@ export function deployWithProgress(session: SshSession, serverPath: string, loca
         },
         async (progress) => {
             // Create error callback that uses error correlations
-            const errorCallback = SshErrorHandler.createErrorCallback(ZoweExplorerApiType.All, "Server installation");
-            
+            const errorCallback = SshErrorHandler.getInstance().createErrorCallback(
+                ZoweExplorerApiType.All,
+                "Server installation",
+            );
+
             // Pass callbacks for both progress and error handling
             await ZSshUtils.installServer(session, serverPath, localDir, {
                 onProgress: (progressIncrement) => {
@@ -114,9 +117,12 @@ export function registerCommands(context: vscode.ExtensionContext): vscode.Dispo
 
             SshClientCache.inst.end(profile.profile);
             const serverPath = SshConfigUtils.getServerPath(profile.profile);
-            
+
             // Create error callback for uninstall operation
-            const errorCallback = SshErrorHandler.createErrorCallback(ZoweExplorerApiType.All, "Server uninstall");
+            const errorCallback = SshErrorHandler.getInstance().createErrorCallback(
+                ZoweExplorerApiType.All,
+                "Server uninstall",
+            );
             await ZSshUtils.uninstallServer(ZSshUtils.buildSession(profile.profile), serverPath, {
                 onError: errorCallback,
             });

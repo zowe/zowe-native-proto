@@ -32,7 +32,7 @@ export class SshCommonApi implements MainframeInteraction.ICommon {
                 await SshClientCache.inst.connect(profile);
                 return "active";
             } catch (err) {
-                await SshErrorHandler.handleError(
+                await SshErrorHandler.getInstance().handleError(
                     err as Error,
                     ZoweExplorerApiType.All,
                     "SSH connection status check failed",

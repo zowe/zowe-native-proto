@@ -12,7 +12,7 @@
 import {
     type ErrorCorrelation,
     type ErrorCorrelator,
-    type ZoweExplorerApiType,
+    ZoweExplorerApiType,
     ZoweVsCodeExtension,
 } from "@zowe/zowe-explorer-api";
 
@@ -51,8 +51,8 @@ function registerConnectionFailures(correlator: ErrorCorrelator): void {
             ],
             resources: [
                 {
-                    href: "https://www.ibm.com/docs/en/zos/2.4.0?topic=guide-openssh-messages",
-                    title: "IBM z/OS OpenSSH Messages and Codes",
+                    href: "https://www.ibm.com/docs/en/zos/2.5.0?topic=messages-fots4241",
+                    title: "IBM z/OS OpenSSH Messages - FOTS4241",
                 },
             ],
         },
@@ -66,6 +66,12 @@ function registerConnectionFailures(correlator: ErrorCorrelator): void {
                 "Contact your system administrator to check the server's supported key exchange methods.",
                 "Consider using a newer version of the SSH protocol if available.",
             ],
+            resources: [
+                {
+                    href: "https://www.ibm.com/docs/en/zos/2.5.0?topic=messages-fots4134",
+                    title: "IBM z/OS OpenSSH Messages - FOTS4134",
+                },
+            ],
         },
         {
             errorCode: "FOTS4231",
@@ -76,6 +82,12 @@ function registerConnectionFailures(correlator: ErrorCorrelator): void {
                 "Contact your system administrator to upgrade the SSH server configuration.",
                 "Ask your administrator to enable more secure key exchange algorithms on the server.",
                 "Verify that your client supports the server's configured key exchange methods.",
+            ],
+            resources: [
+                {
+                    href: "https://www.ibm.com/docs/en/zos/2.5.0?topic=messages-fots4231",
+                    title: "IBM z/OS OpenSSH Messages - FOTS4231",
+                },
             ],
         },
         {
@@ -88,11 +100,17 @@ function registerConnectionFailures(correlator: ErrorCorrelator): void {
                 "Verify the server's host key fingerprint before continuing.",
                 "Do not proceed with the connection until the server's identity is confirmed.",
             ],
+            resources: [
+                {
+                    href: "https://www.ibm.com/docs/en/zos/2.5.0?topic=messages-fots4203",
+                    title: "IBM z/OS OpenSSH Messages - FOTS4203",
+                },
+            ],
         },
     ];
 
     connectionFailures.forEach((correlation) => {
-        correlator.addCorrelation("All" as ZoweExplorerApiType, "ssh", correlation);
+        correlator.addCorrelation(ZoweExplorerApiType.All, "ssh", correlation);
     });
 }
 
@@ -108,18 +126,32 @@ function registerMemoryFailures(correlator: ErrorCorrelator): void {
                 "Restart the SSH client to clear any memory leaks.",
                 "Contact your system administrator if the issue persists.",
                 "Consider reducing the size of data being transferred or processed.",
+                "Ensure that your system has enough storage allocated for the operation.",
+            ],
+            resources: [
+                {
+                    href: "https://www.ibm.com/docs/en/zos/2.5.0?topic=messages-fots4314",
+                    title: "IBM z/OS OpenSSH Messages - FOTS4314",
+                },
             ],
         },
         {
             errorCode: "FOTS4315",
             matches: [/xrecallocarray: out of memory \(elements \d+ of \d+ bytes\)/, "FOTS4315"],
             summary:
-                "SSH client ran out of memory during array recalculation. Insufficient memory available for the operation.",
+                "SSH client ran out of memory when requesting storage. Insufficient memory available for the operation.",
             tips: [
                 "Close unnecessary applications to free up memory.",
                 "Restart the SSH session to clear memory usage.",
                 "Try breaking large operations into smaller chunks.",
                 "Contact your system administrator if memory issues persist.",
+                "Ensure that your system has enough storage allocated for the operation.",
+            ],
+            resources: [
+                {
+                    href: "https://www.ibm.com/docs/en/zos/2.5.0?topic=messages-fots4315",
+                    title: "IBM z/OS OpenSSH Messages - FOTS4315",
+                },
             ],
         },
         {
@@ -133,6 +165,12 @@ function registerMemoryFailures(correlator: ErrorCorrelator): void {
                 "Check available system memory and disk space.",
                 "Contact your system administrator if the problem continues.",
             ],
+            resources: [
+                {
+                    href: "https://www.ibm.com/docs/en/zos/2.5.0?topic=messages-fots4216",
+                    title: "IBM z/OS OpenSSH Messages - FOTS4216",
+                },
+            ],
         },
         {
             errorCode: "FOTS4311",
@@ -144,11 +182,17 @@ function registerMemoryFailures(correlator: ErrorCorrelator): void {
                 "Check that your system has sufficient available memory.",
                 "Try the operation again after freeing up system resources.",
             ],
+            resources: [
+                {
+                    href: "https://www.ibm.com/docs/en/zos/2.5.0?topic=messages-fots4311",
+                    title: "IBM z/OS OpenSSH Messages - FOTS4311",
+                },
+            ],
         },
     ];
 
     memoryFailures.forEach((correlation) => {
-        correlator.addCorrelation("All" as ZoweExplorerApiType, "ssh", correlation);
+        correlator.addCorrelation(ZoweExplorerApiType.All, "ssh", correlation);
     });
 }
 
@@ -156,7 +200,11 @@ function registerFileSystemErrors(correlator: ErrorCorrelator): void {
     const fileSystemErrors: ErrorCorrelation[] = [
         {
             errorCode: "FSUM6260",
-            matches: [/write error on file ".*"/, "FSUM6260", "Failed to upload server PAX file with RC 4: Error: Failure"],
+            matches: [
+                /write error on file ".*"/,
+                "FSUM6260",
+                "Failed to upload server PAX file with RC 4: Error: Failure",
+            ],
             summary:
                 "Failed to write to file. The file may be read-only, the disk may be full, or there may be permission issues.",
             tips: [
@@ -164,24 +212,34 @@ function registerFileSystemErrors(correlator: ErrorCorrelator): void {
                 "Verify that the disk has sufficient free space.",
                 "Ensure the file is not locked by another process.",
                 "Check if the file system is mounted as read-only.",
-                "Try writing to a different location to isolate the issue.",
+                "Try deploying to a different location to isolate the issue.",
             ],
             resources: [
                 {
-                    href: "https://www.ibm.com/docs/en/zos/2.4.0?topic=messages-fsum6260",
+                    href: "https://www.ibm.com/docs/en/zos/2.5.0?topic=fsum-fsum6260",
                     title: "IBM z/OS UNIX System Services Messages - FSUM6260",
+                },
+                {
+                    href: "https://www.ibm.com/docs/en/zos/2.5.0?topic=scd-df-display-amount-free-space-in-file-system",
+                    title: "df (command) - Display amount of free space in file system",
                 },
             ],
         },
         {
-            errorCode: "FOTS4151",
-            matches: [/openpty: .*/, "FOTS4151"],
+            errorCode: "FOTS4152",
+            matches: [/openpty returns device for which (.+?) fails/, "FOTS4152"],
             summary: "Failed to open a pseudo-terminal (pty). This is required for SSH shell sessions.",
             tips: [
                 "Check that your system supports pseudo-terminals.",
-                "Verify that the /dev/pts file system is mounted and accessible.",
                 "Contact your system administrator to check pty configuration.",
                 "Try restarting the SSH service if you have administrative access.",
+                "Ensure that the pseudo-terminal device returned by openpty is valid and accessible.",
+            ],
+            resources: [
+                {
+                    href: "https://www.ibm.com/docs/en/zos/2.5.0?topic=messages-fots4152",
+                    title: "IBM z/OS OpenSSH Messages - FOTS4152",
+                },
             ],
         },
         {
@@ -194,6 +252,12 @@ function registerFileSystemErrors(correlator: ErrorCorrelator): void {
                 "Try connecting again after a few minutes.",
                 "Contact your network administrator if network issues persist.",
             ],
+            resources: [
+                {
+                    href: "https://www.ibm.com/docs/en/zos/2.5.0?topic=messages-fots4154",
+                    title: "IBM z/OS OpenSSH Messages - FOTS4154",
+                },
+            ],
         },
         {
             errorCode: "FOTS4150",
@@ -204,6 +268,12 @@ function registerFileSystemErrors(correlator: ErrorCorrelator): void {
                 "Verify the SSH configuration allows the necessary key exchange methods.",
                 "Contact your system administrator to review SSH server configuration.",
                 "Try using a different SSH client or version if possible.",
+            ],
+            resources: [
+                {
+                    href: "https://www.ibm.com/docs/en/zos/2.5.0?topic=messages-fots4150",
+                    title: "IBM z/OS OpenSSH Messages - FOTS4150",
+                },
             ],
         },
         {
@@ -216,10 +286,16 @@ function registerFileSystemErrors(correlator: ErrorCorrelator): void {
                 "Contact your system administrator to review cipher configuration.",
                 "Try using a different encryption algorithm if supported.",
             ],
+            resources: [
+                {
+                    href: "https://www.ibm.com/docs/en/zos/2.5.0?topic=messages-fots4312",
+                    title: "IBM z/OS OpenSSH Messages - FOTS4312",
+                },
+            ],
         },
     ];
 
     fileSystemErrors.forEach((correlation) => {
-        correlator.addCorrelation("All" as ZoweExplorerApiType, "ssh", correlation);
+        correlator.addCorrelation(ZoweExplorerApiType.All, "ssh", correlation);
     });
 }
