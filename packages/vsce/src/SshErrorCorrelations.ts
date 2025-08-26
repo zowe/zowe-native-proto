@@ -54,6 +54,14 @@ function registerConnectionFailures(correlator: ErrorCorrelator): void {
                     href: "https://www.ibm.com/docs/en/zos/2.5.0?topic=messages-fots4241",
                     title: "IBM z/OS OpenSSH Messages - FOTS4241",
                 },
+                {
+                    href: "https://www.ibm.com/docs/en/zos/2.5.0?topic=daemon-format-authorized-keys-file",
+                    title: "IBM z/OS - Format of authorized_keys file",
+                },
+                {
+                    href: "https://www.ibm.com/docs/en/zos/2.5.0?topic=openssh-setting-up-user-authentication",
+                    title: "IBM z/OS OpenSSH - Setting up user authentication",
+                },
             ],
         },
         {
@@ -70,6 +78,14 @@ function registerConnectionFailures(correlator: ErrorCorrelator): void {
                 {
                     href: "https://www.ibm.com/docs/en/zos/2.5.0?topic=messages-fots4134",
                     title: "IBM z/OS OpenSSH Messages - FOTS4134",
+                },
+                {
+                    href: "https://www.ibm.com/docs/en/zos/3.1.0?topic=ibmssh-zos31mig-sshd-config",
+                    title: "IBM z/OS ZOS31MIG_SSHD_CONFIG migration (for z/OS v3.1.0)",
+                },
+                {
+                    href: "https://www.ibm.com/docs/en/zos/2.5.0?topic=troubleshooting-frequently-asked-questions",
+                    title: "IBM z/OS OpenSSH - Frequently Asked Questions",
                 },
             ],
         },
@@ -104,6 +120,10 @@ function registerConnectionFailures(correlator: ErrorCorrelator): void {
                 {
                     href: "https://www.ibm.com/docs/en/zos/2.5.0?topic=messages-fots4203",
                     title: "IBM z/OS OpenSSH Messages - FOTS4203",
+                },
+                {
+                    href: "https://www.ibm.com/docs/en/zos/2.5.0?topic=troubleshooting-frequently-asked-questions",
+                    title: "IBM z/OS OpenSSH - Frequently Asked Questions",
                 },
             ],
         },
@@ -186,6 +206,10 @@ function registerMemoryFailures(correlator: ErrorCorrelator): void {
                 {
                     href: "https://www.ibm.com/docs/en/zos/2.5.0?topic=messages-fots4311",
                     title: "IBM z/OS OpenSSH Messages - FOTS4311",
+                },
+                {
+                    href: "https://www.ibm.com/docs/en/zos/2.5.0?topic=troubleshooting-frequently-asked-questions",
+                    title: "IBM z/OS OpenSSH - Frequently Asked Questions",
                 },
             ],
         },
