@@ -18,14 +18,10 @@
 #include <unistd.h>
 #include <memory>
 #include <chrono>
+#include <cstdlib>
 #include "extern/picojson.h"
 #include "worker.hpp"
-
-struct IoserverOptions
-{
-  int numWorkers = 10;
-  bool verbose = false;
-};
+#include "zowed.hpp"
 
 class ZowedServer
 {
@@ -109,58 +105,9 @@ public:
   {
   }
 
-  IoserverOptions parseOptions(int argc, char *argv[])
+  void run(const IoserverOptions &opts)
   {
-    IoserverOptions opts;
-
-    // Simple argument parsing without getopt_long
-    for (int i = 1; i < argc; i++)
-    {
-      std::string arg = argv[i];
-
-      if (arg == "-w" || arg == "--num-workers" || arg == "-num-workers")
-      {
-        // TODO Should we support single hyphen with long option names?
-        if (i + 1 < argc)
-        {
-          opts.numWorkers = std::stoi(argv[++i]);
-          if (opts.numWorkers <= 0)
-          {
-            std::cerr << "Number of workers must be greater than 0" << std::endl;
-            exit(1);
-          }
-        }
-        else
-        {
-          std::cerr << "Option " << arg << " requires an argument" << std::endl;
-          exit(1);
-        }
-      }
-      else if (arg == "-v" || arg == "--verbose")
-      {
-        opts.verbose = true;
-      }
-      else if (arg == "-h" || arg == "--help")
-      {
-        std::cout << "Usage: " << argv[0] << " [OPTIONS]\n"
-                  << "  -w, --num-workers NUM  Number of worker threads (default: 10)\n"
-                  << "  -v, --verbose          Enable verbose logging\n"
-                  << "  -h, --help             Show this help message\n";
-        exit(0);
-      }
-      else
-      {
-        std::cerr << "Unknown option: " << arg << std::endl;
-        exit(1);
-      }
-    }
-
-    return opts;
-  }
-
-  void run(int argc, char *argv[])
-  {
-    options = parseOptions(argc, argv);
+    options = opts;
 
     // Initialize logger (placeholder for now)
     if (options.verbose)
@@ -200,12 +147,13 @@ public:
   }
 };
 
-int main(int argc, char *argv[])
+// Library implementation functions
+extern "C" int run_zowed_server(const IoserverOptions &options)
 {
   try
   {
     ZowedServer server;
-    server.run(argc, argv);
+    server.run(options);
   }
   catch (const std::exception &e)
   {
