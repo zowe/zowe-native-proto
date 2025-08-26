@@ -136,9 +136,8 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
                 dsname: dataSetName,
                 attributes: datasetAttributes,
             });
-        }
-        catch (error) {
-            if(error instanceof imperative.ImperativeError) {
+        } catch (error) {
+            if (error instanceof imperative.ImperativeError) {
                 Gui.errorMessage(error.additionalDetails);
             }
         }
