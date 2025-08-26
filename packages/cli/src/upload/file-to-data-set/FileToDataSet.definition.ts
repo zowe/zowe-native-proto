@@ -75,7 +75,7 @@ export const UploadFileToDataSetDefinition: ICommandDefinition = {
         },
         {
             name: "volume-serial",
-            aliases: ["vs"],
+            aliases: ["vs", "volser"],
             description: "The volume serial (VOLSER) where the data set resides.",
             type: "string",
         },
