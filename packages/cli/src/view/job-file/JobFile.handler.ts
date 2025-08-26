@@ -19,6 +19,7 @@ export default class ViewJobJclHandler extends SshBaseHandler {
             spoolId: params.arguments.dsnKey,
             jobId: params.arguments.jobId,
             encoding: params.arguments.encoding,
+            localEncoding: params.arguments.localEncoding,
         });
         const content = B64String.decode(response.data);
         params.response.data.setMessage(

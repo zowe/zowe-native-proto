@@ -66,6 +66,13 @@ export const UploadFileToDataSetDefinition: ICommandDefinition = {
             defaultValue: null,
             type: "string",
         },
+        {
+            name: "local-encoding",
+            aliases: ["lec"],
+            description: "The source encoding of the local file content (defaults to UTF-8).",
+            defaultValue: null,
+            type: "string",
+        },
     ],
     profile: { optional: ["ssh"] },
 };

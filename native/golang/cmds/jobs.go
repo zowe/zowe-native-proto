@@ -123,6 +123,9 @@ func HandleReadSpoolRequest(conn *utils.StdioConn, params []byte) (result any, e
 		request.Encoding = fmt.Sprintf("IBM-%d", utils.DefaultEncoding)
 	}
 	args := []string{"job", "view-file", request.JobId, strconv.Itoa(request.DsnKey), "--encoding", request.Encoding, "--rfb"}
+	if len(request.LocalEncoding) > 0 {
+		args = append(args, "--local-encoding", request.LocalEncoding)
+	}
 	out, err := conn.ExecCmd(args)
 	if err != nil {
 		e = fmt.Errorf("Failed to read spool: %v", err)
@@ -312,7 +315,11 @@ func HandleSubmitJclRequest(conn *utils.StdioConn, params []byte) (result any, e
 		request.Encoding = fmt.Sprintf("IBM-%d", utils.DefaultEncoding)
 	}
 
-	cmd := utils.BuildCommand([]string{"job", "submit-jcl", "--only-jobid", "--encoding", request.Encoding})
+	cmdArgs := []string{"job", "submit-jcl", "--only-jobid", "--encoding", request.Encoding}
+	if len(request.LocalEncoding) > 0 {
+		cmdArgs = append(cmdArgs, "--local-encoding", request.LocalEncoding)
+	}
+	cmd := utils.BuildCommand(cmdArgs)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		e = fmt.Errorf("failed to open stdin pipe to zowex: %v", err)
