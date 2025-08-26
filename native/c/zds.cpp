@@ -1085,7 +1085,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
   free(area);
   ZDSDEL(zds);
 
-  return rc;
+  return RTNCD_SUCCESS;
 }
 
 /**
