@@ -323,9 +323,19 @@ int zds_create_dsn(ZDS *zds, std::string dsn, DS_ATTRIBUTES attributes, std::str
   int rc = 0;
   unsigned int code = 0;
   string parm = "ALLOC DA('" + dsn + "')";
-  if (attributes.alcunit.empty())
+  transform(attributes.alcunit.begin(), attributes.alcunit.end(), attributes.alcunit.begin(), ::toupper);
+  if (attributes.alcunit.empty() || attributes.alcunit == "TRACKS" || attributes.alcunit == "TRK")
   {
     attributes.alcunit = "TRACKS"; // Allocation Unit
+  }
+  else if (attributes.alcunit == "CYLINDERS" || attributes.alcunit == "CYL")
+  {
+    attributes.alcunit = "CYL"; // Allocation Unit
+  }
+  else
+  {
+    response = "Invalid allocation unit '" + attributes.alcunit + "'";
+    return RTNCD_FAILURE;
   }
   if (attributes.blksize == 0)
   {
@@ -1075,7 +1085,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
   free(area);
   ZDSDEL(zds);
 
-  return rc;
+  return RTNCD_SUCCESS;
 }
 
 /**
