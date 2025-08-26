@@ -955,9 +955,9 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
       {
         auto *dscb = (DSCBFormat1 *)__malloc31(sizeof(DSCBFormat1));
         memset(dscb, 0x00, sizeof(DSCBFormat1));
-        const auto obtain_dscb_rc = ZDSDSCB1(zds, entry.name.c_str(), entry.volser.c_str(), dscb);
+        rc = ZDSDSCB1(zds, entry.name.c_str(), entry.volser.c_str(), dscb);
 
-        if (obtain_dscb_rc == RTNCD_SUCCESS)
+        if (rc == RTNCD_SUCCESS)
         {
           load_dsorg_from_dscb(dscb, &entry.dsorg);
           load_recfm_from_dscb(dscb, &entry.recfm);
@@ -1085,7 +1085,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
   free(area);
   ZDSDEL(zds);
 
-  return rc;
+  return RTNCD_SUCCESS;
 }
 
 /**
