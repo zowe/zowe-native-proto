@@ -955,9 +955,9 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
       {
         auto *dscb = (DSCBFormat1 *)__malloc31(sizeof(DSCBFormat1));
         memset(dscb, 0x00, sizeof(DSCBFormat1));
-        rc = ZDSDSCB1(zds, entry.name.c_str(), entry.volser.c_str(), dscb);
+        const auto rc2 = ZDSDSCB1(zds, entry.name.c_str(), entry.volser.c_str(), dscb);
 
-        if (rc == RTNCD_SUCCESS)
+        if (rc2 == RTNCD_SUCCESS)
         {
           load_dsorg_from_dscb(dscb, &entry.dsorg);
           load_recfm_from_dscb(dscb, &entry.recfm);
