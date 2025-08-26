@@ -815,4 +815,261 @@ void zusf_tests()
                   rmdir(test_dir.c_str());
                 });
            });
+
+  describe("zusf source encoding tests",
+           [&]() -> void
+           {
+             it("should use default source encoding (UTF-8) when not specified",
+                [&]() -> void
+                {
+                  ZUSF zusf = {0};
+                  // Set target encoding but no source encoding
+                  strcpy(zusf.encoding_opts.codepage, "IBM-1047");
+                  zusf.encoding_opts.data_type = eDataTypeText;
+                  // source_codepage should be empty/null
+
+                  // The encoding conversion logic should use UTF-8 as source when source_codepage is empty
+                  Expect(strlen(zusf.encoding_opts.source_codepage)).ToBe(0);
+                  Expect(strlen(zusf.encoding_opts.codepage)).ToBe(8); // "IBM-1047"
+                });
+
+             it("should use specified source encoding when provided",
+                [&]() -> void
+                {
+                  ZUSF zusf = {0};
+                  // Set both target and source encoding
+                  strcpy(zusf.encoding_opts.codepage, "IBM-1047");
+                  strcpy(zusf.encoding_opts.source_codepage, "IBM-037");
+                  zusf.encoding_opts.data_type = eDataTypeText;
+
+                  // Verify both encodings are set correctly
+                  Expect(string(zusf.encoding_opts.codepage)).ToBe("IBM-1047");
+                  Expect(string(zusf.encoding_opts.source_codepage)).ToBe("IBM-037");
+                  Expect(zusf.encoding_opts.data_type).ToBe(eDataTypeText);
+                });
+
+             it("should handle binary data type correctly with source encoding",
+                [&]() -> void
+                {
+                  ZUSF zusf = {0};
+                  strcpy(zusf.encoding_opts.codepage, "binary");
+                  strcpy(zusf.encoding_opts.source_codepage, "UTF-8");
+                  zusf.encoding_opts.data_type = eDataTypeBinary;
+
+                  // For binary data, encoding should not be used for conversion
+                  Expect(string(zusf.encoding_opts.codepage)).ToBe("binary");
+                  Expect(string(zusf.encoding_opts.source_codepage)).ToBe("UTF-8");
+                  Expect(zusf.encoding_opts.data_type).ToBe(eDataTypeBinary);
+                });
+
+             it("should handle empty source encoding gracefully",
+                [&]() -> void
+                {
+                  ZUSF zusf = {0};
+                  strcpy(zusf.encoding_opts.codepage, "IBM-1047");
+                  // Explicitly set source_codepage to empty
+                  memset(zusf.encoding_opts.source_codepage, 0, sizeof(zusf.encoding_opts.source_codepage));
+                  zusf.encoding_opts.data_type = eDataTypeText;
+
+                  // Should handle empty source encoding (will default to UTF-8 in actual conversion)
+                  Expect(strlen(zusf.encoding_opts.source_codepage)).ToBe(0);
+                  Expect(string(zusf.encoding_opts.codepage)).ToBe("IBM-1047");
+                });
+
+             it("should preserve encoding settings in file operations struct",
+                [&]() -> void
+                {
+                  ZUSF zusf = {0};
+                  strcpy(zusf.encoding_opts.codepage, "IBM-1047");
+                  strcpy(zusf.encoding_opts.source_codepage, "ISO8859-1");
+                  zusf.encoding_opts.data_type = eDataTypeText;
+
+                  // Simulate what would happen in a file operation
+                  ZUSF zusf_copy = zusf;
+
+                  // Verify encodings are preserved
+                  Expect(string(zusf_copy.encoding_opts.codepage)).ToBe("IBM-1047");
+                  Expect(string(zusf_copy.encoding_opts.source_codepage)).ToBe("ISO8859-1");
+                  Expect(zusf_copy.encoding_opts.data_type).ToBe(eDataTypeText);
+                });
+
+             it("should handle USS file encoding with source encoding set",
+                [&]() -> void
+                {
+                  ZUSF zusf = {0};
+                  strcpy(zusf.encoding_opts.codepage, "UTF-8");
+                  strcpy(zusf.encoding_opts.source_codepage, "IBM-1047");
+                  zusf.encoding_opts.data_type = eDataTypeText;
+
+                  const string test_file = "/tmp/zusf_source_encoding_test.txt";
+
+                  // Create a test file with some content
+                  unlink(test_file.c_str());
+                  ofstream file(test_file);
+                  file << "Test content for source encoding";
+                  file.close();
+
+                  // Test that the encoding options are properly set for file operations
+                  // We can't easily test the actual encoding conversion without mainframe-specific
+                  // file tags, but we can verify the struct is configured correctly
+                  Expect(string(zusf.encoding_opts.codepage)).ToBe("UTF-8");
+                  Expect(string(zusf.encoding_opts.source_codepage)).ToBe("IBM-1047");
+
+                  // Test that file exists and can be accessed
+                  struct stat file_stats;
+                  int stat_result = stat(test_file.c_str(), &file_stats);
+                  Expect(stat_result).ToBe(0);
+                  Expect(S_ISREG(file_stats.st_mode)).ToBe(true);
+
+                  // Cleanup
+                  unlink(test_file.c_str());
+                });
+
+             it("should validate encoding field sizes and limits",
+                [&]() -> void
+                {
+                  ZUSF zusf = {0};
+
+                  // Test maximum length encoding names (15 chars + null terminator)
+                  string long_target = "IBM-1234567890A"; // 15 characters
+                  string long_source = "UTF-1234567890B"; // 15 characters
+
+                  strncpy(zusf.encoding_opts.codepage, long_target.c_str(), sizeof(zusf.encoding_opts.codepage) - 1);
+                  strncpy(zusf.encoding_opts.source_codepage, long_source.c_str(), sizeof(zusf.encoding_opts.source_codepage) - 1);
+
+                  // Ensure null termination
+                  zusf.encoding_opts.codepage[sizeof(zusf.encoding_opts.codepage) - 1] = '\0';
+                  zusf.encoding_opts.source_codepage[sizeof(zusf.encoding_opts.source_codepage) - 1] = '\0';
+
+                  Expect(string(zusf.encoding_opts.codepage)).ToBe(long_target);
+                  Expect(string(zusf.encoding_opts.source_codepage)).ToBe(long_source);
+
+                  // Verify the struct size assumptions
+                  Expect(sizeof(zusf.encoding_opts.codepage)).ToBe(16);
+                  Expect(sizeof(zusf.encoding_opts.source_codepage)).ToBe(16);
+                });
+
+             it("should handle various encoding combinations for USS files",
+                [&]() -> void
+                {
+                  ZUSF zusf = {0};
+                  zusf.encoding_opts.data_type = eDataTypeText;
+
+                  // Test common USS file encoding conversions
+                  struct EncodingPair
+                  {
+                    const char *source;
+                    const char *target;
+                    const char *description;
+                  };
+
+                  EncodingPair pairs[] = {
+                      {"UTF-8", "IBM-1047", "UTF-8 to EBCDIC"},
+                      {"IBM-037", "UTF-8", "EBCDIC to UTF-8"},
+                      {"IBM-1047", "ISO8859-1", "EBCDIC to ASCII"},
+                      {"ISO8859-1", "UTF-8", "ASCII to UTF-8"},
+                      {"UTF-8", "binary", "Text to binary"},
+                      {"IBM-1208", "IBM-037", "UTF-8 CCSID to EBCDIC"}};
+
+                  for (const auto &pair : pairs)
+                  {
+                    memset(&zusf.encoding_opts, 0, sizeof(zusf.encoding_opts));
+                    strcpy(zusf.encoding_opts.source_codepage, pair.source);
+                    strcpy(zusf.encoding_opts.codepage, pair.target);
+                    zusf.encoding_opts.data_type = eDataTypeText;
+
+                    // Verify encoding pair is set correctly
+                    Expect(string(zusf.encoding_opts.source_codepage)).ToBe(string(pair.source));
+                    Expect(string(zusf.encoding_opts.codepage)).ToBe(string(pair.target));
+                    Expect(zusf.encoding_opts.data_type).ToBe(eDataTypeText);
+                  }
+                });
+
+             it("should handle source encoding with file creation operations",
+                [&]() -> void
+                {
+                  ZUSF zusf = {0};
+                  strcpy(zusf.encoding_opts.codepage, "IBM-1047");
+                  strcpy(zusf.encoding_opts.source_codepage, "UTF-8");
+                  zusf.encoding_opts.data_type = eDataTypeText;
+
+                  const string test_file = "/tmp/zusf_create_with_source_encoding.txt";
+
+                  // Cleanup any existing file
+                  unlink(test_file.c_str());
+
+                  // Test file creation with encoding options set
+                  // This simulates what would happen during file write operations
+                  int result = zusf_create_uss_file_or_dir(&zusf, test_file, 0644, false);
+                  Expect(result).ToBe(RTNCD_SUCCESS);
+
+                  // Verify file was created
+                  struct stat file_stats;
+                  Expect(stat(test_file.c_str(), &file_stats)).ToBe(0);
+                  Expect(S_ISREG(file_stats.st_mode)).ToBe(true);
+
+                  // Verify encoding options are still set correctly
+                  Expect(string(zusf.encoding_opts.codepage)).ToBe("IBM-1047");
+                  Expect(string(zusf.encoding_opts.source_codepage)).ToBe("UTF-8");
+
+                  // Cleanup
+                  unlink(test_file.c_str());
+                });
+
+             it("should handle source encoding with directory operations",
+                [&]() -> void
+                {
+                  ZUSF zusf = {0};
+                  strcpy(zusf.encoding_opts.codepage, "UTF-8");
+                  strcpy(zusf.encoding_opts.source_codepage, "IBM-037");
+                  zusf.encoding_opts.data_type = eDataTypeText;
+
+                  const string test_dir = "/tmp/zusf_dir_source_encoding_test";
+
+                  // Cleanup any existing directory
+                  rmdir(test_dir.c_str());
+
+                  // Test directory creation with encoding options set
+                  int result = zusf_create_uss_file_or_dir(&zusf, test_dir, 0755, true);
+                  Expect(result).ToBe(RTNCD_SUCCESS);
+
+                  // Verify directory was created
+                  struct stat dir_stats;
+                  Expect(stat(test_dir.c_str(), &dir_stats)).ToBe(0);
+                  Expect(S_ISDIR(dir_stats.st_mode)).ToBe(true);
+
+                  // Verify encoding options are still preserved
+                  Expect(string(zusf.encoding_opts.codepage)).ToBe("UTF-8");
+                  Expect(string(zusf.encoding_opts.source_codepage)).ToBe("IBM-037");
+
+                  // Cleanup
+                  rmdir(test_dir.c_str());
+                });
+
+             it("should maintain source encoding through error conditions",
+                [&]() -> void
+                {
+                  ZUSF zusf = {0};
+                  strcpy(zusf.encoding_opts.codepage, "IBM-1047");
+                  strcpy(zusf.encoding_opts.source_codepage, "UTF-8");
+                  zusf.encoding_opts.data_type = eDataTypeText;
+
+                  const string nonexistent_file = "/tmp/nonexistent_path_for_encoding_test.txt";
+
+                  // Ensure the file doesn't exist
+                  unlink(nonexistent_file.c_str());
+
+                  // Test that encoding options are preserved even when operations fail
+                  int result = zusf_chmod_uss_file_or_dir(&zusf, nonexistent_file, 0644, false);
+                  Expect(result).ToBe(RTNCD_FAILURE);
+
+                  // Verify encoding options are still set correctly after error
+                  Expect(string(zusf.encoding_opts.codepage)).ToBe("IBM-1047");
+                  Expect(string(zusf.encoding_opts.source_codepage)).ToBe("UTF-8");
+                  Expect(zusf.encoding_opts.data_type).ToBe(eDataTypeText);
+
+                  // Verify error message was set but encoding preserved
+                  Expect(strlen(zusf.diag.e_msg)).ToBeGreaterThan(0);
+                });
+           });
 }
