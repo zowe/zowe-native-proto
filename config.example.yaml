@@ -17,7 +17,7 @@ profiles:
     deployDir: ~/zowe-native-proto
 
     # Environment variables to set for the `go build` command
-    goBuildEnv: 'GOINSECURE="*" GOPROXY=direct'  # Allow fetching Go dependencies
+    goBuildEnv: 'GOINSECURE="*" GOPROXY=direct GIT_SSL_NO_VERIFY=true'  # Allow fetching Go dependencies
 
     # Command to run before building the native code
     # preBuildCmd: '. ~/entrypoint.sh'  # Run script to configure build environment
