@@ -27,6 +27,16 @@ typedef struct
   int x;
 } KEY_HANDLE;
 
+// typedef struct
+// {
+//   int y;
+// } OBJECT_HANDLE;
+
+typedef struct
+{
+  int z;
+} ENTRY_VALUE_HANDLE;
+
 typedef struct
 {
   char msg[132];
@@ -40,6 +50,7 @@ typedef int (*HWTJGJST)(int *PTR32, PARSE_HANDLE *PTR32, KEY_HANDLE *PTR32, int 
 typedef int (*HWTJGNUE)(int *PTR32, PARSE_HANDLE *PTR32, KEY_HANDLE *PTR32, int *PTR32, DIAG *PTR32) ATTRIBUTE(amode31);
 typedef int (*HWTJGVAL)(int *PTR32, PARSE_HANDLE *PTR32, KEY_HANDLE *PTR32, char *PTR32 *PTR32, int *PTR32, DIAG *PTR32) ATTRIBUTE(amode31);
 typedef int (*HWTJGBOV)(int *PTR32, PARSE_HANDLE *PTR32, KEY_HANDLE *PTR32, char *PTR32, DIAG *PTR32) ATTRIBUTE(amode31);
+typedef int (*HWTJGAEN)(int *PTR32, PARSE_HANDLE *PTR32, KEY_HANDLE *PTR32, int *PTR32, KEY_HANDLE *PTR32, DIAG *PTR32) ATTRIBUTE(amode31);
 
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=parser-hwtjinit-initialize-instance
 static int ZJSNMINIT(PARSE_HANDLE *PTR32 handle, DIAG *PTR32 diag)
@@ -151,6 +162,20 @@ static int ZJSMGBOV(PARSE_HANDLE *PTR32 handle, KEY_HANDLE *PTR32 key_handle, ch
   hwtjgbov(&rc, handle, key_handle, value, diag_p);
 
   delete_module("HWTJGBOV");
+  return rc;
+}
+
+static int ZJSMGAEN(PARSE_HANDLE *PTR32 handle, KEY_HANDLE *PTR32 key_handle, int *PTR32 index, KEY_HANDLE *PTR32 value, DIAG *PTR32 diag)
+{
+  HWTJGAEN hwtjgaen = (HWTJGAEN)load_module31("HWTJGAEN");
+  // TODO(Kelosky): add error handling
+
+  int rc = 0;
+  DIAG *PTR32 diag_p = diag;
+  diag_p = (DIAG * PTR32)((unsigned int)diag_p | 0x80000000);
+
+  hwtjgaen(&rc, handle, key_handle, index, value, diag_p);
+  delete_module("HWTJGAEN");
   return rc;
 }
 
