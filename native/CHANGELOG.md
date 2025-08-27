@@ -15,6 +15,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - `c`: Added `--local-encoding` option for read and write operations on data sets, USS files, and job files to specify the source encoding of content (defaults to UTF-8). [#511](https://github.com/zowe/zowe-native-proto/issues/511)
 - `c`: Fixed issue where the `zowex ds create` command did not parse `--alcunit` and integer arguments (e.g., `--primary`). [#414](https://github.com/zowe/zowe-native-proto/issues/414)
 - `c`: Fixed issue where listing data sets fails if the `OBTAIN` service fails while obtaining attributes for a data set in the list of matches. [#529](https://github.com/zowe/zowe-native-proto/issues/529)
+- `native`: Added support for `volser` option when reading/writing data sets. [#439](https://github.com/zowe/zowe-native-proto/issues/439)
 
 ## `0.1.8`
 
