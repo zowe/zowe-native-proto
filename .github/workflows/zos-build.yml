@@ -128,6 +128,11 @@ jobs:
       - name: Install Dependencies
         run: npm ci --workspaces=false
 
+      # Need to modify the python/bindings/Makefile to use the correct -C flag for the make command
+      - name: Modify Makefile
+        run: |
+          sed -i '/\$(MAKE)/s/ -c / -C /' native/python/bindings/Makefile
+
       - name: Upload Python Bindings
         run: npm run z:upload
 
