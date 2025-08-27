@@ -57,20 +57,20 @@ build-zjb: swig-zjb
 # Run SWIG extenders in the C directory
 swig-extenders:
 	@echo '\nBuilding SWIG extenders'
-	$(MAKE) -c ../../c swig-extenders
+	cd ../../c && $(MAKE) swig-extenders && cd -
 
 # Selective SWIG extenders for specific modules
 swig-zusf:
 	@echo '\nBuilding SWIG extenders for zusf_py module'
-	$(MAKE) -c ../../c swig-zusf
+	cd ../../c && $(MAKE) swig-zusf && cd -
 
 swig-zds:
 	@echo '\nBuilding SWIG extenders for zds_py module'
-	$(MAKE) -c ../../c swig-zds
+	cd ../../c && $(MAKE) swig-zds && cd -
 
 swig-zjb:
 	@echo '\nBuilding SWIG extenders for zjb_py module'
-	$(MAKE) -c ../../c swig-zjb
+	cd ../../c && $(MAKE) swig-zjb && cd -
 
 help:
 	@echo "Available targets:"
