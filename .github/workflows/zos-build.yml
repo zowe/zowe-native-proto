@@ -134,13 +134,16 @@ jobs:
           sed -i '/\$(MAKE)/s/ -c / -C /' native/python/bindings/Makefile
 
       - name: Upload Python Bindings
-        run: npm run z:upload
+        run: |
+          npm run z:upload
 
       - name: Build Python Bindings
-        run: cd native/python/bindings && make
+        run: |
+          . ~/.custom_profile && cd native/python/bindings && make
 
       - name: Test Python Bindings
-        run: cd native/python/bindings/test && make
+        run: |
+          . ~/.custom_profile && cd native/python/bindings/test && make
 
       - name: Clean up on z/OS
         if: always()
