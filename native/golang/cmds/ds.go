@@ -42,6 +42,9 @@ func HandleReadDatasetRequest(conn *utils.StdioConn, params []byte) (result any,
 	if len(request.LocalEncoding) > 0 {
 		args = append(args, "--local-encoding", request.LocalEncoding)
 	}
+	if len(request.Volume) > 0 {
+		args = append(args, "--volser", request.Volume)
+	}
 
 	var etag string
 	var data []byte
@@ -139,6 +142,9 @@ func HandleWriteDatasetRequest(conn *utils.StdioConn, params []byte) (result any
 	}
 	if len(request.Etag) > 0 {
 		args = append(args, "--etag", request.Etag)
+	}
+	if len(request.Volume) > 0 {
+		args = append(args, "--volser", request.Volume)
 	}
 
 	var out []byte
