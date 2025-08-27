@@ -124,7 +124,7 @@ int main()
     zwto_debug("@TEST ZJSMGNUE error: %d - exiting...", rc);
     return -1;
   }
-  zwto_debug("@TEST array number_entries: %d", number_entries);
+  zwto_debug("@TEST array number_entries of pets: %d", number_entries);
 
   int index = 1;
   KEY_HANDLE value = {0};
@@ -134,7 +134,7 @@ int main()
     zwto_debug("@TEST ZJSMGAEN error: %d - exiting...", rc);
     return -1;
   }
-  zwto_debug("@TEST array index: %d", index);
+  zwto_debug("@TEST array index of pets: %d", index);
 
   rc = ZJSMGVAL(&handle, &value, &string_value, &string_value_length, &diag);
   if (0 != rc)
@@ -142,7 +142,7 @@ int main()
     zwto_debug("@TEST ZJSMGVAL error: %d - exiting...", rc);
     return -1;
   }
-  zwto_debug("@TEST array value: %.*s", string_value_length, string_value);
+  zwto_debug("@TEST array value of pets: %.*s", string_value_length, string_value);
 
   // search for object key
   char *PTR32 object_key = "address";
@@ -160,7 +160,28 @@ int main()
     zwto_debug("@TEST ZJSMGNUE error: %d - exiting...", rc);
     return -1;
   }
-  zwto_debug("@TEST number_entries: %d", number_entries);
+  zwto_debug("@TEST number_entries of address: %d", number_entries);
+
+  char buffer[100] = {0};
+  int buffer_length = (int)sizeof(buffer);
+  int actual_length = 0;
+  char *PTR32 buffer_ptr = buffer;
+  index = 3;
+  rc = ZJSMGOEN(&handle, &key_handle, &index, &buffer_ptr, &buffer_length, &value, &actual_length, &diag);
+  if (0 != rc)
+  {
+    zwto_debug("@TEST ZJSMGOEN error: %d - exiting...", rc);
+    return -1;
+  }
+  zwto_debug("@TEST object value of address: %s and actual_length: %d", buffer, actual_length);
+
+  rc = ZJSMGVAL(&handle, &value, &string_value, &string_value_length, &diag);
+  if (0 != rc)
+  {
+    zwto_debug("@TEST ZJSMGVAL error: %d - exiting...", rc);
+    return -1;
+  }
+  zwto_debug("@TEST object value of address.%s: %.*s", buffer, string_value_length, string_value);
 
   // search for boolean key
   char *PTR32 boolean_key = "isMarried";
@@ -187,7 +208,7 @@ int main()
     zwto_debug("@TEST ZJSMGBOV error: %d - exiting...", rc);
     return -1;
   }
-  zwto_debug("@TEST boolean_value result: %x", boolean_value);
+  zwto_debug("@TEST boolean_value of isMarried: %x", boolean_value);
 
   // search for boolean key
   char *PTR32 boolean_key2 = "hasKids";
@@ -214,7 +235,7 @@ int main()
     zwto_debug("@TEST ZJSMGBOV error: %d - exiting...", rc);
     return -1;
   }
-  zwto_debug("@TEST boolean_value2 result: %x", boolean_value2);
+  zwto_debug("@TEST boolean_value2 of hasKids: %x", boolean_value2);
 
   // char *PTR32 boolean_value3 = NULL;
   // int boolean_value3_length = 0;
@@ -244,7 +265,7 @@ int main()
     zwto_debug("@TEST ZJSMGVAL error: %d - exiting...", rc);
     return -1;
   }
-  zwto_debug("@TEST result: %.*s", number_value_length, number_value);
+  zwto_debug("@TEST result of age: %.*s", number_value_length, number_value);
 
   // terminate JSON services
   rc = ZJSNMTERM(&handle, &diag);
