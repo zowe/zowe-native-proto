@@ -78,5 +78,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build
+      - name: Build Go Native
         run: cd native/golang && go build
+
+  build-python:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Python Bindings
+        run: cd native/python/bindings && make

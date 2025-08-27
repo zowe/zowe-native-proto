@@ -58,10 +58,6 @@ struct ZShmContext
   size_t size;
 };
 
-#ifdef SWIG
-extern "C"
-{
-#endif
 class ZShared
 {
   ZShared()
@@ -170,9 +166,5 @@ inline void set_content_length(uint64_t content_len)
 
   msync(ZShared::instance()->region, sizeof(ZSharedRegion), MS_SYNC);
 }
-
-#ifdef SWIG
-}
-#endif
 
 #endif
