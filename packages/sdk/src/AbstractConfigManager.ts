@@ -122,8 +122,12 @@ export abstract class AbstractConfigManager {
                 });
                 if (validConfig === undefined) return;
 
-                if (setExistingProfile || Object.keys(validConfig).length > 0)
+                if (setExistingProfile || Object.keys(validConfig).length > 0) {
+                    if (validConfig.password) {
+                        foundProfile.profile.privateKey = foundProfile.profile.keyPassphrase = undefined;
+                    }
                     await this.setProfile(validConfig, foundProfile.name);
+                }
                 return { ...foundProfile, profile: { ...foundProfile.profile, ...validConfig } };
             }
         }
@@ -162,6 +166,7 @@ export abstract class AbstractConfigManager {
 
         // If validateConfig returns a string, that string is the correct keyPassphrase
         if (this.validationResult && Object.keys(this.validationResult).length >= 1) {
+            this.selectedProfile.privateKey = this.selectedProfile.keyPassphrase = undefined;
             this.selectedProfile = { ...this.selectedProfile, ...this.validationResult };
         }
 
@@ -327,13 +332,12 @@ export abstract class AbstractConfigManager {
             await this.attemptConnection({ ...newConfig, ...configModifications });
         } catch (err) {
             const errorMessage = `${err}`;
-
             if (
                 newConfig.privateKey &&
                 !newConfig.password &&
                 errorMessage.includes("All configured authentication methods failed")
             ) {
-                return undefined;
+                newConfig.privateKey = undefined;
             }
 
             if (errorMessage.includes("Invalid username")) {
