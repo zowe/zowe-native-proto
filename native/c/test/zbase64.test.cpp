@@ -121,6 +121,7 @@ void zbase64_tests()
                 []() -> void
                 {
                   std::vector<char> input;
+                  input.reserve(256);
                   for (int i = 0; i < 256; i++)
                   {
                     input.push_back(static_cast<char>(i));
@@ -319,6 +320,7 @@ void zbase64_tests()
                 []() -> void
                 {
                   std::vector<char> original;
+                  original.reserve(256);
                   for (int i = 0; i < 256; i++)
                   {
                     original.push_back(static_cast<char>(i));

@@ -1008,6 +1008,7 @@ int handle_data_set_list(const ParseResult &result)
   if (RTNCD_SUCCESS == rc || RTNCD_WARNING == rc)
   {
     vector<string> fields;
+    fields.reserve(attributes ? 5 : 1);
     for (vector<ZDSEntry>::iterator it = entries.begin(); it != entries.end(); ++it)
     {
       if (emit_csv)
@@ -1238,6 +1239,7 @@ int handle_data_set_restore(const ParseResult &result)
 
   // perform dynalloc
   vector<string> dds;
+  dds.reserve(2);
   dds.push_back("alloc da('" + dsn + "') shr");
   dds.push_back("free da('" + dsn + "')");
 
@@ -1285,6 +1287,7 @@ int handle_data_set_compress(const ParseResult &result)
 
   // perform dynalloc
   vector<string> dds;
+  dds.reserve(4);
   dds.push_back("alloc dd(a) da('" + dsn + "') shr");
   dds.push_back("alloc dd(b) da('" + dsn + "') shr");
   dds.push_back("alloc dd(sysprint) lrecl(80) recfm(f,b) blksize(80)");
@@ -1355,6 +1358,7 @@ int handle_tool_convert_dsect(const ParseResult &result)
   cout << adata_dsn << " " << chdr_dsn << " " << sysprint << " " << sysout << endl;
 
   vector<string> dds;
+  dds.reserve(4);
   dds.push_back("alloc fi(sysprint) path('" + sysprint + "') pathopts(owronly,ocreat,otrunc) pathmode(sirusr,siwusr,sirgrp) filedata(text) msg(2)");
   dds.push_back("alloc fi(sysout) path('" + sysout + "') pathopts(owronly,ocreat,otrunc) pathmode(sirusr,siwusr,sirgrp) filedata(text) msg(2)");
   dds.push_back("alloc fi(sysadata) da('" + adata_dsn + "') shr msg(2)");
@@ -1462,6 +1466,7 @@ int handle_tool_search(const ParseResult &result)
 
   // Perform dynalloc
   vector<string> dds;
+  dds.reserve(3);
   dds.push_back("alloc dd(newdd) da('" + dsn + "') shr");
   dds.push_back("alloc dd(outdd)");
   dds.push_back("alloc dd(sysin)");
@@ -1533,6 +1538,7 @@ int handle_tool_amblist(const ParseResult &result)
 
   // Perform dynalloc
   vector<string> dds;
+  dds.reserve(3);
   dds.push_back("alloc dd(syslib) da('" + dsn + "') shr");
   dds.push_back("alloc dd(sysprint) lrecl(80) recfm(f,b) blksize(80)");
   dds.push_back("alloc dd(sysin) lrecl(80) recfm(f,b) blksize(80)");
@@ -2152,6 +2158,7 @@ int handle_job_list(const ParseResult &result)
       if (emit_csv)
       {
         vector<string> fields;
+        fields.reserve(5);
         fields.push_back(it->jobid);
         fields.push_back(it->retcode);
         fields.push_back(it->jobname);
@@ -2200,9 +2207,10 @@ int handle_job_list_files(const ParseResult &result)
   if (RTNCD_SUCCESS == rc || RTNCD_WARNING == rc)
   {
     bool emit_csv = result.find_kw_arg_bool("response-format-csv");
+    std::vector<string> fields;
+    fields.reserve(5);
     for (vector<ZJobDD>::iterator it = job_dds.begin(); it != job_dds.end(); ++it)
     {
-      std::vector<string> fields;
       fields.push_back(it->ddn);
       fields.push_back(it->dsn);
       fields.push_back(TO_STRING(it->key));
@@ -2258,6 +2266,7 @@ int handle_job_view_status(const ParseResult &result)
   if (emit_csv)
   {
     vector<string> fields;
+    fields.reserve(6);
     fields.push_back(job.jobid);
     fields.push_back(job.retcode);
     fields.push_back(job.jobname);
@@ -2534,6 +2543,7 @@ int loop_dynalloc(vector<string> &list)
 int free_dynalloc_dds(vector<string> &list)
 {
   vector<string> free_dds;
+  free_dds.reserve(list.size());
 
   for (vector<string>::iterator it = list.begin(); it != list.end(); it++)
   {
