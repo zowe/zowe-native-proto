@@ -52,7 +52,7 @@ const extensionConfig = {
             parser: {
               syntax: 'typescript',
             },
-            target: 'es2020',
+            target: require('../../tsconfig.json').compilerOptions.target,
           },
         },
       },
