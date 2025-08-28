@@ -7,6 +7,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## Recent Changes
 
 - Added "Worker Count" setting to configure number of `zowex` worker threads. [#514](https://github.com/zowe/zowe-native-proto/pull/514)
+- Fixed an issue where the `Zowe-SSH: Connect to Host...` command did not prompt the user for a password if the given private key was not recognized by the host. [#524](https://github.com/zowe/zowe-native-proto/issues/524)
 
 ## `0.1.7`
 
