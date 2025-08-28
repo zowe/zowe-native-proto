@@ -19,6 +19,7 @@
 #include "zmetal.test.hpp"
 #include "zusf.test.hpp"
 #include "zbase64.test.hpp"
+#include "zjson.test.hpp"
 #include "zlogger.test.hpp"
 #include "ztest.hpp"
 
@@ -48,6 +49,7 @@ int main(int argc, char *argv[])
         zmetal_tests();
         zusf_tests();
         zbase64_tests();
+        zjson_tests();
         zlogger_tests();
       });
 
