@@ -127,6 +127,28 @@ function registerConnectionFailures(correlator: ErrorCorrelator): void {
                 },
             ],
         },
+        {
+            errorCode: "FOTS4240",
+            matches: ["kex_prop2buf: error", "FOTS4240"],
+            summary:
+                "SSH key exchange internal error occurred. This is typically caused by incompatible encryption parameters or corrupted key exchange data.",
+            tips: [
+                "Try reconnecting to establish a fresh SSH session.",
+                "Check that the SSH client and server support compatible key exchange algorithms.",
+                "Contact your system administrator to review SSH server configuration and logs.",
+                "If the problem persists, this may indicate a system-level issue requiring IBM support.",
+            ],
+            resources: [
+                {
+                    href: "https://www.ibm.com/docs/en/zos/2.5.0?topic=messages-fots4240",
+                    title: "IBM z/OS OpenSSH Messages - FOTS4240",
+                },
+                {
+                    href: "https://www.ibm.com/docs/en/zos/2.5.0?topic=troubleshooting-frequently-asked-questions",
+                    title: "IBM z/OS OpenSSH - Frequently Asked Questions",
+                },
+            ],
+        },
     ];
 
     connectionFailures.forEach((correlation) => {
@@ -194,7 +216,7 @@ function registerMemoryFailures(correlator: ErrorCorrelator): void {
         },
         {
             errorCode: "FOTS4311",
-            matches: [/.*: cound not allocate state/, "FOTS4311"],
+            matches: [/.*: could not allocate state/, "FOTS4311"],
             summary: "SSH client could not allocate memory for internal state management.",
             tips: [
                 "Restart the SSH client to clear memory usage.",

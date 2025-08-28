@@ -83,6 +83,7 @@ export class SshErrorHandler {
 
         // Check for fatal OpenSSH error codes
         const fatalErrorCodes = [
+            "FOTS4240", // kex_prop2buf: error (internal error, program ends)
             "FOTS4241", // Authentication failed
             "FOTS4134", // Client version uses unsafe key agreement
             "FOTS4231", // Server version uses unsafe key agreement
