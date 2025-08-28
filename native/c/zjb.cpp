@@ -629,6 +629,7 @@ int zjb_list_by_owner(ZJB *zjb, string owner_name, string prefix_name, vector<ZJ
 void zjb_build_job_response(ZJB_JOB_INFO *PTR64 job_info, int entries, vector<ZJob> &jobs)
 {
   ZJB_JOB_INFO *PTR64 job_info_next = job_info;
+  jobs.reserve(entries);
 
   for (int i = 0; i < entries; i++)
   {

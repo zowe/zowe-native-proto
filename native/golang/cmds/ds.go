@@ -429,7 +429,14 @@ func HandleCreateDatasetRequest(conn *utils.StdioConn, jsonData []byte) (result 
 
 	_, err = conn.ExecCmd(args)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create data set: %v", args)
+		errMsg := err.Error()
+		var filteredErrors []string
+		for _, line := range strings.Split(errMsg, "\n") {
+			if !strings.HasPrefix(line, "IGD01007I") && !strings.HasPrefix(line, "IGD01008I") {
+				filteredErrors = append(filteredErrors, line)
+			}
+		}
+		return nil, fmt.Errorf("Failed to create data set '%s': %v", request.Dsname, strings.Join(filteredErrors, "\n"))
 	}
 
 	result = ds.CreateDatasetResponse{
