@@ -78,5 +78,5 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build Go Native
+      - name: Build
         run: cd native/golang && go build

@@ -1,10 +1,10 @@
-name: z/OS Build
+name: z/OS Python Build
 
 on:
   pull_request:
     paths:
-      - ".github/workflows/zos-build.yml"
-      - "native/**"
+      - ".github/workflows/zos-py-build.yml"
+      - "native/python/**"
   push:
     branches:
       - main
@@ -25,7 +25,7 @@ permissions:
   pull-requests: write
 
 jobs:
-  build-server:
+  build-python:
     runs-on: ubuntu-latest
     concurrency:
       group: ${{ github.workflow }}
@@ -58,38 +58,17 @@ jobs:
       - name: Install Dependencies
         run: npm ci --workspaces=false
 
-      - name: Set Build Version
-        if: ${{ inputs.version }}
-        run: npm pkg set version=${{ inputs.version }}
+      - name: Upload Python Bindings
+        run: |
+          npm run z:upload
 
-      - name: Build on z/OS
-        uses: nick-fields/retry@v3
-        with:
-          command: npm run z:all
-          max_attempts: 3
-          retry_on_exit_code: 11 # Ignore transient SIGSEGV error on Go build
-          timeout_minutes: 15
+      - name: Build Python Bindings
+        run: |
+          cd native/python/bindings && make
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: zowe-server-bin
-          path: packages/cli/bin/*
-
-      - uses: actions/upload-artifact@v4
-        id: pax-artifact-upload
-        with:
-          name: zowe-server-release
-          path: dist/server.pax.Z
-
-      - name: Comment on PR
-        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
-        uses: marocchino/sticky-pull-request-comment@v2
-        with:
-          header: Server artifacts
-          number: ${{ github.event.pull_request.number }}
-          message: |
-            Server artifacts:
-             - PAX: ${{ steps.pax-artifact-upload.outputs.artifact-url }}
+      - name: Test Python Bindings
+        run: |
+          cd native/python/bindings/test && make
 
       - name: Clean up on z/OS
         if: always()
