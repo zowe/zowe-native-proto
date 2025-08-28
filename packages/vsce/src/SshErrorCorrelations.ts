@@ -216,7 +216,7 @@ function registerMemoryFailures(correlator: ErrorCorrelator): void {
         },
         {
             errorCode: "FOTS4311",
-            matches: [/.*: could not allocate state/, "FOTS4311"],
+            matches: ["could not allocate state", "FOTS4311"],
             summary: "SSH client could not allocate memory for internal state management.",
             tips: [
                 "Restart the SSH client to clear memory usage.",
@@ -324,7 +324,7 @@ function registerFileSystemErrors(correlator: ErrorCorrelator): void {
         },
         {
             errorCode: "FOTS4312",
-            matches: [/.*: cipher_init failed: .*/, "FOTS4312"],
+            matches: ["cipher_init failed:", "FOTS4312"],
             summary: "SSH cipher initialization failed. The client could not initialize the encryption cipher.",
             tips: [
                 "Check that the SSH client and server support compatible cipher algorithms.",

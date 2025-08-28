@@ -94,7 +94,6 @@ export class ZSshUtils {
                     { step: progressCallback },
                 );
             } catch (err) {
-                const error = err instanceof Error ? err : new Error(String(err));
                 const errMsg = `Failed to upload server PAX file${(err as SftpError).code ? ` with RC ${(err as SftpError).code}` : ""}: ${err}`;
                 Logger.getAppLogger().error(errMsg);
                 
@@ -130,7 +129,6 @@ export class ZSshUtils {
             try {
                 await promisify(sftp.unlink.bind(sftp))(path.posix.join(remoteDir, ZSshUtils.SERVER_PAX_FILE));
             } catch (err) {
-                const error = err instanceof Error ? err : new Error(String(err));
                 const errMsg = `Failed to cleanup server PAX file: ${err}`;
                 Logger.getAppLogger().warn(errMsg);
                 
