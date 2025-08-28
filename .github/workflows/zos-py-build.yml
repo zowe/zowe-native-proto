@@ -28,7 +28,7 @@ jobs:
   build-python:
     runs-on: ubuntu-latest
     concurrency:
-      group: ${{ github.workflow }}
+      group: "zos-build"
     timeout-minutes: 20
 
     steps:
