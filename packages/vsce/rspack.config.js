@@ -52,7 +52,7 @@ const extensionConfig = {
             parser: {
               syntax: 'typescript',
             },
-            target: require('../../tsconfig.json').compilerOptions.target,
+            target: "es2022",
           },
         },
       },
