@@ -14,6 +14,7 @@
 'use strict';
 
 const path = require('path');
+const rspack = require('@rspack/core');
 const { TsCheckerRspackPlugin } = require('ts-checker-rspack-plugin');
 
 /**@type {import('@rspack/core').RspackOptions}*/
@@ -52,7 +53,7 @@ const extensionConfig = {
             parser: {
               syntax: 'typescript',
             },
-            target: "es2022",
+            target: 'es2022'
           },
         },
       },
