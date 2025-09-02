@@ -20,6 +20,9 @@ describe("ConfigFileUtils", () => {
     let tempFilePath: string;
     let mockTeamConfig: Config;
 
+    const EXAMPLE_PRIVATE_KEY_PATH = "/u/users/example/.ssh/id_XXX";
+    const EXAMPLE_PRIVATE_KEY_COMMENT = `privateKey was moved to a comment as the value is invalid. Original value: "${EXAMPLE_PRIVATE_KEY_PATH}"`;
+
     beforeEach(() => {
         // Create a temporary file for testing
         tempFilePath = path.join(os.tmpdir(), `test-config-${Date.now()}.json`);
@@ -37,7 +40,7 @@ describe("ConfigFileUtils", () => {
                         properties: {
                             host: "example.com",
                             user: "testuser",
-                            privateKey: "/u/users/example/.ssh/id_XXX",
+                            privateKey: EXAMPLE_PRIVATE_KEY_PATH,
                         },
                     },
                 },
@@ -68,7 +71,7 @@ describe("ConfigFileUtils", () => {
         (testConfig.properties.profiles as any).testprofile[Symbol.for("after:properties")] = [
             {
                 type: "LineComment",
-                value: ' privateKey was invalid and commented out to avoid re-use. Original value: "/u/users/example/.ssh/id_XXX"',
+                value: EXAMPLE_PRIVATE_KEY_COMMENT,
                 inline: false,
             } as commentJson.CommentToken,
         ];
@@ -129,12 +132,12 @@ describe("ConfigFileUtils", () => {
 
             expect(result).toBeDefined();
             expect(result?.propertyPath).toBe("properties.privateKey");
-            expect(result?.originalValue).toBe("/u/users/example/.ssh/id_XXX");
+            expect(result?.originalValue).toBe(EXAMPLE_PRIVATE_KEY_PATH);
             expect(result?.layerPath).toBe(tempFilePath);
-            expect(result?.commentText).toContain("privateKey was invalid and commented out");
+            expect(result?.commentText).toContain(EXAMPLE_PRIVATE_KEY_COMMENT);
 
             const content = readFileSync(tempFilePath, "utf-8");
-            expect(content).toContain("privateKey was invalid and commented out");
+            expect(content).toContain(EXAMPLE_PRIVATE_KEY_COMMENT);
             expect(content).not.toContain('"privateKey": "/u/users/example/.ssh/id_XXX"');
         });
 
@@ -178,7 +181,8 @@ describe("ConfigFileUtils", () => {
             const success = ConfigFileUtils.getInstance().uncommentProperty(mockTeamConfig, "testprofile", {
                 layerPath: tempFilePath,
                 propertyPath: "properties.privateKey",
-                originalValue: "/u/users/example/.ssh/id_XXX",
+                originalValue: EXAMPLE_PRIVATE_KEY_PATH,
+                commentText: EXAMPLE_PRIVATE_KEY_COMMENT
             });
             expect(success).toBe(true);
 
@@ -196,7 +200,8 @@ describe("ConfigFileUtils", () => {
             const success = ConfigFileUtils.getInstance().deleteCommentedLine(mockTeamConfig, "testprofile", {
                 layerPath: tempFilePath,
                 propertyPath: "properties.privateKey",
-                originalValue: "/u/users/example/.ssh/id_XXX",
+                originalValue: EXAMPLE_PRIVATE_KEY_PATH,
+                commentText: EXAMPLE_PRIVATE_KEY_COMMENT
             });
             expect(success).toBe(true);
 

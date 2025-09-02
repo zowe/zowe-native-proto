@@ -80,7 +80,7 @@ export class ConfigFileUtils {
             }
 
             // Add a comment explaining why the property was commented out
-            const commentText = `${propertyName} was invalid and commented out to avoid re-use. Original value: ${JSON.stringify(currentValue)}`;
+            const commentText = `${propertyName} was moved to a comment as the value is invalid. Original value: ${JSON.stringify(currentValue)}`;
 
             const profileInJson = _.get(layerJson, profilePath);
             // Add comment before where the property would be
@@ -126,10 +126,20 @@ export class ConfigFileUtils {
             // Parse the JSON content with comment-json to preserve formatting
             _.set(profileJson, commentInfo.propertyPath, commentInfo.originalValue);
 
-            // Remove any comments associated with this property
+            // Filter out only the specific comment that matches our comment text
             const commentSymbol = Symbol.for(`after:properties`);
-            if (profileJson?.[commentSymbol]) {
-                delete profileJson[commentSymbol];
+            if (profileJson?.[commentSymbol] && commentInfo.commentText) {
+                const comments = profileJson[commentSymbol] as CommentToken[];
+                const filteredComments = comments.filter((comment: CommentToken) => 
+                    comment.value?.trim() !== commentInfo.commentText
+                );
+                
+                if (filteredComments.length === 0) {
+                    delete profileJson[commentSymbol];
+                } else {
+                    profileJson[commentSymbol] = filteredComments;
+                }
+                
                 // Write the modified content back to the file
                 teamConfig.api.layers.write(layerJson);
                 return true;
@@ -158,10 +168,20 @@ export class ConfigFileUtils {
                 return false;
             }
 
-            // Remove comment placed after `properties` object under profile/group
+            // Filter out only the specific comment that matches our comment text
             const commentSymbol = Symbol.for(`after:properties`);
-            if (profileJson[commentSymbol]) {
-                delete profileJson[commentSymbol];
+            if (profileJson[commentSymbol] && commentInfo.commentText) {
+                const comments = profileJson[commentSymbol] as CommentToken[];
+                const filteredComments = comments.filter((comment: CommentToken) => 
+                    comment.value?.trim() !== commentInfo.commentText
+                );
+                
+                if (filteredComments.length === 0) {
+                    delete profileJson[commentSymbol];
+                } else {
+                    profileJson[commentSymbol] = filteredComments;
+                }
+                
                 teamConfig.api.layers.write(layerJson);
             }
             return true;
