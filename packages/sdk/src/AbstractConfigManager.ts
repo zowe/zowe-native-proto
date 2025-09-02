@@ -720,7 +720,11 @@ export abstract class AbstractConfigManager {
                     profileName: config.name,
                     privateKeyPath: config.privateKey,
                     onUndo: async () => {
-                        const success = ConfigFileUtils.getInstance().uncommentProperty(teamConfig, config.name, commentedProperty);
+                        const success = ConfigFileUtils.getInstance().uncommentProperty(
+                            teamConfig,
+                            config.name,
+                            commentedProperty,
+                        );
                         if (success) {
                             this.showMessage(
                                 `Private key has been restored for profile "${config.name}".`,
@@ -734,7 +738,11 @@ export abstract class AbstractConfigManager {
                         }
                     },
                     onDelete: async () => {
-                        const success = ConfigFileUtils.getInstance().deleteCommentedLine(teamConfig, config.name, commentedProperty);
+                        const success = ConfigFileUtils.getInstance().deleteCommentedLine(
+                            teamConfig,
+                            config.name,
+                            commentedProperty,
+                        );
                         if (success) {
                             this.showMessage(
                                 `Private key comment lines have been deleted from profile "${config.name}".`,

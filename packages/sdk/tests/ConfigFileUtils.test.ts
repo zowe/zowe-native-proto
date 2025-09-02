@@ -81,29 +81,31 @@ describe("ConfigFileUtils", () => {
 
     const createMockTeamConfig = (testConfig: any) => {
         return {
-            findLayer: (user: boolean, global: boolean) => testConfig,
+            findLayer: (_user: boolean, _global: boolean) => testConfig,
             api: {
                 profiles: {
                     get: (profileName: string, _failNotFound = true) => {
                         const profile = testConfig.properties?.profiles?.[profileName];
-                        return profile ? {
-                            host: profile.properties.host,
-                            user: profile.properties.user,
-                            privateKey: profile.properties.privateKey,
-                        } : undefined;
+                        return profile
+                            ? {
+                                  host: profile.properties.host,
+                                  user: profile.properties.user,
+                                  privateKey: profile.properties.privateKey,
+                              }
+                            : undefined;
                     },
                     getProfilePathFromName: (profileName: string) => {
                         return `profiles.${profileName}`;
-                    }
+                    },
                 },
                 layers: {
-                    find: (profileName: string) => ({
+                    find: (_profileName: string) => ({
                         user: testConfig.user,
                         global: testConfig.global,
                     }),
                     write: (layerJson: any) => {
                         writeFileSync(tempFilePath, commentJson.stringify(layerJson, null, 4), "utf-8");
-                    }
+                    },
                 },
             },
         } as any;
@@ -182,7 +184,7 @@ describe("ConfigFileUtils", () => {
                 layerPath: tempFilePath,
                 propertyPath: "properties.privateKey",
                 originalValue: EXAMPLE_PRIVATE_KEY_PATH,
-                commentText: EXAMPLE_PRIVATE_KEY_COMMENT
+                commentText: EXAMPLE_PRIVATE_KEY_COMMENT,
             });
             expect(success).toBe(true);
 
@@ -201,7 +203,7 @@ describe("ConfigFileUtils", () => {
                 layerPath: tempFilePath,
                 propertyPath: "properties.privateKey",
                 originalValue: EXAMPLE_PRIVATE_KEY_PATH,
-                commentText: EXAMPLE_PRIVATE_KEY_COMMENT
+                commentText: EXAMPLE_PRIVATE_KEY_COMMENT,
             });
             expect(success).toBe(true);
 
@@ -231,7 +233,11 @@ describe("ConfigFileUtils", () => {
                 originalValue: "test",
             };
 
-            const success = ConfigFileUtils.getInstance().deleteCommentedLine(mockTeamConfig, "invalidprofile", invalidCommentInfo);
+            const success = ConfigFileUtils.getInstance().deleteCommentedLine(
+                mockTeamConfig,
+                "invalidprofile",
+                invalidCommentInfo,
+            );
             expect(success).toBe(false);
         });
     });

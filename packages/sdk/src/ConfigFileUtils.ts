@@ -54,6 +54,7 @@ export class ConfigFileUtils {
                 console.warn("Could not determine active config layer path");
                 return undefined;
             }
+            // biome-ignore lint/suspicious/noExplicitAny: The type cast is necessary to access an internal function in the Config API.
             const layerJson = (teamConfig as any).findLayer(layerFromProfName.user, layerFromProfName.global);
 
             const profilePath = profileName.split(".").reduce((all, seg, i, arr) => {
@@ -119,10 +120,14 @@ export class ConfigFileUtils {
     public uncommentProperty(teamConfig: Config, profileName: string, commentInfo: CommentedProperty): boolean {
         try {
             const layerFromProfName = teamConfig.api.layers.find(profileName);
+            // biome-ignore lint/suspicious/noExplicitAny: The type cast is necessary to access an internal function in the Config API.
             const layerJson = (teamConfig as any).findLayer(layerFromProfName.user, layerFromProfName.global);
 
             // Parse the property path to get profile and property name
-            const profileJson = _.get(layerJson, `properties.${teamConfig.api.profiles.getProfilePathFromName(profileName)}`);
+            const profileJson = _.get(
+                layerJson,
+                `properties.${teamConfig.api.profiles.getProfilePathFromName(profileName)}`,
+            );
             // Parse the JSON content with comment-json to preserve formatting
             _.set(profileJson, commentInfo.propertyPath, commentInfo.originalValue);
 
@@ -130,16 +135,16 @@ export class ConfigFileUtils {
             const commentSymbol = Symbol.for(`after:properties`);
             if (profileJson?.[commentSymbol] && commentInfo.commentText) {
                 const comments = profileJson[commentSymbol] as CommentToken[];
-                const filteredComments = comments.filter((comment: CommentToken) => 
-                    comment.value?.trim() !== commentInfo.commentText
+                const filteredComments = comments.filter(
+                    (comment: CommentToken) => comment.value?.trim() !== commentInfo.commentText,
                 );
-                
+
                 if (filteredComments.length === 0) {
                     delete profileJson[commentSymbol];
                 } else {
                     profileJson[commentSymbol] = filteredComments;
                 }
-                
+
                 // Write the modified content back to the file
                 teamConfig.api.layers.write(layerJson);
                 return true;
@@ -160,10 +165,14 @@ export class ConfigFileUtils {
     public deleteCommentedLine(teamConfig: Config, profileName: string, commentInfo: CommentedProperty): boolean {
         try {
             const layerFromProfName = teamConfig.api.layers.find(profileName);
+            // biome-ignore lint/suspicious/noExplicitAny: The type cast is necessary to access an internal function in the Config API.
             const layerJson = (teamConfig as any).findLayer(layerFromProfName.user, layerFromProfName.global);
 
             // Parse the property path to get profile and property name
-            const profileJson = _.get(layerJson, `properties.${teamConfig.api.profiles.getProfilePathFromName(profileName)}`);
+            const profileJson = _.get(
+                layerJson,
+                `properties.${teamConfig.api.profiles.getProfilePathFromName(profileName)}`,
+            );
             if (!profileJson) {
                 return false;
             }
@@ -172,16 +181,16 @@ export class ConfigFileUtils {
             const commentSymbol = Symbol.for(`after:properties`);
             if (profileJson[commentSymbol] && commentInfo.commentText) {
                 const comments = profileJson[commentSymbol] as CommentToken[];
-                const filteredComments = comments.filter((comment: CommentToken) => 
-                    comment.value?.trim() !== commentInfo.commentText
+                const filteredComments = comments.filter(
+                    (comment: CommentToken) => comment.value?.trim() !== commentInfo.commentText,
                 );
-                
+
                 if (filteredComments.length === 0) {
                     delete profileJson[commentSymbol];
                 } else {
                     profileJson[commentSymbol] = filteredComments;
                 }
-                
+
                 teamConfig.api.layers.write(layerJson);
             }
             return true;
