@@ -130,8 +130,8 @@ export class ConfigFileUtils {
             const commentSymbol = Symbol.for(`after:properties`);
             if (profileJson?.[commentSymbol]) {
                 delete profileJson[commentSymbol];
-                // Reload the team config to reflect changes
-                teamConfig.api.layers.write({ user: layerJson.user, global: layerJson.global });
+                // Write the modified content back to the file
+                teamConfig.api.layers.write(layerJson);
                 return true;
             }
 
