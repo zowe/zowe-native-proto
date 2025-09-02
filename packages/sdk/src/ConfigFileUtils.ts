@@ -132,11 +132,6 @@ export class ConfigFileUtils {
             const content = readFileSync(commentInfo.filePath, "utf-8");
 
             // Parse the property path to get profile and property names
-            const pathParts = commentInfo.propertyPath.split(".");
-            if (pathParts.length < 4 || pathParts[0] !== "profiles") {
-                return false;
-            }
-
             const profilePath = commentInfo.propertyPath.substring(0, commentInfo.propertyPath.indexOf("properties.privateKey") - 1);
             // Parse the JSON content with comment-json to preserve formatting
             const jsonWithComments = commentJson.parse(content) as any;
@@ -166,7 +161,7 @@ export class ConfigFileUtils {
     /**
      * Delete comment lines related to a commented property
      * @param commentInfo Information about the commented property
-     * @returns true if successful, false otherwise
+     * @returns true if the comment was removed or no longer in file, false otherwise
      */
     public deleteCommentedLine(commentInfo: CommentedProperty): boolean {
         try {
@@ -179,17 +174,18 @@ export class ConfigFileUtils {
             // Strip off "properties" and "privateKey" to access comment in profile object
             const profilePath = commentInfo.propertyPath.split(".").slice(0, -2).join(".");
 
-            // Remove any comments associated with this property
-            const commentSymbol = Symbol.for(`after:properties`);
             const profileObject = _.get(jsonWithComments, profilePath);
-            if (profileObject && profileObject[commentSymbol]) {
-                delete profileObject[commentSymbol];
+            if (!profileObject) {
+                return false;
             }
 
-            // Write the modified content back to the file
-            const modifiedContent = commentJson.stringify(jsonWithComments, null, 4);
-            writeFileSync(commentInfo.filePath, modifiedContent, "utf-8");
-
+            // Remove comment placed after `properties` object under profile/group
+            const commentSymbol = Symbol.for(`after:properties`);
+            if (profileObject[commentSymbol]) {
+                delete profileObject[commentSymbol];
+                // Write the modified content back to the file
+                writeFileSync(commentInfo.filePath, commentJson.stringify(jsonWithComments, null, 4), "utf-8");
+            }
             return true;
         } catch (error) {
             console.error("Error deleting comment lines:", error);

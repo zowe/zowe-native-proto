@@ -25,6 +25,7 @@ import type { MockInstance } from "vitest";
 import { AbstractConfigManager, type ProgressCallback } from "../src/AbstractConfigManager";
 import { type inputBoxOpts, MESSAGE_TYPE, type qpItem, type qpOpts } from "../src/doc";
 import { type ISshConfigExt, ZClientUtils } from "../src/ZClientUtils";
+import { ConfigFileUtils } from "../src/ConfigFileUtils";
 
 vi.mock("path", () => ({
     normalize: vi.fn(() => (p: string) => p),
@@ -751,6 +752,7 @@ describe("AbstractConfigManager", async () => {
             vi.spyOn(testManager as any, "attemptConnection").mockRejectedValue(
                 "Cannot parse privateKey: Malformed OpenSSH private key",
             );
+            vi.spyOn(ConfigFileUtils.getInstance(), "commentOutProperty").mockReturnValue(undefined);
 
             expect(
                 await (testManager as any).validateConfig(
@@ -763,6 +765,7 @@ describe("AbstractConfigManager", async () => {
             vi.spyOn(testManager as any, "attemptConnection").mockRejectedValue(
                 new Error("All configured authentication methods failed"),
             );
+            vi.spyOn(ConfigFileUtils.getInstance(), "commentOutProperty").mockReturnValueOnce(undefined);
 
             const config = {
                 name: "ssh1",
@@ -791,6 +794,7 @@ describe("AbstractConfigManager", async () => {
             vi.spyOn(testManager, "showInputBox").mockResolvedValue("wrongPass"); // always fails
             vi.spyOn(testManager as any, "attemptConnection").mockRejectedValue(new Error("integrity check failed"));
             vi.spyOn(testManager, "showMessage").mockImplementation(() => {});
+            vi.spyOn(ConfigFileUtils.getInstance(), "commentOutProperty").mockReturnValue(undefined);
 
             const config = {
                 name: "ssh1",
