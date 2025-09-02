@@ -9,6 +9,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - Filtered out certain information messages to display a clear and concise error message for when creating a data set with an invalid management class. [#502](https://github.com/zowe/zowe-native-proto/issues/502)
 - Added "Worker Count" setting to configure number of `zowex` worker threads. [#514](https://github.com/zowe/zowe-native-proto/pull/514)
 - Fixed an issue where the `Zowe-SSH: Connect to Host...` command did not prompt the user for a password if the given private key was not recognized by the host. [#524](https://github.com/zowe/zowe-native-proto/issues/524)
+- Added a new prompt that shows if the user has an invalid private key on an existing profile when running the `Zowe-SSH: Connect to Host...` command. Now, if an invalid private key is detected, it is moved to a new comment in the JSON file and the user is given options to proceed. They can undo the comment action, delete the comment entirely, or preserve the comment and succeed with setup. [#524](https://github.com/zowe/zowe-native-proto/issues/524)
 
 ## `0.1.7`
 
