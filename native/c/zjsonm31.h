@@ -111,6 +111,21 @@ static int ZJSMPARS31(JSON_INSTANCE *PTR32 instance, const char *PTR32 json)
   return rc;
 }
 
+#if defined(__IBM_METAL__)
+#define CLEAR_GRS()          \
+  __asm(                     \
+      "*                 \n" \
+      " LMH 0,15,=16F'0' \n" \
+      "*                 \n" \
+      :                      \
+      :                      \
+      :);
+#else
+#define CLEAR_GRS() \
+  {                 \
+  } // NOTE(Kelosky): if literals become unreachable, pass in object of zeros
+#endif
+
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=parser-hwtjsrch-search
 static int ZJSMSRCH31(JSON_INSTANCE *PTR32 instance, const char *PTR32 key, KEY_HANDLE *PTR32 key_handle)
 {
@@ -121,11 +136,14 @@ static int ZJSMSRCH31(JSON_INSTANCE *PTR32 instance, const char *PTR32 key, KEY_
   DIAG *PTR32 diag_p = &instance->diag;
   diag_p = (DIAG * PTR32)((unsigned int)diag_p | 0x80000000);
 
+  // CLEAR_GRS(); // @TEST
+
   int search_type = HWTJ_SEARCHTYPE_SHALLOW;
   int object_handle = 0;
   int starting_handle = 0;
-  int name_length = (int)strlen(key);
-
+  // int name_length = (int)strlen(key);
+  int name_length = 4; //@TEST
+  //  zwto_debug("@TEST key: '%s' and length: %d", key, name_length);
   // const char *PTR32 name = "name";
 
   // zwto_debug("@TEST key: '%s'", key);

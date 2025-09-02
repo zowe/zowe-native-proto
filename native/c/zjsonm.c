@@ -29,6 +29,28 @@ int ZJSMINIT(JSON_INSTANCE *PTR64 instance)
 
   rc = ZJSMINIT31(&instance31);
 
+  // if (0 != rc)
+  // {
+  //   zwto_debug("@TEST ZJSMINIT error: %d - exiting...", rc);
+  //   return rc;
+  // }
+
+  // char *PTR32 json = "{\"name\": \"John\", \"isMarried\": true, \"hasKids\": false, \"age\": 30, \"pets\": [\"dog\", \"cat\", \"fish\"], \"address\": {\"street\": \"123 Main St\", \"city\": \"Anytown\", \"state\": \"CA\", \"zip\": \"12345\"}}";
+  // rc = ZJSMPARS31(&instance31, json);
+  // if (0 != rc)
+  // {
+  //   zwto_debug("@TEST ZJSMPARS error: %d - exiting...", rc);
+  //   return rc;
+  // }
+
+  // KEY_HANDLE key_handle = {0};
+  // rc = ZJSMSRCH31(&instance31, "name", &key_handle);
+  // if (0 != rc)
+  // {
+  //   zwto_debug("@TEST ZJSMSRCH error: %d - exiting...", rc);
+  //   return rc;
+  // }
+
   memcpy(instance, &instance31, sizeof(JSON_INSTANCE));
 
   return rc;
@@ -46,36 +68,6 @@ int ZJSMGENC(JSON_INSTANCE *PTR64 instance, int *PTR64 encoding)
   memcpy(&instance31, instance, sizeof(JSON_INSTANCE));
 
   rc = ZJSMGENC31(&instance31, &encoding31);
-
-  JSON_INSTANCE instance2 = {0};
-  int rc2 = 0;
-  rc2 = ZJSMINIT31(&instance2);
-  if (0 != rc2)
-  {
-    zwto_debug("@TEST ZJSMINIT error: %d - exiting...", rc2);
-    return rc2;
-  }
-
-  zwto_debug("@TEST instance2 handle: %12x", instance2.handle.x);
-
-  char *PTR32 json = "{\"name\": \"John\", \"isMarried\": true, \"hasKids\": false, \"age\": 30, \"pets\": [\"dog\", \"cat\", \"fish\"], \"address\": {\"street\": \"123 Main St\", \"city\": \"Anytown\", \"state\": \"CA\", \"zip\": \"12345\"}}";
-  rc2 = ZJSMPARS31(&instance2, json);
-  if (0 != rc2)
-  {
-    zwto_debug("@TEST ZJSMPARS error: %d - exiting...", rc2);
-    return rc2;
-  }
-
-  char *PTR32 string_key = "name";
-  KEY_HANDLE key_handle = {0};
-  rc2 = ZJSMSRCH31(&instance2, string_key, &key_handle);
-  if (0 != rc2)
-  {
-    zwto_debug("@TEST ZJSMSRCH error: %d - exiting...", rc2);
-    return rc2;
-  }
-
-  zwto_debug("@TEST geez222");
 
   *encoding = encoding31;
 
@@ -103,7 +95,7 @@ int ZJSMPARS(JSON_INSTANCE *PTR64 instance, const char *PTR64 json)
 
   JSON_INSTANCE instance31 = {0};
   memcpy(&instance31, instance, sizeof(JSON_INSTANCE));
-  zwto_debug("@TEST instance handle: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x", instance31.handle.x[0], instance31.handle.x[1], instance31.handle.x[2], instance31.handle.x[3], instance31.handle.x[4], instance31.handle.x[5], instance31.handle.x[6], instance31.handle.x[7], instance31.handle.x[8], instance31.handle.x[9], instance31.handle.x[10], instance31.handle.x[11]);
+  // zwto_debug("@TEST instance handle: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x", instance31.handle.x[0], instance31.handle.x[1], instance31.handle.x[2], instance31.handle.x[3], instance31.handle.x[4], instance31.handle.x[5], instance31.handle.x[6], instance31.handle.x[7], instance31.handle.x[8], instance31.handle.x[9], instance31.handle.x[10], instance31.handle.x[11]);
 
   int json_length = (int)strlen(json) + 1;
   char *PTR32 json31 = storage_obtain31(json_length);
@@ -112,6 +104,28 @@ int ZJSMPARS(JSON_INSTANCE *PTR64 instance, const char *PTR64 json)
   json31[json_length - 1] = '\0';
 
   rc = ZJSMPARS31(&instance31, json31);
+
+  // if (0 != rc)
+  // {
+  //   zwto_debug("@TEST ZJSMINIT error: %d - exiting...", rc);
+  //   return rc;
+  // }
+
+  // char *PTR32 json = "{\"name\": \"John\", \"isMarried\": true, \"hasKids\": false, \"age\": 30, \"pets\": [\"dog\", \"cat\", \"fish\"], \"address\": {\"street\": \"123 Main St\", \"city\": \"Anytown\", \"state\": \"CA\", \"zip\": \"12345\"}}";
+  // rc = ZJSMPARS31(&instance31, json);
+  // if (0 != rc)
+  // {
+  //   zwto_debug("@TEST ZJSMPARS error: %d - exiting...", rc);
+  //   return rc;
+  // }
+
+  // KEY_HANDLE key_handle = {0};
+  // rc = ZJSMSRCH31(&instance31, "name", &key_handle);
+  // if (0 != rc)
+  // {
+  //   zwto_debug("@TEST ZJSMSRCH error: %d - exiting...", rc);
+  //   return rc;
+  // }
 
   storage_release(json_length, json31);
   memcpy(instance, &instance31, sizeof(JSON_INSTANCE));
@@ -137,13 +151,13 @@ int ZJSMSRCH(JSON_INSTANCE *PTR64 instance, const char *PTR64 key, KEY_HANDLE *P
   memcpy(key31, key, strlen(key));
   key31[length - 1] = '\0';
 
-  zwto_debug("@TEST key: '%s'", key31);
-  zwto_debug("@TEST instance handle: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x", instance31.handle.x[0], instance31.handle.x[1], instance31.handle.x[2], instance31.handle.x[3], instance31.handle.x[4], instance31.handle.x[5], instance31.handle.x[6], instance31.handle.x[7], instance31.handle.x[8], instance31.handle.x[9], instance31.handle.x[10], instance31.handle.x[11]);
-  zwto_debug("@TEST key length: %d", length);
+  zwto_debug("@TEST key: '%s' and length: %d", key31, length);
+  // zwto_debug("@TEST instance handle: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x", instance31.handle.x[0], instance31.handle.x[1], instance31.handle.x[2], instance31.handle.x[3], instance31.handle.x[4], instance31.handle.x[5], instance31.handle.x[6], instance31.handle.x[7], instance31.handle.x[8], instance31.handle.x[9], instance31.handle.x[10], instance31.handle.x[11]);
+  // zwto_debug("@TEST key length: %d", strlen(key31));
 
-  char *PTR32 name = "name";
-  rc = ZJSMSRCH31(&instance31, name, &key_handle31);
-  zwto_debug("@TEST rc: %d", rc);
+  // char *PTR32 name = "name";
+  rc = ZJSMSRCH31(&instance31, key31, &key_handle31);
+  // zwto_debug("@TEST rc: %d", rc);
 
   memcpy(key_handle, &key_handle31, sizeof(KEY_HANDLE));
 
@@ -174,7 +188,23 @@ int ZJSMGVAL(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, char *
 #pragma epilog(ZJSMGNUE, " ZWEEPILG ")
 int ZJSMGNUE(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *PTR64 number_entries)
 {
-  return 0;
+  int rc = 0;
+
+  int number_entries31 = 0;
+
+  KEY_HANDLE key_handle31 = {0};
+  memcpy(&key_handle31, key_handle, sizeof(KEY_HANDLE));
+
+  JSON_INSTANCE instance31 = {0};
+  memcpy(&instance31, instance, sizeof(JSON_INSTANCE));
+
+  rc = ZJSMGNUE31(&instance31, &key_handle31, &number_entries31);
+
+  *number_entries = number_entries31;
+
+  memcpy(instance, &instance31, sizeof(JSON_INSTANCE));
+
+  return rc;
 }
 
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=parser-hwtjgbov-get-boolean-value

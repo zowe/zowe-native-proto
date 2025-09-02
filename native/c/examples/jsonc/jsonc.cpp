@@ -31,7 +31,6 @@ int main()
   char *PTR32 json = "{\"name\": \"John\", \"isMarried\": true, \"hasKids\": false, \"age\": 30, \"pets\": [\"dog\", \"cat\", \"fish\"], \"address\": {\"street\": \"123 Main St\", \"city\": \"Anytown\", \"state\": \"CA\", \"zip\": \"12345\"}}";
 
   memset(&instance, 0, sizeof(JSON_INSTANCE));
-  printf("instance handle: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n", instance.handle.x[0], instance.handle.x[1], instance.handle.x[2], instance.handle.x[3], instance.handle.x[4], instance.handle.x[5], instance.handle.x[6], instance.handle.x[7], instance.handle.x[8], instance.handle.x[9], instance.handle.x[10], instance.handle.x[11]);
   rc = ZJSMINIT(&instance);
   if (0 != rc)
   {
@@ -61,13 +60,27 @@ int main()
 
   std::cout << "ZJSMGENC: " << encoding << std::endl;
 
-  KEY_HANDLE key_handle = {0};
-  std::string string_key = "name";
-  printf("first char of name is: %c\n", string_key[0]);
-  rc = ZJSMSRCH(&instance, string_key.c_str(), &key_handle);
+  int number_entries = 0;
+  KEY_HANDLE key_handle_zero = {0};
+  rc = ZJSMGNUE(&instance, &key_handle_zero, &number_entries);
   if (0 != rc)
   {
-    std::cout << "Error ZJSMSRCH: " << rc << std::endl;
+    std::cout << "Error ZJSMGNUE: " << rc << std::endl;
+    return -1;
+  }
+
+  std::cout << "ZJSMGNUE: " << number_entries << std::endl;
+
+  KEY_HANDLE key_handle = {0};
+  // std::string string_key = "name";
+  // printf("first char of name is: %c\n", string_key[0]);
+  char *PTR32 string_key = "address";
+  // char *PTR32 string
+  std::cout << "@TEST string_key: " << string_key << std::endl;
+  rc = ZJSMSRCH(&instance, string_key, &key_handle);
+  if (0 != rc)
+  {
+    printf("Error ZJSMSRCH: x'%x'\n", rc);
     return -1;
   }
 
