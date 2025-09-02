@@ -9,11 +9,11 @@
  *
  */
 
-import { readFileSync, writeFileSync, unlinkSync } from "node:fs";
-import * as path from "node:path";
+import { readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import * as os from "node:os";
+import * as path from "node:path";
+import type { Config } from "@zowe/imperative";
 import * as commentJson from "comment-json";
-import { Config } from "@zowe/imperative";
 import { ConfigFileUtils } from "../src/ConfigFileUtils";
 
 describe("ConfigFileUtils", () => {
@@ -38,9 +38,9 @@ describe("ConfigFileUtils", () => {
         (testConfig.profiles as any).testprofile[Symbol.for("after:properties")] = [
             {
                 type: "LineComment",
-                value: " Private key was invalid and commented out to avoid re-use. Original value: \"/u/users/example/.ssh/id_XXX\"",
-                inline: false
-            } as commentJson.CommentToken
+                value: ' Private key was invalid and commented out to avoid re-use. Original value: "/u/users/example/.ssh/id_XXX"',
+                inline: false,
+            } as commentJson.CommentToken,
         ];
         writeFileSync(tempFilePath, commentJson.stringify(testConfig, null, 4), "utf-8");
 
@@ -49,7 +49,7 @@ describe("ConfigFileUtils", () => {
             layerActive: () => ({ path: tempFilePath }),
             api: {
                 profiles: {
-                    get: (profileName: string) => ({
+                    get: (_profileName: string) => ({
                         host: "example.com",
                         user: "testuser",
                         privateKey: "/u/users/example/.ssh/id_XXX",
@@ -76,13 +76,17 @@ describe("ConfigFileUtils", () => {
             const uncommentResult = ConfigFileUtils.getInstance().uncommentProperty(mockTeamConfig, {
                 filePath: tempFilePath,
                 propertyPath: "profiles.testprofile.properties.privateKey",
-                originalValue: "/u/users/example/.ssh/id_XXX"
+                originalValue: "/u/users/example/.ssh/id_XXX",
             });
             // Expect private key to be uncommented
             expect(uncommentResult).toBe(true);
 
             // Now add it back as a comment
-            const result = ConfigFileUtils.getInstance().commentOutProperty(mockTeamConfig, "testprofile", "privateKey");
+            const result = ConfigFileUtils.getInstance().commentOutProperty(
+                mockTeamConfig,
+                "testprofile",
+                "privateKey",
+            );
 
             expect(result).toBeDefined();
             expect(result?.propertyPath).toBe("profiles.testprofile.properties.privateKey");
@@ -102,7 +106,11 @@ describe("ConfigFileUtils", () => {
                 },
             });
 
-            const result = ConfigFileUtils.getInstance().commentOutProperty(mockTeamConfig, "testprofile", "privateKey");
+            const result = ConfigFileUtils.getInstance().commentOutProperty(
+                mockTeamConfig,
+                "testprofile",
+                "privateKey",
+            );
             expect(result).toBeUndefined();
         });
     });
@@ -113,7 +121,7 @@ describe("ConfigFileUtils", () => {
             const success = ConfigFileUtils.getInstance().uncommentProperty(mockTeamConfig, {
                 filePath: tempFilePath,
                 propertyPath: "profiles.testprofile.properties.privateKey",
-                originalValue: "/u/users/example/.ssh/id_XXX"
+                originalValue: "/u/users/example/.ssh/id_XXX",
             });
             expect(success).toBe(true);
 
@@ -127,7 +135,7 @@ describe("ConfigFileUtils", () => {
             const success = ConfigFileUtils.getInstance().deleteCommentedLine({
                 filePath: tempFilePath,
                 propertyPath: "profiles.testprofile.properties.privateKey",
-                originalValue: "/u/users/example/.ssh/id_XXX"
+                originalValue: "/u/users/example/.ssh/id_XXX",
             });
             expect(success).toBe(true);
 

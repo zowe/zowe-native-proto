@@ -10,9 +10,9 @@
  */
 
 import { readFileSync, writeFileSync } from "node:fs";
-import type { Config, IConfig, ProfileInfo } from "@zowe/imperative";
-import * as commentJson from "comment-json";
+import type { Config } from "@zowe/imperative";
 import type { CommentToken } from "comment-json";
+import * as commentJson from "comment-json";
 import * as _ from "es-toolkit/compat";
 
 export interface CommentedProperty {
@@ -60,10 +60,10 @@ export class ConfigFileUtils {
             const profilePath = profileName.split(".").reduce((all, seg, i, arr) => {
                 // Last segment in split
                 if (arr.length === 1 || i === arr.length - 1) {
-                    return all + `${seg}`;
+                    return `${all}${seg}`;
                 }
 
-                return all + `${seg}.profiles.`;
+                return `${all}${seg}.profiles.`;
             }, "profiles.");
 
             const filePath = activeLayer.path;
@@ -79,11 +79,11 @@ export class ConfigFileUtils {
             }
 
             // Parse the JSON content with comment-json to preserve comments and formatting
-            const jsonWithComments = commentJson.parse(content) as any;
+            const jsonWithComments = commentJson.parse(content) as object;
 
             const profileInJson = _.get(jsonWithComments, profilePath);
             // Check if the property exists in the JSON structure
-            if (!profileInJson || !profileInJson.properties?.[propertyName]) {
+            if (!profileInJson?.properties?.[propertyName]) {
                 return undefined;
             }
 
@@ -132,26 +132,29 @@ export class ConfigFileUtils {
             const content = readFileSync(commentInfo.filePath, "utf-8");
 
             // Parse the property path to get profile and property names
-            const profilePath = commentInfo.propertyPath.substring(0, commentInfo.propertyPath.indexOf("properties.privateKey") - 1);
+            const profilePath = commentInfo.propertyPath.substring(
+                0,
+                commentInfo.propertyPath.indexOf("properties.privateKey") - 1,
+            );
             // Parse the JSON content with comment-json to preserve formatting
-            const jsonWithComments = commentJson.parse(content) as any;
+            const jsonWithComments = commentJson.parse(content) as object;
             _.set(jsonWithComments, commentInfo.propertyPath, commentInfo.originalValue);
 
             // Remove any comments associated with this property
             const commentSymbol = Symbol.for(`after:properties`);
             const profileObject = _.get(jsonWithComments, profilePath);
-            if (profileObject && profileObject[commentSymbol]) {
+            if (profileObject?.[commentSymbol]) {
                 delete profileObject[commentSymbol];
+                // Write the modified content back to the file
+                const modifiedContent = commentJson.stringify(jsonWithComments, null, 4);
+                writeFileSync(commentInfo.filePath, modifiedContent, "utf-8");
+
+                // Reload the team config to reflect changes
+                teamConfig.api.layers.read();
+                return true;
             }
 
-            // Write the modified content back to the file
-            const modifiedContent = commentJson.stringify(jsonWithComments, null, 4);
-            writeFileSync(commentInfo.filePath, modifiedContent, "utf-8");
-
-            // Reload the team config to reflect changes
-            teamConfig.api.layers.read();
-
-            return true;
+            return false;
         } catch (error) {
             console.error("Error uncommenting property:", error);
             return false;
@@ -168,7 +171,7 @@ export class ConfigFileUtils {
             const content = readFileSync(commentInfo.filePath, "utf-8");
 
             // Parse the JSON content with comment-json
-            const jsonWithComments = commentJson.parse(content) as any;
+            const jsonWithComments = commentJson.parse(content) as object;
 
             // Parse the property path to get profile and property names
             // Strip off "properties" and "privateKey" to access comment in profile object

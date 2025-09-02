@@ -27,9 +27,9 @@ import {
     type ProfileInfo,
 } from "@zowe/imperative";
 import { Client, type ClientChannel } from "ssh2";
+import { ConfigFileUtils } from "./ConfigFileUtils";
 import { type inputBoxOpts, MESSAGE_TYPE, type PrivateKeyWarningOptions, type qpItem, type qpOpts } from "./doc";
 import { type ISshConfigExt, ZClientUtils } from "./ZClientUtils";
-import { ConfigFileUtils } from "./ConfigFileUtils";
 
 export type ProgressCallback = (percent: number) => void;
 export abstract class AbstractConfigManager {
@@ -708,7 +708,11 @@ export abstract class AbstractConfigManager {
             const teamConfig = this.mProfilesCache.getTeamConfig();
 
             // Comment out the private key property using Config API and comment-json
-            const commentedProperty = ConfigFileUtils.getInstance().commentOutProperty(teamConfig, config.name, "privateKey");
+            const commentedProperty = ConfigFileUtils.getInstance().commentOutProperty(
+                teamConfig,
+                config.name,
+                "privateKey",
+            );
 
             if (commentedProperty) {
                 // Show warning to user with undo/delete options

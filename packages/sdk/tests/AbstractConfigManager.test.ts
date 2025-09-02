@@ -23,9 +23,9 @@ import type { Config } from "node-ssh";
 import { Client, type ClientCallback, type ConnectConfig } from "ssh2";
 import type { MockInstance } from "vitest";
 import { AbstractConfigManager, type ProgressCallback } from "../src/AbstractConfigManager";
+import { ConfigFileUtils } from "../src/ConfigFileUtils";
 import { type inputBoxOpts, MESSAGE_TYPE, type qpItem, type qpOpts } from "../src/doc";
 import { type ISshConfigExt, ZClientUtils } from "../src/ZClientUtils";
-import { ConfigFileUtils } from "../src/ConfigFileUtils";
 
 vi.mock("path", () => ({
     normalize: vi.fn(() => (p: string) => p),

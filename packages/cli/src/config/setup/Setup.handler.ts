@@ -25,7 +25,7 @@ import {
     AbstractConfigManager,
     type inputBoxOpts,
     MESSAGE_TYPE,
-    PrivateKeyWarningOptions,
+    type PrivateKeyWarningOptions,
     type ProgressCallback,
     type qpItem,
     type qpOpts,
@@ -133,9 +133,13 @@ export class CliPromptApi extends AbstractConfigManager {
         this.mResponseApi.console.log(TextUtils.chalk.yellow(warningMessage));
         this.mResponseApi.console.log("");
 
-        let selectedIndex = 0;
+        const selectedIndex = 0;
         const menu = this.term.singleColumnMenu(
-            ["Undo (restores the private key)", "Delete (removes the commented line)", "Proceed as-is (no config changes)"],
+            [
+                "Undo (restores the private key)",
+                "Delete (removes the commented line)",
+                "Proceed as-is (no config changes)",
+            ],
             {
                 cancelable: true,
                 continueOnSubmit: false,
@@ -167,7 +171,6 @@ export class CliPromptApi extends AbstractConfigManager {
                     this.mResponseApi.console.log(TextUtils.chalk.green("Commented line has been deleted."));
                 }
                 break;
-            case 2:
             default:
                 break;
         }
