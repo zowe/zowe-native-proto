@@ -27,8 +27,9 @@ import {
     type ProfileInfo,
 } from "@zowe/imperative";
 import { Client, type ClientChannel } from "ssh2";
-import { type inputBoxOpts, MESSAGE_TYPE, type qpItem, type qpOpts } from "./doc";
+import { type inputBoxOpts, MESSAGE_TYPE, type PrivateKeyWarningOptions, type qpItem, type qpOpts } from "./doc";
 import { type ISshConfigExt, ZClientUtils } from "./ZClientUtils";
+import { ConfigFileUtils } from "./ConfigFileUtils";
 
 export type ProgressCallback = (percent: number) => void;
 export abstract class AbstractConfigManager {
@@ -41,6 +42,7 @@ export abstract class AbstractConfigManager {
     protected abstract showCustomMenu(opts: qpOpts): Promise<qpItem | undefined>;
     protected abstract getCurrentDir(): string | undefined;
     protected abstract getProfileSchemas(): IProfileTypeConfiguration[];
+    protected abstract showPrivateKeyWarning(opts: PrivateKeyWarningOptions): Promise<void>;
 
     private migratedConfigs: ISshConfigExt[];
     private filteredMigratedConfigs: ISshConfigExt[];
@@ -113,6 +115,7 @@ export abstract class AbstractConfigManager {
             const foundProfile = this.sshProfiles.find(({ name }) => name === result.label);
             if (foundProfile) {
                 const validConfig = await this.validateConfig({
+                    name: foundProfile.name,
                     hostname: foundProfile?.profile?.host,
                     port: foundProfile?.profile?.port,
                     privateKey: foundProfile?.profile?.privateKey,
@@ -337,6 +340,7 @@ export abstract class AbstractConfigManager {
                 !newConfig.password &&
                 errorMessage.includes("All configured authentication methods failed")
             ) {
+                await this.handleInvalidPrivateKey(newConfig);
                 newConfig.privateKey = undefined;
             }
 
@@ -376,6 +380,7 @@ export abstract class AbstractConfigManager {
                         this.showMessage(`Passphrase Authentication Failed (${attempts + 1}/3)`, MESSAGE_TYPE.ERROR);
                     }
                 }
+                await this.handleInvalidPrivateKey(newConfig);
                 newConfig.privateKey = undefined;
                 newConfig.keyPassphrase = undefined;
                 return undefined;
@@ -385,6 +390,13 @@ export abstract class AbstractConfigManager {
                 const passwordPrompt = askForPassword
                     ? await this.promptForPassword(newConfig, configModifications)
                     : undefined;
+
+                // If password authentication succeeded and we had a private key that failed,
+                // comment out the private key in the configuration file
+                if (passwordPrompt && newConfig.privateKey) {
+                    await this.handleInvalidPrivateKey(newConfig);
+                }
+
                 return passwordPrompt ? { ...configModifications, ...passwordPrompt } : undefined;
             }
 
@@ -394,6 +406,7 @@ export abstract class AbstractConfigManager {
             }
 
             if (errorMessage.includes("Cannot parse privateKey: Malformed OpenSSH private key")) {
+                await this.handleInvalidPrivateKey(newConfig);
                 return undefined;
             }
         }
@@ -679,5 +692,65 @@ export abstract class AbstractConfigManager {
             profile: this.getMergedAttrs(defaultProfile),
             failNotFound: false,
         };
+    }
+
+    /**
+     * Handle an invalid private key by commenting it out in the configuration file
+     * and showing a warning to the user
+     */
+    private async handleInvalidPrivateKey(config: ISshConfigExt): Promise<void> {
+        if (!config.privateKey || !config.name) {
+            return;
+        }
+
+        try {
+            // Get the team configuration object
+            const teamConfig = this.mProfilesCache.getTeamConfig();
+
+            // Comment out the private key property using Config API and comment-json
+            const commentedProperty = ConfigFileUtils.getInstance().commentOutProperty(teamConfig, config.name, "privateKey");
+
+            if (commentedProperty) {
+                // Show warning to user with undo/delete options
+                await this.showPrivateKeyWarning({
+                    profileName: config.name,
+                    privateKeyPath: config.privateKey,
+                    onUndo: async () => {
+                        const success = ConfigFileUtils.getInstance().uncommentProperty(teamConfig, commentedProperty);
+                        if (success) {
+                            this.showMessage(
+                                `Private key has been restored for profile "${config.name}".`,
+                                MESSAGE_TYPE.INFORMATION,
+                            );
+                        } else {
+                            this.showMessage(
+                                "Failed to restore private key. You may need to manually edit the configuration file.",
+                                MESSAGE_TYPE.ERROR,
+                            );
+                        }
+                    },
+                    onDelete: async () => {
+                        const success = ConfigFileUtils.getInstance().deleteCommentedLine(commentedProperty);
+                        if (success) {
+                            this.showMessage(
+                                `Private key comment lines have been deleted from profile "${config.name}".`,
+                                MESSAGE_TYPE.INFORMATION,
+                            );
+                        } else {
+                            this.showMessage(
+                                "Failed to delete private key comment lines. You may need to manually edit the configuration file.",
+                                MESSAGE_TYPE.ERROR,
+                            );
+                        }
+                    },
+                });
+            }
+        } catch (error) {
+            console.error("Error handling invalid private key:", error);
+            this.showMessage(
+                "Failed to comment out invalid private key. You may need to manually edit the configuration file.",
+                MESSAGE_TYPE.WARNING,
+            );
+        }
     }
 }

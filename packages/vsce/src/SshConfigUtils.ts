@@ -16,6 +16,7 @@ import {
     AbstractConfigManager,
     type inputBoxOpts,
     MESSAGE_TYPE,
+    type PrivateKeyWarningOptions,
     type ProgressCallback,
     type qpItem,
     type qpOpts,
@@ -185,5 +186,24 @@ export class VscePromptApi extends AbstractConfigManager {
             ...profCache.getConfigArray(),
             ProfileConstants.BaseProfile,
         ];
+    }
+
+    protected async showPrivateKeyWarning(opts: PrivateKeyWarningOptions): Promise<void> {
+        const message = `The private key "${opts.privateKeyPath}" for profile "${opts.profileName}" is invalid and has been commented out in your team configuration to avoid re-use.`;
+        const action = await vscode.window.showWarningMessage(message, { modal: true }, "Undo", "Delete Line");
+
+        switch (action) {
+            case "Undo":
+                if (opts.onUndo) {
+                    await opts.onUndo();
+                }
+                break;
+            case "Delete Line":
+                if (opts.onDelete) {
+                    await opts.onDelete();
+                }
+                break;
+            // If user dismisses the dialog (no action), do nothing
+        }
     }
 }

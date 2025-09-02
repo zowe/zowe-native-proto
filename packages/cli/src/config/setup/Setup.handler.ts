@@ -25,6 +25,7 @@ import {
     AbstractConfigManager,
     type inputBoxOpts,
     MESSAGE_TYPE,
+    PrivateKeyWarningOptions,
     type ProgressCallback,
     type qpItem,
     type qpOpts,
@@ -125,6 +126,55 @@ export default class ServerInstallHandler implements ICommandHandler {
 }
 
 export class CliPromptApi extends AbstractConfigManager {
+    protected async showPrivateKeyWarning(opts: PrivateKeyWarningOptions): Promise<void> {
+        // Display the warning message
+        this.mResponseApi.console.log("");
+        const warningMessage = `⚠️  The private key "${opts.privateKeyPath}" for profile "${opts.profileName}" is invalid and has been commented out in your team configuration to avoid re-use.`;
+        this.mResponseApi.console.log(TextUtils.chalk.yellow(warningMessage));
+        this.mResponseApi.console.log("");
+
+        let selectedIndex = 0;
+        const menu = this.term.singleColumnMenu(
+            ["Undo (restores the private key)", "Delete (removes the commented line)", "Proceed as-is (no config changes)"],
+            {
+                cancelable: true,
+                continueOnSubmit: false,
+                oneLineItem: true,
+                selectedIndex,
+                submittedStyle: this.term.bold.green,
+                selectedStyle: this.term.brightGreen,
+                leftPadding: "  ",
+                selectedLeftPadding: "> ",
+                submittedLeftPadding: "> ",
+            },
+        );
+        const response = await menu.promise;
+
+        switch (response.selectedIndex) {
+            case 0:
+                this.mResponseApi.console.log("Restoring private key...");
+                if (opts.onUndo) {
+                    await opts.onUndo();
+                } else {
+                    this.mResponseApi.console.log(TextUtils.chalk.green("Private key has been restored."));
+                }
+                break;
+            case 1:
+                this.mResponseApi.console.log("Deleting commented line...");
+                if (opts.onDelete) {
+                    await opts.onDelete();
+                } else {
+                    this.mResponseApi.console.log(TextUtils.chalk.green("Commented line has been deleted."));
+                }
+                break;
+            case 2:
+            default:
+                break;
+        }
+
+        this.mResponseApi.console.log("");
+    }
+
     constructor(
         mProfilesCache: ProfileInfo,
         private mResponseApi: IHandlerResponseApi,
