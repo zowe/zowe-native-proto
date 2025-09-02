@@ -47,6 +47,7 @@ describe("ConfigFileUtils", () => {
         // Mock the Config object
         mockTeamConfig = {
             layerActive: () => ({ path: tempFilePath }),
+            findLayer: () => testConfig,
             api: {
                 profiles: {
                     get: (_profileName: string) => ({
@@ -54,9 +55,14 @@ describe("ConfigFileUtils", () => {
                         user: "testuser",
                         privateKey: "/u/users/example/.ssh/id_XXX",
                     }),
+                    getProfilePathFromName: (shortPath: string) => {
+                        return shortPath.replace(/(^|\.)/g, "$1profiles.");
+                    }
                 },
                 layers: {
+                    find: () => testConfig,
                     read: () => {},
+                    write: () => {}
                 },
             },
         } as any;
@@ -73,8 +79,8 @@ describe("ConfigFileUtils", () => {
 
     describe("commentOutProperty", () => {
         it("should comment out a property in JSON file using Config API and comment-json", () => {
-            const uncommentResult = ConfigFileUtils.getInstance().uncommentProperty(mockTeamConfig, {
-                filePath: tempFilePath,
+            const uncommentResult = ConfigFileUtils.getInstance().uncommentProperty(mockTeamConfig, "testprofile", {
+                layerPath: tempFilePath,
                 propertyPath: "profiles.testprofile.properties.privateKey",
                 originalValue: "/u/users/example/.ssh/id_XXX",
             });
@@ -118,8 +124,8 @@ describe("ConfigFileUtils", () => {
     describe("uncommentProperty", () => {
         it("should uncomment a previously commented property", () => {
             // Then uncomment it
-            const success = ConfigFileUtils.getInstance().uncommentProperty(mockTeamConfig, {
-                filePath: tempFilePath,
+            const success = ConfigFileUtils.getInstance().uncommentProperty(mockTeamConfig, "testprofile", {
+                layerPath: tempFilePath,
                 propertyPath: "profiles.testprofile.properties.privateKey",
                 originalValue: "/u/users/example/.ssh/id_XXX",
             });
@@ -132,8 +138,8 @@ describe("ConfigFileUtils", () => {
 
     describe("deleteCommentedLine", () => {
         it("should delete comment lines", () => {
-            const success = ConfigFileUtils.getInstance().deleteCommentedLine({
-                filePath: tempFilePath,
+            const success = ConfigFileUtils.getInstance().deleteCommentedLine(mockTeamConfig, "testprofile", {
+                layerPath: tempFilePath,
                 propertyPath: "profiles.testprofile.properties.privateKey",
                 originalValue: "/u/users/example/.ssh/id_XXX",
             });
@@ -146,12 +152,12 @@ describe("ConfigFileUtils", () => {
 
         it("should return false for invalid property path", () => {
             const invalidCommentInfo = {
-                filePath: tempFilePath,
+                layerPath: tempFilePath,
                 propertyPath: "invalid.path",
                 originalValue: "test",
             };
 
-            const success = ConfigFileUtils.getInstance().deleteCommentedLine(invalidCommentInfo);
+            const success = ConfigFileUtils.getInstance().deleteCommentedLine(mockTeamConfig, "testprofile", invalidCommentInfo);
             expect(success).toBe(false);
         });
     });

@@ -99,7 +99,7 @@ export class ConfigFileUtils {
             teamConfig.api.layers.write(layerJson);
 
             return {
-                layerPath: (layerJson as any).path,
+                layerPath: layerJson.path,
                 propertyPath,
                 originalValue: currentValue,
                 commentText,
