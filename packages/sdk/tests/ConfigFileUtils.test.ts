@@ -23,50 +23,88 @@ describe("ConfigFileUtils", () => {
     beforeEach(() => {
         // Create a temporary file for testing
         tempFilePath = path.join(os.tmpdir(), `test-config-${Date.now()}.json`);
+    });
+
+    const createMockConfigWithPrivateKey = () => {
         const testConfig = {
-            profiles: {
-                testprofile: {
-                    type: "ssh",
-                    properties: {
-                        host: "example.com",
-                        user: "testuser",
+            user: false,
+            global: false,
+            path: tempFilePath,
+            properties: {
+                profiles: {
+                    testprofile: {
+                        type: "ssh",
+                        properties: {
+                            host: "example.com",
+                            user: "testuser",
+                            privateKey: "/u/users/example/.ssh/id_XXX",
+                        },
                     },
                 },
             },
         };
-        // Private key is already commented out
-        (testConfig.profiles as any).testprofile[Symbol.for("after:properties")] = [
+        writeFileSync(tempFilePath, commentJson.stringify(testConfig, null, 4), "utf-8");
+        return testConfig;
+    };
+
+    const createMockConfigWithCommentedKey = () => {
+        const testConfig = {
+            user: false,
+            global: false,
+            path: tempFilePath,
+            properties: {
+                profiles: {
+                    testprofile: {
+                        type: "ssh",
+                        properties: {
+                            host: "example.com",
+                            user: "testuser",
+                        },
+                    },
+                },
+            },
+        };
+        // Add comment for private key that was removed
+        (testConfig.properties.profiles as any).testprofile[Symbol.for("after:properties")] = [
             {
                 type: "LineComment",
-                value: ' Private key was invalid and commented out to avoid re-use. Original value: "/u/users/example/.ssh/id_XXX"',
+                value: ' privateKey was invalid and commented out to avoid re-use. Original value: "/u/users/example/.ssh/id_XXX"',
                 inline: false,
             } as commentJson.CommentToken,
         ];
         writeFileSync(tempFilePath, commentJson.stringify(testConfig, null, 4), "utf-8");
+        return testConfig;
+    };
 
-        // Mock the Config object
-        mockTeamConfig = {
-            layerActive: () => ({ path: tempFilePath }),
-            findLayer: () => testConfig,
+    const createMockTeamConfig = (testConfig: any) => {
+        return {
+            findLayer: (user: boolean, global: boolean) => testConfig,
             api: {
                 profiles: {
-                    get: (_profileName: string) => ({
-                        host: "example.com",
-                        user: "testuser",
-                        privateKey: "/u/users/example/.ssh/id_XXX",
-                    }),
-                    getProfilePathFromName: (shortPath: string) => {
-                        return shortPath.replace(/(^|\.)/g, "$1profiles.");
+                    get: (profileName: string, _failNotFound = true) => {
+                        const profile = testConfig.properties?.profiles?.[profileName];
+                        return profile ? {
+                            host: profile.properties.host,
+                            user: profile.properties.user,
+                            privateKey: profile.properties.privateKey,
+                        } : undefined;
+                    },
+                    getProfilePathFromName: (profileName: string) => {
+                        return `profiles.${profileName}`;
                     }
                 },
                 layers: {
-                    find: () => testConfig,
-                    read: () => {},
-                    write: () => {}
+                    find: (profileName: string) => ({
+                        user: testConfig.user,
+                        global: testConfig.global,
+                    }),
+                    write: (layerJson: any) => {
+                        writeFileSync(tempFilePath, commentJson.stringify(layerJson, null, 4), "utf-8");
+                    }
                 },
             },
         } as any;
-    });
+    };
 
     afterEach(() => {
         // Clean up temporary file
@@ -79,15 +117,10 @@ describe("ConfigFileUtils", () => {
 
     describe("commentOutProperty", () => {
         it("should comment out a property in JSON file using Config API and comment-json", () => {
-            const uncommentResult = ConfigFileUtils.getInstance().uncommentProperty(mockTeamConfig, "testprofile", {
-                layerPath: tempFilePath,
-                propertyPath: "profiles.testprofile.properties.privateKey",
-                originalValue: "/u/users/example/.ssh/id_XXX",
-            });
-            // Expect private key to be uncommented
-            expect(uncommentResult).toBe(true);
+            // Start with a config that has the privateKey property
+            const testConfig = createMockConfigWithPrivateKey();
+            mockTeamConfig = createMockTeamConfig(testConfig);
 
-            // Now add it back as a comment
             const result = ConfigFileUtils.getInstance().commentOutProperty(
                 mockTeamConfig,
                 "testprofile",
@@ -95,22 +128,37 @@ describe("ConfigFileUtils", () => {
             );
 
             expect(result).toBeDefined();
-            expect(result?.propertyPath).toBe("profiles.testprofile.properties.privateKey");
+            expect(result?.propertyPath).toBe("properties.privateKey");
             expect(result?.originalValue).toBe("/u/users/example/.ssh/id_XXX");
+            expect(result?.layerPath).toBe(tempFilePath);
+            expect(result?.commentText).toContain("privateKey was invalid and commented out");
 
             const content = readFileSync(tempFilePath, "utf-8");
-            expect(content).toContain("Private key was invalid and commented out");
+            expect(content).toContain("privateKey was invalid and commented out");
             expect(content).not.toContain('"privateKey": "/u/users/example/.ssh/id_XXX"');
         });
 
         it("should return undefined for non-existent property", () => {
-            // Mock profile that doesn't have privateKey
-            mockTeamConfig.api.profiles.get = () => ({
+            // Start with a config that doesn't have the privateKey property
+            const testConfig = {
+                user: false,
+                global: false,
+                path: tempFilePath,
                 properties: {
-                    host: "example.com",
-                    user: "testuser",
+                    profiles: {
+                        testprofile: {
+                            type: "ssh",
+                            properties: {
+                                host: "example.com",
+                                user: "testuser",
+                                // No privateKey property
+                            },
+                        },
+                    },
                 },
-            });
+            };
+            writeFileSync(tempFilePath, commentJson.stringify(testConfig, null, 4), "utf-8");
+            mockTeamConfig = createMockTeamConfig(testConfig);
 
             const result = ConfigFileUtils.getInstance().commentOutProperty(
                 mockTeamConfig,
@@ -123,10 +171,13 @@ describe("ConfigFileUtils", () => {
 
     describe("uncommentProperty", () => {
         it("should uncomment a previously commented property", () => {
-            // Then uncomment it
+            // Start with a config that has a commented privateKey
+            const testConfig = createMockConfigWithCommentedKey();
+            mockTeamConfig = createMockTeamConfig(testConfig);
+
             const success = ConfigFileUtils.getInstance().uncommentProperty(mockTeamConfig, "testprofile", {
                 layerPath: tempFilePath,
-                propertyPath: "profiles.testprofile.properties.privateKey",
+                propertyPath: "properties.privateKey",
                 originalValue: "/u/users/example/.ssh/id_XXX",
             });
             expect(success).toBe(true);
@@ -138,26 +189,44 @@ describe("ConfigFileUtils", () => {
 
     describe("deleteCommentedLine", () => {
         it("should delete comment lines", () => {
+            // Start with a config that has a commented privateKey
+            const testConfig = createMockConfigWithCommentedKey();
+            mockTeamConfig = createMockTeamConfig(testConfig);
+
             const success = ConfigFileUtils.getInstance().deleteCommentedLine(mockTeamConfig, "testprofile", {
                 layerPath: tempFilePath,
-                propertyPath: "profiles.testprofile.properties.privateKey",
+                propertyPath: "properties.privateKey",
                 originalValue: "/u/users/example/.ssh/id_XXX",
             });
             expect(success).toBe(true);
 
             const content = readFileSync(tempFilePath, "utf-8");
-            expect(content).not.toContain("Private key was invalid");
+            expect(content).not.toContain("privateKey was invalid");
             expect(content).not.toContain("privateKey");
         });
 
         it("should return false for invalid property path", () => {
+            // Start with a basic config without the profile we're trying to access
+            const testConfig = {
+                user: false,
+                global: false,
+                path: tempFilePath,
+                properties: {
+                    profiles: {
+                        // No testprofile here
+                    },
+                },
+            };
+            writeFileSync(tempFilePath, commentJson.stringify(testConfig, null, 4), "utf-8");
+            mockTeamConfig = createMockTeamConfig(testConfig);
+
             const invalidCommentInfo = {
                 layerPath: tempFilePath,
                 propertyPath: "invalid.path",
                 originalValue: "test",
             };
 
-            const success = ConfigFileUtils.getInstance().deleteCommentedLine(mockTeamConfig, "testprofile", invalidCommentInfo);
+            const success = ConfigFileUtils.getInstance().deleteCommentedLine(mockTeamConfig, "invalidprofile", invalidCommentInfo);
             expect(success).toBe(false);
         });
     });
