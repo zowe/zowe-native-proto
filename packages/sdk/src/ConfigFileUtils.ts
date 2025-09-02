@@ -9,14 +9,12 @@
  *
  */
 
-import { readFileSync, writeFileSync } from "node:fs";
 import type { Config } from "@zowe/imperative";
 import type { CommentToken } from "comment-json";
-import * as commentJson from "comment-json";
 import * as _ from "es-toolkit/compat";
 
 export interface CommentedProperty {
-    filePath: string;
+    layerPath: string;
     propertyPath: string;
     originalValue: unknown;
     commentText?: string;
@@ -51,11 +49,12 @@ export class ConfigFileUtils {
     ): CommentedProperty | undefined {
         try {
             // Get the active layer that contains the profile
-            const activeLayer = teamConfig.layerActive();
-            if (!activeLayer?.path) {
+            const layerFromProfName = teamConfig.api.layers.find(profileName);
+            if (!layerFromProfName) {
                 console.warn("Could not determine active config layer path");
                 return undefined;
             }
+            const layerJson = (teamConfig as any).findLayer(layerFromProfName.user, layerFromProfName.global);
 
             const profilePath = profileName.split(".").reduce((all, seg, i, arr) => {
                 // Last segment in split
@@ -64,13 +63,10 @@ export class ConfigFileUtils {
                 }
 
                 return `${all}${seg}.profiles.`;
-            }, "profiles.");
-
-            const filePath = activeLayer.path;
-            const content = readFileSync(filePath, "utf-8");
+            }, "properties.profiles.");
 
             // Get the current value of the property
-            const propertyPath = `${profilePath}.properties.${propertyName}`;
+            const propertyPath = `properties.${propertyName}`;
             const profile = teamConfig.api.profiles.get(profileName, false);
             const currentValue = profile?.privateKey;
 
@@ -78,18 +74,15 @@ export class ConfigFileUtils {
                 return undefined; // Property doesn't exist
             }
 
-            // Parse the JSON content with comment-json to preserve comments and formatting
-            const jsonWithComments = commentJson.parse(content) as object;
-
-            const profileInJson = _.get(jsonWithComments, profilePath);
             // Check if the property exists in the JSON structure
-            if (!profileInJson?.properties?.[propertyName]) {
+            if (!profile?.[propertyName]) {
                 return undefined;
             }
 
             // Add a comment explaining why the property was commented out
-            const commentText = `Private key was invalid and commented out to avoid re-use. Original value: ${JSON.stringify(currentValue)}`;
+            const commentText = `${propertyName} was invalid and commented out to avoid re-use. Original value: ${JSON.stringify(currentValue)}`;
 
+            const profileInJson = _.get(layerJson, profilePath);
             // Add comment before where the property would be
             profileInJson[Symbol.for("after:properties")] = [
                 {
@@ -103,14 +96,10 @@ export class ConfigFileUtils {
             delete profileInJson.properties[propertyName];
 
             // Write the modified content back to the file
-            const modifiedContent = commentJson.stringify(jsonWithComments, null, 4);
-            writeFileSync(filePath, modifiedContent, "utf-8");
-
-            // Reload the team config to reflect changes
-            teamConfig.api.layers.read();
+            teamConfig.api.layers.write(layerJson);
 
             return {
-                filePath,
+                layerPath: (layerJson as any).path,
                 propertyPath,
                 originalValue: currentValue,
                 commentText,
@@ -127,30 +116,22 @@ export class ConfigFileUtils {
      * @param commentInfo Information about the commented property
      * @returns true if successful, false otherwise
      */
-    public uncommentProperty(teamConfig: Config, commentInfo: CommentedProperty): boolean {
+    public uncommentProperty(teamConfig: Config, profileName: string, commentInfo: CommentedProperty): boolean {
         try {
-            const content = readFileSync(commentInfo.filePath, "utf-8");
+            const layerFromProfName = teamConfig.api.layers.find(profileName);
+            const layerJson = (teamConfig as any).findLayer(layerFromProfName.user, layerFromProfName.global);
 
-            // Parse the property path to get profile and property names
-            const profilePath = commentInfo.propertyPath.substring(
-                0,
-                commentInfo.propertyPath.indexOf("properties.privateKey") - 1,
-            );
+            // Parse the property path to get profile and property name
+            const profileJson = _.get(layerJson, `properties.${teamConfig.api.profiles.getProfilePathFromName(profileName)}`);
             // Parse the JSON content with comment-json to preserve formatting
-            const jsonWithComments = commentJson.parse(content) as object;
-            _.set(jsonWithComments, commentInfo.propertyPath, commentInfo.originalValue);
+            _.set(profileJson, commentInfo.propertyPath, commentInfo.originalValue);
 
             // Remove any comments associated with this property
             const commentSymbol = Symbol.for(`after:properties`);
-            const profileObject = _.get(jsonWithComments, profilePath);
-            if (profileObject?.[commentSymbol]) {
-                delete profileObject[commentSymbol];
-                // Write the modified content back to the file
-                const modifiedContent = commentJson.stringify(jsonWithComments, null, 4);
-                writeFileSync(commentInfo.filePath, modifiedContent, "utf-8");
-
+            if (profileJson?.[commentSymbol]) {
+                delete profileJson[commentSymbol];
                 // Reload the team config to reflect changes
-                teamConfig.api.layers.read();
+                teamConfig.api.layers.write({ user: layerJson.user, global: layerJson.global });
                 return true;
             }
 
@@ -166,28 +147,22 @@ export class ConfigFileUtils {
      * @param commentInfo Information about the commented property
      * @returns true if the comment was removed or no longer in file, false otherwise
      */
-    public deleteCommentedLine(commentInfo: CommentedProperty): boolean {
+    public deleteCommentedLine(teamConfig: Config, profileName: string, commentInfo: CommentedProperty): boolean {
         try {
-            const content = readFileSync(commentInfo.filePath, "utf-8");
+            const layerFromProfName = teamConfig.api.layers.find(profileName);
+            const layerJson = (teamConfig as any).findLayer(layerFromProfName.user, layerFromProfName.global);
 
-            // Parse the JSON content with comment-json
-            const jsonWithComments = commentJson.parse(content) as object;
-
-            // Parse the property path to get profile and property names
-            // Strip off "properties" and "privateKey" to access comment in profile object
-            const profilePath = commentInfo.propertyPath.split(".").slice(0, -2).join(".");
-
-            const profileObject = _.get(jsonWithComments, profilePath);
-            if (!profileObject) {
+            // Parse the property path to get profile and property name
+            const profileJson = _.get(layerJson, `properties.${teamConfig.api.profiles.getProfilePathFromName(profileName)}`);
+            if (!profileJson) {
                 return false;
             }
 
             // Remove comment placed after `properties` object under profile/group
             const commentSymbol = Symbol.for(`after:properties`);
-            if (profileObject[commentSymbol]) {
-                delete profileObject[commentSymbol];
-                // Write the modified content back to the file
-                writeFileSync(commentInfo.filePath, commentJson.stringify(jsonWithComments, null, 4), "utf-8");
+            if (profileJson[commentSymbol]) {
+                delete profileJson[commentSymbol];
+                teamConfig.api.layers.write(layerJson);
             }
             return true;
         } catch (error) {
