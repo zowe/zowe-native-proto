@@ -21,14 +21,17 @@ int main()
 
   // std::string json = "{\"name\": \"John\", \"isMarried\": true, \"hasKids\": false, \"age\": 30, \"pets\": [\"dog\", \"cat\", \"fish\"], \"address\": {\"street\": \"123 Main St\", \"city\": \"Anytown\", \"state\": \"CA\", \"zip\": \"12345\"}}";
 
-  char json[] = "{\"name\": \"John\", \"isMarried\": true, \
-  \"hasKids\": false, \"age\": 30, \
-  \"pets\": [\"dog\", \"cat\", \"fish\"], \
-  \"address\": {\"street\": \
-  \"123 Main St\", \"city\": \"Anytown\", \"state\": \"CA\", \
-  \"zip\": \"12345\"}}";
+  // char json[] = "{\"name\": \"John\", \"isMarried\": true, \
+  // \"hasKids\": false, \"age\": 30, \
+  // \"pets\": [\"dog\", \"cat\", \"fish\"], \
+  // \"address\": {\"street\": \
+  // \"123 Main St\", \"city\": \"Anytown\", \"state\": \"CA\", \
+  // \"zip\": \"12345\"}}";
 
-  printf("instance handle: %d\n", instance.handle);
+  char *PTR32 json = "{\"name\": \"John\", \"isMarried\": true, \"hasKids\": false, \"age\": 30, \"pets\": [\"dog\", \"cat\", \"fish\"], \"address\": {\"street\": \"123 Main St\", \"city\": \"Anytown\", \"state\": \"CA\", \"zip\": \"12345\"}}";
+
+  memset(&instance, 0, sizeof(JSON_INSTANCE));
+  printf("instance handle: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n", instance.handle.x[0], instance.handle.x[1], instance.handle.x[2], instance.handle.x[3], instance.handle.x[4], instance.handle.x[5], instance.handle.x[6], instance.handle.x[7], instance.handle.x[8], instance.handle.x[9], instance.handle.x[10], instance.handle.x[11]);
   rc = ZJSMINIT(&instance);
   if (0 != rc)
   {
@@ -37,7 +40,7 @@ int main()
   }
 
   std::cout << "ZJSMINIT: " << rc << std::endl;
-  printf("instance handle: %d\n", instance.handle);
+  printf("instance handle: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n", instance.handle.x[0], instance.handle.x[1], instance.handle.x[2], instance.handle.x[3], instance.handle.x[4], instance.handle.x[5], instance.handle.x[6], instance.handle.x[7], instance.handle.x[8], instance.handle.x[9], instance.handle.x[10], instance.handle.x[11]);
 
   rc = ZJSMPARS(&instance, json);
   if (0 != rc)

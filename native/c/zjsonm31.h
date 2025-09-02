@@ -126,13 +126,13 @@ static int ZJSMSRCH31(JSON_INSTANCE *PTR32 instance, const char *PTR32 key, KEY_
   int starting_handle = 0;
   int name_length = (int)strlen(key);
 
-  const char *PTR32 name = "name";
+  // const char *PTR32 name = "name";
 
-  zwto_debug("@TEST key: '%s'", key);
-  zwto_debug("@TEST instance handle: %d", instance->handle);
-  zwto_debug("@TEST key length: %d", name_length);
+  // zwto_debug("@TEST key: '%s'", key);
+  // zwto_debug("@TEST instance handle: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x", instance->handle.x[0], instance->handle.x[1], instance->handle.x[2], instance->handle.x[3], instance->handle.x[4], instance->handle.x[5], instance->handle.x[6], instance->handle.x[7], instance->handle.x[8], instance->handle.x[9], instance->handle.x[10], instance->handle.x[11]);
+  // zwto_debug("@TEST key length: %d", name_length);
 
-  hwtjsrch(&rc, &instance->handle, &search_type, &name, &name_length, &object_handle, &starting_handle, key_handle, diag_p);
+  hwtjsrch(&rc, &instance->handle, &search_type, &key, &name_length, &object_handle, &starting_handle, key_handle, diag_p);
   return rc;
 }
 

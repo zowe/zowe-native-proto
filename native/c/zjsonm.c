@@ -47,6 +47,36 @@ int ZJSMGENC(JSON_INSTANCE *PTR64 instance, int *PTR64 encoding)
 
   rc = ZJSMGENC31(&instance31, &encoding31);
 
+  JSON_INSTANCE instance2 = {0};
+  int rc2 = 0;
+  rc2 = ZJSMINIT31(&instance2);
+  if (0 != rc2)
+  {
+    zwto_debug("@TEST ZJSMINIT error: %d - exiting...", rc2);
+    return rc2;
+  }
+
+  zwto_debug("@TEST instance2 handle: %12x", instance2.handle.x);
+
+  char *PTR32 json = "{\"name\": \"John\", \"isMarried\": true, \"hasKids\": false, \"age\": 30, \"pets\": [\"dog\", \"cat\", \"fish\"], \"address\": {\"street\": \"123 Main St\", \"city\": \"Anytown\", \"state\": \"CA\", \"zip\": \"12345\"}}";
+  rc2 = ZJSMPARS31(&instance2, json);
+  if (0 != rc2)
+  {
+    zwto_debug("@TEST ZJSMPARS error: %d - exiting...", rc2);
+    return rc2;
+  }
+
+  char *PTR32 string_key = "name";
+  KEY_HANDLE key_handle = {0};
+  rc2 = ZJSMSRCH31(&instance2, string_key, &key_handle);
+  if (0 != rc2)
+  {
+    zwto_debug("@TEST ZJSMSRCH error: %d - exiting...", rc2);
+    return rc2;
+  }
+
+  zwto_debug("@TEST geez222");
+
   *encoding = encoding31;
 
   memcpy(instance, &instance31, sizeof(JSON_INSTANCE));
@@ -61,9 +91,19 @@ int ZJSMPARS(JSON_INSTANCE *PTR64 instance, const char *PTR64 json)
 {
   int rc = 0;
 
+  zwto_debug("@TEST json:");
+  int print_length = 25;
+  int print_offset = 0;
+  int total_length = (int)strlen(json);
+  while (print_offset < total_length)
+  {
+    zwto_debug("%.*s", print_length, json + print_offset);
+    print_offset += print_length;
+  }
+
   JSON_INSTANCE instance31 = {0};
   memcpy(&instance31, instance, sizeof(JSON_INSTANCE));
-  zwto_debug("@TEST instance handle: %d", instance31.handle);
+  zwto_debug("@TEST instance handle: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x", instance31.handle.x[0], instance31.handle.x[1], instance31.handle.x[2], instance31.handle.x[3], instance31.handle.x[4], instance31.handle.x[5], instance31.handle.x[6], instance31.handle.x[7], instance31.handle.x[8], instance31.handle.x[9], instance31.handle.x[10], instance31.handle.x[11]);
 
   int json_length = (int)strlen(json) + 1;
   char *PTR32 json31 = storage_obtain31(json_length);
@@ -98,7 +138,7 @@ int ZJSMSRCH(JSON_INSTANCE *PTR64 instance, const char *PTR64 key, KEY_HANDLE *P
   key31[length - 1] = '\0';
 
   zwto_debug("@TEST key: '%s'", key31);
-  zwto_debug("@TEST instance handle: %d", instance31.handle);
+  zwto_debug("@TEST instance handle: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x", instance31.handle.x[0], instance31.handle.x[1], instance31.handle.x[2], instance31.handle.x[3], instance31.handle.x[4], instance31.handle.x[5], instance31.handle.x[6], instance31.handle.x[7], instance31.handle.x[8], instance31.handle.x[9], instance31.handle.x[10], instance31.handle.x[11]);
   zwto_debug("@TEST key length: %d", length);
 
   char *PTR32 name = "name";
