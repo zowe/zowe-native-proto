@@ -71,6 +71,28 @@ int ZJSMSENC(JSON_INSTANCE *PTR64 instance, int *PTR64 encoding)
   return rc;
 }
 
+#pragma prolog(ZJSMDEL, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma epilog(ZJSMDEL, " ZWEEPILG ")
+int ZJSMDEL(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, KEY_HANDLE *PTR64 value_handle)
+{
+  int rc = 0;
+  return rc;
+
+  JSON_INSTANCE instance31 = {0};
+  memcpy(&instance31, instance, sizeof(JSON_INSTANCE));
+
+  KEY_HANDLE key_handle31 = {0};
+  memcpy(&key_handle31, key_handle, sizeof(KEY_HANDLE));
+  KEY_HANDLE value_handle31 = {0};
+  memcpy(&value_handle31, value_handle, sizeof(KEY_HANDLE));
+
+  rc = ZJSMDEL31(&instance31, &key_handle31, &value_handle31);
+
+  memcpy(instance, &instance31, sizeof(JSON_INSTANCE));
+
+  return rc;
+}
+
 #pragma prolog(ZJSMPARS, " ZWEPROLG NEWDSA=(YES,4) ")
 #pragma epilog(ZJSMPARS, " ZWEEPILG ")
 int ZJSMPARS(JSON_INSTANCE *PTR64 instance, const char *PTR64 json)

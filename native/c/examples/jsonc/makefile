@@ -14,6 +14,7 @@ OUT_DIRS=$(OUT_DIR_CXXLANG)
 
 XLC_FLAGS=_CC_ACCEPTABLE_RC=0 _C89_ACCEPTABLE_RC=0 _CXX_ACCEPTABLE_RC=0
 CXX=$(XLC_FLAGS) xlc++
+CXXLANG=xlclang++
 CC=$(XLC_FLAGS) xlc
 ASM=as
 
@@ -121,11 +122,11 @@ build-out/zjsonm.o: build-out/zjsonm.s
 
 build-out/jsonc.o: jsonc.cpp
 	@echo 'Building $(OUT_DIR)/jsonc.o'
-	$(CXX) $(CPP_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
+	$(CXXLANG) $(CPP_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
 
 build-out/jsonc: build-out/jsonc.o build-out/zjsonm.o
 	@echo 'Building jsonc'
-	$(CXX) $(CPP_BND_FLAGS) -o $@ $^ > $*.bind.lst
+	$(CXXLANG) $(CPP_BND_FLAGS) -o $@ $^ > $*.bind.lst
 
 jsonc: build-out/jsonc
 

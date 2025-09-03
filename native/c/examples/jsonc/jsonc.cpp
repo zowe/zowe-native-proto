@@ -13,73 +13,87 @@
 #include <string>
 #include "zjsonm.h"
 #include "zjsontype.h"
+#include "zjson.hpp"
 
-// function to print hex bytes from a char array
-void print_hex_bytes(char *bytes, int length)
+int run_low_level_json();
+
+// NOTE(Kelosky): this file is build and run with `xlclang++` but `xlc++` is used to build the `zjsonm.o` file
+// `xlc++` can also be used
+int main()
 {
-  for (int i = 0; i < length; i++)
+  ZJson json;
+
+  try
   {
-    printf("%02x ", (unsigned char)bytes[i]);
+    json.parse("{\"name");
   }
+  catch (const std::runtime_error &e)
+  {
+    std::cout << "Error: " << e.what() << std::endl;
+  }
+  // json.parse("{\"name\": \"John\", \"isMarried\": true, \"hasKids\": false, \"age\": 30, \"pets\": [\"dog\", \"cat\", \"fish\"], \"address\": {\"street\": \"123 Main St\", \"city\": \"Anytown\", \"state\": \"CA\", \"zip\": \"12345\"}}");
+  // run_low_level_json();
+  return 0;
 }
 
-int main()
+int run_low_level_json()
 {
   JSON_INSTANCE instance = {0};
   int rc = 0;
 
-  char *json = "{\"name\": \"John\", \"isMarried\": true, \"hasKids\": false, \"age\": 30, \"pets\": [\"dog\", \"cat\", \"fish\"], \"address\": {\"street\": \"123 Main St\", \"city\": \"Anytown\", \"state\": \"CA\", \"zip\": \"12345\"}}";
+  char json[] = "{\"name\": \"John\", \"isMarried\": true, \"hasKids\": false, \"age\": 30, \"pets\": [\"dog\", \"cat\", \"fish\"], \"address\": {\"street\": \"123 Main St\", \"city\": \"Anytown\", \"state\": \"CA\", \"zip\": \"12345\"}}";
 
-  // memset(&instance, 0, sizeof(JSON_INSTANCE));
   rc = ZJSMINIT(&instance);
   if (0 != rc)
   {
-    std::cout << "Error ZJSMINIT: " << rc << std::endl;
+    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMPARS rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
+    std::cout << "Error, exiting..." << std::endl;
     return -1;
   }
 
-  std::cout << "ZJSMINIT: " << rc << std::endl;
   // printf("instance handle: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n", instance.handle.x[0], instance.handle.x[1], instance.handle.x[2], instance.handle.x[3], instance.handle.x[4], instance.handle.x[5], instance.handle.x[6], instance.handle.x[7], instance.handle.x[8], instance.handle.x[9], instance.handle.x[10], instance.handle.x[11]);
 
   int encoding = 2;
   rc = ZJSMSENC(&instance, &encoding);
   if (0 != rc)
   {
-    std::cout << "Error ZJSMSENC: " << rc << std::endl;
+    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMSENC rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
+    std::cout << "Error, exiting..." << std::endl;
     return -1;
   }
 
-  printf("encoding: %d\n", encoding);
+  printf("Encoding was set to: %d\n", encoding);
 
   rc = ZJSMPARS(&instance, json);
   if (0 != rc)
   {
-    std::cout << "Error ZJSMPARS: " << rc << std::endl;
+    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMPARS rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
+    std::cout << "Error, exiting..." << std::endl;
     return -1;
   }
-
-  std::cout << "ZJSMPARS: " << rc << std::endl;
 
   encoding = 0;
   rc = ZJSMGENC(&instance, &encoding);
   if (0 != rc)
   {
-    std::cout << "Error ZJSMGENC: " << rc << std::endl;
+    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMGENC rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
+    std::cout << "Error, exiting..." << std::endl;
     return -1;
   }
 
-  std::cout << "ZJSMGENC: " << encoding << std::endl;
+  std::cout << "Encoding that was received was: " << encoding << std::endl;
 
   int number_entries = 0;
   KEY_HANDLE key_handle_zero = {0};
   rc = ZJSMGNUE(&instance, &key_handle_zero, &number_entries);
   if (0 != rc)
   {
-    std::cout << "Error ZJSMGNUE: " << rc << std::endl;
+    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMGNUE rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
+    std::cout << "Error, exiting..." << std::endl;
     return -1;
   }
 
-  std::cout << "ZJSMGNUE: " << number_entries << std::endl;
+  std::cout << "Number of entries was: " << number_entries << std::endl;
 
   // serialize JSON
   char serialized_json[1024] = {0};
@@ -88,11 +102,12 @@ int main()
   rc = ZJSMSERI(&instance, serialized_json, &serialized_json_length, &serialized_json_length_actual);
   if (0 != rc)
   {
-    std::cout << "Error ZJSMSERI: " << rc << std::endl;
+    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMSERI rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
+    std::cout << "Error, exiting..." << std::endl;
     return -1;
   }
 
-  std::cout << "ZJSMSERI: " << serialized_json_length_actual << std::endl;
+  std::cout << "Serialized JSON length was: " << serialized_json_length_actual << std::endl;
 
   // printf("Serialized JSON in hex: ");
   // print_hex_bytes(serialized_json, serialized_json_length_actual);
@@ -108,68 +123,76 @@ int main()
   // printf("first char of name is: %c\n", string_key[0]);
   std::string string_key = "name";
   // char *PTR32 string
+  std::cout << "Searching for key: " << string_key << std::endl;
   rc = ZJSMSRCH(&instance, string_key.c_str(), &key_handle);
   if (0 != rc)
   {
-    printf("Error ZJSMSRCH: x'%x'\n", rc);
+    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMSRCH rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
+    std::cout << "Error, exiting..." << std::endl;
     return -1;
   }
-
-  std::cout << "ZJSMSRCH: " << rc << std::endl;
 
   int type = 0;
   rc = ZJSNGJST(&instance, &key_handle, &type);
   if (0 != rc)
   {
-    std::cout << "Error ZJSNGJST: " << rc << std::endl;
+    std::cout << __FILE__ << ":" << __LINE__ << " ZJSNGJST rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
+    std::cout << "Error, exiting..." << std::endl;
     return -1;
   }
 
-  std::cout << "ZJSNGJST: " << type << std::endl;
+  std::cout << "Type was: " << type << std::endl;
 
   char *string_value = NULL;
   int string_value_length = 0;
   rc = ZJSMGVAL(&instance, &key_handle, &string_value, &string_value_length);
   if (0 != rc)
   {
-    std::cout << "Error ZJSMGVAL: " << rc << std::endl;
+    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMGVAL rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
+    std::cout << "Error, exiting..." << std::endl;
     return -1;
   }
-  std::cout << "ZJSMGVAL: " << string_value_length << std::endl;
-  printf("ZJSMGVAL: %.*s\n", string_value_length, string_value);
+  std::cout << "String value length was: " << string_value_length << std::endl;
+  printf("String value: %.*s\n", string_value_length, string_value);
 
   string_key = "isMarried";
+  std::cout << "Searching for key: " << string_key << std::endl;
   rc = ZJSMSRCH(&instance, string_key.c_str(), &key_handle);
   if (0 != rc)
   {
-    std::cout << "Error ZJSMSRCH: " << rc << std::endl;
+    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMSRCH rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
+    std::cout << "Error, exiting..." << std::endl;
     return -1;
   }
 
   rc = ZJSNGJST(&instance, &key_handle, &type);
   if (0 != rc)
   {
-    std::cout << "Error ZJSNGJST: " << rc << std::endl;
+    std::cout << __FILE__ << ":" << __LINE__ << " ZJSNGJST rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
+    std::cout << "Error, exiting..." << std::endl;
     return -1;
   }
 
-  std::cout << "ZJSNGJST: " << type << std::endl;
+  std::cout << "Type was: " << type << std::endl;
 
   char boolean_value = 0;
   rc = ZJSMGBOV(&instance, &key_handle, &boolean_value);
   if (0 != rc)
   {
-    std::cout << "Error ZJSMGBOV: " << rc << std::endl;
+    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMSGBOV rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
+    std::cout << "Error, exiting..." << std::endl;
     return -1;
   }
 
-  printf("ZJSMGBOV: %x\n", boolean_value);
+  printf("Boolean value was: %x\n", boolean_value);
 
   // find pets
+  std::cout << "Searching for key: pets" << std::endl;
   rc = ZJSMSRCH(&instance, "pets", &key_handle);
   if (0 != rc)
   {
-    std::cout << "Error ZJSMSRCH: " << rc << std::endl;
+    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMSRCH rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
+    std::cout << "Error, exiting..." << std::endl;
     return -1;
   }
 
@@ -177,11 +200,12 @@ int main()
   rc = ZJSMGNUE(&instance, &key_handle, &number_entries);
   if (0 != rc)
   {
-    std::cout << "Error ZJSMGNUE: " << rc << std::endl;
+    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMSGNUE rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
+    std::cout << "Error, exiting..." << std::endl;
     return -1;
   }
 
-  std::cout << "ZJSMGNUE: " << number_entries << std::endl;
+  std::cout << "Number of entries was: " << number_entries << std::endl;
 
   // get handle of second entry in pets array
   int index = 2;
@@ -189,43 +213,46 @@ int main()
   rc = ZJSMGAEN(&instance, &key_handle, &index, &value);
   if (0 != rc)
   {
-    std::cout << "Error ZJSMGAEN: " << rc << std::endl;
+    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMSGAEN rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
+    std::cout << "Error, exiting..." << std::endl;
     return -1;
   }
 
-  std::cout << "ZJSMGAEN: " << index << std::endl;
+  std::cout << "Index was: " << index << std::endl;
 
   // get value of second entry in pets array
   rc = ZJSMGVAL(&instance, &value, &string_value, &string_value_length);
   if (0 != rc)
   {
-    std::cout << "Error ZJSMGVAL: " << rc << std::endl;
+    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMSGVAL rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
+    std::cout << "Error, exiting..." << std::endl;
     return -1;
   }
 
-  std::cout << "ZJSMGVAL: " << string_value_length << std::endl;
+  std::cout << "String value length was: " << string_value_length << std::endl;
 
-  printf("ZJSMGVAL: %.*s\n", string_value_length, string_value);
+  printf("String value: %.*s\n", string_value_length, string_value);
 
   // find address
+  std::cout << "Searching for key: address" << std::endl;
   rc = ZJSMSRCH(&instance, "address", &key_handle);
   if (0 != rc)
   {
-    std::cout << "Error ZJSMSRCH: " << rc << std::endl;
+    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMSRCH rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
+    std::cout << "Error, exiting..." << std::endl;
     return -1;
   }
-
-  std::cout << "ZJSMSRCH for address: " << rc << std::endl;
 
   // get number of entries in address object
   rc = ZJSMGNUE(&instance, &key_handle, &number_entries);
   if (0 != rc)
   {
-    std::cout << "Error ZJSMGNUE: " << rc << std::endl;
+    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMSGNUE rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
+    std::cout << "Error, exiting..." << std::endl;
     return -1;
   }
 
-  std::cout << "ZJSMGNUE for address: " << number_entries << std::endl;
+  std::cout << "Number of entries was: " << number_entries << std::endl;
 
   // get value of third entry in address object
   index = 3;
@@ -239,32 +266,33 @@ int main()
   rc = ZJSMGOEN(&instance, &key_handle, &index, &key_buffer_ptr, &key_buffer_length, &value, &actual_length);
   if (0 != rc)
   {
-    std::cout << "Error ZJSMGOEN: " << rc << std::endl;
+    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMSGOEN rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
+    std::cout << "Error, exiting..." << std::endl;
     return -1;
   }
 
-  std::cout << "ZJSMGOEN: " << string_value_length << std::endl;
+  std::cout << "Key buffer length was: " << key_buffer_length << std::endl;
 
-  printf("ZJSMGOEN: %.*s\n", string_value_length, string_value);
+  printf("Key buffer: %.*s\n", key_buffer_length, key_buffer);
 
   rc = ZJSMGVAL(&instance, &value, &string_value, &string_value_length);
   if (0 != rc)
   {
-    std::cout << "Error ZJSMGVAL: " << rc << std::endl;
+    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMSGVAL rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
+    std::cout << "Error, exiting..." << std::endl;
     return -1;
   }
-  std::cout << "ZJSMGVAL: " << string_value_length << std::endl;
-  printf("ZJSMGVAL: %.*s\n", string_value_length, string_value);
+  std::cout << "String value length was: " << string_value_length << std::endl;
+  printf("String value: %.*s\n", string_value_length, string_value);
 
   // get handle of third entry in address object
   rc = ZJSMTERM(&instance);
   if (0 != rc)
   {
-    std::cout << "Error ZJSMTERM: " << rc << std::endl;
+    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMTERM rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
+    std::cout << "Error, exiting..." << std::endl;
     return -1;
   }
-
-  std::cout << "ZJSMTERM: " << rc << std::endl;
 
   return 0;
 }

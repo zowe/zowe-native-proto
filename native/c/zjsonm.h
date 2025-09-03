@@ -30,6 +30,8 @@ extern "C"
 
   int ZJSMSENC(JSON_INSTANCE *PTR64 instance, int *PTR64 encoding);
 
+  int ZJSMDEL(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, KEY_HANDLE *PTR64 value_handle);
+
   int ZJSMPARS(JSON_INSTANCE *PTR64 instance, const char *PTR64 json);
 
   int ZJSMSERI(JSON_INSTANCE *PTR64 instance, char *PTR64 buffer, int *PTR64 buffer_length, int *PTR64 buffer_length_actual);
