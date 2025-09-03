@@ -128,10 +128,10 @@ int main()
   KEY_HANDLE key_handle = {0};
   // std::string string_key = "name";
   // printf("first char of name is: %c\n", string_key[0]);
-  char *PTR32 string_key = "address";
+  std::string string_key = "name";
   // char *PTR32 string
   std::cout << "@TEST string_key: " << string_key << std::endl;
-  rc = ZJSMSRCH(&instance, string_key, &key_handle);
+  rc = ZJSMSRCH(&instance, string_key.c_str(), &key_handle);
   if (0 != rc)
   {
     printf("Error ZJSMSRCH: x'%x'\n", rc);
@@ -139,6 +139,54 @@ int main()
   }
 
   std::cout << "ZJSMSRCH: " << rc << std::endl;
+
+  int type = 0;
+  rc = ZJSNGJST(&instance, &key_handle, &type);
+  if (0 != rc)
+  {
+    std::cout << "Error ZJSNGJST: " << rc << std::endl;
+    return -1;
+  }
+
+  std::cout << "ZJSNGJST: " << type << std::endl;
+
+  string_key = "isMarried";
+  rc = ZJSMSRCH(&instance, string_key.c_str(), &key_handle);
+  if (0 != rc)
+  {
+    std::cout << "Error ZJSMSRCH: " << rc << std::endl;
+    return -1;
+  }
+
+  rc = ZJSNGJST(&instance, &key_handle, &type);
+  if (0 != rc)
+  {
+    std::cout << "Error ZJSNGJST: " << rc << std::endl;
+    return -1;
+  }
+
+  std::cout << "ZJSNGJST: " << type << std::endl;
+
+  char boolean_value = 0;
+  rc = ZJSMGBOV(&instance, &key_handle, &boolean_value);
+  if (0 != rc)
+  {
+    std::cout << "Error ZJSMGBOV: " << rc << std::endl;
+    return -1;
+  }
+
+  printf("ZJSMGBOV: %x\n", boolean_value);
+
+  // char *PTR32 string_value = NULL;
+  // int string_value_length = 0;
+  // rc = ZJSMGVAL(&instance, &key_handle, &string_value, &string_value_length);
+  // if (0 != rc)
+  // {
+  //   std::cout << "Error ZJSMGVAL: " << rc << std::endl;
+  //   return -1;
+  // }
+
+  // std::cout << "ZJSMGVAL: " << string_value_length << std::endl;
 
   rc = ZJSMTERM(&instance);
   if (0 != rc)

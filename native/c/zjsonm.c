@@ -156,7 +156,21 @@ int ZJSMSERI(JSON_INSTANCE *PTR64 instance, char *PTR64 buffer, int *PTR64 buffe
 #pragma epilog(ZJSNGJST, " ZWEEPILG ")
 int ZJSNGJST(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *PTR64 type)
 {
-  return 0;
+  int rc = 0;
+  KEY_HANDLE key_handle31 = {0};
+  memcpy(&key_handle31, key_handle, sizeof(KEY_HANDLE));
+  int type31 = 0;
+
+  JSON_INSTANCE instance31 = {0};
+  memcpy(&instance31, instance, sizeof(JSON_INSTANCE));
+
+  rc = ZJSNGJST31(&instance31, &key_handle31, &type31);
+
+  *type = type31;
+
+  memcpy(instance, &instance31, sizeof(JSON_INSTANCE));
+
+  return rc;
 }
 
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=parser-hwtjgval-get-value
@@ -164,7 +178,16 @@ int ZJSNGJST(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *P
 #pragma epilog(ZJSMGVAL, " ZWEEPILG ")
 int ZJSMGVAL(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, char *PTR64 *PTR64 value, int *PTR64 value_length)
 {
-  return 0;
+  int rc = 0;
+
+  // JSON_INSTANCE instance31 = {0};
+  // memcpy(&instance31, instance, sizeof(JSON_INSTANCE));
+
+  // rc = ZJSMGVAL31(&instance31, key_handle, value, value_length);
+
+  // memcpy(instance, &instance31, sizeof(JSON_INSTANCE));
+
+  return rc;
 }
 
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=parser-hwtjgnue-get-number-entries
@@ -196,7 +219,22 @@ int ZJSMGNUE(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *P
 #pragma epilog(ZJSMGBOV, " ZWEEPILG ")
 int ZJSMGBOV(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, char *PTR64 value)
 {
-  return 0;
+  int rc = 0;
+
+  KEY_HANDLE key_handle31 = {0};
+  memcpy(&key_handle31, key_handle, sizeof(KEY_HANDLE));
+
+  char value31 = 0;
+
+  JSON_INSTANCE instance31 = {0};
+  memcpy(&instance31, instance, sizeof(JSON_INSTANCE));
+
+  rc = ZJSMGBOV31(&instance31, &key_handle31, &value31);
+  *value = value31;
+
+  memcpy(instance, &instance31, sizeof(JSON_INSTANCE));
+
+  return rc;
 }
 
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=parser-hwtjgaen-get-array-element
