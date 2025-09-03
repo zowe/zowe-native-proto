@@ -15,7 +15,6 @@
 #include "ztype.h"
 #include "zjsontype.h"
 #include "zstorage.h"
-#include "zwto.h"
 
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=parser-hwtjinit-initialize-instance
 #pragma prolog(ZJSMINIT, " ZWEPROLG NEWDSA=(YES,4) ")
@@ -28,28 +27,6 @@ int ZJSMINIT(JSON_INSTANCE *PTR64 instance)
   memcpy(&instance31, instance, sizeof(JSON_INSTANCE));
 
   rc = ZJSMINIT31(&instance31);
-
-  // if (0 != rc)
-  // {
-  //   zwto_debug("@TEST ZJSMINIT error: %d - exiting...", rc);
-  //   return rc;
-  // }
-
-  // char *PTR32 json = "{\"name\": \"John\", \"isMarried\": true, \"hasKids\": false, \"age\": 30, \"pets\": [\"dog\", \"cat\", \"fish\"], \"address\": {\"street\": \"123 Main St\", \"city\": \"Anytown\", \"state\": \"CA\", \"zip\": \"12345\"}}";
-  // rc = ZJSMPARS31(&instance31, json);
-  // if (0 != rc)
-  // {
-  //   zwto_debug("@TEST ZJSMPARS error: %d - exiting...", rc);
-  //   return rc;
-  // }
-
-  // KEY_HANDLE key_handle = {0};
-  // rc = ZJSMSRCH31(&instance31, "name", &key_handle);
-  // if (0 != rc)
-  // {
-  //   zwto_debug("@TEST ZJSMSRCH error: %d - exiting...", rc);
-  //   return rc;
-  // }
 
   memcpy(instance, &instance31, sizeof(JSON_INSTANCE));
 
@@ -76,65 +53,53 @@ int ZJSMGENC(JSON_INSTANCE *PTR64 instance, int *PTR64 encoding)
   return rc;
 }
 
+// https://www.ibm.com/docs/en/zos/3.1.0?topic=parser-hwtjsenc-get-json-encoding
+#pragma prolog(ZJSMSENC, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma epilog(ZJSMSENC, " ZWEEPILG ")
+int ZJSMSENC(JSON_INSTANCE *PTR64 instance, int *PTR64 encoding)
+{
+  return 0;
+
+  int rc = 0;
+  int encoding31 = 0;
+
+  JSON_INSTANCE instance31 = {0};
+  memcpy(&instance31, instance, sizeof(JSON_INSTANCE));
+
+  encoding31 = *encoding;
+
+  rc = ZJSMSENC31(&instance31, &encoding31);
+
+  memcpy(instance, &instance31, sizeof(JSON_INSTANCE));
+
+  return rc;
+}
+
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=parser-hwtjpars-parse-json-string
-#pragma prolog(ZJSMPARS, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma prolog(ZJSMPARS, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(ZJSMPARS, " ZWEEPILG ")
 int ZJSMPARS(JSON_INSTANCE *PTR64 instance, const char *PTR64 json)
 {
   int rc = 0;
 
-  zwto_debug("@TEST json:");
-  int print_length = 25;
-  int print_offset = 0;
-  int total_length = (int)strlen(json);
-  while (print_offset < total_length)
-  {
-    zwto_debug("%.*s", print_length, json + print_offset);
-    print_offset += print_length;
-  }
-
   JSON_INSTANCE instance31 = {0};
   memcpy(&instance31, instance, sizeof(JSON_INSTANCE));
-  // zwto_debug("@TEST instance handle: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x", instance31.handle.x[0], instance31.handle.x[1], instance31.handle.x[2], instance31.handle.x[3], instance31.handle.x[4], instance31.handle.x[5], instance31.handle.x[6], instance31.handle.x[7], instance31.handle.x[8], instance31.handle.x[9], instance31.handle.x[10], instance31.handle.x[11]);
 
-  int json_length = (int)strlen(json) + 1;
-  char *PTR32 json31 = storage_obtain31(json_length);
+  instance->json_length = (int)strlen(json) + 1;
+  instance->json = storage_obtain31(instance->json_length);
 
-  memcpy(json31, json, strlen(json));
-  json31[json_length - 1] = '\0';
+  memcpy(instance->json, json, instance->json_length - 1);
+  instance->json[instance->json_length - 1] = '\0';
 
-  rc = ZJSMPARS31(&instance31, json31);
+  rc = ZJSMPARS31(&instance31, (const char *PTR32)instance->json);
 
-  // if (0 != rc)
-  // {
-  //   zwto_debug("@TEST ZJSMINIT error: %d - exiting...", rc);
-  //   return rc;
-  // }
-
-  // char *PTR32 json = "{\"name\": \"John\", \"isMarried\": true, \"hasKids\": false, \"age\": 30, \"pets\": [\"dog\", \"cat\", \"fish\"], \"address\": {\"street\": \"123 Main St\", \"city\": \"Anytown\", \"state\": \"CA\", \"zip\": \"12345\"}}";
-  // rc = ZJSMPARS31(&instance31, json);
-  // if (0 != rc)
-  // {
-  //   zwto_debug("@TEST ZJSMPARS error: %d - exiting...", rc);
-  //   return rc;
-  // }
-
-  // KEY_HANDLE key_handle = {0};
-  // rc = ZJSMSRCH31(&instance31, "name", &key_handle);
-  // if (0 != rc)
-  // {
-  //   zwto_debug("@TEST ZJSMSRCH error: %d - exiting...", rc);
-  //   return rc;
-  // }
-
-  storage_release(json_length, json31);
   memcpy(instance, &instance31, sizeof(JSON_INSTANCE));
 
   return rc;
 }
 
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=parser-hwtjsrch-search
-#pragma prolog(ZJSMSRCH, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma prolog(ZJSMSRCH, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(ZJSMSRCH, " ZWEEPILG ")
 int ZJSMSRCH(JSON_INSTANCE *PTR64 instance, const char *PTR64 key, KEY_HANDLE *PTR64 key_handle)
 {
@@ -151,13 +116,7 @@ int ZJSMSRCH(JSON_INSTANCE *PTR64 instance, const char *PTR64 key, KEY_HANDLE *P
   memcpy(key31, key, strlen(key));
   key31[length - 1] = '\0';
 
-  zwto_debug("@TEST key: '%s' and length: %d", key31, length);
-  // zwto_debug("@TEST instance handle: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x", instance31.handle.x[0], instance31.handle.x[1], instance31.handle.x[2], instance31.handle.x[3], instance31.handle.x[4], instance31.handle.x[5], instance31.handle.x[6], instance31.handle.x[7], instance31.handle.x[8], instance31.handle.x[9], instance31.handle.x[10], instance31.handle.x[11]);
-  // zwto_debug("@TEST key length: %d", strlen(key31));
-
-  // char *PTR32 name = "name";
   rc = ZJSMSRCH31(&instance31, key31, &key_handle31);
-  // zwto_debug("@TEST rc: %d", rc);
 
   memcpy(key_handle, &key_handle31, sizeof(KEY_HANDLE));
 
@@ -167,8 +126,33 @@ int ZJSMSRCH(JSON_INSTANCE *PTR64 instance, const char *PTR64 key, KEY_HANDLE *P
   return rc;
 }
 
+// https://www.ibm.com/docs/en/zos/3.1.0?topic=parser-hwtjseri-serialize-json
+#pragma prolog(ZJSMSERI, " ZWEPROLG NEWDSA=(YES,128) ")
+#pragma epilog(ZJSMSERI, " ZWEEPILG ")
+int ZJSMSERI(JSON_INSTANCE *PTR64 instance, char *PTR64 buffer, int *PTR64 buffer_length, int *PTR64 buffer_length_actual)
+{
+  int rc = 0;
+  JSON_INSTANCE instance31 = {0};
+  memcpy(&instance31, instance, sizeof(JSON_INSTANCE));
+
+  int buffer_length31 = *buffer_length;
+  char *PTR32 buffer31 = storage_obtain31(buffer_length31);
+  int buffer_length_actual31 = 0;
+
+  rc = ZJSMSERI31(&instance31, buffer31, &buffer_length31, &buffer_length_actual31);
+
+  *buffer_length_actual = buffer_length_actual31;
+  memcpy(buffer, buffer31, buffer_length31);
+
+  storage_release(buffer_length31, buffer31);
+
+  memcpy(instance, &instance31, sizeof(JSON_INSTANCE));
+
+  return rc;
+}
+
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=parser-hwtjgjst-get-type
-#pragma prolog(ZJSNGJST, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma prolog(ZJSNGJST, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(ZJSNGJST, " ZWEEPILG ")
 int ZJSNGJST(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *PTR64 type)
 {
@@ -176,7 +160,7 @@ int ZJSNGJST(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *P
 }
 
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=parser-hwtjgval-get-value
-#pragma prolog(ZJSMGVAL, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma prolog(ZJSMGVAL, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(ZJSMGVAL, " ZWEEPILG ")
 int ZJSMGVAL(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, char *PTR64 *PTR64 value, int *PTR64 value_length)
 {
@@ -184,7 +168,7 @@ int ZJSMGVAL(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, char *
 }
 
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=parser-hwtjgnue-get-number-entries
-#pragma prolog(ZJSMGNUE, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma prolog(ZJSMGNUE, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(ZJSMGNUE, " ZWEEPILG ")
 int ZJSMGNUE(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *PTR64 number_entries)
 {
@@ -208,7 +192,7 @@ int ZJSMGNUE(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *P
 }
 
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=parser-hwtjgbov-get-boolean-value
-#pragma prolog(ZJSMGBOV, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma prolog(ZJSMGBOV, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(ZJSMGBOV, " ZWEEPILG ")
 int ZJSMGBOV(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, char *PTR64 value)
 {
@@ -216,7 +200,7 @@ int ZJSMGBOV(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, char *
 }
 
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=parser-hwtjgaen-get-array-element
-#pragma prolog(ZJSMGAEN, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma prolog(ZJSMGAEN, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(ZJSMGAEN, " ZWEEPILG ")
 int ZJSMGAEN(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *PTR64 index, KEY_HANDLE *PTR64 value)
 {
@@ -224,7 +208,7 @@ int ZJSMGAEN(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *P
 }
 
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=parser-hwtjterm-terminate-instance
-#pragma prolog(ZJSMTERM, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma prolog(ZJSMTERM, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(ZJSMTERM, " ZWEEPILG ")
 int ZJSMTERM(JSON_INSTANCE *PTR64 instance)
 {
@@ -237,11 +221,18 @@ int ZJSMTERM(JSON_INSTANCE *PTR64 instance)
 
   memcpy(instance, &instance31, sizeof(JSON_INSTANCE));
 
+  if (instance->json)
+  {
+    storage_release(instance->json_length, instance->json);
+    instance->json = NULL;
+    instance->json_length = 0;
+  }
+
   return rc;
 }
 
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=parser-hwtjgoen-get-object-element
-#pragma prolog(ZJSMGOEN, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma prolog(ZJSMGOEN, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(ZJSMGOEN, " ZWEEPILG ")
 int ZJSMGOEN(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *PTR64 index, char *PTR64 *PTR64 value, int *PTR64 value_length, KEY_HANDLE *PTR64 value_handle, int *PTR64 actual_length)
 {

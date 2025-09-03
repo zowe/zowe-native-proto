@@ -16,7 +16,6 @@
 #include "ztype.h"
 #include "zmetal.h"
 #include "zjsontype.h"
-#include "zwto.h"
 
 // NOTE(Kelosky): we can generate these from SYS1.MACLIB(HWTJKASM) in the future
 #define HWT_Serv_JCREN 0x00000001
@@ -39,6 +38,8 @@
 
 typedef int (*PTR32 HWTJINIT)(int *PTR32, int *PTR32, PARSE_HANDLE *PTR32, DIAG *PTR32) ATTRIBUTE(amode31);
 typedef int (*PTR32 HWTJGENC)(int *PTR32, PARSE_HANDLE *PTR32, int *PTR32, DIAG *PTR32) ATTRIBUTE(amode31);
+typedef int (*PTR32 HWTJSENC)(int *PTR32, PARSE_HANDLE *PTR32, int *PTR32, DIAG *PTR32) ATTRIBUTE(amode31);
+typedef int (*PTR32 HWTJSERI)(int *PTR32, PARSE_HANDLE *PTR32, char *PTR32 *PTR32, int *PTR32, int *PTR32, DIAG *PTR32) ATTRIBUTE(amode31);
 typedef int (*PTR32 HWTJTERM)(int *PTR32, PARSE_HANDLE *PTR32, int *PTR32, DIAG *PTR32) ATTRIBUTE(amode31);
 typedef int (*PTR32 HWTJPARS)(int *PTR32, PARSE_HANDLE *PTR32, const char *PTR32 *PTR32, int *PTR32, DIAG *PTR32) ATTRIBUTE(amode31);
 typedef int (*PTR32 HWTJSRCH)(int *PTR32, PARSE_HANDLE *PTR32, int *PTR32, const char *PTR32 *PTR32, int *PTR32, int *PTR32, int *PTR32, KEY_HANDLE *PTR32, DIAG *PTR32) ATTRIBUTE(amode31);
@@ -96,6 +97,31 @@ static int ZJSMGENC31(JSON_INSTANCE *PTR32 instance, int *PTR32 encoding)
   return rc;
 }
 
+static int ZJSMSENC31(JSON_INSTANCE *PTR32 instance, int *PTR32 encoding)
+{
+  HWTJSENC hwtjsenc = NULL;
+  GET_EP(HWT_Serv_JSENC, hwtjsenc);
+
+  int rc = 0;
+  DIAG *PTR32 diag_p = &instance->diag;
+  diag_p = (DIAG * PTR32)((unsigned int)diag_p | 0x80000000);
+  hwtjsenc(&rc, &instance->handle, encoding, diag_p);
+  return rc;
+}
+
+static int ZJSMSERI31(JSON_INSTANCE *PTR32 instance, char *PTR32 buffer, int *PTR32 buffer_length, int *PTR32 buffer_length_actual)
+{
+  HWTJSERI hwtjseri = NULL;
+  GET_EP(HWT_Serv_JSERI, hwtjseri);
+
+  int rc = 0;
+  DIAG *PTR32 diag_p = &instance->diag;
+  diag_p = (DIAG * PTR32)((unsigned int)diag_p | 0x80000000);
+
+  hwtjseri(&rc, &instance->handle, &buffer, buffer_length, buffer_length_actual, diag_p);
+  return rc;
+}
+
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=parser-hwtjpars-parse-json-string
 static int ZJSMPARS31(JSON_INSTANCE *PTR32 instance, const char *PTR32 json)
 {
@@ -111,21 +137,6 @@ static int ZJSMPARS31(JSON_INSTANCE *PTR32 instance, const char *PTR32 json)
   return rc;
 }
 
-#if defined(__IBM_METAL__)
-#define CLEAR_GRS()          \
-  __asm(                     \
-      "*                 \n" \
-      " LMH 0,15,=16F'0' \n" \
-      "*                 \n" \
-      :                      \
-      :                      \
-      :);
-#else
-#define CLEAR_GRS() \
-  {                 \
-  } // NOTE(Kelosky): if literals become unreachable, pass in object of zeros
-#endif
-
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=parser-hwtjsrch-search
 static int ZJSMSRCH31(JSON_INSTANCE *PTR32 instance, const char *PTR32 key, KEY_HANDLE *PTR32 key_handle)
 {
@@ -136,19 +147,10 @@ static int ZJSMSRCH31(JSON_INSTANCE *PTR32 instance, const char *PTR32 key, KEY_
   DIAG *PTR32 diag_p = &instance->diag;
   diag_p = (DIAG * PTR32)((unsigned int)diag_p | 0x80000000);
 
-  // CLEAR_GRS(); // @TEST
-
   int search_type = HWTJ_SEARCHTYPE_SHALLOW;
   int object_handle = 0;
   int starting_handle = 0;
-  // int name_length = (int)strlen(key);
-  int name_length = 4; //@TEST
-  //  zwto_debug("@TEST key: '%s' and length: %d", key, name_length);
-  // const char *PTR32 name = "name";
-
-  // zwto_debug("@TEST key: '%s'", key);
-  // zwto_debug("@TEST instance handle: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x", instance->handle.x[0], instance->handle.x[1], instance->handle.x[2], instance->handle.x[3], instance->handle.x[4], instance->handle.x[5], instance->handle.x[6], instance->handle.x[7], instance->handle.x[8], instance->handle.x[9], instance->handle.x[10], instance->handle.x[11]);
-  // zwto_debug("@TEST key length: %d", name_length);
+  int name_length = (int)strlen(key);
 
   hwtjsrch(&rc, &instance->handle, &search_type, &key, &name_length, &object_handle, &starting_handle, key_handle, diag_p);
   return rc;

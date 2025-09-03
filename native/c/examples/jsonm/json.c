@@ -22,6 +22,8 @@ int main()
   KEY_HANDLE key_handle = {0};
 
   int rc = 0;
+  // char json[] = "{\"name\": \"John\"}";
+
   char json[] = "{\"name\": \"John\", \"isMarried\": true, \
   \"hasKids\": false, \"age\": 30, \
   \"pets\": [\"dog\", \"cat\", \"fish\"], \
@@ -32,14 +34,6 @@ int main()
   int print_length = 25;
   int print_offset = 0;
   int total_length = sizeof(json);
-
-  zwto_debug("@TEST json:");
-
-  while (print_offset < total_length)
-  {
-    zwto_debug("%.*s", print_length, json + print_offset);
-    print_offset += print_length;
-  }
 
   /**
    * initialize json services and parse json
@@ -53,6 +47,16 @@ int main()
     return -1;
   }
 
+  int encoding = 2; // HWTJ_ENCODING_EBCDIC
+  rc = ZJSMSENC31(&instance, &encoding);
+  if (0 != rc)
+  {
+    zwto_debug("@TEST ZJSMSENC error: %d - exiting...", rc);
+    return -1;
+  }
+
+  zwto_debug("@TEST encoding: %d", encoding);
+
   rc = ZJSMPARS31(&instance, json);
   if (0 != rc)
   {
@@ -60,7 +64,30 @@ int main()
     return -1;
   }
 
-  int encoding = 0;
+  // serialize JSON
+  char serialized_json[1024] = {0};
+  int serialized_json_length = (int)sizeof(serialized_json);
+  int serialized_json_length_actual = 0;
+  rc = ZJSMSERI31(&instance, serialized_json, &serialized_json_length, &serialized_json_length_actual);
+  if (0 != rc)
+  {
+    zwto_debug("@TEST ZJSMSERI error: %d - exiting...", rc);
+    return -1;
+  }
+
+  print_offset = 0;
+  total_length = serialized_json_length_actual;
+
+  zwto_debug("@TEST serialized JSON length is: %d", serialized_json_length_actual);
+
+  while (print_offset < total_length)
+  {
+    zwto_debug("%.*s", print_length, serialized_json + print_offset);
+    print_offset += print_length;
+  }
+
+  zwto_debug("@TEST serialized JSON:");
+
   rc = ZJSMGENC31(&instance, &encoding);
   if (0 != rc)
   {

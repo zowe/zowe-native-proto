@@ -13,6 +13,8 @@
 #ifndef ZJSYTYPE_H
 #define ZJSYTYPE_H
 
+#include "ztype.h"
+
 typedef struct
 {
   char x[12];
@@ -32,6 +34,8 @@ typedef struct
 {
   PARSE_HANDLE handle;
   DIAG diag;
+  char *PTR64 json;
+  int json_length;
 } JSON_INSTANCE;
 
 #endif
