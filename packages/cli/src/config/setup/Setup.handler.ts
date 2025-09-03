@@ -139,21 +139,18 @@ export class CliPromptApi extends AbstractConfigManager {
             `Undo and cancel              ${TextUtils.chalk.dim("│")} ${TextUtils.chalk.italic("restore the private key and cancel the operation")}`,
         ];
 
-        let selectedIndex = 0;
-        const menu = this.term.singleColumnMenu(
-            menuItems,
-            {
-                cancelable: true,
-                continueOnSubmit: false,
-                oneLineItem: true,
-                selectedIndex,
-                submittedStyle: this.term.bold.green,
-                selectedStyle: this.term.green,
-                leftPadding: "  ",
-                selectedLeftPadding: "> ",
-                submittedLeftPadding: "> ",
-            },
-        );
+        const selectedIndex = 0;
+        const menu = this.term.singleColumnMenu(menuItems, {
+            cancelable: true,
+            continueOnSubmit: false,
+            oneLineItem: true,
+            selectedIndex,
+            submittedStyle: this.term.bold.green,
+            selectedStyle: this.term.green,
+            leftPadding: "  ",
+            selectedLeftPadding: "> ",
+            submittedLeftPadding: "> ",
+        });
         const response = await menu.promise;
         this.mResponseApi.console.log("");
 
@@ -168,7 +165,6 @@ export class CliPromptApi extends AbstractConfigManager {
                     await opts.onDelete();
                 }
                 return true;
-            case 2: // Undo and cancel
             default:
                 this.mResponseApi.console.log("Restoring private key and cancelling...");
                 if (opts.onUndo) {

@@ -33,7 +33,7 @@ export class SshCommonApi implements MainframeInteraction.ICommon {
                 return "active";
             } catch (err) {
                 const errorMessage = (err as Error).toString();
-                
+
                 // Check if this is a private key authentication failure
                 if (this.isPrivateKeyAuthFailure(errorMessage, profile.profile)) {
                     try {
@@ -45,15 +45,15 @@ export class SshCommonApi implements MainframeInteraction.ICommon {
                         }
                     } catch (retryErr) {
                         imperative.Logger.getAppLogger().warn(
-                            `Password authentication also failed for profile ${profile.name}: ${retryErr}`
+                            `Password authentication also failed for profile ${profile.name}: ${retryErr}`,
                         );
                         vscode.window.showErrorMessage(
-                            `Authentication failed for profile ${profile.name}. Both private key and password authentication failed.`
+                            `Authentication failed for profile ${profile.name}. Both private key and password authentication failed.`,
                         );
                         return "inactive";
                     }
                 }
-                
+
                 vscode.window.showErrorMessage(errorMessage);
                 return "inactive";
             }
@@ -90,10 +90,10 @@ export class SshCommonApi implements MainframeInteraction.ICommon {
             "but no passphrase given",
             "integrity check failed",
             "Permission denied (publickey)",
-            "Authentication failed"
+            "Authentication failed",
         ];
 
-        return privateKeyFailurePatterns.some(pattern => errorMessage.includes(pattern));
+        return privateKeyFailurePatterns.some((pattern) => errorMessage.includes(pattern));
     }
 
     /**
@@ -101,7 +101,9 @@ export class SshCommonApi implements MainframeInteraction.ICommon {
      * @param profile The profile that failed private key authentication
      * @returns Updated profile with password, or undefined if user cancelled
      */
-    private async handlePrivateKeyFailure(profile: imperative.IProfileLoaded): Promise<imperative.IProfileLoaded | undefined> {
+    private async handlePrivateKeyFailure(
+        profile: imperative.IProfileLoaded,
+    ): Promise<imperative.IProfileLoaded | undefined> {
         try {
             // Prompt for password using VS Code's native input box
             const password = await vscode.window.showInputBox({
