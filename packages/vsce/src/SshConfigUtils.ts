@@ -188,22 +188,54 @@ export class VscePromptApi extends AbstractConfigManager {
         ];
     }
 
-    protected async showPrivateKeyWarning(opts: PrivateKeyWarningOptions): Promise<void> {
-        const message = `The private key "${opts.privateKeyPath}" for profile "${opts.profileName}" is invalid and has been commented out in your team configuration to avoid re-use.`;
-        const action = await vscode.window.showWarningMessage(message, { modal: true }, "Undo", "Delete Line");
+    protected async showPrivateKeyWarning(opts: PrivateKeyWarningOptions): Promise<boolean> {
+        const quickPick = vscode.window.createQuickPick();
+
+        const items = [
+            {
+                label: "$(check) Accept and continue",
+                description: "Keep the invalid private key comment and proceed",
+                action: "continue",
+            },
+            {
+                label: "$(trash) Delete comment and continue",
+                description: "Remove the private key comment and proceed",
+                action: "delete",
+            },
+            {
+                label: "$(discard) Undo and cancel",
+                description: "Restore the private key and cancel the operation",
+                action: "undo",
+            },
+        ];
+
+        quickPick.items = items;
+        quickPick.title = "Invalid Private Key";
+        quickPick.placeholder = `Private key for "${opts.profileName}" is invalid and was moved to a comment. How would you like to proceed?`;
+        quickPick.ignoreFocusOut = true;
+
+        const action = await new Promise<string | undefined>((resolve) => {
+            quickPick.onDidAccept(() => {
+                const selectedItem = quickPick.selectedItems[0] as (typeof items)[0];
+                resolve(selectedItem?.action);
+                quickPick.hide();
+            });
+            quickPick.onDidHide(() => resolve(undefined));
+            quickPick.show();
+        });
 
         switch (action) {
-            case "Undo":
+            case "delete":
+            case "continue":
+                if ("delete" === action && opts.onDelete) {
+                    await opts.onDelete();
+                }
+                return true;
+            default:
                 if (opts.onUndo) {
                     await opts.onUndo();
                 }
-                break;
-            case "Delete Line":
-                if (opts.onDelete) {
-                    await opts.onDelete();
-                }
-                break;
-            // If user dismisses the dialog (no action), do nothing
+                return false;
         }
     }
 }

@@ -50,9 +50,9 @@ export default class ServerInstallHandler implements ICommandHandler {
 
         if (!profile) {
             params.response.console.error(
-                "Unable to validate config, please check credentials for the selected profile",
+                "SSH setup cancelled or unable to validate config. Please check credentials for the selected profile.",
             );
-            return;
+            process.exit(1);
         }
 
         // Get all profiles after selecting a profile
@@ -126,56 +126,56 @@ export default class ServerInstallHandler implements ICommandHandler {
 }
 
 export class CliPromptApi extends AbstractConfigManager {
-    protected async showPrivateKeyWarning(opts: PrivateKeyWarningOptions): Promise<void> {
+    protected async showPrivateKeyWarning(opts: PrivateKeyWarningOptions): Promise<boolean> {
         // Display the warning message
-        this.mResponseApi.console.log("");
-        const warningMessage = `⚠️  The private key "${opts.privateKeyPath}" for profile "${opts.profileName}" is invalid and has been commented out in your team configuration to avoid re-use.`;
+        const warningMessage = `\n[!]  Private key for "${opts.profileName}" is invalid and was moved to a comment.`;
         this.mResponseApi.console.log(TextUtils.chalk.yellow(warningMessage));
-        this.mResponseApi.console.log("");
+        this.mResponseApi.console.log(TextUtils.chalk.grey(`     Original value: ${opts.privateKeyPath}`));
+        this.mResponseApi.console.log(TextUtils.chalk.bold.green("\nHow would you like to proceed?"));
 
-        const selectedIndex = 0;
+        const menuItems = [
+            `Accept and continue          ${TextUtils.chalk.dim("│")} ${TextUtils.chalk.italic("keep the invalid private key comment and proceed")}`,
+            `Delete comment and continue  ${TextUtils.chalk.dim("│")} ${TextUtils.chalk.italic("remove the private key comment and proceed")}`,
+            `Undo and cancel              ${TextUtils.chalk.dim("│")} ${TextUtils.chalk.italic("restore the private key and cancel the operation")}`,
+        ];
+
+        let selectedIndex = 0;
         const menu = this.term.singleColumnMenu(
-            [
-                "Undo (restores the private key)",
-                "Delete (removes the commented line)",
-                "Proceed as-is (no config changes)",
-            ],
+            menuItems,
             {
                 cancelable: true,
                 continueOnSubmit: false,
                 oneLineItem: true,
                 selectedIndex,
                 submittedStyle: this.term.bold.green,
-                selectedStyle: this.term.brightGreen,
+                selectedStyle: this.term.green,
                 leftPadding: "  ",
                 selectedLeftPadding: "> ",
                 submittedLeftPadding: "> ",
             },
         );
         const response = await menu.promise;
+        this.mResponseApi.console.log("");
 
+        // Adjust for separator items (indices 0, 1, 2 are separators, real options start at 3)
         switch (response.selectedIndex) {
-            case 0:
-                this.mResponseApi.console.log("Restoring private key...");
-                if (opts.onUndo) {
-                    await opts.onUndo();
-                } else {
-                    this.mResponseApi.console.log(TextUtils.chalk.green("Private key has been restored."));
-                }
-                break;
-            case 1:
+            case 0: // Accept and continue
+                this.mResponseApi.console.log("Continuing with commented private key...");
+                return true;
+            case 1: // Delete comment and continue
                 this.mResponseApi.console.log("Deleting commented line...");
                 if (opts.onDelete) {
                     await opts.onDelete();
-                } else {
-                    this.mResponseApi.console.log(TextUtils.chalk.green("Commented line has been deleted."));
                 }
-                break;
+                return true;
+            case 2: // Undo and cancel
             default:
-                break;
+                this.mResponseApi.console.log("Restoring private key and cancelling...");
+                if (opts.onUndo) {
+                    await opts.onUndo();
+                }
+                return false;
         }
-
-        this.mResponseApi.console.log("");
     }
 
     constructor(

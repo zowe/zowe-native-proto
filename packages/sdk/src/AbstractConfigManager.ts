@@ -42,7 +42,7 @@ export abstract class AbstractConfigManager {
     protected abstract showCustomMenu(opts: qpOpts): Promise<qpItem | undefined>;
     protected abstract getCurrentDir(): string | undefined;
     protected abstract getProfileSchemas(): IProfileTypeConfiguration[];
-    protected abstract showPrivateKeyWarning(opts: PrivateKeyWarningOptions): Promise<void>;
+    protected abstract showPrivateKeyWarning(opts: PrivateKeyWarningOptions): Promise<boolean>;
 
     private migratedConfigs: ISshConfigExt[];
     private filteredMigratedConfigs: ISshConfigExt[];
@@ -340,7 +340,9 @@ export abstract class AbstractConfigManager {
                 !newConfig.password &&
                 errorMessage.includes("All configured authentication methods failed")
             ) {
-                await this.handleInvalidPrivateKey(newConfig);
+                if (!(await this.handleInvalidPrivateKey(newConfig))) {
+                    return undefined;
+                }
                 newConfig.privateKey = undefined;
             }
 
@@ -380,7 +382,9 @@ export abstract class AbstractConfigManager {
                         this.showMessage(`Passphrase Authentication Failed (${attempts + 1}/3)`, MESSAGE_TYPE.ERROR);
                     }
                 }
-                await this.handleInvalidPrivateKey(newConfig);
+                if (!(await this.handleInvalidPrivateKey(newConfig))) {
+                    return undefined;
+                }
                 newConfig.privateKey = undefined;
                 newConfig.keyPassphrase = undefined;
                 return undefined;
@@ -394,7 +398,9 @@ export abstract class AbstractConfigManager {
                 // If password authentication succeeded and we had a private key that failed,
                 // comment out the private key in the configuration file
                 if (passwordPrompt && newConfig.privateKey) {
-                    await this.handleInvalidPrivateKey(newConfig);
+                    if (!(await this.handleInvalidPrivateKey(newConfig))) {
+                        return undefined;
+                    }
                 }
 
                 return passwordPrompt ? { ...configModifications, ...passwordPrompt } : undefined;
@@ -406,7 +412,9 @@ export abstract class AbstractConfigManager {
             }
 
             if (errorMessage.includes("Cannot parse privateKey: Malformed OpenSSH private key")) {
-                await this.handleInvalidPrivateKey(newConfig);
+                if (!(await this.handleInvalidPrivateKey(newConfig))) {
+                    return undefined;
+                }
                 return undefined;
             }
         }
@@ -698,9 +706,10 @@ export abstract class AbstractConfigManager {
      * Handle an invalid private key by commenting it out in the configuration file
      * and showing a warning to the user
      */
-    private async handleInvalidPrivateKey(config: ISshConfigExt): Promise<void> {
+    private async handleInvalidPrivateKey(config: ISshConfigExt): Promise<boolean> {
         if (!config.privateKey || !config.name) {
-            return;
+            // Private key is not invalid if its missing
+            return true;
         }
 
         try {
@@ -716,7 +725,7 @@ export abstract class AbstractConfigManager {
 
             if (commentedProperty) {
                 // Show warning to user with undo/delete options
-                await this.showPrivateKeyWarning({
+                const shouldContinue = await this.showPrivateKeyWarning({
                     profileName: config.name,
                     privateKeyPath: config.privateKey,
                     onUndo: async () => {
@@ -756,6 +765,7 @@ export abstract class AbstractConfigManager {
                         }
                     },
                 });
+                return shouldContinue;
             }
         } catch (error) {
             console.error("Error handling invalid private key:", error);
@@ -764,5 +774,7 @@ export abstract class AbstractConfigManager {
                 MESSAGE_TYPE.WARNING,
             );
         }
+
+        return false;
     }
 }
