@@ -25,6 +25,7 @@ export interface CommentedProperty {
  */
 export class ConfigFileUtils {
     private static instance: ConfigFileUtils;
+    private static AFTER_PROPERTIES_SYMBOL = Symbol.for("after:properties");
     private constructor() {}
 
     public static getInstance(): ConfigFileUtils {
@@ -36,7 +37,7 @@ export class ConfigFileUtils {
     }
 
     /**
-     * Comment out a property in a team configuration using Config API and comment-json
+     * Comment out a property in a team configuration using Config API and comment-json symbol
      * @param teamConfig The team configuration object from Imperative
      * @param profileName The name of the profile
      * @param propertyName The property name to comment out (e.g., "privateKey")
@@ -57,41 +58,37 @@ export class ConfigFileUtils {
             // biome-ignore lint/suspicious/noExplicitAny: The type cast is necessary to access an internal function in the Config API.
             const layerJson = (teamConfig as any).findLayer(layerFromProfName.user, layerFromProfName.global);
 
-            const profilePath = profileName.split(".").reduce((all, seg, i, arr) => {
-                // Last segment in split
-                if (arr.length === 1 || i === arr.length - 1) {
-                    return `${all}${seg}`;
-                }
-
-                return `${all}${seg}.profiles.`;
-            }, "properties.profiles.");
+            const profilePath = `properties.${teamConfig.api.profiles.getProfilePathFromName(profileName)}`;
 
             // Get the current value of the property
             const propertyPath = `properties.${propertyName}`;
             const profile = teamConfig.api.profiles.get(profileName, false);
-            const currentValue = profile?.privateKey;
-
-            if (currentValue === undefined) {
-                return undefined; // Property doesn't exist
-            }
 
             // Check if the property exists in the JSON structure
             if (!profile?.[propertyName]) {
                 return undefined;
             }
 
+            const currentValue = profile[propertyName];
+
             // Add a comment explaining why the property was commented out
             const commentText = `${propertyName} was moved to a comment as the value is invalid. Original value: ${JSON.stringify(currentValue)}`;
 
             const profileInJson = _.get(layerJson, profilePath);
             // Add comment before where the property would be
-            profileInJson[Symbol.for("after:properties")] = [
-                {
-                    type: "LineComment",
-                    value: ` ${commentText}`,
-                    inline: false,
-                } as CommentToken,
-            ];
+            const commentToken: CommentToken = {
+                type: "LineComment",
+                value: ` ${commentText}`,
+                inline: false,
+            };
+            const comments = profileInJson[ConfigFileUtils.AFTER_PROPERTIES_SYMBOL];
+            if (!comments) {
+                // No comments exist after `properties` object
+                profileInJson[ConfigFileUtils.AFTER_PROPERTIES_SYMBOL] = [commentToken];
+            } else {
+                // Add comment above pre-existing comments to keep close to `properties` object
+                comments.unshift(commentToken);
+            }
 
             // Remove the property from the configuration
             delete profileInJson.properties[propertyName];
@@ -112,6 +109,26 @@ export class ConfigFileUtils {
     }
 
     /**
+     * Removes comments from the given object that match the given text and within the given comment-json symbol.
+     * @param obj The object to remove comments from
+     * @param text The text to compare against each comment; matches are removed
+     * @param commentSymbol The comment-json symbol (`after-all, after:<propertyName>, before-all, before:<propertyName>`) where the comments are located
+     */
+    private removeCommentsInObject(obj: object, text: string, commentSymbol: symbol): void {
+        const comments = obj[commentSymbol] as CommentToken[] | undefined;
+        if (comments == null) {
+            return;
+        }
+
+        const filteredComments = comments.filter((comment) => comment.value?.trim() !== text);
+        if (filteredComments.length === 0) {
+            delete obj[commentSymbol];
+        } else {
+            obj[commentSymbol] = filteredComments;
+        }
+    }
+
+    /**
      * Uncomment a previously commented property by restoring it to the configuration
      * @param teamConfig The team configuration object from Imperative
      * @param commentInfo Information about the commented property
@@ -123,27 +140,21 @@ export class ConfigFileUtils {
             // biome-ignore lint/suspicious/noExplicitAny: The type cast is necessary to access an internal function in the Config API.
             const layerJson = (teamConfig as any).findLayer(layerFromProfName.user, layerFromProfName.global);
 
-            // Parse the property path to get profile and property name
+            // Restore the property in the properties section under the given profile
             const profileJson = _.get(
                 layerJson,
                 `properties.${teamConfig.api.profiles.getProfilePathFromName(profileName)}`,
             );
-            // Parse the JSON content with comment-json to preserve formatting
             _.set(profileJson, commentInfo.propertyPath, commentInfo.originalValue);
 
             // Filter out only the specific comment that matches our comment text
-            const commentSymbol = Symbol.for(`after:properties`);
-            if (profileJson?.[commentSymbol] && commentInfo.commentText) {
-                const comments = profileJson[commentSymbol] as CommentToken[];
-                const filteredComments = comments.filter(
-                    (comment: CommentToken) => comment.value?.trim() !== commentInfo.commentText,
+            if (profileJson?.[ConfigFileUtils.AFTER_PROPERTIES_SYMBOL] && commentInfo.commentText) {
+                // The presence of the comment symbol indicates at least one comment after the `properties` section
+                this.removeCommentsInObject(
+                    profileJson,
+                    commentInfo.commentText,
+                    ConfigFileUtils.AFTER_PROPERTIES_SYMBOL,
                 );
-
-                if (filteredComments.length === 0) {
-                    delete profileJson[commentSymbol];
-                } else {
-                    profileJson[commentSymbol] = filteredComments;
-                }
 
                 // Write the modified content back to the file
                 teamConfig.api.layers.write(layerJson);
@@ -178,19 +189,15 @@ export class ConfigFileUtils {
             }
 
             // Filter out only the specific comment that matches our comment text
-            const commentSymbol = Symbol.for(`after:properties`);
-            if (profileJson[commentSymbol] && commentInfo.commentText) {
-                const comments = profileJson[commentSymbol] as CommentToken[];
-                const filteredComments = comments.filter(
-                    (comment: CommentToken) => comment.value?.trim() !== commentInfo.commentText,
+            if (profileJson[ConfigFileUtils.AFTER_PROPERTIES_SYMBOL] && commentInfo.commentText) {
+                // The presence of the comment symbol indicates at least one comment after the `properties` section
+                this.removeCommentsInObject(
+                    profileJson,
+                    commentInfo.commentText,
+                    ConfigFileUtils.AFTER_PROPERTIES_SYMBOL,
                 );
 
-                if (filteredComments.length === 0) {
-                    delete profileJson[commentSymbol];
-                } else {
-                    profileJson[commentSymbol] = filteredComments;
-                }
-
+                // Write the modified content back to the file
                 teamConfig.api.layers.write(layerJson);
             }
             return true;
