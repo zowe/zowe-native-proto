@@ -9,30 +9,53 @@
  *
  */
 
-import { readFileSync, unlinkSync, writeFileSync } from "node:fs";
-import * as os from "node:os";
-import * as path from "node:path";
 import type { Config } from "@zowe/imperative";
-import * as commentJson from "comment-json";
+import type { CommentToken } from "comment-json";
+import { cloneDeep } from "es-toolkit/compat";
 import { ConfigFileUtils } from "../src/ConfigFileUtils";
 
+const AFTER_PROPERTIES_SYMBOL = Symbol.for("after:properties");
+
+interface MockProfile {
+    type: string;
+    properties: {
+        host: string;
+        user: string;
+        privateKey?: string;
+    };
+    [AFTER_PROPERTIES_SYMBOL]?: CommentToken[];
+}
+
+interface MockConfigLayer {
+    user: boolean;
+    global: boolean;
+    path: string;
+    properties: {
+        profiles: {
+            [profileName: string]: MockProfile;
+        };
+    };
+}
+
 describe("ConfigFileUtils", () => {
-    let tempFilePath: string;
     let mockTeamConfig: Config;
+    let mockLayerJson: MockConfigLayer;
+    let writtenLayerJson: MockConfigLayer | null;
 
     const EXAMPLE_PRIVATE_KEY_PATH = "/u/users/example/.ssh/id_XXX";
     const EXAMPLE_PRIVATE_KEY_COMMENT = `privateKey was moved to a comment as the value is invalid. Original value: "${EXAMPLE_PRIVATE_KEY_PATH}"`;
+    const MOCK_LAYER_PATH = "/mock/path/config.json";
 
     beforeEach(() => {
-        // Create a temporary file for testing
-        tempFilePath = path.join(os.tmpdir(), `test-config-${Date.now()}.json`);
+        // Reset the written layer JSON for each test
+        writtenLayerJson = null;
     });
 
-    const createMockConfigWithPrivateKey = () => {
-        const testConfig = {
+    const createMockConfigWithPrivateKey = (): MockConfigLayer => {
+        const testConfig: MockConfigLayer = {
             user: false,
             global: false,
-            path: tempFilePath,
+            path: MOCK_LAYER_PATH,
             properties: {
                 profiles: {
                     testprofile: {
@@ -46,15 +69,15 @@ describe("ConfigFileUtils", () => {
                 },
             },
         };
-        writeFileSync(tempFilePath, commentJson.stringify(testConfig, null, 4), "utf-8");
+        mockLayerJson = cloneDeep(testConfig);
         return testConfig;
     };
 
-    const createMockConfigWithCommentedKey = () => {
-        const testConfig = {
+    const createMockConfigWithCommentedKey = (): MockConfigLayer => {
+        const testConfig: MockConfigLayer = {
             user: false,
             global: false,
-            path: tempFilePath,
+            path: MOCK_LAYER_PATH,
             properties: {
                 profiles: {
                     testprofile: {
@@ -68,20 +91,23 @@ describe("ConfigFileUtils", () => {
             },
         };
         // Add comment for private key that was removed
-        (testConfig.properties.profiles as any).testprofile[Symbol.for("after:properties")] = [
+        testConfig.properties.profiles.testprofile[AFTER_PROPERTIES_SYMBOL] = [
             {
                 type: "LineComment",
-                value: EXAMPLE_PRIVATE_KEY_COMMENT,
+                value: ` ${EXAMPLE_PRIVATE_KEY_COMMENT}`,
                 inline: false,
-            } as commentJson.CommentToken,
+            } as CommentToken,
         ];
-        writeFileSync(tempFilePath, commentJson.stringify(testConfig, null, 4), "utf-8");
+        mockLayerJson = cloneDeep(testConfig);
+        // Manually copy the symbol since cloneDeep won't preserve it
+        mockLayerJson.properties.profiles.testprofile[AFTER_PROPERTIES_SYMBOL] =
+            testConfig.properties.profiles.testprofile[AFTER_PROPERTIES_SYMBOL];
         return testConfig;
     };
 
-    const createMockTeamConfig = (testConfig: any) => {
+    const createMockTeamConfig = (testConfig: MockConfigLayer): Config => {
         return {
-            findLayer: (_user: boolean, _global: boolean) => testConfig,
+            findLayer: (_user: boolean, _global: boolean) => mockLayerJson,
             api: {
                 profiles: {
                     get: (profileName: string, _failNotFound = true) => {
@@ -103,22 +129,42 @@ describe("ConfigFileUtils", () => {
                         user: testConfig.user,
                         global: testConfig.global,
                     }),
-                    write: (layerJson: any) => {
-                        writeFileSync(tempFilePath, commentJson.stringify(layerJson, null, 4), "utf-8");
+                    write: (layerJson: MockConfigLayer) => {
+                        writtenLayerJson = cloneDeep(layerJson);
+                        // Preserve symbols when capturing written data
+                        const preserveSymbols = (source: MockConfigLayer, target: MockConfigLayer) => {
+                            if (typeof source === "object" && source !== null) {
+                                for (const key of Object.getOwnPropertySymbols(source)) {
+                                    (target as Record<symbol, unknown>)[key] = (source as Record<symbol, unknown>)[key];
+                                }
+                                for (const [key, value] of Object.entries(source)) {
+                                    if (
+                                        typeof value === "object" &&
+                                        value !== null &&
+                                        target[key as keyof MockConfigLayer]
+                                    ) {
+                                        if (key === "properties" && "profiles" in value) {
+                                            for (const [profileKey, profileValue] of Object.entries(value.profiles)) {
+                                                if (typeof profileValue === "object" && profileValue !== null) {
+                                                    preserveSymbols(
+                                                        profileValue as MockConfigLayer,
+                                                        target.properties.profiles[profileKey] as MockConfigLayer,
+                                                    );
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        };
+                        if (writtenLayerJson) {
+                            preserveSymbols(layerJson, writtenLayerJson);
+                        }
                     },
                 },
             },
-        } as any;
+        } as Config;
     };
-
-    afterEach(() => {
-        // Clean up temporary file
-        try {
-            unlinkSync(tempFilePath);
-        } catch {
-            // Ignore if file doesn't exist
-        }
-    });
 
     describe("commentOutProperty", () => {
         it("should comment out a property in JSON file using Config API and comment-json", () => {
@@ -135,20 +181,26 @@ describe("ConfigFileUtils", () => {
             expect(result).toBeDefined();
             expect(result?.propertyPath).toBe("properties.privateKey");
             expect(result?.originalValue).toBe(EXAMPLE_PRIVATE_KEY_PATH);
-            expect(result?.layerPath).toBe(tempFilePath);
+            expect(result?.layerPath).toBe(MOCK_LAYER_PATH);
             expect(result?.commentText).toContain(EXAMPLE_PRIVATE_KEY_COMMENT);
 
-            const content = readFileSync(tempFilePath, "utf-8");
-            expect(content).toContain(EXAMPLE_PRIVATE_KEY_COMMENT);
-            expect(content).not.toContain('"privateKey": "/u/users/example/.ssh/id_XXX"');
+            // Verify the written config has the comment and no privateKey property
+            expect(writtenLayerJson).toBeDefined();
+            expect(writtenLayerJson?.properties.profiles.testprofile.properties.privateKey).toBeUndefined();
+
+            const afterPropertiesSymbol = Symbol.for("after:properties");
+            const comments = writtenLayerJson?.properties.profiles.testprofile[afterPropertiesSymbol];
+            expect(comments).toBeDefined();
+            expect(comments).toHaveLength(1);
+            expect(comments?.[0].value).toContain(EXAMPLE_PRIVATE_KEY_COMMENT);
         });
 
         it("should return undefined for non-existent property", () => {
             // Start with a config that doesn't have the privateKey property
-            const testConfig = {
+            const testConfig: MockConfigLayer = {
                 user: false,
                 global: false,
-                path: tempFilePath,
+                path: MOCK_LAYER_PATH,
                 properties: {
                     profiles: {
                         testprofile: {
@@ -162,7 +214,7 @@ describe("ConfigFileUtils", () => {
                     },
                 },
             };
-            writeFileSync(tempFilePath, commentJson.stringify(testConfig, null, 4), "utf-8");
+            mockLayerJson = cloneDeep(testConfig);
             mockTeamConfig = createMockTeamConfig(testConfig);
 
             const result = ConfigFileUtils.getInstance().commentOutProperty(
@@ -181,15 +233,23 @@ describe("ConfigFileUtils", () => {
             mockTeamConfig = createMockTeamConfig(testConfig);
 
             const success = ConfigFileUtils.getInstance().uncommentProperty(mockTeamConfig, "testprofile", {
-                layerPath: tempFilePath,
+                layerPath: MOCK_LAYER_PATH,
                 propertyPath: "properties.privateKey",
                 originalValue: EXAMPLE_PRIVATE_KEY_PATH,
                 commentText: EXAMPLE_PRIVATE_KEY_COMMENT,
             });
             expect(success).toBe(true);
 
-            const content = readFileSync(tempFilePath, "utf-8");
-            expect(content).toContain('"privateKey": "/u/users/example/.ssh/id_XXX"');
+            // Verify the property was restored
+            expect(writtenLayerJson).toBeDefined();
+            expect(writtenLayerJson?.properties.profiles.testprofile.properties.privateKey).toBe(
+                EXAMPLE_PRIVATE_KEY_PATH,
+            );
+
+            // Verify the comment was removed
+            const afterPropertiesSymbol = Symbol.for("after:properties");
+            const comments = writtenLayerJson?.properties.profiles.testprofile[afterPropertiesSymbol];
+            expect(comments).toBeUndefined();
         });
     });
 
@@ -200,35 +260,37 @@ describe("ConfigFileUtils", () => {
             mockTeamConfig = createMockTeamConfig(testConfig);
 
             const success = ConfigFileUtils.getInstance().deleteCommentedLine(mockTeamConfig, "testprofile", {
-                layerPath: tempFilePath,
+                layerPath: MOCK_LAYER_PATH,
                 propertyPath: "properties.privateKey",
                 originalValue: EXAMPLE_PRIVATE_KEY_PATH,
                 commentText: EXAMPLE_PRIVATE_KEY_COMMENT,
             });
             expect(success).toBe(true);
 
-            const content = readFileSync(tempFilePath, "utf-8");
-            expect(content).not.toContain("privateKey was invalid");
-            expect(content).not.toContain("privateKey");
+            // Verify the comment was removed
+            expect(writtenLayerJson).toBeDefined();
+            const afterPropertiesSymbol = Symbol.for("after:properties");
+            const comments = writtenLayerJson?.properties.profiles.testprofile[afterPropertiesSymbol];
+            expect(comments).toBeUndefined();
         });
 
         it("should return false for invalid property path", () => {
             // Start with a basic config without the profile we're trying to access
-            const testConfig = {
+            const testConfig: MockConfigLayer = {
                 user: false,
                 global: false,
-                path: tempFilePath,
+                path: MOCK_LAYER_PATH,
                 properties: {
                     profiles: {
                         // No testprofile here
                     },
                 },
             };
-            writeFileSync(tempFilePath, commentJson.stringify(testConfig, null, 4), "utf-8");
+            mockLayerJson = cloneDeep(testConfig);
             mockTeamConfig = createMockTeamConfig(testConfig);
 
             const invalidCommentInfo = {
-                layerPath: tempFilePath,
+                layerPath: MOCK_LAYER_PATH,
                 propertyPath: "invalid.path",
                 originalValue: "test",
             };
