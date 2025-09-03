@@ -794,8 +794,6 @@ describe("AbstractConfigManager", async () => {
             vi.spyOn(testManager, "showInputBox").mockResolvedValue("wrongPass"); // always fails
             vi.spyOn(testManager as any, "attemptConnection").mockRejectedValue(new Error("integrity check failed"));
             vi.spyOn(testManager, "showMessage").mockImplementation(() => {});
-            vi.spyOn(ConfigFileUtils.getInstance(), "commentOutProperty").mockReturnValue(undefined);
-
             const config = {
                 name: "ssh1",
                 hostname: "lpar1.com",
@@ -803,6 +801,12 @@ describe("AbstractConfigManager", async () => {
                 user: "user1",
                 privateKey: "/path/to/key",
             };
+            vi.spyOn(ConfigFileUtils.getInstance(), "commentOutProperty").mockImplementation(() => {
+                delete config.privateKey;
+                // We don't need to worry about the commented value as the stub is just meant to delete the property
+                return undefined;
+            });
+
             const result = await (testManager as any).validateConfig(config, true);
 
             expect(result).toBeUndefined();
