@@ -272,16 +272,6 @@ int main()
   }
   zwto_debug("@TEST boolean_value2 of hasKids: %x", boolean_value2);
 
-  // char *PTR32 boolean_value3 = NULL;
-  // int boolean_value3_length = 0;
-  // rc = ZJSMGVAL(&instance, &key_handle, &boolean_value3, &boolean_value3_length);
-  // if (0 != rc)
-  // {
-  //   zwto_debug("@TEST ZJSMGVAL error: %d - exiting...", rc);
-  //   return -1;
-  // }
-  // zwto_debug("@TEST boolean_value3 result: %.*s", boolean_value3_length, boolean_value3);
-
   // search for number key
   char *PTR32 number_key = "age";
   rc = ZJSMSRCH31(&instance, number_key, &key_handle);

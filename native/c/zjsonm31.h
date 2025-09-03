@@ -67,7 +67,6 @@ typedef int (*PTR32 HWTJGOEN)(int *PTR32, PARSE_HANDLE *PTR32, KEY_HANDLE *PTR32
 #define GET_EP(index, ep)
 #endif
 
-// https://www.ibm.com/docs/en/zos/3.1.0?topic=parser-hwtjinit-initialize-instance
 static int ZJSMINIT31(JSON_INSTANCE *PTR32 instance)
 {
   HWTJINIT hwtjinit = NULL;
@@ -83,7 +82,6 @@ static int ZJSMINIT31(JSON_INSTANCE *PTR32 instance)
   return rc;
 }
 
-// https://www.ibm.com/docs/en/zos/3.1.0?topic=parser-hwtjgenc-get-json-encoding
 static int ZJSMGENC31(JSON_INSTANCE *PTR32 instance, int *PTR32 encoding)
 {
   HWTJGENC hwtjgenc = NULL;
@@ -122,7 +120,6 @@ static int ZJSMSERI31(JSON_INSTANCE *PTR32 instance, char *PTR32 buffer, int *PT
   return rc;
 }
 
-// https://www.ibm.com/docs/en/zos/3.1.0?topic=parser-hwtjpars-parse-json-string
 static int ZJSMPARS31(JSON_INSTANCE *PTR32 instance, const char *PTR32 json)
 {
   HWTJPARS hwtjpars = NULL;
@@ -137,7 +134,6 @@ static int ZJSMPARS31(JSON_INSTANCE *PTR32 instance, const char *PTR32 json)
   return rc;
 }
 
-// https://www.ibm.com/docs/en/zos/3.1.0?topic=parser-hwtjsrch-search
 static int ZJSMSRCH31(JSON_INSTANCE *PTR32 instance, const char *PTR32 key, KEY_HANDLE *PTR32 key_handle)
 {
   HWTJSRCH hwtjsrch = NULL;
@@ -221,7 +217,6 @@ static int ZJSMGAEN31(JSON_INSTANCE *PTR32 instance, KEY_HANDLE *PTR32 key_handl
   return rc;
 }
 
-// https://www.ibm.com/docs/en/zos/3.1.0?topic=parser-hwtjterm-terminate-instance
 static int ZJSMTERM31(JSON_INSTANCE *PTR32 instance)
 {
   HWTJTERM hwtjterm = NULL;

@@ -28,29 +28,7 @@ int main()
   JSON_INSTANCE instance = {0};
   int rc = 0;
 
-  // std::string json = "{\"name\": \"John\", \"isMarried\": true, \"hasKids\": false, \"age\": 30, \"pets\": [\"dog\", \"cat\", \"fish\"], \"address\": {\"street\": \"123 Main St\", \"city\": \"Anytown\", \"state\": \"CA\", \"zip\": \"12345\"}}";
-
-  // char json[] = "{\"name\": \"John\", \"isMarried\": true, \
-  // \"hasKids\": false, \"age\": 30, \
-  // \"pets\": [\"dog\", \"cat\", \"fish\"], \
-  // \"address\": {\"street\": \
-  // \"123 Main St\", \"city\": \"Anytown\", \"state\": \"CA\", \
-  // \"zip\": \"12345\"}}";
-
-  // #if defined(__IBMC__) || defined(__IBMCPP__)
-  // #pragma convert(1208)
-  // #endif
-  // char *json = "{\"name\": \"John\"}"; //
-
   char *json = "{\"name\": \"John\", \"isMarried\": true, \"hasKids\": false, \"age\": 30, \"pets\": [\"dog\", \"cat\", \"fish\"], \"address\": {\"street\": \"123 Main St\", \"city\": \"Anytown\", \"state\": \"CA\", \"zip\": \"12345\"}}";
-  // printf("json: %s\n", json);
-  // printf("json in hex: ");
-  // print_hex_bytes(json, strlen(json));
-  // printf("\n");
-
-  // #if defined(__IBMC__) || defined(__IBMCPP__)
-  // #pragma convert(0)
-  // #endif
 
   // memset(&instance, 0, sizeof(JSON_INSTANCE));
   rc = ZJSMINIT(&instance);
@@ -187,17 +165,98 @@ int main()
 
   printf("ZJSMGBOV: %x\n", boolean_value);
 
-  // char *PTR32 string_value = NULL;
-  // int string_value_length = 0;
-  // rc = ZJSMGVAL(&instance, &key_handle, &string_value, &string_value_length);
-  // if (0 != rc)
-  // {
-  //   std::cout << "Error ZJSMGVAL: " << rc << std::endl;
-  //   return -1;
-  // }
+  // find pets
+  rc = ZJSMSRCH(&instance, "pets", &key_handle);
+  if (0 != rc)
+  {
+    std::cout << "Error ZJSMSRCH: " << rc << std::endl;
+    return -1;
+  }
 
-  // std::cout << "ZJSMGVAL: " << string_value_length << std::endl;
+  // get number of entries in pets array
+  rc = ZJSMGNUE(&instance, &key_handle, &number_entries);
+  if (0 != rc)
+  {
+    std::cout << "Error ZJSMGNUE: " << rc << std::endl;
+    return -1;
+  }
 
+  std::cout << "ZJSMGNUE: " << number_entries << std::endl;
+
+  // get handle of second entry in pets array
+  int index = 2;
+  KEY_HANDLE value = {0};
+  rc = ZJSMGAEN(&instance, &key_handle, &index, &value);
+  if (0 != rc)
+  {
+    std::cout << "Error ZJSMGAEN: " << rc << std::endl;
+    return -1;
+  }
+
+  std::cout << "ZJSMGAEN: " << index << std::endl;
+
+  // get value of second entry in pets array
+  rc = ZJSMGVAL(&instance, &value, &string_value, &string_value_length);
+  if (0 != rc)
+  {
+    std::cout << "Error ZJSMGVAL: " << rc << std::endl;
+    return -1;
+  }
+
+  std::cout << "ZJSMGVAL: " << string_value_length << std::endl;
+
+  printf("ZJSMGVAL: %.*s\n", string_value_length, string_value);
+
+  // find address
+  rc = ZJSMSRCH(&instance, "address", &key_handle);
+  if (0 != rc)
+  {
+    std::cout << "Error ZJSMSRCH: " << rc << std::endl;
+    return -1;
+  }
+
+  std::cout << "ZJSMSRCH for address: " << rc << std::endl;
+
+  // get number of entries in address object
+  rc = ZJSMGNUE(&instance, &key_handle, &number_entries);
+  if (0 != rc)
+  {
+    std::cout << "Error ZJSMGNUE: " << rc << std::endl;
+    return -1;
+  }
+
+  std::cout << "ZJSMGNUE for address: " << number_entries << std::endl;
+
+  // get value of third entry in address object
+  index = 3;
+  int actual_length = 0;
+
+  char key_buffer[100] = {0};
+  int key_buffer_length = (int)sizeof(key_buffer);
+  // int actual_length = 0;
+  char *key_buffer_ptr = key_buffer;
+
+  rc = ZJSMGOEN(&instance, &key_handle, &index, &key_buffer_ptr, &key_buffer_length, &value, &actual_length);
+  if (0 != rc)
+  {
+    std::cout << "Error ZJSMGOEN: " << rc << std::endl;
+    return -1;
+  }
+
+  std::cout << "ZJSMGOEN: " << string_value_length << std::endl;
+
+  printf("ZJSMGOEN: %.*s\n", string_value_length, string_value);
+
+  rc = ZJSMGVAL(&instance, &value, &string_value, &string_value_length);
+  if (0 != rc)
+  {
+    std::cout << "Error ZJSMGVAL: " << rc << std::endl;
+    return -1;
+  }
+  std::cout << "ZJSMGVAL: " << string_value_length << std::endl;
+  printf("ZJSMGVAL: %.*s\n", string_value_length, string_value);
+
+  // get handle of third entry in address object
   rc = ZJSMTERM(&instance);
   if (0 != rc)
   {

@@ -9,14 +9,12 @@
  *
  */
 
-#include <hwtjic.h> // ensure to include /usr/include
 #include "zjsonm31.h"
 #include "zjsonm.h"
 #include "ztype.h"
 #include "zjsontype.h"
 #include "zstorage.h"
 
-// https://www.ibm.com/docs/en/zos/3.1.0?topic=parser-hwtjinit-initialize-instance
 #pragma prolog(ZJSMINIT, " ZWEPROLG NEWDSA=(YES,4) ")
 #pragma epilog(ZJSMINIT, " ZWEEPILG ")
 int ZJSMINIT(JSON_INSTANCE *PTR64 instance)
@@ -33,7 +31,6 @@ int ZJSMINIT(JSON_INSTANCE *PTR64 instance)
   return rc;
 }
 
-// https://www.ibm.com/docs/en/zos/3.1.0?topic=parser-hwtjgenc-get-json-encoding
 #pragma prolog(ZJSMGENC, " ZWEPROLG NEWDSA=(YES,4) ")
 #pragma epilog(ZJSMGENC, " ZWEEPILG ")
 int ZJSMGENC(JSON_INSTANCE *PTR64 instance, int *PTR64 encoding)
@@ -53,7 +50,6 @@ int ZJSMGENC(JSON_INSTANCE *PTR64 instance, int *PTR64 encoding)
   return rc;
 }
 
-// https://www.ibm.com/docs/en/zos/3.1.0?topic=parser-hwtjsenc-get-json-encoding
 #pragma prolog(ZJSMSENC, " ZWEPROLG NEWDSA=(YES,4) ")
 #pragma epilog(ZJSMSENC, " ZWEEPILG ")
 int ZJSMSENC(JSON_INSTANCE *PTR64 instance, int *PTR64 encoding)
@@ -75,7 +71,6 @@ int ZJSMSENC(JSON_INSTANCE *PTR64 instance, int *PTR64 encoding)
   return rc;
 }
 
-// https://www.ibm.com/docs/en/zos/3.1.0?topic=parser-hwtjpars-parse-json-string
 #pragma prolog(ZJSMPARS, " ZWEPROLG NEWDSA=(YES,4) ")
 #pragma epilog(ZJSMPARS, " ZWEEPILG ")
 int ZJSMPARS(JSON_INSTANCE *PTR64 instance, const char *PTR64 json)
@@ -98,7 +93,6 @@ int ZJSMPARS(JSON_INSTANCE *PTR64 instance, const char *PTR64 json)
   return rc;
 }
 
-// https://www.ibm.com/docs/en/zos/3.1.0?topic=parser-hwtjsrch-search
 #pragma prolog(ZJSMSRCH, " ZWEPROLG NEWDSA=(YES,4) ")
 #pragma epilog(ZJSMSRCH, " ZWEEPILG ")
 int ZJSMSRCH(JSON_INSTANCE *PTR64 instance, const char *PTR64 key, KEY_HANDLE *PTR64 key_handle)
@@ -126,7 +120,6 @@ int ZJSMSRCH(JSON_INSTANCE *PTR64 instance, const char *PTR64 key, KEY_HANDLE *P
   return rc;
 }
 
-// https://www.ibm.com/docs/en/zos/3.1.0?topic=parser-hwtjseri-serialize-json
 #pragma prolog(ZJSMSERI, " ZWEPROLG NEWDSA=(YES,4) ")
 #pragma epilog(ZJSMSERI, " ZWEEPILG ")
 int ZJSMSERI(JSON_INSTANCE *PTR64 instance, char *PTR64 buffer, int *PTR64 buffer_length, int *PTR64 buffer_length_actual)
@@ -151,7 +144,6 @@ int ZJSMSERI(JSON_INSTANCE *PTR64 instance, char *PTR64 buffer, int *PTR64 buffe
   return rc;
 }
 
-// https://www.ibm.com/docs/en/zos/3.1.0?topic=parser-hwtjgjst-get-type
 #pragma prolog(ZJSNGJST, " ZWEPROLG NEWDSA=(YES,4) ")
 #pragma epilog(ZJSNGJST, " ZWEEPILG ")
 int ZJSNGJST(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *PTR64 type)
@@ -173,7 +165,6 @@ int ZJSNGJST(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *P
   return rc;
 }
 
-// https://www.ibm.com/docs/en/zos/3.1.0?topic=parser-hwtjgval-get-value
 #pragma prolog(ZJSMGVAL, " ZWEPROLG NEWDSA=(YES,4) ")
 #pragma epilog(ZJSMGVAL, " ZWEEPILG ")
 int ZJSMGVAL(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, char *PTR64 *PTR64 value, int *PTR64 value_length)
@@ -198,7 +189,6 @@ int ZJSMGVAL(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, char *
   return rc;
 }
 
-// https://www.ibm.com/docs/en/zos/3.1.0?topic=parser-hwtjgnue-get-number-entries
 #pragma prolog(ZJSMGNUE, " ZWEPROLG NEWDSA=(YES,4) ")
 #pragma epilog(ZJSMGNUE, " ZWEEPILG ")
 int ZJSMGNUE(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *PTR64 number_entries)
@@ -222,7 +212,6 @@ int ZJSMGNUE(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *P
   return rc;
 }
 
-// https://www.ibm.com/docs/en/zos/3.1.0?topic=parser-hwtjgbov-get-boolean-value
 #pragma prolog(ZJSMGBOV, " ZWEPROLG NEWDSA=(YES,4) ")
 #pragma epilog(ZJSMGBOV, " ZWEEPILG ")
 int ZJSMGBOV(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, char *PTR64 value)
@@ -245,15 +234,64 @@ int ZJSMGBOV(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, char *
   return rc;
 }
 
-// https://www.ibm.com/docs/en/zos/3.1.0?topic=parser-hwtjgaen-get-array-element
 #pragma prolog(ZJSMGAEN, " ZWEPROLG NEWDSA=(YES,4) ")
 #pragma epilog(ZJSMGAEN, " ZWEEPILG ")
 int ZJSMGAEN(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *PTR64 index, KEY_HANDLE *PTR64 value)
 {
-  return 0;
+
+  int rc = 0;
+
+  KEY_HANDLE key_handle31 = {0};
+  memcpy(&key_handle31, key_handle, sizeof(KEY_HANDLE));
+
+  int index31 = *index;
+  KEY_HANDLE value31 = {0};
+
+  JSON_INSTANCE instance31 = {0};
+  memcpy(&instance31, instance, sizeof(JSON_INSTANCE));
+
+  rc = ZJSMGAEN31(&instance31, &key_handle31, &index31, &value31);
+
+  memcpy(value, &value31, sizeof(KEY_HANDLE));
+
+  memcpy(instance, &instance31, sizeof(JSON_INSTANCE));
+
+  return rc;
 }
 
-// https://www.ibm.com/docs/en/zos/3.1.0?topic=parser-hwtjterm-terminate-instance
+#pragma prolog(ZJSMGOEN, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma epilog(ZJSMGOEN, " ZWEEPILG ")
+int ZJSMGOEN(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *PTR64 index, char *PTR64 *PTR64 key_buffer, int *PTR64 key_buffer_length, KEY_HANDLE *PTR64 value_handle, int *PTR64 actual_length)
+{
+  int rc = 0;
+
+  KEY_HANDLE key_handle31 = {0};
+  memcpy(&key_handle31, key_handle, sizeof(KEY_HANDLE));
+
+  int index31 = *index;
+  char *PTR32 key_buffer31 = storage_obtain31(*key_buffer_length);
+  int key_buffer_length31 = *key_buffer_length;
+
+  KEY_HANDLE value_handle31 = {0};
+
+  int actual_length31 = 0;
+
+  JSON_INSTANCE instance31 = {0};
+  memcpy(&instance31, instance, sizeof(JSON_INSTANCE));
+
+  rc = ZJSMGOEN31(&instance31, &key_handle31, &index31, &key_buffer31, &key_buffer_length31, &value_handle31, &actual_length31);
+
+  memcpy(*key_buffer, key_buffer31, key_buffer_length31);
+  *actual_length = actual_length31;
+  memcpy(value_handle, &value_handle31, sizeof(KEY_HANDLE));
+
+  storage_release(key_buffer_length31, key_buffer31);
+
+  memcpy(instance, &instance31, sizeof(JSON_INSTANCE));
+
+  return rc;
+}
+
 #pragma prolog(ZJSMTERM, " ZWEPROLG NEWDSA=(YES,4) ")
 #pragma epilog(ZJSMTERM, " ZWEEPILG ")
 int ZJSMTERM(JSON_INSTANCE *PTR64 instance)
@@ -275,12 +313,4 @@ int ZJSMTERM(JSON_INSTANCE *PTR64 instance)
   }
 
   return rc;
-}
-
-// https://www.ibm.com/docs/en/zos/3.1.0?topic=parser-hwtjgoen-get-object-element
-#pragma prolog(ZJSMGOEN, " ZWEPROLG NEWDSA=(YES,4) ")
-#pragma epilog(ZJSMGOEN, " ZWEEPILG ")
-int ZJSMGOEN(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *PTR64 index, char *PTR64 *PTR64 value, int *PTR64 value_length, KEY_HANDLE *PTR64 value_handle, int *PTR64 actual_length)
-{
-  return 0;
 }

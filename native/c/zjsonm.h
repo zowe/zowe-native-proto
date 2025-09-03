@@ -12,7 +12,6 @@
 #ifndef ZJSONM_H
 #define ZJSONM_H
 
-#include <hwtjic.h> // ensure to include /usr/include
 #include "ztype.h"
 #include "zmetal.h"
 #include "zjsontype.h"
