@@ -26,6 +26,7 @@ int main()
 
   char json[] = "{\"name\": \"John\", \"isMarried\": true, \
   \"hasKids\": false, \"age\": 30, \
+  \"ssn\": 123456789, \
   \"pets\": [\"dog\", \"cat\", \"fish\"], \
   \"address\": {\"street\": \
   \"123 Main St\", \"city\": \"Anytown\", \"state\": \"CA\", \
@@ -133,6 +134,25 @@ int main()
   rc = ZJSMGVAL31(&instance, &key_handle, &string_value, &string_value_length);
 
   zwto_debug("@TEST result: %.*s", string_value_length, string_value);
+
+  char *PTR32 ssn_key = "ssn";
+  memset(&key_handle, 0, sizeof(KEY_HANDLE));
+  rc = ZJSMSRCH31(&instance, ssn_key, &key_handle);
+  if (0 != rc)
+  {
+    zwto_debug("@TEST ZJSMSRCH error: %d - exiting...", rc);
+    return -1;
+  }
+  KEY_HANDLE value_handle = {0};
+  rc = ZJSMDEL31(&instance, &value_handle, &key_handle);
+  if (0 != rc)
+  {
+    zwto_debug("@TEST ZJSMDEL error: %d - exiting...", rc);
+    return -1;
+  }
+
+  zwto_debug("@TEST deleted key: %s", ssn_key);
+  // zwto_debug("@TEST deleted key: %.*s", string_value_length, string_value);
 
   // search for array key
   char *PTR32 array_key = "pets";
@@ -291,6 +311,28 @@ int main()
     return -1;
   }
   zwto_debug("@TEST result of age: %.*s", number_value_length, number_value);
+
+  // serialize JSON
+  // char serialized_json[1024] = {0};
+  serialized_json_length = (int)sizeof(serialized_json);
+  serialized_json_length_actual = 0;
+  rc = ZJSMSERI31(&instance, serialized_json, &serialized_json_length, &serialized_json_length_actual);
+  if (0 != rc)
+  {
+    zwto_debug("@TEST ZJSMSERI error: %d - exiting...", rc);
+    return -1;
+  }
+
+  print_offset = 0;
+  total_length = serialized_json_length_actual;
+
+  zwto_debug("@TEST serialized JSON length is: %d", serialized_json_length_actual);
+
+  while (print_offset < total_length)
+  {
+    zwto_debug("%.*s", print_length, serialized_json + print_offset);
+    print_offset += print_length;
+  }
 
   // terminate JSON services
   rc = ZJSMTERM31(&instance);

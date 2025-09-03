@@ -38,6 +38,8 @@
 
 typedef int (*PTR32 HWTJINIT)(int *PTR32, int *PTR32, PARSE_HANDLE *PTR32, DIAG *PTR32) ATTRIBUTE(amode31);
 typedef int (*PTR32 HWTJGENC)(int *PTR32, PARSE_HANDLE *PTR32, int *PTR32, DIAG *PTR32) ATTRIBUTE(amode31);
+typedef int (*PTR32 HWTJCREN)(int *PTR32, PARSE_HANDLE *PTR32, KEY_HANDLE *PTR32, char *PTR32 *PTR32, int *PTR32, int *PTR32, char *PTR32 *PTR32, int *PTR32, KEY_HANDLE *PTR32, DIAG *PTR32) ATTRIBUTE(amode31);
+typedef int (*PTR32 HWTJDEL)(int *PTR32, PARSE_HANDLE *PTR32, KEY_HANDLE *PTR32, KEY_HANDLE *PTR32, DIAG *PTR32) ATTRIBUTE(amode31);
 typedef int (*PTR32 HWTJSENC)(int *PTR32, PARSE_HANDLE *PTR32, int *PTR32, DIAG *PTR32) ATTRIBUTE(amode31);
 typedef int (*PTR32 HWTJSERI)(int *PTR32, PARSE_HANDLE *PTR32, char *PTR32 *PTR32, int *PTR32, int *PTR32, DIAG *PTR32) ATTRIBUTE(amode31);
 typedef int (*PTR32 HWTJTERM)(int *PTR32, PARSE_HANDLE *PTR32, int *PTR32, DIAG *PTR32) ATTRIBUTE(amode31);
@@ -92,6 +94,18 @@ static int ZJSMGENC31(JSON_INSTANCE *PTR32 instance, int *PTR32 encoding)
   diag_p = (DIAG * PTR32)((unsigned int)diag_p | 0x80000000);
 
   hwtjgenc(&rc, &instance->handle, encoding, diag_p);
+  return rc;
+}
+
+static int ZJSMDEL31(JSON_INSTANCE *PTR32 instance, KEY_HANDLE *PTR32 key_handle, KEY_HANDLE *PTR32 value_handle)
+{
+  HWTJDEL hwtjdel = NULL;
+  GET_EP(HWT_Serv_JDEL, hwtjdel);
+
+  int rc = 0;
+  DIAG *PTR32 diag_p = &instance->diag;
+  diag_p = (DIAG * PTR32)((unsigned int)diag_p | 0x80000000);
+  hwtjdel(&rc, &instance->handle, key_handle, value_handle, diag_p);
   return rc;
 }
 
