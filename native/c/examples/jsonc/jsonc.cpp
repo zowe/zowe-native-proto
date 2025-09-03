@@ -130,7 +130,6 @@ int main()
   // printf("first char of name is: %c\n", string_key[0]);
   std::string string_key = "name";
   // char *PTR32 string
-  std::cout << "@TEST string_key: " << string_key << std::endl;
   rc = ZJSMSRCH(&instance, string_key.c_str(), &key_handle);
   if (0 != rc)
   {
@@ -149,6 +148,17 @@ int main()
   }
 
   std::cout << "ZJSNGJST: " << type << std::endl;
+
+  char *string_value = NULL;
+  int string_value_length = 0;
+  rc = ZJSMGVAL(&instance, &key_handle, &string_value, &string_value_length);
+  if (0 != rc)
+  {
+    std::cout << "Error ZJSMGVAL: " << rc << std::endl;
+    return -1;
+  }
+  std::cout << "ZJSMGVAL: " << string_value_length << std::endl;
+  printf("ZJSMGVAL: %.*s\n", string_value_length, string_value);
 
   string_key = "isMarried";
   rc = ZJSMSRCH(&instance, string_key.c_str(), &key_handle);
