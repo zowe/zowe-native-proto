@@ -76,11 +76,11 @@ export class ConfigFileUtils {
 
             const profileInJson = _.get(layerJson, profilePath);
             // Add comment before where the property would be
-            const commentToken: CommentToken = {
+            const commentToken = {
                 type: "LineComment",
                 value: ` ${commentText}`,
                 inline: false,
-            };
+            } as CommentToken;
             const comments = profileInJson[ConfigFileUtils.AFTER_PROPERTIES_SYMBOL];
             if (!comments) {
                 // No comments exist after `properties` object
@@ -114,7 +114,11 @@ export class ConfigFileUtils {
      * @param text The text to compare against each comment; matches are removed
      * @param commentSymbol The comment-json symbol (`after-all, after:<propertyName>, before-all, before:<propertyName>`) where the comments are located
      */
-    private removeCommentsInObject(obj: object, text: string, commentSymbol: symbol): void {
+    private removeCommentsInObject(
+        obj: { [key: string | symbol]: unknown },
+        text: string,
+        commentSymbol: symbol,
+    ): void {
         const comments = obj[commentSymbol] as CommentToken[] | undefined;
         if (comments == null) {
             return;
