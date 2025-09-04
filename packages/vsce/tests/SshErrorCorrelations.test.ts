@@ -17,7 +17,7 @@ import {
     ZoweVsCodeExtension,
 } from "@zowe/zowe-explorer-api";
 import { afterEach, beforeEach, describe, expect, it, type MockedFunction, vi } from "vitest";
-import { registerSshErrorCorrelations } from "../SshErrorCorrelations";
+import { registerSshErrorCorrelations } from "../src/SshErrorCorrelations";
 
 // Mock Zowe Explorer API
 vi.mock("@zowe/zowe-explorer-api", () => ({

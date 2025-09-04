@@ -12,7 +12,7 @@
 import { type ErrorCorrelator, type Types, ZoweExplorerApiType, ZoweVsCodeExtension } from "@zowe/zowe-explorer-api";
 import { afterEach, beforeEach, describe, expect, it, type MockedFunction, vi } from "vitest";
 import * as vscode from "vscode";
-import { SshErrorHandler } from "../SshErrorHandler";
+import { SshErrorHandler } from "../src/SshErrorHandler";
 
 // Mock vscode module
 vi.mock("vscode", () => ({
