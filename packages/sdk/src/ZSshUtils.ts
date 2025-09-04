@@ -21,7 +21,6 @@ type SftpError = Error & { code?: number };
 
 // biome-ignore lint/complexity/noStaticOnlyClass: Utilities class has static methods
 export class ZSshUtils {
-    private static readonly SERVER_BIN_FILES = ["zowed", "zowex"];
     private static readonly SERVER_PAX_FILE = "server.pax.Z";
 
     public static buildSession(args: IProfile): SshSession {
@@ -111,17 +110,15 @@ export class ZSshUtils {
     public static async uninstallServer(session: SshSession, serverPath: string): Promise<void> {
         Logger.getAppLogger().debug(`Uninstalling server from ${session.ISshSession.hostname} at path: ${serverPath}`);
         const remoteDir = serverPath.replace(/^~/, ".");
-        return ZSshUtils.sftp(session, async (sftp, _ssh) => {
-            for (const file of ZSshUtils.SERVER_BIN_FILES) {
-                await promisify(sftp.unlink.bind(sftp))(path.posix.join(remoteDir, file)).catch((err: SftpError) => {
-                    if (err.code !== 2) throw err;
-                    Logger.getAppLogger().info(`Remote file does not exist: ${serverPath}/${file}`);
-                });
+        return ZSshUtils.sftp(session, async (_sftp, ssh) => {
+            const result = await ssh.execCommand(`rm -rf ${serverPath}`);
+            if (result.code === 0) {
+                Logger.getAppLogger().debug(`Deleted directory ${serverPath} with response: ${result.stdout}`);
+            } else {
+                const errMsg = `Failed to delete directory ${serverPath} with RC ${result.code}: ${result.stderr}`;
+                Logger.getAppLogger().error(errMsg);
+                throw new Error(errMsg);
             }
-            await promisify(sftp.rmdir.bind(sftp))(remoteDir).catch((err: SftpError) => {
-                if (err.code !== 4) throw err;
-                Logger.getAppLogger().info(`Remote directory does not exist: ${serverPath}`);
-            });
         });
     }
 
