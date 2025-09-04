@@ -325,7 +325,11 @@ int ZJSMGOEN(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *P
   memcpy(&key_handle31, key_handle, sizeof(KEY_HANDLE));
 
   int index31 = *index;
-  char *PTR32 key_buffer31 = storage_obtain31(*key_buffer_length);
+  char *PTR32 key_buffer31 = NULL;
+  if (*key_buffer_length > 0)
+  {
+    key_buffer31 = storage_obtain31(*key_buffer_length);
+  }
   int key_buffer_length31 = *key_buffer_length;
 
   KEY_HANDLE value_handle31 = {0};
@@ -341,7 +345,10 @@ int ZJSMGOEN(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *P
   *actual_length = actual_length31;
   memcpy(value_handle, &value_handle31, sizeof(KEY_HANDLE));
 
-  storage_release(key_buffer_length31, key_buffer31);
+  if (key_buffer31)
+  {
+    storage_release(key_buffer_length31, key_buffer31);
+  }
 
   memcpy(instance, &instance31, sizeof(JSON_INSTANCE));
 

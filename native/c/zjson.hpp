@@ -15,6 +15,7 @@
 #include <iostream>
 #include <string>
 #include <sstream>
+#include <vector>
 #include <hwtjic.h> // ensure to include /usr/include
 #include "zjsonm.h"
 
@@ -29,6 +30,8 @@ private:
 public:
   class JsonValueProxy
   {
+    friend class ZJson;
+
   private:
     ZJson &parent;
     std::string key;
@@ -127,6 +130,65 @@ public:
       return key;
     }
 
+    std::vector<std::string> getKeys() const
+    {
+      std::vector<std::string> keys;
+      int type = this->getType();
+
+      if (type != 1) // not an object
+      {
+        throw std::runtime_error("Cannot get keys from non-object type for key '" + key + "'. Type was " + std::to_string(type));
+      }
+
+      int rc = 0;
+      int number_entries = 0;
+
+      rc = ZJSMGNUE(&parent.instance, get_mutable_key_handle(), &number_entries);
+      if (0 != rc)
+      {
+        throw format_error("Error getting number of entries for key '" + key + "'", rc);
+      }
+
+      for (int i = 0; i < number_entries; i++)
+      {
+        char buffer[1] = {0};
+        char *buffer_ptr = buffer;
+        int buffer_length = (int)sizeof(buffer);
+        KEY_HANDLE value_handle = {0};
+        int actual_length = 0;
+        char *dynamic_buffer = nullptr;
+
+        rc = ZJSMGOEN(&parent.instance, get_mutable_key_handle(), &i, &buffer_ptr, &buffer_length, &value_handle, &actual_length);
+
+        // if the buffer is too small, allocate a dynamic buffer
+        if (HWTJ_BUFFER_TOO_SMALL == rc)
+        {
+          dynamic_buffer = new char[actual_length];
+          buffer_ptr = dynamic_buffer;
+          buffer_length = actual_length;
+          rc = ZJSMGOEN(&parent.instance, get_mutable_key_handle(), &i, &buffer_ptr, &buffer_length, &value_handle, &actual_length);
+        }
+
+        if (0 == rc)
+        {
+          keys.push_back(std::string(buffer_ptr, actual_length));
+        }
+
+        // release the dynamic buffer if we allocated it
+        if (dynamic_buffer)
+        {
+          delete[] dynamic_buffer;
+        }
+
+        if (0 != rc)
+        {
+          throw format_error("Error getting key at index " + std::to_string(i) + " for key '" + key + "'", rc);
+        }
+      }
+
+      return keys;
+    }
+
     JsonValueProxy operator[](int index) const
     {
       int type = this->getType();
@@ -207,7 +269,7 @@ public:
     }
   }
 
-  void parse(const std::string &json)
+  JsonValueProxy parse(const std::string &json)
   {
     int rc = 0;
     if (instance.json != nullptr)
@@ -235,6 +297,10 @@ public:
       ss << std::hex << rc;
       throw std::runtime_error("Error parsing JSON rc was x'" + ss.str() + "'");
     }
+
+    // Return a proxy representing the root object
+    KEY_HANDLE root_handle = {0};
+    return JsonValueProxy(*this, "root", root_handle);
   }
 
   std::string stringify()
