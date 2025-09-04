@@ -57,6 +57,21 @@ public:
     {
     }
 
+    JsonValueProxy(ZJson &p, const std::string &k, KEY_HANDLE parent_kh, const std::string &search_key)
+        : parent(p), key(k)
+    {
+      int type = HWTJ_SEARCHTYPE_SHALLOW;
+      KEY_HANDLE starting_handle = {0};
+
+      int rc = ZJSMSRCH(&parent.instance, &type, search_key.c_str(), &parent_kh, &starting_handle, &key_handle);
+      if (0 != rc)
+      {
+        std::stringstream ss;
+        ss << std::hex << rc;
+        throw std::runtime_error("Error searching for nested key '" + search_key + "' in '" + key + "' rc was x'" + ss.str() + "'");
+      }
+    }
+
   public:
     explicit operator std::string() const
     {
@@ -144,7 +159,22 @@ public:
 
     JsonValueProxy operator[](const std::string &index_str) const
     {
-      return (*this)[std::stoi(index_str)];
+      // Check if this is an array access (numeric string) or object access
+      int type = this->getType();
+      if (type == 2) // Array type
+      {
+        return (*this)[std::stoi(index_str)];
+      }
+      else if (type == 1) // Object type
+      {
+        // Create a nested search proxy
+        std::string nested_key = key + "." + index_str;
+        return JsonValueProxy(parent, nested_key, key_handle, index_str);
+      }
+      else
+      {
+        throw std::runtime_error("Cannot apply string operator[] to type " + std::to_string(type) + " for key '" + key + "'");
+      }
     }
   };
 
