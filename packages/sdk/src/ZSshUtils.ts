@@ -61,7 +61,7 @@ export class ZSshUtils {
         options?: {
             onProgress?: (increment: number) => void; // Callback to report incremental progress
             onError?: (error: Error, context: string) => Promise<boolean>; // Callback to handle errors, returns true to continue/retry
-        }
+        },
     ): Promise<void> {
         Logger.getAppLogger().debug(`Installing server to ${session.ISshSession.hostname} at path: ${serverPath}`);
         const remoteDir = serverPath.replace(/^~/, ".");
@@ -96,7 +96,7 @@ export class ZSshUtils {
             } catch (err) {
                 const errMsg = `Failed to upload server PAX file${(err as SftpError).code ? ` with RC ${(err as SftpError).code}` : ""}: ${err}`;
                 Logger.getAppLogger().error(errMsg);
-                
+
                 if (options?.onError) {
                     const shouldContinue = await options.onError(new Error(errMsg), "upload");
                     if (!shouldContinue) {
@@ -115,7 +115,7 @@ export class ZSshUtils {
             } else {
                 const errMsg = `Failed to extract server binaries with RC ${result.code}: ${result.stderr}`;
                 Logger.getAppLogger().error(errMsg);
-                
+
                 if (options?.onError) {
                     const shouldContinue = await options.onError(new Error(errMsg), "extract");
                     if (!shouldContinue) {
@@ -125,13 +125,13 @@ export class ZSshUtils {
                     throw new Error(errMsg);
                 }
             }
-            
+
             try {
                 await promisify(sftp.unlink.bind(sftp))(path.posix.join(remoteDir, ZSshUtils.SERVER_PAX_FILE));
             } catch (err) {
                 const errMsg = `Failed to cleanup server PAX file: ${err}`;
                 Logger.getAppLogger().warn(errMsg);
-                
+
                 if (options?.onError) {
                     await options.onError(new Error(errMsg), "cleanup");
                     // Don't throw for cleanup errors, just log them
@@ -144,11 +144,11 @@ export class ZSshUtils {
     }
 
     public static async uninstallServer(
-        session: SshSession, 
+        session: SshSession,
         serverPath: string,
         options?: {
             onError?: (error: Error, context: string) => Promise<boolean>; // Callback to handle errors, returns true to continue/retry
-        }
+        },
     ): Promise<void> {
         Logger.getAppLogger().debug(`Uninstalling server from ${session.ISshSession.hostname} at path: ${serverPath}`);
         const remoteDir = serverPath.replace(/^~/, ".");
@@ -164,7 +164,7 @@ export class ZSshUtils {
                     } else {
                         const errMsg = `Failed to remove server file ${file}: ${err}`;
                         Logger.getAppLogger().error(errMsg);
-                        
+
                         if (options?.onError) {
                             const shouldContinue = await options.onError(new Error(errMsg), "unlink");
                             if (!shouldContinue) {
@@ -176,7 +176,7 @@ export class ZSshUtils {
                     }
                 }
             }
-            
+
             try {
                 await promisify(sftp.rmdir.bind(sftp))(remoteDir);
             } catch (err) {
@@ -187,7 +187,7 @@ export class ZSshUtils {
                 } else {
                     const errMsg = `Failed to remove server directory: ${err}`;
                     Logger.getAppLogger().error(errMsg);
-                    
+
                     if (options?.onError) {
                         const shouldContinue = await options.onError(new Error(errMsg), "rmdir");
                         if (!shouldContinue) {

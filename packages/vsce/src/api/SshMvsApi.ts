@@ -31,7 +31,7 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
                 })),
                 returnedRows: response.returnedRows,
             });
-        } catch (err) {
+        } catch (_err) {
             return this.buildZosFilesResponse(
                 {
                     items: [],
