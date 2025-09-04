@@ -10,7 +10,7 @@
  */
 
 import { type SshSession, ZosUssProfile } from "@zowe/zos-uss-for-zowe-sdk";
-import type { imperative, MainframeInteraction } from "@zowe/zowe-explorer-api";
+import { imperative, type MainframeInteraction } from "@zowe/zowe-explorer-api";
 import * as vscode from "vscode";
 import { type ZSshClient, ZSshUtils } from "zowe-native-proto-sdk";
 import { SshClientCache } from "../SshClientCache";
@@ -23,7 +23,8 @@ export class SshCommonApi implements MainframeInteraction.ICommon {
     }
 
     public getSession(profile?: imperative.IProfileLoaded): imperative.Session {
-        return this.getSshSession(profile) as unknown as imperative.Session;
+        const sshSession = this.getSshSession(profile);
+        return new imperative.Session(sshSession.ISshSession as unknown as imperative.ISession);
     }
 
     public async getStatus(profile: imperative.IProfileLoaded, profileType?: string): Promise<string> {
