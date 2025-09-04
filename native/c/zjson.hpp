@@ -18,6 +18,7 @@
 #include <vector>
 #include <hwtjic.h> // ensure to include /usr/include
 #include "zjsonm.h"
+#include "zjsontype.h"
 
 class ZJson
 {
@@ -135,7 +136,7 @@ public:
       std::vector<std::string> keys;
       int type = this->getType();
 
-      if (type != 1) // not an object
+      if (type != HWTJ_OBJECT_TYPE) // not an object
       {
         throw std::runtime_error("Cannot get keys from non-object type for key '" + key + "'. Type was " + std::to_string(type));
       }
@@ -192,7 +193,7 @@ public:
     JsonValueProxy operator[](int index) const
     {
       int type = this->getType();
-      if (type != 2) // not an array
+      if (type != HWTJ_ARRAY_TYPE) // not an array
       {
         throw std::runtime_error("Cannot apply operator[] to a non-array type for key '" + key + "'. Type was " + std::to_string(type));
       }
@@ -215,11 +216,11 @@ public:
     {
       // Check if this is an array access (numeric string) or object access
       int type = this->getType();
-      if (type == 2) // Array type
+      if (type == HWTJ_ARRAY_TYPE) // Array type
       {
         return (*this)[std::stoi(index_str)];
       }
-      else if (type == 1) // Object type
+      else if (type == HWTJ_OBJECT_TYPE) // Object type
       {
         // Create a nested search proxy
         std::string nested_key = key + "." + index_str;
@@ -404,13 +405,13 @@ inline std::ostream &operator<<(std::ostream &os, const ZJson::JsonValueProxy &p
   int type = proxy.getType();
   switch (type)
   {
-  case 2:                   // Array
+  case HWTJ_ARRAY_TYPE:
     return os << "Array[]"; // TODO(Kelosky): print array type
-  case 3:                   // String
+  case HWTJ_STRING_TYPE:    // String
     return os << static_cast<std::string>(proxy);
-  case 4: // Number
+  case HWTJ_NUMBER_TYPE: // Number
     return os << static_cast<int>(proxy);
-  case 5: // Boolean
+  case HWTJ_BOOLEAN_TYPE: // Boolean
     return os << std::boolalpha << static_cast<bool>(proxy);
   default:
   {

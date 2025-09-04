@@ -15,8 +15,14 @@
 
 #include "ztype.h"
 
-#ifndef HWTJ_SEARCHTYPE_SHALLOW
+#if (!defined(__IBMCPP__) || !defined(__IBMC__))
 #define HWTJ_SEARCHTYPE_SHALLOW 3
+#define HWTJ_OBJECT_TYPE 1
+#define HWTJ_ARRAY_TYPE 2
+#define HWTJ_STRING_TYPE 3
+#define HWTJ_NUMBER_TYPE 4
+#define HWTJ_BOOLEAN_TYPE 5
+#define HWTJ_NULL_TYPE 6
 #endif
 
 typedef struct
