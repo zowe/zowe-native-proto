@@ -154,7 +154,6 @@ export class CliPromptApi extends AbstractConfigManager {
         const response = await menu.promise;
         this.mResponseApi.console.log("");
 
-        // Adjust for separator items (indices 0, 1, 2 are separators, real options start at 3)
         switch (response.selectedIndex) {
             case 0: // Accept and continue
                 this.mResponseApi.console.log("Continuing with commented private key...");
