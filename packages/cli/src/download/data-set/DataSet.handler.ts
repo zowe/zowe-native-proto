@@ -37,6 +37,7 @@ export default class DownloadDataSetHandler extends SshBaseHandler {
             dsname: params.arguments.dataSet,
             encoding: params.arguments.binary ? "binary" : params.arguments.encoding,
             localEncoding: params.arguments.localEncoding,
+            volume: params.arguments.volumeSerial,
         });
 
         params.response.data.setMessage("Successfully downloaded content to %s", localFilePath);
