@@ -164,24 +164,21 @@ public:
         // if the buffer is too small, allocate a dynamic buffer
         if (HWTJ_BUFFER_TOO_SMALL == rc)
         {
-          dynamic_buffer = new char[actual_length];
-          buffer_ptr = dynamic_buffer;
+          // dynamic_buffer = new char[actual_length];
+          auto dynamic_buffer = std::vector<char>(actual_length);
+
+          buffer_ptr = &dynamic_buffer[0];
           buffer_length = actual_length;
           rc = ZJSMGOEN(&parent.instance, get_mutable_key_handle(), &i, &buffer_ptr, &buffer_length, &value_handle, &actual_length);
+          keys.push_back(std::string(dynamic_buffer.begin(), dynamic_buffer.end()));
         }
 
-        if (0 == rc)
+        else if (0 == rc)
         {
           keys.push_back(std::string(buffer_ptr, actual_length));
         }
 
-        // release the dynamic buffer if we allocated it
-        if (dynamic_buffer)
-        {
-          delete[] dynamic_buffer;
-        }
-
-        if (0 != rc)
+        else
         {
           throw format_error("Error getting key at index " + std::to_string(i) + " for key '" + key + "'", rc);
         }
