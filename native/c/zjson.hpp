@@ -38,7 +38,11 @@ public:
     JsonValueProxy(ZJson &p, const std::string &k)
         : parent(p), key(k)
     {
-      int rc = ZJSMSRCH(&parent.instance, key.c_str(), &key_handle);
+      int type = HWTJ_SEARCHTYPE_SHALLOW;
+      KEY_HANDLE object_handle = {0};
+      KEY_HANDLE starting_handle = {0};
+
+      int rc = ZJSMSRCH(&parent.instance, &type, key.c_str(), &object_handle, &starting_handle, &key_handle);
       if (0 != rc)
       {
         std::stringstream ss;

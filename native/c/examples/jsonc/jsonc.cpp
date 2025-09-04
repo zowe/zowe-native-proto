@@ -37,7 +37,7 @@ int main()
     std::cout << "Has Kids: " << json["hasKids"] << std::endl;
     std::cout << "Age: " << json["age"] << std::endl;
     std::cout << "Pets: " << json["pets"][1] << std::endl;
-    // std::cout << "Address Street: " << json["address"]["street"] << std::endl;
+    std::cout << "Address Street: " << json["address"]["street"] << std::endl;
     // std::cout << "Address City: " << json["address"]["city"] << std::endl;
 
     // std::cout << "Name: " << static_cast<std::string>(json["name"]) << std::endl;
@@ -143,10 +143,10 @@ int run_low_level_json()
   std::string string_key = "name";
   // char *PTR32 string
   std::cout << "Searching for key: " << string_key << std::endl;
-  rc = ZJSMSRCH(&instance, string_key.c_str(), &key_handle);
+  rc = ZJSMSSRC(&instance, string_key.c_str(), &key_handle);
   if (0 != rc)
   {
-    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMSRCH rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
+    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMSSRC rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
     std::cout << "Error, exiting..." << std::endl;
     return -1;
   }
@@ -176,10 +176,10 @@ int run_low_level_json()
 
   string_key = "isMarried";
   std::cout << "Searching for key: " << string_key << std::endl;
-  rc = ZJSMSRCH(&instance, string_key.c_str(), &key_handle);
+  rc = ZJSMSSRC(&instance, string_key.c_str(), &key_handle);
   if (0 != rc)
   {
-    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMSRCH rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
+    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMSSRC rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
     std::cout << "Error, exiting..." << std::endl;
     return -1;
   }
@@ -207,10 +207,10 @@ int run_low_level_json()
 
   // find pets
   std::cout << "Searching for key: pets" << std::endl;
-  rc = ZJSMSRCH(&instance, "pets", &key_handle);
+  rc = ZJSMSSRC(&instance, "pets", &key_handle);
   if (0 != rc)
   {
-    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMSRCH rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
+    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMSSRC rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
     std::cout << "Error, exiting..." << std::endl;
     return -1;
   }
@@ -254,10 +254,10 @@ int run_low_level_json()
 
   // find address
   std::cout << "Searching for key: address" << std::endl;
-  rc = ZJSMSRCH(&instance, "address", &key_handle);
+  rc = ZJSMSSRC(&instance, "address", &key_handle);
   if (0 != rc)
   {
-    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMSRCH rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
+    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMSSRC rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
     std::cout << "Error, exiting..." << std::endl;
     return -1;
   }

@@ -15,6 +15,10 @@
 
 #include "ztype.h"
 
+#ifndef HWTJ_SEARCHTYPE_SHALLOW
+#define HWTJ_SEARCHTYPE_SHALLOW 3
+#endif
+
 typedef struct
 {
   char x[12];

@@ -107,7 +107,7 @@ int main()
   rc = zjsm_shallow_search(&instance, string_key, &key_handle);
   if (0 != rc)
   {
-    zwto_debug("@TEST ZJSMSRCH error: %d - exiting...", rc);
+    zwto_debug("@TEST ZJSMSSRC error: %d - exiting...", rc);
     return -1;
   }
 
@@ -140,7 +140,7 @@ int main()
   rc = zjsm_shallow_search(&instance, ssn_key, &key_handle);
   if (0 != rc)
   {
-    zwto_debug("@TEST ZJSMSRCH error: %d - exiting...", rc);
+    zwto_debug("@TEST ZJSMSSRC error: %d - exiting...", rc);
     return -1;
   }
   KEY_HANDLE value_handle = {0};
@@ -159,7 +159,7 @@ int main()
   rc = zjsm_shallow_search(&instance, array_key, &key_handle);
   if (0 != rc)
   {
-    zwto_debug("@TEST ZJSMSRCH error: %d - exiting...", rc);
+    zwto_debug("@TEST ZJSMSSRC error: %d - exiting...", rc);
     return -1;
   }
 
@@ -204,7 +204,7 @@ int main()
   rc = zjsm_shallow_search(&instance, object_key, &key_handle);
   if (0 != rc)
   {
-    zwto_debug("@TEST ZJSMSRCH error: %d - exiting...", rc);
+    zwto_debug("@TEST ZJSMSSRC error: %d - exiting...", rc);
     return -1;
   }
 
@@ -243,7 +243,7 @@ int main()
   rc = zjsm_shallow_search(&instance, boolean_key, &key_handle);
   if (0 != rc)
   {
-    zwto_debug("@TEST ZJSMSRCH error: %d - exiting...", rc);
+    zwto_debug("@TEST ZJSMSSRC error: %d - exiting...", rc);
     return -1;
   }
 
@@ -270,7 +270,7 @@ int main()
   rc = zjsm_shallow_search(&instance, boolean_key2, &key_handle);
   if (0 != rc)
   {
-    zwto_debug("@TEST ZJSMSRCH error: %d - exiting...", rc);
+    zwto_debug("@TEST ZJSMSSRC error: %d - exiting...", rc);
     return -1;
   }
 
@@ -297,7 +297,7 @@ int main()
   rc = zjsm_shallow_search(&instance, number_key, &key_handle);
   if (0 != rc)
   {
-    zwto_debug("@TEST ZJSMSRCH error: %d - exiting...", rc);
+    zwto_debug("@TEST ZJSMSSRC error: %d - exiting...", rc);
     return -1;
   }
 

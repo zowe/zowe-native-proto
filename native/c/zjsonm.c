@@ -117,7 +117,41 @@ int ZJSMPARS(JSON_INSTANCE *PTR64 instance, const char *PTR64 json)
 
 #pragma prolog(ZJSMSRCH, " ZWEPROLG NEWDSA=(YES,4) ")
 #pragma epilog(ZJSMSRCH, " ZWEEPILG ")
-int ZJSMSRCH(JSON_INSTANCE *PTR64 instance, const char *PTR64 key, KEY_HANDLE *PTR64 key_handle)
+int ZJSMSRCH(JSON_INSTANCE *PTR64 instance, int *PTR64 type, const char *PTR64 key, KEY_HANDLE *PTR64 object_handle, KEY_HANDLE *PTR64 starting_handle, KEY_HANDLE *PTR64 key_handle)
+{
+  int rc = 0;
+
+  KEY_HANDLE key_handle31 = {0};
+  KEY_HANDLE object_handle31 = {0};
+  KEY_HANDLE starting_handle31 = {0};
+
+  memcpy(&object_handle31, object_handle, sizeof(KEY_HANDLE));
+  memcpy(&starting_handle31, starting_handle, sizeof(KEY_HANDLE));
+
+  int type31 = *type;
+
+  JSON_INSTANCE instance31 = {0};
+  memcpy(&instance31, instance, sizeof(JSON_INSTANCE));
+
+  int length = (int)strlen(key) + 1;
+  char *PTR32 key31 = storage_obtain31(length);
+
+  memcpy(key31, key, strlen(key));
+  key31[length - 1] = '\0';
+
+  rc = zjsm_search(&instance31, &type31, key31, &object_handle31, &starting_handle31, &key_handle31);
+
+  memcpy(key_handle, &key_handle31, sizeof(KEY_HANDLE));
+
+  storage_release(length, key31);
+  memcpy(instance, &instance31, sizeof(JSON_INSTANCE));
+
+  return rc;
+}
+
+#pragma prolog(ZJSMSSRC, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma epilog(ZJSMSSRC, " ZWEEPILG ")
+int ZJSMSSRC(JSON_INSTANCE *PTR64 instance, const char *PTR64 key, KEY_HANDLE *PTR64 key_handle)
 {
   int rc = 0;
 

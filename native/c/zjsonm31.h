@@ -44,7 +44,7 @@ typedef int (*PTR32 HWTJSENC)(int *PTR32, PARSE_HANDLE *PTR32, int *PTR32, DIAG 
 typedef int (*PTR32 HWTJSERI)(int *PTR32, PARSE_HANDLE *PTR32, char *PTR32 *PTR32, int *PTR32, int *PTR32, DIAG *PTR32) ATTRIBUTE(amode31);
 typedef int (*PTR32 HWTJTERM)(int *PTR32, PARSE_HANDLE *PTR32, int *PTR32, DIAG *PTR32) ATTRIBUTE(amode31);
 typedef int (*PTR32 HWTJPARS)(int *PTR32, PARSE_HANDLE *PTR32, const char *PTR32 *PTR32, int *PTR32, DIAG *PTR32) ATTRIBUTE(amode31);
-typedef int (*PTR32 HWTJSRCH)(int *PTR32, PARSE_HANDLE *PTR32, int *PTR32, const char *PTR32 *PTR32, int *PTR32, int *PTR32, int *PTR32, KEY_HANDLE *PTR32, DIAG *PTR32) ATTRIBUTE(amode31);
+typedef int (*PTR32 HWTJSRCH)(int *PTR32, PARSE_HANDLE *PTR32, int *PTR32, const char *PTR32 *PTR32, int *PTR32, KEY_HANDLE *PTR32, KEY_HANDLE *PTR32, KEY_HANDLE *PTR32, DIAG *PTR32) ATTRIBUTE(amode31);
 typedef int (*PTR32 HWTJGJST)(int *PTR32, PARSE_HANDLE *PTR32, KEY_HANDLE *PTR32, int *PTR32, DIAG *PTR32) ATTRIBUTE(amode31);
 typedef int (*PTR32 HWTJGNUE)(int *PTR32, PARSE_HANDLE *PTR32, KEY_HANDLE *PTR32, int *PTR32, DIAG *PTR32) ATTRIBUTE(amode31);
 typedef int (*PTR32 HWTJGVAL)(int *PTR32, PARSE_HANDLE *PTR32, KEY_HANDLE *PTR32, char *PTR32 *PTR32, int *PTR32, DIAG *PTR32) ATTRIBUTE(amode31);
@@ -148,7 +148,7 @@ static int zjsm_parse(JSON_INSTANCE *PTR32 instance, const char *PTR32 json)
   return rc;
 }
 
-static int zjsm_shallow_search(JSON_INSTANCE *PTR32 instance, const char *PTR32 key, KEY_HANDLE *PTR32 key_handle)
+static int zjsm_search(JSON_INSTANCE *PTR32 instance, int *PTR32 type, const char *PTR32 key, KEY_HANDLE *PTR32 object_handle, KEY_HANDLE *PTR32 starting_handle, KEY_HANDLE *PTR32 key_handle)
 {
   HWTJSRCH hwtjsrch = NULL;
   GET_EP(HWT_Serv_JSRCH, hwtjsrch);
@@ -157,13 +157,19 @@ static int zjsm_shallow_search(JSON_INSTANCE *PTR32 instance, const char *PTR32 
   DIAG *PTR32 diag_p = &instance->diag;
   diag_p = (DIAG * PTR32)((unsigned int)diag_p | 0x80000000);
 
-  int search_type = HWTJ_SEARCHTYPE_SHALLOW;
-  int object_handle = 0;
-  int starting_handle = 0;
   int name_length = (int)strlen(key);
 
-  hwtjsrch(&rc, &instance->handle, &search_type, &key, &name_length, &object_handle, &starting_handle, key_handle, diag_p);
+  hwtjsrch(&rc, &instance->handle, type, &key, &name_length, object_handle, starting_handle, key_handle, diag_p);
   return rc;
+}
+
+static int zjsm_shallow_search(JSON_INSTANCE *PTR32 instance, const char *PTR32 key, KEY_HANDLE *PTR32 key_handle)
+{
+  int type = HWTJ_SEARCHTYPE_SHALLOW;
+  KEY_HANDLE object_handle = {0};
+  KEY_HANDLE starting_handle = {0};
+
+  return zjsm_search(instance, &type, key, &object_handle, &starting_handle, key_handle);
 }
 
 static int zjsm_get_type(JSON_INSTANCE *PTR32 instance, KEY_HANDLE *PTR32 key_handle, int *PTR32 type)

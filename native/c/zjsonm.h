@@ -36,7 +36,9 @@ extern "C"
 
   int ZJSMSERI(JSON_INSTANCE *PTR64 instance, char *PTR64 buffer, int *PTR64 buffer_length, int *PTR64 buffer_length_actual);
 
-  int ZJSMSRCH(JSON_INSTANCE *PTR64 instance, const char *PTR64 key, KEY_HANDLE *PTR64 key_handle);
+  int ZJSMSRCH(JSON_INSTANCE *PTR64 instance, int *PTR64 type, const char *PTR64 key, KEY_HANDLE *PTR64, KEY_HANDLE *PTR64, KEY_HANDLE *PTR64 key_handle);
+
+  int ZJSMSSRC(JSON_INSTANCE *PTR64 instance, const char *PTR64 key, KEY_HANDLE *PTR64 key_handle); // helper for shallow search
 
   int ZJSNGJST(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *PTR64 type);
 
