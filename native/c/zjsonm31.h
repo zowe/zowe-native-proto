@@ -69,7 +69,7 @@ typedef int (*PTR32 HWTJGOEN)(int *PTR32, PARSE_HANDLE *PTR32, KEY_HANDLE *PTR32
 #define GET_EP(index, ep)
 #endif
 
-static int ZJSMINIT31(JSON_INSTANCE *PTR32 instance)
+static int zjsm_init(JSON_INSTANCE *PTR32 instance)
 {
   HWTJINIT hwtjinit = NULL;
   GET_EP(HWT_Serv_JINIT, hwtjinit);
@@ -84,7 +84,7 @@ static int ZJSMINIT31(JSON_INSTANCE *PTR32 instance)
   return rc;
 }
 
-static int ZJSMGENC31(JSON_INSTANCE *PTR32 instance, int *PTR32 encoding)
+static int zjsm_get_encoding(JSON_INSTANCE *PTR32 instance, int *PTR32 encoding)
 {
   HWTJGENC hwtjgenc = NULL;
   GET_EP(HWT_Serv_JGENC, hwtjgenc);
@@ -97,7 +97,7 @@ static int ZJSMGENC31(JSON_INSTANCE *PTR32 instance, int *PTR32 encoding)
   return rc;
 }
 
-static int ZJSMDEL31(JSON_INSTANCE *PTR32 instance, KEY_HANDLE *PTR32 key_handle, KEY_HANDLE *PTR32 value_handle)
+static int zjsm_delete(JSON_INSTANCE *PTR32 instance, KEY_HANDLE *PTR32 key_handle, KEY_HANDLE *PTR32 value_handle)
 {
   HWTJDEL hwtjdel = NULL;
   GET_EP(HWT_Serv_JDEL, hwtjdel);
@@ -109,7 +109,7 @@ static int ZJSMDEL31(JSON_INSTANCE *PTR32 instance, KEY_HANDLE *PTR32 key_handle
   return rc;
 }
 
-static int ZJSMSENC31(JSON_INSTANCE *PTR32 instance, int *PTR32 encoding)
+static int zjsm_set_encoding(JSON_INSTANCE *PTR32 instance, int *PTR32 encoding)
 {
   HWTJSENC hwtjsenc = NULL;
   GET_EP(HWT_Serv_JSENC, hwtjsenc);
@@ -121,7 +121,7 @@ static int ZJSMSENC31(JSON_INSTANCE *PTR32 instance, int *PTR32 encoding)
   return rc;
 }
 
-static int ZJSMSERI31(JSON_INSTANCE *PTR32 instance, char *PTR32 buffer, int *PTR32 buffer_length, int *PTR32 buffer_length_actual)
+static int zjsm_serialize(JSON_INSTANCE *PTR32 instance, char *PTR32 buffer, int *PTR32 buffer_length, int *PTR32 buffer_length_actual)
 {
   HWTJSERI hwtjseri = NULL;
   GET_EP(HWT_Serv_JSERI, hwtjseri);
@@ -134,7 +134,7 @@ static int ZJSMSERI31(JSON_INSTANCE *PTR32 instance, char *PTR32 buffer, int *PT
   return rc;
 }
 
-static int ZJSMPARS31(JSON_INSTANCE *PTR32 instance, const char *PTR32 json)
+static int zjsm_parse(JSON_INSTANCE *PTR32 instance, const char *PTR32 json)
 {
   HWTJPARS hwtjpars = NULL;
   GET_EP(HWT_Serv_JPARS, hwtjpars);
@@ -148,7 +148,7 @@ static int ZJSMPARS31(JSON_INSTANCE *PTR32 instance, const char *PTR32 json)
   return rc;
 }
 
-static int ZJSMSRCH31(JSON_INSTANCE *PTR32 instance, const char *PTR32 key, KEY_HANDLE *PTR32 key_handle)
+static int zjsm_shallow_search(JSON_INSTANCE *PTR32 instance, const char *PTR32 key, KEY_HANDLE *PTR32 key_handle)
 {
   HWTJSRCH hwtjsrch = NULL;
   GET_EP(HWT_Serv_JSRCH, hwtjsrch);
@@ -166,7 +166,7 @@ static int ZJSMSRCH31(JSON_INSTANCE *PTR32 instance, const char *PTR32 key, KEY_
   return rc;
 }
 
-static int ZJSNGJST31(JSON_INSTANCE *PTR32 instance, KEY_HANDLE *PTR32 key_handle, int *PTR32 type)
+static int zjsm_get_type(JSON_INSTANCE *PTR32 instance, KEY_HANDLE *PTR32 key_handle, int *PTR32 type)
 {
   HWTJGJST hwtjgjst = NULL;
   GET_EP(HWT_Serv_JGJST, hwtjgjst);
@@ -179,7 +179,7 @@ static int ZJSNGJST31(JSON_INSTANCE *PTR32 instance, KEY_HANDLE *PTR32 key_handl
   return rc;
 }
 
-static int ZJSMGVAL31(JSON_INSTANCE *PTR32 instance, KEY_HANDLE *PTR32 key_handle, char *PTR32 *PTR32 value, int *PTR32 value_length)
+static int zjsm_get_string_value(JSON_INSTANCE *PTR32 instance, KEY_HANDLE *PTR32 key_handle, char *PTR32 *PTR32 value, int *PTR32 value_length)
 {
   HWTJGVAL hwtjgval = NULL;
   GET_EP(HWT_Serv_JGVAL, hwtjgval);
@@ -192,7 +192,7 @@ static int ZJSMGVAL31(JSON_INSTANCE *PTR32 instance, KEY_HANDLE *PTR32 key_handl
   return rc;
 }
 
-static int ZJSMGNUE31(JSON_INSTANCE *PTR32 instance, KEY_HANDLE *PTR32 key_handle, int *PTR32 number_entries)
+static int zjsm_get_number_of_entries(JSON_INSTANCE *PTR32 instance, KEY_HANDLE *PTR32 key_handle, int *PTR32 number_entries)
 {
   HWTJGNUE hwtjgnue = NULL;
   GET_EP(HWT_Serv_JGNUE, hwtjgnue);
@@ -205,7 +205,7 @@ static int ZJSMGNUE31(JSON_INSTANCE *PTR32 instance, KEY_HANDLE *PTR32 key_handl
   return rc;
 }
 
-static int ZJSMGBOV31(JSON_INSTANCE *PTR32 instance, KEY_HANDLE *PTR32 key_handle, char *PTR32 value)
+static int zjsm_get_boolean_value(JSON_INSTANCE *PTR32 instance, KEY_HANDLE *PTR32 key_handle, char *PTR32 value)
 {
   HWTJGBOV hwtjgbov = NULL;
   GET_EP(HWT_Serv_JGBOV, hwtjgbov);
@@ -218,7 +218,7 @@ static int ZJSMGBOV31(JSON_INSTANCE *PTR32 instance, KEY_HANDLE *PTR32 key_handl
   return rc;
 }
 
-static int ZJSMGAEN31(JSON_INSTANCE *PTR32 instance, KEY_HANDLE *PTR32 key_handle, int *PTR32 index, KEY_HANDLE *PTR32 value)
+static int zjsm_get_array_entry(JSON_INSTANCE *PTR32 instance, KEY_HANDLE *PTR32 key_handle, int *PTR32 index, KEY_HANDLE *PTR32 value)
 {
   HWTJGAEN hwtjgaen = NULL;
   GET_EP(HWT_Serv_JGAEN, hwtjgaen);
@@ -231,7 +231,7 @@ static int ZJSMGAEN31(JSON_INSTANCE *PTR32 instance, KEY_HANDLE *PTR32 key_handl
   return rc;
 }
 
-static int ZJSMTERM31(JSON_INSTANCE *PTR32 instance)
+static int zjsm_term(JSON_INSTANCE *PTR32 instance)
 {
   HWTJTERM hwtjterm = NULL;
   GET_EP(HWT_Serv_JTERM, hwtjterm);
@@ -246,7 +246,7 @@ static int ZJSMTERM31(JSON_INSTANCE *PTR32 instance)
   return rc;
 }
 
-static int ZJSMGOEN31(JSON_INSTANCE *PTR32 instance, KEY_HANDLE *PTR32 key_handle, int *PTR32 index, char *PTR32 *PTR32 value, int *PTR32 value_length, KEY_HANDLE *PTR32 value_handle, int *PTR32 actual_length)
+static int zjsm_get_object_entry(JSON_INSTANCE *PTR32 instance, KEY_HANDLE *PTR32 key_handle, int *PTR32 index, char *PTR32 *PTR32 value, int *PTR32 value_length, KEY_HANDLE *PTR32 value_handle, int *PTR32 actual_length)
 {
   HWTJGOEN hwtjgoen = NULL;
   GET_EP(HWT_Serv_JGOEN, hwtjgoen);

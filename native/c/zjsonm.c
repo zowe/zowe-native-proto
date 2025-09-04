@@ -24,7 +24,7 @@ int ZJSMINIT(JSON_INSTANCE *PTR64 instance)
   JSON_INSTANCE instance31 = {0};
   memcpy(&instance31, instance, sizeof(JSON_INSTANCE));
 
-  rc = ZJSMINIT31(&instance31);
+  rc = zjsm_init(&instance31);
 
   memcpy(instance, &instance31, sizeof(JSON_INSTANCE));
 
@@ -41,7 +41,7 @@ int ZJSMGENC(JSON_INSTANCE *PTR64 instance, int *PTR64 encoding)
   JSON_INSTANCE instance31 = {0};
   memcpy(&instance31, instance, sizeof(JSON_INSTANCE));
 
-  rc = ZJSMGENC31(&instance31, &encoding31);
+  rc = zjsm_get_encoding(&instance31, &encoding31);
 
   *encoding = encoding31;
 
@@ -64,7 +64,7 @@ int ZJSMSENC(JSON_INSTANCE *PTR64 instance, int *PTR64 encoding)
 
   encoding31 = *encoding;
 
-  rc = ZJSMSENC31(&instance31, &encoding31);
+  rc = zjsm_set_encoding(&instance31, &encoding31);
 
   memcpy(instance, &instance31, sizeof(JSON_INSTANCE));
 
@@ -86,7 +86,7 @@ int ZJSMDEL(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, KEY_HAN
   KEY_HANDLE value_handle31 = {0};
   memcpy(&value_handle31, value_handle, sizeof(KEY_HANDLE));
 
-  rc = ZJSMDEL31(&instance31, &key_handle31, &value_handle31);
+  rc = zjsm_delete(&instance31, &key_handle31, &value_handle31);
 
   memcpy(instance, &instance31, sizeof(JSON_INSTANCE));
 
@@ -108,7 +108,7 @@ int ZJSMPARS(JSON_INSTANCE *PTR64 instance, const char *PTR64 json)
   memcpy(instance->json, json, instance->json_length - 1);
   instance->json[instance->json_length - 1] = '\0';
 
-  rc = ZJSMPARS31(&instance31, (const char *PTR32)instance->json);
+  rc = zjsm_parse(&instance31, (const char *PTR32)instance->json);
 
   memcpy(instance, &instance31, sizeof(JSON_INSTANCE));
 
@@ -132,7 +132,7 @@ int ZJSMSRCH(JSON_INSTANCE *PTR64 instance, const char *PTR64 key, KEY_HANDLE *P
   memcpy(key31, key, strlen(key));
   key31[length - 1] = '\0';
 
-  rc = ZJSMSRCH31(&instance31, key31, &key_handle31);
+  rc = zjsm_shallow_search(&instance31, key31, &key_handle31);
 
   memcpy(key_handle, &key_handle31, sizeof(KEY_HANDLE));
 
@@ -154,7 +154,7 @@ int ZJSMSERI(JSON_INSTANCE *PTR64 instance, char *PTR64 buffer, int *PTR64 buffe
   char *PTR32 buffer31 = storage_obtain31(buffer_length31);
   int buffer_length_actual31 = 0;
 
-  rc = ZJSMSERI31(&instance31, buffer31, &buffer_length31, &buffer_length_actual31);
+  rc = zjsm_serialize(&instance31, buffer31, &buffer_length31, &buffer_length_actual31);
 
   *buffer_length_actual = buffer_length_actual31;
   memcpy(buffer, buffer31, buffer_length31);
@@ -178,7 +178,7 @@ int ZJSNGJST(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *P
   JSON_INSTANCE instance31 = {0};
   memcpy(&instance31, instance, sizeof(JSON_INSTANCE));
 
-  rc = ZJSNGJST31(&instance31, &key_handle31, &type31);
+  rc = zjsm_get_type(&instance31, &key_handle31, &type31);
 
   *type = type31;
 
@@ -201,7 +201,7 @@ int ZJSMGVAL(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, char *
   JSON_INSTANCE instance31 = {0};
   memcpy(&instance31, instance, sizeof(JSON_INSTANCE));
 
-  rc = ZJSMGVAL31(&instance31, &key_handle31, &value31, &value_length31);
+  rc = zjsm_get_string_value(&instance31, &key_handle31, &value31, &value_length31);
 
   *value = value31;
   *value_length = value_length31;
@@ -225,7 +225,7 @@ int ZJSMGNUE(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *P
   JSON_INSTANCE instance31 = {0};
   memcpy(&instance31, instance, sizeof(JSON_INSTANCE));
 
-  rc = ZJSMGNUE31(&instance31, &key_handle31, &number_entries31);
+  rc = zjsm_get_number_of_entries(&instance31, &key_handle31, &number_entries31);
 
   *number_entries = number_entries31;
 
@@ -248,7 +248,7 @@ int ZJSMGBOV(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, char *
   JSON_INSTANCE instance31 = {0};
   memcpy(&instance31, instance, sizeof(JSON_INSTANCE));
 
-  rc = ZJSMGBOV31(&instance31, &key_handle31, &value31);
+  rc = zjsm_get_boolean_value(&instance31, &key_handle31, &value31);
   *value = value31;
 
   memcpy(instance, &instance31, sizeof(JSON_INSTANCE));
@@ -272,7 +272,7 @@ int ZJSMGAEN(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *P
   JSON_INSTANCE instance31 = {0};
   memcpy(&instance31, instance, sizeof(JSON_INSTANCE));
 
-  rc = ZJSMGAEN31(&instance31, &key_handle31, &index31, &value31);
+  rc = zjsm_get_array_entry(&instance31, &key_handle31, &index31, &value31);
 
   memcpy(value, &value31, sizeof(KEY_HANDLE));
 
@@ -301,7 +301,7 @@ int ZJSMGOEN(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *P
   JSON_INSTANCE instance31 = {0};
   memcpy(&instance31, instance, sizeof(JSON_INSTANCE));
 
-  rc = ZJSMGOEN31(&instance31, &key_handle31, &index31, &key_buffer31, &key_buffer_length31, &value_handle31, &actual_length31);
+  rc = zjsm_get_object_entry(&instance31, &key_handle31, &index31, &key_buffer31, &key_buffer_length31, &value_handle31, &actual_length31);
 
   memcpy(*key_buffer, key_buffer31, key_buffer_length31);
   *actual_length = actual_length31;
@@ -323,7 +323,7 @@ int ZJSMTERM(JSON_INSTANCE *PTR64 instance)
   JSON_INSTANCE instance31 = {0};
   memcpy(&instance31, instance, sizeof(JSON_INSTANCE));
 
-  rc = ZJSMTERM31(&instance31);
+  rc = zjsm_term(&instance31);
 
   memcpy(instance, &instance31, sizeof(JSON_INSTANCE));
 

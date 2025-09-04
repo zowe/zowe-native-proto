@@ -25,14 +25,33 @@ int main()
 
   try
   {
-    json.parse("{\"name");
+    json.parse("{\"name\": \"John\", \"isMarried\": true, \"hasKids\": false, \"age\": 30, \"pets\": [\"dog\", \"cat\", \"fish\"], \"address\": {\"street\": \"123 Main St\", \"city\": \"Anytown\", \"state\": \"CA\", \"zip\": \"12345\"}}");
+
+    std::string serialized_json = json.to_string();
+
+    std::cout << "Serialized JSON:\n"
+              << serialized_json << std::endl;
+
+    std::cout << "Name: " << json["name"] << std::endl;
+    std::cout << "Is Married: " << json["isMarried"] << std::endl;
+    std::cout << "Has Kids: " << json["hasKids"] << std::endl;
+    std::cout << "Age: " << json["age"] << std::endl;
+    std::cout << "Pets: " << json["pets"][1] << std::endl;
+    // std::cout << "Address Street: " << json["address"]["street"] << std::endl;
+    // std::cout << "Address City: " << json["address"]["city"] << std::endl;
+
+    // std::cout << "Name: " << static_cast<std::string>(json["name"]) << std::endl;
+    //   std::cout << "Is Married: " << static_cast<bool>(json["isMarried"]) << std::endl;
+    //   std::cout << "Has Kids: " << static_cast<bool>(json["hasKids"]) << std::endl;
+    //   std::cout << "Age: " << static_cast<int>(json["age"]) << std::endl;
+    //   std::cout << "Pets: " << static_cast<std::string>(json["pets"]) << std::endl;
+    //   std::cout << "Address: " << static_cast<std::string>(json["address"]) << std::endl;
   }
   catch (const std::runtime_error &e)
   {
     std::cout << "Error: " << e.what() << std::endl;
   }
-  // json.parse("{\"name\": \"John\", \"isMarried\": true, \"hasKids\": false, \"age\": 30, \"pets\": [\"dog\", \"cat\", \"fish\"], \"address\": {\"street\": \"123 Main St\", \"city\": \"Anytown\", \"state\": \"CA\", \"zip\": \"12345\"}}");
-  // run_low_level_json();
+
   return 0;
 }
 

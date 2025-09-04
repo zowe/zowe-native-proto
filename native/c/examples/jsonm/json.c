@@ -41,7 +41,7 @@ int main()
    */
 
   // initialize JSON services
-  rc = ZJSMINIT31(&instance);
+  rc = zjsm_init(&instance);
   if (0 != rc)
   {
     zwto_debug("@TEST ZJSMINIT error: %d - exiting...", rc);
@@ -49,7 +49,7 @@ int main()
   }
 
   int encoding = 2; // HWTJ_ENCODING_EBCDIC
-  rc = ZJSMSENC31(&instance, &encoding);
+  rc = zjsm_set_encoding(&instance, &encoding);
   if (0 != rc)
   {
     zwto_debug("@TEST ZJSMSENC error: %d - exiting...", rc);
@@ -58,7 +58,7 @@ int main()
 
   zwto_debug("@TEST encoding: %d", encoding);
 
-  rc = ZJSMPARS31(&instance, json);
+  rc = zjsm_parse(&instance, json);
   if (0 != rc)
   {
     zwto_debug("@TEST ZJSMPARS error: %d - exiting...", rc);
@@ -69,7 +69,7 @@ int main()
   char serialized_json[1024] = {0};
   int serialized_json_length = (int)sizeof(serialized_json);
   int serialized_json_length_actual = 0;
-  rc = ZJSMSERI31(&instance, serialized_json, &serialized_json_length, &serialized_json_length_actual);
+  rc = zjsm_serialize(&instance, serialized_json, &serialized_json_length, &serialized_json_length_actual);
   if (0 != rc)
   {
     zwto_debug("@TEST ZJSMSERI error: %d - exiting...", rc);
@@ -89,7 +89,7 @@ int main()
 
   zwto_debug("@TEST serialized JSON:");
 
-  rc = ZJSMGENC31(&instance, &encoding);
+  rc = zjsm_get_encoding(&instance, &encoding);
   if (0 != rc)
   {
     zwto_debug("@TEST ZJSMGENC error: %d - exiting...", rc);
@@ -104,7 +104,7 @@ int main()
   // search for string key
   char *PTR32 string_key = "name";
 
-  rc = ZJSMSRCH31(&instance, string_key, &key_handle);
+  rc = zjsm_shallow_search(&instance, string_key, &key_handle);
   if (0 != rc)
   {
     zwto_debug("@TEST ZJSMSRCH error: %d - exiting...", rc);
@@ -120,7 +120,7 @@ int main()
   // HWTJ_BOOLEAN_TYPE
   // HWTJ_NULL_TYPE
   int type = 0;
-  rc = ZJSNGJST31(&instance, &key_handle, &type);
+  rc = zjsm_get_type(&instance, &key_handle, &type);
   if (0 != rc)
   {
     zwto_debug("@TEST ZJSNGJST error: %d - exiting...", rc);
@@ -131,20 +131,20 @@ int main()
   // get value from previous search
   char *PTR32 string_value = NULL;
   int string_value_length = 0;
-  rc = ZJSMGVAL31(&instance, &key_handle, &string_value, &string_value_length);
+  rc = zjsm_get_string_value(&instance, &key_handle, &string_value, &string_value_length);
 
   zwto_debug("@TEST result: %.*s", string_value_length, string_value);
 
   char *PTR32 ssn_key = "ssn";
   memset(&key_handle, 0, sizeof(KEY_HANDLE));
-  rc = ZJSMSRCH31(&instance, ssn_key, &key_handle);
+  rc = zjsm_shallow_search(&instance, ssn_key, &key_handle);
   if (0 != rc)
   {
     zwto_debug("@TEST ZJSMSRCH error: %d - exiting...", rc);
     return -1;
   }
   KEY_HANDLE value_handle = {0};
-  rc = ZJSMDEL31(&instance, &value_handle, &key_handle);
+  rc = zjsm_delete(&instance, &value_handle, &key_handle);
   if (0 != rc)
   {
     zwto_debug("@TEST ZJSMDEL error: %d - exiting...", rc);
@@ -156,14 +156,14 @@ int main()
 
   // search for array key
   char *PTR32 array_key = "pets";
-  rc = ZJSMSRCH31(&instance, array_key, &key_handle);
+  rc = zjsm_shallow_search(&instance, array_key, &key_handle);
   if (0 != rc)
   {
     zwto_debug("@TEST ZJSMSRCH error: %d - exiting...", rc);
     return -1;
   }
 
-  rc = ZJSNGJST31(&instance, &key_handle, &type);
+  rc = zjsm_get_type(&instance, &key_handle, &type);
   if (0 != rc)
   {
     zwto_debug("@TEST ZJSNGJST error: %d - exiting...", rc);
@@ -173,7 +173,7 @@ int main()
 
   // get number of entries
   int number_entries = 0;
-  rc = ZJSMGNUE31(&instance, &key_handle, &number_entries);
+  rc = zjsm_get_number_of_entries(&instance, &key_handle, &number_entries);
   if (0 != rc)
   {
     zwto_debug("@TEST ZJSMGNUE error: %d - exiting...", rc);
@@ -183,7 +183,7 @@ int main()
 
   int index = 1;
   KEY_HANDLE value = {0};
-  rc = ZJSMGAEN31(&instance, &key_handle, &index, &value);
+  rc = zjsm_get_array_entry(&instance, &key_handle, &index, &value);
   if (0 != rc)
   {
     zwto_debug("@TEST ZJSMGAEN error: %d - exiting...", rc);
@@ -191,7 +191,7 @@ int main()
   }
   zwto_debug("@TEST array index of pets: %d", index);
 
-  rc = ZJSMGVAL31(&instance, &value, &string_value, &string_value_length);
+  rc = zjsm_get_string_value(&instance, &value, &string_value, &string_value_length);
   if (0 != rc)
   {
     zwto_debug("@TEST ZJSMGVAL error: %d - exiting...", rc);
@@ -201,7 +201,7 @@ int main()
 
   // search for object key
   char *PTR32 object_key = "address";
-  rc = ZJSMSRCH31(&instance, object_key, &key_handle);
+  rc = zjsm_shallow_search(&instance, object_key, &key_handle);
   if (0 != rc)
   {
     zwto_debug("@TEST ZJSMSRCH error: %d - exiting...", rc);
@@ -209,7 +209,7 @@ int main()
   }
 
   // get number of entries
-  rc = ZJSMGNUE31(&instance, &key_handle, &number_entries);
+  rc = zjsm_get_number_of_entries(&instance, &key_handle, &number_entries);
   if (0 != rc)
   {
     zwto_debug("@TEST ZJSMGNUE error: %d - exiting...", rc);
@@ -222,7 +222,7 @@ int main()
   int actual_length = 0;
   char *PTR32 buffer_ptr = buffer;
   index = 3;
-  rc = ZJSMGOEN31(&instance, &key_handle, &index, &buffer_ptr, &buffer_length, &value, &actual_length);
+  rc = zjsm_get_object_entry(&instance, &key_handle, &index, &buffer_ptr, &buffer_length, &value, &actual_length);
   if (0 != rc)
   {
     zwto_debug("@TEST ZJSMGOEN error: %d - exiting...", rc);
@@ -230,7 +230,7 @@ int main()
   }
   zwto_debug("@TEST object value of address: %s and actual_length: %d", buffer, actual_length);
 
-  rc = ZJSMGVAL31(&instance, &value, &string_value, &string_value_length);
+  rc = zjsm_get_string_value(&instance, &value, &string_value, &string_value_length);
   if (0 != rc)
   {
     zwto_debug("@TEST ZJSMGVAL error: %d - exiting...", rc);
@@ -240,14 +240,14 @@ int main()
 
   // search for boolean key
   char *PTR32 boolean_key = "isMarried";
-  rc = ZJSMSRCH31(&instance, boolean_key, &key_handle);
+  rc = zjsm_shallow_search(&instance, boolean_key, &key_handle);
   if (0 != rc)
   {
     zwto_debug("@TEST ZJSMSRCH error: %d - exiting...", rc);
     return -1;
   }
 
-  rc = ZJSNGJST31(&instance, &key_handle, &type);
+  rc = zjsm_get_type(&instance, &key_handle, &type);
   if (0 != rc)
   {
     zwto_debug("@TEST ZJSNGJST error: %d - exiting...", rc);
@@ -257,7 +257,7 @@ int main()
 
   // get boolean value
   char boolean_value = 0x00;
-  rc = ZJSMGBOV31(&instance, &key_handle, &boolean_value);
+  rc = zjsm_get_boolean_value(&instance, &key_handle, &boolean_value);
   if (0 != rc)
   {
     zwto_debug("@TEST ZJSMGBOV error: %d - exiting...", rc);
@@ -267,14 +267,14 @@ int main()
 
   // search for boolean key
   char *PTR32 boolean_key2 = "hasKids";
-  rc = ZJSMSRCH31(&instance, boolean_key2, &key_handle);
+  rc = zjsm_shallow_search(&instance, boolean_key2, &key_handle);
   if (0 != rc)
   {
     zwto_debug("@TEST ZJSMSRCH error: %d - exiting...", rc);
     return -1;
   }
 
-  rc = ZJSNGJST31(&instance, &key_handle, &type);
+  rc = zjsm_get_type(&instance, &key_handle, &type);
   if (0 != rc)
   {
     zwto_debug("@TEST ZJSNGJST error: %d - exiting...", rc);
@@ -284,7 +284,7 @@ int main()
 
   // get boolean value
   char boolean_value2 = 0x00;
-  rc = ZJSMGBOV31(&instance, &key_handle, &boolean_value2);
+  rc = zjsm_get_boolean_value(&instance, &key_handle, &boolean_value2);
   if (0 != rc)
   {
     zwto_debug("@TEST ZJSMGBOV error: %d - exiting...", rc);
@@ -294,7 +294,7 @@ int main()
 
   // search for number key
   char *PTR32 number_key = "age";
-  rc = ZJSMSRCH31(&instance, number_key, &key_handle);
+  rc = zjsm_shallow_search(&instance, number_key, &key_handle);
   if (0 != rc)
   {
     zwto_debug("@TEST ZJSMSRCH error: %d - exiting...", rc);
@@ -304,7 +304,7 @@ int main()
   // get value from previous search
   char *PTR32 number_value = NULL;
   int number_value_length = 0;
-  rc = ZJSMGVAL31(&instance, &key_handle, &number_value, &number_value_length);
+  rc = zjsm_get_string_value(&instance, &key_handle, &number_value, &number_value_length);
   if (0 != rc)
   {
     zwto_debug("@TEST ZJSMGVAL error: %d - exiting...", rc);
@@ -316,7 +316,7 @@ int main()
   // char serialized_json[1024] = {0};
   serialized_json_length = (int)sizeof(serialized_json);
   serialized_json_length_actual = 0;
-  rc = ZJSMSERI31(&instance, serialized_json, &serialized_json_length, &serialized_json_length_actual);
+  rc = zjsm_serialize(&instance, serialized_json, &serialized_json_length, &serialized_json_length_actual);
   if (0 != rc)
   {
     zwto_debug("@TEST ZJSMSERI error: %d - exiting...", rc);
@@ -335,7 +335,7 @@ int main()
   }
 
   // terminate JSON services
-  rc = ZJSMTERM31(&instance);
+  rc = zjsm_term(&instance);
   if (0 != rc)
   {
     zwto_debug("@TEST ZJSMTERM error: %d - exiting...", rc);
