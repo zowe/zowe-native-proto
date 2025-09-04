@@ -122,7 +122,13 @@ MTL_FLAGS64+=$(LOG_FLAGS)
 all: libzut.so libzut.a libzds.so libzds.a libzusf.so libzusf.a libzcn.so libzcn.a libzjb.so libzjb.a zowex zoweax
 xlclang-extenders: $(OUT_DIR_CXXLANG)/zut.o $(OUT_DIR_CXXLANG)/zds.o $(OUT_DIR_CXXLANG)/zjb.o $(OUT_DIR_CXXLANG)/zcn.o $(OUT_DIR_CXXLANG)/zusf.o $(OUT_DIR_CXXLANG)/ztso.o
 # SWIG extenders: compile C++ files with SWIG macro defined for Python bindings
-swig-extenders: $(OUT_DIR_SWIG)/zut.o $(OUT_DIR_SWIG)/zds.o $(OUT_DIR_SWIG)/zjb.o $(OUT_DIR_SWIG)/zcn.o $(OUT_DIR_SWIG)/zusf.o $(OUT_DIR_SWIG)/ztso.o
+swig-extenders: swig-zusf swig-zds swig-zjb swig-zcn swig-ztso
+swig-zusf: $(OUT_DIR_SWIG)/zut.o $(OUT_DIR_SWIG)/zusf.o
+swig-zds: $(OUT_DIR_SWIG)/zut.o $(OUT_DIR_SWIG)/zds.o
+swig-zjb: $(OUT_DIR_SWIG)/zut.o $(OUT_DIR_SWIG)/zds.o $(OUT_DIR_SWIG)/zjb.o
+swig-zcn: $(OUT_DIR_SWIG)/zut.o $(OUT_DIR_SWIG)/zcn.o
+swig-ztso: $(OUT_DIR_SWIG)/zut.o $(OUT_DIR_SWIG)/ztso.o
+
 tests:
 	 $(MAKE) -c test
 
