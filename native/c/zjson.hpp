@@ -45,9 +45,7 @@ public:
       int rc = ZJSMSRCH(&parent.instance, &type, key.c_str(), &object_handle, &starting_handle, &key_handle);
       if (0 != rc)
       {
-        std::stringstream ss;
-        ss << std::hex << rc;
-        throw std::runtime_error("Error searching for key '" + key + "' rc was x'" + ss.str() + "'");
+        throw format_error("Error searching for key '" + key + "'", rc);
       }
     }
 
@@ -66,9 +64,7 @@ public:
       int rc = ZJSMSRCH(&parent.instance, &type, search_key.c_str(), &parent_kh, &starting_handle, &key_handle);
       if (0 != rc)
       {
-        std::stringstream ss;
-        ss << std::hex << rc;
-        throw std::runtime_error("Error searching for nested key '" + search_key + "' in '" + key + "' rc was x'" + ss.str() + "'");
+        throw format_error("Error searching for nested key '" + search_key + "' in '" + key + "'", rc);
       }
     }
 
@@ -76,16 +72,13 @@ public:
     explicit operator std::string() const
     {
       int rc = 0;
-
       char *value_ptr = nullptr;
       int value_length = 0;
 
-      rc = ZJSMGVAL(&parent.instance, (KEY_HANDLE *)&key_handle, &value_ptr, &value_length);
+      rc = ZJSMGVAL(&parent.instance, get_mutable_key_handle(), &value_ptr, &value_length);
       if (0 != rc)
       {
-        std::stringstream ss;
-        ss << std::hex << rc;
-        throw std::runtime_error("Error getting string value for key '" + key + "' rc was x'" + ss.str() + "'");
+        throw format_error("Error getting string value for key '" + key + "'", rc);
       }
       return std::string(value_ptr, value_length);
     }
@@ -93,23 +86,26 @@ public:
     explicit operator int() const
     {
       int rc = 0;
+      char *value_ptr = nullptr;
+      int value_length = 0;
 
-      std::string s_val = static_cast<std::string>(*this);
-      return std::stoi(s_val);
+      rc = ZJSMGVAL(&parent.instance, get_mutable_key_handle(), &value_ptr, &value_length);
+      if (0 != rc)
+      {
+        throw format_error("Error getting integer value for key '" + key + "'", rc);
+      }
+      return std::strtol(value_ptr, nullptr, 10);
     }
 
     explicit operator bool() const
     {
       int rc = 0;
-
       char b_val = 0;
 
-      rc = ZJSMGBOV(&parent.instance, (KEY_HANDLE *)&key_handle, &b_val);
+      rc = ZJSMGBOV(&parent.instance, get_mutable_key_handle(), &b_val);
       if (0 != rc)
       {
-        std::stringstream ss;
-        ss << std::hex << rc;
-        throw std::runtime_error("Error getting boolean value for key '" + key + "' rc was x'" + ss.str() + "'");
+        throw format_error("Error getting boolean value for key '" + key + "'", rc);
       }
       return (b_val == 1);
     }
@@ -118,12 +114,10 @@ public:
     {
       int rc = 0;
       int type = 0;
-      rc = ZJSNGJST(&parent.instance, (KEY_HANDLE *)&key_handle, &type);
+      rc = ZJSNGJST(&parent.instance, get_mutable_key_handle(), &type);
       if (0 != rc)
       {
-        std::stringstream ss;
-        ss << std::hex << rc;
-        throw std::runtime_error("Error getting type for key '" + key + "' rc was x'" + ss.str() + "'");
+        throw format_error("Error getting type for key '" + key + "'", rc);
       }
       return type;
     }
@@ -145,12 +139,10 @@ public:
       KEY_HANDLE element_handle = {0};
       int mutable_index = index;
 
-      rc = ZJSMGAEN(&parent.instance, (KEY_HANDLE *)&this->key_handle, &mutable_index, &element_handle);
+      rc = ZJSMGAEN(&parent.instance, get_mutable_key_handle(), &mutable_index, &element_handle);
       if (0 != rc)
       {
-        std::stringstream ss;
-        ss << std::hex << rc;
-        throw std::runtime_error("Error getting array element at index " + std::to_string(index) + " for key '" + key + "'. rc was x'" + ss.str() + "'");
+        throw format_error("Error getting array element at index " + std::to_string(index) + " for key '" + key + "'.", rc);
       }
 
       std::string new_key = key + "[" + std::to_string(index) + "]";
@@ -175,6 +167,19 @@ public:
       {
         throw std::runtime_error("Cannot apply string operator[] to type " + std::to_string(type) + " for key '" + key + "'");
       }
+    }
+
+  private:
+    std::runtime_error format_error(const std::string &msg, int rc) const
+    {
+      std::stringstream ss;
+      ss << std::hex << rc;
+      return std::runtime_error(msg + " rc was x'" + ss.str() + "'");
+    }
+
+    KEY_HANDLE *get_mutable_key_handle() const
+    {
+      return const_cast<KEY_HANDLE *>(&key_handle);
     }
   };
 
@@ -232,7 +237,7 @@ public:
     }
   }
 
-  std::string to_string()
+  std::string stringify()
   {
     int rc = 0;
 
@@ -266,6 +271,60 @@ public:
     }
 
     return std::string(dynamic_buffer, dynamic_buffer_length);
+  }
+
+  std::string stringify(int space)
+  {
+    std::string minified_json = this->stringify();
+    std::string indented_json;
+    int indent_level = 0;
+    bool in_string = false;
+
+    for (char ch : minified_json)
+    {
+      if (ch == '\"')
+      {
+        indented_json += ch;
+        in_string = !in_string;
+      }
+      else if (!in_string)
+      {
+        switch (ch)
+        {
+        case '{':
+        case '[':
+          indented_json += ch;
+          indented_json += '\n';
+          indent_level++;
+          indented_json.append(indent_level * space, ' ');
+          break;
+        case '}':
+        case ']':
+          indented_json += '\n';
+          indent_level--;
+          indented_json.append(indent_level * space, ' ');
+          indented_json += ch;
+          break;
+        case ',':
+          indented_json += ch;
+          indented_json += '\n';
+          indented_json.append(indent_level * space, ' ');
+          break;
+        case ':':
+          indented_json += ch;
+          indented_json += ' ';
+          break;
+        default:
+          indented_json += ch;
+          break;
+        }
+      }
+      else
+      {
+        indented_json += ch;
+      }
+    }
+    return indented_json;
   }
 
   JsonValueProxy operator[](const std::string &key)

@@ -40,6 +40,7 @@ int main()
                "    \"company\": \"MegaCorp\",\n"
                "    \"office\": {\n"
                "      \"building\": \"Tower 1\",\n"
+               "      \"rooms\": [{ \"number\": 101, \"type\": \"bedroom\" }, { \"number\": 102, \"type\": \"bathroom\" }],\n"
                "      \"location\": {\n"
                "        \"floor\": 42,\n"
                "        \"desk\": \"A1\"\n"
@@ -48,11 +49,6 @@ int main()
                "  }\n"
                "}");
 
-    std::string serialized_json = json.to_string();
-
-    std::cout << "Serialized JSON:\n"
-              << serialized_json << std::endl;
-
     std::cout << "Name: " << json["name"] << std::endl;
     std::cout << "Is Married: " << json["isMarried"] << std::endl;
     std::cout << "Has Kids: " << json["hasKids"] << std::endl;
@@ -60,6 +56,11 @@ int main()
     std::cout << "Pets: " << json["pets"][1] << std::endl;
     std::cout << "Address Street: " << json["address"]["street"] << std::endl;
     std::cout << "Work Desk: " << json["work"]["office"]["location"]["desk"] << std::endl;
+    std::cout << "Work Rooms: " << json["work"]["office"]["rooms"][0]["number"] << std::endl;
+
+    std::string serialized_json = json.stringify(2);
+    std::cout << "Serialized JSON:\n"
+              << serialized_json << std::endl;
   }
   catch (const std::runtime_error &e)
   {
@@ -74,29 +75,29 @@ int run_low_level_json()
   JSON_INSTANCE instance = {0};
   int rc = 0;
 
-  char *json = "{\n"
-               "  \"name\": \"John\",\n"
-               "  \"isMarried\": true,\n"
-               "  \"hasKids\": false,\n"
-               "  \"age\": 30,\n"
-               "  \"pets\": [\"dog\", \"cat\", \"fish\"],\n"
-               "  \"address\": {\n"
-               "    \"street\": \"123 Main St\",\n"
-               "    \"city\": \"Anytown\",\n"
-               "    \"state\": \"CA\",\n"
-               "    \"zip\": \"12345\"\n"
-               "  },\n"
-               "  \"work\": {\n"
-               "    \"company\": \"MegaCorp\",\n"
-               "    \"office\": {\n"
-               "      \"building\": \"Tower 1\",\n"
-               "      \"location\": {\n"
-               "        \"floor\": 42,\n"
-               "        \"desk\": \"A1\"\n"
-               "      }\n"
-               "    }\n"
-               "  }\n"
-               "}";
+  char json[] = "{\n"
+                "  \"name\": \"John\",\n"
+                "  \"isMarried\": true,\n"
+                "  \"hasKids\": false,\n"
+                "  \"age\": 30,\n"
+                "  \"pets\": [\"dog\", \"cat\", \"fish\"],\n"
+                "  \"address\": {\n"
+                "    \"street\": \"123 Main St\",\n"
+                "    \"city\": \"Anytown\",\n"
+                "    \"state\": \"CA\",\n"
+                "    \"zip\": \"12345\"\n"
+                "  },\n"
+                "  \"work\": {\n"
+                "    \"company\": \"MegaCorp\",\n"
+                "    \"office\": {\n"
+                "      \"building\": \"Tower 1\",\n"
+                "      \"location\": {\n"
+                "        \"floor\": 42,\n"
+                "        \"desk\": \"A1\"\n"
+                "      }\n"
+                "    }\n"
+                "  }\n"
+                "}";
 
   rc = ZJSMINIT(&instance);
   if (0 != rc)
