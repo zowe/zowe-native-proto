@@ -23,7 +23,7 @@ export class SshCommonApi implements MainframeInteraction.ICommon {
     }
 
     public getSession(profile?: imperative.IProfileLoaded): imperative.Session {
-        return this.getSshSession(profile) as unknown as imperative.Session;
+        return new imperative.Session(this.getSshSession(profile).ISshSession);
     }
 
     public async getStatus(profile: imperative.IProfileLoaded, profileType?: string): Promise<string> {
