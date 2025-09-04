@@ -15,7 +15,7 @@ import { type CommandResponse, ZSshClient, ZSshUtils } from "zowe-native-proto-s
 
 export abstract class SshBaseHandler implements ICommandHandler {
     // Static cache to store passwords for the duration of the session
-    private static passwordCache = new Map<string, string>();
+    private static readonly passwordCache = new Map<string, string>();
 
     public async process(commandParameters: IHandlerParameters) {
         const session = ZSshUtils.buildSession(commandParameters.arguments);
