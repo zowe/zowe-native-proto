@@ -181,6 +181,7 @@ public:
   ZJson()
   {
     int rc = 0;
+    memset(&instance, 0, sizeof(JSON_INSTANCE));
     rc = ZJSMINIT(&instance);
     if (0 != rc)
     {
@@ -206,8 +207,21 @@ public:
     int rc = 0;
     if (instance.json != nullptr)
     {
-      ZJSMTERM(&instance);
-      ZJSMINIT(&instance);
+      rc = ZJSMTERM(&instance);
+      if (0 != rc)
+      {
+        std::stringstream ss;
+        ss << std::hex << rc;
+        throw std::runtime_error("Error terminating JSON rc was x'" + ss.str() + "'");
+      }
+      memset(&instance, 0, sizeof(JSON_INSTANCE));
+      rc = ZJSMINIT(&instance);
+      if (0 != rc)
+      {
+        std::stringstream ss;
+        ss << std::hex << rc;
+        throw std::runtime_error("Error initializing JSON rc was x'" + ss.str() + "'");
+      }
     }
     rc = ZJSMPARS(&instance, json.c_str());
     if (0 != rc)

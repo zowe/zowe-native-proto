@@ -21,11 +21,32 @@ int run_low_level_json();
 // `xlc++` can also be used
 int main()
 {
-  ZJson json;
-
   try
   {
-    json.parse("{\"name\": \"John\", \"isMarried\": true, \"hasKids\": false, \"age\": 30, \"pets\": [\"dog\", \"cat\", \"fish\"], \"address\": {\"street\": \"123 Main St\", \"city\": \"Anytown\", \"state\": \"CA\", \"zip\": \"12345\"}}");
+    ZJson json;
+    json.parse("{\n"
+               "  \"name\": \"John\",\n"
+               "  \"isMarried\": true,\n"
+               "  \"hasKids\": false,\n"
+               "  \"age\": 30,\n"
+               "  \"pets\": [\"dog\", \"cat\", \"fish\"],\n"
+               "  \"address\": {\n"
+               "    \"street\": \"123 Main St\",\n"
+               "    \"city\": \"Anytown\",\n"
+               "    \"state\": \"CA\",\n"
+               "    \"zip\": \"12345\"\n"
+               "  },\n"
+               "  \"work\": {\n"
+               "    \"company\": \"MegaCorp\",\n"
+               "    \"office\": {\n"
+               "      \"building\": \"Tower 1\",\n"
+               "      \"location\": {\n"
+               "        \"floor\": 42,\n"
+               "        \"desk\": \"A1\"\n"
+               "      }\n"
+               "    }\n"
+               "  }\n"
+               "}");
 
     std::string serialized_json = json.to_string();
 
@@ -38,14 +59,7 @@ int main()
     std::cout << "Age: " << json["age"] << std::endl;
     std::cout << "Pets: " << json["pets"][1] << std::endl;
     std::cout << "Address Street: " << json["address"]["street"] << std::endl;
-    // std::cout << "Address City: " << json["address"]["city"] << std::endl;
-
-    // std::cout << "Name: " << static_cast<std::string>(json["name"]) << std::endl;
-    //   std::cout << "Is Married: " << static_cast<bool>(json["isMarried"]) << std::endl;
-    //   std::cout << "Has Kids: " << static_cast<bool>(json["hasKids"]) << std::endl;
-    //   std::cout << "Age: " << static_cast<int>(json["age"]) << std::endl;
-    //   std::cout << "Pets: " << static_cast<std::string>(json["pets"]) << std::endl;
-    //   std::cout << "Address: " << static_cast<std::string>(json["address"]) << std::endl;
+    std::cout << "Work Desk: " << json["work"]["office"]["location"]["desk"] << std::endl;
   }
   catch (const std::runtime_error &e)
   {
@@ -60,7 +74,29 @@ int run_low_level_json()
   JSON_INSTANCE instance = {0};
   int rc = 0;
 
-  char json[] = "{\"name\": \"John\", \"isMarried\": true, \"hasKids\": false, \"age\": 30, \"pets\": [\"dog\", \"cat\", \"fish\"], \"address\": {\"street\": \"123 Main St\", \"city\": \"Anytown\", \"state\": \"CA\", \"zip\": \"12345\"}}";
+  char *json = "{\n"
+               "  \"name\": \"John\",\n"
+               "  \"isMarried\": true,\n"
+               "  \"hasKids\": false,\n"
+               "  \"age\": 30,\n"
+               "  \"pets\": [\"dog\", \"cat\", \"fish\"],\n"
+               "  \"address\": {\n"
+               "    \"street\": \"123 Main St\",\n"
+               "    \"city\": \"Anytown\",\n"
+               "    \"state\": \"CA\",\n"
+               "    \"zip\": \"12345\"\n"
+               "  },\n"
+               "  \"work\": {\n"
+               "    \"company\": \"MegaCorp\",\n"
+               "    \"office\": {\n"
+               "      \"building\": \"Tower 1\",\n"
+               "      \"location\": {\n"
+               "        \"floor\": 42,\n"
+               "        \"desk\": \"A1\"\n"
+               "      }\n"
+               "    }\n"
+               "  }\n"
+               "}";
 
   rc = ZJSMINIT(&instance);
   if (0 != rc)
