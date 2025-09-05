@@ -51,11 +51,11 @@
     "chokidar": "^3",
     "concurrently": "^9.1.2",
     "husky": "^9.1.7",
+    "jest-mock-vscode": "^4.6.0",
     "js-yaml": "^4.1.0",
     "rimraf": "^6.0.1",
     "ssh2": "^1.16.0",
     "tsx": "^4.19.3",
-    "vitest": "^3.2.4",
-    "jest-mock-vscode": "^4.6.0"
+    "vitest": "^3.2.4"
   }
 }
