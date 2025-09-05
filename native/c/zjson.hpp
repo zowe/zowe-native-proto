@@ -111,7 +111,7 @@ public:
       {
         throw format_error("Error getting boolean value for key '" + key + "'", rc);
       }
-      return (b_val == 1);
+      return (b_val == HWTJ_TRUE);
     }
 
     int getType() const
@@ -237,6 +237,7 @@ public:
       return std::runtime_error(msg + " rc was x'" + ss.str() + "'");
     }
 
+    // NOTE(Kelosky): keeping this const for now because the operators appear to require this
     KEY_HANDLE *get_mutable_key_handle() const
     {
       return const_cast<KEY_HANDLE *>(&key_handle);
