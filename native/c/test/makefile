@@ -166,7 +166,6 @@ build-out/zmetal.metal.test.o \
 build-out/zusf.test.o \
 build-out/zusf.o \
 build-out/zshmem.o \
-build-out/zjson.o \
 build-out/zjsonm.o \
 build-out/zlogger.test.o \
 build-out/zlogger_metal.o

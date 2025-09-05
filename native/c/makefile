@@ -174,10 +174,6 @@ $(OUT_DIR)/zjsonm.o: $(OUT_DIR)/zjsonm.s
 	@echo 'Building $(OUT_DIR)/zjsonm.o'
 	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
-$(OUT_DIR)/zjson.o: zjson.hpp
-	@echo 'Building $(OUT_DIR)/zjson.o'
-	$(CXX) $(DLL_CPP_FLAGS) -qlist=$*.cpp.lst -o $@ $^
-
 #
 # Metal C Logger
 #

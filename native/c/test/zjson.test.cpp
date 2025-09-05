@@ -13,7 +13,7 @@
 #include <cstring>
 
 #include "ztest.hpp"
-#include "../zjson.hpp"
+#include "../zjson2.hpp"
 
 using namespace std;
 using namespace ztst;
