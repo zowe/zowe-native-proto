@@ -42,6 +42,9 @@ func HandleReadDatasetRequest(conn *utils.StdioConn, params []byte) (result any,
 	if len(request.LocalEncoding) > 0 {
 		args = append(args, "--local-encoding", request.LocalEncoding)
 	}
+	if len(request.Volume) > 0 {
+		args = append(args, "--volser", request.Volume)
+	}
 
 	var etag string
 	var data []byte
@@ -139,6 +142,9 @@ func HandleWriteDatasetRequest(conn *utils.StdioConn, params []byte) (result any
 	}
 	if len(request.Etag) > 0 {
 		args = append(args, "--etag", request.Etag)
+	}
+	if len(request.Volume) > 0 {
+		args = append(args, "--volser", request.Volume)
 	}
 
 	var out []byte
@@ -423,7 +429,14 @@ func HandleCreateDatasetRequest(conn *utils.StdioConn, jsonData []byte) (result 
 
 	_, err = conn.ExecCmd(args)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create data set: %v", args)
+		errMsg := err.Error()
+		var filteredErrors []string
+		for _, line := range strings.Split(errMsg, "\n") {
+			if !strings.HasPrefix(line, "IGD01007I") && !strings.HasPrefix(line, "IGD01008I") {
+				filteredErrors = append(filteredErrors, line)
+			}
+		}
+		return nil, fmt.Errorf("Failed to create data set '%s': %v", request.Dsname, strings.Join(filteredErrors, "\n"))
 	}
 
 	result = ds.CreateDatasetResponse{

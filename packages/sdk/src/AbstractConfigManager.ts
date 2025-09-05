@@ -27,7 +27,8 @@ import {
     type ProfileInfo,
 } from "@zowe/imperative";
 import { Client, type ClientChannel } from "ssh2";
-import { type inputBoxOpts, MESSAGE_TYPE, type qpItem, type qpOpts } from "./doc";
+import { ConfigFileUtils } from "./ConfigFileUtils";
+import { type inputBoxOpts, MESSAGE_TYPE, type PrivateKeyWarningOptions, type qpItem, type qpOpts } from "./doc";
 import { type ISshConfigExt, ZClientUtils } from "./ZClientUtils";
 
 export type ProgressCallback = (percent: number) => void;
@@ -41,6 +42,7 @@ export abstract class AbstractConfigManager {
     protected abstract showCustomMenu(opts: qpOpts): Promise<qpItem | undefined>;
     protected abstract getCurrentDir(): string | undefined;
     protected abstract getProfileSchemas(): IProfileTypeConfiguration[];
+    protected abstract showPrivateKeyWarning(opts: PrivateKeyWarningOptions): Promise<boolean>;
 
     private migratedConfigs: ISshConfigExt[];
     private filteredMigratedConfigs: ISshConfigExt[];
@@ -113,6 +115,7 @@ export abstract class AbstractConfigManager {
             const foundProfile = this.sshProfiles.find(({ name }) => name === result.label);
             if (foundProfile) {
                 const validConfig = await this.validateConfig({
+                    name: foundProfile.name,
                     hostname: foundProfile?.profile?.host,
                     port: foundProfile?.profile?.port,
                     privateKey: foundProfile?.profile?.privateKey,
@@ -122,8 +125,12 @@ export abstract class AbstractConfigManager {
                 });
                 if (validConfig === undefined) return;
 
-                if (setExistingProfile || Object.keys(validConfig).length > 0)
+                if (setExistingProfile || Object.keys(validConfig).length > 0) {
+                    if (validConfig.password) {
+                        foundProfile.profile.privateKey = foundProfile.profile.keyPassphrase = undefined;
+                    }
                     await this.setProfile(validConfig, foundProfile.name);
+                }
                 return { ...foundProfile, profile: { ...foundProfile.profile, ...validConfig } };
             }
         }
@@ -162,6 +169,7 @@ export abstract class AbstractConfigManager {
 
         // If validateConfig returns a string, that string is the correct keyPassphrase
         if (this.validationResult && Object.keys(this.validationResult).length >= 1) {
+            this.selectedProfile.privateKey = this.selectedProfile.keyPassphrase = undefined;
             this.selectedProfile = { ...this.selectedProfile, ...this.validationResult };
         }
 
@@ -327,13 +335,15 @@ export abstract class AbstractConfigManager {
             await this.attemptConnection({ ...newConfig, ...configModifications });
         } catch (err) {
             const errorMessage = `${err}`;
-
             if (
                 newConfig.privateKey &&
                 !newConfig.password &&
                 errorMessage.includes("All configured authentication methods failed")
             ) {
-                return undefined;
+                if (!(await this.handleInvalidPrivateKey(newConfig))) {
+                    return undefined;
+                }
+                newConfig.privateKey = undefined;
             }
 
             if (errorMessage.includes("Invalid username")) {
@@ -372,6 +382,9 @@ export abstract class AbstractConfigManager {
                         this.showMessage(`Passphrase Authentication Failed (${attempts + 1}/3)`, MESSAGE_TYPE.ERROR);
                     }
                 }
+                if (!(await this.handleInvalidPrivateKey(newConfig))) {
+                    return undefined;
+                }
                 newConfig.privateKey = undefined;
                 newConfig.keyPassphrase = undefined;
                 return undefined;
@@ -381,6 +394,15 @@ export abstract class AbstractConfigManager {
                 const passwordPrompt = askForPassword
                     ? await this.promptForPassword(newConfig, configModifications)
                     : undefined;
+
+                // If password authentication succeeded and we had a private key that failed,
+                // comment out the private key in the configuration file
+                if (passwordPrompt && newConfig.privateKey) {
+                    if (!(await this.handleInvalidPrivateKey(newConfig))) {
+                        return undefined;
+                    }
+                }
+
                 return passwordPrompt ? { ...configModifications, ...passwordPrompt } : undefined;
             }
 
@@ -390,6 +412,9 @@ export abstract class AbstractConfigManager {
             }
 
             if (errorMessage.includes("Cannot parse privateKey: Malformed OpenSSH private key")) {
+                if (!(await this.handleInvalidPrivateKey(newConfig))) {
+                    return undefined;
+                }
                 return undefined;
             }
         }
@@ -675,5 +700,81 @@ export abstract class AbstractConfigManager {
             profile: this.getMergedAttrs(defaultProfile),
             failNotFound: false,
         };
+    }
+
+    /**
+     * Handle an invalid private key by commenting it out in the configuration file
+     * and showing a warning to the user
+     */
+    private async handleInvalidPrivateKey(config: ISshConfigExt): Promise<boolean> {
+        if (!config.privateKey || !config.name) {
+            // Private key is not invalid if its missing
+            return true;
+        }
+
+        try {
+            // Get the team configuration object
+            const teamConfig = this.mProfilesCache.getTeamConfig();
+
+            // Comment out the private key property using Config API and comment-json
+            const commentedProperty = ConfigFileUtils.getInstance().commentOutProperty(
+                teamConfig,
+                config.name,
+                "privateKey",
+            );
+
+            if (commentedProperty) {
+                // Show warning to user with undo/delete options
+                const shouldContinue = await this.showPrivateKeyWarning({
+                    profileName: config.name,
+                    privateKeyPath: config.privateKey,
+                    onUndo: async () => {
+                        const success = ConfigFileUtils.getInstance().uncommentProperty(
+                            teamConfig,
+                            config.name,
+                            commentedProperty,
+                        );
+                        if (success) {
+                            this.showMessage(
+                                `Private key has been restored for profile "${config.name}".`,
+                                MESSAGE_TYPE.INFORMATION,
+                            );
+                        } else {
+                            this.showMessage(
+                                "Failed to restore private key. You may need to manually edit the configuration file.",
+                                MESSAGE_TYPE.ERROR,
+                            );
+                        }
+                    },
+                    onDelete: async () => {
+                        const success = ConfigFileUtils.getInstance().deleteCommentedLine(
+                            teamConfig,
+                            config.name,
+                            commentedProperty,
+                        );
+                        if (success) {
+                            this.showMessage(
+                                `Private key comment lines have been deleted from profile "${config.name}".`,
+                                MESSAGE_TYPE.INFORMATION,
+                            );
+                        } else {
+                            this.showMessage(
+                                "Failed to delete private key comment lines. You may need to manually edit the configuration file.",
+                                MESSAGE_TYPE.ERROR,
+                            );
+                        }
+                    },
+                });
+                return shouldContinue;
+            }
+        } catch (error) {
+            console.error("Error handling invalid private key:", error);
+            this.showMessage(
+                "Failed to comment out invalid private key. You may need to manually edit the configuration file.",
+                MESSAGE_TYPE.WARNING,
+            );
+        }
+
+        return false;
     }
 }

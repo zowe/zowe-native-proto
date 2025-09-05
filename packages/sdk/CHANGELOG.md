@@ -8,6 +8,8 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 - Changed default number of `zowex` worker threads from 10 to 3 to reduce resource usage on z/OS. [#514](https://github.com/zowe/zowe-native-proto/pull/514)
 - Added support for `localEncoding` option in data set, USS file, and job file operations to specify the source encoding of content (defaults to UTF-8). [#511](https://github.com/zowe/zowe-native-proto/issues/511)
+- Added support for `volume` option when reading/writing data sets. [#439](https://github.com/zowe/zowe-native-proto/issues/439)
+- Added a new `ConfigFileUtils` class with helper functions for commenting out properties, removing comments after the `properties` section of a profile, and restoring properties from comments to their original values. [#534](https://github.com/zowe/zowe-native-proto/issues/534)
 
 ## `0.1.7`
 

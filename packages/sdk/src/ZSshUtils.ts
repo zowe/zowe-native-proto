@@ -24,6 +24,37 @@ export class ZSshUtils {
     private static readonly SERVER_BIN_FILES = ["zowed", "zowex"];
     private static readonly SERVER_PAX_FILE = "server.pax.Z";
 
+    /**
+     * Common patterns that indicate SSH private key authentication failures
+     */
+    private static readonly PRIVATE_KEY_FAILURE_PATTERNS = [
+        "All configured authentication methods failed",
+        "Cannot parse privateKey: Malformed OpenSSH private key",
+        "but no passphrase given",
+        "integrity check failed",
+        "Permission denied (publickey,password)",
+        "Permission denied (publickey)",
+        "Authentication failed",
+        "Invalid private key",
+        "privateKey value does not contain a (valid) private key",
+        "Cannot parse privateKey",
+    ];
+
+    /**
+     * Checks if an error message indicates a private key authentication failure
+     * @param errorMessage The error message to check
+     * @param hasPrivateKey Optional flag to indicate if a private key is configured (for more accurate detection)
+     * @returns True if the error indicates a private key authentication failure
+     */
+    public static isPrivateKeyAuthFailure(errorMessage: string, hasPrivateKey?: boolean): boolean {
+        // If no private key is configured, this can't be a private key failure
+        if (hasPrivateKey === false) {
+            return false;
+        }
+
+        return ZSshUtils.PRIVATE_KEY_FAILURE_PATTERNS.some((pattern) => errorMessage.includes(pattern));
+    }
+
     public static buildSession(args: IProfile): SshSession {
         const sshSessCfg: ISshSession = {
             hostname: args.host,

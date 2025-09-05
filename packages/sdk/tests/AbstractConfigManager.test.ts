@@ -23,6 +23,7 @@ import type { Config } from "node-ssh";
 import { Client, type ClientCallback, type ConnectConfig } from "ssh2";
 import type { MockInstance } from "vitest";
 import { AbstractConfigManager, type ProgressCallback } from "../src/AbstractConfigManager";
+import { ConfigFileUtils } from "../src/ConfigFileUtils";
 import { type inputBoxOpts, MESSAGE_TYPE, type qpItem, type qpOpts } from "../src/doc";
 import { type ISshConfigExt, ZClientUtils } from "../src/ZClientUtils";
 
@@ -751,6 +752,7 @@ describe("AbstractConfigManager", async () => {
             vi.spyOn(testManager as any, "attemptConnection").mockRejectedValue(
                 "Cannot parse privateKey: Malformed OpenSSH private key",
             );
+            vi.spyOn(ConfigFileUtils.getInstance(), "commentOutProperty").mockReturnValue(undefined);
 
             expect(
                 await (testManager as any).validateConfig(
@@ -763,6 +765,7 @@ describe("AbstractConfigManager", async () => {
             vi.spyOn(testManager as any, "attemptConnection").mockRejectedValue(
                 new Error("All configured authentication methods failed"),
             );
+            vi.spyOn(ConfigFileUtils.getInstance(), "commentOutProperty").mockReturnValueOnce(undefined);
 
             const config = {
                 name: "ssh1",
@@ -791,7 +794,6 @@ describe("AbstractConfigManager", async () => {
             vi.spyOn(testManager, "showInputBox").mockResolvedValue("wrongPass"); // always fails
             vi.spyOn(testManager as any, "attemptConnection").mockRejectedValue(new Error("integrity check failed"));
             vi.spyOn(testManager, "showMessage").mockImplementation(() => {});
-
             const config = {
                 name: "ssh1",
                 hostname: "lpar1.com",
@@ -799,6 +801,12 @@ describe("AbstractConfigManager", async () => {
                 user: "user1",
                 privateKey: "/path/to/key",
             };
+            vi.spyOn(ConfigFileUtils.getInstance(), "commentOutProperty").mockImplementation(() => {
+                delete config.privateKey;
+                // We don't need to worry about the commented value as the stub is just meant to delete the property
+                return undefined;
+            });
+
             const result = await (testManager as any).validateConfig(config, true);
 
             expect(result).toBeUndefined();
