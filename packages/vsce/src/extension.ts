@@ -13,6 +13,7 @@ import { imperative, ZoweVsCodeExtension } from "@zowe/zowe-explorer-api";
 import * as vscode from "vscode";
 import { SshCommandApi, SshJesApi, SshMvsApi, SshUssApi } from "./api";
 import { SshClientCache } from "./SshClientCache";
+import { registerSshErrorCorrelations } from "./SshErrorCorrelations";
 import { initLogger, registerCommands } from "./Utilities";
 
 // This method is called when your extension is activated
@@ -33,6 +34,9 @@ export function activate(context: vscode.ExtensionContext) {
     zoweExplorerApi.registerUssApi(new SshUssApi());
     zoweExplorerApi.registerJesApi(new SshJesApi());
     zoweExplorerApi.registerCommandApi(new SshCommandApi());
+
+    registerSshErrorCorrelations();
+
     zoweExplorerApi.getExplorerExtenderApi().reloadProfiles("ssh");
 }
 

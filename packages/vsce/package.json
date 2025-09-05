@@ -83,10 +83,13 @@
   ],
   "scripts": {
     "build": "tsc -p . --noEmit",
-    "clean": "rimraf bin out",
+    "clean": "rimraf bin out coverage",
     "compile": "rspack --mode development",
     "lint": "npx @biomejs/biome check --write src",
     "package": "vsce package --out ../../dist",
+    "test": "vitest run --coverage",
+    "test:ui": "vitest --ui --coverage",
+    "test:watch": "vitest --watch",
     "vscode:prepublish": "rspack --mode production --devtool=hidden-source-map",
     "watch": "rspack --mode development --watch"
   },

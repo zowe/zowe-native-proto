@@ -10,10 +10,11 @@
  */
 
 import { type SshSession, ZosUssProfile } from "@zowe/zos-uss-for-zowe-sdk";
-import { imperative, type MainframeInteraction } from "@zowe/zowe-explorer-api";
+import { imperative, type MainframeInteraction, ZoweExplorerApiType } from "@zowe/zowe-explorer-api";
 import * as vscode from "vscode";
 import { type ZSshClient, ZSshUtils } from "zowe-native-proto-sdk";
 import { SshClientCache } from "../SshClientCache";
+import { SshErrorHandler } from "../SshErrorHandler";
 
 export class SshCommonApi implements MainframeInteraction.ICommon {
     public constructor(public profile?: imperative.IProfileLoaded) {}
@@ -56,9 +57,15 @@ export class SshCommonApi implements MainframeInteraction.ICommon {
                         );
                         return "inactive";
                     }
+                } else {
+                    await SshErrorHandler.getInstance().handleError(
+                        err as Error,
+                        ZoweExplorerApiType.All,
+                        "SSH connection status check failed",
+                        false,
+                    );
                 }
 
-                vscode.window.showErrorMessage(errorMessage);
                 return "inactive";
             }
         }

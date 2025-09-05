@@ -32,8 +32,17 @@ export default class ServerInstallHandler implements ICommandHandler {
 
         params.response.progress.startBar({ task });
         try {
-            await ZSshUtils.installServer(session, serverPath, Constants.ZSSH_BIN_DIR, (progressIncrement) => {
-                task.percentComplete += progressIncrement;
+            await ZSshUtils.installServer(session, serverPath, Constants.ZSSH_BIN_DIR, {
+                onProgress: (progressIncrement) => {
+                    task.percentComplete += progressIncrement;
+                },
+                onError: async (error: Error, context: string) => {
+                    // Log the error for CLI users
+                    params.response.console.error(`Error during ${context}: ${error.message}`);
+                    
+                    // For CLI, we don't retry - just log and continue with the original error
+                    return false;
+                },
             });
         } finally {
             task.stageName = TaskStage.COMPLETE;
