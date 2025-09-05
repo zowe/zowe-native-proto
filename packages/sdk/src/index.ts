@@ -11,6 +11,7 @@
 
 export * from "./AbstractConfigManager";
 export * from "./AbstractRpcClient";
+export * from "./ConfigFileUtils";
 export * from "./doc";
 export * from "./ZClientUtils";
 export * from "./ZSshClient";

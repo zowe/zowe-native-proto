@@ -31,3 +31,10 @@ export enum MESSAGE_TYPE {
     WARNING = 2,
     ERROR = 3,
 }
+
+export interface PrivateKeyWarningOptions {
+    profileName: string;
+    privateKeyPath: string;
+    onUndo?: () => void | Promise<void>;
+    onDelete?: () => void | Promise<void>;
+}

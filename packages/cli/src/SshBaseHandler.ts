@@ -9,23 +9,143 @@
  *
  */
 
-import type { ICommandHandler, IHandlerParameters } from "@zowe/imperative";
+import { type ICommandHandler, type IHandlerParameters, TextUtils } from "@zowe/imperative";
+import { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { type CommandResponse, ZSshClient, ZSshUtils } from "zowe-native-proto-sdk";
 
 export abstract class SshBaseHandler implements ICommandHandler {
+    // Static cache to store passwords for the duration of the session
+    private static readonly passwordCache = new Map<string, string>();
+
     public async process(commandParameters: IHandlerParameters) {
         const session = ZSshUtils.buildSession(commandParameters.arguments);
-        using client = await ZSshClient.create(session, {
-            serverPath: commandParameters.arguments.serverPath,
-            numWorkers: 1,
-        });
 
-        const response = await this.processWithClient(commandParameters, client);
+        // Check if we have a cached password for this host/user combination
+        const cacheKey = this.getCacheKey(session);
+        const cachedPassword = SshBaseHandler.passwordCache.get(cacheKey);
+        if (cachedPassword && !session.ISshSession.password) {
+            session.ISshSession.password = cachedPassword;
+        }
 
-        commandParameters.response.progress.endBar(); // end any progress bars
+        try {
+            using client = await ZSshClient.create(session, {
+                serverPath: commandParameters.arguments.serverPath,
+                numWorkers: 1,
+            });
 
-        // Return as an object when using --response-format-json
-        commandParameters.response.data.setObj(response);
+            const response = await this.processWithClient(commandParameters, client);
+
+            commandParameters.response.progress.endBar(); // end any progress bars
+
+            // Return as an object when using --response-format-json
+            commandParameters.response.data.setObj(response);
+        } catch (error) {
+            const errorMessage = `${error}`;
+
+            // Check if this is a private key authentication failure
+            if (ZSshUtils.isPrivateKeyAuthFailure(errorMessage, !!session.ISshSession.privateKey) && !cachedPassword) {
+                commandParameters.response.console.log(
+                    TextUtils.chalk.yellow(
+                        "Private key authentication failed. Falling back to password authentication...",
+                    ),
+                );
+
+                // Prompt for password
+                const password = await this.promptForPassword(commandParameters, session);
+                if (password) {
+                    // Cache the password for this session
+                    SshBaseHandler.passwordCache.set(cacheKey, password);
+
+                    // Create a new session with password authentication
+                    const passwordSession = this.createPasswordSession(session, password);
+
+                    // Retry the connection with password
+                    using client = await ZSshClient.create(passwordSession, {
+                        serverPath: commandParameters.arguments.serverPath,
+                        numWorkers: 1,
+                    });
+
+                    const response = await this.processWithClient(commandParameters, client);
+
+                    commandParameters.response.progress.endBar(); // end any progress bars
+
+                    // Return as an object when using --response-format-json
+                    commandParameters.response.data.setObj(response);
+                } else {
+                    throw error; // Re-throw if user cancelled password prompt
+                }
+            } else {
+                throw error; // Re-throw for other types of errors
+            }
+        }
+    }
+
+    /**
+     * Creates a cache key for storing passwords based on host and user
+     */
+    private getCacheKey(session: SshSession): string {
+        return `${session.ISshSession.user}@${session.ISshSession.hostname}:${session.ISshSession.port}`;
+    }
+
+    /**
+     * Prompts the user for a password with retry logic
+     */
+    private async promptForPassword(
+        commandParameters: IHandlerParameters,
+        session: SshSession,
+    ): Promise<string | undefined> {
+        for (let attempts = 0; attempts < 3; attempts++) {
+            const password = await commandParameters.response.console.prompt(
+                `${session.ISshSession.user}@${session.ISshSession.hostname}'s password: `,
+                { hideText: true },
+            );
+
+            if (!password) {
+                return undefined; // User cancelled
+            }
+
+            // Test the password by attempting a connection
+            try {
+                const testSession = this.createPasswordSession(session, password);
+                using _testClient = await ZSshClient.create(testSession, {
+                    serverPath: commandParameters.arguments.serverPath,
+                    numWorkers: 1,
+                });
+                // If we get here, the password is valid
+                return password;
+            } catch (error) {
+                const errorMessage = `${error}`;
+                if (errorMessage.includes("FOTS1668")) {
+                    commandParameters.response.console.error("Password expired on target system");
+                    return undefined;
+                }
+                commandParameters.response.console.error(`Password authentication failed (${attempts + 1}/3)`);
+                if (attempts === 2) {
+                    return undefined; // Max attempts reached
+                }
+            }
+        }
+        return undefined;
+    }
+
+    /**
+     * Creates a new session with password authentication, disabling private key
+     */
+    private createPasswordSession(originalSession: SshSession, password: string): SshSession {
+        const newSessionConfig = {
+            ...originalSession.ISshSession,
+            password,
+            privateKey: undefined as string | undefined,
+            keyPassphrase: undefined as string | undefined,
+        };
+        return new SshSession(newSessionConfig);
+    }
+
+    /**
+     * Clears the password cache (useful for testing or when switching contexts)
+     */
+    public static clearPasswordCache(): void {
+        SshBaseHandler.passwordCache.clear();
     }
 
     public abstract processWithClient(
