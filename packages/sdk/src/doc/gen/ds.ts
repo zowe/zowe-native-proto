@@ -60,7 +60,7 @@ export interface ReadDatasetRequest extends common.CommandRequest {
   /**
    * Stream to write contents to
    */
-  stream?: Writable;
+  stream?: Writable /* streamId:int */;
 }
 export interface WriteDatasetRequest extends common.CommandRequest {
   command: "writeDataset";
@@ -91,7 +91,7 @@ export interface WriteDatasetRequest extends common.CommandRequest {
   /**
    * Stream to read contents from
    */
-  stream?: Readable;
+  stream?: Readable /* streamId:int */;
 }
 export interface DeleteDatasetRequest extends common.CommandRequest {
   command: "deleteDataset";

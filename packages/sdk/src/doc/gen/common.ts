@@ -23,6 +23,11 @@ export interface RpcRequest extends RpcNotification {
   params?: any;
   id: number /* int */;
 }
+export interface ErrorDetails {
+  code: number /* int */;
+  message: string;
+  data?: any;
+}
 export interface RpcResponse {
   jsonrpc: "2.0";
   result?: any;
@@ -40,11 +45,6 @@ export interface CommandResponse {
    * True if command succeeded
    */
   success: boolean;
-}
-export interface ErrorDetails {
-  code: number /* int */;
-  message: string;
-  data?: any;
 }
 export interface Dataset {
   /**
