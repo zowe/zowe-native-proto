@@ -100,7 +100,7 @@ MTL_FLAGS+=-g1
 MTL_FLAGS64+=-g1
 .END
 
-all: copy-mtl build-out jsonc
+all: copy-mtl build-out json
 
 #
 # Output directories
@@ -120,15 +120,15 @@ build-out/zjsonm.o: build-out/zjsonm.s
 	@echo 'Building $(OUT_DIR)/zjsonm.o'
 	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
-build-out/jsonc.o: jsonc.cpp
-	@echo 'Building $(OUT_DIR)/jsonc.o'
+build-out/json.o: json.cpp
+	@echo 'Building $(OUT_DIR)/json.o'
 	$(CXXLANG) $(CPP_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
 
-build-out/jsonc: build-out/jsonc.o build-out/zjsonm.o
-	@echo 'Building jsonc'
+build-out/json: build-out/json.o build-out/zjsonm.o
+	@echo 'Building json'
 	$(CXXLANG) $(CPP_BND_FLAGS) -o $@ $^ > $*.bind.lst
 
-jsonc: build-out/jsonc
+json: build-out/json
 
 clean:
 	rm -f *.o
