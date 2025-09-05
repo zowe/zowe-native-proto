@@ -49,7 +49,7 @@ export interface ReadFileRequest extends common.CommandRequest {
   /**
    * Stream to write contents to
    */
-  stream?: Writable;
+  stream?: Writable /* streamId:int */;
 }
 export interface WriteFileRequest extends common.CommandRequest {
   command: "writeFile";
@@ -76,7 +76,7 @@ export interface WriteFileRequest extends common.CommandRequest {
   /**
    * Stream to read contents from
    */
-  stream?: Readable;
+  stream?: Readable /* streamId:int */;
   /**
    * Length of file contents in bytes (only used for streaming)
    */
