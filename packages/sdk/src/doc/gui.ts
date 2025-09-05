@@ -35,6 +35,6 @@ export enum MESSAGE_TYPE {
 export interface PrivateKeyWarningOptions {
     profileName: string;
     privateKeyPath: string;
-    onUndo?: () => Promise<void>;
-    onDelete?: () => Promise<void>;
+    onUndo?: () => void | Promise<void>;
+    onDelete?: () => void | Promise<void>;
 }

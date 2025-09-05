@@ -26,7 +26,7 @@ import {
     type IProfileTypeConfiguration,
     type ProfileInfo,
 } from "@zowe/imperative";
-import { Client, type ClientChannel } from "ssh2";
+import { NodeSSH } from "node-ssh";
 import { ConfigFileUtils } from "./ConfigFileUtils";
 import { type inputBoxOpts, MESSAGE_TYPE, type PrivateKeyWarningOptions, type qpItem, type qpOpts } from "./doc";
 import { type ISshConfigExt, ZClientUtils } from "./ZClientUtils";
@@ -421,29 +421,34 @@ export abstract class AbstractConfigManager {
         return configModifications;
     }
 
-    private async attemptConnection(config: ISshConfigExt): Promise<boolean> {
-        return new Promise((resolve, reject) => {
-            const sshClient = new Client();
-            const testConfig = { ...config };
+    private async attemptConnection(config: ISshConfigExt): Promise<void> {
+        const ssh = new NodeSSH();
 
-            if (typeof testConfig.privateKey === "string") {
-                testConfig.privateKey = readFileSync(path.normalize(testConfig.privateKey), "utf8");
+        try {
+            // Prepare connection configuration
+            const connectionConfig = {
+                host: config.hostname,
+                port: config.port || 22,
+                username: config.user,
+                password: config.password,
+                privateKey: config.privateKey ? readFileSync(path.normalize(config.privateKey), "utf8") : undefined,
+                passphrase: config.keyPassphrase,
+                readyTimeout: config.handshakeTimeout || 30000,
+            };
+
+            // Attempt connection
+            await ssh.connect(connectionConfig);
+            if (!ssh.isConnected()) {
+                throw new Error("Failed to connect to SSH: All configured authentication methods failed");
             }
-
-            sshClient
-                .on("error", reject)
-                .on("ready", () => {
-                    sshClient.shell((err, stream: ClientChannel) => {
-                        if (err) return reject(err);
-                        stream.on("data", (data: Buffer | string) => {
-                            if (data.toString().startsWith("FOTS1668")) reject(new Error(data.toString()));
-                        });
-                        stream.on("end", () => resolve(true));
-                        sshClient.end();
-                    });
-                })
-                .connect({ ...testConfig, passphrase: testConfig.keyPassphrase });
-        });
+            // Test the connection by executing a simple command
+            const result = await ssh.execCommand("exit");
+            if (result.stderr?.startsWith("FOTS1668")) {
+                throw new Error(result.stderr);
+            }
+        } finally {
+            ssh.dispose();
+        }
     }
 
     private async promptForPassword(
@@ -728,7 +733,7 @@ export abstract class AbstractConfigManager {
                 const shouldContinue = await this.showPrivateKeyWarning({
                     profileName: config.name,
                     privateKeyPath: config.privateKey,
-                    onUndo: async () => {
+                    onUndo: () => {
                         const success = ConfigFileUtils.getInstance().uncommentProperty(
                             teamConfig,
                             config.name,
@@ -746,7 +751,7 @@ export abstract class AbstractConfigManager {
                             );
                         }
                     },
-                    onDelete: async () => {
+                    onDelete: () => {
                         const success = ConfigFileUtils.getInstance().deleteCommentedLine(
                             teamConfig,
                             config.name,
