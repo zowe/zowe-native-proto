@@ -18,6 +18,20 @@
 
 int run_low_level_json();
 
+struct Address
+{
+  std::string street;
+  std::string city;
+  std::string state;
+  int zipCode;
+};
+
+ZJSON_SERIALIZABLE(Address,
+                   ZJSON_FIELD(Address, street),
+                   ZJSON_FIELD(Address, city),
+                   ZJSON_FIELD(Address, state),
+                   ZJSON_FIELD(Address, zipCode));
+
 // NOTE(Kelosky): this file is build and run with `xlclang++` but `xlc++` is used to build the `zjsonm.o` file
 // `xlc++` can also be used
 int main()
@@ -51,6 +65,12 @@ int main()
                            "  }\n"
                            "}");
 
+    Address address_obj = json.serialize<Address>("address");
+    std::cout << "Address Street: " << address_obj.street << std::endl;
+    std::cout << "Address City: " << address_obj.city << std::endl;
+    std::cout << "Address State: " << address_obj.state << std::endl;
+    std::cout << "Address Zip Code: " << address_obj.zipCode << std::endl;
+
     std::cout << "Name: " << root["name"] << " (" << root["name"].getType() << ")" << std::endl;
     std::cout << "Is Married: " << root["isMarried"] << std::endl;
     std::cout << "Has Kids: " << root["hasKids"] << std::endl;
@@ -60,8 +80,8 @@ int main()
     std::cout << "Work Desk: " << root["work"]["office"]["location"]["desk"] << std::endl;
     std::cout << "Work Rooms: " << root["work"]["office"]["rooms"][0]["number"] << std::endl;
 
-    auto address = root["address"];
-    std::cout << "Number of keys in address: " << address.getKeys().size() << std::endl;
+    auto address_proxy = root["address"];
+    std::cout << "Number of keys in address: " << address_proxy.getKeys().size() << std::endl;
     std::cout << "Number of keys in work.office: " << root["work"]["office"].getKeys().size() << std::endl;
 
     std::string serialized_json = json.stringify(2);

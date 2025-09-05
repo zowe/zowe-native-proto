@@ -15,7 +15,7 @@
 
 #include "ztype.h"
 
-#if (!defined(__IBMCPP__) || !defined(__IBMC__))
+#ifdef TARGET_OS_MAC
 #define HWTJ_SEARCHTYPE_SHALLOW 3
 #define HWTJ_OBJECT_TYPE 1
 #define HWTJ_ARRAY_TYPE 2
@@ -23,6 +23,9 @@
 #define HWTJ_NUMBER_TYPE 4
 #define HWTJ_BOOLEAN_TYPE 5
 #define HWTJ_NULL_TYPE 6
+#define HWTJ_TRUE 1
+#define HWTJ_FALSE 0
+#define HWTJ_BUFFER_TOO_SMALL 8
 #endif
 
 typedef struct

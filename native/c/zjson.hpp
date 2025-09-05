@@ -16,9 +16,116 @@
 #include <string>
 #include <sstream>
 #include <vector>
+#include <type_traits>
+#include <functional>
 #include <hwtjic.h> // ensure to include /usr/include
 #include "zjsonm.h"
 #include "zjsontype.h"
+
+/*
+ * USAGE EXAMPLE:
+ *
+ * // Define your struct/class
+ * struct Person {
+ *     std::string name;
+ *     int age;
+ *     bool isActive;
+ * };
+ *
+ * struct Address {
+ *     std::string street;
+ *     std::string city;
+ *     int zipCode;
+ * };
+ *
+ * struct Employee {
+ *     Person person;
+ *     Address address;
+ *     std::string department;
+ * };
+ *
+ * // Register your types for serialization
+ * ZJSON_SERIALIZABLE(Person,
+ *     ZJSON_FIELD(Person, name),
+ *     ZJSON_FIELD(Person, age),
+ *     ZJSON_FIELD(Person, isActive)
+ * );
+ *
+ * ZJSON_SERIALIZABLE(Address,
+ *     ZJSON_FIELD(Address, street),
+ *     ZJSON_FIELD(Address, city),
+ *     ZJSON_FIELD(Address, zipCode)
+ * );
+ *
+ * ZJSON_SERIALIZABLE(Employee,
+ *     ZJSON_FIELD(Employee, person),
+ *     ZJSON_FIELD(Employee, address),
+ *     ZJSON_FIELD(Employee, department)
+ * );
+ *
+ * // Usage:
+ * void example() {
+ *     std::string json_str = R"({
+ *         "name": "John Doe",
+ *         "age": 30,
+ *         "isActive": true
+ *     })";
+ *
+ *     ZJson json;
+ *     json.parse(json_str);
+ *
+ *     // Type-safe deserialization with compile-time checking
+ *     Person person = json.serialize<Person>();
+ *
+ *     std::cout << "Name: " << person.name << std::endl;
+ *     std::cout << "Age: " << person.age << std::endl;
+ *     std::cout << "Active: " << std::boolalpha << person.isActive << std::endl;
+ *
+ *     // Check if type can be serialized at compile time
+ *     static_assert(ZJson::canSerialize<Person>(), "Person should be serializable");
+ * }
+ */
+
+// Forward declaration
+class ZJson;
+
+// Type traits for compile-time type checking
+template <typename T>
+struct is_serializable : std::false_type
+{
+};
+
+template <typename T>
+struct is_arithmetic_or_string : std::integral_constant<bool,
+                                                        std::is_arithmetic<T>::value || std::is_same<T, std::string>::value>
+{
+};
+
+// Field descriptor for reflection
+template <typename T, typename FieldType>
+struct FieldDescriptor
+{
+  std::string name;
+  FieldType T::*member;
+
+  FieldDescriptor(const std::string &n, FieldType T::*m)
+      : name(n), member(m)
+  {
+  }
+};
+
+// Forward declaration for SerializationRegistry
+template <typename T>
+class SerializationRegistry;
+
+// Macro definition moved after ZJson class - see below
+
+// Forward declarations
+class ZJson;
+
+// Helper macro for creating field descriptors
+#define ZJSON_FIELD(StructType, field_name) \
+  FieldDescriptor<StructType, decltype(StructType::field_name)>(#field_name, &StructType::field_name)
 
 class ZJson
 {
@@ -396,7 +503,180 @@ public:
   {
     return JsonValueProxy(*this, key);
   }
+
+  // Type-safe deserialization method
+  template <typename T>
+  T serialize() const
+  {
+    static_assert(is_serializable<T>::value,
+                  "Type must be registered with ZJSON_SERIALIZABLE macro");
+
+    T result{};
+    auto &deserializer = SerializationRegistry<T>::getDeserializer();
+
+    if (!deserializer)
+    {
+      throw std::runtime_error("No deserializer registered for type");
+    }
+
+    // Get the root object
+    KEY_HANDLE root_handle = {0};
+    JsonValueProxy root_proxy(*const_cast<ZJson *>(this), "root", root_handle);
+
+    deserializer(result, root_proxy);
+    return result;
+  }
+
+  // Overload for deserializing from a specific JSON path
+  template <typename T>
+  T serialize(const std::string &path) const
+  {
+    static_assert(is_serializable<T>::value,
+                  "Type must be registered with ZJSON_SERIALIZABLE macro");
+
+    T result{};
+    auto &deserializer = SerializationRegistry<T>::getDeserializer();
+
+    if (!deserializer)
+    {
+      throw std::runtime_error("No deserializer registered for type");
+    }
+
+    // Get the specified path
+    JsonValueProxy path_proxy = (*const_cast<ZJson *>(this))[path];
+
+    deserializer(result, path_proxy);
+    return result;
+  }
+
+  // Helper method to check if a type can be serialized
+  template <typename T>
+  static constexpr bool canSerialize()
+  {
+    return is_serializable<T>::value && SerializationRegistry<T>::hasDeserializer();
+  }
 };
+
+// Macro for easy struct registration (after ZJson class definition)
+#define ZJSON_SERIALIZABLE(StructType, ...)                                                                        \
+  template <>                                                                                                      \
+  struct is_serializable<StructType> : std::true_type                                                              \
+  {                                                                                                                \
+  };                                                                                                               \
+  namespace                                                                                                        \
+  {                                                                                                                \
+  struct StructType##_Registrar                                                                                    \
+  {                                                                                                                \
+    StructType##_Registrar()                                                                                       \
+    {                                                                                                              \
+      SerializationRegistry<StructType>::registerDeserializer(                                                     \
+          [](StructType &obj, const ZJson::JsonValueProxy &json) { deserialize_fields(obj, json, __VA_ARGS__); }); \
+    }                                                                                                              \
+  };                                                                                                               \
+  static StructType##_Registrar StructType##_registrar_instance;                                                   \
+  }
+
+// Serialization registry implementation (after ZJson class definition)
+template <typename T>
+class SerializationRegistry
+{
+public:
+  using DeserializerFunc = std::function<void(T &, const ZJson::JsonValueProxy &)>;
+
+  static void registerDeserializer(DeserializerFunc func)
+  {
+    getDeserializer() = func;
+  }
+
+  static DeserializerFunc &getDeserializer()
+  {
+    static DeserializerFunc deserializer;
+    return deserializer;
+  }
+
+  static bool hasDeserializer()
+  {
+    return static_cast<bool>(getDeserializer());
+  }
+};
+
+// Template implementations (after ZJson class definition)
+template <typename T, typename FieldType>
+typename std::enable_if<std::is_same<FieldType, std::string>::value>::type
+deserialize_field_impl(T &obj, const ZJson::JsonValueProxy &json, const FieldDescriptor<T, FieldType> &field)
+{
+  obj.*(field.member) = static_cast<std::string>(json[field.name]);
+}
+
+template <typename T, typename FieldType>
+typename std::enable_if<std::is_same<FieldType, int>::value>::type
+deserialize_field_impl(T &obj, const ZJson::JsonValueProxy &json, const FieldDescriptor<T, FieldType> &field)
+{
+  obj.*(field.member) = static_cast<int>(json[field.name]);
+}
+
+template <typename T, typename FieldType>
+typename std::enable_if<std::is_same<FieldType, bool>::value>::type
+deserialize_field_impl(T &obj, const ZJson::JsonValueProxy &json, const FieldDescriptor<T, FieldType> &field)
+{
+  obj.*(field.member) = static_cast<bool>(json[field.name]);
+}
+
+template <typename T, typename FieldType>
+typename std::enable_if<std::is_arithmetic<FieldType>::value &&
+                        !std::is_same<FieldType, int>::value &&
+                        !std::is_same<FieldType, bool>::value>::type
+deserialize_field_impl(T &obj, const ZJson::JsonValueProxy &json, const FieldDescriptor<T, FieldType> &field)
+{
+  obj.*(field.member) = static_cast<FieldType>(static_cast<int>(json[field.name]));
+}
+
+template <typename T, typename FieldType>
+typename std::enable_if<is_serializable<FieldType>::value>::type
+deserialize_field_impl(T &obj, const ZJson::JsonValueProxy &json, const FieldDescriptor<T, FieldType> &field)
+{
+  FieldType nested_obj;
+  auto &deserializer = SerializationRegistry<FieldType>::getDeserializer();
+  if (deserializer)
+  {
+    deserializer(nested_obj, json[field.name]);
+    obj.*(field.member) = nested_obj;
+  }
+}
+
+template <typename T, typename FieldType>
+void deserialize_field(T &obj, const ZJson::JsonValueProxy &json, const FieldDescriptor<T, FieldType> &field)
+{
+  try
+  {
+    deserialize_field_impl(obj, json, field);
+  }
+  catch (const std::exception &e)
+  {
+    // Field might be optional or have a different name
+    // Could add logging here if needed
+  }
+}
+
+// Helper for unpacking variadic templates (C++11 compatible)
+template <typename T>
+void deserialize_fields_impl(T &obj, const ZJson::JsonValueProxy &json)
+{
+  // Base case - do nothing
+}
+
+template <typename T, typename Field, typename... Fields>
+void deserialize_fields_impl(T &obj, const ZJson::JsonValueProxy &json, Field field, Fields... fields)
+{
+  deserialize_field(obj, json, field);
+  deserialize_fields_impl(obj, json, fields...);
+}
+
+template <typename T, typename... Fields>
+void deserialize_fields(T &obj, const ZJson::JsonValueProxy &json, Fields... fields)
+{
+  deserialize_fields_impl(obj, json, fields...);
+}
 
 inline std::ostream &operator<<(std::ostream &os, const ZJson::JsonValueProxy &proxy)
 {
