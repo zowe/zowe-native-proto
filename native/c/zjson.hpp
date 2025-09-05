@@ -36,7 +36,7 @@ public:
   private:
     ZJson &parent;
     std::string key;
-    KEY_HANDLE key_handle = {0};
+    mutable KEY_HANDLE key_handle = {0};
 
   public:
     JsonValueProxy(ZJson &p, const std::string &k)
@@ -237,10 +237,9 @@ public:
       return std::runtime_error(msg + " rc was x'" + ss.str() + "'");
     }
 
-    // NOTE(Kelosky): keeping this const for now because the operators appear to require this
     KEY_HANDLE *get_mutable_key_handle() const
     {
-      return const_cast<KEY_HANDLE *>(&key_handle);
+      return &key_handle;
     }
   };
 
