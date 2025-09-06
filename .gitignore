@@ -13,6 +13,7 @@ zowe-native-proto-package
 
 # Files
 .DS_Store
+.zsync.json
 config.*.json
 config.yaml
 native/golang/zowed*
