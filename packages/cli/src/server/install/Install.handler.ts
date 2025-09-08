@@ -39,7 +39,7 @@ export default class ServerInstallHandler implements ICommandHandler {
                 onError: async (error: Error, context: string) => {
                     // Log the error for CLI users
                     params.response.console.error(`Error during ${context}: ${error.message}`);
-                    
+
                     // For CLI, we don't retry - just log and continue with the original error
                     return false;
                 },
