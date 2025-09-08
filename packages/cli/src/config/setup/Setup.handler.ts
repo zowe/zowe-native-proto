@@ -52,7 +52,7 @@ export default class ServerInstallHandler implements ICommandHandler {
             params.response.console.error(
                 "SSH setup cancelled or unable to validate config. Please check credentials for the selected profile.",
             );
-            process.exit(1);
+            return;
         }
 
         // Get all profiles after selecting a profile
