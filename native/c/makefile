@@ -121,6 +121,7 @@ MTL_FLAGS64+=$(LOG_FLAGS)
 .END
 
 COMMAND_OBJS = $(OUT_DIR)/commands/console.o \
+	$(OUT_DIR)/commands/core.o \
 	$(OUT_DIR)/commands/ds.o \
 	$(OUT_DIR)/commands/job.o \
 	$(OUT_DIR)/commands/tso.o \
@@ -416,6 +417,11 @@ libztso.a: $(OUT_DIRS) $(OUT_DIR)/libztso.a
 # Commands
 #
 $(OUT_DIR)/commands/console.o: commands/console.cpp
+	@echo 'Building $@'
+	@mkdir -p $(@D)
+	$(CXX) $(CPP_FLAGS) -c $< -o $@
+
+$(OUT_DIR)/commands/core.o: commands/core.cpp
 	@echo 'Building $@'
 	@mkdir -p $(@D)
 	$(CXX) $(CPP_FLAGS) -c $< -o $@

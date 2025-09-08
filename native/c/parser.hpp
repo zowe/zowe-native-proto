@@ -1258,7 +1258,7 @@ public:
 
   // get the value, or a default if missing/wrong type
   template <typename T>
-  T get_value(const std::string &name, const T &default_value) const
+  T get_value(const std::string &name, const T &default_value = T()) const
   {
     const T *ptr = get<T>(name);
     if (ptr)
