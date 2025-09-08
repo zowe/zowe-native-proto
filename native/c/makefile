@@ -124,7 +124,8 @@ COMMAND_OBJS = $(OUT_DIR)/commands/console.o \
 	$(OUT_DIR)/commands/ds.o \
 	$(OUT_DIR)/commands/job.o \
 	$(OUT_DIR)/commands/tso.o \
-	$(OUT_DIR)/commands/uss.o
+	$(OUT_DIR)/commands/uss.o \
+	$(OUT_DIR)/commands/tool.o
 
 all: libzut.so libzut.a libzds.so libzds.a libzusf.so libzusf.a libzcn.so libzcn.a libzjb.so libzjb.a zowex zoweax
 xlclang-extenders: $(OUT_DIR_CXXLANG)/zut.o $(OUT_DIR_CXXLANG)/zds.o $(OUT_DIR_CXXLANG)/zjb.o $(OUT_DIR_CXXLANG)/zcn.o $(OUT_DIR_CXXLANG)/zusf.o $(OUT_DIR_CXXLANG)/ztso.o
@@ -435,6 +436,11 @@ $(OUT_DIR)/commands/tso.o: commands/tso.cpp
 	$(CXX) $(CPP_FLAGS) -c $< -o $@
 
 $(OUT_DIR)/commands/uss.o: commands/uss.cpp
+	@echo 'Building $@'
+	@mkdir -p $(@D)
+	$(CXX) $(CPP_FLAGS) -c $< -o $@
+
+$(OUT_DIR)/commands/tool.o: commands/tool.cpp
 	@echo 'Building $@'
 	@mkdir -p $(@D)
 	$(CXX) $(CPP_FLAGS) -c $< -o $@
