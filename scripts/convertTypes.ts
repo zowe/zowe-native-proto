@@ -6,6 +6,7 @@ import * as path from "path";
 // Project paths
 const SDK_GEN_DIR = path.join(__dirname, "../packages/sdk/src/doc/gen");
 const C_TYPES_DIR = path.join(__dirname, "../native/c/types");
+const LICENSE_HEADER_PATH = path.join(__dirname, "../LICENSE_HEADER");
 
 // TypeScript to C++ type mapping
 const TYPE_MAPPING: Record<string, string> = {
@@ -167,14 +168,39 @@ function extractInterfaces(filePath: string): ExtractedInterface[] {
     return interfaces;
 }
 
-// Common base class property names to exclude from derived structs
-const BASE_CLASS_PROPERTIES = new Set([
-    "command", // from CommandRequest
-    "success", // from CommandResponse
-    "maxItems", // from ListOptions
-    "responseTimeout", // from ListOptions
-    "start", // from ListDatasetOptions
-]);
+// Dynamically collected base class properties
+let baseClassProperties: Map<string, Set<string>> = new Map();
+
+// License header content
+let licenseHeader: string = "";
+
+function loadLicenseHeader(): void {
+    try {
+        licenseHeader = fs.readFileSync(LICENSE_HEADER_PATH, "utf8");
+        // Ensure the license header ends with a newline
+        if (!licenseHeader.endsWith("\n")) {
+            licenseHeader += "\n";
+        }
+    } catch (error) {
+        console.warn(`Could not load license header from ${LICENSE_HEADER_PATH}:`, error);
+        licenseHeader = "";
+    }
+}
+
+function getInheritedProperties(extendsTypes: string[]): Set<string> {
+    const inheritedProps = new Set<string>();
+
+    for (const baseType of extendsTypes) {
+        // Extract just the interface name (remove namespace prefixes like "common.")
+        const baseName = baseType.includes(".") ? baseType.split(".").pop()! : baseType;
+        const baseProps = baseClassProperties.get(baseName);
+        if (baseProps) {
+            baseProps.forEach((prop) => inheritedProps.add(prop));
+        }
+    }
+
+    return inheritedProps;
+}
 
 function generateCStruct(iface: ExtractedInterface): string {
     const structName = iface.name;
@@ -193,9 +219,11 @@ function generateCStruct(iface: ExtractedInterface): string {
 
     // Add properties, but exclude ones that are inherited from base classes
     const hasInheritance = iface.extends && iface.extends.length > 0;
+    const inheritedProps = hasInheritance ? getInheritedProperties(iface.extends!) : new Set<string>();
+
     for (const prop of iface.properties) {
         // Skip properties that are inherited from base classes
-        if (hasInheritance && BASE_CLASS_PROPERTIES.has(prop.name)) {
+        if (hasInheritance && inheritedProps.has(prop.name)) {
             continue;
         }
 
@@ -233,7 +261,14 @@ function generateCStruct(iface: ExtractedInterface): string {
 
 function generateHeaderFile(interfaces: ExtractedInterface[], fileName: string): string {
     const headerGuard = `${fileName.toUpperCase()}_TYPES_H`;
-    let content = `#ifndef ${headerGuard}\n#define ${headerGuard}\n\n`;
+    let content = "";
+
+    // Add license header if available
+    if (licenseHeader) {
+        content += licenseHeader + "\n";
+    }
+
+    content += `#ifndef ${headerGuard}\n#define ${headerGuard}\n\n`;
     content += `#include <string>\n`;
     content += `#include <vector>\n`;
     content += `#include <map>\n`;
@@ -254,14 +289,46 @@ function generateHeaderFile(interfaces: ExtractedInterface[], fileName: string):
     return content;
 }
 
+function collectBaseClassProperties(allInterfaces: ExtractedInterface[]): void {
+    // First pass: collect all interface properties
+    for (const iface of allInterfaces) {
+        const props = new Set<string>();
+        for (const prop of iface.properties) {
+            props.add(prop.name);
+        }
+        baseClassProperties.set(iface.name, props);
+    }
+
+    // Second pass: add inherited properties to base classes
+    for (const iface of allInterfaces) {
+        if (iface.extends && iface.extends.length > 0) {
+            const currentProps = baseClassProperties.get(iface.name)!;
+
+            for (const baseType of iface.extends) {
+                const baseName = baseType.includes(".") ? baseType.split(".").pop()! : baseType;
+                const baseProps = baseClassProperties.get(baseName);
+                if (baseProps) {
+                    baseProps.forEach((prop) => currentProps.add(prop));
+                }
+            }
+        }
+    }
+}
+
 function processAllGenFiles(): void {
+    // Load the license header
+    loadLicenseHeader();
+
     if (!fs.existsSync(C_TYPES_DIR)) {
         fs.mkdirSync(C_TYPES_DIR, { recursive: true });
     }
 
     const genFiles = fs.readdirSync(SDK_GEN_DIR).filter((file) => file.endsWith(".ts"));
-
     console.log(`Processing ${genFiles.length} TypeScript files...`);
+
+    // First pass: extract all interfaces from all files
+    const allInterfaces: ExtractedInterface[] = [];
+    const fileInterfaceMap: Map<string, ExtractedInterface[]> = new Map();
 
     for (const file of genFiles) {
         const filePath = path.join(SDK_GEN_DIR, file);
@@ -270,6 +337,15 @@ function processAllGenFiles(): void {
         console.log(`Extracting interfaces from ${file}...`);
         const interfaces = extractInterfaces(filePath);
 
+        allInterfaces.push(...interfaces);
+        fileInterfaceMap.set(fileName, interfaces);
+    }
+
+    // Build the base class property map
+    collectBaseClassProperties(allInterfaces);
+
+    // Second pass: generate header files
+    for (const [fileName, interfaces] of fileInterfaceMap) {
         if (interfaces.length > 0) {
             const headerContent = generateHeaderFile(interfaces, fileName);
             const headerPath = path.join(C_TYPES_DIR, `${fileName}.h`);
@@ -277,7 +353,7 @@ function processAllGenFiles(): void {
             fs.writeFileSync(headerPath, headerContent);
             console.log(`Generated ${headerPath} with ${interfaces.length} interfaces`);
         } else {
-            console.log(`No interfaces found in ${file}`);
+            console.log(`No interfaces found in ${fileName}.ts`);
         }
     }
 }
