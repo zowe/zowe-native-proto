@@ -14,7 +14,6 @@
 
 #include <iostream>
 #include <memory>
-#include <vector>
 #include <string>
 #include <stdio.h>
 #include <sys/types.h>
@@ -23,7 +22,6 @@
 #include <limits.h>
 #include "zcn.hpp"
 #include "parser.hpp"
-#include "ztso.hpp"
 #include "zshmem.hpp"
 #include "zlogger.hpp"
 
@@ -31,6 +29,7 @@
 #include "commands/job.hpp"
 #include "commands/uss.hpp"
 #include "commands/tool.hpp"
+#include "commands/tso.hpp"
 
 // Version information
 #ifndef PACKAGE_VERSION
@@ -110,26 +109,11 @@ int main(int argc, char *argv[])
   console_cmd->add_command(issue_cmd);
   root_cmd.add_command(console_cmd);
 
-  // TSO command group
-  auto tso_cmd = command_ptr(new Command("tso", "TSO operations"));
-
-  // TSO issue subcommand
-  auto tso_issue_cmd = command_ptr(new Command("issue", "issue TSO command"));
-  tso_issue_cmd->add_positional_arg("command", "command to issue", ArgType_Single, true);
-  tso_issue_cmd->set_handler(handle_tso_issue);
-
-  tso_cmd->add_command(tso_issue_cmd);
-  root_cmd.add_command(tso_cmd);
-
-  auto encoding_option = make_aliases("--encoding", "--ec");
-  auto source_encoding_option = make_aliases("--local-encoding", "--lec");
-  auto response_format_csv_option = make_aliases("--response-format-csv", "--rfc");
-  auto response_format_bytes_option = make_aliases("--response-format-bytes", "--rfb");
-
   ds::register_commands(root_cmd);
   uss::register_commands(root_cmd);
   tool::register_commands(root_cmd);
   job::register_commands(root_cmd);
+  tso::register_commands(root_cmd);
 
   // Version command
   auto version_cmd = command_ptr(new Command("version", "display version information"));
@@ -195,25 +179,6 @@ int handle_console_issue(const ParseResult &result)
     cerr << "  Details: " << zcn.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
-  return rc;
-}
-
-int handle_tso_issue(const ParseResult &result)
-{
-  int rc = 0;
-  string command = result.get_value<std::string>("command", "");
-  string response;
-
-  rc = ztso_issue(command, response);
-
-  if (0 != rc)
-  {
-    cerr << "Error running command, rc '" << rc << "'" << endl;
-    cerr << "  Details: " << response << endl;
-  }
-
-  cout << response;
-
   return rc;
 }
 
