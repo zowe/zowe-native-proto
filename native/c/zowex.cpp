@@ -20,16 +20,16 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <limits.h>
-#include "zcn.hpp"
 #include "parser.hpp"
 #include "zshmem.hpp"
 #include "zlogger.hpp"
 
+#include "commands/console.hpp"
 #include "commands/ds.hpp"
 #include "commands/job.hpp"
-#include "commands/uss.hpp"
 #include "commands/tool.hpp"
 #include "commands/tso.hpp"
+#include "commands/uss.hpp"
 
 // Version information
 #ifndef PACKAGE_VERSION
@@ -43,8 +43,6 @@ using namespace parser;
 using namespace std;
 
 int handle_console_issue(const ParseResult &result);
-
-int handle_tso_issue(const ParseResult &result);
 
 int handle_version(const ParseResult &result);
 
@@ -86,34 +84,12 @@ int main(int argc, char *argv[])
   root_cmd.set_handler(handle_root_command);
 
   // Console command group
-  auto console_cmd = command_ptr(new Command("console", "z/OS console operations"));
-  console_cmd->add_alias("cn");
-
-  // Console Issue subcommand
-  auto issue_cmd = command_ptr(new Command("issue", "issue a console command"));
-  issue_cmd->add_keyword_arg("console-name",
-                             make_aliases("--cn", "--console-name"),
-                             "extended console name", ArgType_Single, false,
-                             ArgValue(std::string("zowex")));
-  issue_cmd->add_keyword_arg("wait",
-                             make_aliases("--wait"),
-                             "wait for responses", ArgType_Flag, false,
-                             ArgValue(true));
-  issue_cmd->add_keyword_arg("timeout",
-                             make_aliases("--timeout"),
-                             "timeout in seconds", ArgType_Single, false);
-  issue_cmd->add_positional_arg("command", "command to run, e.g. 'D IPLINFO'",
-                                ArgType_Single, true);
-  issue_cmd->set_handler(handle_console_issue);
-
-  console_cmd->add_command(issue_cmd);
-  root_cmd.add_command(console_cmd);
-
+  console::register_commands(root_cmd);
   ds::register_commands(root_cmd);
-  uss::register_commands(root_cmd);
-  tool::register_commands(root_cmd);
   job::register_commands(root_cmd);
+  tool::register_commands(root_cmd);
   tso::register_commands(root_cmd);
+  uss::register_commands(root_cmd);
 
   // Version command
   auto version_cmd = command_ptr(new Command("version", "display version information"));
@@ -125,61 +101,6 @@ int main(int argc, char *argv[])
   // Parse and execute through normal command handling
   ParseResult result = arg_parser->parse(argc, argv);
   return result.exit_code;
-}
-
-int handle_console_issue(const ParseResult &result)
-{
-  int rc = 0;
-  ZCN zcn = {0};
-
-  string console_name = result.get_value<std::string>("console-name", "zowex");
-  long long timeout = result.get_value<long long>("timeout", 0);
-
-  string command = result.get_value<std::string>("command", "");
-  bool wait = result.get_value<bool>("wait", true);
-
-  if (timeout > 0)
-  {
-    zcn.timeout = timeout;
-  }
-
-  rc = zcn_activate(&zcn, console_name);
-  if (0 != rc)
-  {
-    cerr << "Error: could not activate console: '" << console_name << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details: " << zcn.diag.e_msg << endl;
-    return RTNCD_FAILURE;
-  }
-
-  rc = zcn_put(&zcn, command);
-  if (0 != rc)
-  {
-    cerr << "Error: could not write to console: '" << console_name << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details: " << zcn.diag.e_msg << endl;
-    return RTNCD_FAILURE;
-  }
-
-  if (wait)
-  {
-    string response = "";
-    rc = zcn_get(&zcn, response);
-    if (0 != rc)
-    {
-      cerr << "Error: could not get from console: '" << console_name << "' rc: '" << rc << "'" << endl;
-      cerr << "  Details: " << zcn.diag.e_msg << endl;
-      return RTNCD_FAILURE;
-    }
-    cout << response << endl;
-  }
-
-  rc = zcn_deactivate(&zcn);
-  if (0 != rc)
-  {
-    cerr << "Error: could not deactivate console: '" << console_name << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details: " << zcn.diag.e_msg << endl;
-    return RTNCD_FAILURE;
-  }
-  return rc;
 }
 
 int handle_version(const ParseResult &result)
