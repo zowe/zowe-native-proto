@@ -616,11 +616,11 @@ int handle_console_issue(const ParseResult &result)
   int rc = 0;
   ZCN zcn = {0};
 
-  string console_name = result.find_kw_arg_string("console-name");
-  int timeout = result.find_kw_arg_int("timeout");
+  string console_name = result.get_value<std::string>("console-name", "zowex");
+  long long timeout = result.get_value<long long>("timeout", 0);
 
-  string command = result.find_pos_arg_string("command");
-  bool wait = result.find_kw_arg_bool("wait");
+  string command = result.get_value<std::string>("command", "");
+  bool wait = result.get_value<bool>("wait", true);
 
   if (timeout > 0)
   {
@@ -669,7 +669,7 @@ int handle_console_issue(const ParseResult &result)
 int handle_tso_issue(const ParseResult &result)
 {
   int rc = 0;
-  string command = result.find_pos_arg_string("command");
+  string command = result.get_value<std::string>("command", "");
   string response;
 
   rc = ztso_issue(command, response);
@@ -722,78 +722,78 @@ int process_data_set_create_result(ZDS *zds, int rc, string dsn, string response
 int handle_data_set_create(const ParseResult &result)
 {
   int rc = 0;
-  string dsn = result.find_pos_arg_string("dsn");
+  string dsn = result.get_value<std::string>("dsn", "");
   ZDS zds = {0};
   DS_ATTRIBUTES attributes = {0};
 
   // Extract all the optional creation attributes
-  if (result.has_kw_arg("alcunit"))
+  if (result.has("alcunit"))
   {
-    attributes.alcunit = result.find_kw_arg_string("alcunit");
+    attributes.alcunit = result.get_value<std::string>("alcunit", "");
   }
-  if (result.has_kw_arg("blksize"))
+  if (result.has("blksize"))
   {
-    attributes.blksize = result.find_kw_arg_int("blksize");
+    attributes.blksize = result.get_value<long long>("blksize", 0);
   }
-  if (result.has_kw_arg("dirblk"))
+  if (result.has("dirblk"))
   {
-    attributes.dirblk = result.find_kw_arg_int("dirblk");
+    attributes.dirblk = result.get_value<long long>("dirblk", 0);
   }
-  if (result.has_kw_arg("dsorg"))
+  if (result.has("dsorg"))
   {
-    attributes.dsorg = result.find_kw_arg_string("dsorg");
+    attributes.dsorg = result.get_value<std::string>("dsorg", "");
   }
-  if (result.has_kw_arg("primary"))
+  if (result.has("primary"))
   {
-    attributes.primary = result.find_kw_arg_int("primary");
+    attributes.primary = result.get_value<long long>("primary", 0);
   }
-  if (result.has_kw_arg("recfm"))
+  if (result.has("recfm"))
   {
-    attributes.recfm = result.find_kw_arg_string("recfm");
+    attributes.recfm = result.get_value<std::string>("recfm", "");
   }
-  if (result.has_kw_arg("lrecl"))
+  if (result.has("lrecl"))
   {
-    attributes.lrecl = result.find_kw_arg_int("lrecl");
+    attributes.lrecl = result.get_value<long long>("lrecl", 0);
   }
-  if (result.has_kw_arg("dataclass"))
+  if (result.has("dataclass"))
   {
-    attributes.dataclass = result.find_kw_arg_string("dataclass");
+    attributes.dataclass = result.get_value<std::string>("dataclass", "");
   }
-  if (result.has_kw_arg("unit"))
+  if (result.has("unit"))
   {
-    attributes.unit = result.find_kw_arg_string("unit");
+    attributes.unit = result.get_value<std::string>("unit", "");
   }
-  if (result.has_kw_arg("dsntype"))
+  if (result.has("dsntype"))
   {
-    attributes.dsntype = result.find_kw_arg_string("dsntype");
+    attributes.dsntype = result.get_value<std::string>("dsntype", "");
   }
-  if (result.has_kw_arg("mgntclass"))
+  if (result.has("mgntclass"))
   {
-    attributes.mgntclass = result.find_kw_arg_string("mgntclass");
+    attributes.mgntclass = result.get_value<std::string>("mgntclass", "");
   }
-  if (result.has_kw_arg("dsname"))
+  if (result.has("dsname"))
   {
-    attributes.dsname = result.find_kw_arg_string("dsname");
+    attributes.dsname = result.get_value<std::string>("dsname", "");
   }
-  if (result.has_kw_arg("avgblk"))
+  if (result.has("avgblk"))
   {
-    attributes.avgblk = result.find_kw_arg_int("avgblk");
+    attributes.avgblk = result.get_value<long long>("avgblk", 0);
   }
-  if (result.has_kw_arg("secondary"))
+  if (result.has("secondary"))
   {
-    attributes.secondary = result.find_kw_arg_int("secondary");
+    attributes.secondary = result.get_value<long long>("secondary", 0);
   }
-  if (result.has_kw_arg("size"))
+  if (result.has("size"))
   {
-    attributes.size = result.find_kw_arg_int("size");
+    attributes.size = result.get_value<long long>("size", 0);
   }
-  if (result.has_kw_arg("storclass"))
+  if (result.has("storclass"))
   {
-    attributes.storclass = result.find_kw_arg_string("storclass");
+    attributes.storclass = result.get_value<std::string>("storclass", "");
   }
-  if (result.has_kw_arg("vol"))
+  if (result.has("vol"))
   {
-    attributes.vol = result.find_kw_arg_string("vol");
+    attributes.vol = result.get_value<std::string>("vol", "");
   }
 
   string response;
@@ -804,7 +804,7 @@ int handle_data_set_create(const ParseResult &result)
 int handle_data_set_create_fb(const ParseResult &result)
 {
   int rc = 0;
-  string dsn = result.find_pos_arg_string("dsn");
+  string dsn = result.get_value<std::string>("dsn", "");
   ZDS zds = {0};
   string response;
   rc = zds_create_dsn_fb(&zds, dsn, response);
@@ -814,7 +814,7 @@ int handle_data_set_create_fb(const ParseResult &result)
 int handle_data_set_create_vb(const ParseResult &result)
 {
   int rc = 0;
-  string dsn = result.find_pos_arg_string("dsn");
+  string dsn = result.get_value<std::string>("dsn", "");
   ZDS zds = {0};
   string response;
   rc = zds_create_dsn_vb(&zds, dsn, response);
@@ -824,7 +824,7 @@ int handle_data_set_create_vb(const ParseResult &result)
 int handle_data_set_create_adata(const ParseResult &result)
 {
   int rc = 0;
-  string dsn = result.find_pos_arg_string("dsn");
+  string dsn = result.get_value<std::string>("dsn", "");
   ZDS zds = {0};
   string response;
   rc = zds_create_dsn_adata(&zds, dsn, response);
@@ -834,7 +834,7 @@ int handle_data_set_create_adata(const ParseResult &result)
 int handle_data_set_create_loadlib(const ParseResult &result)
 {
   int rc = 0;
-  string dsn = result.find_pos_arg_string("dsn");
+  string dsn = result.get_value<std::string>("dsn", "");
   ZDS zds = {0};
   string response;
   rc = zds_create_dsn_loadlib(&zds, dsn, response);
@@ -844,7 +844,7 @@ int handle_data_set_create_loadlib(const ParseResult &result)
 int handle_data_set_create_member(const ParseResult &result)
 {
   int rc = 0;
-  string dsn = result.find_pos_arg_string("dsn");
+  string dsn = result.get_value<std::string>("dsn", "");
   ZDS zds = {0};
   string response;
   vector<ZDSEntry> entries;
@@ -888,26 +888,26 @@ int handle_data_set_create_member(const ParseResult &result)
 int handle_data_set_view(const ParseResult &result)
 {
   int rc = 0;
-  string dsn = result.find_pos_arg_string("dsn");
+  string dsn = result.get_value<std::string>("dsn", "");
   ZDS zds = {0};
   vector<string> dds;
 
-  if (result.has_kw_arg("encoding"))
+  if (result.has("encoding"))
   {
-    zut_prepare_encoding(result.find_kw_arg_string("encoding"), &zds.encoding_opts);
+    zut_prepare_encoding(result.get_value<std::string>("encoding", ""), &zds.encoding_opts);
   }
-  if (result.has_kw_arg("local-encoding"))
+  if (result.has("local-encoding"))
   {
-    const auto source_encoding = result.find_kw_arg_string("local-encoding");
+    const auto source_encoding = result.get_value<std::string>("local-encoding", "");
     if (!source_encoding.empty() && source_encoding.size() < sizeof(zds.encoding_opts.source_codepage))
     {
       memcpy(zds.encoding_opts.source_codepage, source_encoding.data(), source_encoding.length() + 1);
     }
   }
 
-  if (result.has_kw_arg("volser"))
+  if (result.has("volser"))
   {
-    string volser_value = result.find_kw_arg_string("volser");
+    string volser_value = result.get_value<std::string>("volser", "");
     if (!volser_value.empty())
     {
       dds.push_back("alloc dd(input) da('" + dsn + "') shr vol(" + volser_value + ")");
@@ -920,15 +920,15 @@ int handle_data_set_view(const ParseResult &result)
     }
   }
 
-  bool has_pipe_path = result.has_kw_arg("pipe-path");
-  string pipe_path = result.find_kw_arg_string("pipe-path");
+  bool has_pipe_path = result.has("pipe-path");
+  string pipe_path = result.get_value<std::string>("pipe-path", "");
 
   if (has_pipe_path && !pipe_path.empty())
   {
     size_t content_len = 0;
     rc = zds_read_from_dsn_streamed(&zds, dsn, pipe_path, &content_len);
 
-    if (result.find_kw_arg_bool("return-etag"))
+    if (result.get_value<bool>("return-etag", false))
     {
       string temp_content;
       auto read_rc = zds_read_from_dsn(&zds, dsn, temp_content);
@@ -951,15 +951,15 @@ int handle_data_set_view(const ParseResult &result)
       return RTNCD_FAILURE;
     }
 
-    if (result.find_kw_arg_bool("return-etag"))
+    if (result.get_value<bool>("return-etag", false))
     {
       const auto etag = zut_calc_adler32_checksum(response);
       cout << "etag: " << std::hex << etag << std::dec << endl;
       cout << "data: ";
     }
 
-    bool has_encoding = result.has_kw_arg("encoding");
-    bool response_format_bytes = result.find_kw_arg_bool("response-format-bytes");
+    bool has_encoding = result.has("encoding");
+    bool response_format_bytes = result.get_value<bool>("response-format-bytes", false);
 
     if (has_encoding && response_format_bytes)
     {
@@ -982,7 +982,8 @@ int handle_data_set_view(const ParseResult &result)
 int handle_data_set_list(const ParseResult &result)
 {
   int rc = 0;
-  string dsn = result.find_pos_arg_string("dsn");
+  ZLOG_DEBUG("[>] handle_data_set_list");
+  string dsn = result.get_value<std::string>("dsn", "");
 
   if (dsn.length() > MAX_DS_LENGTH)
   {
@@ -992,9 +993,9 @@ int handle_data_set_list(const ParseResult &result)
 
   dsn += ".**";
 
-  int max_entries = result.find_kw_arg_int("max-entries");
-  bool warn = result.find_kw_arg_bool("warn", true);
-  bool attributes = result.find_kw_arg_bool("attributes");
+  long long max_entries = result.get_value<long long>("max-entries", 0);
+  bool warn = result.get_value<bool>("warn", true);
+  bool attributes = result.get_value<bool>("attributes", false);
 
   ZDS zds = {0};
   if (max_entries > 0)
@@ -1003,7 +1004,7 @@ int handle_data_set_list(const ParseResult &result)
   }
   vector<ZDSEntry> entries;
 
-  bool emit_csv = result.find_kw_arg_bool("response-format-csv");
+  bool emit_csv = result.get_value<bool>("response-format-csv", false);
   rc = zds_list_data_sets(&zds, dsn, entries);
   if (RTNCD_SUCCESS == rc || RTNCD_WARNING == rc)
   {
@@ -1065,9 +1066,9 @@ int handle_data_set_list(const ParseResult &result)
 int handle_data_set_list_members(const ParseResult &result)
 {
   int rc = 0;
-  string dsn = result.find_pos_arg_string("dsn");
-  int max_entries = result.find_kw_arg_int("max-entries");
-  bool warn = result.find_kw_arg_bool("warn", true);
+  string dsn = result.get_value<std::string>("dsn", "");
+  long long max_entries = result.get_value<long long>("max-entries", 0);
+  bool warn = result.get_value<bool>("warn", true);
 
   ZDS zds = {0};
   if (max_entries > 0)
@@ -1107,35 +1108,35 @@ int handle_data_set_list_members(const ParseResult &result)
 int handle_data_set_write(const ParseResult &result)
 {
   int rc = 0;
-  string dsn = result.find_pos_arg_string("dsn");
+  string dsn = result.get_value<std::string>("dsn", "");
   ZDS zds = {0};
   vector<string> dds;
 
-  if (result.has_kw_arg("encoding"))
+  if (result.has("encoding"))
   {
-    zut_prepare_encoding(result.find_kw_arg_string("encoding"), &zds.encoding_opts);
+    zut_prepare_encoding(result.get_value<std::string>("encoding", ""), &zds.encoding_opts);
   }
-  if (result.has_kw_arg("local-encoding"))
+  if (result.has("local-encoding"))
   {
-    const auto source_encoding = result.find_kw_arg_string("local-encoding");
+    const auto source_encoding = result.get_value<std::string>("local-encoding", "");
     if (!source_encoding.empty() && source_encoding.size() < sizeof(zds.encoding_opts.source_codepage))
     {
       memcpy(zds.encoding_opts.source_codepage, source_encoding.data(), source_encoding.length() + 1);
     }
   }
 
-  if (result.has_kw_arg("etag"))
+  if (result.has("etag"))
   {
-    string etag_value = result.find_kw_arg_string("etag");
+    string etag_value = result.get_value<std::string>("etag", "");
     if (!etag_value.empty())
     {
       strcpy(zds.etag, etag_value.c_str());
     }
   }
 
-  if (result.has_kw_arg("volser"))
+  if (result.has("volser"))
   {
-    string volser_value = result.find_kw_arg_string("volser");
+    string volser_value = result.get_value<std::string>("volser", "");
     if (!volser_value.empty())
     {
       dds.push_back("alloc dd(output) da('" + dsn + "') shr vol(" + volser_value + ")");
@@ -1148,8 +1149,8 @@ int handle_data_set_write(const ParseResult &result)
     }
   }
 
-  bool has_pipe_path = result.has_kw_arg("pipe-path");
-  string pipe_path = result.find_kw_arg_string("pipe-path");
+  bool has_pipe_path = result.has("pipe-path");
+  string pipe_path = result.get_value<std::string>("pipe-path", "");
   size_t content_len = 0;
 
   if (has_pipe_path && !pipe_path.empty())
@@ -1197,7 +1198,7 @@ int handle_data_set_write(const ParseResult &result)
     return RTNCD_FAILURE;
   }
 
-  if (result.find_kw_arg_bool("etag-only"))
+  if (result.get_value<bool>("etag-only", false))
   {
     cout << "etag: " << zds.etag << endl;
     if (content_len > 0)
@@ -1214,7 +1215,7 @@ int handle_data_set_write(const ParseResult &result)
 int handle_data_set_delete(const ParseResult &result)
 {
   int rc = 0;
-  string dsn = result.find_pos_arg_string("dsn");
+  string dsn = result.get_value<std::string>("dsn", "");
   ZDS zds = {0};
   rc = zds_delete_dsn(&zds, dsn);
 
@@ -1232,7 +1233,7 @@ int handle_data_set_delete(const ParseResult &result)
 int handle_data_set_restore(const ParseResult &result)
 {
   int rc = 0;
-  string dsn = result.find_pos_arg_string("dsn");
+  string dsn = result.get_value<std::string>("dsn", "");
   ZDS zds = {0};
   string response;
   unsigned int code = 0;
@@ -1257,7 +1258,7 @@ int handle_data_set_restore(const ParseResult &result)
 int handle_data_set_compress(const ParseResult &result)
 {
   int rc = 0;
-  string dsn = result.find_pos_arg_string("dsn");
+  string dsn = result.get_value<std::string>("dsn", "");
 
   transform(dsn.begin(), dsn.end(), dsn.begin(), ::toupper);
 
@@ -1341,10 +1342,10 @@ int handle_tool_convert_dsect(const ParseResult &result)
   unsigned int code = 0;
   string resp;
 
-  string adata_dsn = result.find_kw_arg_string("adata-dsn");
-  string chdr_dsn = result.find_kw_arg_string("chdr-dsn");
-  string sysprint = result.find_kw_arg_string("sysprint");
-  string sysout = result.find_kw_arg_string("sysout");
+  string adata_dsn = result.get_value<std::string>("adata-dsn", "");
+  string chdr_dsn = result.get_value<std::string>("chdr-dsn", "");
+  string sysprint = result.get_value<std::string>("sysprint", "");
+  string sysout = result.get_value<std::string>("sysout", "");
 
   const char *user = getlogin();
   string struser(user);
@@ -1393,7 +1394,7 @@ int handle_tool_dynalloc(const ParseResult &result)
   unsigned int code = 0;
   string resp;
 
-  string parm = result.find_pos_arg_string("parm");
+  string parm = result.get_value<std::string>("parm", "");
 
   rc = zut_bpxwdyn(parm, &code, resp);
   if (0 != rc)
@@ -1411,7 +1412,7 @@ int handle_tool_dynalloc(const ParseResult &result)
 int handle_tool_display_symbol(const ParseResult &result)
 {
   int rc = 0;
-  string symbol = result.find_pos_arg_string("symbol");
+  string symbol = result.get_value<std::string>("symbol", "");
   transform(symbol.begin(), symbol.end(), symbol.begin(), ::toupper);
   symbol = "&" + symbol;
   string value;
@@ -1430,10 +1431,10 @@ int handle_tool_search(const ParseResult &result)
 {
   int rc = 0;
 
-  string pattern = result.find_pos_arg_string("string");
-  string warn = result.find_kw_arg_string("warn");
-  int max_entries = result.find_kw_arg_int("max-entries");
-  string dsn = result.find_pos_arg_string("dsn");
+  string pattern = result.get_value<std::string>("string", "");
+  string warn = result.get_value<std::string>("warn", "");
+  long long max_entries = result.get_value<long long>("max-entries", 0);
+  string dsn = result.get_value<std::string>("dsn", "");
 
   ZDS zds = {0};
   bool results_truncated = false;
@@ -1533,8 +1534,8 @@ int handle_tool_amblist(const ParseResult &result)
 {
   int rc = 0;
 
-  string dsn = result.find_pos_arg_string("dsn");
-  string statements = " " + result.find_kw_arg_string("control-statements");
+  string dsn = result.get_value<std::string>("dsn", "");
+  string statements = " " + result.get_value<std::string>("control-statements", "");
 
   // Perform dynalloc
   vector<string> dds;
@@ -1588,9 +1589,9 @@ int handle_tool_amblist(const ParseResult &result)
 int handle_tool_run(const ParseResult &result)
 {
   int rc = 0;
-  string program = result.find_pos_arg_string("program");
-  string dynalloc_pre = result.find_kw_arg_string("dynalloc-pre");
-  string dynalloc_post = result.find_kw_arg_string("dynalloc-post");
+  string program = result.get_value<std::string>("program", "");
+  string dynalloc_pre = result.get_value<std::string>("dynalloc-pre", "");
+  string dynalloc_post = result.get_value<std::string>("dynalloc-post", "");
 
   // Allocate anything that was requested
   if (dynalloc_pre.length() > 0)
@@ -1618,7 +1619,7 @@ int handle_tool_run(const ParseResult &result)
     }
   }
 
-  string indd = result.find_kw_arg_string("in-dd");
+  string indd = result.get_value<std::string>("in-dd", "");
   if (indd.length() > 0)
   {
     string ddname = "DD:" + indd;
@@ -1629,8 +1630,8 @@ int handle_tool_run(const ParseResult &result)
       return RTNCD_FAILURE;
     }
 
-    string input = result.find_kw_arg_string("input");
-    if (result.has_kw_arg("input"))
+    string input = result.get_value<std::string>("input", "");
+    if (result.has("input"))
     {
       out << input << endl;
     }
@@ -1648,7 +1649,7 @@ int handle_tool_run(const ParseResult &result)
     rc = RTNCD_FAILURE;
   }
 
-  string outdd = result.find_kw_arg_string("out-dd");
+  string outdd = result.get_value<std::string>("out-dd", "");
   if (outdd.length() > 0)
   {
     string ddname = "DD:" + outdd;
@@ -1694,14 +1695,14 @@ int handle_tool_run(const ParseResult &result)
 int handle_uss_create_file(const ParseResult &result)
 {
   int rc = 0;
-  string file_path = result.find_pos_arg_string("file-path");
+  string file_path = result.get_value<std::string>("file-path", "");
 
-  int mode = result.find_kw_arg_int("mode");
-  if (result.find_kw_arg_string("mode").empty())
+  long long mode = result.get_value<long long>("mode", 0);
+  if (result.get_value<std::string>("mode", "").empty())
   {
     mode = 644;
   }
-  else if (mode == 0 && result.find_kw_arg_string("mode") != "0")
+  else if (mode == 0 && result.get_value<std::string>("mode", "") != "0")
   {
     cerr << "Error: invalid mode provided.\nExamples of valid modes: 777, 0644" << endl;
     return RTNCD_FAILURE;
@@ -1739,14 +1740,14 @@ int handle_uss_create_file(const ParseResult &result)
 int handle_uss_create_dir(const ParseResult &result)
 {
   int rc = 0;
-  string file_path = result.find_pos_arg_string("file-path");
+  string file_path = result.get_value<std::string>("file-path", "");
 
-  int mode = result.find_kw_arg_int("mode");
-  if (result.find_kw_arg_string("mode").empty())
+  long long mode = result.get_value<long long>("mode", 0);
+  if (result.get_value<std::string>("mode", "").empty())
   {
     mode = 755;
   }
-  else if (mode == 0 && result.find_kw_arg_string("mode") != "0")
+  else if (mode == 0 && result.get_value<std::string>("mode", "") != "0")
   {
     cerr << "Error: invalid mode provided.\nExamples of valid modes: 777, 0644" << endl;
     return RTNCD_FAILURE;
@@ -1784,13 +1785,13 @@ int handle_uss_create_dir(const ParseResult &result)
 int handle_uss_list(const ParseResult &result)
 {
   int rc = 0;
-  string uss_file = result.find_pos_arg_string("file-path");
+  string uss_file = result.get_value<std::string>("file-path", "");
 
   ListOptions list_options = {0};
-  list_options.all_files = result.find_kw_arg_bool("all");
-  list_options.long_format = result.find_kw_arg_bool("long");
+  list_options.all_files = result.get_value<bool>("all", false);
+  list_options.long_format = result.get_value<bool>("long", false);
 
-  const auto use_csv_format = result.find_kw_arg_bool("response-format-csv");
+  const auto use_csv_format = result.get_value<bool>("response-format-csv", false);
 
   ZUSF zusf = {0};
   string response;
@@ -1812,16 +1813,16 @@ int handle_uss_list(const ParseResult &result)
 int handle_uss_view(const ParseResult &result)
 {
   int rc = 0;
-  string uss_file = result.find_pos_arg_string("file-path");
+  string uss_file = result.get_value<std::string>("file-path", "");
 
   ZUSF zusf = {0};
-  if (result.has_kw_arg("encoding"))
+  if (result.has("encoding"))
   {
-    zut_prepare_encoding(result.find_kw_arg_string("encoding"), &zusf.encoding_opts);
+    zut_prepare_encoding(result.get_value<std::string>("encoding", ""), &zusf.encoding_opts);
   }
-  if (result.has_kw_arg("local-encoding"))
+  if (result.has("local-encoding"))
   {
-    const auto source_encoding = result.find_kw_arg_string("local-encoding");
+    const auto source_encoding = result.get_value<std::string>("local-encoding", "");
     if (!source_encoding.empty() && source_encoding.size() < sizeof(zusf.encoding_opts.source_codepage))
     {
       memcpy(zusf.encoding_opts.source_codepage, source_encoding.data(), source_encoding.length() + 1);
@@ -1835,15 +1836,15 @@ int handle_uss_view(const ParseResult &result)
     return RTNCD_FAILURE;
   }
 
-  bool has_pipe_path = result.has_kw_arg("pipe-path");
-  string pipe_path = result.find_kw_arg_string("pipe-path");
+  bool has_pipe_path = result.has("pipe-path");
+  string pipe_path = result.get_value<std::string>("pipe-path", "");
 
   if (has_pipe_path && !pipe_path.empty())
   {
     size_t content_len = 0;
     rc = zusf_read_from_uss_file_streamed(&zusf, uss_file, pipe_path, &content_len);
 
-    if (result.find_kw_arg_bool("return-etag"))
+    if (result.get_value<bool>("return-etag", false))
     {
       cout << "etag: " << zut_build_etag(file_stats.st_mtime, file_stats.st_size) << endl;
     }
@@ -1862,14 +1863,14 @@ int handle_uss_view(const ParseResult &result)
       return RTNCD_FAILURE;
     }
 
-    if (result.find_kw_arg_bool("return-etag"))
+    if (result.get_value<bool>("return-etag", false))
     {
       cout << "etag: " << zut_build_etag(file_stats.st_mtime, file_stats.st_size) << endl;
       cout << "data: ";
     }
 
-    bool has_encoding = result.has_kw_arg("encoding");
-    bool response_format_bytes = result.find_kw_arg_bool("response-format-bytes");
+    bool has_encoding = result.has("encoding");
+    bool response_format_bytes = result.get_value<bool>("response-format-bytes", false);
 
     if (has_encoding && response_format_bytes)
     {
@@ -1887,33 +1888,33 @@ int handle_uss_view(const ParseResult &result)
 int handle_uss_write(const ParseResult &result)
 {
   int rc = 0;
-  string file = result.find_pos_arg_string("file-path");
+  string file = result.get_value<std::string>("file-path", "");
   ZUSF zusf = {0};
 
-  if (result.has_kw_arg("encoding"))
+  if (result.has("encoding"))
   {
-    zut_prepare_encoding(result.find_kw_arg_string("encoding"), &zusf.encoding_opts);
+    zut_prepare_encoding(result.get_value<std::string>("encoding", ""), &zusf.encoding_opts);
   }
-  if (result.has_kw_arg("local-encoding"))
+  if (result.has("local-encoding"))
   {
-    const auto source_encoding = result.find_kw_arg_string("local-encoding");
+    const auto source_encoding = result.get_value<std::string>("local-encoding", "");
     if (!source_encoding.empty() && source_encoding.size() < sizeof(zusf.encoding_opts.source_codepage))
     {
       memcpy(zusf.encoding_opts.source_codepage, source_encoding.data(), source_encoding.length() + 1);
     }
   }
 
-  if (result.has_kw_arg("etag"))
+  if (result.has("etag"))
   {
-    string etag_value = result.find_kw_arg_string("etag");
+    string etag_value = result.get_value<std::string>("etag", "");
     if (!etag_value.empty())
     {
       strcpy(zusf.etag, etag_value.c_str());
     }
   }
 
-  bool has_pipe_path = result.has_kw_arg("pipe-path");
-  string pipe_path = result.find_kw_arg_string("pipe-path");
+  bool has_pipe_path = result.has("pipe-path");
+  string pipe_path = result.get_value<std::string>("pipe-path", "");
   size_t content_len = 0;
 
   if (has_pipe_path && !pipe_path.empty())
@@ -1955,7 +1956,7 @@ int handle_uss_write(const ParseResult &result)
     return RTNCD_FAILURE;
   }
 
-  if (result.find_kw_arg_bool("etag-only"))
+  if (result.get_value<bool>("etag-only", false))
   {
     cout << "etag: " << zusf.etag << endl
          << "created: " << (zusf.created ? "true" : "false") << endl;
@@ -1972,8 +1973,8 @@ int handle_uss_write(const ParseResult &result)
 
 int handle_uss_delete(const ParseResult &result)
 {
-  string file_path = result.find_pos_arg_string("file-path");
-  bool recursive = result.find_kw_arg_bool("recursive");
+  string file_path = result.get_value<std::string>("file-path", "");
+  bool recursive = result.get_value<bool>("recursive", false);
 
   ZUSF zusf = {0};
   const auto rc = zusf_delete_uss_item(&zusf, file_path, recursive);
@@ -1992,15 +1993,15 @@ int handle_uss_delete(const ParseResult &result)
 int handle_uss_chmod(const ParseResult &result)
 {
   int rc = 0;
-  int mode = result.find_pos_arg_int("mode");
-  if (mode == 0 && !result.find_pos_arg_string("mode").empty())
+  long long mode = result.get_value<long long>("mode", 0);
+  if (mode == 0 && !result.get_value<std::string>("mode", "").empty())
   {
     cerr << "Error: invalid mode provided.\nExamples of valid modes: 777, 0644" << endl;
     return RTNCD_FAILURE;
   }
 
-  string file_path = result.find_pos_arg_string("file-path");
-  bool recursive = result.find_kw_arg_bool("recursive");
+  string file_path = result.get_value<std::string>("file-path", "");
+  bool recursive = result.get_value<bool>("recursive", false);
 
   // Convert mode from decimal to octal
   mode_t chmod_mode = 0;
@@ -2033,9 +2034,9 @@ int handle_uss_chmod(const ParseResult &result)
 
 int handle_uss_chown(const ParseResult &result)
 {
-  string path = result.find_pos_arg_string("file-path");
-  string owner = result.find_pos_arg_string("owner");
-  bool recursive = result.find_kw_arg_bool("recursive");
+  string path = result.get_value<std::string>("file-path", "");
+  string owner = result.get_value<std::string>("owner", "");
+  bool recursive = result.get_value<bool>("recursive", false);
 
   ZUSF zusf = {0};
 
@@ -2055,11 +2056,11 @@ int handle_uss_chown(const ParseResult &result)
 
 int handle_uss_chtag(const ParseResult &result)
 {
-  string path = result.find_pos_arg_string("file-path");
-  string tag = result.find_pos_arg_string("tag");
+  string path = result.get_value<std::string>("file-path", "");
+  string tag = result.get_value<std::string>("tag", "");
   if (tag.empty())
   {
-    tag = zut_int_to_string(result.find_pos_arg_int("tag"));
+    tag = zut_int_to_string(result.get_value<long long>("tag", 0));
   }
 
   if (tag.empty())
@@ -2068,7 +2069,7 @@ int handle_uss_chtag(const ParseResult &result)
     return RTNCD_FAILURE;
   }
 
-  bool recursive = result.find_kw_arg_bool("recursive");
+  bool recursive = result.get_value<bool>("recursive", false);
 
   ZUSF zusf = {0};
   const auto rc = zusf_chtag_uss_file_or_dir(&zusf, path, tag, recursive);
@@ -2099,9 +2100,9 @@ int job_submit_common(const ParseResult &result, string jcl, string &jobid, stri
     return RTNCD_FAILURE;
   }
 
-  bool only_jobid = result.find_kw_arg_bool("only-jobid");
-  bool only_correlator = result.find_kw_arg_bool("only-correlator");
-  string wait = result.find_kw_arg_string("wait");
+  bool only_jobid = result.get_value<bool>("only-jobid", false);
+  bool only_correlator = result.get_value<bool>("only-correlator", false);
+  string wait = result.get_value<std::string>("wait", "");
   transform(wait.begin(), wait.end(), wait.begin(), ::toupper);
 
   if (only_jobid)
@@ -2137,10 +2138,10 @@ int handle_job_list(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
-  string owner_name = result.find_kw_arg_string("owner");
-  string prefix_name = result.find_kw_arg_string("prefix");
-  int max_entries = result.find_kw_arg_int("max-entries");
-  bool warn = result.find_kw_arg_bool("warn", true);
+  string owner_name = result.get_value<std::string>("owner", "*");
+  string prefix_name = result.get_value<std::string>("prefix", "*");
+  long long max_entries = result.get_value<long long>("max-entries", 0);
+  bool warn = result.get_value<bool>("warn", true);
 
   if (max_entries > 0)
   {
@@ -2152,7 +2153,7 @@ int handle_job_list(const ParseResult &result)
 
   if (RTNCD_SUCCESS == rc || RTNCD_WARNING == rc)
   {
-    bool emit_csv = result.find_kw_arg_bool("response-format-csv");
+    bool emit_csv = result.get_value<bool>("response-format-csv", false);
     for (vector<ZJob>::iterator it = jobs.begin(); it != jobs.end(); it++)
     {
       if (emit_csv)
@@ -2193,9 +2194,9 @@ int handle_job_list_files(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
-  string jobid = result.find_pos_arg_string("jobid");
-  int max_entries = result.find_kw_arg_int("max-entries");
-  bool warn = result.find_kw_arg_bool("warn", true);
+  string jobid = result.get_value<std::string>("jobid", "");
+  long long max_entries = result.get_value<long long>("max-entries", 0);
+  bool warn = result.get_value<bool>("warn", true);
 
   if (max_entries > 0)
   {
@@ -2206,7 +2207,7 @@ int handle_job_list_files(const ParseResult &result)
   rc = zjb_list_dds(&zjb, jobid, job_dds);
   if (RTNCD_SUCCESS == rc || RTNCD_WARNING == rc)
   {
-    bool emit_csv = result.find_kw_arg_bool("response-format-csv");
+    bool emit_csv = result.get_value<bool>("response-format-csv", false);
     std::vector<string> fields;
     fields.reserve(5);
     for (vector<ZJobDD>::iterator it = job_dds.begin(); it != job_dds.end(); ++it)
@@ -2250,9 +2251,9 @@ int handle_job_view_status(const ParseResult &result)
   int rc = 0;
   ZJB zjb = {0};
   ZJob job = {0};
-  string jobid = result.find_pos_arg_string("jobid");
+  string jobid = result.get_value<std::string>("jobid", "");
 
-  bool emit_csv = result.find_kw_arg_bool("response-format-csv");
+  bool emit_csv = result.get_value<bool>("response-format-csv", false);
 
   rc = zjb_view(&zjb, jobid, job);
 
@@ -2286,16 +2287,16 @@ int handle_job_view_file(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
-  string jobid = result.find_pos_arg_string("jobid");
-  int key = result.find_pos_arg_int("key");
+  string jobid = result.get_value<std::string>("jobid", "");
+  long long key = result.get_value<long long>("key", 0);
 
-  if (result.has_kw_arg("encoding"))
+  if (result.has("encoding"))
   {
-    zut_prepare_encoding(result.find_kw_arg_string("encoding"), &zjb.encoding_opts);
+    zut_prepare_encoding(result.get_value<std::string>("encoding", ""), &zjb.encoding_opts);
   }
-  if (result.has_kw_arg("local-encoding"))
+  if (result.has("local-encoding"))
   {
-    const auto source_encoding = result.find_kw_arg_string("local-encoding");
+    const auto source_encoding = result.get_value<std::string>("local-encoding", "");
     if (!source_encoding.empty() && source_encoding.size() < sizeof(zjb.encoding_opts.source_codepage))
     {
       memcpy(zjb.encoding_opts.source_codepage, source_encoding.data(), source_encoding.length() + 1);
@@ -2312,8 +2313,8 @@ int handle_job_view_file(const ParseResult &result)
     return RTNCD_FAILURE;
   }
 
-  bool has_encoding = result.has_kw_arg("encoding");
-  bool response_format_bytes = result.find_kw_arg_bool("response-format-bytes");
+  bool has_encoding = result.has("encoding");
+  bool response_format_bytes = result.get_value<bool>("response-format-bytes", false);
 
   if (has_encoding && response_format_bytes)
   {
@@ -2331,7 +2332,7 @@ int handle_job_view_jcl(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
-  string jobid = result.find_pos_arg_string("jobid");
+  string jobid = result.get_value<std::string>("jobid", "");
 
   string resp;
   rc = zjb_read_job_jcl(&zjb, jobid, resp);
@@ -2352,7 +2353,7 @@ int handle_job_submit(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
-  string dsn = result.find_pos_arg_string("dsn");
+  string dsn = result.get_value<std::string>("dsn", "");
   string jobid;
 
   ZDS zds = {0};
@@ -2372,7 +2373,7 @@ int handle_job_submit_uss(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
-  string file = result.find_pos_arg_string("file-path");
+  string file = result.get_value<std::string>("file-path", "");
 
   ZUSF zusf = {0};
   string response;
@@ -2412,11 +2413,11 @@ int handle_job_submit_jcl(const ParseResult &result)
   raw_bytes.clear();
 
   ZEncode encoding_opts = {0};
-  bool encoding_prepared = result.has_kw_arg("encoding") && zut_prepare_encoding(result.find_kw_arg_string("encoding"), &encoding_opts);
+  bool encoding_prepared = result.has("encoding") && zut_prepare_encoding(result.get_value<std::string>("encoding", ""), &encoding_opts);
 
-  if (result.has_kw_arg("local-encoding"))
+  if (result.has("local-encoding"))
   {
-    const auto source_encoding = result.find_kw_arg_string("local-encoding");
+    const auto source_encoding = result.get_value<std::string>("local-encoding", "");
     if (!source_encoding.empty() && source_encoding.size() < sizeof(encoding_opts.source_codepage))
     {
       memcpy(encoding_opts.source_codepage, source_encoding.data(), source_encoding.length() + 1);
@@ -2436,7 +2437,7 @@ int handle_job_delete(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
-  string jobid = result.find_pos_arg_string("jobid");
+  string jobid = result.get_value<std::string>("jobid", "");
 
   rc = zjb_delete(&zjb, jobid);
 
@@ -2456,14 +2457,14 @@ int handle_job_cancel(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
-  string jobid = result.find_pos_arg_string("jobid");
+  string jobid = result.get_value<std::string>("jobid", "");
 
   // Note: Cancel options (dump, force, purge, restart) are currently not used by the backend
   // but are defined for future compatibility
-  bool option_dump = result.find_kw_arg_bool("dump");
-  bool option_force = result.find_kw_arg_bool("force");
-  bool option_purge = result.find_kw_arg_bool("purge");
-  bool option_restart = result.find_kw_arg_bool("restart");
+  bool option_dump = result.get_value<bool>("dump", false);
+  bool option_force = result.get_value<bool>("force", false);
+  bool option_purge = result.get_value<bool>("purge", false);
+  bool option_restart = result.get_value<bool>("restart", false);
 
   rc = zjb_cancel(&zjb, jobid);
 
@@ -2483,7 +2484,7 @@ int handle_job_hold(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
-  string jobid = result.find_pos_arg_string("jobid");
+  string jobid = result.get_value<std::string>("jobid", "");
 
   rc = zjb_hold(&zjb, jobid);
 
@@ -2503,7 +2504,7 @@ int handle_job_release(const ParseResult &result)
 {
   int rc = 0;
   ZJB zjb = {0};
-  string jobid = result.find_pos_arg_string("jobid");
+  string jobid = result.get_value<std::string>("jobid", "");
 
   rc = zjb_release(&zjb, jobid);
 
@@ -2574,8 +2575,8 @@ int handle_version(const ParseResult &result)
 
 int handle_root_command(const ParseResult &result)
 {
-  const auto is_interactive = result.find_kw_arg_bool("interactive");
-  if (result.find_kw_arg_bool("version"))
+  const auto is_interactive = result.get_value<bool>("interactive", false);
+  if (result.get_value<bool>("version", false))
   {
     const auto version_rc = handle_version(result);
     if (!is_interactive)
@@ -2586,7 +2587,7 @@ int handle_root_command(const ParseResult &result)
 
   if (is_interactive)
   {
-    return run_interactive_mode(result.find_kw_arg_string("shm-file"));
+    return run_interactive_mode(result.get_value<std::string>("shm-file", ""));
   }
 
   // If no interactive mode and no subcommands were invoked, show help
