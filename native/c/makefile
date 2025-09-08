@@ -120,6 +120,12 @@ MTL_FLAGS+=$(LOG_FLAGS)
 MTL_FLAGS64+=$(LOG_FLAGS)
 .END
 
+COMMAND_OBJS = $(OUT_DIR)/commands/console.o \
+	$(OUT_DIR)/commands/ds.o \
+	$(OUT_DIR)/commands/job.o \
+	$(OUT_DIR)/commands/tso.o \
+	$(OUT_DIR)/commands/uss.o
+
 all: libzut.so libzut.a libzds.so libzds.a libzusf.so libzusf.a libzcn.so libzcn.a libzjb.so libzjb.a zowex zoweax
 xlclang-extenders: $(OUT_DIR_CXXLANG)/zut.o $(OUT_DIR_CXXLANG)/zds.o $(OUT_DIR_CXXLANG)/zjb.o $(OUT_DIR_CXXLANG)/zcn.o $(OUT_DIR_CXXLANG)/zusf.o $(OUT_DIR_CXXLANG)/ztso.o
 # SWIG extenders: compile C++ files with SWIG macro defined for Python bindings
@@ -406,10 +412,38 @@ $(OUT_DIR)/libztso.a: $(OUT_DIR)/ztso.o $(OUT_DIR)/libzut.a
 libztso.a: $(OUT_DIRS) $(OUT_DIR)/libztso.a
 
 #
+# Commands
+#
+$(OUT_DIR)/commands/console.o: commands/console.cpp
+	@echo 'Building $@'
+	@mkdir -p $(@D)
+	$(CXX) $(CPP_FLAGS) -c $< -o $@
+
+$(OUT_DIR)/commands/ds.o: commands/ds.cpp
+	@echo 'Building $@'
+	@mkdir -p $(@D)
+	$(CXX) $(CPP_FLAGS) -c $< -o $@
+
+$(OUT_DIR)/commands/job.o: commands/job.cpp
+	@echo 'Building $@'
+	@mkdir -p $(@D)
+	$(CXX) $(CPP_FLAGS) -c $< -o $@
+
+$(OUT_DIR)/commands/tso.o: commands/tso.cpp
+	@echo 'Building $@'
+	@mkdir -p $(@D)
+	$(CXX) $(CPP_FLAGS) -c $< -o $@
+
+$(OUT_DIR)/commands/uss.o: commands/uss.cpp
+	@echo 'Building $@'
+	@mkdir -p $(@D)
+	$(CXX) $(CPP_FLAGS) -c $< -o $@
+
+#
 # Test CLI
 #
 # zowex: zowex.o zcn.o zcnm.o zcnm31.o zut.o zutm.o zutm31.o zjb.o zjbm.o zssi31.o zjbm31.o zds.o
-$(OUT_DIR)/zowex: $(OUT_DIR)/zowex.o $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(OUT_DIR)/libzjb.a $(OUT_DIR)/libzds.a $(OUT_DIR)/libzusf.a $(OUT_DIR)/libztso.a $(OUT_DIR)/libzshmem.a
+$(OUT_DIR)/zowex: $(OUT_DIR)/zowex.o $(COMMAND_OBJS) $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(OUT_DIR)/libzjb.a $(OUT_DIR)/libzds.a $(OUT_DIR)/libzusf.a $(OUT_DIR)/libztso.a $(OUT_DIR)/libzshmem.a
 	@echo 'Building zowex'
 	$(CXX) $(CPP_BND_FLAGS) -o $@ $^ > $*.bind.lst
 	ln -sf ../c/$@ ../golang/zowex
@@ -417,7 +451,7 @@ $(OUT_DIR)/zowex: $(OUT_DIR)/zowex.o $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(O
 
 zowex: $(OUT_DIRS) $(OUT_DIR)/zowex
 
-$(OUT_DIR)/zoweax: $(OUT_DIR)/zowex.o $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(OUT_DIR)/libzjb.a $(OUT_DIR)/libzds.a $(OUT_DIR)/libzusf.a $(OUT_DIR)/libztso.a $(OUT_DIR)/libzshmem.a
+$(OUT_DIR)/zoweax: $(OUT_DIR)/zowex.o $(COMMAND_OBJS) $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(OUT_DIR)/libzjb.a $(OUT_DIR)/libzds.a $(OUT_DIR)/libzusf.a $(OUT_DIR)/libztso.a $(OUT_DIR)/libzshmem.a
 	@echo 'Building zoweax'
 	$(CXX) $(CPP_BND_FLAGS_AUTH) -o $@ $^ > $*.bind.lst
 	extattr +ap $@

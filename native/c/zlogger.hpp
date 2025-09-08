@@ -31,6 +31,8 @@
 #include <errno.h>
 #endif
 
+extern "C" char *getcwd(char *, size_t);
+
 typedef zlog_level_t LogLevel;
 
 /**
