@@ -9,7 +9,6 @@
  *
  */
 
-import { EventEmitter } from "node:stream";
 import {
     ConfigBuilder,
     ConfigSchema,
@@ -19,8 +18,8 @@ import {
     type ProfileInfo,
 } from "@zowe/imperative";
 import { ZoweVsCodeExtension } from "@zowe/zowe-explorer-api";
-import { NodeSSH, type Config } from "node-ssh";
-import { type ConnectConfig } from "ssh2";
+import { type Config, NodeSSH } from "node-ssh";
+import type { ConnectConfig } from "ssh2";
 import type { MockInstance } from "vitest";
 import { AbstractConfigManager, type ProgressCallback } from "../src/AbstractConfigManager";
 import { ConfigFileUtils } from "../src/ConfigFileUtils";
@@ -880,11 +879,9 @@ describe("AbstractConfigManager", async () => {
         });
 
         it("should throw an error on connection attempt", async () => {
-            const connectMock = vi.spyOn(NodeSSH.prototype, "connect").mockImplementation(function (
-                _config: ConnectConfig,
-            ) {
-                return undefined;
-            });
+            const connectMock = vi
+                .spyOn(NodeSSH.prototype, "connect")
+                .mockImplementation((_config: ConnectConfig) => undefined);
             const isConnectedMock = vi.spyOn(NodeSSH.prototype, "isConnected").mockReturnValueOnce(true);
             const execCommandMock = vi.spyOn(NodeSSH.prototype, "execCommand").mockImplementation(() => {
                 return { stderr: "FOTS1668" } as any;
