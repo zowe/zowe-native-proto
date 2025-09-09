@@ -110,7 +110,7 @@ void zowex_tests()
                                         int rc = 0;
                                         string user;
                                         execute_command_with_output("whoami", user);
-                                        string data_set = TrimChars(user) + ".temp.temp.temp.temp.temp.temp.tmp";
+                                        string data_set = TrimChars(user) + ".TEMP.TEMP.TEMP.TEMP.TEMP.TEMP.TMP";
                                         string response;
                                         string del_command = zowex_command + " data-set delete " + data_set;
                                         execute_command_with_output(del_command, response);
