@@ -26,11 +26,15 @@ struct Address
   int zipCode;
 };
 
-ZJSON_SERIALIZABLE(Address,
-                   ZJSON_FIELD(Address, street),
-                   ZJSON_FIELD(Address, city),
-                   ZJSON_FIELD(Address, state),
-                   ZJSON_FIELD(Address, zipCode));
+// Old way (commented out):
+// ZJSON_SERIALIZABLE(Address,
+//                    ZJSON_FIELD(Address, street),
+//                    ZJSON_FIELD(Address, city),
+//                    ZJSON_FIELD(Address, state),
+//                    ZJSON_FIELD(Address, zipCode));
+
+// New simplified way:
+ZJSON_AUTO_SERIALIZABLE(Address, street, city, state, zipCode);
 
 // NOTE(Kelosky): this file is build and run with `xlclang++` but `xlc++` is used to build the `zjsonm.o` file
 // `xlc++` can also be used

@@ -22,6 +22,38 @@
 #include "zjsonm.h"
 #include "zjsontype.h"
 
+// Simplified macro to reduce repetition - automatically applies struct name to all fields
+// Uses a much simpler approach that just transforms the field list
+
+#define ZJSON_FIELD_AUTO(StructName, field) ZJSON_FIELD(StructName, field)
+
+// Transform macro that converts field list to ZJSON_FIELD calls
+#define ZJSON_TRANSFORM_FIELDS_1(StructName, f1) \
+  ZJSON_FIELD_AUTO(StructName, f1)
+
+#define ZJSON_TRANSFORM_FIELDS_2(StructName, f1, f2) \
+  ZJSON_FIELD_AUTO(StructName, f1), ZJSON_FIELD_AUTO(StructName, f2)
+
+#define ZJSON_TRANSFORM_FIELDS_3(StructName, f1, f2, f3) \
+  ZJSON_FIELD_AUTO(StructName, f1), ZJSON_FIELD_AUTO(StructName, f2), ZJSON_FIELD_AUTO(StructName, f3)
+
+#define ZJSON_TRANSFORM_FIELDS_4(StructName, f1, f2, f3, f4) \
+  ZJSON_FIELD_AUTO(StructName, f1), ZJSON_FIELD_AUTO(StructName, f2), ZJSON_FIELD_AUTO(StructName, f3), ZJSON_FIELD_AUTO(StructName, f4)
+
+#define ZJSON_TRANSFORM_FIELDS_5(StructName, f1, f2, f3, f4, f5) \
+  ZJSON_FIELD_AUTO(StructName, f1), ZJSON_FIELD_AUTO(StructName, f2), ZJSON_FIELD_AUTO(StructName, f3), ZJSON_FIELD_AUTO(StructName, f4), ZJSON_FIELD_AUTO(StructName, f5)
+
+// Count arguments and dispatch to appropriate macro
+#define ZJSON_GET_ARG_COUNT(...) ZJSON_GET_ARG_COUNT_IMPL(__VA_ARGS__, 5, 4, 3, 2, 1)
+#define ZJSON_GET_ARG_COUNT_IMPL(_1, _2, _3, _4, _5, N, ...) N
+
+#define ZJSON_CONCAT(a, b) ZJSON_CONCAT_IMPL(a, b)
+#define ZJSON_CONCAT_IMPL(a, b) a##b
+
+// Main macro - works with up to 5 fields (easily extendable)
+#define ZJSON_AUTO_SERIALIZABLE(StructName, ...) \
+  ZJSON_SERIALIZABLE(StructName, ZJSON_CONCAT(ZJSON_TRANSFORM_FIELDS_, ZJSON_GET_ARG_COUNT(__VA_ARGS__))(StructName, __VA_ARGS__))
+
 /*
  * USAGE EXAMPLE:
  *
