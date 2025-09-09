@@ -468,4 +468,51 @@ describe("ZSshClient", () => {
             expect(onErrorMock.mock.calls[0][0]).toBeInstanceOf(Error);
         });
     });
+
+    describe("uninstall server", () => {
+        const serverPath = "/tmp/server";
+        const fakeSshSession = new SshSession(fakeSession);
+        it("should return code 0 when uninstalling server succeeds", async () => {
+            const fakeLogger = { debug: vi.fn(), error: vi.fn() };
+            vi.spyOn(Logger, "getAppLogger").mockReturnValue(fakeLogger as any);
+            vi.spyOn(ZSshUtils as any, "sftp").mockImplementation(
+                async (_session: any, callback: (sftp: any, ssh: any) => Promise<void>) => {
+                    const sshMock = {
+                        execCommand: vi.fn().mockResolvedValue({ code: 0, stdout: "deleted" }),
+                    };
+                    return callback({} as any, sshMock);
+                }
+            );
+            const debugSpy = vi.spyOn(Logger.getAppLogger(), "debug");
+            await ZSshUtils.uninstallServer(
+                fakeSshSession,
+                serverPath
+            );
+            expect(fakeLogger.debug).toHaveBeenCalledWith(
+                `Deleted directory ${serverPath} with response: deleted`
+            );
+            expect(fakeLogger.error).not.toHaveBeenCalled();
+        });
+
+        it("should return code 1 when uninstalling server succeeds", async () => {
+            const fakeLogger = { debug: vi.fn(), error: vi.fn() };
+            vi.spyOn(Logger, "getAppLogger").mockReturnValue(fakeLogger as any);
+            vi.spyOn(ZSshUtils as any, "sftp").mockImplementation(
+                async (_session: any, callback: (sftp: any, ssh: any) => Promise<void>) => {
+                    const sshMock = {
+                        execCommand: vi.fn().mockResolvedValue({ code: 1}),
+                    };
+                    return callback({} as any, sshMock);
+                }
+            );
+
+            await expect(
+                ZSshUtils.uninstallServer(
+                    fakeSshSession,
+                    serverPath
+                )
+            ).rejects.toThrow();
+            expect(fakeLogger.error).toHaveBeenCalled();
+        });
+    });
 });
