@@ -616,10 +616,10 @@ public:
     return indented_json;
   }
 
-  // TODO(TAJ): Figure out how this overload is used and fix parameters
   JsonValueProxy operator[](const std::string &key)
   {
-    return JsonValueProxy(*this, key);
+    KEY_HANDLE root_handle = {0};
+    return JsonValueProxy(*this, key, root_handle);
   }
 
   // Type-safe deserialization method
