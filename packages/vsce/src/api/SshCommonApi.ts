@@ -9,10 +9,11 @@
  *
  */
 
+import { ImperativeError } from "@zowe/imperative";
 import { type SshSession, ZosUssProfile } from "@zowe/zos-uss-for-zowe-sdk";
 import {
     AuthHandler,
-    IAuthMethods,
+    type IAuthMethods,
     imperative,
     type MainframeInteraction,
     ZoweExplorerApiType,
@@ -22,7 +23,6 @@ import * as vscode from "vscode";
 import { type ZSshClient, ZSshUtils } from "zowe-native-proto-sdk";
 import { SshClientCache } from "../SshClientCache";
 import { SshErrorHandler } from "../SshErrorHandler";
-import { ImperativeError } from "@zowe/imperative";
 
 export class SshCommonApi implements MainframeInteraction.ICommon {
     public constructor(public profile?: imperative.IProfileLoaded) {}
