@@ -9,6 +9,7 @@
  *
  */
 
+#include "ztype.h"
 #pragma runopts("TRAP(ON,NOSPIE)")
 
 #include <iostream>
@@ -24,6 +25,8 @@
 #include <fstream>
 #include <unistd.h>
 #include <cstring>
+#include <sys/stat.h>
+#include <limits.h>
 #include "zcn.hpp"
 #include "zut.hpp"
 #include "parser.hpp"
@@ -33,6 +36,7 @@
 #include "ztso.hpp"
 #include "zshmem.hpp"
 #include "zuttype.h"
+#include "zlogger.hpp"
 
 #ifndef TO_STRING
 #define TO_STRING(x) static_cast<std::ostringstream &>(           \
@@ -113,6 +117,19 @@ int run_interactive_mode(const std::string &shm_file_path);
 std::tr1::shared_ptr<ArgumentParser> arg_parser;
 int main(int argc, char *argv[])
 {
+#ifdef ZLOG_ENABLE
+  string args = "";
+  for (int i = 0; i < argc; i++)
+  {
+    args += argv[i];
+    if (i < argc - 1)
+    {
+      args += " ";
+    }
+  }
+  ZLOG_TRACE("Starting zowex with args: %s", args.c_str());
+#endif
+
   arg_parser = std::tr1::shared_ptr<ArgumentParser>(new ArgumentParser(argv[0], "Zowe Native Protocol CLI"));
   arg_parser->get_root_command().add_keyword_arg("interactive",
                                                  make_aliases("--interactive", "--it"),
@@ -169,12 +186,14 @@ int main(int argc, char *argv[])
 
   // Common data set options that are reused
   auto encoding_option = make_aliases("--encoding", "--ec");
+  auto source_encoding_option = make_aliases("--local-encoding", "--lec");
   auto etag_option = make_aliases("--etag");
   auto etag_only_option = make_aliases("--etag-only");
   auto return_etag_option = make_aliases("--return-etag");
   auto pipe_path_option = make_aliases("--pipe-path");
   auto response_format_csv_option = make_aliases("--response-format-csv", "--rfc");
   auto response_format_bytes_option = make_aliases("--response-format-bytes", "--rfb");
+  auto volser_option = make_aliases("--volser", "--vs");
 
   // Create subcommand
   auto ds_create_cmd = command_ptr(new Command("create", "create data set"));
@@ -241,9 +260,11 @@ int main(int argc, char *argv[])
   auto ds_view_cmd = command_ptr(new Command("view", "view data set"));
   ds_view_cmd->add_positional_arg("dsn", "data set name, optionally with member specified", ArgType_Single, true);
   ds_view_cmd->add_keyword_arg("encoding", encoding_option, "return contents in given encoding", ArgType_Single, false);
+  ds_view_cmd->add_keyword_arg("local-encoding", source_encoding_option, "source encoding of the data set content (defaults to UTF-8)", ArgType_Single, false);
   ds_view_cmd->add_keyword_arg("response-format-bytes", response_format_bytes_option, "returns the response as raw bytes", ArgType_Flag, false, ArgValue(false));
   ds_view_cmd->add_keyword_arg("return-etag", return_etag_option, "Display the e-tag for a read response in addition to data", ArgType_Flag, false, ArgValue(false));
   ds_view_cmd->add_keyword_arg("pipe-path", pipe_path_option, "Specify a FIFO pipe path for transferring binary data", ArgType_Single, false);
+  ds_view_cmd->add_keyword_arg("volser", volser_option, "Specify volume serial where the data set resides", ArgType_Single, false);
   ds_view_cmd->set_handler(handle_data_set_view);
   data_set_cmd->add_command(ds_view_cmd);
 
@@ -271,9 +292,11 @@ int main(int argc, char *argv[])
   auto ds_write_cmd = command_ptr(new Command("write", "write to data set"));
   ds_write_cmd->add_positional_arg("dsn", "data set name, optionally with member specified", ArgType_Single, true);
   ds_write_cmd->add_keyword_arg("encoding", encoding_option, "encoding for input data", ArgType_Single, false);
+  ds_write_cmd->add_keyword_arg("local-encoding", source_encoding_option, "source encoding of the input data (defaults to UTF-8)", ArgType_Single, false);
   ds_write_cmd->add_keyword_arg("etag", etag_option, "Provide the e-tag for a write response to detect conflicts before save", ArgType_Single, false);
   ds_write_cmd->add_keyword_arg("etag-only", etag_only_option, "Only print the e-tag for a write response (when successful)", ArgType_Flag, false, ArgValue(false));
   ds_write_cmd->add_keyword_arg("pipe-path", pipe_path_option, "Specify a FIFO pipe path for transferring binary data", ArgType_Single, false);
+  ds_write_cmd->add_keyword_arg("volser", volser_option, "Specify volume serial where the data set resides", ArgType_Single, false);
   ds_write_cmd->set_handler(handle_data_set_write);
   data_set_cmd->add_command(ds_write_cmd);
 
@@ -377,6 +400,7 @@ int main(int argc, char *argv[])
 
   // Common encoding/etag/pipe-path option helpers (reuse from data-set group)
   auto uss_encoding_option = make_aliases("--encoding", "--ec");
+  auto uss_source_encoding_option = make_aliases("--local-encoding", "--lec");
   auto uss_etag_option = make_aliases("--etag");
   auto uss_etag_only_option = make_aliases("--etag-only");
   auto uss_return_etag_option = make_aliases("--return-etag");
@@ -410,6 +434,7 @@ int main(int argc, char *argv[])
   auto uss_view_cmd = command_ptr(new Command("view", "view a USS file"));
   uss_view_cmd->add_positional_arg("file-path", "file path", ArgType_Single, true);
   uss_view_cmd->add_keyword_arg("encoding", uss_encoding_option, "return contents in given encoding", ArgType_Single, false);
+  uss_view_cmd->add_keyword_arg("local-encoding", uss_source_encoding_option, "source encoding of the USS file content (defaults to UTF-8)", ArgType_Single, false);
   uss_view_cmd->add_keyword_arg("response-format-bytes", uss_response_format_bytes_option, "returns the response as raw bytes", ArgType_Flag, false, ArgValue(false));
   uss_view_cmd->add_keyword_arg("return-etag", uss_return_etag_option, "Display the e-tag for a read response in addition to data", ArgType_Flag, false, ArgValue(false));
   uss_view_cmd->add_keyword_arg("pipe-path", uss_pipe_path_option, "Specify a FIFO pipe path for transferring binary data", ArgType_Single, false);
@@ -420,6 +445,7 @@ int main(int argc, char *argv[])
   auto uss_write_cmd = command_ptr(new Command("write", "write to a USS file"));
   uss_write_cmd->add_positional_arg("file-path", "file path", ArgType_Single, true);
   uss_write_cmd->add_keyword_arg("encoding", uss_encoding_option, "encoding for input data", ArgType_Single, false);
+  uss_write_cmd->add_keyword_arg("local-encoding", uss_source_encoding_option, "source encoding of the input data (defaults to UTF-8)", ArgType_Single, false);
   uss_write_cmd->add_keyword_arg("etag", uss_etag_option, "Provide the e-tag for a write response to detect conflicts before save", ArgType_Single, false);
   uss_write_cmd->add_keyword_arg("etag-only", uss_etag_only_option, "Only print the e-tag for a write response (when successful)", ArgType_Flag, false, ArgValue(false));
   uss_write_cmd->add_keyword_arg("pipe-path", uss_pipe_path_option, "Specify a FIFO pipe path for transferring binary data", ArgType_Single, false);
@@ -496,6 +522,7 @@ int main(int argc, char *argv[])
   job_view_file_cmd->add_positional_arg("jobid", "valid jobid or job correlator", ArgType_Single, true);
   job_view_file_cmd->add_positional_arg("key", "valid job dsn key via 'job list-files'", ArgType_Single, true);
   job_view_file_cmd->add_keyword_arg("encoding", encoding_option, "return contents in given encoding", ArgType_Single, false);
+  job_view_file_cmd->add_keyword_arg("local-encoding", source_encoding_option, "source encoding of the spool file content (defaults to UTF-8)", ArgType_Single, false);
   job_view_file_cmd->add_keyword_arg("response-format-bytes", response_format_bytes_option, "returns the response as raw bytes", ArgType_Flag, false, ArgValue(false));
   job_view_file_cmd->set_handler(handle_job_view_file);
   job_cmd->add_command(job_view_file_cmd);
@@ -524,6 +551,7 @@ int main(int argc, char *argv[])
   job_submit_jcl_cmd->add_keyword_arg("only-jobid", make_aliases("--only-jobid", "--oj"), "show only job id on success", ArgType_Flag, false, ArgValue(false));
   job_submit_jcl_cmd->add_keyword_arg("only-correlator", make_aliases("--only-correlator", "--oc"), "show only job correlator on success", ArgType_Flag, false, ArgValue(false));
   job_submit_jcl_cmd->add_keyword_arg("encoding", encoding_option, "encoding for input data", ArgType_Single, false);
+  job_submit_jcl_cmd->add_keyword_arg("local-encoding", source_encoding_option, "source encoding of the JCL content (defaults to UTF-8)", ArgType_Single, false);
   job_submit_jcl_cmd->set_handler(handle_job_submit_jcl);
   job_cmd->add_command(job_submit_jcl_cmd);
 
@@ -705,19 +733,11 @@ int handle_data_set_create(const ParseResult &result)
   }
   if (result.has_kw_arg("blksize"))
   {
-    string blksize_str = result.find_kw_arg_string("blksize");
-    if (!blksize_str.empty())
-    {
-      attributes.blksize = std::strtoul(blksize_str.c_str(), nullptr, 10);
-    }
+    attributes.blksize = result.find_kw_arg_int("blksize");
   }
   if (result.has_kw_arg("dirblk"))
   {
-    string dirblk_str = result.find_kw_arg_string("dirblk");
-    if (!dirblk_str.empty())
-    {
-      attributes.dirblk = std::strtoul(dirblk_str.c_str(), nullptr, 10);
-    }
+    attributes.dirblk = result.find_kw_arg_int("dirblk");
   }
   if (result.has_kw_arg("dsorg"))
   {
@@ -725,11 +745,7 @@ int handle_data_set_create(const ParseResult &result)
   }
   if (result.has_kw_arg("primary"))
   {
-    string primary_str = result.find_kw_arg_string("primary");
-    if (!primary_str.empty())
-    {
-      attributes.primary = std::strtoul(primary_str.c_str(), nullptr, 10);
-    }
+    attributes.primary = result.find_kw_arg_int("primary");
   }
   if (result.has_kw_arg("recfm"))
   {
@@ -737,11 +753,7 @@ int handle_data_set_create(const ParseResult &result)
   }
   if (result.has_kw_arg("lrecl"))
   {
-    string lrecl_str = result.find_kw_arg_string("lrecl");
-    if (!lrecl_str.empty())
-    {
-      attributes.lrecl = std::strtoul(lrecl_str.c_str(), nullptr, 10);
-    }
+    attributes.lrecl = result.find_kw_arg_int("lrecl");
   }
   if (result.has_kw_arg("dataclass"))
   {
@@ -765,27 +777,15 @@ int handle_data_set_create(const ParseResult &result)
   }
   if (result.has_kw_arg("avgblk"))
   {
-    string avgblk_str = result.find_kw_arg_string("avgblk");
-    if (!avgblk_str.empty())
-    {
-      attributes.avgblk = std::strtoul(avgblk_str.c_str(), nullptr, 10);
-    }
+    attributes.avgblk = result.find_kw_arg_int("avgblk");
   }
   if (result.has_kw_arg("secondary"))
   {
-    string secondary_str = result.find_kw_arg_string("secondary");
-    if (!secondary_str.empty())
-    {
-      attributes.secondary = std::strtoul(secondary_str.c_str(), nullptr, 10);
-    }
+    attributes.secondary = result.find_kw_arg_int("secondary");
   }
   if (result.has_kw_arg("size"))
   {
-    string size_str = result.find_kw_arg_string("size");
-    if (!size_str.empty())
-    {
-      attributes.size = std::strtoul(size_str.c_str(), nullptr, 10);
-    }
+    attributes.size = result.find_kw_arg_int("size");
   }
   if (result.has_kw_arg("storclass"))
   {
@@ -890,10 +890,34 @@ int handle_data_set_view(const ParseResult &result)
   int rc = 0;
   string dsn = result.find_pos_arg_string("dsn");
   ZDS zds = {0};
+  vector<string> dds;
 
   if (result.has_kw_arg("encoding"))
   {
     zut_prepare_encoding(result.find_kw_arg_string("encoding"), &zds.encoding_opts);
+  }
+  if (result.has_kw_arg("local-encoding"))
+  {
+    const auto source_encoding = result.find_kw_arg_string("local-encoding");
+    if (!source_encoding.empty() && source_encoding.size() < sizeof(zds.encoding_opts.source_codepage))
+    {
+      memcpy(zds.encoding_opts.source_codepage, source_encoding.data(), source_encoding.length() + 1);
+    }
+  }
+
+  if (result.has_kw_arg("volser"))
+  {
+    string volser_value = result.find_kw_arg_string("volser");
+    if (!volser_value.empty())
+    {
+      dds.push_back("alloc dd(input) da('" + dsn + "') shr vol(" + volser_value + ")");
+      rc = loop_dynalloc(dds);
+      if (0 != rc)
+      {
+        return RTNCD_FAILURE;
+      }
+      strcpy(zds.ddname, "INPUT");
+    }
   }
 
   bool has_pipe_path = result.has_kw_arg("pipe-path");
@@ -947,6 +971,11 @@ int handle_data_set_view(const ParseResult &result)
     }
   }
 
+  if (dds.size() > 0)
+  {
+    free_dynalloc_dds(dds);
+  }
+
   return rc;
 }
 
@@ -979,6 +1008,7 @@ int handle_data_set_list(const ParseResult &result)
   if (RTNCD_SUCCESS == rc || RTNCD_WARNING == rc)
   {
     vector<string> fields;
+    fields.reserve(attributes ? 5 : 1);
     for (vector<ZDSEntry>::iterator it = entries.begin(); it != entries.end(); ++it)
     {
       if (emit_csv)
@@ -1079,10 +1109,19 @@ int handle_data_set_write(const ParseResult &result)
   int rc = 0;
   string dsn = result.find_pos_arg_string("dsn");
   ZDS zds = {0};
+  vector<string> dds;
 
   if (result.has_kw_arg("encoding"))
   {
     zut_prepare_encoding(result.find_kw_arg_string("encoding"), &zds.encoding_opts);
+  }
+  if (result.has_kw_arg("local-encoding"))
+  {
+    const auto source_encoding = result.find_kw_arg_string("local-encoding");
+    if (!source_encoding.empty() && source_encoding.size() < sizeof(zds.encoding_opts.source_codepage))
+    {
+      memcpy(zds.encoding_opts.source_codepage, source_encoding.data(), source_encoding.length() + 1);
+    }
   }
 
   if (result.has_kw_arg("etag"))
@@ -1091,6 +1130,21 @@ int handle_data_set_write(const ParseResult &result)
     if (!etag_value.empty())
     {
       strcpy(zds.etag, etag_value.c_str());
+    }
+  }
+
+  if (result.has_kw_arg("volser"))
+  {
+    string volser_value = result.find_kw_arg_string("volser");
+    if (!volser_value.empty())
+    {
+      dds.push_back("alloc dd(output) da('" + dsn + "') shr vol(" + volser_value + ")");
+      rc = loop_dynalloc(dds);
+      if (0 != rc)
+      {
+        return RTNCD_FAILURE;
+      }
+      strcpy(zds.ddname, "OUTPUT");
     }
   }
 
@@ -1129,6 +1183,11 @@ int handle_data_set_write(const ParseResult &result)
     }
 
     rc = zds_write_to_dsn(&zds, dsn, data);
+  }
+
+  if (dds.size() > 0)
+  {
+    free_dynalloc_dds(dds);
   }
 
   if (0 != rc)
@@ -1180,6 +1239,7 @@ int handle_data_set_restore(const ParseResult &result)
 
   // perform dynalloc
   vector<string> dds;
+  dds.reserve(2);
   dds.push_back("alloc da('" + dsn + "') shr");
   dds.push_back("free da('" + dsn + "')");
 
@@ -1227,6 +1287,7 @@ int handle_data_set_compress(const ParseResult &result)
 
   // perform dynalloc
   vector<string> dds;
+  dds.reserve(4);
   dds.push_back("alloc dd(a) da('" + dsn + "') shr");
   dds.push_back("alloc dd(b) da('" + dsn + "') shr");
   dds.push_back("alloc dd(sysprint) lrecl(80) recfm(f,b) blksize(80)");
@@ -1297,6 +1358,7 @@ int handle_tool_convert_dsect(const ParseResult &result)
   cout << adata_dsn << " " << chdr_dsn << " " << sysprint << " " << sysout << endl;
 
   vector<string> dds;
+  dds.reserve(4);
   dds.push_back("alloc fi(sysprint) path('" + sysprint + "') pathopts(owronly,ocreat,otrunc) pathmode(sirusr,siwusr,sirgrp) filedata(text) msg(2)");
   dds.push_back("alloc fi(sysout) path('" + sysout + "') pathopts(owronly,ocreat,otrunc) pathmode(sirusr,siwusr,sirgrp) filedata(text) msg(2)");
   dds.push_back("alloc fi(sysadata) da('" + adata_dsn + "') shr msg(2)");
@@ -1404,6 +1466,7 @@ int handle_tool_search(const ParseResult &result)
 
   // Perform dynalloc
   vector<string> dds;
+  dds.reserve(3);
   dds.push_back("alloc dd(newdd) da('" + dsn + "') shr");
   dds.push_back("alloc dd(outdd)");
   dds.push_back("alloc dd(sysin)");
@@ -1475,6 +1538,7 @@ int handle_tool_amblist(const ParseResult &result)
 
   // Perform dynalloc
   vector<string> dds;
+  dds.reserve(3);
   dds.push_back("alloc dd(syslib) da('" + dsn + "') shr");
   dds.push_back("alloc dd(sysprint) lrecl(80) recfm(f,b) blksize(80)");
   dds.push_back("alloc dd(sysin) lrecl(80) recfm(f,b) blksize(80)");
@@ -1755,6 +1819,14 @@ int handle_uss_view(const ParseResult &result)
   {
     zut_prepare_encoding(result.find_kw_arg_string("encoding"), &zusf.encoding_opts);
   }
+  if (result.has_kw_arg("local-encoding"))
+  {
+    const auto source_encoding = result.find_kw_arg_string("local-encoding");
+    if (!source_encoding.empty() && source_encoding.size() < sizeof(zusf.encoding_opts.source_codepage))
+    {
+      memcpy(zusf.encoding_opts.source_codepage, source_encoding.data(), source_encoding.length() + 1);
+    }
+  }
 
   struct stat file_stats;
   if (stat(uss_file.c_str(), &file_stats) == -1)
@@ -1821,6 +1893,14 @@ int handle_uss_write(const ParseResult &result)
   if (result.has_kw_arg("encoding"))
   {
     zut_prepare_encoding(result.find_kw_arg_string("encoding"), &zusf.encoding_opts);
+  }
+  if (result.has_kw_arg("local-encoding"))
+  {
+    const auto source_encoding = result.find_kw_arg_string("local-encoding");
+    if (!source_encoding.empty() && source_encoding.size() < sizeof(zusf.encoding_opts.source_codepage))
+    {
+      memcpy(zusf.encoding_opts.source_codepage, source_encoding.data(), source_encoding.length() + 1);
+    }
   }
 
   if (result.has_kw_arg("etag"))
@@ -2078,6 +2158,7 @@ int handle_job_list(const ParseResult &result)
       if (emit_csv)
       {
         vector<string> fields;
+        fields.reserve(5);
         fields.push_back(it->jobid);
         fields.push_back(it->retcode);
         fields.push_back(it->jobname);
@@ -2126,9 +2207,10 @@ int handle_job_list_files(const ParseResult &result)
   if (RTNCD_SUCCESS == rc || RTNCD_WARNING == rc)
   {
     bool emit_csv = result.find_kw_arg_bool("response-format-csv");
+    std::vector<string> fields;
+    fields.reserve(5);
     for (vector<ZJobDD>::iterator it = job_dds.begin(); it != job_dds.end(); ++it)
     {
-      std::vector<string> fields;
       fields.push_back(it->ddn);
       fields.push_back(it->dsn);
       fields.push_back(TO_STRING(it->key));
@@ -2184,6 +2266,7 @@ int handle_job_view_status(const ParseResult &result)
   if (emit_csv)
   {
     vector<string> fields;
+    fields.reserve(6);
     fields.push_back(job.jobid);
     fields.push_back(job.retcode);
     fields.push_back(job.jobname);
@@ -2209,6 +2292,14 @@ int handle_job_view_file(const ParseResult &result)
   if (result.has_kw_arg("encoding"))
   {
     zut_prepare_encoding(result.find_kw_arg_string("encoding"), &zjb.encoding_opts);
+  }
+  if (result.has_kw_arg("local-encoding"))
+  {
+    const auto source_encoding = result.find_kw_arg_string("local-encoding");
+    if (!source_encoding.empty() && source_encoding.size() < sizeof(zjb.encoding_opts.source_codepage))
+    {
+      memcpy(zjb.encoding_opts.source_codepage, source_encoding.data(), source_encoding.length() + 1);
+    }
   }
 
   string resp;
@@ -2302,9 +2393,8 @@ int handle_job_submit_uss(const ParseResult &result)
 
 int handle_job_submit_jcl(const ParseResult &result)
 {
-  int rc = 0;
   ZJB zjb = {0};
-
+  string jobid;
   string data;
   string line;
 
@@ -2324,15 +2414,22 @@ int handle_job_submit_jcl(const ParseResult &result)
   ZEncode encoding_opts = {0};
   bool encoding_prepared = result.has_kw_arg("encoding") && zut_prepare_encoding(result.find_kw_arg_string("encoding"), &encoding_opts);
 
-  if (encoding_prepared && encoding_opts.data_type != eDataTypeBinary)
+  if (result.has_kw_arg("local-encoding"))
   {
-    data = zut_encode(data, "UTF-8", string(encoding_opts.codepage), zjb.diag);
+    const auto source_encoding = result.find_kw_arg_string("local-encoding");
+    if (!source_encoding.empty() && source_encoding.size() < sizeof(encoding_opts.source_codepage))
+    {
+      memcpy(encoding_opts.source_codepage, source_encoding.data(), source_encoding.length() + 1);
+    }
   }
 
-  string jobid;
-  rc = zjb_submit(&zjb, data, jobid);
+  if (encoding_prepared && encoding_opts.data_type != eDataTypeBinary)
+  {
+    const auto source_encoding = strlen(encoding_opts.source_codepage) > 0 ? string(encoding_opts.source_codepage) : "UTF-8";
+    data = zut_encode(data, source_encoding, string(encoding_opts.codepage), zjb.diag);
+  }
 
-  return job_submit_common(result, data, jobid, data);
+  return job_submit_common(result, data, jobid, "JCL");
 }
 
 int handle_job_delete(const ParseResult &result)
@@ -2446,6 +2543,7 @@ int loop_dynalloc(vector<string> &list)
 int free_dynalloc_dds(vector<string> &list)
 {
   vector<string> free_dds;
+  free_dds.reserve(list.size());
 
   for (vector<string>::iterator it = list.begin(); it != list.end(); it++)
   {

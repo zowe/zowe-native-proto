@@ -79,8 +79,13 @@ CXXLANG_BND_FLAGS=-W "l,lp64"
 
 ASM_FLAGS=-mRENT
 
+.IF $(ZLOG_ENABLE) == 1
+LOG_FLAGS=-DZLOG_ENABLE
+.END
+
 # make -DBuildType=DEBUG
 .IF $(BuildType) == DEBUG
+LOG_FLAGS=-DZLOG_ENABLE
 # -g generates debugging information
 DEBUGGER_FLAGS=-qSOURCE -qDEBUG
 CPP_BND_FLAGS+=$(DEBUGGER_FLAGS)
@@ -105,8 +110,18 @@ MTL_FLAGS64+=$(PRODUCTION_FLAGS) -qNOSHOWINC
 ASM_FLAGS+=--noverbose
 .END
 
+# Apply LOG_FLAGS to all relevant compilation flags if logging is enabled
+.IF DEFINED(LOG_FLAGS)
+C_FLAGS+=$(LOG_FLAGS)
+DLL_CPP_FLAGS+=$(LOG_FLAGS)
+CPP_FLAGS+=$(LOG_FLAGS)
+CXXLANG_FLAGS+=$(LOG_FLAGS)
+MTL_FLAGS+=$(LOG_FLAGS)
+MTL_FLAGS64+=$(LOG_FLAGS)
+.END
 
-all: build-out build-out/ztest_runner
+all:
+	$(MAKE) -DZLOG_ENABLE=1 build-out build-out/ztest_runner
 
 
 #
@@ -151,6 +166,9 @@ build-out/zusf.test.o \
 build-out/zusf.o \
 build-out/zowex.test.o \
 build-out/zshmem.o
+build-out/zshmem.o \
+build-out/zlogger.test.o \
+build-out/zlogger_metal.o
 	$(OCXX) $(CXXLANG_BND_FLAGS) -o $@ $^ > $*.bind.lst
 
 build-out/zut.o:
@@ -196,7 +214,7 @@ build-out/zusf.o:
 	cp ../build-out/xlclang/zusf.o build-out/zusf.o
 
 build-out/zshmem.o:
-	cp ../build-out/xlclang/zshmem.o build-out/zshmem.o
+	cp ../build-out/zshmem.o build-out/zshmem.o
 
 build-out/zbase64.test.o: zbase64.test.cpp
 	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
@@ -246,6 +264,15 @@ build-out/zusf.test.o: zusf.test.cpp
 build-out/zowex.test.o: zowex.test.cpp
 	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
 
+build-out/zlogger.test.o: zlogger.test.cpp
+	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
+
+build-out/zlogger_metal.s: ../zlogger_metal.c
+	$(CC) $(MTL_FLAGS64) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
+
+build-out/zlogger_metal.o: build-out/zlogger_metal.s
+	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
+
 # build-out/testrcvy.s: testrcvy.c
 # 	$(CC) $(MTL_FLAGS64) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
 
@@ -279,7 +306,8 @@ build-out/zowex.test.o: zowex.test.cpp
 #
 # Testing utilities
 #
-test: test.sh
+test:
+	$(MAKE) -DZLOG_ENABLE=1 build-out build-out/ztest_runner
 	chmod +x test.sh
 	_CEE_RUNOPTS="TRAP(ON,NOSPIE)" ./build-out/ztest_runner
 

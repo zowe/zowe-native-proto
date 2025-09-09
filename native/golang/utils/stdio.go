@@ -61,7 +61,11 @@ func readUntilEot(reader *bufio.Reader, data chan<- []byte) {
 			_, _ = reader.Discard(1)
 			break
 		}
-		line, _ := reader.ReadBytes('\n')
+		line, err := reader.ReadBytes('\n')
+		if err != nil {
+			LogError("Error reading from stdio pipe: %v", err)
+			break
+		}
 		tempData = append(tempData, line...)
 	}
 

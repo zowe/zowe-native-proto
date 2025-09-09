@@ -24,8 +24,8 @@ export const UploadFileToDataSetDefinition: ICommandDefinition = {
             options: 'iefbr14.txt "ibmuser.cntl(iefbr14)"',
         },
         {
-            description: 'Upload to "ibmuser.dataset" from the file dataset.txt with the DCB parameters',
-            options: 'dataset.txt "ibmuser.dataset" --dcb "RECFM=FB LRECL=326 BLKSIZE=23472"',
+            description: 'Upload to "ibmuser.dataset" on volume VOL001 from the file dataset.txt',
+            options: 'dataset.txt "ibmuser.dataset" --volume-serial VOL001',
         },
     ],
     positionals: [
@@ -64,6 +64,19 @@ export const UploadFileToDataSetDefinition: ICommandDefinition = {
             aliases: ["ec"],
             description: "The encoding for download and upload of z/OS data set.",
             defaultValue: null,
+            type: "string",
+        },
+        {
+            name: "local-encoding",
+            aliases: ["lec"],
+            description: "The source encoding of the local file content (defaults to UTF-8).",
+            defaultValue: null,
+            type: "string",
+        },
+        {
+            name: "volume-serial",
+            aliases: ["vs", "volser"],
+            description: "The volume serial (VOLSER) where the data set resides.",
             type: "string",
         },
     ],

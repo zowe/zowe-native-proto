@@ -53,6 +53,13 @@ export const DownloadDataSetDefinition: ICommandDefinition = {
             type: "string",
         },
         {
+            name: "local-encoding",
+            aliases: ["lec"],
+            description: "The source encoding of the z/OS data set content (defaults to UTF-8).",
+            defaultValue: null,
+            type: "string",
+        },
+        {
             name: "directory",
             aliases: ["d"],
             description: "The directory for the downloaded data set.",
@@ -66,6 +73,12 @@ export const DownloadDataSetDefinition: ICommandDefinition = {
             defaultValue: null,
             type: "string",
             conflictsWith: ["directory"],
+        },
+        {
+            name: "volume-serial",
+            aliases: ["vs", "volser"],
+            description: "The volume serial (VOLSER) where the data set resides.",
+            type: "string",
         },
     ],
     profile: { optional: ["ssh"] },

@@ -7,6 +7,16 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## Recent Changes
 
 - `c`: Fixed issue where the `zowex ds lm` command always returned non-zero exit code for warnings and ignored the `--no-warn` flag. [#498](https://github.com/zowe/zowe-native-proto/issues/498)
+- `c`: Fixed issue where the `zowex job submit-jcl` command submitted the given JCL contents twice, causing two jobs to be created. [#508](https://github.com/zowe/zowe-native-proto/issues/508)
+- `c`: Implemented a logger for Metal C and C++ source code for diagnostics, debug information, and printing dumps. When enabled, log messages are written to a log file named `zowex.log` in a new `logs` folder, relative to the location of the `zowex` binary. [#107](https://github.com/zowe/zowe-native-proto/issues/107)
+- `golang`: Moved location of log file inside "logs" directory to be consistent with `zowex`. [#514](https://github.com/zowe/zowe-native-proto/pull/514)
+- `c`: Fixed issue where the `zowex ds write` command automatically created a data set when it did not exist. [#292](https://github.com/zowe/zowe-native-proto/issues/292)
+- `native`: Fixed issue where the `zowex ds ls` command could hang when listing data sets that the system cannot open. [#496](https://github.com/zowe/zowe-native-proto/issues/496)
+- `c`: Added `--local-encoding` option for read and write operations on data sets, USS files, and job files to specify the source encoding of content (defaults to UTF-8). [#511](https://github.com/zowe/zowe-native-proto/issues/511)
+- `c`: Fixed issue where the `zowex ds create` command did not parse `--alcunit` and integer arguments (e.g., `--primary`). [#414](https://github.com/zowe/zowe-native-proto/issues/414)
+- `c`: Fixed issue where listing data sets fails if the `OBTAIN` service fails while obtaining attributes for a data set in the list of matches. [#529](https://github.com/zowe/zowe-native-proto/issues/529)
+- `native`: Added support for `volser` option when reading/writing data sets. [#439](https://github.com/zowe/zowe-native-proto/issues/439)
+- `native`: Reduced number of memory allocations in vectors by reserving capacity before adding elements. [#522](https://github.com/zowe/zowe-native-proto/issues/522)
 
 ## `0.1.8`
 
