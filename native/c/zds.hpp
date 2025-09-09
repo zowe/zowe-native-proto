@@ -54,8 +54,6 @@ typedef struct
   std::string vol;       // Volume Serial
 } DS_ATTRIBUTES;
 
-std::string zds_get_recfm(const fldata_t &file_info);
-
 #ifdef SWIG
 extern "C"
 {
