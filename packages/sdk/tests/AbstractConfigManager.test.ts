@@ -800,15 +800,14 @@ describe("AbstractConfigManager", async () => {
                 user: "user1",
                 privateKey: "/path/to/key",
             };
-            vi.spyOn(ConfigFileUtils.getInstance(), "commentOutProperty").mockImplementation(() => {
-                delete config.privateKey;
-                // We don't need to worry about the commented value as the stub is just meant to delete the property
-                return undefined;
-            });
+            const handleInvalidPrivateKeyMock = vi
+                .spyOn(testManager as any, "handleInvalidPrivateKey")
+                .mockResolvedValue(true);
 
             const result = await (testManager as any).validateConfig(config, true);
 
             expect(result).toBeUndefined();
+            expect(handleInvalidPrivateKeyMock).toHaveBeenCalledTimes(1);
             expect(config.privateKey).toBeUndefined();
             expect((config as any).keyPassphrase).toBeUndefined();
         });
