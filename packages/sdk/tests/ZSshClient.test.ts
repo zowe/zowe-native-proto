@@ -470,7 +470,7 @@ describe("ZSshClient", () => {
     });
 
     describe("uninstall server", () => {
-        const serverPath = "/tmp/server";
+        const serverPath = "/faketmp/fakeserver";
         const fakeSshSession = new SshSession(fakeSession);
         it("should return code 0 when uninstalling server succeeds", async () => {
             const fakeLogger = { debug: vi.fn(), error: vi.fn() };
