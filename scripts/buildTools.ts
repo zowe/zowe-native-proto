@@ -487,14 +487,14 @@ async function rmdir(connection: Client) {
 }
 
 async function watch(connection: Client) {
-    function cTask(err: Error, stream: ClientChannel, resolve: any) {
+    function makeTask(err: Error, stream: ClientChannel, resolve: any, inDir?: string) {
         if (err) {
             console.error("Failed to start shell:", err);
             resolve();
             return;
         }
 
-        const cmd = `cd ${deployDirs.cDir}\nmake 1> /dev/null\nexit\n`;
+        const cmd = `cd ${inDir ?? deployDirs.cDir}\nmake 1> /dev/null\nexit\n`;
         stream.write(cmd);
 
         let errText = "";
@@ -570,10 +570,13 @@ async function watch(connection: Client) {
                         connection.shell(false, (err, stream) => {
                             // If the uploaded file is in the `c` directory, run `make`
                             if (localPath.split(path.sep)[0] === "c") {
-                                cTask(err, stream, resolve);
+                                makeTask(err, stream, resolve);
                             } else if (localPath.split(path.sep)[0] === "golang") {
                                 // Run `go build` when a Golang file has changed
                                 golangTask(err, stream, resolve);
+                            } else if (localPath.split(path.sep)[0] === "python") {
+                                // Run `make` when a Python file has changed
+                                makeTask(err, stream, resolve, deployDirs.pythonDir);
                             } else {
                                 console.log();
                                 resolve();
@@ -588,7 +591,7 @@ async function watch(connection: Client) {
         });
     }
 
-    const watcher = chokidar.watch(["c/makefile", "c/**/*.{c,cpp,h,hpp,s,sh}", "golang/**"], {
+    const watcher = chokidar.watch(["c/makefile", "c/**/*.{c,cpp,h,hpp,s,sh}", "golang/**", "python/**"], {
         cwd: path.resolve(__dirname, localDeployDir),
         ignoreInitial: true,
         persistent: true,
@@ -739,8 +742,8 @@ async function main() {
         cDir: `${config.deployDir}/c`,
         cTestDir: `${config.deployDir}/c/test`,
         goDir: `${config.deployDir}/golang`,
-        pythonDir: `${config.deployDir}/python`,
-        pythonTestDir: `${config.deployDir}/python/test`,
+        pythonDir: `${config.deployDir}/python/bindings`,
+        pythonTestDir: `${config.deployDir}/python/bindings/test`,
     };
     const sshClient = await buildSshClient(config.sshProfile as IProfile);
 

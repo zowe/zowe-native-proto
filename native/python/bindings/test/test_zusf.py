@@ -1,20 +1,28 @@
 import pytest
 import sys
 import os
-import tempfile
+import yaml
 
 # Add parent directory to path for importing USS module
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import zusf_py as uss
 
+FIXTURES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures")
+ENV_FIXTURE_PATH = os.path.join(FIXTURES_PATH, "env.yml")
+
 class TestUSSFunctions:
     """Tests for z/OS USS (Unix System Services) file system functions."""
     
     def setup_method(self):
         """Setup test fixtures before each test method."""
+        # Load environment variables from fixture
+        with open(ENV_FIXTURE_PATH, "r") as env_yml:
+            env_parsed = yaml.safe_load(env_yml)
+            self.USS_BASE_DIR = env_parsed["USS_BASE_DIR"]
+
         # Create test directory in /tmp
-        self.test_base_dir = "/tmp/test_uss_functions"
+        self.test_base_dir = self.USS_BASE_DIR
         self.created_items = []
 
     def teardown_method(self):
