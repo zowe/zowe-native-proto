@@ -15,18 +15,8 @@ import { type CommandResponse, ZSshClient, type ISshErrorDefinition, ZSshUtils }
 import { translateCliError } from "./CliErrorUtils";
 
 export abstract class SshBaseHandler implements ICommandHandler {
-    // Static cache to store passwords for the duration of the session
-    private static readonly passwordCache = new Map<string, string>();
-
     public async process(commandParameters: IHandlerParameters) {
         const session = ZSshUtils.buildSession(commandParameters.arguments);
-
-        // Check if we have a cached password for this host/user combination
-        const cacheKey = this.getCacheKey(session);
-        const cachedPassword = SshBaseHandler.passwordCache.get(cacheKey);
-        if (cachedPassword && !session.ISshSession.password) {
-            session.ISshSession.password = cachedPassword;
-        }
 
         try {
             using client = await ZSshClient.create(session, {
@@ -62,9 +52,6 @@ export abstract class SshBaseHandler implements ICommandHandler {
                 // Prompt for password
                 const password = await this.promptForPassword(commandParameters, session);
                 if (password) {
-                    // Cache the password for this session
-                    SshBaseHandler.passwordCache.set(cacheKey, password);
-
                     // Create a new session with password authentication
                     const passwordSession = this.createPasswordSession(session, password);
 
@@ -110,13 +97,6 @@ export abstract class SshBaseHandler implements ICommandHandler {
                 commandParameters.response.console.log(`- ${resource.title}: ${resource.href}`);
             });
         }
-    }
-
-    /**
-     * Creates a cache key for storing passwords based on host and user
-     */
-    private getCacheKey(session: SshSession): string {
-        return `${session.ISshSession.user}@${session.ISshSession.hostname}:${session.ISshSession.port}`;
     }
 
     /**
@@ -171,13 +151,6 @@ export abstract class SshBaseHandler implements ICommandHandler {
             keyPassphrase: undefined as string | undefined,
         };
         return new SshSession(newSessionConfig);
-    }
-
-    /**
-     * Clears the password cache (useful for testing or when switching contexts)
-     */
-    public static clearPasswordCache(): void {
-        SshBaseHandler.passwordCache.clear();
     }
 
     public abstract processWithClient(
