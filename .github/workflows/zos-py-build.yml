@@ -51,23 +51,19 @@ jobs:
                 user: "${{ secrets.SSH_MARIST_USERNAME }}"
                 password: "${{ secrets.SSH_MARIST_RACF_PASSWORD }}"
               deployDir: "/ZOWE/tmp/zowe-native-proto"
-              goBuildEnv: 'GOCACHE=/ZOWE/tmp/.go-cache GOINSECURE="*" GOPATH=/ZOWE/tmp/go-pkg GOPROXY=direct GOTMPDIR=/ZOWE/tmp'
           EOF
 
       - name: Install Dependencies
         run: npm ci --workspaces=false
 
       - name: Upload Python Bindings
-        run: |
-          npm run z:upload
+        run: npm run z:upload
 
       - name: Build Python Bindings
-        run: |
-          cd native/python/bindings && make
+        run: npm run z:build:python
 
       - name: Test Python Bindings
-        run: |
-          cd native/python/bindings/test && make
+        run: npm run z:test:python
 
       - name: Clean up on z/OS
         if: always()
