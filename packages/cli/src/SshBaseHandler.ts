@@ -11,7 +11,8 @@
 
 import { type ICommandHandler, type IHandlerParameters, TextUtils } from "@zowe/imperative";
 import { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
-import { type CommandResponse, ZSshClient, ZSshUtils } from "zowe-native-proto-sdk";
+import { type CommandResponse, ZSshClient, type ISshErrorDefinition, ZSshUtils } from "zowe-native-proto-sdk";
+import { translateCliError } from "./CliErrorUtils";
 
 export abstract class SshBaseHandler implements ICommandHandler {
     // Static cache to store passwords for the duration of the session
@@ -40,10 +41,18 @@ export abstract class SshBaseHandler implements ICommandHandler {
             // Return as an object when using --response-format-json
             commandParameters.response.data.setObj(response);
         } catch (error) {
-            const errorMessage = `${error}`;
+            const translatedError = translateCliError(error as Error);
+
+            if ("summary" in translatedError) {
+                // This is an ISshErrorDefinition
+                SshBaseHandler.logTranslatedError(commandParameters, translatedError);
+                return;
+            }
+
+            const errorMessage = `${translatedError}`;
 
             // Check if this is a private key authentication failure
-            if (ZSshUtils.isPrivateKeyAuthFailure(errorMessage, !!session.ISshSession.privateKey) && !cachedPassword) {
+            if (ZSshUtils.isPrivateKeyAuthFailure(errorMessage, !!session.ISshSession.privateKey)) {
                 commandParameters.response.console.log(
                     TextUtils.chalk.yellow(
                         "Private key authentication failed. Falling back to password authentication...",
@@ -77,6 +86,29 @@ export abstract class SshBaseHandler implements ICommandHandler {
             } else {
                 throw error; // Re-throw for other types of errors
             }
+        }
+    }
+
+    /**
+     * Logs a translated error with tips and resources to the console.
+     * @param commandParameters The handler parameters
+     * @param errorDef The translated error definition
+     */
+    public static logTranslatedError(commandParameters: IHandlerParameters, errorDef: ISshErrorDefinition): void {
+        commandParameters.response.console.log(errorDef.summary);
+
+        if (errorDef.tips) {
+            commandParameters.response.console.log("\nTips:");
+            errorDef.tips.forEach((tip) => {
+                commandParameters.response.console.log(`- ${tip}`);
+            });
+        }
+
+        if (errorDef.resources) {
+            commandParameters.response.console.log("\nResources:");
+            errorDef.resources.forEach((resource) => {
+                commandParameters.response.console.log(`- ${resource.title}: ${resource.href}`);
+            });
         }
     }
 

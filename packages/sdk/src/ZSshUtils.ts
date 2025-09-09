@@ -16,6 +16,7 @@ import { type IProfile, Logger } from "@zowe/imperative";
 import { type ISshSession, SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { NodeSSH, type Config as NodeSSHConfig } from "node-ssh";
 import type { ConnectConfig, SFTPWrapper } from "ssh2";
+import { PrivateKeyFailurePatterns } from "./SshErrors";
 
 type SftpError = Error & { code?: number };
 
@@ -23,22 +24,6 @@ type SftpError = Error & { code?: number };
 export class ZSshUtils {
     private static readonly SERVER_BIN_FILES = ["zowed", "zowex"];
     private static readonly SERVER_PAX_FILE = "server.pax.Z";
-
-    /**
-     * Common patterns that indicate SSH private key authentication failures
-     */
-    private static readonly PRIVATE_KEY_FAILURE_PATTERNS = [
-        "All configured authentication methods failed",
-        "Cannot parse privateKey: Malformed OpenSSH private key",
-        "but no passphrase given",
-        "integrity check failed",
-        "Permission denied (publickey,password)",
-        "Permission denied (publickey)",
-        "Authentication failed",
-        "Invalid private key",
-        "privateKey value does not contain a (valid) private key",
-        "Cannot parse privateKey",
-    ];
 
     /**
      * Checks if an error message indicates a private key authentication failure
@@ -52,7 +37,7 @@ export class ZSshUtils {
             return false;
         }
 
-        return ZSshUtils.PRIVATE_KEY_FAILURE_PATTERNS.some((pattern) => errorMessage.includes(pattern));
+        return PrivateKeyFailurePatterns.some((pattern) => errorMessage.includes(pattern));
     }
 
     public static buildSession(args: IProfile): SshSession {

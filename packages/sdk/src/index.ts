@@ -16,3 +16,4 @@ export * from "./doc";
 export * from "./ZClientUtils";
 export * from "./ZSshClient";
 export * from "./ZSshUtils";
+export * from "./SshErrors";

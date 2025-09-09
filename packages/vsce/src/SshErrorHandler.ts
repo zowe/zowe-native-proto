@@ -11,6 +11,7 @@
 
 import { type ZoweExplorerApiType, ZoweVsCodeExtension } from "@zowe/zowe-explorer-api";
 import * as vscode from "vscode";
+import { SshErrors } from "zowe-native-proto-sdk";
 
 /**
  * Enhanced error handling utility for SSH operations using Zowe Explorer's ErrorCorrelator
@@ -82,22 +83,7 @@ export class SshErrorHandler {
         const errorMessage = error instanceof Error ? error.message : error;
 
         // Check for fatal OpenSSH error codes
-        const fatalErrorCodes = [
-            "FOTS4240", // kex_prop2buf: error (internal error, program ends)
-            "FOTS4241", // Authentication failed
-            "FOTS4134", // Client version uses unsafe key agreement
-            "FOTS4231", // Server version uses unsafe key agreement
-            "FOTS4203", // Server failed to confirm ownership of private host keys
-            "FOTS4314", // xreallocarray: out of memory
-            "FOTS4315", // xrecallocarray: out of memory
-            "FOTS4216", // Couldn't allocate session state
-            "FOTS4311", // could not allocate state
-            "FOTS4151", // openpty failed
-            "FOTS4154", // ssh_packet_set_connection failed
-            "FOTS4150", // kex_setup failed
-            "FOTS4312", // cipher_init failed
-            "FSUM6260", // write error on file
-        ];
+        const fatalErrorCodes = Object.keys(SshErrors);
 
         return fatalErrorCodes.some((code) => errorMessage.includes(code));
     }

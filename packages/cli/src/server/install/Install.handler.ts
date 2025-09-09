@@ -18,6 +18,8 @@ import {
 } from "@zowe/imperative";
 import { ZSshClient, ZSshUtils } from "zowe-native-proto-sdk";
 import { Constants } from "../../Constants";
+import { translateCliError } from "../../CliErrorUtils";
+import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class ServerInstallHandler implements ICommandHandler {
     public async process(params: IHandlerParameters): Promise<void> {
@@ -38,12 +40,19 @@ export default class ServerInstallHandler implements ICommandHandler {
                 },
                 onError: async (error: Error, context: string) => {
                     // Log the error for CLI users
-                    params.response.console.error(`Error during ${context}: ${error.message}`);
+                    const translatedError = translateCliError(error);
+                    if ("summary" in translatedError) {
+                        SshBaseHandler.logTranslatedError(params, translatedError);
+                        return false;
+                    }
+                    params.response.console.error(`Error during ${context}: ${translatedError}`);
 
                     // For CLI, we don't retry - just log and continue with the original error
                     return false;
                 },
             });
+        } catch (error) {
+            throw translateCliError(error as Error);
         } finally {
             task.stageName = TaskStage.COMPLETE;
             params.response.progress.endBar();
