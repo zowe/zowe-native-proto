@@ -88,6 +88,10 @@ int main()
     std::cout << "Number of keys in address: " << address_proxy.getKeys().size() << std::endl;
     std::cout << "Number of keys in work.office: " << root["work"]["office"].getKeys().size() << std::endl;
 
+    root["name"] = "Johnny";
+    root["name2"] = "Smith";
+    root["address"]["zip"] = "54321";
+    root["age"] = 42;
     std::string serialized_json = json.stringify(2);
     std::cout << "Serialized JSON:\n"
               << serialized_json << std::endl;

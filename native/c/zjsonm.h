@@ -40,6 +40,8 @@ extern "C"
   int ZJSMGOEN(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *PTR64 index, char *PTR64 *PTR64 value, int *PTR64 value_length, KEY_HANDLE *PTR64 value_handle, int *PTR64 actual_length);
   int ZJSMTERM(JSON_INSTANCE *PTR64 instance);
 
+  int ZJSMCREN(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 parent_handle, const char *PTR64 entry_name, const char *PTR64 entry_value, int *PTR64 entry_type, KEY_HANDLE *PTR64 new_entry_handle);
+
 #if defined(__cplusplus)
 }
 #endif
