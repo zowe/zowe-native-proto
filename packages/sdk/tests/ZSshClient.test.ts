@@ -481,16 +481,10 @@ describe("ZSshClient", () => {
                         execCommand: vi.fn().mockResolvedValue({ code: 0, stdout: "deleted" }),
                     };
                     return callback({} as any, sshMock);
-                }
+                },
             );
-            const debugSpy = vi.spyOn(Logger.getAppLogger(), "debug");
-            await ZSshUtils.uninstallServer(
-                fakeSshSession,
-                serverPath
-            );
-            expect(fakeLogger.debug).toHaveBeenCalledWith(
-                `Deleted directory ${serverPath} with response: deleted`
-            );
+            await ZSshUtils.uninstallServer(fakeSshSession, serverPath);
+            expect(fakeLogger.debug).toHaveBeenCalledWith(`Deleted directory ${serverPath} with response: deleted`);
             expect(fakeLogger.error).not.toHaveBeenCalled();
         });
 
@@ -500,18 +494,13 @@ describe("ZSshClient", () => {
             vi.spyOn(ZSshUtils as any, "sftp").mockImplementation(
                 async (_session: any, callback: (sftp: any, ssh: any) => Promise<void>) => {
                     const sshMock = {
-                        execCommand: vi.fn().mockResolvedValue({ code: 1}),
+                        execCommand: vi.fn().mockResolvedValue({ code: 1 }),
                     };
                     return callback({} as any, sshMock);
-                }
+                },
             );
 
-            await expect(
-                ZSshUtils.uninstallServer(
-                    fakeSshSession,
-                    serverPath
-                )
-            ).rejects.toThrow();
+            await expect(ZSshUtils.uninstallServer(fakeSshSession, serverPath)).rejects.toThrow();
             expect(fakeLogger.error).toHaveBeenCalled();
         });
     });
