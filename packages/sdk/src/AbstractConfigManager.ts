@@ -721,6 +721,10 @@ export abstract class AbstractConfigManager {
             // Get the team configuration object
             const teamConfig = this.mProfilesCache.getTeamConfig();
 
+            if (teamConfig.properties.autoStore === false) {
+                return true;
+            }
+
             // Comment out the private key property using Config API and comment-json
             const commentedProperty = ConfigFileUtils.getInstance().commentOutProperty(
                 teamConfig,
