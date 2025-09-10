@@ -18,6 +18,7 @@
 #include <vector>
 #include <type_traits>
 #include <functional>
+#include <initializer_list>
 #include <hwtjic.h> // ensure to include /usr/include
 #include "zjsonm.h"
 #include "zjsontype.h"
@@ -178,6 +179,9 @@ class ZJson;
 #endif
 #ifndef HWTJ_NULL_TYPE
 #define HWTJ_NULL_TYPE 6
+#endif
+#ifndef HWTJ_JSONTEXTVALUETYPE
+#define HWTJ_JSONTEXTVALUETYPE 7
 #endif
 
 // Additional constants
@@ -427,7 +431,146 @@ public:
       return *this;
     }
 
+    // Array assignment operators for creating and populating arrays
+    JsonValueProxy &operator=(const std::initializer_list<std::string> &list)
+    {
+      // Create empty array first
+      setValue("[]", HWTJ_JSONTEXTVALUETYPE);
+      // Then populate it with items
+      for (std::initializer_list<std::string>::const_iterator it = list.begin(); it != list.end(); ++it)
+      {
+        appendToArray(*it, HWTJ_STRING_TYPE);
+      }
+      return *this;
+    }
+
+    JsonValueProxy &operator=(const std::initializer_list<const char *> &list)
+    {
+      // Create empty array first
+      setValue("[]", HWTJ_JSONTEXTVALUETYPE);
+      // Then populate it with items
+      for (std::initializer_list<const char *>::const_iterator it = list.begin(); it != list.end(); ++it)
+      {
+        appendToArray(std::string(*it), HWTJ_STRING_TYPE);
+      }
+      return *this;
+    }
+
+    JsonValueProxy &operator=(const std::initializer_list<int> &list)
+    {
+      // Create empty array first, then populate it
+      setValue("[]", HWTJ_JSONTEXTVALUETYPE);
+      // Then populate it with items
+      for (std::initializer_list<int>::const_iterator it = list.begin(); it != list.end(); ++it)
+      {
+        appendToArray(std::to_string(*it), HWTJ_NUMBER_TYPE);
+      }
+      return *this;
+    }
+
+    JsonValueProxy &operator=(const std::initializer_list<double> &list)
+    {
+      // Create empty array first
+      setValue("[]", HWTJ_JSONTEXTVALUETYPE);
+      // Then populate it with items
+      for (std::initializer_list<double>::const_iterator it = list.begin(); it != list.end(); ++it)
+      {
+        appendToArray(std::to_string(*it), HWTJ_NUMBER_TYPE);
+      }
+      return *this;
+    }
+
+    JsonValueProxy &operator=(const std::initializer_list<bool> &list)
+    {
+      // Create empty array first
+      setValue("[]", HWTJ_JSONTEXTVALUETYPE);
+      // Then populate it with items
+      for (std::initializer_list<bool>::const_iterator it = list.begin(); it != list.end(); ++it)
+      {
+        appendToArray(*it ? "true" : "false", HWTJ_BOOLEAN_TYPE);
+      }
+      return *this;
+    }
+
+    // Array append operators using +=
+    JsonValueProxy &operator+=(const std::string &value)
+    {
+      appendToArray(value, HWTJ_STRING_TYPE);
+      return *this;
+    }
+
+    JsonValueProxy &operator+=(const char *value)
+    {
+      appendToArray(std::string(value), HWTJ_STRING_TYPE);
+      return *this;
+    }
+
+    JsonValueProxy &operator+=(int value)
+    {
+      appendToArray(std::to_string(value), HWTJ_NUMBER_TYPE);
+      return *this;
+    }
+
+    JsonValueProxy &operator+=(double value)
+    {
+      appendToArray(std::to_string(value), HWTJ_NUMBER_TYPE);
+      return *this;
+    }
+
+    JsonValueProxy &operator+=(bool value)
+    {
+      appendToArray(value ? "true" : "false", HWTJ_BOOLEAN_TYPE);
+      return *this;
+    }
+
+    // Array append operators for multiple items using initializer lists
+    JsonValueProxy &operator+=(const std::initializer_list<std::string> &list)
+    {
+      for (std::initializer_list<std::string>::const_iterator it = list.begin(); it != list.end(); ++it)
+      {
+        appendToArray(*it, HWTJ_STRING_TYPE);
+      }
+      return *this;
+    }
+
+    JsonValueProxy &operator+=(const std::initializer_list<const char *> &list)
+    {
+      for (std::initializer_list<const char *>::const_iterator it = list.begin(); it != list.end(); ++it)
+      {
+        appendToArray(std::string(*it), HWTJ_STRING_TYPE);
+      }
+      return *this;
+    }
+
+    JsonValueProxy &operator+=(const std::initializer_list<int> &list)
+    {
+      for (std::initializer_list<int>::const_iterator it = list.begin(); it != list.end(); ++it)
+      {
+        appendToArray(std::to_string(*it), HWTJ_NUMBER_TYPE);
+      }
+      return *this;
+    }
+
+    JsonValueProxy &operator+=(const std::initializer_list<double> &list)
+    {
+      for (std::initializer_list<double>::const_iterator it = list.begin(); it != list.end(); ++it)
+      {
+        appendToArray(std::to_string(*it), HWTJ_NUMBER_TYPE);
+      }
+      return *this;
+    }
+
+    JsonValueProxy &operator+=(const std::initializer_list<bool> &list)
+    {
+      for (std::initializer_list<bool>::const_iterator it = list.begin(); it != list.end(); ++it)
+      {
+        appendToArray(*it ? "true" : "false", HWTJ_BOOLEAN_TYPE);
+      }
+      return *this;
+    }
+
   private:
+    // TODO Make this method public and perhaps add some others too
     void erase(const std::string &key_name)
     {
       int type = HWTJ_SEARCHTYPE_SHALLOW;
@@ -452,6 +595,25 @@ public:
       if (0 != rc)
       {
         throw format_error("Error setting value for key '" + key + "'", rc);
+      }
+    }
+
+    void appendToArray(const std::string &value, int entry_type)
+    {
+      // Check if this is an array type
+      int type = this->getType();
+      if (type != HWTJ_ARRAY_TYPE)
+      {
+        throw std::runtime_error("Cannot append to non-array type for key '" + key + "'. Type was " + std::to_string(type));
+      }
+
+      // For array entries, use null/empty entry name as per IBM documentation
+      // HWTJCREN inserts JSON data directly into the array when entry name is null/empty
+      KEY_HANDLE new_entry_handle = {0};
+      int rc = ZJSMCREN(&parser.instance, &key_handle, nullptr, value.c_str(), &entry_type, &new_entry_handle);
+      if (0 != rc)
+      {
+        throw format_error("Error appending value to array for key '" + key + "'", rc);
       }
     }
 

@@ -47,7 +47,6 @@ int main()
                            "  \"name\": \"John\",\n"
                            "  \"isMarried\": true,\n"
                            "  \"hasKids\": false,\n"
-                           "  \"a\": \"b\",\n"
                            "  \"age\": 30,\n"
                            "  \"pets\": [\"dog\", \"cat\", \"fish\"],\n"
                            "  \"address\": {\n"
@@ -92,6 +91,9 @@ int main()
     root["name2"] = "Smith";
     root["address"]["zip"] = "54321";
     root["age"] = 42;
+    root["pets"] += "bird";
+    root["newArray"] = {"uno"};
+    root["newArray"] += {"dos", "tres"};
     std::string serialized_json = json.stringify(2);
     std::cout << "Serialized JSON:\n"
               << serialized_json << std::endl;
