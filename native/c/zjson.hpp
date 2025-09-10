@@ -616,20 +616,21 @@ class SerializationRegistry : public Singleton<SerializationRegistry<T>>
   friend class Singleton<SerializationRegistry<T>>;
   using DeserializerFunc = std::function<void(T &, const ZJson::JsonValueProxy &)>;
   DeserializerFunc m_deserializeFn;
+
 public:
-  void registerDeserializer(DeserializerFunc func)
+  static void registerDeserializer(DeserializerFunc func)
   {
-    m_deserializeFn = func;
+    SerializationRegistry<T>::get_instance().m_deserializeFn = func;
   }
 
-  DeserializerFunc &getDeserializer()
+  static DeserializerFunc &getDeserializer()
   {
-    return m_deserializeFn;
+    return SerializationRegistry<T>::get_instance().m_deserializeFn;
   }
 
-  bool hasDeserializer()
+  static bool hasDeserializer()
   {
-    return m_deserializeFn != nullptr;
+    return SerializationRegistry<T>::get_instance().m_deserializeFn != nullptr;
   }
 };
 
