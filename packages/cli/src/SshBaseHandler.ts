@@ -18,17 +18,7 @@ export abstract class SshBaseHandler implements ICommandHandler {
         const session = ZSshUtils.buildSession(commandParameters.arguments);
 
         try {
-            using client = await ZSshClient.create(session, {
-                serverPath: commandParameters.arguments.serverPath,
-                numWorkers: 1,
-            });
-
-            const response = await this.processWithClient(commandParameters, client);
-
-            commandParameters.response.progress.endBar(); // end any progress bars
-
-            // Return as an object when using --response-format-json
-            commandParameters.response.data.setObj(response);
+            await this._processCommandWithClient(commandParameters, session);
         } catch (error) {
             const errorMessage = `${error}`;
 
@@ -47,17 +37,7 @@ export abstract class SshBaseHandler implements ICommandHandler {
                     const passwordSession = this.createPasswordSession(session, password);
 
                     // Retry the connection with password
-                    using client = await ZSshClient.create(passwordSession, {
-                        serverPath: commandParameters.arguments.serverPath,
-                        numWorkers: 1,
-                    });
-
-                    const response = await this.processWithClient(commandParameters, client);
-
-                    commandParameters.response.progress.endBar(); // end any progress bars
-
-                    // Return as an object when using --response-format-json
-                    commandParameters.response.data.setObj(response);
+                    await this._processCommandWithClient(commandParameters, passwordSession);
                 } else {
                     throw error; // Re-throw if user cancelled password prompt
                 }
@@ -125,4 +105,18 @@ export abstract class SshBaseHandler implements ICommandHandler {
         commandParameters: IHandlerParameters,
         client: ZSshClient,
     ): Promise<CommandResponse>;
+
+    private async _processCommandWithClient(commandParameters: IHandlerParameters, session: SshSession): Promise<void> {
+        using client = await ZSshClient.create(session, {
+            serverPath: commandParameters.arguments.serverPath,
+            numWorkers: 1,
+        });
+
+        const response = await this.processWithClient(commandParameters, client);
+
+        commandParameters.response.progress.endBar(); // end any progress bars
+
+        // Return as an object when using --response-format-json
+        commandParameters.response.data.setObj(response);
+    }
 }
