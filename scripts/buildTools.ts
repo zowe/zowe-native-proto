@@ -313,8 +313,18 @@ async function upload(connection: Client) {
         remoteDirs.add(deployDirs.root);
     }
 
-    if (remoteDirs.size > 0) {
-        const quotedDirs = Array.from(remoteDirs).map((dir) => `"${dir}"`);
+    const allDirs = Array.from(remoteDirs);
+    const optimizedDirs = new Set(allDirs);
+    for (const dir1 of allDirs) {
+        for (const dir2 of allDirs) {
+            if (dir1 !== dir2 && dir2.startsWith(`${dir1}/`)) {
+                optimizedDirs.delete(dir1);
+            }
+        }
+    }
+
+    if (optimizedDirs.size > 0) {
+        const quotedDirs = Array.from(optimizedDirs).map((dir) => `"${dir}"`);
         await runCommandInShell(connection, `mkdir -p ${quotedDirs.join(" ")}`);
     }
 
