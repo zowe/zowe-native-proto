@@ -53,6 +53,7 @@ const extensionConfig = {
             parser: {
               syntax: 'typescript',
             },
+            target: 'es2022'
           },
         },
       },

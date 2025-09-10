@@ -505,3 +505,56 @@ describe("ZSshClient", () => {
         });
     });
 });
+
+describe("ZSshUtils", () => {
+    describe("isPrivateKeyAuthFailure", () => {
+        it("should return true for common private key failure patterns", () => {
+            const testCases = [
+                "All configured authentication methods failed",
+                "Cannot parse privateKey: Malformed OpenSSH private key",
+                "but no passphrase given",
+                "integrity check failed",
+                "Permission denied (publickey,password)",
+                "Permission denied (publickey)",
+                "Authentication failed",
+                "Invalid private key",
+                "privateKey value does not contain a (valid) private key",
+                "Cannot parse privateKey",
+            ];
+
+            testCases.forEach((errorMessage) => {
+                expect(ZSshUtils.isPrivateKeyAuthFailure(errorMessage, true)).toBe(true);
+            });
+        });
+
+        it("should return false for non-private key error messages", () => {
+            const testCases = [
+                "Connection timed out",
+                "Network is unreachable",
+                "Connection refused",
+                "Host key verification failed",
+                "Some other random error",
+            ];
+
+            testCases.forEach((errorMessage) => {
+                expect(ZSshUtils.isPrivateKeyAuthFailure(errorMessage, true)).toBe(false);
+            });
+        });
+
+        it("should return false when hasPrivateKey is explicitly false", () => {
+            const privateKeyErrorMessage = "All configured authentication methods failed";
+            expect(ZSshUtils.isPrivateKeyAuthFailure(privateKeyErrorMessage, false)).toBe(false);
+        });
+
+        it("should return true when hasPrivateKey is undefined but error matches pattern", () => {
+            const privateKeyErrorMessage = "All configured authentication methods failed";
+            expect(ZSshUtils.isPrivateKeyAuthFailure(privateKeyErrorMessage)).toBe(true);
+        });
+
+        it("should handle partial matches in error messages", () => {
+            const errorMessage =
+                "SSH Error: All configured authentication methods failed. Please check your credentials.";
+            expect(ZSshUtils.isPrivateKeyAuthFailure(errorMessage, true)).toBe(true);
+        });
+    });
+});

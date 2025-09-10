@@ -8,6 +8,8 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 - Added support for the `local-encoding` option to data set, USS file, and job file commands (view, download, upload) to specify the source encoding of content (defaults to UTF-8). [#511](https://github.com/zowe/zowe-native-proto/issues/511)
 - Added support for `--volume-serial` option when uploading/downloading data sets. [#439](https://github.com/zowe/zowe-native-proto/issues/439)
+- Fixed an issue where the `zssh config setup` command did not prompt the user for a password if the given private key was not recognized by the host. [#524](https://github.com/zowe/zowe-native-proto/issues/524)
+- Added a new prompt that shows if the user has an invalid private key on an existing profile when running the `zssh config setup` command. Now, if an invalid private key is detected, it is moved to a new comment in the JSON file and the user is given options to proceed. They can undo the comment action, delete the comment entirely, or preserve the comment and succeed with setup. [#524](https://github.com/zowe/zowe-native-proto/issues/524)
 
 ## `0.1.5`
 
