@@ -13,6 +13,7 @@
 #define CONVERSION_HPP
 
 #include <string>
+#include <unistd.h> // For __e2a_s and __a2e_s functions
 
 // Define a type for the conversion function pointers
 typedef size_t (*conversion_func_t)(char *);
@@ -24,15 +25,15 @@ typedef size_t (*conversion_func_t)(char *);
  */
 inline void convert_inplace(std::string &s, conversion_func_t func)
 {
-    if (s.empty())
-    {
-        return;
-    }
-    s.push_back('\0');
-    // Call the conversion function on the underlying C-style string.
-    func(&s[0]);
-    // Remove the null terminator.
-    s.pop_back();
+  if (s.empty())
+  {
+    return;
+  }
+  s.push_back('\0');
+  // Call the conversion function on the underlying C-style string.
+  func(&s[0]);
+  // Remove the null terminator.
+  s.pop_back();
 }
 
 /**
@@ -41,7 +42,7 @@ inline void convert_inplace(std::string &s, conversion_func_t func)
  */
 inline void e2a_inplace(std::string &s)
 {
-    convert_inplace(s, __e2a_s);
+  convert_inplace(s, __e2a_s);
 }
 
 /**
@@ -50,7 +51,7 @@ inline void e2a_inplace(std::string &s)
  */
 inline void a2e_inplace(std::string &s)
 {
-    convert_inplace(s, __a2e_s);
+  convert_inplace(s, __a2e_s);
 }
 
 #endif
