@@ -32,7 +32,33 @@ export class SshCommonApi implements MainframeInteraction.ICommon {
                 await SshClientCache.inst.connect(profile);
                 return "active";
             } catch (err) {
-                vscode.window.showErrorMessage((err as Error).toString());
+                const errorMessage = (err as Error).toString();
+
+                // Check if this is a private key authentication failure
+                if (ZSshUtils.isPrivateKeyAuthFailure(errorMessage, !!profile.profile?.privateKey)) {
+                    vscode.window.showWarningMessage(
+                        `Private key authentication failed for "${profile.name}". Falling back to password authentication...`,
+                    );
+
+                    try {
+                        // Attempt to prompt for password with retry logic (up to 3 attempts)
+                        const updatedProfile = await this.handlePrivateKeyFailure(profile);
+                        if (updatedProfile) {
+                            await SshClientCache.inst.connect(updatedProfile);
+                            return "active";
+                        }
+                    } catch (retryErr) {
+                        imperative.Logger.getAppLogger().warn(
+                            `Password authentication failed after 3 attempts for profile ${profile.name}: ${retryErr}`,
+                        );
+                        vscode.window.showErrorMessage(
+                            `Authentication failed for profile ${profile.name}. Both private key and password authentication failed.`,
+                        );
+                        return "inactive";
+                    }
+                }
+
+                vscode.window.showErrorMessage(errorMessage);
                 return "inactive";
             }
         }
@@ -48,5 +74,64 @@ export class SshCommonApi implements MainframeInteraction.ICommon {
 
     public getSshSession(profile?: imperative.IProfileLoaded): SshSession {
         return ZSshUtils.buildSession((profile ?? this.profile)?.profile!);
+    }
+
+    /**
+     * Handles private key authentication failure by prompting for password with retry logic
+     * @param profile The profile that failed private key authentication
+     * @returns Updated profile with password, or undefined if user cancelled or max attempts reached
+     */
+    private async handlePrivateKeyFailure(
+        profile: imperative.IProfileLoaded,
+    ): Promise<imperative.IProfileLoaded | undefined> {
+        for (let attempts = 0; attempts < 3; attempts++) {
+            try {
+                // Prompt for password using VS Code's native input box
+                const password = await vscode.window.showInputBox({
+                    title: `${profile.profile?.user}@${profile.profile?.host}'s password:`,
+                    password: true,
+                    placeHolder: "Enter your password",
+                    prompt: `Enter password for ${profile.profile?.user}@${profile.profile?.host}`,
+                    ignoreFocusOut: true,
+                });
+
+                if (!password) {
+                    return undefined; // User cancelled
+                }
+
+                // Create a new profile with password authentication (temporarily disabling private key)
+                const testProfile: imperative.IProfileLoaded = {
+                    ...profile,
+                    profile: {
+                        ...profile.profile!,
+                        password,
+                        // Temporarily disable private key for this connection attempt
+                        privateKey: undefined,
+                        keyPassphrase: undefined,
+                    },
+                };
+
+                // Test the password by attempting a connection
+                try {
+                    await SshClientCache.inst.connect(testProfile);
+                    // If we get here, the password is valid
+                    return testProfile;
+                } catch (authError) {
+                    const authErrorMessage = `${authError}`;
+                    if (authErrorMessage.includes("FOTS1668")) {
+                        vscode.window.showErrorMessage("Password expired on target system");
+                        return undefined;
+                    }
+
+                    vscode.window.showWarningMessage(`Password authentication failed (${attempts + 1}/3)`);
+                }
+            } catch (error) {
+                imperative.Logger.getAppLogger().error(`Failed to handle private key failure: ${error}`);
+                return undefined;
+            }
+        }
+
+        // All attempts failed
+        return undefined;
     }
 }
