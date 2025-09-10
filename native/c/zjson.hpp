@@ -609,26 +609,27 @@ public:
   }
 
 // Serialization registry implementation (after ZJson class definition)
+#include "singleton.hpp"
 template <typename T>
-class SerializationRegistry
+class SerializationRegistry : public Singleton<SerializationRegistry<T>>
 {
-public:
+  friend class Singleton<SerializationRegistry<T>>;
   using DeserializerFunc = std::function<void(T &, const ZJson::JsonValueProxy &)>;
-
-  static void registerDeserializer(DeserializerFunc func)
+  DeserializerFunc m_deserializeFn;
+public:
+  void registerDeserializer(DeserializerFunc func)
   {
-    getDeserializer() = func;
+    m_deserializeFn = func;
   }
 
-  static DeserializerFunc &getDeserializer()
+  DeserializerFunc &getDeserializer()
   {
-    static DeserializerFunc deserializer;
-    return deserializer;
+    return m_deserializeFn;
   }
 
-  static bool hasDeserializer()
+  bool hasDeserializer()
   {
-    return static_cast<bool>(getDeserializer());
+    return m_deserializeFn != nullptr;
   }
 };
 
