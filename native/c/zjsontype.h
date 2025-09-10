@@ -15,7 +15,7 @@
 
 #include "ztype.h"
 
-#ifdef TARGET_OS_MAC
+#ifndef __MVS__
 #define HWTJ_SEARCHTYPE_SHALLOW 3
 #define HWTJ_OBJECT_TYPE 1
 #define HWTJ_ARRAY_TYPE 2
