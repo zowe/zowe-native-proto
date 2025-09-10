@@ -21,6 +21,7 @@
 #include <hwtjic.h> // ensure to include /usr/include
 #include "zjsonm.h"
 #include "zjsontype.h"
+#include "zlogger.hpp"
 
 // Simplified macro to reduce repetition - automatically applies struct name to all fields
 // Uses a much simpler approach that just transforms the field list
@@ -685,7 +686,7 @@ void deserialize_field(T &obj, const ZJson::JsonValueProxy &json, const FieldDes
   catch (const std::exception &e)
   {
     // Field might be optional or have a different name
-    // Could add logging here if needed
+    ZLOG_TRACE("Unable to deserialize field %s: %s", field.name.c_str(), e.what());
   }
 }
 
