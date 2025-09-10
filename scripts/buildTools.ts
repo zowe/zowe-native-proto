@@ -239,7 +239,7 @@ async function artifacts(connection: Client, packageApf: boolean) {
 }
 
 async function runCommandInShell(connection: Client, command: string, pty = false) {
-    const spinner = startSpinner(`Command: ${command.trim()}`);
+    const spinner = startSpinner(`Running: ${command.trim()}`);
     return new Promise<string>((resolve, reject) => {
         let data = "";
         let error = "";
@@ -302,46 +302,52 @@ async function retrieve(connection: Client, files: string[], targetDir: string) 
 }
 
 async function upload(connection: Client) {
-    return new Promise<void>((finish) => {
-        const spinner = startSpinner("Deploying files...");
+    const spinner = startSpinner("Deploying files...");
 
-        const dirs = getDirs();
-        const files = getAllServerFiles();
+    const files = getAllServerFiles();
+    const remoteDirs = new Set<string>();
+    for (const file of files) {
+        remoteDirs.add(path.posix.dirname(path.posix.join(deployDirs.root, file)));
+    }
+    if (args[1] == null) {
+        remoteDirs.add(deployDirs.root);
+    }
 
+    if (remoteDirs.size > 0) {
+        const quotedDirs = Array.from(remoteDirs).map((dir) => `"${dir}"`);
+        await runCommandInShell(connection, `mkdir -p ${quotedDirs.join(" ")}`);
+    }
+
+    await new Promise<void>((resolve, reject) => {
         connection.sftp(async (err, sftpcon) => {
             if (err) {
                 stopSpinner(spinner, `Deploy error!\n${err}`);
-                throw err;
+                return reject(err);
             }
 
-            const filteredDirs = args[1] ? dirs.filter((dir) => args.some((arg) => arg.startsWith(dir))) : dirs;
-            for (const dir of ["", ...filteredDirs]) {
-                await new Promise<void>((resolve, reject) => {
-                    sftpcon.mkdir(`${deployDirs.root}/${dir}`, (err) => {
-                        if (err && (err as any).code !== 4) {
-                            reject(err);
-                        } else {
-                            resolve();
-                        }
-                    });
-                });
+            try {
+                const pendingUploads = [];
+                if (args[1] == null) {
+                    pendingUploads.push(
+                        uploadFile(
+                            sftpcon,
+                            path.resolve(__dirname, "../package.json"),
+                            `${deployDirs.root}/package.json`,
+                        ),
+                    );
+                }
+                for (const file of files) {
+                    const from = path.resolve(__dirname, `${localDeployDir}/${file}`);
+                    const to = path.posix.join(deployDirs.root, file);
+                    pendingUploads.push(uploadFile(sftpcon, from, to));
+                }
+                await Promise.all(pendingUploads);
+                stopSpinner(spinner, "Deploy complete!");
+                resolve();
+            } catch (uploadErr) {
+                stopSpinner(spinner, `Upload error!\n${uploadErr}`);
+                reject(uploadErr);
             }
-
-            const pendingUploads = [];
-            if (args[1] == null) {
-                pendingUploads.push(
-                    uploadFile(sftpcon, path.resolve(__dirname, "../package.json"), `${deployDirs.root}/package.json`),
-                );
-            }
-            for (let i = 0; i < files.length; i++) {
-                const from = path.resolve(__dirname, `${localDeployDir}/${files[i]}`);
-                const to = `${deployDirs.root}/${files[i]}`;
-                pendingUploads.push(uploadFile(sftpcon, from, to));
-            }
-            await Promise.all(pendingUploads);
-
-            stopSpinner(spinner, "Deploy complete!");
-            finish();
         });
     });
 }
