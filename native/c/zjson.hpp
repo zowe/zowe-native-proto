@@ -227,9 +227,9 @@ public:
       ZJSMSRCH(&parser.instance, &type, search_key.c_str(), &parent->key_handle, &starting_handle, &key_handle);
     }
 
-    // Constructor for array entries
-    JsonValueProxy(ZJson &parser, const std::string &key, KEY_HANDLE parent_kh)
-        : parser(parser), key(key), key_handle(parent_kh)
+    // Constructor for array elements with direct handle
+    JsonValueProxy(ZJson &parser, const std::string &key, KEY_HANDLE element_handle)
+        : parser(parser), key(key), key_handle(element_handle)
     {
     }
 
@@ -273,6 +273,46 @@ public:
         throw format_error("Error getting boolean value for key '" + key + "'", rc);
       }
       return (b_val == HWTJ_TRUE);
+    }
+
+    explicit operator const std::vector<JsonValueProxy>() const
+    {
+      int type = this->getType();
+      if (type != HWTJ_ARRAY_TYPE) // not an array
+      {
+        throw std::runtime_error("Cannot get array entries from non-array type for key '" + key + "'. Type was " + std::to_string(type));
+      }
+
+      std::vector<JsonValueProxy> result;
+
+      int rc = 0;
+      int number_entries = 0;
+
+      rc = ZJSMGNUE(&parser.instance, get_mutable_key_handle(), &number_entries);
+      if (0 != rc)
+      {
+        throw format_error("Error getting number of array entries for key '" + key + "'", rc);
+      }
+
+      result.reserve(number_entries);
+
+      // Load all array entries
+      for (int i = 0; i < number_entries; i++)
+      {
+        KEY_HANDLE element_handle = {0};
+        int mutable_index = i;
+
+        rc = ZJSMGAEN(&parser.instance, get_mutable_key_handle(), &mutable_index, &element_handle);
+        if (0 != rc)
+        {
+          throw format_error("Error getting array element at index " + std::to_string(i) + " for key '" + key + "'.", rc);
+        }
+
+        std::string element_key = key + "[" + std::to_string(i) + "]";
+        result.push_back(JsonValueProxy(parser, element_key, element_handle));
+      }
+
+      return result;
     }
 
     int getType() const
@@ -965,9 +1005,13 @@ inline std::ostream &operator<<(std::ostream &os, const ZJson::JsonValueProxy &p
   int type = proxy.getType();
   switch (type)
   {
-  case HWTJ_ARRAY_TYPE:     // Array
-    return os << "Array[]"; // TODO(Kelosky): print array type
-  case HWTJ_STRING_TYPE:    // String
+  case HWTJ_ARRAY_TYPE: // Array
+  {
+    // TODO(Kelosky): print array type
+    auto temp_proxy = static_cast<const std::vector<ZJson::JsonValueProxy>>(proxy);
+    return os << "Array[" << temp_proxy.size() << "]";
+  }
+  case HWTJ_STRING_TYPE: // String
     return os << static_cast<std::string>(proxy);
   case HWTJ_NUMBER_TYPE: // Number
     return os << static_cast<int>(proxy);

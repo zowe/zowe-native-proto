@@ -87,6 +87,11 @@ int main()
     std::cout << "Number of keys in address: " << address_proxy.getKeys().size() << std::endl;
     std::cout << "Number of keys in work.office: " << root["work"]["office"].getKeys().size() << std::endl;
 
+    auto pets_proxy = static_cast<const std::vector<ZJson::JsonValueProxy>>(root["pets"]);
+    std::cout << "Number of pets: " << pets_proxy.size() << std::endl;
+    std::cout << "First pet: " << pets_proxy.front() << std::endl;
+    std::cout << "Last pet: " << pets_proxy.back() << std::endl;
+
     root["name"] = "Johnny";
     root["name2"] = "Smith";
     root["address"]["zip"] = "54321";
