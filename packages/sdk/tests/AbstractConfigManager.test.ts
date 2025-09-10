@@ -9,7 +9,6 @@
  *
  */
 
-import { EventEmitter } from "node:stream";
 import {
     ConfigBuilder,
     ConfigSchema,
@@ -19,10 +18,11 @@ import {
     type ProfileInfo,
 } from "@zowe/imperative";
 import { ZoweVsCodeExtension } from "@zowe/zowe-explorer-api";
-import type { Config } from "node-ssh";
-import { Client, type ClientCallback, type ConnectConfig } from "ssh2";
+import { type Config, NodeSSH } from "node-ssh";
+import type { ConnectConfig } from "ssh2";
 import type { MockInstance } from "vitest";
 import { AbstractConfigManager, type ProgressCallback } from "../src/AbstractConfigManager";
+import { ConfigFileUtils } from "../src/ConfigFileUtils";
 import { type inputBoxOpts, MESSAGE_TYPE, type qpItem, type qpOpts } from "../src/doc";
 import { type ISshConfigExt, ZClientUtils } from "../src/ZClientUtils";
 
@@ -751,6 +751,7 @@ describe("AbstractConfigManager", async () => {
             vi.spyOn(testManager as any, "attemptConnection").mockRejectedValue(
                 "Cannot parse privateKey: Malformed OpenSSH private key",
             );
+            vi.spyOn(ConfigFileUtils.getInstance(), "commentOutProperty").mockReturnValue(undefined);
 
             expect(
                 await (testManager as any).validateConfig(
@@ -763,6 +764,7 @@ describe("AbstractConfigManager", async () => {
             vi.spyOn(testManager as any, "attemptConnection").mockRejectedValue(
                 new Error("All configured authentication methods failed"),
             );
+            vi.spyOn(ConfigFileUtils.getInstance(), "commentOutProperty").mockReturnValueOnce(undefined);
 
             const config = {
                 name: "ssh1",
@@ -791,7 +793,6 @@ describe("AbstractConfigManager", async () => {
             vi.spyOn(testManager, "showInputBox").mockResolvedValue("wrongPass"); // always fails
             vi.spyOn(testManager as any, "attemptConnection").mockRejectedValue(new Error("integrity check failed"));
             vi.spyOn(testManager, "showMessage").mockImplementation(() => {});
-
             const config = {
                 name: "ssh1",
                 hostname: "lpar1.com",
@@ -799,9 +800,14 @@ describe("AbstractConfigManager", async () => {
                 user: "user1",
                 privateKey: "/path/to/key",
             };
+            const handleInvalidPrivateKeyMock = vi
+                .spyOn(testManager as any, "handleInvalidPrivateKey")
+                .mockResolvedValue(true);
+
             const result = await (testManager as any).validateConfig(config, true);
 
             expect(result).toBeUndefined();
+            expect(handleInvalidPrivateKeyMock).toHaveBeenCalledTimes(1);
             expect(config.privateKey).toBeUndefined();
             expect((config as any).keyPassphrase).toBeUndefined();
         });
@@ -849,37 +855,35 @@ describe("AbstractConfigManager", async () => {
         });
     });
     describe("attemptConnection", async () => {
-        let eventEmitter: any;
         it("should attempt connection and have a truthy result", async () => {
-            vi.spyOn(Client.prototype, "connect").mockImplementation(function (_config: ConnectConfig) {
-                this.emit("ready");
-                return this;
+            const connectMock = vi.spyOn(NodeSSH.prototype, "connect").mockResolvedValueOnce(undefined);
+            const isConnectedMock = vi.spyOn(NodeSSH.prototype, "isConnected").mockReturnValueOnce(true);
+            const execCommandMock = vi.spyOn(NodeSSH.prototype, "execCommand").mockImplementation(() => {
+                return { stdout: "" } as any;
             });
-            vi.spyOn(Client.prototype, "shell").mockImplementation((callback: ClientCallback) => {
-                eventEmitter = new EventEmitter() as any;
-                callback(undefined, eventEmitter);
-                eventEmitter.emit("end");
-                return this;
-            });
-            expect(
-                await (testManager as any).attemptConnection({
+            await expect(
+                (testManager as any).attemptConnection({
                     name: "testProf",
                     privateKey: "/path/to/id_rsa",
                     port: 22,
                     user: "user1",
                 }),
-            ).toBeTruthy();
+            ).resolves.not.toThrow();
+            expect(connectMock).toHaveBeenCalledTimes(1);
+            expect(isConnectedMock).toHaveBeenCalledTimes(1);
+            expect(execCommandMock).toHaveBeenCalledTimes(1);
+            connectMock.mockRestore();
+            isConnectedMock.mockRestore();
+            execCommandMock.mockRestore();
         });
+
         it("should throw an error on connection attempt", async () => {
-            vi.spyOn(Client.prototype, "connect").mockImplementation(function (_config: ConnectConfig) {
-                this.emit("ready");
-                return this;
-            });
-            vi.spyOn(Client.prototype, "shell").mockImplementation((callback: ClientCallback) => {
-                eventEmitter = new EventEmitter() as any;
-                callback(undefined, eventEmitter);
-                eventEmitter.emit("data", "FOTS1668");
-                return this;
+            const connectMock = vi
+                .spyOn(NodeSSH.prototype, "connect")
+                .mockImplementation((_config: ConnectConfig) => undefined);
+            const isConnectedMock = vi.spyOn(NodeSSH.prototype, "isConnected").mockReturnValueOnce(true);
+            const execCommandMock = vi.spyOn(NodeSSH.prototype, "execCommand").mockImplementation(() => {
+                return { stderr: "FOTS1668" } as any;
             });
             await expect(
                 (testManager as any).attemptConnection({
@@ -889,6 +893,9 @@ describe("AbstractConfigManager", async () => {
                     user: "user1",
                 }),
             ).rejects.toThrow("FOTS1668");
+            expect(connectMock).toHaveBeenCalledTimes(1);
+            expect(isConnectedMock).toHaveBeenCalledTimes(1);
+            expect(execCommandMock).toHaveBeenCalledTimes(1);
         });
     });
     describe("promptForPassword", async () => {

@@ -65,7 +65,7 @@ export class ZClientUtils {
                                     session.hostname = value;
                                     break;
                                 case "port":
-                                    session.port = Number.parseInt(value);
+                                    session.port = Number.parseInt(value, 10);
                                     break;
                                 case "user":
                                     session.user = value;
@@ -74,7 +74,7 @@ export class ZClientUtils {
                                     session.privateKey = value;
                                     break;
                                 case "connecttimeout":
-                                    session.handshakeTimeout = Number.parseInt(value) * 1000;
+                                    session.handshakeTimeout = Number.parseInt(value, 10) * 1000;
                                     break;
                                 default:
                                     break;
