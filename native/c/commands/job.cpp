@@ -10,6 +10,7 @@
  */
 
 #include "job.hpp"
+#include "common_args.hpp"
 #include "../zds.hpp"
 #include "../zjb.hpp"
 #include "../zusf.hpp"
@@ -18,6 +19,7 @@
 
 using namespace parser;
 using namespace std;
+using namespace commands::common;
 
 namespace job
 {
@@ -468,52 +470,52 @@ void register_commands(parser::Command &root_command)
   auto job_list_cmd = command_ptr(new Command("list", "list jobs"));
   job_list_cmd->add_keyword_arg("owner", make_aliases("--owner", "-o"), "filter by owner", ArgType_Single, false);
   job_list_cmd->add_keyword_arg("prefix", make_aliases("--prefix", "-p"), "filter by prefix", ArgType_Single, false);
-  job_list_cmd->add_keyword_arg("max-entries", make_aliases("--max-entries", "--me"), "max number of results to return before warning generated", ArgType_Single, false);
-  job_list_cmd->add_keyword_arg("warn", make_aliases("--warn"), "warn if truncated or not found", ArgType_Flag, false, ArgValue(true));
-  job_list_cmd->add_keyword_arg("response-format-csv", response_format_csv_option, "returns the response in CSV format", ArgType_Flag, false, ArgValue(false));
+  job_list_cmd->add_keyword_arg(MAX_ENTRIES);
+  job_list_cmd->add_keyword_arg(WARN);
+  job_list_cmd->add_keyword_arg(RESPONSE_FORMAT_CSV);
   job_list_cmd->set_handler(handle_job_list);
   job_group->add_command(job_list_cmd);
 
   // List-files subcommand
   auto job_list_files_cmd = command_ptr(new Command("list-files", "list spool files for jobid"));
   job_list_files_cmd->add_alias("lf");
-  job_list_files_cmd->add_positional_arg("jobid", "valid jobid or job correlator", ArgType_Single, true);
-  job_list_files_cmd->add_keyword_arg("max-entries", make_aliases("--max-entries", "--me"), "max number of files to return before warning generated", ArgType_Single, false);
-  job_list_files_cmd->add_keyword_arg("warn", make_aliases("--warn"), "warn if truncated or not found", ArgType_Flag, false, ArgValue(true));
-  job_list_files_cmd->add_keyword_arg("response-format-csv", response_format_csv_option, "returns the response in CSV format", ArgType_Flag, false, ArgValue(false));
+  job_list_files_cmd->add_positional_arg(JOB_ID);
+  job_list_files_cmd->add_keyword_arg(MAX_ENTRIES);
+  job_list_files_cmd->add_keyword_arg(WARN);
+  job_list_files_cmd->add_keyword_arg(RESPONSE_FORMAT_CSV);
   job_list_files_cmd->set_handler(handle_job_list_files);
   job_group->add_command(job_list_files_cmd);
 
   // View-status subcommand
   auto job_view_status_cmd = command_ptr(new Command("view-status", "view job status"));
   job_view_status_cmd->add_alias("vs");
-  job_view_status_cmd->add_positional_arg("jobid", "valid jobid or job correlator", ArgType_Single, true);
-  job_view_status_cmd->add_keyword_arg("response-format-csv", response_format_csv_option, "returns the response in CSV format", ArgType_Flag, false, ArgValue(false));
+  job_view_status_cmd->add_positional_arg(JOB_ID);
+  job_view_status_cmd->add_keyword_arg(RESPONSE_FORMAT_CSV);
   job_view_status_cmd->set_handler(handle_job_view_status);
   job_group->add_command(job_view_status_cmd);
 
   // View-file subcommand
   auto job_view_file_cmd = command_ptr(new Command("view-file", "view job file output"));
   job_view_file_cmd->add_alias("vf");
-  job_view_file_cmd->add_positional_arg("jobid", "valid jobid or job correlator", ArgType_Single, true);
+  job_view_file_cmd->add_positional_arg(JOB_ID);
   job_view_file_cmd->add_positional_arg("key", "valid job dsn key via 'job list-files'", ArgType_Single, true);
-  job_view_file_cmd->add_keyword_arg("encoding", encoding_option, "return contents in given encoding", ArgType_Single, false);
-  job_view_file_cmd->add_keyword_arg("local-encoding", source_encoding_option, "source encoding of the spool file content (defaults to UTF-8)", ArgType_Single, false);
-  job_view_file_cmd->add_keyword_arg("response-format-bytes", response_format_bytes_option, "returns the response as raw bytes", ArgType_Flag, false, ArgValue(false));
+  job_view_file_cmd->add_keyword_arg(ENCODING);
+  job_view_file_cmd->add_keyword_arg(LOCAL_ENCODING);
+  job_view_file_cmd->add_keyword_arg(RESPONSE_FORMAT_BYTES);
   job_view_file_cmd->set_handler(handle_job_view_file);
   job_group->add_command(job_view_file_cmd);
 
   // View-jcl subcommand
   auto job_view_jcl_cmd = command_ptr(new Command("view-jcl", "view job jcl from input jobid"));
   job_view_jcl_cmd->add_alias("vj");
-  job_view_jcl_cmd->add_positional_arg("jobid", "valid jobid or job correlator", ArgType_Single, true);
+  job_view_jcl_cmd->add_positional_arg(JOB_ID);
   job_view_jcl_cmd->set_handler(handle_job_view_jcl);
   job_group->add_command(job_view_jcl_cmd);
 
   // Submit subcommand
   auto job_submit_cmd = command_ptr(new Command("submit", "submit a job"));
   job_submit_cmd->add_alias("sub");
-  job_submit_cmd->add_positional_arg("dsn", "dsn containing JCL", ArgType_Single, true);
+  job_submit_cmd->add_positional_arg(DSN);
   job_submit_cmd->add_keyword_arg("wait", make_aliases("--wait"), "wait for job status", ArgType_Single, false);
   job_submit_cmd->add_keyword_arg("only-jobid", make_aliases("--only-jobid", "--oj"), "show only job id on success", ArgType_Flag, false, ArgValue(false));
   job_submit_cmd->add_keyword_arg("only-correlator", make_aliases("--only-correlator", "--oc"), "show only job correlator on success", ArgType_Flag, false, ArgValue(false));
@@ -526,15 +528,15 @@ void register_commands(parser::Command &root_command)
   job_submit_jcl_cmd->add_keyword_arg("wait", make_aliases("--wait"), "wait for job status", ArgType_Single, false);
   job_submit_jcl_cmd->add_keyword_arg("only-jobid", make_aliases("--only-jobid", "--oj"), "show only job id on success", ArgType_Flag, false, ArgValue(false));
   job_submit_jcl_cmd->add_keyword_arg("only-correlator", make_aliases("--only-correlator", "--oc"), "show only job correlator on success", ArgType_Flag, false, ArgValue(false));
-  job_submit_jcl_cmd->add_keyword_arg("encoding", encoding_option, "encoding for input data", ArgType_Single, false);
-  job_submit_jcl_cmd->add_keyword_arg("local-encoding", source_encoding_option, "source encoding of the JCL content (defaults to UTF-8)", ArgType_Single, false);
+  job_submit_jcl_cmd->add_keyword_arg(ENCODING);
+  job_submit_jcl_cmd->add_keyword_arg(LOCAL_ENCODING);
   job_submit_jcl_cmd->set_handler(handle_job_submit_jcl);
   job_group->add_command(job_submit_jcl_cmd);
 
   // Submit-uss subcommand
   auto job_submit_uss_cmd = command_ptr(new Command("submit-uss", "submit a job from USS files"));
   job_submit_uss_cmd->add_alias("sub-u");
-  job_submit_uss_cmd->add_positional_arg("file-path", "USS file containing JCL", ArgType_Single, true);
+  job_submit_uss_cmd->add_positional_arg(FILE_PATH);
   job_submit_uss_cmd->add_keyword_arg("wait", make_aliases("--wait"), "wait for job status", ArgType_Single, false);
   job_submit_uss_cmd->add_keyword_arg("only-jobid", make_aliases("--only-jobid", "--oj"), "show only job id on success", ArgType_Flag, false, ArgValue(false));
   job_submit_uss_cmd->add_keyword_arg("only-correlator", make_aliases("--only-correlator", "--oc"), "show only job correlator on success", ArgType_Flag, false, ArgValue(false));
@@ -544,14 +546,14 @@ void register_commands(parser::Command &root_command)
   // Delete subcommand
   auto job_delete_cmd = command_ptr(new Command("delete", "delete a job"));
   job_delete_cmd->add_alias("del");
-  job_delete_cmd->add_positional_arg("jobid", "valid jobid or job correlator", ArgType_Single, true);
+  job_delete_cmd->add_positional_arg(JOB_ID);
   job_delete_cmd->set_handler(handle_job_delete);
   job_group->add_command(job_delete_cmd);
 
   // Cancel subcommand
   auto job_cancel_cmd = command_ptr(new Command("cancel", "cancel a job"));
   job_cancel_cmd->add_alias("cnl");
-  job_cancel_cmd->add_positional_arg("jobid", "valid jobid or job correlator", ArgType_Single, true);
+  job_cancel_cmd->add_positional_arg(JOB_ID);
   job_cancel_cmd->add_keyword_arg("dump", make_aliases("--dump", "-d"), "Dump the cancelled jobs if waiting for conversion, in conversion, or in execution", ArgType_Flag, false, ArgValue(false));
   job_cancel_cmd->add_keyword_arg("force", make_aliases("--force", "-f"), "Force cancel the jobs, even if marked", ArgType_Flag, false, ArgValue(false));
   job_cancel_cmd->add_keyword_arg("purge", make_aliases("--purge", "-p"), "Purge output of the cancelled jobs", ArgType_Flag, false, ArgValue(false));
@@ -562,14 +564,14 @@ void register_commands(parser::Command &root_command)
   // Hold subcommand
   auto job_hold_cmd = command_ptr(new Command("hold", "hold a job"));
   job_hold_cmd->add_alias("hld");
-  job_hold_cmd->add_positional_arg("jobid", "valid jobid or job correlator", ArgType_Single, true);
+  job_hold_cmd->add_positional_arg(JOB_ID);
   job_hold_cmd->set_handler(handle_job_hold);
   job_group->add_command(job_hold_cmd);
 
   // Release subcommand
   auto job_release_cmd = command_ptr(new Command("release", "release a job"));
   job_release_cmd->add_alias("rel");
-  job_release_cmd->add_positional_arg("jobid", "valid jobid or job correlator", ArgType_Single, true);
+  job_release_cmd->add_positional_arg(JOB_ID);
   job_release_cmd->set_handler(handle_job_release);
   job_group->add_command(job_release_cmd);
 

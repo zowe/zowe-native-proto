@@ -10,6 +10,7 @@
  */
 
 #include "ds.hpp"
+#include "common_args.hpp"
 #include "../zds.hpp"
 #include "../zut.hpp"
 #include <string>
@@ -18,6 +19,7 @@
 
 using namespace parser;
 using namespace std;
+using namespace commands::common;
 
 namespace ds
 {
@@ -677,21 +679,10 @@ void register_commands(parser::Command &root_command)
   auto data_set_cmd = command_ptr(new Command("data-set", "z/OS data set operations"));
   data_set_cmd->add_alias("ds");
 
-  // Common data set options that are reused
-  auto encoding_option = make_aliases("--encoding", "--ec");
-  auto source_encoding_option = make_aliases("--local-encoding", "--lec");
-  auto etag_option = make_aliases("--etag");
-  auto etag_only_option = make_aliases("--etag-only");
-  auto return_etag_option = make_aliases("--return-etag");
-  auto pipe_path_option = make_aliases("--pipe-path");
-  auto response_format_csv_option = make_aliases("--response-format-csv", "--rfc");
-  auto response_format_bytes_option = make_aliases("--response-format-bytes", "--rfb");
-  auto volser_option = make_aliases("--volser", "--vs");
-
   // Create subcommand
   auto ds_create_cmd = command_ptr(new Command("create", "create data set"));
   ds_create_cmd->add_alias("cre");
-  ds_create_cmd->add_positional_arg("dsn", "data set name, optionally with member specified", ArgType_Single, true);
+  ds_create_cmd->add_positional_arg(DSN);
 
   // Data set creation attributes
   ds_create_cmd->add_keyword_arg("alcunit", make_aliases("--alcunit"), "Allocation unit", ArgType_Single, false);
@@ -717,28 +708,28 @@ void register_commands(parser::Command &root_command)
   // Create-fb subcommand
   auto ds_create_fb_cmd = command_ptr(new Command("create-fb", "create FB data set using defaults: DSORG=PO, RECFM=FB, LRECL=80 "));
   ds_create_fb_cmd->add_alias("cre-fb");
-  ds_create_fb_cmd->add_positional_arg("dsn", "data set name, optionally with member specified", ArgType_Single, true);
+  ds_create_fb_cmd->add_positional_arg(DSN);
   ds_create_fb_cmd->set_handler(handle_data_set_create_fb);
   data_set_cmd->add_command(ds_create_fb_cmd);
 
   // Create-vb subcommand
   auto ds_create_vb_cmd = command_ptr(new Command("create-vb", "create VB data set using defaults: DSORG=PO, RECFM=VB, LRECL=255"));
   ds_create_vb_cmd->add_alias("cre-vb");
-  ds_create_vb_cmd->add_positional_arg("dsn", "data set name, optionally with member specified", ArgType_Single, true);
+  ds_create_vb_cmd->add_positional_arg(DSN);
   ds_create_vb_cmd->set_handler(handle_data_set_create_vb);
   data_set_cmd->add_command(ds_create_vb_cmd);
 
   // Create-adata subcommand
   auto ds_create_adata_cmd = command_ptr(new Command("create-adata", "create VB data set using defaults: DSORG=PO, RECFM=VB, LRECL=32756"));
   ds_create_adata_cmd->add_alias("cre-a");
-  ds_create_adata_cmd->add_positional_arg("dsn", "data set name, optionally with member specified", ArgType_Single, true);
+  ds_create_adata_cmd->add_positional_arg(DSN);
   ds_create_adata_cmd->set_handler(handle_data_set_create_adata);
   data_set_cmd->add_command(ds_create_adata_cmd);
 
   // Create-loadlib subcommand
   auto ds_create_loadlib_cmd = command_ptr(new Command("create-loadlib", "create loadlib data set using defaults: DSORG=PO, RECFM=U, LRECL=0"));
   ds_create_loadlib_cmd->add_alias("cre-u");
-  ds_create_loadlib_cmd->add_positional_arg("dsn", "data set name, optionally with member specified", ArgType_Single, true);
+  ds_create_loadlib_cmd->add_positional_arg(DSN);
   ds_create_loadlib_cmd->set_handler(handle_data_set_create_loadlib);
   data_set_cmd->add_command(ds_create_loadlib_cmd);
 
@@ -751,58 +742,58 @@ void register_commands(parser::Command &root_command)
 
   // View subcommand
   auto ds_view_cmd = command_ptr(new Command("view", "view data set"));
-  ds_view_cmd->add_positional_arg("dsn", "data set name, optionally with member specified", ArgType_Single, true);
-  ds_view_cmd->add_keyword_arg("encoding", encoding_option, "return contents in given encoding", ArgType_Single, false);
-  ds_view_cmd->add_keyword_arg("local-encoding", source_encoding_option, "source encoding of the data set content (defaults to UTF-8)", ArgType_Single, false);
-  ds_view_cmd->add_keyword_arg("response-format-bytes", response_format_bytes_option, "returns the response as raw bytes", ArgType_Flag, false, ArgValue(false));
-  ds_view_cmd->add_keyword_arg("return-etag", return_etag_option, "Display the e-tag for a read response in addition to data", ArgType_Flag, false, ArgValue(false));
-  ds_view_cmd->add_keyword_arg("pipe-path", pipe_path_option, "Specify a FIFO pipe path for transferring binary data", ArgType_Single, false);
-  ds_view_cmd->add_keyword_arg("volser", volser_option, "Specify volume serial where the data set resides", ArgType_Single, false);
+  ds_view_cmd->add_positional_arg(DSN);
+  ds_view_cmd->add_keyword_arg(ENCODING);
+  ds_view_cmd->add_keyword_arg(LOCAL_ENCODING);
+  ds_view_cmd->add_keyword_arg(RESPONSE_FORMAT_BYTES);
+  ds_view_cmd->add_keyword_arg(RETURN_ETAG);
+  ds_view_cmd->add_keyword_arg(PIPE_PATH);
+  ds_view_cmd->add_keyword_arg(VOLSER);
   ds_view_cmd->set_handler(handle_data_set_view);
   data_set_cmd->add_command(ds_view_cmd);
 
   // List subcommand
   auto ds_list_cmd = command_ptr(new Command("list", "list data sets"));
   ds_list_cmd->add_alias("ls");
-  ds_list_cmd->add_positional_arg("dsn", "data set name pattern", ArgType_Single, true);
+  ds_list_cmd->add_positional_arg(DSN_PATTERN);
   ds_list_cmd->add_keyword_arg("attributes", make_aliases("--attributes", "-a"), "display data set attributes", ArgType_Flag, false, ArgValue(false));
-  ds_list_cmd->add_keyword_arg("max-entries", make_aliases("--max-entries", "--me"), "max number of results to return before warning generated", ArgType_Single, false);
-  ds_list_cmd->add_keyword_arg("warn", make_aliases("--warn"), "warn if truncated or not found", ArgType_Flag, false, ArgValue(true));
-  ds_list_cmd->add_keyword_arg("response-format-csv", response_format_csv_option, "returns the response in CSV format", ArgType_Flag, false, ArgValue(false));
+  ds_list_cmd->add_keyword_arg(MAX_ENTRIES);
+  ds_list_cmd->add_keyword_arg(WARN);
+  ds_list_cmd->add_keyword_arg(RESPONSE_FORMAT_CSV);
   ds_list_cmd->set_handler(handle_data_set_list);
   data_set_cmd->add_command(ds_list_cmd);
 
   // List-members subcommand
   auto ds_list_members_cmd = command_ptr(new Command("list-members", "list data set members"));
   ds_list_members_cmd->add_alias("lm");
-  ds_list_members_cmd->add_positional_arg("dsn", "data set name", ArgType_Single, true);
-  ds_list_members_cmd->add_keyword_arg("max-entries", make_aliases("--max-entries", "--me"), "max number of results to return before warning generated", ArgType_Single, false);
-  ds_list_members_cmd->add_keyword_arg("warn", make_aliases("--warn"), "warn if truncated or not found", ArgType_Flag, false, ArgValue(true));
+  ds_list_members_cmd->add_positional_arg(DSN);
+  ds_list_members_cmd->add_keyword_arg(MAX_ENTRIES);
+  ds_list_members_cmd->add_keyword_arg(WARN);
   ds_list_members_cmd->set_handler(handle_data_set_list_members);
   data_set_cmd->add_command(ds_list_members_cmd);
 
   // Write subcommand
   auto ds_write_cmd = command_ptr(new Command("write", "write to data set"));
-  ds_write_cmd->add_positional_arg("dsn", "data set name, optionally with member specified", ArgType_Single, true);
-  ds_write_cmd->add_keyword_arg("encoding", encoding_option, "encoding for input data", ArgType_Single, false);
-  ds_write_cmd->add_keyword_arg("local-encoding", source_encoding_option, "source encoding of the input data (defaults to UTF-8)", ArgType_Single, false);
-  ds_write_cmd->add_keyword_arg("etag", etag_option, "Provide the e-tag for a write response to detect conflicts before save", ArgType_Single, false);
-  ds_write_cmd->add_keyword_arg("etag-only", etag_only_option, "Only print the e-tag for a write response (when successful)", ArgType_Flag, false, ArgValue(false));
-  ds_write_cmd->add_keyword_arg("pipe-path", pipe_path_option, "Specify a FIFO pipe path for transferring binary data", ArgType_Single, false);
-  ds_write_cmd->add_keyword_arg("volser", volser_option, "Specify volume serial where the data set resides", ArgType_Single, false);
+  ds_write_cmd->add_positional_arg(DSN);
+  ds_write_cmd->add_keyword_arg(ENCODING);
+  ds_write_cmd->add_keyword_arg(LOCAL_ENCODING);
+  ds_write_cmd->add_keyword_arg(ETAG);
+  ds_write_cmd->add_keyword_arg(ETAG_ONLY);
+  ds_write_cmd->add_keyword_arg(PIPE_PATH);
+  ds_write_cmd->add_keyword_arg(VOLSER);
   ds_write_cmd->set_handler(handle_data_set_write);
   data_set_cmd->add_command(ds_write_cmd);
 
   // Delete subcommand
   auto ds_delete_cmd = command_ptr(new Command("delete", "delete data set"));
   ds_delete_cmd->add_alias("del");
-  ds_delete_cmd->add_positional_arg("dsn", "data set name, optionally with member specified", ArgType_Single, true);
+  ds_delete_cmd->add_positional_arg(DSN);
   ds_delete_cmd->set_handler(handle_data_set_delete);
   data_set_cmd->add_command(ds_delete_cmd);
 
   // Restore subcommand
   auto ds_restore_cmd = command_ptr(new Command("restore", "restore/recall data set"));
-  ds_restore_cmd->add_positional_arg("dsn", "data set name", ArgType_Single, true);
+  ds_restore_cmd->add_positional_arg(DSN);
   ds_restore_cmd->set_handler(handle_data_set_restore);
   data_set_cmd->add_command(ds_restore_cmd);
 

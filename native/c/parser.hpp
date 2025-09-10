@@ -463,6 +463,17 @@ enum ArgType
   ArgType_Multiple, // expects one or more values (e.g., --input a.txt b.txt)
 };
 
+struct ArgTemplate
+{
+  std::string name;
+  std::vector<std::string> aliases;
+  std::string help;
+  ArgType type;
+  bool required;
+  ArgValue default_value;
+  std::vector<std::string> conflicts_with;
+};
+
 struct ArgumentDef
 {
   std::string name; // internal name to access the parsed value
@@ -552,7 +563,96 @@ struct ArgumentDef
   }
 };
 
-class ArgumentBuilder;
+class ArgumentFactory
+{
+public:
+  static ArgumentDef create(const ArgTemplate &tpl, bool positional)
+  {
+    ArgumentDef arg(tpl.name,
+                    positional ? std::vector<std::string>() : tpl.aliases,
+                    tpl.help, tpl.type, positional, tpl.required,
+                    tpl.default_value);
+    arg.conflicts_with = tpl.conflicts_with;
+    return arg;
+  }
+};
+
+class ArgumentBuilder
+{
+public:
+  ArgumentBuilder(Command *cmd, const std::string &name)
+      : m_command(cmd), m_arg_def(), m_is_registered(false)
+  {
+    m_arg_def.name = name;
+  }
+
+  ~ArgumentBuilder();
+
+  ArgumentBuilder &alias(const std::string &als)
+  {
+    m_arg_def.aliases.push_back(als);
+    return *this;
+  }
+
+  ArgumentBuilder &aliases(const std::vector<std::string> &als)
+  {
+    m_arg_def.aliases.insert(m_arg_def.aliases.end(), als.begin(), als.end());
+    return *this;
+  }
+
+  ArgumentBuilder &help(const std::string &h)
+  {
+    m_arg_def.help = h;
+    return *this;
+  }
+
+  ArgumentBuilder &type(ArgType t)
+  {
+    m_arg_def.type = t;
+    return *this;
+  }
+
+  ArgumentBuilder &positional(bool val = true)
+  {
+    m_arg_def.positional = val;
+    return *this;
+  }
+
+  ArgumentBuilder &required(bool val = true)
+  {
+    m_arg_def.required = val;
+    return *this;
+  }
+
+  ArgumentBuilder &default_value(const ArgValue &val)
+  {
+    m_arg_def.default_value = val;
+    return *this;
+  }
+
+  ArgumentBuilder &conflicts_with(const std::string &other_arg)
+  {
+    m_arg_def.conflicts_with.push_back(other_arg);
+    return *this;
+  }
+
+  ArgumentBuilder &
+  conflicts_with(const std::vector<std::string> &other_args)
+  {
+    m_arg_def.conflicts_with.insert(m_arg_def.conflicts_with.end(),
+                                    other_args.begin(), other_args.end());
+    return *this;
+  }
+
+private:
+  Command *m_command;
+  ArgumentDef m_arg_def;
+  bool m_is_registered;
+
+  // Prohibit copying
+  ArgumentBuilder(const ArgumentBuilder &);
+  ArgumentBuilder &operator=(const ArgumentBuilder &);
+};
 
 // represents a command or subcommand with its arguments
 class Command : public enable_shared_command
@@ -608,6 +708,22 @@ public:
     }
     return add_arg(name, std::vector<std::string>(), help, type, true, required,
                    default_value);
+  }
+
+  Command &add_keyword_arg(const ArgTemplate &tpl)
+  {
+    register_argument(ArgumentFactory::create(tpl, false));
+    return *this;
+  }
+
+  Command &add_positional_arg(const ArgTemplate &tpl)
+  {
+    if (tpl.type == ArgType_Flag)
+    {
+      throw std::invalid_argument("positional arguments cannot be flags.");
+    }
+    register_argument(ArgumentFactory::create(tpl, true));
+    return *this;
   }
 
   // add a command under this command (making this command act as a group)
@@ -2294,83 +2410,6 @@ inline void generate_bash_completion(std::ostream &os, const std::string &prog_n
   os << "}\n";
   os << "complete -F _parser_complete_" << prog_name << " " << prog_name << "\n";
 }
-
-class ArgumentBuilder
-{
-public:
-  ArgumentBuilder(Command *cmd, const std::string &name)
-      : m_command(cmd), m_arg_def(), m_is_registered(false)
-  {
-    m_arg_def.name = name;
-  }
-
-  ~ArgumentBuilder();
-
-  ArgumentBuilder &alias(const std::string &als)
-  {
-    m_arg_def.aliases.push_back(als);
-    return *this;
-  }
-
-  ArgumentBuilder &aliases(const std::vector<std::string> &als)
-  {
-    m_arg_def.aliases.insert(m_arg_def.aliases.end(), als.begin(), als.end());
-    return *this;
-  }
-
-  ArgumentBuilder &help(const std::string &h)
-  {
-    m_arg_def.help = h;
-    return *this;
-  }
-
-  ArgumentBuilder &type(ArgType t)
-  {
-    m_arg_def.type = t;
-    return *this;
-  }
-
-  ArgumentBuilder &positional(bool val = true)
-  {
-    m_arg_def.positional = val;
-    return *this;
-  }
-
-  ArgumentBuilder &required(bool val = true)
-  {
-    m_arg_def.required = val;
-    return *this;
-  }
-
-  ArgumentBuilder &default_value(const ArgValue &val)
-  {
-    m_arg_def.default_value = val;
-    return *this;
-  }
-
-  ArgumentBuilder &conflicts_with(const std::string &other_arg)
-  {
-    m_arg_def.conflicts_with.push_back(other_arg);
-    return *this;
-  }
-
-  ArgumentBuilder &
-  conflicts_with(const std::vector<std::string> &other_args)
-  {
-    m_arg_def.conflicts_with.insert(m_arg_def.conflicts_with.end(),
-                                    other_args.begin(), other_args.end());
-    return *this;
-  }
-
-private:
-  Command *m_command;
-  ArgumentDef m_arg_def;
-  bool m_is_registered;
-
-  // Prohibit copying
-  ArgumentBuilder(const ArgumentBuilder &);
-  ArgumentBuilder &operator=(const ArgumentBuilder &);
-};
 
 inline ArgumentBuilder Command::add_argument(const std::string &name)
 {

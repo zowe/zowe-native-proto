@@ -10,6 +10,7 @@
  */
 
 #include "tool.hpp"
+#include "common_args.hpp"
 #include "../zcn.hpp"
 #include "../zds.hpp"
 #include "../zut.hpp"
@@ -18,6 +19,7 @@
 
 using namespace parser;
 using namespace std;
+using namespace commands::common;
 
 namespace tool
 {
@@ -414,10 +416,10 @@ void register_commands(parser::Command &root_command)
 
   // Search subcommand
   auto tool_search_cmd = command_ptr(new Command("search", "search members for string"));
-  tool_search_cmd->add_positional_arg("dsn", "data set to search", ArgType_Single, true);
+  tool_search_cmd->add_positional_arg(DSN);
   tool_search_cmd->add_positional_arg("string", "string to search for", ArgType_Single, true);
-  tool_search_cmd->add_keyword_arg("max-entries", make_aliases("--max-entries", "--me"), "max number of results to return before warning generated", ArgType_Single, false);
-  tool_search_cmd->add_keyword_arg("warn", make_aliases("--warn"), "warn if truncated or not found", ArgType_Flag, false, ArgValue(true));
+  tool_search_cmd->add_keyword_arg(MAX_ENTRIES);
+  tool_search_cmd->add_keyword_arg(WARN);
   tool_search_cmd->set_handler(handle_tool_search);
   tool_cmd->add_command(tool_search_cmd);
 

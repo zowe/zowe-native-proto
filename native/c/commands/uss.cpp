@@ -10,6 +10,7 @@
  */
 
 #include "uss.hpp"
+#include "common_args.hpp"
 #include "../parser.hpp"
 #include "../zusf.hpp"
 #include "../zut.hpp"
@@ -17,6 +18,7 @@
 
 using namespace parser;
 using namespace std;
+using namespace commands::common;
 
 namespace uss
 {
@@ -418,93 +420,82 @@ int handle_uss_chtag(const ParseResult &result)
 
 void register_commands(parser::Command &root_command)
 {
-  auto response_format_csv_option = make_aliases("--response-format-csv", "--rfc");
-
   // USS command group
   auto uss_group = command_ptr(new Command("uss", "z/OS USS operations"));
 
-  // Common encoding/etag/pipe-path option helpers (reuse from data-set group)
-  auto uss_encoding_option = make_aliases("--encoding", "--ec");
-  auto uss_source_encoding_option = make_aliases("--local-encoding", "--lec");
-  auto uss_etag_option = make_aliases("--etag");
-  auto uss_etag_only_option = make_aliases("--etag-only");
-  auto uss_return_etag_option = make_aliases("--return-etag");
-  auto uss_pipe_path_option = make_aliases("--pipe-path");
-  auto uss_response_format_bytes_option = make_aliases("--response-format-bytes", "--rfb");
-
   // Create-file subcommand
   auto uss_create_file_cmd = command_ptr(new Command("create-file", "create a USS file"));
-  uss_create_file_cmd->add_positional_arg("file-path", "file path", ArgType_Single, true);
+  uss_create_file_cmd->add_positional_arg(FILE_PATH);
   uss_create_file_cmd->add_keyword_arg("mode", make_aliases("--mode"), "permissions", ArgType_Single, false);
   uss_create_file_cmd->set_handler(handle_uss_create_file);
   uss_group->add_command(uss_create_file_cmd);
 
   // Create-dir subcommand
   auto uss_create_dir_cmd = command_ptr(new Command("create-dir", "create a USS directory"));
-  uss_create_dir_cmd->add_positional_arg("file-path", "file path", ArgType_Single, true);
+  uss_create_dir_cmd->add_positional_arg(FILE_PATH);
   uss_create_dir_cmd->add_keyword_arg("mode", make_aliases("--mode"), "permissions", ArgType_Single, false);
   uss_create_dir_cmd->set_handler(handle_uss_create_dir);
   uss_group->add_command(uss_create_dir_cmd);
 
   // List subcommand
   auto uss_list_cmd = command_ptr(new Command("list", "list USS files and directories"));
-  uss_list_cmd->add_positional_arg("file-path", "file path", ArgType_Single, true);
+  uss_list_cmd->add_positional_arg(FILE_PATH);
   uss_list_cmd->add_keyword_arg("all", make_aliases("--all", "-a"), "list all files and directories", ArgType_Flag, false, ArgValue(false));
   uss_list_cmd->add_keyword_arg("long", make_aliases("--long", "-l"), "list long format", ArgType_Flag, false, ArgValue(false));
-  uss_list_cmd->add_keyword_arg("response-format-csv", response_format_csv_option, "returns the response in CSV format", ArgType_Flag, false, ArgValue(false));
+  uss_list_cmd->add_keyword_arg(RESPONSE_FORMAT_CSV);
   uss_list_cmd->set_handler(handle_uss_list);
   uss_group->add_command(uss_list_cmd);
 
   // View subcommand
   auto uss_view_cmd = command_ptr(new Command("view", "view a USS file"));
-  uss_view_cmd->add_positional_arg("file-path", "file path", ArgType_Single, true);
-  uss_view_cmd->add_keyword_arg("encoding", uss_encoding_option, "return contents in given encoding", ArgType_Single, false);
-  uss_view_cmd->add_keyword_arg("local-encoding", uss_source_encoding_option, "source encoding of the USS file content (defaults to UTF-8)", ArgType_Single, false);
-  uss_view_cmd->add_keyword_arg("response-format-bytes", uss_response_format_bytes_option, "returns the response as raw bytes", ArgType_Flag, false, ArgValue(false));
-  uss_view_cmd->add_keyword_arg("return-etag", uss_return_etag_option, "Display the e-tag for a read response in addition to data", ArgType_Flag, false, ArgValue(false));
-  uss_view_cmd->add_keyword_arg("pipe-path", uss_pipe_path_option, "Specify a FIFO pipe path for transferring binary data", ArgType_Single, false);
+  uss_view_cmd->add_positional_arg(FILE_PATH);
+  uss_view_cmd->add_keyword_arg(ENCODING);
+  uss_view_cmd->add_keyword_arg(LOCAL_ENCODING);
+  uss_view_cmd->add_keyword_arg(RESPONSE_FORMAT_BYTES);
+  uss_view_cmd->add_keyword_arg(RETURN_ETAG);
+  uss_view_cmd->add_keyword_arg(PIPE_PATH);
   uss_view_cmd->set_handler(handle_uss_view);
   uss_group->add_command(uss_view_cmd);
 
   // Write subcommand
   auto uss_write_cmd = command_ptr(new Command("write", "write to a USS file"));
-  uss_write_cmd->add_positional_arg("file-path", "file path", ArgType_Single, true);
-  uss_write_cmd->add_keyword_arg("encoding", uss_encoding_option, "encoding for input data", ArgType_Single, false);
-  uss_write_cmd->add_keyword_arg("local-encoding", uss_source_encoding_option, "source encoding of the input data (defaults to UTF-8)", ArgType_Single, false);
-  uss_write_cmd->add_keyword_arg("etag", uss_etag_option, "Provide the e-tag for a write response to detect conflicts before save", ArgType_Single, false);
-  uss_write_cmd->add_keyword_arg("etag-only", uss_etag_only_option, "Only print the e-tag for a write response (when successful)", ArgType_Flag, false, ArgValue(false));
-  uss_write_cmd->add_keyword_arg("pipe-path", uss_pipe_path_option, "Specify a FIFO pipe path for transferring binary data", ArgType_Single, false);
+  uss_write_cmd->add_positional_arg(FILE_PATH);
+  uss_write_cmd->add_keyword_arg(ENCODING);
+  uss_write_cmd->add_keyword_arg(LOCAL_ENCODING);
+  uss_write_cmd->add_keyword_arg(ETAG);
+  uss_write_cmd->add_keyword_arg(ETAG_ONLY);
+  uss_write_cmd->add_keyword_arg(PIPE_PATH);
   uss_write_cmd->set_handler(handle_uss_write);
   uss_group->add_command(uss_write_cmd);
 
   // Delete subcommand
   auto uss_delete_cmd = command_ptr(new Command("delete", "delete a USS item"));
-  uss_delete_cmd->add_positional_arg("file-path", "file path", ArgType_Single, true);
-  uss_delete_cmd->add_keyword_arg("recursive", make_aliases("--recursive", "-r"), "Applies the operation recursively (e.g. for folders w/ inner files)", ArgType_Flag, false, ArgValue(false));
+  uss_delete_cmd->add_positional_arg(FILE_PATH);
+  uss_delete_cmd->add_keyword_arg(RECURSIVE);
   uss_delete_cmd->set_handler(handle_uss_delete);
   uss_group->add_command(uss_delete_cmd);
 
   // Chmod subcommand
   auto uss_chmod_cmd = command_ptr(new Command("chmod", "change permissions on a USS file or directory"));
   uss_chmod_cmd->add_positional_arg("mode", "new permissions for the file or directory", ArgType_Single, true);
-  uss_chmod_cmd->add_positional_arg("file-path", "file path", ArgType_Single, true);
-  uss_chmod_cmd->add_keyword_arg("recursive", make_aliases("--recursive", "-r"), "Applies the operation recursively (e.g. for folders w/ inner files)", ArgType_Flag, false, ArgValue(false));
+  uss_chmod_cmd->add_positional_arg(FILE_PATH);
+  uss_chmod_cmd->add_keyword_arg(RECURSIVE);
   uss_chmod_cmd->set_handler(handle_uss_chmod);
   uss_group->add_command(uss_chmod_cmd);
 
   // Chown subcommand
   auto uss_chown_cmd = command_ptr(new Command("chown", "change owner on a USS file or directory"));
   uss_chown_cmd->add_positional_arg("owner", "New owner (or owner:group) for the file or directory", ArgType_Single, true);
-  uss_chown_cmd->add_positional_arg("file-path", "file path", ArgType_Single, true);
-  uss_chown_cmd->add_keyword_arg("recursive", make_aliases("--recursive", "-r"), "Applies the operation recursively (e.g. for folders w/ inner files)", ArgType_Flag, false, ArgValue(false));
+  uss_chown_cmd->add_positional_arg(FILE_PATH);
+  uss_chown_cmd->add_keyword_arg(RECURSIVE);
   uss_chown_cmd->set_handler(handle_uss_chown);
   uss_group->add_command(uss_chown_cmd);
 
   // Chtag subcommand
   auto uss_chtag_cmd = command_ptr(new Command("chtag", "change tags on a USS file"));
-  uss_chtag_cmd->add_positional_arg("file-path", "file path", ArgType_Single, true);
+  uss_chtag_cmd->add_positional_arg(FILE_PATH);
   uss_chtag_cmd->add_positional_arg("tag", "new tag for the file", ArgType_Single, true);
-  uss_chtag_cmd->add_keyword_arg("recursive", make_aliases("--recursive", "-r"), "Applies the operation recursively (e.g. for folders w/ inner files)", ArgType_Flag, false, ArgValue(false));
+  uss_chtag_cmd->add_keyword_arg(RECURSIVE);
   uss_chtag_cmd->set_handler(handle_uss_chtag);
   uss_group->add_command(uss_chtag_cmd);
 
