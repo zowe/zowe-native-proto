@@ -12,7 +12,6 @@
 #ifndef ZSTD_HPP
 #define ZSTD_HPP
 
-#include <new>
 #include <stdexcept>
 #include <algorithm>
 
@@ -26,12 +25,10 @@ public:
   typedef T value_type;
 
   optional()
-      : m_has_value(false)
   {
   }
 
-  optional(const T &value)
-      : m_has_value(false)
+  explicit optional(const T &value)
   {
     construct(value);
   }
@@ -66,6 +63,19 @@ public:
           construct(*other);
         }
       }
+    }
+    return *this;
+  }
+
+  optional<T> &operator=(const T &value)
+  {
+    if (has_value())
+    {
+      **this = value;
+    }
+    else
+    {
+      construct(value);
     }
     return *this;
   }
@@ -185,8 +195,8 @@ private:
   }
 
 private:
-  bool m_has_value;
-  char m_storage[sizeof(T)] __attribute__((aligned(__alignof__(T))));
+  bool m_has_value = false;
+  char m_storage[sizeof(T)] __attribute__((aligned(__alignof__(T)))) = {};
 };
 
 } // namespace zstd
