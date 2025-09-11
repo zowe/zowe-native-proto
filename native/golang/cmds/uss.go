@@ -59,8 +59,18 @@ func HandleListFilesRequest(conn *utils.StdioConn, params []byte) (result any, e
 	ussResponse := uss.ListFilesResponse{}
 
 	rawResponse := strings.TrimSpace(string(out))
+
+	// Handle empty response
+	if rawResponse == "" {
+		ussResponse.Items = []t.UssItem{} // Empty slice
+		ussResponse.ReturnedRows = 0
+		return ussResponse, nil
+	}
+
 	lines := strings.Split(rawResponse, "\n")
+
 	ussResponse.Items = make([]t.UssItem, len(lines))
+
 	for i, line := range lines {
 		if request.Long {
 			fields := strings.Split(line, ",")
