@@ -139,6 +139,7 @@ build-out/ztest_runner.o: ztest_runner.cpp
 
 build-out/ztest_runner: build-out/ztest_runner.o \
 build-out/zbase64.test.o \
+build-out/zstd.test.o \
 build-out/zstorage.test.o \
 build-out/zstorage.metal.test.o \
 build-out/zut.test.o \
@@ -215,6 +216,9 @@ build-out/zshmem.o:
 	cp ../build-out/zshmem.o build-out/zshmem.o
 
 build-out/zbase64.test.o: zbase64.test.cpp
+	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
+
+build-out/zstd.test.o: zstd.test.cpp
 	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
 
 build-out/zstorage.test.o: zstorage.test.cpp
