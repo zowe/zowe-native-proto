@@ -161,37 +161,6 @@ class ZJson;
 #define ZJSON_FIELD(StructType, field_name) \
   FieldDescriptor<StructType, decltype(StructType::field_name)>(#field_name, &StructType::field_name)
 
-// JSON type constants (from z/OS HWTJIC documentation)
-#ifndef HWTJ_OBJECT_TYPE
-#define HWTJ_OBJECT_TYPE 1
-#endif
-#ifndef HWTJ_ARRAY_TYPE
-#define HWTJ_ARRAY_TYPE 2
-#endif
-#ifndef HWTJ_STRING_TYPE
-#define HWTJ_STRING_TYPE 3
-#endif
-#ifndef HWTJ_NUMBER_TYPE
-#define HWTJ_NUMBER_TYPE 4
-#endif
-#ifndef HWTJ_BOOLEAN_TYPE
-#define HWTJ_BOOLEAN_TYPE 5
-#endif
-#ifndef HWTJ_NULL_TYPE
-#define HWTJ_NULL_TYPE 6
-#endif
-#ifndef HWTJ_JSONTEXTVALUETYPE
-#define HWTJ_JSONTEXTVALUETYPE 7
-#endif
-
-// Additional constants
-#ifndef HWTJ_BUFFER_TOO_SMALL
-#define HWTJ_BUFFER_TOO_SMALL 0x406
-#endif
-#ifndef HWTJ_NOFORCE
-#define HWTJ_NOFORCE 0
-#endif
-
 class ZJson
 {
 
@@ -889,7 +858,7 @@ public:
   {                                                                                                                \
     StructType##_Registrar()                                                                                       \
     {                                                                                                              \
-      SerializationRegistry<StructType>::registerDeserializer(                                                     \
+      SerializationRegistry<StructType>::get_instance().registerDeserializer(                                      \
           [](StructType &obj, const ZJson::JsonValueProxy &json) { deserialize_fields(obj, json, __VA_ARGS__); }); \
     }                                                                                                              \
   };                                                                                                               \
@@ -958,7 +927,7 @@ typename std::enable_if<is_serializable<FieldType>::value>::type
 deserialize_field_impl(T &obj, const ZJson::JsonValueProxy &json, const FieldDescriptor<T, FieldType> &field)
 {
   FieldType nested_obj;
-  auto &deserializer = SerializationRegistry<FieldType>::getDeserializer();
+  auto &deserializer = SerializationRegistry<FieldType>::get_instance().getDeserializer();
   if (deserializer)
   {
     deserializer(nested_obj, json[field.name]);
