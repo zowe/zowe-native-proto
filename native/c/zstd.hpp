@@ -14,9 +14,113 @@
 
 #include <stdexcept>
 #include <algorithm>
+#include <utility>
 
 namespace zstd
 {
+
+template <typename T>
+class unique_ptr
+{
+public:
+  typedef T element_type;
+
+  explicit unique_ptr(element_type *ptr = nullptr)
+      : m_ptr(ptr)
+  {
+  }
+
+  unique_ptr(unique_ptr &&other)
+      : m_ptr(other.release())
+  {
+  }
+
+  ~unique_ptr()
+  {
+    delete m_ptr;
+  }
+
+  unique_ptr &operator=(unique_ptr &&other)
+  {
+    if (this != &other)
+    {
+      reset(other.release());
+    }
+    return *this;
+  }
+
+  element_type &operator*() const
+  {
+    return *m_ptr;
+  }
+
+  element_type *operator->() const
+  {
+    return m_ptr;
+  }
+
+  element_type *get() const
+  {
+    return m_ptr;
+  }
+
+  explicit operator bool() const
+  {
+    return m_ptr != nullptr;
+  }
+
+  element_type *release()
+  {
+    element_type *ptr = m_ptr;
+    m_ptr = nullptr;
+    return ptr;
+  }
+
+  void reset(element_type *ptr = nullptr)
+  {
+    if (ptr != m_ptr)
+    {
+      delete m_ptr;
+      m_ptr = ptr;
+    }
+  }
+
+  void swap(unique_ptr &other)
+  {
+    using std::swap;
+    swap(m_ptr, other.m_ptr);
+  }
+
+private:
+  unique_ptr(const unique_ptr &);
+  unique_ptr &operator=(const unique_ptr &);
+
+  element_type *m_ptr;
+};
+
+template <typename T>
+void swap(unique_ptr<T> &a, unique_ptr<T> &b)
+{
+  a.swap(b);
+}
+
+template <typename T>
+unique_ptr<T> make_unique()
+{
+  return unique_ptr<T>(new T());
+}
+
+template <typename T, typename A1>
+unique_ptr<T> make_unique(const A1 &a1)
+{
+  return unique_ptr<T>(new T(a1));
+}
+
+template <typename T, typename A1, typename A2>
+unique_ptr<T> make_unique(const A1 &a1, const A2 &a2)
+{
+  return unique_ptr<T>(new T(a1, a2));
+}
 
 template <typename T>
 class optional
@@ -26,6 +130,8 @@ public:
 
   optional()
   {
+    m_has_value = false;
+    memset(m_storage, 0, sizeof(T));
   }
 
   explicit optional(const T &value)
@@ -195,8 +301,8 @@ private:
   }
 
 private:
-  bool m_has_value = false;
-  char m_storage[sizeof(T)] __attribute__((aligned(__alignof__(T)))) = {};
+  bool m_has_value;
+  char m_storage[sizeof(T)] __attribute__((aligned(__alignof__(T))));
 };
 
 } // namespace zstd

@@ -11,8 +11,8 @@
 
 #include "ztest.hpp"
 #include "../zstd.hpp"
-#include <string>
 #include <stdint.h>
+#include <utility>
 
 using namespace ztst;
 using namespace zstd;
@@ -31,6 +31,23 @@ struct AlignedObject
   char c;
   double d;
 };
+
+namespace
+{
+struct DestructorTester
+{
+  DestructorTester(bool *flag)
+      : destroyed(flag)
+  {
+    *destroyed = false;
+  }
+  ~DestructorTester()
+  {
+    *destroyed = true;
+  }
+  bool *destroyed;
+};
+} // namespace
 
 void zstd_tests()
 {
@@ -157,4 +174,143 @@ void zstd_tests()
 
             Expect(address % alignment).ToBe(0);
         }); });
+
+  describe("zstd::unique_ptr", []() -> void
+           {
+    it("should be empty on default construction", []() -> void {
+      unique_ptr<int> ptr;
+      Expect(ptr.get()).ToBe(nullptr);
+      Expect(static_cast<bool>(ptr)).ToBe(false);
+    });
+
+    it("should hold a value when constructed with one", []() -> void {
+      int *raw_ptr = new int(42);
+      unique_ptr<int> ptr(raw_ptr);
+      Expect(ptr.get()).ToBe(raw_ptr);
+      Expect(*ptr).ToBe(42);
+    });
+
+    it("should delete the object on destruction", []() -> void {
+      bool destroyed = false;
+      {
+        unique_ptr<DestructorTester> ptr(new DestructorTester(&destroyed));
+        Expect(destroyed).ToBe(false);
+      }
+      Expect(destroyed).ToBe(true);
+    });
+
+    it("should release ownership", []() -> void {
+      bool destroyed = false;
+      DestructorTester *raw_ptr = new DestructorTester(&destroyed);
+      unique_ptr<DestructorTester> ptr(raw_ptr);
+      DestructorTester *released_ptr = ptr.release();
+      Expect(ptr.get()).ToBe(nullptr);
+      Expect(released_ptr).ToBe(raw_ptr);
+      Expect(destroyed).ToBe(false);
+      delete released_ptr;
+      Expect(destroyed).ToBe(true);
+    });
+
+    it("should reset the pointer", []() -> void {
+      bool destroyed1 = false;
+      bool destroyed2 = false;
+      unique_ptr<DestructorTester> ptr(new DestructorTester(&destroyed1));
+      DestructorTester *raw_ptr2 = new DestructorTester(&destroyed2);
+
+      ptr.reset(raw_ptr2);
+      Expect(destroyed1).ToBe(true);
+      Expect(ptr.get()).ToBe(raw_ptr2);
+
+      ptr.reset();
+      Expect(destroyed2).ToBe(true);
+      Expect(ptr.get()).ToBe(nullptr);
+    });
+
+    it("should handle move construction", []() -> void {
+      int *raw_ptr = new int(123);
+      unique_ptr<int> ptr1(raw_ptr);
+      unique_ptr<int> ptr2(std::move(ptr1));
+
+      Expect(ptr1.get()).ToBe(nullptr);
+      Expect(ptr2.get()).ToBe(raw_ptr);
+      Expect(*ptr2).ToBe(123);
+    });
+
+    it("should handle move assignment", []() -> void {
+      bool destroyed = false;
+      unique_ptr<DestructorTester> ptr1(new DestructorTester(&destroyed));
+
+      int *raw_ptr2 = new int(20);
+      unique_ptr<int> ptr2(raw_ptr2);
+
+      // This is a bit of a complex scenario to test destruction on assignment.
+      // We create a new scope to control the lifetime of ptr1's replacement.
+      {
+        int *raw_ptr1 = new int(10);
+        unique_ptr<int> ptr_new(raw_ptr1);
+        ptr2 = std::move(ptr_new);
+      }
+
+      Expect(ptr2.get()).Not().ToBe(raw_ptr2); // Should have been replaced
+      Expect(*ptr2).ToBe(10);
+    });
+
+    it("should swap with another unique_ptr", []() -> void {
+      int *raw_ptr1 = new int(1);
+      unique_ptr<int> ptr1(raw_ptr1);
+
+      int *raw_ptr2 = new int(2);
+      unique_ptr<int> ptr2(raw_ptr2);
+
+      ptr1.swap(ptr2);
+
+      Expect(ptr1.get()).ToBe(raw_ptr2);
+      Expect(ptr2.get()).ToBe(raw_ptr1);
+    });
+
+    it("should allow access through operator->", []() -> void {
+      struct TestObject
+      {
+        int value;
+      };
+      unique_ptr<TestObject> ptr(new TestObject{55});
+      Expect(ptr->value).ToBe(55);
+    }); });
+
+  describe("zstd::make_unique", []() -> void
+           {
+    it("should create a unique_ptr with a default-constructed object", []() -> void {
+      struct Simple
+      {
+        Simple() : value(123)
+        {
+        }
+        int value;
+      };
+      unique_ptr<Simple> ptr = make_unique<Simple>();
+      Expect(ptr->value).ToBe(123);
+    });
+
+    it("should create a unique_ptr with an object constructed with arguments", []() -> void {
+      struct Complex
+      {
+        Complex(int a, double b) : val1(a), val2(b)
+        {
+        }
+        int val1;
+        double val2;
+      };
+      unique_ptr<Complex> ptr = make_unique<Complex>(10, 20.5);
+      Expect(ptr->val1).ToBe(10);
+      Expect(ptr->val2).ToBe(20.5);
+    });
+
+    it("should create a unique_ptr that correctly manages lifetime", []() -> void {
+      bool destroyed = false;
+      {
+        unique_ptr<DestructorTester> ptr = make_unique<DestructorTester>(&destroyed);
+        Expect(destroyed).ToBe(false);
+      }
+      Expect(destroyed).ToBe(true);
+    }); });
 }

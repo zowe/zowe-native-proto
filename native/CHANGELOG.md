@@ -18,6 +18,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - `native`: Added support for `volser` option when reading/writing data sets. [#439](https://github.com/zowe/zowe-native-proto/issues/439)
 - `native`: Reduced number of memory allocations in vectors by reserving capacity before adding elements. [#522](https://github.com/zowe/zowe-native-proto/issues/522)
 - `c`: Added a `zstd::optional` type for handling optional values.
+- `c`: Added `zstd::unique_ptr` and `zstd::make_unique` for RAII-based automatic memory management.
 
 ## `0.1.8`
 
