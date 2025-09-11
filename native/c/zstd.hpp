@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <utility>
 #include <cstring>
+#include <string>
 #include <new>
 
 namespace zstd
@@ -879,6 +880,476 @@ template <typename T, typename E>
 bool operator!=(const unexpected<E> &lhs, const expected<T, E> &rhs)
 {
   return !(lhs == rhs);
+}
+
+// String view type that mimics C++17 std::string_view
+class string_view
+{
+public:
+  typedef char value_type;
+  typedef const char *pointer;
+  typedef const char *const_pointer;
+  typedef const char &reference;
+  typedef const char &const_reference;
+  typedef const char *const_iterator;
+  typedef const_iterator iterator;
+  typedef std::size_t size_type;
+  typedef std::ptrdiff_t difference_type;
+  
+  static const size_type npos = static_cast<size_type>(-1);
+
+  // Default constructor
+  string_view() : m_data(nullptr), m_size(0)
+  {
+  }
+
+  // C-string constructor
+  string_view(const char *str) : m_data(str), m_size(str ? strlen(str) : 0)
+  {
+  }
+
+  // Data and size constructor
+  string_view(const char *data, size_type size) : m_data(data), m_size(size)
+  {
+  }
+
+  // std::string constructor
+  string_view(const std::string &str) : m_data(str.c_str()), m_size(str.size())
+  {
+  }
+
+  // Copy constructor
+  string_view(const string_view &other) : m_data(other.m_data), m_size(other.m_size)
+  {
+  }
+
+  // Assignment operator
+  string_view &operator=(const string_view &other)
+  {
+    if (this != &other)
+    {
+      m_data = other.m_data;
+      m_size = other.m_size;
+    }
+    return *this;
+  }
+
+  // Iterators
+  const_iterator begin() const
+  {
+    return m_data;
+  }
+
+  const_iterator end() const
+  {
+    return m_data + m_size;
+  }
+
+  const_iterator cbegin() const
+  {
+    return begin();
+  }
+
+  const_iterator cend() const
+  {
+    return end();
+  }
+
+  // Element access
+  const_reference operator[](size_type pos) const
+  {
+    return m_data[pos];
+  }
+
+  const_reference at(size_type pos) const
+  {
+    if (pos >= m_size)
+    {
+      throw std::out_of_range("string_view::at: position out of range");
+    }
+    return m_data[pos];
+  }
+
+  const_reference front() const
+  {
+    return m_data[0];
+  }
+
+  const_reference back() const
+  {
+    return m_data[m_size - 1];
+  }
+
+  const_pointer data() const
+  {
+    return m_data;
+  }
+
+  // Capacity
+  size_type size() const
+  {
+    return m_size;
+  }
+
+  size_type length() const
+  {
+    return m_size;
+  }
+
+  size_type max_size() const
+  {
+    return static_cast<size_type>(-1);
+  }
+
+  bool empty() const
+  {
+    return m_size == 0;
+  }
+
+  // Modifiers
+  void remove_prefix(size_type n)
+  {
+    m_data += n;
+    m_size -= n;
+  }
+
+  void remove_suffix(size_type n)
+  {
+    m_size -= n;
+  }
+
+  void swap(string_view &other)
+  {
+    using std::swap;
+    swap(m_data, other.m_data);
+    swap(m_size, other.m_size);
+  }
+
+  // String operations
+  size_type copy(char *dest, size_type count, size_type pos = 0) const
+  {
+    if (pos > m_size)
+    {
+      throw std::out_of_range("string_view::copy: position out of range");
+    }
+    
+    size_type rcount = std::min(count, m_size - pos);
+    std::copy(m_data + pos, m_data + pos + rcount, dest);
+    return rcount;
+  }
+
+  string_view substr(size_type pos = 0, size_type count = npos) const
+  {
+    if (pos > m_size)
+    {
+      throw std::out_of_range("string_view::substr: position out of range");
+    }
+    
+    size_type rcount = std::min(count, m_size - pos);
+    return string_view(m_data + pos, rcount);
+  }
+
+  int compare(string_view other) const
+  {
+    size_type rlen = std::min(m_size, other.m_size);
+    int result = rlen ? std::memcmp(m_data, other.m_data, rlen) : 0;
+    if (result == 0)
+    {
+      result = (m_size < other.m_size) ? -1 : (m_size > other.m_size) ? 1 : 0;
+    }
+    return result;
+  }
+
+  int compare(size_type pos1, size_type count1, string_view other) const
+  {
+    return substr(pos1, count1).compare(other);
+  }
+
+  int compare(size_type pos1, size_type count1, string_view other, size_type pos2, size_type count2) const
+  {
+    return substr(pos1, count1).compare(other.substr(pos2, count2));
+  }
+
+  int compare(const char *s) const
+  {
+    return compare(string_view(s));
+  }
+
+  int compare(size_type pos1, size_type count1, const char *s) const
+  {
+    return substr(pos1, count1).compare(string_view(s));
+  }
+
+  int compare(size_type pos1, size_type count1, const char *s, size_type count2) const
+  {
+    return substr(pos1, count1).compare(string_view(s, count2));
+  }
+
+  bool starts_with(string_view prefix) const
+  {
+    return m_size >= prefix.m_size && substr(0, prefix.m_size) == prefix;
+  }
+
+  bool starts_with(char c) const
+  {
+    return !empty() && front() == c;
+  }
+
+  bool starts_with(const char *s) const
+  {
+    return starts_with(string_view(s));
+  }
+
+  bool ends_with(string_view suffix) const
+  {
+    return m_size >= suffix.m_size && substr(m_size - suffix.m_size) == suffix;
+  }
+
+  bool ends_with(char c) const
+  {
+    return !empty() && back() == c;
+  }
+
+  bool ends_with(const char *s) const
+  {
+    return ends_with(string_view(s));
+  }
+
+  // Find operations
+  size_type find(string_view str, size_type pos = 0) const
+  {
+    if (pos > m_size || str.m_size > m_size - pos)
+      return npos;
+    
+    if (str.empty())
+      return pos;
+      
+    const char *result = std::search(m_data + pos, m_data + m_size, str.m_data, str.m_data + str.m_size);
+    return result == m_data + m_size ? npos : result - m_data;
+  }
+
+  size_type find(char c, size_type pos = 0) const
+  {
+    if (pos >= m_size)
+      return npos;
+      
+    const char *result = static_cast<const char *>(std::memchr(m_data + pos, c, m_size - pos));
+    return result ? result - m_data : npos;
+  }
+
+  size_type find(const char *s, size_type pos, size_type count) const
+  {
+    return find(string_view(s, count), pos);
+  }
+
+  size_type find(const char *s, size_type pos = 0) const
+  {
+    return find(string_view(s), pos);
+  }
+
+  size_type rfind(string_view str, size_type pos = npos) const
+  {
+    if (str.m_size > m_size)
+      return npos;
+      
+    if (str.empty())
+      return std::min(pos, m_size);
+      
+    size_type start_pos = std::min(pos, m_size - str.m_size);
+    for (size_type i = start_pos + 1; i > 0; --i)
+    {
+      if (substr(i - 1, str.m_size) == str)
+        return i - 1;
+    }
+    return npos;
+  }
+
+  size_type rfind(char c, size_type pos = npos) const
+  {
+    if (empty())
+      return npos;
+      
+    size_type start_pos = std::min(pos, m_size - 1);
+    for (size_type i = start_pos + 1; i > 0; --i)
+    {
+      if (m_data[i - 1] == c)
+        return i - 1;
+    }
+    return npos;
+  }
+
+  size_type rfind(const char *s, size_type pos, size_type count) const
+  {
+    return rfind(string_view(s, count), pos);
+  }
+
+  size_type rfind(const char *s, size_type pos = npos) const
+  {
+    return rfind(string_view(s), pos);
+  }
+
+  size_type find_first_of(string_view str, size_type pos = 0) const
+  {
+    for (size_type i = pos; i < m_size; ++i)
+    {
+      if (str.find(m_data[i]) != npos)
+        return i;
+    }
+    return npos;
+  }
+
+  size_type find_first_of(char c, size_type pos = 0) const
+  {
+    return find(c, pos);
+  }
+
+  size_type find_first_of(const char *s, size_type pos, size_type count) const
+  {
+    return find_first_of(string_view(s, count), pos);
+  }
+
+  size_type find_first_of(const char *s, size_type pos = 0) const
+  {
+    return find_first_of(string_view(s), pos);
+  }
+
+  size_type find_last_of(string_view str, size_type pos = npos) const
+  {
+    if (empty() || str.empty())
+      return npos;
+      
+    size_type start_pos = std::min(pos, m_size - 1);
+    for (size_type i = start_pos + 1; i > 0; --i)
+    {
+      if (str.find(m_data[i - 1]) != npos)
+        return i - 1;
+    }
+    return npos;
+  }
+
+  size_type find_last_of(char c, size_type pos = npos) const
+  {
+    return rfind(c, pos);
+  }
+
+  size_type find_last_of(const char *s, size_type pos, size_type count) const
+  {
+    return find_last_of(string_view(s, count), pos);
+  }
+
+  size_type find_last_of(const char *s, size_type pos = npos) const
+  {
+    return find_last_of(string_view(s), pos);
+  }
+
+  size_type find_first_not_of(string_view str, size_type pos = 0) const
+  {
+    for (size_type i = pos; i < m_size; ++i)
+    {
+      if (str.find(m_data[i]) == npos)
+        return i;
+    }
+    return npos;
+  }
+
+  size_type find_first_not_of(char c, size_type pos = 0) const
+  {
+    for (size_type i = pos; i < m_size; ++i)
+    {
+      if (m_data[i] != c)
+        return i;
+    }
+    return npos;
+  }
+
+  size_type find_first_not_of(const char *s, size_type pos, size_type count) const
+  {
+    return find_first_not_of(string_view(s, count), pos);
+  }
+
+  size_type find_first_not_of(const char *s, size_type pos = 0) const
+  {
+    return find_first_not_of(string_view(s), pos);
+  }
+
+  size_type find_last_not_of(string_view str, size_type pos = npos) const
+  {
+    if (empty())
+      return npos;
+      
+    size_type start_pos = std::min(pos, m_size - 1);
+    for (size_type i = start_pos + 1; i > 0; --i)
+    {
+      if (str.find(m_data[i - 1]) == npos)
+        return i - 1;
+    }
+    return npos;
+  }
+
+  size_type find_last_not_of(char c, size_type pos = npos) const
+  {
+    if (empty())
+      return npos;
+      
+    size_type start_pos = std::min(pos, m_size - 1);
+    for (size_type i = start_pos + 1; i > 0; --i)
+    {
+      if (m_data[i - 1] != c)
+        return i - 1;
+    }
+    return npos;
+  }
+
+  size_type find_last_not_of(const char *s, size_type pos, size_type count) const
+  {
+    return find_last_not_of(string_view(s, count), pos);
+  }
+
+  size_type find_last_not_of(const char *s, size_type pos = npos) const
+  {
+    return find_last_not_of(string_view(s), pos);
+  }
+
+private:
+  const char *m_data;
+  size_type m_size;
+};
+
+// Non-member functions for string_view
+inline void swap(string_view &a, string_view &b)
+{
+  a.swap(b);
+}
+
+// Comparison operators
+inline bool operator==(string_view lhs, string_view rhs)
+{
+  return lhs.size() == rhs.size() && lhs.compare(rhs) == 0;
+}
+
+inline bool operator!=(string_view lhs, string_view rhs)
+{
+  return !(lhs == rhs);
+}
+
+inline bool operator<(string_view lhs, string_view rhs)
+{
+  return lhs.compare(rhs) < 0;
+}
+
+inline bool operator<=(string_view lhs, string_view rhs)
+{
+  return lhs.compare(rhs) <= 0;
+}
+
+inline bool operator>(string_view lhs, string_view rhs)
+{
+  return lhs.compare(rhs) > 0;
+}
+
+inline bool operator>=(string_view lhs, string_view rhs)
+{
+  return lhs.compare(rhs) >= 0;
 }
 
 } // namespace zstd
