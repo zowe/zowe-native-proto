@@ -18,6 +18,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - `c`: Fixed issue where listing data sets fails if the `OBTAIN` service fails while obtaining attributes for a data set in the list of matches. [#529](https://github.com/zowe/zowe-native-proto/issues/529)
 - `native`: Added support for `volser` option when reading/writing data sets. [#439](https://github.com/zowe/zowe-native-proto/issues/439)
 - `native`: Reduced number of memory allocations in vectors by reserving capacity before adding elements. [#522](https://github.com/zowe/zowe-native-proto/issues/522)
+- `c`: Added wrappers for Web Enablement Toolkit to be invoked via Metal C as header only or from LE-C using a 64-bit wrapper.
 
 ## `0.1.8`
 
