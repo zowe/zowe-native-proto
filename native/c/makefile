@@ -44,6 +44,7 @@ MACLIBS= -I../asmmac \
  -ICBC.SCCNSAM
 
 MTL_HEADERS=-I/usr/include/metal \
+ -I/usr/include \
  -I./chdsect
 
 CPP_BND_FLAGS=-W "l,lp64,xplink,map,list"
@@ -360,7 +361,7 @@ $(OUT_DIR)/zusf.o: zusf.cpp
 $(OUT_DIR_CXXLANG)/zusf.o: $(OUT_DIRS) zusf.cpp
 	@echo '$(OUT_DIR_CXXLANG)/zusf.o'
 	$(CXXLANG) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -o $@ $^
-	
+
 $(OUT_DIR_SWIG)/zusf.o: $(OUT_DIRS) zusf.cpp
 	@echo 'Building $(OUT_DIR_SWIG)/zusf.o with SWIG macro'
 	$(CXXLANG) $(SWIG_FLAGS) -qlist=$*.cpp.lst -o $@ $^
