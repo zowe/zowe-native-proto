@@ -13,6 +13,7 @@
 #include "../zstd.hpp"
 #include <stdint.h>
 #include <utility>
+#include <type_traits>
 
 using namespace ztst;
 using namespace zstd;
@@ -49,8 +50,61 @@ struct DestructorTester
 };
 } // namespace
 
+struct TestClass
+{
+  template <typename T>
+  static typename enable_if<std::is_integral<T>::value, int>::type
+  test_function(T)
+  {
+    return 1;
+  }
+
+  template <typename T>
+  static typename enable_if<!std::is_integral<T>::value, int>::type
+  test_function(T)
+  {
+    return 2;
+  }
+};
+
 void zstd_tests()
 {
+  describe("zstd::enable_if", []() -> void
+           {
+    it("should define type when condition is true", []() -> void {
+      // Test that enable_if<true, int> has a type member
+      typedef typename enable_if<true, int>::type result_type;
+      bool is_same = std::is_same<result_type, int>::value;
+      Expect(is_same).ToBe(true);
+    });
+
+    it("should define void type when condition is true and no type specified", []() -> void {
+      // Test that enable_if<true> has a type member of void
+      typedef typename enable_if<true>::type result_type;
+      bool is_same = std::is_same<result_type, void>::value;
+      Expect(is_same).ToBe(true);
+    });
+
+    // Note: We cannot directly test enable_if<false> because it would cause
+    // compilation errors. In real usage, enable_if is used in SFINAE contexts
+    // where the substitution failure is silently ignored.
+
+    it("should work in SFINAE context for function overloading", []() -> void {
+      int result1 = TestClass::test_function(42);     // integral type
+      int result2 = TestClass::test_function(3.14);   // non-integral type
+      
+      Expect(result1).ToBe(1);
+      Expect(result2).ToBe(2);
+    });
+
+    it("should work with custom boolean conditions", []() -> void {
+      // Test with a compile-time constant expression
+      const bool condition = (sizeof(int) == 4);
+      typedef typename enable_if<condition, double>::type result_type;
+      bool is_same = std::is_same<result_type, double>::value;
+      Expect(is_same).ToBe(true);
+    }); });
+
   describe("zstd::optional", []() -> void
            {
         it("should be empty on default construction", []() -> void {
