@@ -544,7 +544,7 @@ public:
                   "Type must be registered with ZJSON_SERIALIZABLE macro");
 
     T result{};
-    auto &deserializer = SerializationRegistry<T>::getDeserializer();
+    auto &deserializer = SerializationRegistry<T>::get_instance().getDeserializer();
 
     if (!deserializer)
     {
@@ -567,7 +567,7 @@ public:
                   "Type must be registered with ZJSON_SERIALIZABLE macro");
 
     T result{};
-    auto &deserializer = SerializationRegistry<T>::getDeserializer();
+    auto &deserializer = SerializationRegistry<T>::get_instance().getDeserializer();
 
     if (!deserializer)
     {
@@ -585,7 +585,7 @@ public:
   template <typename T>
   static constexpr bool canSerialize()
   {
-    return is_serializable<T>::value && SerializationRegistry<T>::hasDeserializer();
+    return is_serializable<T>::value && SerializationRegistry<T>::get_instance().hasDeserializer();
   }
 };
 
@@ -618,17 +618,17 @@ class SerializationRegistry : public Singleton<SerializationRegistry<T>>
   DeserializerFunc m_deserializeFn;
 
 public:
-  static void registerDeserializer(DeserializerFunc func)
+  void registerDeserializer(DeserializerFunc func)
   {
     SerializationRegistry<T>::get_instance().m_deserializeFn = func;
   }
 
-  static DeserializerFunc &getDeserializer()
+  DeserializerFunc &getDeserializer()
   {
     return SerializationRegistry<T>::get_instance().m_deserializeFn;
   }
 
-  static bool hasDeserializer()
+  bool hasDeserializer()
   {
     return SerializationRegistry<T>::get_instance().m_deserializeFn != nullptr;
   }
