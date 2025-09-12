@@ -12,7 +12,6 @@
 #ifndef ZSERDE_HPP
 #define ZSERDE_HPP
 
-#include "zjson.hpp"
 #include <string>
 #include <vector>
 #include <map>
@@ -21,6 +20,9 @@
 #include <sstream>
 #include <cctype>
 #include <cstring>
+#include <cstdio>
+#include "zjsonm.h"
+#include "zjsontype.h"
 
 // Forward declarations
 namespace zserde
@@ -225,7 +227,7 @@ class Value
   // Forward declare friend functions and classes
   friend std::string value_to_json_string(const Value &value);
   friend Value parse_json_string(const std::string &json_str);
-  friend Value json_proxy_to_value(const ZJson::JsonValueProxy &proxy);
+  friend Value json_handle_to_value(JSON_INSTANCE *instance, KEY_HANDLE *key_handle);
 
   // Friend template specializations for vector serialization
   template <typename T>
@@ -865,12 +867,16 @@ Result<std::string> to_string(const T &value)
   }
 }
 
-Value json_proxy_to_value(const ZJson::JsonValueProxy &proxy)
+Value json_handle_to_value(JSON_INSTANCE *instance, KEY_HANDLE *key_handle)
 {
-  // Safer ZJson integration with more error checking
   try
   {
-    int type = proxy.getType();
+    int type = 0;
+    int rc = ZJSNGJST(instance, key_handle, &type);
+    if (rc != 0)
+    {
+      return Value(); // Return null on error
+    }
 
     switch (type)
     {
@@ -878,58 +884,30 @@ Value json_proxy_to_value(const ZJson::JsonValueProxy &proxy)
       return Value();
 
     case HWTJ_BOOLEAN_TYPE:
-      try
-      {
-        return Value(static_cast<bool>(proxy));
-      }
-      catch (...)
+    {
+      char bool_val = 0;
+      rc = ZJSMGBOV(instance, key_handle, &bool_val);
+      if (rc != 0)
       {
         return Value();
       }
+      return Value(bool_val == HWTJ_TRUE);
+    }
 
     case HWTJ_NUMBER_TYPE:
-      try
-      {
-        return Value(static_cast<int>(proxy));
-      }
-      catch (...)
-      {
-        return Value();
-      }
-
-    case HWTJ_STRING_TYPE:
-      try
-      {
-        return Value(static_cast<std::string>(proxy));
-      }
-      catch (...)
-      {
-        return Value();
-      }
-
-    case HWTJ_ARRAY_TYPE:
     {
+      char *value_ptr = nullptr;
+      int value_length = 0;
+      rc = ZJSMGVAL(instance, key_handle, &value_ptr, &value_length);
+      if (rc != 0)
+      {
+        return Value();
+      }
       try
       {
-        Value result = Value::create_array();
-
-        // Use ZJson's array conversion method with error checking
-        const auto array_proxies = static_cast<const std::vector<ZJson::JsonValueProxy>>(proxy);
-        result.reserve_array(array_proxies.size());
-
-        for (const auto &item : array_proxies)
-        {
-          try
-          {
-            result.add_to_array(json_proxy_to_value(item));
-          }
-          catch (...)
-          {
-            // Skip problematic array elements
-            continue;
-          }
-        }
-        return result;
+        std::string str_val(value_ptr, value_length);
+        double num_val = std::stod(str_val);
+        return Value(num_val);
       }
       catch (...)
       {
@@ -937,19 +915,77 @@ Value json_proxy_to_value(const ZJson::JsonValueProxy &proxy)
       }
     }
 
-    case HWTJ_OBJECT_TYPE:
+    case HWTJ_STRING_TYPE:
     {
-      try
+      char *value_ptr = nullptr;
+      int value_length = 0;
+      rc = ZJSMGVAL(instance, key_handle, &value_ptr, &value_length);
+      if (rc != 0)
       {
-        Value result = Value::create_object();
+        return Value();
+      }
+      return Value(std::string(value_ptr, value_length));
+    }
 
-        // Use ZJson's key enumeration with error checking
-        auto keys = proxy.getKeys();
-        for (const auto &key : keys)
+    case HWTJ_ARRAY_TYPE:
+    {
+      Value result = Value::create_array();
+
+      int num_entries = 0;
+      rc = ZJSMGNUE(instance, key_handle, &num_entries);
+      if (rc != 0)
+      {
+        return result; // Return empty array
+      }
+
+      for (int i = 0; i < num_entries; i++)
+      {
+        KEY_HANDLE element_handle = {0};
+        rc = ZJSMGAEN(instance, key_handle, &i, &element_handle);
+        if (rc == 0)
         {
           try
           {
-            result.add_to_object(key, json_proxy_to_value(proxy[key]));
+            Value element = json_handle_to_value(instance, &element_handle);
+            result.add_to_array(element);
+          }
+          catch (...)
+          {
+            // Skip problematic array elements
+            continue;
+          }
+        }
+      }
+      return result;
+    }
+
+    case HWTJ_OBJECT_TYPE:
+    {
+      Value result = Value::create_object();
+
+      int num_entries = 0;
+      rc = ZJSMGNUE(instance, key_handle, &num_entries);
+      if (rc != 0)
+      {
+        return result; // Return empty object
+      }
+
+      for (int i = 0; i < num_entries; i++)
+      {
+        char key_buffer[256] = {0};
+        char *key_buffer_ptr = key_buffer;
+        int key_buffer_length = sizeof(key_buffer);
+        KEY_HANDLE value_handle = {0};
+        int actual_length = 0;
+
+        rc = ZJSMGOEN(instance, key_handle, &i, &key_buffer_ptr, &key_buffer_length, &value_handle, &actual_length);
+        if (rc == 0)
+        {
+          try
+          {
+            std::string key_name(key_buffer_ptr, actual_length);
+            Value value = json_handle_to_value(instance, &value_handle);
+            result.add_to_object(key_name, value);
           }
           catch (...)
           {
@@ -957,12 +993,31 @@ Value json_proxy_to_value(const ZJson::JsonValueProxy &proxy)
             continue;
           }
         }
-        return result;
+        else if (rc == HWTJ_BUFFER_TOO_SMALL)
+        {
+          // Allocate larger buffer for long keys
+          std::vector<char> dynamic_buffer(actual_length);
+          key_buffer_ptr = &dynamic_buffer[0];
+          key_buffer_length = actual_length;
+
+          rc = ZJSMGOEN(instance, key_handle, &i, &key_buffer_ptr, &key_buffer_length, &value_handle, &actual_length);
+          if (rc == 0)
+          {
+            try
+            {
+              std::string key_name(key_buffer_ptr, actual_length);
+              Value value = json_handle_to_value(instance, &value_handle);
+              result.add_to_object(key_name, value);
+            }
+            catch (...)
+            {
+              // Skip problematic object fields
+              continue;
+            }
+          }
+        }
       }
-      catch (...)
-      {
-        return Value();
-      }
+      return result;
     }
 
     default:
@@ -971,14 +1026,10 @@ Value json_proxy_to_value(const ZJson::JsonValueProxy &proxy)
   }
   catch (const std::exception &e)
   {
-    // If ZJson methods fail, return null value
-    std::cout << "ZJson error: " << e.what() << std::endl;
     return Value();
   }
   catch (...)
   {
-    // Catch any other errors
-    std::cout << "Unknown ZJson error" << std::endl;
     return Value();
   }
 }
@@ -989,10 +1040,27 @@ Result<T> from_str(const std::string &json_str)
 {
   try
   {
-    // Use ZJson for proper JSON parsing
-    ZJson zjson;
-    auto root = zjson.parse(json_str);
-    Value parsed = json_proxy_to_value(root);
+    // Use zjsonm C API for JSON parsing
+    JSON_INSTANCE instance = {0};
+    int rc = ZJSMINIT(&instance);
+    if (rc != 0)
+    {
+      return Result<T>(Error(Error::Custom, "Failed to initialize JSON parser"));
+    }
+
+    rc = ZJSMPARS(&instance, json_str.c_str());
+    if (rc != 0)
+    {
+      ZJSMTERM(&instance);
+      return Result<T>(Error(Error::Custom, "Failed to parse JSON string"));
+    }
+
+    // Get root handle and convert to Value
+    KEY_HANDLE root_handle = {0};
+    Value parsed = json_handle_to_value(&instance, &root_handle);
+
+    // Clean up
+    ZJSMTERM(&instance);
 
     return from_str_impl<T>(parsed, typename std::integral_constant<bool, Deserializable<T>::value>{});
   }
@@ -1004,6 +1072,75 @@ Result<T> from_str(const std::string &json_str)
   {
     return Result<T>(Error(Error::Custom, e.what()));
   }
+}
+
+// Helper function to add indentation to JSON string
+std::string add_json_indentation(const std::string &json_str, int spaces)
+{
+  std::string result;
+  int indent_level = 0;
+  bool in_string = false;
+  bool escape_next = false;
+
+  for (char ch : json_str)
+  {
+    if (escape_next)
+    {
+      result += ch;
+      escape_next = false;
+      continue;
+    }
+
+    if (ch == '\\' && in_string)
+    {
+      result += ch;
+      escape_next = true;
+      continue;
+    }
+
+    if (ch == '\"')
+    {
+      result += ch;
+      in_string = !in_string;
+    }
+    else if (!in_string)
+    {
+      switch (ch)
+      {
+      case '{':
+      case '[':
+        result += ch;
+        result += '\n';
+        indent_level++;
+        result.append(indent_level * spaces, ' ');
+        break;
+      case '}':
+      case ']':
+        result += '\n';
+        indent_level--;
+        result.append(indent_level * spaces, ' ');
+        result += ch;
+        break;
+      case ',':
+        result += ch;
+        result += '\n';
+        result.append(indent_level * spaces, ' ');
+        break;
+      case ':':
+        result += ch;
+        result += ' ';
+        break;
+      default:
+        result += ch;
+        break;
+      }
+    }
+    else
+    {
+      result += ch;
+    }
+  }
+  return result;
 }
 
 // to_string_pretty function similar to serde_json::to_string_pretty
@@ -1018,9 +1155,8 @@ Result<std::string> to_string_pretty(const T &value)
 
   try
   {
-    ZJson zjson;
-    auto root = zjson.parse(result.unwrap());
-    std::string pretty_json = zjson.stringify(2); // 2 spaces for indentation
+    // Use our simple indentation function instead of ZJson
+    std::string pretty_json = add_json_indentation(result.unwrap(), 2);
     return Result<std::string>(pretty_json);
   }
   catch (const std::exception &e)
@@ -1029,7 +1165,7 @@ Result<std::string> to_string_pretty(const T &value)
   }
 }
 
-// Helper functions for conversion between Value and ZJson (defined here for proper ordering)
+// Convert Value to JSON string with proper escaping
 std::string value_to_json_string(const Value &value)
 {
   switch (value.get_type())
@@ -1046,6 +1182,7 @@ std::string value_to_json_string(const Value &value)
   }
   case Value::String:
   {
+    // Properly escape string according to JSON standard
     std::string escaped = "\"";
     for (char c : value.as_string())
     {
@@ -1072,8 +1209,21 @@ std::string value_to_json_string(const Value &value)
       case '\t':
         escaped += "\\t";
         break;
+      case '\0':
+        escaped += "\\u0000";
+        break;
       default:
-        escaped += c;
+        if (static_cast<unsigned char>(c) < 0x20)
+        {
+          // Control characters - escape as \uXXXX
+          char buf[7];
+          sprintf(buf, "\\u%04x", static_cast<unsigned char>(c));
+          escaped += buf;
+        }
+        else
+        {
+          escaped += c;
+        }
         break;
       }
     }
@@ -1103,7 +1253,51 @@ std::string value_to_json_string(const Value &value)
       if (!first)
         result += ",";
       first = false;
-      result += "\"" + pair.first + "\":" + value_to_json_string(pair.second);
+
+      // Escape the key name
+      std::string escaped_key = "\"";
+      for (char c : pair.first)
+      {
+        switch (c)
+        {
+        case '"':
+          escaped_key += "\\\"";
+          break;
+        case '\\':
+          escaped_key += "\\\\";
+          break;
+        case '\b':
+          escaped_key += "\\b";
+          break;
+        case '\f':
+          escaped_key += "\\f";
+          break;
+        case '\n':
+          escaped_key += "\\n";
+          break;
+        case '\r':
+          escaped_key += "\\r";
+          break;
+        case '\t':
+          escaped_key += "\\t";
+          break;
+        default:
+          if (static_cast<unsigned char>(c) < 0x20)
+          {
+            char buf[7];
+            sprintf(buf, "\\u%04x", static_cast<unsigned char>(c));
+            escaped_key += buf;
+          }
+          else
+          {
+            escaped_key += c;
+          }
+          break;
+        }
+      }
+      escaped_key += "\"";
+
+      result += escaped_key + ":" + value_to_json_string(pair.second);
     }
     result += "}";
     return result;
@@ -1113,66 +1307,38 @@ std::string value_to_json_string(const Value &value)
   }
 }
 
-// Simple JSON parser for basic JSON strings (for demonstration)
+// JSON parser using zjsonm C API
 Value parse_json_string(const std::string &json_str)
 {
-  // This is a simplified JSON parser for demonstration purposes
-  // In production, this would integrate properly with ZJson
-
-  // Strip whitespace
-  std::string trimmed = json_str;
-  trimmed.erase(0, trimmed.find_first_not_of(" \t\n\r"));
-  trimmed.erase(trimmed.find_last_not_of(" \t\n\r") + 1);
-
-  if (trimmed.empty())
+  try
   {
-    return Value();
-  }
-
-  // Handle basic cases
-  if (trimmed == "null")
-  {
-    return Value();
-  }
-  else if (trimmed == "true")
-  {
-    return Value(true);
-  }
-  else if (trimmed == "false")
-  {
-    return Value(false);
-  }
-  else if (trimmed[0] == '"' && trimmed.back() == '"')
-  {
-    // String value
-    return Value(trimmed.substr(1, trimmed.length() - 2));
-  }
-  else if (trimmed[0] == '{')
-  {
-    // Object - simplified parsing
-    Value result = Value::create_object();
-    // For demonstration, just return empty object
-    return result;
-  }
-  else if (trimmed[0] == '[')
-  {
-    // Array - simplified parsing
-    Value result = Value::create_array();
-    // For demonstration, just return empty array
-    return result;
-  }
-  else
-  {
-    // Try to parse as number
-    try
-    {
-      double num = std::stod(trimmed);
-      return Value(num);
-    }
-    catch (...)
+    JSON_INSTANCE instance = {0};
+    int rc = ZJSMINIT(&instance);
+    if (rc != 0)
     {
       return Value();
     }
+
+    rc = ZJSMPARS(&instance, json_str.c_str());
+    if (rc != 0)
+    {
+      ZJSMTERM(&instance);
+      return Value();
+    }
+
+    // Get root handle and convert to Value
+    KEY_HANDLE root_handle = {0};
+    Value result = json_handle_to_value(&instance, &root_handle);
+
+    // Clean up
+    ZJSMTERM(&instance);
+
+    return result;
+  }
+  catch (const std::exception &e)
+  {
+    // Return null value if parsing fails
+    return Value();
   }
 }
 
@@ -1670,25 +1836,26 @@ struct RenameAll
  * }
  *
  * ============================================================================
- * INTEGRATION WITH ZJSON (using z/OS Web Enablement Toolkit)
+ * NATIVE z/OS JSON INTEGRATION (using z/OS Web Enablement Toolkit directly)
  * ============================================================================
  *
- * void zjson_integration_example() {
- *     // ZSerde seamlessly integrates with the existing ZJson class
+ * void native_json_integration_example() {
+ *     // ZSerde uses z/OS HWTJIC services directly for optimal performance
  *     Person person{"John", 30, true};
  *
- *     // Convert to JSON using ZSerde
+ *     // Convert to JSON using ZSerde (uses zjsonm C API internally)
  *     auto json_str = zserde::to_string(person).unwrap();
+ *     std::cout << "JSON: " << json_str << std::endl;
  *
- *     // Parse with ZJson for further manipulation
- *     ZJson zjson;
- *     auto root = zjson.parse(json_str);
+ *     // Parse JSON back to object (uses zjsonm C API internally)
+ *     auto parsed_person = zserde::from_str<Person>(json_str);
+ *     if (parsed_person.is_ok()) {
+ *         Person p = parsed_person.unwrap();
+ *         std::cout << "Parsed: " << p.name << ", age " << p.age << std::endl;
+ *     }
  *
- *     // Modify using ZJson API
- *     root["extra_field"] = "added by ZJson";
- *
- *     // Convert back to string
- *     std::string modified_json = zjson.stringify(2);
- *     std::cout << modified_json << std::endl;
+ *     // Pretty print JSON
+ *     auto pretty_json = zserde::to_string_pretty(person).unwrap();
+ *     std::cout << "Pretty JSON:\n" << pretty_json << std::endl;
  * }
  */
