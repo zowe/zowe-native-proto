@@ -667,4 +667,112 @@ void zstd_tests()
       Expect(exp != unexp).ToBe(true);
       Expect(unexp != exp).ToBe(true);
     }); });
+
+  describe("zstd::variant", []() -> void
+           {
+    it("should default construct to first type", []() -> void {
+      variant<int, std::string> var;
+      Expect(var.index()).ToBe(0);
+      Expect(var.get<int>()).ToBe(0);
+    });
+
+    it("should hold a value when constructed with one", []() -> void {
+      variant<int, std::string> var(42);
+      Expect(var.index()).ToBe(0);
+      Expect(var.get<int>()).ToBe(42);
+    });
+
+    it("should hold a value when constructed with another", []() -> void {
+      variant<int, std::string> var(std::string("hello"));
+      Expect(var.index()).ToBe(1);
+      Expect(var.get<std::string>()).ToBe(std::string("hello"));
+    });
+
+    it("should handle copy construction", []() -> void {
+      variant<int, std::string> var1(42);
+      variant<int, std::string> var2(var1);
+      Expect(var2.index()).ToBe(0);
+      Expect(var2.get<int>()).ToBe(42);
+
+      variant<int, std::string> var3(std::string("world"));
+      variant<int, std::string> var4(var3);
+      Expect(var4.index()).ToBe(1);
+      Expect(var4.get<std::string>()).ToBe(std::string("world"));
+    });
+
+    it("should handle assignment", []() -> void {
+      variant<int, std::string> var1(42);
+      variant<int, std::string> var2;
+      var2 = var1;
+      Expect(var2.index()).ToBe(0);
+      Expect(var2.get<int>()).ToBe(42);
+
+      variant<int, std::string> var3(std::string("test"));
+      var1 = var3;
+      Expect(var1.index()).ToBe(1);
+      Expect(var1.get<std::string>()).ToBe(std::string("test"));
+    });
+
+    it("should throw when accessing with incorrect type", []() -> void {
+      variant<int, std::string> var(42);
+      bool thrown = false;
+      try {
+        var.get<std::string>();
+      } catch (const zstd::bad_variant_access&) {
+        thrown = true;
+      }
+      Expect(thrown).ToBe(true);
+    });
+    
+    it("should throw when accessing with incorrect index", []() -> void {
+      variant<int, std::string> var(42);
+      bool thrown = false;
+      try {
+        var.get<1>();
+      } catch (const zstd::bad_variant_access&) {
+        thrown = true;
+      }
+      Expect(thrown).ToBe(true);
+    });
+
+    it("should allow modification through get()", []() -> void {
+      variant<int, std::string> var(10);
+      var.get<int>() = 20;
+      Expect(var.get<int>()).ToBe(20);
+    });
+
+    it("should allow member access through get()", []() -> void {
+      variant<MyObject, std::string> var(MyObject(55));
+      Expect(var.get<MyObject>().value).ToBe(55);
+    });
+
+    it("should ensure proper memory alignment", []() -> void {
+      variant<AlignedObject, std::string> var;
+      var = AlignedObject();
+
+      const AlignedObject* ptr = &var.get<AlignedObject>();
+      uintptr_t address = reinterpret_cast<uintptr_t>(ptr);
+      size_t alignment = __alignof__(AlignedObject);
+
+      Expect(address % alignment).ToBe(0);
+    });
+
+    it("should properly destruct contained objects", []() -> void {
+      DestructorTester::instance_count = 0; // Reset counter
+      
+      {
+        variant<DestructorTester, std::string> var((DestructorTester()));
+        Expect(DestructorTester::instance_count).ToBe(1); // One instance should remain in variant
+      }
+      Expect(DestructorTester::instance_count).ToBe(0); // Should be destroyed when variant goes out of scope
+
+      DestructorTester::instance_count = 0; // Reset counter
+      {
+        variant<int, DestructorTester> var((DestructorTester()));
+        Expect(DestructorTester::instance_count).ToBe(1); // One instance should remain in variant
+        var = 42; // Assigning a new type should destruct the old one
+        Expect(DestructorTester::instance_count).ToBe(0);
+      }
+      Expect(DestructorTester::instance_count).ToBe(0);
+    }); });
 }

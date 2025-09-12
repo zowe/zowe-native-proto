@@ -18,6 +18,8 @@
 #include <cstring>
 #include <string>
 #include <new>
+#include <typeinfo>
+#include <type_traits>
 
 namespace zstd
 {
@@ -325,28 +327,18 @@ class unexpected
 public:
   typedef E error_type;
 
-  explicit unexpected(const E &e) : m_error(e)
-  {
-  }
-  explicit unexpected(E &&e) : m_error(std::move(e))
+  explicit unexpected(const E &e)
+      : m_error(e)
   {
   }
 
-  const E &error() const &
+  const E &error() const
   {
     return m_error;
   }
-  E &error() &
+  E &error()
   {
     return m_error;
-  }
-  const E &&error() const &&
-  {
-    return std::move(m_error);
-  }
-  E &&error() &&
-  {
-    return std::move(m_error);
   }
 
 private:
@@ -360,12 +352,6 @@ unexpected<E> make_unexpected(const E &e)
   return unexpected<E>(e);
 }
 
-template <typename E>
-unexpected<E> make_unexpected(E &&e)
-{
-  return unexpected<E>(std::move(e));
-}
-
 // Expected type that mimics C++23 std::expected
 template <typename T, typename E>
 class expected
@@ -375,13 +361,15 @@ public:
   typedef E error_type;
 
   // Default constructor (constructs value)
-  expected() : m_has_value(true)
+  expected()
+      : m_has_value(true)
   {
     construct_value();
   }
 
   // Copy constructor
-  expected(const expected &other) : m_has_value(other.m_has_value)
+  expected(const expected &other)
+      : m_has_value(other.m_has_value)
   {
     if (m_has_value)
     {
@@ -393,41 +381,18 @@ public:
     }
   }
 
-  // Move constructor
-  expected(expected &&other) : m_has_value(other.m_has_value)
-  {
-    if (m_has_value)
-    {
-      construct_value(std::move(other.value()));
-    }
-    else
-    {
-      construct_error(std::move(other.error()));
-    }
-  }
-
   // Value constructor
-  expected(const T &value) : m_has_value(true)
+  expected(const T &value)
+      : m_has_value(true)
   {
     construct_value(value);
   }
 
-  // Value move constructor
-  expected(T &&value) : m_has_value(true)
-  {
-    construct_value(std::move(value));
-  }
-
   // Error constructor
-  expected(const unexpected<E> &unexp) : m_has_value(false)
+  expected(const unexpected<E> &unexp)
+      : m_has_value(false)
   {
     construct_error(unexp.error());
-  }
-
-  // Error move constructor
-  expected(unexpected<E> &&unexp) : m_has_value(false)
-  {
-    construct_error(std::move(unexp.error()));
   }
 
   // Destructor
@@ -466,36 +431,6 @@ public:
     return *this;
   }
 
-  // Move assignment
-  expected &operator=(expected &&other)
-  {
-    if (this != &other)
-    {
-      if (m_has_value && other.m_has_value)
-      {
-        value() = std::move(other.value());
-      }
-      else if (!m_has_value && !other.m_has_value)
-      {
-        error() = std::move(other.error());
-      }
-      else
-      {
-        destroy();
-        m_has_value = other.m_has_value;
-        if (m_has_value)
-        {
-          construct_value(std::move(other.value()));
-        }
-        else
-        {
-          construct_error(std::move(other.error()));
-        }
-      }
-    }
-    return *this;
-  }
-
   // Value assignment
   expected &operator=(const T &val)
   {
@@ -512,22 +447,6 @@ public:
     return *this;
   }
 
-  // Value move assignment
-  expected &operator=(T &&val)
-  {
-    if (m_has_value)
-    {
-      value() = std::move(val);
-    }
-    else
-    {
-      destroy();
-      m_has_value = true;
-      construct_value(std::move(val));
-    }
-    return *this;
-  }
-
   // Unexpected assignment
   expected &operator=(const unexpected<E> &unexp)
   {
@@ -540,22 +459,6 @@ public:
     else
     {
       error() = unexp.error();
-    }
-    return *this;
-  }
-
-  // Unexpected move assignment
-  expected &operator=(unexpected<E> &&unexp)
-  {
-    if (m_has_value)
-    {
-      destroy();
-      m_has_value = false;
-      construct_error(std::move(unexp.error()));
-    }
-    else
-    {
-      error() = std::move(unexp.error());
     }
     return *this;
   }
@@ -579,7 +482,7 @@ public:
     return get_value_ptr();
   }
 
-  const T &operator*() const &
+  const T &operator*() const
   {
     if (!has_value())
     {
@@ -588,31 +491,13 @@ public:
     return *get_value_ptr();
   }
 
-  T &operator*() &
+  T &operator*()
   {
     if (!has_value())
     {
       throw std::logic_error("expected contains error, not value");
     }
     return *get_value_ptr();
-  }
-
-  const T &&operator*() const &&
-  {
-    if (!has_value())
-    {
-      throw std::logic_error("expected contains error, not value");
-    }
-    return std::move(*get_value_ptr());
-  }
-
-  T &&operator*() &&
-  {
-    if (!has_value())
-    {
-      throw std::logic_error("expected contains error, not value");
-    }
-    return std::move(*get_value_ptr());
   }
 
   // Check if contains value
@@ -627,7 +512,7 @@ public:
   }
 
   // Value access
-  const T &value() const &
+  const T &value() const
   {
     if (!has_value())
     {
@@ -636,35 +521,17 @@ public:
     return *get_value_ptr();
   }
 
-  T &value() &
+  T &value()
   {
     if (!has_value())
     {
       throw std::logic_error("expected contains error, not value");
     }
     return *get_value_ptr();
-  }
-
-  const T &&value() const &&
-  {
-    if (!has_value())
-    {
-      throw std::logic_error("expected contains error, not value");
-    }
-    return std::move(*get_value_ptr());
-  }
-
-  T &&value() &&
-  {
-    if (!has_value())
-    {
-      throw std::logic_error("expected contains error, not value");
-    }
-    return std::move(*get_value_ptr());
   }
 
   // Error access
-  const E &error() const &
+  const E &error() const
   {
     if (has_value())
     {
@@ -673,44 +540,20 @@ public:
     return *get_error_ptr();
   }
 
-  E &error() &
+  E &error()
   {
     if (has_value())
     {
       throw std::logic_error("expected contains value, not error");
     }
     return *get_error_ptr();
-  }
-
-  const E &&error() const &&
-  {
-    if (has_value())
-    {
-      throw std::logic_error("expected contains value, not error");
-    }
-    return std::move(*get_error_ptr());
-  }
-
-  E &&error() &&
-  {
-    if (has_value())
-    {
-      throw std::logic_error("expected contains value, not error");
-    }
-    return std::move(*get_error_ptr());
   }
 
   // Value or default
   template <typename U>
-  T value_or(U &&default_value) const &
+  T value_or(const U &default_value) const
   {
-    return has_value() ? value() : static_cast<T>(std::forward<U>(default_value));
-  }
-
-  template <typename U>
-  T value_or(U &&default_value) &&
-  {
-    return has_value() ? std::move(value()) : static_cast<T>(std::forward<U>(default_value));
+    return has_value() ? value() : static_cast<T>(default_value);
   }
 
   // Swap
@@ -728,23 +571,23 @@ public:
     }
     else if (has_value())
     {
-      E temp_error = std::move(other.error());
+      E temp_error = other.error();
       other.destroy();
       other.m_has_value = true;
-      other.construct_value(std::move(value()));
+      other.construct_value(value());
       destroy();
       m_has_value = false;
-      construct_error(std::move(temp_error));
+      construct_error(temp_error);
     }
     else
     {
-      T temp_value = std::move(other.value());
+      T temp_value = other.value();
       other.destroy();
       other.m_has_value = false;
-      other.construct_error(std::move(error()));
+      other.construct_error(error());
       destroy();
       m_has_value = true;
-      construct_value(std::move(temp_value));
+      construct_value(temp_value);
     }
   }
 
@@ -759,19 +602,9 @@ private:
     new (m_storage) T(val);
   }
 
-  void construct_value(T &&val)
-  {
-    new (m_storage) T(std::move(val));
-  }
-
   void construct_error(const E &err)
   {
     new (m_storage) E(err);
-  }
-
-  void construct_error(E &&err)
-  {
-    new (m_storage) E(std::move(err));
   }
 
   void destroy()
@@ -899,27 +732,32 @@ public:
   static const size_type npos = static_cast<size_type>(-1);
 
   // Default constructor
-  string_view() : m_data(nullptr), m_size(0)
+  string_view()
+      : m_data(nullptr), m_size(0)
   {
   }
 
   // C-string constructor
-  string_view(const char *str) : m_data(str), m_size(str ? strlen(str) : 0)
+  string_view(const char *str)
+      : m_data(str), m_size(str ? strlen(str) : 0)
   {
   }
 
   // Data and size constructor
-  string_view(const char *data, size_type size) : m_data(data), m_size(size)
+  string_view(const char *data, size_type size)
+      : m_data(data), m_size(size)
   {
   }
 
   // std::string constructor
-  string_view(const std::string &str) : m_data(str.c_str()), m_size(str.size())
+  string_view(const std::string &str)
+      : m_data(str.c_str()), m_size(str.size())
   {
   }
 
   // Copy constructor
-  string_view(const string_view &other) : m_data(other.m_data), m_size(other.m_size)
+  string_view(const string_view &other)
+      : m_data(other.m_data), m_size(other.m_size)
   {
   }
 
@@ -1351,6 +1189,308 @@ inline bool operator>(const string_view &lhs, const string_view &rhs)
 inline bool operator>=(const string_view &lhs, const string_view &rhs)
 {
   return lhs.compare(rhs) >= 0;
+}
+
+// Variant type that mimics C++17 std::variant
+template <typename... Types>
+class variant;
+
+namespace internal
+{
+template <typename T, typename... Types>
+struct is_one_of;
+
+template <typename T, typename Head, typename... Tail>
+struct is_one_of<T, Head, Tail...>
+{
+  static const bool value = std::is_same<T, Head>::value || is_one_of<T, Tail...>::value;
+};
+
+template <typename T>
+struct is_one_of<T>
+{
+  static const bool value = false;
+};
+
+template <typename T, typename... Types>
+struct IndexOf;
+
+template <typename T, typename Head, typename... Tail>
+struct IndexOf<T, Head, Tail...>
+{
+  static const size_t value = IndexOf<T, Tail...>::value + 1;
+};
+
+template <typename T, typename... Tail>
+struct IndexOf<T, T, Tail...>
+{
+  static const size_t value = 0;
+};
+
+template <typename T>
+struct IndexOf<T>
+{
+  static const size_t value = (size_t)-1; // Not found
+};
+
+template <size_t N, typename... Types>
+struct AtIndex;
+
+template <size_t N, typename Head, typename... Tail>
+struct AtIndex<N, Head, Tail...>
+{
+  typedef typename AtIndex<N - 1, Tail...>::type type;
+};
+
+template <typename Head, typename... Tail>
+struct AtIndex<0, Head, Tail...>
+{
+  typedef Head type;
+};
+
+template <typename... Types>
+struct MaxSizeOf;
+
+template <typename Head, typename... Tail>
+struct MaxSizeOf<Head, Tail...>
+{
+  static const size_t tail_size = MaxSizeOf<Tail...>::value;
+  static const size_t value = sizeof(Head) > tail_size ? sizeof(Head) : tail_size;
+};
+
+template <>
+struct MaxSizeOf<>
+{
+  static const size_t value = 0;
+};
+
+template <typename... Types>
+struct MaxAlignOf;
+
+template <typename Head, typename... Tail>
+struct MaxAlignOf<Head, Tail...>
+{
+  static const size_t tail_align = MaxAlignOf<Tail...>::value;
+  static const size_t value = __alignof__(Head) > tail_align ? __alignof__(Head) : tail_align;
+};
+
+template <>
+struct MaxAlignOf<>
+{
+  static const size_t value = 0;
+};
+
+template <typename Visitor, typename Variant, size_t I, size_t Max>
+struct visitor_caller
+{
+  static typename Visitor::result_type apply(Variant &v, Visitor &visitor)
+  {
+    if (v.index() == I)
+    {
+      return visitor(v.template get<I>());
+    }
+    return visitor_caller<Visitor, Variant, I + 1, Max>::apply(v, visitor);
+  }
+};
+
+template <typename Visitor, typename Variant, size_t Max>
+struct visitor_caller<Visitor, Variant, Max, Max>
+{
+  static typename Visitor::result_type apply(Variant &v, Visitor &visitor)
+  {
+    throw std::bad_cast(); // Should not happen
+  }
+};
+
+template <size_t I, typename... Types>
+struct destroy_visitor
+{
+  static void apply(size_t index, void *data)
+  {
+    if (index == I)
+    {
+      typedef typename AtIndex<I, Types...>::type T;
+      reinterpret_cast<T *>(data)->~T();
+    }
+    else
+    {
+      destroy_visitor<I + 1, Types...>::apply(index, data);
+    }
+  }
+};
+
+template <typename... Types>
+struct destroy_visitor<sizeof...(Types), Types...>
+{
+  static void apply(size_t index, void *data)
+  {
+  }
+};
+
+template <size_t I, typename... Types>
+struct copy_visitor
+{
+  static void apply(size_t index, void *dest, const void *src)
+  {
+    if (index == I)
+    {
+      typedef typename AtIndex<I, Types...>::type T;
+      new (dest) T(*reinterpret_cast<const T *>(src));
+    }
+    else
+    {
+      copy_visitor<I + 1, Types...>::apply(index, dest, src);
+    }
+  }
+};
+
+template <typename... Types>
+struct copy_visitor<sizeof...(Types), Types...>
+{
+  static void apply(size_t index, void *dest, const void *src)
+  {
+  }
+};
+} // namespace internal
+
+struct bad_variant_access : public std::logic_error
+{
+  bad_variant_access()
+      : std::logic_error("bad_variant_access")
+  {
+  }
+};
+
+template <typename... Types>
+class variant
+{
+public:
+  variant()
+      : m_index(0)
+  {
+    construct<0>();
+  }
+
+  template <typename T>
+  variant(const T &value)
+  {
+    m_index = internal::IndexOf<T, Types...>::value;
+    construct_value(value);
+  }
+
+  variant(const variant &other)
+      : m_index(other.m_index)
+  {
+    copy_construct(other);
+  }
+
+  ~variant()
+  {
+    destroy();
+  }
+
+  variant &operator=(const variant &other)
+  {
+    if (this != &other)
+    {
+      destroy();
+      m_index = other.m_index;
+      copy_construct(other);
+    }
+    return *this;
+  }
+
+  template <typename T>
+  variant &operator=(const T &value)
+  {
+    destroy();
+    m_index = internal::IndexOf<T, Types...>::value;
+    construct_value(value);
+    return *this;
+  }
+
+  size_t index() const
+  {
+    return m_index;
+  }
+
+  template <typename T>
+  T &get()
+  {
+    if (m_index != internal::IndexOf<T, Types...>::value)
+    {
+      throw bad_variant_access();
+    }
+    return *reinterpret_cast<T *>(m_storage);
+  }
+
+  template <typename T>
+  const T &get() const
+  {
+    if (m_index != internal::IndexOf<T, Types...>::value)
+    {
+      throw bad_variant_access();
+    }
+    return *reinterpret_cast<const T *>(m_storage);
+  }
+
+  template <size_t I>
+  typename internal::AtIndex<I, Types...>::type &get()
+  {
+    if (m_index != I)
+    {
+      throw bad_variant_access();
+    }
+    typedef typename internal::AtIndex<I, Types...>::type T;
+    return *reinterpret_cast<T *>(m_storage);
+  }
+
+  template <size_t I>
+  const typename internal::AtIndex<I, Types...>::type &get() const
+  {
+    if (m_index != I)
+    {
+      throw bad_variant_access();
+    }
+    typedef typename internal::AtIndex<I, Types...>::type T;
+    return *reinterpret_cast<const T *>(m_storage);
+  }
+
+private:
+  template <typename Visitor, typename Variant, size_t I, size_t Max>
+  friend struct internal::visitor_caller;
+
+  template <size_t I, typename... Args>
+  void construct(Args &&...args)
+  {
+    typedef typename internal::AtIndex<I, Types...>::type T;
+    new (m_storage) T(std::forward<Args>(args)...);
+  }
+
+  template <typename T>
+  void construct_value(const T &value)
+  {
+    new (m_storage) T(value);
+  }
+
+  void destroy()
+  {
+    internal::destroy_visitor<0, Types...>::apply(m_index, m_storage);
+  }
+
+  void copy_construct(const variant &other)
+  {
+    internal::copy_visitor<0, Types...>::apply(m_index, m_storage, other.m_storage);
+  }
+
+  size_t m_index;
+  char m_storage[internal::MaxSizeOf<Types...>::value] __attribute__((aligned(internal::MaxAlignOf<Types...>::value)));
+};
+
+template <typename Visitor, typename... Types>
+typename Visitor::result_type apply_visitor(Visitor &visitor, variant<Types...> &v)
+{
+  return internal::visitor_caller<Visitor, variant<Types...>, 0, sizeof...(Types)>::apply(v, visitor);
 }
 
 } // namespace zstd
