@@ -18,6 +18,7 @@
 #include <vector>
 #include <type_traits>
 #include <functional>
+#include <initializer_list>
 #include <hwtjic.h> // ensure to include /usr/include
 #include "zjsonm.h"
 #include "zjsontype.h"
@@ -174,42 +175,31 @@ public:
     friend class ZJson;
 
   private:
-    ZJson &parent;
+    ZJson &parser;
     std::string key;
     mutable KEY_HANDLE key_handle = {0};
+    JsonValueProxy *parent = nullptr;
 
-  public:
-    JsonValueProxy(ZJson &p, const std::string &k)
-        : parent(p), key(k)
-    {
-      int type = HWTJ_SEARCHTYPE_SHALLOW;
-      KEY_HANDLE object_handle = {0};
-      KEY_HANDLE starting_handle = {0};
-
-      int rc = ZJSMSRCH(&parent.instance, &type, key.c_str(), &object_handle, &starting_handle, &key_handle);
-      if (0 != rc)
-      {
-        throw format_error("Error searching for key '" + key + "'", rc);
-      }
-    }
-
-  private:
-    JsonValueProxy(ZJson &p, const std::string &k, KEY_HANDLE kh)
-        : parent(p), key(k), key_handle(kh)
+    // Constructor for JSON root level
+    JsonValueProxy(ZJson &parser, KEY_HANDLE root_kh)
+        : parser(parser), key(""), key_handle(root_kh)
     {
     }
 
-    JsonValueProxy(ZJson &p, const std::string &k, KEY_HANDLE parent_kh, const std::string &search_key)
-        : parent(p), key(k)
+    // Constructor for individual keys
+    JsonValueProxy(ZJson &parser, const std::string &key, JsonValueProxy *parent, const std::string &search_key)
+        : parser(parser), key(key), parent(parent)
     {
       int type = HWTJ_SEARCHTYPE_SHALLOW;
       KEY_HANDLE starting_handle = {0};
 
-      int rc = ZJSMSRCH(&parent.instance, &type, search_key.c_str(), &parent_kh, &starting_handle, &key_handle);
-      if (0 != rc)
-      {
-        throw format_error("Error searching for nested key '" + search_key + "' in '" + key + "'", rc);
-      }
+      ZJSMSRCH(&parser.instance, &type, search_key.c_str(), &parent->key_handle, &starting_handle, &key_handle);
+    }
+
+    // Constructor for array elements with direct handle
+    JsonValueProxy(ZJson &parser, const std::string &key, KEY_HANDLE element_handle)
+        : parser(parser), key(key), key_handle(element_handle)
+    {
     }
 
   public:
@@ -219,7 +209,7 @@ public:
       char *value_ptr = nullptr;
       int value_length = 0;
 
-      rc = ZJSMGVAL(&parent.instance, get_mutable_key_handle(), &value_ptr, &value_length);
+      rc = ZJSMGVAL(&parser.instance, get_mutable_key_handle(), &value_ptr, &value_length);
       if (0 != rc)
       {
         throw format_error("Error getting string value for key '" + key + "'", rc);
@@ -233,7 +223,7 @@ public:
       char *value_ptr = nullptr;
       int value_length = 0;
 
-      rc = ZJSMGVAL(&parent.instance, get_mutable_key_handle(), &value_ptr, &value_length);
+      rc = ZJSMGVAL(&parser.instance, get_mutable_key_handle(), &value_ptr, &value_length);
       if (0 != rc)
       {
         throw format_error("Error getting integer value for key '" + key + "'", rc);
@@ -246,7 +236,7 @@ public:
       int rc = 0;
       char b_val = 0;
 
-      rc = ZJSMGBOV(&parent.instance, get_mutable_key_handle(), &b_val);
+      rc = ZJSMGBOV(&parser.instance, get_mutable_key_handle(), &b_val);
       if (0 != rc)
       {
         throw format_error("Error getting boolean value for key '" + key + "'", rc);
@@ -254,11 +244,51 @@ public:
       return (b_val == HWTJ_TRUE);
     }
 
+    explicit operator const std::vector<JsonValueProxy>() const
+    {
+      int type = this->getType();
+      if (type != HWTJ_ARRAY_TYPE) // not an array
+      {
+        throw std::runtime_error("Cannot get array entries from non-array type for key '" + key + "'. Type was " + std::to_string(type));
+      }
+
+      std::vector<JsonValueProxy> result;
+
+      int rc = 0;
+      int number_entries = 0;
+
+      rc = ZJSMGNUE(&parser.instance, get_mutable_key_handle(), &number_entries);
+      if (0 != rc)
+      {
+        throw format_error("Error getting number of array entries for key '" + key + "'", rc);
+      }
+
+      result.reserve(number_entries);
+
+      // Load all array entries
+      for (int i = 0; i < number_entries; i++)
+      {
+        KEY_HANDLE element_handle = {0};
+        int mutable_index = i;
+
+        rc = ZJSMGAEN(&parser.instance, get_mutable_key_handle(), &mutable_index, &element_handle);
+        if (0 != rc)
+        {
+          throw format_error("Error getting array element at index " + std::to_string(i) + " for key '" + key + "'.", rc);
+        }
+
+        std::string element_key = key + "[" + std::to_string(i) + "]";
+        result.push_back(JsonValueProxy(parser, element_key, element_handle));
+      }
+
+      return result;
+    }
+
     int getType() const
     {
       int rc = 0;
       int type = 0;
-      rc = ZJSNGJST(&parent.instance, get_mutable_key_handle(), &type);
+      rc = ZJSNGJST(&parser.instance, get_mutable_key_handle(), &type);
       if (0 != rc)
       {
         throw format_error("Error getting type for key '" + key + "'", rc);
@@ -266,8 +296,18 @@ public:
       return type;
     }
 
+    std::string getKeyPath() const
+    {
+      return key;
+    }
+
     std::string getKey() const
     {
+      size_t pos = key.find_last_of('.');
+      if (pos != std::string::npos)
+      {
+        return key.substr(pos + 1);
+      }
       return key;
     }
 
@@ -284,7 +324,7 @@ public:
       int rc = 0;
       int number_entries = 0;
 
-      rc = ZJSMGNUE(&parent.instance, get_mutable_key_handle(), &number_entries);
+      rc = ZJSMGNUE(&parser.instance, get_mutable_key_handle(), &number_entries);
       if (0 != rc)
       {
         throw format_error("Error getting number of entries for key '" + key + "'", rc);
@@ -299,7 +339,7 @@ public:
         int actual_length = 0;
         char *dynamic_buffer = nullptr;
 
-        rc = ZJSMGOEN(&parent.instance, get_mutable_key_handle(), &i, &buffer_ptr, &buffer_length, &value_handle, &actual_length);
+        rc = ZJSMGOEN(&parser.instance, get_mutable_key_handle(), &i, &buffer_ptr, &buffer_length, &value_handle, &actual_length);
 
         // if the buffer is too small, allocate a dynamic buffer
         if (HWTJ_BUFFER_TOO_SMALL == rc)
@@ -309,7 +349,7 @@ public:
 
           buffer_ptr = &dynamic_buffer[0];
           buffer_length = actual_length;
-          rc = ZJSMGOEN(&parent.instance, get_mutable_key_handle(), &i, &buffer_ptr, &buffer_length, &value_handle, &actual_length);
+          rc = ZJSMGOEN(&parser.instance, get_mutable_key_handle(), &i, &buffer_ptr, &buffer_length, &value_handle, &actual_length);
           keys.push_back(std::string(dynamic_buffer.begin(), dynamic_buffer.end()));
         }
 
@@ -339,14 +379,14 @@ public:
       KEY_HANDLE element_handle = {0};
       int mutable_index = index;
 
-      rc = ZJSMGAEN(&parent.instance, get_mutable_key_handle(), &mutable_index, &element_handle);
+      rc = ZJSMGAEN(&parser.instance, get_mutable_key_handle(), &mutable_index, &element_handle);
       if (0 != rc)
       {
         throw format_error("Error getting array element at index " + std::to_string(index) + " for key '" + key + "'.", rc);
       }
 
       std::string new_key = key + "[" + std::to_string(index) + "]";
-      return JsonValueProxy(parent, new_key, element_handle);
+      return JsonValueProxy(parser, new_key, element_handle);
     }
 
     JsonValueProxy operator[](const std::string &index_str) const
@@ -361,7 +401,7 @@ public:
       {
         // Create a nested search proxy
         std::string nested_key = key + "." + index_str;
-        return JsonValueProxy(parent, nested_key, key_handle, index_str);
+        return JsonValueProxy(parser, nested_key, const_cast<JsonValueProxy *>(this), index_str);
       }
       else
       {
@@ -369,7 +409,223 @@ public:
       }
     }
 
+    // Assignment operators for different types
+    JsonValueProxy &operator=(const std::string &value)
+    {
+      setValue(value, HWTJ_STRING_TYPE);
+      return *this;
+    }
+
+    JsonValueProxy &operator=(const char *value)
+    {
+      setValue(std::string(value), HWTJ_STRING_TYPE);
+      return *this;
+    }
+
+    JsonValueProxy &operator=(int value)
+    {
+      setValue(std::to_string(value), HWTJ_NUMBER_TYPE);
+      return *this;
+    }
+
+    JsonValueProxy &operator=(double value)
+    {
+      setValue(std::to_string(value), HWTJ_NUMBER_TYPE);
+      return *this;
+    }
+
+    JsonValueProxy &operator=(bool value)
+    {
+      setValue(std::to_string(value), HWTJ_BOOLEAN_TYPE);
+      return *this;
+    }
+
+    // Array assignment operators for creating and populating arrays
+    JsonValueProxy &operator=(const std::initializer_list<std::string> &list)
+    {
+      // Create empty array first
+      setValue("[]", HWTJ_JSONTEXTVALUETYPE);
+      // Then populate it with items
+      for (std::initializer_list<std::string>::const_iterator it = list.begin(); it != list.end(); ++it)
+      {
+        appendToArray(*it, HWTJ_STRING_TYPE);
+      }
+      return *this;
+    }
+
+    JsonValueProxy &operator=(const std::initializer_list<const char *> &list)
+    {
+      // Create empty array first
+      setValue("[]", HWTJ_JSONTEXTVALUETYPE);
+      // Then populate it with items
+      for (std::initializer_list<const char *>::const_iterator it = list.begin(); it != list.end(); ++it)
+      {
+        appendToArray(std::string(*it), HWTJ_STRING_TYPE);
+      }
+      return *this;
+    }
+
+    JsonValueProxy &operator=(const std::initializer_list<int> &list)
+    {
+      // Create empty array first, then populate it
+      setValue("[]", HWTJ_JSONTEXTVALUETYPE);
+      // Then populate it with items
+      for (std::initializer_list<int>::const_iterator it = list.begin(); it != list.end(); ++it)
+      {
+        appendToArray(std::to_string(*it), HWTJ_NUMBER_TYPE);
+      }
+      return *this;
+    }
+
+    JsonValueProxy &operator=(const std::initializer_list<double> &list)
+    {
+      // Create empty array first
+      setValue("[]", HWTJ_JSONTEXTVALUETYPE);
+      // Then populate it with items
+      for (std::initializer_list<double>::const_iterator it = list.begin(); it != list.end(); ++it)
+      {
+        appendToArray(std::to_string(*it), HWTJ_NUMBER_TYPE);
+      }
+      return *this;
+    }
+
+    JsonValueProxy &operator=(const std::initializer_list<bool> &list)
+    {
+      // Create empty array first
+      setValue("[]", HWTJ_JSONTEXTVALUETYPE);
+      // Then populate it with items
+      for (std::initializer_list<bool>::const_iterator it = list.begin(); it != list.end(); ++it)
+      {
+        appendToArray(*it ? "true" : "false", HWTJ_BOOLEAN_TYPE);
+      }
+      return *this;
+    }
+
+    // Array append operators using +=
+    JsonValueProxy &operator+=(const std::string &value)
+    {
+      appendToArray(value, HWTJ_STRING_TYPE);
+      return *this;
+    }
+
+    JsonValueProxy &operator+=(const char *value)
+    {
+      appendToArray(std::string(value), HWTJ_STRING_TYPE);
+      return *this;
+    }
+
+    JsonValueProxy &operator+=(int value)
+    {
+      appendToArray(std::to_string(value), HWTJ_NUMBER_TYPE);
+      return *this;
+    }
+
+    JsonValueProxy &operator+=(double value)
+    {
+      appendToArray(std::to_string(value), HWTJ_NUMBER_TYPE);
+      return *this;
+    }
+
+    JsonValueProxy &operator+=(bool value)
+    {
+      appendToArray(value ? "true" : "false", HWTJ_BOOLEAN_TYPE);
+      return *this;
+    }
+
+    // Array append operators for multiple items using initializer lists
+    JsonValueProxy &operator+=(const std::initializer_list<std::string> &list)
+    {
+      for (std::initializer_list<std::string>::const_iterator it = list.begin(); it != list.end(); ++it)
+      {
+        appendToArray(*it, HWTJ_STRING_TYPE);
+      }
+      return *this;
+    }
+
+    JsonValueProxy &operator+=(const std::initializer_list<const char *> &list)
+    {
+      for (std::initializer_list<const char *>::const_iterator it = list.begin(); it != list.end(); ++it)
+      {
+        appendToArray(std::string(*it), HWTJ_STRING_TYPE);
+      }
+      return *this;
+    }
+
+    JsonValueProxy &operator+=(const std::initializer_list<int> &list)
+    {
+      for (std::initializer_list<int>::const_iterator it = list.begin(); it != list.end(); ++it)
+      {
+        appendToArray(std::to_string(*it), HWTJ_NUMBER_TYPE);
+      }
+      return *this;
+    }
+
+    JsonValueProxy &operator+=(const std::initializer_list<double> &list)
+    {
+      for (std::initializer_list<double>::const_iterator it = list.begin(); it != list.end(); ++it)
+      {
+        appendToArray(std::to_string(*it), HWTJ_NUMBER_TYPE);
+      }
+      return *this;
+    }
+
+    JsonValueProxy &operator+=(const std::initializer_list<bool> &list)
+    {
+      for (std::initializer_list<bool>::const_iterator it = list.begin(); it != list.end(); ++it)
+      {
+        appendToArray(*it ? "true" : "false", HWTJ_BOOLEAN_TYPE);
+      }
+      return *this;
+    }
+
   private:
+    // TODO Make this method public and perhaps add some others too
+    void erase(const std::string &key_name)
+    {
+      int type = HWTJ_SEARCHTYPE_SHALLOW;
+      KEY_HANDLE starting_handle = {0};
+      KEY_HANDLE found_entry_handle = {0};
+
+      int rc = ZJSMSRCH(&parser.instance, &type, key_name.c_str(), &key_handle, &starting_handle, &found_entry_handle);
+      if (0 == rc)
+      {
+        ZJSMDEL(&parser.instance, &key_handle, &found_entry_handle);
+      }
+    }
+
+    void setValue(const std::string &value, int entry_type)
+    {
+      // Delete existing key from parent
+      auto key = getKey();
+      parent->erase(key);
+
+      // Create the new entry
+      int rc = ZJSMCREN(&parser.instance, &parent->key_handle, key.c_str(), value.c_str(), &entry_type, &key_handle);
+      if (0 != rc)
+      {
+        throw format_error("Error setting value for key '" + key + "'", rc);
+      }
+    }
+
+    void appendToArray(const std::string &value, int entry_type)
+    {
+      // Check if this is an array type
+      int type = this->getType();
+      if (type != HWTJ_ARRAY_TYPE)
+      {
+        throw std::runtime_error("Cannot append to non-array type for key '" + key + "'. Type was " + std::to_string(type));
+      }
+
+      // For array entries, use null/empty entry name as per IBM documentation
+      // HWTJCREN inserts JSON data directly into the array when entry name is null/empty
+      KEY_HANDLE new_entry_handle = {0};
+      int rc = ZJSMCREN(&parser.instance, &key_handle, nullptr, value.c_str(), &entry_type, &new_entry_handle);
+      if (0 != rc)
+      {
+        throw format_error("Error appending value to array for key '" + key + "'", rc);
+      }
+    }
+
     std::runtime_error format_error(const std::string &msg, int rc) const
     {
       std::stringstream ss;
@@ -438,7 +694,7 @@ public:
 
     // Return a proxy representing the root object
     KEY_HANDLE root_handle = {0};
-    return JsonValueProxy(*this, "root", root_handle);
+    return JsonValueProxy(*this, root_handle);
   }
 
   std::string stringify()
@@ -533,7 +789,8 @@ public:
 
   JsonValueProxy operator[](const std::string &key)
   {
-    return JsonValueProxy(*this, key);
+    KEY_HANDLE root_handle = {0};
+    return JsonValueProxy(*this, key, root_handle);
   }
 
   // Type-safe deserialization method
@@ -601,7 +858,7 @@ public:
   {                                                                                                                \
     StructType##_Registrar()                                                                                       \
     {                                                                                                              \
-      SerializationRegistry<StructType>::registerDeserializer(                                                     \
+      SerializationRegistry<StructType>::get_instance().registerDeserializer(                                      \
           [](StructType &obj, const ZJson::JsonValueProxy &json) { deserialize_fields(obj, json, __VA_ARGS__); }); \
     }                                                                                                              \
   };                                                                                                               \
@@ -670,7 +927,7 @@ typename std::enable_if<is_serializable<FieldType>::value>::type
 deserialize_field_impl(T &obj, const ZJson::JsonValueProxy &json, const FieldDescriptor<T, FieldType> &field)
 {
   FieldType nested_obj;
-  auto &deserializer = SerializationRegistry<FieldType>::getDeserializer();
+  auto &deserializer = SerializationRegistry<FieldType>::get_instance().getDeserializer();
   if (deserializer)
   {
     deserializer(nested_obj, json[field.name]);
@@ -717,9 +974,13 @@ inline std::ostream &operator<<(std::ostream &os, const ZJson::JsonValueProxy &p
   int type = proxy.getType();
   switch (type)
   {
-  case HWTJ_ARRAY_TYPE:
-    return os << "Array[]"; // TODO(Kelosky): print array type
-  case HWTJ_STRING_TYPE:    // String
+  case HWTJ_ARRAY_TYPE: // Array
+  {
+    // TODO(Kelosky): print array type
+    auto temp_proxy = static_cast<const std::vector<ZJson::JsonValueProxy>>(proxy);
+    return os << "Array[" << temp_proxy.size() << "]";
+  }
+  case HWTJ_STRING_TYPE: // String
     return os << static_cast<std::string>(proxy);
   case HWTJ_NUMBER_TYPE: // Number
     return os << static_cast<int>(proxy);
@@ -729,7 +990,7 @@ inline std::ostream &operator<<(std::ostream &os, const ZJson::JsonValueProxy &p
   {
     std::stringstream ss;
     ss << std::hex << type;
-    throw std::runtime_error("Unsupported JSON type for key '" + proxy.getKey() + "' type was x'" + ss.str() + "'");
+    throw std::runtime_error("Unsupported JSON type for key '" + proxy.getKeyPath() + "' type was x'" + ss.str() + "'");
   }
   }
 }

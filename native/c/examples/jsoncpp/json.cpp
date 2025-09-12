@@ -47,7 +47,6 @@ int main()
                            "  \"name\": \"John\",\n"
                            "  \"isMarried\": true,\n"
                            "  \"hasKids\": false,\n"
-                           "  \"a\": \"b\",\n"
                            "  \"age\": 30,\n"
                            "  \"pets\": [\"dog\", \"cat\", \"fish\"],\n"
                            "  \"address\": {\n"
@@ -88,6 +87,18 @@ int main()
     std::cout << "Number of keys in address: " << address_proxy.getKeys().size() << std::endl;
     std::cout << "Number of keys in work.office: " << root["work"]["office"].getKeys().size() << std::endl;
 
+    auto pets_proxy = static_cast<const std::vector<ZJson::JsonValueProxy>>(root["pets"]);
+    std::cout << "Number of pets: " << pets_proxy.size() << std::endl;
+    std::cout << "First pet: " << pets_proxy.front() << std::endl;
+    std::cout << "Last pet: " << pets_proxy.back() << std::endl;
+
+    root["name"] = "Johnny";
+    root["name2"] = "Smith";
+    root["address"]["zip"] = "54321";
+    root["age"] = 42;
+    root["pets"] += "bird";
+    root["newArray"] = {"uno"};
+    root["newArray"] += {"dos", "tres"};
     std::string serialized_json = json.stringify(2);
     std::cout << "Serialized JSON:\n"
               << serialized_json << std::endl;

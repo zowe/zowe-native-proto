@@ -38,7 +38,7 @@
 
 typedef int (*PTR32 HWTJINIT)(int *PTR32, int *PTR32, PARSE_HANDLE *PTR32, DIAG *PTR32) ATTRIBUTE(amode31);
 typedef int (*PTR32 HWTJGENC)(int *PTR32, PARSE_HANDLE *PTR32, int *PTR32, DIAG *PTR32) ATTRIBUTE(amode31);
-typedef int (*PTR32 HWTJCREN)(int *PTR32, PARSE_HANDLE *PTR32, KEY_HANDLE *PTR32, char *PTR32 *PTR32, int *PTR32, int *PTR32, char *PTR32 *PTR32, int *PTR32, KEY_HANDLE *PTR32, DIAG *PTR32) ATTRIBUTE(amode31);
+typedef int (*PTR32 HWTJCREN)(int *PTR32, PARSE_HANDLE *PTR32, KEY_HANDLE *PTR32, const char *PTR32 *PTR32, int *PTR32, int *PTR32, const char *PTR32 *PTR32, int *PTR32, KEY_HANDLE *PTR32, DIAG *PTR32) ATTRIBUTE(amode31);
 typedef int (*PTR32 HWTJDEL)(int *PTR32, PARSE_HANDLE *PTR32, KEY_HANDLE *PTR32, KEY_HANDLE *PTR32, DIAG *PTR32) ATTRIBUTE(amode31);
 typedef int (*PTR32 HWTJSENC)(int *PTR32, PARSE_HANDLE *PTR32, int *PTR32, DIAG *PTR32) ATTRIBUTE(amode31);
 typedef int (*PTR32 HWTJSERI)(int *PTR32, PARSE_HANDLE *PTR32, char *PTR32 *PTR32, int *PTR32, int *PTR32, DIAG *PTR32) ATTRIBUTE(amode31);
@@ -262,6 +262,22 @@ static int zjsm_get_object_entry(JSON_INSTANCE *PTR32 instance, KEY_HANDLE *PTR3
   diag_p = (DIAG * PTR32)((unsigned int)diag_p | 0x80000000);
 
   hwtjgoen(&rc, &instance->handle, key_handle, index, value, value_length, value_handle, actual_length, diag_p);
+  return rc;
+}
+
+static int zjsm_create_entry(JSON_INSTANCE *PTR32 instance, KEY_HANDLE *PTR32 parent_handle, const char *PTR32 entry_name, const char *PTR32 entry_value, int *PTR32 entry_type, KEY_HANDLE *PTR32 new_entry_handle)
+{
+  HWTJCREN hwtjcren = NULL;
+  GET_EP(HWT_Serv_JCREN, hwtjcren);
+
+  int rc = 0;
+  DIAG *PTR32 diag_p = &instance->diag;
+  diag_p = (DIAG * PTR32)((unsigned int)diag_p | 0x80000000);
+
+  int entry_name_length = entry_name ? (int)strlen(entry_name) : 0;
+  int entry_value_length = entry_value ? (int)strlen(entry_value) : 0;
+
+  hwtjcren(&rc, &instance->handle, parent_handle, &entry_name, &entry_name_length, entry_type, &entry_value, &entry_value_length, new_entry_handle, diag_p);
   return rc;
 }
 

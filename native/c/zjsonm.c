@@ -76,7 +76,6 @@ int ZJSMSENC(JSON_INSTANCE *PTR64 instance, int *PTR64 encoding)
 int ZJSMDEL(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, KEY_HANDLE *PTR64 value_handle)
 {
   int rc = 0;
-  return rc;
 
   JSON_INSTANCE instance31 = {0};
   memcpy(&instance31, instance, sizeof(JSON_INSTANCE));
@@ -351,6 +350,59 @@ int ZJSMGOEN(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *P
   }
 
   memcpy(instance, &instance31, sizeof(JSON_INSTANCE));
+
+  return rc;
+}
+
+#pragma prolog(ZJSMCREN, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma epilog(ZJSMCREN, " ZWEEPILG ")
+int ZJSMCREN(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 parent_handle, const char *PTR64 entry_name, const char *PTR64 entry_value, int *PTR64 entry_type, KEY_HANDLE *PTR64 new_entry_handle)
+{
+  int rc = 0;
+
+  JSON_INSTANCE instance31 = {0};
+  memcpy(&instance31, instance, sizeof(JSON_INSTANCE));
+
+  KEY_HANDLE parent_handle31 = {0};
+  memcpy(&parent_handle31, parent_handle, sizeof(KEY_HANDLE));
+
+  int entry_type31 = *entry_type;
+  KEY_HANDLE new_entry_handle31 = {0};
+
+  // Allocate 31-bit storage for entry name
+  int entry_name_length = entry_name ? (int)strlen(entry_name) + 1 : 0;
+  char *PTR32 entry_name31 = 0;
+  if (entry_name)
+  {
+    entry_name31 = storage_obtain31(entry_name_length);
+    memcpy(entry_name31, entry_name, strlen(entry_name));
+    entry_name31[entry_name_length - 1] = '\0';
+  }
+
+  // Allocate 31-bit storage for entry value
+  int entry_value_length = entry_value ? (int)strlen(entry_value) + 1 : 1;
+  char *PTR32 entry_value31 = storage_obtain31(entry_value_length);
+  if (entry_value)
+  {
+    memcpy(entry_value31, entry_value, strlen(entry_value));
+    entry_value31[entry_value_length - 1] = '\0';
+  }
+  else
+  {
+    entry_value31[0] = '\0';
+  }
+
+  rc = zjsm_create_entry(&instance31, &parent_handle31, entry_name31, entry_value31, &entry_type31, &new_entry_handle31);
+
+  memcpy(new_entry_handle, &new_entry_handle31, sizeof(KEY_HANDLE));
+  memcpy(instance, &instance31, sizeof(JSON_INSTANCE));
+
+  // Release allocated storage
+  if (entry_name)
+  {
+    storage_release(entry_name_length, entry_name31);
+  }
+  storage_release(entry_value_length, entry_value31);
 
   return rc;
 }
