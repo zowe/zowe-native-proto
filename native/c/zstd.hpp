@@ -895,7 +895,7 @@ public:
   typedef const_iterator iterator;
   typedef std::size_t size_type;
   typedef std::ptrdiff_t difference_type;
-  
+
   static const size_type npos = static_cast<size_type>(-1);
 
   // Default constructor
@@ -1032,7 +1032,7 @@ public:
     {
       throw std::out_of_range("string_view::copy: position out of range");
     }
-    
+
     size_type rcount = std::min(count, m_size - pos);
     std::copy(m_data + pos, m_data + pos + rcount, dest);
     return rcount;
@@ -1044,7 +1044,7 @@ public:
     {
       throw std::out_of_range("string_view::substr: position out of range");
     }
-    
+
     size_type rcount = std::min(count, m_size - pos);
     return string_view(m_data + pos, rcount);
   }
@@ -1055,7 +1055,8 @@ public:
     int result = rlen ? std::memcmp(m_data, other.m_data, rlen) : 0;
     if (result == 0)
     {
-      result = (m_size < other.m_size) ? -1 : (m_size > other.m_size) ? 1 : 0;
+      result = (m_size < other.m_size) ? -1 : (m_size > other.m_size) ? 1
+                                                                      : 0;
     }
     return result;
   }
@@ -1087,7 +1088,7 @@ public:
 
   bool starts_with(string_view prefix) const
   {
-    return m_size >= prefix.m_size && substr(0, prefix.m_size) == prefix;
+    return m_size >= prefix.m_size && substr(0, prefix.m_size).compare(prefix) == 0;
   }
 
   bool starts_with(char c) const
@@ -1102,7 +1103,7 @@ public:
 
   bool ends_with(string_view suffix) const
   {
-    return m_size >= suffix.m_size && substr(m_size - suffix.m_size) == suffix;
+    return m_size >= suffix.m_size && substr(m_size - suffix.m_size).compare(suffix) == 0;
   }
 
   bool ends_with(char c) const
@@ -1120,10 +1121,10 @@ public:
   {
     if (pos > m_size || str.m_size > m_size - pos)
       return npos;
-    
+
     if (str.empty())
       return pos;
-      
+
     const char *result = std::search(m_data + pos, m_data + m_size, str.m_data, str.m_data + str.m_size);
     return result == m_data + m_size ? npos : result - m_data;
   }
@@ -1132,7 +1133,7 @@ public:
   {
     if (pos >= m_size)
       return npos;
-      
+
     const char *result = static_cast<const char *>(std::memchr(m_data + pos, c, m_size - pos));
     return result ? result - m_data : npos;
   }
@@ -1151,14 +1152,14 @@ public:
   {
     if (str.m_size > m_size)
       return npos;
-      
+
     if (str.empty())
       return std::min(pos, m_size);
-      
+
     size_type start_pos = std::min(pos, m_size - str.m_size);
     for (size_type i = start_pos + 1; i > 0; --i)
     {
-      if (substr(i - 1, str.m_size) == str)
+      if (substr(i - 1, str.m_size).compare(str) == 0)
         return i - 1;
     }
     return npos;
@@ -1168,7 +1169,7 @@ public:
   {
     if (empty())
       return npos;
-      
+
     size_type start_pos = std::min(pos, m_size - 1);
     for (size_type i = start_pos + 1; i > 0; --i)
     {
@@ -1217,7 +1218,7 @@ public:
   {
     if (empty() || str.empty())
       return npos;
-      
+
     size_type start_pos = std::min(pos, m_size - 1);
     for (size_type i = start_pos + 1; i > 0; --i)
     {
@@ -1276,7 +1277,7 @@ public:
   {
     if (empty())
       return npos;
-      
+
     size_type start_pos = std::min(pos, m_size - 1);
     for (size_type i = start_pos + 1; i > 0; --i)
     {
@@ -1290,7 +1291,7 @@ public:
   {
     if (empty())
       return npos;
-      
+
     size_type start_pos = std::min(pos, m_size - 1);
     for (size_type i = start_pos + 1; i > 0; --i)
     {
@@ -1322,32 +1323,32 @@ inline void swap(string_view &a, string_view &b)
 }
 
 // Comparison operators
-inline bool operator==(string_view lhs, string_view rhs)
+inline bool operator==(const string_view &lhs, const string_view &rhs)
 {
   return lhs.size() == rhs.size() && lhs.compare(rhs) == 0;
 }
 
-inline bool operator!=(string_view lhs, string_view rhs)
+inline bool operator!=(const string_view &lhs, const string_view &rhs)
 {
   return !(lhs == rhs);
 }
 
-inline bool operator<(string_view lhs, string_view rhs)
+inline bool operator<(const string_view &lhs, const string_view &rhs)
 {
   return lhs.compare(rhs) < 0;
 }
 
-inline bool operator<=(string_view lhs, string_view rhs)
+inline bool operator<=(const string_view &lhs, const string_view &rhs)
 {
   return lhs.compare(rhs) <= 0;
 }
 
-inline bool operator>(string_view lhs, string_view rhs)
+inline bool operator>(const string_view &lhs, const string_view &rhs)
 {
   return lhs.compare(rhs) > 0;
 }
 
-inline bool operator>=(string_view lhs, string_view rhs)
+inline bool operator>=(const string_view &lhs, const string_view &rhs)
 {
   return lhs.compare(rhs) >= 0;
 }
