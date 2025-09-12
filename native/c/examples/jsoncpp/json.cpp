@@ -73,10 +73,10 @@ void basic_example()
 
   std::cout << "\n--- Test 1: Serialization of Complex Nested Structure ---" << std::endl;
   auto json_result = zserde::to_string(person);
-  if (json_result.is_ok())
+  if (json_result.has_value())
   {
     std::cout << "✅ Serialization SUCCESS!" << std::endl;
-    std::cout << "Compact JSON: " << json_result.unwrap() << std::endl;
+    std::cout << "Compact JSON: " << json_result.value() << std::endl;
   }
   else
   {
@@ -86,11 +86,11 @@ void basic_example()
 
   std::cout << "\n--- Test 2: Pretty-Printed JSON ---" << std::endl;
   auto pretty_result = zserde::to_string_pretty(person);
-  if (pretty_result.is_ok())
+  if (pretty_result.has_value())
   {
     std::cout << "✅ Pretty print SUCCESS!" << std::endl;
     std::cout << "Formatted JSON:\n"
-              << pretty_result.unwrap() << std::endl;
+              << pretty_result.value() << std::endl;
   }
   else
   {
@@ -127,9 +127,9 @@ void basic_example()
   })";
 
   auto person_result = zserde::from_str<Person>(complex_json);
-  if (person_result.is_ok())
+  if (person_result.has_value())
   {
-    Person p = person_result.unwrap();
+    Person p = person_result.value();
     std::cout << "✅ Deserialization SUCCESS!" << std::endl;
     std::cout << "Person: " << p.name << " (age " << p.age << ")" << std::endl;
     std::cout << "Address: " << p.address.street << ", " << p.address.city << ", " << p.address.state << std::endl;
@@ -145,23 +145,23 @@ void basic_example()
   }
   else
   {
-    std::cout << "❌ Deserialization FAILED: " << person_result.unwrap_err().what() << std::endl;
+    std::cout << "❌ Deserialization FAILED: " << person_result.error().what() << std::endl;
   }
 
   std::cout << "\n--- Test 4: Individual Structure Serialization ---" << std::endl;
 
   // Test individual Pet serialization
   auto pet_json = zserde::to_string(dog);
-  if (pet_json.is_ok())
+  if (pet_json.has_value())
   {
-    std::cout << "✅ Pet serialization: " << pet_json.unwrap() << std::endl;
+    std::cout << "✅ Pet serialization: " << pet_json.value() << std::endl;
   }
 
   // Test individual Address serialization
   auto address_json = zserde::to_string(address);
-  if (address_json.is_ok())
+  if (address_json.has_value())
   {
-    std::cout << "✅ Address serialization: " << address_json.unwrap() << std::endl;
+    std::cout << "✅ Address serialization: " << address_json.value() << std::endl;
   }
 
   std::cout << "\n=== All tests completed! ===" << std::endl;

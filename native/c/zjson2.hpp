@@ -23,6 +23,7 @@
 #include <cstdio>
 #include "zjsonm.h"
 #include "zjsontype.h"
+#include "zstd.hpp"
 #include <hwtjic.h> // ensure to include /usr/include
 
 // Forward declarations
@@ -34,10 +35,6 @@ template <typename T>
 struct Serializable;
 template <typename T>
 struct Deserializable;
-
-// Result type similar to Rust's Result<T, E>
-template <typename T, typename E = Error>
-class Result;
 } // namespace zserde
 
 namespace zserde
@@ -112,111 +109,6 @@ public:
   static Error invalid_data(const std::string &msg)
   {
     return Error(InvalidData, "Invalid data: " + msg);
-  }
-};
-
-/**
- * Result type wrapper similar to Rust's Result<T, E>
- */
-template <typename T, typename E>
-class Result
-{
-private:
-  bool is_ok_;
-  union
-  {
-    T value_;
-    E error_;
-  };
-
-public:
-  Result(const T &value) : is_ok_(true), value_(value)
-  {
-  }
-  Result(const E &error) : is_ok_(false), error_(error)
-  {
-  }
-
-  Result(const Result &other) : is_ok_(other.is_ok_)
-  {
-    if (is_ok_)
-    {
-      new (&value_) T(other.value_);
-    }
-    else
-    {
-      new (&error_) E(other.error_);
-    }
-  }
-
-  Result &operator=(const Result &other)
-  {
-    if (this != &other)
-    {
-      if (is_ok_)
-      {
-        value_.~T();
-      }
-      else
-      {
-        error_.~E();
-      }
-
-      is_ok_ = other.is_ok_;
-      if (is_ok_)
-      {
-        new (&value_) T(other.value_);
-      }
-      else
-      {
-        new (&error_) E(other.error_);
-      }
-    }
-    return *this;
-  }
-
-  ~Result()
-  {
-    if (is_ok_)
-    {
-      value_.~T();
-    }
-    else
-    {
-      error_.~E();
-    }
-  }
-
-  bool is_ok() const
-  {
-    return is_ok_;
-  }
-  bool is_err() const
-  {
-    return !is_ok_;
-  }
-
-  const T &unwrap() const
-  {
-    if (!is_ok_)
-    {
-      throw std::runtime_error("Called unwrap on an error Result");
-    }
-    return value_;
-  }
-
-  T unwrap_or(const T &default_value) const
-  {
-    return is_ok_ ? value_ : default_value;
-  }
-
-  const E &unwrap_err() const
-  {
-    if (is_ok_)
-    {
-      throw std::runtime_error("Called unwrap_err on an ok Result");
-    }
-    return error_;
   }
 };
 
@@ -554,10 +446,10 @@ struct Deserializable
 {
   static constexpr bool value = false;
 
-  static Result<T> deserialize(const Value &value)
+  static zstd::expected<T, Error> deserialize(const Value &value)
   {
     static_assert(Deserializable<T>::value, "Type must implement Deserializable trait");
-    return Result<T>(Error::invalid_type("deserializable", "unknown"));
+    return zstd::make_unexpected(Error::invalid_type("deserializable", "unknown"));
   }
 };
 
@@ -576,13 +468,13 @@ template <>
 struct Deserializable<bool>
 {
   static constexpr bool value = true;
-  static Result<bool> deserialize(const Value &value)
+  static zstd::expected<bool, Error> deserialize(const Value &value)
   {
     if (!value.is_bool())
     {
-      return Result<bool>(Error::invalid_type("bool", "other"));
+      return zstd::make_unexpected(Error::invalid_type("bool", "other"));
     }
-    return Result<bool>(value.as_bool());
+    return value.as_bool();
   }
 };
 
@@ -600,13 +492,13 @@ template <>
 struct Deserializable<int>
 {
   static constexpr bool value = true;
-  static Result<int> deserialize(const Value &value)
+  static zstd::expected<int, Error> deserialize(const Value &value)
   {
     if (!value.is_number())
     {
-      return Result<int>(Error::invalid_type("number", "other"));
+      return zstd::make_unexpected(Error::invalid_type("number", "other"));
     }
-    return Result<int>(value.as_int());
+    return value.as_int();
   }
 };
 
@@ -624,13 +516,13 @@ template <>
 struct Deserializable<double>
 {
   static constexpr bool value = true;
-  static Result<double> deserialize(const Value &value)
+  static zstd::expected<double, Error> deserialize(const Value &value)
   {
     if (!value.is_number())
     {
-      return Result<double>(Error::invalid_type("number", "other"));
+      return zstd::make_unexpected(Error::invalid_type("number", "other"));
     }
-    return Result<double>(value.as_number());
+    return value.as_number();
   }
 };
 
@@ -648,13 +540,13 @@ template <>
 struct Deserializable<std::string>
 {
   static constexpr bool value = true;
-  static Result<std::string> deserialize(const Value &value)
+  static zstd::expected<std::string, Error> deserialize(const Value &value)
   {
     if (!value.is_string())
     {
-      return Result<std::string>(Error::invalid_type("string", "other"));
+      return zstd::make_unexpected(Error::invalid_type("string", "other"));
     }
-    return Result<std::string>(value.as_string());
+    return value.as_string();
   }
 };
 
@@ -680,11 +572,11 @@ template <typename T>
 struct Deserializable<std::vector<T>>
 {
   static constexpr bool value = Deserializable<T>::value;
-  static Result<std::vector<T>> deserialize(const Value &value)
+  static zstd::expected<std::vector<T>, Error> deserialize(const Value &value)
   {
     if (!value.is_array())
     {
-      return Result<std::vector<T>>(Error::invalid_type("array", "other"));
+      return zstd::make_unexpected(Error::invalid_type("array", "other"));
     }
 
     std::vector<T> result;
@@ -694,14 +586,14 @@ struct Deserializable<std::vector<T>>
     for (const auto &item : array)
     {
       auto item_result = Deserializable<T>::deserialize(item);
-      if (item_result.is_err())
+      if (!item_result.has_value())
       {
-        return Result<std::vector<T>>(item_result.unwrap_err());
+        return zstd::make_unexpected(item_result.error());
       }
-      result.push_back(item_result.unwrap());
+      result.push_back(item_result.value());
     }
 
-    return Result<std::vector<T>>(result);
+    return result;
   }
 };
 
@@ -768,7 +660,7 @@ class SerializationRegistry
 {
 public:
   using SerializeFunc = std::function<Value(const T &)>;
-  using DeserializeFunc = std::function<Result<T>(const Value &)>;
+  using DeserializeFunc = std::function<zstd::expected<T, Error>(const Value &)>;
 
   static void register_serializer(SerializeFunc func)
   {
@@ -809,36 +701,36 @@ public:
 
 // Helper implementation functions for C++14 compatibility
 template <typename T>
-Result<std::string> to_string_impl(const T &value, std::true_type)
+zstd::expected<std::string, Error> to_string_impl(const T &value, std::true_type)
 {
   Value serialized = Serializable<T>::serialize(value);
   std::string json_str = value_to_json_string(serialized);
-  return Result<std::string>(json_str);
+  return json_str;
 }
 
 template <typename T>
-Result<std::string> to_string_impl(const T &value, std::false_type)
+zstd::expected<std::string, Error> to_string_impl(const T &value, std::false_type)
 {
   if (SerializationRegistry<T>::has_serializer())
   {
     Value serialized = SerializationRegistry<T>::get_serializer()(value);
     std::string json_str = value_to_json_string(serialized);
-    return Result<std::string>(json_str);
+    return json_str;
   }
   else
   {
-    return Result<std::string>(Error::invalid_type("serializable", "unknown"));
+    return zstd::make_unexpected(Error::invalid_type("serializable", "unknown"));
   }
 }
 
 template <typename T>
-Result<T> from_str_impl(const Value &parsed, std::true_type)
+zstd::expected<T, Error> from_str_impl(const Value &parsed, std::true_type)
 {
   return Deserializable<T>::deserialize(parsed);
 }
 
 template <typename T>
-Result<T> from_str_impl(const Value &parsed, std::false_type)
+zstd::expected<T, Error> from_str_impl(const Value &parsed, std::false_type)
 {
   if (SerializationRegistry<T>::has_deserializer())
   {
@@ -846,13 +738,13 @@ Result<T> from_str_impl(const Value &parsed, std::false_type)
   }
   else
   {
-    return Result<T>(Error::invalid_type("deserializable", "unknown"));
+    return zstd::make_unexpected(Error::invalid_type("deserializable", "unknown"));
   }
 }
 
 // to_string function similar to serde_json::to_string
 template <typename T>
-Result<std::string> to_string(const T &value)
+zstd::expected<std::string, Error> to_string(const T &value)
 {
   try
   {
@@ -860,11 +752,11 @@ Result<std::string> to_string(const T &value)
   }
   catch (const Error &e)
   {
-    return Result<std::string>(e);
+    return zstd::make_unexpected(e);
   }
   catch (const std::exception &e)
   {
-    return Result<std::string>(Error(Error::Custom, e.what()));
+    return zstd::make_unexpected(Error(Error::Custom, e.what()));
   }
 }
 
@@ -1037,7 +929,7 @@ Value json_handle_to_value(JSON_INSTANCE *instance, KEY_HANDLE *key_handle)
 
 // from_str function similar to serde_json::from_str
 template <typename T>
-Result<T> from_str(const std::string &json_str)
+zstd::expected<T, Error> from_str(const std::string &json_str)
 {
   try
   {
@@ -1046,14 +938,14 @@ Result<T> from_str(const std::string &json_str)
     int rc = ZJSMINIT(&instance);
     if (rc != 0)
     {
-      return Result<T>(Error(Error::Custom, "Failed to initialize JSON parser"));
+      return zstd::make_unexpected(Error(Error::Custom, "Failed to initialize JSON parser"));
     }
 
     rc = ZJSMPARS(&instance, json_str.c_str());
     if (rc != 0)
     {
       ZJSMTERM(&instance);
-      return Result<T>(Error(Error::Custom, "Failed to parse JSON string"));
+      return zstd::make_unexpected(Error(Error::Custom, "Failed to parse JSON string"));
     }
 
     // Get root handle and convert to Value
@@ -1067,11 +959,11 @@ Result<T> from_str(const std::string &json_str)
   }
   catch (const Error &e)
   {
-    return Result<T>(e);
+    return zstd::make_unexpected(e);
   }
   catch (const std::exception &e)
   {
-    return Result<T>(Error(Error::Custom, e.what()));
+    return zstd::make_unexpected(Error(Error::Custom, e.what()));
   }
 }
 
@@ -1146,10 +1038,10 @@ std::string add_json_indentation(const std::string &json_str, int spaces)
 
 // to_string_pretty function similar to serde_json::to_string_pretty
 template <typename T>
-Result<std::string> to_string_pretty(const T &value)
+zstd::expected<std::string, Error> to_string_pretty(const T &value)
 {
   auto result = to_string(value);
-  if (result.is_err())
+  if (!result.has_value())
   {
     return result;
   }
@@ -1157,12 +1049,12 @@ Result<std::string> to_string_pretty(const T &value)
   try
   {
     // Use our simple indentation function instead of ZJson
-    std::string pretty_json = add_json_indentation(result.unwrap(), 2);
-    return Result<std::string>(pretty_json);
+    std::string pretty_json = add_json_indentation(result.value(), 2);
+    return pretty_json;
   }
   catch (const std::exception &e)
   {
-    return Result<std::string>(Error(Error::Custom, e.what()));
+    return zstd::make_unexpected(Error(Error::Custom, e.what()));
   }
 }
 
@@ -1407,19 +1299,19 @@ Value parse_json_string(const std::string &json_str)
   struct Deserializable<StructType>                                                                           \
   {                                                                                                           \
     static constexpr bool value = true;                                                                       \
-    static Result<StructType> deserialize(const Value &value)                                                 \
+    static zstd::expected<StructType, Error> deserialize(const Value &value)                                  \
     {                                                                                                         \
       if (!value.is_object())                                                                                 \
       {                                                                                                       \
-        return Result<StructType>(Error::invalid_type("object", "other"));                                    \
+        return zstd::make_unexpected(Error::invalid_type("object", "other"));                                 \
       }                                                                                                       \
       StructType result{};                                                                                    \
       bool deserialize_result = deserialize_fields(result, value.as_object(), __VA_ARGS__);                   \
       if (!deserialize_result)                                                                                \
       {                                                                                                       \
-        return Result<StructType>(Error::invalid_data("Failed to deserialize fields"));                       \
+        return zstd::make_unexpected(Error::invalid_data("Failed to deserialize fields"));                    \
       }                                                                                                       \
-      return Result<StructType>(result);                                                                      \
+      return result;                                                                                          \
     }                                                                                                         \
   };                                                                                                          \
   }                                                                                                           \
@@ -1476,11 +1368,11 @@ template <typename T, typename FieldType>
 bool deserialize_field_impl(T &obj, const Field<T, FieldType> &field, const Value &value, std::true_type)
 {
   auto result = Deserializable<FieldType>::deserialize(value);
-  if (result.is_err())
+  if (!result.has_value())
   {
     return false;
   }
-  obj.*(field.member) = result.unwrap();
+  obj.*(field.member) = result.value();
   return true;
 }
 
@@ -1707,25 +1599,25 @@ struct RenameAll
  *
  *     // Serialize to JSON string (similar to serde_json::to_string)
  *     auto json_result = zserde::to_string(person);
- *     if (json_result.is_ok()) {
- *         std::cout << "JSON: " << json_result.unwrap() << std::endl;
+ *     if (json_result.has_value()) {
+ *         std::cout << "JSON: " << json_result.value() << std::endl;
  *         // Output: {"name":"John Doe","age":30,"is_active":true}
  *     }
  *
  *     // Pretty print (similar to serde_json::to_string_pretty)
  *     auto pretty_result = zserde::to_string_pretty(person);
- *     if (pretty_result.is_ok()) {
- *         std::cout << pretty_result.unwrap() << std::endl;
+ *     if (pretty_result.has_value()) {
+ *         std::cout << pretty_result.value() << std::endl;
  *     }
  *
  *     // Deserialize from JSON string (similar to serde_json::from_str)
  *     std::string json = R"({"name":"Jane Doe","age":25,"is_active":false})";
  *     auto person_result = zserde::from_str<Person>(json);
- *     if (person_result.is_ok()) {
- *         Person p = person_result.unwrap();
+ *     if (person_result.has_value()) {
+ *         Person p = person_result.value();
  *         std::cout << "Name: " << p.name << ", Age: " << p.age << std::endl;
  *     } else {
- *         std::cout << "Error: " << person_result.unwrap_err().what() << std::endl;
+ *         std::cout << "Error: " << person_result.error().what() << std::endl;
  *     }
  * }
  *
@@ -1796,28 +1688,28 @@ struct RenameAll
  *     };
  *
  *     auto json_result = zserde::to_string_pretty(emp);
- *     if (json_result.is_ok()) {
- *         std::cout << json_result.unwrap() << std::endl;
+ *     if (json_result.has_value()) {
+ *         std::cout << json_result.value() << std::endl;
  *     }
  * }
  *
  * ============================================================================
- * ERROR HANDLING (similar to Rust Result<T, E> pattern)
+ * ERROR HANDLING (using zstd::expected<T, E> pattern similar to Rust Result<T, E>)
  * ============================================================================
  *
  * void error_handling_example() {
  *     std::string invalid_json = R"({"name": 123, "age": "not_a_number"})";
  *
  *     auto result = zserde::from_str<Person>(invalid_json);
- *     if (result.is_err()) {
- *         const auto& error = result.unwrap_err();
+ *     if (!result.has_value()) {
+ *         const auto& error = result.error();
  *         std::cout << "Deserialization failed: " << error.what() << std::endl;
  *         std::cout << "Error kind: " << error.kind() << std::endl;
  *     }
  *
- *     // Using unwrap_or for default values
+ *     // Using value_or for default values
  *     Person default_person{"Unknown", 0, false};
- *     Person person = result.unwrap_or(default_person);
+ *     Person person = result.value_or(default_person);
  * }
  *
  * ============================================================================
@@ -1828,8 +1720,8 @@ struct RenameAll
  * void serialize_if_possible(const T& obj) {
  *     if constexpr (zserde::Serializable<T>::value) {
  *         auto result = zserde::to_string(obj);
- *         if (result.is_ok()) {
- *             std::cout << "Serialized: " << result.unwrap() << std::endl;
+ *         if (result.has_value()) {
+ *             std::cout << "Serialized: " << result.value() << std::endl;
  *         }
  *     } else {
  *         std::cout << "Type is not serializable" << std::endl;
@@ -1845,18 +1737,18 @@ struct RenameAll
  *     Person person{"John", 30, true};
  *
  *     // Convert to JSON using ZSerde (uses zjsonm C API internally)
- *     auto json_str = zserde::to_string(person).unwrap();
+ *     auto json_str = zserde::to_string(person).value();
  *     std::cout << "JSON: " << json_str << std::endl;
  *
  *     // Parse JSON back to object (uses zjsonm C API internally)
  *     auto parsed_person = zserde::from_str<Person>(json_str);
- *     if (parsed_person.is_ok()) {
- *         Person p = parsed_person.unwrap();
+ *     if (parsed_person.has_value()) {
+ *         Person p = parsed_person.value();
  *         std::cout << "Parsed: " << p.name << ", age " << p.age << std::endl;
  *     }
  *
  *     // Pretty print JSON
- *     auto pretty_json = zserde::to_string_pretty(person).unwrap();
+ *     auto pretty_json = zserde::to_string_pretty(person).value();
  *     std::cout << "Pretty JSON:\n" << pretty_json << std::endl;
  * }
  */
