@@ -370,9 +370,9 @@ int ZJSMCREN(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 parent_handle, con
   KEY_HANDLE new_entry_handle31 = {0};
 
   // Allocate 31-bit storage for entry name
-  int entry_name_length = entry_name ? (int)strlen(entry_name) + 1 : 0;
+  int entry_name_length = entry_name != NULL ? (int)strlen(entry_name) + 1 : 0;
   char *PTR32 entry_name31 = 0;
-  if (entry_name)
+  if (entry_name != NULL)
   {
     entry_name31 = storage_obtain31(entry_name_length);
     memcpy(entry_name31, entry_name, strlen(entry_name));
@@ -380,16 +380,13 @@ int ZJSMCREN(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 parent_handle, con
   }
 
   // Allocate 31-bit storage for entry value
-  int entry_value_length = entry_value ? (int)strlen(entry_value) + 1 : 1;
-  char *PTR32 entry_value31 = storage_obtain31(entry_value_length);
-  if (entry_value)
+  int entry_value_length = entry_value != NULL ? (int)strlen(entry_value) + 1 : 0;
+  char *PTR32 entry_value31 = 0;
+  if (entry_value != NULL)
   {
+    entry_value31 = storage_obtain31(entry_value_length);
     memcpy(entry_value31, entry_value, strlen(entry_value));
     entry_value31[entry_value_length - 1] = '\0';
-  }
-  else
-  {
-    entry_value31[0] = '\0';
   }
 
   rc = zjsm_create_entry(&instance31, &parent_handle31, entry_name31, entry_value31, &entry_type31, &new_entry_handle31);
@@ -398,11 +395,14 @@ int ZJSMCREN(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 parent_handle, con
   memcpy(instance, &instance31, sizeof(JSON_INSTANCE));
 
   // Release allocated storage
-  if (entry_name)
+  if (entry_name31)
   {
     storage_release(entry_name_length, entry_name31);
   }
-  storage_release(entry_value_length, entry_value31);
+  if (entry_value31)
+  {
+    storage_release(entry_value_length, entry_value31);
+  }
 
   return rc;
 }

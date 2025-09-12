@@ -787,23 +787,45 @@ public:
 template <typename T>
 zstd::expected<std::string, Error> to_string_impl(const T &value, std::true_type)
 {
-  Value serialized = Serializable<T>::serialize(value);
-  std::string json_str = value_to_json_string(serialized);
-  return json_str;
+  try
+  {
+    Value serialized = Serializable<T>::serialize(value);
+    std::string json_str = value_to_json_string(serialized);
+    return json_str;
+  }
+  catch (const Error &e)
+  {
+    return zstd::make_unexpected(e);
+  }
+  catch (const std::exception &e)
+  {
+    return zstd::make_unexpected(Error(Error::Custom, e.what()));
+  }
 }
 
 template <typename T>
 zstd::expected<std::string, Error> to_string_impl(const T &value, std::false_type)
 {
-  if (SerializationRegistry<T>::has_serializer())
+  try
   {
-    Value serialized = SerializationRegistry<T>::get_serializer()(value);
-    std::string json_str = value_to_json_string(serialized);
-    return json_str;
+    if (SerializationRegistry<T>::has_serializer())
+    {
+      Value serialized = SerializationRegistry<T>::get_serializer()(value);
+      std::string json_str = value_to_json_string(serialized);
+      return json_str;
+    }
+    else
+    {
+      return zstd::make_unexpected(Error::invalid_type("serializable", "unknown"));
+    }
   }
-  else
+  catch (const Error &e)
   {
-    return zstd::make_unexpected(Error::invalid_type("serializable", "unknown"));
+    return zstd::make_unexpected(e);
+  }
+  catch (const std::exception &e)
+  {
+    return zstd::make_unexpected(Error(Error::Custom, e.what()));
   }
 }
 
@@ -1142,165 +1164,270 @@ zstd::expected<std::string, Error> to_string_pretty(const T &value)
   }
 }
 
-// Convert Value to JSON string with proper escaping
-std::string value_to_json_string(const Value &value)
+// Helper function to add Value to JSON instance using ZJSM API
+int value_to_json_instance(JSON_INSTANCE *instance, KEY_HANDLE *parent_handle, const std::string &entry_name, const Value &value)
 {
+  int rc = 0;
+  int entry_type = 0;
+  KEY_HANDLE new_entry_handle = {0};
+  const char *entry_name_ptr = entry_name.empty() ? nullptr : entry_name.c_str();
+
   switch (value.get_type())
   {
   case Value::Null:
-    return "null";
+    entry_type = HWTJ_NULLVALUETYPE;
+    rc = ZJSMCREN(instance, parent_handle, entry_name_ptr, nullptr, &entry_type, &new_entry_handle);
+    break;
+
   case Value::Bool:
-    return value.as_bool() ? "true" : "false";
+    entry_type = value.as_bool() ? HWTJ_TRUEVALUETYPE : HWTJ_FALSEVALUETYPE;
+    rc = ZJSMCREN(instance, parent_handle, entry_name_ptr, nullptr, &entry_type, &new_entry_handle);
+    break;
+
   case Value::Number:
   {
+    entry_type = HWTJ_NUMVALUETYPE;
     std::stringstream ss;
     ss << value.as_number();
-    return ss.str();
+    std::string num_str = ss.str();
+    rc = ZJSMCREN(instance, parent_handle, entry_name_ptr, num_str.c_str(), &entry_type, &new_entry_handle);
+    break;
   }
+
   case Value::String:
-  {
-    // Properly escape string according to JSON standard
-    std::string escaped = "\"";
-    for (char c : value.as_string())
-    {
-      switch (c)
-      {
-      case '"':
-        escaped += "\\\"";
-        break;
-      case '\\':
-        escaped += "\\\\";
-        break;
-      case '\b':
-        escaped += "\\b";
-        break;
-      case '\f':
-        escaped += "\\f";
-        break;
-      case '\n':
-        escaped += "\\n";
-        break;
-      case '\r':
-        escaped += "\\r";
-        break;
-      case '\t':
-        escaped += "\\t";
-        break;
-      case '\0':
-        escaped += "\\u0000";
-        break;
-      default:
-        if (static_cast<unsigned char>(c) < 0x20)
-        {
-          // Control characters - escape as \uXXXX
-          char buf[7];
-          sprintf(buf, "\\u%04x", static_cast<unsigned char>(c));
-          escaped += buf;
-        }
-        else
-        {
-          escaped += c;
-        }
-        break;
-      }
-    }
-    escaped += "\"";
-    return escaped;
-  }
+    entry_type = HWTJ_STRINGVALUETYPE;
+    // ZJSMCREN handles all string escaping automatically
+    rc = ZJSMCREN(instance, parent_handle, entry_name_ptr, value.as_string().c_str(), &entry_type, &new_entry_handle);
+    break;
+
   case Value::Array:
   {
-    std::string result = "[";
+    entry_type = HWTJ_JSONTEXTVALUETYPE;
+    rc = ZJSMCREN(instance, parent_handle, entry_name_ptr, "[]", &entry_type, &new_entry_handle);
+    if (rc != 0)
+      break;
+
+    // Add all array elements
     const auto &arr = value.as_array();
-    for (size_t i = 0; i < arr.size(); ++i)
+    for (const auto &item : arr)
     {
-      if (i > 0)
-        result += ",";
-      result += value_to_json_string(arr[i]);
+      rc = value_to_json_instance(instance, &new_entry_handle, "", item);
+      if (rc != 0)
+        break;
     }
-    result += "]";
-    return result;
+    break;
   }
+
   case Value::Object:
   {
-    std::string result = "{";
+    entry_type = HWTJ_JSONTEXTVALUETYPE;
+    rc = ZJSMCREN(instance, parent_handle, entry_name_ptr, "{}", &entry_type, &new_entry_handle);
+    if (rc != 0)
+      break;
+
+    // Add all object properties
     const auto &obj = value.as_object();
-    bool first = true;
     for (const auto &pair : obj)
     {
-      if (!first)
-        result += ",";
-      first = false;
+      rc = value_to_json_instance(instance, &new_entry_handle, pair.first, pair.second);
+      if (rc != 0)
+        break;
+    }
+    break;
+  }
 
-      // Escape the key name
-      std::string escaped_key = "\"";
-      for (char c : pair.first)
+  default:
+    entry_type = HWTJ_NULLVALUETYPE;
+    rc = ZJSMCREN(instance, parent_handle, entry_name_ptr, nullptr, &entry_type, &new_entry_handle);
+    break;
+  }
+
+  return rc;
+}
+
+// Convert Value to JSON string using ZJSM API
+std::string value_to_json_string(const Value &value)
+{
+  JSON_INSTANCE instance = {0};
+  int rc = ZJSMINIT(&instance);
+  if (rc != 0)
+  {
+    std::stringstream ss;
+    ss << std::hex << rc;
+    throw Error(Error::Custom, "Failed to initialize JSON parser. RC: x'" + ss.str() + "'");
+  }
+
+  // Start with an empty root object/array/value
+  KEY_HANDLE root_handle = {0};
+
+  try
+  {
+    // For root level values, we need to handle them specially
+    if (value.get_type() == Value::Object || value.get_type() == Value::Array)
+    {
+      // Parse a minimal JSON to get a root container
+      const char *init_json = (value.get_type() == Value::Object) ? "{}" : "[]";
+      rc = ZJSMPARS(&instance, init_json);
+      if (rc != 0)
       {
-        switch (c)
+        ZJSMTERM(&instance);
+        std::stringstream ss;
+        ss << std::hex << rc;
+        throw Error(Error::Custom, "Failed to parse initial JSON container. RC: x'" + ss.str() + "'");
+      }
+
+      // Clear the initial content and rebuild
+      if (value.get_type() == Value::Object)
+      {
+        const auto &obj = value.as_object();
+        for (const auto &pair : obj)
         {
-        case '"':
-          escaped_key += "\\\"";
-          break;
-        case '\\':
-          escaped_key += "\\\\";
-          break;
-        case '\b':
-          escaped_key += "\\b";
-          break;
-        case '\f':
-          escaped_key += "\\f";
-          break;
-        case '\n':
-          escaped_key += "\\n";
-          break;
-        case '\r':
-          escaped_key += "\\r";
-          break;
-        case '\t':
-          escaped_key += "\\t";
-          break;
-        default:
-          if (static_cast<unsigned char>(c) < 0x20)
+          rc = value_to_json_instance(&instance, &root_handle, pair.first, pair.second);
+          if (rc != 0)
           {
-            char buf[7];
-            sprintf(buf, "\\u%04x", static_cast<unsigned char>(c));
-            escaped_key += buf;
+            ZJSMTERM(&instance);
+            std::stringstream ss;
+            ss << std::hex << rc;
+            throw Error(Error::Custom, "Failed to serialize object property '" + pair.first + "'. RC: x'" + ss.str() + "'");
           }
-          else
-          {
-            escaped_key += c;
-          }
-          break;
         }
       }
-      escaped_key += "\"";
-
-      result += escaped_key + ":" + value_to_json_string(pair.second);
+      else // Array
+      {
+        const auto &arr = value.as_array();
+        for (size_t i = 0; i < arr.size(); ++i)
+        {
+          rc = value_to_json_instance(&instance, &root_handle, "", arr[i]);
+          if (rc != 0)
+          {
+            ZJSMTERM(&instance);
+            std::stringstream ss;
+            ss << std::hex << rc;
+            throw Error(Error::Custom, "Failed to serialize array element at index " + std::to_string(i) + ". RC: x'" + ss.str() + "'");
+          }
+        }
+      }
     }
-    result += "}";
+    else
+    {
+      // For primitive values, create a temporary object to hold the value
+      rc = ZJSMPARS(&instance, "{}");
+      if (rc != 0)
+      {
+        ZJSMTERM(&instance);
+        std::stringstream ss;
+        ss << std::hex << rc;
+        throw Error(Error::Custom, "Failed to parse temporary JSON object for primitive value. RC: x'" + ss.str() + "'");
+      }
+
+      rc = value_to_json_instance(&instance, &root_handle, "value", value);
+      if (rc != 0)
+      {
+        ZJSMTERM(&instance);
+        std::stringstream ss;
+        ss << std::hex << rc;
+        throw Error(Error::Custom, "Failed to serialize primitive value. RC: x'" + ss.str() + "'");
+      }
+    }
+
+    // Serialize the result using the same pattern as ZJson
+    char buffer[1] = {0};
+    int buffer_length = (int)sizeof(buffer);
+    int actual_length = 0;
+
+    rc = ZJSMSERI(&instance, buffer, &buffer_length, &actual_length);
+
+    std::string result;
+    if (rc == HWTJ_BUFFER_TOO_SMALL)
+    {
+      // Allocate proper buffer and retry
+      std::vector<char> dynamic_buffer(actual_length);
+      int dynamic_buffer_length = actual_length;
+      rc = ZJSMSERI(&instance, &dynamic_buffer[0], &dynamic_buffer_length, &actual_length);
+      if (rc != 0)
+      {
+        ZJSMTERM(&instance);
+        std::stringstream ss;
+        ss << std::hex << rc;
+        throw Error(Error::Custom, "Failed to serialize JSON with dynamic buffer. RC: x'" + ss.str() + "'");
+      }
+      result = std::string(dynamic_buffer.data(), actual_length);
+    }
+    else if (rc == 0)
+    {
+      result = std::string(buffer, actual_length);
+    }
+    else
+    {
+      ZJSMTERM(&instance);
+      std::stringstream ss;
+      ss << std::hex << rc;
+      throw Error(Error::Custom, "Failed to serialize JSON. RC: x'" + ss.str() + "'");
+    }
+
+    ZJSMTERM(&instance);
+
+    // For primitive values, extract just the value from {"value":...}
+    if (value.get_type() != Value::Object && value.get_type() != Value::Array && !result.empty())
+    {
+      // Extract the value part from {"value":...}
+      size_t start = result.find(":");
+      if (start != std::string::npos)
+      {
+        start++; // Skip the ':'
+        size_t end = result.find_last_of('}');
+        if (end != std::string::npos)
+        {
+          result = result.substr(start, end - start);
+        }
+      }
+    }
+
+    if (result.empty())
+    {
+      throw Error(Error::Custom, "Serialization resulted in empty string");
+    }
+
     return result;
   }
-  default:
-    return "null";
+  catch (const Error &e)
+  {
+    // Re-throw zjson::Error as-is
+    throw;
+  }
+  catch (const std::exception &e)
+  {
+    ZJSMTERM(&instance);
+    throw Error(Error::Custom, "Standard exception during serialization: " + std::string(e.what()));
+  }
+  catch (...)
+  {
+    ZJSMTERM(&instance);
+    throw Error(Error::Custom, "Unknown exception during JSON serialization");
   }
 }
 
 // JSON parser using zjsonm C API
 Value parse_json_string(const std::string &json_str)
 {
+  JSON_INSTANCE instance = {0};
+  int rc = ZJSMINIT(&instance);
+  if (rc != 0)
+  {
+    std::stringstream ss;
+    ss << std::hex << rc;
+    throw Error(Error::Custom, "Failed to initialize JSON parser for parsing. RC: x'" + ss.str() + "'");
+  }
+
   try
   {
-    JSON_INSTANCE instance = {0};
-    int rc = ZJSMINIT(&instance);
-    if (rc != 0)
-    {
-      return Value();
-    }
-
     rc = ZJSMPARS(&instance, json_str.c_str());
     if (rc != 0)
     {
       ZJSMTERM(&instance);
-      return Value();
+      std::stringstream ss;
+      ss << std::hex << rc;
+      throw Error(Error::Custom, "Failed to parse JSON string. RC: x'" + ss.str() + "'");
     }
 
     // Get root handle and convert to Value
@@ -1312,10 +1439,20 @@ Value parse_json_string(const std::string &json_str)
 
     return result;
   }
+  catch (const Error &e)
+  {
+    // Re-throw zjson::Error as-is
+    throw;
+  }
   catch (const std::exception &e)
   {
-    // Return null value if parsing fails
-    return Value();
+    ZJSMTERM(&instance);
+    throw Error(Error::Custom, "Standard exception during JSON parsing: " + std::string(e.what()));
+  }
+  catch (...)
+  {
+    ZJSMTERM(&instance);
+    throw Error(Error::Custom, "Unknown exception during JSON parsing");
   }
 }
 

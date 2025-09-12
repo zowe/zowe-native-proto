@@ -45,6 +45,10 @@ void basic_example()
     std::cout << "✅ Serialization: " << json_result.value() << std::endl;
     // Output: {"name":"John Doe","age":30,"is_active":true}
   }
+  else
+  {
+    std::cout << "❌ Serialization Error: " << json_result.error().what() << std::endl;
+  }
 
   // Pretty print JSON
   auto pretty_result = zjson::to_string_pretty(person);
@@ -52,6 +56,10 @@ void basic_example()
   {
     std::cout << "✅ Pretty JSON:\n"
               << pretty_result.value() << std::endl;
+  }
+  else
+  {
+    std::cout << "❌ Pretty JSON Error: " << pretty_result.error().what() << std::endl;
   }
 
   // Deserialize from JSON string
@@ -248,10 +256,10 @@ void nested_example()
 
   // Test deserialization
   std::string emp_json = R"({
-        "person": {"name": "Bob Wilson", "age": 35, "is_active": true},
-        "address": {"street": "456 Oak Ave", "city": "Seattle", "country": "USA"},
-        "department": "Marketing"
-    })";
+         "person": {"name": "Bob Wilson", "age": 35, "is_active": true},
+         "address": {"street": "456 Oak Ave", "city": "Seattle", "country": "USA"},
+         "department": "Marketing"
+     })";
 
   auto emp_result = zjson::from_str<Employee>(emp_json);
   if (emp_result.has_value())
@@ -317,30 +325,30 @@ void complex_nested_example()
 
   // Test deserialization
   std::string complex_json = R"({
-        "name": "Bob Smith",
-        "age": 35,
-        "is_active": true,
-        "address": {
-            "street": "456 Oak Avenue",
-            "city": "Seattle", 
-            "country": "USA"
-        },
-        "pets": [
-            {
-                "name": "Max",
-                "species": "Labrador",
-                "age": 4,
-                "is_vaccinated": true
-            },
-            {
-                "name": "Luna", 
-                "species": "Persian Cat",
-                "age": 2,
-                "is_vaccinated": true
-            }
-        ],
-        "email": "bob.smith@example.com"
-    })";
+         "name": "Bob Smith",
+         "age": 35,
+         "is_active": true,
+         "address": {
+             "street": "456 Oak Avenue",
+             "city": "Seattle", 
+             "country": "USA"
+         },
+         "pets": [
+             {
+                 "name": "Max",
+                 "species": "Labrador",
+                 "age": 4,
+                 "is_vaccinated": true
+             },
+             {
+                 "name": "Luna", 
+                 "species": "Persian Cat",
+                 "age": 2,
+                 "is_vaccinated": true
+             }
+         ],
+         "email": "bob.smith@example.com"
+     })";
 
   auto person_result = zjson::from_str<ComplexPerson>(complex_json);
   if (person_result.has_value())
