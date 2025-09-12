@@ -26,6 +26,43 @@
 #include "zstd.hpp"
 #include <hwtjic.h> // ensure to include /usr/include
 
+/*
+ * USAGE EXAMPLES:
+ *
+ * For comprehensive usage examples demonstrating all ZJson features, see:
+ * native/c/examples/jsoncpp/json.cpp
+ *
+ * Examples include:
+ * - Basic serialization/deserialization
+ * - Field attributes (rename, skip, skip_if_none, defaults)
+ * - Optional fields with serde-compatible behavior
+ * - Nested structures and arrays
+ * - Error handling with zstd::expected
+ * - Compile-time type checking
+ * - Complex real-world scenarios
+ *
+ * Quick Reference:
+ *
+ * ZJSON_DERIVE(StructName, field1, field2, ...)  // Auto-generate serialization
+ * ZJSON_SERIALIZABLE(StructName, ...)            // Manual field configuration
+ * ZJSON_FIELD(StructName, field)                 // Field descriptor
+ *
+ * Field Attributes:
+ * .rename("newName")         // Rename field in JSON
+ * .skip()                    // Skip field entirely
+ * .skip_serializing_if_none() // Skip optional field if empty (like serde's skip_serializing_if)
+ * .with_default(func)       // Default value for missing fields
+ *
+ * Functions:
+ * zjson::to_string(obj)         // Serialize to compact JSON
+ * zjson::to_string_pretty(obj)  // Serialize to formatted JSON
+ * zjson::from_str<T>(json)      // Deserialize from JSON string
+ *
+ * Optional Fields (serde-compatible):
+ * zstd::optional<T> field;      // Include null by default when empty
+ * ZJSON_FIELD(...) zjson_skip_serializing_if_none()  // Skip when empty
+ */
+
 // Forward declarations
 namespace zjson
 {
@@ -597,6 +634,46 @@ struct Deserializable<std::vector<T>>
   }
 };
 
+// Specializations for zstd::optional<T>
+template <typename T>
+struct Serializable<zstd::optional<T>>
+{
+  static constexpr bool value = Serializable<T>::value;
+  static Value serialize(const zstd::optional<T> &opt)
+  {
+    if (opt.has_value())
+    {
+      return Serializable<T>::serialize(opt.value());
+    }
+    else
+    {
+      return Value(); // Create null value
+    }
+  }
+};
+
+template <typename T>
+struct Deserializable<zstd::optional<T>>
+{
+  static constexpr bool value = Deserializable<T>::value;
+  static zstd::expected<zstd::optional<T>, Error> deserialize(const Value &value)
+  {
+    if (value.is_null())
+    {
+      return zstd::optional<T>(); // Empty optional
+    }
+    else
+    {
+      auto result = Deserializable<T>::deserialize(value);
+      if (!result.has_value())
+      {
+        return zstd::make_unexpected(result.error());
+      }
+      return zstd::optional<T>(result.value());
+    }
+  }
+};
+
 /**
  * Field descriptor for reflection-like behavior
  */
@@ -607,11 +684,12 @@ struct Field
   FieldType T::*member;
   bool skip_serializing;
   bool skip_deserializing;
+  bool skip_if_none; // For optional fields - skip if no value (serde-compatible)
   std::string rename_to;
   std::function<FieldType()> default_value;
 
   Field(const std::string &n, FieldType T::*m)
-      : name(n), member(m), skip_serializing(false), skip_deserializing(false)
+      : name(n), member(m), skip_serializing(false), skip_deserializing(false), skip_if_none(false)
   {
   }
 
@@ -643,6 +721,12 @@ struct Field
   Field &with_default(std::function<FieldType()> default_fn)
   {
     default_value = default_fn;
+    return *this;
+  }
+
+  Field &skip_serializing_if_none()
+  {
+    skip_if_none = true;
     return *this;
   }
 
@@ -1357,6 +1441,23 @@ void serialize_field_impl(const T &obj, Value &result, const Field<T, FieldType>
   result.add_to_object(field.get_serialized_name(), Serializable<FieldType>::serialize(field_value));
 }
 
+// Specialized implementation for optional types - by default include as null (serde-compatible)
+// Use .skip_if_none() field attribute to skip empty optionals
+template <typename T, typename OptionalType>
+void serialize_field_impl(const T &obj, Value &result, const Field<T, zstd::optional<OptionalType>> &field, std::true_type)
+{
+  const zstd::optional<OptionalType> &field_value = obj.*(field.member);
+
+  // Check if field has skip_if_none attribute
+  if (!field_value.has_value() && field.skip_if_none)
+  {
+    return; // Skip field entirely
+  }
+
+  // Otherwise, serialize normally (null if empty, value if present)
+  result.add_to_object(field.get_serialized_name(), Serializable<zstd::optional<OptionalType>>::serialize(field_value));
+}
+
 template <typename T, typename FieldType>
 void serialize_field_impl(const T &obj, Value &result, const Field<T, FieldType> &field, std::false_type)
 {
@@ -1368,6 +1469,19 @@ template <typename T, typename FieldType>
 bool deserialize_field_impl(T &obj, const Field<T, FieldType> &field, const Value &value, std::true_type)
 {
   auto result = Deserializable<FieldType>::deserialize(value);
+  if (!result.has_value())
+  {
+    return false;
+  }
+  obj.*(field.member) = result.value();
+  return true;
+}
+
+// Specialized implementation for optional types - handle null values gracefully
+template <typename T, typename OptionalType>
+bool deserialize_field_impl(T &obj, const Field<T, zstd::optional<OptionalType>> &field, const Value &value, std::true_type)
+{
+  auto result = Deserializable<zstd::optional<OptionalType>>::deserialize(value);
   if (!result.has_value())
   {
     return false;
@@ -1413,6 +1527,31 @@ bool deserialize_field(T &obj, const std::map<std::string, Value> &object, const
   }
 
   return deserialize_field_impl(obj, field, it->second, typename std::integral_constant<bool, Deserializable<FieldType>::value>{});
+}
+
+// Specialized deserialize_field for optional types - missing fields are OK
+template <typename T, typename OptionalType>
+bool deserialize_field(T &obj, const std::map<std::string, Value> &object, const Field<T, zstd::optional<OptionalType>> &field)
+{
+  if (field.skip_deserializing)
+  {
+    return true; // Skip field successfully
+  }
+
+  auto it = object.find(field.get_serialized_name());
+  if (it == object.end())
+  {
+    if (field.default_value)
+    {
+      obj.*(field.member) = field.default_value();
+      return true; // Used default value
+    }
+    // For optional fields, missing is OK - leave as empty optional
+    obj.*(field.member) = zstd::optional<OptionalType>();
+    return true;
+  }
+
+  return deserialize_field_impl(obj, field, it->second, typename std::integral_constant<bool, Deserializable<zstd::optional<OptionalType>>::value>{});
 }
 
 // Duplicate deserialize_field_impl functions removed - already defined above
@@ -1574,181 +1713,7 @@ struct RenameAll
 #define zjson_skip() .skip()
 #define zjson_skip_serializing() .skip_serializing_field()
 #define zjson_skip_deserializing() .skip_deserializing_field()
+#define zjson_skip_serializing_if_none() .skip_serializing_if_none()
 #define zjson_default(func) .with_default(func)
 
 #endif // ZJSON2_HPP
-
-/*
- * USAGE EXAMPLES - ZJson C++ API for JSON serialization/deserialization:
- *
- * ============================================================================
- * BASIC USAGE - Similar to Rust #[derive(Serialize, Deserialize)]
- * ============================================================================
- *
- * struct Person {
- *     std::string name;
- *     int age;
- *     bool is_active;
- * };
- *
- * // Register the type for serialization/deserialization
- * ZJSON_DERIVE(Person, name, age, is_active);
- *
- * void basic_example() {
- *     Person person{"John Doe", 30, true};
- *
- *     // Serialize to JSON string
- *     auto json_result = zjson::to_string(person);
- *     if (json_result.has_value()) {
- *         std::cout << "JSON: " << json_result.value() << std::endl;
- *         // Output: {"name":"John Doe","age":30,"is_active":true}
- *     }
- *
- *     // Pretty print JSON
- *     auto pretty_result = zjson::to_string_pretty(person);
- *     if (pretty_result.has_value()) {
- *         std::cout << pretty_result.value() << std::endl;
- *     }
- *
- *     // Deserialize from JSON string
- *     std::string json = R"({"name":"Jane Doe","age":25,"is_active":false})";
- *     auto person_result = zjson::from_str<Person>(json);
- *     if (person_result.has_value()) {
- *         Person p = person_result.value();
- *         std::cout << "Name: " << p.name << ", Age: " << p.age << std::endl;
- *     } else {
- *         std::cout << "Error: " << person_result.error().what() << std::endl;
- *     }
- * }
- *
- * ============================================================================
- * ADVANCED USAGE - Field Attributes for JSON serialization
- * ============================================================================
- *
- * struct User {
- *     std::string username;
- *     std::string email;
- *     int user_id;
- *     std::string password_hash;  // should be skipped
- *     std::string display_name;   // should be renamed
- * };
- *
- * // Manual field configuration with attributes
- * ZJSON_SERIALIZABLE(User,
- *     ZJSON_FIELD(User, username),
- *     ZJSON_FIELD(User, email),
- *     ZJSON_FIELD(User, user_id).rename("userId"),
- *     ZJSON_FIELD(User, password_hash).skip(),
- *     ZJSON_FIELD(User, display_name).rename("displayName")
- * );
- *
- * ============================================================================
- * OPTIONAL FIELDS AND DEFAULTS for JSON serialization
- * ============================================================================
- *
- * struct Config {
- *     std::string host;
- *     int port;
- *     bool debug_mode;
- * };
- *
- * int default_port() { return 8080; }
- * bool default_debug() { return false; }
- *
- * ZJSON_SERIALIZABLE(Config,
- *     ZJSON_FIELD(Config, host),
- *     ZJSON_FIELD(Config, port).with_default(default_port),
- *     ZJSON_FIELD(Config, debug_mode).rename("debug").with_default(default_debug)
- * );
- *
- * ============================================================================
- * NESTED STRUCTURES (automatic serialization of registered types)
- * ============================================================================
- *
- * struct Address {
- *     std::string street;
- *     std::string city;
- *     std::string country;
- * };
- *
- * struct Employee {
- *     Person person;    // Previously registered type
- *     Address address;  // Will be registered below
- *     std::string department;
- * };
- *
- * ZJSON_DERIVE(Address, street, city, country);
- * ZJSON_DERIVE(Employee, person, address, department);
- *
- * void nested_example() {
- *     Employee emp{
- *         {"Alice Smith", 28, true},
- *         {"123 Main St", "Boston", "USA"},
- *         "Engineering"
- *     };
- *
- *     auto json_result = zjson::to_string_pretty(emp);
- *     if (json_result.has_value()) {
- *         std::cout << json_result.value() << std::endl;
- *     }
- * }
- *
- * ============================================================================
- * ERROR HANDLING (using zstd::expected<T, E> pattern similar to Rust Result<T, E>)
- * ============================================================================
- *
- * void error_handling_example() {
- *     std::string invalid_json = R"({"name": 123, "age": "not_a_number"})";
- *
- *     auto result = zjson::from_str<Person>(invalid_json);
- *     if (!result.has_value()) {
- *         const auto& error = result.error();
- *         std::cout << "Deserialization failed: " << error.what() << std::endl;
- *         std::cout << "Error kind: " << error.kind() << std::endl;
- *     }
- *
- *     // Using value_or for default values
- *     Person default_person{"Unknown", 0, false};
- *     Person person = result.value_or(default_person);
- * }
- *
- * ============================================================================
- * COMPILE-TIME TYPE CHECKING (similar to Rust trait bounds)
- * ============================================================================
- *
- * template<typename T>
- * void serialize_if_possible(const T& obj) {
- *     if constexpr (zjson::Serializable<T>::value) {
- *         auto result = zjson::to_string(obj);
- *         if (result.has_value()) {
- *             std::cout << "Serialized: " << result.value() << std::endl;
- *         }
- *     } else {
- *         std::cout << "Type is not serializable" << std::endl;
- *     }
- * }
- *
- * ============================================================================
- * NATIVE z/OS JSON INTEGRATION (using z/OS Web Enablement Toolkit directly)
- * ============================================================================
- *
- * void native_json_integration_example() {
- *     // ZJson uses z/OS HWTJIC services directly for optimal performance
- *     Person person{"John", 30, true};
- *
- *     // Convert to JSON using ZJson (uses zjsonm C API internally)
- *     auto json_str = zjson::to_string(person).value();
- *     std::cout << "JSON: " << json_str << std::endl;
- *
- *     // Parse JSON back to object (uses zjsonm C API internally)
- *     auto parsed_person = zjson::from_str<Person>(json_str);
- *     if (parsed_person.has_value()) {
- *         Person p = parsed_person.value();
- *         std::cout << "Parsed: " << p.name << ", age " << p.age << std::endl;
- *     }
- *
- *     // Pretty print JSON
- *     auto pretty_json = zjson::to_string_pretty(person).value();
- *     std::cout << "Pretty JSON:\n" << pretty_json << std::endl;
- * }
- */
