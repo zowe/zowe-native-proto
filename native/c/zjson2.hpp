@@ -23,6 +23,7 @@
 #include <cstdio>
 #include "zjsonm.h"
 #include "zjsontype.h"
+#include <hwtjic.h> // ensure to include /usr/include
 
 // Forward declarations
 namespace zserde

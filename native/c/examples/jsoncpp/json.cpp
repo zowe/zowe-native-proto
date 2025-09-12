@@ -14,8 +14,7 @@
 #include <vector>
 #include "zjsonm.h"
 #include "zjsontype.h"
-#include "zjson.hpp"
-#include "zserde.hpp"
+#include "zjson2.hpp"
 
 struct Pet
 {
