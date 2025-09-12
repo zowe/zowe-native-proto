@@ -23,9 +23,11 @@
 #define HWTJ_NUMBER_TYPE 4
 #define HWTJ_BOOLEAN_TYPE 5
 #define HWTJ_NULL_TYPE 6
+#define HWTJ_JSONTEXTVALUETYPE 7
 #define HWTJ_TRUE 1
 #define HWTJ_FALSE 0
-#define HWTJ_BUFFER_TOO_SMALL 8
+#define HWTJ_BUFFER_TOO_SMALL 0x106
+#define HWTJ_NOFORCE 0
 #endif
 
 typedef struct

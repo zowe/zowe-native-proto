@@ -107,9 +107,9 @@ export function registerCommands(context: vscode.ExtensionContext): vscode.Dispo
 
             SshClientCache.inst.end(profile.profile);
             const serverPath = SshConfigUtils.getServerPath(profile.profile);
+            await SshConfigUtils.showSessionInTree(profile.name!, false);
             await ZSshUtils.uninstallServer(ZSshUtils.buildSession(profile.profile), serverPath);
 
-            await SshConfigUtils.showSessionInTree(profile.name!, false);
             const infoMsg = `Uninstalled Zowe SSH server from ${profile.profile.host ?? profile.name}`;
             imperative.Logger.getAppLogger().info(infoMsg);
             await Gui.showMessage(infoMsg);
