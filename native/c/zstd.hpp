@@ -22,6 +22,32 @@
 
 namespace zstd
 {
+template <class T>
+struct remove_reference
+{
+  typedef T type;
+};
+template <class T>
+struct remove_reference<T &>
+{
+  typedef T type;
+};
+template <class T>
+struct remove_reference<T &&>
+{
+  typedef T type;
+};
+
+template <class T, class U>
+struct is_same : std::false_type
+{
+};
+
+template <class T>
+struct is_same<T, T> : std::true_type
+{
+};
+
 template <bool B, class T = void>
 struct enable_if
 {
@@ -34,13 +60,13 @@ struct enable_if<true, T>
 };
 
 template <typename T>
-T &&forward(typename std::remove_reference<T>::type &t)
+T &&forward(typename remove_reference<T>::type &t)
 {
   return static_cast<T &&>(t);
 }
 
 template <typename T>
-T &&forward(typename std::remove_reference<T>::type &&t)
+T &&forward(typename remove_reference<T>::type &&t)
 {
   return static_cast<T &&>(t);
 }
@@ -1214,7 +1240,7 @@ struct is_one_of;
 template <typename T, typename Head, typename... Tail>
 struct is_one_of<T, Head, Tail...>
 {
-  static const bool value = std::is_same<T, Head>::value || is_one_of<T, Tail...>::value;
+  static const bool value = is_same<T, Head>::value || is_one_of<T, Tail...>::value;
 };
 
 template <typename T>
@@ -1436,6 +1462,16 @@ public:
   }
 
   template <typename T>
+  T *get_ptr() const
+  {
+    if (m_index != internal::IndexOf<T, Types...>::value)
+    {
+      throw bad_variant_access();
+    }
+    return reinterpret_cast<T *>(m_storage);
+  }
+
+  template <typename T>
   const T &get() const
   {
     if (m_index != internal::IndexOf<T, Types...>::value)
@@ -1467,6 +1503,11 @@ public:
     return *reinterpret_cast<const T *>(m_storage);
   }
 
+  void reset()
+  {
+    destroy();
+  }
+
 private:
   template <typename Visitor, typename Variant, size_t I, size_t Max>
   friend struct internal::visitor_caller;
@@ -1475,7 +1516,7 @@ private:
   void construct(Args &&...args)
   {
     typedef typename internal::AtIndex<I, Types...>::type T;
-    new (m_storage) T(zstd::forward<Args>(args)...);
+    new (m_storage) T(forward<Args>(args)...);
   }
 
   template <typename T>
