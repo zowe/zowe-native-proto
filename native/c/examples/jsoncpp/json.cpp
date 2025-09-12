@@ -43,13 +43,13 @@ struct Person
 };
 
 // Register the types for serialization/deserialization (in dependency order)
-ZSERDE_DERIVE(Pet, name, species, age, is_vaccinated);
-ZSERDE_DERIVE(Address, street, city, state, zip_code);
-ZSERDE_DERIVE(Person, name, age, is_active, address, pets, email);
+ZJSON_DERIVE(Pet, name, species, age, is_vaccinated);
+ZJSON_DERIVE(Address, street, city, state, zip_code);
+ZJSON_DERIVE(Person, name, age, is_active, address, pets, email);
 
 void basic_example()
 {
-  std::cout << "=== ZSerde Advanced Example - Nested Objects and Arrays ===" << std::endl;
+  std::cout << "=== ZJson Advanced Example - Nested Objects and Arrays ===" << std::endl;
 
   // Create nested data structures similar to serde_json examples
 
@@ -72,7 +72,7 @@ void basic_example()
   };
 
   std::cout << "\n--- Test 1: Serialization of Complex Nested Structure ---" << std::endl;
-  auto json_result = zserde::to_string(person);
+  auto json_result = zjson::to_string(person);
   if (json_result.has_value())
   {
     std::cout << "✅ Serialization SUCCESS!" << std::endl;
@@ -85,7 +85,7 @@ void basic_example()
   }
 
   std::cout << "\n--- Test 2: Pretty-Printed JSON ---" << std::endl;
-  auto pretty_result = zserde::to_string_pretty(person);
+  auto pretty_result = zjson::to_string_pretty(person);
   if (pretty_result.has_value())
   {
     std::cout << "✅ Pretty print SUCCESS!" << std::endl;
@@ -126,7 +126,7 @@ void basic_example()
     "email": "bob.smith@example.com"
   })";
 
-  auto person_result = zserde::from_str<Person>(complex_json);
+  auto person_result = zjson::from_str<Person>(complex_json);
   if (person_result.has_value())
   {
     Person p = person_result.value();
@@ -151,14 +151,14 @@ void basic_example()
   std::cout << "\n--- Test 4: Individual Structure Serialization ---" << std::endl;
 
   // Test individual Pet serialization
-  auto pet_json = zserde::to_string(dog);
+  auto pet_json = zjson::to_string(dog);
   if (pet_json.has_value())
   {
     std::cout << "✅ Pet serialization: " << pet_json.value() << std::endl;
   }
 
   // Test individual Address serialization
-  auto address_json = zserde::to_string(address);
+  auto address_json = zjson::to_string(address);
   if (address_json.has_value())
   {
     std::cout << "✅ Address serialization: " << address_json.value() << std::endl;
@@ -171,7 +171,7 @@ int main()
 {
   try
   {
-    std::cout << "Starting ZSerde Advanced Nested Example..." << std::endl;
+    std::cout << "Starting ZJson Advanced Nested Example..." << std::endl;
     basic_example();
     std::cout << "\nAdvanced example completed successfully!" << std::endl;
     return 0;

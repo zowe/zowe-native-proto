@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef ZSERDE_HPP
-#define ZSERDE_HPP
+#ifndef ZJSON_HPP
+#define ZJSON_HPP
 
 #include <string>
 #include <vector>
@@ -27,7 +27,7 @@
 #include <hwtjic.h> // ensure to include /usr/include
 
 // Forward declarations
-namespace zserde
+namespace zjson
 {
 class Value;
 class Error;
@@ -35,13 +35,13 @@ template <typename T>
 struct Serializable;
 template <typename T>
 struct Deserializable;
-} // namespace zserde
+} // namespace zjson
 
-namespace zserde
+namespace zjson
 {
 
 /**
- * Error handling class similar to serde_json::Error
+ * Error handling class for JSON operations
  */
 class Error : public std::runtime_error
 {
@@ -113,7 +113,7 @@ public:
 };
 
 /**
- * Value type similar to serde_json::Value
+ * Value type for JSON operations
  */
 class Value
 {
@@ -424,7 +424,7 @@ private:
 };
 
 /**
- * Serialization trait similar to serde::Serialize
+ * Serialization trait for JSON operations
  */
 template <typename T>
 struct Serializable
@@ -439,7 +439,7 @@ struct Serializable
 };
 
 /**
- * Deserialization trait similar to serde::Deserialize
+ * Deserialization trait for JSON operations
  */
 template <typename T>
 struct Deserializable
@@ -742,7 +742,7 @@ zstd::expected<T, Error> from_str_impl(const Value &parsed, std::false_type)
   }
 }
 
-// to_string function similar to serde_json::to_string
+// to_string function for JSON serialization
 template <typename T>
 zstd::expected<std::string, Error> to_string(const T &value)
 {
@@ -927,7 +927,7 @@ Value json_handle_to_value(JSON_INSTANCE *instance, KEY_HANDLE *key_handle)
   }
 }
 
-// from_str function similar to serde_json::from_str
+// from_str function for JSON deserialization
 template <typename T>
 zstd::expected<T, Error> from_str(const std::string &json_str)
 {
@@ -1036,7 +1036,7 @@ std::string add_json_indentation(const std::string &json_str, int spaces)
   return result;
 }
 
-// to_string_pretty function similar to serde_json::to_string_pretty
+// to_string_pretty function for pretty-printed JSON serialization
 template <typename T>
 zstd::expected<std::string, Error> to_string_pretty(const T &value)
 {
@@ -1237,101 +1237,101 @@ Value parse_json_string(const std::string &json_str)
 
 // Function moved before from_str to fix declaration order
 
-} // namespace zserde
+} // namespace zjson
 
 /**
  * Macro system for automatic serialization similar to #[derive(Serialize, Deserialize)]
  */
 
 // Field creation macro
-#define ZSERDE_FIELD(StructType, field_name) \
-  zserde::Field<StructType, decltype(StructType::field_name)>(#field_name, &StructType::field_name)
+#define ZJSON_FIELD(StructType, field_name) \
+  zjson::Field<StructType, decltype(StructType::field_name)>(#field_name, &StructType::field_name)
 
 // Auto-generated field creation (simplified version)
-#define ZSERDE_FIELD_AUTO(StructType, field) ZSERDE_FIELD(StructType, field)
+#define ZJSON_FIELD_AUTO(StructType, field) ZJSON_FIELD(StructType, field)
 
 // Transform macros for field lists - these create Field objects from field names
-#define ZSERDE_TRANSFORM_FIELDS_1(StructType, f1) \
-  ZSERDE_FIELD_AUTO(StructType, f1)
+#define ZJSON_TRANSFORM_FIELDS_1(StructType, f1) \
+  ZJSON_FIELD_AUTO(StructType, f1)
 
-#define ZSERDE_TRANSFORM_FIELDS_2(StructType, f1, f2) \
-  ZSERDE_FIELD_AUTO(StructType, f1), ZSERDE_FIELD_AUTO(StructType, f2)
+#define ZJSON_TRANSFORM_FIELDS_2(StructType, f1, f2) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2)
 
-#define ZSERDE_TRANSFORM_FIELDS_3(StructType, f1, f2, f3) \
-  ZSERDE_FIELD_AUTO(StructType, f1), ZSERDE_FIELD_AUTO(StructType, f2), ZSERDE_FIELD_AUTO(StructType, f3)
+#define ZJSON_TRANSFORM_FIELDS_3(StructType, f1, f2, f3) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3)
 
-#define ZSERDE_TRANSFORM_FIELDS_4(StructType, f1, f2, f3, f4) \
-  ZSERDE_FIELD_AUTO(StructType, f1), ZSERDE_FIELD_AUTO(StructType, f2), ZSERDE_FIELD_AUTO(StructType, f3), ZSERDE_FIELD_AUTO(StructType, f4)
+#define ZJSON_TRANSFORM_FIELDS_4(StructType, f1, f2, f3, f4) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4)
 
-#define ZSERDE_TRANSFORM_FIELDS_5(StructType, f1, f2, f3, f4, f5) \
-  ZSERDE_FIELD_AUTO(StructType, f1), ZSERDE_FIELD_AUTO(StructType, f2), ZSERDE_FIELD_AUTO(StructType, f3), ZSERDE_FIELD_AUTO(StructType, f4), ZSERDE_FIELD_AUTO(StructType, f5)
+#define ZJSON_TRANSFORM_FIELDS_5(StructType, f1, f2, f3, f4, f5) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5)
 
-#define ZSERDE_TRANSFORM_FIELDS_6(StructType, f1, f2, f3, f4, f5, f6) \
-  ZSERDE_FIELD_AUTO(StructType, f1), ZSERDE_FIELD_AUTO(StructType, f2), ZSERDE_FIELD_AUTO(StructType, f3), ZSERDE_FIELD_AUTO(StructType, f4), ZSERDE_FIELD_AUTO(StructType, f5), ZSERDE_FIELD_AUTO(StructType, f6)
+#define ZJSON_TRANSFORM_FIELDS_6(StructType, f1, f2, f3, f4, f5, f6) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6)
 
 // Argument counting macros
-#define ZSERDE_GET_ARG_COUNT(...) ZSERDE_GET_ARG_COUNT_IMPL(__VA_ARGS__, 6, 5, 4, 3, 2, 1)
-#define ZSERDE_GET_ARG_COUNT_IMPL(_1, _2, _3, _4, _5, _6, N, ...) N
+#define ZJSON_GET_ARG_COUNT(...) ZJSON_GET_ARG_COUNT_IMPL(__VA_ARGS__, 6, 5, 4, 3, 2, 1)
+#define ZJSON_GET_ARG_COUNT_IMPL(_1, _2, _3, _4, _5, _6, N, ...) N
 
-#define ZSERDE_CONCAT(a, b) ZSERDE_CONCAT_IMPL(a, b)
-#define ZSERDE_CONCAT_IMPL(a, b) a##b
+#define ZJSON_CONCAT(a, b) ZJSON_CONCAT_IMPL(a, b)
+#define ZJSON_CONCAT_IMPL(a, b) a##b
 
 // Main derive macro - equivalent to #[derive(Serialize, Deserialize)]
-#define ZSERDE_DERIVE(StructName, ...) \
-  ZSERDE_SERIALIZABLE(StructName, ZSERDE_CONCAT(ZSERDE_TRANSFORM_FIELDS_, ZSERDE_GET_ARG_COUNT(__VA_ARGS__))(StructName, __VA_ARGS__))
+#define ZJSON_DERIVE(StructName, ...) \
+  ZJSON_SERIALIZABLE(StructName, ZJSON_CONCAT(ZJSON_TRANSFORM_FIELDS_, ZJSON_GET_ARG_COUNT(__VA_ARGS__))(StructName, __VA_ARGS__))
 
 // Core serializable macro
-#define ZSERDE_SERIALIZABLE(StructType, ...)                                                                  \
-  namespace zserde                                                                                            \
-  {                                                                                                           \
-  template <>                                                                                                 \
-  struct Serializable<StructType>                                                                             \
-  {                                                                                                           \
-    static constexpr bool value = true;                                                                       \
-    static Value serialize(const StructType &obj)                                                             \
-    {                                                                                                         \
-      Value result = Value::create_object();                                                                  \
-      serialize_fields(obj, result, __VA_ARGS__);                                                             \
-      return result;                                                                                          \
-    }                                                                                                         \
-  };                                                                                                          \
-  template <>                                                                                                 \
-  struct Deserializable<StructType>                                                                           \
-  {                                                                                                           \
-    static constexpr bool value = true;                                                                       \
-    static zstd::expected<StructType, Error> deserialize(const Value &value)                                  \
-    {                                                                                                         \
-      if (!value.is_object())                                                                                 \
-      {                                                                                                       \
-        return zstd::make_unexpected(Error::invalid_type("object", "other"));                                 \
-      }                                                                                                       \
-      StructType result{};                                                                                    \
-      bool deserialize_result = deserialize_fields(result, value.as_object(), __VA_ARGS__);                   \
-      if (!deserialize_result)                                                                                \
-      {                                                                                                       \
-        return zstd::make_unexpected(Error::invalid_data("Failed to deserialize fields"));                    \
-      }                                                                                                       \
-      return result;                                                                                          \
-    }                                                                                                         \
-  };                                                                                                          \
-  }                                                                                                           \
-  namespace                                                                                                   \
-  {                                                                                                           \
-  struct StructType##_Registrar                                                                               \
-  {                                                                                                           \
-    StructType##_Registrar()                                                                                  \
-    {                                                                                                         \
-      zserde::SerializationRegistry<StructType>::register_serializer(                                         \
-          [](const StructType &obj) { return zserde::Serializable<StructType>::serialize(obj); });            \
-      zserde::SerializationRegistry<StructType>::register_deserializer(                                       \
-          [](const zserde::Value &value) { return zserde::Deserializable<StructType>::deserialize(value); }); \
-    }                                                                                                         \
-  };                                                                                                          \
-  static StructType##_Registrar StructType##_registrar_instance;                                              \
+#define ZJSON_SERIALIZABLE(StructType, ...)                                                                 \
+  namespace zjson                                                                                           \
+  {                                                                                                         \
+  template <>                                                                                               \
+  struct Serializable<StructType>                                                                           \
+  {                                                                                                         \
+    static constexpr bool value = true;                                                                     \
+    static Value serialize(const StructType &obj)                                                           \
+    {                                                                                                       \
+      Value result = Value::create_object();                                                                \
+      serialize_fields(obj, result, __VA_ARGS__);                                                           \
+      return result;                                                                                        \
+    }                                                                                                       \
+  };                                                                                                        \
+  template <>                                                                                               \
+  struct Deserializable<StructType>                                                                         \
+  {                                                                                                         \
+    static constexpr bool value = true;                                                                     \
+    static zstd::expected<StructType, Error> deserialize(const Value &value)                                \
+    {                                                                                                       \
+      if (!value.is_object())                                                                               \
+      {                                                                                                     \
+        return zstd::make_unexpected(Error::invalid_type("object", "other"));                               \
+      }                                                                                                     \
+      StructType result{};                                                                                  \
+      bool deserialize_result = deserialize_fields(result, value.as_object(), __VA_ARGS__);                 \
+      if (!deserialize_result)                                                                              \
+      {                                                                                                     \
+        return zstd::make_unexpected(Error::invalid_data("Failed to deserialize fields"));                  \
+      }                                                                                                     \
+      return result;                                                                                        \
+    }                                                                                                       \
+  };                                                                                                        \
+  }                                                                                                         \
+  namespace                                                                                                 \
+  {                                                                                                         \
+  struct StructType##_Registrar                                                                             \
+  {                                                                                                         \
+    StructType##_Registrar()                                                                                \
+    {                                                                                                       \
+      zjson::SerializationRegistry<StructType>::register_serializer(                                        \
+          [](const StructType &obj) { return zjson::Serializable<StructType>::serialize(obj); });           \
+      zjson::SerializationRegistry<StructType>::register_deserializer(                                      \
+          [](const zjson::Value &value) { return zjson::Deserializable<StructType>::deserialize(value); }); \
+    }                                                                                                       \
+  };                                                                                                        \
+  static StructType##_Registrar StructType##_registrar_instance;                                            \
   }
 
 // Field serialization/deserialization helper functions need to be implemented
-namespace zserde
+namespace zjson
 {
 namespace detail
 {
@@ -1467,14 +1467,14 @@ bool deserialize_fields(T &obj, const std::map<std::string, Value> &object, Fiel
 using detail::deserialize_fields;
 using detail::serialize_fields;
 
-} // namespace zserde
+} // namespace zjson
 
 /**
  * Usage examples and convenience macros
  */
 
-// Container attributes similar to serde container attributes
-namespace zserde
+// Container attributes for JSON serialization
+namespace zjson
 {
 namespace attributes
 {
@@ -1560,26 +1560,26 @@ struct RenameAll
 };
 
 } // namespace attributes
-} // namespace zserde
+} // namespace zjson
 
 // Container attribute macros
-#define ZSERDE_RENAME_ALL(StructType, case_style) \
+#define ZJSON_RENAME_ALL(StructType, case_style) \
   /* This would modify the field name transformation during serialization */
 
-#define ZSERDE_DENY_UNKNOWN_FIELDS(StructType) \
+#define ZJSON_DENY_UNKNOWN_FIELDS(StructType) \
   /* This would add validation during deserialization to reject unknown fields */
 
 // Field attribute macros
-#define zserde_rename(name) .rename(name)
-#define zserde_skip() .skip()
-#define zserde_skip_serializing() .skip_serializing_field()
-#define zserde_skip_deserializing() .skip_deserializing_field()
-#define zserde_default(func) .with_default(func)
+#define zjson_rename(name) .rename(name)
+#define zjson_skip() .skip()
+#define zjson_skip_serializing() .skip_serializing_field()
+#define zjson_skip_deserializing() .skip_deserializing_field()
+#define zjson_default(func) .with_default(func)
 
-#endif // ZSERDE_HPP
+#endif // ZJSON2_HPP
 
 /*
- * USAGE EXAMPLES - ZSerde C++ API similar to Rust serde_json:
+ * USAGE EXAMPLES - ZJson C++ API for JSON serialization/deserialization:
  *
  * ============================================================================
  * BASIC USAGE - Similar to Rust #[derive(Serialize, Deserialize)]
@@ -1592,27 +1592,27 @@ struct RenameAll
  * };
  *
  * // Register the type for serialization/deserialization
- * ZSERDE_DERIVE(Person, name, age, is_active);
+ * ZJSON_DERIVE(Person, name, age, is_active);
  *
  * void basic_example() {
  *     Person person{"John Doe", 30, true};
  *
- *     // Serialize to JSON string (similar to serde_json::to_string)
- *     auto json_result = zserde::to_string(person);
+ *     // Serialize to JSON string
+ *     auto json_result = zjson::to_string(person);
  *     if (json_result.has_value()) {
  *         std::cout << "JSON: " << json_result.value() << std::endl;
  *         // Output: {"name":"John Doe","age":30,"is_active":true}
  *     }
  *
- *     // Pretty print (similar to serde_json::to_string_pretty)
- *     auto pretty_result = zserde::to_string_pretty(person);
+ *     // Pretty print JSON
+ *     auto pretty_result = zjson::to_string_pretty(person);
  *     if (pretty_result.has_value()) {
  *         std::cout << pretty_result.value() << std::endl;
  *     }
  *
- *     // Deserialize from JSON string (similar to serde_json::from_str)
+ *     // Deserialize from JSON string
  *     std::string json = R"({"name":"Jane Doe","age":25,"is_active":false})";
- *     auto person_result = zserde::from_str<Person>(json);
+ *     auto person_result = zjson::from_str<Person>(json);
  *     if (person_result.has_value()) {
  *         Person p = person_result.value();
  *         std::cout << "Name: " << p.name << ", Age: " << p.age << std::endl;
@@ -1622,7 +1622,7 @@ struct RenameAll
  * }
  *
  * ============================================================================
- * ADVANCED USAGE - Field Attributes (similar to #[serde(...)] attributes)
+ * ADVANCED USAGE - Field Attributes for JSON serialization
  * ============================================================================
  *
  * struct User {
@@ -1634,16 +1634,16 @@ struct RenameAll
  * };
  *
  * // Manual field configuration with attributes
- * ZSERDE_SERIALIZABLE(User,
- *     ZSERDE_FIELD(User, username),
- *     ZSERDE_FIELD(User, email),
- *     ZSERDE_FIELD(User, user_id).rename("userId"),
- *     ZSERDE_FIELD(User, password_hash).skip(),
- *     ZSERDE_FIELD(User, display_name).rename("displayName")
+ * ZJSON_SERIALIZABLE(User,
+ *     ZJSON_FIELD(User, username),
+ *     ZJSON_FIELD(User, email),
+ *     ZJSON_FIELD(User, user_id).rename("userId"),
+ *     ZJSON_FIELD(User, password_hash).skip(),
+ *     ZJSON_FIELD(User, display_name).rename("displayName")
  * );
  *
  * ============================================================================
- * OPTIONAL FIELDS AND DEFAULTS (similar to #[serde(default)])
+ * OPTIONAL FIELDS AND DEFAULTS for JSON serialization
  * ============================================================================
  *
  * struct Config {
@@ -1655,10 +1655,10 @@ struct RenameAll
  * int default_port() { return 8080; }
  * bool default_debug() { return false; }
  *
- * ZSERDE_SERIALIZABLE(Config,
- *     ZSERDE_FIELD(Config, host),
- *     ZSERDE_FIELD(Config, port).with_default(default_port),
- *     ZSERDE_FIELD(Config, debug_mode).rename("debug").with_default(default_debug)
+ * ZJSON_SERIALIZABLE(Config,
+ *     ZJSON_FIELD(Config, host),
+ *     ZJSON_FIELD(Config, port).with_default(default_port),
+ *     ZJSON_FIELD(Config, debug_mode).rename("debug").with_default(default_debug)
  * );
  *
  * ============================================================================
@@ -1677,8 +1677,8 @@ struct RenameAll
  *     std::string department;
  * };
  *
- * ZSERDE_DERIVE(Address, street, city, country);
- * ZSERDE_DERIVE(Employee, person, address, department);
+ * ZJSON_DERIVE(Address, street, city, country);
+ * ZJSON_DERIVE(Employee, person, address, department);
  *
  * void nested_example() {
  *     Employee emp{
@@ -1687,7 +1687,7 @@ struct RenameAll
  *         "Engineering"
  *     };
  *
- *     auto json_result = zserde::to_string_pretty(emp);
+ *     auto json_result = zjson::to_string_pretty(emp);
  *     if (json_result.has_value()) {
  *         std::cout << json_result.value() << std::endl;
  *     }
@@ -1700,7 +1700,7 @@ struct RenameAll
  * void error_handling_example() {
  *     std::string invalid_json = R"({"name": 123, "age": "not_a_number"})";
  *
- *     auto result = zserde::from_str<Person>(invalid_json);
+ *     auto result = zjson::from_str<Person>(invalid_json);
  *     if (!result.has_value()) {
  *         const auto& error = result.error();
  *         std::cout << "Deserialization failed: " << error.what() << std::endl;
@@ -1718,8 +1718,8 @@ struct RenameAll
  *
  * template<typename T>
  * void serialize_if_possible(const T& obj) {
- *     if constexpr (zserde::Serializable<T>::value) {
- *         auto result = zserde::to_string(obj);
+ *     if constexpr (zjson::Serializable<T>::value) {
+ *         auto result = zjson::to_string(obj);
  *         if (result.has_value()) {
  *             std::cout << "Serialized: " << result.value() << std::endl;
  *         }
@@ -1733,22 +1733,22 @@ struct RenameAll
  * ============================================================================
  *
  * void native_json_integration_example() {
- *     // ZSerde uses z/OS HWTJIC services directly for optimal performance
+ *     // ZJson uses z/OS HWTJIC services directly for optimal performance
  *     Person person{"John", 30, true};
  *
- *     // Convert to JSON using ZSerde (uses zjsonm C API internally)
- *     auto json_str = zserde::to_string(person).value();
+ *     // Convert to JSON using ZJson (uses zjsonm C API internally)
+ *     auto json_str = zjson::to_string(person).value();
  *     std::cout << "JSON: " << json_str << std::endl;
  *
  *     // Parse JSON back to object (uses zjsonm C API internally)
- *     auto parsed_person = zserde::from_str<Person>(json_str);
+ *     auto parsed_person = zjson::from_str<Person>(json_str);
  *     if (parsed_person.has_value()) {
  *         Person p = parsed_person.value();
  *         std::cout << "Parsed: " << p.name << ", age " << p.age << std::endl;
  *     }
  *
  *     // Pretty print JSON
- *     auto pretty_json = zserde::to_string_pretty(person).value();
+ *     auto pretty_json = zjson::to_string_pretty(person).value();
  *     std::cout << "Pretty JSON:\n" << pretty_json << std::endl;
  * }
  */
