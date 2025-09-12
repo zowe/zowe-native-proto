@@ -17,7 +17,6 @@
 #include <utility>
 #include <cstring>
 #include <string>
-#include <new>
 #include <typeinfo>
 #include <type_traits>
 
@@ -33,6 +32,18 @@ struct enable_if<true, T>
 {
   typedef T type;
 };
+
+template <typename T>
+T &&forward(typename std::remove_reference<T>::type &t)
+{
+  return static_cast<T &&>(t);
+}
+
+template <typename T>
+T &&forward(typename std::remove_reference<T>::type &&t)
+{
+  return static_cast<T &&>(t);
+}
 
 template <typename T>
 class unique_ptr
@@ -1464,7 +1475,7 @@ private:
   void construct(Args &&...args)
   {
     typedef typename internal::AtIndex<I, Types...>::type T;
-    new (m_storage) T(std::forward<Args>(args)...);
+    new (m_storage) T(zstd::forward<Args>(args)...);
   }
 
   template <typename T>

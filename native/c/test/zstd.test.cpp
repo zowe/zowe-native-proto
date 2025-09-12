@@ -62,6 +62,31 @@ struct DestructorTester
 };
 
 int DestructorTester::instance_count = 0;
+
+struct ForwardTestHelper
+{
+  static bool is_lvalue_ref;
+  static bool is_rvalue_ref;
+
+  static void reset()
+  {
+    is_lvalue_ref = false;
+    is_rvalue_ref = false;
+  }
+
+  static void test_func(std::string &)
+  {
+    is_lvalue_ref = true;
+  }
+
+  static void test_func(std::string &&)
+  {
+    is_rvalue_ref = true;
+  }
+};
+
+bool ForwardTestHelper::is_lvalue_ref = false;
+bool ForwardTestHelper::is_rvalue_ref = false;
 } // namespace
 
 struct TestClass
@@ -117,6 +142,32 @@ void zstd_tests()
       typedef typename enable_if<condition, double>::type result_type;
       bool is_same = std::is_same<result_type, double>::value;
       Expect(is_same).ToBe(true);
+    }); });
+
+  describe("zstd::forward", []() -> void
+           {
+    it("should forward an l-value as an l-value reference", []() -> void {
+      ForwardTestHelper::reset();
+      std::string s = "test";
+      ForwardTestHelper::test_func(zstd::forward<std::string &>(s));
+      Expect(ForwardTestHelper::is_lvalue_ref).ToBe(true);
+      Expect(ForwardTestHelper::is_rvalue_ref).ToBe(false);
+    });
+
+    it("should forward an l-value as an r-value reference", []() -> void {
+      ForwardTestHelper::reset();
+      std::string s = "test";
+      ForwardTestHelper::test_func(zstd::forward<std::string>(s));
+      Expect(ForwardTestHelper::is_lvalue_ref).ToBe(false);
+      Expect(ForwardTestHelper::is_rvalue_ref).ToBe(true);
+    });
+
+    it("should forward an r-value as an r-value reference", []() -> void {
+      ForwardTestHelper::reset();
+      ForwardTestHelper::test_func(
+          zstd::forward<std::string>(std::string("test")));
+      Expect(ForwardTestHelper::is_lvalue_ref).ToBe(false);
+      Expect(ForwardTestHelper::is_rvalue_ref).ToBe(true);
     }); });
 
   describe("zstd::optional", []() -> void
