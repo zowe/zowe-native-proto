@@ -22,6 +22,8 @@
 
 namespace zstd
 {
+
+// Backport of C++11 `std::remove_reference`
 template <class T>
 struct remove_reference
 {
@@ -38,6 +40,7 @@ struct remove_reference<T &&>
   typedef T type;
 };
 
+// Backport of C++11 `std::is_same`
 template <class T, class U>
 struct is_same : std::false_type
 {
@@ -48,6 +51,7 @@ struct is_same<T, T> : std::true_type
 {
 };
 
+// Backport of C++11 `std::enable_if`
 template <bool B, class T = void>
 struct enable_if
 {
@@ -59,6 +63,7 @@ struct enable_if<true, T>
   typedef T type;
 };
 
+// Backport of C++11 `std::forward`
 template <typename T>
 T &&forward(typename remove_reference<T>::type &t)
 {
@@ -71,17 +76,20 @@ T &&forward(typename remove_reference<T>::type &&t)
   return static_cast<T &&>(t);
 }
 
+// Backport of C++11 `std::unique_ptr`
 template <typename T>
 class unique_ptr
 {
 public:
   typedef T element_type;
 
+  // Default constructor
   explicit unique_ptr(element_type *ptr = nullptr)
       : m_ptr(ptr)
   {
   }
 
+  // Copy constructor
   unique_ptr(unique_ptr &&other)
       : m_ptr(other.release())
   {
@@ -92,6 +100,7 @@ public:
     delete m_ptr;
   }
 
+  // Copy-assignment
   unique_ptr &operator=(unique_ptr &&other)
   {
     if (this != &other)
@@ -156,6 +165,7 @@ void swap(unique_ptr<T> &a, unique_ptr<T> &b)
   a.swap(b);
 }
 
+// Backport of C++14 `std::make_unique`
 template <typename T>
 unique_ptr<T> make_unique()
 {
@@ -174,6 +184,7 @@ unique_ptr<T> make_unique(const A1 &a1, const A2 &a2)
   return unique_ptr<T>(new T(a1, a2));
 }
 
+// Backport of C++17 `std::optional`
 template <typename T>
 class optional
 {
@@ -357,7 +368,7 @@ private:
   char m_storage[sizeof(T)] __attribute__((aligned(__alignof__(T))));
 };
 
-// Unexpected type for expected
+// Unexpected type for `expected` backport
 template <typename E>
 class unexpected
 {
@@ -389,7 +400,7 @@ unexpected<E> make_unexpected(const E &e)
   return unexpected<E>(e);
 }
 
-// Expected type that mimics C++23 std::expected
+// Backport of C++23 `std::expected`
 template <typename T, typename E>
 class expected
 {
@@ -397,7 +408,7 @@ public:
   typedef T value_type;
   typedef E error_type;
 
-  // Default constructor (constructs value)
+  // Default constructor
   expected()
       : m_has_value(true)
   {
@@ -752,7 +763,7 @@ bool operator!=(const unexpected<E> &lhs, const expected<T, E> &rhs)
   return !(lhs == rhs);
 }
 
-// String view type that mimics C++17 std::string_view
+// Backport of C++17 class `std::string_view`
 class string_view
 {
 public:
@@ -1398,6 +1409,7 @@ struct bad_variant_access : public std::logic_error
   }
 };
 
+// Backport of C++17 utility `std::variant`
 template <typename... Types>
 class variant
 {
