@@ -13,7 +13,7 @@
 
 #include <iostream>
 #include <string>
-#include <vector>
+#include <cstdio>
 #include "zjsonm.h"
 #include "zjsontype.h"
 #include "zjson2.hpp"
@@ -403,21 +403,27 @@ void error_handling_example()
 // COMPILE-TIME TYPE CHECKING (similar to Rust trait bounds)
 // ============================================================================
 
+// Helper functions for C++14 compatibility
+template <typename T>
+void serialize_if_possible_impl(const T &obj, const std::string &type_name, std::true_type)
+{
+  auto result = zjson::to_string(obj);
+  if (result.has_value())
+  {
+    std::cout << "✅ " << type_name << " is serializable: " << result.value() << std::endl;
+  }
+}
+
+template <typename T>
+void serialize_if_possible_impl(const T &obj, const std::string &type_name, std::false_type)
+{
+  std::cout << "❌ " << type_name << " is not serializable" << std::endl;
+}
+
 template <typename T>
 void serialize_if_possible(const T &obj, const std::string &type_name)
 {
-  if constexpr (zjson::Serializable<T>::value)
-  {
-    auto result = zjson::to_string(obj);
-    if (result.has_value())
-    {
-      std::cout << "✅ " << type_name << " is serializable: " << result.value() << std::endl;
-    }
-  }
-  else
-  {
-    std::cout << "❌ " << type_name << " is not serializable" << std::endl;
-  }
+  serialize_if_possible_impl<T>(obj, type_name, typename std::integral_constant<bool, zjson::Serializable<T>::value>{});
 }
 
 struct UnregisteredType
@@ -553,6 +559,250 @@ void large_struct_example()
 }
 
 // ============================================================================
+// VALUE CONVERSION EXAMPLES (zjson::to_value and zjson::from_value)
+// ============================================================================
+
+void value_conversion_example()
+{
+  std::cout << "\n=== VALUE CONVERSION EXAMPLE ===" << std::endl;
+
+  // Example 1: Convert typed objects to Value
+  BasicPerson person{"Alice Johnson", 28, true};
+
+  auto person_value_result = zjson::to_value(person);
+  if (person_value_result.has_value())
+  {
+    zjson::Value person_value = person_value_result.value();
+    std::cout << "✅ Converted BasicPerson to Value" << std::endl;
+
+    // Can access the Value like any JSON object using dynamic indexing
+    if (person_value.is_object())
+    {
+      // New dynamic access - much cleaner than manual iteration!
+      std::string name = person_value["name"].as_string();
+      int age = person_value["age"].as_int();
+      bool active = person_value["is_active"].as_bool();
+
+      std::cout << "  Name from Value (dynamic access): " << name << std::endl;
+      std::cout << "  Age from Value (dynamic access): " << age << std::endl;
+      std::cout << "  Active from Value (dynamic access): " << (active ? "true" : "false") << std::endl;
+    }
+
+    // Convert Value back to typed object
+    auto person_back_result = zjson::from_value<BasicPerson>(person_value);
+    if (person_back_result.has_value())
+    {
+      BasicPerson person_back = person_back_result.value();
+      std::cout << "✅ Converted Value back to BasicPerson" << std::endl;
+      std::cout << "  Round-trip: " << person_back.name << ", age " << person_back.age << std::endl;
+    }
+  }
+
+  // Example 2: Convert primitive types
+  auto int_value_result = zjson::to_value(42);
+  if (int_value_result.has_value())
+  {
+    zjson::Value int_value = int_value_result.value();
+    std::cout << "✅ Converted int to Value: " << int_value.as_int() << std::endl;
+
+    auto int_back_result = zjson::from_value<int>(int_value);
+    if (int_back_result.has_value())
+    {
+      int int_back = int_back_result.value();
+      std::cout << "✅ Converted Value back to int: " << int_back << std::endl;
+    }
+  }
+
+  // Example 3: Convert arrays
+  std::vector<int> numbers = {1, 2, 3, 4, 5};
+  auto array_value_result = zjson::to_value(numbers);
+  if (array_value_result.has_value())
+  {
+    zjson::Value array_value = array_value_result.value();
+    std::cout << "✅ Converted vector<int> to Value array" << std::endl;
+
+    auto numbers_back_result = zjson::from_value<std::vector<int>>(array_value);
+    if (numbers_back_result.has_value())
+    {
+      std::vector<int> numbers_back = numbers_back_result.value();
+      std::cout << "✅ Converted Value back to vector<int>, size: " << numbers_back.size() << std::endl;
+    }
+  }
+}
+
+// ============================================================================
+// DYNAMIC JSON PROCESSING EXAMPLE
+// ============================================================================
+
+void dynamic_json_processing_example()
+{
+  std::cout << "\n=== DYNAMIC JSON PROCESSING EXAMPLE ===" << std::endl;
+
+  // Parse JSON into Value first for flexible processing
+  std::string complex_json = R"({
+    "users": [
+      {"name": "Alice", "age": 30, "is_active": true},
+      {"name": "Bob", "age": 25, "is_active": false}
+    ],
+    "metadata": {
+      "total_count": 2,
+      "last_updated": "2023-01-01",
+      "api_version": "v2.1"
+    },
+    "settings": {
+      "enable_notifications": true,
+      "max_results": 100
+    }
+  })";
+
+  auto root_result = zjson::from_str<zjson::Value>(complex_json);
+  if (root_result.has_value())
+  {
+    zjson::Value root = root_result.value();
+    std::cout << "✅ Parsed JSON into Value for dynamic processing" << std::endl;
+
+    // NEW: Dynamic access with indexing operators (serde_json style!)
+    std::cout << "\n--- Dynamic Indexing Examples ---" << std::endl;
+
+    // Access nested data with chained indexing like serde_json
+    std::string first_user_name = root["users"][0]["name"].as_string();
+    int first_user_age = root["users"][0]["age"].as_int();
+    bool first_user_active = root["users"][0]["is_active"].as_bool();
+
+    std::cout << "✅ First user (chained access): " << first_user_name
+              << " (age " << first_user_age << ", active: " << (first_user_active ? "yes" : "no") << ")" << std::endl;
+
+    std::string second_user_name = root["users"][1]["name"].as_string();
+    int second_user_age = root["users"][1]["age"].as_int();
+
+    std::cout << "✅ Second user (chained access): " << second_user_name
+              << " (age " << second_user_age << ")" << std::endl;
+
+    // Access metadata with dynamic indexing
+    int total_count = root["metadata"]["total_count"].as_int();
+    std::string api_version = root["metadata"]["api_version"].as_string();
+    std::string last_updated = root["metadata"]["last_updated"].as_string();
+
+    std::cout << "✅ Metadata (dynamic access):" << std::endl;
+    std::cout << "  Total count: " << total_count << std::endl;
+    std::cout << "  API version: " << api_version << std::endl;
+    std::cout << "  Last updated: " << last_updated << std::endl;
+
+    // Access settings
+    bool notifications = root["settings"]["enable_notifications"].as_bool();
+    int max_results = root["settings"]["max_results"].as_int();
+
+    std::cout << "✅ Settings (dynamic access):" << std::endl;
+    std::cout << "  Notifications enabled: " << (notifications ? "yes" : "no") << std::endl;
+    std::cout << "  Max results: " << max_results << std::endl;
+
+    // OLD WAY: Manual iteration (still works for completeness)
+    std::cout << "\n--- Traditional Manual Access (still supported) ---" << std::endl;
+    if (root.is_object())
+    {
+      const auto &obj = root.as_object();
+
+      // Extract and convert users array to typed vector
+      auto users_it = obj.find("users");
+      if (users_it != obj.end())
+      {
+        auto users_result = zjson::from_value<std::vector<BasicPerson>>(users_it->second);
+        if (users_result.has_value())
+        {
+          std::vector<BasicPerson> users = users_result.value();
+          std::cout << "✅ Extracted " << users.size() << " users as typed objects (manual way)" << std::endl;
+        }
+      }
+    }
+  }
+}
+
+// ============================================================================
+// VALUE MANIPULATION EXAMPLE
+// ============================================================================
+
+void value_manipulation_example()
+{
+  std::cout << "\n=== VALUE MANIPULATION EXAMPLE ===" << std::endl;
+
+  // Build JSON dynamically using Values and typed objects
+  BasicPerson person1{"Alice", 30, true};
+  BasicPerson person2{"Bob", 25, false};
+
+  // Convert persons to Values
+  auto person1_val_result = zjson::to_value(person1);
+  auto person2_val_result = zjson::to_value(person2);
+
+  if (person1_val_result.has_value() && person2_val_result.has_value())
+  {
+    std::cout << "\n--- Traditional Value Construction ---" << std::endl;
+    // Build a complex structure (traditional way)
+    zjson::Value root = zjson::Value::create_object();
+    zjson::Value users_array = zjson::Value::create_array();
+
+    users_array.add_to_array(person1_val_result.value());
+    users_array.add_to_array(person2_val_result.value());
+
+    root.add_to_object("users", users_array);
+    root.add_to_object("total_count", zjson::Value(2));
+    root.add_to_object("generated_at", zjson::Value("2023-12-01T10:30:00Z"));
+
+    // Add a settings object
+    zjson::Value settings = zjson::Value::create_object();
+    settings.add_to_object("format_version", zjson::Value("1.0"));
+    settings.add_to_object("include_metadata", zjson::Value(true));
+    root.add_to_object("settings", settings);
+
+    std::cout << "✅ Built complex JSON structure using traditional Value manipulation" << std::endl;
+
+    std::cout << "\n--- NEW: Dynamic Construction with Indexing ---" << std::endl;
+    // NEW: Build structure using dynamic indexing (much cleaner!)
+    zjson::Value dynamic_root; // Starts as null, auto-converts to object
+
+    // Auto-creates nested structure as we access it
+    dynamic_root["users"][0] = person1_val_result.value();
+    dynamic_root["users"][1] = person2_val_result.value();
+    dynamic_root["total_count"] = zjson::Value(2);
+    dynamic_root["generated_at"] = zjson::Value("2023-12-01T10:30:00Z");
+    dynamic_root["settings"]["format_version"] = zjson::Value("1.0");
+    dynamic_root["settings"]["include_metadata"] = zjson::Value(true);
+
+    std::cout << "✅ Built identical structure using dynamic indexing (much cleaner!)" << std::endl;
+
+    // Convert both results to JSON string to verify they're identical
+    auto json_result = zjson::to_string_pretty(root);
+    auto dynamic_json_result = zjson::to_string_pretty(dynamic_root);
+
+    if (json_result.has_value() && dynamic_json_result.has_value())
+    {
+      std::cout << "✅ Traditional construction result:\n"
+                << json_result.value() << std::endl;
+      std::cout << "✅ Dynamic construction result:\n"
+                << dynamic_json_result.value() << std::endl;
+
+      // Verify they're the same
+      if (json_result.value() == dynamic_json_result.value())
+      {
+        std::cout << "✅ Both construction methods produce identical JSON!" << std::endl;
+      }
+    }
+
+    // Extract parts back to typed objects using dynamic access
+    std::cout << "\n--- Extracting with Dynamic Access ---" << std::endl;
+    auto users_result = zjson::from_value<std::vector<BasicPerson>>(dynamic_root["users"]);
+    if (users_result.has_value())
+    {
+      std::vector<BasicPerson> users = users_result.value();
+      std::cout << "✅ Extracted " << users.size() << " users using dynamic access: dynamic_root[\"users\"]" << std::endl;
+
+      // Show individual access too
+      std::string first_name = dynamic_root["users"][0]["name"].as_string();
+      std::cout << "  First user name (chained access): " << first_name << std::endl;
+    }
+  }
+}
+
+// ============================================================================
 // MAIN FUNCTION - Run all examples
 // ============================================================================
 
@@ -572,6 +822,11 @@ int main()
     error_handling_example();
     compile_time_checking_example();
     large_struct_example();
+
+    // New value conversion and utility function examples
+    value_conversion_example();
+    dynamic_json_processing_example();
+    value_manipulation_example();
 
     std::cout << "\n=== All Examples Completed Successfully! ===" << std::endl;
     return 0;
