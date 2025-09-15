@@ -131,7 +131,7 @@ describe("SshErrorCorrelations", () => {
             correlation.resources.forEach((resource: { href: string; title: string }) => {
                 expect(resource).toHaveProperty("href");
                 expect(resource).toHaveProperty("title");
-                expect(resource.href.startsWith("https://www.ibm.com")).toBe(true);
+                expect(new URL(resource.href).host).toBe("www.ibm.com");
             });
         });
 
