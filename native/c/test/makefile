@@ -167,7 +167,8 @@ build-out/zusf.test.o \
 build-out/zusf.o \
 build-out/zshmem.o \
 build-out/zlogger.test.o \
-build-out/zlogger_metal.o
+build-out/zlogger_metal.o \
+build-out/zjsonm.o
 	$(OCXX) $(CXXLANG_BND_FLAGS) -o $@ $^ > $*.bind.lst
 
 build-out/zut.o:
