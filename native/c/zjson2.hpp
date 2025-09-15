@@ -24,6 +24,7 @@
 #include "zjsonm.h"
 #include "zjsontype.h"
 #include "zstd.hpp"
+#include "zbase64.h"
 #include <hwtjic.h> // ensure to include /usr/include
 
 /*
@@ -57,6 +58,10 @@
  * zjson::to_string(obj)         // Serialize to compact JSON
  * zjson::to_string_pretty(obj)  // Serialize to formatted JSON
  * zjson::from_str<T>(json)      // Deserialize from JSON string
+ * zjson::to_value<T>(obj)       // Convert any type to Value
+ * zjson::from_value<T>(value)   // Convert Value to any type
+ * zjson::to_bytes<T>(obj)     // Serialize to base64-encoded byte array
+ * zjson::from_bytes<T>(bytes) // Deserialize from base64-encoded byte array
  *
  * Optional Fields (serde-compatible):
  * zstd::optional<T> field;      // Include null by default when empty
@@ -1033,6 +1038,62 @@ Value json_handle_to_value(JSON_INSTANCE *instance, KEY_HANDLE *key_handle)
   }
 }
 
+// from_value function - convert Value to any deserializable type
+template <typename T>
+zstd::expected<T, Error> from_value(const Value &value)
+{
+  try
+  {
+    return from_str_impl<T>(value, typename std::integral_constant<bool, Deserializable<T>::value>{});
+  }
+  catch (const Error &e)
+  {
+    return zstd::make_unexpected(e);
+  }
+  catch (const std::exception &e)
+  {
+    return zstd::make_unexpected(Error(Error::Custom, e.what()));
+  }
+}
+
+// Helper implementation functions for to_value for C++14 compatibility
+template <typename T>
+zstd::expected<Value, Error> to_value_impl(const T &obj, std::true_type)
+{
+  return Serializable<T>::serialize(obj);
+}
+
+template <typename T>
+zstd::expected<Value, Error> to_value_impl(const T &obj, std::false_type)
+{
+  if (SerializationRegistry<T>::has_serializer())
+  {
+    return SerializationRegistry<T>::get_serializer()(obj);
+  }
+  else
+  {
+    return zstd::make_unexpected(Error::invalid_type("serializable", "unknown"));
+  }
+}
+
+// to_value function - convert any serializable type to Value
+template <typename T>
+zstd::expected<Value, Error> to_value(const T &obj)
+{
+  try
+  {
+    return to_value_impl<T>(obj, typename std::integral_constant<bool, Serializable<T>::value>{});
+  }
+  catch (const Error &e)
+  {
+    return zstd::make_unexpected(e);
+  }
+  catch (const std::exception &e)
+  {
+    return zstd::make_unexpected(Error(Error::Custom, e.what()));
+  }
+}
+
 // from_str function for JSON deserialization
 template <typename T>
 zstd::expected<T, Error> from_str(const std::string &json_str)
@@ -1062,6 +1123,63 @@ zstd::expected<T, Error> from_str(const std::string &json_str)
     ZJSMTERM(&instance);
 
     return from_str_impl<T>(parsed, typename std::integral_constant<bool, Deserializable<T>::value>{});
+  }
+  catch (const Error &e)
+  {
+    return zstd::make_unexpected(e);
+  }
+  catch (const std::exception &e)
+  {
+    return zstd::make_unexpected(Error(Error::Custom, e.what()));
+  }
+}
+
+// from_bytes function - deserialize from base64-encoded byte array
+template <typename T>
+zstd::expected<T, Error> from_bytes(const std::vector<uint8_t> &base64_bytes)
+{
+  try
+  {
+    // Convert bytes to string for base64 decoding
+    std::string base64_str(base64_bytes.begin(), base64_bytes.end());
+
+    // Decode base64 to get the original JSON
+    std::string json_str = zbase64::decode(base64_str);
+
+    // Deserialize the JSON
+    return from_str<T>(json_str);
+  }
+  catch (const Error &e)
+  {
+    return zstd::make_unexpected(e);
+  }
+  catch (const std::exception &e)
+  {
+    return zstd::make_unexpected(Error(Error::Custom, e.what()));
+  }
+}
+
+// to_bytes function - serialize to base64-encoded byte array
+template <typename T>
+zstd::expected<std::vector<uint8_t>, Error> to_bytes(const T &obj)
+{
+  try
+  {
+    // First serialize to JSON string
+    auto json_result = to_string(obj);
+    if (!json_result.has_value())
+    {
+      return zstd::make_unexpected(json_result.error());
+    }
+
+    const std::string &json_str = json_result.value();
+
+    // Encode JSON string as base64
+    std::string base64_str = zbase64::encode(json_str);
+
+    // Convert base64 string to byte array
+    std::vector<uint8_t> bytes(base64_str.begin(), base64_str.end());
+    return bytes;
   }
   catch (const Error &e)
   {
