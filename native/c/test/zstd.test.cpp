@@ -1094,6 +1094,70 @@ void zstd_tests()
       Expect(sv1 >= sv3).ToBe(true);
     }); });
 
+  describe("zstd::monostate", []() -> void
+           {
+    it("should default construct", []() -> void {
+      monostate m;
+      (void)m; // Suppress unused variable warning
+    });
+
+    it("should copy construct", []() -> void {
+      monostate m1;
+      monostate m2(m1);
+      (void)m2; // Suppress unused variable warning
+    });
+
+    it("should handle assignment", []() -> void {
+      monostate m1;
+      monostate m2;
+      m2 = m1;
+      (void)m1;
+      (void)m2; // Suppress unused variable warnings
+    });
+
+    it("should compare equal with any other monostate", []() -> void {
+      monostate m1;
+      monostate m2;
+      Expect(m1 == m2).ToBe(true);
+      Expect(m1 != m2).ToBe(false);
+    });
+
+    it("should have consistent ordering relationships", []() -> void {
+      monostate m1;
+      monostate m2;
+      Expect(m1 < m2).ToBe(false);
+      Expect(m1 <= m2).ToBe(true);
+      Expect(m1 > m2).ToBe(false);
+      Expect(m1 >= m2).ToBe(true);
+    });
+
+    it("should work as variant alternative", []() -> void {
+      variant<monostate, int, std::string> var;
+      Expect(var.index()).ToBe(0);
+      // Should construct monostate by default
+      var.get<monostate>(); // Should not throw
+    });
+
+    it("should allow switching between monostate and other types", []() -> void {
+      variant<monostate, int> var;
+      Expect(var.index()).ToBe(0);
+
+      // Switch to int
+      var = 42;
+      Expect(var.index()).ToBe(1);
+      Expect(var.get<int>()).ToBe(42);
+
+      // Switch back to monostate
+      var = monostate();
+      Expect(var.index()).ToBe(0);
+      var.get<monostate>(); // Should not throw
+    });
+
+    it("should have minimal size", []() -> void {
+      // monostate should have size of at least 1 (empty class requirement)
+      Expect(sizeof(monostate) >= 1).ToBe(true);
+    }); });
+
   describe("zstd::bad_variant_access", []() -> void
            {
     it("should be a logic_error", []() -> void {

@@ -1239,6 +1239,42 @@ inline bool operator>=(const string_view &lhs, const string_view &rhs)
   return lhs.compare(rhs) >= 0;
 }
 
+// Backport of C++17 `std::monostate`
+struct monostate
+{
+};
+
+// Comparison operators for monostate
+inline bool operator==(const monostate&, const monostate&)
+{
+  return true;
+}
+
+inline bool operator!=(const monostate&, const monostate&)
+{
+  return false;
+}
+
+inline bool operator<(const monostate&, const monostate&)
+{
+  return false;
+}
+
+inline bool operator<=(const monostate&, const monostate&)
+{
+  return true;
+}
+
+inline bool operator>(const monostate&, const monostate&)
+{
+  return false;
+}
+
+inline bool operator>=(const monostate&, const monostate&)
+{
+  return true;
+}
+
 // Variant type that mimics C++17 std::variant
 template <typename... Types>
 class variant;
