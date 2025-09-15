@@ -2050,6 +2050,11 @@ public:
 
   ~ArgumentParser() = default;
 
+  /**
+   * @brief Changes the program name to the given name.
+   *
+   * @param new_program_name The new program name
+   */
   void update_program_name(const std::string &new_program_name)
   {
     m_program_name = new_program_name;
@@ -2059,19 +2064,29 @@ public:
     }
   }
 
-  // get a reference to the root command to add arguments or subcommands
+  /**
+   * @return Reference to the root command
+   */
   Command &get_root_command()
   {
     return *m_root_cmd;
   }
 
-  // get the program name
+  /**
+   * @return Returns the current program name registered with the parser
+   */
   const std::string &get_program_name() const
   {
     return m_program_name;
   }
 
-  // parse command line arguments from main(argc, argv)
+  /**
+   * @brief Parse keyword and positional arguments from an entrypoint function
+   *
+   * @param argc Total number of arguments
+   * @param argv User-provided argument list (raw text)
+   * @return Result of parse operation
+   */
   ParseResult parse(int argc, char *argv[])
   {
     ZLOG_TRACE("ArgumentParser::parse(argc=%d) entry", argc);
@@ -2216,7 +2231,12 @@ public:
     return result;
   }
 
-  // parse command line arguments from a single string
+  /**
+   * @brief Parse and execute command based on the given string
+   *
+   * @param command_line The user-provided command, including keyword and positional arguments
+   * @return Result of parse operation
+   */
   ParseResult parse(const std::string &command_line)
   {
     ZLOG_TRACE("ArgumentParser::parse(string='%s') entry", command_line.c_str());
@@ -2309,7 +2329,8 @@ private:
 }; // class ArgumentParser
 
 /**
- * Generate a bash completion script for the given CLI parser.
+ * @brief Generate a bash completion script for the given CLI parser.
+ *
  * @param os Output stream to write the script to.
  * @param prog_name The name of the executable (as invoked).
  * @param root_cmd The root Command object.
@@ -2411,6 +2432,12 @@ inline void generate_bash_completion(std::ostream &os, const std::string &prog_n
   os << "complete -F _parser_complete_" << prog_name << " " << prog_name << "\n";
 }
 
+/**
+ * @brief Add an argument with the given name to the ArgumentBuilder
+ *
+ * @param name The name of the new argument
+ * @return ArgumentBuilder
+ */
 inline ArgumentBuilder Command::add_argument(const std::string &name)
 {
   return ArgumentBuilder(this, name);
