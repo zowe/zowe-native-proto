@@ -108,6 +108,80 @@ struct TestClass
 
 void zstd_tests()
 {
+  describe("zstd::remove_reference", []() -> void
+           {
+    it("should remove reference from regular type", []() -> void {
+      bool is_same = std::is_same<typename remove_reference<int>::type, int>::value;
+      Expect(is_same).ToBe(true);
+    });
+
+    it("should remove l-value reference", []() -> void {
+      bool is_same = std::is_same<typename remove_reference<int &>::type, int>::value;
+      Expect(is_same).ToBe(true);
+    });
+
+    it("should remove r-value reference", []() -> void {
+      bool is_same = std::is_same<typename remove_reference<int &&>::type, int>::value;
+      Expect(is_same).ToBe(true);
+    });
+
+    it("should remove reference from const type", []() -> void {
+      bool is_same = std::is_same<typename remove_reference<const int &>::type, const int>::value;
+      Expect(is_same).ToBe(true);
+    });
+
+    it("should remove reference from pointer type", []() -> void {
+      bool is_same = std::is_same<typename remove_reference<int *&>::type, int *>::value;
+      Expect(is_same).ToBe(true);
+    });
+
+    it("should handle complex types", []() -> void {
+      bool is_same = std::is_same<typename remove_reference<std::string &&>::type, std::string>::value;
+      Expect(is_same).ToBe(true);
+    }); });
+
+  describe("zstd::is_same", []() -> void
+           {
+    it("should return true for identical types", []() -> void {
+      bool result = is_same<int, int>::value;
+      Expect(result).ToBe(true);
+    });
+
+    it("should return false for different types", []() -> void {
+      bool result = is_same<int, double>::value;
+      Expect(result).ToBe(false);
+    });
+
+    it("should distinguish between reference and non-reference types", []() -> void {
+      bool result = is_same<int &, int>::value;
+      Expect(result).ToBe(false);
+    });
+
+    it("should distinguish between const and non-const types", []() -> void {
+      bool result = is_same<const int, int>::value;
+      Expect(result).ToBe(false);
+    });
+
+    it("should return true for identical const types", []() -> void {
+      bool result = is_same<const int, const int>::value;
+      Expect(result).ToBe(true);
+    });
+
+    it("should return true for identical pointer types", []() -> void {
+      bool result = is_same<int *, int *>::value;
+      Expect(result).ToBe(true);
+    });
+
+    it("should inherit from std::true_type when types are same", []() -> void {
+      bool result = std::is_base_of<std::true_type, is_same<int, int>>::value;
+      Expect(result).ToBe(true);
+    });
+
+    it("should inherit from std::false_type when types are different", []() -> void {
+      bool result = std::is_base_of<std::false_type, is_same<int, double>>::value;
+      Expect(result).ToBe(true);
+    }); });
+
   describe("zstd::enable_if", []() -> void
            {
     it("should define type when condition is true", []() -> void {
@@ -717,6 +791,343 @@ void zstd_tests()
       Expect(different_unexp != error).ToBe(true);
       Expect(exp != unexp).ToBe(true);
       Expect(unexp != exp).ToBe(true);
+    }); });
+
+  describe("zstd::string_view", []() -> void
+           {
+    it("should default construct to empty string_view", []() -> void {
+      string_view sv;
+      Expect(sv.data()).ToBe(nullptr);
+      Expect(sv.size()).ToBe(0);
+      Expect(sv.empty()).ToBe(true);
+    });
+
+    it("should construct from C-string", []() -> void {
+      const char* str = "hello";
+      string_view sv(str);
+      Expect(sv.data()).ToBe(str);
+      Expect(sv.size()).ToBe(5);
+      Expect(sv.empty()).ToBe(false);
+    });
+
+    it("should construct from data and size", []() -> void {
+      const char* data = "hello world";
+      string_view sv(data, 5);
+      Expect(sv.data()).ToBe(data);
+      Expect(sv.size()).ToBe(5);
+      Expect(sv.length()).ToBe(5);
+    });
+
+    it("should construct from std::string", []() -> void {
+      std::string str = "test string";
+      string_view sv(str);
+      Expect(sv.data()).ToBe(str.c_str());
+      Expect(sv.size()).ToBe(11);
+    });
+
+    it("should handle copy construction", []() -> void {
+      string_view sv1("original");
+      string_view sv2(sv1);
+      Expect(sv2.data()).ToBe(sv1.data());
+      Expect(sv2.size()).ToBe(sv1.size());
+    });
+
+    it("should handle assignment", []() -> void {
+      string_view sv1("hello");
+      string_view sv2;
+      sv2 = sv1;
+      Expect(sv2.data()).ToBe(sv1.data());
+      Expect(sv2.size()).ToBe(sv1.size());
+    });
+
+    it("should provide element access via operator[]", []() -> void {
+      string_view sv("hello");
+      Expect(sv[0]).ToBe('h');
+      Expect(sv[4]).ToBe('o');
+    });
+
+    it("should provide bounds-checked access via at()", []() -> void {
+      string_view sv("test");
+      Expect(sv.at(0)).ToBe('t');
+      Expect(sv.at(3)).ToBe('t');
+      
+      bool thrown = false;
+      try {
+        sv.at(4);
+      } catch (const std::out_of_range&) {
+        thrown = true;
+      }
+      Expect(thrown).ToBe(true);
+    });
+
+    it("should provide front() and back() access", []() -> void {
+      string_view sv("hello");
+      Expect(sv.front()).ToBe('h');
+      Expect(sv.back()).ToBe('o');
+    });
+
+    it("should provide iterators", []() -> void {
+      string_view sv("abc");
+      auto it = sv.begin();
+      Expect(*it).ToBe('a');
+      ++it;
+      Expect(*it).ToBe('b');
+      ++it;
+      Expect(*it).ToBe('c');
+      ++it;
+      Expect(it == sv.end()).ToBe(true);
+    });
+
+    it("should provide const iterators", []() -> void {
+      string_view sv("test");
+      auto cit = sv.cbegin();
+      Expect(*cit).ToBe('t');
+      Expect(sv.cend() - sv.cbegin()).ToBe(4);
+    });
+
+    it("should report max_size", []() -> void {
+      string_view sv;
+      Expect(sv.max_size()).ToBe(static_cast<string_view::size_type>(-1));
+    });
+
+    it("should remove prefix correctly", []() -> void {
+      string_view sv("hello world");
+      sv.remove_prefix(6);
+      Expect(sv.size()).ToBe(5);
+      Expect(sv[0]).ToBe('w');
+      Expect(std::string(sv.data(), sv.size())).ToBe(std::string("world"));
+    });
+
+    it("should remove suffix correctly", []() -> void {
+      string_view sv("hello world");
+      sv.remove_suffix(6);
+      Expect(sv.size()).ToBe(5);
+      Expect(std::string(sv.data(), sv.size())).ToBe(std::string("hello"));
+    });
+
+    it("should swap with another string_view", []() -> void {
+      string_view sv1("first");
+      string_view sv2("second");
+      const char* data1 = sv1.data();
+      const char* data2 = sv2.data();
+      sv1.swap(sv2);
+      Expect(sv1.data()).ToBe(data2);
+      Expect(sv2.data()).ToBe(data1);
+      Expect(sv1.size()).ToBe(6);
+      Expect(sv2.size()).ToBe(5);
+    });
+
+    it("should copy data to buffer", []() -> void {
+      string_view sv("hello");
+      char buffer[10];
+      string_view::size_type copied = sv.copy(buffer, 3, 1);
+      Expect(copied).ToBe(3);
+      Expect(std::string(buffer, copied)).ToBe(std::string("ell"));
+
+      bool thrown = false;
+      try {
+        sv.copy(buffer, 3, 10);
+      } catch (const std::out_of_range&) {
+        thrown = true;
+      }
+      Expect(thrown).ToBe(true);
+    });
+
+    it("should create substring", []() -> void {
+      string_view sv("hello world");
+      string_view sub = sv.substr(6, 5);
+      Expect(sub.size()).ToBe(5);
+      Expect(std::string(sub.data(), sub.size())).ToBe(std::string("world"));
+
+      string_view sub2 = sv.substr(6);
+      Expect(sub2.size()).ToBe(5);
+
+      bool thrown = false;
+      try {
+        sv.substr(20);
+      } catch (const std::out_of_range&) {
+        thrown = true;
+      }
+      Expect(thrown).ToBe(true);
+    });
+
+    it("should compare with other string_view", []() -> void {
+      string_view sv1("abc");
+      string_view sv2("abc");
+      string_view sv3("def");
+      string_view sv4("ab");
+
+      Expect(sv1.compare(sv2)).ToBe(0);
+      Expect(sv1.compare(sv3) < 0).ToBe(true);
+      Expect(sv3.compare(sv1) > 0).ToBe(true);
+      Expect(sv1.compare(sv4) > 0).ToBe(true);
+    });
+
+    it("should compare with substring", []() -> void {
+      string_view sv("hello world");
+      string_view other("world");
+      Expect(sv.compare(6, 5, other)).ToBe(0);
+      Expect(sv.compare(0, 5, other) < 0).ToBe(true);
+    });
+
+    it("should compare with C-string", []() -> void {
+      string_view sv("hello");
+      Expect(sv.compare("hello")).ToBe(0);
+      Expect(sv.compare("world") < 0).ToBe(true);
+      Expect(sv.compare("abc") > 0).ToBe(true);
+    });
+
+    it("should test starts_with", []() -> void {
+      string_view sv("hello world");
+      Expect(sv.starts_with("hello")).ToBe(true);
+      Expect(sv.starts_with("world")).ToBe(false);
+      Expect(sv.starts_with('h')).ToBe(true);
+      Expect(sv.starts_with('w')).ToBe(false);
+      Expect(sv.starts_with(string_view("hello"))).ToBe(true);
+    });
+
+    it("should test ends_with", []() -> void {
+      string_view sv("hello world");
+      Expect(sv.ends_with("world")).ToBe(true);
+      Expect(sv.ends_with("hello")).ToBe(false);
+      Expect(sv.ends_with('d')).ToBe(true);
+      Expect(sv.ends_with('h')).ToBe(false);
+      Expect(sv.ends_with(string_view("world"))).ToBe(true);
+    });
+
+    it("should find substring", []() -> void {
+      string_view sv("hello world hello");
+      Expect(sv.find("hello")).ToBe(0);
+      Expect(sv.find("world")).ToBe(6);
+      Expect(sv.find("hello", 1)).ToBe(12);
+      Expect(sv.find("xyz")).ToBe(string_view::npos);
+      Expect(sv.find("")).ToBe(0);
+    });
+
+    it("should find character", []() -> void {
+      string_view sv("hello");
+      Expect(sv.find('e')).ToBe(1);
+      Expect(sv.find('l')).ToBe(2);
+      Expect(sv.find('x')).ToBe(string_view::npos);
+      Expect(sv.find('l', 3)).ToBe(3);
+    });
+
+    it("should reverse find substring", []() -> void {
+      string_view sv("hello world hello");
+      Expect(sv.rfind("hello")).ToBe(12);
+      Expect(sv.rfind("world")).ToBe(6);
+      Expect(sv.rfind("xyz")).ToBe(string_view::npos);
+      Expect(sv.rfind("hello", 10)).ToBe(0);
+    });
+
+    it("should reverse find character", []() -> void {
+      string_view sv("hello");
+      Expect(sv.rfind('l')).ToBe(3);
+      Expect(sv.rfind('e')).ToBe(1);
+      Expect(sv.rfind('x')).ToBe(string_view::npos);
+      Expect(sv.rfind('l', 2)).ToBe(2);
+    });
+
+    it("should find first of characters", []() -> void {
+      string_view sv("hello world");
+      Expect(sv.find_first_of("aeiou")).ToBe(1); // 'e'
+      Expect(sv.find_first_of('o')).ToBe(4);
+      Expect(sv.find_first_of("xyz")).ToBe(string_view::npos);
+      Expect(sv.find_first_of("aeiou", 2)).ToBe(4); // 'o'
+    });
+
+    it("should find last of characters", []() -> void {
+      string_view sv("hello world");
+      Expect(sv.find_last_of("aeiou")).ToBe(7); // 'o' in world
+      Expect(sv.find_last_of('l')).ToBe(9);
+      Expect(sv.find_last_of("xyz")).ToBe(string_view::npos);
+      Expect(sv.find_last_of("aeiou", 5)).ToBe(4); // 'o' in hello
+    });
+
+    it("should find first not of characters", []() -> void {
+      string_view sv("hello world");
+      Expect(sv.find_first_not_of("hel")).ToBe(4); // 'o'
+      Expect(sv.find_first_not_of('h')).ToBe(1);
+      Expect(sv.find_first_not_of("helo wrd")).ToBe(string_view::npos);
+      Expect(sv.find_first_not_of("he", 2)).ToBe(2); // 'l'
+    });
+
+    it("should find last not of characters", []() -> void {
+      string_view sv("hello world");
+      Expect(sv.find_last_not_of("drl")).ToBe(7); // 'o' in world
+      Expect(sv.find_last_not_of('d')).ToBe(9);
+      Expect(sv.find_last_not_of("helo wrd")).ToBe(string_view::npos);
+      Expect(sv.find_last_not_of("ld", 8)).ToBe(7); // 'o'
+    });
+
+    it("should handle empty string operations", []() -> void {
+      string_view empty;
+      Expect(empty.starts_with("")).ToBe(true);
+      Expect(empty.ends_with("")).ToBe(true);
+      Expect(empty.find("")).ToBe(0);
+      Expect(empty.find("x")).ToBe(string_view::npos);
+      Expect(empty.substr().size()).ToBe(0);
+    }); });
+
+  describe("zstd::string_view comparisons", []() -> void
+           {
+    it("should compare equal string_views", []() -> void {
+      string_view sv1("hello");
+      string_view sv2("hello");
+      string_view sv3("world");
+      
+      Expect(sv1 == sv2).ToBe(true);
+      Expect(sv1 != sv3).ToBe(true);
+      Expect(sv1 == sv3).ToBe(false);
+    });
+
+    it("should compare string_views with ordering", []() -> void {
+      string_view sv1("abc");
+      string_view sv2("def");
+      string_view sv3("ab");
+      
+      Expect(sv1 < sv2).ToBe(true);
+      Expect(sv1 <= sv2).ToBe(true);
+      Expect(sv2 > sv1).ToBe(true);
+      Expect(sv2 >= sv1).ToBe(true);
+      Expect(sv1 > sv3).ToBe(true);
+      Expect(sv1 >= sv3).ToBe(true);
+    }); });
+
+  describe("zstd::bad_variant_access", []() -> void
+           {
+    it("should be a logic_error", []() -> void {
+      bad_variant_access ex;
+      bool is_logic_error = std::is_base_of<std::logic_error, bad_variant_access>::value;
+      Expect(is_logic_error).ToBe(true);
+    });
+
+    it("should have appropriate error message", []() -> void {
+      bad_variant_access ex;
+      std::string msg = ex.what();
+      Expect(msg).ToBe(std::string("bad_variant_access"));
+    });
+
+    it("should be thrown by variant get with wrong type", []() -> void {
+      variant<int, std::string> var(42);
+      bool thrown = false;
+      try {
+        var.get<std::string>();
+      } catch (const bad_variant_access&) {
+        thrown = true;
+      }
+      Expect(thrown).ToBe(true);
+    });
+
+    it("should be catchable as logic_error", []() -> void {
+      variant<int, std::string> var(42);
+      bool caught_as_logic_error = false;
+      try {
+        var.get<std::string>();
+      } catch (const std::logic_error&) {
+        caught_as_logic_error = true;
+      }
+      Expect(caught_as_logic_error).ToBe(true);
     }); });
 
   describe("zstd::variant", []() -> void
