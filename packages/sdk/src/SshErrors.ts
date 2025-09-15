@@ -230,6 +230,11 @@ export const SshErrors: Record<string, ISshErrorDefinition> = {
         summary:
             "The operation failed because there is no space left on the device. Please check the available disk space on the z/OS system.",
         matches: ["EDC5133I"],
+        tips: [
+            "Check that you have write permissions for the target file and directory.",
+            "Verify that the disk or volume has sufficient free space.",
+            "Check if the file system is mounted as read-only.",
+        ],
     },
     FOTS4152: {
         summary: "Failed to open a pseudo-terminal (pty). This is required for SSH shell sessions.",

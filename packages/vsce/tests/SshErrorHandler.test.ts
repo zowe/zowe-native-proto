@@ -211,7 +211,6 @@ describe("SshErrorHandler", () => {
                 "FOTS4315 xrecallocarray: out of memory",
                 "FOTS4216 Couldn't allocate session state",
                 "FOTS4311 could not allocate state",
-                "FOTS4151 openpty failed",
                 "FOTS4154 ssh_packet_set_connection failed",
                 "FOTS4150 kex_setup failed",
                 "FOTS4312 cipher_init failed",

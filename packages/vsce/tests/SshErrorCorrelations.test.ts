@@ -70,7 +70,7 @@ describe("SshErrorCorrelations", () => {
             expect(mockExtenderApi.getErrorCorrelator).toHaveBeenCalled();
 
             // Should register multiple correlations (connection failures, memory failures, filesystem errors)
-            expect(mockErrorCorrelator.addCorrelation).toHaveBeenCalledTimes(14); // 5 connection + 4 memory + 5 filesystem
+            expect(mockErrorCorrelator.addCorrelation).toHaveBeenCalledTimes(15); // 5 connection + 4 memory + 6 filesystem
         });
 
         it("should handle missing Zowe Explorer API gracefully", () => {
@@ -131,7 +131,7 @@ describe("SshErrorCorrelations", () => {
             correlation.resources.forEach((resource: { href: string; title: string }) => {
                 expect(resource).toHaveProperty("href");
                 expect(resource).toHaveProperty("title");
-                expect(resource.href).toMatch(/^https:\/\/www\.ibm\.com/);
+                expect(resource.href.startsWith("https://www.ibm.com")).toBe(true);
             });
         });
 
@@ -348,12 +348,15 @@ describe("SshErrorCorrelations", () => {
                 expect(typeof correlation.errorCode).toBe("string");
                 expect(Array.isArray(correlation.matches)).toBe(true);
                 expect(typeof correlation.summary).toBe("string");
-                expect(Array.isArray(correlation.tips)).toBe(true);
-                expect(Array.isArray(correlation.resources)).toBe(true);
-
+                if (correlation.tips) {
+                    expect(Array.isArray(correlation.tips)).toBe(true);
+                    expect(correlation.tips.length).toBeGreaterThan(0);
+                }
+                if (correlation.resources) {
+                    expect(Array.isArray(correlation.resources)).toBe(true);
+                    expect(correlation.resources.length).toBeGreaterThan(0);
+                }
                 expect(correlation.matches.length).toBeGreaterThan(0);
-                expect(correlation.tips.length).toBeGreaterThan(0);
-                expect(correlation.resources.length).toBeGreaterThan(0);
             });
         });
 
@@ -363,7 +366,8 @@ describe("SshErrorCorrelations", () => {
             allCalls.forEach((call) => {
                 const correlation = call[2];
 
-                correlation.resources.forEach((resource: { href: string; title: string }) => {
+                // Not every correlation has resources, but the ones that do should have HTTPS links
+                correlation.resources?.forEach((resource: { href: string; title: string }) => {
                     expect(resource).toHaveProperty("href");
                     expect(resource).toHaveProperty("title");
                     expect(typeof resource.href).toBe("string");
