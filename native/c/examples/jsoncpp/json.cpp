@@ -439,6 +439,120 @@ void compile_time_checking_example()
 }
 
 // ============================================================================
+// LARGE STRUCT (32 fields)
+// ============================================================================
+
+struct LargeStruct
+{
+  std::string field1;
+  int field2;
+  bool field3;
+  double field4;
+  std::string field5;
+  int field6;
+  bool field7;
+  double field8;
+  std::string field9;
+  int field10;
+  bool field11;
+  double field12;
+  std::string field13;
+  int field14;
+  bool field15;
+  double field16;
+  std::string field17;
+  int field18;
+  bool field19;
+  double field20;
+  std::string field21;
+  int field22;
+  bool field23;
+  double field24;
+  std::string field25;
+  int field26;
+  bool field27;
+  double field28;
+  std::string field29;
+  int field30;
+  bool field31;
+  double field32;
+};
+
+ZJSON_DERIVE(LargeStruct,
+             field1, field2, field3, field4, field5, field6, field7, field8,
+             field9, field10, field11, field12, field13, field14, field15, field16,
+             field17, field18, field19, field20, field21, field22, field23, field24,
+             field25, field26, field27, field28, field29, field30, field31, field32);
+
+void large_struct_example()
+{
+  std::cout << "\n=== LARGE STRUCT (32 FIELDS) EXAMPLE ===" << std::endl;
+
+  LargeStruct s;
+  s.field1 = "value1";
+  s.field2 = 2;
+  s.field3 = true;
+  s.field4 = 4.4;
+  s.field5 = "value5";
+  s.field6 = 6;
+  s.field7 = false;
+  s.field8 = 8.8;
+  s.field9 = "value9";
+  s.field10 = 10;
+  s.field11 = true;
+  s.field12 = 12.12;
+  s.field13 = "value13";
+  s.field14 = 14;
+  s.field15 = false;
+  s.field16 = 16.16;
+  s.field17 = "value17";
+  s.field18 = 18;
+  s.field19 = true;
+  s.field20 = 20.20;
+  s.field21 = "value21";
+  s.field22 = 22;
+  s.field23 = false;
+  s.field24 = 24.24;
+  s.field25 = "value25";
+  s.field26 = 26;
+  s.field27 = true;
+  s.field28 = 28.28;
+  s.field29 = "value29";
+  s.field30 = 30;
+  s.field31 = false;
+  s.field32 = 32.32;
+
+  auto json_result = zjson::to_string_pretty(s);
+  if (json_result.has_value())
+  {
+    std::cout << "✅ Large struct serialization successful" << std::endl;
+
+    auto s2_result = zjson::from_str<LargeStruct>(json_result.value());
+    if (s2_result.has_value())
+    {
+      LargeStruct s2 = s2_result.value();
+      std::cout << "✅ Large struct deserialization successful" << std::endl;
+      if (s2.field1 == s.field1 && s2.field32 == s.field32)
+      {
+        std::cout << "✅ Deserialized values verified (spot check)" << std::endl;
+      }
+      else
+      {
+        std::cout << "❌ Deserialized values verification failed" << std::endl;
+      }
+    }
+    else
+    {
+      std::cout << "❌ Large struct deserialization error: " << s2_result.error().what() << std::endl;
+    }
+  }
+  else
+  {
+    std::cout << "❌ Large struct serialization error: " << json_result.error().what() << std::endl;
+  }
+}
+
+// ============================================================================
 // MAIN FUNCTION - Run all examples
 // ============================================================================
 
@@ -457,6 +571,7 @@ int main()
     complex_nested_example();
     error_handling_example();
     compile_time_checking_example();
+    large_struct_example();
 
     std::cout << "\n=== All Examples Completed Successfully! ===" << std::endl;
     return 0;
