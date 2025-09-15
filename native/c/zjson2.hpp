@@ -24,7 +24,6 @@
 #include "zjsonm.h"
 #include "zjsontype.h"
 #include "zstd.hpp"
-#include "zbase64.h"
 #include <hwtjic.h> // ensure to include /usr/include
 
 /*
@@ -60,8 +59,13 @@
  * zjson::from_str<T>(json)      // Deserialize from JSON string
  * zjson::to_value<T>(obj)       // Convert any type to Value
  * zjson::from_value<T>(value)   // Convert Value to any type
- * zjson::to_bytes<T>(obj)     // Serialize to base64-encoded byte array
- * zjson::from_bytes<T>(bytes) // Deserialize from base64-encoded byte array
+ *
+ * Dynamic Value Access (serde_json compatible):
+ * value["key"]                  // Object access by key
+ * value[0]                      // Array access by index
+ * value["users"][0]["name"]     // Chained access like serde_json
+ * value.as_string()             // Use existing C++ methods for type conversion
+ * value.as_int(), .as_number(), .as_bool(), etc.
  *
  * Optional Fields (serde-compatible):
  * zstd::optional<T> field;      // Include null by default when empty
@@ -422,6 +426,83 @@ public:
   bool is_object() const
   {
     return type_ == Object;
+  }
+
+  // Object access by key
+  Value &operator[](const std::string &key)
+  {
+    if (type_ == Null)
+    {
+      // Convert null to empty object on first access
+      clear();
+      type_ = Object;
+      object_value_ = new std::map<std::string, Value>();
+    }
+
+    if (type_ != Object)
+    {
+      throw Error::invalid_type("object", type_name());
+    }
+
+    return (*object_value_)[key]; // Creates entry if doesn't exist
+  }
+
+  const Value &operator[](const std::string &key) const
+  {
+    if (type_ != Object)
+    {
+      throw Error::invalid_type("object", type_name());
+    }
+
+    auto it = object_value_->find(key);
+    if (it == object_value_->end())
+    {
+      static const Value null_value; // Return reference to static null
+      return null_value;
+    }
+
+    return it->second;
+  }
+
+  // Array access by index
+  Value &operator[](size_t index)
+  {
+    if (type_ == Null)
+    {
+      // Convert null to empty array on first access
+      clear();
+      type_ = Array;
+      array_value_ = new std::vector<Value>();
+    }
+
+    if (type_ != Array)
+    {
+      throw Error::invalid_type("array", type_name());
+    }
+
+    // Expand array if needed
+    if (index >= array_value_->size())
+    {
+      array_value_->resize(index + 1);
+    }
+
+    return (*array_value_)[index];
+  }
+
+  const Value &operator[](size_t index) const
+  {
+    if (type_ != Array)
+    {
+      throw Error::invalid_type("array", type_name());
+    }
+
+    if (index >= array_value_->size())
+    {
+      static const Value null_value; // Return reference to static null
+      return null_value;
+    }
+
+    return (*array_value_)[index];
   }
 
 private:
@@ -1123,63 +1204,6 @@ zstd::expected<T, Error> from_str(const std::string &json_str)
     ZJSMTERM(&instance);
 
     return from_str_impl<T>(parsed, typename std::integral_constant<bool, Deserializable<T>::value>{});
-  }
-  catch (const Error &e)
-  {
-    return zstd::make_unexpected(e);
-  }
-  catch (const std::exception &e)
-  {
-    return zstd::make_unexpected(Error(Error::Custom, e.what()));
-  }
-}
-
-// from_bytes function - deserialize from base64-encoded byte array
-template <typename T>
-zstd::expected<T, Error> from_bytes(const std::vector<uint8_t> &base64_bytes)
-{
-  try
-  {
-    // Convert bytes to string for base64 decoding
-    std::string base64_str(base64_bytes.begin(), base64_bytes.end());
-
-    // Decode base64 to get the original JSON
-    std::string json_str = zbase64::decode(base64_str);
-
-    // Deserialize the JSON
-    return from_str<T>(json_str);
-  }
-  catch (const Error &e)
-  {
-    return zstd::make_unexpected(e);
-  }
-  catch (const std::exception &e)
-  {
-    return zstd::make_unexpected(Error(Error::Custom, e.what()));
-  }
-}
-
-// to_bytes function - serialize to base64-encoded byte array
-template <typename T>
-zstd::expected<std::vector<uint8_t>, Error> to_bytes(const T &obj)
-{
-  try
-  {
-    // First serialize to JSON string
-    auto json_result = to_string(obj);
-    if (!json_result.has_value())
-    {
-      return zstd::make_unexpected(json_result.error());
-    }
-
-    const std::string &json_str = json_result.value();
-
-    // Encode JSON string as base64
-    std::string base64_str = zbase64::encode(json_str);
-
-    // Convert base64 string to byte array
-    std::vector<uint8_t> bytes(base64_str.begin(), base64_str.end());
-    return bytes;
   }
   catch (const Error &e)
   {
