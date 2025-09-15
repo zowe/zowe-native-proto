@@ -22,7 +22,6 @@ type SftpError = Error & { code?: number };
 
 // biome-ignore lint/complexity/noStaticOnlyClass: Utilities class has static methods
 export class ZSshUtils {
-    private static readonly SERVER_BIN_FILES = ["zowed", "zowex"];
     private static readonly SERVER_PAX_FILE = "server.pax.Z";
 
     /**
@@ -167,51 +166,20 @@ export class ZSshUtils {
         },
     ): Promise<void> {
         Logger.getAppLogger().debug(`Uninstalling server from ${session.ISshSession.hostname} at path: ${serverPath}`);
-        const remoteDir = serverPath.replace(/^~/, ".");
-        return ZSshUtils.sftp(session, async (sftp, _ssh) => {
-            for (const file of ZSshUtils.SERVER_BIN_FILES) {
-                try {
-                    await promisify(sftp.unlink.bind(sftp))(path.posix.join(remoteDir, file));
-                } catch (err) {
-                    const sftpErr = err as SftpError;
-                    if (sftpErr.code === 2) {
-                        // File not found - this is expected and not an error
-                        Logger.getAppLogger().info(`Remote file does not exist: ${serverPath}/${file}`);
-                    } else {
-                        const errMsg = `Failed to remove server file ${file}: ${err}`;
-                        Logger.getAppLogger().error(errMsg);
-
-                        if (options?.onError) {
-                            const shouldContinue = await options.onError(new Error(errMsg), "unlink");
-                            if (!shouldContinue) {
-                                throw new Error(errMsg);
-                            }
-                        } else {
-                            throw new Error(errMsg);
-                        }
-                    }
-                }
-            }
-
-            try {
-                await promisify(sftp.rmdir.bind(sftp))(remoteDir);
-            } catch (err) {
-                const sftpErr = err as SftpError;
-                if (sftpErr.code === 4) {
-                    // Directory not found - this is expected and not an error
-                    Logger.getAppLogger().info(`Remote directory does not exist: ${serverPath}`);
-                } else {
-                    const errMsg = `Failed to remove server directory: ${err}`;
-                    Logger.getAppLogger().error(errMsg);
-
-                    if (options?.onError) {
-                        const shouldContinue = await options.onError(new Error(errMsg), "rmdir");
-                        if (!shouldContinue) {
-                            throw new Error(errMsg);
-                        }
-                    } else {
+        return ZSshUtils.sftp(session, async (_sftp, ssh) => {
+            const result = await ssh.execCommand(`rm -rf ${serverPath}`);
+            if (result.code === 0) {
+                Logger.getAppLogger().debug(`Deleted directory ${serverPath} with response: ${result.stdout}`);
+            } else {
+                const errMsg = `Failed to delete directory ${serverPath} with RC ${result.code}: ${result.stderr}`;
+                Logger.getAppLogger().error(errMsg);
+                if (options?.onError) {
+                    const shouldContinue = await options.onError(new Error(errMsg), "unlink");
+                    if (!shouldContinue) {
                         throw new Error(errMsg);
                     }
+                } else {
+                    throw new Error(errMsg);
                 }
             }
         });

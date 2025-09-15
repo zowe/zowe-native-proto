@@ -117,6 +117,7 @@ export function registerCommands(context: vscode.ExtensionContext): vscode.Dispo
 
             SshClientCache.inst.end(profile.profile);
             const serverPath = SshConfigUtils.getServerPath(profile.profile);
+            await SshConfigUtils.showSessionInTree(profile.name!, false);
 
             // Create error callback for uninstall operation
             const errorCallback = SshErrorHandler.getInstance().createErrorCallback(
@@ -127,7 +128,6 @@ export function registerCommands(context: vscode.ExtensionContext): vscode.Dispo
                 onError: errorCallback,
             });
 
-            await SshConfigUtils.showSessionInTree(profile.name!, false);
             const infoMsg = `Uninstalled Zowe SSH server from ${profile.profile.host ?? profile.name}`;
             imperative.Logger.getAppLogger().info(infoMsg);
             await Gui.showMessage(infoMsg);

@@ -468,6 +468,95 @@ describe("ZSshClient", () => {
             expect(onErrorMock.mock.calls[0][0]).toBeInstanceOf(Error);
         });
     });
+
+    describe("uninstall server", () => {
+        const serverPath = "/faketmp/fakeserver";
+        const fakeSshSession = new SshSession(fakeSession);
+        it("should return code 0 when uninstalling server succeeds", async () => {
+            const fakeLogger = { debug: vi.fn(), error: vi.fn() };
+            vi.spyOn(Logger, "getAppLogger").mockReturnValue(fakeLogger as any);
+            vi.spyOn(ZSshUtils as any, "sftp").mockImplementation(
+                async (_session: any, callback: (sftp: any, ssh: any) => Promise<void>) => {
+                    const sshMock = {
+                        execCommand: vi.fn().mockResolvedValue({ code: 0, stdout: "deleted" }),
+                    };
+                    return callback({} as any, sshMock);
+                },
+            );
+            await ZSshUtils.uninstallServer(fakeSshSession, serverPath);
+            expect(fakeLogger.debug).toHaveBeenCalledWith(`Deleted directory ${serverPath} with response: deleted`);
+            expect(fakeLogger.error).not.toHaveBeenCalled();
+        });
+
+        it("should return code 1 when uninstalling server succeeds", async () => {
+            const fakeLogger = { debug: vi.fn(), error: vi.fn() };
+            vi.spyOn(Logger, "getAppLogger").mockReturnValue(fakeLogger as any);
+            vi.spyOn(ZSshUtils as any, "sftp").mockImplementation(
+                async (_session: any, callback: (sftp: any, ssh: any) => Promise<void>) => {
+                    const sshMock = {
+                        execCommand: vi.fn().mockResolvedValue({ code: 1 }),
+                    };
+                    return callback({} as any, sshMock);
+                },
+            );
+
+            await expect(ZSshUtils.uninstallServer(fakeSshSession, serverPath)).rejects.toThrow();
+            expect(fakeLogger.error).toHaveBeenCalled();
+        });
+    });
+});
+
+describe("ZSshUtils", () => {
+    describe("isPrivateKeyAuthFailure", () => {
+        it("should return true for common private key failure patterns", () => {
+            const testCases = [
+                "All configured authentication methods failed",
+                "Cannot parse privateKey: Malformed OpenSSH private key",
+                "but no passphrase given",
+                "integrity check failed",
+                "Permission denied (publickey,password)",
+                "Permission denied (publickey)",
+                "Authentication failed",
+                "Invalid private key",
+                "privateKey value does not contain a (valid) private key",
+                "Cannot parse privateKey",
+            ];
+
+            testCases.forEach((errorMessage) => {
+                expect(ZSshUtils.isPrivateKeyAuthFailure(errorMessage, true)).toBe(true);
+            });
+        });
+
+        it("should return false for non-private key error messages", () => {
+            const testCases = [
+                "Connection timed out",
+                "Network is unreachable",
+                "Connection refused",
+                "Host key verification failed",
+                "Some other random error",
+            ];
+
+            testCases.forEach((errorMessage) => {
+                expect(ZSshUtils.isPrivateKeyAuthFailure(errorMessage, true)).toBe(false);
+            });
+        });
+
+        it("should return false when hasPrivateKey is explicitly false", () => {
+            const privateKeyErrorMessage = "All configured authentication methods failed";
+            expect(ZSshUtils.isPrivateKeyAuthFailure(privateKeyErrorMessage, false)).toBe(false);
+        });
+
+        it("should return true when hasPrivateKey is undefined but error matches pattern", () => {
+            const privateKeyErrorMessage = "All configured authentication methods failed";
+            expect(ZSshUtils.isPrivateKeyAuthFailure(privateKeyErrorMessage)).toBe(true);
+        });
+
+        it("should handle partial matches in error messages", () => {
+            const errorMessage =
+                "SSH Error: All configured authentication methods failed. Please check your credentials.";
+            expect(ZSshUtils.isPrivateKeyAuthFailure(errorMessage, true)).toBe(true);
+        });
+    });
 });
 
 describe("ZSshUtils", () => {

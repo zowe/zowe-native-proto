@@ -239,7 +239,7 @@ async function artifacts(connection: Client, packageApf: boolean) {
 }
 
 async function runCommandInShell(connection: Client, command: string, pty = false) {
-    const spinner = startSpinner(`Command: ${command.trim()}`);
+    const spinner = startSpinner(`Running: ${command.trim()}`);
     return new Promise<string>((resolve, reject) => {
         let data = "";
         let error = "";
@@ -314,7 +314,7 @@ async function upload(connection: Client) {
                 throw err;
             }
 
-            const filteredDirs = args[1] ? dirs.filter((dir) => args.some((arg) => arg.startsWith(dir))) : dirs;
+            const filteredDirs = args[1] ? dirs.filter((dir) => args.some((arg) => `${arg}/`.startsWith(dir))) : dirs;
             for (const dir of ["", ...filteredDirs]) {
                 await new Promise<void>((resolve, reject) => {
                     sftpcon.mkdir(`${deployDirs.root}/${dir}`, (err) => {
