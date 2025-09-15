@@ -13,11 +13,11 @@ import {
     ConfigBuilder,
     ConfigSchema,
     ConfigUtils,
-    ProfileInfo,
     type IProfileLoaded,
     type IProfileTypeConfiguration,
+    type ProfileInfo,
 } from "@zowe/imperative";
-import { ProfilesCache, ZoweVsCodeExtension } from "@zowe/zowe-explorer-api";
+import { ZoweVsCodeExtension } from "@zowe/zowe-explorer-api";
 import { type Config, NodeSSH } from "node-ssh";
 import type { ConnectConfig } from "ssh2";
 import type { MockInstance } from "vitest";
