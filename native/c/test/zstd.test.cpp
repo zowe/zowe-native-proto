@@ -842,14 +842,14 @@ void zstd_tests()
 
     it("should provide element access via operator[]", []() -> void {
       string_view sv("hello");
-      Expect(sv[0]).ToBe('h');
-      Expect(sv[4]).ToBe('o');
+      Expect(sv[0] == 'h').ToBe(true);
+      Expect(sv[4] == 'o').ToBe(true);
     });
 
     it("should provide bounds-checked access via at()", []() -> void {
       string_view sv("test");
-      Expect(sv.at(0)).ToBe('t');
-      Expect(sv.at(3)).ToBe('t');
+      Expect(sv.at(0) == 't').ToBe(true);
+      Expect(sv.at(3) == 't').ToBe(true);
       
       bool thrown = false;
       try {
@@ -862,18 +862,18 @@ void zstd_tests()
 
     it("should provide front() and back() access", []() -> void {
       string_view sv("hello");
-      Expect(sv.front()).ToBe('h');
-      Expect(sv.back()).ToBe('o');
+      Expect(sv.front() == 'h').ToBe(true);
+      Expect(sv.back() == 'o').ToBe(true);
     });
 
     it("should provide iterators", []() -> void {
       string_view sv("abc");
       auto it = sv.begin();
-      Expect(*it).ToBe('a');
+      Expect(*it == 'a').ToBe(true);
       ++it;
-      Expect(*it).ToBe('b');
+      Expect(*it == 'b').ToBe(true);
       ++it;
-      Expect(*it).ToBe('c');
+      Expect(*it == 'c').ToBe(true);
       ++it;
       Expect(it == sv.end()).ToBe(true);
     });
@@ -881,7 +881,7 @@ void zstd_tests()
     it("should provide const iterators", []() -> void {
       string_view sv("test");
       auto cit = sv.cbegin();
-      Expect(*cit).ToBe('t');
+      Expect(*cit == 't').ToBe(true);
       Expect(sv.cend() - sv.cbegin()).ToBe(4);
     });
 
@@ -894,7 +894,7 @@ void zstd_tests()
       string_view sv("hello world");
       sv.remove_prefix(6);
       Expect(sv.size()).ToBe(5);
-      Expect(sv[0]).ToBe('w');
+      Expect(sv[0] == 'w').ToBe(true);
       Expect(std::string(sv.data(), sv.size())).ToBe(std::string("world"));
     });
 
@@ -1057,7 +1057,7 @@ void zstd_tests()
       Expect(sv.find_last_not_of("drl")).ToBe(7); // 'o' in world
       Expect(sv.find_last_not_of('d')).ToBe(9);
       Expect(sv.find_last_not_of("helo wrd")).ToBe(string_view::npos);
-      Expect(sv.find_last_not_of("ld", 8)).ToBe(7); // 'o'
+      Expect(sv.find_last_not_of("ld", 7)).ToBe(7); // 'o'
     });
 
     it("should handle empty string operations", []() -> void {
