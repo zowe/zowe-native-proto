@@ -43,6 +43,10 @@
  *
  * Quick Reference:
  *
+ * // Dynamic JSON parsing (no struct registration needed)
+ * zjson::Value data = zjson::from_str(json_string);        // Default to Value
+ * auto result = zjson::from_str<MyStruct>(json_string);    // Parse to specific type
+ *
  * ZJSON_DERIVE(StructName, field1, field2, ...)  // Auto-generate serialization
  * ZJSON_SERIALIZABLE(StructName, ...)            // Manual field configuration
  * ZJSON_FIELD(StructName, field)                 // Field descriptor
@@ -365,28 +369,30 @@ public:
 
   bool as_bool() const
   {
-    if (type_ != Bool)
-      throw Error::invalid_type("bool", type_name());
-    return bool_value_;
+    if (type_ == Bool)
+      return bool_value_;
+    return false;
   }
 
   double as_number() const
   {
-    if (type_ != Number)
-      throw Error::invalid_type("number", type_name());
-    return number_value_;
+    if (type_ == Number)
+      return number_value_;
+    return 0.0;
   }
 
   int as_int() const
   {
-    return static_cast<int>(as_number());
+    if (type_ == Number)
+      return static_cast<int>(number_value_);
+    return 0;
   }
 
-  const std::string &as_string() const
+  std::string as_string() const
   {
-    if (type_ != String)
-      throw Error::invalid_type("string", type_name());
-    return *string_value_;
+    if (type_ == String)
+      return *string_value_;
+    return "";
   }
 
   const std::vector<Value> &as_array() const
@@ -670,6 +676,28 @@ struct Deserializable<std::string>
       return zstd::make_unexpected(Error::invalid_type("string", "other"));
     }
     return value.as_string();
+  }
+};
+
+// Specializations for Value itself - enables both to_value<Value> and from_str<Value>
+template <>
+struct Serializable<Value>
+{
+  static constexpr bool value = true;
+  static Value serialize(const Value &obj)
+  {
+    return obj; // Value serializes to itself (identity)
+  }
+};
+
+template <>
+struct Deserializable<Value>
+{
+  static constexpr bool value = true;
+  static zstd::expected<Value, Error> deserialize(const Value &value)
+  {
+    // Value to Value is just a copy - already parsed from JSON
+    return value;
   }
 };
 
@@ -1179,16 +1207,15 @@ zstd::expected<Value, Error> to_value(const T &obj)
 template <typename T>
 zstd::expected<T, Error> from_str(const std::string &json_str)
 {
+  JSON_INSTANCE instance = {0};
+  int rc = ZJSMINIT(&instance);
+  if (rc != 0)
+  {
+    return zstd::make_unexpected(Error(Error::Custom, "Failed to initialize JSON parser"));
+  }
+
   try
   {
-    // Use zjsonm C API for JSON parsing
-    JSON_INSTANCE instance = {0};
-    int rc = ZJSMINIT(&instance);
-    if (rc != 0)
-    {
-      return zstd::make_unexpected(Error(Error::Custom, "Failed to initialize JSON parser"));
-    }
-
     rc = ZJSMPARS(&instance, json_str.c_str());
     if (rc != 0)
     {
@@ -1207,12 +1234,20 @@ zstd::expected<T, Error> from_str(const std::string &json_str)
   }
   catch (const Error &e)
   {
+    ZJSMTERM(&instance);
     return zstd::make_unexpected(e);
   }
   catch (const std::exception &e)
   {
+    ZJSMTERM(&instance);
     return zstd::make_unexpected(Error(Error::Custom, e.what()));
   }
+}
+
+// Convenience overload: from_str without template parameter defaults to Value
+inline zstd::expected<Value, Error> from_str(const std::string &json_str)
+{
+  return from_str<Value>(json_str);
 }
 
 // Helper function to add indentation to JSON string
