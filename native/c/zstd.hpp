@@ -165,6 +165,109 @@ void swap(unique_ptr<T> &a, unique_ptr<T> &b)
   a.swap(b);
 }
 
+// Simple deep-copying smart pointer to mirror std::experimental::clone_ptr
+template <typename T>
+class clone_ptr
+{
+public:
+  typedef T element_type;
+
+  clone_ptr()
+      : m_ptr(nullptr)
+  {
+  }
+
+  explicit clone_ptr(element_type *ptr)
+      : m_ptr(ptr)
+  {
+  }
+
+  clone_ptr(const clone_ptr &other)
+      : m_ptr(other.m_ptr ? new element_type(*other.m_ptr) : nullptr)
+  {
+  }
+
+  clone_ptr(clone_ptr &&other)
+      : m_ptr(other.release())
+  {
+  }
+
+  ~clone_ptr()
+  {
+    delete m_ptr;
+  }
+
+  clone_ptr &operator=(const clone_ptr &other)
+  {
+    if (this != &other)
+    {
+      element_type *copy = other.m_ptr ? new element_type(*other.m_ptr) : nullptr;
+      reset(copy);
+    }
+    return *this;
+  }
+
+  clone_ptr &operator=(clone_ptr &&other)
+  {
+    if (this != &other)
+    {
+      reset(other.release());
+    }
+    return *this;
+  }
+
+  element_type &operator*() const
+  {
+    return *m_ptr;
+  }
+
+  element_type *operator->() const
+  {
+    return m_ptr;
+  }
+
+  element_type *get() const
+  {
+    return m_ptr;
+  }
+
+  explicit operator bool() const
+  {
+    return m_ptr != nullptr;
+  }
+
+  element_type *release()
+  {
+    element_type *ptr = m_ptr;
+    m_ptr = nullptr;
+    return ptr;
+  }
+
+  void reset(element_type *ptr = nullptr)
+  {
+    if (ptr != m_ptr)
+    {
+      delete m_ptr;
+      m_ptr = ptr;
+    }
+  }
+
+  void swap(clone_ptr &other)
+  {
+    using std::swap;
+    swap(m_ptr, other.m_ptr);
+  }
+
+private:
+  element_type *m_ptr;
+};
+
+template <typename T>
+void swap(clone_ptr<T> &a, clone_ptr<T> &b)
+{
+  a.swap(b);
+}
+
 // Backport of C++14 `std::make_unique`
 template <typename T>
 unique_ptr<T> make_unique()
@@ -1279,6 +1382,28 @@ inline bool operator>=(const monostate&, const monostate&)
 template <typename... Types>
 class variant;
 
+template <typename T>
+struct in_place_type_t
+{
+};
+
+template <size_t I>
+struct in_place_index_t
+{
+};
+
+template <typename T>
+inline in_place_type_t<T> in_place_type()
+{
+  return in_place_type_t<T>();
+}
+
+template <size_t I>
+inline in_place_index_t<I> in_place_index()
+{
+  return in_place_index_t<I>();
+}
+
 namespace internal
 {
 template <typename T, typename... Types>
@@ -1463,6 +1588,22 @@ public:
     construct_value(value);
   }
 
+  template <typename T, typename... Args,
+            typename Dummy = typename enable_if<(internal::IndexOf<T, Types...>::value != (size_t)-1)>::type>
+  explicit variant(in_place_type_t<T>, Args &&...args)
+  {
+    m_index = internal::IndexOf<T, Types...>::value;
+    construct_value_in_place<T>(forward<Args>(args)...);
+  }
+
+  template <size_t I, typename... Args,
+            typename Dummy = typename enable_if<(I < sizeof...(Types))>::type>
+  explicit variant(in_place_index_t<I>, Args &&...args)
+  {
+    m_index = I;
+    construct<I>(forward<Args>(args)...);
+  }
+
   variant(const variant &other)
       : m_index(other.m_index)
   {
@@ -1492,6 +1633,26 @@ public:
     m_index = internal::IndexOf<T, Types...>::value;
     construct_value(value);
     return *this;
+  }
+
+  template <typename T, typename... Args,
+            typename Dummy = typename enable_if<(internal::IndexOf<T, Types...>::value != (size_t)-1)>::type>
+  T &emplace(Args &&...args)
+  {
+    destroy();
+    m_index = internal::IndexOf<T, Types...>::value;
+    construct_value_in_place<T>(forward<Args>(args)...);
+    return get<T>();
+  }
+
+  template <size_t I, typename... Args,
+            typename Dummy = typename enable_if<(I < sizeof...(Types))>::type>
+  typename internal::AtIndex<I, Types...>::type &emplace(Args &&...args)
+  {
+    destroy();
+    m_index = I;
+    construct<I>(forward<Args>(args)...);
+    return get<I>();
   }
 
   size_t index() const
@@ -1573,6 +1734,12 @@ private:
     new (m_storage) T(value);
   }
 
+  template <typename T, typename... Args>
+  void construct_value_in_place(Args &&...args)
+  {
+    new (m_storage) T(forward<Args>(args)...);
+  }
+
   void destroy()
   {
     internal::destroy_visitor<0, Types...>::apply(m_index, m_storage);
@@ -1591,6 +1758,43 @@ template <typename Visitor, typename... Types>
 typename Visitor::result_type apply_visitor(Visitor &visitor, variant<Types...> &v)
 {
   return internal::visitor_caller<Visitor, variant<Types...>, 0, sizeof...(Types)>::apply(v, visitor);
+}
+
+template <typename T, typename... Types>
+typename enable_if<(internal::IndexOf<T, Types...>::value != (size_t)-1), bool>::type
+holds_alternative(const variant<Types...> &v)
+{
+  return v.index() == internal::IndexOf<T, Types...>::value;
+}
+
+template <typename T, typename... Types>
+typename enable_if<(internal::IndexOf<T, Types...>::value != (size_t)-1), T *>::type
+get_if(variant<Types...> *v)
+{
+  if (!v)
+  {
+    return nullptr;
+  }
+  if (!holds_alternative<T>(*v))
+  {
+    return nullptr;
+  }
+  return &v->template get<T>();
+}
+
+template <typename T, typename... Types>
+typename enable_if<(internal::IndexOf<T, Types...>::value != (size_t)-1), const T *>::type
+get_if(const variant<Types...> *v)
+{
+  if (!v)
+  {
+    return nullptr;
+  }
+  if (!holds_alternative<T>(*v))
+  {
+    return nullptr;
+  }
+  return &v->template get<T>();
 }
 
 } // namespace zstd
