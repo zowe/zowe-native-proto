@@ -435,7 +435,6 @@ describe("AbstractConfigManager", async () => {
         });
 
         it("prompts for custom path and returns user input", async () => {
-
             vi.spyOn(testManager, "showCustomMenu").mockResolvedValue({
                 label: "$(plus) Add New Deploy Directory",
             });

@@ -201,14 +201,11 @@ export abstract class AbstractConfigManager {
 
     public async promptForDeployDirectory(defaultServerPath: string): Promise<string> {
         const result = await this.showCustomMenu({
-            items: [
-                { label: defaultServerPath},
-                { label: "$(plus) Add New Deploy Directory" }
-            ],
+            items: [{ label: defaultServerPath }, { label: "$(plus) Add New Deploy Directory" }],
             placeholder: `Select a deploy directory for the Zowe SSH server`,
         });
 
-        if(!result) return;
+        if (!result) return;
 
         if (result.label === "$(plus) Add New Deploy Directory") {
             const input = await this.showInputBox({
