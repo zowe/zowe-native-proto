@@ -107,7 +107,10 @@ int ZJSMPARS(JSON_INSTANCE *PTR64 instance, const char *PTR64 json)
   memcpy(instance->json, json, instance->json_length - 1);
   instance->json[instance->json_length - 1] = '\0';
 
-  rc = zjsm_parse(&instance31, (const char *PTR32)instance->json);
+  instance31.json = (char *PTR32)instance->json;
+  instance31.json_length = instance->json_length;
+
+  rc = zjsm_parse(&instance31, instance31.json);
 
   memcpy(instance, &instance31, sizeof(JSON_INSTANCE));
 
