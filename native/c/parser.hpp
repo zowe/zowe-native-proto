@@ -14,6 +14,7 @@
 
 #include "lexer.hpp"
 #include "zlogger.hpp"
+#include "zstd.hpp"
 #include <algorithm>
 #include <cstdlib>
 #include <cstring>
@@ -25,7 +26,9 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
-#include <xtr1common>
+#if defined(__MVS__)
+#  include <xtr1common>
+#endif
 
 namespace parser
 {
@@ -90,88 +93,6 @@ typedef std::enable_shared_from_this<Command> enable_shared_command;
 
 class ArgumentParser;
 class ParseResult;
-struct ArgValue;
-
-// SFINAE check for to_string method
-template <typename T>
-class has_to_string
-{
-  typedef char one;
-  typedef struct
-  {
-    char arr[2];
-  } two;
-
-  template <typename C, std::string (C::*)() const>
-  struct SFINAE_HELPER
-  {
-  };
-  template <typename C>
-  static one test(SFINAE_HELPER<C, &C::to_string> *);
-  template <typename C>
-  static two test(...);
-
-public:
-  static const bool value;
-};
-
-template <typename T>
-const bool has_to_string<T>::value = sizeof(test<T>(0)) == sizeof(one);
-
-// base class for type erasure of complex types
-struct ComplexTypeBase
-{
-  virtual ~ComplexTypeBase()
-  {
-  }
-  virtual std::string to_string() const = 0;
-  virtual ComplexTypeBase *clone() const = 0;
-  virtual const std::type_info &type() const = 0;
-};
-
-// wrapper for complex types
-template <typename T>
-class ComplexType : public ComplexTypeBase
-{
-public:
-  T value;
-
-  explicit ComplexType(const T &val)
-      : value(val)
-  {
-  }
-
-private:
-  // SFINAE for to_string using tag dispatch
-  std::string to_string_impl(std::tr1::true_type) const
-  {
-    return value.to_string();
-  }
-
-  std::string to_string_impl(std::tr1::false_type) const
-  {
-    std::stringstream ss;
-    ss << "<complex_type:" << typeid(T).name() << ">";
-    return ss.str();
-  }
-
-public:
-  std::string to_string() const
-  {
-    return to_string_impl(std::tr1::integral_constant<bool, has_to_string<T>::value>());
-  }
-
-  ComplexTypeBase *clone() const
-  {
-    return new ComplexType<T>(value);
-  }
-
-  const std::type_info &type() const
-  {
-    return typeid(T);
-  }
-};
-
 struct ArgValue
 {
   enum ValueKind
@@ -181,79 +102,53 @@ struct ArgValue
     ValueKind_Int,
     ValueKind_Double,
     ValueKind_String,
-    ValueKind_List,
-    ValueKind_Complex
+    ValueKind_List
   };
 
-  ValueKind kind;
-  union
+  struct NoneValue
   {
-    bool b;
-    long long i; // assuming long long is available as extension, else use long
-    double d;
-    std::string *s;               // pointer for backwards compatibility for unions in
-                                  // pre-c++11 environments
-    std::vector<std::string> *sv; // pointer for the same reason
-    ComplexTypeBase *c;
-  } value;
+  };
+
+  typedef zstd::variant<NoneValue, bool, long long, double, std::string,
+                        std::vector<std::string> >
+      Storage;
 
   // default constructor
   ArgValue()
-      : kind(ValueKind_None)
+      : m_value(NoneValue())
   {
-    // initialize one member to avoid undefined state, though not strictly
-    // necessary for none
-    value.i = 0;
   }
 
   explicit ArgValue(bool val)
-      : kind(ValueKind_Bool)
+      : m_value(val)
   {
-    value.b = val;
   }
   explicit ArgValue(long long val)
-      : kind(ValueKind_Int)
+      : m_value(val)
   {
-    value.i = val;
   }
   explicit ArgValue(double val)
-      : kind(ValueKind_Double)
+      : m_value(val)
   {
-    value.d = val;
   }
-  // note: takes ownership of new string
   explicit ArgValue(const std::string &val)
-      : kind(ValueKind_String)
+      : m_value(val)
   {
-    value.s = new std::string(val);
   }
-  // note: takes ownership of new string
   explicit ArgValue(const char *val)
-      : kind(ValueKind_String)
+      : m_value(std::string(val))
   {
-    value.s = new std::string(val);
   }
-  // note: takes ownership of new vector
   explicit ArgValue(const std::vector<std::string> &val)
-      : kind(ValueKind_List)
+      : m_value(val)
   {
-    value.sv = new std::vector<std::string>(val);
   }
-  template <typename T>
-  explicit ArgValue(const T &val)
-      : kind(ValueKind_Complex)
-  {
-    value.c = new ComplexType<T>(val);
-  }
-
-  // cleanup pointer members
   ~ArgValue()
   {
-    clear();
   }
 
   ArgValue(const ArgValue &other)
-      : kind(ValueKind_None)
+      : m_value(NoneValue())
   {
     copy_from(other);
   }
@@ -261,155 +156,144 @@ struct ArgValue
   {
     if (this != &other)
     {
-      clear();
       copy_from(other);
     }
     return *this;
   }
 
-  // helper to clear existing data (delete pointers)
+  ArgValue(ArgValue &&other)
+      : m_value(NoneValue())
+  {
+    m_value = other.m_value;
+    other.clear();
+  }
+  ArgValue &operator=(ArgValue &&other)
+  {
+    if (this != &other)
+    {
+      m_value = other.m_value;
+      other.clear();
+    }
+    return *this;
+  }
+
+  // helper to clear existing data
   void clear()
   {
-    if (kind == ValueKind_String)
-    {
-      delete value.s;
-      value.s = nullptr;
-    }
-    else if (kind == ValueKind_List)
-    {
-      delete value.sv;
-      value.sv = nullptr;
-    }
-    else if (kind == ValueKind_Complex)
-    {
-      delete value.c;
-      value.c = nullptr;
-    }
-    kind = ValueKind_None;
-    value.i = 0;
+    m_value = Storage(NoneValue());
   }
 
   // helper for copy construction/assignment
   void copy_from(const ArgValue &other)
   {
-    kind = other.kind;
-    switch (kind)
+    m_value = other.m_value;
+  }
+
+  ValueKind get_kind() const
+  {
+    if (zstd::holds_alternative<NoneValue>(m_value))
     {
-    case ValueKind_None:
-      value.i = 0;
-      break;
-    case ValueKind_Bool:
-      value.b = other.value.b;
-      break;
-    case ValueKind_Int:
-      value.i = other.value.i;
-      break;
-    case ValueKind_Double:
-      value.d = other.value.d;
-      break;
-    case ValueKind_String:
-      value.s = other.value.s ? new std::string(*other.value.s) : nullptr;
-      break;
-    case ValueKind_List:
-      value.sv = other.value.sv ? new std::vector<std::string>(*other.value.sv)
-                                : nullptr;
-      break;
-    case ValueKind_Complex:
-      value.c = other.value.c ? other.value.c->clone() : nullptr;
-      break;
+      return ValueKind_None;
     }
+    if (zstd::holds_alternative<bool>(m_value))
+    {
+      return ValueKind_Bool;
+    }
+    if (zstd::holds_alternative<long long>(m_value))
+    {
+      return ValueKind_Int;
+    }
+    if (zstd::holds_alternative<double>(m_value))
+    {
+      return ValueKind_Double;
+    }
+    if (zstd::holds_alternative<std::string>(m_value))
+    {
+      return ValueKind_String;
+    }
+    if (zstd::holds_alternative<std::vector<std::string> >(m_value))
+    {
+      return ValueKind_List;
+    }
+    return ValueKind_None;
   }
 
   // type checkers
   bool is_none() const
   {
-    return kind == ValueKind_None;
+    return get_kind() == ValueKind_None;
   }
   bool is_bool() const
   {
-    return kind == ValueKind_Bool;
+    return get_kind() == ValueKind_Bool;
   }
   bool is_int() const
   {
-    return kind == ValueKind_Int;
+    return get_kind() == ValueKind_Int;
   }
   bool is_double() const
   {
-    return kind == ValueKind_Double;
+    return get_kind() == ValueKind_Double;
   }
   bool is_string() const
   {
-    return kind == ValueKind_String;
+    return get_kind() == ValueKind_String;
   }
   bool is_string_vector() const
   {
-    return kind == ValueKind_List;
+    return get_kind() == ValueKind_List;
   }
-  bool is_complex() const
-  {
-    return kind == ValueKind_Complex;
-  }
-
   // getters (unsafe, check type first or use safe getters below)
   bool get_bool_unsafe() const
   {
-    return value.b;
+    return m_value.template get<bool>();
   }
   long long get_int_unsafe() const
   {
-    return value.i;
+    return m_value.template get<long long>();
   }
   double get_double_unsafe() const
   {
-    return value.d;
+    return m_value.template get<double>();
   }
   const std::string &get_string_unsafe() const
   {
-    return *value.s;
+    return m_value.template get<std::string>();
   }
   const std::vector<std::string> &get_string_vector_unsafe() const
   {
-    return *value.sv;
+    return m_value.template get<std::vector<std::string> >();
   }
   std::string *get_string_ptr_unsafe() const
   {
-    return value.s;
+    return const_cast<std::string *>(zstd::get_if<std::string>(&m_value));
   }
   std::vector<std::string> *get_string_vector_ptr_unsafe() const
   {
-    return value.sv;
-  }
-  template <typename T>
-  const T *get_complex() const
-  {
-    if (kind == ValueKind_Complex && value.c &&
-        value.c->type() == typeid(T))
-    {
-      return &static_cast<ComplexType<T> *>(value.c)->value;
-    }
-    return nullptr;
+    return const_cast<std::vector<std::string> *>(
+        zstd::get_if<std::vector<std::string> >(&m_value));
   }
 
   // safe getters (returns a pointer; nullptr if wrong type/unset)
   const bool *get_bool() const
   {
-    return kind == ValueKind_Bool ? &value.b : nullptr;
+    return zstd::get_if<bool>(&m_value);
   }
   const long long *get_int() const
   {
-    return kind == ValueKind_Int ? &value.i : nullptr;
+    return zstd::get_if<long long>(&m_value);
   }
   const double *get_double() const
   {
-    return kind == ValueKind_Double ? &value.d : nullptr;
+    return zstd::get_if<double>(&m_value);
   }
   const std::string *get_string() const
   {
-    return kind == ValueKind_String ? value.s : nullptr;
+    return zstd::get_if<std::string>(&m_value);
   }
   const std::vector<std::string> *get_string_vector() const
   {
-    return kind == ValueKind_List ? value.sv : nullptr;
+    return zstd::get_if<std::vector<std::string> >(&m_value);
   }
   std::string get_string_value(const std::string &default_val = "") const
   {
@@ -419,41 +303,45 @@ struct ArgValue
 
   void print(std::ostream &os) const
   {
-    switch (kind)
+    switch (get_kind())
     {
     case ValueKind_None:
       os << "<none>";
       break;
     case ValueKind_Bool:
-      os << (value.b ? "true" : "false");
+      os << (m_value.template get<bool>() ? "true" : "false");
       break;
     case ValueKind_Int:
-      os << value.i;
+      os << m_value.template get<long long>();
       break;
     case ValueKind_Double:
-      os << value.d;
+      os << m_value.template get<double>();
       break;
     case ValueKind_String:
-      os << (value.s ? *value.s : "<invalid_string>");
+    {
+      const std::string *str = get_string();
+      os << (str ? *str : "<invalid_string>");
       break;
+    }
     case ValueKind_List:
     {
       os << "[";
-      if (value.sv)
+      const std::vector<std::string> *vec = get_string_vector();
+      if (vec)
       {
-        for (size_t j = 0; j < value.sv->size(); ++j)
+        for (size_t j = 0; j < vec->size(); ++j)
         {
-          os << (*value.sv)[j] << (j == value.sv->size() - 1 ? "" : ", ");
+          os << (*vec)[j] << (j == vec->size() - 1 ? "" : ", ");
         }
       }
       os << "]";
       break;
     }
-    case ValueKind_Complex:
-      os << (value.c ? value.c->to_string() : "<invalid_complex>");
-      break;
     }
   }
+
+private:
+  Storage m_value;
 };
 
 enum ArgType
@@ -586,7 +474,11 @@ public:
     m_arg_def.name = name;
   }
 
+  ArgumentBuilder(ArgumentBuilder &&other);
+
   ~ArgumentBuilder();
+
+  ArgumentBuilder &operator=(ArgumentBuilder &&other);
 
   ArgumentBuilder &alias(const std::string &als)
   {
@@ -1278,13 +1170,21 @@ public:
   }
 };
 
+template <typename>
+struct dependent_false
+{
+  static const bool value = false;
+};
+
 // Helper struct for type-safe argument retrieval
 template <typename T>
 struct ArgGetter
 {
-  static const T *get(const ArgValue &v)
+  static const T *get(const ArgValue &)
   {
-    return v.get_complex<T>();
+    static_assert(dependent_false<T>::value,
+                  "ArgGetter is not specialized for this type");
+    return nullptr;
   }
 };
 template <>
@@ -2441,6 +2341,31 @@ inline void generate_bash_completion(std::ostream &os, const std::string &prog_n
 inline ArgumentBuilder Command::add_argument(const std::string &name)
 {
   return ArgumentBuilder(this, name);
+}
+
+inline ArgumentBuilder::ArgumentBuilder(ArgumentBuilder &&other)
+    : m_command(other.m_command), m_arg_def(other.m_arg_def),
+      m_is_registered(other.m_is_registered)
+{
+  other.m_command = nullptr;
+  other.m_is_registered = true;
+}
+
+inline ArgumentBuilder &ArgumentBuilder::operator=(ArgumentBuilder &&other)
+{
+  if (this != &other)
+  {
+    if (!m_is_registered && m_command)
+    {
+      m_command->register_argument(m_arg_def);
+    }
+    m_command = other.m_command;
+    m_arg_def = other.m_arg_def;
+    m_is_registered = other.m_is_registered;
+    other.m_command = nullptr;
+    other.m_is_registered = true;
+  }
+  return *this;
 }
 
 inline ArgumentBuilder::~ArgumentBuilder()
