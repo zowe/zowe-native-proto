@@ -187,7 +187,7 @@ int ZJSMSERI(JSON_INSTANCE *PTR64 instance, char *PTR64 buffer, int *PTR64 buffe
   rc = zjsm_serialize(&instance31, buffer31, &buffer_length31, &buffer_length_actual31);
 
   *buffer_length_actual = buffer_length_actual31;
-  strncpy(buffer, buffer31, buffer_length31);
+  memcpy(buffer, buffer31, buffer_length31);
 
   storage_release(buffer_length31, buffer31);
 
@@ -337,7 +337,7 @@ int ZJSMGOEN(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *P
 
   rc = zjsm_get_object_entry(&instance31, &key_handle31, &index31, &key_buffer31, &key_buffer_length31, &value_handle31, &actual_length31);
 
-  strncpy(*key_buffer, key_buffer31, key_buffer_length31);
+  memcpy(*key_buffer, key_buffer31, key_buffer_length31);
   *actual_length = actual_length31;
   memcpy(value_handle, &value_handle31, sizeof(KEY_HANDLE));
 
@@ -356,6 +356,7 @@ int ZJSMGOEN(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *P
 int ZJSMCREN(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 parent_handle, const char *PTR64 entry_name, const char *PTR64 entry_value, int *PTR64 entry_type, KEY_HANDLE *PTR64 new_entry_handle)
 {
   int rc = 0;
+  int ptr_size = sizeof(char *PTR32);
 
   JSON_INSTANCE instance31 = {0};
   memcpy(&instance31, instance, sizeof(JSON_INSTANCE));
@@ -366,38 +367,46 @@ int ZJSMCREN(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 parent_handle, con
   int entry_type31 = *entry_type;
   KEY_HANDLE new_entry_handle31 = {0};
 
-  // Allocate 31-bit storage for entry name
+  // Allocate 31-bit storage for entry name (pointer + string data in one block)
   int entry_name_length = entry_name ? (int)strlen(entry_name) + 1 : 0;
-  char *PTR32 entry_name31 = NULL;
+  char *PTR32 name_block = storage_obtain31(entry_name_length + ptr_size);
+  const char *PTR32 *entry_name31_ptr = (const char *PTR32 *)name_block;
+
   if (entry_name)
   {
-    entry_name31 = storage_obtain31(entry_name_length);
-    strncpy(entry_name31, entry_name, entry_name_length);
+    char *PTR32 name_data = name_block + ptr_size;
+    strncpy(name_data, entry_name, entry_name_length);
+    *entry_name31_ptr = name_data;
+  }
+  else
+  {
+    *entry_name31_ptr = NULL;
   }
 
-  // Allocate 31-bit storage for entry value
+  // Allocate 31-bit storage for entry value (pointer + string data in one block)
   int entry_value_length = entry_value ? (int)strlen(entry_value) + 1 : 0;
-  char *PTR32 entry_value31 = NULL;
+  char *PTR32 value_block = storage_obtain31(entry_value_length + ptr_size);
+  const char *PTR32 *entry_value31_ptr = (const char *PTR32 *)value_block;
+
   if (entry_value)
   {
-    entry_value31 = storage_obtain31(entry_value_length);
-    strncpy(entry_value31, entry_value, entry_value_length);
+    char *PTR32 value_data = value_block + ptr_size;
+    strncpy(value_data, entry_value, entry_value_length);
+    *entry_value31_ptr = value_data;
+  }
+  else
+  {
+    *entry_value31_ptr = NULL;
   }
 
-  rc = zjsm_create_entry(&instance31, &parent_handle31, entry_name31, entry_value31, &entry_type31, &new_entry_handle31);
+  rc = zjsm_create_entry(&instance31, &parent_handle31, entry_name31_ptr, entry_value31_ptr, &entry_type31, &new_entry_handle31);
 
   memcpy(new_entry_handle, &new_entry_handle31, sizeof(KEY_HANDLE));
   memcpy(instance, &instance31, sizeof(JSON_INSTANCE));
 
   // Release allocated storage
-  if (entry_name31)
-  {
-    storage_release(entry_name_length, entry_name31);
-  }
-  if (entry_value31)
-  {
-    storage_release(entry_value_length, entry_value31);
-  }
+  storage_release(entry_name_length + ptr_size, name_block);
+  storage_release(entry_value_length + ptr_size, value_block);
 
   return rc;
 }
