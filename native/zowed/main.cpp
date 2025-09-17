@@ -145,7 +145,8 @@ const char *dlerror_zos()
  * @brief Main entry point for the zowed executable
  *
  * This function serves as the main entry point for the zowed binary.
- * It loads the libzowed.so shared library at runtime and delegates to it.
+ * It loads the libzowed.so shared library at runtime from the executable's
+ * directory and delegates to it.
  *
  * @param argc Number of command line arguments
  * @param argv Array of command line argument strings
@@ -156,8 +157,21 @@ int main(int argc, char *argv[])
   IoserverOptions options = parseOptions(argc, argv);
 
   // Load the shared library at runtime
-  // Try current directory first, then system paths
-  void *handle = dlopen("./libzowed.so", RTLD_LAZY);
+  // Try executable directory first, then system paths
+  std::string executable_dir;
+  std::string full_path = argv[0];
+  size_t last_slash = full_path.find_last_of('/');
+  if (last_slash != std::string::npos)
+  {
+    executable_dir = full_path.substr(0, last_slash + 1);
+  }
+  else
+  {
+    executable_dir = "./";
+  }
+
+  std::string lib_path = executable_dir + "libzowed.so";
+  void *handle = dlopen(lib_path.c_str(), RTLD_LAZY);
   if (handle == NULL)
   {
     // Try without path (searches LD_LIBRARY_PATH)
@@ -167,7 +181,7 @@ int main(int argc, char *argv[])
   {
     const char *error_msg = dlerror();
     std::cerr << "Cannot load libzowed.so: " << (error_msg ? error_msg : "Unknown error") << std::endl;
-    std::cerr << "Make sure libzowed.so is in the current directory or LD_LIBRARY_PATH" << std::endl;
+    std::cerr << "Make sure libzowed.so is in the executable directory or LD_LIBRARY_PATH" << std::endl;
     return 1;
   }
 

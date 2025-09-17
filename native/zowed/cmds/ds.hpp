@@ -11,12 +11,12 @@
 
 #pragma once
 
-#include "../extern/picojson.h"
+#include "../../c/zjson.hpp"
 
-using picojson::value;
+using zjson::Value;
 
 // Dataset command handlers
-picojson::value HandleReadDatasetRequest(const picojson::value &params);
-picojson::value HandleWriteDatasetRequest(const picojson::value &params);
-picojson::value HandleListDatasetsRequest(const picojson::value &params);
-picojson::value HandleListDsMembersRequest(const picojson::value &params);
+zjson::Value HandleReadDatasetRequest(const zjson::Value &params);
+zjson::Value HandleWriteDatasetRequest(const zjson::Value &params);
+zjson::Value HandleListDatasetsRequest(const zjson::Value &params);
+zjson::Value HandleListDsMembersRequest(const zjson::Value &params);

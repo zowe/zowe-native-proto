@@ -14,7 +14,7 @@
 #include <sstream>
 #endif
 #include "ds.hpp"
-#include "../extern/picojson.h"
+#include "../../c/zjson.hpp"
 #include "../worker.hpp"
 #include "../../c/zds.hpp"
 #include "../../c/zdstype.h"
@@ -25,7 +25,7 @@
 #include <cstring>
 #include <unistd.h>
 
-using picojson::value;
+using zjson::Value;
 
 namespace
 {
@@ -36,33 +36,44 @@ void initZDS(ZDS *zds)
 }
 
 // Helper to convert ZDS error to JSON error
-picojson::value createErrorFromZDS(const ZDS *zds, const std::string &operation)
+zjson::Value createErrorFromZDS(const ZDS *zds, const std::string &operation)
 {
-  picojson::object error;
-  error["code"] = picojson::value(static_cast<double>(zds->diag.service_rc));
-  error["message"] = picojson::value(operation + " failed");
+  zjson::Value error = zjson::Value::create_object();
+  error.add_to_object("code", zjson::Value(zds->diag.service_rc));
+  error.add_to_object("message", zjson::Value(operation + " failed"));
 
-  picojson::object data;
+  zjson::Value data = zjson::Value::create_object();
   if (zds->diag.e_msg[0] != '\0')
   {
-    data["error"] = picojson::value(std::string(zds->diag.e_msg));
+    data.add_to_object("error", zjson::Value(std::string(zds->diag.e_msg)));
   }
   if (zds->diag.service_rsn != 0)
   {
-    data["reasonCode"] = picojson::value(static_cast<double>(zds->diag.service_rsn));
+    data.add_to_object("reasonCode", zjson::Value(zds->diag.service_rsn));
   }
-  error["data"] = picojson::value(data);
+  error.add_to_object("data", data);
 
-  return picojson::value(error);
+  return error;
 }
 } // namespace
 
-picojson::value HandleReadDatasetRequest(const picojson::value &params)
+zjson::Value HandleReadDatasetRequest(const zjson::Value &params)
 {
   // Parse request parameters
-  std::string dsname = params.contains("dsname") ? params.get("dsname").get<std::string>() : "";
-  std::string encoding = params.contains("encoding") ? params.get("encoding").get<std::string>() : "IBM-1047";
-  std::string localEncoding = params.contains("localEncoding") ? params.get("localEncoding").get<std::string>() : "";
+  if (!params.is_object())
+  {
+    throw std::runtime_error("Invalid parameters: expected object");
+  }
+  const auto &obj = params.as_object();
+
+  auto dsname_it = obj.find("dsname");
+  std::string dsname = (dsname_it != obj.end() && dsname_it->second.is_string()) ? dsname_it->second.as_string() : "";
+
+  auto encoding_it = obj.find("encoding");
+  std::string encoding = (encoding_it != obj.end() && encoding_it->second.is_string()) ? encoding_it->second.as_string() : "IBM-1047";
+
+  auto localEncoding_it = obj.find("localEncoding");
+  std::string localEncoding = (localEncoding_it != obj.end() && localEncoding_it->second.is_string()) ? localEncoding_it->second.as_string() : "";
 
   if (dsname.empty())
   {
@@ -79,7 +90,7 @@ picojson::value HandleReadDatasetRequest(const picojson::value &params)
 
   if (rc != 0)
   {
-    picojson::value error = createErrorFromZDS(&zds, "Read dataset");
+    zjson::Value error = createErrorFromZDS(&zds, "Read dataset");
     std::string errorString = serializeJson(error);
     throw std::runtime_error(errorString);
   }
@@ -87,26 +98,41 @@ picojson::value HandleReadDatasetRequest(const picojson::value &params)
   // Convert response to base64 for JSON transport
   std::string base64Data = zbase64::encode(response);
 
-  picojson::object result;
-  result["encoding"] = picojson::value(encoding);
+  zjson::Value result = zjson::Value::create_object();
+  result.add_to_object("encoding", zjson::Value(encoding));
   std::stringstream etag_stream;
   etag_stream << std::hex << zut_calc_adler32_checksum(response) << std::dec;
-  result["etag"] = picojson::value(etag_stream.str());
-  result["dataset"] = picojson::value(dsname);
-  result["data"] = picojson::value(base64Data);
-  result["contentLen"] = picojson::value(static_cast<double>(response.length()));
+  result.add_to_object("etag", zjson::Value(etag_stream.str()));
+  result.add_to_object("dataset", zjson::Value(dsname));
+  result.add_to_object("data", zjson::Value(base64Data));
+  result.add_to_object("contentLen", zjson::Value(static_cast<int>(response.length())));
 
-  return picojson::value(result);
+  return result;
 }
 
-picojson::value HandleWriteDatasetRequest(const picojson::value &params)
+zjson::Value HandleWriteDatasetRequest(const zjson::Value &params)
 {
   // Parse request parameters
-  std::string dsname = params.contains("dsname") ? params.get("dsname").get<std::string>() : "";
-  std::string encoding = params.contains("encoding") ? params.get("encoding").get<std::string>() : "IBM-1047";
-  std::string localEncoding = params.contains("localEncoding") ? params.get("localEncoding").get<std::string>() : "";
-  std::string etag = params.contains("etag") ? params.get("etag").get<std::string>() : "";
-  std::string data = params.contains("data") ? params.get("data").get<std::string>() : "";
+  if (!params.is_object())
+  {
+    throw std::runtime_error("Invalid parameters: expected object");
+  }
+  const auto &obj = params.as_object();
+
+  auto dsname_it = obj.find("dsname");
+  std::string dsname = (dsname_it != obj.end() && dsname_it->second.is_string()) ? dsname_it->second.as_string() : "";
+
+  auto encoding_it = obj.find("encoding");
+  std::string encoding = (encoding_it != obj.end() && encoding_it->second.is_string()) ? encoding_it->second.as_string() : "IBM-1047";
+
+  auto localEncoding_it = obj.find("localEncoding");
+  std::string localEncoding = (localEncoding_it != obj.end() && localEncoding_it->second.is_string()) ? localEncoding_it->second.as_string() : "";
+
+  auto etag_it = obj.find("etag");
+  std::string etag = (etag_it != obj.end() && etag_it->second.is_string()) ? etag_it->second.as_string() : "";
+
+  auto data_it = obj.find("data");
+  std::string data = (data_it != obj.end() && data_it->second.is_string()) ? data_it->second.as_string() : "";
 
   if (dsname.empty())
   {
@@ -129,24 +155,31 @@ picojson::value HandleWriteDatasetRequest(const picojson::value &params)
 
   if (rc != 0)
   {
-    picojson::value error = createErrorFromZDS(&zds, "Write dataset");
+    zjson::Value error = createErrorFromZDS(&zds, "Write dataset");
     std::string errorString = serializeJson(error);
     throw std::runtime_error(errorString);
   }
 
-  picojson::object result;
-  result["success"] = picojson::value(true);
-  result["dataset"] = picojson::value(dsname);
-  result["etag"] = picojson::value(std::string("")); // TODO: Implement etag support if needed
-  result["contentLen"] = picojson::value(static_cast<double>(decodedData.length()));
+  zjson::Value result = zjson::Value::create_object();
+  result.add_to_object("success", zjson::Value(true));
+  result.add_to_object("dataset", zjson::Value(dsname));
+  result.add_to_object("etag", zjson::Value(std::string(""))); // TODO: Implement etag support if needed
+  result.add_to_object("contentLen", zjson::Value(static_cast<int>(decodedData.length())));
 
-  return picojson::value(result);
+  return result;
 }
 
-picojson::value HandleListDatasetsRequest(const picojson::value &params)
+zjson::Value HandleListDatasetsRequest(const zjson::Value &params)
 {
   // Parse request parameters
-  std::string pattern = params.contains("pattern") ? params.get("pattern").get<std::string>() : "";
+  if (!params.is_object())
+  {
+    throw std::runtime_error("Invalid parameters: expected object");
+  }
+  const auto &obj = params.as_object();
+
+  auto pattern_it = obj.find("pattern");
+  std::string pattern = (pattern_it != obj.end() && pattern_it->second.is_string()) ? pattern_it->second.as_string() : "";
 
   if (pattern.empty())
   {
@@ -161,35 +194,42 @@ picojson::value HandleListDatasetsRequest(const picojson::value &params)
 
   if (rc != 0)
   {
-    picojson::value error = createErrorFromZDS(&zds, "List datasets");
+    zjson::Value error = createErrorFromZDS(&zds, "List datasets");
     std::string errorString = serializeJson(error);
     throw std::runtime_error(errorString);
   }
 
-  picojson::array items;
+  zjson::Value items = zjson::Value::create_array();
   for (const auto &entry : entries)
   {
-    picojson::object item;
+    zjson::Value item = zjson::Value::create_object();
     std::string trimmed_name = entry.name;
     trimmed_name.erase(trimmed_name.find_last_not_of(" ") + 1);
-    item["name"] = picojson::value(trimmed_name);
-    item["dsorg"] = picojson::value(entry.dsorg);
-    item["volser"] = picojson::value(entry.volser);
-    item["migr"] = picojson::value(entry.migr);
-    items.push_back(picojson::value(item));
+    item.add_to_object("name", zjson::Value(trimmed_name));
+    item.add_to_object("dsorg", zjson::Value(entry.dsorg));
+    item.add_to_object("volser", zjson::Value(entry.volser));
+    item.add_to_object("migr", zjson::Value(entry.migr));
+    items.add_to_array(item);
   }
 
-  picojson::object result;
-  result["items"] = picojson::value(items);
-  result["returnedRows"] = picojson::value(static_cast<double>(entries.size()));
+  zjson::Value result = zjson::Value::create_object();
+  result.add_to_object("items", items);
+  result.add_to_object("returnedRows", zjson::Value(static_cast<int>(entries.size())));
 
-  return picojson::value(result);
+  return result;
 }
 
-picojson::value HandleListDsMembersRequest(const picojson::value &params)
+zjson::Value HandleListDsMembersRequest(const zjson::Value &params)
 {
   // Parse request parameters
-  std::string dsname = params.contains("dsname") ? params.get("dsname").get<std::string>() : "";
+  if (!params.is_object())
+  {
+    throw std::runtime_error("Invalid parameters: expected object");
+  }
+  const auto &obj = params.as_object();
+
+  auto dsname_it = obj.find("dsname");
+  std::string dsname = (dsname_it != obj.end() && dsname_it->second.is_string()) ? dsname_it->second.as_string() : "";
 
   if (dsname.empty())
   {
@@ -204,24 +244,24 @@ picojson::value HandleListDsMembersRequest(const picojson::value &params)
 
   if (rc != 0)
   {
-    picojson::value error = createErrorFromZDS(&zds, "List dataset members");
+    zjson::Value error = createErrorFromZDS(&zds, "List dataset members");
     std::string errorString = serializeJson(error);
     throw std::runtime_error(errorString);
   }
 
-  picojson::array items;
+  zjson::Value items = zjson::Value::create_array();
   for (const auto &member : members)
   {
-    picojson::object item;
+    zjson::Value item = zjson::Value::create_object();
     std::string trimmed_name = member.name;
     trimmed_name.erase(trimmed_name.find_last_not_of(" \t\r\n") + 1);
-    item["name"] = picojson::value(trimmed_name);
-    items.push_back(picojson::value(item));
+    item.add_to_object("name", zjson::Value(trimmed_name));
+    items.add_to_array(item);
   }
 
-  picojson::object result;
-  result["items"] = picojson::value(items);
-  result["returnedRows"] = picojson::value(static_cast<double>(members.size()));
+  zjson::Value result = zjson::Value::create_object();
+  result.add_to_object("items", items);
+  result.add_to_object("returnedRows", zjson::Value(static_cast<int>(members.size())));
 
-  return picojson::value(result);
+  return result;
 }
