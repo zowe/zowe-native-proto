@@ -5,6 +5,7 @@ template <typename Interface>
 class Factory
 {
 public:
+  virtual ~Factory() {}
   virtual Interface *create() = 0;
 };
 
