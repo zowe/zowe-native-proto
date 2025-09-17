@@ -15,7 +15,7 @@
 #include "zjsontype.h"
 #include "zstorage.h"
 
-#pragma prolog(ZJSMINIT, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma prolog(ZJSMINIT, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(ZJSMINIT, " ZWEEPILG ")
 int ZJSMINIT(JSON_INSTANCE *PTR64 instance)
 {
@@ -31,7 +31,7 @@ int ZJSMINIT(JSON_INSTANCE *PTR64 instance)
   return rc;
 }
 
-#pragma prolog(ZJSMGENC, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma prolog(ZJSMGENC, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(ZJSMGENC, " ZWEEPILG ")
 int ZJSMGENC(JSON_INSTANCE *PTR64 instance, int *PTR64 encoding)
 {
@@ -50,7 +50,7 @@ int ZJSMGENC(JSON_INSTANCE *PTR64 instance, int *PTR64 encoding)
   return rc;
 }
 
-#pragma prolog(ZJSMSENC, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma prolog(ZJSMSENC, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(ZJSMSENC, " ZWEEPILG ")
 int ZJSMSENC(JSON_INSTANCE *PTR64 instance, int *PTR64 encoding)
 {
@@ -71,7 +71,7 @@ int ZJSMSENC(JSON_INSTANCE *PTR64 instance, int *PTR64 encoding)
   return rc;
 }
 
-#pragma prolog(ZJSMDEL, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma prolog(ZJSMDEL, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(ZJSMDEL, " ZWEEPILG ")
 int ZJSMDEL(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, KEY_HANDLE *PTR64 value_handle)
 {
@@ -92,7 +92,7 @@ int ZJSMDEL(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, KEY_HAN
   return rc;
 }
 
-#pragma prolog(ZJSMPARS, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma prolog(ZJSMPARS, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(ZJSMPARS, " ZWEEPILG ")
 int ZJSMPARS(JSON_INSTANCE *PTR64 instance, const char *PTR64 json)
 {
@@ -102,22 +102,18 @@ int ZJSMPARS(JSON_INSTANCE *PTR64 instance, const char *PTR64 json)
   memcpy(&instance31, instance, sizeof(JSON_INSTANCE));
 
   instance->json_length = (int)strlen(json) + 1;
-  instance->json = storage_obtain31(instance->json_length);
+  instance->json_ptr31 = storage_obtain31(instance->json_length);
 
-  memcpy(instance->json, json, instance->json_length - 1);
-  instance->json[instance->json_length - 1] = '\0';
+  strncpy(instance->json_ptr31, json, instance->json_length);
 
-  instance31.json = (char *PTR32)instance->json;
-  instance31.json_length = instance->json_length;
-
-  rc = zjsm_parse(&instance31, instance31.json);
+  rc = zjsm_parse(&instance31, (const char *PTR32)instance->json_ptr31);
 
   memcpy(instance, &instance31, sizeof(JSON_INSTANCE));
 
   return rc;
 }
 
-#pragma prolog(ZJSMSRCH, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma prolog(ZJSMSRCH, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(ZJSMSRCH, " ZWEEPILG ")
 int ZJSMSRCH(JSON_INSTANCE *PTR64 instance, int *PTR64 type, const char *PTR64 key, KEY_HANDLE *PTR64 object_handle, KEY_HANDLE *PTR64 starting_handle, KEY_HANDLE *PTR64 key_handle)
 {
@@ -138,8 +134,7 @@ int ZJSMSRCH(JSON_INSTANCE *PTR64 instance, int *PTR64 type, const char *PTR64 k
   int length = (int)strlen(key) + 1;
   char *PTR32 key31 = storage_obtain31(length);
 
-  memcpy(key31, key, strlen(key));
-  key31[length - 1] = '\0';
+  strncpy(key31, key, length);
 
   rc = zjsm_search(&instance31, &type31, key31, &object_handle31, &starting_handle31, &key_handle31);
 
@@ -151,7 +146,7 @@ int ZJSMSRCH(JSON_INSTANCE *PTR64 instance, int *PTR64 type, const char *PTR64 k
   return rc;
 }
 
-#pragma prolog(ZJSMSSRC, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma prolog(ZJSMSSRC, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(ZJSMSSRC, " ZWEEPILG ")
 int ZJSMSSRC(JSON_INSTANCE *PTR64 instance, const char *PTR64 key, KEY_HANDLE *PTR64 key_handle)
 {
@@ -165,8 +160,7 @@ int ZJSMSSRC(JSON_INSTANCE *PTR64 instance, const char *PTR64 key, KEY_HANDLE *P
   int length = (int)strlen(key) + 1;
   char *PTR32 key31 = storage_obtain31(length);
 
-  memcpy(key31, key, strlen(key));
-  key31[length - 1] = '\0';
+  strncpy(key31, key, length);
 
   rc = zjsm_shallow_search(&instance31, key31, &key_handle31);
 
@@ -178,7 +172,7 @@ int ZJSMSSRC(JSON_INSTANCE *PTR64 instance, const char *PTR64 key, KEY_HANDLE *P
   return rc;
 }
 
-#pragma prolog(ZJSMSERI, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma prolog(ZJSMSERI, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(ZJSMSERI, " ZWEEPILG ")
 int ZJSMSERI(JSON_INSTANCE *PTR64 instance, char *PTR64 buffer, int *PTR64 buffer_length, int *PTR64 buffer_length_actual)
 {
@@ -193,7 +187,7 @@ int ZJSMSERI(JSON_INSTANCE *PTR64 instance, char *PTR64 buffer, int *PTR64 buffe
   rc = zjsm_serialize(&instance31, buffer31, &buffer_length31, &buffer_length_actual31);
 
   *buffer_length_actual = buffer_length_actual31;
-  memcpy(buffer, buffer31, buffer_length31);
+  strncpy(buffer, buffer31, buffer_length31);
 
   storage_release(buffer_length31, buffer31);
 
@@ -202,7 +196,7 @@ int ZJSMSERI(JSON_INSTANCE *PTR64 instance, char *PTR64 buffer, int *PTR64 buffe
   return rc;
 }
 
-#pragma prolog(ZJSNGJST, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma prolog(ZJSNGJST, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(ZJSNGJST, " ZWEEPILG ")
 int ZJSNGJST(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *PTR64 type)
 {
@@ -223,7 +217,7 @@ int ZJSNGJST(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *P
   return rc;
 }
 
-#pragma prolog(ZJSMGVAL, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma prolog(ZJSMGVAL, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(ZJSMGVAL, " ZWEEPILG ")
 int ZJSMGVAL(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, char *PTR64 *PTR64 value, int *PTR64 value_length)
 {
@@ -247,7 +241,7 @@ int ZJSMGVAL(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, char *
   return rc;
 }
 
-#pragma prolog(ZJSMGNUE, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma prolog(ZJSMGNUE, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(ZJSMGNUE, " ZWEEPILG ")
 int ZJSMGNUE(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *PTR64 number_entries)
 {
@@ -270,7 +264,7 @@ int ZJSMGNUE(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *P
   return rc;
 }
 
-#pragma prolog(ZJSMGBOV, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma prolog(ZJSMGBOV, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(ZJSMGBOV, " ZWEEPILG ")
 int ZJSMGBOV(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, char *PTR64 value)
 {
@@ -292,7 +286,7 @@ int ZJSMGBOV(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, char *
   return rc;
 }
 
-#pragma prolog(ZJSMGAEN, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma prolog(ZJSMGAEN, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(ZJSMGAEN, " ZWEEPILG ")
 int ZJSMGAEN(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *PTR64 index, KEY_HANDLE *PTR64 value)
 {
@@ -317,7 +311,7 @@ int ZJSMGAEN(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *P
   return rc;
 }
 
-#pragma prolog(ZJSMGOEN, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma prolog(ZJSMGOEN, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(ZJSMGOEN, " ZWEEPILG ")
 int ZJSMGOEN(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *PTR64 index, char *PTR64 *PTR64 key_buffer, int *PTR64 key_buffer_length, KEY_HANDLE *PTR64 value_handle, int *PTR64 actual_length)
 {
@@ -343,7 +337,7 @@ int ZJSMGOEN(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *P
 
   rc = zjsm_get_object_entry(&instance31, &key_handle31, &index31, &key_buffer31, &key_buffer_length31, &value_handle31, &actual_length31);
 
-  memcpy(*key_buffer, key_buffer31, key_buffer_length31);
+  strncpy(*key_buffer, key_buffer31, key_buffer_length31);
   *actual_length = actual_length31;
   memcpy(value_handle, &value_handle31, sizeof(KEY_HANDLE));
 
@@ -357,7 +351,7 @@ int ZJSMGOEN(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *P
   return rc;
 }
 
-#pragma prolog(ZJSMCREN, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma prolog(ZJSMCREN, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(ZJSMCREN, " ZWEEPILG ")
 int ZJSMCREN(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 parent_handle, const char *PTR64 entry_name, const char *PTR64 entry_value, int *PTR64 entry_type, KEY_HANDLE *PTR64 new_entry_handle)
 {
@@ -373,23 +367,27 @@ int ZJSMCREN(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 parent_handle, con
   KEY_HANDLE new_entry_handle31 = {0};
 
   // Allocate 31-bit storage for entry name
-  int entry_name_length = entry_name != NULL ? (int)strlen(entry_name) + 1 : 0;
-  char *PTR32 entry_name31 = 0;
-  if (entry_name != NULL)
+  int entry_name_length = entry_name ? (int)strlen(entry_name) + 1 : sizeof(char *PTR32);
+  char *PTR32 entry_name31 = storage_obtain31(entry_name_length);
+  if (entry_name)
   {
-    entry_name31 = storage_obtain31(entry_name_length);
-    memcpy(entry_name31, entry_name, strlen(entry_name));
-    entry_name31[entry_name_length - 1] = '\0';
+    strncpy(entry_name31, entry_name, entry_name_length);
+  }
+  else
+  {
+    *(char *PTR32 *)entry_name31 = NULL;
   }
 
   // Allocate 31-bit storage for entry value
-  int entry_value_length = entry_value != NULL ? (int)strlen(entry_value) + 1 : 0;
-  char *PTR32 entry_value31 = 0;
-  if (entry_value != NULL)
+  int entry_value_length = entry_value ? (int)strlen(entry_value) + 1 : sizeof(char *PTR32);
+  char *PTR32 entry_value31 = storage_obtain31(entry_value_length);
+  if (entry_value)
   {
-    entry_value31 = storage_obtain31(entry_value_length);
-    memcpy(entry_value31, entry_value, strlen(entry_value));
-    entry_value31[entry_value_length - 1] = '\0';
+    strncpy(entry_value31, entry_value, entry_value_length);
+  }
+  else
+  {
+    *(char *PTR32 *)entry_value31 = NULL;
   }
 
   rc = zjsm_create_entry(&instance31, &parent_handle31, entry_name31, entry_value31, &entry_type31, &new_entry_handle31);
@@ -410,7 +408,7 @@ int ZJSMCREN(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 parent_handle, con
   return rc;
 }
 
-#pragma prolog(ZJSMTERM, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma prolog(ZJSMTERM, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(ZJSMTERM, " ZWEEPILG ")
 int ZJSMTERM(JSON_INSTANCE *PTR64 instance)
 {
@@ -423,10 +421,10 @@ int ZJSMTERM(JSON_INSTANCE *PTR64 instance)
 
   memcpy(instance, &instance31, sizeof(JSON_INSTANCE));
 
-  if (instance->json)
+  if (instance->json_ptr31)
   {
-    storage_release(instance->json_length, instance->json);
-    instance->json = NULL;
+    storage_release(instance->json_length, instance->json_ptr31);
+    instance->json_ptr31 = NULL;
     instance->json_length = 0;
   }
 
