@@ -7,9 +7,9 @@
  *
  * Copyright Contributors to the Zowe Project.
  *
- * ZJson Test Suite - Testing zjson2.hpp API functionality
+ * ZJson Test Suite - Testing zjson.hpp API functionality
  *
- * NOTE: This test suite uses the real zjson2.hpp implementation and tests:
+ * NOTE: This test suite uses the real zjson.hpp implementation and tests:
  * - API structure, type traits, and macro system
  * - Real serialization traits and field descriptors
  * - Compile-time type checking and template instantiation
@@ -23,9 +23,7 @@
 #include <string>
 #include <vector>
 #include <cassert>
-
-// Include the real zjson2.hpp implementation
-#include "../zjson2.hpp"
+#include "../zjson.hpp"
 
 using namespace std;
 using namespace ztst;
