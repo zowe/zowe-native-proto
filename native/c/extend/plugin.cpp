@@ -1,15 +1,15 @@
 #include "plugin.hpp"
-
 #include "../parser.hpp"
 
 #include <string>
 #include <vector>
 
-namespace
+namespace plugin
 {
 class RegistrationContextImpl
     : public CommandProviderImpl::CommandRegistrationContext
 {
+
 public:
   explicit RegistrationContextImpl(parser::Command &root)
       : m_root(root), m_rootRecord(root)
@@ -57,7 +57,7 @@ public:
                              const char *help,
                              ArgumentType type,
                              int required,
-                             const CommandDefaultValue *defaultValue)
+                             const DefaultValue *defaultValue)
   {
     CommandRecord *record = toRecord(command);
     if (!record || !name)
@@ -84,9 +84,8 @@ public:
   virtual void addPositionalArg(CommandHandle command,
                                 const char *name,
                                 const char *help,
-                                ArgumentType type,
                                 int required,
-                                const CommandDefaultValue *defaultValue)
+                                const DefaultValue *defaultValue)
   {
     CommandRecord *record = toRecord(command);
     if (!record || !name)
@@ -96,7 +95,7 @@ public:
 
     record->get().add_positional_arg(std::string(name),
                                      help ? std::string(help) : std::string(),
-                                     convertArgType(type), required != 0,
+                                     parser::ArgType_Positional, required != 0,
                                      defaultArg);
   }
 
@@ -128,8 +127,6 @@ public:
   }
 
 private:
-  typedef CommandProviderImpl::CommandDefaultValue DefaultValue;
-
   struct CommandRecord
   {
     parser::command_ptr pointer;
@@ -211,7 +208,6 @@ private:
   CommandRecord m_rootRecord;
   std::vector<CommandRecord *> m_records;
 };
-} // namespace
 
 class PluginManager::Impl
 {
@@ -264,3 +260,4 @@ void PluginManager::registerCommands(parser::Command &rootCommand)
     delete provider;
   }
 }
+} // namespace plugin

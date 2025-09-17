@@ -7,8 +7,10 @@ namespace parser
 {
 class Command;
 class ParseResult;
-}
+} // namespace parser
 
+namespace plugin
+{
 class CommandProviderImpl
 {
 public:
@@ -77,7 +79,9 @@ public:
     typedef void *CommandHandle;
     typedef int (*CommandHandler)(const parser::ParseResult &result);
 
-    virtual ~CommandRegistrationContext() {}
+    virtual ~CommandRegistrationContext()
+    {
+    }
 
     virtual CommandHandle createCommand(const char *name, const char *help) = 0;
     virtual CommandHandle getRootCommand() = 0;
@@ -100,11 +104,14 @@ public:
     virtual void addSubcommand(CommandHandle parent, CommandHandle child) = 0;
   };
 
-  virtual ~CommandProviderImpl() {}
+  virtual ~CommandProviderImpl()
+  {
+  }
 
   virtual void registerCommands(CommandRegistrationContext &context) = 0;
 };
 
+typedef CommandProviderImpl::CommandDefaultValue DefaultValue;
 typedef Factory<CommandProviderImpl> CommandProvider;
 
 class PluginManager
@@ -126,5 +133,6 @@ private:
   class Impl;
   Impl *m_impl;
 };
+} // namespace plugin
 
 #endif
