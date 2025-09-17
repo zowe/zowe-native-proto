@@ -42,166 +42,166 @@ void CommandDispatcher::initializeCoreHandlers()
   registerHandler("readDataset", HandleReadDatasetRequest);
   registerHandler("writeDataset", HandleWriteDatasetRequest);
   registerHandler("listDsMembers", HandleListDsMembersRequest);
-  registerHandler("createDataset", [](const picojson::value &params)
+  registerHandler("createDataset", [](const zjson::Value &params)
                   {
 // Placeholder implementation
-return picojson::value(picojson::array()); });
-  registerHandler("deleteDataset", [](const picojson::value &params)
+return zjson::Value::create_array(); });
+  registerHandler("deleteDataset", [](const zjson::Value &params)
                   {
 // Placeholder implementation
-return picojson::value(picojson::array()); });
-  registerHandler("createMember", [](const picojson::value &params)
+return zjson::Value::create_array(); });
+  registerHandler("createMember", [](const zjson::Value &params)
                   {
 // Placeholder implementation
-return picojson::value(picojson::array()); });
-  registerHandler("restoreDataset", [](const picojson::value &params)
+return zjson::Value::create_array(); });
+  registerHandler("restoreDataset", [](const zjson::Value &params)
                   {
 // Placeholder implementation
-return picojson::value(picojson::array()); });
+return zjson::Value::create_array(); });
 
   // USS handlers
-  registerHandler("listUssFiles", [](const picojson::value &params)
+  registerHandler("listUssFiles", [](const zjson::Value &params)
                   {
         // Placeholder implementation
-        return picojson::value(picojson::array()); });
+        return zjson::Value::create_array(); });
 
-  registerHandler("readUssFile", [](const picojson::value &params)
+  registerHandler("readUssFile", [](const zjson::Value &params)
                   {
         // Placeholder implementation
-        picojson::object result;
-        result["content"] = picojson::value(std::string(""));
-        return picojson::value(result); });
+        zjson::Value result = zjson::Value::create_object();
+        result.add_to_object("content", zjson::Value(std::string("")));
+        return result; });
 
-  registerHandler("writeUssFile", [](const picojson::value &params)
+  registerHandler("writeUssFile", [](const zjson::Value &params)
                   {
         // Placeholder implementation
-        picojson::object result;
-        result["success"] = picojson::value(true);
-        return picojson::value(result); });
+        zjson::Value result = zjson::Value::create_object();
+        result.add_to_object("success", zjson::Value(true));
+        return result; });
 
-  registerHandler("createUssFile", [](const picojson::value &params)
+  registerHandler("createUssFile", [](const zjson::Value &params)
                   {
         // Placeholder implementation
-        picojson::object result;
-        result["success"] = picojson::value(true);
-        return picojson::value(result); });
+        zjson::Value result = zjson::Value::create_object();
+        result.add_to_object("success", zjson::Value(true));
+        return result; });
 
-  registerHandler("deleteUssFile", [](const picojson::value &params)
+  registerHandler("deleteUssFile", [](const zjson::Value &params)
                   {
         // Placeholder implementation
-        picojson::object result;
-        result["success"] = picojson::value(true);
-        return picojson::value(result); });
+        zjson::Value result = zjson::Value::create_object();
+        result.add_to_object("success", zjson::Value(true));
+        return result; });
 
-  registerHandler("chmodUss", [](const picojson::value &params)
+  registerHandler("chmodUss", [](const zjson::Value &params)
                   {
         // Placeholder implementation
-        picojson::object result;
-        result["success"] = picojson::value(true);
-        return picojson::value(result); });
+        zjson::Value result = zjson::Value::create_object();
+        result.add_to_object("success", zjson::Value(true));
+        return result; });
 
-  registerHandler("chownUss", [](const picojson::value &params)
+  registerHandler("chownUss", [](const zjson::Value &params)
                   {
         // Placeholder implementation
-        picojson::object result;
-        result["success"] = picojson::value(true);
-        return picojson::value(result); });
+        zjson::Value result = zjson::Value::create_object();
+        result.add_to_object("success", zjson::Value(true));
+        return result; });
 
-  registerHandler("chtagUss", [](const picojson::value &params)
+  registerHandler("chtagUss", [](const zjson::Value &params)
                   {
         // Placeholder implementation
-        picojson::object result;
-        result["success"] = picojson::value(true);
-        return picojson::value(result); });
+        zjson::Value result = zjson::Value::create_object();
+        result.add_to_object("success", zjson::Value(true));
+        return result; });
 
   // Job handlers
-  registerHandler("listJobs", [](const picojson::value &params)
+  registerHandler("listJobs", [](const zjson::Value &params)
                   {
         // Placeholder implementation
-        return picojson::value(picojson::array()); });
+        return zjson::Value::create_array(); });
 
-  registerHandler("getJcl", [](const picojson::value &params)
+  registerHandler("getJcl", [](const zjson::Value &params)
                   {
         // Placeholder implementation
-        picojson::object result;
-        result["jcl"] = picojson::value(std::string(""));
-        return picojson::value(result); });
+        zjson::Value result = zjson::Value::create_object();
+        result.add_to_object("jcl", zjson::Value(std::string("")));
+        return result; });
 
-  registerHandler("getJobStatus", [](const picojson::value &params)
+  registerHandler("getJobStatus", [](const zjson::Value &params)
                   {
         // Placeholder implementation
-        picojson::object result;
-        result["status"] = picojson::value(std::string("UNKNOWN"));
-        return picojson::value(result); });
+        zjson::Value result = zjson::Value::create_object();
+        result.add_to_object("status", zjson::Value(std::string("UNKNOWN")));
+        return result; });
 
-  registerHandler("listSpools", [](const picojson::value &params)
+  registerHandler("listSpools", [](const zjson::Value &params)
                   {
         // Placeholder implementation
-        return picojson::value(picojson::array()); });
+        return zjson::Value::create_array(); });
 
-  registerHandler("readSpool", [](const picojson::value &params)
+  registerHandler("readSpool", [](const zjson::Value &params)
                   {
         // Placeholder implementation
-        picojson::object result;
-        result["content"] = picojson::value(std::string(""));
-        return picojson::value(result); });
+        zjson::Value result = zjson::Value::create_object();
+        result.add_to_object("content", zjson::Value(std::string("")));
+        return result; });
 
-  registerHandler("submitJob", [](const picojson::value &params)
+  registerHandler("submitJob", [](const zjson::Value &params)
                   {
         // Placeholder implementation
-        picojson::object result;
-        result["jobid"] = picojson::value(std::string("JOB00000"));
-        return picojson::value(result); });
+        zjson::Value result = zjson::Value::create_object();
+        result.add_to_object("jobid", zjson::Value(std::string("JOB00000")));
+        return result; });
 
-  registerHandler("submitJcl", [](const picojson::value &params)
+  registerHandler("submitJcl", [](const zjson::Value &params)
                   {
         // Placeholder implementation
-        picojson::object result;
-        result["jobid"] = picojson::value(std::string("JOB00000"));
-        return picojson::value(result); });
+        zjson::Value result = zjson::Value::create_object();
+        result.add_to_object("jobid", zjson::Value(std::string("JOB00000")));
+        return result; });
 
-  registerHandler("submitUss", [](const picojson::value &params)
+  registerHandler("submitUss", [](const zjson::Value &params)
                   {
         // Placeholder implementation
-        picojson::object result;
-        result["jobid"] = picojson::value(std::string("JOB00000"));
-        return picojson::value(result); });
+        zjson::Value result = zjson::Value::create_object();
+        result.add_to_object("jobid", zjson::Value(std::string("JOB00000")));
+        return result; });
 
-  registerHandler("cancelJob", [](const picojson::value &params)
+  registerHandler("cancelJob", [](const zjson::Value &params)
                   {
         // Placeholder implementation
-        picojson::object result;
-        result["success"] = picojson::value(true);
-        return picojson::value(result); });
+        zjson::Value result = zjson::Value::create_object();
+        result.add_to_object("success", zjson::Value(true));
+        return result; });
 
-  registerHandler("deleteJob", [](const picojson::value &params)
+  registerHandler("deleteJob", [](const zjson::Value &params)
                   {
         // Placeholder implementation
-        picojson::object result;
-        result["success"] = picojson::value(true);
-        return picojson::value(result); });
+        zjson::Value result = zjson::Value::create_object();
+        result.add_to_object("success", zjson::Value(true));
+        return result; });
 
-  registerHandler("holdJob", [](const picojson::value &params)
+  registerHandler("holdJob", [](const zjson::Value &params)
                   {
         // Placeholder implementation
-        picojson::object result;
-        result["success"] = picojson::value(true);
-        return picojson::value(result); });
+        zjson::Value result = zjson::Value::create_object();
+        result.add_to_object("success", zjson::Value(true));
+        return result; });
 
-  registerHandler("releaseJob", [](const picojson::value &params)
+  registerHandler("releaseJob", [](const zjson::Value &params)
                   {
         // Placeholder implementation
-        picojson::object result;
-        result["success"] = picojson::value(true);
-        return picojson::value(result); });
+        zjson::Value result = zjson::Value::create_object();
+        result.add_to_object("success", zjson::Value(true));
+        return result; });
 
   // Console handler
-  registerHandler("consoleCommand", [](const picojson::value &params)
+  registerHandler("consoleCommand", [](const zjson::Value &params)
                   {
         // Placeholder implementation
-        picojson::object result;
-        result["response"] = picojson::value(std::string(""));
-        return picojson::value(result); });
+        zjson::Value result = zjson::Value::create_object();
+        result.add_to_object("response", zjson::Value(std::string("")));
+        return result; });
 }
 
 // Worker implementation
@@ -267,18 +267,19 @@ void Worker::processRequest(const std::string &data)
   try
   {
     // Parse the JSON request
-    picojson::value requestJson;
-    std::string errors = picojson::parse(requestJson, data);
+    auto parse_result = zjson::from_str<zjson::Value>(data);
 
-    if (!errors.empty())
+    if (!parse_result.has_value())
     {
       ErrorDetails error{
           -32700,
-          "Failed to parse command request: " + errors,
-          picojson::value(picojson::object())};
+          std::string("Failed to parse command request: ") + parse_result.error().what(),
+          zjson::Value()};
       printErrorResponse(error, 0); // No request ID available
       return;
     }
+
+    zjson::Value requestJson = parse_result.value();
 
     RpcRequest request = RpcRequest::fromJson(requestJson);
 
@@ -289,7 +290,7 @@ void Worker::processRequest(const std::string &data)
       ErrorDetails error{
           -32601,
           "Unrecognized command " + request.method,
-          picojson::value(picojson::object())};
+          zjson::Value()};
       printErrorResponse(error, request.id);
       return;
     }
@@ -297,7 +298,7 @@ void Worker::processRequest(const std::string &data)
     // Execute the command
     try
     {
-      picojson::value result = handler(request.params);
+      zjson::Value result = handler(request.params);
       printCommandResponse(result, request.id);
     }
     catch (const std::exception &e)
@@ -321,7 +322,7 @@ void Worker::processRequest(const std::string &data)
       ErrorDetails error{
           -32603, // Internal error
           errMsg,
-          errData.empty() ? picojson::value(picojson::object()) : picojson::value(errData)};
+          errData.empty() ? zjson::Value() : zjson::Value(errData)};
       printErrorResponse(error, request.id);
     }
   }
@@ -330,7 +331,7 @@ void Worker::processRequest(const std::string &data)
     ErrorDetails error{
         -32700,
         "Failed to parse command request: " + std::string(e.what()),
-        picojson::value(picojson::object())};
+        zjson::Value()};
     printErrorResponse(error, 0); // No request ID available
   }
 }
@@ -347,7 +348,7 @@ void Worker::printErrorResponse(const ErrorDetails &error, int requestId)
   std::cout << jsonString << std::endl;
 }
 
-void Worker::printCommandResponse(const picojson::value &result, int requestId)
+void Worker::printCommandResponse(const zjson::Value &result, int requestId)
 {
   std::lock_guard<std::mutex> lock(*responseMutex);
 
