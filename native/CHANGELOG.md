@@ -19,6 +19,9 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - `native`: Added support for `volser` option when reading/writing data sets. [#439](https://github.com/zowe/zowe-native-proto/issues/439)
 - `native`: Reduced number of memory allocations in vectors by reserving capacity before adding elements. [#522](https://github.com/zowe/zowe-native-proto/issues/522)
 - `c`: Added wrappers for Web Enablement Toolkit to be invoked via Metal C as header only or from LE-C using a 64-bit wrapper.
+- `c`: Added the `zstd::optional` class for handling optional values.
+- `c`: Added the `zstd::unique_ptr` class and `zstd::make_unique` function for RAII-based automatic memory management.
+- `c`: Added the `zstd::expected` class for error handling similar to Rust `Result` type.
 
 ## `0.1.8`
 
