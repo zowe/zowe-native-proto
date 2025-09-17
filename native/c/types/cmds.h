@@ -9,6 +9,11 @@
  *
  */
 
+/*
+ * AUTO-GENERATED - DO NOT EDIT
+ * Generated from cmds.ts - edit there instead
+ */
+
 #ifndef CMDS_TYPES_H
 #define CMDS_TYPES_H
 

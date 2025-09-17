@@ -9,6 +9,11 @@
  *
  */
 
+/*
+ * AUTO-GENERATED - DO NOT EDIT
+ * Generated from jobs.ts - edit there instead
+ */
+
 #ifndef JOBS_TYPES_H
 #define JOBS_TYPES_H
 
