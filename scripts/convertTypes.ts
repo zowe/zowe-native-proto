@@ -268,6 +268,12 @@ function generateHeaderFile(interfaces: ExtractedInterface[], fileName: string):
         content += licenseHeader + "\n";
     }
 
+    // Add auto-generation disclaimer
+    content += `/*\n`;
+    content += ` * AUTO-GENERATED - DO NOT EDIT\n`;
+    content += ` * Generated from ${fileName}.ts - edit there instead\n`;
+    content += ` */\n\n`;
+
     content += `#ifndef ${headerGuard}\n#define ${headerGuard}\n\n`;
     content += `#include <string>\n`;
     content += `#include <vector>\n`;

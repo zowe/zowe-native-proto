@@ -9,6 +9,11 @@
  *
  */
 
+/*
+ * AUTO-GENERATED - DO NOT EDIT
+ * Generated from ds.ts - edit there instead
+ */
+
 #ifndef DS_TYPES_H
 #define DS_TYPES_H
 
@@ -33,6 +38,7 @@ struct ListDsMembersRequest : public CommandRequest, public ListOptions, public 
 struct ReadDatasetRequest : public CommandRequest {
     std::string* encoding; // optional
     std::string* localEncoding; // optional
+    std::string* volume; // optional
     std::string dsname;
     int* streamId; // optional
 };
@@ -41,6 +47,7 @@ struct WriteDatasetRequest : public CommandRequest {
     std::string* encoding; // optional
     std::string* localEncoding; // optional
     std::string* etag; // optional
+    std::string* volume; // optional
     std::string dsname;
     std::vector<uint8_t> data; // optional
     int* streamId; // optional
@@ -77,7 +84,7 @@ struct ReadDatasetResponse : public CommandResponse {
     std::string* encoding; // optional
     std::string etag;
     std::string dataset;
-    std::vector<uint8_t> data; // optional
+    std::vector<uint8_t> data;
     // int
     int* contentLen; // optional
 };

@@ -9,6 +9,11 @@
  *
  */
 
+/*
+ * AUTO-GENERATED - DO NOT EDIT
+ * Generated from uss.ts - edit there instead
+ */
+
 #ifndef USS_TYPES_H
 #define USS_TYPES_H
 
@@ -81,7 +86,7 @@ struct ReadFileResponse : public CommandResponse {
     std::string* encoding; // optional
     std::string etag;
     std::string fspath;
-    std::vector<uint8_t> data; // optional
+    std::vector<uint8_t> data;
     // int
     int* contentLen; // optional
 };
