@@ -7,9 +7,11 @@
  *
  * Copyright Contributors to the Zowe Project.
  *
- * ZJson Basic Examples - Demonstrating core ZJson C++ API
- * Similar to Rust serde_json usage patterns
  */
+
+// ============================================================================
+// ZJson Basic Examples - Demonstrating core ZJson C++ API
+// ============================================================================
 
 #include <iostream>
 #include <string>
