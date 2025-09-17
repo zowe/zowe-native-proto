@@ -1487,24 +1487,7 @@ std::string value_to_json_string(const Value &value)
     }
     else
     {
-      // For primitive values, create a temporary object to hold the value
-      rc = ZJSMPARS(&instance, "{}");
-      if (rc != 0)
-      {
-        ZJSMTERM(&instance);
-        std::stringstream ss;
-        ss << std::hex << rc;
-        throw Error(Error::Custom, "Failed to parse temporary JSON object for primitive value. RC: x'" + ss.str() + "'");
-      }
-
-      rc = value_to_json_instance(&instance, &root_handle, "value", value);
-      if (rc != 0)
-      {
-        ZJSMTERM(&instance);
-        std::stringstream ss;
-        ss << std::hex << rc;
-        throw Error(Error::Custom, "Failed to serialize primitive value. RC: x'" + ss.str() + "'");
-      }
+      throw Error(Error::Custom, "Serializing primitive values is not supported");
     }
 
     // Serialize the result using the same pattern as ZJson
@@ -1543,22 +1526,6 @@ std::string value_to_json_string(const Value &value)
     }
 
     ZJSMTERM(&instance);
-
-    // For primitive values, extract just the value from {"value":...}
-    if (value.get_type() != Value::Object && value.get_type() != Value::Array && !result.empty())
-    {
-      // Extract the value part from {"value":...}
-      size_t start = result.find(":");
-      if (start != std::string::npos)
-      {
-        start++; // Skip the ':'
-        size_t end = result.find_last_of('}');
-        if (end != std::string::npos)
-        {
-          result = result.substr(start, end - start);
-        }
-      }
-    }
 
     if (result.empty())
     {
@@ -1696,6 +1663,51 @@ Value parse_json_string(const std::string &json_str)
 
 #define ZJSON_TRANSFORM_FIELDS_16(StructType, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16) \
   ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6), ZJSON_FIELD_AUTO(StructType, f7), ZJSON_FIELD_AUTO(StructType, f8), ZJSON_FIELD_AUTO(StructType, f9), ZJSON_FIELD_AUTO(StructType, f10), ZJSON_FIELD_AUTO(StructType, f11), ZJSON_FIELD_AUTO(StructType, f12), ZJSON_FIELD_AUTO(StructType, f13), ZJSON_FIELD_AUTO(StructType, f14), ZJSON_FIELD_AUTO(StructType, f15), ZJSON_FIELD_AUTO(StructType, f16)
+
+#define ZJSON_TRANSFORM_FIELDS_17(StructType, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6), ZJSON_FIELD_AUTO(StructType, f7), ZJSON_FIELD_AUTO(StructType, f8), ZJSON_FIELD_AUTO(StructType, f9), ZJSON_FIELD_AUTO(StructType, f10), ZJSON_FIELD_AUTO(StructType, f11), ZJSON_FIELD_AUTO(StructType, f12), ZJSON_FIELD_AUTO(StructType, f13), ZJSON_FIELD_AUTO(StructType, f14), ZJSON_FIELD_AUTO(StructType, f15), ZJSON_FIELD_AUTO(StructType, f16), ZJSON_FIELD_AUTO(StructType, f17)
+
+#define ZJSON_TRANSFORM_FIELDS_18(StructType, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6), ZJSON_FIELD_AUTO(StructType, f7), ZJSON_FIELD_AUTO(StructType, f8), ZJSON_FIELD_AUTO(StructType, f9), ZJSON_FIELD_AUTO(StructType, f10), ZJSON_FIELD_AUTO(StructType, f11), ZJSON_FIELD_AUTO(StructType, f12), ZJSON_FIELD_AUTO(StructType, f13), ZJSON_FIELD_AUTO(StructType, f14), ZJSON_FIELD_AUTO(StructType, f15), ZJSON_FIELD_AUTO(StructType, f16), ZJSON_FIELD_AUTO(StructType, f17), ZJSON_FIELD_AUTO(StructType, f18)
+
+#define ZJSON_TRANSFORM_FIELDS_19(StructType, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6), ZJSON_FIELD_AUTO(StructType, f7), ZJSON_FIELD_AUTO(StructType, f8), ZJSON_FIELD_AUTO(StructType, f9), ZJSON_FIELD_AUTO(StructType, f10), ZJSON_FIELD_AUTO(StructType, f11), ZJSON_FIELD_AUTO(StructType, f12), ZJSON_FIELD_AUTO(StructType, f13), ZJSON_FIELD_AUTO(StructType, f14), ZJSON_FIELD_AUTO(StructType, f15), ZJSON_FIELD_AUTO(StructType, f16), ZJSON_FIELD_AUTO(StructType, f17), ZJSON_FIELD_AUTO(StructType, f18), ZJSON_FIELD_AUTO(StructType, f19)
+
+#define ZJSON_TRANSFORM_FIELDS_20(StructType, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19, f20) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6), ZJSON_FIELD_AUTO(StructType, f7), ZJSON_FIELD_AUTO(StructType, f8), ZJSON_FIELD_AUTO(StructType, f9), ZJSON_FIELD_AUTO(StructType, f10), ZJSON_FIELD_AUTO(StructType, f11), ZJSON_FIELD_AUTO(StructType, f12), ZJSON_FIELD_AUTO(StructType, f13), ZJSON_FIELD_AUTO(StructType, f14), ZJSON_FIELD_AUTO(StructType, f15), ZJSON_FIELD_AUTO(StructType, f16), ZJSON_FIELD_AUTO(StructType, f17), ZJSON_FIELD_AUTO(StructType, f18), ZJSON_FIELD_AUTO(StructType, f19), ZJSON_FIELD_AUTO(StructType, f20)
+
+#define ZJSON_TRANSFORM_FIELDS_21(StructType, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19, f20, f21) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6), ZJSON_FIELD_AUTO(StructType, f7), ZJSON_FIELD_AUTO(StructType, f8), ZJSON_FIELD_AUTO(StructType, f9), ZJSON_FIELD_AUTO(StructType, f10), ZJSON_FIELD_AUTO(StructType, f11), ZJSON_FIELD_AUTO(StructType, f12), ZJSON_FIELD_AUTO(StructType, f13), ZJSON_FIELD_AUTO(StructType, f14), ZJSON_FIELD_AUTO(StructType, f15), ZJSON_FIELD_AUTO(StructType, f16), ZJSON_FIELD_AUTO(StructType, f17), ZJSON_FIELD_AUTO(StructType, f18), ZJSON_FIELD_AUTO(StructType, f19), ZJSON_FIELD_AUTO(StructType, f20), ZJSON_FIELD_AUTO(StructType, f21)
+
+#define ZJSON_TRANSFORM_FIELDS_22(StructType, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19, f20, f21, f22) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6), ZJSON_FIELD_AUTO(StructType, f7), ZJSON_FIELD_AUTO(StructType, f8), ZJSON_FIELD_AUTO(StructType, f9), ZJSON_FIELD_AUTO(StructType, f10), ZJSON_FIELD_AUTO(StructType, f11), ZJSON_FIELD_AUTO(StructType, f12), ZJSON_FIELD_AUTO(StructType, f13), ZJSON_FIELD_AUTO(StructType, f14), ZJSON_FIELD_AUTO(StructType, f15), ZJSON_FIELD_AUTO(StructType, f16), ZJSON_FIELD_AUTO(StructType, f17), ZJSON_FIELD_AUTO(StructType, f18), ZJSON_FIELD_AUTO(StructType, f19), ZJSON_FIELD_AUTO(StructType, f20), ZJSON_FIELD_AUTO(StructType, f21), ZJSON_FIELD_AUTO(StructType, f22)
+
+#define ZJSON_TRANSFORM_FIELDS_23(StructType, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19, f20, f21, f22, f23) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6), ZJSON_FIELD_AUTO(StructType, f7), ZJSON_FIELD_AUTO(StructType, f8), ZJSON_FIELD_AUTO(StructType, f9), ZJSON_FIELD_AUTO(StructType, f10), ZJSON_FIELD_AUTO(StructType, f11), ZJSON_FIELD_AUTO(StructType, f12), ZJSON_FIELD_AUTO(StructType, f13), ZJSON_FIELD_AUTO(StructType, f14), ZJSON_FIELD_AUTO(StructType, f15), ZJSON_FIELD_AUTO(StructType, f16), ZJSON_FIELD_AUTO(StructType, f17), ZJSON_FIELD_AUTO(StructType, f18), ZJSON_FIELD_AUTO(StructType, f19), ZJSON_FIELD_AUTO(StructType, f20), ZJSON_FIELD_AUTO(StructType, f21), ZJSON_FIELD_AUTO(StructType, f22), ZJSON_FIELD_AUTO(StructType, f23)
+
+#define ZJSON_TRANSFORM_FIELDS_24(StructType, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19, f20, f21, f22, f23, f24) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6), ZJSON_FIELD_AUTO(StructType, f7), ZJSON_FIELD_AUTO(StructType, f8), ZJSON_FIELD_AUTO(StructType, f9), ZJSON_FIELD_AUTO(StructType, f10), ZJSON_FIELD_AUTO(StructType, f11), ZJSON_FIELD_AUTO(StructType, f12), ZJSON_FIELD_AUTO(StructType, f13), ZJSON_FIELD_AUTO(StructType, f14), ZJSON_FIELD_AUTO(StructType, f15), ZJSON_FIELD_AUTO(StructType, f16), ZJSON_FIELD_AUTO(StructType, f17), ZJSON_FIELD_AUTO(StructType, f18), ZJSON_FIELD_AUTO(StructType, f19), ZJSON_FIELD_AUTO(StructType, f20), ZJSON_FIELD_AUTO(StructType, f21), ZJSON_FIELD_AUTO(StructType, f22), ZJSON_FIELD_AUTO(StructType, f23), ZJSON_FIELD_AUTO(StructType, f24)
+
+#define ZJSON_TRANSFORM_FIELDS_25(StructType, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19, f20, f21, f22, f23, f24, f25) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6), ZJSON_FIELD_AUTO(StructType, f7), ZJSON_FIELD_AUTO(StructType, f8), ZJSON_FIELD_AUTO(StructType, f9), ZJSON_FIELD_AUTO(StructType, f10), ZJSON_FIELD_AUTO(StructType, f11), ZJSON_FIELD_AUTO(StructType, f12), ZJSON_FIELD_AUTO(StructType, f13), ZJSON_FIELD_AUTO(StructType, f14), ZJSON_FIELD_AUTO(StructType, f15), ZJSON_FIELD_AUTO(StructType, f16), ZJSON_FIELD_AUTO(StructType, f17), ZJSON_FIELD_AUTO(StructType, f18), ZJSON_FIELD_AUTO(StructType, f19), ZJSON_FIELD_AUTO(StructType, f20), ZJSON_FIELD_AUTO(StructType, f21), ZJSON_FIELD_AUTO(StructType, f22), ZJSON_FIELD_AUTO(StructType, f23), ZJSON_FIELD_AUTO(StructType, f24), ZJSON_FIELD_AUTO(StructType, f25)
+
+#define ZJSON_TRANSFORM_FIELDS_26(StructType, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19, f20, f21, f22, f23, f24, f25, f26) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6), ZJSON_FIELD_AUTO(StructType, f7), ZJSON_FIELD_AUTO(StructType, f8), ZJSON_FIELD_AUTO(StructType, f9), ZJSON_FIELD_AUTO(StructType, f10), ZJSON_FIELD_AUTO(StructType, f11), ZJSON_FIELD_AUTO(StructType, f12), ZJSON_FIELD_AUTO(StructType, f13), ZJSON_FIELD_AUTO(StructType, f14), ZJSON_FIELD_AUTO(StructType, f15), ZJSON_FIELD_AUTO(StructType, f16), ZJSON_FIELD_AUTO(StructType, f17), ZJSON_FIELD_AUTO(StructType, f18), ZJSON_FIELD_AUTO(StructType, f19), ZJSON_FIELD_AUTO(StructType, f20), ZJSON_FIELD_AUTO(StructType, f21), ZJSON_FIELD_AUTO(StructType, f22), ZJSON_FIELD_AUTO(StructType, f23), ZJSON_FIELD_AUTO(StructType, f24), ZJSON_FIELD_AUTO(StructType, f25), ZJSON_FIELD_AUTO(StructType, f26)
+
+#define ZJSON_TRANSFORM_FIELDS_27(StructType, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19, f20, f21, f22, f23, f24, f25, f26, f27) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6), ZJSON_FIELD_AUTO(StructType, f7), ZJSON_FIELD_AUTO(StructType, f8), ZJSON_FIELD_AUTO(StructType, f9), ZJSON_FIELD_AUTO(StructType, f10), ZJSON_FIELD_AUTO(StructType, f11), ZJSON_FIELD_AUTO(StructType, f12), ZJSON_FIELD_AUTO(StructType, f13), ZJSON_FIELD_AUTO(StructType, f14), ZJSON_FIELD_AUTO(StructType, f15), ZJSON_FIELD_AUTO(StructType, f16), ZJSON_FIELD_AUTO(StructType, f17), ZJSON_FIELD_AUTO(StructType, f18), ZJSON_FIELD_AUTO(StructType, f19), ZJSON_FIELD_AUTO(StructType, f20), ZJSON_FIELD_AUTO(StructType, f21), ZJSON_FIELD_AUTO(StructType, f22), ZJSON_FIELD_AUTO(StructType, f23), ZJSON_FIELD_AUTO(StructType, f24), ZJSON_FIELD_AUTO(StructType, f25), ZJSON_FIELD_AUTO(StructType, f26), ZJSON_FIELD_AUTO(StructType, f27)
+
+#define ZJSON_TRANSFORM_FIELDS_28(StructType, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19, f20, f21, f22, f23, f24, f25, f26, f27, f28) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6), ZJSON_FIELD_AUTO(StructType, f7), ZJSON_FIELD_AUTO(StructType, f8), ZJSON_FIELD_AUTO(StructType, f9), ZJSON_FIELD_AUTO(StructType, f10), ZJSON_FIELD_AUTO(StructType, f11), ZJSON_FIELD_AUTO(StructType, f12), ZJSON_FIELD_AUTO(StructType, f13), ZJSON_FIELD_AUTO(StructType, f14), ZJSON_FIELD_AUTO(StructType, f15), ZJSON_FIELD_AUTO(StructType, f16), ZJSON_FIELD_AUTO(StructType, f17), ZJSON_FIELD_AUTO(StructType, f18), ZJSON_FIELD_AUTO(StructType, f19), ZJSON_FIELD_AUTO(StructType, f20), ZJSON_FIELD_AUTO(StructType, f21), ZJSON_FIELD_AUTO(StructType, f22), ZJSON_FIELD_AUTO(StructType, f23), ZJSON_FIELD_AUTO(StructType, f24), ZJSON_FIELD_AUTO(StructType, f25), ZJSON_FIELD_AUTO(StructType, f26), ZJSON_FIELD_AUTO(StructType, f27), ZJSON_FIELD_AUTO(StructType, f28)
+
+#define ZJSON_TRANSFORM_FIELDS_29(StructType, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19, f20, f21, f22, f23, f24, f25, f26, f27, f28, f29) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6), ZJSON_FIELD_AUTO(StructType, f7), ZJSON_FIELD_AUTO(StructType, f8), ZJSON_FIELD_AUTO(StructType, f9), ZJSON_FIELD_AUTO(StructType, f10), ZJSON_FIELD_AUTO(StructType, f11), ZJSON_FIELD_AUTO(StructType, f12), ZJSON_FIELD_AUTO(StructType, f13), ZJSON_FIELD_AUTO(StructType, f14), ZJSON_FIELD_AUTO(StructType, f15), ZJSON_FIELD_AUTO(StructType, f16), ZJSON_FIELD_AUTO(StructType, f17), ZJSON_FIELD_AUTO(StructType, f18), ZJSON_FIELD_AUTO(StructType, f19), ZJSON_FIELD_AUTO(StructType, f20), ZJSON_FIELD_AUTO(StructType, f21), ZJSON_FIELD_AUTO(StructType, f22), ZJSON_FIELD_AUTO(StructType, f23), ZJSON_FIELD_AUTO(StructType, f24), ZJSON_FIELD_AUTO(StructType, f25), ZJSON_FIELD_AUTO(StructType, f26), ZJSON_FIELD_AUTO(StructType, f27), ZJSON_FIELD_AUTO(StructType, f28), ZJSON_FIELD_AUTO(StructType, f29)
+
+#define ZJSON_TRANSFORM_FIELDS_30(StructType, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19, f20, f21, f22, f23, f24, f25, f26, f27, f28, f29, f30) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6), ZJSON_FIELD_AUTO(StructType, f7), ZJSON_FIELD_AUTO(StructType, f8), ZJSON_FIELD_AUTO(StructType, f9), ZJSON_FIELD_AUTO(StructType, f10), ZJSON_FIELD_AUTO(StructType, f11), ZJSON_FIELD_AUTO(StructType, f12), ZJSON_FIELD_AUTO(StructType, f13), ZJSON_FIELD_AUTO(StructType, f14), ZJSON_FIELD_AUTO(StructType, f15), ZJSON_FIELD_AUTO(StructType, f16), ZJSON_FIELD_AUTO(StructType, f17), ZJSON_FIELD_AUTO(StructType, f18), ZJSON_FIELD_AUTO(StructType, f19), ZJSON_FIELD_AUTO(StructType, f20), ZJSON_FIELD_AUTO(StructType, f21), ZJSON_FIELD_AUTO(StructType, f22), ZJSON_FIELD_AUTO(StructType, f23), ZJSON_FIELD_AUTO(StructType, f24), ZJSON_FIELD_AUTO(StructType, f25), ZJSON_FIELD_AUTO(StructType, f26), ZJSON_FIELD_AUTO(StructType, f27), ZJSON_FIELD_AUTO(StructType, f28), ZJSON_FIELD_AUTO(StructType, f29), ZJSON_FIELD_AUTO(StructType, f30)
+
+#define ZJSON_TRANSFORM_FIELDS_31(StructType, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19, f20, f21, f22, f23, f24, f25, f26, f27, f28, f29, f30, f31) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6), ZJSON_FIELD_AUTO(StructType, f7), ZJSON_FIELD_AUTO(StructType, f8), ZJSON_FIELD_AUTO(StructType, f9), ZJSON_FIELD_AUTO(StructType, f10), ZJSON_FIELD_AUTO(StructType, f11), ZJSON_FIELD_AUTO(StructType, f12), ZJSON_FIELD_AUTO(StructType, f13), ZJSON_FIELD_AUTO(StructType, f14), ZJSON_FIELD_AUTO(StructType, f15), ZJSON_FIELD_AUTO(StructType, f16), ZJSON_FIELD_AUTO(StructType, f17), ZJSON_FIELD_AUTO(StructType, f18), ZJSON_FIELD_AUTO(StructType, f19), ZJSON_FIELD_AUTO(StructType, f20), ZJSON_FIELD_AUTO(StructType, f21), ZJSON_FIELD_AUTO(StructType, f22), ZJSON_FIELD_AUTO(StructType, f23), ZJSON_FIELD_AUTO(StructType, f24), ZJSON_FIELD_AUTO(StructType, f25), ZJSON_FIELD_AUTO(StructType, f26), ZJSON_FIELD_AUTO(StructType, f27), ZJSON_FIELD_AUTO(StructType, f28), ZJSON_FIELD_AUTO(StructType, f29), ZJSON_FIELD_AUTO(StructType, f30), ZJSON_FIELD_AUTO(StructType, f31)
 
 #define ZJSON_TRANSFORM_FIELDS_32(StructType, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19, f20, f21, f22, f23, f24, f25, f26, f27, f28, f29, f30, f31, f32) \
   ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6), ZJSON_FIELD_AUTO(StructType, f7), ZJSON_FIELD_AUTO(StructType, f8), ZJSON_FIELD_AUTO(StructType, f9), ZJSON_FIELD_AUTO(StructType, f10), ZJSON_FIELD_AUTO(StructType, f11), ZJSON_FIELD_AUTO(StructType, f12), ZJSON_FIELD_AUTO(StructType, f13), ZJSON_FIELD_AUTO(StructType, f14), ZJSON_FIELD_AUTO(StructType, f15), ZJSON_FIELD_AUTO(StructType, f16), ZJSON_FIELD_AUTO(StructType, f17), ZJSON_FIELD_AUTO(StructType, f18), ZJSON_FIELD_AUTO(StructType, f19), ZJSON_FIELD_AUTO(StructType, f20), ZJSON_FIELD_AUTO(StructType, f21), ZJSON_FIELD_AUTO(StructType, f22), ZJSON_FIELD_AUTO(StructType, f23), ZJSON_FIELD_AUTO(StructType, f24), ZJSON_FIELD_AUTO(StructType, f25), ZJSON_FIELD_AUTO(StructType, f26), ZJSON_FIELD_AUTO(StructType, f27), ZJSON_FIELD_AUTO(StructType, f28), ZJSON_FIELD_AUTO(StructType, f29), ZJSON_FIELD_AUTO(StructType, f30), ZJSON_FIELD_AUTO(StructType, f31), ZJSON_FIELD_AUTO(StructType, f32)
