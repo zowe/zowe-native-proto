@@ -19,7 +19,7 @@
 #include <memory>
 #include <chrono>
 #include <cstdlib>
-#include "extern/picojson.h"
+#include "../c/zjson.hpp"
 #include "worker.hpp"
 #include "zowed.hpp"
 
@@ -66,16 +66,16 @@ private:
 
   void printReadyMessage()
   {
-    picojson::object data;
+    zjson::Value data = zjson::Value::create_object();
     // TODO: Load checksums similar to Go implementation
-    data["checksums"] = picojson::value(picojson::object());
+    data.add_to_object("checksums", zjson::Value::create_object());
 
-    picojson::object readyMsg;
-    readyMsg["status"] = picojson::value(std::string("ready"));
-    readyMsg["message"] = picojson::value(std::string("zowed is ready to accept input"));
-    readyMsg["data"] = picojson::value(data);
+    zjson::Value readyMsg = zjson::Value::create_object();
+    readyMsg.add_to_object("status", zjson::Value(std::string("ready")));
+    readyMsg.add_to_object("message", zjson::Value(std::string("zowed is ready to accept input")));
+    readyMsg.add_to_object("data", data);
 
-    std::string jsonString = serializeJson(picojson::value(readyMsg));
+    std::string jsonString = serializeJson(readyMsg);
     std::cout << jsonString << std::endl;
   }
 

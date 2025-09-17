@@ -21,14 +21,19 @@
 #include <memory>
 #include <functional>
 #include <unordered_map>
-#include "extern/picojson.h"
+#include "../c/zjson.hpp"
 
-using picojson::value;
+using zjson::Value;
 
-// Utility function to serialize JSON (picojson doesn't need special writer)
-inline std::string serializeJson(const picojson::value &val, bool prettify = false)
+// Utility function to serialize JSON
+inline std::string serializeJson(const zjson::Value &val, bool prettify = false)
 {
-  return val.serialize(prettify);
+  auto result = prettify ? zjson::to_string_pretty(val) : zjson::to_string(val);
+  if (!result.has_value())
+  {
+    throw std::runtime_error(std::string("Failed to serialize JSON: ") + result.error().what());
+  }
+  return result.value();
 }
 
 // Forward declarations
@@ -40,16 +45,30 @@ struct RpcRequest
 {
   std::string jsonrpc = "2.0";
   std::string method;
-  picojson::value params;
+  zjson::Value params;
   int id;
 
-  static RpcRequest fromJson(const picojson::value &j)
+  static RpcRequest fromJson(const zjson::Value &j)
   {
     RpcRequest req;
-    req.jsonrpc = j.contains("jsonrpc") ? j.get("jsonrpc").get<std::string>() : "2.0";
-    req.method = j.contains("method") ? j.get("method").get<std::string>() : "";
-    req.params = j.contains("params") ? j.get("params") : picojson::value(picojson::object());
-    req.id = j.contains("id") ? static_cast<int>(j.get("id").get<double>()) : 0;
+    if (!j.is_object())
+    {
+      throw std::runtime_error("JSON-RPC request must be an object");
+    }
+    const auto &obj = j.as_object();
+
+    auto jsonrpc_it = obj.find("jsonrpc");
+    req.jsonrpc = (jsonrpc_it != obj.end() && jsonrpc_it->second.is_string()) ? jsonrpc_it->second.as_string() : "2.0";
+
+    auto method_it = obj.find("method");
+    req.method = (method_it != obj.end() && method_it->second.is_string()) ? method_it->second.as_string() : "";
+
+    auto params_it = obj.find("params");
+    req.params = (params_it != obj.end()) ? params_it->second : zjson::Value::create_object();
+
+    auto id_it = obj.find("id");
+    req.id = (id_it != obj.end() && id_it->second.is_number()) ? id_it->second.as_int() : 0;
+
     return req;
   }
 };
@@ -57,24 +76,24 @@ struct RpcRequest
 struct RpcResponse
 {
   std::string jsonrpc = "2.0";
-  picojson::value result;
-  picojson::value error;
+  zjson::Value result;
+  zjson::Value error;
   int id;
 
-  picojson::value toJson() const
+  zjson::Value toJson() const
   {
-    picojson::object obj;
-    obj["jsonrpc"] = picojson::value(jsonrpc);
-    obj["id"] = picojson::value(static_cast<double>(id));
-    if (!result.is<picojson::null>())
+    zjson::Value obj = zjson::Value::create_object();
+    obj.add_to_object("jsonrpc", zjson::Value(jsonrpc));
+    obj.add_to_object("id", zjson::Value(id));
+    if (!result.is_null())
     {
-      obj["result"] = result;
+      obj.add_to_object("result", result);
     }
-    if (!error.is<picojson::null>())
+    if (!error.is_null())
     {
-      obj["error"] = error;
+      obj.add_to_object("error", error);
     }
-    return picojson::value(obj);
+    return obj;
   }
 };
 
@@ -82,23 +101,23 @@ struct ErrorDetails
 {
   int code;
   std::string message;
-  picojson::value data;
+  zjson::Value data;
 
-  picojson::value toJson() const
+  zjson::Value toJson() const
   {
-    picojson::object obj;
-    obj["code"] = picojson::value(static_cast<double>(code));
-    obj["message"] = picojson::value(message);
-    if (!data.is<picojson::null>())
+    zjson::Value obj = zjson::Value::create_object();
+    obj.add_to_object("code", zjson::Value(code));
+    obj.add_to_object("message", zjson::Value(message));
+    if (!data.is_null())
     {
-      obj["data"] = data;
+      obj.add_to_object("data", data);
     }
-    return picojson::value(obj);
+    return obj;
   }
 };
 
 // Command handler function type
-using CommandHandler = std::function<picojson::value(const picojson::value &params)>;
+using CommandHandler = std::function<zjson::Value(const zjson::Value &params)>;
 
 // Command dispatcher for managing command handlers
 class CommandDispatcher
@@ -130,7 +149,7 @@ private:
   void workerLoop();
   void processRequest(const std::string &data);
   void printErrorResponse(const ErrorDetails &error, int requestId);
-  void printCommandResponse(const picojson::value &result, int requestId);
+  void printCommandResponse(const zjson::Value &result, int requestId);
 
 public:
   Worker(int workerId, std::shared_ptr<CommandDispatcher> disp, std::mutex *respMutex);
