@@ -9,6 +9,11 @@
  *
  */
 
+/*
+ * AUTO-GENERATED - DO NOT EDIT
+ * Generated from common.ts - edit there instead
+ */
+
 #ifndef COMMON_TYPES_H
 #define COMMON_TYPES_H
 
