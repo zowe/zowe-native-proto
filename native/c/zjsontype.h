@@ -56,7 +56,7 @@ typedef struct
 {
   PARSE_HANDLE handle;
   DIAG diag;
-  char *PTR64 json;
+  char *PTR32 json_ptr31;
   int json_length;
 } JSON_INSTANCE;
 
