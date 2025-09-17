@@ -56,7 +56,8 @@ typedef struct
 {
   PARSE_HANDLE handle;
   DIAG diag;
-  char *PTR32 json_ptr31;
+  // Use 64-bit pointer to ensure consistent struct layout across z/OS addressing modes
+  char *PTR64 json;
   int json_length;
 } JSON_INSTANCE;
 

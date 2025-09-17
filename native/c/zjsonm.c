@@ -102,11 +102,11 @@ int ZJSMPARS(JSON_INSTANCE *PTR64 instance, const char *PTR64 json)
   memcpy(&instance31, instance, sizeof(JSON_INSTANCE));
 
   instance->json_length = (int)strlen(json) + 1;
-  instance->json_ptr31 = storage_obtain31(instance->json_length);
+  instance->json = storage_obtain31(instance->json_length);
 
-  strncpy(instance->json_ptr31, json, instance->json_length);
+  strncpy(instance->json, json, instance->json_length);
 
-  rc = zjsm_parse(&instance31, (const char *PTR32)instance->json_ptr31);
+  rc = zjsm_parse(&instance31, (const char *PTR32)instance->json);
 
   memcpy(instance, &instance31, sizeof(JSON_INSTANCE));
 
@@ -424,10 +424,10 @@ int ZJSMTERM(JSON_INSTANCE *PTR64 instance)
 
   memcpy(instance, &instance31, sizeof(JSON_INSTANCE));
 
-  if (instance->json_ptr31)
+  if (instance->json)
   {
-    storage_release(instance->json_length, instance->json_ptr31);
-    instance->json_ptr31 = NULL;
+    storage_release(instance->json_length, instance->json);
+    instance->json = NULL;
     instance->json_length = 0;
   }
 
