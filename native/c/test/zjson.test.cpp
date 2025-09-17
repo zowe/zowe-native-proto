@@ -7,16 +7,11 @@
  *
  * Copyright Contributors to the Zowe Project.
  *
- * ZJson Test Suite - Testing zjson.hpp API functionality
- *
- * NOTE: This test suite uses the real zjson.hpp implementation and tests:
- * - API structure, type traits, and macro system
- * - Real serialization traits and field descriptors
- * - Compile-time type checking and template instantiation
- *
- * This test runs in the z/OS test environment where all required
- * headers and APIs are available.
  */
+
+// ============================================================================
+// ZJson Test Suite - Testing zjson.hpp API functionality
+// ============================================================================
 
 #include "zjson.test.hpp"
 #include "ztest.hpp"

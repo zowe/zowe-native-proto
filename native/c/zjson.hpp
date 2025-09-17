@@ -136,27 +136,27 @@ public:
     return column_;
   }
 
-  static Error invalid_value(const std::string &msg)
+  static inline Error invalid_value(const std::string &msg)
   {
     return Error(InvalidValue, "Invalid value: " + msg);
   }
 
-  static Error invalid_type(const std::string &expected, const std::string &found)
+  static inline Error invalid_type(const std::string &expected, const std::string &found)
   {
     return Error(InvalidType, "Invalid type. Expected " + expected + ", found " + found);
   }
 
-  static Error missing_field(const std::string &field)
+  static inline Error missing_field(const std::string &field)
   {
     return Error(MissingField, "Missing field: " + field);
   }
 
-  static Error unknown_field(const std::string &field)
+  static inline Error unknown_field(const std::string &field)
   {
     return Error(UnknownField, "Unknown field: " + field);
   }
 
-  static Error invalid_data(const std::string &msg)
+  static inline Error invalid_data(const std::string &msg)
   {
     return Error(InvalidData, "Invalid data: " + msg);
   }
@@ -362,33 +362,33 @@ public:
     clear();
   }
 
-  Type get_type() const
+  inline Type get_type() const
   {
     return type_;
   }
 
-  bool as_bool() const
+  inline bool as_bool() const
   {
     if (type_ == Bool)
       return bool_value_;
     return false;
   }
 
-  double as_number() const
+  inline double as_number() const
   {
     if (type_ == Number)
       return number_value_;
     return 0.0;
   }
 
-  int as_int() const
+  inline int as_int() const
   {
     if (type_ == Number)
       return static_cast<int>(number_value_);
     return 0;
   }
 
-  std::string as_string() const
+  inline std::string as_string() const
   {
     if (type_ == String)
       return *string_value_;
@@ -409,27 +409,27 @@ public:
     return *object_value_;
   }
 
-  bool is_null() const
+  inline bool is_null() const
   {
     return type_ == Null;
   }
-  bool is_bool() const
+  inline bool is_bool() const
   {
     return type_ == Bool;
   }
-  bool is_number() const
+  inline bool is_number() const
   {
     return type_ == Number;
   }
-  bool is_string() const
+  inline bool is_string() const
   {
     return type_ == String;
   }
-  bool is_array() const
+  inline bool is_array() const
   {
     return type_ == Array;
   }
-  bool is_object() const
+  inline bool is_object() const
   {
     return type_ == Object;
   }
@@ -530,7 +530,7 @@ private:
     }
   }
 
-  std::string type_name() const
+  inline std::string type_name() const
   {
     switch (type_)
     {
@@ -807,44 +807,44 @@ struct Field
   {
   }
 
-  Field &rename(const std::string &new_name)
+  inline Field &rename(const std::string &new_name)
   {
     rename_to = new_name;
     return *this;
   }
 
-  Field &skip()
+  inline Field &skip()
   {
     skip_serializing = true;
     skip_deserializing = true;
     return *this;
   }
 
-  Field &skip_serializing_field()
+  inline Field &skip_serializing_field()
   {
     skip_serializing = true;
     return *this;
   }
 
-  Field &skip_deserializing_field()
+  inline Field &skip_deserializing_field()
   {
     skip_deserializing = true;
     return *this;
   }
 
-  Field &with_default(std::function<FieldType()> default_fn)
+  inline Field &with_default(std::function<FieldType()> default_fn)
   {
     default_value = default_fn;
     return *this;
   }
 
-  Field &skip_serializing_if_none()
+  inline Field &skip_serializing_if_none()
   {
     skip_if_none = true;
     return *this;
   }
 
-  std::string get_serialized_name() const
+  inline std::string get_serialized_name() const
   {
     return rename_to.empty() ? name : rename_to;
   }
@@ -860,12 +860,12 @@ public:
   using SerializeFunc = std::function<Value(const T &)>;
   using DeserializeFunc = std::function<zstd::expected<T, Error>(const Value &)>;
 
-  static void register_serializer(SerializeFunc func)
+  static inline void register_serializer(SerializeFunc func)
   {
     get_serializer() = func;
   }
 
-  static void register_deserializer(DeserializeFunc func)
+  static inline void register_deserializer(DeserializeFunc func)
   {
     get_deserializer() = func;
   }
@@ -882,12 +882,12 @@ public:
     return deserializer;
   }
 
-  static bool has_serializer()
+  static inline bool has_serializer()
   {
     return static_cast<bool>(get_serializer());
   }
 
-  static bool has_deserializer()
+  static inline bool has_deserializer()
   {
     return static_cast<bool>(get_deserializer());
   }
@@ -980,7 +980,7 @@ zstd::expected<std::string, Error> to_string(const T &value)
   }
 }
 
-Value json_handle_to_value(JSON_INSTANCE *instance, KEY_HANDLE *key_handle)
+inline Value json_handle_to_value(JSON_INSTANCE *instance, KEY_HANDLE *key_handle)
 {
   try
   {
@@ -1251,7 +1251,7 @@ inline zstd::expected<Value, Error> from_str(const std::string &json_str)
 }
 
 // Helper function to add indentation to JSON string
-std::string add_json_indentation(const std::string &json_str, int spaces)
+inline std::string add_json_indentation(const std::string &json_str, int spaces)
 {
   std::string result;
   int indent_level = 0;
@@ -1342,7 +1342,7 @@ zstd::expected<std::string, Error> to_string_pretty(const T &value)
 }
 
 // Helper function to add Value to JSON instance using ZJSM API
-int value_to_json_instance(JSON_INSTANCE *instance, KEY_HANDLE *parent_handle, const std::string &entry_name, const Value &value)
+inline int value_to_json_instance(JSON_INSTANCE *instance, KEY_HANDLE *parent_handle, const std::string &entry_name, const Value &value)
 {
   int rc = 0;
   int entry_type = 0;
@@ -1423,7 +1423,7 @@ int value_to_json_instance(JSON_INSTANCE *instance, KEY_HANDLE *parent_handle, c
 }
 
 // Convert Value to JSON string using ZJSM API
-std::string value_to_json_string(const Value &value)
+inline std::string value_to_json_string(const Value &value)
 {
   JSON_INSTANCE instance = {0};
   int rc = ZJSMINIT(&instance);
@@ -1552,7 +1552,7 @@ std::string value_to_json_string(const Value &value)
 }
 
 // JSON parser using zjsonm C API
-Value parse_json_string(const std::string &json_str)
+inline Value parse_json_string(const std::string &json_str)
 {
   JSON_INSTANCE instance = {0};
   int rc = ZJSMINIT(&instance);
