@@ -15,7 +15,7 @@
 #include "zjsontype.h"
 #include "zstorage.h"
 
-#pragma prolog(ZJSMINIT, " ZWEPROLG NEWDSA=(YES,128) ")
+#pragma prolog(ZJSMINIT, " ZWEPROLG NEWDSA=(YES,4) ")
 #pragma epilog(ZJSMINIT, " ZWEEPILG ")
 int ZJSMINIT(JSON_INSTANCE *PTR64 instance)
 {
@@ -31,7 +31,7 @@ int ZJSMINIT(JSON_INSTANCE *PTR64 instance)
   return rc;
 }
 
-#pragma prolog(ZJSMGENC, " ZWEPROLG NEWDSA=(YES,128) ")
+#pragma prolog(ZJSMGENC, " ZWEPROLG NEWDSA=(YES,4) ")
 #pragma epilog(ZJSMGENC, " ZWEEPILG ")
 int ZJSMGENC(JSON_INSTANCE *PTR64 instance, int *PTR64 encoding)
 {
@@ -50,7 +50,7 @@ int ZJSMGENC(JSON_INSTANCE *PTR64 instance, int *PTR64 encoding)
   return rc;
 }
 
-#pragma prolog(ZJSMSENC, " ZWEPROLG NEWDSA=(YES,128) ")
+#pragma prolog(ZJSMSENC, " ZWEPROLG NEWDSA=(YES,4) ")
 #pragma epilog(ZJSMSENC, " ZWEEPILG ")
 int ZJSMSENC(JSON_INSTANCE *PTR64 instance, int *PTR64 encoding)
 {
@@ -71,7 +71,7 @@ int ZJSMSENC(JSON_INSTANCE *PTR64 instance, int *PTR64 encoding)
   return rc;
 }
 
-#pragma prolog(ZJSMDEL, " ZWEPROLG NEWDSA=(YES,128) ")
+#pragma prolog(ZJSMDEL, " ZWEPROLG NEWDSA=(YES,4) ")
 #pragma epilog(ZJSMDEL, " ZWEEPILG ")
 int ZJSMDEL(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, KEY_HANDLE *PTR64 value_handle)
 {
@@ -92,7 +92,7 @@ int ZJSMDEL(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, KEY_HAN
   return rc;
 }
 
-#pragma prolog(ZJSMPARS, " ZWEPROLG NEWDSA=(YES,128) ")
+#pragma prolog(ZJSMPARS, " ZWEPROLG NEWDSA=(YES,4) ")
 #pragma epilog(ZJSMPARS, " ZWEEPILG ")
 int ZJSMPARS(JSON_INSTANCE *PTR64 instance, const char *PTR64 json)
 {
@@ -113,7 +113,7 @@ int ZJSMPARS(JSON_INSTANCE *PTR64 instance, const char *PTR64 json)
   return rc;
 }
 
-#pragma prolog(ZJSMSRCH, " ZWEPROLG NEWDSA=(YES,128) ")
+#pragma prolog(ZJSMSRCH, " ZWEPROLG NEWDSA=(YES,4) ")
 #pragma epilog(ZJSMSRCH, " ZWEEPILG ")
 int ZJSMSRCH(JSON_INSTANCE *PTR64 instance, int *PTR64 type, const char *PTR64 key, KEY_HANDLE *PTR64 object_handle, KEY_HANDLE *PTR64 starting_handle, KEY_HANDLE *PTR64 key_handle)
 {
@@ -146,7 +146,7 @@ int ZJSMSRCH(JSON_INSTANCE *PTR64 instance, int *PTR64 type, const char *PTR64 k
   return rc;
 }
 
-#pragma prolog(ZJSMSSRC, " ZWEPROLG NEWDSA=(YES,128) ")
+#pragma prolog(ZJSMSSRC, " ZWEPROLG NEWDSA=(YES,4) ")
 #pragma epilog(ZJSMSSRC, " ZWEEPILG ")
 int ZJSMSSRC(JSON_INSTANCE *PTR64 instance, const char *PTR64 key, KEY_HANDLE *PTR64 key_handle)
 {
@@ -172,7 +172,7 @@ int ZJSMSSRC(JSON_INSTANCE *PTR64 instance, const char *PTR64 key, KEY_HANDLE *P
   return rc;
 }
 
-#pragma prolog(ZJSMSERI, " ZWEPROLG NEWDSA=(YES,128) ")
+#pragma prolog(ZJSMSERI, " ZWEPROLG NEWDSA=(YES,4) ")
 #pragma epilog(ZJSMSERI, " ZWEEPILG ")
 int ZJSMSERI(JSON_INSTANCE *PTR64 instance, char *PTR64 buffer, int *PTR64 buffer_length, int *PTR64 buffer_length_actual)
 {
@@ -196,7 +196,7 @@ int ZJSMSERI(JSON_INSTANCE *PTR64 instance, char *PTR64 buffer, int *PTR64 buffe
   return rc;
 }
 
-#pragma prolog(ZJSNGJST, " ZWEPROLG NEWDSA=(YES,128) ")
+#pragma prolog(ZJSNGJST, " ZWEPROLG NEWDSA=(YES,4) ")
 #pragma epilog(ZJSNGJST, " ZWEEPILG ")
 int ZJSNGJST(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *PTR64 type)
 {
@@ -217,7 +217,7 @@ int ZJSNGJST(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *P
   return rc;
 }
 
-#pragma prolog(ZJSMGVAL, " ZWEPROLG NEWDSA=(YES,128) ")
+#pragma prolog(ZJSMGVAL, " ZWEPROLG NEWDSA=(YES,4) ")
 #pragma epilog(ZJSMGVAL, " ZWEEPILG ")
 int ZJSMGVAL(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, char *PTR64 *PTR64 value, int *PTR64 value_length)
 {
@@ -241,7 +241,7 @@ int ZJSMGVAL(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, char *
   return rc;
 }
 
-#pragma prolog(ZJSMGNUE, " ZWEPROLG NEWDSA=(YES,128) ")
+#pragma prolog(ZJSMGNUE, " ZWEPROLG NEWDSA=(YES,4) ")
 #pragma epilog(ZJSMGNUE, " ZWEEPILG ")
 int ZJSMGNUE(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *PTR64 number_entries)
 {
@@ -264,7 +264,7 @@ int ZJSMGNUE(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *P
   return rc;
 }
 
-#pragma prolog(ZJSMGBOV, " ZWEPROLG NEWDSA=(YES,128) ")
+#pragma prolog(ZJSMGBOV, " ZWEPROLG NEWDSA=(YES,4) ")
 #pragma epilog(ZJSMGBOV, " ZWEEPILG ")
 int ZJSMGBOV(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, char *PTR64 value)
 {
@@ -286,7 +286,7 @@ int ZJSMGBOV(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, char *
   return rc;
 }
 
-#pragma prolog(ZJSMGAEN, " ZWEPROLG NEWDSA=(YES,128) ")
+#pragma prolog(ZJSMGAEN, " ZWEPROLG NEWDSA=(YES,4) ")
 #pragma epilog(ZJSMGAEN, " ZWEEPILG ")
 int ZJSMGAEN(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *PTR64 index, KEY_HANDLE *PTR64 value)
 {
@@ -311,7 +311,7 @@ int ZJSMGAEN(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *P
   return rc;
 }
 
-#pragma prolog(ZJSMGOEN, " ZWEPROLG NEWDSA=(YES,128) ")
+#pragma prolog(ZJSMGOEN, " ZWEPROLG NEWDSA=(YES,4) ")
 #pragma epilog(ZJSMGOEN, " ZWEEPILG ")
 int ZJSMGOEN(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *PTR64 index, char *PTR64 *PTR64 key_buffer, int *PTR64 key_buffer_length, KEY_HANDLE *PTR64 value_handle, int *PTR64 actual_length)
 {
@@ -351,7 +351,7 @@ int ZJSMGOEN(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *P
   return rc;
 }
 
-#pragma prolog(ZJSMCREN, " ZWEPROLG NEWDSA=(YES,128) ")
+#pragma prolog(ZJSMCREN, " ZWEPROLG NEWDSA=(YES,4) ")
 #pragma epilog(ZJSMCREN, " ZWEEPILG ")
 int ZJSMCREN(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 parent_handle, const char *PTR64 entry_name, const char *PTR64 entry_value, int *PTR64 entry_type, KEY_HANDLE *PTR64 new_entry_handle)
 {
@@ -411,7 +411,7 @@ int ZJSMCREN(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 parent_handle, con
   return rc;
 }
 
-#pragma prolog(ZJSMTERM, " ZWEPROLG NEWDSA=(YES,128) ")
+#pragma prolog(ZJSMTERM, " ZWEPROLG NEWDSA=(YES,4) ")
 #pragma epilog(ZJSMTERM, " ZWEEPILG ")
 int ZJSMTERM(JSON_INSTANCE *PTR64 instance)
 {
