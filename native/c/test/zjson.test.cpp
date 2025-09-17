@@ -253,12 +253,24 @@ void test_value_types()
 }
 
 // ============================================================================
-// OPTIONAL TYPE TESTS
+// OPTIONAL FIELD TESTS
 // ============================================================================
+
+struct OptionalBehaviorStruct
+{
+  std::string name;
+  zstd::optional<std::string> include_null; // Default: include null when empty
+  zstd::optional<int> skip_if_none;         // Skip when empty
+};
+
+ZJSON_SERIALIZABLE(OptionalBehaviorStruct,
+                   ZJSON_FIELD(OptionalBehaviorStruct, name),
+                   ZJSON_FIELD(OptionalBehaviorStruct, include_null), // Default serde behavior
+                   ZJSON_FIELD(OptionalBehaviorStruct, skip_if_none) zjson_skip_serializing_if_none());
 
 void test_optional_types()
 {
-  describe("ZJson Optional Type Tests", []()
+  describe("ZJson Optional Field Tests", []()
            {
         it("should handle empty optionals", []() {
             zstd::optional<int> empty_opt;
@@ -282,6 +294,47 @@ void test_optional_types()
             zstd::optional<int> copied_opt = valued_opt;
             Expect(copied_opt.has_value()).ToBe(true);
             Expect(copied_opt.value()).ToBe(42);
+        });
+
+        it("should include null for empty optionals by default (serde-compatible)", []() {
+            OptionalBehaviorStruct obj{
+                "test",
+                zstd::optional<std::string>(), // empty - should include as null
+                zstd::optional<int>()          // empty - should skip due to attribute
+            };
+            
+            auto json_result = zjson::to_string(obj);
+            Expect(json_result.has_value()).ToBe(true);
+            
+            std::string json_str = json_result.value();
+            
+            // Should include include_null as null
+            bool has_include_null = json_str.find("include_null") != std::string::npos;
+            Expect(has_include_null).ToBe(true);
+            
+            // Should NOT include skip_if_none field
+            bool has_skip_if_none = json_str.find("skip_if_none") != std::string::npos;
+            Expect(has_skip_if_none).ToBe(false);
+        });
+
+        it("should serialize present optional values normally", []() {
+            OptionalBehaviorStruct obj{
+                "test",
+                zstd::optional<std::string>("present_value"),
+                zstd::optional<int>(42)
+            };
+            
+            auto json_result = zjson::to_string(obj);
+            Expect(json_result.has_value()).ToBe(true);
+            
+            auto restored_result = zjson::from_str<OptionalBehaviorStruct>(json_result.value());
+            Expect(restored_result.has_value()).ToBe(true);
+            
+            OptionalBehaviorStruct restored = restored_result.value();
+            Expect(restored.include_null.has_value()).ToBe(true);
+            Expect(restored.include_null.value()).ToBe(std::string("present_value"));
+            Expect(restored.skip_if_none.has_value()).ToBe(true);
+            Expect(restored.skip_if_none.value()).ToBe(42);
         }); });
 }
 
@@ -517,6 +570,404 @@ void test_dynamic_access_edge_cases()
         }); });
 }
 
+// ============================================================================
+// SERIALIZATION/DESERIALIZATION ROUND-TRIP TESTS
+// ============================================================================
+
+void test_serialization_round_trips()
+{
+  describe("ZJson Serialization Round-Trip Tests", []()
+           {
+        it("should serialize and deserialize SimpleStruct correctly", []() {
+            SimpleStruct original{42, "test_name"};
+            
+            // Serialize to JSON
+            auto json_result = zjson::to_string(original);
+            Expect(json_result.has_value()).ToBe(true);
+            
+            std::string json_str = json_result.value();
+            Expect(json_str.length() > 0).ToBe(true);
+            
+            // Deserialize back
+            auto struct_result = zjson::from_str<SimpleStruct>(json_str);
+            Expect(struct_result.has_value()).ToBe(true);
+            
+            SimpleStruct restored = struct_result.value();
+            Expect(restored.id).ToBe(original.id);
+            Expect(restored.name).ToBe(original.name);
+        });
+
+        it("should handle pretty printing correctly", []() {
+            SimpleStruct original{123, "pretty_test"};
+            
+            auto pretty_result = zjson::to_string_pretty(original);
+            Expect(pretty_result.has_value()).ToBe(true);
+            
+            std::string pretty_json = pretty_result.value();
+            Expect(pretty_json.length() > 0).ToBe(true);
+            
+            // Should contain newlines and spaces for formatting
+            bool has_newlines = pretty_json.find('\n') != std::string::npos;
+            Expect(has_newlines).ToBe(true);
+            
+            // Should still be parseable
+            auto parsed_result = zjson::from_str<SimpleStruct>(pretty_json);
+            Expect(parsed_result.has_value()).ToBe(true);
+            
+            SimpleStruct restored = parsed_result.value();
+            Expect(restored.id).ToBe(original.id);
+            Expect(restored.name).ToBe(original.name);
+        });
+
+        it("should handle optional fields serialization", []() {
+            TestOptional original{
+                zstd::optional<int>(42),
+                zstd::optional<std::string>("test_string")
+            };
+            
+            auto json_result = zjson::to_string(original);
+            Expect(json_result.has_value()).ToBe(true);
+            
+            auto restored_result = zjson::from_str<TestOptional>(json_result.value());
+            Expect(restored_result.has_value()).ToBe(true);
+            
+            TestOptional restored = restored_result.value();
+            Expect(restored.opt_int.has_value()).ToBe(true);
+            Expect(restored.opt_int.value()).ToBe(42);
+            Expect(restored.opt_string.has_value()).ToBe(true);
+            Expect(restored.opt_string.value()).ToBe(std::string("test_string"));
+        });
+
+        it("should handle empty optional fields", []() {
+            TestOptional original{
+                zstd::optional<int>(),        // empty
+                zstd::optional<std::string>() // empty
+            };
+            
+            auto json_result = zjson::to_string(original);
+            Expect(json_result.has_value()).ToBe(true);
+            
+            auto restored_result = zjson::from_str<TestOptional>(json_result.value());
+            Expect(restored_result.has_value()).ToBe(true);
+            
+            TestOptional restored = restored_result.value();
+            Expect(restored.opt_int.has_value()).ToBe(false);
+            Expect(restored.opt_string.has_value()).ToBe(false);
+        }); });
+}
+
+// ============================================================================
+// FIELD ATTRIBUTE TESTS
+// ============================================================================
+
+struct AttributeTestStruct
+{
+  std::string username;
+  std::string password;     // should be skipped
+  int user_id;              // should be renamed to "userId"
+  std::string display_name; // should be renamed to "displayName"
+  int default_port;         // should have default value
+};
+
+// Test with field attributes
+ZJSON_SERIALIZABLE(AttributeTestStruct,
+                   ZJSON_FIELD(AttributeTestStruct, username),
+                   ZJSON_FIELD(AttributeTestStruct, password) zjson_skip(),
+                   ZJSON_FIELD(AttributeTestStruct, user_id) zjson_rename("userId"),
+                   ZJSON_FIELD(AttributeTestStruct, display_name) zjson_rename("displayName"),
+                   ZJSON_FIELD(AttributeTestStruct, default_port) zjson_default([]()
+                                                                                { return 8080; }));
+
+void test_field_attributes()
+{
+  describe("ZJson Field Attribute Tests", []()
+           {
+        it("should skip fields marked with zjson_skip", []() {
+            AttributeTestStruct original{"testuser", "secret123", 12345, "Test User", 3000};
+            
+            auto json_result = zjson::to_string(original);
+            Expect(json_result.has_value()).ToBe(true);
+            
+            std::string json_str = json_result.value();
+            
+            // Password field should not appear in JSON
+            bool has_password = json_str.find("password") != std::string::npos;
+            Expect(has_password).ToBe(false);
+            
+            // Other fields should be present
+            bool has_username = json_str.find("username") != std::string::npos;
+            Expect(has_username).ToBe(true);
+        });
+
+        it("should rename fields correctly", []() {
+            AttributeTestStruct original{"testuser", "secret", 12345, "Test User", 3000};
+            
+            auto json_result = zjson::to_string(original);
+            Expect(json_result.has_value()).ToBe(true);
+            
+            std::string json_str = json_result.value();
+            
+            // Should use renamed fields
+            bool has_userId = json_str.find("userId") != std::string::npos;
+            bool has_displayName = json_str.find("displayName") != std::string::npos;
+            Expect(has_userId).ToBe(true);
+            Expect(has_displayName).ToBe(true);
+            
+            // Should not have original field names
+            bool has_user_id = json_str.find("user_id") != std::string::npos;
+            bool has_display_name = json_str.find("display_name") != std::string::npos;
+            Expect(has_user_id).ToBe(false);
+            Expect(has_display_name).ToBe(false);
+        });
+
+        it("should use default values for missing fields", []() {
+            // JSON without default_port field
+            std::string json_without_port = R"({"username":"testuser","userId":12345,"displayName":"Test User"})";
+            
+            auto result = zjson::from_str<AttributeTestStruct>(json_without_port);
+            Expect(result.has_value()).ToBe(true);
+            
+            AttributeTestStruct restored = result.value();
+            Expect(restored.username).ToBe(std::string("testuser"));
+            Expect(restored.user_id).ToBe(12345);
+            Expect(restored.display_name).ToBe(std::string("Test User"));
+            Expect(restored.default_port).ToBe(8080); // Should use default value
+        }); });
+}
+
+// ============================================================================
+// VALUE CONVERSION TESTS
+// ============================================================================
+
+void test_value_conversions()
+{
+  describe("ZJson Value Conversion Tests", []()
+           {
+        it("should convert typed objects to Value using to_value", []() {
+            SimpleStruct obj{42, "test_name"};
+            
+            auto value_result = zjson::to_value(obj);
+            Expect(value_result.has_value()).ToBe(true);
+            
+            zjson::Value value = value_result.value();
+            Expect(value.is_object()).ToBe(true);
+            
+            // Should be able to access fields dynamically
+            int id = value["id"].as_int();
+            std::string name = value["name"].as_string();
+            
+            Expect(id).ToBe(42);
+            Expect(name).ToBe(std::string("test_name"));
+        });
+
+        it("should convert Value back to typed objects using from_value", []() {
+            // Create a Value manually
+            zjson::Value value = zjson::Value::create_object();
+            value.add_to_object("id", zjson::Value(123));
+            value.add_to_object("name", zjson::Value("converted_name"));
+            
+            auto struct_result = zjson::from_value<SimpleStruct>(value);
+            Expect(struct_result.has_value()).ToBe(true);
+            
+            SimpleStruct obj = struct_result.value();
+            Expect(obj.id).ToBe(123);
+            Expect(obj.name).ToBe(std::string("converted_name"));
+        });
+
+        it("should handle round-trip conversion: object -> Value -> object", []() {
+            SimpleStruct original{999, "round_trip_test"};
+            
+            // Object -> Value
+            auto value_result = zjson::to_value(original);
+            Expect(value_result.has_value()).ToBe(true);
+            
+            // Value -> Object
+            auto object_result = zjson::from_value<SimpleStruct>(value_result.value());
+            Expect(object_result.has_value()).ToBe(true);
+            
+            SimpleStruct restored = object_result.value();
+            Expect(restored.id).ToBe(original.id);
+            Expect(restored.name).ToBe(original.name);
+        });
+
+        it("should convert basic types to Value", []() {
+            // Test int conversion
+            auto int_value_result = zjson::to_value(42);
+            Expect(int_value_result.has_value()).ToBe(true);
+            zjson::Value int_val = int_value_result.value();
+            Expect(int_val.is_number()).ToBe(true);
+            Expect(int_val.as_int()).ToBe(42);
+            
+            // Test string conversion
+            std::string test_str = "hello";
+            auto str_value_result = zjson::to_value(test_str);
+            Expect(str_value_result.has_value()).ToBe(true);
+            zjson::Value str_val = str_value_result.value();
+            Expect(str_val.is_string()).ToBe(true);
+            Expect(str_val.as_string()).ToBe(test_str);
+        }); });
+}
+
+// ============================================================================
+// COMPLEX NESTED STRUCTURE TESTS
+// ============================================================================
+
+struct Address
+{
+  std::string street;
+  std::string city;
+  std::string country;
+};
+
+struct Person
+{
+  std::string name;
+  int age;
+  Address address;
+};
+
+struct Company
+{
+  std::string name;
+  std::vector<Person> employees;
+  Address headquarters;
+};
+
+ZJSON_DERIVE(Address, street, city, country);
+ZJSON_DERIVE(Person, name, age, address);
+ZJSON_DERIVE(Company, name, employees, headquarters);
+
+void test_complex_nested_structures()
+{
+  describe("ZJson Complex Nested Structure Tests", []()
+           {
+        it("should serialize and deserialize nested objects", []() {
+            Address addr{"123 Main St", "Boston", "USA"};
+            Person person{"John Doe", 30, addr};
+            
+            auto json_result = zjson::to_string(person);
+            Expect(json_result.has_value()).ToBe(true);
+            
+            auto person_result = zjson::from_str<Person>(json_result.value());
+            Expect(person_result.has_value()).ToBe(true);
+            
+            Person restored = person_result.value();
+            Expect(restored.name).ToBe(std::string("John Doe"));
+            Expect(restored.age).ToBe(30);
+            Expect(restored.address.street).ToBe(std::string("123 Main St"));
+            Expect(restored.address.city).ToBe(std::string("Boston"));
+            Expect(restored.address.country).ToBe(std::string("USA"));
+        });
+
+        it("should handle arrays of complex objects", []() {
+            Address hq{"456 Corporate Blvd", "Seattle", "USA"};
+            
+            Person emp1{"Alice Smith", 28, {"111 First St", "Boston", "USA"}};
+            Person emp2{"Bob Jones", 35, {"222 Second Ave", "Seattle", "USA"}};
+            
+            Company company{"Tech Corp", {emp1, emp2}, hq};
+            
+            auto json_result = zjson::to_string_pretty(company);
+            Expect(json_result.has_value()).ToBe(true);
+            
+            auto company_result = zjson::from_str<Company>(json_result.value());
+            Expect(company_result.has_value()).ToBe(true);
+            
+            Company restored = company_result.value();
+            Expect(restored.name).ToBe(std::string("Tech Corp"));
+            Expect(restored.employees.size()).ToBe(2);
+            Expect(restored.employees[0].name).ToBe(std::string("Alice Smith"));
+            Expect(restored.employees[1].name).ToBe(std::string("Bob Jones"));
+            Expect(restored.headquarters.city).ToBe(std::string("Seattle"));
+        });
+
+        it("should support deep nested access with dynamic indexing", []() {
+            Company company{"Test Corp", 
+                          {{"John", 30, {"123 St", "Boston", "USA"}}}, 
+                          {"456 HQ Ave", "Seattle", "USA"}};
+            
+            auto value_result = zjson::to_value(company);
+            Expect(value_result.has_value()).ToBe(true);
+            
+            zjson::Value root = value_result.value();
+            
+            // Deep chained access
+            std::string emp_name = root["employees"][0]["name"].as_string();
+            std::string emp_city = root["employees"][0]["address"]["city"].as_string();
+            std::string hq_country = root["headquarters"]["country"].as_string();
+            
+            Expect(emp_name).ToBe(std::string("John"));
+            Expect(emp_city).ToBe(std::string("Boston"));
+            Expect(hq_country).ToBe(std::string("USA"));
+        }); });
+}
+
+// ============================================================================
+// LARGE STRUCT TESTS
+// ============================================================================
+
+struct LargeStruct
+{
+  std::string f1, f2, f3, f4, f5, f6, f7, f8, f9, f10;
+  std::string f11, f12, f13, f14, f15, f16, f17, f18, f19, f20;
+  int f21, f22, f23, f24, f25, f26, f27, f28, f29, f30, f31, f32;
+};
+
+// Test the new macros we added (17-32 fields)
+ZJSON_DERIVE(LargeStruct,
+             f1, f2, f3, f4, f5, f6, f7, f8, f9, f10,
+             f11, f12, f13, f14, f15, f16, f17, f18, f19, f20,
+             f21, f22, f23, f24, f25, f26, f27, f28, f29, f30, f31, f32);
+
+void test_large_struct_support()
+{
+  describe("ZJson Large Struct Support Tests", []()
+           {
+        it("should handle structs with 32 fields using new macros", []() {
+            LargeStruct large;
+            large.f1 = "field1"; large.f2 = "field2"; large.f3 = "field3"; large.f4 = "field4";
+            large.f5 = "field5"; large.f6 = "field6"; large.f7 = "field7"; large.f8 = "field8";
+            large.f9 = "field9"; large.f10 = "field10"; large.f11 = "field11"; large.f12 = "field12";
+            large.f13 = "field13"; large.f14 = "field14"; large.f15 = "field15"; large.f16 = "field16";
+            large.f17 = "field17"; large.f18 = "field18"; large.f19 = "field19"; large.f20 = "field20";
+            large.f21 = 21; large.f22 = 22; large.f23 = 23; large.f24 = 24;
+            large.f25 = 25; large.f26 = 26; large.f27 = 27; large.f28 = 28;
+            large.f29 = 29; large.f30 = 30; large.f31 = 31; large.f32 = 32;
+            
+            // Test serialization
+            auto json_result = zjson::to_string(large);
+            Expect(json_result.has_value()).ToBe(true);
+            
+            std::string json_str = json_result.value();
+            
+            // Should contain all fields
+            bool has_f1 = json_str.find("f1") != std::string::npos;
+            bool has_f17 = json_str.find("f17") != std::string::npos;  // Test new macro range
+            bool has_f32 = json_str.find("f32") != std::string::npos;
+            
+            Expect(has_f1).ToBe(true);
+            Expect(has_f17).ToBe(true);
+            Expect(has_f32).ToBe(true);
+            
+            // Test deserialization
+            auto restored_result = zjson::from_str<LargeStruct>(json_str);
+            Expect(restored_result.has_value()).ToBe(true);
+            
+            LargeStruct restored = restored_result.value();
+            Expect(restored.f1).ToBe(std::string("field1"));
+            Expect(restored.f17).ToBe(std::string("field17"));  // Test new macro range
+            Expect(restored.f32).ToBe(32);
+        });
+
+        it("should validate serializable trait works for large structs", []() {
+            bool is_serializable = zjson::Serializable<LargeStruct>::value;
+            bool is_deserializable = zjson::Deserializable<LargeStruct>::value;
+            
+            Expect(is_serializable).ToBe(true);
+            Expect(is_deserializable).ToBe(true);
+        }); });
+}
+
 void zjson_tests()
 {
   // Core API and type system tests - focused on API functionality
@@ -526,4 +977,9 @@ void zjson_tests()
   test_expected_types();
   test_basic_api();
   test_dynamic_access_edge_cases();
+  test_serialization_round_trips();
+  test_field_attributes();
+  test_value_conversions();
+  test_complex_nested_structures();
+  test_large_struct_support();
 }
