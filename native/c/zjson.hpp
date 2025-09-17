@@ -27,53 +27,48 @@
 #include <hwtjic.h> // ensure to include /usr/include
 
 /*
- * USAGE EXAMPLES:
+ * ZJson - C++ JSON library with automatic struct serialization
  *
- * For comprehensive usage examples demonstrating all ZJson features, see:
- * native/c/examples/jsoncpp/json.cpp
+ * ==================== QUICK REFERENCE ====================
  *
- * Examples include:
- * - Basic serialization/deserialization
- * - Field attributes (rename, skip, skip_if_none, defaults)
- * - Optional fields with serde-compatible behavior
- * - Nested structures and arrays
- * - Error handling with zstd::expected
- * - Compile-time type checking
- * - Complex real-world scenarios
+ * Parsing:
+ *   zjson::Value data = zjson::from_str(json_string);
+ *   auto result = zjson::from_str<MyStruct>(json_string);
  *
- * Quick Reference:
+ * Serialization:
+ *   std::string json = zjson::to_string(obj);
+ *   std::string pretty = zjson::to_string_pretty(obj);
  *
- * // Dynamic JSON parsing (no struct registration needed)
- * zjson::Value data = zjson::from_str(json_string);        // Default to Value
- * auto result = zjson::from_str<MyStruct>(json_string);    // Parse to specific type
+ * Struct Registration:
+ *   ZJSON_DERIVE(StructName, field1, field2, ...)
+ *   ZJSON_SERIALIZABLE(StructName, ZJSON_FIELD(StructName, field).rename("name"))
  *
- * ZJSON_DERIVE(StructName, field1, field2, ...)  // Auto-generate serialization
- * ZJSON_SERIALIZABLE(StructName, ...)            // Manual field configuration
- * ZJSON_FIELD(StructName, field)                 // Field descriptor
+ * Dynamic JSON:
+ *   zjson::Value obj = zjson::Value::create_object();
+ *   zjson::Value arr = zjson::Value::create_array();
+ *   obj["name"] = "John"; arr[0] = "item";
+ *
+ * Type Conversion:
+ *   zjson::Value val = zjson::to_value(obj);
+ *   auto obj = zjson::from_value<MyStruct>(val);
+ *
+ * Value Access:
+ *   value["key"]              // Object field access
+ *   value[0]                  // Array element access
+ *   value.as_string()         // Type conversion
+ *
+ * Error Handling:
+ *   auto result = zjson::from_str<MyStruct>(json);
+ *   if (result.has_value()) { auto obj = result.value(); }
  *
  * Field Attributes:
- * .rename("newName")         // Rename field in JSON
- * .skip()                    // Skip field entirely
- * .skip_serializing_if_none() // Skip optional field if empty (like serde's skip_serializing_if)
- * .with_default(func)       // Default value for missing fields
+ *   .rename("newName")        // JSON field name
+ *   .skip()                   // Skip serialization/deserialization
+ *   .skip_serializing_if_none()  // Skip if optional field is empty
+ *   .with_default(func)       // Default value for missing fields
  *
- * Functions:
- * zjson::to_string(obj)         // Serialize to compact JSON
- * zjson::to_string_pretty(obj)  // Serialize to formatted JSON
- * zjson::from_str<T>(json)      // Deserialize from JSON string
- * zjson::to_value<T>(obj)       // Convert any type to Value
- * zjson::from_value<T>(value)   // Convert Value to any type
- *
- * Dynamic Value Access (serde_json compatible):
- * value["key"]                  // Object access by key
- * value[0]                      // Array access by index
- * value["users"][0]["name"]     // Chained access like serde_json
- * value.as_string()             // Use existing C++ methods for type conversion
- * value.as_int(), .as_number(), .as_bool(), etc.
- *
- * Optional Fields (serde-compatible):
- * zstd::optional<T> field;      // Include null by default when empty
- * ZJSON_FIELD(...) zjson_skip_serializing_if_none()  // Skip when empty
+ * Optional Fields:
+ *   zstd::optional<T> field; // Nullable fields (null when empty)
  */
 
 // Forward declarations
@@ -798,7 +793,7 @@ struct Field
   FieldType T::*member;
   bool skip_serializing;
   bool skip_deserializing;
-  bool skip_if_none; // For optional fields - skip if no value (serde-compatible)
+  bool skip_if_none; // For optional fields - skip if no value
   std::string rename_to;
   std::function<FieldType()> default_value;
 
@@ -1805,7 +1800,7 @@ void serialize_field_impl(const T &obj, Value &result, const Field<T, FieldType>
   result.add_to_object(field.get_serialized_name(), Serializable<FieldType>::serialize(field_value));
 }
 
-// Specialized implementation for optional types - by default include as null (serde-compatible)
+// Specialized implementation for optional types - by default include as null
 // Use .skip_if_none() field attribute to skip empty optionals
 template <typename T, typename OptionalType>
 void serialize_field_impl(const T &obj, Value &result, const Field<T, zstd::optional<OptionalType>> &field, std::true_type)
