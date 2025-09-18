@@ -930,12 +930,13 @@ struct Field
   FieldType T::*member;
   bool skip_serializing;
   bool skip_deserializing;
-  bool skip_if_none; // For optional fields - skip if no value
+  bool skip_if_none;  // For optional fields - skip if no value
+  bool flatten_field; // For struct flattening - inline fields from nested struct
   std::string rename_to;
   std::function<FieldType()> default_value;
 
   Field(const std::string &n, FieldType T::*m)
-      : name(n), member(m), skip_serializing(false), skip_deserializing(false), skip_if_none(false)
+      : name(n), member(m), skip_serializing(false), skip_deserializing(false), skip_if_none(false), flatten_field(false)
   {
   }
 
@@ -973,6 +974,12 @@ struct Field
   inline Field &skip_serializing_if_none()
   {
     skip_if_none = true;
+    return *this;
+  }
+
+  inline Field &flatten()
+  {
+    flatten_field = true;
     return *this;
   }
 
@@ -1941,6 +1948,24 @@ template <typename T, typename FieldType>
 void serialize_field_impl(const T &obj, Value &result, const Field<T, FieldType> &field, std::true_type)
 {
   const FieldType &field_value = obj.*(field.member);
+
+  // Handle flattening for struct types
+  if (field.flatten_field)
+  {
+    // Serialize the nested struct and merge its fields into the parent
+    Value nested_value = Serializable<FieldType>::serialize(field_value);
+    if (nested_value.is_object())
+    {
+      const auto &nested_obj = nested_value.as_object();
+      for (const auto &nested_field : nested_obj)
+      {
+        result.add_to_object(nested_field.first, nested_field.second);
+      }
+      return;
+    }
+  }
+
+  // Normal serialization
   result.add_to_object(field.get_serialized_name(), Serializable<FieldType>::serialize(field_value));
 }
 
@@ -2016,6 +2041,24 @@ bool deserialize_field(T &obj, const std::map<std::string, Value> &object, const
   if (field.skip_deserializing)
   {
     return true; // Skip field successfully
+  }
+
+  // Handle flattening for struct types during deserialization
+  if (field.flatten_field)
+  {
+    // Create a Value object from the current object map to deserialize the nested struct
+    Value flattened_value = Value::create_object();
+    for (const auto &pair : object)
+    {
+      flattened_value.add_to_object(pair.first, pair.second);
+    }
+    auto result = Deserializable<FieldType>::deserialize(flattened_value);
+    if (result.has_value())
+    {
+      obj.*(field.member) = result.value();
+      return true;
+    }
+    return false;
   }
 
   auto it = object.find(field.get_serialized_name());
@@ -2190,5 +2233,6 @@ using detail::serialize_fields;
 #define zjson_skip_deserializing() .skip_deserializing_field()
 #define zjson_skip_serializing_if_none() .skip_serializing_if_none()
 #define zjson_default(func) .with_default(func)
+#define zjson_flatten() .flatten()
 
 #endif // ZJSON_HPP

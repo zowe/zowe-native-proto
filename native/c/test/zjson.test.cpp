@@ -44,9 +44,28 @@ struct TestOptional
   zstd::optional<std::string> opt_string;
 };
 
+// Test structs for flattening feature
+struct BaseConfig
+{
+  std::string host;
+  int port;
+};
+
+struct DatabaseConfig
+{
+  BaseConfig connection; // Will be flattened
+  std::string database_name;
+  bool ssl_enabled;
+};
+
 // Register minimal test types for API testing
 ZJSON_DERIVE(SimpleStruct, id, name);
 ZJSON_DERIVE(TestOptional, opt_int, opt_string);
+ZJSON_DERIVE(BaseConfig, host, port);
+ZJSON_SERIALIZABLE(DatabaseConfig,
+                   ZJSON_FIELD(DatabaseConfig, connection).flatten(),
+                   ZJSON_FIELD(DatabaseConfig, database_name),
+                   ZJSON_FIELD(DatabaseConfig, ssl_enabled));
 
 // ============================================================================
 // TYPE TRAIT TESTS
@@ -1272,6 +1291,78 @@ void test_container_attributes()
         }); });
 }
 
+// ============================================================================
+// STRUCT FLATTENING TESTS
+// ============================================================================
+
+void test_struct_flattening()
+{
+  describe("ZJson Struct Flattening Tests", []()
+           {
+        it("should flatten nested struct fields into parent", []() {
+            DatabaseConfig config;
+            config.connection.host = "localhost";
+            config.connection.port = 5432;
+            config.database_name = "myapp";
+            config.ssl_enabled = true;
+            
+            auto json_result = zjson::to_string(config);
+            Expect(json_result.has_value()).ToBe(true);
+            
+            std::string json_str = json_result.value();
+            
+            // Should contain flattened fields directly, not nested
+            bool has_host = json_str.find("\"host\"") != std::string::npos;
+            bool has_port = json_str.find("\"port\"") != std::string::npos;
+            bool has_database_name = json_str.find("\"database_name\"") != std::string::npos;
+            bool has_ssl_enabled = json_str.find("\"ssl_enabled\"") != std::string::npos;
+            
+            // Should NOT contain nested "connection" object
+            bool has_connection = json_str.find("\"connection\"") != std::string::npos;
+            
+            Expect(has_host).ToBe(true);
+            Expect(has_port).ToBe(true);
+            Expect(has_database_name).ToBe(true);
+            Expect(has_ssl_enabled).ToBe(true);
+            Expect(has_connection).ToBe(false);
+        });
+
+        it("should deserialize flattened JSON back to nested struct", []() {
+            std::string json_str = R"({"host":"db.example.com","port":3306,"database_name":"production","ssl_enabled":false})";
+            
+            auto result = zjson::from_str<DatabaseConfig>(json_str);
+            Expect(result.has_value()).ToBe(true);
+            
+            DatabaseConfig config = result.value();
+            Expect(config.connection.host).ToBe(std::string("db.example.com"));
+            Expect(config.connection.port).ToBe(3306);
+            Expect(config.database_name).ToBe(std::string("production"));
+            Expect(config.ssl_enabled).ToBe(false);
+        });
+
+        it("should handle round-trip serialization correctly", []() {
+            DatabaseConfig original;
+            original.connection.host = "test.db";
+            original.connection.port = 9999;
+            original.database_name = "test_db";
+            original.ssl_enabled = true;
+            
+            // Serialize
+            auto json_result = zjson::to_string(original);
+            Expect(json_result.has_value()).ToBe(true);
+            
+            // Deserialize
+            auto restored_result = zjson::from_str<DatabaseConfig>(json_result.value());
+            Expect(restored_result.has_value()).ToBe(true);
+            
+            DatabaseConfig restored = restored_result.value();
+            Expect(restored.connection.host).ToBe(original.connection.host);
+            Expect(restored.connection.port).ToBe(original.connection.port);
+            Expect(restored.database_name).ToBe(original.database_name);
+            Expect(restored.ssl_enabled).ToBe(original.ssl_enabled);
+        }); });
+}
+
 void zjson_tests()
 {
   // Core API and type system tests - focused on API functionality
@@ -1287,4 +1378,5 @@ void zjson_tests()
   test_complex_nested_structures();
   test_large_struct_support();
   test_container_attributes();
+  test_struct_flattening();
 }
