@@ -4,7 +4,7 @@ All notable changes to the "zowe-native-proto-vsce" extension will be documented
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## Recent Changes
+## `0.1.9`
 
 - Updated the `Zowe-SSH: Connect to Host...` command to prompt the user to choose a deploy directory.[#527] (https://github.com/zowe/zowe-native-proto/issues/527)
 - Moved `showSessionInTree` call to before `uninstallServer` is called to ensure the session is displayed in the tree before the uninstall removes it. [#484] (https://github.com/zowe/zowe-native-proto/issues/484)
