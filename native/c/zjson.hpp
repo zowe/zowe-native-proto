@@ -315,64 +315,42 @@ public:
   static Value create_object()
   {
     Value result;
-    result.clear();
-    result.type_ = Object;
-    try
-    {
-      result.object_value_ = new std::map<std::string, Value>();
-    }
-    catch (...)
-    {
-      result.type_ = Null;
-      memset(&result.bool_value_, 0, sizeof(result.bool_value_));
-      throw;
-    }
+    result.data_ = std::map<std::string, Value>();
     return result;
   }
 
   static Value create_array()
   {
     Value result;
-    result.clear();
-    result.type_ = Array;
-    try
-    {
-      result.array_value_ = new std::vector<Value>();
-    }
-    catch (...)
-    {
-      result.type_ = Null;
-      memset(&result.bool_value_, 0, sizeof(result.bool_value_));
-      throw;
-    }
+    result.data_ = std::vector<Value>();
     return result;
   }
 
   void add_to_object(const std::string &key, const Value &value)
   {
-    if (type_ != Object)
+    if (!is_object())
     {
       throw Error::invalid_type("object", "other");
     }
-    (*object_value_)[key] = value;
+    data_.template get<std::map<std::string, Value>>()[key] = value;
   }
 
   void add_to_array(const Value &value)
   {
-    if (type_ != Array)
+    if (!is_array())
     {
       throw Error::invalid_type("array", "other");
     }
-    array_value_->push_back(value);
+    data_.template get<std::vector<Value>>().push_back(value);
   }
 
   void reserve_array(size_t capacity)
   {
-    if (type_ != Array)
+    if (!is_array())
     {
       throw Error::invalid_type("array", "other");
     }
-    array_value_->reserve(capacity);
+    data_.template get<std::vector<Value>>().reserve(capacity);
   }
   enum Type
   {
@@ -385,232 +363,178 @@ public:
   };
 
 private:
-  Type type_;
-  union
-  {
-    bool bool_value_;
-    double number_value_;
-    std::string *string_value_;
-    std::vector<Value> *array_value_;
-    std::map<std::string, Value> *object_value_;
-  };
+  // Variant type for JSON values
+  using ValueVariant = zstd::variant<
+      zstd::monostate,             // Null
+      bool,                        // Bool
+      double,                      // Number
+      std::string,                 // String
+      std::vector<Value>,          // Array
+      std::map<std::string, Value> // Object
+      >;
+
+  ValueVariant data_;
 
 public:
-  Value() : type_(Null)
-  {
-    // Initialize union members safely
-    memset(&bool_value_, 0, sizeof(bool_value_));
-  }
-  Value(bool b) : type_(Bool), bool_value_(b)
+  Value() : data_(zstd::monostate{})
   {
   }
-  Value(int i) : type_(Number), number_value_(static_cast<double>(i))
+  Value(bool b) : data_(b)
   {
   }
-  Value(double d) : type_(Number), number_value_(d)
+  Value(int i) : data_(static_cast<double>(i))
   {
   }
-  Value(const std::string &s) : type_(String)
+  Value(double d) : data_(d)
   {
-    try
-    {
-      string_value_ = new std::string(s);
-    }
-    catch (...)
-    {
-      type_ = Null;
-      memset(&bool_value_, 0, sizeof(bool_value_));
-      throw;
-    }
   }
-  Value(const char *s) : type_(String)
+  Value(const std::string &s) : data_(s)
   {
-    try
-    {
-      string_value_ = new std::string(s);
-    }
-    catch (...)
-    {
-      type_ = Null;
-      memset(&bool_value_, 0, sizeof(bool_value_));
-      throw;
-    }
+  }
+  Value(const char *s) : data_(std::string(s))
+  {
   }
 
-  Value(const Value &other) : type_(other.type_)
-  {
-    switch (type_)
-    {
-    case Bool:
-      bool_value_ = other.bool_value_;
-      break;
-    case Number:
-      number_value_ = other.number_value_;
-      break;
-    case String:
-      string_value_ = new std::string(*other.string_value_);
-      break;
-    case Array:
-      array_value_ = new std::vector<Value>(*other.array_value_);
-      break;
-    case Object:
-      object_value_ = new std::map<std::string, Value>(*other.object_value_);
-      break;
-    default:
-      break;
-    }
-  }
-
-  Value &operator=(const Value &other)
-  {
-    if (this != &other)
-    {
-      clear();
-      type_ = other.type_;
-      switch (type_)
-      {
-      case Bool:
-        bool_value_ = other.bool_value_;
-        break;
-      case Number:
-        number_value_ = other.number_value_;
-        break;
-      case String:
-        string_value_ = new std::string(*other.string_value_);
-        break;
-      case Array:
-        array_value_ = new std::vector<Value>(*other.array_value_);
-        break;
-      case Object:
-        object_value_ = new std::map<std::string, Value>(*other.object_value_);
-        break;
-      default:
-        break;
-      }
-    }
-    return *this;
-  }
-
-  ~Value()
-  {
-    clear();
-  }
+  Value(const Value &other) = default;
+  Value(Value &&other) = default;
+  Value &operator=(const Value &other) = default;
+  Value &operator=(Value &&other) = default;
+  ~Value() = default;
 
   inline Type get_type() const
   {
-    return type_;
+    switch (data_.index())
+    {
+    case 0:
+      return Null;
+    case 1:
+      return Bool;
+    case 2:
+      return Number;
+    case 3:
+      return String;
+    case 4:
+      return Array;
+    case 5:
+      return Object;
+    default:
+      return Null;
+    }
   }
 
   inline bool as_bool() const
   {
-    if (type_ != Bool)
+    if (!is_bool())
       throw Error::invalid_type("bool", type_name());
-    return bool_value_;
+    return data_.template get<bool>();
   }
 
   inline double as_number() const
   {
-    if (type_ != Number)
+    if (!is_number())
       throw Error::invalid_type("number", type_name());
 
-    // Check for overflow/underflow
-    if (!std::isfinite(number_value_))
-      throw Error::invalid_value("Number is not finite: " + std::to_string(number_value_));
+    double value = data_.template get<double>();
 
-    return number_value_;
+    // Check for overflow/underflow
+    if (!std::isfinite(value))
+      throw Error::invalid_value("Number is not finite: " + std::to_string(value));
+
+    return value;
   }
 
   inline int as_int() const
   {
-    if (type_ != Number)
+    if (!is_number())
       throw Error::invalid_type("number", type_name());
 
+    double value = data_.template get<double>();
+
     // Check for fractional part
-    if (number_value_ != std::floor(number_value_))
-      throw Error::invalid_value("Cannot convert floating-point number " + std::to_string(number_value_) + " to integer");
+    if (value != std::floor(value))
+      throw Error::invalid_value("Cannot convert floating-point number " + std::to_string(value) + " to integer");
 
     // Check for overflow
-    if (number_value_ > static_cast<double>(std::numeric_limits<int>::max()) ||
-        number_value_ < static_cast<double>(std::numeric_limits<int>::min()))
-      throw Error::invalid_value("Number " + std::to_string(number_value_) + " overflows int range");
+    if (value > static_cast<double>(std::numeric_limits<int>::max()) ||
+        value < static_cast<double>(std::numeric_limits<int>::min()))
+      throw Error::invalid_value("Number " + std::to_string(value) + " overflows int range");
 
-    return static_cast<int>(number_value_);
+    return static_cast<int>(value);
   }
 
   inline std::string as_string() const
   {
-    if (type_ != String)
+    if (!is_string())
       throw Error::invalid_type("string", type_name());
-    return *string_value_;
+    return data_.template get<std::string>();
   }
 
   const std::vector<Value> &as_array() const
   {
-    if (type_ != Array)
+    if (!is_array())
       throw Error::invalid_type("array", type_name());
-    return *array_value_;
+    return data_.template get<std::vector<Value>>();
   }
 
   const std::map<std::string, Value> &as_object() const
   {
-    if (type_ != Object)
+    if (!is_object())
       throw Error::invalid_type("object", type_name());
-    return *object_value_;
+    return data_.template get<std::map<std::string, Value>>();
   }
 
   inline bool is_null() const
   {
-    return type_ == Null;
+    return zstd::holds_alternative<zstd::monostate>(data_);
   }
   inline bool is_bool() const
   {
-    return type_ == Bool;
+    return zstd::holds_alternative<bool>(data_);
   }
   inline bool is_number() const
   {
-    return type_ == Number;
+    return zstd::holds_alternative<double>(data_);
   }
   inline bool is_string() const
   {
-    return type_ == String;
+    return zstd::holds_alternative<std::string>(data_);
   }
   inline bool is_array() const
   {
-    return type_ == Array;
+    return zstd::holds_alternative<std::vector<Value>>(data_);
   }
   inline bool is_object() const
   {
-    return type_ == Object;
+    return zstd::holds_alternative<std::map<std::string, Value>>(data_);
   }
 
   // Object access by key
   Value &operator[](const std::string &key)
   {
-    if (type_ == Null)
+    if (is_null())
     {
       // Convert null to empty object on first access
-      clear();
-      type_ = Object;
-      object_value_ = new std::map<std::string, Value>();
+      data_ = std::map<std::string, Value>();
     }
 
-    if (type_ != Object)
+    if (!is_object())
     {
       throw Error::invalid_type("object", type_name());
     }
 
-    return (*object_value_)[key]; // Creates entry if doesn't exist
+    return data_.template get<std::map<std::string, Value>>()[key]; // Creates entry if doesn't exist
   }
 
   const Value &operator[](const std::string &key) const
   {
-    if (type_ != Object)
+    if (!is_object())
     {
       throw Error::invalid_type("object", type_name());
     }
 
-    auto it = object_value_->find(key);
-    if (it == object_value_->end())
+    const auto &obj = data_.template get<std::map<std::string, Value>>();
+    auto it = obj.find(key);
+    if (it == obj.end())
     {
       static const Value null_value; // Return reference to static null
       return null_value;
@@ -622,66 +546,49 @@ public:
   // Array access by index
   Value &operator[](size_t index)
   {
-    if (type_ == Null)
+    if (is_null())
     {
       // Convert null to empty array on first access
-      clear();
-      type_ = Array;
-      array_value_ = new std::vector<Value>();
+      data_ = std::vector<Value>();
     }
 
-    if (type_ != Array)
+    if (!is_array())
     {
       throw Error::invalid_type("array", type_name());
     }
 
+    auto &arr = data_.template get<std::vector<Value>>();
+
     // Expand array if needed
-    if (index >= array_value_->size())
+    if (index >= arr.size())
     {
-      array_value_->resize(index + 1);
+      arr.resize(index + 1);
     }
 
-    return (*array_value_)[index];
+    return arr[index];
   }
 
   const Value &operator[](size_t index) const
   {
-    if (type_ != Array)
+    if (!is_array())
     {
       throw Error::invalid_type("array", type_name());
     }
 
-    if (index >= array_value_->size())
+    const auto &arr = data_.template get<std::vector<Value>>();
+    if (index >= arr.size())
     {
       static const Value null_value; // Return reference to static null
       return null_value;
     }
 
-    return (*array_value_)[index];
+    return arr[index];
   }
 
 private:
-  void clear()
-  {
-    switch (type_)
-    {
-    case String:
-      delete string_value_;
-      break;
-    case Array:
-      delete array_value_;
-      break;
-    case Object:
-      delete object_value_;
-      break;
-    default:
-      break;
-    }
-  }
-
   inline std::string type_name() const
   {
-    switch (type_)
+    switch (get_type())
     {
     case Null:
       return "null";
@@ -1613,10 +1520,10 @@ inline std::string value_to_json_string(const Value &value)
   try
   {
     // For root level values, we need to handle them specially
-    if (value.get_type() == Value::Object || value.get_type() == Value::Array)
+    if (value.is_object() || value.is_array())
     {
       // Parse a minimal JSON to get a root container
-      const char *init_json = (value.get_type() == Value::Object) ? "{}" : "[]";
+      const char *init_json = value.is_object() ? "{}" : "[]";
       rc = ZJSMPARS(&instance, init_json);
       if (rc != 0)
       {
@@ -1627,7 +1534,7 @@ inline std::string value_to_json_string(const Value &value)
       }
 
       // Clear the initial content and rebuild
-      if (value.get_type() == Value::Object)
+      if (value.is_object())
       {
         const auto &obj = value.as_object();
         for (const auto &pair : obj)
