@@ -200,14 +200,14 @@ export abstract class AbstractConfigManager {
     }
 
     public async promptForDeployDirectory(defaultServerPath: string): Promise<string> {
-        const result = await this.showCustomMenu({
+        const result = await this.showMenu({
             items: [{ label: defaultServerPath }, { label: "$(plus) Add New Deploy Directory" }],
             placeholder: `Select a deploy directory for the Zowe SSH server`,
         });
 
         if (!result) return;
 
-        if (result.label === "$(plus) Add New Deploy Directory") {
+        if (result === "$(plus) Add New Deploy Directory") {
             const input = await this.showInputBox({
                 title: "Enter custom deploy directory for the Zowe SSH server",
                 placeHolder: "E.g. " + defaultServerPath,
@@ -216,7 +216,7 @@ export abstract class AbstractConfigManager {
             return input?.trim() || defaultServerPath;
         }
 
-        return result.label;
+        return result;
     }
 
     private async createNewProfile(knownConfigOpts?: string): Promise<ISshConfigExt | undefined> {
