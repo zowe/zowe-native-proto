@@ -961,6 +961,317 @@ void test_large_struct_support()
         }); });
 }
 
+// ============================================================================
+// CONTAINER ATTRIBUTE TESTS
+// ============================================================================
+
+struct CamelCaseStruct
+{
+  std::string user_name;
+  int user_id;
+  std::string display_name;
+};
+
+struct PascalCaseStruct
+{
+  std::string first_name;
+  std::string last_name;
+  int user_count;
+};
+
+struct KebabCaseStruct
+{
+  std::string user_name;
+  std::string email_address;
+  int session_timeout;
+};
+
+struct UppercaseStruct
+{
+  std::string user_name;
+  std::string api_key;
+  int max_connections;
+};
+
+struct LowercaseStruct
+{
+  std::string USER_NAME;
+  std::string API_KEY;
+  int MAX_CONNECTIONS;
+};
+
+struct SnakeCaseStruct
+{
+  std::string userName;
+  std::string emailAddress;
+  int sessionTimeout;
+};
+
+struct ScreamingSnakeCaseStruct
+{
+  std::string user_name;
+  std::string api_key;
+  int max_connections;
+};
+
+struct ScreamingKebabCaseStruct
+{
+  std::string user_name;
+  std::string api_key;
+  int max_connections;
+};
+
+struct StrictValidationStruct
+{
+  std::string name;
+  int id;
+};
+
+// Register structs with different rename_all styles
+// Note: Container attributes must be declared before ZJSON_DERIVE to avoid template specialization errors
+ZJSON_RENAME_ALL(CamelCaseStruct, camelCase);
+ZJSON_DERIVE(CamelCaseStruct, user_name, user_id, display_name);
+
+ZJSON_RENAME_ALL(PascalCaseStruct, PascalCase);
+ZJSON_DERIVE(PascalCaseStruct, first_name, last_name, user_count);
+
+ZJSON_RENAME_ALL(KebabCaseStruct, kebab_case);
+ZJSON_DERIVE(KebabCaseStruct, user_name, email_address, session_timeout);
+
+ZJSON_RENAME_ALL(UppercaseStruct, UPPERCASE);
+ZJSON_DERIVE(UppercaseStruct, user_name, api_key, max_connections);
+
+ZJSON_RENAME_ALL(LowercaseStruct, lowercase);
+ZJSON_DERIVE(LowercaseStruct, USER_NAME, API_KEY, MAX_CONNECTIONS);
+
+ZJSON_RENAME_ALL(SnakeCaseStruct, snake_case);
+ZJSON_DERIVE(SnakeCaseStruct, userName, emailAddress, sessionTimeout);
+
+ZJSON_RENAME_ALL(ScreamingSnakeCaseStruct, SCREAMING_SNAKE_CASE);
+ZJSON_DERIVE(ScreamingSnakeCaseStruct, user_name, api_key, max_connections);
+
+ZJSON_RENAME_ALL(ScreamingKebabCaseStruct, SCREAMING_KEBAB_CASE);
+ZJSON_DERIVE(ScreamingKebabCaseStruct, user_name, api_key, max_connections);
+
+ZJSON_DENY_UNKNOWN_FIELDS(StrictValidationStruct);
+ZJSON_DERIVE(StrictValidationStruct, name, id);
+
+void test_container_attributes()
+{
+  describe("ZJson Container Attribute Tests", []()
+           {
+        it("should apply camelCase rename_all transformation", []() {
+            CamelCaseStruct obj{"john_doe", 123, "John Doe"};
+            
+            auto json_result = zjson::to_string(obj);
+            Expect(json_result.has_value()).ToBe(true);
+            
+            std::string json_str = json_result.value();
+            
+            // Should use camelCase field names
+            bool has_userName = json_str.find("userName") != std::string::npos;
+            bool has_userId = json_str.find("userId") != std::string::npos;
+            bool has_displayName = json_str.find("displayName") != std::string::npos;
+            
+            Expect(has_userName).ToBe(true);
+            Expect(has_userId).ToBe(true);
+            Expect(has_displayName).ToBe(true);
+            
+            // Should NOT use original field names
+            bool has_user_name = json_str.find("user_name") != std::string::npos;
+            bool has_user_id = json_str.find("user_id") != std::string::npos;
+            bool has_display_name = json_str.find("display_name") != std::string::npos;
+            
+            Expect(has_user_name).ToBe(false);
+            Expect(has_user_id).ToBe(false);
+            Expect(has_display_name).ToBe(false);
+        });
+
+        it("should apply PascalCase rename_all transformation", []() {
+            PascalCaseStruct obj{"John", "Doe", 5};
+            
+            auto json_result = zjson::to_string(obj);
+            Expect(json_result.has_value()).ToBe(true);
+            
+            std::string json_str = json_result.value();
+            
+            // Should use PascalCase field names
+            bool has_FirstName = json_str.find("FirstName") != std::string::npos;
+            bool has_LastName = json_str.find("LastName") != std::string::npos;
+            bool has_UserCount = json_str.find("UserCount") != std::string::npos;
+            
+            Expect(has_FirstName).ToBe(true);
+            Expect(has_LastName).ToBe(true);
+            Expect(has_UserCount).ToBe(true);
+        });
+
+        it("should apply kebab-case rename_all transformation", []() {
+            KebabCaseStruct obj{"test_user", "test@example.com", 3600};
+            
+            auto json_result = zjson::to_string(obj);
+            Expect(json_result.has_value()).ToBe(true);
+            
+            std::string json_str = json_result.value();
+            
+            // Should use kebab-case field names
+            bool has_user_name = json_str.find("user-name") != std::string::npos;
+            bool has_email_address = json_str.find("email-address") != std::string::npos;
+            bool has_session_timeout = json_str.find("session-timeout") != std::string::npos;
+            
+            Expect(has_user_name).ToBe(true);
+            Expect(has_email_address).ToBe(true);
+            Expect(has_session_timeout).ToBe(true);
+        });
+
+        it("should apply UPPERCASE rename_all transformation", []() {
+            UppercaseStruct obj{"testuser", "secret123", 100};
+            
+            auto json_result = zjson::to_string(obj);
+            Expect(json_result.has_value()).ToBe(true);
+            
+            std::string json_str = json_result.value();
+            
+            // Should use UPPERCASE field names
+            bool has_USER_NAME = json_str.find("USER_NAME") != std::string::npos;
+            bool has_API_KEY = json_str.find("API_KEY") != std::string::npos;
+            bool has_MAX_CONNECTIONS = json_str.find("MAX_CONNECTIONS") != std::string::npos;
+            
+            Expect(has_USER_NAME).ToBe(true);
+            Expect(has_API_KEY).ToBe(true);
+            Expect(has_MAX_CONNECTIONS).ToBe(true);
+        });
+
+        it("should apply lowercase rename_all transformation", []() {
+            LowercaseStruct obj{"TESTUSER", "SECRET123", 100};
+            
+            auto json_result = zjson::to_string(obj);
+            Expect(json_result.has_value()).ToBe(true);
+            
+            std::string json_str = json_result.value();
+            
+            // Should use lowercase field names
+            bool has_user_name = json_str.find("user_name") != std::string::npos;
+            bool has_api_key = json_str.find("api_key") != std::string::npos;
+            bool has_max_connections = json_str.find("max_connections") != std::string::npos;
+            
+            Expect(has_user_name).ToBe(true);
+            Expect(has_api_key).ToBe(true);
+            Expect(has_max_connections).ToBe(true);
+        });
+
+        it("should apply snake_case rename_all transformation", []() {
+            SnakeCaseStruct obj{"testUser", "testEmail", 1800};
+            
+            auto json_result = zjson::to_string(obj);
+            Expect(json_result.has_value()).ToBe(true);
+            
+            std::string json_str = json_result.value();
+            
+            // Should use snake_case field names (camelCase -> snake_case)
+            bool has_user_name = json_str.find("userName") != std::string::npos;
+            bool has_email_address = json_str.find("emailAddress") != std::string::npos;
+            bool has_session_timeout = json_str.find("sessionTimeout") != std::string::npos;
+            
+            Expect(has_user_name).ToBe(true);
+            Expect(has_email_address).ToBe(true);
+            Expect(has_session_timeout).ToBe(true);
+        });
+
+        it("should apply SCREAMING_SNAKE_CASE rename_all transformation", []() {
+            ScreamingSnakeCaseStruct obj{"testuser", "secret", 50};
+            
+            auto json_result = zjson::to_string(obj);
+            Expect(json_result.has_value()).ToBe(true);
+            
+            std::string json_str = json_result.value();
+            
+            // Should use SCREAMING_SNAKE_CASE field names
+            bool has_USER_NAME = json_str.find("USER_NAME") != std::string::npos;
+            bool has_API_KEY = json_str.find("API_KEY") != std::string::npos;
+            bool has_MAX_CONNECTIONS = json_str.find("MAX_CONNECTIONS") != std::string::npos;
+            
+            Expect(has_USER_NAME).ToBe(true);
+            Expect(has_API_KEY).ToBe(true);
+            Expect(has_MAX_CONNECTIONS).ToBe(true);
+        });
+
+        it("should apply SCREAMING-KEBAB-CASE rename_all transformation", []() {
+            ScreamingKebabCaseStruct obj{"testuser", "secret", 50};
+            
+            auto json_result = zjson::to_string(obj);
+            Expect(json_result.has_value()).ToBe(true);
+            
+            std::string json_str = json_result.value();
+            
+            // Should use SCREAMING-KEBAB-CASE field names
+            bool has_USER_NAME = json_str.find("USER-NAME") != std::string::npos;
+            bool has_API_KEY = json_str.find("API-KEY") != std::string::npos;
+            bool has_MAX_CONNECTIONS = json_str.find("MAX-CONNECTIONS") != std::string::npos;
+            
+            Expect(has_USER_NAME).ToBe(true);
+            Expect(has_API_KEY).ToBe(true);
+            Expect(has_MAX_CONNECTIONS).ToBe(true);
+        });
+
+        it("should deserialize with renamed fields correctly", []() {
+            // Test round-trip with camelCase
+            std::string camel_json = R"({"userName":"test","userId":42,"displayName":"Test User"})";
+            
+            auto result = zjson::from_str<CamelCaseStruct>(camel_json);
+            Expect(result.has_value()).ToBe(true);
+            
+            CamelCaseStruct restored = result.value();
+            Expect(restored.user_name).ToBe(std::string("test"));
+            Expect(restored.user_id).ToBe(42);
+            Expect(restored.display_name).ToBe(std::string("Test User"));
+        });
+
+        it("should deny unknown fields when ZJSON_DENY_UNKNOWN_FIELDS is used", []() {
+            // Valid JSON should work
+            std::string valid_json = R"({"name":"test","id":123})";
+            auto valid_result = zjson::from_str<StrictValidationStruct>(valid_json);
+            Expect(valid_result.has_value()).ToBe(true);
+            
+            // JSON with extra fields should fail
+            std::string invalid_json = R"({"name":"test","id":123,"extra_field":"should_fail"})";
+            auto invalid_result = zjson::from_str<StrictValidationStruct>(invalid_json);
+            Expect(invalid_result.has_value()).ToBe(false);
+            
+            // Should be unknown field error
+            auto error = invalid_result.error();
+            Expect(error.kind() == zjson::Error::UnknownField).ToBe(true);
+        });
+
+        it("should allow unknown fields by default (when ZJSON_DENY_UNKNOWN_FIELDS not used)", []() {
+            // Regular struct without ZJSON_DENY_UNKNOWN_FIELDS should accept extra fields
+            // Using SimpleStruct which has no ZJSON_RENAME_ALL, so uses original field names
+            std::string json_with_extra = R"({"id":123,"name":"test","extra_field":"ignored"})";
+            auto result = zjson::from_str<SimpleStruct>(json_with_extra);
+            Expect(result.has_value()).ToBe(true);
+            
+            SimpleStruct restored = result.value();
+            Expect(restored.id).ToBe(123);
+            Expect(restored.name).ToBe(std::string("test"));
+        });
+
+        it("should use 'none' transformation by default (no rename_all)", []() {
+            // SimpleStruct doesn't have ZJSON_RENAME_ALL, so should use original field names
+            SimpleStruct obj{42, "test"};
+            
+            auto json_result = zjson::to_string(obj);
+            Expect(json_result.has_value()).ToBe(true);
+            
+            std::string json_str = json_result.value();
+            
+            // Should use original field names (no transformation)
+            bool has_id = json_str.find("id") != std::string::npos;
+            bool has_name = json_str.find("name") != std::string::npos;
+            
+            Expect(has_id).ToBe(true);
+            Expect(has_name).ToBe(true);
+        }); });
+}
+
 void zjson_tests()
 {
   // Core API and type system tests - focused on API functionality
@@ -975,4 +1286,5 @@ void zjson_tests()
   test_value_conversions();
   test_complex_nested_structures();
   test_large_struct_support();
+  test_container_attributes();
 }
