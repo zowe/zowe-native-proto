@@ -23,14 +23,14 @@ using namespace commands::common;
 
 namespace job
 {
-int handle_job_list(const ParseResult &result)
+int handle_job_list(InvocationContext &context)
 {
   int rc = 0;
   ZJB zjb = {0};
-  string owner_name = result.get_value<string>("owner", "*");
-  string prefix_name = result.get_value<string>("prefix", "*");
-  long long max_entries = result.get_value<long long>("max-entries", 0);
-  bool warn = result.get_value<bool>("warn", true);
+  string owner_name = context.get<string>("owner", "*");
+  string prefix_name = context.get<string>("prefix", "*");
+  long long max_entries = context.get<long long>("max-entries", 0);
+  bool warn = context.get<bool>("warn", true);
 
   if (max_entries > 0)
   {
@@ -42,7 +42,7 @@ int handle_job_list(const ParseResult &result)
 
   if (RTNCD_SUCCESS == rc || RTNCD_WARNING == rc)
   {
-    bool emit_csv = result.get_value<bool>("response-format-csv", false);
+    bool emit_csv = context.get<bool>("response-format-csv", false);
     for (vector<ZJob>::iterator it = jobs.begin(); it != jobs.end(); it++)
     {
       if (emit_csv)
@@ -79,13 +79,13 @@ int handle_job_list(const ParseResult &result)
   return (!warn && rc == RTNCD_WARNING) ? RTNCD_SUCCESS : rc;
 }
 
-int handle_job_list_files(const ParseResult &result)
+int handle_job_list_files(InvocationContext &context)
 {
   int rc = 0;
   ZJB zjb = {0};
-  string jobid = result.get_value<std::string>("jobid", "");
-  long long max_entries = result.get_value<long long>("max-entries", 0);
-  bool warn = result.get_value<bool>("warn", true);
+  string jobid = context.get<std::string>("jobid", "");
+  long long max_entries = context.get<long long>("max-entries", 0);
+  bool warn = context.get<bool>("warn", true);
 
   if (max_entries > 0)
   {
@@ -96,7 +96,7 @@ int handle_job_list_files(const ParseResult &result)
   rc = zjb_list_dds(&zjb, jobid, job_dds);
   if (RTNCD_SUCCESS == rc || RTNCD_WARNING == rc)
   {
-    bool emit_csv = result.get_value<bool>("response-format-csv", false);
+    bool emit_csv = context.get<bool>("response-format-csv", false);
     std::vector<string> fields;
     fields.reserve(5);
     for (vector<ZJobDD>::iterator it = job_dds.begin(); it != job_dds.end(); ++it)
@@ -135,14 +135,14 @@ int handle_job_list_files(const ParseResult &result)
   return (!warn && rc == RTNCD_WARNING) ? RTNCD_SUCCESS : rc;
 }
 
-int handle_job_view_status(const ParseResult &result)
+int handle_job_view_status(InvocationContext &context)
 {
   int rc = 0;
   ZJB zjb = {0};
   ZJob job = {0};
-  string jobid = result.get_value<std::string>("jobid", "");
+  string jobid = context.get<std::string>("jobid", "");
 
-  bool emit_csv = result.get_value<bool>("response-format-csv", false);
+  bool emit_csv = context.get<bool>("response-format-csv", false);
 
   rc = zjb_view(&zjb, jobid, job);
 
@@ -172,20 +172,20 @@ int handle_job_view_status(const ParseResult &result)
   return 0;
 }
 
-int handle_job_view_file(const ParseResult &result)
+int handle_job_view_file(InvocationContext &context)
 {
   int rc = 0;
   ZJB zjb = {0};
-  string jobid = result.get_value<std::string>("jobid", "");
-  long long key = result.get_value<long long>("key", 0);
+  string jobid = context.get<std::string>("jobid", "");
+  long long key = context.get<long long>("key", 0);
 
-  if (result.has("encoding"))
+  if (context.has("encoding"))
   {
-    zut_prepare_encoding(result.get_value<std::string>("encoding", ""), &zjb.encoding_opts);
+    zut_prepare_encoding(context.get<std::string>("encoding", ""), &zjb.encoding_opts);
   }
-  if (result.has("local-encoding"))
+  if (context.has("local-encoding"))
   {
-    const auto source_encoding = result.get_value<std::string>("local-encoding", "");
+    const auto source_encoding = context.get<std::string>("local-encoding", "");
     if (!source_encoding.empty() && source_encoding.size() < sizeof(zjb.encoding_opts.source_codepage))
     {
       memcpy(zjb.encoding_opts.source_codepage, source_encoding.data(), source_encoding.length() + 1);
@@ -202,8 +202,8 @@ int handle_job_view_file(const ParseResult &result)
     return RTNCD_FAILURE;
   }
 
-  bool has_encoding = result.has("encoding");
-  bool response_format_bytes = result.get_value<bool>("response-format-bytes", false);
+  bool has_encoding = context.has("encoding");
+  bool response_format_bytes = context.get<bool>("response-format-bytes", false);
 
   if (has_encoding && response_format_bytes)
   {
@@ -217,11 +217,11 @@ int handle_job_view_file(const ParseResult &result)
   return RTNCD_SUCCESS;
 }
 
-int handle_job_view_jcl(const ParseResult &result)
+int handle_job_view_jcl(InvocationContext &context)
 {
   int rc = 0;
   ZJB zjb = {0};
-  string jobid = result.get_value<std::string>("jobid", "");
+  string jobid = context.get<std::string>("jobid", "");
 
   string resp;
   rc = zjb_read_job_jcl(&zjb, jobid, resp);
@@ -238,11 +238,11 @@ int handle_job_view_jcl(const ParseResult &result)
   return 0;
 }
 
-int handle_job_submit(const ParseResult &result)
+int handle_job_submit(InvocationContext &context)
 {
   int rc = 0;
   ZJB zjb = {0};
-  string dsn = result.get_value<std::string>("dsn", "");
+  string dsn = context.get<std::string>("dsn", "");
   string jobid;
 
   ZDS zds = {0};
@@ -255,14 +255,14 @@ int handle_job_submit(const ParseResult &result)
     return RTNCD_FAILURE;
   }
 
-  return job_submit_common(result, contents, jobid, dsn);
+  return job_submit_common(context, contents, jobid, dsn);
 }
 
-int handle_job_submit_uss(const ParseResult &result)
+int handle_job_submit_uss(InvocationContext &context)
 {
   int rc = 0;
   ZJB zjb = {0};
-  string file = result.get_value<std::string>("file-path", "");
+  string file = context.get<std::string>("file-path", "");
 
   ZUSF zusf = {0};
   string response;
@@ -278,10 +278,10 @@ int handle_job_submit_uss(const ParseResult &result)
 
   string jobid;
 
-  return job_submit_common(result, response, jobid, file);
+  return job_submit_common(context, response, jobid, file);
 }
 
-int handle_job_submit_jcl(const ParseResult &result)
+int handle_job_submit_jcl(InvocationContext &context)
 {
   ZJB zjb = {0};
   string jobid;
@@ -302,11 +302,11 @@ int handle_job_submit_jcl(const ParseResult &result)
   raw_bytes.clear();
 
   ZEncode encoding_opts = {0};
-  bool encoding_prepared = result.has("encoding") && zut_prepare_encoding(result.get_value<std::string>("encoding", ""), &encoding_opts);
+  bool encoding_prepared = context.has("encoding") && zut_prepare_encoding(context.get<std::string>("encoding", ""), &encoding_opts);
 
-  if (result.has("local-encoding"))
+  if (context.has("local-encoding"))
   {
-    const auto source_encoding = result.get_value<std::string>("local-encoding", "");
+    const auto source_encoding = context.get<std::string>("local-encoding", "");
     if (!source_encoding.empty() && source_encoding.size() < sizeof(encoding_opts.source_codepage))
     {
       memcpy(encoding_opts.source_codepage, source_encoding.data(), source_encoding.length() + 1);
@@ -319,14 +319,14 @@ int handle_job_submit_jcl(const ParseResult &result)
     data = zut_encode(data, source_encoding, string(encoding_opts.codepage), zjb.diag);
   }
 
-  return job_submit_common(result, data, jobid, "JCL");
+  return job_submit_common(context, data, jobid, "JCL");
 }
 
-int handle_job_delete(const ParseResult &result)
+int handle_job_delete(InvocationContext &context)
 {
   int rc = 0;
   ZJB zjb = {0};
-  string jobid = result.get_value<std::string>("jobid", "");
+  string jobid = context.get<std::string>("jobid", "");
 
   rc = zjb_delete(&zjb, jobid);
 
@@ -342,18 +342,18 @@ int handle_job_delete(const ParseResult &result)
   return RTNCD_SUCCESS;
 }
 
-int handle_job_cancel(const ParseResult &result)
+int handle_job_cancel(InvocationContext &context)
 {
   int rc = 0;
   ZJB zjb = {0};
-  string jobid = result.get_value<std::string>("jobid", "");
+  string jobid = context.get<std::string>("jobid", "");
 
   // Note: Cancel options (dump, force, purge, restart) are currently not used by the backend
   // but are defined for future compatibility
-  bool option_dump = result.get_value<bool>("dump", false);
-  bool option_force = result.get_value<bool>("force", false);
-  bool option_purge = result.get_value<bool>("purge", false);
-  bool option_restart = result.get_value<bool>("restart", false);
+  bool option_dump = context.get<bool>("dump", false);
+  bool option_force = context.get<bool>("force", false);
+  bool option_purge = context.get<bool>("purge", false);
+  bool option_restart = context.get<bool>("restart", false);
 
   rc = zjb_cancel(&zjb, jobid);
 
@@ -369,11 +369,11 @@ int handle_job_cancel(const ParseResult &result)
   return RTNCD_SUCCESS;
 }
 
-int handle_job_hold(const ParseResult &result)
+int handle_job_hold(InvocationContext &context)
 {
   int rc = 0;
   ZJB zjb = {0};
-  string jobid = result.get_value<std::string>("jobid", "");
+  string jobid = context.get<std::string>("jobid", "");
 
   rc = zjb_hold(&zjb, jobid);
 
@@ -389,11 +389,11 @@ int handle_job_hold(const ParseResult &result)
   return RTNCD_SUCCESS;
 }
 
-int handle_job_release(const ParseResult &result)
+int handle_job_release(InvocationContext &context)
 {
   int rc = 0;
   ZJB zjb = {0};
-  string jobid = result.get_value<std::string>("jobid", "");
+  string jobid = context.get<std::string>("jobid", "");
 
   rc = zjb_release(&zjb, jobid);
 
@@ -409,7 +409,7 @@ int handle_job_release(const ParseResult &result)
   return RTNCD_SUCCESS;
 }
 
-int job_submit_common(const ParseResult &result, string jcl, string &jobid, string identifier)
+int job_submit_common(InvocationContext &context, string jcl, string &jobid, string identifier)
 {
   int rc = 0;
   ZJB zjb = {0};
@@ -422,9 +422,9 @@ int job_submit_common(const ParseResult &result, string jcl, string &jobid, stri
     return RTNCD_FAILURE;
   }
 
-  bool only_jobid = result.get_value<bool>("only-jobid", false);
-  bool only_correlator = result.get_value<bool>("only-correlator", false);
-  string wait = result.get_value<std::string>("wait", "");
+  bool only_jobid = context.get<bool>("only-jobid", false);
+  bool only_correlator = context.get<bool>("only-correlator", false);
+  string wait = context.get<std::string>("wait", "");
   transform(wait.begin(), wait.end(), wait.begin(), ::toupper);
 
   if (only_jobid)
