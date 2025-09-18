@@ -101,13 +101,13 @@ public:
     return *this;
   }
 
-  Argument(Argument &&other) noexcept
+  Argument(Argument &&other)
       : m_kind(ValueKind_None)
   {
     move_from(other);
   }
 
-  Argument &operator=(Argument &&other) noexcept
+  Argument &operator=(Argument &&other)
   {
     if (this != &other)
     {
@@ -354,10 +354,10 @@ struct ArgGetter<std::vector<std::string>>
   }
 };
 
-#if defined(__IBMTR1_CPP__) && !defined(__CLANG__)
-typedef std::tr1::unordered_map<std::string, Argument> ArgumentMap;
-#else
+#if defined(__CLANG__)
 typedef std::unordered_map<std::string, Argument> ArgumentMap;
+#else
+typedef std::tr1::unordered_map<std::string, Argument> ArgumentMap;
 #endif
 
 class Io
@@ -483,18 +483,18 @@ public:
 private:
   ArgumentMap m_args;
   ArgumentMap m_output;
-  std::ostream *m_output_stream = nullptr;
-  std::ostream *m_error_stream = nullptr;
+  std::ostream *m_output_stream;
+  std::ostream *m_error_stream;
 };
 
 class InvocationContext : public Io
 {
 public:
-  InvocationContext(std::string command_path,
+  InvocationContext(const std::string &command_path,
                     const ArgumentMap &args,
                     std::ostream *out_stream = nullptr,
                     std::ostream *err_stream = nullptr)
-      : m_command_path(std::move(command_path)), Io(args, out_stream, err_stream)
+      : m_command_path(command_path), Io(args, out_stream, err_stream)
   {
   }
 
