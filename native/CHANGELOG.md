@@ -4,7 +4,7 @@ All notable changes to the native code for "zowe-native-proto" are documented in
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## Recent Changes
+## `0.1.9`
 
 - `golang`: Fixed an issue where an empty response on the `HandleReadFileRequest` function would result in a panic. [#550](https://github.com/zowe/zowe-native-proto/pull/550)
 - `c`: Fixed issue where the `zowex ds lm` command always returned non-zero exit code for warnings and ignored the `--no-warn` flag. [#498](https://github.com/zowe/zowe-native-proto/issues/498)
