@@ -1,18 +1,30 @@
+/**
+ * This program and the accompanying materials are made available under the terms of the
+ * Eclipse Public License v2.0 which accompanies this distribution, and is available at
+ * https://www.eclipse.org/legal/epl-v20.html
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ *
+ * Copyright Contributors to the Zowe Project.
+ *
+ */
+
 #ifndef EXTEND_IO_HPP
 #define EXTEND_IO_HPP
 
 #include <cstring>
 #include <iostream>
 #include <ostream>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
 
 #if defined(__IBMTR1_CPP__) && !defined(__CLANG__)
-#  include <tr1/unordered_map>
+#include <tr1/unordered_map>
 #else
-#  include <unordered_map>
+#include <unordered_map>
 #endif
 
 namespace plugin
@@ -392,7 +404,7 @@ public:
   }
 
   template <typename T>
-  T get_or(const std::string &key, const T &default_value) const
+  T get(const std::string &key, const T &default_value) const
   {
     const T *ptr = get_if<T>(key);
     return ptr ? *ptr : default_value;
@@ -432,6 +444,11 @@ public:
     }
   }
 
+  void to_err(const std::stringstream &sstr)
+  {
+    errln(sstr.str().data());
+  }
+
   template <typename T>
   void set_output(const std::string &key, const T &value)
   {
@@ -453,14 +470,14 @@ public:
     return m_output;
   }
 
-  std::ostream *output_stream() const
+  std::ostream &output_stream() const
   {
-    return m_output_stream;
+    return m_output_stream != nullptr ? *m_output_stream : std::cout;
   }
 
-  std::ostream *error_stream() const
+  std::ostream &error_stream() const
   {
-    return m_error_stream;
+    return m_error_stream != nullptr ? *m_error_stream : std::cerr;
   }
 
 private:
@@ -470,25 +487,15 @@ private:
   std::ostream *m_error_stream = nullptr;
 };
 
-class InvocationContext
+class InvocationContext : public Io
 {
 public:
   InvocationContext(std::string command_path,
                     const ArgumentMap &args,
                     std::ostream *out_stream = nullptr,
                     std::ostream *err_stream = nullptr)
-      : m_command_path(std::move(command_path)), m_io(args, out_stream, err_stream)
+      : m_command_path(std::move(command_path)), Io(args, out_stream, err_stream)
   {
-  }
-
-  Io &io()
-  {
-    return m_io;
-  }
-
-  const Io &io() const
-  {
-    return m_io;
   }
 
   const std::string &command_path() const
@@ -498,7 +505,6 @@ public:
 
 private:
   std::string m_command_path;
-  Io m_io;
 };
 
 } // namespace plugin
