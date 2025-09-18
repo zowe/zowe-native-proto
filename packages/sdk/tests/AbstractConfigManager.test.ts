@@ -424,6 +424,36 @@ describe("AbstractConfigManager", async () => {
             });
         });
     });
+    describe("promptForDeployDirectory", () => {
+        const defaultServerPath = "/faketmp/fakeserver";
+        it("returns default path when user selects it", async () => {
+            vi.spyOn(testManager, "showMenu").mockResolvedValue(defaultServerPath);
+
+            const result = await testManager.promptForDeployDirectory(defaultServerPath);
+
+            expect(result).toBe(defaultServerPath);
+        });
+
+        it("prompts for deploy directory and returns user input", async () => {
+            vi.spyOn(testManager, "showMenu").mockResolvedValue("$(plus) Add New Deploy Directory");
+
+            vi.spyOn(testManager, "showInputBox").mockResolvedValue("/custom/path");
+
+            const result = await testManager.promptForDeployDirectory(defaultServerPath);
+
+            expect(result).toBe("/custom/path");
+        });
+
+        it("falls back to default path when user cancels input", async () => {
+            vi.spyOn(testManager, "showMenu").mockResolvedValue("$(plus) Add New Deploy Directory");
+
+            vi.spyOn(testManager, "showInputBox").mockResolvedValue(undefined);
+
+            const result = await testManager.promptForDeployDirectory(defaultServerPath);
+
+            expect(result).toBe(defaultServerPath);
+        });
+    });
     describe("createNewProfile", async () => {
         let showInputBoxSpy: any;
 

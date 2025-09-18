@@ -66,11 +66,12 @@ export function registerCommands(context: vscode.ExtensionContext): vscode.Dispo
             const vscePromptApi = new VscePromptApi(await profCache.getProfileInfo());
             const profile = await vscePromptApi.promptForProfile(profName);
             if (!profile?.profile) return;
+            const defaultServerPath = SshConfigUtils.getServerPath(profile.profile);
+            const deployDirectory = await vscePromptApi.promptForDeployDirectory(defaultServerPath);
 
             const sshSession = ZSshUtils.buildSession(profile.profile);
-            const serverPath = SshConfigUtils.getServerPath(profile.profile);
             const localDir = path.join(context.extensionPath, "bin");
-            await deployWithProgress(sshSession, serverPath, localDir);
+            await deployWithProgress(sshSession, deployDirectory, localDir);
 
             await SshConfigUtils.showSessionInTree(profile.name!, true);
             const infoMsg = `Installed Zowe SSH server on ${profile.profile.host ?? profile.name}`;
