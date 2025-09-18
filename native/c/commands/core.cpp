@@ -92,19 +92,19 @@ int interactive_mode(const std::string &shm_file_path)
   return rc;
 }
 
-int handle_version(const ParseResult &result)
+int handle_version(plugin::InvocationContext &context)
 {
-  cout << "Zowe Native Protocol CLI (zowex)" << endl;
-  cout << "Version: " << PACKAGE_VERSION << endl;
-  cout << "Build Date: " << BUILD_DATE << " " << BUILD_TIME << endl;
-  cout << "Copyright Contributors to the Zowe Project." << endl;
+  context.output_stream() << "Zowe Native Protocol CLI (zowex)" << endl;
+  context.output_stream() << "Version: " << PACKAGE_VERSION << endl;
+  context.output_stream() << "Build Date: " << BUILD_DATE << " " << BUILD_TIME << endl;
+  context.output_stream() << "Copyright Contributors to the Zowe Project." << endl;
   return 0;
 }
 
-int handle_command(const ParseResult &result)
+int handle_command(plugin::InvocationContext &result)
 {
-  const auto is_interactive = result.get_value<bool>("interactive", false);
-  if (result.get_value<bool>("version", false))
+  const auto is_interactive = result.get<bool>("interactive", false);
+  if (result.get<bool>("version", false))
   {
     const auto version_rc = handle_version(result);
     if (!is_interactive)
@@ -115,12 +115,13 @@ int handle_command(const ParseResult &result)
 
   if (is_interactive)
   {
-    return interactive_mode(result.get_value<std::string>("shm-file", ""));
+    return interactive_mode(result.get<std::string>("shm-file", ""));
   }
 
   // If no interactive mode and no subcommands were invoked, show help
 
-  result.m_command->generate_help(std::cout);
+  // TODO: Fix
+  // result.m_command->generate_help(std::cout);
   return 0;
 }
 
