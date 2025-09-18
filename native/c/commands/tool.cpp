@@ -24,17 +24,17 @@ using namespace commands::common;
 namespace tool
 {
 
-int handle_tool_convert_dsect(const ParseResult &result)
+int handle_tool_convert_dsect(InvocationContext &context)
 {
   int rc = 0;
   ZCN zcn = {0};
   unsigned int code = 0;
   string resp;
 
-  string adata_dsn = result.get_value<std::string>("adata-dsn", "");
-  string chdr_dsn = result.get_value<std::string>("chdr-dsn", "");
-  string sysprint = result.get_value<std::string>("sysprint", "");
-  string sysout = result.get_value<std::string>("sysout", "");
+  string adata_dsn = context.get<std::string>("adata-dsn", "");
+  string chdr_dsn = context.get<std::string>("chdr-dsn", "");
+  string sysprint = context.get<std::string>("sysprint", "");
+  string sysout = context.get<std::string>("sysout", "");
 
   const char *user = getlogin();
   string struser(user);
@@ -77,13 +77,13 @@ int handle_tool_convert_dsect(const ParseResult &result)
   return rc;
 }
 
-int handle_tool_dynalloc(const ParseResult &result)
+int handle_tool_dynalloc(InvocationContext &context)
 {
   int rc = 0;
   unsigned int code = 0;
   string resp;
 
-  string parm = result.get_value<std::string>("parm", "");
+  string parm = context.get<std::string>("parm", "");
 
   rc = zut_bpxwdyn(parm, &code, resp);
   if (0 != rc)
@@ -98,10 +98,10 @@ int handle_tool_dynalloc(const ParseResult &result)
   return rc;
 }
 
-int handle_tool_display_symbol(const ParseResult &result)
+int handle_tool_display_symbol(InvocationContext &context)
 {
   int rc = 0;
-  string symbol = result.get_value<std::string>("symbol", "");
+  string symbol = context.get<std::string>("symbol", "");
   transform(symbol.begin(), symbol.end(), symbol.begin(), ::toupper);
   symbol = "&" + symbol;
   string value;
@@ -116,14 +116,14 @@ int handle_tool_display_symbol(const ParseResult &result)
   return RTNCD_SUCCESS;
 }
 
-int handle_tool_search(const ParseResult &result)
+int handle_tool_search(InvocationContext &context)
 {
   int rc = 0;
 
-  string pattern = result.get_value<std::string>("string", "");
-  string warn = result.get_value<std::string>("warn", "");
-  long long max_entries = result.get_value<long long>("max-entries", 0);
-  string dsn = result.get_value<std::string>("dsn", "");
+  string pattern = context.get<std::string>("string", "");
+  string warn = context.get<std::string>("warn", "");
+  long long max_entries = context.get<long long>("max-entries", 0);
+  string dsn = context.get<std::string>("dsn", "");
 
   ZDS zds = {0};
   bool results_truncated = false;
@@ -219,12 +219,12 @@ int handle_tool_search(const ParseResult &result)
   return RTNCD_SUCCESS;
 }
 
-int handle_tool_amblist(const ParseResult &result)
+int handle_tool_amblist(InvocationContext &context)
 {
   int rc = 0;
 
-  string dsn = result.get_value<std::string>("dsn", "");
-  string statements = " " + result.get_value<std::string>("control-statements", "");
+  string dsn = context.get<std::string>("dsn", "");
+  string statements = " " + context.get<std::string>("control-statements", "");
 
   // Perform dynalloc
   vector<string> dds;
@@ -275,12 +275,12 @@ int handle_tool_amblist(const ParseResult &result)
   return RTNCD_SUCCESS;
 }
 
-int handle_tool_run(const ParseResult &result)
+int handle_tool_run(InvocationContext &context)
 {
   int rc = 0;
-  string program = result.get_value<std::string>("program", "");
-  string dynalloc_pre = result.get_value<std::string>("dynalloc-pre", "");
-  string dynalloc_post = result.get_value<std::string>("dynalloc-post", "");
+  string program = context.get<std::string>("program", "");
+  string dynalloc_pre = context.get<std::string>("dynalloc-pre", "");
+  string dynalloc_post = context.get<std::string>("dynalloc-post", "");
 
   // Allocate anything that was requested
   if (dynalloc_pre.length() > 0)
@@ -308,7 +308,7 @@ int handle_tool_run(const ParseResult &result)
     }
   }
 
-  string indd = result.get_value<std::string>("in-dd", "");
+  string indd = context.get<std::string>("in-dd", "");
   if (indd.length() > 0)
   {
     string ddname = "DD:" + indd;
@@ -319,8 +319,8 @@ int handle_tool_run(const ParseResult &result)
       return RTNCD_FAILURE;
     }
 
-    string input = result.get_value<std::string>("input", "");
-    if (result.has("input"))
+    string input = context.get<std::string>("input", "");
+    if (context.has("input"))
     {
       out << input << endl;
     }
@@ -338,7 +338,7 @@ int handle_tool_run(const ParseResult &result)
     rc = RTNCD_FAILURE;
   }
 
-  string outdd = result.get_value<std::string>("out-dd", "");
+  string outdd = context.get<std::string>("out-dd", "");
   if (outdd.length() > 0)
   {
     string ddname = "DD:" + outdd;

@@ -13,12 +13,13 @@
 
 namespace tool
 {
-int handle_tool_convert_dsect(const parser::ParseResult &result);
-int handle_tool_dynalloc(const parser::ParseResult &result);
-int handle_tool_display_symbol(const parser::ParseResult &result);
-int handle_tool_search(const parser::ParseResult &result);
-int handle_tool_amblist(const parser::ParseResult &result);
-int handle_tool_run(const parser::ParseResult &result);
+using namespace plugin;
+int handle_tool_convert_dsect(InvocationContext &result);
+int handle_tool_dynalloc(InvocationContext &result);
+int handle_tool_display_symbol(InvocationContext &result);
+int handle_tool_search(InvocationContext &result);
+int handle_tool_amblist(InvocationContext &result);
+int handle_tool_run(InvocationContext &result);
 
 void register_commands(parser::Command &root_command);
 } // namespace tool
