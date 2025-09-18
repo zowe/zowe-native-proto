@@ -22,6 +22,8 @@
 #include <cctype>
 #include <cstring>
 #include <cstdio>
+#include <cmath>
+#include <limits>
 #include "zjsonm.h"
 #include "zjsontype.h"
 #include "zstd.hpp"
@@ -501,30 +503,45 @@ public:
 
   inline bool as_bool() const
   {
-    if (type_ == Bool)
-      return bool_value_;
-    return false;
+    if (type_ != Bool)
+      throw Error::invalid_type("bool", type_name());
+    return bool_value_;
   }
 
   inline double as_number() const
   {
-    if (type_ == Number)
-      return number_value_;
-    return 0.0;
+    if (type_ != Number)
+      throw Error::invalid_type("number", type_name());
+
+    // Check for overflow/underflow
+    if (!std::isfinite(number_value_))
+      throw Error::invalid_value("Number is not finite: " + std::to_string(number_value_));
+
+    return number_value_;
   }
 
   inline int as_int() const
   {
-    if (type_ == Number)
-      return static_cast<int>(number_value_);
-    return 0;
+    if (type_ != Number)
+      throw Error::invalid_type("number", type_name());
+
+    // Check for fractional part
+    if (number_value_ != std::floor(number_value_))
+      throw Error::invalid_value("Cannot convert floating-point number " + std::to_string(number_value_) + " to integer");
+
+    // Check for overflow
+    if (number_value_ > static_cast<double>(std::numeric_limits<int>::max()) ||
+        number_value_ < static_cast<double>(std::numeric_limits<int>::min()))
+      throw Error::invalid_value("Number " + std::to_string(number_value_) + " overflows int range");
+
+    return static_cast<int>(number_value_);
   }
 
   inline std::string as_string() const
   {
-    if (type_ == String)
-      return *string_value_;
-    return "";
+    if (type_ != String)
+      throw Error::invalid_type("string", type_name());
+    return *string_value_;
   }
 
   const std::vector<Value> &as_array() const
@@ -731,11 +748,14 @@ struct Deserializable<bool>
   static constexpr bool value = true;
   static zstd::expected<bool, Error> deserialize(const Value &value)
   {
-    if (!value.is_bool())
+    try
     {
-      return zstd::make_unexpected(Error::invalid_type("bool", "other"));
+      return value.as_bool();
     }
-    return value.as_bool();
+    catch (const Error &e)
+    {
+      return zstd::make_unexpected(e);
+    }
   }
 };
 
@@ -755,11 +775,14 @@ struct Deserializable<int>
   static constexpr bool value = true;
   static zstd::expected<int, Error> deserialize(const Value &value)
   {
-    if (!value.is_number())
+    try
     {
-      return zstd::make_unexpected(Error::invalid_type("number", "other"));
+      return value.as_int();
     }
-    return value.as_int();
+    catch (const Error &e)
+    {
+      return zstd::make_unexpected(e);
+    }
   }
 };
 
@@ -779,11 +802,14 @@ struct Deserializable<double>
   static constexpr bool value = true;
   static zstd::expected<double, Error> deserialize(const Value &value)
   {
-    if (!value.is_number())
+    try
     {
-      return zstd::make_unexpected(Error::invalid_type("number", "other"));
+      return value.as_number();
     }
-    return value.as_number();
+    catch (const Error &e)
+    {
+      return zstd::make_unexpected(e);
+    }
   }
 };
 
@@ -803,11 +829,14 @@ struct Deserializable<std::string>
   static constexpr bool value = true;
   static zstd::expected<std::string, Error> deserialize(const Value &value)
   {
-    if (!value.is_string())
+    try
     {
-      return zstd::make_unexpected(Error::invalid_type("string", "other"));
+      return value.as_string();
     }
-    return value.as_string();
+    catch (const Error &e)
+    {
+      return zstd::make_unexpected(e);
+    }
   }
 };
 
@@ -1959,6 +1988,16 @@ void serialize_field_impl(const T &obj, Value &result, const Field<T, FieldType>
       const auto &nested_obj = nested_value.as_object();
       for (const auto &nested_field : nested_obj)
       {
+        // Check for name collisions before adding flattened fields
+        if (result.is_object())
+        {
+          const auto &existing_obj = result.as_object();
+          if (existing_obj.find(nested_field.first) != existing_obj.end())
+          {
+            // Name collision detected - this should be an error to match standard JSON library behavior
+            throw Error::invalid_data("Field name collision during flattening: '" + nested_field.first + "' already exists in parent struct");
+          }
+        }
         result.add_to_object(nested_field.first, nested_field.second);
       }
       return;
@@ -2144,18 +2183,45 @@ bool deserialize_fields(T &obj, const std::map<std::string, Value> &object, Fiel
   return deserialize_fields_impl(obj, object, fields...);
 }
 
-// Helper to collect field names (declared first)
+// Helper to collect field names, including flattened struct fields
 template <typename Field>
 void collect_field_names_impl(std::set<std::string> &names, Field field)
 {
-  names.insert(field.get_serialized_name());
+  if (field.flatten_field)
+  {
+    // Can't statically determine flattened struct field names - skip validation
+  }
+  else
+  {
+    names.insert(field.get_serialized_name());
+  }
 }
 
 template <typename Field, typename... Fields>
 void collect_field_names_impl(std::set<std::string> &names, Field field, Fields... fields)
 {
-  names.insert(field.get_serialized_name());
+  if (field.flatten_field)
+  {
+    // Skip validation for flattened fields - let the nested struct handle it
+  }
+  else
+  {
+    names.insert(field.get_serialized_name());
+  }
   collect_field_names_impl(names, fields...);
+}
+
+// Helper to check if any field has flatten enabled
+template <typename Field>
+bool has_flattened_field_impl(Field field)
+{
+  return field.flatten_field;
+}
+
+template <typename Field, typename... Fields>
+bool has_flattened_field_impl(Field field, Fields... fields)
+{
+  return field.flatten_field || has_flattened_field_impl(fields...);
 }
 
 // Validation function for unknown fields
@@ -2168,6 +2234,16 @@ zstd::expected<bool, Error> validate_no_unknown_fields_impl(const std::map<std::
 template <typename T, typename Field, typename... Fields>
 zstd::expected<bool, Error> validate_no_unknown_fields_impl(const std::map<std::string, Value> &object, Field field, Fields... fields)
 {
+  // Check if any field is flattened - if so, we cannot reliably validate unknown fields
+  // because we don't have static access to the nested struct's field names
+  if (has_flattened_field_impl(field, fields...))
+  {
+    // When flattening is used, we cannot perform strict unknown field validation
+    // because flattened fields effectively "consume" arbitrary field names
+    // This matches standard JSON library behavior where flattened structs accept their fields
+    return true;
+  }
+
   // Collect all expected field names
   std::set<std::string> expected_fields;
   collect_field_names_impl(expected_fields, field, fields...);
