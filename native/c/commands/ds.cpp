@@ -23,13 +23,13 @@ using namespace commands::common;
 
 namespace ds
 {
-int process_data_set_create_result(ZDS *zds, int rc, string dsn, string response)
+int process_data_set_create_result(InvocationContext &context, ZDS *zds, int rc, string dsn, string response)
 {
   if (0 != rc)
   {
-    cerr << "Error: could not create data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details:\n"
-         << response << endl;
+    context.error_stream() << "Error: could not create data set: '" << dsn << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << "  Details:\n"
+                           << response << endl;
     return RTNCD_FAILURE;
   }
 
@@ -43,15 +43,15 @@ int process_data_set_create_result(ZDS *zds, int rc, string dsn, string response
     rc = zds_write_to_dsn(zds, dsn, data);
     if (0 != rc)
     {
-      cout << "Error: could not write to data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-      cout << "  Details: " << zds->diag.e_msg << endl;
+      context.output_stream() << "Error: could not write to data set: '" << dsn << "' rc: '" << rc << "'" << endl;
+      context.output_stream() << "  Details: " << zds->diag.e_msg << endl;
       return RTNCD_FAILURE;
     }
-    cout << "Data set and/or member created: '" << dsn << "'" << endl;
+    context.output_stream() << "Data set and/or member created: '" << dsn << "'" << endl;
   }
   else
   {
-    cout << "Data set created: '" << dsn << "'" << endl;
+    context.output_stream() << "Data set created: '" << dsn << "'" << endl;
   }
 
   return rc;
@@ -60,129 +60,129 @@ int process_data_set_create_result(ZDS *zds, int rc, string dsn, string response
 int create_with_attributes(InvocationContext &context)
 {
   int rc = 0;
-  string dsn = context.get_or<string>("dsn", "");
+  string dsn = context.get<string>("dsn", "");
   ZDS zds = {0};
   DS_ATTRIBUTES attributes = {0};
 
   // Extract all the optional creation attributes
   if (context.has("alcunit"))
   {
-    attributes.alcunit = context.get_or<string>("alcunit", "");
+    attributes.alcunit = context.get<string>("alcunit", "");
   }
   if (context.has("blksize"))
   {
-    attributes.blksize = context.get_or<long long>("blksize", 0);
+    attributes.blksize = context.get<long long>("blksize", 0);
   }
   if (context.has("dirblk"))
   {
-    attributes.dirblk = context.get_or<long long>("dirblk", 0);
+    attributes.dirblk = context.get<long long>("dirblk", 0);
   }
   if (context.has("dsorg"))
   {
-    attributes.dsorg = context.get_or<string>("dsorg", "");
+    attributes.dsorg = context.get<string>("dsorg", "");
   }
   if (context.has("primary"))
   {
-    attributes.primary = context.get_or<long long>("primary", 0);
+    attributes.primary = context.get<long long>("primary", 0);
   }
   if (context.has("recfm"))
   {
-    attributes.recfm = context.get_or<string>("recfm", "");
+    attributes.recfm = context.get<string>("recfm", "");
   }
   if (context.has("lrecl"))
   {
-    attributes.lrecl = context.get_or<long long>("lrecl", 0);
+    attributes.lrecl = context.get<long long>("lrecl", 0);
   }
   if (context.has("dataclass"))
   {
-    attributes.dataclass = context.get_or<string>("dataclass", "");
+    attributes.dataclass = context.get<string>("dataclass", "");
   }
   if (context.has("unit"))
   {
-    attributes.unit = context.get_or<string>("unit", "");
+    attributes.unit = context.get<string>("unit", "");
   }
   if (context.has("dsntype"))
   {
-    attributes.dsntype = context.get_or<string>("dsntype", "");
+    attributes.dsntype = context.get<string>("dsntype", "");
   }
   if (context.has("mgntclass"))
   {
-    attributes.mgntclass = context.get_or<string>("mgntclass", "");
+    attributes.mgntclass = context.get<string>("mgntclass", "");
   }
   if (context.has("dsname"))
   {
-    attributes.dsname = context.get_or<string>("dsname", "");
+    attributes.dsname = context.get<string>("dsname", "");
   }
   if (context.has("avgblk"))
   {
-    attributes.avgblk = context.get_or<long long>("avgblk", 0);
+    attributes.avgblk = context.get<long long>("avgblk", 0);
   }
   if (context.has("secondary"))
   {
-    attributes.secondary = context.get_or<long long>("secondary", 0);
+    attributes.secondary = context.get<long long>("secondary", 0);
   }
   if (context.has("size"))
   {
-    attributes.size = context.get_or<long long>("size", 0);
+    attributes.size = context.get<long long>("size", 0);
   }
   if (context.has("storclass"))
   {
-    attributes.storclass = context.get_or<string>("storclass", "");
+    attributes.storclass = context.get<string>("storclass", "");
   }
   if (context.has("vol"))
   {
-    attributes.vol = context.get_or<string>("vol", "");
+    attributes.vol = context.get<string>("vol", "");
   }
 
   string response;
   rc = zds_create_dsn(&zds, dsn, attributes, response);
-  return process_data_set_create_result(&zds, rc, dsn, response);
+  return process_data_set_create_result(context, &zds, rc, dsn, response);
 }
 
-int handle_data_set_create_fb(InvocationContext &result)
+int handle_data_set_create_fb(InvocationContext &context)
 {
   int rc = 0;
-  string dsn = result.get_or<string>("dsn", "");
+  string dsn = context.get<string>("dsn", "");
   ZDS zds = {0};
   string response;
   rc = zds_create_dsn_fb(&zds, dsn, response);
-  return process_data_set_create_result(&zds, rc, dsn, response);
+  return process_data_set_create_result(context, &zds, rc, dsn, response);
 }
 
-int handle_data_set_create_vb(InvocationContext &result)
+int handle_data_set_create_vb(InvocationContext &context)
 {
   int rc = 0;
-  string dsn = result.get_or<string>("dsn", "");
+  string dsn = context.get<string>("dsn", "");
   ZDS zds = {0};
   string response;
   rc = zds_create_dsn_vb(&zds, dsn, response);
-  return process_data_set_create_result(&zds, rc, dsn, response);
+  return process_data_set_create_result(context, &zds, rc, dsn, response);
 }
 
-int handle_data_set_create_adata(InvocationContext &result)
+int handle_data_set_create_adata(InvocationContext &context)
 {
   int rc = 0;
-  string dsn = result.get_or<string>("dsn", "");
+  string dsn = context.get<string>("dsn", "");
   ZDS zds = {0};
   string response;
   rc = zds_create_dsn_adata(&zds, dsn, response);
-  return process_data_set_create_result(&zds, rc, dsn, response);
+  return process_data_set_create_result(context, &zds, rc, dsn, response);
 }
 
-int handle_data_set_create_loadlib(InvocationContext &result)
+int handle_data_set_create_loadlib(InvocationContext &context)
 {
   int rc = 0;
-  string dsn = result.get_or<string>("dsn", "");
+  string dsn = context.get<string>("dsn", "");
   ZDS zds = {0};
   string response;
   rc = zds_create_dsn_loadlib(&zds, dsn, response);
-  return process_data_set_create_result(&zds, rc, dsn, response);
+  return process_data_set_create_result(context, &zds, rc, dsn, response);
 }
 
-int handle_data_set_create_member(InvocationContext &result)
+int handle_data_set_create_member(InvocationContext &context)
 {
   int rc = 0;
-  string dsn = result.get_or<string>("dsn", "");
+  string dsn = context.get<string>("dsn", "");
   ZDS zds = {0};
   string response;
   vector<ZDSEntry> entries;
@@ -198,9 +198,9 @@ int handle_data_set_create_member(InvocationContext &result)
     rc = zds_list_data_sets(&zds, dataset_name, entries);
     if (RTNCD_WARNING < rc || entries.size() == 0)
     {
-      cout << "Error: could not create data set member: '" << dataset_name << "' rc: '" << rc << "'" << endl;
-      cout << "  Details:\n"
-           << zds.diag.e_msg << endl;
+      context.output_stream() << "Error: could not create data set member: '" << dataset_name << "' rc: '" << rc << "'" << endl;
+      context.output_stream() << "  Details:\n"
+                              << zds.diag.e_msg << endl;
       return RTNCD_FAILURE;
     }
 
@@ -208,15 +208,15 @@ int handle_data_set_create_member(InvocationContext &result)
     rc = zds_write_to_dsn(&zds, dsn, data);
     if (0 != rc)
     {
-      cout << "Error: could not write to data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-      cout << "  Details: " << zds.diag.e_msg << endl;
+      context.output_stream() << "Error: could not write to data set: '" << dsn << "' rc: '" << rc << "'" << endl;
+      context.output_stream() << "  Details: " << zds.diag.e_msg << endl;
       return RTNCD_FAILURE;
     }
-    cout << "Data set and/or member created: '" << dsn << "'" << endl;
+    context.output_stream() << "Data set and/or member created: '" << dsn << "'" << endl;
   }
   else
   {
-    cout << "Error: could not find member name in dsn: '" << dsn << "'" << endl;
+    context.output_stream() << "Error: could not find member name in dsn: '" << dsn << "'" << endl;
     return RTNCD_FAILURE;
   }
 
@@ -226,17 +226,17 @@ int handle_data_set_create_member(InvocationContext &result)
 int handle_data_set_view(InvocationContext &context)
 {
   int rc = 0;
-  string dsn = context.get_or<string>("dsn", "");
+  string dsn = context.get<string>("dsn", "");
   ZDS zds = {0};
   vector<string> dds;
 
   if (context.has("encoding"))
   {
-    zut_prepare_encoding(context.get_or<string>("encoding", ""), &zds.encoding_opts);
+    zut_prepare_encoding(context.get<string>("encoding", ""), &zds.encoding_opts);
   }
   if (context.has("local-encoding"))
   {
-    const auto source_encoding = context.get_or<string>("local-encoding", "");
+    const auto source_encoding = context.get<string>("local-encoding", "");
     if (!source_encoding.empty() && source_encoding.size() < sizeof(zds.encoding_opts.source_codepage))
     {
       memcpy(zds.encoding_opts.source_codepage, source_encoding.data(), source_encoding.length() + 1);
@@ -245,7 +245,7 @@ int handle_data_set_view(InvocationContext &context)
 
   if (context.has("volser"))
   {
-    string volser_value = context.get_or<string>("volser", "");
+    string volser_value = context.get<string>("volser", "");
     if (!volser_value.empty())
     {
       dds.push_back("alloc dd(input) da('" + dsn + "') shr vol(" + volser_value + ")");
@@ -259,14 +259,14 @@ int handle_data_set_view(InvocationContext &context)
   }
 
   bool has_pipe_path = context.has("pipe-path");
-  string pipe_path = context.get_or<string>("pipe-path", "");
+  string pipe_path = context.get<string>("pipe-path", "");
 
   if (has_pipe_path && !pipe_path.empty())
   {
     size_t content_len = 0;
     rc = zds_read_from_dsn_streamed(&zds, dsn, pipe_path, &content_len);
 
-    if (context.get_or<bool>("return-etag", false))
+    if (context.get<bool>("return-etag", false))
     {
       string temp_content;
       auto read_rc = zds_read_from_dsn(&zds, dsn, temp_content);
@@ -275,7 +275,7 @@ int handle_data_set_view(InvocationContext &context)
         const auto etag = zut_calc_adler32_checksum(temp_content);
         context.output_stream() << "etag: " << hex << etag << dec << endl;
       }
-      cout << "size: " << content_len << endl;
+      context.output_stream() << "size: " << content_len << endl;
     }
   }
   else
@@ -284,20 +284,20 @@ int handle_data_set_view(InvocationContext &context)
     rc = zds_read_from_dsn(&zds, dsn, response);
     if (0 != rc)
     {
-      cerr << "Error: could not read data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-      cerr << "  Details: " << zds.diag.e_msg << endl;
+      context.error_stream() << "Error: could not read data set: '" << dsn << "' rc: '" << rc << "'" << endl;
+      context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
       return RTNCD_FAILURE;
     }
 
-    if (context.get_or<bool>("return-etag", false))
+    if (context.get<bool>("return-etag", false))
     {
       const auto etag = zut_calc_adler32_checksum(response);
-      cout << "etag: " << hex << etag << dec << endl;
-      cout << "data: ";
+      context.output_stream() << "etag: " << hex << etag << dec << endl;
+      context.output_stream() << "data: ";
     }
 
     bool has_encoding = context.has("encoding");
-    bool response_format_bytes = context.get_or<bool>("response-format-bytes", false);
+    bool response_format_bytes = context.get<bool>("response-format-bytes", false);
 
     if (has_encoding && response_format_bytes)
     {
@@ -305,7 +305,7 @@ int handle_data_set_view(InvocationContext &context)
     }
     else
     {
-      cout << response << endl;
+      context.output_stream() << response << endl;
     }
   }
 
@@ -317,23 +317,23 @@ int handle_data_set_view(InvocationContext &context)
   return rc;
 }
 
-int handle_data_set_list(const ParseResult &result)
+int handle_data_set_list(InvocationContext &context)
 {
   int rc = 0;
   ZLOG_DEBUG("[>] handle_data_set_list");
-  string dsn = result.get_value<string>("dsn", "");
+  string dsn = context.get<string>("dsn", "");
 
   if (dsn.length() > MAX_DS_LENGTH)
   {
-    cerr << "Error: data set pattern exceeds 44 character length limit" << endl;
+    context.error_stream() << "Error: data set pattern exceeds 44 character length limit" << endl;
     return RTNCD_FAILURE;
   }
 
   dsn += ".**";
 
-  long long max_entries = result.get_value<long long>("max-entries", 0);
-  bool warn = result.get_value<bool>("warn", true);
-  bool attributes = result.get_value<bool>("attributes", false);
+  long long max_entries = context.get<long long>("max-entries", 0);
+  bool warn = context.get<bool>("warn", true);
+  bool attributes = context.get<bool>("attributes", false);
 
   ZDS zds = {0};
   if (max_entries > 0)
@@ -342,7 +342,7 @@ int handle_data_set_list(const ParseResult &result)
   }
   vector<ZDSEntry> entries;
 
-  bool emit_csv = result.get_value<bool>("response-format-csv", false);
+  bool emit_csv = context.get<bool>("response-format-csv", false);
   rc = zds_list_data_sets(&zds, dsn, entries);
   if (RTNCD_SUCCESS == rc || RTNCD_WARNING == rc)
   {
@@ -360,18 +360,18 @@ int handle_data_set_list(const ParseResult &result)
           fields.push_back(it->migr ? "true" : "false");
           fields.push_back(it->recfm);
         }
-        cout << zut_format_as_csv(fields) << endl;
+        context.output_stream() << zut_format_as_csv(fields) << endl;
         fields.clear();
       }
       else
       {
         if (attributes)
         {
-          cout << left << setw(44) << it->name << " " << it->volser << " " << setw(4) << it->dsorg << " " << setw(6) << it->recfm << endl;
+          context.output_stream() << left << setw(44) << it->name << " " << it->volser << " " << setw(4) << it->dsorg << " " << setw(6) << it->recfm << endl;
         }
         else
         {
-          cout << left << setw(44) << it->name << endl;
+          context.output_stream() << left << setw(44) << it->name << endl;
         }
       }
     }
@@ -382,31 +382,31 @@ int handle_data_set_list(const ParseResult &result)
     {
       if (ZDS_RSNCD_MAXED_ENTRIES_REACHED == zds.diag.detail_rc)
       {
-        cerr << "Warning: results truncated" << endl;
+        context.error_stream() << "Warning: results truncated" << endl;
       }
       else if (ZDS_RSNCD_NOT_FOUND == zds.diag.detail_rc)
       {
-        cerr << "Warning: no matching results found" << endl;
+        context.error_stream() << "Warning: no matching results found" << endl;
       }
     }
   }
 
   if (RTNCD_SUCCESS != rc && RTNCD_WARNING != rc)
   {
-    cerr << "Error: could not list data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details: " << zds.diag.e_msg << endl;
+    context.error_stream() << "Error: could not list data set: '" << dsn << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
   return (!warn && rc == RTNCD_WARNING) ? RTNCD_SUCCESS : rc;
 }
 
-int handle_data_set_list_members(const ParseResult &result)
+int handle_data_set_list_members(InvocationContext &context)
 {
   int rc = 0;
-  string dsn = result.get_value<string>("dsn", "");
-  long long max_entries = result.get_value<long long>("max-entries", 0);
-  bool warn = result.get_value<bool>("warn", true);
+  string dsn = context.get<string>("dsn", "");
+  long long max_entries = context.get<long long>("max-entries", 0);
+  bool warn = context.get<bool>("warn", true);
 
   ZDS zds = {0};
   if (max_entries > 0)
@@ -420,7 +420,7 @@ int handle_data_set_list_members(const ParseResult &result)
   {
     for (vector<ZDSMem>::iterator it = members.begin(); it != members.end(); ++it)
     {
-      cout << left << setw(12) << it->name << endl;
+      context.output_stream() << left << setw(12) << it->name << endl;
     }
   }
   if (RTNCD_WARNING == rc)
@@ -429,52 +429,52 @@ int handle_data_set_list_members(const ParseResult &result)
     {
       if (ZDS_RSNCD_MAXED_ENTRIES_REACHED == zds.diag.detail_rc)
       {
-        cerr << "Warning: results truncated" << endl;
+        context.error_stream() << "Warning: results truncated" << endl;
       }
     }
   }
   if (RTNCD_SUCCESS != rc && RTNCD_WARNING != rc)
   {
-    cerr << "Error: could not read data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details: " << zds.diag.e_msg << endl;
+    context.error_stream() << "Error: could not read data set: '" << dsn << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
   return (!warn && rc == RTNCD_WARNING) ? RTNCD_SUCCESS : rc;
 }
 
-int handle_data_set_write(const ParseResult &result)
+int handle_data_set_write(InvocationContext &context)
 {
   int rc = 0;
-  string dsn = result.get_value<string>("dsn", "");
+  string dsn = context.get<string>("dsn", "");
   ZDS zds = {0};
   vector<string> dds;
 
-  if (result.has("encoding"))
+  if (context.has("encoding"))
   {
-    zut_prepare_encoding(result.get_value<string>("encoding", ""), &zds.encoding_opts);
+    zut_prepare_encoding(context.get<string>("encoding", ""), &zds.encoding_opts);
   }
-  if (result.has("local-encoding"))
+  if (context.has("local-encoding"))
   {
-    const auto source_encoding = result.get_value<string>("local-encoding", "");
+    const auto source_encoding = context.get<string>("local-encoding", "");
     if (!source_encoding.empty() && source_encoding.size() < sizeof(zds.encoding_opts.source_codepage))
     {
       memcpy(zds.encoding_opts.source_codepage, source_encoding.data(), source_encoding.length() + 1);
     }
   }
 
-  if (result.has("etag"))
+  if (context.has("etag"))
   {
-    string etag_value = result.get_value<string>("etag", "");
+    string etag_value = context.get<string>("etag", "");
     if (!etag_value.empty())
     {
       strcpy(zds.etag, etag_value.c_str());
     }
   }
 
-  if (result.has("volser"))
+  if (context.has("volser"))
   {
-    string volser_value = result.get_value<string>("volser", "");
+    string volser_value = context.get<string>("volser", "");
     if (!volser_value.empty())
     {
       dds.push_back("alloc dd(output) da('" + dsn + "') shr vol(" + volser_value + ")");
@@ -487,8 +487,8 @@ int handle_data_set_write(const ParseResult &result)
     }
   }
 
-  bool has_pipe_path = result.has("pipe-path");
-  string pipe_path = result.get_value<string>("pipe-path", "");
+  bool has_pipe_path = context.has("pipe-path");
+  string pipe_path = context.get<string>("pipe-path", "");
   size_t content_len = 0;
 
   if (has_pipe_path && !pipe_path.empty())
@@ -531,47 +531,47 @@ int handle_data_set_write(const ParseResult &result)
 
   if (0 != rc)
   {
-    cerr << "Error: could not write to data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details: " << zds.diag.e_msg << endl;
+    context.error_stream() << "Error: could not write to data set: '" << dsn << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
-  if (result.get_value<bool>("etag-only", false))
+  if (context.get<bool>("etag-only", false))
   {
-    cout << "etag: " << zds.etag << endl;
+    context.output_stream() << "etag: " << zds.etag << endl;
     if (content_len > 0)
-      cout << "size: " << content_len << endl;
+      context.output_stream() << "size: " << content_len << endl;
   }
   else
   {
-    cout << "Wrote data to '" << dsn << "'" << endl;
+    context.output_stream() << "Wrote data to '" << dsn << "'" << endl;
   }
 
   return rc;
 }
 
-int handle_data_set_delete(const ParseResult &result)
+int handle_data_set_delete(InvocationContext &context)
 {
   int rc = 0;
-  string dsn = result.get_value<string>("dsn", "");
+  string dsn = context.get<string>("dsn", "");
   ZDS zds = {0};
   rc = zds_delete_dsn(&zds, dsn);
 
   if (0 != rc)
   {
-    cerr << "Error: could not delete data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details: " << zds.diag.e_msg << endl;
+    context.error_stream() << "Error: could not delete data set: '" << dsn << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
-  cout << "Data set '" << dsn << "' deleted" << endl;
+  context.output_stream() << "Data set '" << dsn << "' deleted" << endl;
 
   return rc;
 }
 
-int handle_data_set_restore(const ParseResult &result)
+int handle_data_set_restore(InvocationContext &context)
 {
   int rc = 0;
-  string dsn = result.get_value<string>("dsn", "");
+  string dsn = context.get<string>("dsn", "");
   ZDS zds = {0};
   string response;
   unsigned int code = 0;
@@ -588,15 +588,15 @@ int handle_data_set_restore(const ParseResult &result)
     return RTNCD_FAILURE;
   }
 
-  cout << "Data set '" << dsn << "' restored" << endl;
+  context.output_stream() << "Data set '" << dsn << "' restored" << endl;
 
   return rc;
 }
 
-int handle_data_set_compress(const ParseResult &result)
+int handle_data_set_compress(InvocationContext &context)
 {
   int rc = 0;
-  string dsn = result.get_value<string>("dsn", "");
+  string dsn = context.get<string>("dsn", "");
 
   transform(dsn.begin(), dsn.end(), dsn.begin(), ::toupper);
 
@@ -620,7 +620,7 @@ int handle_data_set_compress(const ParseResult &result)
 
   if (!is_pds)
   {
-    cerr << "Error: data set'" << dsn << "' is not a PDS'" << endl;
+    context.error_stream() << "Error: data set'" << dsn << "' is not a PDS'" << endl;
     return RTNCD_FAILURE;
   }
 
@@ -643,8 +643,8 @@ int handle_data_set_compress(const ParseResult &result)
   zds_write_to_dd(&zds, "sysin", "        COPY OUTDD=B,INDD=A");
   if (0 != rc)
   {
-    cerr << "Error: could not write to dd: '" << "sysin" << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details: " << zds.diag.e_msg << endl;
+    context.error_stream() << "Error: could not write to dd: '" << "sysin" << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
@@ -652,7 +652,7 @@ int handle_data_set_compress(const ParseResult &result)
   rc = zut_run("IEBCOPY");
   if (RTNCD_SUCCESS != rc)
   {
-    cerr << "Error: could error invoking IEBCOPY rc: '" << rc << "'" << endl;
+    context.error_stream() << "Error: could error invoking IEBCOPY rc: '" << rc << "'" << endl;
   }
 
   // read output from iebcopy
@@ -660,12 +660,12 @@ int handle_data_set_compress(const ParseResult &result)
   rc = zds_read_from_dd(&zds, "sysprint", output);
   if (0 != rc)
   {
-    cerr << "Error: could not read from dd: '" << "sysprint" << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details: " << zds.diag.e_msg << endl;
-    cerr << output << endl;
+    context.error_stream() << "Error: could not read from dd: '" << "sysprint" << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
+    context.error_stream() << output << endl;
     return RTNCD_FAILURE;
   }
-  cout << "Data set '" << dsn << "' compressed" << endl;
+  context.output_stream() << "Data set '" << dsn << "' compressed" << endl;
 
   // free dynalloc dds
   zut_free_dynalloc_dds(dds);
