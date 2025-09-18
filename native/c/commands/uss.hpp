@@ -10,17 +10,19 @@
  */
 
 #include "../parser.hpp"
+#include "../extend/plugin.hpp"
 
 namespace uss
 {
-int handle_uss_create_file(const parser::ParseResult &result);
-int handle_uss_create_dir(const parser::ParseResult &result);
-int handle_uss_list(const parser::ParseResult &result);
-int handle_uss_view(const parser::ParseResult &result);
-int handle_uss_write(const parser::ParseResult &result);
-int handle_uss_delete(const parser::ParseResult &result);
-int handle_uss_chmod(const parser::ParseResult &result);
-int handle_uss_chown(const parser::ParseResult &result);
-int handle_uss_chtag(const parser::ParseResult &result);
+using namespace plugin;
+int handle_uss_create_file(InvocationContext &result);
+int handle_uss_create_dir(InvocationContext &result);
+int handle_uss_list(InvocationContext &result);
+int handle_uss_view(InvocationContext &result);
+int handle_uss_write(InvocationContext &result);
+int handle_uss_delete(InvocationContext &result);
+int handle_uss_chmod(InvocationContext &result);
+int handle_uss_chown(InvocationContext &result);
+int handle_uss_chtag(InvocationContext &result);
 void register_commands(parser::Command &root_command);
 } // namespace uss

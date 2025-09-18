@@ -23,17 +23,17 @@ using namespace commands::common;
 namespace uss
 {
 
-int handle_uss_create_file(const ParseResult &result)
+int handle_uss_create_file(InvocationContext &context)
 {
   int rc = 0;
-  string file_path = result.get_value<std::string>("file-path", "");
+  string file_path = context.get<std::string>("file-path", "");
 
-  long long mode = result.get_value<long long>("mode", 0);
-  if (result.get_value<std::string>("mode", "").empty())
+  long long mode = context.get<long long>("mode", 0);
+  if (context.get<std::string>("mode", "").empty())
   {
     mode = 644;
   }
-  else if (mode == 0 && result.get_value<std::string>("mode", "") != "0")
+  else if (mode == 0 && context.get<std::string>("mode", "") != "0")
   {
     cerr << "Error: invalid mode provided.\nExamples of valid modes: 777, 0644" << endl;
     return RTNCD_FAILURE;
@@ -68,17 +68,17 @@ int handle_uss_create_file(const ParseResult &result)
   return rc;
 }
 
-int handle_uss_create_dir(const ParseResult &result)
+int handle_uss_create_dir(InvocationContext &context)
 {
   int rc = 0;
-  string file_path = result.get_value<std::string>("file-path", "");
+  string file_path = context.get<std::string>("file-path", "");
 
-  long long mode = result.get_value<long long>("mode", 0);
-  if (result.get_value<std::string>("mode", "").empty())
+  long long mode = context.get<long long>("mode", 0);
+  if (context.get<std::string>("mode", "").empty())
   {
     mode = 755;
   }
-  else if (mode == 0 && result.get_value<std::string>("mode", "") != "0")
+  else if (mode == 0 && context.get<std::string>("mode", "") != "0")
   {
     cerr << "Error: invalid mode provided.\nExamples of valid modes: 777, 0644" << endl;
     return RTNCD_FAILURE;
@@ -113,16 +113,16 @@ int handle_uss_create_dir(const ParseResult &result)
   return rc;
 }
 
-int handle_uss_list(const ParseResult &result)
+int handle_uss_list(InvocationContext &context)
 {
   int rc = 0;
-  string uss_file = result.get_value<std::string>("file-path", "");
+  string uss_file = context.get<std::string>("file-path", "");
 
   ListOptions list_options = {0};
-  list_options.all_files = result.get_value<bool>("all", false);
-  list_options.long_format = result.get_value<bool>("long", false);
+  list_options.all_files = context.get<bool>("all", false);
+  list_options.long_format = context.get<bool>("long", false);
 
-  const auto use_csv_format = result.get_value<bool>("response-format-csv", false);
+  const auto use_csv_format = context.get<bool>("response-format-csv", false);
 
   ZUSF zusf = {0};
   string response;
@@ -141,19 +141,19 @@ int handle_uss_list(const ParseResult &result)
   return rc;
 }
 
-int handle_uss_view(const ParseResult &result)
+int handle_uss_view(InvocationContext &context)
 {
   int rc = 0;
-  string uss_file = result.get_value<std::string>("file-path", "");
+  string uss_file = context.get<std::string>("file-path", "");
 
   ZUSF zusf = {0};
-  if (result.has("encoding"))
+  if (context.has("encoding"))
   {
-    zut_prepare_encoding(result.get_value<std::string>("encoding", ""), &zusf.encoding_opts);
+    zut_prepare_encoding(context.get<std::string>("encoding", ""), &zusf.encoding_opts);
   }
-  if (result.has("local-encoding"))
+  if (context.has("local-encoding"))
   {
-    const auto source_encoding = result.get_value<std::string>("local-encoding", "");
+    const auto source_encoding = context.get<std::string>("local-encoding", "");
     if (!source_encoding.empty() && source_encoding.size() < sizeof(zusf.encoding_opts.source_codepage))
     {
       memcpy(zusf.encoding_opts.source_codepage, source_encoding.data(), source_encoding.length() + 1);
@@ -167,15 +167,15 @@ int handle_uss_view(const ParseResult &result)
     return RTNCD_FAILURE;
   }
 
-  bool has_pipe_path = result.has("pipe-path");
-  string pipe_path = result.get_value<std::string>("pipe-path", "");
+  bool has_pipe_path = context.has("pipe-path");
+  string pipe_path = context.get<std::string>("pipe-path", "");
 
   if (has_pipe_path && !pipe_path.empty())
   {
     size_t content_len = 0;
     rc = zusf_read_from_uss_file_streamed(&zusf, uss_file, pipe_path, &content_len);
 
-    if (result.get_value<bool>("return-etag", false))
+    if (context.get<bool>("return-etag", false))
     {
       cout << "etag: " << zut_build_etag(file_stats.st_mtime, file_stats.st_size) << endl;
     }
@@ -194,14 +194,14 @@ int handle_uss_view(const ParseResult &result)
       return RTNCD_FAILURE;
     }
 
-    if (result.get_value<bool>("return-etag", false))
+    if (context.get<bool>("return-etag", false))
     {
       cout << "etag: " << zut_build_etag(file_stats.st_mtime, file_stats.st_size) << endl;
       cout << "data: ";
     }
 
-    bool has_encoding = result.has("encoding");
-    bool response_format_bytes = result.get_value<bool>("response-format-bytes", false);
+    bool has_encoding = context.has("encoding");
+    bool response_format_bytes = context.get<bool>("response-format-bytes", false);
 
     if (has_encoding && response_format_bytes)
     {
@@ -216,36 +216,36 @@ int handle_uss_view(const ParseResult &result)
   return rc;
 }
 
-int handle_uss_write(const ParseResult &result)
+int handle_uss_write(InvocationContext &context)
 {
   int rc = 0;
-  string file = result.get_value<std::string>("file-path", "");
+  string file = context.get<std::string>("file-path", "");
   ZUSF zusf = {0};
 
-  if (result.has("encoding"))
+  if (context.has("encoding"))
   {
-    zut_prepare_encoding(result.get_value<std::string>("encoding", ""), &zusf.encoding_opts);
+    zut_prepare_encoding(context.get<std::string>("encoding", ""), &zusf.encoding_opts);
   }
-  if (result.has("local-encoding"))
+  if (context.has("local-encoding"))
   {
-    const auto source_encoding = result.get_value<std::string>("local-encoding", "");
+    const auto source_encoding = context.get<std::string>("local-encoding", "");
     if (!source_encoding.empty() && source_encoding.size() < sizeof(zusf.encoding_opts.source_codepage))
     {
       memcpy(zusf.encoding_opts.source_codepage, source_encoding.data(), source_encoding.length() + 1);
     }
   }
 
-  if (result.has("etag"))
+  if (context.has("etag"))
   {
-    string etag_value = result.get_value<std::string>("etag", "");
+    string etag_value = context.get<std::string>("etag", "");
     if (!etag_value.empty())
     {
       strcpy(zusf.etag, etag_value.c_str());
     }
   }
 
-  bool has_pipe_path = result.has("pipe-path");
-  string pipe_path = result.get_value<std::string>("pipe-path", "");
+  bool has_pipe_path = context.has("pipe-path");
+  string pipe_path = context.get<std::string>("pipe-path", "");
   size_t content_len = 0;
 
   if (has_pipe_path && !pipe_path.empty())
@@ -287,7 +287,7 @@ int handle_uss_write(const ParseResult &result)
     return RTNCD_FAILURE;
   }
 
-  if (result.get_value<bool>("etag-only", false))
+  if (context.get<bool>("etag-only", false))
   {
     cout << "etag: " << zusf.etag << endl
          << "created: " << (zusf.created ? "true" : "false") << endl;
@@ -302,10 +302,10 @@ int handle_uss_write(const ParseResult &result)
   return rc;
 }
 
-int handle_uss_delete(const ParseResult &result)
+int handle_uss_delete(InvocationContext &context)
 {
-  string file_path = result.get_value<std::string>("file-path", "");
-  bool recursive = result.get_value<bool>("recursive", false);
+  string file_path = context.get<std::string>("file-path", "");
+  bool recursive = context.get<bool>("recursive", false);
 
   ZUSF zusf = {0};
   const auto rc = zusf_delete_uss_item(&zusf, file_path, recursive);
@@ -321,18 +321,18 @@ int handle_uss_delete(const ParseResult &result)
   return rc;
 }
 
-int handle_uss_chmod(const ParseResult &result)
+int handle_uss_chmod(InvocationContext &context)
 {
   int rc = 0;
-  long long mode = result.get_value<long long>("mode", 0);
-  if (mode == 0 && !result.get_value<std::string>("mode", "").empty())
+  long long mode = context.get<long long>("mode", 0);
+  if (mode == 0 && !context.get<std::string>("mode", "").empty())
   {
     cerr << "Error: invalid mode provided.\nExamples of valid modes: 777, 0644" << endl;
     return RTNCD_FAILURE;
   }
 
-  string file_path = result.get_value<std::string>("file-path", "");
-  bool recursive = result.get_value<bool>("recursive", false);
+  string file_path = context.get<std::string>("file-path", "");
+  bool recursive = context.get<bool>("recursive", false);
 
   // Convert mode from decimal to octal
   mode_t chmod_mode = 0;
@@ -363,11 +363,11 @@ int handle_uss_chmod(const ParseResult &result)
   return rc;
 }
 
-int handle_uss_chown(const ParseResult &result)
+int handle_uss_chown(InvocationContext &context)
 {
-  string path = result.get_value<std::string>("file-path", "");
-  string owner = result.get_value<std::string>("owner", "");
-  bool recursive = result.get_value<bool>("recursive", false);
+  string path = context.get<std::string>("file-path", "");
+  string owner = context.get<std::string>("owner", "");
+  bool recursive = context.get<bool>("recursive", false);
 
   ZUSF zusf = {0};
 
@@ -385,13 +385,13 @@ int handle_uss_chown(const ParseResult &result)
   return rc;
 }
 
-int handle_uss_chtag(const ParseResult &result)
+int handle_uss_chtag(InvocationContext &context)
 {
-  string path = result.get_value<std::string>("file-path", "");
-  string tag = result.get_value<std::string>("tag", "");
+  string path = context.get<std::string>("file-path", "");
+  string tag = context.get<std::string>("tag", "");
   if (tag.empty())
   {
-    tag = zut_int_to_string(result.get_value<long long>("tag", 0));
+    tag = zut_int_to_string(context.get<long long>("tag", 0));
   }
 
   if (tag.empty())
@@ -400,7 +400,7 @@ int handle_uss_chtag(const ParseResult &result)
     return RTNCD_FAILURE;
   }
 
-  bool recursive = result.get_value<bool>("recursive", false);
+  bool recursive = context.get<bool>("recursive", false);
 
   ZUSF zusf = {0};
   const auto rc = zusf_chtag_uss_file_or_dir(&zusf, path, tag, recursive);
