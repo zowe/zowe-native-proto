@@ -222,4 +222,18 @@ int zut_debug_message(const char *message);
  */
 bool zut_string_compare_c(const std::string &a, const std::string &b);
 
+/**
+ * @brief Loop through a list of dynamic allocation commands and call BPXWDYN for each one
+ * @param list List of dynamic allocation commands
+ * @return Return code (0 for success, non-zero for error)
+ */
+int zut_loop_dynalloc(std::vector<std::string> &list);
+
+/**
+ * @brief Free a list of dynamic allocation commands
+ * @param list List of dynamic allocation commands
+ * @return Return code (0 for success, non-zero for error)
+ */
+int zut_free_dynalloc_dds(std::vector<std::string> &list);
+
 #endif // ZUT_HPP

@@ -27,7 +27,7 @@
 #include <string>
 #include <vector>
 #if defined(__MVS__)
-#  include <xtr1common>
+#include <xtr1common>
 #endif
 
 namespace parser
@@ -922,9 +922,6 @@ public:
   }
 };
 
-template <typename T>
-using ArgGetter = plugin::ArgGetter<T>;
-
 // stores the outcome of the parsing process
 class ParseResult
 {
@@ -966,7 +963,7 @@ public:
     std::map<std::string, ArgValue>::const_iterator it = m_values.find(name);
     if (it == m_values.end())
       return nullptr;
-    return ArgGetter<T>::get(it->second);
+    return plugin::ArgGetter<T>::get(it->second);
   }
 
   // get the value, or a default if missing/wrong type
@@ -985,7 +982,7 @@ public:
       {
         if (defs[i].name == name)
         {
-          const T *def_ptr = ArgGetter<T>::get(defs[i].default_value);
+          const T *def_ptr = plugin::ArgGetter<T>::get(defs[i].default_value);
           if (def_ptr)
             return *def_ptr;
           break; // found the arg def, no need to look further
@@ -1022,7 +1019,7 @@ inline bool ParseResult::get_value<bool>(const std::string &name,
     {
       if (defs[i].name == name)
       {
-        const bool *def_ptr = ArgGetter<bool>::get(defs[i].default_value);
+        const bool *def_ptr = plugin::ArgGetter<bool>::get(defs[i].default_value);
         if (def_ptr)
           return *def_ptr;
         break; // found the arg def, no need to look further
