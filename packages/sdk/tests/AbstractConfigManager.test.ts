@@ -427,7 +427,7 @@ describe("AbstractConfigManager", async () => {
     describe("promptForDeployDirectory", () => {
         const defaultServerPath = "/faketmp/fakeserver";
         it("returns default path when user selects it", async () => {
-            vi.spyOn(testManager, "showCustomMenu").mockResolvedValue({ label: defaultServerPath });
+            vi.spyOn(testManager, "showMenu").mockResolvedValue(defaultServerPath);
 
             const result = await testManager.promptForDeployDirectory(defaultServerPath);
 
@@ -435,9 +435,7 @@ describe("AbstractConfigManager", async () => {
         });
 
         it("prompts for deploy directory and returns user input", async () => {
-            vi.spyOn(testManager, "showCustomMenu").mockResolvedValue({
-                label: "$(plus) Add New Deploy Directory",
-            });
+            vi.spyOn(testManager, "showMenu").mockResolvedValue("$(plus) Add New Deploy Directory");
 
             vi.spyOn(testManager, "showInputBox").mockResolvedValue("/custom/path");
 
@@ -447,9 +445,7 @@ describe("AbstractConfigManager", async () => {
         });
 
         it("falls back to default path when user cancels input", async () => {
-            vi.spyOn(testManager, "showCustomMenu").mockResolvedValue({
-                label: "$(plus) Add New Deploy Directory",
-            });
+            vi.spyOn(testManager, "showMenu").mockResolvedValue("$(plus) Add New Deploy Directory");
 
             vi.spyOn(testManager, "showInputBox").mockResolvedValue(undefined);
 
