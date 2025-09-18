@@ -31,6 +31,10 @@ export interface ListFilesRequest extends common.CommandRequest, common.ListOpti
    * Whether to return the long format with all attributes
    */
   long?: boolean;
+  /**
+   * Depth of subdirectories to list
+   */
+  depth?: number /* int */;
 }
 export interface ReadFileRequest extends common.CommandRequest {
   command: "readFile";

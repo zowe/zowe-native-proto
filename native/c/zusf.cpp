@@ -65,15 +65,15 @@ string zusf_format_ls_time(time_t mtime, bool use_csv_format)
 
   if (use_csv_format)
   {
-    // CSV format: ISO time in UTC (2024-01-31T05:30:00)
+    // CSV format: ISO time in UTC (2024-01-31T05:30:00Z)
     struct tm *tm_info = gmtime(&mtime);
     if (tm_info != nullptr)
     {
-      strftime(time_buf, sizeof(time_buf), "%Y-%m-%dT%H:%M:%S", tm_info);
+      strftime(time_buf, sizeof(time_buf), "%Y-%m-%dT%H:%M:%SZ", tm_info);
     }
     else
     {
-      strcpy(time_buf, "1970-01-01T00:00:00"); // Fallback if time conversion fails
+      strcpy(time_buf, "1970-01-01T00:00:00Z"); // Fallback if time conversion fails
     }
   }
   else
@@ -962,12 +962,82 @@ string zusf_format_file_entry(ZUSF *zusf, const struct stat &file_stats, const s
 }
 
 /**
+ * Recursive helper function to collect directory entries with depth control.
+ *
+ * @param zusf pointer to a ZUSF object
+ * @param dir_path path to the directory
+ * @param entry_names reference to vector where entry names will be stored
+ * @param options listing options (all_files, long_format, depth)
+ * @param current_depth current recursion depth
+ *
+ * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
+ */
+static int zusf_collect_directory_entries_recursive(ZUSF *zusf, const string &dir_path, vector<string> &entry_names, const ListOptions &options, int current_depth = 0)
+{
+  DIR *dir;
+  if ((dir = opendir(dir_path.c_str())) == nullptr)
+  {
+    return RTNCD_FAILURE;
+  }
+
+  // Collect all directory entries first
+  vector<string> current_entries;
+  struct dirent *entry;
+  while ((entry = readdir(dir)) != nullptr)
+  {
+    if ((strcmp(entry->d_name, ".") != 0) && (strcmp(entry->d_name, "..") != 0))
+    {
+      string name = entry->d_name;
+      // Skip hidden files if not requested
+      if (name.at(0) == '.' && !options.all_files)
+      {
+        continue;
+      }
+      current_entries.push_back(name);
+    }
+  }
+  closedir(dir);
+
+  // Sort entries alphabetically using C string comparison
+  sort(current_entries.begin(), current_entries.end(), zut_string_compare_c);
+
+  // Add current level entries to the result
+  for (vector<string>::const_iterator it = current_entries.begin(); it != current_entries.end(); ++it)
+  {
+    const string &name = *it;
+    entry_names.push_back(name);
+
+    // If we haven't reached max depth, recurse into subdirectories
+    if (options.max_depth > 0 && current_depth < options.max_depth)
+    {
+      string child_path = dir_path[dir_path.length() - 1] == '/' ? dir_path + name : dir_path + "/" + name;
+      struct stat child_stats;
+      if (stat(child_path.c_str(), &child_stats) == 0 && S_ISDIR(child_stats.st_mode))
+      {
+        vector<string> subdir_entries;
+        if (zusf_collect_directory_entries_recursive(zusf, child_path, subdir_entries, options, current_depth + 1) == RTNCD_SUCCESS)
+        {
+          // Add subdirectory entries with path prefix
+          for (vector<string>::const_iterator sub_it = subdir_entries.begin(); sub_it != subdir_entries.end(); ++sub_it)
+          {
+            const string &subentry = *sub_it;
+            entry_names.push_back(name + "/" + subentry);
+          }
+        }
+      }
+    }
+  }
+
+  return RTNCD_SUCCESS;
+}
+
+/**
  * Lists the USS file path.
  *
  * @param zusf pointer to a ZUSF object
  * @param file name of the USS file or directory
  * @param response reference to a string where the read data will be stored
- * @param options listing options (all_files, long_format)
+ * @param options listing options (all_files, long_format, max_depth)
  * @param use_csv_format whether to use CSV format or ls-style format
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
@@ -997,33 +1067,13 @@ int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response, ListOptio
     return RTNCD_FAILURE;
   }
 
-  DIR *dir;
-  if ((dir = opendir(file.c_str())) == nullptr)
+  // Collect all directory entries (recursively if depth > 0)
+  vector<string> entry_names;
+  if (zusf_collect_directory_entries_recursive(zusf, file, entry_names, options) != RTNCD_SUCCESS)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open directory '%s'", file.c_str());
     return RTNCD_FAILURE;
   }
-
-  // Collect all directory entries first
-  vector<string> entry_names;
-  struct dirent *entry;
-  while ((entry = readdir(dir)) != nullptr)
-  {
-    if ((strcmp(entry->d_name, ".") != 0) && (strcmp(entry->d_name, "..") != 0))
-    {
-      string name = entry->d_name;
-      // Skip hidden files if not requested
-      if (name.at(0) == '.' && !options.all_files)
-      {
-        continue;
-      }
-      entry_names.push_back(name);
-    }
-  }
-  closedir(dir);
-
-  // Sort entries alphabetically using C string comparison
-  sort(entry_names.begin(), entry_names.end(), zut_string_compare_c);
 
   // Process sorted entries
   response.clear();
