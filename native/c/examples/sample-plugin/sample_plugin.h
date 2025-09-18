@@ -17,7 +17,7 @@
 class BasicCommandRegistry : public plugin::CommandProviderImpl
 {
 public:
-  void registerCommands(CommandRegistrationContext &context) override;
+  void registerCommands(CommandRegistrationContext &context);
 };
 
 class BasicCommandProvider : public Factory<plugin::CommandProviderImpl>
