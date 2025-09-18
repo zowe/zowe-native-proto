@@ -2,11 +2,11 @@
 #define PLUGIN_HPP
 
 #include "../factory.hpp"
+#include "io.hpp"
 
 namespace parser
 {
 class Command;
-class ParseResult;
 } // namespace parser
 
 namespace plugin
@@ -77,7 +77,7 @@ public:
     };
 
     typedef void *CommandHandle;
-    typedef int (*CommandHandler)(const parser::ParseResult &result);
+    typedef int (*CommandHandler)(InvocationContext &context);
 
     virtual ~CommandRegistrationContext()
     {

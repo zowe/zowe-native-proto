@@ -1,6 +1,6 @@
 #include "sample_plugin.h"
 
-int hello_command(const parser::ParseResult &result)
+int hello_command(plugin::InvocationContext &context)
 {
 }
 

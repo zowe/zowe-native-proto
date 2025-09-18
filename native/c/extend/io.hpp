@@ -1,22 +1,26 @@
 #ifndef EXTEND_IO_HPP
 #define EXTEND_IO_HPP
 
+#include <cstring>
 #include <iostream>
 #include <ostream>
+#include <stdexcept>
 #include <string>
-#include <unordered_map>
+#include <utility>
+#include <vector>
 
-typedef union
-{
-  bool b;
-  long long i;
-  double d;
-  std::string *s;
-  std::vector<std::string> *sv;
-} ArgTypes;
+#if defined(__IBMTR1_CPP__) && !defined(__CLANG__)
+#  include <tr1/unordered_map>
+#else
+#  include <unordered_map>
+#endif
 
-struct Argument
+namespace plugin
 {
+
+class Argument
+{
+public:
   enum ValueKind
   {
     ValueKind_None,
@@ -27,57 +31,54 @@ struct Argument
     ValueKind_List
   };
 
-  ValueKind kind;
-  ArgTypes value;
-
-  // default constructor
   Argument()
-      : kind(ValueKind_None)
+      : m_kind(ValueKind_None)
   {
-    // initialize one member to avoid undefined state, though not strictly
-    // necessary for none
-    value.i = 0;
+    m_value.i = 0;
   }
 
   explicit Argument(bool val)
-      : kind(ValueKind_Bool)
+      : m_kind(ValueKind_Bool)
   {
-    value.b = val;
-  }
-  explicit Argument(long long val)
-      : kind(ValueKind_Int)
-  {
-    value.i = val;
-  }
-  explicit Argument(double val)
-      : kind(ValueKind_Double)
-  {
-    value.d = val;
-  }
-  // note: takes ownership of new string
-  explicit Argument(const std::string &val)
-      : kind(ValueKind_String)
-  {
-    value.s = new std::string(val);
-  }
-  // note: takes ownership of new vector
-  explicit Argument(const std::vector<std::string> &val)
-      : kind(ValueKind_List)
-  {
-    value.sv = new std::vector<std::string>(val);
+    m_value.b = val;
   }
 
-  // cleanup pointer members
-  ~Argument()
+  explicit Argument(long long val)
+      : m_kind(ValueKind_Int)
   {
-    clear();
+    m_value.i = val;
+  }
+
+  explicit Argument(double val)
+      : m_kind(ValueKind_Double)
+  {
+    m_value.d = val;
+  }
+
+  explicit Argument(const std::string &val)
+      : m_kind(ValueKind_String)
+  {
+    m_value.s = new std::string(val);
+  }
+
+  explicit Argument(const char *val)
+      : m_kind(ValueKind_String)
+  {
+    m_value.s = val ? new std::string(val) : new std::string();
+  }
+
+  explicit Argument(const std::vector<std::string> &val)
+      : m_kind(ValueKind_List)
+  {
+    m_value.sv = new std::vector<std::string>(val);
   }
 
   Argument(const Argument &other)
-      : kind(ValueKind_None)
+      : m_kind(ValueKind_None)
   {
     copy_from(other);
   }
+
   Argument &operator=(const Argument &other)
   {
     if (this != &other)
@@ -88,164 +89,132 @@ struct Argument
     return *this;
   }
 
-  // helper to clear existing data (delete pointers)
-  void clear()
+  Argument(Argument &&other) noexcept
+      : m_kind(ValueKind_None)
   {
-    if (kind == ValueKind_String)
-    {
-      delete value.s;
-      value.s = nullptr;
-    }
-    else if (kind == ValueKind_List)
-    {
-      delete value.sv;
-      value.sv = nullptr;
-    }
-    kind = ValueKind_None;
-    value.i = 0;
+    move_from(other);
   }
 
-  // helper for copy construction/assignment
-  void copy_from(const Argument &other)
+  Argument &operator=(Argument &&other) noexcept
   {
-    kind = other.kind;
-    switch (kind)
+    if (this != &other)
     {
-    case ValueKind_None:
-      value.i = 0;
-      break;
-    case ValueKind_Bool:
-      value.b = other.value.b;
-      break;
-    case ValueKind_Int:
-      value.i = other.value.i;
-      break;
-    case ValueKind_Double:
-      value.d = other.value.d;
-      break;
-    case ValueKind_String:
-      value.s = other.value.s ? new std::string(*other.value.s) : nullptr;
-      break;
-    case ValueKind_List:
-      value.sv = other.value.sv ? new std::vector<std::string>(*other.value.sv)
-                                : nullptr;
-      break;
+      clear();
+      move_from(other);
     }
+    return *this;
   }
 
-  // type checkers
+  ~Argument()
+  {
+    clear();
+  }
+
+  ValueKind get_kind() const
+  {
+    return m_kind;
+  }
+
   bool is_none() const
   {
-    return kind == ValueKind_None;
-  }
-  bool is_bool() const
-  {
-    return kind == ValueKind_Bool;
-  }
-  bool is_int() const
-  {
-    return kind == ValueKind_Int;
-  }
-  bool is_double() const
-  {
-    return kind == ValueKind_Double;
-  }
-  bool is_string() const
-  {
-    return kind == ValueKind_String;
-  }
-  bool is_string_vector() const
-  {
-    return kind == ValueKind_List;
+    return m_kind == ValueKind_None;
   }
 
-  // safe getters (returns a pointer; nullptr if wrong type/unset)
+  bool is_bool() const
+  {
+    return m_kind == ValueKind_Bool;
+  }
+
+  bool is_int() const
+  {
+    return m_kind == ValueKind_Int;
+  }
+
+  bool is_double() const
+  {
+    return m_kind == ValueKind_Double;
+  }
+
+  bool is_string() const
+  {
+    return m_kind == ValueKind_String;
+  }
+
+  bool is_string_vector() const
+  {
+    return m_kind == ValueKind_List;
+  }
+
   const bool *get_bool() const
   {
-    return kind == ValueKind_Bool ? &value.b : nullptr;
+    return m_kind == ValueKind_Bool ? &m_value.b : nullptr;
   }
+
   const long long *get_int() const
   {
-    return kind == ValueKind_Int ? &value.i : nullptr;
+    return m_kind == ValueKind_Int ? &m_value.i : nullptr;
   }
+
   const double *get_double() const
   {
-    return kind == ValueKind_Double ? &value.d : nullptr;
+    return m_kind == ValueKind_Double ? &m_value.d : nullptr;
   }
+
   const std::string *get_string() const
   {
-    return kind == ValueKind_String ? value.s : nullptr;
+    return m_kind == ValueKind_String ? m_value.s : nullptr;
   }
+
   const std::vector<std::string> *get_string_vector() const
   {
-    return kind == ValueKind_List ? value.sv : nullptr;
+    return m_kind == ValueKind_List ? m_value.sv : nullptr;
   }
+
+  std::string *get_string_mutable()
+  {
+    return m_kind == ValueKind_String ? m_value.s : nullptr;
+  }
+
+  std::vector<std::string> *get_string_vector_mutable()
+  {
+    return m_kind == ValueKind_List ? m_value.sv : nullptr;
+  }
+
   std::string get_string_value(const std::string &default_val = "") const
   {
     const std::string *ptr = get_string();
     return ptr ? *ptr : default_val;
   }
 
-  template <typename T>
-  T get(const std::string &key);
-
-  template <>
-  bool get(const std::string &key)
-  {
-    return *get_bool();
-  }
-
-  template <>
-  long long get(const std::string &key)
-  {
-    return *get_int();
-  }
-
-  template <>
-  double get(const std::string &key)
-  {
-    return *get_double();
-  }
-
-  template <>
-  std::string get(const std::string &key)
-  {
-    return *get_string();
-  }
-
-  template <>
-  std::vector<std::string> get(const std::string &key)
-  {
-    return *get_string_vector();
-  }
-
   void print(std::ostream &os) const
   {
-    switch (kind)
+    switch (m_kind)
     {
     case ValueKind_None:
       os << "<none>";
       break;
     case ValueKind_Bool:
-      os << (value.b ? "true" : "false");
+      os << (m_value.b ? "true" : "false");
       break;
     case ValueKind_Int:
-      os << value.i;
+      os << m_value.i;
       break;
     case ValueKind_Double:
-      os << value.d;
+      os << m_value.d;
       break;
     case ValueKind_String:
-      os << (value.s ? *value.s : "<invalid_string>");
+      os << (m_value.s ? *m_value.s : "<invalid_string>");
       break;
     case ValueKind_List:
     {
       os << "[";
-      if (value.sv)
+      if (m_value.sv)
       {
-        for (size_t j = 0; j < value.sv->size(); ++j)
+        for (size_t j = 0; j < m_value.sv->size(); ++j)
         {
-          os << (*value.sv)[j] << (j == value.sv->size() - 1 ? "" : ", ");
+          os << (*m_value.sv)[j];
+          if (j + 1 < m_value.sv->size())
+            os << ", ";
         }
       }
       os << "]";
@@ -253,12 +222,69 @@ struct Argument
     }
     }
   }
-};
 
-template <typename>
-struct dependent_false
-{
-  static const bool value = false;
+private:
+  void clear()
+  {
+    if (m_kind == ValueKind_String)
+    {
+      delete m_value.s;
+      m_value.s = nullptr;
+    }
+    else if (m_kind == ValueKind_List)
+    {
+      delete m_value.sv;
+      m_value.sv = nullptr;
+    }
+    m_kind = ValueKind_None;
+    m_value.i = 0;
+  }
+
+  void copy_from(const Argument &other)
+  {
+    m_kind = other.m_kind;
+    switch (other.m_kind)
+    {
+    case ValueKind_None:
+      m_value.i = 0;
+      break;
+    case ValueKind_Bool:
+      m_value.b = other.m_value.b;
+      break;
+    case ValueKind_Int:
+      m_value.i = other.m_value.i;
+      break;
+    case ValueKind_Double:
+      m_value.d = other.m_value.d;
+      break;
+    case ValueKind_String:
+      m_value.s = other.m_value.s ? new std::string(*other.m_value.s) : nullptr;
+      break;
+    case ValueKind_List:
+      m_value.sv = other.m_value.sv
+                       ? new std::vector<std::string>(*other.m_value.sv)
+                       : nullptr;
+      break;
+    }
+  }
+
+  void move_from(Argument &other)
+  {
+    m_kind = other.m_kind;
+    m_value = other.m_value;
+    other.m_kind = ValueKind_None;
+    other.m_value.i = 0;
+  }
+
+  ValueKind m_kind;
+  union
+  {
+    bool b;
+    long long i;
+    double d;
+    std::string *s;
+    std::vector<std::string> *sv;
+  } m_value;
 };
 
 // Helper struct for type-safe argument retrieval
@@ -267,11 +293,10 @@ struct ArgGetter
 {
   static const T *get(const Argument &)
   {
-    static_assert(dependent_false<T>::value,
-                  "ArgGetter is not specialized for this type");
     return nullptr;
   }
 };
+
 template <>
 struct ArgGetter<bool>
 {
@@ -280,6 +305,7 @@ struct ArgGetter<bool>
     return v.get_bool();
   }
 };
+
 template <>
 struct ArgGetter<long long>
 {
@@ -288,6 +314,7 @@ struct ArgGetter<long long>
     return v.get_int();
   }
 };
+
 template <>
 struct ArgGetter<double>
 {
@@ -296,6 +323,7 @@ struct ArgGetter<double>
     return v.get_double();
   }
 };
+
 template <>
 struct ArgGetter<std::string>
 {
@@ -304,6 +332,7 @@ struct ArgGetter<std::string>
     return v.get_string();
   }
 };
+
 template <>
 struct ArgGetter<std::vector<std::string>>
 {
@@ -314,63 +343,70 @@ struct ArgGetter<std::vector<std::string>>
 };
 
 #if defined(__IBMTR1_CPP__) && !defined(__CLANG__)
-typedef std::tr1::unordered_map<std::string, ArgValue> arg_map;
+typedef std::tr1::unordered_map<std::string, Argument> ArgumentMap;
 #else
-typedef std::unordered_map<std::string, Argument> arg_map;
+typedef std::unordered_map<std::string, Argument> ArgumentMap;
 #endif
 
 class Io
 {
-  class Impl;
-  Impl *m_impl;
-
-  arg_map m_args;
-  arg_map m_output;
-
-  std::ostream *m_output_stream;
-  std::ostream *m_error_stream;
-
 public:
-  Io(arg_map &args, std::ostream *out = nullptr, std::ostream *err = nullptr);
+  Io() = default;
 
-  template <typename T>
-  const T get_as(const std::string &key)
+  Io(const ArgumentMap &args,
+     std::ostream *out_stream = nullptr,
+     std::ostream *err_stream = nullptr)
+      : m_args(args), m_output_stream(out_stream), m_error_stream(err_stream)
   {
-    const auto ptr = ArgGetter<T>::get(m_args.at(key));
-    if (ptr)
-    {
-      return *ptr;
-    }
+  }
+
+  bool has(const std::string &key) const
+  {
+    return m_args.find(key) != m_args.end();
+  }
+
+  const Argument *find(const std::string &key) const
+  {
+    ArgumentMap::const_iterator it = m_args.find(key);
+    return it != m_args.end() ? &it->second : nullptr;
   }
 
   template <typename T>
-  const T *has(const std::string &key)
+  const T *get_if(const std::string &key) const
   {
-    if (m_args.find(key) != m_args.end())
-    {
-      return m_args[key];
-    }
-
-    return nullptr;
+    ArgumentMap::const_iterator it = m_args.find(key);
+    if (it == m_args.end())
+      return nullptr;
+    return ArgGetter<T>::get(it->second);
   }
 
-  void print(const char *s)
+  template <typename T>
+  T get(const std::string &key) const
   {
-    if (m_output_stream && s != nullptr)
+    const T *ptr = get_if<T>(key);
+    if (!ptr)
     {
-      m_output_stream->write(s, strlen(s));
+      throw std::runtime_error("argument '" + key + "' missing or wrong type");
+    }
+    return *ptr;
+  }
+
+  template <typename T>
+  T get_or(const std::string &key, const T &default_value) const
+  {
+    const T *ptr = get_if<T>(key);
+    return ptr ? *ptr : default_value;
+  }
+
+  void print(const char *s) const
+  {
+    if (m_output_stream && s)
+    {
+      m_output_stream->write(s, std::strlen(s));
     }
   }
 
-  void err(const char *e)
-  {
-    if (m_error_stream && e != nullptr)
-    {
-      m_error_stream->write(e, strlen(e));
-    }
-  }
-
-  void println(const char *s)
+  void println(const char *s) const
   {
     print(s);
     if (m_output_stream)
@@ -379,7 +415,15 @@ public:
     }
   }
 
-  void errln(const char *e)
+  void err(const char *e) const
+  {
+    if (m_error_stream && e)
+    {
+      m_error_stream->write(e, std::strlen(e));
+    }
+  }
+
+  void errln(const char *e) const
   {
     err(e);
     if (m_error_stream)
@@ -389,15 +433,74 @@ public:
   }
 
   template <typename T>
-  void set_output(const std::string &key, const T value)
+  void set_output(const std::string &key, const T &value)
   {
-    m_output.insert({key, Argument(value)});
+    m_output[key] = Argument(value);
   }
 
-  void set_output(const arg_map &output)
+  void set_output(const ArgumentMap &output)
   {
     m_output = output;
   }
+
+  const ArgumentMap &arguments() const
+  {
+    return m_args;
+  }
+
+  const ArgumentMap &output() const
+  {
+    return m_output;
+  }
+
+  std::ostream *output_stream() const
+  {
+    return m_output_stream;
+  }
+
+  std::ostream *error_stream() const
+  {
+    return m_error_stream;
+  }
+
+private:
+  ArgumentMap m_args;
+  ArgumentMap m_output;
+  std::ostream *m_output_stream = nullptr;
+  std::ostream *m_error_stream = nullptr;
 };
+
+class InvocationContext
+{
+public:
+  InvocationContext(std::string command_path,
+                    const ArgumentMap &args,
+                    std::ostream *out_stream = nullptr,
+                    std::ostream *err_stream = nullptr)
+      : m_command_path(std::move(command_path)), m_io(args, out_stream, err_stream)
+  {
+  }
+
+  Io &io()
+  {
+    return m_io;
+  }
+
+  const Io &io() const
+  {
+    return m_io;
+  }
+
+  const std::string &command_path() const
+  {
+    return m_command_path;
+  }
+
+private:
+  std::string m_command_path;
+  Io m_io;
+};
+
+} // namespace plugin
 
 #endif
