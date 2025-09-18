@@ -10,9 +10,11 @@
  */
 
 #include "../parser.hpp"
+#include "../extend/plugin.hpp"
 
 namespace tso
 {
-int handle_tso_issue(const parser::ParseResult &result);
+using namespace plugin;
+int handle_tso_issue(const InvocationContext &result);
 void register_commands(parser::Command &root_command);
 } // namespace tso

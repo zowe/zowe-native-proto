@@ -17,10 +17,10 @@ using namespace std;
 
 namespace tso
 {
-int handle_tso_issue(const ParseResult &result)
+int handle_tso_issue(InvocationContext &result)
 {
   int rc = 0;
-  string command = result.get_value<std::string>("command", "");
+  string command = result.get<std::string>("command", "");
   string response;
 
   rc = ztso_issue(command, response);
