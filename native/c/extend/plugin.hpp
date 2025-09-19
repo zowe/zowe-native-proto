@@ -139,11 +139,14 @@ public:
   // Register commands from all providers, attaching them under the supplied root command.
   void registerCommands(parser::Command &rootCommand);
 
+  void loadPlugins();
+
   PluginManager(const PluginManager &) = delete;
   PluginManager &operator=(const PluginManager &) = delete;
 
 private:
   std::vector<CommandProvider *> m_commandProviders;
+  std::vector<void *> m_plugins;
 };
 
 inline PluginManager::~PluginManager()
