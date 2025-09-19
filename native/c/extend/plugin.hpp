@@ -12,6 +12,7 @@
 #ifndef PLUGIN_HPP
 #define PLUGIN_HPP
 
+#include <dlfcn.h>
 #include <vector>
 
 #include "../factory.hpp"
@@ -86,7 +87,6 @@ public:
       ArgumentType_Flag = 0,
       ArgumentType_Single = 1,
       ArgumentType_Multiple = 2,
-      ArgumentType_Positional = 3
     };
 
     typedef void *CommandHandle;
@@ -151,11 +151,17 @@ private:
 
 inline PluginManager::~PluginManager()
 {
-  for (std::vector<CommandProvider *>::iterator it =
+  for (auto it =
            m_commandProviders.begin();
        it != m_commandProviders.end(); ++it)
   {
     delete *it;
+  }
+
+  for (auto it = m_plugins.begin(); it != m_plugins.end(); ++it)
+  {
+    dlclose(*it);
+    *it = nullptr;
   }
 }
 
