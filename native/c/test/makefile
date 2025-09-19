@@ -50,6 +50,7 @@ MACLIBS= -I../../asmmac \
  -ICBC.SCCNSAM
 
 MTL_HEADERS=-I/usr/include/metal\
+-I/usr/include\
 -I../\
 -I../chdsect
 
@@ -167,7 +168,9 @@ build-out/zusf.test.o \
 build-out/zusf.o \
 build-out/zshmem.o \
 build-out/zlogger.test.o \
-build-out/zlogger_metal.o
+build-out/zlogger_metal.o \
+build-out/zjson.test.o \
+build-out/zjsonm.o
 	$(OCXX) $(CXXLANG_BND_FLAGS) -o $@ $^ > $*.bind.lst
 
 build-out/zut.o:
@@ -270,6 +273,15 @@ build-out/zlogger_metal.s: ../zlogger_metal.c
 	$(CC) $(MTL_FLAGS64) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
 
 build-out/zlogger_metal.o: build-out/zlogger_metal.s
+	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
+
+build-out/zjson.test.o: zjson.test.cpp
+	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
+
+build-out/zjsonm.s: ../zjsonm.c
+	$(CC) $(MTL_FLAGS64) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
+
+build-out/zjsonm.o: build-out/zjsonm.s
 	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
 # build-out/testrcvy.s: testrcvy.c
