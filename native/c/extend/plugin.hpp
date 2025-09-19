@@ -12,6 +12,8 @@
 #ifndef PLUGIN_HPP
 #define PLUGIN_HPP
 
+#include <vector>
+
 #include "../factory.hpp"
 #include "io.hpp"
 
@@ -128,7 +130,7 @@ typedef Factory<CommandProviderImpl> CommandProvider;
 class PluginManager
 {
 public:
-  PluginManager();
+  PluginManager() = default;
   ~PluginManager();
 
   // Takes ownership of the provider pointer; it will be deleted with the manager.
@@ -141,9 +143,24 @@ public:
   PluginManager &operator=(const PluginManager &) = delete;
 
 private:
-  class Impl;
-  Impl *m_impl;
+  std::vector<CommandProvider *> m_commandProviders;
 };
+
+inline PluginManager::~PluginManager()
+{
+  for (std::vector<CommandProvider *>::iterator it =
+           m_commandProviders.begin();
+       it != m_commandProviders.end(); ++it)
+  {
+    delete *it;
+  }
+}
+
+inline void PluginManager::registerCommandProvider(CommandProvider *provider)
+{
+  // Take ownership of the pointer for the plugin manager lifetime.
+  m_commandProviders.push_back(provider);
+}
 } // namespace plugin
 
 #endif

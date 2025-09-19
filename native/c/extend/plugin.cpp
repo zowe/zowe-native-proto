@@ -220,44 +220,13 @@ private:
   std::vector<CommandRecord *> m_records;
 };
 
-class PluginManager::Impl
-{
-public:
-  std::vector<CommandProvider *> commandProviders;
-
-  ~Impl()
-  {
-    for (std::vector<CommandProvider *>::iterator it = commandProviders.begin();
-         it != commandProviders.end(); ++it)
-    {
-      delete *it;
-    }
-  }
-};
-
-PluginManager::PluginManager()
-    : m_impl(new PluginManager::Impl())
-{
-}
-
-PluginManager::~PluginManager()
-{
-  delete m_impl;
-}
-
-void PluginManager::registerCommandProvider(CommandProvider *provider)
-{
-  // Take ownership of the pointer for the plugin manager lifetime.
-  m_impl->commandProviders.push_back(provider);
-}
-
 void PluginManager::registerCommands(parser::Command &rootCommand)
 {
   RegistrationContextImpl context(rootCommand);
 
   for (std::vector<CommandProvider *>::iterator it =
-           m_impl->commandProviders.begin();
-       it != m_impl->commandProviders.end(); ++it)
+           m_commandProviders.begin();
+       it != m_commandProviders.end(); ++it)
   {
     CommandProvider *factory = *it;
     if (!factory)
