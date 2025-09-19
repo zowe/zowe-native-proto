@@ -643,7 +643,7 @@ template <>
 struct Serializable<bool>
 {
   static constexpr bool value = true;
-  static Value serialize(const bool &obj)
+  static Value serialize(const bool &obj) noexcept
   {
     return Value(obj);
   }
@@ -670,7 +670,7 @@ template <>
 struct Serializable<int>
 {
   static constexpr bool value = true;
-  static Value serialize(const int &obj)
+  static Value serialize(const int &obj) noexcept
   {
     return Value(obj);
   }
@@ -697,7 +697,7 @@ template <>
 struct Serializable<double>
 {
   static constexpr bool value = true;
-  static Value serialize(const double &obj)
+  static Value serialize(const double &obj) noexcept
   {
     return Value(obj);
   }
@@ -724,7 +724,7 @@ template <>
 struct Serializable<std::string>
 {
   static constexpr bool value = true;
-  static Value serialize(const std::string &obj)
+  static Value serialize(const std::string &obj) noexcept
   {
     return Value(obj);
   }
@@ -1688,8 +1688,9 @@ inline Value parse_json_string(const std::string &json_str)
 #define ZJSON_FIELD(StructType, field_name) \
   zjson::Field<StructType, decltype(StructType::field_name)>(#field_name, &StructType::field_name)
 
-// Auto-generated field creation (simplified version)
-#define ZJSON_FIELD_AUTO(StructType, field) ZJSON_FIELD(StructType, field)
+// Auto-generated field creation (with inline expansion)
+#define ZJSON_FIELD_AUTO(StructType, field) \
+  zjson::Field<StructType, decltype(StructType::field)>(#field, &StructType::field)
 
 // Transform macros for field lists - these create Field objects from field names
 #define ZJSON_TRANSFORM_FIELDS_1(StructType, f1) \
@@ -1805,61 +1806,62 @@ inline Value parse_json_string(const std::string &json_str)
   ZJSON_SERIALIZABLE(StructName, ZJSON_CONCAT(ZJSON_TRANSFORM_FIELDS_, ZJSON_GET_ARG_COUNT(__VA_ARGS__))(StructName, __VA_ARGS__))
 
 // Core serializable macro
-#define ZJSON_SERIALIZABLE(StructType, ...)                                                                      \
-  namespace zjson                                                                                                \
-  {                                                                                                              \
-  template <>                                                                                                    \
-  struct Serializable<StructType>                                                                                \
-  {                                                                                                              \
-    static constexpr bool value = true;                                                                          \
-    static Value serialize(const StructType &obj)                                                                \
-    {                                                                                                            \
-      Value result = Value::create_object();                                                                     \
-      serialize_fields(obj, result, __VA_ARGS__);                                                                \
-      return result;                                                                                             \
-    }                                                                                                            \
-  };                                                                                                             \
-  template <>                                                                                                    \
-  struct Deserializable<StructType>                                                                              \
-  {                                                                                                              \
-    static constexpr bool value = true;                                                                          \
-    static zstd::expected<StructType, Error> deserialize(const Value &value)                                     \
-    {                                                                                                            \
-      if (!value.is_object())                                                                                    \
-      {                                                                                                          \
-        return zstd::make_unexpected(Error::invalid_type("object", "other"));                                    \
-      }                                                                                                          \
-      StructType result{};                                                                                       \
-      bool deserialize_result = deserialize_fields(result, value.as_object(), __VA_ARGS__);                      \
-      if (!deserialize_result)                                                                                   \
-      {                                                                                                          \
-        return zstd::make_unexpected(Error::invalid_data("Failed to deserialize fields"));                       \
-      }                                                                                                          \
-      if (zjson::detail::StructConfig<StructType>::deny_unknown_fields)                                          \
-      {                                                                                                          \
-        auto validation_result = detail::validate_no_unknown_fields<StructType>(value.as_object(), __VA_ARGS__); \
-        if (!validation_result.has_value())                                                                      \
-        {                                                                                                        \
-          return zstd::make_unexpected(validation_result.error());                                               \
-        }                                                                                                        \
-      }                                                                                                          \
-      return result;                                                                                             \
-    }                                                                                                            \
-  };                                                                                                             \
-  }                                                                                                              \
-  namespace                                                                                                      \
-  {                                                                                                              \
-  struct StructType##_Registrar                                                                                  \
-  {                                                                                                              \
-    StructType##_Registrar()                                                                                     \
-    {                                                                                                            \
-      zjson::SerializationRegistry<StructType>::register_serializer(                                             \
-          [](const StructType &obj) { return zjson::Serializable<StructType>::serialize(obj); });                \
-      zjson::SerializationRegistry<StructType>::register_deserializer(                                           \
-          [](const zjson::Value &value) { return zjson::Deserializable<StructType>::deserialize(value); });      \
-    }                                                                                                            \
-  };                                                                                                             \
-  static StructType##_Registrar StructType##_registrar_instance;                                                 \
+#define ZJSON_SERIALIZABLE(StructType, ...)                                                                 \
+  namespace zjson                                                                                           \
+  {                                                                                                         \
+  template <>                                                                                               \
+  struct Serializable<StructType>                                                                           \
+  {                                                                                                         \
+    static constexpr bool value = true;                                                                     \
+    static Value serialize(const StructType &obj)                                                           \
+    {                                                                                                       \
+      Value result = Value::create_object();                                                                \
+      serialize_fields(obj, result, __VA_ARGS__);                                                           \
+      return result;                                                                                        \
+    }                                                                                                       \
+  };                                                                                                        \
+  template <>                                                                                               \
+  struct Deserializable<StructType>                                                                         \
+  {                                                                                                         \
+    static constexpr bool value = true;                                                                     \
+    static zstd::expected<StructType, Error> deserialize(const Value &value)                                \
+    {                                                                                                       \
+      if (!value.is_object())                                                                               \
+      {                                                                                                     \
+        return zstd::make_unexpected(Error::invalid_type("object", "other"));                               \
+      }                                                                                                     \
+      StructType result{};                                                                                  \
+      const auto &obj = value.as_object();                                                                  \
+      bool deserialize_result = deserialize_fields(result, obj, __VA_ARGS__);                               \
+      if (!deserialize_result)                                                                              \
+      {                                                                                                     \
+        return zstd::make_unexpected(Error::invalid_data("Failed to deserialize fields"));                  \
+      }                                                                                                     \
+      if (zjson::detail::StructConfig<StructType>::deny_unknown_fields)                                     \
+      {                                                                                                     \
+        auto validation_result = detail::validate_no_unknown_fields<StructType>(obj, __VA_ARGS__);          \
+        if (!validation_result.has_value())                                                                 \
+        {                                                                                                   \
+          return zstd::make_unexpected(validation_result.error());                                          \
+        }                                                                                                   \
+      }                                                                                                     \
+      return result;                                                                                        \
+    }                                                                                                       \
+  };                                                                                                        \
+  }                                                                                                         \
+  namespace                                                                                                 \
+  {                                                                                                         \
+  struct StructType##_Registrar                                                                             \
+  {                                                                                                         \
+    StructType##_Registrar()                                                                                \
+    {                                                                                                       \
+      zjson::SerializationRegistry<StructType>::register_serializer(                                        \
+          [](const StructType &obj) { return zjson::Serializable<StructType>::serialize(obj); });           \
+      zjson::SerializationRegistry<StructType>::register_deserializer(                                      \
+          [](const zjson::Value &value) { return zjson::Deserializable<StructType>::deserialize(value); }); \
+    }                                                                                                       \
+  };                                                                                                        \
+  static StructType##_Registrar StructType##_registrar_instance;                                            \
   }
 
 // Field serialization/deserialization helper functions
@@ -1976,7 +1978,6 @@ void serialize_field(const T &obj, Value &result, const Field<T, FieldType> &fie
 {
   if (!field.skip_serializing)
   {
-    const FieldType &field_value = obj.*(field.member);
     serialize_field_impl(obj, result, field, typename std::integral_constant<bool, Serializable<FieldType>::value>{});
   }
 }
@@ -2069,15 +2070,13 @@ void serialize_fields(const T &obj, Value &result, Fields... fields)
 template <typename T>
 bool deserialize_fields_impl(T &obj, const std::map<std::string, Value> &object)
 {
-  // Base case - success
   return true;
 }
 
 template <typename T, typename Field, typename... Fields>
 bool deserialize_fields_impl(T &obj, const std::map<std::string, Value> &object, Field field, Fields... fields)
 {
-  bool result = deserialize_field(obj, object, field);
-  if (!result)
+  if (!deserialize_field(obj, object, field))
   {
     return false;
   }
@@ -2094,11 +2093,7 @@ bool deserialize_fields(T &obj, const std::map<std::string, Value> &object, Fiel
 template <typename Field>
 void collect_field_names_impl(std::set<std::string> &names, Field field)
 {
-  if (field.flatten_field)
-  {
-    // Can't statically determine flattened struct field names - skip validation
-  }
-  else
+  if (!field.flatten_field)
   {
     names.insert(field.get_serialized_name());
   }
@@ -2107,18 +2102,19 @@ void collect_field_names_impl(std::set<std::string> &names, Field field)
 template <typename Field, typename... Fields>
 void collect_field_names_impl(std::set<std::string> &names, Field field, Fields... fields)
 {
-  if (field.flatten_field)
-  {
-    // Skip validation for flattened fields - let the nested struct handle it
-  }
-  else
+  if (!field.flatten_field)
   {
     names.insert(field.get_serialized_name());
   }
   collect_field_names_impl(names, fields...);
 }
 
-// Helper to check if any field has flatten enabled
+template <typename... Fields>
+void collect_field_names(std::set<std::string> &names, Fields... fields)
+{
+  collect_field_names_impl(names, fields...);
+}
+
 template <typename Field>
 bool has_flattened_field_impl(Field field)
 {
@@ -2131,29 +2127,26 @@ bool has_flattened_field_impl(Field field, Fields... fields)
   return field.flatten_field || has_flattened_field_impl(fields...);
 }
 
-// Validation function for unknown fields
-template <typename T>
-zstd::expected<bool, Error> validate_no_unknown_fields_impl(const std::map<std::string, Value> &object)
+template <typename... Fields>
+bool has_flattened_field(Fields... fields)
 {
-  return true;
+  return has_flattened_field_impl(fields...);
 }
 
-template <typename T, typename Field, typename... Fields>
-zstd::expected<bool, Error> validate_no_unknown_fields_impl(const std::map<std::string, Value> &object, Field field, Fields... fields)
+template <typename T, typename... Fields>
+zstd::expected<bool, Error> validate_no_unknown_fields(const std::map<std::string, Value> &object, Fields... fields)
 {
   // Check if any field is flattened - if so, we cannot reliably validate unknown fields
-  // because we don't have static access to the nested struct's field names
-  if (has_flattened_field_impl(field, fields...))
+  if (has_flattened_field(fields...))
   {
     // When flattening is used, we cannot perform strict unknown field validation
     // because flattened fields effectively "consume" arbitrary field names
-    // This matches standard JSON library behavior where flattened structs accept their fields
     return true;
   }
 
   // Collect all expected field names
   std::set<std::string> expected_fields;
-  collect_field_names_impl(expected_fields, field, fields...);
+  collect_field_names(expected_fields, fields...);
 
   // Check for unknown fields
   for (const auto &pair : object)
@@ -2165,12 +2158,6 @@ zstd::expected<bool, Error> validate_no_unknown_fields_impl(const std::map<std::
   }
 
   return true;
-}
-
-template <typename T, typename... Fields>
-zstd::expected<bool, Error> validate_no_unknown_fields(const std::map<std::string, Value> &object, Fields... fields)
-{
-  return validate_no_unknown_fields_impl<T>(object, fields...);
 }
 
 } // namespace detail
