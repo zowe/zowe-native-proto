@@ -18,6 +18,11 @@ import { NodeSSH, type Config as NodeSSHConfig } from "node-ssh";
 import type { ConnectConfig, SFTPWrapper } from "ssh2";
 import { PrivateKeyFailurePatterns } from "./SshErrors";
 
+export interface ISshCallbacks {
+    onProgress?: (increment: number) => void; // Callback to report incremental progress
+    onError?: (error: Error, context: string) => Promise<boolean>; // Callback to handle errors, returns true to continue/retry
+}
+
 type SftpError = Error & { code?: number };
 
 // biome-ignore lint/complexity/noStaticOnlyClass: Utilities class has static methods
@@ -73,10 +78,7 @@ export class ZSshUtils {
         session: SshSession,
         serverPath: string,
         localDir: string,
-        options?: {
-            onProgress?: (increment: number) => void; // Callback to report incremental progress
-            onError?: (error: Error, context: string) => Promise<boolean>; // Callback to handle errors, returns true to continue/retry
-        },
+        options?: ISshCallbacks,
     ): Promise<void> {
         Logger.getAppLogger().debug(`Installing server to ${session.ISshSession.hostname} at path: ${serverPath}`);
         const remoteDir = serverPath.replace(/^~/, ".");
@@ -161,9 +163,7 @@ export class ZSshUtils {
     public static async uninstallServer(
         session: SshSession,
         serverPath: string,
-        options?: {
-            onError?: (error: Error, context: string) => Promise<boolean>; // Callback to handle errors, returns true to continue/retry
-        },
+        options?: Omit<ISshCallbacks, "onProgress">,
     ): Promise<void> {
         Logger.getAppLogger().debug(`Uninstalling server from ${session.ISshSession.hostname} at path: ${serverPath}`);
         return ZSshUtils.sftp(session, async (_sftp, ssh) => {
