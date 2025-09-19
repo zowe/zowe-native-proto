@@ -19,7 +19,11 @@
 #include <memory>
 #include <chrono>
 #include <cstdlib>
+#include <fstream>
+#include <sstream>
+#include <map>
 #include "../c/zjson.hpp"
+#include "../c/types/common.h"
 #include "worker.hpp"
 #include "zowed.hpp"
 
@@ -64,18 +68,62 @@ private:
     return instance;
   }
 
+  std::string getExecutableDir()
+  {
+    // z/OS implementation: use current working directory
+    char *cwd = getcwd(nullptr, 0);
+    std::string result = cwd ? std::string(cwd) : ".";
+    free(cwd);
+    return result;
+  }
+
+  std::map<std::string, std::string> loadChecksums()
+  {
+    std::map<std::string, std::string> checksums;
+    std::string execDir = getExecutableDir();
+    std::string checksumsFile = execDir + "/checksums.asc";
+
+    std::ifstream file(checksumsFile);
+    if (!file.is_open())
+    {
+      // Checksums file does not exist for dev builds
+      return checksums;
+    }
+
+    std::string line;
+    while (std::getline(file, line))
+    {
+      std::istringstream iss(line);
+      std::string checksum, filename;
+      if (iss >> checksum >> filename)
+      {
+        checksums[filename] = checksum;
+      }
+    }
+
+    return checksums;
+  }
+
   void printReadyMessage()
   {
     zjson::Value data = zjson::Value::create_object();
-    // TODO: Load checksums similar to Go implementation
-    data.add_to_object("checksums", zjson::Value::create_object());
 
-    zjson::Value readyMsg = zjson::Value::create_object();
-    readyMsg.add_to_object("status", zjson::Value(std::string("ready")));
-    readyMsg.add_to_object("message", zjson::Value(std::string("zowed is ready to accept input")));
-    readyMsg.add_to_object("data", data);
+    // Load checksums similar to Go implementation
+    std::map<std::string, std::string> checksums = loadChecksums();
+    zjson::Value checksumsObj = zjson::Value::create_object();
+    for (const auto &pair : checksums)
+    {
+      checksumsObj.add_to_object(pair.first, zjson::Value(pair.second));
+    }
+    data.add_to_object("checksums", checksumsObj);
 
-    std::string jsonString = serializeJson(readyMsg);
+    StatusMessage statusMsg{
+        .status = "ready",
+        .message = "zowed is ready to accept input",
+        .data = checksums.empty() ? zstd::optional<zjson::Value>() : zstd::optional<zjson::Value>(checksumsObj),
+    };
+
+    std::string jsonString = serializeJson(zjson::to_value(statusMsg).value());
     std::cout << jsonString << std::endl;
   }
 
