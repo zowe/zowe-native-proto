@@ -21,87 +21,102 @@
 #include <vector>
 #include <map>
 #include <cstdint>
+#include "../zstd.hpp"
+#include "../zjson.hpp"
 #include "common.h"
 
 // Generated C++ structs from uss.ts
 
-struct ListFilesRequest : public CommandRequest, public ListOptions {
+struct ListFilesRequest : public CommandRequest {
+    ListOptions listoptions;
     std::string fspath;
-    bool* all; // optional
-    bool* long; // optional
+    zstd::optional<bool> all;
+    zstd::optional<bool> long;
 };
+ZJSON_SERIALIZABLE(ListFilesRequest, ZJSON_FIELD(ListFilesRequest, listoptions).flatten(), ZJSON_FIELD(ListFilesRequest, fspath), ZJSON_FIELD(ListFilesRequest, all), ZJSON_FIELD(ListFilesRequest, long));
 
 struct ReadFileRequest : public CommandRequest {
-    std::string* encoding; // optional
-    std::string* localEncoding; // optional
+    zstd::optional<std::string> encoding;
+    zstd::optional<std::string> localEncoding;
     std::string fspath;
-    int* streamId; // optional
+    zstd::optional<int> streamId;
 };
+ZJSON_DERIVE(ReadFileRequest, encoding, localEncoding, fspath, streamId);
 
 struct WriteFileRequest : public CommandRequest {
-    std::string* encoding; // optional
-    std::string* localEncoding; // optional
-    std::string* etag; // optional
+    zstd::optional<std::string> encoding;
+    zstd::optional<std::string> localEncoding;
+    zstd::optional<std::string> etag;
     std::string fspath;
-    std::vector<uint8_t> data; // optional
-    int* streamId; // optional
+    zstd::optional<std::vector<uint8_t>> data;
+    zstd::optional<int> streamId;
     // int
-    int* contentLen; // optional
+    zstd::optional<int> contentLen;
 };
+ZJSON_DERIVE(WriteFileRequest, encoding, localEncoding, etag, fspath, data, streamId, contentLen);
 
 struct CreateFileRequest : public CommandRequest {
-    std::string* permissions; // optional
+    zstd::optional<std::string> permissions;
     std::string fspath;
-    bool* isDir; // optional
+    zstd::optional<bool> isDir;
 };
+ZJSON_DERIVE(CreateFileRequest, permissions, fspath, isDir);
 
 struct DeleteFileRequest : public CommandRequest {
     std::string fspath;
     bool recursive;
 };
+ZJSON_DERIVE(DeleteFileRequest, fspath, recursive);
 
 struct ChmodFileRequest : public CommandRequest {
     std::string mode;
     std::string fspath;
     bool recursive;
 };
+ZJSON_DERIVE(ChmodFileRequest, mode, fspath, recursive);
 
 struct ChownFileRequest : public CommandRequest {
     std::string owner;
     std::string fspath;
     bool recursive;
 };
+ZJSON_DERIVE(ChownFileRequest, owner, fspath, recursive);
 
 struct ChtagFileRequest : public CommandRequest {
     std::string fspath;
     std::string tag;
     bool recursive;
 };
+ZJSON_DERIVE(ChtagFileRequest, fspath, tag, recursive);
 
 struct GenericFileResponse : public CommandResponse {
     std::string fspath;
 };
+ZJSON_DERIVE(GenericFileResponse, fspath);
 
 struct ReadFileResponse : public CommandResponse {
-    std::string* encoding; // optional
+    zstd::optional<std::string> encoding;
     std::string etag;
     std::string fspath;
     std::vector<uint8_t> data;
     // int
-    int* contentLen; // optional
+    zstd::optional<int> contentLen;
 };
+ZJSON_DERIVE(ReadFileResponse, encoding, etag, fspath, data, contentLen);
 
 struct WriteFileResponse : public GenericFileResponse {
     std::string etag;
     bool created;
     // int
-    int* contentLen; // optional
+    zstd::optional<int> contentLen;
 };
+ZJSON_DERIVE(WriteFileResponse, etag, created, contentLen);
 
 struct ListFilesResponse : public CommandResponse {
     std::vector<UssItem> items;
     // int
     int returnedRows;
 };
+ZJSON_DERIVE(ListFilesResponse, items, returnedRows);
 
 #endif

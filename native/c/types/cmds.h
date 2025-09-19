@@ -21,33 +21,41 @@
 #include <vector>
 #include <map>
 #include <cstdint>
+#include "../zstd.hpp"
+#include "../zjson.hpp"
 #include "common.h"
 
 // Generated C++ structs from cmds.ts
 
 struct IssueConsoleRequest : public CommandRequest {
     std::string commandText;
-    std::string* consoleName; // optional
+    zstd::optional<std::string> consoleName;
 };
+ZJSON_DERIVE(IssueConsoleRequest, commandText, consoleName);
 
 struct IssueTsoRequest : public CommandRequest {
     std::string commandText;
 };
+ZJSON_DERIVE(IssueTsoRequest, commandText);
 
 struct IssueUnixRequest : public CommandRequest {
     std::string commandText;
 };
+ZJSON_DERIVE(IssueUnixRequest, commandText);
 
 struct IssueConsoleResponse : public CommandResponse {
     std::string data;
 };
+ZJSON_DERIVE(IssueConsoleResponse, data);
 
 struct IssueTsoResponse : public CommandResponse {
     std::string data;
 };
+ZJSON_DERIVE(IssueTsoResponse, data);
 
 struct IssueUnixResponse : public CommandResponse {
     std::string data;
 };
+ZJSON_DERIVE(IssueUnixResponse, data);
 
 #endif

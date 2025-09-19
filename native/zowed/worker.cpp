@@ -274,14 +274,14 @@ void Worker::processRequest(const std::string &data)
       ErrorDetails error{
           -32700,
           std::string("Failed to parse command request: ") + parse_result.error().what(),
-          zjson::Value()};
+          zstd::optional<zjson::Value>()};
       printErrorResponse(error, 0); // No request ID available
       return;
     }
 
     zjson::Value requestJson = parse_result.value();
 
-    RpcRequest request = RpcRequest::fromJson(requestJson);
+    RpcRequest request = parseRpcRequest(requestJson);
 
     // Get the command handler
     CommandHandler handler = dispatcher->getHandler(request.method);
@@ -290,7 +290,7 @@ void Worker::processRequest(const std::string &data)
       ErrorDetails error{
           -32601,
           "Unrecognized command " + request.method,
-          zjson::Value()};
+          zstd::optional<zjson::Value>()};
       printErrorResponse(error, request.id);
       return;
     }
@@ -298,7 +298,8 @@ void Worker::processRequest(const std::string &data)
     // Execute the command
     try
     {
-      zjson::Value result = handler(request.params);
+      zjson::Value params = request.params.has_value() ? request.params.value() : zjson::Value::create_object();
+      zjson::Value result = handler(params);
       printCommandResponse(result, request.id);
     }
     catch (const std::exception &e)
@@ -322,7 +323,7 @@ void Worker::processRequest(const std::string &data)
       ErrorDetails error{
           -32603, // Internal error
           errMsg,
-          errData.empty() ? zjson::Value() : zjson::Value(errData)};
+          errData.empty() ? zstd::optional<zjson::Value>() : zstd::optional<zjson::Value>(zjson::Value(errData))};
       printErrorResponse(error, request.id);
     }
   }
@@ -331,7 +332,7 @@ void Worker::processRequest(const std::string &data)
     ErrorDetails error{
         -32700,
         "Failed to parse command request: " + std::string(e.what()),
-        zjson::Value()};
+        zstd::optional<zjson::Value>()};
     printErrorResponse(error, 0); // No request ID available
   }
 }
@@ -341,10 +342,12 @@ void Worker::printErrorResponse(const ErrorDetails &error, int requestId)
   std::lock_guard<std::mutex> lock(*responseMutex);
 
   RpcResponse response;
-  response.error = error.toJson();
+  response.jsonrpc = "2.0";
+  response.result = zstd::optional<zjson::Value>();
+  response.error = zstd::optional<ErrorDetails>(error);
   response.id = requestId;
 
-  std::string jsonString = serializeJson(response.toJson());
+  std::string jsonString = serializeJson(rpcResponseToJson(response));
   std::cout << jsonString << std::endl;
 }
 
@@ -353,10 +356,12 @@ void Worker::printCommandResponse(const zjson::Value &result, int requestId)
   std::lock_guard<std::mutex> lock(*responseMutex);
 
   RpcResponse response;
-  response.result = result;
+  response.jsonrpc = "2.0";
+  response.result = zstd::optional<zjson::Value>(result);
+  response.error = zstd::optional<ErrorDetails>();
   response.id = requestId;
 
-  std::string jsonString = serializeJson(response.toJson());
+  std::string jsonString = serializeJson(rpcResponseToJson(response));
   std::cout << jsonString << std::endl;
 }
 
