@@ -206,8 +206,6 @@ private:
       return parser::ArgType_Single;
     case ArgumentType_Multiple:
       return parser::ArgType_Multiple;
-    case ArgumentType_Positional:
-      return parser::ArgType_Single;
     }
     return parser::ArgType_Flag;
   }
@@ -230,7 +228,7 @@ void PluginManager::loadPlugins()
       void *plugin = dlopen(plugin_path.c_str(), RTLD_LAZY);
       if (!plugin)
       {
-        // Handle error, e.g., print dlerror()
+        ZLOG_ERROR("Failed to open handle to plugin located at: %s", plugin_path);
         continue;
       }
 
@@ -239,6 +237,11 @@ void PluginManager::loadPlugins()
       {
         RegisterPluginFn(*this);
         m_plugins.push_back(plugin);
+      }
+      else
+      {
+        ZLOG_ERROR("Plugin %s loaded but no entrypoint available (registerPlugin missing)", plugin_path);
+        dlclose(plugin);
       }
     }
   }
