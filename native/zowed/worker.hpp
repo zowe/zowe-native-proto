@@ -22,6 +22,7 @@
 #include <functional>
 #include <unordered_map>
 #include "../c/zjson.hpp"
+#include "../c/types/common.h"
 
 using zjson::Value;
 
@@ -40,81 +41,32 @@ inline std::string serializeJson(const zjson::Value &val, bool prettify = false)
 class Worker;
 class WorkerPool;
 
-// RPC request/response structures
-struct RpcRequest
+// Helper function for parsing RPC requests from JSON
+inline RpcRequest parseRpcRequest(const zjson::Value &j)
 {
-  std::string jsonrpc = "2.0";
-  std::string method;
-  zjson::Value params;
-  int id;
-
-  static RpcRequest fromJson(const zjson::Value &j)
+  if (!j.is_object())
   {
-    RpcRequest req;
-    if (!j.is_object())
-    {
-      throw std::runtime_error("JSON-RPC request must be an object");
-    }
-    const auto &obj = j.as_object();
-
-    auto jsonrpc_it = obj.find("jsonrpc");
-    req.jsonrpc = (jsonrpc_it != obj.end() && jsonrpc_it->second.is_string()) ? jsonrpc_it->second.as_string() : "2.0";
-
-    auto method_it = obj.find("method");
-    req.method = (method_it != obj.end() && method_it->second.is_string()) ? method_it->second.as_string() : "";
-
-    auto params_it = obj.find("params");
-    req.params = (params_it != obj.end()) ? params_it->second : zjson::Value::create_object();
-
-    auto id_it = obj.find("id");
-    req.id = (id_it != obj.end() && id_it->second.is_number()) ? id_it->second.as_int() : 0;
-
-    return req;
+    throw std::runtime_error("JSON-RPC request must be an object");
   }
-};
 
-struct RpcResponse
+  auto result = zjson::from_value<RpcRequest>(j);
+  if (!result.has_value())
+  {
+    throw std::runtime_error(std::string("Failed to parse RPC request: ") + result.error().what());
+  }
+  return result.value();
+}
+
+// Helper functions for working with common types
+inline zjson::Value rpcResponseToJson(const RpcResponse &response)
 {
-  std::string jsonrpc = "2.0";
-  zjson::Value result;
-  zjson::Value error;
-  int id;
+  return zjson::to_value(response).value_or(zjson::Value::create_object());
+}
 
-  zjson::Value toJson() const
-  {
-    zjson::Value obj = zjson::Value::create_object();
-    obj.add_to_object("jsonrpc", zjson::Value(jsonrpc));
-    obj.add_to_object("id", zjson::Value(id));
-    if (!result.is_null())
-    {
-      obj.add_to_object("result", result);
-    }
-    if (!error.is_null())
-    {
-      obj.add_to_object("error", error);
-    }
-    return obj;
-  }
-};
-
-struct ErrorDetails
+inline zjson::Value errorDetailsToJson(const ErrorDetails &error)
 {
-  int code;
-  std::string message;
-  zjson::Value data;
-
-  zjson::Value toJson() const
-  {
-    zjson::Value obj = zjson::Value::create_object();
-    obj.add_to_object("code", zjson::Value(code));
-    obj.add_to_object("message", zjson::Value(message));
-    if (!data.is_null())
-    {
-      obj.add_to_object("data", data);
-    }
-    return obj;
-  }
-};
+  return zjson::to_value(error).value_or(zjson::Value::create_object());
+}
 
 // Command handler function type
 using CommandHandler = std::function<zjson::Value(const zjson::Value &params)>;

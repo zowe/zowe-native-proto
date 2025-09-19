@@ -14,7 +14,7 @@ const TYPE_MAPPING: Record<string, string> = {
     number: "int",
     boolean: "bool",
     bool: "bool", // Also handle bool directly
-    any: "void*",
+    any: "zjson::Value",
     B64String: "std::vector<uint8_t>", // Base64 string -> byte array
 };
 
@@ -70,9 +70,9 @@ function mapTypeScriptToCType(tsType: string, optional: boolean): string {
         baseType = "void*";
     }
 
-    // Use pointers for optional parameters, direct types for required ones
-    if (optional && baseType !== "void*" && !baseType.startsWith("std::vector") && !baseType.startsWith("std::map")) {
-        return `${baseType}*`;
+    // Use zstd::optional for optional parameters, direct types for required ones
+    if (optional) {
+        return `zstd::optional<${baseType}>`;
     }
 
     return baseType;
@@ -121,12 +121,12 @@ function extractInterfaces(filePath: string): ExtractedInterface[] {
                     let typeOverride: string | undefined;
 
                     // Look for inline comments /* ... */ within the property line
-                    const inlineCommentMatch = memberText.match(/\/\*\s*([^*]+)\s*\*\//);
+                    const inlineCommentMatch = memberText.match(/\/\*\s*(.*?)\s*\*\//);
                     if (inlineCommentMatch) {
                         comment = inlineCommentMatch[1].trim();
 
                         // Check for override syntax: name:type, :type, or name:
-                        const overrideMatch = comment?.match(/^([^:]*):([^:]*)$/);
+                        const overrideMatch = comment?.match(/^([^:]*):(.*)$/);
                         if (overrideMatch) {
                             const [, nameMatch, typeMatch] = overrideMatch;
                             nameOverride = nameMatch.trim() || undefined;
@@ -168,8 +168,9 @@ function extractInterfaces(filePath: string): ExtractedInterface[] {
     return interfaces;
 }
 
-// Dynamically collected base class properties
+// Dynamically collected base class properties and interfaces
 let baseClassProperties: Map<string, Set<string>> = new Map();
+let allInterfaces: Map<string, ExtractedInterface> = new Map();
 
 // License header content
 let licenseHeader: string = "";
@@ -206,24 +207,36 @@ function generateCStruct(iface: ExtractedInterface): string {
     const structName = iface.name;
     let header = "";
 
-    // Handle inheritance with struct inheritance syntax
+    // Handle inheritance: first base class uses C++ inheritance, rest are flattened
+    let primaryBaseClass: string | undefined;
+    let flattenedBases: string[] = [];
+
     if (iface.extends && iface.extends.length > 0) {
         const baseTypes = iface.extends.map((baseType) => {
             // Extract just the interface name (remove namespace prefixes like "common.")
             return baseType.includes(".") ? baseType.split(".").pop() : baseType;
         });
-        header += `struct ${structName} : ${baseTypes.map((base) => `public ${base}`).join(", ")} {\n`;
+
+        primaryBaseClass = baseTypes[0];
+        flattenedBases = baseTypes.slice(1); // All bases after the first one
+
+        header += `struct ${structName} : public ${primaryBaseClass} {\n`;
     } else {
         header += `struct ${structName} {\n`;
     }
 
-    // Add properties, but exclude ones that are inherited from base classes
-    const hasInheritance = iface.extends && iface.extends.length > 0;
-    const inheritedProps = hasInheritance ? getInheritedProperties(iface.extends!) : new Set<string>();
+    // Get inherited properties from primary base class only
+    const primaryInheritedProps = primaryBaseClass ? getInheritedProperties([primaryBaseClass]) : new Set<string>();
+
+    // Add nested fields for additional base classes (beyond the first)
+    for (const flattenedBase of flattenedBases) {
+        const fieldName = flattenedBase.toLowerCase();
+        header += `    ${flattenedBase} ${fieldName};\n`;
+    }
 
     for (const prop of iface.properties) {
-        // Skip properties that are inherited from base classes
-        if (hasInheritance && inheritedProps.has(prop.name)) {
+        // Skip properties that are inherited from the primary base class
+        if (primaryInheritedProps.has(prop.name)) {
             continue;
         }
 
@@ -243,19 +256,68 @@ function generateCStruct(iface: ExtractedInterface): string {
         ) {
             // This looks like a C++ type override, use directly
             cType = prop.type;
-            if (prop.optional && !cType.includes("*")) {
-                cType += "*"; // Add pointer for optional
+            if (prop.optional && !cType.includes("zstd::optional") && !cType.includes("*")) {
+                cType = `zstd::optional<${cType}>`;
             }
         } else {
             // Regular TypeScript type, process through mapping
             cType = mapTypeScriptToCType(prop.type, prop.optional);
         }
 
-        const suffix = prop.optional ? "; // optional" : ";";
-        header += `    ${cType} ${prop.name}${suffix}\n`;
+        header += `    ${cType} ${prop.name};\n`;
     }
 
-    header += `};\n\n`;
+    header += `};\n`;
+
+    // Add ZJSON serialization macro
+    if (flattenedBases.length > 0) {
+        // Use ZJSON_SERIALIZABLE with flatten() for nested fields
+        const fieldSpecs: string[] = [];
+
+        // Add flattened fields with .flatten()
+        for (const flattenedBase of flattenedBases) {
+            const fieldName = flattenedBase.toLowerCase();
+            fieldSpecs.push(`ZJSON_FIELD(${structName}, ${fieldName}).flatten()`);
+        }
+
+        // Add own fields (excluding inherited from primary base)
+        const ownFields = iface.properties
+            .filter((prop) => {
+                // Skip properties that are inherited from the primary base class
+                if (primaryInheritedProps.has(prop.name)) {
+                    return false;
+                }
+                return true;
+            })
+            .map((prop) => `ZJSON_FIELD(${structName}, ${prop.name})`);
+
+        fieldSpecs.push(...ownFields);
+
+        if (fieldSpecs.length > 0) {
+            header += `ZJSON_SERIALIZABLE(${structName}, ${fieldSpecs.join(", ")});\n`;
+        } else {
+            header += `ZJSON_SERIALIZABLE(${structName});\n`;
+        }
+    } else {
+        // Use ZJSON_DERIVE for simple cases without flattening
+        const ownFields = iface.properties
+            .filter((prop) => {
+                // Skip properties that are inherited from the primary base class
+                if (primaryInheritedProps.has(prop.name)) {
+                    return false;
+                }
+                return true;
+            })
+            .map((prop) => prop.name);
+
+        if (ownFields.length > 0) {
+            header += `ZJSON_DERIVE(${structName}, ${ownFields.join(", ")});\n`;
+        } else {
+            header += `ZJSON_DERIVE(${structName});\n`;
+        }
+    }
+
+    header += `\n`;
     return header;
 }
 
@@ -279,6 +341,8 @@ function generateHeaderFile(interfaces: ExtractedInterface[], fileName: string):
     content += `#include <vector>\n`;
     content += `#include <map>\n`;
     content += `#include <cstdint>\n`; // for uint8_t
+    content += `#include "../zstd.hpp"\n`; // for zstd::optional
+    content += `#include "../zjson.hpp"\n`; // for ZJSON_DERIVE macro
 
     // Include common.h for non-common files that might inherit from common types
     if (fileName !== "common") {
@@ -295,18 +359,19 @@ function generateHeaderFile(interfaces: ExtractedInterface[], fileName: string):
     return content;
 }
 
-function collectBaseClassProperties(allInterfaces: ExtractedInterface[]): void {
-    // First pass: collect all interface properties
-    for (const iface of allInterfaces) {
+function collectBaseClassProperties(interfaces: ExtractedInterface[]): void {
+    // First pass: collect all interface properties and store interfaces
+    for (const iface of interfaces) {
         const props = new Set<string>();
         for (const prop of iface.properties) {
             props.add(prop.name);
         }
         baseClassProperties.set(iface.name, props);
+        allInterfaces.set(iface.name, iface);
     }
 
     // Second pass: add inherited properties to base classes
-    for (const iface of allInterfaces) {
+    for (const iface of interfaces) {
         if (iface.extends && iface.extends.length > 0) {
             const currentProps = baseClassProperties.get(iface.name)!;
 
