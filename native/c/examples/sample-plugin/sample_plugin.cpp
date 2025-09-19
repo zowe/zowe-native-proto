@@ -14,9 +14,10 @@
 int hello_command(plugin::InvocationContext &context)
 {
   std::string str = "hello from sample command";
-  if (context.has("name"))
+  const auto name = context.get<std::string>("name", "");
+  if (!name.empty())
   {
-    str += " to " + context.get<std::string>("name");
+    str += " to " + name;
   }
   context.println(str.c_str());
   return 0;
@@ -24,16 +25,17 @@ int hello_command(plugin::InvocationContext &context)
 
 void BasicCommandRegistry::registerCommands(CommandProviderImpl::CommandRegistrationContext &ctx)
 {
+  auto root = ctx.getRootCommand();
   auto sample_group = ctx.createCommand("sample", "Sample command group for plug-in operations");
   auto hello = ctx.createCommand("hello", "says hi to the caller");
   ctx.addAlias(hello, "hi");
   ctx.addPositionalArg(hello, "name", "the name of the person calling the command", CommandProviderImpl::CommandRegistrationContext::ArgumentType_Positional, 0, nullptr);
   ctx.setHandler(hello, hello_command);
   ctx.addSubcommand(sample_group, hello);
+  ctx.addSubcommand(root, sample_group);
 }
 
 void registerPlugin(plugin::PluginManager &pm)
 {
-  auto provider = BasicCommandProvider();
-  pm.registerCommandProvider(&provider);
+  pm.registerCommandProvider(new BasicCommandProvider());
 }

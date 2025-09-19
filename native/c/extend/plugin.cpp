@@ -36,7 +36,7 @@ public:
     }
   }
 
-  virtual CommandHandle createCommand(const char *name, const char *help)
+  CommandHandle createCommand(const char *name, const char *help)
   {
     std::string cmdName = name ? name : "";
     std::string cmdHelp = help ? help : "";
@@ -47,12 +47,12 @@ public:
     return reinterpret_cast<CommandHandle>(record);
   }
 
-  virtual CommandHandle getRootCommand()
+  CommandHandle getRootCommand()
   {
     return reinterpret_cast<CommandHandle>(&m_rootRecord);
   }
 
-  virtual void addAlias(CommandHandle command, const char *alias)
+  void addAlias(CommandHandle command, const char *alias)
   {
     CommandRecord *record = toRecord(command);
     if (!record || !alias)
@@ -61,14 +61,14 @@ public:
     record->get().add_alias(alias);
   }
 
-  virtual void addKeywordArg(CommandHandle command,
-                             const char *name,
-                             const char **aliases,
-                             unsigned int aliasCount,
-                             const char *help,
-                             ArgumentType type,
-                             int required,
-                             const DefaultValue *defaultValue)
+  void addKeywordArg(CommandHandle command,
+                     const char *name,
+                     const char **aliases,
+                     unsigned int aliasCount,
+                     const char *help,
+                     ArgumentType type,
+                     int required,
+                     const DefaultValue *defaultValue)
   {
     CommandRecord *record = toRecord(command);
     if (!record || !name)
@@ -85,18 +85,15 @@ public:
     }
 
     parser::ArgValue defaultArg = convertDefaultValue(defaultValue);
-
-    record->get().add_keyword_arg(std::string(name), aliasVector,
-                                  help ? std::string(help) : std::string(),
-                                  convertArgType(type), required != 0,
-                                  defaultArg);
+    record->get().add_keyword_arg(std::string(name), aliasVector, std::string(help ? help : ""), convertArgType(type), required != 0, defaultArg);
   }
 
-  virtual void addPositionalArg(CommandHandle command,
-                                const char *name,
-                                const char *help,
-                                int required,
-                                const DefaultValue *defaultValue)
+  void addPositionalArg(CommandHandle command,
+                        const char *name,
+                        const char *help,
+                        ArgumentType type,
+                        int required,
+                        const DefaultValue *defaultValue)
   {
     CommandRecord *record = toRecord(command);
     if (!record || !name)
@@ -106,11 +103,11 @@ public:
 
     record->get().add_positional_arg(std::string(name),
                                      help ? std::string(help) : std::string(),
-                                     parser::ArgType_Positional, required != 0,
+                                     parser::ArgType_Single, required != 0,
                                      defaultArg);
   }
 
-  virtual void setHandler(CommandHandle command, CommandHandler handler)
+  void setHandler(CommandHandle command, CommandHandler handler)
   {
     CommandRecord *record = toRecord(command);
     if (!record)
@@ -119,7 +116,7 @@ public:
     record->get().set_handler(handler);
   }
 
-  virtual void addSubcommand(CommandHandle parent, CommandHandle child)
+  void addSubcommand(CommandHandle parent, CommandHandle child)
   {
     CommandRecord *parentRecord = toRecord(parent);
     CommandRecord *childRecord = toRecord(child);
@@ -210,7 +207,7 @@ private:
     case ArgumentType_Multiple:
       return parser::ArgType_Multiple;
     case ArgumentType_Positional:
-      return parser::ArgType_Positional;
+      return parser::ArgType_Single;
     }
     return parser::ArgType_Flag;
   }
@@ -219,6 +216,33 @@ private:
   CommandRecord m_rootRecord;
   std::vector<CommandRecord *> m_records;
 };
+
+void PluginManager::loadPlugins()
+{
+  auto *plugins_dir = opendir("./plugins");
+  if (plugins_dir != nullptr)
+  {
+    struct dirent *entry;
+    void (*RegisterPluginFn)(plugin::PluginManager &);
+    while ((entry = readdir(plugins_dir)) != nullptr)
+    {
+      std::string plugin_path = std::string("./plugins/") + entry->d_name;
+      void *plugin = dlopen(plugin_path.c_str(), RTLD_LAZY);
+      if (!plugin)
+      {
+        // Handle error, e.g., print dlerror()
+        continue;
+      }
+
+      *(void **)(&RegisterPluginFn) = dlsym(plugin, "registerPlugin");
+      if (RegisterPluginFn)
+      {
+        RegisterPluginFn(*this);
+        m_plugins.push_back(plugin);
+      }
+    }
+  }
+}
 
 void PluginManager::registerCommands(parser::Command &rootCommand)
 {
