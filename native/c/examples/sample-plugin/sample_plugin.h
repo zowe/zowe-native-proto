@@ -17,22 +17,15 @@
 class BasicCommandRegistry : public plugin::CommandProviderImpl
 {
 public:
-  void registerCommands(CommandRegistrationContext &context) override;
+  void registerCommands(CommandRegistrationContext &context);
 };
 
 class BasicCommandProvider : public Factory<plugin::CommandProviderImpl>
 {
-  static plugin::CommandProviderImpl *m_providerImpl;
-
 public:
   plugin::CommandProviderImpl *create()
   {
-    if (m_providerImpl == nullptr)
-    {
-      m_providerImpl = new BasicCommandRegistry();
-    }
-
-    return m_providerImpl;
+    return new BasicCommandRegistry();
   }
 };
 

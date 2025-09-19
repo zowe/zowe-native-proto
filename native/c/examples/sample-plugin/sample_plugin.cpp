@@ -34,6 +34,6 @@ void BasicCommandRegistry::registerCommands(CommandProviderImpl::CommandRegistra
 
 void registerPlugin(plugin::PluginManager &pm)
 {
-  auto commandProvider = BasicCommandProvider();
-  pm.registerCommandProvider(&commandProvider);
+  auto provider = BasicCommandProvider();
+  pm.registerCommandProvider(&provider);
 }
