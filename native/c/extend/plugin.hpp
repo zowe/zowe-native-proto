@@ -12,6 +12,9 @@
 #ifndef PLUGIN_HPP
 #define PLUGIN_HPP
 
+#ifndef _UNIX03_SOURCE
+#define _UNIX03_SOURCE
+#endif
 #include <dlfcn.h>
 #include <vector>
 
