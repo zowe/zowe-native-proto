@@ -444,11 +444,20 @@ $(OUT_DIR)/commands/tool.o: commands/tool.cpp
 	@mkdir -p $(@D)
 	$(CXX) $(CPP_FLAGS) -c $< -o $@
 
+# 
+# Extensibility
+#
+
+$(OUT_DIR)/extend/plugin.o: extend/plugin.cpp
+	@echo 'Building $@'
+	@mkdir -p $(@D)
+	$(CXX) $(CPP_FLAGS) -c $< -o $@
+
 #
 # Test CLI
 #
 # zowex: zowex.o zcn.o zcnm.o zcnm31.o zut.o zutm.o zutm31.o zjb.o zjbm.o zssi31.o zjbm31.o zds.o
-$(OUT_DIR)/zowex: $(OUT_DIR)/zowex.o $(COMMAND_OBJS) $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(OUT_DIR)/libzjb.a $(OUT_DIR)/libzds.a $(OUT_DIR)/libzusf.a $(OUT_DIR)/libztso.a $(OUT_DIR)/libzshmem.a
+$(OUT_DIR)/zowex: $(OUT_DIR)/zowex.o $(OUT_DIR)/extend/plugin.o $(COMMAND_OBJS) $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(OUT_DIR)/libzjb.a $(OUT_DIR)/libzds.a $(OUT_DIR)/libzusf.a $(OUT_DIR)/libztso.a $(OUT_DIR)/libzshmem.a
 	@echo 'Building zowex'
 	$(CXX) $(CPP_BND_FLAGS) -o $@ $^ > $*.bind.lst
 	ln -sf ../c/$@ ../golang/zowex
@@ -456,7 +465,7 @@ $(OUT_DIR)/zowex: $(OUT_DIR)/zowex.o $(COMMAND_OBJS) $(OUT_DIR)/libzcn.a $(OUT_D
 
 zowex: $(OUT_DIRS) $(OUT_DIR)/zowex
 
-$(OUT_DIR)/zoweax: $(OUT_DIR)/zowex.o $(COMMAND_OBJS) $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(OUT_DIR)/libzjb.a $(OUT_DIR)/libzds.a $(OUT_DIR)/libzusf.a $(OUT_DIR)/libztso.a $(OUT_DIR)/libzshmem.a
+$(OUT_DIR)/zoweax: $(OUT_DIR)/zowex.o $(OUT_DIR)/extend/plugin.o $(COMMAND_OBJS) $(OUT_DIR)/libzcn.a $(OUT_DIR)/libzut.a $(OUT_DIR)/libzjb.a $(OUT_DIR)/libzds.a $(OUT_DIR)/libzusf.a $(OUT_DIR)/libztso.a $(OUT_DIR)/libzshmem.a
 	@echo 'Building zoweax'
 	$(CXX) $(CPP_BND_FLAGS_AUTH) -o $@ $^ > $*.bind.lst
 	extattr +ap $@
