@@ -22,17 +22,10 @@ public:
 
 class BasicCommandProvider : public Factory<plugin::CommandProviderImpl>
 {
-  static plugin::CommandProviderImpl *m_providerImpl;
-
 public:
   plugin::CommandProviderImpl *create()
   {
-    if (m_providerImpl == nullptr)
-    {
-      m_providerImpl = new BasicCommandRegistry();
-    }
-
-    return m_providerImpl;
+    return new BasicCommandRegistry();
   }
 };
 
