@@ -9,6 +9,11 @@
  *
  */
 
+#ifndef _UNIX03_SOURCE
+#define _UNIX03_SOURCE
+#endif
+#include <dirent.h>
+#include <dlfcn.h>
 #include "plugin.hpp"
 #include "../parser.hpp"
 
@@ -244,6 +249,15 @@ void PluginManager::loadPlugins()
         dlclose(plugin);
       }
     }
+  }
+}
+
+void PluginManager::unloadPlugins()
+{
+  for (auto it = m_plugins.begin(); it != m_plugins.end(); ++it)
+  {
+    dlclose(*it);
+    *it = nullptr;
   }
 }
 

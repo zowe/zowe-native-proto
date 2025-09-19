@@ -12,10 +12,6 @@
 #ifndef PLUGIN_HPP
 #define PLUGIN_HPP
 
-#ifndef _UNIX03_SOURCE
-#define _UNIX03_SOURCE
-#endif
-#include <dlfcn.h>
 #include <vector>
 
 #include "../factory.hpp"
@@ -148,6 +144,7 @@ public:
   PluginManager &operator=(const PluginManager &) = delete;
 
 private:
+  void unloadPlugins();
   std::vector<CommandProvider *> m_commandProviders;
   std::vector<void *> m_plugins;
 };
@@ -161,11 +158,7 @@ inline PluginManager::~PluginManager()
     delete *it;
   }
 
-  for (auto it = m_plugins.begin(); it != m_plugins.end(); ++it)
-  {
-    dlclose(*it);
-    *it = nullptr;
-  }
+  unloadPlugins();
 }
 
 inline void PluginManager::registerCommandProvider(CommandProvider *provider)
