@@ -9,11 +9,20 @@
  *
  */
 
+import { ImperativeError } from "@zowe/imperative";
 import { type SshSession, ZosUssProfile } from "@zowe/zos-uss-for-zowe-sdk";
-import { imperative, type MainframeInteraction } from "@zowe/zowe-explorer-api";
+import {
+    AuthHandler,
+    type IAuthMethods,
+    imperative,
+    type MainframeInteraction,
+    ZoweExplorerApiType,
+    ZoweVsCodeExtension,
+} from "@zowe/zowe-explorer-api";
 import * as vscode from "vscode";
 import { type ZSshClient, ZSshUtils } from "zowe-native-proto-sdk";
 import { SshClientCache } from "../SshClientCache";
+import { SshErrorHandler } from "../SshErrorHandler";
 
 export class SshCommonApi implements MainframeInteraction.ICommon {
     public constructor(public profile?: imperative.IProfileLoaded) {}
@@ -56,9 +65,46 @@ export class SshCommonApi implements MainframeInteraction.ICommon {
                         );
                         return "inactive";
                     }
+                } else if (
+                    profile.profile?.password &&
+                    !profile.profile?.privateKey &&
+                    `${err}`.includes("All configured authentication methods failed")
+                ) {
+                    const zoweExplorerApi = ZoweVsCodeExtension.getZoweExplorerApi();
+                    const extenderApi = await zoweExplorerApi.getExplorerExtenderApi();
+                    let finalErr: ImperativeError | undefined;
+                    if (extenderApi) {
+                        const errorCorrelator = extenderApi.getErrorCorrelator?.();
+                        if (errorCorrelator) {
+                            finalErr = new ImperativeError({
+                                msg: await errorCorrelator.correlateError(ZoweExplorerApiType.All, err as Error, {
+                                    templateArgs: { profileName: profile.name! },
+                                }).message,
+                            });
+                        }
+                    } else {
+                        finalErr = new ImperativeError({ msg: `${err}` });
+                    }
+                    if (finalErr) {
+                        const authSuccessful = await AuthHandler.promptForAuthentication(profile, {
+                            authMethods: zoweExplorerApi
+                                .getExplorerExtenderApi()
+                                .getProfilesCache() as unknown as IAuthMethods,
+                            imperativeError: finalErr,
+                        });
+                        if (authSuccessful) {
+                            return this.getStatus(profile, profileType);
+                        }
+                    }
+                } else {
+                    await SshErrorHandler.getInstance().handleError(
+                        err as Error,
+                        ZoweExplorerApiType.All,
+                        "SSH connection status check failed",
+                        false,
+                    );
                 }
 
-                vscode.window.showErrorMessage(errorMessage);
                 return "inactive";
             }
         }
