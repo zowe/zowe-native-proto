@@ -29,7 +29,7 @@ void BasicCommandRegistry::registerCommands(CommandProviderImpl::CommandRegistra
   auto sample_group = ctx.createCommand("sample", "Sample command group for plug-in operations");
   auto hello = ctx.createCommand("hello", "says hi to the caller");
   ctx.addAlias(hello, "hi");
-  ctx.addPositionalArg(hello, "name", "the name of the person calling the command", CommandProviderImpl::CommandRegistrationContext::ArgumentType_Positional, 0, nullptr);
+  ctx.addPositionalArg(hello, "name", "the name of the person calling the command", CommandProviderImpl::CommandRegistrationContext::ArgumentType_Single, 0, nullptr);
   ctx.setHandler(hello, hello_command);
   ctx.addSubcommand(sample_group, hello);
   ctx.addSubcommand(root, sample_group);
