@@ -27,7 +27,7 @@ typedef int (*zut_print_func)(const char *fmt);
  * @param size Size of the memory region in bytes
  * @param cb_print Call back function to print the output
  */
-void zut_dump_storage(const char *title, const void *data, int size, zut_print_func cb_print)
+static void zut_dump_storage(const char *title, const void *data, int size, zut_print_func cb_print)
 {
   int len = 0;
   char buf[1024] = {0};
