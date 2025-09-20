@@ -219,7 +219,7 @@ async function artifacts(connection: Client, packageApf: boolean) {
             `cd ${deployDirs.root}`,
             ...prePaxCmds,
             `_BPXK_AUTOCVT=OFF sha256 -r ${artifactNames.join(" ")} | ${e2aPipe(checksumFile)}`,
-            `pax -wvz -o saveext -f ${paxFile} ${artifactNames.join(" ")} ${checksumFile}`,
+            `pax -wvz -x pax -f ${paxFile} ${artifactNames.join(" ")} ${checksumFile}`,
             postPaxCmd,
         ].join("\n"),
     );
