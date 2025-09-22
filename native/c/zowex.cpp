@@ -31,6 +31,7 @@ int main(int argc, char *argv[])
   auto &root_cmd = core::setup_root_command(argc, argv);
 
   plugin::PluginManager pm;
+  core::set_plugin_manager(&pm);
   pm.load_plugins();
 
   console::register_commands(root_cmd);

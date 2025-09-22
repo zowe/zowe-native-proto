@@ -11,8 +11,15 @@
 
 #include "../parser.hpp"
 
+namespace plugin
+{
+class PluginManager;
+} // namespace plugin
+
 namespace core
 {
 parser::Command &setup_root_command(int argc, char *argv[]);
 int execute_command(int argc, char *argv[]);
+void set_plugin_manager(plugin::PluginManager *manager);
+plugin::PluginManager *get_plugin_manager();
 } // namespace core
