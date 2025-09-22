@@ -237,8 +237,11 @@ void PluginManager::load_plugins()
       *(void **)(&register_plugin) = dlsym(plugin, "register_plugin");
       if (register_plugin)
       {
+        m_metadata_pending = false;
+        m_pending_metadata = PluginMetadata();
+
         register_plugin(*this);
-        m_plugins.push_back(plugin);
+        record_loaded_plugin(plugin, entry->d_name);
       }
       else
       {
@@ -253,9 +256,30 @@ void PluginManager::unload_plugins()
 {
   for (auto it = m_plugins.begin(); it != m_plugins.end(); ++it)
   {
-    dlclose(*it);
-    *it = nullptr;
+    if (it->handle)
+    {
+      dlclose(it->handle);
+      it->handle = nullptr;
+    }
   }
+}
+
+void PluginManager::record_loaded_plugin(void *plugin_handle, const std::string &plugin_identifier)
+{
+  PluginMetadata metadata;
+  if (m_metadata_pending)
+  {
+    metadata = m_pending_metadata;
+  }
+  else
+  {
+    metadata.display_name = plugin_identifier;
+    metadata.version = "";
+  }
+
+  metadata.filename = plugin_identifier;
+
+  m_plugins.push_back(LoadedPlugin(metadata, plugin_handle));
 }
 
 void PluginManager::register_commands(parser::Command &rootCommand)

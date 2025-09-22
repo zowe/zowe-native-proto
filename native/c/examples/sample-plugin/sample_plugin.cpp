@@ -43,5 +43,6 @@ void BasicCommandRegistry::register_commands(CommandProviderImpl::CommandRegistr
 
 void register_plugin(plugin::PluginManager &pm)
 {
+  pm.register_plugin_metadata("Sample Plug-in", "1.0.0");
   pm.register_command_provider(new BasicCommandProvider());
 }
