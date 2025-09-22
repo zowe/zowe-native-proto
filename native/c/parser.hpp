@@ -12,7 +12,7 @@
 #ifndef PARSER_HPP
 #define PARSER_HPP
 
-#include "extend/io.hpp"
+#include "extend/plugin.hpp"
 #include "lexer.hpp"
 #include "zlogger.hpp"
 #include <algorithm>
