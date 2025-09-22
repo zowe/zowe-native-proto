@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
   auto &root_cmd = core::setup_root_command(argc, argv);
 
   plugin::PluginManager pm;
-  pm.loadPlugins();
+  pm.load_plugins();
 
   console::register_commands(root_cmd);
   ds::register_commands(root_cmd);
@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
   tso::register_commands(root_cmd);
   uss::register_commands(root_cmd);
 
-  pm.registerCommands(root_cmd);
+  pm.register_commands(root_cmd);
 
   return core::execute_command(argc, argv);
 }
