@@ -9,6 +9,20 @@
  *
  */
 
+// z/OS UNIX extensions needed for st_tag in struct stat, etc.
+#ifndef _AE_BIMODAL
+#define _AE_BIMODAL 1
+#endif
+#ifndef _OPEN_SYS_FILE_EXT
+#define _OPEN_SYS_FILE_EXT 1
+#endif
+#ifndef _LARGE_TIME_API
+#define _LARGE_TIME_API
+#endif
+
+#include <limits.h>
+#include <limits>
+#include <climits>
 #ifndef _LARGE_TIME_API
 #define _LARGE_TIME_API
 #endif
@@ -49,7 +63,6 @@
 #include <time.h>
 #include <iomanip>
 #include <sstream>
-#include <limits>
 #include <errno.h>
 
 using namespace std;
@@ -1463,61 +1476,6 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, const string &file, const string
   return RTNCD_SUCCESS;
 }
 
-/**
- * Changes the permissions of a USS file or directory.
- *
- * @param zusf pointer to a ZUSF object
- * @param file name of the USS file
- * @param mode new permissions in octal format
- *
- * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
- */
-int zusf_chmod_uss_file_or_dir(ZUSF *zusf, string file, mode_t mode, bool recursive)
-{
-  // TODO(zFernand0): Add recursive option for directories
-  struct stat file_stats;
-  if (stat(file.c_str(), &file_stats) == -1)
-  {
-    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Path '%s' does not exist", file.c_str());
-    return RTNCD_FAILURE;
-  }
-
-  if (!recursive && S_ISDIR(file_stats.st_mode))
-  {
-    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Path '%s' is a folder and recursive is false", file.c_str());
-    return RTNCD_FAILURE;
-  }
-
-  chmod(file.c_str(), mode);
-  if (recursive && S_ISDIR(file_stats.st_mode))
-  {
-    DIR *dir;
-    if ((dir = opendir(file.c_str())) == nullptr)
-    {
-      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open directory '%s'", file.c_str());
-      return RTNCD_FAILURE;
-    }
-    struct dirent *entry;
-    while ((entry = readdir(dir)) != nullptr)
-    {
-      if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0)
-      {
-        const string child_path = file[file.length() - 1] == '/' ? file + string((const char *)entry->d_name)
-                                                                 : file + string("/") + string((const char *)entry->d_name);
-        struct stat file_stats;
-        stat(child_path.c_str(), &file_stats);
-
-        const auto rc = zusf_chmod_uss_file_or_dir(zusf, child_path, mode, S_ISDIR(file_stats.st_mode));
-        if (0 != rc)
-        {
-          return rc;
-        }
-      }
-    }
-  }
-  return 0;
-}
-
 int zusf_delete_uss_item(ZUSF *zusf, string file, bool recursive)
 {
   struct stat file_stats;
@@ -1643,7 +1601,7 @@ static bool resolve_gid_from_str(const std::string& s, gid_t& out) {
  * Supports "user", "user:group", ":group", or numeric IDs.
  * Validates input, avoids silent -1, and returns RTNCD_FAILURE on error.
  */
-int zusf_chown_uss_file_or_dir(ZUSF *zusf, string file, const string &owner, bool recursive)
+int zusf_chown_uss_file_or_dir(ZUSF *zusf, std::string file, std::string owner, bool recursive)
 {
   struct stat file_stats;
   // Verify target exists and capture current metadata
@@ -1719,7 +1677,7 @@ int zusf_chown_uss_file_or_dir(ZUSF *zusf, string file, const string &owner, boo
       if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0)
       {
         const string child_path =
-          (file.back() == '/') ? file + string(entry->d_name)
+          (file.length() > 0 && file[file.length() - 1] == '/') ? file + string(entry->d_name)
                                : file + string("/") + string(entry->d_name);
 
         struct stat child_stats;
@@ -1746,7 +1704,7 @@ int zusf_chown_uss_file_or_dir(ZUSF *zusf, string file, const string &owner, boo
   return 0;
 }
 
-int zusf_chtag_uss_file_or_dir(ZUSF *zusf, string file, string tag, bool recursive)
+int zusf_chtag_uss_file_or_dir(ZUSF *zusf, std::string file, std::string tag, bool recursive)
 {
   struct stat file_stats;
   if (stat(file.c_str(), &file_stats) == -1)
