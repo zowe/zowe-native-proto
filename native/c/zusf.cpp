@@ -50,6 +50,7 @@
 #include <iomanip>
 #include <sstream>
 #include <limits>
+#include <errno.h>
 
 using namespace std;
 
@@ -1606,7 +1607,7 @@ short zusf_get_id_from_user_or_group(const string &user_or_group, bool is_user)
 * Returns true if resolved or empty, false if invalid/overflow.
  */
 static bool resolve_uid_from_str(const std::string& s, uid_t& out) {
-  if (s.empty()) { out = (uid_t)-1; return true; } // not uid provided
+  if (s.empty()) { out = (uid_t)-1; return true; } // not user provided
   bool digits = s.find_first_not_of("0123456789") == std::string::npos;
   if (digits) {
     unsigned long v = strtoul(s.c_str(), nullptr, 10);
@@ -1619,7 +1620,7 @@ static bool resolve_uid_from_str(const std::string& s, uid_t& out) {
 }
 
 /**
-* Convert group string to GID.
+* Helper to convert group string to GID.
 * Accepts empty (→ -1), numeric GID, or name (getgrnam).
 * Returns true if resolved or empty, false if invalid/overflow.
  */

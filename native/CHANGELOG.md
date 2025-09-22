@@ -4,6 +4,10 @@ All notable changes to the native code for "zowe-native-proto" are documented in
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+
+- `c`: Fixed silent error when uss chown user did not have permissions [#565](https://github.com/zowe/zowe-native-proto/pull/565)
+
 ## `0.1.9`
 
 - `golang`: Fixed an issue where an empty response on the `HandleReadFileRequest` function would result in a panic. [#550](https://github.com/zowe/zowe-native-proto/pull/550)
