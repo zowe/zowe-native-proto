@@ -8,10 +8,10 @@ The native plug-in infrastructure lets extenders add new commands and behaviors 
 Each shared library is expected to export a single function that `zowex` discovers via dynamic loading:
 
 ```c
-extern "C" void registerPlugin(PluginManager &manager);
+extern "C" void register_plugin(PluginManager &manager);
 ```
 
-Inside `register_plugin`, call `manager.register_command_provider(...)` for every command set your plug-in offers. The `PluginManager` takes ownership of the pointer you pass in, so allocate the provider factory on the heap:
+Inside `register_plugin`, call `manager.register_plugin_metadata(...)` once to describe your plug-in and then `manager.register_command_provider(...)` for every command set the plug-in contributes. The `PluginManager` takes ownership of the pointer you pass in, so allocate the provider factory on the heap. The manager automatically records the underlying shared library filename for debugging, so you only supply a display name and version:
 
 ```cpp
 #include "native/c/extend/plugin.hpp"
@@ -21,8 +21,9 @@ public:
   CommandProviderImpl *create() override { return new MyCommandProviderImpl(); }
 };
 
-extern "C" void registerPlugin(PluginManager &manager)
+extern "C" void register_plugin(PluginManager &manager)
 {
+  manager.register_plugin_metadata("Sample Plug-in", "1.0.0");
   manager.register_command_provider(new MyCommandProviderFactory());
 }
 ```

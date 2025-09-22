@@ -621,28 +621,79 @@ public:
 typedef CommandProviderImpl::CommandDefaultValue DefaultValue;
 typedef Factory<CommandProviderImpl> CommandProvider;
 
+struct PluginMetadata
+{
+  PluginMetadata()
+  {
+  }
+
+  PluginMetadata(const std::string &displayName,
+                 const std::string &versionString,
+                 const std::string &fileName)
+      : display_name(displayName), version(versionString), filename(fileName)
+  {
+  }
+
+  std::string display_name;
+  std::string version;
+  std::string filename;
+};
+
 class PluginManager
 {
 public:
-  PluginManager() = default;
+  struct LoadedPlugin
+  {
+    LoadedPlugin()
+        : handle(nullptr)
+    {
+    }
+
+    LoadedPlugin(const PluginMetadata &pluginMetadata, void *pluginHandle)
+        : metadata(pluginMetadata), handle(pluginHandle)
+    {
+    }
+
+    PluginMetadata metadata;
+    void *handle;
+  };
+
+  PluginManager();
   ~PluginManager();
 
   // Takes ownership of the provider pointer; it will be deleted with the manager.
   void register_command_provider(CommandProvider *provider);
+
+  // Capture metadata the active plug-in supplies during registration.
+  void register_plugin_metadata(const char *display_name, const char *version);
 
   // Register commands from all providers, attaching them under the supplied root command.
   void register_commands(parser::Command &rootCommand);
 
   void load_plugins();
 
+  const std::vector<LoadedPlugin> &get_loaded_plugins() const
+  {
+    return m_plugins;
+  }
+
   PluginManager(const PluginManager &) = delete;
   PluginManager &operator=(const PluginManager &) = delete;
 
 private:
   void unload_plugins();
+  void record_loaded_plugin(void *plugin_handle, const std::string &plugin_identifier);
+
   std::vector<CommandProvider *> m_command_providers;
-  std::vector<void *> m_plugins;
+  std::vector<LoadedPlugin> m_plugins;
+  PluginMetadata m_pending_metadata;
+  bool m_metadata_pending;
 };
+
+inline PluginManager::PluginManager()
+    : m_metadata_pending(false)
+{
+}
 
 inline PluginManager::~PluginManager()
 {
@@ -660,6 +711,13 @@ inline void PluginManager::register_command_provider(CommandProvider *provider)
 {
   // Take ownership of the pointer for the plugin manager lifetime.
   m_command_providers.push_back(provider);
+}
+
+inline void PluginManager::register_plugin_metadata(const char *display_name, const char *version)
+{
+  m_pending_metadata.display_name = display_name ? display_name : "";
+  m_pending_metadata.version = version ? version : "";
+  m_metadata_pending = true;
 }
 } // namespace plugin
 
