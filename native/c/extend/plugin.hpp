@@ -590,32 +590,32 @@ public:
     {
     }
 
-    virtual CommandHandle createCommand(const char *name, const char *help) = 0;
-    virtual CommandHandle getRootCommand() = 0;
-    virtual void addAlias(CommandHandle command, const char *alias) = 0;
-    virtual void addKeywordArg(CommandHandle command,
-                               const char *name,
-                               const char **aliases,
-                               unsigned int aliasCount,
-                               const char *help,
-                               ArgumentType type,
-                               int required,
-                               const CommandDefaultValue *defaultValue) = 0;
-    virtual void addPositionalArg(CommandHandle command,
-                                  const char *name,
-                                  const char *help,
-                                  ArgumentType type,
-                                  int required,
-                                  const CommandDefaultValue *defaultValue) = 0;
-    virtual void setHandler(CommandHandle command, CommandHandler handler) = 0;
-    virtual void addSubcommand(CommandHandle parent, CommandHandle child) = 0;
+    virtual CommandHandle create_command(const char *name, const char *help) = 0;
+    virtual CommandHandle get_root_command() = 0;
+    virtual void add_alias(CommandHandle command, const char *alias) = 0;
+    virtual void add_keyword_arg(CommandHandle command,
+                                 const char *name,
+                                 const char **aliases,
+                                 unsigned int aliasCount,
+                                 const char *help,
+                                 ArgumentType type,
+                                 int required,
+                                 const CommandDefaultValue *defaultValue) = 0;
+    virtual void add_positional_arg(CommandHandle command,
+                                    const char *name,
+                                    const char *help,
+                                    ArgumentType type,
+                                    int required,
+                                    const CommandDefaultValue *defaultValue) = 0;
+    virtual void set_handler(CommandHandle command, CommandHandler handler) = 0;
+    virtual void add_subcommand(CommandHandle parent, CommandHandle child) = 0;
   };
 
   virtual ~CommandProviderImpl()
   {
   }
 
-  virtual void registerCommands(CommandRegistrationContext &context) = 0;
+  virtual void register_commands(CommandRegistrationContext &context) = 0;
 };
 
 typedef CommandProviderImpl::CommandDefaultValue DefaultValue;
@@ -628,38 +628,38 @@ public:
   ~PluginManager();
 
   // Takes ownership of the provider pointer; it will be deleted with the manager.
-  void registerCommandProvider(CommandProvider *provider);
+  void register_command_provider(CommandProvider *provider);
 
   // Register commands from all providers, attaching them under the supplied root command.
-  void registerCommands(parser::Command &rootCommand);
+  void register_commands(parser::Command &rootCommand);
 
-  void loadPlugins();
+  void load_plugins();
 
   PluginManager(const PluginManager &) = delete;
   PluginManager &operator=(const PluginManager &) = delete;
 
 private:
-  void unloadPlugins();
-  std::vector<CommandProvider *> m_commandProviders;
+  void unload_plugins();
+  std::vector<CommandProvider *> m_command_providers;
   std::vector<void *> m_plugins;
 };
 
 inline PluginManager::~PluginManager()
 {
   for (auto it =
-           m_commandProviders.begin();
-       it != m_commandProviders.end(); ++it)
+           m_command_providers.begin();
+       it != m_command_providers.end(); ++it)
   {
     delete *it;
   }
 
-  unloadPlugins();
+  unload_plugins();
 }
 
-inline void PluginManager::registerCommandProvider(CommandProvider *provider)
+inline void PluginManager::register_command_provider(CommandProvider *provider)
 {
   // Take ownership of the pointer for the plugin manager lifetime.
-  m_commandProviders.push_back(provider);
+  m_command_providers.push_back(provider);
 }
 } // namespace plugin
 

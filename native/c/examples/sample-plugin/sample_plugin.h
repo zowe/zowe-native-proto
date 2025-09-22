@@ -17,7 +17,7 @@
 class BasicCommandRegistry : public plugin::CommandProviderImpl
 {
 public:
-  void registerCommands(CommandRegistrationContext &context);
+  void register_commands(CommandRegistrationContext &context);
 };
 
 class BasicCommandProvider : public Factory<plugin::CommandProviderImpl>
@@ -29,6 +29,6 @@ public:
   }
 };
 
-extern "C" void registerPlugin(plugin::PluginManager &pm);
+extern "C" void register_plugin(plugin::PluginManager &pm);
 
 #endif
