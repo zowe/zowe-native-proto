@@ -40,22 +40,18 @@ public:
 };
 ```
 
-The `CommandRegistrationContext` supplied to `registerCommands` is your builder for commands, arguments, and handlers. It
-offers the following capabilities:
+The `CommandRegistrationContext` supplied to `registerCommands` is your builder for commands, arguments, and handlers. It offers the following capabilities:
 
 - `createCommand(name, help)` – create a child command and hold on to the returned handle.
 - `getRootCommand()` – fetch a handle to the root so you can attach top-level commands.
 - `addAlias(command, alias)` – register alternative names.
-- `addKeywordArg(...)` and `addPositionalArg(...)` – add options/positional parameters with the specified
-  `ArgumentType` (`Flag`, `Single`, `Multiple`, or `Positional`), whether they are required, and an optional default.
+- `addKeywordArg(...)` and `addPositionalArg(...)` – add options/positional parameters with the specified `ArgumentType` (`Flag`, `Single`, `Multiple`, or `Positional`), whether they are required, and an optional default.
 - `setHandler(command, handler)` – wire in an `int handler(const parser::ParseResult &)` that executes when the command runs.
-- `addSubcommand(parent, child)` – stitch commands into the hierarchy. Pass `getRootCommand()` as the parent to create
-  top-level commands.
+- `addSubcommand(parent, child)` – stitch commands into the hierarchy. Pass `getRootCommand()` as the parent to create top-level commands.
 
 ### Providing default argument values
 
-`CommandDefaultValue` supplies constructors for every supported kind (bool, integer, double, and string). Construct one
-on the stack and pass its pointer when you want a default:
+`CommandDefaultValue` supplies constructors for every supported kind (bool, integer, double, and string). Construct one on the stack and pass its pointer when you want a default:
 
 ```cpp
 CommandDefaultValue defaultTimeout(30LL);

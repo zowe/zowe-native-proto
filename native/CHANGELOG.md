@@ -4,6 +4,10 @@ All notable changes to the native code for "zowe-native-proto" are documented in
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+
+- Added plug-in support to the `zowex` backend. Plug-ins can contribute commands that users invoke through `zowex`. For more information on how to create and register a plug-in with `zowex`, please refer to the `plugins.md` file in the `doc/` root-level folder.
+
 ## `0.1.9`
 
 - `golang`: Fixed an issue where an empty response on the `HandleReadFileRequest` function would result in a panic. [#550](https://github.com/zowe/zowe-native-proto/pull/550)
