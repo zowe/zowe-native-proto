@@ -1600,8 +1600,13 @@ short zusf_get_id_from_user_or_group(const string &user_or_group, bool is_user)
   return -1;
 }
 
+/**
+* Helper to convert user string to UID.
+* Accepts empty (→ -1), numeric UID, or name (getpwnam).
+* Returns true if resolved or empty, false if invalid/overflow.
+ */
 static bool resolve_uid_from_str(const std::string& s, uid_t& out) {
-  if (s.empty()) { out = (uid_t)-1; return true; }     // “not provided”
+  if (s.empty()) { out = (uid_t)-1; return true; } // not uid provided
   bool digits = s.find_first_not_of("0123456789") == std::string::npos;
   if (digits) {
     unsigned long v = strtoul(s.c_str(), nullptr, 10);
@@ -1613,8 +1618,13 @@ static bool resolve_uid_from_str(const std::string& s, uid_t& out) {
   return false;
 }
 
+/**
+* Convert group string to GID.
+* Accepts empty (→ -1), numeric GID, or name (getgrnam).
+* Returns true if resolved or empty, false if invalid/overflow.
+ */
 static bool resolve_gid_from_str(const std::string& s, gid_t& out) {
-  if (s.empty()) { out = (gid_t)-1; return true; }     // “not provided”
+  if (s.empty()) { out = (gid_t)-1; return true; } // no group provided
   bool digits = s.find_first_not_of("0123456789") == std::string::npos;
   if (digits) {
     unsigned long v = strtoul(s.c_str(), nullptr, 10);
@@ -1623,18 +1633,26 @@ static bool resolve_gid_from_str(const std::string& s, gid_t& out) {
     return true;
   }
   if (group* gr = getgrnam(s.c_str())) { out = gr->gr_gid; return true; }
-  return false;
+  return false; // invalid group string
 }
 
+/**
+ * Change ownership of a USS file or directory (recursive optional).
+ *
+ * Supports "user", "user:group", ":group", or numeric IDs.
+ * Validates input, avoids silent -1, and returns RTNCD_FAILURE on error.
+ */
 int zusf_chown_uss_file_or_dir(ZUSF *zusf, string file, const string &owner, bool recursive)
 {
   struct stat file_stats;
+  // Verify target exists and capture current metadata
   if (stat(file.c_str(), &file_stats) == -1)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Path '%s' does not exist", file.c_str());
     return RTNCD_FAILURE;
   }
 
+  // Refuse to descend into a directory if caller didn’t request recursion
   if (S_ISDIR(file_stats.st_mode) && !recursive)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Path '%s' is a folder and recursive is false", file.c_str());
@@ -1653,33 +1671,38 @@ int zusf_chown_uss_file_or_dir(ZUSF *zusf, string file, const string &owner, boo
   uid_t uid;
   gid_t gid;
 
+  // Resolve user to UID (numeric or name); return error on invalid input
   if (!resolve_uid_from_str(userPart, uid)) {
     errno = EINVAL;
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "chown error: invalid user '%s'", userPart.c_str());
     return RTNCD_FAILURE;
   }
+
+  // Resolve group to GID (numeric or name); return error on invalid input
   if (!resolve_gid_from_str(groupPart, gid)) {
     errno = EINVAL;
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "chown error: invalid group '%s'", groupPart.c_str());
     return RTNCD_FAILURE;
   }
 
-  // Refuse no-op cases (both missing)
+  // If both were empty, refuse (otherwise chown(-1,-1) is a no-op)
   if (uid == (uid_t)-1 && gid == (gid_t)-1) {
     errno = EINVAL;
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "chown error: neither user nor group specified");
     return RTNCD_FAILURE;
   }
 
-  // If group not supplied, keep current explicitly (avoid -1 semantics)
+  // Preserve current group explicitly if only user was supplied
   if (gid == (gid_t)-1) gid = file_stats.st_gid;
 
+  // Attempt chown
   const auto rc = chown(file.c_str(), uid, gid);
   if (rc != 0) {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "chown failed for path '%s', errno %d", file.c_str(), errno);
     return RTNCD_FAILURE;
   }
 
+  // Recurse into directories if requested
   if (recursive && S_ISDIR(file_stats.st_mode))
   {
     DIR *dir = opendir(file.c_str());
@@ -1706,6 +1729,7 @@ int zusf_chown_uss_file_or_dir(ZUSF *zusf, string file, const string &owner, boo
           return RTNCD_FAILURE;
         }
 
+        // Propagate chown to children, recursing into subdirectories
         const auto child_rc =
           zusf_chown_uss_file_or_dir(zusf, child_path, owner, S_ISDIR(child_stats.st_mode));
         if (child_rc != 0)
