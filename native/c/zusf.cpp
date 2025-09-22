@@ -49,6 +49,7 @@
 #include <time.h>
 #include <iomanip>
 #include <sstream>
+#include <limits>
 
 using namespace std;
 
@@ -1599,6 +1600,32 @@ short zusf_get_id_from_user_or_group(const string &user_or_group, bool is_user)
   return -1;
 }
 
+static bool resolve_uid_from_str(const std::string& s, uid_t& out) {
+  if (s.empty()) { out = (uid_t)-1; return true; }     // “not provided”
+  bool digits = s.find_first_not_of("0123456789") == std::string::npos;
+  if (digits) {
+    unsigned long v = strtoul(s.c_str(), nullptr, 10);
+    if (v > std::numeric_limits<uid_t>::max()) return false;
+    out = static_cast<uid_t>(v);
+    return true;
+  }
+  if (passwd* pw = getpwnam(s.c_str())) { out = pw->pw_uid; return true; }
+  return false;
+}
+
+static bool resolve_gid_from_str(const std::string& s, gid_t& out) {
+  if (s.empty()) { out = (gid_t)-1; return true; }     // “not provided”
+  bool digits = s.find_first_not_of("0123456789") == std::string::npos;
+  if (digits) {
+    unsigned long v = strtoul(s.c_str(), nullptr, 10);
+    if (v > std::numeric_limits<gid_t>::max()) return false;
+    out = static_cast<gid_t>(v);
+    return true;
+  }
+  if (group* gr = getgrnam(s.c_str())) { out = gr->gr_gid; return true; }
+  return false;
+}
+
 int zusf_chown_uss_file_or_dir(ZUSF *zusf, string file, const string &owner, bool recursive)
 {
   struct stat file_stats;
@@ -1614,43 +1641,81 @@ int zusf_chown_uss_file_or_dir(ZUSF *zusf, string file, const string &owner, boo
     return RTNCD_FAILURE;
   }
 
-  const auto uid = zusf_get_id_from_user_or_group(owner, true);
-  const auto colon_pos = owner.find_first_of(":");
-  const auto group = colon_pos != std::string::npos ? owner.substr(colon_pos + 1) : std::string();
-  const auto gid = group.empty() ? file_stats.st_gid : zusf_get_id_from_user_or_group(group, false);
-  const auto rc = chown(file.c_str(), uid, gid);
+  // Split owner into user[:group]
+  std::string userPart = owner;
+  std::string groupPart;
+  const auto colon_pos = owner.find(':');
+  if (colon_pos != std::string::npos) {
+    userPart  = owner.substr(0, colon_pos);
+    groupPart = owner.substr(colon_pos + 1);
+  }
 
-  if (0 != rc)
-  {
-    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "chmod failed for path '%s', errno %d", file.c_str(), errno);
+  uid_t uid;
+  gid_t gid;
+
+  if (!resolve_uid_from_str(userPart, uid)) {
+    errno = EINVAL;
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "chown error: invalid user '%s'", userPart.c_str());
+    return RTNCD_FAILURE;
+  }
+  if (!resolve_gid_from_str(groupPart, gid)) {
+    errno = EINVAL;
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "chown error: invalid group '%s'", groupPart.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  // Refuse no-op cases (both missing)
+  if (uid == (uid_t)-1 && gid == (gid_t)-1) {
+    errno = EINVAL;
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "chown error: neither user nor group specified");
+    return RTNCD_FAILURE;
+  }
+
+  // If group not supplied, keep current explicitly (avoid -1 semantics)
+  if (gid == (gid_t)-1) gid = file_stats.st_gid;
+
+  const auto rc = chown(file.c_str(), uid, gid);
+  if (rc != 0) {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "chown failed for path '%s', errno %d", file.c_str(), errno);
     return RTNCD_FAILURE;
   }
 
   if (recursive && S_ISDIR(file_stats.st_mode))
   {
-    DIR *dir;
-    if ((dir = opendir(file.c_str())) == nullptr)
+    DIR *dir = opendir(file.c_str());
+    if (!dir)
     {
       zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open directory '%s'", file.c_str());
       return RTNCD_FAILURE;
     }
+
     struct dirent *entry;
     while ((entry = readdir(dir)) != nullptr)
     {
       if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0)
       {
-        const string child_path = file[file.length() - 1] == '/' ? file + string((const char *)entry->d_name)
-                                                                 : file + string("/") + string((const char *)entry->d_name);
-        struct stat file_stats;
-        stat(child_path.c_str(), &file_stats);
+        const string child_path =
+          (file.back() == '/') ? file + string(entry->d_name)
+                               : file + string("/") + string(entry->d_name);
 
-        const auto rc = zusf_chown_uss_file_or_dir(zusf, child_path, owner, S_ISDIR(file_stats.st_mode));
-        if (0 != rc)
+        struct stat child_stats;
+        if (stat(child_path.c_str(), &child_stats) == -1)
         {
-          return rc;
+          closedir(dir);
+          zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Path '%s' no longer accessible", child_path.c_str());
+          return RTNCD_FAILURE;
+        }
+
+        const auto child_rc =
+          zusf_chown_uss_file_or_dir(zusf, child_path, owner, S_ISDIR(child_stats.st_mode));
+        if (child_rc != 0)
+        {
+          closedir(dir);
+          return child_rc;
         }
       }
     }
+    closedir(dir);
   }
 
   return 0;
