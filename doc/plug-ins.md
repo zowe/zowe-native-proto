@@ -11,8 +11,7 @@ Each shared library is expected to export a single function that `zowex` discove
 extern "C" void registerPlugin(PluginManager &manager);
 ```
 
-Inside `registerPlugin`, call `manager.registerCommandProvider(...)` for every command set your plug-in offers. The
-`PluginManager` takes ownership of the pointer you pass in, so allocate the provider factory on the heap:
+Inside `register_plugin`, call `manager.register_command_provider(...)` for every command set your plug-in offers. The `PluginManager` takes ownership of the pointer you pass in, so allocate the provider factory on the heap:
 
 ```cpp
 #include "native/c/extend/plugin.hpp"
@@ -24,45 +23,45 @@ public:
 
 extern "C" void registerPlugin(PluginManager &manager)
 {
-  manager.registerCommandProvider(new MyCommandProviderFactory());
+  manager.register_command_provider(new MyCommandProviderFactory());
 }
 ```
 
 ## Implementing a command provider
 
 `CommandProvider` is a `Factory<CommandProviderImpl>`. When `zowex` is ready to populate the command tree it calls
-`create()`, expects a `CommandProviderImpl`, and immediately invokes `registerCommands(...)` on the instance.
+`create()`, expects a `CommandProviderImpl`, and immediately invokes `register_commands(...)` on the instance.
 
 ```cpp
 class MyCommandProviderImpl : public CommandProviderImpl {
 public:
-  void registerCommands(CommandRegistrationContext &context) override;
+  void register_commands(CommandRegistrationContext &context) override;
 };
 ```
 
-The `CommandRegistrationContext` supplied to `registerCommands` is your builder for commands, arguments, and handlers. It offers the following capabilities:
+The `CommandRegistrationContext` supplied to `register_commands` is your builder for commands, arguments, and handlers. It offers the following capabilities:
 
-- `createCommand(name, help)` – create a child command and hold on to the returned handle.
-- `getRootCommand()` – fetch a handle to the root so you can attach top-level commands.
-- `addAlias(command, alias)` – register alternative names.
-- `addKeywordArg(...)` and `addPositionalArg(...)` – add options/positional parameters with the specified `ArgumentType` (`Flag`, `Single`, `Multiple`, or `Positional`), whether they are required, and an optional default.
-- `setHandler(command, handler)` – wire in an `int handler(const parser::ParseResult &)` that executes when the command runs.
-- `addSubcommand(parent, child)` – stitch commands into the hierarchy. Pass `getRootCommand()` as the parent to create top-level commands.
+- `create_command(name, help)` – create a child command and hold on to the returned handle.
+- `get_root_command()` – fetch a handle to the root so you can attach top-level commands.
+- `add_alias(command, alias)` – register alternative names.
+- `add_keyword_arg(...)` and `add_positional_arg(...)` – add options/positional parameters with the specified `ArgumentType` (`Flag`, `Single`, `Multiple`, or `Positional`), whether they are required, and an optional default.
+- `set_handler(command, handler)` – wire in an `int handler(const parser::ParseResult &)` that executes when the command runs.
+- `add_subcommand(parent, child)` – stitch commands into the hierarchy. Pass `get_root_command()` as the parent to create top-level commands.
 
 ### Providing default argument values
 
 `CommandDefaultValue` supplies constructors for every supported kind (bool, integer, double, and string). Construct one on the stack and pass its pointer when you want a default:
 
 ```cpp
-CommandDefaultValue defaultTimeout(30LL);
-context.addKeywordArg(cmd,
+CommandDefaultValue default_timeout(30LL);
+context.add_keyword_arg(cmd,
                       "timeout",
                       nullptr,
                       0,
                       "Number of seconds to wait",
                       CommandRegistrationContext::ArgumentType_Single,
                       /* required */ 0,
-                      &defaultTimeout);
+                      &default_timeout);
 ```
 
 If you do not supply a default or pass `nullptr`, the argument inherits the parser's standard empty value.
@@ -70,14 +69,25 @@ If you do not supply a default or pass `nullptr`, the argument inherits the pars
 ### Complete example
 
 ```cpp
-void MyCommandProviderImpl::registerCommands(CommandRegistrationContext &context)
-{
-  auto root = context.getRootCommand();
-  auto hello = context.createCommand("hello", "Print a greeting");
+int hello_cmd_handler(const InvocationContext& context) {
+  const auto name = context.get<std::string>("name", "");
+  if (!name.empty()) {
+    context.println("hello, " + name + "!");
+  } else {
+    context.println("hello");
+  }
 
-  CommandDefaultValue defaultName("World");
+  return 0;
+}
+
+void MyCommandProviderImpl::register_commands(CommandRegistrationContext &context)
+{
+  auto root = context.get_root_command();
+  auto hello = context.create_command("hello", "Print a greeting");
+
+  CommandDefaultValue default_name("World");
   const char *aliases[] = {"-n", "--name"};
-  context.addKeywordArg(hello,
+  context.add_keyword_arg(hello,
                         "name",
                         aliases,
                         2,
@@ -86,7 +96,7 @@ void MyCommandProviderImpl::registerCommands(CommandRegistrationContext &context
                         /* required */ 0,
                         &defaultName);
 
-  context.setHandler(hello, &handleHello);
-  context.addSubcommand(root, hello);
+  context.set_handler(hello, &hello_cmd_handler);
+  context.add_subcommand(root, hello);
 }
 ```

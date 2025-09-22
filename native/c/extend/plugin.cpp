@@ -25,7 +25,7 @@ class RegistrationContextImpl
 
 public:
   explicit RegistrationContextImpl(parser::Command &root)
-      : m_root(root), m_rootRecord(root)
+      : m_root(root), m_root_record(root)
   {
   }
 
@@ -38,101 +38,101 @@ public:
     }
   }
 
-  CommandHandle createCommand(const char *name, const char *help)
+  CommandHandle create_command(const char *name, const char *help)
   {
-    std::string cmdName = name ? name : "";
-    std::string cmdHelp = help ? help : "";
+    std::string cmd_name = name ? name : "";
+    std::string cmd_help = help ? help : "";
 
-    parser::command_ptr command(new parser::Command(cmdName, cmdHelp));
+    parser::command_ptr command(new parser::Command(cmd_name, cmd_help));
     CommandRecord *record = new CommandRecord(command);
     m_records.push_back(record);
     return reinterpret_cast<CommandHandle>(record);
   }
 
-  CommandHandle getRootCommand()
+  CommandHandle get_root_command()
   {
-    return reinterpret_cast<CommandHandle>(&m_rootRecord);
+    return reinterpret_cast<CommandHandle>(&m_root_record);
   }
 
-  void addAlias(CommandHandle command, const char *alias)
+  void add_alias(CommandHandle command, const char *alias)
   {
-    CommandRecord *record = toRecord(command);
+    CommandRecord *record = to_record(command);
     if (!record || !alias)
       return;
 
     record->get().add_alias(alias);
   }
 
-  void addKeywordArg(CommandHandle command,
-                     const char *name,
-                     const char **aliases,
-                     unsigned int aliasCount,
-                     const char *help,
-                     ArgumentType type,
-                     int required,
-                     const DefaultValue *defaultValue)
+  void add_keyword_arg(CommandHandle command,
+                       const char *name,
+                       const char **aliases,
+                       unsigned int alias_count,
+                       const char *help,
+                       ArgumentType type,
+                       int required,
+                       const DefaultValue *default_value)
   {
-    CommandRecord *record = toRecord(command);
+    CommandRecord *record = to_record(command);
     if (!record || !name)
       return;
 
-    std::vector<std::string> aliasVector;
+    std::vector<std::string> alias_vector;
     if (aliases)
     {
-      for (unsigned int i = 0; i < aliasCount; ++i)
+      for (unsigned int i = 0; i < alias_count; ++i)
       {
         if (aliases[i])
-          aliasVector.push_back(aliases[i]);
+          alias_vector.push_back(aliases[i]);
       }
     }
 
-    parser::ArgValue defaultArg = convertDefaultValue(defaultValue);
-    record->get().add_keyword_arg(std::string(name), aliasVector, std::string(help ? help : ""), convertArgType(type), required != 0, defaultArg);
+    parser::ArgValue defaultArg = convert_default(default_value);
+    record->get().add_keyword_arg(std::string(name), alias_vector, std::string(help ? help : ""), convert_type(type), required != 0, defaultArg);
   }
 
-  void addPositionalArg(CommandHandle command,
-                        const char *name,
-                        const char *help,
-                        ArgumentType type,
-                        int required,
-                        const DefaultValue *defaultValue)
+  void add_positional_arg(CommandHandle command,
+                          const char *name,
+                          const char *help,
+                          ArgumentType type,
+                          int required,
+                          const DefaultValue *default_value)
   {
-    CommandRecord *record = toRecord(command);
+    CommandRecord *record = to_record(command);
     if (!record || !name)
       return;
 
-    parser::ArgValue defaultArg = convertDefaultValue(defaultValue);
+    parser::ArgValue default_arg = convert_default(default_value);
 
     record->get().add_positional_arg(std::string(name),
                                      help ? std::string(help) : std::string(),
                                      parser::ArgType_Single, required != 0,
-                                     defaultArg);
+                                     default_arg);
   }
 
-  void setHandler(CommandHandle command, CommandHandler handler)
+  void set_handler(CommandHandle command, CommandHandler handler)
   {
-    CommandRecord *record = toRecord(command);
+    CommandRecord *record = to_record(command);
     if (!record)
       return;
 
     record->get().set_handler(handler);
   }
 
-  void addSubcommand(CommandHandle parent, CommandHandle child)
+  void add_subcommand(CommandHandle parent, CommandHandle child)
   {
-    CommandRecord *parentRecord = toRecord(parent);
-    CommandRecord *childRecord = toRecord(child);
-    if (!parentRecord || !childRecord)
+    CommandRecord *parent_record = to_record(parent);
+    CommandRecord *child_record = to_record(child);
+    if (!parent_record || !child_record)
       return;
 
-    if (parentRecord->isRoot())
+    if (parent_record->is_root())
     {
-      m_root.add_command(childRecord->getCommandPointer());
+      m_root.add_command(child_record->get_command_ptr());
     }
     else
     {
-      parentRecord->get()
-          .add_command(childRecord->getCommandPointer());
+      parent_record->get()
+          .add_command(child_record->get_command_ptr());
     }
   }
 
@@ -158,23 +158,23 @@ private:
       return *raw;
     }
 
-    const parser::command_ptr &getCommandPointer() const
+    const parser::command_ptr &get_command_ptr() const
     {
       return pointer;
     }
 
-    bool isRoot() const
+    bool is_root() const
     {
       return root;
     }
   };
 
-  CommandRecord *toRecord(CommandHandle handle)
+  CommandRecord *to_record(CommandHandle handle)
   {
     return reinterpret_cast<CommandRecord *>(handle);
   }
 
-  parser::ArgValue convertDefaultValue(const DefaultValue *value)
+  parser::ArgValue convert_default(const DefaultValue *value)
   {
     if (!value || value->kind == DefaultValue::ValueKind_None)
     {
@@ -198,7 +198,7 @@ private:
     }
   }
 
-  parser::ArgType convertArgType(ArgumentType type)
+  parser::ArgType convert_type(ArgumentType type)
   {
     switch (type)
     {
@@ -213,17 +213,17 @@ private:
   }
 
   parser::Command &m_root;
-  CommandRecord m_rootRecord;
+  CommandRecord m_root_record;
   std::vector<CommandRecord *> m_records;
 };
 
-void PluginManager::loadPlugins()
+void PluginManager::load_plugins()
 {
   auto *plugins_dir = opendir("./plugins");
   if (plugins_dir != nullptr)
   {
     struct dirent *entry;
-    void (*RegisterPluginFn)(plugin::PluginManager &);
+    void (*register_plugin)(plugin::PluginManager &);
     while ((entry = readdir(plugins_dir)) != nullptr)
     {
       std::string plugin_path = std::string("./plugins/") + entry->d_name;
@@ -234,22 +234,22 @@ void PluginManager::loadPlugins()
         continue;
       }
 
-      *(void **)(&RegisterPluginFn) = dlsym(plugin, "registerPlugin");
-      if (RegisterPluginFn)
+      *(void **)(&register_plugin) = dlsym(plugin, "register_plugin");
+      if (register_plugin)
       {
-        RegisterPluginFn(*this);
+        register_plugin(*this);
         m_plugins.push_back(plugin);
       }
       else
       {
-        ZLOG_ERROR("Plugin %s loaded but no entrypoint available (registerPlugin missing)", plugin_path);
+        ZLOG_ERROR("Plugin %s loaded but no entrypoint available (register_plugin missing)", plugin_path);
         dlclose(plugin);
       }
     }
   }
 }
 
-void PluginManager::unloadPlugins()
+void PluginManager::unload_plugins()
 {
   for (auto it = m_plugins.begin(); it != m_plugins.end(); ++it)
   {
@@ -258,13 +258,13 @@ void PluginManager::unloadPlugins()
   }
 }
 
-void PluginManager::registerCommands(parser::Command &rootCommand)
+void PluginManager::register_commands(parser::Command &rootCommand)
 {
   RegistrationContextImpl context(rootCommand);
 
   for (std::vector<CommandProvider *>::iterator it =
-           m_commandProviders.begin();
-       it != m_commandProviders.end(); ++it)
+           m_command_providers.begin();
+       it != m_command_providers.end(); ++it)
   {
     CommandProvider *factory = *it;
     if (!factory)
@@ -274,7 +274,7 @@ void PluginManager::registerCommands(parser::Command &rootCommand)
     if (!provider)
       continue;
 
-    provider->registerCommands(context);
+    provider->register_commands(context);
     delete provider;
   }
 }
