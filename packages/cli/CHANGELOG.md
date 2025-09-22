@@ -4,7 +4,7 @@ All notable changes to the Client code for "zowe-native-proto-cli" are documente
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## Recent Changes
+## `0.1.9`
 
 - Added support for the `local-encoding` option to data set, USS file, and job file commands (view, download, upload) to specify the source encoding of content (defaults to UTF-8). [#511](https://github.com/zowe/zowe-native-proto/issues/511)
 - Added support for `--volume-serial` option when uploading/downloading data sets. [#439](https://github.com/zowe/zowe-native-proto/issues/439)
