@@ -38,6 +38,10 @@ build: swig-wrappers
 	@echo '\nBuilding Python extensions'
 	$(_SWIG_ENV) python setup.py build_ext
 
+# Pattern rule to rename so files
+%.cpython-311.so: %.abi3.so
+	mv $< $@
+
 # Build specific modules only
 build-zusf: swig-zusf
 	@echo '\nBuilding zusf_py module only'

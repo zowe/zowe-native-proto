@@ -1,3 +1,7 @@
+%begin %{
+#define Py_LIMITED_API 0x030A0000
+%}
+
 %include "exception.i"
 
 %exception {
@@ -11,3 +15,6 @@
         SWIG_exception(SWIG_RuntimeError, "Unknown exception");
     }
 }
+
+%include "std_string.i"
+%include "std_vector.i"
