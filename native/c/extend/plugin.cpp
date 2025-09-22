@@ -17,9 +17,6 @@
 #include "plugin.hpp"
 #include "../parser.hpp"
 
-#include <string>
-#include <vector>
-
 namespace plugin
 {
 class RegistrationContextImpl
