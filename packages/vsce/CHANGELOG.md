@@ -4,9 +4,12 @@ All notable changes to the "zowe-native-proto-vsce" extension will be documented
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## `0.1.9`
+## Recent Changes
 
 - Updated the `Zowe-SSH: Connect to Host...` command to prompt the user to choose a deploy directory.[#527] (https://github.com/zowe/zowe-native-proto/issues/527)
+
+## `0.1.9`
+
 - Moved `showSessionInTree` call to before `uninstallServer` is called to ensure the session is displayed in the tree before the uninstall removes it. [#484] (https://github.com/zowe/zowe-native-proto/issues/484)
 - Filtered out certain information messages to display a clear and concise error message for when creating a data set with an invalid management class. [#502](https://github.com/zowe/zowe-native-proto/issues/502)
 - Added "Worker Count" setting to configure number of `zowex` worker threads. [#514](https://github.com/zowe/zowe-native-proto/pull/514)

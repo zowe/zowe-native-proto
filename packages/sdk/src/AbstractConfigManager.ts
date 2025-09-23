@@ -9,6 +9,7 @@
  *
  */
 
+import * as fs from "node:fs";
 import { readFileSync } from "node:fs";
 import * as path from "node:path";
 import {
@@ -210,10 +211,24 @@ export abstract class AbstractConfigManager {
         if (result === "$(plus) Add New Deploy Directory") {
             const input = await this.showInputBox({
                 title: "Enter custom deploy directory for the Zowe SSH server",
-                placeHolder: "E.g. " + defaultServerPath,
+                placeHolder: `E.g. ${defaultServerPath}`,
+                validateInput: (input) => {
+                    const trimmed = input.trim();
+                    if (!trimmed) return "Path cannot be empty";
+                    if (!path.isAbsolute(trimmed)) return "Deploy Directory must be an absolute path";
+                    return null;
+                },
             });
 
-            return input?.trim() || defaultServerPath;
+            return input?.trim();
+        }
+
+        if (!path.isAbsolute(result)) {
+            this.showMessage(
+                "Invalid Deploy Directory format. Ensure it matches the expected pattern.",
+                MESSAGE_TYPE.ERROR,
+            );
+            return;
         }
 
         return result;
