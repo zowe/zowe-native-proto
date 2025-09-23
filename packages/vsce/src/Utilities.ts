@@ -12,11 +12,12 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
-import { Gui, imperative, ZoweVsCodeExtension } from "@zowe/zowe-explorer-api";
+import { Gui, imperative, ZoweExplorerApiType, ZoweVsCodeExtension } from "@zowe/zowe-explorer-api";
 import * as vscode from "vscode";
 import { ZSshUtils } from "zowe-native-proto-sdk";
 import { SshClientCache } from "./SshClientCache";
 import { SshConfigUtils, VscePromptApi } from "./SshConfigUtils";
+import { SshErrorHandler } from "./SshErrorHandler";
 
 const EXTENSION_NAME = "zowe-native-proto-vsce";
 
@@ -27,9 +28,18 @@ export function deployWithProgress(session: SshSession, serverPath: string, loca
             title: "Deploying Zowe SSH server...",
         },
         async (progress) => {
-            // Pass a callback function that will update the progress object
-            await ZSshUtils.installServer(session, serverPath, localDir, (progressIncrement) => {
-                progress.report({ increment: progressIncrement });
+            // Create error callback that uses error correlations
+            const errorCallback = SshErrorHandler.getInstance().createErrorCallback(
+                ZoweExplorerApiType.All,
+                "Server installation",
+            );
+
+            // Pass callbacks for both progress and error handling
+            await ZSshUtils.installServer(session, serverPath, localDir, {
+                onProgress: (progressIncrement) => {
+                    progress.report({ increment: progressIncrement });
+                },
+                onError: errorCallback,
             });
         },
     );
@@ -110,7 +120,15 @@ export function registerCommands(context: vscode.ExtensionContext): vscode.Dispo
             SshClientCache.inst.end(profile.profile);
             const serverPath = SshConfigUtils.getServerPath(profile.profile);
             await SshConfigUtils.showSessionInTree(profile.name!, false);
-            await ZSshUtils.uninstallServer(ZSshUtils.buildSession(profile.profile), serverPath);
+
+            // Create error callback for uninstall operation
+            const errorCallback = SshErrorHandler.getInstance().createErrorCallback(
+                ZoweExplorerApiType.All,
+                "Server uninstall",
+            );
+            await ZSshUtils.uninstallServer(ZSshUtils.buildSession(profile.profile), serverPath, {
+                onError: errorCallback,
+            });
 
             const infoMsg = `Uninstalled Zowe SSH server from ${profile.profile.host ?? profile.name}`;
             imperative.Logger.getAppLogger().info(infoMsg);
