@@ -27,6 +27,7 @@
 #include "zjsonm.h"
 #include "zjsontype.h"
 #include "zstd.hpp"
+#include "zlogger.hpp"
 #include <hwtjic.h> // ensure to include /usr/include
 
 /*
@@ -111,7 +112,7 @@ struct RenameAll
     case lowercase:
     {
       std::string result;
-      for (char c : name)
+      for (const char &c : name)
       {
         result += std::tolower(c);
       }
@@ -120,7 +121,7 @@ struct RenameAll
     case UPPERCASE:
     {
       std::string result;
-      for (char c : name)
+      for (const char &c : name)
       {
         result += std::toupper(c);
       }
@@ -132,7 +133,7 @@ struct RenameAll
     {
       std::string result;
       bool capitalize_next = false;
-      for (char c : name)
+      for (const char &c : name)
       {
         if (c == '_')
         {
@@ -162,7 +163,7 @@ struct RenameAll
     case SCREAMING_SNAKE_CASE:
     {
       std::string result;
-      for (char c : name)
+      for (const char &c : name)
       {
         result += std::toupper(c);
       }
@@ -171,7 +172,7 @@ struct RenameAll
     case kebab_case:
     {
       std::string result;
-      for (char c : name)
+      for (const char &c : name)
       {
         if (c == '_')
         {
@@ -187,7 +188,7 @@ struct RenameAll
     case SCREAMING_KEBAB_CASE:
     {
       std::string result;
-      for (char c : name)
+      for (const char &c : name)
       {
         if (c == '_')
         {
@@ -1145,6 +1146,7 @@ inline Value json_handle_to_value(JSON_INSTANCE *instance, KEY_HANDLE *key_handl
           catch (...)
           {
             // Skip problematic array elements
+            ZLOG_WARN("Failed to parse JSON array element at index %d to Value", i);
             continue;
           }
         }
@@ -1183,6 +1185,7 @@ inline Value json_handle_to_value(JSON_INSTANCE *instance, KEY_HANDLE *key_handl
           catch (...)
           {
             // Skip problematic object fields
+            ZLOG_WARN("Failed to parse JSON object field at index %d to Value", i);
             continue;
           }
         }
@@ -1205,6 +1208,7 @@ inline Value json_handle_to_value(JSON_INSTANCE *instance, KEY_HANDLE *key_handl
             catch (...)
             {
               // Skip problematic object fields
+              ZLOG_WARN("Failed to parse JSON object field at index %d to Value", i);
               continue;
             }
           }
@@ -1338,7 +1342,7 @@ inline std::string add_json_indentation(const std::string &json_str, int spaces)
   bool in_string = false;
   bool escape_next = false;
 
-  for (char ch : json_str)
+  for (const char &ch : json_str)
   {
     if (escape_next)
     {
@@ -1412,8 +1416,7 @@ zstd::expected<std::string, Error> to_string_pretty(const T &value)
   try
   {
     // Use our simple indentation function instead of ZJson
-    std::string pretty_json = add_json_indentation(result.value(), 2);
-    return pretty_json;
+    return add_json_indentation(result.value(), 2);
   }
   catch (const std::exception &e)
   {

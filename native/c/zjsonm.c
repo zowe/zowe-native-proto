@@ -103,8 +103,7 @@ int ZJSMPARS(JSON_INSTANCE *PTR64 instance, const char *PTR64 json)
 
   instance->json_length = (int)strlen(json) + 1;
   instance->json = storage_obtain31(instance->json_length);
-
-  strncpy(instance->json, json, instance->json_length);
+  strcpy(instance->json, json);
 
   rc = zjsm_parse(&instance31, (const char *PTR32)instance->json);
 
@@ -133,8 +132,7 @@ int ZJSMSRCH(JSON_INSTANCE *PTR64 instance, int *PTR64 type, const char *PTR64 k
 
   int length = (int)strlen(key) + 1;
   char *PTR32 key31 = storage_obtain31(length);
-
-  strncpy(key31, key, length);
+  strcpy(key31, key);
 
   rc = zjsm_search(&instance31, &type31, key31, &object_handle31, &starting_handle31, &key_handle31);
 
@@ -159,8 +157,7 @@ int ZJSMSSRC(JSON_INSTANCE *PTR64 instance, const char *PTR64 key, KEY_HANDLE *P
 
   int length = (int)strlen(key) + 1;
   char *PTR32 key31 = storage_obtain31(length);
-
-  strncpy(key31, key, length);
+  strcpy(key31, key);
 
   rc = zjsm_shallow_search(&instance31, key31, &key_handle31);
 
@@ -375,7 +372,7 @@ int ZJSMCREN(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 parent_handle, con
   if (entry_name)
   {
     char *PTR32 name_data = name_block + ptr_size;
-    strncpy(name_data, entry_name, entry_name_length);
+    strcpy(name_data, entry_name);
     *entry_name31_ptr = name_data;
   }
   else
@@ -391,7 +388,7 @@ int ZJSMCREN(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 parent_handle, con
   if (entry_value)
   {
     char *PTR32 value_data = value_block + ptr_size;
-    strncpy(value_data, entry_value, entry_value_length);
+    strcpy(value_data, entry_value);
     *entry_value31_ptr = value_data;
   }
   else
