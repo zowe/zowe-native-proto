@@ -752,6 +752,12 @@ describe("AbstractConfigManager", async () => {
                 "Cannot parse privateKey: Malformed OpenSSH private key",
             );
             vi.spyOn(ConfigFileUtils.getInstance(), "commentOutProperty").mockReturnValue(undefined);
+            // Skip past autoStore = false check to validate logic below it
+            const getTeamConfigMock = vi
+                .spyOn((testManager as any).mProfilesCache, "getTeamConfig")
+                .mockReturnValueOnce({
+                    properties: { autoStore: false },
+                });
 
             expect(
                 await (testManager as any).validateConfig(
@@ -759,12 +765,19 @@ describe("AbstractConfigManager", async () => {
                     true,
                 ),
             ).toBeUndefined();
+            expect(getTeamConfigMock).toHaveBeenCalledTimes(1);
         });
         it("should return undefined for privateKey with no password if 'All configured authentication methods failed'", async () => {
             vi.spyOn(testManager as any, "attemptConnection").mockRejectedValue(
                 new Error("All configured authentication methods failed"),
             );
             vi.spyOn(ConfigFileUtils.getInstance(), "commentOutProperty").mockReturnValueOnce(undefined);
+            // Skip past autoStore = false check to validate logic below it
+            const getTeamConfigMock = vi
+                .spyOn((testManager as any).mProfilesCache, "getTeamConfig")
+                .mockReturnValueOnce({
+                    properties: { autoStore: false },
+                });
 
             const config = {
                 name: "ssh1",
@@ -774,6 +787,7 @@ describe("AbstractConfigManager", async () => {
                 privateKey: "/path/to/key",
             };
             const result = await (testManager as any).validateConfig(config, false);
+            expect(getTeamConfigMock).toHaveBeenCalledTimes(1);
 
             expect(result).toBeUndefined();
         });
