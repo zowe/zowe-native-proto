@@ -9,6 +9,10 @@
  *
  */
 
+// ============================================================================
+// ZJson Basic Examples - Demonstrating core ZJson C++ API
+// ============================================================================
+
 #include <iostream>
 #include <string>
 #include <vector>
@@ -16,388 +20,148 @@
 #include "zjsontype.h"
 #include "zjson.hpp"
 
-int run_low_level_json();
+// ============================================================================
+// PARSING JSON AS STRONGLY TYPED DATA STRUCTURES
+// ============================================================================
+
+struct Person
+{
+  std::string name;
+  int age;
+  std::vector<std::string> phones;
+};
+
+// Register the type for serialization/deserialization
+ZJSON_DERIVE(Person, name, age, phones);
+
+void typed_example()
+{
+  std::cout << "\n=== STRONGLY TYPED PARSING EXAMPLE ===" << std::endl;
+
+  // Some JSON input data as a string. Maybe this comes from the user.
+  std::string data = R"(
+      {
+          "name": "John Doe",
+          "age": 43,
+          "phones": [
+              "+44 1234567",
+              "+44 2345678"
+          ]
+      })";
+
+  // Parse the string of data into a Person object. This is exactly the
+  // same function as the one that produced serde_json::Value above, but
+  // now we are asking it for a Person as output.
+  auto person_result = zjson::from_str<Person>(data);
+  if (person_result.has_value())
+  {
+    Person p = person_result.value();
+    // Do things just like with any other C++ data structure.
+    std::cout << "✅ Please call " << p.name << " at the number " << p.phones[0] << std::endl;
+  }
+  else
+  {
+    std::cout << "❌ Parse error: " << person_result.error().what() << std::endl;
+  }
+}
+
+// ============================================================================
+// CREATING JSON BY SERIALIZING DATA STRUCTURES
+// ============================================================================
 
 struct Address
 {
   std::string street;
   std::string city;
-  std::string state;
-  int zipCode;
 };
 
-// Old way (commented out):
-// ZJSON_SERIALIZABLE(Address,
-//                    ZJSON_FIELD(Address, street),
-//                    ZJSON_FIELD(Address, city),
-//                    ZJSON_FIELD(Address, state),
-//                    ZJSON_FIELD(Address, zipCode));
+ZJSON_DERIVE(Address, street, city);
 
-// New simplified way:
-ZJSON_AUTO_SERIALIZABLE(Address, street, city, state, zipCode);
+void serialization_example()
+{
+  std::cout << "\n=== SERIALIZATION EXAMPLE ===" << std::endl;
 
-// NOTE(Kelosky): this file is build and run with `xlclang++` but `xlc++` is used to build the `zjsonm.o` file
-// `xlc++` can also be used
+  // Some data structure.
+  Address address{"10 Downing Street", "London"};
+
+  // Serialize it to a JSON string.
+  auto json_result = zjson::to_string(address);
+  if (json_result.has_value())
+  {
+    // Print, write to a file, or send to an HTTP server.
+    std::cout << "✅ Address JSON: " << json_result.value() << std::endl;
+  }
+  else
+  {
+    std::cout << "❌ Serialization error: " << json_result.error().what() << std::endl;
+  }
+
+  // Pretty print version
+  auto pretty_result = zjson::to_string_pretty(address);
+  if (pretty_result.has_value())
+  {
+    std::cout << "✅ Pretty Address JSON:\n"
+              << pretty_result.value() << std::endl;
+  }
+}
+
+// ============================================================================
+// ERROR HANDLING (using zstd::expected<T, E> pattern similar to Rust Result<T, E>)
+// ============================================================================
+
+void error_handling_example()
+{
+  std::cout << "\n=== ERROR HANDLING EXAMPLE ===" << std::endl;
+
+  std::string invalid_json = R"({"name": 123, "age": "not_a_number"})";
+
+  auto result = zjson::from_str<Person>(invalid_json);
+  if (!result.has_value())
+  {
+    const auto &error = result.error();
+    std::cout << "✅ Expected error caught: " << error.what() << std::endl;
+    std::cout << "  Error kind: " << static_cast<int>(error.kind()) << std::endl;
+  }
+  else
+  {
+    std::cout << "❌ Expected error but got success!" << std::endl;
+  }
+
+  // Test malformed JSON
+  std::string malformed_json = R"({"name": "John", "age": 30, })"; // trailing comma
+  auto result2 = zjson::from_str<Person>(malformed_json);
+  if (!result2.has_value())
+  {
+    std::cout << "✅ Malformed JSON error: " << result2.error().what() << std::endl;
+  }
+}
+
+// ============================================================================
+// MAIN FUNCTION - Run basic examples
+// ============================================================================
+
 int main()
 {
   try
   {
-    ZJson json;
-    auto root = json.parse("{\n"
-                           "  \"name\": \"John\",\n"
-                           "  \"isMarried\": true,\n"
-                           "  \"hasKids\": false,\n"
-                           "  \"age\": 30,\n"
-                           "  \"pets\": [\"dog\", \"cat\", \"fish\"],\n"
-                           "  \"address\": {\n"
-                           "    \"street\": \"123 Main St\",\n"
-                           "    \"city\": \"Anytown\",\n"
-                           "    \"state\": \"CA\",\n"
-                           "    \"zip\": \"12345\"\n"
-                           "  },\n"
-                           "  \"work\": {\n"
-                           "    \"company\": \"MegaCorp\",\n"
-                           "    \"office\": {\n"
-                           "      \"building\": \"Tower 1\",\n"
-                           "      \"rooms\": [{ \"number\": 101, \"type\": \"bedroom\" }, { \"number\": 102, \"type\": \"bathroom\" }],\n"
-                           "      \"location\": {\n"
-                           "        \"floor\": 42,\n"
-                           "        \"desk\": \"A1\"\n"
-                           "      }\n"
-                           "    }\n"
-                           "  }\n"
-                           "}");
+    std::cout << "=== ZJson Basic Examples ===" << std::endl;
+    std::cout << "Demonstrating core ZJson C++ API similar to serde_json" << std::endl;
 
-    Address address_obj = json.serialize<Address>("address");
-    std::cout << "Address Street: " << address_obj.street << std::endl;
-    std::cout << "Address City: " << address_obj.city << std::endl;
-    std::cout << "Address State: " << address_obj.state << std::endl;
-    std::cout << "Address Zip Code: " << address_obj.zipCode << std::endl;
+    typed_example();
+    serialization_example();
+    error_handling_example();
 
-    std::cout << "Name: " << root["name"] << " (" << root["name"].getType() << ")" << std::endl;
-    std::cout << "Is Married: " << root["isMarried"] << std::endl;
-    std::cout << "Has Kids: " << root["hasKids"] << std::endl;
-    std::cout << "Age: " << root["age"] << std::endl;
-    std::cout << "Pets: " << root["pets"][1] << std::endl;
-    std::cout << "Address Street: " << root["address"]["street"] << std::endl;
-    std::cout << "Work Desk: " << root["work"]["office"]["location"]["desk"] << std::endl;
-    std::cout << "Work Rooms: " << root["work"]["office"]["rooms"][0]["number"] << std::endl;
-
-    auto address_proxy = root["address"];
-    std::cout << "Number of keys in address: " << address_proxy.getKeys().size() << std::endl;
-    std::cout << "Number of keys in work.office: " << root["work"]["office"].getKeys().size() << std::endl;
-
-    auto pets_proxy = static_cast<const std::vector<ZJson::JsonValueProxy>>(root["pets"]);
-    std::cout << "Number of pets: " << pets_proxy.size() << std::endl;
-    std::cout << "First pet: " << pets_proxy.front() << std::endl;
-    std::cout << "Last pet: " << pets_proxy.back() << std::endl;
-
-    root["name"] = "Johnny";
-    root["name2"] = "Smith";
-    root["address"]["zip"] = "54321";
-    root["age"] = 42;
-    root["pets"] += "bird";
-    root["newArray"] = {"uno"};
-    root["newArray"] += {"dos", "tres"};
-    std::string serialized_json = json.stringify(2);
-    std::cout << "Serialized JSON:\n"
-              << serialized_json << std::endl;
-
-    std::vector<std::string> keys = root.getKeys();
-    std::cout << "Keys: ";
-    for (const auto &key : keys)
-    {
-      std::cout << key << " ";
-    }
-    std::cout << std::endl;
+    std::cout << "\n=== All Examples Completed Successfully! ===" << std::endl;
+    return 0;
   }
-  catch (const std::runtime_error &e)
+  catch (const std::exception &e)
   {
-    std::cout << "Error: " << e.what() << std::endl;
+    std::cout << "❌ Exception: " << e.what() << std::endl;
+    return 1;
   }
-
-  return 0;
-}
-
-int run_low_level_json()
-{
-  JSON_INSTANCE instance = {0};
-  int rc = 0;
-
-  char json[] = "{\n"
-                "  \"name\": \"John\",\n"
-                "  \"isMarried\": true,\n"
-                "  \"hasKids\": false,\n"
-                "  \"age\": 30,\n"
-                "  \"pets\": [\"dog\", \"cat\", \"fish\"],\n"
-                "  \"address\": {\n"
-                "    \"street\": \"123 Main St\",\n"
-                "    \"city\": \"Anytown\",\n"
-                "    \"state\": \"CA\",\n"
-                "    \"zip\": \"12345\"\n"
-                "  },\n"
-                "  \"work\": {\n"
-                "    \"company\": \"MegaCorp\",\n"
-                "    \"office\": {\n"
-                "      \"building\": \"Tower 1\",\n"
-                "      \"location\": {\n"
-                "        \"floor\": 42,\n"
-                "        \"desk\": \"A1\"\n"
-                "      }\n"
-                "    }\n"
-                "  }\n"
-                "}";
-
-  rc = ZJSMINIT(&instance);
-  if (0 != rc)
+  catch (...)
   {
-    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMPARS rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
-    std::cout << "Error, exiting..." << std::endl;
-    return -1;
+    std::cout << "❌ Unknown exception!" << std::endl;
+    return 2;
   }
-
-  // printf("instance handle: %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n", instance.handle.x[0], instance.handle.x[1], instance.handle.x[2], instance.handle.x[3], instance.handle.x[4], instance.handle.x[5], instance.handle.x[6], instance.handle.x[7], instance.handle.x[8], instance.handle.x[9], instance.handle.x[10], instance.handle.x[11]);
-
-  int encoding = 2;
-  rc = ZJSMSENC(&instance, &encoding);
-  if (0 != rc)
-  {
-    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMSENC rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
-    std::cout << "Error, exiting..." << std::endl;
-    return -1;
-  }
-
-  printf("Encoding was set to: %d\n", encoding);
-
-  rc = ZJSMPARS(&instance, json);
-  if (0 != rc)
-  {
-    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMPARS rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
-    std::cout << "Error, exiting..." << std::endl;
-    return -1;
-  }
-
-  encoding = 0;
-  rc = ZJSMGENC(&instance, &encoding);
-  if (0 != rc)
-  {
-    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMGENC rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
-    std::cout << "Error, exiting..." << std::endl;
-    return -1;
-  }
-
-  std::cout << "Encoding that was received was: " << encoding << std::endl;
-
-  int number_entries = 0;
-  KEY_HANDLE key_handle_zero = {0};
-  rc = ZJSMGNUE(&instance, &key_handle_zero, &number_entries);
-  if (0 != rc)
-  {
-    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMGNUE rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
-    std::cout << "Error, exiting..." << std::endl;
-    return -1;
-  }
-
-  std::cout << "Number of entries was: " << number_entries << std::endl;
-
-  // serialize JSON
-  char serialized_json[1024] = {0};
-  int serialized_json_length = (int)sizeof(serialized_json);
-  int serialized_json_length_actual = 0;
-  rc = ZJSMSERI(&instance, serialized_json, &serialized_json_length, &serialized_json_length_actual);
-  if (0 != rc)
-  {
-    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMSERI rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
-    std::cout << "Error, exiting..." << std::endl;
-    return -1;
-  }
-
-  std::cout << "Serialized JSON length was: " << serialized_json_length_actual << std::endl;
-
-  // printf("Serialized JSON in hex: ");
-  // print_hex_bytes(serialized_json, serialized_json_length_actual);
-  // printf("\n");
-
-  // print serialized JSON
-  printf("Serialized JSON:\n%.*s\n", serialized_json_length_actual, serialized_json);
-  // std::cout << "Serialized JSON:\n"
-  // << serialized_json << std::endl;
-
-  KEY_HANDLE key_handle = {0};
-  // std::string string_key = "name";
-  // printf("first char of name is: %c\n", string_key[0]);
-  std::string string_key = "name";
-  // char *PTR32 string
-  std::cout << "Searching for key: " << string_key << std::endl;
-  rc = ZJSMSSRC(&instance, string_key.c_str(), &key_handle);
-  if (0 != rc)
-  {
-    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMSSRC rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
-    std::cout << "Error, exiting..." << std::endl;
-    return -1;
-  }
-
-  int type = 0;
-  rc = ZJSNGJST(&instance, &key_handle, &type);
-  if (0 != rc)
-  {
-    std::cout << __FILE__ << ":" << __LINE__ << " ZJSNGJST rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
-    std::cout << "Error, exiting..." << std::endl;
-    return -1;
-  }
-
-  std::cout << "Type was: " << type << std::endl;
-
-  char *string_value = NULL;
-  int string_value_length = 0;
-  rc = ZJSMGVAL(&instance, &key_handle, &string_value, &string_value_length);
-  if (0 != rc)
-  {
-    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMGVAL rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
-    std::cout << "Error, exiting..." << std::endl;
-    return -1;
-  }
-  std::cout << "String value length was: " << string_value_length << std::endl;
-  printf("String value: %.*s\n", string_value_length, string_value);
-
-  string_key = "isMarried";
-  std::cout << "Searching for key: " << string_key << std::endl;
-  rc = ZJSMSSRC(&instance, string_key.c_str(), &key_handle);
-  if (0 != rc)
-  {
-    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMSSRC rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
-    std::cout << "Error, exiting..." << std::endl;
-    return -1;
-  }
-
-  rc = ZJSNGJST(&instance, &key_handle, &type);
-  if (0 != rc)
-  {
-    std::cout << __FILE__ << ":" << __LINE__ << " ZJSNGJST rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
-    std::cout << "Error, exiting..." << std::endl;
-    return -1;
-  }
-
-  std::cout << "Type was: " << type << std::endl;
-
-  char boolean_value = 0;
-  rc = ZJSMGBOV(&instance, &key_handle, &boolean_value);
-  if (0 != rc)
-  {
-    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMSGBOV rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
-    std::cout << "Error, exiting..." << std::endl;
-    return -1;
-  }
-
-  printf("Boolean value was: %x\n", boolean_value);
-
-  // find pets
-  std::cout << "Searching for key: pets" << std::endl;
-  rc = ZJSMSSRC(&instance, "pets", &key_handle);
-  if (0 != rc)
-  {
-    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMSSRC rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
-    std::cout << "Error, exiting..." << std::endl;
-    return -1;
-  }
-
-  // get number of entries in pets array
-  rc = ZJSMGNUE(&instance, &key_handle, &number_entries);
-  if (0 != rc)
-  {
-    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMSGNUE rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
-    std::cout << "Error, exiting..." << std::endl;
-    return -1;
-  }
-
-  std::cout << "Number of entries was: " << number_entries << std::endl;
-
-  // get handle of second entry in pets array
-  int index = 2;
-  KEY_HANDLE value = {0};
-  rc = ZJSMGAEN(&instance, &key_handle, &index, &value);
-  if (0 != rc)
-  {
-    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMSGAEN rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
-    std::cout << "Error, exiting..." << std::endl;
-    return -1;
-  }
-
-  std::cout << "Index was: " << index << std::endl;
-
-  // get value of second entry in pets array
-  rc = ZJSMGVAL(&instance, &value, &string_value, &string_value_length);
-  if (0 != rc)
-  {
-    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMSGVAL rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
-    std::cout << "Error, exiting..." << std::endl;
-    return -1;
-  }
-
-  std::cout << "String value length was: " << string_value_length << std::endl;
-
-  printf("String value: %.*s\n", string_value_length, string_value);
-
-  // find address
-  std::cout << "Searching for key: address" << std::endl;
-  rc = ZJSMSSRC(&instance, "address", &key_handle);
-  if (0 != rc)
-  {
-    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMSSRC rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
-    std::cout << "Error, exiting..." << std::endl;
-    return -1;
-  }
-
-  // get number of entries in address object
-  rc = ZJSMGNUE(&instance, &key_handle, &number_entries);
-  if (0 != rc)
-  {
-    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMSGNUE rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
-    std::cout << "Error, exiting..." << std::endl;
-    return -1;
-  }
-
-  std::cout << "Number of entries was: " << number_entries << std::endl;
-
-  // get value of third entry in address object
-  index = 3;
-  int actual_length = 0;
-
-  char key_buffer[100] = {0};
-  int key_buffer_length = (int)sizeof(key_buffer);
-  // int actual_length = 0;
-  char *key_buffer_ptr = key_buffer;
-
-  rc = ZJSMGOEN(&instance, &key_handle, &index, &key_buffer_ptr, &key_buffer_length, &value, &actual_length);
-  if (0 != rc)
-  {
-    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMSGOEN rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
-    std::cout << "Error, exiting..." << std::endl;
-    return -1;
-  }
-
-  std::cout << "Key buffer length was: " << key_buffer_length << std::endl;
-
-  printf("Key buffer: %.*s\n", key_buffer_length, key_buffer);
-
-  rc = ZJSMGVAL(&instance, &value, &string_value, &string_value_length);
-  if (0 != rc)
-  {
-    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMSGVAL rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
-    std::cout << "Error, exiting..." << std::endl;
-    return -1;
-  }
-  std::cout << "String value length was: " << string_value_length << std::endl;
-  printf("String value: %.*s\n", string_value_length, string_value);
-
-  // get handle of third entry in address object
-  rc = ZJSMTERM(&instance);
-  if (0 != rc)
-  {
-    std::cout << __FILE__ << ":" << __LINE__ << " ZJSMTERM rc=x'" << std::hex << rc << std::dec << "'" << std::endl;
-    std::cout << "Error, exiting..." << std::endl;
-    return -1;
-  }
-
-  return 0;
 }
