@@ -33,7 +33,11 @@ static void zut_dump_storage_common(const char *title, const void *data, int siz
 {
   int len = 0;
   char buf[1024] = {0};
-  len += sprintf(buf + len, "--- Dumping storage for '%s' at x'%016llx' ---\n", title, (unsigned long long)data);
+  len += sprintf(buf + len, "--- Dumping storage for '%s' at x'%016llx' ---", title, (unsigned long long)data);
+  if (new_line)
+  {
+    len += sprintf(buf + len, "\n");
+  }
   cb_print(buf);
   memset(buf, 0, sizeof(buf));
   len = 0;
@@ -120,7 +124,11 @@ static void zut_dump_storage_common(const char *title, const void *data, int siz
   memset(buf, 0, sizeof(buf));
   len = 0;
 
-  len += sprintf(buf + len, "--- END ---\n");
+  len += sprintf(buf + len, "--- END ---");
+  if (new_line)
+  {
+    len += sprintf(buf + len, "\n");
+  }
   cb_print(buf);
   memset(buf, 0, sizeof(buf));
   len = 0;
