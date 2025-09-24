@@ -324,4 +324,5 @@ export class CliPromptApi extends AbstractConfigManager {
     protected getProfileSchemas(): IProfileTypeConfiguration[] {
         return ImperativeConfig.instance.loadedConfig.profiles;
     }
+    protected storeServerPath(host: string, path: string): void;
 }
