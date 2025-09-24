@@ -8,7 +8,7 @@
  * Copyright Contributors to the Zowe Project.
  *
  */
-
+import * as fs from "node:fs";
 import { readFileSync } from "node:fs";
 import * as path from "node:path";
 import {
@@ -200,37 +200,18 @@ export abstract class AbstractConfigManager {
     }
 
     public async promptForDeployDirectory(defaultServerPath: string): Promise<string> {
-        const result = await this.showMenu({
-            items: [{ label: defaultServerPath }, { label: "$(plus) Add New Deploy Directory" }],
-            placeholder: `Select a deploy directory for the Zowe SSH server`,
+        const input = await this.showInputBox({
+            title: "Enter deploy directory",
+            value: defaultServerPath,
+            validateInput: (input) => {
+                if (!input.trim()) return "Path cannot be empty";
+                if (!path.isAbsolute(input.trim()))
+                    return "Invalid Deploy Directory format. Ensure it matches the expected pattern.";
+                if (!fs.existsSync(input.trim())) return "Deploy Directory does not exist";
+                return null;
+            },
         });
-
-        if (!result) return;
-
-        if (result === "$(plus) Add New Deploy Directory") {
-            const input = await this.showInputBox({
-                title: "Enter custom deploy directory for the Zowe SSH server",
-                placeHolder: `E.g. ${defaultServerPath}`,
-                validateInput: (input) => {
-                    const trimmed = input.trim();
-                    if (!trimmed) return "Path cannot be empty";
-                    if (!path.isAbsolute(trimmed)) return "Deploy Directory must be an absolute path";
-                    return null;
-                },
-            });
-
-            return input?.trim() || defaultServerPath;
-        }
-
-        if (!path.isAbsolute(result)) {
-            this.showMessage(
-                "Invalid Deploy Directory format. Ensure it matches the expected pattern.",
-                MESSAGE_TYPE.ERROR,
-            );
-            return;
-        }
-
-        return result;
+        return input?.trim() || defaultServerPath;
     }
 
     private async createNewProfile(knownConfigOpts?: string): Promise<ISshConfigExt | undefined> {

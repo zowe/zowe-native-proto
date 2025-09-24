@@ -431,40 +431,37 @@ describe("AbstractConfigManager", async () => {
     });
     describe("promptForDeployDirectory", () => {
         const defaultServerPath = "/faketmp/fakeserver";
-        it("returns default path when user selects it", async () => {
-            vi.spyOn(testManager, "showMenu").mockResolvedValue(defaultServerPath);
+        it("returns default path if user presses enter without changing", async () => {
+            vi.spyOn(testManager, "showInputBox").mockResolvedValue(defaultServerPath);
             const result = await testManager.promptForDeployDirectory(defaultServerPath);
-
             expect(result).toBe(defaultServerPath);
         });
 
-        it("prompts for deploy directory and returns user input", async () => {
-            vi.spyOn(testManager, "showMenu").mockResolvedValue("$(plus) Add New Deploy Directory");
-            vi.spyOn(testManager, "showInputBox").mockResolvedValue("/custom/path");
+        it("returns trimmed user input if valid absolute path is entered", async () => {
+            vi.spyOn(testManager, "showInputBox").mockResolvedValue("   /custom/path   ");
             const result = await testManager.promptForDeployDirectory(defaultServerPath);
-
             expect(result).toBe("/custom/path");
         });
 
-        it("falls back to default path when user cancels input", async () => {
-            vi.spyOn(testManager, "showMenu").mockResolvedValue("$(plus) Add New Deploy Directory");
+        it("returns default path if user cancels input", async () => {
             vi.spyOn(testManager, "showInputBox").mockResolvedValue(undefined);
             const result = await testManager.promptForDeployDirectory(defaultServerPath);
-
             expect(result).toBe(defaultServerPath);
         });
 
-        it("displays error if user input is not absolute", async () => {
-            vi.spyOn(testManager, "showMenu").mockResolvedValue("relative/path");
-            const showMessageMock = vi.spyOn(testManager, "showMessage").mockImplementation(() => {});
+        it("rejects empty or whitespace-only input", async () => {
+            const validateSpy = vi.spyOn(testManager, "showInputBox").mockImplementation(async (opts) => {
+                const error = opts.validateInput?.("   ");
+                expect(error).toBe("Path cannot be empty");
+                return undefined;
+            });
+
             const result = await testManager.promptForDeployDirectory(defaultServerPath);
-            expect(showMessageMock).toHaveBeenCalledWith(
-                "Invalid Deploy Directory format. Ensure it matches the expected pattern.",
-                MESSAGE_TYPE.ERROR,
-            );
-            expect(result).toBeUndefined();
+            expect(result).toBe(defaultServerPath);
+            expect(validateSpy).toHaveBeenCalled();
         });
     });
+
     describe("createNewProfile", async () => {
         let showInputBoxSpy: any;
 
