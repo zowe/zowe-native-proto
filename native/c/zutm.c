@@ -336,7 +336,7 @@ void ZUTAOFF()
   }
 }
 
-int ZUTDBGMG(const char *msg)
+void ZUTDBGMG(const char *msg)
 {
   IO_CTRL *sysprintIoc = open_output_assert("ZOWEXDBG", 132, 132, dcbrecf + dcbrecbr);
   char writeBuf[132] = {0};

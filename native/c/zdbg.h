@@ -18,7 +18,7 @@
 #include <ctype.h>
 #include "zutm.h"
 
-typedef int (*zut_print_func)(const char *fmt);
+typedef void (*zut_print_func)(const char *fmt);
 
 /**
  * @brief Dump a memory region to output for debugging
