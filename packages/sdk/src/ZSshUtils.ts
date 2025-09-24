@@ -177,6 +177,7 @@ export class ZSshUtils {
                     if (!shouldContinue) {
                         throw new Error(errMsg);
                     }
+                    return this.uninstallServer(session, serverPath, options);
                 } else {
                     throw new Error(errMsg);
                 }
