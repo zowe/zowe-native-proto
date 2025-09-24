@@ -6,7 +6,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
-- Added a storeServerPath for future CLI functionality to persist deploy directory paths by host. [#527](https://github.com/zowe/zowe-native-proto/issues/527)
+- Added a `storeServerPath` function as placeholder for future CLI functionality to persist deploy directory paths from user input. [#527](https://github.com/zowe/zowe-native-proto/issues/527)
 
 ## `0.1.9`
 
