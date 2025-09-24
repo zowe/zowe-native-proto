@@ -153,6 +153,7 @@ int zut_list_parmlib(ZDIAG &diag, std::vector<std::string> &parmlibs)
     return rc;
   }
 
+  parmlibs.reserve(num_dsns);
   for (int i = 0; i < num_dsns; i++)
   {
     parmlibs.push_back(string(dsns.dsn[i].val, sizeof(dsns.dsn[i].val)));
