@@ -115,12 +115,11 @@ export class ZSshUtils {
                 Logger.getAppLogger().error(errMsg);
 
                 if (options?.onError) {
-                    const shouldContinue = await options.onError(new Error(errMsg), "upload");
-                    if (!shouldContinue) {
+                    const shouldRetry = await options.onError(new Error(errMsg), "upload");
+                    if (!shouldRetry) {
                         throw new Error(errMsg);
                     }
-                    // If shouldContinue is true, the error handler might have resolved the issue
-                    // or the user chose to continue despite the error
+                    return this.installServer(session, serverPath, localDir, options);
                 } else {
                     throw new Error(errMsg);
                 }
