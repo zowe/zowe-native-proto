@@ -8,7 +8,6 @@
  * Copyright Contributors to the Zowe Project.
  *
  */
-import * as fs from "node:fs";
 import { readFileSync } from "node:fs";
 import * as path from "node:path";
 import {

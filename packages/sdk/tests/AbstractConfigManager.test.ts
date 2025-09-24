@@ -25,7 +25,6 @@ import { AbstractConfigManager, type ProgressCallback } from "../src/AbstractCon
 import { ConfigFileUtils } from "../src/ConfigFileUtils";
 import { type inputBoxOpts, MESSAGE_TYPE, type qpItem, type qpOpts } from "../src/doc";
 import { type ISshConfigExt, ZClientUtils } from "../src/ZClientUtils";
-import exp = require("constants");
 
 vi.mock("path", async (importOriginal) => {
     const actual = await importOriginal<typeof import("path")>();
@@ -140,9 +139,7 @@ export class TestAbstractConfigManager extends AbstractConfigManager {
     public getCurrentDir = vi.fn<() => string | undefined>().mockReturnValue("/mock/dir");
 
     public getProfileSchemas = vi.fn<() => IProfileTypeConfiguration[]>().mockReturnValue([]);
-    protected storeServerPath(host: string, path: string): void {
-        // no-op; we'll spy on this
-    }
+    protected storeServerPath(host: string, _path: string): void {}
 }
 
 describe("AbstractConfigManager", async () => {
