@@ -277,10 +277,7 @@ int ZUTMLPLB(ZDIAG *diag, int *num_dsns, PARMLIB_DSNS *dsns)
 
   rc = zutm1lpl(&diag31, &num_dsns31, &dsns31);
 
-  for (int i = 0; i < num_dsns31; i++)
-  {
-    memcpy(&dsns->dsn[i], &dsns31.dsn[i], sizeof(dsns31.dsn[i]));
-  }
+    memcpy(dsns->dsn, &dsns31.dsn, num_dsns31 * sizeof(dsns31.dsn[0]));
 
   memcpy(diag, &diag31, sizeof(ZDIAG));
   *num_dsns = num_dsns31;
