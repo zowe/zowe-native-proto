@@ -301,7 +301,7 @@ void zusf_tests()
                   string result = zusf_format_ls_time(test_time, true);
 
                   // Should be in format "2024-01-01T12:00:00"
-                  Expect(result).ToBe("2024-01-01T12:00:00");
+                  Expect(result).ToBe("2024-01-01T12:00:00Z");
                 });
 
              it("should handle zero timestamp in CSV format",
@@ -312,7 +312,7 @@ void zusf_tests()
                   string result = zusf_format_ls_time(test_time, true);
 
                   // Should be in format "1970-01-01T00:00:00"
-                  Expect(result).ToBe("1970-01-01T00:00:00");
+                  Expect(result).ToBe("1970-01-01T00:00:00Z");
                 });
 
              it("should handle negative timestamp gracefully",
@@ -323,7 +323,7 @@ void zusf_tests()
                   string result = zusf_format_ls_time(test_time, true);
 
                   // Should fallback to epoch time
-                  Expect(result).ToBe("1970-01-01T00:00:00");
+                  Expect(result).ToBe("1970-01-01T00:00:00Z");
                 });
 
              it("should handle very large timestamp",
@@ -335,7 +335,7 @@ void zusf_tests()
                   string result = zusf_format_ls_time(test_time, true);
 
                   // Should format correctly
-                  Expect(result).ToBe("2038-01-19T03:14:07");
+                  Expect(result).ToBe("2038-01-19T03:14:07Z");
                 });
            });
 

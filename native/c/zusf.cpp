@@ -53,6 +53,18 @@
 using namespace std;
 
 /**
+ * Concatenates a directory path with a file/directory name, handling trailing slashes.
+ *
+ * @param dir_path the directory path
+ * @param name the file or directory name to append
+ * @return the concatenated path
+ */
+string zusf_join_path(const string &dir_path, const string &name)
+{
+  return dir_path[dir_path.length() - 1] == '/' ? dir_path + name : dir_path + "/" + name;
+}
+
+/**
  * Formats a file timestamp.
  *
  * @param mtime the modification time from stat
@@ -1010,7 +1022,7 @@ static int zusf_collect_directory_entries_recursive(ZUSF *zusf, const string &di
     // If we haven't reached max depth, recurse into subdirectories
     if (options.max_depth > 0 && current_depth < options.max_depth)
     {
-      string child_path = dir_path[dir_path.length() - 1] == '/' ? dir_path + name : dir_path + "/" + name;
+      string child_path = zusf_join_path(dir_path, name);
       struct stat child_stats;
       if (stat(child_path.c_str(), &child_stats) == 0 && S_ISDIR(child_stats.st_mode))
       {
@@ -1080,7 +1092,7 @@ int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response, ListOptio
   for (auto i = 0u; i < entry_names.size(); i++)
   {
     const auto name = entry_names.at(i);
-    string child_path = file[file.length() - 1] == '/' ? file + name : file + "/" + name;
+    string child_path = zusf_join_path(file, name);
     struct stat child_stats;
     stat(child_path.c_str(), &child_stats);
 
@@ -1550,8 +1562,7 @@ int zusf_chmod_uss_file_or_dir(ZUSF *zusf, string file, mode_t mode, bool recurs
     {
       if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0)
       {
-        const string child_path = file[file.length() - 1] == '/' ? file + string((const char *)entry->d_name)
-                                                                 : file + string("/") + string((const char *)entry->d_name);
+        const string child_path = zusf_join_path(file, string((const char *)entry->d_name));
         struct stat file_stats;
         stat(child_path.c_str(), &file_stats);
 
@@ -1595,8 +1606,7 @@ int zusf_delete_uss_item(ZUSF *zusf, string file, bool recursive)
     {
       if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0)
       {
-        const string child_path = file[file.length() - 1] == '/' ? file + string((const char *)entry->d_name)
-                                                                 : file + string("/") + string((const char *)entry->d_name);
+        const string child_path = zusf_join_path(file, string((const char *)entry->d_name));
         struct stat file_stats;
         stat(child_path.c_str(), &file_stats);
 
@@ -1689,8 +1699,7 @@ int zusf_chown_uss_file_or_dir(ZUSF *zusf, string file, const string &owner, boo
     {
       if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0)
       {
-        const string child_path = file[file.length() - 1] == '/' ? file + string((const char *)entry->d_name)
-                                                                 : file + string("/") + string((const char *)entry->d_name);
+        const string child_path = zusf_join_path(file, string((const char *)entry->d_name));
         struct stat file_stats;
         stat(child_path.c_str(), &file_stats);
 
@@ -1765,8 +1774,7 @@ int zusf_chtag_uss_file_or_dir(ZUSF *zusf, string file, string tag, bool recursi
     {
       if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0)
       {
-        const string child_path = file[file.length() - 1] == '/' ? file + string((const char *)entry->d_name)
-                                                                 : file + string("/") + string((const char *)entry->d_name);
+        const string child_path = zusf_join_path(file, string((const char *)entry->d_name));
         struct stat file_stats;
         stat(child_path.c_str(), &file_stats);
 
