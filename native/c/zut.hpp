@@ -210,9 +210,8 @@ unsigned char zut_get_key();
  * @brief Default debug message function for zut_dump_storage
  *
  * @param message Message to be printed
- * @return int rc Return code (0 for success, non-zero for error)
  */
-int zut_debug_message(const char *message);
+void zut_debug_message(const char *message);
 
 /**
  * @brief String comparison function using C strcmp for sorting

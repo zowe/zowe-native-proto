@@ -103,9 +103,7 @@ int ZJSMPARS(JSON_INSTANCE *PTR64 instance, const char *PTR64 json)
 
   instance->json_length = (int)strlen(json) + 1;
   instance->json = storage_obtain31(instance->json_length);
-
-  memcpy(instance->json, json, instance->json_length - 1);
-  instance->json[instance->json_length - 1] = '\0';
+  strcpy(instance->json, json);
 
   rc = zjsm_parse(&instance31, (const char *PTR32)instance->json);
 
@@ -134,9 +132,7 @@ int ZJSMSRCH(JSON_INSTANCE *PTR64 instance, int *PTR64 type, const char *PTR64 k
 
   int length = (int)strlen(key) + 1;
   char *PTR32 key31 = storage_obtain31(length);
-
-  memcpy(key31, key, strlen(key));
-  key31[length - 1] = '\0';
+  strcpy(key31, key);
 
   rc = zjsm_search(&instance31, &type31, key31, &object_handle31, &starting_handle31, &key_handle31);
 
@@ -161,9 +157,7 @@ int ZJSMSSRC(JSON_INSTANCE *PTR64 instance, const char *PTR64 key, KEY_HANDLE *P
 
   int length = (int)strlen(key) + 1;
   char *PTR32 key31 = storage_obtain31(length);
-
-  memcpy(key31, key, strlen(key));
-  key31[length - 1] = '\0';
+  strcpy(key31, key);
 
   rc = zjsm_shallow_search(&instance31, key31, &key_handle31);
 
@@ -359,6 +353,7 @@ int ZJSMGOEN(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 key_handle, int *P
 int ZJSMCREN(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 parent_handle, const char *PTR64 entry_name, const char *PTR64 entry_value, int *PTR64 entry_type, KEY_HANDLE *PTR64 new_entry_handle)
 {
   int rc = 0;
+  int ptr_size = sizeof(char *PTR32);
 
   JSON_INSTANCE instance31 = {0};
   memcpy(&instance31, instance, sizeof(JSON_INSTANCE));
@@ -369,40 +364,46 @@ int ZJSMCREN(JSON_INSTANCE *PTR64 instance, KEY_HANDLE *PTR64 parent_handle, con
   int entry_type31 = *entry_type;
   KEY_HANDLE new_entry_handle31 = {0};
 
-  // Allocate 31-bit storage for entry name
+  // Allocate 31-bit storage for entry name (pointer + string data in one block)
   int entry_name_length = entry_name ? (int)strlen(entry_name) + 1 : 0;
-  char *PTR32 entry_name31 = 0;
+  char *PTR32 name_block = storage_obtain31(entry_name_length + ptr_size);
+  const char *PTR32 *entry_name31_ptr = (const char *PTR32 *)name_block;
+
   if (entry_name)
   {
-    entry_name31 = storage_obtain31(entry_name_length);
-    memcpy(entry_name31, entry_name, strlen(entry_name));
-    entry_name31[entry_name_length - 1] = '\0';
-  }
-
-  // Allocate 31-bit storage for entry value
-  int entry_value_length = entry_value ? (int)strlen(entry_value) + 1 : 1;
-  char *PTR32 entry_value31 = storage_obtain31(entry_value_length);
-  if (entry_value)
-  {
-    memcpy(entry_value31, entry_value, strlen(entry_value));
-    entry_value31[entry_value_length - 1] = '\0';
+    char *PTR32 name_data = name_block + ptr_size;
+    strcpy(name_data, entry_name);
+    *entry_name31_ptr = name_data;
   }
   else
   {
-    entry_value31[0] = '\0';
+    *entry_name31_ptr = NULL;
   }
 
-  rc = zjsm_create_entry(&instance31, &parent_handle31, entry_name31, entry_value31, &entry_type31, &new_entry_handle31);
+  // Allocate 31-bit storage for entry value (pointer + string data in one block)
+  int entry_value_length = entry_value ? (int)strlen(entry_value) + 1 : 0;
+  char *PTR32 value_block = storage_obtain31(entry_value_length + ptr_size);
+  const char *PTR32 *entry_value31_ptr = (const char *PTR32 *)value_block;
+
+  if (entry_value)
+  {
+    char *PTR32 value_data = value_block + ptr_size;
+    strcpy(value_data, entry_value);
+    *entry_value31_ptr = value_data;
+  }
+  else
+  {
+    *entry_value31_ptr = NULL;
+  }
+
+  rc = zjsm_create_entry(&instance31, &parent_handle31, entry_name31_ptr, entry_value31_ptr, &entry_type31, &new_entry_handle31);
 
   memcpy(new_entry_handle, &new_entry_handle31, sizeof(KEY_HANDLE));
   memcpy(instance, &instance31, sizeof(JSON_INSTANCE));
 
   // Release allocated storage
-  if (entry_name)
-  {
-    storage_release(entry_name_length, entry_name31);
-  }
-  storage_release(entry_value_length, entry_value31);
+  storage_release(entry_name_length + ptr_size, name_block);
+  storage_release(entry_value_length + ptr_size, value_block);
 
   return rc;
 }
