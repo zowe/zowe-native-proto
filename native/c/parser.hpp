@@ -23,6 +23,7 @@
 #include <map>
 #include <memory>
 #include <sstream>
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -1583,28 +1584,52 @@ Command::parse(const std::vector<lexer::Token> &tokens,
     }
   }
 
-  // check for conflicting arguments
+  // check for conflicting arguments - aggregate conflicts for reporting
+  std::set<std::pair<std::string, std::string>> conflict_pairs;
   for (std::vector<ArgumentDef>::const_iterator it = m_args.begin();
        it != m_args.end(); ++it)
   {
     const ArgumentDef &arg = *it;
-    if (args_seen.count(arg.name) && !arg.conflicts_with.empty())
+    if (!args_seen.count(arg.name) || arg.conflicts_with.empty())
+      continue;
+
+    for (size_t i = 0; i < arg.conflicts_with.size(); ++i)
     {
-      for (size_t i = 0; i < arg.conflicts_with.size(); ++i)
-      {
-        const std::string &conflict = arg.conflicts_with[i];
-        if (args_seen.count(conflict))
-        {
-          result.status = ParseResult::ParserStatus_ParseError;
-          result.error_message =
-              "argument --" + arg.name + " conflicts with argument --" + conflict;
-          std::cerr << "error: " << result.error_message << "\n\n";
-          generate_help(std::cerr, command_path_prefix);
-          result.exit_code = 1;
-          return result;
-        }
-      }
+      const std::string &conflict = arg.conflicts_with[i];
+      if (!args_seen.count(conflict))
+        continue;
+
+      std::string first = arg.name;
+      std::string second = conflict;
+      if (first == second)
+        continue;
+      if (second < first)
+        std::swap(first, second);
+      conflict_pairs.insert(std::make_pair(first, second));
     }
+  }
+
+  // if conflict pairs present, print them to the error stream and return w/ help text
+  if (!conflict_pairs.empty())
+  {
+    result.status = ParseResult::ParserStatus_ParseError;
+    std::stringstream ss;
+    ss << "conflicting options provided: ";
+    bool first_pair = true;
+    for (std::set<std::pair<std::string, std::string>>::const_iterator it =
+             conflict_pairs.begin();
+         it != conflict_pairs.end(); ++it)
+    {
+      if (!first_pair)
+        ss << "; ";
+      ss << "--" << it->first << " conflicts with --" << it->second;
+      first_pair = false;
+    }
+    result.error_message = ss.str();
+    std::cerr << "error: " << result.error_message << "\n\n";
+    generate_help(std::cerr, command_path_prefix);
+    result.exit_code = 1;
+    return result;
   }
 
   // only execute the handler if parsing was successful and no subcommand took
