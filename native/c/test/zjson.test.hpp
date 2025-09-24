@@ -9,11 +9,7 @@
  *
  */
 
-export * from "./AbstractConfigManager";
-export * from "./AbstractRpcClient";
-export * from "./ConfigFileUtils";
-export * from "./doc";
-export * from "./SshErrors";
-export * from "./ZClientUtils";
-export * from "./ZSshClient";
-export * from "./ZSshUtils";
+#ifndef ZJSON_TEST_HPP
+#define ZJSON_TEST_HPP
+void zjson_tests();
+#endif

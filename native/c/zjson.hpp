@@ -12,987 +12,2200 @@
 #ifndef ZJSON_HPP
 #define ZJSON_HPP
 
-#include <iostream>
 #include <string>
-#include <sstream>
 #include <vector>
-#include <type_traits>
+#include <map>
+#include <set>
 #include <functional>
-#include <initializer_list>
-#include <hwtjic.h> // ensure to include /usr/include
+#include <stdexcept>
+#include <sstream>
+#include <cctype>
+#include <cstring>
+#include <cstdio>
+#include <cmath>
+#include <limits>
 #include "zjsonm.h"
 #include "zjsontype.h"
+#include "zstd.hpp"
 #include "zlogger.hpp"
+#include <hwtjic.h> // ensure to include /usr/include
 
-// Simplified macro to reduce repetition - automatically applies struct name to all fields
-// Uses a much simpler approach that just transforms the field list
+/*
+ * ZJson - C++ JSON library with automatic struct serialization
+ *
+ * ==================== QUICK REFERENCE ====================
+ *
+ * Parsing:
+ *   zjson::Value data = zjson::from_str(json_string);
+ *   auto result = zjson::from_str<MyStruct>(json_string);
+ *
+ * Serialization:
+ *   std::string json = zjson::to_string(obj);
+ *   std::string pretty = zjson::to_string_pretty(obj);
+ *
+ * Struct Registration:
+ *   ZJSON_DERIVE(StructName, field1, field2, ...)
+ *   ZJSON_SERIALIZABLE(StructName, ZJSON_FIELD(StructName, field).rename("name"))
+ *
+ * Dynamic JSON:
+ *   zjson::Value obj = zjson::Value::create_object();
+ *   zjson::Value arr = zjson::Value::create_array();
+ *   obj["name"] = "John"; arr[0] = "item";
+ *
+ * Type Conversion:
+ *   zjson::Value val = zjson::to_value(obj);
+ *   auto obj = zjson::from_value<MyStruct>(val);
+ *
+ * Value Access:
+ *   value["key"]              // Object field access
+ *   value[0]                  // Array element access
+ *   value.as_string()         // Type conversion
+ *
+ * Error Handling:
+ *   auto result = zjson::from_str<MyStruct>(json);
+ *   if (result.has_value()) { auto obj = result.value(); }
+ *
+ * Field Attributes:
+ *   .rename("newName")        // JSON field name
+ *   .skip()                   // Skip serialization/deserialization
+ *   .skip_serializing_if_none()  // Skip if optional field is empty
+ *   .with_default(func)       // Default value for missing fields
+ *
+ * Optional Fields:
+ *   zstd::optional<T> field; // Nullable fields (null when empty)
+ */
 
-#define ZJSON_FIELD_AUTO(StructName, field) ZJSON_FIELD(StructName, field)
+// Forward declarations
+namespace zjson
+{
+class Value;
+class Error;
+template <typename T>
+struct Serializable;
+template <typename T>
+struct Deserializable;
 
-// Transform macro that converts field list to ZJSON_FIELD calls
-#define ZJSON_TRANSFORM_FIELDS_1(StructName, f1) \
-  ZJSON_FIELD_AUTO(StructName, f1)
+// Attributes namespace with RenameAll implementation
+namespace attributes
+{
+struct RenameAll
+{
+  enum CaseStyle
+  {
+    none, // No transformation (default)
+    lowercase,
+    UPPERCASE,
+    PascalCase,
+    camelCase,
+    snake_case,
+    SCREAMING_SNAKE_CASE,
+    kebab_case,
+    SCREAMING_KEBAB_CASE
+  };
 
-#define ZJSON_TRANSFORM_FIELDS_2(StructName, f1, f2) \
-  ZJSON_FIELD_AUTO(StructName, f1), ZJSON_FIELD_AUTO(StructName, f2)
+  static std::string transform_name(const std::string &name, CaseStyle style)
+  {
+    switch (style)
+    {
+    case none:
+      return name; // No transformation
+    case lowercase:
+    {
+      std::string result;
+      for (const char &c : name)
+      {
+        result += std::tolower(c);
+      }
+      return result;
+    }
+    case UPPERCASE:
+    {
+      std::string result;
+      for (const char &c : name)
+      {
+        result += std::toupper(c);
+      }
+      return result;
+    }
+    case snake_case:
+      return name; // Already in snake_case format (C++ convention)
+    case camelCase:
+    {
+      std::string result;
+      bool capitalize_next = false;
+      for (const char &c : name)
+      {
+        if (c == '_')
+        {
+          capitalize_next = true;
+        }
+        else if (capitalize_next)
+        {
+          result += std::toupper(c);
+          capitalize_next = false;
+        }
+        else
+        {
+          result += std::tolower(c);
+        }
+      }
+      return result;
+    }
+    case PascalCase:
+    {
+      std::string result = transform_name(name, camelCase);
+      if (!result.empty())
+      {
+        result[0] = std::toupper(result[0]);
+      }
+      return result;
+    }
+    case SCREAMING_SNAKE_CASE:
+    {
+      std::string result;
+      for (const char &c : name)
+      {
+        result += std::toupper(c);
+      }
+      return result;
+    }
+    case kebab_case:
+    {
+      std::string result;
+      for (const char &c : name)
+      {
+        if (c == '_')
+        {
+          result += '-';
+        }
+        else
+        {
+          result += std::tolower(c);
+        }
+      }
+      return result;
+    }
+    case SCREAMING_KEBAB_CASE:
+    {
+      std::string result;
+      for (const char &c : name)
+      {
+        if (c == '_')
+        {
+          result += '-';
+        }
+        else
+        {
+          result += std::toupper(c);
+        }
+      }
+      return result;
+    }
+    default:
+      return name;
+    }
+  }
+};
+} // namespace attributes
 
-#define ZJSON_TRANSFORM_FIELDS_3(StructName, f1, f2, f3) \
-  ZJSON_FIELD_AUTO(StructName, f1), ZJSON_FIELD_AUTO(StructName, f2), ZJSON_FIELD_AUTO(StructName, f3)
+// Forward declare detail namespace and StructConfig
+namespace detail
+{
+template <typename T>
+struct StructConfig
+{
+  static attributes::RenameAll::CaseStyle rename_all_case;
+  static bool deny_unknown_fields;
+};
 
-#define ZJSON_TRANSFORM_FIELDS_4(StructName, f1, f2, f3, f4) \
-  ZJSON_FIELD_AUTO(StructName, f1), ZJSON_FIELD_AUTO(StructName, f2), ZJSON_FIELD_AUTO(StructName, f3), ZJSON_FIELD_AUTO(StructName, f4)
+template <typename T>
+attributes::RenameAll::CaseStyle StructConfig<T>::rename_all_case = attributes::RenameAll::none;
 
-#define ZJSON_TRANSFORM_FIELDS_5(StructName, f1, f2, f3, f4, f5) \
-  ZJSON_FIELD_AUTO(StructName, f1), ZJSON_FIELD_AUTO(StructName, f2), ZJSON_FIELD_AUTO(StructName, f3), ZJSON_FIELD_AUTO(StructName, f4), ZJSON_FIELD_AUTO(StructName, f5)
+template <typename T>
+bool StructConfig<T>::deny_unknown_fields = false;
+} // namespace detail
 
-// Count arguments and dispatch to appropriate macro
-#define ZJSON_GET_ARG_COUNT(...) ZJSON_GET_ARG_COUNT_IMPL(__VA_ARGS__, 5, 4, 3, 2, 1)
-#define ZJSON_GET_ARG_COUNT_IMPL(_1, _2, _3, _4, _5, N, ...) N
+/**
+ * Error handling class for JSON operations
+ */
+class Error : public std::runtime_error
+{
+public:
+  enum ErrorKind
+  {
+    InvalidValue,
+    InvalidType,
+    InvalidLength,
+    InvalidData,
+    MissingField,
+    UnknownField,
+    Custom
+  };
+
+private:
+  ErrorKind kind_;
+  size_t line_;
+  size_t column_;
+
+public:
+  Error(ErrorKind kind, const std::string &message)
+      : std::runtime_error(message), kind_(kind), line_(0), column_(0)
+  {
+  }
+
+  Error(ErrorKind kind, const std::string &message, size_t line, size_t column)
+      : std::runtime_error(message), kind_(kind), line_(line), column_(column)
+  {
+  }
+
+  ErrorKind kind() const
+  {
+    return kind_;
+  }
+  size_t line() const
+  {
+    return line_;
+  }
+  size_t column() const
+  {
+    return column_;
+  }
+
+  static inline Error invalid_value(const std::string &msg)
+  {
+    return Error(InvalidValue, "Invalid value: " + msg);
+  }
+
+  static inline Error invalid_type(const std::string &expected, const std::string &found)
+  {
+    return Error(InvalidType, "Invalid type. Expected " + expected + ", found " + found);
+  }
+
+  static inline Error missing_field(const std::string &field)
+  {
+    return Error(MissingField, "Missing field: " + field);
+  }
+
+  static inline Error unknown_field(const std::string &field)
+  {
+    return Error(UnknownField, "Unknown field: " + field);
+  }
+
+  static inline Error invalid_data(const std::string &msg)
+  {
+    return Error(InvalidData, "Invalid data: " + msg);
+  }
+};
+
+/**
+ * Value type for JSON operations
+ */
+class Value
+{
+  // Forward declare friend functions and classes
+  friend std::string value_to_json_string(const Value &value);
+  friend Value parse_json_string(const std::string &json_str);
+  friend Value json_handle_to_value(JSON_INSTANCE *instance, KEY_HANDLE *key_handle);
+
+  // Friend template specializations for vector serialization
+  template <typename T>
+  friend struct Serializable;
+
+public:
+  // Public methods for creating Values to avoid private member access
+  static Value create_object()
+  {
+    Value result;
+    result.data_ = std::map<std::string, Value>();
+    return result;
+  }
+
+  static Value create_array()
+  {
+    Value result;
+    result.data_ = std::vector<Value>();
+    return result;
+  }
+
+  void add_to_object(const std::string &key, const Value &value)
+  {
+    if (!is_object())
+    {
+      throw Error::invalid_type("object", "other");
+    }
+    data_.template get<std::map<std::string, Value>>()[key] = value;
+  }
+
+  void add_to_array(const Value &value)
+  {
+    if (!is_array())
+    {
+      throw Error::invalid_type("array", "other");
+    }
+    data_.template get<std::vector<Value>>().push_back(value);
+  }
+
+  void reserve_array(size_t capacity)
+  {
+    if (!is_array())
+    {
+      throw Error::invalid_type("array", "other");
+    }
+    data_.template get<std::vector<Value>>().reserve(capacity);
+  }
+  enum Type
+  {
+    Null,
+    Bool,
+    Number,
+    String,
+    Array,
+    Object
+  };
+
+private:
+  // Variant type for JSON values
+  using ValueVariant = zstd::variant<
+      zstd::monostate,             // Null
+      bool,                        // Bool
+      double,                      // Number
+      std::string,                 // String
+      std::vector<Value>,          // Array
+      std::map<std::string, Value> // Object
+      >;
+
+  ValueVariant data_;
+
+public:
+  Value() : data_(zstd::monostate{})
+  {
+  }
+  Value(bool b) : data_(b)
+  {
+  }
+  Value(int i) : data_(static_cast<double>(i))
+  {
+  }
+  Value(double d) : data_(d)
+  {
+  }
+  Value(const std::string &s) : data_(s)
+  {
+  }
+  Value(const char *s) : data_(std::string(s))
+  {
+  }
+
+  Value(const Value &other) = default;
+  Value(Value &&other) = default;
+  Value &operator=(const Value &other) = default;
+  Value &operator=(Value &&other) = default;
+  ~Value() = default;
+
+  inline Type get_type() const
+  {
+    switch (data_.index())
+    {
+    case 0:
+      return Null;
+    case 1:
+      return Bool;
+    case 2:
+      return Number;
+    case 3:
+      return String;
+    case 4:
+      return Array;
+    case 5:
+      return Object;
+    default:
+      return Null;
+    }
+  }
+
+  inline bool as_bool() const
+  {
+    if (!is_bool())
+      throw Error::invalid_type("bool", type_name());
+    return data_.template get<bool>();
+  }
+
+  inline double as_number() const
+  {
+    if (!is_number())
+      throw Error::invalid_type("number", type_name());
+
+    double value = data_.template get<double>();
+
+    // Check for overflow/underflow
+    if (!std::isfinite(value))
+      throw Error::invalid_value("Number is not finite: " + std::to_string(value));
+
+    return value;
+  }
+
+  inline int as_int() const
+  {
+    if (!is_number())
+      throw Error::invalid_type("number", type_name());
+
+    double value = data_.template get<double>();
+
+    // Check for fractional part
+    if (value != std::floor(value))
+      throw Error::invalid_value("Cannot convert floating-point number " + std::to_string(value) + " to integer");
+
+    // Check for overflow
+    if (value > static_cast<double>(std::numeric_limits<int>::max()) ||
+        value < static_cast<double>(std::numeric_limits<int>::min()))
+      throw Error::invalid_value("Number " + std::to_string(value) + " overflows int range");
+
+    return static_cast<int>(value);
+  }
+
+  inline std::string as_string() const
+  {
+    if (!is_string())
+      throw Error::invalid_type("string", type_name());
+    return data_.template get<std::string>();
+  }
+
+  const std::vector<Value> &as_array() const
+  {
+    if (!is_array())
+      throw Error::invalid_type("array", type_name());
+    return data_.template get<std::vector<Value>>();
+  }
+
+  const std::map<std::string, Value> &as_object() const
+  {
+    if (!is_object())
+      throw Error::invalid_type("object", type_name());
+    return data_.template get<std::map<std::string, Value>>();
+  }
+
+  inline bool is_null() const
+  {
+    return zstd::holds_alternative<zstd::monostate>(data_);
+  }
+  inline bool is_bool() const
+  {
+    return zstd::holds_alternative<bool>(data_);
+  }
+  inline bool is_number() const
+  {
+    return zstd::holds_alternative<double>(data_);
+  }
+  inline bool is_string() const
+  {
+    return zstd::holds_alternative<std::string>(data_);
+  }
+  inline bool is_array() const
+  {
+    return zstd::holds_alternative<std::vector<Value>>(data_);
+  }
+  inline bool is_object() const
+  {
+    return zstd::holds_alternative<std::map<std::string, Value>>(data_);
+  }
+
+  // Object access by key
+  Value &operator[](const std::string &key)
+  {
+    if (is_null())
+    {
+      // Convert null to empty object on first access
+      data_ = std::map<std::string, Value>();
+    }
+
+    if (!is_object())
+    {
+      throw Error::invalid_type("object", type_name());
+    }
+
+    return data_.template get<std::map<std::string, Value>>()[key]; // Creates entry if doesn't exist
+  }
+
+  const Value &operator[](const std::string &key) const
+  {
+    if (!is_object())
+    {
+      throw Error::invalid_type("object", type_name());
+    }
+
+    const auto &obj = data_.template get<std::map<std::string, Value>>();
+    auto it = obj.find(key);
+    if (it == obj.end())
+    {
+      static const Value null_value; // Return reference to static null
+      return null_value;
+    }
+
+    return it->second;
+  }
+
+  // Array access by index
+  Value &operator[](size_t index)
+  {
+    if (is_null())
+    {
+      // Convert null to empty array on first access
+      data_ = std::vector<Value>();
+    }
+
+    if (!is_array())
+    {
+      throw Error::invalid_type("array", type_name());
+    }
+
+    auto &arr = data_.template get<std::vector<Value>>();
+
+    // Expand array if needed
+    if (index >= arr.size())
+    {
+      arr.resize(index + 1);
+    }
+
+    return arr[index];
+  }
+
+  const Value &operator[](size_t index) const
+  {
+    if (!is_array())
+    {
+      throw Error::invalid_type("array", type_name());
+    }
+
+    const auto &arr = data_.template get<std::vector<Value>>();
+    if (index >= arr.size())
+    {
+      static const Value null_value; // Return reference to static null
+      return null_value;
+    }
+
+    return arr[index];
+  }
+
+private:
+  inline std::string type_name() const
+  {
+    switch (get_type())
+    {
+    case Null:
+      return "null";
+    case Bool:
+      return "bool";
+    case Number:
+      return "number";
+    case String:
+      return "string";
+    case Array:
+      return "array";
+    case Object:
+      return "object";
+    default:
+      return "unknown";
+    }
+  }
+};
+
+/**
+ * Serialization trait for JSON operations
+ */
+template <typename T>
+struct Serializable
+{
+  static constexpr bool value = false;
+
+  static Value serialize(const T &obj)
+  {
+    static_assert(Serializable<T>::value, "Type must implement Serializable trait");
+    return Value();
+  }
+};
+
+/**
+ * Deserialization trait for JSON operations
+ */
+template <typename T>
+struct Deserializable
+{
+  static constexpr bool value = false;
+
+  static zstd::expected<T, Error> deserialize(const Value &value)
+  {
+    static_assert(Deserializable<T>::value, "Type must implement Deserializable trait");
+    return zstd::make_unexpected(Error::invalid_type("deserializable", "unknown"));
+  }
+};
+
+// Specializations for basic types
+template <>
+struct Serializable<bool>
+{
+  static constexpr bool value = true;
+  static Value serialize(const bool &obj) noexcept
+  {
+    return Value(obj);
+  }
+};
+
+template <>
+struct Deserializable<bool>
+{
+  static constexpr bool value = true;
+  static zstd::expected<bool, Error> deserialize(const Value &value)
+  {
+    try
+    {
+      return value.as_bool();
+    }
+    catch (const Error &e)
+    {
+      return zstd::make_unexpected(e);
+    }
+  }
+};
+
+template <>
+struct Serializable<int>
+{
+  static constexpr bool value = true;
+  static Value serialize(const int &obj) noexcept
+  {
+    return Value(obj);
+  }
+};
+
+template <>
+struct Deserializable<int>
+{
+  static constexpr bool value = true;
+  static zstd::expected<int, Error> deserialize(const Value &value)
+  {
+    try
+    {
+      return value.as_int();
+    }
+    catch (const Error &e)
+    {
+      return zstd::make_unexpected(e);
+    }
+  }
+};
+
+template <>
+struct Serializable<double>
+{
+  static constexpr bool value = true;
+  static Value serialize(const double &obj) noexcept
+  {
+    return Value(obj);
+  }
+};
+
+template <>
+struct Deserializable<double>
+{
+  static constexpr bool value = true;
+  static zstd::expected<double, Error> deserialize(const Value &value)
+  {
+    try
+    {
+      return value.as_number();
+    }
+    catch (const Error &e)
+    {
+      return zstd::make_unexpected(e);
+    }
+  }
+};
+
+template <>
+struct Serializable<std::string>
+{
+  static constexpr bool value = true;
+  static Value serialize(const std::string &obj) noexcept
+  {
+    return Value(obj);
+  }
+};
+
+template <>
+struct Deserializable<std::string>
+{
+  static constexpr bool value = true;
+  static zstd::expected<std::string, Error> deserialize(const Value &value)
+  {
+    try
+    {
+      return value.as_string();
+    }
+    catch (const Error &e)
+    {
+      return zstd::make_unexpected(e);
+    }
+  }
+};
+
+// Specializations for Value itself - enables both to_value<Value> and from_str<Value>
+template <>
+struct Serializable<Value>
+{
+  static constexpr bool value = true;
+  static Value serialize(const Value &obj)
+  {
+    return obj; // Value serializes to itself (identity)
+  }
+};
+
+template <>
+struct Deserializable<Value>
+{
+  static constexpr bool value = true;
+  static zstd::expected<Value, Error> deserialize(const Value &value)
+  {
+    // Value to Value is just a copy - already parsed from JSON
+    return value;
+  }
+};
+
+// Specializations for std::vector<T>
+template <typename T>
+struct Serializable<std::vector<T>>
+{
+  static constexpr bool value = Serializable<T>::value;
+  static Value serialize(const std::vector<T> &vec)
+  {
+    Value result = Value::create_array();
+    result.reserve_array(vec.size());
+
+    for (const auto &item : vec)
+    {
+      result.add_to_array(Serializable<T>::serialize(item));
+    }
+    return result;
+  }
+};
+
+template <typename T>
+struct Deserializable<std::vector<T>>
+{
+  static constexpr bool value = Deserializable<T>::value;
+  static zstd::expected<std::vector<T>, Error> deserialize(const Value &value)
+  {
+    if (!value.is_array())
+    {
+      return zstd::make_unexpected(Error::invalid_type("array", "other"));
+    }
+
+    std::vector<T> result;
+    const auto &array = value.as_array();
+    result.reserve(array.size());
+
+    for (const auto &item : array)
+    {
+      auto item_result = Deserializable<T>::deserialize(item);
+      if (!item_result.has_value())
+      {
+        return zstd::make_unexpected(item_result.error());
+      }
+      result.push_back(item_result.value());
+    }
+
+    return result;
+  }
+};
+
+// Specializations for zstd::optional<T>
+template <typename T>
+struct Serializable<zstd::optional<T>>
+{
+  static constexpr bool value = Serializable<T>::value;
+  static Value serialize(const zstd::optional<T> &opt)
+  {
+    if (opt.has_value())
+    {
+      return Serializable<T>::serialize(opt.value());
+    }
+    else
+    {
+      return Value(); // Create null value
+    }
+  }
+};
+
+template <typename T>
+struct Deserializable<zstd::optional<T>>
+{
+  static constexpr bool value = Deserializable<T>::value;
+  static zstd::expected<zstd::optional<T>, Error> deserialize(const Value &value)
+  {
+    if (value.is_null())
+    {
+      return zstd::optional<T>(); // Empty optional
+    }
+    else
+    {
+      auto result = Deserializable<T>::deserialize(value);
+      if (!result.has_value())
+      {
+        return zstd::make_unexpected(result.error());
+      }
+      return zstd::optional<T>(result.value());
+    }
+  }
+};
+
+/**
+ * Field descriptor for reflection-like behavior
+ */
+template <typename T, typename FieldType>
+struct Field
+{
+  std::string name;
+  FieldType T::*member;
+  bool skip_serializing;
+  bool skip_deserializing;
+  bool skip_if_none;  // For optional fields - skip if no value
+  bool flatten_field; // For struct flattening - inline fields from nested struct
+  std::string rename_to;
+  std::function<FieldType()> default_value;
+
+  Field(const std::string &n, FieldType T::*m)
+      : name(n), member(m), skip_serializing(false), skip_deserializing(false), skip_if_none(false), flatten_field(false)
+  {
+  }
+
+  inline Field &rename(const std::string &new_name)
+  {
+    rename_to = new_name;
+    return *this;
+  }
+
+  inline Field &skip()
+  {
+    skip_serializing = true;
+    skip_deserializing = true;
+    return *this;
+  }
+
+  inline Field &skip_serializing_field()
+  {
+    skip_serializing = true;
+    return *this;
+  }
+
+  inline Field &skip_deserializing_field()
+  {
+    skip_deserializing = true;
+    return *this;
+  }
+
+  inline Field &with_default(std::function<FieldType()> default_fn)
+  {
+    default_value = default_fn;
+    return *this;
+  }
+
+  inline Field &skip_serializing_if_none()
+  {
+    skip_if_none = true;
+    return *this;
+  }
+
+  inline Field &flatten()
+  {
+    flatten_field = true;
+    return *this;
+  }
+
+  inline std::string get_serialized_name() const
+  {
+    if (!rename_to.empty())
+    {
+      return rename_to;
+    }
+    // Apply struct-level rename_all transformation if no explicit rename
+    return attributes::RenameAll::transform_name(name, detail::StructConfig<T>::rename_all_case);
+  }
+};
+
+/**
+ * Serialization registry for custom types
+ */
+template <typename T>
+class SerializationRegistry
+{
+public:
+  using SerializeFunc = std::function<Value(const T &)>;
+  using DeserializeFunc = std::function<zstd::expected<T, Error>(const Value &)>;
+
+  static inline void register_serializer(SerializeFunc func)
+  {
+    get_serializer() = func;
+  }
+
+  static inline void register_deserializer(DeserializeFunc func)
+  {
+    get_deserializer() = func;
+  }
+
+  static SerializeFunc &get_serializer()
+  {
+    static SerializeFunc serializer;
+    return serializer;
+  }
+
+  static DeserializeFunc &get_deserializer()
+  {
+    static DeserializeFunc deserializer;
+    return deserializer;
+  }
+
+  static inline bool has_serializer()
+  {
+    return static_cast<bool>(get_serializer());
+  }
+
+  static inline bool has_deserializer()
+  {
+    return static_cast<bool>(get_deserializer());
+  }
+};
+
+/**
+ * Main serialization and deserialization functions
+ */
+
+// Helper implementation functions for C++14 compatibility
+template <typename T>
+zstd::expected<std::string, Error> to_string_impl(const T &value, std::true_type)
+{
+  try
+  {
+    Value serialized = Serializable<T>::serialize(value);
+    std::string json_str = value_to_json_string(serialized);
+    return json_str;
+  }
+  catch (const Error &e)
+  {
+    return zstd::make_unexpected(e);
+  }
+  catch (const std::exception &e)
+  {
+    return zstd::make_unexpected(Error(Error::Custom, e.what()));
+  }
+}
+
+template <typename T>
+zstd::expected<std::string, Error> to_string_impl(const T &value, std::false_type)
+{
+  try
+  {
+    if (SerializationRegistry<T>::has_serializer())
+    {
+      Value serialized = SerializationRegistry<T>::get_serializer()(value);
+      std::string json_str = value_to_json_string(serialized);
+      return json_str;
+    }
+    else
+    {
+      return zstd::make_unexpected(Error::invalid_type("serializable", "unknown"));
+    }
+  }
+  catch (const Error &e)
+  {
+    return zstd::make_unexpected(e);
+  }
+  catch (const std::exception &e)
+  {
+    return zstd::make_unexpected(Error(Error::Custom, e.what()));
+  }
+}
+
+template <typename T>
+zstd::expected<T, Error> from_str_impl(const Value &parsed, std::true_type)
+{
+  return Deserializable<T>::deserialize(parsed);
+}
+
+template <typename T>
+zstd::expected<T, Error> from_str_impl(const Value &parsed, std::false_type)
+{
+  if (SerializationRegistry<T>::has_deserializer())
+  {
+    return SerializationRegistry<T>::get_deserializer()(parsed);
+  }
+  else
+  {
+    return zstd::make_unexpected(Error::invalid_type("deserializable", "unknown"));
+  }
+}
+
+// to_string function for JSON serialization
+template <typename T>
+zstd::expected<std::string, Error> to_string(const T &value)
+{
+  try
+  {
+    return to_string_impl<T>(value, typename std::integral_constant<bool, Serializable<T>::value>{});
+  }
+  catch (const Error &e)
+  {
+    return zstd::make_unexpected(e);
+  }
+  catch (const std::exception &e)
+  {
+    return zstd::make_unexpected(Error(Error::Custom, e.what()));
+  }
+}
+
+inline Value json_handle_to_value(JSON_INSTANCE *instance, KEY_HANDLE *key_handle)
+{
+  try
+  {
+    int type = 0;
+    int rc = ZJSNGJST(instance, key_handle, &type);
+    if (rc != 0)
+    {
+      return Value(); // Return null on error
+    }
+
+    switch (type)
+    {
+    case HWTJ_NULL_TYPE:
+      return Value();
+
+    case HWTJ_BOOLEAN_TYPE:
+    {
+      char bool_val = 0;
+      rc = ZJSMGBOV(instance, key_handle, &bool_val);
+      if (rc != 0)
+      {
+        return Value();
+      }
+      return Value(bool_val == HWTJ_TRUE);
+    }
+
+    case HWTJ_NUMBER_TYPE:
+    {
+      char *value_ptr = nullptr;
+      int value_length = 0;
+      rc = ZJSMGVAL(instance, key_handle, &value_ptr, &value_length);
+      if (rc != 0)
+      {
+        return Value();
+      }
+      try
+      {
+        std::string str_val(value_ptr, value_length);
+        double num_val = std::stod(str_val);
+        return Value(num_val);
+      }
+      catch (...)
+      {
+        return Value();
+      }
+    }
+
+    case HWTJ_STRING_TYPE:
+    {
+      char *value_ptr = nullptr;
+      int value_length = 0;
+      rc = ZJSMGVAL(instance, key_handle, &value_ptr, &value_length);
+      if (rc != 0)
+      {
+        return Value();
+      }
+      return Value(std::string(value_ptr, value_length));
+    }
+
+    case HWTJ_ARRAY_TYPE:
+    {
+      Value result = Value::create_array();
+
+      int num_entries = 0;
+      rc = ZJSMGNUE(instance, key_handle, &num_entries);
+      if (rc != 0)
+      {
+        return result; // Return empty array
+      }
+
+      for (int i = 0; i < num_entries; i++)
+      {
+        KEY_HANDLE element_handle = {0};
+        rc = ZJSMGAEN(instance, key_handle, &i, &element_handle);
+        if (rc == 0)
+        {
+          try
+          {
+            Value element = json_handle_to_value(instance, &element_handle);
+            result.add_to_array(element);
+          }
+          catch (...)
+          {
+            // Skip problematic array elements
+            ZLOG_WARN("Failed to parse JSON array element at index %d to Value", i);
+            continue;
+          }
+        }
+      }
+      return result;
+    }
+
+    case HWTJ_OBJECT_TYPE:
+    {
+      Value result = Value::create_object();
+
+      int num_entries = 0;
+      rc = ZJSMGNUE(instance, key_handle, &num_entries);
+      if (rc != 0)
+      {
+        return result; // Return empty object
+      }
+
+      for (int i = 0; i < num_entries; i++)
+      {
+        char key_buffer[256] = {0};
+        char *key_buffer_ptr = key_buffer;
+        int key_buffer_length = sizeof(key_buffer);
+        KEY_HANDLE value_handle = {0};
+        int actual_length = 0;
+
+        rc = ZJSMGOEN(instance, key_handle, &i, &key_buffer_ptr, &key_buffer_length, &value_handle, &actual_length);
+        if (rc == 0)
+        {
+          try
+          {
+            std::string key_name(key_buffer_ptr, actual_length);
+            Value value = json_handle_to_value(instance, &value_handle);
+            result.add_to_object(key_name, value);
+          }
+          catch (...)
+          {
+            // Skip problematic object fields
+            ZLOG_WARN("Failed to parse JSON object field at index %d to Value", i);
+            continue;
+          }
+        }
+        else if (rc == HWTJ_BUFFER_TOO_SMALL)
+        {
+          // Allocate larger buffer for long keys
+          std::vector<char> dynamic_buffer(actual_length);
+          key_buffer_ptr = &dynamic_buffer[0];
+          key_buffer_length = actual_length;
+
+          rc = ZJSMGOEN(instance, key_handle, &i, &key_buffer_ptr, &key_buffer_length, &value_handle, &actual_length);
+          if (rc == 0)
+          {
+            try
+            {
+              std::string key_name(key_buffer_ptr, actual_length);
+              Value value = json_handle_to_value(instance, &value_handle);
+              result.add_to_object(key_name, value);
+            }
+            catch (...)
+            {
+              // Skip problematic object fields
+              ZLOG_WARN("Failed to parse JSON object field at index %d to Value", i);
+              continue;
+            }
+          }
+        }
+      }
+      return result;
+    }
+
+    default:
+      return Value();
+    }
+  }
+  catch (const std::exception &e)
+  {
+    return Value();
+  }
+  catch (...)
+  {
+    return Value();
+  }
+}
+
+// from_value function - convert Value to any deserializable type
+template <typename T>
+zstd::expected<T, Error> from_value(const Value &value)
+{
+  try
+  {
+    return from_str_impl<T>(value, typename std::integral_constant<bool, Deserializable<T>::value>{});
+  }
+  catch (const Error &e)
+  {
+    return zstd::make_unexpected(e);
+  }
+  catch (const std::exception &e)
+  {
+    return zstd::make_unexpected(Error(Error::Custom, e.what()));
+  }
+}
+
+// Helper implementation functions for to_value for C++14 compatibility
+template <typename T>
+zstd::expected<Value, Error> to_value_impl(const T &obj, std::true_type)
+{
+  return Serializable<T>::serialize(obj);
+}
+
+template <typename T>
+zstd::expected<Value, Error> to_value_impl(const T &obj, std::false_type)
+{
+  if (SerializationRegistry<T>::has_serializer())
+  {
+    return SerializationRegistry<T>::get_serializer()(obj);
+  }
+  else
+  {
+    return zstd::make_unexpected(Error::invalid_type("serializable", "unknown"));
+  }
+}
+
+// to_value function - convert any serializable type to Value
+template <typename T>
+zstd::expected<Value, Error> to_value(const T &obj)
+{
+  try
+  {
+    return to_value_impl<T>(obj, typename std::integral_constant<bool, Serializable<T>::value>{});
+  }
+  catch (const Error &e)
+  {
+    return zstd::make_unexpected(e);
+  }
+  catch (const std::exception &e)
+  {
+    return zstd::make_unexpected(Error(Error::Custom, e.what()));
+  }
+}
+
+// from_str function for JSON deserialization
+template <typename T>
+zstd::expected<T, Error> from_str(const std::string &json_str)
+{
+  JSON_INSTANCE instance = {0};
+  int rc = ZJSMINIT(&instance);
+  if (rc != 0)
+  {
+    return zstd::make_unexpected(Error(Error::Custom, "Failed to initialize JSON parser"));
+  }
+
+  try
+  {
+    rc = ZJSMPARS(&instance, json_str.c_str());
+    if (rc != 0)
+    {
+      ZJSMTERM(&instance);
+      return zstd::make_unexpected(Error(Error::Custom, "Failed to parse JSON string"));
+    }
+
+    // Get root handle and convert to Value
+    KEY_HANDLE root_handle = {0};
+    Value parsed = json_handle_to_value(&instance, &root_handle);
+
+    // Clean up
+    ZJSMTERM(&instance);
+
+    return from_str_impl<T>(parsed, typename std::integral_constant<bool, Deserializable<T>::value>{});
+  }
+  catch (const Error &e)
+  {
+    ZJSMTERM(&instance);
+    return zstd::make_unexpected(e);
+  }
+  catch (const std::exception &e)
+  {
+    ZJSMTERM(&instance);
+    return zstd::make_unexpected(Error(Error::Custom, e.what()));
+  }
+}
+
+// Convenience overload: from_str without template parameter defaults to Value
+inline zstd::expected<Value, Error> from_str(const std::string &json_str)
+{
+  return from_str<Value>(json_str);
+}
+
+// Helper function to add indentation to JSON string
+inline std::string add_json_indentation(const std::string &json_str, int spaces)
+{
+  std::string result;
+  int indent_level = 0;
+  bool in_string = false;
+  bool escape_next = false;
+
+  for (const char &ch : json_str)
+  {
+    if (escape_next)
+    {
+      result += ch;
+      escape_next = false;
+      continue;
+    }
+
+    if (ch == '\\' && in_string)
+    {
+      result += ch;
+      escape_next = true;
+      continue;
+    }
+
+    if (ch == '\"')
+    {
+      result += ch;
+      in_string = !in_string;
+    }
+    else if (!in_string)
+    {
+      switch (ch)
+      {
+      case '{':
+      case '[':
+        result += ch;
+        result += '\n';
+        indent_level++;
+        result.append(indent_level * spaces, ' ');
+        break;
+      case '}':
+      case ']':
+        result += '\n';
+        indent_level--;
+        result.append(indent_level * spaces, ' ');
+        result += ch;
+        break;
+      case ',':
+        result += ch;
+        result += '\n';
+        result.append(indent_level * spaces, ' ');
+        break;
+      case ':':
+        result += ch;
+        result += ' ';
+        break;
+      default:
+        result += ch;
+        break;
+      }
+    }
+    else
+    {
+      result += ch;
+    }
+  }
+  return result;
+}
+
+// to_string_pretty function for pretty-printed JSON serialization
+template <typename T>
+zstd::expected<std::string, Error> to_string_pretty(const T &value)
+{
+  auto result = to_string(value);
+  if (!result.has_value())
+  {
+    return result;
+  }
+
+  try
+  {
+    // Use our simple indentation function instead of ZJson
+    return add_json_indentation(result.value(), 2);
+  }
+  catch (const std::exception &e)
+  {
+    return zstd::make_unexpected(Error(Error::Custom, e.what()));
+  }
+}
+
+// Helper function to add Value to JSON instance using ZJSM API
+inline int value_to_json_instance(JSON_INSTANCE *instance, KEY_HANDLE *parent_handle, const std::string &entry_name, const Value &value)
+{
+  int rc = 0;
+  int entry_type = 0;
+  KEY_HANDLE new_entry_handle = {0};
+  const char *entry_name_ptr = entry_name.empty() ? nullptr : entry_name.c_str();
+
+  switch (value.get_type())
+  {
+  case Value::Null:
+    entry_type = HWTJ_NULLVALUETYPE;
+    rc = ZJSMCREN(instance, parent_handle, entry_name_ptr, nullptr, &entry_type, &new_entry_handle);
+    break;
+
+  case Value::Bool:
+    entry_type = value.as_bool() ? HWTJ_TRUEVALUETYPE : HWTJ_FALSEVALUETYPE;
+    rc = ZJSMCREN(instance, parent_handle, entry_name_ptr, nullptr, &entry_type, &new_entry_handle);
+    break;
+
+  case Value::Number:
+  {
+    entry_type = HWTJ_NUMVALUETYPE;
+    std::stringstream ss;
+    ss << value.as_number();
+    std::string num_str = ss.str();
+    rc = ZJSMCREN(instance, parent_handle, entry_name_ptr, num_str.c_str(), &entry_type, &new_entry_handle);
+    break;
+  }
+
+  case Value::String:
+    entry_type = HWTJ_STRINGVALUETYPE;
+    // ZJSMCREN handles all string escaping automatically
+    rc = ZJSMCREN(instance, parent_handle, entry_name_ptr, value.as_string().c_str(), &entry_type, &new_entry_handle);
+    break;
+
+  case Value::Array:
+  {
+    entry_type = HWTJ_JSONTEXTVALUETYPE;
+    rc = ZJSMCREN(instance, parent_handle, entry_name_ptr, "[]", &entry_type, &new_entry_handle);
+    if (rc != 0)
+      break;
+
+    // Add all array elements
+    const auto &arr = value.as_array();
+    for (const auto &item : arr)
+    {
+      rc = value_to_json_instance(instance, &new_entry_handle, "", item);
+      if (rc != 0)
+        break;
+    }
+    break;
+  }
+
+  case Value::Object:
+  {
+    entry_type = HWTJ_JSONTEXTVALUETYPE;
+    rc = ZJSMCREN(instance, parent_handle, entry_name_ptr, "{}", &entry_type, &new_entry_handle);
+    if (rc != 0)
+      break;
+
+    // Add all object properties
+    const auto &obj = value.as_object();
+    for (const auto &pair : obj)
+    {
+      rc = value_to_json_instance(instance, &new_entry_handle, pair.first, pair.second);
+      if (rc != 0)
+        break;
+    }
+    break;
+  }
+
+  default:
+    entry_type = HWTJ_NULLVALUETYPE;
+    rc = ZJSMCREN(instance, parent_handle, entry_name_ptr, nullptr, &entry_type, &new_entry_handle);
+    break;
+  }
+
+  return rc;
+}
+
+// Convert Value to JSON string using ZJSM API
+inline std::string value_to_json_string(const Value &value)
+{
+  JSON_INSTANCE instance = {0};
+  int rc = ZJSMINIT(&instance);
+  if (rc != 0)
+  {
+    std::stringstream ss;
+    ss << std::hex << rc;
+    throw Error(Error::Custom, "Failed to initialize JSON parser. RC: x'" + ss.str() + "'");
+  }
+
+  // Start with an empty root object/array/value
+  KEY_HANDLE root_handle = {0};
+
+  try
+  {
+    // For root level values, we need to handle them specially
+    if (value.is_object() || value.is_array())
+    {
+      // Parse a minimal JSON to get a root container
+      const char *init_json = value.is_object() ? "{}" : "[]";
+      rc = ZJSMPARS(&instance, init_json);
+      if (rc != 0)
+      {
+        ZJSMTERM(&instance);
+        std::stringstream ss;
+        ss << std::hex << rc;
+        throw Error(Error::Custom, "Failed to parse initial JSON container. RC: x'" + ss.str() + "'");
+      }
+
+      // Clear the initial content and rebuild
+      if (value.is_object())
+      {
+        const auto &obj = value.as_object();
+        for (const auto &pair : obj)
+        {
+          rc = value_to_json_instance(&instance, &root_handle, pair.first, pair.second);
+          if (rc != 0)
+          {
+            ZJSMTERM(&instance);
+            std::stringstream ss;
+            ss << std::hex << rc;
+            throw Error(Error::Custom, "Failed to serialize object property '" + pair.first + "'. RC: x'" + ss.str() + "'");
+          }
+        }
+      }
+      else // Array
+      {
+        const auto &arr = value.as_array();
+        for (size_t i = 0; i < arr.size(); ++i)
+        {
+          rc = value_to_json_instance(&instance, &root_handle, "", arr[i]);
+          if (rc != 0)
+          {
+            ZJSMTERM(&instance);
+            std::stringstream ss;
+            ss << std::hex << rc;
+            throw Error(Error::Custom, "Failed to serialize array element at index " + std::to_string(i) + ". RC: x'" + ss.str() + "'");
+          }
+        }
+      }
+    }
+    else
+    {
+      throw Error(Error::Custom, "Serializing primitive values is not supported");
+    }
+
+    // Serialize the result using the same pattern as ZJson
+    char buffer[1] = {0};
+    int buffer_length = (int)sizeof(buffer);
+    int actual_length = 0;
+
+    rc = ZJSMSERI(&instance, buffer, &buffer_length, &actual_length);
+
+    std::string result;
+    if (rc == HWTJ_BUFFER_TOO_SMALL)
+    {
+      // Allocate proper buffer and retry
+      std::vector<char> dynamic_buffer(actual_length);
+      int dynamic_buffer_length = actual_length;
+      rc = ZJSMSERI(&instance, &dynamic_buffer[0], &dynamic_buffer_length, &actual_length);
+      if (rc != 0)
+      {
+        ZJSMTERM(&instance);
+        std::stringstream ss;
+        ss << std::hex << rc;
+        throw Error(Error::Custom, "Failed to serialize JSON with dynamic buffer. RC: x'" + ss.str() + "'");
+      }
+      result = std::string(dynamic_buffer.data(), actual_length);
+    }
+    else if (rc == 0)
+    {
+      result = std::string(buffer, actual_length);
+    }
+    else
+    {
+      ZJSMTERM(&instance);
+      std::stringstream ss;
+      ss << std::hex << rc;
+      throw Error(Error::Custom, "Failed to serialize JSON. RC: x'" + ss.str() + "'");
+    }
+
+    ZJSMTERM(&instance);
+
+    if (result.empty())
+    {
+      throw Error(Error::Custom, "Serialization resulted in empty string");
+    }
+
+    return result;
+  }
+  catch (const Error &e)
+  {
+    // Re-throw zjson::Error as-is
+    throw;
+  }
+  catch (const std::exception &e)
+  {
+    ZJSMTERM(&instance);
+    throw Error(Error::Custom, "Standard exception during serialization: " + std::string(e.what()));
+  }
+  catch (...)
+  {
+    ZJSMTERM(&instance);
+    throw Error(Error::Custom, "Unknown exception during JSON serialization");
+  }
+}
+
+// JSON parser using zjsonm C API
+inline Value parse_json_string(const std::string &json_str)
+{
+  JSON_INSTANCE instance = {0};
+  int rc = ZJSMINIT(&instance);
+  if (rc != 0)
+  {
+    std::stringstream ss;
+    ss << std::hex << rc;
+    throw Error(Error::Custom, "Failed to initialize JSON parser for parsing. RC: x'" + ss.str() + "'");
+  }
+
+  try
+  {
+    rc = ZJSMPARS(&instance, json_str.c_str());
+    if (rc != 0)
+    {
+      ZJSMTERM(&instance);
+      std::stringstream ss;
+      ss << std::hex << rc;
+      throw Error(Error::Custom, "Failed to parse JSON string. RC: x'" + ss.str() + "'");
+    }
+
+    // Get root handle and convert to Value
+    KEY_HANDLE root_handle = {0};
+    Value result = json_handle_to_value(&instance, &root_handle);
+
+    // Clean up
+    ZJSMTERM(&instance);
+
+    return result;
+  }
+  catch (const Error &e)
+  {
+    // Re-throw zjson::Error as-is
+    throw;
+  }
+  catch (const std::exception &e)
+  {
+    ZJSMTERM(&instance);
+    throw Error(Error::Custom, "Standard exception during JSON parsing: " + std::string(e.what()));
+  }
+  catch (...)
+  {
+    ZJSMTERM(&instance);
+    throw Error(Error::Custom, "Unknown exception during JSON parsing");
+  }
+}
+
+/**
+ * Macro system for automatic serialization
+ */
+
+// Field creation macro
+#define ZJSON_FIELD(StructType, field_name) \
+  zjson::Field<StructType, decltype(StructType::field_name)>(#field_name, &StructType::field_name)
+
+// Auto-generated field creation (with inline expansion)
+#define ZJSON_FIELD_AUTO(StructType, field) \
+  zjson::Field<StructType, decltype(StructType::field)>(#field, &StructType::field)
+
+// Transform macros for field lists - these create Field objects from field names
+#define ZJSON_TRANSFORM_FIELDS_1(StructType, f1) \
+  ZJSON_FIELD_AUTO(StructType, f1)
+
+#define ZJSON_TRANSFORM_FIELDS_2(StructType, f1, f2) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2)
+
+#define ZJSON_TRANSFORM_FIELDS_3(StructType, f1, f2, f3) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3)
+
+#define ZJSON_TRANSFORM_FIELDS_4(StructType, f1, f2, f3, f4) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4)
+
+#define ZJSON_TRANSFORM_FIELDS_5(StructType, f1, f2, f3, f4, f5) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5)
+
+#define ZJSON_TRANSFORM_FIELDS_6(StructType, f1, f2, f3, f4, f5, f6) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6)
+
+#define ZJSON_TRANSFORM_FIELDS_7(StructType, f1, f2, f3, f4, f5, f6, f7) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6), ZJSON_FIELD_AUTO(StructType, f7)
+
+#define ZJSON_TRANSFORM_FIELDS_8(StructType, f1, f2, f3, f4, f5, f6, f7, f8) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6), ZJSON_FIELD_AUTO(StructType, f7), ZJSON_FIELD_AUTO(StructType, f8)
+
+#define ZJSON_TRANSFORM_FIELDS_9(StructType, f1, f2, f3, f4, f5, f6, f7, f8, f9) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6), ZJSON_FIELD_AUTO(StructType, f7), ZJSON_FIELD_AUTO(StructType, f8), ZJSON_FIELD_AUTO(StructType, f9)
+
+#define ZJSON_TRANSFORM_FIELDS_10(StructType, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6), ZJSON_FIELD_AUTO(StructType, f7), ZJSON_FIELD_AUTO(StructType, f8), ZJSON_FIELD_AUTO(StructType, f9), ZJSON_FIELD_AUTO(StructType, f10)
+
+#define ZJSON_TRANSFORM_FIELDS_11(StructType, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6), ZJSON_FIELD_AUTO(StructType, f7), ZJSON_FIELD_AUTO(StructType, f8), ZJSON_FIELD_AUTO(StructType, f9), ZJSON_FIELD_AUTO(StructType, f10), ZJSON_FIELD_AUTO(StructType, f11)
+
+#define ZJSON_TRANSFORM_FIELDS_12(StructType, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6), ZJSON_FIELD_AUTO(StructType, f7), ZJSON_FIELD_AUTO(StructType, f8), ZJSON_FIELD_AUTO(StructType, f9), ZJSON_FIELD_AUTO(StructType, f10), ZJSON_FIELD_AUTO(StructType, f11), ZJSON_FIELD_AUTO(StructType, f12)
+
+#define ZJSON_TRANSFORM_FIELDS_13(StructType, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6), ZJSON_FIELD_AUTO(StructType, f7), ZJSON_FIELD_AUTO(StructType, f8), ZJSON_FIELD_AUTO(StructType, f9), ZJSON_FIELD_AUTO(StructType, f10), ZJSON_FIELD_AUTO(StructType, f11), ZJSON_FIELD_AUTO(StructType, f12), ZJSON_FIELD_AUTO(StructType, f13)
+
+#define ZJSON_TRANSFORM_FIELDS_14(StructType, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6), ZJSON_FIELD_AUTO(StructType, f7), ZJSON_FIELD_AUTO(StructType, f8), ZJSON_FIELD_AUTO(StructType, f9), ZJSON_FIELD_AUTO(StructType, f10), ZJSON_FIELD_AUTO(StructType, f11), ZJSON_FIELD_AUTO(StructType, f12), ZJSON_FIELD_AUTO(StructType, f13), ZJSON_FIELD_AUTO(StructType, f14)
+
+#define ZJSON_TRANSFORM_FIELDS_15(StructType, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6), ZJSON_FIELD_AUTO(StructType, f7), ZJSON_FIELD_AUTO(StructType, f8), ZJSON_FIELD_AUTO(StructType, f9), ZJSON_FIELD_AUTO(StructType, f10), ZJSON_FIELD_AUTO(StructType, f11), ZJSON_FIELD_AUTO(StructType, f12), ZJSON_FIELD_AUTO(StructType, f13), ZJSON_FIELD_AUTO(StructType, f14), ZJSON_FIELD_AUTO(StructType, f15)
+
+#define ZJSON_TRANSFORM_FIELDS_16(StructType, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6), ZJSON_FIELD_AUTO(StructType, f7), ZJSON_FIELD_AUTO(StructType, f8), ZJSON_FIELD_AUTO(StructType, f9), ZJSON_FIELD_AUTO(StructType, f10), ZJSON_FIELD_AUTO(StructType, f11), ZJSON_FIELD_AUTO(StructType, f12), ZJSON_FIELD_AUTO(StructType, f13), ZJSON_FIELD_AUTO(StructType, f14), ZJSON_FIELD_AUTO(StructType, f15), ZJSON_FIELD_AUTO(StructType, f16)
+
+#define ZJSON_TRANSFORM_FIELDS_17(StructType, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6), ZJSON_FIELD_AUTO(StructType, f7), ZJSON_FIELD_AUTO(StructType, f8), ZJSON_FIELD_AUTO(StructType, f9), ZJSON_FIELD_AUTO(StructType, f10), ZJSON_FIELD_AUTO(StructType, f11), ZJSON_FIELD_AUTO(StructType, f12), ZJSON_FIELD_AUTO(StructType, f13), ZJSON_FIELD_AUTO(StructType, f14), ZJSON_FIELD_AUTO(StructType, f15), ZJSON_FIELD_AUTO(StructType, f16), ZJSON_FIELD_AUTO(StructType, f17)
+
+#define ZJSON_TRANSFORM_FIELDS_18(StructType, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6), ZJSON_FIELD_AUTO(StructType, f7), ZJSON_FIELD_AUTO(StructType, f8), ZJSON_FIELD_AUTO(StructType, f9), ZJSON_FIELD_AUTO(StructType, f10), ZJSON_FIELD_AUTO(StructType, f11), ZJSON_FIELD_AUTO(StructType, f12), ZJSON_FIELD_AUTO(StructType, f13), ZJSON_FIELD_AUTO(StructType, f14), ZJSON_FIELD_AUTO(StructType, f15), ZJSON_FIELD_AUTO(StructType, f16), ZJSON_FIELD_AUTO(StructType, f17), ZJSON_FIELD_AUTO(StructType, f18)
+
+#define ZJSON_TRANSFORM_FIELDS_19(StructType, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6), ZJSON_FIELD_AUTO(StructType, f7), ZJSON_FIELD_AUTO(StructType, f8), ZJSON_FIELD_AUTO(StructType, f9), ZJSON_FIELD_AUTO(StructType, f10), ZJSON_FIELD_AUTO(StructType, f11), ZJSON_FIELD_AUTO(StructType, f12), ZJSON_FIELD_AUTO(StructType, f13), ZJSON_FIELD_AUTO(StructType, f14), ZJSON_FIELD_AUTO(StructType, f15), ZJSON_FIELD_AUTO(StructType, f16), ZJSON_FIELD_AUTO(StructType, f17), ZJSON_FIELD_AUTO(StructType, f18), ZJSON_FIELD_AUTO(StructType, f19)
+
+#define ZJSON_TRANSFORM_FIELDS_20(StructType, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19, f20) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6), ZJSON_FIELD_AUTO(StructType, f7), ZJSON_FIELD_AUTO(StructType, f8), ZJSON_FIELD_AUTO(StructType, f9), ZJSON_FIELD_AUTO(StructType, f10), ZJSON_FIELD_AUTO(StructType, f11), ZJSON_FIELD_AUTO(StructType, f12), ZJSON_FIELD_AUTO(StructType, f13), ZJSON_FIELD_AUTO(StructType, f14), ZJSON_FIELD_AUTO(StructType, f15), ZJSON_FIELD_AUTO(StructType, f16), ZJSON_FIELD_AUTO(StructType, f17), ZJSON_FIELD_AUTO(StructType, f18), ZJSON_FIELD_AUTO(StructType, f19), ZJSON_FIELD_AUTO(StructType, f20)
+
+#define ZJSON_TRANSFORM_FIELDS_21(StructType, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19, f20, f21) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6), ZJSON_FIELD_AUTO(StructType, f7), ZJSON_FIELD_AUTO(StructType, f8), ZJSON_FIELD_AUTO(StructType, f9), ZJSON_FIELD_AUTO(StructType, f10), ZJSON_FIELD_AUTO(StructType, f11), ZJSON_FIELD_AUTO(StructType, f12), ZJSON_FIELD_AUTO(StructType, f13), ZJSON_FIELD_AUTO(StructType, f14), ZJSON_FIELD_AUTO(StructType, f15), ZJSON_FIELD_AUTO(StructType, f16), ZJSON_FIELD_AUTO(StructType, f17), ZJSON_FIELD_AUTO(StructType, f18), ZJSON_FIELD_AUTO(StructType, f19), ZJSON_FIELD_AUTO(StructType, f20), ZJSON_FIELD_AUTO(StructType, f21)
+
+#define ZJSON_TRANSFORM_FIELDS_22(StructType, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19, f20, f21, f22) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6), ZJSON_FIELD_AUTO(StructType, f7), ZJSON_FIELD_AUTO(StructType, f8), ZJSON_FIELD_AUTO(StructType, f9), ZJSON_FIELD_AUTO(StructType, f10), ZJSON_FIELD_AUTO(StructType, f11), ZJSON_FIELD_AUTO(StructType, f12), ZJSON_FIELD_AUTO(StructType, f13), ZJSON_FIELD_AUTO(StructType, f14), ZJSON_FIELD_AUTO(StructType, f15), ZJSON_FIELD_AUTO(StructType, f16), ZJSON_FIELD_AUTO(StructType, f17), ZJSON_FIELD_AUTO(StructType, f18), ZJSON_FIELD_AUTO(StructType, f19), ZJSON_FIELD_AUTO(StructType, f20), ZJSON_FIELD_AUTO(StructType, f21), ZJSON_FIELD_AUTO(StructType, f22)
+
+#define ZJSON_TRANSFORM_FIELDS_23(StructType, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19, f20, f21, f22, f23) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6), ZJSON_FIELD_AUTO(StructType, f7), ZJSON_FIELD_AUTO(StructType, f8), ZJSON_FIELD_AUTO(StructType, f9), ZJSON_FIELD_AUTO(StructType, f10), ZJSON_FIELD_AUTO(StructType, f11), ZJSON_FIELD_AUTO(StructType, f12), ZJSON_FIELD_AUTO(StructType, f13), ZJSON_FIELD_AUTO(StructType, f14), ZJSON_FIELD_AUTO(StructType, f15), ZJSON_FIELD_AUTO(StructType, f16), ZJSON_FIELD_AUTO(StructType, f17), ZJSON_FIELD_AUTO(StructType, f18), ZJSON_FIELD_AUTO(StructType, f19), ZJSON_FIELD_AUTO(StructType, f20), ZJSON_FIELD_AUTO(StructType, f21), ZJSON_FIELD_AUTO(StructType, f22), ZJSON_FIELD_AUTO(StructType, f23)
+
+#define ZJSON_TRANSFORM_FIELDS_24(StructType, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19, f20, f21, f22, f23, f24) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6), ZJSON_FIELD_AUTO(StructType, f7), ZJSON_FIELD_AUTO(StructType, f8), ZJSON_FIELD_AUTO(StructType, f9), ZJSON_FIELD_AUTO(StructType, f10), ZJSON_FIELD_AUTO(StructType, f11), ZJSON_FIELD_AUTO(StructType, f12), ZJSON_FIELD_AUTO(StructType, f13), ZJSON_FIELD_AUTO(StructType, f14), ZJSON_FIELD_AUTO(StructType, f15), ZJSON_FIELD_AUTO(StructType, f16), ZJSON_FIELD_AUTO(StructType, f17), ZJSON_FIELD_AUTO(StructType, f18), ZJSON_FIELD_AUTO(StructType, f19), ZJSON_FIELD_AUTO(StructType, f20), ZJSON_FIELD_AUTO(StructType, f21), ZJSON_FIELD_AUTO(StructType, f22), ZJSON_FIELD_AUTO(StructType, f23), ZJSON_FIELD_AUTO(StructType, f24)
+
+#define ZJSON_TRANSFORM_FIELDS_25(StructType, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19, f20, f21, f22, f23, f24, f25) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6), ZJSON_FIELD_AUTO(StructType, f7), ZJSON_FIELD_AUTO(StructType, f8), ZJSON_FIELD_AUTO(StructType, f9), ZJSON_FIELD_AUTO(StructType, f10), ZJSON_FIELD_AUTO(StructType, f11), ZJSON_FIELD_AUTO(StructType, f12), ZJSON_FIELD_AUTO(StructType, f13), ZJSON_FIELD_AUTO(StructType, f14), ZJSON_FIELD_AUTO(StructType, f15), ZJSON_FIELD_AUTO(StructType, f16), ZJSON_FIELD_AUTO(StructType, f17), ZJSON_FIELD_AUTO(StructType, f18), ZJSON_FIELD_AUTO(StructType, f19), ZJSON_FIELD_AUTO(StructType, f20), ZJSON_FIELD_AUTO(StructType, f21), ZJSON_FIELD_AUTO(StructType, f22), ZJSON_FIELD_AUTO(StructType, f23), ZJSON_FIELD_AUTO(StructType, f24), ZJSON_FIELD_AUTO(StructType, f25)
+
+#define ZJSON_TRANSFORM_FIELDS_26(StructType, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19, f20, f21, f22, f23, f24, f25, f26) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6), ZJSON_FIELD_AUTO(StructType, f7), ZJSON_FIELD_AUTO(StructType, f8), ZJSON_FIELD_AUTO(StructType, f9), ZJSON_FIELD_AUTO(StructType, f10), ZJSON_FIELD_AUTO(StructType, f11), ZJSON_FIELD_AUTO(StructType, f12), ZJSON_FIELD_AUTO(StructType, f13), ZJSON_FIELD_AUTO(StructType, f14), ZJSON_FIELD_AUTO(StructType, f15), ZJSON_FIELD_AUTO(StructType, f16), ZJSON_FIELD_AUTO(StructType, f17), ZJSON_FIELD_AUTO(StructType, f18), ZJSON_FIELD_AUTO(StructType, f19), ZJSON_FIELD_AUTO(StructType, f20), ZJSON_FIELD_AUTO(StructType, f21), ZJSON_FIELD_AUTO(StructType, f22), ZJSON_FIELD_AUTO(StructType, f23), ZJSON_FIELD_AUTO(StructType, f24), ZJSON_FIELD_AUTO(StructType, f25), ZJSON_FIELD_AUTO(StructType, f26)
+
+#define ZJSON_TRANSFORM_FIELDS_27(StructType, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19, f20, f21, f22, f23, f24, f25, f26, f27) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6), ZJSON_FIELD_AUTO(StructType, f7), ZJSON_FIELD_AUTO(StructType, f8), ZJSON_FIELD_AUTO(StructType, f9), ZJSON_FIELD_AUTO(StructType, f10), ZJSON_FIELD_AUTO(StructType, f11), ZJSON_FIELD_AUTO(StructType, f12), ZJSON_FIELD_AUTO(StructType, f13), ZJSON_FIELD_AUTO(StructType, f14), ZJSON_FIELD_AUTO(StructType, f15), ZJSON_FIELD_AUTO(StructType, f16), ZJSON_FIELD_AUTO(StructType, f17), ZJSON_FIELD_AUTO(StructType, f18), ZJSON_FIELD_AUTO(StructType, f19), ZJSON_FIELD_AUTO(StructType, f20), ZJSON_FIELD_AUTO(StructType, f21), ZJSON_FIELD_AUTO(StructType, f22), ZJSON_FIELD_AUTO(StructType, f23), ZJSON_FIELD_AUTO(StructType, f24), ZJSON_FIELD_AUTO(StructType, f25), ZJSON_FIELD_AUTO(StructType, f26), ZJSON_FIELD_AUTO(StructType, f27)
+
+#define ZJSON_TRANSFORM_FIELDS_28(StructType, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19, f20, f21, f22, f23, f24, f25, f26, f27, f28) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6), ZJSON_FIELD_AUTO(StructType, f7), ZJSON_FIELD_AUTO(StructType, f8), ZJSON_FIELD_AUTO(StructType, f9), ZJSON_FIELD_AUTO(StructType, f10), ZJSON_FIELD_AUTO(StructType, f11), ZJSON_FIELD_AUTO(StructType, f12), ZJSON_FIELD_AUTO(StructType, f13), ZJSON_FIELD_AUTO(StructType, f14), ZJSON_FIELD_AUTO(StructType, f15), ZJSON_FIELD_AUTO(StructType, f16), ZJSON_FIELD_AUTO(StructType, f17), ZJSON_FIELD_AUTO(StructType, f18), ZJSON_FIELD_AUTO(StructType, f19), ZJSON_FIELD_AUTO(StructType, f20), ZJSON_FIELD_AUTO(StructType, f21), ZJSON_FIELD_AUTO(StructType, f22), ZJSON_FIELD_AUTO(StructType, f23), ZJSON_FIELD_AUTO(StructType, f24), ZJSON_FIELD_AUTO(StructType, f25), ZJSON_FIELD_AUTO(StructType, f26), ZJSON_FIELD_AUTO(StructType, f27), ZJSON_FIELD_AUTO(StructType, f28)
+
+#define ZJSON_TRANSFORM_FIELDS_29(StructType, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19, f20, f21, f22, f23, f24, f25, f26, f27, f28, f29) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6), ZJSON_FIELD_AUTO(StructType, f7), ZJSON_FIELD_AUTO(StructType, f8), ZJSON_FIELD_AUTO(StructType, f9), ZJSON_FIELD_AUTO(StructType, f10), ZJSON_FIELD_AUTO(StructType, f11), ZJSON_FIELD_AUTO(StructType, f12), ZJSON_FIELD_AUTO(StructType, f13), ZJSON_FIELD_AUTO(StructType, f14), ZJSON_FIELD_AUTO(StructType, f15), ZJSON_FIELD_AUTO(StructType, f16), ZJSON_FIELD_AUTO(StructType, f17), ZJSON_FIELD_AUTO(StructType, f18), ZJSON_FIELD_AUTO(StructType, f19), ZJSON_FIELD_AUTO(StructType, f20), ZJSON_FIELD_AUTO(StructType, f21), ZJSON_FIELD_AUTO(StructType, f22), ZJSON_FIELD_AUTO(StructType, f23), ZJSON_FIELD_AUTO(StructType, f24), ZJSON_FIELD_AUTO(StructType, f25), ZJSON_FIELD_AUTO(StructType, f26), ZJSON_FIELD_AUTO(StructType, f27), ZJSON_FIELD_AUTO(StructType, f28), ZJSON_FIELD_AUTO(StructType, f29)
+
+#define ZJSON_TRANSFORM_FIELDS_30(StructType, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19, f20, f21, f22, f23, f24, f25, f26, f27, f28, f29, f30) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6), ZJSON_FIELD_AUTO(StructType, f7), ZJSON_FIELD_AUTO(StructType, f8), ZJSON_FIELD_AUTO(StructType, f9), ZJSON_FIELD_AUTO(StructType, f10), ZJSON_FIELD_AUTO(StructType, f11), ZJSON_FIELD_AUTO(StructType, f12), ZJSON_FIELD_AUTO(StructType, f13), ZJSON_FIELD_AUTO(StructType, f14), ZJSON_FIELD_AUTO(StructType, f15), ZJSON_FIELD_AUTO(StructType, f16), ZJSON_FIELD_AUTO(StructType, f17), ZJSON_FIELD_AUTO(StructType, f18), ZJSON_FIELD_AUTO(StructType, f19), ZJSON_FIELD_AUTO(StructType, f20), ZJSON_FIELD_AUTO(StructType, f21), ZJSON_FIELD_AUTO(StructType, f22), ZJSON_FIELD_AUTO(StructType, f23), ZJSON_FIELD_AUTO(StructType, f24), ZJSON_FIELD_AUTO(StructType, f25), ZJSON_FIELD_AUTO(StructType, f26), ZJSON_FIELD_AUTO(StructType, f27), ZJSON_FIELD_AUTO(StructType, f28), ZJSON_FIELD_AUTO(StructType, f29), ZJSON_FIELD_AUTO(StructType, f30)
+
+#define ZJSON_TRANSFORM_FIELDS_31(StructType, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19, f20, f21, f22, f23, f24, f25, f26, f27, f28, f29, f30, f31) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6), ZJSON_FIELD_AUTO(StructType, f7), ZJSON_FIELD_AUTO(StructType, f8), ZJSON_FIELD_AUTO(StructType, f9), ZJSON_FIELD_AUTO(StructType, f10), ZJSON_FIELD_AUTO(StructType, f11), ZJSON_FIELD_AUTO(StructType, f12), ZJSON_FIELD_AUTO(StructType, f13), ZJSON_FIELD_AUTO(StructType, f14), ZJSON_FIELD_AUTO(StructType, f15), ZJSON_FIELD_AUTO(StructType, f16), ZJSON_FIELD_AUTO(StructType, f17), ZJSON_FIELD_AUTO(StructType, f18), ZJSON_FIELD_AUTO(StructType, f19), ZJSON_FIELD_AUTO(StructType, f20), ZJSON_FIELD_AUTO(StructType, f21), ZJSON_FIELD_AUTO(StructType, f22), ZJSON_FIELD_AUTO(StructType, f23), ZJSON_FIELD_AUTO(StructType, f24), ZJSON_FIELD_AUTO(StructType, f25), ZJSON_FIELD_AUTO(StructType, f26), ZJSON_FIELD_AUTO(StructType, f27), ZJSON_FIELD_AUTO(StructType, f28), ZJSON_FIELD_AUTO(StructType, f29), ZJSON_FIELD_AUTO(StructType, f30), ZJSON_FIELD_AUTO(StructType, f31)
+
+#define ZJSON_TRANSFORM_FIELDS_32(StructType, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19, f20, f21, f22, f23, f24, f25, f26, f27, f28, f29, f30, f31, f32) \
+  ZJSON_FIELD_AUTO(StructType, f1), ZJSON_FIELD_AUTO(StructType, f2), ZJSON_FIELD_AUTO(StructType, f3), ZJSON_FIELD_AUTO(StructType, f4), ZJSON_FIELD_AUTO(StructType, f5), ZJSON_FIELD_AUTO(StructType, f6), ZJSON_FIELD_AUTO(StructType, f7), ZJSON_FIELD_AUTO(StructType, f8), ZJSON_FIELD_AUTO(StructType, f9), ZJSON_FIELD_AUTO(StructType, f10), ZJSON_FIELD_AUTO(StructType, f11), ZJSON_FIELD_AUTO(StructType, f12), ZJSON_FIELD_AUTO(StructType, f13), ZJSON_FIELD_AUTO(StructType, f14), ZJSON_FIELD_AUTO(StructType, f15), ZJSON_FIELD_AUTO(StructType, f16), ZJSON_FIELD_AUTO(StructType, f17), ZJSON_FIELD_AUTO(StructType, f18), ZJSON_FIELD_AUTO(StructType, f19), ZJSON_FIELD_AUTO(StructType, f20), ZJSON_FIELD_AUTO(StructType, f21), ZJSON_FIELD_AUTO(StructType, f22), ZJSON_FIELD_AUTO(StructType, f23), ZJSON_FIELD_AUTO(StructType, f24), ZJSON_FIELD_AUTO(StructType, f25), ZJSON_FIELD_AUTO(StructType, f26), ZJSON_FIELD_AUTO(StructType, f27), ZJSON_FIELD_AUTO(StructType, f28), ZJSON_FIELD_AUTO(StructType, f29), ZJSON_FIELD_AUTO(StructType, f30), ZJSON_FIELD_AUTO(StructType, f31), ZJSON_FIELD_AUTO(StructType, f32)
+
+// Argument counting macros for up to 32 arguments
+#define ZJSON_GET_ARG_COUNT(...) ZJSON_GET_ARG_COUNT_IMPL(__VA_ARGS__,                                                        \
+                                                          32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, \
+                                                          15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
+
+#define ZJSON_GET_ARG_COUNT_IMPL(                                          \
+    _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, \
+    _17, _18, _19, _20, _21, _22, _23, _24, _25, _26, _27, _28, _29, _30, _31, _32, N, ...) N
 
 #define ZJSON_CONCAT(a, b) ZJSON_CONCAT_IMPL(a, b)
 #define ZJSON_CONCAT_IMPL(a, b) a##b
 
-// Main macro - works with up to 5 fields (easily extendable)
-#define ZJSON_AUTO_SERIALIZABLE(StructName, ...) \
+// Main derive macro for automatic serialization
+#define ZJSON_DERIVE(StructName, ...) \
   ZJSON_SERIALIZABLE(StructName, ZJSON_CONCAT(ZJSON_TRANSFORM_FIELDS_, ZJSON_GET_ARG_COUNT(__VA_ARGS__))(StructName, __VA_ARGS__))
 
-/*
- * USAGE EXAMPLE:
- *
- * // Define your struct/class
- * struct Person {
- *     std::string name;
- *     int age;
- *     bool isActive;
- * };
- *
- * struct Address {
- *     std::string street;
- *     std::string city;
- *     int zipCode;
- * };
- *
- * struct Employee {
- *     Person person;
- *     Address address;
- *     std::string department;
- * };
- *
- * // Register your types for serialization
- * ZJSON_SERIALIZABLE(Person,
- *     ZJSON_FIELD(Person, name),
- *     ZJSON_FIELD(Person, age),
- *     ZJSON_FIELD(Person, isActive)
- * );
- *
- * ZJSON_SERIALIZABLE(Address,
- *     ZJSON_FIELD(Address, street),
- *     ZJSON_FIELD(Address, city),
- *     ZJSON_FIELD(Address, zipCode)
- * );
- *
- * ZJSON_SERIALIZABLE(Employee,
- *     ZJSON_FIELD(Employee, person),
- *     ZJSON_FIELD(Employee, address),
- *     ZJSON_FIELD(Employee, department)
- * );
- *
- * // Usage:
- * void example() {
- *     std::string json_str = R"({
- *         "name": "John Doe",
- *         "age": 30,
- *         "isActive": true
- *     })";
- *
- *     ZJson json;
- *     json.parse(json_str);
- *
- *     // Type-safe deserialization with compile-time checking
- *     Person person = json.serialize<Person>();
- *
- *     std::cout << "Name: " << person.name << std::endl;
- *     std::cout << "Age: " << person.age << std::endl;
- *     std::cout << "Active: " << std::boolalpha << person.isActive << std::endl;
- *
- *     // Check if type can be serialized at compile time
- *     static_assert(ZJson::canSerialize<Person>(), "Person should be serializable");
- * }
- */
-
-// Forward declaration
-class ZJson;
-
-// Type traits for compile-time type checking
-template <typename T>
-struct is_serializable : std::false_type
-{
-};
-
-template <typename T>
-struct is_arithmetic_or_string : std::integral_constant<bool,
-                                                        std::is_arithmetic<T>::value || std::is_same<T, std::string>::value>
-{
-};
-
-// Field descriptor for reflection
-template <typename T, typename FieldType>
-struct FieldDescriptor
-{
-  std::string name;
-  FieldType T::*member;
-
-  FieldDescriptor(const std::string &n, FieldType T::*m)
-      : name(n), member(m)
-  {
+// Core serializable macro
+#define ZJSON_SERIALIZABLE(StructType, ...)                                                                 \
+  namespace zjson                                                                                           \
+  {                                                                                                         \
+  template <>                                                                                               \
+  struct Serializable<StructType>                                                                           \
+  {                                                                                                         \
+    static constexpr bool value = true;                                                                     \
+    static Value serialize(const StructType &obj)                                                           \
+    {                                                                                                       \
+      Value result = Value::create_object();                                                                \
+      serialize_fields(obj, result, __VA_ARGS__);                                                           \
+      return result;                                                                                        \
+    }                                                                                                       \
+  };                                                                                                        \
+  template <>                                                                                               \
+  struct Deserializable<StructType>                                                                         \
+  {                                                                                                         \
+    static constexpr bool value = true;                                                                     \
+    static zstd::expected<StructType, Error> deserialize(const Value &value)                                \
+    {                                                                                                       \
+      if (!value.is_object())                                                                               \
+      {                                                                                                     \
+        return zstd::make_unexpected(Error::invalid_type("object", "other"));                               \
+      }                                                                                                     \
+      StructType result{};                                                                                  \
+      const auto &obj = value.as_object();                                                                  \
+      bool deserialize_result = deserialize_fields(result, obj, __VA_ARGS__);                               \
+      if (!deserialize_result)                                                                              \
+      {                                                                                                     \
+        return zstd::make_unexpected(Error::invalid_data("Failed to deserialize fields"));                  \
+      }                                                                                                     \
+      if (zjson::detail::StructConfig<StructType>::deny_unknown_fields)                                     \
+      {                                                                                                     \
+        auto validation_result = detail::validate_no_unknown_fields<StructType>(obj, __VA_ARGS__);          \
+        if (!validation_result.has_value())                                                                 \
+        {                                                                                                   \
+          return zstd::make_unexpected(validation_result.error());                                          \
+        }                                                                                                   \
+      }                                                                                                     \
+      return result;                                                                                        \
+    }                                                                                                       \
+  };                                                                                                        \
+  }                                                                                                         \
+  namespace                                                                                                 \
+  {                                                                                                         \
+  struct StructType##_Registrar                                                                             \
+  {                                                                                                         \
+    StructType##_Registrar()                                                                                \
+    {                                                                                                       \
+      zjson::SerializationRegistry<StructType>::register_serializer(                                        \
+          [](const StructType &obj) { return zjson::Serializable<StructType>::serialize(obj); });           \
+      zjson::SerializationRegistry<StructType>::register_deserializer(                                      \
+          [](const zjson::Value &value) { return zjson::Deserializable<StructType>::deserialize(value); }); \
+    }                                                                                                       \
+  };                                                                                                        \
+  static StructType##_Registrar StructType##_registrar_instance;                                            \
   }
-};
 
-// Forward declaration for SerializationRegistry
-template <typename T>
-class SerializationRegistry;
-
-// Macro definition moved after ZJson class - see below
-
-// Forward declarations
-class ZJson;
-
-// Helper macro for creating field descriptors
-#define ZJSON_FIELD(StructType, field_name) \
-  FieldDescriptor<StructType, decltype(StructType::field_name)>(#field_name, &StructType::field_name)
-
-class ZJson
+// Field serialization/deserialization helper functions
+namespace detail
 {
 
-private:
-  JSON_INSTANCE instance;
-  char *dynamic_buffer;
-  int dynamic_buffer_length;
+// Forward declare the _impl functions
+template <typename T, typename FieldType>
+void serialize_field_impl(const T &obj, Value &result, const Field<T, FieldType> &field, std::true_type);
 
-public:
-  class JsonValueProxy
+template <typename T, typename FieldType>
+void serialize_field_impl(const T &obj, Value &result, const Field<T, FieldType> &field, std::false_type);
+
+template <typename T, typename FieldType>
+bool deserialize_field_impl(T &obj, const Field<T, FieldType> &field, const Value &value, std::true_type);
+
+template <typename T, typename FieldType>
+bool deserialize_field_impl(T &obj, const Field<T, FieldType> &field, const Value &value, std::false_type);
+
+// Implementation of serialize_field_impl functions
+template <typename T, typename FieldType>
+void serialize_field_impl(const T &obj, Value &result, const Field<T, FieldType> &field, std::true_type)
+{
+  const FieldType &field_value = obj.*(field.member);
+
+  // Handle flattening for struct types
+  if (field.flatten_field)
   {
-    friend class ZJson;
-
-  private:
-    ZJson &parser;
-    std::string key;
-    mutable KEY_HANDLE key_handle = {0};
-    JsonValueProxy *parent = nullptr;
-
-    // Constructor for JSON root level
-    JsonValueProxy(ZJson &parser, KEY_HANDLE root_kh)
-        : parser(parser), key(""), key_handle(root_kh)
+    // Serialize the nested struct and merge its fields into the parent
+    Value nested_value = Serializable<FieldType>::serialize(field_value);
+    if (nested_value.is_object())
     {
-    }
-
-    // Constructor for individual keys
-    JsonValueProxy(ZJson &parser, const std::string &key, JsonValueProxy *parent, const std::string &search_key)
-        : parser(parser), key(key), parent(parent)
-    {
-      int type = HWTJ_SEARCHTYPE_SHALLOW;
-      KEY_HANDLE starting_handle = {0};
-
-      ZJSMSRCH(&parser.instance, &type, search_key.c_str(), &parent->key_handle, &starting_handle, &key_handle);
-    }
-
-    // Constructor for array elements with direct handle
-    JsonValueProxy(ZJson &parser, const std::string &key, KEY_HANDLE element_handle)
-        : parser(parser), key(key), key_handle(element_handle)
-    {
-    }
-
-  public:
-    explicit operator std::string() const
-    {
-      int rc = 0;
-      char *value_ptr = nullptr;
-      int value_length = 0;
-
-      rc = ZJSMGVAL(&parser.instance, get_mutable_key_handle(), &value_ptr, &value_length);
-      if (0 != rc)
+      const auto &nested_obj = nested_value.as_object();
+      for (const auto &nested_field : nested_obj)
       {
-        throw format_error("Error getting string value for key '" + key + "'", rc);
-      }
-      return std::string(value_ptr, value_length);
-    }
-
-    explicit operator int() const
-    {
-      int rc = 0;
-      char *value_ptr = nullptr;
-      int value_length = 0;
-
-      rc = ZJSMGVAL(&parser.instance, get_mutable_key_handle(), &value_ptr, &value_length);
-      if (0 != rc)
-      {
-        throw format_error("Error getting integer value for key '" + key + "'", rc);
-      }
-      return std::strtol(value_ptr, nullptr, 10);
-    }
-
-    explicit operator bool() const
-    {
-      int rc = 0;
-      char b_val = 0;
-
-      rc = ZJSMGBOV(&parser.instance, get_mutable_key_handle(), &b_val);
-      if (0 != rc)
-      {
-        throw format_error("Error getting boolean value for key '" + key + "'", rc);
-      }
-      return (b_val == HWTJ_TRUE);
-    }
-
-    explicit operator const std::vector<JsonValueProxy>() const
-    {
-      int type = this->getType();
-      if (type != HWTJ_ARRAY_TYPE) // not an array
-      {
-        throw std::runtime_error("Cannot get array entries from non-array type for key '" + key + "'. Type was " + std::to_string(type));
-      }
-
-      std::vector<JsonValueProxy> result;
-
-      int rc = 0;
-      int number_entries = 0;
-
-      rc = ZJSMGNUE(&parser.instance, get_mutable_key_handle(), &number_entries);
-      if (0 != rc)
-      {
-        throw format_error("Error getting number of array entries for key '" + key + "'", rc);
-      }
-
-      result.reserve(number_entries);
-
-      // Load all array entries
-      for (int i = 0; i < number_entries; i++)
-      {
-        KEY_HANDLE element_handle = {0};
-        int mutable_index = i;
-
-        rc = ZJSMGAEN(&parser.instance, get_mutable_key_handle(), &mutable_index, &element_handle);
-        if (0 != rc)
+        // Check for name collisions before adding flattened fields
+        if (result.is_object())
         {
-          throw format_error("Error getting array element at index " + std::to_string(i) + " for key '" + key + "'.", rc);
+          const auto &existing_obj = result.as_object();
+          if (existing_obj.find(nested_field.first) != existing_obj.end())
+          {
+            // Name collision detected - this should be an error to match standard JSON library behavior
+            throw Error::invalid_data("Field name collision during flattening: '" + nested_field.first + "' already exists in parent struct");
+          }
         }
-
-        std::string element_key = key + "[" + std::to_string(i) + "]";
-        result.push_back(JsonValueProxy(parser, element_key, element_handle));
+        result.add_to_object(nested_field.first, nested_field.second);
       }
-
-      return result;
+      return;
     }
+  }
 
-    int getType() const
-    {
-      int rc = 0;
-      int type = 0;
-      rc = ZJSNGJST(&parser.instance, get_mutable_key_handle(), &type);
-      if (0 != rc)
-      {
-        throw format_error("Error getting type for key '" + key + "'", rc);
-      }
-      return type;
-    }
+  // Normal serialization
+  result.add_to_object(field.get_serialized_name(), Serializable<FieldType>::serialize(field_value));
+}
 
-    std::string getKeyPath() const
-    {
-      return key;
-    }
+// Specialized implementation for optional types - by default include as null
+// Use .skip_if_none() field attribute to skip empty optionals
+template <typename T, typename OptionalType>
+void serialize_field_impl(const T &obj, Value &result, const Field<T, zstd::optional<OptionalType>> &field, std::true_type)
+{
+  const zstd::optional<OptionalType> &field_value = obj.*(field.member);
 
-    std::string getKey() const
-    {
-      size_t pos = key.find_last_of('.');
-      if (pos != std::string::npos)
-      {
-        return key.substr(pos + 1);
-      }
-      return key;
-    }
-
-    std::vector<std::string> getKeys() const
-    {
-      std::vector<std::string> keys;
-      int type = this->getType();
-
-      if (type != HWTJ_OBJECT_TYPE) // not an object
-      {
-        throw std::runtime_error("Cannot get keys from non-object type for key '" + key + "'. Type was " + std::to_string(type));
-      }
-
-      int rc = 0;
-      int number_entries = 0;
-
-      rc = ZJSMGNUE(&parser.instance, get_mutable_key_handle(), &number_entries);
-      if (0 != rc)
-      {
-        throw format_error("Error getting number of entries for key '" + key + "'", rc);
-      }
-
-      for (int i = 0; i < number_entries; i++)
-      {
-        char buffer[1] = {0};
-        char *buffer_ptr = buffer;
-        int buffer_length = (int)sizeof(buffer);
-        KEY_HANDLE value_handle = {0};
-        int actual_length = 0;
-        char *dynamic_buffer = nullptr;
-
-        rc = ZJSMGOEN(&parser.instance, get_mutable_key_handle(), &i, &buffer_ptr, &buffer_length, &value_handle, &actual_length);
-
-        // if the buffer is too small, allocate a dynamic buffer
-        if (HWTJ_BUFFER_TOO_SMALL == rc)
-        {
-          // dynamic_buffer = new char[actual_length];
-          auto dynamic_buffer = std::vector<char>(actual_length);
-
-          buffer_ptr = &dynamic_buffer[0];
-          buffer_length = actual_length;
-          rc = ZJSMGOEN(&parser.instance, get_mutable_key_handle(), &i, &buffer_ptr, &buffer_length, &value_handle, &actual_length);
-          keys.push_back(std::string(dynamic_buffer.begin(), dynamic_buffer.end()));
-        }
-
-        else if (0 == rc)
-        {
-          keys.push_back(std::string(buffer_ptr, actual_length));
-        }
-
-        else
-        {
-          throw format_error("Error getting key at index " + std::to_string(i) + " for key '" + key + "'", rc);
-        }
-      }
-
-      return keys;
-    }
-
-    JsonValueProxy operator[](int index) const
-    {
-      int type = this->getType();
-      if (type != HWTJ_ARRAY_TYPE) // not an array
-      {
-        throw std::runtime_error("Cannot apply operator[] to a non-array type for key '" + key + "'. Type was " + std::to_string(type));
-      }
-
-      int rc = 0;
-      KEY_HANDLE element_handle = {0};
-      int mutable_index = index;
-
-      rc = ZJSMGAEN(&parser.instance, get_mutable_key_handle(), &mutable_index, &element_handle);
-      if (0 != rc)
-      {
-        throw format_error("Error getting array element at index " + std::to_string(index) + " for key '" + key + "'.", rc);
-      }
-
-      std::string new_key = key + "[" + std::to_string(index) + "]";
-      return JsonValueProxy(parser, new_key, element_handle);
-    }
-
-    JsonValueProxy operator[](const std::string &index_str) const
-    {
-      // Check if this is an array access (numeric string) or object access
-      int type = this->getType();
-      if (type == HWTJ_ARRAY_TYPE) // Array type
-      {
-        return (*this)[std::stoi(index_str)];
-      }
-      else if (type == HWTJ_OBJECT_TYPE) // Object type
-      {
-        // Create a nested search proxy
-        std::string nested_key = key + "." + index_str;
-        return JsonValueProxy(parser, nested_key, const_cast<JsonValueProxy *>(this), index_str);
-      }
-      else
-      {
-        throw std::runtime_error("Cannot apply string operator[] to type " + std::to_string(type) + " for key '" + key + "'");
-      }
-    }
-
-    // Assignment operators for different types
-    JsonValueProxy &operator=(const std::string &value)
-    {
-      setValue(value, HWTJ_STRING_TYPE);
-      return *this;
-    }
-
-    JsonValueProxy &operator=(const char *value)
-    {
-      setValue(std::string(value), HWTJ_STRING_TYPE);
-      return *this;
-    }
-
-    JsonValueProxy &operator=(int value)
-    {
-      setValue(std::to_string(value), HWTJ_NUMBER_TYPE);
-      return *this;
-    }
-
-    JsonValueProxy &operator=(double value)
-    {
-      setValue(std::to_string(value), HWTJ_NUMBER_TYPE);
-      return *this;
-    }
-
-    JsonValueProxy &operator=(bool value)
-    {
-      setValue(std::to_string(value), HWTJ_BOOLEAN_TYPE);
-      return *this;
-    }
-
-    // Array assignment operators for creating and populating arrays
-    JsonValueProxy &operator=(const std::initializer_list<std::string> &list)
-    {
-      // Create empty array first
-      setValue("[]", HWTJ_JSONTEXTVALUETYPE);
-      // Then populate it with items
-      for (std::initializer_list<std::string>::const_iterator it = list.begin(); it != list.end(); ++it)
-      {
-        appendToArray(*it, HWTJ_STRING_TYPE);
-      }
-      return *this;
-    }
-
-    JsonValueProxy &operator=(const std::initializer_list<const char *> &list)
-    {
-      // Create empty array first
-      setValue("[]", HWTJ_JSONTEXTVALUETYPE);
-      // Then populate it with items
-      for (std::initializer_list<const char *>::const_iterator it = list.begin(); it != list.end(); ++it)
-      {
-        appendToArray(std::string(*it), HWTJ_STRING_TYPE);
-      }
-      return *this;
-    }
-
-    JsonValueProxy &operator=(const std::initializer_list<int> &list)
-    {
-      // Create empty array first, then populate it
-      setValue("[]", HWTJ_JSONTEXTVALUETYPE);
-      // Then populate it with items
-      for (std::initializer_list<int>::const_iterator it = list.begin(); it != list.end(); ++it)
-      {
-        appendToArray(std::to_string(*it), HWTJ_NUMBER_TYPE);
-      }
-      return *this;
-    }
-
-    JsonValueProxy &operator=(const std::initializer_list<double> &list)
-    {
-      // Create empty array first
-      setValue("[]", HWTJ_JSONTEXTVALUETYPE);
-      // Then populate it with items
-      for (std::initializer_list<double>::const_iterator it = list.begin(); it != list.end(); ++it)
-      {
-        appendToArray(std::to_string(*it), HWTJ_NUMBER_TYPE);
-      }
-      return *this;
-    }
-
-    JsonValueProxy &operator=(const std::initializer_list<bool> &list)
-    {
-      // Create empty array first
-      setValue("[]", HWTJ_JSONTEXTVALUETYPE);
-      // Then populate it with items
-      for (std::initializer_list<bool>::const_iterator it = list.begin(); it != list.end(); ++it)
-      {
-        appendToArray(*it ? "true" : "false", HWTJ_BOOLEAN_TYPE);
-      }
-      return *this;
-    }
-
-    // Array append operators using +=
-    JsonValueProxy &operator+=(const std::string &value)
-    {
-      appendToArray(value, HWTJ_STRING_TYPE);
-      return *this;
-    }
-
-    JsonValueProxy &operator+=(const char *value)
-    {
-      appendToArray(std::string(value), HWTJ_STRING_TYPE);
-      return *this;
-    }
-
-    JsonValueProxy &operator+=(int value)
-    {
-      appendToArray(std::to_string(value), HWTJ_NUMBER_TYPE);
-      return *this;
-    }
-
-    JsonValueProxy &operator+=(double value)
-    {
-      appendToArray(std::to_string(value), HWTJ_NUMBER_TYPE);
-      return *this;
-    }
-
-    JsonValueProxy &operator+=(bool value)
-    {
-      appendToArray(value ? "true" : "false", HWTJ_BOOLEAN_TYPE);
-      return *this;
-    }
-
-    // Array append operators for multiple items using initializer lists
-    JsonValueProxy &operator+=(const std::initializer_list<std::string> &list)
-    {
-      for (std::initializer_list<std::string>::const_iterator it = list.begin(); it != list.end(); ++it)
-      {
-        appendToArray(*it, HWTJ_STRING_TYPE);
-      }
-      return *this;
-    }
-
-    JsonValueProxy &operator+=(const std::initializer_list<const char *> &list)
-    {
-      for (std::initializer_list<const char *>::const_iterator it = list.begin(); it != list.end(); ++it)
-      {
-        appendToArray(std::string(*it), HWTJ_STRING_TYPE);
-      }
-      return *this;
-    }
-
-    JsonValueProxy &operator+=(const std::initializer_list<int> &list)
-    {
-      for (std::initializer_list<int>::const_iterator it = list.begin(); it != list.end(); ++it)
-      {
-        appendToArray(std::to_string(*it), HWTJ_NUMBER_TYPE);
-      }
-      return *this;
-    }
-
-    JsonValueProxy &operator+=(const std::initializer_list<double> &list)
-    {
-      for (std::initializer_list<double>::const_iterator it = list.begin(); it != list.end(); ++it)
-      {
-        appendToArray(std::to_string(*it), HWTJ_NUMBER_TYPE);
-      }
-      return *this;
-    }
-
-    JsonValueProxy &operator+=(const std::initializer_list<bool> &list)
-    {
-      for (std::initializer_list<bool>::const_iterator it = list.begin(); it != list.end(); ++it)
-      {
-        appendToArray(*it ? "true" : "false", HWTJ_BOOLEAN_TYPE);
-      }
-      return *this;
-    }
-
-  private:
-    // TODO Make this method public and perhaps add some others too
-    void erase(const std::string &key_name)
-    {
-      int type = HWTJ_SEARCHTYPE_SHALLOW;
-      KEY_HANDLE starting_handle = {0};
-      KEY_HANDLE found_entry_handle = {0};
-
-      int rc = ZJSMSRCH(&parser.instance, &type, key_name.c_str(), &key_handle, &starting_handle, &found_entry_handle);
-      if (0 == rc)
-      {
-        ZJSMDEL(&parser.instance, &key_handle, &found_entry_handle);
-      }
-    }
-
-    void setValue(const std::string &value, int entry_type)
-    {
-      // Delete existing key from parent
-      auto key = getKey();
-      parent->erase(key);
-
-      // Create the new entry
-      int rc = ZJSMCREN(&parser.instance, &parent->key_handle, key.c_str(), value.c_str(), &entry_type, &key_handle);
-      if (0 != rc)
-      {
-        throw format_error("Error setting value for key '" + key + "'", rc);
-      }
-    }
-
-    void appendToArray(const std::string &value, int entry_type)
-    {
-      // Check if this is an array type
-      int type = this->getType();
-      if (type != HWTJ_ARRAY_TYPE)
-      {
-        throw std::runtime_error("Cannot append to non-array type for key '" + key + "'. Type was " + std::to_string(type));
-      }
-
-      // For array entries, use null/empty entry name as per IBM documentation
-      // HWTJCREN inserts JSON data directly into the array when entry name is null/empty
-      KEY_HANDLE new_entry_handle = {0};
-      int rc = ZJSMCREN(&parser.instance, &key_handle, nullptr, value.c_str(), &entry_type, &new_entry_handle);
-      if (0 != rc)
-      {
-        throw format_error("Error appending value to array for key '" + key + "'", rc);
-      }
-    }
-
-    std::runtime_error format_error(const std::string &msg, int rc) const
-    {
-      std::stringstream ss;
-      ss << std::hex << rc;
-      return std::runtime_error(msg + " rc was x'" + ss.str() + "'");
-    }
-
-    KEY_HANDLE *get_mutable_key_handle() const
-    {
-      return &key_handle;
-    }
-  };
-
-  ZJson()
+  // Check if field has skip_if_none attribute
+  if (!field_value.has_value() && field.skip_if_none)
   {
-    int rc = 0;
-    memset(&instance, 0, sizeof(JSON_INSTANCE));
-    rc = ZJSMINIT(&instance);
-    if (0 != rc)
-    {
-      std::stringstream ss;
-      ss << std::hex << rc;
-      throw std::runtime_error("Error initializing JSON rc was x'" + ss.str() + "'");
-    }
+    return; // Skip field entirely
   }
-  ~ZJson()
+
+  // Otherwise, serialize normally (null if empty, value if present)
+  result.add_to_object(field.get_serialized_name(), Serializable<zstd::optional<OptionalType>>::serialize(field_value));
+}
+
+template <typename T, typename FieldType>
+void serialize_field_impl(const T &obj, Value &result, const Field<T, FieldType> &field, std::false_type)
+{
+  // Type is not serializable - skip or handle error
+}
+
+// Implementation of deserialize_field_impl functions
+template <typename T, typename FieldType>
+bool deserialize_field_impl(T &obj, const Field<T, FieldType> &field, const Value &value, std::true_type)
+{
+  auto result = Deserializable<FieldType>::deserialize(value);
+  if (!result.has_value())
   {
-    int rc = 0;
-    rc = ZJSMTERM(&instance);
-    if (0 != rc)
-    {
-      std::stringstream ss;
-      ss << std::hex << rc;
-      throw std::runtime_error("Error terminating JSON rc was x'" + ss.str() + "'");
-    }
+    return false;
   }
+  obj.*(field.member) = result.value();
+  return true;
+}
 
-  JsonValueProxy parse(const std::string &json)
+// Specialized implementation for optional types - handle null values gracefully
+template <typename T, typename OptionalType>
+bool deserialize_field_impl(T &obj, const Field<T, zstd::optional<OptionalType>> &field, const Value &value, std::true_type)
+{
+  auto result = Deserializable<zstd::optional<OptionalType>>::deserialize(value);
+  if (!result.has_value())
   {
-    int rc = 0;
-    if (instance.json != nullptr)
-    {
-      rc = ZJSMTERM(&instance);
-      if (0 != rc)
-      {
-        std::stringstream ss;
-        ss << std::hex << rc;
-        throw std::runtime_error("Error terminating JSON rc was x'" + ss.str() + "'");
-      }
-      memset(&instance, 0, sizeof(JSON_INSTANCE));
-      rc = ZJSMINIT(&instance);
-      if (0 != rc)
-      {
-        std::stringstream ss;
-        ss << std::hex << rc;
-        throw std::runtime_error("Error initializing JSON rc was x'" + ss.str() + "'");
-      }
-    }
-    rc = ZJSMPARS(&instance, json.c_str());
-    if (0 != rc)
-    {
-      std::stringstream ss;
-      ss << std::hex << rc;
-      throw std::runtime_error("Error parsing JSON rc was x'" + ss.str() + "'");
-    }
-
-    // Return a proxy representing the root object
-    KEY_HANDLE root_handle = {0};
-    return JsonValueProxy(*this, root_handle);
+    return false;
   }
+  obj.*(field.member) = result.value();
+  return true;
+}
 
-  std::string stringify()
+template <typename T, typename FieldType>
+bool deserialize_field_impl(T &obj, const Field<T, FieldType> &field, const Value &value, std::false_type)
+{
+  // Type is not deserializable
+  return false;
+}
+
+template <typename T, typename FieldType>
+void serialize_field(const T &obj, Value &result, const Field<T, FieldType> &field)
+{
+  if (!field.skip_serializing)
   {
-    int rc = 0;
-
-    if (nullptr != dynamic_buffer)
-    {
-      delete[] dynamic_buffer;
-      dynamic_buffer = nullptr;
-      dynamic_buffer_length = 0;
-    }
-
-    char buffer[1] = {0};
-    int buffer_length = (int)sizeof(buffer);
-    int buffer_length_actual = 0;
-
-    rc = ZJSMSERI(&instance, buffer, &buffer_length, &buffer_length_actual);
-
-    // expect this failure on the first call to ZJSMSERI
-    if (HWTJ_BUFFER_TOO_SMALL == rc)
-    {
-      dynamic_buffer_length = buffer_length_actual;
-      dynamic_buffer = new char[dynamic_buffer_length];
-      rc = ZJSMSERI(&instance, dynamic_buffer, &dynamic_buffer_length, &buffer_length_actual);
-    }
-
-    // if the rc is still not zero or not the previous expected failure, throw an error
-    if (0 != rc)
-    {
-      std::stringstream ss;
-      ss << std::hex << rc;
-      throw std::runtime_error("Error serializing JSON rc was x'" + ss.str() + "'");
-    }
-
-    return std::string(dynamic_buffer, dynamic_buffer_length);
+    serialize_field_impl(obj, result, field, typename std::integral_constant<bool, Serializable<FieldType>::value>{});
   }
+}
 
-  std::string stringify(int space)
+template <typename T, typename FieldType>
+bool deserialize_field(T &obj, const std::map<std::string, Value> &object, const Field<T, FieldType> &field)
+{
+  if (field.skip_deserializing)
   {
-    std::string minified_json = this->stringify();
-    std::string indented_json;
-    int indent_level = 0;
-    bool in_string = false;
+    return true; // Skip field successfully
+  }
 
-    for (char ch : minified_json)
+  // Handle flattening for struct types during deserialization
+  if (field.flatten_field)
+  {
+    // Create a Value object from the current object map to deserialize the nested struct
+    Value flattened_value = Value::create_object();
+    for (const auto &pair : object)
     {
-      if (ch == '\"')
-      {
-        indented_json += ch;
-        in_string = !in_string;
-      }
-      else if (!in_string)
-      {
-        switch (ch)
-        {
-        case '{':
-        case '[':
-          indented_json += ch;
-          indented_json += '\n';
-          indent_level++;
-          indented_json.append(indent_level * space, ' ');
-          break;
-        case '}':
-        case ']':
-          indented_json += '\n';
-          indent_level--;
-          indented_json.append(indent_level * space, ' ');
-          indented_json += ch;
-          break;
-        case ',':
-          indented_json += ch;
-          indented_json += '\n';
-          indented_json.append(indent_level * space, ' ');
-          break;
-        case ':':
-          indented_json += ch;
-          indented_json += ' ';
-          break;
-        default:
-          indented_json += ch;
-          break;
-        }
-      }
-      else
-      {
-        indented_json += ch;
-      }
+      flattened_value.add_to_object(pair.first, pair.second);
     }
-    return indented_json;
-  }
-
-  JsonValueProxy operator[](const std::string &key)
-  {
-    KEY_HANDLE root_handle = {0};
-    return JsonValueProxy(*this, key, root_handle);
-  }
-
-  // Type-safe deserialization method
-  template <typename T>
-  T serialize() const
-  {
-    static_assert(is_serializable<T>::value,
-                  "Type must be registered with ZJSON_SERIALIZABLE macro");
-
-    T result{};
-    auto &deserializer = SerializationRegistry<T>::get_instance().getDeserializer();
-
-    if (!deserializer)
+    auto result = Deserializable<FieldType>::deserialize(flattened_value);
+    if (result.has_value())
     {
-      throw std::runtime_error("No deserializer registered for type");
+      obj.*(field.member) = result.value();
+      return true;
     }
-
-    // Get the root object
-    KEY_HANDLE root_handle = {0};
-    JsonValueProxy root_proxy(*const_cast<ZJson *>(this), "root", root_handle);
-
-    deserializer(result, root_proxy);
-    return result;
+    return false;
   }
 
-  // Overload for deserializing from a specific JSON path
-  template <typename T>
-  T serialize(const std::string &path) const
+  auto it = object.find(field.get_serialized_name());
+  if (it == object.end())
   {
-    static_assert(is_serializable<T>::value,
-                  "Type must be registered with ZJSON_SERIALIZABLE macro");
-
-    T result{};
-    auto &deserializer = SerializationRegistry<T>::get_instance().getDeserializer();
-
-    if (!deserializer)
+    if (field.default_value)
     {
-      throw std::runtime_error("No deserializer registered for type");
+      obj.*(field.member) = field.default_value();
+      return true; // Used default value
     }
-
-    // Get the specified path
-    JsonValueProxy path_proxy = (*const_cast<ZJson *>(this))[path];
-
-    deserializer(result, path_proxy);
-    return result;
+    return false; // Missing required field
   }
 
-  // Helper method to check if a type can be serialized
-  template <typename T>
-  static constexpr bool canSerialize()
+  return deserialize_field_impl(obj, field, it->second, typename std::integral_constant<bool, Deserializable<FieldType>::value>{});
+}
+
+// Specialized deserialize_field for optional types - missing fields are OK
+template <typename T, typename OptionalType>
+bool deserialize_field(T &obj, const std::map<std::string, Value> &object, const Field<T, zstd::optional<OptionalType>> &field)
+{
+  if (field.skip_deserializing)
   {
-    return is_serializable<T>::value && SerializationRegistry<T>::get_instance().hasDeserializer();
-  }
-};
-
-// Macro for easy struct registration (after ZJson class definition)
-#define ZJSON_SERIALIZABLE(StructType, ...)                                                                        \
-  template <>                                                                                                      \
-  struct is_serializable<StructType> : std::true_type                                                              \
-  {                                                                                                                \
-  };                                                                                                               \
-  namespace                                                                                                        \
-  {                                                                                                                \
-  struct StructType##_Registrar                                                                                    \
-  {                                                                                                                \
-    StructType##_Registrar()                                                                                       \
-    {                                                                                                              \
-      SerializationRegistry<StructType>::get_instance().registerDeserializer(                                      \
-          [](StructType &obj, const ZJson::JsonValueProxy &json) { deserialize_fields(obj, json, __VA_ARGS__); }); \
-    }                                                                                                              \
-  };                                                                                                               \
-  static StructType##_Registrar StructType##_registrar_instance;                                                   \
+    return true; // Skip field successfully
   }
 
-// Serialization registry implementation (after ZJson class definition)
-#include "singleton.hpp"
+  auto it = object.find(field.get_serialized_name());
+  if (it == object.end())
+  {
+    if (field.default_value)
+    {
+      obj.*(field.member) = field.default_value();
+      return true; // Used default value
+    }
+    // For optional fields, missing is OK - leave as empty optional
+    obj.*(field.member) = zstd::optional<OptionalType>();
+    return true;
+  }
+
+  return deserialize_field_impl(obj, field, it->second, typename std::integral_constant<bool, Deserializable<zstd::optional<OptionalType>>::value>{});
+}
+
+// Variadic template helpers for field processing
 template <typename T>
-class SerializationRegistry : public Singleton<SerializationRegistry<T>>
-{
-  friend class Singleton<SerializationRegistry<T>>;
-  using DeserializerFunc = std::function<void(T &, const ZJson::JsonValueProxy &)>;
-  DeserializerFunc m_deserializeFn;
-
-public:
-  void registerDeserializer(DeserializerFunc func)
-  {
-    SerializationRegistry<T>::get_instance().m_deserializeFn = func;
-  }
-
-  DeserializerFunc &getDeserializer()
-  {
-    return SerializationRegistry<T>::get_instance().m_deserializeFn;
-  }
-
-  bool hasDeserializer()
-  {
-    return SerializationRegistry<T>::get_instance().m_deserializeFn != nullptr;
-  }
-};
-
-// Template implementations (after ZJson class definition)
-template <typename T, typename FieldType>
-typename std::enable_if<std::is_same<FieldType, std::string>::value>::type
-deserialize_field_impl(T &obj, const ZJson::JsonValueProxy &json, const FieldDescriptor<T, FieldType> &field)
-{
-  obj.*(field.member) = static_cast<std::string>(json[field.name]);
-}
-
-template <typename T, typename FieldType>
-typename std::enable_if<std::is_same<FieldType, int>::value>::type
-deserialize_field_impl(T &obj, const ZJson::JsonValueProxy &json, const FieldDescriptor<T, FieldType> &field)
-{
-  obj.*(field.member) = static_cast<int>(json[field.name]);
-}
-
-template <typename T, typename FieldType>
-typename std::enable_if<std::is_same<FieldType, bool>::value>::type
-deserialize_field_impl(T &obj, const ZJson::JsonValueProxy &json, const FieldDescriptor<T, FieldType> &field)
-{
-  obj.*(field.member) = static_cast<bool>(json[field.name]);
-}
-
-template <typename T, typename FieldType>
-typename std::enable_if<std::is_arithmetic<FieldType>::value &&
-                        !std::is_same<FieldType, int>::value &&
-                        !std::is_same<FieldType, bool>::value>::type
-deserialize_field_impl(T &obj, const ZJson::JsonValueProxy &json, const FieldDescriptor<T, FieldType> &field)
-{
-  obj.*(field.member) = static_cast<FieldType>(static_cast<int>(json[field.name]));
-}
-
-template <typename T, typename FieldType>
-typename std::enable_if<is_serializable<FieldType>::value>::type
-deserialize_field_impl(T &obj, const ZJson::JsonValueProxy &json, const FieldDescriptor<T, FieldType> &field)
-{
-  FieldType nested_obj;
-  auto &deserializer = SerializationRegistry<FieldType>::get_instance().getDeserializer();
-  if (deserializer)
-  {
-    deserializer(nested_obj, json[field.name]);
-    obj.*(field.member) = nested_obj;
-  }
-}
-
-template <typename T, typename FieldType>
-void deserialize_field(T &obj, const ZJson::JsonValueProxy &json, const FieldDescriptor<T, FieldType> &field)
-{
-  try
-  {
-    deserialize_field_impl(obj, json, field);
-  }
-  catch (const std::exception &e)
-  {
-    // Field might be optional or have a different name
-    ZLOG_TRACE("Unable to deserialize field %s: %s", field.name.c_str(), e.what());
-  }
-}
-
-// Helper for unpacking variadic templates (C++11 compatible)
-template <typename T>
-void deserialize_fields_impl(T &obj, const ZJson::JsonValueProxy &json)
+void serialize_fields_impl(const T &obj, Value &result)
 {
   // Base case - do nothing
 }
 
 template <typename T, typename Field, typename... Fields>
-void deserialize_fields_impl(T &obj, const ZJson::JsonValueProxy &json, Field field, Fields... fields)
+void serialize_fields_impl(const T &obj, Value &result, Field field, Fields... fields)
 {
-  deserialize_field(obj, json, field);
-  deserialize_fields_impl(obj, json, fields...);
+  serialize_field(obj, result, field);
+  serialize_fields_impl(obj, result, fields...);
 }
 
 template <typename T, typename... Fields>
-void deserialize_fields(T &obj, const ZJson::JsonValueProxy &json, Fields... fields)
+void serialize_fields(const T &obj, Value &result, Fields... fields)
 {
-  deserialize_fields_impl(obj, json, fields...);
+  serialize_fields_impl(obj, result, fields...);
 }
 
-inline std::ostream &operator<<(std::ostream &os, const ZJson::JsonValueProxy &proxy)
+template <typename T>
+bool deserialize_fields_impl(T &obj, const std::map<std::string, Value> &object)
 {
-  int type = proxy.getType();
-  switch (type)
+  return true;
+}
+
+template <typename T, typename Field, typename... Fields>
+bool deserialize_fields_impl(T &obj, const std::map<std::string, Value> &object, Field field, Fields... fields)
+{
+  if (!deserialize_field(obj, object, field))
   {
-  case HWTJ_ARRAY_TYPE: // Array
-  {
-    // TODO(Kelosky): print array type
-    auto temp_proxy = static_cast<const std::vector<ZJson::JsonValueProxy>>(proxy);
-    return os << "Array[" << temp_proxy.size() << "]";
+    return false;
   }
-  case HWTJ_STRING_TYPE: // String
-    return os << static_cast<std::string>(proxy);
-  case HWTJ_NUMBER_TYPE: // Number
-    return os << static_cast<int>(proxy);
-  case HWTJ_BOOLEAN_TYPE: // Boolean
-    return os << std::boolalpha << static_cast<bool>(proxy);
-  default:
+  return deserialize_fields_impl(obj, object, fields...);
+}
+
+template <typename T, typename... Fields>
+bool deserialize_fields(T &obj, const std::map<std::string, Value> &object, Fields... fields)
+{
+  return deserialize_fields_impl(obj, object, fields...);
+}
+
+// Helper to collect field names, including flattened struct fields
+template <typename Field>
+void collect_field_names_impl(std::set<std::string> &names, Field field)
+{
+  if (!field.flatten_field)
   {
-    std::stringstream ss;
-    ss << std::hex << type;
-    throw std::runtime_error("Unsupported JSON type for key '" + proxy.getKeyPath() + "' type was x'" + ss.str() + "'");
-  }
+    names.insert(field.get_serialized_name());
   }
 }
 
-#endif
+template <typename Field, typename... Fields>
+void collect_field_names_impl(std::set<std::string> &names, Field field, Fields... fields)
+{
+  if (!field.flatten_field)
+  {
+    names.insert(field.get_serialized_name());
+  }
+  collect_field_names_impl(names, fields...);
+}
+
+template <typename... Fields>
+void collect_field_names(std::set<std::string> &names, Fields... fields)
+{
+  collect_field_names_impl(names, fields...);
+}
+
+template <typename Field>
+bool has_flattened_field_impl(Field field)
+{
+  return field.flatten_field;
+}
+
+template <typename Field, typename... Fields>
+bool has_flattened_field_impl(Field field, Fields... fields)
+{
+  return field.flatten_field || has_flattened_field_impl(fields...);
+}
+
+template <typename... Fields>
+bool has_flattened_field(Fields... fields)
+{
+  return has_flattened_field_impl(fields...);
+}
+
+template <typename T, typename... Fields>
+zstd::expected<bool, Error> validate_no_unknown_fields(const std::map<std::string, Value> &object, Fields... fields)
+{
+  // Check if any field is flattened - if so, we cannot reliably validate unknown fields
+  if (has_flattened_field(fields...))
+  {
+    // When flattening is used, we cannot perform strict unknown field validation
+    // because flattened fields effectively "consume" arbitrary field names
+    return true;
+  }
+
+  // Collect all expected field names
+  std::set<std::string> expected_fields;
+  collect_field_names(expected_fields, fields...);
+
+  // Check for unknown fields
+  for (const auto &pair : object)
+  {
+    if (expected_fields.find(pair.first) == expected_fields.end())
+    {
+      return zstd::make_unexpected(Error::unknown_field(pair.first));
+    }
+  }
+
+  return true;
+}
+
+} // namespace detail
+
+// Expose helper functions
+using detail::deserialize_fields;
+using detail::serialize_fields;
+
+} // namespace zjson
+
+/**
+ * Usage examples and convenience macros
+ */
+
+// Container attributes for JSON serialization
+
+// Container attribute macros
+
+#define ZJSON_RENAME_ALL(StructType, case_style)                                                                                \
+  namespace zjson                                                                                                               \
+  {                                                                                                                             \
+  namespace detail                                                                                                              \
+  {                                                                                                                             \
+  template <>                                                                                                                   \
+  zjson::attributes::RenameAll::CaseStyle StructConfig<StructType>::rename_all_case = zjson::attributes::RenameAll::case_style; \
+  }                                                                                                                             \
+  }
+
+#define ZJSON_DENY_UNKNOWN_FIELDS(StructType)                \
+  namespace zjson                                            \
+  {                                                          \
+  namespace detail                                           \
+  {                                                          \
+  template <>                                                \
+  bool StructConfig<StructType>::deny_unknown_fields = true; \
+  }                                                          \
+  }
+
+// Field attribute macros
+#define zjson_rename(name) .rename(name)
+#define zjson_skip() .skip()
+#define zjson_skip_serializing() .skip_serializing_field()
+#define zjson_skip_deserializing() .skip_deserializing_field()
+#define zjson_skip_serializing_if_none() .skip_serializing_if_none()
+#define zjson_default(func) .with_default(func)
+#define zjson_flatten() .flatten()
+
+#endif // ZJSON_HPP
