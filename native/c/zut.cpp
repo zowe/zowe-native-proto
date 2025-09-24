@@ -518,10 +518,9 @@ int zut_alloc_debug()
   return rc;
 }
 
-int zut_debug_message(const char *message)
+void zut_debug_message(const char *message)
 {
   fprintf(stderr, "%s", message);
-  return 0;
 }
 
 bool zut_string_compare_c(const std::string &a, const std::string &b)

@@ -189,6 +189,12 @@ Use `.Not()` to inverse compare values behavior. `Not()` returns a `RESULT_CHECK
 
 To create a C header from an HLASM DSECT:
 
+- Create the `asmchdr` element, e.g. `cvt.s`
+- Generate & download the header via `npm run z:chdsect cvt.s`
+- Save the file to ensure proper formating
+
+OR:
+
 - create a `.s` file in `asmchdr` folder, e.g. `asasymbp.s`
 - upload, e.g. `npm run z:upload asmchdr/asasymbp.s`
 - allocate output adata data set if none exists, e.g. `zowex data-set create-adata <hlq>.adata`

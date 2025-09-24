@@ -26,9 +26,6 @@ import { ConfigFileUtils } from "../src/ConfigFileUtils";
 import { type inputBoxOpts, MESSAGE_TYPE, type qpItem, type qpOpts } from "../src/doc";
 import { type ISshConfigExt, ZClientUtils } from "../src/ZClientUtils";
 
-// vi.mock("path", () => ({
-//     normalize: vi.fn(() => (p: string) => p),
-// }));
 vi.mock("path", async (importOriginal) => {
     const actual = await importOriginal<typeof import("path")>();
     return {
