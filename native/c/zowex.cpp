@@ -429,9 +429,11 @@ int main(int argc, char *argv[])
 
   // List subcommand
   auto uss_list_cmd = command_ptr(new Command("list", "list USS files and directories"));
+  uss_list_cmd->add_alias("ls");
   uss_list_cmd->add_positional_arg("file-path", "file path", ArgType_Single, true);
   uss_list_cmd->add_keyword_arg("all", make_aliases("--all", "-a"), "list all files and directories", ArgType_Flag, false, ArgValue(false));
   uss_list_cmd->add_keyword_arg("long", make_aliases("--long", "-l"), "list long format", ArgType_Flag, false, ArgValue(false));
+  uss_list_cmd->add_keyword_arg("depth", make_aliases("--depth"), "depth of subdirectories to list", ArgType_Single, false);
   uss_list_cmd->add_keyword_arg("response-format-csv", response_format_csv_option, "returns the response in CSV format", ArgType_Flag, false, ArgValue(false));
   uss_list_cmd->set_handler(handle_uss_list);
   uss_cmd->add_command(uss_list_cmd);
@@ -496,6 +498,7 @@ int main(int argc, char *argv[])
 
   // List subcommand
   auto job_list_cmd = command_ptr(new Command("list", "list jobs"));
+  job_list_cmd->add_alias("ls");
   job_list_cmd->add_keyword_arg("owner", make_aliases("--owner", "-o"), "filter by owner", ArgType_Single, false);
   job_list_cmd->add_keyword_arg("prefix", make_aliases("--prefix", "-p"), "filter by prefix", ArgType_Single, false);
   job_list_cmd->add_keyword_arg("max-entries", make_aliases("--max-entries", "--me"), "max number of results to return before warning generated", ArgType_Single, false);
@@ -1816,6 +1819,7 @@ int handle_uss_list(const ParseResult &result)
   ListOptions list_options = {0};
   list_options.all_files = result.find_kw_arg_bool("all");
   list_options.long_format = result.find_kw_arg_bool("long");
+  list_options.max_depth = result.find_kw_arg_int("depth");
 
   const auto use_csv_format = result.find_kw_arg_bool("response-format-csv");
 

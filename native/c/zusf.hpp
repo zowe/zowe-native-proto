@@ -27,6 +27,7 @@ typedef struct _ListOptions
 {
   bool all_files;
   bool long_format;
+  int max_depth;
 } ListOptions;
 
 int zusf_create_uss_file_or_dir(ZUSF *zusf, const std::string &file, mode_t mode, bool createDir);
