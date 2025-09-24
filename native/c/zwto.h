@@ -121,6 +121,11 @@ static int wto(WTO_BUF *buf)
     wto(&buf);                                          \
   }
 
+static void zut_print_debug(const char *fmt)
+{
+  zwto_debug(fmt);
+}
+
 typedef struct
 {
   char msg[MAX_WTOR_TEXT + 1];
