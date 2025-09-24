@@ -77,7 +77,10 @@ export function registerCommands(context: vscode.ExtensionContext): vscode.Dispo
             const profile = await vscePromptApi.promptForProfile(profName);
             if (!profile?.profile) return;
             const defaultServerPath = SshConfigUtils.getServerPath(profile.profile);
-            const deployDirectory = await vscePromptApi.promptForDeployDirectory(defaultServerPath);
+            const deployDirectory = await vscePromptApi.promptForDeployDirectory(
+                profile.profile.host,
+                defaultServerPath,
+            );
             if (!deployDirectory) return;
 
             const sshSession = ZSshUtils.buildSession(profile.profile);
