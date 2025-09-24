@@ -23,12 +23,7 @@
 #include <limits.h>
 #include <limits>
 #include <climits>
-#ifndef _LARGE_TIME_API
-#define _LARGE_TIME_API
-#endif
-#ifndef _OPEN_SYS_FILE_EXT
-#define _OPEN_SYS_FILE_EXT 1
-#endif
+
 #ifdef ZSHMEM_ENABLE
 #include "zshmem.hpp"
 #endif

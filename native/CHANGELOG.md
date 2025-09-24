@@ -6,7 +6,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
-- `c`: Fixed silent error when uss chown user did not have permissions [#565](https://github.com/zowe/zowe-native-proto/pull/565)
+- `c`: Fixed issue where `zowex uss chown` (and `zusf_chown_uss_file_or_dir`) silently succeeded with exit code `0` when a non-existent user or group was supplied. The command now validates `user:group` input and returns a non-zero exit code with a clear error message when invalid. [#565](https://github.com/zowe/zowe-native-proto/pull/565)
 
 ## `0.1.9`
 
