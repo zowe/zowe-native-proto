@@ -265,6 +265,29 @@ int ZUTEDSCT()
   return rc;
 }
 
+#pragma prolog(ZUTMLPLB, " ZWEPROLG NEWDSA=(YES,128) ") // TODO(Kelosky): ensure this is large enough
+#pragma epilog(ZUTMLPLB, " ZWEEPILG ")
+int ZUTMLPLB(ZDIAG *diag, int *num_dsns, PARMLIB_DSNS *dsns)
+{
+  int rc = 0;
+
+  ZDIAG diag31 = {0};
+  int num_dsns31 = 0;
+  PARMLIB_DSNS dsns31 = {0};
+
+  rc = zutm1lpl(&diag31, &num_dsns31, &dsns31);
+
+  for (int i = 0; i < num_dsns31; i++)
+  {
+    memcpy(&dsns->dsn[i], &dsns31.dsn[i], sizeof(dsns31.dsn[i]));
+  }
+
+  memcpy(diag, &diag31, sizeof(ZDIAG));
+  *num_dsns = num_dsns31;
+
+  return rc;
+}
+
 // NOTE(Kelosky): this is unused in favor of `getlogin()` but retained for other usages of IAZXJSAB
 #pragma prolog(ZUTMGUSR, " ZWEPROLG NEWDSA=(YES,4) ")
 #pragma epilog(ZUTMGUSR, " ZWEEPILG ")
