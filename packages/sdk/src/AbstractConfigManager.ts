@@ -220,7 +220,7 @@ export abstract class AbstractConfigManager {
                 },
             });
 
-            return input?.trim();
+            return input?.trim() || defaultServerPath;
         }
 
         if (!path.isAbsolute(result)) {

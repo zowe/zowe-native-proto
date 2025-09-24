@@ -26,9 +26,17 @@ import { ConfigFileUtils } from "../src/ConfigFileUtils";
 import { type inputBoxOpts, MESSAGE_TYPE, type qpItem, type qpOpts } from "../src/doc";
 import { type ISshConfigExt, ZClientUtils } from "../src/ZClientUtils";
 
-vi.mock("path", () => ({
-    normalize: vi.fn(() => (p: string) => p),
-}));
+// vi.mock("path", () => ({
+//     normalize: vi.fn(() => (p: string) => p),
+// }));
+vi.mock("path", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("path")>();
+    return {
+        ...actual,
+        normalize: vi.fn((p: string) => p),
+    };
+});
+
 vi.mock("ssh2");
 vi.mock("node:fs", () => ({
     readFileSync: vi.fn(() => "mocked file content"),
@@ -447,6 +455,17 @@ describe("AbstractConfigManager", async () => {
             const result = await testManager.promptForDeployDirectory(defaultServerPath);
 
             expect(result).toBe(defaultServerPath);
+        });
+
+        it("displays error if user input is not absolute", async () => {
+            vi.spyOn(testManager, "showMenu").mockResolvedValue("relative/path");
+            const showMessageMock = vi.spyOn(testManager, "showMessage").mockImplementation(() => {});
+            const result = await testManager.promptForDeployDirectory(defaultServerPath);
+            expect(showMessageMock).toHaveBeenCalledWith(
+                "Invalid Deploy Directory format. Ensure it matches the expected pattern.",
+                MESSAGE_TYPE.ERROR,
+            );
+            expect(result).toBeUndefined();
         });
     });
     describe("createNewProfile", async () => {
