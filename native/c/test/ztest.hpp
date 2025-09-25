@@ -46,8 +46,6 @@
 #define TestLog(message) Globals::get_instance().test_log(message)
 #define TrimChars(str) Globals::get_instance().trim_chars(str)
 
-extern std::string matcher;
-
 namespace ztst
 {
 
@@ -191,6 +189,7 @@ private:
   int suite_index = -1;
   int current_nesting = 0;
   jmp_buf jump_buf = {0};
+  std::string matcher = "";
 
   Globals()
   {
@@ -334,6 +333,14 @@ public:
     return instance;
   }
 
+  std::string &get_matcher()
+  {
+    return matcher;
+  }
+  void set_matcher(const std::string &m)
+  {
+    matcher = m;
+  }
   std::vector<TEST_SUITE> &get_suites()
   {
     return suites;
@@ -396,11 +403,11 @@ public:
 
     int current_nesting = get_nesting();
 
-    if (matcher != "")
+    if (get_matcher() != "")
     {
       try
       {
-        std::regex pattern(matcher);
+        std::regex pattern(get_matcher());
         if (!std::regex_search(description, pattern))
         {
           return;
@@ -409,7 +416,7 @@ public:
       catch (const std::regex_error &e)
       {
         // If regex is invalid, fall back to exact string match
-        if (matcher != description)
+        if (get_matcher() != description)
         {
           return;
         }
@@ -784,22 +791,129 @@ RESULT_CHECK<T> expect(T val, EXPECT_CONTEXT ctx = {0})
   return result;
 }
 
+inline void print_failed_tests()
+{
+  Globals &g = Globals::get_instance();
+  bool has_failures = false;
+
+  // First pass: check if there are any failures
+  for (std::vector<TEST_SUITE>::iterator it = g.get_suites().begin(); it != g.get_suites().end(); it++)
+  {
+    for (std::vector<TEST_CASE>::iterator iit = it->tests.begin(); iit != it->tests.end(); iit++)
+    {
+      if (!iit->success)
+      {
+        has_failures = true;
+        break;
+      }
+    }
+    if (has_failures)
+      break;
+  }
+
+  if (!has_failures)
+    return;
+
+  std::cout << "\n======== FAILED TESTS ========" << std::endl;
+
+  // Build a map of suite paths for proper nesting display
+  std::vector<std::string> suite_paths;
+  std::vector<int> suite_nesting_levels;
+
+  for (std::vector<TEST_SUITE>::iterator it = g.get_suites().begin(); it != g.get_suites().end(); it++)
+  {
+    bool suite_has_failures = false;
+
+    // Check if this suite has any failures
+    for (std::vector<TEST_CASE>::iterator iit = it->tests.begin(); iit != it->tests.end(); iit++)
+    {
+      if (!iit->success)
+      {
+        suite_has_failures = true;
+        break;
+      }
+    }
+
+    if (suite_has_failures)
+    {
+      // Build the complete path for this suite
+      std::string full_path = it->description;
+      int current_nesting = it->nesting_level;
+
+      // Find the most recent parent suite by looking at nesting levels
+      // We need to find the last suite that has a lower nesting level
+      for (int i = suite_paths.size() - 1; i >= 0; i--)
+      {
+        if (suite_nesting_levels[i] < current_nesting)
+        {
+          full_path = suite_paths[i] + " > " + it->description;
+          break;
+        }
+      }
+
+      std::cout << colors.red << colors.cross << " FAIL " << full_path << colors.reset << std::endl;
+
+      for (std::vector<TEST_CASE>::iterator iit = it->tests.begin(); iit != it->tests.end(); iit++)
+      {
+        if (!iit->success)
+        {
+          std::cout << "  " << colors.red << colors.cross << " FAIL " << iit->description << colors.reset << std::endl;
+          if (!iit->fail_message.empty())
+          {
+            std::cout << "    " << colors.arrow << " " << iit->fail_message << std::endl;
+          }
+        }
+      }
+
+      // Store this suite for future path building
+      suite_paths.push_back(full_path);
+      suite_nesting_levels.push_back(current_nesting);
+    }
+    else
+    {
+      // Even if this suite doesn't have failures, we need to track it for path building
+      // This is important for nested suites that don't have failures themselves
+      std::string full_path = it->description;
+      int current_nesting = it->nesting_level;
+
+      // Find the most recent parent suite
+      for (int i = suite_paths.size() - 1; i >= 0; i--)
+      {
+        if (suite_nesting_levels[i] < current_nesting)
+        {
+          full_path = suite_paths[i] + " > " + it->description;
+          break;
+        }
+      }
+
+      suite_paths.push_back(full_path);
+      suite_nesting_levels.push_back(current_nesting);
+    }
+  }
+}
+
 inline int report()
 {
   int suite_fail = 0;
+  int suite_total = 0;
   int tests_total = 0;
   int tests_fail = 0;
   std::chrono::microseconds total_duration(0);
 
   Globals &g = Globals::get_instance();
 
+  // Print failed tests summary before the main summary
+  print_failed_tests();
+
   std::cout << "\n======== TESTS SUMMARY ========" << std::endl;
 
   for (std::vector<TEST_SUITE>::iterator it = g.get_suites().begin(); it != g.get_suites().end(); it++)
   {
     bool suite_success = true;
+    bool suite_ran = false;
     for (std::vector<TEST_CASE>::iterator iit = it->tests.begin(); iit != it->tests.end(); iit++)
     {
+      suite_ran = true;
       tests_total++;
       if (!iit->success)
       {
@@ -807,6 +921,10 @@ inline int report()
         tests_fail++;
       }
       total_duration += std::chrono::duration_cast<std::chrono::microseconds>(iit->end_time - iit->start_time);
+    }
+    if (suite_ran)
+    {
+      suite_total++;
     }
     if (!suite_success)
     {
@@ -816,9 +934,9 @@ inline int report()
 
   const int width = 13;
   std::cout << std::left << std::setw(width) << "Suites:"
-            << colors.green << g.get_suites().size() - suite_fail << " passed" << colors.reset << ", "
+            << colors.green << suite_total - suite_fail << " passed" << colors.reset << ", "
             << colors.red << suite_fail << " failed" << colors.reset << ", "
-            << g.get_suites().size() << " total" << std::endl;
+            << suite_total << " total" << std::endl;
 
   std::cout << std::left << std::setw(width) << "Tests:"
             << colors.green << tests_total - tests_fail << " passed" << colors.reset << ", "
@@ -1129,9 +1247,20 @@ inline int execute_command(const std::string &command, std::string &stdout_outpu
   return -1;
 }
 
-inline int tests(ztst::cb tests)
+inline int tests(int argc, char *argv[], ztst::cb tests)
 {
   std::cout << "======== TESTS ========" << std::endl;
+
+  if (argc > 1)
+  {
+    std::cout << "Running tests matching: " << argv[1] << std::endl;
+    Globals::get_instance().set_matcher(argv[1]);
+  }
+  else
+  {
+    std::cout << "Running all tests" << std::endl;
+  }
+
   tests();
   int rc = report();
   report_xml();
