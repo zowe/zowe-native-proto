@@ -69,6 +69,14 @@ void zowex_tests()
                   Expect(response).ToContain("zowex");
                   Expect(response).ToContain("Version");
                 });
+             it("should remain less than 10mb in size",
+                []() -> void
+                {
+                  string response;
+                  execute_command_with_output("cat ../build-out/zowex | wc -c", response);
+                  int file_size = stoi(response);
+                  ExpectWithContext(file_size, response).ToBeLessThan(10 * 1024 * 1024);
+                });
              describe("job tests",
                       []() -> void
                       {
