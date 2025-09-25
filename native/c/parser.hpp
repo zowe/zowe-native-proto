@@ -124,6 +124,7 @@ struct ArgumentDef
   ArgType type;     // type of argument (flag, single, etc.)
   bool positional;
   bool required;          // is this argument mandatory?
+  bool hidden;            // is this argument meant to be hidden / for developers only?
   ArgValue default_value; // default value if argument is not provided
   bool is_help_flag;      // internal flag to identify the help argument
   std::vector<std::string>
@@ -266,6 +267,12 @@ public:
   ArgumentBuilder &required(bool val = true)
   {
     m_arg_def.required = val;
+    return *this;
+  }
+
+  ArgumentBuilder &hidden(bool val = true)
+  {
+    m_arg_def.hidden = val;
     return *this;
   }
 
@@ -495,6 +502,8 @@ public:
          it != pos_args.end(); ++it)
     {
       const ArgumentDef &arg = *it;
+      if (arg.hidden)
+        continue;
       max_pos_arg_width = std::max(max_pos_arg_width, arg.name.length());
     }
 
@@ -503,6 +512,8 @@ public:
          it != kw_args.end(); ++it)
     {
       const ArgumentDef &arg = *it;
+      if (arg.hidden)
+        continue;
       max_kw_arg_width =
           std::max(max_kw_arg_width, arg.get_display_name().length());
     }
@@ -609,6 +620,8 @@ public:
            it != kw_args.end(); ++it)
       {
         const ArgumentDef &arg = *it;
+        if (arg.hidden)
+          continue;
         os << "  " << std::left << std::setw(max_kw_arg_width)
            << arg.get_display_name() << arg.help;
         if (!arg.default_value.is_none())
