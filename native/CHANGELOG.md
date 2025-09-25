@@ -6,6 +6,11 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
+- `c`: Added `zowex tool list-parmlib` command to list parmlib concatenation data sets.
+
+## `0.1.9`
+
+- `golang`: Fixed an issue where an empty response on the `HandleReadFileRequest` function would result in a panic. [#550](https://github.com/zowe/zowe-native-proto/pull/550)
 - `c`: Fixed issue where the `zowex ds lm` command always returned non-zero exit code for warnings and ignored the `--no-warn` flag. [#498](https://github.com/zowe/zowe-native-proto/issues/498)
 - `c`: Fixed issue where the `zowex job submit-jcl` command submitted the given JCL contents twice, causing two jobs to be created. [#508](https://github.com/zowe/zowe-native-proto/issues/508)
 - `c`: Implemented a logger for Metal C and C++ source code for diagnostics, debug information, and printing dumps. When enabled, log messages are written to a log file named `zowex.log` in a new `logs` folder, relative to the location of the `zowex` binary. [#107](https://github.com/zowe/zowe-native-proto/issues/107)
@@ -17,6 +22,10 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - `c`: Fixed issue where listing data sets fails if the `OBTAIN` service fails while obtaining attributes for a data set in the list of matches. [#529](https://github.com/zowe/zowe-native-proto/issues/529)
 - `native`: Added support for `volser` option when reading/writing data sets. [#439](https://github.com/zowe/zowe-native-proto/issues/439)
 - `native`: Reduced number of memory allocations in vectors by reserving capacity before adding elements. [#522](https://github.com/zowe/zowe-native-proto/issues/522)
+- `c`: Added wrappers for Web Enablement Toolkit to be invoked via Metal C as header only or from LE-C using a 64-bit wrapper.
+- `c`: Added the `zstd::optional` class for handling optional values.
+- `c`: Added the `zstd::unique_ptr` class and `zstd::make_unique` function for RAII-based automatic memory management.
+- `c`: Added the `zstd::expected` class for error handling similar to Rust `Result` type.
 
 ## `0.1.8`
 

@@ -2,7 +2,7 @@
   "name": "zowe-native-proto-vsce",
   "displayName": "zowe-native-proto-vsce",
   "description": "Zowe Native Proto VS Code Extension for Zowe Explorer",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "publisher": "Zowe",
   "repository": "https://github.com/zowe/zowe-native-proto-vsce/tree/main/packages/vsce",
   "engines": {
@@ -83,10 +83,13 @@
   ],
   "scripts": {
     "build": "tsc -p . --noEmit",
-    "clean": "rimraf bin out",
+    "clean": "rimraf bin out coverage",
     "compile": "rspack --mode development",
     "lint": "npx @biomejs/biome check --write src",
     "package": "vsce package --out ../../dist",
+    "test": "vitest run --coverage",
+    "test:ui": "vitest --ui --coverage",
+    "test:watch": "vitest --watch",
     "vscode:prepublish": "rspack --mode production --devtool=hidden-source-map",
     "watch": "rspack --mode development --watch"
   },
@@ -94,7 +97,7 @@
     "@zowe/core-for-zowe-sdk": "^8.11.0",
     "@zowe/zowe-explorer-api": "^3.1.0",
     "ssh2": "^1.16.0",
-    "zowe-native-proto-sdk": "0.1.8"
+    "zowe-native-proto-sdk": "0.1.9"
   },
   "devDependencies": {
     "@rspack/cli": "^1.3.15",

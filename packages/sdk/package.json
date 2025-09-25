@@ -1,6 +1,6 @@
 {
   "name": "zowe-native-proto-sdk",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "main": "lib/index.js",
   "scripts": {
     "build": "tsc -b",
@@ -20,6 +20,7 @@
   ],
   "dependencies": {
     "base64-stream": "^1.0.0",
+    "es-toolkit": "^1.39.10",
     "node-ssh": "^13.2.0",
     "ssh-config": "^5.0.3",
     "ssh2": "^1.16.0"

@@ -81,6 +81,7 @@ int handle_tool_display_symbol(const ParseResult &result);
 int handle_tool_search(const ParseResult &result);
 int handle_tool_amblist(const ParseResult &result);
 int handle_tool_run(const ParseResult &result);
+int handle_tool_list_parmlib(const ParseResult &result);
 
 int handle_uss_create_file(const ParseResult &result);
 int handle_uss_create_dir(const ParseResult &result);
@@ -392,6 +393,11 @@ int main(int argc, char *argv[])
                                 "output ddname", ArgType_Single, false);
   tool_run_cmd->set_handler(handle_tool_run);
   tool_cmd->add_command(tool_run_cmd);
+
+  // List-parmlib subcommand
+  auto tool_list_parmlib_cmd = command_ptr(new Command("list-parmlib", "list parmlib"));
+  tool_list_parmlib_cmd->set_handler(handle_tool_list_parmlib);
+  tool_cmd->add_command(tool_list_parmlib_cmd);
 
   arg_parser->get_root_command().add_command(tool_cmd);
 
@@ -1686,6 +1692,27 @@ int handle_tool_run(const ParseResult &result)
     in.close();
 
     loop_dynalloc(dds);
+  }
+
+  return rc;
+}
+
+int handle_tool_list_parmlib(const ParseResult &result)
+{
+  int rc = 0;
+  ZDIAG diag = {0};
+  std::vector<std::string> parmlibs;
+  rc = zut_list_parmlib(diag, parmlibs);
+  if (0 != rc)
+  {
+    cerr << "Error: could not list parmlibs rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
+  for (vector<string>::iterator it = parmlibs.begin(); it != parmlibs.end(); ++it)
+  {
+    cout << *it << endl;
   }
 
   return rc;

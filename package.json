@@ -1,6 +1,6 @@
 {
   "name": "zowe-native-proto",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "private": true,
   "scripts": {
     "all": "npm run z:rebuild && concurrently \"npm run z:artifacts\" \"npm run build\"",
@@ -22,6 +22,7 @@
     "z:artifacts": "tsx scripts/buildTools.ts artifacts",
     "z:build": "tsx scripts/buildTools.ts build",
     "z:build:python": "tsx scripts/buildTools.ts build:python",
+    "z:chdsect": "tsx scripts/buildTools.ts build:chdsect",
     "z:clean": "tsx scripts/buildTools.ts clean",
     "z:delete": "tsx scripts/buildTools.ts delete",
     "z:make": "tsx scripts/buildTools.ts make",
@@ -51,11 +52,11 @@
     "chokidar": "^3",
     "concurrently": "^9.1.2",
     "husky": "^9.1.7",
+    "jest-mock-vscode": "^4.6.0",
     "js-yaml": "^4.1.0",
     "rimraf": "^6.0.1",
     "ssh2": "^1.16.0",
     "tsx": "^4.19.3",
-    "vitest": "^3.2.4",
-    "jest-mock-vscode": "^4.6.0"
+    "vitest": "^3.2.4"
   }
 }

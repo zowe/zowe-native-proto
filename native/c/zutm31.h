@@ -13,7 +13,9 @@
 #define ZUTM31_H
 
 #include "ztype.h"
+#include "zprmtype.h"
 
+int zutm1lpl(ZDIAG *, int *, PARMLIB_DSNS *) ATTRIBUTE(amode31);
 int zutm1gur(char[8]) ATTRIBUTE(amode31);
 
 #endif
