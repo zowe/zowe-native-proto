@@ -12,7 +12,6 @@
 #ifndef ZDS_HPP
 #define ZDS_HPP
 
-#include <iostream>
 #include <vector>
 #include <string>
 #include "zdstype.h"
@@ -54,8 +53,6 @@ typedef struct
   std::string storclass; // Storage Class
   std::string vol;       // Volume Serial
 } DS_ATTRIBUTES;
-
-std::string zds_get_recfm(const fldata_t &file_info);
 
 #ifdef SWIG
 extern "C"

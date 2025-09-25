@@ -30,18 +30,20 @@
 #define ZDS_RSNCD_NOT_FOUND -2
 
 #define ZDS_DEFAULT_BUFFER_SIZE 8096
-#define ZDS_DEFAULT_MAX_ENTRIES 100
+#define ZDS_DEFAULT_MAX_ENTRIES 1000
+#define ZDS_DEFAULT_MAX_MEMBER_ENTRIES 5000
 
 #define ZDS_VOLSER_VSAM "*VSAM*" // library
 #define ZDS_VOLSER_ALIAS "*ALIAS"
 #define ZDS_VOLSER_GDG "??????"
 #define ZDS_VOLSER_UNKNOWN "------"
 
-#define ZDS_DSORG_UNKNOWN "--" // library
-#define ZDS_DSORG_PDSE "PO-E"  // library
+#define ZDS_DSORG_UNKNOWN "--" // Unknown
+#define ZDS_DSORG_PDSE "PO-E"  // Library
 #define ZDS_DSORG_VSAM "VS"    // VSAM
-#define ZDS_DSORG_PS "PS"      // sequential
-#define ZDS_DSORG_PO "PO"      // partitioned
+#define ZDS_DSORG_PS "PS"      // Sequential
+#define ZDS_DSORG_PO "PO"      // Partitioned
+#define ZDS_DSORG_DA "DA"      // Direct Access
 
 // Record format constants
 #define ZDS_RECFM_FB "FB"   // Fixed Blocked
@@ -69,6 +71,7 @@ typedef struct
 
   ZEncode encoding_opts;
   char etag[8];
+  char ddname[8];
 
   int32_t max_entries;
   int32_t buffer_size;

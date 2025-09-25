@@ -30,6 +30,7 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include "zbase64.h"
+#include "zdsm.h"
 
 const size_t MAX_DS_LENGTH = 44u;
 
@@ -68,6 +69,19 @@ string zds_get_recfm(const fldata_t &file_info)
   return recfm;
 }
 
+bool zds_dataset_exists(const string &dsn)
+{
+  const auto member_idx = dsn.find('(');
+  const string dsn_without_member = member_idx == string::npos ? dsn : dsn.substr(0, member_idx);
+  FILE *fp = fopen(("//'" + dsn_without_member + "'").c_str(), "r");
+  if (fp)
+  {
+    fclose(fp);
+    return true;
+  }
+  return false;
+}
+
 int zds_read_from_dd(ZDS *zds, string ddname, string &response)
 {
   ddname = "DD:" + ddname;
@@ -101,14 +115,16 @@ int zds_read_from_dd(ZDS *zds, string ddname, string &response)
   if (size > 0 && strlen(zds->encoding_opts.codepage) > 0)
   {
     string temp = response;
+    const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
     try
     {
-      const auto bytes_with_encoding = zut_encode(temp, string(zds->encoding_opts.codepage), "UTF-8", zds->diag);
+      const auto bytes_with_encoding = zut_encode(temp, string(zds->encoding_opts.codepage), source_encoding, zds->diag);
       temp = bytes_with_encoding;
     }
     catch (exception &e)
     {
-      // TODO: error handling
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), zds->encoding_opts.codepage);
+      return RTNCD_FAILURE;
     }
     if (!temp.empty())
     {
@@ -122,12 +138,16 @@ int zds_read_from_dd(ZDS *zds, string ddname, string &response)
 int zds_read_from_dsn(ZDS *zds, const string &dsn, string &response)
 {
   string dsname = "//'" + dsn + "'";
+  if (strlen(zds->ddname) > 0)
+  {
+    dsname = "//DD:" + string(zds->ddname);
+  }
   const string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "rb" : "r";
 
   FILE *fp = fopen(dsname.c_str(), fopen_flags.c_str());
   if (!fp)
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open file '%s'", dsname.c_str());
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open dsn '%s'", dsn.c_str());
     return RTNCD_FAILURE;
   }
 
@@ -146,14 +166,16 @@ int zds_read_from_dsn(ZDS *zds, const string &dsn, string &response)
   if (total_size > 0 && encodingProvided)
   {
     string temp = response;
+    const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
     try
     {
-      const auto bytes_with_encoding = zut_encode(temp, string(zds->encoding_opts.codepage), "UTF-8", zds->diag);
+      const auto bytes_with_encoding = zut_encode(temp, string(zds->encoding_opts.codepage), source_encoding, zds->diag);
       temp = bytes_with_encoding;
     }
     catch (exception &e)
     {
-      // TODO: error handling
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), zds->encoding_opts.codepage);
+      return RTNCD_FAILURE;
     }
     if (!temp.empty())
     {
@@ -171,7 +193,7 @@ int zds_write_to_dd(ZDS *zds, string ddname, const string &data)
 
   if (!out.is_open())
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open '%s'", ddname.c_str());
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open file '%s'", ddname.c_str());
     return RTNCD_FAILURE;
   }
 
@@ -183,6 +205,12 @@ int zds_write_to_dd(ZDS *zds, string ddname, const string &data)
 
 int zds_write_to_dsn(ZDS *zds, const string &dsn, string &data)
 {
+  if (!zds_dataset_exists(dsn))
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not access '%s'", dsn.c_str());
+    return RTNCD_FAILURE;
+  }
+
   const auto hasEncoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
   const auto codepage = string(zds->encoding_opts.codepage);
 
@@ -218,13 +246,17 @@ int zds_write_to_dsn(ZDS *zds, const string &dsn, string &data)
     }
   }
 
-  const string dsname = "//'" + dsn + "'";
+  string dsname = "//'" + dsn + "'";
+  if (strlen(zds->ddname) > 0)
+  {
+    dsname = "//DD:" + string(zds->ddname);
+  }
   const string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "wb" : "w" + string(",recfm=*");
 
   auto *fp = fopen(dsname.c_str(), fopen_flags.c_str());
   if (nullptr == fp)
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open '%s'", dsname.c_str());
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open dsn '%s'", dsn.c_str());
     return RTNCD_FAILURE;
   }
 
@@ -233,13 +265,14 @@ int zds_write_to_dsn(ZDS *zds, const string &dsn, string &data)
   {
     if (hasEncoding)
     {
+      const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
       try
       {
-        temp = zut_encode(temp, "UTF-8", codepage, zds->diag);
+        temp = zut_encode(temp, source_encoding, codepage, zds->diag);
       }
       catch (exception &e)
       {
-        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from UTF-8 to %s", codepage.c_str());
+        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), codepage.c_str());
         return RTNCD_FAILURE;
       }
     }
@@ -298,9 +331,19 @@ int zds_create_dsn(ZDS *zds, std::string dsn, DS_ATTRIBUTES attributes, std::str
   int rc = 0;
   unsigned int code = 0;
   string parm = "ALLOC DA('" + dsn + "')";
-  if (attributes.alcunit.empty())
+  transform(attributes.alcunit.begin(), attributes.alcunit.end(), attributes.alcunit.begin(), ::toupper);
+  if (attributes.alcunit.empty() || attributes.alcunit == "TRACKS" || attributes.alcunit == "TRK")
   {
     attributes.alcunit = "TRACKS"; // Allocation Unit
+  }
+  else if (attributes.alcunit == "CYLINDERS" || attributes.alcunit == "CYL")
+  {
+    attributes.alcunit = "CYL"; // Allocation Unit
+  }
+  else
+  {
+    response = "Invalid allocation unit '" + attributes.alcunit + "'";
+    return RTNCD_FAILURE;
   }
   if (attributes.blksize == 0)
   {
@@ -440,7 +483,9 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &list)
   int total_entries = 0;
 
   if (0 == zds->max_entries)
-    zds->max_entries = ZDS_DEFAULT_MAX_ENTRIES;
+    zds->max_entries = ZDS_DEFAULT_MAX_MEMBER_ENTRIES;
+
+  list.reserve(zds->max_entries);
 
   RECORD rec = {0};
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=pds-reading-directory-sequentially
@@ -606,6 +651,93 @@ typedef struct
 #define BUFF_SIZE 1024
 #define FIELD_LEN 8
 
+#define DS1DSGPS_MASK 0x4000 // PS: Bit 2 is set
+#define DS1DSGDA_MASK 0x2000 // DA: Bit 3 is set
+#define DS1DSGPO_MASK 0x0200 // PO: Bit 7 is set
+#define DS1DSGU_MASK 0x0100  // Unmovable: Bit 8 is set
+#define DS1ACBM_MASK 0x0008  // VSAM: Bit 13 is set
+
+void load_dsorg_from_dscb(const DSCBFormat1 *dscb, string *dsorg)
+{
+  // Bitmasks translated from binary to hex from "DFSMSdfp advanced services" PDF, Chapter 1 page 7 (PDF page 39)
+  if (dscb->ds1dsorg & DS1DSGPS_MASK)
+  {
+    *dsorg = ZDS_DSORG_PS;
+  }
+  else if (dscb->ds1dsorg & DS1DSGDA_MASK)
+  {
+    *dsorg = ZDS_DSORG_DA;
+  }
+  else if (dscb->ds1dsorg & DS1DSGPO_MASK)
+  {
+    *dsorg = ZDS_DSORG_PO;
+  }
+  else if (dscb->ds1dsorg & DS1ACBM_MASK)
+  {
+    *dsorg = ZDS_DSORG_VSAM;
+  }
+
+  // Unmovable: Last bit of first half is set
+  if (dscb->ds1dsorg & DS1DSGU_MASK)
+  {
+    *dsorg += 'U';
+  }
+
+  if (dsorg->empty())
+  {
+    *dsorg = ZDS_DSORG_UNKNOWN;
+  }
+}
+
+void load_recfm_from_dscb(const DSCBFormat1 *dscb, string *recfm)
+{
+  // Bitmasks translated from binary to hex from "DFSMSdfp advanced services" PDF, Chapter 1 page 7 (PDF page 39)
+  // Fixed: First bit is set
+  if ((dscb->ds1recfm & 0xC0) == 0x80)
+  {
+    *recfm = ZDS_RECFM_F;
+  }
+  // Variable: Second bit is set
+  else if ((dscb->ds1recfm & 0xC0) == 0x40)
+  {
+    *recfm = ZDS_RECFM_V;
+  }
+  // Undefined: First and second bits are set
+  else if ((dscb->ds1recfm & 0xC0) == 0xC0)
+  {
+    *recfm = ZDS_RECFM_U;
+  }
+
+  // Blocked records: Fourth bit is set
+  if ((dscb->ds1recfm & 0x10) > 0)
+  {
+    *recfm += 'B';
+  }
+
+  // Sequential: Fifth bit is set
+  if ((dscb->ds1recfm & 0x08) > 0 && recfm[0] != ZDS_RECFM_U)
+  {
+    *recfm += 'S';
+  }
+
+  // ANSI control characters/ASA: Sixth bit is set
+  if ((dscb->ds1recfm & 0x04) > 0)
+  {
+    *recfm += 'A';
+  }
+
+  // Machine-control characters: Seventh bit is set
+  if ((dscb->ds1recfm & 0x02) > 0)
+  {
+    *recfm += 'M';
+  }
+
+  if (recfm->empty())
+  {
+    *recfm = ZDS_RECFM_U;
+  }
+}
+
 int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
 {
   int rc = 0;
@@ -635,7 +767,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
     return RTNCD_FAILURE;
   }
 
-  unsigned char *area = (unsigned char *)__malloc31(zds->buffer_size);
+  auto *area = (unsigned char *)__malloc31(zds->buffer_size);
   memset(area, 0x00, zds->buffer_size);
 
   CSIFIELD *selection_criteria = (CSIFIELD *)area;
@@ -808,7 +940,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
       {
         string symbol(IPL_VOLUME_SYMBOL);
         string value;
-        int rc = zut_substitute_symbol(symbol, value);
+        rc = zut_substitute_symbol(symbol, value);
         if (0 == rc)
         {
           entry.volser = value;
@@ -828,57 +960,17 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
         entry.migr = false;
       }
 
-      // attempt to obtain fldata in all cases and set default data
+      // attempt to load dsorg and recfm from vtoc if not migrated
       if (!entry.migr)
       {
-        string dsn = "//'" + entry.name + "'";
-        FILE *dir = fopen(dsn.c_str(), "r");
-        fldata_t file_info = {0};
-        char file_name[64] = {0};
+        auto *dscb = (DSCBFormat1 *)__malloc31(sizeof(DSCBFormat1));
+        memset(dscb, 0x00, sizeof(DSCBFormat1));
+        rc = ZDSDSCB1(zds, entry.name.c_str(), entry.volser.c_str(), dscb);
 
-        if (dir)
+        if (rc == RTNCD_SUCCESS)
         {
-          if (0 == fldata(dir, file_name, &file_info))
-          {
-            if (file_info.__dsorgPS)
-            {
-              entry.dsorg = ZDS_DSORG_PS;
-            }
-            else if (file_info.__dsorgPO)
-            {
-              entry.dsorg = ZDS_DSORG_PO;
-            }
-            else if (file_info.__dsorgVSAM)
-            {
-              entry.dsorg = ZDS_DSORG_VSAM;
-            }
-            else
-            {
-              entry.dsorg = ZDS_DSORG_UNKNOWN;
-              entry.volser = ZDS_VOLSER_UNKNOWN;
-            }
-
-            if (!entry.migr && entry.volser != ZDS_VOLSER_UNKNOWN)
-            {
-              char recfm_buf[8] = {0};
-              if (ZDSRECFM(zds, entry.name.c_str(), entry.volser.c_str(), recfm_buf,
-                           sizeof(recfm_buf)) == RTNCD_SUCCESS)
-              {
-                entry.recfm = recfm_buf;
-              }
-              else
-              {
-                entry.recfm = ZDS_RECFM_U;
-              }
-            }
-          }
-          else
-          {
-            entry.dsorg = ZDS_DSORG_UNKNOWN;
-            entry.volser = ZDS_VOLSER_UNKNOWN;
-            entry.recfm = ZDS_RECFM_U;
-          }
-          fclose(dir);
+          load_dsorg_from_dscb(dscb, &entry.dsorg);
+          load_recfm_from_dscb(dscb, &entry.recfm);
         }
         else
         {
@@ -886,7 +978,8 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
           entry.volser = ZDS_VOLSER_UNKNOWN;
           entry.recfm = ZDS_RECFM_U;
         }
-        fclose(dir);
+
+        free(dscb);
       }
 
       switch (f->type)
@@ -1002,7 +1095,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
   free(area);
   ZDSDEL(zds);
 
-  return rc;
+  return RTNCD_SUCCESS;
 }
 
 /**
@@ -1024,11 +1117,15 @@ int zds_read_from_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, 
   }
 
   string dsname = "//'" + dsn + "'";
+  if (strlen(zds->ddname) > 0)
+  {
+    dsname = "//DD:" + string(zds->ddname);
+  }
   const std::string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "rb,recfm=U" : "r";
   FILE *fin = fopen(dsname.c_str(), fopen_flags.c_str());
   if (!fin)
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open file '%s'", dsname.c_str());
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open dsn '%s'", dsn.c_str());
     return RTNCD_FAILURE;
   }
 
@@ -1057,15 +1154,16 @@ int zds_read_from_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, 
 
     if (hasEncoding)
     {
+      const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
       try
       {
-        temp_encoded = zut_encode(chunk, chunk_len, codepage, "UTF-8", zds->diag);
+        temp_encoded = zut_encode(chunk, chunk_len, codepage, source_encoding, zds->diag);
         chunk = &temp_encoded[0];
         chunk_len = temp_encoded.size();
       }
       catch (std::exception &e)
       {
-        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to UTF-8", codepage.c_str());
+        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", codepage.c_str(), source_encoding.c_str());
         fclose(fin);
         fclose(fout);
         return RTNCD_FAILURE;
@@ -1108,8 +1206,18 @@ int zds_write_to_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, s
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "content_len must be a valid size_t pointer");
     return RTNCD_FAILURE;
   }
+  else if (!zds_dataset_exists(dsn))
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not access '%s'", dsn.c_str());
+    return RTNCD_FAILURE;
+  }
 
   string dsname = "//'" + dsn + "'";
+  if (strlen(zds->ddname) > 0)
+  {
+    dsname = "//DD:" + string(zds->ddname);
+  }
+
   if (strlen(zds->etag) > 0)
   {
     // Get current data set content for etag check
@@ -1150,7 +1258,7 @@ int zds_write_to_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, s
   FILE *fout = fopen(dsname.c_str(), fopen_flags.c_str());
   if (!fout)
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open '%s'", dsname.c_str());
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open dsn '%s'", dsn.c_str());
     return RTNCD_FAILURE;
   }
 
@@ -1177,15 +1285,16 @@ int zds_write_to_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, s
 
     if (hasEncoding)
     {
+      const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
       try
       {
-        temp_encoded = zut_encode(chunk, chunk_len, "UTF-8", codepage, zds->diag);
+        temp_encoded = zut_encode(chunk, chunk_len, source_encoding, codepage, zds->diag);
         chunk = &temp_encoded[0];
         chunk_len = temp_encoded.size();
       }
       catch (std::exception &e)
       {
-        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from UTF-8 to %s", codepage.c_str());
+        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), codepage.c_str());
         fclose(fin);
         fclose(fout);
         return RTNCD_FAILURE;

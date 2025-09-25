@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	t "zowe-native-proto/zowed/types/common"
 )
 
@@ -53,9 +54,13 @@ func LogError(format string, args ...any) {
 
 	// If log file size exceeds 10MB, truncate and reopen the file
 	if info.Size() > 10*1024*1024 {
-		logFile.Close()
+		if err := logFile.Close(); err != nil {
+			log.Fatalln("Failed to close log file:", err)
+		}
 		InitLogger(true, verboseLogging)
-		_, _ = logFile.WriteString("Log file truncated due to size limit\n")
+		if _, err := logFile.WriteString("Log file truncated due to size limit\n"); err != nil {
+			log.Fatalln("Failed to write to log file:", err)
+		}
 	}
 }
 
@@ -74,18 +79,30 @@ func PrintErrorResponse(details t.ErrorDetails, rpcId *int) {
 		Error:   &details,
 		Id:      rpcId,
 	}
-	out, _ := json.Marshal(errResponse)
+	out, err := json.Marshal(errResponse)
+	if err != nil {
+		LogError("Error marshalling error response: %v", err)
+		return
+	}
 	fmt.Fprintln(os.Stderr, string(out))
 }
 
 // InitLogger initializes the logger
 func InitLogger(truncate bool, verbose bool) {
 	verboseLogging = verbose
+	logsDir := filepath.Dir(os.Args[0]) + "/logs"
+	err := os.MkdirAll(logsDir, 0700)
+	if err != nil {
+		log.Fatalln("Failed to create logs directory:", err)
+		return
+	}
+
+	logFilePath := logsDir + "/" + filepath.Base(os.Args[0]) + ".log"
 	access := os.O_APPEND
 	if truncate {
 		access = os.O_TRUNC
 	}
-	file, err := os.OpenFile(os.Args[0]+".log", access|os.O_CREATE|os.O_WRONLY, 0644)
+	file, err := os.OpenFile(logFilePath, access|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		log.Fatalln("Failed to initialize logger:", err)
 		return

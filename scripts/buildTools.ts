@@ -29,6 +29,7 @@ const args = process.argv.slice(2);
 let deployDirs: {
     root: string;
     cDir: string;
+    asmchdrDir: string;
     cTestDir: string;
     goDir: string;
     pythonDir: string;
@@ -179,26 +180,6 @@ function getDirs(next = "") {
     return dirs;
 }
 
-async function getListings(connection: Client) {
-    if (args[1]) {
-        await convert(connection, "IBM-1047", "utf8", [...args.slice(1)]);
-        await retrieve(connection, [...args.slice(1)], "listings");
-        return;
-    }
-
-    const resp = (await runCommandInShell(connection, `cd ${deployDirs.cDir}\nls *.lst`)).trim().split("\n");
-
-    await convert(connection, "IBM-1047", "utf8", resp);
-    await retrieve(connection, resp, "listings");
-}
-
-async function getDumps(connection: Client) {
-    const resp = (await runCommandInShell(connection, `cd ${deployDirs.cDir}\nls CEEDUMP.*`)).trim().split("\n");
-
-    await convert(connection, "IBM-1047", "utf8", resp);
-    await retrieve(connection, resp, "dumps");
-}
-
 async function artifacts(connection: Client, packageApf: boolean) {
     const artifactPaths = ["c/build-out/zowex", "golang/zowed"];
     if (packageApf) {
@@ -239,7 +220,7 @@ async function artifacts(connection: Client, packageApf: boolean) {
 }
 
 async function runCommandInShell(connection: Client, command: string, pty = false) {
-    const spinner = startSpinner(`Command: ${command.trim()}`);
+    const spinner = startSpinner(`Running: ${command.trim()}`);
     return new Promise<string>((resolve, reject) => {
         let data = "";
         let error = "";
@@ -292,7 +273,6 @@ async function retrieve(connection: Client, files: string[], targetDir: string) 
                 if (!fs.existsSync(`${absTargetDir}`)) fs.mkdirSync(`${absTargetDir}`);
                 const to = `${absTargetDir}/${files[i]}`;
                 const from = `${deployDirs.root}/${files[i]}`;
-                // console.log(`from '${from}' to'${to}'`)
                 await download(sftpcon, from, to);
             }
             console.log("Get complete!");
@@ -314,7 +294,7 @@ async function upload(connection: Client) {
                 throw err;
             }
 
-            const filteredDirs = args[1] ? dirs.filter((dir) => args.some((arg) => arg.startsWith(dir))) : dirs;
+            const filteredDirs = args[1] ? dirs.filter((dir) => args.some((arg) => `${arg}/`.startsWith(dir))) : dirs;
             for (const dir of ["", ...filteredDirs]) {
                 await new Promise<void>((resolve, reject) => {
                     sftpcon.mkdir(`${deployDirs.root}/${dir}`, (err) => {
@@ -327,9 +307,12 @@ async function upload(connection: Client) {
                 });
             }
 
-            const pendingUploads = [
-                uploadFile(sftpcon, path.resolve(__dirname, "../package.json"), `${deployDirs.root}/package.json`),
-            ];
+            const pendingUploads = [];
+            if (args[1] == null) {
+                pendingUploads.push(
+                    uploadFile(sftpcon, path.resolve(__dirname, "../package.json"), `${deployDirs.root}/package.json`),
+                );
+            }
             for (let i = 0; i < files.length; i++) {
                 const from = path.resolve(__dirname, `${localDeployDir}/${files[i]}`);
                 const to = `${deployDirs.root}/${files[i]}`;
@@ -465,6 +448,47 @@ async function test(connection: Client) {
     console.log("Testing complete!");
 }
 
+async function chdsect(connection: Client) {
+    return new Promise<void>((finish, reject) => {
+        if (args[1] == null) {
+            console.log("Usage: npm run z:chdsect <target_name>");
+            console.log("  example: npm run z:chdsect cvt.s");
+            reject(new Error("Usage: npm run z:chdsect <target_name>"));
+        }
+
+        connection.sftp(async (err, sftpcon) => {
+            if (err) {
+                console.log("Chdsect err");
+                reject(err);
+            }
+            await uploadFile(
+                sftpcon,
+                path.resolve(__dirname, `${localDeployDir}/asmchdr/${args[1]}`),
+                `${deployDirs.asmchdrDir}/${args[1]}`,
+            );
+            const response = await runCommandInShell(
+                connection,
+                `cd ${deployDirs.asmchdrDir} && make build-${args[1]} 2>&1 \n`,
+            );
+            console.log(response);
+            console.log("Chdsect complete!");
+
+            const from = `${deployDirs.asmchdrDir}/build-out/${args[1].replace(".s", ".h")}`;
+            const to = path.resolve(__dirname, `${localDeployDir}/c/chdsect/${args[1].replace(".s", ".h")}`);
+            console.log(`Downloading file from '${from}' to '${to}'`);
+
+            await download(sftpcon, from, to);
+            sftpcon.end();
+            finish();
+        });
+    });
+
+    // console.log("Running chdsect ...");
+    // const response = await runCommandInShell(connection, `cd ${deployDirs.asmchdrDir} && make build-${args[1]}\n`);
+    // console.log(response);
+    // console.log("Chdsect complete!");
+}
+
 async function clean(connection: Client) {
     console.log("Cleaning native/c ...");
     console.log(await runCommandInShell(connection, `cd ${deployDirs.cDir} && make clean\n`));
@@ -484,14 +508,14 @@ async function rmdir(connection: Client) {
 }
 
 async function watch(connection: Client) {
-    function cTask(err: Error, stream: ClientChannel, resolve: any) {
+    function makeTask(err: Error, stream: ClientChannel, resolve: any, inDir?: string) {
         if (err) {
             console.error("Failed to start shell:", err);
             resolve();
             return;
         }
 
-        const cmd = `cd ${deployDirs.cDir}\nmake 1> /dev/null\nexit\n`;
+        const cmd = `cd ${inDir ?? deployDirs.cDir}\nmake 1> /dev/null\nexit\n`;
         stream.write(cmd);
 
         let errText = "";
@@ -567,10 +591,13 @@ async function watch(connection: Client) {
                         connection.shell(false, (err, stream) => {
                             // If the uploaded file is in the `c` directory, run `make`
                             if (localPath.split(path.sep)[0] === "c") {
-                                cTask(err, stream, resolve);
+                                makeTask(err, stream, resolve);
                             } else if (localPath.split(path.sep)[0] === "golang") {
                                 // Run `go build` when a Golang file has changed
                                 golangTask(err, stream, resolve);
+                            } else if (localPath.split(path.sep)[0] === "python") {
+                                // Run `make` when a Python file has changed
+                                makeTask(err, stream, resolve, deployDirs.pythonDir);
                             } else {
                                 console.log();
                                 resolve();
@@ -585,7 +612,7 @@ async function watch(connection: Client) {
         });
     }
 
-    const watcher = chokidar.watch(["c/makefile", "c/**/*.{c,cpp,h,hpp,s,sh}", "golang/**"], {
+    const watcher = chokidar.watch(["c/makefile", "c/**/*.{c,cpp,h,hpp,s,sh}", "golang/**", "python/**"], {
         cwd: path.resolve(__dirname, localDeployDir),
         ignoreInitial: true,
         persistent: true,
@@ -734,10 +761,11 @@ async function main() {
     deployDirs = {
         root: config.deployDir,
         cDir: `${config.deployDir}/c`,
+        asmchdrDir: `${config.deployDir}/asmchdr`,
         cTestDir: `${config.deployDir}/c/test`,
         goDir: `${config.deployDir}/golang`,
-        pythonDir: `${config.deployDir}/python`,
-        pythonTestDir: `${config.deployDir}/python/test`,
+        pythonDir: `${config.deployDir}/python/bindings`,
+        pythonTestDir: `${config.deployDir}/python/bindings/test`,
     };
     const sshClient = await buildSshClient(config.sshProfile as IProfile);
 
@@ -758,17 +786,14 @@ async function main() {
             case "test:python":
                 await make(sshClient, deployDirs.pythonTestDir);
                 break;
+            case "build:chdsect":
+                await chdsect(sshClient);
+                break;
             case "clean":
                 await clean(sshClient);
                 break;
             case "delete":
                 await rmdir(sshClient);
-                break;
-            case "get-dumps":
-                await getDumps(sshClient);
-                break;
-            case "get-listings":
-                await getListings(sshClient);
                 break;
             case "make":
                 await make(sshClient);

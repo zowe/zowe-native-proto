@@ -13,6 +13,7 @@
 #define ZUTM_H
 
 #include "ztype.h"
+#include "zprmtype.h"
 
 #if defined(__cplusplus) && (defined(__IBMCPP__) || defined(__IBMC__))
 extern "OS"
@@ -55,9 +56,10 @@ extern "C"
   int ZUTSYMBP(SYMBOL_DATA *);
   int ZUTSRCH();
   int ZUTRUN(const char *);
-  int ZUTDBGMG(const char *);
+  void ZUTDBGMG(const char *);
   unsigned char ZUTMGKEY();
   void ZUTAOFF();
+  int ZUTMLPLB(ZDIAG *, int *, PARMLIB_DSNS *);
 
 #if defined(__cplusplus)
 }

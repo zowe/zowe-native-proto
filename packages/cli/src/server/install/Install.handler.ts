@@ -17,7 +17,9 @@ import {
     TaskStage,
 } from "@zowe/imperative";
 import { ZSshClient, ZSshUtils } from "zowe-native-proto-sdk";
+import { translateCliError } from "../../CliErrorUtils";
 import { Constants } from "../../Constants";
+import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class ServerInstallHandler implements ICommandHandler {
     public async process(params: IHandlerParameters): Promise<void> {
@@ -32,9 +34,25 @@ export default class ServerInstallHandler implements ICommandHandler {
 
         params.response.progress.startBar({ task });
         try {
-            await ZSshUtils.installServer(session, serverPath, Constants.ZSSH_BIN_DIR, (progressIncrement) => {
-                task.percentComplete += progressIncrement;
+            await ZSshUtils.installServer(session, serverPath, Constants.ZSSH_BIN_DIR, {
+                onProgress: (progressIncrement) => {
+                    task.percentComplete += progressIncrement;
+                },
+                onError: async (error: Error, context: string) => {
+                    // Log the error for CLI users
+                    const translatedError = translateCliError(error);
+                    if ("summary" in translatedError) {
+                        SshBaseHandler.logTranslatedError(params, translatedError);
+                        return false;
+                    }
+                    params.response.console.error(`Error during ${context}: ${translatedError}`);
+
+                    // For CLI, we don't retry - just log and continue with the original error
+                    return false;
+                },
             });
+        } catch (error) {
+            throw translateCliError(error as Error);
         } finally {
             task.stageName = TaskStage.COMPLETE;
             params.response.progress.endBar();

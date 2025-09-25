@@ -31,10 +31,7 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
                 })),
                 returnedRows: response.returnedRows,
             });
-        } catch (err) {
-            if (err instanceof imperative.ImperativeError) {
-                Gui.errorMessage(`Failed to list data sets: ${err.additionalDetails.replace("Error: ", "")}`);
-            }
+        } catch (_err) {
             return this.buildZosFilesResponse(
                 {
                     items: [],
@@ -130,11 +127,17 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
             lrecl: 80,
             ...(options || {}),
         };
-
-        const response = await (await this.client).ds.createDataset({
-            dsname: dataSetName,
-            attributes: datasetAttributes,
-        });
+        let response: ds.CreateDatasetResponse = { success: false, dsname: dataSetName };
+        try {
+            response = await (await this.client).ds.createDataset({
+                dsname: dataSetName,
+                attributes: datasetAttributes,
+            });
+        } catch (error) {
+            if (error instanceof imperative.ImperativeError) {
+                Gui.errorMessage(error.additionalDetails);
+            }
+        }
         return this.buildZosFilesResponse(response, response.success);
     }
 

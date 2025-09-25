@@ -4,6 +4,15 @@ All notable changes to the Client code for "zowe-native-proto-sdk" are documente
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## `0.1.9`
+
+- Updated the `ZSshUtils.uninstallServer` function to remove the deploy directory and all of its contents.[#484] (https://github.com/zowe/zowe-native-proto/issues/484)
+- Changed default number of `zowex` worker threads from 10 to 3 to reduce resource usage on z/OS. [#514](https://github.com/zowe/zowe-native-proto/pull/514)
+- Added support for `localEncoding` option in data set, USS file, and job file operations to specify the source encoding of content (defaults to UTF-8). [#511](https://github.com/zowe/zowe-native-proto/issues/511)
+- Added support for `volume` option when reading/writing data sets. [#439](https://github.com/zowe/zowe-native-proto/issues/439)
+- Added a new `ConfigFileUtils` class with helper functions for commenting out properties, removing comments after the `properties` section of a profile, and restoring properties from comments to their original values. [#534](https://github.com/zowe/zowe-native-proto/issues/534)
+- Added an `onError` callback to the `installServer` and `uninstallServer` functions, allowing applications to implement custom error handling and retry logic during server deployment. [#533](https://github.com/zowe/zowe-native-proto/pull/533)
+
 ## `0.1.7`
 
 - Fixed inconsistent type of the `data` property between the `ReadDatasetResponse` and `ReadFileResponse` types. [#488](https://github.com/zowe/zowe-native-proto/pull/488)

@@ -34,3 +34,9 @@ linkupd *
 
 Note 1: You may need to run `linkact zowex` after an IPL if your linklist has been reset.<br/>
 Note 2: Depending on your z/OS configuration, you may need to replace `*` with your mask character. For example, `linkact zowex =`
+
+## Downloading Go dependencies: tls: failed to verify certificate: x509: certificate signed by unknown authority
+
+Update your `config.yaml` to include this property:
+
+- `goBuildEnv: 'GOINSECURE="*" GOPROXY=direct GIT_SSL_NO_VERIFY=true'  # Allow fetching Go dependencies`

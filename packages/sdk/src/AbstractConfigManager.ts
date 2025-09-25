@@ -26,8 +26,9 @@ import {
     type IProfileTypeConfiguration,
     type ProfileInfo,
 } from "@zowe/imperative";
-import { Client, type ClientChannel } from "ssh2";
-import { type inputBoxOpts, MESSAGE_TYPE, type qpItem, type qpOpts } from "./doc";
+import { NodeSSH } from "node-ssh";
+import { ConfigFileUtils } from "./ConfigFileUtils";
+import { type inputBoxOpts, MESSAGE_TYPE, type PrivateKeyWarningOptions, type qpItem, type qpOpts } from "./doc";
 import { type ISshConfigExt, ZClientUtils } from "./ZClientUtils";
 
 export type ProgressCallback = (percent: number) => void;
@@ -41,6 +42,7 @@ export abstract class AbstractConfigManager {
     protected abstract showCustomMenu(opts: qpOpts): Promise<qpItem | undefined>;
     protected abstract getCurrentDir(): string | undefined;
     protected abstract getProfileSchemas(): IProfileTypeConfiguration[];
+    protected abstract showPrivateKeyWarning(opts: PrivateKeyWarningOptions): Promise<boolean>;
 
     private migratedConfigs: ISshConfigExt[];
     private filteredMigratedConfigs: ISshConfigExt[];
@@ -113,6 +115,7 @@ export abstract class AbstractConfigManager {
             const foundProfile = this.sshProfiles.find(({ name }) => name === result.label);
             if (foundProfile) {
                 const validConfig = await this.validateConfig({
+                    name: foundProfile.name,
                     hostname: foundProfile?.profile?.host,
                     port: foundProfile?.profile?.port,
                     privateKey: foundProfile?.profile?.privateKey,
@@ -122,8 +125,12 @@ export abstract class AbstractConfigManager {
                 });
                 if (validConfig === undefined) return;
 
-                if (setExistingProfile || Object.keys(validConfig).length > 0)
+                if (setExistingProfile || Object.keys(validConfig).length > 0) {
+                    if (validConfig.password) {
+                        foundProfile.profile.privateKey = foundProfile.profile.keyPassphrase = undefined;
+                    }
                     await this.setProfile(validConfig, foundProfile.name);
+                }
                 return { ...foundProfile, profile: { ...foundProfile.profile, ...validConfig } };
             }
         }
@@ -162,6 +169,7 @@ export abstract class AbstractConfigManager {
 
         // If validateConfig returns a string, that string is the correct keyPassphrase
         if (this.validationResult && Object.keys(this.validationResult).length >= 1) {
+            this.selectedProfile.privateKey = this.selectedProfile.keyPassphrase = undefined;
             this.selectedProfile = { ...this.selectedProfile, ...this.validationResult };
         }
 
@@ -248,7 +256,7 @@ export abstract class AbstractConfigManager {
                     const portNumber = Number.parseInt(unquotedValue, 10);
                     if (Number.isNaN(portNumber)) {
                         this.showMessage(
-                            `Invalid value for flag --${flag}. Port must be a valid number.`,
+                            `Invalid value for flag ${flag.length > 1 ? "-" : ""}-${flag}. Port must be a valid number.`,
                             MESSAGE_TYPE.ERROR,
                         );
                         return undefined;
@@ -261,7 +269,7 @@ export abstract class AbstractConfigManager {
                 // Validate if quotes are required
                 if (/\s/.test(unquotedValue) && !/^["'].*["']$/.test(value)) {
                     this.showMessage(
-                        `Invalid value for flag --${flag}. Values with spaces must be quoted.`,
+                        `Invalid value for flag ${flag.length > 1 ? "-" : ""}-${flag}. Values with spaces must be quoted.`,
                         MESSAGE_TYPE.ERROR,
                     );
                     return undefined;
@@ -308,55 +316,6 @@ export abstract class AbstractConfigManager {
 
     private async validateConfig(newConfig: ISshConfigExt, askForPassword = true): Promise<ISshConfigExt | undefined> {
         const configModifications: ISshConfigExt | undefined = {};
-        const attemptConnection = async (config: ISshConfigExt): Promise<boolean> => {
-            return new Promise((resolve, reject) => {
-                const sshClient = new Client();
-                const testConfig = { ...config };
-
-                if (testConfig.privateKey && typeof testConfig.privateKey === "string") {
-                    testConfig.privateKey = readFileSync(path.normalize(testConfig.privateKey), "utf8");
-                }
-
-                sshClient
-                    .connect({ ...testConfig, passphrase: testConfig.keyPassphrase })
-                    .on("error", reject)
-                    .on("ready", () => {
-                        sshClient.shell((err, stream: ClientChannel) => {
-                            if (err) return reject(err);
-                            stream.on("data", (data: Buffer | string) => {
-                                if (data.toString().startsWith("FOTS1668")) reject(new Error(data.toString()));
-                            });
-                            stream.on("end", () => resolve(true));
-                            sshClient.end();
-                        });
-                    });
-            });
-        };
-
-        const promptForPassword = async (config: ISshConfigExt): Promise<ISshConfigExt | undefined> => {
-            for (let attempts = 0; attempts < 3; attempts++) {
-                const testPassword = await this.showInputBox({
-                    title: `${configModifications.user ?? config.user}@${config.hostname}'s password:`,
-                    password: true,
-                    placeHolder: "Enter your password",
-                });
-
-                if (!testPassword) return undefined;
-
-                try {
-                    await attemptConnection({ ...config, ...configModifications, password: testPassword });
-                    return { password: testPassword };
-                } catch (error) {
-                    if (`${error}`.includes("FOTS1668")) {
-                        this.showMessage("Password Expired on Target System", MESSAGE_TYPE.ERROR);
-                        return undefined;
-                    }
-                    this.showMessage(`Password Authentication Failed (${attempts + 1}/3)`, MESSAGE_TYPE.ERROR);
-                }
-            }
-            return undefined;
-        };
-
         try {
             const privateKeyPath = newConfig.privateKey;
 
@@ -369,23 +328,24 @@ export abstract class AbstractConfigManager {
             }
 
             if ((!privateKeyPath || !readFileSync(path.normalize(privateKeyPath), "utf-8")) && !newConfig.password) {
-                const passwordPrompt = askForPassword ? await promptForPassword(newConfig) : undefined;
+                const passwordPrompt = askForPassword && (await this.promptForPassword(newConfig, configModifications));
                 return passwordPrompt ? { ...configModifications, ...passwordPrompt } : undefined;
             }
 
-            await attemptConnection({ ...newConfig, ...configModifications });
+            await this.attemptConnection({ ...newConfig, ...configModifications });
         } catch (err) {
             const errorMessage = `${err}`;
-            // Check if a validation method is possible
             if (
                 newConfig.privateKey &&
                 !newConfig.password &&
                 errorMessage.includes("All configured authentication methods failed")
             ) {
-                return undefined;
+                if (!(await this.handleInvalidPrivateKey(newConfig))) {
+                    return undefined;
+                }
+                newConfig.privateKey = undefined;
             }
 
-            // Username is not valid
             if (errorMessage.includes("Invalid username")) {
                 const testUser = await this.showInputBox({
                     title: `Enter user for host: '${newConfig.hostname}'`,
@@ -394,17 +354,15 @@ export abstract class AbstractConfigManager {
 
                 if (!testUser) return undefined;
                 try {
-                    await attemptConnection({ ...newConfig, user: testUser });
+                    await this.attemptConnection({ ...newConfig, user: testUser });
                     return { user: testUser };
                 } catch {
                     return undefined;
                 }
             }
 
-            // No passphrase given or incorrect passphrase
             if (errorMessage.includes("but no passphrase given") || errorMessage.includes("integrity check failed")) {
                 const privateKeyPath = newConfig.privateKey;
-
                 for (let attempts = 0; attempts < 3; attempts++) {
                     const testKeyPassphrase = await this.showInputBox({
                         title: `Enter passphrase for key '${privateKeyPath}'`,
@@ -413,7 +371,7 @@ export abstract class AbstractConfigManager {
                     });
 
                     try {
-                        await attemptConnection({
+                        await this.attemptConnection({
                             ...newConfig,
                             ...configModifications,
                             keyPassphrase: testKeyPassphrase,
@@ -424,29 +382,100 @@ export abstract class AbstractConfigManager {
                         this.showMessage(`Passphrase Authentication Failed (${attempts + 1}/3)`, MESSAGE_TYPE.ERROR);
                     }
                 }
+                if (!(await this.handleInvalidPrivateKey(newConfig))) {
+                    return undefined;
+                }
                 newConfig.privateKey = undefined;
                 newConfig.keyPassphrase = undefined;
                 return undefined;
             }
 
-            // Authentication failure
             if (errorMessage.includes("All configured authentication methods failed")) {
-                const passwordPrompt = askForPassword ? await promptForPassword(newConfig) : undefined;
+                const passwordPrompt = askForPassword
+                    ? await this.promptForPassword(newConfig, configModifications)
+                    : undefined;
+
+                // If password authentication succeeded and we had a private key that failed,
+                // comment out the private key in the configuration file
+                if (passwordPrompt && newConfig.privateKey) {
+                    if (!(await this.handleInvalidPrivateKey(newConfig))) {
+                        return undefined;
+                    }
+                }
+
                 return passwordPrompt ? { ...configModifications, ...passwordPrompt } : undefined;
             }
 
-            // Handshake timeout error handling
             if (errorMessage.includes("Timed out while waiting for handshake")) {
                 this.showMessage("Timed out while waiting for handshake", MESSAGE_TYPE.ERROR);
                 return undefined;
             }
 
-            // Malformed Private Key
             if (errorMessage.includes("Cannot parse privateKey: Malformed OpenSSH private key")) {
+                if (!(await this.handleInvalidPrivateKey(newConfig))) {
+                    return undefined;
+                }
                 return undefined;
             }
         }
         return configModifications;
+    }
+
+    private async attemptConnection(config: ISshConfigExt): Promise<void> {
+        const ssh = new NodeSSH();
+
+        try {
+            // Prepare connection configuration
+            const connectionConfig = {
+                host: config.hostname,
+                port: config.port || 22,
+                username: config.user,
+                password: config.password,
+                privateKey: config.privateKey ? readFileSync(path.normalize(config.privateKey), "utf8") : undefined,
+                passphrase: config.keyPassphrase,
+                readyTimeout: config.handshakeTimeout || 30000,
+            };
+
+            // Attempt connection
+            await ssh.connect(connectionConfig);
+            if (!ssh.isConnected()) {
+                throw new Error("Failed to connect to SSH: All configured authentication methods failed");
+            }
+            // Test the connection by executing a simple command
+            const result = await ssh.execCommand("exit");
+            if (result.stderr?.startsWith("FOTS1668")) {
+                throw new Error(result.stderr);
+            }
+        } finally {
+            ssh.dispose();
+        }
+    }
+
+    private async promptForPassword(
+        config: ISshConfigExt,
+        configModifications: ISshConfigExt,
+    ): Promise<ISshConfigExt | undefined> {
+        for (let attempts = 0; attempts < 3; attempts++) {
+            const testPassword = await this.showInputBox({
+                title: `${configModifications.user ?? config.user}@${config.hostname}'s password:`,
+                password: true,
+                placeHolder: "Enter your password",
+            });
+
+            if (!testPassword) return undefined;
+
+            try {
+                await this.attemptConnection({ ...config, ...configModifications, password: testPassword });
+                return { password: testPassword };
+            } catch (error) {
+                if (`${error}`.includes("FOTS1668")) {
+                    this.showMessage("Password Expired on Target System", MESSAGE_TYPE.ERROR);
+                    return undefined;
+                }
+                this.showMessage(`Password Authentication Failed (${attempts + 1}/3)`, MESSAGE_TYPE.ERROR);
+            }
+        }
+        return undefined;
     }
 
     private async validateFoundPrivateKeys() {
@@ -508,27 +537,27 @@ export abstract class AbstractConfigManager {
         });
     }
 
-    private async setProfile(selectedConfig: ISshConfigExt | undefined, updatedProfile?: string): Promise<void> {
+    private async setProfile(selectedConfig: ISshConfigExt, updatedProfile?: string): Promise<void> {
         const configApi = this.mProfilesCache.getTeamConfig().api;
         // Create the base config object
         const config: IConfigProfile = {
             type: "ssh",
             properties: {
-                user: selectedConfig?.user,
-                host: selectedConfig?.hostname,
-                privateKey: selectedConfig?.privateKey,
-                port: selectedConfig?.port || 22,
-                keyPassphrase: selectedConfig?.keyPassphrase,
-                password: selectedConfig?.password,
+                user: selectedConfig.user,
+                host: selectedConfig.hostname,
+                privateKey: selectedConfig.privateKey,
+                port: selectedConfig.port || 22,
+                keyPassphrase: selectedConfig.keyPassphrase,
+                password: selectedConfig.password,
             },
             secure: [],
         };
         //if password or KP is defined, make them secure
-        if (selectedConfig?.password) config.secure.push("password" as never);
-        if (selectedConfig?.keyPassphrase) config.secure.push("keyPassphrase" as never);
+        if (selectedConfig.password) config.secure.push("password" as never);
+        if (selectedConfig.keyPassphrase) config.secure.push("keyPassphrase" as never);
 
         if (updatedProfile) {
-            for (const key of Object.keys(selectedConfig!)) {
+            for (const key of Object.keys(selectedConfig)) {
                 const validKey = key as keyof ISshConfigExt;
 
                 // Get the location of the property being modified
@@ -566,15 +595,15 @@ export abstract class AbstractConfigManager {
                     profileName: updatedProfile,
                     profileType: "ssh",
                     property: validKey,
-                    value: selectedConfig![validKey],
+                    value: selectedConfig[validKey],
                     forceUpdate: allowBaseModification !== "Yes",
                     setSecure: this.mProfilesCache.isSecured(),
                 });
             }
         } else {
             if (!configApi.profiles.defaultGet("ssh") || !configApi.layers.get().properties.defaults.ssh)
-                configApi.profiles.defaultSet("ssh", selectedConfig?.name!);
-            configApi.profiles.set(selectedConfig?.name!, config);
+                configApi.profiles.defaultSet("ssh", selectedConfig.name!);
+            configApi.profiles.set(selectedConfig.name!, config);
         }
 
         if (config.secure.length > 0) {
@@ -676,5 +705,85 @@ export abstract class AbstractConfigManager {
             profile: this.getMergedAttrs(defaultProfile),
             failNotFound: false,
         };
+    }
+
+    /**
+     * Handle an invalid private key by commenting it out in the configuration file
+     * and showing a warning to the user
+     */
+    private async handleInvalidPrivateKey(config: ISshConfigExt): Promise<boolean> {
+        if (!config.privateKey || !config.name) {
+            // Private key is not invalid if its missing
+            return true;
+        }
+
+        try {
+            // Get the team configuration object
+            const teamConfig = this.mProfilesCache.getTeamConfig();
+
+            if (teamConfig.properties.autoStore === false) {
+                return true;
+            }
+
+            // Comment out the private key property using Config API and comment-json
+            const commentedProperty = ConfigFileUtils.getInstance().commentOutProperty(
+                teamConfig,
+                config.name,
+                "privateKey",
+            );
+
+            if (commentedProperty) {
+                // Show warning to user with undo/delete options
+                const shouldContinue = await this.showPrivateKeyWarning({
+                    profileName: config.name,
+                    privateKeyPath: config.privateKey,
+                    onUndo: () => {
+                        const success = ConfigFileUtils.getInstance().uncommentProperty(
+                            teamConfig,
+                            config.name,
+                            commentedProperty,
+                        );
+                        if (success) {
+                            this.showMessage(
+                                `Private key has been restored for profile "${config.name}".`,
+                                MESSAGE_TYPE.INFORMATION,
+                            );
+                        } else {
+                            this.showMessage(
+                                "Failed to restore private key. You may need to manually edit the configuration file.",
+                                MESSAGE_TYPE.ERROR,
+                            );
+                        }
+                    },
+                    onDelete: () => {
+                        const success = ConfigFileUtils.getInstance().deleteCommentedLine(
+                            teamConfig,
+                            config.name,
+                            commentedProperty,
+                        );
+                        if (success) {
+                            this.showMessage(
+                                `Private key comment lines have been deleted from profile "${config.name}".`,
+                                MESSAGE_TYPE.INFORMATION,
+                            );
+                        } else {
+                            this.showMessage(
+                                "Failed to delete private key comment lines. You may need to manually edit the configuration file.",
+                                MESSAGE_TYPE.ERROR,
+                            );
+                        }
+                    },
+                });
+                return shouldContinue;
+            }
+        } catch (error) {
+            console.error("Error handling invalid private key:", error);
+            this.showMessage(
+                "Failed to comment out invalid private key. You may need to manually edit the configuration file.",
+                MESSAGE_TYPE.WARNING,
+            );
+        }
+
+        return false;
     }
 }
