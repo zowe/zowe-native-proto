@@ -12,6 +12,7 @@
 #include <iostream>
 #include "ztest.hpp"
 #include "more.hpp"
+#include "evenmore.hpp"
 
 using namespace std;
 using namespace ztst;
@@ -33,6 +34,7 @@ int main(int argc, char *argv[])
                       });
 
                    more_tests();
+                   even_more_tests();
                  });
       });
 }
