@@ -308,6 +308,12 @@ private:
   ArgumentBuilder &operator=(const ArgumentBuilder &);
 };
 
+typedef struct _CmdExample
+{
+  std::string title;
+  std::string command;
+} CmdExample;
+
 // represents a command or subcommand with its arguments
 class Command : public enable_shared_command
 {
@@ -338,6 +344,15 @@ public:
   }
 
   ArgumentBuilder add_argument(const std::string &name);
+
+  Command &add_example(const std::string &title, const std::string &command)
+  {
+    CmdExample example;
+    example.title = title;
+    example.command = command;
+    m_examples.push_back(example);
+    return *this;
+  }
 
   // add a keyword/option argument (e.g., --file, -f)
   // New add_keyword_arg: accepts a vector of aliases for maximum flexibility
@@ -674,6 +689,16 @@ public:
       os << "\nRun '" << full_command_path
          << " <command> --help' for more information on a command.\n";
     }
+
+    if (!m_examples.empty())
+    {
+      os << "Examples:\n\n";
+      for (auto it = m_examples.begin(); it != m_examples.end(); ++it)
+      {
+        os << "   - " << (*it).title << ":\n\n";
+        os << "      $ " << (*it).command << "\n\n";
+      }
+    }
   }
 
   void set_name(const std::string &new_name)
@@ -691,6 +716,7 @@ private:
   std::vector<ArgumentDef> m_args;
   std::map<std::string, command_ptr> m_commands;
   std::vector<std::string> m_aliases;
+  std::vector<CmdExample> m_examples;
 
 public:
   CommandHandler m_handler;
