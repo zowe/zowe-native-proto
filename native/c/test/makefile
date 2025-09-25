@@ -30,7 +30,6 @@ MTL_BASE_OPTS=metal,\
  nolongname,\
  inline,\
  genasm,\
- inlrpt,\
  csect,\
  nose,\
  warn64,\
@@ -97,7 +96,7 @@ ASM_FLAGS+=--verbose
 CPP_LIST_FLAG=-qlist=$$*.cpp.lst
 MTL_LIST_FLAG=-qlist=$$*.mtl.lst
 ASM_LIST_FLAG=-a=$$*.s.lst
-MTL_LIST_OPTS=,list,showmacro,aggregate
+MTL_LIST_OPTS=,inlrpt,list,showmacro,aggregate
 CPP_BND_FLAGS=$(CPP_BND_DEBUG_FLAGS)
 CPP_BND_FLAGS_AUTH=$(CPP_BND_DEBUG_FLAGS_AUTH)
 DLL_BND_FLAGS=$(DLL_BND_DEBUG_FLAGS)
