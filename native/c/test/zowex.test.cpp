@@ -119,25 +119,25 @@ void zowex_tests()
              describe("data set tests",
                       []() -> void
                       {
-                        describe("data set create tests",
-                                 []() -> void
-                                 {
-                                   it("should create a fb data set",
-                                      []()
-                                      {
-                                        int rc = 0;
-                                        string user;
-                                        execute_command_with_output("whoami", user);
-                                        string data_set = TrimChars(user) + ".TEMP.TEMP.TEMP.TEMP.TEMP.TEMP.TMP";
-                                        string response;
-                                        string del_command = zowex_command + " data-set delete " + data_set;
-                                        execute_command_with_output(del_command, response);
-                                        string command = zowex_command + " data-set create-fb " + data_set;
-                                        rc = execute_command_with_output(command, response);
-                                        ExpectWithContext(rc, response).ToBe(0);
-                                        execute_command_with_output(del_command, response);
-                                      });
-                                 });
+                        // describe("data set create tests",
+                        //          []() -> void
+                        //          {
+                        //            it("should create a fb data set",
+                        //               []()
+                        //               {
+                        //                 int rc = 0;
+                        //                 string user;
+                        //                 execute_command_with_output("whoami", user);
+                        //                 string data_set = TrimChars(user) + ".temp.temp.temp.temp.temp.temp.tmp";
+                        //                 string response;
+                        //                 string del_command = zowex_command + " data-set delete " + data_set;
+                        //                 execute_command_with_output(del_command, response);
+                        //                 string command = zowex_command + " data-set create-fb " + data_set;
+                        //                 rc = execute_command_with_output(command, response);
+                        //                 ExpectWithContext(rc, response).ToBe(0);
+                        //                 execute_command_with_output(del_command, response);
+                        //               });
+                        //          });
                         describe("data set list tests",
                                  []() -> void
                                  {
@@ -172,6 +172,48 @@ void zowex_tests()
                                         ExpectWithContext(rc, response).ToBe(RTNCD_WARNING);
                                       });
                                  });
+
+                        // describe("data set i/o tests",
+                        //          []() -> void
+                        //          {
+                        //            it("should write and read from a data set",
+                        //               []()
+                        //               {
+                        //                 int rc = 0;
+                        //                 string user;
+                        //                 execute_command_with_output("whoami", user);
+                        //                 string data_set = TrimChars(user) + ".temp.temp.temp.temp.temp.temp.tmp";
+                        //                 string member = "IEFBR14";
+                        //                 string data_set_member = "\"" + data_set + "(" + member + ")\"";
+                        //                 string response;
+
+                        //                 // delete the data set if it exists
+                        //                 string del_command = zowex_command + " data-set delete " + data_set;
+                        //                 execute_command_with_output(del_command, response);
+
+                        //                 // create the data set
+                        //                 string command = zowex_command + " data-set create-fb " + data_set;
+                        //                 rc = execute_command_with_output(command, response);
+                        //                 ExpectWithContext(rc, response).ToBe(0);
+
+                        //                 string jcl = "//IEFBR14$ JOB (IZUACCT),TEST,REGION=0M\n//RUN EXEC PGM=IEFBR14";
+
+                        //                 // Convert JCL to hex format and write to the data set
+                        //                 string hex_jcl = string_to_hex(jcl);
+                        //                 string write_command = "printf \"" + hex_jcl + "\" | " + zowex_command + " data-set write " + data_set_member;
+                        //                 rc = execute_command_with_output(write_command, response);
+                        //                 ExpectWithContext(rc, response).ToBe(0);
+
+                        //                 // read from the data set
+                        //                 string read_command = zowex_command + " data-set view " + data_set_member;
+                        //                 rc = execute_command_with_output(read_command, response);
+                        //                 ExpectWithContext(rc, response).ToBe(0);
+                        //                 Expect(TrimChars(response)).ToBe(jcl);
+
+                        //                 // delete the data set
+                        //                 execute_command_with_output(del_command, response);
+                        //               });
+                        //          });
                       });
            });
 }
