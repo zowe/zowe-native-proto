@@ -160,6 +160,7 @@ build-out/zstd.test.o \
 build-out/zstorage.test.o \
 build-out/zstorage.metal.test.o \
 build-out/zut.test.o \
+build-out/zowex.test.o \
 build-out/zut.o \
 build-out/zutm.o \
 build-out/zutm31.o \
@@ -182,7 +183,6 @@ build-out/zmetal.test.o \
 build-out/zmetal.metal.test.o \
 build-out/zusf.test.o \
 build-out/zusf.o \
-build-out/zowex.test.o
 build-out/zshmem.o \
 build-out/zlogger.test.o \
 build-out/zlogger_metal.o \
@@ -234,6 +234,9 @@ build-out/zusf.o:
 
 build-out/zshmem.o:
 	ln -sf ../../build-out/zshmem.o build-out/zshmem.o
+
+build-out/zowex.test.o: zowex.test.cpp
+	$(OCXX) $(CXXLANG_FLAGS) $(CPP_LIST_FLAG) -c $^ -o $@
 
 build-out/zbase64.test.o: zbase64.test.cpp
 	$(OCXX) $(CXXLANG_FLAGS) $(CPP_LIST_FLAG) -c $^ -o $@
@@ -300,9 +303,6 @@ build-out/zjsonm.s: ../zjsonm.c
 
 build-out/zjsonm.o: build-out/zjsonm.s
 	$(ASM) $(ASM_FLAGS) $(ASM_LIST_FLAG) $(MACLIBS) -o $@ $^
-
-build-out/zowex.test.o: zowex.test.cpp
-	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
 
 # build-out/testrcvy.s: testrcvy.c
 # 	$(CC) $(MTL_FLAGS64) $(MTL_LIST_FLAG) $(MTL_HEADERS) -o $@ $^
