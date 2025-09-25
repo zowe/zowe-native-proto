@@ -128,7 +128,7 @@ const ArgTemplate PIPE_PATH = {
     ArgType_Single,
     false,
     ArgValue(),
-    make_aliases()};
+    make_aliases(), true};
 
 const ArgTemplate VOLSER = {
     "volser",

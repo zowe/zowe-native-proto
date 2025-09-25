@@ -113,6 +113,7 @@ struct ArgTemplate
   bool required;
   ArgValue default_value;
   std::vector<std::string> conflicts_with;
+  bool hidden;
 };
 
 struct ArgumentDef
@@ -214,6 +215,7 @@ public:
                     positional ? std::vector<std::string>() : tpl.aliases,
                     tpl.help, tpl.type, positional, tpl.required,
                     tpl.default_value);
+    arg.hidden = tpl.hidden;
     arg.conflicts_with = tpl.conflicts_with;
     return arg;
   }
