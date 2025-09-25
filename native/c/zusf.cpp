@@ -1020,7 +1020,7 @@ static int zusf_collect_directory_entries_recursive(ZUSF *zusf, const string &di
     entry_names.push_back(name);
 
     // If we haven't reached max depth, recurse into subdirectories
-    if (options.max_depth > 0 && current_depth < options.max_depth)
+    if (options.max_depth > 1 && current_depth < (options.max_depth - 1))
     {
       string child_path = zusf_join_path(dir_path, name);
       struct stat child_stats;
@@ -1079,7 +1079,34 @@ int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response, ListOptio
     return RTNCD_FAILURE;
   }
 
-  // Collect all directory entries (recursively if depth > 0)
+  response.clear();
+
+  // Add "." and ".." entries if all_files option is set
+  if (options.all_files)
+  {
+    // Add "." entry
+    response += zusf_format_file_entry(zusf, file_stats, file, ".", options, use_csv_format);
+
+    // Add ".." entry if we can stat the parent directory
+    string parent_path = file.substr(0, file.find_last_of("/"));
+    if (parent_path.empty())
+    {
+      parent_path = "/"; // Root directory case
+    }
+    struct stat parent_stats;
+    if (stat(parent_path.c_str(), &parent_stats) == 0)
+    {
+      response += zusf_format_file_entry(zusf, parent_stats, parent_path, "..", options, use_csv_format);
+    }
+  }
+
+  // Treat depth == 0 as stat and skip listing children
+  if (options.max_depth == 0)
+  {
+    return RTNCD_SUCCESS;
+  }
+
+  // Collect all directory entries (recursively if depth > 1)
   vector<string> entry_names;
   if (zusf_collect_directory_entries_recursive(zusf, file, entry_names, options) != RTNCD_SUCCESS)
   {
@@ -1088,7 +1115,6 @@ int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response, ListOptio
   }
 
   // Process sorted entries
-  response.clear();
   for (auto i = 0u; i < entry_names.size(); i++)
   {
     const auto name = entry_names.at(i);

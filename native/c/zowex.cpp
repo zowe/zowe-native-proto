@@ -433,7 +433,7 @@ int main(int argc, char *argv[])
   uss_list_cmd->add_positional_arg("file-path", "file path", ArgType_Single, true);
   uss_list_cmd->add_keyword_arg("all", make_aliases("--all", "-a"), "list all files and directories", ArgType_Flag, false, ArgValue(false));
   uss_list_cmd->add_keyword_arg("long", make_aliases("--long", "-l"), "list long format", ArgType_Flag, false, ArgValue(false));
-  uss_list_cmd->add_keyword_arg("depth", make_aliases("--depth"), "depth of subdirectories to list", ArgType_Single, false);
+  uss_list_cmd->add_keyword_arg("depth", make_aliases("--depth"), "depth of subdirectories to list", ArgType_Single, false, ArgValue((long long)1));
   uss_list_cmd->add_keyword_arg("response-format-csv", response_format_csv_option, "returns the response in CSV format", ArgType_Flag, false, ArgValue(false));
   uss_list_cmd->set_handler(handle_uss_list);
   uss_cmd->add_command(uss_list_cmd);
