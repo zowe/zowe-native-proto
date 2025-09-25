@@ -43,6 +43,19 @@ void zut_tests()
                   expect(string(buffer)).ToBe("ABC     ");
                 });
 
+             describe("zut_list_parmlib",
+                      []() -> void
+                      {
+                        it("should list parmlib data sets",
+                           []() -> void
+                           {
+                             ZDIAG diag = {0};
+                             vector<string> parmlibs;
+                             zut_list_parmlib(diag, parmlibs);
+                             expect(parmlibs.size()).ToBeGreaterThan(0);
+                           });
+                      });
+
              describe("zut_encode",
                       []() -> void
                       {
