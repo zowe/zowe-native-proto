@@ -528,3 +528,47 @@ bool zut_string_compare_c(const std::string &a, const std::string &b)
 {
   return strcmp(a.c_str(), b.c_str()) < 0;
 }
+
+int zut_loop_dynalloc(vector<string> &list)
+{
+  int rc = 0;
+  unsigned int code = 0;
+  string response;
+
+  for (vector<string>::iterator it = list.begin(); it != list.end(); it++)
+  {
+    rc = zut_bpxwdyn(*it, &code, response);
+
+    if (0 != rc)
+    {
+      cerr << "Error: bpxwdyn failed with '" << *it << "' rc: '" << rc << "'" << endl;
+      cerr << "  Details: " << response << endl;
+      return -1;
+    }
+  }
+
+  return rc;
+}
+
+int zut_free_dynalloc_dds(vector<string> &list)
+{
+  vector<string> free_dds;
+  free_dds.reserve(list.size());
+
+  for (vector<string>::iterator it = list.begin(); it != list.end(); it++)
+  {
+    string alloc_dd = *it;
+    size_t start = alloc_dd.find(" ");
+    size_t end = alloc_dd.find(")", start);
+    if (start == string::npos || end == string::npos)
+    {
+      cerr << "Error: Invalid format in DD alloc string: " << alloc_dd << endl;
+    }
+    else
+    {
+      free_dds.push_back("free " + alloc_dd.substr(start + 1, end - start));
+    }
+  }
+
+  return zut_loop_dynalloc(free_dds);
+}

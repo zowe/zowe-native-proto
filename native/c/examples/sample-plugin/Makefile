@@ -5,4 +5,4 @@ CXX_FLAGS=-W "c,lp64,langlvl(extended0x),dll,xplink,exportall" -D__IBMCPP_TR1__=
 all: sample_plugin.so
 
 sample_plugin.so: sample_plugin.cpp
-	$(CXX) $^ $(CXX_FLAGS) -qdll -Wl,dll -o $@
+	$(CXX) $(CXX_FLAGS) -qdll -Wl,dll -o $@ $^

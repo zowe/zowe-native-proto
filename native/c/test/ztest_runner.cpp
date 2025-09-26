@@ -20,6 +20,7 @@
 #include "zusf.test.hpp"
 #include "zbase64.test.hpp"
 #include "zlogger.test.hpp"
+#include "parser.test.hpp"
 #include "zstd.test.hpp"
 #include "ztest.hpp"
 
@@ -50,6 +51,7 @@ int main(int argc, char *argv[])
         zusf_tests();
         zbase64_tests();
         zlogger_tests();
+        parser_tests();
         zstd_tests();
       });
 
