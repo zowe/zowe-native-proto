@@ -20,6 +20,7 @@ import { type IProfile, ProfileInfo } from "@zowe/imperative";
 interface IConfig {
     sshProfile: string | IProfile;
     deployDir: string;
+    toolsDir: string;
     goBuildEnv?: string;
     preBuildCmd?: string;
 }
@@ -684,6 +685,10 @@ async function download(sftpcon: SFTPWrapper, from: string, to: string) {
     });
 }
 
+async function init(_connection: Client) {
+    throw new Error("Not yet implemented");
+}
+
 async function loadConfig(): Promise<IConfig> {
     const configPath = path.join(__dirname, "..", "config.yaml");
     if (!fs.existsSync(configPath)) {
@@ -780,20 +785,20 @@ async function main() {
             case "build":
                 await build(sshClient, config);
                 break;
-            case "build:python":
-                await make(sshClient, deployDirs.pythonDir);
-                break;
-            case "test:python":
-                await make(sshClient, deployDirs.pythonTestDir);
-                break;
             case "build:chdsect":
                 await chdsect(sshClient);
+                break;
+            case "build:python":
+                await make(sshClient, deployDirs.pythonDir);
                 break;
             case "clean":
                 await clean(sshClient);
                 break;
             case "delete":
                 await rmdir(sshClient);
+                break;
+            case "init":
+                await init(sshClient);
                 break;
             case "make":
                 await make(sshClient);
@@ -807,6 +812,9 @@ async function main() {
                 break;
             case "test":
                 await test(sshClient);
+                break;
+            case "test:python":
+                await make(sshClient, deployDirs.pythonTestDir);
                 break;
             case "upload":
                 await upload(sshClient);

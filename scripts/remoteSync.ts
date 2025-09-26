@@ -9,52 +9,24 @@
  *
  */
 
+// Usage: npm run z:sync -- ./native lpar1_ssh:/u/users/ibmuser/zowe-native-proto
+
+import * as fsWalk from "@nodelib/fs.walk";
 import { type IProfile, ProfileInfo } from "@zowe/imperative";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import * as yaml from "js-yaml";
+import type { Client } from "ssh2";
 import { B64String, ZSshClient, ZSshUtils } from "zowe-native-proto-sdk";
-import { Client } from "ssh2";
-import * as fsWalk from "@nodelib/fs.walk";
 
-const args = process.argv.slice(2);
-const srcDir = path.resolve(__dirname, "../native");
+const TOOLS_DIR = "/tmp/zowe-native-proto_tools";
+let TIME_OFFSET = 0;
 
-interface IConfig {
-    sshProfile: string | IProfile;
-    deployDir: string;
-    goBuildEnv?: string;
-    preBuildCmd?: string;
-}
-
-async function loadConfig(): Promise<IConfig> {
-    const configPath = path.join(__dirname, "..", "config.yaml");
-    if (!fs.existsSync(configPath)) {
-        console.error("Could not find config.yaml. See the README for instructions.");
-        process.exit(1);
-    }
-
-    const configYaml: any = yaml.load(fs.readFileSync(configPath, "utf-8"));
-    let activeProfile = configYaml.activeProfile;
-    const profileArgIdx = args.findIndex((arg) => arg.startsWith("--profile="));
-    if (profileArgIdx !== -1) {
-        activeProfile = args.splice(profileArgIdx, 1)[0].split("=").pop();
-    }
-    if (configYaml.profiles?.[activeProfile] == null) {
-        console.error(`Could not find profile "${activeProfile}" in config.yaml. See the README for instructions.`);
-        process.exit(1);
-    }
-
-    const config: IConfig = configYaml.profiles[activeProfile];
-    if (typeof config.sshProfile === "string") {
-        const profInfo = new ProfileInfo("zowe");
-        await profInfo.readProfilesFromDisk();
-        const profAttrs = profInfo.getAllProfiles("ssh").find((prof) => prof.profName === config.sshProfile);
-        const mergedArgs = profInfo.mergeArgsForProfile(profAttrs, { getSecureVals: true });
-        config.sshProfile = mergedArgs.knownArgs.reduce((prof, arg) => ({ ...prof, [arg.argName]: arg.argValue }), {});
-    }
-    config.deployDir = config.deployDir.replace(/^~/, ".");
-    return config;
+async function loadSshProfile(profileName: string): Promise<IProfile> {
+    const profInfo = new ProfileInfo("zowe");
+    await profInfo.readProfilesFromDisk();
+    const profAttrs = profInfo.getAllProfiles("ssh").find((prof) => prof.profName === profileName);
+    const mergedArgs = profInfo.mergeArgsForProfile(profAttrs, { getSecureVals: true });
+    return mergedArgs.knownArgs.reduce((prof, arg) => ({ ...prof, [arg.argName]: arg.argValue }), {});
 }
 
 async function getTimeOffset(sshClient: Client, hostname: string): Promise<number> {
@@ -81,39 +53,34 @@ async function getTimeOffset(sshClient: Client, hostname: string): Promise<numbe
     return zsyncJson[hostname];
 }
 
-async function remoteSync(config: IConfig): Promise<void> {
-    // TODO respect gitignore to skip files like .DS_Store
-    // TODO use new SSH client method once available to run commands
-    // TODO add progress bar
-    // TODO create root dir if it doesn't exist
-    const sshSession = ZSshUtils.buildSession(config.sshProfile as IProfile);
-    using client = await ZSshClient.create(sshSession, {
-        serverPath: (config.sshProfile as IProfile).serverPath,
-        numWorkers: 10,
-    });
-    const timeOffset = await getTimeOffset((client as any).mSshClient as Client, sshSession.ISshSession.hostname);
-    console.time("sync");
-    const listResponse = await client.uss.listFiles({ fspath: config.deployDir, depth: 10, long: true });
+async function upload(client: ZSshClient, srcDir: string, destDir: string, shouldDelete: boolean): Promise<void> {
+    const listResponse = await client.uss.listFiles({ fspath: destDir, depth: 10, long: true });
+    // TODO Create root dir if it doesn't exist
+    const pathCache: string[] = [];
     const uploadTasks = [];
+    let createCount = 0;
+    let updateCount = 0;
+    let deleteCount = 0;
     for (const entry of fsWalk.walkSync(srcDir)) {
         const relPath = path.relative(srcDir, entry.path);
-        const remotePath = path.join(config.deployDir, relPath);
+        const remotePath = path.join(destDir, relPath);
+        pathCache.push(relPath);
         if (entry.dirent.isDirectory()) {
             const dirExists = listResponse.items.some((item) => item.name === relPath);
             if (!dirExists) {
                 console.log(`Creating ${relPath}`);
                 await client.uss.createFile({ fspath: remotePath, isDir: true });
+                createCount++;
             }
-        } else if (!relPath.includes(".DS_Store")) {
+        } else if (!path.basename(relPath).startsWith(".")) {
             const remoteStats = listResponse.items.find((item) => item.name === relPath);
             let fileOutdated = true;
             if (remoteStats != null) {
                 const localMtime = fs.statSync(entry.path).mtime.getTime();
-                const remoteMtime = new Date(remoteStats.mtime).getTime() - timeOffset;
+                const remoteMtime = new Date(remoteStats.mtime).getTime() - TIME_OFFSET;
                 fileOutdated = remoteMtime - 100 < localMtime;
             }
             if (fileOutdated) {
-                console.log(`Uploading ${relPath}`);
                 uploadTasks.push(
                     client.uss.writeFile({
                         fspath: remotePath,
@@ -121,16 +88,69 @@ async function remoteSync(config: IConfig): Promise<void> {
                         encoding: "IBM-1047",
                     }),
                 );
+                if (remoteStats != null) {
+                    updateCount++;
+                } else {
+                    createCount++;
+                }
+            }
+        }
+    }
+    if (shouldDelete) {
+        for (const item of listResponse.items.reverse()) {
+            if (!pathCache.includes(item.name)) {
+                await client.uss.deleteFile({ fspath: item.name, recursive: false });
+                deleteCount++;
             }
         }
     }
     await Promise.all(uploadTasks);
+    console.log(`+ ${createCount}\t- ${deleteCount}\t* ${updateCount}`);
+}
+
+async function download(
+    _client: ZSshClient,
+    _srcDir: string,
+    _destDir: string,
+    _shouldDelete: boolean,
+): Promise<void> {}
+
+async function remoteSync(argv: any): Promise<void> {
+    let shouldUpload = true;
+    let sshProfile: string;
+    let srcDir = argv._[0];
+    if (srcDir.includes(":")) {
+        shouldUpload = false;
+        [sshProfile, srcDir] = srcDir.split(":");
+    }
+    let destDir = argv._[1];
+    if (destDir.includes(":")) {
+        if (!shouldUpload) {
+            throw new Error("Cannot specify remote folders for both source and destination");
+        }
+        [sshProfile, destDir] = destDir.split(":");
+    }
+    if (sshProfile == null) {
+        throw new Error("Cannot specify local folders for both source and destination");
+    }
+    const sshSession = ZSshUtils.buildSession(await loadSshProfile(sshProfile));
+    using client = await ZSshClient.create(sshSession, {
+        serverPath: TOOLS_DIR,
+        numWorkers: 3,
+    });
+    TIME_OFFSET = await getTimeOffset((client as any).mSshClient as Client, sshSession.ISshSession.hostname);
+    console.time("sync");
+    if (shouldUpload) {
+        await upload(client, srcDir, destDir, argv.delete);
+    } else {
+        await download(client, srcDir, destDir, argv.delete);
+    }
     console.timeEnd("sync");
 }
 
 async function main() {
-    const config = await loadConfig();
-    await remoteSync(config);
+    const argv = require("minimist")(process.argv.slice(2));
+    await remoteSync(argv);
 }
 
 main().catch(console.error);
