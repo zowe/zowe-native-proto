@@ -25,6 +25,7 @@
     "z:chdsect": "tsx scripts/buildTools.ts build:chdsect",
     "z:clean": "tsx scripts/buildTools.ts clean",
     "z:delete": "tsx scripts/buildTools.ts delete",
+    "z:init": "tsx scripts/buildTools.ts init",
     "z:make": "tsx scripts/buildTools.ts make",
     "z:package": "npm run z:artifacts && tsx scripts/buildTools.ts package",
     "z:rebuild": "tsx scripts/buildTools.ts rebuild",

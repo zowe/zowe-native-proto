@@ -16,6 +16,9 @@ profiles:
     # USS directory on z/OS where native code is built
     deployDir: ~/zowe-native-proto
 
+    # USS directory on z/OS where build tools are installed
+    toolsDir: /tmp/zowe-native-proto_tools
+
     # Environment variables to set for the `go build` command
     goBuildEnv: 'GOINSECURE="*" GOPROXY=direct GIT_SSL_NO_VERIFY=true'  # Allow fetching Go dependencies
 
