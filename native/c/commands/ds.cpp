@@ -305,7 +305,7 @@ int handle_data_set_view(InvocationContext &context)
     }
     else
     {
-      context.output_stream() << response << endl;
+      context.output_stream() << response;
     }
   }
 
