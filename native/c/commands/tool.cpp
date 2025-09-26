@@ -116,6 +116,27 @@ int handle_tool_display_symbol(InvocationContext &context)
   return RTNCD_SUCCESS;
 }
 
+int handle_tool_list_parmlib(InvocationContext &context)
+{
+  int rc = 0;
+  ZDIAG diag = {0};
+  std::vector<std::string> parmlibs;
+  rc = zut_list_parmlib(diag, parmlibs);
+  if (0 != rc)
+  {
+    cerr << "Error: could not list parmlibs rc: '" << rc << "'" << endl;
+    cerr << "  Details: " << diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
+  for (vector<string>::iterator it = parmlibs.begin(); it != parmlibs.end(); ++it)
+  {
+    context.output_stream() << *it << endl;
+  }
+
+  return rc;
+}
+
 int handle_tool_search(InvocationContext &context)
 {
   int rc = 0;
@@ -413,6 +434,11 @@ void register_commands(parser::Command &root_command)
   tool_display_symbol_cmd->add_positional_arg("symbol", "symbol to display", ArgType_Single, true);
   tool_display_symbol_cmd->set_handler(handle_tool_display_symbol);
   tool_cmd->add_command(tool_display_symbol_cmd);
+
+  // List-parmlib subcommand
+  auto tool_list_parmlib_cmd = command_ptr(new Command("list-parmlib", "list parmlib"));
+  tool_list_parmlib_cmd->set_handler(handle_tool_list_parmlib);
+  tool_cmd->add_command(tool_list_parmlib_cmd);
 
   // Search subcommand
   auto tool_search_cmd = command_ptr(new Command("search", "search members for string"));

@@ -518,10 +518,9 @@ int zut_alloc_debug()
   return rc;
 }
 
-int zut_debug_message(const char *message)
+void zut_debug_message(const char *message)
 {
   fprintf(stderr, "%s", message);
-  return 0;
 }
 
 bool zut_string_compare_c(const std::string &a, const std::string &b)
@@ -571,4 +570,25 @@ int zut_free_dynalloc_dds(vector<string> &list)
   }
 
   return zut_loop_dynalloc(free_dds);
+}
+
+int zut_list_parmlib(ZDIAG &diag, std::vector<std::string> &parmlibs)
+{
+  int rc = 0;
+  PARMLIB_DSNS dsns = {0};
+  int num_dsns = 0;
+
+  rc = ZUTMLPLB(&diag, &num_dsns, &dsns);
+  if (0 != rc)
+  {
+    return rc;
+  }
+
+  parmlibs.reserve(num_dsns);
+  for (int i = 0; i < num_dsns; i++)
+  {
+    parmlibs.push_back(string(dsns.dsn[i].val, sizeof(dsns.dsn[i].val)));
+  }
+
+  return rc;
 }

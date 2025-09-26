@@ -212,7 +212,7 @@ unsigned char zut_get_key();
  * @param message Message to be printed
  * @return int rc Return code (0 for success, non-zero for error)
  */
-int zut_debug_message(const char *message);
+void zut_debug_message(const char *message);
 
 /**
  * @brief String comparison function using C strcmp for sorting
@@ -235,5 +235,11 @@ int zut_loop_dynalloc(std::vector<std::string> &list);
  * @return Return code (0 for success, non-zero for error)
  */
 int zut_free_dynalloc_dds(std::vector<std::string> &list);
+
+/**
+ * @brief List a parmlib
+ * @return Return code (0 for success, non-zero for error)
+ */
+int zut_list_parmlib(ZDIAG &diag, std::vector<std::string> &parmlibs);
 
 #endif // ZUT_HPP
