@@ -12,14 +12,28 @@
 // Usage: npm run z:sync -- ./native lpar1_ssh:/u/users/ibmuser/zowe-native-proto
 
 import * as fsWalk from "@nodelib/fs.walk";
-import { type IProfile, ProfileInfo } from "@zowe/imperative";
+import { ImperativeError, type IProfile, ProfileInfo } from "@zowe/imperative";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import type { Client } from "ssh2";
-import { B64String, ZSshClient, ZSshUtils } from "zowe-native-proto-sdk";
+import { B64String, ZSshClient, ZSshUtils, type uss } from "zowe-native-proto-sdk";
 
 const TOOLS_DIR = "/tmp/zowe-native-proto_tools";
 let TIME_OFFSET = 0;
+let SPINNER_INDEX = 0;
+const SPINNER_FRAMES = ["-", "\\", "|", "/"];
+
+function startSpinner() {
+    return setInterval(() => {
+        process.stdout.write(`\r${SPINNER_FRAMES[SPINNER_INDEX]}`);
+        SPINNER_INDEX = (SPINNER_INDEX + 1) % SPINNER_FRAMES.length;
+    }, 100);
+}
+
+function stopSpinner(spinner: NodeJS.Timeout | null) {
+    spinner && clearInterval(spinner);
+    process.stdout.write("\r\n");
+}
 
 async function loadSshProfile(profileName: string): Promise<IProfile> {
     const profInfo = new ProfileInfo("zowe");
@@ -54,8 +68,19 @@ async function getTimeOffset(sshClient: Client, hostname: string): Promise<numbe
 }
 
 async function upload(client: ZSshClient, srcDir: string, destDir: string, shouldDelete: boolean): Promise<void> {
-    const listResponse = await client.uss.listFiles({ fspath: destDir, depth: 10, long: true });
-    // TODO Create root dir if it doesn't exist
+    if (!fs.existsSync(srcDir)) {
+        throw new Error(`Source directory ${srcDir} does not exist`);
+    }
+    let listResponse: uss.ListFilesResponse = { items: [], returnedRows: 0, success: true };
+    try {
+        listResponse = await client.uss.listFiles({ fspath: destDir, depth: 10, long: true });
+    } catch (error) {
+        if (error instanceof ImperativeError && error.additionalDetails.includes("does not exist")) {
+            await client.uss.createFile({ fspath: destDir, isDir: true });
+        } else {
+            throw error;
+        }
+    }
     const pathCache: string[] = [];
     const uploadTasks = [];
     let createCount = 0;
@@ -63,12 +88,12 @@ async function upload(client: ZSshClient, srcDir: string, destDir: string, shoul
     let deleteCount = 0;
     for (const entry of fsWalk.walkSync(srcDir)) {
         const relPath = path.relative(srcDir, entry.path);
-        const remotePath = path.join(destDir, relPath);
+        const localPath = entry.path;
+        const remotePath = path.posix.join(destDir, relPath);
         pathCache.push(relPath);
         if (entry.dirent.isDirectory()) {
             const dirExists = listResponse.items.some((item) => item.name === relPath);
             if (!dirExists) {
-                console.log(`Creating ${relPath}`);
                 await client.uss.createFile({ fspath: remotePath, isDir: true });
                 createCount++;
             }
@@ -76,7 +101,7 @@ async function upload(client: ZSshClient, srcDir: string, destDir: string, shoul
             const remoteStats = listResponse.items.find((item) => item.name === relPath);
             let fileOutdated = true;
             if (remoteStats != null) {
-                const localMtime = fs.statSync(entry.path).mtime.getTime();
+                const localMtime = fs.statSync(localPath).mtime.getTime();
                 const remoteMtime = new Date(remoteStats.mtime).getTime() - TIME_OFFSET;
                 fileOutdated = remoteMtime - 100 < localMtime;
             }
@@ -84,8 +109,8 @@ async function upload(client: ZSshClient, srcDir: string, destDir: string, shoul
                 uploadTasks.push(
                     client.uss.writeFile({
                         fspath: remotePath,
-                        data: B64String.encode(fs.readFileSync(entry.path)),
-                        encoding: "IBM-1047",
+                        data: B64String.encode(fs.readFileSync(localPath)),
+                        // encoding: "IBM-1047",
                     }),
                 );
                 if (remoteStats != null) {
@@ -99,21 +124,80 @@ async function upload(client: ZSshClient, srcDir: string, destDir: string, shoul
     if (shouldDelete) {
         for (const item of listResponse.items.reverse()) {
             if (!pathCache.includes(item.name)) {
-                await client.uss.deleteFile({ fspath: item.name, recursive: false });
+                await client.uss.deleteFile({ fspath: path.posix.join(destDir, item.name), recursive: false });
                 deleteCount++;
             }
         }
     }
     await Promise.all(uploadTasks);
-    console.log(`+ ${createCount}\t- ${deleteCount}\t* ${updateCount}`);
+    console.log(`\r+ ${createCount}\t- ${deleteCount}\t* ${updateCount}`);
 }
 
-async function download(
-    _client: ZSshClient,
-    _srcDir: string,
-    _destDir: string,
-    _shouldDelete: boolean,
-): Promise<void> {}
+async function download(client: ZSshClient, srcDir: string, destDir: string, shouldDelete: boolean): Promise<void> {
+    let listResponse: uss.ListFilesResponse;
+    try {
+        listResponse = await client.uss.listFiles({ fspath: srcDir, depth: 10, long: true });
+    } catch (error) {
+        if (error instanceof ImperativeError && error.additionalDetails.includes("does not exist")) {
+            throw new Error(`Source directory ${srcDir} does not exist`);
+        } else {
+            throw error;
+        }
+    }
+    fs.mkdirSync(destDir, { recursive: true });
+    const pathCache: string[] = [];
+    const downloadTasks = [];
+    let createCount = 0;
+    let updateCount = 0;
+    let deleteCount = 0;
+    for (const item of listResponse.items) {
+        const relPath = item.name;
+        const remotePath = path.posix.join(srcDir, relPath);
+        const localPath = path.join(destDir, relPath);
+        pathCache.push(relPath);
+        if (item.mode.startsWith("d")) {
+            const dirExists = fs.existsSync(localPath);
+            if (!dirExists) {
+                fs.mkdirSync(localPath);
+                createCount++;
+            }
+        } else if (!path.basename(relPath).startsWith(".")) {
+            const localStats = fs.existsSync(localPath) ? fs.statSync(localPath) : undefined;
+            let fileOutdated = true;
+            if (localStats != null) {
+                const localMtime = localStats.mtime.getTime();
+                const remoteMtime = new Date(item.mtime).getTime() - TIME_OFFSET;
+                fileOutdated = localMtime - 100 < remoteMtime;
+            }
+            if (fileOutdated) {
+                downloadTasks.push(
+                    client.uss
+                        .readFile({
+                            fspath: remotePath,
+                        })
+                        .then((response) => {
+                            fs.writeFileSync(localPath, B64String.decodeBytes(response.data));
+                        }),
+                );
+                if (localStats != null) {
+                    updateCount++;
+                } else {
+                    createCount++;
+                }
+            }
+        }
+    }
+    if (shouldDelete) {
+        for (const entry of fsWalk.walkSync(srcDir).reverse()) {
+            if (!pathCache.includes(path.relative(srcDir, entry.path))) {
+                fs.unlinkSync(entry.path);
+                deleteCount++;
+            }
+        }
+    }
+    await Promise.all(downloadTasks);
+    console.log(`\r+ ${createCount}\t- ${deleteCount}\t* ${updateCount}`);
+}
 
 async function remoteSync(argv: any): Promise<void> {
     let shouldUpload = true;
@@ -139,12 +223,14 @@ async function remoteSync(argv: any): Promise<void> {
         numWorkers: 3,
     });
     TIME_OFFSET = await getTimeOffset((client as any).mSshClient as Client, sshSession.ISshSession.hostname);
+    const spinner = startSpinner();
     console.time("sync");
     if (shouldUpload) {
         await upload(client, srcDir, destDir, argv.delete);
     } else {
         await download(client, srcDir, destDir, argv.delete);
     }
+    stopSpinner(spinner);
     console.timeEnd("sync");
 }
 
