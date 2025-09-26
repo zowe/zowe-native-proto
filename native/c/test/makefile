@@ -167,6 +167,7 @@ build-out/zusf.test.o \
 build-out/zusf.o \
 build-out/zshmem.o \
 build-out/zlogger.test.o \
+build-out/parser.test.o \
 build-out/zlogger_metal.o
 	$(OCXX) $(CXXLANG_BND_FLAGS) -o $@ $^ > $*.bind.lst
 
@@ -264,6 +265,9 @@ build-out/zusf.test.o: zusf.test.cpp
 	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
 
 build-out/zlogger.test.o: zlogger.test.cpp
+	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
+
+build-out/parser.test.o: parser.test.cpp
 	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
 
 build-out/zlogger_metal.s: ../zlogger_metal.c
