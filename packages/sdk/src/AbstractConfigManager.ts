@@ -199,6 +199,32 @@ export abstract class AbstractConfigManager {
         };
     }
 
+    protected abstract storeServerPath(host: string, path: string): void;
+
+    public async promptForDeployDirectory(host: string, defaultServerPath: string): Promise<string> {
+        const input = await this.showInputBox({
+            title: "Enter deploy directory",
+            value: defaultServerPath,
+            validateInput: (input) => {
+                const trimmed = input.trim();
+                if (!trimmed) return "Path cannot be empty";
+                if (trimmed !== defaultServerPath && !path.isAbsolute(input.trim()))
+                    return "Invalid Deploy Directory format. Ensure it matches the expected pattern.";
+                return null;
+            },
+        });
+        if (input === undefined) {
+            this.showMessage("SSH setup cancelled.", MESSAGE_TYPE.WARNING);
+            return undefined;
+        }
+
+        const deployDir = input?.trim();
+        if (host && deployDir !== defaultServerPath) {
+            this.storeServerPath(host, deployDir);
+        }
+        return deployDir;
+    }
+
     private async createNewProfile(knownConfigOpts?: string): Promise<ISshConfigExt | undefined> {
         const SshProfile: ISshConfigExt = {};
 
