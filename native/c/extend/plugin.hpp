@@ -391,14 +391,14 @@ public:
 
   const Argument *find(const std::string &key) const
   {
-    ArgumentMap::const_iterator it = m_args.find(key);
+    auto it = m_args.find(key);
     return it != m_args.end() ? &it->second : nullptr;
   }
 
   template <typename T>
   const T *get_if(const std::string &key) const
   {
-    ArgumentMap::const_iterator it = m_args.find(key);
+    auto it = m_args.find(key);
     if (it == m_args.end())
       return nullptr;
     return ArgGetter<T>::get(it->second);

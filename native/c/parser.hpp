@@ -322,8 +322,7 @@ public:
 
   Command(std::string name, std::string help)
       : m_name(name), m_help(help), m_handler(nullptr),
-        m_allow_dynamic_keywords(false),
-        m_dynamic_keyword_type(ArgType_Single)
+        m_allow_dynamic_keywords(false)
   {
     ensure_help_argument();
   }
@@ -357,7 +356,7 @@ public:
   }
 
   Command &enable_dynamic_keywords(
-      ArgType dynamic_type = ArgType_Single)
+      ArgType dynamic_type, const std::string &placeholder, const std::string &description)
   {
     if (dynamic_type == ArgType_Flag)
     {
@@ -365,7 +364,9 @@ public:
           "dynamic keyword arguments cannot be configured as flags.");
     }
     m_allow_dynamic_keywords = true;
-    m_dynamic_keyword_type = dynamic_type;
+    m_dynamic.keyword_type = dynamic_type;
+    m_dynamic.description = description;
+    m_dynamic.placeholder = placeholder;
     return *this;
   }
 
@@ -376,7 +377,7 @@ public:
 
   ArgType get_dynamic_keyword_type() const
   {
-    return m_dynamic_keyword_type;
+    return m_dynamic.keyword_type;
   }
 
   // add a keyword/option argument (e.g., --file, -f)
@@ -562,11 +563,11 @@ public:
 
     if (m_allow_dynamic_keywords)
     {
-      const char *dynamic_placeholder =
-          (m_dynamic_keyword_type == ArgType_Multiple) ? "--<key> <value...>"
-                                                       : "--<key> <value>";
+      const auto dynamic_placeholder =
+          (m_dynamic.keyword_type == ArgType_Multiple) ? "--<" + m_dynamic.placeholder + "> " + "<value...>"
+                                                       : "--<" + m_dynamic.placeholder + "> " + "<value>";
       max_kw_arg_width =
-          std::max(max_kw_arg_width, std::strlen(dynamic_placeholder));
+          std::max(max_kw_arg_width, std::strlen(dynamic_placeholder.c_str()));
     }
 
     size_t max_cmd_width = 0;
@@ -693,12 +694,12 @@ public:
       }
       if (m_allow_dynamic_keywords)
       {
-        const char *dynamic_placeholder =
-            (m_dynamic_keyword_type == ArgType_Multiple) ? "--<key> <value...>"
-                                                         : "--<key> <value>";
+        const auto dynamic_placeholder =
+            (m_dynamic.keyword_type == ArgType_Multiple) ? "--<" + m_dynamic.placeholder + "> " + "<values...>"
+                                                         : "--<" + m_dynamic.placeholder + "> " + "<value>";
         os << "  " << std::left << std::setw(max_kw_arg_width)
            << dynamic_placeholder
-           << "additional dynamic options accepted" << "\n";
+           << m_dynamic.description << "\n";
       }
       os << "\n";
     }
@@ -761,12 +762,19 @@ private:
   std::vector<std::string> m_aliases;
   std::vector<CmdExample> m_examples;
 
+  typedef struct
+  {
+    ArgType keyword_type;
+    std::string description;
+    std::string placeholder;
+  } DynamicKw;
+  DynamicKw m_dynamic;
+
 public:
   CommandHandler m_handler;
 
 private:
   bool m_allow_dynamic_keywords;
-  ArgType m_dynamic_keyword_type;
   // helper to check if the token at the given index is a flag/option token
   bool is_flag_token(const std::vector<lexer::Token> &tokens,
                      size_t index) const
@@ -1250,7 +1258,7 @@ Command::parse(const std::vector<lexer::Token> &tokens,
         {
           current_token_index++; // consume flag token
 
-          ArgType dynamic_type = m_dynamic_keyword_type;
+          ArgType dynamic_type = m_dynamic.keyword_type;
 
           if (dynamic_type == ArgType_Single)
           {
