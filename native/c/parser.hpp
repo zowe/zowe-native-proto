@@ -321,7 +321,9 @@ public:
   typedef int (*CommandHandler)(plugin::InvocationContext &context);
 
   Command(std::string name, std::string help)
-      : m_name(name), m_help(help), m_handler(nullptr)
+      : m_name(name), m_help(help), m_handler(nullptr),
+        m_allow_dynamic_keywords(false),
+        m_dynamic_keyword_type(ArgType_Single)
   {
     ensure_help_argument();
   }
@@ -352,6 +354,29 @@ public:
     example.command = command;
     m_examples.push_back(example);
     return *this;
+  }
+
+  Command &enable_dynamic_keywords(
+      ArgType dynamic_type = ArgType_Single)
+  {
+    if (dynamic_type == ArgType_Flag)
+    {
+      throw std::invalid_argument(
+          "dynamic keyword arguments cannot be configured as flags.");
+    }
+    m_allow_dynamic_keywords = true;
+    m_dynamic_keyword_type = dynamic_type;
+    return *this;
+  }
+
+  bool allow_dynamic_keywords() const
+  {
+    return m_allow_dynamic_keywords;
+  }
+
+  ArgType get_dynamic_keyword_type() const
+  {
+    return m_dynamic_keyword_type;
   }
 
   // add a keyword/option argument (e.g., --file, -f)
@@ -535,6 +560,15 @@ public:
           std::max(max_kw_arg_width, arg.get_display_name().length());
     }
 
+    if (m_allow_dynamic_keywords)
+    {
+      const char *dynamic_placeholder =
+          (m_dynamic_keyword_type == ArgType_Multiple) ? "--<key> <value...>"
+                                                       : "--<key> <value>";
+      max_kw_arg_width =
+          std::max(max_kw_arg_width, std::strlen(dynamic_placeholder));
+    }
+
     size_t max_cmd_width = 0;
     for (std::map<std::string, command_ptr>::const_iterator it =
              m_commands.begin();
@@ -595,7 +629,7 @@ public:
 
     os << positional_usage;
 
-    if (!kw_args.empty())
+    if (!kw_args.empty() || m_allow_dynamic_keywords)
       os << " [options]";
 
     os << "\n\n";
@@ -630,7 +664,7 @@ public:
     }
 
     // info about keyword arguments
-    if (!kw_args.empty())
+    if (!kw_args.empty() || m_allow_dynamic_keywords)
     {
       os << "Options:\n";
       for (std::vector<ArgumentDef>::const_iterator it = kw_args.begin();
@@ -656,6 +690,15 @@ public:
         if (arg.required)
           os << " [required]";
         os << "\n";
+      }
+      if (m_allow_dynamic_keywords)
+      {
+        const char *dynamic_placeholder =
+            (m_dynamic_keyword_type == ArgType_Multiple) ? "--<key> <value...>"
+                                                         : "--<key> <value>";
+        os << "  " << std::left << std::setw(max_kw_arg_width)
+           << dynamic_placeholder
+           << "additional dynamic options accepted" << "\n";
       }
       os << "\n";
     }
@@ -722,6 +765,8 @@ public:
   CommandHandler m_handler;
 
 private:
+  bool m_allow_dynamic_keywords;
+  ArgType m_dynamic_keyword_type;
   // helper to check if the token at the given index is a flag/option token
   bool is_flag_token(const std::vector<lexer::Token> &tokens,
                      size_t index) const
@@ -983,6 +1028,7 @@ public:
 
   // map storing parsed argument values (name -> value)
   std::map<std::string, ArgValue> m_values;
+  std::map<std::string, ArgValue> m_dynamic_values;
 
   // pointer to the command definition for default value lookup
   const Command *m_command;
@@ -998,6 +1044,11 @@ public:
     return m_values.find(name) != m_values.end();
   }
 
+  bool has_dynamic(const std::string &name) const
+  {
+    return m_dynamic_values.find(name) != m_dynamic_values.end();
+  }
+
   // get a pointer to the value, or nullptr if missing/wrong type
   template <typename T>
   const T *get(const std::string &name) const
@@ -1006,6 +1057,20 @@ public:
     if (it == m_values.end())
       return nullptr;
     return plugin::ArgGetter<T>::get(it->second);
+  }
+
+  const ArgValue *get_dynamic(const std::string &name) const
+  {
+    std::map<std::string, ArgValue>::const_iterator it =
+        m_dynamic_values.find(name);
+    if (it == m_dynamic_values.end())
+      return nullptr;
+    return &it->second;
+  }
+
+  const std::map<std::string, ArgValue> &get_dynamic_values() const
+  {
+    return m_dynamic_values;
   }
 
   // get the value, or a default if missing/wrong type
@@ -1181,6 +1246,98 @@ Command::parse(const std::vector<lexer::Token> &tokens,
 
       if (!matched_arg)
       {
+        if (!is_short_flag_kind && m_allow_dynamic_keywords)
+        {
+          current_token_index++; // consume flag token
+
+          ArgType dynamic_type = m_dynamic_keyword_type;
+
+          if (dynamic_type == ArgType_Single)
+          {
+            if (current_token_index >= tokens.size() ||
+                is_flag_token(tokens, current_token_index))
+            {
+              result.status = ParseResult::ParserStatus_ParseError;
+              result.error_message = "option --" + flag_name_str +
+                                     " requires a value.";
+              std::cerr << "error: " << result.error_message << "\n\n";
+              generate_help(std::cerr, command_path_prefix);
+              result.exit_code = 1;
+              return result;
+            }
+
+            const lexer::Token &value_token = tokens[current_token_index];
+            ArgValue parsed_value =
+                parse_token_value(value_token, ArgType_Single);
+            if (parsed_value.is_none())
+            {
+              result.status = ParseResult::ParserStatus_ParseError;
+              result.error_message =
+                  "invalid value for option --" + flag_name_str;
+              std::cerr << "error: " << result.error_message << "\n\n";
+              generate_help(std::cerr, command_path_prefix);
+              result.exit_code = 1;
+              return result;
+            }
+
+            result.m_dynamic_values[flag_name_str] = parsed_value;
+            current_token_index++;
+            continue;
+          }
+
+          if (dynamic_type == ArgType_Multiple)
+          {
+            if (current_token_index >= tokens.size() ||
+                is_flag_token(tokens, current_token_index))
+            {
+              result.status = ParseResult::ParserStatus_ParseError;
+              result.error_message = "option --" + flag_name_str +
+                                     " requires at least one value.";
+              std::cerr << "error: " << result.error_message << "\n\n";
+              generate_help(std::cerr, command_path_prefix);
+              result.exit_code = 1;
+              return result;
+            }
+
+            std::vector<std::string> values;
+            while (current_token_index < tokens.size() &&
+                   !is_flag_token(tokens, current_token_index))
+            {
+              const lexer::Token &value_token = tokens[current_token_index];
+              ArgValue parsed_value =
+                  parse_token_value(value_token, ArgType_Multiple);
+              const std::string *value_str = parsed_value.get_string();
+              if (!value_str)
+                break;
+              values.push_back(*value_str);
+              current_token_index++;
+            }
+
+            if (values.empty())
+            {
+              result.status = ParseResult::ParserStatus_ParseError;
+              result.error_message =
+                  "invalid value for option --" + flag_name_str;
+              std::cerr << "error: " << result.error_message << "\n\n";
+              generate_help(std::cerr, command_path_prefix);
+              result.exit_code = 1;
+              return result;
+            }
+
+            result.m_dynamic_values[flag_name_str] = ArgValue(values);
+            continue;
+          }
+
+          // fallback in case of unexpected configuration
+          result.status = ParseResult::ParserStatus_ParseError;
+          result.error_message =
+              "internal error: unsupported dynamic keyword configuration";
+          std::cerr << "error: " << result.error_message << "\n\n";
+          generate_help(std::cerr, command_path_prefix);
+          result.exit_code = 1;
+          return result;
+        }
+
         result.status = ParseResult::ParserStatus_ParseError;
         result.error_message = "unknown option: ";
         result.error_message += (is_short_flag_kind ? "-" : "--");
