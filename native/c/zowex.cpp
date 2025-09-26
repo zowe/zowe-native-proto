@@ -1816,7 +1816,7 @@ int handle_uss_list(const ParseResult &result)
   int rc = 0;
   string uss_file = result.find_pos_arg_string("file-path");
 
-  ListOptions list_options = {0};
+  ListOptions list_options;
   list_options.all_files = result.find_kw_arg_bool("all");
   list_options.long_format = result.find_kw_arg_bool("long");
   list_options.max_depth = result.find_kw_arg_int("depth");
