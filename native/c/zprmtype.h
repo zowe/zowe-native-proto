@@ -9,13 +9,20 @@
  *
  */
 
-#ifndef ZUTM31_H
-#define ZUTM31_H
+#ifndef ZPRMTYPE_H
+#define ZPRMTYPE_H
 
-#include "ztype.h"
-#include "zprmtype.h"
+#define MAX_PARMLIB_DSN_LEN 44
+#define MAX_PARMLIB_DSNS 11
 
-int zutm1lpl(ZDIAG *, int *, PARMLIB_DSNS *) ATTRIBUTE(amode31);
-int zutm1gur(char[8]) ATTRIBUTE(amode31);
+typedef struct
+{
+  char val[MAX_PARMLIB_DSN_LEN];
+} PARMLIB_DSN;
+
+typedef struct
+{
+  PARMLIB_DSN dsn[MAX_PARMLIB_DSNS];
+} PARMLIB_DSNS;
 
 #endif

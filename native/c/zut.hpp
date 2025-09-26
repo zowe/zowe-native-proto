@@ -13,10 +13,9 @@
 #define ZUT_HPP
 
 #include <iconv.h>
-#include <iostream>
 #include <vector>
 #include <string>
-#include "zcntype.h"
+#include "ztype.h"
 
 /**
  * @struct ZConvData
@@ -210,9 +209,8 @@ unsigned char zut_get_key();
  * @brief Default debug message function for zut_dump_storage
  *
  * @param message Message to be printed
- * @return int rc Return code (0 for success, non-zero for error)
  */
-int zut_debug_message(const char *message);
+void zut_debug_message(const char *message);
 
 /**
  * @brief String comparison function using C strcmp for sorting
@@ -221,5 +219,11 @@ int zut_debug_message(const char *message);
  * @return True if a should come before b in sorted order, false otherwise
  */
 bool zut_string_compare_c(const std::string &a, const std::string &b);
+
+/**
+ * @brief List a parmlib
+ * @return Return code (0 for success, non-zero for error)
+ */
+int zut_list_parmlib(ZDIAG &diag, std::vector<std::string> &parmlibs);
 
 #endif // ZUT_HPP

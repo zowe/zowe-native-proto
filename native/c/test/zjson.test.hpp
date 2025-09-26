@@ -9,13 +9,7 @@
  *
  */
 
-#ifndef ZUTM31_H
-#define ZUTM31_H
-
-#include "ztype.h"
-#include "zprmtype.h"
-
-int zutm1lpl(ZDIAG *, int *, PARMLIB_DSNS *) ATTRIBUTE(amode31);
-int zutm1gur(char[8]) ATTRIBUTE(amode31);
-
+#ifndef ZJSON_TEST_HPP
+#define ZJSON_TEST_HPP
+void zjson_tests();
 #endif
