@@ -18,7 +18,7 @@
 #include <string>
 #include <vector>
 
-#if defined(__IBMTR1_CPP__) && !defined(__CLANG__)
+#if defined(__IBMTR1_CPP__) && !defined(__clang__)
 #include <tr1/unordered_map>
 #else
 #include <unordered_map>
@@ -366,7 +366,7 @@ struct ArgGetter<std::vector<std::string>>
   }
 };
 
-#if defined(__CLANG__)
+#if defined(__clang__)
 typedef std::unordered_map<std::string, Argument> ArgumentMap;
 #else
 typedef std::tr1::unordered_map<std::string, Argument> ArgumentMap;
