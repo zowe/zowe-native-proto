@@ -502,7 +502,7 @@ int handle_data_set_write(InvocationContext &context)
 
     if (!isatty(fileno(stdout)))
     {
-      istreambuf_iterator<char> begin(cin);
+      istreambuf_iterator<char> begin(context.input_stream());
       istreambuf_iterator<char> end;
 
       vector<char> input(begin, end);
@@ -514,7 +514,7 @@ int handle_data_set_write(InvocationContext &context)
     }
     else
     {
-      while (getline(cin, line))
+      while (getline(context.input_stream(), line))
       {
         data += line;
         data.push_back('\n');

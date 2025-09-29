@@ -53,11 +53,13 @@ bool should_quit(const std::string &input)
           input == "QUIT" || input == "EXIT");
 }
 
-int interactive_mode(const std::string &shm_file_path)
+int interactive_mode(plugin::InvocationContext &context)
 {
   // Initialize shared memory
   int shm_id;
   ZSharedRegion *shm_ptr = nullptr;
+
+  const auto shm_file_path = context.get<std::string>("shm-file", "");
 
   if (!shm_file_path.empty())
   {
@@ -70,7 +72,7 @@ int interactive_mode(const std::string &shm_file_path)
     }
   }
 
-  std::cout << "Started, enter command or 'quit' to quit..." << std::endl;
+  context.output_stream() << "Started, enter command or 'quit' to quit..." << std::endl;
 
   std::string command;
   int rc = 0;
@@ -79,9 +81,9 @@ int interactive_mode(const std::string &shm_file_path)
   do
   {
     if (is_tty)
-      std::cout << "\r> " << std::flush;
+      context.output_stream() << "\r> " << std::flush;
 
-    std::getline(std::cin, command);
+    std::getline(context.input_stream(), command);
 
     if (should_quit(command))
       break;
@@ -92,15 +94,15 @@ int interactive_mode(const std::string &shm_file_path)
 
     if (!is_tty)
     {
-      std::cout << "[" << rc << "]" << std::endl;
+      context.output_stream() << "[" << rc << "]" << std::endl;
       // EBCDIC \x37 = ASCII \x04 = End of Transmission (Ctrl+D)
-      std::cout << '\x37' << std::flush;
-      std::cerr << '\x37' << std::flush;
+      context.output_stream() << '\x37' << std::flush;
+      context.error_stream() << '\x37' << std::flush;
     }
 
   } while (!should_quit(command));
 
-  std::cout << "...terminated" << std::endl;
+  context.output_stream() << "...terminated" << std::endl;
 
   // Clean up this process's shared memory
   if (!shm_file_path.empty())
@@ -196,7 +198,7 @@ int handle_command(plugin::InvocationContext &context)
 
   if (is_interactive)
   {
-    return interactive_mode(context.get<std::string>("shm-file", ""));
+    return interactive_mode(context);
   }
 
   // If no interactive mode and no subcommands were invoked, show help

@@ -288,7 +288,7 @@ int handle_job_submit_jcl(InvocationContext &context)
   string data;
   string line;
 
-  std::istreambuf_iterator<char> begin(std::cin);
+  std::istreambuf_iterator<char> begin(context.input_stream());
   std::istreambuf_iterator<char> end;
 
   std::vector<char> raw_bytes(begin, end);

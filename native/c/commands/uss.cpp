@@ -259,7 +259,7 @@ int handle_uss_write(InvocationContext &context)
 
     if (!isatty(fileno(stdout)))
     {
-      std::istreambuf_iterator<char> begin(std::cin);
+      std::istreambuf_iterator<char> begin(context.input_stream());
       std::istreambuf_iterator<char> end;
 
       vector<char> input(begin, end);
@@ -271,7 +271,7 @@ int handle_uss_write(InvocationContext &context)
     }
     else
     {
-      while (getline(cin, line))
+      while (getline(context.input_stream(), line))
       {
         data += line;
         data.push_back('\n');

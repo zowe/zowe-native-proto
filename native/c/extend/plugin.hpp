@@ -378,9 +378,10 @@ public:
   Io() = default;
 
   Io(const ArgumentMap &args,
+     std::istream *in_stream = nullptr,
      std::ostream *out_stream = nullptr,
      std::ostream *err_stream = nullptr)
-      : m_args(args), m_output_stream(out_stream), m_error_stream(err_stream)
+      : m_args(args), m_input_stream(in_stream), m_output_stream(out_stream), m_error_stream(err_stream)
   {
   }
 
@@ -482,6 +483,11 @@ public:
     return m_output;
   }
 
+  std::istream &input_stream() const
+  {
+    return m_input_stream != nullptr ? *m_input_stream : std::cin;
+  }
+
   std::ostream &output_stream() const
   {
     return m_output_stream != nullptr ? *m_output_stream : std::cout;
@@ -495,6 +501,7 @@ public:
 private:
   ArgumentMap m_args;
   ArgumentMap m_output;
+  std::istream *m_input_stream;
   std::ostream *m_output_stream;
   std::ostream *m_error_stream;
 };
@@ -504,9 +511,10 @@ class InvocationContext : public Io
 public:
   InvocationContext(const std::string &command_path,
                     const ArgumentMap &args,
+                    std::istream *in_stream = nullptr,
                     std::ostream *out_stream = nullptr,
                     std::ostream *err_stream = nullptr)
-      : m_command_path(command_path), Io(args, out_stream, err_stream)
+      : m_command_path(command_path), Io(args, in_stream, out_stream, err_stream)
   {
   }
 
