@@ -28,6 +28,7 @@
 #include "zowed.hpp"
 #include "dispatcher.hpp"
 #include "../c/commands/ds.hpp"
+#include "../c/zbase64.h"
 
 class ZowedServer
 {
@@ -175,7 +176,35 @@ public:
     dispatcher.register_command("listDatasets", ds::handle_data_set_list);
     dispatcher.register_command("listDsMembers", ds::handle_data_set_list_members);
     dispatcher.register_command("readDataset", ds::handle_data_set_view);
-    dispatcher.register_command("writeDataset", ds::handle_data_set_write);
+
+    // Register writeDataset with input handler for "data" parameter
+    dispatcher.register_command("writeDataset", ds::handle_data_set_write,
+                                [](MiddlewareContext &context)
+                                {
+                                  // Check if "data" argument exists
+                                  const plugin::Argument *dataArg = context.find("data");
+                                  if (dataArg && dataArg->is_string())
+                                  {
+                                    try
+                                    {
+                                      // Get the base64 encoded data
+                                      std::string base64Data = dataArg->get_string_value();
+
+                                      // Base64 decode the data and write to input stream
+                                      std::string decodedData = zbase64::decode(base64Data);
+                                      context.set_input_content(decodedData);
+
+                                      // Remove "data" from arguments since it's now in input stream
+                                      plugin::ArgumentMap &args = const_cast<plugin::ArgumentMap &>(context.arguments());
+                                      args.erase("data");
+                                    }
+                                    catch (const std::exception &e)
+                                    {
+                                      // If base64 decode fails, write error to error stream
+                                      context.errln("Failed to decode base64 data");
+                                    }
+                                  }
+                                });
 
     // Create worker pool
     workerPool.reset(new WorkerPool(options.numWorkers));

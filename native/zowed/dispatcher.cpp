@@ -27,7 +27,7 @@ RpcDispatcher::~RpcDispatcher()
 {
 }
 
-bool RpcDispatcher::register_command(const std::string &command_name, CommandHandler handler)
+bool RpcDispatcher::register_command(const std::string &command_name, CommandHandler handler, InputHandler input_handler)
 {
   if (command_name.empty() || handler == nullptr)
   {
@@ -41,6 +41,13 @@ bool RpcDispatcher::register_command(const std::string &command_name, CommandHan
   }
 
   m_command_handlers[command_name] = handler;
+
+  // Store input handler if provided
+  if (input_handler != nullptr)
+  {
+    m_input_handlers[command_name] = input_handler;
+  }
+
   return true;
 }
 
@@ -63,6 +70,13 @@ int RpcDispatcher::dispatch(const std::string &command_name, MiddlewareContext &
 
   try
   {
+    // Call input handler first if it exists
+    auto input_it = m_input_handlers.find(command_name);
+    if (input_it != m_input_handlers.end())
+    {
+      input_it->second(context);
+    }
+
     // Call the command handler with the context
     return handler(context);
   }
@@ -108,10 +122,19 @@ bool RpcDispatcher::unregister_command(const std::string &command_name)
   }
 
   m_command_handlers.erase(it);
+
+  // Also remove input handler if it exists
+  auto input_it = m_input_handlers.find(command_name);
+  if (input_it != m_input_handlers.end())
+  {
+    m_input_handlers.erase(input_it);
+  }
+
   return true;
 }
 
 void RpcDispatcher::clear()
 {
   m_command_handlers.clear();
+  m_input_handlers.clear();
 }

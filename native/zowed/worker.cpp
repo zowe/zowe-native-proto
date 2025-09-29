@@ -10,7 +10,6 @@
  */
 
 #include "worker.hpp"
-#include "cmds/ds.hpp"
 #include <iostream>
 
 // Worker implementation
@@ -108,59 +107,118 @@ void Worker::processRequest(const std::string &data)
 
     // Create MiddlewareContext for the command
     plugin::ArgumentMap args;
-    // TODO: Convert JSON params to ArgumentMap
-    // For now, we'll use an empty ArgumentMap
 
-    MiddlewareContext context(request.method, args);
-
-    // Dispatch the command
-    int result = dispatcher.dispatch(request.method, context);
-
-    if (result == 0)
+    // Convert JSON params to ArgumentMap
+    if (request.params.has_value())
     {
-      // Success - get output and convert to JSON
-      std::string output = context.get_output_content();
-      zjson::Value resultJson;
-
-      if (!output.empty())
+      zjson::Value params = request.params.value();
+      if (!params.is_object())
       {
-        // Try to parse output as JSON, fallback to string
-        auto parse_result = zjson::from_str<zjson::Value>(output);
-        if (parse_result.has_value())
+        ErrorDetails error{
+            -32602,
+            "Invalid parameters",
+            zstd::optional<zjson::Value>()};
+      }
+
+      // Convert JSON object to ArgumentMap
+      for (const auto &pair : params.as_object())
+      {
+        const std::string &key = pair.first;
+        const zjson::Value &value = pair.second;
+
+        if (value.is_bool())
         {
-          resultJson = parse_result.value();
+          args[key] = plugin::Argument(value.get_bool());
         }
+        else if (value.is_int())
+        {
+          args[key] = plugin::Argument(static_cast<long long>(value.get_int()));
+        }
+        else if (value.is_double())
+        {
+          args[key] = plugin::Argument(value.get_double());
+        }
+        else if (value.is_string())
+        {
+          args[key] = plugin::Argument(value.get_string());
+        }
+        else if (value.is_array())
+        {
+          // Convert array to vector<string>
+          std::vector<std::string> stringArray;
+          for (const auto &arrayItem : value.get_array())
+          {
+            if (arrayItem.is_string())
+            {
+              stringArray.push_back(arrayItem.get_string());
+            }
+            else
+            {
+              // Convert non-string values to string representation
+              stringArray.push_back(zjson::to_string(arrayItem).value_or(""));
+            }
+          }
+          args[key] = plugin::Argument(stringArray);
+        }
+        // For other types (null, object), convert to string representation
         else
         {
-          resultJson = zjson::Value(output);
+          args[key] = plugin::Argument(zjson::to_string(value).value_or(""));
         }
+      }
+    }
+  }
+
+  MiddlewareContext context(request.method, args);
+
+  // Dispatch the command
+  int result = dispatcher.dispatch(request.method, context);
+
+  if (result == 0)
+  {
+    // Success - get output and convert to JSON
+    std::string output = context.get_output_content();
+    zjson::Value resultJson;
+
+    if (!output.empty())
+    {
+      // Try to parse output as JSON, fallback to string
+      auto parse_result = zjson::from_str<zjson::Value>(output);
+      if (parse_result.has_value())
+      {
+        resultJson = parse_result.value();
       }
       else
       {
-        resultJson = zjson::Value::create_object();
+        resultJson = zjson::Value(output);
       }
-
-      printCommandResponse(resultJson, request.id);
     }
     else
     {
-      // Error occurred
-      std::string errorOutput = context.get_error_content();
-      ErrorDetails error{
-          -32603, // Internal error
-          "Command execution failed",
-          errorOutput.empty() ? zstd::optional<zjson::Value>() : zstd::optional<zjson::Value>(zjson::Value(errorOutput))};
-      printErrorResponse(error, request.id);
+      resultJson = zjson::Value::create_object();
     }
+
+    printCommandResponse(resultJson, request.id);
   }
-  catch (const std::exception &e)
+  else
   {
+    // Error occurred
+    std::string errorOutput = context.get_error_content();
     ErrorDetails error{
-        -32700,
-        "Failed to parse command request: " + std::string(e.what()),
-        zstd::optional<zjson::Value>()};
-    printErrorResponse(error, 0); // No request ID available
+        -32603, // Internal error
+        "Command execution failed",
+        errorOutput.empty() ? zstd::optional<zjson::Value>() : zstd::optional<zjson::Value>(zjson::Value(errorOutput))};
+    printErrorResponse(error, request.id);
   }
+}
+catch (const std::exception &e)
+{
+  ErrorDetails error{
+      -32700,
+      "Failed to parse command request: " + std::string(e.what()),
+      zstd::optional<zjson::Value>()};
+  printErrorResponse(error, 0); // No request ID available
+}
 }
 
 void Worker::printErrorResponse(const ErrorDetails &error, int requestId)
