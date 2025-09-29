@@ -33,6 +33,16 @@ std::vector<char *> to_argv(std::vector<std::string> &storage)
   return argv;
 }
 
+bool g_handler_called = false;
+std::string g_handler_arg;
+
+int sample_handler(plugin::InvocationContext &context)
+{
+  g_handler_called = true;
+  g_handler_arg = context.get<std::string>("name");
+  return 7;
+}
+
 } // namespace
 
 void parser_tests()
@@ -97,6 +107,39 @@ void parser_tests()
                  Expect((*tags_list)[1] == "two").ToBe(true);
                  Expect((*tags_list)[2] == "three").ToBe(true);
                }
+             });
+
+             it("requires values for dynamic single keywords", []() {
+               ArgumentParser arg_parser("prog", "dynamic sample");
+               Command &root = arg_parser.get_root_command();
+               root.enable_dynamic_keywords(ArgType_Single, "val", "description");
+
+               std::vector<std::string> raw = {"prog", "--missing"};
+               std::vector<char *> argv = to_argv(raw);
+
+               ParseResult result =
+                   arg_parser.parse(static_cast<int>(argv.size()), argv.data());
+
+               Expect(result.status).ToBe(ParseResult::ParserStatus_ParseError);
+               Expect(result.error_message == "option --missing requires a value.")
+                   .ToBe(true);
+             });
+
+             it("enforces values for dynamic multi-value keywords", []() {
+               ArgumentParser arg_parser("prog", "dynamic sample");
+               Command &root = arg_parser.get_root_command();
+               root.enable_dynamic_keywords(ArgType_Multiple, "items", "description");
+
+               std::vector<std::string> raw = {"prog", "--tags"};
+               std::vector<char *> argv = to_argv(raw);
+
+               ParseResult result =
+                   arg_parser.parse(static_cast<int>(argv.size()), argv.data());
+
+               Expect(result.status).ToBe(ParseResult::ParserStatus_ParseError);
+               Expect(result.error_message ==
+                          "option --tags requires at least one value.")
+                   .ToBe(true);
              });
 
              it("errors on unknown keyword when dynamic support disabled", []() {
@@ -261,5 +304,52 @@ void parser_tests()
                           "conflicting options provided: --primary conflicts with --secondary")
                    .ToBe(true);
              });
-             }); });
+             });
+
+             describe("required options", []() -> void
+                      {
+             it("demands presence of required keyword arguments", []() {
+               ArgumentParser arg_parser("prog", "required sample");
+               Command &root = arg_parser.get_root_command();
+               root.add_keyword_arg("source", make_aliases("-s"), "source file", ArgType_Single, true);
+
+               std::vector<std::string> raw = {"prog"};
+               std::vector<char *> argv = to_argv(raw);
+
+               ParseResult result =
+                   arg_parser.parse(static_cast<int>(argv.size()), argv.data());
+
+               Expect(result.status).ToBe(ParseResult::ParserStatus_ParseError);
+               Expect(result.error_message ==
+                          "missing required option: -s, --source <value>")
+                   .ToBe(true);
+             });
+             });
+
+             describe("command handlers", []() -> void
+                      {
+             it("invokes registered handlers on successful parse", []() {
+               g_handler_called = false;
+               g_handler_arg.clear();
+
+               ArgumentParser arg_parser("prog", "handler sample");
+               Command &root = arg_parser.get_root_command();
+               root.add_keyword_arg("name", make_aliases("-n"), "name to capture", ArgType_Single, true);
+               root.set_handler(&sample_handler);
+
+               std::vector<std::string> raw = {"prog", "--name", "cli"};
+               std::vector<char *> argv = to_argv(raw);
+
+               ParseResult result =
+                   arg_parser.parse(static_cast<int>(argv.size()), argv.data());
+
+               Expect(result.status).ToBe(ParseResult::ParserStatus_Success);
+               Expect(result.exit_code).ToBe(7);
+               Expect(g_handler_called).ToBe(true);
+               Expect(g_handler_arg == "cli").ToBe(true);
+               Expect(result.get_value<std::string>("name", ""))
+                   .ToBe("cli");
+             });
+             });
+           });
 }
