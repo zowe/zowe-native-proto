@@ -23,7 +23,7 @@ type ListFilesRequest struct {
 	// Whether to return the long format with all attributes
 	Long bool `json:"long,omitempty"`
 	// Depth of subdirectories to list (defaults to 1)
-	Depth int `default:"1" json:"depth,omitempty"`
+	Depth *int `json:"depth,omitempty"`
 	// List options
 	common.ListOptions `tstype:",extends"`
 }

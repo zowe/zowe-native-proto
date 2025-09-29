@@ -51,8 +51,8 @@ func HandleListFilesRequest(conn *utils.StdioConn, params []byte) (result any, e
 	if request.Long {
 		args = append(args, "-l")
 	}
-	if request.Depth != 1 {
-		args = append(args, "--depth", strconv.Itoa(request.Depth))
+	if request.Depth != nil {
+		args = append(args, "--depth", strconv.Itoa(*request.Depth))
 	}
 	out, err := conn.ExecCmd(args)
 	if err != nil {
