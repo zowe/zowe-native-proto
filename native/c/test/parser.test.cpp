@@ -156,9 +156,105 @@ void parser_tests()
 
                Expect(result.status).ToBe(ParseResult::ParserStatus_ParseError);
                Expect(result.has_dynamic("foo")).ToBe(false);
-             }); }); 
-            
-            
+             }); });
+
+
+             describe("keyword arguments", []() -> void
+                      {
+             it("captures values for named keywords", []() {
+               ArgumentParser arg_parser("prog", "keyword sample");
+               Command &root = arg_parser.get_root_command();
+               root.add_keyword_arg("dataset", make_aliases("-d"), "dataset to process",
+                                   ArgType_Single);
+
+               std::vector<std::string> raw = {"prog", "--dataset", "HLQ.PDS"};
+               std::vector<char *> argv = to_argv(raw);
+
+               ParseResult result =
+                   arg_parser.parse(static_cast<int>(argv.size()), argv.data());
+
+               Expect(result.status).ToBe(ParseResult::ParserStatus_Success);
+               Expect(result.get_value<std::string>("dataset", ""))
+                   .ToBe("HLQ.PDS");
+             });
+
+             it("accepts short aliases for keyword arguments", []() {
+               ArgumentParser arg_parser("prog", "keyword sample");
+               Command &root = arg_parser.get_root_command();
+               root.add_keyword_arg("name", make_aliases("-n"), "name to capture", ArgType_Single);
+
+               std::vector<std::string> raw = {"prog", "-n", "cli"};
+               std::vector<char *> argv = to_argv(raw);
+
+               ParseResult result =
+                   arg_parser.parse(static_cast<int>(argv.size()), argv.data());
+
+               Expect(result.status).ToBe(ParseResult::ParserStatus_Success);
+               Expect(result.get_value<std::string>("name", ""))
+                   .ToBe("cli");
+             });
+
+             it("collects multiple values for keyword arguments", []() {
+               ArgumentParser arg_parser("prog", "keyword sample");
+               Command &root = arg_parser.get_root_command();
+               root.add_keyword_arg("members", make_aliases("-m"), "member names",
+                                   ArgType_Multiple);
+
+               std::vector<std::string> raw =
+                   {"prog", "--members", "alpha", "beta", "gamma"};
+               std::vector<char *> argv = to_argv(raw);
+
+               ParseResult result =
+                   arg_parser.parse(static_cast<int>(argv.size()), argv.data());
+
+               Expect(result.status).ToBe(ParseResult::ParserStatus_Success);
+               const std::vector<std::string> *members =
+                   result.get<std::vector<std::string>>("members");
+               Expect(members != nullptr).ToBe(true);
+               if (members)
+               {
+                 Expect(members->size()).ToBe(static_cast<size_t>(3));
+                 Expect((*members)[0] == "alpha").ToBe(true);
+                 Expect((*members)[1] == "beta").ToBe(true);
+                 Expect((*members)[2] == "gamma").ToBe(true);
+               }
+             });
+
+             it("allows explicit boolean values for keyword flags", []() {
+               ArgumentParser arg_parser("prog", "keyword sample");
+               Command &root = arg_parser.get_root_command();
+               root.add_keyword_arg("force", make_aliases("-f"), "force execution",
+                                   ArgType_Flag);
+
+               std::vector<std::string> raw = {"prog", "--force", "false"};
+               std::vector<char *> argv = to_argv(raw);
+
+               ParseResult result =
+                   arg_parser.parse(static_cast<int>(argv.size()), argv.data());
+
+               Expect(result.status).ToBe(ParseResult::ParserStatus_Success);
+               Expect(result.get_value<bool>("force", true)).ToBe(false);
+             });
+
+             it("reports missing values for keyword arguments", []() {
+               ArgumentParser arg_parser("prog", "keyword sample");
+               Command &root = arg_parser.get_root_command();
+               root.add_keyword_arg("target", make_aliases("-t"), "target data set",
+                                   ArgType_Single);
+
+               std::vector<std::string> raw = {"prog", "--target"};
+               std::vector<char *> argv = to_argv(raw);
+
+               ParseResult result =
+                   arg_parser.parse(static_cast<int>(argv.size()), argv.data());
+
+               Expect(result.status).ToBe(ParseResult::ParserStatus_ParseError);
+               Expect(result.error_message ==
+                          "option -t, --target <value> requires a value.")
+                   .ToBe(true);
+             });
+             });
+
 
              describe("flag parsing", []() -> void
                       {
