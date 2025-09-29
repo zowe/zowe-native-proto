@@ -18,6 +18,7 @@ using namespace std;
 using namespace ztst;
 
 // Helper function to convert string to hex format
+// TODO(Kelosky): move to zut.hpp if additional use is found
 string string_to_hex(const string &input)
 {
   string hex_output;
@@ -30,6 +31,7 @@ string string_to_hex(const string &input)
   return hex_output;
 }
 
+// NOTE(Kelosky): consolidate this into ztest.hpp if additional use is found
 int execute_command_with_output(const std::string &command, std::string &output)
 {
   output = "";
