@@ -128,34 +128,29 @@ void Worker::processRequest(const std::string &data)
 
         if (value.is_bool())
         {
-          args[key] = plugin::Argument(value.get_bool());
+          args[key] = plugin::Argument(value.as_bool());
         }
-        else if (value.is_int())
+        else if (value.is_number())
         {
-          args[key] = plugin::Argument(static_cast<long long>(value.get_int()));
-        }
-        else if (value.is_double())
-        {
-          args[key] = plugin::Argument(value.get_double());
+          args[key] = plugin::Argument(static_cast<long long>(value.as_number()));
         }
         else if (value.is_string())
         {
-          args[key] = plugin::Argument(value.get_string());
+          args[key] = plugin::Argument(value.as_string());
         }
         else if (value.is_array())
         {
           // Convert array to vector<string>
           std::vector<std::string> stringArray;
-          for (const auto &arrayItem : value.get_array())
+          for (const auto &arrayItem : value.as_array())
           {
             if (arrayItem.is_string())
             {
-              stringArray.push_back(arrayItem.get_string());
+              stringArray.push_back(arrayItem.as_string());
             }
             else
             {
-              // Convert non-string values to string representation
-              stringArray.push_back(zjson::to_string(arrayItem).value_or(""));
+              // TODO Handle non-string values in arrays
             }
           }
           args[key] = plugin::Argument(stringArray);
@@ -167,58 +162,57 @@ void Worker::processRequest(const std::string &data)
         }
       }
     }
-  }
 
-  MiddlewareContext context(request.method, args);
+    MiddlewareContext context(request.method, args);
 
-  // Dispatch the command
-  int result = dispatcher.dispatch(request.method, context);
+    // Dispatch the command
+    int result = dispatcher.dispatch(request.method, context);
 
-  if (result == 0)
-  {
-    // Success - get output and convert to JSON
-    std::string output = context.get_output_content();
-    zjson::Value resultJson;
-
-    if (!output.empty())
+    if (result == 0)
     {
-      // Try to parse output as JSON, fallback to string
-      auto parse_result = zjson::from_str<zjson::Value>(output);
-      if (parse_result.has_value())
+      // Success - get output and convert to JSON
+      std::string output = context.get_output_content();
+      zjson::Value resultJson;
+
+      if (!output.empty())
       {
-        resultJson = parse_result.value();
+        // Try to parse output as JSON, fallback to string
+        auto parse_result = zjson::from_str<zjson::Value>(output);
+        if (parse_result.has_value())
+        {
+          resultJson = parse_result.value();
+        }
+        else
+        {
+          resultJson = zjson::Value(output);
+        }
       }
       else
       {
-        resultJson = zjson::Value(output);
+        resultJson = zjson::Value::create_object();
       }
+
+      printCommandResponse(resultJson, request.id);
     }
     else
     {
-      resultJson = zjson::Value::create_object();
+      // Error occurred
+      std::string errorOutput = context.get_error_content();
+      ErrorDetails error{
+          -32603, // Internal error
+          "Command execution failed",
+          errorOutput.empty() ? zstd::optional<zjson::Value>() : zstd::optional<zjson::Value>(zjson::Value(errorOutput))};
+      printErrorResponse(error, request.id);
     }
-
-    printCommandResponse(resultJson, request.id);
   }
-  else
+  catch (const std::exception &e)
   {
-    // Error occurred
-    std::string errorOutput = context.get_error_content();
     ErrorDetails error{
-        -32603, // Internal error
-        "Command execution failed",
-        errorOutput.empty() ? zstd::optional<zjson::Value>() : zstd::optional<zjson::Value>(zjson::Value(errorOutput))};
-    printErrorResponse(error, request.id);
+        -32700,
+        "Failed to parse command request: " + std::string(e.what()),
+        zstd::optional<zjson::Value>()};
+    printErrorResponse(error, 0); // No request ID available
   }
-}
-catch (const std::exception &e)
-{
-  ErrorDetails error{
-      -32700,
-      "Failed to parse command request: " + std::string(e.what()),
-      zstd::optional<zjson::Value>()};
-  printErrorResponse(error, 0); // No request ID available
-}
 }
 
 void Worker::printErrorResponse(const ErrorDetails &error, int requestId)
