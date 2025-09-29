@@ -54,13 +54,7 @@ LIBRARY = libzowed.so
 
 # Source files
 LIB_SOURCES = zowed.cpp worker.cpp dispatcher.cpp parser.cpp
-LIB_OBJECTS = $(OUT_DIR)/zowed.lib.o $(OUT_DIR)/worker.lib.o $(OUT_DIR)/dispatcher.lib.o $(OUT_DIR)/parser.lib.o
-
-MAIN_SOURCES = main.cpp
-MAIN_OBJECTS = $(OUT_DIR)/main.o
-
-# Header files
-HEADERS = worker.hpp dispatcher.hpp parser.hpp zowed.hpp
+LIB_OBJECTS = $(OUT_DIR)/zowed.o $(OUT_DIR)/worker.o $(OUT_DIR)/dispatcher.o $(OUT_DIR)/parser.o
 
 # Default target - build both shared library and executable
 all: $(OUT_DIR)/$(LIBRARY) $(OUT_DIR)/$(TARGET)
@@ -73,15 +67,15 @@ $(OUT_DIR)/$(LIBRARY): $(OUT_DIR) $(LIB_OBJECTS) $(OUT_DIR)/zjsonm.o
 	$(CXX_LIB) $(DLL_BND_FLAGS) -o $(OUT_DIR)/$(LIBRARY) $(LIB_OBJECTS) ../c/build-out/xlclang/zds.o ../c/build-out/xlclang/zut.o ../c/build-out/zam.o ../c/build-out/zdsm.o ../c/build-out/zutm.o ../c/build-out/zutm31.o $(OUT_DIR)/zjsonm.o > $(OUT_DIR)/libzowed.bind.lst
 
 # Build the executable (main compiled with xlc++, dynamically loads shared library)
-$(OUT_DIR)/$(TARGET): $(OUT_DIR) $(MAIN_OBJECTS)
+$(OUT_DIR)/$(TARGET): $(OUT_DIR) $(OUT_DIR)/main.o
 	$(CXX_MAIN) $(LDFLAGS) -o $(OUT_DIR)/$(TARGET) $(MAIN_OBJECTS) > $(OUT_DIR)/zowed.bind.lst
 
 # Compile library source files with xlclang++
-$(OUT_DIR)/%.lib.o: %.cpp $(HEADERS) $(OUT_DIR)
+$(OUT_DIR)/%.o: %.cpp $(OUT_DIR)
 	$(CXX_LIB) $(CXXFLAGS_LIB) -c $< -o $@
 
 # Compile main source files with xlc++
-$(OUT_DIR)/%.o: %.cpp $(HEADERS) $(OUT_DIR)
+$(OUT_DIR)/main.o: main.cpp $(OUT_DIR)
 	$(CXX_MAIN) $(CXXFLAGS_MAIN) -c $< -o $@
 
 # Compile zjsonm Metal C source to assembly

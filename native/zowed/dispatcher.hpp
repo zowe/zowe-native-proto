@@ -15,6 +15,7 @@
 #include "../c/extend/plugin.hpp"
 #include "parser.hpp"
 #include <string>
+#include <functional>
 
 #if defined(__IBMTR1_CPP__) && !defined(__clang__)
 #include <tr1/unordered_map>
@@ -28,6 +29,9 @@ public:
   // CommandHandler type from plugin.hpp
   typedef plugin::CommandProviderImpl::CommandRegistrationContext::CommandHandler CommandHandler;
 
+  // Input handler type for preprocessing
+  typedef std::function<void(MiddlewareContext &)> InputHandler;
+
   // Singleton access method
   static RpcDispatcher &getInstance();
 
@@ -35,8 +39,8 @@ public:
   RpcDispatcher(const RpcDispatcher &) = delete;
   RpcDispatcher &operator=(const RpcDispatcher &) = delete;
 
-  // Register a new command with its handler
-  bool register_command(const std::string &command_name, CommandHandler handler);
+  // Register a new command with its handler and optional input handler
+  bool register_command(const std::string &command_name, CommandHandler handler, InputHandler input_handler = nullptr);
 
   // Dispatch a command by name using the provided context
   int dispatch(const std::string &command_name, MiddlewareContext &context);
@@ -62,8 +66,10 @@ private:
 
 #if defined(__clang__)
   std::unordered_map<std::string, CommandHandler> m_command_handlers;
+  std::unordered_map<std::string, InputHandler> m_input_handlers;
 #else
   std::tr1::unordered_map<std::string, CommandHandler> m_command_handlers;
+  std::tr1::unordered_map<std::string, InputHandler> m_input_handlers;
 #endif
 };
 
