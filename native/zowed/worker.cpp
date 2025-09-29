@@ -13,200 +13,9 @@
 #include "cmds/ds.hpp"
 #include <iostream>
 
-// CommandDispatcher implementation
-bool CommandDispatcher::registerHandler(const std::string &command, CommandHandler handler)
-{
-  std::lock_guard<std::mutex> lock(handlersMutex);
-  auto result = handlers.emplace(command, handler);
-  return result.second; // true if insertion took place
-}
-
-CommandHandler CommandDispatcher::getHandler(const std::string &command)
-{
-  std::lock_guard<std::mutex> lock(handlersMutex);
-  auto it = handlers.find(command);
-  if (it != handlers.end())
-  {
-    return it->second;
-  }
-  return nullptr;
-}
-
-void CommandDispatcher::initializeCoreHandlers()
-{
-  // Register placeholder handlers for core commands
-  // These would be implemented to call the actual zowex processes
-
-  // Dataset handlers
-  registerHandler("listDatasets", HandleListDatasetsRequest);
-  registerHandler("readDataset", HandleReadDatasetRequest);
-  registerHandler("writeDataset", HandleWriteDatasetRequest);
-  registerHandler("listDsMembers", HandleListDsMembersRequest);
-  registerHandler("createDataset", [](const zjson::Value &params)
-                  {
-// Placeholder implementation
-return zjson::Value::create_array(); });
-  registerHandler("deleteDataset", [](const zjson::Value &params)
-                  {
-// Placeholder implementation
-return zjson::Value::create_array(); });
-  registerHandler("createMember", [](const zjson::Value &params)
-                  {
-// Placeholder implementation
-return zjson::Value::create_array(); });
-  registerHandler("restoreDataset", [](const zjson::Value &params)
-                  {
-// Placeholder implementation
-return zjson::Value::create_array(); });
-
-  // USS handlers
-  registerHandler("listUssFiles", [](const zjson::Value &params)
-                  {
-        // Placeholder implementation
-        return zjson::Value::create_array(); });
-
-  registerHandler("readUssFile", [](const zjson::Value &params)
-                  {
-        // Placeholder implementation
-        zjson::Value result = zjson::Value::create_object();
-        result.add_to_object("content", zjson::Value(std::string("")));
-        return result; });
-
-  registerHandler("writeUssFile", [](const zjson::Value &params)
-                  {
-        // Placeholder implementation
-        zjson::Value result = zjson::Value::create_object();
-        result.add_to_object("success", zjson::Value(true));
-        return result; });
-
-  registerHandler("createUssFile", [](const zjson::Value &params)
-                  {
-        // Placeholder implementation
-        zjson::Value result = zjson::Value::create_object();
-        result.add_to_object("success", zjson::Value(true));
-        return result; });
-
-  registerHandler("deleteUssFile", [](const zjson::Value &params)
-                  {
-        // Placeholder implementation
-        zjson::Value result = zjson::Value::create_object();
-        result.add_to_object("success", zjson::Value(true));
-        return result; });
-
-  registerHandler("chmodUss", [](const zjson::Value &params)
-                  {
-        // Placeholder implementation
-        zjson::Value result = zjson::Value::create_object();
-        result.add_to_object("success", zjson::Value(true));
-        return result; });
-
-  registerHandler("chownUss", [](const zjson::Value &params)
-                  {
-        // Placeholder implementation
-        zjson::Value result = zjson::Value::create_object();
-        result.add_to_object("success", zjson::Value(true));
-        return result; });
-
-  registerHandler("chtagUss", [](const zjson::Value &params)
-                  {
-        // Placeholder implementation
-        zjson::Value result = zjson::Value::create_object();
-        result.add_to_object("success", zjson::Value(true));
-        return result; });
-
-  // Job handlers
-  registerHandler("listJobs", [](const zjson::Value &params)
-                  {
-        // Placeholder implementation
-        return zjson::Value::create_array(); });
-
-  registerHandler("getJcl", [](const zjson::Value &params)
-                  {
-        // Placeholder implementation
-        zjson::Value result = zjson::Value::create_object();
-        result.add_to_object("jcl", zjson::Value(std::string("")));
-        return result; });
-
-  registerHandler("getJobStatus", [](const zjson::Value &params)
-                  {
-        // Placeholder implementation
-        zjson::Value result = zjson::Value::create_object();
-        result.add_to_object("status", zjson::Value(std::string("UNKNOWN")));
-        return result; });
-
-  registerHandler("listSpools", [](const zjson::Value &params)
-                  {
-        // Placeholder implementation
-        return zjson::Value::create_array(); });
-
-  registerHandler("readSpool", [](const zjson::Value &params)
-                  {
-        // Placeholder implementation
-        zjson::Value result = zjson::Value::create_object();
-        result.add_to_object("content", zjson::Value(std::string("")));
-        return result; });
-
-  registerHandler("submitJob", [](const zjson::Value &params)
-                  {
-        // Placeholder implementation
-        zjson::Value result = zjson::Value::create_object();
-        result.add_to_object("jobid", zjson::Value(std::string("JOB00000")));
-        return result; });
-
-  registerHandler("submitJcl", [](const zjson::Value &params)
-                  {
-        // Placeholder implementation
-        zjson::Value result = zjson::Value::create_object();
-        result.add_to_object("jobid", zjson::Value(std::string("JOB00000")));
-        return result; });
-
-  registerHandler("submitUss", [](const zjson::Value &params)
-                  {
-        // Placeholder implementation
-        zjson::Value result = zjson::Value::create_object();
-        result.add_to_object("jobid", zjson::Value(std::string("JOB00000")));
-        return result; });
-
-  registerHandler("cancelJob", [](const zjson::Value &params)
-                  {
-        // Placeholder implementation
-        zjson::Value result = zjson::Value::create_object();
-        result.add_to_object("success", zjson::Value(true));
-        return result; });
-
-  registerHandler("deleteJob", [](const zjson::Value &params)
-                  {
-        // Placeholder implementation
-        zjson::Value result = zjson::Value::create_object();
-        result.add_to_object("success", zjson::Value(true));
-        return result; });
-
-  registerHandler("holdJob", [](const zjson::Value &params)
-                  {
-        // Placeholder implementation
-        zjson::Value result = zjson::Value::create_object();
-        result.add_to_object("success", zjson::Value(true));
-        return result; });
-
-  registerHandler("releaseJob", [](const zjson::Value &params)
-                  {
-        // Placeholder implementation
-        zjson::Value result = zjson::Value::create_object();
-        result.add_to_object("success", zjson::Value(true));
-        return result; });
-
-  // Console handler
-  registerHandler("consoleCommand", [](const zjson::Value &params)
-                  {
-        // Placeholder implementation
-        zjson::Value result = zjson::Value::create_object();
-        result.add_to_object("response", zjson::Value(std::string("")));
-        return result; });
-}
-
 // Worker implementation
-Worker::Worker(int workerId, std::shared_ptr<CommandDispatcher> disp, std::mutex *respMutex)
-    : id(workerId), ready(false), shouldStop(false), dispatcher(disp), responseMutex(respMutex)
+Worker::Worker(int workerId, std::mutex *respMutex)
+    : id(workerId), ready(false), shouldStop(false), responseMutex(respMutex)
 {
 }
 
@@ -283,9 +92,11 @@ void Worker::processRequest(const std::string &data)
 
     RpcRequest request = parseRpcRequest(requestJson);
 
-    // Get the command handler
-    CommandHandler handler = dispatcher->getHandler(request.method);
-    if (!handler)
+    // Use RpcDispatcher singleton to handle the command
+    RpcDispatcher &dispatcher = RpcDispatcher::getInstance();
+
+    // Check if command is registered
+    if (!dispatcher.has_command(request.method))
     {
       ErrorDetails error{
           -32601,
@@ -295,35 +106,50 @@ void Worker::processRequest(const std::string &data)
       return;
     }
 
-    // Execute the command
-    try
+    // Create MiddlewareContext for the command
+    plugin::ArgumentMap args;
+    // TODO: Convert JSON params to ArgumentMap
+    // For now, we'll use an empty ArgumentMap
+
+    MiddlewareContext context(request.method, args);
+
+    // Dispatch the command
+    int result = dispatcher.dispatch(request.method, context);
+
+    if (result == 0)
     {
-      zjson::Value params = request.params.has_value() ? request.params.value() : zjson::Value::create_object();
-      zjson::Value result = handler(params);
-      printCommandResponse(result, request.id);
+      // Success - get output and convert to JSON
+      std::string output = context.get_output_content();
+      zjson::Value resultJson;
+
+      if (!output.empty())
+      {
+        // Try to parse output as JSON, fallback to string
+        auto parse_result = zjson::from_str<zjson::Value>(output);
+        if (parse_result.has_value())
+        {
+          resultJson = parse_result.value();
+        }
+        else
+        {
+          resultJson = zjson::Value(output);
+        }
+      }
+      else
+      {
+        resultJson = zjson::Value::create_object();
+      }
+
+      printCommandResponse(resultJson, request.id);
     }
-    catch (const std::exception &e)
+    else
     {
-      std::string errMsg = e.what();
-      std::string errData;
-
-      // Parse error message similar to Go implementation
-      if (errMsg.substr(0, 7) == "Error: ")
-      {
-        errMsg = errMsg.substr(7);
-      }
-
-      size_t colonPos = errMsg.find(": ");
-      if (colonPos != std::string::npos)
-      {
-        errData = errMsg.substr(colonPos + 2);
-        errMsg = errMsg.substr(0, colonPos);
-      }
-
+      // Error occurred
+      std::string errorOutput = context.get_error_content();
       ErrorDetails error{
           -32603, // Internal error
-          errMsg,
-          errData.empty() ? zstd::optional<zjson::Value>() : zstd::optional<zjson::Value>(zjson::Value(errData))};
+          "Command execution failed",
+          errorOutput.empty() ? zstd::optional<zjson::Value>() : zstd::optional<zjson::Value>(zjson::Value(errorOutput))};
       printErrorResponse(error, request.id);
     }
   }
@@ -368,15 +194,12 @@ void Worker::printCommandResponse(const zjson::Value &result, int requestId)
 // WorkerPool implementation
 WorkerPool::WorkerPool(int numWorkers) : readyCount(0), isShuttingDown(false)
 {
-  dispatcher = std::make_shared<CommandDispatcher>();
-  dispatcher->initializeCoreHandlers();
-
   workers.reserve(numWorkers);
 
   // Create workers
   for (int i = 0; i < numWorkers; ++i)
   {
-    std::unique_ptr<Worker> worker(new Worker(i, dispatcher, &responseMutex));
+    std::unique_ptr<Worker> worker(new Worker(i, &responseMutex));
     workers.push_back(std::move(worker));
   }
 

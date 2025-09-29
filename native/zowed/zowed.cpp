@@ -26,6 +26,8 @@
 #include "../c/types/common.h"
 #include "worker.hpp"
 #include "zowed.hpp"
+#include "dispatcher.hpp"
+#include "../c/commands/ds.hpp"
 
 class ZowedServer
 {
@@ -165,6 +167,15 @@ public:
 
     // Set up signal handling
     setupSignalHandlers();
+
+    // Initialize RpcDispatcher singleton
+    RpcDispatcher &dispatcher = RpcDispatcher::getInstance();
+
+    // Register core command handlers
+    dispatcher.register_command("listDatasets", ds::handle_data_set_list);
+    dispatcher.register_command("listDsMembers", ds::handle_data_set_list_members);
+    dispatcher.register_command("readDataset", ds::handle_data_set_view);
+    dispatcher.register_command("writeDataset", ds::handle_data_set_write);
 
     // Create worker pool
     workerPool.reset(new WorkerPool(options.numWorkers));
