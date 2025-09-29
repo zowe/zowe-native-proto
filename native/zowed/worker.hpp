@@ -23,6 +23,7 @@
 #include <unordered_map>
 #include "../c/zjson.hpp"
 #include "../c/types/common.h"
+#include "dispatcher.hpp"
 
 using zjson::Value;
 
@@ -71,19 +72,6 @@ inline zjson::Value errorDetailsToJson(const ErrorDetails &error)
 // Command handler function type
 using CommandHandler = std::function<zjson::Value(const zjson::Value &params)>;
 
-// Command dispatcher for managing command handlers
-class CommandDispatcher
-{
-private:
-  std::unordered_map<std::string, CommandHandler> handlers;
-  std::mutex handlersMutex;
-
-public:
-  bool registerHandler(const std::string &command, CommandHandler handler);
-  CommandHandler getHandler(const std::string &command);
-  void initializeCoreHandlers();
-};
-
 // Worker class that processes command requests
 class Worker
 {
@@ -95,7 +83,6 @@ private:
   std::condition_variable queueCondition;
   std::atomic<bool> ready;
   std::atomic<bool> shouldStop;
-  std::shared_ptr<CommandDispatcher> dispatcher;
   std::mutex *responseMutex; // Shared response mutex
 
   void workerLoop();
@@ -104,7 +91,7 @@ private:
   void printCommandResponse(const zjson::Value &result, int requestId);
 
 public:
-  Worker(int workerId, std::shared_ptr<CommandDispatcher> disp, std::mutex *respMutex);
+  Worker(int workerId, std::mutex *respMutex);
   ~Worker();
 
   void start();
@@ -125,7 +112,6 @@ class WorkerPool
 {
 private:
   std::vector<std::unique_ptr<Worker>> workers;
-  std::shared_ptr<CommandDispatcher> dispatcher;
   std::mutex responseMutex;
   std::mutex readyMutex;
   std::condition_variable readyCondition;

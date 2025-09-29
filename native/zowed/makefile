@@ -53,21 +53,20 @@ TARGET = zowed
 LIBRARY = libzowed.so
 
 # Source files
-LIB_SOURCES = zowed.cpp worker.cpp cmds/ds.cpp
-LIB_OBJECTS = $(OUT_DIR)/zowed.lib.o $(OUT_DIR)/worker.lib.o $(OUT_DIR)/cmds/ds.lib.o
+LIB_SOURCES = zowed.cpp worker.cpp dispatcher.cpp parser.cpp
+LIB_OBJECTS = $(OUT_DIR)/zowed.lib.o $(OUT_DIR)/worker.lib.o $(OUT_DIR)/dispatcher.lib.o $(OUT_DIR)/parser.lib.o
 
 MAIN_SOURCES = main.cpp
 MAIN_OBJECTS = $(OUT_DIR)/main.o
 
 # Header files
-HEADERS = worker.hpp cmds/ds.hpp zowed.hpp
+HEADERS = worker.hpp dispatcher.hpp parser.hpp zowed.hpp
 
 # Default target - build both shared library and executable
 all: $(OUT_DIR)/$(LIBRARY) $(OUT_DIR)/$(TARGET)
 
 $(OUT_DIR):
 	mkdir -p $(OUT_DIR)
-	mkdir -p $(OUT_DIR)/cmds
 
 # Build the shared library (.so file)
 $(OUT_DIR)/$(LIBRARY): $(OUT_DIR) $(LIB_OBJECTS) $(OUT_DIR)/zjsonm.o
