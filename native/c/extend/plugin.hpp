@@ -498,12 +498,23 @@ public:
     return m_error_stream != nullptr ? *m_error_stream : std::cerr;
   }
 
+  const size_t &content_len() const
+  {
+    return m_content_len;
+  }
+
+  virtual void set_content_len(const size_t content_len)
+  {
+    m_content_len = content_len;
+  }
+
 private:
   ArgumentMap m_args;
   ArgumentMap m_output;
   std::istream *m_input_stream;
   std::ostream *m_output_stream;
   std::ostream *m_error_stream;
+  size_t m_content_len;
 };
 
 class InvocationContext : public Io
