@@ -31,7 +31,7 @@ const ArgTemplate DSN = {
     make_aliases()};
 
 const ArgTemplate DSN_PATTERN = {
-    "dsn",
+    "pattern",
     make_aliases(),
     "data set name pattern",
     ArgType_Single,

@@ -27,23 +27,26 @@
 
 // Generated C++ structs from ds.ts
 
-struct ListDatasetsRequest : public CommandRequest {
-    ListOptions listoptions;
-    ListDatasetOptions listdatasetoptions;
+struct ListDatasetsRequest : CommandRequest
+{
+    ListOptions listOptions;
+    ListDatasetOptions listDatasetOptions;
     std::string pattern;
     zstd::optional<bool> attributes;
 };
-ZJSON_SERIALIZABLE(ListDatasetsRequest, ZJSON_FIELD(ListDatasetsRequest, listoptions).flatten(), ZJSON_FIELD(ListDatasetsRequest, listdatasetoptions).flatten(), ZJSON_FIELD(ListDatasetsRequest, pattern), ZJSON_FIELD(ListDatasetsRequest, attributes));
+ZJSON_SERIALIZABLE(ListDatasetsRequest, ZJSON_FIELD(ListDatasetsRequest, listOptions).flatten(), ZJSON_FIELD(ListDatasetsRequest, listDatasetOptions).flatten(), ZJSON_FIELD(ListDatasetsRequest, pattern), ZJSON_FIELD(ListDatasetsRequest, attributes));
 
-struct ListDsMembersRequest : public CommandRequest {
-    ListOptions listoptions;
-    ListDatasetOptions listdatasetoptions;
+struct ListDsMembersRequest : CommandRequest
+{
+    ListOptions listOptions;
+    ListDatasetOptions listDatasetOptions;
     std::string dsname;
     zstd::optional<bool> attributes;
 };
-ZJSON_SERIALIZABLE(ListDsMembersRequest, ZJSON_FIELD(ListDsMembersRequest, listoptions).flatten(), ZJSON_FIELD(ListDsMembersRequest, listdatasetoptions).flatten(), ZJSON_FIELD(ListDsMembersRequest, dsname), ZJSON_FIELD(ListDsMembersRequest, attributes));
+ZJSON_SERIALIZABLE(ListDsMembersRequest, ZJSON_FIELD(ListDsMembersRequest, listOptions).flatten(), ZJSON_FIELD(ListDsMembersRequest, listDatasetOptions).flatten(), ZJSON_FIELD(ListDsMembersRequest, dsname), ZJSON_FIELD(ListDsMembersRequest, attributes));
 
-struct ReadDatasetRequest : public CommandRequest {
+struct ReadDatasetRequest : CommandRequest
+{
     zstd::optional<std::string> encoding;
     zstd::optional<std::string> localEncoding;
     zstd::optional<std::string> volume;
@@ -52,7 +55,8 @@ struct ReadDatasetRequest : public CommandRequest {
 };
 ZJSON_DERIVE(ReadDatasetRequest, encoding, localEncoding, volume, dsname, streamId);
 
-struct WriteDatasetRequest : public CommandRequest {
+struct WriteDatasetRequest : CommandRequest
+{
     zstd::optional<std::string> encoding;
     zstd::optional<std::string> localEncoding;
     zstd::optional<std::string> etag;
@@ -63,40 +67,47 @@ struct WriteDatasetRequest : public CommandRequest {
 };
 ZJSON_DERIVE(WriteDatasetRequest, encoding, localEncoding, etag, volume, dsname, data, streamId);
 
-struct DeleteDatasetRequest : public CommandRequest {
+struct DeleteDatasetRequest : CommandRequest
+{
     std::string dsname;
 };
 ZJSON_DERIVE(DeleteDatasetRequest, dsname);
 
-struct RestoreDatasetRequest : public CommandRequest {
+struct RestoreDatasetRequest : CommandRequest
+{
     std::string dsname;
 };
 ZJSON_DERIVE(RestoreDatasetRequest, dsname);
 
-struct CreateDatasetRequest : public CommandRequest {
+struct CreateDatasetRequest : CommandRequest
+{
     std::string dsname;
     DatasetAttributes attributes;
 };
 ZJSON_DERIVE(CreateDatasetRequest, dsname, attributes);
 
-struct CreateMemberRequest : public CommandRequest {
+struct CreateMemberRequest : CommandRequest
+{
     std::string dsname;
 };
 ZJSON_DERIVE(CreateMemberRequest, dsname);
 
-struct WriteDatasetResponse : public CommandResponse {
+struct WriteDatasetResponse : CommandResponse
+{
     std::string dataset;
     std::string etag;
     // int
     zstd::optional<int> contentLen;
 };
-ZJSON_DERIVE(WriteDatasetResponse, dataset, etag, contentLen);
+ZJSON_DERIVE(WriteDatasetResponse, success, dataset, etag, contentLen);
 
-struct RestoreDatasetResponse : public CommandResponse {
+struct RestoreDatasetResponse : CommandResponse
+{
 };
-ZJSON_DERIVE(RestoreDatasetResponse);
+ZJSON_DERIVE(RestoreDatasetResponse, success);
 
-struct ReadDatasetResponse : public CommandResponse {
+struct ReadDatasetResponse : CommandResponse
+{
     zstd::optional<std::string> encoding;
     std::string etag;
     std::string dataset;
@@ -104,25 +115,28 @@ struct ReadDatasetResponse : public CommandResponse {
     // int
     zstd::optional<int> contentLen;
 };
-ZJSON_DERIVE(ReadDatasetResponse, encoding, etag, dataset, data, contentLen);
+ZJSON_DERIVE(ReadDatasetResponse, success, encoding, etag, dataset, data, contentLen);
 
-struct ListDatasetsResponse : public CommandResponse {
+struct ListDatasetsResponse : CommandResponse
+{
     std::vector<Dataset> items;
     // int
     int returnedRows;
 };
-ZJSON_DERIVE(ListDatasetsResponse, items, returnedRows);
+ZJSON_DERIVE(ListDatasetsResponse, success, items, returnedRows);
 
-struct ListDsMembersResponse : public CommandResponse {
+struct ListDsMembersResponse : CommandResponse
+{
     std::vector<DsMember> items;
     // int
     int returnedRows;
 };
-ZJSON_DERIVE(ListDsMembersResponse, items, returnedRows);
+ZJSON_DERIVE(ListDsMembersResponse, success, items, returnedRows);
 
-struct GenericDatasetResponse : public CommandResponse {
+struct GenericDatasetResponse : CommandResponse
+{
     std::string dsname;
 };
-ZJSON_DERIVE(GenericDatasetResponse, dsname);
+ZJSON_DERIVE(GenericDatasetResponse, success, dsname);
 
 #endif

@@ -27,35 +27,41 @@
 
 // Generated C++ structs from cmds.ts
 
-struct IssueConsoleRequest : public CommandRequest {
+struct IssueConsoleRequest : CommandRequest
+{
     std::string commandText;
     zstd::optional<std::string> consoleName;
 };
 ZJSON_DERIVE(IssueConsoleRequest, commandText, consoleName);
 
-struct IssueTsoRequest : public CommandRequest {
+struct IssueTsoRequest : CommandRequest
+{
     std::string commandText;
 };
 ZJSON_DERIVE(IssueTsoRequest, commandText);
 
-struct IssueUnixRequest : public CommandRequest {
+struct IssueUnixRequest : CommandRequest
+{
     std::string commandText;
 };
 ZJSON_DERIVE(IssueUnixRequest, commandText);
 
-struct IssueConsoleResponse : public CommandResponse {
+struct IssueConsoleResponse : CommandResponse
+{
     std::string data;
 };
-ZJSON_DERIVE(IssueConsoleResponse, data);
+ZJSON_DERIVE(IssueConsoleResponse, success, data);
 
-struct IssueTsoResponse : public CommandResponse {
+struct IssueTsoResponse : CommandResponse
+{
     std::string data;
 };
-ZJSON_DERIVE(IssueTsoResponse, data);
+ZJSON_DERIVE(IssueTsoResponse, success, data);
 
-struct IssueUnixResponse : public CommandResponse {
+struct IssueUnixResponse : CommandResponse
+{
     std::string data;
 };
-ZJSON_DERIVE(IssueUnixResponse, data);
+ZJSON_DERIVE(IssueUnixResponse, success, data);
 
 #endif

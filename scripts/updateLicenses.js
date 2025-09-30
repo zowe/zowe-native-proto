@@ -53,7 +53,7 @@ const path = require("path");
     // remove any existing copyright
     // Be very, very careful messing with this regex. Regex is wonderful.
     result = result.replace(
-      /\/\*[\s\S]*?(License|SPDX)[\s\S]*?\*\/[\s\n]*/i,
+      /^[\s]*\/\*[\s\S]*?(License|SPDX)[\s\S]*?\*\/[\s\n]*/i,
       ""
     );
     result = header + result; // add the new header

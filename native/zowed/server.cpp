@@ -32,7 +32,7 @@ void RpcServer::processRequest(const std::string &requestData)
   try
   {
     // Parse the JSON request
-    auto parse_result = zjson::from_str<zjson::Value>(requestData);
+    auto parse_result = zjson::from_str<RpcRequest>(requestData);
 
     if (!parse_result.has_value())
     {
@@ -51,8 +51,7 @@ void RpcServer::processRequest(const std::string &requestData)
       return;
     }
 
-    zjson::Value requestJson = parse_result.value();
-    RpcRequest request = parseRpcRequest(requestJson);
+    RpcRequest request = parse_result.value();
 
     // Use CommandDispatcher singleton to handle the command
     CommandDispatcher &dispatcher = CommandDispatcher::getInstance();

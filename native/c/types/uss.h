@@ -27,15 +27,17 @@
 
 // Generated C++ structs from uss.ts
 
-struct ListFilesRequest : public CommandRequest {
-    ListOptions listoptions;
+struct ListFilesRequest : CommandRequest
+{
+    ListOptions listOptions;
     std::string fspath;
     zstd::optional<bool> all;
     zstd::optional<bool> long;
 };
-ZJSON_SERIALIZABLE(ListFilesRequest, ZJSON_FIELD(ListFilesRequest, listoptions).flatten(), ZJSON_FIELD(ListFilesRequest, fspath), ZJSON_FIELD(ListFilesRequest, all), ZJSON_FIELD(ListFilesRequest, long));
+ZJSON_SERIALIZABLE(ListFilesRequest, ZJSON_FIELD(ListFilesRequest, listOptions).flatten(), ZJSON_FIELD(ListFilesRequest, fspath), ZJSON_FIELD(ListFilesRequest, all), ZJSON_FIELD(ListFilesRequest, long));
 
-struct ReadFileRequest : public CommandRequest {
+struct ReadFileRequest : CommandRequest
+{
     zstd::optional<std::string> encoding;
     zstd::optional<std::string> localEncoding;
     std::string fspath;
@@ -43,7 +45,8 @@ struct ReadFileRequest : public CommandRequest {
 };
 ZJSON_DERIVE(ReadFileRequest, encoding, localEncoding, fspath, streamId);
 
-struct WriteFileRequest : public CommandRequest {
+struct WriteFileRequest : CommandRequest
+{
     zstd::optional<std::string> encoding;
     zstd::optional<std::string> localEncoding;
     zstd::optional<std::string> etag;
@@ -55,46 +58,53 @@ struct WriteFileRequest : public CommandRequest {
 };
 ZJSON_DERIVE(WriteFileRequest, encoding, localEncoding, etag, fspath, data, streamId, contentLen);
 
-struct CreateFileRequest : public CommandRequest {
+struct CreateFileRequest : CommandRequest
+{
     zstd::optional<std::string> permissions;
     std::string fspath;
     zstd::optional<bool> isDir;
 };
 ZJSON_DERIVE(CreateFileRequest, permissions, fspath, isDir);
 
-struct DeleteFileRequest : public CommandRequest {
+struct DeleteFileRequest : CommandRequest
+{
     std::string fspath;
     bool recursive;
 };
 ZJSON_DERIVE(DeleteFileRequest, fspath, recursive);
 
-struct ChmodFileRequest : public CommandRequest {
+struct ChmodFileRequest : CommandRequest
+{
     std::string mode;
     std::string fspath;
     bool recursive;
 };
 ZJSON_DERIVE(ChmodFileRequest, mode, fspath, recursive);
 
-struct ChownFileRequest : public CommandRequest {
+struct ChownFileRequest : CommandRequest
+{
     std::string owner;
     std::string fspath;
     bool recursive;
 };
 ZJSON_DERIVE(ChownFileRequest, owner, fspath, recursive);
 
-struct ChtagFileRequest : public CommandRequest {
+struct ChtagFileRequest : CommandRequest
+{
     std::string fspath;
     std::string tag;
     bool recursive;
 };
 ZJSON_DERIVE(ChtagFileRequest, fspath, tag, recursive);
 
-struct GenericFileResponse : public CommandResponse {
+struct GenericFileResponse : CommandResponse
+{
     std::string fspath;
 };
-ZJSON_DERIVE(GenericFileResponse, fspath);
+ZJSON_DERIVE(GenericFileResponse, success, fspath);
 
-struct ReadFileResponse : public CommandResponse {
+struct ReadFileResponse : CommandResponse
+{
     zstd::optional<std::string> encoding;
     std::string etag;
     std::string fspath;
@@ -102,21 +112,23 @@ struct ReadFileResponse : public CommandResponse {
     // int
     zstd::optional<int> contentLen;
 };
-ZJSON_DERIVE(ReadFileResponse, encoding, etag, fspath, data, contentLen);
+ZJSON_DERIVE(ReadFileResponse, success, encoding, etag, fspath, data, contentLen);
 
-struct WriteFileResponse : public GenericFileResponse {
+struct WriteFileResponse : GenericFileResponse
+{
     std::string etag;
     bool created;
     // int
     zstd::optional<int> contentLen;
 };
-ZJSON_DERIVE(WriteFileResponse, etag, created, contentLen);
+ZJSON_DERIVE(WriteFileResponse, success, fspath, etag, created, contentLen);
 
-struct ListFilesResponse : public CommandResponse {
+struct ListFilesResponse : CommandResponse
+{
     std::vector<UssItem> items;
     // int
     int returnedRows;
 };
-ZJSON_DERIVE(ListFilesResponse, items, returnedRows);
+ZJSON_DERIVE(ListFilesResponse, success, items, returnedRows);
 
 #endif

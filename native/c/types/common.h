@@ -28,148 +28,148 @@
 
 struct RpcNotification
 {
-  std::string jsonrpc;
-  std::string method;
-  zstd::optional<zjson::Value> params;
+    std::string jsonrpc;
+    std::string method;
+    zstd::optional<zjson::Value> params;
 };
 ZJSON_DERIVE(RpcNotification, jsonrpc, method, params);
 
-struct RpcRequest : public RpcNotification
+struct RpcRequest : RpcNotification
 {
-  // int
-  int id;
+    // int
+    int id;
 };
-ZJSON_DERIVE(RpcRequest, id);
+ZJSON_DERIVE(RpcRequest, jsonrpc, method, params, id);
 
 struct ErrorDetails
 {
-  // int
-  int code;
-  std::string message;
-  zstd::optional<zjson::Value> data;
+    // int
+    int code;
+    std::string message;
+    zstd::optional<zjson::Value> data;
 };
 ZJSON_DERIVE(ErrorDetails, code, message, data);
 
 struct RpcResponse
 {
-  std::string jsonrpc;
-  zstd::optional<zjson::Value> result;
-  zstd::optional<ErrorDetails> error;
-  // int
-  int id;
+    std::string jsonrpc;
+    zstd::optional<zjson::Value> result;
+    zstd::optional<ErrorDetails> error;
+    // int
+    int id;
 };
 ZJSON_DERIVE(RpcResponse, jsonrpc, result, error, id);
 
 struct CommandRequest
 {
-  std::string command;
+    std::string command;
 };
 ZJSON_DERIVE(CommandRequest, command);
 
 struct CommandResponse
 {
-  bool success;
+    bool success;
 };
 ZJSON_DERIVE(CommandResponse, success);
 
 struct Dataset
 {
-  std::string name;
-  std::string dsorg;
-  std::string volser;
-  bool migr;
+    std::string name;
+    std::string dsorg;
+    std::string volser;
+    bool migr;
 };
 ZJSON_DERIVE(Dataset, name, dsorg, volser, migr);
 
 struct DatasetAttributes
 {
-  zstd::optional<std::string> alcunit;
-  // int
-  zstd::optional<int> blksize;
-  // int
-  zstd::optional<int> dirblk;
-  zstd::optional<std::string> dsorg;
-  // int
-  int primary;
-  zstd::optional<std::string> recfm;
-  // int
-  int lrecl;
-  zstd::optional<std::string> dataclass;
-  zstd::optional<std::string> unit;
-  zstd::optional<std::string> dsntype;
-  zstd::optional<std::string> mgntclass;
-  zstd::optional<std::string> dsname;
-  // int
-  zstd::optional<int> avgblk;
-  // int
-  zstd::optional<int> secondary;
-  zstd::optional<std::string> size;
-  zstd::optional<std::string> storclass;
-  zstd::optional<std::string> vol;
+    zstd::optional<std::string> alcunit;
+    // int
+    zstd::optional<int> blksize;
+    // int
+    zstd::optional<int> dirblk;
+    zstd::optional<std::string> dsorg;
+    // int
+    int primary;
+    zstd::optional<std::string> recfm;
+    // int
+    int lrecl;
+    zstd::optional<std::string> dataclass;
+    zstd::optional<std::string> unit;
+    zstd::optional<std::string> dsntype;
+    zstd::optional<std::string> mgntclass;
+    zstd::optional<std::string> dsname;
+    // int
+    zstd::optional<int> avgblk;
+    // int
+    zstd::optional<int> secondary;
+    zstd::optional<std::string> size;
+    zstd::optional<std::string> storclass;
+    zstd::optional<std::string> vol;
 };
 ZJSON_DERIVE(DatasetAttributes, alcunit, blksize, dirblk, dsorg, primary, recfm, lrecl, dataclass, unit, dsntype, mgntclass, dsname, avgblk, secondary, size, storclass, vol);
 
 struct DsMember
 {
-  std::string name;
+    std::string name;
 };
 ZJSON_DERIVE(DsMember, name);
 
 struct UssItem
 {
-  std::string name;
-  // int
-  int links;
-  std::string user;
-  std::string group;
-  // int
-  int size;
-  zstd::optional<std::string> filetag;
-  std::string mtime;
-  std::string mode;
+    std::string name;
+    // int
+    int links;
+    std::string user;
+    std::string group;
+    // int
+    int size;
+    zstd::optional<std::string> filetag;
+    std::string mtime;
+    std::string mode;
 };
 ZJSON_DERIVE(UssItem, name, links, user, group, size, filetag, mtime, mode);
 
 struct Job
 {
-  std::string id;
-  std::string name;
-  std::string status;
-  std::string retcode;
+    std::string id;
+    std::string name;
+    std::string status;
+    std::string retcode;
 };
 ZJSON_DERIVE(Job, id, name, status, retcode);
 
 struct Spool
 {
-  // int
-  int id;
-  std::string ddname;
-  std::string stepname;
-  std::string dsname;
-  std::string procstep;
+    // int
+    int id;
+    std::string ddname;
+    std::string stepname;
+    std::string dsname;
+    std::string procstep;
 };
 ZJSON_DERIVE(Spool, id, ddname, stepname, dsname, procstep);
 
 struct StatusMessage
 {
-  std::string status;
-  std::string message;
-  zstd::optional<zjson::Value> data;
+    std::string status;
+    std::string message;
+    zstd::optional<zjson::Value> data;
 };
 ZJSON_DERIVE(StatusMessage, status, message, data);
 
 struct ListOptions
 {
-  // int
-  zstd::optional<int> maxItems;
-  // int
-  zstd::optional<int> responseTimeout;
+    // int
+    zstd::optional<int> maxItems;
+    // int
+    zstd::optional<int> responseTimeout;
 };
 ZJSON_DERIVE(ListOptions, maxItems, responseTimeout);
 
 struct ListDatasetOptions
 {
-  zstd::optional<std::string> start;
+    zstd::optional<std::string> start;
 };
 ZJSON_DERIVE(ListDatasetOptions, start);
 

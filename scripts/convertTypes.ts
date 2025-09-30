@@ -1,3 +1,14 @@
+/**
+ * This program and the accompanying materials are made available under the terms of the
+ * Eclipse Public License v2.0 which accompanies this distribution, and is available at
+ * https://www.eclipse.org/legal/epl-v20.html
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ *
+ * Copyright Contributors to the Zowe Project.
+ *
+ */
+
 // convertTypes.ts - Extract TypeScript interfaces and convert to C structs
 import * as ts from "typescript";
 import * as fs from "fs";
@@ -25,6 +36,8 @@ interface ExtractedInterface {
         type: string;
         optional: boolean;
         comment?: string;
+        hasTypeOverride?: boolean;
+        isLiteral?: boolean;
     }>;
     extends?: string[];
     sourceFile: string;
@@ -111,6 +124,14 @@ function extractInterfaces(filePath: string): ExtractedInterface[] {
                     const propType = member.type?.getText() || "any";
                     const optional = !!member.questionToken;
 
+                    // Check if this is a literal type (e.g., "listDatasets", 'test', false, 123, "2.0")
+                    const isLiteralType =
+                        (propType.startsWith('"') && propType.endsWith('"')) ||
+                        (propType.startsWith("'") && propType.endsWith("'")) ||
+                        propType === "true" ||
+                        propType === "false" ||
+                        /^\d+$/.test(propType); // numeric literals
+
                     // Extract comments within the property signature line
                     const memberStart = member.getFullStart();
                     const memberEnd = member.getEnd();
@@ -126,9 +147,11 @@ function extractInterfaces(filePath: string): ExtractedInterface[] {
                         comment = inlineCommentMatch[1].trim();
 
                         // Check for override syntax: name:type, :type, or name:
-                        const overrideMatch = comment?.match(/^([^:]*):(.*)$/);
-                        if (overrideMatch) {
-                            const [, nameMatch, typeMatch] = overrideMatch;
+                        // Split only on the first colon to handle types like zjson::Value
+                        const colonIndex = comment.indexOf(":");
+                        if (colonIndex !== -1) {
+                            const nameMatch = comment.substring(0, colonIndex);
+                            const typeMatch = comment.substring(colonIndex + 1);
                             nameOverride = nameMatch.trim() || undefined;
                             typeOverride = typeMatch.trim() || undefined;
                             comment = undefined; // Remove the override syntax from comment
@@ -143,12 +166,15 @@ function extractInterfaces(filePath: string): ExtractedInterface[] {
                     // Use override values if present, otherwise use extracted values
                     const finalName = nameOverride || propName;
                     const finalType = typeOverride || propType;
+                    const hasTypeOverride = typeOverride !== undefined;
 
                     properties.push({
                         name: finalName,
                         type: finalType,
                         optional,
                         comment,
+                        hasTypeOverride,
+                        isLiteral: isLiteralType,
                     });
                 }
             }
@@ -220,9 +246,9 @@ function generateCStruct(iface: ExtractedInterface): string {
         primaryBaseClass = baseTypes[0];
         flattenedBases = baseTypes.slice(1); // All bases after the first one
 
-        header += `struct ${structName} : public ${primaryBaseClass} {\n`;
+        header += `struct ${structName} : ${primaryBaseClass}\n{\n`;
     } else {
-        header += `struct ${structName} {\n`;
+        header += `struct ${structName}\n{\n`;
     }
 
     // Get inherited properties from primary base class only
@@ -230,7 +256,8 @@ function generateCStruct(iface: ExtractedInterface): string {
 
     // Add nested fields for additional base classes (beyond the first)
     for (const flattenedBase of flattenedBases) {
-        const fieldName = flattenedBase.toLowerCase();
+        // Convert to camelCase: first letter lowercase, rest preserved
+        const fieldName = flattenedBase.charAt(0).toLowerCase() + flattenedBase.slice(1);
         header += `    ${flattenedBase} ${fieldName};\n`;
     }
 
@@ -240,27 +267,26 @@ function generateCStruct(iface: ExtractedInterface): string {
             continue;
         }
 
+        // Skip literal type fields (they are constants, not stored fields)
+        // UNLESS they have a type override (user wants to preserve them)
+        if (prop.isLiteral && !prop.hasTypeOverride) {
+            continue;
+        }
+
         if (prop.comment) {
             header += `    // ${prop.comment}\n`;
         }
 
-        // For type overrides, use them directly if they look like C++ types,
-        // otherwise process through the mapping function
         let cType: string;
-        if (
-            prop.type.includes("*") ||
-            prop.type.includes("std::") ||
-            prop.type.includes("int") ||
-            prop.type.includes("char") ||
-            prop.type === "bool" // Only exact match for bool, not boolean
-        ) {
-            // This looks like a C++ type override, use directly
+
+        if (prop.hasTypeOverride) {
+            // Type override from comment: use directly without any inspection or mapping
             cType = prop.type;
             if (prop.optional && !cType.includes("zstd::optional") && !cType.includes("*")) {
                 cType = `zstd::optional<${cType}>`;
             }
         } else {
-            // Regular TypeScript type, process through mapping
+            // Regular TypeScript type: process through mapping
             cType = mapTypeScriptToCType(prop.type, prop.optional);
         }
 
@@ -276,7 +302,8 @@ function generateCStruct(iface: ExtractedInterface): string {
 
         // Add flattened fields with .flatten()
         for (const flattenedBase of flattenedBases) {
-            const fieldName = flattenedBase.toLowerCase();
+            // Convert to camelCase: first letter lowercase, rest preserved
+            const fieldName = flattenedBase.charAt(0).toLowerCase() + flattenedBase.slice(1);
             fieldSpecs.push(`ZJSON_FIELD(${structName}, ${fieldName}).flatten()`);
         }
 
@@ -300,20 +327,44 @@ function generateCStruct(iface: ExtractedInterface): string {
         }
     } else {
         // Use ZJSON_DERIVE for simple cases without flattening
-        const ownFields = iface.properties
-            .filter((prop) => {
-                // Skip properties that are inherited from the primary base class
-                if (primaryInheritedProps.has(prop.name)) {
-                    return false;
-                }
-                return true;
-            })
-            .map((prop) => prop.name);
+        // For structs with C++ inheritance, we need to include ALL fields (inherited + own)
+        // because ZJSON_DERIVE doesn't automatically handle base class fields
+        const allFields: string[] = [];
+        const fieldsSeen = new Set<string>();
+        const literalFields = new Set<string>();
 
-        if (ownFields.length > 0) {
-            header += `ZJSON_DERIVE(${structName}, ${ownFields.join(", ")});\n`;
-        } else {
-            header += `ZJSON_DERIVE(${structName});\n`;
+        // Collect literal field names from child to exclude them (unless they have type override)
+        for (const prop of iface.properties) {
+            if (prop.isLiteral && !prop.hasTypeOverride) {
+                literalFields.add(prop.name);
+            }
+        }
+
+        // First, add inherited fields from the primary base class (excluding literals without overrides)
+        if (primaryBaseClass) {
+            const baseInterface = allInterfaces.get(primaryBaseClass);
+            if (baseInterface) {
+                for (const baseProp of baseInterface.properties) {
+                    // Skip if field is overridden with literal in child, or already seen
+                    if (!fieldsSeen.has(baseProp.name) && !literalFields.has(baseProp.name)) {
+                        allFields.push(baseProp.name);
+                        fieldsSeen.add(baseProp.name);
+                    }
+                }
+            }
+        }
+
+        // Then add own fields (skip if already added from base or is literal without override)
+        for (const prop of iface.properties) {
+            const shouldSkip = prop.isLiteral && !prop.hasTypeOverride;
+            if (!fieldsSeen.has(prop.name) && !shouldSkip) {
+                allFields.push(prop.name);
+                fieldsSeen.add(prop.name);
+            }
+        }
+
+        if (allFields.length > 0) {
+            header += `ZJSON_DERIVE(${structName}, ${allFields.join(", ")});\n`;
         }
     }
 

@@ -15,7 +15,7 @@
 // source: common.go
 
 export interface RpcNotification {
-    jsonrpc: "2.0";
+    jsonrpc: "2.0" /* :std::string */;
     method: string;
     params?: any;
 }
@@ -29,7 +29,7 @@ export interface ErrorDetails {
     data?: any;
 }
 export interface RpcResponse {
-    jsonrpc: "2.0";
+    jsonrpc: "2.0" /* :std::string */;
     result?: any;
     error?: ErrorDetails;
     id: number /* int */;
@@ -169,7 +169,6 @@ export interface Spool {
 export interface StatusMessage {
     status: string;
     message: string;
-    // TODO: Fix wrong type in CPP
     data?: { [key: string]: any } /* :zjson::Value */;
 }
 
