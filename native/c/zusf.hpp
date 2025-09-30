@@ -27,11 +27,15 @@ typedef struct _ListOptions
 {
   bool all_files;
   bool long_format;
+  int max_depth;
+  _ListOptions(bool all_files = false, bool long_format = false, int max_depth = 1) : all_files(all_files), long_format(long_format), max_depth(max_depth)
+  {
+  }
 } ListOptions;
 
 int zusf_create_uss_file_or_dir(ZUSF *zusf, const std::string &file, mode_t mode, bool createDir);
 std::string zusf_format_file_entry(ZUSF *zusf, const struct stat &file_stats, const std::string &file_path, const std::string &display_name, ListOptions options, bool use_csv_format);
-int zusf_list_uss_file_path(ZUSF *zusf, std::string file, std::string &response, ListOptions options = ListOptions{}, bool use_csv_format = false);
+int zusf_list_uss_file_path(ZUSF *zusf, std::string file, std::string &response, ListOptions options = ListOptions(), bool use_csv_format = false);
 int zusf_read_from_uss_file(ZUSF *zusf, const std::string &file, std::string &response);
 int zusf_read_from_uss_file_streamed(ZUSF *zusf, const std::string &file, const std::string &pipe, size_t *content_len);
 int zusf_write_to_uss_file(ZUSF *zusf, const std::string &file, std::string &data);

@@ -7,6 +7,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## Recent Changes
 
 - `c`: Added `zowex tool list-parmlib` command to list parmlib concatenation data sets.
+- `native`: Added a `--depth` option to the `zowex uss list` command for listing USS directories recursively. [#575](https://github.com/zowe/zowe-native-proto/pull/575)
 
 ## `0.1.9`
 
