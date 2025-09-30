@@ -13,10 +13,9 @@
 #define ZUT_HPP
 
 #include <iconv.h>
-#include <iostream>
 #include <vector>
 #include <string>
-#include "zcntype.h"
+#include "ztype.h"
 
 /**
  * @struct ZConvData
@@ -210,7 +209,6 @@ unsigned char zut_get_key();
  * @brief Default debug message function for zut_dump_storage
  *
  * @param message Message to be printed
- * @return int rc Return code (0 for success, non-zero for error)
  */
 void zut_debug_message(const char *message);
 

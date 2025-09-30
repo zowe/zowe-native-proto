@@ -18,48 +18,59 @@
 #include <ctype.h>
 #include "zutm.h"
 
-typedef int (*zut_print_func)(const char *fmt);
+typedef void (*zut_print_func)(const char *fmt);
 
 /**
  * @brief Dump a memory region to output for debugging
  * @param label Label for the dump
  * @param addr Pointer to the memory region
  * @param size Size of the memory region in bytes
+ * @param bytes_per_line Number of bytes per line
+ * @param new_line Whether to print a new line
  * @param cb_print Call back function to print the output
  */
-static void zut_dump_storage(const char *title, const void *data, int size, zut_print_func cb_print)
+static void zut_dump_storage_common(const char *title, const void *data, int size, int bytes_per_line, int new_line, zut_print_func cb_print)
 {
   int len = 0;
   char buf[1024] = {0};
-  len += sprintf(buf + len, "--- Dumping storage for '%s' at x'%016llx' ---\n", title, (unsigned long long)data);
+  len += sprintf(buf + len, "--- Dumping storage for '%s' at x'%016llx' ---", title, (unsigned long long)data);
+  if (new_line)
+  {
+    len += sprintf(buf + len, "\n");
+  }
   cb_print(buf);
   memset(buf, 0, sizeof(buf));
   len = 0;
 
   unsigned char *ptr = (unsigned char *)data;
 
-#define BYTES_PER_LINE 32
+#define MAX_BYTES_PER_LINE 32
+
+  if (bytes_per_line > MAX_BYTES_PER_LINE)
+  {
+    bytes_per_line = MAX_BYTES_PER_LINE;
+  }
 
   int index = 0;
   char spaces[] = "                                ";
-  char fmt_buf[BYTES_PER_LINE + 1] = {0};
+  char fmt_buf[MAX_BYTES_PER_LINE + 1] = {0};
 
-  int lines = size / BYTES_PER_LINE;
-  int remainder = size % BYTES_PER_LINE;
+  int lines = size / bytes_per_line;
+  int remainder = size % bytes_per_line;
   char unknown = '.';
 
   for (int x = 0; x < lines; x++)
   {
     len += sprintf(buf + len, "%016llx", (unsigned long long)ptr);
     len += sprintf(buf + len, " | ");
-    for (int y = 0; y < BYTES_PER_LINE; y++)
+    for (int y = 0; y < bytes_per_line; y++)
     {
       unsigned char p = isprint(ptr[y]) ? ptr[y] : unknown;
       len += sprintf(buf + len, "%c", p);
     }
     len += sprintf(buf + len, " | ");
 
-    for (int y = 0; y < BYTES_PER_LINE; y++)
+    for (int y = 0; y < bytes_per_line; y++)
     {
       len += sprintf(buf + len, "%02x", (unsigned char)ptr[y]);
 
@@ -72,11 +83,14 @@ static void zut_dump_storage(const char *title, const void *data, int size, zut_
         len += sprintf(buf + len, "    ");
       }
     }
-    len += sprintf(buf + len, "\n");
+    if (new_line)
+    {
+      len += sprintf(buf + len, "\n");
+    }
     cb_print(buf);
     memset(buf, 0, sizeof(buf));
     len = 0;
-    ptr = ptr + BYTES_PER_LINE;
+    ptr = ptr + bytes_per_line;
   }
 
   len += sprintf(buf + len, "%016llx", (unsigned long long)ptr);
@@ -86,8 +100,8 @@ static void zut_dump_storage(const char *title, const void *data, int size, zut_
     unsigned char p = isprint(ptr[y]) ? ptr[y] : unknown;
     len += sprintf(buf + len, "%c", p);
   }
-  memset(fmt_buf, 0x00, sizeof(fmt_buf));
-  sprintf(fmt_buf, "%.*s | ", BYTES_PER_LINE - remainder, spaces);
+  memset(fmt_buf, 0x00, bytes_per_line);
+  sprintf(fmt_buf, "%.*s | ", bytes_per_line - remainder, spaces);
   len += sprintf(buf + len, "%s", fmt_buf);
   for (int y = 0; y < remainder; y++)
   {
@@ -102,15 +116,27 @@ static void zut_dump_storage(const char *title, const void *data, int size, zut_
       len += sprintf(buf + len, "    ");
     }
   }
-  len += sprintf(buf + len, "\n");
+  if (new_line)
+  {
+    len += sprintf(buf + len, "\n");
+  }
   cb_print(buf);
   memset(buf, 0, sizeof(buf));
   len = 0;
 
-  len += sprintf(buf + len, "--- END ---\n");
+  len += sprintf(buf + len, "--- END ---");
+  if (new_line)
+  {
+    len += sprintf(buf + len, "\n");
+  }
   cb_print(buf);
   memset(buf, 0, sizeof(buf));
   len = 0;
+}
+
+static void zut_dump_storage(const char *title, const void *data, int size, zut_print_func cb_print)
+{
+  zut_dump_storage_common(title, data, size, 32, 1, cb_print);
 }
 
 #endif

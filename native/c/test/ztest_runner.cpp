@@ -22,6 +22,7 @@
 #include "zlogger.test.hpp"
 #include "parser.test.hpp"
 #include "zstd.test.hpp"
+#include "zjson.test.hpp"
 #include "ztest.hpp"
 
 using namespace std;
@@ -53,6 +54,7 @@ int main(int argc, char *argv[])
         zlogger_tests();
         parser_tests();
         zstd_tests();
+        zjson_tests();
       });
 
   return rc;
