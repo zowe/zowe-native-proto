@@ -35,6 +35,12 @@ void register_job_commands(CommandDispatcher &dispatcher);
 void register_uss_commands(CommandDispatcher &dispatcher);
 
 /**
+ * Register all command related commands with the dispatcher
+ * @param dispatcher The CommandDispatcher instance to register commands with
+ */
+void register_cmd_commands(CommandDispatcher &dispatcher);
+
+/**
  * Internal helper method to process base64 encoded data from arguments
  * Decodes base64 data and moves it to the input stream, removing the "data" argument
  * @param context The MiddlewareContext to process

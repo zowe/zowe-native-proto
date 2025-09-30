@@ -28,6 +28,7 @@
 #include "zowed.hpp"
 #include "dispatcher.hpp"
 #include "commands.hpp"
+#include "server.hpp"
 
 class ZowedServer
 {
@@ -125,7 +126,7 @@ private:
         .data = checksums.empty() ? zstd::optional<zjson::Value>() : zstd::optional<zjson::Value>(checksumsObj),
     };
 
-    std::string jsonString = serializeJson(zjson::to_value(statusMsg).value());
+    std::string jsonString = RpcServer::serializeJson(zjson::to_value(statusMsg).value());
     std::cout << jsonString << std::endl;
   }
 
@@ -175,6 +176,8 @@ public:
     register_ds_commands(dispatcher);
     register_job_commands(dispatcher);
     register_uss_commands(dispatcher);
+    register_cmd_commands(dispatcher);
+
     // Create worker pool
     workerPool.reset(new WorkerPool(options.numWorkers));
 
