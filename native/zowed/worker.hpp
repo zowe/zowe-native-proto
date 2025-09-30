@@ -19,58 +19,10 @@
 #include <string>
 #include <vector>
 #include <memory>
-#include <functional>
-#include <unordered_map>
-#include "../c/zjson.hpp"
-#include "../c/types/common.h"
-#include "dispatcher.hpp"
-
-using zjson::Value;
-
-// Utility function to serialize JSON
-inline std::string serializeJson(const zjson::Value &val, bool prettify = false)
-{
-  auto result = prettify ? zjson::to_string_pretty(val) : zjson::to_string(val);
-  if (!result.has_value())
-  {
-    throw std::runtime_error(std::string("Failed to serialize JSON: ") + result.error().what());
-  }
-  return result.value();
-}
 
 // Forward declarations
 class Worker;
 class WorkerPool;
-
-// Helper function for parsing RPC requests from JSON
-inline RpcRequest parseRpcRequest(const zjson::Value &j)
-{
-  if (!j.is_object())
-  {
-    throw std::runtime_error("JSON-RPC request must be an object");
-  }
-
-  auto result = zjson::from_value<RpcRequest>(j);
-  if (!result.has_value())
-  {
-    throw std::runtime_error(std::string("Failed to parse RPC request: ") + result.error().what());
-  }
-  return result.value();
-}
-
-// Helper functions for working with common types
-inline zjson::Value rpcResponseToJson(const RpcResponse &response)
-{
-  return zjson::to_value(response).value_or(zjson::Value::create_object());
-}
-
-inline zjson::Value errorDetailsToJson(const ErrorDetails &error)
-{
-  return zjson::to_value(error).value_or(zjson::Value::create_object());
-}
-
-// Command handler function type
-using CommandHandler = std::function<zjson::Value(const zjson::Value &params)>;
 
 // Worker class that processes command requests
 class Worker
@@ -83,15 +35,12 @@ private:
   std::condition_variable queueCondition;
   std::atomic<bool> ready;
   std::atomic<bool> shouldStop;
-  std::mutex *responseMutex; // Shared response mutex
 
   void workerLoop();
   void processRequest(const std::string &data);
-  void printErrorResponse(const ErrorDetails &error, int requestId);
-  void printCommandResponse(const zjson::Value &result, int requestId);
 
 public:
-  Worker(int workerId, std::mutex *respMutex);
+  Worker(int workerId);
   ~Worker();
 
   void start();
@@ -112,7 +61,6 @@ class WorkerPool
 {
 private:
   std::vector<std::unique_ptr<Worker>> workers;
-  std::mutex responseMutex;
   std::mutex readyMutex;
   std::condition_variable readyCondition;
   std::atomic<int32_t> readyCount;
