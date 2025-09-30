@@ -53,8 +53,8 @@ TARGET = zowed
 LIBRARY = libzowed.so
 
 # Source files
-LIB_SOURCES = zowed.cpp worker.cpp dispatcher.cpp parser.cpp
-LIB_OBJECTS = $(OUT_DIR)/zowed.o $(OUT_DIR)/worker.o $(OUT_DIR)/dispatcher.o $(OUT_DIR)/parser.o
+LIB_SOURCES = zowed.cpp worker.cpp dispatcher.cpp parser.cpp commands.cpp
+LIB_OBJECTS = $(OUT_DIR)/zowed.o $(OUT_DIR)/worker.o $(OUT_DIR)/dispatcher.o $(OUT_DIR)/parser.o $(OUT_DIR)/commands.o
 CMDS_OBJECTS = $(OUT_DIR)/commands/ds.o $(OUT_DIR)/commands/job.o $(OUT_DIR)/commands/uss.o
 
 # Default target - build both shared library and executable
