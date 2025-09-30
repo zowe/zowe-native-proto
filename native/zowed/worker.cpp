@@ -91,8 +91,8 @@ void Worker::processRequest(const std::string &data)
 
     RpcRequest request = parseRpcRequest(requestJson);
 
-    // Use RpcDispatcher singleton to handle the command
-    RpcDispatcher &dispatcher = RpcDispatcher::getInstance();
+    // Use CommandDispatcher singleton to handle the command
+    CommandDispatcher &dispatcher = CommandDispatcher::getInstance();
 
     // Check if command is registered
     if (!dispatcher.has_command(request.method))

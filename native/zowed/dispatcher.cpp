@@ -13,21 +13,21 @@
 #include <vector>
 #include <algorithm>
 
-RpcDispatcher &RpcDispatcher::getInstance()
+CommandDispatcher &CommandDispatcher::getInstance()
 {
-  static RpcDispatcher instance;
+  static CommandDispatcher instance;
   return instance;
 }
 
-RpcDispatcher::RpcDispatcher()
+CommandDispatcher::CommandDispatcher()
 {
 }
 
-RpcDispatcher::~RpcDispatcher()
+CommandDispatcher::~CommandDispatcher()
 {
 }
 
-bool RpcDispatcher::register_command(const std::string &command_name, CommandHandler handler, InputHandler input_handler)
+bool CommandDispatcher::register_command(const std::string &command_name, CommandHandler handler, InputHandler input_handler)
 {
   if (command_name.empty() || handler == nullptr)
   {
@@ -51,7 +51,7 @@ bool RpcDispatcher::register_command(const std::string &command_name, CommandHan
   return true;
 }
 
-int RpcDispatcher::dispatch(const std::string &command_name, MiddlewareContext &context)
+int CommandDispatcher::dispatch(const std::string &command_name, MiddlewareContext &context)
 {
   auto it = m_command_handlers.find(command_name);
   if (it == m_command_handlers.end())
@@ -93,12 +93,12 @@ int RpcDispatcher::dispatch(const std::string &command_name, MiddlewareContext &
   }
 }
 
-bool RpcDispatcher::has_command(const std::string &command_name) const
+bool CommandDispatcher::has_command(const std::string &command_name) const
 {
   return m_command_handlers.find(command_name) != m_command_handlers.end();
 }
 
-std::vector<std::string> RpcDispatcher::get_registered_commands() const
+std::vector<std::string> CommandDispatcher::get_registered_commands() const
 {
   std::vector<std::string> commands;
   commands.reserve(m_command_handlers.size());
@@ -113,7 +113,7 @@ std::vector<std::string> RpcDispatcher::get_registered_commands() const
   return commands;
 }
 
-bool RpcDispatcher::unregister_command(const std::string &command_name)
+bool CommandDispatcher::unregister_command(const std::string &command_name)
 {
   auto it = m_command_handlers.find(command_name);
   if (it == m_command_handlers.end())
@@ -133,7 +133,7 @@ bool RpcDispatcher::unregister_command(const std::string &command_name)
   return true;
 }
 
-void RpcDispatcher::clear()
+void CommandDispatcher::clear()
 {
   m_command_handlers.clear();
   m_input_handlers.clear();
