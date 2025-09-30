@@ -23,7 +23,7 @@
 #include <unordered_map>
 #endif
 
-class RpcDispatcher
+class CommandDispatcher
 {
 public:
   // CommandHandler type from plugin.hpp
@@ -33,11 +33,11 @@ public:
   typedef std::function<void(MiddlewareContext &)> InputHandler;
 
   // Singleton access method
-  static RpcDispatcher &getInstance();
+  static CommandDispatcher &getInstance();
 
   // Delete copy constructor and assignment operator to prevent copying
-  RpcDispatcher(const RpcDispatcher &) = delete;
-  RpcDispatcher &operator=(const RpcDispatcher &) = delete;
+  CommandDispatcher(const CommandDispatcher &) = delete;
+  CommandDispatcher &operator=(const CommandDispatcher &) = delete;
 
   // Register a new command with its handler and optional input handler
   bool register_command(const std::string &command_name, CommandHandler handler, InputHandler input_handler = nullptr);
@@ -59,10 +59,10 @@ public:
 
 private:
   // Private constructor for singleton
-  RpcDispatcher();
+  CommandDispatcher();
 
   // Private destructor
-  ~RpcDispatcher();
+  ~CommandDispatcher();
 
 #if defined(__clang__)
   std::unordered_map<std::string, CommandHandler> m_command_handlers;

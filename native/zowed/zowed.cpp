@@ -171,8 +171,8 @@ public:
     // Set up signal handling
     setupSignalHandlers();
 
-    // Initialize RpcDispatcher singleton
-    RpcDispatcher &dispatcher = RpcDispatcher::getInstance();
+    // Initialize CommandDispatcher singleton
+    CommandDispatcher &dispatcher = CommandDispatcher::getInstance();
 
     // Register data set command handlers
     dispatcher.register_command("listDatasets", ds::handle_data_set_list);
