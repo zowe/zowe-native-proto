@@ -49,7 +49,7 @@ const ArgTemplate JOB_ID = {
     make_aliases()};
 
 const ArgTemplate FILE_PATH = {
-    "file-path",
+    "fspath",
     make_aliases(),
     "file path",
     ArgType_Single,

@@ -1061,6 +1061,133 @@ zstd::expected<std::string, Error> to_string(const T &value)
   }
 }
 
+// Helper function for JSON string escaping
+inline std::string escape_json_string(const std::string &input)
+{
+  std::string output;
+  output.reserve(input.length());
+
+  for (char c : input)
+  {
+    switch (c)
+    {
+    case '"':
+      output += "\\\"";
+      break;
+    case '\\':
+      output += "\\\\";
+      break;
+    case '\b':
+      output += "\\b";
+      break;
+    case '\f':
+      output += "\\f";
+      break;
+    case '\n':
+      output += "\\n";
+      break;
+    case '\r':
+      output += "\\r";
+      break;
+    case '\t':
+      output += "\\t";
+      break;
+    default:
+      if ('\x00' <= c && c <= '\x1f')
+      {
+        char buf[7];
+        snprintf(buf, sizeof(buf), "\\u%04x", static_cast<unsigned char>(c));
+        output += buf;
+      }
+      else
+      {
+        output += c;
+      }
+      break;
+    }
+  }
+  return output;
+}
+
+// Helper function for JSON string unescaping
+inline std::string unescape_json_string(const std::string &s)
+{
+  std::string res;
+  res.reserve(s.length());
+  for (std::string::size_type i = 0; i < s.length(); ++i)
+  {
+    if (s[i] == '\\' && i + 1 < s.length())
+    {
+      switch (s[++i])
+      {
+      case '"':
+        res += '"';
+        break;
+      case '\\':
+        res += '\\';
+        break;
+      case '/':
+        res += '/';
+        break;
+      case 'b':
+        res += '\b';
+        break;
+      case 'f':
+        res += '\f';
+        break;
+      case 'n':
+        res += '\n';
+        break;
+      case 'r':
+        res += '\r';
+        break;
+      case 't':
+        res += '\t';
+        break;
+      case 'u':
+        if (i + 4 < s.length())
+        {
+          try
+          {
+            std::string hex = s.substr(i + 1, 4);
+            unsigned long val = std::stoul(hex, nullptr, 16);
+            if (val < 256)
+            {
+              res += static_cast<char>(val);
+            }
+            else
+            {
+              // For values outside of single byte range, preserve original escape
+              res += "\\u" + hex;
+            }
+            i += 4;
+          }
+          catch (...)
+          {
+            res += "\\u"; // Malformed, just append what we can
+          }
+        }
+        else
+        {
+          res += '\\';
+          res += 'u';
+        }
+        break;
+      default:
+        // Unrecognized escape sequence, just append as is
+        res += '\\';
+        res += s[i];
+        break;
+      }
+    }
+    else
+    {
+      res += s[i];
+    }
+  }
+  return res;
+}
+
 inline Value json_handle_to_value(JSON_INSTANCE *instance, KEY_HANDLE *key_handle)
 {
   try
@@ -1118,7 +1245,8 @@ inline Value json_handle_to_value(JSON_INSTANCE *instance, KEY_HANDLE *key_handl
       {
         return Value();
       }
-      return Value(std::string(value_ptr, value_length));
+      std::string raw_str(value_ptr, value_length);
+      return Value(unescape_json_string(raw_str));
     }
 
     case HWTJ_ARRAY_TYPE:
@@ -1457,7 +1585,10 @@ inline int value_to_json_instance(JSON_INSTANCE *instance, KEY_HANDLE *parent_ha
   case Value::String:
     entry_type = HWTJ_STRINGVALUETYPE;
     // ZJSMCREN handles all string escaping automatically
-    rc = ZJSMCREN(instance, parent_handle, entry_name_ptr, value.as_string().c_str(), &entry_type, &new_entry_handle);
+    {
+      std::string escaped_str = escape_json_string(value.as_string());
+      rc = ZJSMCREN(instance, parent_handle, entry_name_ptr, escaped_str.c_str(), &entry_type, &new_entry_handle);
+    }
     break;
 
   case Value::Array:
