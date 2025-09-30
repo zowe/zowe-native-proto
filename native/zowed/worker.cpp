@@ -10,11 +10,11 @@
  */
 
 #include "worker.hpp"
-#include <iostream>
+#include "server.hpp"
 
 // Worker implementation
-Worker::Worker(int workerId, std::mutex *respMutex)
-    : id(workerId), ready(false), shouldStop(false), responseMutex(respMutex)
+Worker::Worker(int workerId)
+    : id(workerId), ready(false), shouldStop(false)
 {
 }
 
@@ -72,175 +72,9 @@ void Worker::workerLoop()
 
 void Worker::processRequest(const std::string &data)
 {
-  try
-  {
-    // Parse the JSON request
-    auto parse_result = zjson::from_str<zjson::Value>(data);
-
-    if (!parse_result.has_value())
-    {
-      ErrorDetails error{
-          -32700,
-          std::string("Failed to parse command request: ") + parse_result.error().what(),
-          zstd::optional<zjson::Value>()};
-      printErrorResponse(error, 0); // No request ID available
-      return;
-    }
-
-    zjson::Value requestJson = parse_result.value();
-
-    RpcRequest request = parseRpcRequest(requestJson);
-
-    // Use CommandDispatcher singleton to handle the command
-    CommandDispatcher &dispatcher = CommandDispatcher::getInstance();
-
-    // Check if command is registered
-    if (!dispatcher.has_command(request.method))
-    {
-      ErrorDetails error{
-          -32601,
-          "Unrecognized command " + request.method,
-          zstd::optional<zjson::Value>()};
-      printErrorResponse(error, request.id);
-      return;
-    }
-
-    // Create MiddlewareContext for the command
-    plugin::ArgumentMap args;
-
-    // Convert JSON params to ArgumentMap
-    if (request.params.has_value())
-    {
-      zjson::Value params = request.params.value();
-      if (!params.is_object())
-      {
-        ErrorDetails error{
-            -32602,
-            "Invalid parameters",
-            zstd::optional<zjson::Value>()};
-      }
-
-      // Convert JSON object to ArgumentMap
-      for (const auto &pair : params.as_object())
-      {
-        const std::string &key = pair.first;
-        const zjson::Value &value = pair.second;
-
-        if (value.is_bool())
-        {
-          args[key] = plugin::Argument(value.as_bool());
-        }
-        else if (value.is_number())
-        {
-          args[key] = plugin::Argument(static_cast<long long>(value.as_number()));
-        }
-        else if (value.is_string())
-        {
-          args[key] = plugin::Argument(value.as_string());
-        }
-        else if (value.is_array())
-        {
-          // Convert array to vector<string>
-          std::vector<std::string> stringArray;
-          for (const auto &arrayItem : value.as_array())
-          {
-            if (arrayItem.is_string())
-            {
-              stringArray.push_back(arrayItem.as_string());
-            }
-            else
-            {
-              // TODO Handle non-string values in arrays
-            }
-          }
-          args[key] = plugin::Argument(stringArray);
-        }
-        // For other types (null, object), convert to string representation
-        else
-        {
-          args[key] = plugin::Argument(zjson::to_string(value).value_or(""));
-        }
-      }
-    }
-
-    MiddlewareContext context(request.method, args);
-
-    // Dispatch the command
-    int result = dispatcher.dispatch(request.method, context);
-
-    if (result == 0)
-    {
-      // Success - get output and convert to JSON
-      std::string output = context.get_output_content();
-      zjson::Value resultJson;
-
-      if (!output.empty())
-      {
-        // Try to parse output as JSON, fallback to string
-        auto parse_result = zjson::from_str<zjson::Value>(output);
-        if (parse_result.has_value())
-        {
-          resultJson = parse_result.value();
-        }
-        else
-        {
-          resultJson = zjson::Value(output);
-        }
-      }
-      else
-      {
-        resultJson = zjson::Value::create_object();
-      }
-
-      printCommandResponse(resultJson, request.id);
-    }
-    else
-    {
-      // Error occurred
-      std::string errorOutput = context.get_error_content();
-      ErrorDetails error{
-          -32603, // Internal error
-          "Command execution failed",
-          errorOutput.empty() ? zstd::optional<zjson::Value>() : zstd::optional<zjson::Value>(zjson::Value(errorOutput))};
-      printErrorResponse(error, request.id);
-    }
-  }
-  catch (const std::exception &e)
-  {
-    ErrorDetails error{
-        -32700,
-        "Failed to parse command request: " + std::string(e.what()),
-        zstd::optional<zjson::Value>()};
-    printErrorResponse(error, 0); // No request ID available
-  }
-}
-
-void Worker::printErrorResponse(const ErrorDetails &error, int requestId)
-{
-  std::lock_guard<std::mutex> lock(*responseMutex);
-
-  RpcResponse response;
-  response.jsonrpc = "2.0";
-  response.result = zstd::optional<zjson::Value>();
-  response.error = zstd::optional<ErrorDetails>(error);
-  response.id = requestId;
-
-  std::string jsonString = serializeJson(rpcResponseToJson(response));
-  std::cout << jsonString << std::endl;
-}
-
-void Worker::printCommandResponse(const zjson::Value &result, int requestId)
-{
-  std::lock_guard<std::mutex> lock(*responseMutex);
-
-  RpcResponse response;
-  response.jsonrpc = "2.0";
-  response.result = zstd::optional<zjson::Value>(result);
-  response.error = zstd::optional<ErrorDetails>();
-  response.id = requestId;
-
-  std::string jsonString = serializeJson(rpcResponseToJson(response));
-  std::cout << jsonString << std::endl;
+  // Delegate JSON-RPC processing to the RpcServer singleton
+  RpcServer &server = RpcServer::getInstance();
+  server.processRequest(data);
 }
 
 // WorkerPool implementation
@@ -251,7 +85,7 @@ WorkerPool::WorkerPool(int numWorkers) : readyCount(0), isShuttingDown(false)
   // Create workers
   for (int i = 0; i < numWorkers; ++i)
   {
-    std::unique_ptr<Worker> worker(new Worker(i, &responseMutex));
+    std::unique_ptr<Worker> worker(new Worker(i));
     workers.push_back(std::move(worker));
   }
 
