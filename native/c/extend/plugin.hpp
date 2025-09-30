@@ -17,6 +17,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <cstddef>
 
 #if defined(__IBMTR1_CPP__) && !defined(__CLANG__)
 #include <tr1/unordered_map>
@@ -683,15 +684,22 @@ public:
 private:
   void unload_plugins();
   void record_loaded_plugin(void *plugin_handle, const std::string &plugin_identifier);
+  bool is_display_name_in_use(const std::string &name) const;
+  void discard_command_providers_from(std::size_t start_index);
 
   std::vector<CommandProvider *> m_command_providers;
   std::vector<LoadedPlugin> m_plugins;
   PluginMetadata m_pending_metadata;
   bool m_metadata_pending;
+  bool m_registration_rejected;
+  std::string m_duplicate_display_name;
+  std::size_t m_provider_snapshot;
 };
 
 inline PluginManager::PluginManager()
-    : m_metadata_pending(false)
+    : m_metadata_pending(false),
+      m_registration_rejected(false),
+      m_provider_snapshot(0)
 {
 }
 
@@ -709,15 +717,73 @@ inline PluginManager::~PluginManager()
 
 inline void PluginManager::register_command_provider(CommandProvider *provider)
 {
+  if (!provider)
+  {
+    return;
+  }
+
+  if (m_registration_rejected)
+  {
+    delete provider;
+    return;
+  }
+
   // Take ownership of the pointer for the plugin manager lifetime.
   m_command_providers.push_back(provider);
 }
 
 inline void PluginManager::register_plugin_metadata(const char *display_name, const char *version)
 {
+  if (m_registration_rejected)
+  {
+    return;
+  }
+
   m_pending_metadata.display_name = display_name ? display_name : "";
+  if (!m_pending_metadata.display_name.empty() && is_display_name_in_use(m_pending_metadata.display_name))
+  {
+    m_registration_rejected = true;
+    m_duplicate_display_name = m_pending_metadata.display_name;
+    m_metadata_pending = false;
+    m_pending_metadata = PluginMetadata();
+    return;
+  }
+
   m_pending_metadata.version = version ? version : "";
   m_metadata_pending = true;
+}
+
+inline bool PluginManager::is_display_name_in_use(const std::string &name) const
+{
+  if (name.empty())
+  {
+    return false;
+  }
+
+  for (std::vector<LoadedPlugin>::const_iterator it = m_plugins.begin(); it != m_plugins.end(); ++it)
+  {
+    if (it->metadata.display_name == name)
+    {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+inline void PluginManager::discard_command_providers_from(std::size_t start_index)
+{
+  if (start_index >= m_command_providers.size())
+  {
+    return;
+  }
+
+  for (std::size_t i = start_index; i < m_command_providers.size(); ++i)
+  {
+    delete m_command_providers[i];
+  }
+
+  m_command_providers.resize(start_index);
 }
 } // namespace plugin
 

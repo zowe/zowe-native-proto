@@ -239,8 +239,22 @@ void PluginManager::load_plugins()
       {
         m_metadata_pending = false;
         m_pending_metadata = PluginMetadata();
+        m_registration_rejected = false;
+        m_duplicate_display_name.clear();
+        m_provider_snapshot = m_command_providers.size();
 
         register_plugin(*this);
+
+        if (m_registration_rejected)
+        {
+          ZLOG_ERROR("Plugin %s rejected because display name '%s' is already registered",
+                     plugin_path.c_str(),
+                     m_duplicate_display_name.c_str());
+          discard_command_providers_from(m_provider_snapshot);
+          dlclose(plugin);
+          continue;
+        }
+
         record_loaded_plugin(plugin, entry->d_name);
       }
       else
@@ -280,6 +294,8 @@ void PluginManager::record_loaded_plugin(void *plugin_handle, const std::string 
   metadata.filename = plugin_identifier;
 
   m_plugins.push_back(LoadedPlugin(metadata, plugin_handle));
+  m_metadata_pending = false;
+  m_pending_metadata = PluginMetadata();
 }
 
 void PluginManager::register_commands(parser::Command &rootCommand)
