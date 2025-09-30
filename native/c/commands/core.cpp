@@ -67,7 +67,7 @@ int interactive_mode(plugin::InvocationContext &context)
     shm_id = init_shared_memory(&shm_ptr, shm_file_path.c_str());
     if (shm_id == -1)
     {
-      cerr << "Failed to initialize shared memory" << endl;
+      context.error_stream() << "Failed to initialize shared memory" << endl;
       return RTNCD_FAILURE;
     }
   }

@@ -17,21 +17,21 @@ using namespace std;
 
 namespace tso
 {
-int handle_tso_issue(InvocationContext &result)
+int handle_tso_issue(InvocationContext &context)
 {
   int rc = 0;
-  string command = result.get<std::string>("command", "");
+  string command = context.get<std::string>("command", "");
   string response;
 
   rc = ztso_issue(command, response);
 
   if (0 != rc)
   {
-    cerr << "Error running command, rc '" << rc << "'" << endl;
-    cerr << "  Details: " << response << endl;
+    context.error_stream() << "Error running command, rc '" << rc << "'" << endl;
+    context.error_stream() << "  Details: " << response << endl;
   }
 
-  cout << response;
+  context.output_stream() << response;
 
   return rc;
 }

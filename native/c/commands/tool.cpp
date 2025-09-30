@@ -45,7 +45,7 @@ int handle_tool_convert_dsect(InvocationContext &context)
   if (sysout.empty())
     sysout = "/tmp/" + struser + "_sysout.txt";
 
-  cout << adata_dsn << " " << chdr_dsn << " " << sysprint << " " << sysout << endl;
+  context.output_stream() << adata_dsn << " " << chdr_dsn << " " << sysprint << " " << sysout << endl;
 
   vector<string> dds;
   dds.reserve(4);
@@ -63,13 +63,13 @@ int handle_tool_convert_dsect(InvocationContext &context)
   rc = zut_convert_dsect();
   if (0 != rc)
   {
-    cerr << "Error: convert failed with rc: '" << rc << "'" << endl;
-    cout << "  See '" << sysprint << "' and '" << sysout << "' for more details" << endl;
+    context.error_stream() << "Error: convert failed with rc: '" << rc << "'" << endl;
+    context.output_stream() << "  See '" << sysprint << "' and '" << sysout << "' for more details" << endl;
     return RTNCD_FAILURE;
   }
 
-  cout << "DSECT converted to '" << chdr_dsn << "'" << endl;
-  cout << "Copy it via `cp \"//'" + chdr_dsn + "'\" <member>.h`" << endl;
+  context.output_stream() << "DSECT converted to '" << chdr_dsn << "'" << endl;
+  context.output_stream() << "Copy it via `cp \"//'" + chdr_dsn + "'\" <member>.h`" << endl;
 
   // Free dynalloc dds
   zut_free_dynalloc_dds(dds);
@@ -88,12 +88,12 @@ int handle_tool_dynalloc(InvocationContext &context)
   rc = zut_bpxwdyn(parm, &code, resp);
   if (0 != rc)
   {
-    cerr << "Error: bpxwdyn with parm '" << parm << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details: " << resp << endl;
+    context.error_stream() << "Error: bpxwdyn with parm '" << parm << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << "  Details: " << resp << endl;
     return RTNCD_FAILURE;
   }
 
-  cout << resp << endl;
+  context.output_stream() << resp << endl;
 
   return rc;
 }
@@ -108,10 +108,10 @@ int handle_tool_display_symbol(InvocationContext &context)
   rc = zut_substitute_symbol(symbol, value);
   if (0 != rc)
   {
-    cerr << "Error: asasymbf with parm '" << symbol << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << "Error: asasymbf with parm '" << symbol << "' rc: '" << rc << "'" << endl;
     return RTNCD_FAILURE;
   }
-  cout << value << endl;
+  context.output_stream() << value << endl;
 
   return RTNCD_SUCCESS;
 }
@@ -124,8 +124,8 @@ int handle_tool_list_parmlib(InvocationContext &context)
   rc = zut_list_parmlib(diag, parmlibs);
   if (0 != rc)
   {
-    cerr << "Error: could not list parmlibs rc: '" << rc << "'" << endl;
-    cerr << "  Details: " << diag.e_msg << endl;
+    context.error_stream() << "Error: could not list parmlibs rc: '" << rc << "'" << endl;
+    context.error_stream() << "  Details: " << diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
@@ -170,8 +170,8 @@ int handle_tool_search(InvocationContext &context)
   // Note failure if we can't list
   if (RTNCD_SUCCESS != rc && RTNCD_WARNING != rc)
   {
-    cerr << "Error: could not read data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details: " << zds.diag.e_msg << endl;
+    context.error_stream() << "Error: could not read data set: '" << dsn << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
@@ -200,8 +200,8 @@ int handle_tool_search(InvocationContext &context)
   zds_write_to_dd(&zds, "sysin", data);
   if (0 != rc)
   {
-    cerr << "Error: could not write to dd: '" << "sysin" << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details: " << zds.diag.e_msg << endl;
+    context.error_stream() << "Error: could not write to dd: '" << "sysin" << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
@@ -212,7 +212,7 @@ int handle_tool_search(InvocationContext &context)
       ZUT_RTNCD_SEARCH_SUCCESS != rc &&
       ZUT_RTNCD_SEARCH_WARNING != rc)
   {
-    cerr << "Error: could error invoking ISRSUPC rc: '" << rc << "'" << endl;
+    context.error_stream() << "Error: could error invoking ISRSUPC rc: '" << rc << "'" << endl;
   }
 
   // Read output from super c
@@ -220,17 +220,17 @@ int handle_tool_search(InvocationContext &context)
   rc = zds_read_from_dd(&zds, "outdd", output);
   if (0 != rc)
   {
-    cerr << "Error: could not read from dd: '" << "outdd" << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details: " << zds.diag.e_msg << endl;
+    context.error_stream() << "Error: could not read from dd: '" << "outdd" << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
-  cout << output << endl;
+  context.output_stream() << output << endl;
 
   if (results_truncated)
   {
     if (warn == "true")
     {
-      cerr << "Warning: results truncated" << endl;
+      context.error_stream() << "Warning: results truncated" << endl;
     }
   }
 
@@ -267,8 +267,8 @@ int handle_tool_amblist(InvocationContext &context)
   zds_write_to_dd(&zds, "sysin", statements);
   if (0 != rc)
   {
-    cerr << "Error: could not write to dd: '" << "sysin" << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details: " << zds.diag.e_msg << endl;
+    context.error_stream() << "Error: could not write to dd: '" << "sysin" << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
@@ -276,7 +276,7 @@ int handle_tool_amblist(InvocationContext &context)
   rc = zut_run("AMBLIST");
   if (RTNCD_SUCCESS != rc)
   {
-    cerr << "Error: could error invoking AMBLIST rc: '" << rc << "'" << endl;
+    context.error_stream() << "Error: could error invoking AMBLIST rc: '" << rc << "'" << endl;
   }
 
   // Read output from amblist
@@ -284,11 +284,11 @@ int handle_tool_amblist(InvocationContext &context)
   rc = zds_read_from_dd(&zds, "sysprint", output);
   if (0 != rc)
   {
-    cerr << "Error: could not read from dd: '" << "sysprint" << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details: " << zds.diag.e_msg << endl;
+    context.error_stream() << "Error: could not read from dd: '" << "sysprint" << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
-  cout << output << endl;
+  context.output_stream() << output << endl;
 
   // Free dynalloc dds
   zut_free_dynalloc_dds(dds);
@@ -311,7 +311,7 @@ int handle_tool_run(InvocationContext &context)
     ifstream in(dynalloc_pre.c_str());
     if (!in.is_open())
     {
-      cerr << "Error: could not open '" << dynalloc_pre << "'" << endl;
+      context.error_stream() << "Error: could not open '" << dynalloc_pre << "'" << endl;
       return RTNCD_FAILURE;
     }
 
@@ -336,7 +336,7 @@ int handle_tool_run(InvocationContext &context)
     ofstream out(ddname.c_str());
     if (!out.is_open())
     {
-      cerr << "Error: could not open input '" << ddname << "'" << endl;
+      context.error_stream() << "Error: could not open input '" << ddname << "'" << endl;
       return RTNCD_FAILURE;
     }
 
@@ -355,7 +355,7 @@ int handle_tool_run(InvocationContext &context)
 
   if (0 != rc)
   {
-    cerr << "Error: program '" << program << "' ended with rc: '" << rc << "'" << endl;
+    context.error_stream() << "Error: program '" << program << "' ended with rc: '" << rc << "'" << endl;
     rc = RTNCD_FAILURE;
   }
 
@@ -366,14 +366,14 @@ int handle_tool_run(InvocationContext &context)
     ifstream in(ddname.c_str());
     if (!in.is_open())
     {
-      cerr << "Error: could not open output '" << ddname << "'" << endl;
+      context.error_stream() << "Error: could not open output '" << ddname << "'" << endl;
       return RTNCD_FAILURE;
     }
 
     string line;
     while (getline(in, line))
     {
-      cout << line << endl;
+      context.output_stream() << line << endl;
     }
     in.close();
   }
@@ -386,7 +386,7 @@ int handle_tool_run(InvocationContext &context)
     ifstream in(dynalloc_post.c_str());
     if (!in.is_open())
     {
-      cerr << "Error: could not open '" << dynalloc_post << "'" << endl;
+      context.error_stream() << "Error: could not open '" << dynalloc_post << "'" << endl;
     }
 
     string line;

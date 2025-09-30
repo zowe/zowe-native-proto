@@ -60,7 +60,7 @@ int handle_console_issue(plugin::InvocationContext &context)
       context.error_stream() << "  Details: " << zcn.diag.e_msg << endl;
       return RTNCD_FAILURE;
     }
-    cout << response << endl;
+    context.output_stream() << response << endl;
   }
 
   rc = zcn_deactivate(&zcn);

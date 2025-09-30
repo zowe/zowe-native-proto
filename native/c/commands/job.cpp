@@ -54,11 +54,11 @@ int handle_job_list(InvocationContext &context)
         fields.push_back(it->jobname);
         fields.push_back(it->status);
         fields.push_back(it->correlator);
-        cout << zut_format_as_csv(fields) << endl;
+        context.output_stream() << zut_format_as_csv(fields) << endl;
       }
       else
       {
-        cout << it->jobid << " " << left << setw(10) << it->retcode << " " << it->jobname << " " << it->status << endl;
+        context.output_stream() << it->jobid << " " << left << setw(10) << it->retcode << " " << it->jobname << " " << it->status << endl;
       }
     }
   }
@@ -66,13 +66,13 @@ int handle_job_list(InvocationContext &context)
   {
     if (warn)
     {
-      cerr << "Warning: results truncated" << endl;
+      context.error_stream() << "Warning: results truncated" << endl;
     }
   }
   if (RTNCD_SUCCESS != rc && RTNCD_WARNING != rc)
   {
-    cerr << "Error: could not list jobs for: '" << owner_name << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details: " << zjb.diag.e_msg << endl;
+    context.error_stream() << "Error: could not list jobs for: '" << owner_name << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << "  Details: " << zjb.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
@@ -108,11 +108,11 @@ int handle_job_list_files(InvocationContext &context)
       fields.push_back(it->procstep);
       if (emit_csv)
       {
-        cout << zut_format_as_csv(fields) << endl;
+        context.output_stream() << zut_format_as_csv(fields) << endl;
       }
       else
       {
-        cout << left << setw(9) << it->ddn << " " << it->dsn << " " << setw(4) << it->key << " " << it->stepname << " " << it->procstep << endl;
+        context.output_stream() << left << setw(9) << it->ddn << " " << it->dsn << " " << setw(4) << it->key << " " << it->stepname << " " << it->procstep << endl;
       }
     }
   }
@@ -121,14 +121,14 @@ int handle_job_list_files(InvocationContext &context)
   {
     if (warn)
     {
-      cerr << "Warning: " << zjb.diag.e_msg << endl;
+      context.error_stream() << "Warning: " << zjb.diag.e_msg << endl;
     }
   }
 
   if (RTNCD_SUCCESS != rc && RTNCD_WARNING != rc)
   {
-    cerr << "Error: could not list files for: '" << jobid << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details: " << zjb.diag.e_msg << endl;
+    context.error_stream() << "Error: could not list files for: '" << jobid << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << "  Details: " << zjb.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
@@ -148,8 +148,8 @@ int handle_job_view_status(InvocationContext &context)
 
   if (0 != rc)
   {
-    cerr << "Error: could not view job status for: '" << jobid << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details: " << zjb.diag.e_msg << endl;
+    context.error_stream() << "Error: could not view job status for: '" << jobid << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << "  Details: " << zjb.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
@@ -163,11 +163,11 @@ int handle_job_view_status(InvocationContext &context)
     fields.push_back(job.status);
     fields.push_back(job.correlator);
     fields.push_back(job.full_status);
-    cout << zut_format_as_csv(fields) << endl;
+    context.output_stream() << zut_format_as_csv(fields) << endl;
   }
   else
   {
-    cout << job.jobid << " " << left << setw(10) << job.retcode << " " << job.jobname << " " << job.status << endl;
+    context.output_stream() << job.jobid << " " << left << setw(10) << job.retcode << " " << job.jobname << " " << job.status << endl;
   }
   return 0;
 }
@@ -197,8 +197,8 @@ int handle_job_view_file(InvocationContext &context)
 
   if (0 != rc)
   {
-    cerr << "Error: could not view job file for: '" << jobid << "' with key '" << key << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details: " << zjb.diag.e_msg << endl;
+    context.error_stream() << "Error: could not view job file for: '" << jobid << "' with key '" << key << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << "  Details: " << zjb.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
@@ -211,7 +211,7 @@ int handle_job_view_file(InvocationContext &context)
   }
   else
   {
-    cout << resp;
+    context.output_stream() << resp;
   }
 
   return RTNCD_SUCCESS;
@@ -228,12 +228,12 @@ int handle_job_view_jcl(InvocationContext &context)
 
   if (0 != rc)
   {
-    cerr << "Error: could not view job file for: '" << jobid << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details: " << zjb.diag.e_msg << endl;
+    context.error_stream() << "Error: could not view job file for: '" << jobid << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << "  Details: " << zjb.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
-  cout << resp;
+  context.output_stream() << resp;
 
   return 0;
 }
@@ -250,8 +250,8 @@ int handle_job_submit(InvocationContext &context)
   rc = zds_read_from_dsn(&zds, dsn, contents);
   if (0 != rc)
   {
-    cerr << "Error: could not read data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details: " << zds.diag.e_msg << endl;
+    context.error_stream() << "Error: could not read data set: '" << dsn << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
@@ -269,8 +269,8 @@ int handle_job_submit_uss(InvocationContext &context)
   rc = zusf_read_from_uss_file(&zusf, file, response);
   if (0 != rc)
   {
-    cerr << "Error: could not view USS file: '" << file << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details:\n"
+    context.error_stream() << "Error: could not view USS file: '" << file << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << "  Details:\n"
          << zusf.diag.e_msg << endl
          << response << endl;
     return RTNCD_FAILURE;
@@ -332,12 +332,12 @@ int handle_job_delete(InvocationContext &context)
 
   if (0 != rc)
   {
-    cerr << "Error: could not delete job: '" << jobid << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details: " << zjb.diag.e_msg << endl;
+    context.error_stream() << "Error: could not delete job: '" << jobid << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << "  Details: " << zjb.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
-  cout << "Job " << jobid << " deleted " << endl;
+  context.output_stream() << "Job " << jobid << " deleted " << endl;
 
   return RTNCD_SUCCESS;
 }
@@ -359,12 +359,12 @@ int handle_job_cancel(InvocationContext &context)
 
   if (0 != rc)
   {
-    cerr << "Error: could not cancel job: '" << jobid << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details: " << zjb.diag.e_msg << endl;
+    context.error_stream() << "Error: could not cancel job: '" << jobid << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << "  Details: " << zjb.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
-  cout << "Job " << jobid << " cancelled " << endl;
+  context.output_stream() << "Job " << jobid << " cancelled " << endl;
 
   return RTNCD_SUCCESS;
 }
@@ -379,12 +379,12 @@ int handle_job_hold(InvocationContext &context)
 
   if (0 != rc)
   {
-    cerr << "Error: could not hold job: '" << jobid << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details: " << zjb.diag.e_msg << endl;
+    context.error_stream() << "Error: could not hold job: '" << jobid << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << "  Details: " << zjb.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
-  cout << "Job " << jobid << " held " << endl;
+  context.output_stream() << "Job " << jobid << " held " << endl;
 
   return RTNCD_SUCCESS;
 }
@@ -399,12 +399,12 @@ int handle_job_release(InvocationContext &context)
 
   if (0 != rc)
   {
-    cerr << "Error: could not release job: '" << jobid << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details: " << zjb.diag.e_msg << endl;
+    context.error_stream() << "Error: could not release job: '" << jobid << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << "  Details: " << zjb.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
-  cout << "Job " << jobid << " released " << endl;
+  context.output_stream() << "Job " << jobid << " released " << endl;
 
   return RTNCD_SUCCESS;
 }
@@ -417,8 +417,8 @@ int job_submit_common(InvocationContext &context, string jcl, string &jobid, str
 
   if (0 != rc)
   {
-    cerr << "Error: could not submit JCL: '" << identifier << "' rc: '" << rc << "'" << endl;
-    cerr << "  Details: " << zjb.diag.e_msg << endl;
+    context.error_stream() << "Error: could not submit JCL: '" << identifier << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << "  Details: " << zjb.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
@@ -428,11 +428,11 @@ int job_submit_common(InvocationContext &context, string jcl, string &jobid, str
   transform(wait.begin(), wait.end(), wait.begin(), ::toupper);
 
   if (only_jobid)
-    cout << jobid << endl;
+    context.output_stream() << jobid << endl;
   else if (only_correlator)
-    cout << string(zjb.correlator, sizeof(zjb.correlator)) << endl;
+    context.output_stream() << string(zjb.correlator, sizeof(zjb.correlator)) << endl;
   else
-    cout << "Submitted " << identifier << ", " << jobid << endl;
+    context.output_stream() << "Submitted " << identifier << ", " << jobid << endl;
 
 #define JOB_STATUS_OUTPUT "OUTPUT"
 #define JOB_STATUS_INPUT "ACTIVE"
@@ -442,14 +442,14 @@ int job_submit_common(InvocationContext &context, string jcl, string &jobid, str
     rc = zjb_wait(&zjb, wait);
     if (0 != rc)
     {
-      cerr << "Error: could not wait for job status: '" << wait << "' rc: '" << rc << "'" << endl;
-      cerr << "  Details: " << zjb.diag.e_msg << endl;
+      context.error_stream() << "Error: could not wait for job status: '" << wait << "' rc: '" << rc << "'" << endl;
+      context.error_stream() << "  Details: " << zjb.diag.e_msg << endl;
       return RTNCD_FAILURE;
     }
   }
   else if ("" != wait)
   {
-    cerr << "Error: cannot wait for unknown status '" << wait << "'" << endl;
+    context.error_stream() << "Error: cannot wait for unknown status '" << wait << "'" << endl;
     return RTNCD_FAILURE;
   }
 
