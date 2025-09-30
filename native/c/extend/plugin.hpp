@@ -12,6 +12,7 @@
 #ifndef PLUGIN_HPP
 #define PLUGIN_HPP
 
+#include <memory>
 #include <iostream>
 #include <ostream>
 #include <sstream>
@@ -34,6 +35,406 @@ public:
   }
   virtual Interface *create() = 0;
 };
+
+namespace ast
+{
+using namespace std;
+struct Ast;
+
+#if !defined(__clang__)
+typedef tr1::shared_ptr<Ast> Node;
+typedef tr1::shared_ptr<string> StringPtr;
+typedef tr1::shared_ptr<vector<Node>> VecPtr;
+typedef tr1::unordered_map<string, Node> ObjMap;
+typedef tr1::shared_ptr<ObjMap> ObjPtr;
+#else
+typedef shared_ptr<Ast> Node;
+typedef shared_ptr<string> StringPtr;
+typedef shared_ptr<vector<Node>> VecPtr;
+typedef unordered_map<string, Node> ObjMap;
+typedef shared_ptr<ObjMap> ObjPtr;
+#endif
+
+struct Ast
+{
+  enum Kind
+  {
+    Null,
+    Boolean,
+    Integer,
+    Number,
+    String,
+    Array,
+    Object
+  };
+
+  // --- factories ---
+  static Node null()
+  {
+    return Node(new Ast(Null));
+  }
+  static Node boolean(bool v)
+  {
+    Node n(new Ast(Boolean));
+    n->b = v;
+    return n;
+  }
+  static Node integer(long long v)
+  {
+    Node n(new Ast(Integer));
+    n->i = v;
+    return n;
+  }
+  static Node number(double v)
+  {
+    Node n(new Ast(Number));
+    n->d = v;
+    return n;
+  }
+  static Node string(const std::string &v)
+  {
+    Node n(new Ast(String));
+    n->s.reset(new std::string(v));
+    return n;
+  }
+  static Node array()
+  {
+    Node n(new Ast(Array));
+    n->a.reset(new std::vector<Node>());
+    return n;
+  }
+  static Node object()
+  {
+    Node n(new Ast(Object));
+    n->o.reset(new ObjMap());
+    return n;
+  }
+
+  // --- kind checks ---
+  Kind kind() const
+  {
+    return k;
+  }
+  bool is_null() const
+  {
+    return k == Null;
+  }
+  bool is_bool() const
+  {
+    return k == Boolean;
+  }
+  bool is_integer() const
+  {
+    return k == Integer;
+  }
+  bool is_number() const
+  {
+    return k == Number || k == Integer;
+  }
+  bool is_string() const
+  {
+    return k == String;
+  }
+  bool is_array() const
+  {
+    return k == Array;
+  }
+  bool is_object() const
+  {
+    return k == Object;
+  }
+
+  // --- accessors (const) ---
+  bool as_bool() const
+  {
+    require(Boolean, "bool");
+    return b;
+  }
+  long long as_integer() const
+  {
+    require(Integer, "integer");
+    return i;
+  }
+  double as_number() const
+  {
+    return k == Integer ? (double)i : (require(Number, "number"), d);
+  }
+  const std::string &as_string() const
+  {
+    require(String, "string");
+    return *s;
+  }
+  const std::vector<Node> &as_array() const
+  {
+    require(Array, "array");
+    return *a;
+  }
+  const ObjMap &as_object() const
+  {
+    require(Object, "object");
+    return *o;
+  }
+
+  // --- accessors (mutable) ---
+  std::vector<Node> &array_ref()
+  {
+    require(Array, "array");
+    return *a;
+  }
+  ObjMap &object_ref()
+  {
+    require(Object, "object");
+    return *o;
+  }
+
+  Ast *set(const std::string &key, const Node &value)
+  {
+    require(Object, "object");
+    (*o)[key] = value;
+    return this;
+  }
+  Ast *push(const Node &value)
+  {
+    require(Array, "array");
+    a->push_back(value);
+    return this;
+  }
+
+  // --- lookups ---
+  Node get(const std::string &key) const
+  {
+    require(Object, "object");
+    auto it = o->find(key);
+    return it == o->end() ? Node() : it->second;
+  }
+  const Node &at(size_t idx) const
+  {
+    require(Array, "array");
+    if (idx >= a->size())
+      throw std::out_of_range("json array index");
+    return (*a)[idx];
+  }
+
+  std::string as_json() const
+  {
+    switch (k)
+    {
+    case Null:
+      return "null";
+    case Boolean:
+      return b ? "true" : "false";
+    case Integer:
+    {
+      std::stringstream ss;
+      ss << i;
+      return ss.str();
+    }
+    case Number:
+    {
+      std::stringstream ss;
+      ss << d;
+      return ss.str();
+    }
+    case String:
+      return '"' + *s + '"';
+    case Array:
+    {
+      std::string out = "[";
+      for (size_t i = 0; i < a->size(); ++i)
+      {
+        if (i)
+          out += ", ";
+        out += (*a)[i] ? (*a)[i]->as_json() : "null";
+      }
+      out += "]";
+      return out;
+    }
+    case Object:
+    {
+      std::string out = "{";
+      bool first = true;
+      for (auto it = o->begin(); it != o->end(); ++it)
+      {
+        if (!first)
+          out += ", ";
+        first = false;
+        out += '"' + it->first + '"';
+        out += ": ";
+        out += it->second ? it->second->as_json() : "null";
+      }
+      out += "}";
+      return out;
+    }
+    }
+    return "null";
+  }
+
+  std::string as_yaml() const
+  {
+    std::ostringstream out;
+    append_yaml(out, 0);
+    return out.str();
+  }
+
+  std::string debug() const
+  {
+    return as_yaml();
+  }
+
+private:
+  explicit Ast(Kind kind_) : k(kind_), b(false), i(0), d(0.0)
+  {
+  }
+
+  void append_yaml(std::ostringstream &out, size_t indent) const
+  {
+    switch (k)
+    {
+    case Null:
+    case Boolean:
+    case Integer:
+    case Number:
+    case String:
+      out << as_json();
+      return;
+    case Array:
+      append_yaml_array(out, indent);
+      return;
+    case Object:
+      append_yaml_object(out, indent);
+      return;
+    }
+    out << "null";
+  }
+
+  void append_yaml_array(std::ostringstream &out, size_t indent) const
+  {
+    if (!a || a->empty())
+    {
+      out << "[]";
+      return;
+    }
+
+    for (size_t idx = 0; idx < a->size(); ++idx)
+    {
+      if (idx)
+        out << '\n';
+
+      append_indent(out, indent);
+      const Node &elem = (*a)[idx];
+      if (!elem)
+      {
+        out << "- null";
+      }
+      else if (elem->needs_multiline_yaml())
+      {
+        out << "-\n";
+        elem->append_yaml(out, indent + 2);
+      }
+      else
+      {
+        out << "- ";
+        elem->append_yaml(out, 0);
+      }
+    }
+  }
+
+  void append_yaml_object(std::ostringstream &out, size_t indent) const
+  {
+    if (!o || o->empty())
+    {
+      out << "{}";
+      return;
+    }
+
+    bool first = true;
+    for (const auto &entry : *o)
+    {
+      if (!first)
+        out << '\n';
+      first = false;
+
+      append_indent(out, indent);
+      out << entry.first;
+      const Node &value = entry.second;
+      if (!value)
+      {
+        out << ": null";
+      }
+      else if (value->needs_multiline_yaml())
+      {
+        out << ":\n";
+        value->append_yaml(out, indent + 2);
+      }
+      else
+      {
+        out << ": ";
+        value->append_yaml(out, 0);
+      }
+    }
+  }
+
+  bool needs_multiline_yaml() const
+  {
+    if (k == Array)
+      return a && !a->empty();
+    if (k == Object)
+      return o && !o->empty();
+    return false;
+  }
+
+  static void append_indent(std::ostringstream &out, size_t indent)
+  {
+    for (size_t idx = 0; idx < indent; ++idx)
+      out << ' ';
+  }
+
+  void require(Kind expected, const char *name) const
+  {
+    if (k != expected)
+      throw std::logic_error(std::string("Json: expected ") + name);
+  }
+
+  Kind k;
+  bool b;      // Boolean
+  long long i; // Integer
+  double d;    // Number
+  StringPtr s; // String
+  VecPtr a;    // Array
+  ObjPtr o;    // Object
+};
+
+// convenience free functions
+inline Node obj()
+{
+  return Ast::object();
+}
+inline Node arr()
+{
+  return Ast::array();
+}
+inline Node str(const std::string &v)
+{
+  return Ast::string(v);
+}
+inline Node num(double v)
+{
+  return Ast::number(v);
+}
+inline Node i64(long long v)
+{
+  return Ast::integer(v);
+}
+inline Node boolean(bool v)
+{
+  return Ast::boolean(v);
+}
+inline Node nil()
+{
+  return Ast::null();
+}
+
+} // namespace ast
 
 namespace parser
 {
