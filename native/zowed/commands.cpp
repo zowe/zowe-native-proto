@@ -45,43 +45,48 @@ void write_data_to_stdin(MiddlewareContext &context)
 
 void register_ds_commands(CommandDispatcher &dispatcher)
 {
-  // Register data set command handlers
+  dispatcher.register_command("deleteDataset", ds::handle_data_set_delete);
   dispatcher.register_command("listDatasets", ds::handle_data_set_list);
   dispatcher.register_command("listDsMembers", ds::handle_data_set_list_members);
   dispatcher.register_command("readDataset", ds::handle_data_set_view);
-  dispatcher.register_command("writeDataset", ds::handle_data_set_write, write_data_to_stdin);
   dispatcher.register_command("restoreDataset", ds::handle_data_set_restore);
-  dispatcher.register_command("deleteDataset", ds::handle_data_set_delete);
+  dispatcher.register_command("writeDataset", ds::handle_data_set_write, write_data_to_stdin);
   dispatcher.register_command("createDataset", ds::create_with_attributes);
   dispatcher.register_command("createMember", ds::handle_data_set_create_member);
 }
 
 void register_job_commands(CommandDispatcher &dispatcher)
 {
-  // Register jobs command handlers
   dispatcher.register_command("getJcl", job::handle_job_view_jcl);
+  dispatcher.register_command("getJobStatus", job::handle_job_view_status);
   dispatcher.register_command("listJobs", job::handle_job_list);
   dispatcher.register_command("listSpools", job::handle_job_list_files);
   dispatcher.register_command("readSpool", job::handle_job_view_file);
-  dispatcher.register_command("getStatus", job::handle_job_view_status);
+  dispatcher.register_command("submitJob", job::handle_job_submit);
+  dispatcher.register_command("submitJcl", job::handle_job_submit_jcl);
+  dispatcher.register_command("submitUss", job::handle_job_submit_uss);
   dispatcher.register_command("cancelJob", job::handle_job_cancel);
   dispatcher.register_command("deleteJob", job::handle_job_delete);
-  dispatcher.register_command("submitJob", job::handle_job_submit);
-  dispatcher.register_command("submitUss", job::handle_job_submit_uss);
-  dispatcher.register_command("submitJcl", job::handle_job_submit_jcl);
   dispatcher.register_command("holdJob", job::handle_job_hold);
   dispatcher.register_command("releaseJob", job::handle_job_release);
 }
 
 void register_uss_commands(CommandDispatcher &dispatcher)
 {
-  // Register USS command handlers
+  dispatcher.register_command("chownFile", uss::handle_uss_chown);
+  dispatcher.register_command("chmodFile", uss::handle_uss_chmod);
+  dispatcher.register_command("chtagFile", uss::handle_uss_chtag);
+  dispatcher.register_command("createFile", [](plugin::InvocationContext &context) -> int
+                              {
+    auto handler = context.get<bool>("isDir", false) ? uss::handle_uss_create_dir : uss::handle_uss_create_file;
+    return handler(context); });
+  dispatcher.register_command("deleteFile", uss::handle_uss_delete);
   dispatcher.register_command("listFiles", uss::handle_uss_list);
   dispatcher.register_command("readFile", uss::handle_uss_view);
   dispatcher.register_command("writeFile", uss::handle_uss_write, write_data_to_stdin);
-  dispatcher.register_command("deleteFile", uss::handle_uss_delete);
-  dispatcher.register_command("createFile", uss::handle_uss_create_file);
-  dispatcher.register_command("chmodFile", uss::handle_uss_chmod);
-  dispatcher.register_command("chownFile", uss::handle_uss_chown);
-  dispatcher.register_command("chtagFile", uss::handle_uss_chtag);
+}
+
+void register_cmd_commands(CommandDispatcher &dispatcher)
+{
+  // dispatcher.register_command("consoleCommand", console::handle_console_issue);
 }
