@@ -321,7 +321,7 @@ int handle_data_set_list(InvocationContext &context)
 {
   int rc = 0;
   ZLOG_DEBUG("[>] handle_data_set_list");
-  string dsn = context.get<string>("dsn", "");
+  string dsn = context.get<string>("pattern", "");
 
   if (dsn.length() > MAX_DS_LENGTH)
   {

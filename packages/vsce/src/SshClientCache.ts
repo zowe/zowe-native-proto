@@ -109,7 +109,7 @@ export class SshClientCache extends vscode.Disposable {
     }
 
     private getClientId(profile: imperative.IProfile): string {
-        return `${profile.host}:${profile.port ?? 22}`;
+        return `${profile.name}_${profile.type}`;
     }
 
     private acquireProfileLock(clientId: string): AsyncMutex {

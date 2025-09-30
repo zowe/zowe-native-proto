@@ -27,20 +27,23 @@
 
 // Generated C++ structs from jobs.ts
 
-struct ListJobsRequest : public CommandRequest {
-    ListOptions listoptions;
+struct ListJobsRequest : CommandRequest
+{
+    ListOptions listOptions;
     zstd::optional<std::string> owner;
     zstd::optional<std::string> prefix;
     zstd::optional<std::string> status;
 };
-ZJSON_SERIALIZABLE(ListJobsRequest, ZJSON_FIELD(ListJobsRequest, listoptions).flatten(), ZJSON_FIELD(ListJobsRequest, owner), ZJSON_FIELD(ListJobsRequest, prefix), ZJSON_FIELD(ListJobsRequest, status));
+ZJSON_SERIALIZABLE(ListJobsRequest, ZJSON_FIELD(ListJobsRequest, listOptions).flatten(), ZJSON_FIELD(ListJobsRequest, owner), ZJSON_FIELD(ListJobsRequest, prefix), ZJSON_FIELD(ListJobsRequest, status));
 
-struct ListSpoolsRequest : public CommandRequest {
+struct ListSpoolsRequest : CommandRequest
+{
     std::string jobId;
 };
 ZJSON_DERIVE(ListSpoolsRequest, jobId);
 
-struct ReadSpoolRequest : public CommandRequest {
+struct ReadSpoolRequest : CommandRequest
+{
     zstd::optional<std::string> encoding;
     zstd::optional<std::string> localEncoding;
     // int
@@ -49,118 +52,139 @@ struct ReadSpoolRequest : public CommandRequest {
 };
 ZJSON_DERIVE(ReadSpoolRequest, encoding, localEncoding, spoolId, jobId);
 
-struct GetJclRequest : public CommandRequest {
+struct GetJclRequest : CommandRequest
+{
     std::string jobId;
 };
 ZJSON_DERIVE(GetJclRequest, jobId);
 
-struct GetJobStatusRequest : public CommandRequest {
+struct GetJobStatusRequest : CommandRequest
+{
     std::string jobId;
 };
 ZJSON_DERIVE(GetJobStatusRequest, jobId);
 
-struct SubmitJobRequest : public CommandRequest {
+struct SubmitJobRequest : CommandRequest
+{
     std::string dsname;
 };
 ZJSON_DERIVE(SubmitJobRequest, dsname);
 
-struct SubmitUssRequest : public CommandRequest {
+struct SubmitUssRequest : CommandRequest
+{
     std::string fspath;
 };
 ZJSON_DERIVE(SubmitUssRequest, fspath);
 
-struct SubmitJclRequest : public CommandRequest {
+struct SubmitJclRequest : CommandRequest
+{
     zstd::optional<std::string> encoding;
     zstd::optional<std::string> localEncoding;
     std::vector<uint8_t> jcl;
 };
 ZJSON_DERIVE(SubmitJclRequest, encoding, localEncoding, jcl);
 
-struct CancelJobRequest : public CommandRequest {
+struct CancelJobRequest : CommandRequest
+{
     std::string jobId;
 };
 ZJSON_DERIVE(CancelJobRequest, jobId);
 
-struct DeleteJobRequest : public CommandRequest {
+struct DeleteJobRequest : CommandRequest
+{
     std::string jobId;
 };
 ZJSON_DERIVE(DeleteJobRequest, jobId);
 
-struct HoldJobRequest : public CommandRequest {
+struct HoldJobRequest : CommandRequest
+{
     std::string jobId;
 };
 ZJSON_DERIVE(HoldJobRequest, jobId);
 
-struct ReleaseJobRequest : public CommandRequest {
+struct ReleaseJobRequest : CommandRequest
+{
     std::string jobId;
 };
 ZJSON_DERIVE(ReleaseJobRequest, jobId);
 
-struct ListJobsResponse : public CommandResponse {
+struct ListJobsResponse : CommandResponse
+{
     std::vector<Job> items;
 };
-ZJSON_DERIVE(ListJobsResponse, items);
+ZJSON_DERIVE(ListJobsResponse, success, items);
 
-struct ListSpoolsResponse : public CommandResponse {
+struct ListSpoolsResponse : CommandResponse
+{
     std::vector<Spool> items;
 };
-ZJSON_DERIVE(ListSpoolsResponse, items);
+ZJSON_DERIVE(ListSpoolsResponse, success, items);
 
-struct GetJclResponse : public CommandResponse {
+struct GetJclResponse : CommandResponse
+{
     std::string jobId;
     std::string data;
 };
-ZJSON_DERIVE(GetJclResponse, jobId, data);
+ZJSON_DERIVE(GetJclResponse, success, jobId, data);
 
-struct ReadSpoolResponse : public CommandResponse {
+struct ReadSpoolResponse : CommandResponse
+{
     zstd::optional<std::string> encoding;
     // int
     int spoolId;
     std::string jobId;
     std::vector<uint8_t> data;
 };
-ZJSON_DERIVE(ReadSpoolResponse, encoding, spoolId, jobId, data);
+ZJSON_DERIVE(ReadSpoolResponse, success, encoding, spoolId, jobId, data);
 
-struct GetJobStatusResponse : public CommandResponse {
+struct GetJobStatusResponse : CommandResponse
+{
     Job job;
 };
 ZJSON_SERIALIZABLE(GetJobStatusResponse, ZJSON_FIELD(GetJobStatusResponse, job).flatten());
 
-struct SubmitJobResponse : public CommandResponse {
+struct SubmitJobResponse : CommandResponse
+{
     std::string jobId;
     std::string dsname;
 };
-ZJSON_DERIVE(SubmitJobResponse, jobId, dsname);
+ZJSON_DERIVE(SubmitJobResponse, success, jobId, dsname);
 
-struct SubmitUssResponse : public CommandResponse {
+struct SubmitUssResponse : CommandResponse
+{
     std::string jobId;
     std::string fspath;
 };
-ZJSON_DERIVE(SubmitUssResponse, jobId, fspath);
+ZJSON_DERIVE(SubmitUssResponse, success, jobId, fspath);
 
-struct SubmitJclResponse : public CommandResponse {
+struct SubmitJclResponse : CommandResponse
+{
     std::string jobId;
 };
-ZJSON_DERIVE(SubmitJclResponse, jobId);
+ZJSON_DERIVE(SubmitJclResponse, success, jobId);
 
-struct DeleteJobResponse : public CommandResponse {
+struct DeleteJobResponse : CommandResponse
+{
     std::string jobId;
 };
-ZJSON_DERIVE(DeleteJobResponse, jobId);
+ZJSON_DERIVE(DeleteJobResponse, success, jobId);
 
-struct CancelJobResponse : public CommandResponse {
+struct CancelJobResponse : CommandResponse
+{
     std::string jobId;
 };
-ZJSON_DERIVE(CancelJobResponse, jobId);
+ZJSON_DERIVE(CancelJobResponse, success, jobId);
 
-struct HoldJobResponse : public CommandResponse {
+struct HoldJobResponse : CommandResponse
+{
     std::string jobId;
 };
-ZJSON_DERIVE(HoldJobResponse, jobId);
+ZJSON_DERIVE(HoldJobResponse, success, jobId);
 
-struct ReleaseJobResponse : public CommandResponse {
+struct ReleaseJobResponse : CommandResponse
+{
     std::string jobId;
 };
-ZJSON_DERIVE(ReleaseJobResponse, jobId);
+ZJSON_DERIVE(ReleaseJobResponse, success, jobId);
 
 #endif
