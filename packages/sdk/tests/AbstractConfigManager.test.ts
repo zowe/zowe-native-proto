@@ -26,9 +26,14 @@ import { ConfigFileUtils } from "../src/ConfigFileUtils";
 import { type inputBoxOpts, MESSAGE_TYPE, type qpItem, type qpOpts } from "../src/doc";
 import { type ISshConfigExt, ZClientUtils } from "../src/ZClientUtils";
 
-vi.mock("path", () => ({
-    normalize: vi.fn(() => (p: string) => p),
-}));
+vi.mock("path", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("path")>();
+    return {
+        ...actual,
+        normalize: vi.fn((p: string) => p),
+    };
+});
+
 vi.mock("ssh2");
 vi.mock("node:fs", () => ({
     readFileSync: vi.fn(() => "mocked file content"),
@@ -134,6 +139,7 @@ export class TestAbstractConfigManager extends AbstractConfigManager {
     public getCurrentDir = vi.fn<() => string | undefined>().mockReturnValue("/mock/dir");
 
     public getProfileSchemas = vi.fn<() => IProfileTypeConfiguration[]>().mockReturnValue([]);
+    protected storeServerPath(host: string, _path: string): void {}
 }
 
 describe("AbstractConfigManager", async () => {
@@ -424,6 +430,52 @@ describe("AbstractConfigManager", async () => {
             });
         });
     });
+    describe("promptForDeployDirectory", () => {
+        const defaultServerPath = "/faketmp/fakeserver";
+        const host = "testHost";
+        it("returns default path if user presses enter without changing", async () => {
+            vi.spyOn(testManager, "showInputBox").mockResolvedValue(defaultServerPath);
+            const storeMock = vi.spyOn(testManager as any, "storeServerPath").mockImplementation(() => {});
+
+            const result = await testManager.promptForDeployDirectory(host, defaultServerPath);
+
+            expect(result).toBe(defaultServerPath);
+            expect(storeMock).not.toHaveBeenCalled();
+        });
+
+        it("returns trimmed user input if valid absolute path is entered", async () => {
+            vi.spyOn(testManager, "showInputBox").mockResolvedValue("   /custom/path   ");
+            const storeMock = vi.spyOn(testManager as any, "storeServerPath").mockImplementation(() => {});
+
+            const result = await testManager.promptForDeployDirectory(host, defaultServerPath);
+
+            expect(result).toBe("/custom/path");
+            expect(storeMock).toHaveBeenCalledWith(host, "/custom/path");
+        });
+
+        it("returns undefined if user cancels input", async () => {
+            vi.spyOn(testManager, "showInputBox").mockResolvedValue(undefined);
+            const showMessageMock = vi.spyOn(testManager, "showMessage").mockImplementation(() => {});
+            const storeMock = vi.spyOn(testManager as any, "storeServerPath").mockImplementation(() => {});
+
+            const result = await testManager.promptForDeployDirectory(host, defaultServerPath);
+
+            expect(result).toBeUndefined();
+            expect(showMessageMock).toHaveBeenCalled();
+            expect(storeMock).not.toHaveBeenCalled();
+        });
+
+        it("should return error if user enters invalid path", async () => {
+            vi.spyOn(testManager, "showInputBox").mockImplementation(async (opts) => {
+                opts.validateInput?.(" ");
+                return undefined;
+            });
+
+            const result = await testManager.promptForDeployDirectory(defaultServerPath, host);
+            expect(result).toBeUndefined();
+        });
+    });
+
     describe("createNewProfile", async () => {
         let showInputBoxSpy: any;
 

@@ -393,14 +393,14 @@ public:
 
   const Argument *find(const std::string &key) const
   {
-    auto it = m_args.find(key);
+    ArgumentMap::const_iterator it = m_args.find(key);
     return it != m_args.end() ? &it->second : nullptr;
   }
 
   template <typename T>
   const T *get_if(const std::string &key) const
   {
-    auto it = m_args.find(key);
+    ArgumentMap::const_iterator it = m_args.find(key);
     if (it == m_args.end())
       return nullptr;
     return ArgGetter<T>::get(it->second);
@@ -499,23 +499,12 @@ public:
     return m_error_stream != nullptr ? *m_error_stream : std::cerr;
   }
 
-  const size_t &content_len() const
-  {
-    return m_content_len;
-  }
-
-  virtual void set_content_len(const size_t content_len)
-  {
-    m_content_len = content_len;
-  }
-
 private:
   ArgumentMap m_args;
   ArgumentMap m_output;
   std::istream *m_input_stream;
   std::ostream *m_output_stream;
   std::ostream *m_error_stream;
-  size_t m_content_len;
 };
 
 class InvocationContext : public Io
