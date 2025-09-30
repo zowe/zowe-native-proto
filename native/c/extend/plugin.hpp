@@ -12,6 +12,7 @@
 #ifndef PLUGIN_HPP
 #define PLUGIN_HPP
 
+#include <memory>
 #include <iostream>
 #include <ostream>
 #include <sstream>
@@ -34,6 +35,291 @@ public:
   }
   virtual Interface *create() = 0;
 };
+
+namespace jsonast
+{
+using namespace std;
+struct Json;
+
+#if !defined(__clang__)
+typedef tr1::shared_ptr<Json> Node;
+typedef tr1::shared_ptr<string> StringPtr;
+typedef tr1::shared_ptr<vector<Node>> VecPtr;
+typedef tr1::unordered_map<string, Node> ObjMap;
+typedef tr1::shared_ptr<ObjMap> ObjPtr;
+#else
+typedef shared_ptr<Json> Node;
+typedef shared_ptr<string> StringPtr;
+typedef shared_ptr<vector<Node>> VecPtr;
+typedef unordered_map<string, Node> ObjMap;
+typedef shared_ptr<ObjMap> ObjPtr;
+#endif
+
+struct Json
+{
+  enum Kind
+  {
+    Null,
+    Boolean,
+    Integer,
+    Number,
+    String,
+    Array,
+    Object
+  };
+
+  // --- factories ---
+  static Node null()
+  {
+    return Node(new Json(Null));
+  }
+  static Node boolean(bool v)
+  {
+    Node n(new Json(Boolean));
+    n->b = v;
+    return n;
+  }
+  static Node integer(long long v)
+  {
+    Node n(new Json(Integer));
+    n->i = v;
+    return n;
+  }
+  static Node number(double v)
+  {
+    Node n(new Json(Number));
+    n->d = v;
+    return n;
+  }
+  static Node string(const std::string &v)
+  {
+    Node n(new Json(String));
+    n->s.reset(new std::string(v));
+    return n;
+  }
+  static Node array()
+  {
+    Node n(new Json(Array));
+    n->a.reset(new std::vector<Node>());
+    return n;
+  }
+  static Node object()
+  {
+    Node n(new Json(Object));
+    n->o.reset(new ObjMap());
+    return n;
+  }
+
+  // --- kind checks ---
+  Kind kind() const
+  {
+    return k;
+  }
+  bool is_null() const
+  {
+    return k == Null;
+  }
+  bool is_bool() const
+  {
+    return k == Boolean;
+  }
+  bool is_integer() const
+  {
+    return k == Integer;
+  }
+  bool is_number() const
+  {
+    return k == Number || k == Integer;
+  }
+  bool is_string() const
+  {
+    return k == String;
+  }
+  bool is_array() const
+  {
+    return k == Array;
+  }
+  bool is_object() const
+  {
+    return k == Object;
+  }
+
+  // --- accessors (const) ---
+  bool as_bool() const
+  {
+    require(Boolean, "bool");
+    return b;
+  }
+  long long as_integer() const
+  {
+    require(Integer, "integer");
+    return i;
+  }
+  double as_number() const
+  {
+    return k == Integer ? (double)i : (require(Number, "number"), d);
+  }
+  const std::string &as_string() const
+  {
+    require(String, "string");
+    return *s;
+  }
+  const std::vector<Node> &as_array() const
+  {
+    require(Array, "array");
+    return *a;
+  }
+  const ObjMap &as_object() const
+  {
+    require(Object, "object");
+    return *o;
+  }
+
+  // --- accessors (mutable) ---
+  std::vector<Node> &array_ref()
+  {
+    require(Array, "array");
+    return *a;
+  }
+  ObjMap &object_ref()
+  {
+    require(Object, "object");
+    return *o;
+  }
+
+  Json *set(const std::string &key, const Node &value)
+  {
+    require(Object, "object");
+    (*o)[key] = value;
+    return this;
+  }
+  Json *push(const Node &value)
+  {
+    require(Array, "array");
+    a->push_back(value);
+    return this;
+  }
+
+  // --- lookups ---
+  Node get(const std::string &key) const
+  {
+    require(Object, "object");
+    auto it = o->find(key);
+    return it == o->end() ? Node() : it->second;
+  }
+  const Node &at(size_t idx) const
+  {
+    require(Array, "array");
+    if (idx >= a->size())
+      throw std::out_of_range("json array index");
+    return (*a)[idx];
+  }
+
+  std::string debug() const
+  {
+    switch (k)
+    {
+    case Null:
+      return "null";
+    case Boolean:
+      return b ? "true" : "false";
+    case Integer:
+    {
+      std::stringstream ss;
+      ss << i;
+      return ss.str();
+    }
+    case Number:
+    {
+      std::stringstream ss;
+      ss << d;
+      return ss.str();
+    }
+    case String:
+      return '"' + *s + '"';
+    case Array:
+    {
+      std::string out = "[";
+      for (size_t i = 0; i < a->size(); ++i)
+      {
+        if (i)
+          out += ", ";
+        out += (*a)[i] ? (*a)[i]->debug() : "null";
+      }
+      out += "]";
+      return out;
+    }
+    case Object:
+    {
+      std::string out = "{";
+      bool first = true;
+      for (auto it = o->begin(); it != o->end(); ++it)
+      {
+        if (!first)
+          out += ", ";
+        first = false;
+        out += '"' + it->first + '"';
+        out += ": ";
+        out += it->second ? it->second->debug() : "null";
+      }
+      out += "}";
+      return out;
+    }
+    }
+    return "null";
+  }
+
+private:
+  explicit Json(Kind kind_) : k(kind_), b(false), i(0), d(0.0)
+  {
+  }
+
+  void require(Kind expected, const char *name) const
+  {
+    if (k != expected)
+      throw std::logic_error(std::string("Json: expected ") + name);
+  }
+
+  Kind k;
+  bool b;      // Boolean
+  long long i; // Integer
+  double d;    // Number
+  StringPtr s; // String
+  VecPtr a;    // Array
+  ObjPtr o;    // Object
+};
+
+// convenience free functions
+inline Node obj()
+{
+  return Json::object();
+}
+inline Node arr()
+{
+  return Json::array();
+}
+inline Node str(const std::string &v)
+{
+  return Json::string(v);
+}
+inline Node num(double v)
+{
+  return Json::number(v);
+}
+inline Node i64(long long v)
+{
+  return Json::integer(v);
+}
+inline Node boolean(bool v)
+{
+  return Json::boolean(v);
+}
+inline Node nil()
+{
+  return Json::null();
+}
+
+} // namespace jsonast
 
 namespace parser
 {
