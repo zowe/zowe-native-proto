@@ -40,11 +40,4 @@ void register_uss_commands(CommandDispatcher &dispatcher);
  */
 void register_cmd_commands(CommandDispatcher &dispatcher);
 
-/**
- * Internal helper method to process base64 encoded data from arguments
- * Decodes base64 data and moves it to the input stream, removing the "data" argument
- * @param context The MiddlewareContext to process
- */
-void write_data_to_stdin(MiddlewareContext &context);
-
 #endif

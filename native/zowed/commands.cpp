@@ -16,24 +16,22 @@
 #include "../c/commands/uss.hpp"
 #include "../c/zbase64.h"
 
-void write_data_to_stdin(MiddlewareContext &context)
+// Transform callback that decodes base64 data and writes to stdin, then removes the argument
+static std::string transform_data_to_stdin(const plugin::Argument &value, MiddlewareContext &context)
 {
-  // Check if "data" argument exists
-  const plugin::Argument *dataArg = context.find("data");
-  if (dataArg && dataArg->is_string())
+  if (value.is_string())
   {
     try
     {
       // Get the base64 encoded data
-      std::string base64Data = dataArg->get_string_value();
+      std::string base64Data = value.get_string_value();
 
       // Base64 decode the data and write to input stream
       std::string decodedData = zbase64::decode(base64Data);
       context.set_input_content(decodedData);
 
-      // Remove "data" from arguments since it's now in input stream
-      plugin::ArgumentMap &args = const_cast<plugin::ArgumentMap &>(context.arguments());
-      args.erase("data");
+      // Return empty string to remove the argument
+      return "";
     }
     catch (const std::exception &e)
     {
@@ -41,16 +39,19 @@ void write_data_to_stdin(MiddlewareContext &context)
       context.errln("Failed to decode base64 data");
     }
   }
+  return ""; // Remove argument if not a string or failed to decode
 }
 
 void register_ds_commands(CommandDispatcher &dispatcher)
 {
   dispatcher.register_command("deleteDataset", ds::handle_data_set_delete);
-  dispatcher.register_command("listDatasets", ds::handle_data_set_list);
+  dispatcher.register_command("listDatasets", ds::handle_data_set_list,
+                              {InputTransform("pattern", "dsn")});
   dispatcher.register_command("listDsMembers", ds::handle_data_set_list_members);
   dispatcher.register_command("readDataset", ds::handle_data_set_view);
   dispatcher.register_command("restoreDataset", ds::handle_data_set_restore);
-  dispatcher.register_command("writeDataset", ds::handle_data_set_write, write_data_to_stdin);
+  dispatcher.register_command("writeDataset", ds::handle_data_set_write,
+                              {InputTransform("data", transform_data_to_stdin)});
   dispatcher.register_command("createDataset", ds::create_with_attributes);
   dispatcher.register_command("createMember", ds::handle_data_set_create_member);
 }
@@ -81,9 +82,11 @@ void register_uss_commands(CommandDispatcher &dispatcher)
     auto handler = context.get<bool>("isDir", false) ? uss::handle_uss_create_dir : uss::handle_uss_create_file;
     return handler(context); });
   dispatcher.register_command("deleteFile", uss::handle_uss_delete);
-  dispatcher.register_command("listFiles", uss::handle_uss_list);
+  dispatcher.register_command("listFiles", uss::handle_uss_list,
+                              {InputTransform("fspath", "file-path")});
   dispatcher.register_command("readFile", uss::handle_uss_view);
-  dispatcher.register_command("writeFile", uss::handle_uss_write, write_data_to_stdin);
+  dispatcher.register_command("writeFile", uss::handle_uss_write,
+                              {InputTransform("data", transform_data_to_stdin)});
 }
 
 void register_cmd_commands(CommandDispatcher &dispatcher)

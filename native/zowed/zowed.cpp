@@ -22,13 +22,21 @@
 #include <fstream>
 #include <sstream>
 #include <map>
+#define ZJSON_ENABLE_STRUCT_SUPPORT
 #include "../c/zjson.hpp"
-#include "../c/types/common.h"
 #include "worker.hpp"
 #include "zowed.hpp"
 #include "dispatcher.hpp"
 #include "commands.hpp"
 #include "server.hpp"
+
+struct StatusMessage
+{
+  std::string status;
+  std::string message;
+  zstd::optional<zjson::Value> data;
+};
+ZJSON_DERIVE(StatusMessage, status, message, data);
 
 class ZowedServer
 {

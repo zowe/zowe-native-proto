@@ -31,7 +31,7 @@ const ArgTemplate DSN = {
     make_aliases()};
 
 const ArgTemplate DSN_PATTERN = {
-    "pattern",
+    "dsn",
     make_aliases(),
     "data set name pattern",
     ArgType_Single,
@@ -49,7 +49,7 @@ const ArgTemplate JOB_ID = {
     make_aliases()};
 
 const ArgTemplate FILE_PATH = {
-    "fspath",
+    "file-path",
     make_aliases(),
     "file path",
     ArgType_Single,

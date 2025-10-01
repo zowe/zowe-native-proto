@@ -9,15 +9,8 @@
  *
  */
 
-#pragma once
-
-/**
- * @file libzowed.hpp
- * @brief Header file for the libzowed library interface
- *
- * This header defines the public interface for the zowed library,
- * allowing external programs to run the zowed server functionality.
- */
+#ifndef ZOWED_HPP
+#define ZOWED_HPP
 
 /**
  * @brief Options structure for configuring the zowed server
@@ -54,3 +47,5 @@ struct IoserverOptions
  * @return int Exit code (0 for success, non-zero for error)
  */
 extern "C" int run_zowed_server(const IoserverOptions &options);
+
+#endif

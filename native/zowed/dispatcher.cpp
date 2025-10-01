@@ -27,7 +27,7 @@ CommandDispatcher::~CommandDispatcher()
 {
 }
 
-bool CommandDispatcher::register_command(const std::string &command_name, CommandHandler handler, InputHandler input_handler)
+bool CommandDispatcher::register_command(const std::string &command_name, CommandHandler handler, const std::vector<ArgTransform> &transforms)
 {
   if (command_name.empty() || handler == nullptr)
   {
@@ -42,10 +42,10 @@ bool CommandDispatcher::register_command(const std::string &command_name, Comman
 
   m_command_handlers[command_name] = handler;
 
-  // Store input handler if provided
-  if (input_handler != nullptr)
+  // Store transforms if provided
+  if (!transforms.empty())
   {
-    m_input_handlers[command_name] = input_handler;
+    m_transforms[command_name] = transforms;
   }
 
   return true;
@@ -70,15 +70,23 @@ int CommandDispatcher::dispatch(const std::string &command_name, MiddlewareConte
 
   try
   {
-    // Call input handler first if it exists
-    auto input_it = m_input_handlers.find(command_name);
-    if (input_it != m_input_handlers.end())
+    // Apply input transforms if they exist
+    auto transforms_it = m_transforms.find(command_name);
+    if (transforms_it != m_transforms.end())
     {
-      input_it->second(context);
+      apply_input_transforms(transforms_it->second, context);
     }
 
     // Call the command handler with the context
-    return handler(context);
+    int result = handler(context);
+
+    // Apply output transforms if they exist
+    if (transforms_it != m_transforms.end())
+    {
+      apply_output_transforms(transforms_it->second, context);
+    }
+
+    return result;
   }
   catch (const std::exception &e)
   {
@@ -123,11 +131,11 @@ bool CommandDispatcher::unregister_command(const std::string &command_name)
 
   m_command_handlers.erase(it);
 
-  // Also remove input handler if it exists
-  auto input_it = m_input_handlers.find(command_name);
-  if (input_it != m_input_handlers.end())
+  // Also remove transforms if they exist
+  auto transforms_it = m_transforms.find(command_name);
+  if (transforms_it != m_transforms.end())
   {
-    m_input_handlers.erase(input_it);
+    m_transforms.erase(transforms_it);
   }
 
   return true;
@@ -136,5 +144,91 @@ bool CommandDispatcher::unregister_command(const std::string &command_name)
 void CommandDispatcher::clear()
 {
   m_command_handlers.clear();
-  m_input_handlers.clear();
+  m_transforms.clear();
+}
+
+void CommandDispatcher::apply_input_transforms(const std::vector<ArgTransform> &transforms, MiddlewareContext &context)
+{
+  plugin::ArgumentMap &args = context.mutable_arguments();
+
+  for (std::vector<ArgTransform>::const_iterator it = transforms.begin(); it != transforms.end(); ++it)
+  {
+    if (it->type != ArgTransform::Input)
+    {
+      continue;
+    }
+
+    // Find the argument
+    plugin::ArgumentMap::iterator arg_it = args.find(it->argName);
+    if (arg_it == args.end())
+    {
+      continue; // Argument not found, skip
+    }
+
+    plugin::Argument value = arg_it->second;
+
+    if (it->isRename)
+    {
+      // Simple rename: remove old key and add with new name
+      args.erase(arg_it);
+      args[it->newName] = value;
+    }
+    else if (it->callback)
+    {
+      // Callback transformation
+      std::string newArgName = it->callback(value, context);
+
+      // Remove the old argument
+      args.erase(arg_it);
+
+      // If callback returned a non-empty name, add with new name
+      if (!newArgName.empty())
+      {
+        args[newArgName] = value;
+      }
+    }
+  }
+}
+
+void CommandDispatcher::apply_output_transforms(const std::vector<ArgTransform> &transforms, MiddlewareContext &context)
+{
+  plugin::ArgumentMap &output = context.mutable_output();
+
+  for (std::vector<ArgTransform>::const_iterator it = transforms.begin(); it != transforms.end(); ++it)
+  {
+    if (it->type != ArgTransform::Output)
+    {
+      continue;
+    }
+
+    // Find the output argument
+    plugin::ArgumentMap::iterator out_it = output.find(it->argName);
+    if (out_it == output.end())
+    {
+      continue; // Output not found, skip
+    }
+
+    plugin::Argument value = out_it->second;
+
+    if (it->isRename)
+    {
+      // Simple rename: remove old key and add with new name
+      output.erase(out_it);
+      output[it->newName] = value;
+    }
+    else if (it->callback)
+    {
+      // Callback transformation
+      std::string newArgName = it->callback(value, context);
+
+      // Remove the old output
+      output.erase(out_it);
+
+      // If callback returned a non-empty name, add with new name
+      if (!newArgName.empty())
+      {
+        output[newArgName] = value;
+      }
+    }
+  }
 }
