@@ -34,6 +34,7 @@ let deployDirs: {
     goDir: string;
     pythonDir: string;
     pythonTestDir: string;
+    zowedDir: string;
 };
 
 const asciiToEbcdicMap =
@@ -766,6 +767,7 @@ async function main() {
         goDir: `${config.deployDir}/golang`,
         pythonDir: `${config.deployDir}/python/bindings`,
         pythonTestDir: `${config.deployDir}/python/bindings/test`,
+        zowedDir: `${config.deployDir}/zowed`,
     };
     const sshClient = await buildSshClient(config.sshProfile as IProfile);
 
@@ -782,6 +784,9 @@ async function main() {
                 break;
             case "build:python":
                 await make(sshClient, deployDirs.pythonDir);
+                break;
+            case "build:zowed":
+                await make(sshClient, deployDirs.zowedDir);
                 break;
             case "test:python":
                 await make(sshClient, deployDirs.pythonTestDir);
