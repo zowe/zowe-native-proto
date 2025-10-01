@@ -138,18 +138,18 @@ struct RenameAll
     case lowercase:
     {
       std::string result;
-      for (const char &c : name)
+      for (std::string::const_iterator it = name.begin(); it != name.end(); ++it)
       {
-        result += std::tolower(c);
+        result += std::tolower(*it);
       }
       return result;
     }
     case UPPERCASE:
     {
       std::string result;
-      for (const char &c : name)
+      for (std::string::const_iterator it = name.begin(); it != name.end(); ++it)
       {
-        result += std::toupper(c);
+        result += std::toupper(*it);
       }
       return result;
     }
@@ -159,20 +159,20 @@ struct RenameAll
     {
       std::string result;
       bool capitalize_next = false;
-      for (const char &c : name)
+      for (std::string::const_iterator it = name.begin(); it != name.end(); ++it)
       {
-        if (c == '_')
+        if (*it == '_')
         {
           capitalize_next = true;
         }
         else if (capitalize_next)
         {
-          result += std::toupper(c);
+          result += std::toupper(*it);
           capitalize_next = false;
         }
         else
         {
-          result += std::tolower(c);
+          result += std::tolower(*it);
         }
       }
       return result;
@@ -189,24 +189,24 @@ struct RenameAll
     case SCREAMING_SNAKE_CASE:
     {
       std::string result;
-      for (const char &c : name)
+      for (std::string::const_iterator it = name.begin(); it != name.end(); ++it)
       {
-        result += std::toupper(c);
+        result += std::toupper(*it);
       }
       return result;
     }
     case kebab_case:
     {
       std::string result;
-      for (const char &c : name)
+      for (std::string::const_iterator it = name.begin(); it != name.end(); ++it)
       {
-        if (c == '_')
+        if (*it == '_')
         {
           result += '-';
         }
         else
         {
-          result += std::tolower(c);
+          result += std::tolower(*it);
         }
       }
       return result;
@@ -214,15 +214,15 @@ struct RenameAll
     case SCREAMING_KEBAB_CASE:
     {
       std::string result;
-      for (const char &c : name)
+      for (std::string::const_iterator it = name.begin(); it != name.end(); ++it)
       {
-        if (c == '_')
+        if (*it == '_')
         {
           result += '-';
         }
         else
         {
-          result += std::toupper(c);
+          result += std::toupper(*it);
         }
       }
       return result;
@@ -359,7 +359,7 @@ public:
     {
       throw Error::invalid_type("object", "other");
     }
-    data_.template get<std::map<std::string, Value>>()[key] = value;
+    get_object()[key] = value;
   }
 
   void add_to_array(const Value &value)
@@ -368,7 +368,7 @@ public:
     {
       throw Error::invalid_type("array", "other");
     }
-    data_.template get<std::vector<Value>>().push_back(value);
+    get_array().push_back(value);
   }
 
   void reserve_array(size_t capacity)
@@ -377,7 +377,7 @@ public:
     {
       throw Error::invalid_type("array", "other");
     }
-    data_.template get<std::vector<Value>>().reserve(capacity);
+    get_array().reserve(capacity);
   }
   enum Type
   {
@@ -402,6 +402,49 @@ private:
       ValueVariant;
 
   ValueVariant data_;
+
+  // Helper methods to avoid .template syntax for XLC compatibility
+  inline bool &get_bool()
+  {
+    return data_.get<bool>();
+  }
+  inline double &get_double()
+  {
+    return data_.get<double>();
+  }
+  inline std::string &get_string()
+  {
+    return data_.get<std::string>();
+  }
+  inline std::vector<Value> &get_array()
+  {
+    return data_.get<std::vector<Value>>();
+  }
+  inline std::map<std::string, Value> &get_object()
+  {
+    return data_.get<std::map<std::string, Value>>();
+  }
+
+  inline const bool &get_bool() const
+  {
+    return data_.get<bool>();
+  }
+  inline const double &get_double() const
+  {
+    return data_.get<double>();
+  }
+  inline const std::string &get_string() const
+  {
+    return data_.get<std::string>();
+  }
+  inline const std::vector<Value> &get_array() const
+  {
+    return data_.get<std::vector<Value>>();
+  }
+  inline const std::map<std::string, Value> &get_object() const
+  {
+    return data_.get<std::map<std::string, Value>>();
+  }
 
 public:
   Value() : data_(zstd::monostate())
@@ -466,7 +509,7 @@ public:
   {
     if (!is_bool())
       throw Error::invalid_type("bool", type_name());
-    return data_.template get<bool>();
+    return get_bool();
   }
 
   inline double as_number() const
@@ -474,10 +517,10 @@ public:
     if (!is_number())
       throw Error::invalid_type("number", type_name());
 
-    double value = data_.template get<double>();
+    double value = get_double();
 
     // Check for overflow/underflow
-    if (!std::isfinite(value))
+    if (isnan(value) || isinf(value))
     {
       std::stringstream ss;
       ss << value;
@@ -492,7 +535,7 @@ public:
     if (!is_number())
       throw Error::invalid_type("number", type_name());
 
-    double value = data_.template get<double>();
+    double value = get_double();
 
     // Check for fractional part
     if (value != std::floor(value))
@@ -518,21 +561,21 @@ public:
   {
     if (!is_string())
       throw Error::invalid_type("string", type_name());
-    return data_.template get<std::string>();
+    return get_string();
   }
 
   const std::vector<Value> &as_array() const
   {
     if (!is_array())
       throw Error::invalid_type("array", type_name());
-    return data_.template get<std::vector<Value>>();
+    return get_array();
   }
 
   const std::map<std::string, Value> &as_object() const
   {
     if (!is_object())
       throw Error::invalid_type("object", type_name());
-    return data_.template get<std::map<std::string, Value>>();
+    return get_object();
   }
 
   inline bool is_null() const
@@ -574,7 +617,7 @@ public:
       throw Error::invalid_type("object", type_name());
     }
 
-    return data_.template get<std::map<std::string, Value>>()[key]; // Creates entry if doesn't exist
+    return get_object()[key]; // Creates entry if doesn't exist
   }
 
   const Value &operator[](const std::string &key) const
@@ -584,7 +627,7 @@ public:
       throw Error::invalid_type("object", type_name());
     }
 
-    const std::map<std::string, Value> &obj = data_.template get<std::map<std::string, Value>>();
+    const std::map<std::string, Value> &obj = get_object();
     std::map<std::string, Value>::const_iterator it = obj.find(key);
     if (it == obj.end())
     {
@@ -609,7 +652,7 @@ public:
       throw Error::invalid_type("array", type_name());
     }
 
-    std::vector<Value> &arr = data_.template get<std::vector<Value>>();
+    std::vector<Value> &arr = get_array();
 
     // Expand array if needed
     if (index >= arr.size())
@@ -627,7 +670,7 @@ public:
       throw Error::invalid_type("array", type_name());
     }
 
-    const std::vector<Value> &arr = data_.template get<std::vector<Value>>();
+    const std::vector<Value> &arr = get_array();
     if (index >= arr.size())
     {
       static const Value null_value; // Return reference to static null
@@ -1033,7 +1076,7 @@ public:
 
 // Helper implementation functions for C++14 compatibility
 template <typename T>
-zstd::expected<std::string, Error> to_string_impl(const T &value, std::true_type)
+zstd::expected<std::string, Error> to_string_impl(const T &value, zstd::true_type)
 {
   try
   {
@@ -1053,7 +1096,7 @@ zstd::expected<std::string, Error> to_string_impl(const T &value, std::true_type
 
 #ifdef ZJSON_ENABLE_STRUCT_SUPPORT
 template <typename T>
-zstd::expected<std::string, Error> to_string_impl(const T &value, std::false_type)
+zstd::expected<std::string, Error> to_string_impl(const T &value, zstd::false_type)
 {
   try
   {
@@ -1079,21 +1122,21 @@ zstd::expected<std::string, Error> to_string_impl(const T &value, std::false_typ
 }
 #else
 template <typename T>
-zstd::expected<std::string, Error> to_string_impl(const T &value, std::false_type)
+zstd::expected<std::string, Error> to_string_impl(const T &value, zstd::false_type)
 {
   return zstd::make_unexpected(Error::invalid_type("serializable", "unknown"));
 }
 #endif
 
 template <typename T>
-zstd::expected<T, Error> from_str_impl(const Value &parsed, std::true_type)
+zstd::expected<T, Error> from_str_impl(const Value &parsed, zstd::true_type)
 {
   return Deserializable<T>::deserialize(parsed);
 }
 
 #ifdef ZJSON_ENABLE_STRUCT_SUPPORT
 template <typename T>
-zstd::expected<T, Error> from_str_impl(const Value &parsed, std::false_type)
+zstd::expected<T, Error> from_str_impl(const Value &parsed, zstd::false_type)
 {
   if (SerializationRegistry<T>::has_deserializer())
   {
@@ -1106,7 +1149,7 @@ zstd::expected<T, Error> from_str_impl(const Value &parsed, std::false_type)
 }
 #else
 template <typename T>
-zstd::expected<T, Error> from_str_impl(const Value &parsed, std::false_type)
+zstd::expected<T, Error> from_str_impl(const Value &parsed, zstd::false_type)
 {
   return zstd::make_unexpected(Error::invalid_type("deserializable", "unknown"));
 }
@@ -1118,7 +1161,7 @@ zstd::expected<std::string, Error> to_string(const T &value)
 {
   try
   {
-    return to_string_impl<T>(value, typename std::integral_constant<bool, Serializable<T>::value>{});
+    return to_string_impl<T>(value, typename zstd::integral_constant<bool, Serializable<T>::value>::type());
   }
   catch (const Error &e)
   {
@@ -1136,8 +1179,9 @@ inline std::string escape_json_string(const std::string &input)
   std::string output;
   output.reserve(input.length());
 
-  for (char c : input)
+  for (std::string::const_iterator it = input.begin(); it != input.end(); ++it)
   {
+    char c = *it;
     switch (c)
     {
     case '"':
@@ -1162,7 +1206,7 @@ inline std::string escape_json_string(const std::string &input)
       output += "\\t";
       break;
     default:
-      if ('\x00' <= c && c <= '\x1f')
+      if (iscntrl(c))
       {
         char buf[7];
         snprintf(buf, sizeof(buf), "\\u%04x", static_cast<unsigned char>(c));
@@ -1297,7 +1341,9 @@ inline Value json_handle_to_value(JSON_INSTANCE *instance, KEY_HANDLE *key_handl
       try
       {
         std::string str_val(value_ptr, value_length);
-        double num_val = std::stod(str_val);
+        // Use strtod instead of std::stod for C++98 compatibility
+        char *endptr;
+        double num_val = std::strtod(str_val.c_str(), &endptr);
         return Value(num_val);
       }
       catch (...)
@@ -1435,7 +1481,7 @@ zstd::expected<T, Error> from_value(const Value &value)
 {
   try
   {
-    return from_str_impl<T>(value, typename std::integral_constant<bool, Deserializable<T>::value>{});
+    return from_str_impl<T>(value, typename zstd::integral_constant<bool, Deserializable<T>::value>::type());
   }
   catch (const Error &e)
   {
@@ -1449,14 +1495,14 @@ zstd::expected<T, Error> from_value(const Value &value)
 
 // Helper implementation functions for to_value for C++14 compatibility
 template <typename T>
-zstd::expected<Value, Error> to_value_impl(const T &obj, std::true_type)
+zstd::expected<Value, Error> to_value_impl(const T &obj, zstd::true_type)
 {
   return Serializable<T>::serialize(obj);
 }
 
 #ifdef ZJSON_ENABLE_STRUCT_SUPPORT
 template <typename T>
-zstd::expected<Value, Error> to_value_impl(const T &obj, std::false_type)
+zstd::expected<Value, Error> to_value_impl(const T &obj, zstd::false_type)
 {
   if (SerializationRegistry<T>::has_serializer())
   {
@@ -1469,7 +1515,7 @@ zstd::expected<Value, Error> to_value_impl(const T &obj, std::false_type)
 }
 #else
 template <typename T>
-zstd::expected<Value, Error> to_value_impl(const T &obj, std::false_type)
+zstd::expected<Value, Error> to_value_impl(const T &obj, zstd::false_type)
 {
   return zstd::make_unexpected(Error::invalid_type("serializable", "unknown"));
 }
@@ -1481,7 +1527,7 @@ zstd::expected<Value, Error> to_value(const T &obj)
 {
   try
   {
-    return to_value_impl<T>(obj, typename std::integral_constant<bool, Serializable<T>::value>{});
+    return to_value_impl<T>(obj, typename zstd::integral_constant<bool, Serializable<T>::value>::type());
   }
   catch (const Error &e)
   {
@@ -1520,7 +1566,7 @@ zstd::expected<T, Error> from_str(const std::string &json_str)
     // Clean up
     ZJSMTERM(&instance);
 
-    return from_str_impl<T>(parsed, typename std::integral_constant<bool, Deserializable<T>::value>{});
+    return from_str_impl<T>(parsed, typename zstd::integral_constant<bool, Deserializable<T>::value>::type());
   }
   catch (const Error &e)
   {
@@ -1548,8 +1594,9 @@ inline std::string add_json_indentation(const std::string &json_str, int spaces)
   bool in_string = false;
   bool escape_next = false;
 
-  for (const char &ch : json_str)
+  for (std::string::const_iterator it = json_str.begin(); it != json_str.end(); ++it)
   {
+    char ch = *it;
     if (escape_next)
     {
       result += ch;
@@ -1804,7 +1851,7 @@ inline std::string value_to_json_string(const Value &value)
         ss << std::hex << rc;
         throw Error(Error::Custom, "Failed to serialize JSON with dynamic buffer. RC: x'" + ss.str() + "'");
       }
-      result = std::string(dynamic_buffer.data(), actual_length);
+      result = std::string(&dynamic_buffer[0], actual_length);
     }
     else if (rc == 0)
     {
