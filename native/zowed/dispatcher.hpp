@@ -40,27 +40,25 @@ struct ArgTransform
 
   TransformKind kind;
   std::string argName;
-  std::string newName;        // Used for InputRename
-  std::string defaultValue;   // Used for InputDefault
-  TransformCallback callback; // Used for InputCallback and OutputCallback
+  std::string newName;         // Used for InputRename
+  plugin::Argument defaultArg; // Used for InputDefault
+  TransformCallback callback;  // Used for InputCallback and OutputCallback
 
   // Constructor for InputRename
   ArgTransform(TransformKind k, const std::string &arg, const std::string &newArgName)
-      : kind(k), argName(arg), newName(newArgName), defaultValue(""), callback(nullptr)
+      : kind(k), argName(arg), newName(newArgName), defaultArg(), callback(nullptr)
   {
   }
 
-  // Constructor for InputDefault
-  static ArgTransform create_default(const std::string &arg, const std::string &defValue)
+  // Constructor for InputDefault (internal use)
+  ArgTransform(TransformKind k, const std::string &arg, const plugin::Argument &defValue)
+      : kind(k), argName(arg), newName(""), defaultArg(defValue), callback(nullptr)
   {
-    ArgTransform t(InputDefault, arg, "");
-    t.defaultValue = defValue;
-    return t;
   }
 
   // Constructor for InputCallback and OutputCallback
   ArgTransform(TransformKind k, const std::string &arg, TransformCallback cb)
-      : kind(k), argName(arg), newName(""), defaultValue(""), callback(cb)
+      : kind(k), argName(arg), newName(""), defaultArg(), callback(cb)
   {
   }
 };
@@ -74,9 +72,34 @@ inline ArgTransform InputRename(const std::string &rpcName, const std::string &a
 }
 
 // InputDefault: Set a default value for an argument if not provided
+inline ArgTransform InputDefault(const std::string &argName, const char *defaultValue)
+{
+  return ArgTransform(ArgTransform::InputDefault, argName, plugin::Argument(defaultValue));
+}
+
 inline ArgTransform InputDefault(const std::string &argName, const std::string &defaultValue)
 {
-  return ArgTransform::create_default(argName, defaultValue);
+  return ArgTransform(ArgTransform::InputDefault, argName, plugin::Argument(defaultValue));
+}
+
+inline ArgTransform InputDefault(const std::string &argName, bool defaultValue)
+{
+  return ArgTransform(ArgTransform::InputDefault, argName, plugin::Argument(defaultValue));
+}
+
+inline ArgTransform InputDefault(const std::string &argName, int defaultValue)
+{
+  return ArgTransform(ArgTransform::InputDefault, argName, plugin::Argument(static_cast<long long>(defaultValue)));
+}
+
+inline ArgTransform InputDefault(const std::string &argName, long long defaultValue)
+{
+  return ArgTransform(ArgTransform::InputDefault, argName, plugin::Argument(defaultValue));
+}
+
+inline ArgTransform InputDefault(const std::string &argName, double defaultValue)
+{
+  return ArgTransform(ArgTransform::InputDefault, argName, plugin::Argument(defaultValue));
 }
 
 // InputCallback: Transform input via callback (context first, value second)
