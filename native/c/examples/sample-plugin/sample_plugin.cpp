@@ -19,7 +19,7 @@ int hello_command(plugin::InvocationContext &context)
   {
     str += " to " + name;
   }
-  const auto times = context.get<int>("times", 1);
+  const auto times = context.get<long long>("times", 1);
   for (int i = 0; i < times; i++)
   {
     context.println(str.c_str());
