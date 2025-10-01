@@ -153,46 +153,36 @@ void CommandDispatcher::apply_input_transforms(const std::vector<ArgTransform> &
 
   for (std::vector<ArgTransform>::const_iterator it = transforms.begin(); it != transforms.end(); ++it)
   {
-    if (it->type != ArgTransform::Input)
-    {
-      continue;
-    }
-
     // Find the argument
     plugin::ArgumentMap::iterator arg_it = args.find(it->argName);
 
-    // For simple renames, the argument must exist
-    if (it->isRename)
+    switch (it->kind)
     {
+    case ArgTransform::InputRename:
+    {
+      // Rename: argument must exist
       if (arg_it == args.end())
       {
         continue; // Argument not found, skip rename
       }
 
       plugin::Argument value = arg_it->second;
-      // Simple rename: remove old key and add with new name
       args.erase(arg_it);
       args[it->newName] = value;
+      break;
     }
-    // For callbacks, they can create new values even if argName doesn't exist
-    else if (it->isNoArgsCallback && it->callbackNoArgs)
+
+    case ArgTransform::InputDefault:
     {
-      // No-argument callback transformation - can create new values
-      std::string result = it->callbackNoArgs();
-
-      // Remove the old argument if it existed
-      if (arg_it != args.end())
+      // Set default value if argument doesn't exist
+      if (arg_it == args.end())
       {
-        args.erase(arg_it);
+        args[it->argName] = plugin::Argument(it->defaultValue);
       }
-
-      // If callback returned a non-empty result, add it as new argument
-      if (!result.empty())
-      {
-        args[it->argName] = plugin::Argument(result);
-      }
+      break;
     }
-    else if (it->callback)
+
+    case ArgTransform::InputCallback:
     {
       // Callback transformation (context first, value second)
       // If argument exists, pass it; otherwise pass empty argument
@@ -211,6 +201,12 @@ void CommandDispatcher::apply_input_transforms(const std::vector<ArgTransform> &
       {
         args[it->argName] = plugin::Argument(result);
       }
+      break;
+    }
+
+    default:
+      // Not an input transform, skip
+      break;
     }
   }
 }
@@ -234,45 +230,19 @@ void CommandDispatcher::apply_output_transforms(const std::vector<ArgTransform> 
 
   for (std::vector<ArgTransform>::const_iterator it = transforms.begin(); it != transforms.end(); ++it)
   {
-    if (it->type != ArgTransform::Output)
-    {
-      continue;
-    }
-
     // Get the field value from the object if it exists
     ast::Node fieldValue = obj->get(it->argName);
 
-    // For simple renames
-    if (it->isRename)
+    switch (it->kind)
     {
-      if (!fieldValue)
-      {
-        continue; // Field not found, skip rename
-      }
-
-      // Remove old field and add with new name (AST doesn't support erase, so we just add the new one)
-      obj->set(it->newName, fieldValue);
-    }
-    // For callbacks, they can create new values even if argName doesn't exist
-    else if (it->isNoArgsCallback && it->callbackNoArgs)
-    {
-      // No-argument callback transformation - can create new values
-      std::string result = it->callbackNoArgs();
-
-      // If callback returned a non-empty result, set it on the object
-      if (!result.empty())
-      {
-        obj->set(it->argName, ast::Ast::string(result));
-      }
-    }
-    else if (it->callback)
+    case ArgTransform::OutputCallback:
     {
       // Callback transformation (context first, value second)
       // Create empty argument if field doesn't exist
       plugin::Argument value;
       if (fieldValue)
       {
-        // Convert AST node to string for the argument
+        // Convert AST node to appropriate type for the argument
         if (fieldValue->is_string())
         {
           value = plugin::Argument(fieldValue->as_string());
@@ -297,9 +267,14 @@ void CommandDispatcher::apply_output_transforms(const std::vector<ArgTransform> 
       // If callback returned a non-empty result, set it on the object
       if (!result.empty())
       {
-        // std::cout << "argName: " << it->argName << ", result: " << result << std::endl;
         obj->set(it->argName, ast::Ast::string(result));
       }
+      break;
+    }
+
+    default:
+      // Not an output transform, skip
+      break;
     }
   }
 }
