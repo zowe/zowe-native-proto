@@ -668,12 +668,15 @@ void test_serialization_round_trips()
             Expect(restored.opt_string.has_value()).ToBe(false);
         });
 
-        it("should properly escape and unescape special characters in strings", []() {
-            // Test string with various special JSON characters that require escaping
-            SimpleStruct original{
-                42,
-                "Line 1\nLine 2\tTabbed\rCarriage\bBackspace\"Quote\"\\Backslash"
-            };
+        it("should properly escape and unescape all EBCDIC characters (0-255)", []() {
+            // Build a string containing all EBCDIC characters from 0 to 255
+            std::string all_chars;
+            all_chars.reserve(256);
+            for (int i = 0; i < 256; i++) {
+                all_chars += static_cast<char>(i);
+            }
+            
+            SimpleStruct original{42, all_chars};
             
             // Serialize to JSON
             auto json_result = zjson::to_string(original);
@@ -681,76 +684,32 @@ void test_serialization_round_trips()
             
             std::string json_str = json_result.value();
             
-            // Verify that newline is escaped as \n (not literal newline)
-            // The JSON should contain the escaped sequence "\\n" not actual newline
-            bool has_escaped_newline = json_str.find("\\n") != std::string::npos;
-            Expect(has_escaped_newline).ToBe(true);
+            // Verify that control and special characters are properly escaped
+            bool has_escaped_chars = json_str.find("\\u0000") != std::string::npos;
+            has_escaped_chars &= json_str.find("\\n") != std::string::npos;
+            has_escaped_chars &= json_str.find("\\t") != std::string::npos;
+            has_escaped_chars &= json_str.find("\\\"") != std::string::npos;
+            has_escaped_chars &= json_str.find("\\\\") != std::string::npos;
+            Expect(has_escaped_chars).ToBe(true);
             
-            // Verify that tab is escaped as \t
-            bool has_escaped_tab = json_str.find("\\t") != std::string::npos;
-            Expect(has_escaped_tab).ToBe(true);
-            
-            // Verify that quote is escaped as \"
-            bool has_escaped_quote = json_str.find("\\\"") != std::string::npos;
-            Expect(has_escaped_quote).ToBe(true);
-            
-            // Deserialize back - escaped sequences should be interpreted as literal characters
+            // Deserialize back - all characters should be preserved
             auto restored_result = zjson::from_str<SimpleStruct>(json_str);
             Expect(restored_result.has_value()).ToBe(true);
             
             SimpleStruct restored = restored_result.value();
             Expect(restored.id).ToBe(original.id);
             
-            // The restored string should contain actual special characters (not escape sequences)
+            // Verify all 256 characters are preserved exactly
+            Expect(restored.name.size()).ToBe(256);
+            
+            for (int i = 0; i < 256; i++) {
+                unsigned char original_char = static_cast<unsigned char>(original.name[i]);
+                unsigned char restored_char = static_cast<unsigned char>(restored.name[i]);
+                Expect(restored_char).ToBe(original_char);
+            }
+            
+            // Verify the entire string matches
             Expect(restored.name).ToBe(original.name);
-            
-            // Verify specific characters are preserved
-            bool contains_newline = restored.name.find('\n') != std::string::npos;
-            bool contains_tab = restored.name.find('\t') != std::string::npos;
-            bool contains_quote = restored.name.find('"') != std::string::npos;
-            bool contains_backslash = restored.name.find('\\') != std::string::npos;
-            
-            Expect(contains_newline).ToBe(true);
-            Expect(contains_tab).ToBe(true);
-            Expect(contains_quote).ToBe(true);
-            Expect(contains_backslash).ToBe(true);
-        });
-
-        it("should handle unicode and control characters in JSON strings", []() {
-            // Test with null byte, form feed, and other control characters
-            std::string test_str = "Test\fFormFeed";
-            test_str += '\0';  // Null byte
-            test_str += "After Null";
-            test_str += " Unicode: \u00E9\u00F1\u4E2D";  // é, ñ, 中 (Chinese character)
-            
-            SimpleStruct original{123, test_str};
-            
-            auto json_result = zjson::to_string(original);
-            Expect(json_result.has_value()).ToBe(true);
-            
-            std::string json_str = json_result.value();
-            
-            // Verify form feed is escaped
-            bool has_escaped_formfeed = json_str.find("\\f") != std::string::npos;
-            Expect(has_escaped_formfeed).ToBe(true);
-            
-            // Should be able to parse back
-            auto restored_result = zjson::from_str<SimpleStruct>(json_str);
-            Expect(restored_result.has_value()).ToBe(true);
-            
-            SimpleStruct restored = restored_result.value();
-            
-            // Verify the string was fully preserved including null byte and Unicode
-            Expect(restored.name.length()).ToBe(original.name.length());
-            Expect(restored.name).ToBe(original.name);
-            
-            // Verify null byte is present
-            bool has_null_byte = restored.name.find('\0') != std::string::npos;
-            Expect(has_null_byte).ToBe(true);
-            
-            // Verify form feed is present
-            bool has_formfeed = restored.name.find('\f') != std::string::npos;
-            Expect(has_formfeed).ToBe(true);
         }); });
 }
 
