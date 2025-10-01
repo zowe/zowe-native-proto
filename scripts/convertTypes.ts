@@ -393,6 +393,7 @@ function generateHeaderFile(interfaces: ExtractedInterface[], fileName: string):
     content += `#include <map>\n`;
     content += `#include <cstdint>\n`; // for uint8_t
     content += `#include "../zstd.hpp"\n`; // for zstd::optional
+    content += `#define ZJSON_ENABLE_STRUCT_SUPPORT\n`; // Enable struct serialization macros
     content += `#include "../zjson.hpp"\n`; // for ZJSON_DERIVE macro
 
     // Include common.h for non-common files that might inherit from common types
