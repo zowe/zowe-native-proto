@@ -27,75 +27,68 @@
 // Argument transformation types
 struct ArgTransform
 {
-  enum TransformType
+  enum TransformKind
   {
-    Input, // Transform input arguments before command execution
-    Output // Transform output arguments after command execution
+    InputRename,   // Rename an input argument
+    InputDefault,  // Set a default value for an input argument
+    InputCallback, // Transform input via callback
+    OutputCallback // Transform output via callback
   };
 
-  // Transformation function that processes an argument value
-  // Returns new name if transformation succeeded, or empty string if transformation failed/should be removed
+  // Callback function that processes an argument value
   typedef std::function<std::string(MiddlewareContext &context, const plugin::Argument &value)> TransformCallback;
-  typedef std::function<std::string()> TransformCallbackNoArgs;
 
-  TransformType type;
+  TransformKind kind;
   std::string argName;
+  std::string newName;        // Used for InputRename
+  std::string defaultValue;   // Used for InputDefault
+  TransformCallback callback; // Used for InputCallback and OutputCallback
 
-  // Either a simple rename (string) or a callback function
-  bool isRename;
-  bool isNoArgsCallback;
-  std::string newName;                    // Used when isRename is true
-  TransformCallback callback;             // Used when isRename is false
-  TransformCallbackNoArgs callbackNoArgs; // Used for 0-argument callbacks
-
-  // Constructor for simple rename
-  ArgTransform(TransformType t, const std::string &arg, const std::string &newArgName)
-      : type(t), argName(arg), isRename(true), isNoArgsCallback(false), newName(newArgName), callback(nullptr), callbackNoArgs(nullptr)
+  // Constructor for InputRename
+  ArgTransform(TransformKind k, const std::string &arg, const std::string &newArgName)
+      : kind(k), argName(arg), newName(newArgName), defaultValue(""), callback(nullptr)
   {
   }
 
-  // Constructor for callback-based transformation (with context and value)
-  ArgTransform(TransformType t, const std::string &arg, TransformCallback cb)
-      : type(t), argName(arg), isRename(false), isNoArgsCallback(false), newName(""), callback(cb), callbackNoArgs(nullptr)
+  // Constructor for InputDefault
+  static ArgTransform create_default(const std::string &arg, const std::string &defValue)
   {
+    ArgTransform t(InputDefault, arg, "");
+    t.defaultValue = defValue;
+    return t;
   }
 
-  // Constructor for callback-based transformation (no arguments)
-  ArgTransform(TransformType t, const std::string &arg, TransformCallbackNoArgs cb)
-      : type(t), argName(arg), isRename(false), isNoArgsCallback(true), newName(""), callback(nullptr), callbackNoArgs(cb)
+  // Constructor for InputCallback and OutputCallback
+  ArgTransform(TransformKind k, const std::string &arg, TransformCallback cb)
+      : kind(k), argName(arg), newName(""), defaultValue(""), callback(cb)
   {
   }
 };
 
 // Helper functions to create transforms with cleaner syntax
-inline ArgTransform InputTransform(const std::string &argName, ArgTransform::TransformCallback callback)
+
+// InputRename: Rename an argument from rpcName to argName
+inline ArgTransform InputRename(const std::string &rpcName, const std::string &argName)
 {
-  return ArgTransform(ArgTransform::Input, argName, callback);
+  return ArgTransform(ArgTransform::InputRename, rpcName, argName);
 }
 
-inline ArgTransform InputTransform(const std::string &argName, ArgTransform::TransformCallbackNoArgs callback)
+// InputDefault: Set a default value for an argument if not provided
+inline ArgTransform InputDefault(const std::string &argName, const std::string &defaultValue)
 {
-  return ArgTransform(ArgTransform::Input, argName, callback);
+  return ArgTransform::create_default(argName, defaultValue);
 }
 
-inline ArgTransform InputTransform(const std::string &rpcName, const std::string &argName)
+// InputCallback: Transform input via callback (context first, value second)
+inline ArgTransform InputCallback(const std::string &argName, ArgTransform::TransformCallback callback)
 {
-  return ArgTransform(ArgTransform::Input, rpcName, argName);
+  return ArgTransform(ArgTransform::InputCallback, argName, callback);
 }
 
-inline ArgTransform OutputTransform(const std::string &argName, ArgTransform::TransformCallback callback)
+// OutputCallback: Transform output via callback (context first, value second)
+inline ArgTransform OutputCallback(const std::string &argName, ArgTransform::TransformCallback callback)
 {
-  return ArgTransform(ArgTransform::Output, argName, callback);
-}
-
-inline ArgTransform OutputTransform(const std::string &argName, ArgTransform::TransformCallbackNoArgs callback)
-{
-  return ArgTransform(ArgTransform::Output, argName, callback);
-}
-
-inline ArgTransform OutputTransform(const std::string &argName, const std::string &rpcName)
-{
-  return ArgTransform(ArgTransform::Output, argName, rpcName);
+  return ArgTransform(ArgTransform::OutputCallback, argName, callback);
 }
 
 class CommandDispatcher

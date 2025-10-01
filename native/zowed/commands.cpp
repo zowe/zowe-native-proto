@@ -52,20 +52,21 @@ void register_ds_commands(CommandDispatcher &dispatcher)
 {
   dispatcher.register_command("deleteDataset", ds::handle_data_set_delete);
   dispatcher.register_command("listDatasets", ds::handle_data_set_list,
-                              {InputTransform("pattern", "dsn")});
+                              {InputRename("pattern", "dsn")});
   dispatcher.register_command("listDsMembers", ds::handle_data_set_list_members,
-                              {InputTransform("dsname", "dsn")});
+                              {InputRename("dsname", "dsn")});
   dispatcher.register_command("readDataset", ds::handle_data_set_view,
-                              {InputTransform("dsname", "dsn"),
-                               InputTransform("return-etag", []()
-                                              { return "true"; }),
-                               InputTransform("volume", "volser"),
-                               OutputTransform("data", transform_data_from_stdout)});
+                              {InputRename("dsname", "dsn"),
+                               InputDefault("encoding", "IBM-1047"),
+                               InputDefault("return-etag", "true"),
+                               InputRename("volume", "volser"),
+                               OutputCallback("data", transform_data_from_stdout)});
   dispatcher.register_command("restoreDataset", ds::handle_data_set_restore);
   dispatcher.register_command("writeDataset", ds::handle_data_set_write,
-                              {InputTransform("dsname", "dsn"),
-                               InputTransform("data", transform_data_to_stdin),
-                               InputTransform("volume", "volser")});
+                              {InputRename("dsname", "dsn"),
+                               InputCallback("data", transform_data_to_stdin),
+                               InputDefault("encoding", "IBM-1047"),
+                               InputRename("volume", "volser")});
   dispatcher.register_command("createDataset", ds::create_with_attributes);
   dispatcher.register_command("createMember", ds::handle_data_set_create_member);
 }
@@ -97,10 +98,10 @@ void register_uss_commands(CommandDispatcher &dispatcher)
     return handler(context); });
   dispatcher.register_command("deleteFile", uss::handle_uss_delete);
   dispatcher.register_command("listFiles", uss::handle_uss_list,
-                              {InputTransform("fspath", "file-path")});
+                              {InputRename("fspath", "file-path")});
   dispatcher.register_command("readFile", uss::handle_uss_view);
   dispatcher.register_command("writeFile", uss::handle_uss_write,
-                              {InputTransform("data", transform_data_to_stdin)});
+                              {InputCallback("data", transform_data_to_stdin)});
 }
 
 void register_cmd_commands(CommandDispatcher &dispatcher)
