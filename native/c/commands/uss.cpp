@@ -275,7 +275,7 @@ int handle_uss_view(InvocationContext &context)
 
     if (has_encoding && response_format_bytes)
     {
-      zut_print_string_as_bytes(response);
+      zut_print_string_as_bytes(response, &context.output_stream());
     }
     else
     {

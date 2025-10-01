@@ -16,7 +16,7 @@
 #include "../c/commands/uss.hpp"
 #include "../c/zbase64.h"
 
-// Transform callback that reads from stdout and decodes base64 data
+// Transform callback that reads from stdout and encodes base64 data
 static std::string transform_data_from_stdout(MiddlewareContext &context, const plugin::Argument &value)
 {
   try
@@ -54,9 +54,12 @@ void register_ds_commands(CommandDispatcher &dispatcher)
   // dispatcher.register_command("createMember", ds::handle_data_set_create_member);
   // dispatcher.register_command("deleteDataset", ds::handle_data_set_delete);
   dispatcher.register_command("listDatasets", ds::handle_data_set_list,
-                              {InputRename("pattern", "dsn")});
+                              {InputRename("pattern", "dsn"),
+                               InputDefault("response-format-csv", true),
+                               InputDefault("warn", false)});
   dispatcher.register_command("listDsMembers", ds::handle_data_set_list_members,
-                              {InputRename("dsname", "dsn")});
+                              {InputRename("dsname", "dsn"),
+                               InputDefault("warn", false)});
   dispatcher.register_command("readDataset", ds::handle_data_set_view,
                               {InputRename("dsname", "dsn"),
                                InputDefault("encoding", "IBM-1047"),
@@ -78,9 +81,17 @@ void register_job_commands(CommandDispatcher &dispatcher)
   // dispatcher.register_command("getJcl", job::handle_job_view_jcl);
   // dispatcher.register_command("getJobStatus", job::handle_job_view_status);
   // dispatcher.register_command("holdJob", job::handle_job_hold);
-  // dispatcher.register_command("listJobs", job::handle_job_list);
-  // dispatcher.register_command("listSpools", job::handle_job_list_files);
-  // dispatcher.register_command("readSpool", job::handle_job_view_file);
+  dispatcher.register_command("listJobs", job::handle_job_list,
+                              {InputDefault("response-format-csv", true),
+                               InputDefault("warn", false)});
+  dispatcher.register_command("listSpools", job::handle_job_list_files,
+                              {InputRename("job-id", "jobid"),
+                               InputDefault("response-format-csv", true)});
+  dispatcher.register_command("readSpool", job::handle_job_view_file,
+                              {InputRename("job-id", "jobid"),
+                               InputRename("spool-id", "key"),
+                               InputDefault("encoding", "IBM-1047"),
+                               OutputCallback("data", transform_data_from_stdout)});
   // dispatcher.register_command("releaseJob", job::handle_job_release);
   // dispatcher.register_command("submitJcl", job::handle_job_submit_jcl);
   // dispatcher.register_command("submitJob", job::handle_job_submit);

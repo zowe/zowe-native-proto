@@ -17,6 +17,7 @@
 #include "../zut.hpp"
 #include <unistd.h>
 
+using namespace ast;
 using namespace parser;
 using namespace std;
 using namespace commands::common;
@@ -43,6 +44,8 @@ int handle_job_list(InvocationContext &context)
   if (RTNCD_SUCCESS == rc || RTNCD_WARNING == rc)
   {
     bool emit_csv = context.get<bool>("response-format-csv", false);
+    const auto entries_array = arr();
+
     for (vector<ZJob>::iterator it = jobs.begin(); it != jobs.end(); it++)
     {
       if (emit_csv)
@@ -60,7 +63,20 @@ int handle_job_list(InvocationContext &context)
       {
         context.output_stream() << it->jobid << " " << left << setw(10) << it->retcode << " " << it->jobname << " " << it->status << endl;
       }
+
+      const auto entry = obj();
+      entry->set("id", str(it->jobid));
+      string trimmed_name = it->jobname;
+      zut_rtrim(trimmed_name);
+      entry->set("name", str(trimmed_name));
+      entry->set("retcode", str(it->retcode));
+      entry->set("status", str(it->status));
+      entries_array->push(entry);
     }
+
+    const auto result = obj();
+    result->set("items", entries_array);
+    context.set_object(result);
   }
   if (RTNCD_WARNING == rc)
   {
@@ -99,6 +115,8 @@ int handle_job_list_files(InvocationContext &context)
     bool emit_csv = context.get<bool>("response-format-csv", false);
     std::vector<string> fields;
     fields.reserve(5);
+    const auto entries_array = arr();
+
     for (vector<ZJobDD>::iterator it = job_dds.begin(); it != job_dds.end(); ++it)
     {
       fields.push_back(it->ddn);
@@ -114,7 +132,19 @@ int handle_job_list_files(InvocationContext &context)
       {
         context.output_stream() << left << setw(9) << it->ddn << " " << it->dsn << " " << setw(4) << it->key << " " << it->stepname << " " << it->procstep << endl;
       }
+
+      const auto entry = obj();
+      entry->set("id", i64(it->key));
+      entry->set("ddname", str(it->ddn));
+      entry->set("dsname", str(it->dsn));
+      entry->set("procstep", str(it->procstep));
+      entry->set("stepname", str(it->stepname));
+      entries_array->push(entry);
     }
+
+    const auto result = obj();
+    result->set("items", entries_array);
+    context.set_object(result);
   }
 
   if (RTNCD_WARNING == rc)
@@ -207,12 +237,17 @@ int handle_job_view_file(InvocationContext &context)
 
   if (has_encoding && response_format_bytes)
   {
-    zut_print_string_as_bytes(resp);
+    zut_print_string_as_bytes(resp, &context.output_stream());
   }
   else
   {
     context.output_stream() << resp;
   }
+
+  const auto result = obj();
+  result->set("jobId", str(jobid));
+  result->set("spoolId", i64(key));
+  context.set_object(result);
 
   return RTNCD_SUCCESS;
 }
@@ -271,8 +306,8 @@ int handle_job_submit_uss(InvocationContext &context)
   {
     context.error_stream() << "Error: could not view USS file: '" << file << "' rc: '" << rc << "'" << endl;
     context.error_stream() << "  Details:\n"
-         << zusf.diag.e_msg << endl
-         << response << endl;
+                           << zusf.diag.e_msg << endl
+                           << response << endl;
     return RTNCD_FAILURE;
   }
 
