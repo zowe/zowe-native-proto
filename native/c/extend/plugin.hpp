@@ -894,11 +894,37 @@ public:
     return m_error_stream != nullptr ? *m_error_stream : std::cerr;
   }
 
+  bool is_redirecting_error() const
+  {
+    return m_output_stream != nullptr;
+  }
+
+  bool is_redirecting_input() const
+  {
+    return m_output_stream != nullptr;
+  }
+
+  bool is_redirecting_output() const
+  {
+    return m_output_stream != nullptr;
+  }
+
+  const ast::Node &get_object()
+  {
+    return m_object;
+  }
+
+  void set_object(const ast::Node &n)
+  {
+    m_object = n;
+  }
+
 private:
   ArgumentMap m_args;
   ArgumentMap m_output;
   std::ostream *m_output_stream;
   std::ostream *m_error_stream;
+  ast::Node m_object;
 };
 
 class InvocationContext : public Io
