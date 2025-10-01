@@ -63,8 +63,3 @@ plugin::ArgumentMap &MiddlewareContext::mutable_arguments()
 {
   return const_cast<plugin::ArgumentMap &>(arguments());
 }
-
-plugin::ArgumentMap &MiddlewareContext::mutable_output()
-{
-  return const_cast<plugin::ArgumentMap &>(output());
-}

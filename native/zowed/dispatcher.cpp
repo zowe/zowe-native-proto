@@ -160,31 +160,56 @@ void CommandDispatcher::apply_input_transforms(const std::vector<ArgTransform> &
 
     // Find the argument
     plugin::ArgumentMap::iterator arg_it = args.find(it->argName);
-    if (arg_it == args.end())
-    {
-      continue; // Argument not found, skip
-    }
 
-    plugin::Argument value = arg_it->second;
-
+    // For simple renames, the argument must exist
     if (it->isRename)
     {
+      if (arg_it == args.end())
+      {
+        continue; // Argument not found, skip rename
+      }
+
+      plugin::Argument value = arg_it->second;
       // Simple rename: remove old key and add with new name
       args.erase(arg_it);
       args[it->newName] = value;
     }
+    // For callbacks, they can create new values even if argName doesn't exist
+    else if (it->isNoArgsCallback && it->callbackNoArgs)
+    {
+      // No-argument callback transformation - can create new values
+      std::string result = it->callbackNoArgs();
+
+      // Remove the old argument if it existed
+      if (arg_it != args.end())
+      {
+        args.erase(arg_it);
+      }
+
+      // If callback returned a non-empty result, add it as new argument
+      if (!result.empty())
+      {
+        args[it->argName] = plugin::Argument(result);
+      }
+    }
     else if (it->callback)
     {
-      // Callback transformation
-      std::string newArgName = it->callback(value, context);
+      // Callback transformation (context first, value second)
+      // If argument exists, pass it; otherwise pass empty argument
+      plugin::Argument value = (arg_it != args.end()) ? arg_it->second : plugin::Argument();
 
-      // Remove the old argument
-      args.erase(arg_it);
+      std::string result = it->callback(context, value);
 
-      // If callback returned a non-empty name, add with new name
-      if (!newArgName.empty())
+      // Remove the old argument if it existed
+      if (arg_it != args.end())
       {
-        args[newArgName] = value;
+        args.erase(arg_it);
+      }
+
+      // If callback returned a non-empty result, add it as new argument
+      if (!result.empty())
+      {
+        args[it->argName] = plugin::Argument(result);
       }
     }
   }
@@ -192,7 +217,20 @@ void CommandDispatcher::apply_input_transforms(const std::vector<ArgTransform> &
 
 void CommandDispatcher::apply_output_transforms(const std::vector<ArgTransform> &transforms, MiddlewareContext &context)
 {
-  plugin::ArgumentMap &output = context.mutable_output();
+  ast::Node obj = context.get_object();
+
+  // If no object is set, create one
+  if (!obj)
+  {
+    obj = ast::Ast::object();
+    context.set_object(obj);
+  }
+
+  // Only process objects (not arrays or primitives)
+  if (!obj->is_object())
+  {
+    return;
+  }
 
   for (std::vector<ArgTransform>::const_iterator it = transforms.begin(); it != transforms.end(); ++it)
   {
@@ -201,33 +239,66 @@ void CommandDispatcher::apply_output_transforms(const std::vector<ArgTransform> 
       continue;
     }
 
-    // Find the output argument
-    plugin::ArgumentMap::iterator out_it = output.find(it->argName);
-    if (out_it == output.end())
-    {
-      continue; // Output not found, skip
-    }
+    // Get the field value from the object if it exists
+    ast::Node fieldValue = obj->get(it->argName);
 
-    plugin::Argument value = out_it->second;
-
+    // For simple renames
     if (it->isRename)
     {
-      // Simple rename: remove old key and add with new name
-      output.erase(out_it);
-      output[it->newName] = value;
+      if (!fieldValue)
+      {
+        continue; // Field not found, skip rename
+      }
+
+      // Remove old field and add with new name (AST doesn't support erase, so we just add the new one)
+      obj->set(it->newName, fieldValue);
+    }
+    // For callbacks, they can create new values even if argName doesn't exist
+    else if (it->isNoArgsCallback && it->callbackNoArgs)
+    {
+      // No-argument callback transformation - can create new values
+      std::string result = it->callbackNoArgs();
+
+      // If callback returned a non-empty result, set it on the object
+      if (!result.empty())
+      {
+        obj->set(it->argName, ast::Ast::string(result));
+      }
     }
     else if (it->callback)
     {
-      // Callback transformation
-      std::string newArgName = it->callback(value, context);
-
-      // Remove the old output
-      output.erase(out_it);
-
-      // If callback returned a non-empty name, add with new name
-      if (!newArgName.empty())
+      // Callback transformation (context first, value second)
+      // Create empty argument if field doesn't exist
+      plugin::Argument value;
+      if (fieldValue)
       {
-        output[newArgName] = value;
+        // Convert AST node to string for the argument
+        if (fieldValue->is_string())
+        {
+          value = plugin::Argument(fieldValue->as_string());
+        }
+        else if (fieldValue->is_integer())
+        {
+          value = plugin::Argument(fieldValue->as_integer());
+        }
+        else if (fieldValue->is_bool())
+        {
+          value = plugin::Argument(fieldValue->as_bool());
+        }
+        // For complex types, use JSON representation
+        else
+        {
+          value = plugin::Argument(fieldValue->as_json());
+        }
+      }
+
+      std::string result = it->callback(context, value);
+
+      // If callback returned a non-empty result, set it on the object
+      if (!result.empty())
+      {
+        // std::cout << "argName: " << it->argName << ", result: " << result << std::endl;
+        obj->set(it->argName, ast::Ast::string(result));
       }
     }
   }

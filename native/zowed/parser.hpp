@@ -31,9 +31,8 @@ public:
   std::string get_error_content() const;
   void clear_streams();
 
-  // Provide mutable access to arguments and output for transforms
+  // Provide mutable access to arguments for transforms
   plugin::ArgumentMap &mutable_arguments();
-  plugin::ArgumentMap &mutable_output();
 
 private:
   std::stringstream m_input_stream;
