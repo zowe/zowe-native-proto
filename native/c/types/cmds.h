@@ -22,6 +22,7 @@
 #include <map>
 #include <cstdint>
 #include "../zstd.hpp"
+#define ZJSON_ENABLE_STRUCT_SUPPORT
 #include "../zjson.hpp"
 #include "common.h"
 
@@ -29,38 +30,38 @@
 
 struct IssueConsoleRequest : CommandRequest
 {
-    std::string commandText;
-    zstd::optional<std::string> consoleName;
+  std::string commandText;
+  zstd::optional<std::string> consoleName;
 };
 ZJSON_DERIVE(IssueConsoleRequest, commandText, consoleName);
 
 struct IssueTsoRequest : CommandRequest
 {
-    std::string commandText;
+  std::string commandText;
 };
 ZJSON_DERIVE(IssueTsoRequest, commandText);
 
 struct IssueUnixRequest : CommandRequest
 {
-    std::string commandText;
+  std::string commandText;
 };
 ZJSON_DERIVE(IssueUnixRequest, commandText);
 
 struct IssueConsoleResponse : CommandResponse
 {
-    std::string data;
+  std::string data;
 };
 ZJSON_DERIVE(IssueConsoleResponse, success, data);
 
 struct IssueTsoResponse : CommandResponse
 {
-    std::string data;
+  std::string data;
 };
 ZJSON_DERIVE(IssueTsoResponse, success, data);
 
 struct IssueUnixResponse : CommandResponse
 {
-    std::string data;
+  std::string data;
 };
 ZJSON_DERIVE(IssueUnixResponse, success, data);
 
