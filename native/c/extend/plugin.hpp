@@ -348,15 +348,16 @@ private:
     }
 
     bool first = true;
-    for (const auto &entry : *o)
+    const auto &obj = *o;
+    for (auto entry = obj.begin(); entry != obj.end(); ++entry)
     {
       if (!first)
         out << '\n';
       first = false;
 
       append_indent(out, indent);
-      out << entry.first;
-      const Node &value = entry.second;
+      out << entry->first;
+      const Node &value = entry->second;
       if (!value)
       {
         out << ": null";
