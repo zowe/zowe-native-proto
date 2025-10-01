@@ -16,30 +16,36 @@
 #include "../c/commands/uss.hpp"
 #include "../c/zbase64.h"
 
-// Transform callback that decodes base64 data and writes to stdin, then removes the argument
-static std::string transform_data_to_stdin(const plugin::Argument &value, MiddlewareContext &context)
+// Transform callback that reads from stdout and decodes base64 data
+static std::string transform_data_from_stdout(MiddlewareContext &context, const plugin::Argument &value)
 {
-  if (value.is_string())
+  try
   {
-    try
-    {
-      // Get the base64 encoded data
-      std::string base64Data = value.get_string_value();
-
-      // Base64 decode the data and write to input stream
-      std::string decodedData = zbase64::decode(base64Data);
-      context.set_input_content(decodedData);
-
-      // Return empty string to remove the argument
-      return "";
-    }
-    catch (const std::exception &e)
-    {
-      // If base64 decode fails, write error to error stream
-      context.errln("Failed to decode base64 data");
-    }
+    std::string rawData = context.get_output_content();
+    std::string encodedData = zbase64::encode(rawData);
+    return encodedData;
   }
-  return ""; // Remove argument if not a string or failed to decode
+  catch (const std::exception &e)
+  {
+    context.errln("Failed to encode base64 data");
+  }
+  return "";
+}
+
+// Transform callback that decodes base64 data and writes to stdin
+static std::string transform_data_to_stdin(MiddlewareContext &context, const plugin::Argument &value)
+{
+  try
+  {
+    std::string base64Data = value.get_string_value();
+    std::string decodedData = zbase64::decode(base64Data);
+    context.set_input_content(decodedData);
+  }
+  catch (const std::exception &e)
+  {
+    context.errln("Failed to decode base64 data");
+  }
+  return "";
 }
 
 void register_ds_commands(CommandDispatcher &dispatcher)
@@ -47,11 +53,19 @@ void register_ds_commands(CommandDispatcher &dispatcher)
   dispatcher.register_command("deleteDataset", ds::handle_data_set_delete);
   dispatcher.register_command("listDatasets", ds::handle_data_set_list,
                               {InputTransform("pattern", "dsn")});
-  dispatcher.register_command("listDsMembers", ds::handle_data_set_list_members);
-  dispatcher.register_command("readDataset", ds::handle_data_set_view);
+  dispatcher.register_command("listDsMembers", ds::handle_data_set_list_members,
+                              {InputTransform("dsname", "dsn")});
+  dispatcher.register_command("readDataset", ds::handle_data_set_view,
+                              {InputTransform("dsname", "dsn"),
+                               InputTransform("return-etag", []()
+                                              { return "true"; }),
+                               InputTransform("volume", "volser"),
+                               OutputTransform("data", transform_data_from_stdout)});
   dispatcher.register_command("restoreDataset", ds::handle_data_set_restore);
   dispatcher.register_command("writeDataset", ds::handle_data_set_write,
-                              {InputTransform("data", transform_data_to_stdin)});
+                              {InputTransform("dsname", "dsn"),
+                               InputTransform("data", transform_data_to_stdin),
+                               InputTransform("volume", "volser")});
   dispatcher.register_command("createDataset", ds::create_with_attributes);
   dispatcher.register_command("createMember", ds::handle_data_set_create_member);
 }

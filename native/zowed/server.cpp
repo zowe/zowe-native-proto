@@ -159,6 +159,33 @@ RpcRequest RpcServer::parseRpcRequest(const zjson::Value &json)
   return result.value();
 }
 
+std::string RpcServer::camelCaseToKebabCase(const std::string &input)
+{
+  std::string result;
+  result.reserve(input.length() + 5); // Reserve some extra space for hyphens
+
+  for (size_t i = 0; i < input.length(); ++i)
+  {
+    char c = input[i];
+
+    // If uppercase letter, convert to lowercase and prepend hyphen (unless it's the first character)
+    if (std::isupper(c))
+    {
+      if (i > 0)
+      {
+        result += '-';
+      }
+      result += std::tolower(c);
+    }
+    else
+    {
+      result += c;
+    }
+  }
+
+  return result;
+}
+
 plugin::ArgumentMap RpcServer::convertJsonParamsToArgumentMap(const zjson::Value &params)
 {
   plugin::ArgumentMap args;
@@ -171,20 +198,21 @@ plugin::ArgumentMap RpcServer::convertJsonParamsToArgumentMap(const zjson::Value
   // Convert JSON object to ArgumentMap
   for (const auto &pair : params.as_object())
   {
-    const std::string &key = pair.first;
+    // Convert camelCase keys to kebab-case
+    const std::string kebabKey = camelCaseToKebabCase(pair.first);
     const zjson::Value &value = pair.second;
 
     if (value.is_bool())
     {
-      args[key] = plugin::Argument(value.as_bool());
+      args[kebabKey] = plugin::Argument(value.as_bool());
     }
     else if (value.is_number())
     {
-      args[key] = plugin::Argument(static_cast<long long>(value.as_number()));
+      args[kebabKey] = plugin::Argument(static_cast<long long>(value.as_number()));
     }
     else if (value.is_string())
     {
-      args[key] = plugin::Argument(value.as_string());
+      args[kebabKey] = plugin::Argument(value.as_string());
     }
     else if (value.is_array())
     {
@@ -201,13 +229,13 @@ plugin::ArgumentMap RpcServer::convertJsonParamsToArgumentMap(const zjson::Value
           // TODO Handle non-string values in arrays
         }
       }
-      args[key] = plugin::Argument(stringArray);
+      args[kebabKey] = plugin::Argument(stringArray);
     }
     // For other types (null, object), convert to string representation
     else
     {
       auto str_result = zjson::to_string(value);
-      args[key] = plugin::Argument(str_result.value_or(""));
+      args[kebabKey] = plugin::Argument(str_result.value_or(""));
     }
   }
 

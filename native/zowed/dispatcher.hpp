@@ -35,25 +35,34 @@ struct ArgTransform
 
   // Transformation function that processes an argument value
   // Returns new name if transformation succeeded, or empty string if transformation failed/should be removed
-  typedef std::function<std::string(const plugin::Argument &value, MiddlewareContext &context)> TransformCallback;
+  typedef std::function<std::string(MiddlewareContext &context, const plugin::Argument &value)> TransformCallback;
+  typedef std::function<std::string()> TransformCallbackNoArgs;
 
   TransformType type;
   std::string argName;
 
   // Either a simple rename (string) or a callback function
   bool isRename;
-  std::string newName;        // Used when isRename is true
-  TransformCallback callback; // Used when isRename is false
+  bool isNoArgsCallback;
+  std::string newName;                    // Used when isRename is true
+  TransformCallback callback;             // Used when isRename is false
+  TransformCallbackNoArgs callbackNoArgs; // Used for 0-argument callbacks
 
   // Constructor for simple rename
   ArgTransform(TransformType t, const std::string &arg, const std::string &newArgName)
-      : type(t), argName(arg), isRename(true), newName(newArgName), callback(nullptr)
+      : type(t), argName(arg), isRename(true), isNoArgsCallback(false), newName(newArgName), callback(nullptr), callbackNoArgs(nullptr)
   {
   }
 
-  // Constructor for callback-based transformation
+  // Constructor for callback-based transformation (with context and value)
   ArgTransform(TransformType t, const std::string &arg, TransformCallback cb)
-      : type(t), argName(arg), isRename(false), newName(""), callback(cb)
+      : type(t), argName(arg), isRename(false), isNoArgsCallback(false), newName(""), callback(cb), callbackNoArgs(nullptr)
+  {
+  }
+
+  // Constructor for callback-based transformation (no arguments)
+  ArgTransform(TransformType t, const std::string &arg, TransformCallbackNoArgs cb)
+      : type(t), argName(arg), isRename(false), isNoArgsCallback(true), newName(""), callback(nullptr), callbackNoArgs(cb)
   {
   }
 };
@@ -64,12 +73,22 @@ inline ArgTransform InputTransform(const std::string &argName, ArgTransform::Tra
   return ArgTransform(ArgTransform::Input, argName, callback);
 }
 
+inline ArgTransform InputTransform(const std::string &argName, ArgTransform::TransformCallbackNoArgs callback)
+{
+  return ArgTransform(ArgTransform::Input, argName, callback);
+}
+
 inline ArgTransform InputTransform(const std::string &rpcName, const std::string &argName)
 {
   return ArgTransform(ArgTransform::Input, rpcName, argName);
 }
 
 inline ArgTransform OutputTransform(const std::string &argName, ArgTransform::TransformCallback callback)
+{
+  return ArgTransform(ArgTransform::Output, argName, callback);
+}
+
+inline ArgTransform OutputTransform(const std::string &argName, ArgTransform::TransformCallbackNoArgs callback)
 {
   return ArgTransform(ArgTransform::Output, argName, callback);
 }

@@ -282,6 +282,9 @@ int handle_data_set_view(InvocationContext &context)
   else
   {
     string response;
+    const auto result = obj();
+    result->set("dataset", str(dsn));
+
     rc = zds_read_from_dsn(&zds, dsn, response);
     if (0 != rc)
     {
@@ -293,8 +296,11 @@ int handle_data_set_view(InvocationContext &context)
     if (context.get<bool>("return-etag", false))
     {
       const auto etag = zut_calc_adler32_checksum(response);
-      context.output_stream() << "etag: " << hex << etag << dec << endl;
+      stringstream etag_stream;
+      etag_stream << hex << etag << dec;
+      context.output_stream() << "etag: " << etag_stream.str() << endl;
       context.output_stream() << "data: ";
+      result->set("etag", str(etag_stream.str()));
     }
 
     bool has_encoding = context.has("encoding");
@@ -308,6 +314,8 @@ int handle_data_set_view(InvocationContext &context)
     {
       context.output_stream() << response;
     }
+
+    context.set_object(result);
   }
 
   if (dds.size() > 0)
@@ -349,7 +357,7 @@ int handle_data_set_list(InvocationContext &context)
   {
     vector<string> fields;
     fields.reserve(attributes ? 5 : 1);
-    const auto entries_array = Ast::array();
+    const auto entries_array = arr();
 
     for (vector<ZDSEntry>::iterator it = entries.begin(); it != entries.end(); ++it)
     {
@@ -378,20 +386,20 @@ int handle_data_set_list(InvocationContext &context)
         }
       }
 
-      const auto entry = Ast::object();
+      const auto entry = obj();
       string trimmed_name = it->name;
       zut_rtrim(trimmed_name);
-      entry->set("name", Ast::string(trimmed_name));
-      entry->set("dsorg", Ast::string(it->dsorg));
-      entry->set("volser", Ast::string(it->volser));
-      entry->set("migr", Ast::boolean(it->migr));
-      entry->set("recfm", Ast::string(it->recfm));
+      entry->set("name", str(trimmed_name));
+      entry->set("dsorg", str(it->dsorg));
+      entry->set("volser", str(it->volser));
+      entry->set("migr", boolean(it->migr));
+      entry->set("recfm", str(it->recfm));
       entries_array->push(entry);
     }
 
-    const auto result = Ast::object();
+    const auto result = obj();
     result->set("items", entries_array);
-    result->set("returnedRows", Ast::integer(entries.size()));
+    result->set("returnedRows", i64(entries.size()));
     context.set_object(result);
   }
   if (RTNCD_WARNING == rc)
@@ -436,10 +444,20 @@ int handle_data_set_list_members(InvocationContext &context)
 
   if (RTNCD_SUCCESS == rc || RTNCD_WARNING == rc)
   {
+    const auto entries_array = arr();
     for (vector<ZDSMem>::iterator it = members.begin(); it != members.end(); ++it)
     {
       context.output_stream() << left << setw(12) << it->name << endl;
+      const auto entry = obj();
+      string trimmed_name = it->name;
+      zut_rtrim(trimmed_name);
+      entry->set("name", str(trimmed_name));
+      entries_array->push(entry);
     }
+    const auto result = obj();
+    result->set("items", entries_array);
+    result->set("returnedRows", i64(members.size()));
+    context.set_object(result);
   }
   if (RTNCD_WARNING == rc)
   {
@@ -565,6 +583,11 @@ int handle_data_set_write(InvocationContext &context)
   {
     context.output_stream() << "Wrote data to '" << dsn << "'" << endl;
   }
+
+  const auto result = obj();
+  result->set("dataset", str(dsn));
+  result->set("etag", str(zds.etag));
+  context.set_object(result);
 
   return rc;
 }
