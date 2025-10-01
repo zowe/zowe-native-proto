@@ -71,6 +71,7 @@ private:
   RpcRequest parseRpcRequest(const zjson::Value &json);
   plugin::ArgumentMap convertJsonParamsToArgumentMap(const zjson::Value &params);
   zjson::Value convertOutputToJson(const std::string &output);
+  zjson::Value convertAstToJson(const ast::Node &astNode);
   void printResponse(const RpcResponse &response);
 
 public:

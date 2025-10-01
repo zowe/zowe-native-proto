@@ -93,9 +93,21 @@ void RpcServer::processRequest(const std::string &requestData)
 
     if (result == 0)
     {
-      // Success - get output and convert to JSON
-      std::string output = context.get_output_content();
-      zjson::Value resultJson = convertOutputToJson(output);
+      // Success - check if context has an object set, otherwise use output content
+      zjson::Value resultJson;
+
+      const ast::Node &astObject = context.get_object();
+      if (astObject)
+      {
+        // Convert AST object to zjson::Value
+        resultJson = convertAstToJson(astObject);
+      }
+      else
+      {
+        // Fallback to output content if no AST object is set
+        std::string output = context.get_output_content();
+        resultJson = convertOutputToJson(output);
+      }
 
       response.result = zstd::optional<zjson::Value>(resultJson);
       response.error = zstd::optional<ErrorDetails>();
@@ -220,6 +232,60 @@ zjson::Value RpcServer::convertOutputToJson(const std::string &output)
   else
   {
     return zjson::Value::create_object();
+  }
+}
+
+zjson::Value RpcServer::convertAstToJson(const ast::Node &astNode)
+{
+  if (!astNode)
+  {
+    return zjson::Value(); // null
+  }
+
+  switch (astNode->kind())
+  {
+  case ast::Ast::Null:
+    return zjson::Value(); // null
+
+  case ast::Ast::Boolean:
+    return zjson::Value(astNode->as_bool());
+
+  case ast::Ast::Integer:
+    return zjson::Value(static_cast<int>(astNode->as_integer()));
+
+  case ast::Ast::Number:
+    return zjson::Value(astNode->as_number());
+
+  case ast::Ast::String:
+    return zjson::Value(astNode->as_string());
+
+  case ast::Ast::Array:
+  {
+    zjson::Value arrayValue = zjson::Value::create_array();
+    const std::vector<ast::Node> &astArray = astNode->as_array();
+    arrayValue.reserve_array(astArray.size());
+
+    for (size_t i = 0; i < astArray.size(); ++i)
+    {
+      arrayValue.add_to_array(convertAstToJson(astArray[i]));
+    }
+    return arrayValue;
+  }
+
+  case ast::Ast::Object:
+  {
+    zjson::Value objectValue = zjson::Value::create_object();
+    const ast::ObjMap &astObject = astNode->as_object();
+
+    for (ast::ObjMap::const_iterator it = astObject.begin(); it != astObject.end(); ++it)
+    {
+      objectValue.add_to_object(it->first, convertAstToJson(it->second));
+    }
+    return objectValue;
+  }
+
+  default:
+    return zjson::Value(); // null for unknown types
   }
 }
 

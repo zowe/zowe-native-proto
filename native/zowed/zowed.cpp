@@ -126,12 +126,12 @@ private:
     {
       checksumsObj.add_to_object(pair.first, zjson::Value(pair.second));
     }
-    data.add_to_object("checksums", checksumsObj);
+    data.add_to_object("checksums", checksums.empty() ? zjson::Value() : checksumsObj);
 
     StatusMessage statusMsg{
         .status = "ready",
         .message = "zowed is ready to accept input",
-        .data = checksums.empty() ? zstd::optional<zjson::Value>() : zstd::optional<zjson::Value>(checksumsObj),
+        .data = zstd::optional<zjson::Value>(data),
     };
 
     std::string jsonString = RpcServer::serializeJson(zjson::to_value(statusMsg).value());

@@ -17,6 +17,7 @@
 #include <vector>
 #include <unistd.h>
 
+using namespace ast;
 using namespace parser;
 using namespace std;
 using namespace commands::common;
@@ -348,6 +349,8 @@ int handle_data_set_list(InvocationContext &context)
   {
     vector<string> fields;
     fields.reserve(attributes ? 5 : 1);
+    const auto entries_array = Ast::array();
+
     for (vector<ZDSEntry>::iterator it = entries.begin(); it != entries.end(); ++it)
     {
       if (emit_csv)
@@ -374,7 +377,22 @@ int handle_data_set_list(InvocationContext &context)
           context.output_stream() << left << setw(44) << it->name << endl;
         }
       }
+
+      const auto entry = Ast::object();
+      string trimmed_name = it->name;
+      zut_rtrim(trimmed_name);
+      entry->set("name", Ast::string(trimmed_name));
+      entry->set("dsorg", Ast::string(it->dsorg));
+      entry->set("volser", Ast::string(it->volser));
+      entry->set("migr", Ast::boolean(it->migr));
+      entry->set("recfm", Ast::string(it->recfm));
+      entries_array->push(entry);
     }
+
+    const auto result = Ast::object();
+    result->set("items", entries_array);
+    result->set("returnedRows", Ast::integer(entries.size()));
+    context.set_object(result);
   }
   if (RTNCD_WARNING == rc)
   {
