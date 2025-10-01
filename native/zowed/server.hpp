@@ -9,14 +9,49 @@
  *
  */
 
-#pragma once
+#ifndef SERVER_HPP
+#define SERVER_HPP
 
 #include <string>
 #include <mutex>
+#define ZJSON_ENABLE_STRUCT_SUPPORT
 #include "../c/zjson.hpp"
-#include "../c/types/common.h"
 #include "../c/extend/plugin.hpp"
 #include "parser.hpp"
+
+struct RpcNotification
+{
+  std::string jsonrpc;
+  std::string method;
+  zstd::optional<zjson::Value> params;
+};
+ZJSON_DERIVE(RpcNotification, jsonrpc, method, params);
+
+struct RpcRequest : RpcNotification
+{
+  // int
+  int id;
+};
+ZJSON_DERIVE(RpcRequest, jsonrpc, method, params, id);
+
+struct ErrorDetails
+{
+  // int
+  int code;
+  std::string message;
+  zstd::optional<zjson::Value> data;
+};
+ZJSON_DERIVE(ErrorDetails, code, message, data);
+
+struct RpcResponse
+{
+  std::string jsonrpc;
+  zstd::optional<zjson::Value> result;
+  zstd::optional<ErrorDetails> error;
+  // int
+  int id;
+};
+ZJSON_DERIVE(RpcResponse, jsonrpc, result, error, id);
 
 /**
  * Thread-safe singleton RPC server that handles JSON-RPC request parsing,
@@ -86,3 +121,5 @@ public:
    */
   static zjson::Value errorDetailsToJson(const ErrorDetails &error);
 };
+
+#endif

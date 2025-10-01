@@ -9,7 +9,8 @@
  *
  */
 
-#pragma once
+#ifndef WORKER_HPP
+#define WORKER_HPP
 
 #include <thread>
 #include <queue>
@@ -78,3 +79,5 @@ public:
   Worker *getReadyWorker();
   void setWorkerReady(int workerId);
 };
+
+#endif

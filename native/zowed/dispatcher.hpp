@@ -16,6 +16,7 @@
 #include "parser.hpp"
 #include <string>
 #include <functional>
+#include <vector>
 
 #if defined(__IBMTR1_CPP__) && !defined(__clang__)
 #include <tr1/unordered_map>
@@ -23,14 +24,66 @@
 #include <unordered_map>
 #endif
 
+// Argument transformation types
+struct ArgTransform
+{
+  enum TransformType
+  {
+    Input, // Transform input arguments before command execution
+    Output // Transform output arguments after command execution
+  };
+
+  // Transformation function that processes an argument value
+  // Returns new name if transformation succeeded, or empty string if transformation failed/should be removed
+  typedef std::function<std::string(const plugin::Argument &value, MiddlewareContext &context)> TransformCallback;
+
+  TransformType type;
+  std::string argName;
+
+  // Either a simple rename (string) or a callback function
+  bool isRename;
+  std::string newName;        // Used when isRename is true
+  TransformCallback callback; // Used when isRename is false
+
+  // Constructor for simple rename
+  ArgTransform(TransformType t, const std::string &arg, const std::string &newArgName)
+      : type(t), argName(arg), isRename(true), newName(newArgName), callback(nullptr)
+  {
+  }
+
+  // Constructor for callback-based transformation
+  ArgTransform(TransformType t, const std::string &arg, TransformCallback cb)
+      : type(t), argName(arg), isRename(false), newName(""), callback(cb)
+  {
+  }
+};
+
+// Helper functions to create transforms with cleaner syntax
+inline ArgTransform InputTransform(const std::string &argName, ArgTransform::TransformCallback callback)
+{
+  return ArgTransform(ArgTransform::Input, argName, callback);
+}
+
+inline ArgTransform InputTransform(const std::string &rpcName, const std::string &argName)
+{
+  return ArgTransform(ArgTransform::Input, rpcName, argName);
+}
+
+inline ArgTransform OutputTransform(const std::string &argName, ArgTransform::TransformCallback callback)
+{
+  return ArgTransform(ArgTransform::Output, argName, callback);
+}
+
+inline ArgTransform OutputTransform(const std::string &argName, const std::string &rpcName)
+{
+  return ArgTransform(ArgTransform::Output, argName, rpcName);
+}
+
 class CommandDispatcher
 {
 public:
   // CommandHandler type from plugin.hpp
   typedef plugin::CommandProviderImpl::CommandRegistrationContext::CommandHandler CommandHandler;
-
-  // Input handler type for preprocessing
-  typedef std::function<void(MiddlewareContext &)> InputHandler;
 
   // Singleton access method
   static CommandDispatcher &getInstance();
@@ -39,8 +92,8 @@ public:
   CommandDispatcher(const CommandDispatcher &) = delete;
   CommandDispatcher &operator=(const CommandDispatcher &) = delete;
 
-  // Register a new command with its handler and optional input handler
-  bool register_command(const std::string &command_name, CommandHandler handler, InputHandler input_handler = nullptr);
+  // Register a new command with its handler and optional argument transforms
+  bool register_command(const std::string &command_name, CommandHandler handler, const std::vector<ArgTransform> &transforms = std::vector<ArgTransform>());
 
   // Dispatch a command by name using the provided context
   int dispatch(const std::string &command_name, MiddlewareContext &context);
@@ -64,12 +117,18 @@ private:
   // Private destructor
   ~CommandDispatcher();
 
+  // Apply input transforms to the context before command execution
+  void apply_input_transforms(const std::vector<ArgTransform> &transforms, MiddlewareContext &context);
+
+  // Apply output transforms to the context after command execution
+  void apply_output_transforms(const std::vector<ArgTransform> &transforms, MiddlewareContext &context);
+
 #if defined(__clang__)
   std::unordered_map<std::string, CommandHandler> m_command_handlers;
-  std::unordered_map<std::string, InputHandler> m_input_handlers;
+  std::unordered_map<std::string, std::vector<ArgTransform>> m_transforms;
 #else
   std::tr1::unordered_map<std::string, CommandHandler> m_command_handlers;
-  std::tr1::unordered_map<std::string, InputHandler> m_input_handlers;
+  std::tr1::unordered_map<std::string, std::vector<ArgTransform>> m_transforms;
 #endif
 };
 

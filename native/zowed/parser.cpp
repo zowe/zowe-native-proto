@@ -58,3 +58,13 @@ void MiddlewareContext::clear_streams()
   m_error_stream.str("");
   m_error_stream.clear();
 }
+
+plugin::ArgumentMap &MiddlewareContext::mutable_arguments()
+{
+  return const_cast<plugin::ArgumentMap &>(arguments());
+}
+
+plugin::ArgumentMap &MiddlewareContext::mutable_output()
+{
+  return const_cast<plugin::ArgumentMap &>(output());
+}
