@@ -120,7 +120,7 @@ export function registerCommands(context: vscode.ExtensionContext): vscode.Dispo
             const profile = await vscePromptApi.promptForProfile(profName);
             if (!profile?.profile) return;
 
-            SshClientCache.inst.end(profile.profile);
+            SshClientCache.inst.end(profile);
             const serverPath = SshConfigUtils.getServerPath(profile.profile);
             await SshConfigUtils.showSessionInTree(profile.name!, false);
 
