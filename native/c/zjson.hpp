@@ -1708,12 +1708,21 @@ inline int value_to_json_instance(JSON_INSTANCE *instance, KEY_HANDLE *parent_ha
   }
 
   case Value::String:
-    entry_type = HWTJ_STRINGVALUETYPE;
+  {
+    if (!value.as_string().empty())
     {
+      entry_type = HWTJ_STRINGVALUETYPE;
       std::string escaped_str = escape_json_string(value.as_string());
       rc = ZJSMCREN(instance, parent_handle, entry_name_ptr, escaped_str.c_str(), &entry_type, &new_entry_handle);
     }
-    break;
+    else
+    {
+      // Empty strings must use HWTJ_JSONTEXTVALUETYPE because HWTJ_STRINGVALUETYPE doesn't support them
+      entry_type = HWTJ_JSONTEXTVALUETYPE;
+      rc = ZJSMCREN(instance, parent_handle, entry_name_ptr, "\"\"", &entry_type, &new_entry_handle);
+    }
+  }
+  break;
 
   case Value::Array:
   {
