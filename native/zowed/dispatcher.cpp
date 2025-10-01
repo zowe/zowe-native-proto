@@ -177,7 +177,7 @@ void CommandDispatcher::apply_input_transforms(const std::vector<ArgTransform> &
       // Set default value if argument doesn't exist
       if (arg_it == args.end())
       {
-        args[it->argName] = plugin::Argument(it->defaultValue);
+        args[it->argName] = it->defaultArg;
       }
       break;
     }

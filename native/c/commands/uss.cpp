@@ -16,6 +16,7 @@
 #include "../zut.hpp"
 #include <unistd.h>
 
+using namespace ast;
 using namespace parser;
 using namespace std;
 using namespace commands::common;
@@ -59,7 +60,7 @@ int handle_uss_create_file(InvocationContext &context)
   {
     context.error_stream() << "Error: could not create USS file: '" << file_path << "' rc: '" << rc << "'" << endl;
     context.error_stream() << "  Details:\n"
-         << zusf.diag.e_msg << endl;
+                           << zusf.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
@@ -104,7 +105,7 @@ int handle_uss_create_dir(InvocationContext &context)
   {
     context.error_stream() << "Error: could not create USS directory: '" << file_path << "' rc: '" << rc << "'" << endl;
     context.error_stream() << "  Details:\n"
-         << zusf.diag.e_msg << endl;
+                           << zusf.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
@@ -131,12 +132,70 @@ int handle_uss_list(InvocationContext &context)
   {
     context.error_stream() << "Error: could not list USS files: '" << uss_file << "' rc: '" << rc << "'" << endl;
     context.error_stream() << "  Details:\n"
-         << zusf.diag.e_msg << endl
-         << response << endl;
+                           << zusf.diag.e_msg << endl
+                           << response << endl;
     return RTNCD_FAILURE;
   }
 
   context.output_stream() << response;
+
+  if (use_csv_format)
+  {
+    const auto result = obj();
+    const auto entries_array = arr();
+
+    // Parse CSV lines
+    stringstream ss(response);
+    string line;
+    int row_count = 0;
+
+    while (getline(ss, line))
+    {
+      if (line.empty())
+      {
+        continue;
+      }
+
+      const auto entry = obj();
+
+      if (list_options.long_format)
+      {
+        // Parse CSV fields: mode,links,user,group,size,tag,date,name
+        vector<string> fields;
+        stringstream line_ss(line);
+        string field;
+
+        while (getline(line_ss, field, ','))
+        {
+          fields.push_back(field);
+        }
+
+        if (fields.size() >= 8)
+        {
+          entry->set("mode", str(fields[0]));
+          entry->set("links", i64(atoi(fields[1].c_str())));
+          entry->set("user", str(fields[2]));
+          entry->set("group", str(fields[3]));
+          entry->set("size", i64(atoi(fields[4].c_str())));
+          entry->set("tag", str(fields[5]));
+          entry->set("date", str(fields[6]));
+          entry->set("name", str(fields[7]));
+        }
+      }
+      else
+      {
+        // Simple format: just the name
+        entry->set("name", str(line));
+      }
+
+      entries_array->push(entry);
+      row_count++;
+    }
+
+    result->set("items", entries_array);
+    result->set("returnedRows", i64(row_count));
+    context.set_object(result);
+  }
 
   return rc;
 }
@@ -184,20 +243,31 @@ int handle_uss_view(InvocationContext &context)
   else
   {
     string response;
+    const auto result = obj();
+    result->set("fspath", str(uss_file));
+
     rc = zusf_read_from_uss_file(&zusf, uss_file, response);
     if (0 != rc)
     {
       context.error_stream() << "Error: could not view USS file: '" << uss_file << "' rc: '" << rc << "'" << endl;
       context.error_stream() << "  Details:\n"
-           << zusf.diag.e_msg << endl
-           << response << endl;
+                             << zusf.diag.e_msg << endl
+                             << response << endl;
       return RTNCD_FAILURE;
     }
 
     if (context.get<bool>("return-etag", false))
     {
-      context.output_stream() << "etag: " << zut_build_etag(file_stats.st_mtime, file_stats.st_size) << endl;
-      context.output_stream() << "data: ";
+      const auto etag = zut_build_etag(file_stats.st_mtime, file_stats.st_size);
+      if (!context.is_redirecting_output())
+      {
+        context.output_stream() << "etag: " << etag << endl;
+        context.output_stream() << "data: ";
+      }
+      else
+      {
+        result->set("etag", str(etag));
+      }
     }
 
     bool has_encoding = context.has("encoding");
@@ -211,6 +281,8 @@ int handle_uss_view(InvocationContext &context)
     {
       context.output_stream() << response << endl;
     }
+
+    context.set_object(result);
   }
 
   return rc;
@@ -291,7 +363,7 @@ int handle_uss_write(InvocationContext &context)
   if (context.get<bool>("etag-only", false))
   {
     context.output_stream() << "etag: " << zusf.etag << endl
-         << "created: " << (zusf.created ? "true" : "false") << endl;
+                            << "created: " << (zusf.created ? "true" : "false") << endl;
     if (content_len > 0)
       context.output_stream() << "size: " << content_len << endl;
   }
@@ -299,6 +371,12 @@ int handle_uss_write(InvocationContext &context)
   {
     context.output_stream() << "Wrote data to '" << file << "'" << (zusf.created ? " (created new file)" : " (overwrote existing)") << endl;
   }
+
+  const auto result = obj();
+  result->set("created", boolean(zusf.created));
+  result->set("etag", str(zusf.etag));
+  result->set("fspath", str(file));
+  context.set_object(result);
 
   return rc;
 }
@@ -355,7 +433,7 @@ int handle_uss_chmod(InvocationContext &context)
   {
     context.error_stream() << "Error: could not chmod USS path: '" << file_path << "' rc: '" << rc << "'" << endl;
     context.error_stream() << "  Details:\n"
-         << zusf.diag.e_msg << endl;
+                           << zusf.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
@@ -377,7 +455,7 @@ int handle_uss_chown(InvocationContext &context)
   {
     context.error_stream() << "Error: could not chown USS path: '" << path << "' rc: '" << rc << "'" << endl;
     context.error_stream() << "  Details:\n"
-         << zusf.diag.e_msg << endl;
+                           << zusf.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
@@ -410,7 +488,7 @@ int handle_uss_chtag(InvocationContext &context)
   {
     context.error_stream() << "Error: could not chtag USS path: '" << path << "' rc: '" << rc << "'" << endl;
     context.error_stream() << "  Details:\n"
-         << zusf.diag.e_msg << endl;
+                           << zusf.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 

@@ -298,9 +298,15 @@ int handle_data_set_view(InvocationContext &context)
       const auto etag = zut_calc_adler32_checksum(response);
       stringstream etag_stream;
       etag_stream << hex << etag << dec;
-      context.output_stream() << "etag: " << etag_stream.str() << endl;
-      context.output_stream() << "data: ";
-      result->set("etag", str(etag_stream.str()));
+      if (!context.is_redirecting_output())
+      {
+        context.output_stream() << "etag: " << etag_stream.str() << endl;
+        context.output_stream() << "data: ";
+      }
+      else
+      {
+        result->set("etag", str(etag_stream.str()));
+      }
     }
 
     bool has_encoding = context.has("encoding");
