@@ -287,20 +287,6 @@ unique_ptr<T> make_unique(const A1 &a1, const A2 &a2)
   return unique_ptr<T>(new T(a1, a2));
 }
 
-// Nullopt type for optional - similar to std::nullopt_t
-struct nullopt_t
-{
-  struct init
-  {
-  };
-  explicit nullopt_t(init)
-  {
-  }
-};
-
-// Global nullopt instance - similar to std::nullopt
-static const nullopt_t nullopt(nullopt_t::init());
-
 // Backport of C++17 `std::optional`
 template <typename T>
 class optional
@@ -317,13 +303,6 @@ public:
   explicit optional(const T &value)
   {
     construct(value);
-  }
-
-  // Constructor from nullopt
-  optional(nullopt_t)
-  {
-    m_has_value = false;
-    memset(m_storage, 0, sizeof(T));
   }
 
   optional(const optional<T> &other)
@@ -370,13 +349,6 @@ public:
     {
       construct(value);
     }
-    return *this;
-  }
-
-  // Assignment from nullopt
-  optional<T> &operator=(nullopt_t)
-  {
-    destroy();
     return *this;
   }
 
@@ -1376,32 +1348,32 @@ struct monostate
 };
 
 // Comparison operators for monostate
-inline bool operator==(const monostate &, const monostate &)
+inline bool operator==(const monostate&, const monostate&)
 {
   return true;
 }
 
-inline bool operator!=(const monostate &, const monostate &)
+inline bool operator!=(const monostate&, const monostate&)
 {
   return false;
 }
 
-inline bool operator<(const monostate &, const monostate &)
+inline bool operator<(const monostate&, const monostate&)
 {
   return false;
 }
 
-inline bool operator<=(const monostate &, const monostate &)
+inline bool operator<=(const monostate&, const monostate&)
 {
   return true;
 }
 
-inline bool operator>(const monostate &, const monostate &)
+inline bool operator>(const monostate&, const monostate&)
 {
   return false;
 }
 
-inline bool operator>=(const monostate &, const monostate &)
+inline bool operator>=(const monostate&, const monostate&)
 {
   return true;
 }

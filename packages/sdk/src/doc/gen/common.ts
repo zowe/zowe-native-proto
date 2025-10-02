@@ -15,183 +15,183 @@
 // source: common.go
 
 export interface RpcNotification {
-    jsonrpc: "2.0" /* :std::string */;
-    method: string;
-    params?: any;
+  jsonrpc: "2.0";
+  method: string;
+  params?: any;
 }
 export interface RpcRequest extends RpcNotification {
-    params?: any;
-    id: number /* int */;
-}
-export interface ErrorDetails {
-    code: number /* int */;
-    message: string;
-    data?: any;
+  params?: any;
+  id: number /* int */;
 }
 export interface RpcResponse {
-    jsonrpc: "2.0" /* :std::string */;
-    result?: any;
-    error?: ErrorDetails;
-    id: number /* int */;
+  jsonrpc: "2.0";
+  result?: any;
+  error?: ErrorDetails;
+  id: number /* int */;
 }
 export interface CommandRequest {
-    /**
-     * Requested command to execute
-     */
-    command: string;
+  /**
+   * Requested command to execute
+   */
+  command: string;
 }
 export interface CommandResponse {
-    /**
-     * True if command succeeded
-     */
-    success: boolean;
+  /**
+   * True if command succeeded
+   */
+  success: boolean;
+}
+export interface ErrorDetails {
+  code: number /* int */;
+  message: string;
+  data?: any;
 }
 export interface Dataset {
-    /**
-     * Dataset name
-     */
-    name: string;
-    /**
-     * Dataset organization
-     */
-    dsorg: string;
-    /**
-     * Volume serial number
-     */
-    volser: string;
-    /**
-     * Dataset migrated
-     */
-    migr: boolean;
+  /**
+   * Dataset name
+   */
+  name: string;
+  /**
+   * Dataset organization
+   */
+  dsorg: string;
+  /**
+   * Volume serial number
+   */
+  volser: string;
+  /**
+   * Dataset migrated
+   */
+  migr: boolean;
 }
 export interface DatasetAttributes {
-    alcunit?: string; // Allocation Unit
-    blksize?: number /* int */; // Block Size
-    dirblk?: number /* int */; // Directory Blocks
-    dsorg?: string; // Data Set Organization
-    primary: number /* int */; // Primary Space
-    recfm?: string; // Record Format
-    lrecl: number /* int */; // Record Length
-    dataclass?: string; // Data Class
-    unit?: string; // Device Type
-    dsntype?: string; // Data Set Type
-    mgntclass?: string; // Management Class
-    dsname?: string; // Data Set Name
-    avgblk?: number /* int */; // Average Block Length
-    secondary?: number /* int */; // Secondary Space
-    size?: string; // Size
-    storclass?: string; // Storage Class
-    vol?: string; // Volume Serial
+  alcunit?: string; // Allocation Unit
+  blksize?: number /* int */; // Block Size
+  dirblk?: number /* int */; // Directory Blocks
+  dsorg?: string; // Data Set Organization
+  primary: number /* int */; // Primary Space
+  recfm?: string; // Record Format
+  lrecl: number /* int */; // Record Length
+  dataclass?: string; // Data Class
+  unit?: string; // Device Type
+  dsntype?: string; // Data Set Type
+  mgntclass?: string; // Management Class
+  dsname?: string; // Data Set Name
+  avgblk?: number /* int */; // Average Block Length
+  secondary?: number /* int */; // Secondary Space
+  size?: string; // Size
+  storclass?: string; // Storage Class
+  vol?: string; // Volume Serial
 }
 export interface DsMember {
-    /**
-     * Dataset member name
-     */
-    name: string;
+  /**
+   * Dataset member name
+   */
+  name: string;
 }
 export interface UssItem {
-    /**
-     * File name
-     */
-    name: string;
-    /**
-     * Number of links to the item
-     */
-    links: number /* int */;
-    /**
-     * User (owner) of the item
-     */
-    user: string;
-    /**
-     * Group of the item
-     */
-    group: string;
-    /**
-     * Size of the item
-     */
-    size: number /* int */;
-    /**
-     * The filetag of the item
-     */
-    filetag?: string;
-    /**
-     * Modification date of the item
-     */
-    mtime: string;
-    /**
-     * The permission string of the item
-     */
-    mode: string;
+  /**
+   * File name
+   */
+  name: string;
+  /**
+   * Number of links to the item
+   */
+  links: number /* int */;
+  /**
+   * User (owner) of the item
+   */
+  user: string;
+  /**
+   * Group of the item
+   */
+  group: string;
+  /**
+   * Size of the item
+   */
+  size: number /* int */;
+  /**
+   * The filetag of the item
+   */
+  filetag?: string;
+  /**
+   * Modification date of the item
+   */
+  mtime: string;
+  /**
+   * The permission string of the item
+   */
+  mode: string;
 }
 export interface Job {
-    /**
-     * Job ID
-     */
-    id: string;
-    /**
-     * Job name
-     */
-    name: string;
-    /**
-     * Job status
-     */
-    status: string;
-    /**
-     * Job return code
-     */
-    retcode: string;
+  /**
+   * Job ID
+   */
+  id: string;
+  /**
+   * Job name
+   */
+  name: string;
+  /**
+   * Job status
+   */
+  status: string;
+  /**
+   * Job return code
+   */
+  retcode: string;
 }
 export interface Spool {
-    /**
-     * Spool ID
-     */
-    id: number /* int */;
-    /**
-     * DD name
-     */
-    ddname: string;
-    /**
-     * Step name in the job
-     */
-    stepname: string;
-    /**
-     * Dataset name
-     */
-    dsname: string;
-    /**
-     * Procedure name for the step
-     */
-    procstep: string;
+  /**
+   * Spool ID
+   */
+  id: number /* int */;
+  /**
+   * DD name
+   */
+  ddname: string;
+  /**
+   * Step name in the job
+   */
+  stepname: string;
+  /**
+   * Dataset name
+   */
+  dsname: string;
+  /**
+   * Procedure name for the step
+   */
+  procstep: string;
 }
 /**
  * StatusMessage represents the status of `zowed` and serves as a health check
  */
 export interface StatusMessage {
-    status: string;
-    message: string;
-    data?: { [key: string]: any } /* :zjson::Value */;
+  status: string;
+  message: string;
+  data?: { [key: string]: any};
 }
 
 //////////
 // source: options.go
 
-// export interface IoserverOptions {
-//     numWorkers?: number /* int */;
-//     verbose?: boolean;
-// }
+export interface IoserverOptions {
+  numWorkers?: number /* int */;
+  verbose?: boolean;
+}
 export interface ListOptions {
-    /**
-     * Maximum number of items to return
-     */
-    maxItems?: number /* int */;
-    /**
-     * Response timeout in seconds
-     */
-    responseTimeout?: number /* int */;
+  /**
+   * Maximum number of items to return
+   */
+  maxItems?: number /* int */;
+  /**
+   * Response timeout in seconds
+   */
+  responseTimeout?: number /* int */;
 }
 export interface ListDatasetOptions {
-    /**
-     * Skip data sets that come before this data set name
-     */
-    start?: string;
+  /**
+   * Skip data sets that come before this data set name
+   */
+  start?: string;
 }

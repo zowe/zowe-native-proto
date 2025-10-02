@@ -28,14 +28,12 @@ ZJSON_DERIVE(RpcNotification, jsonrpc, method, params);
 
 struct RpcRequest : RpcNotification
 {
-  // int
   int id;
 };
 ZJSON_DERIVE(RpcRequest, jsonrpc, method, params, id);
 
 struct ErrorDetails
 {
-  // int
   int code;
   std::string message;
   zstd::optional<zjson::Value> data;
@@ -47,10 +45,13 @@ struct RpcResponse
   std::string jsonrpc;
   zstd::optional<zjson::Value> result;
   zstd::optional<ErrorDetails> error;
-  // int
   int id;
 };
-ZJSON_DERIVE(RpcResponse, jsonrpc, result, error, id);
+ZJSON_SERIALIZABLE(RpcResponse,
+                   ZJSON_FIELD(RpcResponse, jsonrpc),
+                   ZJSON_FIELD(RpcResponse, result).skip_serializing_if_none(),
+                   ZJSON_FIELD(RpcResponse, error).skip_serializing_if_none(),
+                   ZJSON_FIELD(RpcResponse, id));
 
 /**
  * Thread-safe singleton RPC server that handles JSON-RPC request parsing,
