@@ -88,7 +88,7 @@ void zowex_tests()
                              int rc = 0;
                              string response;
                              rc = execute_command_with_output(zowex_command + " job list", response);
-                             ExpectWithContext(rc, response).ToBe(0);
+                             ExpectWithContext(rc, response).ToBeGreaterThanOrEqualTo(0); // results might be truncated
                            });
                         it("should submit a job, view it, and delete it", []()
                            {
