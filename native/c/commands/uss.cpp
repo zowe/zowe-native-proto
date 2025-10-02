@@ -177,7 +177,7 @@ int handle_uss_list(InvocationContext &context)
           entry->set("user", str(fields[2]));
           entry->set("group", str(fields[3]));
           entry->set("size", i64(atoi(fields[4].c_str())));
-          entry->set("tag", str(fields[5]));
+          entry->set("filetag", str(fields[5]));
           entry->set("date", str(fields[6]));
           entry->set("name", str(fields[7]));
         }
