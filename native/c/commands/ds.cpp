@@ -261,6 +261,8 @@ int handle_data_set_view(InvocationContext &context)
 
   bool has_pipe_path = context.has("pipe-path");
   string pipe_path = context.get<string>("pipe-path", "");
+  const auto result = obj();
+  result->set("dataset", str(dsn));
 
   if (has_pipe_path && !pipe_path.empty())
   {
@@ -274,17 +276,28 @@ int handle_data_set_view(InvocationContext &context)
       if (read_rc == 0)
       {
         const auto etag = zut_calc_adler32_checksum(temp_content);
-        context.output_stream() << "etag: " << hex << etag << dec << endl;
+        stringstream etag_stream;
+        etag_stream << hex << etag << dec;
+        if (!context.is_redirecting_output())
+        {
+          context.output_stream() << "etag: " << etag_stream.str() << endl;
+        }
+        else
+        {
+          result->set("etag", str(etag_stream.str()));
+        }
       }
+    }
+
+    if (!context.is_redirecting_output())
+    {
       context.output_stream() << "size: " << content_len << endl;
     }
+    result->set("contentLen", i64(content_len));
   }
   else
   {
     string response;
-    const auto result = obj();
-    result->set("dataset", str(dsn));
-
     rc = zds_read_from_dsn(&zds, dsn, response);
     if (0 != rc)
     {

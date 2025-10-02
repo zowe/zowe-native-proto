@@ -31,13 +31,15 @@ void register_ds_commands(CommandDispatcher &dispatcher)
                                InputDefault("encoding", "IBM-1047"),
                                InputDefault("return-etag", true),
                                InputRename("volume", "volser"),
+                               PipeWriter("streamId", "pipe-path"),
                                OutputStdout("data", true)});
   // dispatcher.register_command("restoreDataset", ds::handle_data_set_restore);
   dispatcher.register_command("writeDataset", ds::handle_data_set_write,
                               {InputRename("dsname", "dsn"),
                                InputStdin("data", true),
                                InputDefault("encoding", "IBM-1047"),
-                               InputRename("volume", "volser")});
+                               InputRename("volume", "volser"),
+                               PipeReader("streamId", "pipe-path")});
 }
 
 void register_job_commands(CommandDispatcher &dispatcher)
@@ -79,11 +81,13 @@ void register_uss_commands(CommandDispatcher &dispatcher)
   dispatcher.register_command("readFile", uss::handle_uss_view,
                               {InputRename("fspath", "file-path"),
                                InputDefault("encoding", "IBM-1047"),
+                               PipeWriter("streamId", "pipe-path"),
                                OutputStdout("data", true)});
   dispatcher.register_command("writeFile", uss::handle_uss_write,
                               {InputRename("fspath", "file-path"),
                                InputStdin("data", true),
-                               InputDefault("encoding", "IBM-1047")});
+                               InputDefault("encoding", "IBM-1047"),
+                               PipeReader("streamId", "pipe-path")});
 }
 
 void register_cmd_commands(CommandDispatcher &dispatcher)
