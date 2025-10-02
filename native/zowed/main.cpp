@@ -44,7 +44,6 @@ IoserverOptions parseOptions(int argc, char *argv[])
 
     if (arg == "-w" || arg == "--num-workers" || arg == "-num-workers")
     {
-      // TODO Should we support single hyphen with long option names?
       if (i + 1 < argc)
       {
         opts.numWorkers = atoi(argv[++i]);
@@ -60,11 +59,11 @@ IoserverOptions parseOptions(int argc, char *argv[])
         exit(1);
       }
     }
-    else if (arg == "-v" || arg == "--verbose")
+    else if (arg == "-v" || arg == "--verbose" || arg == "-verbose")
     {
       opts.verbose = true;
     }
-    else if (arg == "-h" || arg == "--help")
+    else if (arg == "-h" || arg == "--help" || arg == "-help")
     {
       std::cout << "Usage: " << argv[0] << " [OPTIONS]\n"
                 << "  -w, --num-workers NUM  Number of worker threads (default: 10)\n"
