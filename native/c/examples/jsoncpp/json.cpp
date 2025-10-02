@@ -18,7 +18,6 @@
 #include <vector>
 #include "zjsonm.h"
 #include "zjsontype.h"
-#define ZJSON_ENABLE_STRUCT_SUPPORT
 #include "zjson.hpp"
 
 // ============================================================================

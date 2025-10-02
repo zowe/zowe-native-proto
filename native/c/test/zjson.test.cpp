@@ -18,7 +18,6 @@
 #include <string>
 #include <vector>
 #include <cassert>
-#define ZJSON_ENABLE_STRUCT_SUPPORT
 #include "../zjson.hpp"
 
 using namespace std;
