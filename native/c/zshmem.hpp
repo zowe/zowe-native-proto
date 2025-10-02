@@ -27,6 +27,7 @@
 
 #define _ISOC99_SOURCE
 
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
