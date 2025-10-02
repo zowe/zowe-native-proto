@@ -228,6 +228,8 @@ int handle_uss_view(InvocationContext &context)
 
   bool has_pipe_path = context.has("pipe-path");
   string pipe_path = context.get<std::string>("pipe-path", "");
+  const auto result = obj();
+  result->set("fspath", str(uss_file));
 
   if (has_pipe_path && !pipe_path.empty())
   {
@@ -236,16 +238,23 @@ int handle_uss_view(InvocationContext &context)
 
     if (context.get<bool>("return-etag", false))
     {
-      context.output_stream() << "etag: " << zut_build_etag(file_stats.st_mtime, file_stats.st_size) << endl;
+      const auto etag = zut_build_etag(file_stats.st_mtime, file_stats.st_size);
+      context.output_stream() << "etag: " << etag << endl;
+      if (!context.is_redirecting_output())
+      {
+        result->set("etag", str(etag));
+      }
     }
-    context.output_stream() << "size: " << content_len << endl;
+
+    if (!context.is_redirecting_output())
+    {
+      context.output_stream() << "size: " << content_len << endl;
+    }
+    result->set("contentLen", i64(content_len));
   }
   else
   {
     string response;
-    const auto result = obj();
-    result->set("fspath", str(uss_file));
-
     rc = zusf_read_from_uss_file(&zusf, uss_file, response);
     if (0 != rc)
     {

@@ -10,9 +10,17 @@
  */
 
 #include "dispatcher.hpp"
+#include "server.hpp"
 #include "../c/zbase64.h"
+#include "../c/zjson.hpp"
 #include <vector>
 #include <algorithm>
+#include <sstream>
+#include <cstdlib>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <iostream>
 
 CommandDispatcher &CommandDispatcher::getInstance()
 {
@@ -213,6 +221,146 @@ void CommandDispatcher::apply_input_transforms(const std::vector<ArgTransform> &
       break;
     }
 
+    case ArgTransform::PipeWriter:
+    {
+      // PipeWriter: Create FIFO pipe for read requests and send receiveStream notification
+      // argName contains the streamId RPC argument name
+      // newName contains the output argument name for the pipe path
+      if (arg_it != args.end())
+      {
+        try
+        {
+          // Get streamId from the argument
+          const long long *streamIdPtr = arg_it->second.get_int();
+          if (streamIdPtr == nullptr)
+          {
+            context.errln("PipeWriter: streamId argument is not an integer");
+            break;
+          }
+          long long streamId = *streamIdPtr;
+
+          // Create pipe path: /tmp/zowe-native-proto_{uid}_{pid}_{streamId}_fifo
+          const char *tmpDir = std::getenv("TMPDIR");
+          if (tmpDir == nullptr || tmpDir[0] == '\0')
+          {
+            tmpDir = "/tmp";
+          }
+
+          std::ostringstream pipePathStream;
+          pipePathStream << tmpDir << "/zowe-native-proto_"
+                         << geteuid() << "_"
+                         << getpid() << "_"
+                         << streamId << "_fifo";
+
+          it->pipePath = pipePathStream.str();
+
+          // Remove any existing pipe (ignore errors if it doesn't exist)
+          unlink(it->pipePath.c_str());
+
+          // Create the FIFO pipe
+          if (mkfifo(it->pipePath.c_str(), 0600) != 0)
+          {
+            context.errln("Failed to create FIFO pipe");
+            break;
+          }
+
+          // Set the pipe path as the output argument
+          args[it->newName] = plugin::Argument(it->pipePath);
+
+          // Send receiveStream notification
+          zjson::Value paramsObj = zjson::Value::create_object();
+          paramsObj.add_to_object("id", zjson::Value(static_cast<int>(streamId)));
+          paramsObj.add_to_object("pipePath", zjson::Value(it->pipePath));
+
+          RpcNotification notification;
+          notification.jsonrpc = "2.0";
+          notification.method = "receiveStream";
+          notification.params = zstd::optional<zjson::Value>(paramsObj);
+
+          auto jsonResult = zjson::to_string(notification);
+          if (jsonResult.has_value())
+          {
+            std::cout << jsonResult.value() << std::endl;
+          }
+        }
+        catch (const std::exception &e)
+        {
+          context.errln("Failed to process PipeWriter transform");
+        }
+      }
+      break;
+    }
+
+    case ArgTransform::PipeReader:
+    {
+      // PipeReader: Create FIFO pipe for write requests and send sendStream notification
+      // argName contains the streamId RPC argument name
+      // newName contains the output argument name for the pipe path
+      if (arg_it != args.end())
+      {
+        try
+        {
+          // Get streamId from the argument
+          const long long *streamIdPtr = arg_it->second.get_int();
+          if (streamIdPtr == nullptr)
+          {
+            context.errln("PipeReader: streamId argument is not an integer");
+            break;
+          }
+          long long streamId = *streamIdPtr;
+
+          // Create pipe path: /tmp/zowe-native-proto_{uid}_{pid}_{streamId}_fifo
+          const char *tmpDir = std::getenv("TMPDIR");
+          if (tmpDir == nullptr || tmpDir[0] == '\0')
+          {
+            tmpDir = "/tmp";
+          }
+
+          std::ostringstream pipePathStream;
+          pipePathStream << tmpDir << "/zowe-native-proto_"
+                         << geteuid() << "_"
+                         << getpid() << "_"
+                         << streamId << "_fifo";
+
+          it->pipePath = pipePathStream.str();
+
+          // Remove any existing pipe (ignore errors if it doesn't exist)
+          unlink(it->pipePath.c_str());
+
+          // Create the FIFO pipe
+          if (mkfifo(it->pipePath.c_str(), 0600) != 0)
+          {
+            context.errln("Failed to create FIFO pipe");
+            break;
+          }
+
+          // Set the pipe path as the output argument
+          args[it->newName] = plugin::Argument(it->pipePath);
+
+          // Send sendStream notification
+          zjson::Value paramsObj = zjson::Value::create_object();
+          paramsObj.add_to_object("id", zjson::Value(static_cast<int>(streamId)));
+          paramsObj.add_to_object("pipePath", zjson::Value(it->pipePath));
+
+          RpcNotification notification;
+          notification.jsonrpc = "2.0";
+          notification.method = "sendStream";
+          notification.params = zstd::optional<zjson::Value>(paramsObj);
+
+          auto jsonResult = zjson::to_string(notification);
+          if (jsonResult.has_value())
+          {
+            std::cout << jsonResult.value() << std::endl;
+          }
+        }
+        catch (const std::exception &e)
+        {
+          context.errln("Failed to process PipeReader transform");
+        }
+      }
+      break;
+    }
+
     default:
       // Not an input transform, skip
       break;
@@ -264,6 +412,18 @@ void CommandDispatcher::apply_output_transforms(const std::vector<ArgTransform> 
       catch (const std::exception &e)
       {
         context.errln("Failed to process OutputStdout transform");
+      }
+      break;
+    }
+
+    case ArgTransform::PipeWriter:
+    case ArgTransform::PipeReader:
+    {
+      // PipeWriter/PipeReader cleanup: Remove the FIFO pipe after command execution
+      if (!it->pipePath.empty())
+      {
+        // Remove the pipe (ignore errors if already removed)
+        unlink(it->pipePath.c_str());
       }
       break;
     }

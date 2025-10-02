@@ -17,6 +17,9 @@
 #include <string>
 #include <vector>
 
+// Forward declaration
+struct RpcNotification;
+
 #if defined(__IBMTR1_CPP__) && !defined(__clang__)
 #include <tr1/unordered_map>
 #else
@@ -31,30 +34,33 @@ struct ArgTransform
     InputRename,  // Rename an input argument
     InputDefault, // Set a default value for an input argument
     InputStdin,   // Transform input from argument to stdin
-    OutputStdout  // Transform output from stdout to argument
+    OutputStdout, // Transform output from stdout to argument
+    PipeWriter,   // Create FIFO pipe for read requests, send receiveStream notification
+    PipeReader    // Create FIFO pipe for write requests, send sendStream notification
   };
 
   TransformKind kind;
   std::string argName;
-  std::string newName;         // Used for InputRename
-  plugin::Argument defaultArg; // Used for InputDefault
-  bool b64Encode;              // Used for InputStdin and OutputStdout
+  std::string newName;          // Used for InputRename, PipeWriter, PipeReader (for argName output)
+  plugin::Argument defaultArg;  // Used for InputDefault
+  bool b64Encode;               // Used for InputStdin and OutputStdout
+  mutable std::string pipePath; // Used for PipeWriter and PipeReader (mutable for cleanup in output phase)
 
   // Constructor for InputRename
   ArgTransform(TransformKind k, const std::string &arg, const std::string &newArgName)
-      : kind(k), argName(arg), newName(newArgName), defaultArg(), b64Encode(false)
+      : kind(k), argName(arg), newName(newArgName), defaultArg(), b64Encode(false), pipePath()
   {
   }
 
   // Constructor for InputDefault (internal use)
   ArgTransform(TransformKind k, const std::string &arg, const plugin::Argument &defValue)
-      : kind(k), argName(arg), newName(""), defaultArg(defValue), b64Encode(false)
+      : kind(k), argName(arg), newName(""), defaultArg(defValue), b64Encode(false), pipePath()
   {
   }
 
   // Constructor for InputStdin and OutputStdout
   ArgTransform(TransformKind k, const std::string &arg, bool encode)
-      : kind(k), argName(arg), newName(""), defaultArg(), b64Encode(encode)
+      : kind(k), argName(arg), newName(""), defaultArg(), b64Encode(encode), pipePath()
   {
   }
 };
@@ -108,6 +114,18 @@ inline ArgTransform InputStdin(const std::string &argName, bool b64Encode)
 inline ArgTransform OutputStdout(const std::string &argName, bool b64Encode)
 {
   return ArgTransform(ArgTransform::OutputStdout, argName, b64Encode);
+}
+
+// PipeWriter: Create FIFO pipe for read requests, send receiveStream notification
+inline ArgTransform PipeWriter(const std::string &requestId, const std::string &argName)
+{
+  return ArgTransform(ArgTransform::PipeWriter, requestId, argName);
+}
+
+// PipeReader: Create FIFO pipe for write requests, send sendStream notification
+inline ArgTransform PipeReader(const std::string &requestId, const std::string &argName)
+{
+  return ArgTransform(ArgTransform::PipeReader, requestId, argName);
 }
 
 class CommandDispatcher
