@@ -549,7 +549,7 @@ bool zut_string_compare_c(const std::string &a, const std::string &b)
   return strcmp(a.c_str(), b.c_str()) < 0;
 }
 
-int zut_loop_dynalloc(vector<string> &list)
+int zut_loop_dynalloc(vector<string> &list, std::ostream *err_stream)
 {
   int rc = 0;
   unsigned int code = 0;
@@ -561,8 +561,11 @@ int zut_loop_dynalloc(vector<string> &list)
 
     if (0 != rc)
     {
-      cerr << "Error: bpxwdyn failed with '" << *it << "' rc: '" << rc << "'" << endl;
-      cerr << "  Details: " << response << endl;
+      if (err_stream != nullptr)
+      {
+        *err_stream << "Error: bpxwdyn failed with '" << *it << "' rc: '" << rc << "'" << endl;
+        *err_stream << "  Details: " << response << endl;
+      }
       return -1;
     }
   }
@@ -570,7 +573,7 @@ int zut_loop_dynalloc(vector<string> &list)
   return rc;
 }
 
-int zut_free_dynalloc_dds(vector<string> &list)
+int zut_free_dynalloc_dds(vector<string> &list, std::ostream *err_stream)
 {
   vector<string> free_dds;
   free_dds.reserve(list.size());
@@ -582,7 +585,7 @@ int zut_free_dynalloc_dds(vector<string> &list)
     size_t end = alloc_dd.find(")", start);
     if (start == string::npos || end == string::npos)
     {
-      cerr << "Error: Invalid format in DD alloc string: " << alloc_dd << endl;
+      *err_stream << "Error: Invalid format in DD alloc string: " << alloc_dd << endl;
     }
     else
     {
@@ -590,5 +593,5 @@ int zut_free_dynalloc_dds(vector<string> &list)
     }
   }
 
-  return zut_loop_dynalloc(free_dds);
+  return zut_loop_dynalloc(free_dds, err_stream);
 }

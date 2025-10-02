@@ -72,7 +72,7 @@ int handle_tool_convert_dsect(InvocationContext &context)
   context.output_stream() << "Copy it via `cp \"//'" + chdr_dsn + "'\" <member>.h`" << endl;
 
   // Free dynalloc dds
-  zut_free_dynalloc_dds(dds);
+  zut_free_dynalloc_dds(dds, &context.error_stream());
 
   return rc;
 }
@@ -235,7 +235,7 @@ int handle_tool_search(InvocationContext &context)
   }
 
   // Free dynalloc dds
-  zut_free_dynalloc_dds(dds);
+  zut_free_dynalloc_dds(dds, &context.error_stream());
 
   return RTNCD_SUCCESS;
 }
@@ -291,7 +291,7 @@ int handle_tool_amblist(InvocationContext &context)
   context.output_stream() << output << endl;
 
   // Free dynalloc dds
-  zut_free_dynalloc_dds(dds);
+  zut_free_dynalloc_dds(dds, &context.error_stream());
 
   return RTNCD_SUCCESS;
 }

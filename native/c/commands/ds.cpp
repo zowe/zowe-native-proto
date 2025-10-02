@@ -311,7 +311,7 @@ int handle_data_set_view(InvocationContext &context)
 
   if (dds.size() > 0)
   {
-    zut_free_dynalloc_dds(dds);
+    zut_free_dynalloc_dds(dds, &context.error_stream());
   }
 
   return rc;
@@ -526,7 +526,7 @@ int handle_data_set_write(InvocationContext &context)
 
   if (dds.size() > 0)
   {
-    zut_free_dynalloc_dds(dds);
+    zut_free_dynalloc_dds(dds, &context.error_stream());
   }
 
   if (0 != rc)
@@ -668,7 +668,7 @@ int handle_data_set_compress(InvocationContext &context)
   context.output_stream() << "Data set '" << dsn << "' compressed" << endl;
 
   // free dynalloc dds
-  zut_free_dynalloc_dds(dds);
+  zut_free_dynalloc_dds(dds, &context.error_stream());
 
   return RTNCD_SUCCESS;
 }

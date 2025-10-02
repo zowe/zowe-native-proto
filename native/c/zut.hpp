@@ -12,6 +12,7 @@
 #ifndef ZUT_HPP
 #define ZUT_HPP
 
+#include <ostream>
 #include <iconv.h>
 #include <vector>
 #include <string>
@@ -223,16 +224,18 @@ bool zut_string_compare_c(const std::string &a, const std::string &b);
 /**
  * @brief Loop through a list of dynamic allocation commands and call BPXWDYN for each one
  * @param list List of dynamic allocation commands
+ * @param err_stream If provided, error details are sent to the given output stream
  * @return Return code (0 for success, non-zero for error)
  */
-int zut_loop_dynalloc(std::vector<std::string> &list);
+int zut_loop_dynalloc(std::vector<std::string> &list, std::ostream *err_stream = nullptr);
 
 /**
  * @brief Free a list of dynamic allocation commands
  * @param list List of dynamic allocation commands
+ * @param err_stream If provided, error details are sent to the given output stream
  * @return Return code (0 for success, non-zero for error)
  */
-int zut_free_dynalloc_dds(std::vector<std::string> &list);
+int zut_free_dynalloc_dds(std::vector<std::string> &list, std::ostream *err_stream = nullptr);
 
 /**
  * @brief List a parmlib
