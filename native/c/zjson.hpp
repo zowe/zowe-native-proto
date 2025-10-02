@@ -36,32 +36,26 @@
 #else
 #define ZJSON_CONSTEXPR const
 #define ZJSON_NOEXCEPT throw()
-#if defined(ZJSON_ENABLE_STRUCT_SUPPORT)
-#error "ZJSON_ENABLE_STRUCT_SUPPORT requires xlclang compiler"
-#endif
 #endif
 
 /*
  * ZJson - C++ JSON library with automatic struct serialization
  *
- * ==================== FEATURE CONFIGURATION ====================
+ * ==================== COMPILER REQUIREMENTS ====================
  *
- * Define ZJSON_ENABLE_STRUCT_SUPPORT before including this header to enable
- * automatic struct serialization/deserialization macros. When disabled (default),
- * only dynamic JSON with zjson::Value is supported, making this a minimal
- * header-only library with faster compilation times.
+ * This library supports two compilation modes:
  *
- * Compiler Requirements:
- *   - Minimal mode (default): Compatible with z/OS XLC (C++98/03)
- *   - Full mode (ZJSON_ENABLE_STRUCT_SUPPORT): Requires xlclang (C++11/14)
+ *   - Minimal mode: Compatible with z/OS XLC (C++98/03)
+ *     Only dynamic JSON with zjson::Value is supported, making this a minimal
+ *     header-only library with faster compilation times.
  *
- * To enable struct support:
- *   #define ZJSON_ENABLE_STRUCT_SUPPORT
- *   #include "zjson.hpp"
+ *   - Full mode: Requires xlclang (C++11/14)
+ *     Enables automatic struct serialization/deserialization with ZJSON_DERIVE
+ *     and ZJSON_SERIALIZABLE macros.
  *
  * ==================== QUICK REFERENCE ====================
  *
- * Parsing (from struct requires ZJSON_ENABLE_STRUCT_SUPPORT):
+ * Parsing (from struct requires xlclang):
  *   zjson::Value data = zjson::from_str(json_string);
  *   auto result = zjson::from_str<MyStruct>(json_string);
  *
@@ -69,7 +63,7 @@
  *   std::string json = zjson::to_string(obj);
  *   std::string pretty = zjson::to_string_pretty(obj);
  *
- * Struct Registration (requires ZJSON_ENABLE_STRUCT_SUPPORT):
+ * Struct Registration (requires xlclang):
  *   ZJSON_DERIVE(StructName, field1, field2, ...)
  *   ZJSON_SERIALIZABLE(StructName, ZJSON_FIELD(StructName, field).rename("name"))
  *
@@ -78,7 +72,7 @@
  *   zjson::Value arr = zjson::Value::create_array();
  *   obj["name"] = "John"; arr[0] = "item";
  *
- * Type Conversion (requires ZJSON_ENABLE_STRUCT_SUPPORT):
+ * Type Conversion (requires xlclang):
  *   zjson::Value val = zjson::to_value(obj);
  *   auto obj = zjson::from_value<MyStruct>(val);
  *
@@ -91,7 +85,7 @@
  *   auto result = zjson::from_str<MyStruct>(json);
  *   if (result.has_value()) { auto obj = result.value(); }
  *
- * Field Attributes (requires ZJSON_ENABLE_STRUCT_SUPPORT):
+ * Field Attributes (requires xlclang):
  *   .rename("newName")        // JSON field name
  *   .skip()                   // Skip serialization/deserialization
  *   .skip_serializing_if_none()  // Skip if optional field is empty
@@ -951,7 +945,7 @@ struct Deserializable<zstd::optional<T>>
   }
 };
 
-#ifdef ZJSON_ENABLE_STRUCT_SUPPORT
+#if defined(__clang__)
 /**
  * Field descriptor for reflection-like behavior
  */
@@ -1068,7 +1062,7 @@ public:
     return static_cast<bool>(get_deserializer());
   }
 };
-#endif // ZJSON_ENABLE_STRUCT_SUPPORT
+#endif
 
 /**
  * Main serialization and deserialization functions
@@ -1094,7 +1088,7 @@ zstd::expected<std::string, Error> to_string_impl(const T &value, zstd::true_typ
   }
 }
 
-#ifdef ZJSON_ENABLE_STRUCT_SUPPORT
+#if defined(__clang__)
 template <typename T>
 zstd::expected<std::string, Error> to_string_impl(const T &value, zstd::false_type)
 {
@@ -1134,7 +1128,7 @@ zstd::expected<T, Error> from_str_impl(const Value &parsed, zstd::true_type)
   return Deserializable<T>::deserialize(parsed);
 }
 
-#ifdef ZJSON_ENABLE_STRUCT_SUPPORT
+#if defined(__clang__)
 template <typename T>
 zstd::expected<T, Error> from_str_impl(const Value &parsed, zstd::false_type)
 {
@@ -1500,7 +1494,7 @@ zstd::expected<Value, Error> to_value_impl(const T &obj, zstd::true_type)
   return Serializable<T>::serialize(obj);
 }
 
-#ifdef ZJSON_ENABLE_STRUCT_SUPPORT
+#if defined(__clang__)
 template <typename T>
 zstd::expected<Value, Error> to_value_impl(const T &obj, zstd::false_type)
 {
@@ -1949,7 +1943,7 @@ inline Value parse_json_string(const std::string &json_str)
   }
 }
 
-#ifdef ZJSON_ENABLE_STRUCT_SUPPORT
+#if defined(__clang__)
 /**
  * Macro system for automatic serialization
  */
@@ -2470,8 +2464,14 @@ using detail::serialize_fields;
 #define zjson_skip_serializing_if_none() .skip_serializing_if_none()
 #define zjson_default(func) .with_default(func)
 #define zjson_flatten() .flatten()
+#else
+// XLC (minimal mode) - struct serialization macros not supported
+#define ZJSON_DERIVE(StructType, ...) \
+  typedef zjson::ERROR_ZJSON_DERIVE_requires_xlclang_compiler ZJSON_DERIVE_ERROR
 
-#endif // ZJSON_ENABLE_STRUCT_SUPPORT
+#define ZJSON_SERIALIZABLE(StructType, ...) \
+  typedef zjson::ERROR_ZJSON_SERIALIZABLE_requires_xlclang_compiler ZJSON_SERIALIZABLE_ERROR
+#endif
 
 } // namespace zjson
 

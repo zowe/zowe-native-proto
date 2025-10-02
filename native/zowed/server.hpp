@@ -14,7 +14,6 @@
 
 #include <string>
 #include <mutex>
-#define ZJSON_ENABLE_STRUCT_SUPPORT
 #include "../c/zjson.hpp"
 #include "../c/extend/plugin.hpp"
 #include "parser.hpp"

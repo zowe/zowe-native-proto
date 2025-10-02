@@ -22,7 +22,6 @@
 #include <fstream>
 #include <sstream>
 #include <map>
-#define ZJSON_ENABLE_STRUCT_SUPPORT
 #include "../c/zjson.hpp"
 #include "worker.hpp"
 #include "zowed.hpp"
