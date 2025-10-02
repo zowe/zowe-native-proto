@@ -191,17 +191,18 @@ async function artifacts(connection: Client, packageApf: boolean) {
     const localFiles = ["server.pax.Z", "checksums.asc"];
     const [paxFile, checksumFile] = localFiles;
     const prePaxCmds = artifactPaths.map(
-        (file) => `cp ${file} ${path.basename(file)} && chmod 700 ${path.basename(file)}`,
+        (file) => `cp ../${file} ${path.basename(file)} && chmod 700 ${path.basename(file)}`,
     );
-    const postPaxCmd = `rm ${artifactNames.join(" ")}`;
+    const postPaxCmd = `rm ${artifactNames.join(" ")} && rmdir ../bin`;
     const e2aPipe = (file: string) => `iconv -f IBM-1047 -t ISO8859-1 > ${file} && chtag -tc ISO8859-1 ${file}`;
     await runCommandInShell(
         connection,
         [
-            `cd ${deployDirs.root}`,
+            `cd ${deployDirs.root} && mkdir -p bin dist && cd bin`,
             ...prePaxCmds,
             `_BPXK_AUTOCVT=OFF sha256 -r ${artifactNames.join(" ")} | ${e2aPipe(checksumFile)}`,
-            `pax -wvz -o saveext -f ${paxFile} ${artifactNames.join(" ")} ${checksumFile}`,
+            `pax -wvz -o saveext -f ../dist/${paxFile} ${artifactNames.join(" ")} ${checksumFile}`,
+            `mv ${checksumFile} ../dist/${checksumFile}`,
             postPaxCmd,
         ].join("\n"),
     );
@@ -209,7 +210,7 @@ async function artifacts(connection: Client, packageApf: boolean) {
         fs.mkdirSync(path.resolve(__dirname, `./../${localDir}`), { recursive: true });
         for (const localFile of localFiles) {
             if (localDirs.indexOf(localDir) === 0) {
-                await retrieve(connection, [localFile], localDir);
+                await retrieve(connection, [`dist/${localFile}`], localDir, true);
             } else {
                 fs.cpSync(
                     path.resolve(__dirname, `./../${localDirs[0]}/${localFile}`),
@@ -259,7 +260,7 @@ async function runCommandInShell(connection: Client, command: string, pty = fals
     });
 }
 
-async function retrieve(connection: Client, files: string[], targetDir: string) {
+async function retrieve(connection: Client, files: string[], targetDir: string, useBasename = false) {
     return new Promise<void>((finish) => {
         console.log("Retrieving files...");
 
@@ -272,7 +273,7 @@ async function retrieve(connection: Client, files: string[], targetDir: string) 
             for (let i = 0; i < files.length; i++) {
                 const absTargetDir = path.resolve(__dirname, `./../${targetDir}`);
                 if (!fs.existsSync(`${absTargetDir}`)) fs.mkdirSync(`${absTargetDir}`);
-                const to = `${absTargetDir}/${files[i]}`;
+                const to = `${absTargetDir}/${useBasename ? path.basename(files[i]) : files[i]}`;
                 const from = `${deployDirs.root}/${files[i]}`;
                 await download(sftpcon, from, to);
             }
