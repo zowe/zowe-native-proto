@@ -214,24 +214,7 @@ plugin::ArgumentMap RpcServer::convertJsonParamsToArgumentMap(const zjson::Value
     {
       args[kebabKey] = plugin::Argument(value.as_string());
     }
-    else if (value.is_array())
-    {
-      // Convert array to vector<string>
-      std::vector<std::string> stringArray;
-      for (const auto &arrayItem : value.as_array())
-      {
-        if (arrayItem.is_string())
-        {
-          stringArray.push_back(arrayItem.as_string());
-        }
-        else
-        {
-          // TODO Handle non-string values in arrays
-        }
-      }
-      args[kebabKey] = plugin::Argument(stringArray);
-    }
-    // For other types (null, object), convert to string representation
+    // For other types (null, array, object), convert to string representation
     else
     {
       auto str_result = zjson::to_string(value);

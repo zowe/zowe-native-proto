@@ -109,26 +109,5 @@ debug: CXXFLAGS_LIB += -g -DDEBUG
 debug: CXXFLAGS_MAIN += -g -DDEBUG
 debug: $(OUT_DIR)/$(TARGET)
 
-# Test target - placeholder
-test:
-	@echo "No tests configured yet"
-
 # Phony targets
-.PHONY: all clean test debug help library
-
-# Help target
-help:
-	@echo "Available targets:"
-	@echo "  all     - Build libzowed shared library and zowed executable (default)"
-	@echo "  library - Build only the libzowed.so shared library"
-	@echo "  clean   - Remove build artifacts from $(OUT_DIR)"
-	@echo "  debug   - Build with debug symbols"
-	@echo "  test    - Run tests (placeholder)"
-	@echo "  help    - Show this help message"
-	@echo ""
-	@echo "Build approach:"
-	@echo "  - $(TARGET) uses dlopen() to load $(LIBRARY) at runtime"
-	@echo ""
-	@echo "Compilers:"
-	@echo "  - Shared Library ($(LIBRARY)) compiled with $(CXX_LIB)"
-	@echo "  - Main executable ($(TARGET)) compiled with $(CXX_MAIN)"
+.PHONY: all clean debug library
