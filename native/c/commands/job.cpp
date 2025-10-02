@@ -134,7 +134,6 @@ int handle_job_list_files(InvocationContext &context)
       }
 
       const auto entry = obj();
-      entry->set("id", i64(it->key));
       string trimmed_name = it->ddn;
       trimmed_name = it->ddn;
       zut_rtrim(trimmed_name);
@@ -142,12 +141,13 @@ int handle_job_list_files(InvocationContext &context)
       trimmed_name = it->dsn;
       zut_rtrim(trimmed_name);
       entry->set("dsname", str(trimmed_name));
-      trimmed_name = it->procstep;
-      zut_rtrim(trimmed_name);
-      entry->set("procstep", str(trimmed_name));
+      entry->set("id", i64(it->key));
       trimmed_name = it->stepname;
       zut_rtrim(trimmed_name);
       entry->set("stepname", str(trimmed_name));
+      trimmed_name = it->procstep;
+      zut_rtrim(trimmed_name);
+      entry->set("procstep", str(trimmed_name));
       entries_array->push(entry);
     }
 
