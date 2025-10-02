@@ -1852,8 +1852,7 @@ Command::parse(const std::vector<lexer::Token> &tokens,
       invocation_args[it->first] = it->second;
     }
 
-    plugin::InvocationContext context(result.command_path, invocation_args, &std::cin,
-                                      &std::cout, &std::cerr);
+    plugin::InvocationContext context(result.command_path, invocation_args);
     result.exit_code = m_handler(context);
     ZLOG_TRACE("Handler returned exit code: %d", result.exit_code);
   }
