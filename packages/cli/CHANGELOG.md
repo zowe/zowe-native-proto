@@ -4,7 +4,7 @@ All notable changes to the Client code for "zowe-native-proto-cli" are documente
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## Recent Changes
+## `0.1.10`
 
 - Added a `storeServerPath` function as placeholder for future CLI functionality to persist deploy directory paths from user input. [#527](https://github.com/zowe/zowe-native-proto/issues/527)
 
