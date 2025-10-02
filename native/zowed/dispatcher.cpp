@@ -10,6 +10,7 @@
  */
 
 #include "dispatcher.hpp"
+#include "../c/zbase64.h"
 #include <vector>
 #include <algorithm>
 
@@ -182,24 +183,32 @@ void CommandDispatcher::apply_input_transforms(const std::vector<ArgTransform> &
       break;
     }
 
-    case ArgTransform::InputCallback:
+    case ArgTransform::InputStdin:
     {
-      // Callback transformation (context first, value second)
-      // If argument exists, pass it; otherwise pass empty argument
-      plugin::Argument value = (arg_it != args.end()) ? arg_it->second : plugin::Argument();
-
-      std::string result = it->callback(context, value);
-
-      // Remove the old argument if it existed
+      // InputStdin: Read argument value and write to stdin
+      // If b64Encode is true, decode base64 before writing to stdin
       if (arg_it != args.end())
       {
-        args.erase(arg_it);
-      }
+        try
+        {
+          std::string data = arg_it->second.get_string_value();
 
-      // If callback returned a non-empty result, add it as new argument
-      if (!result.empty())
-      {
-        args[it->argName] = plugin::Argument(result);
+          // Decode base64 if requested
+          if (it->b64Encode)
+          {
+            data = zbase64::decode(data);
+          }
+
+          // Write to stdin
+          context.set_input_content(data);
+
+          // Remove the argument from args
+          args.erase(arg_it);
+        }
+        catch (const std::exception &e)
+        {
+          context.errln("Failed to process InputStdin transform");
+        }
       }
       break;
     }
@@ -235,39 +244,26 @@ void CommandDispatcher::apply_output_transforms(const std::vector<ArgTransform> 
 
     switch (it->kind)
     {
-    case ArgTransform::OutputCallback:
+    case ArgTransform::OutputStdout:
     {
-      // Callback transformation (context first, value second)
-      // Create empty argument if field doesn't exist
-      plugin::Argument value;
-      if (fieldValue)
+      // OutputStdout: Read from stdout and write to output argument
+      // If b64Encode is true, encode base64 before writing to output
+      try
       {
-        // Convert AST node to appropriate type for the argument
-        if (fieldValue->is_string())
+        std::string data = context.get_output_content();
+
+        // Encode base64 if requested
+        if (it->b64Encode)
         {
-          value = plugin::Argument(fieldValue->as_string());
+          data = zbase64::encode(data);
         }
-        else if (fieldValue->is_integer())
-        {
-          value = plugin::Argument(fieldValue->as_integer());
-        }
-        else if (fieldValue->is_bool())
-        {
-          value = plugin::Argument(fieldValue->as_bool());
-        }
-        // For complex types, use JSON representation
-        else
-        {
-          value = plugin::Argument(fieldValue->as_json());
-        }
+
+        // Set the output field
+        obj->set(it->argName, ast::Ast::string(data));
       }
-
-      std::string result = it->callback(context, value);
-
-      // If callback returned a non-empty result, set it on the object
-      if (!result.empty())
+      catch (const std::exception &e)
       {
-        obj->set(it->argName, ast::Ast::string(result));
+        context.errln("Failed to process OutputStdout transform");
       }
       break;
     }

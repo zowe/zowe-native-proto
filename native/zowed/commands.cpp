@@ -14,39 +14,6 @@
 #include "../c/commands/ds.hpp"
 #include "../c/commands/job.hpp"
 #include "../c/commands/uss.hpp"
-#include "../c/zbase64.h"
-
-// Transform callback that reads from stdout and encodes base64 data
-static std::string transform_data_from_stdout(MiddlewareContext &context, const plugin::Argument &value)
-{
-  try
-  {
-    std::string rawData = context.get_output_content();
-    std::string encodedData = zbase64::encode(rawData);
-    return encodedData;
-  }
-  catch (const std::exception &e)
-  {
-    context.errln("Failed to encode base64 data");
-  }
-  return "";
-}
-
-// Transform callback that decodes base64 data and writes to stdin
-static std::string transform_data_to_stdin(MiddlewareContext &context, const plugin::Argument &value)
-{
-  try
-  {
-    std::string base64Data = value.get_string_value();
-    std::string decodedData = zbase64::decode(base64Data);
-    context.set_input_content(decodedData);
-  }
-  catch (const std::exception &e)
-  {
-    context.errln("Failed to decode base64 data");
-  }
-  return "";
-}
 
 void register_ds_commands(CommandDispatcher &dispatcher)
 {
@@ -64,11 +31,11 @@ void register_ds_commands(CommandDispatcher &dispatcher)
                                InputDefault("encoding", "IBM-1047"),
                                InputDefault("return-etag", true),
                                InputRename("volume", "volser"),
-                               OutputCallback("data", transform_data_from_stdout)});
+                               OutputStdout("data", true)});
   // dispatcher.register_command("restoreDataset", ds::handle_data_set_restore);
   dispatcher.register_command("writeDataset", ds::handle_data_set_write,
                               {InputRename("dsname", "dsn"),
-                               InputCallback("data", transform_data_to_stdin),
+                               InputStdin("data", true),
                                InputDefault("encoding", "IBM-1047"),
                                InputRename("volume", "volser")});
 }
@@ -88,7 +55,7 @@ void register_job_commands(CommandDispatcher &dispatcher)
                               {InputRename("job-id", "jobid"),
                                InputRename("spool-id", "key"),
                                InputDefault("encoding", "IBM-1047"),
-                               OutputCallback("data", transform_data_from_stdout)});
+                               OutputStdout("data", true)});
   // dispatcher.register_command("releaseJob", job::handle_job_release);
   // dispatcher.register_command("submitJcl", job::handle_job_submit_jcl);
   // dispatcher.register_command("submitJob", job::handle_job_submit);
@@ -112,10 +79,10 @@ void register_uss_commands(CommandDispatcher &dispatcher)
   dispatcher.register_command("readFile", uss::handle_uss_view,
                               {InputRename("fspath", "file-path"),
                                InputDefault("encoding", "IBM-1047"),
-                               OutputCallback("data", transform_data_from_stdout)});
+                               OutputStdout("data", true)});
   dispatcher.register_command("writeFile", uss::handle_uss_write,
                               {InputRename("fspath", "file-path"),
-                               InputCallback("data", transform_data_to_stdin),
+                               InputStdin("data", true),
                                InputDefault("encoding", "IBM-1047")});
 }
 

@@ -15,7 +15,6 @@
 #include "../c/extend/plugin.hpp"
 #include "parser.hpp"
 #include <string>
-#include <functional>
 #include <vector>
 
 #if defined(__IBMTR1_CPP__) && !defined(__clang__)
@@ -29,36 +28,33 @@ struct ArgTransform
 {
   enum TransformKind
   {
-    InputRename,   // Rename an input argument
-    InputDefault,  // Set a default value for an input argument
-    InputCallback, // Transform input via callback
-    OutputCallback // Transform output via callback
+    InputRename,  // Rename an input argument
+    InputDefault, // Set a default value for an input argument
+    InputStdin,   // Transform input from argument to stdin
+    OutputStdout  // Transform output from stdout to argument
   };
-
-  // Callback function that processes an argument value
-  typedef std::function<std::string(MiddlewareContext &context, const plugin::Argument &value)> TransformCallback;
 
   TransformKind kind;
   std::string argName;
   std::string newName;         // Used for InputRename
   plugin::Argument defaultArg; // Used for InputDefault
-  TransformCallback callback;  // Used for InputCallback and OutputCallback
+  bool b64Encode;              // Used for InputStdin and OutputStdout
 
   // Constructor for InputRename
   ArgTransform(TransformKind k, const std::string &arg, const std::string &newArgName)
-      : kind(k), argName(arg), newName(newArgName), defaultArg(), callback(nullptr)
+      : kind(k), argName(arg), newName(newArgName), defaultArg(), b64Encode(false)
   {
   }
 
   // Constructor for InputDefault (internal use)
   ArgTransform(TransformKind k, const std::string &arg, const plugin::Argument &defValue)
-      : kind(k), argName(arg), newName(""), defaultArg(defValue), callback(nullptr)
+      : kind(k), argName(arg), newName(""), defaultArg(defValue), b64Encode(false)
   {
   }
 
-  // Constructor for InputCallback and OutputCallback
-  ArgTransform(TransformKind k, const std::string &arg, TransformCallback cb)
-      : kind(k), argName(arg), newName(""), defaultArg(), callback(cb)
+  // Constructor for InputStdin and OutputStdout
+  ArgTransform(TransformKind k, const std::string &arg, bool encode)
+      : kind(k), argName(arg), newName(""), defaultArg(), b64Encode(encode)
   {
   }
 };
@@ -102,16 +98,16 @@ inline ArgTransform InputDefault(const std::string &argName, double defaultValue
   return ArgTransform(ArgTransform::InputDefault, argName, plugin::Argument(defaultValue));
 }
 
-// InputCallback: Transform input via callback (context first, value second)
-inline ArgTransform InputCallback(const std::string &argName, ArgTransform::TransformCallback callback)
+// InputStdin: Read input argument and write to stdin (optionally base64 decoding)
+inline ArgTransform InputStdin(const std::string &argName, bool b64Encode)
 {
-  return ArgTransform(ArgTransform::InputCallback, argName, callback);
+  return ArgTransform(ArgTransform::InputStdin, argName, b64Encode);
 }
 
-// OutputCallback: Transform output via callback (context first, value second)
-inline ArgTransform OutputCallback(const std::string &argName, ArgTransform::TransformCallback callback)
+// OutputStdout: Read from stdout and write to output argument (optionally base64 encoding)
+inline ArgTransform OutputStdout(const std::string &argName, bool b64Encode)
 {
-  return ArgTransform(ArgTransform::OutputCallback, argName, callback);
+  return ArgTransform(ArgTransform::OutputStdout, argName, b64Encode);
 }
 
 class CommandDispatcher
