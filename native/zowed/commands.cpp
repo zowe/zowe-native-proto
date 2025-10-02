@@ -55,7 +55,6 @@ void register_ds_commands(CommandDispatcher &dispatcher)
   // dispatcher.register_command("deleteDataset", ds::handle_data_set_delete);
   dispatcher.register_command("listDatasets", ds::handle_data_set_list,
                               {InputRename("pattern", "dsn"),
-                               InputDefault("response-format-csv", true),
                                InputDefault("warn", false)});
   dispatcher.register_command("listDsMembers", ds::handle_data_set_list_members,
                               {InputRename("dsname", "dsn"),
@@ -82,11 +81,9 @@ void register_job_commands(CommandDispatcher &dispatcher)
   // dispatcher.register_command("getJobStatus", job::handle_job_view_status);
   // dispatcher.register_command("holdJob", job::handle_job_hold);
   dispatcher.register_command("listJobs", job::handle_job_list,
-                              {InputDefault("response-format-csv", true),
-                               InputDefault("warn", false)});
+                              {InputDefault("warn", false)});
   dispatcher.register_command("listSpools", job::handle_job_list_files,
-                              {InputRename("job-id", "jobid"),
-                               InputDefault("response-format-csv", true)});
+                              {InputRename("job-id", "jobid")});
   dispatcher.register_command("readSpool", job::handle_job_view_file,
                               {InputRename("job-id", "jobid"),
                                InputRename("spool-id", "key"),

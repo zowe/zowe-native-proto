@@ -292,9 +292,9 @@ uint32_t zut_calc_adler32_checksum(const string &input)
  * @param input The input string to be printed.
  * @param output_stream Pointer to output stream (nullptr uses std::cout).
  */
-void zut_print_string_as_bytes(string &input, std::ostream *output_stream)
+void zut_print_string_as_bytes(string &input, std::ostream *out_stream)
 {
-  std::ostream &stream = output_stream ? *output_stream : std::cout;
+  std::ostream &output_stream = out_stream ? *out_stream : std::cout;
   char buf[4];
   for (char *p = (char *)input.data(); p < (input.data() + input.length()); p++)
   {
@@ -306,9 +306,9 @@ void zut_print_string_as_bytes(string &input, std::ostream *output_stream)
     {
       sprintf(buf, "%02x ", (unsigned char)*p);
     }
-    stream << buf;
+    output_stream << buf;
   }
-  stream << endl;
+  output_stream << endl;
 }
 
 /**
