@@ -25,7 +25,7 @@
 #define ZUSF_DEFAULT_MAX_DDS 100
 
 #if (defined(__IBMCPP__) || defined(__IBMC__))
-#if defined(SWIG)
+#if defined(__clang__)
 #pragma pack(1)
 #else
 #pragma pack(packed)
