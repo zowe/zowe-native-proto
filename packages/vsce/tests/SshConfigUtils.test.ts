@@ -194,9 +194,23 @@ describe("SshConfigUtils", () => {
             }
         }
         let testInstance: TestVscePromptApi;
+        let mockQuickPick: any;
+
+        beforeEach(() => {
+            vi.resetAllMocks();
+            mockQuickPick = {
+                items: [],
+                selectedItems: [],
+                show: vi.fn(),
+                hide: vi.fn(),
+                onDidAccept: vi.fn(),
+                onDidHide: vi.fn(),
+                onDidChangeValue: vi.fn(),
+            };
+            testInstance = new TestVscePromptApi();
+        });
         describe("showMessage", () => {
             beforeEach(() => {
-                testInstance = new TestVscePromptApi();
                 vscode.window.showInformationMessage = vi.fn();
                 vscode.window.showWarningMessage = vi.fn();
                 vscode.window.showErrorMessage = vi.fn();
@@ -219,17 +233,7 @@ describe("SshConfigUtils", () => {
             });
         });
         describe("showMenu", () => {
-            let mockQuickPick: any;
             beforeEach(() => {
-                mockQuickPick = {
-                    items: [],
-                    selectedItems: [],
-                    show: vi.fn(),
-                    hide: vi.fn(),
-                    onDidAccept: vi.fn(),
-                    onDidHide: vi.fn(),
-                };
-                testInstance = new TestVscePromptApi();
                 vi.spyOn(vscode.window, "createQuickPick").mockReturnValue(mockQuickPick);
             });
             afterEach(() => {
@@ -253,18 +257,7 @@ describe("SshConfigUtils", () => {
             });
         });
         describe("showCustomMenu", () => {
-            let mockQuickPick: any;
             beforeEach(() => {
-                mockQuickPick = {
-                    items: [],
-                    selectedItems: [],
-                    show: vi.fn(),
-                    hide: vi.fn(),
-                    onDidAccept: vi.fn(),
-                    onDidHide: vi.fn(),
-                    onDidChangeValue: vi.fn(),
-                };
-                testInstance = new TestVscePromptApi();
                 vi.spyOn(vscode.window, "createQuickPick").mockReturnValue(mockQuickPick);
             });
             afterEach(() => {
@@ -321,12 +314,6 @@ describe("SshConfigUtils", () => {
             });
         });
         describe("getCurrentDir", () => {
-            beforeEach(() => {
-                testInstance = new TestVscePromptApi();
-            });
-            afterEach(() => {
-                vi.restoreAllMocks();
-            });
             it("returns the fsPath when workspaceRoot is defined", () => {
                 const testPath = "/user/project";
                 (ZoweVsCodeExtension as any).workspaceRoot = {
@@ -337,18 +324,7 @@ describe("SshConfigUtils", () => {
             });
         });
         describe("showPrivateKeyWarning", () => {
-            let mockQuickPick: any;
             beforeEach(() => {
-                mockQuickPick = {
-                    items: [],
-                    selectedItems: [],
-                    show: vi.fn(),
-                    hide: vi.fn(),
-                    onDidAccept: vi.fn(),
-                    onDidHide: vi.fn(),
-                    onDidChangeValue: vi.fn(),
-                };
-                testInstance = new TestVscePromptApi();
                 vi.spyOn(vscode.window, "createQuickPick").mockReturnValue(mockQuickPick);
             });
             afterEach(() => {
@@ -374,7 +350,6 @@ describe("SshConfigUtils", () => {
             let mockGet: any;
             let mockUpdate: any;
             beforeEach(() => {
-                testInstance = new TestVscePromptApi();
                 mockGet = vi.fn();
                 mockUpdate = vi.fn();
                 (getVsceConfig as Mock).mockReturnValue({ get: mockGet, update: mockUpdate });
