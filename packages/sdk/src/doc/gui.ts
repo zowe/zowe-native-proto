@@ -20,6 +20,7 @@ export interface qpOpts {
     items: qpItem[];
     title?: string;
     placeholder?: string;
+    value?: string;
 }
 export interface qpItem {
     label: string;
