@@ -36,6 +36,18 @@
 #else
 #define ZJSON_CONSTEXPR const
 #define ZJSON_NOEXCEPT throw()
+namespace std
+{
+template <typename T, T v>
+struct integral_constant
+{
+  static ZJSON_CONSTEXPR T value = v;
+  typedef T value_type;
+  typedef integral_constant type;
+};
+typedef integral_constant<bool, true> true_type;
+typedef integral_constant<bool, false> false_type;
+} // namespace std
 #endif
 
 /*
@@ -1070,7 +1082,7 @@ public:
 
 // Helper implementation functions for C++14 compatibility
 template <typename T>
-zstd::expected<std::string, Error> to_string_impl(const T &value, zstd::true_type)
+zstd::expected<std::string, Error> to_string_impl(const T &value, std::true_type)
 {
   try
   {
@@ -1090,7 +1102,7 @@ zstd::expected<std::string, Error> to_string_impl(const T &value, zstd::true_typ
 
 #if defined(__clang__)
 template <typename T>
-zstd::expected<std::string, Error> to_string_impl(const T &value, zstd::false_type)
+zstd::expected<std::string, Error> to_string_impl(const T &value, std::false_type)
 {
   try
   {
@@ -1116,21 +1128,21 @@ zstd::expected<std::string, Error> to_string_impl(const T &value, zstd::false_ty
 }
 #else
 template <typename T>
-zstd::expected<std::string, Error> to_string_impl(const T &value, zstd::false_type)
+zstd::expected<std::string, Error> to_string_impl(const T &value, std::false_type)
 {
   return zstd::make_unexpected(Error::invalid_type("serializable", "unknown"));
 }
 #endif
 
 template <typename T>
-zstd::expected<T, Error> from_str_impl(const Value &parsed, zstd::true_type)
+zstd::expected<T, Error> from_str_impl(const Value &parsed, std::true_type)
 {
   return Deserializable<T>::deserialize(parsed);
 }
 
 #if defined(__clang__)
 template <typename T>
-zstd::expected<T, Error> from_str_impl(const Value &parsed, zstd::false_type)
+zstd::expected<T, Error> from_str_impl(const Value &parsed, std::false_type)
 {
   if (SerializationRegistry<T>::has_deserializer())
   {
@@ -1143,7 +1155,7 @@ zstd::expected<T, Error> from_str_impl(const Value &parsed, zstd::false_type)
 }
 #else
 template <typename T>
-zstd::expected<T, Error> from_str_impl(const Value &parsed, zstd::false_type)
+zstd::expected<T, Error> from_str_impl(const Value &parsed, std::false_type)
 {
   return zstd::make_unexpected(Error::invalid_type("deserializable", "unknown"));
 }
@@ -1155,7 +1167,7 @@ zstd::expected<std::string, Error> to_string(const T &value)
 {
   try
   {
-    return to_string_impl<T>(value, typename zstd::integral_constant<bool, Serializable<T>::value>::type());
+    return to_string_impl<T>(value, typename std::integral_constant<bool, Serializable<T>::value>::type());
   }
   catch (const Error &e)
   {
@@ -1475,7 +1487,7 @@ zstd::expected<T, Error> from_value(const Value &value)
 {
   try
   {
-    return from_str_impl<T>(value, typename zstd::integral_constant<bool, Deserializable<T>::value>::type());
+    return from_str_impl<T>(value, typename std::integral_constant<bool, Deserializable<T>::value>::type());
   }
   catch (const Error &e)
   {
@@ -1489,14 +1501,14 @@ zstd::expected<T, Error> from_value(const Value &value)
 
 // Helper implementation functions for to_value for C++14 compatibility
 template <typename T>
-zstd::expected<Value, Error> to_value_impl(const T &obj, zstd::true_type)
+zstd::expected<Value, Error> to_value_impl(const T &obj, std::true_type)
 {
   return Serializable<T>::serialize(obj);
 }
 
 #if defined(__clang__)
 template <typename T>
-zstd::expected<Value, Error> to_value_impl(const T &obj, zstd::false_type)
+zstd::expected<Value, Error> to_value_impl(const T &obj, std::false_type)
 {
   if (SerializationRegistry<T>::has_serializer())
   {
@@ -1509,7 +1521,7 @@ zstd::expected<Value, Error> to_value_impl(const T &obj, zstd::false_type)
 }
 #else
 template <typename T>
-zstd::expected<Value, Error> to_value_impl(const T &obj, zstd::false_type)
+zstd::expected<Value, Error> to_value_impl(const T &obj, std::false_type)
 {
   return zstd::make_unexpected(Error::invalid_type("serializable", "unknown"));
 }
@@ -1521,7 +1533,7 @@ zstd::expected<Value, Error> to_value(const T &obj)
 {
   try
   {
-    return to_value_impl<T>(obj, typename zstd::integral_constant<bool, Serializable<T>::value>::type());
+    return to_value_impl<T>(obj, typename std::integral_constant<bool, Serializable<T>::value>::type());
   }
   catch (const Error &e)
   {
@@ -1560,7 +1572,7 @@ zstd::expected<T, Error> from_str(const std::string &json_str)
     // Clean up
     ZJSMTERM(&instance);
 
-    return from_str_impl<T>(parsed, typename zstd::integral_constant<bool, Deserializable<T>::value>::type());
+    return from_str_impl<T>(parsed, typename std::integral_constant<bool, Deserializable<T>::value>::type());
   }
   catch (const Error &e)
   {

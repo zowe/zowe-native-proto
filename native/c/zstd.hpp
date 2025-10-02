@@ -40,28 +40,14 @@ struct remove_reference<T &&>
   typedef T type;
 };
 
-// Backport of C++11 `std::integral_constant`
-template <typename T, T v>
-struct integral_constant
-{
-  static const T value = v;
-  typedef T value_type;
-  typedef integral_constant<T, v> type;
-  operator value_type() const { return value; }
-};
-
-// Backport of C++11 `std::true_type` and `std::false_type`
-typedef integral_constant<bool, true> true_type;
-typedef integral_constant<bool, false> false_type;
-
 // Backport of C++11 `std::is_same`
 template <class T, class U>
-struct is_same : false_type
+struct is_same : std::false_type
 {
 };
 
 template <class T>
-struct is_same<T, T> : true_type
+struct is_same<T, T> : std::true_type
 {
 };
 
