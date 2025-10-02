@@ -27,11 +27,14 @@ $(BUILD_DIR):
 $(BUILD_DIR)/more.o: more.cpp | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -c $< -o $@
 
+$(BUILD_DIR)/evenmore.o: evenmore.cpp | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) $(INCLUDE) -c $< -o $@
+
 $(BUILD_DIR)/runner.o: runner.cpp | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -c $< -o $@
 
 # Link the runner executable
-$(BUILD_DIR)/runner: $(BUILD_DIR)/runner.o $(BUILD_DIR)/more.o
+$(BUILD_DIR)/runner: $(BUILD_DIR)/runner.o $(BUILD_DIR)/more.o $(BUILD_DIR)/evenmore.o
 	$(CXX) -o $@ $^
 
 # Clean build artifacts

@@ -12,16 +12,15 @@
 #include <iostream>
 #include "ztest.hpp"
 #include "more.hpp"
+#include "evenmore.hpp"
 
 using namespace std;
 using namespace ztst;
 
-// @TEST TODO(Kelosky): fix this global variable
-std::string matcher = "";
-
-int main()
+int main(int argc, char *argv[])
 {
   return tests(
+      argc, argv,
       []() -> void
       {
         describe("test suite",
@@ -35,6 +34,7 @@ int main()
                       });
 
                    more_tests();
+                   even_more_tests();
                  });
       });
 }
