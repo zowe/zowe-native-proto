@@ -89,6 +89,12 @@ CommandBuilder &CommandBuilder::write_stdin(const std::string &argName, bool b64
   return *this;
 }
 
+CommandBuilder &CommandBuilder::flatten_obj(const std::string &argName)
+{
+  transforms_.push_back(ArgTransform(ArgTransform::FlattenObj, argName));
+  return *this;
+}
+
 void CommandBuilder::apply_input_transforms(MiddlewareContext &context) const
 {
   plugin::ArgumentMap &args = context.mutable_arguments();
@@ -149,6 +155,56 @@ void CommandBuilder::apply_input_transforms(MiddlewareContext &context) const
         catch (const std::exception &e)
         {
           context.errln("Failed to process WriteStdin transform");
+        }
+      }
+      break;
+    }
+
+    case ArgTransform::FlattenObj:
+    {
+      // FlattenObj: Flatten a JSON object argument into the argument map
+      if (arg_it != args.end())
+      {
+        try
+        {
+          // Get the object argument
+          const ast::Node *objPtr = arg_it->second.get_object();
+          if (objPtr != nullptr && (*objPtr)->is_object())
+          {
+            const ast::ObjMap &obj = (*objPtr)->as_object();
+
+            // Add each property from the object to the argument map
+            for (ast::ObjMap::const_iterator obj_it = obj.begin(); obj_it != obj.end(); ++obj_it)
+            {
+              const std::string &key = obj_it->first;
+              const ast::Node &value = obj_it->second;
+
+              // Convert ast::Node to plugin::Argument
+              if (value->is_bool())
+              {
+                args[key] = plugin::Argument(value->as_bool());
+              }
+              else if (value->is_integer())
+              {
+                args[key] = plugin::Argument(value->as_integer());
+              }
+              else if (value->is_number())
+              {
+                args[key] = plugin::Argument(value->as_number());
+              }
+              else if (value->is_string())
+              {
+                args[key] = plugin::Argument(value->as_string());
+              }
+            }
+
+            // Remove the original object argument
+            args.erase(arg_it);
+          }
+        }
+        catch (const std::exception &e)
+        {
+          context.errln("Failed to process FlattenObj transform");
         }
       }
       break;
