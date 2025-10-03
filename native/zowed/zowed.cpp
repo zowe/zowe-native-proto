@@ -141,7 +141,7 @@ private:
 
   void logWorkerCount()
   {
-    if (!options.verbose)
+    if (!zowed::Logger::is_verbose_logging())
       return;
 
     std::thread([this]()
@@ -165,12 +165,12 @@ public:
   {
   }
 
-  void run(const IoserverOptions &opts)
+  void run(const IoserverOptions &opts, const char *execDir = nullptr)
   {
     options = opts;
 
-    // Initialize logger
-    zowed::Logger::initLogger(false, options.verbose);
+    // Initialize logger with executable directory
+    zowed::Logger::init_logger(execDir, options.verbose);
     LOG_INFO("Starting zowed with %d workers (verbose=%s)", options.numWorkers, options.verbose ? "true" : "false");
 
     // Set up signal handling
@@ -221,12 +221,12 @@ public:
 };
 
 // Library implementation functions
-extern "C" int run_zowed_server(const IoserverOptions &options)
+extern "C" int run_zowed_server(const IoserverOptions &options, const char *execDir)
 {
   try
   {
     ZowedServer server;
-    server.run(options);
+    server.run(options, execDir);
   }
   catch (const std::exception &e)
   {

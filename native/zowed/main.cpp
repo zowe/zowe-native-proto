@@ -185,7 +185,7 @@ int main(int argc, char *argv[])
   }
 
   // Get the function pointer
-  typedef int (*run_zowed_server_func)(const IoserverOptions &);
+  typedef int (*run_zowed_server_func)(const IoserverOptions &, const char *);
   void *func_ptr = dlsym(handle, "run_zowed_server");
 
   const char *dlsym_error = dlerror();
@@ -198,8 +198,8 @@ int main(int argc, char *argv[])
 
   run_zowed_server_func run_server = (run_zowed_server_func)func_ptr;
 
-  // Call the function
-  int result = run_server(options);
+  // Call the function with executable directory
+  int result = run_server(options, executable_dir.c_str());
 
   // Clean up
   dlclose(handle);
