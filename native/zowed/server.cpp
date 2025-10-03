@@ -110,6 +110,7 @@ void RpcServer::processRequest(const std::string &requestData)
         resultJson = convertOutputToJson(output);
       }
 
+      resultJson.add_to_object("success", zjson::Value(context.get_error_content().empty()));
       response.result = zstd::optional<zjson::Value>(resultJson);
       response.error = zstd::optional<ErrorDetails>();
     }
