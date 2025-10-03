@@ -13,6 +13,7 @@
 #define DISPATCHER_HPP
 
 #include "../c/extend/plugin.hpp"
+#include "builder.hpp"
 #include "parser.hpp"
 #include <string>
 #include <vector>
@@ -25,108 +26,6 @@ struct RpcNotification;
 #else
 #include <unordered_map>
 #endif
-
-// Argument transformation types
-struct ArgTransform
-{
-  enum TransformKind
-  {
-    InputRename,  // Rename an input argument
-    InputDefault, // Set a default value for an input argument
-    InputStdin,   // Transform input from argument to stdin
-    OutputStdout, // Transform output from stdout to argument
-    PipeWriter,   // Create FIFO pipe for read requests, send receiveStream notification
-    PipeReader    // Create FIFO pipe for write requests, send sendStream notification
-  };
-
-  TransformKind kind;
-  std::string argName;
-  std::string newName;          // Used for InputRename, PipeWriter, PipeReader (for argName output)
-  plugin::Argument defaultArg;  // Used for InputDefault
-  bool b64Encode;               // Used for InputStdin and OutputStdout
-  mutable std::string pipePath; // Used for PipeWriter and PipeReader (mutable for cleanup in output phase)
-
-  // Constructor for InputRename
-  ArgTransform(TransformKind k, const std::string &arg, const std::string &newArgName)
-      : kind(k), argName(arg), newName(newArgName), defaultArg(), b64Encode(false), pipePath()
-  {
-  }
-
-  // Constructor for InputDefault (internal use)
-  ArgTransform(TransformKind k, const std::string &arg, const plugin::Argument &defValue)
-      : kind(k), argName(arg), newName(""), defaultArg(defValue), b64Encode(false), pipePath()
-  {
-  }
-
-  // Constructor for InputStdin and OutputStdout
-  ArgTransform(TransformKind k, const std::string &arg, bool encode)
-      : kind(k), argName(arg), newName(""), defaultArg(), b64Encode(encode), pipePath()
-  {
-  }
-};
-
-// Helper functions to create transforms with cleaner syntax
-
-// InputRename: Rename an argument from rpcName to argName
-inline ArgTransform InputRename(const std::string &rpcName, const std::string &argName)
-{
-  return ArgTransform(ArgTransform::InputRename, rpcName, argName);
-}
-
-// InputDefault: Set a default value for an argument if not provided
-inline ArgTransform InputDefault(const std::string &argName, const char *defaultValue)
-{
-  return ArgTransform(ArgTransform::InputDefault, argName, plugin::Argument(defaultValue));
-}
-
-inline ArgTransform InputDefault(const std::string &argName, const std::string &defaultValue)
-{
-  return ArgTransform(ArgTransform::InputDefault, argName, plugin::Argument(defaultValue));
-}
-
-inline ArgTransform InputDefault(const std::string &argName, bool defaultValue)
-{
-  return ArgTransform(ArgTransform::InputDefault, argName, plugin::Argument(defaultValue));
-}
-
-inline ArgTransform InputDefault(const std::string &argName, int defaultValue)
-{
-  return ArgTransform(ArgTransform::InputDefault, argName, plugin::Argument(static_cast<long long>(defaultValue)));
-}
-
-inline ArgTransform InputDefault(const std::string &argName, long long defaultValue)
-{
-  return ArgTransform(ArgTransform::InputDefault, argName, plugin::Argument(defaultValue));
-}
-
-inline ArgTransform InputDefault(const std::string &argName, double defaultValue)
-{
-  return ArgTransform(ArgTransform::InputDefault, argName, plugin::Argument(defaultValue));
-}
-
-// InputStdin: Read input argument and write to stdin (optionally base64 decoding)
-inline ArgTransform InputStdin(const std::string &argName, bool b64Encode)
-{
-  return ArgTransform(ArgTransform::InputStdin, argName, b64Encode);
-}
-
-// OutputStdout: Read from stdout and write to output argument (optionally base64 encoding)
-inline ArgTransform OutputStdout(const std::string &argName, bool b64Encode)
-{
-  return ArgTransform(ArgTransform::OutputStdout, argName, b64Encode);
-}
-
-// PipeWriter: Create FIFO pipe for read requests, send receiveStream notification
-inline ArgTransform PipeWriter(const std::string &requestId, const std::string &argName)
-{
-  return ArgTransform(ArgTransform::PipeWriter, requestId, argName);
-}
-
-// PipeReader: Create FIFO pipe for write requests, send sendStream notification
-inline ArgTransform PipeReader(const std::string &requestId, const std::string &argName)
-{
-  return ArgTransform(ArgTransform::PipeReader, requestId, argName);
-}
 
 class CommandDispatcher
 {
@@ -141,8 +40,8 @@ public:
   CommandDispatcher(const CommandDispatcher &) = delete;
   CommandDispatcher &operator=(const CommandDispatcher &) = delete;
 
-  // Register a new command with its handler and optional argument transforms
-  bool register_command(const std::string &command_name, CommandHandler handler, const std::vector<ArgTransform> &transforms = std::vector<ArgTransform>());
+  // Register a new command using CommandBuilder
+  bool register_command(const std::string &command_name, const CommandBuilder &builder);
 
   // Dispatch a command by name using the provided context
   int dispatch(const std::string &command_name, MiddlewareContext &context);
@@ -166,18 +65,12 @@ private:
   // Private destructor
   ~CommandDispatcher();
 
-  // Apply input transforms to the context before command execution
-  void apply_input_transforms(const std::vector<ArgTransform> &transforms, MiddlewareContext &context);
-
-  // Apply output transforms to the context after command execution
-  void apply_output_transforms(const std::vector<ArgTransform> &transforms, MiddlewareContext &context);
-
 #if defined(__clang__)
   std::unordered_map<std::string, CommandHandler> m_command_handlers;
-  std::unordered_map<std::string, std::vector<ArgTransform>> m_transforms;
+  std::unordered_map<std::string, CommandBuilder> m_builders;
 #else
   std::tr1::unordered_map<std::string, CommandHandler> m_command_handlers;
-  std::tr1::unordered_map<std::string, std::vector<ArgTransform>> m_transforms;
+  std::tr1::unordered_map<std::string, CommandBuilder> m_builders;
 #endif
 };
 

@@ -10,17 +10,8 @@
  */
 
 #include "dispatcher.hpp"
-#include "server.hpp"
-#include "../c/zbase64.h"
-#include "../c/zjson.hpp"
 #include <vector>
 #include <algorithm>
-#include <sstream>
-#include <cstdlib>
-#include <unistd.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <iostream>
 
 CommandDispatcher &CommandDispatcher::getInstance()
 {
@@ -36,9 +27,9 @@ CommandDispatcher::~CommandDispatcher()
 {
 }
 
-bool CommandDispatcher::register_command(const std::string &command_name, CommandHandler handler, const std::vector<ArgTransform> &transforms)
+bool CommandDispatcher::register_command(const std::string &command_name, const CommandBuilder &builder)
 {
-  if (command_name.empty() || handler == nullptr)
+  if (command_name.empty() || builder.get_handler() == nullptr)
   {
     return false;
   }
@@ -49,13 +40,8 @@ bool CommandDispatcher::register_command(const std::string &command_name, Comman
     return false; // Command already registered
   }
 
-  m_command_handlers[command_name] = handler;
-
-  // Store transforms if provided
-  if (!transforms.empty())
-  {
-    m_transforms[command_name] = transforms;
-  }
+  m_command_handlers[command_name] = builder.get_handler();
+  m_builders.insert(std::make_pair(command_name, builder));
 
   return true;
 }
@@ -79,20 +65,20 @@ int CommandDispatcher::dispatch(const std::string &command_name, MiddlewareConte
 
   try
   {
-    // Apply input transforms if they exist
-    auto transforms_it = m_transforms.find(command_name);
-    if (transforms_it != m_transforms.end())
+    // Apply input transforms if builder exists
+    auto builder_it = m_builders.find(command_name);
+    if (builder_it != m_builders.end())
     {
-      apply_input_transforms(transforms_it->second, context);
+      builder_it->second.apply_input_transforms(context);
     }
 
     // Call the command handler with the context
     int result = handler(context);
 
-    // Apply output transforms if they exist
-    if (transforms_it != m_transforms.end())
+    // Apply output transforms if builder exists
+    if (builder_it != m_builders.end())
     {
-      apply_output_transforms(transforms_it->second, context);
+      builder_it->second.apply_output_transforms(context);
     }
 
     return result;
@@ -140,11 +126,11 @@ bool CommandDispatcher::unregister_command(const std::string &command_name)
 
   m_command_handlers.erase(it);
 
-  // Also remove transforms if they exist
-  auto transforms_it = m_transforms.find(command_name);
-  if (transforms_it != m_transforms.end())
+  // Also remove builder if it exists
+  auto builder_it = m_builders.find(command_name);
+  if (builder_it != m_builders.end())
   {
-    m_transforms.erase(transforms_it);
+    m_builders.erase(builder_it);
   }
 
   return true;
@@ -153,284 +139,5 @@ bool CommandDispatcher::unregister_command(const std::string &command_name)
 void CommandDispatcher::clear()
 {
   m_command_handlers.clear();
-  m_transforms.clear();
-}
-
-void CommandDispatcher::apply_input_transforms(const std::vector<ArgTransform> &transforms, MiddlewareContext &context)
-{
-  plugin::ArgumentMap &args = context.mutable_arguments();
-
-  for (std::vector<ArgTransform>::const_iterator it = transforms.begin(); it != transforms.end(); ++it)
-  {
-    // Find the argument
-    plugin::ArgumentMap::iterator arg_it = args.find(it->argName);
-
-    switch (it->kind)
-    {
-    case ArgTransform::InputRename:
-    {
-      // Rename: argument must exist
-      if (arg_it == args.end())
-      {
-        continue; // Argument not found, skip rename
-      }
-
-      plugin::Argument value = arg_it->second;
-      args.erase(arg_it);
-      args[it->newName] = value;
-      break;
-    }
-
-    case ArgTransform::InputDefault:
-    {
-      // Set default value if argument doesn't exist
-      if (arg_it == args.end())
-      {
-        args[it->argName] = it->defaultArg;
-      }
-      break;
-    }
-
-    case ArgTransform::InputStdin:
-    {
-      // InputStdin: Read argument value and write to stdin
-      // If b64Encode is true, decode base64 before writing to stdin
-      if (arg_it != args.end())
-      {
-        try
-        {
-          std::string data = arg_it->second.get_string_value();
-
-          // Decode base64 if requested
-          if (it->b64Encode)
-          {
-            data = zbase64::decode(data);
-          }
-
-          // Write to stdin
-          context.set_input_content(data);
-
-          // Remove the argument from args
-          args.erase(arg_it);
-        }
-        catch (const std::exception &e)
-        {
-          context.errln("Failed to process InputStdin transform");
-        }
-      }
-      break;
-    }
-
-    case ArgTransform::PipeWriter:
-    {
-      // PipeWriter: Create FIFO pipe for read requests and send receiveStream notification
-      // argName contains the streamId RPC argument name
-      // newName contains the output argument name for the pipe path
-      if (arg_it != args.end())
-      {
-        try
-        {
-          // Get streamId from the argument
-          const long long *streamIdPtr = arg_it->second.get_int();
-          if (streamIdPtr == nullptr)
-          {
-            context.errln("PipeWriter: streamId argument is not an integer");
-            break;
-          }
-          long long streamId = *streamIdPtr;
-
-          // Create pipe path: /tmp/zowe-native-proto_{uid}_{pid}_{streamId}_fifo
-          const char *tmpDir = std::getenv("TMPDIR");
-          if (tmpDir == nullptr || tmpDir[0] == '\0')
-          {
-            tmpDir = "/tmp";
-          }
-
-          std::ostringstream pipePathStream;
-          pipePathStream << tmpDir << "/zowe-native-proto_"
-                         << geteuid() << "_"
-                         << getpid() << "_"
-                         << streamId << "_fifo";
-
-          it->pipePath = pipePathStream.str();
-
-          // Remove any existing pipe (ignore errors if it doesn't exist)
-          unlink(it->pipePath.c_str());
-
-          // Create the FIFO pipe
-          if (mkfifo(it->pipePath.c_str(), 0600) != 0)
-          {
-            context.errln("Failed to create FIFO pipe");
-            break;
-          }
-
-          // Set the pipe path as the output argument
-          args[it->newName] = plugin::Argument(it->pipePath);
-
-          // Send receiveStream notification
-          zjson::Value paramsObj = zjson::Value::create_object();
-          paramsObj.add_to_object("id", zjson::Value(static_cast<int>(streamId)));
-          paramsObj.add_to_object("pipePath", zjson::Value(it->pipePath));
-
-          RpcNotification notification;
-          notification.jsonrpc = "2.0";
-          notification.method = "receiveStream";
-          notification.params = zstd::optional<zjson::Value>(paramsObj);
-
-          auto jsonResult = zjson::to_string(notification);
-          if (jsonResult.has_value())
-          {
-            std::cout << jsonResult.value() << std::endl;
-          }
-        }
-        catch (const std::exception &e)
-        {
-          context.errln("Failed to process PipeWriter transform");
-        }
-      }
-      break;
-    }
-
-    case ArgTransform::PipeReader:
-    {
-      // PipeReader: Create FIFO pipe for write requests and send sendStream notification
-      // argName contains the streamId RPC argument name
-      // newName contains the output argument name for the pipe path
-      if (arg_it != args.end())
-      {
-        try
-        {
-          // Get streamId from the argument
-          const long long *streamIdPtr = arg_it->second.get_int();
-          if (streamIdPtr == nullptr)
-          {
-            context.errln("PipeReader: streamId argument is not an integer");
-            break;
-          }
-          long long streamId = *streamIdPtr;
-
-          // Create pipe path: /tmp/zowe-native-proto_{uid}_{pid}_{streamId}_fifo
-          const char *tmpDir = std::getenv("TMPDIR");
-          if (tmpDir == nullptr || tmpDir[0] == '\0')
-          {
-            tmpDir = "/tmp";
-          }
-
-          std::ostringstream pipePathStream;
-          pipePathStream << tmpDir << "/zowe-native-proto_"
-                         << geteuid() << "_"
-                         << getpid() << "_"
-                         << streamId << "_fifo";
-
-          it->pipePath = pipePathStream.str();
-
-          // Remove any existing pipe (ignore errors if it doesn't exist)
-          unlink(it->pipePath.c_str());
-
-          // Create the FIFO pipe
-          if (mkfifo(it->pipePath.c_str(), 0600) != 0)
-          {
-            context.errln("Failed to create FIFO pipe");
-            break;
-          }
-
-          // Set the pipe path as the output argument
-          args[it->newName] = plugin::Argument(it->pipePath);
-
-          // Send sendStream notification
-          zjson::Value paramsObj = zjson::Value::create_object();
-          paramsObj.add_to_object("id", zjson::Value(static_cast<int>(streamId)));
-          paramsObj.add_to_object("pipePath", zjson::Value(it->pipePath));
-
-          RpcNotification notification;
-          notification.jsonrpc = "2.0";
-          notification.method = "sendStream";
-          notification.params = zstd::optional<zjson::Value>(paramsObj);
-
-          auto jsonResult = zjson::to_string(notification);
-          if (jsonResult.has_value())
-          {
-            std::cout << jsonResult.value() << std::endl;
-          }
-        }
-        catch (const std::exception &e)
-        {
-          context.errln("Failed to process PipeReader transform");
-        }
-      }
-      break;
-    }
-
-    default:
-      // Not an input transform, skip
-      break;
-    }
-  }
-}
-
-void CommandDispatcher::apply_output_transforms(const std::vector<ArgTransform> &transforms, MiddlewareContext &context)
-{
-  ast::Node obj = context.get_object();
-
-  // If no object is set, create one
-  if (!obj)
-  {
-    obj = ast::Ast::object();
-    context.set_object(obj);
-  }
-
-  // Only process objects (not arrays or primitives)
-  if (!obj->is_object())
-  {
-    return;
-  }
-
-  for (std::vector<ArgTransform>::const_iterator it = transforms.begin(); it != transforms.end(); ++it)
-  {
-    // Get the field value from the object if it exists
-    ast::Node fieldValue = obj->get(it->argName);
-
-    switch (it->kind)
-    {
-    case ArgTransform::OutputStdout:
-    {
-      // OutputStdout: Read from stdout and write to output argument
-      // If b64Encode is true, encode base64 before writing to output
-      try
-      {
-        std::string data = context.get_output_content();
-
-        // Encode base64 if requested
-        if (it->b64Encode)
-        {
-          data = zbase64::encode(data);
-        }
-
-        // Set the output field
-        obj->set(it->argName, ast::Ast::string(data));
-      }
-      catch (const std::exception &e)
-      {
-        context.errln("Failed to process OutputStdout transform");
-      }
-      break;
-    }
-
-    case ArgTransform::PipeWriter:
-    case ArgTransform::PipeReader:
-    {
-      // PipeWriter/PipeReader cleanup: Remove the FIFO pipe after command execution
-      if (!it->pipePath.empty())
-      {
-        // Remove the pipe (ignore errors if already removed)
-        unlink(it->pipePath.c_str());
-      }
-      break;
-    }
-
-    default:
-      // Not an output transform, skip
-      break;
-    }
-  }
+  m_builders.clear();
 }
