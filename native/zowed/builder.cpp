@@ -167,40 +167,55 @@ void CommandBuilder::apply_input_transforms(MiddlewareContext &context) const
       {
         try
         {
-          // Get the object argument
-          const ast::Node *objPtr = arg_it->second.get_object();
-          if (objPtr != nullptr && (*objPtr)->is_object())
+          // Parse the JSON string into a zjson::Value
+          const auto parse_result = zjson::from_str<zjson::Value>(arg_it->second.get_string_value());
+          if (!parse_result.has_value())
           {
-            const ast::ObjMap &obj = (*objPtr)->as_object();
+            context.errln("Failed to parse JSON for FlattenObj transform");
+            break;
+          }
 
-            // Add each property from the object to the argument map
-            for (ast::ObjMap::const_iterator obj_it = obj.begin(); obj_it != obj.end(); ++obj_it)
+          const auto &jsonValue = parse_result.value();
+
+          // Verify it's an object
+          if (!jsonValue.is_object())
+          {
+            context.errln("FlattenObj transform requires a JSON object");
+            break;
+          }
+
+          // Add each property from the object to the argument map
+          for (const auto &property : jsonValue.as_object())
+          {
+            const auto &key = property.first;
+            const auto &value = property.second;
+
+            // Convert zjson::Value to plugin::Argument
+            if (value.is_bool())
             {
-              const std::string &key = obj_it->first;
-              const ast::Node &value = obj_it->second;
-
-              // Convert ast::Node to plugin::Argument
-              if (value->is_bool())
+              args[key] = plugin::Argument(value.as_bool());
+            }
+            else if (value.is_number())
+            {
+              // Check if it's an integer
+              const double num = value.as_number();
+              if (num == static_cast<long long>(num))
               {
-                args[key] = plugin::Argument(value->as_bool());
+                args[key] = plugin::Argument(static_cast<long long>(num));
               }
-              else if (value->is_integer())
+              else
               {
-                args[key] = plugin::Argument(value->as_integer());
-              }
-              else if (value->is_number())
-              {
-                args[key] = plugin::Argument(value->as_number());
-              }
-              else if (value->is_string())
-              {
-                args[key] = plugin::Argument(value->as_string());
+                args[key] = plugin::Argument(num);
               }
             }
-
-            // Remove the original object argument
-            args.erase(arg_it);
+            else if (value.is_string())
+            {
+              args[key] = plugin::Argument(value.as_string());
+            }
           }
+
+          // Remove the original object argument
+          args.erase(arg_it);
         }
         catch (const std::exception &e)
         {
