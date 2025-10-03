@@ -288,7 +288,7 @@ int handle_uss_view(InvocationContext &context)
     }
     else
     {
-      context.output_stream() << response << endl;
+      context.output_stream() << response;
     }
 
     context.set_object(result);
@@ -328,10 +328,12 @@ int handle_uss_write(InvocationContext &context)
   bool has_pipe_path = context.has("pipe-path");
   string pipe_path = context.get<std::string>("pipe-path", "");
   size_t content_len = 0;
+  const auto result = obj();
 
   if (has_pipe_path && !pipe_path.empty())
   {
     rc = zusf_write_to_uss_file_streamed(&zusf, file, pipe_path, &content_len);
+    result->set("contentLen", i64(content_len));
   }
   else
   {
@@ -387,7 +389,6 @@ int handle_uss_write(InvocationContext &context)
     context.output_stream() << "Wrote data to '" << file << "'" << (zusf.created ? " (created new file)" : " (overwrote existing)") << endl;
   }
 
-  const auto result = obj();
   result->set("created", boolean(zusf.created));
   result->set("etag", str(zusf.etag));
   result->set("fspath", str(file));

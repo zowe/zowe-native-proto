@@ -545,10 +545,12 @@ int handle_data_set_write(InvocationContext &context)
   bool has_pipe_path = context.has("pipe-path");
   string pipe_path = context.get<string>("pipe-path", "");
   size_t content_len = 0;
+  const auto result = obj();
 
   if (has_pipe_path && !pipe_path.empty())
   {
     rc = zds_write_to_dsn_streamed(&zds, dsn, pipe_path, &content_len);
+    result->set("contentLen", i64(content_len));
   }
   else
   {
@@ -609,7 +611,6 @@ int handle_data_set_write(InvocationContext &context)
     context.output_stream() << "Wrote data to '" << dsn << "'" << endl;
   }
 
-  const auto result = obj();
   result->set("dataset", str(dsn));
   result->set("etag", str(zds.etag));
   context.set_object(result);
