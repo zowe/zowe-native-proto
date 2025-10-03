@@ -44,8 +44,9 @@ struct IoserverOptions
  * bypassing command line argument parsing.
  *
  * @param options Pre-configured server options
+ * @param execDir Executable directory for logger initialization
  * @return int Exit code (0 for success, non-zero for error)
  */
-extern "C" int run_zowed_server(const IoserverOptions &options);
+extern "C" int run_zowed_server(const IoserverOptions &options, const char *execDir = nullptr);
 
 #endif
