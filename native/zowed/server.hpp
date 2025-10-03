@@ -122,6 +122,13 @@ public:
    * @return JSON representation of the error
    */
   static zjson::Value errorDetailsToJson(const ErrorDetails &error);
+
+  /**
+   * Helper function to send an RPC notification
+   * Serializes the notification and outputs it to stdout
+   * @param notification The RpcNotification to send
+   */
+  static void sendNotification(const RpcNotification &notification);
 };
 
 #endif

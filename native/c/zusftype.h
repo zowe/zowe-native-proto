@@ -15,6 +15,10 @@
 #include <stdint.h>
 #include "ztype.h"
 
+#ifdef __clang__
+#include <functional>
+#endif
+
 #define ZUSF_RTNCD_SERVICE_FAILURE -2
 #define ZUSF_RTNCD_MAX_JOBS_REACHED -3
 #define ZUSF_RTNCD_INSUFFICIENT_BUFFER -4
@@ -51,6 +55,10 @@ typedef struct
 
   bool created;
   char _pad[3];
+
+#ifdef __clang__
+  std::function<void(uint64_t)> set_size_callback;
+#endif
 } ZUSF;
 
 #if (defined(__IBMCPP__) || defined(__IBMC__))

@@ -19,6 +19,7 @@
 #include <functional>
 #include <stdexcept>
 #include <sstream>
+#include <iomanip>
 #include <cctype>
 #include <cstring>
 #include <cstdio>
@@ -1707,7 +1708,15 @@ inline int value_to_json_instance(JSON_INSTANCE *instance, KEY_HANDLE *parent_ha
   {
     entry_type = HWTJ_NUMVALUETYPE;
     std::stringstream ss;
-    ss << value.as_number();
+    double num = value.as_number();
+
+    // Always use fixed notation to avoid scientific notation
+    if (num == std::floor(num))
+    {
+      ss << std::setprecision(0);
+    }
+    ss << std::fixed << num;
+
     std::string num_str = ss.str();
     rc = ZJSMCREN(instance, parent_handle, entry_name_ptr, num_str.c_str(), &entry_type, &new_entry_handle);
     break;

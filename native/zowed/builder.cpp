@@ -71,9 +71,9 @@ CommandBuilder &CommandBuilder::set_default(const std::string &argName, double d
   return *this;
 }
 
-CommandBuilder &CommandBuilder::handle_fifo(const std::string &rpcId, const std::string &argName, FifoMode mode)
+CommandBuilder &CommandBuilder::handle_fifo(const std::string &rpcId, const std::string &argName, FifoMode mode, bool defer)
 {
-  transforms_.push_back(ArgTransform(ArgTransform::HandleFifo, rpcId, argName, mode));
+  transforms_.push_back(ArgTransform(ArgTransform::HandleFifo, rpcId, argName, mode, defer));
   return *this;
 }
 
@@ -200,19 +200,27 @@ void CommandBuilder::apply_input_transforms(MiddlewareContext &context) const
           // Set the pipe path as the output argument
           args[it->argName] = plugin::Argument(it->pipePath);
 
-          // Send appropriate notification based on mode
+          // Create notification based on mode
           zjson::Value paramsObj = zjson::Value::create_object();
           paramsObj.add_to_object("id", zjson::Value(static_cast<int>(streamId)));
           paramsObj.add_to_object("pipePath", zjson::Value(it->pipePath));
 
           RpcNotification notification = RpcNotification{
               .jsonrpc = "2.0",
-              .method = (it->fifoMode == FifoMode::Get) ? "receiveStream" : "sendStream",
+              .method = (it->fifoMode == FifoMode::GET) ? "receiveStream" : "sendStream",
               .params = zstd::optional<zjson::Value>(paramsObj),
           };
 
-          std::string jsonString = RpcServer::serializeJson(zjson::to_value(notification).value());
-          std::cout << jsonString << std::endl;
+          // If defer is true, store the notification for later
+          // Otherwise, send it immediately
+          if (it->defer)
+          {
+            context.set_pending_notification(notification);
+          }
+          else
+          {
+            RpcServer::sendNotification(notification);
+          }
         }
         catch (const std::exception &e)
         {
