@@ -28,6 +28,7 @@
 #include "dispatcher.hpp"
 #include "commands.hpp"
 #include "server.hpp"
+#include "logger.hpp"
 
 struct StatusMessage
 {
@@ -147,7 +148,7 @@ private:
             while (!shutdownRequested) {
                 if (workerPool) {
                     int32_t count = workerPool->getAvailableWorkersCount();
-                    std::cerr << "Available workers: " << count << "/" << options.numWorkers << std::endl;
+                    LOG_DEBUG("Available workers: %d/%d", count, options.numWorkers);
                     std::this_thread::sleep_for(std::chrono::milliseconds(500));
                     if (count == options.numWorkers) {
                         break;
@@ -167,11 +168,8 @@ public:
   {
     options = opts;
 
-    // Initialize logger (placeholder for now)
-    if (options.verbose)
-    {
-      std::cerr << "Verbose logging enabled" << std::endl;
-    }
+    // Initialize logger
+    zowed::Logger::initLogger(false, options.verbose);
 
     // Set up signal handling
     setupSignalHandlers();
@@ -211,6 +209,9 @@ public:
 
     // Graceful shutdown
     requestShutdown();
+
+    // Cleanup logger
+    zowed::Logger::shutdown();
   }
 };
 

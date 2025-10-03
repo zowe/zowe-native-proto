@@ -11,6 +11,7 @@
 
 #include "server.hpp"
 #include "dispatcher.hpp"
+#include "logger.hpp"
 #include <iostream>
 
 // Static member definitions
@@ -303,8 +304,25 @@ zjson::Value RpcServer::convertAstToJson(const ast::Node &astNode)
 void RpcServer::printResponse(const RpcResponse &response)
 {
   std::lock_guard<std::mutex> lock(responseMutex);
+
+  // Log errors to the log file
+  if (response.error.has_value())
+  {
+    const ErrorDetails &error = response.error.value();
+    LOG_ERROR("%s", error.message.c_str());
+  }
+
   std::string jsonString = serializeJson(rpcResponseToJson(response));
-  std::cout << jsonString << std::endl;
+
+  // Print errors to stderr, success responses to stdout
+  if (response.error.has_value())
+  {
+    std::cerr << jsonString << std::endl;
+  }
+  else
+  {
+    std::cout << jsonString << std::endl;
+  }
 }
 
 // Static utility methods
