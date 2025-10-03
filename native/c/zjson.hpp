@@ -1101,10 +1101,10 @@ zstd::expected<std::string, Error> to_string_impl(const T &value, std::true_type
   }
 }
 
-#if defined(__clang__)
 template <typename T>
 zstd::expected<std::string, Error> to_string_impl(const T &value, std::false_type)
 {
+#if defined(__clang__)
   try
   {
     if (SerializationRegistry<T>::has_serializer())
@@ -1112,10 +1112,6 @@ zstd::expected<std::string, Error> to_string_impl(const T &value, std::false_typ
       Value serialized = SerializationRegistry<T>::get_serializer()(value);
       std::string json_str = value_to_json_string(serialized);
       return json_str;
-    }
-    else
-    {
-      return zstd::make_unexpected(Error::invalid_type("serializable", "unknown"));
     }
   }
   catch (const Error &e)
@@ -1126,14 +1122,9 @@ zstd::expected<std::string, Error> to_string_impl(const T &value, std::false_typ
   {
     return zstd::make_unexpected(Error(Error::Custom, e.what()));
   }
-}
-#else
-template <typename T>
-zstd::expected<std::string, Error> to_string_impl(const T &value, std::false_type)
-{
+#endif
   return zstd::make_unexpected(Error::invalid_type("serializable", "unknown"));
 }
-#endif
 
 template <typename T>
 zstd::expected<T, Error> from_str_impl(const Value &parsed, std::true_type)
@@ -1141,26 +1132,17 @@ zstd::expected<T, Error> from_str_impl(const Value &parsed, std::true_type)
   return Deserializable<T>::deserialize(parsed);
 }
 
-#if defined(__clang__)
 template <typename T>
 zstd::expected<T, Error> from_str_impl(const Value &parsed, std::false_type)
 {
+#if defined(__clang__)
   if (SerializationRegistry<T>::has_deserializer())
   {
     return SerializationRegistry<T>::get_deserializer()(parsed);
   }
-  else
-  {
-    return zstd::make_unexpected(Error::invalid_type("deserializable", "unknown"));
-  }
-}
-#else
-template <typename T>
-zstd::expected<T, Error> from_str_impl(const Value &parsed, std::false_type)
-{
+#endif
   return zstd::make_unexpected(Error::invalid_type("deserializable", "unknown"));
 }
-#endif
 
 // to_string function for JSON serialization
 template <typename T>
@@ -1348,7 +1330,6 @@ inline Value json_handle_to_value(JSON_INSTANCE *instance, KEY_HANDLE *key_handl
       try
       {
         std::string str_val(value_ptr, value_length);
-        // Use strtod instead of std::stod for C++98 compatibility
         char *endptr;
         double num_val = std::strtod(str_val.c_str(), &endptr);
         return Value(num_val);
@@ -1507,26 +1488,17 @@ zstd::expected<Value, Error> to_value_impl(const T &obj, std::true_type)
   return Serializable<T>::serialize(obj);
 }
 
-#if defined(__clang__)
 template <typename T>
 zstd::expected<Value, Error> to_value_impl(const T &obj, std::false_type)
 {
+#if defined(__clang__)
   if (SerializationRegistry<T>::has_serializer())
   {
     return SerializationRegistry<T>::get_serializer()(obj);
   }
-  else
-  {
-    return zstd::make_unexpected(Error::invalid_type("serializable", "unknown"));
-  }
-}
-#else
-template <typename T>
-zstd::expected<Value, Error> to_value_impl(const T &obj, std::false_type)
-{
+#endif
   return zstd::make_unexpected(Error::invalid_type("serializable", "unknown"));
 }
-#endif
 
 // to_value function - convert any serializable type to Value
 template <typename T>
