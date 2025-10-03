@@ -11,6 +11,7 @@
 
 #include "worker.hpp"
 #include "server.hpp"
+#include "logger.hpp"
 
 // Worker implementation
 Worker::Worker(int workerId)
@@ -27,6 +28,7 @@ void Worker::start()
 {
   workerThread = std::thread(&Worker::workerLoop, this);
   ready = true;
+  LOG_DEBUG("Worker %d started", id);
 }
 
 void Worker::stop()
@@ -37,6 +39,7 @@ void Worker::stop()
   {
     workerThread.join();
   }
+  LOG_DEBUG("Worker %d stopped", id);
 }
 
 void Worker::addRequest(const std::string &request)
@@ -105,8 +108,11 @@ void WorkerPool::initializeWorker(int workerId)
 {
   if (workerId < 0 || workerId >= static_cast<int>(workers.size()))
   {
+    LOG_ERROR("Invalid worker ID: %d", workerId);
     return;
   }
+
+  LOG_DEBUG("Initializing worker %d", workerId);
 
   // Start the worker
   workers[workerId]->start();
@@ -170,11 +176,16 @@ int32_t WorkerPool::getAvailableWorkersCount()
 
 void WorkerPool::shutdown()
 {
+  LOG_DEBUG("Shutting down worker pool");
   isShuttingDown = true;
   readyCondition.notify_all();
 
   for (auto &worker : workers)
   {
-    worker->stop();
+    if (worker)
+    {
+      worker->stop();
+    }
   }
+  LOG_DEBUG("Worker pool shutdown complete");
 }

@@ -98,6 +98,7 @@ private:
     if (!file.is_open())
     {
       // Checksums file does not exist for dev builds
+      LOG_DEBUG("Checksums file not found: %s (expected for dev builds)", checksumsFile.c_str());
       return checksums;
     }
 
@@ -170,6 +171,7 @@ public:
 
     // Initialize logger
     zowed::Logger::initLogger(false, options.verbose);
+    LOG_INFO("Starting zowed with %d workers (verbose=%s)", options.numWorkers, options.verbose ? "true" : "false");
 
     // Set up signal handling
     setupSignalHandlers();
@@ -178,6 +180,7 @@ public:
     CommandDispatcher &dispatcher = CommandDispatcher::getInstance();
 
     // Register all command handlers
+    LOG_DEBUG("Registering command handlers");
     register_ds_commands(dispatcher);
     register_job_commands(dispatcher);
     register_uss_commands(dispatcher);
@@ -197,6 +200,7 @@ public:
     printReadyMessage();
 
     // Main input processing loop
+    LOG_DEBUG("Entering main input processing loop");
     std::string line;
     while (std::getline(std::cin, line) && !shutdownRequested)
     {
@@ -208,6 +212,7 @@ public:
     }
 
     // Graceful shutdown
+    LOG_INFO("Input stream closed, shutting down");
     requestShutdown();
 
     // Cleanup logger
@@ -226,6 +231,7 @@ extern "C" int run_zowed_server(const IoserverOptions &options)
   catch (const std::exception &e)
   {
     std::cerr << "Fatal error: " << e.what() << std::endl;
+    LOG_FATAL("Fatal error: %s", e.what());
     return 1;
   }
 
