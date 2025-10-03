@@ -208,6 +208,14 @@ int handle_job_view_status(InvocationContext &context)
   {
     context.output_stream() << job.jobid << " " << left << setw(10) << job.retcode << " " << job.jobname << " " << job.status << endl;
   }
+
+  const auto result = obj();
+  result->set("id", str(jobid));
+  result->set("name", str(job.jobname));
+  result->set("status", str(job.status));
+  result->set("retcode", str(job.retcode));
+  context.set_object(result);
+
   return 0;
 }
 
@@ -338,7 +346,7 @@ int handle_job_submit_jcl(InvocationContext &context)
   std::vector<char> raw_bytes(begin, end);
   data.assign(raw_bytes.begin(), raw_bytes.end());
 
-  if (!isatty(fileno(stdout)))
+  if (!isatty(fileno(stdout)) && !context.is_redirecting_input())
   {
     const auto bytes = zut_get_contents_as_bytes(data);
     data.assign(bytes.begin(), bytes.end());
@@ -496,6 +504,10 @@ int job_submit_common(InvocationContext &context, string jcl, string &jobid, str
     context.error_stream() << "Error: cannot wait for unknown status '" << wait << "'" << endl;
     return RTNCD_FAILURE;
   }
+
+  const auto result = obj();
+  result->set("jobId", str(jobid));
+  context.set_object(result);
 
   return rc;
 }

@@ -26,8 +26,9 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
                 items: response.items.map((item) => ({
                     dsname: item.name,
                     dsorg: item.dsorg,
-                    vol: item.volser,
+                    vols: item.volser,
                     migr: item.migr ? "YES" : "NO",
+                    recfm: (item as any).recfm,
                 })),
                 returnedRows: response.returnedRows,
             });
