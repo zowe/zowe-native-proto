@@ -15,10 +15,14 @@
 #include "../c/extend/plugin.hpp"
 #include <sstream>
 
+// Forward declaration
+struct RpcNotification;
+
 class MiddlewareContext : public plugin::InvocationContext
 {
 public:
   MiddlewareContext(const std::string &command_path, const plugin::ArgumentMap &args);
+  ~MiddlewareContext();
 
   // Get access to the string streams for reading/writing content
   std::stringstream &get_input_stream();
@@ -34,10 +38,18 @@ public:
   // Provide mutable access to arguments for transforms
   plugin::ArgumentMap &mutable_arguments();
 
+  // Set content length and send pending notification if present
+  void set_content_len(size_t content_length);
+
+  // Store pending notification for delayed sending
+  void set_pending_notification(const RpcNotification &notification);
+  bool has_pending_notification() const;
+
 private:
   std::stringstream m_input_stream;
   std::stringstream m_output_stream;
   std::stringstream m_error_stream;
+  RpcNotification *m_pending_notification;
 };
 
 #endif

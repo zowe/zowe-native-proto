@@ -233,6 +233,14 @@ int handle_uss_view(InvocationContext &context)
 
   if (has_pipe_path && !pipe_path.empty())
   {
+#if defined(__clang__)
+    // Set up callback for content length reporting
+    zusf.set_size_callback = [&context](uint64_t size)
+    {
+      context.set_content_len(size);
+    };
+#endif
+
     size_t content_len = 0;
     rc = zusf_read_from_uss_file_streamed(&zusf, uss_file, pipe_path, &content_len);
 

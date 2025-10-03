@@ -10,12 +10,23 @@
  */
 
 #include "rpcio.hpp"
+#include "server.hpp"
 #include "../c/extend/plugin.hpp"
 #include <sstream>
 
 MiddlewareContext::MiddlewareContext(const std::string &command_path, const plugin::ArgumentMap &args)
-    : plugin::InvocationContext(command_path, args, &m_input_stream, &m_output_stream, &m_error_stream)
+    : plugin::InvocationContext(command_path, args, &m_input_stream, &m_output_stream, &m_error_stream),
+      m_pending_notification(nullptr)
 {
+}
+
+MiddlewareContext::~MiddlewareContext()
+{
+  if (m_pending_notification != nullptr)
+  {
+    delete m_pending_notification;
+    m_pending_notification = nullptr;
+  }
 }
 
 std::stringstream &MiddlewareContext::get_input_stream()
@@ -62,4 +73,42 @@ void MiddlewareContext::clear_streams()
 plugin::ArgumentMap &MiddlewareContext::mutable_arguments()
 {
   return const_cast<plugin::ArgumentMap &>(arguments());
+}
+
+void MiddlewareContext::set_content_len(size_t content_length)
+{
+  plugin::Io::set_content_len(content_length);
+
+  // If there's a pending notification, send it now with content length
+  if (has_pending_notification())
+  {
+    // Add content length to the notification params
+    if (m_pending_notification->params.has_value())
+    {
+      zjson::Value &params = m_pending_notification->params.value();
+      params.add_to_object("contentLen", zjson::Value(static_cast<int>(content_length)));
+    }
+
+    // Send the notification
+    RpcServer::sendNotification(*m_pending_notification);
+
+    // Clean up the pending notification
+    delete m_pending_notification;
+    m_pending_notification = nullptr;
+  }
+}
+
+void MiddlewareContext::set_pending_notification(const RpcNotification &notification)
+{
+  // Clean up any existing pending notification
+  if (m_pending_notification != nullptr)
+  {
+    delete m_pending_notification;
+  }
+  m_pending_notification = new RpcNotification(notification);
+}
+
+bool MiddlewareContext::has_pending_notification() const
+{
+  return m_pending_notification != nullptr;
 }

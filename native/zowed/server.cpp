@@ -344,3 +344,9 @@ zjson::Value RpcServer::errorDetailsToJson(const ErrorDetails &error)
   auto result = zjson::to_value(error);
   return result.value_or(zjson::Value::create_object());
 }
+
+void RpcServer::sendNotification(const RpcNotification &notification)
+{
+  std::string jsonString = serializeJson(zjson::to_value(notification).value());
+  std::cout << jsonString << std::endl;
+}

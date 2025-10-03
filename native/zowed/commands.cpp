@@ -35,7 +35,7 @@ void register_ds_commands(CommandDispatcher &dispatcher)
                                   .set_default("encoding", "IBM-1047")
                                   .set_default("return-etag", true)
                                   .read_stdout("data", true)
-                                  .handle_fifo("streamId", "pipe-path", FifoMode::GET));
+                                  .handle_fifo("stream", "pipe-path", FifoMode::GET));
   // dispatcher.register_command("restoreDataset", CommandBuilder(ds::handle_data_set_restore));
   dispatcher.register_command("writeDataset",
                               CommandBuilder(ds::handle_data_set_write)
@@ -43,7 +43,7 @@ void register_ds_commands(CommandDispatcher &dispatcher)
                                   .rename_arg("volume", "volser")
                                   .set_default("encoding", "IBM-1047")
                                   .write_stdin("data", true)
-                                  .handle_fifo("streamId", "pipe-path", FifoMode::PUT));
+                                  .handle_fifo("stream", "pipe-path", FifoMode::PUT));
 }
 
 void register_job_commands(CommandDispatcher &dispatcher)
@@ -91,13 +91,13 @@ void register_uss_commands(CommandDispatcher &dispatcher)
                                   .rename_arg("fspath", "file-path")
                                   .set_default("encoding", "IBM-1047")
                                   .read_stdout("data", true)
-                                  .handle_fifo("streamId", "pipe-path", FifoMode::GET));
+                                  .handle_fifo("stream", "pipe-path", FifoMode::GET, true));
   dispatcher.register_command("writeFile",
                               CommandBuilder(uss::handle_uss_write)
                                   .rename_arg("fspath", "file-path")
                                   .set_default("encoding", "IBM-1047")
                                   .write_stdin("data", true)
-                                  .handle_fifo("streamId", "pipe-path", FifoMode::PUT));
+                                  .handle_fifo("stream", "pipe-path", FifoMode::PUT));
 }
 
 void register_cmd_commands(CommandDispatcher &dispatcher)

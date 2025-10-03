@@ -47,28 +47,29 @@ struct ArgTransform
   std::string rpcId;             // Used for HandleFifo (stream ID parameter name)
   FifoMode fifoMode;             // Used for HandleFifo
   mutable std::string pipePath;  // Used for HandleFifo (mutable for cleanup in output phase)
+  bool defer;                    // Used for HandleFifo (defer notification until content length is known)
 
   // Constructor for RenameArg
   ArgTransform(TransformKind k, const std::string &from, const std::string &to)
-      : kind(k), argName(from), renamedTo(to), defaultValue(), base64(false), rpcId(), fifoMode(FifoMode::GET), pipePath()
+      : kind(k), argName(from), renamedTo(to), defaultValue(), base64(false), rpcId(), fifoMode(FifoMode::GET), pipePath(), defer(false)
   {
   }
 
   // Constructor for SetDefault
   ArgTransform(TransformKind k, const std::string &arg, const plugin::Argument &defValue)
-      : kind(k), argName(arg), renamedTo(""), defaultValue(defValue), base64(false), rpcId(), fifoMode(FifoMode::GET), pipePath()
+      : kind(k), argName(arg), renamedTo(""), defaultValue(defValue), base64(false), rpcId(), fifoMode(FifoMode::GET), pipePath(), defer(false)
   {
   }
 
   // Constructor for WriteStdin and ReadStdout
   ArgTransform(TransformKind k, const std::string &arg, bool b64)
-      : kind(k), argName(arg), renamedTo(""), defaultValue(), base64(b64), rpcId(), fifoMode(FifoMode::GET), pipePath()
+      : kind(k), argName(arg), renamedTo(""), defaultValue(), base64(b64), rpcId(), fifoMode(FifoMode::GET), pipePath(), defer(false)
   {
   }
 
   // Constructor for HandleFifo
-  ArgTransform(TransformKind k, const std::string &rpc_id, const std::string &arg, FifoMode mode)
-      : kind(k), argName(arg), renamedTo(""), defaultValue(), base64(false), rpcId(rpc_id), fifoMode(mode), pipePath()
+  ArgTransform(TransformKind k, const std::string &rpc_id, const std::string &arg, FifoMode mode, bool defer_arg = false)
+      : kind(k), argName(arg), renamedTo(""), defaultValue(), base64(false), rpcId(rpc_id), fifoMode(mode), pipePath(), defer(defer_arg)
   {
   }
 };
@@ -96,7 +97,8 @@ public:
 
   // Handle FIFO pipe creation for streaming
   // mode: FifoMode::Get for download, FifoMode::Put for upload
-  CommandBuilder &handle_fifo(const std::string &rpcId, const std::string &argName, FifoMode mode);
+  // defer: if true, defer notification until content length is known (via set_content_len)
+  CommandBuilder &handle_fifo(const std::string &rpcId, const std::string &argName, FifoMode mode, bool defer = false);
 
   // Capture stdout and write to output argument (optionally base64 encoded)
   CommandBuilder &read_stdout(const std::string &argName, bool b64Encode = false);
