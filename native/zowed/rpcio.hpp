@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef PARSER_HPP
-#define PARSER_HPP
+#ifndef RPCIO_HPP
+#define RPCIO_HPP
 
 #include "../c/extend/plugin.hpp"
 #include <sstream>

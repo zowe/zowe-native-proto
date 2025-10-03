@@ -10,7 +10,7 @@
  */
 
 #include "builder.hpp"
-#include "parser.hpp"
+#include "rpcio.hpp"
 #include "server.hpp"
 #include "../c/zbase64.h"
 #include "../c/zjson.hpp"
