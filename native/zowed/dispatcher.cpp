@@ -10,6 +10,7 @@
  */
 
 #include "dispatcher.hpp"
+#include "logger.hpp"
 #include <vector>
 #include <algorithm>
 
@@ -31,18 +32,21 @@ bool CommandDispatcher::register_command(const std::string &command_name, const 
 {
   if (command_name.empty() || builder.get_handler() == nullptr)
   {
+    LOG_ERROR("Cannot register command: invalid name or handler");
     return false;
   }
 
   // Check if command already exists
   if (m_command_handlers.find(command_name) != m_command_handlers.end())
   {
+    LOG_ERROR("Command already registered: %s", command_name.c_str());
     return false; // Command already registered
   }
 
   m_command_handlers[command_name] = builder.get_handler();
   m_builders.insert(std::make_pair(command_name, builder));
 
+  LOG_DEBUG("Registered command: %s", command_name.c_str());
   return true;
 }
 
@@ -52,7 +56,9 @@ int CommandDispatcher::dispatch(const std::string &command_name, MiddlewareConte
   if (it == m_command_handlers.end())
   {
     // Command not found - return error code
-    context.errln("Command not found");
+    std::string errMsg = "Command not found: " + command_name;
+    context.errln(errMsg.c_str());
+    LOG_ERROR("%s", errMsg.c_str());
     return -1;
   }
 
@@ -60,11 +66,14 @@ int CommandDispatcher::dispatch(const std::string &command_name, MiddlewareConte
   if (handler == nullptr)
   {
     context.errln("Invalid command handler");
+    LOG_ERROR("Invalid command handler for: %s", command_name.c_str());
     return -2;
   }
 
   try
   {
+    LOG_DEBUG("Dispatching command: %s", command_name.c_str());
+
     // Apply input transforms if builder exists
     auto builder_it = m_builders.find(command_name);
     if (builder_it != m_builders.end())
@@ -81,17 +90,25 @@ int CommandDispatcher::dispatch(const std::string &command_name, MiddlewareConte
       builder_it->second.apply_output_transforms(context);
     }
 
+    if (result != 0)
+    {
+      LOG_ERROR("Command failed with code %d: %s", result, command_name.c_str());
+    }
+
     return result;
   }
   catch (const std::exception &e)
   {
+    std::string errMsg = std::string("Command execution failed: ") + e.what();
     context.err("Command execution failed: ");
     context.errln(e.what());
+    LOG_ERROR("%s (command: %s)", errMsg.c_str(), command_name.c_str());
     return -3;
   }
   catch (...)
   {
     context.errln("Command execution failed with unknown error");
+    LOG_ERROR("Command execution failed with unknown error: %s", command_name.c_str());
     return -4;
   }
 }
@@ -121,6 +138,7 @@ bool CommandDispatcher::unregister_command(const std::string &command_name)
   auto it = m_command_handlers.find(command_name);
   if (it == m_command_handlers.end())
   {
+    LOG_ERROR("Cannot unregister command (not found): %s", command_name.c_str());
     return false; // Command not found
   }
 
@@ -133,11 +151,13 @@ bool CommandDispatcher::unregister_command(const std::string &command_name)
     m_builders.erase(builder_it);
   }
 
+  LOG_DEBUG("Unregistered command: %s", command_name.c_str());
   return true;
 }
 
 void CommandDispatcher::clear()
 {
+  LOG_DEBUG("Clearing all registered commands");
   m_command_handlers.clear();
   m_builders.clear();
 }

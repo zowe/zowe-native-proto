@@ -12,6 +12,7 @@
 #include "builder.hpp"
 #include "rpcio.hpp"
 #include "server.hpp"
+#include "logger.hpp"
 #include "../c/zbase64.h"
 #include "../c/zjson.hpp"
 #include <sstream>
@@ -154,7 +155,9 @@ void CommandBuilder::apply_input_transforms(MiddlewareContext &context) const
         }
         catch (const std::exception &e)
         {
-          context.errln("Failed to process WriteStdin transform");
+          std::string errMsg = std::string("Failed to process WriteStdin transform: ") + e.what();
+          context.errln(errMsg.c_str());
+          LOG_ERROR("%s", errMsg.c_str());
         }
       }
       break;
@@ -171,7 +174,9 @@ void CommandBuilder::apply_input_transforms(MiddlewareContext &context) const
           const auto parse_result = zjson::from_str<zjson::Value>(arg_it->second.get_string_value());
           if (!parse_result.has_value())
           {
-            context.errln("Failed to parse JSON for FlattenObj transform");
+            std::string errMsg = std::string("Failed to parse JSON for FlattenObj transform: ") + parse_result.error().what();
+            context.errln(errMsg.c_str());
+            LOG_ERROR("%s", errMsg.c_str());
             break;
           }
 
@@ -181,6 +186,7 @@ void CommandBuilder::apply_input_transforms(MiddlewareContext &context) const
           if (!jsonValue.is_object())
           {
             context.errln("FlattenObj transform requires a JSON object");
+            LOG_ERROR("FlattenObj transform requires a JSON object");
             break;
           }
 
@@ -219,7 +225,9 @@ void CommandBuilder::apply_input_transforms(MiddlewareContext &context) const
         }
         catch (const std::exception &e)
         {
-          context.errln("Failed to process FlattenObj transform");
+          std::string errMsg = std::string("Failed to process FlattenObj transform: ") + e.what();
+          context.errln(errMsg.c_str());
+          LOG_ERROR("%s", errMsg.c_str());
         }
       }
       break;
@@ -239,6 +247,7 @@ void CommandBuilder::apply_input_transforms(MiddlewareContext &context) const
           if (streamIdPtr == nullptr)
           {
             context.errln("HandleFifo: RPC ID argument is not an integer");
+            LOG_ERROR("HandleFifo: RPC ID argument is not an integer");
             break;
           }
           long long streamId = *streamIdPtr;
@@ -264,9 +273,13 @@ void CommandBuilder::apply_input_transforms(MiddlewareContext &context) const
           // Create the FIFO pipe
           if (mkfifo(it->pipePath.c_str(), 0600) != 0)
           {
-            context.errln("Failed to create FIFO pipe");
+            std::string errMsg = std::string("Failed to create FIFO pipe: ") + it->pipePath;
+            context.errln(errMsg.c_str());
+            LOG_ERROR("%s", errMsg.c_str());
             break;
           }
+
+          LOG_DEBUG("Created FIFO pipe: %s", it->pipePath.c_str());
 
           // Set the pipe path as the output argument
           args[it->argName] = plugin::Argument(it->pipePath);
@@ -295,7 +308,9 @@ void CommandBuilder::apply_input_transforms(MiddlewareContext &context) const
         }
         catch (const std::exception &e)
         {
-          context.errln("Failed to process HandleFifo transform");
+          std::string errMsg = std::string("Failed to process HandleFifo transform: ") + e.what();
+          context.errln(errMsg.c_str());
+          LOG_ERROR("%s", errMsg.c_str());
         }
       }
       break;
@@ -351,7 +366,9 @@ void CommandBuilder::apply_output_transforms(MiddlewareContext &context) const
       }
       catch (const std::exception &e)
       {
-        context.errln("Failed to process ReadStdout transform");
+        std::string errMsg = std::string("Failed to process ReadStdout transform: ") + e.what();
+        context.errln(errMsg.c_str());
+        LOG_ERROR("%s", errMsg.c_str());
       }
       break;
     }
@@ -362,7 +379,10 @@ void CommandBuilder::apply_output_transforms(MiddlewareContext &context) const
       if (!it->pipePath.empty())
       {
         // Remove the pipe (ignore errors if already removed)
-        unlink(it->pipePath.c_str());
+        if (unlink(it->pipePath.c_str()) == 0)
+        {
+          LOG_DEBUG("Cleaned up FIFO pipe: %s", it->pipePath.c_str());
+        }
       }
       break;
     }
