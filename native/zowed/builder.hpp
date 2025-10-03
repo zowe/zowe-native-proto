@@ -36,7 +36,8 @@ struct ArgTransform
     SetDefault, // Set a default value for an input argument
     WriteStdin, // Write input argument to stdin
     ReadStdout, // Read stdout to output argument
-    HandleFifo  // Handle FIFO pipe creation for streaming
+    HandleFifo, // Handle FIFO pipe creation for streaming
+    FlattenObj  // Flatten a JSON object argument into the argument map
   };
 
   TransformKind kind;
@@ -72,6 +73,12 @@ struct ArgTransform
       : kind(k), argName(arg), renamedTo(""), defaultValue(), base64(false), rpcId(rpc_id), fifoMode(mode), pipePath(), defer(defer_arg)
   {
   }
+
+  // Constructor for FlattenObj
+  ArgTransform(TransformKind k, const std::string &arg)
+      : kind(k), argName(arg), renamedTo(""), defaultValue(), base64(false), rpcId(), fifoMode(FifoMode::GET), pipePath(), defer(false)
+  {
+  }
 };
 
 // CommandBuilder class for fluent command registration
@@ -105,6 +112,9 @@ public:
 
   // Read input argument and write to stdin (optionally base64 decoded)
   CommandBuilder &write_stdin(const std::string &argName, bool b64Decode = false);
+
+  // Flatten a JSON object argument into the argument map
+  CommandBuilder &flatten_obj(const std::string &argName);
 
   // Get the command handler
   CommandHandler get_handler() const
