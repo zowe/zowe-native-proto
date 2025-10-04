@@ -43,8 +43,6 @@ void register_commands(parser::Command &root_command);
 #include <string>
 #include <ctime>
 #include <cstdlib>
-#include <sstream>
-#include <iomanip>
 
 using namespace ast;
 using namespace parser;
@@ -88,14 +86,14 @@ int get_time_for_timezone(const string &timezone, string &date_str, string &time
   }
 
   // Format date as YYYY-MM-DD
-  ostringstream date_stream;
-  date_stream << put_time(timeinfo, "%Y-%m-%d");
-  date_str = date_stream.str();
+  char date_buf[32];
+  strftime(date_buf, sizeof(date_buf), "%Y-%m-%d", timeinfo);
+  date_str = string(date_buf);
 
   // Format time as HH:MM:SS
-  ostringstream time_stream;
-  time_stream << put_time(timeinfo, "%H:%M:%S");
-  time_str = time_stream.str();
+  char time_buf[32];
+  strftime(time_buf, sizeof(time_buf), "%H:%M:%S", timeinfo);
+  time_str = string(time_buf);
 
   // Restore original timezone
   if (!saved_tz.empty())
