@@ -30,3 +30,11 @@ jobs:
         uses: golangci/golangci-lint-action@v6
         with:
           working-directory: native/golang
+
+      - name: Run Cpp-Linter
+        uses: cpp-linter/cpp-linter-action@v2
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          repo-root: native/zowed
+          style: file
