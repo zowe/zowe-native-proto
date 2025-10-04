@@ -17,6 +17,7 @@
 #include <vector>
 #include <unistd.h>
 
+using namespace ast;
 using namespace parser;
 using namespace std;
 using namespace commands::common;
@@ -260,6 +261,8 @@ int handle_data_set_view(InvocationContext &context)
 
   bool has_pipe_path = context.has("pipe-path");
   string pipe_path = context.get<string>("pipe-path", "");
+  const auto result = obj();
+  result->set("dataset", str(dsn));
 
   if (has_pipe_path && !pipe_path.empty())
   {
@@ -273,10 +276,24 @@ int handle_data_set_view(InvocationContext &context)
       if (read_rc == 0)
       {
         const auto etag = zut_calc_adler32_checksum(temp_content);
-        context.output_stream() << "etag: " << hex << etag << dec << endl;
+        stringstream etag_stream;
+        etag_stream << hex << etag << dec;
+        if (!context.is_redirecting_output())
+        {
+          context.output_stream() << "etag: " << etag_stream.str() << endl;
+        }
+        else
+        {
+          result->set("etag", str(etag_stream.str()));
+        }
       }
+    }
+
+    if (!context.is_redirecting_output())
+    {
       context.output_stream() << "size: " << content_len << endl;
     }
+    result->set("contentLen", i64(content_len));
   }
   else
   {
@@ -292,8 +309,17 @@ int handle_data_set_view(InvocationContext &context)
     if (context.get<bool>("return-etag", false))
     {
       const auto etag = zut_calc_adler32_checksum(response);
-      context.output_stream() << "etag: " << hex << etag << dec << endl;
-      context.output_stream() << "data: ";
+      stringstream etag_stream;
+      etag_stream << hex << etag << dec;
+      if (!context.is_redirecting_output())
+      {
+        context.output_stream() << "etag: " << etag_stream.str() << endl;
+        context.output_stream() << "data: ";
+      }
+      else
+      {
+        result->set("etag", str(etag_stream.str()));
+      }
     }
 
     bool has_encoding = context.has("encoding");
@@ -301,12 +327,14 @@ int handle_data_set_view(InvocationContext &context)
 
     if (has_encoding && response_format_bytes)
     {
-      zut_print_string_as_bytes(response);
+      zut_print_string_as_bytes(response, &context.output_stream());
     }
     else
     {
       context.output_stream() << response;
     }
+
+    context.set_object(result);
   }
 
   if (dds.size() > 0)
@@ -348,6 +376,8 @@ int handle_data_set_list(InvocationContext &context)
   {
     vector<string> fields;
     fields.reserve(attributes ? 5 : 1);
+    const auto entries_array = arr();
+
     for (vector<ZDSEntry>::iterator it = entries.begin(); it != entries.end(); ++it)
     {
       if (emit_csv)
@@ -374,7 +404,22 @@ int handle_data_set_list(InvocationContext &context)
           context.output_stream() << left << setw(44) << it->name << endl;
         }
       }
+
+      const auto entry = obj();
+      string trimmed_name = it->name;
+      zut_rtrim(trimmed_name);
+      entry->set("name", str(trimmed_name));
+      entry->set("dsorg", str(it->dsorg));
+      entry->set("volser", str(it->volser));
+      entry->set("migr", boolean(it->migr));
+      entry->set("recfm", str(it->recfm));
+      entries_array->push(entry);
     }
+
+    const auto result = obj();
+    result->set("items", entries_array);
+    result->set("returnedRows", i64(entries.size()));
+    context.set_object(result);
   }
   if (RTNCD_WARNING == rc)
   {
@@ -418,10 +463,20 @@ int handle_data_set_list_members(InvocationContext &context)
 
   if (RTNCD_SUCCESS == rc || RTNCD_WARNING == rc)
   {
+    const auto entries_array = arr();
     for (vector<ZDSMem>::iterator it = members.begin(); it != members.end(); ++it)
     {
       context.output_stream() << left << setw(12) << it->name << endl;
+      const auto entry = obj();
+      string trimmed_name = it->name;
+      zut_rtrim(trimmed_name);
+      entry->set("name", str(trimmed_name));
+      entries_array->push(entry);
     }
+    const auto result = obj();
+    result->set("items", entries_array);
+    result->set("returnedRows", i64(members.size()));
+    context.set_object(result);
   }
   if (RTNCD_WARNING == rc)
   {
@@ -490,10 +545,12 @@ int handle_data_set_write(InvocationContext &context)
   bool has_pipe_path = context.has("pipe-path");
   string pipe_path = context.get<string>("pipe-path", "");
   size_t content_len = 0;
+  const auto result = obj();
 
   if (has_pipe_path && !pipe_path.empty())
   {
     rc = zds_write_to_dsn_streamed(&zds, dsn, pipe_path, &content_len);
+    result->set("contentLen", i64(content_len));
   }
   else
   {
@@ -505,12 +562,19 @@ int handle_data_set_write(InvocationContext &context)
       istreambuf_iterator<char> begin(context.input_stream());
       istreambuf_iterator<char> end;
 
-      vector<char> input(begin, end);
-      const auto temp = string(input.begin(), input.end());
-      input.clear();
-      const auto bytes = zut_get_contents_as_bytes(temp);
+      if (!context.is_redirecting_input())
+      {
+        vector<char> input(begin, end);
+        const auto temp = string(input.begin(), input.end());
+        input.clear();
+        const auto bytes = zut_get_contents_as_bytes(temp);
 
-      data.assign(bytes.begin(), bytes.end());
+        data.assign(bytes.begin(), bytes.end());
+      }
+      else
+      {
+        data.assign(begin, end);
+      }
     }
     else
     {
@@ -546,6 +610,10 @@ int handle_data_set_write(InvocationContext &context)
   {
     context.output_stream() << "Wrote data to '" << dsn << "'" << endl;
   }
+
+  result->set("dataset", str(dsn));
+  result->set("etag", str(zds.etag));
+  context.set_object(result);
 
   return rc;
 }

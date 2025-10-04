@@ -17,6 +17,7 @@
 #include "../zut.hpp"
 #include <unistd.h>
 
+using namespace ast;
 using namespace parser;
 using namespace std;
 using namespace commands::common;
@@ -43,6 +44,8 @@ int handle_job_list(InvocationContext &context)
   if (RTNCD_SUCCESS == rc || RTNCD_WARNING == rc)
   {
     bool emit_csv = context.get<bool>("response-format-csv", false);
+    const auto entries_array = arr();
+
     for (vector<ZJob>::iterator it = jobs.begin(); it != jobs.end(); it++)
     {
       if (emit_csv)
@@ -60,7 +63,20 @@ int handle_job_list(InvocationContext &context)
       {
         context.output_stream() << it->jobid << " " << left << setw(10) << it->retcode << " " << it->jobname << " " << it->status << endl;
       }
+
+      const auto entry = obj();
+      entry->set("id", str(it->jobid));
+      string trimmed_name = it->jobname;
+      zut_rtrim(trimmed_name);
+      entry->set("name", str(trimmed_name));
+      entry->set("retcode", str(it->retcode));
+      entry->set("status", str(it->status));
+      entries_array->push(entry);
     }
+
+    const auto result = obj();
+    result->set("items", entries_array);
+    context.set_object(result);
   }
   if (RTNCD_WARNING == rc)
   {
@@ -99,6 +115,8 @@ int handle_job_list_files(InvocationContext &context)
     bool emit_csv = context.get<bool>("response-format-csv", false);
     std::vector<string> fields;
     fields.reserve(5);
+    const auto entries_array = arr();
+
     for (vector<ZJobDD>::iterator it = job_dds.begin(); it != job_dds.end(); ++it)
     {
       fields.push_back(it->ddn);
@@ -114,7 +132,28 @@ int handle_job_list_files(InvocationContext &context)
       {
         context.output_stream() << left << setw(9) << it->ddn << " " << it->dsn << " " << setw(4) << it->key << " " << it->stepname << " " << it->procstep << endl;
       }
+
+      const auto entry = obj();
+      string trimmed_name = it->ddn;
+      trimmed_name = it->ddn;
+      zut_rtrim(trimmed_name);
+      entry->set("ddname", str(trimmed_name));
+      trimmed_name = it->dsn;
+      zut_rtrim(trimmed_name);
+      entry->set("dsname", str(trimmed_name));
+      entry->set("id", i64(it->key));
+      trimmed_name = it->stepname;
+      zut_rtrim(trimmed_name);
+      entry->set("stepname", str(trimmed_name));
+      trimmed_name = it->procstep;
+      zut_rtrim(trimmed_name);
+      entry->set("procstep", str(trimmed_name));
+      entries_array->push(entry);
     }
+
+    const auto result = obj();
+    result->set("items", entries_array);
+    context.set_object(result);
   }
 
   if (RTNCD_WARNING == rc)
@@ -169,6 +208,14 @@ int handle_job_view_status(InvocationContext &context)
   {
     context.output_stream() << job.jobid << " " << left << setw(10) << job.retcode << " " << job.jobname << " " << job.status << endl;
   }
+
+  const auto result = obj();
+  result->set("id", str(jobid));
+  result->set("name", str(job.jobname));
+  result->set("status", str(job.status));
+  result->set("retcode", str(job.retcode));
+  context.set_object(result);
+
   return 0;
 }
 
@@ -207,12 +254,17 @@ int handle_job_view_file(InvocationContext &context)
 
   if (has_encoding && response_format_bytes)
   {
-    zut_print_string_as_bytes(resp);
+    zut_print_string_as_bytes(resp, &context.output_stream());
   }
   else
   {
     context.output_stream() << resp;
   }
+
+  const auto result = obj();
+  result->set("jobId", str(jobid));
+  result->set("spoolId", i64(key));
+  context.set_object(result);
 
   return RTNCD_SUCCESS;
 }
@@ -271,8 +323,8 @@ int handle_job_submit_uss(InvocationContext &context)
   {
     context.error_stream() << "Error: could not view USS file: '" << file << "' rc: '" << rc << "'" << endl;
     context.error_stream() << "  Details:\n"
-         << zusf.diag.e_msg << endl
-         << response << endl;
+                           << zusf.diag.e_msg << endl
+                           << response << endl;
     return RTNCD_FAILURE;
   }
 
@@ -294,7 +346,7 @@ int handle_job_submit_jcl(InvocationContext &context)
   std::vector<char> raw_bytes(begin, end);
   data.assign(raw_bytes.begin(), raw_bytes.end());
 
-  if (!isatty(fileno(stdout)))
+  if (!isatty(fileno(stdout)) && !context.is_redirecting_input())
   {
     const auto bytes = zut_get_contents_as_bytes(data);
     data.assign(bytes.begin(), bytes.end());
@@ -452,6 +504,10 @@ int job_submit_common(InvocationContext &context, string jcl, string &jobid, str
     context.error_stream() << "Error: cannot wait for unknown status '" << wait << "'" << endl;
     return RTNCD_FAILURE;
   }
+
+  const auto result = obj();
+  result->set("jobId", str(jobid));
+  context.set_object(result);
 
   return rc;
 }

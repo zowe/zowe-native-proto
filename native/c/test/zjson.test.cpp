@@ -665,6 +665,50 @@ void test_serialization_round_trips()
             TestOptional restored = restored_result.value();
             Expect(restored.opt_int.has_value()).ToBe(false);
             Expect(restored.opt_string.has_value()).ToBe(false);
+        });
+
+        it("should properly escape and unescape all EBCDIC characters (0-255)", []() {
+            // Build a string containing all EBCDIC characters from 0 to 255
+            std::string all_chars;
+            all_chars.reserve(256);
+            for (int i = 0; i < 256; i++) {
+                all_chars += static_cast<char>(i);
+            }
+            
+            SimpleStruct original{42, all_chars};
+            
+            // Serialize to JSON
+            auto json_result = zjson::to_string(original);
+            Expect(json_result.has_value()).ToBe(true);
+            
+            std::string json_str = json_result.value();
+            
+            // Verify that control and special characters are properly escaped
+            bool has_escaped_chars = json_str.find("\\u0000") != std::string::npos;
+            has_escaped_chars &= json_str.find("\\n") != std::string::npos;
+            has_escaped_chars &= json_str.find("\\t") != std::string::npos;
+            has_escaped_chars &= json_str.find("\\\"") != std::string::npos;
+            has_escaped_chars &= json_str.find("\\\\") != std::string::npos;
+            Expect(has_escaped_chars).ToBe(true);
+            
+            // Deserialize back - all characters should be preserved
+            auto restored_result = zjson::from_str<SimpleStruct>(json_str);
+            Expect(restored_result.has_value()).ToBe(true);
+            
+            SimpleStruct restored = restored_result.value();
+            Expect(restored.id).ToBe(original.id);
+            
+            // Verify all 256 characters are preserved exactly
+            Expect(restored.name.size()).ToBe(256);
+            
+            for (int i = 0; i < 256; i++) {
+                unsigned char original_char = static_cast<unsigned char>(original.name[i]);
+                unsigned char restored_char = static_cast<unsigned char>(restored.name[i]);
+                Expect(restored_char).ToBe(original_char);
+            }
+            
+            // Verify the entire string matches
+            Expect(restored.name).ToBe(original.name);
         }); });
 }
 

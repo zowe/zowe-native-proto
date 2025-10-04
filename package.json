@@ -22,6 +22,7 @@
     "z:artifacts": "tsx scripts/buildTools.ts artifacts",
     "z:build": "tsx scripts/buildTools.ts build",
     "z:build:python": "tsx scripts/buildTools.ts build:python",
+    "z:build:zowed": "npm run z:make xlclang-extenders && tsx scripts/buildTools.ts build:zowed",
     "z:chdsect": "tsx scripts/buildTools.ts build:chdsect",
     "z:clean": "tsx scripts/buildTools.ts clean",
     "z:delete": "tsx scripts/buildTools.ts delete",
