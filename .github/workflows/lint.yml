@@ -36,5 +36,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         with:
+          ignore: native/c
           repo-root: native/zowed
+          step-summary: true
           style: file
