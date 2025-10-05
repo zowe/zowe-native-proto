@@ -13,7 +13,7 @@ CXX_MAIN = xlc++
 CC = xlc
 ASM = as
 
-CXXFLAGS_LIB = -std=c++11 -Wall -Wextra -O2 -qlanglvl=extended0x -I../c -W "c,exportall,dll"
+CXXFLAGS_LIB = -std=c++11 -Wall -Werror -O2 -qlanglvl=extended0x -I../c -W "c,exportall,dll"
 CXXFLAGS_MAIN = -qlanglvl=extended0x -O2 -I../c -W "c,lp64,xplink"
 LDFLAGS = -W "l,lp64,xplink,map,list"
 DLL_BND_FLAGS = -W "l,lp64,dll,dynam=dll,xplink,map,list"

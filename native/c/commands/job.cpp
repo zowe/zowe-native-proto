@@ -27,7 +27,7 @@ namespace job
 int handle_job_list(InvocationContext &context)
 {
   int rc = 0;
-  ZJB zjb = {0};
+  ZJB zjb = {};
   string owner_name = context.get<string>("owner", "*");
   string prefix_name = context.get<string>("prefix", "*");
   long long max_entries = context.get<long long>("max-entries", 0);
@@ -98,7 +98,7 @@ int handle_job_list(InvocationContext &context)
 int handle_job_list_files(InvocationContext &context)
 {
   int rc = 0;
-  ZJB zjb = {0};
+  ZJB zjb = {};
   string jobid = context.get<std::string>("jobid", "");
   long long max_entries = context.get<long long>("max-entries", 0);
   bool warn = context.get<bool>("warn", true);
@@ -177,7 +177,7 @@ int handle_job_list_files(InvocationContext &context)
 int handle_job_view_status(InvocationContext &context)
 {
   int rc = 0;
-  ZJB zjb = {0};
+  ZJB zjb = {};
   ZJob job = {0};
   string jobid = context.get<std::string>("jobid", "");
 
@@ -222,7 +222,7 @@ int handle_job_view_status(InvocationContext &context)
 int handle_job_view_file(InvocationContext &context)
 {
   int rc = 0;
-  ZJB zjb = {0};
+  ZJB zjb = {};
   string jobid = context.get<std::string>("jobid", "");
   long long key = context.get<long long>("key", 0);
 
@@ -272,7 +272,7 @@ int handle_job_view_file(InvocationContext &context)
 int handle_job_view_jcl(InvocationContext &context)
 {
   int rc = 0;
-  ZJB zjb = {0};
+  ZJB zjb = {};
   string jobid = context.get<std::string>("jobid", "");
 
   string resp;
@@ -293,11 +293,10 @@ int handle_job_view_jcl(InvocationContext &context)
 int handle_job_submit(InvocationContext &context)
 {
   int rc = 0;
-  ZJB zjb = {0};
   string dsn = context.get<std::string>("dsn", "");
   string jobid;
 
-  ZDS zds = {0};
+  ZDS zds = {};
   string contents;
   rc = zds_read_from_dsn(&zds, dsn, contents);
   if (0 != rc)
@@ -313,10 +312,9 @@ int handle_job_submit(InvocationContext &context)
 int handle_job_submit_uss(InvocationContext &context)
 {
   int rc = 0;
-  ZJB zjb = {0};
   string file = context.get<std::string>("file-path", "");
 
-  ZUSF zusf = {0};
+  ZUSF zusf = {};
   string response;
   rc = zusf_read_from_uss_file(&zusf, file, response);
   if (0 != rc)
@@ -335,7 +333,7 @@ int handle_job_submit_uss(InvocationContext &context)
 
 int handle_job_submit_jcl(InvocationContext &context)
 {
-  ZJB zjb = {0};
+  ZJB zjb = {};
   string jobid;
   string data;
   string line;
@@ -353,7 +351,7 @@ int handle_job_submit_jcl(InvocationContext &context)
   }
   raw_bytes.clear();
 
-  ZEncode encoding_opts = {0};
+  ZEncode encoding_opts = {};
   bool encoding_prepared = context.has("encoding") && zut_prepare_encoding(context.get<std::string>("encoding", ""), &encoding_opts);
 
   if (context.has("local-encoding"))
@@ -377,7 +375,7 @@ int handle_job_submit_jcl(InvocationContext &context)
 int handle_job_delete(InvocationContext &context)
 {
   int rc = 0;
-  ZJB zjb = {0};
+  ZJB zjb = {};
   string jobid = context.get<std::string>("jobid", "");
 
   rc = zjb_delete(&zjb, jobid);
@@ -397,15 +395,15 @@ int handle_job_delete(InvocationContext &context)
 int handle_job_cancel(InvocationContext &context)
 {
   int rc = 0;
-  ZJB zjb = {0};
+  ZJB zjb = {};
   string jobid = context.get<std::string>("jobid", "");
 
   // Note: Cancel options (dump, force, purge, restart) are currently not used by the backend
   // but are defined for future compatibility
-  bool option_dump = context.get<bool>("dump", false);
-  bool option_force = context.get<bool>("force", false);
-  bool option_purge = context.get<bool>("purge", false);
-  bool option_restart = context.get<bool>("restart", false);
+  // bool option_dump = context.get<bool>("dump", false);
+  // bool option_force = context.get<bool>("force", false);
+  // bool option_purge = context.get<bool>("purge", false);
+  // bool option_restart = context.get<bool>("restart", false);
 
   rc = zjb_cancel(&zjb, jobid);
 
@@ -424,7 +422,7 @@ int handle_job_cancel(InvocationContext &context)
 int handle_job_hold(InvocationContext &context)
 {
   int rc = 0;
-  ZJB zjb = {0};
+  ZJB zjb = {};
   string jobid = context.get<std::string>("jobid", "");
 
   rc = zjb_hold(&zjb, jobid);
@@ -444,7 +442,7 @@ int handle_job_hold(InvocationContext &context)
 int handle_job_release(InvocationContext &context)
 {
   int rc = 0;
-  ZJB zjb = {0};
+  ZJB zjb = {};
   string jobid = context.get<std::string>("jobid", "");
 
   rc = zjb_release(&zjb, jobid);
@@ -464,7 +462,7 @@ int handle_job_release(InvocationContext &context)
 int job_submit_common(InvocationContext &context, string jcl, string &jobid, string identifier)
 {
   int rc = 0;
-  ZJB zjb = {0};
+  ZJB zjb = {};
   rc = zjb_submit(&zjb, jcl, jobid);
 
   if (0 != rc)

@@ -954,7 +954,7 @@ public:
                     std::istream *in_stream = nullptr,
                     std::ostream *out_stream = nullptr,
                     std::ostream *err_stream = nullptr)
-      : m_command_path(command_path), Io(args, in_stream, out_stream, err_stream)
+      : Io(args, in_stream, out_stream, err_stream), m_command_path(command_path)
   {
   }
 

@@ -62,7 +62,7 @@ int create_with_attributes(InvocationContext &context)
 {
   int rc = 0;
   string dsn = context.get<string>("dsn", "");
-  ZDS zds = {0};
+  ZDS zds = {};
   DS_ATTRIBUTES attributes = {0};
 
   // Extract all the optional creation attributes
@@ -144,7 +144,7 @@ int handle_data_set_create_fb(InvocationContext &context)
 {
   int rc = 0;
   string dsn = context.get<string>("dsn", "");
-  ZDS zds = {0};
+  ZDS zds = {};
   string response;
   rc = zds_create_dsn_fb(&zds, dsn, response);
   return process_data_set_create_result(context, &zds, rc, dsn, response);
@@ -154,7 +154,7 @@ int handle_data_set_create_vb(InvocationContext &context)
 {
   int rc = 0;
   string dsn = context.get<string>("dsn", "");
-  ZDS zds = {0};
+  ZDS zds = {};
   string response;
   rc = zds_create_dsn_vb(&zds, dsn, response);
   return process_data_set_create_result(context, &zds, rc, dsn, response);
@@ -164,7 +164,7 @@ int handle_data_set_create_adata(InvocationContext &context)
 {
   int rc = 0;
   string dsn = context.get<string>("dsn", "");
-  ZDS zds = {0};
+  ZDS zds = {};
   string response;
   rc = zds_create_dsn_adata(&zds, dsn, response);
   return process_data_set_create_result(context, &zds, rc, dsn, response);
@@ -174,7 +174,7 @@ int handle_data_set_create_loadlib(InvocationContext &context)
 {
   int rc = 0;
   string dsn = context.get<string>("dsn", "");
-  ZDS zds = {0};
+  ZDS zds = {};
   string response;
   rc = zds_create_dsn_loadlib(&zds, dsn, response);
   return process_data_set_create_result(context, &zds, rc, dsn, response);
@@ -184,7 +184,7 @@ int handle_data_set_create_member(InvocationContext &context)
 {
   int rc = 0;
   string dsn = context.get<string>("dsn", "");
-  ZDS zds = {0};
+  ZDS zds = {};
   string response;
   vector<ZDSEntry> entries;
 
@@ -228,7 +228,7 @@ int handle_data_set_view(InvocationContext &context)
 {
   int rc = 0;
   string dsn = context.get<string>("dsn", "");
-  ZDS zds = {0};
+  ZDS zds = {};
   vector<string> dds;
 
   if (context.has("encoding"))
@@ -363,7 +363,7 @@ int handle_data_set_list(InvocationContext &context)
   bool warn = context.get<bool>("warn", true);
   bool attributes = context.get<bool>("attributes", false);
 
-  ZDS zds = {0};
+  ZDS zds = {};
   if (max_entries > 0)
   {
     zds.max_entries = max_entries;
@@ -453,7 +453,7 @@ int handle_data_set_list_members(InvocationContext &context)
   long long max_entries = context.get<long long>("max-entries", 0);
   bool warn = context.get<bool>("warn", true);
 
-  ZDS zds = {0};
+  ZDS zds = {};
   if (max_entries > 0)
   {
     zds.max_entries = max_entries;
@@ -502,7 +502,7 @@ int handle_data_set_write(InvocationContext &context)
 {
   int rc = 0;
   string dsn = context.get<string>("dsn", "");
-  ZDS zds = {0};
+  ZDS zds = {};
   vector<string> dds;
 
   if (context.has("encoding"))
@@ -622,7 +622,7 @@ int handle_data_set_delete(InvocationContext &context)
 {
   int rc = 0;
   string dsn = context.get<string>("dsn", "");
-  ZDS zds = {0};
+  ZDS zds = {};
   rc = zds_delete_dsn(&zds, dsn);
 
   if (0 != rc)
@@ -640,9 +640,6 @@ int handle_data_set_restore(InvocationContext &context)
 {
   int rc = 0;
   string dsn = context.get<string>("dsn", "");
-  ZDS zds = {0};
-  string response;
-  unsigned int code = 0;
 
   // perform dynalloc
   vector<string> dds;
@@ -707,7 +704,7 @@ int handle_data_set_compress(InvocationContext &context)
   }
 
   // write control statements
-  ZDS zds = {0};
+  ZDS zds = {};
   zds_write_to_dd(&zds, "sysin", "        COPY OUTDD=B,INDD=A");
   if (0 != rc)
   {

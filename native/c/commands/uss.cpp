@@ -54,7 +54,7 @@ int handle_uss_create_file(InvocationContext &context)
     multiplier *= 8;
   }
 
-  ZUSF zusf = {0};
+  ZUSF zusf = {};
   rc = zusf_create_uss_file_or_dir(&zusf, file_path, cf_mode, false);
   if (0 != rc)
   {
@@ -99,7 +99,7 @@ int handle_uss_create_dir(InvocationContext &context)
     multiplier *= 8;
   }
 
-  ZUSF zusf = {0};
+  ZUSF zusf = {};
   rc = zusf_create_uss_file_or_dir(&zusf, file_path, cf_mode, true);
   if (0 != rc)
   {
@@ -125,7 +125,7 @@ int handle_uss_list(InvocationContext &context)
 
   const auto use_csv_format = context.get<bool>("response-format-csv", false);
 
-  ZUSF zusf = {0};
+  ZUSF zusf = {};
   string response;
   rc = zusf_list_uss_file_path(&zusf, uss_file, response, list_options, use_csv_format);
   if (0 != rc)
@@ -205,7 +205,7 @@ int handle_uss_view(InvocationContext &context)
   int rc = 0;
   string uss_file = context.get<std::string>("file-path", "");
 
-  ZUSF zusf = {0};
+  ZUSF zusf = {};
   if (context.has("encoding"))
   {
     zut_prepare_encoding(context.get<std::string>("encoding", ""), &zusf.encoding_opts);
@@ -309,7 +309,7 @@ int handle_uss_write(InvocationContext &context)
 {
   int rc = 0;
   string file = context.get<std::string>("file-path", "");
-  ZUSF zusf = {0};
+  ZUSF zusf = {};
 
   if (context.has("encoding"))
   {
@@ -410,7 +410,7 @@ int handle_uss_delete(InvocationContext &context)
   string file_path = context.get<std::string>("file-path", "");
   bool recursive = context.get<bool>("recursive", false);
 
-  ZUSF zusf = {0};
+  ZUSF zusf = {};
   const auto rc = zusf_delete_uss_item(&zusf, file_path, recursive);
 
   if (0 != rc)
@@ -451,7 +451,7 @@ int handle_uss_chmod(InvocationContext &context)
     multiplier *= 8;
   }
 
-  ZUSF zusf = {0};
+  ZUSF zusf = {};
   rc = zusf_chmod_uss_file_or_dir(&zusf, file_path, chmod_mode, recursive);
   if (0 != rc)
   {
@@ -472,7 +472,7 @@ int handle_uss_chown(InvocationContext &context)
   string owner = context.get<std::string>("owner", "");
   bool recursive = context.get<bool>("recursive", false);
 
-  ZUSF zusf = {0};
+  ZUSF zusf = {};
 
   const auto rc = zusf_chown_uss_file_or_dir(&zusf, path, owner, recursive);
   if (0 != rc)
@@ -505,7 +505,7 @@ int handle_uss_chtag(InvocationContext &context)
 
   bool recursive = context.get<bool>("recursive", false);
 
-  ZUSF zusf = {0};
+  ZUSF zusf = {};
   const auto rc = zusf_chtag_uss_file_or_dir(&zusf, path, tag, recursive);
 
   if (0 != rc)

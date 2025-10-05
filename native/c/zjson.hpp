@@ -1522,7 +1522,7 @@ zstd::expected<Value, Error> to_value(const T &obj)
 template <typename T>
 zstd::expected<T, Error> from_str(const std::string &json_str)
 {
-  JSON_INSTANCE instance = {0};
+  JSON_INSTANCE instance = {};
   int rc = ZJSMINIT(&instance);
   if (rc != 0)
   {
@@ -1759,7 +1759,7 @@ inline int value_to_json_instance(JSON_INSTANCE *instance, KEY_HANDLE *parent_ha
 // Convert Value to JSON string using ZJSM API
 inline std::string value_to_json_string(const Value &value)
 {
-  JSON_INSTANCE instance = {0};
+  JSON_INSTANCE instance = {};
   int rc = ZJSMINIT(&instance);
   if (rc != 0)
   {
@@ -1890,7 +1890,7 @@ inline std::string value_to_json_string(const Value &value)
 // JSON parser using zjsonm C API
 inline Value parse_json_string(const std::string &json_str)
 {
-  JSON_INSTANCE instance = {0};
+  JSON_INSTANCE instance = {};
   int rc = ZJSMINIT(&instance);
   if (rc != 0)
   {
