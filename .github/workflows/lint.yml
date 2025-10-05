@@ -36,7 +36,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         with:
+          ignore: c/chdsect
           repo-root: native
           style: file
           tidy-checks: ""
-          version: 21
+          version: 20
