@@ -36,9 +36,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         with:
-          ignore: c|python
           repo-root: native
-          step-summary: true
           style: file
           tidy-checks: ""
           version: 21
