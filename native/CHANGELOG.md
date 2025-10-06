@@ -4,6 +4,10 @@ All notable changes to the native code for "zowe-native-proto" are documented in
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+
+- `c`: Fixed issue where uploading changes to a PDS member removed its ISPF stats. [#556](https://github.com/zowe/zowe-native-proto/issues/556)
+
 ## `0.1.10`
 
 - `c`: Added `zowex tool list-parmlib` command to list parmlib concatenation data sets.
