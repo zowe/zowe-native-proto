@@ -8,6 +8,10 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 - Added `depth` property to the `ListFilesRequest` type for listing USS directories recursively. [#575](https://github.com/zowe/zowe-native-proto/pull/575)
 
+## `0.1.10`
+
+- Added a `promptForDeployDirectory` function to prompt the users to choose a deploy directory aside from the default.[#527] (https://github.com/zowe/zowe-native-proto/issues/527)
+
 ## `0.1.9`
 
 - Updated the `ZSshUtils.uninstallServer` function to remove the deploy directory and all of its contents.[#484] (https://github.com/zowe/zowe-native-proto/issues/484)

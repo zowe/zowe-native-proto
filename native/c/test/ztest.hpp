@@ -28,6 +28,11 @@
 #include <cstring> // Required for memset
 #include <chrono>
 #include <iomanip>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <fcntl.h>
+#include <sys/select.h>
+#include <algorithm>
 #include <fstream>
 #include <unistd.h>
 #include <cstdlib>
@@ -38,8 +43,8 @@
 
 #define Expect(x) [&]() -> RESULT_CHECK<typename std::remove_reference<decltype(x)>::type> { EXPECT_CONTEXT ctx = {__LINE__, __FILE__}; return expect(x, ctx); }()
 #define ExpectWithContext(x, context) [&]() -> RESULT_CHECK<typename std::remove_reference<decltype(x)>::type> { EXPECT_CONTEXT ctx = {__LINE__, __FILE__, std::string(context), true}; return expect(x, ctx); }()
-
-extern std::string matcher;
+#define TestLog(message) Globals::get_instance().test_log(message)
+#define TrimChars(str) Globals::get_instance().trim_chars(str)
 
 namespace ztst
 {
@@ -184,6 +189,7 @@ private:
   int suite_index = -1;
   int current_nesting = 0;
   jmp_buf jump_buf = {0};
+  std::string matcher = "";
 
   Globals()
   {
@@ -306,10 +312,7 @@ private:
     }
 
     // Print exactly current_nesting * 2 spaces
-    for (int i = 0; i < current_nesting * 2; i++)
-    {
-      std::cout << " ";
-    }
+    Globals::get_instance().pad_nesting(current_nesting);
     std::cout << color << colors.arrow << colors.reset << " " << main_error << std::endl;
 
     if (!context.empty())
@@ -330,6 +333,14 @@ public:
     return instance;
   }
 
+  std::string &get_matcher()
+  {
+    return matcher;
+  }
+  void set_matcher(const std::string &m)
+  {
+    matcher = m;
+  }
   std::vector<TEST_SUITE> &get_suites()
   {
     return suites;
@@ -363,6 +374,24 @@ public:
   {
     return current_nesting;
   }
+  std::string &trim_chars(std::string &str, const std::string &chars = " \t\n\r\f\v")
+  {
+    str.erase(0, str.find_first_not_of(chars));
+    str.erase(str.find_last_not_of(chars) + 1);
+    return str;
+  }
+  void pad_nesting(int level)
+  {
+    for (int i = 0; i < level * 2; i++)
+    {
+      std::cout << " ";
+    }
+  }
+  void test_log(const std::string &message)
+  {
+    pad_nesting(get_nesting());
+    std::cout << "[TEST_INFO] " << message << std::endl;
+  }
 
   template <typename Callable,
             typename = typename std::enable_if<
@@ -374,11 +403,11 @@ public:
 
     int current_nesting = get_nesting();
 
-    if (matcher != "")
+    if (get_matcher() != "")
     {
       try
       {
-        std::regex pattern(matcher);
+        std::regex pattern(get_matcher());
         if (!std::regex_search(description, pattern))
         {
           return;
@@ -387,7 +416,7 @@ public:
       catch (const std::regex_error &e)
       {
         // If regex is invalid, fall back to exact string match
-        if (matcher != description)
+        if (get_matcher() != description)
         {
           return;
         }
@@ -676,7 +705,9 @@ public:
     {
       error = "\n" + std::string(2, ' ') + "at " + ctx.file_name + ":" + std::to_string(ctx.line_number);
       if (ctx.message.size() > 0)
-        error += " (" + ctx.message + ")";
+      {
+        error += " (" + TrimChars(ctx.message) + ")";
+      }
     }
     return error;
   }
@@ -727,11 +758,6 @@ void describe(std::string description, Callable suite)
   g.get_suites().push_back(ts);
   g.increment_suite_index();
 
-  // Add newline only if we're not at the root level
-  if (ts.nesting_level > 0)
-  {
-    std::cout << "\n";
-  }
   std::cout << get_indent(ts.nesting_level) << description << std::endl;
   g.increment_nesting();
   suite();
@@ -765,22 +791,129 @@ RESULT_CHECK<T> expect(T val, EXPECT_CONTEXT ctx = {0})
   return result;
 }
 
+inline void print_failed_tests()
+{
+  Globals &g = Globals::get_instance();
+  bool has_failures = false;
+
+  // First pass: check if there are any failures
+  for (std::vector<TEST_SUITE>::iterator it = g.get_suites().begin(); it != g.get_suites().end(); it++)
+  {
+    for (std::vector<TEST_CASE>::iterator iit = it->tests.begin(); iit != it->tests.end(); iit++)
+    {
+      if (!iit->success)
+      {
+        has_failures = true;
+        break;
+      }
+    }
+    if (has_failures)
+      break;
+  }
+
+  if (!has_failures)
+    return;
+
+  std::cout << "\n======== FAILED TESTS ========" << std::endl;
+
+  // Build a map of suite paths for proper nesting display
+  std::vector<std::string> suite_paths;
+  std::vector<int> suite_nesting_levels;
+
+  for (std::vector<TEST_SUITE>::iterator it = g.get_suites().begin(); it != g.get_suites().end(); it++)
+  {
+    bool suite_has_failures = false;
+
+    // Check if this suite has any failures
+    for (std::vector<TEST_CASE>::iterator iit = it->tests.begin(); iit != it->tests.end(); iit++)
+    {
+      if (!iit->success)
+      {
+        suite_has_failures = true;
+        break;
+      }
+    }
+
+    if (suite_has_failures)
+    {
+      // Build the complete path for this suite
+      std::string full_path = it->description;
+      int current_nesting = it->nesting_level;
+
+      // Find the most recent parent suite by looking at nesting levels
+      // We need to find the last suite that has a lower nesting level
+      for (int i = suite_paths.size() - 1; i >= 0; i--)
+      {
+        if (suite_nesting_levels[i] < current_nesting)
+        {
+          full_path = suite_paths[i] + " > " + it->description;
+          break;
+        }
+      }
+
+      std::cout << colors.red << colors.cross << " FAIL " << full_path << colors.reset << std::endl;
+
+      for (std::vector<TEST_CASE>::iterator iit = it->tests.begin(); iit != it->tests.end(); iit++)
+      {
+        if (!iit->success)
+        {
+          std::cout << "  " << colors.red << colors.cross << " FAIL " << iit->description << colors.reset << std::endl;
+          if (!iit->fail_message.empty())
+          {
+            std::cout << "    " << colors.arrow << " " << iit->fail_message << std::endl;
+          }
+        }
+      }
+
+      // Store this suite for future path building
+      suite_paths.push_back(full_path);
+      suite_nesting_levels.push_back(current_nesting);
+    }
+    else
+    {
+      // Even if this suite doesn't have failures, we need to track it for path building
+      // This is important for nested suites that don't have failures themselves
+      std::string full_path = it->description;
+      int current_nesting = it->nesting_level;
+
+      // Find the most recent parent suite
+      for (int i = suite_paths.size() - 1; i >= 0; i--)
+      {
+        if (suite_nesting_levels[i] < current_nesting)
+        {
+          full_path = suite_paths[i] + " > " + it->description;
+          break;
+        }
+      }
+
+      suite_paths.push_back(full_path);
+      suite_nesting_levels.push_back(current_nesting);
+    }
+  }
+}
+
 inline int report()
 {
   int suite_fail = 0;
+  int suite_total = 0;
   int tests_total = 0;
   int tests_fail = 0;
   std::chrono::microseconds total_duration(0);
 
   Globals &g = Globals::get_instance();
 
+  // Print failed tests summary before the main summary
+  print_failed_tests();
+
   std::cout << "\n======== TESTS SUMMARY ========" << std::endl;
 
   for (std::vector<TEST_SUITE>::iterator it = g.get_suites().begin(); it != g.get_suites().end(); it++)
   {
     bool suite_success = true;
+    bool suite_ran = false;
     for (std::vector<TEST_CASE>::iterator iit = it->tests.begin(); iit != it->tests.end(); iit++)
     {
+      suite_ran = true;
       tests_total++;
       if (!iit->success)
       {
@@ -788,6 +921,10 @@ inline int report()
         tests_fail++;
       }
       total_duration += std::chrono::duration_cast<std::chrono::microseconds>(iit->end_time - iit->start_time);
+    }
+    if (suite_ran)
+    {
+      suite_total++;
     }
     if (!suite_success)
     {
@@ -797,9 +934,9 @@ inline int report()
 
   const int width = 13;
   std::cout << std::left << std::setw(width) << "Suites:"
-            << colors.green << g.get_suites().size() - suite_fail << " passed" << colors.reset << ", "
+            << colors.green << suite_total - suite_fail << " passed" << colors.reset << ", "
             << colors.red << suite_fail << " failed" << colors.reset << ", "
-            << g.get_suites().size() << " total" << std::endl;
+            << suite_total << " total" << std::endl;
 
   std::cout << std::left << std::setw(width) << "Tests:"
             << colors.green << tests_total - tests_fail << " passed" << colors.reset << ", "
@@ -939,9 +1076,191 @@ inline void report_xml(const std::string &filename = "test-results.xml")
   xml_file.close();
 }
 
-inline int tests(ztst::cb tests)
+/**
+ * Execute a command and capture stdout and stderr separately
+ * @param command The command string to execute
+ * @param stdout_output Reference to string that will contain stdout
+ * @param stderr_output Reference to string that will contain stderr
+ * @return Exit code of the executed command
+ */
+inline int execute_command(const std::string &command, std::string &stdout_output, std::string &stderr_output)
+{
+  stdout_output = "";
+  stderr_output = "";
+
+  // Create pipes for stdout and stderr
+  int stdout_pipe[2], stderr_pipe[2];
+  if (pipe(stdout_pipe) == -1 || pipe(stderr_pipe) == -1)
+  {
+    throw std::runtime_error("Failed to create pipes");
+  }
+
+  // Fork the process
+  pid_t pid = fork();
+  if (pid == -1)
+  {
+    close(stdout_pipe[0]);
+    close(stdout_pipe[1]);
+    close(stderr_pipe[0]);
+    close(stderr_pipe[1]);
+    throw std::runtime_error("Failed to fork process");
+  }
+
+  if (pid == 0)
+  {
+    // Child process
+    close(stdout_pipe[0]); // Close read ends
+    close(stderr_pipe[0]);
+
+    // Redirect stdout and stderr to respective pipes
+    dup2(stdout_pipe[1], STDOUT_FILENO);
+    dup2(stderr_pipe[1], STDERR_FILENO);
+    close(stdout_pipe[1]);
+    close(stderr_pipe[1]);
+
+    // Execute command via shell
+    execl("/bin/sh", "sh", "-c", command.c_str(), (char *)NULL);
+    _exit(127); // If execl fails
+  }
+  else
+  {
+    // Parent process
+    close(stdout_pipe[1]); // Close write ends
+    close(stderr_pipe[1]);
+
+    // Set pipes to non-blocking
+    fcntl(stdout_pipe[0], F_SETFL, O_NONBLOCK);
+    fcntl(stderr_pipe[0], F_SETFL, O_NONBLOCK);
+
+    // Read from both pipes using select
+    fd_set read_fds;
+    char buffer[256];
+    ssize_t bytes_read;
+    bool stdout_open = true, stderr_open = true;
+
+    while (stdout_open || stderr_open)
+    {
+      FD_ZERO(&read_fds);
+      int max_fd = 0;
+
+      if (stdout_open)
+      {
+        FD_SET(stdout_pipe[0], &read_fds);
+        max_fd = std::max(max_fd, stdout_pipe[0]);
+      }
+      if (stderr_open)
+      {
+        FD_SET(stderr_pipe[0], &read_fds);
+        max_fd = std::max(max_fd, stderr_pipe[0]);
+      }
+
+      struct timeval timeout = {1, 0}; // 1 second timeout
+      int select_result = select(max_fd + 1, &read_fds, NULL, NULL, &timeout);
+
+      if (select_result > 0)
+      {
+        // Check stdout
+        if (stdout_open && FD_ISSET(stdout_pipe[0], &read_fds))
+        {
+          bytes_read = read(stdout_pipe[0], buffer, sizeof(buffer) - 1);
+          if (bytes_read > 0)
+          {
+            buffer[bytes_read] = '\0';
+            stdout_output += buffer;
+          }
+          else if (bytes_read == 0)
+          {
+            stdout_open = false;
+          }
+        }
+
+        // Check stderr
+        if (stderr_open && FD_ISSET(stderr_pipe[0], &read_fds))
+        {
+          bytes_read = read(stderr_pipe[0], buffer, sizeof(buffer) - 1);
+          if (bytes_read > 0)
+          {
+            buffer[bytes_read] = '\0';
+            stderr_output += buffer;
+          }
+          else if (bytes_read == 0)
+          {
+            stderr_open = false;
+          }
+        }
+      }
+      else if (select_result == 0)
+      {
+        // Timeout - check if child is still running
+        int status;
+        if (waitpid(pid, &status, WNOHANG) != 0)
+        {
+          // Child has exited, do final reads
+          break;
+        }
+      }
+      else
+      {
+        // Error in select
+        break;
+      }
+    }
+
+    // Final non-blocking reads to get any remaining data
+    while ((bytes_read = read(stdout_pipe[0], buffer, sizeof(buffer) - 1)) > 0)
+    {
+      buffer[bytes_read] = '\0';
+      stdout_output += buffer;
+    }
+    while ((bytes_read = read(stderr_pipe[0], buffer, sizeof(buffer) - 1)) > 0)
+    {
+      buffer[bytes_read] = '\0';
+      stderr_output += buffer;
+    }
+
+    close(stdout_pipe[0]);
+    close(stderr_pipe[0]);
+
+    // Wait for child process to complete
+    int status;
+    if (waitpid(pid, &status, 0) == -1)
+    {
+      throw std::runtime_error("Failed to wait for child process");
+    }
+
+    // Return exit code
+    if (WIFEXITED(status))
+    {
+      return WEXITSTATUS(status);
+    }
+    else if (WIFSIGNALED(status))
+    {
+      return 128 + WTERMSIG(status);
+    }
+    else
+    {
+      return -1;
+    }
+  }
+
+  // Should never reach here, but add return to satisfy compiler
+  return -1;
+}
+
+inline int tests(int argc, char *argv[], ztst::cb tests)
 {
   std::cout << "======== TESTS ========" << std::endl;
+
+  if (argc > 1)
+  {
+    std::cout << "Running tests matching: " << argv[1] << std::endl;
+    Globals::get_instance().set_matcher(argv[1]);
+  }
+  else
+  {
+    std::cout << "Running all tests" << std::endl;
+  }
+
   tests();
   int rc = report();
   report_xml();

@@ -8,6 +8,10 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 - Added a `--depth` option to the `zssh list uss` command for listing USS directories recursively. [#575](https://github.com/zowe/zowe-native-proto/pull/575)
 
+## `0.1.10`
+
+- Added a `storeServerPath` function as placeholder for future CLI functionality to persist deploy directory paths from user input. [#527](https://github.com/zowe/zowe-native-proto/issues/527)
+
 ## `0.1.9`
 
 - Added support for the `local-encoding` option to data set, USS file, and job file commands (view, download, upload) to specify the source encoding of content (defaults to UTF-8). [#511](https://github.com/zowe/zowe-native-proto/issues/511)
