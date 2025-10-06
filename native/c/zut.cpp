@@ -141,6 +141,27 @@ int zut_hello(string name)
   return 0;
 }
 
+int zut_list_parmlib(ZDIAG &diag, std::vector<std::string> &parmlibs)
+{
+  int rc = 0;
+  PARMLIB_DSNS dsns = {0};
+  int num_dsns = 0;
+
+  rc = ZUTMLPLB(&diag, &num_dsns, &dsns);
+  if (0 != rc)
+  {
+    return rc;
+  }
+
+  parmlibs.reserve(num_dsns);
+  for (int i = 0; i < num_dsns; i++)
+  {
+    parmlibs.push_back(string(dsns.dsn[i].val, sizeof(dsns.dsn[i].val)));
+  }
+
+  return rc;
+}
+
 /**
  * Get char value from hex byte, e.g. 0x0E -> 'E'
  */
