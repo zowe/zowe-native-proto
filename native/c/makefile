@@ -408,38 +408,7 @@ libztso.a: $(OUT_DIRS) $(OUT_DIR)/libztso.a
 
 #
 # Commands
-#
-$(OUT_DIR)/commands/console.o: commands/console.cpp
-	@echo 'Building $@'
-	@mkdir -p $(@D)
-	$(CXX) $(CPP_FLAGS) -c $< -o $@
-
-$(OUT_DIR)/commands/core.o: commands/core.cpp
-	@echo 'Building $@'
-	@mkdir -p $(@D)
-	$(CXX) $(CPP_FLAGS) -c $< -o $@
-
-$(OUT_DIR)/commands/ds.o: commands/ds.cpp
-	@echo 'Building $@'
-	@mkdir -p $(@D)
-	$(CXX) $(CPP_FLAGS) -c $< -o $@
-
-$(OUT_DIR)/commands/job.o: commands/job.cpp
-	@echo 'Building $@'
-	@mkdir -p $(@D)
-	$(CXX) $(CPP_FLAGS) -c $< -o $@
-
-$(OUT_DIR)/commands/tso.o: commands/tso.cpp
-	@echo 'Building $@'
-	@mkdir -p $(@D)
-	$(CXX) $(CPP_FLAGS) -c $< -o $@
-
-$(OUT_DIR)/commands/uss.o: commands/uss.cpp
-	@echo 'Building $@'
-	@mkdir -p $(@D)
-	$(CXX) $(CPP_FLAGS) -c $< -o $@
-
-$(OUT_DIR)/commands/tool.o: commands/tool.cpp
+$(OUT_DIR)/commands/%.o: commands/%.cpp
 	@echo 'Building $@'
 	@mkdir -p $(@D)
 	$(CXX) $(CPP_FLAGS) -c $< -o $@
