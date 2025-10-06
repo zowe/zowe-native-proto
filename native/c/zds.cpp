@@ -251,14 +251,13 @@ int zds_write_to_dsn(ZDS *zds, const string &dsn, string &data)
   {
     dsname = "//DD:" + string(zds->ddname);
   }
-  // If file already exists, open in read+write mode to avoid losing ISPF stats
-  const string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "rb+" : "r+" + string(",recfm=*");
-  const string fopen_flags2 = zds->encoding_opts.data_type == eDataTypeBinary ? "wb" : "w" + string(",recfm=*");
+  const string fopen_extra_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "b" : "" + string(",recfm=*");
 
-  auto *fp = fopen(dsname.c_str(), fopen_flags.c_str());
+  // If file already exists, open in read+write mode to avoid losing ISPF stats
+  auto *fp = fopen(dsname.c_str(), ("r+" + fopen_extra_flags).c_str());
   if (nullptr == fp)
   {
-    fp = fopen(dsname.c_str(), fopen_flags2.c_str());
+    fp = fopen(dsname.c_str(), ("w" + fopen_extra_flags).c_str());
     if (nullptr == fp)
     {
       zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open dsn '%s'", dsn.c_str());
@@ -1259,14 +1258,13 @@ int zds_write_to_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, s
 
   const auto hasEncoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
   const auto codepage = string(zds->encoding_opts.codepage);
-  // If file already exists, open in read+write mode to avoid losing ISPF stats
-  const auto fopen_flags = (zds->encoding_opts.data_type == eDataTypeBinary ? "rb+" : "r+") + string(",recfm=*");
-  const auto fopen_flags2 = (zds->encoding_opts.data_type == eDataTypeBinary ? "wb" : "w") + string(",recfm=*");
+  const auto fopen_extra_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "b" : "" + string(",recfm=*");
 
-  FILE *fout = fopen(dsname.c_str(), fopen_flags.c_str());
+  // If file already exists, open in read+write mode to avoid losing ISPF stats
+  FILE *fout = fopen(dsname.c_str(), ("r+" + fopen_flags).c_str());
   if (!fout)
   {
-    fout = fopen(dsname.c_str(), fopen_flags2.c_str());
+    fout = fopen(dsname.c_str(), ("w" + fopen_flags).c_str());
     if (!fout)
     {
       zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open dsn '%s'", dsn.c_str());
