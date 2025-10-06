@@ -18,7 +18,7 @@ import {
     type qpOpts,
     ZSshClient,
 } from "zowe-native-proto-sdk";
-import type { IProfile } from "@zowe/imperative";
+import { IProfile, ProfileInfo } from "@zowe/imperative";
 import { SshConfigUtils, VscePromptApi } from "../src/SshConfigUtils";
 import { getVsceConfig } from "../src/Utilities";
 import { ZoweVsCodeExtension } from "@zowe/zowe-explorer-api";
@@ -170,31 +170,9 @@ describe("SshConfigUtils", () => {
         });
     });
     describe("VscePromptApi", () => {
-        class TestVscePromptApi extends VscePromptApi {
-            constructor() {
-                super({} as any as AbstractConfigManager["mProfilesCache"]);
-            }
-            public callShowMessage(message: string, type: MESSAGE_TYPE) {
-                return this.showMessage(message, type);
-            }
-            public callStoreServerPath(host: string, path: string) {
-                return this.storeServerPath(host, path);
-            }
-            public callShowMenu(options: qpOpts) {
-                return this.showMenu(options);
-            }
-            public async callShowCustomMenu(opts: qpOpts) {
-                return await this.showCustomMenu(opts);
-            }
-            public callGetCurrentDir() {
-                return this.getCurrentDir();
-            }
-            public callShowPrivateKeyWarning(opts: PrivateKeyWarningOptions) {
-                return this.showPrivateKeyWarning(opts);
-            }
-        }
-        let testInstance: TestVscePromptApi;
         let mockQuickPick: any;
+        const mockProfilesCache = {} as unknown as AbstractConfigManager["mProfilesCache"];
+        const instance = new VscePromptApi(mockProfilesCache);
 
         beforeEach(() => {
             vi.resetAllMocks();
@@ -207,7 +185,6 @@ describe("SshConfigUtils", () => {
                 onDidHide: vi.fn(),
                 onDidChangeValue: vi.fn(),
             };
-            testInstance = new TestVscePromptApi();
         });
         describe("showMessage", () => {
             beforeEach(() => {
@@ -220,15 +197,15 @@ describe("SshConfigUtils", () => {
                 vi.restoreAllMocks();
             });
             it("returns an information message", () => {
-                testInstance.callShowMessage("test info message", MESSAGE_TYPE.INFORMATION);
+                (instance as any).showMessage("test info message", MESSAGE_TYPE.INFORMATION);
                 expect(vscode.window.showInformationMessage).toHaveBeenCalledWith("test info message");
             });
             it("returns a warning message", () => {
-                testInstance.callShowMessage("test warning message", MESSAGE_TYPE.WARNING);
+                (instance as any).showMessage("test warning message", MESSAGE_TYPE.WARNING);
                 expect(vscode.window.showWarningMessage).toHaveBeenCalledWith("test warning message");
             });
             it("returns an error message", () => {
-                testInstance.callShowMessage("test error message", MESSAGE_TYPE.ERROR);
+                (instance as any).showMessage("test error message", MESSAGE_TYPE.ERROR);
                 expect(vscode.window.showErrorMessage).toHaveBeenCalledWith("test error message");
             });
         });
@@ -247,8 +224,7 @@ describe("SshConfigUtils", () => {
                 };
                 mockQuickPick.selectedItems = [opts.items[0]];
                 mockQuickPick.onDidAccept.mockImplementation((cb: Function) => cb());
-
-                const result = await testInstance.callShowMenu(opts);
+                const result = await (instance as any).showMenu(opts);
 
                 expect(vscode.window.createQuickPick).toHaveBeenCalled();
                 expect(mockQuickPick.show).toHaveBeenCalled();
@@ -269,8 +245,7 @@ describe("SshConfigUtils", () => {
                     placeholder: "Pick one",
                     items: [{ label: "host1", description: "host" }],
                 };
-                const promise = testInstance.callShowCustomMenu(opts);
-
+                const promise = (instance as any).showCustomMenu(opts);
                 expect(mockQuickPick.items).toEqual([{ label: "host1", description: "host" }]);
                 expect(mockQuickPick.title).toBe("Select SSH");
                 expect(mockQuickPick.placeholder).toBe("Pick one");
@@ -284,8 +259,7 @@ describe("SshConfigUtils", () => {
             });
             it("returns custom item when input starts with >", async () => {
                 const opts = { items: [{ label: "host1", description: "host" }] };
-
-                const promise = testInstance.callShowCustomMenu(opts);
+                const promise = (instance as any).showCustomMenu(opts);
                 const onDidChangeValue = (mockQuickPick.onDidChangeValue as any).mock.calls[0][0];
                 onDidChangeValue("customHost");
 
@@ -306,7 +280,7 @@ describe("SshConfigUtils", () => {
 
             it("returns undefined when quick pick is hidden", async () => {
                 const opts = { items: [] };
-                const promise = testInstance.callShowCustomMenu(opts);
+                const promise = (instance as any).showCustomMenu(opts);
                 const onDidHide = (mockQuickPick.onDidHide as any).mock.calls[0][0];
                 onDidHide();
                 const result = await promise;
@@ -319,7 +293,7 @@ describe("SshConfigUtils", () => {
                 (ZoweVsCodeExtension as any).workspaceRoot = {
                     uri: { fsPath: testPath },
                 };
-                const result = testInstance.callGetCurrentDir();
+                const result = (instance as any).getCurrentDir();
                 expect(result).toBe(testPath);
             });
         });
@@ -335,8 +309,7 @@ describe("SshConfigUtils", () => {
                     profileName: "test",
                     privateKeyPath: "",
                 };
-
-                const promise = testInstance.callShowPrivateKeyWarning(opts);
+                const promise = (instance as any).showPrivateKeyWarning(opts);
 
                 const accept = mockQuickPick.onDidAccept.mock.calls[0][0];
                 mockQuickPick.selectedItems = [{ action: "continue" }];
@@ -359,7 +332,7 @@ describe("SshConfigUtils", () => {
             });
             it("updates an existing serverPathMap with new host and path", () => {
                 mockGet.mockReturnValue({ oldHost: "/old/path" });
-                testInstance.callStoreServerPath("newHost", "/new/path");
+                (instance as any).storeServerPath("newHost", "/new/path");
                 expect(mockUpdate).toHaveBeenCalledWith(
                     "serverInstallPath",
                     {
@@ -371,7 +344,7 @@ describe("SshConfigUtils", () => {
             });
             it("adds a new host and path entry when serverPathMap is empty", () => {
                 mockGet.mockReturnValue(undefined);
-                testInstance.callStoreServerPath("newHost", "/new/path");
+                (instance as any).storeServerPath("newHost", "/new/path");
                 expect(mockUpdate).toHaveBeenCalledWith(
                     "serverInstallPath",
                     { newHost: "/new/path" },
