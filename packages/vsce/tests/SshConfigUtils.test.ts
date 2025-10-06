@@ -20,6 +20,7 @@ import { SshConfigUtils, VscePromptApi } from "../src/SshConfigUtils";
 import { getVsceConfig } from "../src/Utilities";
 import { ZoweVsCodeExtension } from "@zowe/zowe-explorer-api";
 import * as vscode from "vscode";
+import type { IProfile } from "@zowe/imperative";
 
 vi.mock("vscode", () => ({
     Disposable: vi.fn(),
@@ -290,6 +291,7 @@ describe("SshConfigUtils", () => {
                 (ZoweVsCodeExtension as any).workspaceRoot = {
                     uri: { fsPath: testPath },
                 };
+
                 const result = (instance as any).getCurrentDir();
                 expect(result).toBe(testPath);
             });
