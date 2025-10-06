@@ -9,16 +9,13 @@
  *
  */
 
-// biome-ignore assist/source/organizeImports: <explanation>
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import {
     type AbstractConfigManager,
     MESSAGE_TYPE,
     type PrivateKeyWarningOptions,
-    type qpOpts,
     ZSshClient,
 } from "zowe-native-proto-sdk";
-import { IProfile, ProfileInfo } from "@zowe/imperative";
 import { SshConfigUtils, VscePromptApi } from "../src/SshConfigUtils";
 import { getVsceConfig } from "../src/Utilities";
 import { ZoweVsCodeExtension } from "@zowe/zowe-explorer-api";
