@@ -136,7 +136,7 @@ MTL_FLAGS+=$(LOG_FLAGS)
 MTL_FLAGS64+=$(LOG_FLAGS)
 .END
 
-all: 
+all:
 	$(MAKE) -DZLOG_ENABLE=1 build-out build-out/ztest_runner
 
 
@@ -182,6 +182,7 @@ build-out/zmetal.metal.test.o \
 build-out/zusf.test.o \
 build-out/zusf.o \
 build-out/zshmem.o \
+build-out/zowex.test.o \
 build-out/zlogger.test.o \
 build-out/parser.test.o \
 build-out/zlogger_metal.o \
@@ -233,6 +234,9 @@ build-out/zusf.o:
 
 build-out/zshmem.o:
 	ln -sf ../../build-out/zshmem.o build-out/zshmem.o
+
+build-out/zowex.test.o: zowex.test.cpp
+	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
 
 build-out/zbase64.test.o: zbase64.test.cpp
 	$(OCXX) $(CXXLANG_FLAGS) $(CPP_LIST_FLAG) -c $^ -o $@
@@ -336,7 +340,7 @@ build-out/zjsonm.o: build-out/zjsonm.s
 #
 # Testing utilities
 #
-test: 
+test:
 	$(MAKE) -DZLOG_ENABLE=1 build-out build-out/ztest_runner
 	chmod +x test.sh
 	_CEE_RUNOPTS="TRAP(ON,NOSPIE)" ./build-out/ztest_runner

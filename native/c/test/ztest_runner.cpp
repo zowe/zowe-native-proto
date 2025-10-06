@@ -19,6 +19,7 @@
 #include "zmetal.test.hpp"
 #include "zusf.test.hpp"
 #include "zbase64.test.hpp"
+#include "zowex.test.hpp"
 #include "zlogger.test.hpp"
 #include "parser.test.hpp"
 #include "zstd.test.hpp"
@@ -28,18 +29,10 @@
 using namespace std;
 using namespace ztst;
 
-string matcher = "";
-
 int main(int argc, char *argv[])
 {
-
-  if (argc > 1)
-  {
-    cout << "Running tests matching: " << argv[1] << endl;
-    matcher = argv[1];
-  }
-
   int rc = tests(
+      argc, argv,
       []() -> void
       {
         zut_tests();
@@ -51,6 +44,7 @@ int main(int argc, char *argv[])
         zmetal_tests();
         zusf_tests();
         zbase64_tests();
+        zowex_tests();
         zlogger_tests();
         parser_tests();
         zstd_tests();
