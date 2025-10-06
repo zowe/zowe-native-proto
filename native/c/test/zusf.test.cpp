@@ -44,7 +44,7 @@ void zusf_tests()
             const std::string f_bot     = dir_b    + "/file_bottom.txt";
 
             // Ensure clean slate
-            system(("rm -rf " + tmp_base).c_str());
+            zusf_delete_uss_item(zusf, tmp_base, true);
             mkdir(tmp_base.c_str(), 0755);
 
             // Discover current primary group (gid and name)
