@@ -1782,7 +1782,7 @@ int zusf_chown_uss_file_or_dir(ZUSF *zusf, std::string file, std::string owner, 
   return 0;
 }
 
-int zusf_chtag_uss_file_or_dir(ZUSF *zusf, std::string file, std::string tag, bool recursive)
+int zusf_chtag_uss_file_or_dir(ZUSF *zusf, const string &file, const string &owner, bool recursive)
 {
   struct stat file_stats;
   if (stat(file.c_str(), &file_stats) == -1)

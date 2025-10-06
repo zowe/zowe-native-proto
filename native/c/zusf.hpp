@@ -38,7 +38,7 @@ int zusf_write_to_uss_file(ZUSF *zusf, const std::string &file, std::string &dat
 int zusf_write_to_uss_file_streamed(ZUSF *zusf, const std::string &file, const std::string &pipe, size_t *content_len);
 int zusf_chmod_uss_file_or_dir(ZUSF *zusf, std::string file, mode_t mode, bool recursive);
 int zusf_delete_uss_item(ZUSF *zusf, std::string file, bool recursive);
-int zusf_chown_uss_file_or_dir(ZUSF *zusf, std::string file, std::string owner, bool recursive);
+int zusf_chown_uss_file_or_dir(ZUSF *zusf, const std::string &file, const std::string &owner, bool recursive);
 int zusf_chtag_uss_file_or_dir(ZUSF *zusf, std::string file, std::string tag, bool recursive);
 short zusf_get_id_from_user_or_group(const std::string &user_or_group, bool is_user);
 int zusf_get_file_ccsid(ZUSF *zusf, std::string file);
