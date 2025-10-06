@@ -527,7 +527,7 @@ public:
     double value = get_double();
 
     // Check for overflow/underflow
-    if (isnan(value) || isinf(value))
+    if (std::isnan(value) || std::isinf(value))
     {
       std::stringstream ss;
       ss << value;

@@ -70,7 +70,7 @@ private:
             if (workerPool) {
                 workerPool->shutdown();
             }
-            exit(0); });
+            close(STDIN_FILENO); });
   }
 
   static ZowedServer &getInstance()

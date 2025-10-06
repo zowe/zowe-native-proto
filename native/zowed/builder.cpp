@@ -17,6 +17,7 @@
 #include "../c/zjson.hpp"
 #include <sstream>
 #include <cstdlib>
+#include <cerrno>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -268,7 +269,13 @@ void CommandBuilder::apply_input_transforms(MiddlewareContext &context) const
           it->pipePath = pipePathStream.str();
 
           // Remove any existing pipe (ignore errors if it doesn't exist)
-          unlink(it->pipePath.c_str());
+          if (unlink(it->pipePath.c_str()) != 0 && errno != ENOENT)
+          {
+            std::string errMsg = std::string("Failed to delete existing FIFO pipe: ") + it->pipePath;
+            context.errln(errMsg.c_str());
+            LOG_ERROR("%s", errMsg.c_str());
+            break;
+          }
 
           // Create the FIFO pipe
           if (mkfifo(it->pipePath.c_str(), 0600) != 0)
@@ -382,6 +389,10 @@ void CommandBuilder::apply_output_transforms(MiddlewareContext &context) const
         if (unlink(it->pipePath.c_str()) == 0)
         {
           LOG_DEBUG("Cleaned up FIFO pipe: %s", it->pipePath.c_str());
+        }
+        else
+        {
+          LOG_ERROR("Failed to delete FIFO pipe: %s", it->pipePath.c_str());
         }
       }
       break;
