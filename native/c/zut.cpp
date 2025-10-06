@@ -585,7 +585,10 @@ int zut_free_dynalloc_dds(vector<string> &list, std::ostream *err_stream)
     size_t end = alloc_dd.find(")", start);
     if (start == string::npos || end == string::npos)
     {
-      *err_stream << "Error: Invalid format in DD alloc string: " << alloc_dd << endl;
+      if (err_stream != nullptr)
+      {
+        *err_stream << "Error: Invalid format in DD alloc string: " << alloc_dd << endl;
+      }
     }
     else
     {
