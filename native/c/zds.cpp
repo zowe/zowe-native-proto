@@ -1261,10 +1261,10 @@ int zds_write_to_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, s
   const auto fopen_extra_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "b" : "" + string(",recfm=*");
 
   // If file already exists, open in read+write mode to avoid losing ISPF stats
-  FILE *fout = fopen(dsname.c_str(), ("r+" + fopen_flags).c_str());
+  FILE *fout = fopen(dsname.c_str(), ("r+" + fopen_extra_flags).c_str());
   if (!fout)
   {
-    fout = fopen(dsname.c_str(), ("w" + fopen_flags).c_str());
+    fout = fopen(dsname.c_str(), ("w" + fopen_extra_flags).c_str());
     if (!fout)
     {
       zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open dsn '%s'", dsn.c_str());
