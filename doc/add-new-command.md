@@ -460,10 +460,9 @@ You've successfully added a new command to the Zowe Native Protocol stack! Here'
 
 ## Key Patterns
 
-- **Simplicity first**: Start with simple commands (like ping) before tackling complex ones
+- **Separation of concerns**: Library logic is separate from command handling
 - **Return objects**: Always set a return object using `context.set_object()` for programmatic access
 - **Error handling**: Use proper return codes (`RTNCD_SUCCESS`, `RTNCD_FAILURE`) and error messages
-- **Default values**: Use `.set_default()` in CommandBuilder to provide sensible defaults for optional parameters
 - **CommandBuilder**: Use the fluent API to map RPC parameters to command arguments
 - **Type safety**: Define TypeScript types to ensure consistency between middleware and SDK
 
