@@ -865,7 +865,7 @@ void zusf_tests()
                   rmdir(test_dir.c_str());
                 });
 
-             it("should return no items when depth is 0 and all_files is false",
+             it("should return directory info when depth is 0 (like 'ls -d')",
                 [&]() -> void
                 {
                   // Create test directory structure
@@ -895,14 +895,13 @@ void zusf_tests()
 
                   ZUSF zusf = {0};
                   string response;
-                  ListOptions options = {false, false, 0}; // all_files=false, depth=0 = no items returned
+                  ListOptions options = {false, false, 0}; // all_files=false, depth=0 = show directory itself
 
                   int result = zusf_list_uss_file_path(&zusf, test_dir, response, options, false);
 
                   Expect(result).ToBe(RTNCD_SUCCESS);
-                  Expect(response).ToBe("");                     // Should return empty response
-                  Expect(response).Not().ToContain(".");         // Should NOT contain current directory entry
-                  Expect(response).Not().ToContain("..");        // Should NOT contain parent directory entry
+                  Expect(response).Not().ToBe("");               // Should return directory info, not empty
+                  Expect(response).ToContain("test_depth0_dir"); // Should contain the directory name
                   Expect(response).Not().ToContain("file1.txt"); // Should NOT include actual directory contents
                   Expect(response).Not().ToContain("subdir");
                   Expect(response).Not().ToContain("subdir/file2.txt");
@@ -985,14 +984,15 @@ void zusf_tests()
                   ZUSF zusf = {0};
                   string response;
 
-                  // Test with depth 0 and all_files = true
+                  // Test with depth 0 and all_files = true (should behave like 'ls -d')
                   ListOptions options_depth0 = {true, false, 0}; // all_files=true, depth=0
                   int result = zusf_list_uss_file_path(&zusf, test_dir, response, options_depth0, false);
 
                   Expect(result).ToBe(RTNCD_SUCCESS);
-                  Expect(response).ToContain(".");               // Should contain current directory entry
-                  Expect(response).ToContain("..");              // Should contain parent directory entry
-                  Expect(response).Not().ToContain("file1.txt"); // Should NOT include directory contents with depth 0
+                  Expect(response).ToContain("test_all_files_dir"); // Should contain the directory name itself
+                  Expect(response).Not().ToContain(".");            // Should NOT contain current directory entry with depth=0
+                  Expect(response).Not().ToContain("..");           // Should NOT contain parent directory entry with depth=0
+                  Expect(response).Not().ToContain("file1.txt");    // Should NOT include directory contents with depth 0
                   Expect(response).Not().ToContain("subdir");
 
                   // Test with depth 1 and all_files = true

@@ -1081,6 +1081,14 @@ int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response, ListOptio
 
   response.clear();
 
+  // Treat depth == 0 as "ls -d" behavior: show the directory itself, not its contents
+  if (options.max_depth == 0)
+  {
+    const auto dir_name = file.substr(file.find_last_of("/") + 1);
+    response = zusf_format_file_entry(zusf, file_stats, file, dir_name, options, use_csv_format);
+    return RTNCD_SUCCESS;
+  }
+
   // Add "." and ".." entries if all_files option is set
   if (options.all_files)
   {
@@ -1098,12 +1106,6 @@ int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response, ListOptio
     {
       response += zusf_format_file_entry(zusf, parent_stats, parent_path, "..", options, use_csv_format);
     }
-  }
-
-  // Treat depth == 0 as stat and skip listing children
-  if (options.max_depth == 0)
-  {
-    return RTNCD_SUCCESS;
   }
 
   // Collect all directory entries (recursively if depth > 1)
