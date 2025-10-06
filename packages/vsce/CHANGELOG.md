@@ -6,7 +6,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
-- Added unit test for `SshConfigUtils.ts` file.
+- Added unit tests for `SshConfigUtils.ts` file.
 
 ## `0.1.10`
 
