@@ -1,6 +1,8 @@
 # Adding a New Command to Zowe Native Protocol
 
-This guide walks you through creating a new command for the Zowe Native Protocol stack, from the low-level C++ implementation through the middleware layer to the SDK. We'll use a `getTime` command as an example that takes a timezone argument and returns the current date and time.
+This guide walks you through creating a new command for the Zowe Native Protocol stack, from the low-level C++ implementation through the middleware layer to the SDK. We'll use a simple `ping` command as an example that takes an optional message and returns a pong response with a timestamp.
+
+> **💡 Example Source Code**: For a complete working example, see the [`examples/add-new-command`](../examples/add-new-command) directory, which demonstrates adding commands across all layers of the stack (C++ backend, middleware, SDK, CLI, and VS Code extension).
 
 ## Table of Contents
 
@@ -19,129 +21,57 @@ The `zowex` CLI is the lowest level of the stack, providing direct access to mai
 
 Create two files in `native/c/commands/`:
 
-- `time.hpp` - Header file with function declarations
-- `time.cpp` - Implementation file with command logic
+- `sample.hpp` - Header file with function declarations
+- `sample.cpp` - Implementation file with command logic
 
-**`native/c/commands/time.hpp`:**
+**`native/c/commands/sample.hpp`:**
 
 ```cpp
 #include "../parser.hpp"
 
-namespace time_cmd
+namespace sample
 {
 using namespace plugin;
-int handle_get_time(InvocationContext &context);
+int handle_ping(InvocationContext &context);
 void register_commands(parser::Command &root_command);
-} // namespace time_cmd
+} // namespace sample
 ```
 
-**`native/c/commands/time.cpp`:**
+**`native/c/commands/sample.cpp`:**
 
 ```cpp
-#include "time.hpp"
-#include "common_args.hpp"
+#include "sample.hpp"
 #include <string>
 #include <ctime>
-#include <cstdlib>
 
 using namespace ast;
 using namespace parser;
 using namespace std;
-using namespace commands::common;
 
-namespace time_cmd
+namespace sample
 {
 
-// Library method that performs the actual time retrieval logic
-int get_time_for_timezone(const string &timezone, string &date_str, string &time_str)
+// Command handler for ping command
+int handle_ping(InvocationContext &context)
 {
-  // Save the current TZ environment variable
-  const char *old_tz = getenv("TZ");
-  string saved_tz = old_tz ? old_tz : "";
+  // Parse the optional message argument
+  string message = context.get<string>("message", "hello");
 
-  // Set the requested timezone
-  if (!timezone.empty())
-  {
-    setenv("TZ", timezone.c_str(), 1);
-    tzset();
-  }
-
-  // Get current time
+  // Get current timestamp
   time_t now = time(nullptr);
-  struct tm *timeinfo = localtime(&now);
+  char *dt = ctime(&now);
 
-  if (timeinfo == nullptr)
-  {
-    // Restore original timezone
-    if (!saved_tz.empty())
-    {
-      setenv("TZ", saved_tz.c_str(), 1);
-    }
-    else
-    {
-      unsetenv("TZ");
-    }
-    tzset();
-    return RTNCD_FAILURE;
-  }
-
-  // Format date as YYYY-MM-DD
-  char date_buf[32];
-  strftime(date_buf, sizeof(date_buf), "%Y-%m-%d", timeinfo);
-  date_str = string(date_buf);
-
-  // Format time as HH:MM:SS
-  char time_buf[32];
-  strftime(time_buf, sizeof(time_buf), "%H:%M:%S", timeinfo);
-  time_str = string(time_buf);
-
-  // Restore original timezone
-  if (!saved_tz.empty())
-  {
-    setenv("TZ", saved_tz.c_str(), 1);
-  }
-  else
-  {
-    unsetenv("TZ");
-  }
-  tzset();
-
-  return RTNCD_SUCCESS;
-}
-
-// Command handler that parses args, invokes library method, and sets return object
-int handle_get_time(InvocationContext &context)
-{
-  // Parse the timezone argument
-  string timezone = context.get<string>("timezone", "");
-
-  if (timezone.empty())
-  {
-    context.error_stream() << "Error: timezone argument is required" << endl;
-    return RTNCD_FAILURE;
-  }
-
-  // Invoke the library method
-  string date_str;
-  string time_str;
-  int rc = get_time_for_timezone(timezone, date_str, time_str);
-
-  if (rc != RTNCD_SUCCESS)
-  {
-    context.error_stream() << "Error: could not retrieve time for timezone: '" << timezone << "'" << endl;
-    return rc;
-  }
+  // Remove newline from ctime output
+  string timestamp(dt);
+  timestamp.erase(timestamp.find_last_not_of("\n\r") + 1);
 
   // Print to stdout (for CLI output)
-  context.output_stream() << "Date: " << date_str << endl;
-  context.output_stream() << "Time: " << time_str << endl;
-  context.output_stream() << "Timezone: " << timezone << endl;
+  context.output_stream() << "PONG: " << message << " at " << timestamp << endl;
 
   // Set return object (for programmatic access)
   const auto result = obj();
-  result->set("date", str(date_str));
-  result->set("time", str(time_str));
-  result->set("timezone", str(timezone));
+  result->set("data", str("PONG: " + message));
+  result->set("timestamp", str(timestamp));
   context.set_object(result);
 
   return RTNCD_SUCCESS;
@@ -150,29 +80,29 @@ int handle_get_time(InvocationContext &context)
 // Register the command with the parser
 void register_commands(parser::Command &root_command)
 {
-  // Create the get-time command
-  auto get_time_cmd = command_ptr(new Command("get-time", "get current date and time for a timezone"));
+  // Create the ping command
+  auto ping_cmd = command_ptr(new Command("ping", "send a ping message"));
 
-  // Add required timezone positional argument
-  get_time_cmd->add_positional_arg(
-      "timezone",
-      "timezone identifier (e.g., 'America/New_York', 'UTC', 'Europe/London')",
+  // Add optional message argument
+  ping_cmd->add_option(
+      "message",
+      "message to include in ping",
       ArgType_Single,
-      true  // required
+      false  // not required
   );
 
   // Set the handler function
-  get_time_cmd->set_handler(handle_get_time);
+  ping_cmd->set_handler(handle_ping);
 
-  // Add an example
-  get_time_cmd->add_example("Get time in UTC", "zowex get-time UTC");
-  get_time_cmd->add_example("Get time in New York", "zowex get-time America/New_York");
+  // Add examples
+  ping_cmd->add_example("Simple ping", "zowex ping");
+  ping_cmd->add_example("Ping with message", "zowex ping --message \"Hello, world!\"");
 
   // Register with the root command
-  root_command.add_command(get_time_cmd);
+  root_command.add_command(ping_cmd);
 }
 
-} // namespace time_cmd
+} // namespace sample
 ```
 
 ### Step 1.2: Register Your Command
@@ -181,7 +111,7 @@ Edit `native/c/zowex.cpp` to include and register your new command:
 
 ```cpp
 // Add include at the top with other command includes
-#include "commands/time.hpp"
+#include "commands/sample.hpp"
 
 // In the main() function, add registration call with other commands
 int main(int argc, char *argv[])
@@ -192,7 +122,7 @@ int main(int argc, char *argv[])
   ds::register_commands(arg_parser.get_root_command());
   job::register_commands(arg_parser.get_root_command());
   uss::register_commands(arg_parser.get_root_command());
-  time_cmd::register_commands(arg_parser.get_root_command());  // Add this line
+  sample::register_commands(arg_parser.get_root_command());  // Add this line
 
   // ... rest of main ...
 }
@@ -203,10 +133,10 @@ int main(int argc, char *argv[])
 Edit `native/c/makefile` to include your new source file in the build:
 
 ```makefile
-# Find the line with command object files and add time.o
+# Find the line with command object files and add sample.o
 COMMAND_OBJS = commands/ds.o commands/job.o commands/uss.o \
                commands/tso.o commands/console.o commands/tool.o \
-               commands/core.o commands/time.o
+               commands/core.o commands/sample.o
 ```
 
 ---
@@ -234,20 +164,17 @@ npm run z:build
 Once compiled, you can test the command directly on z/OS:
 
 ```bash
-# Test with UTC timezone
-./zowex get-time UTC
+# Test simple ping
+./zowex ping
 
 # Expected output:
-# Date: 2025-10-04
-# Time: 18:23:45
-# Timezone: UTC
+# PONG: hello at Mon Oct  6 14:23:45 2025
 
-# Test with a different timezone
-./zowex get-time America/New_York
+# Test with custom message
+./zowex ping --message "Hello, world!"
 
-# Test with invalid timezone
-./zowex get-time InvalidTimezone
-# Should show an error message
+# Expected output:
+# PONG: Hello, world! at Mon Oct  6 14:23:45 2025
 ```
 
 ---
@@ -264,14 +191,14 @@ The middleware (`zowed`) is a C++ application that provides remote access to zow
 
 Before implementing the middleware integration, design the request and response structure for your command. This defines how clients will interact with your command over JSON-RPC. Later in [Step 4.1](#step-41-define-sdk-types), we'll formalize these as TypeScript types.
 
-For our `zowex get-time` command, we'll create a JSON-RPC method called `getTime` with:
+For our `zowex ping` command, we'll create a JSON-RPC method called `ping` with:
 
 **Request structure:**
 
 ```json
 {
-  "command": "getTime",
-  "timezone": "America/New_York"
+  "command": "ping",
+  "message": "Hello, world!"
 }
 ```
 
@@ -279,20 +206,19 @@ For our `zowex get-time` command, we'll create a JSON-RPC method called `getTime
 
 ```json
 {
-  "date": "2025-10-04",
-  "time": "14:23:45",
-  "timezone": "America/New_York"
+  "data": "PONG: Hello, world!",
+  "timestamp": "Mon Oct  6 14:23:45 2025"
 }
 ```
 
 Key considerations when planning your API:
 
-- **Method name**: Use camelCase for the RPC method name (`getTime`)
-- **CLI mapping**: The `timezone` parameter will map to the CLI's positional argument
+- **Method name**: Use camelCase for the RPC method name (in this case `ping` works for both)
+- **CLI mapping**: The `message` parameter will map to the CLI's optional `--message` flag
 - **Response shape**: Include all relevant data from the CLI's return object
 - **Consistency**: Follow patterns from existing commands (e.g., `listDatasets`, `submitJob`)
 
-The `CommandBuilder` will help us map these RPC parameters to the CLI command arguments that `zowex get-time` expects.
+The `CommandBuilder` will help us map these RPC parameters to the CLI command arguments that `zowex ping` expects.
 
 ### Step 3.2: Register the Command in zowed
 
@@ -304,25 +230,25 @@ Edit `native/zowed/commands.cpp` to register your command with the dispatcher:
 #include "../c/commands/ds.hpp"
 #include "../c/commands/job.hpp"
 #include "../c/commands/uss.hpp"
-#include "../c/commands/time.hpp"  // Add this include
+#include "../c/commands/sample.hpp"  // Add this include
 
 // ... existing registration functions ...
 
-void register_time_commands(CommandDispatcher &dispatcher)
+void register_sample_commands(CommandDispatcher &dispatcher)
 {
-  dispatcher.register_command("getTime",
-                              CommandBuilder(time_cmd::handle_get_time)
-                                  .set_default("timezone", "UTC"));
+  dispatcher.register_command("ping",
+                              CommandBuilder(sample::handle_ping)
+                                  .set_default("message", "hello from zowed"));
 }
 
-// In the main registration function, call register_time_commands:
+// In the main registration function, call register_ping_commands:
 void register_all_commands(CommandDispatcher &dispatcher)
 {
   register_ds_commands(dispatcher);
   register_job_commands(dispatcher);
   register_uss_commands(dispatcher);
   register_cmd_commands(dispatcher);
-  register_time_commands(dispatcher);  // Add this line
+  register_ping_commands(dispatcher);  // Add this line
 }
 ```
 
@@ -357,42 +283,38 @@ npm run z:build:zowed
 
 ### Step 4.1: Define SDK Types
 
-Create TypeScript type definitions for your new command in `packages/sdk/src/doc/gen/time.ts`:
+Create TypeScript type definitions for your new command in `packages/sdk/src/doc/gen/ping.ts`:
 
-**`packages/sdk/src/doc/gen/time.ts`:**
+**`packages/sdk/src/doc/gen/ping.ts`:**
 
 ```typescript
 import type * as common from "./common";
 
-export interface GetTimeRequest extends common.CommandRequest {
-  command: "getTime";
+export interface PingRequest extends common.CommandRequest {
+  command: "ping";
   /**
-   * Timezone identifier (e.g., 'America/New_York', 'UTC')
-   * @default "UTC"
+   * Optional message to include in ping
+   * @default "hello"
    */
-  timezone?: string;
+  message?: string;
 }
 
-export interface GetTimeResponse extends common.CommandResponse {
+export interface PingResponse extends common.CommandResponse {
   /**
-   * Current date in YYYY-MM-DD format
+   * Data returned from the ping command
    */
-  date: string;
+  data: string;
   /**
-   * Current time in HH:MM:SS format
+   * Timestamp when the ping was processed
    */
-  time: string;
-  /**
-   * Timezone used
-   */
-  timezone: string;
+  timestamp: string;
 }
 ```
 
 You'll also need to export your new types from `packages/sdk/src/doc/index.ts`:
 
 ```typescript
-export * as time from "./gen/time";
+export * as ping from "./gen/ping";
 ```
 
 ### Step 4.2: Add SDK Method
@@ -407,18 +329,17 @@ import type {
   ds,
   jobs,
   uss,
-  time,
+  sample,
 } from "./doc";
-
 export abstract class AbstractRpcClient {
   // ... existing methods (request, ds, jobs, uss, cmds) ...
 
-  public get time() {
+  public get sample() {
     return {
-      getTime: (
-        request: Omit<time.GetTimeRequest, "command">
-      ): Promise<time.GetTimeResponse> =>
-        this.request({ command: "getTime", ...request }),
+      ping: (
+        request: Omit<cmds.PingRequest, "command">
+      ): Promise<cmds.PingResponse> =>
+        this.request({ command: "ping", ...request }),
     };
   }
 }
@@ -428,7 +349,7 @@ export abstract class AbstractRpcClient {
 
 Create a test script to verify your command works end-to-end:
 
-**`test-gettime.ts`:**
+**`test-ping.ts`:**
 
 ```typescript
 import { ZSshClient } from "zowe-native-proto-sdk/src/ZSshClient";
@@ -453,28 +374,27 @@ async function main() {
     await client.connect();
     console.log("Connected to server");
 
-    // Test 1: Get time with default timezone (UTC)
-    console.log("\nTest 1: Default Timezone (UTC)");
-    const defaultResponse = await client.time.getTime({});
-    console.log("  Date:", defaultResponse.date);
-    console.log("  Time:", defaultResponse.time);
-    console.log("  Timezone:", defaultResponse.timezone);
+    // Test 1: Ping with default message
+    console.log("\nTest 1: Default Message");
+    const defaultResponse = await client.sample.ping({});
+    console.log("  Data:", defaultResponse.data);
+    console.log("  Timestamp:", defaultResponse.timestamp);
 
-    // Test 2: Get time in New York
-    console.log("\nTest 2: America/New_York Timezone");
-    const nyResponse = await client.time.getTime({
-      timezone: "America/New_York",
+    // Test 2: Ping with custom message
+    console.log("\nTest 2: Custom Message");
+    const customResponse = await client.sample.ping({
+      message: "Hello, world!",
     });
-    console.log("  Date:", nyResponse.date);
-    console.log("  Time:", nyResponse.time);
-    console.log("  Timezone:", nyResponse.timezone);
+    console.log("  Data:", customResponse.data);
+    console.log("  Timestamp:", customResponse.timestamp);
 
-    // Test 3: Get time in Tokyo
-    console.log("\nTest 3: Asia/Tokyo Timezone");
-    const tokyoResponse = await client.time.getTime({ timezone: "Asia/Tokyo" });
-    console.log("  Date:", tokyoResponse.date);
-    console.log("  Time:", tokyoResponse.time);
-    console.log("  Timezone:", tokyoResponse.timezone);
+    // Test 3: Another custom message
+    console.log("\nTest 3: Another Custom Message");
+    const anotherResponse = await client.sample.ping({
+      message: "Zowe Native Protocol rocks!",
+    });
+    console.log("  Data:", anotherResponse.data);
+    console.log("  Timestamp:", anotherResponse.timestamp);
 
     console.log("\n✅ All tests passed!");
   } catch (error) {
@@ -500,7 +420,7 @@ cd packages/sdk
 npm run build
 
 # Run the test script
-npx tsx test-gettime.ts
+npx tsx test-ping.ts
 ```
 
 Expected output:
@@ -508,20 +428,17 @@ Expected output:
 ```
 Connected to server
 
-Test 1: Default Timezone (UTC)
-  Date: 2025-10-04
-  Time: 18:23:45
-  Timezone: UTC
+Test 1: Default Message
+  Data: PONG: hello from zowed
+  Timestamp: Mon Oct  6 14:23:45 2025
 
-Test 2: America/New_York Timezone
-  Date: 2025-10-04
-  Time: 14:23:45
-  Timezone: America/New_York
+Test 2: Custom Message
+  Data: PONG: Hello, world!
+  Timestamp: Mon Oct  6 14:23:46 2025
 
-Test 3: Asia/Tokyo Timezone
-  Date: 2025-10-05
-  Time: 03:23:45
-  Timezone: Asia/Tokyo
+Test 3: Another Custom Message
+  Data: PONG: Zowe Native Protocol rocks!
+  Timestamp: Mon Oct  6 14:23:47 2025
 
 ✅ All tests passed!
 Disconnected from server
@@ -535,18 +452,30 @@ You've successfully added a new command to the Zowe Native Protocol stack! Here'
 
 1. **Created a low-level C++ command** in `native/c/commands/` that can be invoked directly via `zowex`
 2. **Tested it locally** on z/OS using the zowex CLI
-3. **Registered it with zowed** using the `CommandBuilder` API in `native/zowed/commands.cpp`
-4. **Created TypeScript types** in `packages/sdk/src/doc/gen/` for the SDK
-5. **Added SDK methods** in TypeScript for easy client-side access
-6. **Tested end-to-end** with a sample script
+3. **Planned the JSON-RPC API** to define how clients will interact with your command
+4. **Registered it with zowed** using the `CommandBuilder` API in `native/zowed/commands.cpp`
+5. **Created TypeScript types** in `packages/sdk/src/doc/gen/` for the SDK
+6. **Added SDK methods** in TypeScript for easy client-side access
+7. **Tested end-to-end** with a sample script
 
 ## Key Patterns
 
-- **Separation of concerns**: Library logic is separate from command handling
+- **Simplicity first**: Start with simple commands (like ping) before tackling complex ones
 - **Return objects**: Always set a return object using `context.set_object()` for programmatic access
 - **Error handling**: Use proper return codes (`RTNCD_SUCCESS`, `RTNCD_FAILURE`) and error messages
+- **Default values**: Use `.set_default()` in CommandBuilder to provide sensible defaults for optional parameters
 - **CommandBuilder**: Use the fluent API to map RPC parameters to command arguments
-- **Type safety**: Manually define TypeScript types to ensure consistency between middleware and SDK
+- **Type safety**: Define TypeScript types to ensure consistency between middleware and SDK
+
+## Reference Implementation
+
+For a complete working example that includes all layers (C++ native, SDK, CLI, and VS Code extension), check out the [`examples/add-new-command`](../examples/add-new-command) directory. This includes:
+
+- **C++ command** (`native/c/`) - Example command implementation for zowex
+- **C++ middleware** (`native/zowed/`) - Command registration with the dispatcher
+- **SDK** (`packages/sdk/`) - TypeScript types and client methods
+- **CLI** (`packages/cli/`) - CLI command definition and handler
+- **VS Code Extension** (`packages/vsce/`) - VS Code integration with CommandApi
 
 ## Next Steps
 

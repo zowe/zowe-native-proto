@@ -14,14 +14,14 @@
 #include "../c/commands/ds.hpp"
 #include "../c/commands/job.hpp"
 #include "../c/commands/uss.hpp"
-#include "../c/commands/ping.hpp"
+#include "../c/commands/sample.hpp"
 
 // ... existing registration functions ...
 
-void register_ping_commands(CommandDispatcher &dispatcher)
+void register_sample_commands(CommandDispatcher &dispatcher)
 {
-  dispatcher.register_command("ping", CommandBuilder(ping::handle_ping)
-                                          .set_default("message", "hello"));
+  dispatcher.register_command("ping", CommandBuilder(sample::handle_ping)
+                                          .set_default("message", "hello from zowed"));
 }
 
 void register_all_commands(CommandDispatcher &dispatcher)
@@ -30,5 +30,5 @@ void register_all_commands(CommandDispatcher &dispatcher)
   register_job_commands(dispatcher);
   register_uss_commands(dispatcher);
   register_cmd_commands(dispatcher);
-  register_ping_commands(dispatcher);
+  register_sample_commands(dispatcher);
 }
