@@ -6,8 +6,12 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
-- `c`: Added `zowex tool list-parmlib` command to list parmlib concatenation data sets. [#572](https://github.com/zowe/zowe-native-proto/pull/572)
 - `c`: Fixed issue where uploading changes to a PDS member removed its ISPF stats. [#556](https://github.com/zowe/zowe-native-proto/issues/556)
+
+## `0.1.10`
+
+- `c`: Added `zowex tool list-parmlib` command to list parmlib concatenation data sets.
+- Added plug-in support to the `zowex` backend. Plug-ins can contribute commands that users invoke through `zowex`. For more information on how to create and register a plug-in with `zowex`, please refer to the `plugins.md` file in the `doc/` root-level folder. [#148](https://github.com/zowe/zowe-native-proto/issues/148)
 
 ## `0.1.9`
 

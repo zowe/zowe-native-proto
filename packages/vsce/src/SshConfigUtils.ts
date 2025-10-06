@@ -238,4 +238,14 @@ export class VscePromptApi extends AbstractConfigManager {
                 return false;
         }
     }
+
+    protected storeServerPath(host: string, path: string): void {
+        const config = getVsceConfig();
+        let serverPathMap: Record<string, string> = getVsceConfig().get("serverInstallPath") ?? {};
+        if (!serverPathMap) {
+            serverPathMap = {};
+        }
+        serverPathMap[host] = path;
+        config.update("serverInstallPath", serverPathMap, vscode.ConfigurationTarget.Global);
+    }
 }
