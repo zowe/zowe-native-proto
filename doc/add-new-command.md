@@ -256,10 +256,45 @@ Once compiled, you can test the command directly on z/OS:
 
 The middleware (`zowed`) is a C++ application that provides remote access to zowex commands via JSON-RPC over SSH. To expose your command through the middleware, you need to:
 
-1. Register the command with the C++ dispatcher using `CommandBuilder`
-2. Define TypeScript types for the SDK
+1. Plan your request and response structure
+2. Register the command with the C++ dispatcher using `CommandBuilder`
+3. Define TypeScript types for the SDK
 
-### Step 3.1: Register the Command in zowed
+### Step 3.1: Plan Your JSON-RPC Types
+
+Before implementing the middleware integration, design the request and response structure for your command. This defines how clients will interact with your command over JSON-RPC. Later in [Step 4.1](#step-41-define-sdk-types), we'll formalize these as TypeScript types.
+
+For our `zowex get-time` command, we'll create a JSON-RPC method called `getTime` with:
+
+**Request structure:**
+
+```json
+{
+  "command": "getTime",
+  "timezone": "America/New_York"
+}
+```
+
+**Response structure:**
+
+```json
+{
+  "date": "2025-10-04",
+  "time": "14:23:45",
+  "timezone": "America/New_York"
+}
+```
+
+Key considerations when planning your API:
+
+- **Method name**: Use camelCase for the RPC method name (`getTime`)
+- **CLI mapping**: The `timezone` parameter will map to the CLI's positional argument
+- **Response shape**: Include all relevant data from the CLI's return object
+- **Consistency**: Follow patterns from existing commands (e.g., `listDatasets`, `submitJob`)
+
+The `CommandBuilder` will help us map these RPC parameters to the CLI command arguments that `zowex get-time` expects.
+
+### Step 3.2: Register the Command in zowed
 
 Edit `native/zowed/commands.cpp` to register your command with the dispatcher:
 
@@ -276,7 +311,8 @@ Edit `native/zowed/commands.cpp` to register your command with the dispatcher:
 void register_time_commands(CommandDispatcher &dispatcher)
 {
   dispatcher.register_command("getTime",
-                              CommandBuilder(time_cmd::handle_get_time));
+                              CommandBuilder(time_cmd::handle_get_time)
+                                  .set_default("timezone", "UTC"));
 }
 
 // In the main registration function, call register_time_commands:
@@ -299,7 +335,7 @@ The `CommandBuilder` provides a fluent API for mapping RPC parameters to command
 - `.read_stdout(name, base64)` - Read the command's stdout into the RPC response
 - `.handle_fifo(rpcId, argName, mode)` - Create a FIFO pipe for streaming data
 
-### Step 3.2: Build the Middleware
+### Step 3.3: Build the Middleware
 
 Upload your new source code:
 
@@ -332,8 +368,9 @@ export interface GetTimeRequest extends common.CommandRequest {
   command: "getTime";
   /**
    * Timezone identifier (e.g., 'America/New_York', 'UTC')
+   * @default "UTC"
    */
-  timezone: string;
+  timezone?: string;
 }
 
 export interface GetTimeResponse extends common.CommandResponse {
@@ -416,12 +453,12 @@ async function main() {
     await client.connect();
     console.log("Connected to server");
 
-    // Test 1: Get time in UTC
-    console.log("\nTest 1: UTC Timezone");
-    const utcResponse = await client.time.getTime({ timezone: "UTC" });
-    console.log("  Date:", utcResponse.date);
-    console.log("  Time:", utcResponse.time);
-    console.log("  Timezone:", utcResponse.timezone);
+    // Test 1: Get time with default timezone (UTC)
+    console.log("\nTest 1: Default Timezone (UTC)");
+    const defaultResponse = await client.time.getTime({});
+    console.log("  Date:", defaultResponse.date);
+    console.log("  Time:", defaultResponse.time);
+    console.log("  Timezone:", defaultResponse.timezone);
 
     // Test 2: Get time in New York
     console.log("\nTest 2: America/New_York Timezone");
@@ -471,7 +508,7 @@ Expected output:
 ```
 Connected to server
 
-Test 1: UTC Timezone
+Test 1: Default Timezone (UTC)
   Date: 2025-10-04
   Time: 18:23:45
   Timezone: UTC
