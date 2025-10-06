@@ -136,3 +136,11 @@ void register_cmd_commands(CommandDispatcher &dispatcher)
   // TODO Support APF authorized commands with zoweax
   // dispatcher.register_command("consoleCommand", CommandBuilder(console::handle_console_issue));
 }
+
+void register_all_commands(CommandDispatcher &dispatcher)
+{
+  register_ds_commands(dispatcher);
+  register_job_commands(dispatcher);
+  register_uss_commands(dispatcher);
+  register_cmd_commands(dispatcher);
+}

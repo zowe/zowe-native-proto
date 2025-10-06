@@ -181,10 +181,7 @@ public:
 
     // Register all command handlers
     LOG_DEBUG("Registering command handlers");
-    register_ds_commands(dispatcher);
-    register_job_commands(dispatcher);
-    register_uss_commands(dispatcher);
-    register_cmd_commands(dispatcher);
+    register_all_commands(dispatcher);
 
     // Create worker pool
     workerPool.reset(new WorkerPool(options.numWorkers));

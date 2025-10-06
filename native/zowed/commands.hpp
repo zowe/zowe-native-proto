@@ -17,27 +17,9 @@ class CommandDispatcher;
 class MiddlewareContext;
 
 /**
- * Register all data set related commands with the dispatcher
+ * Register all commands with the dispatcher
  * @param dispatcher The CommandDispatcher instance to register commands with
  */
-void register_ds_commands(CommandDispatcher &dispatcher);
-
-/**
- * Register all job related commands with the dispatcher
- * @param dispatcher The CommandDispatcher instance to register commands with
- */
-void register_job_commands(CommandDispatcher &dispatcher);
-
-/**
- * Register all USS (Unix System Services) related commands with the dispatcher
- * @param dispatcher The CommandDispatcher instance to register commands with
- */
-void register_uss_commands(CommandDispatcher &dispatcher);
-
-/**
- * Register all command related commands with the dispatcher
- * @param dispatcher The CommandDispatcher instance to register commands with
- */
-void register_cmd_commands(CommandDispatcher &dispatcher);
+void register_all_commands(CommandDispatcher &dispatcher);
 
 #endif
