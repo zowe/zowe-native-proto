@@ -1610,38 +1610,60 @@ short zusf_get_id_from_user_or_group(const string &user_or_group, bool is_user)
 }
 
 /**
-* Helper to convert user string to UID.
-* Accepts empty (→ -1), numeric UID, or name (getpwnam).
-* Returns true if resolved or empty, false if invalid/overflow.
+ * Helper to convert user string to UID.
+ * Accepts empty (→ -1), numeric UID, or name (getpwnam).
+ * Returns true if resolved or empty, false if invalid/overflow.
  */
-static bool resolve_uid_from_str(const std::string& s, uid_t& out) {
-  if (s.empty()) { out = (uid_t)-1; return true; } // not user provided
+static bool resolve_uid_from_str(const std::string &s, uid_t &out)
+{
+  if (s.empty())
+  {
+    out = (uid_t)-1;
+    return true;
+  } // not user provided
   bool digits = s.find_first_not_of("0123456789") == std::string::npos;
-  if (digits) {
+  if (digits)
+  {
     unsigned long v = strtoul(s.c_str(), nullptr, 10);
-    if (v > std::numeric_limits<uid_t>::max()) return false;
+    if (v > std::numeric_limits<uid_t>::max())
+      return false;
     out = static_cast<uid_t>(v);
     return true;
   }
-  if (passwd* pw = getpwnam(s.c_str())) { out = pw->pw_uid; return true; }
+  if (passwd *pw = getpwnam(s.c_str()))
+  {
+    out = pw->pw_uid;
+    return true;
+  }
   return false;
 }
 
 /**
-* Helper to convert group string to GID.
-* Accepts empty (→ -1), numeric GID, or name (getgrnam).
-* Returns true if resolved or empty, false if invalid/overflow.
+ * Helper to convert group string to GID.
+ * Accepts empty (→ -1), numeric GID, or name (getgrnam).
+ * Returns true if resolved or empty, false if invalid/overflow.
  */
-static bool resolve_gid_from_str(const std::string& s, gid_t& out) {
-  if (s.empty()) { out = (gid_t)-1; return true; } // no group provided
+static bool resolve_gid_from_str(const std::string &s, gid_t &out)
+{
+  if (s.empty())
+  {
+    out = (gid_t)-1;
+    return true;
+  } // no group provided
   bool digits = s.find_first_not_of("0123456789") == std::string::npos;
-  if (digits) {
+  if (digits)
+  {
     unsigned long v = strtoul(s.c_str(), nullptr, 10);
-    if (v > std::numeric_limits<gid_t>::max()) return false;
+    if (v > std::numeric_limits<gid_t>::max())
+      return false;
     out = static_cast<gid_t>(v);
     return true;
   }
-  if (group* gr = getgrnam(s.c_str())) { out = gr->gr_gid; return true; }
+  if (group *gr = getgrnam(s.c_str()))
+  {
+    out = gr->gr_gid;
+    return true;
+  }
   return false; // invalid group string
 }
 
@@ -1672,8 +1694,9 @@ int zusf_chown_uss_file_or_dir(ZUSF *zusf, std::string file, std::string owner, 
   std::string userPart = owner;
   std::string groupPart;
   const auto colon_pos = owner.find(':');
-  if (colon_pos != std::string::npos) {
-    userPart  = owner.substr(0, colon_pos);
+  if (colon_pos != std::string::npos)
+  {
+    userPart = owner.substr(0, colon_pos);
     groupPart = owner.substr(colon_pos + 1);
   }
 
@@ -1681,32 +1704,37 @@ int zusf_chown_uss_file_or_dir(ZUSF *zusf, std::string file, std::string owner, 
   gid_t gid;
 
   // Resolve user to UID (numeric or name); return error on invalid input
-  if (!resolve_uid_from_str(userPart, uid)) {
+  if (!resolve_uid_from_str(userPart, uid))
+  {
     errno = EINVAL;
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "chown error: invalid user '%s'", userPart.c_str());
     return RTNCD_FAILURE;
   }
 
   // Resolve group to GID (numeric or name); return error on invalid input
-  if (!resolve_gid_from_str(groupPart, gid)) {
+  if (!resolve_gid_from_str(groupPart, gid))
+  {
     errno = EINVAL;
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "chown error: invalid group '%s'", groupPart.c_str());
     return RTNCD_FAILURE;
   }
 
   // If both were empty, refuse (otherwise chown(-1,-1) is a no-op)
-  if (uid == (uid_t)-1 && gid == (gid_t)-1) {
+  if (uid == (uid_t)-1 && gid == (gid_t)-1)
+  {
     errno = EINVAL;
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "chown error: neither user nor group specified");
     return RTNCD_FAILURE;
   }
 
   // Preserve current group explicitly if only user was supplied
-  if (gid == (gid_t)-1) gid = file_stats.st_gid;
+  if (gid == (gid_t)-1)
+    gid = file_stats.st_gid;
 
   // Attempt chown
   const auto rc = chown(file.c_str(), uid, gid);
-  if (rc != 0) {
+  if (rc != 0)
+  {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "chown failed for path '%s', errno %d", file.c_str(), errno);
     return RTNCD_FAILURE;
   }
@@ -1727,8 +1755,8 @@ int zusf_chown_uss_file_or_dir(ZUSF *zusf, std::string file, std::string owner, 
       if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0)
       {
         const string child_path =
-          (file.length() > 0 && file[file.length() - 1] == '/') ? file + string(entry->d_name)
-                               : file + string("/") + string(entry->d_name);
+            (file.length() > 0 && file[file.length() - 1] == '/') ? file + string(entry->d_name)
+                                                                  : file + string("/") + string(entry->d_name);
 
         struct stat child_stats;
         if (stat(child_path.c_str(), &child_stats) == -1)
@@ -1740,7 +1768,7 @@ int zusf_chown_uss_file_or_dir(ZUSF *zusf, std::string file, std::string owner, 
 
         // Propagate chown to children, recursing into subdirectories
         const auto child_rc =
-          zusf_chown_uss_file_or_dir(zusf, child_path, owner, S_ISDIR(child_stats.st_mode));
+            zusf_chown_uss_file_or_dir(zusf, child_path, owner, S_ISDIR(child_stats.st_mode));
         if (child_rc != 0)
         {
           closedir(dir);

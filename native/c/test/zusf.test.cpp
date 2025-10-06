@@ -29,151 +29,173 @@ using namespace ztst;
 void zusf_tests()
 {
   describe("zusf_chown_uss_file_or_dir tests",
-          [&]() -> void
-          {
-            ZUSF zusf;
-            memset(&zusf, 0, sizeof(zusf));
+           [&]() -> void
+           {
+             ZUSF zusf;
+             memset(&zusf, 0, sizeof(zusf));
 
-            const std::string tmp_base = "/tmp/zusf_chown_tests";
-            const std::string file_path = tmp_base + "/one.txt";
-            const std::string dir_path  = tmp_base + "/tree";
-            const std::string dir_a     = dir_path + "/subA";
-            const std::string dir_b     = dir_path + "/subA/subB";
-            const std::string f_top     = dir_path + "/file_top.txt";
-            const std::string f_mid     = dir_a    + "/file_mid.txt";
-            const std::string f_bot     = dir_b    + "/file_bottom.txt";
+             const std::string tmp_base = "/tmp/zusf_chown_tests";
+             const std::string file_path = tmp_base + "/one.txt";
+             const std::string dir_path = tmp_base + "/tree";
+             const std::string dir_a = dir_path + "/subA";
+             const std::string dir_b = dir_path + "/subA/subB";
+             const std::string f_top = dir_path + "/file_top.txt";
+             const std::string f_mid = dir_a + "/file_mid.txt";
+             const std::string f_bot = dir_b + "/file_bottom.txt";
 
-            // Ensure clean slate
-            zusf_delete_uss_item(zusf, tmp_base, true);
-            mkdir(tmp_base.c_str(), 0755);
+             // Ensure clean slate
+             zusf_delete_uss_item(zusf, tmp_base, true);
+             mkdir(tmp_base.c_str(), 0755);
 
-            // Discover current primary group (gid and name)
-            gid_t primary_gid = getgid();
-            struct group *gr = getgrgid(primary_gid);
-            const char *primary_group_name = (gr && gr->gr_name) ? gr->gr_name : nullptr;
+             // Discover current primary group (gid and name)
+             gid_t primary_gid = getgid();
+             struct group *gr = getgrgid(primary_gid);
+             const char *primary_group_name = (gr && gr->gr_name) ? gr->gr_name : nullptr;
 
-            it("should fail when path does not exist",
-              [&]() -> void
-              {
-                std::string not_there = tmp_base + "/does_not_exist.txt";
-                int rc = zusf_chown_uss_file_or_dir(&zusf, not_there, ":somegroup", false);
-                Expect(rc).ToBe(RTNCD_FAILURE);
-                Expect(std::string(zusf.diag.e_msg)).ToContain("does not exist");
-              });
-
-            it("should fail for invalid user name",
-              [&]() -> void
-              {
-                // Create a real file to exercise the user validation path
+             it("should fail when path does not exist",
+                [&]() -> void
                 {
-                  std::ofstream f(file_path); f << "x"; f.close();
-                }
-                int rc = zusf_chown_uss_file_or_dir(&zusf, file_path, "nosuchuser_xyz", false);
-                Expect(rc).ToBe(RTNCD_FAILURE);
-                Expect(std::string(zusf.diag.e_msg)).ToContain("invalid user 'nosuchuser_xyz'");
-                unlink(file_path.c_str());
-              });
+                  std::string not_there = tmp_base + "/does_not_exist.txt";
+                  int rc = zusf_chown_uss_file_or_dir(&zusf, not_there, ":somegroup", false);
+                  Expect(rc).ToBe(RTNCD_FAILURE);
+                  Expect(std::string(zusf.diag.e_msg)).ToContain("does not exist");
+                });
 
-            it("should fail for invalid group name",
-              [&]() -> void
-              {
+             it("should fail for invalid user name",
+                [&]() -> void
                 {
-                  std::ofstream f(file_path); f << "x"; f.close();
-                }
-                int rc = zusf_chown_uss_file_or_dir(&zusf, file_path, ":nosuchgroup_xyz", false);
-                Expect(rc).ToBe(RTNCD_FAILURE);
-                Expect(std::string(zusf.diag.e_msg)).ToContain("invalid group 'nosuchgroup_xyz'");
-                unlink(file_path.c_str());
-              });
+                  // Create a real file to exercise the user validation path
+                  {
+                    std::ofstream f(file_path);
+                    f << "x";
+                    f.close();
+                  }
+                  int rc = zusf_chown_uss_file_or_dir(&zusf, file_path, "nosuchuser_xyz", false);
+                  Expect(rc).ToBe(RTNCD_FAILURE);
+                  Expect(std::string(zusf.diag.e_msg)).ToContain("invalid user 'nosuchuser_xyz'");
+                  unlink(file_path.c_str());
+                });
 
-            it("should fail for no-op guard ':' (no user or group specified, empty)",
-              [&]() -> void
-              {
+             it("should fail for invalid group name",
+                [&]() -> void
                 {
-                  std::ofstream f(file_path); f << "x"; f.close();
-                }
-                int rc = zusf_chown_uss_file_or_dir(&zusf, file_path, ":", false);
-                Expect(rc).ToBe(RTNCD_FAILURE);
-                Expect(std::string(zusf.diag.e_msg)).ToContain("neither user nor group specified");
-                unlink(file_path.c_str());
-              });
+                  {
+                    std::ofstream f(file_path);
+                    f << "x";
+                    f.close();
+                  }
+                  int rc = zusf_chown_uss_file_or_dir(&zusf, file_path, ":nosuchgroup_xyz", false);
+                  Expect(rc).ToBe(RTNCD_FAILURE);
+                  Expect(std::string(zusf.diag.e_msg)).ToContain("invalid group 'nosuchgroup_xyz'");
+                  unlink(file_path.c_str());
+                });
 
-            it("should fail on directory without --recursive",
-              [&]() -> void
-              {
-                mkdir(dir_path.c_str(), 0755);
-                int rc = zusf_chown_uss_file_or_dir(&zusf, dir_path, ":somegroup", false);
-                Expect(rc).ToBe(RTNCD_FAILURE);
-                Expect(std::string(zusf.diag.e_msg)).ToContain("is a folder and recursive is false");
-                rmdir(dir_path.c_str());
-              });
+             it("should fail for no-op guard ':' (no user or group specified, empty)",
+                [&]() -> void
+                {
+                  {
+                    std::ofstream f(file_path);
+                    f << "x";
+                    f.close();
+                  }
+                  int rc = zusf_chown_uss_file_or_dir(&zusf, file_path, ":", false);
+                  Expect(rc).ToBe(RTNCD_FAILURE);
+                  Expect(std::string(zusf.diag.e_msg)).ToContain("neither user nor group specified");
+                  unlink(file_path.c_str());
+                });
 
-            it("should chown group-only on a single file when caller owns it",
-              [&]() -> void
-              {
-                if (!primary_group_name) {
-                  // If we cannot resolve a group name, skip meaningfully
-                  std::cout << "[SKIP] primary group name not available\n";
-                  return;
-                }
+             it("should fail on directory without --recursive",
+                [&]() -> void
+                {
+                  mkdir(dir_path.c_str(), 0755);
+                  int rc = zusf_chown_uss_file_or_dir(&zusf, dir_path, ":somegroup", false);
+                  Expect(rc).ToBe(RTNCD_FAILURE);
+                  Expect(std::string(zusf.diag.e_msg)).ToContain("is a folder and recursive is false");
+                  rmdir(dir_path.c_str());
+                });
 
-                { std::ofstream f(file_path); f << "hello"; }
+             it("should chown group-only on a single file when caller owns it",
+                [&]() -> void
+                {
+                  if (!primary_group_name)
+                  {
+                    // If we cannot resolve a group name, skip meaningfully
+                    std::cout << "[SKIP] primary group name not available\n";
+                    return;
+                  }
 
-                std::string owner_str = std::string(":") + primary_group_name;
-                int rc = zusf_chown_uss_file_or_dir(&zusf, file_path, owner_str, false);
-                Expect(rc).ToBe(RTNCD_SUCCESS);
+                  {
+                    std::ofstream f(file_path);
+                    f << "hello";
+                  }
 
-                struct stat st{};
-                Expect(stat(file_path.c_str(), &st)).ToBe(0);
-                Expect((int)st.st_gid).ToBe((int)primary_gid);
+                  std::string owner_str = std::string(":") + primary_group_name;
+                  int rc = zusf_chown_uss_file_or_dir(&zusf, file_path, owner_str, false);
+                  Expect(rc).ToBe(RTNCD_SUCCESS);
 
-                unlink(file_path.c_str());
-              });
-
-            it("should chown group-only recursively over a directory tree",
-              [&]() -> void
-              {
-                if (!primary_group_name) {
-                  std::cout << "[SKIP] primary group name not available\n";
-                  return;
-                }
-
-                // project_dir/subdir1/subdir2 with three files
-                mkdir(dir_path.c_str(), 0755);
-                mkdir(dir_a.c_str(), 0755);
-                mkdir(dir_b.c_str(), 0755);
-                { std::ofstream f(f_top); f << "first"; }
-                { std::ofstream f(f_mid); f << "second"; }
-                { std::ofstream f(f_bot); f << "third"; }
-
-                std::string owner_str = std::string(":") + primary_group_name;
-                int rc = zusf_chown_uss_file_or_dir(&zusf, dir_path, owner_str, true);
-                Expect(rc).ToBe(RTNCD_SUCCESS);
-
-                // Verify all dirs and files now have primary_gid
-                auto expect_gid = [&](const std::string& p){
-                  struct stat st{}; Expect(stat(p.c_str(), &st)).ToBe(0);
+                  struct stat st{};
+                  Expect(stat(file_path.c_str(), &st)).ToBe(0);
                   Expect((int)st.st_gid).ToBe((int)primary_gid);
-                };
-                expect_gid(dir_path);
-                expect_gid(dir_a);
-                expect_gid(dir_b);
-                expect_gid(f_top);
-                expect_gid(f_mid);
-                expect_gid(f_bot);
 
-                // Cleanup
-                unlink(f_bot.c_str());
-                unlink(f_mid.c_str());
-                unlink(f_top.c_str());
-                rmdir(dir_b.c_str());
-                rmdir(dir_a.c_str());
-                rmdir(dir_path.c_str());
-              });
+                  unlink(file_path.c_str());
+                });
 
-            // Final cleanup
-            rmdir(tmp_base.c_str());
-          });
+             it("should chown group-only recursively over a directory tree",
+                [&]() -> void
+                {
+                  if (!primary_group_name)
+                  {
+                    std::cout << "[SKIP] primary group name not available\n";
+                    return;
+                  }
+
+                  // project_dir/subdir1/subdir2 with three files
+                  mkdir(dir_path.c_str(), 0755);
+                  mkdir(dir_a.c_str(), 0755);
+                  mkdir(dir_b.c_str(), 0755);
+                  {
+                    std::ofstream f(f_top);
+                    f << "first";
+                  }
+                  {
+                    std::ofstream f(f_mid);
+                    f << "second";
+                  }
+                  {
+                    std::ofstream f(f_bot);
+                    f << "third";
+                  }
+
+                  std::string owner_str = std::string(":") + primary_group_name;
+                  int rc = zusf_chown_uss_file_or_dir(&zusf, dir_path, owner_str, true);
+                  Expect(rc).ToBe(RTNCD_SUCCESS);
+
+                  // Verify all dirs and files now have primary_gid
+                  auto expect_gid = [&](const std::string &p)
+                  {
+                    struct stat st{};
+                    Expect(stat(p.c_str(), &st)).ToBe(0);
+                    Expect((int)st.st_gid).ToBe((int)primary_gid);
+                  };
+                  expect_gid(dir_path);
+                  expect_gid(dir_a);
+                  expect_gid(dir_b);
+                  expect_gid(f_top);
+                  expect_gid(f_mid);
+                  expect_gid(f_bot);
+
+                  // Cleanup
+                  unlink(f_bot.c_str());
+                  unlink(f_mid.c_str());
+                  unlink(f_top.c_str());
+                  rmdir(dir_b.c_str());
+                  rmdir(dir_a.c_str());
+                  rmdir(dir_path.c_str());
+                });
+
+             // Final cleanup
+             rmdir(tmp_base.c_str());
+           });
 
   describe("zusf_chmod_uss_file_or_dir tests",
            [&]() -> void
