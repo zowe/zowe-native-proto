@@ -4,6 +4,10 @@ All notable changes to the Client code for "zowe-native-proto-sdk" are documente
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+
+- Replaced `this.uninstallServer` with the class reference `ZSshUtils.installServer` in `ZSshUtils.ts`.
+
 ## `0.1.10`
 
 - Added a `promptForDeployDirectory` function to prompt the users to choose a deploy directory aside from the default.[#527] (https://github.com/zowe/zowe-native-proto/issues/527)
