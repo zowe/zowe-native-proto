@@ -119,7 +119,7 @@ export class ZSshUtils {
                     if (!shouldRetry) {
                         throw new Error(errMsg);
                     }
-                    return this.installServer(session, serverPath, localDir, options);
+                    return ZSshUtils.installServer(session, serverPath, localDir, options);
                 } else {
                     throw new Error(errMsg);
                 }
@@ -177,7 +177,7 @@ export class ZSshUtils {
                     if (!shouldContinue) {
                         throw new Error(errMsg);
                     }
-                    return this.uninstallServer(session, serverPath, options);
+                    return ZSshUtils.uninstallServer(session, serverPath, options);
                 } else {
                     throw new Error(errMsg);
                 }
