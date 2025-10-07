@@ -13,7 +13,6 @@
 // ZJson Test Suite - Testing zjson.hpp API functionality
 // ============================================================================
 
-#include "zjson.test.hpp"
 #include "ztest.hpp"
 #include <string>
 #include <vector>
