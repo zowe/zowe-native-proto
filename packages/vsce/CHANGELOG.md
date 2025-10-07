@@ -6,7 +6,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
-- Added unit tests for `SshConfigUtils.ts` file.
+- Added unit tests for `SshConfigUtils.ts` file [#586] (https://github.com/zowe/zowe-native-proto/pull/586)
 
 ## `0.1.10`
 
