@@ -522,6 +522,7 @@ void register_commands(parser::Command &root_command)
 
   // List subcommand
   auto job_list_cmd = command_ptr(new Command("list", "list jobs"));
+  job_list_cmd->add_alias("ls");
   job_list_cmd->add_keyword_arg("owner", make_aliases("--owner", "-o"), "filter by owner", ArgType_Single, false);
   job_list_cmd->add_keyword_arg("prefix", make_aliases("--prefix", "-p"), "filter by prefix", ArgType_Single, false);
   job_list_cmd->add_keyword_arg(MAX_ENTRIES);

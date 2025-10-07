@@ -119,9 +119,10 @@ int handle_uss_list(InvocationContext &context)
   int rc = 0;
   string uss_file = context.get<std::string>("file-path", "");
 
-  ListOptions list_options = {0};
+  ListOptions list_options;
   list_options.all_files = context.get<bool>("all", false);
   list_options.long_format = context.get<bool>("long", false);
+  list_options.max_depth = context.get<long long>("depth", 1);
 
   const auto use_csv_format = context.get<bool>("response-format-csv", false);
 
@@ -542,9 +543,11 @@ void register_commands(parser::Command &root_command)
 
   // List subcommand
   auto uss_list_cmd = command_ptr(new Command("list", "list USS files and directories"));
+  uss_list_cmd->add_alias("ls");
   uss_list_cmd->add_positional_arg(FILE_PATH);
   uss_list_cmd->add_keyword_arg("all", make_aliases("--all", "-a"), "list all files and directories", ArgType_Flag, false, ArgValue(false));
   uss_list_cmd->add_keyword_arg("long", make_aliases("--long", "-l"), "list long format", ArgType_Flag, false, ArgValue(false));
+  uss_list_cmd->add_keyword_arg("depth", make_aliases("--depth"), "depth of subdirectories to list", ArgType_Single, false, ArgValue((long long)1));
   uss_list_cmd->add_keyword_arg(RESPONSE_FORMAT_CSV);
   uss_list_cmd->set_handler(handle_uss_list);
   uss_group->add_command(uss_list_cmd);
