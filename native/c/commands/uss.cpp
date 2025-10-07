@@ -121,7 +121,7 @@ int handle_uss_list(InvocationContext &context)
   ListOptions list_options;
   list_options.all_files = context.get<bool>("all", false);
   list_options.long_format = context.get<bool>("long", false);
-  list_options.max_depth = context.get<int>("depth", 1);
+  list_options.max_depth = context.get<long long>("depth", 1);
 
   const auto use_csv_format = context.get<bool>("response-format-csv", false);
 
