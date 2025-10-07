@@ -6,7 +6,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
-- Replaced `this.uninstallServer` with the class reference `ZSshUtils.installServer` in `ZSshUtils.ts`.
+- Replaced `this.uninstallServer` with the class reference `ZSshUtils.uninstallServer` in `ZSshUtils.ts`.
 
 ## `0.1.10`
 
