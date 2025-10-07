@@ -301,7 +301,7 @@ void zusf_tests()
                   string result = zusf_format_ls_time(test_time, true);
 
                   // Should be in format "2024-01-01T12:00:00"
-                  Expect(result).ToBe("2024-01-01T12:00:00");
+                  Expect(result).ToBe("2024-01-01T12:00:00Z");
                 });
 
              it("should handle zero timestamp in CSV format",
@@ -312,7 +312,7 @@ void zusf_tests()
                   string result = zusf_format_ls_time(test_time, true);
 
                   // Should be in format "1970-01-01T00:00:00"
-                  Expect(result).ToBe("1970-01-01T00:00:00");
+                  Expect(result).ToBe("1970-01-01T00:00:00Z");
                 });
 
              it("should handle negative timestamp gracefully",
@@ -323,7 +323,7 @@ void zusf_tests()
                   string result = zusf_format_ls_time(test_time, true);
 
                   // Should fallback to epoch time
-                  Expect(result).ToBe("1970-01-01T00:00:00");
+                  Expect(result).ToBe("1970-01-01T00:00:00Z");
                 });
 
              it("should handle very large timestamp",
@@ -335,7 +335,7 @@ void zusf_tests()
                   string result = zusf_format_ls_time(test_time, true);
 
                   // Should format correctly
-                  Expect(result).ToBe("2038-01-19T03:14:07");
+                  Expect(result).ToBe("2038-01-19T03:14:07Z");
                 });
            });
 
@@ -438,7 +438,7 @@ void zusf_tests()
                   struct stat file_stats;
                   stat(test_file.c_str(), &file_stats);
 
-                  ListOptions options = {false, false}; // not all files, not long format
+                  ListOptions options = {false, false, 1}; // not all files, not long format, no recursion
                   string result = zusf_format_file_entry(&zusf, file_stats, test_file, "testfile.txt", options, false);
 
                   // Short format should just be filename + newline
@@ -461,7 +461,7 @@ void zusf_tests()
                   struct stat file_stats;
                   stat(test_file.c_str(), &file_stats);
 
-                  ListOptions options = {false, true}; // not all files, long format
+                  ListOptions options = {false, true, 1}; // not all files, long format, no recursion
                   string result = zusf_format_file_entry(&zusf, file_stats, test_file, "testfile.txt", options, false);
 
                   // Long format should contain permissions, size, time, filename
@@ -487,7 +487,7 @@ void zusf_tests()
                   struct stat file_stats;
                   stat(test_file.c_str(), &file_stats);
 
-                  ListOptions options = {false, true}; // not all files, long format
+                  ListOptions options = {false, true, 1}; // not all files, long format, no recursion
                   string result = zusf_format_file_entry(&zusf, file_stats, test_file, "testfile.txt", options, true);
 
                   // CSV format should have comma-separated values
@@ -520,7 +520,7 @@ void zusf_tests()
                   struct stat dir_stats;
                   stat(test_dir.c_str(), &dir_stats);
 
-                  ListOptions options = {false, true}; // not all files, long format
+                  ListOptions options = {false, true, 1}; // not all files, long format, no recursion
                   string result = zusf_format_file_entry(&zusf, dir_stats, test_dir, "testdir", options, false);
 
                   // Directory should start with 'd'
@@ -543,7 +543,7 @@ void zusf_tests()
                   struct stat file_stats;
                   stat(test_file.c_str(), &file_stats);
 
-                  ListOptions options = {false, true}; // long format
+                  ListOptions options = {false, true, 1}; // long format, no recursion
                   string result = zusf_format_file_entry(&zusf, file_stats, test_file, "testfile.txt", options, false);
 
                   // Should contain CCSID information (could be "untagged" or a specific CCSID)
@@ -572,7 +572,7 @@ void zusf_tests()
                 [&]() -> void
                 {
                   string response;
-                  ListOptions options = {false, false};
+                  ListOptions options = {false, false, 1}; // no recursion
 
                   int result = zusf_list_uss_file_path(&zusf, nonexistent_path, response, options, false);
 
@@ -590,7 +590,7 @@ void zusf_tests()
                   file.close();
 
                   string response;
-                  ListOptions options = {false, false}; // short format
+                  ListOptions options = {false, false, 1}; // short format, no recursion
 
                   int result = zusf_list_uss_file_path(&zusf, test_file, response, options, false);
 
@@ -611,7 +611,7 @@ void zusf_tests()
                   file.close();
 
                   string response;
-                  ListOptions options = {false, true}; // long format
+                  ListOptions options = {false, true, 1}; // long format, no recursion
 
                   int result = zusf_list_uss_file_path(&zusf, test_file, response, options, false);
 
@@ -646,7 +646,7 @@ void zusf_tests()
                   mkdir(subdir.c_str(), 0755);
 
                   string response;
-                  ListOptions options = {false, false}; // short format
+                  ListOptions options = {false, false, 1}; // short format, no recursion
 
                   int result = zusf_list_uss_file_path(&zusf, test_dir, response, options, false);
 
@@ -681,7 +681,7 @@ void zusf_tests()
                   f1.close();
 
                   string response;
-                  ListOptions options = {false, true}; // long format
+                  ListOptions options = {false, true, 1}; // long format, no recursion
 
                   int result = zusf_list_uss_file_path(&zusf, test_dir, response, options, false);
 
@@ -715,7 +715,7 @@ void zusf_tests()
 
                   // Test without all_files option
                   string response1;
-                  ListOptions options1 = {false, false}; // no all_files
+                  ListOptions options1 = {false, false, 1}; // no all_files, no recursion
                   int result1 = zusf_list_uss_file_path(&zusf, test_dir, response1, options1, false);
 
                   Expect(result1).ToBe(RTNCD_SUCCESS);
@@ -724,7 +724,7 @@ void zusf_tests()
 
                   // Test with all_files option
                   string response2;
-                  ListOptions options2 = {true, false}; // with all_files
+                  ListOptions options2 = {true, false, 1}; // with all_files, no recursion
                   int result2 = zusf_list_uss_file_path(&zusf, test_dir, response2, options2, false);
 
                   Expect(result2).ToBe(RTNCD_SUCCESS);
@@ -747,7 +747,7 @@ void zusf_tests()
                   file.close();
 
                   string response;
-                  ListOptions options = {false, true}; // long format
+                  ListOptions options = {false, true, 1}; // long format, no recursion
 
                   int result = zusf_list_uss_file_path(&zusf, test_file, response, options, true); // CSV format
 
@@ -778,7 +778,7 @@ void zusf_tests()
                   mkdir(test_dir.c_str(), 0755);
 
                   string response;
-                  ListOptions options = {false, false};
+                  ListOptions options = {false, false, 1}; // no recursion
 
                   int result = zusf_list_uss_file_path(&zusf, test_dir, response, options, false);
 
@@ -803,7 +803,7 @@ void zusf_tests()
                   f1.close();
 
                   string response;
-                  ListOptions options = {false, false}; // no all_files
+                  ListOptions options = {false, false, 1}; // no all_files, no recursion
 
                   int result = zusf_list_uss_file_path(&zusf, test_dir, response, options, false);
 
@@ -812,6 +812,203 @@ void zusf_tests()
 
                   // Cleanup
                   unlink(hidden_file.c_str());
+                  rmdir(test_dir.c_str());
+                });
+           });
+
+  describe("zusf_list_uss_file_path recursive tests",
+           [&]() -> void
+           {
+             it("should list immediate children only with depth 1",
+                [&]() -> void
+                {
+                  // Create test directory structure
+                  string test_dir = "/tmp/test_depth1_dir";
+                  string sub_dir = test_dir + "/subdir";
+                  string file1 = test_dir + "/file1.txt";
+                  string file2 = sub_dir + "/file2.txt";
+
+                  // Cleanup first
+                  unlink(file2.c_str());
+                  unlink(file1.c_str());
+                  rmdir(sub_dir.c_str());
+                  rmdir(test_dir.c_str());
+
+                  // Create directories
+                  mkdir(test_dir.c_str(), 0755);
+                  mkdir(sub_dir.c_str(), 0755);
+
+                  // Create files
+                  ofstream f1(file1);
+                  f1 << "content1";
+                  f1.close();
+
+                  ofstream f2(file2);
+                  f2 << "content2";
+                  f2.close();
+
+                  ZUSF zusf = {0};
+                  string response;
+                  ListOptions options = {false, false, 1}; // depth 1 = immediate children only
+
+                  int result = zusf_list_uss_file_path(&zusf, test_dir, response, options, false);
+
+                  Expect(result).ToBe(RTNCD_SUCCESS);
+                  Expect(response).ToContain("file1.txt");
+                  Expect(response).ToContain("subdir");
+                  Expect(response).Not().ToContain("subdir/file2.txt"); // Should NOT include recursive content
+
+                  // Cleanup
+                  unlink(file2.c_str());
+                  unlink(file1.c_str());
+                  rmdir(sub_dir.c_str());
+                  rmdir(test_dir.c_str());
+                });
+
+             it("should return directory info when depth is 0 (like 'ls -d')",
+                [&]() -> void
+                {
+                  // Create test directory structure
+                  string test_dir = "/tmp/test_depth0_dir";
+                  string sub_dir = test_dir + "/subdir";
+                  string file1 = test_dir + "/file1.txt";
+                  string file2 = sub_dir + "/file2.txt";
+
+                  // Cleanup first
+                  unlink(file2.c_str());
+                  unlink(file1.c_str());
+                  rmdir(sub_dir.c_str());
+                  rmdir(test_dir.c_str());
+
+                  // Create directories
+                  mkdir(test_dir.c_str(), 0755);
+                  mkdir(sub_dir.c_str(), 0755);
+
+                  // Create files
+                  ofstream f1(file1);
+                  f1 << "content1";
+                  f1.close();
+
+                  ofstream f2(file2);
+                  f2 << "content2";
+                  f2.close();
+
+                  ZUSF zusf = {0};
+                  string response;
+                  ListOptions options = {false, false, 0}; // all_files=false, depth=0 = show directory itself
+
+                  int result = zusf_list_uss_file_path(&zusf, test_dir, response, options, false);
+
+                  Expect(result).ToBe(RTNCD_SUCCESS);
+                  Expect(response).Not().ToBe("");               // Should return directory info, not empty
+                  Expect(response).ToContain("test_depth0_dir"); // Should contain the directory name
+                  Expect(response).Not().ToContain("file1.txt"); // Should NOT include actual directory contents
+                  Expect(response).Not().ToContain("subdir");
+                  Expect(response).Not().ToContain("subdir/file2.txt");
+
+                  // Cleanup
+                  unlink(file2.c_str());
+                  unlink(file1.c_str());
+                  rmdir(sub_dir.c_str());
+                  rmdir(test_dir.c_str());
+                });
+
+             it("should include one level of subdirectories with depth 2",
+                [&]() -> void
+                {
+                  // Create test directory structure
+                  string test_dir = "/tmp/test_depth2_dir";
+                  string sub_dir = test_dir + "/subdir";
+                  string file1 = test_dir + "/file1.txt";
+                  string file2 = sub_dir + "/file2.txt";
+
+                  // Cleanup first
+                  unlink(file2.c_str());
+                  unlink(file1.c_str());
+                  rmdir(sub_dir.c_str());
+                  rmdir(test_dir.c_str());
+
+                  // Create directories
+                  mkdir(test_dir.c_str(), 0755);
+                  mkdir(sub_dir.c_str(), 0755);
+
+                  // Create files
+                  ofstream f1(file1);
+                  f1 << "content1";
+                  f1.close();
+
+                  ofstream f2(file2);
+                  f2 << "content2";
+                  f2.close();
+
+                  ZUSF zusf = {0};
+                  string response;
+                  ListOptions options = {false, false, 2}; // depth 2 = immediate children + 1 level of subdirs
+
+                  int result = zusf_list_uss_file_path(&zusf, test_dir, response, options, false);
+
+                  Expect(result).ToBe(RTNCD_SUCCESS);
+                  Expect(response).ToContain("file1.txt");
+                  Expect(response).ToContain("subdir");
+                  Expect(response).ToContain("subdir/file2.txt"); // Should include one level of recursive content
+
+                  // Cleanup
+                  unlink(file2.c_str());
+                  unlink(file1.c_str());
+                  rmdir(sub_dir.c_str());
+                  rmdir(test_dir.c_str());
+                });
+
+             it("should handle '.' and '..' entries correctly when all_files is set",
+                [&]() -> void
+                {
+                  // Create test directory structure
+                  string test_dir = "/tmp/test_all_files_dir";
+                  string sub_dir = test_dir + "/subdir";
+                  string file1 = test_dir + "/file1.txt";
+
+                  // Cleanup first
+                  unlink(file1.c_str());
+                  rmdir(sub_dir.c_str());
+                  rmdir(test_dir.c_str());
+
+                  // Create directories
+                  mkdir(test_dir.c_str(), 0755);
+                  mkdir(sub_dir.c_str(), 0755);
+
+                  // Create files
+                  ofstream f1(file1);
+                  f1 << "content1";
+                  f1.close();
+
+                  ZUSF zusf = {0};
+                  string response;
+
+                  // Test with depth 0 and all_files = true (should behave like 'ls -d')
+                  ListOptions options_depth0 = {true, false, 0}; // all_files=true, depth=0
+                  int result = zusf_list_uss_file_path(&zusf, test_dir, response, options_depth0, false);
+
+                  Expect(result).ToBe(RTNCD_SUCCESS);
+                  Expect(response).ToContain("test_all_files_dir"); // Should contain the directory name itself
+                  Expect(response).Not().ToContain(".");            // Should NOT contain current directory entry with depth=0
+                  Expect(response).Not().ToContain("..");           // Should NOT contain parent directory entry with depth=0
+                  Expect(response).Not().ToContain("file1.txt");    // Should NOT include directory contents with depth 0
+                  Expect(response).Not().ToContain("subdir");
+
+                  // Test with depth 1 and all_files = true
+                  response.clear();
+                  ListOptions options_depth1 = {true, false, 1}; // all_files=true, depth=1
+                  result = zusf_list_uss_file_path(&zusf, test_dir, response, options_depth1, false);
+
+                  Expect(result).ToBe(RTNCD_SUCCESS);
+                  Expect(response).ToContain(".");         // Should contain current directory entry
+                  Expect(response).ToContain("..");        // Should contain parent directory entry
+                  Expect(response).ToContain("file1.txt"); // Should include directory contents
+                  Expect(response).ToContain("subdir");
+
+                  // Cleanup
+                  unlink(file1.c_str());
+                  rmdir(sub_dir.c_str());
                   rmdir(test_dir.c_str());
                 });
            });
