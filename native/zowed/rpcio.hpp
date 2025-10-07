@@ -13,6 +13,7 @@
 #define RPCIO_HPP
 
 #include "../c/extend/plugin.hpp"
+#include "../c/zstd.hpp"
 #include <sstream>
 
 // Forward declaration
@@ -22,7 +23,6 @@ class MiddlewareContext : public plugin::InvocationContext
 {
 public:
   MiddlewareContext(const std::string &command_path, const plugin::ArgumentMap &args);
-  ~MiddlewareContext();
 
   // Get access to the string streams for reading/writing content
   std::stringstream &get_input_stream();
@@ -36,7 +36,10 @@ public:
   void clear_streams();
 
   // Provide mutable access to arguments for transforms
-  plugin::ArgumentMap &mutable_arguments();
+  plugin::ArgumentMap &mutable_arguments()
+  {
+    return m_args;
+  }
 
   // Set content length and send pending notification if present
   void set_content_len(size_t content_length);
@@ -49,7 +52,7 @@ private:
   std::stringstream m_input_stream;
   std::stringstream m_output_stream;
   std::stringstream m_error_stream;
-  RpcNotification *m_pending_notification;
+  zstd::unique_ptr<RpcNotification> m_pending_notification;
 };
 
 #endif

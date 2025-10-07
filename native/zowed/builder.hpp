@@ -113,7 +113,7 @@ public:
   // Read input argument and write to stdin (optionally base64 decoded)
   CommandBuilder &write_stdin(const std::string &argName, bool b64Decode = false);
 
-  // Flatten a JSON object argument into the argument map
+  // Flatten a JSON object argument into the argument map (recursion not supported)
   CommandBuilder &flatten_obj(const std::string &argName);
 
   // Get the command handler

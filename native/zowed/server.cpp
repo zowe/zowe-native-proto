@@ -38,7 +38,7 @@ void RpcServer::processRequest(const std::string &requestData)
     if (!parse_result.has_value())
     {
       ErrorDetails error{
-          -32700,
+          RpcErrorCode::PARSE_ERROR,
           std::string("Failed to parse command request: ") + parse_result.error().what(),
           zstd::optional<zjson::Value>()};
 
@@ -61,7 +61,7 @@ void RpcServer::processRequest(const std::string &requestData)
     if (!dispatcher.has_command(request.method))
     {
       ErrorDetails error{
-          -32601,
+          RpcErrorCode::METHOD_NOT_FOUND,
           "Unrecognized command " + request.method,
           zstd::optional<zjson::Value>()};
 
@@ -119,7 +119,7 @@ void RpcServer::processRequest(const std::string &requestData)
       // Error occurred
       std::string errorOutput = context.get_error_content();
       ErrorDetails error{
-          -32603, // Internal error
+          result, // Internal error
           "Command execution failed",
           errorOutput.empty() ? zstd::optional<zjson::Value>() : zstd::optional<zjson::Value>(zjson::Value(errorOutput))};
 
@@ -132,7 +132,7 @@ void RpcServer::processRequest(const std::string &requestData)
   catch (const std::exception &e)
   {
     ErrorDetails error{
-        -32700,
+        RpcErrorCode::PARSE_ERROR,
         "Failed to parse command request: " + std::string(e.what()),
         zstd::optional<zjson::Value>()};
 

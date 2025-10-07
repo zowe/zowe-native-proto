@@ -18,6 +18,20 @@
 #include "../c/extend/plugin.hpp"
 #include "rpcio.hpp"
 
+// JSON-RPC 2.0 Standard Error Codes
+namespace RpcErrorCode
+{
+enum
+{
+  PARSE_ERROR = -32700,      // Invalid JSON was received
+  INVALID_REQUEST = -32600,  // The JSON sent is not a valid Request object
+  METHOD_NOT_FOUND = -32601, // The method does not exist / is not available
+  INVALID_PARAMS = -32602,   // Invalid method parameter(s)
+  INTERNAL_ERROR = -32603    // Internal JSON-RPC error
+  // -32000 to -32099 are reserved for implementation-defined server-errors
+};
+}
+
 struct RpcNotification
 {
   std::string jsonrpc;

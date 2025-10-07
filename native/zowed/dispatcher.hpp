@@ -60,18 +60,10 @@ public:
 
 private:
   // Private constructor for singleton
-  CommandDispatcher();
+  CommandDispatcher() = default;
 
-  // Private destructor
-  ~CommandDispatcher();
-
-#if defined(__clang__)
   std::unordered_map<std::string, CommandHandler> m_command_handlers;
   std::unordered_map<std::string, CommandBuilder> m_builders;
-#else
-  std::tr1::unordered_map<std::string, CommandHandler> m_command_handlers;
-  std::tr1::unordered_map<std::string, CommandBuilder> m_builders;
-#endif
 };
 
 #endif

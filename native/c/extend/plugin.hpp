@@ -936,8 +936,10 @@ public:
     m_content_len = content_len;
   }
 
-private:
+protected:
   ArgumentMap m_args;
+
+private:
   ArgumentMap m_output;
   std::istream *m_input_stream;
   std::ostream *m_output_stream;

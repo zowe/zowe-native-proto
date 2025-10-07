@@ -22,17 +22,10 @@ struct IoserverOptions
 
   /**
    * @brief Constructor with default values
-   */
-  IoserverOptions() : numWorkers(10), verbose(false)
-  {
-  }
-
-  /**
-   * @brief Constructor with custom values
    * @param workers Number of worker threads
    * @param verb Enable verbose logging
    */
-  IoserverOptions(int workers, bool verb) : numWorkers(workers), verbose(verb)
+  IoserverOptions(const int workers = 10, const bool verb = false) : numWorkers(workers), verbose(verb)
   {
   }
 };

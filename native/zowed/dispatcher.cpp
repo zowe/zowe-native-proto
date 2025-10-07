@@ -10,6 +10,7 @@
  */
 
 #include "dispatcher.hpp"
+#include "server.hpp"
 #include "logger.hpp"
 #include <vector>
 #include <algorithm>
@@ -18,14 +19,6 @@ CommandDispatcher &CommandDispatcher::getInstance()
 {
   static CommandDispatcher instance;
   return instance;
-}
-
-CommandDispatcher::CommandDispatcher()
-{
-}
-
-CommandDispatcher::~CommandDispatcher()
-{
 }
 
 bool CommandDispatcher::register_command(const std::string &command_name, const CommandBuilder &builder)
@@ -55,11 +48,10 @@ int CommandDispatcher::dispatch(const std::string &command_name, MiddlewareConte
   auto it = m_command_handlers.find(command_name);
   if (it == m_command_handlers.end())
   {
-    // Command not found - return error code
     std::string errMsg = "Command not found: " + command_name;
     context.errln(errMsg.c_str());
     LOG_ERROR("%s", errMsg.c_str());
-    return -1;
+    return RpcErrorCode::METHOD_NOT_FOUND;
   }
 
   CommandHandler handler = it->second;
@@ -67,7 +59,7 @@ int CommandDispatcher::dispatch(const std::string &command_name, MiddlewareConte
   {
     context.errln("Invalid command handler");
     LOG_ERROR("Invalid command handler for: %s", command_name.c_str());
-    return -2;
+    return RpcErrorCode::INTERNAL_ERROR;
   }
 
   try
@@ -76,7 +68,9 @@ int CommandDispatcher::dispatch(const std::string &command_name, MiddlewareConte
 
     // Apply input transforms if builder exists
     auto builder_it = m_builders.find(command_name);
-    if (builder_it != m_builders.end())
+    bool has_builder = (builder_it != m_builders.end());
+
+    if (has_builder)
     {
       builder_it->second.apply_input_transforms(context);
     }
@@ -85,7 +79,7 @@ int CommandDispatcher::dispatch(const std::string &command_name, MiddlewareConte
     int result = handler(context);
 
     // Apply output transforms if builder exists
-    if (builder_it != m_builders.end())
+    if (has_builder)
     {
       builder_it->second.apply_output_transforms(context);
     }
@@ -103,13 +97,13 @@ int CommandDispatcher::dispatch(const std::string &command_name, MiddlewareConte
     context.err("Command execution failed: ");
     context.errln(e.what());
     LOG_ERROR("%s (command: %s)", errMsg.c_str(), command_name.c_str());
-    return -3;
+    return RpcErrorCode::INTERNAL_ERROR;
   }
   catch (...)
   {
     context.errln("Command execution failed with unknown error");
     LOG_ERROR("Command execution failed with unknown error: %s", command_name.c_str());
-    return -4;
+    return RpcErrorCode::INTERNAL_ERROR;
   }
 }
 

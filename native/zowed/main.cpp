@@ -155,8 +155,7 @@ int main(int argc, char *argv[])
 {
   IoserverOptions options = parseOptions(argc, argv);
 
-  // Load the shared library at runtime
-  // Try executable directory first, then system paths
+  // Load the shared library at runtime from executable directory
   std::string executable_dir;
   std::string full_path = argv[0];
   size_t last_slash = full_path.find_last_of('/');
@@ -173,14 +172,10 @@ int main(int argc, char *argv[])
   void *handle = dlopen(lib_path.c_str(), RTLD_LAZY);
   if (handle == NULL)
   {
-    // Try without path (searches LD_LIBRARY_PATH)
-    handle = dlopen("libzowed.so", RTLD_LAZY);
-  }
-  if (handle == NULL)
-  {
     const char *error_msg = dlerror();
     std::cerr << "Cannot load libzowed.so: " << (error_msg ? error_msg : "Unknown error") << std::endl;
-    std::cerr << "Make sure libzowed.so is in the executable directory or LD_LIBRARY_PATH" << std::endl;
+    std::cerr << "Expected location: " << lib_path << std::endl;
+    std::cerr << "Make sure libzowed.so is in the same directory as the zowed executable" << std::endl;
     return 1;
   }
 
