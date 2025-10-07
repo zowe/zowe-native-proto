@@ -9,7 +9,10 @@
  *
  */
 
+import type { IProfile } from "@zowe/imperative";
+import { ZoweVsCodeExtension } from "@zowe/zowe-explorer-api";
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
+import * as vscode from "vscode";
 import {
     type AbstractConfigManager,
     MESSAGE_TYPE,
@@ -18,9 +21,6 @@ import {
 } from "zowe-native-proto-sdk";
 import { SshConfigUtils, VscePromptApi } from "../src/SshConfigUtils";
 import { getVsceConfig } from "../src/Utilities";
-import { ZoweVsCodeExtension } from "@zowe/zowe-explorer-api";
-import * as vscode from "vscode";
-import type { IProfile } from "@zowe/imperative";
 
 vi.mock("vscode", () => ({
     Disposable: vi.fn(),
@@ -221,7 +221,7 @@ describe("SshConfigUtils", () => {
                     placeholder: "Choose...",
                 };
                 mockQuickPick.selectedItems = [opts.items[0]];
-                mockQuickPick.onDidAccept.mockImplementation((cb: Function) => cb());
+                mockQuickPick.onDidAccept.mockImplementation((cb: () => void) => cb());
                 const result = await (instance as any).showMenu(opts);
 
                 expect(vscode.window.createQuickPick).toHaveBeenCalled();

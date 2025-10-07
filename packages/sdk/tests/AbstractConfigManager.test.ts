@@ -139,7 +139,7 @@ export class TestAbstractConfigManager extends AbstractConfigManager {
     public getCurrentDir = vi.fn<() => string | undefined>().mockReturnValue("/mock/dir");
 
     public getProfileSchemas = vi.fn<() => IProfileTypeConfiguration[]>().mockReturnValue([]);
-    protected storeServerPath(host: string, _path: string): void {}
+    protected storeServerPath(_host: string, _path: string): void {}
 }
 
 describe("AbstractConfigManager", async () => {
