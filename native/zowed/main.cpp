@@ -33,7 +33,7 @@
 #endif
 #include "zowed.hpp"
 
-IoserverOptions parseOptions(int argc, char *argv[])
+IoserverOptions parse_options(int argc, char *argv[])
 {
   IoserverOptions opts;
 
@@ -46,8 +46,8 @@ IoserverOptions parseOptions(int argc, char *argv[])
     {
       if (i + 1 < argc)
       {
-        opts.numWorkers = atoi(argv[++i]);
-        if (opts.numWorkers <= 0)
+        opts.num_workers = atoi(argv[++i]);
+        if (opts.num_workers <= 0)
         {
           std::cerr << "Number of workers must be greater than 0" << std::endl;
           exit(1);
@@ -153,7 +153,7 @@ const char *dlerror_zos()
  */
 int main(int argc, char *argv[])
 {
-  IoserverOptions options = parseOptions(argc, argv);
+  IoserverOptions options = parse_options(argc, argv);
 
   // Load the shared library at runtime from executable directory
   std::string executable_dir;

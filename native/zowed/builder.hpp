@@ -41,42 +41,42 @@ struct ArgTransform
   };
 
   TransformKind kind;
-  std::string argName;
-  std::string renamedTo;         // Used for RenameArg
-  plugin::Argument defaultValue; // Used for SetDefault
-  bool base64;                   // Used for WriteStdin and ReadStdout
-  std::string rpcId;             // Used for HandleFifo (stream ID parameter name)
-  FifoMode fifoMode;             // Used for HandleFifo
-  mutable std::string pipePath;  // Used for HandleFifo (mutable for cleanup in output phase)
-  bool defer;                    // Used for HandleFifo (defer notification until content length is known)
+  std::string arg_name;
+  std::string renamed_to;         // Used for RenameArg
+  plugin::Argument default_value; // Used for SetDefault
+  bool base64;                    // Used for WriteStdin and ReadStdout
+  std::string rpc_id;             // Used for HandleFifo (stream ID parameter name)
+  FifoMode fifo_mode;             // Used for HandleFifo
+  mutable std::string pipe_path;  // Used for HandleFifo (mutable for cleanup in output phase)
+  bool defer;                     // Used for HandleFifo (defer notification until content length is known)
 
   // Constructor for RenameArg
   ArgTransform(TransformKind k, const std::string &from, const std::string &to)
-      : kind(k), argName(from), renamedTo(to), defaultValue(), base64(false), rpcId(), fifoMode(FifoMode::GET), pipePath(), defer(false)
+      : kind(k), arg_name(from), renamed_to(to), default_value(), base64(false), rpc_id(), fifo_mode(FifoMode::GET), pipe_path(), defer(false)
   {
   }
 
   // Constructor for SetDefault
   ArgTransform(TransformKind k, const std::string &arg, const plugin::Argument &defValue)
-      : kind(k), argName(arg), renamedTo(""), defaultValue(defValue), base64(false), rpcId(), fifoMode(FifoMode::GET), pipePath(), defer(false)
+      : kind(k), arg_name(arg), renamed_to(""), default_value(defValue), base64(false), rpc_id(), fifo_mode(FifoMode::GET), pipe_path(), defer(false)
   {
   }
 
   // Constructor for WriteStdin and ReadStdout
   ArgTransform(TransformKind k, const std::string &arg, bool b64)
-      : kind(k), argName(arg), renamedTo(""), defaultValue(), base64(b64), rpcId(), fifoMode(FifoMode::GET), pipePath(), defer(false)
+      : kind(k), arg_name(arg), renamed_to(""), default_value(), base64(b64), rpc_id(), fifo_mode(FifoMode::GET), pipe_path(), defer(false)
   {
   }
 
   // Constructor for HandleFifo
-  ArgTransform(TransformKind k, const std::string &rpc_id, const std::string &arg, FifoMode mode, bool defer_arg = false)
-      : kind(k), argName(arg), renamedTo(""), defaultValue(), base64(false), rpcId(rpc_id), fifoMode(mode), pipePath(), defer(defer_arg)
+  ArgTransform(TransformKind k, const std::string &rpc_id_param, const std::string &arg, FifoMode mode, bool defer_arg = false)
+      : kind(k), arg_name(arg), renamed_to(""), default_value(), base64(false), rpc_id(rpc_id_param), fifo_mode(mode), pipe_path(), defer(defer_arg)
   {
   }
 
   // Constructor for FlattenObj
   ArgTransform(TransformKind k, const std::string &arg)
-      : kind(k), argName(arg), renamedTo(""), defaultValue(), base64(false), rpcId(), fifoMode(FifoMode::GET), pipePath(), defer(false)
+      : kind(k), arg_name(arg), renamed_to(""), default_value(), base64(false), rpc_id(), fifo_mode(FifoMode::GET), pipe_path(), defer(false)
   {
   }
 };
@@ -95,26 +95,26 @@ public:
   CommandBuilder &rename_arg(const std::string &from, const std::string &to);
 
   // Set a default value for an argument if not provided
-  CommandBuilder &set_default(const std::string &argName, const char *defaultValue);
-  CommandBuilder &set_default(const std::string &argName, const std::string &defaultValue);
-  CommandBuilder &set_default(const std::string &argName, bool defaultValue);
-  CommandBuilder &set_default(const std::string &argName, int defaultValue);
-  CommandBuilder &set_default(const std::string &argName, long long defaultValue);
-  CommandBuilder &set_default(const std::string &argName, double defaultValue);
+  CommandBuilder &set_default(const std::string &arg_name, const char *default_value);
+  CommandBuilder &set_default(const std::string &arg_name, const std::string &default_value);
+  CommandBuilder &set_default(const std::string &arg_name, bool default_value);
+  CommandBuilder &set_default(const std::string &arg_name, int default_value);
+  CommandBuilder &set_default(const std::string &arg_name, long long default_value);
+  CommandBuilder &set_default(const std::string &arg_name, double default_value);
 
   // Handle FIFO pipe creation for streaming
   // mode: FifoMode::Get for download, FifoMode::Put for upload
   // defer: if true, defer notification until content length is known (via set_content_len)
-  CommandBuilder &handle_fifo(const std::string &rpcId, const std::string &argName, FifoMode mode, bool defer = false);
+  CommandBuilder &handle_fifo(const std::string &rpc_id, const std::string &arg_name, FifoMode mode, bool defer = false);
 
   // Capture stdout and write to output argument (optionally base64 encoded)
-  CommandBuilder &read_stdout(const std::string &argName, bool b64Encode = false);
+  CommandBuilder &read_stdout(const std::string &arg_name, bool b64_encode = false);
 
   // Read input argument and write to stdin (optionally base64 decoded)
-  CommandBuilder &write_stdin(const std::string &argName, bool b64Decode = false);
+  CommandBuilder &write_stdin(const std::string &arg_name, bool b64_decode = false);
 
   // Flatten a JSON object argument into the argument map (recursion not supported)
-  CommandBuilder &flatten_obj(const std::string &argName);
+  CommandBuilder &flatten_obj(const std::string &arg_name);
 
   // Get the command handler
   CommandHandler get_handler() const

@@ -67,7 +67,7 @@ void MiddlewareContext::set_content_len(size_t content_length)
     }
 
     // Send the notification
-    RpcServer::sendNotification(*m_pending_notification);
+    RpcServer::send_notification(*m_pending_notification);
 
     // Clean up the pending notification
     m_pending_notification.reset();

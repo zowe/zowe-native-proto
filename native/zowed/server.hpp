@@ -77,27 +77,27 @@ class RpcServer : public Singleton<RpcServer>
   friend class Singleton<RpcServer>;
 
 private:
-  std::mutex responseMutex;
+  std::mutex response_mutex;
 
   // Private constructor for singleton
   RpcServer() = default;
 
   // Helper methods for JSON processing
-  RpcRequest parseRpcRequest(const zjson::Value &json);
-  std::string camelCaseToKebabCase(const std::string &input);
-  plugin::ArgumentMap convertJsonParamsToArgumentMap(const zjson::Value &params);
-  zjson::Value convertOutputToJson(const std::string &output);
-  zjson::Value convertAstToJson(const ast::Node &astNode);
-  void printResponse(const RpcResponse &response);
+  RpcRequest parse_rpc_request(const zjson::Value &json);
+  std::string camel_case_to_kebab_case(const std::string &input);
+  plugin::ArgumentMap convert_json_params_to_argument_map(const zjson::Value &params);
+  zjson::Value convert_output_to_json(const std::string &output);
+  zjson::Value convert_ast_to_json(const ast::Node &ast_node);
+  void print_response(const RpcResponse &response);
 
 public:
   /**
    * Process a JSON-RPC request string and return the response
    * This method is thread-safe and handles all JSON parsing, command execution,
    * and response serialization
-   * @param requestData The raw JSON-RPC request string
+   * @param request_data The raw JSON-RPC request string
    */
-  void processRequest(const std::string &requestData);
+  void process_request(const std::string &request_data);
 
   /**
    * Utility function to serialize JSON with error handling
@@ -105,35 +105,35 @@ public:
    * @param prettify Whether to format the output with indentation
    * @return Serialized JSON string
    */
-  static std::string serializeJson(const zjson::Value &val, bool prettify = false);
+  static std::string serialize_json(const zjson::Value &val, bool prettify = false);
 
   /**
    * Helper function for parsing RPC requests from JSON
    * @param json The JSON value containing the RPC request
    * @return Parsed RpcRequest structure
    */
-  static RpcRequest parseRpcRequestFromJson(const zjson::Value &json);
+  static RpcRequest parse_rpc_request_from_json(const zjson::Value &json);
 
   /**
    * Helper function to convert RPC response to JSON
    * @param response The RpcResponse structure
    * @return JSON representation of the response
    */
-  static zjson::Value rpcResponseToJson(const RpcResponse &response);
+  static zjson::Value rpc_response_to_json(const RpcResponse &response);
 
   /**
    * Helper function to convert error details to JSON
    * @param error The ErrorDetails structure
    * @return JSON representation of the error
    */
-  static zjson::Value errorDetailsToJson(const ErrorDetails &error);
+  static zjson::Value error_details_to_json(const ErrorDetails &error);
 
   /**
    * Helper function to send an RPC notification
    * Serializes the notification and outputs it to stdout
    * @param notification The RpcNotification to send
    */
-  static void sendNotification(const RpcNotification &notification);
+  static void send_notification(const RpcNotification &notification);
 };
 
 #endif

@@ -16,8 +16,8 @@
 using std::string;
 
 // Worker implementation
-Worker::Worker(int workerId)
-    : id(workerId), ready(false), shouldStop(false)
+Worker::Worker(int worker_id)
+    : id(worker_id), ready(false), should_stop(false)
 {
 }
 
@@ -28,76 +28,76 @@ Worker::~Worker()
 
 void Worker::start()
 {
-  workerThread = std::thread(&Worker::workerLoop, this);
+  worker_thread = std::thread(&Worker::worker_loop, this);
   ready = true;
   LOG_DEBUG("Worker %d started", id);
 }
 
 void Worker::stop()
 {
-  shouldStop = true;
-  queueCondition.notify_all();
-  if (workerThread.joinable())
+  should_stop = true;
+  queue_condition.notify_all();
+  if (worker_thread.joinable())
   {
-    workerThread.join();
+    worker_thread.join();
   }
   LOG_DEBUG("Worker %d stopped", id);
 }
 
-void Worker::addRequest(const string &request)
+void Worker::add_request(const string &request)
 {
   {
-    std::lock_guard<std::mutex> lock(queueMutex);
-    requestQueue.push(request);
+    std::lock_guard<std::mutex> lock(queue_mutex);
+    request_queue.push(request);
   }
-  queueCondition.notify_one();
+  queue_condition.notify_one();
 }
 
-void Worker::workerLoop()
+void Worker::worker_loop()
 {
-  while (!shouldStop)
+  while (!should_stop)
   {
-    std::unique_lock<std::mutex> lock(queueMutex);
-    queueCondition.wait(lock, [this]
-                        { return !requestQueue.empty() || shouldStop; });
+    std::unique_lock<std::mutex> lock(queue_mutex);
+    queue_condition.wait(lock, [this]
+                         { return !request_queue.empty() || should_stop; });
 
-    if (shouldStop)
+    if (should_stop)
       break;
 
-    if (!requestQueue.empty())
+    if (!request_queue.empty())
     {
-      string request = requestQueue.front();
-      requestQueue.pop();
+      string request = request_queue.front();
+      request_queue.pop();
       lock.unlock();
 
-      processRequest(request);
+      process_request(request);
     }
   }
 }
 
-void Worker::processRequest(const string &data)
+void Worker::process_request(const string &data)
 {
   // Delegate JSON-RPC processing to the RpcServer singleton
   RpcServer &server = RpcServer::get_instance();
-  server.processRequest(data);
+  server.process_request(data);
 }
 
 // WorkerPool implementation
-WorkerPool::WorkerPool(int numWorkers) : readyCount(0), isShuttingDown(false)
+WorkerPool::WorkerPool(int num_workers) : ready_count(0), is_shutting_down(false)
 {
-  workers.reserve(numWorkers);
+  workers.reserve(num_workers);
 
   // Create workers
-  for (int i = 0; i < numWorkers; ++i)
+  for (int i = 0; i < num_workers; ++i)
   {
     std::unique_ptr<Worker> worker(new Worker(i));
     workers.push_back(std::move(worker));
   }
 
   // Initialize workers asynchronously
-  for (int i = 0; i < numWorkers; ++i)
+  for (int i = 0; i < num_workers; ++i)
   {
-    std::thread(&WorkerPool::initializeWorker, this, i).detach();
+    std::thread(&WorkerPool::initialize_worker, this, i).detach();
   }
 }
 
@@ -106,49 +106,49 @@ WorkerPool::~WorkerPool()
   shutdown();
 }
 
-void WorkerPool::initializeWorker(int workerId)
+void WorkerPool::initialize_worker(int worker_id)
 {
-  if (workerId < 0 || workerId >= static_cast<int>(workers.size()))
+  if (worker_id < 0 || worker_id >= static_cast<int>(workers.size()))
   {
-    LOG_ERROR("Invalid worker ID: %d", workerId);
+    LOG_ERROR("Invalid worker ID: %d", worker_id);
     return;
   }
 
-  LOG_DEBUG("Initializing worker %d", workerId);
+  LOG_DEBUG("Initializing worker %d", worker_id);
 
   // Start the worker
-  workers[workerId]->start();
+  workers[worker_id]->start();
 
   // Mark worker as ready
-  setWorkerReady(workerId);
+  set_worker_ready(worker_id);
 }
 
-void WorkerPool::distributeRequest(const string &request)
+void WorkerPool::distribute_request(const string &request)
 {
-  if (isShuttingDown)
+  if (is_shutting_down)
     return;
 
   // Simple round-robin distribution to ready workers
-  Worker *worker = getReadyWorker();
+  Worker *worker = get_ready_worker();
   if (worker)
   {
-    worker->addRequest(request);
+    worker->add_request(request);
   }
 }
 
-Worker *WorkerPool::getReadyWorker()
+Worker *WorkerPool::get_ready_worker()
 {
-  std::unique_lock<std::mutex> lock(readyMutex);
-  readyCondition.wait(lock, [this]
-                      { return readyCount > 0 || isShuttingDown; });
+  std::unique_lock<std::mutex> lock(ready_mutex);
+  ready_condition.wait(lock, [this]
+                       { return ready_count > 0 || is_shutting_down; });
 
-  if (isShuttingDown)
+  if (is_shutting_down)
     return nullptr;
 
   // Find a ready worker
   for (auto &worker : workers)
   {
-    if (worker->isReady())
+    if (worker->is_ready())
     {
       return worker.get();
     }
@@ -157,30 +157,30 @@ Worker *WorkerPool::getReadyWorker()
   return nullptr;
 }
 
-void WorkerPool::setWorkerReady(int workerId)
+void WorkerPool::set_worker_ready(int worker_id)
 {
-  std::lock_guard<std::mutex> lock(readyMutex);
+  std::lock_guard<std::mutex> lock(ready_mutex);
 
-  if (workerId >= 0 && workerId < static_cast<int>(workers.size()))
+  if (worker_id >= 0 && worker_id < static_cast<int>(workers.size()))
   {
-    if (workers[workerId]->isReady())
+    if (workers[worker_id]->is_ready())
     {
-      readyCount++;
-      readyCondition.notify_one();
+      ready_count++;
+      ready_condition.notify_one();
     }
   }
 }
 
-int32_t WorkerPool::getAvailableWorkersCount()
+int32_t WorkerPool::get_available_workers_count()
 {
-  return readyCount.load();
+  return ready_count.load();
 }
 
 void WorkerPool::shutdown()
 {
   LOG_DEBUG("Shutting down worker pool");
-  isShuttingDown = true;
-  readyCondition.notify_all();
+  is_shutting_down = true;
+  ready_condition.notify_all();
 
   for (auto &worker : workers)
   {

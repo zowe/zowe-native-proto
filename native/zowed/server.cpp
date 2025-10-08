@@ -16,12 +16,12 @@
 
 using std::string;
 
-void RpcServer::processRequest(const string &requestData)
+void RpcServer::process_request(const string &request_data)
 {
   try
   {
     // Parse the JSON request
-    auto parse_result = zjson::from_str<RpcRequest>(requestData);
+    auto parse_result = zjson::from_str<RpcRequest>(request_data);
 
     if (!parse_result.has_value())
     {
@@ -36,7 +36,7 @@ void RpcServer::processRequest(const string &requestData)
       response.error = zstd::optional<ErrorDetails>(error);
       response.id = 0; // No request ID available
 
-      printResponse(response);
+      print_response(response);
       return;
     }
 
@@ -59,7 +59,7 @@ void RpcServer::processRequest(const string &requestData)
       response.error = zstd::optional<ErrorDetails>(error);
       response.id = request.id;
 
-      printResponse(response);
+      print_response(response);
       return;
     }
 
@@ -67,7 +67,7 @@ void RpcServer::processRequest(const string &requestData)
     plugin::ArgumentMap args;
     if (request.params.has_value())
     {
-      args = convertJsonParamsToArgumentMap(request.params.value());
+      args = convert_json_params_to_argument_map(request.params.value());
     }
 
     // Create MiddlewareContext for the command
@@ -83,39 +83,39 @@ void RpcServer::processRequest(const string &requestData)
     if (result == 0)
     {
       // Success - check if context has an object set, otherwise use output content
-      zjson::Value resultJson;
+      zjson::Value result_json;
 
-      const ast::Node &astObject = context.get_object();
-      if (astObject)
+      const ast::Node &ast_object = context.get_object();
+      if (ast_object)
       {
         // Convert AST object to zjson::Value
-        resultJson = convertAstToJson(astObject);
+        result_json = convert_ast_to_json(ast_object);
       }
       else
       {
         // Fallback to output content if no AST object is set
         string output = context.get_output_content();
-        resultJson = convertOutputToJson(output);
+        result_json = convert_output_to_json(output);
       }
 
-      resultJson.add_to_object("success", zjson::Value(context.get_error_content().empty()));
-      response.result = zstd::optional<zjson::Value>(resultJson);
+      result_json.add_to_object("success", zjson::Value(context.get_error_content().empty()));
+      response.result = zstd::optional<zjson::Value>(result_json);
       response.error = zstd::optional<ErrorDetails>();
     }
     else
     {
       // Error occurred
-      string errorOutput = context.get_error_content();
+      string error_output = context.get_error_content();
       ErrorDetails error{
           result, // Internal error
           "Command execution failed",
-          errorOutput.empty() ? zstd::optional<zjson::Value>() : zstd::optional<zjson::Value>(zjson::Value(errorOutput))};
+          error_output.empty() ? zstd::optional<zjson::Value>() : zstd::optional<zjson::Value>(zjson::Value(error_output))};
 
       response.result = zstd::optional<zjson::Value>();
       response.error = zstd::optional<ErrorDetails>(error);
     }
 
-    printResponse(response);
+    print_response(response);
   }
   catch (const std::exception &e)
   {
@@ -130,11 +130,11 @@ void RpcServer::processRequest(const string &requestData)
     response.error = zstd::optional<ErrorDetails>(error);
     response.id = 0; // No request ID available
 
-    printResponse(response);
+    print_response(response);
   }
 }
 
-RpcRequest RpcServer::parseRpcRequest(const zjson::Value &json)
+RpcRequest RpcServer::parse_rpc_request(const zjson::Value &json)
 {
   if (!json.is_object())
   {
@@ -149,7 +149,7 @@ RpcRequest RpcServer::parseRpcRequest(const zjson::Value &json)
   return result.value();
 }
 
-string RpcServer::camelCaseToKebabCase(const string &input)
+string RpcServer::camel_case_to_kebab_case(const string &input)
 {
   string result;
   result.reserve(input.length() + 5); // Reserve some extra space for hyphens
@@ -176,7 +176,7 @@ string RpcServer::camelCaseToKebabCase(const string &input)
   return result;
 }
 
-plugin::ArgumentMap RpcServer::convertJsonParamsToArgumentMap(const zjson::Value &params)
+plugin::ArgumentMap RpcServer::convert_json_params_to_argument_map(const zjson::Value &params)
 {
   plugin::ArgumentMap args;
 
@@ -189,37 +189,37 @@ plugin::ArgumentMap RpcServer::convertJsonParamsToArgumentMap(const zjson::Value
   for (const auto &pair : params.as_object())
   {
     // Convert camelCase keys to kebab-case
-    const string kebabKey = camelCaseToKebabCase(pair.first);
+    const string kebab_key = camel_case_to_kebab_case(pair.first);
     const zjson::Value &value = pair.second;
 
     if (value.is_bool())
     {
-      args[kebabKey] = plugin::Argument(value.as_bool());
+      args[kebab_key] = plugin::Argument(value.as_bool());
     }
     else if (value.is_integer())
     {
-      args[kebabKey] = plugin::Argument(value.as_int64());
+      args[kebab_key] = plugin::Argument(value.as_int64());
     }
     else if (value.is_double())
     {
-      args[kebabKey] = plugin::Argument(value.as_double());
+      args[kebab_key] = plugin::Argument(value.as_double());
     }
     else if (value.is_string())
     {
-      args[kebabKey] = plugin::Argument(value.as_string());
+      args[kebab_key] = plugin::Argument(value.as_string());
     }
     // For other types (null, array, object), convert to string representation
     else
     {
       auto str_result = zjson::to_string(value);
-      args[kebabKey] = plugin::Argument(str_result.value_or(""));
+      args[kebab_key] = plugin::Argument(str_result.value_or(""));
     }
   }
 
   return args;
 }
 
-zjson::Value RpcServer::convertOutputToJson(const string &output)
+zjson::Value RpcServer::convert_output_to_json(const string &output)
 {
   if (!output.empty())
   {
@@ -240,53 +240,53 @@ zjson::Value RpcServer::convertOutputToJson(const string &output)
   }
 }
 
-zjson::Value RpcServer::convertAstToJson(const ast::Node &astNode)
+zjson::Value RpcServer::convert_ast_to_json(const ast::Node &ast_node)
 {
-  if (!astNode)
+  if (!ast_node)
   {
     return zjson::Value(); // null
   }
 
-  switch (astNode->kind())
+  switch (ast_node->kind())
   {
   case ast::Ast::Null:
     return zjson::Value(); // null
 
   case ast::Ast::Boolean:
-    return zjson::Value(astNode->as_bool());
+    return zjson::Value(ast_node->as_bool());
 
   case ast::Ast::Integer:
-    return zjson::Value(static_cast<int>(astNode->as_integer()));
+    return zjson::Value(static_cast<int>(ast_node->as_integer()));
 
   case ast::Ast::Number:
-    return zjson::Value(astNode->as_number());
+    return zjson::Value(ast_node->as_number());
 
   case ast::Ast::String:
-    return zjson::Value(astNode->as_string());
+    return zjson::Value(ast_node->as_string());
 
   case ast::Ast::Array:
   {
-    zjson::Value arrayValue = zjson::Value::create_array();
-    const std::vector<ast::Node> &astArray = astNode->as_array();
-    arrayValue.reserve_array(astArray.size());
+    zjson::Value array_value = zjson::Value::create_array();
+    const std::vector<ast::Node> &ast_array = ast_node->as_array();
+    array_value.reserve_array(ast_array.size());
 
-    for (size_t i = 0; i < astArray.size(); ++i)
+    for (size_t i = 0; i < ast_array.size(); ++i)
     {
-      arrayValue.add_to_array(convertAstToJson(astArray[i]));
+      array_value.add_to_array(convert_ast_to_json(ast_array[i]));
     }
-    return arrayValue;
+    return array_value;
   }
 
   case ast::Ast::Object:
   {
-    zjson::Value objectValue = zjson::Value::create_object();
-    const ast::ObjMap &astObject = astNode->as_object();
+    zjson::Value object_value = zjson::Value::create_object();
+    const ast::ObjMap &ast_object = ast_node->as_object();
 
-    for (ast::ObjMap::const_iterator it = astObject.begin(); it != astObject.end(); ++it)
+    for (ast::ObjMap::const_iterator it = ast_object.begin(); it != ast_object.end(); ++it)
     {
-      objectValue.add_to_object(it->first, convertAstToJson(it->second));
+      object_value.add_to_object(it->first, convert_ast_to_json(it->second));
     }
-    return objectValue;
+    return object_value;
   }
 
   default:
@@ -294,9 +294,9 @@ zjson::Value RpcServer::convertAstToJson(const ast::Node &astNode)
   }
 }
 
-void RpcServer::printResponse(const RpcResponse &response)
+void RpcServer::print_response(const RpcResponse &response)
 {
-  std::lock_guard<std::mutex> lock(responseMutex);
+  std::lock_guard<std::mutex> lock(response_mutex);
 
   // Log errors to the log file
   if (response.error.has_value())
@@ -305,21 +305,21 @@ void RpcServer::printResponse(const RpcResponse &response)
     LOG_ERROR("%s", error.message.c_str());
   }
 
-  string jsonString = serializeJson(rpcResponseToJson(response));
+  string json_string = serialize_json(rpc_response_to_json(response));
 
   // Print errors to stderr, success responses to stdout
   if (response.error.has_value())
   {
-    std::cerr << jsonString << std::endl;
+    std::cerr << json_string << std::endl;
   }
   else
   {
-    std::cout << jsonString << std::endl;
+    std::cout << json_string << std::endl;
   }
 }
 
 // Static utility methods
-string RpcServer::serializeJson(const zjson::Value &val, bool prettify)
+string RpcServer::serialize_json(const zjson::Value &val, bool prettify)
 {
   auto result = prettify ? zjson::to_string_pretty(val) : zjson::to_string(val);
   if (!result.has_value())
@@ -329,7 +329,7 @@ string RpcServer::serializeJson(const zjson::Value &val, bool prettify)
   return result.value();
 }
 
-RpcRequest RpcServer::parseRpcRequestFromJson(const zjson::Value &json)
+RpcRequest RpcServer::parse_rpc_request_from_json(const zjson::Value &json)
 {
   if (!json.is_object())
   {
@@ -344,20 +344,20 @@ RpcRequest RpcServer::parseRpcRequestFromJson(const zjson::Value &json)
   return result.value();
 }
 
-zjson::Value RpcServer::rpcResponseToJson(const RpcResponse &response)
+zjson::Value RpcServer::rpc_response_to_json(const RpcResponse &response)
 {
   auto result = zjson::to_value(response);
   return result.value_or(zjson::Value::create_object());
 }
 
-zjson::Value RpcServer::errorDetailsToJson(const ErrorDetails &error)
+zjson::Value RpcServer::error_details_to_json(const ErrorDetails &error)
 {
   auto result = zjson::to_value(error);
   return result.value_or(zjson::Value::create_object());
 }
 
-void RpcServer::sendNotification(const RpcNotification &notification)
+void RpcServer::send_notification(const RpcNotification &notification)
 {
-  string jsonString = serializeJson(zjson::to_value(notification).value());
-  std::cout << jsonString << std::endl;
+  string json_string = serialize_json(zjson::to_value(notification).value());
+  std::cout << json_string << std::endl;
 }

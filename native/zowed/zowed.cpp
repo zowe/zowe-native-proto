@@ -44,54 +44,54 @@ class ZowedServer
 {
 private:
   IoserverOptions options;
-  string execDir;
-  std::unique_ptr<WorkerPool> workerPool;
-  std::atomic<bool> shutdownRequested;
-  std::mutex shutdownMutex;
-  std::once_flag shutdownFlag;
+  string exec_dir;
+  std::unique_ptr<WorkerPool> worker_pool;
+  std::atomic<bool> shutdown_requested;
+  std::mutex shutdown_mutex;
+  std::once_flag shutdown_flag;
 
-  static void signalHandler(int sig __attribute__((unused)))
+  static void signal_handler(int sig __attribute__((unused)))
   {
-    getInstance().requestShutdown();
+    get_instance().request_shutdown();
   }
 
-  void setupSignalHandlers()
+  void setup_signal_handlers()
   {
     // Set up signal handling for graceful shutdown
-    signal(SIGHUP, signalHandler);
-    signal(SIGINT, signalHandler);
-    signal(SIGQUIT, signalHandler);
-    signal(SIGABRT, signalHandler);
-    signal(SIGTERM, signalHandler);
+    signal(SIGHUP, signal_handler);
+    signal(SIGINT, signal_handler);
+    signal(SIGQUIT, signal_handler);
+    signal(SIGABRT, signal_handler);
+    signal(SIGTERM, signal_handler);
   }
 
-  void requestShutdown()
+  void request_shutdown()
   {
-    std::call_once(shutdownFlag, [this]()
+    std::call_once(shutdown_flag, [this]()
                    {
-            shutdownRequested = true;
-            if (workerPool) {
-                workerPool->shutdown();
+            shutdown_requested = true;
+            if (worker_pool) {
+                worker_pool->shutdown();
             }
             close(STDIN_FILENO); });
   }
 
-  static ZowedServer &getInstance()
+  static ZowedServer &get_instance()
   {
     static ZowedServer instance;
     return instance;
   }
 
-  std::map<string, string> loadChecksums()
+  std::map<string, string> load_checksums()
   {
     std::map<string, string> checksums;
-    string checksumsFile = execDir + "/checksums.asc";
+    string checksums_file = exec_dir + "/checksums.asc";
 
-    std::ifstream file(checksumsFile);
+    std::ifstream file(checksums_file);
     if (!file.is_open())
     {
       // Checksums file does not exist for dev builds
-      LOG_DEBUG("Checksums file not found: %s (expected for dev builds)", checksumsFile.c_str());
+      LOG_DEBUG("Checksums file not found: %s (expected for dev builds)", checksums_file.c_str());
       return checksums;
     }
 
@@ -109,42 +109,42 @@ private:
     return checksums;
   }
 
-  void printReadyMessage()
+  void print_ready_message()
   {
     zjson::Value data = zjson::Value::create_object();
 
     // Load checksums similar to Go implementation
-    std::map<string, string> checksums = loadChecksums();
-    zjson::Value checksumsObj = zjson::Value::create_object();
+    std::map<string, string> checksums = load_checksums();
+    zjson::Value checksums_obj = zjson::Value::create_object();
     for (const auto &pair : checksums)
     {
-      checksumsObj.add_to_object(pair.first, zjson::Value(pair.second));
+      checksums_obj.add_to_object(pair.first, zjson::Value(pair.second));
     }
-    data.add_to_object("checksums", checksums.empty() ? zjson::Value() : checksumsObj);
+    data.add_to_object("checksums", checksums.empty() ? zjson::Value() : checksums_obj);
 
-    StatusMessage statusMsg{
+    StatusMessage status_msg{
         .status = "ready",
         .message = "zowed is ready to accept input",
         .data = zstd::optional<zjson::Value>(data),
     };
 
-    string jsonString = RpcServer::serializeJson(zjson::to_value(statusMsg).value());
-    std::cout << jsonString << std::endl;
+    string json_string = RpcServer::serialize_json(zjson::to_value(status_msg).value());
+    std::cout << json_string << std::endl;
   }
 
-  void logWorkerCount()
+  void log_worker_count()
   {
     if (!zowed::Logger::is_verbose_logging())
       return;
 
     std::thread([this]()
                 {
-            while (!shutdownRequested) {
-                if (workerPool) {
-                    int32_t count = workerPool->getAvailableWorkersCount();
-                    LOG_DEBUG("Available workers: %d/%d", count, options.numWorkers);
+            while (!shutdown_requested) {
+                if (worker_pool) {
+                    int32_t count = worker_pool->get_available_workers_count();
+                    LOG_DEBUG("Available workers: %d/%d", count, options.num_workers);
                     std::this_thread::sleep_for(std::chrono::milliseconds(500));
-                    if (count == options.numWorkers) {
+                    if (count == options.num_workers) {
                         break;
                     }
                 }
@@ -154,21 +154,21 @@ private:
   }
 
 public:
-  ZowedServer() : shutdownRequested(false)
+  ZowedServer() : shutdown_requested(false)
   {
   }
 
-  void run(const IoserverOptions &opts, const string &execDir)
+  void run(const IoserverOptions &opts, const string &exec_dir_param)
   {
     options = opts;
-    this->execDir = execDir;
+    this->exec_dir = exec_dir_param;
 
     // Initialize logger with executable directory
-    zowed::Logger::init_logger(execDir.c_str(), options.verbose);
-    LOG_INFO("Starting zowed with %d workers (verbose=%s)", options.numWorkers, options.verbose ? "true" : "false");
+    zowed::Logger::init_logger(exec_dir.c_str(), options.verbose);
+    LOG_INFO("Starting zowed with %d workers (verbose=%s)", options.num_workers, options.verbose ? "true" : "false");
 
     // Set up signal handling
-    setupSignalHandlers();
+    setup_signal_handlers();
 
     // Initialize CommandDispatcher singleton
     CommandDispatcher &dispatcher = CommandDispatcher::get_instance();
@@ -178,33 +178,33 @@ public:
     register_all_commands(dispatcher);
 
     // Create worker pool
-    workerPool.reset(new WorkerPool(options.numWorkers));
+    worker_pool.reset(new WorkerPool(options.num_workers));
 
     // Ensure worker pool teardown on normal exit
     std::atexit([]()
-                { getInstance().requestShutdown(); });
+                { get_instance().request_shutdown(); });
 
     // Log available worker count if verbose
-    logWorkerCount();
+    log_worker_count();
 
     // Print ready message
-    printReadyMessage();
+    print_ready_message();
 
     // Main input processing loop
     LOG_DEBUG("Entering main input processing loop");
     string line;
-    while (std::getline(std::cin, line) && !shutdownRequested)
+    while (std::getline(std::cin, line) && !shutdown_requested)
     {
       if (!line.empty())
       {
         // Distribute request to worker pool
-        workerPool->distributeRequest(line);
+        worker_pool->distribute_request(line);
       }
     }
 
     // Graceful shutdown
     LOG_INFO("Input stream closed, shutting down");
-    requestShutdown();
+    request_shutdown();
 
     // Cleanup logger
     zowed::Logger::shutdown();
@@ -212,12 +212,12 @@ public:
 };
 
 // Library implementation functions
-extern "C" int run_zowed_server(const IoserverOptions &options, const char *execDir)
+extern "C" int run_zowed_server(const IoserverOptions &options, const char *exec_dir)
 {
   try
   {
     ZowedServer server;
-    server.run(options, string(execDir ? execDir : "."));
+    server.run(options, string(exec_dir ? exec_dir : "."));
   }
   catch (const std::exception &e)
   {

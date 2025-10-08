@@ -39,63 +39,63 @@ CommandBuilder &CommandBuilder::rename_arg(const string &from, const string &to)
   return *this;
 }
 
-CommandBuilder &CommandBuilder::set_default(const string &argName, const char *defaultValue)
+CommandBuilder &CommandBuilder::set_default(const string &arg_name, const char *default_value)
 {
-  transforms_.push_back(ArgTransform(ArgTransform::SetDefault, argName, plugin::Argument(defaultValue)));
+  transforms_.push_back(ArgTransform(ArgTransform::SetDefault, arg_name, plugin::Argument(default_value)));
   return *this;
 }
 
-CommandBuilder &CommandBuilder::set_default(const string &argName, const string &defaultValue)
+CommandBuilder &CommandBuilder::set_default(const string &arg_name, const string &default_value)
 {
-  transforms_.push_back(ArgTransform(ArgTransform::SetDefault, argName, plugin::Argument(defaultValue)));
+  transforms_.push_back(ArgTransform(ArgTransform::SetDefault, arg_name, plugin::Argument(default_value)));
   return *this;
 }
 
-CommandBuilder &CommandBuilder::set_default(const string &argName, bool defaultValue)
+CommandBuilder &CommandBuilder::set_default(const string &arg_name, bool default_value)
 {
-  transforms_.push_back(ArgTransform(ArgTransform::SetDefault, argName, plugin::Argument(defaultValue)));
+  transforms_.push_back(ArgTransform(ArgTransform::SetDefault, arg_name, plugin::Argument(default_value)));
   return *this;
 }
 
-CommandBuilder &CommandBuilder::set_default(const string &argName, int defaultValue)
+CommandBuilder &CommandBuilder::set_default(const string &arg_name, int default_value)
 {
-  transforms_.push_back(ArgTransform(ArgTransform::SetDefault, argName, plugin::Argument(static_cast<long long>(defaultValue))));
+  transforms_.push_back(ArgTransform(ArgTransform::SetDefault, arg_name, plugin::Argument(static_cast<long long>(default_value))));
   return *this;
 }
 
-CommandBuilder &CommandBuilder::set_default(const string &argName, long long defaultValue)
+CommandBuilder &CommandBuilder::set_default(const string &arg_name, long long default_value)
 {
-  transforms_.push_back(ArgTransform(ArgTransform::SetDefault, argName, plugin::Argument(defaultValue)));
+  transforms_.push_back(ArgTransform(ArgTransform::SetDefault, arg_name, plugin::Argument(default_value)));
   return *this;
 }
 
-CommandBuilder &CommandBuilder::set_default(const string &argName, double defaultValue)
+CommandBuilder &CommandBuilder::set_default(const string &arg_name, double default_value)
 {
-  transforms_.push_back(ArgTransform(ArgTransform::SetDefault, argName, plugin::Argument(defaultValue)));
+  transforms_.push_back(ArgTransform(ArgTransform::SetDefault, arg_name, plugin::Argument(default_value)));
   return *this;
 }
 
-CommandBuilder &CommandBuilder::handle_fifo(const string &rpcId, const string &argName, FifoMode mode, bool defer)
+CommandBuilder &CommandBuilder::handle_fifo(const string &rpc_id, const string &arg_name, FifoMode mode, bool defer)
 {
-  transforms_.push_back(ArgTransform(ArgTransform::HandleFifo, rpcId, argName, mode, defer));
+  transforms_.push_back(ArgTransform(ArgTransform::HandleFifo, rpc_id, arg_name, mode, defer));
   return *this;
 }
 
-CommandBuilder &CommandBuilder::read_stdout(const string &argName, bool b64Encode)
+CommandBuilder &CommandBuilder::read_stdout(const string &arg_name, bool b64_encode)
 {
-  transforms_.push_back(ArgTransform(ArgTransform::ReadStdout, argName, b64Encode));
+  transforms_.push_back(ArgTransform(ArgTransform::ReadStdout, arg_name, b64_encode));
   return *this;
 }
 
-CommandBuilder &CommandBuilder::write_stdin(const string &argName, bool b64Decode)
+CommandBuilder &CommandBuilder::write_stdin(const string &arg_name, bool b64_decode)
 {
-  transforms_.push_back(ArgTransform(ArgTransform::WriteStdin, argName, b64Decode));
+  transforms_.push_back(ArgTransform(ArgTransform::WriteStdin, arg_name, b64_decode));
   return *this;
 }
 
-CommandBuilder &CommandBuilder::flatten_obj(const string &argName)
+CommandBuilder &CommandBuilder::flatten_obj(const string &arg_name)
 {
-  transforms_.push_back(ArgTransform(ArgTransform::FlattenObj, argName));
+  transforms_.push_back(ArgTransform(ArgTransform::FlattenObj, arg_name));
   return *this;
 }
 
@@ -106,7 +106,7 @@ void CommandBuilder::apply_input_transforms(MiddlewareContext &context) const
   for (std::vector<ArgTransform>::const_iterator it = transforms_.begin(); it != transforms_.end(); ++it)
   {
     // Find the argument
-    plugin::ArgumentMap::iterator arg_it = args.find(it->argName);
+    plugin::ArgumentMap::iterator arg_it = args.find(it->arg_name);
 
     switch (it->kind)
     {
@@ -120,7 +120,7 @@ void CommandBuilder::apply_input_transforms(MiddlewareContext &context) const
 
       plugin::Argument value = arg_it->second;
       args.erase(arg_it);
-      args[it->renamedTo] = value;
+      args[it->renamed_to] = value;
       break;
     }
 
@@ -129,7 +129,7 @@ void CommandBuilder::apply_input_transforms(MiddlewareContext &context) const
       // Set default value if argument doesn't exist
       if (arg_it == args.end())
       {
-        args[it->argName] = it->defaultValue;
+        args[it->arg_name] = it->default_value;
       }
       break;
     }
@@ -235,68 +235,68 @@ void CommandBuilder::apply_input_transforms(MiddlewareContext &context) const
     {
       // HandleFifo: Create FIFO pipe and send appropriate notification
       // Find the RPC ID argument
-      plugin::ArgumentMap::iterator rpc_it = args.find(it->rpcId);
+      plugin::ArgumentMap::iterator rpc_it = args.find(it->rpc_id);
       if (rpc_it != args.end())
       {
         try
         {
-          // Get streamId from the argument
-          const long long *streamIdPtr = rpc_it->second.get_int();
-          if (streamIdPtr == nullptr)
+          // Get stream_id from the argument
+          const long long *stream_id_ptr = rpc_it->second.get_int();
+          if (stream_id_ptr == nullptr)
           {
             context.errln("HandleFifo: RPC ID argument is not an integer");
             LOG_ERROR("HandleFifo: RPC ID argument is not an integer");
             break;
           }
-          long long streamId = *streamIdPtr;
+          long long stream_id = *stream_id_ptr;
 
-          // Create pipe path: /tmp/zowe-native-proto_{uid}_{pid}_{streamId}_fifo
-          const char *tmpDir = std::getenv("TMPDIR");
-          if (tmpDir == nullptr || tmpDir[0] == '\0')
+          // Create pipe path: /tmp/zowe-native-proto_{uid}_{pid}_{stream_id}_fifo
+          const char *tmp_dir = std::getenv("TMPDIR");
+          if (tmp_dir == nullptr || tmp_dir[0] == '\0')
           {
-            tmpDir = "/tmp";
+            tmp_dir = "/tmp";
           }
 
-          std::ostringstream pipePathStream;
-          pipePathStream << tmpDir << "/zowe-native-proto_"
-                         << geteuid() << "_"
-                         << getpid() << "_"
-                         << streamId << "_fifo";
+          std::ostringstream pipe_path_stream;
+          pipe_path_stream << tmp_dir << "/zowe-native-proto_"
+                           << geteuid() << "_"
+                           << getpid() << "_"
+                           << stream_id << "_fifo";
 
-          it->pipePath = pipePathStream.str();
+          it->pipe_path = pipe_path_stream.str();
 
           // Remove any existing pipe (ignore errors if it doesn't exist)
-          if (unlink(it->pipePath.c_str()) != 0 && errno != ENOENT)
+          if (unlink(it->pipe_path.c_str()) != 0 && errno != ENOENT)
           {
-            string errMsg = string("Failed to delete existing FIFO pipe: ") + it->pipePath;
+            string errMsg = string("Failed to delete existing FIFO pipe: ") + it->pipe_path;
             context.errln(errMsg.c_str());
             LOG_ERROR("%s", errMsg.c_str());
             break;
           }
 
           // Create the FIFO pipe
-          if (mkfifo(it->pipePath.c_str(), 0600) != 0)
+          if (mkfifo(it->pipe_path.c_str(), 0600) != 0)
           {
-            string errMsg = string("Failed to create FIFO pipe: ") + it->pipePath;
+            string errMsg = string("Failed to create FIFO pipe: ") + it->pipe_path;
             context.errln(errMsg.c_str());
             LOG_ERROR("%s", errMsg.c_str());
             break;
           }
 
-          LOG_DEBUG("Created FIFO pipe: %s", it->pipePath.c_str());
+          LOG_DEBUG("Created FIFO pipe: %s", it->pipe_path.c_str());
 
           // Set the pipe path as the output argument
-          args[it->argName] = plugin::Argument(it->pipePath);
+          args[it->arg_name] = plugin::Argument(it->pipe_path);
 
           // Create notification based on mode
-          zjson::Value paramsObj = zjson::Value::create_object();
-          paramsObj.add_to_object("id", zjson::Value(static_cast<int>(streamId)));
-          paramsObj.add_to_object("pipePath", zjson::Value(it->pipePath));
+          zjson::Value params_obj = zjson::Value::create_object();
+          params_obj.add_to_object("id", zjson::Value(static_cast<int>(stream_id)));
+          params_obj.add_to_object("pipePath", zjson::Value(it->pipe_path));
 
           RpcNotification notification = RpcNotification{
               .jsonrpc = "2.0",
-              .method = (it->fifoMode == FifoMode::GET) ? "receiveStream" : "sendStream",
-              .params = zstd::optional<zjson::Value>(paramsObj),
+              .method = (it->fifo_mode == FifoMode::GET) ? "receiveStream" : "sendStream",
+              .params = zstd::optional<zjson::Value>(params_obj),
           };
 
           // If defer is true, store the notification for later
@@ -307,7 +307,7 @@ void CommandBuilder::apply_input_transforms(MiddlewareContext &context) const
           }
           else
           {
-            RpcServer::sendNotification(notification);
+            RpcServer::send_notification(notification);
           }
         }
         catch (const std::exception &e)
@@ -347,7 +347,7 @@ void CommandBuilder::apply_output_transforms(MiddlewareContext &context) const
   for (std::vector<ArgTransform>::const_iterator it = transforms_.begin(); it != transforms_.end(); ++it)
   {
     // Get the field value from the object if it exists
-    ast::Node fieldValue = obj->get(it->argName);
+    ast::Node field_value = obj->get(it->arg_name);
 
     switch (it->kind)
     {
@@ -366,7 +366,7 @@ void CommandBuilder::apply_output_transforms(MiddlewareContext &context) const
         }
 
         // Set the output field
-        obj->set(it->argName, ast::Ast::string(data));
+        obj->set(it->arg_name, ast::Ast::string(data));
       }
       catch (const std::exception &e)
       {
@@ -380,16 +380,16 @@ void CommandBuilder::apply_output_transforms(MiddlewareContext &context) const
     case ArgTransform::HandleFifo:
     {
       // HandleFifo cleanup: Remove the FIFO pipe after command execution
-      if (!it->pipePath.empty())
+      if (!it->pipe_path.empty())
       {
         // Remove the pipe (ignore errors if already removed)
-        if (unlink(it->pipePath.c_str()) == 0)
+        if (unlink(it->pipe_path.c_str()) == 0)
         {
-          LOG_DEBUG("Cleaned up FIFO pipe: %s", it->pipePath.c_str());
+          LOG_DEBUG("Cleaned up FIFO pipe: %s", it->pipe_path.c_str());
         }
         else
         {
-          LOG_ERROR("Failed to delete FIFO pipe: %s", it->pipePath.c_str());
+          LOG_ERROR("Failed to delete FIFO pipe: %s", it->pipe_path.c_str());
         }
       }
       break;

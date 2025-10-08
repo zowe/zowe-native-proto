@@ -40,20 +40,20 @@ private:
 
   static std::ofstream &get_log_file()
   {
-    static std::ofstream logFile;
-    return logFile;
+    static std::ofstream log_file;
+    return log_file;
   }
 
   static bool &get_verbose_logging()
   {
-    static bool verboseLogging = false;
-    return verboseLogging;
+    static bool verbose_logging = false;
+    return verbose_logging;
   }
 
   static std::mutex &get_log_mutex()
   {
-    static std::mutex logMutex;
-    return logMutex;
+    static std::mutex log_mutex;
+    return log_mutex;
   }
 
   static bool &get_initialized()
@@ -64,8 +64,8 @@ private:
 
   static std::string &get_log_file_path()
   {
-    static std::string logFilePath;
-    return logFilePath;
+    static std::string log_file_path;
+    return log_file_path;
   }
 
   /**
@@ -87,31 +87,31 @@ private:
    */
   static void check_and_truncate_log_file()
   {
-    std::string &logFilePath = get_log_file_path();
-    std::ofstream &logFile = get_log_file();
+    std::string &log_file_path = get_log_file_path();
+    std::ofstream &log_file = get_log_file();
 
-    if (logFilePath.empty() || !logFile.is_open())
+    if (log_file_path.empty() || !log_file.is_open())
     {
       return;
     }
 
     struct stat st;
-    if (stat(logFilePath.c_str(), &st) == 0)
+    if (stat(log_file_path.c_str(), &st) == 0)
     {
       if (static_cast<size_t>(st.st_size) > MAX_LOG_SIZE)
       {
-        logFile.close();
+        log_file.close();
 
         // Reopen the file in truncate mode
-        logFile.open(logFilePath.c_str(), std::ios::out | std::ios::trunc);
-        if (!logFile.is_open())
+        log_file.open(log_file_path.c_str(), std::ios::out | std::ios::trunc);
+        if (!log_file.is_open())
         {
-          std::cerr << "Failed to truncate log file: " << logFilePath << std::endl;
+          std::cerr << "Failed to truncate log file: " << log_file_path << std::endl;
           return;
         }
 
-        logFile << get_current_timestamp() << " [INFO] Log file truncated due to size limit\n";
-        logFile.flush();
+        log_file << get_current_timestamp() << " [INFO] Log file truncated due to size limit\n";
+        log_file.flush();
       }
     }
   }
@@ -119,33 +119,33 @@ private:
 public:
   /**
    * Initialize the logger with specified options
-   * @param execDir Executable directory (must be provided)
+   * @param exec_dir Executable directory (must be provided)
    * @param verbose Whether to enable verbose logging
    * @param truncate Whether to truncate existing log file
    */
-  static void init_logger(const char *execDir, bool verbose = false, bool truncate = false)
+  static void init_logger(const char *exec_dir, bool verbose = false, bool truncate = false)
   {
-    std::mutex &logMutex = get_log_mutex();
-    std::ofstream &logFile = get_log_file();
-    bool &verboseLogging = get_verbose_logging();
+    std::mutex &log_mutex = get_log_mutex();
+    std::ofstream &log_file = get_log_file();
+    bool &verbose_logging = get_verbose_logging();
     bool &initialized = get_initialized();
-    std::string &logFilePath = get_log_file_path();
+    std::string &log_file_path = get_log_file_path();
 
-    std::lock_guard<std::mutex> lock(logMutex);
+    std::lock_guard<std::mutex> lock(log_mutex);
 
-    verboseLogging = verbose;
+    verbose_logging = verbose;
 
     // Create logs directory
-    std::string logsDir = std::string(execDir) + "/logs";
+    std::string logs_dir = std::string(exec_dir) + "/logs";
 
-    if (mkdir(logsDir.c_str(), 0700) != 0 && errno != EEXIST)
+    if (mkdir(logs_dir.c_str(), 0700) != 0 && errno != EEXIST)
     {
-      std::cerr << "Failed to create logs directory: " << logsDir << std::endl;
+      std::cerr << "Failed to create logs directory: " << logs_dir << std::endl;
       return;
     }
 
     // Set log file path
-    logFilePath = logsDir + "/zowed.log";
+    log_file_path = logs_dir + "/zowed.log";
 
     // Open log file
     std::ios_base::openmode mode = std::ios::out;
@@ -158,25 +158,25 @@ public:
       mode |= std::ios::app;
     }
 
-    if (logFile.is_open())
+    if (log_file.is_open())
     {
-      logFile.close();
+      log_file.close();
     }
 
     // Create/open file with restricted permissions (0600)
-    int fd = open(logFilePath.c_str(), O_WRONLY | O_CREAT | (truncate ? O_TRUNC : O_APPEND), 0600);
+    int fd = open(log_file_path.c_str(), O_WRONLY | O_CREAT | (truncate ? O_TRUNC : O_APPEND), 0600);
     if (fd == -1)
     {
-      std::cerr << "Failed to create log file: " << logFilePath << std::endl;
+      std::cerr << "Failed to create log file: " << log_file_path << std::endl;
       return;
     }
     close(fd);
 
     // Now open with fstream
-    logFile.open(logFilePath.c_str(), mode);
-    if (!logFile.is_open())
+    log_file.open(log_file_path.c_str(), mode);
+    if (!log_file.is_open())
     {
-      std::cerr << "Failed to initialize logger: could not open " << logFilePath << std::endl;
+      std::cerr << "Failed to initialize logger: could not open " << log_file_path << std::endl;
       return;
     }
 
@@ -201,17 +201,17 @@ public:
    */
   static void log_debug(const char *format, ...)
   {
-    bool &verboseLogging = get_verbose_logging();
+    bool &verbose_logging = get_verbose_logging();
     bool &initialized = get_initialized();
 
-    if (!verboseLogging || !initialized)
+    if (!verbose_logging || !initialized)
     {
       return;
     }
 
-    std::mutex &logMutex = get_log_mutex();
-    std::ofstream &logFile = get_log_file();
-    std::lock_guard<std::mutex> lock(logMutex);
+    std::mutex &log_mutex = get_log_mutex();
+    std::ofstream &log_file = get_log_file();
+    std::lock_guard<std::mutex> lock(log_mutex);
 
     char buffer[4096];
     va_list args;
@@ -219,8 +219,8 @@ public:
     vsnprintf(buffer, sizeof(buffer), format, args);
     va_end(args);
 
-    logFile << get_current_timestamp() << " [DEBUG] " << buffer << std::endl;
-    logFile.flush();
+    log_file << get_current_timestamp() << " [DEBUG] " << buffer << std::endl;
+    log_file.flush();
 
     check_and_truncate_log_file();
   }
@@ -237,9 +237,9 @@ public:
       return;
     }
 
-    std::mutex &logMutex = get_log_mutex();
-    std::ofstream &logFile = get_log_file();
-    std::lock_guard<std::mutex> lock(logMutex);
+    std::mutex &log_mutex = get_log_mutex();
+    std::ofstream &log_file = get_log_file();
+    std::lock_guard<std::mutex> lock(log_mutex);
 
     char buffer[4096];
     va_list args;
@@ -247,8 +247,8 @@ public:
     vsnprintf(buffer, sizeof(buffer), format, args);
     va_end(args);
 
-    logFile << get_current_timestamp() << " [ERROR] " << buffer << std::endl;
-    logFile.flush();
+    log_file << get_current_timestamp() << " [ERROR] " << buffer << std::endl;
+    log_file.flush();
 
     check_and_truncate_log_file();
   }
@@ -268,11 +268,11 @@ public:
 
     if (initialized)
     {
-      std::mutex &logMutex = get_log_mutex();
-      std::ofstream &logFile = get_log_file();
-      std::lock_guard<std::mutex> lock(logMutex);
-      logFile << get_current_timestamp() << " [FATAL] " << buffer << std::endl;
-      logFile.flush();
+      std::mutex &log_mutex = get_log_mutex();
+      std::ofstream &log_file = get_log_file();
+      std::lock_guard<std::mutex> lock(log_mutex);
+      log_file << get_current_timestamp() << " [FATAL] " << buffer << std::endl;
+      log_file.flush();
     }
 
     // Also print to stderr
@@ -293,9 +293,9 @@ public:
       return;
     }
 
-    std::mutex &logMutex = get_log_mutex();
-    std::ofstream &logFile = get_log_file();
-    std::lock_guard<std::mutex> lock(logMutex);
+    std::mutex &log_mutex = get_log_mutex();
+    std::ofstream &log_file = get_log_file();
+    std::lock_guard<std::mutex> lock(log_mutex);
 
     char buffer[4096];
     va_list args;
@@ -303,8 +303,8 @@ public:
     vsnprintf(buffer, sizeof(buffer), format, args);
     va_end(args);
 
-    logFile << get_current_timestamp() << " [INFO] " << buffer << std::endl;
-    logFile.flush();
+    log_file << get_current_timestamp() << " [INFO] " << buffer << std::endl;
+    log_file.flush();
 
     check_and_truncate_log_file();
   }
@@ -314,14 +314,14 @@ public:
    */
   static void shutdown()
   {
-    std::mutex &logMutex = get_log_mutex();
-    std::ofstream &logFile = get_log_file();
+    std::mutex &log_mutex = get_log_mutex();
+    std::ofstream &log_file = get_log_file();
     bool &initialized = get_initialized();
 
-    std::lock_guard<std::mutex> lock(logMutex);
-    if (logFile.is_open())
+    std::lock_guard<std::mutex> lock(log_mutex);
+    if (log_file.is_open())
     {
-      logFile.close();
+      log_file.close();
     }
     initialized = false;
   }

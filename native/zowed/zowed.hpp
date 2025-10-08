@@ -17,15 +17,15 @@
  */
 struct IoserverOptions
 {
-  int numWorkers; ///< Number of worker threads
-  bool verbose;   ///< Enable verbose logging
+  int num_workers; ///< Number of worker threads
+  bool verbose;    ///< Enable verbose logging
 
   /**
    * @brief Constructor with default values
-   * @param workers Number of worker threads
-   * @param verb Enable verbose logging
+   * @param num_workers Number of worker threads
+   * @param verbose Enable verbose logging
    */
-  IoserverOptions(const int workers = 10, const bool verb = false) : numWorkers(workers), verbose(verb)
+  IoserverOptions(const int num_workers = 10, const bool verbose = false) : num_workers(num_workers), verbose(verbose)
   {
   }
 };
@@ -37,9 +37,9 @@ struct IoserverOptions
  * bypassing command line argument parsing.
  *
  * @param options Pre-configured server options
- * @param execDir Executable directory for logger initialization
+ * @param exec_dir Executable directory for logger initialization
  * @return int Exit code (0 for success, non-zero for error)
  */
-extern "C" int run_zowed_server(const IoserverOptions &options, const char *execDir = nullptr);
+extern "C" int run_zowed_server(const IoserverOptions &options, const char *exec_dir = nullptr);
 
 #endif

@@ -30,28 +30,28 @@ class Worker
 {
 private:
   int id;
-  std::thread workerThread;
-  std::queue<std::string> requestQueue;
-  std::mutex queueMutex;
-  std::condition_variable queueCondition;
+  std::thread worker_thread;
+  std::queue<std::string> request_queue;
+  std::mutex queue_mutex;
+  std::condition_variable queue_condition;
   std::atomic<bool> ready;
-  std::atomic<bool> shouldStop;
+  std::atomic<bool> should_stop;
 
-  void workerLoop();
-  void processRequest(const std::string &data);
+  void worker_loop();
+  void process_request(const std::string &data);
 
 public:
-  Worker(int workerId);
+  Worker(int worker_id);
   ~Worker();
 
   void start();
   void stop();
-  void addRequest(const std::string &request);
-  bool isReady() const
+  void add_request(const std::string &request);
+  bool is_ready() const
   {
     return ready.load();
   }
-  int getId() const
+  int get_id() const
   {
     return id;
   }
@@ -62,22 +62,22 @@ class WorkerPool
 {
 private:
   std::vector<std::unique_ptr<Worker>> workers;
-  std::mutex readyMutex;
-  std::condition_variable readyCondition;
-  std::atomic<int32_t> readyCount;
-  std::atomic<bool> isShuttingDown;
+  std::mutex ready_mutex;
+  std::condition_variable ready_condition;
+  std::atomic<int32_t> ready_count;
+  std::atomic<bool> is_shutting_down;
 
-  void initializeWorker(int workerId);
+  void initialize_worker(int worker_id);
 
 public:
-  explicit WorkerPool(int numWorkers);
+  explicit WorkerPool(int num_workers);
   ~WorkerPool();
 
-  void distributeRequest(const std::string &request);
-  int32_t getAvailableWorkersCount();
+  void distribute_request(const std::string &request);
+  int32_t get_available_workers_count();
   void shutdown();
-  Worker *getReadyWorker();
-  void setWorkerReady(int workerId);
+  Worker *get_ready_worker();
+  void set_worker_ready(int worker_id);
 };
 
 #endif
