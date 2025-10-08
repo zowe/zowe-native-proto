@@ -1556,14 +1556,22 @@ inline Value json_handle_to_value(JSON_INSTANCE *instance, KEY_HANDLE *key_handl
         std::string str_val(value_ptr, value_length);
         if (str_val.find('.') != std::string::npos || str_val.find('e') != std::string::npos || str_val.find('E') != std::string::npos)
         {
-          char *endptr;
+          char *endptr = nullptr;
           double num_val = std::strtod(str_val.c_str(), &endptr);
+          if (endptr == str_val.c_str() || *endptr != '\0')
+          {
+            return Value();
+          }
           return Value(num_val);
         }
         else
         {
-          char *endptr;
+          char *endptr = nullptr;
           long long int_val = std::strtoll(str_val.c_str(), &endptr, 10);
+          if (endptr == str_val.c_str() || *endptr != '\0')
+          {
+            return Value();
+          }
           return Value(int_val);
         }
       }

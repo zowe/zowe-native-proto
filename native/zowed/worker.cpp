@@ -83,7 +83,7 @@ void Worker::process_request(const string &data)
 }
 
 // WorkerPool implementation
-WorkerPool::WorkerPool(int num_workers) : ready_count(0), is_shutting_down(false)
+WorkerPool::WorkerPool(int num_workers) : ready_count(0), is_shutting_down(false), next_worker_index(0)
 {
   workers.reserve(num_workers);
 
@@ -145,12 +145,20 @@ Worker *WorkerPool::get_ready_worker()
   if (is_shutting_down)
     return nullptr;
 
-  // Find a ready worker
-  for (auto &worker : workers)
+  // Round-robin selection for O(1) access
+  size_t workers_size = workers.size();
+  if (workers_size == 0)
+    return nullptr;
+
+  size_t start_index = next_worker_index.fetch_add(1) % workers_size;
+
+  // Try to find a ready worker starting from the next index
+  for (size_t i = 0; i < workers_size; ++i)
   {
-    if (worker->is_ready())
+    size_t index = (start_index + i) % workers_size;
+    if (workers[index]->is_ready())
     {
-      return worker.get();
+      return workers[index].get();
     }
   }
 

@@ -66,6 +66,7 @@ private:
   std::condition_variable ready_condition;
   std::atomic<int32_t> ready_count;
   std::atomic<bool> is_shutting_down;
+  std::atomic<size_t> next_worker_index;
 
   void initialize_worker(int worker_id);
 
