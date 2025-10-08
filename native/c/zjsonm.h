@@ -13,7 +13,6 @@
 #define ZJSONM_H
 
 #include "ztype.h"
-#include "zmetal.h"
 #include "zjsontype.h"
 
 #if defined(__cplusplus) && (defined(__IBMCPP__) || defined(__IBMC__))

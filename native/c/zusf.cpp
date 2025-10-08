@@ -1242,6 +1242,11 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, const string &file, const strin
 
 #ifdef ZSHMEM_ENABLE
   set_content_length((uint64_t)st.st_size);
+#elif defined(__clang__)
+  if (zusf->set_size_callback)
+  {
+    zusf->set_size_callback((uint64_t)st.st_size);
+  }
 #endif
 
   int fifo_fd = open(pipe.c_str(), O_WRONLY);

@@ -8,6 +8,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 - Added `depth` property to the `ListFilesRequest` type for listing USS directories recursively. [#575](https://github.com/zowe/zowe-native-proto/pull/575)
 - Replaced `this.uninstallServer` with the class reference `ZSshUtils.uninstallServer` in `ZSshUtils.ts`. [#586] (https://github.com/zowe/zowe-native-proto/pull/586).
+- Added `recfm` property to the `Dataset` type for listing data sets with attributes. [#558](https://github.com/zowe/zowe-native-proto/pull/558)
 
 ## `0.1.10`
 

@@ -108,8 +108,9 @@ bool zut_prepare_encoding(const std::string &encoding_value, ZEncode *opts);
 /**
  * @brief Print a string as a sequence of bytes
  * @param input The string to print
+ * @param output_stream Pointer to output stream (defaults to std::cout)
  */
-void zut_print_string_as_bytes(std::string &input);
+void zut_print_string_as_bytes(std::string &input, std::ostream *out_stream = nullptr);
 
 /**
  * @brief Convert a hexadecimal string to a vector of bytes

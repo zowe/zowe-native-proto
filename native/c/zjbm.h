@@ -17,7 +17,7 @@
 #include "zjbtype.h"
 
 #if (defined(__IBMCPP__) || defined(__IBMC__))
-#if defined(SWIG)
+#if defined(__clang__)
 #pragma pack(1)
 #else
 #pragma pack(packed)
