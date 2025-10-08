@@ -8,7 +8,7 @@
  * Copyright Contributors to the Zowe Project.
  *
  */
-
+import { ProfileConstants } from "@zowe/core-for-zowe-sdk";
 import type { IProfile } from "@zowe/imperative";
 import { ZoweVsCodeExtension } from "@zowe/zowe-explorer-api";
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
@@ -21,7 +21,6 @@ import {
 } from "zowe-native-proto-sdk";
 import { SshConfigUtils, VscePromptApi } from "../src/SshConfigUtils";
 import { getVsceConfig } from "../src/Utilities";
-import { ProfileConstants } from "@zowe/core-for-zowe-sdk";
 
 vi.mock("vscode", () => ({
     Disposable: vi.fn(),
