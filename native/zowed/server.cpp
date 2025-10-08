@@ -14,7 +14,9 @@
 #include "logger.hpp"
 #include <iostream>
 
-void RpcServer::processRequest(const std::string &requestData)
+using std::string;
+
+void RpcServer::processRequest(const string &requestData)
 {
   try
   {
@@ -25,7 +27,7 @@ void RpcServer::processRequest(const std::string &requestData)
     {
       ErrorDetails error{
           RpcErrorCode::PARSE_ERROR,
-          std::string("Failed to parse command request: ") + parse_result.error().what(),
+          string("Failed to parse command request: ") + parse_result.error().what(),
           zstd::optional<zjson::Value>()};
 
       RpcResponse response;
@@ -92,7 +94,7 @@ void RpcServer::processRequest(const std::string &requestData)
       else
       {
         // Fallback to output content if no AST object is set
-        std::string output = context.get_output_content();
+        string output = context.get_output_content();
         resultJson = convertOutputToJson(output);
       }
 
@@ -103,7 +105,7 @@ void RpcServer::processRequest(const std::string &requestData)
     else
     {
       // Error occurred
-      std::string errorOutput = context.get_error_content();
+      string errorOutput = context.get_error_content();
       ErrorDetails error{
           result, // Internal error
           "Command execution failed",
@@ -119,7 +121,7 @@ void RpcServer::processRequest(const std::string &requestData)
   {
     ErrorDetails error{
         RpcErrorCode::PARSE_ERROR,
-        "Failed to parse command request: " + std::string(e.what()),
+        "Failed to parse command request: " + string(e.what()),
         zstd::optional<zjson::Value>()};
 
     RpcResponse response;
@@ -142,14 +144,14 @@ RpcRequest RpcServer::parseRpcRequest(const zjson::Value &json)
   auto result = zjson::from_value<RpcRequest>(json);
   if (!result.has_value())
   {
-    throw std::runtime_error(std::string("Failed to parse RPC request: ") + result.error().what());
+    throw std::runtime_error(string("Failed to parse RPC request: ") + result.error().what());
   }
   return result.value();
 }
 
-std::string RpcServer::camelCaseToKebabCase(const std::string &input)
+string RpcServer::camelCaseToKebabCase(const string &input)
 {
-  std::string result;
+  string result;
   result.reserve(input.length() + 5); // Reserve some extra space for hyphens
 
   for (size_t i = 0; i < input.length(); ++i)
@@ -187,7 +189,7 @@ plugin::ArgumentMap RpcServer::convertJsonParamsToArgumentMap(const zjson::Value
   for (const auto &pair : params.as_object())
   {
     // Convert camelCase keys to kebab-case
-    const std::string kebabKey = camelCaseToKebabCase(pair.first);
+    const string kebabKey = camelCaseToKebabCase(pair.first);
     const zjson::Value &value = pair.second;
 
     if (value.is_bool())
@@ -217,7 +219,7 @@ plugin::ArgumentMap RpcServer::convertJsonParamsToArgumentMap(const zjson::Value
   return args;
 }
 
-zjson::Value RpcServer::convertOutputToJson(const std::string &output)
+zjson::Value RpcServer::convertOutputToJson(const string &output)
 {
   if (!output.empty())
   {
@@ -303,7 +305,7 @@ void RpcServer::printResponse(const RpcResponse &response)
     LOG_ERROR("%s", error.message.c_str());
   }
 
-  std::string jsonString = serializeJson(rpcResponseToJson(response));
+  string jsonString = serializeJson(rpcResponseToJson(response));
 
   // Print errors to stderr, success responses to stdout
   if (response.error.has_value())
@@ -317,12 +319,12 @@ void RpcServer::printResponse(const RpcResponse &response)
 }
 
 // Static utility methods
-std::string RpcServer::serializeJson(const zjson::Value &val, bool prettify)
+string RpcServer::serializeJson(const zjson::Value &val, bool prettify)
 {
   auto result = prettify ? zjson::to_string_pretty(val) : zjson::to_string(val);
   if (!result.has_value())
   {
-    throw std::runtime_error(std::string("Failed to serialize JSON: ") + result.error().what());
+    throw std::runtime_error(string("Failed to serialize JSON: ") + result.error().what());
   }
   return result.value();
 }
@@ -337,7 +339,7 @@ RpcRequest RpcServer::parseRpcRequestFromJson(const zjson::Value &json)
   auto result = zjson::from_value<RpcRequest>(json);
   if (!result.has_value())
   {
-    throw std::runtime_error(std::string("Failed to parse RPC request: ") + result.error().what());
+    throw std::runtime_error(string("Failed to parse RPC request: ") + result.error().what());
   }
   return result.value();
 }
@@ -356,6 +358,6 @@ zjson::Value RpcServer::errorDetailsToJson(const ErrorDetails &error)
 
 void RpcServer::sendNotification(const RpcNotification &notification)
 {
-  std::string jsonString = serializeJson(zjson::to_value(notification).value());
+  string jsonString = serializeJson(zjson::to_value(notification).value());
   std::cout << jsonString << std::endl;
 }

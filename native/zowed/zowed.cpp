@@ -30,10 +30,12 @@
 #include "server.hpp"
 #include "logger.hpp"
 
+using std::string;
+
 struct StatusMessage
 {
-  std::string status;
-  std::string message;
+  string status;
+  string message;
   zstd::optional<zjson::Value> data;
 };
 ZJSON_DERIVE(StatusMessage, status, message, data);
@@ -42,7 +44,7 @@ class ZowedServer
 {
 private:
   IoserverOptions options;
-  std::string execDir;
+  string execDir;
   std::unique_ptr<WorkerPool> workerPool;
   std::atomic<bool> shutdownRequested;
   std::mutex shutdownMutex;
@@ -80,10 +82,10 @@ private:
     return instance;
   }
 
-  std::map<std::string, std::string> loadChecksums()
+  std::map<string, string> loadChecksums()
   {
-    std::map<std::string, std::string> checksums;
-    std::string checksumsFile = execDir + "/checksums.asc";
+    std::map<string, string> checksums;
+    string checksumsFile = execDir + "/checksums.asc";
 
     std::ifstream file(checksumsFile);
     if (!file.is_open())
@@ -93,11 +95,11 @@ private:
       return checksums;
     }
 
-    std::string line;
+    string line;
     while (std::getline(file, line))
     {
       std::istringstream iss(line);
-      std::string checksum, filename;
+      string checksum, filename;
       if (iss >> checksum >> filename)
       {
         checksums[filename] = checksum;
@@ -112,7 +114,7 @@ private:
     zjson::Value data = zjson::Value::create_object();
 
     // Load checksums similar to Go implementation
-    std::map<std::string, std::string> checksums = loadChecksums();
+    std::map<string, string> checksums = loadChecksums();
     zjson::Value checksumsObj = zjson::Value::create_object();
     for (const auto &pair : checksums)
     {
@@ -126,7 +128,7 @@ private:
         .data = zstd::optional<zjson::Value>(data),
     };
 
-    std::string jsonString = RpcServer::serializeJson(zjson::to_value(statusMsg).value());
+    string jsonString = RpcServer::serializeJson(zjson::to_value(statusMsg).value());
     std::cout << jsonString << std::endl;
   }
 
@@ -156,7 +158,7 @@ public:
   {
   }
 
-  void run(const IoserverOptions &opts, const std::string &execDir)
+  void run(const IoserverOptions &opts, const string &execDir)
   {
     options = opts;
     this->execDir = execDir;
@@ -190,7 +192,7 @@ public:
 
     // Main input processing loop
     LOG_DEBUG("Entering main input processing loop");
-    std::string line;
+    string line;
     while (std::getline(std::cin, line) && !shutdownRequested)
     {
       if (!line.empty())
@@ -215,7 +217,7 @@ extern "C" int run_zowed_server(const IoserverOptions &options, const char *exec
   try
   {
     ZowedServer server;
-    server.run(options, std::string(execDir ? execDir : "."));
+    server.run(options, string(execDir ? execDir : "."));
   }
   catch (const std::exception &e)
   {

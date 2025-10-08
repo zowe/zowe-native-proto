@@ -14,7 +14,9 @@
 #include "../c/extend/plugin.hpp"
 #include <sstream>
 
-MiddlewareContext::MiddlewareContext(const std::string &command_path, const plugin::ArgumentMap &args)
+using std::string;
+
+MiddlewareContext::MiddlewareContext(const string &command_path, const plugin::ArgumentMap &args)
     : plugin::InvocationContext(command_path, args, &m_input_stream, &m_output_stream, &m_error_stream)
 {
 }
@@ -34,18 +36,18 @@ std::stringstream &MiddlewareContext::get_error_stream()
   return m_error_stream;
 }
 
-void MiddlewareContext::set_input_content(const std::string &content)
+void MiddlewareContext::set_input_content(const string &content)
 {
   m_input_stream.str(content);
   m_input_stream.clear(); // Clear any error flags
 }
 
-std::string MiddlewareContext::get_output_content() const
+string MiddlewareContext::get_output_content() const
 {
   return m_output_stream.str();
 }
 
-std::string MiddlewareContext::get_error_content() const
+string MiddlewareContext::get_error_content() const
 {
   return m_error_stream.str();
 }

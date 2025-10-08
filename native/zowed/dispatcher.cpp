@@ -15,7 +15,9 @@
 #include <vector>
 #include <algorithm>
 
-bool CommandDispatcher::register_command(const std::string &command_name, const CommandBuilder &builder)
+using std::string;
+
+bool CommandDispatcher::register_command(const string &command_name, const CommandBuilder &builder)
 {
   if (command_name.empty() || builder.get_handler() == nullptr)
   {
@@ -37,12 +39,12 @@ bool CommandDispatcher::register_command(const std::string &command_name, const 
   return true;
 }
 
-int CommandDispatcher::dispatch(const std::string &command_name, MiddlewareContext &context)
+int CommandDispatcher::dispatch(const string &command_name, MiddlewareContext &context)
 {
   auto it = m_command_handlers.find(command_name);
   if (it == m_command_handlers.end())
   {
-    std::string errMsg = "Command not found: " + command_name;
+    string errMsg = "Command not found: " + command_name;
     context.errln(errMsg.c_str());
     LOG_ERROR("%s", errMsg.c_str());
     return RpcErrorCode::METHOD_NOT_FOUND;
@@ -87,7 +89,7 @@ int CommandDispatcher::dispatch(const std::string &command_name, MiddlewareConte
   }
   catch (const std::exception &e)
   {
-    std::string errMsg = std::string("Command execution failed: ") + e.what();
+    string errMsg = string("Command execution failed: ") + e.what();
     context.err("Command execution failed: ");
     context.errln(e.what());
     LOG_ERROR("%s (command: %s)", errMsg.c_str(), command_name.c_str());
@@ -101,14 +103,14 @@ int CommandDispatcher::dispatch(const std::string &command_name, MiddlewareConte
   }
 }
 
-bool CommandDispatcher::has_command(const std::string &command_name) const
+bool CommandDispatcher::has_command(const string &command_name) const
 {
   return m_command_handlers.find(command_name) != m_command_handlers.end();
 }
 
-std::vector<std::string> CommandDispatcher::get_registered_commands() const
+std::vector<string> CommandDispatcher::get_registered_commands() const
 {
-  std::vector<std::string> commands;
+  std::vector<string> commands;
   commands.reserve(m_command_handlers.size());
 
   for (auto it = m_command_handlers.begin(); it != m_command_handlers.end(); ++it)
@@ -121,7 +123,7 @@ std::vector<std::string> CommandDispatcher::get_registered_commands() const
   return commands;
 }
 
-bool CommandDispatcher::unregister_command(const std::string &command_name)
+bool CommandDispatcher::unregister_command(const string &command_name)
 {
   auto it = m_command_handlers.find(command_name);
   if (it == m_command_handlers.end())

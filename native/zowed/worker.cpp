@@ -13,6 +13,8 @@
 #include "server.hpp"
 #include "logger.hpp"
 
+using std::string;
+
 // Worker implementation
 Worker::Worker(int workerId)
     : id(workerId), ready(false), shouldStop(false)
@@ -42,7 +44,7 @@ void Worker::stop()
   LOG_DEBUG("Worker %d stopped", id);
 }
 
-void Worker::addRequest(const std::string &request)
+void Worker::addRequest(const string &request)
 {
   {
     std::lock_guard<std::mutex> lock(queueMutex);
@@ -64,7 +66,7 @@ void Worker::workerLoop()
 
     if (!requestQueue.empty())
     {
-      std::string request = requestQueue.front();
+      string request = requestQueue.front();
       requestQueue.pop();
       lock.unlock();
 
@@ -73,7 +75,7 @@ void Worker::workerLoop()
   }
 }
 
-void Worker::processRequest(const std::string &data)
+void Worker::processRequest(const string &data)
 {
   // Delegate JSON-RPC processing to the RpcServer singleton
   RpcServer &server = RpcServer::get_instance();
@@ -121,7 +123,7 @@ void WorkerPool::initializeWorker(int workerId)
   setWorkerReady(workerId);
 }
 
-void WorkerPool::distributeRequest(const std::string &request)
+void WorkerPool::distributeRequest(const string &request)
 {
   if (isShuttingDown)
     return;

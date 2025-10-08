@@ -23,6 +23,8 @@
 #include <sys/types.h>
 #include <iostream>
 
+using std::string;
+
 // Forward declaration from server.hpp
 struct RpcNotification;
 
@@ -31,67 +33,67 @@ CommandBuilder::CommandBuilder(CommandHandler handler)
 {
 }
 
-CommandBuilder &CommandBuilder::rename_arg(const std::string &from, const std::string &to)
+CommandBuilder &CommandBuilder::rename_arg(const string &from, const string &to)
 {
   transforms_.push_back(ArgTransform(ArgTransform::RenameArg, from, to));
   return *this;
 }
 
-CommandBuilder &CommandBuilder::set_default(const std::string &argName, const char *defaultValue)
+CommandBuilder &CommandBuilder::set_default(const string &argName, const char *defaultValue)
 {
   transforms_.push_back(ArgTransform(ArgTransform::SetDefault, argName, plugin::Argument(defaultValue)));
   return *this;
 }
 
-CommandBuilder &CommandBuilder::set_default(const std::string &argName, const std::string &defaultValue)
+CommandBuilder &CommandBuilder::set_default(const string &argName, const string &defaultValue)
 {
   transforms_.push_back(ArgTransform(ArgTransform::SetDefault, argName, plugin::Argument(defaultValue)));
   return *this;
 }
 
-CommandBuilder &CommandBuilder::set_default(const std::string &argName, bool defaultValue)
+CommandBuilder &CommandBuilder::set_default(const string &argName, bool defaultValue)
 {
   transforms_.push_back(ArgTransform(ArgTransform::SetDefault, argName, plugin::Argument(defaultValue)));
   return *this;
 }
 
-CommandBuilder &CommandBuilder::set_default(const std::string &argName, int defaultValue)
+CommandBuilder &CommandBuilder::set_default(const string &argName, int defaultValue)
 {
   transforms_.push_back(ArgTransform(ArgTransform::SetDefault, argName, plugin::Argument(static_cast<long long>(defaultValue))));
   return *this;
 }
 
-CommandBuilder &CommandBuilder::set_default(const std::string &argName, long long defaultValue)
+CommandBuilder &CommandBuilder::set_default(const string &argName, long long defaultValue)
 {
   transforms_.push_back(ArgTransform(ArgTransform::SetDefault, argName, plugin::Argument(defaultValue)));
   return *this;
 }
 
-CommandBuilder &CommandBuilder::set_default(const std::string &argName, double defaultValue)
+CommandBuilder &CommandBuilder::set_default(const string &argName, double defaultValue)
 {
   transforms_.push_back(ArgTransform(ArgTransform::SetDefault, argName, plugin::Argument(defaultValue)));
   return *this;
 }
 
-CommandBuilder &CommandBuilder::handle_fifo(const std::string &rpcId, const std::string &argName, FifoMode mode, bool defer)
+CommandBuilder &CommandBuilder::handle_fifo(const string &rpcId, const string &argName, FifoMode mode, bool defer)
 {
   transforms_.push_back(ArgTransform(ArgTransform::HandleFifo, rpcId, argName, mode, defer));
   return *this;
 }
 
-CommandBuilder &CommandBuilder::read_stdout(const std::string &argName, bool b64Encode)
+CommandBuilder &CommandBuilder::read_stdout(const string &argName, bool b64Encode)
 {
   transforms_.push_back(ArgTransform(ArgTransform::ReadStdout, argName, b64Encode));
   return *this;
 }
 
-CommandBuilder &CommandBuilder::write_stdin(const std::string &argName, bool b64Decode)
+CommandBuilder &CommandBuilder::write_stdin(const string &argName, bool b64Decode)
 {
   transforms_.push_back(ArgTransform(ArgTransform::WriteStdin, argName, b64Decode));
   return *this;
 }
 
-CommandBuilder &CommandBuilder::flatten_obj(const std::string &argName)
+CommandBuilder &CommandBuilder::flatten_obj(const string &argName)
 {
   transforms_.push_back(ArgTransform(ArgTransform::FlattenObj, argName));
   return *this;
@@ -140,7 +142,7 @@ void CommandBuilder::apply_input_transforms(MiddlewareContext &context) const
       {
         try
         {
-          std::string data = arg_it->second.get_string_value();
+          string data = arg_it->second.get_string_value();
 
           // Decode base64 if requested
           if (it->base64)
@@ -156,7 +158,7 @@ void CommandBuilder::apply_input_transforms(MiddlewareContext &context) const
         }
         catch (const std::exception &e)
         {
-          std::string errMsg = std::string("Failed to process WriteStdin transform: ") + e.what();
+          string errMsg = string("Failed to process WriteStdin transform: ") + e.what();
           context.errln(errMsg.c_str());
           LOG_ERROR("%s", errMsg.c_str());
         }
@@ -175,7 +177,7 @@ void CommandBuilder::apply_input_transforms(MiddlewareContext &context) const
           const auto parse_result = zjson::from_str<zjson::Value>(arg_it->second.get_string_value());
           if (!parse_result.has_value())
           {
-            std::string errMsg = std::string("Failed to parse JSON for FlattenObj transform: ") + parse_result.error().what();
+            string errMsg = string("Failed to parse JSON for FlattenObj transform: ") + parse_result.error().what();
             context.errln(errMsg.c_str());
             LOG_ERROR("%s", errMsg.c_str());
             break;
@@ -221,7 +223,7 @@ void CommandBuilder::apply_input_transforms(MiddlewareContext &context) const
         }
         catch (const std::exception &e)
         {
-          std::string errMsg = std::string("Failed to process FlattenObj transform: ") + e.what();
+          string errMsg = string("Failed to process FlattenObj transform: ") + e.what();
           context.errln(errMsg.c_str());
           LOG_ERROR("%s", errMsg.c_str());
         }
@@ -266,7 +268,7 @@ void CommandBuilder::apply_input_transforms(MiddlewareContext &context) const
           // Remove any existing pipe (ignore errors if it doesn't exist)
           if (unlink(it->pipePath.c_str()) != 0 && errno != ENOENT)
           {
-            std::string errMsg = std::string("Failed to delete existing FIFO pipe: ") + it->pipePath;
+            string errMsg = string("Failed to delete existing FIFO pipe: ") + it->pipePath;
             context.errln(errMsg.c_str());
             LOG_ERROR("%s", errMsg.c_str());
             break;
@@ -275,7 +277,7 @@ void CommandBuilder::apply_input_transforms(MiddlewareContext &context) const
           // Create the FIFO pipe
           if (mkfifo(it->pipePath.c_str(), 0600) != 0)
           {
-            std::string errMsg = std::string("Failed to create FIFO pipe: ") + it->pipePath;
+            string errMsg = string("Failed to create FIFO pipe: ") + it->pipePath;
             context.errln(errMsg.c_str());
             LOG_ERROR("%s", errMsg.c_str());
             break;
@@ -310,7 +312,7 @@ void CommandBuilder::apply_input_transforms(MiddlewareContext &context) const
         }
         catch (const std::exception &e)
         {
-          std::string errMsg = std::string("Failed to process HandleFifo transform: ") + e.what();
+          string errMsg = string("Failed to process HandleFifo transform: ") + e.what();
           context.errln(errMsg.c_str());
           LOG_ERROR("%s", errMsg.c_str());
         }
@@ -355,7 +357,7 @@ void CommandBuilder::apply_output_transforms(MiddlewareContext &context) const
       // If base64 is true, encode base64 before writing to output
       try
       {
-        std::string data = context.get_output_content();
+        string data = context.get_output_content();
 
         // Encode base64 if requested
         if (it->base64)
@@ -368,7 +370,7 @@ void CommandBuilder::apply_output_transforms(MiddlewareContext &context) const
       }
       catch (const std::exception &e)
       {
-        std::string errMsg = std::string("Failed to process ReadStdout transform: ") + e.what();
+        string errMsg = string("Failed to process ReadStdout transform: ") + e.what();
         context.errln(errMsg.c_str());
         LOG_ERROR("%s", errMsg.c_str());
       }
