@@ -1597,10 +1597,12 @@ int zusf_chmod_uss_file_or_dir(ZUSF *zusf, string file, mode_t mode, bool recurs
         const auto rc = zusf_chmod_uss_file_or_dir(zusf, child_path, mode, S_ISDIR(file_stats.st_mode));
         if (0 != rc)
         {
+          closedir(dir);
           return rc;
         }
       }
     }
+    closedir(dir);
   }
   return 0;
 }
@@ -1734,10 +1736,12 @@ int zusf_chown_uss_file_or_dir(ZUSF *zusf, string file, const string &owner, boo
         const auto rc = zusf_chown_uss_file_or_dir(zusf, child_path, owner, S_ISDIR(file_stats.st_mode));
         if (0 != rc)
         {
+          closedir(dir);
           return rc;
         }
       }
     }
+    closedir(dir);
   }
 
   return 0;
@@ -1809,10 +1813,12 @@ int zusf_chtag_uss_file_or_dir(ZUSF *zusf, string file, string tag, bool recursi
         const auto rc = zusf_chtag_uss_file_or_dir(zusf, child_path, tag, S_ISDIR(file_stats.st_mode));
         if (0 != rc)
         {
+          closedir(dir);
           return rc;
         }
       }
     }
+    closedir(dir);
   }
   return 0;
 }
