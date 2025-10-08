@@ -764,6 +764,14 @@ void describe(std::string description, Callable suite)
   g.decrement_nesting();
 }
 
+#ifndef xdescribe
+#define xdescribe(d, s)
+#endif
+
+#ifndef xit
+#define xit(d, s)
+#endif
+
 template <typename Callable,
           typename = typename std::enable_if<
               std::is_same<void, decltype(std::declval<Callable>()())>::value>::type>

@@ -809,7 +809,7 @@ public:
   }
 
   template <typename T>
-  T get(const std::string &key) const
+  T get(const std::string &key)
   {
     const T *ptr = get_if<T>(key);
     if (!ptr)
@@ -820,7 +820,7 @@ public:
   }
 
   template <typename T>
-  T get(const std::string &key, const T &default_value) const
+  T get(const std::string &key, const T &default_value)
   {
     const T *ptr = get_if<T>(key);
     return ptr ? *ptr : default_value;

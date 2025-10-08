@@ -154,16 +154,16 @@ void zowex_tests()
                                         ExpectWithContext(rc, response).ToBe(0);
                                       });
                                    // TODO: Issue with test related to memory leak in [#577](https://github.com/zowe/zowe-native-proto/issues/577)
-                                   //  it("should list a member of a data set",
-                                   //     []()
-                                   //     {
-                                   //       string data_set = "SYS1.MACLIB";
-                                   //       string response;
-                                   //       string command = zowex_command + " data-set lm " + data_set + " --no-warn --me 1";
-                                   //       TestLog("Running: " + command);
-                                   //       int rc = execute_command_with_output(command, response);
-                                   //       ExpectWithContext(rc, response).ToBe(0);
-                                   //     });
+                                   it("should list a member of a data set",
+                                      []()
+                                      {
+                                        string data_set = "SYS1.MACLIB";
+                                        string response;
+                                        string command = zowex_command + " data-set lm " + data_set + " --no-warn --me 1";
+                                        TestLog("Running: " + command);
+                                        int rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                      });
                                    it("should warn when listing members of a data set with many members",
                                       []()
                                       {
