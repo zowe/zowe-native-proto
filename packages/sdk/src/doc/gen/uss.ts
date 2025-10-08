@@ -32,7 +32,7 @@ export interface ListFilesRequest extends common.CommandRequest, common.ListOpti
    */
   long?: boolean;
   /**
-   * Depth of subdirectories to list
+   * Depth of subdirectories to list (defaults to 1)
    */
   depth?: number /* int */;
 }

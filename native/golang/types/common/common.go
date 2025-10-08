@@ -57,6 +57,8 @@ type Dataset struct {
 	Volser string `json:"volser"`
 	// Dataset migrated
 	Migr bool `json:"migr"`
+	// Record format
+	Recfm string `json:"recfm"`
 }
 
 type DatasetAttributes struct {

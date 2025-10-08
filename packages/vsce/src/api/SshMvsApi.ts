@@ -28,7 +28,7 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
                     dsorg: item.dsorg,
                     vols: item.volser,
                     migr: item.migr ? "YES" : "NO",
-                    recfm: (item as any).recfm,
+                    recfm: item.recfm,
                 })),
                 returnedRows: response.returnedRows,
             });
