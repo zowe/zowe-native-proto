@@ -268,7 +268,7 @@ void CommandBuilder::apply_input_transforms(MiddlewareContext &context) const
           // Remove any existing pipe (ignore errors if it doesn't exist)
           if (unlink(it->pipe_path.c_str()) != 0 && errno != ENOENT)
           {
-            string errMsg = string("Failed to delete existing FIFO pipe: ") + it->pipe_path;
+            string errMsg = string("Failed to delete existing FIFO pipe: ") + it->pipe_path + ", errno: " + std::to_string(errno);
             context.errln(errMsg.c_str());
             LOG_ERROR("%s", errMsg.c_str());
             break;
@@ -277,7 +277,7 @@ void CommandBuilder::apply_input_transforms(MiddlewareContext &context) const
           // Create the FIFO pipe
           if (mkfifo(it->pipe_path.c_str(), 0600) != 0)
           {
-            string errMsg = string("Failed to create FIFO pipe: ") + it->pipe_path;
+            string errMsg = string("Failed to create FIFO pipe: ") + it->pipe_path + ", errno: " + std::to_string(errno);
             context.errln(errMsg.c_str());
             LOG_ERROR("%s", errMsg.c_str());
             break;
@@ -389,7 +389,7 @@ void CommandBuilder::apply_output_transforms(MiddlewareContext &context) const
         }
         else
         {
-          LOG_ERROR("Failed to delete FIFO pipe: %s", it->pipe_path.c_str());
+          LOG_ERROR("Failed to delete FIFO pipe: %s, errno: %d", it->pipe_path.c_str(), errno);
         }
       }
       break;
