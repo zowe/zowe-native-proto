@@ -208,9 +208,13 @@ plugin::ArgumentMap RpcServer::convertJsonParamsToArgumentMap(const zjson::Value
     {
       args[kebabKey] = plugin::Argument(value.as_bool());
     }
-    else if (value.is_number())
+    else if (value.is_integer())
     {
-      args[kebabKey] = plugin::Argument(static_cast<long long>(value.as_number()));
+      args[kebabKey] = plugin::Argument(value.as_int64());
+    }
+    else if (value.is_double())
+    {
+      args[kebabKey] = plugin::Argument(value.as_double());
     }
     else if (value.is_string())
     {

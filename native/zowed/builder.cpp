@@ -202,18 +202,13 @@ void CommandBuilder::apply_input_transforms(MiddlewareContext &context) const
             {
               args[key] = plugin::Argument(value.as_bool());
             }
-            else if (value.is_number())
+            else if (value.is_integer())
             {
-              // Check if it's an integer
-              const double num = value.as_number();
-              if (num == static_cast<long long>(num))
-              {
-                args[key] = plugin::Argument(static_cast<long long>(num));
-              }
-              else
-              {
-                args[key] = plugin::Argument(num);
-              }
+              args[key] = plugin::Argument(value.as_int64());
+            }
+            else if (value.is_double())
+            {
+              args[key] = plugin::Argument(value.as_double());
             }
             else if (value.is_string())
             {

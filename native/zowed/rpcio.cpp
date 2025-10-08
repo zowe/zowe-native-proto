@@ -71,7 +71,7 @@ void MiddlewareContext::set_content_len(size_t content_length)
     if (m_pending_notification->params.has_value())
     {
       zjson::Value &params = m_pending_notification->params.value();
-      params.add_to_object("contentLen", zjson::Value(static_cast<int>(content_length)));
+      params.add_to_object("contentLen", zjson::Value(static_cast<unsigned long long>(content_length)));
     }
 
     // Send the notification

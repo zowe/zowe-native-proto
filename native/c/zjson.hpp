@@ -401,7 +401,8 @@ private:
   typedef zstd::variant<
       zstd::monostate,             // Null
       bool,                        // Bool
-      double,                      // Number
+      long long,                   // Integer
+      double,                      // Float
       std::string,                 // String
       std::vector<Value>,          // Array
       std::map<std::string, Value> // Object
@@ -414,6 +415,10 @@ private:
   inline bool &get_bool()
   {
     return data_.get<bool>();
+  }
+  inline long long &get_long_long()
+  {
+    return data_.get<long long>();
   }
   inline double &get_double()
   {
@@ -435,6 +440,10 @@ private:
   inline const bool &get_bool() const
   {
     return data_.get<bool>();
+  }
+  inline const long long &get_long_long() const
+  {
+    return data_.get<long long>();
   }
   inline const double &get_double() const
   {
@@ -460,8 +469,22 @@ public:
   Value(bool b) : data_(b)
   {
   }
-  Value(int i) : data_(static_cast<double>(i))
+  Value(int i) : data_(static_cast<long long>(i))
   {
+  }
+  Value(long long ll) : data_(ll)
+  {
+  }
+  Value(unsigned long long ull)
+  {
+    if (ull <= static_cast<unsigned long long>(std::numeric_limits<long long>::max()))
+    {
+      data_ = static_cast<long long>(ull);
+    }
+    else
+    {
+      data_ = static_cast<double>(ull);
+    }
   }
   Value(double d) : data_(d)
   {
@@ -500,12 +523,13 @@ public:
     case 1:
       return Bool;
     case 2:
-      return Number;
     case 3:
-      return String;
+      return Number;
     case 4:
-      return Array;
+      return String;
     case 5:
+      return Array;
+    case 6:
       return Object;
     default:
       return Null;
@@ -519,49 +543,111 @@ public:
     return get_bool();
   }
 
-  inline double as_number() const
+  inline long long as_int64() const
   {
-    if (!is_number())
-      throw Error::invalid_type("number", type_name());
-
-    double value = get_double();
-
-    // Check for overflow/underflow
-    if (std::isnan(value) || std::isinf(value))
+    if (is_integer())
     {
-      std::stringstream ss;
-      ss << value;
-      throw Error::invalid_value("Number is not finite: " + ss.str());
+      return get_long_long();
     }
 
-    return value;
+    if (is_double())
+    {
+      double value = get_double();
+
+      if (value != std::floor(value))
+      {
+        std::stringstream ss;
+        ss << value;
+        throw Error::invalid_value("Cannot convert floating-point number " + ss.str() + " to int64");
+      }
+      else if (std::isnan(value) || std::isinf(value))
+      {
+        std::stringstream ss;
+        ss << value;
+        throw Error::invalid_value("Number is not finite: " + ss.str());
+      }
+      else if (value > static_cast<double>(std::numeric_limits<long long>::max()) || value < static_cast<double>(std::numeric_limits<long long>::min()))
+      {
+        std::stringstream ss;
+        ss << value;
+        throw Error::invalid_value("Number " + ss.str() + " overflows long long range");
+      }
+
+      return static_cast<long long>(value);
+    }
+
+    throw Error::invalid_type("number", type_name());
   }
 
-  inline int as_int() const
+  inline unsigned long long as_uint64() const
   {
-    if (!is_number())
-      throw Error::invalid_type("number", type_name());
-
-    double value = get_double();
-
-    // Check for fractional part
-    if (value != std::floor(value))
+    if (is_integer())
     {
-      std::stringstream ss;
-      ss << value;
-      throw Error::invalid_value("Cannot convert floating-point number " + ss.str() + " to integer");
+      long long value = get_long_long();
+      if (value < 0)
+      {
+        std::stringstream ss;
+        ss << value;
+        throw Error::invalid_value("Cannot convert negative number " + ss.str() + " to uint64");
+      }
+      return static_cast<unsigned long long>(value);
     }
 
-    // Check for overflow
-    if (value > static_cast<double>(std::numeric_limits<int>::max()) ||
-        value < static_cast<double>(std::numeric_limits<int>::min()))
+    if (is_double())
     {
-      std::stringstream ss;
-      ss << value;
-      throw Error::invalid_value("Number " + ss.str() + " overflows int range");
+      double value = get_double();
+
+      if (value < 0)
+      {
+        std::stringstream ss;
+        ss << value;
+        throw Error::invalid_value("Cannot convert negative number " + ss.str() + " to uint64");
+      }
+      else if (value != std::floor(value))
+      {
+        std::stringstream ss;
+        ss << value;
+        throw Error::invalid_value("Cannot convert floating-point number " + ss.str() + " to uint64");
+      }
+      else if (std::isnan(value) || std::isinf(value))
+      {
+        std::stringstream ss;
+        ss << value;
+        throw Error::invalid_value("Number is not finite: " + ss.str());
+      }
+      else if (value > static_cast<double>(std::numeric_limits<unsigned long long>::max()))
+      {
+        std::stringstream ss;
+        ss << value;
+        throw Error::invalid_value("Number " + ss.str() + " overflows unsigned long long range");
+      }
+
+      return static_cast<unsigned long long>(value);
     }
 
-    return static_cast<int>(value);
+    throw Error::invalid_type("number", type_name());
+  }
+
+  inline double as_double() const
+  {
+    if (is_double())
+    {
+      double value = get_double();
+      if (std::isnan(value) || std::isinf(value))
+      {
+        std::stringstream ss;
+        ss << value;
+        throw Error::invalid_value("Number is not finite: " + ss.str());
+      }
+      return value;
+    }
+
+    if (is_integer())
+    {
+      return static_cast<double>(get_long_long());
+    }
+
+    throw Error::invalid_type("number", type_name());
   }
 
   inline std::string as_string() const
@@ -593,7 +679,11 @@ public:
   {
     return zstd::holds_alternative<bool>(data_);
   }
-  inline bool is_number() const
+  inline bool is_integer() const
+  {
+    return zstd::holds_alternative<long long>(data_);
+  }
+  inline bool is_double() const
   {
     return zstd::holds_alternative<double>(data_);
   }
@@ -786,7 +876,141 @@ struct Deserializable<int>
   {
     try
     {
-      return value.as_int();
+      // Get as int64 and downcast to int with range check
+      long long val = value.as_int64();
+      if (val > static_cast<long long>(std::numeric_limits<int>::max()) ||
+          val < static_cast<long long>(std::numeric_limits<int>::min()))
+      {
+        std::stringstream ss;
+        ss << val;
+        throw Error::invalid_value("Number " + ss.str() + " overflows int range");
+      }
+      return static_cast<int>(val);
+    }
+    catch (const Error &e)
+    {
+      return zstd::make_unexpected(e);
+    }
+  }
+};
+
+template <>
+struct Serializable<unsigned int>
+{
+  static ZJSON_CONSTEXPR bool value = true;
+  static Value serialize(const unsigned int &obj) ZJSON_NOEXCEPT
+  {
+    return Value(static_cast<unsigned long long>(obj));
+  }
+};
+
+template <>
+struct Deserializable<unsigned int>
+{
+  static ZJSON_CONSTEXPR bool value = true;
+  static zstd::expected<unsigned int, Error> deserialize(const Value &value)
+  {
+    try
+    {
+      // Get as uint64 and downcast to unsigned int with range check
+      unsigned long long val = value.as_uint64();
+      if (val > static_cast<unsigned long long>(std::numeric_limits<unsigned int>::max()))
+      {
+        std::stringstream ss;
+        ss << val;
+        throw Error::invalid_value("Number " + ss.str() + " overflows unsigned int range");
+      }
+      return static_cast<unsigned int>(val);
+    }
+    catch (const Error &e)
+    {
+      return zstd::make_unexpected(e);
+    }
+  }
+};
+
+template <>
+struct Serializable<long long>
+{
+  static ZJSON_CONSTEXPR bool value = true;
+  static Value serialize(const long long &obj) ZJSON_NOEXCEPT
+  {
+    return Value(obj);
+  }
+};
+
+template <>
+struct Deserializable<long long>
+{
+  static ZJSON_CONSTEXPR bool value = true;
+  static zstd::expected<long long, Error> deserialize(const Value &value)
+  {
+    try
+    {
+      return value.as_int64();
+    }
+    catch (const Error &e)
+    {
+      return zstd::make_unexpected(e);
+    }
+  }
+};
+
+template <>
+struct Serializable<unsigned long long>
+{
+  static ZJSON_CONSTEXPR bool value = true;
+  static Value serialize(const unsigned long long &obj) ZJSON_NOEXCEPT
+  {
+    return Value(obj);
+  }
+};
+
+template <>
+struct Deserializable<unsigned long long>
+{
+  static ZJSON_CONSTEXPR bool value = true;
+  static zstd::expected<unsigned long long, Error> deserialize(const Value &value)
+  {
+    try
+    {
+      return value.as_uint64();
+    }
+    catch (const Error &e)
+    {
+      return zstd::make_unexpected(e);
+    }
+  }
+};
+
+// Support for size_t (typically an alias for unsigned long long or unsigned int)
+template <>
+struct Serializable<size_t>
+{
+  static ZJSON_CONSTEXPR bool value = true;
+  static Value serialize(const size_t &obj) ZJSON_NOEXCEPT
+  {
+    return Value(static_cast<unsigned long long>(obj));
+  }
+};
+
+template <>
+struct Deserializable<size_t>
+{
+  static ZJSON_CONSTEXPR bool value = true;
+  static zstd::expected<size_t, Error> deserialize(const Value &value)
+  {
+    try
+    {
+      unsigned long long val = value.as_uint64();
+      // size_t range check (in case size_t is smaller than unsigned long long)
+      if (val > static_cast<unsigned long long>(std::numeric_limits<size_t>::max()))
+      {
+        std::stringstream ss;
+        ss << val;
+        throw Error::invalid_value("Number " + ss.str() + " overflows size_t range");
+      }
+      return static_cast<size_t>(val);
     }
     catch (const Error &e)
     {
@@ -813,7 +1037,7 @@ struct Deserializable<double>
   {
     try
     {
-      return value.as_number();
+      return value.as_double();
     }
     catch (const Error &e)
     {
@@ -1330,9 +1554,18 @@ inline Value json_handle_to_value(JSON_INSTANCE *instance, KEY_HANDLE *key_handl
       try
       {
         std::string str_val(value_ptr, value_length);
-        char *endptr;
-        double num_val = std::strtod(str_val.c_str(), &endptr);
-        return Value(num_val);
+        if (str_val.find('.') != std::string::npos || str_val.find('e') != std::string::npos || str_val.find('E') != std::string::npos)
+        {
+          char *endptr;
+          double num_val = std::strtod(str_val.c_str(), &endptr);
+          return Value(num_val);
+        }
+        else
+        {
+          char *endptr;
+          long long int_val = std::strtoll(str_val.c_str(), &endptr, 10);
+          return Value(int_val);
+        }
       }
       catch (...)
       {
@@ -1680,14 +1913,16 @@ inline int value_to_json_instance(JSON_INSTANCE *instance, KEY_HANDLE *parent_ha
   {
     entry_type = HWTJ_NUMVALUETYPE;
     std::stringstream ss;
-    double num = value.as_number();
 
-    // Always use fixed notation to avoid scientific notation
-    if (num == std::floor(num))
+    if (value.is_integer())
     {
-      ss << std::setprecision(0);
+      ss << value.as_int64();
     }
-    ss << std::fixed << num;
+    else
+    {
+      // Use full double precision (17 significant digits)
+      ss << std::setprecision(17) << value.as_double();
+    }
 
     std::string num_str = ss.str();
     rc = ZJSMCREN(instance, parent_handle, entry_name_ptr, num_str.c_str(), &entry_type, &new_entry_handle);
