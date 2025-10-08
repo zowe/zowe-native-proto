@@ -1,12 +1,12 @@
-#ifndef PING_H
-#define PING_H
+#ifndef SAMPLE_H
+#define SAMPLE_H
 
 #include "../parser.hpp"
 
-namespace ping
+namespace sample
 {
 int handle_ping(plugin::InvocationContext &context);
 void register_commands(parser::Command &root_command);
-} // namespace ping
+} // namespace sample
 
 #endif

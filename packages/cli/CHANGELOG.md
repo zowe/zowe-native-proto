@@ -4,6 +4,10 @@ All notable changes to the Client code for "zowe-native-proto-cli" are documente
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+
+- Added a `--depth` option to the `zssh list uss` command for listing USS directories recursively. [#575](https://github.com/zowe/zowe-native-proto/pull/575)
+
 ## `0.1.10`
 
 - Added a `storeServerPath` function as placeholder for future CLI functionality to persist deploy directory paths from user input. [#527](https://github.com/zowe/zowe-native-proto/issues/527)

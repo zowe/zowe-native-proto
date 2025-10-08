@@ -16,6 +16,7 @@
 #include "../zut.hpp"
 #include <unistd.h>
 
+using namespace ast;
 using namespace parser;
 using namespace std;
 using namespace commands::common;
@@ -53,13 +54,13 @@ int handle_uss_create_file(InvocationContext &context)
     multiplier *= 8;
   }
 
-  ZUSF zusf = {0};
+  ZUSF zusf = {};
   rc = zusf_create_uss_file_or_dir(&zusf, file_path, cf_mode, false);
   if (0 != rc)
   {
     context.error_stream() << "Error: could not create USS file: '" << file_path << "' rc: '" << rc << "'" << endl;
     context.error_stream() << "  Details:\n"
-         << zusf.diag.e_msg << endl;
+                           << zusf.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
@@ -98,13 +99,13 @@ int handle_uss_create_dir(InvocationContext &context)
     multiplier *= 8;
   }
 
-  ZUSF zusf = {0};
+  ZUSF zusf = {};
   rc = zusf_create_uss_file_or_dir(&zusf, file_path, cf_mode, true);
   if (0 != rc)
   {
     context.error_stream() << "Error: could not create USS directory: '" << file_path << "' rc: '" << rc << "'" << endl;
     context.error_stream() << "  Details:\n"
-         << zusf.diag.e_msg << endl;
+                           << zusf.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
@@ -118,25 +119,84 @@ int handle_uss_list(InvocationContext &context)
   int rc = 0;
   string uss_file = context.get<std::string>("file-path", "");
 
-  ListOptions list_options = {0};
+  ListOptions list_options;
   list_options.all_files = context.get<bool>("all", false);
   list_options.long_format = context.get<bool>("long", false);
+  list_options.max_depth = context.get<long long>("depth", 1);
 
   const auto use_csv_format = context.get<bool>("response-format-csv", false);
 
-  ZUSF zusf = {0};
+  ZUSF zusf = {};
   string response;
   rc = zusf_list_uss_file_path(&zusf, uss_file, response, list_options, use_csv_format);
   if (0 != rc)
   {
     context.error_stream() << "Error: could not list USS files: '" << uss_file << "' rc: '" << rc << "'" << endl;
     context.error_stream() << "  Details:\n"
-         << zusf.diag.e_msg << endl
-         << response << endl;
+                           << zusf.diag.e_msg << endl
+                           << response << endl;
     return RTNCD_FAILURE;
   }
 
   context.output_stream() << response;
+
+  if (use_csv_format)
+  {
+    const auto result = obj();
+    const auto entries_array = arr();
+
+    // Parse CSV lines
+    stringstream ss(response);
+    string line;
+    int row_count = 0;
+
+    while (getline(ss, line))
+    {
+      if (line.empty())
+      {
+        continue;
+      }
+
+      const auto entry = obj();
+
+      if (list_options.long_format)
+      {
+        // Parse CSV fields: mode,links,user,group,size,tag,date,name
+        vector<string> fields;
+        stringstream line_ss(line);
+        string field;
+
+        while (getline(line_ss, field, ','))
+        {
+          fields.push_back(field);
+        }
+
+        if (fields.size() >= 8)
+        {
+          entry->set("mode", str(fields[0]));
+          entry->set("links", i64(atoi(fields[1].c_str())));
+          entry->set("user", str(fields[2]));
+          entry->set("group", str(fields[3]));
+          entry->set("size", i64(atoi(fields[4].c_str())));
+          entry->set("filetag", str(fields[5]));
+          entry->set("date", str(fields[6]));
+          entry->set("name", str(fields[7]));
+        }
+      }
+      else
+      {
+        // Simple format: just the name
+        entry->set("name", str(line));
+      }
+
+      entries_array->push(entry);
+      row_count++;
+    }
+
+    result->set("items", entries_array);
+    result->set("returnedRows", i64(row_count));
+    context.set_object(result);
+  }
 
   return rc;
 }
@@ -146,7 +206,7 @@ int handle_uss_view(InvocationContext &context)
   int rc = 0;
   string uss_file = context.get<std::string>("file-path", "");
 
-  ZUSF zusf = {0};
+  ZUSF zusf = {};
   if (context.has("encoding"))
   {
     zut_prepare_encoding(context.get<std::string>("encoding", ""), &zusf.encoding_opts);
@@ -169,17 +229,37 @@ int handle_uss_view(InvocationContext &context)
 
   bool has_pipe_path = context.has("pipe-path");
   string pipe_path = context.get<std::string>("pipe-path", "");
+  const auto result = obj();
+  result->set("fspath", str(uss_file));
 
   if (has_pipe_path && !pipe_path.empty())
   {
+#if defined(__clang__)
+    // Set up callback for content length reporting
+    zusf.set_size_callback = [&context](uint64_t size)
+    {
+      context.set_content_len(size);
+    };
+#endif
+
     size_t content_len = 0;
     rc = zusf_read_from_uss_file_streamed(&zusf, uss_file, pipe_path, &content_len);
 
     if (context.get<bool>("return-etag", false))
     {
-      context.output_stream() << "etag: " << zut_build_etag(file_stats.st_mtime, file_stats.st_size) << endl;
+      const auto etag = zut_build_etag(file_stats.st_mtime, file_stats.st_size);
+      context.output_stream() << "etag: " << etag << endl;
+      if (!context.is_redirecting_output())
+      {
+        result->set("etag", str(etag));
+      }
     }
-    context.output_stream() << "size: " << content_len << endl;
+
+    if (!context.is_redirecting_output())
+    {
+      context.output_stream() << "size: " << content_len << endl;
+    }
+    result->set("contentLen", i64(content_len));
   }
   else
   {
@@ -189,15 +269,23 @@ int handle_uss_view(InvocationContext &context)
     {
       context.error_stream() << "Error: could not view USS file: '" << uss_file << "' rc: '" << rc << "'" << endl;
       context.error_stream() << "  Details:\n"
-           << zusf.diag.e_msg << endl
-           << response << endl;
+                             << zusf.diag.e_msg << endl
+                             << response << endl;
       return RTNCD_FAILURE;
     }
 
     if (context.get<bool>("return-etag", false))
     {
-      context.output_stream() << "etag: " << zut_build_etag(file_stats.st_mtime, file_stats.st_size) << endl;
-      context.output_stream() << "data: ";
+      const auto etag = zut_build_etag(file_stats.st_mtime, file_stats.st_size);
+      if (!context.is_redirecting_output())
+      {
+        context.output_stream() << "etag: " << etag << endl;
+        context.output_stream() << "data: ";
+      }
+      else
+      {
+        result->set("etag", str(etag));
+      }
     }
 
     bool has_encoding = context.has("encoding");
@@ -205,12 +293,14 @@ int handle_uss_view(InvocationContext &context)
 
     if (has_encoding && response_format_bytes)
     {
-      zut_print_string_as_bytes(response);
+      zut_print_string_as_bytes(response, &context.output_stream());
     }
     else
     {
-      context.output_stream() << response << endl;
+      context.output_stream() << response;
     }
+
+    context.set_object(result);
   }
 
   return rc;
@@ -220,7 +310,7 @@ int handle_uss_write(InvocationContext &context)
 {
   int rc = 0;
   string file = context.get<std::string>("file-path", "");
-  ZUSF zusf = {0};
+  ZUSF zusf = {};
 
   if (context.has("encoding"))
   {
@@ -247,10 +337,12 @@ int handle_uss_write(InvocationContext &context)
   bool has_pipe_path = context.has("pipe-path");
   string pipe_path = context.get<std::string>("pipe-path", "");
   size_t content_len = 0;
+  const auto result = obj();
 
   if (has_pipe_path && !pipe_path.empty())
   {
     rc = zusf_write_to_uss_file_streamed(&zusf, file, pipe_path, &content_len);
+    result->set("contentLen", i64(content_len));
   }
   else
   {
@@ -262,12 +354,19 @@ int handle_uss_write(InvocationContext &context)
       std::istreambuf_iterator<char> begin(context.input_stream());
       std::istreambuf_iterator<char> end;
 
-      vector<char> input(begin, end);
-      const auto temp = string(input.begin(), input.end());
-      input.clear();
-      const auto bytes = zut_get_contents_as_bytes(temp);
+      if (!context.is_redirecting_input())
+      {
+        vector<char> input(begin, end);
+        const auto temp = string(input.begin(), input.end());
+        input.clear();
+        const auto bytes = zut_get_contents_as_bytes(temp);
 
-      data.assign(bytes.begin(), bytes.end());
+        data.assign(bytes.begin(), bytes.end());
+      }
+      else
+      {
+        data.assign(begin, end);
+      }
     }
     else
     {
@@ -290,7 +389,7 @@ int handle_uss_write(InvocationContext &context)
   if (context.get<bool>("etag-only", false))
   {
     context.output_stream() << "etag: " << zusf.etag << endl
-         << "created: " << (zusf.created ? "true" : "false") << endl;
+                            << "created: " << (zusf.created ? "true" : "false") << endl;
     if (content_len > 0)
       context.output_stream() << "size: " << content_len << endl;
   }
@@ -298,6 +397,11 @@ int handle_uss_write(InvocationContext &context)
   {
     context.output_stream() << "Wrote data to '" << file << "'" << (zusf.created ? " (created new file)" : " (overwrote existing)") << endl;
   }
+
+  result->set("created", boolean(zusf.created));
+  result->set("etag", str(zusf.etag));
+  result->set("fspath", str(file));
+  context.set_object(result);
 
   return rc;
 }
@@ -307,7 +411,7 @@ int handle_uss_delete(InvocationContext &context)
   string file_path = context.get<std::string>("file-path", "");
   bool recursive = context.get<bool>("recursive", false);
 
-  ZUSF zusf = {0};
+  ZUSF zusf = {};
   const auto rc = zusf_delete_uss_item(&zusf, file_path, recursive);
 
   if (0 != rc)
@@ -348,13 +452,13 @@ int handle_uss_chmod(InvocationContext &context)
     multiplier *= 8;
   }
 
-  ZUSF zusf = {0};
+  ZUSF zusf = {};
   rc = zusf_chmod_uss_file_or_dir(&zusf, file_path, chmod_mode, recursive);
   if (0 != rc)
   {
     context.error_stream() << "Error: could not chmod USS path: '" << file_path << "' rc: '" << rc << "'" << endl;
     context.error_stream() << "  Details:\n"
-         << zusf.diag.e_msg << endl;
+                           << zusf.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
@@ -369,14 +473,14 @@ int handle_uss_chown(InvocationContext &context)
   string owner = context.get<std::string>("owner", "");
   bool recursive = context.get<bool>("recursive", false);
 
-  ZUSF zusf = {0};
+  ZUSF zusf = {};
 
   const auto rc = zusf_chown_uss_file_or_dir(&zusf, path, owner, recursive);
   if (0 != rc)
   {
     context.error_stream() << "Error: could not chown USS path: '" << path << "' rc: '" << rc << "'" << endl;
     context.error_stream() << "  Details:\n"
-         << zusf.diag.e_msg << endl;
+                           << zusf.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
@@ -402,14 +506,14 @@ int handle_uss_chtag(InvocationContext &context)
 
   bool recursive = context.get<bool>("recursive", false);
 
-  ZUSF zusf = {0};
+  ZUSF zusf = {};
   const auto rc = zusf_chtag_uss_file_or_dir(&zusf, path, tag, recursive);
 
   if (0 != rc)
   {
     context.error_stream() << "Error: could not chtag USS path: '" << path << "' rc: '" << rc << "'" << endl;
     context.error_stream() << "  Details:\n"
-         << zusf.diag.e_msg << endl;
+                           << zusf.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
@@ -439,9 +543,11 @@ void register_commands(parser::Command &root_command)
 
   // List subcommand
   auto uss_list_cmd = command_ptr(new Command("list", "list USS files and directories"));
+  uss_list_cmd->add_alias("ls");
   uss_list_cmd->add_positional_arg(FILE_PATH);
   uss_list_cmd->add_keyword_arg("all", make_aliases("--all", "-a"), "list all files and directories", ArgType_Flag, false, ArgValue(false));
   uss_list_cmd->add_keyword_arg("long", make_aliases("--long", "-l"), "list long format", ArgType_Flag, false, ArgValue(false));
+  uss_list_cmd->add_keyword_arg("depth", make_aliases("--depth"), "depth of subdirectories to list", ArgType_Single, false, ArgValue((long long)1));
   uss_list_cmd->add_keyword_arg(RESPONSE_FORMAT_CSV);
   uss_list_cmd->set_handler(handle_uss_list);
   uss_group->add_command(uss_list_cmd);

@@ -13,7 +13,7 @@
 #include <time.h>
 #include "parser.hpp"
 
-namespace ping
+namespace sample
 {
 
 using namespace std;
@@ -43,4 +43,4 @@ void register_commands(Command &root_command)
 
   root_command.add_command(ping_cmd);
 }
-} // namespace ping
+} // namespace sample

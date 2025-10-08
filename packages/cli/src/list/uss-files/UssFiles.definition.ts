@@ -66,6 +66,14 @@ export const ListUssFilesDefinition: ICommandDefinition = {
             required: false,
             aliases: ["l"],
         },
+        {
+            name: "depth",
+            description: "Depth of subdirectories to list",
+            type: "number",
+            required: false,
+            aliases: ["d"],
+            defaultValue: 1,
+        },
     ],
     positionals: [
         {
