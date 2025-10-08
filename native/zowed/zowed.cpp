@@ -42,6 +42,7 @@ class ZowedServer
 {
 private:
   IoserverOptions options;
+  std::string execDir;
   std::unique_ptr<WorkerPool> workerPool;
   std::atomic<bool> shutdownRequested;
   std::mutex shutdownMutex;
@@ -79,19 +80,9 @@ private:
     return instance;
   }
 
-  std::string getExecutableDir()
-  {
-    // z/OS implementation: use current working directory
-    char *cwd = getcwd(nullptr, 0);
-    std::string result = cwd ? std::string(cwd) : ".";
-    free(cwd);
-    return result;
-  }
-
   std::map<std::string, std::string> loadChecksums()
   {
     std::map<std::string, std::string> checksums;
-    std::string execDir = getExecutableDir();
     std::string checksumsFile = execDir + "/checksums.asc";
 
     std::ifstream file(checksumsFile);
@@ -165,19 +156,20 @@ public:
   {
   }
 
-  void run(const IoserverOptions &opts, const char *execDir = nullptr)
+  void run(const IoserverOptions &opts, const std::string &execDir)
   {
     options = opts;
+    this->execDir = execDir;
 
     // Initialize logger with executable directory
-    zowed::Logger::init_logger(execDir, options.verbose);
+    zowed::Logger::init_logger(execDir.c_str(), options.verbose);
     LOG_INFO("Starting zowed with %d workers (verbose=%s)", options.numWorkers, options.verbose ? "true" : "false");
 
     // Set up signal handling
     setupSignalHandlers();
 
     // Initialize CommandDispatcher singleton
-    CommandDispatcher &dispatcher = CommandDispatcher::getInstance();
+    CommandDispatcher &dispatcher = CommandDispatcher::get_instance();
 
     // Register all command handlers
     LOG_DEBUG("Registering command handlers");
@@ -223,7 +215,7 @@ extern "C" int run_zowed_server(const IoserverOptions &options, const char *exec
   try
   {
     ZowedServer server;
-    server.run(options, execDir);
+    server.run(options, std::string(execDir ? execDir : "."));
   }
   catch (const std::exception &e)
   {

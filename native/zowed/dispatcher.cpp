@@ -15,12 +15,6 @@
 #include <vector>
 #include <algorithm>
 
-CommandDispatcher &CommandDispatcher::getInstance()
-{
-  static CommandDispatcher instance;
-  return instance;
-}
-
 bool CommandDispatcher::register_command(const std::string &command_name, const CommandBuilder &builder)
 {
   if (command_name.empty() || builder.get_handler() == nullptr)

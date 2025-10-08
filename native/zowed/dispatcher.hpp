@@ -13,6 +13,7 @@
 #define DISPATCHER_HPP
 
 #include "../c/extend/plugin.hpp"
+#include "../c/singleton.hpp"
 #include "builder.hpp"
 #include "rpcio.hpp"
 #include <string>
@@ -27,18 +28,13 @@ struct RpcNotification;
 #include <unordered_map>
 #endif
 
-class CommandDispatcher
+class CommandDispatcher : public Singleton<CommandDispatcher>
 {
+  friend class Singleton<CommandDispatcher>;
+
 public:
   // CommandHandler type from plugin.hpp
   typedef plugin::CommandProviderImpl::CommandRegistrationContext::CommandHandler CommandHandler;
-
-  // Singleton access method
-  static CommandDispatcher &getInstance();
-
-  // Delete copy constructor and assignment operator to prevent copying
-  CommandDispatcher(const CommandDispatcher &) = delete;
-  CommandDispatcher &operator=(const CommandDispatcher &) = delete;
 
   // Register a new command using CommandBuilder
   bool register_command(const std::string &command_name, const CommandBuilder &builder);

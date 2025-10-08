@@ -33,7 +33,6 @@ public:
   void set_input_content(const std::string &content);
   std::string get_output_content() const;
   std::string get_error_content() const;
-  void clear_streams();
 
   // Provide mutable access to arguments for transforms
   plugin::ArgumentMap &mutable_arguments()
@@ -46,7 +45,6 @@ public:
 
   // Store pending notification for delayed sending
   void set_pending_notification(const RpcNotification &notification);
-  bool has_pending_notification() const;
 
 private:
   std::stringstream m_input_stream;

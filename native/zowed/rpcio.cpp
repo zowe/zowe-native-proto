@@ -50,22 +50,12 @@ std::string MiddlewareContext::get_error_content() const
   return m_error_stream.str();
 }
 
-void MiddlewareContext::clear_streams()
-{
-  m_input_stream.str("");
-  m_input_stream.clear();
-  m_output_stream.str("");
-  m_output_stream.clear();
-  m_error_stream.str("");
-  m_error_stream.clear();
-}
-
 void MiddlewareContext::set_content_len(size_t content_length)
 {
   plugin::Io::set_content_len(content_length);
 
   // If there's a pending notification, send it now with content length
-  if (has_pending_notification())
+  if (m_pending_notification)
   {
     // Add content length to the notification params
     if (m_pending_notification->params.has_value())
@@ -85,9 +75,4 @@ void MiddlewareContext::set_content_len(size_t content_length)
 void MiddlewareContext::set_pending_notification(const RpcNotification &notification)
 {
   m_pending_notification.reset(new RpcNotification(notification));
-}
-
-bool MiddlewareContext::has_pending_notification() const
-{
-  return m_pending_notification.get() != nullptr;
 }

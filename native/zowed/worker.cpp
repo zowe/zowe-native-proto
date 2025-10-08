@@ -76,7 +76,7 @@ void Worker::workerLoop()
 void Worker::processRequest(const std::string &data)
 {
   // Delegate JSON-RPC processing to the RpcServer singleton
-  RpcServer &server = RpcServer::getInstance();
+  RpcServer &server = RpcServer::get_instance();
   server.processRequest(data);
 }
 

@@ -16,6 +16,7 @@
 #include <mutex>
 #include "../c/zjson.hpp"
 #include "../c/extend/plugin.hpp"
+#include "../c/singleton.hpp"
 #include "rpcio.hpp"
 
 // JSON-RPC 2.0 Standard Error Codes
@@ -71,11 +72,11 @@ ZJSON_SERIALIZABLE(RpcResponse,
  * Thread-safe singleton RPC server that handles JSON-RPC request parsing,
  * command execution, and response serialization.
  */
-class RpcServer
+class RpcServer : public Singleton<RpcServer>
 {
+  friend class Singleton<RpcServer>;
+
 private:
-  static RpcServer *instance;
-  static std::mutex instanceMutex;
   std::mutex responseMutex;
 
   // Private constructor for singleton
@@ -90,16 +91,6 @@ private:
   void printResponse(const RpcResponse &response);
 
 public:
-  // Singleton access
-  static RpcServer &getInstance();
-
-  // Delete copy constructor and assignment operator
-  RpcServer(const RpcServer &) = delete;
-  RpcServer &operator=(const RpcServer &) = delete;
-
-  // Destructor
-  ~RpcServer() = default;
-
   /**
    * Process a JSON-RPC request string and return the response
    * This method is thread-safe and handles all JSON parsing, command execution,

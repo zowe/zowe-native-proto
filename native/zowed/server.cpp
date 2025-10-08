@@ -14,20 +14,6 @@
 #include "logger.hpp"
 #include <iostream>
 
-// Static member definitions
-RpcServer *RpcServer::instance = nullptr;
-std::mutex RpcServer::instanceMutex;
-
-RpcServer &RpcServer::getInstance()
-{
-  std::lock_guard<std::mutex> lock(instanceMutex);
-  if (instance == nullptr)
-  {
-    instance = new RpcServer();
-  }
-  return *instance;
-}
-
 void RpcServer::processRequest(const std::string &requestData)
 {
   try
@@ -55,7 +41,7 @@ void RpcServer::processRequest(const std::string &requestData)
     RpcRequest request = parse_result.value();
 
     // Use CommandDispatcher singleton to handle the command
-    CommandDispatcher &dispatcher = CommandDispatcher::getInstance();
+    CommandDispatcher &dispatcher = CommandDispatcher::get_instance();
 
     // Check if command is registered
     if (!dispatcher.has_command(request.method))
