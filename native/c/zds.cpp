@@ -531,6 +531,7 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &list)
         {
           zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Reached maximum returned members requested %d", zds->max_entries);
           zds->diag.detail_rc = ZDS_RSNCD_MAXED_ENTRIES_REACHED;
+          fclose(fp);
           return RTNCD_WARNING;
         }
 
@@ -570,7 +571,6 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &list)
   }
 
   fclose(fp);
-
   return 0;
 }
 
