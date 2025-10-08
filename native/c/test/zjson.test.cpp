@@ -888,15 +888,16 @@ void test_value_conversions()
 
         it("should preserve i64 precision through JSON round-trip", []() {
             long long max_i64 = 9223372036854775807LL;
-            zjson::Value val(max_i64);
+            zjson::Value obj = zjson::Value::create_object();
+            obj["maxInt"] = zjson::Value(max_i64);
             
-            auto json_result = zjson::to_string(val);
+            auto json_result = zjson::to_string(obj);
             Expect(json_result.has_value()).ToBe(true);
             
             auto parsed = zjson::from_str(json_result.value());
             Expect(parsed.has_value()).ToBe(true);
-            Expect(parsed.value().is_integer()).ToBe(true);
-            Expect(parsed.value().as_int64()).ToBe(max_i64);
+            Expect(parsed.value()["maxInt"].is_integer()).ToBe(true);
+            Expect(parsed.value()["maxInt"].as_int64()).ToBe(max_i64);
         });
 
         it("should handle u64 within i64 range as integer", []() {
