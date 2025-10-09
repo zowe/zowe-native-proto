@@ -926,13 +926,26 @@ public:
     m_object = n;
   }
 
-private:
+  const size_t &content_len() const
+  {
+    return m_content_len;
+  }
+
+  virtual void set_content_len(const size_t content_len)
+  {
+    m_content_len = content_len;
+  }
+
+protected:
   ArgumentMap m_args;
+
+private:
   ArgumentMap m_output;
   std::istream *m_input_stream;
   std::ostream *m_output_stream;
   std::ostream *m_error_stream;
   ast::Node m_object;
+  size_t m_content_len;
 };
 
 class InvocationContext : public Io
@@ -943,7 +956,7 @@ public:
                     std::istream *in_stream = nullptr,
                     std::ostream *out_stream = nullptr,
                     std::ostream *err_stream = nullptr)
-      : m_command_path(command_path), Io(args, in_stream, out_stream, err_stream)
+      : Io(args, in_stream, out_stream, err_stream), m_command_path(command_path)
   {
   }
 

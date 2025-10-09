@@ -53,7 +53,7 @@ export class SshClientCache extends vscode.Disposable {
     }
 
     public async connect(profile: imperative.IProfileLoaded, restart = false): Promise<ZSshClient> {
-        const clientId = this.getClientId(profile.profile!);
+        const clientId = this.getClientId(profile);
         await this.mMutexMap.get(clientId)?.promise;
         if (restart) {
             this.end(clientId);
@@ -102,14 +102,14 @@ export class SshClientCache extends vscode.Disposable {
         return this.mClientMap.get(clientId) as ZSshClient;
     }
 
-    public end(hostOrProfile: string | imperative.IProfile): void {
+    public end(hostOrProfile: string | imperative.IProfileLoaded): void {
         const clientId = typeof hostOrProfile === "string" ? hostOrProfile : this.getClientId(hostOrProfile);
         this.mClientMap.get(clientId)?.dispose();
         this.mClientMap.delete(clientId);
     }
 
-    private getClientId(profile: imperative.IProfile): string {
-        return `${profile.host}:${profile.port ?? 22}`;
+    private getClientId(profile: imperative.IProfileLoaded): string {
+        return `${profile.name}_${profile.type}`;
     }
 
     private acquireProfileLock(clientId: string): AsyncMutex {

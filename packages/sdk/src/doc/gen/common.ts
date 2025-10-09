@@ -63,6 +63,10 @@ export interface Dataset {
    * Dataset migrated
    */
   migr: boolean;
+  /**
+   * Record format
+   */
+  recfm: string;
 }
 export interface DatasetAttributes {
   alcunit?: string; // Allocation Unit
