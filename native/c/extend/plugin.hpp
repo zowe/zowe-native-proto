@@ -948,6 +948,37 @@ private:
   size_t m_content_len;
 };
 
+template <>
+inline bool Io::get(const std::string &key)
+{
+  // Look for negative argument first in case there is a default assigned to the normal argument
+  const auto *neg_ptr = get_if<bool>("no-" + key);
+  if (neg_ptr)
+  {
+    return !*neg_ptr;
+  }
+
+  const auto *ptr = get_if<bool>(key);
+  if (!ptr)
+  {
+    throw std::runtime_error("argument '" + key + "' missing or wrong type");
+  }
+  return *ptr;
+}
+
+template <>
+inline bool Io::get(const std::string &key, const bool &default_value)
+{
+  // Look for negative argument first in case there is a default assigned to the normal argument
+  const auto *neg_ptr = get_if<bool>("no-" + key);
+  if (neg_ptr)
+  {
+    return !*neg_ptr;
+  }
+  const auto *ptr = get_if<bool>(key);
+  return ptr ? *ptr : default_value;
+}
+
 class InvocationContext : public Io
 {
 public:
