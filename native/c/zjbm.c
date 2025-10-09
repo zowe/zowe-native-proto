@@ -456,7 +456,6 @@ int ZJBMTCOM(ZJB *zjb, STAT *PTR64 stat, ZJB_JOB_INFO **PTR64 job_info, int *ent
         zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "IAZTLKUP RC: '%d' reason: '%d'", statjqtrsp->statjqtr.sttrjid, rc, zjb->diag.detail_rc);
         zjb->diag.detail_rc = ZJB_RTNCD_SERVICE_FAILURE;
         storage_free64(statjqtrsp);
-        *job_info = NULL;
         return RTNCD_FAILURE;
       }
 
