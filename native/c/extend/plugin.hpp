@@ -961,7 +961,7 @@ inline bool Io::get(const std::string &key)
   const auto *ptr = get_if<bool>(key);
   if (!ptr)
   {
-    throw std::runtime_error("argument '" + key + "' missing or wrong type");
+    throw std::invalid_argument("argument '" + key + "' missing or wrong type");
   }
   return *ptr;
 }
