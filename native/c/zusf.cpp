@@ -1648,6 +1648,7 @@ int zusf_delete_uss_item(ZUSF *zusf, string file, bool recursive)
         const auto rc = zusf_delete_uss_item(zusf, child_path, S_ISDIR(file_stats.st_mode));
         if (0 != rc)
         {
+          closedir(dir);
           return rc;
         }
       }
