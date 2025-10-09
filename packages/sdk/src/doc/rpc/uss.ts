@@ -11,7 +11,7 @@
 
 import type { Readable, Writable } from "node:stream";
 import type { B64String } from "../types";
-import type * as common from "./common.ts";
+import type * as common from "./common";
 
 export interface ChmodFileRequest extends common.CommandRequest<"chmodFile"> {
     /**

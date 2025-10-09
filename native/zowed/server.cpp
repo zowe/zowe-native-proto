@@ -63,7 +63,7 @@ void RpcServer::process_request(const string &request_data)
       return;
     }
 
-    // Validate params if a validator is registered for this command
+    // Validate params if a request validator is registered for this command
     if (request.params.has_value())
     {
       validator::ValidationResult validation_result = validate_request(request.method, request.params.value());
@@ -122,7 +122,7 @@ void RpcServer::process_request(const string &request_data)
 
       result_json.add_to_object("success", zjson::Value(context.get_error_content().empty()));
 
-      // Validate response if a response validator is registered for this command
+      // Validate result if a response validator is registered for this command
       validator::ValidationResult validation_result = validate_response(request.method, result_json);
       if (!validation_result.is_valid)
       {

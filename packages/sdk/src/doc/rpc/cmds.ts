@@ -9,7 +9,7 @@
  *
  */
 
-import type * as common from "./common.ts";
+import type * as common from "./common";
 
 export interface IssueConsoleRequest extends common.CommandRequest<"consoleCommand"> {
     /**

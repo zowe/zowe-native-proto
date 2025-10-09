@@ -10,7 +10,7 @@
  */
 
 import type { B64String } from "../types";
-import type * as common from "./common.ts";
+import type * as common from "./common";
 
 export interface CancelJobRequest extends common.CommandRequest<"cancelJob"> {
     /**
