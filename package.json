@@ -55,6 +55,7 @@
     "husky": "^9.1.7",
     "jest-mock-vscode": "^4.6.0",
     "js-yaml": "^4.1.0",
+    "quicktype": "^23.2.6",
     "rimraf": "^6.0.1",
     "ssh2": "^1.16.0",
     "tsx": "^4.19.3",
