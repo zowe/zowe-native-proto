@@ -764,13 +764,23 @@ void describe(std::string description, Callable suite)
   g.decrement_nesting();
 }
 
-#ifndef xdescribe
-#define xdescribe(d, s)
-#endif
+template <typename Callable,
+          typename = typename std::enable_if<
+              std::is_same<void, decltype(std::declval<Callable>()())>::value>::type>
+void xit(std::string description, Callable test)
+{
+  Globals &g = Globals::get_instance();
+  std::cout << get_indent(g.get_nesting()) << "/ SKIP " << description << std::endl;
+}
 
-#ifndef xit
-#define xit(d, s)
-#endif
+template <typename Callable,
+          typename = typename std::enable_if<
+              std::is_same<void, decltype(std::declval<Callable>()())>::value>::type>
+void xdescribe(std::string description, Callable suite)
+{
+  Globals &g = Globals::get_instance();
+  std::cout << get_indent(g.get_nesting()) << "/ SKIP " << description << std::endl;
+}
 
 template <typename Callable,
           typename = typename std::enable_if<
