@@ -11,6 +11,8 @@
 
 #include "commands.hpp"
 #include "dispatcher.hpp"
+#include "schemas/requests.hpp"
+#include "schemas/responses.hpp"
 #include "../c/commands/ds.hpp"
 #include "../c/commands/job.hpp"
 #include "../c/commands/uss.hpp"
@@ -21,6 +23,7 @@
 void register_sample_commands(CommandDispatcher &dispatcher)
 {
   dispatcher.register_command("ping", CommandBuilder(sample::handle_ping)
+                                          .validate<PingRequest, PingResponse>()
                                           .set_default("message", "hello from zowed"));
 }
 
