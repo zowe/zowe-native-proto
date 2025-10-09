@@ -45,7 +45,7 @@ int zut_substitute_symbol(string pattern, string &result)
   SYMBOL_DATA *parms = (SYMBOL_DATA *)__malloc31(sizeof(SYMBOL_DATA));
   memset(parms, 0x00, sizeof(SYMBOL_DATA));
 
-  if (pattern.size() > 128ULL)
+  if (pattern.size() > sizeof(parms->input))
   {
     return RTNCD_FAILURE;
   }
