@@ -9,15 +9,8 @@
  *
  */
 
-#ifndef SAMPLE_H
-#define SAMPLE_H
-
-#include "../parser.hpp"
-
-namespace sample
-{
-int handle_ping(plugin::InvocationContext &context);
-void register_commands(parser::Command &root_command);
-} // namespace sample
-
-#endif
+export * from "./common";
+export * as cmds from "./cmds";
+export * as ds from "./ds";
+export * as jobs from "./jobs";
+export * as uss from "./uss";

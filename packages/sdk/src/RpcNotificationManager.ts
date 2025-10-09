@@ -15,8 +15,8 @@ import { Logger } from "@zowe/imperative";
 import { Base64Decode, Base64Encode } from "base64-stream";
 import type { Client, ClientChannel } from "ssh2";
 import type { CallbackInfo, CommandResponse, RpcNotification, RpcPromise, RpcRequest } from "./doc";
-import type { ReadDatasetResponse } from "./doc/gen/ds";
-import type { ReadFileResponse } from "./doc/gen/uss";
+import type { ReadDatasetResponse } from "./doc/rpc/ds";
+import type { ReadFileResponse } from "./doc/rpc/uss";
 import { ProgressTransform } from "./ProgressTransform";
 
 type StreamMode = "r" | "w";

@@ -9,7 +9,7 @@
  *
  */
 
-import type { CommandRequest, CommandResponse, cmds, ds, jobs, uss } from "./doc";
+import type { CommandRequest, CommandResponse, cmds, ds, jobs, uss } from "./doc/rpc";
 
 export abstract class AbstractRpcClient {
     public abstract request<Req extends CommandRequest, Resp extends CommandResponse>(

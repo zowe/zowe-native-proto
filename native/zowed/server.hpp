@@ -18,6 +18,7 @@
 #include "../c/extend/plugin.hpp"
 #include "../c/singleton.hpp"
 #include "rpcio.hpp"
+#include "validator.hpp"
 
 // JSON-RPC 2.0 Standard Error Codes
 namespace RpcErrorCode
@@ -89,6 +90,8 @@ private:
   zjson::Value convert_output_to_json(const std::string &output);
   zjson::Value convert_ast_to_json(const ast::Node &ast_node);
   void print_response(const RpcResponse &response);
+  validator::ValidationResult validate_request(const std::string &method, const zjson::Value &params);
+  validator::ValidationResult validate_response(const std::string &method, const zjson::Value &result);
 
 public:
   /**

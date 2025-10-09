@@ -13,8 +13,10 @@
 #define BUILDER_HPP
 
 #include "../c/extend/plugin.hpp"
+#include "validator.hpp"
 #include <string>
 #include <vector>
+#include <memory>
 
 // Forward declarations
 class CommandDispatcher;
@@ -116,6 +118,15 @@ public:
   // Flatten a JSON object argument into the argument map (recursion not supported)
   CommandBuilder &flatten_obj(const std::string &arg_name);
 
+  // Validate both request and response using separate schemas
+  template <typename RequestT, typename ResponseT>
+  CommandBuilder &validate(bool allow_unknown_fields = false)
+  {
+    request_validator_ = std::shared_ptr<validator::ParamsValidator>(new validator::SchemaValidator<RequestT>(allow_unknown_fields));
+    response_validator_ = std::shared_ptr<validator::ParamsValidator>(new validator::SchemaValidator<ResponseT>(allow_unknown_fields));
+    return *this;
+  }
+
   // Get the command handler
   CommandHandler get_handler() const
   {
@@ -128,6 +139,18 @@ public:
     return transforms_;
   }
 
+  // Get the request validator (may be null)
+  std::shared_ptr<validator::ParamsValidator> get_request_validator() const
+  {
+    return request_validator_;
+  }
+
+  // Get the response validator (may be null)
+  std::shared_ptr<validator::ParamsValidator> get_response_validator() const
+  {
+    return response_validator_;
+  }
+
   // Apply input transforms to the context before command execution
   void apply_input_transforms(MiddlewareContext &context) const;
 
@@ -137,6 +160,8 @@ public:
 private:
   CommandHandler handler_;
   std::vector<ArgTransform> transforms_;
+  std::shared_ptr<validator::ParamsValidator> request_validator_;
+  std::shared_ptr<validator::ParamsValidator> response_validator_;
 };
 
 #endif

@@ -63,6 +63,28 @@ void RpcServer::process_request(const string &request_data)
       return;
     }
 
+    // Validate params if a validator is registered for this command
+    if (request.params.has_value())
+    {
+      validator::ValidationResult validation_result = validate_request(request.method, request.params.value());
+      if (!validation_result.is_valid)
+      {
+        ErrorDetails error{
+            RpcErrorCode::INVALID_PARAMS,
+            validation_result.error_message,
+            zstd::optional<zjson::Value>()};
+
+        RpcResponse response;
+        response.jsonrpc = "2.0";
+        response.result = zstd::optional<zjson::Value>();
+        response.error = zstd::optional<ErrorDetails>(error);
+        response.id = request.id;
+
+        print_response(response);
+        return;
+      }
+    }
+
     // Convert JSON params to ArgumentMap
     plugin::ArgumentMap args;
     if (request.params.has_value())
@@ -99,8 +121,25 @@ void RpcServer::process_request(const string &request_data)
       }
 
       result_json.add_to_object("success", zjson::Value(context.get_error_content().empty()));
-      response.result = zstd::optional<zjson::Value>(result_json);
-      response.error = zstd::optional<ErrorDetails>();
+
+      // Validate response if a response validator is registered for this command
+      validator::ValidationResult validation_result = validate_response(request.method, result_json);
+      if (!validation_result.is_valid)
+      {
+        // Response validation failed - return internal error
+        ErrorDetails error{
+            RpcErrorCode::INTERNAL_ERROR,
+            string("Response validation failed: ") + validation_result.error_message,
+            zstd::optional<zjson::Value>()};
+
+        response.result = zstd::optional<zjson::Value>();
+        response.error = zstd::optional<ErrorDetails>(error);
+      }
+      else
+      {
+        response.result = zstd::optional<zjson::Value>(result_json);
+        response.error = zstd::optional<ErrorDetails>();
+      }
     }
     else
     {
@@ -360,4 +399,68 @@ void RpcServer::send_notification(const RpcNotification &notification)
 {
   string json_string = serialize_json(zjson::to_value(notification).value());
   std::cout << json_string << std::endl;
+}
+
+validator::ValidationResult RpcServer::validate_request(const string &method, const zjson::Value &params)
+{
+  // Get the dispatcher to access the builder for this command
+  CommandDispatcher &dispatcher = CommandDispatcher::get_instance();
+
+  // If the command isn't registered, skip validation (will be caught later)
+  if (!dispatcher.has_command(method))
+  {
+    return validator::ValidationResult::success();
+  }
+
+  // Get the builder to access the request validator
+  const auto &builders = dispatcher.get_builders();
+  auto it = builders.find(method);
+  if (it == builders.end())
+  {
+    return validator::ValidationResult::success();
+  }
+
+  const CommandBuilder &builder = it->second;
+  std::shared_ptr<validator::ParamsValidator> validator = builder.get_request_validator();
+
+  if (!validator)
+  {
+    // No validator registered, validation passes
+    return validator::ValidationResult::success();
+  }
+
+  // Run the validator
+  return validator->validate(params);
+}
+
+validator::ValidationResult RpcServer::validate_response(const string &method, const zjson::Value &result)
+{
+  // Get the dispatcher to access the builder for this command
+  CommandDispatcher &dispatcher = CommandDispatcher::get_instance();
+
+  // If the command isn't registered, skip validation
+  if (!dispatcher.has_command(method))
+  {
+    return validator::ValidationResult::success();
+  }
+
+  // Get the builder to access the response validator
+  const auto &builders = dispatcher.get_builders();
+  auto it = builders.find(method);
+  if (it == builders.end())
+  {
+    return validator::ValidationResult::success();
+  }
+
+  const CommandBuilder &builder = it->second;
+  std::shared_ptr<validator::ParamsValidator> validator = builder.get_response_validator();
+
+  if (!validator)
+  {
+    // No validator registered, validation passes
+    return validator::ValidationResult::success();
+  }
+
+  // Run the validator
+  return validator->validate(result);
 }

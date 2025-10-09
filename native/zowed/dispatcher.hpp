@@ -54,6 +54,12 @@ public:
   // Clear all registered commands
   void clear();
 
+  // Get the builders map (for accessing validators)
+  const std::unordered_map<std::string, CommandBuilder> &get_builders() const
+  {
+    return m_builders;
+  }
+
 private:
   // Private constructor for singleton
   CommandDispatcher() = default;
