@@ -634,8 +634,6 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
         rc = iefssreq(&ssobp);   // TODO(Kelosky): recovery
         zjb->diag.detail_rc = ZJB_RSNCD_MAX_JOBS_REACHED;
         zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "max DDs reached '%d', results truncated", zjb->dds_max);
-        storage_free64(statsetrsp);
-        *sysoutInfo = NULL;
         return RTNCD_WARNING;
       }
 

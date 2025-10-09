@@ -153,7 +153,6 @@ void zowex_tests()
                                         rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
                                       });
-                                   // TODO: Issue with test related to memory leak in [#577](https://github.com/zowe/zowe-native-proto/issues/577)
                                    it("should list a member of a data set",
                                       []()
                                       {
