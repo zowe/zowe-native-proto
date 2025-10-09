@@ -45,6 +45,11 @@ int zut_substitute_symbol(string pattern, string &result)
   SYMBOL_DATA *parms = (SYMBOL_DATA *)__malloc31(sizeof(SYMBOL_DATA));
   memset(parms, 0x00, sizeof(SYMBOL_DATA));
 
+  if (pattern.size() > 128ull)
+  {
+    return RTNCD_FAILURE;
+  }
+
   strcpy(parms->input, pattern.c_str());
   parms->length = strlen(pattern.c_str());
   int rc = ZUTSYMBP(parms);
@@ -76,6 +81,10 @@ int zut_bpxwdyn(string parm, unsigned int *code, string &resp)
   char bpx_response[RET_ARG_MAX_LEN * MSG_ENTRIES + 1] = {0};
 
   unsigned char *p = (unsigned char *)__malloc31(sizeof(BPXWDYN_PARM) + sizeof(BPXWDYN_RESPONSE));
+  if (p == nullptr)
+  {
+    return RTNCD_FAILURE;
+  }
   memset(p, 0x00, sizeof(BPXWDYN_PARM) + sizeof(BPXWDYN_RESPONSE));
 
   BPXWDYN_PARM *bparm = (BPXWDYN_PARM *)p;
