@@ -15,7 +15,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 // Project paths
-const SDK_GEN_DIR = path.join(__dirname, "../packages/sdk/src/doc/rpc");
+const SDK_TYPES_DIR = path.join(__dirname, "../packages/sdk/src/doc/rpc");
 const C_SCHEMAS_DIR = path.join(__dirname, "../native/zowed/schemas");
 const LICENSE_HEADER_PATH = path.join(__dirname, "../LICENSE_HEADER");
 
@@ -29,59 +29,58 @@ const VALIDATOR_TYPE_MAPPING: Record<string, string> = {
     B64String: "STRING",
 };
 
-function mapTypeScriptToValidatorType(tsType: string): string {
-    let cleanType = tsType;
-    const isCommonType = cleanType.includes("common.");
+function isInternalType(typeName: string): boolean {
+    // Internal types start with uppercase letter (e.g., UssItem, Job, Dataset)
+    return typeName[0].toUpperCase() === typeName[0];
+}
 
-    if (isCommonType) {
-        cleanType = cleanType.replace(/common\./g, "");
-    }
+function stripNamespace(typeName: string): string {
+    return typeName.includes(".") ? typeName.split(".").pop()! : typeName;
+}
+
+function mapTypeScriptToValidatorType(tsType: string): string {
+    const isCommonType = tsType.includes("common.");
+    const cleanType = isCommonType ? tsType.replace(/common\./g, "") : tsType;
 
     // Handle array types
-    if (cleanType.endsWith("[]")) {
-        return "ARRAY";
-    }
+    if (cleanType.endsWith("[]")) return "ARRAY";
+
     // Handle number with int comment
-    else if (cleanType.includes("number") && cleanType.includes("int")) {
-        return "INTEGER";
-    }
+    if (cleanType.includes("number") && cleanType.includes("int")) return "INTEGER";
+
     // Handle generic objects
-    else if (cleanType.includes("{") && cleanType.includes("}")) {
-        return "OBJECT";
-    }
+    if (cleanType.includes("{") && cleanType.includes("}")) return "OBJECT";
+
     // Handle quoted literal types
-    else if (cleanType.startsWith('"') && cleanType.endsWith('"')) {
-        return "STRING";
-    }
+    if (cleanType.startsWith('"') && cleanType.endsWith('"')) return "STRING";
+
     // Direct mapping
-    else if (VALIDATOR_TYPE_MAPPING[cleanType]) {
-        return VALIDATOR_TYPE_MAPPING[cleanType];
-    }
+    if (VALIDATOR_TYPE_MAPPING[cleanType]) return VALIDATOR_TYPE_MAPPING[cleanType];
+
     // Generic type parameters (e.g., CommandT) - treat as STRING since they're literal string types
-    else if (cleanType.endsWith("T") && cleanType[0].toUpperCase() === cleanType[0]) {
-        return "STRING";
-    }
+    if (cleanType.endsWith("T") && isInternalType(cleanType)) return "STRING";
+
     // Custom interface/type from our own code (common.XXX)
-    else if (isCommonType && cleanType[0].toUpperCase() === cleanType[0]) {
-        return "OBJECT";
-    }
+    if (isCommonType && isInternalType(cleanType)) return "OBJECT";
+
     // External types (Readable, Writable, etc.) or unknown types
-    else {
-        return "ANY";
-    }
+    return "ANY";
 }
 
 function getArrayElementType(tsType: string): string | null {
-    let cleanType = tsType;
-    if (cleanType.includes("common.")) {
-        cleanType = cleanType.replace(/common\./g, "");
+    if (!tsType.endsWith("[]")) return null;
+
+    const arrayBaseType = tsType.slice(0, -2);
+    const isCommonType = arrayBaseType.includes("common.");
+
+    // For common types, check if it's an internal object type
+    if (isCommonType) {
+        const cleanType = stripNamespace(arrayBaseType);
+        // Internal types (e.g., UssItem, Job, Dataset) should be OBJECT
+        if (isInternalType(cleanType)) return "OBJECT";
     }
 
-    if (cleanType.endsWith("[]")) {
-        const arrayBaseType = cleanType.slice(0, -2);
-        return mapTypeScriptToValidatorType(arrayBaseType);
-    }
-    return null;
+    return mapTypeScriptToValidatorType(arrayBaseType);
 }
 
 interface ExtractedInterface {
@@ -196,15 +195,12 @@ function extractInterfaces(filePath: string): ExtractedInterface[] {
             // Handle type aliases: export type CreateMemberResponse = common.CommandResponse;
             const aliasName = node.name.text;
             const aliasedType = node.type.getText();
-
-            // Extract the base type name (remove namespace prefixes like "common.")
-            const baseTypeName = aliasedType.includes(".") ? aliasedType.split(".").pop()! : aliasedType;
+            const baseTypeName = stripNamespace(aliasedType);
 
             // For CommandResponse aliases, add the success field directly
             const properties: ExtractedInterface["properties"] =
                 baseTypeName === "CommandResponse" ? [{ name: "success", type: "boolean", optional: false }] : [];
 
-            // Create a new interface with the alias name
             interfaces.push({
                 name: aliasName,
                 properties,
@@ -240,17 +236,14 @@ function loadLicenseHeader(): void {
     }
 }
 
-function generateSchemaFields(iface: ExtractedInterface): string[] {
-    const schemaFields: string[] = [];
-
-    // Collect all properties (including inherited from base classes)
-    const allProps: Array<(typeof iface.properties)[0]> = [];
+function collectAllProperties(iface: ExtractedInterface): Array<ExtractedInterface["properties"][0]> {
+    const allProps: Array<ExtractedInterface["properties"][0]> = [];
     const fieldsSeen = new Set<string>();
 
     // Add inherited properties from base classes
-    if (iface.extends && iface.extends.length > 0) {
+    if (iface.extends) {
         for (const baseType of iface.extends) {
-            const baseName = baseType.includes(".") ? baseType.split(".").pop()! : baseType;
+            const baseName = stripNamespace(baseType);
             const baseInterface = allInterfaces.get(baseName);
             if (baseInterface) {
                 for (const baseProp of baseInterface.properties) {
@@ -271,30 +264,32 @@ function generateSchemaFields(iface: ExtractedInterface): string[] {
         }
     }
 
-    // Generate field descriptors
+    return allProps;
+}
+
+function shouldSkipField(prop: ExtractedInterface["properties"][0]): boolean {
+    // Skip literal type fields without override
+    if (prop.isLiteral && !prop.hasTypeOverride) return true;
+
+    // Skip the "command" field - it's a string literal representing the RPC method name
+    if (prop.name === "command") return true;
+
+    return false;
+}
+
+function generateSchemaFields(iface: ExtractedInterface): string[] {
+    const schemaFields: string[] = [];
+    const allProps = collectAllProperties(iface);
+
     for (const prop of allProps) {
-        // Skip literal type fields
-        if (prop.isLiteral && !prop.hasTypeOverride) {
-            continue;
-        }
+        if (shouldSkipField(prop)) continue;
 
-        // Skip the "command" field - it's a string literal representing the RPC method name
-        // This comes from CommandRequest<T> where T is a literal like "listDatasets"
-        if (prop.name === "command") {
-            continue;
-        }
-
-        const fieldType = mapTypeScriptToValidatorType(prop.type);
         const arrayElementType = getArrayElementType(prop.type);
+        const fieldType = arrayElementType || mapTypeScriptToValidatorType(prop.type);
         const requirement = prop.optional ? "OPTIONAL" : "REQUIRED";
+        const macroSuffix = arrayElementType ? "_ARRAY" : "";
 
-        if (arrayElementType) {
-            // Array field with element type
-            schemaFields.push(`FIELD_${requirement}_ARRAY(${prop.name}, ${arrayElementType})`);
-        } else {
-            // Regular field
-            schemaFields.push(`FIELD_${requirement}(${prop.name}, ${fieldType})`);
-        }
+        schemaFields.push(`FIELD_${requirement}${macroSuffix}(${prop.name}, ${fieldType})`);
     }
 
     return schemaFields;
@@ -331,33 +326,29 @@ function generateHeaderFile(interfaces: ExtractedInterface[], fileName: string):
 }
 
 function collectBaseClassProperties(interfaces: ExtractedInterface[]): void {
-    // First pass: collect all interface properties and store interfaces
+    // First pass: store all interfaces and their properties
     for (const iface of interfaces) {
-        const props = new Set<string>();
-        for (const prop of iface.properties) {
-            props.add(prop.name);
-        }
+        const props = new Set(iface.properties.map((p) => p.name));
         baseClassProperties.set(iface.name, props);
         allInterfaces.set(iface.name, iface);
     }
 
     // Second pass: add inherited properties to base classes
     for (const iface of interfaces) {
-        if (iface.extends && iface.extends.length > 0) {
-            const currentProps = baseClassProperties.get(iface.name)!;
+        if (!iface.extends) continue;
 
-            for (const baseType of iface.extends) {
-                const baseName = baseType.includes(".") ? baseType.split(".").pop()! : baseType;
-                const baseProps = baseClassProperties.get(baseName);
-                if (baseProps) {
-                    baseProps.forEach((prop) => currentProps.add(prop));
-                }
+        const currentProps = baseClassProperties.get(iface.name)!;
+        for (const baseType of iface.extends) {
+            const baseName = stripNamespace(baseType);
+            const baseProps = baseClassProperties.get(baseName);
+            if (baseProps) {
+                baseProps.forEach((prop) => currentProps.add(prop));
             }
         }
     }
 }
 
-function processAllGenFiles(): void {
+function processAllRpcFiles(): void {
     // Load the license header
     loadLicenseHeader();
 
@@ -366,11 +357,11 @@ function processAllGenFiles(): void {
     }
 
     // Count all TypeScript files (excluding index.ts)
-    const allTsFiles = fs.readdirSync(SDK_GEN_DIR).filter((file) => file.endsWith(".ts") && file !== "index.ts");
+    const allTsFiles = fs.readdirSync(SDK_TYPES_DIR).filter((file) => file.endsWith(".ts") && file !== "index.ts");
     console.log(`Processing ${allTsFiles.length} TypeScript files...`);
 
     // First extract common.ts to get base types like CommandResponse, Job, etc.
-    const commonFilePath = path.join(SDK_GEN_DIR, "common.ts");
+    const commonFilePath = path.join(SDK_TYPES_DIR, "common.ts");
     if (fs.existsSync(commonFilePath)) {
         console.log(`Extracting interfaces from common.ts...`);
         const commonInterfaces = extractInterfaces(commonFilePath);
@@ -379,8 +370,8 @@ function processAllGenFiles(): void {
     }
 
     // Process TypeScript files (skip common.ts and index.ts)
-    const genFiles = fs
-        .readdirSync(SDK_GEN_DIR)
+    const rpcFiles = fs
+        .readdirSync(SDK_TYPES_DIR)
         .filter((file) => file.endsWith(".ts") && file !== "common.ts" && file !== "index.ts");
 
     // Extract all interfaces from all files
@@ -388,8 +379,8 @@ function processAllGenFiles(): void {
     const requests: ExtractedInterface[] = [];
     const responses: ExtractedInterface[] = [];
 
-    for (const file of genFiles) {
-        const filePath = path.join(SDK_GEN_DIR, file);
+    for (const file of rpcFiles) {
+        const filePath = path.join(SDK_TYPES_DIR, file);
         console.log(`Extracting interfaces from ${file}...`);
         const interfaces = extractInterfaces(filePath);
         allInterfaces.push(...interfaces);
@@ -427,7 +418,7 @@ function processAllGenFiles(): void {
 // Run the conversion
 if (require.main === module) {
     try {
-        processAllGenFiles();
+        processAllRpcFiles();
         console.log("Type conversion completed successfully!");
     } catch (error) {
         console.error("Error during type conversion:", error);

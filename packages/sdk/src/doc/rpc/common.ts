@@ -14,6 +14,7 @@
 export interface RpcNotification {
     jsonrpc: "2.0";
     method: string;
+    // biome-ignore lint/suspicious/noExplicitAny: RPC params can be any object
     params?: any;
 }
 
@@ -24,11 +25,13 @@ export interface RpcRequest extends RpcNotification {
 export interface ErrorDetails {
     code: number;
     message: string;
+    // biome-ignore lint/suspicious/noExplicitAny: RPC data can be any object
     data?: any;
 }
 
 export interface RpcResponse {
     jsonrpc: "2.0";
+    // biome-ignore lint/suspicious/noExplicitAny: RPC result can be any object
     result?: any;
     error?: ErrorDetails;
     id: number;
@@ -54,6 +57,7 @@ export interface CommandResponse {
 export interface StatusMessage {
     status: string;
     message: string;
+    // biome-ignore lint/suspicious/noExplicitAny: Data properties are unknown type
     data?: { [key: string]: any };
 }
 

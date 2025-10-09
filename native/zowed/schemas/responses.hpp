@@ -52,14 +52,14 @@ ZJSON_SCHEMA(DeleteDatasetResponse,
 struct ListDatasetsResponse {};
 ZJSON_SCHEMA(ListDatasetsResponse,
     FIELD_REQUIRED(success, BOOL),
-    FIELD_REQUIRED_ARRAY(items, ANY),
+    FIELD_REQUIRED_ARRAY(items, OBJECT),
     FIELD_REQUIRED(returnedRows, NUMBER)
 );
 
 struct ListDsMembersResponse {};
 ZJSON_SCHEMA(ListDsMembersResponse,
     FIELD_REQUIRED(success, BOOL),
-    FIELD_REQUIRED_ARRAY(items, ANY),
+    FIELD_REQUIRED_ARRAY(items, OBJECT),
     FIELD_REQUIRED(returnedRows, NUMBER)
 );
 
@@ -119,13 +119,13 @@ ZJSON_SCHEMA(HoldJobResponse,
 struct ListJobsResponse {};
 ZJSON_SCHEMA(ListJobsResponse,
     FIELD_REQUIRED(success, BOOL),
-    FIELD_REQUIRED_ARRAY(items, ANY)
+    FIELD_REQUIRED_ARRAY(items, OBJECT)
 );
 
 struct ListSpoolsResponse {};
 ZJSON_SCHEMA(ListSpoolsResponse,
     FIELD_REQUIRED(success, BOOL),
-    FIELD_REQUIRED_ARRAY(items, ANY)
+    FIELD_REQUIRED_ARRAY(items, OBJECT)
 );
 
 struct ReadSpoolResponse {};
@@ -186,7 +186,7 @@ ZJSON_SCHEMA(DeleteFileResponse,
 struct ListFilesResponse {};
 ZJSON_SCHEMA(ListFilesResponse,
     FIELD_REQUIRED(success, BOOL),
-    FIELD_REQUIRED_ARRAY(items, ANY),
+    FIELD_REQUIRED_ARRAY(items, OBJECT),
     FIELD_REQUIRED(returnedRows, NUMBER)
 );
 

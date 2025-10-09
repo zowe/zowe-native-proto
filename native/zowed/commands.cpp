@@ -151,6 +151,7 @@ void register_uss_commands(CommandDispatcher &dispatcher)
                               create_uss_builder(uss::handle_uss_view)
                                   .validate<ReadFileRequest, ReadFileResponse>()
                                   .set_default("encoding", "IBM-1047")
+                                  .set_default("return-etag", true)
                                   .read_stdout("data", true)
                                   .handle_fifo("stream", "pipe-path", FifoMode::GET, true));
   dispatcher.register_command("writeFile",
