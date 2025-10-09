@@ -21,37 +21,19 @@
 #include "../c/zjson.hpp"
 
 /**
- * Lightweight schema validation for JSON-RPC request parameters.
+ * Schema-based validation for JSON-RPC messages.
  *
- * This validates JSON structure without deserializing to C++ structs,
- * making it 2-5x faster than full deserialization.
+ * Define schemas using ZJSON_SCHEMA macro, then register with CommandBuilder:
  *
- * Usage:
+ *   struct ListDatasetRequest {};
+ *   ZJSON_SCHEMA(ListDatasetRequest,
+ *       FIELD_REQUIRED(pattern, STRING),
+ *       FIELD_OPTIONAL(attributes, BOOL)
+ *   )
  *
- * 1. Define a schema for your request parameters:
+ *   CommandBuilder(handler).validate<ListDatasetRequest, ListDatasetResponse>()
  *
- *    struct ListDatasetRequest {};
- *
- *    ZJSON_SCHEMA(ListDatasetRequest,
- *        FIELD_REQUIRED(pattern, STRING),
- *        FIELD_REQUIRED(attributes, BOOL)
- *    )
- *
- * 2. Register the validator:
- *
- *    CommandBuilder(handler).validate_schema<ListDatasetRequest>()
- *
- * 3. Validation happens automatically before the command handler is invoked.
- *    If validation fails, an INVALID_PARAMS error is returned to the client.
- *
- * Available field types:
- *   TYPE_BOOL     - boolean (true/false)
- *   TYPE_INTEGER  - integer numbers only
- *   TYPE_NUMBER   - any number (integer or double)
- *   TYPE_STRING   - string values
- *   TYPE_ARRAY    - array (use FIELD_*_ARRAY for typed arrays)
- *   TYPE_OBJECT   - object (no deep validation)
- *   TYPE_ANY      - any type
+ * Available field types: BOOL, INTEGER, NUMBER, STRING, ARRAY, OBJECT, ANY
  */
 
 namespace validator
