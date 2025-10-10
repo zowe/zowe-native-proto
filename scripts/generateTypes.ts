@@ -10,9 +10,9 @@
  */
 
 // generateTypes.ts - Extract TypeScript interfaces and convert to C structs
+import * as fs from "node:fs";
+import * as path from "node:path";
 import * as ts from "typescript";
-import * as fs from "fs";
-import * as path from "path";
 
 // Project paths
 const SDK_TYPES_DIR = path.join(__dirname, "../packages/sdk/src/doc/rpc");
@@ -24,7 +24,6 @@ const VALIDATOR_TYPE_MAPPING: Record<string, string> = {
     string: "STRING",
     number: "NUMBER",
     boolean: "BOOL",
-    bool: "BOOL",
     any: "ANY",
     B64String: "STRING",
 };
@@ -44,9 +43,6 @@ function mapTypeScriptToValidatorType(tsType: string): string {
 
     // Handle array types
     if (cleanType.endsWith("[]")) return "ARRAY";
-
-    // Handle number with int comment
-    if (cleanType.includes("number") && cleanType.includes("int")) return "INTEGER";
 
     // Handle generic objects
     if (cleanType.includes("{") && cleanType.includes("}")) return "OBJECT";
@@ -89,8 +85,6 @@ interface ExtractedInterface {
         name: string;
         type: string;
         optional: boolean;
-        comment?: string;
-        hasTypeOverride?: boolean;
         isLiteral?: boolean;
     }>;
     extends?: string[];
@@ -102,7 +96,6 @@ function extractInterfaces(filePath: string): ExtractedInterface[] {
         target: ts.ScriptTarget.ES2020,
         module: ts.ModuleKind.CommonJS,
     });
-    const checker = program.getTypeChecker();
     const sourceFile = program.getSourceFile(filePath);
 
     if (!sourceFile) {
@@ -116,70 +109,28 @@ function extractInterfaces(filePath: string): ExtractedInterface[] {
     function visit(node: ts.Node) {
         if (ts.isInterfaceDeclaration(node)) {
             const interfaceName = node.name.text;
-            const type = checker.getTypeAtLocation(node);
             const properties: ExtractedInterface["properties"] = [];
 
             // Extract heritage clauses (extends)
             const extendsClause = node.heritageClauses?.find((clause) => clause.token === ts.SyntaxKind.ExtendsKeyword);
-            const extendsTypes = extendsClause?.types.map((type) => type.expression.getText()) || [];
+            const extendsTypes = extendsClause?.types.map((type) => type.expression.getText(sourceFile)) || [];
 
             // Extract properties
             for (const member of node.members) {
                 if (ts.isPropertySignature(member) && member.name) {
-                    const propName = member.name.getText();
-                    const propType = member.type?.getText() || "any";
+                    const propName = member.name.getText(sourceFile);
+                    const propType = member.type?.getText(sourceFile) || "any";
                     const optional = !!member.questionToken;
 
-                    // Check if this is a literal type (e.g., "listDatasets", 'test', false, 123, "2.0")
-                    const isLiteralType =
-                        (propType.startsWith('"') && propType.endsWith('"')) ||
-                        (propType.startsWith("'") && propType.endsWith("'")) ||
-                        propType === "true" ||
-                        propType === "false" ||
-                        /^\d+$/.test(propType); // numeric literals
-
-                    // Extract comments within the property signature line
-                    const memberStart = member.getFullStart();
-                    const memberEnd = member.getEnd();
-                    const memberText = sourceFile.text.substring(memberStart, memberEnd);
-
-                    let comment: string | undefined;
-                    let nameOverride: string | undefined;
-                    let typeOverride: string | undefined;
-
-                    // Look for inline comments /* ... */ within the property line
-                    const inlineCommentMatch = memberText.match(/\/\*\s*(.*?)\s*\*\//);
-                    if (inlineCommentMatch) {
-                        comment = inlineCommentMatch[1].trim();
-
-                        // Check for override syntax: name:type, :type, or name:
-                        // Split only on the first colon to handle types like zjson::Value
-                        const colonIndex = comment.indexOf(":");
-                        if (colonIndex !== -1) {
-                            const nameMatch = comment.substring(0, colonIndex);
-                            const typeMatch = comment.substring(colonIndex + 1);
-                            nameOverride = nameMatch.trim() || undefined;
-                            typeOverride = typeMatch.trim() || undefined;
-                            comment = undefined; // Remove the override syntax from comment
-                        }
-
-                        // Only keep non-empty comments that aren't overrides
-                        if (!comment) {
-                            comment = undefined;
-                        }
-                    }
-
-                    // Use override values if present, otherwise use extracted values
-                    const finalName = nameOverride || propName;
-                    const finalType = typeOverride || propType;
-                    const hasTypeOverride = typeOverride !== undefined;
+                    // Check if this is a literal type (e.g., "listDatasets", "2.0") or generic type parameter (e.g., CommandT)
+                    const isStringLiteral = propType.startsWith('"') && propType.endsWith('"');
+                    const isGenericParam = propType.endsWith("T") && isInternalType(propType);
+                    const isLiteralType = isStringLiteral || isGenericParam;
 
                     properties.push({
-                        name: finalName,
-                        type: finalType,
+                        name: propName,
+                        type: propType,
                         optional,
-                        comment,
-                        hasTypeOverride,
                         isLiteral: isLiteralType,
                     });
                 }
@@ -194,7 +145,7 @@ function extractInterfaces(filePath: string): ExtractedInterface[] {
         } else if (ts.isTypeAliasDeclaration(node) && node.type) {
             // Handle type aliases: export type CreateMemberResponse = common.CommandResponse;
             const aliasName = node.name.text;
-            const aliasedType = node.type.getText();
+            const aliasedType = node.type.getText(sourceFile);
             const baseTypeName = stripNamespace(aliasedType);
 
             // For CommandResponse aliases, add the success field directly
@@ -217,8 +168,8 @@ function extractInterfaces(filePath: string): ExtractedInterface[] {
 }
 
 // Dynamically collected base class properties and interfaces
-let baseClassProperties: Map<string, Set<string>> = new Map();
-let allInterfaces: Map<string, ExtractedInterface> = new Map();
+const baseClassProperties: Map<string, Set<string>> = new Map();
+const allInterfaces: Map<string, ExtractedInterface> = new Map();
 
 // License header content
 let licenseHeader: string = "";
@@ -267,22 +218,13 @@ function collectAllProperties(iface: ExtractedInterface): Array<ExtractedInterfa
     return allProps;
 }
 
-function shouldSkipField(prop: ExtractedInterface["properties"][0]): boolean {
-    // Skip literal type fields without override
-    if (prop.isLiteral && !prop.hasTypeOverride) return true;
-
-    // Skip the "command" field - it's a string literal representing the RPC method name
-    if (prop.name === "command") return true;
-
-    return false;
-}
-
 function generateSchemaFields(iface: ExtractedInterface): string[] {
     const schemaFields: string[] = [];
     const allProps = collectAllProperties(iface);
 
     for (const prop of allProps) {
-        if (shouldSkipField(prop)) continue;
+        // Skip literal type fields (like "command" with value "listDatasets")
+        if (prop.isLiteral) continue;
 
         const arrayElementType = getArrayElementType(prop.type);
         const fieldType = arrayElementType || mapTypeScriptToValidatorType(prop.type);
@@ -301,7 +243,7 @@ function generateHeaderFile(interfaces: ExtractedInterface[], fileName: string):
 
     // Add license header if available
     if (licenseHeader) {
-        content += licenseHeader + "\n";
+        content += `${licenseHeader}\n`;
     }
 
     // Add auto-generation disclaimer
@@ -369,18 +311,17 @@ function processAllRpcFiles(): void {
         collectBaseClassProperties(commonInterfaces);
     }
 
-    // Process TypeScript files (skip common.ts and index.ts)
-    const rpcFiles = fs
-        .readdirSync(SDK_TYPES_DIR)
-        .filter((file) => file.endsWith(".ts") && file !== "common.ts" && file !== "index.ts");
-
     // Extract all interfaces from all files
     const allInterfaces: ExtractedInterface[] = [];
     const requests: ExtractedInterface[] = [];
     const responses: ExtractedInterface[] = [];
 
-    for (const file of rpcFiles) {
+    for (const file of allTsFiles) {
         const filePath = path.join(SDK_TYPES_DIR, file);
+        if (filePath === commonFilePath) {
+            continue;
+        }
+
         console.log(`Extracting interfaces from ${file}...`);
         const interfaces = extractInterfaces(filePath);
         allInterfaces.push(...interfaces);
