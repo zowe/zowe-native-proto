@@ -8,7 +8,7 @@
  * Copyright Contributors to the Zowe Project.
  *
  */
-
+import { ProfileConstants } from "@zowe/core-for-zowe-sdk";
 import type { IProfile } from "@zowe/imperative";
 import { ZoweVsCodeExtension } from "@zowe/zowe-explorer-api";
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
@@ -112,6 +112,22 @@ describe("SshConfigUtils", () => {
             const result = SshConfigUtils.getServerPath(profile);
             expect(result).toBe(defaultPath);
         });
+        it("returns profile.serverPath if set and no mapping/env", () => {
+            const profile: IProfile = { host: "testHost", serverPath: "/profile/path" } as IProfile;
+            (getVsceConfig as Mock).mockReturnValue({ get: vi.fn().mockReturnValue({}) });
+
+            const result = SshConfigUtils.getServerPath(profile);
+            expect(result).toBe("/profile/path");
+        });
+
+        it("returns default path if serverPathMap is undefined", () => {
+            const profile: IProfile = { host: "testHost" } as IProfile;
+            (getVsceConfig as Mock).mockReturnValue({ get: vi.fn().mockReturnValue(undefined) });
+            delete process.env.ZOWE_OPT_SERVER_PATH;
+
+            const result = SshConfigUtils.getServerPath(profile);
+            expect(result).toBe(defaultPath);
+        });
     });
     describe("showSessionInTree", () => {
         let mockApi: any;
@@ -206,6 +222,22 @@ describe("SshConfigUtils", () => {
                 (instance as any).showMessage("test error message", MESSAGE_TYPE.ERROR);
                 expect(vscode.window.showErrorMessage).toHaveBeenCalledWith("test error message");
             });
+            it("does nothing when message type is unknown", () => {
+                (instance as any).showMessage("test message", "UNKNOWN" as any);
+                expect(vscode.window.showErrorMessage).not.toHaveBeenCalled();
+            });
+        });
+        describe("showInputBox", () => {
+            beforeEach(() => {
+                vscode.window.showInputBox = vi.fn();
+            });
+            afterEach(() => {
+                vi.restoreAllMocks();
+            });
+            it("returns an input box", () => {
+                (instance as any).showInputBox({ prompt: "test prompt" });
+                expect(vscode.window.showInputBox).toHaveBeenCalledWith({ prompt: "test prompt" });
+            });
         });
         describe("showMenu", () => {
             beforeEach(() => {
@@ -228,6 +260,19 @@ describe("SshConfigUtils", () => {
                 expect(mockQuickPick.show).toHaveBeenCalled();
                 expect(mockQuickPick.hide).toHaveBeenCalled();
                 expect(result).toBe("Option 1");
+            });
+            it("resolves undefined when QuickPick is hidden without selection", async () => {
+                const opts = {
+                    items: [{ label: "Option 1" }, { label: "Option 2" }],
+                    title: "Select an option",
+                    placeholder: "Choose...",
+                };
+                const promise = (instance as any).showMenu(opts);
+                const onDidHide = mockQuickPick.onDidHide.mock.calls[0][0];
+                onDidHide();
+
+                const result = await promise;
+                expect(result).toBeUndefined();
             });
         });
         describe("showCustomMenu", () => {
@@ -284,6 +329,25 @@ describe("SshConfigUtils", () => {
                 const result = await promise;
                 expect(result).toBeUndefined();
             });
+            it("resolves with regular item when selected item does not start with >", async () => {
+                const opts = {
+                    title: "Select an option",
+                    placeholder: "Pick one",
+                    items: [{ label: "test", description: "desc1" }],
+                };
+
+                const promise = (instance as any).showCustomMenu(opts);
+                mockQuickPick.selectedItems = [mockQuickPick.items[0]];
+                const onDidAccept = (mockQuickPick.onDidAccept as any).mock.calls[0][0];
+                onDidAccept();
+
+                const result = await promise;
+
+                expect(result).toEqual({
+                    label: "test",
+                    description: "desc1",
+                });
+            });
         });
         describe("getCurrentDir", () => {
             it("returns the fsPath when workspaceRoot is defined", () => {
@@ -294,6 +358,47 @@ describe("SshConfigUtils", () => {
 
                 const result = (instance as any).getCurrentDir();
                 expect(result).toBe(testPath);
+            });
+        });
+        describe("getProfileSchema", () => {
+            let mockGetProfilesCache: any;
+            let mockExplorerApi: any;
+            beforeEach(() => {
+                mockGetProfilesCache = {
+                    getCoreProfileTypes: vi.fn().mockReturnValue([{ type: "core1" }]),
+                    getConfigArray: vi.fn().mockReturnValue([{ type: "config1" }]),
+                };
+
+                mockExplorerApi = {
+                    getExplorerExtenderApi: vi.fn().mockReturnValue({
+                        getProfilesCache: vi.fn().mockReturnValue(mockGetProfilesCache),
+                    }),
+                };
+
+                vi.spyOn(ZoweVsCodeExtension, "getZoweExplorerApi").mockReturnValue(mockExplorerApi as any);
+            });
+            afterEach(() => {
+                vi.restoreAllMocks();
+            });
+
+            it("returns combined profile schemas including core, config, and base profile", () => {
+                const result = (instance as any).getProfileSchemas();
+
+                expect(ZoweVsCodeExtension.getZoweExplorerApi).toHaveBeenCalled();
+                expect(mockExplorerApi.getExplorerExtenderApi).toHaveBeenCalled();
+                expect(mockGetProfilesCache.getCoreProfileTypes).toHaveBeenCalled();
+                expect(mockGetProfilesCache.getConfigArray).toHaveBeenCalled();
+
+                expect(result).toEqual([{ type: "core1" }, { type: "config1" }, ProfileConstants.BaseProfile]);
+            });
+
+            it("returns empty arrays if profCache methods return empty arrays", () => {
+                mockGetProfilesCache.getCoreProfileTypes.mockReturnValue([]);
+                mockGetProfilesCache.getConfigArray.mockReturnValue([]);
+
+                const result = (instance as any).getProfileSchemas();
+
+                expect(result).toEqual([ProfileConstants.BaseProfile]);
             });
         });
         describe("showPrivateKeyWarning", () => {
@@ -316,6 +421,54 @@ describe("SshConfigUtils", () => {
 
                 const result = await promise;
                 expect(result).toBe(true);
+            });
+            it("resolves true and calls onDelete for delete action", async () => {
+                const opts: PrivateKeyWarningOptions = {
+                    profileName: "test",
+                    privateKeyPath: "",
+                    onDelete: vi.fn(),
+                };
+                const promise = (instance as any).showPrivateKeyWarning(opts);
+
+                const accept = mockQuickPick.onDidAccept.mock.calls[0][0];
+                mockQuickPick.selectedItems = [{ action: "delete" }];
+                await accept();
+
+                const result = await promise;
+                expect(result).toBe(true);
+                expect(opts.onDelete).toHaveBeenCalled();
+            });
+
+            it("resolves false and calls onUndo for undo action", async () => {
+                const opts: PrivateKeyWarningOptions = {
+                    profileName: "test",
+                    privateKeyPath: "",
+                    onUndo: vi.fn(),
+                };
+                const promise = (instance as any).showPrivateKeyWarning(opts);
+
+                const accept = mockQuickPick.onDidAccept.mock.calls[0][0];
+                mockQuickPick.selectedItems = [{ action: "undo" }];
+                await accept();
+
+                const result = await promise;
+                expect(result).toBe(false);
+                expect(opts.onUndo).toHaveBeenCalled();
+            });
+
+            it("returns false when no selection", async () => {
+                const opts: PrivateKeyWarningOptions = {
+                    profileName: "test",
+                    privateKeyPath: "",
+                };
+                const promise = (instance as any).showPrivateKeyWarning(opts);
+
+                const accept = mockQuickPick.onDidAccept.mock.calls[0][0];
+                mockQuickPick.selectedItems = [];
+                await accept();
+
+                const result = await promise;
+                expect(result).toBe(false);
             });
         });
         describe("storeServerPath", () => {
