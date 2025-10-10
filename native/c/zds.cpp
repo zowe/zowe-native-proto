@@ -273,6 +273,7 @@ int zds_write_to_dsn(ZDS *zds, const string &dsn, string &data)
       }
       catch (exception &e)
       {
+        fclose(fp);
         zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), codepage.c_str());
         return RTNCD_FAILURE;
       }
