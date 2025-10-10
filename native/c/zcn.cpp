@@ -33,12 +33,19 @@ int zcn_activate(ZCN *zcn, string console_name)
   zut_uppercase_pad_truncate(zcn->console_name, console_name, sizeof(zcn->console_name));
 
   zcn->ecb = (unsigned int *)__malloc31(sizeof(unsigned int));
+  if (nullptr == zcn->ecb)
+  {
+    return ZCN_RTNCD_SERVICE_FAILURE;
+  }
   memset(zcn->ecb, 0x00, sizeof(unsigned int));
 
   rc = ZCNACT(zcn);
 
   if (0 != rc)
+  {
     free(zcn->ecb);
+    zcn->ecb = nullptr;
+  }
 
   return rc;
 }
@@ -89,7 +96,10 @@ int zcn_deactivate(ZCN *zcn)
 {
   zcn->diag.detail_rc = 0;
   if (zcn->ecb)
+  {
     free(zcn->ecb);
+    zcn->ecb = nullptr;
+  }
 
   return ZCNDACT(zcn);
 }
