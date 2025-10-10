@@ -14,7 +14,7 @@
 
 #include <string>
 #include <vector>
-#include <map>
+#include <unordered_map>
 #include <set>
 #include <functional>
 #include <stdexcept>
@@ -39,6 +39,9 @@
 #define ZJSON_NOEXCEPT throw()
 namespace std
 {
+// Alias TR1 unordered_map to std namespace for XLC compatibility
+using std::tr1::unordered_map;
+
 template <typename T, T v>
 struct integral_constant
 {
@@ -349,7 +352,7 @@ public:
   static Value create_object()
   {
     Value result;
-    result.data_ = std::map<std::string, Value>();
+    result.data_ = std::unordered_map<std::string, Value>();
     return result;
   }
 
@@ -399,13 +402,13 @@ public:
 private:
   // Variant type for JSON values
   typedef zstd::variant<
-      zstd::monostate,             // Null
-      bool,                        // Bool
-      long long,                   // Integer
-      double,                      // Float
-      std::string,                 // String
-      std::vector<Value>,          // Array
-      std::map<std::string, Value> // Object
+      zstd::monostate,                       // Null
+      bool,                                  // Bool
+      long long,                             // Integer
+      double,                                // Float
+      std::string,                           // String
+      std::vector<Value>,                    // Array
+      std::unordered_map<std::string, Value> // Object
       >
       ValueVariant;
 
@@ -432,9 +435,9 @@ private:
   {
     return data_.get<std::vector<Value>>();
   }
-  inline std::map<std::string, Value> &get_object()
+  inline std::unordered_map<std::string, Value> &get_object()
   {
-    return data_.get<std::map<std::string, Value>>();
+    return data_.get<std::unordered_map<std::string, Value>>();
   }
 
   inline const bool &get_bool() const
@@ -457,9 +460,9 @@ private:
   {
     return data_.get<std::vector<Value>>();
   }
-  inline const std::map<std::string, Value> &get_object() const
+  inline const std::unordered_map<std::string, Value> &get_object() const
   {
-    return data_.get<std::map<std::string, Value>>();
+    return data_.get<std::unordered_map<std::string, Value>>();
   }
 
 public:
@@ -560,7 +563,7 @@ public:
         ss << value;
         throw Error::invalid_value("Cannot convert floating-point number " + ss.str() + " to int64");
       }
-      else if (std::isnan(value) || std::isinf(value))
+      else if (isnan(value) || isinf(value))
       {
         std::stringstream ss;
         ss << value;
@@ -609,7 +612,7 @@ public:
         ss << value;
         throw Error::invalid_value("Cannot convert floating-point number " + ss.str() + " to uint64");
       }
-      else if (std::isnan(value) || std::isinf(value))
+      else if (isnan(value) || isinf(value))
       {
         std::stringstream ss;
         ss << value;
@@ -633,7 +636,7 @@ public:
     if (is_double())
     {
       double value = get_double();
-      if (std::isnan(value) || std::isinf(value))
+      if (isnan(value) || isinf(value))
       {
         std::stringstream ss;
         ss << value;
@@ -664,7 +667,7 @@ public:
     return get_array();
   }
 
-  const std::map<std::string, Value> &as_object() const
+  const std::unordered_map<std::string, Value> &as_object() const
   {
     if (!is_object())
       throw Error::invalid_type("object", type_name());
@@ -697,7 +700,7 @@ public:
   }
   inline bool is_object() const
   {
-    return zstd::holds_alternative<std::map<std::string, Value>>(data_);
+    return zstd::holds_alternative<std::unordered_map<std::string, Value>>(data_);
   }
 
   // Object access by key
@@ -706,7 +709,7 @@ public:
     if (is_null())
     {
       // Convert null to empty object on first access
-      data_ = std::map<std::string, Value>();
+      data_ = std::unordered_map<std::string, Value>();
     }
 
     if (!is_object())
@@ -724,8 +727,8 @@ public:
       throw Error::invalid_type("object", type_name());
     }
 
-    const std::map<std::string, Value> &obj = get_object();
-    std::map<std::string, Value>::const_iterator it = obj.find(key);
+    const std::unordered_map<std::string, Value> &obj = get_object();
+    std::unordered_map<std::string, Value>::const_iterator it = obj.find(key);
     if (it == obj.end())
     {
       static const Value null_value; // Return reference to static null
@@ -1567,7 +1570,12 @@ inline Value json_handle_to_value(JSON_INSTANCE *instance, KEY_HANDLE *key_handl
         else
         {
           char *endptr = nullptr;
+#if defined(__clang__)
           long long int_val = std::strtoll(str_val.c_str(), &endptr, 10);
+#else
+          // XLC doesn't have strtoll, use strtol (limits supported range to 32-bit numbers)
+          long long int_val = static_cast<long long>(std::strtol(str_val.c_str(), &endptr, 10));
+#endif
           if (endptr == str_val.c_str() || *endptr != '\0')
           {
             return Value();
@@ -1980,8 +1988,8 @@ inline int value_to_json_instance(JSON_INSTANCE *instance, KEY_HANDLE *parent_ha
       break;
 
     // Add all object properties
-    const std::map<std::string, Value> &obj = value.as_object();
-    for (std::map<std::string, Value>::const_iterator it = obj.begin(); it != obj.end(); ++it)
+    const std::unordered_map<std::string, Value> &obj = value.as_object();
+    for (std::unordered_map<std::string, Value>::const_iterator it = obj.begin(); it != obj.end(); ++it)
     {
       rc = value_to_json_instance(instance, &new_entry_handle, it->first, it->second);
       if (rc != 0)
@@ -2033,8 +2041,8 @@ inline std::string value_to_json_string(const Value &value)
       // Clear the initial content and rebuild
       if (value.is_object())
       {
-        const std::map<std::string, Value> &obj = value.as_object();
-        for (std::map<std::string, Value>::const_iterator it = obj.begin(); it != obj.end(); ++it)
+        const std::unordered_map<std::string, Value> &obj = value.as_object();
+        for (std::unordered_map<std::string, Value>::const_iterator it = obj.begin(); it != obj.end(); ++it)
         {
           rc = value_to_json_instance(&instance, &root_handle, it->first, it->second);
           if (rc != 0)
@@ -2483,7 +2491,7 @@ void serialize_field(const T &obj, Value &result, const Field<T, FieldType> &fie
 }
 
 template <typename T, typename FieldType>
-bool deserialize_field(T &obj, const std::map<std::string, Value> &object, const Field<T, FieldType> &field)
+bool deserialize_field(T &obj, const std::unordered_map<std::string, Value> &object, const Field<T, FieldType> &field)
 {
   if (field.skip_deserializing)
   {
@@ -2524,7 +2532,7 @@ bool deserialize_field(T &obj, const std::map<std::string, Value> &object, const
 
 // Specialized deserialize_field for optional types - missing fields are OK
 template <typename T, typename OptionalType>
-bool deserialize_field(T &obj, const std::map<std::string, Value> &object, const Field<T, zstd::optional<OptionalType>> &field)
+bool deserialize_field(T &obj, const std::unordered_map<std::string, Value> &object, const Field<T, zstd::optional<OptionalType>> &field)
 {
   if (field.skip_deserializing)
   {
@@ -2568,13 +2576,13 @@ void serialize_fields(const T &obj, Value &result, Fields... fields)
 }
 
 template <typename T>
-bool deserialize_fields_impl(T &obj, const std::map<std::string, Value> &object)
+bool deserialize_fields_impl(T &obj, const std::unordered_map<std::string, Value> &object)
 {
   return true;
 }
 
 template <typename T, typename Field, typename... Fields>
-bool deserialize_fields_impl(T &obj, const std::map<std::string, Value> &object, Field field, Fields... fields)
+bool deserialize_fields_impl(T &obj, const std::unordered_map<std::string, Value> &object, Field field, Fields... fields)
 {
   if (!deserialize_field(obj, object, field))
   {
@@ -2584,7 +2592,7 @@ bool deserialize_fields_impl(T &obj, const std::map<std::string, Value> &object,
 }
 
 template <typename T, typename... Fields>
-bool deserialize_fields(T &obj, const std::map<std::string, Value> &object, Fields... fields)
+bool deserialize_fields(T &obj, const std::unordered_map<std::string, Value> &object, Fields... fields)
 {
   return deserialize_fields_impl(obj, object, fields...);
 }
@@ -2634,7 +2642,7 @@ bool has_flattened_field(Fields... fields)
 }
 
 template <typename T, typename... Fields>
-zstd::expected<bool, Error> validate_no_unknown_fields(const std::map<std::string, Value> &object, Fields... fields)
+zstd::expected<bool, Error> validate_no_unknown_fields(const std::unordered_map<std::string, Value> &object, Fields... fields)
 {
   // Check if any field is flattened - if so, we cannot reliably validate unknown fields
   if (has_flattened_field(fields...))

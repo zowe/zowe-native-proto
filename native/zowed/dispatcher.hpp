@@ -18,15 +18,10 @@
 #include "rpcio.hpp"
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 // Forward declaration
 struct RpcNotification;
-
-#if defined(__IBMTR1_CPP__) && !defined(__clang__)
-#include <tr1/unordered_map>
-#else
-#include <unordered_map>
-#endif
 
 class CommandDispatcher : public Singleton<CommandDispatcher>
 {
