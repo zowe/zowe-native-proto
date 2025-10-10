@@ -14,8 +14,9 @@
 
 #include <string>
 #include <vector>
-#include <set>
 #include <map>
+#include <unordered_map>
+#include <unordered_set>
 #include <functional>
 #include <sstream>
 #include "../c/zjson.hpp"
@@ -189,15 +190,23 @@ inline ValidationResult validate_schema(const zjson::Value &params,
   }
 
   const std::map<std::string, zjson::Value> &obj = params.as_object();
-  std::set<std::string> seen_fields;
+  std::unordered_set<std::string> seen_fields;
+
+  // Build unordered_map for quicker field lookups
+  std::unordered_map<std::string, const zjson::Value *> field_cache;
+  field_cache.reserve(obj.size());
+  for (std::map<std::string, zjson::Value>::const_iterator it = obj.begin(); it != obj.end(); ++it)
+  {
+    field_cache[it->first] = &it->second;
+  }
 
   // Check each field in the schema
   for (std::vector<FieldDescriptor>::const_iterator it = schema.begin(); it != schema.end(); ++it)
   {
     const FieldDescriptor &field = *it;
-    std::map<std::string, zjson::Value>::const_iterator field_it = obj.find(field.name);
+    std::unordered_map<std::string, const zjson::Value *>::const_iterator field_it = field_cache.find(field.name);
 
-    if (field_it == obj.end())
+    if (field_it == field_cache.end())
     {
       if (field.requirement == REQUIRED)
       {
@@ -207,7 +216,7 @@ inline ValidationResult validate_schema(const zjson::Value &params,
     }
 
     seen_fields.insert(field.name);
-    const zjson::Value &value = field_it->second;
+    const zjson::Value &value = *field_it->second;
 
     // Allow null for optional fields
     if (value.is_null() && field.requirement == OPTIONAL)
