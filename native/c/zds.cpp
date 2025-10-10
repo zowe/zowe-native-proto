@@ -12,6 +12,10 @@
 #ifndef _OPEN_SYS_ITOA_EXT
 #define _OPEN_SYS_ITOA_EXT
 #endif
+#ifndef _POSIX_SOURCE
+#define _POSIX_SOURCE
+#endif
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <cstring>
@@ -1275,6 +1279,7 @@ int zds_write_to_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, s
   int fifo_fd = open(pipe.c_str(), O_RDONLY);
   if (fifo_fd == -1)
   {
+    fclose(fout);
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "open() failed on input pipe '%s', errno %d", pipe.c_str(), errno);
     return RTNCD_FAILURE;
   }

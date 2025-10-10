@@ -31,6 +31,9 @@
 #include <iconv.h>
 #include <grp.h>
 #include <pwd.h>
+#ifndef _POSIX_SOURCE
+#define _POSIX_SOURCE
+#endif
 #include <unistd.h>
 #include <stdlib.h>
 #include <map>
@@ -1502,10 +1505,18 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, const string &file, const string
   }
 
   int fifo_fd = open(pipe.c_str(), O_RDONLY);
+  if (fifo_fd == -1)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "open() failed on input pipe '%s', errno: %d", pipe.c_str(), errno);
+    fclose(fout);
+    return RTNCD_FAILURE;
+  }
+
   FILE *fin = fdopen(fifo_fd, "r");
   if (!fin)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open input pipe '%s'", pipe.c_str());
+    close(fifo_fd);
     fclose(fout);
     return RTNCD_FAILURE;
   }
