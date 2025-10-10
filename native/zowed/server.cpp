@@ -16,30 +16,6 @@
 
 using std::string;
 
-// Static helper for validation
-static validator::ValidationResult validate_common(const string &method, const zjson::Value &data, bool is_request)
-{
-  CommandDispatcher &dispatcher = CommandDispatcher::get_instance();
-
-  const auto &builders = dispatcher.get_builders();
-  auto it = builders.find(method);
-  if (it == builders.end())
-  {
-    return validator::ValidationResult::success();
-  }
-
-  const CommandBuilder &builder = it->second;
-  std::shared_ptr<validator::ParamsValidator> validator =
-      is_request ? builder.get_request_validator() : builder.get_response_validator();
-
-  if (!validator)
-  {
-    return validator::ValidationResult::success();
-  }
-
-  return validator->validate(data);
-}
-
 void RpcServer::process_request(const string &request_data)
 {
   try
@@ -70,7 +46,7 @@ void RpcServer::process_request(const string &request_data)
     // Validate params if a request validator is registered for this command
     if (request.params.has_value())
     {
-      validator::ValidationResult validation_result = validate_request(request.method, request.params.value());
+      validator::ValidationResult validation_result = validate_json_with_schema(request.method, request.params.value(), true);
       if (!validation_result.is_valid)
       {
         print_error(request.id, RpcErrorCode::INVALID_PARAMS, validation_result.error_message);
@@ -118,7 +94,7 @@ void RpcServer::process_request(const string &request_data)
     result_json.add_to_object("success", zjson::Value(context.get_error_content().empty()));
 
     // Validate result if a response validator is registered for this command
-    validator::ValidationResult validation_result = validate_response(request.method, result_json);
+    validator::ValidationResult validation_result = validate_json_with_schema(request.method, result_json, false);
     if (!validation_result.is_valid)
     {
       // Response validation failed - return internal error
@@ -391,12 +367,25 @@ void RpcServer::print_error(int request_id, int code, const string &message, con
   print_response(response);
 }
 
-validator::ValidationResult RpcServer::validate_request(const string &method, const zjson::Value &params)
+validator::ValidationResult RpcServer::validate_json_with_schema(const string &method, const zjson::Value &data, bool is_request)
 {
-  return validate_common(method, params, true);
-}
+  CommandDispatcher &dispatcher = CommandDispatcher::get_instance();
 
-validator::ValidationResult RpcServer::validate_response(const string &method, const zjson::Value &result)
-{
-  return validate_common(method, result, false);
+  const auto &builders = dispatcher.get_builders();
+  auto it = builders.find(method);
+  if (it == builders.end())
+  {
+    return validator::ValidationResult::success();
+  }
+
+  const CommandBuilder &builder = it->second;
+  std::shared_ptr<validator::ParamsValidator> validator =
+      is_request ? builder.get_request_validator() : builder.get_response_validator();
+
+  if (!validator)
+  {
+    return validator::ValidationResult::success();
+  }
+
+  return validator->validate(data);
 }
