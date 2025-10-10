@@ -39,7 +39,7 @@ function stripNamespace(typeName: string): string {
 
 function mapTypeScriptToValidatorType(tsType: string): string {
     const isCommonType = tsType.includes("common.");
-    const cleanType = isCommonType ? tsType.replace(/common\./g, "") : tsType;
+    const cleanType = isCommonType ? tsType.substring("common.".length) : tsType;
 
     // Handle array types
     if (cleanType.endsWith("[]")) return "ARRAY";
@@ -65,18 +65,7 @@ function mapTypeScriptToValidatorType(tsType: string): string {
 
 function getArrayElementType(tsType: string): string | null {
     if (!tsType.endsWith("[]")) return null;
-
-    const arrayBaseType = tsType.slice(0, -2);
-    const isCommonType = arrayBaseType.includes("common.");
-
-    // For common types, check if it's an internal object type
-    if (isCommonType) {
-        const cleanType = stripNamespace(arrayBaseType);
-        // Internal types (e.g., UssItem, Job, Dataset) should be OBJECT
-        if (isInternalType(cleanType)) return "OBJECT";
-    }
-
-    return mapTypeScriptToValidatorType(arrayBaseType);
+    return tsType.slice(0, -2); // Return the actual type name, not the mapped type
 }
 
 interface ExtractedInterface {
@@ -227,14 +216,55 @@ function generateSchemaFields(iface: ExtractedInterface): string[] {
         if (prop.isLiteral) continue;
 
         const arrayElementType = getArrayElementType(prop.type);
-        const fieldType = arrayElementType || mapTypeScriptToValidatorType(prop.type);
         const requirement = prop.optional ? "OPTIONAL" : "REQUIRED";
-        const macroSuffix = arrayElementType ? "_ARRAY" : "";
 
-        schemaFields.push(`FIELD_${requirement}${macroSuffix}(${prop.name}, ${fieldType})`);
+        if (arrayElementType) {
+            // Array type
+            const elementMappedType = mapTypeScriptToValidatorType(arrayElementType);
+            if (elementMappedType === "OBJECT" && allInterfaces.has(stripNamespace(arrayElementType))) {
+                // Array of objects
+                schemaFields.push(
+                    `FIELD_${requirement}_OBJECT_ARRAY(${prop.name}, ${stripNamespace(arrayElementType)})`,
+                );
+            } else {
+                // Array of primitives
+                schemaFields.push(`FIELD_${requirement}_ARRAY(${prop.name}, ${elementMappedType})`);
+            }
+        } else {
+            // Non-array type
+            const fieldType = mapTypeScriptToValidatorType(prop.type);
+            if (fieldType === "OBJECT" && allInterfaces.has(stripNamespace(prop.type))) {
+                // Object with nested schema
+                schemaFields.push(`FIELD_${requirement}_OBJECT(${prop.name}, ${stripNamespace(prop.type)})`);
+            } else {
+                // Primitive type
+                schemaFields.push(`FIELD_${requirement}(${prop.name}, ${fieldType})`);
+            }
+        }
     }
 
     return schemaFields;
+}
+
+function collectReferencedTypes(interfaces: ExtractedInterface[]): Set<string> {
+    const referenced = new Set<string>();
+
+    for (const iface of interfaces) {
+        const allProps = collectAllProperties(iface);
+        for (const prop of allProps) {
+            if (prop.isLiteral) continue;
+
+            const arrayElementType = getArrayElementType(prop.type);
+            const typeToCheck = arrayElementType || prop.type;
+            const stripped = stripNamespace(typeToCheck);
+
+            if (allInterfaces.has(stripped) && mapTypeScriptToValidatorType(typeToCheck) === "OBJECT") {
+                referenced.add(stripped);
+            }
+        }
+    }
+
+    return referenced;
 }
 
 function generateHeaderFile(interfaces: ExtractedInterface[], fileName: string): string {
@@ -252,8 +282,36 @@ function generateHeaderFile(interfaces: ExtractedInterface[], fileName: string):
     content += `#ifndef ${headerGuard}\n#define ${headerGuard}\n\n`;
     content += `#include "../validator.hpp"\n\n`;
 
-    // Generate schemas in the same order as the source file
+    // Collect types referenced in schemas
+    const referencedTypes = collectReferencedTypes(interfaces);
+
+    // Create a set of interfaces to generate (original + referenced)
+    const interfacesToGenerate = new Set<string>(interfaces.map((i) => i.name));
+    referencedTypes.forEach((t) => interfacesToGenerate.add(t));
+
+    // Generate schemas in dependency order (referenced types first)
+    const generated = new Set<string>();
+    const toGenerate: ExtractedInterface[] = [];
+
+    // First, generate referenced types that are dependencies
+    for (const typeName of referencedTypes) {
+        if (!generated.has(typeName) && allInterfaces.has(typeName)) {
+            const refInterface = allInterfaces.get(typeName)!;
+            if (!interfaces.includes(refInterface)) {
+                toGenerate.push(refInterface);
+                generated.add(typeName);
+            }
+        }
+    }
+
+    // Then generate the original interfaces
     for (const iface of interfaces) {
+        toGenerate.push(iface);
+        generated.add(iface.name);
+    }
+
+    // Generate all schemas
+    for (const iface of toGenerate) {
         const schemaFields = generateSchemaFields(iface);
         if (schemaFields.length > 0) {
             content += `struct ${iface.name} {};\n`;

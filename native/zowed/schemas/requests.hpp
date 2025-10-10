@@ -16,6 +16,27 @@
 
 #include "../validator.hpp"
 
+struct DatasetAttributes {};
+ZJSON_SCHEMA(DatasetAttributes,
+    FIELD_OPTIONAL(alcunit, STRING),
+    FIELD_OPTIONAL(blksize, NUMBER),
+    FIELD_OPTIONAL(dirblk, NUMBER),
+    FIELD_OPTIONAL(dsorg, STRING),
+    FIELD_REQUIRED(primary, NUMBER),
+    FIELD_OPTIONAL(recfm, STRING),
+    FIELD_REQUIRED(lrecl, NUMBER),
+    FIELD_OPTIONAL(dataclass, STRING),
+    FIELD_OPTIONAL(unit, STRING),
+    FIELD_OPTIONAL(dsntype, STRING),
+    FIELD_OPTIONAL(mgntclass, STRING),
+    FIELD_OPTIONAL(dsname, STRING),
+    FIELD_OPTIONAL(avgblk, NUMBER),
+    FIELD_OPTIONAL(secondary, NUMBER),
+    FIELD_OPTIONAL(size, STRING),
+    FIELD_OPTIONAL(storclass, STRING),
+    FIELD_OPTIONAL(vol, STRING)
+);
+
 struct IssueConsoleRequest {};
 ZJSON_SCHEMA(IssueConsoleRequest,
     FIELD_REQUIRED(commandText, STRING),
@@ -35,7 +56,7 @@ ZJSON_SCHEMA(IssueUnixRequest,
 struct CreateDatasetRequest {};
 ZJSON_SCHEMA(CreateDatasetRequest,
     FIELD_REQUIRED(dsname, STRING),
-    FIELD_REQUIRED(attributes, OBJECT)
+    FIELD_REQUIRED_OBJECT(attributes, DatasetAttributes)
 );
 
 struct CreateMemberRequest {};

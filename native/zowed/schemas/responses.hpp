@@ -16,6 +16,49 @@
 
 #include "../validator.hpp"
 
+struct Dataset {};
+ZJSON_SCHEMA(Dataset,
+    FIELD_REQUIRED(name, STRING),
+    FIELD_REQUIRED(dsorg, STRING),
+    FIELD_REQUIRED(volser, STRING),
+    FIELD_REQUIRED(migr, BOOL),
+    FIELD_REQUIRED(recfm, STRING)
+);
+
+struct DsMember {};
+ZJSON_SCHEMA(DsMember,
+    FIELD_REQUIRED(name, STRING)
+);
+
+struct Job {};
+ZJSON_SCHEMA(Job,
+    FIELD_REQUIRED(id, STRING),
+    FIELD_REQUIRED(name, STRING),
+    FIELD_REQUIRED(status, STRING),
+    FIELD_REQUIRED(retcode, STRING)
+);
+
+struct Spool {};
+ZJSON_SCHEMA(Spool,
+    FIELD_REQUIRED(id, NUMBER),
+    FIELD_REQUIRED(ddname, STRING),
+    FIELD_REQUIRED(stepname, STRING),
+    FIELD_REQUIRED(dsname, STRING),
+    FIELD_REQUIRED(procstep, STRING)
+);
+
+struct UssItem {};
+ZJSON_SCHEMA(UssItem,
+    FIELD_REQUIRED(name, STRING),
+    FIELD_REQUIRED(links, NUMBER),
+    FIELD_REQUIRED(user, STRING),
+    FIELD_REQUIRED(group, STRING),
+    FIELD_REQUIRED(size, NUMBER),
+    FIELD_OPTIONAL(filetag, STRING),
+    FIELD_REQUIRED(mtime, STRING),
+    FIELD_REQUIRED(mode, STRING)
+);
+
 struct IssueConsoleResponse {};
 ZJSON_SCHEMA(IssueConsoleResponse,
     FIELD_REQUIRED(success, BOOL),
@@ -52,14 +95,14 @@ ZJSON_SCHEMA(DeleteDatasetResponse,
 struct ListDatasetsResponse {};
 ZJSON_SCHEMA(ListDatasetsResponse,
     FIELD_REQUIRED(success, BOOL),
-    FIELD_REQUIRED_ARRAY(items, OBJECT),
+    FIELD_REQUIRED_OBJECT_ARRAY(items, Dataset),
     FIELD_REQUIRED(returnedRows, NUMBER)
 );
 
 struct ListDsMembersResponse {};
 ZJSON_SCHEMA(ListDsMembersResponse,
     FIELD_REQUIRED(success, BOOL),
-    FIELD_REQUIRED_ARRAY(items, OBJECT),
+    FIELD_REQUIRED_OBJECT_ARRAY(items, DsMember),
     FIELD_REQUIRED(returnedRows, NUMBER)
 );
 
@@ -119,13 +162,13 @@ ZJSON_SCHEMA(HoldJobResponse,
 struct ListJobsResponse {};
 ZJSON_SCHEMA(ListJobsResponse,
     FIELD_REQUIRED(success, BOOL),
-    FIELD_REQUIRED_ARRAY(items, OBJECT)
+    FIELD_REQUIRED_OBJECT_ARRAY(items, Job)
 );
 
 struct ListSpoolsResponse {};
 ZJSON_SCHEMA(ListSpoolsResponse,
     FIELD_REQUIRED(success, BOOL),
-    FIELD_REQUIRED_ARRAY(items, OBJECT)
+    FIELD_REQUIRED_OBJECT_ARRAY(items, Spool)
 );
 
 struct ReadSpoolResponse {};
@@ -186,7 +229,7 @@ ZJSON_SCHEMA(DeleteFileResponse,
 struct ListFilesResponse {};
 ZJSON_SCHEMA(ListFilesResponse,
     FIELD_REQUIRED(success, BOOL),
-    FIELD_REQUIRED_ARRAY(items, OBJECT),
+    FIELD_REQUIRED_OBJECT_ARRAY(items, UssItem),
     FIELD_REQUIRED(returnedRows, NUMBER)
 );
 
