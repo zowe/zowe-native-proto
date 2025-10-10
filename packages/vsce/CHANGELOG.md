@@ -6,7 +6,6 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
-- Added unit tests for `SshConfigUtils.ts` file. [#586] (https://github.com/zowe/zowe-native-proto/pull/586)
 - Fixed SSH client caching to be per profile instead of per hostname, allowing multiple server instances on the same system. [#558](https://github.com/zowe/zowe-native-proto/pull/558)
 
 ## `0.1.10`
