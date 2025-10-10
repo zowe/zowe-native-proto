@@ -26,14 +26,13 @@ bool CommandDispatcher::register_command(const string &command_name, const Comma
   }
 
   // Check if command already exists
-  if (m_command_handlers.find(command_name) != m_command_handlers.end())
+  if (m_commands.find(command_name) != m_commands.end())
   {
     LOG_ERROR("Command already registered: %s", command_name.c_str());
-    return false; // Command already registered
+    return false;
   }
 
-  m_command_handlers[command_name] = builder.get_handler();
-  m_builders.insert(std::make_pair(command_name, builder));
+  m_commands.insert(std::make_pair(command_name, builder));
 
   LOG_DEBUG("Registered command: %s", command_name.c_str());
   return true;
@@ -41,8 +40,8 @@ bool CommandDispatcher::register_command(const string &command_name, const Comma
 
 int CommandDispatcher::dispatch(const string &command_name, MiddlewareContext &context)
 {
-  auto it = m_command_handlers.find(command_name);
-  if (it == m_command_handlers.end())
+  auto it = m_commands.find(command_name);
+  if (it == m_commands.end())
   {
     string errMsg = "Command not found: " + command_name;
     context.errln(errMsg.c_str());
@@ -50,7 +49,8 @@ int CommandDispatcher::dispatch(const string &command_name, MiddlewareContext &c
     return RpcErrorCode::METHOD_NOT_FOUND;
   }
 
-  CommandHandler handler = it->second;
+  const CommandBuilder &builder = it->second;
+  CommandHandler handler = builder.get_handler();
   if (handler == nullptr)
   {
     context.errln("Invalid command handler");
@@ -62,23 +62,14 @@ int CommandDispatcher::dispatch(const string &command_name, MiddlewareContext &c
   {
     LOG_DEBUG("Dispatching command: %s", command_name.c_str());
 
-    // Apply input transforms if builder exists
-    auto builder_it = m_builders.find(command_name);
-    bool has_builder = (builder_it != m_builders.end());
-
-    if (has_builder)
-    {
-      builder_it->second.apply_input_transforms(context);
-    }
+    // Apply input transforms
+    builder.apply_input_transforms(context);
 
     // Call the command handler with the context
     int result = handler(context);
 
-    // Apply output transforms if builder exists
-    if (has_builder)
-    {
-      builder_it->second.apply_output_transforms(context);
-    }
+    // Apply output transforms
+    builder.apply_output_transforms(context);
 
     if (result != 0)
     {
@@ -105,15 +96,15 @@ int CommandDispatcher::dispatch(const string &command_name, MiddlewareContext &c
 
 bool CommandDispatcher::has_command(const string &command_name) const
 {
-  return m_command_handlers.find(command_name) != m_command_handlers.end();
+  return m_commands.find(command_name) != m_commands.end();
 }
 
 std::vector<string> CommandDispatcher::get_registered_commands() const
 {
   std::vector<string> commands;
-  commands.reserve(m_command_handlers.size());
+  commands.reserve(m_commands.size());
 
-  for (auto it = m_command_handlers.begin(); it != m_command_handlers.end(); ++it)
+  for (auto it = m_commands.begin(); it != m_commands.end(); ++it)
   {
     commands.push_back(it->first);
   }
@@ -125,21 +116,14 @@ std::vector<string> CommandDispatcher::get_registered_commands() const
 
 bool CommandDispatcher::unregister_command(const string &command_name)
 {
-  auto it = m_command_handlers.find(command_name);
-  if (it == m_command_handlers.end())
+  auto it = m_commands.find(command_name);
+  if (it == m_commands.end())
   {
     LOG_ERROR("Cannot unregister command (not found): %s", command_name.c_str());
-    return false; // Command not found
+    return false;
   }
 
-  m_command_handlers.erase(it);
-
-  // Also remove builder if it exists
-  auto builder_it = m_builders.find(command_name);
-  if (builder_it != m_builders.end())
-  {
-    m_builders.erase(builder_it);
-  }
+  m_commands.erase(it);
 
   LOG_DEBUG("Unregistered command: %s", command_name.c_str());
   return true;
@@ -148,6 +132,5 @@ bool CommandDispatcher::unregister_command(const string &command_name)
 void CommandDispatcher::clear()
 {
   LOG_DEBUG("Clearing all registered commands");
-  m_command_handlers.clear();
-  m_builders.clear();
+  m_commands.clear();
 }

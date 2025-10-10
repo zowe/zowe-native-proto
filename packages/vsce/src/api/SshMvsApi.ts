@@ -12,8 +12,7 @@
 import { createReadStream, createWriteStream } from "node:fs";
 import type * as zosfiles from "@zowe/zos-files-for-zowe-sdk";
 import { Gui, imperative, type MainframeInteraction } from "@zowe/zowe-explorer-api";
-import { B64String, type ds } from "zowe-native-proto-sdk";
-import type * as common from "../../../sdk/lib/doc/gen/common.ts";
+import { B64String, type DatasetAttributes, type ds } from "zowe-native-proto-sdk";
 import { SshCommonApi } from "./SshCommonApi";
 
 export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs {
@@ -122,13 +121,13 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         dataSetName: string,
         options?: Partial<zosfiles.ICreateDataSetOptions>,
     ): Promise<zosfiles.IZosFilesResponse> {
-        const datasetAttributes: common.DatasetAttributes = {
+        const datasetAttributes: DatasetAttributes = {
             dsname: dataSetName,
             primary: 1,
             lrecl: 80,
             ...(options || {}),
         };
-        let response: ds.CreateDatasetResponse = { success: false, dsname: dataSetName };
+        let response: ds.CreateDatasetResponse = { success: false };
         try {
             response = await (await this.client).ds.createDataset({
                 dsname: dataSetName,
@@ -146,7 +145,7 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         dataSetName: string,
         _options?: zosfiles.IUploadOptions,
     ): Promise<zosfiles.IZosFilesResponse> {
-        let response: ds.CreateMemberResponse = { success: false, dsname: dataSetName };
+        let response: ds.CreateMemberResponse = { success: false };
         try {
             response = await (await this.client).ds.createMember({
                 dsname: dataSetName,
