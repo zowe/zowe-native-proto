@@ -108,10 +108,6 @@ int zds_read_from_dd(ZDS *zds, string ddname, string &response)
   in.close();
 
   const size_t size = response.size() + 1;
-  string bytes;
-  bytes.reserve(size);
-  memcpy((char *)bytes.data(), response.c_str(), size);
-
   if (size > 0 && strlen(zds->encoding_opts.codepage) > 0)
   {
     string temp = response;
@@ -1085,6 +1081,8 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
 
       if (attributes.size() + 1 > zds->max_entries)
       {
+        free(area);
+        ZDSDEL(zds);
         zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Reached maximum returned records requested %d", zds->max_entries);
         zds->diag.detail_rc = ZDS_RSNCD_MAXED_ENTRIES_REACHED;
         return RTNCD_WARNING;
@@ -1140,6 +1138,7 @@ int zds_read_from_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, 
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open output pipe '%s'", pipe.c_str());
     fclose(fin);
+    close(fifo_fd);
     return RTNCD_FAILURE;
   }
 
@@ -1273,11 +1272,18 @@ int zds_write_to_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, s
   }
 
   int fifo_fd = open(pipe.c_str(), O_RDONLY);
+  if (fifo_fd == -1)
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "open() failed on input pipe '%s', errno %d", pipe.c_str(), errno);
+    return RTNCD_FAILURE;
+  }
+
   FILE *fin = fdopen(fifo_fd, "r");
   if (!fin)
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open input pipe '%s'", pipe.c_str());
     fclose(fout);
+    close(fifo_fd);
     return RTNCD_FAILURE;
   }
 

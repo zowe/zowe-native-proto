@@ -1236,6 +1236,7 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, const string &file, const strin
   struct stat st;
   if (stat(file.c_str(), &st) != 0)
   {
+    fclose(fin);
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not stat file '%s'", file.c_str());
     return RTNCD_FAILURE;
   }
@@ -1250,10 +1251,19 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, const string &file, const strin
 #endif
 
   int fifo_fd = open(pipe.c_str(), O_WRONLY);
+  if (fifo_fd == -1)
+  {
+    fclose(fin);
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "open() failed on output pipe '%s', errno: %d", pipe.c_str(), errno);
+    return RTNCD_FAILURE;
+  }
+
   FILE *fout = fdopen(fifo_fd, "w");
   if (!fout)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open output pipe '%s'", pipe.c_str());
+    fclose(fin);
+    close(fifo_fd);
     return RTNCD_FAILURE;
   }
 
@@ -1302,6 +1312,8 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, const string &file, const strin
       }
       catch (std::exception &e)
       {
+        fclose(fin);
+        fclose(fout);
         zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to convert input data from %s to %s", encoding_to_use.c_str(), source_encoding.c_str());
         return RTNCD_FAILURE;
       }
