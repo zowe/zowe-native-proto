@@ -16,6 +16,30 @@
 
 using std::string;
 
+// Static helper for validation
+static validator::ValidationResult validate_common(const string &method, const zjson::Value &data, bool is_request)
+{
+  CommandDispatcher &dispatcher = CommandDispatcher::get_instance();
+
+  const auto &builders = dispatcher.get_builders();
+  auto it = builders.find(method);
+  if (it == builders.end())
+  {
+    return validator::ValidationResult::success();
+  }
+
+  const CommandBuilder &builder = it->second;
+  std::shared_ptr<validator::ParamsValidator> validator =
+      is_request ? builder.get_request_validator() : builder.get_response_validator();
+
+  if (!validator)
+  {
+    return validator::ValidationResult::success();
+  }
+
+  return validator->validate(data);
+}
+
 void RpcServer::process_request(const string &request_data)
 {
   try
@@ -25,18 +49,8 @@ void RpcServer::process_request(const string &request_data)
 
     if (!parse_result.has_value())
     {
-      ErrorDetails error{
-          RpcErrorCode::PARSE_ERROR,
-          string("Failed to parse command request: ") + parse_result.error().what(),
-          zstd::optional<zjson::Value>()};
-
-      RpcResponse response;
-      response.jsonrpc = "2.0";
-      response.result = zstd::optional<zjson::Value>();
-      response.error = zstd::optional<ErrorDetails>(error);
-      response.id = 0; // No request ID available
-
-      print_response(response);
+      const string error_msg = parse_result.error().what();
+      print_error(-1, RpcErrorCode::PARSE_ERROR, "Failed to parse command request", &error_msg);
       return;
     }
 
@@ -48,18 +62,8 @@ void RpcServer::process_request(const string &request_data)
     // Check if command is registered
     if (!dispatcher.has_command(request.method))
     {
-      ErrorDetails error{
-          RpcErrorCode::METHOD_NOT_FOUND,
-          "Unrecognized command " + request.method,
-          zstd::optional<zjson::Value>()};
-
-      RpcResponse response;
-      response.jsonrpc = "2.0";
-      response.result = zstd::optional<zjson::Value>();
-      response.error = zstd::optional<ErrorDetails>(error);
-      response.id = request.id;
-
-      print_response(response);
+      print_error(request.id, RpcErrorCode::METHOD_NOT_FOUND,
+                  "Unrecognized command " + request.method);
       return;
     }
 
@@ -69,18 +73,7 @@ void RpcServer::process_request(const string &request_data)
       validator::ValidationResult validation_result = validate_request(request.method, request.params.value());
       if (!validation_result.is_valid)
       {
-        ErrorDetails error{
-            RpcErrorCode::INVALID_PARAMS,
-            validation_result.error_message,
-            zstd::optional<zjson::Value>()};
-
-        RpcResponse response;
-        response.jsonrpc = "2.0";
-        response.result = zstd::optional<zjson::Value>();
-        response.error = zstd::optional<ErrorDetails>(error);
-        response.id = request.id;
-
-        print_response(response);
+        print_error(request.id, RpcErrorCode::INVALID_PARAMS, validation_result.error_message);
         return;
       }
     }
@@ -98,78 +91,55 @@ void RpcServer::process_request(const string &request_data)
     // Dispatch the command
     int result = dispatcher.dispatch(request.method, context);
 
-    RpcResponse response;
-    response.jsonrpc = "2.0";
-    response.id = request.id;
-
-    if (result == 0)
+    if (result != 0)
     {
-      // Success - check if context has an object set, otherwise use output content
-      zjson::Value result_json;
+      const string error_output = context.get_error_content();
+      print_error(request.id, result, "Command execution failed",
+                  error_output.empty() ? nullptr : &error_output);
+      return;
+    }
 
-      const ast::Node &ast_object = context.get_object();
-      if (ast_object)
-      {
-        // Convert AST object to zjson::Value
-        result_json = convert_ast_to_json(ast_object);
-      }
-      else
-      {
-        // Fallback to output content if no AST object is set
-        string output = context.get_output_content();
-        result_json = convert_output_to_json(output);
-      }
+    // Success - check if context has an object set, otherwise use output content
+    zjson::Value result_json;
 
-      result_json.add_to_object("success", zjson::Value(context.get_error_content().empty()));
-
-      // Validate result if a response validator is registered for this command
-      validator::ValidationResult validation_result = validate_response(request.method, result_json);
-      if (!validation_result.is_valid)
-      {
-        // Response validation failed - return internal error
-        ErrorDetails error{
-            RpcErrorCode::INTERNAL_ERROR,
-            string("Response validation failed: ") + validation_result.error_message,
-            zstd::optional<zjson::Value>()};
-
-        response.result = zstd::optional<zjson::Value>();
-        response.error = zstd::optional<ErrorDetails>(error);
-      }
-      else
-      {
-        response.result = zstd::optional<zjson::Value>(result_json);
-        response.error = zstd::optional<ErrorDetails>();
-      }
+    const ast::Node &ast_object = context.get_object();
+    if (ast_object)
+    {
+      // Convert AST object to zjson::Value
+      result_json = convert_ast_to_json(ast_object);
     }
     else
     {
-      // Error occurred
-      string error_output = context.get_error_content();
-      ErrorDetails error{
-          result, // Internal error
-          "Command execution failed",
-          error_output.empty() ? zstd::optional<zjson::Value>() : zstd::optional<zjson::Value>(zjson::Value(error_output))};
-
-      response.result = zstd::optional<zjson::Value>();
-      response.error = zstd::optional<ErrorDetails>(error);
+      // Fallback to output content if no AST object is set
+      string output = context.get_output_content();
+      result_json = convert_output_to_json(output);
     }
+
+    result_json.add_to_object("success", zjson::Value(context.get_error_content().empty()));
+
+    // Validate result if a response validator is registered for this command
+    validator::ValidationResult validation_result = validate_response(request.method, result_json);
+    if (!validation_result.is_valid)
+    {
+      // Response validation failed - return internal error
+      print_error(request.id, RpcErrorCode::INTERNAL_ERROR,
+                  "Response validation failed", &validation_result.error_message);
+      return;
+    }
+
+    // Build success response
+    RpcResponse response;
+    response.jsonrpc = "2.0";
+    response.result = zstd::optional<zjson::Value>(result_json);
+    response.error = zstd::optional<ErrorDetails>();
+    response.id = zstd::optional<int>(request.id);
 
     print_response(response);
   }
   catch (const std::exception &e)
   {
-    ErrorDetails error{
-        RpcErrorCode::PARSE_ERROR,
-        "Failed to parse command request: " + string(e.what()),
-        zstd::optional<zjson::Value>()};
-
-    RpcResponse response;
-    response.jsonrpc = "2.0";
-    response.result = zstd::optional<zjson::Value>();
-    response.error = zstd::optional<ErrorDetails>(error);
-    response.id = 0; // No request ID available
-
-    print_response(response);
+    const string error_msg = e.what();
+    print_error(-1, RpcErrorCode::PARSE_ERROR, "Failed to parse command request", &error_msg);
   }
 }
 
@@ -401,66 +371,32 @@ void RpcServer::send_notification(const RpcNotification &notification)
   std::cout << json_string << std::endl;
 }
 
+void RpcServer::print_error(int request_id, int code, const string &message, const string *data)
+{
+  zstd::optional<zjson::Value> error_data;
+  if (data != nullptr)
+  {
+    error_data = zjson::Value(*data);
+  }
+
+  ErrorDetails error{code, message, error_data};
+
+  RpcResponse response;
+  response.jsonrpc = "2.0";
+  response.result = zstd::optional<zjson::Value>();
+  response.error = zstd::optional<ErrorDetails>(error);
+  // Use -1 as sentinel for null ID (per JSON-RPC spec for parse errors)
+  response.id = (request_id == -1) ? zstd::optional<int>() : zstd::optional<int>(request_id);
+
+  print_response(response);
+}
+
 validator::ValidationResult RpcServer::validate_request(const string &method, const zjson::Value &params)
 {
-  // Get the dispatcher to access the builder for this command
-  CommandDispatcher &dispatcher = CommandDispatcher::get_instance();
-
-  // If the command isn't registered, skip validation (will be caught later)
-  if (!dispatcher.has_command(method))
-  {
-    return validator::ValidationResult::success();
-  }
-
-  // Get the builder to access the request validator
-  const auto &builders = dispatcher.get_builders();
-  auto it = builders.find(method);
-  if (it == builders.end())
-  {
-    return validator::ValidationResult::success();
-  }
-
-  const CommandBuilder &builder = it->second;
-  std::shared_ptr<validator::ParamsValidator> validator = builder.get_request_validator();
-
-  if (!validator)
-  {
-    // No validator registered, validation passes
-    return validator::ValidationResult::success();
-  }
-
-  // Run the validator
-  return validator->validate(params);
+  return validate_common(method, params, true);
 }
 
 validator::ValidationResult RpcServer::validate_response(const string &method, const zjson::Value &result)
 {
-  // Get the dispatcher to access the builder for this command
-  CommandDispatcher &dispatcher = CommandDispatcher::get_instance();
-
-  // If the command isn't registered, skip validation
-  if (!dispatcher.has_command(method))
-  {
-    return validator::ValidationResult::success();
-  }
-
-  // Get the builder to access the response validator
-  const auto &builders = dispatcher.get_builders();
-  auto it = builders.find(method);
-  if (it == builders.end())
-  {
-    return validator::ValidationResult::success();
-  }
-
-  const CommandBuilder &builder = it->second;
-  std::shared_ptr<validator::ParamsValidator> validator = builder.get_response_validator();
-
-  if (!validator)
-  {
-    // No validator registered, validation passes
-    return validator::ValidationResult::success();
-  }
-
-  // Run the validator
-  return validator->validate(result);
+  return validate_common(method, result, false);
 }
