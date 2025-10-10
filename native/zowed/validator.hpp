@@ -17,7 +17,6 @@
 #include <map>
 #include <unordered_map>
 #include <unordered_set>
-#include <functional>
 #include <sstream>
 #include "../c/zjson.hpp"
 
@@ -34,7 +33,7 @@
  *
  *   CommandBuilder(handler).validate<ListDatasetRequest, ListDatasetResponse>()
  *
- * Available field types: BOOL, INTEGER, NUMBER, STRING, ARRAY, OBJECT, ANY
+ * Available field types: BOOL, NUMBER, STRING, ARRAY, OBJECT, ANY
  */
 
 namespace validator
@@ -46,7 +45,6 @@ namespace validator
 enum FieldType
 {
   TYPE_BOOL,
-  TYPE_INTEGER,
   TYPE_NUMBER,
   TYPE_STRING,
   TYPE_ARRAY,
@@ -112,8 +110,6 @@ inline bool check_type(const zjson::Value &value, FieldType expected_type)
   {
   case TYPE_BOOL:
     return value.is_bool();
-  case TYPE_INTEGER:
-    return value.is_integer();
   case TYPE_NUMBER:
     return value.is_integer() || value.is_double();
   case TYPE_STRING:
@@ -138,8 +134,6 @@ inline std::string type_name(FieldType type)
   {
   case TYPE_BOOL:
     return "boolean";
-  case TYPE_INTEGER:
-    return "integer";
   case TYPE_NUMBER:
     return "number";
   case TYPE_STRING:
@@ -164,9 +158,7 @@ inline std::string actual_type_name(const zjson::Value &value)
     return "null";
   if (value.is_bool())
     return "boolean";
-  if (value.is_integer())
-    return "integer";
-  if (value.is_double())
+  if (value.is_integer() || value.is_double())
     return "number";
   if (value.is_string())
     return "string";
@@ -308,27 +300,6 @@ public:
 
 private:
   bool allow_unknown_fields_;
-};
-
-/**
- * Custom function validator
- */
-class FunctionValidator : public ParamsValidator
-{
-public:
-  typedef std::function<ValidationResult(const zjson::Value &)> ValidatorFunc;
-
-  explicit FunctionValidator(ValidatorFunc func) : func_(func)
-  {
-  }
-
-  ValidationResult validate(const zjson::Value &params) const
-  {
-    return func_(params);
-  }
-
-private:
-  ValidatorFunc func_;
 };
 
 } // namespace validator
