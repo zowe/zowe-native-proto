@@ -17,14 +17,14 @@
 
 int main()
 {
-
-  ZCN zcn = {0};
+  ZcnSession session;
+  ZCN &zcn = session.control_block();
 
   int rc = 0;
 
   printf("Starting, current key is %02x\n", zut_get_key());
 
-  rc = zcn_activate(&zcn, "DKELOSKY");
+  rc = session.activate("DKELOSKY");
   if (0 != rc)
   {
     std::cerr << "Error: Activating console failed with " << rc << " and " << std::string(zcn.diag.e_msg) << std::endl;
@@ -33,7 +33,7 @@ int main()
 
   printf("Console activated, now key is %02x\n", zut_get_key());
 
-  rc = zcn_put(&zcn, "D IPLINFO");
+  rc = session.put("D IPLINFO");
   if (0 != rc)
   {
     std::cerr << "Error: Dectivating console failed with " << rc << " and " << std::string(zcn.diag.e_msg) << std::endl;
@@ -42,7 +42,7 @@ int main()
 
   printf("Console put, now key is %02x\n", zut_get_key());
 
-  rc = zcn_deactivate(&zcn);
+  rc = session.deactivate();
   if (0 != rc)
   {
     std::cerr << "Error: Putting to console failed with " << rc << " and " << std::string(zcn.diag.e_msg) << std::endl;
