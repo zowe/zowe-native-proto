@@ -320,7 +320,7 @@ npm run z:build:zowed
 
 ### Step 4.2: Add SDK Method
 
-Edit `packages/sdk/src/RpcApiBuilder.ts` to add a method for your new command:
+Edit `packages/sdk/src/RpcClientApi.ts` to add a method for your new command:
 
 ```typescript
 import type {
@@ -333,29 +333,12 @@ import type {
   sample,
 } from "./doc/rpc";
 
-type ProgressCallback = (percent: number) => void;
-type RequestHandler = (
-  request: CommandRequest,
-  progressCallback?: ProgressCallback
-) => Promise<CommandResponse>;
+export abstract class RpcClientApi {
+  // ... existing methods (request, ds, jobs, uss, cmds) ...
 
-export class RpcApiBuilder {
-  public static build(requestFn: RequestHandler) {
+  public get sample() {
     return {
-      cmds: RpcApiBuilder.buildCmdsApi(requestFn),
-      ds: RpcApiBuilder.buildDsApi(requestFn),
-      jobs: RpcApiBuilder.buildJobsApi(requestFn),
-      uss: RpcApiBuilder.buildUssApi(requestFn),
-      sample: RpcApiBuilder.buildSampleApi(requestFn), // Add this line
-    };
-  }
-
-  // ... existing buildCmdsApi, buildDsApi, buildJobsApi, buildUssApi methods ...
-
-  private static buildSampleApi(requestFn: RequestHandler) {
-    const rpc = RpcApiBuilder.requestHandler(requestFn);
-    return {
-      ping: rpc<sample.PingRequest, sample.PingResponse>("ping"),
+      ping: this.rpc<sample.PingRequest, sample.PingResponse>("ping"),
     };
   }
 }
