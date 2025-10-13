@@ -193,11 +193,13 @@ ZJSON_SCHEMA(SubmitJclResponse,
 
 struct SubmitJobResponse {};
 ZJSON_SCHEMA(SubmitJobResponse,
+    FIELD_REQUIRED(success, BOOL),
     FIELD_REQUIRED(jobId, STRING)
 );
 
 struct SubmitUssResponse {};
 ZJSON_SCHEMA(SubmitUssResponse,
+    FIELD_REQUIRED(success, BOOL),
     FIELD_REQUIRED(jobId, STRING)
 );
 

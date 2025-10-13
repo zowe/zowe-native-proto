@@ -95,7 +95,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
 
     public async request<T extends CommandResponse>(
         request: CommandRequest,
-        percentCallback?: (percent: number) => void,
+        progressCallback?: (percent: number) => void,
     ): Promise<T> {
         let timeoutId: NodeJS.Timeout;
         return new Promise<T>((resolve, reject) => {
@@ -115,8 +115,8 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                     rpcRequest,
                     request.stream,
                     timeoutId,
-                    percentCallback && {
-                        callback: percentCallback,
+                    progressCallback && {
+                        callback: progressCallback,
                         // If stream is a ReadStream use the size of the localFile in bytes
                         // If stream is a WriteStream, set undefined because the size progress will be provided by a notification
                         totalBytes: "contentLen" in request ? (request.contentLen as number) : undefined,
