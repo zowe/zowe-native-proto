@@ -24,7 +24,7 @@ import type { MockInstance } from "vitest";
 import { AbstractConfigManager, type ProgressCallback } from "../src/AbstractConfigManager";
 import { ConfigFileUtils } from "../src/ConfigFileUtils";
 import { type inputBoxOpts, MESSAGE_TYPE, type qpItem, type qpOpts } from "../src/doc";
-import { type ISshConfigExt, ZClientUtils } from "../src/ZClientUtils";
+import { type ISshConfigExt, SshConfigUtils } from "../src/SshConfigUtils";
 
 vi.mock("path", async (importOriginal) => {
     const actual = await importOriginal<typeof import("path")>();
@@ -155,7 +155,7 @@ describe("AbstractConfigManager", async () => {
     beforeEach(async () => {
         testManager = new TestAbstractConfigManager(profCache);
         vi.spyOn(testManager, "fetchAllSshProfiles" as any).mockReturnValueOnce(sshProfiles);
-        vi.spyOn(ZClientUtils, "migrateSshConfig").mockResolvedValueOnce(migratedSshConfigs);
+        vi.spyOn(SshConfigUtils, "migrateSshConfig").mockResolvedValueOnce(migratedSshConfigs);
     });
     describe("promptForProfile", async () => {
         describe("profile selection and input", () => {
@@ -1030,7 +1030,7 @@ describe("AbstractConfigManager", async () => {
             (testManager as any).migratedConfigs = undefined;
 
             // Create fresh spies for each test
-            findPrivateKeysSpy = vi.spyOn(ZClientUtils, "findPrivateKeys");
+            findPrivateKeysSpy = vi.spyOn(SshConfigUtils, "findPrivateKeys");
             validateConfigSpy = vi.spyOn(testManager as any, "validateConfig");
         });
         it("should modify a profile with a found private key", async () => {

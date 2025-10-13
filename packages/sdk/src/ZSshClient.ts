@@ -163,7 +163,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                     throw new Error(`unknown method ${notif.method}`);
             }
         } catch (err) {
-            const errMsg = Logger.getAppLogger().error("Failed to handle RPC notification: %s", err);
+            const errMsg = Logger.getAppLogger().error("Failed to handle RPC notification: %s", err.message);
             this.mErrHandler(new Error(errMsg));
         }
     }
