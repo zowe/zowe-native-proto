@@ -14,7 +14,6 @@ import { Stream } from "node:stream";
 import { ImperativeError, Logger } from "@zowe/imperative";
 import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Client, type ClientChannel } from "ssh2";
-import { AbstractRpcClient } from "./AbstractRpcClient";
 import type {
     ClientOptions,
     CommandRequest,
@@ -25,14 +24,13 @@ import type {
     RpcResponse,
     StatusMessage,
 } from "./doc";
-import { RpcApiBuilder, type ZSshRpcApi } from "./RpcApiBuilder";
+import { RpcClientApi } from "./RpcClientApi";
 import { RpcStreamManager } from "./RpcStreamManager";
 import { ZSshUtils } from "./ZSshUtils";
 
-export class ZSshClient extends AbstractRpcClient implements Disposable {
+export class ZSshClient extends RpcClientApi implements Disposable {
     public static readonly DEFAULT_SERVER_PATH = "~/.zowe-server";
 
-    private mApi: ZSshRpcApi;
     private mErrHandler: ClientOptions["onError"];
     private mResponseTimeout: number;
     private mServerInfo: { checksums?: Record<string, string> };
@@ -47,7 +45,6 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
 
     private constructor() {
         super();
-        this.mApi = RpcApiBuilder.build(this.request.bind(this));
     }
 
     private static defaultErrHandler(err: Error): void {
@@ -92,22 +89,6 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
         this.dispose();
     }
 
-    public get cmds() {
-        return this.mApi.cmds;
-    }
-
-    public get ds() {
-        return this.mApi.ds;
-    }
-
-    public get jobs() {
-        return this.mApi.jobs;
-    }
-
-    public get uss() {
-        return this.mApi.uss;
-    }
-
     public get serverChecksums(): Record<string, string> | undefined {
         return this.mServerInfo?.checksums;
     }
@@ -147,41 +128,6 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
             Logger.getAppLogger().trace(`Sending request: ${requestStr}`);
             this.mSshStream.stdin.write(`${requestStr}\n`);
         }).finally(() => clearTimeout(timeoutId));
-    }
-
-    protected handleNotification(notif: RpcNotification): void {
-        const streamPromise = this.mPromiseMap.get(notif.params?.id as number);
-        try {
-            switch (notif.method) {
-                case "sendStream":
-                    this.mStreamMgr.linkStreamToPromise(streamPromise, notif, "r");
-                    break;
-                case "receiveStream":
-                    this.mStreamMgr.linkStreamToPromise(streamPromise, notif, "w");
-                    break;
-                default:
-                    throw new Error(`unknown method ${notif.method}`);
-            }
-        } catch (err) {
-            const errMsg = Logger.getAppLogger().error("Failed to handle RPC notification: %s", err.message);
-            this.mErrHandler(new Error(errMsg));
-        }
-    }
-
-    protected handleResponse(response: RpcResponse): void {
-        if (response.error != null) {
-            Logger.getAppLogger().error(`Error for response ID: ${response.id}\n${JSON.stringify(response.error)}`);
-            this.mPromiseMap.get(response.id).reject(
-                new ImperativeError({
-                    msg: response.error.message,
-                    errorCode: response.error.code.toString(),
-                    additionalDetails: response.error.data,
-                }),
-            );
-        } else {
-            this.mPromiseMap.get(response.id).resolve(response.result);
-        }
-        this.mPromiseMap.delete(response.id);
     }
 
     private execAsync(...args: string[]): Promise<ClientChannel> {
@@ -287,5 +233,40 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
             }
         }
         return responses[responses.length - 1];
+    }
+
+    protected handleNotification(notif: RpcNotification): void {
+        const streamPromise = this.mPromiseMap.get(notif.params?.id as number);
+        try {
+            switch (notif.method) {
+                case "sendStream":
+                    this.mStreamMgr.linkStreamToPromise(streamPromise, notif, "r");
+                    break;
+                case "receiveStream":
+                    this.mStreamMgr.linkStreamToPromise(streamPromise, notif, "w");
+                    break;
+                default:
+                    throw new Error(`unknown method ${notif.method}`);
+            }
+        } catch (err) {
+            const errMsg = Logger.getAppLogger().error("Failed to handle RPC notification: %s", err.message);
+            this.mErrHandler(new Error(errMsg));
+        }
+    }
+
+    protected handleResponse(response: RpcResponse): void {
+        if (response.error != null) {
+            Logger.getAppLogger().error(`Error for response ID: ${response.id}\n${JSON.stringify(response.error)}`);
+            this.mPromiseMap.get(response.id).reject(
+                new ImperativeError({
+                    msg: response.error.message,
+                    errorCode: response.error.code.toString(),
+                    additionalDetails: response.error.data,
+                }),
+            );
+        } else {
+            this.mPromiseMap.get(response.id).resolve(response.result);
+        }
+        this.mPromiseMap.delete(response.id);
     }
 }

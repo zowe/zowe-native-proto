@@ -10,9 +10,9 @@
  */
 
 export * from "./AbstractConfigManager";
-export * from "./AbstractRpcClient";
 export * from "./ConfigFileUtils";
 export * from "./doc";
+export * from "./RpcClientApi";
 export * from "./SshConfigUtils";
 export * from "./SshErrors";
 export * from "./ZSshClient";
