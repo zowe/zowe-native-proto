@@ -25,18 +25,20 @@ import type {
     RpcResponse,
     StatusMessage,
 } from "./doc";
-import { RpcNotificationManager } from "./RpcNotificationManager";
+import { RpcApiBuilder, type ZSshRpcApi } from "./RpcApiBuilder";
+import { RpcStreamManager } from "./RpcStreamManager";
 import { ZSshUtils } from "./ZSshUtils";
 
 export class ZSshClient extends AbstractRpcClient implements Disposable {
     public static readonly DEFAULT_SERVER_PATH = "~/.zowe-server";
 
+    private mApi: ZSshRpcApi;
     private mErrHandler: ClientOptions["onError"];
-    private mNotifMgr: RpcNotificationManager;
     private mResponseTimeout: number;
     private mServerInfo: { checksums?: Record<string, string> };
     private mSshClient: Client;
     private mSshStream: ClientChannel;
+    private mStreamMgr: RpcStreamManager;
     private mPartialStderr = "";
     private mPartialStdout = "";
     private readonly mPromiseMap: Map<number, RpcPromise> = new Map();
@@ -45,6 +47,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
 
     private constructor() {
         super();
+        this.mApi = RpcApiBuilder.build(this.request.bind(this));
     }
 
     private static defaultErrHandler(err: Error): void {
@@ -76,7 +79,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
             const keepAliveMsec = opts.keepAliveInterval != null ? opts.keepAliveInterval * 1000 : 30e3;
             client.mSshClient.connect(ZSshUtils.buildSshConfig(session, { keepaliveInterval: keepAliveMsec }));
         });
-        client.mNotifMgr = new RpcNotificationManager(client.mSshClient);
+        client.mStreamMgr = new RpcStreamManager(client.mSshClient);
         return client;
     }
 
@@ -87,6 +90,22 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
 
     public [Symbol.dispose](): void {
         this.dispose();
+    }
+
+    public get cmds() {
+        return this.mApi.cmds;
+    }
+
+    public get ds() {
+        return this.mApi.ds;
+    }
+
+    public get jobs() {
+        return this.mApi.jobs;
+    }
+
+    public get uss() {
+        return this.mApi.uss;
     }
 
     public get serverChecksums(): Record<string, string> | undefined {
@@ -111,7 +130,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                 reject(new ImperativeError({ msg: "Request timed out", errorCode: "ETIMEDOUT" }));
             }, this.mResponseTimeout);
             if ("stream" in request && request.stream instanceof Stream) {
-                this.mNotifMgr.registerStream(
+                this.mStreamMgr.registerStream(
                     rpcRequest,
                     request.stream,
                     timeoutId,
@@ -128,6 +147,41 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
             Logger.getAppLogger().trace(`Sending request: ${requestStr}`);
             this.mSshStream.stdin.write(`${requestStr}\n`);
         }).finally(() => clearTimeout(timeoutId));
+    }
+
+    protected handleNotification(notif: RpcNotification): void {
+        const streamPromise = this.mPromiseMap.get(notif.params?.id as number);
+        try {
+            switch (notif.method) {
+                case "sendStream":
+                    this.mStreamMgr.linkStreamToPromise(streamPromise, notif, "r");
+                    break;
+                case "receiveStream":
+                    this.mStreamMgr.linkStreamToPromise(streamPromise, notif, "w");
+                    break;
+                default:
+                    throw new Error(`unknown method ${notif.method}`);
+            }
+        } catch (err) {
+            const errMsg = Logger.getAppLogger().error("Failed to handle RPC notification: %s", err);
+            this.mErrHandler(new Error(errMsg));
+        }
+    }
+
+    protected handleResponse(response: RpcResponse): void {
+        if (response.error != null) {
+            Logger.getAppLogger().error(`Error for response ID: ${response.id}\n${JSON.stringify(response.error)}`);
+            this.mPromiseMap.get(response.id).reject(
+                new ImperativeError({
+                    msg: response.error.message,
+                    errorCode: response.error.code.toString(),
+                    additionalDetails: response.error.data,
+                }),
+            );
+        } else {
+            this.mPromiseMap.get(response.id).resolve(response.result);
+        }
+        this.mPromiseMap.delete(response.id);
     }
 
     private execAsync(...args: string[]): Promise<ClientChannel> {
@@ -233,31 +287,5 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
             }
         }
         return responses[responses.length - 1];
-    }
-
-    private handleNotification(notif: RpcNotification): void {
-        const responseId = notif.params?.id as number;
-        try {
-            this.mNotifMgr.handleNotification(notif, this.mPromiseMap.get(responseId));
-        } catch (err) {
-            const errMsg = Logger.getAppLogger().error("Failed to handle RPC notification: %s", err);
-            this.mErrHandler(new Error(errMsg));
-        }
-    }
-
-    private handleResponse(response: RpcResponse): void {
-        if (response.error != null) {
-            Logger.getAppLogger().error(`Error for response ID: ${response.id}\n${JSON.stringify(response.error)}`);
-            this.mPromiseMap.get(response.id).reject(
-                new ImperativeError({
-                    msg: response.error.message,
-                    errorCode: response.error.code.toString(),
-                    additionalDetails: response.error.data,
-                }),
-            );
-        } else {
-            this.mPromiseMap.get(response.id).resolve(response.result);
-        }
-        this.mPromiseMap.delete(response.id);
     }
 }

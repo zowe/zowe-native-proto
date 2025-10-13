@@ -21,7 +21,7 @@ import { ProgressTransform } from "./ProgressTransform";
 
 type StreamMode = "r" | "w";
 
-export class RpcNotificationManager {
+export class RpcStreamManager {
     private readonly mPendingStreamMap: Map<number, { stream: Stream; callbackInfo?: CallbackInfo }> = new Map();
 
     public constructor(private readonly mSshClient: Client) {}
@@ -39,17 +39,18 @@ export class RpcNotificationManager {
         request.params.stream = request.id;
     }
 
-    public handleNotification(notif: RpcNotification, promise?: RpcPromise): void {
-        switch (notif.method) {
-            case "sendStream":
-                this.linkStreamToPromise(promise, this.uploadStream(notif.params), "r");
-                break;
-            case "receiveStream":
-                this.linkStreamToPromise(promise, this.downloadStream(notif.params), "w");
-                break;
-            default:
-                throw new Error(`Unknown RPC notification type: ${notif.method}`);
-        }
+    public linkStreamToPromise(rpcPromise: RpcPromise, notif: RpcNotification, mode: StreamMode): void {
+        const { reject, resolve } = rpcPromise;
+        const streamPromise = mode === "r" ? this.uploadStream(notif.params) : this.downloadStream(notif.params);
+        rpcPromise.resolve = async (response: CommandResponse) => {
+            const contentLen = await streamPromise;
+            try {
+                this.expectContentLengthMatches(response, contentLen, mode);
+                resolve(response);
+            } catch (err) {
+                reject(err);
+            }
+        };
     }
 
     private async uploadStream(params: { id: number; pipePath: string }): Promise<number> {
@@ -85,19 +86,6 @@ export class RpcNotificationManager {
 
         await pipeline(sshStream.stdout, new Base64Decode(), progressTransform, writeStream);
         return progressTransform.bytesProcessed;
-    }
-
-    private linkStreamToPromise(rpcPromise: RpcPromise, streamPromise: Promise<number>, mode: StreamMode): void {
-        const { reject, resolve } = rpcPromise;
-        rpcPromise.resolve = async (response: CommandResponse) => {
-            const contentLen = await streamPromise;
-            try {
-                this.expectContentLengthMatches(response, contentLen, mode);
-                resolve(response);
-            } catch (err) {
-                reject(err);
-            }
-        };
     }
 
     private expectContentLengthMatches(response: CommandResponse, clientLen: number, mode: StreamMode): void {
