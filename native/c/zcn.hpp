@@ -12,7 +12,6 @@
 #ifndef ZCN_HPP
 #define ZCN_HPP
 
-#include <cstring>
 #include <string>
 
 #include "zcntype.h"
@@ -71,6 +70,12 @@ public:
   ZcnSession(ZcnSession &&) = delete;
   ZcnSession &operator=(ZcnSession &&) = delete;
 
+  /**
+   * @brief Activates a console with the given name
+   *
+   * @param name The name of the console to activate
+   * @return `0` (`RTNCD_SUCCESS`) if activation was successful, non-zero otherwise
+   */
   int activate(const std::string &name)
   {
     if (active_)
@@ -87,6 +92,11 @@ public:
     return rc;
   }
 
+  /**
+   * @brief Deactivate the console session once finished
+   *
+   * @return `0` (`RTNCD_SUCCESS`) if activation was successful or already completed, non-zero otherwise
+   */
   int deactivate()
   {
     if (!active_)
@@ -99,34 +109,61 @@ public:
     return rc;
   }
 
+  /**
+   * @brief Attempts to execute/put the given command in the console
+   *
+   * @param command The command to execute/put
+   * @return `0` (`RTNCD_SUCCESS`) if successful, non-zero otherwise
+   */
   int put(const std::string &command)
   {
     return zcn_put(&zcn_, command);
   }
 
+  /**
+   * @brief Obtain the response from the console after a command has been executed
+   *
+   * @param response The string variable to store the response text in
+   * @return `0` (`RTNCD_SUCCESS`) if successful, non-zero otherwise
+   */
   int get(std::string &response)
   {
     return zcn_get(&zcn_, response);
   }
 
+  /**
+   * @brief Whether the console session is active (console still activated)
+   *
+   * @return `true` if active, `false` otherwise
+   */
   bool is_active() const
   {
     return active_;
   }
 
+  /**
+   * @brief Low-level structure containing diagnostic info and control-block specific variables
+   *
+   * @return Reference to said low-level structure
+   */
   ZCN &control_block()
   {
     return zcn_;
   }
 
+  /**
+   * @brief Low-level structure containing diagnostic info and control-block specific variables
+   *
+   * @return Constant (read-only) reference to said low-level structure
+   */
   const ZCN &control_block() const
   {
     return zcn_;
   }
 
 private:
-  ZCN zcn_;
   bool active_;
+  ZCN zcn_;
 };
 
 #endif
