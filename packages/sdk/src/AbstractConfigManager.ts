@@ -28,10 +28,16 @@ import {
 } from "@zowe/imperative";
 import { NodeSSH } from "node-ssh";
 import { ConfigFileUtils } from "./ConfigFileUtils";
-import { type inputBoxOpts, MESSAGE_TYPE, type PrivateKeyWarningOptions, type qpItem, type qpOpts } from "./doc";
+import {
+    type inputBoxOpts,
+    MESSAGE_TYPE,
+    type PrivateKeyWarningOptions,
+    type ProgressCallback,
+    type qpItem,
+    type qpOpts,
+} from "./doc";
 import { type ISshConfigExt, SshConfigUtils } from "./SshConfigUtils";
 
-export type ProgressCallback = (percent: number) => void;
 export abstract class AbstractConfigManager {
     public constructor(private mProfilesCache: ProfileInfo) {}
 

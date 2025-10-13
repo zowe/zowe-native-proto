@@ -1,10 +1,6 @@
+import type { AbstractRpcClient } from "./AbstractRpcClient";
 import type { CommandRequest, CommandResponse, cmds, ds, jobs, uss } from "./doc/rpc";
-
-type RequestHandler = (
-    request: CommandRequest,
-    progressCallback?: (percent: number) => void,
-) => Promise<CommandResponse>;
-type ProgressCallback = (percent: number) => void;
+import type { ProgressCallback } from "./doc/types";
 
 function withProgress<ReqT, RespT>(
     handler: (request: ReqT, progressCallback?: ProgressCallback) => Promise<RespT>,
@@ -14,17 +10,17 @@ function withProgress<ReqT, RespT>(
 
 // biome-ignore lint/complexity/noStaticOnlyClass: Builder class has static methods
 export class RpcApiBuilder {
-    public static build(requestFn: RequestHandler) {
+    public static build(requestFn: typeof AbstractRpcClient.prototype.request) {
+        const rpcHandler = RpcApiBuilder.requestHandler(requestFn);
         return {
-            cmds: RpcApiBuilder.buildCmdsApi(requestFn),
-            ds: RpcApiBuilder.buildDsApi(requestFn),
-            jobs: RpcApiBuilder.buildJobsApi(requestFn),
-            uss: RpcApiBuilder.buildUssApi(requestFn),
+            cmds: RpcApiBuilder.buildCmdsApi(rpcHandler),
+            ds: RpcApiBuilder.buildDsApi(rpcHandler),
+            jobs: RpcApiBuilder.buildJobsApi(rpcHandler),
+            uss: RpcApiBuilder.buildUssApi(rpcHandler),
         };
     }
 
-    private static buildCmdsApi(requestFn: RequestHandler) {
-        const rpc = RpcApiBuilder.requestHandler(requestFn);
+    private static buildCmdsApi(rpc: ReturnType<typeof RpcApiBuilder.requestHandler>) {
         return {
             issueConsole: rpc<cmds.IssueConsoleRequest, cmds.IssueConsoleResponse>("consoleCommand"),
             issueTso: rpc<cmds.IssueTsoRequest, cmds.IssueTsoResponse>("tsoCommand"),
@@ -32,8 +28,7 @@ export class RpcApiBuilder {
         };
     }
 
-    private static buildDsApi(requestFn: RequestHandler) {
-        const rpc = RpcApiBuilder.requestHandler(requestFn);
+    private static buildDsApi(rpc: ReturnType<typeof RpcApiBuilder.requestHandler>) {
         return {
             createDataset: rpc<ds.CreateDatasetRequest, ds.CreateDatasetResponse>("createDataset"),
             createMember: rpc<ds.CreateMemberRequest, ds.CreateMemberResponse>("createMember"),
@@ -46,8 +41,7 @@ export class RpcApiBuilder {
         };
     }
 
-    private static buildJobsApi(requestFn: RequestHandler) {
-        const rpc = RpcApiBuilder.requestHandler(requestFn);
+    private static buildJobsApi(rpc: ReturnType<typeof RpcApiBuilder.requestHandler>) {
         return {
             cancelJob: rpc<jobs.CancelJobRequest, jobs.CancelJobResponse>("cancelJob"),
             deleteJob: rpc<jobs.DeleteJobRequest, jobs.DeleteJobResponse>("deleteJob"),
@@ -64,8 +58,7 @@ export class RpcApiBuilder {
         };
     }
 
-    private static buildUssApi(requestFn: RequestHandler) {
-        const rpc = RpcApiBuilder.requestHandler(requestFn);
+    private static buildUssApi(rpc: ReturnType<typeof RpcApiBuilder.requestHandler>) {
         return {
             chmodFile: rpc<uss.ChmodFileRequest, uss.ChmodFileResponse>("chmodFile"),
             chownFile: rpc<uss.ChownFileRequest, uss.ChownFileResponse>("chownFile"),
@@ -78,7 +71,7 @@ export class RpcApiBuilder {
         };
     }
 
-    private static requestHandler(requestFn: RequestHandler) {
+    private static requestHandler(requestFn: typeof AbstractRpcClient.prototype.request) {
         return <ReqT extends CommandRequest, RespT extends CommandResponse>(command: string) => {
             return (request: Omit<ReqT, "command">): Promise<RespT> =>
                 requestFn({ command, ...request }) as Promise<RespT>;

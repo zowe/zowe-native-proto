@@ -26,8 +26,9 @@ export namespace B64String {
     }
 }
 
+export type ProgressCallback = (percent: number) => void;
 export type CallbackInfo = {
-    callback: (percent: number) => void;
+    callback: ProgressCallback;
     totalBytes?: number;
 };
 
