@@ -744,6 +744,32 @@ void load_recfm_from_dscb(const DSCBFormat1 *dscb, string *recfm)
   }
 }
 
+void zds_get_attrs_from_dscb(ZDS *zds, ZDSEntry &entry)
+{
+  auto *dscb = (DSCBFormat1 *)__malloc31(sizeof(DSCBFormat1));
+  if (dscb == nullptr)
+  {
+    return;
+  }
+
+  memset(dscb, 0x00, sizeof(DSCBFormat1));
+  const auto rc = ZDSDSCB1(zds, entry.name.c_str(), entry.volser.c_str(), dscb);
+
+  if (rc == RTNCD_SUCCESS)
+  {
+    load_dsorg_from_dscb(dscb, &entry.dsorg);
+    load_recfm_from_dscb(dscb, &entry.recfm);
+  }
+  else
+  {
+    entry.dsorg = ZDS_DSORG_UNKNOWN;
+    entry.volser = ZDS_VOLSER_UNKNOWN;
+    entry.recfm = ZDS_RECFM_U;
+  }
+
+  free(dscb);
+}
+
 int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
 {
   int rc = 0;
@@ -975,26 +1001,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
       // attempt to load dsorg and recfm from vtoc if not migrated
       if (!entry.migr)
       {
-        auto *dscb = (DSCBFormat1 *)__malloc31(sizeof(DSCBFormat1));
-        if (dscb)
-        {
-          memset(dscb, 0x00, sizeof(DSCBFormat1));
-          rc = ZDSDSCB1(zds, entry.name.c_str(), entry.volser.c_str(), dscb);
-
-          if (rc == RTNCD_SUCCESS)
-          {
-            load_dsorg_from_dscb(dscb, &entry.dsorg);
-            load_recfm_from_dscb(dscb, &entry.recfm);
-          }
-          else
-          {
-            entry.dsorg = ZDS_DSORG_UNKNOWN;
-            entry.volser = ZDS_VOLSER_UNKNOWN;
-            entry.recfm = ZDS_RECFM_U;
-          }
-
-          free(dscb);
-        }
+        zds_get_attrs_from_dscb(zds, entry);
       }
 
       switch (f->type)
