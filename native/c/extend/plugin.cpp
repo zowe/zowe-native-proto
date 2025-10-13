@@ -230,7 +230,7 @@ void PluginManager::load_plugins()
       void *plugin = dlopen(plugin_path.c_str(), RTLD_LAZY);
       if (!plugin)
       {
-        ZLOG_ERROR("Failed to open handle to plugin located at: %s", plugin_path);
+        ZLOG_ERROR("Failed to open handle to plugin located at: %s", plugin_path.c_str());
         continue;
       }
 
@@ -259,7 +259,7 @@ void PluginManager::load_plugins()
       }
       else
       {
-        ZLOG_ERROR("Plugin %s loaded but no entrypoint available (register_plugin missing)", plugin_path);
+        ZLOG_ERROR("Plugin %s loaded but no entrypoint available (register_plugin missing)", plugin_path.c_str());
         dlclose(plugin);
       }
     }
