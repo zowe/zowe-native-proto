@@ -18,7 +18,7 @@
 int main()
 {
   ZcnSession session;
-  ZCN &zcn = session.control_block();
+  const auto &zcn = session.control_block();
 
   int rc = 0;
 
