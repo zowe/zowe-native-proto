@@ -334,13 +334,11 @@ import type {
 } from "./doc/rpc";
 
 export abstract class RpcClientApi {
-  // ... existing methods (request, ds, jobs, uss, cmds) ...
+  // ... existing apis (cmds, ds, jobs, uss) ...
 
-  public get sample() {
-    return {
-      ping: this.rpc<sample.PingRequest, sample.PingResponse>("ping"),
-    };
-  }
+  public sample = {
+    ping: this.rpc<sample.PingRequest, sample.PingResponse>("ping"),
+  };
 }
 ```
 
