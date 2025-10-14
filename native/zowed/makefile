@@ -65,13 +65,17 @@ $(OUT_DIR):
 	mkdir -p $(OUT_DIR)/commands
 
 # Build the shared library (.so file)
-$(OUT_DIR)/$(LIBRARY): $(OUT_DIR) $(LIB_OBJECTS) $(CMDS_OBJECTS) $(OUT_DIR)/zjsonm.o
+$(OUT_DIR)/$(LIBRARY): $(OUT_DIR) $(LIB_OBJECTS) $(CMDS_OBJECTS) $(OUT_DIR)/zjsonm.o xlclang-libs
 	$(CXX_LIB) $(DLL_BND_FLAGS) -o $(OUT_DIR)/$(LIBRARY) $(LIB_OBJECTS) \
 	../c/build-out/xlclang/zds.o ../c/build-out/xlclang/zjb.o ../c/build-out/xlclang/zusf.o \
 	../c/build-out/xlclang/zut.o ../c/build-out/zam.o ../c/build-out/zdsm.o \
 	../c/build-out/zjbm.o ../c/build-out/zjbm31.o ../c/build-out/zssi31.o \
 	../c/build-out/zutm.o ../c/build-out/zutm31.o \
 	$(CMDS_OBJECTS) $(OUT_DIR)/zjsonm.o > $(OUT_DIR)/libzowed.bind.lst
+
+# Build xlclang dependencies from parent makefile
+xlclang-libs:
+	$(MAKE) -c ../c xlclang-extenders
 
 # Build the executable (main compiled with xlc++, dynamically loads shared library)
 $(OUT_DIR)/$(TARGET): $(OUT_DIR) $(OUT_DIR)/main.o
@@ -110,4 +114,4 @@ debug: CXXFLAGS_MAIN += -g -DDEBUG
 debug: $(OUT_DIR)/$(TARGET)
 
 # Phony targets
-.PHONY: all clean debug library
+.PHONY: all clean debug library xlclang-libs

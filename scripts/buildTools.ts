@@ -20,7 +20,6 @@ import { type IProfile, ProfileInfo } from "@zowe/imperative";
 interface IConfig {
     sshProfile: string | IProfile;
     deployDir: string;
-    goBuildEnv?: string;
     preBuildCmd?: string;
 }
 
@@ -111,7 +110,7 @@ function getAllServerFiles() {
         files.push(...getServerFiles(dir));
     }
 
-    return files.filter((file) => !file.startsWith("golang/zowed"));
+    return files;
 }
 
 function getServerFiles(dir = "") {
@@ -182,7 +181,7 @@ function getDirs(next = "") {
 }
 
 async function artifacts(connection: Client, packageApf: boolean) {
-    const artifactPaths = ["c/build-out/zowex", "golang/zowed"];
+    const artifactPaths = ["c/build-out/zowex", "zowed/build-out/libzowed.so", "zowed/build-out/zowed"];
     if (packageApf) {
         artifactPaths.push("c/build-out/zoweax");
     }
@@ -410,22 +409,20 @@ async function bin(connection: Client) {
     });
 }
 
-async function build(connection: Client, { goBuildEnv, preBuildCmd }: IConfig) {
+async function build(connection: Client, { preBuildCmd }: IConfig) {
     preBuildCmd = preBuildCmd ? `${preBuildCmd} && ` : "";
     console.log("Building native/c ...");
-    const response = await runCommandInShell(
+    let response = await runCommandInShell(
         connection,
         `${preBuildCmd}cd ${deployDirs.cDir} && make ${DEBUG_MODE() ? "-DBuildType=DEBUG" : ""}\n`,
     );
     DEBUG_MODE() && console.log(response);
-    console.log("Building native/golang ...");
-    console.log(
-        await runCommandInShell(
-            connection,
-            `${preBuildCmd}cd ${deployDirs.goDir} &&${goBuildEnv ? ` ${goBuildEnv}` : ""} go build${DEBUG_MODE() ? "" : ' -ldflags="-s -w"'}\nexit $?\n`,
-            true,
-        ),
+    console.log("Building native/zowed ...");
+    response = await runCommandInShell(
+        connection,
+        `${preBuildCmd}cd ${deployDirs.zowedDir} && make ${DEBUG_MODE() ? "-DBuildType=DEBUG" : ""}\n`,
     );
+    DEBUG_MODE() && console.log(response);
     console.log("Build complete!");
 }
 
@@ -689,30 +686,8 @@ async function download(sftpcon: SFTPWrapper, from: string, to: string) {
 async function loadConfig(): Promise<IConfig> {
     const configPath = path.join(__dirname, "..", "config.yaml");
     if (!fs.existsSync(configPath)) {
-        const oldConfigPath = path.join(__dirname, "..", "config.local.json");
-        if (fs.existsSync(oldConfigPath)) {
-            const configJson = JSON.parse(fs.readFileSync(oldConfigPath, "utf-8"));
-            const yamlLines = ["activeProfile: default", "", "profiles:", "  default:", "    sshProfile:"];
-            yamlLines.push(`      host: ${configJson.host}`);
-            if (configJson.port) {
-                yamlLines.push(`      port: ${configJson.port}`);
-            }
-            yamlLines.push(`      user: ${configJson.username}`);
-            if (configJson.password) {
-                yamlLines.push(`      password: ${configJson.password}`);
-            } else if (configJson.privateKey) {
-                yamlLines.push(`      privateKey: ${configJson.privateKey}`);
-            }
-            yamlLines.push(`    deployDir: ${configJson.deployDirectory}`);
-            yamlLines.push(`    goBuildEnv: "${configJson.goEnv || ""}"`);
-            fs.writeFileSync(configPath, `${yamlLines.join("\n")}\n`, "utf-8");
-            console.warn(
-                `Warning: Detected old config format in config.local.json. It has been migrated to a config.yaml file.\n\n${yamlLines.join("\n")}\n`,
-            );
-        } else {
-            console.error("Could not find config.yaml. See the README for instructions.");
-            process.exit(1);
-        }
+        console.error("Could not find config.yaml. See the README for instructions.");
+        process.exit(1);
     }
 
     const configYaml: any = yaml.load(fs.readFileSync(configPath, "utf-8"));
