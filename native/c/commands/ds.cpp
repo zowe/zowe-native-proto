@@ -262,7 +262,6 @@ int handle_data_set_view(InvocationContext &context)
   bool has_pipe_path = context.has("pipe-path");
   string pipe_path = context.get<string>("pipe-path", "");
   const auto result = obj();
-  result->set("dataset", str(dsn));
 
   if (has_pipe_path && !pipe_path.empty())
   {
@@ -282,10 +281,7 @@ int handle_data_set_view(InvocationContext &context)
         {
           context.output_stream() << "etag: " << etag_stream.str() << endl;
         }
-        else
-        {
-          result->set("etag", str(etag_stream.str()));
-        }
+        result->set("etag", str(etag_stream.str()));
       }
     }
 
@@ -316,10 +312,7 @@ int handle_data_set_view(InvocationContext &context)
         context.output_stream() << "etag: " << etag_stream.str() << endl;
         context.output_stream() << "data: ";
       }
-      else
-      {
-        result->set("etag", str(etag_stream.str()));
-      }
+      result->set("etag", str(etag_stream.str()));
     }
 
     bool has_encoding = context.has("encoding");
@@ -333,14 +326,14 @@ int handle_data_set_view(InvocationContext &context)
     {
       context.output_stream() << response;
     }
-
-    context.set_object(result);
   }
 
   if (dds.size() > 0)
   {
     zut_free_dynalloc_dds(dds, &context.error_stream());
   }
+
+  context.set_object(result);
 
   return rc;
 }
@@ -611,7 +604,6 @@ int handle_data_set_write(InvocationContext &context)
     context.output_stream() << "Wrote data to '" << dsn << "'" << endl;
   }
 
-  result->set("dataset", str(dsn));
   result->set("etag", str(zds.etag));
   context.set_object(result);
 

@@ -15,14 +15,15 @@ import { Logger } from "@zowe/imperative";
 import { Base64Decode, Base64Encode } from "base64-stream";
 import type { Client, ClientChannel } from "ssh2";
 import type { CallbackInfo, CommandResponse, RpcNotification, RpcPromise, RpcRequest } from "./doc";
-import type { ReadDatasetResponse } from "./doc/rpc/ds";
-import type { ReadFileResponse } from "./doc/rpc/uss";
+import type { ReadDatasetRequest } from "./doc/rpc/ds";
+import type { ReadFileRequest } from "./doc/rpc/uss";
 import { ProgressTransform } from "./ProgressTransform";
 
+type StreamData = { stream: Stream; callbackInfo?: CallbackInfo; resourceName?: string };
 type StreamMode = "GET" | "PUT";
 
 export class RpcStreamManager {
-    private readonly mPendingStreamMap: Map<number, { stream: Stream; callbackInfo?: CallbackInfo }> = new Map();
+    private readonly mPendingStreamMap: Map<number, StreamData> = new Map();
 
     public constructor(private readonly mSshClient: Client) {}
 
@@ -35,17 +36,19 @@ export class RpcStreamManager {
         this.mPendingStreamMap.set(request.id, {
             stream: stream.on("keepAlive", () => timeoutId?.refresh()),
             callbackInfo,
+            resourceName: (request.params as ReadDatasetRequest).dsname ?? (request.params as ReadFileRequest).fspath,
         });
         request.params.stream = request.id;
     }
 
     public linkStreamToPromise(rpcPromise: RpcPromise, notif: RpcNotification, mode: StreamMode): void {
         const { reject, resolve } = rpcPromise;
+        const { resourceName } = this.mPendingStreamMap.get(notif.params.id)!;
         const streamPromise = mode === "PUT" ? this.uploadStream(notif.params) : this.downloadStream(notif.params);
         rpcPromise.resolve = async (response: CommandResponse) => {
-            const contentLen = await streamPromise;
+            const clientLen = await streamPromise;
             try {
-                this.expectContentLengthMatches(response, contentLen, mode);
+                this.expectContentLengthMatches(response, clientLen, mode, resourceName);
                 resolve(response);
             } catch (err) {
                 reject(err);
@@ -88,13 +91,14 @@ export class RpcStreamManager {
         return progressTransform.bytesProcessed;
     }
 
-    private expectContentLengthMatches(response: CommandResponse, clientLen: number, mode: StreamMode): void {
+    private expectContentLengthMatches(
+        response: CommandResponse,
+        clientLen: number,
+        mode: StreamMode,
+        resourceName?: string,
+    ): void {
         if ("contentLen" in response && response.contentLen != null && response.contentLen !== clientLen) {
-            const resourceName = (response as ReadDatasetResponse).dataset ?? (response as ReadFileResponse).fspath;
-            let errMsg = "Content length mismatch";
-            if (resourceName != null) {
-                errMsg += ` for ${resourceName}`;
-            }
+            const errMsg = `Content length mismatch${resourceName != null ? ` for ${resourceName}` : ""}`;
             const errDetails =
                 mode === "GET"
                     ? `server sent ${response.contentLen}, client received ${clientLen}`

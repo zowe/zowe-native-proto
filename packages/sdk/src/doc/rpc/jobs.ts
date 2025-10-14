@@ -123,14 +123,6 @@ export interface ReadSpoolResponse extends common.CommandResponse {
      */
     encoding?: string;
     /**
-     * Spool ID matching the returned spool contents
-     */
-    spoolId: number;
-    /**
-     * Job ID associated with the returned spool
-     */
-    jobId: string;
-    /**
      * Spool contents
      */
     data: B64String;

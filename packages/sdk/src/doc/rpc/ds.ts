@@ -127,10 +127,6 @@ export interface ReadDatasetResponse extends common.CommandResponse {
      */
     etag: string;
     /**
-     * Dataset name
-     */
-    dataset: string;
-    /**
      * Dataset contents (omitted if streaming)
      */
     data: B64String;
@@ -181,10 +177,6 @@ export interface WriteDatasetRequest extends common.CommandRequest<"writeDataset
 }
 
 export interface WriteDatasetResponse extends common.CommandResponse {
-    /**
-     * Dataset name
-     */
-    dataset: string;
     /**
      * Returned e-tag for the data set
      */

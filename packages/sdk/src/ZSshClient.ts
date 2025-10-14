@@ -118,7 +118,7 @@ export class ZSshClient extends RpcClientApi implements Disposable {
                     progressCallback && {
                         callback: progressCallback,
                         // If stream is a ReadStream use the size of the localFile in bytes
-                        // If stream is a WriteStream, set undefined because the size progress will be provided by a notification
+                        // If stream is a WriteStream, set undefined because the size will be provided by a notification
                         totalBytes: "contentLen" in request ? (request.contentLen as number) : undefined,
                     },
                 );

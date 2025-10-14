@@ -111,7 +111,6 @@ ZJSON_SCHEMA(ReadDatasetResponse,
     FIELD_REQUIRED(success, BOOL),
     FIELD_OPTIONAL(encoding, STRING),
     FIELD_REQUIRED(etag, STRING),
-    FIELD_REQUIRED(dataset, STRING),
     FIELD_REQUIRED(data, STRING),
     FIELD_OPTIONAL(contentLen, NUMBER)
 );
@@ -124,7 +123,6 @@ ZJSON_SCHEMA(RestoreDatasetResponse,
 struct WriteDatasetResponse {};
 ZJSON_SCHEMA(WriteDatasetResponse,
     FIELD_REQUIRED(success, BOOL),
-    FIELD_REQUIRED(dataset, STRING),
     FIELD_REQUIRED(etag, STRING),
     FIELD_OPTIONAL(contentLen, NUMBER)
 );
@@ -175,8 +173,6 @@ struct ReadSpoolResponse {};
 ZJSON_SCHEMA(ReadSpoolResponse,
     FIELD_REQUIRED(success, BOOL),
     FIELD_OPTIONAL(encoding, STRING),
-    FIELD_REQUIRED(spoolId, NUMBER),
-    FIELD_REQUIRED(jobId, STRING),
     FIELD_REQUIRED(data, STRING)
 );
 
@@ -240,7 +236,6 @@ ZJSON_SCHEMA(ReadFileResponse,
     FIELD_REQUIRED(success, BOOL),
     FIELD_OPTIONAL(encoding, STRING),
     FIELD_REQUIRED(etag, STRING),
-    FIELD_REQUIRED(fspath, STRING),
     FIELD_REQUIRED(data, STRING),
     FIELD_OPTIONAL(contentLen, NUMBER)
 );
@@ -249,7 +244,6 @@ struct WriteFileResponse {};
 ZJSON_SCHEMA(WriteFileResponse,
     FIELD_REQUIRED(success, BOOL),
     FIELD_REQUIRED(etag, STRING),
-    FIELD_REQUIRED(fspath, STRING),
     FIELD_REQUIRED(created, BOOL),
     FIELD_OPTIONAL(contentLen, NUMBER)
 );

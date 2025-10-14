@@ -153,10 +153,6 @@ export interface ReadFileResponse extends common.CommandResponse {
      */
     etag: string;
     /**
-     * Remote file path
-     */
-    fspath: string;
-    /**
      * File contents (omitted if streaming)
      */
     data: B64String;
@@ -202,10 +198,6 @@ export interface WriteFileResponse extends common.CommandResponse {
      * Returned e-tag for the file
      */
     etag: string;
-    /**
-     * Remote file path
-     */
-    fspath: string;
     /**
      * Whether new file was created
      */
