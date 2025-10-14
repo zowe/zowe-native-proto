@@ -235,15 +235,15 @@ export class ZSshClient extends RpcClientApi implements Disposable {
         return responses[responses.length - 1];
     }
 
-    protected handleNotification(notif: RpcNotification): void {
-        const streamPromise = this.mPromiseMap.get(notif.params?.id as number);
+    private handleNotification(notif: RpcNotification): void {
+        const rpcPromise = this.mPromiseMap.get(notif.params?.id as number);
         try {
             switch (notif.method) {
-                case "sendStream":
-                    this.mStreamMgr.linkStreamToPromise(streamPromise, notif, "r");
-                    break;
                 case "receiveStream":
-                    this.mStreamMgr.linkStreamToPromise(streamPromise, notif, "w");
+                    this.mStreamMgr.linkStreamToPromise(rpcPromise, notif, "GET");
+                    break;
+                case "sendStream":
+                    this.mStreamMgr.linkStreamToPromise(rpcPromise, notif, "PUT");
                     break;
                 default:
                     throw new Error(`unknown method ${notif.method}`);
@@ -254,7 +254,7 @@ export class ZSshClient extends RpcClientApi implements Disposable {
         }
     }
 
-    protected handleResponse(response: RpcResponse): void {
+    private handleResponse(response: RpcResponse): void {
         if (response.error != null) {
             Logger.getAppLogger().error(`Error for response ID: ${response.id}\n${JSON.stringify(response.error)}`);
             this.mPromiseMap.get(response.id).reject(

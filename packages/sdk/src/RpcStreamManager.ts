@@ -19,7 +19,7 @@ import type { ReadDatasetResponse } from "./doc/rpc/ds";
 import type { ReadFileResponse } from "./doc/rpc/uss";
 import { ProgressTransform } from "./ProgressTransform";
 
-type StreamMode = "r" | "w";
+type StreamMode = "GET" | "PUT";
 
 export class RpcStreamManager {
     private readonly mPendingStreamMap: Map<number, { stream: Stream; callbackInfo?: CallbackInfo }> = new Map();
@@ -41,7 +41,7 @@ export class RpcStreamManager {
 
     public linkStreamToPromise(rpcPromise: RpcPromise, notif: RpcNotification, mode: StreamMode): void {
         const { reject, resolve } = rpcPromise;
-        const streamPromise = mode === "r" ? this.uploadStream(notif.params) : this.downloadStream(notif.params);
+        const streamPromise = mode === "PUT" ? this.uploadStream(notif.params) : this.downloadStream(notif.params);
         rpcPromise.resolve = async (response: CommandResponse) => {
             const contentLen = await streamPromise;
             try {
@@ -95,9 +95,11 @@ export class RpcStreamManager {
             if (resourceName != null) {
                 errMsg += ` for ${resourceName}`;
             }
-            const expectedLen = mode === "r" ? clientLen : response.contentLen;
-            const actualLen = mode === "r" ? response.contentLen : clientLen;
-            throw new Error(Logger.getAppLogger().error("%s: expected %d, got %d", errMsg, expectedLen, actualLen));
+            const errDetails =
+                mode === "GET"
+                    ? `server sent ${response.contentLen}, client received ${clientLen}`
+                    : `client sent ${clientLen}, server received ${response.contentLen}`;
+            throw new Error(Logger.getAppLogger().error(`${errMsg}: ${errDetails}`));
         }
     }
 }
