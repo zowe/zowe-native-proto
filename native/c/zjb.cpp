@@ -9,22 +9,16 @@
  *
  */
 
-#include <iostream>
 #include <sstream>
 #include <string>
-#include <fstream>
 #include <cstring>
 #include <vector>
 #include <iomanip>
 #include <stdio.h>
-#include <istream>
-#include <ctype.h>
-#include <algorithm>
 #include <unistd.h>
 #include "iazbtokp.h"
 #include "iefzb4d0.h"
 #include "iefzb4d2.h"
-#include "zmetal.h"
 #include "zds.hpp"
 #include "zjb.hpp"
 #include "zjbm.h"
@@ -623,6 +617,14 @@ int zjb_list_by_owner(ZJB *zjb, string owner_name, string prefix_name, vector<ZJ
 
   ZUTMFR64(job_info);
 
+  return rc;
+}
+
+int zjb_list_proclib(ZJB *zjb, vector<string> &proclib)
+{
+  int rc = 0;
+  ZJB_JOB_INFO *PTR64 job_info = nullptr;
+  int entries = 0;
   return rc;
 }
 
