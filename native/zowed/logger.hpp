@@ -116,6 +116,24 @@ private:
     }
   }
 
+  /**
+   * Common logging implementation
+   */
+  static void log_message(const char *level, const char *format, va_list args)
+  {
+    std::mutex &log_mutex = get_log_mutex();
+    std::ofstream &log_file = get_log_file();
+    std::lock_guard<std::mutex> lock(log_mutex);
+
+    char buffer[4096];
+    vsnprintf(buffer, sizeof(buffer), format, args);
+
+    log_file << get_current_timestamp() << " [" << level << "] " << buffer << std::endl;
+    log_file.flush();
+
+    check_and_truncate_log_file();
+  }
+
 public:
   /**
    * Initialize the logger with specified options
@@ -209,20 +227,46 @@ public:
       return;
     }
 
-    std::mutex &log_mutex = get_log_mutex();
-    std::ofstream &log_file = get_log_file();
-    std::lock_guard<std::mutex> lock(log_mutex);
-
-    char buffer[4096];
     va_list args;
     va_start(args, format);
-    vsnprintf(buffer, sizeof(buffer), format, args);
+    log_message("DEBUG", format, args);
     va_end(args);
+  }
 
-    log_file << get_current_timestamp() << " [DEBUG] " << buffer << std::endl;
-    log_file.flush();
+  /**
+   * Log an info message
+   */
+  static void log_info(const char *format, ...)
+  {
+    bool &initialized = get_initialized();
 
-    check_and_truncate_log_file();
+    if (!initialized)
+    {
+      return;
+    }
+
+    va_list args;
+    va_start(args, format);
+    log_message("INFO", format, args);
+    va_end(args);
+  }
+
+  /**
+   * Log a warning message
+   */
+  static void log_warn(const char *format, ...)
+  {
+    bool &initialized = get_initialized();
+
+    if (!initialized)
+    {
+      return;
+    }
+
+    va_list args;
+    va_start(args, format);
+    log_message("WARN", format, args);
+    va_end(args);
   }
 
   /**
@@ -237,20 +281,10 @@ public:
       return;
     }
 
-    std::mutex &log_mutex = get_log_mutex();
-    std::ofstream &log_file = get_log_file();
-    std::lock_guard<std::mutex> lock(log_mutex);
-
-    char buffer[4096];
     va_list args;
     va_start(args, format);
-    vsnprintf(buffer, sizeof(buffer), format, args);
+    log_message("ERROR", format, args);
     va_end(args);
-
-    log_file << get_current_timestamp() << " [ERROR] " << buffer << std::endl;
-    log_file.flush();
-
-    check_and_truncate_log_file();
   }
 
   /**
@@ -268,45 +302,16 @@ public:
 
     if (initialized)
     {
-      std::mutex &log_mutex = get_log_mutex();
-      std::ofstream &log_file = get_log_file();
-      std::lock_guard<std::mutex> lock(log_mutex);
-      log_file << get_current_timestamp() << " [FATAL] " << buffer << std::endl;
-      log_file.flush();
+      va_list args_copy;
+      va_start(args_copy, format);
+      log_message("FATAL", format, args_copy);
+      va_end(args_copy);
     }
 
     // Also print to stderr
     std::cerr << "FATAL: " << buffer << std::endl;
 
     exit(1);
-  }
-
-  /**
-   * Log an info message
-   */
-  static void log_info(const char *format, ...)
-  {
-    bool &initialized = get_initialized();
-
-    if (!initialized)
-    {
-      return;
-    }
-
-    std::mutex &log_mutex = get_log_mutex();
-    std::ofstream &log_file = get_log_file();
-    std::lock_guard<std::mutex> lock(log_mutex);
-
-    char buffer[4096];
-    va_list args;
-    va_start(args, format);
-    vsnprintf(buffer, sizeof(buffer), format, args);
-    va_end(args);
-
-    log_file << get_current_timestamp() << " [INFO] " << buffer << std::endl;
-    log_file.flush();
-
-    check_and_truncate_log_file();
   }
 
   /**
@@ -331,8 +336,9 @@ public:
 
 // Convenience macros for easier usage
 #define LOG_DEBUG(...) zowed::Logger::log_debug(__VA_ARGS__)
+#define LOG_INFO(...) zowed::Logger::log_info(__VA_ARGS__)
+#define LOG_WARN(...) zowed::Logger::log_warn(__VA_ARGS__)
 #define LOG_ERROR(...) zowed::Logger::log_error(__VA_ARGS__)
 #define LOG_FATAL(...) zowed::Logger::log_fatal(__VA_ARGS__)
-#define LOG_INFO(...) zowed::Logger::log_info(__VA_ARGS__)
 
 #endif // LOGGER_HPP
