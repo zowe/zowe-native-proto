@@ -75,7 +75,7 @@ private:
    */
   static std::string get_current_timestamp()
   {
-    time_t now = time(nullptr);
+    const auto now = time(nullptr);
     struct tm timeinfo;
     localtime_r(&now, &timeinfo);
 
@@ -89,7 +89,7 @@ private:
    */
   static void check_and_truncate_log_file()
   {
-    std::string &log_file_path = get_log_file_path();
+    const auto &log_file_path = get_log_file_path();
     std::ofstream &log_file = get_log_file();
 
     if (log_file_path.empty() || !log_file.is_open())
@@ -123,7 +123,7 @@ private:
    */
   static void log_message(const char *level, const char *format, va_list args, bool check_verbose = false)
   {
-    bool &initialized = get_initialized();
+    const auto initialized = get_initialized();
     if (!initialized)
       return;
 
@@ -132,7 +132,7 @@ private:
 
     std::mutex &log_mutex = get_log_mutex();
     std::ofstream &log_file = get_log_file();
-    std::lock_guard<std::mutex> lock(log_mutex);
+    const std::lock_guard<std::mutex> lock(log_mutex);
 
     char buffer[LOG_BUFFER_SIZE];
     vsnprintf(buffer, sizeof(buffer), format, args);
@@ -157,12 +157,12 @@ public:
     bool &initialized = get_initialized();
     std::string &log_file_path = get_log_file_path();
 
-    std::lock_guard<std::mutex> lock(log_mutex);
+    const std::lock_guard<std::mutex> lock(log_mutex);
 
     verbose_logging = verbose;
 
     // Create logs directory
-    std::string logs_dir = std::string(exec_dir) + "/logs";
+    const std::string logs_dir = std::string(exec_dir) + "/logs";
 
     if (mkdir(logs_dir.c_str(), 0700) != 0 && errno != EEXIST)
     {
@@ -174,7 +174,7 @@ public:
     log_file_path = logs_dir + "/zowed.log";
 
     // Open log file
-    std::ios_base::openmode mode = std::ios::out;
+    auto mode = std::ios::out;
     if (truncate)
     {
       mode |= std::ios::trunc;
@@ -280,7 +280,7 @@ public:
 
     vsnprintf(buffer, sizeof(buffer), format, args);
 
-    bool &initialized = get_initialized();
+    const auto initialized = get_initialized();
 
     if (initialized)
     {
@@ -305,7 +305,7 @@ public:
     std::ofstream &log_file = get_log_file();
     bool &initialized = get_initialized();
 
-    std::lock_guard<std::mutex> lock(log_mutex);
+    const std::lock_guard<std::mutex> lock(log_mutex);
     if (log_file.is_open())
     {
       log_file.close();
