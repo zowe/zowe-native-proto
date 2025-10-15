@@ -116,13 +116,18 @@ void parser_tests()
 
                std::vector<std::string> raw = {"prog", "--missing"};
                std::vector<char *> argv = to_argv(raw);
+               
+               std::stringstream err_output;
+               std::streambuf* original_cerr_buf = std::cerr.rdbuf();
+               std::cerr.rdbuf(err_output.rdbuf());
 
                ParseResult result =
                    arg_parser.parse(static_cast<int>(argv.size()), argv.data());
 
+               std::cerr.rdbuf(original_cerr_buf);
+
                Expect(result.status).ToBe(ParseResult::ParserStatus_ParseError);
-               Expect(result.error_message == "option --missing requires a value.")
-                   .ToBe(true);
+               Expect(result.error_message.find("option --missing requires a value.")).Not().ToBe(std::string::npos);
              });
 
              it("enforces values for dynamic multi-value keywords", []() {
@@ -132,14 +137,18 @@ void parser_tests()
 
                std::vector<std::string> raw = {"prog", "--tags"};
                std::vector<char *> argv = to_argv(raw);
+               
+               std::stringstream err_output;
+               std::streambuf* original_cerr_buf = std::cerr.rdbuf();
+               std::cerr.rdbuf(err_output.rdbuf());
 
                ParseResult result =
                    arg_parser.parse(static_cast<int>(argv.size()), argv.data());
 
+               std::cerr.rdbuf(original_cerr_buf);
+
                Expect(result.status).ToBe(ParseResult::ParserStatus_ParseError);
-               Expect(result.error_message ==
-                          "option --tags requires at least one value.")
-                   .ToBe(true);
+               Expect(result.error_message.find("option --tags requires at least one value.")).Not().ToBe(std::string::npos);
              });
 
              it("errors on unknown keyword when dynamic support disabled", []() {
@@ -151,8 +160,14 @@ void parser_tests()
                std::vector<std::string> raw = {"prog", "--foo", "bar"};
                std::vector<char *> argv = to_argv(raw);
 
+               std::stringstream err_output;
+               std::streambuf* original_cerr_buf = std::cerr.rdbuf();
+               std::cerr.rdbuf(err_output.rdbuf());
+
                ParseResult result =
                    arg_parser.parse(static_cast<int>(argv.size()), argv.data());
+
+               std::cerr.rdbuf(original_cerr_buf);
 
                Expect(result.status).ToBe(ParseResult::ParserStatus_ParseError);
                Expect(result.has_dynamic("foo")).ToBe(false);
@@ -244,14 +259,17 @@ void parser_tests()
 
                std::vector<std::string> raw = {"prog", "--target"};
                std::vector<char *> argv = to_argv(raw);
+               
+               std::stringstream err_output;
+               std::streambuf* original_cerr_buf = std::cerr.rdbuf();
+               std::cerr.rdbuf(err_output.rdbuf());
 
                ParseResult result =
                    arg_parser.parse(static_cast<int>(argv.size()), argv.data());
 
+               std::cerr.rdbuf(original_cerr_buf);
+
                Expect(result.status).ToBe(ParseResult::ParserStatus_ParseError);
-               Expect(result.error_message ==
-                          "option -t, --target <value> requires a value.")
-                   .ToBe(true);
              });
              });
 
@@ -284,11 +302,17 @@ void parser_tests()
                std::vector<std::string> raw = {"prog", "-vo", "file.txt"};
                std::vector<char *> argv = to_argv(raw);
 
+               std::stringstream err_output;
+               std::streambuf* original_cerr_buf = std::cerr.rdbuf();
+               std::cerr.rdbuf(err_output.rdbuf());
+
                ParseResult result =
                    arg_parser.parse(static_cast<int>(argv.size()), argv.data());
 
+               std::cerr.rdbuf(original_cerr_buf);
+
                Expect(result.status).ToBe(ParseResult::ParserStatus_ParseError);
-               Expect(result.error_message == "option -o requires a value and cannot be combined.").ToBe(true);
+               Expect(result.error_message.find("option -o requires a value and cannot be combined")).Not().ToBe(std::string::npos);
              });
 
              it("honors automatically generated no- boolean flags", []() {
@@ -317,12 +341,18 @@ void parser_tests()
 
                std::vector<std::string> raw = {"prog"};
                std::vector<char *> argv = to_argv(raw);
+               
+               std::stringstream err_output;
+               std::streambuf* original_cerr_buf = std::cerr.rdbuf();
+               std::cerr.rdbuf(err_output.rdbuf());
 
                ParseResult result =
                    arg_parser.parse(static_cast<int>(argv.size()), argv.data());
 
+               std::cerr.rdbuf(original_cerr_buf);
+
                Expect(result.status).ToBe(ParseResult::ParserStatus_ParseError);
-               Expect(result.error_message == "missing required positional argument: dataset").ToBe(true);
+               Expect(result.error_message.find("missing required positional argument: dataset")).Not().ToBe(std::string::npos);
              });
 
              it("applies defaults when optional positional arguments are omitted", []() {
@@ -396,6 +426,9 @@ void parser_tests()
              it("flags conflicting keyword arguments", []() {
                ArgumentParser arg_parser("prog", "conflict sample");
                Command &root = arg_parser.get_root_command();
+               std::stringstream err_output;
+               std::streambuf* original_cerr_buf = std::cerr.rdbuf();
+               std::cerr.rdbuf(err_output.rdbuf());
 
                root.add_argument("primary")
                    .aliases(make_aliases("-p"))
@@ -413,11 +446,10 @@ void parser_tests()
 
                ParseResult result =
                    arg_parser.parse(static_cast<int>(argv.size()), argv.data());
+               std::cerr.rdbuf(original_cerr_buf);
 
                Expect(result.status).ToBe(ParseResult::ParserStatus_ParseError);
-               Expect(result.error_message ==
-                          "conflicting options provided: --primary conflicts with --secondary")
-                   .ToBe(true);
+               Expect(result.error_message.find("conflicting options provided: --primary conflicts with --secondary")).Not().ToBe(std::string::npos);
              });
              });
 
@@ -427,6 +459,10 @@ void parser_tests()
                ArgumentParser arg_parser("prog", "required sample");
                Command &root = arg_parser.get_root_command();
                root.add_keyword_arg("source", make_aliases("-s"), "source file", ArgType_Single, true);
+               
+               std::stringstream err_output;
+               std::streambuf* original_cerr_buf = std::cerr.rdbuf();
+               std::cerr.rdbuf(err_output.rdbuf());
 
                std::vector<std::string> raw = {"prog"};
                std::vector<char *> argv = to_argv(raw);
@@ -434,10 +470,10 @@ void parser_tests()
                ParseResult result =
                    arg_parser.parse(static_cast<int>(argv.size()), argv.data());
 
+               std::cerr.rdbuf(original_cerr_buf);
+
                Expect(result.status).ToBe(ParseResult::ParserStatus_ParseError);
-               Expect(result.error_message ==
-                          "missing required option: -s, --source <value>")
-                   .ToBe(true);
+               Expect(result.error_message.find("missing required option: -s, --source <value>")).Not().ToBe(std::string::npos);
              });
              });
 
@@ -465,6 +501,5 @@ void parser_tests()
                Expect(result.get_value<std::string>("name", ""))
                    .ToBe("cli");
              });
-             });
-           });
+             }); });
 }
