@@ -56,6 +56,20 @@ void zut_tests()
                            });
                       });
 
+             describe("zut_search",
+                      []() -> void
+                      {
+                        it("should search for a string",
+                           []() -> void
+                           {
+                             ZDIAG diag = {0};
+                             string input = "Hello World";
+                             string result = zut_search(input, diag);
+                             expect(result).ToBe(input);
+                             expect(diag.e_msg_len).ToBe(0);
+                           });
+                      });
+
              describe("zut_encode",
                       []() -> void
                       {
