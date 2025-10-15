@@ -35,6 +35,8 @@ namespace zowed
 class Logger
 {
 private:
+  // Buffer size for log messages
+  static constexpr size_t LOG_BUFFER_SIZE = 4096;
   // Maximum log file size before truncation (10MB)
   static constexpr size_t MAX_LOG_SIZE = 10 * 1024 * 1024;
 
@@ -119,17 +121,23 @@ private:
   /**
    * Common logging implementation
    */
-  static void log_message(const char *level, const char *format, va_list args)
+  static void log_message(const char *level, const char *format, va_list args, bool check_verbose = false)
   {
+    bool &initialized = get_initialized();
+    if (!initialized)
+      return;
+
+    if (check_verbose && !get_verbose_logging())
+      return;
+
     std::mutex &log_mutex = get_log_mutex();
     std::ofstream &log_file = get_log_file();
     std::lock_guard<std::mutex> lock(log_mutex);
 
-    char buffer[4096];
+    char buffer[LOG_BUFFER_SIZE];
     vsnprintf(buffer, sizeof(buffer), format, args);
 
     log_file << get_current_timestamp() << " [" << level << "] " << buffer << std::endl;
-    log_file.flush();
 
     check_and_truncate_log_file();
   }
@@ -219,17 +227,9 @@ public:
    */
   static void log_debug(const char *format, ...)
   {
-    bool &verbose_logging = get_verbose_logging();
-    bool &initialized = get_initialized();
-
-    if (!verbose_logging || !initialized)
-    {
-      return;
-    }
-
     va_list args;
     va_start(args, format);
-    log_message("DEBUG", format, args);
+    log_message("DEBUG", format, args, true);
     va_end(args);
   }
 
@@ -238,13 +238,6 @@ public:
    */
   static void log_info(const char *format, ...)
   {
-    bool &initialized = get_initialized();
-
-    if (!initialized)
-    {
-      return;
-    }
-
     va_list args;
     va_start(args, format);
     log_message("INFO", format, args);
@@ -256,13 +249,6 @@ public:
    */
   static void log_warn(const char *format, ...)
   {
-    bool &initialized = get_initialized();
-
-    if (!initialized)
-    {
-      return;
-    }
-
     va_list args;
     va_start(args, format);
     log_message("WARN", format, args);
@@ -274,13 +260,6 @@ public:
    */
   static void log_error(const char *format, ...)
   {
-    bool &initialized = get_initialized();
-
-    if (!initialized)
-    {
-      return;
-    }
-
     va_list args;
     va_start(args, format);
     log_message("ERROR", format, args);
@@ -292,21 +271,24 @@ public:
    */
   static void log_fatal(const char *format, ...)
   {
-    char buffer[4096];
+    char buffer[LOG_BUFFER_SIZE];
     va_list args;
     va_start(args, format);
+
+    va_list args_copy;
+    va_copy(args_copy, args);
+
     vsnprintf(buffer, sizeof(buffer), format, args);
-    va_end(args);
 
     bool &initialized = get_initialized();
 
     if (initialized)
     {
-      va_list args_copy;
-      va_start(args_copy, format);
       log_message("FATAL", format, args_copy);
-      va_end(args_copy);
     }
+
+    va_end(args_copy);
+    va_end(args);
 
     // Also print to stderr
     std::cerr << "FATAL: " << buffer << std::endl;
