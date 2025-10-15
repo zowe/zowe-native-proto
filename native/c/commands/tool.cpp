@@ -385,7 +385,7 @@ void register_commands(parser::Command &root_command)
 
   // Dynalloc subcommand
   auto tool_dynalloc_cmd = command_ptr(new Command("bpxwdy2", "dynalloc command"));
-  tool_dynalloc_cmd->add_positional_arg("parm", "dynalloc parm string", ArgType_Single, true);
+  tool_dynalloc_cmd->add_positional_arg("parm", "dynalloc parm string", ArgType_Single, false);
   tool_dynalloc_cmd->set_handler(handle_tool_dynalloc);
   tool_cmd->add_command(tool_dynalloc_cmd);
 
@@ -401,10 +401,12 @@ void register_commands(parser::Command &root_command)
   tool_cmd->add_command(tool_list_parmlib_cmd);
 
   // Search subcommand
-  auto tool_search_cmd = command_ptr(new Command("search", "search members for string"));
+  auto tool_search_cmd = command_ptr(new Command("search", "search members for string with parms, e.g. --parms anyc"));
   tool_search_cmd->add_positional_arg(DSN);
   tool_search_cmd->add_positional_arg("string", "string to search for", ArgType_Single, true);
-  tool_search_cmd->add_argument("parms");
+  tool_search_cmd->add_keyword_arg("parms",
+                                   make_aliases("--parms", "--p"),
+                                   "parms to pass to ISRSUPC", ArgType_Single, false);
   tool_search_cmd->set_handler(handle_tool_search);
   tool_cmd->add_command(tool_search_cmd);
 
