@@ -21,7 +21,8 @@ namespace console
 int handle_console_issue(plugin::InvocationContext &context)
 {
   int rc = 0;
-  ZCN zcn = {0};
+  ZcnSession session;
+  ZCN &zcn = session.control_block();
 
   const string console_name = context.get<std::string>("console-name", "zowex");
   const long long timeout = context.get<long long>("timeout", 0);
@@ -34,7 +35,7 @@ int handle_console_issue(plugin::InvocationContext &context)
     zcn.timeout = timeout;
   }
 
-  rc = zcn_activate(&zcn, console_name);
+  rc = session.activate(console_name);
   if (0 != rc)
   {
     context.error_stream() << "Error: could not activate console: '" << console_name << "' rc: '" << rc << "'" << endl;
@@ -42,7 +43,7 @@ int handle_console_issue(plugin::InvocationContext &context)
     return RTNCD_FAILURE;
   }
 
-  rc = zcn_put(&zcn, command);
+  rc = session.put(command);
   if (0 != rc)
   {
     context.error_stream() << "Error: could not write to console: '" << console_name << "' rc: '" << rc << "'" << endl;
@@ -53,7 +54,7 @@ int handle_console_issue(plugin::InvocationContext &context)
   if (wait)
   {
     string response = "";
-    rc = zcn_get(&zcn, response);
+    rc = session.get(response);
     if (0 != rc)
     {
       context.error_stream() << "Error: could not get from console: '" << console_name << "' rc: '" << rc << "'" << endl;
@@ -63,7 +64,7 @@ int handle_console_issue(plugin::InvocationContext &context)
     context.output_stream() << response << endl;
   }
 
-  rc = zcn_deactivate(&zcn);
+  rc = session.deactivate();
   if (0 != rc)
   {
     context.error_stream() << "Error: could not deactivate console: '" << console_name << "' rc: '" << rc << "'" << endl;
