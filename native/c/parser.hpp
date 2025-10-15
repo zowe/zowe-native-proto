@@ -1725,26 +1725,16 @@ Command::parse(const std::vector<lexer::Token> &tokens,
     }
     else
     {
-      // Only treat as unexpected if not a string or identifier (quoted or
-      // unquoted)
-      if (token.get_kind() != lexer::TokId &&
-          token.get_kind() != lexer::TokStrLit)
-      {
-        result.status = ParseResult::ParserStatus_ParseError;
-        std::stringstream ss;
-        ss << "unexpected argument: ";
-        token.print(ss);
-        result.error_message = ss.str();
-        // print error and help for this command to stderr
-        std::cerr << "error: " << result.error_message << "\n\n";
-        generate_help(std::cerr, command_path_prefix);
-        result.exit_code = 1;
-        return result;
-      }
-      // Otherwise, forcibly advance the token and positional argument index to
-      // avoid infinite loop
-      current_token_index++;
-      current_positional_arg_index++;
+      result.status = ParseResult::ParserStatus_ParseError;
+      std::stringstream ss;
+      ss << "unexpected argument: ";
+      token.print(ss);
+      result.error_message = ss.str();
+      // print error and help for this command to stderr
+      std::cerr << "error: " << result.error_message << "\n\n";
+      generate_help(std::cerr, command_path_prefix);
+      result.exit_code = 1;
+      return result;
     }
   }
 
