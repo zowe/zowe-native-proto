@@ -191,13 +191,23 @@ int ZUTSYMBP(SYMBOL_DATA *data)
 typedef int (*ISRSUPC)() ATTRIBUTE(amode31);
 #pragma prolog(ZUTSRCH, " ZWEPROLG NEWDSA=(YES,4) ")
 #pragma epilog(ZUTSRCH, " ZWEEPILG ")
-int ZUTSRCH()
+
+typedef struct
+{
+  short len;
+  char parms[100];
+} ISRSUPC_PARMS;
+
+int ZUTSRCH(const char *parms)
 {
   int rc = 0;
   ZUTAOFF();
 
+  ISRSUPC_PARMS p = {0};
+  p.len = sprintf(p.parms, "%s", parms);
+
   ISRSUPC search = (ISRSUPC)load_module31("ISRSUPC");
-  rc = search();
+  rc = search(&p);
   delete_module("ISRSUPC");
 
   return rc;
@@ -277,7 +287,7 @@ int ZUTMLPLB(ZDIAG *diag, int *num_dsns, PARMLIB_DSNS *dsns)
 
   rc = zutm1lpl(&diag31, &num_dsns31, &dsns31);
 
-    memcpy(dsns->dsn, &dsns31.dsn, num_dsns31 * sizeof(dsns31.dsn[0]));
+  memcpy(dsns->dsn, &dsns31.dsn, num_dsns31 * sizeof(dsns31.dsn[0]));
 
   memcpy(diag, &diag31, sizeof(ZDIAG));
   *num_dsns = num_dsns31;

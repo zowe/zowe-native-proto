@@ -142,38 +142,8 @@ int handle_tool_search(InvocationContext &context)
   int rc = 0;
 
   string pattern = context.get<std::string>("string", "");
-  string warn = context.get<std::string>("warn", "");
-  long long max_entries = context.get<long long>("max-entries", 0);
+  string parms = context.get<std::string>("parms", "");
   string dsn = context.get<std::string>("dsn", "");
-
-  ZDS zds = {0};
-  bool results_truncated = false;
-
-  if (max_entries > 0)
-  {
-    zds.max_entries = max_entries;
-  }
-
-  // List members in a data set
-  vector<ZDSMem> members;
-  rc = zds_list_members(&zds, dsn, members);
-
-  // Note if results are truncated
-  if (RTNCD_WARNING == rc)
-  {
-    if (ZDS_RSNCD_MAXED_ENTRIES_REACHED == zds.diag.detail_rc)
-    {
-      results_truncated = true;
-    }
-  }
-
-  // Note failure if we can't list
-  if (RTNCD_SUCCESS != rc && RTNCD_WARNING != rc)
-  {
-    context.error_stream() << "Error: could not read data set: '" << dsn << "' rc: '" << rc << "'" << endl;
-    context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
-    return RTNCD_FAILURE;
-  }
 
   // Perform dynalloc
   vector<string> dds;
@@ -191,12 +161,8 @@ int handle_tool_search(InvocationContext &context)
   // Build super c selection criteria
   string data = " SRCHFOR '" + pattern + "'\n";
 
-  for (vector<ZDSMem>::iterator it = members.begin(); it != members.end(); ++it)
-  {
-    data += " SELECT " + it->name + "\n";
-  }
-
   // Write control statements
+  ZDS zds = {0};
   zds_write_to_dd(&zds, "sysin", data);
   if (0 != rc)
   {
@@ -205,8 +171,10 @@ int handle_tool_search(InvocationContext &context)
     return RTNCD_FAILURE;
   }
 
+  transform(parms.begin(), parms.end(), parms.begin(), ::toupper);
+
   // Perform search
-  rc = zut_search("parms are unused for now but can be passed to super c, e.g. ANYC (any case)");
+  rc = zut_search(parms);
   if (RTNCD_SUCCESS != rc &&
       RTNCD_WARNING != rc &&
       ZUT_RTNCD_SEARCH_SUCCESS != rc &&
@@ -225,14 +193,6 @@ int handle_tool_search(InvocationContext &context)
     return RTNCD_FAILURE;
   }
   context.output_stream() << output << endl;
-
-  if (results_truncated)
-  {
-    if (warn == "true")
-    {
-      context.error_stream() << "Warning: results truncated" << endl;
-    }
-  }
 
   // Free dynalloc dds
   zut_free_dynalloc_dds(dds, &context.error_stream());
@@ -425,7 +385,7 @@ void register_commands(parser::Command &root_command)
 
   // Dynalloc subcommand
   auto tool_dynalloc_cmd = command_ptr(new Command("bpxwdy2", "dynalloc command"));
-  tool_dynalloc_cmd->add_positional_arg("parm", "dynalloc parm string", ArgType_Single, true);
+  tool_dynalloc_cmd->add_positional_arg("parm", "dynalloc parm string", ArgType_Single, false);
   tool_dynalloc_cmd->set_handler(handle_tool_dynalloc);
   tool_cmd->add_command(tool_dynalloc_cmd);
 
@@ -441,11 +401,12 @@ void register_commands(parser::Command &root_command)
   tool_cmd->add_command(tool_list_parmlib_cmd);
 
   // Search subcommand
-  auto tool_search_cmd = command_ptr(new Command("search", "search members for string"));
+  auto tool_search_cmd = command_ptr(new Command("search", "search members for string with parms, e.g. --parms anyc"));
   tool_search_cmd->add_positional_arg(DSN);
   tool_search_cmd->add_positional_arg("string", "string to search for", ArgType_Single, true);
-  tool_search_cmd->add_keyword_arg(MAX_ENTRIES);
-  tool_search_cmd->add_keyword_arg(WARN);
+  tool_search_cmd->add_keyword_arg("parms",
+                                   make_aliases("--parms", "--p"),
+                                   "parms to pass to ISRSUPC", ArgType_Single, false);
   tool_search_cmd->set_handler(handle_tool_search);
   tool_cmd->add_command(tool_search_cmd);
 

@@ -54,7 +54,7 @@ extern "C"
   int ZUTWDYN(BPXWDYN_PARM *, BPXWDYN_RESPONSE *);
   int ZUTEDSCT();
   int ZUTSYMBP(SYMBOL_DATA *);
-  int ZUTSRCH();
+  int ZUTSRCH(const char *);
   int ZUTRUN(const char *);
   void ZUTDBGMG(const char *);
   unsigned char ZUTMGKEY();

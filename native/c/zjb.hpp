@@ -66,6 +66,15 @@ extern "C"
 int zjb_list_by_owner(ZJB *zjb, std::string owner_name, std::string prefix_name, std::vector<ZJob> &jobs);
 
 /**
+ * @brief Return a list of proclib for a job
+ *
+ * @param zjb job returned attributes and error information
+ * @param proclib populated list returned containing proclib names
+ * @return int 0 for success; non zero otherwise
+ */
+int zjb_list_proclib(ZJB *zjb, std::vector<std::string> &proclib);
+
+/**
  * @brief Return a job status struct from input jobid
  *
  * @param zjb job returned attributes and error information

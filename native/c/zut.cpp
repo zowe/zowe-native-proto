@@ -27,7 +27,7 @@ using namespace std;
 
 int zut_search(string parms)
 {
-  return ZUTSRCH();
+  return ZUTSRCH(parms.c_str());
 }
 
 int zut_run(string program)

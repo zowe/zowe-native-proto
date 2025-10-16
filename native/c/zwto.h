@@ -121,6 +121,7 @@ static int wto(WTO_BUF *buf)
     wto(&buf);                                          \
   }
 
+// example usage: zut_dump_storage_common("jprhdr", jprhdr, sizeof(JPRHDR), 16, 0, zut_print_debug);
 static void zut_print_debug(const char *fmt)
 {
   zwto_debug(fmt);

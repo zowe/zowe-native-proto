@@ -468,10 +468,16 @@ async function chdsect(connection: Client) {
                 path.resolve(__dirname, `${localDeployDir}/asmchdr/${args[1]}`),
                 `${deployDirs.asmchdrDir}/${args[1]}`,
             );
-            const response = await runCommandInShell(
-                connection,
-                `cd ${deployDirs.asmchdrDir} && make build-${args[1]} 2>&1 \n`,
-            );
+            let response = "";
+            try {
+                response = await runCommandInShell(
+                    connection,
+                    `cd ${deployDirs.asmchdrDir} && make build-${args[1]} 2>&1 \n`,
+                );
+            } catch (err) {
+                console.log("Chdsect err");
+                reject(err);
+            }
             console.log(response);
             console.log("Chdsect complete!");
 
