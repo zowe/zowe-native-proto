@@ -396,7 +396,7 @@ public:
   template <typename Callable,
             typename = typename std::enable_if<
                 std::is_same<void, decltype(std::declval<Callable>()())>::value>::type>
-  void run_test(std::string description, Callable test, TEST_OPTIONS &opts)
+  void run_test(const std::string &description, Callable test, TEST_OPTIONS &opts)
   {
     TEST_CASE tc = {0};
     tc.description = description;
@@ -749,7 +749,7 @@ typedef void (*cb)();
 template <typename Callable,
           typename = typename std::enable_if<
               std::is_same<void, decltype(std::declval<Callable>()())>::value>::type>
-void describe(std::string description, Callable suite)
+void describe(const std::string &description, Callable suite)
 {
   Globals &g = Globals::get_instance();
   TEST_SUITE ts;
@@ -767,7 +767,25 @@ void describe(std::string description, Callable suite)
 template <typename Callable,
           typename = typename std::enable_if<
               std::is_same<void, decltype(std::declval<Callable>()())>::value>::type>
-void it(std::string description, Callable test)
+void xit(const std::string &description, Callable)
+{
+  Globals &g = Globals::get_instance();
+  std::cout << get_indent(g.get_nesting()) << "/ SKIP " << description << std::endl;
+}
+
+template <typename Callable,
+          typename = typename std::enable_if<
+              std::is_same<void, decltype(std::declval<Callable>()())>::value>::type>
+void xdescribe(const std::string &description, Callable)
+{
+  Globals &g = Globals::get_instance();
+  std::cout << get_indent(g.get_nesting()) << "/ SKIP " << description << std::endl;
+}
+
+template <typename Callable,
+          typename = typename std::enable_if<
+              std::is_same<void, decltype(std::declval<Callable>()())>::value>::type>
+void it(const std::string &description, Callable test)
 {
   TEST_OPTIONS opts = {0};
   it(description, test, opts);
@@ -776,7 +794,7 @@ void it(std::string description, Callable test)
 template <typename Callable,
           typename = typename std::enable_if<
               std::is_same<void, decltype(std::declval<Callable>()())>::value>::type>
-void it(std::string description, Callable test, TEST_OPTIONS &opts)
+void it(const std::string &description, Callable test, TEST_OPTIONS &opts)
 {
   Globals::get_instance().run_test(description, test, opts);
 }

@@ -12,6 +12,11 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - `c`: Organized command handlers into separate source files and namespaces in the `commands` folder. Reduced size of main entrypoint function by moving command registration to a `register_commands` function contained in each namespace. [#409](https://github.com/zowe/zowe-native-proto/issues/409)
 - `native`: Added a `--depth` option to the `zowex uss list` command for listing USS directories recursively. [#575](https://github.com/zowe/zowe-native-proto/pull/575)
 - `native`: Added `zowex job list-proclib` to list proclib concatenation.
+- `c`: Fixed issue where a directory handle was leaked when running `chmod`, `chown`, `chtag` or `delete` USS commands. [#577](https://github.com/zowe/zowe-native-proto/issues/577)
+- `c`: Fixed issue where a file handle was leaked if the `fldata` function call failed when listing data set members. [#577](https://github.com/zowe/zowe-native-proto/issues/577)
+- `c`: Fixed issue where a file handle was leaked if the `fldata` function call failed in the `handle_data_set_compress` command handler. [#577](https://github.com/zowe/zowe-native-proto/issues/577)
+- `c`: Fixed issue in the `zut_substitute_symbol` function where passing patterns with a length greater than the input buffer would cause a buffer overflow. [#577](https://github.com/zowe/zowe-native-proto/issues/577)
+- `c`: Fixed undefined behavior in the `zut_bpxwdyn` function by verifying that the allocated 31-bit region is valid before writing to it. [#577](https://github.com/zowe/zowe-native-proto/issues/577)
 
 ## `0.1.10`
 
