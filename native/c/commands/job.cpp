@@ -179,7 +179,6 @@ int handle_job_list_proclib(InvocationContext &context)
   int rc = 0;
   ZJB zjb = {};
 
-  context.output_stream() << "Hello, world!" << endl;
   vector<string> proclib;
   rc = zjb_list_proclib(&zjb, proclib);
   if (0 != rc)

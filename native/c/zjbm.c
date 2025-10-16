@@ -14,6 +14,7 @@
 #include <string.h>
 
 #include "zjblkup.h"
+#include "iazjproc.h"
 #include "zssitype.h"
 #include "zjbm.h"
 #include "zssi31.h"
@@ -24,7 +25,8 @@
 #include "ihapsa.h"
 #include "cvt.h"
 #include "iefjesct.h"
-#include "iazjproc.h"
+#include "zwto.h"
+#include "zdbg.h"
 
 // TODO(Kelosky):
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=79-putget-requests
@@ -670,7 +672,7 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
 
 #pragma prolog(ZJBMLPRC, " ZWEPROLG NEWDSA=(YES,128) ")
 #pragma epilog(ZJBMLPRC, " ZWEEPILG ")
-int ZJBMLPRC(ZJB *zjb, int *entries)
+int ZJBMLPRC(ZJB *zjb, char *buffer, int *buffer_size, int *entries)
 {
   int rc = 0;
 
@@ -680,6 +682,15 @@ int ZJBMLPRC(ZJB *zjb, int *entries)
   SSIB ssib = {0};
   SSJP ssjp = {0};
   JPROC jproc = {0};
+
+  *entries = 0;
+
+  if (NULL == buffer || *buffer_size < MAX_DSN_ENTRY_SIZE)
+  {
+    zjb->diag.detail_rc = ZJB_RTNCD_INSUFFICIENT_BUFFER;
+    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "buffer is NULL or buffer size is less than '%d'", MAX_DSN_ENTRY_SIZE);
+    return RTNCD_FAILURE;
+  }
 
   if (0 != init_ssib(&ssib))
   {
@@ -713,8 +724,40 @@ int ZJBMLPRC(ZJB *zjb, int *entries)
     return RTNCD_FAILURE;
   }
 
+  JPRHDR *PTR32 jprhdr = (JPRHDR * PTR32) jproc.jprclptr; // --> first PROCLIB
+  char *dsn_buffer = buffer;
+
+  while (jprhdr)
+  {
+    JPRPREF *PTR32 jprpref = (JPRPREF * PTR32)((unsigned int)jprhdr + jprhdr->jproprf);     // --> Prefix Section
+    JPRGENI *PTR32 jprgeni = (JPRGENI * PTR32)((unsigned int)jprpref + jprprsz);            // --> General Section
+    JPRDSETS *PTR32 jprdsets = (JPRDSETS * PTR32)((unsigned int)jprgeni + jprgeni->jprgln); // --> Data Set Section
+    JPRDSINF *PTR32 jprdsinf = (JPRDSINF * PTR32)((unsigned int)jprdsets + jprdsize);       // --> Data Set Info Section
+
+    for (int i = 0; i < jprgeni->jprdscnt; i++)
+    {
+      memcpy(dsn_buffer, jprdsinf->jprddsn, DSN_ENTRY_SIZE);
+      dsn_buffer += DSN_ENTRY_SIZE;
+      *entries = *entries + 1;
+      if (*entries > MAX_DSN_ENTRIES)
+      {
+        zjb->diag.detail_rc = ZJB_RTNCD_INSUFFICIENT_BUFFER;
+        zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "max DSN entries reached '%d', results truncated", MAX_DSN_ENTRIES);
+        rc = RTNCD_FAILURE;
+        break;
+      }
+      jprdsinf = (JPRDSINF * PTR32)((unsigned int)jprdsinf + jprdslen);
+    }
+
+    if (rc != RTNCD_SUCCESS)
+    {
+      break;
+    }
+    jprhdr = (JPRHDR * PTR32) jprhdr->jprnxtp;
+  }
+
   ssjp.ssjpfreq = ssjpprrs; // free storage
   rc = iefssreq(&ssobp);    // TODO(Kelosky): recovery
 
-  return RTNCD_SUCCESS;
+  return rc;
 }

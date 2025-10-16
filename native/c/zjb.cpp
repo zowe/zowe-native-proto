@@ -625,7 +625,19 @@ int zjb_list_proclib(ZJB *zjb, vector<string> &proclib)
   int rc = 0;
   ZJB_JOB_INFO *PTR64 job_info = nullptr;
   int entries = 0;
-  rc = ZJBMLPRC(zjb, &entries);
+  char buffer[MAX_DSN_ENTRY_SIZE] = {0};
+  int buffer_size = sizeof(buffer);
+  rc = ZJBMLPRC(zjb, buffer, &buffer_size, &entries);
+
+  if (RTNCD_SUCCESS == rc)
+  {
+    for (int i = 0; i < entries; i++)
+    {
+      string dsn(buffer + (i * DSN_ENTRY_SIZE), DSN_ENTRY_SIZE);
+      proclib.push_back(dsn);
+    }
+  }
+
   return rc;
 }
 
