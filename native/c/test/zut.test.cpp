@@ -63,8 +63,8 @@ void zut_tests()
                            []() -> void
                            {
                              string input = "Hello World";
-                             string result = zut_search(input);
-                             expect(result).ToBe(input);
+                             int rc = zut_search(input);
+                             expect(rc).ToBe(0);
                            });
                       });
 
