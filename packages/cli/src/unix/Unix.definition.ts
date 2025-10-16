@@ -12,9 +12,9 @@
 import type { ICommandDefinition } from "@zowe/imperative";
 import { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Constants } from "../Constants";
-import { ChmodDefinition } from "./chmod/Chmod.handler";
-import { ChownDefinition } from "./chown/Chown.handler";
-import { ChtagDefinition } from "./chtag/Chtag.handler";
+import { ChmodDefinition } from "./chmod/Chmod.definition";
+import { ChownDefinition } from "./chown/Chown.definition";
+import { ChtagDefinition } from "./chtag/Chtag.definition";
 
 const UnixDefinition: ICommandDefinition = {
     name: "unix",

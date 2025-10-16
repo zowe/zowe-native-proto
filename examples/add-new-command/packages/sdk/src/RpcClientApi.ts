@@ -9,15 +9,13 @@
  *
  */
 
+import type { IRpcClient } from "./doc/client";
 import type { CommandRequest, CommandResponse, cmds, ds, jobs, uss, sample } from "./doc/rpc";
 
-export abstract class AbstractRpcClient {
-    // ... existing methods (request, ds, jobs, uss, cmds) ...
+export abstract class RpcClientApi implements IRpcClient {
+    // ... existing apis (cmds, ds, jobs, uss) ...
 
-    public get sample() {
-        return {
-            ping: (request: Omit<sample.PingRequest, "command">): Promise<sample.PingResponse> =>
-                this.request({ command: "ping", ...request }),
-        };
-    }
+    public sample = {
+        ping: this.rpc<sample.PingRequest, sample.PingResponse>("ping"),
+    };
 }

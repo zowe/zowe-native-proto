@@ -132,19 +132,17 @@ function extractInterfaces(filePath: string): ExtractedInterface[] {
                 sourceFile: fileName,
             });
         } else if (ts.isTypeAliasDeclaration(node) && node.type) {
-            // Handle type aliases: export type CreateMemberResponse = common.CommandResponse;
+            // Handle type aliases: export type SubmitJobResponse = SubmitJclResponse;
             const aliasName = node.name.text;
             const aliasedType = node.type.getText(sourceFile);
             const baseTypeName = stripNamespace(aliasedType);
 
-            // For CommandResponse aliases, add the success field directly
-            const properties: ExtractedInterface["properties"] =
-                baseTypeName === "CommandResponse" ? [{ name: "success", type: "boolean", optional: false }] : [];
-
+            // Type aliases are just references to other types - they inherit all properties
+            // We represent them as extending the aliased type so properties are collected properly
             interfaces.push({
                 name: aliasName,
-                properties,
-                extends: baseTypeName === "CommandResponse" ? undefined : [baseTypeName],
+                properties: [],
+                extends: [baseTypeName],
                 sourceFile: fileName,
             });
         }
@@ -179,30 +177,33 @@ function loadLicenseHeader(): void {
 function collectAllProperties(iface: ExtractedInterface): Array<ExtractedInterface["properties"][0]> {
     const allProps: Array<ExtractedInterface["properties"][0]> = [];
     const fieldsSeen = new Set<string>();
+    const visited = new Set<string>();
 
-    // Add inherited properties from base classes
-    if (iface.extends) {
-        for (const baseType of iface.extends) {
-            const baseName = stripNamespace(baseType);
-            const baseInterface = allInterfaces.get(baseName);
-            if (baseInterface) {
-                for (const baseProp of baseInterface.properties) {
-                    if (!fieldsSeen.has(baseProp.name)) {
-                        allProps.push(baseProp);
-                        fieldsSeen.add(baseProp.name);
-                    }
+    // Recursively collect inherited properties from base classes
+    function collectFromBase(currentIface: ExtractedInterface) {
+        if (visited.has(currentIface.name)) return; // Avoid circular references
+        visited.add(currentIface.name);
+
+        if (currentIface.extends) {
+            for (const baseType of currentIface.extends) {
+                const baseName = stripNamespace(baseType);
+                const baseInterface = allInterfaces.get(baseName);
+                if (baseInterface) {
+                    collectFromBase(baseInterface); // Recursively collect base properties
                 }
+            }
+        }
+
+        // Add properties from current interface
+        for (const prop of currentIface.properties) {
+            if (!fieldsSeen.has(prop.name)) {
+                allProps.push(prop);
+                fieldsSeen.add(prop.name);
             }
         }
     }
 
-    // Add own properties
-    for (const prop of iface.properties) {
-        if (!fieldsSeen.has(prop.name)) {
-            allProps.push(prop);
-            fieldsSeen.add(prop.name);
-        }
-    }
+    collectFromBase(iface);
 
     return allProps;
 }

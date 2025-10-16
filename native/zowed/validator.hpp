@@ -183,7 +183,7 @@ inline std::string actual_type_name(const zjson::Value &value)
  */
 inline ValidationResult validate_schema(const zjson::Value &params,
                                         const std::vector<FieldDescriptor> &schema,
-                                        bool allow_unknown_fields = true)
+                                        bool allow_unknown_fields = false)
 {
   if (!params.is_object())
   {
@@ -306,7 +306,7 @@ template <typename T>
 class SchemaValidator : public ParamsValidator
 {
 public:
-  explicit SchemaValidator(bool allow_unknown_fields = true)
+  explicit SchemaValidator(bool allow_unknown_fields = false)
       : allow_unknown_fields_(allow_unknown_fields)
   {
   }

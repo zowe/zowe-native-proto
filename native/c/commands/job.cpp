@@ -261,11 +261,6 @@ int handle_job_view_file(InvocationContext &context)
     context.output_stream() << resp;
   }
 
-  const auto result = obj();
-  result->set("jobId", str(jobid));
-  result->set("spoolId", i64(key));
-  context.set_object(result);
-
   return RTNCD_SUCCESS;
 }
 

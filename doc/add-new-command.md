@@ -320,7 +320,7 @@ npm run z:build:zowed
 
 ### Step 4.2: Add SDK Method
 
-Edit `packages/sdk/src/AbstractRpcClient.ts` to add a method for your new command:
+Edit `packages/sdk/src/RpcClientApi.ts` to add a method for your new command:
 
 ```typescript
 import type {
@@ -333,17 +333,12 @@ import type {
   sample,
 } from "./doc/rpc";
 
-export abstract class AbstractRpcClient {
-  // ... existing methods (request, ds, jobs, uss, cmds) ...
+export abstract class RpcClientApi {
+  // ... existing apis (cmds, ds, jobs, uss) ...
 
-  public get sample() {
-    return {
-      ping: (
-        request: Omit<sample.PingRequest, "command">
-      ): Promise<sample.PingResponse> =>
-        this.request({ command: "ping", ...request }),
-    };
-  }
+  public sample = {
+    ping: this.rpc<sample.PingRequest, sample.PingResponse>("ping"),
+  };
 }
 ```
 
