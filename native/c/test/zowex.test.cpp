@@ -90,6 +90,16 @@ void zowex_tests()
                              rc = execute_command_with_output(zowex_command + " job list", response);
                              ExpectWithContext(rc, response).ToBeGreaterThanOrEqualTo(0); // results might be truncated
                            });
+
+                        it("should list proclib",
+                           []()
+                           {
+                             int rc = 0;
+                             string response;
+                             rc = execute_command_with_output(zowex_command + " job list-proclib", response);
+                             ExpectWithContext(rc, response).ToBeGreaterThanOrEqualTo(0);
+                           });
+
                         it("should submit a job, view it, and delete it", []()
                            {
                            int rc = 0;

@@ -11,6 +11,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - `c`: Command handlers can now be called directly by providing an `InvocationContext`. The context provides helper functions for error, input, and output stream redirection. Handlers can use this context to print output and errors, as well as setting content length. [#574](https://github.com/zowe/zowe-native-proto/pull/574)
 - `c`: Organized command handlers into separate source files and namespaces in the `commands` folder. Reduced size of main entrypoint function by moving command registration to a `register_commands` function contained in each namespace. [#409](https://github.com/zowe/zowe-native-proto/issues/409)
 - `native`: Added a `--depth` option to the `zowex uss list` command for listing USS directories recursively. [#575](https://github.com/zowe/zowe-native-proto/pull/575)
+- `native`: Added `zowex job list-proclib` to list proclib concatenation.
 
 ## `0.1.10`
 
