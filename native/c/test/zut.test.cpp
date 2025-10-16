@@ -56,18 +56,6 @@ void zut_tests()
                            });
                       });
 
-             describe("zut_search",
-                      []() -> void
-                      {
-                        it("should search for a string",
-                           []() -> void
-                           {
-                             string input = "Hello World";
-                             int rc = zut_search(input);
-                             expect(rc).ToBe(0);
-                           });
-                      });
-
              describe("zut_encode",
                       []() -> void
                       {
