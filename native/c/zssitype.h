@@ -19,6 +19,7 @@
 #include "iazsplio.h"
 #include "iazssjm.h"
 #include "iazssjp.h"
+#include "iazjproc.h"
 
 typedef struct ssob SSOB;
 typedef struct ssib SSIB;
@@ -43,6 +44,15 @@ typedef struct splio SPLIO;
 
 typedef struct ssjm SSJM;
 typedef struct ssjf SSJF;
+
+typedef struct jproc JPROC;
+typedef struct jpshdr JPSHDR;
+typedef struct jprcstor JPRCSTOR;
+typedef struct jprhdr JPRHDR;
+typedef struct jprpref JPRPREF;
+typedef struct jprgeni JPRGENI;
+typedef struct jprdsets JPRDSETS;
+typedef struct jprdsinf JPRDSINF;
 
 typedef struct ssjp SSJP;
 #endif

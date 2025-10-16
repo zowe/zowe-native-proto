@@ -24,6 +24,7 @@
 #include "ihapsa.h"
 #include "cvt.h"
 #include "iefjesct.h"
+#include "iazjproc.h"
 
 // TODO(Kelosky):
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=79-putget-requests
@@ -678,6 +679,8 @@ int ZJBMLPRC(ZJB *zjb, int *entries)
   SSOB ssob = {0};
   SSIB ssib = {0};
   SSJP ssjp = {0};
+  JPROC jproc = {0};
+
   if (0 != init_ssib(&ssib))
   {
     strcpy(zjb->diag.service_name, "init_ssib");
@@ -690,7 +693,12 @@ int ZJBMLPRC(ZJB *zjb, int *entries)
   ssjp.ssjplen = sizeof(SSJP);
   ssjp.ssjpver = ssjpverc;
   ssjp.ssjpfreq = ssjpprod; // ssjpprrs to release
-  ssjp.ssjpuser = NULL;     // IAZJPROC
+  ssjp.ssjpuser = &jproc;   // IAZJPROC
+
+  memcpy(jproc.jprcid, "JESPROCI", sizeof(jproc.jprcid));
+  jproc.jprclen = jprcsze;
+  jproc.jprcverl = jprccvrl;
+  jproc.jprcverm = jprccvrm;
 
   ssobp = &ssob;
   ssobp = (SSOB * PTR32)((unsigned int)ssobp | 0x80000000);
