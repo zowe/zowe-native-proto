@@ -115,7 +115,8 @@ void CommandBuilder::apply_input_transforms(MiddlewareContext &context) const
       // Rename: argument must exist
       if (arg_it == args.end())
       {
-        continue; // Argument not found, skip rename
+        LOG_WARN("Argument '%s' not found for rename transform, skipping", it->arg_name.c_str());
+        continue;
       }
 
       plugin::Argument value = arg_it->second;
@@ -387,7 +388,7 @@ void CommandBuilder::apply_output_transforms(MiddlewareContext &context) const
         {
           LOG_DEBUG("Cleaned up FIFO pipe: %s", it->pipe_path.c_str());
         }
-        else
+        else if (errno != ENOENT)
         {
           LOG_ERROR("Failed to delete FIFO pipe: %s, errno: %d", it->pipe_path.c_str(), errno);
         }

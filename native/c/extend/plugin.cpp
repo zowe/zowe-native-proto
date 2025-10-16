@@ -263,6 +263,7 @@ void PluginManager::load_plugins()
         dlclose(plugin);
       }
     }
+    closedir(plugins_dir);
   }
 }
 

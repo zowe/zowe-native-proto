@@ -33,12 +33,19 @@ int zcn_activate(ZCN *zcn, string console_name)
   zut_uppercase_pad_truncate(zcn->console_name, console_name, sizeof(zcn->console_name));
 
   zcn->ecb = (unsigned int *)__malloc31(sizeof(unsigned int));
+  if (nullptr == zcn->ecb)
+  {
+    return ZCN_RTNCD_SERVICE_FAILURE;
+  }
   memset(zcn->ecb, 0x00, sizeof(unsigned int));
 
   rc = ZCNACT(zcn);
 
   if (0 != rc)
+  {
     free(zcn->ecb);
+    zcn->ecb = nullptr;
+  }
 
   return rc;
 }
@@ -49,6 +56,11 @@ int zcn_put(ZCN *zcn, string command)
   zcn->diag.detail_rc = 0;
 
   char *command31 = (char *)__malloc31(command.length() + 1);
+  if (command31 == nullptr)
+  {
+    zcn->diag.e_msg_len = sprintf(zcn->diag.e_msg, "Failed to allocate 31-bit memory for command: %s", command.c_str());
+    return RTNCD_FAILURE;
+  }
   memset(command31, 0x00, command.length() + 1);
   strncpy(command31, command.c_str(), command.length());
 
@@ -74,6 +86,11 @@ int zcn_get(ZCN *zcn, string &response)
     zcn->timeout = ZCN_MAX_TIMEOUT;
 
   char *resp31 = (char *)__malloc31(zcn->buffer_size);
+  if (resp31 == nullptr)
+  {
+    zcn->diag.e_msg_len = sprintf(zcn->diag.e_msg, "Failed to allocate 31-bit memory for response");
+    return RTNCD_FAILURE;
+  }
   memset(resp31, 0x00, zcn->buffer_size);
 
   rc = ZCNGET(zcn, resp31);
@@ -89,7 +106,10 @@ int zcn_deactivate(ZCN *zcn)
 {
   zcn->diag.detail_rc = 0;
   if (zcn->ecb)
+  {
     free(zcn->ecb);
+    zcn->ecb = nullptr;
+  }
 
   return ZCNDACT(zcn);
 }

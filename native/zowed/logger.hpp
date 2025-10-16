@@ -35,6 +35,8 @@ namespace zowed
 class Logger
 {
 private:
+  // Buffer size for log messages
+  static constexpr size_t LOG_BUFFER_SIZE = 4096;
   // Maximum log file size before truncation (10MB)
   static constexpr size_t MAX_LOG_SIZE = 10 * 1024 * 1024;
 
@@ -73,7 +75,7 @@ private:
    */
   static std::string get_current_timestamp()
   {
-    time_t now = time(nullptr);
+    const auto now = time(nullptr);
     struct tm timeinfo;
     localtime_r(&now, &timeinfo);
 
@@ -87,7 +89,7 @@ private:
    */
   static void check_and_truncate_log_file()
   {
-    std::string &log_file_path = get_log_file_path();
+    const auto &log_file_path = get_log_file_path();
     std::ofstream &log_file = get_log_file();
 
     if (log_file_path.empty() || !log_file.is_open())
@@ -116,6 +118,30 @@ private:
     }
   }
 
+  /**
+   * Common logging implementation
+   */
+  static void log_message(const char *level, const char *format, va_list args, bool check_verbose = false)
+  {
+    const auto initialized = get_initialized();
+    if (!initialized)
+      return;
+
+    if (check_verbose && !get_verbose_logging())
+      return;
+
+    std::mutex &log_mutex = get_log_mutex();
+    std::ofstream &log_file = get_log_file();
+    const std::lock_guard<std::mutex> lock(log_mutex);
+
+    char buffer[LOG_BUFFER_SIZE];
+    vsnprintf(buffer, sizeof(buffer), format, args);
+
+    log_file << get_current_timestamp() << " [" << level << "] " << buffer << std::endl;
+
+    check_and_truncate_log_file();
+  }
+
 public:
   /**
    * Initialize the logger with specified options
@@ -131,12 +157,12 @@ public:
     bool &initialized = get_initialized();
     std::string &log_file_path = get_log_file_path();
 
-    std::lock_guard<std::mutex> lock(log_mutex);
+    const std::lock_guard<std::mutex> lock(log_mutex);
 
     verbose_logging = verbose;
 
     // Create logs directory
-    std::string logs_dir = std::string(exec_dir) + "/logs";
+    const std::string logs_dir = std::string(exec_dir) + "/logs";
 
     if (mkdir(logs_dir.c_str(), 0700) != 0 && errno != EEXIST)
     {
@@ -148,7 +174,7 @@ public:
     log_file_path = logs_dir + "/zowed.log";
 
     // Open log file
-    std::ios_base::openmode mode = std::ios::out;
+    auto mode = std::ios::out;
     if (truncate)
     {
       mode |= std::ios::trunc;
@@ -201,84 +227,10 @@ public:
    */
   static void log_debug(const char *format, ...)
   {
-    bool &verbose_logging = get_verbose_logging();
-    bool &initialized = get_initialized();
-
-    if (!verbose_logging || !initialized)
-    {
-      return;
-    }
-
-    std::mutex &log_mutex = get_log_mutex();
-    std::ofstream &log_file = get_log_file();
-    std::lock_guard<std::mutex> lock(log_mutex);
-
-    char buffer[4096];
     va_list args;
     va_start(args, format);
-    vsnprintf(buffer, sizeof(buffer), format, args);
+    log_message("DEBUG", format, args, true);
     va_end(args);
-
-    log_file << get_current_timestamp() << " [DEBUG] " << buffer << std::endl;
-    log_file.flush();
-
-    check_and_truncate_log_file();
-  }
-
-  /**
-   * Log an error message
-   */
-  static void log_error(const char *format, ...)
-  {
-    bool &initialized = get_initialized();
-
-    if (!initialized)
-    {
-      return;
-    }
-
-    std::mutex &log_mutex = get_log_mutex();
-    std::ofstream &log_file = get_log_file();
-    std::lock_guard<std::mutex> lock(log_mutex);
-
-    char buffer[4096];
-    va_list args;
-    va_start(args, format);
-    vsnprintf(buffer, sizeof(buffer), format, args);
-    va_end(args);
-
-    log_file << get_current_timestamp() << " [ERROR] " << buffer << std::endl;
-    log_file.flush();
-
-    check_and_truncate_log_file();
-  }
-
-  /**
-   * Log a fatal error and exit the program
-   */
-  static void log_fatal(const char *format, ...)
-  {
-    char buffer[4096];
-    va_list args;
-    va_start(args, format);
-    vsnprintf(buffer, sizeof(buffer), format, args);
-    va_end(args);
-
-    bool &initialized = get_initialized();
-
-    if (initialized)
-    {
-      std::mutex &log_mutex = get_log_mutex();
-      std::ofstream &log_file = get_log_file();
-      std::lock_guard<std::mutex> lock(log_mutex);
-      log_file << get_current_timestamp() << " [FATAL] " << buffer << std::endl;
-      log_file.flush();
-    }
-
-    // Also print to stderr
-    std::cerr << "FATAL: " << buffer << std::endl;
-
-    exit(1);
   }
 
   /**
@@ -286,27 +238,62 @@ public:
    */
   static void log_info(const char *format, ...)
   {
-    bool &initialized = get_initialized();
-
-    if (!initialized)
-    {
-      return;
-    }
-
-    std::mutex &log_mutex = get_log_mutex();
-    std::ofstream &log_file = get_log_file();
-    std::lock_guard<std::mutex> lock(log_mutex);
-
-    char buffer[4096];
     va_list args;
     va_start(args, format);
+    log_message("INFO", format, args);
+    va_end(args);
+  }
+
+  /**
+   * Log a warning message
+   */
+  static void log_warn(const char *format, ...)
+  {
+    va_list args;
+    va_start(args, format);
+    log_message("WARN", format, args);
+    va_end(args);
+  }
+
+  /**
+   * Log an error message
+   */
+  static void log_error(const char *format, ...)
+  {
+    va_list args;
+    va_start(args, format);
+    log_message("ERROR", format, args);
+    va_end(args);
+  }
+
+  /**
+   * Log a fatal error and exit the program
+   */
+  static void log_fatal(const char *format, ...)
+  {
+    char buffer[LOG_BUFFER_SIZE];
+    va_list args;
+    va_start(args, format);
+
+    va_list args_copy;
+    va_copy(args_copy, args);
+
     vsnprintf(buffer, sizeof(buffer), format, args);
+
+    const auto initialized = get_initialized();
+
+    if (initialized)
+    {
+      log_message("FATAL", format, args_copy);
+    }
+
+    va_end(args_copy);
     va_end(args);
 
-    log_file << get_current_timestamp() << " [INFO] " << buffer << std::endl;
-    log_file.flush();
+    // Also print to stderr
+    std::cerr << "FATAL: " << buffer << std::endl;
 
-    check_and_truncate_log_file();
+    exit(1);
   }
 
   /**
@@ -318,7 +305,7 @@ public:
     std::ofstream &log_file = get_log_file();
     bool &initialized = get_initialized();
 
-    std::lock_guard<std::mutex> lock(log_mutex);
+    const std::lock_guard<std::mutex> lock(log_mutex);
     if (log_file.is_open())
     {
       log_file.close();
@@ -331,8 +318,9 @@ public:
 
 // Convenience macros for easier usage
 #define LOG_DEBUG(...) zowed::Logger::log_debug(__VA_ARGS__)
+#define LOG_INFO(...) zowed::Logger::log_info(__VA_ARGS__)
+#define LOG_WARN(...) zowed::Logger::log_warn(__VA_ARGS__)
 #define LOG_ERROR(...) zowed::Logger::log_error(__VA_ARGS__)
 #define LOG_FATAL(...) zowed::Logger::log_fatal(__VA_ARGS__)
-#define LOG_INFO(...) zowed::Logger::log_info(__VA_ARGS__)
 
 #endif // LOGGER_HPP

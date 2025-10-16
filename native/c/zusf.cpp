@@ -31,6 +31,9 @@
 #include <iconv.h>
 #include <grp.h>
 #include <pwd.h>
+#ifndef _POSIX_SOURCE
+#define _POSIX_SOURCE
+#endif
 #include <unistd.h>
 #include <stdlib.h>
 #include <map>
@@ -1236,6 +1239,7 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, const string &file, const strin
   struct stat st;
   if (stat(file.c_str(), &st) != 0)
   {
+    fclose(fin);
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not stat file '%s'", file.c_str());
     return RTNCD_FAILURE;
   }
@@ -1250,10 +1254,19 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, const string &file, const strin
 #endif
 
   int fifo_fd = open(pipe.c_str(), O_WRONLY);
+  if (fifo_fd == -1)
+  {
+    fclose(fin);
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "open() failed on output pipe '%s', errno: %d", pipe.c_str(), errno);
+    return RTNCD_FAILURE;
+  }
+
   FILE *fout = fdopen(fifo_fd, "w");
   if (!fout)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open output pipe '%s'", pipe.c_str());
+    fclose(fin);
+    close(fifo_fd);
     return RTNCD_FAILURE;
   }
 
@@ -1302,6 +1315,8 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, const string &file, const strin
       }
       catch (std::exception &e)
       {
+        fclose(fin);
+        fclose(fout);
         zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to convert input data from %s to %s", encoding_to_use.c_str(), source_encoding.c_str());
         return RTNCD_FAILURE;
       }
@@ -1490,10 +1505,18 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, const string &file, const string
   }
 
   int fifo_fd = open(pipe.c_str(), O_RDONLY);
+  if (fifo_fd == -1)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "open() failed on input pipe '%s', errno: %d", pipe.c_str(), errno);
+    fclose(fout);
+    return RTNCD_FAILURE;
+  }
+
   FILE *fin = fdopen(fifo_fd, "r");
   if (!fin)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open input pipe '%s'", pipe.c_str());
+    close(fifo_fd);
     fclose(fout);
     return RTNCD_FAILURE;
   }
@@ -1602,10 +1625,12 @@ int zusf_chmod_uss_file_or_dir(ZUSF *zusf, string file, mode_t mode, bool recurs
         const auto rc = zusf_chmod_uss_file_or_dir(zusf, child_path, mode, S_ISDIR(file_stats.st_mode));
         if (0 != rc)
         {
+          closedir(dir);
           return rc;
         }
       }
     }
+    closedir(dir);
   }
   return 0;
 }
@@ -1646,6 +1671,7 @@ int zusf_delete_uss_item(ZUSF *zusf, string file, bool recursive)
         const auto rc = zusf_delete_uss_item(zusf, child_path, S_ISDIR(file_stats.st_mode));
         if (0 != rc)
         {
+          closedir(dir);
           return rc;
         }
       }
@@ -1739,10 +1765,12 @@ int zusf_chown_uss_file_or_dir(ZUSF *zusf, string file, const string &owner, boo
         const auto rc = zusf_chown_uss_file_or_dir(zusf, child_path, owner, S_ISDIR(file_stats.st_mode));
         if (0 != rc)
         {
+          closedir(dir);
           return rc;
         }
       }
     }
+    closedir(dir);
   }
 
   return 0;
@@ -1814,10 +1842,12 @@ int zusf_chtag_uss_file_or_dir(ZUSF *zusf, string file, string tag, bool recursi
         const auto rc = zusf_chtag_uss_file_or_dir(zusf, child_path, tag, S_ISDIR(file_stats.st_mode));
         if (0 != rc)
         {
+          closedir(dir);
           return rc;
         }
       }
     }
+    closedir(dir);
   }
   return 0;
 }

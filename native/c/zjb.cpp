@@ -133,6 +133,11 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, string jobdsn, string &response)
   // calculate total size needed, obtain, & clear
   int total_size_needed = sizeof(IAZBTOKP) + (sizeof(S99TUNIT_X) * NUM_TEXT_UNITS) + (sizeof(S99TUPL) * NUM_TEXT_UNITS) + sizeof(__S99parms) + sizeof(__S99rbx_t);
   unsigned char *parms = (unsigned char *)__malloc31(total_size_needed);
+  if (parms == nullptr)
+  {
+    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "Failed to allocate 31-bit memory for job parms when reading %s", jobdsn.c_str());
+    return RTNCD_FAILURE;
+  }
   memset(parms, 0x00, total_size_needed);
 
   // carve up storage to needed structs
