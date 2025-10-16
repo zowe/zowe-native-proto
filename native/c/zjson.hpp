@@ -148,7 +148,7 @@ struct RenameAll
     case lowercase:
     {
       std::string result;
-      for (std::string::const_iterator it = name.begin(); it != name.end(); ++it)
+      for (auto it = name.begin(); it != name.end(); ++it)
       {
         result += std::tolower(*it);
       }
@@ -157,7 +157,7 @@ struct RenameAll
     case UPPERCASE:
     {
       std::string result;
-      for (std::string::const_iterator it = name.begin(); it != name.end(); ++it)
+      for (auto it = name.begin(); it != name.end(); ++it)
       {
         result += std::toupper(*it);
       }
@@ -169,7 +169,7 @@ struct RenameAll
     {
       std::string result;
       bool capitalize_next = false;
-      for (std::string::const_iterator it = name.begin(); it != name.end(); ++it)
+      for (auto it = name.begin(); it != name.end(); ++it)
       {
         if (*it == '_')
         {
@@ -199,7 +199,7 @@ struct RenameAll
     case SCREAMING_SNAKE_CASE:
     {
       std::string result;
-      for (std::string::const_iterator it = name.begin(); it != name.end(); ++it)
+      for (auto it = name.begin(); it != name.end(); ++it)
       {
         result += std::toupper(*it);
       }
@@ -208,7 +208,7 @@ struct RenameAll
     case kebab_case:
     {
       std::string result;
-      for (std::string::const_iterator it = name.begin(); it != name.end(); ++it)
+      for (auto it = name.begin(); it != name.end(); ++it)
       {
         if (*it == '_')
         {
@@ -224,7 +224,7 @@ struct RenameAll
     case SCREAMING_KEBAB_CASE:
     {
       std::string result;
-      for (std::string::const_iterator it = name.begin(); it != name.end(); ++it)
+      for (auto it = name.begin(); it != name.end(); ++it)
       {
         if (*it == '_')
         {
@@ -727,8 +727,8 @@ public:
       throw Error::invalid_type("object", type_name());
     }
 
-    const std::unordered_map<std::string, Value> &obj = get_object();
-    std::unordered_map<std::string, Value>::const_iterator it = obj.find(key);
+    const auto &obj = get_object();
+    const auto it = obj.find(key);
     if (it == obj.end())
     {
       static const Value null_value; // Return reference to static null
@@ -1108,7 +1108,7 @@ struct Serializable<std::vector<T>>
     Value result = Value::create_array();
     result.reserve_array(vec.size());
 
-    for (typename std::vector<T>::const_iterator it = vec.begin(); it != vec.end(); ++it)
+    for (auto it = vec.begin(); it != vec.end(); ++it)
     {
       result.add_to_array(Serializable<T>::serialize(*it));
     }
@@ -1131,7 +1131,7 @@ struct Deserializable<std::vector<T>>
     const std::vector<Value> &array = value.as_array();
     result.reserve(array.size());
 
-    for (std::vector<Value>::const_iterator it = array.begin(); it != array.end(); ++it)
+    for (auto it = array.begin(); it != array.end(); ++it)
     {
       zstd::expected<T, Error> item_result = Deserializable<T>::deserialize(*it);
       if (!item_result.has_value())
@@ -1395,7 +1395,7 @@ inline std::string escape_json_string(const std::string &input)
   std::string output;
   output.reserve(input.length());
 
-  for (std::string::const_iterator it = input.begin(); it != input.end(); ++it)
+  for (auto it = input.begin(); it != input.end(); ++it)
   {
     char c = *it;
     switch (c)
@@ -1822,7 +1822,7 @@ inline std::string add_json_indentation(const std::string &json_str, int spaces)
   bool in_string = false;
   bool escape_next = false;
 
-  for (std::string::const_iterator it = json_str.begin(); it != json_str.end(); ++it)
+  for (auto it = json_str.begin(); it != json_str.end(); ++it)
   {
     char ch = *it;
     if (escape_next)
@@ -1971,7 +1971,7 @@ inline int value_to_json_instance(JSON_INSTANCE *instance, KEY_HANDLE *parent_ha
 
     // Add all array elements
     const std::vector<Value> &arr = value.as_array();
-    for (std::vector<Value>::const_iterator it = arr.begin(); it != arr.end(); ++it)
+    for (auto it = arr.begin(); it != arr.end(); ++it)
     {
       rc = value_to_json_instance(instance, &new_entry_handle, "", *it);
       if (rc != 0)
@@ -1988,8 +1988,8 @@ inline int value_to_json_instance(JSON_INSTANCE *instance, KEY_HANDLE *parent_ha
       break;
 
     // Add all object properties
-    const std::unordered_map<std::string, Value> &obj = value.as_object();
-    for (std::unordered_map<std::string, Value>::const_iterator it = obj.begin(); it != obj.end(); ++it)
+    const auto &obj = value.as_object();
+    for (auto it = obj.begin(); it != obj.end(); ++it)
     {
       rc = value_to_json_instance(instance, &new_entry_handle, it->first, it->second);
       if (rc != 0)
@@ -2041,8 +2041,8 @@ inline std::string value_to_json_string(const Value &value)
       // Clear the initial content and rebuild
       if (value.is_object())
       {
-        const std::unordered_map<std::string, Value> &obj = value.as_object();
-        for (std::unordered_map<std::string, Value>::const_iterator it = obj.begin(); it != obj.end(); ++it)
+        const auto &obj = value.as_object();
+        for (auto it = obj.begin(); it != obj.end(); ++it)
         {
           rc = value_to_json_instance(&instance, &root_handle, it->first, it->second);
           if (rc != 0)

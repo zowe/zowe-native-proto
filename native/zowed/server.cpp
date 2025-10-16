@@ -369,10 +369,10 @@ void RpcServer::print_error(int request_id, int code, const string &message, con
 
 validator::ValidationResult RpcServer::validate_json_with_schema(const string &method, const zjson::Value &data, bool is_request)
 {
-  CommandDispatcher &dispatcher = CommandDispatcher::get_instance();
+  const auto &dispatcher = CommandDispatcher::get_instance();
 
   const auto &builders = dispatcher.get_builders();
-  auto it = builders.find(method);
+  const auto &it = builders.find(method);
   if (it == builders.end())
   {
     return validator::ValidationResult::success();

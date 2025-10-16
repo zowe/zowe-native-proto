@@ -122,8 +122,8 @@ public:
   template <typename RequestT, typename ResponseT>
   CommandBuilder &validate(bool allow_unknown_fields = false)
   {
-    request_validator_ = std::shared_ptr<validator::ParamsValidator>(new validator::SchemaValidator<RequestT>(allow_unknown_fields));
-    response_validator_ = std::shared_ptr<validator::ParamsValidator>(new validator::SchemaValidator<ResponseT>(allow_unknown_fields));
+    request_validator_ = std::make_shared<validator::SchemaValidator<RequestT>>(allow_unknown_fields);
+    response_validator_ = std::make_shared<validator::SchemaValidator<ResponseT>>(allow_unknown_fields);
     return *this;
   }
 
