@@ -180,6 +180,19 @@ int handle_job_list_proclib(InvocationContext &context)
   ZJB zjb = {};
 
   context.output_stream() << "Hello, world!" << endl;
+  vector<string> proclib;
+  rc = zjb_list_proclib(&zjb, proclib);
+  if (0 != rc)
+  {
+    context.error_stream() << "Error: could not list proclib for rc: '" << rc << "'" << endl;
+    context.error_stream() << "  Details: " << zjb.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
+  for (vector<string>::iterator it = proclib.begin(); it != proclib.end(); it++)
+  {
+    context.output_stream() << *it << endl;
+  }
 
   return RTNCD_SUCCESS;
 }

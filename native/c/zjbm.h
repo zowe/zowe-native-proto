@@ -47,6 +47,7 @@ extern "C"
   int ZJBMEMSG(ZJB *, STAT *PTR64, SSOB *PTR64, int);
   int ZJBMTCOM(ZJB *PTR64, STAT *PTR64 stat, ZJB_JOB_INFO **PTR64, int *PTR64);
   int ZJBMLSDS(ZJB *PTR64, STATSEVB **PTR64, int *PTR64);
+  int ZJBMLPRC(ZJB *PTR64, int *PTR64);
   int ZJBSYMB(ZJB *PTR64, const char *PTR64, char *PTR64);
   int ZJBMPRG(ZJB *PTR64);
   int ZJBMCNL(ZJB *PTR64, int flags);

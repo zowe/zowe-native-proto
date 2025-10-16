@@ -16,12 +16,10 @@
 #include "zjblkup.h"
 #include "zssitype.h"
 #include "zjbm.h"
-#include "zwto.h"
 #include "zssi31.h"
 #include "zjbm31.h"
 #include "zstorage.h"
 #include "zjsytype.h"
-#include "zmetal.h"
 #include "zjbtype.h"
 #include "ihapsa.h"
 #include "cvt.h"
@@ -665,6 +663,50 @@ int ZJBMLSDS(ZJB *PTR64 zjb, STATSEVB **PTR64 sysoutInfo, int *entries)
 
   stat.stattype = statmem; // free storage
   rc = iefssreq(&ssobp);   // TODO(Kelosky): recovery
+
+  return RTNCD_SUCCESS;
+}
+
+#pragma prolog(ZJBMLPRC, " ZWEPROLG NEWDSA=(YES,128) ")
+#pragma epilog(ZJBMLPRC, " ZWEEPILG ")
+int ZJBMLPRC(ZJB *zjb, int *entries)
+{
+  int rc = 0;
+
+  SSOB *PTR32 ssobp = NULL;
+
+  SSOB ssob = {0};
+  SSIB ssib = {0};
+  SSJP ssjp = {0};
+  if (0 != init_ssib(&ssib))
+  {
+    strcpy(zjb->diag.service_name, "init_ssib");
+    zjb->diag.detail_rc = ZJB_RTNCD_SERVICE_FAILURE;
+    return RTNCD_FAILURE;
+  }
+  init_ssob(&ssob, &ssib, &ssjp, 82);
+
+  memcpy(ssjp.ssjpid, "SSJP", sizeof(ssjp.ssjpid));
+  ssjp.ssjplen = sizeof(SSJP);
+  ssjp.ssjpver = ssjpverc;
+  ssjp.ssjpfreq = ssjpprod; // ssjpprrs to release
+  ssjp.ssjpuser = NULL;     // IAZJPROC
+
+  ssobp = &ssob;
+  ssobp = (SSOB * PTR32)((unsigned int)ssobp | 0x80000000);
+  rc = iefssreq(&ssobp); // TODO(Kelosky): recovery
+
+  if (0 != rc || 0 != ssob.ssobretn)
+  {
+    strcpy(zjb->diag.service_name, "IEFSSREQ"); // TODO(Kelosky): recovery
+    zjb->diag.service_rc = ssob.ssobretn;
+    zjb->diag.service_rsn = ssjp.ssjpretn;
+    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "IEFSSREQ rc was: '%d' SSOBRETN was: '%d', SSJPRETN was: '%d'", rc, ssob.ssobretn, ssjp.ssjpretn);
+    return RTNCD_FAILURE;
+  }
+
+  ssjp.ssjpfreq = ssjpprrs; // free storage
+  rc = iefssreq(&ssobp);    // TODO(Kelosky): recovery
 
   return RTNCD_SUCCESS;
 }

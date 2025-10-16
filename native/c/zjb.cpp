@@ -625,6 +625,7 @@ int zjb_list_proclib(ZJB *zjb, vector<string> &proclib)
   int rc = 0;
   ZJB_JOB_INFO *PTR64 job_info = nullptr;
   int entries = 0;
+  rc = ZJBMLPRC(zjb, &entries);
   return rc;
 }
 

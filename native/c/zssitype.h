@@ -18,6 +18,7 @@
 #include "iazssji.h"
 #include "iazsplio.h"
 #include "iazssjm.h"
+#include "iazssjp.h"
 
 typedef struct ssob SSOB;
 typedef struct ssib SSIB;
@@ -43,4 +44,5 @@ typedef struct splio SPLIO;
 typedef struct ssjm SSJM;
 typedef struct ssjf SSJF;
 
+typedef struct ssjp SSJP;
 #endif
