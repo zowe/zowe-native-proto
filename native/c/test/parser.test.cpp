@@ -400,6 +400,25 @@ void parser_tests()
                  Expect((*members)[2] == "mem3").ToBe(true);
                }
              });
+
+             it("rejects unexpected trailing positional arguments", []() {
+               ArgumentParser arg_parser("zowex", "command sample");
+               Command &root = arg_parser.get_root_command();
+
+               command_ptr job_cmd(new Command("job", "job operations"));
+               command_ptr list_cmd(new Command("list", "list jobs"));
+               job_cmd->add_command(list_cmd);
+               root.add_command(job_cmd);
+
+               std::vector<std::string> raw = {"zowex", "job", "list", "extra"};
+               std::vector<char *> argv = to_argv(raw);
+
+               ParseResult result =
+                   arg_parser.parse(static_cast<int>(argv.size()), argv.data());
+
+               Expect(result.status).ToBe(ParseResult::ParserStatus_ParseError);
+               Expect(result.error_message.find("unexpected argument") != std::string::npos).ToBe(true);
+             });
              });
 
              describe("conflict handling", []() -> void

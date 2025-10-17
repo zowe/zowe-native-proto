@@ -686,13 +686,13 @@ public:
   // print token to stream
   void print(std::ostream &os) const
   {
-    if (print_flag_token(os) || print_simple_token(os))
+    if (print_flag_token(os))
       return;
 
     switch (m_kind)
     {
     case TokId:
-      print_string_ref(os, m_data.string_ref, "<null_id>");
+      os << get_id_value();
       break;
     case TokStrLit:
       print_string_literal(os);
@@ -702,6 +702,12 @@ public:
       break;
     case TokFloatLit:
       print_float_literal(os);
+      break;
+    case TokFalse:
+      os << "false";
+      break;
+    case TokTrue:
+      os << "true";
       break;
     default:
       os << "<unknown token_kind: " << static_cast<int>(m_kind) << ">";
