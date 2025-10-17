@@ -12,6 +12,8 @@
 #ifndef ZOWED_HPP
 #define ZOWED_HPP
 
+#include "../c/extend/plugin.hpp"
+
 /**
  * @brief Options structure for configuring the zowed server
  */
@@ -41,5 +43,22 @@ struct IoserverOptions
  * @return int Exit code (0 for success, non-zero for error)
  */
 extern "C" int run_zowed_server(const IoserverOptions &options, const char *exec_dir = nullptr);
+
+class BasicCommandRegistry : public plugin::CommandProviderImpl
+{
+public:
+  void register_commands(CommandRegistrationContext &context);
+};
+
+class BasicCommandProvider : public Factory<plugin::CommandProviderImpl>
+{
+public:
+  plugin::CommandProviderImpl *create()
+  {
+    return new BasicCommandRegistry();
+  }
+};
+
+extern "C" void register_plugin(plugin::PluginManager &pm);
 
 #endif

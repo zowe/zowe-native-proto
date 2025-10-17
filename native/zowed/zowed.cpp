@@ -168,7 +168,7 @@ public:
     LOG_INFO("Starting zowed with %d workers (verbose=%s)", options.num_workers, options.verbose ? "true" : "false");
 
     // Set up signal handling
-    setup_signal_handlers();
+    // setup_signal_handlers();
 
     // Initialize CommandDispatcher singleton
     CommandDispatcher &dispatcher = CommandDispatcher::get_instance();
@@ -181,8 +181,8 @@ public:
     worker_pool.reset(new WorkerPool(options.num_workers));
 
     // Ensure worker pool teardown on normal exit
-    std::atexit([]()
-                { get_instance().request_shutdown(); });
+    // std::atexit([]()
+    //             { get_instance().request_shutdown(); });
 
     // Log available worker count if verbose
     log_worker_count();
@@ -227,4 +227,32 @@ extern "C" int run_zowed_server(const IoserverOptions &options, const char *exec
   }
 
   return 0;
+}
+
+int handle_server_command(plugin::InvocationContext &context)
+{
+  const IoserverOptions options = IoserverOptions(
+      context.get<int>("num-workers", 10),
+      context.get<bool>("verbose", false));
+  // TODO get executable directory for zowex
+  const char *exec_dir = "./";
+  run_zowed_server(options, exec_dir);
+  return 0;
+}
+
+void BasicCommandRegistry::register_commands(CommandProviderImpl::CommandRegistrationContext &ctx)
+{
+  auto root = ctx.get_root_command();
+  auto server_cmd = ctx.create_command("server", "Launch Zowe Native Proto middleware server");
+  const auto num_workers_default = CommandDefaultValue(10ll);
+  ctx.add_keyword_arg(server_cmd, "num-workers", nullptr, 0, "Number of worker threads", CommandProviderImpl::CommandRegistrationContext::ArgumentType_Single, 0, &num_workers_default);
+  ctx.add_keyword_arg(server_cmd, "verbose", nullptr, 0, "Enable verbose logging", CommandProviderImpl::CommandRegistrationContext::ArgumentType_Flag, 0, nullptr);
+  ctx.set_handler(server_cmd, handle_server_command);
+  ctx.add_subcommand(root, server_cmd);
+}
+
+void register_plugin(plugin::PluginManager &pm)
+{
+  pm.register_plugin_metadata("Zowe Native Proto Middleware", "1.0.0");
+  pm.register_command_provider(new BasicCommandProvider());
 }

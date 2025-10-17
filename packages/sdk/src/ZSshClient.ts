@@ -65,9 +65,9 @@ export class ZSshClient extends RpcClientApi implements Disposable {
                 reject(err);
             });
             client.mSshClient.on("ready", async () => {
-                const zowedBin = posix.join(opts.serverPath ?? ZSshClient.DEFAULT_SERVER_PATH, "zowed");
-                const zowedArgs = ["-num-workers", `${opts.numWorkers ?? 3}`];
-                client.execAsync(zowedBin, ...zowedArgs).then(resolve, reject);
+                const zowexBin = posix.join(opts.serverPath ?? ZSshClient.DEFAULT_SERVER_PATH, "zowex");
+                const zowexArgs = ["server", "--num-workers", `${opts.numWorkers ?? 3}`];
+                client.execAsync(zowexBin, ...zowexArgs).then(resolve, reject);
             });
             client.mSshClient.on("close", () => {
                 Logger.getAppLogger().debug("Client disconnected");
