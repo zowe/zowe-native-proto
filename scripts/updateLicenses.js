@@ -11,12 +11,8 @@
 
 const chalk = require("chalk");
 const fs = require("fs");
-const path = require("path");
 
 (async () => {
-  if (process.argv[2] != null) {
-    process.chdir(path.resolve(__dirname, "..", process.argv[2]));
-  }
   const filePaths = await require("glob").glob(
     "{**/*.js,**/*.ts,**/*.go,**/*.h,**/*.hpp,**/*.c,**/*.cpp}",
     {
@@ -31,7 +27,7 @@ const path = require("path");
   );
   // turn the license file into a multi line comment
   const header =
-    fs.readFileSync(path.resolve(__dirname, "..", "LICENSE_HEADER"), "utf-8") +
+    fs.readFileSync("LICENSE_HEADER", "utf-8") +
     require("os").EOL +
     require("os").EOL;
   let alreadyContainedCopyright = 0;

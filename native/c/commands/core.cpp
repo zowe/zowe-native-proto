@@ -10,8 +10,6 @@
  */
 
 #include "core.hpp"
-#include "../zshmem.hpp"
-#include "../ztype.h"
 #include "../extend/plugin.hpp"
 #include <dirent.h>
 #include <algorithm>
@@ -55,23 +53,6 @@ bool should_quit(const std::string &input)
 
 int interactive_mode(plugin::InvocationContext &context)
 {
-  // Initialize shared memory
-  int shm_id;
-  ZSharedRegion *shm_ptr = nullptr;
-
-  const auto shm_file_path = context.get<std::string>("shm-file", "");
-
-  if (!shm_file_path.empty())
-  {
-    // Create new shared memory for this process (each process gets its own)
-    shm_id = init_shared_memory(&shm_ptr, shm_file_path.c_str());
-    if (shm_id == -1)
-    {
-      context.error_stream() << "Failed to initialize shared memory" << endl;
-      return RTNCD_FAILURE;
-    }
-  }
-
   context.output_stream() << "Started, enter command or 'quit' to quit..." << std::endl;
 
   std::string command;
@@ -103,12 +84,6 @@ int interactive_mode(plugin::InvocationContext &context)
   } while (!should_quit(command));
 
   context.output_stream() << "...terminated" << std::endl;
-
-  // Clean up this process's shared memory
-  if (!shm_file_path.empty())
-  {
-    cleanup_shared_memory(shm_id, shm_ptr, shm_file_path.c_str());
-  }
 
   return rc;
 }
@@ -225,9 +200,6 @@ Command &setup_root_command(int argc, char *argv[])
                                make_aliases("--version", "-v"),
                                "display version information", ArgType_Flag, false,
                                ArgValue(false));
-  root_command.add_keyword_arg("shm-file",
-                               make_aliases("--shm-file"),
-                               "shared memory file path", ArgType_Single, false);
   root_command.set_handler(handle_command);
 
   // Core commands

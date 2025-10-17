@@ -51,8 +51,6 @@ jobs:
                 user: "${{ secrets.SSH_MARIST_USERNAME }}"
                 password: "${{ secrets.SSH_MARIST_RACF_PASSWORD }}"
               deployDir: "/ZOWE/tmp/zowe-native-proto"
-              goBuildEnv: 'GOCACHE=/ZOWE/tmp/.go-cache GOINSECURE="*" GOPATH=/ZOWE/tmp/go-pkg GOPROXY=direct GOTMPDIR=/ZOWE/tmp'
-              preBuildCmd: ". ~/.custom_profile"
           EOF
 
       - name: Install Dependencies
@@ -63,12 +61,7 @@ jobs:
         run: npm pkg set version=${{ inputs.version }}
 
       - name: Build on z/OS
-        uses: nick-fields/retry@v3
-        with:
-          command: npm run z:all
-          max_attempts: 3
-          retry_on_exit_code: 11 # Ignore transient SIGSEGV error on Go build
-          timeout_minutes: 15
+        run: npm run z:all
 
       - uses: actions/upload-artifact@v4
         with:
