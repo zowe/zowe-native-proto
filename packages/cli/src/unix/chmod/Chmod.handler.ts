@@ -9,50 +9,27 @@
  *
  */
 
-import type { ICommandDefinition } from "@zowe/imperative";
+import type { IHandlerParameters } from "@zowe/imperative";
+import type { uss, ZSshClient } from "zowe-native-proto-sdk";
+import { SshBaseHandler } from "../../SshBaseHandler";
 
-export const ChmodDefinition: ICommandDefinition = {
-    handler: `${__dirname}/Chmod.handler`,
-    description: "Change the permissions of a UNIX file or directory",
-    type: "command",
-    name: "chmod",
-    aliases: ["mod"],
-    summary: "Change the permissions of a UNIX file or directory",
-    examples: [
-        {
-            description: "Change the permissions of a UNIX file",
-            options: '"755 /path/to/file.txt"',
-        },
-        {
-            description: "Change the permissions of a UNIX directory",
-            options: '"644 /path/to/directory"',
-        },
-        {
-            description: "Change the permissions of all files/folders in a UNIX directory",
-            options: '"755 /path/to/directory --recursive"',
-        },
-    ],
-    positionals: [
-        {
-            name: "mode",
-            description: 'The permissions to set (represented as an octal number, e.g. "755")',
-            type: "string",
-            required: true,
-        },
-        {
-            name: "path",
-            description: "The UNIX file or directory to change the permissions of",
-            type: "string",
-            required: true,
-        },
-    ],
-    options: [
-        {
-            name: "recursive",
-            description: "Change the permissions of all inner files and directories",
-            type: "boolean",
-            required: false,
-        },
-    ],
-    profile: { optional: ["ssh"] },
-};
+export default class ChmodHandler extends SshBaseHandler {
+    public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<uss.ChmodFileResponse> {
+        const response = await client.uss.chmodFile({
+            recursive: params.arguments.recursive,
+            mode: params.arguments.mode,
+            fspath: params.arguments.path,
+        });
+        params.response.data.setMessage(
+            "Successfully changed permissions of %s to %s",
+            params.arguments.path,
+            params.arguments.mode,
+        );
+        params.response.format.output({
+            output: response,
+            format: "table",
+            fields: ["success", "fspath"],
+        });
+        return response;
+    }
+}

@@ -9,6 +9,9 @@
  *
  */
 
+import type { CommandRequest, CommandResponse } from "./rpc/common";
+import type { ProgressCallback } from "./types";
+
 export interface ClientOptions {
     /**
      * Number of seconds between keep-alive messages
@@ -42,4 +45,8 @@ export interface ClientOptions {
      * (default: `~/.zowe-server`)
      */
     serverPath?: string;
+}
+
+export interface IRpcClient {
+    request(request: CommandRequest, progressCallback?: ProgressCallback): Promise<CommandResponse>;
 }

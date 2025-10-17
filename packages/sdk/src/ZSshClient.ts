@@ -14,7 +14,6 @@ import { Stream } from "node:stream";
 import { ImperativeError, Logger } from "@zowe/imperative";
 import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Client, type ClientChannel } from "ssh2";
-import { AbstractRpcClient } from "./AbstractRpcClient";
 import type {
     ClientOptions,
     CommandRequest,
@@ -25,18 +24,19 @@ import type {
     RpcResponse,
     StatusMessage,
 } from "./doc";
-import { RpcNotificationManager } from "./RpcNotificationManager";
+import { RpcClientApi } from "./RpcClientApi";
+import { RpcStreamManager } from "./RpcStreamManager";
 import { ZSshUtils } from "./ZSshUtils";
 
-export class ZSshClient extends AbstractRpcClient implements Disposable {
+export class ZSshClient extends RpcClientApi implements Disposable {
     public static readonly DEFAULT_SERVER_PATH = "~/.zowe-server";
 
     private mErrHandler: ClientOptions["onError"];
-    private mNotifMgr: RpcNotificationManager;
     private mResponseTimeout: number;
     private mServerInfo: { checksums?: Record<string, string> };
     private mSshClient: Client;
     private mSshStream: ClientChannel;
+    private mStreamMgr: RpcStreamManager;
     private mPartialStderr = "";
     private mPartialStdout = "";
     private readonly mPromiseMap: Map<number, RpcPromise> = new Map();
@@ -76,7 +76,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
             const keepAliveMsec = opts.keepAliveInterval != null ? opts.keepAliveInterval * 1000 : 30e3;
             client.mSshClient.connect(ZSshUtils.buildSshConfig(session, { keepaliveInterval: keepAliveMsec }));
         });
-        client.mNotifMgr = new RpcNotificationManager(client.mSshClient);
+        client.mStreamMgr = new RpcStreamManager(client.mSshClient);
         return client;
     }
 
@@ -95,7 +95,7 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
 
     public async request<T extends CommandResponse>(
         request: CommandRequest,
-        percentCallback?: (percent: number) => void,
+        progressCallback?: (percent: number) => void,
     ): Promise<T> {
         let timeoutId: NodeJS.Timeout;
         return new Promise<T>((resolve, reject) => {
@@ -111,14 +111,14 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
                 reject(new ImperativeError({ msg: "Request timed out", errorCode: "ETIMEDOUT" }));
             }, this.mResponseTimeout);
             if ("stream" in request && request.stream instanceof Stream) {
-                this.mNotifMgr.registerStream(
+                this.mStreamMgr.registerStream(
                     rpcRequest,
                     request.stream,
                     timeoutId,
-                    percentCallback && {
-                        callback: percentCallback,
+                    progressCallback && {
+                        callback: progressCallback,
                         // If stream is a ReadStream use the size of the localFile in bytes
-                        // If stream is a WriteStream, set undefined because the size progress will be provided by a notification
+                        // If stream is a WriteStream, set undefined because the size will be provided by a notification
                         totalBytes: "contentLen" in request ? (request.contentLen as number) : undefined,
                     },
                 );
@@ -236,11 +236,20 @@ export class ZSshClient extends AbstractRpcClient implements Disposable {
     }
 
     private handleNotification(notif: RpcNotification): void {
-        const responseId = notif.params?.id as number;
+        const rpcPromise = this.mPromiseMap.get(notif.params?.id as number);
         try {
-            this.mNotifMgr.handleNotification(notif, this.mPromiseMap.get(responseId));
+            switch (notif.method) {
+                case "receiveStream":
+                    this.mStreamMgr.linkStreamToPromise(rpcPromise, notif, "GET");
+                    break;
+                case "sendStream":
+                    this.mStreamMgr.linkStreamToPromise(rpcPromise, notif, "PUT");
+                    break;
+                default:
+                    throw new Error(`unknown method ${notif.method}`);
+            }
         } catch (err) {
-            const errMsg = Logger.getAppLogger().error("Failed to handle RPC notification: %s", err);
+            const errMsg = Logger.getAppLogger().error("Failed to handle RPC notification: %s", err.message);
             this.mErrHandler(new Error(errMsg));
         }
     }

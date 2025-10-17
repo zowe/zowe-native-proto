@@ -230,7 +230,6 @@ int handle_uss_view(InvocationContext &context)
   bool has_pipe_path = context.has("pipe-path");
   string pipe_path = context.get<std::string>("pipe-path", "");
   const auto result = obj();
-  result->set("fspath", str(uss_file));
 
   if (has_pipe_path && !pipe_path.empty())
   {
@@ -248,11 +247,11 @@ int handle_uss_view(InvocationContext &context)
     if (context.get<bool>("return-etag", false))
     {
       const auto etag = zut_build_etag(file_stats.st_mtime, file_stats.st_size);
-      context.output_stream() << "etag: " << etag << endl;
       if (!context.is_redirecting_output())
       {
-        result->set("etag", str(etag));
+        context.output_stream() << "etag: " << etag << endl;
       }
+      result->set("etag", str(etag));
     }
 
     if (!context.is_redirecting_output())
@@ -282,10 +281,7 @@ int handle_uss_view(InvocationContext &context)
         context.output_stream() << "etag: " << etag << endl;
         context.output_stream() << "data: ";
       }
-      else
-      {
-        result->set("etag", str(etag));
-      }
+      result->set("etag", str(etag));
     }
 
     bool has_encoding = context.has("encoding");
@@ -299,9 +295,9 @@ int handle_uss_view(InvocationContext &context)
     {
       context.output_stream() << response;
     }
-
-    context.set_object(result);
   }
+
+  context.set_object(result);
 
   return rc;
 }
@@ -400,7 +396,6 @@ int handle_uss_write(InvocationContext &context)
 
   result->set("created", boolean(zusf.created));
   result->set("etag", str(zusf.etag));
-  result->set("fspath", str(file));
   context.set_object(result);
 
   return rc;

@@ -19,7 +19,7 @@ export interface ISshConfigExt extends ISshSession {
     name?: string;
 }
 // biome-ignore lint/complexity/noStaticOnlyClass: Utilities class has static methods
-export class ZClientUtils {
+export class SshConfigUtils {
     public static async findPrivateKeys(): Promise<string[]> {
         const keyNames = ["id_ed25519", "id_rsa", "id_ecdsa", "id_dsa"];
         const privateKeyPaths: Set<string> = new Set();

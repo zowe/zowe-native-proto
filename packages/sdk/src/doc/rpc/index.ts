@@ -9,11 +9,8 @@
  *
  */
 
-export * from "./AbstractConfigManager";
-export * from "./ConfigFileUtils";
-export * from "./doc";
-export * from "./RpcClientApi";
-export * from "./SshConfigUtils";
-export * from "./SshErrors";
-export * from "./ZSshClient";
-export * from "./ZSshUtils";
+export * as cmds from "./cmds";
+export * from "./common";
+export * as ds from "./ds";
+export * as jobs from "./jobs";
+export * as uss from "./uss";

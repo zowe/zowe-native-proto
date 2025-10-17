@@ -28,10 +28,16 @@ import {
 } from "@zowe/imperative";
 import { NodeSSH } from "node-ssh";
 import { ConfigFileUtils } from "./ConfigFileUtils";
-import { type inputBoxOpts, MESSAGE_TYPE, type PrivateKeyWarningOptions, type qpItem, type qpOpts } from "./doc";
-import { type ISshConfigExt, ZClientUtils } from "./ZClientUtils";
+import {
+    type inputBoxOpts,
+    MESSAGE_TYPE,
+    type PrivateKeyWarningOptions,
+    type ProgressCallback,
+    type qpItem,
+    type qpOpts,
+} from "./doc";
+import { type ISshConfigExt, SshConfigUtils } from "./SshConfigUtils";
 
-export type ProgressCallback = (percent: number) => void;
 export abstract class AbstractConfigManager {
     public constructor(private mProfilesCache: ProfileInfo) {}
 
@@ -64,7 +70,7 @@ export abstract class AbstractConfigManager {
         this.sshProfiles = this.fetchAllSshProfiles().filter(({ name, profile }) => name && profile?.host);
 
         // Get configs from ~/.ssh/config
-        this.migratedConfigs = await ZClientUtils.migrateSshConfig();
+        this.migratedConfigs = await SshConfigUtils.migrateSshConfig();
 
         // Parse to remove migratable configs that already exist on the team config
         this.filteredMigratedConfigs = this.migratedConfigs.filter(
@@ -509,7 +515,7 @@ export abstract class AbstractConfigManager {
         await this.withProgress("Validating Private Keys...", async (progress) => {
             // Find private keys located at ~/.ssh/ and attempt to connect with them
             if (!this.validationResult) {
-                const foundPrivateKeys = await ZClientUtils.findPrivateKeys();
+                const foundPrivateKeys = await SshConfigUtils.findPrivateKeys();
                 for (const privateKey of foundPrivateKeys) {
                     const testValidation: ISshConfigExt = { ...this.selectedProfile };
                     testValidation.privateKey = privateKey;

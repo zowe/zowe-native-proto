@@ -220,13 +220,48 @@ Key considerations when planning your API:
 
 The `CommandBuilder` will help us map these RPC parameters to the CLI command arguments that `zowex ping` expects.
 
-### Step 3.2: Register the Command in zowed
+### Step 3.2: Define RPC Types and Generate Schemas
+
+Define TypeScript interfaces for your command's request and response. Create a new file in `packages/sdk/src/doc/rpc/`:
+
+**`packages/sdk/src/doc/rpc/sample.ts`:**
+
+```typescript
+import type * as common from "./common";
+
+export interface PingRequest extends common.CommandRequest<"ping"> {
+  message?: string;
+}
+
+export interface PingResponse extends common.CommandResponse {
+  data: string;
+  timestamp: string;
+}
+```
+
+Export your new types from `packages/sdk/src/doc/rpc/index.ts`:
+
+```typescript
+export * as sample from "./sample";
+```
+
+Then run the type generation script to convert your TypeScript types to C++ schemas:
+
+```bash
+npm run build:types:zowed
+```
+
+This generates `native/zowed/schemas/requests.hpp` and `responses.hpp` with schema definitions for all RPC types.
+
+### Step 3.3: Register the Command in zowed
 
 Edit `native/zowed/commands.cpp` to register your command with the dispatcher:
 
 ```cpp
 #include "commands.hpp"
 #include "dispatcher.hpp"
+#include "schemas/requests.hpp"
+#include "schemas/responses.hpp"
 #include "../c/commands/ds.hpp"
 #include "../c/commands/job.hpp"
 #include "../c/commands/uss.hpp"
@@ -238,22 +273,24 @@ void register_sample_commands(CommandDispatcher &dispatcher)
 {
   dispatcher.register_command("ping",
                               CommandBuilder(sample::handle_ping)
+                                  .validate<PingRequest, PingResponse>()
                                   .set_default("message", "hello from zowed"));
 }
 
-// In the main registration function, call register_ping_commands:
+// In the main registration function, call register_sample_commands:
 void register_all_commands(CommandDispatcher &dispatcher)
 {
   register_ds_commands(dispatcher);
   register_job_commands(dispatcher);
   register_uss_commands(dispatcher);
   register_cmd_commands(dispatcher);
-  register_ping_commands(dispatcher);  // Add this line
+  register_sample_commands(dispatcher);  // Add this line
 }
 ```
 
 The `CommandBuilder` provides a fluent API for mapping RPC parameters to command arguments:
 
+- `.validate<RequestT, ResponseT>()` - Enable automatic type validation for requests and responses
 - `.rename_arg(from, to)` - Rename an RPC parameter to match the command's expected argument
 - `.set_default(name, value)` - Set a default value for an argument
 - `.flatten_obj(name)` - Flatten a nested JSON object into top-level arguments
@@ -261,7 +298,11 @@ The `CommandBuilder` provides a fluent API for mapping RPC parameters to command
 - `.read_stdout(name, base64)` - Read the command's stdout into the RPC response
 - `.handle_fifo(rpcId, argName, mode)` - Create a FIFO pipe for streaming data
 
-### Step 3.3: Build the Middleware
+---
+
+## 4. Testing Your Middleware Command
+
+### Step 4.1: Build the Middleware
 
 Upload your new source code:
 
@@ -277,49 +318,9 @@ npm run z:build:zowed
 
 **Note:** This command is equivalent to running `cd native/zowed && make` on z/OS.
 
----
-
-## 4. Testing Your Middleware Command
-
-### Step 4.1: Define SDK Types
-
-Create TypeScript type definitions for your new command in `packages/sdk/src/doc/gen/ping.ts`:
-
-**`packages/sdk/src/doc/gen/ping.ts`:**
-
-```typescript
-import type * as common from "./common";
-
-export interface PingRequest extends common.CommandRequest {
-  command: "ping";
-  /**
-   * Optional message to include in ping
-   * @default "hello"
-   */
-  message?: string;
-}
-
-export interface PingResponse extends common.CommandResponse {
-  /**
-   * Data returned from the ping command
-   */
-  data: string;
-  /**
-   * Timestamp when the ping was processed
-   */
-  timestamp: string;
-}
-```
-
-You'll also need to export your new types from `packages/sdk/src/doc/index.ts`:
-
-```typescript
-export * as ping from "./gen/ping";
-```
-
 ### Step 4.2: Add SDK Method
 
-Edit `packages/sdk/src/AbstractRpcClient.ts` to add a method for your new command:
+Edit `packages/sdk/src/RpcClientApi.ts` to add a method for your new command:
 
 ```typescript
 import type {
@@ -330,18 +331,14 @@ import type {
   jobs,
   uss,
   sample,
-} from "./doc";
-export abstract class AbstractRpcClient {
-  // ... existing methods (request, ds, jobs, uss, cmds) ...
+} from "./doc/rpc";
 
-  public get sample() {
-    return {
-      ping: (
-        request: Omit<cmds.PingRequest, "command">
-      ): Promise<cmds.PingResponse> =>
-        this.request({ command: "ping", ...request }),
-    };
-  }
+export abstract class RpcClientApi {
+  // ... existing apis (cmds, ds, jobs, uss) ...
+
+  public sample = {
+    ping: this.rpc<sample.PingRequest, sample.PingResponse>("ping"),
+  };
 }
 ```
 
@@ -452,9 +449,9 @@ You've successfully added a new command to the Zowe Native Protocol stack! Here'
 
 1. **Created a low-level C++ command** in `native/c/commands/` that can be invoked directly via `zowex`
 2. **Tested it locally** on z/OS using the zowex CLI
-3. **Planned the JSON-RPC API** to define how clients will interact with your command
-4. **Registered it with zowed** using the `CommandBuilder` API in `native/zowed/commands.cpp`
-5. **Created TypeScript types** in `packages/sdk/src/doc/gen/` for the SDK
+3. **Defined RPC types** in `packages/sdk/src/doc/rpc/` as TypeScript interfaces
+4. **Generated C++ schemas** using `npm run build:types:zowed`
+5. **Registered it with zowed** using the `CommandBuilder` API in `native/zowed/commands.cpp`
 6. **Added SDK methods** in TypeScript for easy client-side access
 7. **Tested end-to-end** with a sample script
 

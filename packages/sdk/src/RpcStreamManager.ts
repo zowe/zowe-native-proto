@@ -15,14 +15,15 @@ import { Logger } from "@zowe/imperative";
 import { Base64Decode, Base64Encode } from "base64-stream";
 import type { Client, ClientChannel } from "ssh2";
 import type { CallbackInfo, CommandResponse, RpcNotification, RpcPromise, RpcRequest } from "./doc";
-import type { ReadDatasetResponse } from "./doc/gen/ds";
-import type { ReadFileResponse } from "./doc/gen/uss";
+import type { ReadDatasetRequest } from "./doc/rpc/ds";
+import type { ReadFileRequest } from "./doc/rpc/uss";
 import { ProgressTransform } from "./ProgressTransform";
 
-type StreamMode = "r" | "w";
+type StreamData = { stream: Stream; callbackInfo?: CallbackInfo; resourceName?: string };
+type StreamMode = "GET" | "PUT";
 
-export class RpcNotificationManager {
-    private readonly mPendingStreamMap: Map<number, { stream: Stream; callbackInfo?: CallbackInfo }> = new Map();
+export class RpcStreamManager {
+    private readonly mPendingStreamMap: Map<number, StreamData> = new Map();
 
     public constructor(private readonly mSshClient: Client) {}
 
@@ -35,21 +36,24 @@ export class RpcNotificationManager {
         this.mPendingStreamMap.set(request.id, {
             stream: stream.on("keepAlive", () => timeoutId?.refresh()),
             callbackInfo,
+            resourceName: (request.params as ReadDatasetRequest).dsname ?? (request.params as ReadFileRequest).fspath,
         });
         request.params.stream = request.id;
     }
 
-    public handleNotification(notif: RpcNotification, promise?: RpcPromise): void {
-        switch (notif.method) {
-            case "sendStream":
-                this.linkStreamToPromise(promise, this.uploadStream(notif.params), "r");
-                break;
-            case "receiveStream":
-                this.linkStreamToPromise(promise, this.downloadStream(notif.params), "w");
-                break;
-            default:
-                throw new Error(`Unknown RPC notification type: ${notif.method}`);
-        }
+    public linkStreamToPromise(rpcPromise: RpcPromise, notif: RpcNotification, mode: StreamMode): void {
+        const { reject, resolve } = rpcPromise;
+        const { resourceName } = this.mPendingStreamMap.get(notif.params.id)!;
+        const streamPromise = mode === "PUT" ? this.uploadStream(notif.params) : this.downloadStream(notif.params);
+        rpcPromise.resolve = async (response: CommandResponse) => {
+            const clientLen = await streamPromise;
+            try {
+                this.expectContentLengthMatches(response, clientLen, mode, resourceName);
+                resolve(response);
+            } catch (err) {
+                reject(err);
+            }
+        };
     }
 
     private async uploadStream(params: { id: number; pipePath: string }): Promise<number> {
@@ -87,29 +91,19 @@ export class RpcNotificationManager {
         return progressTransform.bytesProcessed;
     }
 
-    private linkStreamToPromise(rpcPromise: RpcPromise, streamPromise: Promise<number>, mode: StreamMode): void {
-        const { reject, resolve } = rpcPromise;
-        rpcPromise.resolve = async (response: CommandResponse) => {
-            const contentLen = await streamPromise;
-            try {
-                this.expectContentLengthMatches(response, contentLen, mode);
-                resolve(response);
-            } catch (err) {
-                reject(err);
-            }
-        };
-    }
-
-    private expectContentLengthMatches(response: CommandResponse, clientLen: number, mode: StreamMode): void {
+    private expectContentLengthMatches(
+        response: CommandResponse,
+        clientLen: number,
+        mode: StreamMode,
+        resourceName?: string,
+    ): void {
         if ("contentLen" in response && response.contentLen != null && response.contentLen !== clientLen) {
-            const resourceName = (response as ReadDatasetResponse).dataset ?? (response as ReadFileResponse).fspath;
-            let errMsg = "Content length mismatch";
-            if (resourceName != null) {
-                errMsg += ` for ${resourceName}`;
-            }
-            const expectedLen = mode === "r" ? clientLen : response.contentLen;
-            const actualLen = mode === "r" ? response.contentLen : clientLen;
-            throw new Error(Logger.getAppLogger().error("%s: expected %d, got %d", errMsg, expectedLen, actualLen));
+            const errMsg = `Content length mismatch${resourceName != null ? ` for ${resourceName}` : ""}`;
+            const errDetails =
+                mode === "GET"
+                    ? `server sent ${response.contentLen}, client received ${clientLen}`
+                    : `client sent ${clientLen}, server received ${response.contentLen}`;
+            throw new Error(Logger.getAppLogger().error(`${errMsg}: ${errDetails}`));
         }
     }
 }
