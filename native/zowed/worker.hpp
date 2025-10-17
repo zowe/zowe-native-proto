@@ -25,6 +25,16 @@
 class Worker;
 class WorkerPool;
 
+enum class WorkerState
+{
+  Starting,
+  Idle,
+  Running,
+  Stopping,
+  Faulted,
+  Exited
+};
+
 // Worker class that processes command requests
 class Worker
 {
@@ -34,8 +44,8 @@ private:
   std::queue<std::string> request_queue;
   std::mutex queue_mutex;
   std::condition_variable queue_condition;
-  std::atomic<bool> ready;
-  std::atomic<bool> should_stop;
+  std::atomic<bool> stop_requested;
+  std::atomic<WorkerState> state;
 
   void worker_loop();
   void process_request(const std::string &data);
@@ -47,14 +57,15 @@ public:
   void start();
   void stop();
   void add_request(const std::string &request);
-  bool is_ready() const
-  {
-    return ready.load();
-  }
+  bool is_ready() const;
   int get_id() const
   {
     return id;
   }
+  bool is_running() const;
+  bool has_fault() const;
+  bool is_stop_requested() const;
+  WorkerState get_state() const;
 };
 
 // Worker pool that manages multiple workers
@@ -67,8 +78,13 @@ private:
   std::atomic<int32_t> ready_count;
   std::atomic<bool> is_shutting_down;
   std::atomic<size_t> next_worker_index;
+  std::vector<bool> worker_ready_flags;
+  std::thread supervisor_thread;
+  std::atomic<bool> supervisor_running;
 
   void initialize_worker(int worker_id);
+  void monitor_workers();
+  void replace_worker(size_t worker_index, const char *reason);
 
 public:
   explicit WorkerPool(int num_workers);
