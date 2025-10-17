@@ -671,8 +671,8 @@ int handle_data_set_compress(InvocationContext &context)
       {
         is_pds = true;
       }
-      fclose(dir);
     }
+    fclose(dir);
   }
 
   if (!is_pds)
