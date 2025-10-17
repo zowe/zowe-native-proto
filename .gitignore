@@ -1,4 +1,5 @@
 # Directories
+.cache
 artifacts
 bin
 coverage
