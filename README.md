@@ -7,7 +7,7 @@ An open-source, native protocol for z/OS mainframe operations via SSH with minim
 ### Local
 
 - Node.js & npm - required to build client packages
-- ClangFormat - optional but recommended for C++ linting
+- VS Code extensions - recommended ones are listed in [extensions.json](./.vscode/extensions.json)
 
 ### z/OS
 
