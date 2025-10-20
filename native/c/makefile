@@ -334,24 +334,6 @@ $(OUT_DIR)/libzcn.a: $(OUT_DIR)/zcn.o $(OUT_DIR)/zcnm.o $(OUT_DIR)/zcnm31.o $(OU
 libzcn.a: $(OUT_DIRS) $(OUT_DIR)/libzcn.a
 
 #
-# Shared memory
-#
-# $(OUT_DIR)/zshmem.o: zshmem.cpp
-# 	@echo 'Building $(OUT_DIR)/zshmem.o'
-# 	$(CXX) $(DLL_CPP_FLAGS) -qlist=$*.cpp.lst -o $@ $^
-
-# $(OUT_DIR)/libzshmem.so: $(OUT_DIR)/zshmem.o
-# 	@echo 'Building $(OUT_DIR)/libzshmem.so'
-# 	$(CXX) $(DLL_BND_FLAGS) -o $@ $^ > $*.bind.lst
-
-# $(OUT_DIR)/libzshmem.a: $(OUT_DIR)/zshmem.o
-# 	@echo 'Building $(OUT_DIR)/libzshmem.a'
-# 	ar -rv $@ $^
-
-# libzshmem.so: $(OUT_DIRS) $(OUT_DIR)/libzshmem.so
-# libzshmem.a: $(OUT_DIRS) $(OUT_DIR)/libzshmem.a
-
-#
 # USS data
 #
 $(OUT_DIR)/zusf.o: zusf.cpp

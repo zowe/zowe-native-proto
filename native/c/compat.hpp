@@ -21,8 +21,8 @@
 #include <tr1/memory>
 namespace std
 {
-    typedef tr1::shared_ptr shared_ptr;
-    typedef tr1::enable_shared_from_this enable_shared_from_this;
+typedef tr1::shared_ptr shared_ptr;
+typedef tr1::enable_shared_from_this enable_shared_from_this;
 } // namespace std
 #endif
 #else
@@ -34,8 +34,8 @@ namespace std
 #include <tr1/memory>
 namespace std
 {
-    using tr1::enable_shared_from_this;
-    using tr1::shared_ptr;
+using tr1::enable_shared_from_this;
+using tr1::shared_ptr;
 } // namespace std
 #endif
 #endif

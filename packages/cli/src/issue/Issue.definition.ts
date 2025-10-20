@@ -12,7 +12,6 @@
 import type { ICommandDefinition } from "@zowe/imperative";
 import { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Constants } from "../Constants";
-// import { ConsoleCommand } from "./console/ConsoleCommand.definition";
 import { TsoCommand } from "./tso/TsoCommand.definition";
 
 const IssueDefinition: ICommandDefinition = {
