@@ -20,6 +20,11 @@ using std::string;
 namespace
 {
 
+constexpr size_t kMaxReplacementAttempts = 5;
+constexpr std::chrono::milliseconds kBaseReplacementBackoff(200);
+constexpr std::chrono::milliseconds kMaxReplacementBackoff(5000);
+constexpr std::chrono::milliseconds kMaxSleepTime(100);
+
 const char *worker_state_to_string(WorkerState state)
 {
   switch (state)
@@ -205,6 +210,8 @@ WorkerPool::WorkerPool(int num_workers)
     workers.push_back(std::move(worker));
   }
   ready_list.resize(num_workers, false);
+  replacement_attempts.resize(num_workers, 0);
+  next_replacement_allowed.resize(num_workers, std::chrono::steady_clock::time_point::min());
 
   // Initialize workers asynchronously
   for (int i = 0; i < num_workers; ++i)
@@ -296,23 +303,32 @@ void WorkerPool::set_worker_ready(int worker_id)
       LOG_ERROR("Attempted to mark worker %d as ready but index is out of range", worker_id);
       return;
     }
+    size_t worker_index = static_cast<size_t>(worker_id);
 
     // Make sure a worker still exists at that index in the pool before using it
-    Worker *worker = workers[worker_id].get();
+    Worker *worker = workers[worker_index].get();
     if (!worker)
     {
       LOG_WARN("Attempted to mark worker %d as ready but worker slot is empty", worker_id);
       return;
     }
 
-    if (worker_id >= static_cast<int>(ready_list.size()))
+    if (worker_index >= ready_list.size())
       ready_list.resize(workers.size(), false);
 
-    if (!ready_list[worker_id] && worker->is_ready())
+    if (worker_index >= replacement_attempts.size())
+    {
+      replacement_attempts.resize(workers.size(), 0);
+      next_replacement_allowed.resize(workers.size(), std::chrono::steady_clock::time_point::min());
+    }
+
+    if (!ready_list[worker_index] && worker->is_ready())
     {
       // Mark worker as ready if we haven't marked it in the list
-      ready_list[worker_id] = true;
+      ready_list[worker_index] = true;
       ready_count.fetch_add(1);
+      replacement_attempts[worker_index] = 0;
+      next_replacement_allowed[worker_index] = std::chrono::steady_clock::time_point::min();
       notify_ready = true;
     }
   }
@@ -391,25 +407,26 @@ void WorkerPool::monitor_workers()
 
 void WorkerPool::replace_worker(size_t worker_index, const char *reason)
 {
-  LOG_WARN("Replacing worker %zu due to %s", worker_index, reason);
-  // Don't replace any workers if we're just shutting down the thread pool
   if (is_shutting_down.load())
     return;
-
-  std::unique_ptr<Worker> old_worker;
 
   {
     std::lock_guard<std::mutex> lock(ready_mutex);
 
     if (worker_index >= workers.size())
     {
-      // Ensure that the worker index is still valid in case multiple workers have failed
       LOG_ERROR("Cannot replace worker at index %zu - out of range", worker_index);
       return;
     }
 
     if (worker_index >= ready_list.size())
       ready_list.resize(workers.size(), false);
+
+    if (worker_index >= replacement_attempts.size())
+    {
+      replacement_attempts.resize(workers.size(), 0);
+      next_replacement_allowed.resize(workers.size(), std::chrono::steady_clock::time_point::min());
+    }
 
     if (ready_list[worker_index])
     {
@@ -422,23 +439,103 @@ void WorkerPool::replace_worker(size_t worker_index, const char *reason)
 
       ready_list[worker_index] = false;
     }
+  }
 
-    // Prepare to shut down the old worker
-    old_worker = std::move(workers[worker_index]);
+  std::unique_ptr<Worker> old_worker;
+  bool max_attempts_reached = false;
+  size_t attempt_number = 0;
+  std::chrono::milliseconds applied_backoff(0);
+
+  while (true)
+  {
+    bool should_wait = false;
+    std::chrono::steady_clock::time_point wait_until;
+    std::chrono::milliseconds wait_duration(0);
+
+    {
+      std::lock_guard<std::mutex> lock(ready_mutex);
+
+      if (worker_index >= workers.size())
+      {
+        LOG_ERROR("Cannot replace worker at index %zu - out of range", worker_index);
+        return;
+      }
+
+      const size_t attempts = replacement_attempts[worker_index];
+      const auto now = std::chrono::steady_clock::now();
+
+      if (attempts >= kMaxReplacementAttempts)
+      {
+        max_attempts_reached = true;
+        old_worker = std::move(workers[worker_index]);
+        break;
+      }
+
+      auto &next_allowed = next_replacement_allowed[worker_index];
+      if (now < next_allowed)
+      {
+        should_wait = true;
+        wait_until = next_allowed;
+        wait_duration = std::chrono::duration_cast<std::chrono::milliseconds>(next_allowed - now);
+      }
+      else
+      {
+        attempt_number = attempts + 1;
+        replacement_attempts[worker_index] = attempt_number;
+
+        auto computed_backoff = kBaseReplacementBackoff * (1ULL << (attempt_number - 1));
+        if (computed_backoff > kMaxReplacementBackoff)
+          computed_backoff = kMaxReplacementBackoff;
+
+        applied_backoff = computed_backoff;
+        next_allowed = now + computed_backoff;
+
+        old_worker = std::move(workers[worker_index]);
+        break;
+      }
+    }
+
+    if (!should_wait)
+      continue;
+
+    LOG_DEBUG("Delaying worker %zu replacement by %lld ms due to backoff", worker_index, static_cast<long long>(wait_duration.count()));
+
+    if (is_shutting_down.load())
+      return;
+
+    auto now = std::chrono::steady_clock::now();
+    while (!is_shutting_down.load() && now < wait_until)
+    {
+      const auto remaining = wait_until - now;
+      const auto sleep_duration = remaining > kMaxSleepTime ? kMaxSleepTime : remaining;
+      std::this_thread::sleep_for(sleep_duration);
+      now = std::chrono::steady_clock::now();
+    }
+
+    if (is_shutting_down.load())
+      return;
   }
 
   if (old_worker)
     old_worker->stop();
 
-  // Don't replace any workers if we're just shutting down the thread pool
-  // Checking again in case the worker pool was shut down while a worker was being replaced
+  if (max_attempts_reached)
+  {
+    LOG_ERROR("Worker %zu hit maximum replacement attempts (%zu) after %s; leaving worker offline", worker_index, kMaxReplacementAttempts, reason);
+    return;
+  }
+
+  if (attempt_number > 0)
+  {
+    LOG_WARN("Replacing worker %zu due to %s (attempt %zu, next backoff %lld ms)", worker_index, reason, attempt_number, static_cast<long long>(applied_backoff.count()));
+  }
+
   if (is_shutting_down.load())
     return;
 
   std::unique_ptr<Worker> new_worker(new Worker(static_cast<int>(worker_index)));
 
   {
-    // Prepare the new worker
     std::lock_guard<std::mutex> lock(ready_mutex);
 
     if (worker_index >= workers.size())
@@ -446,6 +543,12 @@ void WorkerPool::replace_worker(size_t worker_index, const char *reason)
 
     if (worker_index >= ready_list.size())
       ready_list.resize(worker_index + 1, false);
+
+    if (worker_index >= replacement_attempts.size())
+    {
+      replacement_attempts.resize(worker_index + 1, 0);
+      next_replacement_allowed.resize(worker_index + 1, std::chrono::steady_clock::time_point::min());
+    }
 
     workers[worker_index] = std::move(new_worker);
     ready_list[worker_index] = false;

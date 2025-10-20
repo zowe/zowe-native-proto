@@ -20,6 +20,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <chrono>
 
 // Forward declarations
 class Worker;
@@ -80,6 +81,8 @@ private:
   std::mutex ready_mutex;
   std::condition_variable ready_condition;
   std::atomic<int32_t> ready_count;
+  std::vector<size_t> replacement_attempts;
+  std::vector<std::chrono::steady_clock::time_point> next_replacement_allowed;
 
   // Whether the pool is shutting down
   std::atomic<bool> is_shutting_down;
