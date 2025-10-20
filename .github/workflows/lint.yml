@@ -30,4 +30,4 @@ jobs:
           repo-root: native
           style: file
           tidy-checks: "-*"
-          version: 20
+          version: 21
