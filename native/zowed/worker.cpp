@@ -204,7 +204,7 @@ WorkerPool::WorkerPool(int num_workers)
     std::unique_ptr<Worker> worker(new Worker(i));
     workers.push_back(std::move(worker));
   }
-  worker_ready_flags.resize(num_workers, false);
+  ready_list.resize(num_workers, false);
 
   // Initialize workers asynchronously
   for (int i = 0; i < num_workers; ++i)
@@ -279,14 +279,49 @@ Worker *WorkerPool::get_ready_worker()
 
 void WorkerPool::set_worker_ready(int worker_id)
 {
-  std::lock_guard<std::mutex> lock(ready_mutex);
-
-  if (worker_id >= 0 && worker_id < static_cast<int>(workers.size()))
+  if (worker_id < 0)
   {
-    if (workers[worker_id] && workers[worker_id]->is_ready())
+    LOG_ERROR("Attempted to mark invalid worker %d as ready (negative index)", worker_id);
+    return;
+  }
+
+  bool notify_ready = false;
+
+  {
+    std::lock_guard<std::mutex> lock(ready_mutex);
+
+    // Bounds checking for worker ID to make sure the pool hasn't shifted the index out-of-bounds
+    if (worker_id >= static_cast<int>(workers.size()))
     {
-      // TODO: set worker as ready
+      LOG_ERROR("Attempted to mark worker %d as ready but index is out of range", worker_id);
+      return;
     }
+
+    // Make sure a worker still exists at that index in the pool before using it
+    Worker *worker = workers[worker_id].get();
+    if (!worker)
+    {
+      LOG_WARN("Attempted to mark worker %d as ready but worker slot is empty", worker_id);
+      return;
+    }
+
+    if (worker_id >= static_cast<int>(ready_list.size()))
+      ready_list.resize(workers.size(), false);
+
+    if (!ready_list[worker_id] && worker->is_ready())
+    {
+      // Mark worker as ready if we haven't marked it in the list
+      ready_list[worker_id] = true;
+      ready_count.fetch_add(1);
+      notify_ready = true;
+    }
+  }
+
+  if (notify_ready)
+  {
+    // Notify `get_ready_worker` if its waiting for a worker to become available
+    LOG_DEBUG("Worker %d marked as ready. Ready workers: %d", worker_id, ready_count.load());
+    ready_condition.notify_one();
   }
 }
 
@@ -315,14 +350,13 @@ void WorkerPool::shutdown()
 
 void WorkerPool::monitor_workers()
 {
+  // Scan over the workers periodically to check their heartbeat (worker state)
   while (supervisor_running && !is_shutting_down)
   {
     for (size_t i = 0; i < workers.size(); ++i)
     {
       if (!supervisor_running || is_shutting_down)
-      {
         break;
-      }
 
       Worker *worker = nullptr;
       {
@@ -334,10 +368,9 @@ void WorkerPool::monitor_workers()
       }
 
       if (worker == nullptr)
-      {
         continue;
-      }
 
+      // If this worker has faulted, replace it
       const auto worker_state = worker->get_state();
       if (worker_state == WorkerState::Faulted)
       {
@@ -345,10 +378,12 @@ void WorkerPool::monitor_workers()
         continue;
       }
 
+      // If the worker has already crashed/exited, replace it
       if (worker_state == WorkerState::Exited && !worker->is_stop_requested())
         replace_worker(i, "unexpected exit");
     }
 
+    // Sleep loop to avoid busy waiting on CPU
     for (int i = 0; i < 5 && supervisor_running && !is_shutting_down; i++)
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
@@ -356,6 +391,66 @@ void WorkerPool::monitor_workers()
 
 void WorkerPool::replace_worker(size_t worker_index, const char *reason)
 {
-  LOG_WARN("Worker %zu recovered after %s, respawning", worker_index, reason);
-  // TODO: replace actual worker
+  LOG_WARN("Replacing worker %zu due to %s", worker_index, reason);
+  // Don't replace any workers if we're just shutting down the thread pool
+  if (is_shutting_down.load())
+    return;
+
+  std::unique_ptr<Worker> old_worker;
+
+  {
+    std::lock_guard<std::mutex> lock(ready_mutex);
+
+    if (worker_index >= workers.size())
+    {
+      // Ensure that the worker index is still valid in case multiple workers have failed
+      LOG_ERROR("Cannot replace worker at index %zu - out of range", worker_index);
+      return;
+    }
+
+    if (worker_index >= ready_list.size())
+      ready_list.resize(workers.size(), false);
+
+    if (ready_list[worker_index])
+    {
+      int32_t previous_ready = ready_count.fetch_sub(1);
+      if (previous_ready <= 0)
+      {
+        ready_count.fetch_add(1);
+        LOG_WARN("Ready count underflow while replacing worker %zu", worker_index);
+      }
+
+      ready_list[worker_index] = false;
+    }
+
+    // Prepare to shut down the old worker
+    old_worker = std::move(workers[worker_index]);
+  }
+
+  if (old_worker)
+    old_worker->stop();
+
+  // Don't replace any workers if we're just shutting down the thread pool
+  // Checking again in case the worker pool was shut down while a worker was being replaced
+  if (is_shutting_down.load())
+    return;
+
+  std::unique_ptr<Worker> new_worker(new Worker(static_cast<int>(worker_index)));
+
+  {
+    // Prepare the new worker
+    std::lock_guard<std::mutex> lock(ready_mutex);
+
+    if (worker_index >= workers.size())
+      workers.resize(worker_index + 1);
+
+    if (worker_index >= ready_list.size())
+      ready_list.resize(worker_index + 1, false);
+
+    workers[worker_index] = std::move(new_worker);
+    ready_list[worker_index] = false;
+  }
+
+  std::thread(&WorkerPool::initialize_worker, this, static_cast<int>(worker_index)).detach();
+  LOG_DEBUG("Replacement worker %zu spawned, awaiting readiness", worker_index);
 }

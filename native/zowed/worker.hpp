@@ -72,18 +72,30 @@ public:
 class WorkerPool
 {
 private:
+  std::atomic<size_t> next_worker_index;
   std::vector<std::unique_ptr<Worker>> workers;
+
+  // Track ready state variables and total number of ready workers
+  std::vector<bool> ready_list;
   std::mutex ready_mutex;
   std::condition_variable ready_condition;
   std::atomic<int32_t> ready_count;
+
+  // Whether the pool is shutting down
   std::atomic<bool> is_shutting_down;
-  std::atomic<size_t> next_worker_index;
-  std::vector<bool> worker_ready_flags;
+
+  // State variables for supervisor/monitor thread
   std::thread supervisor_thread;
   std::atomic<bool> supervisor_running;
 
   void initialize_worker(int worker_id);
   void monitor_workers();
+  /**
+   * @brief Replace a worker at the given index with the reason for replacement
+   *
+   * @param worker_index The ID of the worker to replace
+   * @param reason The reason why the worker is being replaced
+   */
   void replace_worker(size_t worker_index, const char *reason);
 
 public:
@@ -93,7 +105,17 @@ public:
   void distribute_request(const std::string &request);
   int32_t get_available_workers_count();
   void shutdown();
+  /**
+   * @brief Get the next available worker from the pool
+   *
+   * @return `Worker*` A pointer to the available worker
+   */
   Worker *get_ready_worker();
+  /**
+   * @brief Marks the given worker ID as ready in the pool
+   *
+   * @param worker_id The ID of the worker to mark as ready
+   */
   void set_worker_ready(int worker_id);
 };
 
