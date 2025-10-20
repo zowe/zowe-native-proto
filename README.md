@@ -138,6 +138,6 @@ graph LR
   click sdk "https://github.com/zowe/zowe-native-proto/blob/main/doc/client/architecture.md#sdk-package"
   click cli "https://github.com/zowe/zowe-native-proto/blob/main/doc/client/architecture.md#cli-plug-in"
   click vsce "https://github.com/zowe/zowe-native-proto/blob/main/doc/client/architecture.md#vs-code-extension"
-  click ioserver "https://github.com/zowe/zowe-native-proto/blob/main/doc/server/ioserver_architecture.md"
+  click ioserver "https://github.com/zowe/zowe-native-proto/blob/main/doc/server/zowed_architecture.md"
   click zowex "https://github.com/zowe/zowe-native-proto/blob/main/doc/server/zowex_architecture.md"
 ```
