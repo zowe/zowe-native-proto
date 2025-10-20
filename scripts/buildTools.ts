@@ -410,13 +410,13 @@ function getDirs(next = "") {
     return dirs;
 }
 
-async function artifacts(connection: Client, packageApf: boolean) {
-    const artifactPaths = ["c/build-out/zowex", "zowed/build-out/libzowed.so", "zowed/build-out/zowed"];
-    if (packageApf) {
-        artifactPaths.push("c/build-out/zoweax");
+async function artifacts(connection: Client, packageAll: boolean) {
+    const artifactPaths = ["zowed/build-out/libzowed.so", "zowed/build-out/zowed"];
+    if (packageAll) {
+        artifactPaths.push("c/build-out/zoweax", "c/build-out/zowex");
     }
     const artifactNames = artifactPaths.map((file) => path.basename(file)).sort();
-    const localDirs = packageApf ? ["dist"] : ["packages/cli/bin", "packages/vsce/bin"];
+    const localDirs = packageAll ? ["dist"] : ["packages/cli/bin", "packages/vsce/bin"];
     const localFiles = ["server.pax.Z", "checksums.asc"];
     const [paxFile, checksumFile] = localFiles;
     const prePaxCmds = artifactPaths.map(
