@@ -215,6 +215,7 @@ class WatchUtils {
                 pendingUploads.push(uploadFile(sftp, absLocalPath, remotePath));
                 this.cache[path.posix.relative(deployDirs.root, remotePath)] = localStats.mtimeMs;
             }
+            await Promise.all(pendingUploads);
             this.saveCache();
             await this.buildChanges(...paths.map((pair) => pair[0]));
         } finally {
@@ -243,7 +244,8 @@ class WatchUtils {
                     return;
                 }
 
-                // Wait for initial shell output before sending commands
+                // Capture initial shell output like MOTD before sending commands
+                stream.write("echo\n");
                 await new Promise<void>((resolve) => stream.once("data", resolve));
 
                 const cwd = inDir ?? deployDirs.cDir;
@@ -258,16 +260,15 @@ class WatchUtils {
                     .on("exit", (code: number) => {
                         this.stopSpinner(spinner);
                         if (errText.length > 0) {
+                            const status = code > 0 ? `failed (rc=${code}) ✘` : `succeeded with warnings !`;
                             process.stdout.write(
-                                `\t[tasks -> ${path.basename(cwd)}] make failed (rc=${code}) ✘\nerror: \n${errText}`,
+                                `\t[tasks -> ${path.basename(cwd)}] make ${status}\nerror: \n${errText}`,
                             );
                             resolve(code);
-                        } else if (outText.length > 0) {
-                            process.stdout.write(`\t[tasks -> ${path.basename(cwd)}] make succeeded ✔`);
-                            resolve(outText);
                         } else {
-                            process.stdout.write(`\t[tasks -> ${path.basename(cwd)}] make detected no changes !`);
-                            resolve("");
+                            const status = outText.length > 0 ? "succeeded ✔" : "detected no changes —";
+                            process.stdout.write(`\t[tasks -> ${path.basename(cwd)}] make ${status}`);
+                            resolve(outText);
                         }
                     })
                     .on("error", reject)
@@ -508,7 +509,7 @@ async function retrieve(connection: Client, files: string[], targetDir: string, 
     });
 }
 
-async function upload(connection: Client) {
+async function upload(connection: Client, sshProfile: IProfile) {
     return new Promise<void>((finish) => {
         const spinner = startSpinner("Deploying files...");
 
@@ -535,6 +536,7 @@ async function upload(connection: Client) {
             }
 
             const pendingUploads = [];
+            const watcher = new WatchUtils(connection, sshProfile);
             if (args[1] == null) {
                 pendingUploads.push(
                     uploadFile(sftpcon, path.resolve(__dirname, "../package.json"), `${deployDirs.root}/package.json`),
@@ -544,10 +546,12 @@ async function upload(connection: Client) {
                 const from = path.resolve(__dirname, `${localDeployDir}/${files[i]}`);
                 const to = `${deployDirs.root}/${files[i]}`;
                 pendingUploads.push(uploadFile(sftpcon, from, to));
+                watcher.cache[files[i].replaceAll(path.sep, path.posix.sep)] = fs.statSync(from).mtimeMs;
             }
             await Promise.all(pendingUploads);
 
             stopSpinner(spinner, "Deploy complete!");
+            watcher.saveCache();
             finish();
         });
     });
@@ -644,10 +648,13 @@ async function clean(connection: Client) {
     console.log("Clean complete");
 }
 
-async function rmdir(connection: Client) {
+async function rmdir(connection: Client, sshProfile: IProfile) {
     console.log("Removing ROOT directory ...");
     console.log(await runCommandInShell(connection, `rm -rf ${deployDirs.root}\n`));
     console.log("Removal complete");
+    const watcher = new WatchUtils(connection, sshProfile);
+    watcher.cache = {};
+    watcher.saveCache();
 }
 
 async function watch(connection: Client, sshProfile: IProfile) {
@@ -773,7 +780,7 @@ async function main() {
                 await clean(sshClient);
                 break;
             case "delete":
-                await rmdir(sshClient);
+                await rmdir(sshClient, config.sshProfile as IProfile);
                 break;
             case "make":
                 await make(sshClient);
@@ -782,7 +789,7 @@ async function main() {
                 await artifacts(sshClient, true);
                 break;
             case "rebuild":
-                await upload(sshClient);
+                await upload(sshClient, config.sshProfile as IProfile);
                 await build(sshClient, config);
                 break;
             case "test":
@@ -792,7 +799,7 @@ async function main() {
                 await make(sshClient, deployDirs.pythonTestDir);
                 break;
             case "upload":
-                await upload(sshClient);
+                await upload(sshClient, config.sshProfile as IProfile);
                 break;
             case "watch":
                 await watch(sshClient, config.sshProfile as IProfile);
