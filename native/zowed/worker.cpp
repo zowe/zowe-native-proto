@@ -17,12 +17,39 @@
 
 using std::string;
 
+namespace
+{
+
+const char *worker_state_to_string(WorkerState state)
+{
+  switch (state)
+  {
+  case WorkerState::Starting:
+    return "Starting";
+  case WorkerState::Idle:
+    return "Idle";
+  case WorkerState::Running:
+    return "Running";
+  case WorkerState::Stopping:
+    return "Stopping";
+  case WorkerState::Faulted:
+    return "Faulted";
+  case WorkerState::Exited:
+    return "Exited";
+  default:
+    return "Unknown";
+  }
+}
+
+} // namespace
+
 // Worker implementation
 Worker::Worker(int worker_id)
     : id(worker_id),
       stop_requested(false),
       state(WorkerState::Starting)
 {
+  LOG_DEBUG("Worker %d state -> %s (constructor)", id, worker_state_to_string(WorkerState::Starting));
 }
 
 Worker::~Worker()
@@ -34,8 +61,10 @@ void Worker::start()
 {
   stop_requested.store(false, std::memory_order_release);
   state.store(WorkerState::Starting, std::memory_order_release);
+  LOG_DEBUG("Worker %d state -> %s (start invoked)", id, worker_state_to_string(WorkerState::Starting));
   worker_thread = std::thread(&Worker::worker_loop, this);
   state.store(WorkerState::Idle, std::memory_order_release);
+  LOG_DEBUG("Worker %d state -> %s (worker thread started)", id, worker_state_to_string(WorkerState::Idle));
   LOG_DEBUG("Worker %d started", id);
 }
 
@@ -48,14 +77,20 @@ void Worker::stop()
   stop_requested.store(true, std::memory_order_release);
 
   if (current_state != WorkerState::Faulted)
+  {
     state.store(WorkerState::Stopping, std::memory_order_release);
+    LOG_DEBUG("Worker %d state -> %s (stop requested)", id, worker_state_to_string(WorkerState::Stopping));
+  }
 
   queue_condition.notify_all();
   if (worker_thread.joinable())
     worker_thread.join();
 
   if (state.load(std::memory_order_acquire) != WorkerState::Faulted)
+  {
     state.store(WorkerState::Exited, std::memory_order_release);
+    LOG_DEBUG("Worker %d state -> %s (stop complete)", id, worker_state_to_string(WorkerState::Exited));
+  }
 
   LOG_DEBUG("Worker %d stopped", id);
 }
@@ -86,6 +121,7 @@ void Worker::worker_loop()
         if (stop_requested.load(std::memory_order_acquire))
         {
           state.store(WorkerState::Stopping, std::memory_order_release);
+          LOG_DEBUG("Worker %d state -> %s (stop signaled)", id, worker_state_to_string(WorkerState::Stopping));
           break;
         }
 
@@ -101,16 +137,19 @@ void Worker::worker_loop()
     }
 
     state.store(WorkerState::Exited, std::memory_order_release);
+    LOG_DEBUG("Worker %d state -> %s (worker loop exit)", id, worker_state_to_string(WorkerState::Exited));
   }
   catch (const std::exception &e)
   {
     state.store(WorkerState::Faulted, std::memory_order_release);
+    LOG_DEBUG("Worker %d state -> %s (exception)", id, worker_state_to_string(WorkerState::Faulted));
     stop_requested.store(true, std::memory_order_release);
     LOG_ERROR("Worker %d encountered fatal error: %s", id, e.what());
   }
   catch (...)
   {
     state.store(WorkerState::Faulted, std::memory_order_release);
+    LOG_DEBUG("Worker %d state -> %s (unknown exception)", id, worker_state_to_string(WorkerState::Faulted));
     stop_requested.store(true, std::memory_order_release);
     LOG_ERROR("Worker %d encountered unknown fatal error", id);
   }
