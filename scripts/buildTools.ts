@@ -174,7 +174,7 @@ class WatchUtils {
                     await promisify(sftp.mkdir.bind(sftp))(path.dirname(remotePath));
                 } catch (err) {
                     if (err && (err as any).code !== 4) {
-                        throw err;
+                        throw err; // Ignore if directory already exists
                     }
                 }
             }
@@ -202,7 +202,7 @@ class WatchUtils {
                     await promisify(sftp.mkdir.bind(sftp))(dirPath);
                 } catch (err) {
                     if (err && (err as any).code !== 4) {
-                        throw err;
+                        throw err; // Ignore if directory already exists
                     }
                 }
             }
@@ -277,6 +277,7 @@ class WatchUtils {
                         outText += str;
                     })
                     .stderr.on("data", (data: Buffer) => {
+                        // Filter out INFO level messages and ones about compiler optimizations
                         const str = data.toString().trim();
                         if (/IGD\d{5}I /.test(str) || /WARNING CLC1145:/.test(str)) return;
                         errText += str;
@@ -527,7 +528,7 @@ async function upload(connection: Client, sshProfile: IProfile) {
                 await new Promise<void>((resolve, reject) => {
                     sftpcon.mkdir(`${deployDirs.root}/${dir}`, (err) => {
                         if (err && (err as any).code !== 4) {
-                            reject(err);
+                            reject(err); // Ignore if directory already exists
                         } else {
                             resolve();
                         }
