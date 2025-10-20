@@ -119,8 +119,10 @@ class WatchUtils {
             ignoreInitial: true,
             persistent: true,
         });
+        process.stdout.write("watching for changes...");
+
         this.watcher.on("add", async (filePath, _stats) => {
-            process.stdout.write(`${new Date().toLocaleString()} [+] ${filePath}`);
+            process.stdout.write(`\r${new Date().toLocaleString()} [+] ${filePath}`);
             try {
                 await this.uploadFile(
                     filePath,
@@ -130,9 +132,10 @@ class WatchUtils {
             } catch (err) {
                 console.error(" ✘", err);
             }
+            process.stdout.write("watching for changes...");
         });
         this.watcher.on("change", async (filePath, _stats) => {
-            process.stdout.write(`${new Date().toLocaleString()} [~] ${filePath}`);
+            process.stdout.write(`\r${new Date().toLocaleString()} [~] ${filePath}`);
             try {
                 await this.uploadFile(
                     filePath,
@@ -142,15 +145,17 @@ class WatchUtils {
             } catch (err) {
                 console.error(" ✘", err);
             }
+            process.stdout.write("watching for changes...");
         });
         this.watcher.on("unlink", async (filePath) => {
-            process.stdout.write(`${new Date().toLocaleString()} [-] ${filePath}`);
+            process.stdout.write(`\r${new Date().toLocaleString()} [-] ${filePath}`);
             try {
                 await this.deleteFile(`${deployDirs.root}/${filePath.replaceAll(path.sep, path.posix.sep)}`);
                 console.log(" ✔");
             } catch (err) {
                 console.error(" ✘", err);
             }
+            process.stdout.write("watching for changes...");
         });
     }
 
@@ -660,7 +665,6 @@ async function rmdir(connection: Client, sshProfile: IProfile) {
 
 async function watch(connection: Client, sshProfile: IProfile) {
     await new WatchUtils(connection, sshProfile).start();
-    console.log("watching for changes...");
     return new Promise(() => {});
 }
 
