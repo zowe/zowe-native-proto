@@ -6,6 +6,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
+- Updated `SetupHandler` to gracefully handle unused functions from `AbstractConfigManager`. [#605](https://github.com/zowe/zowe-native-proto/pull/605)
 - Added a `--depth` option to the `zssh list uss` command for listing USS directories recursively. [#575](https://github.com/zowe/zowe-native-proto/pull/575)
 - Added `zssh issue tso-command` command. [#595](https://github.com/zowe/zowe-native-proto/pull/595)
 
