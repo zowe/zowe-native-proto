@@ -1,14 +1,14 @@
-# I/O Server
+# Middleware Design
 
-ioserver (`zowed`) acts as the middleware between the client and server. It is written in Go and leverages an input channel to support asynchronous request processing.
+`zowed` acts as the middleware between the client and backend. It is written in modern C++ and leverages an input channel to support asynchronous request processing.
 
 ## Architectural overview
 
-ioserver mediates all requests and dispatches requests to appropriate command handlers. These command handlers are defined in a map and are accessed by the command name. Those command handlers can perform actions in Go, or execute the backend layer (`zowex`) to access data. The response data is composed and serialized as JSON before being returned to the caller through stdout.
+`zowed` mediates all requests and dispatches them to appropriate command handlers. These command handlers are defined in a map and are accessed by the command name. Those command handlers execute C++ methods in the backend layer (e.g. `handle_data_set_list`) to access data. The response data is composed and serialized as JSON before being returned to the caller through stdout.
 
 ## Request and response processing
 
-The ioserver process is instantiated by the client through SSH, which opens a communication channel over stdio. When a request is received from the client over stdin, ioserver attempts to parse the input as JSON. If the JSON response is valid, the server looks for the `command` property of the JSON object and attempts to identify a matching command handler. If a command handler is found for the given command, the handler is executed and given the JSON object for further processing.
+The `zowed` process is instantiated by the client through SSH, which opens a communication channel over stdio. When a request is received from the client over stdin, `zowed` attempts to parse the input as JSON. If the JSON response is valid, the server looks for the `command` property of the JSON object and attempts to identify a matching command handler. If a command handler is found for the given command, the handler is executed and given the JSON object for further processing.
 
 The command handlers can expect a stronger request type than what is expected during initial command processing. Appropriate request and response types can be exposed for use with these handlers. In the event of a JSON deserialization error, the command handler stops execution and returns early, returning an error response with any additional context. Once the JSON is successfully deserialized into the desired type, command processing continues and the handler can perform any actions necessary to create, receive, update or delete data.
 
@@ -23,7 +23,7 @@ See the example JSON request below for listing data sets:
 }
 ```
 
-This request is deserialized by ioserver and `zowex` is invoked to get the list of data sets matching the given pattern. Then the response is composed, serialized as JSON and returned to the caller, for example:
+This request is deserialized by `zowed` and a command handler is invoked to get the list of data sets matching the given pattern. Then the response is composed, serialized as JSON and returned to the caller, for example:
 
 ```json
 {
@@ -50,7 +50,7 @@ This request is deserialized by ioserver and `zowex` is invoked to get the list 
 
 ## Handling encoding for resource contents
 
-Modern text editors expect a standardized encoding format such as UTF-8. `ioserver` implements processing for reading/writing data sets, USS files and job spools (read-only) with a given encoding.
+Modern text editors expect a standardized encoding format such as UTF-8. `zowed` implements processing for reading/writing data sets, USS files and job spools (read-only) with a given encoding.
 
 ### Read
 
@@ -68,9 +68,8 @@ Response:
 
 ```jsonc
 {
-  "encoding": "ISO8859-1",
-  "path": "/u/users/you/file.txt",
-  "data": [104, 101, 108, 108, 111] // "hello" in ASCII
+  "etag": "1234-5",
+  "data": "aGVsbG8=" // "hello" in ASCII
 }
 ```
 
@@ -83,10 +82,7 @@ The contents of write requests are interpreted as UTF-8 data. We convert the UTF
   "command": "writeFile",
   "path": "/u/users/you/file.txt",
   "encoding": "IBM-939",
-  "contents": [
-    165, 131, 191, 165, 132, 192, 165, 131, 171, 165, 131, 161, 165, 131, 175,
-    33
-  ] // "Hello!" in Japanese, encoded as UTF-8
+  "data": "pYO/pYTApYOrpYOhpYOvIQ==" // "Hello!" in Japanese, encoded as UTF-8
 }
 ```
 
@@ -94,10 +90,12 @@ Response:
 
 ```json
 {
-  "success": true
+  "success": true,
+  "etag": "1234-5",
+  "created": false
 }
 ```
 
 ### Data transmission
 
-To send and receive converted contents between `ioserver` and `zowex`, we pipe the bytes of a write request to `zowex` and interpret the stdout from `zowex` during a read request. The environment variable `_BPXK_AUTOCVT` is temporarily disabled within the command handlers during write operations to prevent additional conversions of piped data.
+To transmit codepage-encoded contents between `zowed` and the backend, we pipe raw bytes to `stdin` for a write request and interpret raw bytes from `stdout` for a read request. For large files, a FIFO pipe is created per request which allows Base64-encoded data to be streamed directly between the client and the backend.

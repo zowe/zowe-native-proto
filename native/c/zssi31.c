@@ -41,7 +41,7 @@
 #endif
 
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=subsystem-making-request-iefssreq-macro
-int iefssreq(SSOB *PTR32 *PTR32 ssob)
+int iefssreq(SSOB * PTR32 * PTR32 ssob)
 {
   int rc = 0;
   IEFSSREQ(ssob, rc);
