@@ -21,11 +21,11 @@ import { ZoweVsCodeExtension } from "@zowe/zowe-explorer-api";
 import { type Config, NodeSSH } from "node-ssh";
 import type { ConnectConfig } from "ssh2";
 import type { MockInstance } from "vitest";
+import type { IDisposable } from "../lib";
 import { AbstractConfigManager, type ProgressCallback } from "../src/AbstractConfigManager";
 import { ConfigFileUtils } from "../src/ConfigFileUtils";
 import { type inputBoxOpts, MESSAGE_TYPE, type qpItem, type qpOpts } from "../src/doc";
 import { type ISshConfigExt, SshConfigUtils } from "../src/SshConfigUtils";
-import { IDisposable } from "../lib";
 
 vi.mock("path", async (importOriginal) => {
     const actual = await importOriginal<typeof import("path")>();
