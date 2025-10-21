@@ -27,7 +27,7 @@
 | Delete migrated data set | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | Rename data set          | ✅              | ✅  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | Copy data set            | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
-| Search data sets         | 🚧 <sup>6</sup> | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
+| Search data sets         | 🚧 <sup>6</sup> | ❌  | 🚧 <sup>6</sup> | ❌         | ❌  | ❌  | ❌   |
 | Invoke AMS (VSAM)        | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ➖   |
 
 1. Not all attributes are retrieved
@@ -87,14 +87,14 @@
 
 ## Console
 
-| Operation                | z/OSMF | FTP | Backend         | Middleware | SDK | CLI | VSCE            |
-| ------------------------ | ------ | --- | --------------- | ---------- | --- | --- | --------------- |
-| Issue MVS command        | ✅     | ❌  | ✅ <sup>1</sup> | ✅         | ✅  | ✅  | ✅ <sup>2</sup> |
-| Get MVS command response | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ❌              |
-| Get MVS detect result    | ✅     | ❌  | ❌              | ❌         | ❌  | ➖  | ➖              |
+| Operation                | z/OSMF | FTP | Backend         | Middleware | SDK | CLI | VSCE |
+| ------------------------ | ------ | --- | --------------- | ---------- | --- | --- | ---- |
+| Issue MVS command        | ✅     | ❌  | ✅ <sup>1</sup> | ❌         | ❌  | ❌  | ❌   |
+| Get MVS command response | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
+| Get MVS detect result    | ✅     | ❌  | ❌              | ❌         | ❌  | ➖  | ➖   |
 
 1. Requires APF authorization
-2. You must manually deploy/symlink `zoweax`
+<!-- 2. You must manually deploy/symlink `zoweax` -->
 
 ## TSO
 
@@ -102,7 +102,7 @@
 | ------------------------ | ------ | --- | ------- | ---------- | --- | --- | ---- |
 | Start TSO address space  | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌   |
 | Start TSO app            | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ➖   |
-| Issue TSO command        | ✅     | ❌  | ✅      | ❌         | ✅  | ❌  | ❌   |
+| Issue TSO command        | ✅     | ❌  | ✅      | ✅         | ✅  | ✅  | ✅   |
 | Get TSO command response | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌   |
 | Send TSO message         | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ❌   |
 | Send TSO app message     | ✅     | ❌  | ❌      | ❌         | ❌  | ❌  | ➖   |

@@ -15,9 +15,6 @@
 #ifndef _OPEN_SYS_FILE_EXT
 #define _OPEN_SYS_FILE_EXT 1
 #endif
-#ifdef ZSHMEM_ENABLE
-#include "zshmem.hpp"
-#endif
 #include <algorithm>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -1244,9 +1241,7 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, const string &file, const strin
     return RTNCD_FAILURE;
   }
 
-#ifdef ZSHMEM_ENABLE
-  set_content_length((uint64_t)st.st_size);
-#elif defined(__clang__)
+#if defined(__clang__)
   if (zusf->set_size_callback)
   {
     zusf->set_size_callback((uint64_t)st.st_size);

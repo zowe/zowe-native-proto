@@ -52,10 +52,15 @@ OUT_DIR = build-out
 TARGET = zowed
 LIBRARY = libzowed.so
 
-# Source files
-LIB_SOURCES = builder.cpp commands.cpp dispatcher.cpp rpcio.cpp server.cpp worker.cpp zowed.cpp
-LIB_OBJECTS = $(OUT_DIR)/builder.o $(OUT_DIR)/commands.o $(OUT_DIR)/dispatcher.o $(OUT_DIR)/rpcio.o $(OUT_DIR)/server.o $(OUT_DIR)/worker.o $(OUT_DIR)/zowed.o
-CMDS_OBJECTS = $(OUT_DIR)/commands/ds.o $(OUT_DIR)/commands/job.o $(OUT_DIR)/commands/uss.o
+# Object files
+LIB_OBJECTS = $(OUT_DIR)/builder.o $(OUT_DIR)/commands.o $(OUT_DIR)/dispatcher.o \
+	$(OUT_DIR)/rpcio.o $(OUT_DIR)/server.o $(OUT_DIR)/worker.o $(OUT_DIR)/zowed.o
+CMDS_OBJECTS = $(OUT_DIR)/commands/ds.o $(OUT_DIR)/commands/job.o $(OUT_DIR)/commands/tso.o \
+	$(OUT_DIR)/commands/uss.o
+XLCLANG_OBJECTS = ../c/build-out/xlclang/zds.o ../c/build-out/xlclang/zjb.o \
+	../c/build-out/xlclang/ztso.o ../c/build-out/xlclang/zusf.o ../c/build-out/xlclang/zut.o
+METAL_OBJECTS = ../c/build-out/zam.o ../c/build-out/zdsm.o ../c/build-out/zjbm.o \
+	../c/build-out/zjbm31.o ../c/build-out/zssi31.o ../c/build-out/zutm.o ../c/build-out/zutm31.o
 
 # Default target - build both shared library and executable
 all: $(OUT_DIR)/$(LIBRARY) $(OUT_DIR)/$(TARGET)
@@ -65,32 +70,36 @@ $(OUT_DIR):
 	mkdir -p $(OUT_DIR)/commands
 
 # Build the shared library (.so file)
-$(OUT_DIR)/$(LIBRARY): $(OUT_DIR) $(LIB_OBJECTS) $(CMDS_OBJECTS) $(OUT_DIR)/zjsonm.o
-	$(CXX_LIB) $(DLL_BND_FLAGS) -o $(OUT_DIR)/$(LIBRARY) $(LIB_OBJECTS) \
-	../c/build-out/xlclang/zds.o ../c/build-out/xlclang/zjb.o ../c/build-out/xlclang/zusf.o \
-	../c/build-out/xlclang/zut.o ../c/build-out/zam.o ../c/build-out/zdsm.o \
-	../c/build-out/zjbm.o ../c/build-out/zjbm31.o ../c/build-out/zssi31.o \
-	../c/build-out/zutm.o ../c/build-out/zutm31.o \
-	$(CMDS_OBJECTS) $(OUT_DIR)/zjsonm.o > $(OUT_DIR)/libzowed.bind.lst
+$(OUT_DIR)/$(LIBRARY): $(OUT_DIR) $(LIB_OBJECTS) $(CMDS_OBJECTS) $(OUT_DIR)/zjsonm.o $(XLCLANG_OBJECTS)
+	$(CXX_LIB) $(DLL_BND_FLAGS) -o $(OUT_DIR)/$(LIBRARY) $(LIB_OBJECTS) $(XLCLANG_OBJECTS) \
+	$(METAL_OBJECTS) $(CMDS_OBJECTS) $(OUT_DIR)/zjsonm.o > $(OUT_DIR)/libzowed.bind.lst
+
+# Build xlclang dependencies from parent makefile
+$(XLCLANG_OBJECTS):
+	$(MAKE) -c ../c xlclang-extenders
 
 # Build the executable (main compiled with xlc++, dynamically loads shared library)
 $(OUT_DIR)/$(TARGET): $(OUT_DIR) $(OUT_DIR)/main.o
 	$(CXX_MAIN) $(LDFLAGS) -o $(OUT_DIR)/$(TARGET) $(OUT_DIR)/main.o > $(OUT_DIR)/zowed.bind.lst
 
 # Compile library source files with xlclang++
-$(OUT_DIR)/%.o: %.cpp $(OUT_DIR)
+$(OUT_DIR)/%.o: %.cpp
+	mkdir -p $(@D)
 	$(CXX_LIB) $(CXXFLAGS_LIB) -c $< -o $@
 
 # Compile commands source files with xlclang++
-$(OUT_DIR)/commands/%.o: ../c/commands/%.cpp $(OUT_DIR)
+$(OUT_DIR)/commands/%.o: ../c/commands/%.cpp
+	mkdir -p $(@D)
 	$(CXX_LIB) $(CXXFLAGS_LIB) -c $< -o $@
 
 # Compile main source files with xlc++
-$(OUT_DIR)/main.o: main.cpp $(OUT_DIR)
+$(OUT_DIR)/main.o: main.cpp
+	mkdir -p $(@D)
 	$(CXX_MAIN) $(CXXFLAGS_MAIN) -c $< -o $@
 
 # Compile zjsonm Metal C source to assembly
-$(OUT_DIR)/zjsonm.s: ../c/zjsonm.c $(OUT_DIR)
+$(OUT_DIR)/zjsonm.s: ../c/zjsonm.c
+	mkdir -p $(@D)
 	$(CC) $(MTL_FLAGS64) -qlist=$(OUT_DIR)/zjsonm.mtl.lst $(MTL_HEADERS) -o $@ $<
 
 # Assemble zjsonm assembly to object

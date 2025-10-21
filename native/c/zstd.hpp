@@ -1348,32 +1348,32 @@ struct monostate
 };
 
 // Comparison operators for monostate
-inline bool operator==(const monostate&, const monostate&)
+inline bool operator==(const monostate &, const monostate &)
 {
   return true;
 }
 
-inline bool operator!=(const monostate&, const monostate&)
+inline bool operator!=(const monostate &, const monostate &)
 {
   return false;
 }
 
-inline bool operator<(const monostate&, const monostate&)
+inline bool operator<(const monostate &, const monostate &)
 {
   return false;
 }
 
-inline bool operator<=(const monostate&, const monostate&)
+inline bool operator<=(const monostate &, const monostate &)
 {
   return true;
 }
 
-inline bool operator>(const monostate&, const monostate&)
+inline bool operator>(const monostate &, const monostate &)
 {
   return false;
 }
 
-inline bool operator>=(const monostate&, const monostate&)
+inline bool operator>=(const monostate &, const monostate &)
 {
   return true;
 }

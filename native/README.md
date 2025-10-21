@@ -2,7 +2,7 @@
 
 ## Metal C/C/C++ & HLASM
 
-The following sections relate to the non-golang portions of the `native` codebase.
+The following sections relate to code in the `native/c` folder.
 
 ### Logging
 
