@@ -29,42 +29,42 @@ typedef int (*PTR32 iean4dl_fn)(int *PTR64, ZNT_NAME *PTR64, int *PTR64) ATTRIBU
 typedef int (*PTR32 iean4rt_fn)(int *PTR64, ZNT_NAME *PTR64, ZNT_TOKEN *PTR64, int *PTR64) ATTRIBUTE(amode64);
 
 #if defined(__IBM_METAL__)
-#define IEAN4CR(func)                                              \ 
-            __asm(                                                     \ 
-              "*                                                  \n"\ 
-              " LLGT  15,X'10'                                    \n"\ 
-              " L     15,X'220'(15,0)                             \n"\ 
-              " L     15,X'14'(15,0)                              \n"\ 
-              " L     15,X'7C'(15,0)  -> IEAN4CR                  \n"\ 
-              " ST    15,%0           Save entry point            \n"\ 
-              "*                                                    "\ 
-              : "=m"(*func)                                          \ 
-              :                                                      \ 
-              : "r15");
-#define IEAN4RT(func)                                              \ 
-              __asm(                                                     \ 
-                "*                                                  \n"\ 
-                " LLGT  15,X'10'                                    \n"\ 
-                " L     15,X'220'(15,0)                             \n"\ 
-                " L     15,X'14'(15,0)                              \n"\ 
-                " L     15,X'80'(15,0)  -> IEAN4RT                  \n"\ 
-                " ST    15,%0           Save entry point            \n"\ 
-                "*                                                    "\ 
-                : "=m"(*func)                                          \ 
-                :                                                      \ 
-                : "r15");
-#define IEAN4DL(func)                                              \ 
-              __asm(                                                     \ 
-                "*                                                  \n"\ 
-                " LLGT  15,X'10'                                    \n"\ 
-                " L     15,X'220'(15,0)                             \n"\ 
-                " L     15,X'14'(15,0)                              \n"\ 
-                " L     15,X'84'(15,0)  -> IEAN4DL                  \n"\ 
-                " ST    15,%0           Save entry point            \n"\ 
-                "*                                                    "\ 
-                : "=m"(*func)                                          \ 
-                :                                                      \ 
-                : "r15");
+#define IEAN4CR(func)                                         \
+  __asm(                                                      \
+      "*                                                  \n" \
+      " LLGT  15,X'10'                                    \n" \
+      " L     15,X'220'(15,0)                             \n" \
+      " L     15,X'14'(15,0)                              \n" \
+      " L     15,X'7C'(15,0)  -> IEAN4CR                  \n" \
+      " ST    15,%0           Save entry point            \n" \
+      "*                                                    " \
+      : "=m"(*func)                                           \
+      :                                                       \
+      : "r15");
+#define IEAN4RT(func)                                         \
+  __asm(                                                      \
+      "*                                                  \n" \
+      " LLGT  15,X'10'                                    \n" \
+      " L     15,X'220'(15,0)                             \n" \
+      " L     15,X'14'(15,0)                              \n" \
+      " L     15,X'80'(15,0)  -> IEAN4RT                  \n" \
+      " ST    15,%0           Save entry point            \n" \
+      "*                                                    " \
+      : "=m"(*func)                                           \
+      :                                                       \
+      : "r15");
+#define IEAN4DL(func)                                         \
+  __asm(                                                      \
+      "*                                                  \n" \
+      " LLGT  15,X'10'                                    \n" \
+      " L     15,X'220'(15,0)                             \n" \
+      " L     15,X'14'(15,0)                              \n" \
+      " L     15,X'84'(15,0)  -> IEAN4DL                  \n" \
+      " ST    15,%0           Save entry point            \n" \
+      "*                                                    " \
+      : "=m"(*func)                                           \
+      :                                                       \
+      : "r15");
 #else
 #define IEAN4CR(func)
 #define IEAN4RT(func)

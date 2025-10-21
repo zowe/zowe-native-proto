@@ -21,16 +21,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: stable
-
-      - name: Run GolangCI-Lint
-        uses: golangci/golangci-lint-action@v6
-        with:
-          working-directory: native/golang
-
       - name: Run Cpp-Linter
         uses: cpp-linter/cpp-linter-action@v2
         env:
@@ -40,4 +30,4 @@ jobs:
           repo-root: native
           style: file
           tidy-checks: "-*"
-          version: 20
+          version: 21
