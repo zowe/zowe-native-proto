@@ -6,6 +6,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
+- Added `defaultHandshakeTimeout` VS Code setting to allow users to customize the handshake timeout when not specified in the profile. [#605](https://github.com/zowe/zowe-native-proto/pull/605)
 - Fixed SSH client caching to be per profile instead of per hostname, allowing multiple server instances on the same system. [#558](https://github.com/zowe/zowe-native-proto/pull/558)
 - Updated RPC response types for data set operations to align with SDK changes. [#590](https://github.com/zowe/zowe-native-proto/pull/590)
 
