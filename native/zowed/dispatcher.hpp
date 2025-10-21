@@ -18,15 +18,10 @@
 #include "rpcio.hpp"
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 // Forward declaration
 struct RpcNotification;
-
-#if defined(__IBMTR1_CPP__) && !defined(__clang__)
-#include <tr1/unordered_map>
-#else
-#include <unordered_map>
-#endif
 
 class CommandDispatcher : public Singleton<CommandDispatcher>
 {
@@ -54,12 +49,17 @@ public:
   // Clear all registered commands
   void clear();
 
+  // Get the builders map (for accessing validators)
+  const std::unordered_map<std::string, CommandBuilder> &get_builders() const
+  {
+    return m_commands;
+  }
+
 private:
   // Private constructor for singleton
   CommandDispatcher() = default;
 
-  std::unordered_map<std::string, CommandHandler> m_command_handlers;
-  std::unordered_map<std::string, CommandBuilder> m_builders;
+  std::unordered_map<std::string, CommandBuilder> m_commands;
 };
 
 #endif

@@ -10,10 +10,6 @@
  */
 
 export * from "./client";
-export * as cmds from "./gen/cmds";
-export * from "./gen/common";
-export * as ds from "./gen/ds";
-export * as jobs from "./gen/jobs";
-export * as uss from "./gen/uss";
 export * from "./gui";
+export * from "./rpc";
 export * from "./types";

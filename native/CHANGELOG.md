@@ -17,6 +17,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - `c`: Fixed issue where a file handle was leaked if the `fldata` function call failed in the `handle_data_set_compress` command handler. [#577](https://github.com/zowe/zowe-native-proto/issues/577)
 - `c`: Fixed issue in the `zut_substitute_symbol` function where passing patterns with a length greater than the input buffer would cause a buffer overflow. [#577](https://github.com/zowe/zowe-native-proto/issues/577)
 - `c`: Fixed undefined behavior in the `zut_bpxwdyn` function by verifying that the allocated 31-bit region is valid before writing to it. [#577](https://github.com/zowe/zowe-native-proto/issues/577)
+- `c`: The CLI parser now prints unexpected, trailing positional arguments when handling command input. [#594](https://github.com/zowe/zowe-native-proto/issues/594)
 
 ## `0.1.10`
 

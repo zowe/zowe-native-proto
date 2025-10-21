@@ -1213,7 +1213,7 @@ Command::parse(const std::vector<lexer::Token> &tokens,
             result.status = ParseResult::ParserStatus_ParseError;
             result.error_message = "unknown option in combined flags: -";
             result.error_message += single_flag_char;
-            std::cerr << "error: " << result.error_message << "\n\n";
+            std::cerr << "Error: " << result.error_message << "\n\n";
             generate_help(std::cerr, command_path_prefix);
             result.exit_code = 1;
             return result;
@@ -1233,7 +1233,7 @@ Command::parse(const std::vector<lexer::Token> &tokens,
             result.status = ParseResult::ParserStatus_ParseError;
             result.error_message = "option -" + single_flag_char +
                                    " requires a value and cannot be combined.";
-            std::cerr << "error: " << result.error_message << "\n\n";
+            std::cerr << "Error: " << result.error_message << "\n\n";
             generate_help(std::cerr, command_path_prefix);
             result.exit_code = 1;
             return result;
@@ -1268,7 +1268,7 @@ Command::parse(const std::vector<lexer::Token> &tokens,
               result.status = ParseResult::ParserStatus_ParseError;
               result.error_message = "option --" + flag_name_str +
                                      " requires a value.";
-              std::cerr << "error: " << result.error_message << "\n\n";
+              std::cerr << "Error: " << result.error_message << "\n\n";
               generate_help(std::cerr, command_path_prefix);
               result.exit_code = 1;
               return result;
@@ -1282,7 +1282,7 @@ Command::parse(const std::vector<lexer::Token> &tokens,
               result.status = ParseResult::ParserStatus_ParseError;
               result.error_message =
                   "invalid value for option --" + flag_name_str;
-              std::cerr << "error: " << result.error_message << "\n\n";
+              std::cerr << "Error: " << result.error_message << "\n\n";
               generate_help(std::cerr, command_path_prefix);
               result.exit_code = 1;
               return result;
@@ -1301,7 +1301,7 @@ Command::parse(const std::vector<lexer::Token> &tokens,
               result.status = ParseResult::ParserStatus_ParseError;
               result.error_message = "option --" + flag_name_str +
                                      " requires at least one value.";
-              std::cerr << "error: " << result.error_message << "\n\n";
+              std::cerr << "Error: " << result.error_message << "\n\n";
               generate_help(std::cerr, command_path_prefix);
               result.exit_code = 1;
               return result;
@@ -1326,7 +1326,7 @@ Command::parse(const std::vector<lexer::Token> &tokens,
               result.status = ParseResult::ParserStatus_ParseError;
               result.error_message =
                   "invalid value for option --" + flag_name_str;
-              std::cerr << "error: " << result.error_message << "\n\n";
+              std::cerr << "Error: " << result.error_message << "\n\n";
               generate_help(std::cerr, command_path_prefix);
               result.exit_code = 1;
               return result;
@@ -1340,7 +1340,7 @@ Command::parse(const std::vector<lexer::Token> &tokens,
           result.status = ParseResult::ParserStatus_ParseError;
           result.error_message =
               "internal error: unsupported dynamic keyword configuration";
-          std::cerr << "error: " << result.error_message << "\n\n";
+          std::cerr << "Error: " << result.error_message << "\n\n";
           generate_help(std::cerr, command_path_prefix);
           result.exit_code = 1;
           return result;
@@ -1446,7 +1446,7 @@ Command::parse(const std::vector<lexer::Token> &tokens,
           result.status = ParseResult::ParserStatus_ParseError;
           result.error_message = "option " + matched_arg->get_display_name() +
                                  " requires a value.";
-          std::cerr << "error: " << result.error_message << "\n\n";
+          std::cerr << "Error: " << result.error_message << "\n\n";
           generate_help(std::cerr, command_path_prefix);
           result.exit_code = 1;
           return result;
@@ -1460,7 +1460,7 @@ Command::parse(const std::vector<lexer::Token> &tokens,
           result.status = ParseResult::ParserStatus_ParseError;
           result.error_message =
               "invalid value for option " + matched_arg->get_display_name();
-          std::cerr << "error: " << result.error_message << "\n\n";
+          std::cerr << "Error: " << result.error_message << "\n\n";
           generate_help(std::cerr, command_path_prefix);
           result.exit_code = 1;
           return result;
@@ -1480,7 +1480,7 @@ Command::parse(const std::vector<lexer::Token> &tokens,
             result.error_message =
                 "internal error: expected string value for multiple option " +
                 matched_arg->name;
-            std::cerr << "error: " << result.error_message << "\n\n";
+            std::cerr << "Error: " << result.error_message << "\n\n";
             generate_help(std::cerr, command_path_prefix);
             result.exit_code = 1;
             return result;
@@ -1537,7 +1537,7 @@ Command::parse(const std::vector<lexer::Token> &tokens,
             result.error_message =
                 "internal error accessing vector for multiple values for " +
                 matched_arg->name;
-            std::cerr << "error: " << result.error_message << "\n\n";
+            std::cerr << "Error: " << result.error_message << "\n\n";
             generate_help(std::cerr, command_path_prefix);
             result.exit_code = 1;
             return result;
@@ -1577,7 +1577,7 @@ Command::parse(const std::vector<lexer::Token> &tokens,
               result.error_message = "ambiguous alias '" +
                                      potential_subcommand_or_alias +
                                      "' matches multiple subcommands.";
-              std::cerr << "error: " << result.error_message << "\n\n";
+              std::cerr << "Error: " << result.error_message << "\n\n";
               generate_help(std::cerr, command_path_prefix);
               result.exit_code = 1;
               return result;
@@ -1661,7 +1661,7 @@ Command::parse(const std::vector<lexer::Token> &tokens,
         result.status = ParseResult::ParserStatus_ParseError;
         result.error_message =
             "invalid value for positional argument '" + pos_arg_def.name + "'";
-        std::cerr << "error: " << result.error_message << "\n\n";
+        std::cerr << "Error: " << result.error_message << "\n\n";
         generate_help(std::cerr, command_path_prefix);
         result.exit_code = 1;
         return result;
@@ -1682,7 +1682,7 @@ Command::parse(const std::vector<lexer::Token> &tokens,
           result.error_message = "internal error: expected string value for "
                                  "multiple positional argument " +
                                  pos_arg_def.name;
-          std::cerr << "error: " << result.error_message << "\n\n";
+          std::cerr << "Error: " << result.error_message << "\n\n";
           generate_help(std::cerr, command_path_prefix);
           result.exit_code = 1;
           return result;
@@ -1725,26 +1725,16 @@ Command::parse(const std::vector<lexer::Token> &tokens,
     }
     else
     {
-      // Only treat as unexpected if not a string or identifier (quoted or
-      // unquoted)
-      if (token.get_kind() != lexer::TokId &&
-          token.get_kind() != lexer::TokStrLit)
-      {
-        result.status = ParseResult::ParserStatus_ParseError;
-        std::stringstream ss;
-        ss << "unexpected argument: ";
-        token.print(ss);
-        result.error_message = ss.str();
-        // print error and help for this command to stderr
-        std::cerr << "error: " << result.error_message << "\n\n";
-        generate_help(std::cerr, command_path_prefix);
-        result.exit_code = 1;
-        return result;
-      }
-      // Otherwise, forcibly advance the token and positional argument index to
-      // avoid infinite loop
-      current_token_index++;
-      current_positional_arg_index++;
+      result.status = ParseResult::ParserStatus_ParseError;
+      std::stringstream ss;
+      ss << "unexpected argument: ";
+      token.print(ss);
+      result.error_message = ss.str();
+      // print error and help for this command to stderr
+      std::cerr << "Error: " << result.error_message << "\n\n";
+      generate_help(std::cerr, command_path_prefix);
+      result.exit_code = 1;
+      return result;
     }
   }
 
@@ -1761,7 +1751,7 @@ Command::parse(const std::vector<lexer::Token> &tokens,
       result.status = ParseResult::ParserStatus_ParseError;
       result.error_message =
           "missing required option: " + arg.get_display_name();
-      std::cerr << "error: " << result.error_message << "\n\n";
+      std::cerr << "Error: " << result.error_message << "\n\n";
       generate_help(std::cerr, command_path_prefix);
       result.exit_code = 1;
       return result;
@@ -1778,7 +1768,7 @@ Command::parse(const std::vector<lexer::Token> &tokens,
       result.status = ParseResult::ParserStatus_ParseError;
       result.error_message =
           "missing required positional argument: " + pos_arg_def.name;
-      std::cerr << "error: " << result.error_message << "\n\n";
+      std::cerr << "Error: " << result.error_message << "\n\n";
       generate_help(std::cerr, command_path_prefix);
       result.exit_code = 1;
       return result;
@@ -1832,7 +1822,7 @@ Command::parse(const std::vector<lexer::Token> &tokens,
       first_pair = false;
     }
     result.error_message = ss.str();
-    std::cerr << "error: " << result.error_message << "\n\n";
+    std::cerr << "Error: " << result.error_message << "\n\n";
     generate_help(std::cerr, command_path_prefix);
     result.exit_code = 1;
     return result;
@@ -2058,7 +2048,7 @@ public:
       ss << "unexpected arguments starting from: ";
       tokens[token_index].print(ss);
       result.error_message = ss.str();
-      std::cerr << "error: " << result.error_message << "\n\n";
+      std::cerr << "Error: " << result.error_message << "\n\n";
       m_root_cmd->generate_help(std::cerr, "");
       result.exit_code = 1;
       return result;
@@ -2121,7 +2111,7 @@ public:
         ss << "unexpected arguments starting from: ";
         tokens[token_index].print(ss);
         result.error_message = ss.str();
-        std::cerr << "error: " << result.error_message << "\n\n";
+        std::cerr << "Error: " << result.error_message << "\n\n";
         // show root help on unexpected trailing arguments error (to stderr)
         m_root_cmd->generate_help(std::cerr, "");
         result.exit_code = 1;
@@ -2132,7 +2122,7 @@ public:
     }
     catch (const lexer::LexError &e)
     {
-      std::cerr << "lexer error: " << e.what() << std::endl;
+      std::cerr << "Lexer error: " << e.what() << std::endl;
       ParseResult error_result;
       error_result.status = ParseResult::ParserStatus_ParseError;
       error_result.error_message = e.what();
@@ -2145,7 +2135,7 @@ public:
     catch (const std::exception &e)
     {
       // catch standard exceptions that might arise
-      std::cerr << "parser error: " << e.what() << std::endl;
+      std::cerr << "Parser error: " << e.what() << std::endl;
       ParseResult error_result;
       error_result.status = ParseResult::ParserStatus_ParseError;
       error_result.error_message = e.what();

@@ -17,7 +17,7 @@ export default class PingCommandHandler extends SshBaseHandler {
     public async processWithClient(commandParameters: IHandlerParameters, client: ZSshClient) {
         const message = commandParameters.arguments.message;
 
-        const response = await client.cmds.ping({
+        const response = await client.sample.ping({
             message: message,
         });
 

@@ -9,27 +9,54 @@
  *
  */
 
-import type { IHandlerParameters } from "@zowe/imperative";
-import type { uss, ZSshClient } from "zowe-native-proto-sdk";
-import { SshBaseHandler } from "../../SshBaseHandler";
+import type { ICommandDefinition } from "@zowe/imperative";
 
-export default class ChtagHandler extends SshBaseHandler {
-    public async processWithClient(params: IHandlerParameters, client: ZSshClient): Promise<uss.ChtagFileResponse> {
-        const response = await client.uss.chtagFile({
-            recursive: params.arguments.recursive,
-            tag: params.arguments.tag,
-            fspath: params.arguments.path,
-        });
-        params.response.data.setMessage(
-            "Successfully changed tag of %s to %s",
-            params.arguments.path,
-            params.arguments.tag,
-        );
-        params.response.format.output({
-            output: response,
-            format: "table",
-            fields: ["success", "fspath"],
-        });
-        return response;
-    }
-}
+export const ChtagDefinition: ICommandDefinition = {
+    handler: `${__dirname}/Chtag.handler`,
+    description: "Change the tag of a UNIX file or directory",
+    type: "command",
+    name: "chtag",
+    aliases: ["tag"],
+    summary: "Change the tag of a UNIX file or directory",
+    examples: [
+        {
+            description: "Change the tag of a UNIX file to ISO8859-1",
+            options: '"819 /path/to/file.txt"',
+        },
+        {
+            description: "Change the tag of a UNIX directory to EBCDIC",
+            options: '"1047 /path/to/directory"',
+        },
+        {
+            description: "Change the tag of a UNIX directory",
+            options: '"819 /path/to/directory" --recursive',
+        },
+        {
+            description: "Change the tag of all files/folders in a UNIX directory",
+            options: '"939 /path/to/directory --recursive"',
+        },
+    ],
+    positionals: [
+        {
+            name: "tag",
+            description: "The tag to set",
+            type: "string",
+            required: true,
+        },
+        {
+            name: "path",
+            description: "The UNIX file or directory to change the tag of",
+            type: "string",
+            required: true,
+        },
+    ],
+    options: [
+        {
+            name: "recursive",
+            description: "Change the tag for all inner files and directories",
+            type: "boolean",
+            required: false,
+        },
+    ],
+    profile: { optional: ["ssh"] },
+};
