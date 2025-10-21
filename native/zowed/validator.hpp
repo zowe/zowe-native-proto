@@ -16,6 +16,7 @@
 #include <vector>
 #include <unordered_map>
 #include <unordered_set>
+#include <functional>
 #include "../c/zjson.hpp"
 
 /**
@@ -36,6 +37,9 @@
 
 namespace validator
 {
+
+// Forward declaration for ValidatorFn typedef
+struct ValidationResult;
 
 /**
  * Field types for schema validation
@@ -278,38 +282,11 @@ template <typename T>
 std::vector<FieldDescriptor> SchemaRegistry<T>::fields;
 
 /**
- * Base validator interface
+ * Validator function type - a callable that validates JSON parameters
+ * Used to store validation logic without requiring class hierarchies or heap allocations
+ * Can be null to indicate no validation is required
  */
-class ParamsValidator
-{
-public:
-  virtual ~ParamsValidator()
-  {
-  }
-
-  virtual ValidationResult validate(const zjson::Value &params) const = 0;
-};
-
-/**
- * Schema validator - validates using ZJSON_SCHEMA definitions
- */
-template <typename T>
-class SchemaValidator : public ParamsValidator
-{
-public:
-  explicit SchemaValidator(bool allow_unknown_fields = false)
-      : allow_unknown_fields_(allow_unknown_fields)
-  {
-  }
-
-  ValidationResult validate(const zjson::Value &params) const
-  {
-    return validate_schema(params, SchemaRegistry<T>::fields, allow_unknown_fields_);
-  }
-
-private:
-  bool allow_unknown_fields_;
-};
+typedef std::function<ValidationResult(const zjson::Value &)> ValidatorFn;
 
 } // namespace validator
 

@@ -379,7 +379,7 @@ validator::ValidationResult RpcServer::validate_json_with_schema(const string &m
   }
 
   const CommandBuilder &builder = it->second;
-  std::shared_ptr<validator::ParamsValidator> validator =
+  validator::ValidatorFn validator =
       is_request ? builder.get_request_validator() : builder.get_response_validator();
 
   if (!validator)
@@ -387,5 +387,5 @@ validator::ValidationResult RpcServer::validate_json_with_schema(const string &m
     return validator::ValidationResult::success();
   }
 
-  return validator->validate(data);
+  return validator(data);
 }
