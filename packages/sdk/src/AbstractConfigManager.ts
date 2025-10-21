@@ -29,6 +29,7 @@ import {
 import { NodeSSH } from "node-ssh";
 import { ConfigFileUtils } from "./ConfigFileUtils";
 import {
+    type IDisposable,
     type inputBoxOpts,
     MESSAGE_TYPE,
     type PrivateKeyWarningOptions,
@@ -49,6 +50,8 @@ export abstract class AbstractConfigManager {
     protected abstract getCurrentDir(): string | undefined;
     protected abstract getProfileSchemas(): IProfileTypeConfiguration[];
     protected abstract showPrivateKeyWarning(opts: PrivateKeyWarningOptions): Promise<boolean>;
+    protected abstract getVscodeSetting<T>(setting: string): T | undefined;
+    protected abstract showStatusBar(): IDisposable | undefined;
 
     private migratedConfigs: ISshConfigExt[];
     private filteredMigratedConfigs: ISshConfigExt[];
@@ -57,7 +60,7 @@ export abstract class AbstractConfigManager {
     private sshProfiles: IProfileLoaded[];
     private sshRegex = /^ssh\s+(?:([a-zA-Z0-9_-]+)@)?([a-zA-Z0-9.-]+)/;
     private flagRegex = /-(\w+)(?:\s+("[^"]+"|'[^']+'|\S+))?/g;
-    /**/
+
     public async promptForProfile(
         profileName?: string,
         setExistingProfile = true,
@@ -118,6 +121,7 @@ export abstract class AbstractConfigManager {
 
         // If an existing team config profile was selected
         if (!this.selectedProfile) {
+            const statusBar = this.showStatusBar();
             const foundProfile = this.sshProfiles.find(({ name }) => name === result.label);
             if (foundProfile) {
                 const validConfig = await this.validateConfig({
@@ -129,7 +133,11 @@ export abstract class AbstractConfigManager {
                     user: foundProfile?.profile?.user,
                     password: foundProfile?.profile?.password,
                 });
-                if (validConfig === undefined) return;
+
+                if (validConfig === undefined) {
+                    statusBar?.dispose();
+                    return;
+                }
 
                 if (setExistingProfile || Object.keys(validConfig).length > 0) {
                     if (validConfig.password) {
@@ -137,6 +145,7 @@ export abstract class AbstractConfigManager {
                     }
                     await this.setProfile(validConfig, foundProfile.name);
                 }
+                statusBar?.dispose();
                 return { ...foundProfile, profile: { ...foundProfile.profile, ...validConfig } };
             }
         }
@@ -161,16 +170,22 @@ export abstract class AbstractConfigManager {
 
         // Attempt connection if private key was provided and it has not been validated
         if (this.validationResult === undefined && this.selectedProfile.privateKey) {
+            const statusBar = this.showStatusBar();
             this.validationResult = await this.validateConfig(this.selectedProfile, false);
+            statusBar?.dispose();
         }
 
         if (this.validationResult === undefined) {
+            const statusBar = this.showStatusBar();
             await this.validateFoundPrivateKeys();
+            statusBar?.dispose();
         }
 
         if (this.validationResult === undefined) {
+            const statusBar = this.showStatusBar();
             // Attempt to validate with given URL/creds
             this.validationResult = await this.validateConfig(this.selectedProfile);
+            statusBar?.dispose();
         }
 
         // If validateConfig returns a string, that string is the correct keyPassphrase
@@ -465,7 +480,7 @@ export abstract class AbstractConfigManager {
                 password: config.password,
                 privateKey: config.privateKey ? readFileSync(path.normalize(config.privateKey), "utf8") : undefined,
                 passphrase: config.keyPassphrase,
-                readyTimeout: config.handshakeTimeout || 30000,
+                readyTimeout: config.handshakeTimeout || this.getVscodeSetting("defaultHandshakeTimeout") || 30000,
             };
 
             // Attempt connection
@@ -507,6 +522,11 @@ export abstract class AbstractConfigManager {
                 this.showMessage(`Password Authentication Failed (${attempts + 1}/3)`, MESSAGE_TYPE.ERROR);
             }
         }
+        this.showMessage(
+            `Authentication failed. Please check your password or ensure your account is not locked out.`,
+            MESSAGE_TYPE.ERROR,
+        );
+
         return undefined;
     }
 

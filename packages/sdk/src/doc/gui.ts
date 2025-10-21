@@ -39,3 +39,7 @@ export interface PrivateKeyWarningOptions {
     onUndo?: () => void | Promise<void>;
     onDelete?: () => void | Promise<void>;
 }
+
+export interface IDisposable {
+    dispose(): void;
+}

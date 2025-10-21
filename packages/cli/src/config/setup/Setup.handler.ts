@@ -23,6 +23,7 @@ import {
 import * as termkit from "terminal-kit";
 import {
     AbstractConfigManager,
+    type IDisposable,
     type inputBoxOpts,
     MESSAGE_TYPE,
     type PrivateKeyWarningOptions,
@@ -325,4 +326,12 @@ export class CliPromptApi extends AbstractConfigManager {
         return ImperativeConfig.instance.loadedConfig.profiles;
     }
     protected storeServerPath(_host: string, _path: string): void {}
+
+    protected getVscodeSetting<T>(_setting: string): T | undefined {
+        return undefined;
+    }
+
+    protected showStatusBar(): IDisposable | undefined {
+        return undefined;
+    }
 }
