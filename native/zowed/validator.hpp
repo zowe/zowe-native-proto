@@ -221,7 +221,7 @@ inline ValidationResult validate_schema(const zjson::Value &params,
     // Validate nested object schema (1 level deep)
     if (field.type == FieldType::TYPE_OBJECT && field.nested_schema != nullptr)
     {
-      ValidationResult nested_result = validate_schema(value, *field.nested_schema, true);
+      ValidationResult nested_result = validate_schema(value, *field.nested_schema, allow_unknown_fields);
       if (!nested_result.is_valid)
       {
         return ValidationResult::error("Field '" + field.name + "': " + nested_result.error_message);
@@ -243,7 +243,7 @@ inline ValidationResult validate_schema(const zjson::Value &params,
         // If it's an object with a schema, validate the schema
         if (field.array_element_type == FieldType::TYPE_OBJECT && field.nested_schema != nullptr)
         {
-          ValidationResult nested_result = validate_schema(arr[0], *field.nested_schema, true);
+          ValidationResult nested_result = validate_schema(arr[0], *field.nested_schema, allow_unknown_fields);
           if (!nested_result.is_valid)
           {
             return ValidationResult::error("Field '" + field.name + "' array element [0]: " + nested_result.error_message);
