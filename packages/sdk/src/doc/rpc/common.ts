@@ -96,19 +96,19 @@ export interface Dataset {
     /**
      * Dataset organization
      */
-    dsorg: string;
+    dsorg?: string;
     /**
      * Volume serial number
      */
-    volser: string;
+    volser?: string;
     /**
      * Dataset migrated
      */
-    migr: boolean;
+    migr?: boolean;
     /**
      * Record format
      */
-    recfm: string;
+    recfm?: string;
 }
 
 export interface DatasetAttributes {
@@ -148,19 +148,19 @@ export interface UssItem {
     /**
      * Number of links to the item
      */
-    links: number;
+    links?: number;
     /**
      * User (owner) of the item
      */
-    user: string;
+    user?: string;
     /**
      * Group of the item
      */
-    group: string;
+    group?: string;
     /**
      * Size of the item
      */
-    size: number;
+    size?: number;
     /**
      * The filetag of the item
      */
@@ -168,11 +168,11 @@ export interface UssItem {
     /**
      * Modification date of the item
      */
-    mtime: string;
+    mtime?: string;
     /**
      * The permission string of the item
      */
-    mode: string;
+    mode?: string;
 }
 
 // Job-related types
