@@ -81,11 +81,11 @@ string zusf_format_ls_time(time_t mtime, bool use_csv_format)
     struct tm *tm_info = gmtime(&mtime);
     if (tm_info != nullptr)
     {
-      strftime(time_buf, sizeof(time_buf), "%Y-%m-%dT%H:%M:%SZ", tm_info);
+      strftime(time_buf, sizeof(time_buf), "%Y-%m-%dT%H:%M:%S", tm_info);
     }
     else
     {
-      strcpy(time_buf, "1970-01-01T00:00:00Z"); // Fallback if time conversion fails
+      strcpy(time_buf, "1970-01-01T00:00:00"); // Fallback if time conversion fails
     }
   }
   else
