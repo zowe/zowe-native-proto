@@ -40,6 +40,7 @@ export interface PrivateKeyWarningOptions {
     onDelete?: () => void | Promise<void>;
 }
 
+// Interface for vscode Disposable when leveraging in the SDK
 export interface IDisposable {
     dispose(): void;
 }
