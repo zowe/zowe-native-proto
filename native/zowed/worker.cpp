@@ -252,11 +252,11 @@ void Worker::force_detach()
 
 // WorkerPool implementation
 WorkerPool::WorkerPool(int num_workers, std::chrono::milliseconds request_timeout_param)
-    : ready_count(0),
+    : next_worker_index(0),
+      ready_count(0),
+      request_timeout(request_timeout_param <= std::chrono::milliseconds(0) ? std::chrono::seconds(60) : request_timeout_param),
       is_shutting_down(false),
-      next_worker_index(0),
-      supervisor_running(false),
-      request_timeout(request_timeout_param <= std::chrono::milliseconds(0) ? std::chrono::seconds(60) : request_timeout_param)
+      supervisor_running(false)
 {
   workers.reserve(num_workers);
 
