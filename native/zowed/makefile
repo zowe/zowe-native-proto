@@ -84,22 +84,22 @@ $(OUT_DIR)/$(TARGET): $(OUT_DIR) $(OUT_DIR)/main.o
 
 # Compile library source files with xlclang++
 $(OUT_DIR)/%.o: %.cpp
-	mkdir -p $(@D)
+	@mkdir -p $(@D)
 	$(CXX_LIB) $(CXXFLAGS_LIB) -c $< -o $@
 
 # Compile commands source files with xlclang++
 $(OUT_DIR)/commands/%.o: ../c/commands/%.cpp
-	mkdir -p $(@D)
+	@mkdir -p $(@D)
 	$(CXX_LIB) $(CXXFLAGS_LIB) -c $< -o $@
 
 # Compile main source files with xlc++
 $(OUT_DIR)/main.o: main.cpp
-	mkdir -p $(@D)
+	@mkdir -p $(@D)
 	$(CXX_MAIN) $(CXXFLAGS_MAIN) -c $< -o $@
 
 # Compile zjsonm Metal C source to assembly
 $(OUT_DIR)/zjsonm.s: ../c/zjsonm.c
-	mkdir -p $(@D)
+	@mkdir -p $(@D)
 	$(CC) $(MTL_FLAGS64) -qlist=$(OUT_DIR)/zjsonm.mtl.lst $(MTL_HEADERS) -o $@ $<
 
 # Assemble zjsonm assembly to object
