@@ -122,8 +122,14 @@ public:
   template <typename RequestT, typename ResponseT>
   CommandBuilder &validate(bool allow_unknown_fields = false)
   {
-    request_validator_ = std::make_shared<validator::SchemaValidator<RequestT>>(allow_unknown_fields);
-    response_validator_ = std::make_shared<validator::SchemaValidator<ResponseT>>(allow_unknown_fields);
+    request_validator_ = [allow_unknown_fields](const zjson::Value &params) -> validator::ValidationResult
+    {
+      return validator::validate_schema(params, validator::SchemaRegistry<RequestT>::fields, allow_unknown_fields);
+    };
+    response_validator_ = [allow_unknown_fields](const zjson::Value &params) -> validator::ValidationResult
+    {
+      return validator::validate_schema(params, validator::SchemaRegistry<ResponseT>::fields, allow_unknown_fields);
+    };
     return *this;
   }
 
@@ -140,13 +146,13 @@ public:
   }
 
   // Get the request validator (may be null)
-  std::shared_ptr<validator::ParamsValidator> get_request_validator() const
+  validator::ValidatorFn get_request_validator() const
   {
     return request_validator_;
   }
 
   // Get the response validator (may be null)
-  std::shared_ptr<validator::ParamsValidator> get_response_validator() const
+  validator::ValidatorFn get_response_validator() const
   {
     return response_validator_;
   }
@@ -160,8 +166,8 @@ public:
 private:
   CommandHandler handler_;
   std::vector<ArgTransform> transforms_;
-  std::shared_ptr<validator::ParamsValidator> request_validator_;
-  std::shared_ptr<validator::ParamsValidator> response_validator_;
+  validator::ValidatorFn request_validator_;
+  validator::ValidatorFn response_validator_;
 };
 
 #endif
