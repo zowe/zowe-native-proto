@@ -285,7 +285,7 @@ std::vector<FieldDescriptor> SchemaRegistry<T>::fields;
  * Used to store validation logic without requiring class hierarchies or heap allocations
  * Can be null to indicate no validation is required
  */
-typedef std::function<ValidationResult(const zjson::Value &)> ValidatorFn;
+using ValidatorFn = std::function<ValidationResult(const zjson::Value &)>;
 
 } // namespace validator
 
