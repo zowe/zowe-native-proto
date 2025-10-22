@@ -444,9 +444,7 @@ export abstract class AbstractConfigManager {
             }
 
             if (errorMessage.includes("Cannot parse privateKey: Malformed OpenSSH private key")) {
-                if (!(await this.handleInvalidPrivateKey(newConfig))) {
-                    return undefined;
-                }
+                await this.handleInvalidPrivateKey(newConfig);
                 return undefined;
             }
         }
