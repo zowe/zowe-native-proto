@@ -17,16 +17,20 @@
  */
 struct IoserverOptions
 {
-  int num_workers; ///< Number of worker threads
-  bool verbose;    ///< Enable verbose logging
+  int num_workers;     ///< Number of worker threads
+  bool verbose;        ///< Enable verbose logging
+  int request_timeout; ///< Request timeout (in seconds) for worker heartbeat
 
   /**
    * @brief Constructor with default values
    * @param num_workers Number of worker threads
    * @param verbose Enable verbose logging
    */
-  IoserverOptions(const int num_workers = 10, const bool verbose = false) : num_workers(num_workers), verbose(verbose)
+  IoserverOptions(const int num_workers = 10, const bool verbose = false, const int request_timeout_seconds = 60)
+      : num_workers(num_workers), verbose(verbose), request_timeout(request_timeout_seconds)
   {
+    if (this->request_timeout <= 0)
+      this->request_timeout = 60;
   }
 };
 

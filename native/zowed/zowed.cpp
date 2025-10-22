@@ -154,7 +154,8 @@ private:
   }
 
 public:
-  ZowedServer() : shutdown_requested(false)
+  ZowedServer()
+      : shutdown_requested(false)
   {
   }
 
@@ -178,7 +179,7 @@ public:
     register_all_commands(dispatcher);
 
     // Create worker pool
-    worker_pool.reset(new WorkerPool(options.num_workers));
+    worker_pool.reset(new WorkerPool(options.num_workers, std::chrono::seconds(options.request_timeout)));
 
     // Ensure worker pool teardown on normal exit
     std::atexit([]()
