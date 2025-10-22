@@ -103,25 +103,25 @@ void CommandBuilder::apply_input_transforms(MiddlewareContext &context) const
 {
   plugin::ArgumentMap &args = context.mutable_arguments();
 
-  for (std::vector<ArgTransform>::const_iterator it = transforms_.begin(); it != transforms_.end(); ++it)
+  for (const auto &transform : transforms_)
   {
     // Find the argument
-    plugin::ArgumentMap::iterator arg_it = args.find(it->arg_name);
+    auto arg_it = args.find(transform.arg_name);
 
-    switch (it->kind)
+    switch (transform.kind)
     {
     case ArgTransform::RenameArg:
     {
       // Rename: argument must exist
       if (arg_it == args.end())
       {
-        LOG_WARN("Argument '%s' not found for rename transform, skipping", it->arg_name.c_str());
+        LOG_WARN("Argument '%s' not found for rename transform, skipping", transform.arg_name.c_str());
         continue;
       }
 
       plugin::Argument value = arg_it->second;
       args.erase(arg_it);
-      args[it->renamed_to] = value;
+      args[transform.renamed_to] = value;
       break;
     }
 
@@ -130,7 +130,7 @@ void CommandBuilder::apply_input_transforms(MiddlewareContext &context) const
       // Set default value if argument doesn't exist
       if (arg_it == args.end())
       {
-        args[it->arg_name] = it->default_value;
+        args[transform.arg_name] = transform.default_value;
       }
       break;
     }
@@ -146,7 +146,7 @@ void CommandBuilder::apply_input_transforms(MiddlewareContext &context) const
           string data = arg_it->second.get_string_value();
 
           // Decode base64 if requested
-          if (it->base64)
+          if (transform.base64)
           {
             data = zbase64::decode(data);
           }
@@ -236,7 +236,7 @@ void CommandBuilder::apply_input_transforms(MiddlewareContext &context) const
     {
       // HandleFifo: Create FIFO pipe and send appropriate notification
       // Find the RPC ID argument
-      plugin::ArgumentMap::iterator rpc_it = args.find(it->rpc_id);
+      auto rpc_it = args.find(transform.rpc_id);
       if (rpc_it != args.end())
       {
         try
@@ -264,45 +264,45 @@ void CommandBuilder::apply_input_transforms(MiddlewareContext &context) const
                            << getpid() << "_"
                            << stream_id << "_fifo";
 
-          it->pipe_path = pipe_path_stream.str();
+          transform.pipe_path = pipe_path_stream.str();
 
           // Remove any existing pipe (ignore errors if it doesn't exist)
-          if (unlink(it->pipe_path.c_str()) != 0 && errno != ENOENT)
+          if (unlink(transform.pipe_path.c_str()) != 0 && errno != ENOENT)
           {
-            string errMsg = string("Failed to delete existing FIFO pipe: ") + it->pipe_path + ", errno: " + std::to_string(errno);
+            string errMsg = string("Failed to delete existing FIFO pipe: ") + transform.pipe_path + ", errno: " + std::to_string(errno);
             context.errln(errMsg.c_str());
             LOG_ERROR("%s", errMsg.c_str());
             break;
           }
 
           // Create the FIFO pipe
-          if (mkfifo(it->pipe_path.c_str(), 0600) != 0)
+          if (mkfifo(transform.pipe_path.c_str(), 0600) != 0)
           {
-            string errMsg = string("Failed to create FIFO pipe: ") + it->pipe_path + ", errno: " + std::to_string(errno);
+            string errMsg = string("Failed to create FIFO pipe: ") + transform.pipe_path + ", errno: " + std::to_string(errno);
             context.errln(errMsg.c_str());
             LOG_ERROR("%s", errMsg.c_str());
             break;
           }
 
-          LOG_DEBUG("Created FIFO pipe: %s", it->pipe_path.c_str());
+          LOG_DEBUG("Created FIFO pipe: %s", transform.pipe_path.c_str());
 
           // Set the pipe path as the output argument
-          args[it->arg_name] = plugin::Argument(it->pipe_path);
+          args[transform.arg_name] = plugin::Argument(transform.pipe_path);
 
           // Create notification based on mode
           zjson::Value params_obj = zjson::Value::create_object();
           params_obj.add_to_object("id", zjson::Value(static_cast<int>(stream_id)));
-          params_obj.add_to_object("pipePath", zjson::Value(it->pipe_path));
+          params_obj.add_to_object("pipePath", zjson::Value(transform.pipe_path));
 
           RpcNotification notification = RpcNotification{
               .jsonrpc = "2.0",
-              .method = (it->fifo_mode == FifoMode::GET) ? "receiveStream" : "sendStream",
+              .method = (transform.fifo_mode == FifoMode::GET) ? "receiveStream" : "sendStream",
               .params = zstd::optional<zjson::Value>(params_obj),
           };
 
           // If defer is true, store the notification for later
           // Otherwise, send it immediately
-          if (it->defer)
+          if (transform.defer)
           {
             context.set_pending_notification(notification);
           }
@@ -330,12 +330,12 @@ void CommandBuilder::apply_input_transforms(MiddlewareContext &context) const
 
 void CommandBuilder::apply_output_transforms(MiddlewareContext &context) const
 {
-  ast::Node obj = context.get_object();
+  auto obj = context.get_object();
 
   // If no object is set, create one
   if (!obj)
   {
-    obj = ast::Ast::object();
+    obj = ast::obj();
     context.set_object(obj);
   }
 
@@ -345,12 +345,12 @@ void CommandBuilder::apply_output_transforms(MiddlewareContext &context) const
     return;
   }
 
-  for (std::vector<ArgTransform>::const_iterator it = transforms_.begin(); it != transforms_.end(); ++it)
+  for (const auto &transform : transforms_)
   {
     // Get the field value from the object if it exists
-    ast::Node field_value = obj->get(it->arg_name);
+    auto field_value = obj->get(transform.arg_name);
 
-    switch (it->kind)
+    switch (transform.kind)
     {
     case ArgTransform::ReadStdout:
     {
@@ -361,13 +361,13 @@ void CommandBuilder::apply_output_transforms(MiddlewareContext &context) const
         string data = context.get_output_content();
 
         // Encode base64 if requested
-        if (it->base64)
+        if (transform.base64)
         {
           data = zbase64::encode(data);
         }
 
         // Set the output field
-        obj->set(it->arg_name, ast::Ast::string(data));
+        obj->set(transform.arg_name, ast::str(data));
       }
       catch (const std::exception &e)
       {
@@ -381,16 +381,16 @@ void CommandBuilder::apply_output_transforms(MiddlewareContext &context) const
     case ArgTransform::HandleFifo:
     {
       // HandleFifo cleanup: Remove the FIFO pipe after command execution
-      if (!it->pipe_path.empty())
+      if (!transform.pipe_path.empty())
       {
         // Remove the pipe (ignore errors if already removed)
-        if (unlink(it->pipe_path.c_str()) == 0)
+        if (unlink(transform.pipe_path.c_str()) == 0)
         {
-          LOG_DEBUG("Cleaned up FIFO pipe: %s", it->pipe_path.c_str());
+          LOG_DEBUG("Cleaned up FIFO pipe: %s", transform.pipe_path.c_str());
         }
         else if (errno != ENOENT)
         {
-          LOG_ERROR("Failed to delete FIFO pipe: %s, errno: %d", it->pipe_path.c_str(), errno);
+          LOG_ERROR("Failed to delete FIFO pipe: %s, errno: %d", transform.pipe_path.c_str(), errno);
         }
       }
       break;
