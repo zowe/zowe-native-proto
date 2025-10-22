@@ -25,6 +25,13 @@ constexpr std::chrono::milliseconds kBaseReplacementBackoff(200);
 constexpr std::chrono::milliseconds kMaxReplacementBackoff(5000);
 constexpr std::chrono::milliseconds kMaxSleepTime(100);
 
+int64_t steady_clock_now_ms()
+{
+  return std::chrono::duration_cast<std::chrono::milliseconds>(
+             std::chrono::steady_clock::now().time_since_epoch())
+      .count();
+}
+
 const char *worker_state_to_string(WorkerState state)
 {
   switch (state)
@@ -52,7 +59,8 @@ const char *worker_state_to_string(WorkerState state)
 Worker::Worker(int worker_id)
     : id(worker_id),
       stop_requested(false),
-      state(WorkerState::Starting)
+      state(WorkerState::Starting),
+      last_heartbeat_ms(steady_clock_now_ms())
 {
   LOG_DEBUG("Worker %d state -> %s (constructor)", id, worker_state_to_string(WorkerState::Starting));
 }
@@ -66,9 +74,11 @@ void Worker::start()
 {
   stop_requested.store(false, std::memory_order_release);
   state.store(WorkerState::Starting, std::memory_order_release);
+  update_heartbeat();
   LOG_DEBUG("Worker %d state -> %s (start invoked)", id, worker_state_to_string(WorkerState::Starting));
   worker_thread = std::thread(&Worker::worker_loop, this);
   state.store(WorkerState::Idle, std::memory_order_release);
+  update_heartbeat();
   LOG_DEBUG("Worker %d state -> %s (worker thread started)", id, worker_state_to_string(WorkerState::Idle));
   LOG_DEBUG("Worker %d started", id);
 }
@@ -97,7 +107,10 @@ void Worker::stop()
     LOG_DEBUG("Worker %d state -> %s (stop complete)", id, worker_state_to_string(WorkerState::Exited));
   }
 
-  LOG_DEBUG("Worker %d stopped", id);
+  if (state.load(std::memory_order_acquire) != WorkerState::Faulted)
+    LOG_DEBUG("Worker %d stopped", id);
+  else
+    LOG_DEBUG("Worker %d stop requested while faulted/detached", id);
 }
 
 void Worker::add_request(const string &request)
@@ -120,33 +133,42 @@ void Worker::worker_loop()
       {
         std::unique_lock<std::mutex> lock(queue_mutex);
         state.store(WorkerState::Idle, std::memory_order_release);
+        update_heartbeat();
         queue_condition.wait(lock, [this]
                              { return stop_requested.load(std::memory_order_acquire) || !request_queue.empty(); });
 
         if (stop_requested.load(std::memory_order_acquire))
         {
           state.store(WorkerState::Stopping, std::memory_order_release);
+          update_heartbeat();
           LOG_DEBUG("Worker %d state -> %s (stop signaled)", id, worker_state_to_string(WorkerState::Stopping));
           break;
         }
 
         if (request_queue.empty())
+        {
+          update_heartbeat();
           continue;
+        }
 
         request = request_queue.front();
         request_queue.pop();
         state.store(WorkerState::Running, std::memory_order_release);
+        update_heartbeat();
       }
 
       process_request(request);
+      update_heartbeat();
     }
 
     state.store(WorkerState::Exited, std::memory_order_release);
+    update_heartbeat();
     LOG_DEBUG("Worker %d state -> %s (worker loop exit)", id, worker_state_to_string(WorkerState::Exited));
   }
   catch (const std::exception &e)
   {
     state.store(WorkerState::Faulted, std::memory_order_release);
+    update_heartbeat();
     LOG_DEBUG("Worker %d state -> %s (exception)", id, worker_state_to_string(WorkerState::Faulted));
     stop_requested.store(true, std::memory_order_release);
     LOG_ERROR("Worker %d encountered fatal error: %s", id, e.what());
@@ -154,6 +176,7 @@ void Worker::worker_loop()
   catch (...)
   {
     state.store(WorkerState::Faulted, std::memory_order_release);
+    update_heartbeat();
     LOG_DEBUG("Worker %d state -> %s (unknown exception)", id, worker_state_to_string(WorkerState::Faulted));
     stop_requested.store(true, std::memory_order_release);
     LOG_ERROR("Worker %d encountered unknown fatal error", id);
@@ -197,9 +220,43 @@ void Worker::process_request(const string &data)
   server.process_request(data);
 }
 
+void Worker::update_heartbeat()
+{
+  last_heartbeat_ms.store(steady_clock_now_ms(), std::memory_order_release);
+}
+
+std::chrono::steady_clock::time_point Worker::get_last_heartbeat() const
+{
+  const auto stored_ms = last_heartbeat_ms.load(std::memory_order_acquire);
+  const auto duration_ms = std::chrono::milliseconds(stored_ms);
+  const auto steady_duration = std::chrono::duration_cast<std::chrono::steady_clock::duration>(duration_ms);
+  return std::chrono::steady_clock::time_point(steady_duration);
+}
+
+void Worker::force_detach()
+{
+  stop_requested.store(true, std::memory_order_release);
+  state.store(WorkerState::Faulted, std::memory_order_release);
+  queue_condition.notify_all();
+  if (worker_thread.joinable())
+  {
+    worker_thread.detach();
+    LOG_WARN("Worker %d forcibly detached due to heartbeat timeout", id);
+  }
+  else
+  {
+    LOG_WARN("Worker %d marked faulted due to heartbeat timeout (thread not joinable)", id);
+  }
+  update_heartbeat();
+}
+
 // WorkerPool implementation
-WorkerPool::WorkerPool(int num_workers)
-    : ready_count(0), is_shutting_down(false), next_worker_index(0), supervisor_running(false)
+WorkerPool::WorkerPool(int num_workers, std::chrono::milliseconds request_timeout_param)
+    : ready_count(0),
+      is_shutting_down(false),
+      next_worker_index(0),
+      supervisor_running(false),
+      request_timeout(request_timeout_param <= std::chrono::milliseconds(0) ? std::chrono::seconds(60) : request_timeout_param)
 {
   workers.reserve(num_workers);
 
@@ -396,7 +453,24 @@ void WorkerPool::monitor_workers()
 
       // If the worker has already crashed/exited, replace it
       if (worker_state == WorkerState::Exited && !worker->is_stop_requested())
+      {
         replace_worker(i, "unexpected exit");
+      }
+      else if (worker_state == WorkerState::Running && request_timeout.count() > 0)
+      {
+        const auto last_heartbeat = worker->get_last_heartbeat();
+        const auto now = std::chrono::steady_clock::now();
+        if (last_heartbeat != std::chrono::steady_clock::time_point::min() && now > last_heartbeat)
+        {
+          const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - last_heartbeat);
+          if (elapsed > request_timeout)
+          {
+            LOG_WARN("Worker %zu exceeded request timeout (%lld ms > %lld ms); scheduling replacement", i, static_cast<long long>(elapsed.count()), static_cast<long long>(request_timeout.count()));
+            replace_worker(i, "heartbeat timeout", true);
+            continue;
+          }
+        }
+      }
     }
 
     // Sleep loop to avoid busy waiting on CPU
@@ -405,7 +479,7 @@ void WorkerPool::monitor_workers()
   }
 }
 
-void WorkerPool::replace_worker(size_t worker_index, const char *reason)
+void WorkerPool::replace_worker(size_t worker_index, const char *reason, bool force_detach)
 {
   if (is_shutting_down.load())
     return;
@@ -517,7 +591,11 @@ void WorkerPool::replace_worker(size_t worker_index, const char *reason)
   }
 
   if (old_worker)
+  {
+    if (force_detach)
+      old_worker->force_detach();
     old_worker->stop();
+  }
 
   if (max_attempts_reached)
   {

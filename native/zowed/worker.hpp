@@ -21,6 +21,7 @@
 #include <vector>
 #include <memory>
 #include <chrono>
+#include <cstdint>
 
 // Forward declarations
 class Worker;
@@ -47,9 +48,11 @@ private:
   std::condition_variable queue_condition;
   std::atomic<bool> stop_requested;
   std::atomic<WorkerState> state;
+  std::atomic<int64_t> last_heartbeat_ms;
 
   void worker_loop();
   void process_request(const std::string &data);
+  void update_heartbeat();
 
 public:
   Worker(int worker_id);
@@ -67,6 +70,8 @@ public:
   bool has_fault() const;
   bool is_stop_requested() const;
   WorkerState get_state() const;
+  std::chrono::steady_clock::time_point get_last_heartbeat() const;
+  void force_detach();
 };
 
 // Worker pool that manages multiple workers
@@ -83,6 +88,7 @@ private:
   std::atomic<int32_t> ready_count;
   std::vector<size_t> replacement_attempts;
   std::vector<std::chrono::steady_clock::time_point> next_replacement_allowed;
+  std::chrono::milliseconds request_timeout;
 
   // Whether the pool is shutting down
   std::atomic<bool> is_shutting_down;
@@ -99,10 +105,10 @@ private:
    * @param worker_index The ID of the worker to replace
    * @param reason The reason why the worker is being replaced
    */
-  void replace_worker(size_t worker_index, const char *reason);
+  void replace_worker(size_t worker_index, const char *reason, bool force_detach = false);
 
 public:
-  explicit WorkerPool(int num_workers);
+  explicit WorkerPool(int num_workers, std::chrono::milliseconds request_timeout = std::chrono::seconds(60));
   ~WorkerPool();
 
   void distribute_request(const std::string &request);
