@@ -37,18 +37,34 @@ enum class WorkerState
   Exited
 };
 
+// Request metadata for tracking retry attempts
+struct RequestMetadata
+{
+  std::string data;        // The actual request payload
+  size_t retry_count;      // Number of times this request has been attempted
+  std::string request_id;  // Optional: for logging/debugging
+
+  RequestMetadata() : retry_count(0) {}
+  RequestMetadata(const std::string &req_data, size_t retries = 0, const std::string &id = "")
+      : data(req_data), retry_count(retries), request_id(id) {}
+};
+
 // Worker class that processes command requests
 class Worker
 {
 private:
   int id;
   std::thread worker_thread;
-  std::queue<std::string> request_queue;
+  std::queue<RequestMetadata> request_queue;
   std::mutex queue_mutex;
   std::condition_variable queue_condition;
   std::atomic<bool> stop_requested;
   std::atomic<WorkerState> state;
   std::atomic<int64_t> last_heartbeat_ms;
+
+  // Track the currently processing request for recovery
+  std::string current_request_data;
+  std::mutex current_request_mutex;
 
   void worker_loop();
   void process_request(const std::string &data);
@@ -60,7 +76,7 @@ public:
 
   void start();
   void stop();
-  void add_request(const std::string &request);
+  void add_request(const RequestMetadata &request);
   bool is_ready() const;
   int get_id() const
   {
@@ -72,12 +88,18 @@ public:
   WorkerState get_state() const;
   std::chrono::steady_clock::time_point get_last_heartbeat() const;
   void force_detach();
+
+  // Request recovery methods
+  std::vector<RequestMetadata> drain_pending_requests();
+  std::string get_current_request();
 };
 
 // Worker pool that manages multiple workers
 class WorkerPool
 {
 private:
+  static constexpr size_t kMaxRequestRetries = 3; // Maximum retry attempts for poison pill protection
+
   std::atomic<size_t> next_worker_index;
   std::vector<std::unique_ptr<Worker>> workers;
 
@@ -106,6 +128,15 @@ private:
    * @param reason The reason why the worker is being replaced
    */
   void replace_worker(size_t worker_index, const char *reason, bool force_detach = false);
+  /**
+   * @brief Re-distribute recovered requests from a failed worker
+   *
+   * @param requests Vector of requests to re-distribute
+   * @param worker_index The index of the worker that failed
+   * @param reason The reason for re-distribution
+   */
+  void redistribute_requests(std::vector<RequestMetadata> &requests, size_t worker_index, const char *reason);
+  void distribute_request_internal(const RequestMetadata &request);
 
 public:
   explicit WorkerPool(int num_workers, std::chrono::milliseconds request_timeout = std::chrono::seconds(60));
