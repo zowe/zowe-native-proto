@@ -113,7 +113,7 @@ void Worker::stop()
     LOG_DEBUG("Worker %d stop requested while faulted/detached", id);
 }
 
-void Worker::add_request(const string &request)
+void Worker::add_request(const RequestMetadata &request)
 {
   {
     std::lock_guard<std::mutex> lock(queue_mutex);
@@ -128,7 +128,7 @@ void Worker::worker_loop()
   {
     while (true)
     {
-      string request;
+      RequestMetadata request_metadata;
 
       {
         std::unique_lock<std::mutex> lock(queue_mutex);
@@ -151,14 +151,26 @@ void Worker::worker_loop()
           continue;
         }
 
-        request = request_queue.front();
+        request_metadata = request_queue.front();
         request_queue.pop();
         state.store(WorkerState::Running, std::memory_order_release);
         update_heartbeat();
       }
 
-      process_request(request);
+      // Track current request for potential recovery
+      {
+        std::lock_guard<std::mutex> lock(current_request_mutex);
+        current_request_data = request_metadata.data;
+      }
+
+      process_request(request_metadata.data);
       update_heartbeat();
+
+      // Clear current request after successful processing
+      {
+        std::lock_guard<std::mutex> lock(current_request_mutex);
+        current_request_data.clear();
+      }
     }
 
     state.store(WorkerState::Exited, std::memory_order_release);
@@ -250,6 +262,33 @@ void Worker::force_detach()
   update_heartbeat();
 }
 
+std::vector<RequestMetadata> Worker::drain_pending_requests()
+{
+  std::vector<RequestMetadata> drained_requests;
+
+  {
+    std::lock_guard<std::mutex> lock(queue_mutex);
+    while (!request_queue.empty())
+    {
+      drained_requests.push_back(request_queue.front());
+      request_queue.pop();
+    }
+  }
+
+  if (!drained_requests.empty())
+  {
+    LOG_DEBUG("Worker %d: Drained %zu pending requests from queue", id, drained_requests.size());
+  }
+
+  return drained_requests;
+}
+
+std::string Worker::get_current_request()
+{
+  std::lock_guard<std::mutex> lock(current_request_mutex);
+  return current_request_data;
+}
+
 // WorkerPool implementation
 WorkerPool::WorkerPool(int num_workers, std::chrono::milliseconds request_timeout_param)
     : next_worker_index(0),
@@ -304,6 +343,13 @@ void WorkerPool::initialize_worker(int worker_id)
 }
 
 void WorkerPool::distribute_request(const string &request)
+{
+  // Wrap the request in metadata with retry_count = 0
+  RequestMetadata metadata(request, 0);
+  distribute_request_internal(metadata);
+}
+
+void WorkerPool::distribute_request_internal(const RequestMetadata &request)
 {
   if (is_shutting_down)
     return;
@@ -590,8 +636,22 @@ void WorkerPool::replace_worker(size_t worker_index, const char *reason, bool fo
       return;
   }
 
+  // Drain pending requests and current request from the failing worker
+  std::vector<RequestMetadata> recovered_requests;
   if (old_worker)
   {
+    // Get pending requests from queue
+    auto pending = old_worker->drain_pending_requests();
+    recovered_requests.insert(recovered_requests.end(), pending.begin(), pending.end());
+
+    // Get currently processing request if any
+    std::string current_req = old_worker->get_current_request();
+    if (!current_req.empty())
+    {
+      LOG_DEBUG("Worker %zu: Recovering in-flight request", worker_index);
+      recovered_requests.push_back(RequestMetadata(current_req, 0));
+    }
+
     if (force_detach)
       old_worker->force_detach();
     old_worker->stop();
@@ -600,6 +660,9 @@ void WorkerPool::replace_worker(size_t worker_index, const char *reason, bool fo
   if (max_attempts_reached)
   {
     LOG_ERROR("Worker %zu hit maximum replacement attempts (%zu) after %s; leaving worker offline", worker_index, kMaxReplacementAttempts, reason);
+    // Still try to redistribute the recovered requests
+    if (!recovered_requests.empty())
+      redistribute_requests(recovered_requests, worker_index, reason);
     return;
   }
 
@@ -634,4 +697,43 @@ void WorkerPool::replace_worker(size_t worker_index, const char *reason, bool fo
 
   std::thread(&WorkerPool::initialize_worker, this, static_cast<int>(worker_index)).detach();
   LOG_DEBUG("Replacement worker %zu spawned, awaiting readiness", worker_index);
+
+  // Redistribute recovered requests
+  if (!recovered_requests.empty())
+    redistribute_requests(recovered_requests, worker_index, reason);
+}
+
+void WorkerPool::redistribute_requests(std::vector<RequestMetadata> &requests, size_t worker_index, const char *reason)
+{
+  if (is_shutting_down.load())
+    return;
+
+  size_t redistributed_count = 0;
+  size_t failed_count = 0;
+
+  for (auto &req : requests)
+  {
+    // Check if request has exceeded max retry limit (poison pill protection)
+    if (req.retry_count >= kMaxRequestRetries)
+    {
+      LOG_ERROR("Request from worker %zu discarded after %zu retry attempts (poison pill protection). Reason: %s",
+                worker_index, req.retry_count, reason);
+      failed_count++;
+      continue;
+    }
+
+    // Increment retry count and re-distribute
+    req.retry_count++;
+    LOG_DEBUG("Re-routing request from worker %zu (attempt %zu/%zu). Reason: %s",
+              worker_index, req.retry_count, kMaxRequestRetries, reason);
+
+    distribute_request_internal(req);
+    redistributed_count++;
+  }
+
+  if (redistributed_count > 0)
+  {
+    LOG_INFO("Redistributed %zu requests from failed worker %zu. Failed: %zu (poison pills)",
+             redistributed_count, worker_index, failed_count);
+  }
 }
