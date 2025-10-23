@@ -9,6 +9,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - Fixed SSH client caching to be per profile instead of per hostname, allowing multiple server instances on the same system. [#558](https://github.com/zowe/zowe-native-proto/pull/558)
 - Updated RPC response types for data set operations to align with SDK changes. [#590](https://github.com/zowe/zowe-native-proto/pull/590)
 - Added support for issuing TSO commands. [#595](https://github.com/zowe/zowe-native-proto/pull/595)
+- Fixed an issue where the input validation for the deploy directory prompt would falsely detect paths as invalid. [#609](https://github.com/zowe/zowe-native-proto/issues/609)
 
 ## `0.1.10`
 

@@ -214,7 +214,12 @@ export abstract class AbstractConfigManager {
             validateInput: (input) => {
                 const trimmed = input.trim();
                 if (!trimmed) return "Path cannot be empty";
-                if (trimmed !== defaultServerPath && !path.isAbsolute(input.trim()))
+                let isNormalized = false;
+                try {
+                    path.normalize(input.trim());
+                    isNormalized = true;
+                } catch (err) {}
+                if (trimmed !== defaultServerPath && !isNormalized)
                     return "Invalid Deploy Directory format. Ensure it matches the expected pattern.";
                 return null;
             },
