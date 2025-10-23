@@ -174,6 +174,28 @@ int handle_job_list_files(InvocationContext &context)
   return (!warn && rc == RTNCD_WARNING) ? RTNCD_SUCCESS : rc;
 }
 
+int handle_job_list_proclib(InvocationContext &context)
+{
+  int rc = 0;
+  ZJB zjb = {};
+
+  vector<string> proclib;
+  rc = zjb_list_proclib(&zjb, proclib);
+  if (0 != rc)
+  {
+    context.error_stream() << "Error: could not list proclib for rc: '" << rc << "'" << endl;
+    context.error_stream() << "  Details: " << zjb.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
+  for (vector<string>::iterator it = proclib.begin(); it != proclib.end(); it++)
+  {
+    context.output_stream() << *it << endl;
+  }
+
+  return RTNCD_SUCCESS;
+}
+
 int handle_job_view_status(InvocationContext &context)
 {
   int rc = 0;
@@ -535,6 +557,12 @@ void register_commands(parser::Command &root_command)
   job_list_files_cmd->add_keyword_arg(RESPONSE_FORMAT_CSV);
   job_list_files_cmd->set_handler(handle_job_list_files);
   job_group->add_command(job_list_files_cmd);
+
+  // List-proclib subcommand
+  auto job_list_proclib_cmd = command_ptr(new Command("list-proclib", "list proclib"));
+  job_list_proclib_cmd->add_alias("lp");
+  job_list_proclib_cmd->set_handler(handle_job_list_proclib);
+  job_group->add_command(job_list_proclib_cmd);
 
   // View-status subcommand
   auto job_view_status_cmd = command_ptr(new Command("view-status", "view job status"));
