@@ -14,7 +14,7 @@ import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { imperative } from "@zowe/zowe-explorer-api";
 import * as vscode from "vscode";
 import { type ClientOptions, ZSshClient, ZSshUtils } from "zowe-native-proto-sdk";
-import { SshConfigUtils } from "./SshConfigUtils";
+import { SshConfigUtils } from "./ConfigUtils";
 import { deployWithProgress, getVsceConfig } from "./Utilities";
 
 class AsyncMutex extends imperative.DeferredPromise<void> implements Disposable {

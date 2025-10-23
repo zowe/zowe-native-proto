@@ -16,7 +16,7 @@ import { Gui, imperative, ZoweExplorerApiType, ZoweVsCodeExtension } from "@zowe
 import * as vscode from "vscode";
 import { ZSshUtils } from "zowe-native-proto-sdk";
 import { SshClientCache } from "./SshClientCache";
-import { SshConfigUtils, VscePromptApi } from "./SshConfigUtils";
+import { SshConfigUtils, VscePromptApi } from "./ConfigUtils";
 import { SshErrorHandler } from "./SshErrorHandler";
 
 const EXTENSION_NAME = "zowe-native-proto-vsce";
