@@ -19,10 +19,10 @@
 struct Dataset {};
 ZJSON_SCHEMA(Dataset,
     FIELD_REQUIRED(name, STRING),
-    FIELD_REQUIRED(dsorg, STRING),
-    FIELD_REQUIRED(volser, STRING),
-    FIELD_REQUIRED(migr, BOOL),
-    FIELD_REQUIRED(recfm, STRING)
+    FIELD_OPTIONAL(dsorg, STRING),
+    FIELD_OPTIONAL(volser, STRING),
+    FIELD_OPTIONAL(migr, BOOL),
+    FIELD_OPTIONAL(recfm, STRING)
 );
 
 struct DsMember {};
@@ -50,13 +50,13 @@ ZJSON_SCHEMA(Spool,
 struct UssItem {};
 ZJSON_SCHEMA(UssItem,
     FIELD_REQUIRED(name, STRING),
-    FIELD_REQUIRED(links, NUMBER),
-    FIELD_REQUIRED(user, STRING),
-    FIELD_REQUIRED(group, STRING),
-    FIELD_REQUIRED(size, NUMBER),
+    FIELD_OPTIONAL(links, NUMBER),
+    FIELD_OPTIONAL(user, STRING),
+    FIELD_OPTIONAL(group, STRING),
+    FIELD_OPTIONAL(size, NUMBER),
     FIELD_OPTIONAL(filetag, STRING),
-    FIELD_REQUIRED(mtime, STRING),
-    FIELD_REQUIRED(mode, STRING)
+    FIELD_OPTIONAL(mtime, STRING),
+    FIELD_OPTIONAL(mode, STRING)
 );
 
 struct IssueConsoleResponse {};
