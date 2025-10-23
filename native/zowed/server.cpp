@@ -78,7 +78,7 @@ void RpcServer::process_request(const string &request_data)
     // Success - check if context has an object set, otherwise use output content
     zjson::Value result_json;
 
-    const ast::Node &ast_object = context.get_object();
+    const auto &ast_object = context.get_object();
     if (ast_object)
     {
       // Convert AST object to zjson::Value
@@ -252,7 +252,7 @@ zjson::Value RpcServer::convert_ast_to_json(const ast::Node &ast_node)
   case ast::Ast::Array:
   {
     zjson::Value array_value = zjson::Value::create_array();
-    const std::vector<ast::Node> &ast_array = ast_node->as_array();
+    const auto &ast_array = ast_node->as_array();
     array_value.reserve_array(ast_array.size());
 
     for (size_t i = 0; i < ast_array.size(); ++i)
@@ -265,11 +265,11 @@ zjson::Value RpcServer::convert_ast_to_json(const ast::Node &ast_node)
   case ast::Ast::Object:
   {
     zjson::Value object_value = zjson::Value::create_object();
-    const ast::ObjMap &ast_object = ast_node->as_object();
+    const auto &ast_object = ast_node->as_object();
 
-    for (ast::ObjMap::const_iterator it = ast_object.begin(); it != ast_object.end(); ++it)
+    for (const auto &pair : ast_object)
     {
-      object_value.add_to_object(it->first, convert_ast_to_json(it->second));
+      object_value.add_to_object(pair.first, convert_ast_to_json(pair.second));
     }
     return object_value;
   }
@@ -379,7 +379,7 @@ validator::ValidationResult RpcServer::validate_json_with_schema(const string &m
   }
 
   const CommandBuilder &builder = it->second;
-  std::shared_ptr<validator::ParamsValidator> validator =
+  validator::ValidatorFn validator =
       is_request ? builder.get_request_validator() : builder.get_response_validator();
 
   if (!validator)
@@ -387,5 +387,5 @@ validator::ValidationResult RpcServer::validate_json_with_schema(const string &m
     return validator::ValidationResult::success();
   }
 
-  return validator->validate(data);
+  return validator(data);
 }

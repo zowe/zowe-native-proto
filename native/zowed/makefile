@@ -99,7 +99,7 @@ $(OUT_DIR)/main.o: main.cpp
 
 # Compile zjsonm Metal C source to assembly
 $(OUT_DIR)/zjsonm.s: ../c/zjsonm.c
-	mkdir -p $(@D)
+	@mkdir -p $(@D)
 	$(CC) $(MTL_FLAGS64) -qlist=$(OUT_DIR)/zjsonm.mtl.lst $(MTL_HEADERS) -o $@ $<
 
 # Assemble zjsonm assembly to object

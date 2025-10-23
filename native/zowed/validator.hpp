@@ -16,6 +16,7 @@
 #include <vector>
 #include <unordered_map>
 #include <unordered_set>
+#include <functional>
 #include "../c/zjson.hpp"
 
 /**
@@ -36,6 +37,9 @@
 
 namespace validator
 {
+
+// Forward declaration for ValidatorFn typedef
+struct ValidationResult;
 
 /**
  * Field types for schema validation
@@ -185,10 +189,9 @@ inline ValidationResult validate_schema(const zjson::Value &params,
   std::unordered_set<std::string> seen_fields;
 
   // Check each field in the schema
-  for (std::vector<FieldDescriptor>::const_iterator it = schema.begin(); it != schema.end(); ++it)
+  for (const auto &field : schema)
   {
-    const FieldDescriptor &field = *it;
-    std::unordered_map<std::string, zjson::Value>::const_iterator field_it = obj.find(field.name);
+    auto field_it = obj.find(field.name);
 
     if (field_it == obj.end())
     {
@@ -253,11 +256,11 @@ inline ValidationResult validate_schema(const zjson::Value &params,
   // Check for unknown fields if requested
   if (!allow_unknown_fields)
   {
-    for (std::unordered_map<std::string, zjson::Value>::const_iterator it = obj.begin(); it != obj.end(); ++it)
+    for (const auto &pair : obj)
     {
-      if (seen_fields.find(it->first) == seen_fields.end())
+      if (seen_fields.find(pair.first) == seen_fields.end())
       {
-        return ValidationResult::error("Unknown field: " + it->first);
+        return ValidationResult::error("Unknown field: " + pair.first);
       }
     }
   }
@@ -278,38 +281,11 @@ template <typename T>
 std::vector<FieldDescriptor> SchemaRegistry<T>::fields;
 
 /**
- * Base validator interface
+ * Validator function type - a callable that validates JSON parameters
+ * Used to store validation logic without requiring class hierarchies or heap allocations
+ * Can be null to indicate no validation is required
  */
-class ParamsValidator
-{
-public:
-  virtual ~ParamsValidator()
-  {
-  }
-
-  virtual ValidationResult validate(const zjson::Value &params) const = 0;
-};
-
-/**
- * Schema validator - validates using ZJSON_SCHEMA definitions
- */
-template <typename T>
-class SchemaValidator : public ParamsValidator
-{
-public:
-  explicit SchemaValidator(bool allow_unknown_fields = false)
-      : allow_unknown_fields_(allow_unknown_fields)
-  {
-  }
-
-  ValidationResult validate(const zjson::Value &params) const
-  {
-    return validate_schema(params, SchemaRegistry<T>::fields, allow_unknown_fields_);
-  }
-
-private:
-  bool allow_unknown_fields_;
-};
+using ValidatorFn = std::function<ValidationResult(const zjson::Value &)>;
 
 } // namespace validator
 
