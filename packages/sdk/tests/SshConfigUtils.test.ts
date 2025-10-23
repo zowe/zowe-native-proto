@@ -27,10 +27,10 @@ describe("findPrivateKeys", () => {
     it("should find private keys in home directory", async () => {
         const homeDir = "/home/dir";
         const expected = [
-            join(homeDir, ".ssh", "id_ed25519"),
-            join(homeDir, ".ssh", "id_rsa"),
-            join(homeDir, ".ssh", "id_ecdsa"),
-            join(homeDir, ".ssh", "id_dsa"),
+            resolve(join(homeDir, ".ssh", "id_ed25519")),
+            resolve(join(homeDir, ".ssh", "id_rsa")),
+            resolve(join(homeDir, ".ssh", "id_ecdsa")),
+            resolve(join(homeDir, ".ssh", "id_dsa")),
         ];
         expect(await SshConfigUtils.findPrivateKeys()).toStrictEqual(expected);
     });
@@ -51,10 +51,10 @@ describe("findPrivateKeys", () => {
     it("should find private keys in home directory", async () => {
         const homeDir = "/home/dir";
         const expected = [
-            join(homeDir, ".ssh", "id_ed25519"),
-            join(homeDir, ".ssh", "id_rsa"),
-            join(homeDir, ".ssh", "id_ecdsa"),
-            join(homeDir, ".ssh", "id_dsa"),
+            resolve(join(homeDir, ".ssh", "id_ed25519")),
+            resolve(join(homeDir, ".ssh", "id_rsa")),
+            resolve(join(homeDir, ".ssh", "id_ecdsa")),
+            resolve(join(homeDir, ".ssh", "id_dsa")),
         ];
         expect(await SshConfigUtils.findPrivateKeys()).toStrictEqual(expected);
     });
@@ -111,7 +111,7 @@ Host production
             hostname: "prod.example.com",
             port: 2222,
             user: "admin",
-            privateKey: normalize(join("/home/dir", ".ssh", "prod_key")),
+            privateKey: normalize(resolve(join("/home/dir", ".ssh", "prod_key"))),
             handshakeTimeout: 30000,
         });
     });
