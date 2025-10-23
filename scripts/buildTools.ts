@@ -107,13 +107,10 @@ class WatchUtils {
                 fs.statSync(path.join(this.rootDir, filePath)).mtimeMs >
                     (this.cache[filePath.replaceAll(path.sep, path.posix.sep)] ?? 0),
         );
-        if (changedFiles.length > 0) {
-            for (const filePath of changedFiles) {
-                const absLocalPath = path.resolve(__dirname, `${localDeployDir}/${filePath}`);
-                const changeKind = this.cache[filePath.replaceAll(path.sep, path.posix.sep)] == null ? "+" : "~";
-                this.pendingChanges.set(filePath, { kind: changeKind, time: fs.statSync(absLocalPath).mtime });
-            }
-            await this.applyChanges(false);
+        for (const filePath of changedFiles) {
+            const absLocalPath = path.resolve(__dirname, `${localDeployDir}/${filePath}`);
+            const changeKind = this.cache[filePath.replaceAll(path.sep, path.posix.sep)] == null ? "+" : "~";
+            this.pendingChanges.set(filePath, { kind: changeKind, time: fs.statSync(absLocalPath).mtime });
         }
 
         this.watcher = chokidar.watch(["**/*"], {
@@ -121,8 +118,6 @@ class WatchUtils {
             ignoreInitial: true,
             persistent: true,
         });
-        this.printReadyMessage();
-
         this.watcher.on("add", (filePath, stats) => {
             this.pendingChanges.set(filePath, { kind: "+", time: stats?.mtime ?? new Date() });
             void this.applyChanges();
@@ -135,9 +130,14 @@ class WatchUtils {
             this.pendingChanges.set(filePath, { kind: "-", time: new Date() });
             void this.applyChanges();
         });
+
+        this.printReadyMessage();
+        if (this.pendingChanges.size > 0) {
+            await this.applyChanges();
+        }
     }
 
-    private async applyChanges(printReady = true) {
+    private async applyChanges() {
         if (this.buildMutex?.status === DeferredPromiseStatus.Pending) {
             await this.buildMutex.promise;
         }
@@ -180,7 +180,7 @@ class WatchUtils {
         } finally {
             sftp?.end();
             this.buildMutex.resolve();
-            printReady && this.printReadyMessage();
+            this.printReadyMessage();
         }
     }
 
