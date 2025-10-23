@@ -75,8 +75,10 @@ $(OUT_DIR)/$(LIBRARY): $(OUT_DIR) $(LIB_OBJECTS) $(CMDS_OBJECTS) $(XLCLANG_OBJEC
 	$(XLCLANG_OBJECTS) $(METAL_OBJECTS) $(OUT_DIR)/zjsonm.o > $(OUT_DIR)/libzowed.bind.
 
 # Build xlclang dependencies from parent makefile
-$(XLCLANG_OBJECTS):
+xlclang-deps:
 	$(MAKE) -c ../c xlclang-extenders
+
+$(XLCLANG_OBJECTS): xlclang-deps
 
 # Build the executable (main compiled with xlc++, dynamically loads shared library)
 $(OUT_DIR)/$(TARGET): $(OUT_DIR) $(OUT_DIR)/main.o
@@ -119,7 +121,7 @@ debug: CXXFLAGS_MAIN += -g -DDEBUG
 debug: $(OUT_DIR)/$(TARGET)
 
 # Phony targets
-.PHONY: all clean debug library
+.PHONY: all clean debug library xlclang-deps
 
 # Include auto-generated dependency files
 .INCLUDE .IGNORE: $(LIB_OBJECTS:.o=.d) $(CMDS_OBJECTS:.o=.d)
