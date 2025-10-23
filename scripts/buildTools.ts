@@ -133,7 +133,7 @@ class WatchUtils {
 
         this.printReadyMessage();
         if (this.pendingChanges.size > 0) {
-            await this.applyChanges();
+            void this.applyChanges();
         }
     }
 

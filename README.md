@@ -12,7 +12,7 @@ An open-source, native protocol for z/OS mainframe operations via SSH with minim
 ### z/OS
 
 - [IBM C/C++ for z/OS](https://www.ibm.com/products/xl-cpp-compiler-zos) - `xlclang` and `xlclang++`
-- [GNU Make for z/OS](https://github.com/zopencommunity/makeport) - `make` a.k.a. `gmake` (native `make` is not supported)
+- [SWIG](https://github.com/t1m0thyj/swig-zos) (optional) - used to build experimental Python bindings
 
 ## Setup
 
