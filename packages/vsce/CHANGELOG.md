@@ -6,6 +6,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
+- Renamed `SshConfigUtils` to `ConfigUtils` to avoid naming conflict with SDK file [#614](https://github.com/zowe/zowe-native-proto/pull/614)
 - Fixed SSH client caching to be per profile instead of per hostname, allowing multiple server instances on the same system. [#558](https://github.com/zowe/zowe-native-proto/pull/558)
 - Updated RPC response types for data set operations to align with SDK changes. [#590](https://github.com/zowe/zowe-native-proto/pull/590)
 - Added support for issuing TSO commands. [#595](https://github.com/zowe/zowe-native-proto/pull/595)

@@ -9,8 +9,8 @@
  *
  */
 
-import { SshConfigUtils } from "../src/SshConfigUtils";
 import { readFileSync } from "node:fs";
+import { SshConfigUtils } from "../src/SshConfigUtils";
 
 vi.mock("node:fs", () => ({
     accessSync: vi.fn(),
