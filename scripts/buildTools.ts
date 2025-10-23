@@ -15,8 +15,8 @@ import { PassThrough, pipeline, Transform, type TransformCallback } from "node:s
 import { promisify } from "node:util";
 import * as chokidar from "chokidar";
 import * as yaml from "js-yaml";
-import { Client, type ClientCallback, type ClientChannel, type SFTPWrapper } from "ssh2";
-import { type IProfile, ProfileInfo } from "@zowe/imperative";
+import { Client, type ClientCallback, type SFTPWrapper } from "ssh2";
+import { DeferredPromise, DeferredPromiseStatus, type IProfile, ProfileInfo } from "@zowe/imperative";
 
 interface IConfig {
     sshProfile: string | IProfile;
@@ -70,8 +70,10 @@ class AsciiToEbcdicTransform extends Transform {
 
 class WatchUtils {
     public cache: Record<string, number>;
+    private buildMutex: DeferredPromise<void>;
     private cacheDir = path.resolve(__dirname, "../.cache");
     private cacheFile: string;
+    private readonly pendingChanges: Map<string, { kind: "+" | "~" | "-"; time: Date }> = new Map();
     private rootDir: string;
     private readonly spinnerFrames = ["-", "\\", "|", "/"];
     private watcher: chokidar.FSWatcher;
@@ -106,12 +108,12 @@ class WatchUtils {
                     (this.cache[filePath.replaceAll(path.sep, path.posix.sep)] ?? 0),
         );
         if (changedFiles.length > 0) {
-            await this.uploadFiles(
-                ...changedFiles.map((localPath): [string, string] => {
-                    const remotePath = `${deployDirs.root}/${localPath.replaceAll(path.sep, path.posix.sep)}`;
-                    return [localPath, remotePath];
-                }),
-            );
+            for (const filePath of changedFiles) {
+                const absLocalPath = path.resolve(__dirname, `${localDeployDir}/${filePath}`);
+                const changeKind = this.cache[filePath.replaceAll(path.sep, path.posix.sep)] == null ? "+" : "~";
+                this.pendingChanges.set(filePath, { kind: changeKind, time: fs.statSync(absLocalPath).mtime });
+            }
+            await this.applyChanges(false);
         }
 
         this.watcher = chokidar.watch(["**/*"], {
@@ -121,123 +123,99 @@ class WatchUtils {
         });
         this.printReadyMessage();
 
-        this.watcher.on("add", async (filePath, _stats) => {
-            process.stdout.write(`${new Date().toLocaleString()} [+] ${filePath}`);
-            try {
-                await this.uploadFile(
-                    filePath,
-                    `${deployDirs.root}/${filePath.replaceAll(path.sep, path.posix.sep)}`,
-                    true,
-                );
-            } catch (err) {
-                console.error(" ✘", err);
-            }
-            this.printReadyMessage();
+        this.watcher.on("add", (filePath, stats) => {
+            this.pendingChanges.set(filePath, { kind: "+", time: stats?.mtime ?? new Date() });
+            void this.applyChanges();
         });
-        this.watcher.on("change", async (filePath, _stats) => {
-            process.stdout.write(`${new Date().toLocaleString()} [~] ${filePath}`);
-            try {
-                await this.uploadFile(
-                    filePath,
-                    `${deployDirs.root}/${filePath.replaceAll(path.sep, path.posix.sep)}`,
-                    false,
-                );
-            } catch (err) {
-                console.error(" ✘", err);
-            }
-            this.printReadyMessage();
+        this.watcher.on("change", (filePath, stats) => {
+            this.pendingChanges.set(filePath, { kind: "~", time: stats?.mtime ?? new Date() });
+            void this.applyChanges();
         });
-        this.watcher.on("unlink", async (filePath) => {
-            process.stdout.write(`${new Date().toLocaleString()} [-] ${filePath}`);
-            try {
-                await this.deleteFile(`${deployDirs.root}/${filePath.replaceAll(path.sep, path.posix.sep)}`);
-                console.log(" ✔");
-            } catch (err) {
-                console.error(" ✘", err);
-            }
-            this.printReadyMessage();
+        this.watcher.on("unlink", (filePath) => {
+            this.pendingChanges.set(filePath, { kind: "-", time: new Date() });
+            void this.applyChanges();
         });
+    }
+
+    private async applyChanges(printReady = true) {
+        if (this.buildMutex?.status === DeferredPromiseStatus.Pending) {
+            await this.buildMutex.promise;
+        }
+        if (this.pendingChanges.size === 0) {
+            return;
+        }
+
+        this.buildMutex = new DeferredPromise<void>();
+        let sftp: SFTPWrapper;
+        try {
+            const toDelete: string[] = [];
+            const toUpload: { localPath: string; remotePath: string }[] = [];
+            const uniqueDirs = new Set<string>();
+            for (const [filePath, { kind, time }] of this.pendingChanges.entries()) {
+                const remotePath = `${deployDirs.root}/${filePath.replaceAll(path.sep, path.posix.sep)}`;
+                if (kind === "-") {
+                    console.log(`${time.toLocaleString()} [-] ${filePath}`);
+                    toDelete.push(remotePath);
+                } else {
+                    console.log(`${time.toLocaleString()} [${kind}] ${filePath} -> ${remotePath}`);
+                    toUpload.push({ localPath: filePath, remotePath });
+                    // Check . and .. directories to ensure parent dirs get created
+                    uniqueDirs.add(path.dirname(path.dirname(remotePath)));
+                    uniqueDirs.add(path.dirname(remotePath));
+                }
+            }
+            this.pendingChanges.clear();
+
+            sftp = await promisify(this.connection.sftp.bind(this.connection))();
+            await Promise.all(toDelete.map((remotePath) => this.deleteFile(sftp, remotePath)));
+            for (const dirPath of uniqueDirs) {
+                // Create directories sequentially since order may matter
+                await this.createDir(sftp, dirPath);
+            }
+            await Promise.all(
+                toUpload.map(({ localPath, remotePath }) => this.uploadFile(sftp, localPath, remotePath)),
+            );
+            this.saveCache();
+            await this.executeBuild(...toUpload.map(({ localPath }) => localPath));
+        } finally {
+            sftp?.end();
+            this.buildMutex.resolve();
+            printReady && this.printReadyMessage();
+        }
     }
 
     private printReadyMessage() {
         console.log(`${new Date().toLocaleString()} watching for changes...`);
     }
 
-    private async deleteFile(remotePath: string) {
-        const sftp: SFTPWrapper = await promisify(this.connection.sftp.bind(this.connection))();
+    private async deleteFile(sftp: SFTPWrapper, remotePath: string) {
         try {
             await promisify(sftp.unlink.bind(sftp))(remotePath);
-            delete this.cache[path.posix.relative(deployDirs.root, remotePath)];
-            this.saveCache();
-        } finally {
-            sftp.end();
+        } catch (err) {
+            if (err && (err as any).code !== 2) {
+                throw err; // Ignore if file does not exist
+            }
         }
+        delete this.cache[path.posix.relative(deployDirs.root, remotePath)];
     }
 
-    private async uploadFile(localPath: string, remotePath: string, mkdir: boolean) {
-        const sftp: SFTPWrapper = await promisify(this.connection.sftp.bind(this.connection))();
+    private async createDir(sftp: SFTPWrapper, remotePath: string) {
         try {
-            process.stdout.write(` -> ${remotePath} `);
-            if (mkdir) {
-                try {
-                    await promisify(sftp.mkdir.bind(sftp))(path.dirname(remotePath));
-                } catch (err) {
-                    if (err && (err as any).code !== 4) {
-                        throw err; // Ignore if directory already exists
-                    }
-                }
+            await promisify(sftp.mkdir.bind(sftp))(remotePath);
+        } catch (err) {
+            if (err && (err as any).code !== 4) {
+                throw err; // Ignore if directory already exists
             }
-            const absLocalPath = path.resolve(__dirname, `${localDeployDir}/${localPath}`);
-            await uploadFile(sftp, absLocalPath, remotePath);
-            this.cache[path.posix.relative(deployDirs.root, remotePath)] = fs.statSync(absLocalPath).mtimeMs;
-            this.saveCache();
-            await this.buildChanges(localPath);
-        } finally {
-            sftp.end();
         }
     }
 
-    private async uploadFiles(...paths: [localPath: string, remotePath: string][]) {
-        const uniqueDirs = new Set<string>();
-        for (const [_, remotePath] of paths) {
-            // Check . and .. directories to ensure parent dirs get created
-            uniqueDirs.add(path.dirname(path.dirname(remotePath)));
-            uniqueDirs.add(path.dirname(remotePath));
-        }
-        const sftp: SFTPWrapper = await promisify(this.connection.sftp.bind(this.connection))();
-        try {
-            for (const dirPath of uniqueDirs) {
-                try {
-                    await promisify(sftp.mkdir.bind(sftp))(dirPath);
-                } catch (err) {
-                    if (err && (err as any).code !== 4) {
-                        throw err; // Ignore if directory already exists
-                    }
-                }
-            }
-            const pendingUploads = [];
-            for (const [localPath, remotePath] of paths) {
-                const absLocalPath = path.resolve(__dirname, `${localDeployDir}/${localPath}`);
-                const localStats = fs.statSync(absLocalPath);
-                const statusChar = this.cache[path.posix.relative(deployDirs.root, remotePath)] == null ? "+" : "~";
-                if (pendingUploads.length > 0) {
-                    console.log();
-                }
-                process.stdout.write(
-                    `${localStats.mtime.toLocaleString()} [${statusChar}] ${localPath} -> ${remotePath}`,
-                );
-                pendingUploads.push(uploadFile(sftp, absLocalPath, remotePath));
-                this.cache[path.posix.relative(deployDirs.root, remotePath)] = localStats.mtimeMs;
-            }
-            await Promise.all(pendingUploads);
-            this.saveCache();
-            await this.buildChanges(...paths.map((pair) => pair[0]));
-        } finally {
-            sftp.end();
-        }
+    private async uploadFile(sftp: SFTPWrapper, localPath: string, remotePath: string) {
+        const absLocalPath = path.resolve(__dirname, `${localDeployDir}/${localPath}`);
+        await uploadFile(sftp, absLocalPath, remotePath);
+        this.cache[path.posix.relative(deployDirs.root, remotePath)] = fs.statSync(absLocalPath).mtimeMs;
     }
 
-    private async buildChanges(...paths: string[]) {
+    private async executeBuild(...paths: string[]) {
         const cSourceChanged = paths.some((filePath) => filePath.split(path.sep)[0] === "c");
         const zowedSourceChanged = paths.some((filePath) => filePath.split(path.sep)[0] === "zowed");
         let result: number | string; // number for failing exit code or string for successful output
@@ -247,7 +225,6 @@ class WatchUtils {
         if (zowedSourceChanged || (typeof result === "string" && result.length > 0)) {
             await this.makeTask(deployDirs.zowedDir);
         }
-        console.log();
     }
 
     private makeTask(inDir?: string): Promise<number | string> {
@@ -265,7 +242,6 @@ class WatchUtils {
                 const cwd = inDir ?? deployDirs.cDir;
                 const cmd = `cd ${cwd}\nmake\nexit $?\n`;
                 stream.write(cmd);
-                console.log();
                 const prefix = `\t[tasks -> ${path.basename(cwd)}] make`;
                 const spinner = this.startSpinner(prefix);
 
@@ -276,11 +252,11 @@ class WatchUtils {
                         this.stopSpinner(spinner);
                         if (errText.length > 0) {
                             const status = code > 0 ? `failed (rc=${code}) ✘` : `succeeded with warnings !`;
-                            process.stdout.write(`${prefix} ${status}\nerror: \n${errText}`);
+                            console.log(`${prefix} ${status}\nerror: \n${errText}`);
                             resolve(code);
                         } else {
                             const status = outText.length > 0 ? "succeeded ✔" : "detected no changes —";
-                            process.stdout.write(`${prefix} ${status}`);
+                            console.log(`${prefix} ${status}`);
                             resolve(outText);
                         }
                     })
