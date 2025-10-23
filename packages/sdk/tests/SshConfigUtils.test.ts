@@ -10,6 +10,7 @@
  */
 
 import { readFileSync } from "node:fs";
+import { join, normalize, resolve } from "node:path";
 import { SshConfigUtils } from "../src/SshConfigUtils";
 
 vi.mock("node:fs", () => ({
@@ -24,12 +25,14 @@ vi.mock("node:os", () => ({
 
 describe("findPrivateKeys", () => {
     it("should find private keys in home directory", async () => {
-        expect(await SshConfigUtils.findPrivateKeys()).toStrictEqual([
-            "/home/dir/.ssh/id_ed25519",
-            "/home/dir/.ssh/id_rsa",
-            "/home/dir/.ssh/id_ecdsa",
-            "/home/dir/.ssh/id_dsa",
-        ]);
+        const homeDir = "/home/dir";
+        const expected = [
+            join(homeDir, ".ssh", "id_ed25519"),
+            join(homeDir, ".ssh", "id_rsa"),
+            join(homeDir, ".ssh", "id_ecdsa"),
+            join(homeDir, ".ssh", "id_dsa"),
+        ];
+        expect(await SshConfigUtils.findPrivateKeys()).toStrictEqual(expected);
     });
 });
 
@@ -46,12 +49,14 @@ vi.mock("node:os", () => ({
 
 describe("findPrivateKeys", () => {
     it("should find private keys in home directory", async () => {
-        expect(await SshConfigUtils.findPrivateKeys()).toStrictEqual([
-            "/home/dir/.ssh/id_ed25519",
-            "/home/dir/.ssh/id_rsa",
-            "/home/dir/.ssh/id_ecdsa",
-            "/home/dir/.ssh/id_dsa",
-        ]);
+        const homeDir = "/home/dir";
+        const expected = [
+            join(homeDir, ".ssh", "id_ed25519"),
+            join(homeDir, ".ssh", "id_rsa"),
+            join(homeDir, ".ssh", "id_ecdsa"),
+            join(homeDir, ".ssh", "id_dsa"),
+        ];
+        expect(await SshConfigUtils.findPrivateKeys()).toStrictEqual(expected);
     });
 });
 
@@ -106,7 +111,7 @@ Host production
             hostname: "prod.example.com",
             port: 2222,
             user: "admin",
-            privateKey: "/home/dir/.ssh/prod_key",
+            privateKey: normalize(join("/home/dir", ".ssh", "prod_key")),
             handshakeTimeout: 30000,
         });
     });
@@ -120,7 +125,7 @@ Host server
         mockReadFileSync.mockReturnValue(configContent);
 
         const result = await SshConfigUtils.migrateSshConfig();
-        expect(result[0].privateKey).toBe("/absolute/path/to/key");
+        expect(result[0].privateKey).toBe(normalize(resolve("/absolute/path/to/key")));
     });
 
     it("should handle multiple host configurations", async () => {
