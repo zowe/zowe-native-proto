@@ -49,7 +49,7 @@ void RpcServer::process_request(const string &request_data)
       validator::ValidationResult validation_result = validate_json_with_schema(request.method, request.params.value(), true);
       if (!validation_result.is_valid)
       {
-        print_error(request.id, RpcErrorCode::INVALID_PARAMS, validation_result.error_message);
+        print_error(request.id, RpcErrorCode::INVALID_PARAMS, "Request validation failed (" + request.method + ")", &validation_result.error_message);
         return;
       }
     }
@@ -70,7 +70,7 @@ void RpcServer::process_request(const string &request_data)
     if (result != 0)
     {
       const string error_output = context.get_error_content();
-      print_error(request.id, result, "Command execution failed",
+      print_error(request.id, result, "Command execution failed (" + request.method + ")",
                   error_output.empty() ? nullptr : &error_output);
       return;
     }
@@ -99,7 +99,7 @@ void RpcServer::process_request(const string &request_data)
     {
       // Response validation failed - return internal error
       print_error(request.id, RpcErrorCode::INTERNAL_ERROR,
-                  "Response validation failed", &validation_result.error_message);
+                  "Response validation failed (" + request.method + ")", &validation_result.error_message);
       return;
     }
 
@@ -287,7 +287,16 @@ void RpcServer::print_response(const RpcResponse &response)
   if (response.error.has_value())
   {
     const ErrorDetails &error = response.error.value();
-    LOG_ERROR("%s", error.message.c_str());
+    if (error.data.has_value())
+    {
+      const auto &val = error.data.value();
+      string data_str = val.is_string() ? val.as_string() : serialize_json(val);
+      LOG_ERROR("%s: %s", error.message.c_str(), data_str.c_str());
+    }
+    else
+    {
+      LOG_ERROR("%s", error.message.c_str());
+    }
   }
 
   string json_string = serialize_json(rpc_response_to_json(response));

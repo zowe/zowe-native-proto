@@ -10,6 +10,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - Replaced `this.uninstallServer` with the class reference `ZSshUtils.uninstallServer` in `ZSshUtils.ts`. [#586] (https://github.com/zowe/zowe-native-proto/pull/586).
 - Added `recfm` property to the `Dataset` type for listing data sets with attributes. [#558](https://github.com/zowe/zowe-native-proto/pull/558)
 - Restructured RPC request and response types to be human-maintained rather than auto-generated to improve maintainability. [#590](https://github.com/zowe/zowe-native-proto/pull/590)
+- Made attribute properties optional in the `Dataset` and `UssItem` types. [#608](https://github.com/zowe/zowe-native-proto/pull/608)
 
 ## `0.1.10`
 

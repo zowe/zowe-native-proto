@@ -171,17 +171,14 @@ int handle_uss_list(InvocationContext &context)
           fields.push_back(field);
         }
 
-        if (fields.size() >= 8)
-        {
-          entry->set("mode", str(fields[0]));
-          entry->set("links", i64(atoi(fields[1].c_str())));
-          entry->set("user", str(fields[2]));
-          entry->set("group", str(fields[3]));
-          entry->set("size", i64(atoi(fields[4].c_str())));
-          entry->set("filetag", str(fields[5]));
-          entry->set("date", str(fields[6]));
-          entry->set("name", str(fields[7]));
-        }
+        entry->set("mode", str(fields[0]));
+        entry->set("links", i64(atoi(fields[1].c_str())));
+        entry->set("user", str(fields[2]));
+        entry->set("group", str(fields[3]));
+        entry->set("size", i64(atoi(fields[4].c_str())));
+        entry->set("filetag", str(fields[5]));
+        entry->set("mtime", str(fields[6]));
+        entry->set("name", str(fields[7]));
       }
       else
       {
