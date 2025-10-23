@@ -644,12 +644,24 @@ void WorkerPool::replace_worker(size_t worker_index, const char *reason, bool fo
     auto pending = old_worker->drain_pending_requests();
     recovered_requests.insert(recovered_requests.end(), pending.begin(), pending.end());
 
-    // Get currently processing request if any
-    std::string current_req = old_worker->get_current_request();
-    if (!current_req.empty())
+    // Only recover the current request if the worker crashed/faulted, not if it's merely hanging
+    // force_detach=true indicates a timeout/hang scenario where the request might still complete
+    if (!force_detach)
     {
-      LOG_DEBUG("Worker %zu: Recovering in-flight request", worker_index);
-      recovered_requests.push_back(RequestMetadata(current_req, 0));
+      std::string current_req = old_worker->get_current_request();
+      if (!current_req.empty())
+      {
+        LOG_DEBUG("Worker %zu: Recovering in-flight request due to %s", worker_index, reason);
+        recovered_requests.push_back(RequestMetadata(current_req, 0));
+      }
+    }
+    else
+    {
+      std::string current_req = old_worker->get_current_request();
+      if (!current_req.empty())
+      {
+        LOG_DEBUG("Worker %zu: NOT recovering in-flight request due to timeout/hang - request may still complete", worker_index);
+      }
     }
 
     if (force_detach)
