@@ -345,7 +345,7 @@ int ZJBMLIST(ZJB *zjb, ZJB_JOB_INFO **PTR64 job_info, int *entries)
   return ZJBMTCOM(zjb, &stat, job_info, entries);
 }
 
-int ZJBMGJQ(ZJB *zjb, SSOB *ssobp, STAT *statp, STATJQ * PTR32 * PTR32 statjqp)
+int ZJBMGJQ(ZJB *zjb, SSOB *ssobp, STAT *statp, STATJQ *PTR32 *PTR32 statjqp)
 {
   int rc = 0;
 
@@ -698,6 +698,8 @@ int ZJBMLPRC(ZJB *zjb, char *buffer, int *buffer_size, int *entries)
     zjb->diag.detail_rc = ZJB_RTNCD_SERVICE_FAILURE;
     return RTNCD_FAILURE;
   }
+
+  // https://www.ibm.com/docs/en/zos/3.2.0?topic=descriptions-jes-properties-ssi-function-code-82
   init_ssob(&ssob, &ssib, &ssjp, 82);
 
   memcpy(ssjp.ssjpid, "SSJP", sizeof(ssjp.ssjpid));
