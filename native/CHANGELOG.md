@@ -18,6 +18,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - `c`: Fixed issue in the `zut_substitute_symbol` function where passing patterns with a length greater than the input buffer would cause a buffer overflow. [#577](https://github.com/zowe/zowe-native-proto/issues/577)
 - `c`: Fixed undefined behavior in the `zut_bpxwdyn` function by verifying that the allocated 31-bit region is valid before writing to it. [#577](https://github.com/zowe/zowe-native-proto/issues/577)
 - `c`: The CLI parser now prints unexpected, trailing positional arguments when handling command input. [#594](https://github.com/zowe/zowe-native-proto/issues/594)
+- Rewrote the middleware (`zowed`) in C++. This removes our dependency on Golang, improves performance, and allows parallel requests to be handled in a single address space. [#595](https://github.com/zowe/zowe-native-proto/pull/595)
 
 ## `0.1.10`
 

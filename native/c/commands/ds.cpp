@@ -402,10 +402,13 @@ int handle_data_set_list(InvocationContext &context)
       string trimmed_name = it->name;
       zut_rtrim(trimmed_name);
       entry->set("name", str(trimmed_name));
-      entry->set("dsorg", str(it->dsorg));
-      entry->set("volser", str(it->volser));
-      entry->set("migr", boolean(it->migr));
-      entry->set("recfm", str(it->recfm));
+      if (attributes)
+      {
+        entry->set("dsorg", str(it->dsorg));
+        entry->set("volser", str(it->volser));
+        entry->set("migr", boolean(it->migr));
+        entry->set("recfm", str(it->recfm));
+      }
       entries_array->push(entry);
     }
 
