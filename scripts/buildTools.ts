@@ -13,16 +13,18 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { PassThrough, pipeline, Transform, type TransformCallback } from "node:stream";
 import { promisify } from "node:util";
+import { DeferredPromise, DeferredPromiseStatus, type IProfile, ProfileInfo } from "@zowe/imperative";
 import * as chokidar from "chokidar";
 import * as yaml from "js-yaml";
 import { Client, type ClientCallback, type SFTPWrapper } from "ssh2";
-import { DeferredPromise, DeferredPromiseStatus, type IProfile, ProfileInfo } from "@zowe/imperative";
 
 interface IConfig {
     sshProfile: string | IProfile;
     deployDir: string;
     preBuildCmd?: string;
 }
+
+type SftpError = Error & { code?: number };
 
 const localDeployDir = "./../native";
 const args = process.argv.slice(2);
@@ -73,7 +75,7 @@ class WatchUtils {
     private buildMutex: DeferredPromise<void>;
     private cacheDir = path.resolve(__dirname, "../.cache");
     private cacheFile: string;
-    private readonly pendingChanges: Map<string, { kind: "+" | "~" | "-"; time: Date }> = new Map();
+    private readonly pendingChanges: Map<string, { kind: "+" | "~" | "-"; mtime: Date }> = new Map();
     private rootDir: string;
     private readonly spinnerFrames = ["-", "\\", "|", "/"];
     private watcher: chokidar.FSWatcher;
@@ -110,7 +112,7 @@ class WatchUtils {
         for (const filePath of changedFiles) {
             const absLocalPath = path.resolve(__dirname, `${localDeployDir}/${filePath}`);
             const changeKind = this.cache[filePath.replaceAll(path.sep, path.posix.sep)] == null ? "+" : "~";
-            this.pendingChanges.set(filePath, { kind: changeKind, time: fs.statSync(absLocalPath).mtime });
+            this.pendingChanges.set(filePath, { kind: changeKind, mtime: fs.statSync(absLocalPath).mtime });
         }
 
         this.watcher = chokidar.watch(["**/*"], {
@@ -119,15 +121,15 @@ class WatchUtils {
             persistent: true,
         });
         this.watcher.on("add", (filePath, stats) => {
-            this.pendingChanges.set(filePath, { kind: "+", time: stats?.mtime ?? new Date() });
+            this.pendingChanges.set(filePath, { kind: "+", mtime: stats?.mtime ?? new Date() });
             void this.applyChanges();
         });
         this.watcher.on("change", (filePath, stats) => {
-            this.pendingChanges.set(filePath, { kind: "~", time: stats?.mtime ?? new Date() });
+            this.pendingChanges.set(filePath, { kind: "~", mtime: stats?.mtime ?? new Date() });
             void this.applyChanges();
         });
         this.watcher.on("unlink", (filePath) => {
-            this.pendingChanges.set(filePath, { kind: "-", time: new Date() });
+            this.pendingChanges.set(filePath, { kind: "-", mtime: new Date() });
             void this.applyChanges();
         });
 
@@ -151,13 +153,13 @@ class WatchUtils {
             const toDelete: string[] = [];
             const toUpload: { localPath: string; remotePath: string }[] = [];
             const uniqueDirs = new Set<string>();
-            for (const [filePath, { kind, time }] of this.pendingChanges.entries()) {
+            for (const [filePath, { kind, mtime }] of this.pendingChanges.entries()) {
                 const remotePath = `${deployDirs.root}/${filePath.replaceAll(path.sep, path.posix.sep)}`;
                 if (kind === "-") {
-                    console.log(`${time.toLocaleString()} [-] ${filePath}`);
+                    console.log(`${mtime.toLocaleString()} [-] ${filePath}`);
                     toDelete.push(remotePath);
                 } else {
-                    console.log(`${time.toLocaleString()} [${kind}] ${filePath} -> ${remotePath}`);
+                    console.log(`${mtime.toLocaleString()} [${kind}] ${filePath} -> ${remotePath}`);
                     toUpload.push({ localPath: filePath, remotePath });
                     // Check . and .. directories to ensure parent dirs get created
                     uniqueDirs.add(path.dirname(path.dirname(remotePath)));
@@ -192,7 +194,7 @@ class WatchUtils {
         try {
             await promisify(sftp.unlink.bind(sftp))(remotePath);
         } catch (err) {
-            if (err && (err as any).code !== 2) {
+            if (err && (err as SftpError).code !== 2) {
                 throw err; // Ignore if file does not exist
             }
         }
@@ -203,7 +205,7 @@ class WatchUtils {
         try {
             await promisify(sftp.mkdir.bind(sftp))(remotePath);
         } catch (err) {
-            if (err && (err as any).code !== 4) {
+            if (err && (err as SftpError).code !== 4) {
                 throw err; // Ignore if directory already exists
             }
         }
@@ -348,7 +350,7 @@ function getServerFiles(dir = "") {
                 let stats: fs.Stats;
                 try {
                     stats = fs.statSync(path.resolve(__dirname, `${localDeployDir}/${arg}`));
-                } catch (e) {
+                } catch {
                     console.log(`Error: input '${arg}' is not found`);
                     process.exit(1);
                 }
@@ -516,7 +518,7 @@ async function upload(connection: Client, sshProfile: IProfile) {
             for (const dir of ["", ...filteredDirs]) {
                 await new Promise<void>((resolve, reject) => {
                     sftpcon.mkdir(`${deployDirs.root}/${dir}`, (err) => {
-                        if (err && (err as any).code !== 4) {
+                        if (err && (err as SftpError).code !== 4) {
                             reject(err); // Ignore if directory already exists
                         } else {
                             resolve();
@@ -698,6 +700,7 @@ async function loadConfig(): Promise<IConfig> {
         process.exit(1);
     }
 
+    // biome-ignore lint/suspicious/noExplicitAny: Config file is not strongly typed
     const configYaml: any = yaml.load(fs.readFileSync(configPath, "utf-8"));
     let activeProfile = configYaml.activeProfile;
     const profileArgIdx = args.findIndex((arg) => arg.startsWith("--profile="));
@@ -715,7 +718,7 @@ async function loadConfig(): Promise<IConfig> {
         await profInfo.readProfilesFromDisk();
         const profAttrs = profInfo.getAllProfiles("ssh").find((prof) => prof.profName === config.sshProfile);
         const mergedArgs = profInfo.mergeArgsForProfile(profAttrs, { getSecureVals: true });
-        config.sshProfile = mergedArgs.knownArgs.reduce((prof, arg) => ({ ...prof, [arg.argName]: arg.argValue }), {});
+        config.sshProfile = Object.fromEntries(mergedArgs.knownArgs.map((arg) => [arg.argName, arg.argValue]));
     }
     config.deployDir = config.deployDir.replace(/^~/, ".");
     return config;
