@@ -207,22 +207,22 @@ export abstract class AbstractConfigManager {
 
     protected abstract storeServerPath(host: string, path: string): void;
 
+    public static validateDeployPath(this: void, defaultServerPath: string, input: string): string | null {
+        const trimmed = input.trim();
+        if (!trimmed) return "Path cannot be empty.";
+        if (trimmed.length > 1024) return "Path is longer than the USS max path length of 1024.";
+        if (trimmed === defaultServerPath) return null;
+
+        return path.isAbsolute(trimmed.replace("~", ""))
+            ? null
+            : "Invalid deploy directory format. Ensure it matches the expected pattern.";
+    }
+
     public async promptForDeployDirectory(host: string, defaultServerPath: string): Promise<string> {
         const input = await this.showInputBox({
             title: "Enter deploy directory",
             value: defaultServerPath,
-            validateInput: (input) => {
-                const trimmed = input.trim();
-                if (!trimmed) return "Path cannot be empty";
-                let isNormalized = false;
-                try {
-                    path.normalize(input.trim());
-                    isNormalized = true;
-                } catch (err) {}
-                if (trimmed !== defaultServerPath && !isNormalized)
-                    return "Invalid Deploy Directory format. Ensure it matches the expected pattern.";
-                return null;
-            },
+            validateInput: AbstractConfigManager.validateDeployPath.bind(defaultServerPath),
         });
         if (input === undefined) {
             this.showMessage("SSH setup cancelled.", MESSAGE_TYPE.WARNING);
