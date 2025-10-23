@@ -40,13 +40,17 @@ enum class WorkerState
 // Request metadata for tracking retry attempts
 struct RequestMetadata
 {
-  std::string data;        // The actual request payload
-  size_t retry_count;      // Number of times this request has been attempted
-  std::string request_id;  // Optional: for logging/debugging
+  std::string data;       // The actual request payload
+  size_t retry_count;     // Number of times this request has been attempted
+  std::string request_id; // Optional: for logging/debugging
 
-  RequestMetadata() : retry_count(0) {}
+  RequestMetadata() : retry_count(0)
+  {
+  }
   RequestMetadata(const std::string &req_data, size_t retries = 0, const std::string &id = "")
-      : data(req_data), retry_count(retries), request_id(id) {}
+      : data(req_data), retry_count(retries), request_id(id)
+  {
+  }
 };
 
 // Worker class that processes command requests
@@ -98,7 +102,7 @@ public:
 class WorkerPool
 {
 private:
-  static constexpr size_t kMaxRequestRetries = 3; // Maximum retry attempts for poison pill protection
+  static constexpr size_t kMaxRequestRetries = 2; // Maximum retry attempts for poison pill protection
 
   std::atomic<size_t> next_worker_index;
   std::vector<std::unique_ptr<Worker>> workers;
