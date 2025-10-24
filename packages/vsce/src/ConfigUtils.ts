@@ -250,7 +250,7 @@ export class VscePromptApi extends AbstractConfigManager {
         config.update("serverInstallPath", serverPathMap, vscode.ConfigurationTarget.Global);
     }
 
-    protected getVscodeSetting<T>(setting: string): T | undefined {
+    protected updateSshConfig<T>(setting: string): T | undefined {
         return getVsceConfig().get<T>(setting);
     }
 

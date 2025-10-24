@@ -50,7 +50,7 @@ export abstract class AbstractConfigManager {
     protected abstract getCurrentDir(): string | undefined;
     protected abstract getProfileSchemas(): IProfileTypeConfiguration[];
     protected abstract showPrivateKeyWarning(opts: PrivateKeyWarningOptions): Promise<boolean>;
-    protected abstract getVscodeSetting<T>(setting: string): T | undefined;
+    protected abstract updateSshConfig<T>(setting: string): T | undefined;
     protected abstract showStatusBar(): IDisposable | undefined;
 
     private migratedConfigs: ISshConfigExt[];
@@ -478,7 +478,7 @@ export abstract class AbstractConfigManager {
                 password: config.password,
                 privateKey: config.privateKey ? readFileSync(path.normalize(config.privateKey), "utf8") : undefined,
                 passphrase: config.keyPassphrase,
-                readyTimeout: config.handshakeTimeout || this.getVscodeSetting("defaultHandshakeTimeout") || 30000,
+                readyTimeout: config.handshakeTimeout || this.updateSshConfig("defaultHandshakeTimeout") || 30000,
             };
 
             // Attempt connection

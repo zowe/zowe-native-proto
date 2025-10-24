@@ -327,7 +327,7 @@ export class CliPromptApi extends AbstractConfigManager {
     }
     protected storeServerPath(_host: string, _path: string): void {}
 
-    protected getVscodeSetting<T>(_setting: string): T | undefined {
+    protected updateSshConfig<T>(_setting: string): T | undefined {
         return undefined;
     }
 

@@ -506,7 +506,7 @@ describe("SshConfigUtils", () => {
             });
         });
 
-        describe("getVscodeSetting", () => {
+        describe("updateSshConfig", () => {
             let mockGet: any;
             beforeEach(() => {
                 mockGet = vi.fn();
@@ -517,7 +517,7 @@ describe("SshConfigUtils", () => {
             });
             it("returns the value from vscode config for the given setting", () => {
                 mockGet.mockReturnValue("testValue");
-                const result = (instance as any).getVscodeSetting<string>("someSetting");
+                const result = (instance as any).updateSshConfig<string>("someSetting");
                 expect(mockGet).toHaveBeenCalledWith("someSetting");
                 expect(result).toBe("testValue");
             });

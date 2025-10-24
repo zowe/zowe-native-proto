@@ -143,7 +143,7 @@ export class TestAbstractConfigManager extends AbstractConfigManager {
 
     protected storeServerPath(_host: string, _path: string): void {}
 
-    protected getVscodeSetting = vi.fn<(setting: string) => any>().mockReturnValue(15000);
+    protected updateSshConfig = vi.fn<(setting: string) => any>().mockReturnValue(15000);
 
     protected showStatusBar = vi.fn<() => IDisposable | undefined>().mockReturnValue(undefined);
 }
