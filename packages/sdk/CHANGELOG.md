@@ -6,8 +6,8 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
-- Added unit tests for `SshConfigUtils`. [#614](https://github.com/zowe/zowe-native-proto/pull/614)
-- Resolved an issue where `~` was not being resolved to the home directory within ssh configuration files. [#614](https://github.com/zowe/zowe-native-proto/pull/614)
+- Added unit tests for `SshConfigUtils` class. [#614](https://github.com/zowe/zowe-native-proto/pull/614)
+- Addressed an issue where `~` was not being resolved to the home directory within ssh configuration files. [#614](https://github.com/zowe/zowe-native-proto/pull/614)
 - Added additional error messages to the `AbstractConfigManager` class to provide better feedback during connection attempts. [#605](https://github.com/zowe/zowe-native-proto/pull/605)
 - Added `depth` property to the `ListFilesRequest` type for listing USS directories recursively. [#575](https://github.com/zowe/zowe-native-proto/pull/575)
 - Replaced `this.uninstallServer` with the class reference `ZSshUtils.uninstallServer` in `ZSshUtils.ts`. [#586] (https://github.com/zowe/zowe-native-proto/pull/586).
