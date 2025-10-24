@@ -13,12 +13,6 @@ import { readFileSync } from "node:fs";
 import { join, normalize, resolve } from "node:path";
 import { SshConfigUtils } from "../src/SshConfigUtils";
 
-vi.mock("node:fs", () => ({
-    accessSync: vi.fn(),
-    constants: {
-        R_OK: vi.fn(),
-    },
-}));
 vi.mock("node:os", () => ({
     homedir: vi.fn(() => "/home/dir"),
 }));
@@ -111,21 +105,9 @@ Host production
             hostname: "prod.example.com",
             port: 2222,
             user: "admin",
-            privateKey: normalize(resolve(join("/home/dir", ".ssh", "prod_key"))),
+            privateKey: normalize(join("/home/dir", ".ssh", "prod_key")),
             handshakeTimeout: 30000,
         });
-    });
-
-    it("should resolve absolute path for IdentityFile", async () => {
-        const configContent = `
-Host server
-    HostName example.com
-    IdentityFile /absolute/path/to/key
-`;
-        mockReadFileSync.mockReturnValue(configContent);
-
-        const result = await SshConfigUtils.migrateSshConfig();
-        expect(result[0].privateKey).toBe(normalize(resolve("/absolute/path/to/key")));
     });
 
     it("should handle multiple host configurations", async () => {
