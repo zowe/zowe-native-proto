@@ -213,7 +213,7 @@ export abstract class AbstractConfigManager {
         if (trimmed.length > 1024) return "Path is longer than the USS max path length of 1024.";
         if (trimmed === defaultServerPath) return null;
 
-        return path.isAbsolute(trimmed.replace("~", ""))
+        return path.isAbsolute(trimmed.replace(/^~/, ""))
             ? null
             : "Invalid deploy directory format. Ensure it matches the expected pattern.";
     }

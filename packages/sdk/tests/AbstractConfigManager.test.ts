@@ -476,8 +476,16 @@ describe("AbstractConfigManager", async () => {
             const result = TestAbstractConfigManager.validateDeployPath("~/.zowe-server", "/a".repeat(1025));
             expect(result).toBe("Path is longer than the USS max path length of 1024.");
         });
-        it("should return null for paths including ~ (valid path)", async () => {
+        it("should return null for paths starting with ~ (valid path)", async () => {
             const result = TestAbstractConfigManager.validateDeployPath(defaultServerPath, "~/.zowe-ssh");
+            expect(result).toBeNull();
+        });
+
+        it("should return null for paths with ~ in the middle (valid path)", async () => {
+            const replaceSpy = vi.spyOn(String.prototype, "replace");
+            const multipleTildes = "~/.projects/zowe~ssh";
+            const result = TestAbstractConfigManager.validateDeployPath(defaultServerPath, multipleTildes);
+            expect(replaceSpy).toHaveLastReturnedWith(multipleTildes.substring(1));
             expect(result).toBeNull();
         });
     });
