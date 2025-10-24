@@ -81,7 +81,7 @@ We use a custom build tool for interacting with z/OS that defines the following 
 | Command       | Description                                                                 |
 | ------------- | --------------------------------------------------------------------------- |
 | `z:artifacts` | Download native binaries and package them with clients                      |
-| `z:build`     | Run `make` and `go build` on z/OS to build native binaries                  |
+| `z:build`     | Run `make` on z/OS to build native binaries                  |
 | `z:clean`     | Run `make clean` on z/OS to clean build targets                             |
 | `z:delete`    | Delete all files from deploy directory                                      |
 | `z:make`      | Execute the specified Make targets on z/OS                                  |
