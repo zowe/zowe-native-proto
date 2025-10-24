@@ -26,6 +26,7 @@
 #include "server.hpp"
 #include "worker.hpp"
 #include "zowed.hpp"
+#include <_Nascii.h>
 
 using std::string;
 
@@ -84,6 +85,7 @@ private:
     std::map<string, string> checksums;
     string checksums_file = exec_dir + "/checksums.asc";
 
+    const int old_state = __ae_autoconvert_state(_CVTSTATE_ON);
     std::ifstream file(checksums_file);
     if (!file.is_open())
     {
@@ -103,14 +105,13 @@ private:
       }
     }
 
+    __ae_autoconvert_state(old_state);
     return checksums;
   }
 
   void print_ready_message()
   {
     zjson::Value data = zjson::Value::create_object();
-
-    // Load checksums similar to Go implementation
     std::map<string, string> checksums = load_checksums();
     zjson::Value checksums_obj = zjson::Value::create_object();
     for (const auto &pair : checksums)

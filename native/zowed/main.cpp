@@ -161,14 +161,14 @@ int main(int argc, char *argv[])
   size_t last_slash = full_path.find_last_of('/');
   if (last_slash != std::string::npos)
   {
-    executable_dir = full_path.substr(0, last_slash + 1);
+    executable_dir = full_path.substr(0, last_slash);
   }
   else
   {
-    executable_dir = "./";
+    executable_dir = ".";
   }
 
-  std::string lib_path = executable_dir + "libzowed.so";
+  std::string lib_path = executable_dir + "/libzowed.so";
   void *handle = dlopen(lib_path.c_str(), RTLD_LAZY);
   if (handle == NULL)
   {
