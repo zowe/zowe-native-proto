@@ -13,7 +13,7 @@ CXX_MAIN = xlc++
 CC = xlc
 ASM = as
 
-CXXFLAGS_LIB = -std=c++11 -Wall -Werror -O2 -qlanglvl=extended0x -I../c -W "c,exportall,dll"
+CXXFLAGS_LIB = -std=c++11 -Wall -Werror -MMD -MP -O2 -qlanglvl=extended0x -I../c -W "c,exportall,dll"
 CXXFLAGS_MAIN = -qlanglvl=extended0x -O2 -I../c -W "c,lp64,xplink"
 LDFLAGS = -W "l,lp64,xplink,map,list"
 DLL_BND_FLAGS = -W "l,lp64,dll,dynam=dll,xplink,map,list"
@@ -70,13 +70,15 @@ $(OUT_DIR):
 	mkdir -p $(OUT_DIR)/commands
 
 # Build the shared library (.so file)
-$(OUT_DIR)/$(LIBRARY): $(OUT_DIR) $(LIB_OBJECTS) $(CMDS_OBJECTS) $(OUT_DIR)/zjsonm.o $(XLCLANG_OBJECTS)
-	$(CXX_LIB) $(DLL_BND_FLAGS) -o $(OUT_DIR)/$(LIBRARY) $(LIB_OBJECTS) $(XLCLANG_OBJECTS) \
-	$(METAL_OBJECTS) $(CMDS_OBJECTS) $(OUT_DIR)/zjsonm.o > $(OUT_DIR)/libzowed.bind.lst
+$(OUT_DIR)/$(LIBRARY): $(OUT_DIR) $(LIB_OBJECTS) $(CMDS_OBJECTS) $(XLCLANG_OBJECTS) $(OUT_DIR)/zjsonm.o
+	$(CXX_LIB) $(DLL_BND_FLAGS) -o $(OUT_DIR)/$(LIBRARY) $(LIB_OBJECTS) $(CMDS_OBJECTS) \
+	$(XLCLANG_OBJECTS) $(METAL_OBJECTS) $(OUT_DIR)/zjsonm.o > $(OUT_DIR)/libzowed.bind.lst
 
 # Build xlclang dependencies from parent makefile
-$(XLCLANG_OBJECTS):
+xlclang-deps:
 	$(MAKE) -c ../c xlclang-extenders
+
+$(XLCLANG_OBJECTS): xlclang-deps
 
 # Build the executable (main compiled with xlc++, dynamically loads shared library)
 $(OUT_DIR)/$(TARGET): $(OUT_DIR) $(OUT_DIR)/main.o
@@ -119,4 +121,7 @@ debug: CXXFLAGS_MAIN += -g -DDEBUG
 debug: $(OUT_DIR)/$(TARGET)
 
 # Phony targets
-.PHONY: all clean debug library
+.PHONY: all clean debug library xlclang-deps
+
+# Include auto-generated dependency files
+.INCLUDE .IGNORE: $(LIB_OBJECTS:.o=.d) $(CMDS_OBJECTS:.o=.d)

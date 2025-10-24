@@ -11,7 +11,6 @@
 
 #include "rpcio.hpp"
 #include "server.hpp"
-#include "../c/extend/plugin.hpp"
 #include <sstream>
 
 using std::string;

@@ -21,6 +21,7 @@ import { ZoweVsCodeExtension } from "@zowe/zowe-explorer-api";
 import { type Config, NodeSSH } from "node-ssh";
 import type { ConnectConfig } from "ssh2";
 import type { MockInstance } from "vitest";
+import type { IDisposable } from "../lib";
 import { AbstractConfigManager, type ProgressCallback } from "../src/AbstractConfigManager";
 import { ConfigFileUtils } from "../src/ConfigFileUtils";
 import { type inputBoxOpts, MESSAGE_TYPE, type qpItem, type qpOpts } from "../src/doc";
@@ -141,6 +142,10 @@ export class TestAbstractConfigManager extends AbstractConfigManager {
     public getProfileSchemas = vi.fn<() => IProfileTypeConfiguration[]>().mockReturnValue([]);
 
     protected storeServerPath(_host: string, _path: string): void {}
+
+    protected getVscodeSetting = vi.fn<(setting: string) => any>().mockReturnValue(15000);
+
+    protected showStatusBar = vi.fn<() => IDisposable | undefined>().mockReturnValue(undefined);
 }
 
 describe("AbstractConfigManager", async () => {
@@ -977,6 +982,27 @@ describe("AbstractConfigManager", async () => {
             expect(isConnectedMock).toHaveBeenCalledTimes(1);
             expect(execCommandMock).toHaveBeenCalledTimes(1);
         });
+        it("should throw leverage the default handshaketimeout setting if no value is passed on config", async () => {
+            const connectMock = vi
+                .spyOn(NodeSSH.prototype, "connect")
+                .mockImplementation((_config: ConnectConfig) => undefined);
+            const isConnectedMock = vi.spyOn(NodeSSH.prototype, "isConnected").mockReturnValueOnce(true);
+            const execCommandMock = vi.spyOn(NodeSSH.prototype, "execCommand").mockImplementation(() => {
+                return { stderr: "FOTS1668" } as any;
+            });
+            await expect(
+                (testManager as any).attemptConnection({
+                    name: "testProf",
+                    privateKey: "/path/to/id_rsa",
+                    port: 22,
+                    user: "user1",
+                }),
+            ).rejects.toThrow("FOTS1668");
+            expect(connectMock).toHaveBeenCalledWith(expect.objectContaining({ readyTimeout: 15000 }));
+            expect(connectMock).toHaveBeenCalledTimes(1);
+            expect(isConnectedMock).toHaveBeenCalledTimes(1);
+            expect(execCommandMock).toHaveBeenCalledTimes(1);
+        });
     });
     describe("promptForPassword", async () => {
         it("returns undefined if user cancels input immediately", async () => {
@@ -1007,7 +1033,8 @@ describe("AbstractConfigManager", async () => {
             const result = await (testManager as any).promptForPassword({ user: "user1", hostname: "host" }, {});
             expect(result).toBeUndefined();
             expect((testManager as any).attemptConnection).toHaveBeenCalledTimes(3);
-            expect(testManager.showMessage).toHaveBeenCalledTimes(3);
+            // One message after each attempt and one final one after 3 failures
+            expect(testManager.showMessage).toHaveBeenCalledTimes(3 + 1);
             expect(testManager.showMessage).toHaveBeenCalledWith(
                 "Password Authentication Failed (1/3)",
                 MESSAGE_TYPE.ERROR,
