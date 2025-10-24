@@ -191,13 +191,23 @@ int ZUTSYMBP(SYMBOL_DATA *data)
 typedef int (*ISRSUPC)() ATTRIBUTE(amode31);
 #pragma prolog(ZUTSRCH, " ZWEPROLG NEWDSA=(YES,4) ")
 #pragma epilog(ZUTSRCH, " ZWEEPILG ")
-int ZUTSRCH()
+
+typedef struct
+{
+  short len;
+  char parms[100];
+} ISRSUPC_PARMS;
+
+int ZUTSRCH(const char *parms)
 {
   int rc = 0;
   ZUTAOFF();
 
+  ISRSUPC_PARMS p = {0};
+  p.len = sprintf(p.parms, "%s", parms);
+
   ISRSUPC search = (ISRSUPC)load_module31("ISRSUPC");
-  rc = search();
+  rc = search(&p);
   delete_module("ISRSUPC");
 
   return rc;
