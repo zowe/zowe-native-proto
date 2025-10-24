@@ -22,7 +22,7 @@ const string zowex_command = "./../build-out/zowex";
 void zowex_tests()
 {
 
-  describe("zowex tests",
+  describe("zowex",
            []() -> void
            {
              it("should list a version of the tool",
@@ -43,7 +43,7 @@ void zowex_tests()
                   int file_size = stoi(response);
                   ExpectWithContext(file_size, response).ToBeLessThan(10 * 1024 * 1024);
                 });
-             describe("job tests",
+             describe("job",
                       []() -> void
                       {
                         it("should list jobs",
@@ -91,7 +91,7 @@ void zowex_tests()
                            ExpectWithContext(rc, stderr_output).ToBe(0);
                            Expect(stdout_output).ToContain("deleted"); });
                       });
-             describe("data set tests",
+             describe("data-set",
                       []() -> void
                       {
                         // describe("data set create tests",
@@ -113,7 +113,7 @@ void zowex_tests()
                         //                 execute_command_with_output(del_command, response);
                         //               });
                         //          });
-                        describe("data set list tests",
+                        describe("list",
                                  []() -> void
                                  {
                                    it("should list a data set",
@@ -132,7 +132,7 @@ void zowex_tests()
                                         string data_set = "SYS1.MACLIB";
                                         string response;
                                         string command = zowex_command + " data-set lm " + data_set + " --no-warn --me 1";
-                                        TestLog("Running: " + command);
+                                        // TestLog("Running: " + command);
                                         int rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
                                       });
@@ -145,6 +145,19 @@ void zowex_tests()
                                         string command = zowex_command + " data-set lm " + data_set + " --me 1";
                                         rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(RTNCD_WARNING);
+                                      });
+
+                                   it("should list data sets based on pattern and warn about listing too many members",
+                                      []()
+                                      {
+                                        int rc = 0;
+                                        string dsn = "SYS1.CMDLIB";
+                                        string pattern = "SYS1.*";
+                                        string response;
+                                        string command = zowex_command + " data-set list " + pattern + " --me 10";
+                                        rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(RTNCD_WARNING);
+                                        Expect(response).ToContain(dsn);
                                       });
                                  });
 
