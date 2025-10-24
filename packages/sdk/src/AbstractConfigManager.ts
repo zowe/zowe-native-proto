@@ -26,6 +26,7 @@ import {
     type IProfileTypeConfiguration,
     type ProfileInfo,
 } from "@zowe/imperative";
+import type { ISshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { NodeSSH } from "node-ssh";
 import { ConfigFileUtils } from "./ConfigFileUtils";
 import {
@@ -50,7 +51,7 @@ export abstract class AbstractConfigManager {
     protected abstract getCurrentDir(): string | undefined;
     protected abstract getProfileSchemas(): IProfileTypeConfiguration[];
     protected abstract showPrivateKeyWarning(opts: PrivateKeyWarningOptions): Promise<boolean>;
-    protected abstract updateSshConfig<T>(setting: string): T | undefined;
+    protected abstract getClientSetting<T>(setting: keyof ISshSession): T | undefined;
     protected abstract showStatusBar(): IDisposable | undefined;
 
     private migratedConfigs: ISshConfigExt[];
@@ -478,7 +479,7 @@ export abstract class AbstractConfigManager {
                 password: config.password,
                 privateKey: config.privateKey ? readFileSync(path.normalize(config.privateKey), "utf8") : undefined,
                 passphrase: config.keyPassphrase,
-                readyTimeout: config.handshakeTimeout || this.updateSshConfig("defaultHandshakeTimeout") || 30000,
+                readyTimeout: config.handshakeTimeout || this.getClientSetting("handshakeTimeout") || 30000,
             };
 
             // Attempt connection

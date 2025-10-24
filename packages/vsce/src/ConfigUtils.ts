@@ -10,6 +10,7 @@
  */
 
 import { ProfileConstants } from "@zowe/core-for-zowe-sdk";
+import type { ISshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Gui, type IZoweTree, type IZoweTreeNode, type imperative, ZoweVsCodeExtension } from "@zowe/zowe-explorer-api";
 import * as vscode from "vscode";
 import {
@@ -250,8 +251,11 @@ export class VscePromptApi extends AbstractConfigManager {
         config.update("serverInstallPath", serverPathMap, vscode.ConfigurationTarget.Global);
     }
 
-    protected updateSshConfig<T>(setting: string): T | undefined {
-        return getVsceConfig().get<T>(setting);
+    protected getClientSetting<T>(setting: keyof ISshSession): T | undefined {
+        const settingMap: { [K in keyof ISshSession]: string } = {
+            handshakeTimeout: "defaultHandshakeTimeout",
+        };
+        return settingMap[setting] ? getVsceConfig().get<T>(settingMap[setting]) : undefined;
     }
 
     protected showStatusBar(): IDisposable | undefined {

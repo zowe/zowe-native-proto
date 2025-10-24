@@ -506,7 +506,7 @@ describe("SshConfigUtils", () => {
             });
         });
 
-        describe("updateSshConfig", () => {
+        describe("getClientSetting", () => {
             let mockGet: any;
             beforeEach(() => {
                 mockGet = vi.fn();
@@ -517,8 +517,8 @@ describe("SshConfigUtils", () => {
             });
             it("returns the value from vscode config for the given setting", () => {
                 mockGet.mockReturnValue("testValue");
-                const result = (instance as any).updateSshConfig<string>("someSetting");
-                expect(mockGet).toHaveBeenCalledWith("someSetting");
+                const result = (instance as any).getClientSetting("handshakeTimeout");
+                expect(mockGet).toHaveBeenCalledWith("defaultHandshakeTimeout");
                 expect(result).toBe("testValue");
             });
         });

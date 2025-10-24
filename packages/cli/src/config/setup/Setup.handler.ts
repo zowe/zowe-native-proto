@@ -20,6 +20,7 @@ import {
     ProfileInfo,
     TextUtils,
 } from "@zowe/imperative";
+import type { ISshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import * as termkit from "terminal-kit";
 import {
     AbstractConfigManager,
@@ -327,7 +328,7 @@ export class CliPromptApi extends AbstractConfigManager {
     }
     protected storeServerPath(_host: string, _path: string): void {}
 
-    protected updateSshConfig<T>(_setting: string): T | undefined {
+    protected getClientSetting<T>(_setting: keyof ISshSession): T | undefined {
         return undefined;
     }
 
