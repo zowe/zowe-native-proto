@@ -119,10 +119,10 @@ class WatchUtils {
             ignoreInitial: true,
             persistent: true,
         });
-        process.stdout.write("watching for changes...");
+        this.printReadyMessage();
 
         this.watcher.on("add", async (filePath, _stats) => {
-            process.stdout.write(`\r${new Date().toLocaleString()} [+] ${filePath}`);
+            process.stdout.write(`${new Date().toLocaleString()} [+] ${filePath}`);
             try {
                 await this.uploadFile(
                     filePath,
@@ -132,10 +132,10 @@ class WatchUtils {
             } catch (err) {
                 console.error(" ✘", err);
             }
-            process.stdout.write("watching for changes...");
+            this.printReadyMessage();
         });
         this.watcher.on("change", async (filePath, _stats) => {
-            process.stdout.write(`\r${new Date().toLocaleString()} [~] ${filePath}`);
+            process.stdout.write(`${new Date().toLocaleString()} [~] ${filePath}`);
             try {
                 await this.uploadFile(
                     filePath,
@@ -145,18 +145,22 @@ class WatchUtils {
             } catch (err) {
                 console.error(" ✘", err);
             }
-            process.stdout.write("watching for changes...");
+            this.printReadyMessage();
         });
         this.watcher.on("unlink", async (filePath) => {
-            process.stdout.write(`\r${new Date().toLocaleString()} [-] ${filePath}`);
+            process.stdout.write(`${new Date().toLocaleString()} [-] ${filePath}`);
             try {
                 await this.deleteFile(`${deployDirs.root}/${filePath.replaceAll(path.sep, path.posix.sep)}`);
                 console.log(" ✔");
             } catch (err) {
                 console.error(" ✘", err);
             }
-            process.stdout.write("watching for changes...");
+            this.printReadyMessage();
         });
+    }
+
+    private printReadyMessage() {
+        console.log(`${new Date().toLocaleString()} watching for changes...`);
     }
 
     private async deleteFile(remotePath: string) {
@@ -216,7 +220,12 @@ class WatchUtils {
                 const absLocalPath = path.resolve(__dirname, `${localDeployDir}/${localPath}`);
                 const localStats = fs.statSync(absLocalPath);
                 const statusChar = this.cache[path.posix.relative(deployDirs.root, remotePath)] == null ? "+" : "~";
-                console.log(`${localStats.mtime.toLocaleString()} [${statusChar}] ${localPath} -> ${remotePath}`);
+                if (pendingUploads.length > 0) {
+                    console.log();
+                }
+                process.stdout.write(
+                    `${localStats.mtime.toLocaleString()} [${statusChar}] ${localPath} -> ${remotePath}`,
+                );
                 pendingUploads.push(uploadFile(sftp, absLocalPath, remotePath));
                 this.cache[path.posix.relative(deployDirs.root, remotePath)] = localStats.mtimeMs;
             }
@@ -257,7 +266,8 @@ class WatchUtils {
                 const cmd = `cd ${cwd}\nmake\nexit $?\n`;
                 stream.write(cmd);
                 console.log();
-                const spinner = this.startSpinner(`\t[tasks -> ${path.basename(cwd)}] make`);
+                const prefix = `\t[tasks -> ${path.basename(cwd)}] make`;
+                const spinner = this.startSpinner(prefix);
 
                 let outText = "";
                 let errText = "";
@@ -266,13 +276,11 @@ class WatchUtils {
                         this.stopSpinner(spinner);
                         if (errText.length > 0) {
                             const status = code > 0 ? `failed (rc=${code}) ✘` : `succeeded with warnings !`;
-                            process.stdout.write(
-                                `\t[tasks -> ${path.basename(cwd)}] make ${status}\nerror: \n${errText}`,
-                            );
+                            process.stdout.write(`${prefix} ${status}\nerror: \n${errText}`);
                             resolve(code);
                         } else {
                             const status = outText.length > 0 ? "succeeded ✔" : "detected no changes —";
-                            process.stdout.write(`\t[tasks -> ${path.basename(cwd)}] make ${status}`);
+                            process.stdout.write(`${prefix} ${status}`);
                             resolve(outText);
                         }
                     })
@@ -619,10 +627,16 @@ async function chdsect(connection: Client) {
                 path.resolve(__dirname, `${localDeployDir}/asmchdr/${args[1]}`),
                 `${deployDirs.asmchdrDir}/${args[1]}`,
             );
-            const response = await runCommandInShell(
-                connection,
-                `cd ${deployDirs.asmchdrDir} && make build-${args[1]} 2>&1 \n`,
-            );
+            let response = "";
+            try {
+                response = await runCommandInShell(
+                    connection,
+                    `cd ${deployDirs.asmchdrDir} && make build-${args[1]} 2>&1 \n`,
+                );
+            } catch (err) {
+                console.log("Chdsect err");
+                reject(err);
+            }
             console.log(response);
             console.log("Chdsect complete!");
 

@@ -343,7 +343,7 @@ $(OUT_DIR)/zusf.o: zusf.cpp
 $(OUT_DIR_CXXLANG)/zusf.o: $(OUT_DIRS) zusf.cpp
 	@echo '$(OUT_DIR_CXXLANG)/zusf.o'
 	$(CXXLANG) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -o $@ $^
-	
+
 $(OUT_DIR_SWIG)/zusf.o: $(OUT_DIRS) zusf.cpp
 	@echo 'Building $(OUT_DIR_SWIG)/zusf.o with SWIG macro'
 	$(CXXLANG) $(SWIG_FLAGS) -qlist=$*.cpp.lst -o $@ $^
@@ -392,16 +392,16 @@ libztso.a: $(OUT_DIRS) $(OUT_DIR)/libztso.a
 $(OUT_DIR)/commands/%.o: commands/%.cpp
 	@echo 'Building $@'
 	@mkdir -p $(@D)
-	$(CXX) $(CPP_FLAGS) -c $< -o $@
+	$(CXX) $(CPP_FLAGS) -qlist=$(OUT_DIR)/commands/$*.cpp.lst -c $< -o $@
 
-# 
+#
 # Extensibility
 #
 
 $(OUT_DIR)/extend/plugin.o: extend/plugin.cpp
 	@echo 'Building $@'
 	@mkdir -p $(@D)
-	$(CXX) $(CPP_FLAGS) -c $< -o $@
+	$(CXX) $(CPP_FLAGS) -qlist=$*.cpp.lst -c $< -o $@
 
 #
 # Test CLI
