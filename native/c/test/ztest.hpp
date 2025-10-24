@@ -37,6 +37,7 @@
 #include <unistd.h>
 #include <cstdlib>
 #include <regex>
+#include <functional>
 
 // TODO(Kelosky): handle test not run
 // TODO(Kelosky): handle running individual test and/or suite
@@ -166,11 +167,17 @@ struct TEST_CASE
   std::chrono::high_resolution_clock::time_point end_time;
 };
 
+using hook_callback = std::function<void()>;
 struct TEST_SUITE
 {
   std::string description;
   std::vector<TEST_CASE> tests;
   int nesting_level;
+  std::vector<hook_callback> before_all_hooks;
+  std::vector<hook_callback> before_each_hooks;
+  std::vector<hook_callback> after_each_hooks;
+  std::vector<hook_callback> after_all_hooks;
+  bool before_all_executed = false;
 };
 
 struct EXPECT_CONTEXT
@@ -393,6 +400,84 @@ public:
     std::cout << "[TEST_INFO] " << message << std::endl;
   }
 
+  // Execute a vector of hooks, catching and reporting any errors
+  void execute_hooks(const std::vector<hook_callback> &hooks, const std::string &hook_type, std::string &error_message)
+  {
+    for (const auto& hook : hooks)
+    {
+      try
+      {
+        hook();
+      }
+      catch (const std::exception &e)
+      {
+        error_message = hook_type + " hook failed: " + std::string(e.what());
+        throw std::runtime_error(error_message);
+      }
+      catch (...)
+      {
+        error_message = hook_type + " hook failed with unknown error";
+        throw std::runtime_error(error_message);
+      }
+    }
+  }
+
+  // Collect beforeEach hooks from current suite and all parent suites (parent -> child order)
+  std::vector<hook_callback> collect_before_each_hooks()
+  {
+    std::vector<hook_callback> hooks;
+    std::vector<int> suite_indices;
+
+    // Find all parent suites by looking at nesting levels
+    int current_nesting = get_nesting();
+    for (int i = 0; i <= get_suite_index(); i++)
+    {
+      if (suites[i].nesting_level < current_nesting)
+      {
+        suite_indices.push_back(i);
+      }
+    }
+    // Add current suite
+    suite_indices.push_back(get_suite_index());
+
+    // Collect hooks in parent -> child order
+    for (const auto& idx : suite_indices)
+    {
+      const auto& suite_hooks = suites[idx].before_each_hooks;
+      hooks.insert(hooks.end(), suite_hooks.begin(), suite_hooks.end());
+    }
+
+    return hooks;
+  }
+
+  // Collect afterEach hooks from current suite and all parent suites (child -> parent order)
+  std::vector<hook_callback> collect_after_each_hooks()
+  {
+    std::vector<hook_callback> hooks;
+    std::vector<int> suite_indices;
+
+    // Find all parent suites by looking at nesting levels
+    int current_nesting = get_nesting();
+    for (int i = 0; i <= get_suite_index(); i++)
+    {
+      if (suites[i].nesting_level < current_nesting)
+      {
+        suite_indices.push_back(i);
+      }
+    }
+    // Add current suite
+    suite_indices.push_back(get_suite_index());
+
+    // Collect hooks in child -> parent order (reverse)
+    for (auto it = suite_indices.rbegin(); it != suite_indices.rend(); ++it)
+    {
+      const auto& suite_hooks = suites[*it].after_each_hooks;
+      hooks.insert(hooks.end(), suite_hooks.begin(), suite_hooks.end());
+    }
+
+    return hooks;
+  }
+
   template <typename Callable,
             typename = typename std::enable_if<
                 std::is_same<void, decltype(std::declval<Callable>()())>::value>::type>
@@ -420,6 +505,71 @@ public:
         {
           return;
         }
+      }
+    }
+
+    // Execute beforeAll hooks if not already executed for this suite
+    int suite_idx = get_suite_index();
+    if (suite_idx >= 0 && suite_idx < static_cast<int>(get_suites().size()))
+    {
+      if (!get_suites()[suite_idx].before_all_executed)
+      {
+        get_suites()[suite_idx].before_all_executed = true;
+        const std::vector<hook_callback> &before_all_hooks = get_suites()[suite_idx].before_all_hooks;
+        if (!before_all_hooks.empty())
+        {
+          std::string error_message;
+          try
+          {
+            execute_hooks(before_all_hooks, "beforeAll", error_message);
+          }
+          catch (const std::exception &)
+          {
+            tc.success = false;
+            tc.fail_message = error_message;
+            auto status = format_test_status(tc, false);
+            print_test_output(tc, description, current_nesting, status.first, status.second);
+            get_suites()[suite_idx].tests.push_back(tc);
+            return;
+          }
+        }
+      }
+    }
+
+    // Collect and execute beforeEach hooks
+    std::vector<hook_callback> before_each_hooks = collect_before_each_hooks();
+    if (!before_each_hooks.empty())
+    {
+      std::string error_message;
+      try
+      {
+        execute_hooks(before_each_hooks, "beforeEach", error_message);
+      }
+      catch (const std::exception &)
+      {
+        tc.success = false;
+        tc.fail_message = error_message;
+
+        // Still run afterEach hooks even if beforeEach failed
+        std::vector<hook_callback> after_each_hooks = collect_after_each_hooks();
+        if (!after_each_hooks.empty())
+        {
+          std::string after_error;
+          try
+          {
+            execute_hooks(after_each_hooks, "afterEach", after_error);
+          }
+          catch (const std::exception &)
+          {
+            // Append afterEach error to beforeEach error
+            tc.fail_message += " (afterEach also failed: " + after_error + ")";
+          }
+        }
+
+        auto status = format_test_status(tc, false);
+        print_test_output(tc, description, current_nesting, status.first, status.second);
+        get_suites()[suite_idx].tests.push_back(tc);
+        return;
       }
     }
 
@@ -454,6 +604,31 @@ public:
     {
       tc.success = false;
       tc.fail_message = "unexpected ABEND occured. Add `TEST_OPTIONS.remove_signal_handling = false` to `it(...)` to capture abend dump";
+    }
+
+    // Execute afterEach hooks (always run, even if test failed)
+    std::vector<hook_callback> after_each_hooks = collect_after_each_hooks();
+    if (!after_each_hooks.empty())
+    {
+      std::string error_message;
+      try
+      {
+        execute_hooks(after_each_hooks, "afterEach", error_message);
+      }
+      catch (const std::exception &)
+      {
+        // If test was successful but afterEach failed, mark test as failed
+        if (tc.success)
+        {
+          tc.success = false;
+          tc.fail_message = error_message;
+        }
+        else
+        {
+          // Test already failed, append afterEach error
+          tc.fail_message += " (afterEach also failed: " + error_message + ")";
+        }
+      }
     }
 
     auto status = format_test_status(tc, abend);
@@ -760,7 +935,31 @@ void describe(const std::string &description, Callable suite)
 
   std::cout << get_indent(ts.nesting_level) << description << std::endl;
   g.increment_nesting();
+
+  // Execute suite (this is where beforeAll/beforeEach/afterEach/afterAll/it calls happen)
   suite();
+
+  // Execute afterAll hooks for this suite
+  int suite_idx = g.get_suite_index();
+  if (suite_idx >= 0 && suite_idx < static_cast<int>(g.get_suites().size()))
+  {
+    const std::vector<hook_callback> &after_all_hooks = g.get_suites()[suite_idx].after_all_hooks;
+    if (!after_all_hooks.empty())
+    {
+      std::string error_message;
+      try
+      {
+        g.execute_hooks(after_all_hooks, "afterAll", error_message);
+      }
+      catch (const std::exception &)
+      {
+        // Report afterAll hook failure
+        g.pad_nesting(g.get_nesting());
+        std::cout << colors.red << colors.cross << " " << error_message << colors.reset << std::endl;
+      }
+    }
+  }
+
   g.decrement_nesting();
 }
 
@@ -807,6 +1006,59 @@ RESULT_CHECK<T> expect(T val, EXPECT_CONTEXT ctx = {0})
   result.set_inverse(false);
   result.set_context(ctx);
   return result;
+}
+
+// Hook registration functions
+template <typename Callable,
+          typename = typename std::enable_if<
+              std::is_same<void, decltype(std::declval<Callable>()())>::value>::type>
+void beforeAll(Callable hook)
+{
+  Globals &g = Globals::get_instance();
+  int suite_idx = g.get_suite_index();
+  if (suite_idx >= 0 && suite_idx < static_cast<int>(g.get_suites().size()))
+  {
+    g.get_suites()[suite_idx].before_all_hooks.push_back(hook);
+  }
+}
+
+template <typename Callable,
+          typename = typename std::enable_if<
+              std::is_same<void, decltype(std::declval<Callable>()())>::value>::type>
+void beforeEach(Callable hook)
+{
+  Globals &g = Globals::get_instance();
+  int suite_idx = g.get_suite_index();
+  if (suite_idx >= 0 && suite_idx < static_cast<int>(g.get_suites().size()))
+  {
+    g.get_suites()[suite_idx].before_each_hooks.push_back(hook);
+  }
+}
+
+template <typename Callable,
+          typename = typename std::enable_if<
+              std::is_same<void, decltype(std::declval<Callable>()())>::value>::type>
+void afterEach(Callable hook)
+{
+  Globals &g = Globals::get_instance();
+  int suite_idx = g.get_suite_index();
+  if (suite_idx >= 0 && suite_idx < static_cast<int>(g.get_suites().size()))
+  {
+    g.get_suites()[suite_idx].after_each_hooks.push_back(hook);
+  }
+}
+
+template <typename Callable,
+          typename = typename std::enable_if<
+              std::is_same<void, decltype(std::declval<Callable>()())>::value>::type>
+void afterAll(Callable hook)
+{
+  Globals &g = Globals::get_instance();
+  int suite_idx = g.get_suite_index();
+  if (suite_idx >= 0 && suite_idx < static_cast<int>(g.get_suites().size()))
+  {
+    g.get_suites()[suite_idx].after_all_hooks.push_back(hook);
+  }
 }
 
 inline void print_failed_tests()
