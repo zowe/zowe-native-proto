@@ -26,7 +26,7 @@ import {
 import { getVsceConfig } from "./Utilities";
 
 // biome-ignore lint/complexity/noStaticOnlyClass: Utilities class has static methods
-export class SshConfigUtils {
+export class ConfigUtils {
     public static getServerPath(profile?: imperative.IProfile): string {
         const serverPathMap: Record<string, string> = getVsceConfig().get("serverInstallPath") ?? {};
         return (

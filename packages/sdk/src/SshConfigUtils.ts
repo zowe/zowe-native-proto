@@ -71,9 +71,9 @@ export class SshConfigUtils {
                                     session.user = value;
                                     break;
                                 case "identityfile":
-                                    session.privateKey = value.startsWith("~")
-                                        ? path.normalize(path.resolve(path.join(os.homedir(), value.slice(2))))
-                                        : path.normalize(path.resolve(value));
+                                    session.privateKey = path.normalize(
+                                        value.startsWith("~") ? path.join(os.homedir(), value.slice(2)) : value,
+                                    );
                                     break;
                                 case "connecttimeout":
                                     session.handshakeTimeout = Number.parseInt(value, 10) * 1000;
