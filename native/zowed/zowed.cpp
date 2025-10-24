@@ -11,7 +11,7 @@
 
 #include <atomic>
 #include <chrono>
-#include <fstream>
+#include <cstring>
 #include <map>
 #include <mutex>
 #include <signal.h>
@@ -84,16 +84,16 @@ private:
     std::map<string, string> checksums;
     string checksums_file = exec_dir + "/checksums.asc";
 
-    std::ifstream file(checksums_file);
-    if (!file.is_open())
+    FILE *fp = fopen(checksums_file.c_str(), "r,ccsid=819");
+    if (!fp)
     {
       // Checksums file does not exist for dev builds
       LOG_DEBUG("Checksums file not found: %s (expected for dev builds)", checksums_file.c_str());
       return checksums;
     }
 
-    string line;
-    while (std::getline(file, line))
+    char line[1024];
+    while (fgets(line, sizeof(line), fp))
     {
       std::istringstream iss(line);
       string checksum, filename;
@@ -103,14 +103,13 @@ private:
       }
     }
 
+    fclose(fp);
     return checksums;
   }
 
   void print_ready_message()
   {
     zjson::Value data = zjson::Value::create_object();
-
-    // Load checksums similar to Go implementation
     std::map<string, string> checksums = load_checksums();
     zjson::Value checksums_obj = zjson::Value::create_object();
     for (const auto &pair : checksums)
