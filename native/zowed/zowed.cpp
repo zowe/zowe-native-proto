@@ -11,7 +11,7 @@
 
 #include <atomic>
 #include <chrono>
-#include <cstring>
+#include <fstream>
 #include <map>
 #include <mutex>
 #include <signal.h>
@@ -26,6 +26,7 @@
 #include "server.hpp"
 #include "worker.hpp"
 #include "zowed.hpp"
+#include <_Nascii.h>
 
 using std::string;
 
@@ -84,16 +85,17 @@ private:
     std::map<string, string> checksums;
     string checksums_file = exec_dir + "/checksums.asc";
 
-    FILE *fp = fopen(checksums_file.c_str(), "r,ccsid=819");
-    if (!fp)
+    const int old_state = __ae_autoconvert_state(_CVTSTATE_ON);
+    std::ifstream file(checksums_file);
+    if (!file.is_open())
     {
       // Checksums file does not exist for dev builds
       LOG_DEBUG("Checksums file not found: %s (expected for dev builds)", checksums_file.c_str());
       return checksums;
     }
 
-    char line[1024];
-    while (fgets(line, sizeof(line), fp))
+    string line;
+    while (std::getline(file, line))
     {
       std::istringstream iss(line);
       string checksum, filename;
@@ -103,7 +105,7 @@ private:
       }
     }
 
-    fclose(fp);
+    __ae_autoconvert_state(old_state);
     return checksums;
   }
 

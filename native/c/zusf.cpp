@@ -49,6 +49,7 @@
 #include <time.h>
 #include <iomanip>
 #include <sstream>
+#include <_Nascii.h>
 
 using namespace std;
 
@@ -1141,8 +1142,7 @@ int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response, ListOptio
  */
 int zusf_read_from_uss_file(ZUSF *zusf, const string &file, string &response)
 {
-  const auto bpxk_autocvt = getenv("_BPXK_AUTOCVT");
-  setenv("_BPXK_AUTOCVT", "OFF", 1);
+  const int old_state = __ae_autoconvert_state(_CVTSTATE_OFF);
   ifstream in(file.c_str(), zusf->encoding_opts.data_type == eDataTypeBinary ? ifstream::in | ifstream::binary : ifstream::in);
   if (!in.is_open())
   {
@@ -1160,7 +1160,7 @@ int zusf_read_from_uss_file(ZUSF *zusf, const string &file, string &response)
   response.assign(raw_data.begin(), raw_data.end());
   in.close();
 
-  setenv("_BPXK_AUTOCVT", bpxk_autocvt, 1);
+  __ae_autoconvert_state(old_state);
 
   // Use file tag encoding if available, otherwise fall back to provided encoding
   string encoding_to_use;
