@@ -10,18 +10,17 @@
  */
 
 #include "builder.hpp"
+#include "logger.hpp"
 #include "rpcio.hpp"
 #include "server.hpp"
-#include "logger.hpp"
 #include "../c/zbase64.h"
-#include "../c/zjson.hpp"
-#include <sstream>
-#include <cstdlib>
 #include <cerrno>
-#include <unistd.h>
+#include <cstdlib>
+#include <iostream>
+#include <sstream>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <iostream>
+#include <unistd.h>
 
 using std::string;
 
