@@ -94,6 +94,8 @@ void zowex_tests()
              describe("data-set",
                       []() -> void
                       {
+                        // TODO(zFernand0): add BeforeEach, BeforeAll, AfterEach, AfterAll
+
                         // describe("data set create tests",
                         //          []() -> void
                         //          {
@@ -113,6 +115,57 @@ void zowex_tests()
                         //                 execute_command_with_output(del_command, response);
                         //               });
                         //          });
+                        it("should display help",
+                           []() -> void
+                           {
+                             int rc = 0;
+                             string response;
+                             string command = zowex_command + " data-set";
+                             rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("create");
+                             Expect(response).ToContain("delete");
+                             Expect(response).ToContain("list");
+                           });
+
+                        describe("compress",
+                                 []() -> void
+                                 {
+                                   it("should compress a data set", []() -> void {});
+                                 });
+                        describe("create",
+                                 []() -> void
+                                 {
+                                   it("should create a data set with default attributes", []() -> void {});
+                                 });
+                        describe("create-adata",
+                                 []() -> void
+                                 {
+                                   it("should create a data set with default attributes", []() -> void {});
+                                 });
+
+                        describe("create-fb",
+                                 []() -> void
+                                 {
+                                   it("should create a data set with default attributes", []() -> void {});
+                                 });
+                        describe("create-loadlib",
+                                 []() -> void
+                                 {
+                                   it("should create a data set with default attributes", []() -> void {});
+                                 });
+                        describe("create-member",
+                                 []() -> void
+                                 {
+                                   it("should create a data set with default attributes", []() -> void {});
+                                 });
+                        describe("create-vb",
+                                 []() -> void
+                                 {
+                                   it("should create a data set with default attributes", []() -> void {});
+                                 });
+                        describe("delete",
+                                 []() -> void {});
                         describe("list",
                                  []() -> void
                                  {
@@ -126,6 +179,22 @@ void zowex_tests()
                                         rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
                                       });
+                                   it("should list data sets based on pattern and warn about listing too many members",
+                                      []()
+                                      {
+                                        int rc = 0;
+                                        string dsn = "SYS1.CMDLIB";
+                                        string pattern = "SYS1.*";
+                                        string response;
+                                        string command = zowex_command + " data-set list " + pattern + " --me 10";
+                                        rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(RTNCD_WARNING);
+                                        Expect(response).ToContain(dsn);
+                                      });
+                                 });
+                        describe("list-members",
+                                 []() -> void
+                                 {
                                    it("should list a member of a data set",
                                       []()
                                       {
@@ -146,21 +215,13 @@ void zowex_tests()
                                         rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(RTNCD_WARNING);
                                       });
-
-                                   it("should list data sets based on pattern and warn about listing too many members",
-                                      []()
-                                      {
-                                        int rc = 0;
-                                        string dsn = "SYS1.CMDLIB";
-                                        string pattern = "SYS1.*";
-                                        string response;
-                                        string command = zowex_command + " data-set list " + pattern + " --me 10";
-                                        rc = execute_command_with_output(command, response);
-                                        ExpectWithContext(rc, response).ToBe(RTNCD_WARNING);
-                                        Expect(response).ToContain(dsn);
-                                      });
                                  });
-
+                        describe("restore",
+                                 []() -> void {});
+                        describe("view",
+                                 []() -> void {});
+                        describe("write",
+                                 []() -> void {});
                         // describe("data set i/o tests",
                         //          []() -> void
                         //          {
