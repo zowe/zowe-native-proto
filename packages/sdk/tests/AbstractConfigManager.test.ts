@@ -17,6 +17,7 @@ import {
     type IProfileTypeConfiguration,
     type ProfileInfo,
 } from "@zowe/imperative";
+import type { ISshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { ZoweVsCodeExtension } from "@zowe/zowe-explorer-api";
 import { type Config, NodeSSH } from "node-ssh";
 import type { ConnectConfig } from "ssh2";
@@ -143,7 +144,7 @@ export class TestAbstractConfigManager extends AbstractConfigManager {
 
     protected storeServerPath(_host: string, _path: string): void {}
 
-    protected getVscodeSetting = vi.fn<(setting: string) => any>().mockReturnValue(15000);
+    protected getClientSetting = vi.fn<(setting: keyof ISshSession) => any>().mockReturnValue(15000);
 
     protected showStatusBar = vi.fn<() => IDisposable | undefined>().mockReturnValue(undefined);
 }

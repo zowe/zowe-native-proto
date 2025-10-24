@@ -20,7 +20,7 @@ import {
     type PrivateKeyWarningOptions,
     ZSshClient,
 } from "zowe-native-proto-sdk";
-import { SshConfigUtils, VscePromptApi } from "../src/SshConfigUtils";
+import { ConfigUtils, VscePromptApi } from "../src/ConfigUtils";
 import { getVsceConfig } from "../src/Utilities";
 
 vi.mock("vscode", () => ({
@@ -95,7 +95,7 @@ describe("SshConfigUtils", () => {
                 get: vi.fn().mockReturnValue({ testHost: "/mapped/path" }),
             });
 
-            const result = SshConfigUtils.getServerPath(profile);
+            const result = ConfigUtils.getServerPath(profile);
             expect(result).toBe("/mapped/path");
         });
         it("falls back to env var if no config", () => {
@@ -103,21 +103,21 @@ describe("SshConfigUtils", () => {
             (getVsceConfig as Mock).mockReturnValue({ get: vi.fn().mockReturnValue({}) });
             process.env.ZOWE_OPT_SERVER_PATH = "/env/path";
 
-            const result = SshConfigUtils.getServerPath(profile);
+            const result = ConfigUtils.getServerPath(profile);
             expect(result).toBe("/env/path");
         });
         it("returns default path if nothing else is set", () => {
             const profile: IProfile = { host: "testHost" } as IProfile;
             (getVsceConfig as Mock).mockReturnValue({ get: vi.fn().mockReturnValue({}) });
 
-            const result = SshConfigUtils.getServerPath(profile);
+            const result = ConfigUtils.getServerPath(profile);
             expect(result).toBe(defaultPath);
         });
         it("returns profile.serverPath if set and no mapping/env", () => {
             const profile: IProfile = { host: "testHost", serverPath: "/profile/path" } as IProfile;
             (getVsceConfig as Mock).mockReturnValue({ get: vi.fn().mockReturnValue({}) });
 
-            const result = SshConfigUtils.getServerPath(profile);
+            const result = ConfigUtils.getServerPath(profile);
             expect(result).toBe("/profile/path");
         });
 
@@ -126,7 +126,7 @@ describe("SshConfigUtils", () => {
             (getVsceConfig as Mock).mockReturnValue({ get: vi.fn().mockReturnValue(undefined) });
             delete process.env.ZOWE_OPT_SERVER_PATH;
 
-            const result = SshConfigUtils.getServerPath(profile);
+            const result = ConfigUtils.getServerPath(profile);
             expect(result).toBe(defaultPath);
         });
     });
@@ -161,7 +161,7 @@ describe("SshConfigUtils", () => {
             vi.restoreAllMocks();
         });
         it("should add a session when visible is true and session is not present", async () => {
-            await SshConfigUtils.showSessionInTree("testProfile", true);
+            await ConfigUtils.showSessionInTree("testProfile", true);
 
             expect(mockProvider.addSession).toHaveBeenCalledWith(
                 expect.objectContaining({ sessionName: "testProfile", profileType: "ssh" }),
@@ -175,7 +175,7 @@ describe("SshConfigUtils", () => {
             const fakeNode = { getProfileName: () => "testProfile" };
             mockProvider.mSessionNodes = [fakeNode];
 
-            await SshConfigUtils.showSessionInTree("testProfile", false);
+            await ConfigUtils.showSessionInTree("testProfile", false);
 
             expect(mockProvider.deleteSession).toHaveBeenCalledWith(fakeNode);
             expect(mockLocalStorage.setValue).toHaveBeenCalledWith(
@@ -506,7 +506,7 @@ describe("SshConfigUtils", () => {
             });
         });
 
-        describe("getVscodeSetting", () => {
+        describe("getClientSetting", () => {
             let mockGet: any;
             beforeEach(() => {
                 mockGet = vi.fn();
@@ -517,8 +517,8 @@ describe("SshConfigUtils", () => {
             });
             it("returns the value from vscode config for the given setting", () => {
                 mockGet.mockReturnValue("testValue");
-                const result = (instance as any).getVscodeSetting<string>("someSetting");
-                expect(mockGet).toHaveBeenCalledWith("someSetting");
+                const result = (instance as any).getClientSetting("handshakeTimeout");
+                expect(mockGet).toHaveBeenCalledWith("defaultHandshakeTimeout");
                 expect(result).toBe("testValue");
             });
         });
