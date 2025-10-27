@@ -86,6 +86,44 @@ void my_tests()
 
 ```
 
+Tests also support before and after hooks, allowing you to clean up resources before/after tests are finished running.
+
+```cpp
+
+describe("an_extern_function tests",
+  []() -> void
+  {
+    int* x;
+    beforeAll([]() -> void {
+      x = (int*)malloc(sizeof(int));
+      memset(x, 0, sizeof(int));
+    });
+
+    beforeEach([]() -> void {
+      *x = -1;
+    });
+
+    afterAll([]() -> void {
+      free(x);
+      x = nullptr;
+    });
+
+    it("should increment x",
+      []() -> void
+      {
+        an_extern_function(x, true);
+        Expect(*x).ToBe(0);
+      });
+
+    it("should not increment x",
+      []() -> void
+      {
+        an_extern_function(x, false);
+        Expect(*x).ToBe(-1);
+      });
+  });
+```
+
 #### Building
 
 Tests are built via a `makefile` in `c/test` and are also a default build target for the project root `makefile`.
