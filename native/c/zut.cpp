@@ -633,6 +633,11 @@ FileGuard::FileGuard(const char *filename, const char *mode) : fp(nullptr)
   fp = fopen(filename, mode);
 }
 
+FileGuard::FileGuard(int fd, const char *mode) : fp(nullptr)
+{
+  fp = fdopen(fd, mode);
+}
+
 FileGuard::~FileGuard()
 {
   if (fp)
@@ -642,4 +647,9 @@ FileGuard::~FileGuard()
 FileGuard::operator FILE *() const
 {
   return fp;
+}
+
+FileGuard::operator bool() const
+{
+  return fp != nullptr;
 }

@@ -1146,7 +1146,7 @@ int zds_read_from_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, 
     dsname = "//DD:" + string(zds->ddname);
   }
   const std::string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "rb" : "r";
-  FILE *fin = fopen(dsname.c_str(), fopen_flags.c_str());
+  FileGuard fin(dsname.c_str(), fopen_flags.c_str());
   if (!fin)
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open dsn '%s'", dsn.c_str());
@@ -1154,11 +1154,10 @@ int zds_read_from_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, 
   }
 
   int fifo_fd = open(pipe.c_str(), O_WRONLY);
-  FILE *fout = fdopen(fifo_fd, "w");
+  FileGuard fout(fifo_fd, "w");
   if (!fout)
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open output pipe '%s'", pipe.c_str());
-    fclose(fin);
     close(fifo_fd);
     return RTNCD_FAILURE;
   }
@@ -1189,8 +1188,6 @@ int zds_read_from_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, 
       catch (std::exception &e)
       {
         zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", codepage.c_str(), source_encoding.c_str());
-        fclose(fin);
-        fclose(fout);
         return RTNCD_FAILURE;
       }
     }
@@ -1208,8 +1205,6 @@ int zds_read_from_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, 
   }
 
   fflush(fout);
-  fclose(fin);
-  fclose(fout);
 
   return RTNCD_SUCCESS;
 }
@@ -1281,10 +1276,10 @@ int zds_write_to_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, s
   const auto fopen_extra_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "b" : "" + string(",recfm=*");
 
   // If file already exists, open in read+write mode to avoid losing ISPF stats
-  FILE *fout = fopen(dsname.c_str(), ("r+" + fopen_extra_flags).c_str());
+  FileGuard fout(dsname.c_str(), ("r+" + fopen_extra_flags).c_str());
   if (!fout)
   {
-    fout = fopen(dsname.c_str(), ("w" + fopen_extra_flags).c_str());
+    fout = FileGuard(dsname.c_str(), ("w" + fopen_extra_flags).c_str());
     if (!fout)
     {
       zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open dsn '%s'", dsn.c_str());
@@ -1295,16 +1290,14 @@ int zds_write_to_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, s
   int fifo_fd = open(pipe.c_str(), O_RDONLY);
   if (fifo_fd == -1)
   {
-    fclose(fout);
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "open() failed on input pipe '%s', errno %d", pipe.c_str(), errno);
     return RTNCD_FAILURE;
   }
 
-  FILE *fin = fdopen(fifo_fd, "r");
+  FileGuard fin(fifo_fd, "r");
   if (!fin)
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open input pipe '%s'", pipe.c_str());
-    fclose(fout);
     close(fifo_fd);
     return RTNCD_FAILURE;
   }
@@ -1333,8 +1326,6 @@ int zds_write_to_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, s
       catch (std::exception &e)
       {
         zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), codepage.c_str());
-        fclose(fin);
-        fclose(fout);
         return RTNCD_FAILURE;
       }
     }
@@ -1343,16 +1334,12 @@ int zds_write_to_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, s
     if (bytes_written != chunk_len)
     {
       zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to write to '%s' (possibly out of space)", dsname.c_str());
-      fclose(fin);
-      fclose(fout);
       return RTNCD_FAILURE;
     }
     temp_encoded.clear();
   }
 
   fflush(fout);
-  fclose(fin);
-  fclose(fout);
 
   // Update the etag
   string saved_contents = "";

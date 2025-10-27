@@ -271,8 +271,10 @@ class FileGuard
 
 public:
   FileGuard(const char *filename, const char *mode);
+  FileGuard(int fd, const char *mode);
   ~FileGuard();
   operator FILE *() const;
+  operator bool() const;
 };
 
 #endif // ZUT_HPP
