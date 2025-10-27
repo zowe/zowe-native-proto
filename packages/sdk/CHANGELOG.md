@@ -14,6 +14,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - Added `recfm` property to the `Dataset` type for listing data sets with attributes. [#558](https://github.com/zowe/zowe-native-proto/pull/558)
 - Restructured RPC request and response types to be human-maintained rather than auto-generated to improve maintainability. [#590](https://github.com/zowe/zowe-native-proto/pull/590)
 - Made attribute properties optional in the `Dataset` and `UssItem` types. [#608](https://github.com/zowe/zowe-native-proto/pull/608)
+- Fixed an issue where the input validation logic in the `AbstractConfigManager.promptForDeployDirectory` function would falsely detect paths as invalid. [#609](https://github.com/zowe/zowe-native-proto/issues/609)
 
 ## `0.1.10`
 
