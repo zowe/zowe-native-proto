@@ -49,7 +49,6 @@
 #include <time.h>
 #include <iomanip>
 #include <sstream>
-#include <_Nascii.h>
 
 using namespace std;
 
@@ -1142,7 +1141,7 @@ int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response, ListOptio
  */
 int zusf_read_from_uss_file(ZUSF *zusf, const string &file, string &response)
 {
-  const int old_state = __ae_autoconvert_state(_CVTSTATE_OFF);
+  AutocvtGuard autocvt(false);
   ifstream in(file.c_str(), zusf->encoding_opts.data_type == eDataTypeBinary ? ifstream::in | ifstream::binary : ifstream::in);
   if (!in.is_open())
   {
@@ -1159,8 +1158,6 @@ int zusf_read_from_uss_file(ZUSF *zusf, const string &file, string &response)
 
   response.assign(raw_data.begin(), raw_data.end());
   in.close();
-
-  __ae_autoconvert_state(old_state);
 
   // Use file tag encoding if available, otherwise fall back to provided encoding
   string encoding_to_use;
@@ -1226,6 +1223,7 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, const string &file, const strin
     return RTNCD_FAILURE;
   }
 
+  AutocvtGuard autocvt(false);
   FILE *fin = fopen(file.c_str(), zusf->encoding_opts.data_type == eDataTypeBinary ? "rb" : "r");
   if (!fin)
   {

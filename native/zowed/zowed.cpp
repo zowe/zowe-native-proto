@@ -20,6 +20,7 @@
 #include <thread>
 #include <unistd.h>
 #include "../c/zjson.hpp"
+#include "../c/zusf.hpp"
 #include "commands.hpp"
 #include "dispatcher.hpp"
 #include "logger.hpp"
@@ -83,19 +84,21 @@ private:
   std::map<string, string> load_checksums()
   {
     std::map<string, string> checksums;
+    ZUSF zusf = {.encoding_opts = {.data_type = eDataTypeText, .source_codepage = "IBM-1047"}};
     string checksums_file = exec_dir + "/checksums.asc";
+    string checksums_content;
 
-    const int old_state = __ae_autoconvert_state(_CVTSTATE_ON);
-    std::ifstream file(checksums_file);
-    if (!file.is_open())
+    int rc = zusf_read_from_uss_file(&zusf, checksums_file, checksums_content);
+    if (rc != 0)
     {
       // Checksums file does not exist for dev builds
-      LOG_DEBUG("Checksums file not found: %s (expected for dev builds)", checksums_file.c_str());
+      LOG_DEBUG("Failed to read checksums file: %s (expected for dev builds)", checksums_file.c_str());
       return checksums;
     }
 
+    std::istringstream iss(checksums_content);
     string line;
-    while (std::getline(file, line))
+    while (std::getline(iss, line))
     {
       std::istringstream iss(line);
       string checksum, filename;
@@ -105,7 +108,6 @@ private:
       }
     }
 
-    __ae_autoconvert_state(old_state);
     return checksums;
   }
 

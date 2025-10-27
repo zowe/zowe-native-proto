@@ -22,6 +22,7 @@
 #include "zutm31.h"
 #include <ios>
 #include "zdyn.h"
+#include <_Nascii.h>
 
 using namespace std;
 
@@ -615,4 +616,30 @@ int zut_free_dynalloc_dds(vector<string> &list, std::ostream *err_stream)
   }
 
   return zut_loop_dynalloc(free_dds, err_stream);
+}
+
+AutocvtGuard::AutocvtGuard(bool autocvt) : old_state(0)
+{
+  old_state = __ae_autoconvert_state(autocvt ? _CVTSTATE_ON : _CVTSTATE_OFF);
+}
+
+AutocvtGuard::~AutocvtGuard()
+{
+  __ae_autoconvert_state(old_state);
+}
+
+FileGuard::FileGuard(const char *filename, const char *mode) : fp(nullptr)
+{
+  fp = fopen(filename, mode);
+}
+
+FileGuard::~FileGuard()
+{
+  if (fp)
+    fclose(fp);
+}
+
+FileGuard::operator FILE *() const
+{
+  return fp;
 }
