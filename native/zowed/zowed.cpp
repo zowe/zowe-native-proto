@@ -96,9 +96,9 @@ private:
       return checksums;
     }
 
-    std::istringstream iss(checksums_content);
+    std::istringstream infile(checksums_content);
     string line;
-    while (std::getline(iss, line))
+    while (std::getline(infile, line))
     {
       std::istringstream iss(line);
       string checksum, filename;

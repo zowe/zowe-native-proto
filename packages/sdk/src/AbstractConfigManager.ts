@@ -222,7 +222,7 @@ export abstract class AbstractConfigManager {
 
     protected abstract storeServerPath(host: string, path: string): void;
 
-    public static validateDeployPath(this: void, defaultServerPath: string, input: string): string | null {
+    public static validateDeployPath(input: string): string | null {
         const trimmed = input.trim();
         if (!trimmed) return "Path cannot be empty.";
         if (trimmed.length > 1024) return "Path is longer than the USS max path length of 1024.";
@@ -236,7 +236,7 @@ export abstract class AbstractConfigManager {
         const input = await this.showInputBox({
             title: "Enter deploy directory",
             value: defaultServerPath,
-            validateInput: (input) => AbstractConfigManager.validateDeployPath(defaultServerPath, input),
+            validateInput: AbstractConfigManager.validateDeployPath,
         });
         if (input === undefined) {
             this.showMessage("SSH setup cancelled.", MESSAGE_TYPE.WARNING);

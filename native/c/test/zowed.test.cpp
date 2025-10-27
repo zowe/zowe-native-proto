@@ -231,7 +231,7 @@ void zowed_tests()
   describe("zowed tests",
            []() -> void
            {
-             it("should print a ready message on startup",
+             it("should print ready message on startup",
                 []() -> void
                 {
                   // Start the daemon, read first line of output, then stop it
@@ -244,7 +244,7 @@ void zowed_tests()
                   Expect(response).ToContain("\"message\":\"zowed is ready to accept input\"");
                   Expect(response).ToContain("\"status\":\"ready\"");
                 });
-             it("should print a ready message with checksums",
+             it("should print ready message with checksums",
                 []() -> void
                 {
                   // Create test checksums file
