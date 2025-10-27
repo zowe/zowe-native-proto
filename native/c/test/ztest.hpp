@@ -943,7 +943,8 @@ void describe(const std::string &description, Callable suite)
   int suite_idx = g.get_suite_index();
   if (suite_idx >= 0 && suite_idx < static_cast<int>(g.get_suites().size()))
   {
-    const std::vector<hook_callback> &after_all_hooks = g.get_suites()[suite_idx].after_all_hooks;
+    TEST_SUITE& current_suite = g.get_suites()[suite_idx];
+    const std::vector<hook_callback> &after_all_hooks = current_suite.after_all_hooks;
     if (!after_all_hooks.empty())
     {
       std::string error_message;
@@ -958,6 +959,11 @@ void describe(const std::string &description, Callable suite)
         std::cout << colors.red << colors.cross << " " << error_message << colors.reset << std::endl;
       }
     }
+    current_suite.before_all_hooks.clear();
+    current_suite.before_each_hooks.clear();
+    current_suite.after_each_hooks.clear();
+    current_suite.after_all_hooks.clear();
+    current_suite.before_all_executed = false;
   }
 
   g.decrement_nesting();
