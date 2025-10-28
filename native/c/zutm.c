@@ -373,6 +373,6 @@ void ZUTDBGMG(const char *msg)
   memset(writeBuf, ' ', sizeof(132));
   int len = snprintf(writeBuf, 132, "%s", msg);
 
-  writeSync(sysprintIoc, writeBuf);
+  write_sync(sysprintIoc, writeBuf);
   close_assert(sysprintIoc);
 }

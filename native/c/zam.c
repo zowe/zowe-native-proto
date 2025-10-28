@@ -11,17 +11,18 @@
 
 #include "zam.h"
 #include "dcbd.h"
+#include "zwto.h"
 
-register FILE_CTRL *fc ASMREG("r2");
+register FILE_CTRL *fc ASMREG("r8");
 
-static IO_CTRL *PTR32 newIoCtrl()
+static IO_CTRL *PTR32 new_io_ctrl()
 {
   IO_CTRL *ioc = storage_obtain24(sizeof(IO_CTRL));
   memset(ioc, 0x00, sizeof(IO_CTRL));
   return ioc;
 }
 
-static void setDcbInfo(IHADCB *PTR32 dcb, char *ddname, int lrecl, int blkSize, unsigned char recfm)
+static void set_dcb_info(IHADCB *PTR32 dcb, char *ddname, int lrecl, int blkSize, unsigned char recfm)
 {
   char ddnam[9] = {0};
   sprintf(ddnam, "%-8.8s", ddname);
@@ -31,7 +32,7 @@ static void setDcbInfo(IHADCB *PTR32 dcb, char *ddname, int lrecl, int blkSize, 
   dcb->dcbrecfm = recfm;
 }
 
-static void setDcbDcbe(IHADCB *PTR32 dcb)
+static void set_dcb_dcbe(IHADCB *PTR32 dcb)
 {
   // get space for DCBE + buffer
   short ctrlLen = sizeof(FILE_CTRL) + dcb->dcbblksi;
@@ -46,39 +47,42 @@ static void setDcbDcbe(IHADCB *PTR32 dcb)
   fc->buffer = (unsigned char *)fc + offsetof(FILE_CTRL, buffer) + sizeof(fc->buffer);
 
   // init DCBE
-  fc->dcbe.dcbelen = 56;
-  memcpy(fc->dcbe.dcbeid, "DCBE", 4);
+  fc->dcbe.dcbelen = sizeof(DCBE);
+  char *dcbeid = "DCBE";
+  memcpy(fc->dcbe.dcbeid, dcbeid, strlen(dcbeid));
 
   // retain access to DCB / file control
   fc->dcbe.dcbeeoda = (void *)eodad;
   dcb->dcbdcbe = fc;
 }
 
-static IO_CTRL *PTR32 newWriteIoCtrl(char *ddname, int lrecl, int blkSize, unsigned char recfm)
+static IO_CTRL *PTR32 new_write_io_ctrl(char *ddname, int lrecl, int blkSize, unsigned char recfm)
 {
-  IO_CTRL *ioc = newIoCtrl();
+  IO_CTRL *ioc = new_io_ctrl();
   IHADCB *dcb = &ioc->dcb;
-  memcpy(dcb, &openWriteModel, sizeof(IHADCB));
-  setDcbInfo(dcb, ddname, lrecl, blkSize, recfm);
+  memcpy(dcb, &open_write_model, sizeof(IHADCB));
+  set_dcb_info(dcb, ddname, lrecl, blkSize, recfm);
   return ioc;
 }
 
-static IO_CTRL *PTR32 newReadIoCtrl(char *ddname, int lrecl, int blkSize, unsigned char recfm)
+static IO_CTRL *PTR32 new_read_io_ctrl(char *ddname, int lrecl, int blkSize, unsigned char recfm)
 {
-  IO_CTRL *ioc = newIoCtrl();
+  IO_CTRL *ioc = new_io_ctrl();
   IHADCB *dcb = &ioc->dcb;
   memcpy(dcb, &openReadModel, sizeof(IHADCB));
-  setDcbInfo(dcb, ddname, lrecl, blkSize, recfm);
-  setDcbDcbe(dcb);
+  set_dcb_info(dcb, ddname, lrecl, blkSize, recfm);
+  set_dcb_dcbe(dcb);
   return ioc;
 }
 
 IO_CTRL *open_output_assert(char *ddname, int lrecl, int blkSize, unsigned char recfm)
 {
-  IO_CTRL *ioc = newWriteIoCtrl(ddname, lrecl, blkSize, recfm);
+  IO_CTRL *ioc = new_write_io_ctrl(ddname, lrecl, blkSize, recfm);
   IHADCB *dcb = &ioc->dcb;
   int rc = 0;
   rc = open_output(dcb);
+  ioc->output = 1;
+  zwto_debug("@TEST open_output_assert dcb: %p", dcb->dcbdcbe);
   if (0 != rc)
     s0c3_abend(OPEN_OUTPUT_ASSERT_RC);
   if (!(dcbofopn & dcb->dcboflgs))
@@ -89,10 +93,12 @@ IO_CTRL *open_output_assert(char *ddname, int lrecl, int blkSize, unsigned char 
 
 IO_CTRL *open_input_assert(char *ddname, int lrecl, int blkSize, unsigned char recfm)
 {
-  IO_CTRL *ioc = newReadIoCtrl(ddname, lrecl, blkSize, recfm);
+  IO_CTRL *ioc = new_read_io_ctrl(ddname, lrecl, blkSize, recfm);
   IHADCB *dcb = &ioc->dcb;
   int rc = 0;
   rc = open_input(dcb);
+  ioc->input = 1;
+  zwto_debug("@TEST open_input_assert dcb: %p", dcb->dcbdcbe);
   if (0 != rc)
     s0c3_abend(OPEN_INPUT_ASSERT_RC);
   if (!(dcbofopn & dcb->dcboflgs))
@@ -103,12 +109,14 @@ IO_CTRL *open_input_assert(char *ddname, int lrecl, int blkSize, unsigned char r
 void close_assert(IO_CTRL *ioc)
 {
   IHADCB *dcb = &ioc->dcb;
+  void *temp = dcb->dcbdcbe;
+
   int rc = close_dcb(dcb);
   if (0 != rc)
     s0c3_abend(CLOSE_ASSERT_RC);
 
   // free DCBE / file control if obtained
-  if (dcb->dcbdcbe)
+  if (temp && ioc->input)
   {
     FILE_CTRL *fc = dcb->dcbdcbe;
     storage_release(fc->ctrlLen, fc);
@@ -158,8 +166,8 @@ int write_dcb(IHADCB *dcb, WRITE_PL *wpl, char *buffer)
 
 // NOTE(Kelosky): simple function that is non inline so that when
 // it is called, NAB will be set.
-void forceNab() ATTRIBUTE(noinline);
-void forceNab()
+void force_nab() ATTRIBUTE(noinline);
+void force_nab()
 {
   return;
 }
@@ -167,7 +175,7 @@ void forceNab()
 int check(DECB *cpl)
 {
   int rc = 0;
-  forceNab();
+  force_nab();
   CHECK(*cpl, rc)
   rc = 0;
   return rc;
@@ -190,7 +198,7 @@ int close_dcb(IHADCB *dcb)
   return rc;
 }
 
-int writeSync(IO_CTRL *ioc, char *buffer)
+int write_sync(IO_CTRL *ioc, char *buffer)
 {
   int rc = 0;
   WRITE_PL *wpl = &ioc->decb;
@@ -203,7 +211,7 @@ int writeSync(IO_CTRL *ioc, char *buffer)
   return check(&ioc->decb);
 }
 
-int readSync(IO_CTRL *ioc, char *buffer)
+int read_sync(IO_CTRL *ioc, char *buffer)
 {
   int rc = 0;
   READ_PL *rpl = &ioc->decb;

@@ -31,11 +31,11 @@
 
 // snap(&snapIoc->dcb, &header, &someCtrl, sizeof(someCtrl));
 
-// while (0 == readSync(inIoc, inbuff))
+// while (0 == read_sync(inIoc, inbuff))
 // {
 //     memset(writeBuf, ' ', 132);
 //     memcpy(writeBuf, inbuff, 80);
-//     writeSync(sysprintIoc, writeBuf);
+//     write_sync(sysprintIoc, writeBuf);
 // }
 
 #if defined(__IBM_METAL__)
@@ -51,7 +51,7 @@
 #define DCB_WRITE_MODEL(dcbwm)
 #endif
 
-DCB_WRITE_MODEL(openWriteModel);
+DCB_WRITE_MODEL(open_write_model);
 
 #if defined(__IBM_METAL__)
 #define DCB_READ_MODEL(dcbrm)                                 \
@@ -322,6 +322,8 @@ typedef struct
 {
   IHADCB dcb;
   DECB decb;
+  int input : 1;
+  int output : 1;
 } IO_CTRL;
 
 // 8-char entry points for z
@@ -336,8 +338,8 @@ IO_CTRL *PTR32 open_output_assert(char *, int, int, unsigned char) ATTRIBUTE(amo
 IO_CTRL *PTR32 open_input_assert(char *, int, int, unsigned char) ATTRIBUTE(amode31);
 void close_assert(IO_CTRL *) ATTRIBUTE(amode31);
 
-int writeSync(IO_CTRL *, char *) ATTRIBUTE(amode31);
-int readSync(IO_CTRL *, char *) ATTRIBUTE(amode31);
+int write_sync(IO_CTRL *, char *) ATTRIBUTE(amode31);
+int read_sync(IO_CTRL *, char *) ATTRIBUTE(amode31);
 
 #if defined(__IBM_METAL__)
 #pragma map(open_output, "openout")
