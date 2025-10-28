@@ -14,6 +14,7 @@ import { Gui, type IZoweTree, type IZoweTreeNode, type imperative, ZoweVsCodeExt
 import * as vscode from "vscode";
 import {
     AbstractConfigManager,
+    type IDisposable,
     type inputBoxOpts,
     MESSAGE_TYPE,
     type PrivateKeyWarningOptions,
@@ -247,5 +248,13 @@ export class VscePromptApi extends AbstractConfigManager {
         }
         serverPathMap[host] = path;
         config.update("serverInstallPath", serverPathMap, vscode.ConfigurationTarget.Global);
+    }
+
+    protected getVscodeSetting<T>(setting: string): T | undefined {
+        return getVsceConfig().get<T>(setting);
+    }
+
+    protected showStatusBar(): IDisposable | undefined {
+        return Gui.setStatusBarMessage("$(loading~spin) Attempting SSH connection");
     }
 }

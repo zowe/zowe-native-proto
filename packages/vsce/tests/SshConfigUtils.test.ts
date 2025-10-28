@@ -11,7 +11,7 @@
 
 import { ProfileConstants } from "@zowe/core-for-zowe-sdk";
 import type { IProfile } from "@zowe/imperative";
-import { ZoweVsCodeExtension } from "@zowe/zowe-explorer-api";
+import { Gui, ZoweVsCodeExtension } from "@zowe/zowe-explorer-api";
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import * as vscode from "vscode";
 import {
@@ -503,6 +503,41 @@ describe("SshConfigUtils", () => {
                     { newHost: "/new/path" },
                     vscode.ConfigurationTarget.Global,
                 );
+            });
+        });
+
+        describe("getVscodeSetting", () => {
+            let mockGet: any;
+            beforeEach(() => {
+                mockGet = vi.fn();
+                (getVsceConfig as Mock).mockReturnValue({ get: mockGet });
+            });
+            afterEach(() => {
+                vi.resetAllMocks();
+            });
+            it("returns the value from vscode config for the given setting", () => {
+                mockGet.mockReturnValue("testValue");
+                const result = (instance as any).getVscodeSetting<string>("someSetting");
+                expect(mockGet).toHaveBeenCalledWith("someSetting");
+                expect(result).toBe("testValue");
+            });
+        });
+
+        describe("showStatusBar", () => {
+            let mockSetStatusBarMessage: any;
+            beforeEach(() => {
+                mockSetStatusBarMessage = vi.fn();
+                (Gui.setStatusBarMessage as Mock) = mockSetStatusBarMessage;
+            });
+            afterEach(() => {
+                vi.resetAllMocks();
+            });
+            it("displays SSH connection loading message in status bar", () => {
+                const mockDisposable = { dispose: vi.fn() };
+                mockSetStatusBarMessage.mockReturnValue(mockDisposable);
+                const result = (instance as any).showStatusBar();
+                expect(mockSetStatusBarMessage).toHaveBeenCalledWith("$(loading~spin) Attempting SSH connection");
+                expect(result).toBe(mockDisposable);
             });
         });
     });

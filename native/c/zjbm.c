@@ -698,6 +698,8 @@ int ZJBMLPRC(ZJB *zjb, char *buffer, int *buffer_size, int *entries)
     zjb->diag.detail_rc = ZJB_RTNCD_SERVICE_FAILURE;
     return RTNCD_FAILURE;
   }
+
+  // https://www.ibm.com/docs/en/zos/3.2.0?topic=descriptions-jes-properties-ssi-function-code-82
   init_ssob(&ssob, &ssib, &ssjp, 82);
 
   memcpy(ssjp.ssjpid, "SSJP", sizeof(ssjp.ssjpid));

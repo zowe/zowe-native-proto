@@ -15,6 +15,7 @@
 #include "schemas/responses.hpp"
 #include "../c/commands/ds.hpp"
 #include "../c/commands/job.hpp"
+#include "../c/commands/tso.hpp"
 #include "../c/commands/uss.hpp"
 
 // Helper functions to create builders with common argument mappings
@@ -166,6 +167,11 @@ void register_cmd_commands(CommandDispatcher &dispatcher)
 {
   // TODO Support APF authorized commands with zoweax
   // dispatcher.register_command("consoleCommand", CommandBuilder(console::handle_console_issue));
+  dispatcher.register_command("tsoCommand",
+                              CommandBuilder(tso::handle_tso_issue)
+                                  .validate<IssueTsoRequest, IssueTsoResponse>()
+                                  .rename_arg("command-text", "command")
+                                  .read_stdout("data", false));
 }
 
 void register_all_commands(CommandDispatcher &dispatcher)

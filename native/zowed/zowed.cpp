@@ -9,26 +9,23 @@
  *
  */
 
-#include <iostream>
+#include <atomic>
+#include <chrono>
+#include <fstream>
+#include <map>
+#include <mutex>
+#include <signal.h>
+#include <sstream>
 #include <string>
 #include <thread>
-#include <mutex>
-#include <atomic>
-#include <signal.h>
 #include <unistd.h>
-#include <memory>
-#include <chrono>
-#include <cstdlib>
-#include <fstream>
-#include <sstream>
-#include <map>
 #include "../c/zjson.hpp"
+#include "commands.hpp"
+#include "dispatcher.hpp"
+#include "logger.hpp"
+#include "server.hpp"
 #include "worker.hpp"
 #include "zowed.hpp"
-#include "dispatcher.hpp"
-#include "commands.hpp"
-#include "server.hpp"
-#include "logger.hpp"
 
 using std::string;
 

@@ -6,10 +6,13 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
+- Added additional error messages to the `AbstractConfigManager` class to provide better feedback during connection attempts. [#605](https://github.com/zowe/zowe-native-proto/pull/605)
 - Added `depth` property to the `ListFilesRequest` type for listing USS directories recursively. [#575](https://github.com/zowe/zowe-native-proto/pull/575)
 - Replaced `this.uninstallServer` with the class reference `ZSshUtils.uninstallServer` in `ZSshUtils.ts`. [#586] (https://github.com/zowe/zowe-native-proto/pull/586).
 - Added `recfm` property to the `Dataset` type for listing data sets with attributes. [#558](https://github.com/zowe/zowe-native-proto/pull/558)
 - Restructured RPC request and response types to be human-maintained rather than auto-generated to improve maintainability. [#590](https://github.com/zowe/zowe-native-proto/pull/590)
+- Made attribute properties optional in the `Dataset` and `UssItem` types. [#608](https://github.com/zowe/zowe-native-proto/pull/608)
+- Fixed an issue where the input validation logic in the `AbstractConfigManager.promptForDeployDirectory` function would falsely detect paths as invalid. [#609](https://github.com/zowe/zowe-native-proto/issues/609)
 
 ## `0.1.10`
 

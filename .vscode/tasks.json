@@ -16,6 +16,38 @@
         "isDefault": true
       },
       "path": "./packages/vsce"
+    },
+    {
+      "type": "npm",
+      "script": "z:watch",
+      "problemMatcher": {
+        "owner": "custom",
+        "fileLocation": ["search", { "include": ["${workspaceFolder}/native"] }],
+        "pattern": [
+          {
+            "regexp": "(?:error:)"
+          },
+          {
+            "regexp": "^\"\\./(.+)\", line (\\d+)\\.(\\d+): (\\w+\\d+) \\((.)\\) (.+)$",
+            "file": 1,
+            "line": 2,
+            "column": 3,
+            "code": 4,
+            "severity": 5,
+            "message": 6
+          }
+        ],
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "^\\d{1,2}/\\d{1,2}/\\d{4}, \\d{1,2}:\\d{2}:\\d{2} (?:AM|PM) \\[.\\]\\s",
+          "endsPattern": "^\\d{1,2}/\\d{1,2}/\\d{4}, \\d{1,2}:\\d{2}:\\d{2} (?:AM|PM) watching for changes\\.\\.\\."
+        }
+      },
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always"
+      },
+      "group": "build"
     }
   ]
 }

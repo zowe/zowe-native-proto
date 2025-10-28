@@ -10,10 +10,10 @@
  */
 
 #include "dispatcher.hpp"
-#include "server.hpp"
 #include "logger.hpp"
-#include <vector>
+#include "server.hpp"
 #include <algorithm>
+#include <vector>
 
 using std::string;
 

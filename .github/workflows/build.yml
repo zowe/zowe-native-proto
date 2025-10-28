@@ -10,7 +10,7 @@ permissions:
   pull-requests: write
 
 jobs:
-  build-client:
+  build:
     runs-on: ${{ matrix.os }}-latest
     strategy:
       fail-fast: false
@@ -71,12 +71,3 @@ jobs:
             Client artifacts:
              - CLI Plug-in: ${{ steps.cli-artifact-upload.outputs.artifact-url }}
              - VSCode Extension: ${{ steps.vsce-artifact-upload.outputs.artifact-url }}
-
-  build-native:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Build
-        run: cd native/golang && go build

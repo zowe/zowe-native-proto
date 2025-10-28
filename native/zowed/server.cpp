@@ -49,7 +49,7 @@ void RpcServer::process_request(const string &request_data)
       validator::ValidationResult validation_result = validate_json_with_schema(request.method, request.params.value(), true);
       if (!validation_result.is_valid)
       {
-        print_error(request.id, RpcErrorCode::INVALID_PARAMS, validation_result.error_message);
+        print_error(request.id, RpcErrorCode::INVALID_PARAMS, "Request validation failed (" + request.method + ")", &validation_result.error_message);
         return;
       }
     }
@@ -70,7 +70,7 @@ void RpcServer::process_request(const string &request_data)
     if (result != 0)
     {
       const string error_output = context.get_error_content();
-      print_error(request.id, result, "Command execution failed",
+      print_error(request.id, result, "Command execution failed (" + request.method + ")",
                   error_output.empty() ? nullptr : &error_output);
       return;
     }
@@ -78,7 +78,7 @@ void RpcServer::process_request(const string &request_data)
     // Success - check if context has an object set, otherwise use output content
     zjson::Value result_json;
 
-    const ast::Node &ast_object = context.get_object();
+    const auto &ast_object = context.get_object();
     if (ast_object)
     {
       // Convert AST object to zjson::Value
@@ -99,7 +99,7 @@ void RpcServer::process_request(const string &request_data)
     {
       // Response validation failed - return internal error
       print_error(request.id, RpcErrorCode::INTERNAL_ERROR,
-                  "Response validation failed", &validation_result.error_message);
+                  "Response validation failed (" + request.method + ")", &validation_result.error_message);
       return;
     }
 
@@ -252,7 +252,7 @@ zjson::Value RpcServer::convert_ast_to_json(const ast::Node &ast_node)
   case ast::Ast::Array:
   {
     zjson::Value array_value = zjson::Value::create_array();
-    const std::vector<ast::Node> &ast_array = ast_node->as_array();
+    const auto &ast_array = ast_node->as_array();
     array_value.reserve_array(ast_array.size());
 
     for (size_t i = 0; i < ast_array.size(); ++i)
@@ -265,11 +265,11 @@ zjson::Value RpcServer::convert_ast_to_json(const ast::Node &ast_node)
   case ast::Ast::Object:
   {
     zjson::Value object_value = zjson::Value::create_object();
-    const ast::ObjMap &ast_object = ast_node->as_object();
+    const auto &ast_object = ast_node->as_object();
 
-    for (ast::ObjMap::const_iterator it = ast_object.begin(); it != ast_object.end(); ++it)
+    for (const auto &pair : ast_object)
     {
-      object_value.add_to_object(it->first, convert_ast_to_json(it->second));
+      object_value.add_to_object(pair.first, convert_ast_to_json(pair.second));
     }
     return object_value;
   }
@@ -287,7 +287,16 @@ void RpcServer::print_response(const RpcResponse &response)
   if (response.error.has_value())
   {
     const ErrorDetails &error = response.error.value();
-    LOG_ERROR("%s", error.message.c_str());
+    if (error.data.has_value())
+    {
+      const auto &val = error.data.value();
+      string data_str = val.is_string() ? val.as_string() : serialize_json(val);
+      LOG_ERROR("%s: %s", error.message.c_str(), data_str.c_str());
+    }
+    else
+    {
+      LOG_ERROR("%s", error.message.c_str());
+    }
   }
 
   string json_string = serialize_json(rpc_response_to_json(response));
@@ -379,7 +388,7 @@ validator::ValidationResult RpcServer::validate_json_with_schema(const string &m
   }
 
   const CommandBuilder &builder = it->second;
-  std::shared_ptr<validator::ParamsValidator> validator =
+  validator::ValidatorFn validator =
       is_request ? builder.get_request_validator() : builder.get_response_validator();
 
   if (!validator)
@@ -387,5 +396,5 @@ validator::ValidationResult RpcServer::validate_json_with_schema(const string &m
     return validator::ValidationResult::success();
   }
 
-  return validator->validate(data);
+  return validator(data);
 }

@@ -10,8 +10,11 @@
  */
 
 #include "core.hpp"
+<<<<<<< HEAD
 #include "../zshmem.hpp"
 #include "../ztype.h"
+=======
+>>>>>>> main
 #include "../extend/plugin.hpp"
 #include <dirent.h>
 #include <algorithm>
@@ -55,6 +58,7 @@ bool should_quit(const std::string &input)
 
 int interactive_mode(plugin::InvocationContext &context)
 {
+<<<<<<< HEAD
   // Initialize shared memory
   int shm_id;
   ZSharedRegion *shm_ptr = nullptr;
@@ -72,6 +76,8 @@ int interactive_mode(plugin::InvocationContext &context)
     }
   }
 
+=======
+>>>>>>> main
   context.output_stream() << "Started, enter command or 'quit' to quit..." << std::endl;
 
   std::string command;
@@ -104,12 +110,15 @@ int interactive_mode(plugin::InvocationContext &context)
 
   context.output_stream() << "...terminated" << std::endl;
 
+<<<<<<< HEAD
   // Clean up this process's shared memory
   if (!shm_file_path.empty())
   {
     cleanup_shared_memory(shm_id, shm_ptr, shm_file_path.c_str());
   }
 
+=======
+>>>>>>> main
   return rc;
 }
 
@@ -225,9 +234,12 @@ Command &setup_root_command(int argc, char *argv[])
                                make_aliases("--version", "-v"),
                                "display version information", ArgType_Flag, false,
                                ArgValue(false));
+<<<<<<< HEAD
   root_command.add_keyword_arg("shm-file",
                                make_aliases("--shm-file"),
                                "shared memory file path", ArgType_Single, false);
+=======
+>>>>>>> main
   root_command.set_handler(handle_command);
 
   // Core commands
