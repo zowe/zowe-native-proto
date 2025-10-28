@@ -640,28 +640,28 @@ FileGuard::FileGuard(int fd, const char *mode) : fp(nullptr)
 
 FileGuard::~FileGuard()
 {
+  this->reset();
+}
+
+void FileGuard::reset(const char *filename, const char *mode)
+{
+  this->reset();
+  fp = fopen(filename, mode);
+}
+
+void FileGuard::reset(int fd, const char *mode)
+{
+  this->reset();
+  fp = fdopen(fd, mode);
+}
+
+void FileGuard::reset()
+{
   if (fp)
-    fclose(fp);
-}
-
-FileGuard::FileGuard(FileGuard &&other) : fp(other.fp)
-{
-  other.fp = nullptr;
-}
-
-FileGuard &FileGuard::operator=(FileGuard &&other)
-{
-  if (this != &other)
   {
-    // Close current file if any
-    if (fp)
-      fclose(fp);
-
-    // Transfer ownership
-    fp = other.fp;
-    other.fp = nullptr;
+    fclose(fp);
+    fp = nullptr;
   }
-  return *this;
 }
 
 FileGuard::operator FILE *() const

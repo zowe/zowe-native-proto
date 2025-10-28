@@ -1279,7 +1279,7 @@ int zds_write_to_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, s
   FileGuard fout(dsname.c_str(), ("r+" + fopen_extra_flags).c_str());
   if (!fout)
   {
-    fout = FileGuard(dsname.c_str(), ("w" + fopen_extra_flags).c_str());
+    fout.reset(dsname.c_str(), ("w" + fopen_extra_flags).c_str());
     if (!fout)
     {
       zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open dsn '%s'", dsn.c_str());
