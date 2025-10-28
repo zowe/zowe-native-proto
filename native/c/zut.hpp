@@ -273,6 +273,15 @@ public:
   FileGuard(const char *filename, const char *mode);
   FileGuard(int fd, const char *mode);
   ~FileGuard();
+
+  // Delete copy to prevent double-close
+  FileGuard(const FileGuard &) = delete;
+  FileGuard &operator=(const FileGuard &) = delete;
+
+  // Allow move semantics for safe ownership transfer
+  FileGuard(FileGuard &&other);
+  FileGuard &operator=(FileGuard &&other);
+
   operator FILE *() const;
   operator bool() const;
 };

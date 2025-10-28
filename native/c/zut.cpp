@@ -644,6 +644,26 @@ FileGuard::~FileGuard()
     fclose(fp);
 }
 
+FileGuard::FileGuard(FileGuard &&other) : fp(other.fp)
+{
+  other.fp = nullptr;
+}
+
+FileGuard &FileGuard::operator=(FileGuard &&other)
+{
+  if (this != &other)
+  {
+    // Close current file if any
+    if (fp)
+      fclose(fp);
+
+    // Transfer ownership
+    fp = other.fp;
+    other.fp = nullptr;
+  }
+  return *this;
+}
+
 FileGuard::operator FILE *() const
 {
   return fp;
