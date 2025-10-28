@@ -409,7 +409,7 @@ public:
   // Execute a vector of hooks, catching and reporting any errors
   void execute_hooks(const std::vector<hook_callback> &hooks, const std::string &hook_type, std::string &error_message)
   {
-    for (const auto& hook : hooks)
+    for (const auto &hook : hooks)
     {
       try
       {
@@ -494,32 +494,50 @@ public:
       }
     }
 
-    // Execute beforeAll hooks if not already executed for this suite
     int suite_idx = get_suite_index();
-    if (suite_idx >= 0 && suite_idx < static_cast<int>(get_suites().size()))
+
+    // Execute beforeAll hooks for the current suite stack (parent -> child order)
+    bool before_all_failed = false;
+    std::string before_all_error;
+    for (const auto &idx : suite_stack)
     {
-      if (!get_suites()[suite_idx].before_all_executed)
+      if (idx < 0 || idx >= static_cast<int>(suites.size()))
       {
-        get_suites()[suite_idx].before_all_executed = true;
-        const std::vector<hook_callback> &before_all_hooks = get_suites()[suite_idx].before_all_hooks;
-        if (!before_all_hooks.empty())
+        continue;
+      }
+
+      TEST_SUITE &suite = suites[idx];
+      if (!suite.before_all_executed)
+      {
+        suite.before_all_executed = true;
+        if (!suite.before_all_hooks.empty())
         {
           std::string error_message;
           try
           {
-            execute_hooks(before_all_hooks, "beforeAll", error_message);
+            execute_hooks(suite.before_all_hooks, "beforeAll", error_message);
           }
           catch (const std::exception &)
           {
-            tc.success = false;
-            tc.fail_message = error_message;
-            auto status = format_test_status(tc, false);
-            print_test_output(tc, description, current_nesting, status.first, status.second);
-            get_suites()[suite_idx].tests.push_back(tc);
-            return;
+            before_all_failed = true;
+            before_all_error = error_message;
+            break;
           }
         }
       }
+    }
+
+    if (before_all_failed)
+    {
+      tc.success = false;
+      tc.fail_message = before_all_error;
+      auto status = format_test_status(tc, false);
+      print_test_output(tc, description, current_nesting, status.first, status.second);
+      if (suite_idx >= 0 && suite_idx < static_cast<int>(suites.size()))
+      {
+        suites[suite_idx].tests.push_back(tc);
+      }
+      return;
     }
 
     // Collect and execute beforeEach hooks
@@ -923,7 +941,8 @@ void describe(const std::string &description, Callable suite)
   std::cout << get_indent(ts.nesting_level) << description << std::endl;
   g.increment_nesting();
 
-  auto cleanup = [&]() {
+  auto cleanup = [&]()
+  {
     g.decrement_nesting();
     g.pop_suite_index();
   };
