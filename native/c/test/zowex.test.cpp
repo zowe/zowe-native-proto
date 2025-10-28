@@ -9,6 +9,13 @@
  *
  */
 
+#include <cstddef>
+#include <ctime>
+#include <sstream>
+#include <stdexcept>
+#include <stdlib.h>
+#include <string>
+#include <vector>
 #include "ztest.hpp"
 #include "ztype.h"
 #include "zowex.test.hpp"
@@ -16,6 +23,91 @@
 
 using namespace std;
 using namespace ztst;
+
+// Helper function to convert string to hex format
+// TODO(Kelosky): move to zut.hpp if additional use is found
+string string_to_hex(const string &input)
+{
+  string hex_output;
+  for (char c : input)
+  {
+    char hex_byte[3];
+    sprintf(hex_byte, "%02x", static_cast<unsigned char>(c));
+    hex_output += hex_byte;
+  }
+  return hex_output;
+}
+
+// NOTE(Kelosky): consolidate this into ztest.hpp if additional use is found
+int execute_command_with_output(const std::string &command, std::string &output)
+{
+  output = "";
+  // TestLog("Running: " + command);
+
+  FILE *pipe = popen((command + " 2>&1").c_str(), "r");
+  if (!pipe)
+  {
+    throw std::runtime_error("Failed to open pipe");
+  }
+
+  char buffer[256];
+  while (fgets(buffer, sizeof(buffer), pipe) != nullptr)
+  {
+    output += buffer;
+  }
+
+  int exit_code = pclose(pipe);
+  return WEXITSTATUS(exit_code);
+}
+
+string get_random_string(const int length = 7, const bool allNumbers = true)
+{
+  static bool seeded = false;
+  if (!seeded)
+  {
+    srand(static_cast<unsigned int>(time(NULL)));
+    seeded = true;
+  }
+  string ret = "";
+  for (int i = 0; i < length; ++i)
+  {
+    ret += to_string(rand() % 10);
+  }
+  return ret;
+}
+
+string get_random_ds(const int qualifier_count = 4, const string hlq = "")
+{
+  string q = hlq;
+  if (q.length() == 0)
+  {
+    string user;
+    execute_command_with_output("whoami", user);
+    q = TrimChars(user);
+  }
+  string ret = q + ".ZNP#TEST";
+  for (int i = 0; i < qualifier_count - 2; ++i)
+  {
+    ret += ".Z" + get_random_string();
+  }
+  return ret;
+}
+
+vector<string> split_rfc_response(const string input, const char *delim)
+{
+  vector<string> ret;
+  char *cstr = new char[input.length() + 1];
+  std::strcpy(cstr, input.c_str());
+  char *token_ptr = std::strtok(cstr, delim);
+  while (token_ptr != NULL)
+  {
+    string token = token_ptr;
+    ret.push_back(TrimChars(token));
+    token_ptr = std::strtok(NULL, delim);
+  }
+  delete[] cstr;
+  return ret;
+}
 
 const string zowex_command = "./../build-out/zowex";
 
@@ -128,6 +220,15 @@ void zowex_tests()
                              Expect(response).ToContain("list");
                            });
 
+                        beforeAll([]() -> void
+                                  { TestLog("-0- before all"); });
+                        afterAll([]() -> void
+                                 { TestLog("-0- after all"); });
+
+                        afterEach([]() -> void
+                                  { TestLog("-1- after each"); });
+                        beforeEach([]() -> void
+                                   { TestLog("-1- before each"); });
                         describe("compress",
                                  []() -> void
                                  {
@@ -136,7 +237,81 @@ void zowex_tests()
                         describe("create",
                                  []() -> void
                                  {
-                                   it("should create a data set with default attributes", []() -> void {});
+                                   it("should create a data set with default attributes", []() -> void
+                                      {
+                                        int rc = 0;
+                                        string data_set = get_random_ds();
+                                        string response;
+                                        string command = zowex_command + " data-set create " + data_set;
+                                        rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("Data set created");
+
+                                        command = zowex_command + " data-set list " + data_set + " -a --rfc";
+                                        rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        vector<string> tokens = split_rfc_response(response, ",");
+                                        Expect(tokens[1]).ToBe("PS");
+                                        Expect(tokens[4]).ToBe("FB");
+
+                                        command = zowex_command + " data-set delete " + data_set;
+                                        rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("Data set '" + data_set + "' deleted"); // ds deleted
+                                      });
+                                   it("should create a data set - recfm:VB dsorg:PO",
+                                      []() -> void
+                                      {
+                                        int rc = 0;
+                                        string data_set = get_random_ds();
+                                        string response;
+                                        string command = zowex_command + " data-set create " + data_set + " --recfm VB --dsorg PO";
+                                        rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("Data set created");
+
+                                        command = zowex_command + " data-set list " + data_set + " -a --rfc";
+                                        rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        vector<string> tokens = split_rfc_response(response, ",");
+                                        Expect(tokens[1]).ToBe("PO");
+                                        Expect(tokens[4]).ToBe("VB");
+
+                                        command = zowex_command + " data-set delete " + data_set;
+                                        rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("Data set '" + data_set + "' deleted"); // ds deleted
+                                      });
+
+                                   it("should create a data set - dsorg: PO, primary: 10, secondary: 2, lrecl: 20, blksize:10, dirblk: 5, alcunit: CYL",
+                                      []() -> void
+                                      {
+                                        int rc = 0;
+                                        string data_set = get_random_ds();
+                                        string response;
+                                        string command = zowex_command + " data-set create " + data_set + " --dsorg PO --primary 10 --secondary 2 --lrecl 20 --blksize 10 --dirblk 5 --alcunit CYL";
+                                        rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("Data set created");
+
+                                        command = zowex_command + " data-set list " + data_set + " -a --rfc";
+                                        rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        vector<string> tokens = split_rfc_response(response, ",");
+                                        Expect(tokens[1]).ToBe("PO");
+                                        Expect(tokens[4]).ToBe("FB");
+
+                                        command = zowex_command + " data-set delete " + data_set;
+                                        rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("Data set '" + data_set + "' deleted"); // ds deleted
+                                      });
+
+                                   afterEach(
+                                       []() -> void
+                                       {
+                                         TestLog("-2- after each");
+                                       });
                                  });
                         describe("create-adata",
                                  []() -> void
