@@ -19,6 +19,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - `c`: Fixed undefined behavior in the `zut_bpxwdyn` function by verifying that the allocated 31-bit region is valid before writing to it. [#577](https://github.com/zowe/zowe-native-proto/issues/577)
 - `c`: The CLI parser now prints unexpected, trailing positional arguments when handling command input. [#594](https://github.com/zowe/zowe-native-proto/issues/594)
 - Rewrote the middleware (`zowed`) in C++. This removes our dependency on Golang, improves performance, and allows parallel requests to be handled in a single address space. [#595](https://github.com/zowe/zowe-native-proto/pull/595)
+- `c`: Fixed issue where automatic codepage conversion with `_BPXK_AUTOCVT` was not disabled for all USS read and write operations, which could interfere with the `--encoding` option. [#620](https://github.com/zowe/zowe-native-proto/pull/620)
 
 ## `0.1.10`
 

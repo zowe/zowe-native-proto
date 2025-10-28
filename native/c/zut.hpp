@@ -255,7 +255,7 @@ class AutocvtGuard
   int old_state;
 
 public:
-  AutocvtGuard(bool autocvt);
+  AutocvtGuard(bool enabled);
   ~AutocvtGuard();
 };
 

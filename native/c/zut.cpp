@@ -618,9 +618,9 @@ int zut_free_dynalloc_dds(vector<string> &list, std::ostream *err_stream)
   return zut_loop_dynalloc(free_dds, err_stream);
 }
 
-AutocvtGuard::AutocvtGuard(bool autocvt) : old_state(0)
+AutocvtGuard::AutocvtGuard(bool enabled) : old_state(0)
 {
-  old_state = __ae_autoconvert_state(autocvt ? _CVTSTATE_ON : _CVTSTATE_OFF);
+  old_state = __ae_autoconvert_state(enabled ? _CVTSTATE_ON : _CVTSTATE_OFF);
 }
 
 AutocvtGuard::~AutocvtGuard()
