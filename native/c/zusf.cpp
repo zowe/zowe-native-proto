@@ -1392,6 +1392,8 @@ int zusf_write_to_uss_file(ZUSF *zusf, const string &file, string &data)
       return RTNCD_FAILURE;
     }
   }
+
+  AutocvtGuard autocvt(false);
   const char *mode = (zusf->encoding_opts.data_type == eDataTypeBinary) ? "wb" : "w";
   FILE *fp = std::fopen(file.c_str(), mode);
   if (!fp)
@@ -1483,6 +1485,7 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, const string &file, const string
     return RTNCD_FAILURE;
   zusf->created = stat_result == -1;
 
+  AutocvtGuard autocvt(false);
   FileGuard fout(file.c_str(), zusf->encoding_opts.data_type == eDataTypeBinary ? "wb" : "w");
   if (!fout)
   {
