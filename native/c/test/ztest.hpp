@@ -197,6 +197,7 @@ private:
   int current_nesting = 0;
   jmp_buf jump_buf = {0};
   std::string matcher = "";
+  std::vector<int> suite_stack;
 
   Globals()
   {
@@ -356,13 +357,18 @@ public:
   {
     return suite_index;
   }
-  void set_suite_index(int si)
+  void push_suite_index(int si)
   {
+    suite_stack.push_back(si);
     suite_index = si;
   }
-  void increment_suite_index()
+  void pop_suite_index()
   {
-    set_suite_index(get_suite_index() + 1);
+    if (!suite_stack.empty())
+    {
+      suite_stack.pop_back();
+    }
+    suite_index = suite_stack.empty() ? -1 : suite_stack.back();
   }
   jmp_buf &get_jmp_buf()
   {
@@ -426,24 +432,14 @@ public:
   std::vector<hook_callback> collect_before_each_hooks()
   {
     std::vector<hook_callback> hooks;
-    std::vector<int> suite_indices;
-
-    // Find all parent suites by looking at nesting levels
-    int current_nesting = get_nesting();
-    for (int i = 0; i <= get_suite_index(); i++)
+    if (suite_stack.empty())
     {
-      if (suites[i].nesting_level < current_nesting)
-      {
-        suite_indices.push_back(i);
-      }
+      return hooks;
     }
-    // Add current suite
-    suite_indices.push_back(get_suite_index());
 
-    // Collect hooks in parent -> child order
-    for (const auto& idx : suite_indices)
+    for (const auto &idx : suite_stack)
     {
-      const auto& suite_hooks = suites[idx].before_each_hooks;
+      const auto &suite_hooks = suites[idx].before_each_hooks;
       hooks.insert(hooks.end(), suite_hooks.begin(), suite_hooks.end());
     }
 
@@ -454,24 +450,14 @@ public:
   std::vector<hook_callback> collect_after_each_hooks()
   {
     std::vector<hook_callback> hooks;
-    std::vector<int> suite_indices;
-
-    // Find all parent suites by looking at nesting levels
-    int current_nesting = get_nesting();
-    for (int i = 0; i <= get_suite_index(); i++)
+    if (suite_stack.empty())
     {
-      if (suites[i].nesting_level < current_nesting)
-      {
-        suite_indices.push_back(i);
-      }
+      return hooks;
     }
-    // Add current suite
-    suite_indices.push_back(get_suite_index());
 
-    // Collect hooks in child -> parent order (reverse)
-    for (auto it = suite_indices.rbegin(); it != suite_indices.rend(); ++it)
+    for (auto it = suite_stack.rbegin(); it != suite_stack.rend(); ++it)
     {
-      const auto& suite_hooks = suites[*it].after_each_hooks;
+      const auto &suite_hooks = suites[*it].after_each_hooks;
       hooks.insert(hooks.end(), suite_hooks.begin(), suite_hooks.end());
     }
 
@@ -931,19 +917,32 @@ void describe(const std::string &description, Callable suite)
   ts.description = description;
   ts.nesting_level = g.get_nesting();
   g.get_suites().push_back(ts);
-  g.increment_suite_index();
+  int current_suite_idx = static_cast<int>(g.get_suites().size()) - 1;
+  g.push_suite_index(current_suite_idx);
 
   std::cout << get_indent(ts.nesting_level) << description << std::endl;
   g.increment_nesting();
 
+  auto cleanup = [&]() {
+    g.decrement_nesting();
+    g.pop_suite_index();
+  };
+
   // Execute suite (this is where beforeAll/beforeEach/afterEach/afterAll/it calls happen)
-  suite();
+  try
+  {
+    suite();
+  }
+  catch (...)
+  {
+    cleanup();
+    throw;
+  }
 
   // Execute afterAll hooks for this suite
-  int suite_idx = g.get_suite_index();
-  if (suite_idx >= 0 && suite_idx < static_cast<int>(g.get_suites().size()))
+  if (current_suite_idx >= 0 && current_suite_idx < static_cast<int>(g.get_suites().size()))
   {
-    TEST_SUITE& current_suite = g.get_suites()[suite_idx];
+    TEST_SUITE &current_suite = g.get_suites()[current_suite_idx];
     const std::vector<hook_callback> &after_all_hooks = current_suite.after_all_hooks;
     if (!after_all_hooks.empty())
     {
@@ -966,7 +965,7 @@ void describe(const std::string &description, Callable suite)
     current_suite.before_all_executed = false;
   }
 
-  g.decrement_nesting();
+  cleanup();
 }
 
 template <typename Callable,
