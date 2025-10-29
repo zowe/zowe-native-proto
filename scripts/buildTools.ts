@@ -120,8 +120,13 @@ class WatchUtils {
             ignoreInitial: true,
             persistent: true,
         });
-        this.connection.on("close", () => this.watcher.close());
         let debounceTimer: NodeJS.Timeout;
+        this.connection.on("close", () => {
+            if (debounceTimer) {
+                clearTimeout(debounceTimer);
+            }
+            this.watcher.close();
+        });
         const applyChangesDebounced = () => {
             if (debounceTimer) {
                 clearTimeout(debounceTimer);
