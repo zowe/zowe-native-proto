@@ -219,16 +219,6 @@ void zowex_tests()
                              Expect(response).ToContain("delete");
                              Expect(response).ToContain("list");
                            });
-
-                        beforeAll([]() -> void
-                                  { TestLog("-0- before all"); });
-                        afterAll([]() -> void
-                                 { TestLog("-0- after all"); });
-
-                        afterEach([]() -> void
-                                  { TestLog("-1- after each"); });
-                        beforeEach([]() -> void
-                                   { TestLog("-1- before each"); });
                         describe("compress",
                                  []() -> void
                                  {
@@ -306,12 +296,6 @@ void zowex_tests()
                                         ExpectWithContext(rc, response).ToBe(0);
                                         Expect(response).ToContain("Data set '" + data_set + "' deleted"); // ds deleted
                                       });
-
-                                   afterEach(
-                                       []() -> void
-                                       {
-                                         TestLog("-2- after each");
-                                       });
                                  });
                         describe("create-adata",
                                  []() -> void
@@ -376,7 +360,6 @@ void zowex_tests()
                                         string data_set = "SYS1.MACLIB";
                                         string response;
                                         string command = zowex_command + " data-set lm " + data_set + " --no-warn --me 1";
-                                        // TestLog("Running: " + command);
                                         int rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
                                       });
