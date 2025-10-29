@@ -30,67 +30,6 @@ RDJFCB_MODEL(rdfjfcb_model);
 
 register FILE_CTRL *fc ASMREG("r8");
 
-static IO_CTRL *PTR32 new_io_ctrl()
-{
-  IO_CTRL *ioc = storage_obtain24(sizeof(IO_CTRL));
-  memset(ioc, 0x00, sizeof(IO_CTRL));
-  return ioc;
-}
-
-static void set_dcb_info(IHADCB *PTR32 dcb, char *ddname, int lrecl, int blkSize, unsigned char recfm)
-{
-  char ddnam[9] = {0};
-  sprintf(ddnam, "%-8.8s", ddname);
-  memcpy(dcb->dcbddnam, ddnam, sizeof(dcb->dcbddnam));
-  dcb->dcblrecl = lrecl;
-  dcb->dcbblksi = blkSize;
-  dcb->dcbrecfm = recfm;
-}
-
-static void set_dcb_dcbe(IHADCB *PTR32 dcb)
-{
-  // get space for DCBE + buffer
-  short ctrlLen = sizeof(FILE_CTRL) + dcb->dcbblksi;
-  FILE_CTRL *fc = storage_obtain31(ctrlLen);
-  memset(fc, 0x00, ctrlLen);
-
-  // init file control
-  fc->ctrlLen = ctrlLen;
-  fc->bufferLen = dcb->dcbblksi;
-
-  // buffer is at the end of the structure
-  fc->buffer = (unsigned char *)fc + offsetof(FILE_CTRL, buffer) + sizeof(fc->buffer);
-
-  // init DCBE
-  fc->dcbe.dcbelen = sizeof(DCBE);
-  char *dcbeid = "DCBE";
-  memcpy(fc->dcbe.dcbeid, dcbeid, strlen(dcbeid));
-
-  // retain access to DCB / file control
-  fc->dcbe.dcbeeoda = (void *)eodad;
-  dcb->dcbdcbe = fc;
-}
-
-static IO_CTRL *PTR32 new_write_io_ctrl(char *ddname, int lrecl, int blkSize, unsigned char recfm)
-{
-  IO_CTRL *ioc = new_io_ctrl();
-  IHADCB *dcb = &ioc->dcb;
-  memcpy(dcb, &open_write_model, sizeof(IHADCB));
-  set_dcb_info(dcb, ddname, lrecl, blkSize, recfm);
-  return ioc;
-}
-
-static IO_CTRL *PTR32 new_read_io_ctrl(char *ddname, int lrecl, int blkSize, unsigned char recfm)
-{
-  IO_CTRL *ioc = new_io_ctrl();
-  IHADCB *dcb = &ioc->dcb;
-  memcpy(dcb, &open_read_model, sizeof(IHADCB));
-  set_dcb_info(dcb, ddname, lrecl, blkSize, recfm);
-  set_dcb_dcbe(dcb);
-  // TODO(Kelosky): set synad
-  return ioc;
-}
-
 IO_CTRL *open_output_assert(char *ddname, int lrecl, int blkSize, unsigned char recfm)
 {
   IO_CTRL *ioc = new_write_io_ctrl(ddname, lrecl, blkSize, recfm);
@@ -110,6 +49,7 @@ IO_CTRL *open_output_assert(char *ddname, int lrecl, int blkSize, unsigned char 
 IO_CTRL *open_input_assert(char *ddname, int lrecl, int blkSize, unsigned char recfm)
 {
   IO_CTRL *ioc = new_read_io_ctrl(ddname, lrecl, blkSize, recfm);
+  set_dcb_dcbe(&ioc->dcb, eodad);
   IHADCB *dcb = &ioc->dcb;
   int rc = 0;
   rc = open_input(dcb);

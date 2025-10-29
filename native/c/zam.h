@@ -365,13 +365,16 @@ int open_input(IHADCB *) ATTRIBUTE(amode31);
 int write_dcb(IHADCB *, WRITE_PL *, char *) ATTRIBUTE(amode31);
 void read_dcb(IHADCB *, READ_PL *, char *) ATTRIBUTE(amode31);
 
+int read_input_jfcb(IO_CTRL *ioc) ATTRIBUTE(amode31);
+int read_output_jfcb(IO_CTRL *ioc) ATTRIBUTE(amode31);
+
 int close_dcb(IHADCB *) ATTRIBUTE(amode31);
 
 int check(DECB *ecb) ATTRIBUTE(amode31);
 
 int snap(IHADCB *, SNAP_HEADER *, void *, int) ATTRIBUTE(amode31);
 
-void eodad();
+void eodad() ATTRIBUTE(amode31);
 
 enum AMS_ERR
 {
@@ -387,6 +390,68 @@ enum AMS_ERR
 
 // TODO(Kelosky): dbcabend
 // TODO(Kelosky): synad
-// TODO(Kelosky): rdjfcb
+
+static IO_CTRL *PTR32 new_io_ctrl()
+{
+  IO_CTRL *ioc = storage_obtain24(sizeof(IO_CTRL));
+  memset(ioc, 0x00, sizeof(IO_CTRL));
+  return ioc;
+}
+
+static void set_dcb_info(IHADCB *PTR32 dcb, char *ddname, int lrecl, int blkSize, unsigned char recfm)
+{
+  char ddnam[9] = {0};
+  sprintf(ddnam, "%-8.8s", ddname);
+  memcpy(dcb->dcbddnam, ddnam, sizeof(dcb->dcbddnam));
+  dcb->dcblrecl = lrecl;
+  dcb->dcbblksi = blkSize;
+  dcb->dcbrecfm = recfm;
+}
+
+typedef void (*PTR32 EODAD)() ATTRIBUTE(amode31);
+
+static void set_dcb_dcbe(IHADCB *PTR32 dcb, EODAD eodad)
+{
+  // get space for DCBE + buffer
+  short ctrlLen = sizeof(FILE_CTRL) + dcb->dcbblksi;
+  FILE_CTRL *fc = storage_obtain31(ctrlLen);
+  memset(fc, 0x00, ctrlLen);
+
+  // init file control
+  fc->ctrlLen = ctrlLen;
+  fc->bufferLen = dcb->dcbblksi;
+
+  // buffer is at the end of the structure
+  fc->buffer = (unsigned char *PTR32)fc + offsetof(FILE_CTRL, buffer) + sizeof(fc->buffer);
+
+  // init DCBE
+  fc->dcbe.dcbelen = sizeof(DCBE);
+  char *dcbeid = "DCBE";
+  memcpy(fc->dcbe.dcbeid, dcbeid, strlen(dcbeid));
+
+  // retain access to DCB / file control
+  fc->dcbe.dcbeeoda = (void *PTR32)eodad;
+  dcb->dcbdcbe = fc;
+}
+
+static IO_CTRL *PTR32 new_write_io_ctrl(char *PTR32 ddname, int lrecl, int blkSize, unsigned char recfm)
+{
+  IO_CTRL *PTR32 ioc = new_io_ctrl();
+  IHADCB *dcb = &ioc->dcb;
+  memcpy(dcb, &open_write_model, sizeof(IHADCB));
+  set_dcb_info(dcb, ddname, lrecl, blkSize, recfm);
+  return ioc;
+}
+
+static IO_CTRL *PTR32 new_read_io_ctrl(char *PTR32 ddname, int lrecl, int blkSize, unsigned char recfm)
+{
+  IO_CTRL *ioc = new_io_ctrl();
+  IHADCB *dcb = &ioc->dcb;
+  memcpy(dcb, &open_read_model, sizeof(IHADCB));
+  set_dcb_info(dcb, ddname, lrecl, blkSize, recfm);
+  // set_dcb_dcbe(dcb);
+  // TODO(Kelosky): set synad
+  return ioc;
+}
 
 #endif

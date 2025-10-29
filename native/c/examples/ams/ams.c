@@ -20,6 +20,18 @@ int AMSMAIN()
 {
   zwto_debug("AMSMAIN started");
 
+  // IO_CTRL *PTR32 ioc = new_read_io_ctrl("SYSIN", 80, 80, dcbrecf);
+  // set_dcb_dcbe(&ioc->dcb, eodad);
+
+  // int rc = read_input_jfcb(ioc);
+  // if (0 != rc)
+  // {
+  //   zwto_debug("@TEST read_input_jfcb failed: %d", rc);
+  //   s0c3_abend(1);
+  // }
+
+  // return 0;
+
   IO_CTRL *PTR32 sysin = open_input_assert("SYSIN", 80, 80, dcbrecf);
   IO_CTRL *PTR32 sysprint = open_output_assert("SYSPRINT", 80, 80, dcbrecf);
 
