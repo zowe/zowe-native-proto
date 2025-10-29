@@ -13,6 +13,21 @@
 #include "dcbd.h"
 #include "zwto.h"
 
+// NOTE(Kelosky): must be assembled in AMODE31 code
+#if defined(__IBM_METAL__)
+#define RDJFCB_MODEL(rdjfcbm)                                 \
+  __asm(                                                      \
+      "*                                                  \n" \
+      " RDJFCB (,),"                                          \
+      "MF=L                                               \n" \
+      "*                                                    " \
+      : "DS"(rdjfcbm));
+#else
+#define RDJFCB_MODEL(rdjfcbm)
+#endif
+
+RDJFCB_MODEL(rdfjfcb_model);
+
 register FILE_CTRL *fc ASMREG("r8");
 
 static IO_CTRL *PTR32 new_io_ctrl()
@@ -126,19 +141,21 @@ void close_assert(IO_CTRL *ioc)
   storage_release(sizeof(IO_CTRL), ioc);
 }
 
-int read_input_jfcb(IHADCB *dcb)
+int read_input_jfcb(IO_CTRL *ioc)
 {
   int rc = 0;
   RDJFCB_PL rpl = {0};
-  RDJFCB(*dcb, rpl, rc, INPUT);
+  memcpy(&rpl, &rdfjfcb_model, sizeof(RDJFCB_PL));
+  RDJFCB(ioc->dcb, rpl, rc, INPUT);
   return rc;
 }
 
-int read_output_jfcb(IHADCB *dcb)
+int read_output_jfcb(IO_CTRL *ioc)
 {
   int rc = 0;
   RDJFCB_PL rpl = {0};
-  RDJFCB(*dcb, rpl, rc, OUTPUT);
+  memcpy(&rpl, &rdfjfcb_model, sizeof(RDJFCB_PL));
+  RDJFCB(ioc->dcb, rpl, rc, OUTPUT);
   return rc;
 }
 

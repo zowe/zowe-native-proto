@@ -22,6 +22,8 @@
 #include "zecb.h"
 #include "zstorage.h"
 #include "ihadcbe.h"
+#include "jfcb.h"
+#include "ihaexlst.h"
 
 // IO_CTRL *sysprintIoc = openOutputAssert("SYSPRINT", 132, 132, dcbrecf + dcbrecbr);
 // IO_CTRL *snapIoc = openOutputAssert("SNAP", 125, 1632, dcbrecv + dcbrecbr + dcbrecca);
@@ -279,6 +281,8 @@ typedef struct
   STATUS_AREA *PTR32 statusArea;
 } DECB;
 
+typedef struct jfcb JFCB;
+
 typedef DECB WRITE_PL;
 typedef DECB READ_PL;
 
@@ -315,10 +319,15 @@ typedef struct
   char *PTR32 buffer;
 } FILE_CTRL;
 
+typedef struct exlst EXLIST;
+
+#define NUM_EXLIST_ENTRIES 2
 typedef struct
 {
   IHADCB dcb;
   DECB decb;
+  JFCB jfcb;
+  EXLIST exlst[NUM_EXLIST_ENTRIES];
   int input : 1;
   int output : 1;
 } IO_CTRL;
