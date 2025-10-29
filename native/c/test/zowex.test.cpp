@@ -53,6 +53,42 @@ int execute_command_with_output(const std::string &command, std::string &output)
   return WEXITSTATUS(exit_code);
 }
 
+string get_random_string(const int length, const bool allNumbers)
+{
+  static bool seeded = false;
+  if (!seeded)
+  {
+    srand(static_cast<unsigned int>(time(NULL)));
+    seeded = true;
+  }
+  string ret = "";
+  for (int i = 0; i < length; ++i)
+  {
+    ret += to_string(rand() % 10);
+  }
+  return ret;
+}
+
+string get_random_uss(const string base_dir)
+{
+  static bool seeded = false;
+  if (!seeded)
+  {
+    srand(static_cast<unsigned int>(time(NULL)));
+    seeded = true;
+  }
+
+  string ret = base_dir;
+  if (ret.back() != '/')
+  {
+    ret += "/";
+  }
+
+  ret += "test_" + get_random_string(10, true);
+
+  return ret;
+}
+
 const string zowex_command = "./../build-out/zowex";
 
 void zowex_tests()

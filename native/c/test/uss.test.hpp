@@ -9,11 +9,7 @@
  *
  */
 
-#ifndef ZOWEX_TEST_HPP
-#define ZOWEX_TEST_HPP
-#include <string>
-void zowex_tests();
-int execute_command_with_output(const std::string &command, std::string &output);
-std::string get_random_string(const int length, const bool allNumbers);
-std::string get_random_uss(const std::string base_dir);
+#ifndef USS_TEST_HPP
+#define USS_TEST_HPP
+void uss_tests();
 #endif

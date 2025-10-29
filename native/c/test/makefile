@@ -182,6 +182,7 @@ build-out/zmetal.metal.test.o \
 build-out/zusf.test.o \
 build-out/zusf.o \
 build-out/zowex.test.o \
+build-out/uss.test.o \
 build-out/parser.test.o \
 build-out/zlogger.test.o \
 build-out/zlogger_metal.o \
@@ -233,6 +234,9 @@ build-out/zusf.o:
 
 build-out/zowex.test.o: zowex.test.cpp
 	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
+
+build-out/uss.test.o: uss.test.cpp
+	$(OCXX) $(CXXLANG_FLAGS) $(CPP_LIST_FLAG) -c $^ -o $@
 
 build-out/zbase64.test.o: zbase64.test.cpp
 	$(OCXX) $(CXXLANG_FLAGS) $(CPP_LIST_FLAG) -c $^ -o $@

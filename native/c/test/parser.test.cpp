@@ -405,6 +405,10 @@ void parser_tests()
                ArgumentParser arg_parser("zowex", "command sample");
                Command &root = arg_parser.get_root_command();
 
+               std::stringstream err_output;
+               std::streambuf* original_cerr_buf = std::cerr.rdbuf();
+               std::cerr.rdbuf(err_output.rdbuf());
+                
                command_ptr job_cmd(new Command("job", "job operations"));
                command_ptr list_cmd(new Command("list", "list jobs"));
                job_cmd->add_command(list_cmd);
@@ -415,6 +419,8 @@ void parser_tests()
 
                ParseResult result =
                    arg_parser.parse(static_cast<int>(argv.size()), argv.data());
+
+               std::cerr.rdbuf(original_cerr_buf);
 
                Expect(result.status).ToBe(ParseResult::ParserStatus_ParseError);
                Expect(result.error_message.find("unexpected argument") != std::string::npos).ToBe(true);
