@@ -299,10 +299,8 @@ void RpcServer::print_response(const RpcResponse &response)
 
   string json_string = serialize_json(rpc_response_to_json(response));
   auto &stream = response.error.has_value() ? std::cerr : std::cout;
-  {
-    std::lock_guard<std::mutex> lock(response_mutex);
-    stream << json_string << std::endl;
-  }
+  std::lock_guard<std::mutex> lock(response_mutex);
+  stream << json_string << std::endl;
 }
 
 // Static utility methods
