@@ -744,7 +744,7 @@ void load_recfm_from_dscb(const DSCBFormat1 *dscb, string *recfm)
   }
 }
 
-void load_date_from_dscb(const char *date_in, string *date_out)
+void load_date_from_dscb(const char *date_in, string *date_out, bool is_expiration_date = false)
 {
   // Date is in 'YDD' format (3 bytes): Year offset and day of year
   // If all zeros, date is not maintained
@@ -764,6 +764,14 @@ void load_date_from_dscb(const char *date_in, string *date_out)
 
   // Parse day of year from 2-byte value (big-endian)
   int day_of_year = (day_high << 8) | day_low;
+
+  // Check for sentinel date 1999/12/31 (year_offset=99, day=365)
+  // This is used to indicate "no expiration" for expiration dates only
+  if (is_expiration_date && year == 1999 && day_of_year == 365)
+  {
+    *date_out = "";
+    return;
+  }
 
   // Convert day of year to month/day
   static const int days_in_month[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
@@ -790,10 +798,56 @@ void load_date_from_dscb(const char *date_in, string *date_out)
   *date_out = buffer;
 }
 
-void load_size_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
+void load_extents_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
 {
   // extx: Number of extents on this volume
   entry.extx = dscb->ds1noepv;
+
+  // spacu: Parse space allocation unit
+  // First check DS1SCAL1 (ds1scalo[0]) for primary allocation type
+  uint8_t scal1 = static_cast<uint8_t>(dscb->ds1scalo[0]);
+  uint8_t dspac = (scal1 & 0xC0) >> 6; // Top 2 bits: space request type
+
+  if (dspac == 0x03) // 11 = DS1CYL - Cylinders
+  {
+    entry.spacu = "CYLINDERS";
+  }
+  else if (dspac == 0x02) // 10 = DS1TRK - Tracks
+  {
+    entry.spacu = "TRACKS";
+  }
+  else if (dspac == 0x01) // 01 = DS1AVR - Average block length (blocks)
+  {
+    entry.spacu = "BLOCKS";
+  }
+  else if ((scal1 & 0x20) != 0) // Bit 2 set: DS1EXT - Extension to secondary space
+  {
+    // Fall back to ds1scext[0] (ds1scxtf) for extended units
+    uint8_t scxtf = static_cast<uint8_t>(dscb->ds1scext[0]);
+
+    if (scxtf & 0x40) // DS1SCMB - megabytes
+    {
+      entry.spacu = "MEGABYTES";
+    }
+    else if (scxtf & 0x20) // DS1SCKB - kilobytes
+    {
+      entry.spacu = "KILOBYTES";
+    }
+    else if (scxtf & 0x10) // DS1SCUB - bytes
+    {
+      // TODO Why is BYTES not reported correctly for SYS1 data sets?
+      entry.spacu = "BYTES";
+    }
+    else
+    {
+      entry.spacu = "TRACKS"; // Default fallback
+    }
+  }
+  else
+  {
+    // Default to tracks if nothing is set
+    entry.spacu = "TRACKS";
+  }
 
   // Parse the extent information from ds1exnts (3 extents, 10 bytes each)
   // Each extent has: type(1), seq(1), lower_limit(4), upper_limit(4)
@@ -847,6 +901,50 @@ void load_size_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
 
   // ovf: Overflow indicator
   entry.ovf = has_overflow;
+
+  // used: Calculate percentage of used space
+  // DS1LSTAR contains the last used track (TTR format)
+  // Not defined/meaningful for VSAM, PDSE, HFS, and DA (direct/BDAM)
+
+  if (dscb->ds1dsorg & DS1DSGDA_MASK || dscb->ds1dsorg & DS1ACBM_MASK)
+  {
+    // DA (Direct Access/BDAM) datasets: DS1LSTAR not meaningful
+    // Data can be scattered randomly across allocated space
+    entry.used = -1;
+  }
+  else
+  {
+    uint8_t lstar_tt_high = static_cast<unsigned char>(dscb->ds1lstar[0]);
+    uint8_t lstar_tt_low = static_cast<unsigned char>(dscb->ds1lstar[1]);
+
+    if (lstar_tt_high == 0 && lstar_tt_low == 0)
+    {
+      // DS1LSTAR is zero - not maintained for this dataset type
+      // (VSAM, PDSE, HFS, or empty dataset)
+      entry.used = 0;
+    }
+    else
+    {
+      // Parse last used track number (TT from TTR)
+      uint32_t last_used_track = (lstar_tt_high << 8) | lstar_tt_low;
+
+      // Calculate percentage: (tracks_used / total_tracks) * 100
+      // Add 1 because track numbers are 0-based
+      if (total_tracks > 0)
+      {
+        entry.used = ((last_used_track + 1) * 100) / total_tracks;
+        // Cap at 100% in case of calculation issues
+        if (entry.used > 100)
+        {
+          entry.used = 100;
+        }
+      }
+      else
+      {
+        entry.used = 0;
+      }
+    }
+  }
 }
 
 void zds_get_attrs_from_dscb(ZDS *zds, ZDSEntry &entry)
@@ -863,15 +961,30 @@ void zds_get_attrs_from_dscb(ZDS *zds, ZDSEntry &entry)
   if (rc == RTNCD_SUCCESS)
   {
     load_dsorg_from_dscb(dscb, &entry.dsorg);
-    load_recfm_from_dscb(dscb, &entry.recfm);
-    entry.blksz = (static_cast<unsigned char>(dscb->ds1blkl[0]) << 8) |
-                  static_cast<unsigned char>(dscb->ds1blkl[1]);
-    entry.lrecl = (static_cast<unsigned char>(dscb->ds1lrecl[0]) << 8) |
-                  static_cast<unsigned char>(dscb->ds1lrecl[1]);
-    load_date_from_dscb(dscb->ds1credt, &entry.cdate);
-    load_date_from_dscb(dscb->ds1expdt, &entry.edate);
-    load_date_from_dscb(dscb->ds1refd, &entry.rdate);
-    load_size_from_dscb(dscb, entry);
+
+    // Check if this is a VSAM dataset
+    bool is_vsam = (dscb->ds1dsorg & DS1ACBM_MASK) != 0;
+
+    if (is_vsam)
+    {
+      // VSAM datasets: blksz, lrecl, and recfm are not meaningful
+      entry.blksz = -1;
+      entry.lrecl = -1;
+      entry.recfm = "";
+    }
+    else
+    {
+      load_recfm_from_dscb(dscb, &entry.recfm);
+      entry.blksz = (static_cast<unsigned char>(dscb->ds1blkl[0]) << 8) |
+                    static_cast<unsigned char>(dscb->ds1blkl[1]);
+      entry.lrecl = (static_cast<unsigned char>(dscb->ds1lrecl[0]) << 8) |
+                    static_cast<unsigned char>(dscb->ds1lrecl[1]);
+    }
+
+    load_date_from_dscb(dscb->ds1credt, &entry.cdate, false);
+    load_date_from_dscb(dscb->ds1expdt, &entry.edate, true); // expiration date can have sentinel
+    load_date_from_dscb(dscb->ds1refd, &entry.rdate, false);
+    load_extents_from_dscb(dscb, entry);
   }
   else
   {

@@ -38,6 +38,8 @@ struct ZDSEntry
   std::string rdate;
   std::string recfm;
   int sizex;
+  std::string spacu;
+  int used;
   std::string volser;
 };
 

@@ -416,6 +416,8 @@ int handle_data_set_list(InvocationContext &context)
         entry->set("rdate", str(it->rdate));
         entry->set("recfm", str(it->recfm));
         entry->set("sizex", i64(it->sizex));
+        entry->set("spacu", str(it->spacu));
+        entry->set("used", i64(it->used));
         entry->set("volser", str(it->volser));
       }
       entries_array->push(entry);

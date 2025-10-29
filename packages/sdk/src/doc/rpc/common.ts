@@ -90,39 +90,39 @@ export interface ListDatasetOptions {
 
 export interface Dataset {
     /**
-     * Dataset name
+     * Data set name
      */
     name: string;
-    /**
-     * Dataset organization
-     */
-    dsorg?: string;
-    /**
-     * Volume serial number
-     */
-    volser?: string;
-    /**
-     * Dataset migrated
-     */
-    migr?: boolean;
-    /**
-     * Record format
-     */
-    recfm?: string;
     /**
      * Block size
      */
     blksz?: number;
     /**
+     * Name of the catalog where the data set is located
+     */
+    catnm?: string;
+    /**
      * Creation date
      */
     cdate?: string;
+    /**
+     * Device type
+     */
+    dev?: string;
+    /**
+     * Dsname type (e.g., PDS, LIBRARY)
+     */
+    dsntype?: string;
+    /**
+     * Data set organization
+     */
+    dsorg?: string;
     /**
      * Expiration date
      */
     edate?: string;
     /**
-     * Number of extents
+     * Number of extents used
      */
     extx?: number;
     /**
@@ -130,25 +130,41 @@ export interface Dataset {
      */
     lrecl?: number;
     /**
-     * Overflow indicator
+     * Whether the data set is migrated
+     */
+    migr?: boolean;
+    /**
+     * Whether the data set is multivolume
+     */
+    mvol?: boolean;
+    /**
+     * Space overflow indicator
      */
     ovf?: boolean;
     /**
-     * Last referenced date
+     * Date last referenced
      */
     rdate?: string;
     /**
-     * Size in extents
+     * Record format
+     */
+    recfm?: string;
+    /**
+     * Data set size in tracks
      */
     sizex?: number;
     /**
-     * Space allocation units
+     * Space units
      */
     spacu?: string;
     /**
-     * Amount of space used
+     * Percentage of used tracks or pages
      */
     used?: number;
+    /**
+     * Volume serial
+     */
+    volser?: string;
 }
 
 export interface DatasetAttributes {
