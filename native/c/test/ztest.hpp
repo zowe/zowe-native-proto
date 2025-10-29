@@ -507,22 +507,19 @@ public:
       }
 
       TEST_SUITE &suite = suites[idx];
-      if (!suite.before_all_executed)
+      if (!suite.before_all_executed && !suite.before_all_hooks.empty())
       {
         suite.before_all_executed = true;
-        if (!suite.before_all_hooks.empty())
+        std::string error_message;
+        try
         {
-          std::string error_message;
-          try
-          {
-            execute_hooks(suite.before_all_hooks, "beforeAll", error_message);
-          }
-          catch (const std::exception &)
-          {
-            before_all_failed = true;
-            before_all_error = error_message;
-            break;
-          }
+          execute_hooks(suite.before_all_hooks, "beforeAll", error_message);
+        }
+        catch (const std::exception &)
+        {
+          before_all_failed = true;
+          before_all_error = error_message;
+          break;
         }
       }
     }
