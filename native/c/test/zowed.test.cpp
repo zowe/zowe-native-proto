@@ -35,6 +35,10 @@ std::string read_line_from_daemon(DaemonHandle &handle, int timeout_ms = 5000)
   fd_set read_fds;
   struct timeval timeout;
   int fd = fileno(handle.output_stream);
+  if (fd == -1)
+  {
+    throw std::runtime_error("Failed to get file descriptor");
+  }
 
   FD_ZERO(&read_fds);
   FD_SET(fd, &read_fds);
@@ -160,7 +164,6 @@ void zowed_tests()
                   unlink(checksums_file.c_str());
                   ofstream outfile(checksums_file);
                   outfile << "123 abc" << endl;
-                  outfile.close();
 
                   DaemonHandle daemon = start_daemon(zowed_command);
                   string response = read_line_from_daemon(daemon);

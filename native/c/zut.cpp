@@ -628,12 +628,12 @@ AutocvtGuard::~AutocvtGuard()
   __ae_autoconvert_state(old_state);
 }
 
-FileGuard::FileGuard(const char *filename, const char *mode) : fp(nullptr)
+FileGuard::FileGuard(const char *filename, const char *mode) : fp()
 {
   fp = fopen(filename, mode);
 }
 
-FileGuard::FileGuard(int fd, const char *mode) : fp(nullptr)
+FileGuard::FileGuard(int fd, const char *mode) : fp()
 {
   fp = fdopen(fd, mode);
 }
