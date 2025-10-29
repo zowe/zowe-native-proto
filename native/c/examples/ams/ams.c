@@ -9,9 +9,12 @@
  *
  */
 #include <stdio.h>
+#include "zmetal.h"
 #include "zwto.h"
 #include "dcbd.h"
 #include "zam.h"
+#include "zams24.h"
+#include "zmetal.h"
 #include "zdbg.h"
 
 #pragma prolog(AMSMAIN, " ZWEPROLG NEWDSA=(YES,256) ")
@@ -27,6 +30,33 @@ int AMSMAIN()
   if (0 != rc)
   {
     zwto_debug("@TEST read_input_jfcb failed: %d", rc);
+    s0c3_abend(1);
+  }
+
+  zwto_debug("@TEST ioc->jfcb.jfcbelnm: %.8s", ioc->jfcb.jfcbelnm); // if first by has`x'BF'` then member name exists and not a PS file, clear DSORG if needed
+  zwto_debug("@TEST ioc->jfcb.jfcnlrec: %d", ioc->jfcb.jfcnlrec);
+  zwto_debug("@TEST ioc->jfcb.jfcbaxbf: %d", ioc->jfcb.jfcbaxbf); // JFCBLKSI
+
+  ZAMS24_FUNCS funcs = {0};
+  AMS24_fn AMS24 = (AMS24_fn)load_module31("ZAMS24");
+  if (!AMS24)
+  {
+    zwto_debug("@TEST AMS24 not found");
+    s0c3_abend(1);
+  }
+
+  rc = AMS24(&funcs);
+  if (0 != rc)
+  {
+    zwto_debug("@TEST AMS24 failed: %d", rc);
+    s0c3_abend(1);
+  }
+
+  // rc = funcs.open_input_j(ioc);
+  rc = funcs.open_input_j(ioc);
+  if (0 != rc)
+  {
+    zwto_debug("@TEST open_input_j failed: %d", rc);
     s0c3_abend(1);
   }
 

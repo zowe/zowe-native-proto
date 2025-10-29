@@ -55,6 +55,12 @@ IO_CTRL *open_input_assert(char *ddname, int lrecl, int blkSize, unsigned char r
   rc = open_input(dcb);
   ioc->input = 1;
   zwto_debug("@TEST open_input_assert dcb: %p", dcb->dcbdcbe);
+
+  // TODO(Kelosky): TM    DCBOFLGS,DCBOFOPN
+  // TODO(Kelosky): TM    dcbabend if occurs
+  // TODO(Kelosky): duplicate in open_output_assert
+  // TODO(Kelosky): handle DUMMY / NULLFILE
+
   if (0 != rc)
     s0c3_abend(OPEN_INPUT_ASSERT_RC);
   if (!(dcbofopn & dcb->dcboflgs))
@@ -81,20 +87,11 @@ void close_assert(IO_CTRL *ioc)
   storage_release(sizeof(IO_CTRL), ioc);
 }
 
-#pragma prolog(DCBABEND, " ZWEPROLG NEWDSA=(YES,10) ")
-#pragma epilog(DCBABEND, " ZWEEPILG ")
-void DCBABEND()
-{
-  // TODO(Kelosky): handle when this is called and ensure in 24 bit storage
-  zwto_debug("@test dbcabend");
-  s0c3_abend(5);
-}
-
 int read_input_jfcb(IO_CTRL *ioc)
 {
   int rc = 0;
 
-  ioc->exlst[0].exlentrb = (unsigned int)DCBABEND; // NOTE(Kelosky): DCBABEND needs to be copied to 24 bit storage or have some wrapper
+  ioc->exlst[0].exlentrb = (unsigned int)0; // NOTE(Kelosky): DCBABEND needs to be copied to 24 bit storage or have some wrapper
   ioc->exlst[0].exlcodes = exldcbab;
   ioc->exlst[1].exlentrb = (unsigned int)&ioc->jfcb;
   ioc->exlst[1].exlcodes = exllaste + exlrjfcb;
