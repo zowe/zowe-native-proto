@@ -54,7 +54,7 @@ struct RequestMetadata
 };
 
 // Worker class that processes command requests
-class Worker
+class Worker : public std::enable_shared_from_this<Worker>
 {
 private:
   int id;
@@ -105,7 +105,7 @@ private:
   static constexpr size_t kMaxRequestRetries = 2; // Maximum retry attempts for poison pill protection
 
   std::atomic<size_t> next_worker_index;
-  std::vector<std::unique_ptr<Worker>> workers;
+  std::vector<std::shared_ptr<Worker>> workers;
 
   // Track ready state variables and total number of ready workers
   std::vector<bool> ready_list;

@@ -76,7 +76,10 @@ void Worker::start()
   state.store(WorkerState::Starting, std::memory_order_release);
   update_heartbeat();
   LOG_DEBUG("Worker %d state -> %s (start invoked)", id, worker_state_to_string(WorkerState::Starting));
-  worker_thread = std::thread(&Worker::worker_loop, this);
+
+  auto self = shared_from_this();
+
+  worker_thread = std::thread(&Worker::worker_loop, self);
   state.store(WorkerState::Idle, std::memory_order_release);
   update_heartbeat();
   LOG_DEBUG("Worker %d state -> %s (worker thread started)", id, worker_state_to_string(WorkerState::Idle));
@@ -250,15 +253,7 @@ void Worker::force_detach()
   stop_requested.store(true, std::memory_order_release);
   state.store(WorkerState::Faulted, std::memory_order_release);
   queue_condition.notify_all();
-  if (worker_thread.joinable())
-  {
-    worker_thread.detach();
-    LOG_WARN("Worker %d forcibly detached due to heartbeat timeout", id);
-  }
-  else
-  {
-    LOG_WARN("Worker %d marked faulted due to heartbeat timeout (thread not joinable)", id);
-  }
+  LOG_WARN(worker_thread.joinable() ? "Worker %d forcibly detached due to heartbeat timeout" : "Worker %d marked faulted due to heartbeat timeout (thread not joinable)", id);
   update_heartbeat();
 }
 
@@ -302,7 +297,7 @@ WorkerPool::WorkerPool(int num_workers, std::chrono::milliseconds request_timeou
   // Create workers
   for (int i = 0; i < num_workers; ++i)
   {
-    std::unique_ptr<Worker> worker(new Worker(i));
+    auto worker = std::make_shared<Worker>(i);
     workers.push_back(std::move(worker));
   }
   ready_list.resize(num_workers, false);
@@ -561,7 +556,7 @@ void WorkerPool::replace_worker(size_t worker_index, const char *reason, bool fo
     }
   }
 
-  std::unique_ptr<Worker> old_worker;
+  std::shared_ptr<Worker> old_worker;
   bool max_attempts_reached = false;
   size_t attempt_number = 0;
   std::chrono::milliseconds applied_backoff(0);
@@ -686,7 +681,7 @@ void WorkerPool::replace_worker(size_t worker_index, const char *reason, bool fo
   if (is_shutting_down.load())
     return;
 
-  std::unique_ptr<Worker> new_worker(new Worker(static_cast<int>(worker_index)));
+  auto new_worker = std::make_shared<Worker>(static_cast<int>(worker_index));
 
   {
     std::lock_guard<std::mutex> lock(ready_mutex);
