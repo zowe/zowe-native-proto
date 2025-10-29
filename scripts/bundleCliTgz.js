@@ -25,7 +25,7 @@ try {
     execSync("npm install --ignore-scripts", execOptions);
 
     const sdkDir = path.join("node_modules", "zowe-native-proto-sdk");
-    fs.rmSync(path.join(tempDir, sdkDir), { recursive: true, force: true });
+    fs.unlinkSync(path.join(tempDir, sdkDir));
     fs.cpSync(fs.realpathSync(sdkDir), path.join(tempDir, sdkDir), { recursive: true });
     fs.rmSync(path.join(tempDir, "node_modules", "cpu-features"), { recursive: true, force: true });
     execSync(`npm pack --pack-destination=${outDir}`, execOptions);
