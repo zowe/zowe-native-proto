@@ -436,8 +436,8 @@ describe("AbstractConfigManager", async () => {
             });
         });
     });
+    const defaultServerPath = "/faketmp/fakeserver";
     describe("promptForDeployDirectory", () => {
-        const defaultServerPath = "/faketmp/fakeserver";
         const host = "testHost";
         it("returns default path if user presses enter without changing", async () => {
             vi.spyOn(testManager, "showInputBox").mockResolvedValue(defaultServerPath);
@@ -470,15 +470,28 @@ describe("AbstractConfigManager", async () => {
             expect(showMessageMock).toHaveBeenCalled();
             expect(storeMock).not.toHaveBeenCalled();
         });
+    });
 
-        it("should return error if user enters invalid path", async () => {
-            vi.spyOn(testManager, "showInputBox").mockImplementation(async (opts) => {
-                opts.validateInput?.(" ");
-                return undefined;
-            });
+    describe("validateDeployPath", () => {
+        it("should return 'Path cannot be empty' when trimmed path is empty", () => {
+            const result = TestAbstractConfigManager.validateDeployPath("~/.zowe-server", "   ");
+            expect(result).toBe("Path cannot be empty.");
+        });
+        it("should return invalid path format when path is >1024 chars", () => {
+            const result = TestAbstractConfigManager.validateDeployPath("~/.zowe-server", "/a".repeat(1025));
+            expect(result).toBe("Path is longer than the USS max path length of 1024.");
+        });
+        it("should return null for paths starting with ~ (valid path)", async () => {
+            const result = TestAbstractConfigManager.validateDeployPath(defaultServerPath, "~/.zowe-ssh");
+            expect(result).toBeNull();
+        });
 
-            const result = await testManager.promptForDeployDirectory(defaultServerPath, host);
-            expect(result).toBeUndefined();
+        it("should return null for paths with ~ in the middle (valid path)", async () => {
+            const replaceSpy = vi.spyOn(String.prototype, "replace");
+            const multipleTildes = "~/.projects/zowe~ssh";
+            const result = TestAbstractConfigManager.validateDeployPath(defaultServerPath, multipleTildes);
+            expect(replaceSpy).toHaveLastReturnedWith(multipleTildes.substring(1));
+            expect(result).toBeNull();
         });
     });
 
