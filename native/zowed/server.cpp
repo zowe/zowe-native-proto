@@ -281,8 +281,6 @@ zjson::Value RpcServer::convert_ast_to_json(const ast::Node &ast_node)
 
 void RpcServer::print_response(const RpcResponse &response)
 {
-  std::lock_guard<std::mutex> lock(response_mutex);
-
   // Log errors to the log file
   if (response.error.has_value())
   {
@@ -300,15 +298,10 @@ void RpcServer::print_response(const RpcResponse &response)
   }
 
   string json_string = serialize_json(rpc_response_to_json(response));
-
-  // Print errors to stderr, success responses to stdout
-  if (response.error.has_value())
+  auto &stream = response.error.has_value() ? std::cerr : std::cout;
   {
-    std::cerr << json_string << std::endl;
-  }
-  else
-  {
-    std::cout << json_string << std::endl;
+    std::lock_guard<std::mutex> lock(response_mutex);
+    stream << json_string << std::endl;
   }
 }
 
