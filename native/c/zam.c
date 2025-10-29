@@ -69,9 +69,10 @@ static IO_CTRL *PTR32 new_read_io_ctrl(char *ddname, int lrecl, int blkSize, uns
 {
   IO_CTRL *ioc = new_io_ctrl();
   IHADCB *dcb = &ioc->dcb;
-  memcpy(dcb, &openReadModel, sizeof(IHADCB));
+  memcpy(dcb, &open_read_model, sizeof(IHADCB));
   set_dcb_info(dcb, ddname, lrecl, blkSize, recfm);
   set_dcb_dcbe(dcb);
+  // TODO(Kelosky): set synad
   return ioc;
 }
 
@@ -125,13 +126,29 @@ void close_assert(IO_CTRL *ioc)
   storage_release(sizeof(IO_CTRL), ioc);
 }
 
+int read_input_jfcb(IHADCB *dcb)
+{
+  int rc = 0;
+  RDJFCB_PL rpl = {0};
+  RDJFCB(*dcb, rpl, rc, INPUT);
+  return rc;
+}
+
+int read_output_jfcb(IHADCB *dcb)
+{
+  int rc = 0;
+  RDJFCB_PL rpl = {0};
+  RDJFCB(*dcb, rpl, rc, OUTPUT);
+  return rc;
+}
+
 int open_output(IHADCB *dcb)
 {
   int rc = 0;
   OPEN_PL opl = {0};
   opl.option = OPTION_BYTE;
 
-  OPEN_OUTPUT(*dcb, opl, rc);
+  OPEN(*dcb, opl, rc, OUTPUT);
   return rc;
 }
 
@@ -141,7 +158,7 @@ int open_input(IHADCB *dcb)
   OPEN_PL opl = {0};
   opl.option = OPTION_BYTE;
 
-  OPEN_INPUT(*dcb, opl, rc);
+  OPEN(*dcb, opl, rc, INPUT);
   return rc;
 }
 
@@ -256,6 +273,14 @@ int read_sync(IO_CTRL *ioc, char *buffer)
   }
 
   return 0;
+}
+
+#pragma prolog(DCBABEND, " ZWEPROLG NEWDSA=(YES,10) ")
+#pragma epilog(DCBABEND, " ZWEEPILG ")
+void DCBABEND()
+{
+  zwto_debug("@test dbcabend");
+  s0c3_abend(5);
 }
 
 // NOTE(Kelosky): registers 2-13 should be the same as the time

@@ -38,6 +38,7 @@
 //     write_sync(sysprintIoc, writeBuf);
 // }
 
+// TODO(KELOSKY): DCBE?
 #if defined(__IBM_METAL__)
 #define DCB_WRITE_MODEL(dcbwm)                                \
   __asm(                                                      \
@@ -67,32 +68,14 @@ DCB_WRITE_MODEL(open_write_model);
 #define DCB_READ_MODEL(dcbrm)
 #endif
 
-DCB_READ_MODEL(openReadModel);
-
-#if defined(__IBM_METAL__)
-#define OPEN_OUTPUT(dcb, plist, rc)                           \
-  __asm(                                                      \
-      "*                                                  \n" \
-      " OPEN (%0,(OUTPUT)),"                                  \
-      "MODE=31,"                                              \
-      "MF=(E,%2)                                          \n" \
-      "*                                                  \n" \
-      " ST    15,%1     Save RC                           \n" \
-      "*                                                    " \
-      : "+m"(dcb),                                            \
-        "=m"(rc)                                              \
-      : "m"(plist)                                            \
-      : "r0", "r1", "r14", "r15");
-#else
-#define OPEN_OUTPUT(dcb, plist, rc)
-#endif
+DCB_READ_MODEL(open_read_model);
 
 // TODO(Kelosky): "TYPE=J,"
 #if defined(__IBM_METAL__)
-#define OPEN_INPUT(dcb, plist, rc)                            \
+#define OPEN(dcb, plist, rc, mode)                            \
   __asm(                                                      \
       "*                                                  \n" \
-      " OPEN (%0,(INPUT)),"                                   \
+      " OPEN (%0,(" #mode ")),"                               \
       "MODE=31,"                                              \
       "MF=(E,%2)                                          \n" \
       "*                                                  \n" \
@@ -103,14 +86,28 @@ DCB_READ_MODEL(openReadModel);
       : "m"(plist)                                            \
       : "r0", "r1", "r14", "r15");
 #else
-#define OPEN_INPUT(dcb, plist, rc)
+#define OPEN(dcb, plist, rc, mode)
 #endif
 
 #if defined(__IBM_METAL__)
-#define RDJFCB_INPUT(dcb, plist, rc)                          \
+#define SYNADRLS()                                            \
   __asm(                                                      \
       "*                                                  \n" \
-      " RDJFCB (%0,(INPUT)),"                                 \
+      " SYNADRLS                                          \n" \
+      "*                                                  \n" \
+      "*                                                    " \
+      :                                                       \
+      :                                                       \
+      : "r0", "r1", "r14", "r15");
+#else
+#define SYNADRLS()
+#endif
+
+#if defined(__IBM_METAL__)
+#define RDJFCB(dcb, plist, rc, mode)                          \
+  __asm(                                                      \
+      "*                                                  \n" \
+      " RDJFCB (%0,(" #mode ")),"                             \
       "MF=(E,%2)                                          \n" \
       "*                                                  \n" \
       " ST    15,%1     Save RC                           \n" \
@@ -120,7 +117,7 @@ DCB_READ_MODEL(openReadModel);
       : "m"(plist)                                            \
       : "r0", "r1", "r14", "r15");
 #else
-#define RDJFCB_INPUT(dcb, plist, rc)
+#define RDJFCB(dcb, plist, rc, mode)
 #endif
 
 #if defined(__IBM_METAL__)
