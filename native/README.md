@@ -94,29 +94,29 @@ describe("an_extern_function tests",
   []() -> void
   {
     int* x;
-    beforeAll([]() -> void {
+    beforeAll([&x]() -> void {
       x = (int*)malloc(sizeof(int));
       memset(x, 0, sizeof(int));
     });
 
-    beforeEach([]() -> void {
+    beforeEach([&x]() -> void {
       *x = -1;
     });
 
-    afterAll([]() -> void {
+    afterAll([&x]() -> void {
       free(x);
       x = nullptr;
     });
 
     it("should increment x",
-      []() -> void
+      [&x]() -> void
       {
         an_extern_function(x, true);
         Expect(*x).ToBe(0);
       });
 
     it("should not increment x",
-      []() -> void
+      [&x]() -> void
       {
         an_extern_function(x, false);
         Expect(*x).ToBe(-1);
