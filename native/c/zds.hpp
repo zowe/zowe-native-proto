@@ -27,10 +27,18 @@ struct ZDSMem
 struct ZDSEntry
 {
   std::string name;
+  int blksz;
+  std::string cdate;
   std::string dsorg;
-  std::string volser;
-  std::string recfm;
+  std::string edate;
+  int extx;
+  int lrecl;
   bool migr;
+  bool ovf;
+  std::string rdate;
+  std::string recfm;
+  int sizex;
+  std::string volser;
 };
 
 typedef struct

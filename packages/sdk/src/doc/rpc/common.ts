@@ -109,6 +109,46 @@ export interface Dataset {
      * Record format
      */
     recfm?: string;
+    /**
+     * Block size
+     */
+    blksz?: number;
+    /**
+     * Creation date
+     */
+    cdate?: string;
+    /**
+     * Expiration date
+     */
+    edate?: string;
+    /**
+     * Number of extents
+     */
+    extx?: number;
+    /**
+     * Logical record length
+     */
+    lrecl?: number;
+    /**
+     * Overflow indicator
+     */
+    ovf?: boolean;
+    /**
+     * Last referenced date
+     */
+    rdate?: string;
+    /**
+     * Size in extents
+     */
+    sizex?: number;
+    /**
+     * Space allocation units
+     */
+    spacu?: string;
+    /**
+     * Amount of space used
+     */
+    used?: number;
 }
 
 export interface DatasetAttributes {

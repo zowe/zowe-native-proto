@@ -382,6 +382,7 @@ int handle_data_set_list(InvocationContext &context)
           fields.push_back(it->volser);
           fields.push_back(it->migr ? "true" : "false");
           fields.push_back(it->recfm);
+          // TODO Add more attributes here
         }
         context.output_stream() << zut_format_as_csv(fields) << endl;
         fields.clear();
@@ -404,10 +405,18 @@ int handle_data_set_list(InvocationContext &context)
       entry->set("name", str(trimmed_name));
       if (attributes)
       {
+        entry->set("cdate", str(it->cdate));
+        entry->set("blksz", i64(it->blksz));
         entry->set("dsorg", str(it->dsorg));
-        entry->set("volser", str(it->volser));
+        entry->set("edate", str(it->edate));
+        entry->set("extx", i64(it->extx));
+        entry->set("lrecl", i64(it->lrecl));
         entry->set("migr", boolean(it->migr));
+        entry->set("ovf", boolean(it->ovf));
+        entry->set("rdate", str(it->rdate));
         entry->set("recfm", str(it->recfm));
+        entry->set("sizex", i64(it->sizex));
+        entry->set("volser", str(it->volser));
       }
       entries_array->push(entry);
     }

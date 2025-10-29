@@ -38,6 +38,7 @@ export default class ListDataSetsHandler extends SshBaseHandler {
             response.returnedRows,
             params.arguments.pattern,
         );
+        params.response.data.setObj(response.items);
         params.response.format.output({
             output: response.items,
             format: "table",

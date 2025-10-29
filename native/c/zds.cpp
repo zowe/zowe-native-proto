@@ -744,6 +744,111 @@ void load_recfm_from_dscb(const DSCBFormat1 *dscb, string *recfm)
   }
 }
 
+void load_date_from_dscb(const char *date_in, string *date_out)
+{
+  // Date is in 'YDD' format (3 bytes): Year offset and day of year
+  // If all zeros, date is not maintained
+  unsigned char year_offset = static_cast<unsigned char>(date_in[0]);
+  unsigned char day_high = static_cast<unsigned char>(date_in[1]);
+  unsigned char day_low = static_cast<unsigned char>(date_in[2]);
+
+  // Check if date is zero (not maintained)
+  if (year_offset == 0 && day_high == 0 && day_low == 0)
+  {
+    *date_out = "";
+    return;
+  }
+
+  // Parse year: add 1900 to the year offset
+  int year = 1900 + year_offset;
+
+  // Parse day of year from 2-byte value (big-endian)
+  int day_of_year = (day_high << 8) | day_low;
+
+  // Convert day of year to month/day
+  static const int days_in_month[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+
+  // Check for leap year
+  bool is_leap = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
+
+  int month = 1;
+  int day = day_of_year;
+
+  for (int i = 0; i < 12 && day > days_in_month[i]; i++)
+  {
+    int days_this_month = days_in_month[i];
+    if (i == 1 && is_leap) // February in leap year
+      days_this_month = 29;
+
+    day -= days_this_month;
+    month++;
+  }
+
+  // Format as "YYYY/MM/DD"
+  char buffer[11];
+  sprintf(buffer, "%04d/%02d/%02d", year, month, day);
+  *date_out = buffer;
+}
+
+void load_size_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
+{
+  // extx: Number of extents on this volume
+  entry.extx = dscb->ds1noepv;
+
+  // Parse the extent information from ds1exnts (3 extents, 10 bytes each)
+  // Each extent has: type(1), seq(1), lower_limit(4), upper_limit(4)
+  const char *extent_data = dscb->ds1exnts;
+  int total_tracks = 0;
+  bool has_overflow = false;
+
+  for (int i = 0; i < 3; i++)
+  {
+    const char *extent = extent_data + (i * 10);
+    uint8_t extent_type = static_cast<uint8_t>(extent[0]);
+
+    // Check if this is a valid extent (not X'00')
+    if (extent_type == 0x00)
+      break;
+
+    // Check for overflow extent (ISAM X'02')
+    if (extent_type & 0x02)
+    {
+      has_overflow = true;
+    }
+
+    // Parse lower limit CCHH (4 bytes)
+    uint16_t lower_cyl_low = (static_cast<unsigned char>(extent[2]) << 8) |
+                             static_cast<unsigned char>(extent[3]);
+    uint16_t lower_cyl_high = (static_cast<unsigned char>(extent[4]) >> 4) & 0x0F;
+    uint16_t lower_head = ((static_cast<unsigned char>(extent[4]) & 0x0F) << 8) |
+                          static_cast<unsigned char>(extent[5]);
+
+    // Parse upper limit CCHH (4 bytes)
+    uint16_t upper_cyl_low = (static_cast<unsigned char>(extent[6]) << 8) |
+                             static_cast<unsigned char>(extent[7]);
+    uint16_t upper_cyl_high = (static_cast<unsigned char>(extent[8]) >> 4) & 0x0F;
+    uint16_t upper_head = ((static_cast<unsigned char>(extent[8]) & 0x0F) << 8) |
+                          static_cast<unsigned char>(extent[9]);
+
+    // Calculate full cylinder numbers (28-bit)
+    uint32_t lower_cyl = (lower_cyl_high << 16) | lower_cyl_low;
+    uint32_t upper_cyl = (upper_cyl_high << 16) | upper_cyl_low;
+
+    // Calculate tracks in this extent
+    if (upper_cyl >= lower_cyl)
+    {
+      int tracks_in_extent = ((upper_cyl - lower_cyl) * 15) + (upper_head - lower_head) + 1;
+      total_tracks += tracks_in_extent;
+    }
+  }
+
+  // sizex: Total tracks allocated
+  entry.sizex = total_tracks;
+
+  // ovf: Overflow indicator
+  entry.ovf = has_overflow;
+}
+
 void zds_get_attrs_from_dscb(ZDS *zds, ZDSEntry &entry)
 {
   auto *dscb = (DSCBFormat1 *)__malloc31(sizeof(DSCBFormat1));
@@ -759,6 +864,14 @@ void zds_get_attrs_from_dscb(ZDS *zds, ZDSEntry &entry)
   {
     load_dsorg_from_dscb(dscb, &entry.dsorg);
     load_recfm_from_dscb(dscb, &entry.recfm);
+    entry.blksz = (static_cast<unsigned char>(dscb->ds1blkl[0]) << 8) |
+                  static_cast<unsigned char>(dscb->ds1blkl[1]);
+    entry.lrecl = (static_cast<unsigned char>(dscb->ds1lrecl[0]) << 8) |
+                  static_cast<unsigned char>(dscb->ds1lrecl[1]);
+    load_date_from_dscb(dscb->ds1credt, &entry.cdate);
+    load_date_from_dscb(dscb->ds1expdt, &entry.edate);
+    load_date_from_dscb(dscb->ds1refd, &entry.rdate);
+    load_size_from_dscb(dscb, entry);
   }
   else
   {
