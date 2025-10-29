@@ -141,10 +141,26 @@ void close_assert(IO_CTRL *ioc)
   storage_release(sizeof(IO_CTRL), ioc);
 }
 
+#pragma prolog(DCBABEND, " ZWEPROLG NEWDSA=(YES,10) ")
+#pragma epilog(DCBABEND, " ZWEEPILG ")
+void DCBABEND()
+{
+  // TODO(Kelosky): handle when this is called and ensure in 24 bit storage
+  zwto_debug("@test dbcabend");
+  s0c3_abend(5);
+}
+
 int read_input_jfcb(IO_CTRL *ioc)
 {
   int rc = 0;
   RDJFCB_PL rpl = {0};
+
+  ioc->exlst[0].exlentrb = (unsigned int)DCBABEND; // NOTE(Kelosky): DCBABEND needs to be copied to 24 bit storage or have some wrapper
+  ioc->exlst[0].exlcodes = exldcbab;
+
+  ioc->exlst[1].exlentrb = (unsigned int)&ioc->jfcb;
+  ioc->exlst[1].exlcodes = exllaste + exlrjfcb;
+
   memcpy(&rpl, &rdfjfcb_model, sizeof(RDJFCB_PL));
   RDJFCB(ioc->dcb, rpl, rc, INPUT);
   return rc;
@@ -290,14 +306,6 @@ int read_sync(IO_CTRL *ioc, char *buffer)
   }
 
   return 0;
-}
-
-#pragma prolog(DCBABEND, " ZWEPROLG NEWDSA=(YES,10) ")
-#pragma epilog(DCBABEND, " ZWEEPILG ")
-void DCBABEND()
-{
-  zwto_debug("@test dbcabend");
-  s0c3_abend(5);
 }
 
 // NOTE(Kelosky): registers 2-13 should be the same as the time
