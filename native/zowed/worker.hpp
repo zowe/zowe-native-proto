@@ -143,7 +143,7 @@ private:
   void distribute_request_internal(const RequestMetadata &request);
 
 public:
-  explicit WorkerPool(int num_workers, std::chrono::milliseconds request_timeout = std::chrono::seconds(60));
+  explicit WorkerPool(int num_workers, std::chrono::milliseconds request_timeout);
   ~WorkerPool();
 
   void distribute_request(const std::string &request);
