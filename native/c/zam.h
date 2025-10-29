@@ -328,6 +328,7 @@ typedef struct
   DECB decb;
   JFCB jfcb;
   EXLIST exlst[NUM_EXLIST_ENTRIES];
+  RDJFCB_PL rpl;
   int input : 1;
   int output : 1;
 } IO_CTRL;

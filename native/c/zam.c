@@ -93,16 +93,19 @@ void DCBABEND()
 int read_input_jfcb(IO_CTRL *ioc)
 {
   int rc = 0;
-  RDJFCB_PL rpl = {0};
 
   ioc->exlst[0].exlentrb = (unsigned int)DCBABEND; // NOTE(Kelosky): DCBABEND needs to be copied to 24 bit storage or have some wrapper
   ioc->exlst[0].exlcodes = exldcbab;
-
   ioc->exlst[1].exlentrb = (unsigned int)&ioc->jfcb;
   ioc->exlst[1].exlcodes = exllaste + exlrjfcb;
+  memcpy(&ioc->rpl, &rdfjfcb_model, sizeof(RDJFCB_PL));
 
-  memcpy(&rpl, &rdfjfcb_model, sizeof(RDJFCB_PL));
-  RDJFCB(ioc->dcb, rpl, rc, INPUT);
+  unsigned char recfm = ioc->dcb.dcbrecfm; // save the recfm
+  void *PTR32 exlst = &ioc->exlst;
+  memcpy(&ioc->dcb.dcbexlst, &exlst, sizeof(ioc->dcb.dcbexlst));
+  ioc->dcb.dcbrecfm = recfm; // restore the recfm
+
+  RDJFCB(ioc->dcb, ioc->rpl, rc, INPUT);
   return rc;
 }
 
