@@ -364,11 +364,17 @@ public:
   }
   void pop_suite_index()
   {
+    // Check if stack has elements before popping last suite index (otherwise pop_back is considered UB for empty vectors)
     if (!suite_stack.empty())
     {
       suite_stack.pop_back();
     }
-    suite_index = suite_stack.empty() ? -1 : suite_stack.back();
+
+    // After removing the last suite stack, re-assign the suite index to the next/parent suite if the stack still has suites
+    if (!suite_stack.empty())
+    {
+      suite_index = suite_stack.back();
+    }
   }
   jmp_buf &get_jmp_buf()
   {
