@@ -12,7 +12,7 @@ The C++ application includes a ZLogger singleton class for centralized logging. 
 
 Once enabled, you can insert log statements into your source code by making calls to the logger class:
 
-````cpp
+```cpp
 int main() {
   ZLogger::get_instance().trace("This is a trace message: %s", "details here");
 }
