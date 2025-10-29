@@ -256,8 +256,23 @@ void uss_tests()
              describe("create-dir",
                       [&response, &rc]() -> void
                       {
-                        it("should properly create a directory",
-                           [&response, &rc]() -> void {});
+                        it("should properly create a directory with mode specified",
+                           [&response, &rc]() -> void
+                           {
+                             string uss_dir = get_random_uss(ussTestDir) + "_dir";
+                             string command = zowex_command + " uss create-dir " + uss_dir + " --mode 777";
+                             string newUserNewGroupChownCommand = zowex_command + " uss chown newUser:newGroup " + uss_dir + " -r";
+                             string listUser = "ls -ld " + uss_dir;
+
+                             // Create file
+                             rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("USS directory '" + uss_dir + "' created");
+
+                             rc = execute_command_with_output(listUser, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain(("drwxrwxrwx"));
+                           });
                       });
            });
 }

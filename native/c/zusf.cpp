@@ -896,6 +896,7 @@ int zusf_create_uss_file_or_dir(ZUSF *zusf, const string &file, mode_t mode, boo
     {
       zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to create directory '%s', errno: %d", file.c_str(), errno);
     }
+    chmod(file.c_str(), mode);
     return rc;
   }
   else
