@@ -380,7 +380,7 @@ int handle_data_set_list(InvocationContext &context)
         {
           fields.push_back(it->dsorg);
           fields.push_back(it->volser);
-          fields.push_back(it->migr ? "true" : "false");
+          fields.push_back(it->migrated ? "true" : "false");
           fields.push_back(it->recfm);
           // TODO Add more attributes here
         }
@@ -405,20 +405,61 @@ int handle_data_set_list(InvocationContext &context)
       entry->set("name", str(trimmed_name));
       if (attributes)
       {
+        entry->set("alloc", i64(it->alloc));
+        entry->set("allocx", i64(it->allocx));
+        entry->set("blksize", i64(it->blksize));
         entry->set("cdate", str(it->cdate));
-        entry->set("blksz", i64(it->blksz));
+        if (!it->dataclass.empty())
+        {
+          entry->set("dataclass", str(it->dataclass));
+        }
+        entry->set("devtype", str(it->devtype));
+        if (!it->dsntype.empty())
+        {
+          entry->set("dsntype", str(it->dsntype));
+        }
         entry->set("dsorg", str(it->dsorg));
-        entry->set("edate", str(it->edate));
-        entry->set("extx", i64(it->extx));
+        if (!it->edate.empty())
+        {
+          entry->set("edate", str(it->edate));
+        }
+        entry->set("encrypted", boolean(it->encrypted));
         entry->set("lrecl", i64(it->lrecl));
-        entry->set("migr", boolean(it->migr));
-        entry->set("ovf", boolean(it->ovf));
+        if (!it->mgmtclass.empty())
+        {
+          entry->set("mgmtclass", str(it->mgmtclass));
+        }
+        entry->set("migrated", boolean(it->migrated));
+        entry->set("primary", i64(it->primary));
         entry->set("rdate", str(it->rdate));
         entry->set("recfm", str(it->recfm));
-        entry->set("sizex", i64(it->sizex));
+        entry->set("secondary", i64(it->secondary));
         entry->set("spacu", str(it->spacu));
-        entry->set("used", i64(it->used));
+        if (!it->storclass.empty())
+        {
+          entry->set("storclass", str(it->storclass));
+        }
         entry->set("volser", str(it->volser));
+        if (it->used != -1)
+        {
+          entry->set("used", i64(it->used));
+        }
+        if (it->usedx != -1)
+        {
+          entry->set("usedx", i64(it->usedx));
+        }
+        if (it->maxdb != -1)
+        {
+          entry->set("maxdb", i64(it->maxdb));
+        }
+        if (it->useddb != -1)
+        {
+          entry->set("useddb", i64(it->useddb));
+        }
+        if (it->members != -1)
+        {
+          entry->set("members", i64(it->members));
+        }
       }
       entries_array->push(entry);
     }

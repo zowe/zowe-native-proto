@@ -10,7 +10,7 @@
  */
 
 import { type IHandlerParameters, ImperativeError, TextUtils } from "@zowe/imperative";
-import type { ds, ZSshClient } from "zowe-native-proto-sdk";
+import type { Dataset, ds, ZSshClient } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class ListDataSetsHandler extends SshBaseHandler {
@@ -33,16 +33,25 @@ export default class ListDataSetsHandler extends SshBaseHandler {
             return { success: false, items: [], returnedRows: 0 };
         }
 
+        // Sort object keys by "name" first, then alphabetically
+        response.items = response.items.map((item) =>
+            Object.keys(item)
+                .sort((a, b) => (a === "name" ? -1 : b === "name" ? 1 : a.localeCompare(b)))
+                .reduce((obj, key) => {
+                    (obj as any)[key] = (item as any)[key];
+                    return obj;
+                }, {} as Dataset),
+        );
+
         params.response.data.setMessage(
             "Successfully listed %d matching data sets for pattern '%s'",
             response.returnedRows,
             params.arguments.pattern,
         );
-        params.response.data.setObj(response.items);
         params.response.format.output({
             output: response.items,
             format: "table",
-            fields: ["name", "dsorg", "volser"],
+            fields: Object.keys(response.items[0]),
         });
         return response;
     }

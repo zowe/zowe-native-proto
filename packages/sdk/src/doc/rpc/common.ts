@@ -94,9 +94,17 @@ export interface Dataset {
      */
     name: string;
     /**
+     * Allocated units
+     */
+    alloc?: number;
+    /**
+     * Allocated extents
+     */
+    allocx?: number;
+    /**
      * Block size
      */
-    blksz?: number;
+    blksize?: number;
     /**
      * Name of the catalog where the data set is located
      */
@@ -106,9 +114,13 @@ export interface Dataset {
      */
     cdate?: string;
     /**
+     * Data class
+     */
+    dataclass?: string;
+    /**
      * Device type
      */
-    dev?: string;
+    devtype?: string;
     /**
      * Dsname type (e.g., PDS, LIBRARY)
      */
@@ -122,25 +134,33 @@ export interface Dataset {
      */
     edate?: string;
     /**
-     * Number of extents used
+     * Whether the data set is encrypted
      */
-    extx?: number;
+    encrypted?: boolean;
     /**
      * Logical record length
      */
     lrecl?: number;
     /**
+     * Maximum directory blocks
+     */
+    maxdb?: number;
+    /**
+     * Number of members
+     */
+    members?: number;
+    /**
+     * Management class
+     */
+    mgmtclass?: string;
+    /**
      * Whether the data set is migrated
      */
-    migr?: boolean;
+    migrated?: boolean;
     /**
-     * Whether the data set is multivolume
+     * Primary units
      */
-    mvol?: boolean;
-    /**
-     * Space overflow indicator
-     */
-    ovf?: boolean;
+    primary?: number;
     /**
      * Date last referenced
      */
@@ -150,17 +170,29 @@ export interface Dataset {
      */
     recfm?: string;
     /**
-     * Data set size in tracks
+     * Secondary units
      */
-    sizex?: number;
+    secondary?: number;
     /**
      * Space units
      */
     spacu?: string;
     /**
-     * Percentage of used tracks or pages
+     * Storage class
+     */
+    storclass?: string;
+    /**
+     * Used units
      */
     used?: number;
+    /**
+     * Used directory blocks
+     */
+    useddb?: number;
+    /**
+     * Used extents
+     */
+    usedx?: number;
     /**
      * Volume serial
      */
