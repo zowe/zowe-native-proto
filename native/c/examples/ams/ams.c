@@ -145,13 +145,15 @@ int AMSMAIN()
   }
   zwto_debug("@TEST find member success");
 
+  // get ttr
+
   char inbuff[80] = {80};
   char writebuff[80] = {80};
   while (0 == read_sync(sysin, inbuff))
   {
     memset(writebuff, ' ', 80);
     memcpy(writebuff, inbuff, 80);
-    // write_sync(sysprint, writebuff);
+    write_sync(sysprint, writebuff);
     zwto_debug("@TEST inbuff: %.80s", writebuff);
   }
 
