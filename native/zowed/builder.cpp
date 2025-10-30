@@ -100,7 +100,7 @@ CommandBuilder &CommandBuilder::flatten_obj(const string &arg_name)
 
 void CommandBuilder::apply_input_transforms(MiddlewareContext &context) const
 {
-  plugin::ArgumentMap &args = context.mutable_arguments();
+  auto &args = context.mutable_arguments();
 
   for (const auto &transform : transforms_)
   {
@@ -235,7 +235,7 @@ void CommandBuilder::apply_input_transforms(MiddlewareContext &context) const
     {
       // HandleFifo: Create FIFO pipe and send appropriate notification
       // Find the RPC ID argument
-      auto rpc_id_arg = args.find(transform.rpc_id_param);
+      const auto rpc_id_arg = args.find(transform.rpc_id_param);
       if (rpc_id_arg != args.end())
       {
         try
@@ -379,8 +379,8 @@ void CommandBuilder::apply_output_transforms(MiddlewareContext &context) const
     case ArgTransform::HandleFifo:
     {
       // HandleFifo cleanup: Remove the FIFO pipe after command execution
-      plugin::ArgumentMap &args = context.mutable_arguments();
-      auto pipe_path_arg = args.find(transform.arg_name);
+      const auto &args = context.arguments();
+      const auto pipe_path_arg = args.find(transform.arg_name);
 
       if (pipe_path_arg != args.end())
       {
