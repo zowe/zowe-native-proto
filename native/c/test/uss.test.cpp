@@ -31,10 +31,10 @@ void uss_tests()
              string response;
              beforeAll([&response]() -> void
                        { execute_command_with_output(zowex_command + " uss create-dir " + ussTestDir + " --mode 777", response); });
-             afterEach([&rc]() -> void
-                       { rc = 0; });
+             beforeEach([&rc]() -> void
+                        { rc = 0; });
              afterAll([&response]() -> void
-                      { execute_command_with_output(zowex_command + " uss delete " + ussTestDir + " -r", response); });
+                      { execute_command_with_output(zowex_command + " uss delete /tmp/zowex-uss --recursive", response); });
 
              auto create_test_file_cmd = [&](const string &uss_file, const string &options = "") -> void
              {
