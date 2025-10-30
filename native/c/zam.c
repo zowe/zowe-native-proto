@@ -36,6 +36,7 @@ IO_CTRL *open_output_assert(char *ddname, int lrecl, int blkSize, unsigned char 
   IHADCB *dcb = &ioc->dcb;
   int rc = 0;
   rc = open_output(dcb);
+  dcb->dcbdsrg1 = dcbdsgps; // DSORG=PS
   ioc->output = 1;
   zwto_debug("@TEST open_output_assert dcb: %p", dcb->dcbdcbe);
   if (0 != rc)
@@ -52,6 +53,7 @@ IO_CTRL *open_input_assert(char *ddname, int lrecl, int blkSize, unsigned char r
   set_dcb_dcbe(&ioc->dcb, eodad);
   IHADCB *dcb = &ioc->dcb;
   int rc = 0;
+  dcb->dcbdsrg1 = dcbdsgps; // DSORG=PS
   rc = open_input(dcb);
   ioc->input = 1;
   zwto_debug("@TEST open_input_assert dcb: %p", dcb->dcbdcbe);
@@ -87,6 +89,15 @@ void close_assert(IO_CTRL *ioc)
   storage_release(sizeof(IO_CTRL), ioc);
 }
 
+int find_member(IO_CTRL *ioc, int *rsn)
+{
+  int rc = 0;
+  int local_rsn = 0;
+  FIND(ioc->dcb, ioc->jfcb.jfcbelnm, rc, local_rsn);
+  *rsn = local_rsn;
+  return rc;
+}
+
 int read_input_jfcb(IO_CTRL *ioc)
 {
   int rc = 0;
@@ -109,9 +120,19 @@ int read_input_jfcb(IO_CTRL *ioc)
 int read_output_jfcb(IO_CTRL *ioc)
 {
   int rc = 0;
-  RDJFCB_PL rpl = {0};
-  memcpy(&rpl, &rdfjfcb_model, sizeof(RDJFCB_PL));
-  RDJFCB(ioc->dcb, rpl, rc, OUTPUT);
+
+  ioc->exlst[0].exlentrb = (unsigned int)0; // NOTE(Kelosky): DCBABEND needs to be copied to 24 bit storage or have some wrapper
+  ioc->exlst[0].exlcodes = exldcbab;
+  ioc->exlst[1].exlentrb = (unsigned int)&ioc->jfcb;
+  ioc->exlst[1].exlcodes = exllaste + exlrjfcb;
+  memcpy(&ioc->rpl, &rdfjfcb_model, sizeof(RDJFCB_PL));
+
+  unsigned char recfm = ioc->dcb.dcbrecfm; // save the recfm
+  void *PTR32 exlst = &ioc->exlst;
+  memcpy(&ioc->dcb.dcbexlst, &exlst, sizeof(ioc->dcb.dcbexlst));
+  ioc->dcb.dcbrecfm = recfm; // restore the recfm
+
+  RDJFCB(ioc->dcb, ioc->rpl, rc, OUTPUT);
   return rc;
 }
 

@@ -123,21 +123,23 @@ DCB_READ_MODEL(open_read_model);
 #endif
 
 #if defined(__IBM_METAL__)
-#define FIND(dcb, ddname, rc)                                 \
+#define FIND(dcb, member, rc, rsn)                            \
   __asm(                                                      \
       "*                                                  \n" \
       " FIND %0,"                                             \
-      "%2,"                                                   \
+      "(%3),"                                                 \
       "D                                                  \n" \
       "*                                                  \n" \
       " ST    15,%1     Save RC                           \n" \
+      " ST    0,%2     Save RSN                           \n" \
       "*                                                    " \
       : "+m"(dcb),                                            \
-        "=m"(rc)                                              \
-      : "m"(ddname)                                           \
+        "=m"(rc),                                             \
+        "=m"(rsn)                                             \
+      : "r"(member)                                           \
       : "r0", "r1", "r14", "r15");
 #else
-#define FIND(dcb, plist, rc)
+#define FIND(dcb, plist, rc, rsn)
 #endif
 
 #if defined(__IBM_METAL__)
@@ -308,6 +310,8 @@ void read_dcb(IHADCB *, READ_PL *, char *) ATTRIBUTE(amode31);
 int read_input_jfcb(IO_CTRL *ioc) ATTRIBUTE(amode31);
 int read_output_jfcb(IO_CTRL *ioc) ATTRIBUTE(amode31);
 
+int find_member(IO_CTRL *ioc, int *rsn) ATTRIBUTE(amode31);
+
 int close_dcb(IHADCB *) ATTRIBUTE(amode31);
 
 int check(DECB *ecb) ATTRIBUTE(amode31);
@@ -389,8 +393,6 @@ static IO_CTRL *PTR32 new_read_io_ctrl(char *PTR32 ddname, int lrecl, int blkSiz
   IHADCB *dcb = &ioc->dcb;
   memcpy(dcb, &open_read_model, sizeof(IHADCB));
   set_dcb_info(dcb, ddname, lrecl, blkSize, recfm);
-  // set_dcb_dcbe(dcb);
-  // TODO(Kelosky): set synad
   return ioc;
 }
 
