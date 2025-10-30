@@ -12,7 +12,7 @@ The C++ application includes a ZLogger singleton class for centralized logging. 
 
 Once enabled, you can insert log statements into your source code by making calls to the logger class:
 
-````cpp
+```cpp
 int main() {
   ZLogger::get_instance().trace("This is a trace message: %s", "details here");
 }
@@ -289,4 +289,4 @@ You must ensure `zut_alloc_debug()` is called to allocate an output DD for log m
 ```
 
 By default, output is printed to `/tmp/zowex_debug.txt` when using `ZUTDBGMG()`; however, you may provide a Metal C compatible alternative.
-````
+
