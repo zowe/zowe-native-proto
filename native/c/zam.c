@@ -107,6 +107,15 @@ int bldl(IO_CTRL *ioc, BLDL_PL *bldl_pl, int *rsn)
   return rc;
 }
 
+int stow(IO_CTRL *ioc, BLDL_PL *bldl_pl, int *rsn)
+{
+  int rc = 0;
+  int local_rsn = 0;
+  STOW(ioc->dcb, bldl_pl->list[0], rc, local_rsn);
+  *rsn = local_rsn;
+  return rc;
+}
+
 int read_input_jfcb(IO_CTRL *ioc)
 {
   int rc = 0;

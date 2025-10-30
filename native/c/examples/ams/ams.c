@@ -31,6 +31,8 @@
 // TODO(Kelosky): handle supported formats
 // TODO(Kelosky): cleanup headers
 // TODO(Kelosky): use BLDL to get TTR and then on READ instead of FIND
+// TODO(Kelosky): test with PDSE, STOW implications
+// TODO(KeloskY): IHAPDS to map pds
 
 #pragma prolog(AMSMAIN, " ZWEPROLG NEWDSA=(YES,256) ")
 #pragma epilog(AMSMAIN, " ZWEEPILG ")
@@ -152,6 +154,10 @@ int AMSMAIN()
   }
   zwto_debug("@TEST bldl success: rsn: %d", rsn);
 
+  zwto_debug("@TEST length of user data is: %x", bldl_pl.list[0].c & 0x1F);
+
+  zut_dump_storage_common("@TEST bldl_pl", &bldl_pl.list[0], sizeof(bldl_pl.list[0]), 16, 0, zut_print_debug);
+
   zwto_debug("@TEST find member");
   rc = find_member(sysprint, &rsn);
   if (0 != rc)
@@ -172,6 +178,15 @@ int AMSMAIN()
     write_sync(sysprint, writebuff);
     zwto_debug("@TEST inbuff: %.80s", writebuff);
   }
+
+  zwto_debug("@TEST stow");
+  rc = stow(sysprint, &bldl_pl, &rsn);
+  if (0 != rc)
+  {
+    zwto_debug("@TEST stow failed: rc: %d, rsn: %d", rc, rsn);
+    return -1;
+  }
+  zwto_debug("@TEST stow success");
 
   close_assert(sysin);
   zwto_debug("@TEST closing sysin");

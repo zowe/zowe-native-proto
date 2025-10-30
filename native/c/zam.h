@@ -165,6 +165,26 @@ DCB_READ_MODEL(open_read_model);
 #endif
 
 #if defined(__IBM_METAL__)
+#define STOW(dcb, list, rc, rsn)                              \
+  __asm(                                                      \
+      "*                                                  \n" \
+      " STOW %2,"                                             \
+      "(%3),"                                                 \
+      "R                                                  \n" \
+      "*                                                  \n" \
+      " ST    15,%1     Save RC                           \n" \
+      " ST    0,%2     Save RSN                           \n" \
+      "*                                                    " \
+      : "=m"(rc),                                             \
+        "=m"(rsn)                                             \
+      : "m"(dcb),                                             \
+        "r"(list)                                             \
+      : "r0", "r1", "r14", "r15");
+#else
+#define STOW(dcb, list, rc, rsn)
+#endif
+
+#if defined(__IBM_METAL__)
 #define CLOSE(dcb, plist, rc)                                 \
   __asm(                                                      \
       "*                                                  \n" \
@@ -353,6 +373,7 @@ int read_input_jfcb(IO_CTRL *ioc) ATTRIBUTE(amode31);
 int read_output_jfcb(IO_CTRL *ioc) ATTRIBUTE(amode31);
 
 int bldl(IO_CTRL *, BLDL_PL *, int *rsn) ATTRIBUTE(amode31);
+int stow(IO_CTRL *, BLDL_PL *, int *rsn) ATTRIBUTE(amode31);
 int find_member(IO_CTRL *ioc, int *rsn) ATTRIBUTE(amode31);
 
 int close_dcb(IHADCB *) ATTRIBUTE(amode31);
