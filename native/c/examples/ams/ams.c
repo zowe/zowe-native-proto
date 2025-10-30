@@ -29,6 +29,8 @@
 // TODO(Kelosky): DCBE for write?
 // TODO(Kelosky): handling wriing via DD name
 // TODO(Kelosky): handle supported formats
+// TODO(Kelosky): cleanup headers
+// TODO(Kelosky): use BLDL to get TTR and then on READ instead of FIND
 
 #pragma prolog(AMSMAIN, " ZWEPROLG NEWDSA=(YES,256) ")
 #pragma epilog(AMSMAIN, " ZWEEPILG ")
@@ -70,11 +72,14 @@ int AMSMAIN()
 
   // return 0;
 
+  int rsn = 0;
+  int rc = 0;
+
   IO_CTRL *PTR32 sysin = open_input_assert("SYSIN", 80, 80, dcbrecf);
   // IO_CTRL *PTR32 sysprint = open_output_assert("SYSPRINT", 80, 80, dcbrecf);
   IO_CTRL *PTR32 sysprint = new_write_io_ctrl("SYSPRINT", 80, 80, dcbrecf);
   set_dcb_dcbe(&sysprint->dcb, eodad);
-  int rc = read_output_jfcb(sysprint);
+  rc = read_output_jfcb(sysprint);
   if (0 != rc)
   {
     zwto_debug("@TEST read_output_jfcb failed: %d", rc);
@@ -135,8 +140,19 @@ int AMSMAIN()
     return -1;
   }
 
+  BLDL_PL bldl_pl = {0};
+  bldl_pl.ff = 1;
+  bldl_pl.ll = sizeof(BLDL_LIST);
+  memcpy(bldl_pl.list[0].name, sysprint->jfcb.jfcbelnm, sizeof(sysprint->jfcb.jfcbelnm));
+  rc = bldl(sysprint, &bldl_pl, &rsn);
+  if (0 != rc)
+  {
+    zwto_debug("@TEST bldl failed: rc: %d, rsn: %d", rc, rsn);
+    return -1;
+  }
+  zwto_debug("@TEST bldl success: rsn: %d", rsn);
+
   zwto_debug("@TEST find member");
-  int rsn = 0;
   rc = find_member(sysprint, &rsn);
   if (0 != rc)
   {

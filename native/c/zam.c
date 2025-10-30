@@ -98,6 +98,15 @@ int find_member(IO_CTRL *ioc, int *rsn)
   return rc;
 }
 
+int bldl(IO_CTRL *ioc, BLDL_PL *bldl_pl, int *rsn)
+{
+  int rc = 0;
+  int local_rsn = 0;
+  BLDL(ioc->dcb, bldl_pl->ff, rc, local_rsn);
+  *rsn = local_rsn;
+  return rc;
+}
+
 int read_input_jfcb(IO_CTRL *ioc)
 {
   int rc = 0;

@@ -127,7 +127,7 @@ DCB_READ_MODEL(open_read_model);
   __asm(                                                      \
       "*                                                  \n" \
       " FIND %0,"                                             \
-      "(%3),"                                                 \
+      "%3,"                                                   \
       "D                                                  \n" \
       "*                                                  \n" \
       " ST    15,%1     Save RC                           \n" \
@@ -136,10 +136,32 @@ DCB_READ_MODEL(open_read_model);
       : "+m"(dcb),                                            \
         "=m"(rc),                                             \
         "=m"(rsn)                                             \
-      : "r"(member)                                           \
+      : "m"(member)                                           \
       : "r0", "r1", "r14", "r15");
 #else
 #define FIND(dcb, plist, rc, rsn)
+#endif
+
+// PDSE member is not connected
+#if defined(__IBM_METAL__)
+#define BLDL(dcb, list, rc, rsn)                              \
+  __asm(                                                      \
+      "*                                                  \n" \
+      " BLDL %3,"                                             \
+      "%0,"                                                   \
+      "BYPASSLLA,"                                            \
+      "NOCONNECT                                          \n" \
+      "*                                                  \n" \
+      " ST    15,%1     Save RC                           \n" \
+      " ST    0,%2     Save RSN                           \n" \
+      "*                                                    " \
+      : "+m"(list),                                           \
+        "=m"(rc),                                             \
+        "=m"(rsn)                                             \
+      : "m"(dcb)                                              \
+      : "r0", "r1", "r14", "r15");
+#else
+#define BLDL(dcb, list, rc, rsn)
 #endif
 
 #if defined(__IBM_METAL__)
@@ -274,6 +296,26 @@ typedef struct
   char *PTR32 buffer;
 } FILE_CTRL;
 
+#define MAX_USER_DATA_LEN 62
+typedef struct
+{
+  char name[8]; // padded with blanks
+  unsigned char ttr[3];
+  unsigned char k; // concatention
+  unsigned char z; // where found, 0=private, 1=link, 2=job, task, step, 3-16=job, task, step of parent
+  unsigned char c; // name type bit0=0member, bit0=1alias, bit1-2=number of TTRN in user data (max 3), bit3-7 number of halfwords in the user data
+  unsigned char user_data[MAX_USER_DATA_LEN];
+} BLDL_LIST;
+
+#define MAX_BLDL_LIST_ENTRIES 10
+typedef struct
+{
+  unsigned char prefix[8]; // you must provide a prefix of 8 bytes immediately precedes the list of member names; listadd most point to FF field
+  unsigned short int ff;   // number of entries in the list
+  unsigned short int ll;   // length of each entry
+  BLDL_LIST list[MAX_BLDL_LIST_ENTRIES];
+} BLDL_PL;
+
 // 8-char entry points for z
 #if defined(__IBM_METAL__)
 #pragma map(open_output_assert, "opnoasrt")
@@ -310,6 +352,7 @@ void read_dcb(IHADCB *, READ_PL *, char *) ATTRIBUTE(amode31);
 int read_input_jfcb(IO_CTRL *ioc) ATTRIBUTE(amode31);
 int read_output_jfcb(IO_CTRL *ioc) ATTRIBUTE(amode31);
 
+int bldl(IO_CTRL *, BLDL_PL *, int *rsn) ATTRIBUTE(amode31);
 int find_member(IO_CTRL *ioc, int *rsn) ATTRIBUTE(amode31);
 
 int close_dcb(IHADCB *) ATTRIBUTE(amode31);
@@ -342,7 +385,7 @@ static IO_CTRL *PTR32 new_io_ctrl()
   return ioc;
 }
 
-static void set_dcb_info(IHADCB *PTR32 dcb, char *ddname, int lrecl, int blkSize, unsigned char recfm)
+static void set_dcb_info(IHADCB *PTR32 dcb, char *PTR32 ddname, int lrecl, int blkSize, unsigned char recfm)
 {
   char ddnam[9] = {0};
   sprintf(ddnam, "%-8.8s", ddname);
