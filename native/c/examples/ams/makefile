@@ -97,7 +97,7 @@ MTL_FLAGS+=-g1
 MTL_FLAGS64+=-g1
 .END
 
-all: build-out build-out/ams_driver zam.c build-out/zams24
+all: build-out build-out/ams_driver zam.c
 
 ams: build-out/ams
 
@@ -129,19 +129,8 @@ build-out/ams.o: build-out/ams.s
 	@echo 'Building build-out/ams.s'
 	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
-build-out/zams24.o: build-out/zams24.s
-	@echo 'Building build-out/zams24.s'
-	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
-
-build-out/zams24.s: zams24.c
-	@echo 'Building build-out/zams24.s'
-	$(CC) $(MTL_FLAGS) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
-
-build-out/zams24: build-out/zams24.o
-	$(BIND) -bRMODE=24 -V -eAMS24 -o $@ $^ > $*.bind.lst
-
 build-out/ams_driver: build-out/ams_driver.o build-out/zam.o build-out/ams.o build-out/libzut.a
-	$(CXX) $(CPP_BND_FLAGS_AUTH) -o $@ $^ > $*.bind.lst
+	$(CXX) $(CPP_BND_FLAGS) -o $@ $^ > $*.bind.lst
 
 clean:
 	rm -f *.o
