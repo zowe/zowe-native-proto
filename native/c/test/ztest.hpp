@@ -408,8 +408,12 @@ public:
   }
   void test_log(const std::string &message)
   {
-    pad_nesting(get_nesting());
-    std::cout << "[TEST_INFO] " << message << std::endl;
+    const char *debug = getenv("ZNP_TEST_LOG");
+    if (debug == nullptr || strstr(debug, "ON") != nullptr)
+    {
+      pad_nesting(get_nesting());
+      std::cout << "[TEST_INFO] " << message << std::endl;
+    }
   }
 
   // Execute a vector of hooks, catching and reporting any errors
