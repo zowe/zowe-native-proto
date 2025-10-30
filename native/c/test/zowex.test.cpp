@@ -183,32 +183,34 @@ void zowex_tests()
                            ExpectWithContext(rc, stderr_output).ToBe(0);
                            Expect(stdout_output).ToContain("deleted"); });
                       });
-             describe("data-set",
-                      []() -> void
-                      {
-                        // TODO(zFernand0): add BeforeEach, BeforeAll, AfterEach, AfterAll
+             vector<string> _ds;
 
-                        // describe("data set create tests",
-                        //          []() -> void
-                        //          {
-                        //            it("should create a fb data set",
-                        //               []()
-                        //               {
-                        //                 int rc = 0;
-                        //                 string user;
-                        //                 execute_command_with_output("whoami", user);
-                        //                 string data_set = TrimChars(user) + ".temp.temp.temp.temp.temp.temp.tmp";
-                        //                 string response;
-                        //                 string del_command = zowex_command + " data-set delete " + data_set;
-                        //                 execute_command_with_output(del_command, response);
-                        //                 string command = zowex_command + " data-set create-fb " + data_set;
-                        //                 rc = execute_command_with_output(command, response);
-                        //                 ExpectWithContext(rc, response).ToBe(0);
-                        //                 execute_command_with_output(del_command, response);
-                        //               });
-                        //          });
-                        it("should display help",
-                           []() -> void
+             describe("data-set",
+                      [&_ds]() -> void
+                      {
+                        afterAll(
+                            [&_ds]() -> void
+                            {
+                              TestLog("Deleting " + to_string(_ds.size()) + " data sets!");
+                              for (vector<string>::iterator it = _ds.begin(); it != _ds.end(); ++it)
+                              {
+                                try
+                                {
+                                  string command = zowex_command + " data-set delete " + *it;
+                                  string response;
+                                  TestLog(command);
+                                  int rc = execute_command_with_output(command, response);
+                                  ExpectWithContext(rc, response).ToBe(0);
+                                  TestLog(response);
+                                  Expect(response).ToContain("Data set '" + *it + "' deleted"); // ds deleted
+                                }
+                                catch (...)
+                                {
+                                  TestLog("Failed to delete: " + *it);
+                                }
+                              }
+                            });
+                        it("should display help", []() -> void
                            {
                              int rc = 0;
                              string response;
@@ -217,7 +219,7 @@ void zowex_tests()
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("create");
                              Expect(response).ToContain("delete");
-                             Expect(response).ToContain("list");
+                             Expect(response).ToContain("list"); // done
                            });
                         describe("compress",
                                  []() -> void
@@ -225,93 +227,145 @@ void zowex_tests()
                                    it("should compress a data set", []() -> void {});
                                  });
                         describe("create",
-                                 []() -> void
+                                 [&_ds]() -> void
                                  {
-                                   it("should create a data set with default attributes", []() -> void
+                                   it("should create a data set with default attributes",
+                                      [&_ds]() -> void
                                       {
                                         int rc = 0;
-                                        string data_set = get_random_ds();
+                                        string ds = get_random_ds();
+                                        _ds.push_back(ds);
+
                                         string response;
-                                        string command = zowex_command + " data-set create " + data_set;
+                                        string command = zowex_command + " data-set create " + ds;
                                         rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
                                         Expect(response).ToContain("Data set created");
 
-                                        command = zowex_command + " data-set list " + data_set + " -a --rfc";
+                                        command = zowex_command + " data-set list " + ds + " -a --rfc";
                                         rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
                                         vector<string> tokens = split_rfc_response(response, ",");
                                         Expect(tokens[1]).ToBe("PS");
                                         Expect(tokens[4]).ToBe("FB");
-
-                                        command = zowex_command + " data-set delete " + data_set;
-                                        rc = execute_command_with_output(command, response);
-                                        ExpectWithContext(rc, response).ToBe(0);
-                                        Expect(response).ToContain("Data set '" + data_set + "' deleted"); // ds deleted
                                       });
                                    it("should create a data set - recfm:VB dsorg:PO",
-                                      []() -> void
+                                      [&_ds]() -> void
                                       {
                                         int rc = 0;
-                                        string data_set = get_random_ds();
+                                        string ds = get_random_ds();
+                                        _ds.push_back(ds);
+
                                         string response;
-                                        string command = zowex_command + " data-set create " + data_set + " --recfm VB --dsorg PO";
+                                        string command = zowex_command + " data-set create " + ds + " --recfm VB --dsorg PO";
                                         rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
                                         Expect(response).ToContain("Data set created");
 
-                                        command = zowex_command + " data-set list " + data_set + " -a --rfc";
+                                        command = zowex_command + " data-set list " + ds + " -a --rfc";
                                         rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
                                         vector<string> tokens = split_rfc_response(response, ",");
                                         Expect(tokens[1]).ToBe("PO");
                                         Expect(tokens[4]).ToBe("VB");
-
-                                        command = zowex_command + " data-set delete " + data_set;
-                                        rc = execute_command_with_output(command, response);
-                                        ExpectWithContext(rc, response).ToBe(0);
-                                        Expect(response).ToContain("Data set '" + data_set + "' deleted"); // ds deleted
                                       });
 
                                    it("should create a data set - dsorg: PO, primary: 10, secondary: 2, lrecl: 20, blksize:10, dirblk: 5, alcunit: CYL",
-                                      []() -> void
+                                      [&_ds]() -> void
                                       {
                                         int rc = 0;
-                                        string data_set = get_random_ds();
+                                        string ds = get_random_ds();
+                                        _ds.push_back(ds);
+
                                         string response;
-                                        string command = zowex_command + " data-set create " + data_set + " --dsorg PO --primary 10 --secondary 2 --lrecl 20 --blksize 10 --dirblk 5 --alcunit CYL";
+                                        string command = zowex_command + " data-set create " + ds + " --dsorg PO --primary 10 --secondary 2 --lrecl 20 --blksize 10 --dirblk 5 --alcunit CYL";
                                         rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
                                         Expect(response).ToContain("Data set created");
 
-                                        command = zowex_command + " data-set list " + data_set + " -a --rfc";
+                                        command = zowex_command + " data-set list " + ds + " -a --rfc";
                                         rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
                                         vector<string> tokens = split_rfc_response(response, ",");
                                         Expect(tokens[1]).ToBe("PO");
                                         Expect(tokens[4]).ToBe("FB");
-
-                                        command = zowex_command + " data-set delete " + data_set;
-                                        rc = execute_command_with_output(command, response);
-                                        ExpectWithContext(rc, response).ToBe(0);
-                                        Expect(response).ToContain("Data set '" + data_set + "' deleted"); // ds deleted
                                       });
                                  });
                         describe("create-adata",
-                                 []() -> void
+                                 [&_ds]() -> void
                                  {
-                                   it("should create a data set with default attributes", []() -> void {});
+                                   it("should create a data set with default attributes",
+                                      [&_ds]() -> void
+                                      {
+                                        int rc = 0;
+                                        string ds = get_random_ds();
+                                        _ds.push_back(ds);
+
+                                        string response;
+                                        string command = zowex_command + " data-set create-adata " + ds;
+                                        rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("Data set created");
+
+                                        command = zowex_command + " data-set list " + ds + " -a --rfc";
+                                        rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        vector<string> tokens = split_rfc_response(response, ",");
+                                        Expect(tokens[1]).ToContain("PO");
+                                        Expect(tokens[4]).ToBe("VB");
+                                        // lrecl = 32756
+                                      });
                                  });
 
                         describe("create-fb",
-                                 []() -> void
+                                 [&_ds]() -> void
                                  {
-                                   it("should create a data set with default attributes", []() -> void {});
+                                   it("should create a data set with default attributes",
+                                      [&_ds]() -> void
+                                      {
+                                        int rc = 0;
+                                        string ds = get_random_ds();
+                                        _ds.push_back(ds);
+
+                                        string response;
+                                        string command = zowex_command + " data-set create-fb " + ds;
+                                        rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("Data set created");
+
+                                        command = zowex_command + " data-set list " + ds + " -a --rfc";
+                                        rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        vector<string> tokens = split_rfc_response(response, ",");
+                                        Expect(tokens[1]).ToContain("PO");
+                                        Expect(tokens[4]).ToBe("FB");
+                                        // lrecl = 80
+                                      });
                                  });
                         describe("create-loadlib",
-                                 []() -> void
+                                 [&_ds]() -> void
                                  {
-                                   it("should create a data set with default attributes", []() -> void {});
+                                   it("should create a data set with default attributes",
+                                      [&_ds]() -> void
+                                      {
+                                        int rc = 0;
+                                        string ds = get_random_ds();
+                                        _ds.push_back(ds);
+
+                                        string response;
+                                        string command = zowex_command + " data-set create-loadlib " + ds;
+                                        rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("Data set created");
+
+                                        command = zowex_command + " data-set list " + ds + " -a --rfc";
+                                        rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        vector<string> tokens = split_rfc_response(response, ",");
+                                        Expect(tokens[1]).ToContain("PO");
+                                        Expect(tokens[4]).ToBe("U");
+                                        // lrecl = 0
+                                      });
                                  });
                         describe("create-member",
                                  []() -> void
@@ -319,9 +373,29 @@ void zowex_tests()
                                    it("should create a data set with default attributes", []() -> void {});
                                  });
                         describe("create-vb",
-                                 []() -> void
+                                 [&_ds]() -> void
                                  {
-                                   it("should create a data set with default attributes", []() -> void {});
+                                   it("should create a data set with default attributes",
+                                      [&_ds]() -> void
+                                      {
+                                        int rc = 0;
+                                        string ds = get_random_ds();
+                                        _ds.push_back(ds);
+
+                                        string response;
+                                        string command = zowex_command + " data-set create-vb " + ds;
+                                        rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("Data set created");
+
+                                        command = zowex_command + " data-set list " + ds + " -a --rfc";
+                                        rc = execute_command_with_output(command, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        vector<string> tokens = split_rfc_response(response, ",");
+                                        Expect(tokens[1]).ToContain("PO");
+                                        Expect(tokens[4]).ToBe("VB");
+                                        // lrecl = 255
+                                      });
                                  });
                         describe("delete",
                                  []() -> void {});
@@ -331,22 +405,20 @@ void zowex_tests()
                                    it("should list a data set",
                                       []()
                                       {
-                                        int rc = 0;
                                         string data_set = "SYS1.MACLIB";
                                         string response;
                                         string command = zowex_command + " data-set list " + data_set;
-                                        rc = execute_command_with_output(command, response);
+                                        int rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
                                       });
                                    it("should list data sets based on pattern and warn about listing too many members",
                                       []()
                                       {
-                                        int rc = 0;
                                         string dsn = "SYS1.CMDLIB";
-                                        string pattern = "SYS1.*";
                                         string response;
+                                        string pattern = "SYS1.*";
                                         string command = zowex_command + " data-set list " + pattern + " --me 10";
-                                        rc = execute_command_with_output(command, response);
+                                        int rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(RTNCD_WARNING);
                                         Expect(response).ToContain(dsn);
                                       });
@@ -354,20 +426,19 @@ void zowex_tests()
                         describe("list-members",
                                  []() -> void
                                  {
+                                   string data_set = "SYS1.MACLIB";
                                    it("should list a member of a data set",
-                                      []()
+                                      [data_set]()
                                       {
-                                        string data_set = "SYS1.MACLIB";
                                         string response;
                                         string command = zowex_command + " data-set lm " + data_set + " --no-warn --me 1";
                                         int rc = execute_command_with_output(command, response);
                                         ExpectWithContext(rc, response).ToBe(0);
                                       });
                                    it("should warn when listing members of a data set with many members",
-                                      []()
+                                      [data_set]()
                                       {
                                         int rc = 0;
-                                        string data_set = "SYS1.MACLIB";
                                         string response;
                                         string command = zowex_command + " data-set lm " + data_set + " --me 1";
                                         rc = execute_command_with_output(command, response);
