@@ -21,7 +21,7 @@ using namespace std;
 using namespace ztst;
 
 const string zowex_command = "./../build-out/zowex";
-const string ussTestDir = "/tmp";
+const string ussTestDir = "/tmp/zowex-uss";
 void uss_tests()
 {
   describe("uss tests",
@@ -29,8 +29,12 @@ void uss_tests()
            {
              int rc;
              string response;
-             beforeEach([&response, &rc]() -> void
-                        { rc = 0; });
+             beforeAll([&response]() -> void
+                       { execute_command_with_output(zowex_command + " uss create-dir " + ussTestDir + " --mode 777", response); });
+             afterEach([&rc]() -> void
+                       { rc = 0; });
+             afterAll([&response]() -> void
+                      { execute_command_with_output(zowex_command + " uss delete " + ussTestDir + " -r", response); });
 
              auto create_test_file_cmd = [&](const string &uss_file, const string &options = "") -> void
              {
@@ -381,5 +385,12 @@ void uss_tests()
                              Expect(response).ToContain("Path '" + uss_file + "' does not exist");
                            });
                       });
+
+             //  describe("list (ls)",
+             //           [&]() -> void
+             //           {
+             //             it("should properly delete a file",
+             //                [&]() -> void {});
+             //           });
            });
 }
