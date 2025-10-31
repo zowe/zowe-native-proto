@@ -26,6 +26,7 @@
 #include "zjson.test.hpp"
 #include "zowed.test.hpp"
 #include "ztest.hpp"
+#include "uss.test.hpp"
 
 using namespace std;
 using namespace ztst;
@@ -46,6 +47,7 @@ int main(int argc, char *argv[])
         zusf_tests();
         zbase64_tests();
         zowex_tests();
+        uss_tests();
         zlogger_tests();
         parser_tests();
         zstd_tests();

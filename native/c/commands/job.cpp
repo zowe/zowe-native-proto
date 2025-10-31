@@ -360,12 +360,6 @@ int handle_job_submit_jcl(InvocationContext &context)
 
   std::vector<char> raw_bytes(begin, end);
   data.assign(raw_bytes.begin(), raw_bytes.end());
-
-  if (!isatty(fileno(stdout)) && !context.is_redirecting_input())
-  {
-    const auto bytes = zut_get_contents_as_bytes(data);
-    data.assign(bytes.begin(), bytes.end());
-  }
   raw_bytes.clear();
 
   ZEncode encoding_opts = {};
