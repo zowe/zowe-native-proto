@@ -68,7 +68,7 @@ CPP_FLAGS=-W "c,lp64,langlvl(extended0x),xplink"\
 CXXLANG_FLAGS=-W "c,lp64"\
  -c \
  -I../ \
- -I./chdsect
+ -I./chdsect -std=c++14
 
 CXXLANG_BND_FLAGS=-W "l,lp64"
 
@@ -187,7 +187,8 @@ build-out/zlogger.test.o \
 build-out/zlogger_metal.o \
 build-out/zjson.test.o \
 build-out/zjsonm.o \
-build-out/zowed.test.o
+build-out/zowed.test.o \
+build-out/worker.test.o
 	$(OCXX) $(CXXLANG_BND_FLAGS) -o $@ $^ > $*.bind.lst
 
 build-out/zut.o:
@@ -305,6 +306,9 @@ build-out/zjsonm.o: build-out/zjsonm.s
 	$(ASM) $(ASM_FLAGS) $(ASM_LIST_FLAG) $(MACLIBS) -o $@ $^
 
 build-out/zowed.test.o: zowed.test.cpp
+	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
+
+build-out/worker.test.o: worker.test.cpp
 	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
 
 # build-out/testrcvy.s: testrcvy.c

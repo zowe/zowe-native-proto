@@ -25,7 +25,6 @@
 #include <string>
 #include <cstdlib>
 #include <cstring>
-#include <string>
 #include <vector>
 #ifdef __MVS__
 #define _OPEN_SYS_DLL_EXT
@@ -83,8 +82,7 @@ IoserverOptions parse_options(int argc, char *argv[])
   const auto *num_workers_env = getenv("ZOWED_NUM_WORKERS");
   if (num_workers_env != nullptr)
   {
-    const auto num_workers_str = std::string(num_workers_env);
-    opts.num_workers = std::stoi(num_workers_str);
+    opts.num_workers = atoi(num_workers_env);
   }
   else
   {
