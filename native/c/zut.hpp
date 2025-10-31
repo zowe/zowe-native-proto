@@ -244,4 +244,49 @@ int zut_free_dynalloc_dds(std::vector<std::string> &list, std::ostream *err_stre
  */
 int zut_list_parmlib(ZDIAG &diag, std::vector<std::string> &parmlibs);
 
+/**
+ * @brief RAII class to manage auto-conversion state
+ *
+ * Saves the current auto-conversion state on construction and restores it on destruction.
+ * This ensures that any changes to the auto-conversion state are properly reverted.
+ */
+class AutocvtGuard
+{
+  int old_state;
+
+public:
+  AutocvtGuard(bool enabled);
+  ~AutocvtGuard();
+};
+
+/**
+ * @brief RAII class to manage FILE* pointers
+ *
+ * Opens a file on construction and automatically closes it on destruction.
+ * Provides implicit conversion to FILE* for easy use with C file APIs.
+ */
+class FileGuard
+{
+  FILE *fp;
+
+public:
+  FileGuard(const char *filename, const char *mode);
+  FileGuard(int fd, const char *mode);
+  ~FileGuard();
+
+  // Delete copy and move since ownership is non-transferable
+  FileGuard(const FileGuard &) = delete;
+  FileGuard &operator=(const FileGuard &) = delete;
+  FileGuard(FileGuard &&) = delete;
+  FileGuard &operator=(FileGuard &&) = delete;
+
+  // Allow reassignment via reset
+  void reset(const char *filename, const char *mode);
+  void reset(int fd, const char *mode);
+  void reset();
+
+  operator FILE *() const;
+  operator bool() const;
+};
+
 #endif // ZUT_HPP

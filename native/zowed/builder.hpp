@@ -44,41 +44,40 @@ struct ArgTransform
 
   TransformKind kind;
   std::string arg_name;
-  std::string renamed_to;         // Used for RenameArg
-  plugin::Argument default_value; // Used for SetDefault
-  bool base64;                    // Used for WriteStdin and ReadStdout
-  std::string rpc_id;             // Used for HandleFifo (stream ID parameter name)
-  FifoMode fifo_mode;             // Used for HandleFifo
-  mutable std::string pipe_path;  // Used for HandleFifo (mutable for cleanup in output phase)
-  bool defer;                     // Used for HandleFifo (defer notification until content length is known)
+  std::string renamed_to{};          // Used for RenameArg
+  plugin::Argument default_value{};  // Used for SetDefault
+  bool base64{false};                // Used for WriteStdin and ReadStdout
+  std::string rpc_id_param{};        // Used for HandleFifo (stream ID parameter name)
+  FifoMode fifo_mode{FifoMode::GET}; // Used for HandleFifo
+  bool defer{false};                 // Used for HandleFifo (defer notification until content length is known)
 
   // Constructor for RenameArg
   ArgTransform(TransformKind k, const std::string &from, const std::string &to)
-      : kind(k), arg_name(from), renamed_to(to), default_value(), base64(false), rpc_id(), fifo_mode(FifoMode::GET), pipe_path(), defer(false)
+      : kind(k), arg_name(from), renamed_to(to)
   {
   }
 
   // Constructor for SetDefault
   ArgTransform(TransformKind k, const std::string &arg, const plugin::Argument &defValue)
-      : kind(k), arg_name(arg), renamed_to(""), default_value(defValue), base64(false), rpc_id(), fifo_mode(FifoMode::GET), pipe_path(), defer(false)
+      : kind(k), arg_name(arg), default_value(defValue)
   {
   }
 
   // Constructor for WriteStdin and ReadStdout
   ArgTransform(TransformKind k, const std::string &arg, bool b64)
-      : kind(k), arg_name(arg), renamed_to(""), default_value(), base64(b64), rpc_id(), fifo_mode(FifoMode::GET), pipe_path(), defer(false)
+      : kind(k), arg_name(arg), base64(b64)
   {
   }
 
   // Constructor for HandleFifo
   ArgTransform(TransformKind k, const std::string &rpc_id_param, const std::string &arg, FifoMode mode, bool defer_arg = false)
-      : kind(k), arg_name(arg), renamed_to(""), default_value(), base64(false), rpc_id(rpc_id_param), fifo_mode(mode), pipe_path(), defer(defer_arg)
+      : kind(k), arg_name(arg), rpc_id_param(rpc_id_param), fifo_mode(mode), defer(defer_arg)
   {
   }
 
   // Constructor for FlattenObj
   ArgTransform(TransformKind k, const std::string &arg)
-      : kind(k), arg_name(arg), renamed_to(""), default_value(), base64(false), rpc_id(), fifo_mode(FifoMode::GET), pipe_path(), defer(false)
+      : kind(k), arg_name(arg)
   {
   }
 };
@@ -107,7 +106,7 @@ public:
   // Handle FIFO pipe creation for streaming
   // mode: FifoMode::Get for download, FifoMode::Put for upload
   // defer: if true, defer notification until content length is known (via set_content_len)
-  CommandBuilder &handle_fifo(const std::string &rpc_id, const std::string &arg_name, FifoMode mode, bool defer = false);
+  CommandBuilder &handle_fifo(const std::string &rpc_id_param, const std::string &arg_name, FifoMode mode, bool defer = false);
 
   // Capture stdout and write to output argument (optionally base64 encoded)
   CommandBuilder &read_stdout(const std::string &arg_name, bool b64_encode = false);

@@ -187,7 +187,8 @@ build-out/parser.test.o \
 build-out/zlogger.test.o \
 build-out/zlogger_metal.o \
 build-out/zjson.test.o \
-build-out/zjsonm.o
+build-out/zjsonm.o \
+build-out/zowed.test.o
 	$(OCXX) $(CXXLANG_BND_FLAGS) -o $@ $^ > $*.bind.lst
 
 build-out/zut.o:
@@ -306,6 +307,9 @@ build-out/zjsonm.s: ../zjsonm.c
 
 build-out/zjsonm.o: build-out/zjsonm.s
 	$(ASM) $(ASM_FLAGS) $(ASM_LIST_FLAG) $(MACLIBS) -o $@ $^
+
+build-out/zowed.test.o: zowed.test.cpp
+	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
 
 # build-out/testrcvy.s: testrcvy.c
 # 	$(CC) $(MTL_FLAGS64) $(MTL_LIST_FLAG) $(MTL_HEADERS) -o $@ $^

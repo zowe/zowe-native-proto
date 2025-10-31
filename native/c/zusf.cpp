@@ -1142,8 +1142,7 @@ int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response, ListOptio
  */
 int zusf_read_from_uss_file(ZUSF *zusf, const string &file, string &response)
 {
-  const auto bpxk_autocvt = getenv("_BPXK_AUTOCVT");
-  setenv("_BPXK_AUTOCVT", "OFF", 1);
+  AutocvtGuard autocvt(false);
   ifstream in(file.c_str(), zusf->encoding_opts.data_type == eDataTypeBinary ? ifstream::in | ifstream::binary : ifstream::in);
   if (!in.is_open())
   {
@@ -1160,8 +1159,6 @@ int zusf_read_from_uss_file(ZUSF *zusf, const string &file, string &response)
 
   response.assign(raw_data.begin(), raw_data.end());
   in.close();
-
-  setenv("_BPXK_AUTOCVT", bpxk_autocvt, 1);
 
   // Use file tag encoding if available, otherwise fall back to provided encoding
   string encoding_to_use;
@@ -1227,7 +1224,8 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, const string &file, const strin
     return RTNCD_FAILURE;
   }
 
-  FILE *fin = fopen(file.c_str(), zusf->encoding_opts.data_type == eDataTypeBinary ? "rb" : "r");
+  AutocvtGuard autocvt(false);
+  FileGuard fin(file.c_str(), zusf->encoding_opts.data_type == eDataTypeBinary ? "rb" : "r");
   if (!fin)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open file '%s'", file.c_str());
@@ -1237,7 +1235,6 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, const string &file, const strin
   struct stat st;
   if (stat(file.c_str(), &st) != 0)
   {
-    fclose(fin);
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not stat file '%s'", file.c_str());
     return RTNCD_FAILURE;
   }
@@ -1252,16 +1249,14 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, const string &file, const strin
   int fifo_fd = open(pipe.c_str(), O_WRONLY);
   if (fifo_fd == -1)
   {
-    fclose(fin);
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "open() failed on output pipe '%s', errno: %d", pipe.c_str(), errno);
     return RTNCD_FAILURE;
   }
 
-  FILE *fout = fdopen(fifo_fd, "w");
+  FileGuard fout(fifo_fd, "w");
   if (!fout)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open output pipe '%s'", pipe.c_str());
-    fclose(fin);
     close(fifo_fd);
     return RTNCD_FAILURE;
   }
@@ -1311,8 +1306,6 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, const string &file, const strin
       }
       catch (std::exception &e)
       {
-        fclose(fin);
-        fclose(fout);
         zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to convert input data from %s to %s", encoding_to_use.c_str(), source_encoding.c_str());
         return RTNCD_FAILURE;
       }
@@ -1331,8 +1324,6 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, const string &file, const strin
   }
 
   fflush(fout);
-  fclose(fin);
-  fclose(fout);
   return RTNCD_SUCCESS;
 }
 
@@ -1402,6 +1393,8 @@ int zusf_write_to_uss_file(ZUSF *zusf, const string &file, string &data)
       return RTNCD_FAILURE;
     }
   }
+
+  AutocvtGuard autocvt(false);
   const char *mode = (zusf->encoding_opts.data_type == eDataTypeBinary) ? "wb" : "w";
   FILE *fp = std::fopen(file.c_str(), mode);
   if (!fp)
@@ -1493,7 +1486,8 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, const string &file, const string
     return RTNCD_FAILURE;
   zusf->created = stat_result == -1;
 
-  FILE *fout = fopen(file.c_str(), zusf->encoding_opts.data_type == eDataTypeBinary ? "wb" : "w");
+  AutocvtGuard autocvt(false);
+  FileGuard fout(file.c_str(), zusf->encoding_opts.data_type == eDataTypeBinary ? "wb" : "w");
   if (!fout)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open '%s'", file.c_str());
@@ -1504,16 +1498,14 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, const string &file, const string
   if (fifo_fd == -1)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "open() failed on input pipe '%s', errno: %d", pipe.c_str(), errno);
-    fclose(fout);
     return RTNCD_FAILURE;
   }
 
-  FILE *fin = fdopen(fifo_fd, "r");
+  FileGuard fin(fifo_fd, "r");
   if (!fin)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open input pipe '%s'", pipe.c_str());
     close(fifo_fd);
-    fclose(fout);
     return RTNCD_FAILURE;
   }
 
@@ -1541,8 +1533,6 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, const string &file, const string
       catch (std::exception &e)
       {
         zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), encoding_to_use.c_str());
-        fclose(fin);
-        fclose(fout);
         return RTNCD_FAILURE;
       }
     }
@@ -1551,16 +1541,12 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, const string &file, const string
     if (bytes_written != chunk_len)
     {
       zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to write to '%s' (possibly out of space)", file.c_str());
-      fclose(fin);
-      fclose(fout);
       return RTNCD_FAILURE;
     }
     temp_encoded.clear();
   }
 
   fflush(fout);
-  fclose(fin);
-  fclose(fout);
 
   if (stat(file.c_str(), &file_stats) == -1)
   {
