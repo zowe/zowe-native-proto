@@ -259,8 +259,8 @@ static int ZLGWRDD(int level, const char *message)
   }
   writeBuf[msg_len] = '\n'; /* Add newline after message */
 
-  /* Write using BSAM synchronous write - writeSync already calls check() */
-  int write_rc = writeSync(logger->log_io, writeBuf);
+  /* Write using BSAM synchronous write - write_sync already calls check() */
+  int write_rc = write_sync(logger->log_io, writeBuf);
 
   /* Force immediate writing to USS file by closing and reopening DCB */
   /* Per IBM docs: BSAM buffers writes beyond program buffering for USS files */
