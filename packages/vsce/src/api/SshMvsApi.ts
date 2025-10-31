@@ -16,11 +16,11 @@ import { B64String, type DatasetAttributes, type ds } from "zowe-native-proto-sd
 import { SshCommonApi } from "./SshCommonApi";
 
 export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs {
-    public async dataSet(filter: string, _options?: zosfiles.IListOptions): Promise<zosfiles.IZosFilesResponse> {
+    public async dataSet(filter: string, options?: zosfiles.IListOptions): Promise<zosfiles.IZosFilesResponse> {
         try {
             const response = await (await this.client).ds.listDatasets({
                 pattern: filter,
-                attributes: true,
+                attributes: options?.attributes,
             });
             return this.buildZosFilesResponse({
                 items: response.items.map((item) => ({
