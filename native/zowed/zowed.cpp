@@ -20,12 +20,14 @@
 #include <thread>
 #include <unistd.h>
 #include "../c/zjson.hpp"
+#include "../c/zusf.hpp"
 #include "commands.hpp"
 #include "dispatcher.hpp"
 #include "logger.hpp"
 #include "server.hpp"
 #include "worker.hpp"
 #include "zowed.hpp"
+#include <_Nascii.h>
 
 using std::string;
 
@@ -82,18 +84,21 @@ private:
   std::map<string, string> load_checksums()
   {
     std::map<string, string> checksums;
+    ZUSF zusf = {.encoding_opts = {.data_type = eDataTypeText, .source_codepage = "IBM-1047"}};
     string checksums_file = exec_dir + "/checksums.asc";
+    string checksums_content;
 
-    std::ifstream file(checksums_file);
-    if (!file.is_open())
+    int rc = zusf_read_from_uss_file(&zusf, checksums_file, checksums_content);
+    if (rc != 0)
     {
       // Checksums file does not exist for dev builds
-      LOG_DEBUG("Checksums file not found: %s (expected for dev builds)", checksums_file.c_str());
+      LOG_DEBUG("Failed to read checksums file: %s (expected for dev builds)", checksums_file.c_str());
       return checksums;
     }
 
+    std::istringstream infile(checksums_content);
     string line;
-    while (std::getline(file, line))
+    while (std::getline(infile, line))
     {
       std::istringstream iss(line);
       string checksum, filename;
@@ -109,8 +114,6 @@ private:
   void print_ready_message()
   {
     zjson::Value data = zjson::Value::create_object();
-
-    // Load checksums similar to Go implementation
     std::map<string, string> checksums = load_checksums();
     zjson::Value checksums_obj = zjson::Value::create_object();
     for (const auto &pair : checksums)

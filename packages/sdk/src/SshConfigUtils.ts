@@ -9,7 +9,7 @@
  *
  */
 
-import { readFileSync } from "node:fs";
+import { accessSync, constants, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import * as path from "node:path";
 import type { ISshSession } from "@zowe/zos-uss-for-zowe-sdk";
@@ -23,12 +23,12 @@ export class SshConfigUtils {
     public static async findPrivateKeys(): Promise<string[]> {
         const keyNames = ["id_ed25519", "id_rsa", "id_ecdsa", "id_dsa"];
         const privateKeyPaths: Set<string> = new Set();
-
         // Check standard ~/.ssh private keys
         for (const algo of keyNames) {
             const keyPath = path.resolve(homedir(), ".ssh", algo);
             try {
-                if (readFileSync(keyPath)) privateKeyPaths.add(keyPath);
+                accessSync(keyPath, constants.R_OK);
+                privateKeyPaths.add(keyPath);
             } catch {
                 // Ignore missing keys
             }
@@ -37,7 +37,8 @@ export class SshConfigUtils {
     }
 
     public static async migrateSshConfig(): Promise<ISshConfigExt[]> {
-        const filePath = path.join(homedir(), ".ssh", "config");
+        const homeDir = homedir();
+        const filePath = path.join(homeDir, ".ssh", "config");
         let fileContent: string;
         try {
             fileContent = readFileSync(filePath, "utf-8");
@@ -71,7 +72,9 @@ export class SshConfigUtils {
                                     session.user = value;
                                     break;
                                 case "identityfile":
-                                    session.privateKey = value;
+                                    session.privateKey = path.normalize(
+                                        value.startsWith("~") ? path.join(homeDir, value.slice(2)) : value,
+                                    );
                                     break;
                                 case "connecttimeout":
                                     session.handshakeTimeout = Number.parseInt(value, 10) * 1000;
