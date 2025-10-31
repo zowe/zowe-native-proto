@@ -25,6 +25,7 @@
 #include <string>
 #include <cstdlib>
 #include <cstring>
+#include <string>
 #include <vector>
 #ifdef __MVS__
 #define _OPEN_SYS_DLL_EXT
