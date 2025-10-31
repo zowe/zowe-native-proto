@@ -9,7 +9,7 @@
  *
  */
 
-#include <iostream>
+#include "worker.test.hpp"
 #include "zstorage.test.hpp"
 #include "zut.test.hpp"
 #include "zjb.test.hpp"
@@ -51,6 +51,7 @@ int main(int argc, char *argv[])
         zstd_tests();
         zjson_tests();
         zowed_tests();
+        worker_tests();
       });
 
   return rc;
