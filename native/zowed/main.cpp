@@ -79,9 +79,18 @@ IoserverOptions parse_options(int argc, char *argv[])
     std::exit(result.exit_code == 0 ? 1 : result.exit_code);
   }
 
-  const long long parsed_num_workers =
-      result.get_value<long long>("num-workers", static_cast<long long>(opts.num_workers));
-  opts.num_workers = static_cast<int>(parsed_num_workers);
+  const auto *num_workers_env = getenv("ZOWED_NUM_WORKERS");
+  if (num_workers_env != nullptr)
+  {
+    const auto num_workers_str = std::string(num_workers_env);
+    opts.num_workers = std::stoi(num_workers_str);
+  }
+  else
+  {
+    const long long parsed_num_workers =
+        result.get_value<long long>("num-workers", static_cast<long long>(opts.num_workers));
+    opts.num_workers = static_cast<int>(parsed_num_workers);
+  }
 
   opts.verbose = result.get_value<bool>("verbose", opts.verbose);
 
