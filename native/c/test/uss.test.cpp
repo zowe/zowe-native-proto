@@ -33,8 +33,8 @@ void uss_tests()
                        { execute_command_with_output(zowex_command + " uss create-dir " + ussTestDir + " --mode 777", response); });
              beforeEach([&rc]() -> void
                         { rc = 0; });
-             afterAll([&response]() -> void
-                      { execute_command_with_output(zowex_command + " uss delete /tmp/zowex-uss --recursive", response); });
+             //  afterAll([&response]() -> void
+             //           { execute_command_with_output(zowex_command + " uss delete /tmp/zowex-uss --recursive", response); });
 
              auto create_test_file_cmd = [&](const string &uss_file, const string &options = "") -> void
              {
@@ -386,11 +386,103 @@ void uss_tests()
                            });
                       });
 
-             //  describe("list (ls)",
-             //           [&]() -> void
-             //           {
-             //             it("should properly delete a file",
-             //                [&]() -> void {});
-             //           });
+             describe("list (ls)",
+                      [&]() -> void
+                      {
+                        beforeAll([&response]() -> void
+                                  {
+                                    execute_command_with_output(zowex_command + " uss create-dir " + ussTestDir + "/subDir1/subDir2/subDir3" + " --mode 777", response);
+                                    execute_command_with_output(zowex_command + " uss create-file " + ussTestDir + "/subDir1/subFile1" + " --mode 777", response);
+                                    execute_command_with_output(zowex_command + " uss create-file " + ussTestDir + "/subDir1/subDir2/subFile2" + " --mode 777", response);
+                                    execute_command_with_output(zowex_command + " uss create-file " + ussTestDir + "/subDir1/subDir2/subDir3/subFile3" + " --mode 777", response); });
+                        it("should properly list files",
+                           [&]() -> void
+                           {
+                             string listCommand = zowex_command + " uss ls " + ussTestDir;
+                             rc = execute_command_with_output(listCommand, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("subDir1");
+                           });
+                        it("should properly list files with the --all option",
+                           [&]() -> void
+                           {
+                             string listAllCommand = zowex_command + " uss ls " + ussTestDir + " --all";
+                             rc = execute_command_with_output(listAllCommand, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain(".");
+                             Expect(response).ToContain("..");
+                             Expect(response).ToContain("subDir1");
+                           });
+                        it("should properly list files with the --depth option set to 1 and should match the output of no depth option specified",
+                           [&]() -> void
+                           {
+                             string testResponse;
+                             string listCommand = zowex_command + " uss ls " + ussTestDir;
+                             string listDepthCommand = zowex_command + " uss ls " + ussTestDir + " --depth 1";
+                             rc = execute_command_with_output(listDepthCommand, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("subDir1");
+                             execute_command_with_output(listCommand, testResponse);
+                             Expect(response).ToBe(testResponse);
+                           });
+                        it("should properly list files with the --depth option set to 2",
+                           [&]() -> void
+                           {
+                             string listDepthCommand = zowex_command + " uss ls " + ussTestDir + " --depth 2";
+                             rc = execute_command_with_output(listDepthCommand, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("subDir1/subDir2");
+                             Expect(response).ToContain("subDir1/subFile1");
+                           });
+                        it("should properly list files with the --depth option set to 3",
+                           [&]() -> void
+                           {
+                             string listDepthCommand = zowex_command + " uss ls " + ussTestDir + " --depth 3";
+                             rc = execute_command_with_output(listDepthCommand, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("subDir1/subDir2");
+                             Expect(response).ToContain("subDir1/subDir2/subDir3");
+                             Expect(response).ToContain("subDir1/subDir2/subFile2");
+                             Expect(response).ToContain("subDir1/subFile1");
+                           });
+                        it("should properly list files with --response-format-csv",
+                           [&]() -> void
+                           {
+                             string listDepthCommand = zowex_command + " uss ls " + ussTestDir + " -l --rfc";
+                             rc = execute_command_with_output(listDepthCommand, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("drwxrwxrwx,");
+                             Expect(response).ToContain(",subDir1");
+                           });
+                      });
+             describe("write and view",
+                      [&]() -> void
+                      {
+                        string uss_path;
+                        beforeEach([&]() -> void
+                                   {
+                                                uss_path = get_random_uss(ussTestDir);
+                                                create_test_file_cmd(uss_path); });
+                        it("should properly write and view files",
+                           [&]() -> void
+                           {
+                             string viewCommand = zowex_command + " uss view " + uss_path + " --ec UTF-8";
+                             string writeCommand = zowex_command + " uss write " + uss_path + " --ec UTF-8";
+                             string view_response; // We only need output from the view command
+
+                             TestLog(writeCommand);
+
+                             // 1. Run the write command using the "input" function
+                             rc = execute_command_with_input(writeCommand, "Hello World!");
+                             ExpectWithContext(rc, "Write command failed").ToBe(0);
+
+                             // 2. Run the view command using the "output" function
+                             rc = execute_command_with_output(viewCommand, view_response);
+                             ExpectWithContext(rc, view_response).ToBe(0);
+
+                             // 3. Check the output from the view command
+                             Expect(view_response).ToContain("Hello World!");
+                           });
+                      });
            });
 }

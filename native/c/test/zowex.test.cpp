@@ -9,6 +9,7 @@
  *
  */
 
+#include <cstdio>
 #include <stdexcept>
 #include "ztest.hpp"
 #include "ztype.h"
@@ -32,15 +33,36 @@ string string_to_hex(const string &input)
 }
 
 // NOTE(Kelosky): consolidate this into ztest.hpp if additional use is found
+int execute_command_with_input(const std::string &command, const std::string &input)
+{
+  FILE *pipe = popen(command.c_str(), "w");
+  if (!pipe)
+  {
+    throw std::runtime_error("Failed to open pipe for writing");
+  }
+
+  if (!input.empty())
+  {
+    if (fprintf(pipe, "%s", input.c_str()) < 0)
+    {
+      pclose(pipe);
+      throw std::runtime_error("Failed to write to pipe");
+    }
+  }
+
+  int exit_status = pclose(pipe);
+  return WEXITSTATUS(exit_status);
+}
+
 int execute_command_with_output(const std::string &command, std::string &output)
 {
   output = "";
-  // TestLog("Running: " + command);
 
+  // Open the pipe in "read" mode and redirect stderr to stdout
   FILE *pipe = popen((command + " 2>&1").c_str(), "r");
   if (!pipe)
   {
-    throw std::runtime_error("Failed to open pipe");
+    throw std::runtime_error("Failed to open pipe for reading");
   }
 
   char buffer[256];
@@ -49,8 +71,8 @@ int execute_command_with_output(const std::string &command, std::string &output)
     output += buffer;
   }
 
-  int exit_code = pclose(pipe);
-  return WEXITSTATUS(exit_code);
+  int exit_status = pclose(pipe);
+  return WEXITSTATUS(exit_status);
 }
 
 string get_random_string(const int length, const bool allNumbers)
