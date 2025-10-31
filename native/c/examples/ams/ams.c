@@ -141,12 +141,12 @@ int AMSMAIN()
     zwto_debug("@TEST sysprint->dcb.dcblrecl is not 80 (0x%x)", sysprint->dcb.dcblrecl);
     return -1;
   }
-
-  BLDL_PL bldl_pl = {0};
-  bldl_pl.ff = 1;
-  bldl_pl.ll = sizeof(BLDL_LIST);
-  memcpy(bldl_pl.list[0].name, sysprint->jfcb.jfcbelnm, sizeof(sysprint->jfcb.jfcbelnm));
-  rc = bldl(sysprint, &bldl_pl, &rsn);
+  sysprint->bldl_pl.ff = 1;
+  sysprint->bldl_pl.ll = sizeof(sysprint->bldl_pl.list[0]);
+  memcpy(sysprint->bldl_pl.list[0].name, sysprint->jfcb.jfcbelnm, sizeof(sysprint->jfcb.jfcbelnm));
+  zwto_debug("@TEST length of user data before bldl: %x", sysprint->bldl_pl.list[0].c & 0x1F);
+  zut_dump_storage_common("@TEST bldl_pl", &sysprint->bldl_pl.list[0], sizeof(sysprint->bldl_pl.list[0]), 16, 0, zut_print_debug);
+  rc = bldl(sysprint, &sysprint->bldl_pl, &rsn);
   if (0 != rc)
   {
     zwto_debug("@TEST bldl failed: rc: %d, rsn: %d", rc, rsn);
@@ -154,9 +154,9 @@ int AMSMAIN()
   }
   zwto_debug("@TEST bldl success: rsn: %d", rsn);
 
-  zwto_debug("@TEST length of user data is: %x", bldl_pl.list[0].c & 0x1F);
+  zwto_debug("@TEST length of user data is: %x", sysprint->bldl_pl.list[0].c & 0x1F);
 
-  zut_dump_storage_common("@TEST bldl_pl", &bldl_pl.list[0], sizeof(bldl_pl.list[0]), 16, 0, zut_print_debug);
+  zut_dump_storage_common("@TEST bldl_pl", &sysprint->bldl_pl.list[0], sizeof(sysprint->bldl_pl.list[0]), 16, 0, zut_print_debug);
 
   zwto_debug("@TEST find member");
   rc = find_member(sysprint, &rsn);
@@ -179,8 +179,9 @@ int AMSMAIN()
     zwto_debug("@TEST inbuff: %.80s", writebuff);
   }
 
+  // TODO(Kelosky): pass only IO_CTRL to stow
   zwto_debug("@TEST stow");
-  rc = stow(sysprint, &bldl_pl, &rsn);
+  rc = stow(sysprint, &sysprint->bldl_pl, &rsn);
   if (0 != rc)
   {
     zwto_debug("@TEST stow failed: rc: %d, rsn: %d", rc, rsn);

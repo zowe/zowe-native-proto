@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef ZAMS_TYPES_H
-#define ZAMS_TYPES_H
+#ifndef ZAMTYPES_H
+#define ZAMTYPES_H
 
 #include "dcbd.h"
 #include "ihadcbe.h"
@@ -66,6 +66,59 @@ typedef DECB READ_PL;
 
 typedef struct exlst EXLIST;
 
+#define MAX_HEADER_LEN 100
+typedef struct
+{
+  unsigned char len;
+  char title[MAX_HEADER_LEN];
+} SNAP_HEADER;
+
+typedef struct
+{
+  unsigned char id;
+  unsigned char flags;
+  unsigned char flag2;
+  unsigned char reserved;
+  unsigned char sdataFlagsOne;
+  unsigned char sdataFlagsTwo;
+  unsigned char pdataFlags;
+  unsigned char reserved2;
+  IHADCB *PTR32 dcb;
+  void *PTR32 tcb;
+  void *PTR32 list;
+  SNAP_HEADER *PTR32 header;
+} SNAP_PLIST;
+
+typedef struct
+{
+  DCBE dcbe;
+  int ctrlLen;
+  int bufferLen;
+  int bufferCtrl;
+  unsigned int eod : 1;
+  char *PTR32 buffer;
+} FILE_CTRL;
+
+#define MAX_USER_DATA_LEN 62
+typedef struct
+{
+  char name[8]; // padded with blanks
+  unsigned char ttr[3];
+  unsigned char k; // concatention
+  unsigned char z; // where found, 0=private, 1=link, 2=job, task, step, 3-16=job, task, step of parent
+  unsigned char c; // name type bit0=0member, bit0=1alias, bit1-2=number of TTRN in user data (max 3), bit3-7 number of halfwords in the user data
+  unsigned char user_data[MAX_USER_DATA_LEN];
+} BLDL_LIST;
+
+#define MAX_BLDL_LIST_ENTRIES 3
+typedef struct
+{
+  unsigned char prefix[8]; // you must provide a prefix of 8 bytes immediately precedes the list of member names; listadd most point to FF field
+  unsigned short int ff;   // number of entries in the list
+  unsigned short int ll;   // length of each entry
+  BLDL_LIST list[MAX_BLDL_LIST_ENTRIES];
+} BLDL_PL;
+
 #define NUM_EXLIST_ENTRIES 2
 typedef struct
 {
@@ -75,6 +128,7 @@ typedef struct
   EXLIST exlst[NUM_EXLIST_ENTRIES];
   RDJFCB_PL rpl;
   OPEN_PL opl;
+  BLDL_PL bldl_pl;
   int input : 1;
   int output : 1;
 } IO_CTRL;

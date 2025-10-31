@@ -24,7 +24,10 @@
 #include "ihadcbe.h"
 #include "jfcb.h"
 #include "ihaexlst.h"
-#include "zamstypes.h"
+#include "zamtypes.h"
+
+// https://www.ibm.com/docs/en/SSLTBW_3.1.0/pdf/idad500_v3r1.pdf
+// see Non-VSAM macro instructions
 
 // IO_CTRL *sysprintIoc = openOutputAssert("SYSPRINT", 132, 132, dcbrecf + dcbrecbr);
 // IO_CTRL *snapIoc = openOutputAssert("SNAP", 125, 1632, dcbrecv + dcbrecbr + dcbrecca);
@@ -169,7 +172,7 @@ DCB_READ_MODEL(open_read_model);
   __asm(                                                      \
       "*                                                  \n" \
       " STOW %2,"                                             \
-      "(%3),"                                                 \
+      "%3,"                                                   \
       "R                                                  \n" \
       "*                                                  \n" \
       " ST    15,%1     Save RC                           \n" \
@@ -178,7 +181,7 @@ DCB_READ_MODEL(open_read_model);
       : "=m"(rc),                                             \
         "=m"(rsn)                                             \
       : "m"(dcb),                                             \
-        "r"(list)                                             \
+        "m"(list)                                             \
       : "r0", "r1", "r14", "r15");
 #else
 #define STOW(dcb, list, rc, rsn)
@@ -283,59 +286,6 @@ DCB_READ_MODEL(open_read_model);
 #define CHECK(ecb, rc)
 #endif
 
-#define MAX_HEADER_LEN 100
-typedef struct
-{
-  unsigned char len;
-  char title[MAX_HEADER_LEN];
-} SNAP_HEADER;
-
-typedef struct
-{
-  unsigned char id;
-  unsigned char flags;
-  unsigned char flag2;
-  unsigned char reserved;
-  unsigned char sdataFlagsOne;
-  unsigned char sdataFlagsTwo;
-  unsigned char pdataFlags;
-  unsigned char reserved2;
-  IHADCB *PTR32 dcb;
-  void *PTR32 tcb;
-  void *PTR32 list;
-  SNAP_HEADER *PTR32 header;
-} SNAP_PLIST;
-
-typedef struct
-{
-  DCBE dcbe;
-  int ctrlLen;
-  int bufferLen;
-  int bufferCtrl;
-  unsigned int eod : 1;
-  char *PTR32 buffer;
-} FILE_CTRL;
-
-#define MAX_USER_DATA_LEN 62
-typedef struct
-{
-  char name[8]; // padded with blanks
-  unsigned char ttr[3];
-  unsigned char k; // concatention
-  unsigned char z; // where found, 0=private, 1=link, 2=job, task, step, 3-16=job, task, step of parent
-  unsigned char c; // name type bit0=0member, bit0=1alias, bit1-2=number of TTRN in user data (max 3), bit3-7 number of halfwords in the user data
-  unsigned char user_data[MAX_USER_DATA_LEN];
-} BLDL_LIST;
-
-#define MAX_BLDL_LIST_ENTRIES 10
-typedef struct
-{
-  unsigned char prefix[8]; // you must provide a prefix of 8 bytes immediately precedes the list of member names; listadd most point to FF field
-  unsigned short int ff;   // number of entries in the list
-  unsigned short int ll;   // length of each entry
-  BLDL_LIST list[MAX_BLDL_LIST_ENTRIES];
-} BLDL_PL;
-
 // 8-char entry points for z
 #if defined(__IBM_METAL__)
 #pragma map(open_output_assert, "opnoasrt")
@@ -358,6 +308,7 @@ int read_sync(IO_CTRL *, char *) ATTRIBUTE(amode31);
 
 // individual api methods
 int open_output(IHADCB *) ATTRIBUTE(amode31);
+int open_update(IHADCB *) ATTRIBUTE(amode31);
 int open_input(IHADCB *) ATTRIBUTE(amode31);
 
 #if defined(__IBM_METAL__)

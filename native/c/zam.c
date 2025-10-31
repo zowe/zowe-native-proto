@@ -164,6 +164,16 @@ int open_output(IHADCB *dcb)
   return rc;
 }
 
+int open_update(IHADCB *dcb)
+{
+  int rc = 0;
+  OPEN_PL opl = {0};
+  opl.option = OPTION_BYTE;
+
+  OPEN(*dcb, opl, rc, OUTPUT);
+  return rc;
+}
+
 int open_input(IHADCB *dcb)
 {
   int rc = 0;
@@ -249,7 +259,6 @@ int read_sync(IO_CTRL *ioc, char *buffer)
   if (dcb->dcbdcbe)
   {
     // file control begins at DCBE address
-    // __asm(" svc 199 ");
     fc = dcb->dcbdcbe;
 
     // fixed only records until rdjfcb

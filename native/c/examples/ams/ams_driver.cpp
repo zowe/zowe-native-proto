@@ -22,8 +22,10 @@ int main()
   std::vector<std::string> dds;
   // dds.reserve(3);
   // dds.push_back("alloc dd(syslib) da('" + dsn + "') shr");
+
   dds.push_back("alloc dd(sysin) da('dkelosky.input.fixed(data)') shr lrecl(80) recfm(f) ");
   dds.push_back("alloc dd(sysprint) da('dkelosky.output.fixed(data)') shr lrecl(80) recfm(f) ");
+
   // dds.push_back("alloc dd(sysprint) da('dkelosky.output.fixed(data)') shr lrecl(80) recfm(f) ");
   // dds.push_back("alloc dd(sysin) da('dkelosky.input(data)') shr lrecl(80) recfm(f,b) blksize(160) ");
   // dds.push_back("alloc dd(sysprint) da('dkelosky.output(test)') shr"); //  lrecl(80) recfm(f,b) blksize(160) ");
