@@ -685,7 +685,7 @@ int handle_data_set_compress(InvocationContext &context)
 
   if (!is_pds)
   {
-    context.error_stream() << "Error: data set'" << dsn << "' is not a PDS'" << endl;
+    context.error_stream() << "Error: data set '" << dsn << "' is not a PDS'" << endl;
     return RTNCD_FAILURE;
   }
 

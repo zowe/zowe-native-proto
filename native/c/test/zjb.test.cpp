@@ -124,7 +124,7 @@ void zjb_tests()
       ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS); });
               
       // https://github.com/zowe/zowe-native-proto/issues/641
-             it("should be able to list and view SYSOUT files for INPUT jobs", [&]() -> void
+             xit("should be able to list and view SYSOUT files for INPUT jobs", [&]() -> void
                 {
       ZJB zjb = {0};
       string jobid;

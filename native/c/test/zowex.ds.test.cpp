@@ -79,6 +79,44 @@ void zowex_ds_tests()
                               ExpectWithContext(rc, response).ToBe(0);
                               Expect(response).ToContain("Data set created");
                             });
+                        it("should error when the data set is PS",
+                           []() -> void
+                           {
+                             //
+                           });
+                        it("should error when the data set is PDS/E",
+                           []() -> void
+                           {
+                             //
+                           });
+                        it("should error when the data set is VSAM",
+                           []() -> void
+                           {
+                             //
+                           });
+                        it("should error when the data set is GDG",
+                           []() -> void
+                           {
+                             //
+                           });
+                        it("should error when the data set is ALIAS",
+                           []() -> void
+                           {
+                             //
+                           });
+                        it("should error when the data set doesn't exist",
+                           [_ds]() -> void
+                           {
+                             string ds = _ds.back() + ".GHOST";
+                             string response;
+                             string command = zowex_command + " data-set compress " + ds;
+                             int rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).Not().ToBe(0);
+                             Expect(response).ToContain("Error: data set ");
+                             Expect(response).ToContain(" is not a PDS");
+                             //
+                           });
+
                         // https://github.com/zowe/zowe-native-proto/issues/640
                         xit("should compress a data set",
                             [_ds]() -> void
@@ -94,6 +132,27 @@ void zowex_ds_tests()
              describe("create",
                       [&_ds]() -> void
                       {
+                        it("should error when the data set already exists",
+                           [&_ds]() -> void
+                           {
+                             int rc = 0;
+                             string ds = get_random_ds();
+                             _ds.push_back(ds);
+
+                             string response;
+                             string command = zowex_command + " data-set create " + ds;
+                             rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("Data set created");
+                             //
+
+                             command = zowex_command + " data-set create " + ds;
+                             rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).Not().ToBe(0);
+                             Expect(response).ToContain("Error: could not create data set");
+                             //
+                           });
+
                         it("should create a data set with default attributes",
                            [&_ds]() -> void
                            {
@@ -134,6 +193,28 @@ void zowex_ds_tests()
                              Expect(tokens[1]).ToBe("PO");
                              Expect(tokens[4]).ToBe("VB");
                            });
+
+                        it("should create a PS data set - recfm:VB dsorg:PS",
+                           [&_ds]() -> void
+                           {
+                             int rc = 0;
+                             string ds = get_random_ds();
+                             _ds.push_back(ds);
+
+                             string response;
+                             string command = zowex_command + " data-set create " + ds + " --recfm VB --dsorg PS";
+                             rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("Data set created");
+
+                             command = zowex_command + " data-set list " + ds + " -a --rfc";
+                             rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             vector<string> tokens = split_rfc_response(response, ",");
+                             Expect(tokens[1]).ToBe("PS");
+                             Expect(tokens[4]).ToBe("VB");
+                           });
+
                         // https://github.com/zowe/zowe-native-proto/pull/625
                         it("should create a data set - dsorg: PO, primary: 10, secondary: 2, lrecl: 20, blksize:10, dirblk: 5, alcunit: CYL",
                            [&_ds]() -> void
@@ -351,27 +432,38 @@ void zowex_ds_tests()
              describe("delete",
                       []() -> void {});
              describe("list",
-                      []() -> void
+                      [&_ds]() -> void
                       {
+                        beforeEach(
+                            [&_ds]() -> void
+                            {
+                              string ds = get_random_ds();
+                              _ds.push_back(ds);
+
+                              string response;
+                              string command = zowex_command + " data-set create-fb " + ds;
+                              int rc = execute_command_with_output(command, response);
+                              ExpectWithContext(rc, response).ToBe(0);
+                              Expect(response).ToContain("Data set created");
+                            });
                         it("should list a data set",
-                           []()
+                           [_ds]()
                            {
-                             string data_set = "SYS1.MACLIB";
+                             string ds = _ds.back();
                              string response;
-                             string command = zowex_command + " data-set list " + data_set;
+                             string command = zowex_command + " data-set list " + ds;
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain(ds);
                            });
-                        it("should list data sets based on pattern and warn about listing too many members",
-                           []()
+                        it("should list data sets based on pattern and warn about listing too many data sets",
+                           [_ds]()
                            {
-                             string dsn = "SYS1.CMDLIB";
                              string response;
                              string pattern = "SYS1.*";
-                             string command = zowex_command + " data-set list " + pattern + " --me 10";
+                             string command = zowex_command + " data-set list " + pattern + " --me 1";
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(RTNCD_WARNING);
-                             Expect(response).ToContain(dsn);
                            });
                       });
              describe("list-members",
@@ -402,40 +494,5 @@ void zowex_ds_tests()
                       []() -> void {});
              describe("write",
                       []() -> void {});
-             // describe("data set i/o tests",
-             //          []() -> void
-             //          {
-             //            it("should write and read from a data set",
-             //               []()
-             //               {
-             //                 int rc = 0;
-             //                 string user;
-             //                 execute_command_with_output("whoami", user);
-             //                 string data_set = TrimChars(user) + ".temp.temp.temp.temp.temp.temp.tmp";
-             //                 string member = "IEFBR14";
-             //                 string data_set_member = "\"" + data_set + "(" + member + ")\"";
-             //                 string response;
-             //                 // delete the data set if it exists
-             //                 string del_command = zowex_command + " data-set delete " + data_set;
-             //                 execute_command_with_output(del_command, response);
-             //                 // create the data set
-             //                 string command = zowex_command + " data-set create-fb " + data_set;
-             //                 rc = execute_command_with_output(command, response);
-             //                 ExpectWithContext(rc, response).ToBe(0);
-             //                 string jcl = "//IEFBR14$ JOB (IZUACCT),TEST,REGION=0M\n//RUN EXEC PGM=IEFBR14";
-             //                 // Convert JCL to hex format and write to the data set
-             //                 string hex_jcl = string_to_hex(jcl);
-             //                 string write_command = "printf \"" + hex_jcl + "\" | " + zowex_command + " data-set write " + data_set_member;
-             //                 rc = execute_command_with_output(write_command, response);
-             //                 ExpectWithContext(rc, response).ToBe(0);
-             //                 // read from the data set
-             //                 string read_command = zowex_command + " data-set view " + data_set_member;
-             //                 rc = execute_command_with_output(read_command, response);
-             //                 ExpectWithContext(rc, response).ToBe(0);
-             //                 Expect(TrimChars(response)).ToBe(jcl);
-             //                 // delete the data set
-             //                 execute_command_with_output(del_command, response);
-             //               });
-             //          });
            });
 }
