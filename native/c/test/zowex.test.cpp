@@ -17,20 +17,6 @@
 using namespace std;
 using namespace ztst;
 
-// Helper function to convert string to hex format
-// TODO(Kelosky): move to zut.hpp if additional use is found
-string string_to_hex(const string &input)
-{
-  string hex_output;
-  for (char c : input)
-  {
-    char hex_byte[3];
-    sprintf(hex_byte, "%02x", static_cast<unsigned char>(c));
-    hex_output += hex_byte;
-  }
-  return hex_output;
-}
-
 // NOTE(Kelosky): consolidate this into ztest.hpp if additional use is found
 int execute_command_with_output(const std::string &command, std::string &output)
 {
@@ -108,9 +94,8 @@ void zowex_tests()
                            string jobname = "IEFBR14$";
                            string jcl = "//" + jobname + " JOB (IZUACCT),TEST,REGION=0M\n//RUN EXEC PGM=IEFBR14";
 
-                           // Convert JCL to hex format and write to the data set
-                           string hex_jcl = string_to_hex(jcl);
-                           string submit_command = "printf \"" + hex_jcl + "\" | " + zowex_command + " job submit-jcl --only-jobid";
+                           // write jcl to the data set
+                           string submit_command = "printf \"" + jcl + "\" | " + zowex_command + " job submit-jcl --only-jobid";
                            rc = execute_command(submit_command, stdout_output, stderr_output);
                            string job_id = TrimChars(stdout_output);
                            ExpectWithContext(rc, stderr_output).ToBe(0);
@@ -210,9 +195,8 @@ void zowex_tests()
 
                         //                 string jcl = "//IEFBR14$ JOB (IZUACCT),TEST,REGION=0M\n//RUN EXEC PGM=IEFBR14";
 
-                        //                 // Convert JCL to hex format and write to the data set
-                        //                 string hex_jcl = string_to_hex(jcl);
-                        //                 string write_command = "printf \"" + hex_jcl + "\" | " + zowex_command + " data-set write " + data_set_member;
+                        //                 // write jcl to the data set
+                        //                 string write_command = "printf \"" + jcl + "\" | " + zowex_command + " data-set write " + data_set_member;
                         //                 rc = execute_command_with_output(write_command, response);
                         //                 ExpectWithContext(rc, response).ToBe(0);
 
