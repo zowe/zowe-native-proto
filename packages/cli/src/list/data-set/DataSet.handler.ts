@@ -19,6 +19,7 @@ export default class ListDataSetsHandler extends SshBaseHandler {
         try {
             response = await client.ds.listDatasets({
                 pattern: params.arguments.pattern,
+                attributes: params.arguments.attributes,
             });
         } catch (err) {
             const errText = (err instanceof ImperativeError ? err.additionalDetails : err.toString()).replace(
