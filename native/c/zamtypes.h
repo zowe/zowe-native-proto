@@ -110,16 +110,29 @@ typedef struct
   unsigned char user_data[MAX_USER_DATA_LEN];
 } BLDL_LIST;
 
-#define MAX_BLDL_LIST_ENTRIES 3
 typedef struct
 {
   unsigned char prefix[8]; // you must provide a prefix of 8 bytes immediately precedes the list of member names; listadd most point to FF field
   unsigned short int ff;   // number of entries in the list
   unsigned short int ll;   // length of each entry
-  BLDL_LIST list[MAX_BLDL_LIST_ENTRIES];
+  BLDL_LIST list;
 } BLDL_PL;
 
-#define NUM_EXLIST_ENTRIES 2
+typedef struct
+{
+  char name[8]; // padded with blanks
+  unsigned char ttr[3];
+  unsigned char c;
+  unsigned char user_data[MAX_USER_DATA_LEN];
+} STOW_LIST;
+
+typedef struct
+{
+  unsigned char ttr[3];
+  unsigned char z;
+} NOTE_RESPONSE;
+
+#define NUM_EXLIST_ENTRIES 2 // dcbabend and jfcb
 typedef struct
 {
   IHADCB dcb;
@@ -128,7 +141,7 @@ typedef struct
   EXLIST exlst[NUM_EXLIST_ENTRIES];
   RDJFCB_PL rpl;
   OPEN_PL opl;
-  BLDL_PL bldl_pl;
+  STOW_LIST stow_list;
   int input : 1;
   int output : 1;
 } IO_CTRL;

@@ -141,12 +141,15 @@ int AMSMAIN()
     zwto_debug("@TEST sysprint->dcb.dcblrecl is not 80 (0x%x)", sysprint->dcb.dcblrecl);
     return -1;
   }
-  sysprint->bldl_pl.ff = 1;
-  sysprint->bldl_pl.ll = sizeof(sysprint->bldl_pl.list[0]);
-  memcpy(sysprint->bldl_pl.list[0].name, sysprint->jfcb.jfcbelnm, sizeof(sysprint->jfcb.jfcbelnm));
-  zwto_debug("@TEST length of user data before bldl: %x", sysprint->bldl_pl.list[0].c & 0x1F);
-  zut_dump_storage_common("@TEST bldl_pl", &sysprint->bldl_pl.list[0], sizeof(sysprint->bldl_pl.list[0]), 16, 0, zut_print_debug);
-  rc = bldl(sysprint, &sysprint->bldl_pl, &rsn);
+
+  BLDL_PL bldl_pl = {0};
+
+  bldl_pl.ff = 1;
+  bldl_pl.ll = sizeof(bldl_pl.list);
+  memcpy(bldl_pl.list.name, sysprint->jfcb.jfcbelnm, sizeof(sysprint->jfcb.jfcbelnm));
+  zwto_debug("@TEST length of user data before bldl: %x", bldl_pl.list.c & 0x1F);
+  zut_dump_storage_common("@TEST bldl_pl", &bldl_pl.list, sizeof(bldl_pl.list), 16, 0, zut_print_debug);
+  rc = bldl(sysprint, &bldl_pl, &rsn);
   if (0 != rc)
   {
     zwto_debug("@TEST bldl failed: rc: %d, rsn: %d", rc, rsn);
@@ -154,9 +157,11 @@ int AMSMAIN()
   }
   zwto_debug("@TEST bldl success: rsn: %d", rsn);
 
-  zwto_debug("@TEST length of user data is: %x", sysprint->bldl_pl.list[0].c & 0x1F);
+  zwto_debug("@TEST length of user data is: %x", bldl_pl.list.c & 0x1F);
 
-  zut_dump_storage_common("@TEST bldl_pl", &sysprint->bldl_pl.list[0], sizeof(sysprint->bldl_pl.list[0]), 16, 0, zut_print_debug);
+  zut_dump_storage_common("@TEST bldl_pl", &bldl_pl.list, sizeof(bldl_pl.list), 16, 0, zut_print_debug);
+
+  // TODO(Kelosky): if no stats are present, revert to LE-C way of writing data set
 
   zwto_debug("@TEST find member");
   rc = find_member(sysprint, &rsn);
@@ -179,9 +184,25 @@ int AMSMAIN()
     zwto_debug("@TEST inbuff: %.80s", writebuff);
   }
 
+  NOTE_RESPONSE note_response = {0};
+  rc = note(sysprint, &note_response, &rsn);
+  if (0 != rc)
+  {
+    zwto_debug("@TEST note failed: rc: %d, rsn: %d", rc, rsn);
+    return -1;
+  }
+  zwto_debug("@TEST note success");
+  zwto_debug("@TEST listaddr value: %02x%02x%02x%02x", note_response.ttr[0], note_response.ttr[1], note_response.ttr[2], note_response.z);
+
   // TODO(Kelosky): pass only IO_CTRL to stow
   zwto_debug("@TEST stow");
-  rc = stow(sysprint, &sysprint->bldl_pl, &rsn);
+  memcpy(sysprint->stow_list.name, bldl_pl.list.name, sizeof(bldl_pl.list.name));
+  memcpy(sysprint->stow_list.user_data, bldl_pl.list.user_data, sizeof(bldl_pl.list.user_data));
+  sysprint->stow_list.c = bldl_pl.list.c;
+  memcpy(sysprint->stow_list.ttr, note_response.ttr, sizeof(note_response.ttr));
+
+  zut_dump_storage_common("@TEST sysprint->stow_list", &sysprint->stow_list, sizeof(sysprint->stow_list), 16, 0, zut_print_debug);
+  rc = stow(sysprint, &rsn);
   if (0 != rc)
   {
     zwto_debug("@TEST stow failed: rc: %d, rsn: %d", rc, rsn);

@@ -188,6 +188,26 @@ DCB_READ_MODEL(open_read_model);
 #endif
 
 #if defined(__IBM_METAL__)
+#define NOTE(dcb, listaddr, rc, rsn)                          \
+  __asm(                                                      \
+      "*                                                  \n" \
+      " NOTE %3,"                                             \
+      "REL                                                \n" \
+      "*                                                  \n" \
+      " ST    1,%0     Save result                        \n" \
+      " ST    15,%1    Save RC                            \n" \
+      " ST    0,%2     Save RSN                           \n" \
+      "*                                                    " \
+      : "=m"(listaddr),                                       \
+        "=m"(rc),                                             \
+        "=m"(rsn)                                             \
+      : "m"(dcb)                                              \
+      : "r0", "r1", "r14", "r15");
+#else
+#define NOTE(dcb, listaddr, rc, rsn)
+#endif
+
+#if defined(__IBM_METAL__)
 #define CLOSE(dcb, plist, rc)                                 \
   __asm(                                                      \
       "*                                                  \n" \
@@ -324,7 +344,8 @@ int read_input_jfcb(IO_CTRL *ioc) ATTRIBUTE(amode31);
 int read_output_jfcb(IO_CTRL *ioc) ATTRIBUTE(amode31);
 
 int bldl(IO_CTRL *, BLDL_PL *, int *rsn) ATTRIBUTE(amode31);
-int stow(IO_CTRL *, BLDL_PL *, int *rsn) ATTRIBUTE(amode31);
+int stow(IO_CTRL *, int *rsn) ATTRIBUTE(amode31);
+int note(IO_CTRL *, NOTE_RESPONSE *PTR32 note_response, int *rsn) ATTRIBUTE(amode31);
 int find_member(IO_CTRL *ioc, int *rsn) ATTRIBUTE(amode31);
 
 int close_dcb(IHADCB *) ATTRIBUTE(amode31);

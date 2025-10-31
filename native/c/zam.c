@@ -107,11 +107,20 @@ int bldl(IO_CTRL *ioc, BLDL_PL *bldl_pl, int *rsn)
   return rc;
 }
 
-int stow(IO_CTRL *ioc, BLDL_PL *bldl_pl, int *rsn)
+int stow(IO_CTRL *ioc, int *rsn)
 {
   int rc = 0;
   int local_rsn = 0;
-  STOW(ioc->dcb, bldl_pl->list[0], rc, local_rsn);
+  STOW(ioc->dcb, ioc->stow_list, rc, local_rsn);
+  *rsn = local_rsn;
+  return rc;
+}
+
+int note(IO_CTRL *ioc, NOTE_RESPONSE *PTR32 note_response, int *rsn)
+{
+  int rc = 0;
+  int local_rsn = 0;
+  NOTE(ioc->dcb, *note_response, rc, local_rsn);
   *rsn = local_rsn;
   return rc;
 }
