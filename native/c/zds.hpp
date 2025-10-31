@@ -27,10 +27,31 @@ struct ZDSMem
 struct ZDSEntry
 {
   std::string name;
+  int alloc;
+  int allocx;
+  int blksize;
+  std::string cdate;
+  std::string dataclass;
+  std::string devtype;
   std::string dsorg;
-  std::string volser;
+  std::string dsntype;
+  std::string edate;
+  bool encrypted;
+  int lrecl;
+  std::string mgmtclass;
+  bool migrated;
+  int primary;
+  std::string rdate;
   std::string recfm;
-  bool migr;
+  int secondary;
+  std::string spacu;
+  std::string storclass;
+  int used;
+  int usedx;
+  std::string volser;
+  int maxdb;   // Maximum directory blocks (for PDS/PDSE)
+  int useddb;  // Used directory blocks (for PDS/PDSE)
+  int members; // Number of members (for PDS/PDSE)
 };
 
 typedef struct
