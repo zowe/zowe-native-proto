@@ -288,6 +288,7 @@ int zds_write_to_dsn(ZDS *zds, const string &dsn, string &data)
     }
   }
 
+  fflush(fp);
   fclose(fp);
 
   // Print new e-tag to stdout as response
