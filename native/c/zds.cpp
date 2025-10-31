@@ -1026,7 +1026,6 @@ void load_extents_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
 
     // Parse last used track number (TT from TTR)
     // TT is a 2-byte big-endian value representing the relative track number (0-based)
-    // Note: DS1LSTAR = 0x000000 is VALID - it means track 0, record 0 (first track used)
     uint32_t last_used_track = (lstar_tt_high << 8) | lstar_tt_low;
 
     // Check if this is a large format dataset that uses DS1TTTHI
@@ -1038,61 +1037,81 @@ void load_extents_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
       last_used_track |= (lstar_tt_highest << 16);
     }
 
-    // Report used space in native units
-    if (use_cylinders)
+    // Special case: DS1LSTAR = 0x000000 can mean either:
+    // 1. Track 0, record 0 is used (dataset has been written to)
+    // 2. Dataset has never been written to (unused)
+    // For datasets with blksize=0, DS1LSTAR = 0x000000 means unused
+    // This is common for checkpoint datasets and preallocated system datasets
+    bool is_blksize_zero = (entry.blksize == 0);
+
+    if (last_used_track == 0 && lstar_tt_high == 0 && lstar_tt_low == 0 && is_blksize_zero)
     {
-      // Convert tracks to cylinders (round up)
-      entry.used = (last_used_track + 1 + 14) / 15;
+      // DS1LSTAR = 0x000000 for blksize=0 dataset = unused
+      entry.used = 0;
+      entry.usedx = 0;
     }
     else
     {
-      // Report in tracks
-      entry.used = last_used_track + 1;
+      // Report used space in native units
+      if (use_cylinders)
+      {
+        // Convert tracks to cylinders (round up)
+        entry.used = (last_used_track + 1 + 14) / 15;
+      }
+      else
+      {
+        // Report in tracks
+        entry.used = last_used_track + 1;
+      }
     }
 
     // Calculate how many extents contain data (count of used extents)
-    int cumulative_tracks = 0;
-    entry.usedx = 0;
-
-    for (int i = 0; i < 3; i++)
+    // Skip this calculation if we already determined the dataset is unused
+    if (entry.used > 0)
     {
-      const char *extent = extent_data + (i * 10);
-      uint8_t extent_type = static_cast<uint8_t>(extent[0]);
+      int cumulative_tracks = 0;
+      entry.usedx = 0;
 
-      if (extent_type == 0x00)
-        break;
-
-      // Parse extent to get track count
-      uint16_t lower_cyl_low = (static_cast<unsigned char>(extent[2]) << 8) |
-                               static_cast<unsigned char>(extent[3]);
-      uint16_t lower_cyl_high = ((static_cast<unsigned char>(extent[4]) << 4) |
-                                 (static_cast<unsigned char>(extent[5]) >> 4)) &
-                                0x0FFF;
-      uint16_t lower_head = static_cast<unsigned char>(extent[5]) & 0x0F;
-      uint16_t upper_cyl_low = (static_cast<unsigned char>(extent[6]) << 8) |
-                               static_cast<unsigned char>(extent[7]);
-      uint16_t upper_cyl_high = ((static_cast<unsigned char>(extent[8]) << 4) |
-                                 (static_cast<unsigned char>(extent[9]) >> 4)) &
-                                0x0FFF;
-      uint16_t upper_head = static_cast<unsigned char>(extent[9]) & 0x0F;
-
-      uint32_t lower_cyl = (lower_cyl_high << 16) | lower_cyl_low;
-      uint32_t upper_cyl = (upper_cyl_high << 16) | upper_cyl_low;
-
-      if (upper_cyl >= lower_cyl)
+      for (int i = 0; i < 3; i++)
       {
-        int tracks_in_extent = ((upper_cyl - lower_cyl) * 15) + (upper_head - lower_head) + 1;
-        cumulative_tracks += tracks_in_extent;
+        const char *extent = extent_data + (i * 10);
+        uint8_t extent_type = static_cast<uint8_t>(extent[0]);
 
-        // Count this extent as used if it contains data up to the last used track
-        // last_used_track is 0-based, cumulative_tracks is the total tracks so far
-        if (last_used_track < cumulative_tracks)
-        {
-          entry.usedx = i + 1; // This is the count of extents with data
+        if (extent_type == 0x00)
           break;
+
+        // Parse extent to get track count
+        uint16_t lower_cyl_low = (static_cast<unsigned char>(extent[2]) << 8) |
+                                 static_cast<unsigned char>(extent[3]);
+        uint16_t lower_cyl_high = ((static_cast<unsigned char>(extent[4]) << 4) |
+                                   (static_cast<unsigned char>(extent[5]) >> 4)) &
+                                  0x0FFF;
+        uint16_t lower_head = static_cast<unsigned char>(extent[5]) & 0x0F;
+        uint16_t upper_cyl_low = (static_cast<unsigned char>(extent[6]) << 8) |
+                                 static_cast<unsigned char>(extent[7]);
+        uint16_t upper_cyl_high = ((static_cast<unsigned char>(extent[8]) << 4) |
+                                   (static_cast<unsigned char>(extent[9]) >> 4)) &
+                                  0x0FFF;
+        uint16_t upper_head = static_cast<unsigned char>(extent[9]) & 0x0F;
+
+        uint32_t lower_cyl = (lower_cyl_high << 16) | lower_cyl_low;
+        uint32_t upper_cyl = (upper_cyl_high << 16) | upper_cyl_low;
+
+        if (upper_cyl >= lower_cyl)
+        {
+          int tracks_in_extent = ((upper_cyl - lower_cyl) * 15) + (upper_head - lower_head) + 1;
+          cumulative_tracks += tracks_in_extent;
+
+          // Count this extent as used if it contains data up to the last used track
+          // last_used_track is 0-based, cumulative_tracks is the total tracks so far
+          if (last_used_track < cumulative_tracks)
+          {
+            entry.usedx = i + 1; // This is the count of extents with data
+            break;
+          }
         }
       }
-    }
+    } // End if (entry.used > 0)
   }
 }
 
@@ -1329,14 +1348,31 @@ void zds_get_attrs_from_dscb(ZDS *zds, ZDSEntry &entry)
       if (entry.primary > 0)
         entry.primary *= usable_bytes_per_track;
       if (entry.used > 0)
-        entry.used *= usable_bytes_per_track;
+      {
+        // Calculate from DS1LSTAR and DS1TRBAL
+        // ISPF calculates used space more precisely using DS1TRBAL (space remaining on last track)
+        // Formula: used_bytes = (used_tracks × bytes_per_track) - bytes_remaining
+        uint16_t trbal = (static_cast<unsigned char>(dscb->ds1trbal[0]) << 8) |
+                         static_cast<unsigned char>(dscb->ds1trbal[1]);
 
-      // For secondary with contiguous allocation, ISPF uses a different formula
-      // Empirically observed: scal3=2 → 1.5 tracks, scal3=3 → 2.5 tracks, etc.
-      // Formula: (scal3 - 0.5) × usable_bytes_per_track, rounded up to nearest 256 bytes
+        // For PDS datasets, ISPF calculates "used" by scanning the directory
+        // and finding the highest TTR among all members, then subtracting DS1TRBAL.
+        // DS1LSTAR includes both directory and member data, which can lead to
+        // discrepancies of 1-2 blocks compared to ISPF's member-based calculation.
+        // For now, we use the simpler DS1LSTAR-based calculation for all datasets.
+        // TODO: For exact ISPF matching on PDS, scan directory for highest member TTR
+
+        entry.used = (entry.used * usable_bytes_per_track) - trbal;
+      }
+
+      // Convert secondary allocation to bytes using a consistent formula
+      // Note: Secondary is stored in the DSCB as an allocation parameter (scal3),
+      // not an exact byte count. ISPF may use additional catalog information or
+      // heuristics that we don't have access to from the DSCB alone.
       if (entry.secondary > 0)
       {
-        // Calculate secondary as (scal3 - 0.5) tracks
+        // Use consistent formula: (scal3 - 0.5) tracks, rounded to 256-byte boundary
+        // This provides a reasonable approximation of the secondary allocation size
         double secondary_tracks = entry.secondary - 0.5;
         int secondary_bytes = (int)(secondary_tracks * usable_bytes_per_track);
 
@@ -1589,7 +1625,8 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
         entry.migrated = false;
       }
 
-      // attempt to load dsorg and recfm from vtoc if not migrated
+      // Load dsorg and recfm from DSCB if not migrated
+      // This needs to happen before the switch statement as it sets entry.dsorg
       if (!entry.migrated)
       {
         zds_get_attrs_from_dscb(zds, entry);
