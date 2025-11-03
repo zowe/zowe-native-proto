@@ -28,7 +28,6 @@ export const SshErrors: Record<string, ISshErrorDefinition> = {
             "For long-running operations, consider breaking them into smaller tasks.",
             "Contact your system administrator if timeouts persist.",
         ],
-        resources: [],
     },
     // Connection Failures
     FOTS4241: {
