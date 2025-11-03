@@ -243,6 +243,8 @@ void Worker::force_detach()
   state.store(WorkerState::Faulted, std::memory_order_release);
   queue_condition.notify_all();
   LOG_WARN(worker_thread.joinable() ? "Worker %d forcibly detached due to heartbeat timeout" : "Worker %d marked faulted due to heartbeat timeout (thread not joinable)", id);
+  if (worker_thread.joinable())
+    worker_thread.detach();
   update_heartbeat();
 }
 
