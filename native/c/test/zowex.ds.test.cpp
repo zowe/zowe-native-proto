@@ -407,16 +407,20 @@ void zowex_ds_tests()
              describe("create-vb",
                       [&_ds]() -> void
                       {
+                        beforeEach(
+                            [&_ds]() -> void
+                            {
+                              _ds.push_back(get_random_ds());
+                              //
+                            });
                         it("should create a data set with default attributes",
-                           [&_ds]() -> void
+                           [_ds]() -> void
                            {
-                             int rc = 0;
-                             string ds = get_random_ds();
-                             _ds.push_back(ds);
-
+                             string ds = _ds.back();
+                             TestLog("ds: " + ds);
                              string response;
                              string command = zowex_command + " data-set create-vb " + ds;
-                             rc = execute_command_with_output(command, response);
+                             int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Data set created");
 
@@ -428,9 +432,65 @@ void zowex_ds_tests()
                              Expect(tokens[4]).ToBe("VB");
                              // lrecl = 255
                            });
+                        it("should error when the data set already exists",
+                           [_ds]() -> void
+                           {
+                             string ds = _ds.back();
+                             TestLog("ds: " + ds);
+
+                             string response;
+                             string command = zowex_command + " data-set create-vb " + ds;
+                             int rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("Data set created");
+
+                             command = zowex_command + " data-set create-vb " + ds;
+                             rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).Not().ToBe(0);
+                             Expect(response).ToContain("Error: could not create data set");
+                             //
+                           });
                       });
              describe("delete",
-                      []() -> void {});
+                      []() -> void
+                      {
+                        it("should delete a sequential data set",
+                           []() -> void {});
+                        it("should delete a partitioned data set (PDS)",
+                           []() -> void {});
+                        it("should delete a partitioned data set extended (PDSE)",
+                           []() -> void {});
+                        it("should delete a VSAM KSDS data set",
+                           []() -> void {});
+                        it("should delete a VSAM ESDS data set",
+                           []() -> void {});
+                        it("should delete a VSAM RRDS data set",
+                           []() -> void {});
+                        it("should delete a generation data group (GDG) base when empty",
+                           []() -> void {});
+                        it("should delete a generation data group (GDG) base and all its generations",
+                           []() -> void {});
+                        it("should delete a specific generation of a GDG",
+                           []() -> void {});
+                        it("should fail to delete a non-existent data set",
+                           []() -> void {});
+                        it("should fail to delete a data set if not authorized",
+                           []() -> void {});
+                        it("should fail to delete a data set that is currently in use",
+                           []() -> void {});
+                        it("should delete a data set with special characters in its name if properly quoted",
+                           []() -> void {});
+                        it("should delete a data set using the force option even if it has members",
+                           []() -> void {});
+                        it("should not delete a data set with the force option if it is in use",
+                           []() -> void {});
+                        it("should delete multiple data sets specified in a list",
+                           []() -> void {});
+                        it("should error when attempting to delete a GDG base with generations without the PURGE or FORCE option",
+                           []() -> void {});
+                        it("should error when the data set name is invalid",
+                           []() -> void {});
+                      });
              describe("list",
                       [&_ds]() -> void
                       {
@@ -465,6 +525,20 @@ void zowex_ds_tests()
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(RTNCD_WARNING);
                            });
+                        it("should list information for a VSAM KSDS data set",
+                           []() -> void {});
+                        it("should list information for a VSAM ESDS data set",
+                           []() -> void {});
+                        it("should list information for a VSAM RRDS data set",
+                           []() -> void {});
+                        it("should list generations of a generation data group (GDG) base",
+                           []() -> void {});
+                        it("should list specific generation of a GDG",
+                           []() -> void {});
+                        it("should fail to list a non-existent data set",
+                           []() -> void {});
+                        it("should error when the data set name is invalid",
+                           []() -> void {});
                       });
              describe("list-members",
                       []() -> void
@@ -489,10 +563,60 @@ void zowex_ds_tests()
                            });
                       });
              describe("restore",
-                      []() -> void {});
+                      []() -> void
+                      {
+                        it("should restore a data set",
+                           []() -> void {});
+                        it("should fail to restore a non-existent backup",
+                           []() -> void {});
+                        it("should fail to restore if not authorized",
+                           []() -> void {});
+                      });
              describe("view",
-                      []() -> void {});
+                      []() -> void
+                      {
+                        it("should view the content of a sequential data set",
+                           []() -> void {});
+                        it("should view the content of a PDS member",
+                           []() -> void {});
+                        it("should view a specific range of lines from a data set",
+                           []() -> void {});
+                        xit("should view the content of a VSAM KSDS data set",
+                            []() -> void {});
+                        xit("should view the content of a VSAM ESDS data set",
+                            []() -> void {});
+                        xit("should view the content of a VSAM RRDS data set",
+                            []() -> void {});
+                        it("should fail to view a non-existent data set",
+                           []() -> void {});
+                        it("should fail to view a data set if not authorized",
+                           []() -> void {});
+                        it("should view a data set with different encoding",
+                           []() -> void {});
+                        it("should error when the data set name is invalid",
+                           []() -> void {});
+                      });
              describe("write",
-                      []() -> void {});
+                      []() -> void
+                      {
+                        it("should write content to a sequential data set",
+                           []() -> void {});
+                        it("should write content to a PDS member",
+                           []() -> void {});
+                        it("should overwrite content in a data set",
+                           []() -> void {});
+                        it("should append content to a data set",
+                           []() -> void {});
+                        it("should fail to write to a non-existent data set",
+                           []() -> void {});
+                        it("should fail to write to a data set if not authorized",
+                           []() -> void {});
+                        it("should write content to a data set with different encoding",
+                           []() -> void {});
+                        it("should write content from a local file to a data set",
+                           []() -> void {});
+                        it("should error when the data set name is invalid",
+                           []() -> void {});
+                      });
            });
 }
