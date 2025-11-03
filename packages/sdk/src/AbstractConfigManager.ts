@@ -386,11 +386,7 @@ export abstract class AbstractConfigManager {
             await this.attemptConnection({ ...newConfig, ...configModifications });
         } catch (err) {
             const errorMessage = `${err}`;
-            if (
-                newConfig.privateKey &&
-                !newConfig.password &&
-                errorMessage.includes("All configured authentication methods failed")
-            ) {
+            if (newConfig.privateKey && errorMessage.includes("All configured authentication methods failed")) {
                 if (!(await this.handleInvalidPrivateKey(newConfig))) {
                     return undefined;
                 }
@@ -479,9 +475,9 @@ export abstract class AbstractConfigManager {
                 host: config.hostname,
                 port: config.port || 22,
                 username: config.user,
-                password: config.password,
+                password: config.privateKey ? undefined : config.password,
                 privateKey: config.privateKey ? readFileSync(path.normalize(config.privateKey), "utf8") : undefined,
-                passphrase: config.keyPassphrase,
+                passphrase: config.privateKey ? config.keyPassphrase : undefined,
                 readyTimeout: config.handshakeTimeout || this.getVscodeSetting("defaultHandshakeTimeout") || 30000,
             };
 
