@@ -69,7 +69,6 @@ void Worker::start()
   auto self = shared_from_this();
 
   worker_thread = std::thread(&Worker::worker_loop, self);
-  state.store(WorkerState::Idle, std::memory_order_release);
   update_heartbeat();
   LOG_DEBUG("Worker %d state -> %s (worker thread started)", id, worker_state_to_string(WorkerState::Idle));
   LOG_DEBUG("Worker %d started", id);
@@ -460,22 +459,24 @@ void WorkerPool::monitor_workers()
         break;
 
       Worker *worker = nullptr;
+      bool skip_due_to_backoff = false;
+      
       {
         std::lock_guard<std::mutex> lock(ready_mutex);
+        
         if (i < next_replacement_allowed.size() &&
             std::chrono::steady_clock::now() < next_replacement_allowed[i])
         {
           // Worker is already being replaced, skip monitoring
-          continue;
+          skip_due_to_backoff = true;
         }
-
-        if (i < workers.size())
+        else if (i < workers.size())
         {
           worker = workers[i].get();
         }
       }
 
-      if (worker == nullptr)
+      if (skip_due_to_backoff || worker == nullptr)
         continue;
 
       // If this worker has faulted, replace it
@@ -544,8 +545,12 @@ void WorkerPool::replace_worker(size_t worker_index, const char *reason, bool fo
       int32_t previous_ready = ready_count.fetch_sub(1);
       if (previous_ready <= 0)
       {
-        ready_count.fetch_add(1);
-        LOG_WARN("Ready count underflow while replacing worker %zu", worker_index);
+        // Critical: ready count and ready list are inconsistent
+        // Reset count to 0 and abort replacement to prevent further corruption
+        ready_count.store(0, std::memory_order_release);
+        LOG_ERROR("Ready count inconsistency detected for worker %zu (was %d). Aborting replacement to prevent corruption.", 
+                  worker_index, previous_ready);
+        return;
       }
       ready_list[worker_index] = false;
     }
