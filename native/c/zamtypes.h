@@ -99,6 +99,8 @@ typedef struct
   char *PTR32 buffer;
 } FILE_CTRL;
 
+#define ISPF_STATS_MIN_LEN 15 // halfwords
+#define ISPF_STATS_MAX_LEN 20 // halfwords
 // https://www.ibm.com/docs/en/zos/3.2.0?topic=di-ispf-statistics-entry-in-pds-directory
 typedef struct
 {

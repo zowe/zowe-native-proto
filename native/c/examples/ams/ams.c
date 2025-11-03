@@ -162,7 +162,7 @@ int AMSMAIN()
 
   zut_dump_storage_common("@TEST bldl_pl", &bldl_pl.list, sizeof(bldl_pl.list), 16, 0, zut_print_debug);
 
-  // TODO(Kelosky): if no stats are present, revert to LE-C way of writing data set
+  // TODO(Kelosky): if no stats are present, revert to LE-C way of writing data set??
 
   zwto_debug("@TEST find member");
   rc = find_member(sysprint, &rsn);
@@ -198,9 +198,12 @@ int AMSMAIN()
   // TODO(Kelosky): pass only IO_CTRL to stow
   zwto_debug("@TEST stow");
   memcpy(sysprint->stow_list.name, bldl_pl.list.name, sizeof(bldl_pl.list.name));
-  memcpy(sysprint->stow_list.user_data, bldl_pl.list.user_data, sizeof(bldl_pl.list.user_data));
   sysprint->stow_list.c = bldl_pl.list.c;
   memcpy(sysprint->stow_list.ttr, note_response.ttr, sizeof(note_response.ttr));
+  memcpy(sysprint->stow_list.user_data, bldl_pl.list.user_data, sizeof(bldl_pl.list.user_data)); // copy all user data
+  // adjust modification date & time
+  // adjust user
+  // adjust number of lines
 
   zut_dump_storage_common("@TEST sysprint->stow_list", &sysprint->stow_list, sizeof(sysprint->stow_list), 16, 0, zut_print_debug);
   zwto_debug("@TEST sysprint->stow_list ttr: %02x%02x%02x", sysprint->stow_list.ttr[0], sysprint->stow_list.ttr[1], sysprint->stow_list.ttr[2]);

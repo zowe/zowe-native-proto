@@ -13,6 +13,7 @@
 #include <vector>
 #include "zut.hpp"
 #include "ams.h"
+#include <unistd.h>
 
 int main()
 {
@@ -30,6 +31,8 @@ int main()
   // dds.push_back("alloc dd(sysin) da('dkelosky.input(data)') shr lrecl(80) recfm(f,b) blksize(160) ");
   // dds.push_back("alloc dd(sysprint) da('dkelosky.output(test)') shr"); //  lrecl(80) recfm(f,b) blksize(160) ");
   // dds.push_back("alloc dd(sysin) lrecl(80) recfm(f,b) blksize(80)");
+
+  std::cout << "current user: " << getlogin() << std::endl;
 
   rc = zut_loop_dynalloc(dds, &std::cerr);
   if (0 != rc)
