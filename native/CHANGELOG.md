@@ -4,10 +4,23 @@ All notable changes to the native code for "zowe-native-proto" are documented in
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## Recent Changes
+## `0.2.0`
 
 - `c`: Fixed issue where `zowex uss chown` (and `zusf_chown_uss_file_or_dir`) silently succeeded with exit code `0` when a non-existent user or group was supplied. The command now validates `user:group` input and returns a non-zero exit code with a clear error message when invalid. [#565](https://github.com/zowe/zowe-native-proto/pull/565)
 - `c`: Fixed issue where uploading changes to a PDS member removed its ISPF stats. [#556](https://github.com/zowe/zowe-native-proto/issues/556)
+- `c`: Streamlined argument checks and access within command handlers. Handlers can now use `get`, `get_if` and `find` to search for arguments and retrieve their values, regardless of whether the argument is a keyword or positional argument. [#574](https://github.com/zowe/zowe-native-proto/pull/574)
+- `c`: Command handlers can now be called directly by providing an `InvocationContext`. The context provides helper functions for error, input, and output stream redirection. Handlers can use this context to print output and errors, as well as setting content length. [#574](https://github.com/zowe/zowe-native-proto/pull/574)
+- `c`: Organized command handlers into separate source files and namespaces in the `commands` folder. Reduced size of main entrypoint function by moving command registration to a `register_commands` function contained in each namespace. [#409](https://github.com/zowe/zowe-native-proto/issues/409)
+- `native`: Added a `--depth` option to the `zowex uss list` command for listing USS directories recursively. [#575](https://github.com/zowe/zowe-native-proto/pull/575)
+- `native`: Added `zowex job list-proclib` to list proclib concatenation.
+- `c`: Fixed issue where a directory handle was leaked when running `chmod`, `chown`, `chtag` or `delete` USS commands. [#577](https://github.com/zowe/zowe-native-proto/issues/577)
+- `c`: Fixed issue where a file handle was leaked if the `fldata` function call failed when listing data set members. [#577](https://github.com/zowe/zowe-native-proto/issues/577)
+- `c`: Fixed issue where a file handle was leaked if the `fldata` function call failed in the `handle_data_set_compress` command handler. [#577](https://github.com/zowe/zowe-native-proto/issues/577)
+- `c`: Fixed issue in the `zut_substitute_symbol` function where passing patterns with a length greater than the input buffer would cause a buffer overflow. [#577](https://github.com/zowe/zowe-native-proto/issues/577)
+- `c`: Fixed undefined behavior in the `zut_bpxwdyn` function by verifying that the allocated 31-bit region is valid before writing to it. [#577](https://github.com/zowe/zowe-native-proto/issues/577)
+- `c`: The CLI parser now prints unexpected, trailing positional arguments when handling command input. [#594](https://github.com/zowe/zowe-native-proto/issues/594)
+- Rewrote the middleware (`zowed`) in C++. This removes our dependency on Golang, improves performance, and allows parallel requests to be handled in a single address space. [#595](https://github.com/zowe/zowe-native-proto/pull/595)
+- `c`: Fixed issue where automatic codepage conversion with `_BPXK_AUTOCVT` was not disabled for all USS read and write operations, which could interfere with the `--encoding` option. [#620](https://github.com/zowe/zowe-native-proto/pull/620)
 
 ## `0.1.10`
 

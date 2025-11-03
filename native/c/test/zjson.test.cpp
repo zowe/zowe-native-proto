@@ -13,7 +13,6 @@
 // ZJson Test Suite - Testing zjson.hpp API functionality
 // ============================================================================
 
-#include "zjson.test.hpp"
 #include "ztest.hpp"
 #include <string>
 #include <vector>
@@ -78,18 +77,26 @@ void test_type_traits()
         it("should correctly identify basic types as serializable", []() {
             bool bool_serializable = zjson::Serializable<bool>::value;
             bool int_serializable = zjson::Serializable<int>::value;
+            bool longlong_serializable = zjson::Serializable<long long>::value;
+            bool ulonglong_serializable = zjson::Serializable<unsigned long long>::value;
             bool string_serializable = zjson::Serializable<std::string>::value;
             Expect(bool_serializable).ToBe(true);
             Expect(int_serializable).ToBe(true);
+            Expect(longlong_serializable).ToBe(true);
+            Expect(ulonglong_serializable).ToBe(true);
             Expect(string_serializable).ToBe(true);
         });
 
         it("should correctly identify basic types as deserializable", []() {
             bool bool_deserializable = zjson::Deserializable<bool>::value;
             bool int_deserializable = zjson::Deserializable<int>::value;
+            bool longlong_deserializable = zjson::Deserializable<long long>::value;
+            bool ulonglong_deserializable = zjson::Deserializable<unsigned long long>::value;
             bool string_deserializable = zjson::Deserializable<std::string>::value;
             Expect(bool_deserializable).ToBe(true);
             Expect(int_deserializable).ToBe(true);
+            Expect(longlong_deserializable).ToBe(true);
+            Expect(ulonglong_deserializable).ToBe(true);
             Expect(string_deserializable).ToBe(true);
         });
 
@@ -127,12 +134,18 @@ void test_type_traits()
 
         it("should support constexpr trait evaluation", []() {
             constexpr bool int_serializable = zjson::Serializable<int>::value;
+            constexpr bool longlong_serializable = zjson::Serializable<long long>::value;
+            constexpr bool ulonglong_serializable = zjson::Serializable<unsigned long long>::value;
             constexpr bool unreg_serializable = zjson::Serializable<UnregisteredType>::value;
 
             // Convert constexpr values to runtime values for testing
             bool int_ser = int_serializable;
+            bool longlong_ser = longlong_serializable;
+            bool ulonglong_ser = ulonglong_serializable;
             bool unreg_ser = unreg_serializable;
             Expect(int_ser).ToBe(true);
+            Expect(longlong_ser).ToBe(true);
+            Expect(ulonglong_ser).ToBe(true);
             Expect(unreg_ser).ToBe(false);
         }); });
 }
@@ -159,11 +172,12 @@ void test_value_types()
 
         it("should detect numeric values correctly", []() {
             zjson::Value int_val(42);
-            Expect(int_val.is_number()).ToBe(true);
+            Expect(int_val.is_integer()).ToBe(true);
             Expect(int_val.get_type() == zjson::Value::Number).ToBe(true);
 
             zjson::Value double_val(3.14);
-            Expect(double_val.is_number()).ToBe(true);
+            Expect(double_val.is_double()).ToBe(true);
+            Expect(double_val.get_type() == zjson::Value::Number).ToBe(true);
         });
 
         it("should detect string values correctly", []() {
@@ -178,7 +192,8 @@ void test_value_types()
             Expect(bool_val.is_string()).ToBe(false);
 
             zjson::Value string_val("hello");
-            Expect(string_val.is_number()).ToBe(false);
+            Expect(string_val.is_integer()).ToBe(false);
+            Expect(string_val.is_double()).ToBe(false);
         });
 
         it("should support object indexing with string keys", []() {
@@ -189,7 +204,7 @@ void test_value_types()
             // Test const access
             const zjson::Value& const_obj = obj;
             std::string name = const_obj["name"].as_string();
-            int age = const_obj["age"].as_int();
+            int64_t age = const_obj["age"].as_int64();
 
             Expect(name == "Alice").ToBe(true);
             Expect(age).ToBe(30);
@@ -207,7 +222,7 @@ void test_value_types()
             obj["age"] = zjson::Value(25);
 
             Expect(obj["name"].as_string() == "Bob").ToBe(true);
-            Expect(obj["age"].as_int()).ToBe(25);
+            Expect(obj["age"].as_int64()).ToBe(25);
         });
 
         it("should support array indexing with size_t indices", []() {
@@ -277,7 +292,7 @@ struct OptionalBehaviorStruct
 
 ZJSON_SERIALIZABLE(OptionalBehaviorStruct,
                    ZJSON_FIELD(OptionalBehaviorStruct, name),
-                   ZJSON_FIELD(OptionalBehaviorStruct, include_null), // Default serde behavior
+                   ZJSON_FIELD(OptionalBehaviorStruct, include_null),
                    ZJSON_FIELD(OptionalBehaviorStruct, skip_if_none) zjson_skip_serializing_if_none());
 
 void test_optional_types()
@@ -308,7 +323,7 @@ void test_optional_types()
             Expect(copied_opt.value()).ToBe(42);
         });
 
-        it("should include null for empty optionals by default (serde-compatible)", []() {
+        it("should include null for empty optionals by default", []() {
             OptionalBehaviorStruct obj{
                 "test",
                 zstd::optional<std::string>(), // empty - should include as null
@@ -397,7 +412,7 @@ void test_basic_api()
 
             // Test basic Value operations
             zjson::Value test_val(42);
-            Expect(test_val.is_number()).ToBe(true);
+            Expect(test_val.is_integer()).ToBe(true);
         });
 
         it("should create valid field objects with ZJSON_FIELD macro", []() {
@@ -431,14 +446,14 @@ void test_basic_api()
 
             // Test deep chained access
             std::string alice_name = root["users"][0]["name"].as_string();
-            int alice_age = root["users"][0]["profile"]["age"].as_int();
+            int64_t alice_age = root["users"][0]["profile"]["age"].as_int64();
 
             Expect(alice_name == "Alice").ToBe(true);
             Expect(alice_age).ToBe(30);
 
             // Test second element
             std::string bob_name = root["users"][1]["name"].as_string();
-            int bob_age = root["users"][1]["profile"]["age"].as_int();
+            int64_t bob_age = root["users"][1]["profile"]["age"].as_int64();
 
             Expect(bob_name == "Bob").ToBe(true);
             Expect(bob_age).ToBe(25);
@@ -459,8 +474,8 @@ void test_basic_api()
             Expect(root.is_object()).ToBe(true);
             Expect(root["company"]["name"].as_string() == "Tech Corp").ToBe(true);
             Expect(root["company"]["employees"][0]["name"].as_string() == "Alice").ToBe(true);
-            Expect(root["company"]["employees"][1]["id"].as_int()).ToBe(2);
-            Expect(root["metadata"]["count"].as_int()).ToBe(2);
+            Expect(root["company"]["employees"][1]["id"].as_int64()).ToBe(2);
+            Expect(root["metadata"]["count"].as_int64()).ToBe(2);
         }); });
 }
 
@@ -515,7 +530,7 @@ void test_dynamic_access_edge_cases()
 
             // Verify deep access works
             std::string deep_val = complex["level1"]["level2"][0]["level3"].as_string();
-            int array_val = complex["level1"]["array"][0].as_int();
+            int64_t array_val = complex["level1"]["array"][0].as_int64();
             bool nested_bool = complex["level1"]["array"][1]["nested"].as_bool();
 
             Expect(deep_val == "deep_value").ToBe(true);
@@ -665,6 +680,50 @@ void test_serialization_round_trips()
             TestOptional restored = restored_result.value();
             Expect(restored.opt_int.has_value()).ToBe(false);
             Expect(restored.opt_string.has_value()).ToBe(false);
+        });
+
+        it("should properly escape and unescape all EBCDIC characters (0-255)", []() {
+            // Build a string containing all EBCDIC characters from 0 to 255
+            std::string all_chars;
+            all_chars.reserve(256);
+            for (int i = 0; i < 256; i++) {
+                all_chars += static_cast<char>(i);
+            }
+            
+            SimpleStruct original{42, all_chars};
+            
+            // Serialize to JSON
+            auto json_result = zjson::to_string(original);
+            Expect(json_result.has_value()).ToBe(true);
+            
+            std::string json_str = json_result.value();
+            
+            // Verify that control and special characters are properly escaped
+            bool has_escaped_chars = json_str.find("\\u0000") != std::string::npos;
+            has_escaped_chars &= json_str.find("\\n") != std::string::npos;
+            has_escaped_chars &= json_str.find("\\t") != std::string::npos;
+            has_escaped_chars &= json_str.find("\\\"") != std::string::npos;
+            has_escaped_chars &= json_str.find("\\\\") != std::string::npos;
+            Expect(has_escaped_chars).ToBe(true);
+            
+            // Deserialize back - all characters should be preserved
+            auto restored_result = zjson::from_str<SimpleStruct>(json_str);
+            Expect(restored_result.has_value()).ToBe(true);
+            
+            SimpleStruct restored = restored_result.value();
+            Expect(restored.id).ToBe(original.id);
+            
+            // Verify all 256 characters are preserved exactly
+            Expect(restored.name.size()).ToBe(256);
+            
+            for (int i = 0; i < 256; i++) {
+                unsigned char original_char = static_cast<unsigned char>(original.name[i]);
+                unsigned char restored_char = static_cast<unsigned char>(restored.name[i]);
+                Expect(restored_char).ToBe(original_char);
+            }
+            
+            // Verify the entire string matches
+            Expect(restored.name).ToBe(original.name);
         }); });
 }
 
@@ -765,7 +824,7 @@ void test_value_conversions()
             Expect(value.is_object()).ToBe(true);
             
             // Should be able to access fields dynamically
-            int id = value["id"].as_int();
+            int64_t id = value["id"].as_int64();
             std::string name = value["name"].as_string();
             
             Expect(id).ToBe(42);
@@ -803,20 +862,72 @@ void test_value_conversions()
         });
 
         it("should convert basic types to Value", []() {
-            // Test int conversion
-            auto int_value_result = zjson::to_value(42);
-            Expect(int_value_result.has_value()).ToBe(true);
-            zjson::Value int_val = int_value_result.value();
-            Expect(int_val.is_number()).ToBe(true);
-            Expect(int_val.as_int()).ToBe(42);
+            auto int_result = zjson::to_value(42);
+            Expect(int_result.has_value()).ToBe(true);
+            Expect(int_result.value().as_int64()).ToBe(42);
             
-            // Test string conversion
-            std::string test_str = "hello";
-            auto str_value_result = zjson::to_value(test_str);
-            Expect(str_value_result.has_value()).ToBe(true);
-            zjson::Value str_val = str_value_result.value();
-            Expect(str_val.is_string()).ToBe(true);
-            Expect(str_val.as_string()).ToBe(test_str);
+            auto str_result = zjson::to_value(std::string("hello"));
+            Expect(str_result.has_value()).ToBe(true);
+            Expect(str_result.value().as_string()).ToBe(std::string("hello"));
+        });
+
+        it("should store integers and doubles separately", []() {
+            // Integers stored as i64 (long long)
+            zjson::Value int_val(42);
+            Expect(int_val.is_integer()).ToBe(true);
+            Expect(int_val.is_double()).ToBe(false);
+            
+            zjson::Value max_i64(9223372036854775807LL);
+            Expect(max_i64.is_integer()).ToBe(true);
+            
+            // Floats stored as f64 (double)
+            zjson::Value float_val(3.14);
+            Expect(float_val.is_double()).ToBe(true);
+            Expect(float_val.is_integer()).ToBe(false);
+        });
+
+        it("should preserve i64 precision through JSON round-trip", []() {
+            long long max_i64 = 9223372036854775807LL;
+            zjson::Value obj = zjson::Value::create_object();
+            obj["maxInt"] = zjson::Value(max_i64);
+            
+            auto json_result = zjson::to_string(obj);
+            Expect(json_result.has_value()).ToBe(true);
+            
+            auto parsed = zjson::from_str(json_result.value());
+            Expect(parsed.has_value()).ToBe(true);
+            Expect(parsed.value()["maxInt"].is_integer()).ToBe(true);
+            Expect(parsed.value()["maxInt"].as_int64()).ToBe(max_i64);
+        });
+
+        it("should handle u64 within i64 range as integer", []() {
+            // u64 values <= i64::MAX stored as integer
+            zjson::Value small_u64(1000ULL);
+            Expect(small_u64.is_integer()).ToBe(true);
+            Expect(small_u64.as_uint64()).ToBe(1000ULL);
+            
+            // u64 values > i64::MAX stored as f64 (precision loss acceptable)
+            zjson::Value large_u64(18446744073709551615ULL);
+            Expect(large_u64.is_double()).ToBe(true);
+        });
+
+        it("should support as_i64/as_u64/as_f64 conversions", []() {
+            // i64 -> f64 conversion
+            zjson::Value int_val(42);
+            Expect(int_val.as_double()).ToBe(42.0);
+            
+            // f64 -> i64 conversion (whole numbers only)
+            zjson::Value whole_double(100.0);
+            Expect(whole_double.as_int64()).ToBe(100);
+            
+            // f64 with fraction -> i64 should error
+            zjson::Value fractional(3.14);
+            try {
+                fractional.as_int64();
+                Expect(false).ToBe(true);
+            } catch (const zjson::Error& e) {
+                Expect(e.kind() == zjson::Error::InvalidValue).ToBe(true);
+            }
         }); });
 }
 

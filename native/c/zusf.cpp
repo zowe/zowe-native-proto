@@ -40,6 +40,9 @@
 #include <iconv.h>
 #include <grp.h>
 #include <pwd.h>
+#ifndef _POSIX_SOURCE
+#define _POSIX_SOURCE
+#endif
 #include <unistd.h>
 #include <stdlib.h>
 #include <map>
@@ -63,6 +66,18 @@
 using namespace std;
 
 /**
+ * Concatenates a directory path with a file/directory name, handling trailing slashes.
+ *
+ * @param dir_path the directory path
+ * @param name the file or directory name to append
+ * @return the concatenated path
+ */
+string zusf_join_path(const string &dir_path, const string &name)
+{
+  return dir_path[dir_path.length() - 1] == '/' ? dir_path + name : dir_path + "/" + name;
+}
+
+/**
  * Formats a file timestamp.
  *
  * @param mtime the modification time from stat
@@ -75,7 +90,7 @@ string zusf_format_ls_time(time_t mtime, bool use_csv_format)
 
   if (use_csv_format)
   {
-    // CSV format: ISO time in UTC (2024-01-31T05:30:00)
+    // CSV format: ISO time in UTC (2024-01-31T05:30:00Z)
     struct tm *tm_info = gmtime(&mtime);
     if (tm_info != nullptr)
     {
@@ -972,12 +987,82 @@ string zusf_format_file_entry(ZUSF *zusf, const struct stat &file_stats, const s
 }
 
 /**
+ * Recursive helper function to collect directory entries with depth control.
+ *
+ * @param zusf pointer to a ZUSF object
+ * @param dir_path path to the directory
+ * @param entry_names reference to vector where entry names will be stored
+ * @param options listing options (all_files, long_format, depth)
+ * @param current_depth current recursion depth
+ *
+ * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
+ */
+static int zusf_collect_directory_entries_recursive(ZUSF *zusf, const string &dir_path, vector<string> &entry_names, const ListOptions &options, int current_depth = 0)
+{
+  DIR *dir;
+  if ((dir = opendir(dir_path.c_str())) == nullptr)
+  {
+    return RTNCD_FAILURE;
+  }
+
+  // Collect all directory entries first
+  vector<string> current_entries;
+  struct dirent *entry;
+  while ((entry = readdir(dir)) != nullptr)
+  {
+    if ((strcmp(entry->d_name, ".") != 0) && (strcmp(entry->d_name, "..") != 0))
+    {
+      string name = entry->d_name;
+      // Skip hidden files if not requested
+      if (name.at(0) == '.' && !options.all_files)
+      {
+        continue;
+      }
+      current_entries.push_back(name);
+    }
+  }
+  closedir(dir);
+
+  // Sort entries alphabetically using C string comparison
+  sort(current_entries.begin(), current_entries.end(), zut_string_compare_c);
+
+  // Add current level entries to the result
+  for (vector<string>::const_iterator it = current_entries.begin(); it != current_entries.end(); ++it)
+  {
+    const string &name = *it;
+    entry_names.push_back(name);
+
+    // If we haven't reached max depth, recurse into subdirectories
+    if (options.max_depth > 1 && current_depth < (options.max_depth - 1))
+    {
+      string child_path = zusf_join_path(dir_path, name);
+      struct stat child_stats;
+      if (stat(child_path.c_str(), &child_stats) == 0 && S_ISDIR(child_stats.st_mode))
+      {
+        vector<string> subdir_entries;
+        if (zusf_collect_directory_entries_recursive(zusf, child_path, subdir_entries, options, current_depth + 1) == RTNCD_SUCCESS)
+        {
+          // Add subdirectory entries with path prefix
+          for (vector<string>::const_iterator sub_it = subdir_entries.begin(); sub_it != subdir_entries.end(); ++sub_it)
+          {
+            const string &subentry = *sub_it;
+            entry_names.push_back(name + "/" + subentry);
+          }
+        }
+      }
+    }
+  }
+
+  return RTNCD_SUCCESS;
+}
+
+/**
  * Lists the USS file path.
  *
  * @param zusf pointer to a ZUSF object
  * @param file name of the USS file or directory
  * @param response reference to a string where the read data will be stored
- * @param options listing options (all_files, long_format)
+ * @param options listing options (all_files, long_format, max_depth)
  * @param use_csv_format whether to use CSV format or ls-style format
  *
  * @return RTNCD_SUCCESS on success, RTNCD_FAILURE on failure
@@ -1007,40 +1092,48 @@ int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response, ListOptio
     return RTNCD_FAILURE;
   }
 
-  DIR *dir;
-  if ((dir = opendir(file.c_str())) == nullptr)
+  response.clear();
+
+  // Treat depth == 0 as "ls -d" behavior: show the directory itself, not its contents
+  if (options.max_depth == 0)
+  {
+    const auto dir_name = file.substr(file.find_last_of("/") + 1);
+    response = zusf_format_file_entry(zusf, file_stats, file, dir_name, options, use_csv_format);
+    return RTNCD_SUCCESS;
+  }
+
+  // Add "." and ".." entries if all_files option is set
+  if (options.all_files)
+  {
+    // Add "." entry
+    response += zusf_format_file_entry(zusf, file_stats, file, ".", options, use_csv_format);
+
+    // Add ".." entry if we can stat the parent directory
+    string parent_path = file.substr(0, file.find_last_of("/"));
+    if (parent_path.empty())
+    {
+      parent_path = "/"; // Root directory case
+    }
+    struct stat parent_stats;
+    if (stat(parent_path.c_str(), &parent_stats) == 0)
+    {
+      response += zusf_format_file_entry(zusf, parent_stats, parent_path, "..", options, use_csv_format);
+    }
+  }
+
+  // Collect all directory entries (recursively if depth > 1)
+  vector<string> entry_names;
+  if (zusf_collect_directory_entries_recursive(zusf, file, entry_names, options) != RTNCD_SUCCESS)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open directory '%s'", file.c_str());
     return RTNCD_FAILURE;
   }
 
-  // Collect all directory entries first
-  vector<string> entry_names;
-  struct dirent *entry;
-  while ((entry = readdir(dir)) != nullptr)
-  {
-    if ((strcmp(entry->d_name, ".") != 0) && (strcmp(entry->d_name, "..") != 0))
-    {
-      string name = entry->d_name;
-      // Skip hidden files if not requested
-      if (name.at(0) == '.' && !options.all_files)
-      {
-        continue;
-      }
-      entry_names.push_back(name);
-    }
-  }
-  closedir(dir);
-
-  // Sort entries alphabetically using C string comparison
-  sort(entry_names.begin(), entry_names.end(), zut_string_compare_c);
-
   // Process sorted entries
-  response.clear();
   for (auto i = 0u; i < entry_names.size(); i++)
   {
     const auto name = entry_names.at(i);
-    string child_path = file[file.length() - 1] == '/' ? file + name : file + "/" + name;
+    string child_path = zusf_join_path(file, name);
     struct stat child_stats;
     stat(child_path.c_str(), &child_stats);
 
@@ -1061,8 +1154,7 @@ int zusf_list_uss_file_path(ZUSF *zusf, string file, string &response, ListOptio
  */
 int zusf_read_from_uss_file(ZUSF *zusf, const string &file, string &response)
 {
-  const auto bpxk_autocvt = getenv("_BPXK_AUTOCVT");
-  setenv("_BPXK_AUTOCVT", "OFF", 1);
+  AutocvtGuard autocvt(false);
   ifstream in(file.c_str(), zusf->encoding_opts.data_type == eDataTypeBinary ? ifstream::in | ifstream::binary : ifstream::in);
   if (!in.is_open())
   {
@@ -1079,8 +1171,6 @@ int zusf_read_from_uss_file(ZUSF *zusf, const string &file, string &response)
 
   response.assign(raw_data.begin(), raw_data.end());
   in.close();
-
-  setenv("_BPXK_AUTOCVT", bpxk_autocvt, 1);
 
   // Use file tag encoding if available, otherwise fall back to provided encoding
   string encoding_to_use;
@@ -1146,7 +1236,8 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, const string &file, const strin
     return RTNCD_FAILURE;
   }
 
-  FILE *fin = fopen(file.c_str(), zusf->encoding_opts.data_type == eDataTypeBinary ? "rb" : "r");
+  AutocvtGuard autocvt(false);
+  FileGuard fin(file.c_str(), zusf->encoding_opts.data_type == eDataTypeBinary ? "rb" : "r");
   if (!fin)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open file '%s'", file.c_str());
@@ -1160,15 +1251,25 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, const string &file, const strin
     return RTNCD_FAILURE;
   }
 
-#ifdef ZSHMEM_ENABLE
-  set_content_length((uint64_t)st.st_size);
+#if defined(__clang__)
+  if (zusf->set_size_callback)
+  {
+    zusf->set_size_callback((uint64_t)st.st_size);
+  }
 #endif
 
   int fifo_fd = open(pipe.c_str(), O_WRONLY);
-  FILE *fout = fdopen(fifo_fd, "w");
+  if (fifo_fd == -1)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "open() failed on output pipe '%s', errno: %d", pipe.c_str(), errno);
+    return RTNCD_FAILURE;
+  }
+
+  FileGuard fout(fifo_fd, "w");
   if (!fout)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open output pipe '%s'", pipe.c_str());
+    close(fifo_fd);
     return RTNCD_FAILURE;
   }
 
@@ -1235,8 +1336,6 @@ int zusf_read_from_uss_file_streamed(ZUSF *zusf, const string &file, const strin
   }
 
   fflush(fout);
-  fclose(fin);
-  fclose(fout);
   return RTNCD_SUCCESS;
 }
 
@@ -1306,6 +1405,8 @@ int zusf_write_to_uss_file(ZUSF *zusf, const string &file, string &data)
       return RTNCD_FAILURE;
     }
   }
+
+  AutocvtGuard autocvt(false);
   const char *mode = (zusf->encoding_opts.data_type == eDataTypeBinary) ? "wb" : "w";
   FILE *fp = std::fopen(file.c_str(), mode);
   if (!fp)
@@ -1397,7 +1498,8 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, const string &file, const string
     return RTNCD_FAILURE;
   zusf->created = stat_result == -1;
 
-  FILE *fout = fopen(file.c_str(), zusf->encoding_opts.data_type == eDataTypeBinary ? "wb" : "w");
+  AutocvtGuard autocvt(false);
+  FileGuard fout(file.c_str(), zusf->encoding_opts.data_type == eDataTypeBinary ? "wb" : "w");
   if (!fout)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open '%s'", file.c_str());
@@ -1405,11 +1507,17 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, const string &file, const string
   }
 
   int fifo_fd = open(pipe.c_str(), O_RDONLY);
-  FILE *fin = fdopen(fifo_fd, "r");
+  if (fifo_fd == -1)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "open() failed on input pipe '%s', errno: %d", pipe.c_str(), errno);
+    return RTNCD_FAILURE;
+  }
+
+  FileGuard fin(fifo_fd, "r");
   if (!fin)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open input pipe '%s'", pipe.c_str());
-    fclose(fout);
+    close(fifo_fd);
     return RTNCD_FAILURE;
   }
 
@@ -1437,8 +1545,6 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, const string &file, const string
       catch (std::exception &e)
       {
         zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), encoding_to_use.c_str());
-        fclose(fin);
-        fclose(fout);
         return RTNCD_FAILURE;
       }
     }
@@ -1447,16 +1553,12 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, const string &file, const string
     if (bytes_written != chunk_len)
     {
       zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to write to '%s' (possibly out of space)", file.c_str());
-      fclose(fin);
-      fclose(fout);
       return RTNCD_FAILURE;
     }
     temp_encoded.clear();
   }
 
   fflush(fout);
-  fclose(fin);
-  fclose(fout);
 
   if (stat(file.c_str(), &file_stats) == -1)
   {
@@ -1510,18 +1612,19 @@ int zusf_chmod_uss_file_or_dir(ZUSF *zusf, string file, mode_t mode, bool recurs
     {
       if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0)
       {
-        const string child_path = file[file.length() - 1] == '/' ? file + string((const char *)entry->d_name)
-                                                                 : file + string("/") + string((const char *)entry->d_name);
+        const string child_path = zusf_join_path(file, string((const char *)entry->d_name));
         struct stat file_stats;
         stat(child_path.c_str(), &file_stats);
 
         const auto rc = zusf_chmod_uss_file_or_dir(zusf, child_path, mode, S_ISDIR(file_stats.st_mode));
         if (0 != rc)
         {
+          closedir(dir);
           return rc;
         }
       }
     }
+    closedir(dir);
   }
   return 0;
 }
@@ -1555,14 +1658,14 @@ int zusf_delete_uss_item(ZUSF *zusf, string file, bool recursive)
     {
       if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0)
       {
-        const string child_path = file[file.length() - 1] == '/' ? file + string((const char *)entry->d_name)
-                                                                 : file + string("/") + string((const char *)entry->d_name);
+        const string child_path = zusf_join_path(file, string((const char *)entry->d_name));
         struct stat file_stats;
         stat(child_path.c_str(), &file_stats);
 
         const auto rc = zusf_delete_uss_item(zusf, child_path, S_ISDIR(file_stats.st_mode));
         if (0 != rc)
         {
+          closedir(dir);
           return rc;
         }
       }
@@ -1754,25 +1857,15 @@ int zusf_chown_uss_file_or_dir(ZUSF *zusf, std::string file, std::string owner, 
     {
       if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0)
       {
-        const string child_path =
-            (file.length() > 0 && file[file.length() - 1] == '/') ? file + string(entry->d_name)
-                                                                  : file + string("/") + string(entry->d_name);
+        const string child_path = zusf_join_path(file, string((const char *)entry->d_name));
+        struct stat file_stats;
+        stat(child_path.c_str(), &file_stats);
 
         struct stat child_stats;
         if (stat(child_path.c_str(), &child_stats) == -1)
         {
           closedir(dir);
-          zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Path '%s' no longer accessible", child_path.c_str());
-          return RTNCD_FAILURE;
-        }
-
-        // Propagate chown to children, recursing into subdirectories
-        const auto child_rc =
-            zusf_chown_uss_file_or_dir(zusf, child_path, owner, S_ISDIR(child_stats.st_mode));
-        if (child_rc != 0)
-        {
-          closedir(dir);
-          return child_rc;
+          return rc;
         }
       }
     }
@@ -1840,18 +1933,19 @@ int zusf_chtag_uss_file_or_dir(ZUSF *zusf, const string &file, const string &own
     {
       if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0)
       {
-        const string child_path = file[file.length() - 1] == '/' ? file + string((const char *)entry->d_name)
-                                                                 : file + string("/") + string((const char *)entry->d_name);
+        const string child_path = zusf_join_path(file, string((const char *)entry->d_name));
         struct stat file_stats;
         stat(child_path.c_str(), &file_stats);
 
         const auto rc = zusf_chtag_uss_file_or_dir(zusf, child_path, tag, S_ISDIR(file_stats.st_mode));
         if (0 != rc)
         {
+          closedir(dir);
           return rc;
         }
       }
     }
+    closedir(dir);
   }
   return 0;
 }

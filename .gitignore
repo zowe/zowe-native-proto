@@ -1,4 +1,5 @@
 # Directories
+.cache
 artifacts
 bin
 coverage
@@ -15,7 +16,6 @@ zowe-native-proto-package
 .DS_Store
 config.*.json
 config.yaml
-native/golang/zowed*
 tsconfig.tsbuildinfo
 zowe.config.json
 zowe.schema.json

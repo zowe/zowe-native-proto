@@ -22,12 +22,13 @@
 #include "zutm31.h"
 #include <ios>
 #include "zdyn.h"
+#include <_Nascii.h>
 
 using namespace std;
 
 int zut_search(string parms)
 {
-  return ZUTSRCH();
+  return ZUTSRCH(parms.c_str());
 }
 
 int zut_run(string program)
@@ -43,7 +44,17 @@ unsigned char zut_get_key()
 int zut_substitute_symbol(string pattern, string &result)
 {
   SYMBOL_DATA *parms = (SYMBOL_DATA *)__malloc31(sizeof(SYMBOL_DATA));
+  if (parms == nullptr)
+  {
+    return RTNCD_FAILURE;
+  }
   memset(parms, 0x00, sizeof(SYMBOL_DATA));
+
+  if (pattern.size() > sizeof(parms->input))
+  {
+    free(parms);
+    return RTNCD_FAILURE;
+  }
 
   strcpy(parms->input, pattern.c_str());
   parms->length = strlen(pattern.c_str());
@@ -76,6 +87,10 @@ int zut_bpxwdyn(string parm, unsigned int *code, string &resp)
   char bpx_response[RET_ARG_MAX_LEN * MSG_ENTRIES + 1] = {0};
 
   unsigned char *p = (unsigned char *)__malloc31(sizeof(BPXWDYN_PARM) + sizeof(BPXWDYN_RESPONSE));
+  if (p == nullptr)
+  {
+    return RTNCD_FAILURE;
+  }
   memset(p, 0x00, sizeof(BPXWDYN_PARM) + sizeof(BPXWDYN_RESPONSE));
 
   BPXWDYN_PARM *bparm = (BPXWDYN_PARM *)p;
@@ -288,23 +303,27 @@ uint32_t zut_calc_adler32_checksum(const string &input)
 }
 
 /**
- * Prints the input string as bytes to stdout.
+ * Prints the input string as bytes to the specified output stream.
  * @param input The input string to be printed.
+ * @param output_stream Pointer to output stream (nullptr uses std::cout).
  */
-void zut_print_string_as_bytes(string &input)
+void zut_print_string_as_bytes(string &input, std::ostream *out_stream)
 {
+  std::ostream &output_stream = out_stream ? *out_stream : std::cout;
+  char buf[4];
   for (char *p = (char *)input.data(); p < (input.data() + input.length()); p++)
   {
     if (p == (input.data() + input.length() - 1))
     {
-      printf("%02x", (unsigned char)*p);
+      sprintf(buf, "%02x", (unsigned char)*p);
     }
     else
     {
-      printf("%02x ", (unsigned char)*p);
+      sprintf(buf, "%02x ", (unsigned char)*p);
     }
+    output_stream << buf;
   }
-  cout << endl;
+  output_stream << endl;
 }
 
 /**
@@ -547,4 +566,110 @@ void zut_debug_message(const char *message)
 bool zut_string_compare_c(const std::string &a, const std::string &b)
 {
   return strcmp(a.c_str(), b.c_str()) < 0;
+}
+
+int zut_loop_dynalloc(vector<string> &list, std::ostream *err_stream)
+{
+  int rc = 0;
+  unsigned int code = 0;
+  string response;
+
+  for (vector<string>::iterator it = list.begin(); it != list.end(); it++)
+  {
+    rc = zut_bpxwdyn(*it, &code, response);
+
+    if (0 != rc)
+    {
+      if (err_stream != nullptr)
+      {
+        *err_stream << "Error: bpxwdyn failed with '" << *it << "' rc: '" << rc << "'" << endl;
+        *err_stream << "  Details: " << response << endl;
+      }
+      return -1;
+    }
+  }
+
+  return rc;
+}
+
+int zut_free_dynalloc_dds(vector<string> &list, std::ostream *err_stream)
+{
+  vector<string> free_dds;
+  free_dds.reserve(list.size());
+
+  for (vector<string>::iterator it = list.begin(); it != list.end(); it++)
+  {
+    string alloc_dd = *it;
+    size_t start = alloc_dd.find(" ");
+    size_t end = alloc_dd.find(")", start);
+    if (start == string::npos || end == string::npos)
+    {
+      if (err_stream != nullptr)
+      {
+        *err_stream << "Error: Invalid format in DD alloc string: " << alloc_dd << endl;
+      }
+    }
+    else
+    {
+      free_dds.push_back("free " + alloc_dd.substr(start + 1, end - start));
+    }
+  }
+
+  return zut_loop_dynalloc(free_dds, err_stream);
+}
+
+AutocvtGuard::AutocvtGuard(bool enabled) : old_state(0)
+{
+  old_state = __ae_autoconvert_state(enabled ? _CVTSTATE_ON : _CVTSTATE_OFF);
+}
+
+AutocvtGuard::~AutocvtGuard()
+{
+  __ae_autoconvert_state(old_state);
+}
+
+FileGuard::FileGuard(const char *filename, const char *mode) : fp()
+{
+  fp = fopen(filename, mode);
+}
+
+FileGuard::FileGuard(int fd, const char *mode) : fp()
+{
+  fp = fdopen(fd, mode);
+}
+
+FileGuard::~FileGuard()
+{
+  this->reset();
+}
+
+void FileGuard::reset(const char *filename, const char *mode)
+{
+  this->reset();
+  fp = fopen(filename, mode);
+}
+
+void FileGuard::reset(int fd, const char *mode)
+{
+  this->reset();
+  fp = fdopen(fd, mode);
+}
+
+void FileGuard::reset()
+{
+  if (fp)
+  {
+    fclose(fp);
+    fp = nullptr;
+  }
+}
+
+FileGuard::operator FILE *() const
+{
+  return fp;
+}
+
+FileGuard::operator bool() const
+{
+  return fp != nullptr;
 }

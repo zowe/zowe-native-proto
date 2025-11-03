@@ -14,11 +14,12 @@
 
 #include <string>
 #include <vector>
-#include <map>
+#include <unordered_map>
 #include <set>
 #include <functional>
 #include <stdexcept>
 #include <sstream>
+#include <iomanip>
 #include <cctype>
 #include <cstring>
 #include <cstdio>
@@ -30,12 +31,47 @@
 #include "zlogger.hpp"
 #include <hwtjic.h> // ensure to include /usr/include
 
+#if defined(__clang__)
+#define ZJSON_CONSTEXPR constexpr
+#define ZJSON_NOEXCEPT noexcept
+#else
+#define ZJSON_CONSTEXPR const
+#define ZJSON_NOEXCEPT throw()
+namespace std
+{
+// Alias TR1 unordered_map to std namespace for XLC compatibility
+using std::tr1::unordered_map;
+
+template <typename T, T v>
+struct integral_constant
+{
+  static ZJSON_CONSTEXPR T value = v;
+  typedef T value_type;
+  typedef integral_constant type;
+};
+typedef integral_constant<bool, true> true_type;
+typedef integral_constant<bool, false> false_type;
+} // namespace std
+#endif
+
 /*
  * ZJson - C++ JSON library with automatic struct serialization
  *
+ * ==================== COMPILER REQUIREMENTS ====================
+ *
+ * This library supports two compilation modes:
+ *
+ *   - Minimal mode: Compatible with z/OS XLC (C++98/03)
+ *     Only dynamic JSON with zjson::Value is supported, making this a minimal
+ *     header-only library with faster compilation times.
+ *
+ *   - Full mode: Requires xlclang (C++11/14)
+ *     Enables automatic struct serialization/deserialization with ZJSON_DERIVE
+ *     and ZJSON_SERIALIZABLE macros.
+ *
  * ==================== QUICK REFERENCE ====================
  *
- * Parsing:
+ * Parsing (from struct requires xlclang):
  *   zjson::Value data = zjson::from_str(json_string);
  *   auto result = zjson::from_str<MyStruct>(json_string);
  *
@@ -43,16 +79,16 @@
  *   std::string json = zjson::to_string(obj);
  *   std::string pretty = zjson::to_string_pretty(obj);
  *
- * Struct Registration:
+ * Struct Registration (requires xlclang):
  *   ZJSON_DERIVE(StructName, field1, field2, ...)
  *   ZJSON_SERIALIZABLE(StructName, ZJSON_FIELD(StructName, field).rename("name"))
  *
- * Dynamic JSON:
+ * Dynamic JSON (always available):
  *   zjson::Value obj = zjson::Value::create_object();
  *   zjson::Value arr = zjson::Value::create_array();
  *   obj["name"] = "John"; arr[0] = "item";
  *
- * Type Conversion:
+ * Type Conversion (requires xlclang):
  *   zjson::Value val = zjson::to_value(obj);
  *   auto obj = zjson::from_value<MyStruct>(val);
  *
@@ -65,7 +101,7 @@
  *   auto result = zjson::from_str<MyStruct>(json);
  *   if (result.has_value()) { auto obj = result.value(); }
  *
- * Field Attributes:
+ * Field Attributes (requires xlclang):
  *   .rename("newName")        // JSON field name
  *   .skip()                   // Skip serialization/deserialization
  *   .skip_serializing_if_none()  // Skip if optional field is empty
@@ -112,18 +148,18 @@ struct RenameAll
     case lowercase:
     {
       std::string result;
-      for (const char &c : name)
+      for (auto it = name.begin(); it != name.end(); ++it)
       {
-        result += std::tolower(c);
+        result += std::tolower(*it);
       }
       return result;
     }
     case UPPERCASE:
     {
       std::string result;
-      for (const char &c : name)
+      for (auto it = name.begin(); it != name.end(); ++it)
       {
-        result += std::toupper(c);
+        result += std::toupper(*it);
       }
       return result;
     }
@@ -133,20 +169,20 @@ struct RenameAll
     {
       std::string result;
       bool capitalize_next = false;
-      for (const char &c : name)
+      for (auto it = name.begin(); it != name.end(); ++it)
       {
-        if (c == '_')
+        if (*it == '_')
         {
           capitalize_next = true;
         }
         else if (capitalize_next)
         {
-          result += std::toupper(c);
+          result += std::toupper(*it);
           capitalize_next = false;
         }
         else
         {
-          result += std::tolower(c);
+          result += std::tolower(*it);
         }
       }
       return result;
@@ -163,24 +199,24 @@ struct RenameAll
     case SCREAMING_SNAKE_CASE:
     {
       std::string result;
-      for (const char &c : name)
+      for (auto it = name.begin(); it != name.end(); ++it)
       {
-        result += std::toupper(c);
+        result += std::toupper(*it);
       }
       return result;
     }
     case kebab_case:
     {
       std::string result;
-      for (const char &c : name)
+      for (auto it = name.begin(); it != name.end(); ++it)
       {
-        if (c == '_')
+        if (*it == '_')
         {
           result += '-';
         }
         else
         {
-          result += std::tolower(c);
+          result += std::tolower(*it);
         }
       }
       return result;
@@ -188,15 +224,15 @@ struct RenameAll
     case SCREAMING_KEBAB_CASE:
     {
       std::string result;
-      for (const char &c : name)
+      for (auto it = name.begin(); it != name.end(); ++it)
       {
-        if (c == '_')
+        if (*it == '_')
         {
           result += '-';
         }
         else
         {
-          result += std::toupper(c);
+          result += std::toupper(*it);
         }
       }
       return result;
@@ -316,7 +352,7 @@ public:
   static Value create_object()
   {
     Value result;
-    result.data_ = std::map<std::string, Value>();
+    result.data_ = std::unordered_map<std::string, Value>();
     return result;
   }
 
@@ -333,7 +369,7 @@ public:
     {
       throw Error::invalid_type("object", "other");
     }
-    data_.template get<std::map<std::string, Value>>()[key] = value;
+    get_object()[key] = value;
   }
 
   void add_to_array(const Value &value)
@@ -342,7 +378,7 @@ public:
     {
       throw Error::invalid_type("array", "other");
     }
-    data_.template get<std::vector<Value>>().push_back(value);
+    get_array().push_back(value);
   }
 
   void reserve_array(size_t capacity)
@@ -351,7 +387,7 @@ public:
     {
       throw Error::invalid_type("array", "other");
     }
-    data_.template get<std::vector<Value>>().reserve(capacity);
+    get_array().reserve(capacity);
   }
   enum Type
   {
@@ -365,26 +401,93 @@ public:
 
 private:
   // Variant type for JSON values
-  using ValueVariant = zstd::variant<
-      zstd::monostate,             // Null
-      bool,                        // Bool
-      double,                      // Number
-      std::string,                 // String
-      std::vector<Value>,          // Array
-      std::map<std::string, Value> // Object
-      >;
+  typedef zstd::variant<
+      zstd::monostate,                       // Null
+      bool,                                  // Bool
+      long long,                             // Integer
+      double,                                // Float
+      std::string,                           // String
+      std::vector<Value>,                    // Array
+      std::unordered_map<std::string, Value> // Object
+      >
+      ValueVariant;
 
   ValueVariant data_;
 
+  // Helper methods to avoid .template syntax for XLC compatibility
+  inline bool &get_bool()
+  {
+    return data_.get<bool>();
+  }
+  inline long long &get_long_long()
+  {
+    return data_.get<long long>();
+  }
+  inline double &get_double()
+  {
+    return data_.get<double>();
+  }
+  inline std::string &get_string()
+  {
+    return data_.get<std::string>();
+  }
+  inline std::vector<Value> &get_array()
+  {
+    return data_.get<std::vector<Value>>();
+  }
+  inline std::unordered_map<std::string, Value> &get_object()
+  {
+    return data_.get<std::unordered_map<std::string, Value>>();
+  }
+
+  inline const bool &get_bool() const
+  {
+    return data_.get<bool>();
+  }
+  inline const long long &get_long_long() const
+  {
+    return data_.get<long long>();
+  }
+  inline const double &get_double() const
+  {
+    return data_.get<double>();
+  }
+  inline const std::string &get_string() const
+  {
+    return data_.get<std::string>();
+  }
+  inline const std::vector<Value> &get_array() const
+  {
+    return data_.get<std::vector<Value>>();
+  }
+  inline const std::unordered_map<std::string, Value> &get_object() const
+  {
+    return data_.get<std::unordered_map<std::string, Value>>();
+  }
+
 public:
-  Value() : data_(zstd::monostate{})
+  Value() : data_(zstd::monostate())
   {
   }
   Value(bool b) : data_(b)
   {
   }
-  Value(int i) : data_(static_cast<double>(i))
+  Value(int i) : data_(static_cast<long long>(i))
   {
+  }
+  Value(long long ll) : data_(ll)
+  {
+  }
+  Value(unsigned long long ull)
+  {
+    if (ull <= static_cast<unsigned long long>(std::numeric_limits<long long>::max()))
+    {
+      data_ = static_cast<long long>(ull);
+    }
+    else
+    {
+      data_ = static_cast<double>(ull);
+    }
   }
   Value(double d) : data_(d)
   {
@@ -396,11 +499,23 @@ public:
   {
   }
 
-  Value(const Value &other) = default;
-  Value(Value &&other) = default;
-  Value &operator=(const Value &other) = default;
-  Value &operator=(Value &&other) = default;
-  ~Value() = default;
+  // Copy constructor and assignment
+  Value(const Value &other) : data_(other.data_)
+  {
+  }
+
+  Value &operator=(const Value &other)
+  {
+    if (this != &other)
+    {
+      data_ = other.data_;
+    }
+    return *this;
+  }
+
+  ~Value()
+  {
+  }
 
   inline Type get_type() const
   {
@@ -411,12 +526,13 @@ public:
     case 1:
       return Bool;
     case 2:
-      return Number;
     case 3:
-      return String;
+      return Number;
     case 4:
-      return Array;
+      return String;
     case 5:
+      return Array;
+    case 6:
       return Object;
     default:
       return Null;
@@ -427,61 +543,135 @@ public:
   {
     if (!is_bool())
       throw Error::invalid_type("bool", type_name());
-    return data_.template get<bool>();
+    return get_bool();
   }
 
-  inline double as_number() const
+  inline long long as_int64() const
   {
-    if (!is_number())
-      throw Error::invalid_type("number", type_name());
+    if (is_integer())
+    {
+      return get_long_long();
+    }
 
-    double value = data_.template get<double>();
+    if (is_double())
+    {
+      double value = get_double();
 
-    // Check for overflow/underflow
-    if (!std::isfinite(value))
-      throw Error::invalid_value("Number is not finite: " + std::to_string(value));
+      if (value != std::floor(value))
+      {
+        std::stringstream ss;
+        ss << value;
+        throw Error::invalid_value("Cannot convert floating-point number " + ss.str() + " to int64");
+      }
+      else if (isnan(value) || isinf(value))
+      {
+        std::stringstream ss;
+        ss << value;
+        throw Error::invalid_value("Number is not finite: " + ss.str());
+      }
+      else if (value > static_cast<double>(std::numeric_limits<long long>::max()) || value < static_cast<double>(std::numeric_limits<long long>::min()))
+      {
+        std::stringstream ss;
+        ss << value;
+        throw Error::invalid_value("Number " + ss.str() + " overflows long long range");
+      }
 
-    return value;
+      return static_cast<long long>(value);
+    }
+
+    throw Error::invalid_type("number", type_name());
   }
 
-  inline int as_int() const
+  inline unsigned long long as_uint64() const
   {
-    if (!is_number())
-      throw Error::invalid_type("number", type_name());
+    if (is_integer())
+    {
+      long long value = get_long_long();
+      if (value < 0)
+      {
+        std::stringstream ss;
+        ss << value;
+        throw Error::invalid_value("Cannot convert negative number " + ss.str() + " to uint64");
+      }
+      return static_cast<unsigned long long>(value);
+    }
 
-    double value = data_.template get<double>();
+    if (is_double())
+    {
+      double value = get_double();
 
-    // Check for fractional part
-    if (value != std::floor(value))
-      throw Error::invalid_value("Cannot convert floating-point number " + std::to_string(value) + " to integer");
+      if (value < 0)
+      {
+        std::stringstream ss;
+        ss << value;
+        throw Error::invalid_value("Cannot convert negative number " + ss.str() + " to uint64");
+      }
+      else if (value != std::floor(value))
+      {
+        std::stringstream ss;
+        ss << value;
+        throw Error::invalid_value("Cannot convert floating-point number " + ss.str() + " to uint64");
+      }
+      else if (isnan(value) || isinf(value))
+      {
+        std::stringstream ss;
+        ss << value;
+        throw Error::invalid_value("Number is not finite: " + ss.str());
+      }
+      else if (value > static_cast<double>(std::numeric_limits<unsigned long long>::max()))
+      {
+        std::stringstream ss;
+        ss << value;
+        throw Error::invalid_value("Number " + ss.str() + " overflows unsigned long long range");
+      }
 
-    // Check for overflow
-    if (value > static_cast<double>(std::numeric_limits<int>::max()) ||
-        value < static_cast<double>(std::numeric_limits<int>::min()))
-      throw Error::invalid_value("Number " + std::to_string(value) + " overflows int range");
+      return static_cast<unsigned long long>(value);
+    }
 
-    return static_cast<int>(value);
+    throw Error::invalid_type("number", type_name());
+  }
+
+  inline double as_double() const
+  {
+    if (is_double())
+    {
+      double value = get_double();
+      if (isnan(value) || isinf(value))
+      {
+        std::stringstream ss;
+        ss << value;
+        throw Error::invalid_value("Number is not finite: " + ss.str());
+      }
+      return value;
+    }
+
+    if (is_integer())
+    {
+      return static_cast<double>(get_long_long());
+    }
+
+    throw Error::invalid_type("number", type_name());
   }
 
   inline std::string as_string() const
   {
     if (!is_string())
       throw Error::invalid_type("string", type_name());
-    return data_.template get<std::string>();
+    return get_string();
   }
 
   const std::vector<Value> &as_array() const
   {
     if (!is_array())
       throw Error::invalid_type("array", type_name());
-    return data_.template get<std::vector<Value>>();
+    return get_array();
   }
 
-  const std::map<std::string, Value> &as_object() const
+  const std::unordered_map<std::string, Value> &as_object() const
   {
     if (!is_object())
       throw Error::invalid_type("object", type_name());
-    return data_.template get<std::map<std::string, Value>>();
+    return get_object();
   }
 
   inline bool is_null() const
@@ -492,7 +682,11 @@ public:
   {
     return zstd::holds_alternative<bool>(data_);
   }
-  inline bool is_number() const
+  inline bool is_integer() const
+  {
+    return zstd::holds_alternative<long long>(data_);
+  }
+  inline bool is_double() const
   {
     return zstd::holds_alternative<double>(data_);
   }
@@ -506,7 +700,7 @@ public:
   }
   inline bool is_object() const
   {
-    return zstd::holds_alternative<std::map<std::string, Value>>(data_);
+    return zstd::holds_alternative<std::unordered_map<std::string, Value>>(data_);
   }
 
   // Object access by key
@@ -515,7 +709,7 @@ public:
     if (is_null())
     {
       // Convert null to empty object on first access
-      data_ = std::map<std::string, Value>();
+      data_ = std::unordered_map<std::string, Value>();
     }
 
     if (!is_object())
@@ -523,7 +717,7 @@ public:
       throw Error::invalid_type("object", type_name());
     }
 
-    return data_.template get<std::map<std::string, Value>>()[key]; // Creates entry if doesn't exist
+    return get_object()[key]; // Creates entry if doesn't exist
   }
 
   const Value &operator[](const std::string &key) const
@@ -533,8 +727,8 @@ public:
       throw Error::invalid_type("object", type_name());
     }
 
-    const auto &obj = data_.template get<std::map<std::string, Value>>();
-    auto it = obj.find(key);
+    const auto &obj = get_object();
+    const auto it = obj.find(key);
     if (it == obj.end())
     {
       static const Value null_value; // Return reference to static null
@@ -558,7 +752,7 @@ public:
       throw Error::invalid_type("array", type_name());
     }
 
-    auto &arr = data_.template get<std::vector<Value>>();
+    std::vector<Value> &arr = get_array();
 
     // Expand array if needed
     if (index >= arr.size())
@@ -576,7 +770,7 @@ public:
       throw Error::invalid_type("array", type_name());
     }
 
-    const auto &arr = data_.template get<std::vector<Value>>();
+    const std::vector<Value> &arr = get_array();
     if (index >= arr.size())
     {
       static const Value null_value; // Return reference to static null
@@ -643,8 +837,8 @@ struct Deserializable
 template <>
 struct Serializable<bool>
 {
-  static constexpr bool value = true;
-  static Value serialize(const bool &obj) noexcept
+  static ZJSON_CONSTEXPR bool value = true;
+  static Value serialize(const bool &obj) ZJSON_NOEXCEPT
   {
     return Value(obj);
   }
@@ -653,7 +847,7 @@ struct Serializable<bool>
 template <>
 struct Deserializable<bool>
 {
-  static constexpr bool value = true;
+  static ZJSON_CONSTEXPR bool value = true;
   static zstd::expected<bool, Error> deserialize(const Value &value)
   {
     try
@@ -670,8 +864,8 @@ struct Deserializable<bool>
 template <>
 struct Serializable<int>
 {
-  static constexpr bool value = true;
-  static Value serialize(const int &obj) noexcept
+  static ZJSON_CONSTEXPR bool value = true;
+  static Value serialize(const int &obj) ZJSON_NOEXCEPT
   {
     return Value(obj);
   }
@@ -680,12 +874,146 @@ struct Serializable<int>
 template <>
 struct Deserializable<int>
 {
-  static constexpr bool value = true;
+  static ZJSON_CONSTEXPR bool value = true;
   static zstd::expected<int, Error> deserialize(const Value &value)
   {
     try
     {
-      return value.as_int();
+      // Get as int64 and downcast to int with range check
+      long long val = value.as_int64();
+      if (val > static_cast<long long>(std::numeric_limits<int>::max()) ||
+          val < static_cast<long long>(std::numeric_limits<int>::min()))
+      {
+        std::stringstream ss;
+        ss << val;
+        throw Error::invalid_value("Number " + ss.str() + " overflows int range");
+      }
+      return static_cast<int>(val);
+    }
+    catch (const Error &e)
+    {
+      return zstd::make_unexpected(e);
+    }
+  }
+};
+
+template <>
+struct Serializable<unsigned int>
+{
+  static ZJSON_CONSTEXPR bool value = true;
+  static Value serialize(const unsigned int &obj) ZJSON_NOEXCEPT
+  {
+    return Value(static_cast<unsigned long long>(obj));
+  }
+};
+
+template <>
+struct Deserializable<unsigned int>
+{
+  static ZJSON_CONSTEXPR bool value = true;
+  static zstd::expected<unsigned int, Error> deserialize(const Value &value)
+  {
+    try
+    {
+      // Get as uint64 and downcast to unsigned int with range check
+      unsigned long long val = value.as_uint64();
+      if (val > static_cast<unsigned long long>(std::numeric_limits<unsigned int>::max()))
+      {
+        std::stringstream ss;
+        ss << val;
+        throw Error::invalid_value("Number " + ss.str() + " overflows unsigned int range");
+      }
+      return static_cast<unsigned int>(val);
+    }
+    catch (const Error &e)
+    {
+      return zstd::make_unexpected(e);
+    }
+  }
+};
+
+template <>
+struct Serializable<long long>
+{
+  static ZJSON_CONSTEXPR bool value = true;
+  static Value serialize(const long long &obj) ZJSON_NOEXCEPT
+  {
+    return Value(obj);
+  }
+};
+
+template <>
+struct Deserializable<long long>
+{
+  static ZJSON_CONSTEXPR bool value = true;
+  static zstd::expected<long long, Error> deserialize(const Value &value)
+  {
+    try
+    {
+      return value.as_int64();
+    }
+    catch (const Error &e)
+    {
+      return zstd::make_unexpected(e);
+    }
+  }
+};
+
+template <>
+struct Serializable<unsigned long long>
+{
+  static ZJSON_CONSTEXPR bool value = true;
+  static Value serialize(const unsigned long long &obj) ZJSON_NOEXCEPT
+  {
+    return Value(obj);
+  }
+};
+
+template <>
+struct Deserializable<unsigned long long>
+{
+  static ZJSON_CONSTEXPR bool value = true;
+  static zstd::expected<unsigned long long, Error> deserialize(const Value &value)
+  {
+    try
+    {
+      return value.as_uint64();
+    }
+    catch (const Error &e)
+    {
+      return zstd::make_unexpected(e);
+    }
+  }
+};
+
+// Support for size_t (typically an alias for unsigned long long or unsigned int)
+template <>
+struct Serializable<size_t>
+{
+  static ZJSON_CONSTEXPR bool value = true;
+  static Value serialize(const size_t &obj) ZJSON_NOEXCEPT
+  {
+    return Value(static_cast<unsigned long long>(obj));
+  }
+};
+
+template <>
+struct Deserializable<size_t>
+{
+  static ZJSON_CONSTEXPR bool value = true;
+  static zstd::expected<size_t, Error> deserialize(const Value &value)
+  {
+    try
+    {
+      unsigned long long val = value.as_uint64();
+      // size_t range check (in case size_t is smaller than unsigned long long)
+      if (val > static_cast<unsigned long long>(std::numeric_limits<size_t>::max()))
+      {
+        std::stringstream ss;
+        ss << val;
+        throw Error::invalid_value("Number " + ss.str() + " overflows size_t range");
+      }
+      return static_cast<size_t>(val);
     }
     catch (const Error &e)
     {
@@ -697,8 +1025,8 @@ struct Deserializable<int>
 template <>
 struct Serializable<double>
 {
-  static constexpr bool value = true;
-  static Value serialize(const double &obj) noexcept
+  static ZJSON_CONSTEXPR bool value = true;
+  static Value serialize(const double &obj) ZJSON_NOEXCEPT
   {
     return Value(obj);
   }
@@ -707,12 +1035,12 @@ struct Serializable<double>
 template <>
 struct Deserializable<double>
 {
-  static constexpr bool value = true;
+  static ZJSON_CONSTEXPR bool value = true;
   static zstd::expected<double, Error> deserialize(const Value &value)
   {
     try
     {
-      return value.as_number();
+      return value.as_double();
     }
     catch (const Error &e)
     {
@@ -724,8 +1052,8 @@ struct Deserializable<double>
 template <>
 struct Serializable<std::string>
 {
-  static constexpr bool value = true;
-  static Value serialize(const std::string &obj) noexcept
+  static ZJSON_CONSTEXPR bool value = true;
+  static Value serialize(const std::string &obj) ZJSON_NOEXCEPT
   {
     return Value(obj);
   }
@@ -734,7 +1062,7 @@ struct Serializable<std::string>
 template <>
 struct Deserializable<std::string>
 {
-  static constexpr bool value = true;
+  static ZJSON_CONSTEXPR bool value = true;
   static zstd::expected<std::string, Error> deserialize(const Value &value)
   {
     try
@@ -752,7 +1080,7 @@ struct Deserializable<std::string>
 template <>
 struct Serializable<Value>
 {
-  static constexpr bool value = true;
+  static ZJSON_CONSTEXPR bool value = true;
   static Value serialize(const Value &obj)
   {
     return obj; // Value serializes to itself (identity)
@@ -762,7 +1090,7 @@ struct Serializable<Value>
 template <>
 struct Deserializable<Value>
 {
-  static constexpr bool value = true;
+  static ZJSON_CONSTEXPR bool value = true;
   static zstd::expected<Value, Error> deserialize(const Value &value)
   {
     // Value to Value is just a copy - already parsed from JSON
@@ -774,15 +1102,15 @@ struct Deserializable<Value>
 template <typename T>
 struct Serializable<std::vector<T>>
 {
-  static constexpr bool value = Serializable<T>::value;
+  static ZJSON_CONSTEXPR bool value = Serializable<T>::value;
   static Value serialize(const std::vector<T> &vec)
   {
     Value result = Value::create_array();
     result.reserve_array(vec.size());
 
-    for (const auto &item : vec)
+    for (auto it = vec.begin(); it != vec.end(); ++it)
     {
-      result.add_to_array(Serializable<T>::serialize(item));
+      result.add_to_array(Serializable<T>::serialize(*it));
     }
     return result;
   }
@@ -791,7 +1119,7 @@ struct Serializable<std::vector<T>>
 template <typename T>
 struct Deserializable<std::vector<T>>
 {
-  static constexpr bool value = Deserializable<T>::value;
+  static ZJSON_CONSTEXPR bool value = Deserializable<T>::value;
   static zstd::expected<std::vector<T>, Error> deserialize(const Value &value)
   {
     if (!value.is_array())
@@ -800,12 +1128,12 @@ struct Deserializable<std::vector<T>>
     }
 
     std::vector<T> result;
-    const auto &array = value.as_array();
+    const std::vector<Value> &array = value.as_array();
     result.reserve(array.size());
 
-    for (const auto &item : array)
+    for (auto it = array.begin(); it != array.end(); ++it)
     {
-      auto item_result = Deserializable<T>::deserialize(item);
+      zstd::expected<T, Error> item_result = Deserializable<T>::deserialize(*it);
       if (!item_result.has_value())
       {
         return zstd::make_unexpected(item_result.error());
@@ -821,7 +1149,7 @@ struct Deserializable<std::vector<T>>
 template <typename T>
 struct Serializable<zstd::optional<T>>
 {
-  static constexpr bool value = Serializable<T>::value;
+  static ZJSON_CONSTEXPR bool value = Serializable<T>::value;
   static Value serialize(const zstd::optional<T> &opt)
   {
     if (opt.has_value())
@@ -838,7 +1166,7 @@ struct Serializable<zstd::optional<T>>
 template <typename T>
 struct Deserializable<zstd::optional<T>>
 {
-  static constexpr bool value = Deserializable<T>::value;
+  static ZJSON_CONSTEXPR bool value = Deserializable<T>::value;
   static zstd::expected<zstd::optional<T>, Error> deserialize(const Value &value)
   {
     if (value.is_null())
@@ -847,7 +1175,7 @@ struct Deserializable<zstd::optional<T>>
     }
     else
     {
-      auto result = Deserializable<T>::deserialize(value);
+      zstd::expected<T, Error> result = Deserializable<T>::deserialize(value);
       if (!result.has_value())
       {
         return zstd::make_unexpected(result.error());
@@ -857,6 +1185,7 @@ struct Deserializable<zstd::optional<T>>
   }
 };
 
+#if defined(__clang__)
 /**
  * Field descriptor for reflection-like behavior
  */
@@ -973,6 +1302,7 @@ public:
     return static_cast<bool>(get_deserializer());
   }
 };
+#endif
 
 /**
  * Main serialization and deserialization functions
@@ -1001,6 +1331,7 @@ zstd::expected<std::string, Error> to_string_impl(const T &value, std::true_type
 template <typename T>
 zstd::expected<std::string, Error> to_string_impl(const T &value, std::false_type)
 {
+#if defined(__clang__)
   try
   {
     if (SerializationRegistry<T>::has_serializer())
@@ -1008,10 +1339,6 @@ zstd::expected<std::string, Error> to_string_impl(const T &value, std::false_typ
       Value serialized = SerializationRegistry<T>::get_serializer()(value);
       std::string json_str = value_to_json_string(serialized);
       return json_str;
-    }
-    else
-    {
-      return zstd::make_unexpected(Error::invalid_type("serializable", "unknown"));
     }
   }
   catch (const Error &e)
@@ -1022,6 +1349,8 @@ zstd::expected<std::string, Error> to_string_impl(const T &value, std::false_typ
   {
     return zstd::make_unexpected(Error(Error::Custom, e.what()));
   }
+#endif
+  return zstd::make_unexpected(Error::invalid_type("serializable", "unknown"));
 }
 
 template <typename T>
@@ -1033,14 +1362,13 @@ zstd::expected<T, Error> from_str_impl(const Value &parsed, std::true_type)
 template <typename T>
 zstd::expected<T, Error> from_str_impl(const Value &parsed, std::false_type)
 {
+#if defined(__clang__)
   if (SerializationRegistry<T>::has_deserializer())
   {
     return SerializationRegistry<T>::get_deserializer()(parsed);
   }
-  else
-  {
-    return zstd::make_unexpected(Error::invalid_type("deserializable", "unknown"));
-  }
+#endif
+  return zstd::make_unexpected(Error::invalid_type("deserializable", "unknown"));
 }
 
 // to_string function for JSON serialization
@@ -1049,7 +1377,7 @@ zstd::expected<std::string, Error> to_string(const T &value)
 {
   try
   {
-    return to_string_impl<T>(value, typename std::integral_constant<bool, Serializable<T>::value>{});
+    return to_string_impl<T>(value, typename std::integral_constant<bool, Serializable<T>::value>::type());
   }
   catch (const Error &e)
   {
@@ -1059,6 +1387,135 @@ zstd::expected<std::string, Error> to_string(const T &value)
   {
     return zstd::make_unexpected(Error(Error::Custom, e.what()));
   }
+}
+
+// Helper function for JSON string escaping
+inline std::string escape_json_string(const std::string &input)
+{
+  std::string output;
+  output.reserve(input.length());
+
+  for (auto it = input.begin(); it != input.end(); ++it)
+  {
+    char c = *it;
+    switch (c)
+    {
+    case '"':
+      output += "\\\"";
+      break;
+    case '\\':
+      output += "\\\\";
+      break;
+    case '\b':
+      output += "\\b";
+      break;
+    case '\f':
+      output += "\\f";
+      break;
+    case '\n':
+      output += "\\n";
+      break;
+    case '\r':
+      output += "\\r";
+      break;
+    case '\t':
+      output += "\\t";
+      break;
+    default:
+      if (iscntrl(c))
+      {
+        char buf[7];
+        snprintf(buf, sizeof(buf), "\\u%04x", static_cast<unsigned char>(c));
+        output += buf;
+      }
+      else
+      {
+        output += c;
+      }
+      break;
+    }
+  }
+  return output;
+}
+
+// Helper function for JSON string unescaping
+inline std::string unescape_json_string(const std::string &s)
+{
+  std::string res;
+  res.reserve(s.length());
+  for (std::string::size_type i = 0; i < s.length(); ++i)
+  {
+    if (s[i] == '\\' && i + 1 < s.length())
+    {
+      switch (s[++i])
+      {
+      case '"':
+        res += '"';
+        break;
+      case '\\':
+        res += '\\';
+        break;
+      case '/':
+        res += '/';
+        break;
+      case 'b':
+        res += '\b';
+        break;
+      case 'f':
+        res += '\f';
+        break;
+      case 'n':
+        res += '\n';
+        break;
+      case 'r':
+        res += '\r';
+        break;
+      case 't':
+        res += '\t';
+        break;
+      case 'u':
+        if (i + 4 < s.length())
+        {
+          try
+          {
+            std::string hex = s.substr(i + 1, 4);
+            char *endptr;
+            unsigned long val = std::strtoul(hex.c_str(), &endptr, 16);
+            if (endptr != hex.c_str() && val < 256)
+            {
+              res += static_cast<char>(val);
+            }
+            else
+            {
+              // For values outside of single byte range, preserve original escape
+              res += "\\u" + hex;
+            }
+            i += 4;
+          }
+          catch (...)
+          {
+            res += "\\u"; // Malformed, just append what we can
+          }
+        }
+        else
+        {
+          res += '\\';
+          res += 'u';
+        }
+        break;
+      default:
+        // Unrecognized escape sequence, just append as is
+        res += '\\';
+        res += s[i];
+        break;
+      }
+    }
+    else
+    {
+      res += s[i];
+    }
+  }
+  return res;
 }
 
 inline Value json_handle_to_value(JSON_INSTANCE *instance, KEY_HANDLE *key_handle)
@@ -1090,7 +1547,7 @@ inline Value json_handle_to_value(JSON_INSTANCE *instance, KEY_HANDLE *key_handl
 
     case HWTJ_NUMBER_TYPE:
     {
-      char *value_ptr = nullptr;
+      char *value_ptr = 0;
       int value_length = 0;
       rc = ZJSMGVAL(instance, key_handle, &value_ptr, &value_length);
       if (rc != 0)
@@ -1100,8 +1557,31 @@ inline Value json_handle_to_value(JSON_INSTANCE *instance, KEY_HANDLE *key_handl
       try
       {
         std::string str_val(value_ptr, value_length);
-        double num_val = std::stod(str_val);
-        return Value(num_val);
+        if (str_val.find('.') != std::string::npos || str_val.find('e') != std::string::npos || str_val.find('E') != std::string::npos)
+        {
+          char *endptr = nullptr;
+          double num_val = std::strtod(str_val.c_str(), &endptr);
+          if (endptr == str_val.c_str() || *endptr != '\0')
+          {
+            return Value();
+          }
+          return Value(num_val);
+        }
+        else
+        {
+          char *endptr = nullptr;
+#if defined(__clang__)
+          long long int_val = std::strtoll(str_val.c_str(), &endptr, 10);
+#else
+          // XLC doesn't have strtoll, use strtol (limits supported range to 32-bit numbers)
+          long long int_val = static_cast<long long>(std::strtol(str_val.c_str(), &endptr, 10));
+#endif
+          if (endptr == str_val.c_str() || *endptr != '\0')
+          {
+            return Value();
+          }
+          return Value(int_val);
+        }
       }
       catch (...)
       {
@@ -1111,14 +1591,15 @@ inline Value json_handle_to_value(JSON_INSTANCE *instance, KEY_HANDLE *key_handl
 
     case HWTJ_STRING_TYPE:
     {
-      char *value_ptr = nullptr;
+      char *value_ptr = 0;
       int value_length = 0;
       rc = ZJSMGVAL(instance, key_handle, &value_ptr, &value_length);
       if (rc != 0)
       {
         return Value();
       }
-      return Value(std::string(value_ptr, value_length));
+      std::string raw_str(value_ptr, value_length);
+      return Value(unescape_json_string(raw_str));
     }
 
     case HWTJ_ARRAY_TYPE:
@@ -1237,7 +1718,7 @@ zstd::expected<T, Error> from_value(const Value &value)
 {
   try
   {
-    return from_str_impl<T>(value, typename std::integral_constant<bool, Deserializable<T>::value>{});
+    return from_str_impl<T>(value, typename std::integral_constant<bool, Deserializable<T>::value>::type());
   }
   catch (const Error &e)
   {
@@ -1259,14 +1740,13 @@ zstd::expected<Value, Error> to_value_impl(const T &obj, std::true_type)
 template <typename T>
 zstd::expected<Value, Error> to_value_impl(const T &obj, std::false_type)
 {
+#if defined(__clang__)
   if (SerializationRegistry<T>::has_serializer())
   {
     return SerializationRegistry<T>::get_serializer()(obj);
   }
-  else
-  {
-    return zstd::make_unexpected(Error::invalid_type("serializable", "unknown"));
-  }
+#endif
+  return zstd::make_unexpected(Error::invalid_type("serializable", "unknown"));
 }
 
 // to_value function - convert any serializable type to Value
@@ -1275,7 +1755,7 @@ zstd::expected<Value, Error> to_value(const T &obj)
 {
   try
   {
-    return to_value_impl<T>(obj, typename std::integral_constant<bool, Serializable<T>::value>{});
+    return to_value_impl<T>(obj, typename std::integral_constant<bool, Serializable<T>::value>::type());
   }
   catch (const Error &e)
   {
@@ -1291,7 +1771,7 @@ zstd::expected<Value, Error> to_value(const T &obj)
 template <typename T>
 zstd::expected<T, Error> from_str(const std::string &json_str)
 {
-  JSON_INSTANCE instance = {0};
+  JSON_INSTANCE instance = {};
   int rc = ZJSMINIT(&instance);
   if (rc != 0)
   {
@@ -1314,7 +1794,7 @@ zstd::expected<T, Error> from_str(const std::string &json_str)
     // Clean up
     ZJSMTERM(&instance);
 
-    return from_str_impl<T>(parsed, typename std::integral_constant<bool, Deserializable<T>::value>{});
+    return from_str_impl<T>(parsed, typename std::integral_constant<bool, Deserializable<T>::value>::type());
   }
   catch (const Error &e)
   {
@@ -1342,8 +1822,9 @@ inline std::string add_json_indentation(const std::string &json_str, int spaces)
   bool in_string = false;
   bool escape_next = false;
 
-  for (const char &ch : json_str)
+  for (auto it = json_str.begin(); it != json_str.end(); ++it)
   {
+    char ch = *it;
     if (escape_next)
     {
       result += ch;
@@ -1407,7 +1888,7 @@ inline std::string add_json_indentation(const std::string &json_str, int spaces)
 template <typename T>
 zstd::expected<std::string, Error> to_string_pretty(const T &value)
 {
-  auto result = to_string(value);
+  zstd::expected<std::string, Error> result = to_string(value);
   if (!result.has_value())
   {
     return result;
@@ -1448,17 +1929,38 @@ inline int value_to_json_instance(JSON_INSTANCE *instance, KEY_HANDLE *parent_ha
   {
     entry_type = HWTJ_NUMVALUETYPE;
     std::stringstream ss;
-    ss << value.as_number();
+
+    if (value.is_integer())
+    {
+      ss << value.as_int64();
+    }
+    else
+    {
+      // Use full double precision (17 significant digits)
+      ss << std::setprecision(17) << value.as_double();
+    }
+
     std::string num_str = ss.str();
     rc = ZJSMCREN(instance, parent_handle, entry_name_ptr, num_str.c_str(), &entry_type, &new_entry_handle);
     break;
   }
 
   case Value::String:
-    entry_type = HWTJ_STRINGVALUETYPE;
-    // ZJSMCREN handles all string escaping automatically
-    rc = ZJSMCREN(instance, parent_handle, entry_name_ptr, value.as_string().c_str(), &entry_type, &new_entry_handle);
-    break;
+  {
+    if (!value.as_string().empty())
+    {
+      entry_type = HWTJ_STRINGVALUETYPE;
+      std::string escaped_str = escape_json_string(value.as_string());
+      rc = ZJSMCREN(instance, parent_handle, entry_name_ptr, escaped_str.c_str(), &entry_type, &new_entry_handle);
+    }
+    else
+    {
+      // Empty strings must use HWTJ_JSONTEXTVALUETYPE because HWTJ_STRINGVALUETYPE doesn't support them
+      entry_type = HWTJ_JSONTEXTVALUETYPE;
+      rc = ZJSMCREN(instance, parent_handle, entry_name_ptr, "\"\"", &entry_type, &new_entry_handle);
+    }
+  }
+  break;
 
   case Value::Array:
   {
@@ -1468,10 +1970,10 @@ inline int value_to_json_instance(JSON_INSTANCE *instance, KEY_HANDLE *parent_ha
       break;
 
     // Add all array elements
-    const auto &arr = value.as_array();
-    for (const auto &item : arr)
+    const std::vector<Value> &arr = value.as_array();
+    for (auto it = arr.begin(); it != arr.end(); ++it)
     {
-      rc = value_to_json_instance(instance, &new_entry_handle, "", item);
+      rc = value_to_json_instance(instance, &new_entry_handle, "", *it);
       if (rc != 0)
         break;
     }
@@ -1487,9 +1989,9 @@ inline int value_to_json_instance(JSON_INSTANCE *instance, KEY_HANDLE *parent_ha
 
     // Add all object properties
     const auto &obj = value.as_object();
-    for (const auto &pair : obj)
+    for (auto it = obj.begin(); it != obj.end(); ++it)
     {
-      rc = value_to_json_instance(instance, &new_entry_handle, pair.first, pair.second);
+      rc = value_to_json_instance(instance, &new_entry_handle, it->first, it->second);
       if (rc != 0)
         break;
     }
@@ -1508,7 +2010,7 @@ inline int value_to_json_instance(JSON_INSTANCE *instance, KEY_HANDLE *parent_ha
 // Convert Value to JSON string using ZJSM API
 inline std::string value_to_json_string(const Value &value)
 {
-  JSON_INSTANCE instance = {0};
+  JSON_INSTANCE instance = {};
   int rc = ZJSMINIT(&instance);
   if (rc != 0)
   {
@@ -1540,21 +2042,21 @@ inline std::string value_to_json_string(const Value &value)
       if (value.is_object())
       {
         const auto &obj = value.as_object();
-        for (const auto &pair : obj)
+        for (auto it = obj.begin(); it != obj.end(); ++it)
         {
-          rc = value_to_json_instance(&instance, &root_handle, pair.first, pair.second);
+          rc = value_to_json_instance(&instance, &root_handle, it->first, it->second);
           if (rc != 0)
           {
             ZJSMTERM(&instance);
             std::stringstream ss;
             ss << std::hex << rc;
-            throw Error(Error::Custom, "Failed to serialize object property '" + pair.first + "'. RC: x'" + ss.str() + "'");
+            throw Error(Error::Custom, "Failed to serialize object property '" + it->first + "'. RC: x'" + ss.str() + "'");
           }
         }
       }
       else // Array
       {
-        const auto &arr = value.as_array();
+        const std::vector<Value> &arr = value.as_array();
         for (size_t i = 0; i < arr.size(); ++i)
         {
           rc = value_to_json_instance(&instance, &root_handle, "", arr[i]);
@@ -1563,7 +2065,9 @@ inline std::string value_to_json_string(const Value &value)
             ZJSMTERM(&instance);
             std::stringstream ss;
             ss << std::hex << rc;
-            throw Error(Error::Custom, "Failed to serialize array element at index " + std::to_string(i) + ". RC: x'" + ss.str() + "'");
+            std::stringstream idx_ss;
+            idx_ss << i;
+            throw Error(Error::Custom, "Failed to serialize array element at index " + idx_ss.str() + ". RC: x'" + ss.str() + "'");
           }
         }
       }
@@ -1594,7 +2098,7 @@ inline std::string value_to_json_string(const Value &value)
         ss << std::hex << rc;
         throw Error(Error::Custom, "Failed to serialize JSON with dynamic buffer. RC: x'" + ss.str() + "'");
       }
-      result = std::string(dynamic_buffer.data(), actual_length);
+      result = std::string(&dynamic_buffer[0], actual_length);
     }
     else if (rc == 0)
     {
@@ -1637,7 +2141,7 @@ inline std::string value_to_json_string(const Value &value)
 // JSON parser using zjsonm C API
 inline Value parse_json_string(const std::string &json_str)
 {
-  JSON_INSTANCE instance = {0};
+  JSON_INSTANCE instance = {};
   int rc = ZJSMINIT(&instance);
   if (rc != 0)
   {
@@ -1683,6 +2187,7 @@ inline Value parse_json_string(const std::string &json_str)
   }
 }
 
+#if defined(__clang__)
 /**
  * Macro system for automatic serialization
  */
@@ -1986,7 +2491,7 @@ void serialize_field(const T &obj, Value &result, const Field<T, FieldType> &fie
 }
 
 template <typename T, typename FieldType>
-bool deserialize_field(T &obj, const std::map<std::string, Value> &object, const Field<T, FieldType> &field)
+bool deserialize_field(T &obj, const std::unordered_map<std::string, Value> &object, const Field<T, FieldType> &field)
 {
   if (field.skip_deserializing)
   {
@@ -2027,7 +2532,7 @@ bool deserialize_field(T &obj, const std::map<std::string, Value> &object, const
 
 // Specialized deserialize_field for optional types - missing fields are OK
 template <typename T, typename OptionalType>
-bool deserialize_field(T &obj, const std::map<std::string, Value> &object, const Field<T, zstd::optional<OptionalType>> &field)
+bool deserialize_field(T &obj, const std::unordered_map<std::string, Value> &object, const Field<T, zstd::optional<OptionalType>> &field)
 {
   if (field.skip_deserializing)
   {
@@ -2071,13 +2576,13 @@ void serialize_fields(const T &obj, Value &result, Fields... fields)
 }
 
 template <typename T>
-bool deserialize_fields_impl(T &obj, const std::map<std::string, Value> &object)
+bool deserialize_fields_impl(T &obj, const std::unordered_map<std::string, Value> &object)
 {
   return true;
 }
 
 template <typename T, typename Field, typename... Fields>
-bool deserialize_fields_impl(T &obj, const std::map<std::string, Value> &object, Field field, Fields... fields)
+bool deserialize_fields_impl(T &obj, const std::unordered_map<std::string, Value> &object, Field field, Fields... fields)
 {
   if (!deserialize_field(obj, object, field))
   {
@@ -2087,7 +2592,7 @@ bool deserialize_fields_impl(T &obj, const std::map<std::string, Value> &object,
 }
 
 template <typename T, typename... Fields>
-bool deserialize_fields(T &obj, const std::map<std::string, Value> &object, Fields... fields)
+bool deserialize_fields(T &obj, const std::unordered_map<std::string, Value> &object, Fields... fields)
 {
   return deserialize_fields_impl(obj, object, fields...);
 }
@@ -2137,7 +2642,7 @@ bool has_flattened_field(Fields... fields)
 }
 
 template <typename T, typename... Fields>
-zstd::expected<bool, Error> validate_no_unknown_fields(const std::map<std::string, Value> &object, Fields... fields)
+zstd::expected<bool, Error> validate_no_unknown_fields(const std::unordered_map<std::string, Value> &object, Fields... fields)
 {
   // Check if any field is flattened - if so, we cannot reliably validate unknown fields
   if (has_flattened_field(fields...))
@@ -2169,13 +2674,9 @@ zstd::expected<bool, Error> validate_no_unknown_fields(const std::map<std::strin
 using detail::deserialize_fields;
 using detail::serialize_fields;
 
-} // namespace zjson
-
 /**
- * Usage examples and convenience macros
+ * Container attributes for JSON serialization
  */
-
-// Container attributes for JSON serialization
 
 // Container attribute macros
 
@@ -2207,5 +2708,15 @@ using detail::serialize_fields;
 #define zjson_skip_serializing_if_none() .skip_serializing_if_none()
 #define zjson_default(func) .with_default(func)
 #define zjson_flatten() .flatten()
+#else
+// XLC (minimal mode) - struct serialization macros not supported
+#define ZJSON_DERIVE(StructType, ...) \
+  typedef zjson::ERROR_ZJSON_DERIVE_requires_xlclang_compiler ZJSON_DERIVE_ERROR
+
+#define ZJSON_SERIALIZABLE(StructType, ...) \
+  typedef zjson::ERROR_ZJSON_SERIALIZABLE_requires_xlclang_compiler ZJSON_SERIALIZABLE_ERROR
+#endif
+
+} // namespace zjson
 
 #endif // ZJSON_HPP

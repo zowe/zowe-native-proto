@@ -12,6 +12,10 @@
 #ifndef _OPEN_SYS_ITOA_EXT
 #define _OPEN_SYS_ITOA_EXT
 #endif
+#ifndef _POSIX_SOURCE
+#define _POSIX_SOURCE
+#endif
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <cstring>
@@ -108,10 +112,6 @@ int zds_read_from_dd(ZDS *zds, string ddname, string &response)
   in.close();
 
   const size_t size = response.size() + 1;
-  string bytes;
-  bytes.reserve(size);
-  memcpy((char *)bytes.data(), response.c_str(), size);
-
   if (size > 0 && strlen(zds->encoding_opts.codepage) > 0)
   {
     string temp = response;
@@ -277,6 +277,7 @@ int zds_write_to_dsn(ZDS *zds, const string &dsn, string &data)
       }
       catch (exception &e)
       {
+        fclose(fp);
         zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), codepage.c_str());
         return RTNCD_FAILURE;
       }
@@ -531,6 +532,7 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &list)
         {
           zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Reached maximum returned members requested %d", zds->max_entries);
           zds->diag.detail_rc = ZDS_RSNCD_MAXED_ENTRIES_REACHED;
+          fclose(fp);
           return RTNCD_WARNING;
         }
 
@@ -570,7 +572,6 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &list)
   }
 
   fclose(fp);
-
   return 0;
 }
 
@@ -743,6 +744,32 @@ void load_recfm_from_dscb(const DSCBFormat1 *dscb, string *recfm)
   }
 }
 
+void zds_get_attrs_from_dscb(ZDS *zds, ZDSEntry &entry)
+{
+  auto *dscb = (DSCBFormat1 *)__malloc31(sizeof(DSCBFormat1));
+  if (dscb == nullptr)
+  {
+    return;
+  }
+
+  memset(dscb, 0x00, sizeof(DSCBFormat1));
+  const auto rc = ZDSDSCB1(zds, entry.name.c_str(), entry.volser.c_str(), dscb);
+
+  if (rc == RTNCD_SUCCESS)
+  {
+    load_dsorg_from_dscb(dscb, &entry.dsorg);
+    load_recfm_from_dscb(dscb, &entry.recfm);
+  }
+  else
+  {
+    entry.dsorg = ZDS_DSORG_UNKNOWN;
+    entry.volser = ZDS_VOLSER_UNKNOWN;
+    entry.recfm = ZDS_RECFM_U;
+  }
+
+  free(dscb);
+}
+
 int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
 {
   int rc = 0;
@@ -773,6 +800,12 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
   }
 
   auto *area = (unsigned char *)__malloc31(zds->buffer_size);
+  if (area == nullptr)
+  {
+    zds->diag.detail_rc = ZDS_RTNCD_INSUFFICIENT_BUFFER;
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to allocate 31-bit buffer for workarea to list %s", dsn.c_str());
+    return RTNCD_FAILURE;
+  }
   memset(area, 0x00, zds->buffer_size);
 
   CSIFIELD *selection_criteria = (CSIFIELD *)area;
@@ -968,23 +1001,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
       // attempt to load dsorg and recfm from vtoc if not migrated
       if (!entry.migr)
       {
-        auto *dscb = (DSCBFormat1 *)__malloc31(sizeof(DSCBFormat1));
-        memset(dscb, 0x00, sizeof(DSCBFormat1));
-        rc = ZDSDSCB1(zds, entry.name.c_str(), entry.volser.c_str(), dscb);
-
-        if (rc == RTNCD_SUCCESS)
-        {
-          load_dsorg_from_dscb(dscb, &entry.dsorg);
-          load_recfm_from_dscb(dscb, &entry.recfm);
-        }
-        else
-        {
-          entry.dsorg = ZDS_DSORG_UNKNOWN;
-          entry.volser = ZDS_VOLSER_UNKNOWN;
-          entry.recfm = ZDS_RECFM_U;
-        }
-
-        free(dscb);
+        zds_get_attrs_from_dscb(zds, entry);
       }
 
       switch (f->type)
@@ -1085,6 +1102,8 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
 
       if (attributes.size() + 1 > zds->max_entries)
       {
+        free(area);
+        ZDSDEL(zds);
         zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Reached maximum returned records requested %d", zds->max_entries);
         zds->diag.detail_rc = ZDS_RSNCD_MAXED_ENTRIES_REACHED;
         return RTNCD_WARNING;
@@ -1127,7 +1146,7 @@ int zds_read_from_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, 
     dsname = "//DD:" + string(zds->ddname);
   }
   const std::string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "rb" : "r";
-  FILE *fin = fopen(dsname.c_str(), fopen_flags.c_str());
+  FileGuard fin(dsname.c_str(), fopen_flags.c_str());
   if (!fin)
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open dsn '%s'", dsn.c_str());
@@ -1135,11 +1154,11 @@ int zds_read_from_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, 
   }
 
   int fifo_fd = open(pipe.c_str(), O_WRONLY);
-  FILE *fout = fdopen(fifo_fd, "w");
+  FileGuard fout(fifo_fd, "w");
   if (!fout)
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open output pipe '%s'", pipe.c_str());
-    fclose(fin);
+    close(fifo_fd);
     return RTNCD_FAILURE;
   }
 
@@ -1169,8 +1188,6 @@ int zds_read_from_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, 
       catch (std::exception &e)
       {
         zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", codepage.c_str(), source_encoding.c_str());
-        fclose(fin);
-        fclose(fout);
         return RTNCD_FAILURE;
       }
     }
@@ -1188,8 +1205,6 @@ int zds_read_from_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, 
   }
 
   fflush(fout);
-  fclose(fin);
-  fclose(fout);
 
   return RTNCD_SUCCESS;
 }
@@ -1261,10 +1276,10 @@ int zds_write_to_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, s
   const auto fopen_extra_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "b" : "" + string(",recfm=*");
 
   // If file already exists, open in read+write mode to avoid losing ISPF stats
-  FILE *fout = fopen(dsname.c_str(), ("r+" + fopen_extra_flags).c_str());
+  FileGuard fout(dsname.c_str(), ("r+" + fopen_extra_flags).c_str());
   if (!fout)
   {
-    fout = fopen(dsname.c_str(), ("w" + fopen_extra_flags).c_str());
+    fout.reset(dsname.c_str(), ("w" + fopen_extra_flags).c_str());
     if (!fout)
     {
       zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open dsn '%s'", dsn.c_str());
@@ -1273,11 +1288,17 @@ int zds_write_to_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, s
   }
 
   int fifo_fd = open(pipe.c_str(), O_RDONLY);
-  FILE *fin = fdopen(fifo_fd, "r");
+  if (fifo_fd == -1)
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "open() failed on input pipe '%s', errno %d", pipe.c_str(), errno);
+    return RTNCD_FAILURE;
+  }
+
+  FileGuard fin(fifo_fd, "r");
   if (!fin)
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open input pipe '%s'", pipe.c_str());
-    fclose(fout);
+    close(fifo_fd);
     return RTNCD_FAILURE;
   }
 
@@ -1305,8 +1326,6 @@ int zds_write_to_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, s
       catch (std::exception &e)
       {
         zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), codepage.c_str());
-        fclose(fin);
-        fclose(fout);
         return RTNCD_FAILURE;
       }
     }
@@ -1315,16 +1334,12 @@ int zds_write_to_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, s
     if (bytes_written != chunk_len)
     {
       zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to write to '%s' (possibly out of space)", dsname.c_str());
-      fclose(fin);
-      fclose(fout);
       return RTNCD_FAILURE;
     }
     temp_encoded.clear();
   }
 
   fflush(fout);
-  fclose(fin);
-  fclose(fout);
 
   // Update the etag
   string saved_contents = "";

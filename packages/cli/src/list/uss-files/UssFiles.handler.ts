@@ -21,6 +21,7 @@ export default class ListUssFilesHandler extends SshBaseHandler {
             fspath: directory,
             all: params.arguments.all,
             long: params.arguments.long,
+            depth: params.arguments.depth,
         });
         params.response.data.setObj(response);
         if (params.arguments.long) {

@@ -781,9 +781,10 @@ public:
   Io() = default;
 
   Io(const ArgumentMap &args,
+     std::istream *in_stream = nullptr,
      std::ostream *out_stream = nullptr,
      std::ostream *err_stream = nullptr)
-      : m_args(args), m_output_stream(out_stream), m_error_stream(err_stream)
+      : m_args(args), m_input_stream(in_stream), m_output_stream(out_stream), m_error_stream(err_stream)
   {
   }
 
@@ -808,7 +809,7 @@ public:
   }
 
   template <typename T>
-  T get(const std::string &key) const
+  T get(const std::string &key)
   {
     const T *ptr = get_if<T>(key);
     if (!ptr)
@@ -819,7 +820,7 @@ public:
   }
 
   template <typename T>
-  T get(const std::string &key, const T &default_value) const
+  T get(const std::string &key, const T &default_value)
   {
     const T *ptr = get_if<T>(key);
     return ptr ? *ptr : default_value;
@@ -885,6 +886,11 @@ public:
     return m_output;
   }
 
+  std::istream &input_stream() const
+  {
+    return m_input_stream != nullptr ? *m_input_stream : std::cin;
+  }
+
   std::ostream &output_stream() const
   {
     return m_output_stream != nullptr ? *m_output_stream : std::cout;
@@ -920,22 +926,68 @@ public:
     m_object = n;
   }
 
-private:
+  const size_t &content_len() const
+  {
+    return m_content_len;
+  }
+
+  virtual void set_content_len(const size_t content_len)
+  {
+    m_content_len = content_len;
+  }
+
+protected:
   ArgumentMap m_args;
+
+private:
   ArgumentMap m_output;
+  std::istream *m_input_stream;
   std::ostream *m_output_stream;
   std::ostream *m_error_stream;
   ast::Node m_object;
+  size_t m_content_len;
 };
+
+template <>
+inline bool Io::get(const std::string &key)
+{
+  // Look for negative argument first in case there is a default assigned to the normal argument
+  const auto *neg_ptr = get_if<bool>("no-" + key);
+  if (neg_ptr)
+  {
+    return !*neg_ptr;
+  }
+
+  const auto *ptr = get_if<bool>(key);
+  if (!ptr)
+  {
+    throw std::invalid_argument("argument '" + key + "' missing or wrong type");
+  }
+  return *ptr;
+}
+
+template <>
+inline bool Io::get(const std::string &key, const bool &default_value)
+{
+  // Look for negative argument first in case there is a default assigned to the normal argument
+  const auto *neg_ptr = get_if<bool>("no-" + key);
+  if (neg_ptr)
+  {
+    return !*neg_ptr;
+  }
+  const auto *ptr = get_if<bool>(key);
+  return ptr ? *ptr : default_value;
+}
 
 class InvocationContext : public Io
 {
 public:
   InvocationContext(const std::string &command_path,
                     const ArgumentMap &args,
+                    std::istream *in_stream = nullptr,
                     std::ostream *out_stream = nullptr,
                     std::ostream *err_stream = nullptr)
-      : m_command_path(command_path), Io(args, out_stream, err_stream)
+      : Io(args, in_stream, out_stream, err_stream), m_command_path(command_path)
   {
   }
 

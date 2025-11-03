@@ -21,8 +21,10 @@
 #include "zbase64.test.hpp"
 #include "zowex.test.hpp"
 #include "zlogger.test.hpp"
+#include "parser.test.hpp"
 #include "zstd.test.hpp"
 #include "zjson.test.hpp"
+#include "zowed.test.hpp"
 #include "ztest.hpp"
 
 using namespace std;
@@ -45,8 +47,10 @@ int main(int argc, char *argv[])
         zbase64_tests();
         zowex_tests();
         zlogger_tests();
+        parser_tests();
         zstd_tests();
         zjson_tests();
+        zowed_tests();
       });
 
   return rc;

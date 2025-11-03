@@ -2,7 +2,7 @@
   "name": "zowe-native-proto-vsce",
   "displayName": "zowe-native-proto-vsce",
   "description": "Zowe Native Proto VS Code Extension for Zowe Explorer",
-  "version": "0.1.10",
+  "version": "0.2.0",
   "publisher": "Zowe",
   "repository": "https://github.com/zowe/zowe-native-proto-vsce/tree/main/packages/vsce",
   "engines": {
@@ -74,6 +74,13 @@
           "minimum": 1,
           "maximum": 50,
           "description": "Number of worker threads for the Zowe SSH server. Each worker runs as a separate process in its own address space."
+        },
+        "zowe-native-proto-vsce.defaultHandshakeTimeout": {
+          "type": "number",
+          "description": "Time in milliseconds to wait for the SSH handshake to complete.",
+          "default": 30000,
+          "minimum": 1000,
+          "maximum": 120000
         }
       }
     }
@@ -97,7 +104,7 @@
     "@zowe/core-for-zowe-sdk": "^8.11.0",
     "@zowe/zowe-explorer-api": "^3.1.0",
     "ssh2": "^1.16.0",
-    "zowe-native-proto-sdk": "0.1.10"
+    "zowe-native-proto-sdk": "0.2.0"
   },
   "devDependencies": {
     "@rspack/cli": "^1.3.15",

@@ -181,12 +181,13 @@ build-out/zmetal.test.o \
 build-out/zmetal.metal.test.o \
 build-out/zusf.test.o \
 build-out/zusf.o \
-build-out/zshmem.o \
 build-out/zowex.test.o \
+build-out/parser.test.o \
 build-out/zlogger.test.o \
 build-out/zlogger_metal.o \
 build-out/zjson.test.o \
-build-out/zjsonm.o
+build-out/zjsonm.o \
+build-out/zowed.test.o
 	$(OCXX) $(CXXLANG_BND_FLAGS) -o $@ $^ > $*.bind.lst
 
 build-out/zut.o:
@@ -230,9 +231,6 @@ build-out/zcnm31.o:
 
 build-out/zusf.o:
 	ln -sf ../../build-out/xlclang/zusf.o build-out/zusf.o
-
-build-out/zshmem.o:
-	ln -sf ../../build-out/zshmem.o build-out/zshmem.o
 
 build-out/zowex.test.o: zowex.test.cpp
 	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
@@ -284,6 +282,9 @@ build-out/zmetal.metal.test.o: build-out/zmetal.metal.test.s
 
 build-out/zusf.test.o: zusf.test.cpp
 	$(OCXX) $(CXXLANG_FLAGS) $(CPP_LIST_FLAG) -c $^ -o $@
+	
+build-out/parser.test.o: parser.test.cpp
+	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
 
 build-out/zlogger.test.o: zlogger.test.cpp
 	$(OCXX) $(CXXLANG_FLAGS) $(CPP_LIST_FLAG) -c $^ -o $@
@@ -302,6 +303,9 @@ build-out/zjsonm.s: ../zjsonm.c
 
 build-out/zjsonm.o: build-out/zjsonm.s
 	$(ASM) $(ASM_FLAGS) $(ASM_LIST_FLAG) $(MACLIBS) -o $@ $^
+
+build-out/zowed.test.o: zowed.test.cpp
+	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
 
 # build-out/testrcvy.s: testrcvy.c
 # 	$(CC) $(MTL_FLAGS64) $(MTL_LIST_FLAG) $(MTL_HEADERS) -o $@ $^

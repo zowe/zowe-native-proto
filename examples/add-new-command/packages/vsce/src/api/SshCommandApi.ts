@@ -48,7 +48,7 @@ export class SshCommandApi extends SshCommonApi implements MainframeInteraction.
 
     public async ping(message?: string): Promise<{ success: boolean; data: string; timestamp: string }> {
         try {
-            const response = await (await this.client).cmds.ping({
+            const response = await (await this.client).sample.ping({
                 message: message ?? "Hello from VS Code!",
             });
             return {

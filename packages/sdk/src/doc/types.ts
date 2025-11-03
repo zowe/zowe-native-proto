@@ -9,7 +9,7 @@
  *
  */
 
-import type { CommandResponse } from "./gen/common";
+import type { CommandResponse } from "./rpc/common";
 
 export type B64String = string & { __brand: "B64String" };
 export namespace B64String {
@@ -26,8 +26,9 @@ export namespace B64String {
     }
 }
 
+export type ProgressCallback = (percent: number) => void;
 export type CallbackInfo = {
-    callback: (percent: number) => void;
+    callback: ProgressCallback;
     totalBytes?: number;
 };
 

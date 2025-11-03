@@ -13,7 +13,7 @@ jobs:
         uses: biomejs/setup-biome@v2
 
       - name: Run Biome
-        run: biome ci packages
+        run: biome ci --reporter=github packages
 
   lint-native:
     runs-on: ubuntu-latest
@@ -21,12 +21,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Go
-        uses: actions/setup-go@v5
+      - name: Run Cpp-Linter
+        uses: cpp-linter/cpp-linter-action@v2
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         with:
-          go-version: stable
-
-      - name: Run GolangCI-Lint
-        uses: golangci/golangci-lint-action@v6
-        with:
-          working-directory: native/golang
+          ignore: c/chdsect
+          repo-root: native
+          style: file
+          tidy-checks: "-*"
+          version: 21

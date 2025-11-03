@@ -9,22 +9,16 @@
  *
  */
 
-#include <iostream>
 #include <sstream>
 #include <string>
-#include <fstream>
 #include <cstring>
 #include <vector>
 #include <iomanip>
 #include <stdio.h>
-#include <istream>
-#include <ctype.h>
-#include <algorithm>
 #include <unistd.h>
 #include "iazbtokp.h"
 #include "iefzb4d0.h"
 #include "iefzb4d2.h"
-#include "zmetal.h"
 #include "zds.hpp"
 #include "zjb.hpp"
 #include "zjbm.h"
@@ -139,6 +133,11 @@ int zjb_read_job_content_by_dsn(ZJB *zjb, string jobdsn, string &response)
   // calculate total size needed, obtain, & clear
   int total_size_needed = sizeof(IAZBTOKP) + (sizeof(S99TUNIT_X) * NUM_TEXT_UNITS) + (sizeof(S99TUPL) * NUM_TEXT_UNITS) + sizeof(__S99parms) + sizeof(__S99rbx_t);
   unsigned char *parms = (unsigned char *)__malloc31(total_size_needed);
+  if (parms == nullptr)
+  {
+    zjb->diag.e_msg_len = sprintf(zjb->diag.e_msg, "Failed to allocate 31-bit memory for job parms when reading %s", jobdsn.c_str());
+    return RTNCD_FAILURE;
+  }
   memset(parms, 0x00, total_size_needed);
 
   // carve up storage to needed structs
@@ -622,6 +621,27 @@ int zjb_list_by_owner(ZJB *zjb, string owner_name, string prefix_name, vector<ZJ
   zjb_build_job_response(job_info, entries, jobs);
 
   ZUTMFR64(job_info);
+
+  return rc;
+}
+
+int zjb_list_proclib(ZJB *zjb, vector<string> &proclib)
+{
+  int rc = 0;
+  ZJB_JOB_INFO *PTR64 job_info = nullptr;
+  int entries = 0;
+  char buffer[MAX_DSN_ENTRY_SIZE] = {0};
+  int buffer_size = sizeof(buffer);
+  rc = ZJBMLPRC(zjb, buffer, &buffer_size, &entries);
+
+  if (RTNCD_SUCCESS == rc)
+  {
+    for (int i = 0; i < entries; i++)
+    {
+      string dsn(buffer + (i * DSN_ENTRY_SIZE), DSN_ENTRY_SIZE);
+      proclib.push_back(dsn);
+    }
+  }
 
   return rc;
 }

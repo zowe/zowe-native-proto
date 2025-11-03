@@ -4,13 +4,22 @@ All notable changes to the "zowe-native-proto-vsce" extension will be documented
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## `0.2.0`
+
+- Renamed `SshConfigUtils` class to `ConfigUtils` to avoid naming conflicts with SDK files [#614](https://github.com/zowe/zowe-native-proto/pull/614)
+- Added new `defaultHandshakeTimeout` VS Code setting to allow users to customize the handshake timeout when not specified in the profile. [#605](https://github.com/zowe/zowe-native-proto/pull/605)
+- Fixed SSH client caching to be per profile instead of per hostname, allowing multiple server instances on the same system. [#558](https://github.com/zowe/zowe-native-proto/pull/558)
+- Updated RPC response types for data set operations to align with SDK changes. [#590](https://github.com/zowe/zowe-native-proto/pull/590)
+- Added support for issuing TSO commands. [#595](https://github.com/zowe/zowe-native-proto/pull/595)
+- Fixed an issue where the input validation for the deploy directory prompt would falsely detect paths as invalid. [#609](https://github.com/zowe/zowe-native-proto/issues/609)
+
 ## `0.1.10`
 
-- Updated the `Zowe-SSH: Connect to Host...` command to prompt the user to choose a deploy directory.[#527] (https://github.com/zowe/zowe-native-proto/issues/527)
+- Updated the `Zowe-SSH: Connect to Host...` command to prompt the user to choose a deploy directory. [#527](https://github.com/zowe/zowe-native-proto/issues/527)
 
 ## `0.1.9`
 
-- Moved `showSessionInTree` call to before `uninstallServer` is called to ensure the session is displayed in the tree before the uninstall removes it. [#484] (https://github.com/zowe/zowe-native-proto/issues/484)
+- Moved `showSessionInTree` call to before `uninstallServer` is called to ensure the session is displayed in the tree before the uninstall removes it. [#484](https://github.com/zowe/zowe-native-proto/issues/484)
 - Filtered out certain information messages to display a clear and concise error message for when creating a data set with an invalid management class. [#502](https://github.com/zowe/zowe-native-proto/issues/502)
 - Added "Worker Count" setting to configure number of `zowex` worker threads. [#514](https://github.com/zowe/zowe-native-proto/pull/514)
 - Fixed error when using SSH profiles in Zowe Explorer 3.3.0. [#540](https://github.com/zowe/zowe-native-proto/issues/540)

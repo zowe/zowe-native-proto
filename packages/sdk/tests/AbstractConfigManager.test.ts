@@ -17,14 +17,16 @@ import {
     type IProfileTypeConfiguration,
     type ProfileInfo,
 } from "@zowe/imperative";
+import type { ISshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { ZoweVsCodeExtension } from "@zowe/zowe-explorer-api";
 import { type Config, NodeSSH } from "node-ssh";
 import type { ConnectConfig } from "ssh2";
 import type { MockInstance } from "vitest";
+import type { IDisposable } from "../lib";
 import { AbstractConfigManager, type ProgressCallback } from "../src/AbstractConfigManager";
 import { ConfigFileUtils } from "../src/ConfigFileUtils";
 import { type inputBoxOpts, MESSAGE_TYPE, type qpItem, type qpOpts } from "../src/doc";
-import { type ISshConfigExt, ZClientUtils } from "../src/ZClientUtils";
+import { type ISshConfigExt, SshConfigUtils } from "../src/SshConfigUtils";
 
 vi.mock("path", async (importOriginal) => {
     const actual = await importOriginal<typeof import("path")>();
@@ -139,7 +141,12 @@ export class TestAbstractConfigManager extends AbstractConfigManager {
     public getCurrentDir = vi.fn<() => string | undefined>().mockReturnValue("/mock/dir");
 
     public getProfileSchemas = vi.fn<() => IProfileTypeConfiguration[]>().mockReturnValue([]);
-    protected storeServerPath(host: string, _path: string): void {}
+
+    protected storeServerPath(_host: string, _path: string): void {}
+
+    protected getClientSetting = vi.fn<(setting: keyof ISshSession) => any>().mockReturnValue(15000);
+
+    protected showStatusBar = vi.fn<() => IDisposable | undefined>().mockReturnValue(undefined);
 }
 
 describe("AbstractConfigManager", async () => {
@@ -154,7 +161,7 @@ describe("AbstractConfigManager", async () => {
     beforeEach(async () => {
         testManager = new TestAbstractConfigManager(profCache);
         vi.spyOn(testManager, "fetchAllSshProfiles" as any).mockReturnValueOnce(sshProfiles);
-        vi.spyOn(ZClientUtils, "migrateSshConfig").mockResolvedValueOnce(migratedSshConfigs);
+        vi.spyOn(SshConfigUtils, "migrateSshConfig").mockResolvedValueOnce(migratedSshConfigs);
     });
     describe("promptForProfile", async () => {
         describe("profile selection and input", () => {
@@ -430,8 +437,8 @@ describe("AbstractConfigManager", async () => {
             });
         });
     });
+    const defaultServerPath = "/faketmp/fakeserver";
     describe("promptForDeployDirectory", () => {
-        const defaultServerPath = "/faketmp/fakeserver";
         const host = "testHost";
         it("returns default path if user presses enter without changing", async () => {
             vi.spyOn(testManager, "showInputBox").mockResolvedValue(defaultServerPath);
@@ -464,15 +471,28 @@ describe("AbstractConfigManager", async () => {
             expect(showMessageMock).toHaveBeenCalled();
             expect(storeMock).not.toHaveBeenCalled();
         });
+    });
 
-        it("should return error if user enters invalid path", async () => {
-            vi.spyOn(testManager, "showInputBox").mockImplementation(async (opts) => {
-                opts.validateInput?.(" ");
-                return undefined;
-            });
+    describe("validateDeployPath", () => {
+        it("should return 'Path cannot be empty' when trimmed path is empty", () => {
+            const result = TestAbstractConfigManager.validateDeployPath("   ");
+            expect(result).toBe("Path cannot be empty.");
+        });
+        it("should return invalid path format when path is >1024 chars", () => {
+            const result = TestAbstractConfigManager.validateDeployPath("/a".repeat(1025));
+            expect(result).toBe("Path is longer than the USS max path length of 1024.");
+        });
+        it("should return null for paths starting with ~ (valid path)", async () => {
+            const result = TestAbstractConfigManager.validateDeployPath("~/.zowe-ssh");
+            expect(result).toBeNull();
+        });
 
-            const result = await testManager.promptForDeployDirectory(defaultServerPath, host);
-            expect(result).toBeUndefined();
+        it("should return null for paths with ~ in the middle (valid path)", async () => {
+            const replaceSpy = vi.spyOn(String.prototype, "replace");
+            const multipleTildes = "~/.projects/zowe~ssh";
+            const result = TestAbstractConfigManager.validateDeployPath(multipleTildes);
+            expect(replaceSpy).toHaveLastReturnedWith(multipleTildes.substring(1));
+            expect(result).toBeNull();
         });
     });
 
@@ -963,6 +983,27 @@ describe("AbstractConfigManager", async () => {
             expect(isConnectedMock).toHaveBeenCalledTimes(1);
             expect(execCommandMock).toHaveBeenCalledTimes(1);
         });
+        it("should throw leverage the default handshaketimeout setting if no value is passed on config", async () => {
+            const connectMock = vi
+                .spyOn(NodeSSH.prototype, "connect")
+                .mockImplementation((_config: ConnectConfig) => undefined);
+            const isConnectedMock = vi.spyOn(NodeSSH.prototype, "isConnected").mockReturnValueOnce(true);
+            const execCommandMock = vi.spyOn(NodeSSH.prototype, "execCommand").mockImplementation(() => {
+                return { stderr: "FOTS1668" } as any;
+            });
+            await expect(
+                (testManager as any).attemptConnection({
+                    name: "testProf",
+                    privateKey: "/path/to/id_rsa",
+                    port: 22,
+                    user: "user1",
+                }),
+            ).rejects.toThrow("FOTS1668");
+            expect(connectMock).toHaveBeenCalledWith(expect.objectContaining({ readyTimeout: 15000 }));
+            expect(connectMock).toHaveBeenCalledTimes(1);
+            expect(isConnectedMock).toHaveBeenCalledTimes(1);
+            expect(execCommandMock).toHaveBeenCalledTimes(1);
+        });
     });
     describe("promptForPassword", async () => {
         it("returns undefined if user cancels input immediately", async () => {
@@ -993,7 +1034,8 @@ describe("AbstractConfigManager", async () => {
             const result = await (testManager as any).promptForPassword({ user: "user1", hostname: "host" }, {});
             expect(result).toBeUndefined();
             expect((testManager as any).attemptConnection).toHaveBeenCalledTimes(3);
-            expect(testManager.showMessage).toHaveBeenCalledTimes(3);
+            // One message after each attempt and one final one after 3 failures
+            expect(testManager.showMessage).toHaveBeenCalledTimes(3 + 1);
             expect(testManager.showMessage).toHaveBeenCalledWith(
                 "Password Authentication Failed (1/3)",
                 MESSAGE_TYPE.ERROR,
@@ -1029,7 +1071,7 @@ describe("AbstractConfigManager", async () => {
             (testManager as any).migratedConfigs = undefined;
 
             // Create fresh spies for each test
-            findPrivateKeysSpy = vi.spyOn(ZClientUtils, "findPrivateKeys");
+            findPrivateKeysSpy = vi.spyOn(SshConfigUtils, "findPrivateKeys");
             validateConfigSpy = vi.spyOn(testManager as any, "validateConfig");
         });
         it("should modify a profile with a found private key", async () => {

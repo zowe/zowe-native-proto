@@ -26,12 +26,20 @@ import {
     type IProfileTypeConfiguration,
     type ProfileInfo,
 } from "@zowe/imperative";
+import type { ISshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { NodeSSH } from "node-ssh";
 import { ConfigFileUtils } from "./ConfigFileUtils";
-import { type inputBoxOpts, MESSAGE_TYPE, type PrivateKeyWarningOptions, type qpItem, type qpOpts } from "./doc";
-import { type ISshConfigExt, ZClientUtils } from "./ZClientUtils";
+import {
+    type IDisposable,
+    type inputBoxOpts,
+    MESSAGE_TYPE,
+    type PrivateKeyWarningOptions,
+    type ProgressCallback,
+    type qpItem,
+    type qpOpts,
+} from "./doc";
+import { type ISshConfigExt, SshConfigUtils } from "./SshConfigUtils";
 
-export type ProgressCallback = (percent: number) => void;
 export abstract class AbstractConfigManager {
     public constructor(private mProfilesCache: ProfileInfo) {}
 
@@ -43,6 +51,8 @@ export abstract class AbstractConfigManager {
     protected abstract getCurrentDir(): string | undefined;
     protected abstract getProfileSchemas(): IProfileTypeConfiguration[];
     protected abstract showPrivateKeyWarning(opts: PrivateKeyWarningOptions): Promise<boolean>;
+    protected abstract getClientSetting<T>(setting: keyof ISshSession): T | undefined;
+    protected abstract showStatusBar(): IDisposable | undefined;
 
     private migratedConfigs: ISshConfigExt[];
     private filteredMigratedConfigs: ISshConfigExt[];
@@ -51,7 +61,7 @@ export abstract class AbstractConfigManager {
     private sshProfiles: IProfileLoaded[];
     private sshRegex = /^ssh\s+(?:([a-zA-Z0-9_-]+)@)?([a-zA-Z0-9.-]+)/;
     private flagRegex = /-(\w+)(?:\s+("[^"]+"|'[^']+'|\S+))?/g;
-    /**/
+
     public async promptForProfile(
         profileName?: string,
         setExistingProfile = true,
@@ -64,7 +74,7 @@ export abstract class AbstractConfigManager {
         this.sshProfiles = this.fetchAllSshProfiles().filter(({ name, profile }) => name && profile?.host);
 
         // Get configs from ~/.ssh/config
-        this.migratedConfigs = await ZClientUtils.migrateSshConfig();
+        this.migratedConfigs = await SshConfigUtils.migrateSshConfig();
 
         // Parse to remove migratable configs that already exist on the team config
         this.filteredMigratedConfigs = this.migratedConfigs.filter(
@@ -112,6 +122,7 @@ export abstract class AbstractConfigManager {
 
         // If an existing team config profile was selected
         if (!this.selectedProfile) {
+            const statusBar = this.showStatusBar();
             const foundProfile = this.sshProfiles.find(({ name }) => name === result.label);
             if (foundProfile) {
                 const validConfig = await this.validateConfig({
@@ -123,7 +134,11 @@ export abstract class AbstractConfigManager {
                     user: foundProfile?.profile?.user,
                     password: foundProfile?.profile?.password,
                 });
-                if (validConfig === undefined) return;
+
+                if (validConfig === undefined) {
+                    statusBar?.dispose();
+                    return;
+                }
 
                 if (setExistingProfile || Object.keys(validConfig).length > 0) {
                     if (validConfig.password) {
@@ -131,6 +146,7 @@ export abstract class AbstractConfigManager {
                     }
                     await this.setProfile(validConfig, foundProfile.name);
                 }
+                statusBar?.dispose();
                 return { ...foundProfile, profile: { ...foundProfile.profile, ...validConfig } };
             }
         }
@@ -155,16 +171,22 @@ export abstract class AbstractConfigManager {
 
         // Attempt connection if private key was provided and it has not been validated
         if (this.validationResult === undefined && this.selectedProfile.privateKey) {
+            const statusBar = this.showStatusBar();
             this.validationResult = await this.validateConfig(this.selectedProfile, false);
+            statusBar?.dispose();
         }
 
         if (this.validationResult === undefined) {
+            const statusBar = this.showStatusBar();
             await this.validateFoundPrivateKeys();
+            statusBar?.dispose();
         }
 
         if (this.validationResult === undefined) {
+            const statusBar = this.showStatusBar();
             // Attempt to validate with given URL/creds
             this.validationResult = await this.validateConfig(this.selectedProfile);
+            statusBar?.dispose();
         }
 
         // If validateConfig returns a string, that string is the correct keyPassphrase
@@ -201,17 +223,21 @@ export abstract class AbstractConfigManager {
 
     protected abstract storeServerPath(host: string, path: string): void;
 
+    public static validateDeployPath(this: void, input: string): string | null {
+        const trimmed = input.trim();
+        if (!trimmed) return "Path cannot be empty.";
+        if (trimmed.length > 1024) return "Path is longer than the USS max path length of 1024.";
+
+        return path.isAbsolute(trimmed.replace(/^~/, ""))
+            ? null
+            : "Invalid deploy directory format. Ensure it matches the expected pattern.";
+    }
+
     public async promptForDeployDirectory(host: string, defaultServerPath: string): Promise<string> {
         const input = await this.showInputBox({
             title: "Enter deploy directory",
             value: defaultServerPath,
-            validateInput: (input) => {
-                const trimmed = input.trim();
-                if (!trimmed) return "Path cannot be empty";
-                if (trimmed !== defaultServerPath && !path.isAbsolute(input.trim()))
-                    return "Invalid Deploy Directory format. Ensure it matches the expected pattern.";
-                return null;
-            },
+            validateInput: (input) => AbstractConfigManager.validateDeployPath(input),
         });
         if (input === undefined) {
             this.showMessage("SSH setup cancelled.", MESSAGE_TYPE.WARNING);
@@ -438,9 +464,7 @@ export abstract class AbstractConfigManager {
             }
 
             if (errorMessage.includes("Cannot parse privateKey: Malformed OpenSSH private key")) {
-                if (!(await this.handleInvalidPrivateKey(newConfig))) {
-                    return undefined;
-                }
+                await this.handleInvalidPrivateKey(newConfig);
                 return undefined;
             }
         }
@@ -459,7 +483,7 @@ export abstract class AbstractConfigManager {
                 password: config.password,
                 privateKey: config.privateKey ? readFileSync(path.normalize(config.privateKey), "utf8") : undefined,
                 passphrase: config.keyPassphrase,
-                readyTimeout: config.handshakeTimeout || 30000,
+                readyTimeout: config.handshakeTimeout || this.getClientSetting("handshakeTimeout") || 30000,
             };
 
             // Attempt connection
@@ -501,6 +525,11 @@ export abstract class AbstractConfigManager {
                 this.showMessage(`Password Authentication Failed (${attempts + 1}/3)`, MESSAGE_TYPE.ERROR);
             }
         }
+        this.showMessage(
+            `Authentication failed. Please check your password or ensure your account is not locked out.`,
+            MESSAGE_TYPE.ERROR,
+        );
+
         return undefined;
     }
 
@@ -509,7 +538,7 @@ export abstract class AbstractConfigManager {
         await this.withProgress("Validating Private Keys...", async (progress) => {
             // Find private keys located at ~/.ssh/ and attempt to connect with them
             if (!this.validationResult) {
-                const foundPrivateKeys = await ZClientUtils.findPrivateKeys();
+                const foundPrivateKeys = await SshConfigUtils.findPrivateKeys();
                 for (const privateKey of foundPrivateKeys) {
                     const testValidation: ISshConfigExt = { ...this.selectedProfile };
                     testValidation.privateKey = privateKey;

@@ -409,7 +409,7 @@ describe("ZSshClient", () => {
             const registerStreamMock = vi.fn();
             const client: ZSshClient = new (ZSshClient as any)();
             (client as any).mSshStream = { stdin: { write: writeMock } };
-            (client as any).mNotifMgr = { registerStream: registerStreamMock };
+            (client as any).mStreamMgr = { registerStream: registerStreamMock };
 
             const response = client.request(request);
             (client as any).processResponses(`${JSON.stringify(rpcResponseGood)}\n`);
@@ -430,34 +430,29 @@ describe("ZSshClient", () => {
             const fakeStdout = new EventEmitter();
             const sshStream = { stdin: { write: vi.fn() }, stdout: fakeStdout, stderr: { on: vi.fn() } };
             const client: ZSshClient = new (ZSshClient as any)();
-            const handleNotificationMock = vi.fn();
-            (client as any).mNotifMgr = { handleNotification: handleNotificationMock };
+            const linkStreamToPromiseMock = vi.fn();
+            (client as any).mStreamMgr = { linkStreamToPromise: linkStreamToPromiseMock };
             (client as any).mSshStream = sshStream;
             (client as any).getServerStatus(sshStream, readyMessage);
             (client as any).mPromiseMap.set(1, { resolve: vi.fn(), reject: vi.fn() });
 
             fakeStdout.emit("data", `${JSON.stringify(notification)}\n`);
 
-            expect(handleNotificationMock).toHaveBeenCalledTimes(1);
-            expect(handleNotificationMock.mock.calls[0][0]).toEqual(notification);
+            expect(linkStreamToPromiseMock).toHaveBeenCalledTimes(1);
+            expect(linkStreamToPromiseMock.mock.calls[0][1]).toEqual(notification);
         });
 
         it("should handle errors in notification processing", async () => {
             const notification = {
                 jsonrpc: "2.0",
-                method: "sendStream",
-                params: { id: 1, pipePath: "/dev/null" },
+                method: "invalidMethod",
+                params: { id: 1 },
             };
             const fakeStdout = new EventEmitter();
             const sshStream = { stdin: { write: vi.fn() }, stdout: fakeStdout, stderr: { on: vi.fn() } };
             const onErrorMock = vi.fn();
             const client: ZSshClient = new (ZSshClient as any)();
             (client as any).mErrHandler = onErrorMock;
-            (client as any).mNotifMgr = {
-                handleNotification: () => {
-                    throw new Error("notification error");
-                },
-            };
             (client as any).mSshStream = sshStream;
             (client as any).getServerStatus(sshStream, readyMessage);
             (client as any).mPromiseMap.set(1, { resolve: vi.fn(), reject: vi.fn() });
@@ -465,7 +460,7 @@ describe("ZSshClient", () => {
             fakeStdout.emit("data", `${JSON.stringify(notification)}\n`);
 
             expect(onErrorMock).toHaveBeenCalledTimes(1);
-            expect(onErrorMock.mock.calls[0][0]).toBeInstanceOf(Error);
+            expect(onErrorMock.mock.calls[0][0].message).toContain("unknown method invalidMethod");
         });
     });
 

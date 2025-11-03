@@ -22,7 +22,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: ["go", "typescript"]
+        language: ["c-cpp", "typescript"]
 
     steps:
       - name: Checkout repository
@@ -34,6 +34,7 @@ jobs:
         uses: github/codeql-action/init@v3
         with:
           languages: ${{ matrix.language }}
+          build-mode: none
           config-file: ./.github/resources/codeql-config.yml
 
       - name: Perform CodeQL Analysis

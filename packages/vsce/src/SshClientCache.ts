@@ -14,7 +14,7 @@ import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { imperative } from "@zowe/zowe-explorer-api";
 import * as vscode from "vscode";
 import { type ClientOptions, ZSshClient, ZSshUtils } from "zowe-native-proto-sdk";
-import { SshConfigUtils } from "./SshConfigUtils";
+import { ConfigUtils } from "./ConfigUtils";
 import { deployWithProgress, getVsceConfig } from "./Utilities";
 
 class AsyncMutex extends imperative.DeferredPromise<void> implements Disposable {
@@ -53,7 +53,7 @@ export class SshClientCache extends vscode.Disposable {
     }
 
     public async connect(profile: imperative.IProfileLoaded, restart = false): Promise<ZSshClient> {
-        const clientId = this.getClientId(profile.profile!);
+        const clientId = this.getClientId(profile);
         await this.mMutexMap.get(clientId)?.promise;
         if (restart) {
             this.end(clientId);
@@ -62,7 +62,7 @@ export class SshClientCache extends vscode.Disposable {
         if (!this.mClientMap.has(clientId)) {
             using _lock = this.acquireProfileLock(clientId);
             const session = ZSshUtils.buildSession(profile.profile!);
-            const serverPath = SshConfigUtils.getServerPath(profile.profile);
+            const serverPath = ConfigUtils.getServerPath(profile.profile);
             const localDir = path.join(this.mContext.extensionPath, "bin");
             const vsceConfig = getVsceConfig();
             const keepAliveInterval = vsceConfig.get<number>("keepAliveInterval");
@@ -102,14 +102,14 @@ export class SshClientCache extends vscode.Disposable {
         return this.mClientMap.get(clientId) as ZSshClient;
     }
 
-    public end(hostOrProfile: string | imperative.IProfile): void {
+    public end(hostOrProfile: string | imperative.IProfileLoaded): void {
         const clientId = typeof hostOrProfile === "string" ? hostOrProfile : this.getClientId(hostOrProfile);
         this.mClientMap.get(clientId)?.dispose();
         this.mClientMap.delete(clientId);
     }
 
-    private getClientId(profile: imperative.IProfile): string {
-        return `${profile.host}:${profile.port ?? 22}`;
+    private getClientId(profile: imperative.IProfileLoaded): string {
+        return `${profile.name}_${profile.type}`;
     }
 
     private acquireProfileLock(clientId: string): AsyncMutex {

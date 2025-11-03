@@ -7,13 +7,12 @@ An open-source, native protocol for z/OS mainframe operations via SSH with minim
 ### Local
 
 - Node.js & npm - required to build client packages
-- Golang - optional but recommended for type generation and linting
+- VS Code extensions - recommended ones are listed in [extensions.json](./.vscode/extensions.json)
 
 ### z/OS
 
 - [IBM C/C++ for z/OS](https://www.ibm.com/products/xl-cpp-compiler-zos) - `xlclang` and `xlclang++`
-- [GNU Make for z/OS](https://github.com/zopencommunity/makeport) - `make` a.k.a. `gmake` (native `make` is not supported)
-- [IBM Open Enterprise SDK for Go](https://www.ibm.com/products/open-enterprise-sdk-go-zos) - Golang for z/OS
+- [SWIG](https://github.com/t1m0thyj/swig-zos) (optional) - used to build experimental Python bindings
 
 ## Setup
 
@@ -56,7 +55,7 @@ Run `npm run z:rebuild` to rebuild server code after editing files in the `nativ
 
 Run `npm run build` to rebuild client code after editing files in the `packages` folder.
 
-To test server changes without having to download artifacts and re-deploy them each time, you can define `serverPath` property in your SSH profile in `zowe.config.json`. It should point to the `<deployDir>/golang` folder that contains the `zowed` binary. See example below.
+To test server changes without having to download artifacts and re-deploy them each time, you can define `serverPath` property in your SSH profile in `zowe.config.json`. It should point to the `<deployDir>/zowed/build-out` folder that contains the `zowed` binary. See example below.
 
 ```json
   "profiles": {
@@ -64,7 +63,7 @@ To test server changes without having to download artifacts and re-deploy them e
       "type": "ssh",
       "properties": {
         ...
-        "serverPath": "~/zowe-native-proto/golang"
+        "serverPath": "~/zowe-native-proto/zowed/build-out"
       }
     }
   }
@@ -82,7 +81,7 @@ We use a custom build tool for interacting with z/OS that defines the following 
 | Command       | Description                                                                 |
 | ------------- | --------------------------------------------------------------------------- |
 | `z:artifacts` | Download native binaries and package them with clients                      |
-| `z:build`     | Run `make` and `go build` on z/OS to build native binaries                  |
+| `z:build`     | Run `make` on z/OS to build native binaries                  |
 | `z:clean`     | Run `make clean` on z/OS to clean build targets                             |
 | `z:delete`    | Delete all files from deploy directory                                      |
 | `z:make`      | Execute the specified Make targets on z/OS                                  |
@@ -123,21 +122,22 @@ graph LR
   other[&lt;My Custom App&gt;]-->sdk
   end
   subgraph z/OS Server
-  ioserver["Golang I/O Server<br>(Middleware)"]<-->zowex["C++ CLI Binary<br>(Backend)"]
+  zowex["C++ CLI Binary<br>(zowex)"]-->cpp
+  ioserver["C++ I/O Server<br>(Middleware)"]-->cpp["C++ Libraries<br>(Backend)"]
+  python["Python REST API<br>(experimental)"]-->cpp
   sdk<-->|SSH|ioserver
   subgraph Mainframe Resources
   ds[Data Sets]
   uss[USS Files]
   jobs[Jobs]
   end
-  zowex-->ds
-  zowex-->uss
-  zowex-->jobs
-  ioserver-->uss
+  cpp-->ds
+  cpp-->uss
+  cpp-->jobs
   end
   click sdk "https://github.com/zowe/zowe-native-proto/blob/main/doc/client/architecture.md#sdk-package"
   click cli "https://github.com/zowe/zowe-native-proto/blob/main/doc/client/architecture.md#cli-plug-in"
   click vsce "https://github.com/zowe/zowe-native-proto/blob/main/doc/client/architecture.md#vs-code-extension"
-  click ioserver "https://github.com/zowe/zowe-native-proto/blob/main/doc/server/ioserver_architecture.md"
+  click ioserver "https://github.com/zowe/zowe-native-proto/blob/main/doc/server/zowed_architecture.md"
   click zowex "https://github.com/zowe/zowe-native-proto/blob/main/doc/server/zowex_architecture.md"
 ```

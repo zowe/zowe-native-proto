@@ -4,6 +4,12 @@ All notable changes to the Client code for "zowe-native-proto-cli" are documente
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## `0.2.0`
+
+- Updated `CliPromptApi` class to gracefully handle unused functions from the `AbstractConfigManager` class. [#605](https://github.com/zowe/zowe-native-proto/pull/605)
+- Added a `--depth` option to the `zssh list uss` command for listing USS directories recursively. [#575](https://github.com/zowe/zowe-native-proto/pull/575)
+- Added `zssh issue tso-command` command. [#595](https://github.com/zowe/zowe-native-proto/pull/595)
+
 ## `0.1.10`
 
 - Added a `storeServerPath` function as placeholder for future CLI functionality to persist deploy directory paths from user input. [#527](https://github.com/zowe/zowe-native-proto/issues/527)

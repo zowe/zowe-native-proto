@@ -20,9 +20,11 @@ import {
     ProfileInfo,
     TextUtils,
 } from "@zowe/imperative";
+import type { ISshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import * as termkit from "terminal-kit";
 import {
     AbstractConfigManager,
+    type IDisposable,
     type inputBoxOpts,
     MESSAGE_TYPE,
     type PrivateKeyWarningOptions,
@@ -325,4 +327,12 @@ export class CliPromptApi extends AbstractConfigManager {
         return ImperativeConfig.instance.loadedConfig.profiles;
     }
     protected storeServerPath(_host: string, _path: string): void {}
+
+    protected getClientSetting<T>(_setting: keyof ISshSession): T | undefined {
+        return undefined;
+    }
+
+    protected showStatusBar(): IDisposable | undefined {
+        return undefined;
+    }
 }
