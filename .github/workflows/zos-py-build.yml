@@ -5,9 +5,9 @@ on:
     paths:
       - ".github/workflows/zos-py-build.yml"
       - "native/python/**"
-  push:
-    branches:
-      - main
+  # push:
+  #   branches:
+  #     - main
   workflow_call:
     inputs:
       version:
