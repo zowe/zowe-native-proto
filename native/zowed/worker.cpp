@@ -24,13 +24,6 @@ constexpr size_t kMaxReplacementAttempts = 5;
 constexpr std::chrono::milliseconds kBaseReplacementBackoff(200);
 constexpr std::chrono::milliseconds kMaxReplacementBackoff(5000);
 
-int64_t steady_clock_now_ms()
-{
-  return std::chrono::duration_cast<std::chrono::milliseconds>(
-             std::chrono::steady_clock::now().time_since_epoch())
-      .count();
-}
-
 const char *worker_state_to_string(WorkerState state)
 {
   switch (state)
@@ -56,10 +49,7 @@ const char *worker_state_to_string(WorkerState state)
 
 // Worker implementation
 Worker::Worker(int worker_id)
-    : id(worker_id),
-      stop_requested(false),
-      state(WorkerState::Starting),
-      last_heartbeat_ms(steady_clock_now_ms())
+    : id(worker_id)
 {
   LOG_DEBUG("Worker %d state -> %s (constructor)", id, worker_state_to_string(WorkerState::Starting));
 }
@@ -285,11 +275,7 @@ std::string Worker::get_current_request()
 
 // WorkerPool implementation
 WorkerPool::WorkerPool(int num_workers, std::chrono::milliseconds request_timeout_param)
-    : next_worker_index(0),
-      ready_count(0),
-      request_timeout(request_timeout_param <= std::chrono::milliseconds(0) ? std::chrono::seconds(60) : request_timeout_param),
-      is_shutting_down(false),
-      supervisor_running(false)
+    : request_timeout(request_timeout_param <= std::chrono::milliseconds(0) ? std::chrono::seconds(60) : request_timeout_param)
 {
   workers.reserve(num_workers);
 
@@ -400,7 +386,7 @@ void WorkerPool::set_worker_ready(int worker_id)
       LOG_ERROR("Attempted to mark worker %d as ready but index is out of range", worker_id);
       return;
     }
-    size_t worker_index = static_cast<size_t>(worker_id);
+    const auto worker_index = static_cast<size_t>(worker_id);
 
     // Make sure a worker still exists at that index in the pool before using it
     Worker *worker = workers[worker_index].get();
@@ -618,7 +604,7 @@ void WorkerPool::replace_worker(size_t worker_index, const char *reason, bool fo
       if (!current_req.empty())
       {
         LOG_DEBUG("Worker %zu: Recovering in-flight request due to %s", worker_index, reason);
-        recovered_requests.push_back(RequestMetadata(current_req, 0));
+        recovered_requests.emplace_back(RequestMetadata(current_req, 0));
       }
     }
     else

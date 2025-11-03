@@ -53,6 +53,13 @@ struct RequestMetadata
   }
 };
 
+inline int64_t steady_clock_now_ms()
+{
+  return std::chrono::duration_cast<std::chrono::milliseconds>(
+             std::chrono::steady_clock::now().time_since_epoch())
+      .count();
+}
+
 // Worker class that processes command requests
 class Worker : public std::enable_shared_from_this<Worker>
 {
@@ -62,9 +69,9 @@ private:
   std::queue<RequestMetadata> request_queue;
   std::mutex queue_mutex;
   std::condition_variable queue_condition;
-  std::atomic<bool> stop_requested;
-  std::atomic<WorkerState> state;
-  std::atomic<int64_t> last_heartbeat_ms;
+  std::atomic<bool> stop_requested{false};
+  std::atomic<WorkerState> state{WorkerState::Starting};
+  std::atomic<int64_t> last_heartbeat_ms{steady_clock_now_ms()};
 
   // Track the currently processing request for recovery
   std::string current_request_data;
@@ -104,24 +111,24 @@ class WorkerPool
 private:
   static constexpr size_t kMaxRequestRetries = 2; // Maximum retry attempts for poison pill protection
 
-  std::atomic<size_t> next_worker_index;
+  std::atomic<size_t> next_worker_index{0};
   std::vector<std::shared_ptr<Worker>> workers;
 
   // Track ready state variables and total number of ready workers
   std::vector<bool> ready_list;
   std::mutex ready_mutex;
   std::condition_variable ready_condition;
-  std::atomic<int32_t> ready_count;
+  std::atomic<int32_t> ready_count{0};
   std::vector<size_t> replacement_attempts;
   std::vector<std::chrono::steady_clock::time_point> next_replacement_allowed;
   std::chrono::milliseconds request_timeout;
 
   // Whether the pool is shutting down
-  std::atomic<bool> is_shutting_down;
+  std::atomic<bool> is_shutting_down{false};
 
   // State variables for supervisor/monitor thread
   std::thread supervisor_thread;
-  std::atomic<bool> supervisor_running;
+  std::atomic<bool> supervisor_running{false};
 
   void initialize_worker(int worker_id);
   void monitor_workers();
