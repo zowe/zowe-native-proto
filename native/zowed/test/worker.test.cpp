@@ -45,6 +45,9 @@ public:
   // Counts how many requests have been fully processed
   std::atomic<int> processed_count{0};
 
+  // Counts how many timeout errors have been sent to clients
+  std::atomic<int> timeout_error_count{0};
+
   // Stores the last request data received
   std::string last_processed_request;
   std::mutex mtx; // Protects last_processed_request
@@ -99,6 +102,20 @@ public:
   }
 
   /**
+   * @brief Mock implementation of send_timeout_error.
+   * Tracks timeout errors sent to clients for test validation.
+   *
+   * @param request_data The raw JSON-RPC request string that timed out
+   * @param timeout_ms The timeout value that was exceeded (in milliseconds)
+   */
+  void send_timeout_error(const std::string &request_data, int64_t timeout_ms)
+  {
+    timeout_error_count++;
+    TestLog("RpcServer: Timeout error sent to client for request");
+    (void)request_data; // Suppress unused parameter warning
+  }
+
+  /**
    * @brief Resets the mock server's state.
    * Called before tests.
    */
@@ -106,6 +123,7 @@ public:
   {
     hang_request.store(false);
     processed_count.store(0);
+    timeout_error_count.store(0);
     std::lock_guard<std::mutex> lock(mtx);
     last_processed_request.clear();
   }
@@ -335,7 +353,7 @@ void worker_tests()
       Expect(clean_processed).ToBe(true);
       Expect(server.processed_count.load()).ToBe(6); });
 
-             it("should replace a timed-out worker and NOT recover in-flight request", [&]()
+             it("should replace a timed-out worker, send timeout error to client, and NOT recover in-flight request", [&]()
                 {
       int num_workers = 1;
       // Use a very short timeout for the test
@@ -352,21 +370,27 @@ void worker_tests()
       pool->distribute_request("hang");
 
       // Expected sequence:
-      // 1. "hang" is processed, RpcServer loop starts, worker state is "Running".
-      // 2. Monitor thread detects stale heartbeat (~250ms + ~500ms loop).
-      // 3. `replace_worker` is called with `force_detach=true`.
-      // 4. "pending1" is drained from the queue.
-      // 5. "hang" (in-flight) is *NOT* recovered due to `force_detach`.
-      // 6. New worker 0 is created and started.
-      // 7. "pending1" is redistributed and processed by the new worker (count=1).
+      // 1. "pending1" is processed normally (count=1).
+      // 2. "hang" is processed, RpcServer loop starts, worker state is "Running".
+      // 3. Monitor thread detects stale heartbeat (~250ms + ~500ms loop).
+      // 4. `replace_worker` is called with `force_detach=true`.
+      // 5. Worker pool calls `send_timeout_error` for the hanging request (timeout_error_count=1).
+      // 6. "hang" (in-flight) is *NOT* recovered due to `force_detach`.
+      // 7. New worker 0 is created and started.
+      // 8. No additional requests are redistributed (pending queue was empty after step 1).
 
-      TestLog("Waiting for timeout/replacement cycle...");
-      bool p1_processed = wait_for([&]() {
-        return server.processed_count.load() == 1; // Only "pending1"
+      TestLog("Waiting for timeout/replacement cycle and timeout error...");
+      
+      // First, verify that pending1 was processed and timeout error was sent
+      bool timeout_sent = wait_for([&]() {
+        return server.processed_count.load() >= 1 && server.timeout_error_count.load() >= 1;
       }, 3000ms); // Needs time for timeout + monitor + backoff
 
-      Expect(p1_processed).ToBe(true);
-      Expect(server.processed_count.load()).ToBe(1);
+      Expect(timeout_sent).ToBe(true);
+      Expect(server.processed_count.load()).ToBe(1); // Only "pending1" processed normally
+      Expect(server.timeout_error_count.load()).ToBe(1); // Timeout error sent for "hang" request
+
+      TestLog("Timeout error successfully sent to client - preventing client hang!");
 
       // Now, manually release the original hanging request
       TestLog("Releasing original hang request...");
@@ -391,7 +415,10 @@ void worker_tests()
 
       Expect(clean_processed).ToBe(true);
       Expect(server.processed_count.load()).ToBe(3);
-      Expect(pool->get_available_workers_count()).ToBe(1); }); });
+      Expect(pool->get_available_workers_count()).ToBe(1);
+      
+      // Final validation: exactly one timeout error was sent
+      Expect(server.timeout_error_count.load()).ToBe(1); }); });
 }
 // Include the implementation so the stubs above satisfy the real compilation unit.
 #include "../worker.cpp"
