@@ -4,7 +4,7 @@ All notable changes to the "zowe-native-proto-vsce" extension will be documented
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## Recent Changes
+## `0.2.0`
 
 - Renamed `SshConfigUtils` class to `ConfigUtils` to avoid naming conflicts with SDK files [#614](https://github.com/zowe/zowe-native-proto/pull/614)
 - Added new `defaultHandshakeTimeout` VS Code setting to allow users to customize the handshake timeout when not specified in the profile. [#605](https://github.com/zowe/zowe-native-proto/pull/605)

@@ -4,7 +4,7 @@ All notable changes to the native code for "zowe-native-proto" are documented in
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## Recent Changes
+## `0.2.0`
 
 - `c`: Fixed issue where uploading changes to a PDS member removed its ISPF stats. [#556](https://github.com/zowe/zowe-native-proto/issues/556)
 - `c`: Streamlined argument checks and access within command handlers. Handlers can now use `get`, `get_if` and `find` to search for arguments and retrieve their values, regardless of whether the argument is a keyword or positional argument. [#574](https://github.com/zowe/zowe-native-proto/pull/574)
