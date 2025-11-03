@@ -9,21 +9,24 @@
 #  Copyright Contributors to the Zowe Project.
 #
 
-CXX=xlclang++
+.INCLUDE: ../../c/toolchain.mk
+
+CXX=$(CXXLANG)
 
 OUT_DIR=build-out
 TARGET=$(OUT_DIR)/zowed_test_runner
 
 INCLUDES=-I../../c/test -I../../c -I..
 CXXFLAGS=-W "c,lp64,langlvl(extended0x),xplink" -c $(INCLUDES)
-LDFLAGS=-W "l,lp64,xplink,map"
+LDFLAGS=$(CPP_BND_BASE_FLAGS)
 
-TEST_SOURCES=\
- zowed_test_runner.cpp \
- worker.test.cpp \
- zowed.test.cpp
+.IF $(BuildType) == DEBUG
+LDFLAGS=$(CPP_BND_DEBUG_FLAGS)
+.END
 
-TEST_OBJECTS=$(addprefix $(OUT_DIR)/,$(TEST_SOURCES:.cpp=.o))
+TEST_OBJECTS=$(OUT_DIR)/zowed_test_runner.o \
+ $(OUT_DIR)/worker.test.o \
+ $(OUT_DIR)/zowed.test.o
 
 .PHONY: all clean test
 
