@@ -1795,8 +1795,7 @@ int zusf_chtag_uss_file_or_dir(ZUSF *zusf, const string &file, const string &own
 
   // First try to parse as a numeric CCSID
   char *endptr;
-  const auto parsed_ccsid = strtol(tag.c_str(), &endptr, 10);
-
+  const auto parsed_ccsid = strtol(owner.c_str(), &endptr, 10);
   // If the entire string was consumed and it's a valid range, it's a numeric CCSID
   if (*endptr == '\0' && parsed_ccsid != LONG_MAX && parsed_ccsid != LONG_MIN)
   {
@@ -1808,7 +1807,7 @@ int zusf_chtag_uss_file_or_dir(ZUSF *zusf, const string &file, const string &own
     ccsid = zusf_get_ccsid_from_display_name(tag);
     if (ccsid == -1)
     {
-      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Invalid tag '%s' - not a valid CCSID or display name", tag.c_str());
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Invalid tag '%s' - not a valid CCSID or display name", owner.c_str());
       return RTNCD_FAILURE;
     }
   }
