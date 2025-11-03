@@ -69,6 +69,7 @@ void Worker::start()
   auto self = shared_from_this();
 
   worker_thread = std::thread(&Worker::worker_loop, self);
+  state.store(WorkerState::Idle, std::memory_order_release);
   update_heartbeat();
   LOG_DEBUG("Worker %d state -> %s (worker thread started)", id, worker_state_to_string(WorkerState::Idle));
   LOG_DEBUG("Worker %d started", id);
@@ -460,10 +461,10 @@ void WorkerPool::monitor_workers()
 
       Worker *worker = nullptr;
       bool skip_due_to_backoff = false;
-      
+
       {
         std::lock_guard<std::mutex> lock(ready_mutex);
-        
+
         if (i < next_replacement_allowed.size() &&
             std::chrono::steady_clock::now() < next_replacement_allowed[i])
         {
@@ -548,7 +549,7 @@ void WorkerPool::replace_worker(size_t worker_index, const char *reason, bool fo
         // Critical: ready count and ready list are inconsistent
         // Reset count to 0 and abort replacement to prevent further corruption
         ready_count.store(0, std::memory_order_release);
-        LOG_ERROR("Ready count inconsistency detected for worker %zu (was %d). Aborting replacement to prevent corruption.", 
+        LOG_ERROR("Ready count inconsistency detected for worker %zu (was %d). Aborting replacement to prevent corruption.",
                   worker_index, previous_ready);
         return;
       }
@@ -619,7 +620,11 @@ void WorkerPool::replace_worker(size_t worker_index, const char *reason, bool fo
       std::string current_req = old_worker->get_current_request();
       if (!current_req.empty())
       {
-        LOG_DEBUG("Worker %zu: NOT recovering in-flight request due to timeout/hang - request may still complete", worker_index);
+        LOG_DEBUG("Worker %zu: Sending timeout error for in-flight request", worker_index);
+
+        // Send timeout error response to the client
+        RpcServer &server = RpcServer::get_instance();
+        server.send_timeout_error(current_req, request_timeout.count());
       }
     }
 

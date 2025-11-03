@@ -347,6 +347,53 @@ void RpcServer::send_notification(const RpcNotification &notification)
   std::cout << json_string << std::endl;
 }
 
+void RpcServer::send_timeout_error(const string &request_data, int64_t timeout_ms)
+{
+  int request_id = -1;
+  string method = "unknown";
+
+  // Try to parse the request to extract the ID
+  try
+  {
+    auto parse_result = zjson::from_str<zjson::Value>(request_data);
+    if (parse_result.has_value())
+    {
+      const zjson::Value &json = parse_result.value();
+      if (json.is_object())
+      {
+        // Extract request ID if present
+        const zjson::Value &id_value = json["id"];
+        if (!id_value.is_null() && id_value.is_integer())
+        {
+          request_id = static_cast<int>(id_value.as_int64());
+        }
+
+        // Extract method name for better error messages
+        const zjson::Value &method_value = json["method"];
+        if (!method_value.is_null() && method_value.is_string())
+        {
+          method = method_value.as_string();
+        }
+      }
+    }
+  }
+  catch (const std::exception &e)
+  {
+    LOG_ERROR("Failed to parse timed-out request for error response: %s", e.what());
+  }
+
+  // Build timeout error message
+  char timeout_message[256];
+  snprintf(timeout_message, sizeof(timeout_message),
+           "Request timed out after %lld ms (method: %s)",
+           static_cast<long long>(timeout_ms), method.c_str());
+
+  // Send the error response
+  print_error(request_id, RpcErrorCode::REQUEST_TIMEOUT, timeout_message);
+
+  LOG_WARN("Sent timeout error response for request ID %d (method: %s)", request_id, method.c_str());
+}
+
 void RpcServer::print_error(int request_id, int code, const string &message, const string *data)
 {
   zstd::optional<zjson::Value> error_data;

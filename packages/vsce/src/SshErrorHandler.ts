@@ -75,12 +75,34 @@ export class SshErrorHandler {
     }
 
     /**
+     * Checks if an error is a timeout error
+     * @param error The error to check
+     * @returns True if the error is a timeout error
+     */
+    public isTimeoutError(error: Error | string): boolean {
+        const errorMessage = error instanceof Error ? error.message : error;
+        const timeoutMatches = SshErrors.REQUEST_TIMEOUT.matches;
+
+        return timeoutMatches.some((match) => {
+            if (typeof match === "string") {
+                return errorMessage.includes(match);
+            }
+            return match.test(errorMessage);
+        });
+    }
+
+    /**
      * Checks if an error is a fatal SSH error that should terminate the connection
      * @param error The error to check
      * @returns True if the error is fatal
      */
     public isFatalError(error: Error | string): boolean {
         const errorMessage = error instanceof Error ? error.message : error;
+
+        // Timeout errors are not fatal - they should allow retry
+        if (this.isTimeoutError(error)) {
+            return false;
+        }
 
         // Check for fatal OpenSSH error codes
         const fatalErrorCodes = Object.keys(SshErrors);

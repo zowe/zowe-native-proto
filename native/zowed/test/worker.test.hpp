@@ -8,6 +8,7 @@
  * Copyright Contributors to the Zowe Project.
  *
  */
+
 #ifndef WORKER_TEST_HPP
 #define WORKER_TEST_HPP
 
