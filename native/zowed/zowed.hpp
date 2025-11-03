@@ -15,7 +15,7 @@
 /**
  * @brief Options structure for configuring the zowed server
  */
-struct IoserverOptions
+struct ZowedOptions
 {
   int num_workers;     ///< Number of worker threads
   bool verbose;        ///< Enable verbose logging
@@ -26,7 +26,7 @@ struct IoserverOptions
    * @param num_workers Number of worker threads
    * @param verbose Enable verbose logging
    */
-  IoserverOptions(const int num_workers = 10, const bool verbose = false, const int request_timeout_seconds = 60)
+  explicit ZowedOptions(const int num_workers = 10, const bool verbose = false, const int request_timeout_seconds = 60)
       : num_workers(num_workers), verbose(verbose), request_timeout(request_timeout_seconds)
   {
     if (this->request_timeout <= 0)
@@ -44,6 +44,6 @@ struct IoserverOptions
  * @param exec_dir Executable directory for logger initialization
  * @return int Exit code (0 for success, non-zero for error)
  */
-extern "C" int run_zowed_server(const IoserverOptions &options, const char *exec_dir = nullptr);
+extern "C" int run_zowed_server(const ZowedOptions &options, const char *exec_dir = nullptr);
 
 #endif

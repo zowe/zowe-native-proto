@@ -35,9 +35,9 @@
 #include "../c/parser.hpp"
 #include "zowed.hpp"
 
-IoserverOptions parse_options(int argc, char *argv[])
+ZowedOptions parse_options(int argc, char *argv[])
 {
-  IoserverOptions opts;
+  ZowedOptions opts;
 
   parser::ArgumentParser arg_parser(argv[0], "Zowe native IO server");
   parser::Command &root_cmd = arg_parser.get_root_command();
@@ -184,7 +184,7 @@ const char *dlerror_zos()
  */
 int main(int argc, char *argv[])
 {
-  IoserverOptions options = parse_options(argc, argv);
+  ZowedOptions options = parse_options(argc, argv);
 
   // Load the shared library at runtime from executable directory
   std::string executable_dir;
@@ -211,7 +211,7 @@ int main(int argc, char *argv[])
   }
 
   // Get the function pointer
-  typedef int (*run_zowed_server_func)(const IoserverOptions &, const char *);
+  typedef int (*run_zowed_server_func)(const ZowedOptions &, const char *);
   void *func_ptr = dlsym(handle, "run_zowed_server");
 
   const char *dlsym_error = dlerror();

@@ -42,10 +42,10 @@ ZJSON_DERIVE(StatusMessage, status, message, data);
 class ZowedServer
 {
 private:
-  IoserverOptions options;
+  ZowedOptions options;
   string exec_dir;
   std::unique_ptr<WorkerPool> worker_pool;
-  std::atomic<bool> shutdown_requested;
+  std::atomic<bool> shutdown_requested{false};
   std::mutex shutdown_mutex;
   std::once_flag shutdown_flag;
 
@@ -154,12 +154,8 @@ private:
   }
 
 public:
-  ZowedServer()
-      : shutdown_requested(false)
-  {
-  }
-
-  void run(const IoserverOptions &opts, const string &exec_dir_param)
+  ZowedServer() = default;
+  void run(const ZowedOptions &opts, const string &exec_dir_param)
   {
     options = opts;
     this->exec_dir = exec_dir_param;
@@ -213,7 +209,7 @@ public:
 };
 
 // Library implementation functions
-extern "C" int run_zowed_server(const IoserverOptions &options, const char *exec_dir)
+extern "C" int run_zowed_server(const ZowedOptions &options, const char *exec_dir)
 {
   try
   {
