@@ -17,7 +17,7 @@ OUT_DIR=build-out
 TARGET=$(OUT_DIR)/zowed_test_runner
 
 INCLUDES=-I../../c/test -I../../c -I..
-CXXFLAGS=-W "c,lp64,langlvl(extended0x),xplink" -c $(INCLUDES)
+CXXFLAGS=-W "c,lp64,xplink" -c $(INCLUDES) -std=c++14
 LDFLAGS=$(CPP_BND_BASE_FLAGS)
 
 .IF $(BuildType) == DEBUG
@@ -35,7 +35,7 @@ all: $(TARGET)
 $(OUT_DIR):
 	mkdir -p $(OUT_DIR)
 
-$(OUT_DIR)/%.o: %.cpp | $(OUT_DIR)
+$(OUT_DIR)/%.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 $(TARGET): $(TEST_OBJECTS)

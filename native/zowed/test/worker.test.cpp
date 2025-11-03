@@ -1,6 +1,7 @@
 #include "worker.test.hpp"
 #include "../../c/test/ztest.hpp"
 #include "../worker.hpp"
+#include "../logger.hpp"
 
 #include <string>
 #include <stdexcept>
@@ -15,40 +16,6 @@
 using namespace ztst;
 
 /**
- * @brief Stub for logger.hpp
- *
- * Provides minimal logging macros (LOG_DEBUG, LOG_INFO, etc.) that
- * print to stdout. This is necessary for worker.cpp to compile.
- */
-#ifndef LOGGER_HPP
-#define LOGGER_HPP
-
-// A global mutex to prevent interleaved log messages from different threads
-static std::mutex g_log_mutex;
-
-/**
- * @brief Simple thread-safe logger function for tests.
- */
-inline void test_logger(const char *level, const char *format, ...)
-{
-  std::lock_guard<std::mutex> lock(g_log_mutex);
-  std::va_list args;
-  va_start(args, format);
-  std::printf("[%s] ", level);
-  std::vprintf(format, args);
-  std::printf("\n");
-  fflush(stdout); // Ensure logs are visible immediately
-  va_end(args);
-}
-
-// Map the logging macros used in worker.cpp
-#define LOG_DEBUG(format, ...) test_logger("DEBUG", format, ##__VA_ARGS__)
-#define LOG_INFO(format, ...) test_logger("INFO", format, ##__VA_ARGS__)
-#define LOG_WARN(format, ...) test_logger("WARN", format, ##__VA_ARGS__)
-#define LOG_ERROR(format, ...) test_logger("ERROR", format, ##__VA_ARGS__)
-#endif // LOGGER_HPP
-
-/**
  * @brief Stub for server.hpp
  *
  * Provides a mock RpcServer singleton that worker.cpp depends on.
@@ -61,8 +28,6 @@ inline void test_logger(const char *level, const char *format, ...)
 class RpcServer
 {
 public:
-  // --- Test control variables ---
-
   // If true, requests with data "hang" will loop until this is set to false
   std::atomic<bool> hang_request{false};
 
@@ -94,9 +59,7 @@ public:
       last_processed_request = data;
     }
 
-    // --- Test Scenarios ---
-
-    // 1. Simulate a hang (for timeout tests)
+    // Simulate a hang (for timeout tests)
     if (data == "hang")
     {
       hang_request.store(true);
@@ -110,7 +73,7 @@ public:
       return;
     }
 
-    // 2. Simulate a fault (for exception tests)
+    // Simulate a fault (for exception tests)
     if (data == "fault")
     {
       TestLog("RpcServer: Simulating fault. Request 'fault' received.");
@@ -118,7 +81,7 @@ public:
       throw std::runtime_error("Simulated worker fault");
     }
 
-    // 3. Default behavior (simulating normal work)
+    // Default behavior (simulating normal work)
     // Sleep for a short duration to make state transitions observable
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
     processed_count++;
@@ -193,8 +156,7 @@ void worker_tests()
       pool = nullptr;
     } });
 
-  // --- Test Suite for the Worker class ---
-  describe("Worker (Unit Tests)", [&]()
+  describe("Worker", [&]()
            {
 
     std::shared_ptr<Worker> worker;
@@ -273,8 +235,7 @@ void worker_tests()
       Expect(worker->get_state() == WorkerState::Exited).ToBe(true);
     }); });
 
-  // --- Test Suite for the WorkerPool class ---
-  describe("WorkerPool (Integration Tests)", [&]()
+  describe("WorkerPool integration", [&]()
            {
              it("should initialize and all workers become ready", [&]()
                 {
@@ -421,6 +382,5 @@ void worker_tests()
       Expect(server.processed_count.load()).ToBe(3);
       Expect(pool->get_available_workers_count()).ToBe(1); }); });
 }
-
 // Include the implementation so the stubs above satisfy the real compilation unit.
 #include "../worker.cpp"
