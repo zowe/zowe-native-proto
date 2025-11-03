@@ -351,19 +351,28 @@ Worker *WorkerPool::get_ready_worker()
   if (is_shutting_down)
     return nullptr;
 
-  // Round-robin selection for O(1) access
-  size_t workers_size = workers.size();
-  if (workers_size == 0)
-    return nullptr;
-
-  size_t start_index = next_worker_index.fetch_add(1) % workers_size;
-
-  // Try to find a ready worker starting from the next index
-  for (size_t i = 0; i < workers_size; ++i)
+  // Pop worker index from front for O(1) FIFO access (round-robin style)
+  // Note: The queue may contain stale entries for workers that are no longer ready.
+  // We validate each worker index as its popped from the queue.
+  // This keeps the common path at O(1) while gracefully handling rare state transitions.
+  while (!ready_queue.empty())
   {
-    size_t index = (start_index + i) % workers_size;
-    if (workers[index] && workers[index]->is_ready())
-      return workers[index].get();
+    size_t worker_index = ready_queue.front();
+    ready_queue.pop_front();
+
+    // Validate worker is still ready and exists
+    if (worker_index < workers.size() && workers[worker_index] && workers[worker_index]->is_ready())
+    {
+      // Re-add worker to back of queue to maintain round-robin distribution
+      // Workers remain "ready" even while processing (Running state)
+      ready_queue.push_back(worker_index);
+      return workers[worker_index].get();
+    }
+    else
+    {
+      // Worker is no longer ready or doesn't exist, continue to next in queue
+      LOG_DEBUG("Worker %zu popped from ready queue but is no longer ready", worker_index);
+    }
   }
 
   return nullptr;
@@ -414,6 +423,8 @@ void WorkerPool::set_worker_ready(int worker_id)
       ready_count.fetch_add(1);
       replacement_attempts[worker_index] = 0;
       next_replacement_allowed[worker_index] = std::chrono::steady_clock::time_point::min();
+
+      ready_queue.push_back(worker_index);
       notify_ready = true;
     }
   }

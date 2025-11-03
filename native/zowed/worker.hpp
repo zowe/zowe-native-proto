@@ -14,6 +14,7 @@
 
 #include <thread>
 #include <queue>
+#include <deque>
 #include <mutex>
 #include <condition_variable>
 #include <atomic>
@@ -44,7 +45,8 @@ struct RequestMetadata
   size_t retry_count;     // Number of times this request has been attempted
   std::string request_id; // Optional: for logging/debugging
 
-  RequestMetadata() : retry_count(0)
+  RequestMetadata()
+      : retry_count(0)
   {
   }
   RequestMetadata(const std::string &req_data, size_t retries = 0, const std::string &id = "")
@@ -111,7 +113,6 @@ class WorkerPool
 private:
   static constexpr size_t kMaxRequestRetries = 2; // Maximum retry attempts for poison pill protection
 
-  std::atomic<size_t> next_worker_index{0};
   std::vector<std::shared_ptr<Worker>> workers;
 
   // Track ready state variables and total number of ready workers
@@ -122,6 +123,9 @@ private:
   std::vector<size_t> replacement_attempts;
   std::vector<std::chrono::steady_clock::time_point> next_replacement_allowed;
   std::chrono::milliseconds request_timeout;
+
+  // Queue of ready worker indices for constant-time access (round-robin distribution)
+  std::deque<size_t> ready_queue;
 
   // Whether the pool is shutting down
   std::atomic<bool> is_shutting_down{false};
