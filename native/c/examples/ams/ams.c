@@ -147,7 +147,7 @@ int AMSMAIN()
   bldl_pl.ff = 1;
   bldl_pl.ll = sizeof(bldl_pl.list);
   memcpy(bldl_pl.list.name, sysprint->jfcb.jfcbelnm, sizeof(sysprint->jfcb.jfcbelnm));
-  zwto_debug("@TEST length of user data before bldl: %x", bldl_pl.list.c & 0x1F);
+  zwto_debug("@TEST length of user data before bldl: %x", bldl_pl.list.c & LEN_MASK);
   zut_dump_storage_common("@TEST bldl_pl", &bldl_pl.list, sizeof(bldl_pl.list), 16, 0, zut_print_debug);
   rc = bldl(sysprint, &bldl_pl, &rsn);
   if (0 != rc)
@@ -158,6 +158,7 @@ int AMSMAIN()
   zwto_debug("@TEST bldl success: rsn: %d", rsn);
 
   zwto_debug("@TEST length of user data is: %x", bldl_pl.list.c & 0x1F);
+  zwto_debug("@TEST bldl_pl ttr: %02x%02x%02x", bldl_pl.list.ttr[0], bldl_pl.list.ttr[1], bldl_pl.list.ttr[2]);
 
   zut_dump_storage_common("@TEST bldl_pl", &bldl_pl.list, sizeof(bldl_pl.list), 16, 0, zut_print_debug);
 
@@ -202,6 +203,7 @@ int AMSMAIN()
   memcpy(sysprint->stow_list.ttr, note_response.ttr, sizeof(note_response.ttr));
 
   zut_dump_storage_common("@TEST sysprint->stow_list", &sysprint->stow_list, sizeof(sysprint->stow_list), 16, 0, zut_print_debug);
+  zwto_debug("@TEST sysprint->stow_list ttr: %02x%02x%02x", sysprint->stow_list.ttr[0], sysprint->stow_list.ttr[1], sysprint->stow_list.ttr[2]);
   rc = stow(sysprint, &rsn);
   if (0 != rc)
   {

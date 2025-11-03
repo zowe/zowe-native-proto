@@ -99,14 +99,36 @@ typedef struct
   char *PTR32 buffer;
 } FILE_CTRL;
 
-#define MAX_USER_DATA_LEN 62
+// https://www.ibm.com/docs/en/zos/3.2.0?topic=di-ispf-statistics-entry-in-pds-directory
 typedef struct
 {
-  char name[8]; // padded with blanks
-  unsigned char ttr[3];
-  unsigned char k; // concatention
-  unsigned char z; // where found, 0=private, 1=link, 2=job, task, step, 3-16=job, task, step of parent
-  unsigned char c; // name type bit0=0member, bit0=1alias, bit1-2=number of TTRN in user data (max 3), bit3-7 number of halfwords in the user data
+  unsigned char version;                // byte1: 0x01 thru 0x99
+  unsigned char modification;           // byte2: 0x00 thru 0x99
+  unsigned char flags;                  // byte3: bit1=sclm indicator, bit2=reserved, bit3=stats exist, bit4-7=reserved, bit8=reserved
+  unsigned char modified_time_seconds;  // byte4: packed decimal
+  unsigned char created_date_century;   // byte5: 0x00 = 1900 0x01=2000
+  unsigned char created_julian_date[3]; // byte6-8: packed decimal
+  unsigned char modified_date_century;  // byte9: 0x00 = 1900 0x01=2000
+  unsigned char modified_date[3];       // byte10-12: packed decimal
+  unsigned char modified_hours;         // byte13: packed decimal
+  unsigned char modified_minutes;       // byte14: packed decimal
+  short int current_number_of_lines;    // byte15-16: hexidcimal
+  short int initial_number_of_lines;    // byte17-18: hexidcimal
+  short int modified_number_of_lines;   // byte19-20: hexidcimal
+  char userid[8];                       // byte21-28: padded with blanks
+  // TODO(Kelosky): conditional data based on byte3 flags
+
+} ISPF_STATS;
+
+#define MAX_USER_DATA_LEN 62
+#define LEN_MASK 0x1F
+typedef struct
+{
+  char name[8];         // padded with blanks
+  unsigned char ttr[3]; // TT=track, R=record
+  unsigned char k;      // concatenation
+  unsigned char z;      // where found, 0=private, 1=link, 2=job, task, step, 3-16=job, task, step of parent
+  unsigned char c;      // name type bit0=0member, bit0=1alias, bit1-2=number of TTRN in user data (max 3), bit3-7 number of halfwords in the user data
   unsigned char user_data[MAX_USER_DATA_LEN];
 } BLDL_LIST;
 
@@ -120,15 +142,15 @@ typedef struct
 
 typedef struct
 {
-  char name[8]; // padded with blanks
-  unsigned char ttr[3];
+  char name[8];         // padded with blanks
+  unsigned char ttr[3]; // TT=track, R=record
   unsigned char c;
   unsigned char user_data[MAX_USER_DATA_LEN];
 } STOW_LIST;
 
 typedef struct
 {
-  unsigned char ttr[3];
+  unsigned char ttr[3]; // TT=track, R=record
   unsigned char z;
 } NOTE_RESPONSE;
 
