@@ -4,6 +4,15 @@ All notable changes to the native code for "zowe-native-proto" are documented in
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+
+- `zowed`: Fixed issue where enabling verbose logging would cause a deadlock during initialization. [#652](https://github.com/zowe/zowe-native-proto/issues/652)
+- `zowed`: Implemented support for automatic worker recovery. If a worker crashes or throws an exception, it is replaced with a new worker. If the maximum number of replacement attempts have been exceeded, the worker is disabled to prevent thrashing the CPU with replacement requests. [#410](https://github.com/zowe/zowe-native-proto/issues/410)
+- `zowed`: Optimized the `get_ready_worker` function to avoid worst-case linear search for the next available worker. [#651](https://github.com/zowe/zowe-native-proto/pull/651)
+- `zowed`: Replaced the options logic with the parser library to avoid code duplication and establish consistency with backend. [#655](https://github.com/zowe/zowe-native-proto/issues/655)
+- `zowed`: Implemented support for server-side request timeouts. If the request timeout is exceeded for a single worker, the hanging worker is replaced and the ongoing request is discarded. [#416](https://github.com/zowe/zowe-native-proto/issues/416)
+- `c`: De-duplicated makefile contents through `.INCLUDE` keyword and separate toolchain file. [#651](https://github.com/zowe/zowe-native-proto/pull/651)
+
 ## `0.2.0`
 
 - `c`: Fixed issue where uploading changes to a PDS member removed its ISPF stats. [#556](https://github.com/zowe/zowe-native-proto/issues/556)
