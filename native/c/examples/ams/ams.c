@@ -10,11 +10,13 @@
  */
 #include <stdio.h>
 #include "zmetal.h"
+#include "zutm.h"
 #include "zwto.h"
 #include "dcbd.h"
 #include "zam.h"
 #include "zmetal.h"
 #include "zdbg.h"
+#include "zutm31.h"
 
 // NOTE(Kelosky): We only use this path for write operations and to preserve and update ISPF statistics.  Read operations or DSORG=PS will use `fopen`.
 // In this path we must perform dynamic allocation on the data set.  We must perform RDJFCB to validate the data set and get the attributes prior to performing the OPEN.
@@ -80,7 +82,7 @@ int AMSMAIN()
   IO_CTRL *PTR32 sysin = open_input_assert("SYSIN", 80, 80, dcbrecf);
   // IO_CTRL *PTR32 sysprint = open_output_assert("SYSPRINT", 80, 80, dcbrecf);
   IO_CTRL *PTR32 sysprint = new_write_io_ctrl("SYSPRINT", 80, 80, dcbrecf);
-  set_dcb_dcbe(&sysprint->dcb, eodad);
+  // set_dcb_dcbe(&sysprint->dcb, eodad); // TODO(Kelosky): is dcbe needed for write?
   rc = read_output_jfcb(sysprint);
   if (0 != rc)
   {
@@ -175,12 +177,14 @@ int AMSMAIN()
 
   // get ttr
 
+  short int lines_written = 0;
   char inbuff[80] = {80};
   char writebuff[80] = {80};
   while (0 == read_sync(sysin, inbuff))
   {
     memset(writebuff, ' ', 80);
     memcpy(writebuff, inbuff, 80);
+    lines_written++;
     write_sync(sysprint, writebuff);
     zwto_debug("@TEST inbuff: %.80s", writebuff);
   }
@@ -201,9 +205,32 @@ int AMSMAIN()
   sysprint->stow_list.c = bldl_pl.list.c;
   memcpy(sysprint->stow_list.ttr, note_response.ttr, sizeof(note_response.ttr));
   memcpy(sysprint->stow_list.user_data, bldl_pl.list.user_data, sizeof(bldl_pl.list.user_data)); // copy all user data
-  // adjust modification date & time
+
+  ISPF_STATS *statsp = (ISPF_STATS *)sysprint->stow_list.user_data;
+  char user[8] = {0};
+  rc = zutm1gur(user);
+  if (0 != rc)
+  {
+    zwto_debug("@TEST zutm1gur failed: rc: %d", rc);
+    return -1;
+  }
+  zwto_debug("current user: '%s'", user);
   // adjust user
-  // adjust number of lines
+  memcpy(statsp->userid, user, sizeof(user));
+
+// adjust modification level
+// https://www.ibm.com/docs/en/zos/3.2.0?topic=environment-version-modification-level-numbers
+// level 0x99 is the maximum level
+#define MAX_LEVEL 0x99
+  if (statsp->level < MAX_LEVEL)
+  {
+    statsp->level++; // increment level
+  }
+
+  // adjust modification date & time
+
+  statsp->modified_number_of_lines = lines_written;
+  statsp->current_number_of_lines = lines_written;
 
   zut_dump_storage_common("@TEST sysprint->stow_list", &sysprint->stow_list, sizeof(sysprint->stow_list), 16, 0, zut_print_debug);
   zwto_debug("@TEST sysprint->stow_list ttr: %02x%02x%02x", sysprint->stow_list.ttr[0], sysprint->stow_list.ttr[1], sysprint->stow_list.ttr[2]);

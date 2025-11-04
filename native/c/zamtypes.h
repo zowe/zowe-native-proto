@@ -105,7 +105,7 @@ typedef struct
 typedef struct
 {
   unsigned char version;                // byte1: 0x01 thru 0x99
-  unsigned char modification;           // byte2: 0x00 thru 0x99
+  unsigned char level;                  // byte2: 0x00 thru 0x99
   unsigned char flags;                  // byte3: bit1=sclm indicator, bit2=reserved, bit3=stats exist, bit4-7=reserved, bit8=reserved
   unsigned char modified_time_seconds;  // byte4: packed decimal
   unsigned char created_date_century;   // byte5: 0x00 = 1900 0x01=2000
