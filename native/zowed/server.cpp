@@ -57,11 +57,11 @@ void RpcServer::process_request(const string &request_data)
     // Create MiddlewareContext first with empty args (needed for large data storage)
     plugin::ArgumentMap args;
     MiddlewareContext context(request.method, args);
-
-    // Convert JSON params to ArgumentMap with large data handling
+    
+    // Convert JSON params to ArgumentMap (with large data handling if needed)
     if (request.params.has_value())
     {
-      args = convert_json_params_to_argument_map_with_large_data(request.params.value(), context);
+      args = convert_json_params_to_argument_map(request.params.value(), &context);
       // Update context with the processed arguments
       context.mutable_arguments() = args;
     }
@@ -112,15 +112,8 @@ void RpcServer::process_request(const string &request_data)
     response.error = zstd::optional<ErrorDetails>();
     response.id = zstd::optional<int>(request.id);
 
-    // Use specialized print method if we have large data
-    if (!context.get_large_data_map().empty())
-    {
-      print_response_with_large_data(response, context);
-    }
-    else
-    {
-      print_response(response);
-    }
+    // Print response (handles large data replacement automatically if present)
+    print_response(response, &context);
   }
   catch (const std::exception &e)
   {
@@ -171,50 +164,7 @@ string RpcServer::camel_case_to_kebab_case(const string &input)
   return result;
 }
 
-plugin::ArgumentMap RpcServer::convert_json_params_to_argument_map(const zjson::Value &params)
-{
-  plugin::ArgumentMap args;
-
-  if (!params.is_object())
-  {
-    throw std::runtime_error("Invalid parameters - must be an object");
-  }
-
-  // Convert JSON object to ArgumentMap
-  for (const auto &pair : params.as_object())
-  {
-    // Convert camelCase keys to kebab-case
-    const string kebab_key = camel_case_to_kebab_case(pair.first);
-    const zjson::Value &value = pair.second;
-
-    if (value.is_bool())
-    {
-      args[kebab_key] = plugin::Argument(value.as_bool());
-    }
-    else if (value.is_integer())
-    {
-      args[kebab_key] = plugin::Argument(value.as_int64());
-    }
-    else if (value.is_double())
-    {
-      args[kebab_key] = plugin::Argument(value.as_double());
-    }
-    else if (value.is_string())
-    {
-      args[kebab_key] = plugin::Argument(value.as_string());
-    }
-    // For other types (null, array, object), convert to string representation
-    else
-    {
-      auto str_result = zjson::to_string(value);
-      args[kebab_key] = plugin::Argument(str_result.value_or(""));
-    }
-  }
-
-  return args;
-}
-
-plugin::ArgumentMap RpcServer::convert_json_params_to_argument_map_with_large_data(const zjson::Value &params, MiddlewareContext &context)
+plugin::ArgumentMap RpcServer::convert_json_params_to_argument_map(const zjson::Value &params, MiddlewareContext *context)
 {
   plugin::ArgumentMap args;
 
@@ -245,13 +195,13 @@ plugin::ArgumentMap RpcServer::convert_json_params_to_argument_map_with_large_da
     else if (value.is_string())
     {
       const string str_value = value.as_string();
-
-      // Check if this string is larger than 16MB - store it separately if so
-      if (str_value.size() >= 16 * 1024 * 1024)
+      
+      // Check if this string is larger than threshold and context is provided
+      if (context && str_value.size() >= MiddlewareContext::LARGE_DATA_THRESHOLD)
       {
-        string placeholder = context.store_large_data(kebab_key, str_value);
+        string placeholder = context->store_large_data(kebab_key, str_value);
         args[kebab_key] = plugin::Argument(placeholder);
-        LOG_DEBUG("Stored large incoming data (%zu bytes) for param '%s'",
+        LOG_DEBUG("Stored large incoming data (%zu bytes) for param '%s'", 
                   str_value.size(), kebab_key.c_str());
       }
       else
@@ -345,7 +295,7 @@ zjson::Value RpcServer::convert_ast_to_json(const ast::Node &ast_node)
   }
 }
 
-void RpcServer::print_response(const RpcResponse &response)
+void RpcServer::print_response(const RpcResponse &response, const MiddlewareContext *context)
 {
   // Log errors to the log file
   if (response.error.has_value())
@@ -363,36 +313,15 @@ void RpcServer::print_response(const RpcResponse &response)
     }
   }
 
+  // Serialize JSON first
   string json_string = serialize_json(rpc_response_to_json(response));
-  auto &stream = response.error.has_value() ? std::cerr : std::cout;
-  std::lock_guard<std::mutex> lock(response_mutex);
-  stream << json_string << std::endl;
-}
-
-void RpcServer::print_response_with_large_data(const RpcResponse &response, const MiddlewareContext &context)
-{
-  // Log errors to the log file
-  if (response.error.has_value())
+  
+  // Replace large data placeholders if context is provided and has large data
+  if (context && !context->get_large_data_map().empty())
   {
-    const ErrorDetails &error = response.error.value();
-    if (error.data.has_value())
-    {
-      const auto &val = error.data.value();
-      string data_str = val.is_string() ? val.as_string() : serialize_json(val);
-      LOG_ERROR("%s: %s", error.message.c_str(), data_str.c_str());
-    }
-    else
-    {
-      LOG_ERROR("%s", error.message.c_str());
-    }
+    json_string = replace_large_data_placeholders(json_string, *context);
   }
-
-  // Serialize JSON first with placeholders
-  string json_string = serialize_json(rpc_response_to_json(response));
-
-  // Replace large data placeholders with actual data
-  json_string = replace_large_data_placeholders(json_string, context);
-
+  
   auto &stream = response.error.has_value() ? std::cerr : std::cout;
   std::lock_guard<std::mutex> lock(response_mutex);
   stream << json_string << std::endl;

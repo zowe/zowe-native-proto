@@ -12,11 +12,13 @@
 #include "rpcio.hpp"
 #include "server.hpp"
 #include <sstream>
+#include <cstring>
 
 using std::string;
 
 MiddlewareContext::MiddlewareContext(const string &command_path, const plugin::ArgumentMap &args)
-    : plugin::InvocationContext(command_path, args, &m_input_stream, &m_output_stream, &m_error_stream)
+    : plugin::InvocationContext(command_path, args, &m_input_stream, &m_output_stream, &m_error_stream),
+      m_large_data_counter(0)
 {
 }
 
@@ -80,16 +82,14 @@ void MiddlewareContext::set_pending_notification(const RpcNotification &notifica
 
 string MiddlewareContext::store_large_data(const string &key, const string &data)
 {
-  // Generate a unique placeholder for this data
-  string placeholder = "__LARGE_DATA_PLACEHOLDER__:" + key + "__";
+  string placeholder = string(LARGE_DATA_PLACEHOLDER) + "_" + std::to_string(m_large_data_counter++);
   m_large_data[placeholder] = data;
   return placeholder;
 }
 
 bool MiddlewareContext::is_large_data_placeholder(const string &value) const
 {
-  return value.find("__LARGE_DATA_PLACEHOLDER__:") == 0 &&
-         value.find("__", 27) != string::npos;
+  return value.find(LARGE_DATA_PLACEHOLDER) == 0;
 }
 
 const string *MiddlewareContext::get_large_data(const string &placeholder) const

@@ -381,13 +381,13 @@ void CommandBuilder::apply_output_transforms(MiddlewareContext &context) const
           data = zbase64::encode(data);
         }
 
-        // Check if data is larger than 16MB (z/OS JSON parser limitation)
+        // Check if data is larger than threshold (z/OS JSON parser limitation)
         // If so, store it separately and use a placeholder
-        if (data.size() >= 16 * 1024 * 1024)
+        if (data.size() >= MiddlewareContext::LARGE_DATA_THRESHOLD)
         {
           string placeholder = context.store_large_data(transform.arg_name, data);
           obj->set(transform.arg_name, ast::str(placeholder));
-          LOG_DEBUG("Stored large data (%zu bytes) for field '%s' with placeholder",
+          LOG_DEBUG("Stored large data (%zu bytes) for field '%s' with placeholder", 
                     data.size(), transform.arg_name.c_str());
         }
         else

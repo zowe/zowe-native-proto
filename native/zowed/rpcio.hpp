@@ -23,6 +23,9 @@ struct RpcNotification;
 class MiddlewareContext : public plugin::InvocationContext
 {
 public:
+  // Large data threshold (z/OS JSON parser 16MB limit on older versions)
+  static constexpr size_t LARGE_DATA_THRESHOLD = 16 * 1024 * 1024; // 16MB
+
   MiddlewareContext(const std::string &command_path, const plugin::ArgumentMap &args);
 
   // Get access to the string streams for reading/writing content
@@ -47,29 +50,24 @@ public:
   // Store pending notification for delayed sending
   void set_pending_notification(const RpcNotification &notification);
 
-  // Large data management (workaround for z/OS JSON parser 16MB limit)
-  // Store large data with a key, returns placeholder string
+  // Large data management (z/OS JSON parser 16MB workaround)
   std::string store_large_data(const std::string &key, const std::string &data);
-
-  // Check if a value is a large data placeholder
   bool is_large_data_placeholder(const std::string &value) const;
-
-  // Get stored large data by placeholder
   const std::string *get_large_data(const std::string &placeholder) const;
-
-  // Get all large data placeholders (for post-serialization injection)
   const std::unordered_map<std::string, std::string> &get_large_data_map() const
   {
     return m_large_data;
   }
 
 private:
+  static constexpr const char *LARGE_DATA_PLACEHOLDER = "__LARGE_DATA_PLACEHOLDER__";
+
   std::stringstream m_input_stream;
   std::stringstream m_output_stream;
   std::stringstream m_error_stream;
   zstd::unique_ptr<RpcNotification> m_pending_notification;
   std::unordered_map<std::string, std::string> m_large_data;
-  static constexpr size_t LARGE_DATA_THRESHOLD = 16 * 1024 * 1024; // 16MB
+  size_t m_large_data_counter;
 };
 
 #endif
