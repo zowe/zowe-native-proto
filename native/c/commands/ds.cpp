@@ -708,11 +708,14 @@ int handle_data_set_compress(InvocationContext &context)
     return RTNCD_FAILURE;
   }
 
+  cout << "@TEST\n";
   // perform compress
   rc = zut_run("IEBCOPY");
   if (RTNCD_SUCCESS != rc)
   {
-    context.error_stream() << "Error: could error invoking IEBCOPY rc: '" << rc << "'" << endl;
+    context.error_stream() << "Error: could not invoke IEBCOPY rc: '" << rc << "'" << endl;
+    zut_free_dynalloc_dds(dds, &context.error_stream());
+    return RTNCD_FAILURE;
   }
 
   // read output from iebcopy

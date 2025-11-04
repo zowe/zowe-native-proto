@@ -180,7 +180,9 @@ int handle_tool_search(InvocationContext &context)
       ZUT_RTNCD_SEARCH_SUCCESS != rc &&
       ZUT_RTNCD_SEARCH_WARNING != rc)
   {
-    context.error_stream() << "Error: could error invoking ISRSUPC rc: '" << rc << "'" << endl;
+    context.error_stream() << "Error: could not invoke ISRSUPC rc: '" << rc << "'" << endl;
+    zut_free_dynalloc_dds(dds, &context.error_stream());
+    return RTNCD_FAILURE;
   }
 
   // Read output from super c
@@ -190,6 +192,7 @@ int handle_tool_search(InvocationContext &context)
   {
     context.error_stream() << "Error: could not read from dd: '" << "outdd" << "' rc: '" << rc << "'" << endl;
     context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
+    zut_free_dynalloc_dds(dds, &context.error_stream());
     return RTNCD_FAILURE;
   }
   context.output_stream() << output << endl;
@@ -236,7 +239,8 @@ int handle_tool_amblist(InvocationContext &context)
   rc = zut_run("AMBLIST");
   if (RTNCD_SUCCESS != rc)
   {
-    context.error_stream() << "Error: could error invoking AMBLIST rc: '" << rc << "'" << endl;
+    context.error_stream() << "Error: could not invoke AMBLIST rc: '" << rc << "'" << endl;
+    return RTNCD_FAILURE;
   }
 
   // Read output from amblist
