@@ -23,6 +23,7 @@ using namespace ztst;
 const string zowex_command = "./../build-out/zowex";
 const string ussTestDir = "/tmp/zowex-uss";
 
+// Helper function to get etag from command response
 string parse_etag_from_output(const string &output)
 {
   const string label = "etag: ";
@@ -54,13 +55,20 @@ void uss_tests()
            {
              int rc;
              string response;
+
+             // Start by creating a /tmp/zowex-uss test directory
              beforeAll([&response]() -> void
                        { execute_command_with_output(zowex_command + " uss create-dir " + ussTestDir + " --mode 777", response); });
+
+             // Reset the RC to zero before each test
              beforeEach([&rc]() -> void
                         { rc = 0; });
+
+             // Clean up the test directory
              afterAll([&response]() -> void
                       { execute_command_with_output(zowex_command + " uss delete /tmp/zowex-uss --recursive", response); });
 
+             // Helper function to create a test file
              auto create_test_file_cmd = [&](const string &uss_file, const string &options = "") -> void
              {
                string command = zowex_command + " uss create-file " + uss_file + " " + options;
@@ -69,6 +77,7 @@ void uss_tests()
                Expect(response).ToContain("USS file '" + uss_file + "' created");
              };
 
+             // Helper function to create a test directory
              auto create_test_dir_cmd = [&](const string &uss_dir, const string &options = "") -> void
              {
                string command = zowex_command + " uss create-dir " + uss_dir + " " + options;
