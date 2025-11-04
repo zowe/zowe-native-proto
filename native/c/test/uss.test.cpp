@@ -529,6 +529,14 @@ void uss_tests()
                              Expect(response).ToContain("drwxrwxrwx,");
                              Expect(response).ToContain(",subDir1");
                            });
+                        it("should properly handle missing options",
+                           [&]() -> void
+                           {
+                             string incompleteCommand = zowex_command + " uss ls";
+                             rc = execute_command_with_output(incompleteCommand, response);
+                             ExpectWithContext(rc, response).ToBe(1);
+                             Expect(response).ToContain("missing required positional argument: file-path");
+                           });
                       });
            });
 }
