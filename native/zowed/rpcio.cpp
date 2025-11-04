@@ -77,3 +77,27 @@ void MiddlewareContext::set_pending_notification(const RpcNotification &notifica
 {
   m_pending_notification.reset(new RpcNotification(notification));
 }
+
+string MiddlewareContext::store_large_data(const string &key, const string &data)
+{
+  // Generate a unique placeholder for this data
+  string placeholder = "__LARGE_DATA_PLACEHOLDER__:" + key + "__";
+  m_large_data[placeholder] = data;
+  return placeholder;
+}
+
+bool MiddlewareContext::is_large_data_placeholder(const string &value) const
+{
+  return value.find("__LARGE_DATA_PLACEHOLDER__:") == 0 &&
+         value.find("__", 27) != string::npos;
+}
+
+const string *MiddlewareContext::get_large_data(const string &placeholder) const
+{
+  auto it = m_large_data.find(placeholder);
+  if (it != m_large_data.end())
+  {
+    return &it->second;
+  }
+  return nullptr;
+}

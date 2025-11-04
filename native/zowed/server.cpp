@@ -54,15 +54,17 @@ void RpcServer::process_request(const string &request_data)
       }
     }
 
-    // Convert JSON params to ArgumentMap
+    // Create MiddlewareContext first with empty args (needed for large data storage)
     plugin::ArgumentMap args;
+    MiddlewareContext context(request.method, args);
+
+    // Convert JSON params to ArgumentMap with large data handling
     if (request.params.has_value())
     {
-      args = convert_json_params_to_argument_map(request.params.value());
+      args = convert_json_params_to_argument_map_with_large_data(request.params.value(), context);
+      // Update context with the processed arguments
+      context.mutable_arguments() = args;
     }
-
-    // Create MiddlewareContext for the command
-    MiddlewareContext context(request.method, args);
 
     // Dispatch the command
     int result = dispatcher.dispatch(request.method, context);
@@ -110,7 +112,15 @@ void RpcServer::process_request(const string &request_data)
     response.error = zstd::optional<ErrorDetails>();
     response.id = zstd::optional<int>(request.id);
 
-    print_response(response);
+    // Use specialized print method if we have large data
+    if (!context.get_large_data_map().empty())
+    {
+      print_response_with_large_data(response, context);
+    }
+    else
+    {
+      print_response(response);
+    }
   }
   catch (const std::exception &e)
   {
@@ -192,6 +202,62 @@ plugin::ArgumentMap RpcServer::convert_json_params_to_argument_map(const zjson::
     else if (value.is_string())
     {
       args[kebab_key] = plugin::Argument(value.as_string());
+    }
+    // For other types (null, array, object), convert to string representation
+    else
+    {
+      auto str_result = zjson::to_string(value);
+      args[kebab_key] = plugin::Argument(str_result.value_or(""));
+    }
+  }
+
+  return args;
+}
+
+plugin::ArgumentMap RpcServer::convert_json_params_to_argument_map_with_large_data(const zjson::Value &params, MiddlewareContext &context)
+{
+  plugin::ArgumentMap args;
+
+  if (!params.is_object())
+  {
+    throw std::runtime_error("Invalid parameters - must be an object");
+  }
+
+  // Convert JSON object to ArgumentMap
+  for (const auto &pair : params.as_object())
+  {
+    // Convert camelCase keys to kebab-case
+    const string kebab_key = camel_case_to_kebab_case(pair.first);
+    const zjson::Value &value = pair.second;
+
+    if (value.is_bool())
+    {
+      args[kebab_key] = plugin::Argument(value.as_bool());
+    }
+    else if (value.is_integer())
+    {
+      args[kebab_key] = plugin::Argument(value.as_int64());
+    }
+    else if (value.is_double())
+    {
+      args[kebab_key] = plugin::Argument(value.as_double());
+    }
+    else if (value.is_string())
+    {
+      const string str_value = value.as_string();
+
+      // Check if this string is larger than 16MB - store it separately if so
+      if (str_value.size() >= 16 * 1024 * 1024)
+      {
+        string placeholder = context.store_large_data(kebab_key, str_value);
+        args[kebab_key] = plugin::Argument(placeholder);
+        LOG_DEBUG("Stored large incoming data (%zu bytes) for param '%s'",
+                  str_value.size(), kebab_key.c_str());
+      }
+      else
+      {
+        args[kebab_key] = plugin::Argument(str_value);
+      }
     }
     // For other types (null, array, object), convert to string representation
     else
@@ -301,6 +367,67 @@ void RpcServer::print_response(const RpcResponse &response)
   auto &stream = response.error.has_value() ? std::cerr : std::cout;
   std::lock_guard<std::mutex> lock(response_mutex);
   stream << json_string << std::endl;
+}
+
+void RpcServer::print_response_with_large_data(const RpcResponse &response, const MiddlewareContext &context)
+{
+  // Log errors to the log file
+  if (response.error.has_value())
+  {
+    const ErrorDetails &error = response.error.value();
+    if (error.data.has_value())
+    {
+      const auto &val = error.data.value();
+      string data_str = val.is_string() ? val.as_string() : serialize_json(val);
+      LOG_ERROR("%s: %s", error.message.c_str(), data_str.c_str());
+    }
+    else
+    {
+      LOG_ERROR("%s", error.message.c_str());
+    }
+  }
+
+  // Serialize JSON first with placeholders
+  string json_string = serialize_json(rpc_response_to_json(response));
+
+  // Replace large data placeholders with actual data
+  json_string = replace_large_data_placeholders(json_string, context);
+
+  auto &stream = response.error.has_value() ? std::cerr : std::cout;
+  std::lock_guard<std::mutex> lock(response_mutex);
+  stream << json_string << std::endl;
+}
+
+string RpcServer::replace_large_data_placeholders(const string &json_string, const MiddlewareContext &context)
+{
+  string result = json_string;
+  const auto &large_data_map = context.get_large_data_map();
+
+  // Replace each placeholder with the actual data
+  for (const auto &pair : large_data_map)
+  {
+    const string &placeholder = pair.first;
+    const string &actual_data = pair.second;
+
+    // Need to find the placeholder in the JSON string
+    // It will appear as "__LARGE_DATA_PLACEHOLDER__:keyname__"
+    // We need to replace the entire quoted string including quotes
+    string quoted_placeholder = "\"" + placeholder + "\"";
+
+    // Escape the actual data for JSON using zjson's helper function
+    string escaped_data = zjson::escape_json_string(actual_data);
+    string quoted_data = "\"" + escaped_data + "\"";
+
+    size_t pos = 0;
+    while ((pos = result.find(quoted_placeholder, pos)) != string::npos)
+    {
+      result.replace(pos, quoted_placeholder.length(), quoted_data);
+      pos += quoted_data.length();
+      LOG_DEBUG("Replaced large data placeholder in output (%zu bytes)", actual_data.size());
+    }
+  }
+
+  return result;
 }
 
 // Static utility methods

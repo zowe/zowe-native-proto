@@ -144,6 +144,23 @@ void CommandBuilder::apply_input_transforms(MiddlewareContext &context) const
         {
           string data = arg_it->second.get_string_value();
 
+          // Check if this is a large data placeholder that needs to be resolved
+          if (context.is_large_data_placeholder(data))
+          {
+            const string *stored_data = context.get_large_data(data);
+            if (stored_data != nullptr)
+            {
+              data = *stored_data;
+            }
+            else
+            {
+              string errMsg = "Large data placeholder not found for WriteStdin";
+              context.errln(errMsg.c_str());
+              LOG_ERROR("%s", errMsg.c_str());
+              break;
+            }
+          }
+
           // Decode base64 if requested
           if (transform.base64)
           {
@@ -364,8 +381,20 @@ void CommandBuilder::apply_output_transforms(MiddlewareContext &context) const
           data = zbase64::encode(data);
         }
 
-        // Set the output field
-        obj->set(transform.arg_name, ast::str(data));
+        // Check if data is larger than 16MB (z/OS JSON parser limitation)
+        // If so, store it separately and use a placeholder
+        if (data.size() >= 16 * 1024 * 1024)
+        {
+          string placeholder = context.store_large_data(transform.arg_name, data);
+          obj->set(transform.arg_name, ast::str(placeholder));
+          LOG_DEBUG("Stored large data (%zu bytes) for field '%s' with placeholder",
+                    data.size(), transform.arg_name.c_str());
+        }
+        else
+        {
+          // Set the output field normally
+          obj->set(transform.arg_name, ast::str(data));
+        }
       }
       catch (const std::exception &e)
       {

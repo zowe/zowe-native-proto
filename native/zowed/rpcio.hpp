@@ -15,6 +15,7 @@
 #include "../c/extend/plugin.hpp"
 #include "../c/zstd.hpp"
 #include <sstream>
+#include <unordered_map>
 
 // Forward declaration
 struct RpcNotification;
@@ -46,11 +47,29 @@ public:
   // Store pending notification for delayed sending
   void set_pending_notification(const RpcNotification &notification);
 
+  // Large data management (workaround for z/OS JSON parser 16MB limit)
+  // Store large data with a key, returns placeholder string
+  std::string store_large_data(const std::string &key, const std::string &data);
+
+  // Check if a value is a large data placeholder
+  bool is_large_data_placeholder(const std::string &value) const;
+
+  // Get stored large data by placeholder
+  const std::string *get_large_data(const std::string &placeholder) const;
+
+  // Get all large data placeholders (for post-serialization injection)
+  const std::unordered_map<std::string, std::string> &get_large_data_map() const
+  {
+    return m_large_data;
+  }
+
 private:
   std::stringstream m_input_stream;
   std::stringstream m_output_stream;
   std::stringstream m_error_stream;
   zstd::unique_ptr<RpcNotification> m_pending_notification;
+  std::unordered_map<std::string, std::string> m_large_data;
+  static constexpr size_t LARGE_DATA_THRESHOLD = 16 * 1024 * 1024; // 16MB
 };
 
 #endif
