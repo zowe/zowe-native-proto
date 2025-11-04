@@ -16,8 +16,7 @@
 using std::string;
 
 MiddlewareContext::MiddlewareContext(const string &command_path, const plugin::ArgumentMap &args)
-    : plugin::InvocationContext(command_path, args, &m_input_stream, &m_output_stream, &m_error_stream),
-      m_large_data_counter(0)
+    : plugin::InvocationContext(command_path, args, &m_input_stream, &m_output_stream, &m_error_stream)
 {
 }
 
@@ -77,11 +76,4 @@ void MiddlewareContext::set_content_len(size_t content_length)
 void MiddlewareContext::set_pending_notification(const RpcNotification &notification)
 {
   m_pending_notification.reset(new RpcNotification(notification));
-}
-
-string MiddlewareContext::store_large_data(const string &data)
-{
-  string placeholder = string(LARGE_DATA_PLACEHOLDER) + "_" + std::to_string(m_large_data_counter++);
-  m_large_data[placeholder] = data;
-  return placeholder;
 }

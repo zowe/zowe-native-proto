@@ -298,13 +298,21 @@ void RpcServer::print_response(const RpcResponse &response, const MiddlewareCont
     }
   }
 
-  // Serialize JSON first
-  string json_string = serialize_json(rpc_response_to_json(response));
-
-  // Replace large data placeholders if context is provided and has large data
-  if (context && !context->get_large_data_map().empty())
+  // Convert response to JSON Value
+  zjson::Value response_json = rpc_response_to_json(response);
+  
+  // Extract and replace large strings with placeholders before serialization
+  std::unordered_map<string, string> large_data_map;
+  size_t counter = 0;
+  extract_large_strings(response_json, large_data_map, counter);
+  
+  // Serialize with placeholders
+  string json_string = serialize_json(response_json);
+  
+  // Replace placeholders with actual data
+  if (!large_data_map.empty())
   {
-    json_string = replace_large_data_placeholders(json_string, *context);
+    json_string = replace_large_data_placeholders(json_string, large_data_map);
   }
 
   auto &stream = response.error.has_value() ? std::cerr : std::cout;
@@ -312,10 +320,60 @@ void RpcServer::print_response(const RpcResponse &response, const MiddlewareCont
   stream << json_string << std::endl;
 }
 
-string RpcServer::replace_large_data_placeholders(const string &json_string, const MiddlewareContext &context)
+void RpcServer::extract_large_strings(zjson::Value &json_value, std::unordered_map<string, string> &large_data_map, size_t &counter)
+{
+  static constexpr size_t LARGE_DATA_THRESHOLD = 16 * 1024 * 1024;
+  static constexpr const char *PLACEHOLDER_PREFIX = "__LARGE_DATA__:";
+
+  if (json_value.is_string())
+  {
+    const string &str_value = json_value.as_string();
+    if (str_value.size() >= LARGE_DATA_THRESHOLD)
+    {
+      string placeholder = string(PLACEHOLDER_PREFIX) + std::to_string(counter++);
+      large_data_map[placeholder] = str_value;
+      json_value = zjson::Value(placeholder);
+      LOG_DEBUG("Extracted large string (%zu bytes) to placeholder %s", str_value.size(), placeholder.c_str());
+    }
+  }
+  else if (json_value.is_object())
+  {
+    const auto &obj = json_value.as_object();
+    std::vector<string> keys;
+    keys.reserve(obj.size());
+    for (const auto &pair : obj)
+    {
+      keys.push_back(pair.first);
+    }
+    for (const auto &key : keys)
+    {
+      zjson::Value field_value = json_value[key];
+      extract_large_strings(field_value, large_data_map, counter);
+      json_value.add_to_object(key, field_value);
+    }
+  }
+  else if (json_value.is_array())
+  {
+    const auto &arr = json_value.as_array();
+    std::vector<zjson::Value> updated_array;
+    updated_array.reserve(arr.size());
+    for (size_t i = 0; i < arr.size(); ++i)
+    {
+      zjson::Value elem = arr[i];
+      extract_large_strings(elem, large_data_map, counter);
+      updated_array.push_back(elem);
+    }
+    json_value = zjson::Value::create_array();
+    for (size_t i = 0; i < updated_array.size(); ++i)
+    {
+      json_value.add_to_array(updated_array[i]);
+    }
+  }
+}
+
+string RpcServer::replace_large_data_placeholders(const string &json_string, const std::unordered_map<string, string> &large_data_map)
 {
   string result = json_string;
-  const auto &large_data_map = context.get_large_data_map();
 
   for (const auto &pair : large_data_map)
   {
@@ -331,7 +389,7 @@ string RpcServer::replace_large_data_placeholders(const string &json_string, con
     {
       result.replace(pos, quoted_placeholder.length(), quoted_data);
       pos += quoted_data.length();
-      LOG_DEBUG("Replaced large data placeholder (%zu bytes)", actual_data.size());
+      LOG_DEBUG("Replaced placeholder %s with large data (%zu bytes)", placeholder.c_str(), actual_data.size());
     }
   }
 

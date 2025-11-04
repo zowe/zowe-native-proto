@@ -15,7 +15,6 @@
 #include "../c/extend/plugin.hpp"
 #include "../c/zstd.hpp"
 #include <sstream>
-#include <unordered_map>
 
 // Forward declaration
 struct RpcNotification;
@@ -23,9 +22,6 @@ struct RpcNotification;
 class MiddlewareContext : public plugin::InvocationContext
 {
 public:
-  // Large data threshold (z/OS JSON parser 16MB limit on older versions)
-  static constexpr size_t LARGE_DATA_THRESHOLD = 16 * 1024 * 1024; // 16MB
-
   MiddlewareContext(const std::string &command_path, const plugin::ArgumentMap &args);
 
   // Get access to the string streams for reading/writing content
@@ -50,22 +46,11 @@ public:
   // Store pending notification for delayed sending
   void set_pending_notification(const RpcNotification &notification);
 
-  // Large data management (z/OS JSON parser 16MB workaround for output)
-  std::string store_large_data(const std::string &data);
-  const std::unordered_map<std::string, std::string> &get_large_data_map() const
-  {
-    return m_large_data;
-  }
-
 private:
-  static constexpr const char *LARGE_DATA_PLACEHOLDER = "__LARGE_DATA_PLACEHOLDER__";
-
   std::stringstream m_input_stream;
   std::stringstream m_output_stream;
   std::stringstream m_error_stream;
   zstd::unique_ptr<RpcNotification> m_pending_notification;
-  std::unordered_map<std::string, std::string> m_large_data;
-  size_t m_large_data_counter;
 };
 
 #endif

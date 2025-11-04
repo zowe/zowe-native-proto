@@ -14,6 +14,7 @@
 
 #include <string>
 #include <mutex>
+#include <unordered_map>
 #include "../c/zjson.hpp"
 #include "../c/extend/plugin.hpp"
 #include "../c/singleton.hpp"
@@ -92,7 +93,8 @@ private:
   void print_response(const RpcResponse &response, const MiddlewareContext *context = nullptr);
   void print_error(int request_id, int code, const std::string &message, const std::string *data = nullptr);
   validator::ValidationResult validate_json_with_schema(const std::string &method, const zjson::Value &params, bool is_request);
-  std::string replace_large_data_placeholders(const std::string &json_string, const MiddlewareContext &context);
+  void extract_large_strings(zjson::Value &json_value, std::unordered_map<std::string, std::string> &large_data_map, size_t &counter);
+  std::string replace_large_data_placeholders(const std::string &json_string, const std::unordered_map<std::string, std::string> &large_data_map);
 
 public:
   /**
