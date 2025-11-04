@@ -223,7 +223,7 @@ public:
    */
   static void log_debug(const char *format, ...)
   {
-    if (!get_initialized())
+    if (!get_initialized() || !is_verbose_logging())
     {
       return;
     }
