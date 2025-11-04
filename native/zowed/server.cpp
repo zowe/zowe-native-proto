@@ -54,17 +54,15 @@ void RpcServer::process_request(const string &request_data)
       }
     }
 
-    // Create MiddlewareContext first with empty args (needed for large data storage)
+    // Convert JSON params to ArgumentMap
     plugin::ArgumentMap args;
-    MiddlewareContext context(request.method, args);
-    
-    // Convert JSON params to ArgumentMap (with large data handling if needed)
     if (request.params.has_value())
     {
-      args = convert_json_params_to_argument_map(request.params.value(), &context);
-      // Update context with the processed arguments
-      context.mutable_arguments() = args;
+      args = convert_json_params_to_argument_map(request.params.value());
     }
+
+    // Create MiddlewareContext for the command
+    MiddlewareContext context(request.method, args);
 
     // Dispatch the command
     int result = dispatcher.dispatch(request.method, context);
@@ -164,7 +162,7 @@ string RpcServer::camel_case_to_kebab_case(const string &input)
   return result;
 }
 
-plugin::ArgumentMap RpcServer::convert_json_params_to_argument_map(const zjson::Value &params, MiddlewareContext *context)
+plugin::ArgumentMap RpcServer::convert_json_params_to_argument_map(const zjson::Value &params)
 {
   plugin::ArgumentMap args;
 
@@ -194,20 +192,7 @@ plugin::ArgumentMap RpcServer::convert_json_params_to_argument_map(const zjson::
     }
     else if (value.is_string())
     {
-      const string str_value = value.as_string();
-      
-      // Check if this string is larger than threshold and context is provided
-      if (context && str_value.size() >= MiddlewareContext::LARGE_DATA_THRESHOLD)
-      {
-        string placeholder = context->store_large_data(kebab_key, str_value);
-        args[kebab_key] = plugin::Argument(placeholder);
-        LOG_DEBUG("Stored large incoming data (%zu bytes) for param '%s'", 
-                  str_value.size(), kebab_key.c_str());
-      }
-      else
-      {
-        args[kebab_key] = plugin::Argument(str_value);
-      }
+      args[kebab_key] = plugin::Argument(value.as_string());
     }
     // For other types (null, array, object), convert to string representation
     else
@@ -315,13 +300,13 @@ void RpcServer::print_response(const RpcResponse &response, const MiddlewareCont
 
   // Serialize JSON first
   string json_string = serialize_json(rpc_response_to_json(response));
-  
+
   // Replace large data placeholders if context is provided and has large data
   if (context && !context->get_large_data_map().empty())
   {
     json_string = replace_large_data_placeholders(json_string, *context);
   }
-  
+
   auto &stream = response.error.has_value() ? std::cerr : std::cout;
   std::lock_guard<std::mutex> lock(response_mutex);
   stream << json_string << std::endl;
@@ -332,18 +317,12 @@ string RpcServer::replace_large_data_placeholders(const string &json_string, con
   string result = json_string;
   const auto &large_data_map = context.get_large_data_map();
 
-  // Replace each placeholder with the actual data
   for (const auto &pair : large_data_map)
   {
     const string &placeholder = pair.first;
     const string &actual_data = pair.second;
 
-    // Need to find the placeholder in the JSON string
-    // It will appear as "__LARGE_DATA_PLACEHOLDER__:keyname__"
-    // We need to replace the entire quoted string including quotes
     string quoted_placeholder = "\"" + placeholder + "\"";
-
-    // Escape the actual data for JSON using zjson's helper function
     string escaped_data = zjson::escape_json_string(actual_data);
     string quoted_data = "\"" + escaped_data + "\"";
 
@@ -352,7 +331,7 @@ string RpcServer::replace_large_data_placeholders(const string &json_string, con
     {
       result.replace(pos, quoted_placeholder.length(), quoted_data);
       pos += quoted_data.length();
-      LOG_DEBUG("Replaced large data placeholder in output (%zu bytes)", actual_data.size());
+      LOG_DEBUG("Replaced large data placeholder (%zu bytes)", actual_data.size());
     }
   }
 

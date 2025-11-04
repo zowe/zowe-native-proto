@@ -50,10 +50,8 @@ public:
   // Store pending notification for delayed sending
   void set_pending_notification(const RpcNotification &notification);
 
-  // Large data management (z/OS JSON parser 16MB workaround)
-  std::string store_large_data(const std::string &key, const std::string &data);
-  bool is_large_data_placeholder(const std::string &value) const;
-  const std::string *get_large_data(const std::string &placeholder) const;
+  // Large data management (z/OS JSON parser 16MB workaround for output)
+  std::string store_large_data(const std::string &data);
   const std::unordered_map<std::string, std::string> &get_large_data_map() const
   {
     return m_large_data;

@@ -86,7 +86,7 @@ private:
   // Helper methods for JSON processing
   RpcRequest parse_rpc_request(const zjson::Value &json);
   std::string camel_case_to_kebab_case(const std::string &input);
-  plugin::ArgumentMap convert_json_params_to_argument_map(const zjson::Value &params, MiddlewareContext *context = nullptr);
+  plugin::ArgumentMap convert_json_params_to_argument_map(const zjson::Value &params);
   zjson::Value convert_output_to_json(const std::string &output);
   zjson::Value convert_ast_to_json(const ast::Node &ast_node);
   void print_response(const RpcResponse &response, const MiddlewareContext *context = nullptr);
