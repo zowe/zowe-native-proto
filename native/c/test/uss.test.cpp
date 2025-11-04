@@ -22,6 +22,31 @@ using namespace ztst;
 
 const string zowex_command = "./../build-out/zowex";
 const string ussTestDir = "/tmp/zowex-uss";
+
+string parse_etag_from_output(const string &output)
+{
+  const string label = "etag: ";
+  size_t etag_label_pos = output.find(label);
+
+  if (etag_label_pos == string::npos)
+  {
+    return "";
+  }
+
+  size_t start_value_pos = etag_label_pos + label.length();
+
+  size_t end_value_pos = output.find_first_of("\r\n", start_value_pos);
+
+  if (end_value_pos == string::npos)
+  {
+    end_value_pos = output.length();
+  }
+
+  string etag = output.substr(start_value_pos, end_value_pos - start_value_pos);
+
+  return etag;
+}
+
 void uss_tests()
 {
   describe("uss tests",
@@ -33,8 +58,8 @@ void uss_tests()
                        { execute_command_with_output(zowex_command + " uss create-dir " + ussTestDir + " --mode 777", response); });
              beforeEach([&rc]() -> void
                         { rc = 0; });
-             //  afterAll([&response]() -> void
-             //           { execute_command_with_output(zowex_command + " uss delete /tmp/zowex-uss --recursive", response); });
+             afterAll([&response]() -> void
+                      { execute_command_with_output(zowex_command + " uss delete /tmp/zowex-uss --recursive", response); });
 
              auto create_test_file_cmd = [&](const string &uss_file, const string &options = "") -> void
              {
@@ -386,15 +411,65 @@ void uss_tests()
                            });
                       });
 
+             describe("write and view",
+                      [&]() -> void
+                      {
+                        string uss_path;
+                        beforeEach([&]() -> void
+                                   {
+                                                 uss_path = get_random_uss(ussTestDir);
+                                                 create_test_file_cmd(uss_path); });
+                        it("should properly write and view files",
+                           [&]() -> void
+                           {
+                             string viewCommand = zowex_command + " uss view " + uss_path + " --ec UTF-8";
+                             string writeCommand = zowex_command + " uss write " + uss_path + " --ec UTF-8";
+                             string view_response;
+
+                             rc = execute_command_with_input(writeCommand, "Hello World!");
+                             ExpectWithContext(rc, "Write command failed").ToBe(0);
+
+                             rc = execute_command_with_output(viewCommand, view_response);
+                             ExpectWithContext(rc, view_response).ToBe(0);
+
+                             Expect(view_response).ToContain("Hello World!");
+                           });
+                        it("should successfully write using a valid etag",
+                           [&]() -> void
+                           {
+                             string viewCommand = zowex_command + " uss view " + uss_path + " --return-etag --ec UTF-8";
+                             string writeCommand = zowex_command + " uss write " + uss_path + " --ec UTF-8";
+                             string view_response;
+
+                             rc = execute_command_with_input(writeCommand, "Initial Content");
+                             ExpectWithContext(rc, "Initial write failed").ToBe(0);
+
+                             rc = execute_command_with_output(viewCommand, view_response);
+                             ExpectWithContext(rc, view_response).ToBe(0);
+                             Expect(view_response).ToContain("Initial Content");
+                             string valid_etag = parse_etag_from_output(view_response);
+                             ExpectWithContext(valid_etag, "Failed to parse ETag from view output.").Not().ToBe("");
+
+                             string writeWithValidEtagCmd = writeCommand + " --etag " + valid_etag;
+                             rc = execute_command_with_input(writeWithValidEtagCmd, "Updated Content");
+                             ExpectWithContext(rc, "Write with valid etag failed").ToBe(0);
+
+                             string final_view_response;
+                             string simpleViewCmd = zowex_command + " uss view " + uss_path + " --ec UTF-8";
+                             rc = execute_command_with_output(simpleViewCmd, final_view_response);
+                             Expect(final_view_response).ToContain("Updated Content");
+                           });
+                      });
+
              describe("list (ls)",
                       [&]() -> void
                       {
                         beforeAll([&response]() -> void
                                   {
-                                    execute_command_with_output(zowex_command + " uss create-dir " + ussTestDir + "/subDir1/subDir2/subDir3" + " --mode 777", response);
-                                    execute_command_with_output(zowex_command + " uss create-file " + ussTestDir + "/subDir1/subFile1" + " --mode 777", response);
-                                    execute_command_with_output(zowex_command + " uss create-file " + ussTestDir + "/subDir1/subDir2/subFile2" + " --mode 777", response);
-                                    execute_command_with_output(zowex_command + " uss create-file " + ussTestDir + "/subDir1/subDir2/subDir3/subFile3" + " --mode 777", response); });
+                                     execute_command_with_output(zowex_command + " uss create-dir " + ussTestDir + "/subDir1/subDir2/subDir3" + " --mode 777", response);
+                                     execute_command_with_output(zowex_command + " uss create-file " + ussTestDir + "/subDir1/subFile1" + " --mode 777", response);
+                                     execute_command_with_output(zowex_command + " uss create-file " + ussTestDir + "/subDir1/subDir2/subFile2" + " --mode 777", response);
+                                     execute_command_with_output(zowex_command + " uss create-file " + ussTestDir + "/subDir1/subDir2/subDir3/subFile3" + " --mode 777", response); });
                         it("should properly list files",
                            [&]() -> void
                            {
@@ -453,35 +528,6 @@ void uss_tests()
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("drwxrwxrwx,");
                              Expect(response).ToContain(",subDir1");
-                           });
-                      });
-             describe("write and view",
-                      [&]() -> void
-                      {
-                        string uss_path;
-                        beforeEach([&]() -> void
-                                   {
-                                                uss_path = get_random_uss(ussTestDir);
-                                                create_test_file_cmd(uss_path); });
-                        it("should properly write and view files",
-                           [&]() -> void
-                           {
-                             string viewCommand = zowex_command + " uss view " + uss_path + " --ec UTF-8";
-                             string writeCommand = zowex_command + " uss write " + uss_path + " --ec UTF-8";
-                             string view_response; // We only need output from the view command
-
-                             TestLog(writeCommand);
-
-                             // 1. Run the write command using the "input" function
-                             rc = execute_command_with_input(writeCommand, "Hello World!");
-                             ExpectWithContext(rc, "Write command failed").ToBe(0);
-
-                             // 2. Run the view command using the "output" function
-                             rc = execute_command_with_output(viewCommand, view_response);
-                             ExpectWithContext(rc, view_response).ToBe(0);
-
-                             // 3. Check the output from the view command
-                             Expect(view_response).ToContain("Hello World!");
                            });
                       });
            });
