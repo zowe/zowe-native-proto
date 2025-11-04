@@ -408,7 +408,7 @@ void parser_tests()
                std::stringstream err_output;
                std::streambuf* original_cerr_buf = std::cerr.rdbuf();
                std::cerr.rdbuf(err_output.rdbuf());
-                
+
                command_ptr job_cmd(new Command("job", "job operations"));
                command_ptr list_cmd(new Command("list", "list jobs"));
                job_cmd->add_command(list_cmd);

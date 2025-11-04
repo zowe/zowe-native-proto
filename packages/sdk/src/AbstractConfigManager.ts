@@ -621,7 +621,7 @@ export abstract class AbstractConfigManager {
                     .mergeArgsForProfile({
                         profName: updatedProfile,
                         profType: "ssh",
-                        isDefaultProfile: this.fetchDefaultProfile().name === updatedProfile,
+                        isDefaultProfile: this.fetchDefaultProfile()?.name === updatedProfile,
                         profLoc: { locType: 1 },
                     })
                     .knownArgs.find((obj) => obj.argName === key)?.argLoc.jsonLoc;
@@ -751,15 +751,17 @@ export abstract class AbstractConfigManager {
     }
 
     // Taken from ZE Api and tweaked for usage
-    private fetchDefaultProfile(): IProfileLoaded {
+    private fetchDefaultProfile(): IProfileLoaded | undefined {
         const defaultProfile = this.mProfilesCache.getDefaultProfile("ssh");
-        return {
-            message: "",
-            name: defaultProfile.profName,
-            type: "ssh",
-            profile: this.getMergedAttrs(defaultProfile),
-            failNotFound: false,
-        };
+        return defaultProfile
+            ? {
+                  message: "",
+                  name: defaultProfile.profName,
+                  type: "ssh",
+                  profile: this.getMergedAttrs(defaultProfile),
+                  failNotFound: false,
+              }
+            : undefined;
     }
 
     /**
