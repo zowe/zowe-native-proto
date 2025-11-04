@@ -369,7 +369,7 @@ export abstract class AbstractConfigManager {
         const configModifications: ISshConfigExt | undefined = {};
         try {
             const privateKeyPath = newConfig.privateKey;
-
+            const pass = newConfig.password;
             if (!newConfig.user) {
                 const userModification = await this.showInputBox({
                     title: `Enter user for host: '${newConfig.hostname}'`,
@@ -391,6 +391,10 @@ export abstract class AbstractConfigManager {
                     return undefined;
                 }
                 newConfig.privateKey = undefined;
+                const pass = newConfig.password;
+                if (newConfig.password && askForPassword) {
+                    await this.attemptConnection({ ...newConfig });
+                }
             }
 
             if (errorMessage.includes("Invalid username")) {
