@@ -121,11 +121,8 @@ private:
   /**
    * Common logging implementation
    */
-  static void log_message(const char *level, const char *format, va_list args, bool check_verbose = false)
+  static void log_message(const char *level, const char *format, va_list args)
   {
-    if (check_verbose && !get_verbose_logging())
-      return;
-
     std::mutex &log_mutex = get_log_mutex();
     std::ofstream &log_file = get_log_file();
     const std::lock_guard<std::mutex> lock(log_mutex);
@@ -229,7 +226,7 @@ public:
     }
     va_list args;
     va_start(args, format);
-    log_message("DEBUG", format, args, true);
+    log_message("DEBUG", format, args);
     va_end(args);
   }
 
