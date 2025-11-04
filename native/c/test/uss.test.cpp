@@ -51,12 +51,11 @@ string parse_etag_from_output(const string &output)
 
 void uss_tests()
 {
+  int rc;
+  string response;
   describe("uss tests",
-           []() -> void
+           [&]() -> void
            {
-             int rc;
-             string response;
-
              // Start by creating a /tmp/zowex-uss test directory
              beforeAll([&response]() -> void
                        { execute_command_with_output(zowex_command + " uss create-dir " + ussTestDir + " --mode 777", response); });
@@ -585,17 +584,17 @@ void uss_tests()
                              ExpectWithContext(rc, response).ToBe(1);
                              Expect(response).ToContain("missing required positional argument: file-path");
                            });
-                        xit("should properly handle listing a path that does not exist",
-                            [&]() -> void
-                            {
-                              string incompleteCommand = zowex_command + " uss ls /does/not/exist";
-                              {
-                                test_utils::ErrorStreamCapture c;
-                                rc = execute_command_with_output(incompleteCommand, response);
-                              }
-                              ExpectWithContext(rc, response).ToBe(255);
-                              Expect(response).ToContain("Path '/does/not/exist' does not exist");
-                            });
+                        it("should properly handle listing a path that does not exist",
+                           [&]() -> void
+                           {
+                             string incompleteCommand = zowex_command + " uss ls /does/not/exist";
+                             {
+                               test_utils::ErrorStreamCapture c;
+                               rc = execute_command_with_output(incompleteCommand, response);
+                             }
+                             ExpectWithContext(rc, response).ToBe(255);
+                             Expect(response).ToContain("Path '/does/not/exist' does not exist");
+                           });
                       });
            });
 }

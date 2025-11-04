@@ -11,6 +11,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <string>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -337,10 +338,10 @@ void zusf_tests()
                 [&]() -> void
                 {
                   uid_t current_uid = getuid();
-                  const char *result = zusf_get_owner_from_uid(current_uid);
+                  string result = zusf_get_owner_from_uid(current_uid);
 
                   // Should return a valid username (not null)
-                  Expect(result).Not().ToBeNull();
+                  Expect(result).Not().ToBe("");
 
                   // Should match what getpwuid returns
                   struct passwd *pwd = getpwuid(current_uid);
@@ -355,10 +356,10 @@ void zusf_tests()
                 {
                   // Use a UID that's very unlikely to exist
                   uid_t invalid_uid = 99999;
-                  const char *result = zusf_get_owner_from_uid(invalid_uid);
+                  string result = zusf_get_owner_from_uid(invalid_uid);
 
                   // Should return null for non-existent UID
-                  Expect(result).ToBeNull();
+                  Expect(result).ToBe("");
                 });
            });
 
@@ -369,10 +370,10 @@ void zusf_tests()
                 [&]() -> void
                 {
                   gid_t current_gid = getgid();
-                  const char *result = zusf_get_group_from_gid(current_gid);
+                  string result = zusf_get_group_from_gid(current_gid);
 
                   // Should return a valid group name (not null)
-                  Expect(result).Not().ToBeNull();
+                  Expect(result).Not().ToBe("");
 
                   // Should match what getgrgid returns
                   struct group *grp = getgrgid(current_gid);
@@ -387,23 +388,23 @@ void zusf_tests()
                 {
                   // Use a GID that's very unlikely to exist
                   gid_t invalid_gid = 99999;
-                  const char *result = zusf_get_group_from_gid(invalid_gid);
+                  string result = zusf_get_group_from_gid(invalid_gid);
 
                   // Should return null for non-existent GID
-                  Expect(result).ToBeNull();
+                  Expect(result).ToBe("");
                 });
 
              it("should handle root GID (0)",
                 [&]() -> void
                 {
                   gid_t root_gid = 0;
-                  const char *result = zusf_get_group_from_gid(root_gid);
+                  string result = zusf_get_group_from_gid(root_gid);
 
                   // May or may not exist depending on system, but should handle gracefully
                   // If it exists, commonly "root" or "wheel"
-                  if (result != nullptr)
+                  if (result != "")
                   {
-                    Expect(strlen(result)).ToBeGreaterThan(0);
+                    Expect(result.length()).ToBeGreaterThan(0);
                   }
                 });
            });
