@@ -9,6 +9,7 @@
  *
  */
 #include <stdio.h>
+#include "zamtypes.h"
 #include "zmetal.h"
 #include "zutm.h"
 #include "zwto.h"
@@ -48,10 +49,18 @@ int AMSMAIN()
   int rsn = 0;
   int rc = 0;
 
-  IO_CTRL *PTR32 sysin = open_input_assert("SYSIN", 80, 80, dcbrecf);
+  IO_CTRL *PTR32 sysin = open_input_assert("SYSIN", 80, 80, dcbrecf); // NOTE(Kelosky): we won't use this IO for reading apart from this test program
   // IO_CTRL *PTR32 sysprint = open_output_assert("SYSPRINT", 80, 80, dcbrecf);
-  IO_CTRL *PTR32 sysprint = new_write_io_ctrl("SYSPRINT", 80, 80, dcbrecf);
+  // IO_CTRL *PTR32 sysprint = new_write_io_ctrl("SYSPRINT", 80, 80, dcbrecf);
   // set_dcb_dcbe(&sysprint->dcb, eodad); // TODO(Kelosky): is dcbe needed for write?
+
+  IO_CTRL *PTR32 sysprint = new_io_ctrl();
+  memcpy(&sysprint->dcb, &open_write_model, sizeof(IHADCB));
+
+  char ddnam[9] = {0};
+  sprintf(ddnam, "%-8.8s", "SYSPRINT");
+  memcpy(sysprint->dcb.dcbddnam, ddnam, sizeof(sysprint->dcb.dcbddnam));
+
   rc = read_output_jfcb(sysprint);
   if (0 != rc)
   {
@@ -73,7 +82,17 @@ int AMSMAIN()
     return -1;
   }
 
-  zwto_debug("@TEST sysprint->dcb.dcbdsrg1: %x", sysprint->dcb.dcbdsrg1);
+  zwto_debug("@TEST sysprint->jfcb.jfcbind1: %x", sysprint->jfcb.jfcbind1);
+  zwto_debug("@TEST sysprint->jfcb.jfcbaxbf: %d", sysprint->jfcb.jfcbaxbf);
+  zwto_debug("@TEST sysprint->jfcb.jfcrecfm: %d", sysprint->jfcb.jfcrecfm);
+
+  // error if not blocked
+  sysprint->dcb.dcbrecfm = sysprint->jfcb.jfcrecfm;
+
+  if (sysprint->dcb.dcbdsrg1 != dcbdsgpo)
+  {
+    zwto_debug("@TEST sysprint->dcb.dcbdsrg1: %x", sysprint->dcb.dcbdsrg1);
+  }
 
   sysprint->dcb.dcbdsrg1 = dcbdsgpo; // DSORG=PO
   rc = open_output(&sysprint->dcb);
@@ -102,6 +121,9 @@ int AMSMAIN()
     zwto_debug("@TEST sysprint->dcb.dcblrecl is not 80 (0x%x)", sysprint->dcb.dcblrecl);
     return -1;
   }
+
+  zwto_debug("@TEST sysprint->dcb.dcbblksi: %d", sysprint->dcb.dcbblksi);
+  return 7;
 
   BLDL_PL bldl_pl = {0};
 

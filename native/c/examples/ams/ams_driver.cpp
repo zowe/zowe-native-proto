@@ -24,8 +24,10 @@ int main()
   // dds.reserve(3);
   // dds.push_back("alloc dd(syslib) da('" + dsn + "') shr");
 
-  dds.push_back("alloc dd(sysin) da('dkelosky.input.fixed(data)') shr lrecl(80) recfm(f) ");
-  dds.push_back("alloc dd(sysprint) da('dkelosky.output.fixed(data)') shr lrecl(80) recfm(f) ");
+  dds.push_back("alloc dd(sysin) da('DKELOSKY.IO.I.F80(data)') shr lrecl(80) recfm(f) ");
+  // dds.push_back("alloc dd(sysprint) da('DKELOSKY.IO.O.F80(data)') shr lrecl(80) recfm(f) ");
+  dds.push_back("alloc dd(sysprint) da('DKELOSKY.IO.O.FB80(data)') shr lrecl(80) recfm(f,b) ");
+  // dds.push_back("alloc dd(sysprint) da('DKELOSKY.IO.O.FB80(data)') shr lrecl(80) blksize(160) recfm(f,b) ");
 
   // dds.push_back("alloc dd(sysprint) da('dkelosky.output.fixed(data)') shr lrecl(80) recfm(f) ");
   // dds.push_back("alloc dd(sysin) da('dkelosky.input(data)') shr lrecl(80) recfm(f,b) blksize(160) ");

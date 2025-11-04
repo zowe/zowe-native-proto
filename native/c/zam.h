@@ -378,6 +378,7 @@ static IO_CTRL *PTR32 new_io_ctrl()
   return ioc;
 }
 
+// TODO(Kelosky): remove this function??
 static void set_dcb_info(IHADCB *PTR32 dcb, char *PTR32 ddname, int lrecl, int blkSize, unsigned char recfm)
 {
   char ddnam[9] = {0};
