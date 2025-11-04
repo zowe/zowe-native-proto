@@ -21,8 +21,6 @@ int main()
   std::string dsn = "SYS1.AMBLIST.DATA";
 
   std::vector<std::string> dds;
-  // dds.reserve(3);
-  // dds.push_back("alloc dd(syslib) da('" + dsn + "') shr");
 
   dds.push_back("alloc dd(sysin) da('DKELOSKY.IO.I.F80(data)') shr lrecl(80) recfm(f) ");
   // dds.push_back("alloc dd(sysprint) da('DKELOSKY.IO.O.F80(data)') shr lrecl(80) recfm(f) ");

@@ -24,22 +24,22 @@
 // NOTE(Kelosky): We only use this path for write operations and to preserve and update ISPF statistics.  Read operations or DSORG=PS will use `fopen`.
 // In this path we must perform dynamic allocation on the data set.  We must perform RDJFCB to validate the data set and get the attributes prior to performing the OPEN.
 // To use a STOW macro, you must specify DSORG=PO|POU.
-
-// TODO(Kelosky): determine if we need to use BPAM up front & that we are writing / updating stats
-// if BPAM, do dynalloc, RDJFCB to valid attributes or perhaps use something like fldata
-// open without TYPE=J
 // TODO(Kelosky): ensure resources are released in abends or thread issues
 // TODO(Kelosky): TEST dcbabend
 // TODO(Kelosky): TEST synad
 // TODO(Kelosky): DCBE for write?
-// TODO(Kelosky): handling wriing via DD name
+// TODO(Kelosky): handling writing via DD name
 // TODO(Kelosky): handle supported formats
 // TODO(Kelosky): cleanup headers
 // TODO(Kelosky): use BLDL to get TTR and then on READ instead of FIND
 // TODO(Kelosky): test with PDSE, STOW implications
-// TODO(Kelosky): IHAPDS to map pds
-// TODO(kelosky): what is PROMPT for in ISPF
+// TODO(Kelosky): what is PROMPT for in ISPF stats?
+// TODO(Kelosky): return errors as messages
 
+/**
+ * @brief By the time this routine is called, dynamic allocation of the data set we are writing to must have occurred.
+ * @assign ???? bpxwydn2 may be able to obtain a unique dd name otherwise use SVC 99 (__svc99)
+ */
 #pragma prolog(AMSMAIN, " ZWEPROLG NEWDSA=(YES,256) ")
 #pragma epilog(AMSMAIN, " ZWEEPILG ")
 int AMSMAIN()
@@ -50,17 +50,23 @@ int AMSMAIN()
   int rc = 0;
 
   IO_CTRL *PTR32 sysin = open_input_assert("SYSIN", 80, 80, dcbrecf); // NOTE(Kelosky): we won't use this IO for reading apart from this test program
-  // IO_CTRL *PTR32 sysprint = open_output_assert("SYSPRINT", 80, 80, dcbrecf);
-  // IO_CTRL *PTR32 sysprint = new_write_io_ctrl("SYSPRINT", 80, 80, dcbrecf);
-  // set_dcb_dcbe(&sysprint->dcb, eodad); // TODO(Kelosky): is dcbe needed for write?
 
+  /**
+   * @brief Obtain 24 bit structures for legacy macros for non-VSAM data sets and initialize the DCB.
+   */
   IO_CTRL *PTR32 sysprint = new_io_ctrl();
   memcpy(&sysprint->dcb, &open_write_model, sizeof(IHADCB));
 
+  /**
+   * @brief Set DD of data set we intend to open.  In the future, we'll probably have to require that the system provide use with a unique DD name.
+   */
   char ddnam[9] = {0};
   sprintf(ddnam, "%-8.8s", "SYSPRINT");
   memcpy(sysprint->dcb.dcbddnam, ddnam, sizeof(sysprint->dcb.dcbddnam));
 
+  /**
+   * @brief Perform a read of the Job File Control Block to see what has been allocated to this "job"
+   */
   rc = read_output_jfcb(sysprint);
   if (0 != rc)
   {
@@ -68,7 +74,9 @@ int AMSMAIN()
     return -1;
   }
 
-  // ensure PDS
+  /**
+   * @brief Validate that this is a member of a data set via PDS and member name
+   */
   if (sysprint->jfcb.jfcbind1 != jfcpds)
   {
     zwto_debug("@TEST sysprint->jfcb.jfcbind1 is not PS (0x%x)", sysprint->jfcb.jfcbind1);
@@ -82,19 +90,15 @@ int AMSMAIN()
     return -1;
   }
 
-  zwto_debug("@TEST sysprint->jfcb.jfcbind1: %x", sysprint->jfcb.jfcbind1);
-  zwto_debug("@TEST sysprint->jfcb.jfcbaxbf: %d", sysprint->jfcb.jfcbaxbf);
-  zwto_debug("@TEST sysprint->jfcb.jfcrecfm: %d", sysprint->jfcb.jfcrecfm);
+  /**
+   * @brief Set items that we obtained from JFCB
+   */
+  sysprint->dcb.dcbrecfm = sysprint->jfcb.jfcrecfm; // copy allocation attributes
+  sysprint->dcb.dcbdsrg1 = dcbdsgpo;                // DSORG=PO
 
-  // error if not blocked
-  sysprint->dcb.dcbrecfm = sysprint->jfcb.jfcrecfm;
-
-  if (sysprint->dcb.dcbdsrg1 != dcbdsgpo)
-  {
-    zwto_debug("@TEST sysprint->dcb.dcbdsrg1: %x", sysprint->dcb.dcbdsrg1);
-  }
-
-  sysprint->dcb.dcbdsrg1 = dcbdsgpo; // DSORG=PO
+  /**
+   * @brief Perform open
+   */
   rc = open_output(&sysprint->dcb);
   if (0 != rc)
   {
@@ -102,6 +106,9 @@ int AMSMAIN()
     return -1;
   }
 
+  /**
+   * @brief Verify file is indeed open and no DCBABEND has occurred
+   */
   if (!(sysprint->dcb.dcboflgs & dcbofopn))
   {
     zwto_debug("@TEST sysprint->dcb.dcboflgs is not open (0x%x)", sysprint->dcb.dcboflgs);
@@ -110,7 +117,10 @@ int AMSMAIN()
 
   // TODO(Kelosky): check for DCBABEND
 
-  if (!(sysprint->dcb.dcbrecfm & dcbrecf))
+  /**
+   * @brief Validate data set attributes are Fixed, Variable, and/or blocked
+   */
+  if (!(sysprint->dcb.dcbrecfm & dcbrecf)) // validate block or variable??
   {
     zwto_debug("@TEST sysprint->dcb.dcbrecfm is not fixed (0x%x)", sysprint->dcb.dcbrecfm);
     return -1;
