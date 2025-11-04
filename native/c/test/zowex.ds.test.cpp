@@ -32,7 +32,7 @@ void zowex_ds_tests()
            [&_ds]() -> void
            {
              // Define a generic helper lambda for creating data sets
-             auto _create_ds = [](const string &ds_name, const string &ds_options) -> void
+             auto _create_ds = [](const string &ds_name, const string &ds_options = "") -> void
              {
                string response;
                string command = zowex_command + " data-set create " + ds_name + " " + ds_options;
@@ -133,6 +133,7 @@ void zowex_ds_tests()
                                ExpectWithContext(rc, response).ToBe(0);
                                Expect(response).ToContain("Data set compressed");
                              });
+
                          xit("should error when the data set is VSAM", []() -> void {});
                          xit("should error when the data set is GDG", []() -> void {});
                          xit("should error when the data set is ALIAS", []() -> void {});
@@ -149,7 +150,7 @@ void zowex_ds_tests()
                            [&_ds, _create_ds]() -> void
                            {
                              string ds = _ds.back();
-                             _create_ds(ds, "");
+                             _create_ds(ds);
 
                              string response;
                              string command = zowex_command + " data-set create " + ds;
@@ -162,7 +163,7 @@ void zowex_ds_tests()
                            [&_ds, _create_ds]() -> void
                            {
                              string ds = _ds.back();
-                             _create_ds(ds, "");
+                             _create_ds(ds);
 
                              string response;
                              string command = zowex_command + " data-set list " + ds + " -a --rfc";
@@ -533,7 +534,6 @@ void zowex_ds_tests()
                            [_ds]() -> void
                            {
                              string ds = _ds.back();
-                             TestLog("ds: " + ds);
 
                              string response;
                              string command = zowex_command + " data-set create-vb " + ds;
@@ -604,35 +604,49 @@ void zowex_ds_tests()
                              Expect(response).ToContain("Data set '" + ds + "' deleted");
                            });
 
+                        it("should fail to delete a non-existent data set",
+                           [&_ds, _create_ds]() -> void
+                           {
+                             string ds = _ds.back();
+
+                             string response;
+                             string command = zowex_command + " data-set delete " + ds;
+                             int rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).Not().ToBe(0);
+                             Expect(response).ToContain("Error: could not delete data set: '" + ds + "'");
+                           });
+                        it("should fail to delete a data set if the data set name is too long",
+                           []() -> void
+                           {
+                             string ds = get_random_ds(8);
+
+                             string response;
+                             string command = zowex_command + " data-set delete " + ds;
+                             int rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).Not().ToBe(0);
+                             Expect(response).ToContain("Error: could not delete data set: '" + ds + "'");
+                           });
+                        it("should fail to delete a data set if not authorized",
+                           []() -> void {});
+                        it("should fail to delete a data set that is currently in use",
+                           []() -> void {});
+
+                        // https://github.com/zowe/zowe-native-proto/issues/665
+                        xit("should delete multiple data sets specified in a list", []() -> void {});
+
+                        // https://github.com/zowe/zowe-native-proto/issues/664
+                        xit("should delete a data set using the force option even if it has members", []() -> void {});
+                        xit("should not delete a data set with the force option if it is in use", []() -> void {});
+
                         xit("should delete a VSAM KSDS data set", []() -> void {});
                         xit("should delete a VSAM ESDS data set", []() -> void {});
                         xit("should delete a VSAM RRDS data set", []() -> void {});
                         xit("should delete a VSAM LDS data set", []() -> void {});
 
-                        it("should delete a generation data group (GDG) base when empty",
-                           []() -> void {});
-                        it("should delete a generation data group (GDG) base and all its generations",
-                           []() -> void {});
-                        it("should delete a specific generation of a GDG",
-                           []() -> void {});
-                        it("should fail to delete a non-existent data set",
-                           []() -> void {});
-                        it("should fail to delete a data set if not authorized",
-                           []() -> void {});
-                        it("should fail to delete a data set that is currently in use",
-                           []() -> void {});
-                        it("should delete a data set with special characters in its name if properly quoted",
-                           []() -> void {});
-                        it("should delete a data set using the force option even if it has members",
-                           []() -> void {});
-                        it("should not delete a data set with the force option if it is in use",
-                           []() -> void {});
-                        it("should delete multiple data sets specified in a list",
-                           []() -> void {});
-                        it("should error when attempting to delete a GDG base with generations without the PURGE or FORCE option",
-                           []() -> void {});
-                        it("should error when the data set name is invalid",
-                           []() -> void {});
+                        xit("should delete a generation data group (GDG) base when empty", []() -> void {});
+                        xit("should delete a generation data group (GDG) base and all its generations", []() -> void {});
+                        xit("should delete a specific generation of a GDG", []() -> void {});
+                        xit("should error when attempting to delete a GDG base with generations without the PURGE or FORCE option", []() -> void {});
                       });
              describe("list",
                       [&_ds, _create_ds]() -> void
@@ -646,7 +660,7 @@ void zowex_ds_tests()
                            [_ds, _create_ds]() -> void
                            {
                              string ds = _ds.back();
-                             _create_ds(ds, "");
+                             _create_ds(ds);
 
                              string response;
                              string command = zowex_command + " data-set list " + ds;
@@ -655,13 +669,60 @@ void zowex_ds_tests()
                              Expect(response).ToContain(ds);
                            });
                         it("should list data sets based on pattern and warn about listing too many data sets",
-                           [_ds]()
+                           [&_ds, _create_ds]() -> void
                            {
+                             string ds = _ds.back();
+                             _create_ds(ds);
+                             _create_ds(ds + ".T00");
+                             _ds.push_back(ds + ".T00");
+
                              string response;
-                             string pattern = "SYS1.*";
+                             string pattern = ds;
                              string command = zowex_command + " data-set list " + pattern + " --me 1";
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(RTNCD_WARNING);
+                             Expect(response).ToContain(ds);
+                             Expect(response).Not().ToContain(ds + ".T00");
+                           });
+
+                        it("should list up to the max entries specified and not warn",
+                           [&_ds, _create_ds]() -> void
+                           {
+                             string ds = _ds.back();
+                             _create_ds(ds);
+                             _create_ds(ds + ".T00");
+                             _ds.push_back(ds + ".T00");
+
+                             string response;
+                             string pattern = ds;
+                             string command = zowex_command + " data-set list " + pattern + " --no-warn --me 1";
+                             int rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain(ds);
+                             Expect(response).Not().ToContain(ds + ".T00");
+                           });
+
+                        it("should warn when listing a non-existent data set",
+                           [&_ds, _create_ds]() -> void
+                           {
+                             string ds = _ds.back();
+
+                             string response;
+                             string command = zowex_command + " data-set list " + ds;
+                             int rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).ToBe(RTNCD_WARNING);
+                             Expect(response).ToContain("Warning: no matching results found");
+                           });
+                        it("should error when the data set name is too long",
+                           [&_ds, _create_ds]() -> void
+                           {
+                             string ds = get_random_ds(8);
+
+                             string response;
+                             string command = zowex_command + " data-set list " + ds;
+                             int rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).Not().ToBe(0);
+                             Expect(response).ToContain("Error: data set pattern exceeds 44 character length limit");
                            });
 
                         xit("should list information for a VSAM KSDS data set", []() -> void {});
@@ -669,14 +730,8 @@ void zowex_ds_tests()
                         xit("should list information for a VSAM RRDS data set", []() -> void {});
                         xit("should list information for a VSAM LDS data set", []() -> void {});
 
-                        it("should list generations of a generation data group (GDG) base",
-                           []() -> void {});
-                        it("should list specific generation of a GDG",
-                           []() -> void {});
-                        it("should fail to list a non-existent data set",
-                           []() -> void {});
-                        it("should error when the data set name is invalid",
-                           []() -> void {});
+                        xit("should list generations of a generation data group (GDG) base", []() -> void {});
+                        xit("should list specific generation of a GDG", []() -> void {});
                       });
              describe("list-members",
                       []() -> void
@@ -751,7 +806,9 @@ void zowex_ds_tests()
                            []() -> void {});
                         it("should write content from a local file to a data set",
                            []() -> void {});
-                        it("should error when the data set name is invalid",
+                        it("should error when the data set name is too long",
+                           []() -> void {});
+                        it("should fail if the data set is deleted before the write operation is completed",
                            []() -> void {});
                       });
            });
