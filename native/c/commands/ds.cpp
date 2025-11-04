@@ -708,7 +708,6 @@ int handle_data_set_compress(InvocationContext &context)
     return RTNCD_FAILURE;
   }
 
-  cout << "@TEST\n";
   // perform compress
   rc = zut_run("IEBCOPY");
   if (RTNCD_SUCCESS != rc)
