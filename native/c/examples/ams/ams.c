@@ -17,6 +17,8 @@
 #include "zmetal.h"
 #include "zdbg.h"
 #include "zutm31.h"
+#include "ztime.h"
+#include <builtins.h>
 
 // NOTE(Kelosky): We only use this path for write operations and to preserve and update ISPF statistics.  Read operations or DSORG=PS will use `fopen`.
 // In this path we must perform dynamic allocation on the data set.  We must perform RDJFCB to validate the data set and get the attributes prior to performing the OPEN.
@@ -36,45 +38,64 @@
 // TODO(Kelosky): test with PDSE, STOW implications
 // TODO(KeloskY): IHAPDS to map pds
 
+// static int get_julian_date(int month, int day, int year_)
+// {
+//   // Days per month (non-leap year)
+//   static const int days_per_month[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+
+//   // Validate inputs
+//   if (month < 1 || month > 12)
+//   {
+//     return 0; // Invalid month
+//   }
+
+//   if (day < 1 || day > 31)
+//   {
+//     return 0; // Invalid day
+//   }
+
+//   // Check for leap year
+//   int is_leap = 0;
+//   if ((year_ % 4 == 0 && year_ % 100 != 0) || (year_ % 400 == 0))
+//   {
+//     is_leap = 1;
+//   }
+
+//   // Validate day against month
+//   int max_days = days_per_month[month - 1];
+//   if (month == 2 && is_leap)
+//   {
+//     max_days = 29;
+//   }
+
+//   if (day > max_days)
+//   {
+//     return 0; // Invalid day for this month
+//   }
+
+//   // Calculate Julian date (day of year, 1-365/366)
+//   int julian_date = day; // Start with the day of the month
+//   int i;
+
+//   // Add days from previous months
+//   for (i = 0; i < month - 1; i++)
+//   {
+//     julian_date += days_per_month[i];
+//     // Adjust February for leap year
+//     if (i == 1 && is_leap)
+//     {
+//       julian_date += 1; // Add extra day for leap year
+//     }
+//   }
+
+//   return julian_date;
+// }
+
 #pragma prolog(AMSMAIN, " ZWEPROLG NEWDSA=(YES,256) ")
 #pragma epilog(AMSMAIN, " ZWEEPILG ")
 int AMSMAIN()
 {
   zwto_debug("AMSMAIN started");
-
-  // IO_CTRL *PTR32 sysin = new_read_io_ctrl("SYSIN", 80, 80, dcbrecf);
-  // set_dcb_dcbe(&sysin->dcb, eodad);
-
-  // int rc = read_input_jfcb(sysin);
-  // if (0 != rc)
-  // {
-  //   zwto_debug("@TEST read_input_jfcb failed: %d", rc);
-  //   s0c3_abend(1);
-  // }
-
-  // zwto_debug("@TEST sysin->jfcb.jfcbelnm: %.8s", sysin->jfcb.jfcbelnm); // if first by has`x'BF'` then member name exists and not a PS file, clear DSORG if needed
-  // zwto_debug("@TEST sysin->jfcb.jfcnlrec: %x", sysin->jfcb.jfcnlrec);
-  // zwto_debug("@TEST sysin->jfcb.jfcbaxbf: %x", sysin->jfcb.jfcbaxbf);
-  // zwto_debug("@TEST sysin->jfcb.jfcdsrg1: %x", sysin->jfcb.jfcdsrg1);
-  // zwto_debug("@TEST sysin->jfcb.jfcdsrg2: %x", sysin->jfcb.jfcdsrg2);
-  // zwto_debug("@TEST sysin->jfcb.jfcbind1: %x", sysin->jfcb.jfcbind1);
-  // zwto_debug("@TEST sysin->jfcb.jfcbind2: %x", sysin->jfcb.jfcbind2);
-
-  // if (sysin->jfcb.jfcbind1 != jfcpds)
-  // {
-  //   zwto_debug("@TEST sysin->jfcb.jfcbind1 is not PS (0x%x)", sysin->jfcb.jfcbind1);
-  //   return -1;
-  // }
-
-  // rc = open_input(&sysin->dcb);
-  // // rc = funcs.open_input_j(ioc);
-  // // if (0 != rc)
-  // {
-  //   zwto_debug("@TEST open_input_j failed: %d", rc);
-  //   s0c3_abend(1);
-  // }
-
-  // return 0;
 
   int rsn = 0;
   int rc = 0;
@@ -89,14 +110,6 @@ int AMSMAIN()
     zwto_debug("@TEST read_output_jfcb failed: %d", rc);
     return -1;
   }
-  zwto_debug("@TEST sysprint->jfcb.jfcbelnm: %.8s", sysprint->jfcb.jfcbelnm);
-  zwto_debug("@TEST sysprint->jfcb.jfcbelnm hex: %x", sysprint->jfcb.jfcbelnm[0]);
-  zwto_debug("@TEST sysprint->jfcb.jfcnlrec: %x", sysprint->jfcb.jfcnlrec);
-  zwto_debug("@TEST sysprint->jfcb.jfcbaxbf: %x", sysprint->jfcb.jfcbaxbf);
-  zwto_debug("@TEST sysprint->jfcb.jfcdsrg1: %x", sysprint->jfcb.jfcdsrg1);
-  zwto_debug("@TEST sysprint->jfcb.jfcdsrg2: %x", sysprint->jfcb.jfcdsrg2);
-  zwto_debug("@TEST sysprint->jfcb.jfcbind1: %x", sysprint->jfcb.jfcbind1);
-  zwto_debug("@TEST sysprint->jfcb.jfcbind2: %x", sysprint->jfcb.jfcbind2);
 
   // ensure PDS
   if (sysprint->jfcb.jfcbind1 != jfcpds)
@@ -121,8 +134,6 @@ int AMSMAIN()
     zwto_debug("@TEST open_output failed: %d", rc);
     return -1;
   }
-
-  zwto_debug("@TEST sysprint->dcb.dcboflgs: %x", sysprint->dcb.dcboflgs);
 
   if (!(sysprint->dcb.dcboflgs & dcbofopn))
   {
@@ -149,33 +160,20 @@ int AMSMAIN()
   bldl_pl.ff = 1;
   bldl_pl.ll = sizeof(bldl_pl.list);
   memcpy(bldl_pl.list.name, sysprint->jfcb.jfcbelnm, sizeof(sysprint->jfcb.jfcbelnm));
-  zwto_debug("@TEST length of user data before bldl: %x", bldl_pl.list.c & LEN_MASK);
-  zut_dump_storage_common("@TEST bldl_pl", &bldl_pl.list, sizeof(bldl_pl.list), 16, 0, zut_print_debug);
   rc = bldl(sysprint, &bldl_pl, &rsn);
+
   if (0 != rc)
   {
     zwto_debug("@TEST bldl failed: rc: %d, rsn: %d", rc, rsn);
     return -1;
   }
-  zwto_debug("@TEST bldl success: rsn: %d", rsn);
 
-  zwto_debug("@TEST length of user data is: %x", bldl_pl.list.c & 0x1F);
-  zwto_debug("@TEST bldl_pl ttr: %02x%02x%02x", bldl_pl.list.ttr[0], bldl_pl.list.ttr[1], bldl_pl.list.ttr[2]);
-
-  zut_dump_storage_common("@TEST bldl_pl", &bldl_pl.list, sizeof(bldl_pl.list), 16, 0, zut_print_debug);
-
-  // TODO(Kelosky): if no stats are present, revert to LE-C way of writing data set??
-
-  zwto_debug("@TEST find member");
   rc = find_member(sysprint, &rsn);
   if (0 != rc)
   {
     zwto_debug("@TEST find_member failed: rc: %d, rsn: %d", rc, rsn);
     return -1;
   }
-  zwto_debug("@TEST find member success");
-
-  // get ttr
 
   short int lines_written = 0;
   char inbuff[80] = {80};
@@ -196,11 +194,7 @@ int AMSMAIN()
     zwto_debug("@TEST note failed: rc: %d, rsn: %d", rc, rsn);
     return -1;
   }
-  zwto_debug("@TEST note success");
-  zwto_debug("@TEST listaddr value: %02x%02x%02x%02x", note_response.ttr[0], note_response.ttr[1], note_response.ttr[2], note_response.z);
 
-  // TODO(Kelosky): pass only IO_CTRL to stow
-  zwto_debug("@TEST stow");
   memcpy(sysprint->stow_list.name, bldl_pl.list.name, sizeof(bldl_pl.list.name));
   sysprint->stow_list.c = bldl_pl.list.c;
   memcpy(sysprint->stow_list.ttr, note_response.ttr, sizeof(note_response.ttr));
@@ -214,9 +208,7 @@ int AMSMAIN()
     zwto_debug("@TEST zutm1gur failed: rc: %d", rc);
     return -1;
   }
-  zwto_debug("current user: '%s'", user);
-  // adjust user
-  memcpy(statsp->userid, user, sizeof(user));
+  memcpy(statsp->userid, user, sizeof(user)); // update ISPF statistics userid
 
 // adjust modification level
 // https://www.ibm.com/docs/en/zos/3.2.0?topic=environment-version-modification-level-numbers
@@ -224,30 +216,57 @@ int AMSMAIN()
 #define MAX_LEVEL 0x99
   if (statsp->level < MAX_LEVEL)
   {
-    statsp->level++; // increment level
+    statsp->level++; // update ISPF statistics level
   }
 
   // adjust modification date & time
+  statsp->modified_number_of_lines = lines_written; // update ISPF statistics number of lines
+  statsp->current_number_of_lines = lines_written;  // update ISPF statistics number of lines
 
-  statsp->modified_number_of_lines = lines_written;
-  statsp->current_number_of_lines = lines_written;
+  zut_dump_storage_common("@TEST ISPFSTATS", statsp, sizeof(ISPF_STATS), 16, 0, zut_print_debug);
 
-  zut_dump_storage_common("@TEST sysprint->stow_list", &sysprint->stow_list, sizeof(sysprint->stow_list), 16, 0, zut_print_debug);
-  zwto_debug("@TEST sysprint->stow_list ttr: %02x%02x%02x", sysprint->stow_list.ttr[0], sysprint->stow_list.ttr[1], sysprint->stow_list.ttr[2]);
+  union
+  {
+    unsigned int timei;
+    struct
+    {
+      unsigned char HH;
+      unsigned char MM;
+      unsigned char SS;
+      unsigned char unused;
+    } times;
+  } timel = {0};
+  unsigned int datel = 0;
+  time_local(&timel.timei, &datel);
+  // // zwto_debug("@TEST timel: %x", timel);
+  // zwto_debug("@TEST datel: %x", datel);
+  // unsigned long long tod = 0;
+  // tod = 0;
+  // time(&tod);
+  // // zwto_debug("@TEST tod: %llu", tod);
+  // TIME_STRUCT time_struct = {0};
+  // rc = stckconv(&tod, &time_struct);
+  // if (0 != rc)
+  // {
+  //   zwto_debug("@TEST stckconv failed: %d", rc);
+  //   return -1;
+  // }
+
+#define CENTURY_2000 0x01
+  memcpy(&statsp->modified_date_century, &datel, sizeof(datel)); // update ISPF statistics day
+  statsp->modified_time_hours = timel.times.HH;                  // update ISPF statistics time hours
+  statsp->modified_time_minutes = timel.times.MM;                // update ISPF statistics time minutes
+  statsp->modified_time_seconds = timel.times.SS;                // update ISPF statistics time seconds
+
   rc = stow(sysprint, &rsn);
   if (0 != rc)
   {
     zwto_debug("@TEST stow failed: rc: %d, rsn: %d", rc, rsn);
     return -1;
   }
-  zwto_debug("@TEST stow success");
 
   close_assert(sysin);
-  zwto_debug("@TEST closing sysin");
-  // sysprint->dcb.dcbdcbe = NULL; // NOTE(Kelosky): this can cause an I/O error which may drive synad or DCBABEND
-  zwto_debug("@TEST closing sysprint");
   close_assert(sysprint);
-  zwto_debug("@TEST closed sysprint");
 
   return 0;
 }
