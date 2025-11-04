@@ -292,9 +292,7 @@ public:
 
     vsnprintf(buffer, sizeof(buffer), format, args);
 
-    const auto initialized = get_initialized();
-
-    if (initialized)
+    if (get_initialized())
     {
       log_message("FATAL", format, args_copy);
     }
