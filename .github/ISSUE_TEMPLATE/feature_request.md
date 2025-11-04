@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Suggest an idea for Zowe CLI
+about: Suggest an idea for Zowe Native Protocol
 labels: enhancement
 ---
 
