@@ -110,8 +110,7 @@ void RpcServer::process_request(const string &request_data)
     response.error = zstd::optional<ErrorDetails>();
     response.id = zstd::optional<int>(request.id);
 
-    // Print response (handles large data replacement automatically if present)
-    print_response(response, &context);
+    print_response(response);
   }
   catch (const std::exception &e)
   {
@@ -280,7 +279,7 @@ zjson::Value RpcServer::convert_ast_to_json(const ast::Node &ast_node)
   }
 }
 
-void RpcServer::print_response(const RpcResponse &response, const MiddlewareContext *context)
+void RpcServer::print_response(RpcResponse &response)
 {
   // Log errors to the log file
   if (response.error.has_value())
@@ -298,17 +297,15 @@ void RpcServer::print_response(const RpcResponse &response, const MiddlewareCont
     }
   }
 
-  // Convert response to JSON Value
-  zjson::Value response_json = rpc_response_to_json(response);
-  
-  // Extract and replace large strings with placeholders before serialization
+  // Extract and replace large strings from result object
   std::unordered_map<string, string> large_data_map;
-  size_t counter = 0;
-  extract_large_strings(response_json, large_data_map, counter);
-  
-  // Serialize with placeholders
-  string json_string = serialize_json(response_json);
-  
+  if (response.result.has_value())
+  {
+    extract_large_strings(response.result.value(), large_data_map);
+  }
+
+  string json_string = serialize_json(rpc_response_to_json(response));
+
   // Replace placeholders with actual data
   if (!large_data_map.empty())
   {
@@ -320,53 +317,34 @@ void RpcServer::print_response(const RpcResponse &response, const MiddlewareCont
   stream << json_string << std::endl;
 }
 
-void RpcServer::extract_large_strings(zjson::Value &json_value, std::unordered_map<string, string> &large_data_map, size_t &counter)
+void RpcServer::extract_large_strings(zjson::Value &json_value, std::unordered_map<string, string> &large_data_map)
 {
   static constexpr size_t LARGE_DATA_THRESHOLD = 16 * 1024 * 1024;
   static constexpr const char *PLACEHOLDER_PREFIX = "__LARGE_DATA__:";
 
-  if (json_value.is_string())
+  if (!json_value.is_object())
   {
-    const string &str_value = json_value.as_string();
-    if (str_value.size() >= LARGE_DATA_THRESHOLD)
-    {
-      string placeholder = string(PLACEHOLDER_PREFIX) + std::to_string(counter++);
-      large_data_map[placeholder] = str_value;
-      json_value = zjson::Value(placeholder);
-      LOG_DEBUG("Extracted large string (%zu bytes) to placeholder %s", str_value.size(), placeholder.c_str());
-    }
+    return;
   }
-  else if (json_value.is_object())
+
+  size_t counter = 0;
+  const auto &obj = json_value.as_object();
+  for (const auto &pair : obj)
   {
-    const auto &obj = json_value.as_object();
-    std::vector<string> keys;
-    keys.reserve(obj.size());
-    for (const auto &pair : obj)
+    const string &key = pair.first;
+    const zjson::Value &value = pair.second;
+
+    if (value.is_string())
     {
-      keys.push_back(pair.first);
-    }
-    for (const auto &key : keys)
-    {
-      zjson::Value field_value = json_value[key];
-      extract_large_strings(field_value, large_data_map, counter);
-      json_value.add_to_object(key, field_value);
-    }
-  }
-  else if (json_value.is_array())
-  {
-    const auto &arr = json_value.as_array();
-    std::vector<zjson::Value> updated_array;
-    updated_array.reserve(arr.size());
-    for (size_t i = 0; i < arr.size(); ++i)
-    {
-      zjson::Value elem = arr[i];
-      extract_large_strings(elem, large_data_map, counter);
-      updated_array.push_back(elem);
-    }
-    json_value = zjson::Value::create_array();
-    for (size_t i = 0; i < updated_array.size(); ++i)
-    {
-      json_value.add_to_array(updated_array[i]);
+      const string &str_value = value.as_string();
+      if (str_value.size() >= LARGE_DATA_THRESHOLD)
+      {
+        string placeholder = string(PLACEHOLDER_PREFIX) + std::to_string(counter++);
+        large_data_map[placeholder] = str_value;
+        json_value.add_to_object(key, zjson::Value(placeholder));
+        LOG_DEBUG("Extracted large string (%zu bytes) from field '%s' to placeholder %s",
+                  str_value.size(), key.c_str(), placeholder.c_str());
+      }
     }
   }
 }
@@ -380,15 +358,14 @@ string RpcServer::replace_large_data_placeholders(const string &json_string, con
     const string &placeholder = pair.first;
     const string &actual_data = pair.second;
 
-    string quoted_placeholder = "\"" + placeholder + "\"";
-    string escaped_data = zjson::escape_json_string(actual_data);
-    string quoted_data = "\"" + escaped_data + "\"";
+    const string quoted_placeholder = "\"" + placeholder + "\"";
+    const string escaped_data = zjson::escape_json_string(actual_data);
+    const string quoted_data = "\"" + escaped_data + "\"";
 
-    size_t pos = 0;
-    while ((pos = result.find(quoted_placeholder, pos)) != string::npos)
+    size_t pos = result.find(quoted_placeholder);
+    if (pos != string::npos)
     {
       result.replace(pos, quoted_placeholder.length(), quoted_data);
-      pos += quoted_data.length();
       LOG_DEBUG("Replaced placeholder %s with large data (%zu bytes)", placeholder.c_str(), actual_data.size());
     }
   }

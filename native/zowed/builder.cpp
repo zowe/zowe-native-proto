@@ -358,7 +358,6 @@ void CommandBuilder::apply_output_transforms(MiddlewareContext &context) const
       {
         string data = context.get_output_content();
 
-        // Encode base64 if requested
         if (transform.base64)
         {
           data = zbase64::encode(data);
