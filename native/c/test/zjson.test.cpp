@@ -724,6 +724,73 @@ void test_serialization_round_trips()
             
             // Verify the entire string matches
             Expect(restored.name).ToBe(original.name);
+        });
+
+        it("should handle large string serialization and deserialization", []() {
+            // Create a 16 MB string by repeating a pattern
+            // This is max entry size supported by z/OS JSON parser
+            // See https://www.ibm.com/support/pages/apar/OA67661
+            const size_t target_size = 16 * 1024 * 1024;
+            const std::string pattern = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz"; // 62 bytes
+            const size_t repeats = target_size / pattern.length();
+            
+            std::string large_string;
+            large_string.reserve(target_size);
+            
+            for (size_t i = 0; i < repeats; ++i) {
+                large_string += pattern;
+            }
+            
+            // Add any remaining bytes to reach exact size
+            size_t remaining = target_size - large_string.length();
+            if (remaining > 0) {
+                large_string += pattern.substr(0, remaining);
+            }
+            
+            Expect(large_string.length()).ToBe(target_size);
+            
+            SimpleStruct original{99, large_string};
+            
+            // Test serialization
+            auto json_result = zjson::to_string(original);
+            Expect(json_result.has_value()).ToBe(true);
+            
+            std::string json_str = json_result.value();
+            
+            // Test deserialization
+            auto restored_result = zjson::from_str<SimpleStruct>(json_str);
+            Expect(restored_result.has_value()).ToBe(true);
+            
+            SimpleStruct restored = restored_result.value();
+            
+            // Verify the ID matches
+            Expect(restored.id).ToBe(original.id);
+            
+            // Verify the string length matches exactly (crucial - this checks actual length, not null termination)
+            Expect(restored.name.length()).ToBe(target_size);
+            Expect(restored.name.size()).ToBe(large_string.size());
+            
+            // Verify the start of the string (first 100 bytes)
+            std::string original_start = large_string.substr(0, 100);
+            std::string restored_start = restored.name.substr(0, 100);
+            Expect(restored_start).ToBe(original_start);
+            
+            // Verify the end of the string using the ORIGINAL string's length as reference
+            // This ensures we're checking the actual end, not a truncated position
+            std::string original_end = large_string.substr(large_string.length() - 100);
+            std::string restored_end = restored.name.substr(large_string.length() - 100);
+            Expect(restored_end).ToBe(original_end);
+            
+            // Also verify the very last character specifically to ensure no truncation
+            char original_last = large_string[large_string.length() - 1];
+            char restored_last = restored.name[large_string.length() - 1];
+            Expect(restored_last).ToBe(original_last);
+            
+            // Verify the middle of the string (100 bytes from middle)
+            size_t mid_pos = large_string.length() / 2;
+            std::string original_mid = large_string.substr(mid_pos, 100);
+            std::string restored_mid = restored.name.substr(mid_pos, 100);
+            Expect(restored_mid).ToBe(original_mid);
         }); });
 }
 
