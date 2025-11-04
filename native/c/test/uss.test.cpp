@@ -398,7 +398,6 @@ void uss_tests()
                              rc = execute_command_with_output(listCommand, response);
                              Expect(rc).ToBe(1);
                            });
-
                         it("should properly handle deleting a non-existent item",
                            [&]() -> void
                            {
@@ -408,6 +407,18 @@ void uss_tests()
                              rc = execute_command_with_output(deleteCommand, response);
                              ExpectWithContext(rc, response).ToBe(255);
                              Expect(response).ToContain("Path '" + uss_file + "' does not exist");
+                           });
+
+                        it("should properly handle deleting a directory without the recursive flag",
+                           [&]() -> void
+                           {
+                             string uss_dir = get_random_uss(ussTestDir) + "_dir";
+                             create_test_dir_cmd(uss_dir);
+                             string deleteCommand = zowex_command + " uss delete " + uss_dir;
+
+                             rc = execute_command_with_output(deleteCommand, response);
+                             ExpectWithContext(rc, response).ToBe(255);
+                             Expect(response).ToContain("Path '" + uss_dir + "' is a directory and recursive was false");
                            });
                       });
 
@@ -458,6 +469,16 @@ void uss_tests()
                              string simpleViewCmd = zowex_command + " uss view " + uss_path + " --ec UTF-8";
                              rc = execute_command_with_output(simpleViewCmd, final_view_response);
                              Expect(final_view_response).ToContain("Updated Content");
+                           });
+                        it("should fail to view a file that does not exist",
+                           [&]() -> void
+                           {
+                             string viewCommand = zowex_command + " uss view /tmp/does/not/exist";
+                             string view_response;
+
+                             rc = execute_command_with_output(viewCommand, view_response);
+                             ExpectWithContext(rc, view_response).ToBe(255);
+                             Expect(view_response).ToContain("Path /tmp/does/not/exist does not exist");
                            });
                       });
 
@@ -536,6 +557,14 @@ void uss_tests()
                              rc = execute_command_with_output(incompleteCommand, response);
                              ExpectWithContext(rc, response).ToBe(1);
                              Expect(response).ToContain("missing required positional argument: file-path");
+                           });
+                        it("should properly handle listing a path that does not exist",
+                           [&]() -> void
+                           {
+                             string incompleteCommand = zowex_command + " uss ls /does/not/exist";
+                             rc = execute_command_with_output(incompleteCommand, response);
+                             ExpectWithContext(rc, response).ToBe(255);
+                             Expect(response).ToContain("Path '/does/not/exist' does not exist");
                            });
                       });
            });
