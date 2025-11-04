@@ -268,7 +268,7 @@ void worker_tests()
            {
              it("should initialize and all workers become ready", [&]()
                 {
-      int num_workers = 4;
+      long long num_workers = 4LL;
       pool = std::make_shared<WorkerPool>(num_workers, 1000ms);
 
       // Wait for all workers to start and mark themselves as ready
@@ -281,7 +281,7 @@ void worker_tests()
 
              it("should distribute multiple requests to workers", [&]()
                 {
-      int num_workers = 2;
+      long long num_workers = 2LL;
       pool = std::make_shared<WorkerPool>(num_workers, 1000ms);
 
       // Wait for workers to be ready
@@ -301,7 +301,7 @@ void worker_tests()
 
              it("should replace a faulted worker and redistribute its requests", [&]()
                 {
-      int num_workers = 1;
+      long long num_workers = 1LL;
       // Use a long timeout so it doesn't interfere with the fault test
       pool = std::make_shared<WorkerPool>(num_workers, 5000ms);
 

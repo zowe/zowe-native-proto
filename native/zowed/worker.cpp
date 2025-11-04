@@ -272,7 +272,7 @@ std::string Worker::get_current_request()
 }
 
 // WorkerPool implementation
-WorkerPool::WorkerPool(int num_workers,
+WorkerPool::WorkerPool(long long num_workers,
                        std::chrono::milliseconds request_timeout_param,
                        size_t max_replacement_attempts,
                        std::chrono::milliseconds base_replacement_backoff,
@@ -285,7 +285,7 @@ WorkerPool::WorkerPool(int num_workers,
   workers.reserve(num_workers);
 
   // Create workers
-  for (int i = 0; i < num_workers; ++i)
+  for (auto i = 0LL; i < num_workers; ++i)
   {
     auto worker = std::make_shared<Worker>(i);
     workers.push_back(std::move(worker));
@@ -295,10 +295,10 @@ WorkerPool::WorkerPool(int num_workers,
   next_replacement_allowed.resize(num_workers, std::chrono::steady_clock::time_point::min());
 
   // Initialize workers asynchronously
-  for (int i = 0; i < num_workers; ++i)
+  for (auto i = 0LL; i < num_workers; ++i)
     std::thread(&WorkerPool::initialize_worker, this, i).detach();
 
-  if (num_workers > 0)
+  if (num_workers > 0LL)
   {
     supervisor_running = true;
     supervisor_thread = std::thread(&WorkerPool::monitor_workers, this);

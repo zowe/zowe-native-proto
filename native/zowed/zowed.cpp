@@ -142,7 +142,7 @@ private:
             while (!shutdown_requested) {
                 if (worker_pool) {
                     int32_t count = worker_pool->get_available_workers_count();
-                    LOG_DEBUG("Available workers: %d/%d", count, options.num_workers);
+                    LOG_DEBUG("Available workers: %d/%lld", count, options.num_workers);
                     std::this_thread::sleep_for(std::chrono::milliseconds(500));
                     if (count == options.num_workers) {
                         break;
@@ -162,7 +162,7 @@ public:
 
     // Initialize logger with executable directory
     zowed::Logger::init_logger(exec_dir.c_str(), options.verbose);
-    LOG_INFO("Starting zowed with %d workers (verbose=%s)", options.num_workers, options.verbose ? "true" : "false");
+    LOG_INFO("Starting zowed with %lld workers (verbose=%s)", options.num_workers, options.verbose ? "true" : "false");
 
     // Set up signal handling
     setup_signal_handlers();

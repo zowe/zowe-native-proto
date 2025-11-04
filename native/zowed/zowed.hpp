@@ -17,20 +17,20 @@
  */
 struct ZowedOptions
 {
-  int num_workers;     ///< Number of worker threads
-  bool verbose;        ///< Enable verbose logging
-  int request_timeout; ///< Request timeout (in seconds) for worker heartbeat
+  long long num_workers;     ///< Number of worker threads
+  bool verbose;              ///< Enable verbose logging
+  long long request_timeout; ///< Request timeout (in seconds) for worker heartbeat
 
   /**
    * @brief Constructor with default values
    * @param num_workers Number of worker threads
    * @param verbose Enable verbose logging
    */
-  explicit ZowedOptions(const int num_workers = 10, const bool verbose = false, const int request_timeout_seconds = 60)
+  explicit ZowedOptions(const long long num_workers = 10, const bool verbose = false, const long long request_timeout_seconds = 60)
       : num_workers(num_workers), verbose(verbose), request_timeout(request_timeout_seconds)
   {
     if (this->request_timeout <= 0)
-      this->request_timeout = 60;
+      this->request_timeout = 60LL;
   }
 };
 

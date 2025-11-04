@@ -48,7 +48,7 @@ ZowedOptions parse_options(int argc, char *argv[])
       "Number of worker threads",
       parser::ArgType_Single,
       false,
-      parser::ArgValue(static_cast<long long>(opts.num_workers)));
+      parser::ArgValue(opts.num_workers));
 
   root_cmd.add_keyword_arg(
       "verbose",
@@ -64,7 +64,7 @@ ZowedOptions parse_options(int argc, char *argv[])
       "Request timeout in seconds before a worker is restarted",
       parser::ArgType_Single,
       false,
-      parser::ArgValue(static_cast<long long>(opts.request_timeout)));
+      parser::ArgValue(opts.request_timeout));
 
   parser::ParseResult result =
       arg_parser.parse(argc, argv);
@@ -87,15 +87,15 @@ ZowedOptions parse_options(int argc, char *argv[])
   else
   {
     const long long parsed_num_workers =
-        result.get_value<long long>("num-workers", static_cast<long long>(opts.num_workers));
-    opts.num_workers = static_cast<int>(parsed_num_workers);
+        result.get_value<long long>("num-workers", opts.num_workers);
+    opts.num_workers = parsed_num_workers;
   }
 
   opts.verbose = result.get_value<bool>("verbose", opts.verbose);
 
   const long long parsed_request_timeout =
-      result.get_value<long long>("request-timeout", static_cast<long long>(opts.request_timeout));
-  opts.request_timeout = static_cast<int>(parsed_request_timeout);
+      result.get_value<long long>("request-timeout", opts.request_timeout);
+  opts.request_timeout = parsed_request_timeout;
 
   if (opts.num_workers <= 0)
   {

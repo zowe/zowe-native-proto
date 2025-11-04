@@ -383,10 +383,7 @@ void RpcServer::send_timeout_error(const string &request_data, int64_t timeout_m
   }
 
   // Build timeout error message
-  char timeout_message[256];
-  snprintf(timeout_message, sizeof(timeout_message),
-           "Request timed out after %lld ms (method: %s)",
-           static_cast<long long>(timeout_ms), method.c_str());
+  const auto timeout_message = "Request timed out after " + std::to_string(timeout_ms) + " ms (method: " + method + ")";
 
   // Send the error response
   print_error(request_id, RpcErrorCode::REQUEST_TIMEOUT, timeout_message);
