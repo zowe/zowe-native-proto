@@ -27,6 +27,7 @@
 // Forward declarations
 class Worker;
 class WorkerPool;
+struct ReplacementContext;
 
 enum class WorkerState
 {
@@ -124,6 +125,11 @@ private:
   std::vector<std::chrono::steady_clock::time_point> next_replacement_allowed;
   std::chrono::milliseconds request_timeout;
 
+  // Worker replacement configuration
+  size_t max_replace_attempts;
+  std::chrono::milliseconds base_replace_backoff;
+  std::chrono::milliseconds max_replace_backoff;
+
   // Queue of ready worker indices for constant-time access (round-robin distribution)
   std::deque<size_t> ready_queue;
 
@@ -136,13 +142,54 @@ private:
 
   void initialize_worker(int worker_id);
   void monitor_workers();
+
   /**
    * @brief Replace a worker at the given index with the reason for replacement
    *
    * @param worker_index The ID of the worker to replace
    * @param reason The reason why the worker is being replaced
+   * @param force_detach Whether to forcibly detach the worker thread (for timeouts)
    */
   void replace_worker(size_t worker_index, const char *reason, bool force_detach = false);
+
+  /**
+   * @brief Mark a worker as not ready and decrement ready count
+   *
+   * @param worker_index The index of the worker to mark as not ready
+   * @return true if successful, false if inconsistency detected
+   */
+  bool mark_worker_not_ready(size_t worker_index);
+
+  /**
+   * @brief Prepare replacement context with backoff and retry tracking
+   *
+   * @param worker_index The index of the worker being replaced
+   * @return ReplacementContext containing old worker and retry metadata
+   */
+  ReplacementContext prepare_worker_replacement(size_t worker_index);
+
+  /**
+   * @brief Recover pending and in-flight requests from a failed worker
+   *
+   * @param old_worker The worker to recover requests from
+   * @param worker_index The index of the worker
+   * @param reason The reason for recovery
+   * @param force_detach Whether this is a timeout (don't recover in-flight)
+   * @return Vector of recovered requests
+   */
+  std::vector<RequestMetadata> recover_requests_from_worker(
+      std::shared_ptr<Worker> &old_worker,
+      size_t worker_index,
+      const char *reason,
+      bool force_detach);
+
+  /**
+   * @brief Create and spawn a new worker at the given index
+   *
+   * @param worker_index The index where the new worker should be spawned
+   */
+  void spawn_replacement_worker(size_t worker_index);
+
   /**
    * @brief Re-distribute recovered requests from a failed worker
    *
@@ -151,10 +198,15 @@ private:
    * @param reason The reason for re-distribution
    */
   void redistribute_requests(std::vector<RequestMetadata> &requests, size_t worker_index, const char *reason);
+
   void distribute_request_internal(const RequestMetadata &request);
 
 public:
-  explicit WorkerPool(int num_workers, std::chrono::milliseconds request_timeout);
+  explicit WorkerPool(int num_workers,
+                      std::chrono::milliseconds request_timeout,
+                      size_t max_replacement_attempts = 3,
+                      std::chrono::milliseconds base_replacement_backoff = std::chrono::milliseconds(200),
+                      std::chrono::milliseconds max_replacement_backoff = std::chrono::milliseconds(5000));
   ~WorkerPool();
 
   void distribute_request(const std::string &request);
