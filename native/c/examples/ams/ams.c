@@ -36,60 +36,8 @@
 // TODO(Kelosky): cleanup headers
 // TODO(Kelosky): use BLDL to get TTR and then on READ instead of FIND
 // TODO(Kelosky): test with PDSE, STOW implications
-// TODO(KeloskY): IHAPDS to map pds
-
-// static int get_julian_date(int month, int day, int year_)
-// {
-//   // Days per month (non-leap year)
-//   static const int days_per_month[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-
-//   // Validate inputs
-//   if (month < 1 || month > 12)
-//   {
-//     return 0; // Invalid month
-//   }
-
-//   if (day < 1 || day > 31)
-//   {
-//     return 0; // Invalid day
-//   }
-
-//   // Check for leap year
-//   int is_leap = 0;
-//   if ((year_ % 4 == 0 && year_ % 100 != 0) || (year_ % 400 == 0))
-//   {
-//     is_leap = 1;
-//   }
-
-//   // Validate day against month
-//   int max_days = days_per_month[month - 1];
-//   if (month == 2 && is_leap)
-//   {
-//     max_days = 29;
-//   }
-
-//   if (day > max_days)
-//   {
-//     return 0; // Invalid day for this month
-//   }
-
-//   // Calculate Julian date (day of year, 1-365/366)
-//   int julian_date = day; // Start with the day of the month
-//   int i;
-
-//   // Add days from previous months
-//   for (i = 0; i < month - 1; i++)
-//   {
-//     julian_date += days_per_month[i];
-//     // Adjust February for leap year
-//     if (i == 1 && is_leap)
-//     {
-//       julian_date += 1; // Add extra day for leap year
-//     }
-//   }
-
-//   return julian_date;
-// }
+// TODO(Kelosky): IHAPDS to map pds
+// TODO(kelosky): what is PROMPT for in ISPF
 
 #pragma prolog(AMSMAIN, " ZWEPROLG NEWDSA=(YES,256) ")
 #pragma epilog(AMSMAIN, " ZWEEPILG ")
@@ -195,12 +143,17 @@ int AMSMAIN()
     return -1;
   }
 
+  // Initially copy all user data
   memcpy(sysprint->stow_list.name, bldl_pl.list.name, sizeof(bldl_pl.list.name));
   sysprint->stow_list.c = bldl_pl.list.c;
   memcpy(sysprint->stow_list.ttr, note_response.ttr, sizeof(note_response.ttr));
   memcpy(sysprint->stow_list.user_data, bldl_pl.list.user_data, sizeof(bldl_pl.list.user_data)); // copy all user data
 
+  // address ISPF statistics
   ISPF_STATS *statsp = (ISPF_STATS *)sysprint->stow_list.user_data;
+  zut_dump_storage_common("ISPFSTATS", statsp, sizeof(ISPF_STATS), 16, 0, zut_print_debug);
+
+  // update ISPF statistics userid
   char user[8] = {0};
   rc = zutm1gur(user);
   if (0 != rc)
@@ -208,9 +161,9 @@ int AMSMAIN()
     zwto_debug("@TEST zutm1gur failed: rc: %d", rc);
     return -1;
   }
-  memcpy(statsp->userid, user, sizeof(user)); // update ISPF statistics userid
+  memcpy(statsp->userid, user, sizeof(user));
 
-// adjust modification level
+// aupdate ISPF statistics modification level
 // https://www.ibm.com/docs/en/zos/3.2.0?topic=environment-version-modification-level-numbers
 // level 0x99 is the maximum level
 #define MAX_LEVEL 0x99
@@ -219,11 +172,9 @@ int AMSMAIN()
     statsp->level++; // update ISPF statistics level
   }
 
-  // adjust modification date & time
+  // update ISPF statistics number of lines
   statsp->modified_number_of_lines = lines_written; // update ISPF statistics number of lines
   statsp->current_number_of_lines = lines_written;  // update ISPF statistics number of lines
-
-  zut_dump_storage_common("@TEST ISPFSTATS", statsp, sizeof(ISPF_STATS), 16, 0, zut_print_debug);
 
   union
   {
@@ -236,27 +187,15 @@ int AMSMAIN()
       unsigned char unused;
     } times;
   } timel = {0};
+
   unsigned int datel = 0;
   time_local(&timel.timei, &datel);
-  // // zwto_debug("@TEST timel: %x", timel);
-  // zwto_debug("@TEST datel: %x", datel);
-  // unsigned long long tod = 0;
-  // tod = 0;
-  // time(&tod);
-  // // zwto_debug("@TEST tod: %llu", tod);
-  // TIME_STRUCT time_struct = {0};
-  // rc = stckconv(&tod, &time_struct);
-  // if (0 != rc)
-  // {
-  //   zwto_debug("@TEST stckconv failed: %d", rc);
-  //   return -1;
-  // }
 
-#define CENTURY_2000 0x01
-  memcpy(&statsp->modified_date_century, &datel, sizeof(datel)); // update ISPF statistics day
-  statsp->modified_time_hours = timel.times.HH;                  // update ISPF statistics time hours
-  statsp->modified_time_minutes = timel.times.MM;                // update ISPF statistics time minutes
-  statsp->modified_time_seconds = timel.times.SS;                // update ISPF statistics time seconds
+  // update ISPF statistics date & time
+  memcpy(&statsp->modified_date_century, &datel, sizeof(datel));
+  statsp->modified_time_hours = timel.times.HH;   // update ISPF statistics time hours
+  statsp->modified_time_minutes = timel.times.MM; // update ISPF statistics time minutes
+  statsp->modified_time_seconds = timel.times.SS; // update ISPF statistics time seconds
 
   rc = stow(sysprint, &rsn);
   if (0 != rc)
