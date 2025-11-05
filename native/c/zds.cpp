@@ -284,7 +284,9 @@ int zds_write_to_dsn(ZDS *zds, const string &dsn, string &data)
     if (!temp.empty())
     {
       size_t bytes_written = fwrite(temp.c_str(), 1u, temp.length(), fp);
-      if (bytes_written != temp.length() || fflush(fp) != 0)
+      const bool truncated = bytes_written != temp.length();
+      const int flush_rc = fflush(fp);
+      if (truncated || flush_rc != 0)
       {
         zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to write to '%s' (possibly out of space)", dsname.c_str());
         return RTNCD_FAILURE;
@@ -1308,6 +1310,7 @@ int zds_write_to_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, s
   size_t bytes_read;
   std::vector<char> temp_encoded;
   std::vector<char> left_over;
+  bool truncated = false;
 
   while ((bytes_read = fread(&buf[0], 1, FIFO_CHUNK_SIZE, fin)) > 0)
   {
@@ -1335,13 +1338,18 @@ int zds_write_to_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, s
     size_t bytes_written = fwrite(chunk, 1, chunk_len, fout);
     if (bytes_written != chunk_len)
     {
-      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to write to '%s' (possibly out of space)", dsname.c_str());
-      return RTNCD_FAILURE;
+      truncated = true;
+      break;
     }
     temp_encoded.clear();
   }
 
-  fflush(fout);
+  const int flush_rc = fflush(fout);
+  if (truncated || flush_rc != 0)
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to write to '%s' (possibly out of space)", dsname.c_str());
+    return RTNCD_FAILURE;
+  }
 
   // Update the etag
   string saved_contents = "";

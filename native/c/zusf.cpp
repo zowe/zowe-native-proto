@@ -1405,7 +1405,9 @@ int zusf_write_to_uss_file(ZUSF *zusf, const string &file, string &data)
   if (!temp.empty())
   {
     size_t bytes_written = fwrite(temp.data(), 1, temp.size(), fp);
-    if (bytes_written != temp.size() || fflush(fp) != 0)
+    const bool truncated = bytes_written != temp.size();
+    const int flush_rc = fflush(fp);
+    if (truncated || flush_rc != 0)
     {
       zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to write to '%s' (possibly out of space)", file.c_str());
       return RTNCD_FAILURE;
@@ -1518,6 +1520,7 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, const string &file, const string
   size_t bytes_read;
   std::vector<char> temp_encoded;
   std::vector<char> left_over;
+  bool truncated = false;
 
   while ((bytes_read = fread(&buf[0], 1, FIFO_CHUNK_SIZE, fin)) > 0)
   {
@@ -1545,13 +1548,18 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, const string &file, const string
     size_t bytes_written = fwrite(chunk, 1, chunk_len, fout);
     if (bytes_written != chunk_len)
     {
-      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to write to '%s' (possibly out of space)", file.c_str());
-      return RTNCD_FAILURE;
+      truncated = true;
+      break;
     }
     temp_encoded.clear();
   }
 
-  fflush(fout);
+  const int flush_rc = fflush(fout);
+  if (truncated || flush_rc != 0)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to write to '%s' (possibly out of space)", file.c_str());
+    return RTNCD_FAILURE;
+  }
 
   if (stat(file.c_str(), &file_stats) == -1)
   {
