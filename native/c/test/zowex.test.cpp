@@ -12,7 +12,7 @@
 #include "ztest.hpp"
 #include "ztype.h"
 #include "zowex.test.hpp"
-#include "utils.test.hpp"
+#include "zutils.hpp"
 
 using namespace std;
 using namespace ztst;
