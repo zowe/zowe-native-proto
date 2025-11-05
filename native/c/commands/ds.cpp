@@ -250,7 +250,7 @@ int handle_data_set_view(InvocationContext &context)
     if (!volser_value.empty())
     {
       dds.push_back("alloc dd(input) da('" + dsn + "') shr vol(" + volser_value + ")");
-      rc = zut_loop_dynalloc(dds);
+      rc = zut_loop_dynalloc(dds, &context.error_stream());
       if (0 != rc)
       {
         return RTNCD_FAILURE;
@@ -529,7 +529,7 @@ int handle_data_set_write(InvocationContext &context)
     if (!volser_value.empty())
     {
       dds.push_back("alloc dd(output) da('" + dsn + "') shr vol(" + volser_value + ")");
-      rc = zut_loop_dynalloc(dds);
+      rc = zut_loop_dynalloc(dds, &context.error_stream());
       if (0 != rc)
       {
         return RTNCD_FAILURE;
@@ -642,7 +642,7 @@ int handle_data_set_restore(InvocationContext &context)
   dds.push_back("alloc da('" + dsn + "') shr");
   dds.push_back("free da('" + dsn + "')");
 
-  rc = zut_loop_dynalloc(dds);
+  rc = zut_loop_dynalloc(dds, &context.error_stream());
   if (0 != rc)
   {
     return RTNCD_FAILURE;
@@ -692,9 +692,10 @@ int handle_data_set_compress(InvocationContext &context)
   dds.push_back("alloc dd(sysprint) lrecl(80) recfm(f,b) blksize(80)");
   dds.push_back("alloc dd(sysin) lrecl(80) recfm(f,b) blksize(80)");
 
-  rc = zut_loop_dynalloc(dds);
+  rc = zut_loop_dynalloc(dds, &context.error_stream());
   if (0 != rc)
   {
+
     return RTNCD_FAILURE;
   }
 
