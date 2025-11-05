@@ -9,9 +9,10 @@
  *
  */
 
+import { ImperativeError } from "@zowe/imperative";
 import { type ZoweExplorerApiType, ZoweVsCodeExtension } from "@zowe/zowe-explorer-api";
 import * as vscode from "vscode";
-import { SshErrors } from "zowe-native-proto-sdk";
+import { RpcErrorCode, SshErrors } from "zowe-native-proto-sdk";
 
 /**
  * Enhanced error handling utility for SSH operations using Zowe Explorer's ErrorCorrelator
@@ -80,6 +81,14 @@ export class SshErrorHandler {
      * @returns True if the error is a timeout error
      */
     public isTimeoutError(error: Error | string): boolean {
+        if (error instanceof ImperativeError) {
+            const errorCode = error.errorCode;
+            if (errorCode === "ETIMEDOUT" || Number(errorCode) === RpcErrorCode.REQUEST_TIMEOUT) {
+                return true;
+            }
+        }
+
+        // Fall back to message pattern matching if error code checks aren't satisfied
         const errorMessage = error instanceof Error ? error.message : error;
         const timeoutMatches = SshErrors.REQUEST_TIMEOUT.matches;
 

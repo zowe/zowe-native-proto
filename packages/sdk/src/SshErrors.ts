@@ -20,7 +20,7 @@ export const SshErrors: Record<string, ISshErrorDefinition> = {
     // Request Timeout
     REQUEST_TIMEOUT: {
         summary: "The request exceeded the timeout limit and was terminated by the server.",
-        matches: ["Request timed out after", /Request timed out after \d+ ms/],
+        matches: ["Request timed out", /Request timed out after \d+ ms/],
         tips: [
             "The operation took longer than the configured timeout period.",
             "Try increasing the request timeout in your client configuration.",
