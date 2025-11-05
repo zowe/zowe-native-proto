@@ -17,20 +17,6 @@
 
 using namespace std;
 
-// Helper function to convert string to hex format
-// TODO(Kelosky): move to zut.hpp if additional use is found
-string string_to_hex(const string &input)
-{
-  string hex_output;
-  for (char c : input)
-  {
-    char hex_byte[3];
-    sprintf(hex_byte, "%02x", static_cast<unsigned char>(c));
-    hex_output += hex_byte;
-  }
-  return hex_output;
-}
-
 // NOTE(Kelosky): consolidate this into ztest.hpp if additional use is found
 int execute_command_with_output(const string &command, string &output)
 {

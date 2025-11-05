@@ -44,7 +44,7 @@ void zowex_ds_tests()
              afterAll(
                  [&]() -> void
                  {
-                   TestLog("Deleting " + to_string(_ds.size()) + " data sets!");
+                   TestLog("Deleting " + to_string(_ds.size()) + " data sets...");
                    for (vector<string>::iterator it = _ds.begin(); it != _ds.end(); ++it)
                    {
                      try
@@ -57,7 +57,18 @@ void zowex_ds_tests()
                      }
                      catch (...)
                      {
-                       TestLog("Failed to delete: " + *it);
+                       try
+                       {
+                         string response;
+                         string command = zowex_command + " data-set list " + *it + " --no-warn --me 1";
+                         int rc = execute_command_with_output(command, response);
+                         ExpectWithContext(rc, response).ToBe(0);
+                         Expect(response).Not().ToContain(*it);
+                       }
+                       catch (...)
+                       {
+                         TestLog("Failed to delete: " + *it);
+                       }
                      }
                    }
                  });
