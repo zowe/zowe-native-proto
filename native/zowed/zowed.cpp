@@ -11,8 +11,7 @@
 
 #include <atomic>
 #include <chrono>
-#include <fstream>
-#include <map>
+#include <unordered_map>
 #include <mutex>
 #include <signal.h>
 #include <sstream>
@@ -27,7 +26,6 @@
 #include "server.hpp"
 #include "worker.hpp"
 #include "zowed.hpp"
-#include <_Nascii.h>
 
 using std::string;
 
@@ -81,9 +79,9 @@ private:
     return instance;
   }
 
-  std::map<string, string> load_checksums()
+  const std::unordered_map<string, string> load_checksums()
   {
-    std::map<string, string> checksums;
+    std::unordered_map<string, string> checksums;
     ZUSF zusf = {.encoding_opts = {.data_type = eDataTypeText, .source_codepage = "IBM-1047"}};
     string checksums_file = exec_dir + "/checksums.asc";
     string checksums_content;
@@ -114,7 +112,7 @@ private:
   void print_ready_message()
   {
     zjson::Value data = zjson::Value::create_object();
-    std::map<string, string> checksums = load_checksums();
+    const auto checksums = load_checksums();
     zjson::Value checksums_obj = zjson::Value::create_object();
     for (const auto &pair : checksums)
     {

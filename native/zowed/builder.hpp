@@ -16,7 +16,6 @@
 #include "validator.hpp"
 #include <string>
 #include <vector>
-#include <memory>
 
 // Forward declarations
 class CommandDispatcher;

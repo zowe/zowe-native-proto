@@ -54,7 +54,8 @@ LIBRARY = libzowed.so
 
 # Object files
 LIB_OBJECTS = $(OUT_DIR)/builder.o $(OUT_DIR)/commands.o $(OUT_DIR)/dispatcher.o \
-	$(OUT_DIR)/rpcio.o $(OUT_DIR)/server.o $(OUT_DIR)/worker.o $(OUT_DIR)/zowed.o
+	$(OUT_DIR)/rpcio.o $(OUT_DIR)/server.o $(OUT_DIR)/validator.o $(OUT_DIR)/worker.o \
+	$(OUT_DIR)/zowed.o
 CMDS_OBJECTS = $(OUT_DIR)/commands/ds.o $(OUT_DIR)/commands/job.o $(OUT_DIR)/commands/tso.o \
 	$(OUT_DIR)/commands/uss.o
 XLCLANG_OBJECTS = ../c/build-out/xlclang/zds.o ../c/build-out/xlclang/zjb.o \
