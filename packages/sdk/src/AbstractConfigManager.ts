@@ -133,16 +133,15 @@ export abstract class AbstractConfigManager {
                     user: foundProfile?.profile?.user,
                     password: foundProfile?.profile?.password,
                 });
-
+                if (validConfig.password) {
+                    foundProfile.profile.privateKey = foundProfile.profile.keyPassphrase = undefined;
+                }
                 if (validConfig === undefined) {
                     statusBar?.dispose();
                     return;
                 }
 
                 if (setExistingProfile || Object.keys(validConfig).length > 0) {
-                    if (validConfig.password) {
-                        foundProfile.profile.privateKey = foundProfile.profile.keyPassphrase = undefined;
-                    }
                     await this.setProfile(validConfig, foundProfile.name);
                 }
                 statusBar?.dispose();
@@ -193,7 +192,6 @@ export abstract class AbstractConfigManager {
             this.selectedProfile.privateKey = this.selectedProfile.keyPassphrase = undefined;
             this.selectedProfile = { ...this.selectedProfile, ...this.validationResult };
         }
-
         // If no private key or password is on the profile then there is no possible validation combination, thus return
         if (!this.selectedProfile?.privateKey && !this.selectedProfile?.password) {
             this.showMessage("SSH setup cancelled.", MESSAGE_TYPE.WARNING);
@@ -369,7 +367,7 @@ export abstract class AbstractConfigManager {
         const configModifications: ISshConfigExt | undefined = {};
         try {
             const privateKeyPath = newConfig.privateKey;
-            const pass = newConfig.password;
+
             if (!newConfig.user) {
                 const userModification = await this.showInputBox({
                     title: `Enter user for host: '${newConfig.hostname}'`,
@@ -827,6 +825,12 @@ export abstract class AbstractConfigManager {
                         }
                     },
                 });
+                if (shouldContinue) {
+                    const cachedProfile = this.sshProfiles.find((prof) => prof.name === config.name);
+                    if (cachedProfile) {
+                        cachedProfile.profile.privateKey = undefined;
+                    }
+                }
                 return shouldContinue;
             }
         } catch (error) {

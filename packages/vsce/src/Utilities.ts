@@ -34,7 +34,6 @@ export function deployWithProgress(session: SshSession, serverPath: string, loca
                 "Server installation",
             );
 
-            // Pass callbacks for both progress and error handling
             await ZSshUtils.installServer(session, serverPath, localDir, {
                 onProgress: (progressIncrement) => {
                     progress.report({ increment: progressIncrement });
