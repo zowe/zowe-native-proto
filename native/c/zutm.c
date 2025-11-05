@@ -16,7 +16,6 @@
 #include "asasymbp.h"
 #include "zattachx.h"
 #include "zstorage.h"
-#include "zwto.h"
 #include "zutm.h"
 #include "zutm31.h"
 #include "zecb.h"
@@ -223,7 +222,11 @@ int ZUTRUN(const char *program)
   int rc = 0;
   ZUTAOFF();
 
-  void *p = load_module(program);
+  char name_truncated[8 + 1] = {0};
+  memset(name_truncated, ' ', sizeof(name_truncated) - 1);                                                                      // pad with spaces
+  memcpy(name_truncated, program, strlen(program) > sizeof(name_truncated) - 1 ? sizeof(name_truncated) - 1 : strlen(program)); // truncate
+
+  void *p = load_module(name_truncated);
 
   if (p)
   {
@@ -242,6 +245,33 @@ int ZUTRUN(const char *program)
       PGM31 p31 = (PGM31)ifunction;
       rc = p31(NULL); // ensure no parms
     }
+  }
+  else
+  {
+    return RTNCD_FAILURE;
+  }
+
+  delete_module(program);
+
+  return rc;
+}
+
+#pragma prolog(ZUTRUN24, " ZWEPROLG NEWDSA=(YES,4),LOC24=YES ")
+#pragma epilog(ZUTRUN24, " ZWEEPILG ")
+int ZUTRUN24(const char *program)
+{
+  int rc = 0;
+  ZUTAOFF();
+
+  char name_truncated[8 + 1] = {0};
+  memset(name_truncated, ' ', sizeof(name_truncated) - 1);                                                                      // pad with spaces
+  memcpy(name_truncated, program, strlen(program) > sizeof(name_truncated) - 1 ? sizeof(name_truncated) - 1 : strlen(program)); // truncate
+
+  Z31FUNC p = load_module31(name_truncated);
+
+  if (p)
+  {
+    rc = ((int (*)(void))p)();
   }
   else
   {

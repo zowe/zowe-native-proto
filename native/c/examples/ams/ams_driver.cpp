@@ -34,10 +34,11 @@ int main()
 
   std::cout << "current user: " << getlogin() << std::endl;
 
-  rc = zut_loop_dynalloc(dds, &std::cerr);
+  ZDIAG diag = {0};
+  rc = zut_loop_dynalloc(diag, dds);
   if (0 != rc)
   {
-    std::cout << "Error: could not allocate dds" << std::endl;
+    std::cout << diag.e_msg << std::endl;
     return 1;
   }
 
@@ -45,10 +46,10 @@ int main()
   AMSMAIN();
   std::cout << "AMS ended" << std::endl;
 
-  rc = zut_free_dynalloc_dds(dds, &std::cerr);
+  rc = zut_free_dynalloc_dds(diag, dds);
   if (0 != rc)
   {
-    std::cout << "Error: could not free dds" << std::endl;
+    std::cout << diag.e_msg << std::endl;
     return 1;
   }
 

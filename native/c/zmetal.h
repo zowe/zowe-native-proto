@@ -100,24 +100,32 @@ static int test_auth()
 #endif
 
 #if defined(__IBM_METAL__)
-#define LOAD(name, ep, rc)                                      \
+#define LOAD(name, ep, rc, rsn)                                 \
   __asm(                                                        \
       "*                                                    \n" \
       " SLGR  2,2          Clear for PDSMAN/IEBCOPY         \n" \
       "*                                                    \n" \
-      " LOAD EPLOC=%2,"                                         \
+      " LOAD EPLOC=%3,"                                         \
       "PLISTVER=MAX,"                                           \
-      "ERRET=*+4                                            \n" \
+      "ERRET=*+4+6+4+4+4                                    \n" \
       "*                                                    \n" \
-      " STG 0,%0                                            \n" \
-      " ST  15,%1                                           \n" \
+      " STG 0,%0           EP                               \n" \
+      " ST  15,%1          RC = 0                           \n" \
+      " ST  15,%2          RSN = 0                          \n" \
+      " J   *+4+4+6+4+4                                     \n" \
+      "*                                                    \n" \
+      " SLGR 0,0           Clear ep                         \n" \
+      " STG 0,%0           Zero                             \n" \
+      " ST 1,%1            r1 = rc                          \n" \
+      " ST 15,%2           r15 = rsn                        \n" \
       "*                                                      " \
       : "=m"(ep),                                               \
-        "=m"(rc)                                                \
+        "=m"(rc),                                               \
+        "=m"(rsn)                                               \
       : "m"(name)                                               \
       : "r0", "r1", "r2", "r14", "r15");
 #else
-#define LOAD(name, ep, rc)
+#define LOAD(name, ep, rc, rsn)
 #endif
 
 #if defined(__IBM_METAL__)
@@ -141,9 +149,11 @@ static int test_auth()
  * @param name name of module to load
  * @return void* address of entry point or NULL if not found
  */
-static void *PTR64 load_module(const char name[8])
+
+static void *PTR64 load_module(const char *name)
 {
   int rc = 0;
+  int rsn = 0;
 
   char name_truncated[8 + 1] = {0};
   memset(name_truncated, ' ', sizeof(name_truncated) - 1);                                                             // pad with spaces
@@ -151,8 +161,7 @@ static void *PTR64 load_module(const char name[8])
 
   void *PTR64 ep = NULL;
 
-  LOAD(name_truncated, ep, rc);
-
+  LOAD(name_truncated, ep, rc, rsn);
   if (0 != rc)
   {
     return NULL;
@@ -168,7 +177,7 @@ typedef void (*Z31FUNC)(void) ATTRIBUTE(amode31);
  * @param name name of module to load
  * @return Z31FUNC 31 bit function cleared for use within 64-bit routine or NULL if not found
  */
-static Z31FUNC ATTRIBUTE(amode31) load_module31(const char name[8])
+static Z31FUNC ATTRIBUTE(amode31) load_module31(const char *name)
 {
 
   // TODO(Kelosky): test return pointer flags to validate amode??
