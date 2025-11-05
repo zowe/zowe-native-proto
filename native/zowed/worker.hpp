@@ -42,15 +42,15 @@ enum class WorkerState
 // Request metadata for tracking retry attempts
 struct RequestMetadata
 {
-  std::string data;       // The actual request payload
-  size_t retry_count;     // Number of times this request has been attempted
-  std::string request_id; // Optional: for logging/debugging
+  std::string data;        // The actual request payload
+  size_t retry_count{0UL}; // Number of times this request has been attempted
+  std::string request_id;  // Optional: for logging/debugging
 
   RequestMetadata()
       : retry_count(0)
   {
   }
-  RequestMetadata(const std::string &req_data, size_t retries = 0, const std::string &id = "")
+  RequestMetadata(const std::string &req_data, size_t retries = 0UL, const std::string &id = "")
       : data(req_data), retry_count(retries), request_id(id)
   {
   }

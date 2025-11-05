@@ -571,14 +571,9 @@ bool WorkerPool::mark_worker_not_ready(size_t worker_index)
 struct ReplacementContext
 {
   std::shared_ptr<Worker> old_worker;
-  bool max_attempts_reached;
-  size_t attempt_number;
-  std::chrono::milliseconds applied_backoff;
-
-  ReplacementContext()
-      : max_attempts_reached(false), attempt_number(0), applied_backoff(0)
-  {
-  }
+  bool max_attempts_reached{false};
+  size_t attempt_number{0UL};
+  std::chrono::milliseconds applied_backoff{0};
 };
 
 ReplacementContext WorkerPool::prepare_worker_replacement(size_t worker_index)
@@ -640,7 +635,7 @@ std::vector<RequestMetadata> WorkerPool::recover_requests_from_worker(
     if (!force_detach)
     {
       LOG_DEBUG("Worker %zu: Recovering in-flight request due to %s", worker_index, reason);
-      recovered_requests.emplace_back(RequestMetadata(current_req, 0));
+      recovered_requests.emplace_back(current_req, 0);
     }
     else
     {

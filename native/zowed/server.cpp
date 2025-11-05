@@ -377,7 +377,7 @@ void RpcServer::send_timeout_error(const string &request_data, int64_t timeout_m
       }
     }
   }
-  catch (const std::exception &e)
+  catch (const zjson::Error &e)
   {
     LOG_ERROR("Failed to parse timed-out request for error response: %s", e.what());
   }
