@@ -35,7 +35,6 @@ string string_to_hex(const string &input)
 int execute_command_with_output(const string &command, string &output)
 {
   output = "";
-  // TestLog("Running: " + command);
 
   FILE *pipe = popen((command + " 2>&1").c_str(), "r");
   if (!pipe)
@@ -76,7 +75,14 @@ string get_random_string(const int length = 7, const bool allNumbers = true)
   string ret = "";
   for (int i = 0; i < length; ++i)
   {
-    ret += to_string(rand() % 10);
+    if (allNumbers)
+    {
+      ret += to_string(rand() % 10);
+    }
+    else
+    {
+      ret += char(rand() % 26 + 'A');
+    }
   }
   return ret;
 }

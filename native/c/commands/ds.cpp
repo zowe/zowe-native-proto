@@ -649,7 +649,8 @@ int handle_data_set_restore(InvocationContext &context)
   rc = zut_loop_dynalloc(diag, dds);
   if (0 != rc)
   {
-    context.error_stream() << diag.e_msg << endl;
+    context.error_stream() << "Error: could not restore data set: '" << dsn << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << "Details: " << diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
