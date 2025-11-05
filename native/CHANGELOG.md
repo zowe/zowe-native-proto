@@ -6,7 +6,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
-- `c`: Implemented system tests for `zowex uss` command group. [#626](https://github.com/zowe/zowe-native-proto/pull/626)
+- `c`: Implemented system tests for the `zowex uss` command group. [#626](https://github.com/zowe/zowe-native-proto/pull/626)
 
 ## `0.2.0`
 
