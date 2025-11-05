@@ -391,9 +391,8 @@ export abstract class AbstractConfigManager {
                     return undefined;
                 }
                 newConfig.privateKey = undefined;
-                const pass = newConfig.password;
-                if (newConfig.password && askForPassword) {
-                    await this.attemptConnection({ ...newConfig });
+                if (newConfig.password) {
+                    return await this.validateConfig(newConfig, askForPassword);
                 }
             }
 
