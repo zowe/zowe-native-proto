@@ -1776,7 +1776,7 @@ static bool resolve_gid_from_str(const std::string &s, gid_t &out)
  * Supports "user", "user:group", ":group", or numeric IDs.
  * Validates input, avoids silent -1, and returns RTNCD_FAILURE on error.
  */
-int zusf_chown_uss_file_or_dir(ZUSF *zusf, std::string file, std::string owner, bool recursive)
+int zusf_chown_uss_file_or_dir(ZUSF *zusf, const std::string &file, const std::string &owner, bool recursive)
 {
   struct stat file_stats;
   // Verify target exists and capture current metadata
@@ -1875,7 +1875,7 @@ int zusf_chown_uss_file_or_dir(ZUSF *zusf, std::string file, std::string owner, 
   return 0;
 }
 
-int zusf_chtag_uss_file_or_dir(ZUSF *zusf, const string &file, const string &owner, bool recursive)
+int zusf_chtag_uss_file_or_dir(ZUSF *zusf, const string &file, const string &tag, bool recursive)
 {
   struct stat file_stats;
   if (stat(file.c_str(), &file_stats) == -1)
@@ -1888,7 +1888,7 @@ int zusf_chtag_uss_file_or_dir(ZUSF *zusf, const string &file, const string &own
 
   // First try to parse as a numeric CCSID
   char *endptr;
-  const auto parsed_ccsid = strtol(owner.c_str(), &endptr, 10);
+  const auto parsed_ccsid = strtol(tag.c_str(), &endptr, 10);
   // If the entire string was consumed and it's a valid range, it's a numeric CCSID
   if (*endptr == '\0' && parsed_ccsid != LONG_MAX && parsed_ccsid != LONG_MIN)
   {
@@ -1900,7 +1900,7 @@ int zusf_chtag_uss_file_or_dir(ZUSF *zusf, const string &file, const string &own
     ccsid = zusf_get_ccsid_from_display_name(tag);
     if (ccsid == -1)
     {
-      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Invalid tag '%s' - not a valid CCSID or display name", owner.c_str());
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Invalid tag '%s' - not a valid CCSID or display name", tag.c_str());
       return RTNCD_FAILURE;
     }
   }
