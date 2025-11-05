@@ -1395,7 +1395,7 @@ int zusf_write_to_uss_file(ZUSF *zusf, const string &file, string &data)
 
   AutocvtGuard autocvt(false);
   const char *mode = (zusf->encoding_opts.data_type == eDataTypeBinary) ? "wb" : "w";
-  FILE *fp = fopen(file.c_str(), mode);
+  FileGuard fp(file.c_str(), mode);
   if (!fp)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open '%s' for writing", file.c_str());
@@ -1403,9 +1403,14 @@ int zusf_write_to_uss_file(ZUSF *zusf, const string &file, string &data)
   }
 
   if (!temp.empty())
-    fwrite(temp.data(), 1, temp.size(), fp);
-  fflush(fp);
-  fclose(fp);
+  {
+    size_t bytes_written = fwrite(temp.data(), 1, temp.size(), fp);
+    if (bytes_written != temp.size() || fflush(fp) != 0)
+    {
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to write to '%s' (possibly out of space)", file.c_str());
+      return RTNCD_FAILURE;
+    }
+  }
 
   if (zusf->created)
   {
