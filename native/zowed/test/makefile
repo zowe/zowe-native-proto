@@ -30,12 +30,12 @@ TEST_OBJECTS=$(OUT_DIR)/zowed_test_runner.o \
 
 .PHONY: all clean test
 
-.ORDER: $(OUT_DIR) $(TEST_OBJECTS)
-
 all: $(TARGET)
 
 $(OUT_DIR):
 	mkdir -p $(OUT_DIR)
+
+$(TEST_OBJECTS): $(OUT_DIR)
 
 $(OUT_DIR)/%.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
