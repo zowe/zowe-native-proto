@@ -15,8 +15,8 @@ import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Gui, imperative, ZoweExplorerApiType, ZoweVsCodeExtension } from "@zowe/zowe-explorer-api";
 import * as vscode from "vscode";
 import { ZSshUtils } from "zowe-native-proto-sdk";
+import { ConfigUtils, VscePromptApi } from "./ConfigUtils";
 import { SshClientCache } from "./SshClientCache";
-import { SshConfigUtils, VscePromptApi } from "./SshConfigUtils";
 import { SshErrorHandler } from "./SshErrorHandler";
 
 const EXTENSION_NAME = "zowe-native-proto-vsce";
@@ -75,7 +75,7 @@ export function registerCommands(context: vscode.ExtensionContext): vscode.Dispo
             const vscePromptApi = new VscePromptApi(await profCache.getProfileInfo());
             const profile = await vscePromptApi.promptForProfile(profName);
             if (!profile?.profile) return;
-            const defaultServerPath = SshConfigUtils.getServerPath(profile.profile);
+            const defaultServerPath = ConfigUtils.getServerPath(profile.profile);
             const deployDirectory = await vscePromptApi.promptForDeployDirectory(
                 profile.profile.host,
                 defaultServerPath,
@@ -119,8 +119,8 @@ export function registerCommands(context: vscode.ExtensionContext): vscode.Dispo
             if (!profile?.profile) return;
 
             SshClientCache.inst.end(profile);
-            const serverPath = SshConfigUtils.getServerPath(profile.profile);
-            await SshConfigUtils.showSessionInTree(profile.name!, false);
+            const serverPath = ConfigUtils.getServerPath(profile.profile);
+            await ConfigUtils.showSessionInTree(profile.name!, false);
 
             // Create error callback for uninstall operation
             const errorCallback = SshErrorHandler.getInstance().createErrorCallback(

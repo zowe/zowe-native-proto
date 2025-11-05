@@ -120,17 +120,30 @@ class WatchUtils {
             ignoreInitial: true,
             persistent: true,
         });
+        let debounceTimer: NodeJS.Timeout;
+        this.connection.on("close", () => {
+            if (debounceTimer) {
+                clearTimeout(debounceTimer);
+            }
+            this.watcher.close();
+        });
+        const applyChangesDebounced = () => {
+            if (debounceTimer) {
+                clearTimeout(debounceTimer);
+            }
+            debounceTimer = setTimeout(() => void this.applyChanges(), 250);
+        };
         this.watcher.on("add", (filePath, stats) => {
             this.pendingChanges.set(filePath, { kind: "+", mtime: stats?.mtime ?? new Date() });
-            void this.applyChanges();
+            applyChangesDebounced();
         });
         this.watcher.on("change", (filePath, stats) => {
             this.pendingChanges.set(filePath, { kind: "~", mtime: stats?.mtime ?? new Date() });
-            void this.applyChanges();
+            applyChangesDebounced();
         });
         this.watcher.on("unlink", (filePath) => {
             this.pendingChanges.set(filePath, { kind: "-", mtime: new Date() });
-            void this.applyChanges();
+            applyChangesDebounced();
         });
 
         this.printReadyMessage();
@@ -468,7 +481,7 @@ async function runCommandInShell(connection: Client, command: string) {
                 if (exitCode !== 0) {
                     const fullError = `\nError: runCommand connection.exec error - stream.on exit: \n ${error || data}`;
                     stopSpinner(spinner, fullError);
-                    process.exitCode = fullError.includes("SIGSEGV: segmentation violation") ? 11 : exitCode;
+                    process.exitCode = exitCode;
                     reject(fullError);
                 }
             });
@@ -657,7 +670,7 @@ async function rmdir(connection: Client, sshProfile: IProfile) {
 
 async function watch(connection: Client, sshProfile: IProfile) {
     await new WatchUtils(connection, sshProfile).start();
-    return new Promise(() => {});
+    return new Promise<void>((resolve) => connection.on("close", () => resolve()));
 }
 
 async function uploadFile(sftpcon: SFTPWrapper, from: string, to: string, convertEbcdic = true) {
@@ -732,6 +745,7 @@ async function buildSshClient(sshProfile: IProfile): Promise<Client> {
         });
         client.on("error", (err) => {
             console.error("Client connection errored");
+            process.exitCode = 1;
             reject(err);
         });
         client.on("ready", () => resolve(client));

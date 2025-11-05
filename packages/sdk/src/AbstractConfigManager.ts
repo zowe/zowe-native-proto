@@ -26,6 +26,7 @@ import {
     type IProfileTypeConfiguration,
     type ProfileInfo,
 } from "@zowe/imperative";
+import type { ISshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { NodeSSH } from "node-ssh";
 import { ConfigFileUtils } from "./ConfigFileUtils";
 import {
@@ -50,7 +51,7 @@ export abstract class AbstractConfigManager {
     protected abstract getCurrentDir(): string | undefined;
     protected abstract getProfileSchemas(): IProfileTypeConfiguration[];
     protected abstract showPrivateKeyWarning(opts: PrivateKeyWarningOptions): Promise<boolean>;
-    protected abstract getVscodeSetting<T>(setting: string): T | undefined;
+    protected abstract getClientSetting<T>(setting: keyof ISshSession): T | undefined;
     protected abstract showStatusBar(): IDisposable | undefined;
 
     private migratedConfigs: ISshConfigExt[];
@@ -220,7 +221,7 @@ export abstract class AbstractConfigManager {
 
     protected abstract storeServerPath(host: string, path: string): void;
 
-    public static validateDeployPath(this: void, defaultServerPath: string, input: string): string | null {
+    public static validateDeployPath(this: void, input: string): string | null {
         const trimmed = input.trim();
         if (!trimmed) return "Path cannot be empty.";
         if (trimmed.length > 1024) return "Path is longer than the USS max path length of 1024.";
@@ -234,7 +235,7 @@ export abstract class AbstractConfigManager {
         const input = await this.showInputBox({
             title: "Enter deploy directory",
             value: defaultServerPath,
-            validateInput: (input) => AbstractConfigManager.validateDeployPath(defaultServerPath, input),
+            validateInput: (input) => AbstractConfigManager.validateDeployPath(input),
         });
         if (input === undefined) {
             this.showMessage("SSH setup cancelled.", MESSAGE_TYPE.WARNING);
@@ -617,7 +618,7 @@ export abstract class AbstractConfigManager {
                     .mergeArgsForProfile({
                         profName: updatedProfile,
                         profType: "ssh",
-                        isDefaultProfile: this.fetchDefaultProfile().name === updatedProfile,
+                        isDefaultProfile: this.fetchDefaultProfile()?.name === updatedProfile,
                         profLoc: { locType: 1 },
                     })
                     .knownArgs.find((obj) => obj.argName === key)?.argLoc.jsonLoc;
@@ -747,15 +748,17 @@ export abstract class AbstractConfigManager {
     }
 
     // Taken from ZE Api and tweaked for usage
-    private fetchDefaultProfile(): IProfileLoaded {
+    private fetchDefaultProfile(): IProfileLoaded | undefined {
         const defaultProfile = this.mProfilesCache.getDefaultProfile("ssh");
-        return {
-            message: "",
-            name: defaultProfile.profName,
-            type: "ssh",
-            profile: this.getMergedAttrs(defaultProfile),
-            failNotFound: false,
-        };
+        return defaultProfile
+            ? {
+                  message: "",
+                  name: defaultProfile.profName,
+                  type: "ssh",
+                  profile: this.getMergedAttrs(defaultProfile),
+                  failNotFound: false,
+              }
+            : undefined;
     }
 
     /**
