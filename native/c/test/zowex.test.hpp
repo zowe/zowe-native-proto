@@ -11,10 +11,5 @@
 
 #ifndef ZOWEX_TEST_HPP
 #define ZOWEX_TEST_HPP
-#include <string>
 void zowex_tests();
-int execute_command_with_input(const std::string &command, const std::string &input);
-int execute_command_with_output(const std::string &command, std::string &output);
-std::string get_random_string(const int length, const bool allNumbers);
-std::string get_random_uss(const std::string base_dir);
 #endif

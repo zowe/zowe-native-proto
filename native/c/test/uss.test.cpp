@@ -14,7 +14,7 @@
 #include <ctime>
 #include <stdlib.h>
 #include <string>
-#include "zowex.test.hpp"
+#include "zutils.hpp"
 #include <stdio.h>
 #include "test_utils.hpp"
 
@@ -23,31 +23,6 @@ using namespace ztst;
 
 const string zowex_command = "./../build-out/zowex";
 const string ussTestDir = "/tmp/zowex-uss";
-
-// Helper function to get etag from command response
-string parse_etag_from_output(const string &output)
-{
-  const string label = "etag: ";
-  size_t etag_label_pos = output.find(label);
-
-  if (etag_label_pos == string::npos)
-  {
-    return "";
-  }
-
-  size_t start_value_pos = etag_label_pos + label.length();
-
-  size_t end_value_pos = output.find_first_of("\r\n", start_value_pos);
-
-  if (end_value_pos == string::npos)
-  {
-    end_value_pos = output.length();
-  }
-
-  string etag = output.substr(start_value_pos, end_value_pos - start_value_pos);
-
-  return etag;
-}
 
 void uss_tests()
 {
