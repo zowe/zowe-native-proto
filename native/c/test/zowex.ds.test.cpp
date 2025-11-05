@@ -29,7 +29,7 @@ void zowex_ds_tests()
 {
   vector<string> _ds;
   describe("data-set",
-           [&_ds]() -> void
+           [&]() -> void
            {
              // Define a generic helper lambda for creating data sets
              auto _create_ds = [](const string &ds_name, const string &ds_options = "") -> void
@@ -42,7 +42,7 @@ void zowex_ds_tests()
              };
 
              afterAll(
-                 [&_ds]() -> void
+                 [&]() -> void
                  {
                    TestLog("Deleting " + to_string(_ds.size()) + " data sets!");
                    for (vector<string>::iterator it = _ds.begin(); it != _ds.end(); ++it)
@@ -75,17 +75,17 @@ void zowex_ds_tests()
                   Expect(response).ToContain("list"); // done
                 });
 
-             // https://github.com/zowe/zowe-native-proto/issues/640
+             // TODO: https://github.com/zowe/zowe-native-proto/issues/640
              xdescribe("compress",
-                       [&_ds, _create_ds]() -> void
+                       [&]() -> void
                        {
                          beforeEach(
-                             [&_ds]() -> void
+                             [&]() -> void
                              {
                                _ds.push_back(get_random_ds());
                              });
                          it("should error when the data set is PS",
-                            [_ds, _create_ds]() -> void
+                            [&]() -> void
                             {
                               string ds = _ds.back();
                               _create_ds(ds, "--dsorg PS");
@@ -97,7 +97,7 @@ void zowex_ds_tests()
                               Expect(response).ToContain("Error: data set '" + ds + "' is not a PDS'");
                             });
                          it("should error when the data set is PDS/E",
-                            [_ds, _create_ds]() -> void
+                            [&]() -> void
                             {
                               string ds = _ds.back();
                               _create_ds(ds, "--dsorg PO --dsntype LIBRARY");
@@ -110,7 +110,7 @@ void zowex_ds_tests()
                             });
 
                          it("should error when the data set doesn't exist",
-                            [_ds]() -> void
+                            [&]() -> void
                             {
                               string ds = _ds.back() + ".GHOST";
 
@@ -122,7 +122,7 @@ void zowex_ds_tests()
                             });
 
                          xit("should compress a data set",
-                             [_ds, _create_ds]() -> void
+                             [&]() -> void
                              {
                                string ds = _ds.back();
                                _create_ds(ds, "--dsorg PO");
@@ -134,20 +134,21 @@ void zowex_ds_tests()
                                Expect(response).ToContain("Data set compressed");
                              });
 
+                         // TODO: https://github.com/zowe/zowe-native-proto/issues/666
                          xit("should error when the data set is VSAM", []() -> void {});
                          xit("should error when the data set is GDG", []() -> void {});
                          xit("should error when the data set is ALIAS", []() -> void {});
                        });
              describe("create",
-                      [&_ds, _create_ds]() -> void
+                      [&]() -> void
                       {
                         beforeEach(
-                            [&_ds]() -> void
+                            [&]() -> void
                             {
                               _ds.push_back(get_random_ds());
                             });
                         it("should error when the data set already exists",
-                           [&_ds, _create_ds]() -> void
+                           [&]() -> void
                            {
                              string ds = _ds.back();
                              _create_ds(ds);
@@ -160,7 +161,7 @@ void zowex_ds_tests()
                            });
 
                         it("should create a data set with default attributes",
-                           [&_ds, _create_ds]() -> void
+                           [&]() -> void
                            {
                              string ds = _ds.back();
                              _create_ds(ds);
@@ -175,7 +176,7 @@ void zowex_ds_tests()
                            });
 
                         it("should create a simple PDS/E data set - dsorg: PO-E",
-                           [&_ds, _create_ds]() -> void
+                           [&]() -> void
                            {
                              string ds = _ds.back();
                              _create_ds(ds, "--dsorg PO --dsntype LIBRARY");
@@ -189,7 +190,7 @@ void zowex_ds_tests()
                            });
 
                         it("should create a data set - recfm:VB dsorg:PO",
-                           [&_ds, _create_ds]() -> void
+                           [&]() -> void
                            {
                              string ds = _ds.back();
                              _create_ds(ds, "--recfm VB --dsorg PO");
@@ -205,7 +206,7 @@ void zowex_ds_tests()
                            });
 
                         it("should create a PS data set - recfm:VB dsorg:PS",
-                           [&_ds, _create_ds]() -> void
+                           [&]() -> void
                            {
                              string ds = _ds.back();
                              _create_ds(ds, "--recfm VB --dsorg PS");
@@ -219,9 +220,9 @@ void zowex_ds_tests()
                              Expect(tokens[4]).ToBe("VB");
                            });
 
-                        // https://github.com/zowe/zowe-native-proto/pull/625
+                        // TODO: https://github.com/zowe/zowe-native-proto/pull/625
                         it("should create a data set - dsorg: PO, primary: 10, secondary: 2, lrecl: 20, blksize:10, dirblk: 5, alcunit: CYL",
-                           [&_ds, _create_ds]() -> void
+                           [&]() -> void
                            {
                              string ds = _ds.back();
                              _create_ds(ds, "--dsorg PO --primary 10 --secondary 2 --lrecl 20 --blksize 10 --dirblk 5 --alcunit CYL");
@@ -253,10 +254,10 @@ void zowex_ds_tests()
                            });
                       });
              describe("create-adata",
-                      [&_ds]() -> void
+                      [&]() -> void
                       {
                         it("should create a data set with default attributes",
-                           [&_ds]() -> void
+                           [&]() -> void
                            {
                              int rc = 0;
                              string ds = get_random_ds();
@@ -278,7 +279,7 @@ void zowex_ds_tests()
                            });
 
                         it("should fail to create a data set if the data set already exists",
-                           [&_ds]() -> void
+                           [&]() -> void
                            {
                              int rc = 0;
                              string ds = get_random_ds();
@@ -309,10 +310,10 @@ void zowex_ds_tests()
                       });
 
              describe("create-fb",
-                      [&_ds]() -> void
+                      [&]() -> void
                       {
                         it("should create a data set with default attributes",
-                           [&_ds]() -> void
+                           [&]() -> void
                            {
                              int rc = 0;
                              string ds = get_random_ds();
@@ -333,7 +334,7 @@ void zowex_ds_tests()
                              // lrecl = 80
                            });
                         it("should fail to create a data set if the data set already exists",
-                           [&_ds]() -> void
+                           [&]() -> void
                            {
                              int rc = 0;
                              string ds = get_random_ds();
@@ -363,10 +364,10 @@ void zowex_ds_tests()
                            });
                       });
              describe("create-loadlib",
-                      [&_ds]() -> void
+                      [&]() -> void
                       {
                         it("should create a data set with default attributes",
-                           [&_ds]() -> void
+                           [&]() -> void
                            {
                              int rc = 0;
                              string ds = get_random_ds();
@@ -387,7 +388,7 @@ void zowex_ds_tests()
                              // lrecl = 0
                            });
                         it("should fail to create a data set if the data set already exists",
-                           [&_ds]() -> void
+                           [&]() -> void
                            {
                              int rc = 0;
                              string ds = get_random_ds();
@@ -417,10 +418,10 @@ void zowex_ds_tests()
                            });
                       });
              describe("create-member",
-                      [&_ds]() -> void
+                      [&]() -> void
                       {
                         beforeEach(
-                            [&_ds]() -> void
+                            [&]() -> void
                             {
                               string ds = get_random_ds();
                               _ds.push_back(ds);
@@ -432,7 +433,7 @@ void zowex_ds_tests()
                               Expect(response).ToContain("Data set created");
                             });
                         it("should error if no member name is specified",
-                           [_ds]() -> void
+                           [&]() -> void
                            {
                              string ds = _ds.back();
                              string response;
@@ -442,7 +443,7 @@ void zowex_ds_tests()
                              Expect(response).ToContain("Error: could not find member name in dsn");
                            });
                         it("should error if the data set doesn't exist",
-                           [_ds]() -> void
+                           [&]() -> void
                            {
                              string ds = _ds.back() + ".GHOST";
                              string response;
@@ -453,7 +454,7 @@ void zowex_ds_tests()
                              Expect(response).ToContain("Not found in catalog");
                            });
                         it("should create a member in a PDS",
-                           [_ds]() -> void
+                           [&]() -> void
                            {
                              string ds = _ds.back();
                              string response;
@@ -463,9 +464,9 @@ void zowex_ds_tests()
                              Expect(response).ToContain("Data set and/or member created");
                            });
 
-                        // https://github.com/zowe/zowe-native-proto/issues/643
+                        // TODO: https://github.com/zowe/zowe-native-proto/issues/643
                         xit("should not overwrite existing members",
-                            [_ds]() -> void
+                            [&]() -> void
                             {
                               string ds = "\"" + _ds.back() + "(TEST)\"";
                               string response;
@@ -490,7 +491,7 @@ void zowex_ds_tests()
                               command = "echo test | " + zowex_command + " data-set create-member " + ds;
                               rc = execute_command_with_output(command, response);
                               ExpectWithContext(rc, response).Not().ToBe(0);
-                              Expect(response).ToContain("ERROR"); // TODO: check for specific error message
+                              Expect(response).ToContain("ERROR");
 
                               // Read "test" data to confirm
                               command = "echo test | " + zowex_command + " data-set view " + ds;
@@ -500,25 +501,21 @@ void zowex_ds_tests()
                             });
                       });
              describe("create-vb",
-                      [&_ds]() -> void
+                      [&]() -> void
                       {
                         beforeEach(
-                            [&_ds]() -> void
+                            [&]() -> void
                             {
                               _ds.push_back(get_random_ds());
                             });
                         it("should create a data set with default attributes",
-                           [_ds]() -> void
+                           [&]() -> void
                            {
                              string ds = _ds.back();
-                             TestLog("ds: " + ds);
 
                              string response;
                              string command = zowex_command + " data-set create-vb " + ds;
-                             TestLog(command);
                              int rc = execute_command_with_output(command, response);
-                             TestLog("rc: " + to_string(rc));
-                             TestLog("response: " + response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Data set created");
 
@@ -531,7 +528,7 @@ void zowex_ds_tests()
                              // lrecl = 255
                            });
                         it("should error when the data set already exists",
-                           [_ds]() -> void
+                           [&]() -> void
                            {
                              string ds = _ds.back();
 
@@ -559,16 +556,16 @@ void zowex_ds_tests()
                            });
                       });
              describe("delete",
-                      [&_ds, _create_ds]() -> void
+                      [&]() -> void
                       {
                         beforeEach(
-                            [&_ds]() -> void
+                            [&]() -> void
                             {
                               _ds.push_back(get_random_ds());
                             });
 
                         it("should delete a sequential data set",
-                           [_ds, _create_ds]() -> void
+                           [&]() -> void
                            {
                              string ds = _ds.back();
                              _create_ds(ds, "--dsorg PS");
@@ -580,7 +577,7 @@ void zowex_ds_tests()
                              Expect(response).ToContain("Data set '" + ds + "' deleted");
                            });
                         it("should delete a partitioned data set (PDS)",
-                           [_ds, _create_ds]() -> void
+                           [&]() -> void
                            {
                              string ds = _ds.back();
                              _create_ds(ds, "--dsorg PO");
@@ -592,7 +589,7 @@ void zowex_ds_tests()
                              Expect(response).ToContain("Data set '" + ds + "' deleted");
                            });
                         it("should delete a partitioned data set extended (PDSE)",
-                           [_ds, _create_ds]() -> void
+                           [&]() -> void
                            {
                              string ds = _ds.back();
                              _create_ds(ds, "--dsorg PO --dsntype LIBRARY");
@@ -605,7 +602,7 @@ void zowex_ds_tests()
                            });
 
                         it("should fail to delete a non-existent data set",
-                           [&_ds, _create_ds]() -> void
+                           [&]() -> void
                            {
                              string ds = _ds.back();
 
@@ -631,18 +628,20 @@ void zowex_ds_tests()
                         it("should fail to delete a data set that is currently in use",
                            []() -> void {});
 
-                        // https://github.com/zowe/zowe-native-proto/issues/665
+                        // TODO: https://github.com/zowe/zowe-native-proto/issues/665
                         xit("should delete multiple data sets specified in a list", []() -> void {});
 
-                        // https://github.com/zowe/zowe-native-proto/issues/664
+                        // TODO: https://github.com/zowe/zowe-native-proto/issues/664
                         xit("should delete a data set using the force option even if it has members", []() -> void {});
                         xit("should not delete a data set with the force option if it is in use", []() -> void {});
 
+                        // TODO: https://github.com/zowe/zowe-native-proto/issues/666
                         xit("should delete a VSAM KSDS data set", []() -> void {});
                         xit("should delete a VSAM ESDS data set", []() -> void {});
                         xit("should delete a VSAM RRDS data set", []() -> void {});
                         xit("should delete a VSAM LDS data set", []() -> void {});
 
+                        // TODO: https://github.com/zowe/zowe-native-proto/issues/666
                         xit("should delete a generation data group (GDG) base when empty", []() -> void {});
                         xit("should delete a generation data group (GDG) base and all its generations", []() -> void {});
                         xit("should delete a specific generation of a GDG", []() -> void {});
@@ -725,20 +724,22 @@ void zowex_ds_tests()
                              Expect(response).ToContain("Error: data set pattern exceeds 44 character length limit");
                            });
 
+                        // TODO: https://github.com/zowe/zowe-native-proto/issues/666
                         xit("should list information for a VSAM KSDS data set", []() -> void {});
                         xit("should list information for a VSAM ESDS data set", []() -> void {});
                         xit("should list information for a VSAM RRDS data set", []() -> void {});
                         xit("should list information for a VSAM LDS data set", []() -> void {});
 
+                        // TODO: https://github.com/zowe/zowe-native-proto/issues/666
                         xit("should list generations of a generation data group (GDG) base", []() -> void {});
                         xit("should list specific generation of a GDG", []() -> void {});
                       });
              describe("list-members",
-                      []() -> void
+                      [&]() -> void
                       {
                         string data_set = "SYS1.MACLIB";
                         it("should list a member of a data set",
-                           [data_set]()
+                           [&]() -> void
                            {
                              string response;
                              string command = zowex_command + " data-set lm " + data_set + " --no-warn --me 1";
@@ -746,7 +747,7 @@ void zowex_ds_tests()
                              ExpectWithContext(rc, response).ToBe(0);
                            });
                         it("should warn when listing members of a data set with many members",
-                           [data_set]()
+                           [&]() -> void
                            {
                              int rc = 0;
                              string response;
@@ -774,10 +775,6 @@ void zowex_ds_tests()
                            []() -> void {});
                         it("should view a specific range of lines from a data set",
                            []() -> void {});
-                        xit("should view the content of a VSAM KSDS data set", []() -> void {});
-                        xit("should view the content of a VSAM ESDS data set", []() -> void {});
-                        xit("should view the content of a VSAM RRDS data set", []() -> void {});
-                        xit("should view the content of a VSAM LDS data set", []() -> void {});
                         it("should fail to view a non-existent data set",
                            []() -> void {});
                         it("should fail to view a data set if not authorized",
@@ -786,6 +783,12 @@ void zowex_ds_tests()
                            []() -> void {});
                         it("should error when the data set name is invalid",
                            []() -> void {});
+
+                        // TODO: https://github.com/zowe/zowe-native-proto/issues/666
+                        xit("should view the content of a VSAM KSDS data set", []() -> void {});
+                        xit("should view the content of a VSAM ESDS data set", []() -> void {});
+                        xit("should view the content of a VSAM RRDS data set", []() -> void {});
+                        xit("should view the content of a VSAM LDS data set", []() -> void {});
                       });
              describe("write",
                       []() -> void

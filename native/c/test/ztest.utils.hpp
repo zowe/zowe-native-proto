@@ -53,6 +53,18 @@ int execute_command_with_output(const string &command, string &output)
   return WEXITSTATUS(exit_code);
 }
 
+static std::string s_user = "";
+string get_user()
+{
+  if (s_user.empty())
+  {
+    string user;
+    execute_command_with_output("whoami", user);
+    s_user = ztst::TrimChars(user);
+  }
+  return s_user;
+}
+
 string get_random_string(const int length = 7, const bool allNumbers = true)
 {
   static bool seeded = false;
@@ -74,9 +86,7 @@ string get_random_ds(const int qualifier_count = 4, const string hlq = "")
   string q = hlq;
   if (q.length() == 0)
   {
-    string user;
-    execute_command_with_output("whoami", user);
-    q = ztst::TrimChars(user);
+    q = get_user();
   }
   string ret = q + ".ZNP#TEST";
   for (int i = 0; i < qualifier_count - 2; ++i)
