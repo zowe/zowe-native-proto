@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "ztype.h"
+#include "zwto.h"
 
 #define MAX_PARM_LENGTH 100 + 1
 
@@ -150,8 +151,10 @@ static int test_auth()
  * @return void* address of entry point or NULL if not found
  */
 
+// static void *PTR64 load_module(const char *name) ATTRIBUTE(noinline);
 static void *PTR64 load_module(const char *name)
 {
+  // zwto_debug("@TEST in load_module loading module: %s", name);
   int rc = 0;
   int rsn = 0;
 
@@ -159,15 +162,22 @@ static void *PTR64 load_module(const char *name)
   memset(name_truncated, ' ', sizeof(name_truncated) - 1);                                                             // pad with spaces
   memcpy(name_truncated, name, strlen(name) > sizeof(name_truncated) - 1 ? sizeof(name_truncated) - 1 : strlen(name)); // truncate
 
-  void *PTR64 ep = NULL;
+  // void *PTR64 ep = NULL;
+  unsigned long long int ep = 0;
+  union
+  {
+    void *PTR64 ep;
+    unsigned long long int epValue;
+  } epData = {0};
 
-  LOAD(name_truncated, ep, rc, rsn);
+  LOAD(name_truncated, epData.epValue, rc, rsn);
   if (0 != rc)
   {
     return NULL;
   }
+  zwto_debug("@TEST in load_module loaded module: %s, ep: %llx", name_truncated, epData.epValue);
 
-  return ep;
+  return epData.ep;
 }
 
 typedef void (*Z31FUNC)(void) ATTRIBUTE(amode31);
@@ -182,6 +192,8 @@ static Z31FUNC ATTRIBUTE(amode31) load_module31(const char *name)
 
   // TODO(Kelosky): test return pointer flags to validate amode??
   void *PTR64 function = load_module(name);
+  // zwto_debug("@TEST in load_module31 loaded module: %s", name);
+  zwto_debug("function: %llx", function);
   Z31FUNC z31func = NULL;
   if (function)
   {

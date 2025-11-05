@@ -16,6 +16,7 @@
 #include "asasymbp.h"
 #include "zattachx.h"
 #include "zstorage.h"
+#include "zwto.h"
 #include "zutm.h"
 #include "zutm31.h"
 #include "zecb.h"
@@ -267,6 +268,7 @@ int ZUTRUN24(const char *program)
   memset(name_truncated, ' ', sizeof(name_truncated) - 1);                                                                      // pad with spaces
   memcpy(name_truncated, program, strlen(program) > sizeof(name_truncated) - 1 ? sizeof(name_truncated) - 1 : strlen(program)); // truncate
 
+  zwto_debug("@TEST in ZUTRUN24 loading module: %s", name_truncated);
   Z31FUNC p = load_module31(name_truncated);
 
   if (p)
