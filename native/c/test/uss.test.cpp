@@ -86,7 +86,7 @@ void uss_tests()
                Expect(response).ToContain("USS directory '" + uss_dir + "' created");
              };
 
-             describe("chmod",
+             describe("zowex uss - chmod",
                       [&]() -> void
                       {
                         string uss_path;
@@ -157,7 +157,7 @@ void uss_tests()
                              Expect(response).ToContain("Path '" + uss_file + "' does not exist");
                            });
                       });
-             describe("chown",
+             describe("zowex uss - chown",
                       [&]() -> void
                       {
                         string uss_path;
@@ -233,7 +233,7 @@ void uss_tests()
                                       });
                                  });
                       });
-             describe("chtag",
+             describe("zowex uss - chtag",
                       [&]() -> void
                       {
                         string uss_file;
@@ -292,7 +292,7 @@ void uss_tests()
                              Expect(response).ToContain("IBM-1047");
                            });
                       });
-             describe("create-dir",
+             describe("zowex uss - create-dir",
                       [&]() -> void
                       {
                         it("should properly create a directory with mode 777 specified",
@@ -341,7 +341,7 @@ void uss_tests()
                              Expect(response).ToContain("Failed to create directory '" + uss_dir + "/'");
                            });
                       });
-             describe("create-file",
+             describe("zowex uss - create-file",
                       [&]() -> void
                       {
                         it("should properly create a file with mode 777 specified",
@@ -379,7 +379,7 @@ void uss_tests()
                              Expect(response).ToContain("could not create USS file: '" + uss_file + "'");
                            });
                       });
-             describe("delete",
+             describe("zowex uss - delete",
                       [&]() -> void
                       {
                         it("should properly delete a file",
@@ -443,7 +443,7 @@ void uss_tests()
                            });
                       });
 
-             describe("write and view",
+             describe("zowex uss - write and view",
                       [&]() -> void
                       {
                         string uss_path;
@@ -505,7 +505,7 @@ void uss_tests()
                            });
                       });
 
-             describe("list (ls)",
+             describe("zowex uss - list (ls)",
                       [&]() -> void
                       {
                         beforeAll([&response]() -> void

@@ -1671,13 +1671,13 @@ int zusf_delete_uss_item(ZUSF *zusf, string file, bool recursive)
   return 0;
 }
 
-const string zusf_get_owner_from_uid(uid_t uid)
+string zusf_get_owner_from_uid(uid_t uid)
 {
   auto *meta = getpwuid(uid);
   return meta && meta->pw_name ? meta->pw_name : string();
 }
 
-const string zusf_get_group_from_gid(gid_t gid)
+string zusf_get_group_from_gid(gid_t gid)
 {
   auto *meta = getgrgid(gid);
   return meta && meta->gr_name ? meta->gr_name : string();
