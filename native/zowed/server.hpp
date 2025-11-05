@@ -14,60 +14,19 @@
 
 #include <string>
 #include <mutex>
-#include "../c/zjson.hpp"
 #include "../c/extend/plugin.hpp"
 #include "../c/singleton.hpp"
 #include "../c/zstd.hpp"
-#include "rpcio.hpp"
 
-// JSON-RPC 2.0 Standard Error Codes
-namespace RpcErrorCode
+// Forward declarations
+namespace zjson
 {
-enum
-{
-  PARSE_ERROR = -32700,      // Invalid JSON was received
-  INVALID_REQUEST = -32600,  // The JSON sent is not a valid Request object
-  METHOD_NOT_FOUND = -32601, // The method does not exist / is not available
-  INVALID_PARAMS = -32602,   // Invalid method parameter(s)
-  INTERNAL_ERROR = -32603    // Internal JSON-RPC error
-  // -32000 to -32099 are reserved for implementation-defined server-errors
-};
+class Value;
 }
-
-struct RpcNotification
-{
-  std::string jsonrpc;
-  std::string method;
-  zstd::optional<zjson::Value> params;
-};
-ZJSON_DERIVE(RpcNotification, jsonrpc, method, params);
-
-struct RpcRequest : RpcNotification
-{
-  int id;
-};
-ZJSON_DERIVE(RpcRequest, jsonrpc, method, params, id);
-
-struct ErrorDetails
-{
-  int code;
-  std::string message;
-  zstd::optional<zjson::Value> data;
-};
-ZJSON_DERIVE(ErrorDetails, code, message, data);
-
-struct RpcResponse
-{
-  std::string jsonrpc;
-  zstd::optional<zjson::Value> result;
-  zstd::optional<ErrorDetails> error;
-  zstd::optional<int> id;
-};
-ZJSON_SERIALIZABLE(RpcResponse,
-                   ZJSON_FIELD(RpcResponse, jsonrpc),
-                   ZJSON_FIELD(RpcResponse, result).skip_serializing_if_none(),
-                   ZJSON_FIELD(RpcResponse, error).skip_serializing_if_none(),
-                   ZJSON_FIELD(RpcResponse, id));
+struct RpcRequest;
+struct RpcResponse;
+struct RpcNotification;
+struct ErrorDetails;
 
 /**
  * Thread-safe singleton RPC server that handles JSON-RPC request parsing,

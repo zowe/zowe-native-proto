@@ -10,6 +10,7 @@
  */
 
 #include "server.hpp"
+#include "rpcio.hpp"
 #include "dispatcher.hpp"
 #include "logger.hpp"
 #include <iostream>
