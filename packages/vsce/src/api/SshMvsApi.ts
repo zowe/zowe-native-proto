@@ -11,25 +11,83 @@
 
 import { createReadStream, createWriteStream } from "node:fs";
 import type * as zosfiles from "@zowe/zos-files-for-zowe-sdk";
-import { Gui, imperative, type MainframeInteraction } from "@zowe/zowe-explorer-api";
-import { B64String, type DatasetAttributes, type ds } from "zowe-native-proto-sdk";
+import {
+    type AttributeEntryInfo,
+    type AttributeInfo,
+    type DataSetAttributesProvider,
+    type DsInfo,
+    Gui,
+    type IAttributesProvider,
+    imperative,
+    type MainframeInteraction,
+} from "@zowe/zowe-explorer-api";
+import { B64String, type Dataset, type DatasetAttributes, type ds } from "zowe-native-proto-sdk";
 import { SshCommonApi } from "./SshCommonApi";
 
+class SshAttributesProvider implements IAttributesProvider {
+    public constructor(public cachedAttrs?: Dataset) {}
+
+    public fetchAttributes(_context: DsInfo): AttributeInfo {
+        const newKeys = new Map<string, AttributeEntryInfo>();
+        if (this.cachedAttrs?.alloc != null) {
+            newKeys.set("Allocated Units", { value: this.cachedAttrs.alloc.toString() });
+        }
+        if (this.cachedAttrs?.allocx != null) {
+            newKeys.set("Allocated Extents", { value: this.cachedAttrs.allocx.toString() });
+        }
+        if (this.cachedAttrs?.encrypted != null) {
+            newKeys.set("Encrypted", { value: this.cachedAttrs.encrypted.toString() });
+        }
+        return [
+            {
+                title: "Zowe Native Proto",
+                keys: newKeys,
+            },
+        ];
+    }
+}
+
 export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs {
+    private attrProvider = new SshAttributesProvider();
+
+    public constructor(
+        dsAttrProvider?: DataSetAttributesProvider,
+        public profile?: imperative.IProfileLoaded,
+    ) {
+        super(profile);
+        dsAttrProvider?.register(this.attrProvider);
+    }
+
     public async dataSet(filter: string, options?: zosfiles.IListOptions): Promise<zosfiles.IZosFilesResponse> {
         try {
             const response = await (await this.client).ds.listDatasets({
                 pattern: filter,
                 attributes: options?.attributes,
             });
+            this.attrProvider.cachedAttrs = response.items[0];
             return this.buildZosFilesResponse({
-                items: response.items.map((item) => ({
-                    dsname: item.name,
-                    dsorg: item.dsorg,
-                    vols: item.volser,
-                    migr: item.migrated ? "YES" : "NO",
-                    recfm: item.recfm,
-                })),
+                items: response.items.map((item) => {
+                    const entry: Record<string, unknown> = { dsname: item.name };
+                    if (options?.attributes) {
+                        entry.alloc = item.alloc;
+                        entry.allocx = item.allocx;
+                        entry.blksz = item.blksize;
+                        entry.cdate = item.cdate;
+                        entry.dev = item.devtype;
+                        entry.dsntp = item.dsntype;
+                        entry.dsorg = item.dsorg;
+                        entry.edate = item.edate;
+                        entry.encrypted = item.encrypted;
+                        entry.lrecl = item.lrecl;
+                        entry.migr = item.migrated ? "YES" : "NO";
+                        entry.rdate = item.rdate;
+                        entry.recfm = item.recfm;
+                        entry.spacu = item.spacu;
+                        entry.used = item.usedp;
+                        entry.vols = item.volser;
+                    }
+                    return entry;
+                }),
                 returnedRows: response.returnedRows,
             });
         } catch (_err) {
