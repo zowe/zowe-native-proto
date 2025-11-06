@@ -28,22 +28,29 @@ class SshAttributesProvider implements IAttributesProvider {
     public constructor(public cachedAttrs?: Dataset) {}
 
     public fetchAttributes(_context: DsInfo): AttributeInfo {
-        const newKeys = new Map<string, AttributeEntryInfo>();
-        if (this.cachedAttrs?.alloc != null) {
-            newKeys.set("Allocated Units", { value: this.cachedAttrs.alloc.toString() });
-        }
-        if (this.cachedAttrs?.allocx != null) {
-            newKeys.set("Allocated Extents", { value: this.cachedAttrs.allocx.toString() });
-        }
-        if (this.cachedAttrs?.encrypted != null) {
-            newKeys.set("Encrypted", { value: this.cachedAttrs.encrypted.toString() });
-        }
-        return [
-            {
-                title: "Zowe Native Proto",
-                keys: newKeys,
-            },
-        ];
+        const keys = new Map<string, AttributeEntryInfo>();
+        const addAttribute = <K extends keyof Dataset>(
+            prop: K,
+            label: string,
+            formatter?: (val: NonNullable<Dataset[K]>) => string,
+        ): void => {
+            const value = this.cachedAttrs?.[prop];
+            if (value != null) {
+                keys.set(label, { value: formatter ? formatter(value as NonNullable<Dataset[K]>) : value });
+            }
+        };
+
+        addAttribute("alloc", "Allocated Units", (v) => v.toLocaleString());
+        addAttribute("allocx", "Allocated Extents", (v) => v.toLocaleString());
+        addAttribute("dataclass", "Data Class");
+        addAttribute("encrypted", "Encryption", (v) => (v ? "YES" : "NO"));
+        addAttribute("mgmtclass", "Management Class");
+        addAttribute("primary", "Primary Space", (v) => v.toLocaleString());
+        addAttribute("secondary", "Secondary Space", (v) => v.toLocaleString());
+        addAttribute("storclass", "Storage Class");
+        addAttribute("usedx", "Used Extents", (v) => v.toLocaleString());
+
+        return [{ title: "Zowe Native Proto", keys }];
     }
 }
 
@@ -69,21 +76,18 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
                 items: response.items.map((item) => {
                     const entry: Record<string, unknown> = { dsname: item.name };
                     if (options?.attributes) {
-                        entry.alloc = item.alloc;
-                        entry.allocx = item.allocx;
                         entry.blksz = item.blksize;
                         entry.cdate = item.cdate;
                         entry.dev = item.devtype;
                         entry.dsntp = item.dsntype;
                         entry.dsorg = item.dsorg;
                         entry.edate = item.edate;
-                        entry.encrypted = item.encrypted;
                         entry.lrecl = item.lrecl;
                         entry.migr = item.migrated ? "YES" : "NO";
                         entry.rdate = item.rdate;
                         entry.recfm = item.recfm;
                         entry.spacu = item.spacu;
-                        entry.used = item.usedp;
+                        entry.used = `${item.usedp}%`;
                         entry.vols = item.volser;
                     }
                     return entry;

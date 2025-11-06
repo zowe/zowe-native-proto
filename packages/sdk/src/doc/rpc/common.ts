@@ -106,10 +106,6 @@ export interface Dataset {
      */
     blksize?: number;
     /**
-     * Name of the catalog where the data set is located
-     */
-    catnm?: string;
-    /**
      * Creation date
      */
     cdate?: string;
