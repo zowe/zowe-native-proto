@@ -811,19 +811,13 @@ static inline uint32_t parse_cchh_cylinder(const char *cchh)
   return (cyl_high << 16) | cyl_low;
 }
 
-// Parse CCHH format to get head (track) number
-static inline uint16_t parse_cchh_head(const char *cchh)
-{
-  return static_cast<unsigned char>(cchh[3]) & 0x0F;
-}
-
 // Calculate tracks in an extent given lower and upper CCHH values
 static inline int calculate_extent_tracks(const char *extent)
 {
   uint32_t lower_cyl = parse_cchh_cylinder(extent + 2);
-  uint16_t lower_head = parse_cchh_head(extent + 2);
+  uint16_t lower_head = static_cast<unsigned char>(extent[5]) & 0x0F;
   uint32_t upper_cyl = parse_cchh_cylinder(extent + 6);
-  uint16_t upper_head = parse_cchh_head(extent + 6);
+  uint16_t upper_head = static_cast<unsigned char>(extent[9]) & 0x0F;
 
   if (upper_cyl < lower_cyl)
     return 0;
@@ -1041,10 +1035,9 @@ void load_alloc_attrs_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
     }
   }
 
-  // alloc: Total allocated space in native units
   entry.alloc = use_cylinders ? total_cylinders : total_tracks;
 
-  // Convert track-based values to bytes if spacu is BYTES
+  // Convert to bytes if spacu is BYTES
   if (entry.spacu == "BYTES" && entry.blksize > 0)
   {
     int blocks_per_track = 56664 / entry.blksize;
@@ -1052,13 +1045,12 @@ void load_alloc_attrs_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
       blocks_per_track = 1;
     int base_bytes_per_track = blocks_per_track * entry.blksize;
 
-    // Convert alloc and primary from tracks to bytes
     if (entry.alloc > 0)
       entry.alloc *= base_bytes_per_track;
     if (entry.primary > 0)
       entry.primary *= base_bytes_per_track;
 
-    // Secondary allocation is already in bytes from DS1SCEXT for contiguous allocations
+    // Secondary already in bytes from DS1SCEXT for contiguous allocations
   }
 }
 
@@ -1146,7 +1138,6 @@ void load_used_attrs_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
 
   if (entry.spacu == "BYTES" && entry.blksize > 0)
   {
-    // For BYTES space unit, calculate percentage from track counts
     if (entry.usedp > 0 && entry.alloc > 0)
     {
       int blocks_per_track = 56664 / entry.blksize;
@@ -1154,8 +1145,6 @@ void load_used_attrs_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
         blocks_per_track = 1;
       int base_bytes_per_track = blocks_per_track * entry.blksize;
 
-      // entry.usedp currently contains used tracks
-      // entry.alloc now contains total allocated bytes
       int used_tracks = entry.usedp;
       int total_tracks = entry.alloc / base_bytes_per_track;
 
@@ -1178,12 +1167,11 @@ void load_used_attrs_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
     }
     else
     {
-      entry.usedp = -1; // Unknown/not applicable
+      entry.usedp = -1;
     }
   }
   else
   {
-    // For non-BYTES space units (TRACKS, CYLINDERS, BLOCKS)
     if (entry.usedp > 0 && entry.alloc > 0)
     {
       double percentage = (100.0 * entry.usedp) / entry.alloc;
@@ -1198,11 +1186,9 @@ void load_used_attrs_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
     }
     else
     {
-      entry.usedp = -1; // Unknown/not applicable
+      entry.usedp = -1;
     }
   }
-
-  // Note: usedx (used extents) is already set by load_extents_from_dscb
 }
 
 // Load Date attributes (creation date, expiration date, referenced date)
