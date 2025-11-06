@@ -38,7 +38,6 @@ IO_CTRL *open_output_assert(char *ddname, int lrecl, int blkSize, unsigned char 
   rc = open_output(dcb);
   dcb->dcbdsrg1 = dcbdsgps; // DSORG=PS
   ioc->output = 1;
-  zwto_debug("@TEST open_output_assert dcb: %p", dcb->dcbdcbe);
   if (0 != rc)
     s0c3_abend(OPEN_OUTPUT_ASSERT_RC);
   if (!(dcbofopn & dcb->dcboflgs))
@@ -56,7 +55,6 @@ IO_CTRL *open_input_assert(char *ddname, int lrecl, int blkSize, unsigned char r
   dcb->dcbdsrg1 = dcbdsgps; // DSORG=PS
   rc = open_input(dcb);
   ioc->input = 1;
-  zwto_debug("@TEST open_input_assert dcb: %p", dcb->dcbdcbe);
 
   // TODO(Kelosky): TM    DCBOFLGS,DCBOFOPN
   // TODO(Kelosky): TM    dcbabend if occurs
