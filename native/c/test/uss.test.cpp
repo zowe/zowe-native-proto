@@ -501,6 +501,7 @@ void uss_tests()
                                  "\x74\x65\x73\x74\x2e";    // "test."
 
                              string writeCommand = zowex_command + " uss write " + uss_path;
+
                              rc = execute_command_with_input(writeCommand, ebcdic_text);
                              ExpectWithContext(rc, "Write command failed").ToBe(0);
 
@@ -510,22 +511,33 @@ void uss_tests()
                              ExpectWithContext(rc, view_response_hex_dump).ToBe(0);
 
                              // Remove Newline
+                             TestLog("1: " + view_response_hex_dump);
                              if (view_response_hex_dump.back() == '\n')
                              {
+                               TestLog("2: " + view_response_hex_dump);
                                view_response_hex_dump.pop_back();
+                               TestLog("3: " + view_response_hex_dump);
                              }
 
                              // Get last 2 characters
                              string newLine = view_response_hex_dump.substr(view_response_hex_dump.length() - 2);
+                             TestLog("4: " + newLine);
+
                              if (!view_response_hex_dump.empty() && newLine == "0a")
                              {
+                               TestLog("5: " + view_response_hex_dump);
                                // Update Dump to not include newline
                                view_response_hex_dump = view_response_hex_dump.substr(0, view_response_hex_dump.length() - 3);
+                               TestLog("6: " + view_response_hex_dump);
                              }
 
                              string parsed_response_bytes = parse_hex_dump(view_response_hex_dump);
 
+                             TestLog("7: " + to_string(parsed_response_bytes.length()));
+                             TestLog("8: " + to_string(parsed_response_bytes.length()));
                              Expect(parsed_response_bytes.length()).ToBe(expected_ascii_text.length());
+                             TestLog("9: " + parsed_response_bytes);
+                             TestLog("10: " + expected_ascii_text);
                              ExpectWithContext(memcmp(parsed_response_bytes.data(), expected_ascii_text.data(), parsed_response_bytes.length()),
                                                "Byte-for-byte memory comparison failed.")
                                  .ToBe(0);
