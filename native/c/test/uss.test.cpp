@@ -509,6 +509,17 @@ void uss_tests()
                              rc = execute_command_with_output(viewCommand, view_response_hex_dump);
                              ExpectWithContext(rc, view_response_hex_dump).ToBe(0);
 
+                             // Remove Newline
+                             view_response_hex_dump.pop_back();
+
+                             // Get last 2 characters
+                             string newLine = view_response_hex_dump.substr(view_response_hex_dump.length() - 2);
+                             if (!view_response_hex_dump.empty() && newLine == "0a")
+                             {
+                               // Update Dump to not include newline
+                               view_response_hex_dump = view_response_hex_dump.substr(0, view_response_hex_dump.length() - 3);
+                             }
+
                              string parsed_response_bytes = parse_hex_dump(view_response_hex_dump);
 
                              Expect(parsed_response_bytes.length()).ToBe(expected_ascii_text.length());
