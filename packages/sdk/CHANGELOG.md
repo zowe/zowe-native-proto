@@ -4,6 +4,10 @@ All notable changes to the Client code for "zowe-native-proto-sdk" are documente
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+
+- Added missing properties to the `Dataset` type for listing data sets with attributes. [#629](https://github.com/zowe/zowe-native-proto/issues/629)
+
 ## `0.2.0`
 
 - Added unit tests for `SshConfigUtils` class. [#614](https://github.com/zowe/zowe-native-proto/pull/614)
