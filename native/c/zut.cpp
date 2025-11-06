@@ -643,7 +643,6 @@ FileGuard::~FileGuard()
   if (fp)
   {
     fclose(fp);
-    fp = nullptr;
   }
 }
 
