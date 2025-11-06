@@ -72,7 +72,12 @@ export class SshClientCache extends vscode.Disposable {
 
             let newClient: ZSshClient | undefined;
             try {
-                newClient = await this.buildClient(session, clientId, { serverPath, keepAliveInterval, numWorkers, requestTimeout });
+                newClient = await this.buildClient(session, clientId, {
+                    serverPath,
+                    keepAliveInterval,
+                    numWorkers,
+                    requestTimeout,
+                });
                 imperative.Logger.getAppLogger().debug(
                     `Server checksums: ${JSON.stringify(newClient.serverChecksums)}`,
                 );
@@ -95,7 +100,12 @@ export class SshClientCache extends vscode.Disposable {
             }
             if (newClient == null) {
                 await deployWithProgress(session, serverPath, localDir);
-                newClient = await this.buildClient(session, clientId, { serverPath, keepAliveInterval, numWorkers, requestTimeout });
+                newClient = await this.buildClient(session, clientId, {
+                    serverPath,
+                    keepAliveInterval,
+                    numWorkers,
+                    requestTimeout,
+                });
             }
             this.mClientMap.set(clientId, newClient);
         }
