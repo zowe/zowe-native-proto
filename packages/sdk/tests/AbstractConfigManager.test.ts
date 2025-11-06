@@ -954,7 +954,7 @@ describe("AbstractConfigManager", async () => {
                 port: 22,
                 user: "user1",
                 privateKey: "/path/to/key",
-                password: "testPass",
+                password: "test",
             };
 
             const result = await (testManager as any).validateConfig(config, true);
