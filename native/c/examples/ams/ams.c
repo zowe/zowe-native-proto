@@ -155,13 +155,19 @@ int AMSMAIN()
     return -1;
   }
 
+  char inbuff[80] = {0};
+  char writebuff[160] = {0};
+
   short int lines_written = 0;
-  char inbuff[80] = {80};
-  char writebuff[80] = {80};
+  int bytes_written = 0;
+  char *free = &writebuff[0];
+  int lrecl = sysprint->dcb.dcblrecl;
+  int blocksize = sysprint->dcb.dcbblksi;
+
   while (0 == read_sync(sysin, inbuff))
   {
-    memset(writebuff, ' ', 80);
-    memcpy(writebuff, inbuff, 80);
+    memset(free, ' ', lrecl);
+    memcpy(free, inbuff, lrecl);
     lines_written++;
     write_sync(sysprint, writebuff);
     zwto_debug("@TEST inbuff: %.80s", writebuff);
