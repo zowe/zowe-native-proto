@@ -17,6 +17,9 @@
 #include "zutils.hpp"
 #include <stdio.h>
 #include "test_utils.hpp"
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 using namespace std;
 using namespace ztst;
@@ -122,7 +125,6 @@ void uss_tests()
                            [&]() -> void
                            {
                              string uss_file = ussTestDir + "/test_does_not_exist";
-                             string response;
                              string chmodFileCommand = zowex_command + " uss chmod 777 " + uss_file;
                              {
                                test_utils::ErrorStreamCapture c;
@@ -483,6 +485,75 @@ void uss_tests()
                              }
                              ExpectWithContext(rc, view_response).ToBe(255);
                              Expect(view_response).ToContain("Path /tmp/does/not/exist does not exist");
+                           });
+                        it("should properly translate EBCDIC text to ASCII/UTF-8",
+                           [&]() -> void
+                           {
+                             string ebcdic_text = "Hello World - This is a test.";
+
+                             string expected_ascii_text =
+                                 "\x48\x65\x6c\x6c\x6f\x20" // "Hello "
+                                 "\x57\x6f\x72\x6c\x64\x20" // "World "
+                                 "\x2d\x20"                 // "- "
+                                 "\x54\x68\x69\x73\x20"     // "This "
+                                 "\x69\x73\x20"             // "is "
+                                 "\x61\x20"                 // "a "
+                                 "\x74\x65\x73\x74\x2e";    // "test."
+
+                             string writeCommand = zowex_command + " uss write " + uss_path;
+                             rc = execute_command_with_input(writeCommand, ebcdic_text);
+                             ExpectWithContext(rc, "Write command failed").ToBe(0);
+
+                             string viewCommand = zowex_command + " uss view " + uss_path + " --rfb";
+                             string view_response_hex_dump;
+                             rc = execute_command_with_output(viewCommand, view_response_hex_dump);
+                             ExpectWithContext(rc, view_response_hex_dump).ToBe(0);
+
+                             string parsed_response_bytes = parse_hex_dump(view_response_hex_dump);
+
+                             Expect(parsed_response_bytes.length()).ToBe(expected_ascii_text.length());
+                             ExpectWithContext(memcmp(parsed_response_bytes.data(), expected_ascii_text.data(), parsed_response_bytes.length()),
+                                               "Byte-for-byte memory comparison failed.")
+                                 .ToBe(0);
+                           });
+                        it("should handle write and view for a FIFO pipe",
+                           [&]() -> void
+                           {
+                             string writeCommand = zowex_command + " uss write " + uss_path + " --ec binary";
+                             string viewCommand = zowex_command + " uss view " + uss_path + " --ec binary";
+                             string view_response;
+                             mkfifo(uss_path.c_str(), 0777);
+
+                             rc = execute_command_with_input(writeCommand, "Hello World!");
+                             ExpectWithContext(rc, "Write command failed").ToBe(0);
+
+                             rc = execute_command_with_output(viewCommand, view_response);
+                             ExpectWithContext(rc, view_response).ToBe(0);
+
+                             Expect(view_response).ToContain("Hello World!");
+                           });
+                        it("should handle write and view for a symlink",
+                           [&]() -> void
+                           {
+                             // Create symlink
+                             string symPath = uss_path + "_sym";
+                             symlink(uss_path.c_str(), symPath.c_str());
+
+                             // Write to sym link
+                             string writeCommand = zowex_command + " uss write " + symPath + " --ec binary";
+
+                             // Read from original path
+                             string viewCommand = zowex_command + " uss view " + uss_path + " --ec binary";
+                             string listCommand = zowex_command + " uss ls " + uss_path + " -l";
+                             string view_response;
+
+                             rc = execute_command_with_input(writeCommand, "Hello World!");
+                             ExpectWithContext(rc, "Write command failed").ToBe(0);
+
+                             rc = execute_command_with_output(viewCommand, view_response);
+                             ExpectWithContext(rc, view_response).ToBe(0);
+
+                             Expect(view_response).ToContain("Hello World!");
                            });
                       });
 
