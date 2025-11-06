@@ -46,12 +46,13 @@ struct ZDSEntry
   int secondary;
   std::string spacu;
   std::string storclass;
-  int used;
+  int usedp;
   int usedx;
   std::string volser;
-  int maxdb;   // Maximum directory blocks (for PDS/PDSE)
-  int useddb;  // Used directory blocks (for PDS/PDSE)
-  int members; // Number of members (for PDS/PDSE)
+  // ISPF shows the following fields, but we omit them since they require reading PDS directory (too slow)
+  // int maxdb;
+  // int members;
+  // int useddb;
 };
 
 typedef struct

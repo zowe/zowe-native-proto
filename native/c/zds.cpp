@@ -1038,7 +1038,7 @@ void load_extents_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry, uint32_t p
   if ((dscb->ds1dsorg & DS1DSGDA_MASK) || (dscb->ds1dsorg & DS1ACBM_MASK) || is_pdse)
   {
     // DA (Direct Access/BDAM), VSAM, or PDSE: DS1LSTAR not meaningful
-    entry.used = -1;
+    entry.usedp = -1;
     entry.usedx = -1;
   }
   else
@@ -1046,28 +1046,22 @@ void load_extents_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry, uint32_t p
     // DS1LSTAR is 3 bytes: TT (track) + R (record)
     // We only need the TT part (bytes 0-1)
     uint32_t last_used_track;
-    if (pds_max_track > 0)
-    {
-      last_used_track = pds_max_track;
-    }
-    else
-    {
-      uint8_t lstar_tt_high = static_cast<unsigned char>(dscb->ds1lstar[0]);
-      uint8_t lstar_tt_low = static_cast<unsigned char>(dscb->ds1lstar[1]);
+    uint8_t lstar_tt_high = static_cast<unsigned char>(dscb->ds1lstar[0]);
+    uint8_t lstar_tt_low = static_cast<unsigned char>(dscb->ds1lstar[1]);
 
-      // Parse last used track number (TT from TTR)
-      // TT is a 2-byte big-endian value representing the relative track number (0-based)
-      last_used_track = (lstar_tt_high << 8) | lstar_tt_low;
+    // Parse last used track number (TT from TTR)
+    // TT is a 2-byte big-endian value representing the relative track number (0-based)
+    last_used_track = (lstar_tt_high << 8) | lstar_tt_low;
 
-      // Check if this is a large format dataset that uses DS1TTHI
-      bool is_large = (dscb->ds1flag1 & 0x10) != 0; // DS1LARGE bit
-      if (is_large)
-      {
-        // Include the high-order byte from DS1TTHI
-        uint8_t lstar_tt_highest = static_cast<unsigned char>(dscb->ds1ttthi);
-        last_used_track |= (lstar_tt_highest << 16);
-      }
+    // Check if this is a large format dataset that uses DS1TTHI
+    bool is_large = (dscb->ds1flag1 & 0x10) != 0; // DS1LARGE bit
+    if (is_large)
+    {
+      // Include the high-order byte from DS1TTHI
+      uint8_t lstar_tt_highest = static_cast<unsigned char>(dscb->ds1ttthi);
+      last_used_track |= (lstar_tt_highest << 16);
     }
+
     // Special case: DS1LSTAR = 0x000000 can mean either:
     // 1. Track 0, record 0 is used (dataset has been written to)
     // 2. Dataset has never been written to (unused)
@@ -1078,27 +1072,28 @@ void load_extents_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry, uint32_t p
     if (last_used_track == 0 && pds_max_track == 0 && is_blksize_zero)
     {
       // DS1LSTAR = 0x000000 for blksize=0 dataset = unused
-      entry.used = 0;
+      entry.usedp = 0;
       entry.usedx = 0;
     }
     else
     {
-      // Report used space in native units
+      // Store used space temporarily in tracks for later percentage calculation
+      // (will be converted to percentage in the bytes conversion section)
       if (use_cylinders)
       {
         // Convert tracks to cylinders (round up)
-        entry.used = (last_used_track + 1 + 14) / 15;
+        entry.usedp = (last_used_track + 1 + 14) / 15;
       }
       else
       {
-        // Report in tracks
-        entry.used = last_used_track + 1;
+        // Report in tracks (temporarily, will convert to percentage later)
+        entry.usedp = last_used_track + 1;
       }
     }
 
     // Calculate how many extents contain data (count of used extents)
     // Skip this calculation if we already determined the dataset is unused
-    if (entry.used > 0)
+    if (entry.usedp > 0)
     {
       int cumulative_tracks = 0;
       entry.usedx = 0;
@@ -1142,113 +1137,8 @@ void load_extents_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry, uint32_t p
           }
         }
       }
-    } // End if (entry.used > 0)
+    } // End if (entry.usedp > 0)
   }
-}
-
-// Helper function to read PDS directory and get member count and directory block info
-uint32_t load_pds_directory_info(const string &dsn, ZDSEntry &entry)
-{
-  string full_dsn = "//'" + dsn + "'";
-
-  FILE *fp = fopen(full_dsn.c_str(), "rb,recfm=u");
-  if (!fp)
-  {
-    // Can't open directory - leave values as-is
-    return 0;
-  }
-
-  RECORD rec = {0};
-  int total_members = 0;
-  int directory_blocks_used = 0;
-  int total_directory_blocks = 0;
-  bool found_end_marker = false;
-  uint32_t max_track = 0;
-
-  // Read all directory blocks - continue even after end marker to count all allocated blocks
-  while (fread(&rec, sizeof(rec), 1, fp))
-  {
-    total_directory_blocks++;
-
-    // Check if this looks like a valid directory block
-    // rec.count should be reasonable (between 0 and RECLEN)
-    if (rec.count > RECLEN)
-    {
-      // This doesn't look like a directory block - probably hit member data
-      total_directory_blocks--; // Don't count this invalid block
-      break;
-    }
-
-    // Check if this block contains actual directory entries
-    bool has_entries = false;
-
-    unsigned char *data = (unsigned char *)&rec;
-    data += sizeof(rec.count); // increment past halfword length
-
-    int len = sizeof(RECORD_ENTRY);
-    for (int i = 0; i < rec.count; i = i + len)
-    {
-      RECORD_ENTRY dir_entry = {0};
-      memcpy(&dir_entry, data, sizeof(dir_entry));
-
-      // Check for end of directory marker (8 bytes of 0xFF)
-      long long int end = 0xFFFFFFFFFFFFFFFF;
-      if (memcmp(dir_entry.name, &end, sizeof(end)) == 0)
-      {
-        // End of directory reached - this block is used up to this point
-        directory_blocks_used = total_directory_blocks;
-        found_end_marker = true;
-        // Don't exit - continue to count remaining allocated but unused directory blocks
-        break; // Break inner loop only
-      }
-
-      // Check for unused directory space (all zeros)
-      long long int zero = 0;
-      if (memcmp(dir_entry.name, &zero, sizeof(zero)) == 0)
-      {
-        // Empty entry - skip it but continue
-        data = data + sizeof(dir_entry);
-        len = sizeof(dir_entry);
-        continue;
-      }
-
-      uint32_t current_track = (dir_entry.ttr[0] << 8) | dir_entry.ttr[1];
-      if (current_track > max_track)
-      {
-        max_track = current_track;
-      }
-
-      total_members++;
-      has_entries = true;
-
-      unsigned char info = dir_entry.info;
-      info &= 0x1F; // bits 3-7 contain the number of half words of user data
-
-      data = data + sizeof(dir_entry) + (info * 2); // skip number of half words
-      len = sizeof(dir_entry) + (info * 2);
-
-      int remainder = rec.count - (i + len);
-      if (remainder < sizeof(dir_entry))
-        break;
-    }
-
-    if (has_entries && !found_end_marker)
-    {
-      directory_blocks_used = total_directory_blocks;
-    }
-  }
-
-done:
-  fclose(fp);
-
-  // Update entry with directory information
-  entry.members = total_members;
-  entry.useddb = directory_blocks_used;
-
-  // maxdb is the total allocated directory blocks
-  // This includes used blocks plus any unused allocated blocks before data starts
-  entry.maxdb = total_directory_blocks;
-  return max_track;
 }
 
 void zds_get_attrs_from_dscb(ZDS *zds, ZDSEntry &entry)
@@ -1336,36 +1226,6 @@ void zds_get_attrs_from_dscb(ZDS *zds, ZDSEntry &entry)
     // DS1ENCRP (0x04) in ds1flag1 indicates access method encrypted dataset
     entry.encrypted = (dscb->ds1flag1 & DS1ENCRP_MASK) != 0;
 
-    // Load directory block information for PDS/PDSE
-    if (is_partitioned)
-    {
-      // Initialize with defaults
-      entry.maxdb = -1;
-      entry.useddb = -1;
-      entry.members = -1;
-
-      // For PDS (not PDSE), read the directory to get accurate counts
-      // PDSE directories are more complex and would require DESERV
-      if (!is_pdse)
-      {
-        // Read the PDS directory to get member count and directory block info
-        max_member_track = load_pds_directory_info(entry.name, entry);
-      }
-      else
-      {
-        // For PDSE, we'd need to use DESERV macro which is more complex
-        // For now, just set DS1NOBDB value
-        entry.useddb = dscb->ds1nobdb;
-      }
-    }
-    else
-    {
-      // Not a partitioned dataset
-      entry.maxdb = -1;
-      entry.useddb = -1;
-      entry.members = -1;
-    }
-
     load_date_from_dscb(dscb->ds1credt, &entry.cdate, false);
     load_date_from_dscb(dscb->ds1expdt, &entry.edate, true); // expiration date can have sentinel
     load_date_from_dscb(dscb->ds1refd, &entry.rdate, false);
@@ -1375,38 +1235,77 @@ void zds_get_attrs_from_dscb(ZDS *zds, ZDSEntry &entry)
     // This uses the block size to calculate usable bytes per track
     if (entry.spacu == "BYTES" && entry.blksize > 0)
     {
-      // For 3390 DASD, track capacity is approximately 56,664 bytes
-      const int TRACK_CAPACITY_3390 = 56664;
+      // Calculate capacity: floor(56664 / blksize) * blksize
+      int blocks_per_track = 56664 / entry.blksize;
+      if (blocks_per_track <= 0)
+        blocks_per_track = 1;
+      int base_bytes_per_track = blocks_per_track * entry.blksize;
 
-      // Calculate usable bytes per track: floor(capacity / blksize) * blksize
-      int blocks_per_track = TRACK_CAPACITY_3390 / entry.blksize;
-      int usable_bytes_per_track = blocks_per_track * entry.blksize;
-
-      // Convert alloc, primary, and used from tracks to bytes
+      // Convert alloc and primary from tracks to bytes
       if (entry.alloc > 0)
-        entry.alloc *= usable_bytes_per_track;
+        entry.alloc *= base_bytes_per_track;
       if (entry.primary > 0)
-        entry.primary *= usable_bytes_per_track;
-      if (entry.used > 0)
+        entry.primary *= base_bytes_per_track;
+
+      // Calculate used percentage
+      // Note: DS1TRBAL contains bytes remaining calculated by IBM TRKCALC,
+      // but since we don't have access to TRKCALC's exact capacity formula,
+      // we approximate by using simple track-based percentage calculation.
+      if (entry.usedp > 0 && entry.alloc > 0)
       {
-        // Calculate from DS1LSTAR and DS1TRBAL
-        // ISPF calculates used space more precisely using DS1TRBAL (space remaining on last track)
-        // Formula: used_bytes = (used_tracks × bytes_per_track) - bytes_remaining
-        uint16_t trbal = (static_cast<unsigned char>(dscb->ds1trbal[0]) << 8) |
-                         static_cast<unsigned char>(dscb->ds1trbal[1]);
+        // entry.usedp currently contains used tracks (or cylinders)
+        // entry.alloc contains total allocated tracks (now converted to bytes)
+        int used_tracks = entry.usedp; // Store before overwriting
+        int total_tracks = entry.alloc / base_bytes_per_track;
 
-        // For PDS datasets, ISPF calculates "used" by scanning the directory
-        // and finding the highest TTR among all members, then subtracting DS1TRBAL.
-        // DS1LSTAR includes both directory and member data, which can lead to
-        // discrepancies of 1-2 blocks compared to ISPF's member-based calculation.
-        // For now, we use the simpler DS1LSTAR-based calculation for all datasets.
-        // TODO: For exact ISPF matching on PDS, scan directory for highest member TTR
+        if (total_tracks > 0)
+        {
+          // Calculate percentage and truncate (round down) to match z/OSMF behavior
+          double percentage = (100.0 * used_tracks) / total_tracks;
+          entry.usedp = (int)percentage; // Truncate to integer
 
-        entry.used = (entry.used * usable_bytes_per_track) - trbal;
+          // Clamp to 0-100 range
+          if (entry.usedp > 100)
+            entry.usedp = 100;
+        }
+        else
+        {
+          entry.usedp = 0;
+        }
+      }
+      else if (entry.usedp == 0)
+      {
+        entry.usedp = 0; // Already 0, keep it
+      }
+      else
+      {
+        entry.usedp = -1; // Unknown/not applicable
       }
 
       // Secondary allocation is already in bytes from DS1SCEXT for contiguous allocations
       // No conversion needed
+    }
+    else
+    {
+      // For non-BYTES space units (TRACKS, CYLINDERS, BLOCKS), calculate percentage
+      // entry.usedp and entry.alloc are both in the same units (tracks or cylinders)
+      if (entry.usedp > 0 && entry.alloc > 0)
+      {
+        double percentage = (100.0 * entry.usedp) / entry.alloc;
+        entry.usedp = (int)percentage; // Truncate to integer to match z/OSMF
+
+        // Clamp to 0-100 range
+        if (entry.usedp > 100)
+          entry.usedp = 100;
+      }
+      else if (entry.usedp == 0)
+      {
+        entry.usedp = 0; // Already 0, keep it
+      }
+      else
+      {
+        entry.usedp = -1; // Unknown/not applicable
+      }
     }
   }
   else
@@ -1663,9 +1562,9 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
           entry.migrated = false;
         }
 
-        // Load dsorg and recfm from DSCB if not migrated
+        // Load detailed attributes from DSCB if not migrated
         // This needs to happen before the switch statement as it sets entry.dsorg
-        if (!entry.migrated)
+        if (show_attributes && !entry.migrated)
         {
           zds_get_attrs_from_dscb(zds, entry);
         }

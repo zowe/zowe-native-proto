@@ -142,14 +142,6 @@ export interface Dataset {
      */
     lrecl?: number;
     /**
-     * Maximum directory blocks
-     */
-    maxdb?: number;
-    /**
-     * Number of members
-     */
-    members?: number;
-    /**
      * Management class
      */
     mgmtclass?: string;
@@ -182,13 +174,9 @@ export interface Dataset {
      */
     storclass?: string;
     /**
-     * Used units
+     * Used percentage
      */
-    used?: number;
-    /**
-     * Used directory blocks
-     */
-    useddb?: number;
+    usedp?: number;
     /**
      * Used extents
      */

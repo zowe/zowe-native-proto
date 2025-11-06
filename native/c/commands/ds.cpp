@@ -439,27 +439,15 @@ int handle_data_set_list(InvocationContext &context)
         {
           entry->set("storclass", str(it->storclass));
         }
-        entry->set("volser", str(it->volser));
-        if (it->used != -1)
+        if (it->usedp != -1)
         {
-          entry->set("used", i64(it->used));
+          entry->set("usedp", i64(it->usedp));
         }
         if (it->usedx != -1)
         {
           entry->set("usedx", i64(it->usedx));
         }
-        if (it->maxdb != -1)
-        {
-          entry->set("maxdb", i64(it->maxdb));
-        }
-        if (it->useddb != -1)
-        {
-          entry->set("useddb", i64(it->useddb));
-        }
-        if (it->members != -1)
-        {
-          entry->set("members", i64(it->members));
-        }
+        entry->set("volser", str(it->volser));
       }
       entries_array->push(entry);
     }
