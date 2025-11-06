@@ -14,7 +14,7 @@ import type { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { imperative } from "@zowe/zowe-explorer-api";
 import * as vscode from "vscode";
 import { type ClientOptions, ZSshClient, ZSshUtils } from "zowe-native-proto-sdk";
-import { SshConfigUtils } from "./SshConfigUtils";
+import { ConfigUtils } from "./ConfigUtils";
 import { deployWithProgress, getVsceConfig } from "./Utilities";
 
 class AsyncMutex extends imperative.DeferredPromise<void> implements Disposable {
@@ -62,7 +62,7 @@ export class SshClientCache extends vscode.Disposable {
         if (!this.mClientMap.has(clientId)) {
             using _lock = this.acquireProfileLock(clientId);
             const session = ZSshUtils.buildSession(profile.profile!);
-            const serverPath = SshConfigUtils.getServerPath(profile.profile);
+            const serverPath = ConfigUtils.getServerPath(profile.profile);
             const localDir = path.join(this.mContext.extensionPath, "bin");
             const vsceConfig = getVsceConfig();
             const keepAliveInterval = vsceConfig.get<number>("keepAliveInterval");

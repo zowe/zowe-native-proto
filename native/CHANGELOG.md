@@ -6,6 +6,11 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
+- `c`: Fixed issue where uploading changes to a data set did not always flush to disk. [#643](https://github.com/zowe/zowe-native-proto/issues/643)
+- `c`: Updated commands that read data from stdin to read literal text rather than parsing hex string. [#645](https://github.com/zowe/zowe-native-proto/pull/645)
+
+## `0.2.0`
+
 - `c`: Fixed issue where uploading changes to a PDS member removed its ISPF stats. [#556](https://github.com/zowe/zowe-native-proto/issues/556)
 - `c`: Streamlined argument checks and access within command handlers. Handlers can now use `get`, `get_if` and `find` to search for arguments and retrieve their values, regardless of whether the argument is a keyword or positional argument. [#574](https://github.com/zowe/zowe-native-proto/pull/574)
 - `c`: Command handlers can now be called directly by providing an `InvocationContext`. The context provides helper functions for error, input, and output stream redirection. Handlers can use this context to print output and errors, as well as setting content length. [#574](https://github.com/zowe/zowe-native-proto/pull/574)
@@ -19,6 +24,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - `c`: Fixed undefined behavior in the `zut_bpxwdyn` function by verifying that the allocated 31-bit region is valid before writing to it. [#577](https://github.com/zowe/zowe-native-proto/issues/577)
 - `c`: The CLI parser now prints unexpected, trailing positional arguments when handling command input. [#594](https://github.com/zowe/zowe-native-proto/issues/594)
 - Rewrote the middleware (`zowed`) in C++. This removes our dependency on Golang, improves performance, and allows parallel requests to be handled in a single address space. [#595](https://github.com/zowe/zowe-native-proto/pull/595)
+- `c`: Fixed issue where automatic codepage conversion with `_BPXK_AUTOCVT` was not disabled for all USS read and write operations, which could interfere with the `--encoding` option. [#620](https://github.com/zowe/zowe-native-proto/pull/620)
 
 ## `0.1.10`
 

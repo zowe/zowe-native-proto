@@ -50,6 +50,14 @@ export const ListDataSetDefinition: ICommandDefinition = {
             required: true,
         },
     ],
+    options: [
+        {
+            name: "attributes",
+            aliases: ["a"],
+            description: "Fetch attributes of the data sets being listed.",
+            type: "boolean",
+        },
+    ],
     profile: { optional: ["ssh"] },
     outputFormatOptions: true,
 };

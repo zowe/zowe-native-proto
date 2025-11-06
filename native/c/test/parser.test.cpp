@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "parser.test.hpp"
+#include "test_utils.hpp"
 #include "ztest.hpp"
 #include "../parser.hpp"
 
@@ -116,15 +117,12 @@ void parser_tests()
 
                std::vector<std::string> raw = {"prog", "--missing"};
                std::vector<char *> argv = to_argv(raw);
-               
-               std::stringstream err_output;
-               std::streambuf* original_cerr_buf = std::cerr.rdbuf();
-               std::cerr.rdbuf(err_output.rdbuf());
 
-               ParseResult result =
-                   arg_parser.parse(static_cast<int>(argv.size()), argv.data());
-
-               std::cerr.rdbuf(original_cerr_buf);
+               ParseResult result;
+               {
+                 test_utils::ErrorStreamCapture error_capture;
+                 result = arg_parser.parse(static_cast<int>(argv.size()), argv.data());
+               }
 
                Expect(result.status).ToBe(ParseResult::ParserStatus_ParseError);
                Expect(result.error_message.find("option --missing requires a value.")).Not().ToBe(std::string::npos);
@@ -137,15 +135,12 @@ void parser_tests()
 
                std::vector<std::string> raw = {"prog", "--tags"};
                std::vector<char *> argv = to_argv(raw);
-               
-               std::stringstream err_output;
-               std::streambuf* original_cerr_buf = std::cerr.rdbuf();
-               std::cerr.rdbuf(err_output.rdbuf());
 
-               ParseResult result =
-                   arg_parser.parse(static_cast<int>(argv.size()), argv.data());
-
-               std::cerr.rdbuf(original_cerr_buf);
+               ParseResult result;
+               {
+                 test_utils::ErrorStreamCapture error_capture;
+                 result = arg_parser.parse(static_cast<int>(argv.size()), argv.data());
+               }
 
                Expect(result.status).ToBe(ParseResult::ParserStatus_ParseError);
                Expect(result.error_message.find("option --tags requires at least one value.")).Not().ToBe(std::string::npos);
@@ -160,14 +155,11 @@ void parser_tests()
                std::vector<std::string> raw = {"prog", "--foo", "bar"};
                std::vector<char *> argv = to_argv(raw);
 
-               std::stringstream err_output;
-               std::streambuf* original_cerr_buf = std::cerr.rdbuf();
-               std::cerr.rdbuf(err_output.rdbuf());
-
-               ParseResult result =
-                   arg_parser.parse(static_cast<int>(argv.size()), argv.data());
-
-               std::cerr.rdbuf(original_cerr_buf);
+               ParseResult result;
+               {
+                 test_utils::ErrorStreamCapture error_capture;
+                 result = arg_parser.parse(static_cast<int>(argv.size()), argv.data());
+               }
 
                Expect(result.status).ToBe(ParseResult::ParserStatus_ParseError);
                Expect(result.has_dynamic("foo")).ToBe(false);
@@ -259,15 +251,12 @@ void parser_tests()
 
                std::vector<std::string> raw = {"prog", "--target"};
                std::vector<char *> argv = to_argv(raw);
-               
-               std::stringstream err_output;
-               std::streambuf* original_cerr_buf = std::cerr.rdbuf();
-               std::cerr.rdbuf(err_output.rdbuf());
 
-               ParseResult result =
-                   arg_parser.parse(static_cast<int>(argv.size()), argv.data());
-
-               std::cerr.rdbuf(original_cerr_buf);
+               ParseResult result;
+               {
+                 test_utils::ErrorStreamCapture error_capture;
+                 result = arg_parser.parse(static_cast<int>(argv.size()), argv.data());
+               }
 
                Expect(result.status).ToBe(ParseResult::ParserStatus_ParseError);
              });
@@ -302,14 +291,11 @@ void parser_tests()
                std::vector<std::string> raw = {"prog", "-vo", "file.txt"};
                std::vector<char *> argv = to_argv(raw);
 
-               std::stringstream err_output;
-               std::streambuf* original_cerr_buf = std::cerr.rdbuf();
-               std::cerr.rdbuf(err_output.rdbuf());
-
-               ParseResult result =
-                   arg_parser.parse(static_cast<int>(argv.size()), argv.data());
-
-               std::cerr.rdbuf(original_cerr_buf);
+               ParseResult result;
+               {
+                 test_utils::ErrorStreamCapture error_capture;
+                 result = arg_parser.parse(static_cast<int>(argv.size()), argv.data());
+               }
 
                Expect(result.status).ToBe(ParseResult::ParserStatus_ParseError);
                Expect(result.error_message.find("option -o requires a value and cannot be combined")).Not().ToBe(std::string::npos);
@@ -341,15 +327,12 @@ void parser_tests()
 
                std::vector<std::string> raw = {"prog"};
                std::vector<char *> argv = to_argv(raw);
-               
-               std::stringstream err_output;
-               std::streambuf* original_cerr_buf = std::cerr.rdbuf();
-               std::cerr.rdbuf(err_output.rdbuf());
 
-               ParseResult result =
-                   arg_parser.parse(static_cast<int>(argv.size()), argv.data());
-
-               std::cerr.rdbuf(original_cerr_buf);
+               ParseResult result;
+               {
+                 test_utils::ErrorStreamCapture error_capture;
+                 result = arg_parser.parse(static_cast<int>(argv.size()), argv.data());
+               }
 
                Expect(result.status).ToBe(ParseResult::ParserStatus_ParseError);
                Expect(result.error_message.find("missing required positional argument: dataset")).Not().ToBe(std::string::npos);
@@ -413,8 +396,11 @@ void parser_tests()
                std::vector<std::string> raw = {"zowex", "job", "list", "extra"};
                std::vector<char *> argv = to_argv(raw);
 
-               ParseResult result =
-                   arg_parser.parse(static_cast<int>(argv.size()), argv.data());
+               ParseResult result;
+               {
+                 test_utils::ErrorStreamCapture error_capture;
+                 result = arg_parser.parse(static_cast<int>(argv.size()), argv.data());
+               }
 
                Expect(result.status).ToBe(ParseResult::ParserStatus_ParseError);
                Expect(result.error_message.find("unexpected argument") != std::string::npos).ToBe(true);
@@ -426,9 +412,6 @@ void parser_tests()
              it("flags conflicting keyword arguments", []() {
                ArgumentParser arg_parser("prog", "conflict sample");
                Command &root = arg_parser.get_root_command();
-               std::stringstream err_output;
-               std::streambuf* original_cerr_buf = std::cerr.rdbuf();
-               std::cerr.rdbuf(err_output.rdbuf());
 
                root.add_argument("primary")
                    .aliases(make_aliases("-p"))
@@ -444,9 +427,11 @@ void parser_tests()
                std::vector<std::string> raw = {"prog", "--primary", "--secondary"};
                std::vector<char *> argv = to_argv(raw);
 
-               ParseResult result =
-                   arg_parser.parse(static_cast<int>(argv.size()), argv.data());
-               std::cerr.rdbuf(original_cerr_buf);
+               ParseResult result;
+               {
+                 test_utils::ErrorStreamCapture error_capture;
+                 result = arg_parser.parse(static_cast<int>(argv.size()), argv.data());
+               }
 
                Expect(result.status).ToBe(ParseResult::ParserStatus_ParseError);
                Expect(result.error_message.find("conflicting options provided: --primary conflicts with --secondary")).Not().ToBe(std::string::npos);
@@ -459,18 +444,15 @@ void parser_tests()
                ArgumentParser arg_parser("prog", "required sample");
                Command &root = arg_parser.get_root_command();
                root.add_keyword_arg("source", make_aliases("-s"), "source file", ArgType_Single, true);
-               
-               std::stringstream err_output;
-               std::streambuf* original_cerr_buf = std::cerr.rdbuf();
-               std::cerr.rdbuf(err_output.rdbuf());
 
                std::vector<std::string> raw = {"prog"};
                std::vector<char *> argv = to_argv(raw);
 
-               ParseResult result =
-                   arg_parser.parse(static_cast<int>(argv.size()), argv.data());
-
-               std::cerr.rdbuf(original_cerr_buf);
+               ParseResult result;
+               {
+                 test_utils::ErrorStreamCapture error_capture;
+                 result = arg_parser.parse(static_cast<int>(argv.size()), argv.data());
+               }
 
                Expect(result.status).ToBe(ParseResult::ParserStatus_ParseError);
                Expect(result.error_message.find("missing required option: -s, --source <value>")).Not().ToBe(std::string::npos);

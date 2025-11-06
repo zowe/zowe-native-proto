@@ -24,9 +24,6 @@
 
 using std::string;
 
-// Forward declaration from server.hpp
-struct RpcNotification;
-
 CommandBuilder::CommandBuilder(CommandHandler handler)
     : handler_(handler), transforms_()
 {
@@ -74,9 +71,9 @@ CommandBuilder &CommandBuilder::set_default(const string &arg_name, double defau
   return *this;
 }
 
-CommandBuilder &CommandBuilder::handle_fifo(const string &rpc_id, const string &arg_name, FifoMode mode, bool defer)
+CommandBuilder &CommandBuilder::handle_fifo(const string &rpc_id_param, const string &arg_name, FifoMode mode, bool defer)
 {
-  transforms_.push_back(ArgTransform(ArgTransform::HandleFifo, rpc_id, arg_name, mode, defer));
+  transforms_.push_back(ArgTransform(ArgTransform::HandleFifo, rpc_id_param, arg_name, mode, defer));
   return *this;
 }
 
@@ -100,7 +97,7 @@ CommandBuilder &CommandBuilder::flatten_obj(const string &arg_name)
 
 void CommandBuilder::apply_input_transforms(MiddlewareContext &context) const
 {
-  plugin::ArgumentMap &args = context.mutable_arguments();
+  auto &args = context.mutable_arguments();
 
   for (const auto &transform : transforms_)
   {
@@ -235,13 +232,13 @@ void CommandBuilder::apply_input_transforms(MiddlewareContext &context) const
     {
       // HandleFifo: Create FIFO pipe and send appropriate notification
       // Find the RPC ID argument
-      auto rpc_it = args.find(transform.rpc_id);
-      if (rpc_it != args.end())
+      const auto rpc_id_arg = args.find(transform.rpc_id_param);
+      if (rpc_id_arg != args.end())
       {
         try
         {
           // Get stream_id from the argument
-          const long long *stream_id_ptr = rpc_it->second.get_int();
+          const long long *stream_id_ptr = rpc_id_arg->second.get_int();
           if (stream_id_ptr == nullptr)
           {
             context.errln("HandleFifo: RPC ID argument is not an integer");
@@ -262,36 +259,35 @@ void CommandBuilder::apply_input_transforms(MiddlewareContext &context) const
                            << geteuid() << "_"
                            << getpid() << "_"
                            << stream_id << "_fifo";
-
-          transform.pipe_path = pipe_path_stream.str();
+          const string pipe_path = pipe_path_stream.str();
 
           // Remove any existing pipe (ignore errors if it doesn't exist)
-          if (unlink(transform.pipe_path.c_str()) != 0 && errno != ENOENT)
+          if (unlink(pipe_path.c_str()) != 0 && errno != ENOENT)
           {
-            string errMsg = string("Failed to delete existing FIFO pipe: ") + transform.pipe_path + ", errno: " + std::to_string(errno);
+            string errMsg = string("Failed to delete existing FIFO pipe: ") + pipe_path + ", errno: " + std::to_string(errno);
             context.errln(errMsg.c_str());
             LOG_ERROR("%s", errMsg.c_str());
             break;
           }
 
           // Create the FIFO pipe
-          if (mkfifo(transform.pipe_path.c_str(), 0600) != 0)
+          if (mkfifo(pipe_path.c_str(), 0600) != 0)
           {
-            string errMsg = string("Failed to create FIFO pipe: ") + transform.pipe_path + ", errno: " + std::to_string(errno);
+            string errMsg = string("Failed to create FIFO pipe: ") + pipe_path + ", errno: " + std::to_string(errno);
             context.errln(errMsg.c_str());
             LOG_ERROR("%s", errMsg.c_str());
             break;
           }
 
-          LOG_DEBUG("Created FIFO pipe: %s", transform.pipe_path.c_str());
+          LOG_DEBUG("Created FIFO pipe: %s", pipe_path.c_str());
 
           // Set the pipe path as the output argument
-          args[transform.arg_name] = plugin::Argument(transform.pipe_path);
+          args[transform.arg_name] = plugin::Argument(pipe_path);
 
           // Create notification based on mode
           zjson::Value params_obj = zjson::Value::create_object();
           params_obj.add_to_object("id", zjson::Value(static_cast<int>(stream_id)));
-          params_obj.add_to_object("pipePath", zjson::Value(transform.pipe_path));
+          params_obj.add_to_object("pipePath", zjson::Value(pipe_path));
 
           RpcNotification notification = RpcNotification{
               .jsonrpc = "2.0",
@@ -380,17 +376,25 @@ void CommandBuilder::apply_output_transforms(MiddlewareContext &context) const
     case ArgTransform::HandleFifo:
     {
       // HandleFifo cleanup: Remove the FIFO pipe after command execution
-      if (!transform.pipe_path.empty())
+      const auto &args = context.arguments();
+      const auto pipe_path_arg = args.find(transform.arg_name);
+
+      if (pipe_path_arg != args.end())
       {
         // Remove the pipe (ignore errors if already removed)
-        if (unlink(transform.pipe_path.c_str()) == 0)
+        const string pipe_path = pipe_path_arg->second.get_string_value();
+        if (unlink(pipe_path.c_str()) == 0)
         {
-          LOG_DEBUG("Cleaned up FIFO pipe: %s", transform.pipe_path.c_str());
+          LOG_DEBUG("Cleaned up FIFO pipe: %s", pipe_path.c_str());
         }
         else if (errno != ENOENT)
         {
-          LOG_ERROR("Failed to delete FIFO pipe: %s, errno: %d", transform.pipe_path.c_str(), errno);
+          LOG_ERROR("Failed to delete FIFO pipe: %s, errno: %d", pipe_path.c_str(), errno);
         }
+      }
+      else
+      {
+        LOG_WARN("Failed to cleanup FIFO: pipe path not found in arguments");
       }
       break;
     }

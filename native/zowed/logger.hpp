@@ -121,15 +121,8 @@ private:
   /**
    * Common logging implementation
    */
-  static void log_message(const char *level, const char *format, va_list args, bool check_verbose = false)
+  static void log_message(const char *level, const char *format, va_list args)
   {
-    const auto initialized = get_initialized();
-    if (!initialized)
-      return;
-
-    if (check_verbose && !get_verbose_logging())
-      return;
-
     std::mutex &log_mutex = get_log_mutex();
     std::ofstream &log_file = get_log_file();
     const std::lock_guard<std::mutex> lock(log_mutex);
@@ -227,9 +220,13 @@ public:
    */
   static void log_debug(const char *format, ...)
   {
+    if (!get_initialized() || !is_verbose_logging())
+    {
+      return;
+    }
     va_list args;
     va_start(args, format);
-    log_message("DEBUG", format, args, true);
+    log_message("DEBUG", format, args);
     va_end(args);
   }
 
@@ -238,6 +235,10 @@ public:
    */
   static void log_info(const char *format, ...)
   {
+    if (!get_initialized())
+    {
+      return;
+    }
     va_list args;
     va_start(args, format);
     log_message("INFO", format, args);
@@ -249,6 +250,10 @@ public:
    */
   static void log_warn(const char *format, ...)
   {
+    if (!get_initialized())
+    {
+      return;
+    }
     va_list args;
     va_start(args, format);
     log_message("WARN", format, args);
@@ -260,6 +265,10 @@ public:
    */
   static void log_error(const char *format, ...)
   {
+    if (!get_initialized())
+    {
+      return;
+    }
     va_list args;
     va_start(args, format);
     log_message("ERROR", format, args);
@@ -280,9 +289,7 @@ public:
 
     vsnprintf(buffer, sizeof(buffer), format, args);
 
-    const auto initialized = get_initialized();
-
-    if (initialized)
+    if (get_initialized())
     {
       log_message("FATAL", format, args_copy);
     }

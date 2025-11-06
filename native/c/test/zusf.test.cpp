@@ -31,13 +31,21 @@ void zusf_tests()
   describe("zusf_chmod_uss_file_or_dir tests",
            [&]() -> void
            {
-             // Setup test environment
              ZUSF zusf;
-             memset(&zusf, 0, sizeof(zusf));
-
              const string test_file = "/tmp/zusf_test_file.txt";
              const string test_dir = "/tmp/zusf_test_dir";
              const string nonexistent_file = "/tmp/nonexistent_file.txt";
+
+             beforeEach([&]() -> void
+                        { memset(&zusf, 0, sizeof(zusf)); });
+
+             afterEach([&]() -> void
+                       {
+                         string inner_file = test_dir + "/inner_file.txt";
+                         unlink(inner_file.c_str());
+                         unlink(test_file.c_str());
+                         rmdir(test_dir.c_str());
+                         unlink(nonexistent_file.c_str()); });
 
              it("should fail when file does not exist",
                 [&]() -> void
@@ -54,22 +62,17 @@ void zusf_tests()
                 [&]() -> void
                 {
                   // Create test directory
-                  rmdir(test_dir.c_str()); // Remove if exists
                   mkdir(test_dir.c_str(), 0755);
 
                   int result = zusf_chmod_uss_file_or_dir(&zusf, test_dir, 0644, false);
                   Expect(result).ToBe(RTNCD_FAILURE);
                   Expect(string(zusf.diag.e_msg)).ToBe("Path '/tmp/zusf_test_dir' is a folder and recursive is false");
-
-                  // Cleanup
-                  rmdir(test_dir.c_str());
                 });
 
              it("should successfully chmod a regular file",
                 [&]() -> void
                 {
                   // Create test file
-                  unlink(test_file.c_str()); // Remove if exists
                   ofstream file(test_file);
                   file << "test content";
                   file.close();
@@ -86,16 +89,12 @@ void zusf_tests()
                   stat(test_file.c_str(), &file_stat);
                   mode_t actual_mode = file_stat.st_mode & 0777; // Mask to get only permission bits
                   Expect((int)actual_mode).ToBe(0644);
-
-                  // Cleanup
-                  unlink(test_file.c_str());
                 });
 
              it("should successfully chmod a directory with recursive flag",
                 [&]() -> void
                 {
                   // Create test directory structure
-                  rmdir(test_dir.c_str()); // Remove if exists
                   mkdir(test_dir.c_str(), 0700);
 
                   // Create a file inside the directory to test recursive behavior
@@ -120,17 +119,12 @@ void zusf_tests()
                   stat(inner_file.c_str(), &file_stat);
                   mode_t actual_file_mode = file_stat.st_mode & 0777;
                   Expect((int)actual_file_mode).ToBe(0755);
-
-                  // Cleanup
-                  unlink(inner_file.c_str());
-                  rmdir(test_dir.c_str());
                 });
 
              it("should handle different permission modes correctly",
                 [&]() -> void
                 {
                   // Create test file
-                  unlink(test_file.c_str());
                   ofstream file(test_file);
                   file << "test content";
                   file.close();
@@ -148,23 +142,28 @@ void zusf_tests()
                     mode_t actual_mode = file_stat.st_mode & 0777;
                     Expect((int)actual_mode).ToBe((int)mode);
                   }
-
-                  // Cleanup
-                  unlink(test_file.c_str());
                 });
            });
 
   describe("zusf_get_file_ccsid tests",
            [&]() -> void
            {
-             // Setup test environment
              ZUSF zusf;
-             memset(&zusf, 0, sizeof(zusf));
-
              const string test_file = "/tmp/zusf_ccsid_test_file.txt";
              const string test_dir = "/tmp/zusf_ccsid_test_dir";
              const string nonexistent_file = "/tmp/nonexistent_ccsid_file.txt";
 
+             // --- Hooks ---
+             beforeEach([&]() -> void
+                        { memset(&zusf, 0, sizeof(zusf)); });
+
+             afterEach([&]() -> void
+                       {
+                         unlink(test_file.c_str());
+                         rmdir(test_dir.c_str());
+                         unlink(nonexistent_file.c_str()); });
+
+             // --- Tests ---
              it("should fail when file does not exist",
                 [&]() -> void
                 {
@@ -180,22 +179,17 @@ void zusf_tests()
                 [&]() -> void
                 {
                   // Create test directory
-                  rmdir(test_dir.c_str()); // Remove if exists
                   mkdir(test_dir.c_str(), 0755);
 
                   int result = zusf_get_file_ccsid(&zusf, test_dir);
                   Expect(result).ToBe(RTNCD_FAILURE);
                   Expect(string(zusf.diag.e_msg)).ToBe("Path '/tmp/zusf_ccsid_test_dir' is a directory");
-
-                  // Cleanup
-                  rmdir(test_dir.c_str());
                 });
 
              it("should return CCSID for a regular file",
                 [&]() -> void
                 {
                   // Create test file
-                  unlink(test_file.c_str()); // Remove if exists
                   ofstream file(test_file);
                   file << "test content";
                   file.close();
@@ -203,9 +197,6 @@ void zusf_tests()
                   int result = zusf_get_file_ccsid(&zusf, test_file);
                   // The result should be a valid CCSID (non-negative) or 0 for untagged
                   Expect(result).ToBeGreaterThanOrEqualTo(0);
-
-                  // Cleanup
-                  unlink(test_file.c_str());
                 });
            });
 
@@ -421,10 +412,16 @@ void zusf_tests()
            [&]() -> void
            {
              ZUSF zusf;
-             memset(&zusf, 0, sizeof(zusf));
-
              const string test_file = "/tmp/zusf_format_test_file.txt";
              const string test_dir = "/tmp/zusf_format_test_dir";
+
+             beforeEach([&]() -> void
+                        { memset(&zusf, 0, sizeof(zusf)); });
+
+             afterEach([&]() -> void
+                       {
+                         unlink(test_file.c_str());
+                         rmdir(test_dir.c_str()); });
 
              it("should format short listing for regular file",
                 [&]() -> void
@@ -443,9 +440,6 @@ void zusf_tests()
 
                   // Short format should just be filename + newline
                   Expect(result).ToBe("testfile.txt\n");
-
-                  // Cleanup
-                  unlink(test_file.c_str());
                 });
 
              it("should format long listing for regular file in ls-style",
@@ -469,9 +463,6 @@ void zusf_tests()
                   Expect(result).ToContain("testfile.txt"); // filename
                   Expect(result).ToContain("12");           // file size (test content = 12 bytes)
                   Expect(result.back()).ToBe('\n');         // should end with newline
-
-                  // Cleanup
-                  unlink(test_file.c_str());
                 });
 
              it("should format long listing for regular file in CSV format",
@@ -505,9 +496,6 @@ void zusf_tests()
                       comma_count++;
                   }
                   Expect(comma_count).ToBe(7);
-
-                  // Cleanup
-                  unlink(test_file.c_str());
                 });
 
              it("should format directory entry correctly",
@@ -526,9 +514,6 @@ void zusf_tests()
                   // Directory should start with 'd'
                   Expect(result).ToContain("drwxr-xr-x"); // directory permissions
                   Expect(result).ToContain("testdir");    // directory name
-
-                  // Cleanup
-                  rmdir(test_dir.c_str());
                 });
 
              it("should handle files with different CCSID tags",
@@ -552,9 +537,6 @@ void zusf_tests()
                                         result.find("UTF-8") != string::npos ||
                                         result.find("binary") != string::npos;
                   Expect(has_ccsid_info).ToBe(true);
-
-                  // Cleanup
-                  unlink(test_file.c_str());
                 });
            });
 
@@ -562,11 +544,12 @@ void zusf_tests()
            [&]() -> void
            {
              ZUSF zusf;
-             memset(&zusf, 0, sizeof(zusf));
-
              const string test_file = "/tmp/zusf_list_test_file.txt";
              const string test_dir = "/tmp/zusf_list_test_dir";
              const string nonexistent_path = "/tmp/nonexistent_path_for_list";
+
+             beforeEach([&]() -> void
+                        { memset(&zusf, 0, sizeof(zusf)); });
 
              it("should fail for nonexistent path",
                 [&]() -> void
@@ -819,6 +802,11 @@ void zusf_tests()
   describe("zusf_list_uss_file_path recursive tests",
            [&]() -> void
            {
+             ZUSF zusf;
+
+             beforeEach([&]() -> void
+                        { memset(&zusf, 0, sizeof(zusf)); });
+
              it("should list immediate children only with depth 1",
                 [&]() -> void
                 {
@@ -847,7 +835,6 @@ void zusf_tests()
                   f2 << "content2";
                   f2.close();
 
-                  ZUSF zusf = {0};
                   string response;
                   ListOptions options = {false, false, 1}; // depth 1 = immediate children only
 
@@ -893,7 +880,6 @@ void zusf_tests()
                   f2 << "content2";
                   f2.close();
 
-                  ZUSF zusf = {0};
                   string response;
                   ListOptions options = {false, false, 0}; // all_files=false, depth=0 = show directory itself
 
@@ -941,7 +927,6 @@ void zusf_tests()
                   f2 << "content2";
                   f2.close();
 
-                  ZUSF zusf = {0};
                   string response;
                   ListOptions options = {false, false, 2}; // depth 2 = immediate children + 1 level of subdirs
 
@@ -981,7 +966,6 @@ void zusf_tests()
                   f1 << "content1";
                   f1.close();
 
-                  ZUSF zusf = {0};
                   string response;
 
                   // Test with depth 0 and all_files = true (should behave like 'ls -d')
@@ -1016,10 +1000,14 @@ void zusf_tests()
   describe("zusf source encoding tests",
            [&]() -> void
            {
+             ZUSF zusf;
+
+             beforeEach([&]() -> void
+                        { memset(&zusf, 0, sizeof(zusf)); });
+
              it("should use default source encoding (UTF-8) when not specified",
                 [&]() -> void
                 {
-                  ZUSF zusf = {0};
                   // Set target encoding but no source encoding
                   strcpy(zusf.encoding_opts.codepage, "IBM-1047");
                   zusf.encoding_opts.data_type = eDataTypeText;
@@ -1033,7 +1021,6 @@ void zusf_tests()
              it("should use specified source encoding when provided",
                 [&]() -> void
                 {
-                  ZUSF zusf = {0};
                   // Set both target and source encoding
                   strcpy(zusf.encoding_opts.codepage, "IBM-1047");
                   strcpy(zusf.encoding_opts.source_codepage, "IBM-037");
@@ -1048,7 +1035,6 @@ void zusf_tests()
              it("should handle binary data type correctly with source encoding",
                 [&]() -> void
                 {
-                  ZUSF zusf = {0};
                   strcpy(zusf.encoding_opts.codepage, "binary");
                   strcpy(zusf.encoding_opts.source_codepage, "UTF-8");
                   zusf.encoding_opts.data_type = eDataTypeBinary;
@@ -1062,7 +1048,6 @@ void zusf_tests()
              it("should handle empty source encoding gracefully",
                 [&]() -> void
                 {
-                  ZUSF zusf = {0};
                   strcpy(zusf.encoding_opts.codepage, "IBM-1047");
                   // Explicitly set source_codepage to empty
                   memset(zusf.encoding_opts.source_codepage, 0, sizeof(zusf.encoding_opts.source_codepage));
@@ -1076,7 +1061,6 @@ void zusf_tests()
              it("should preserve encoding settings in file operations struct",
                 [&]() -> void
                 {
-                  ZUSF zusf = {0};
                   strcpy(zusf.encoding_opts.codepage, "IBM-1047");
                   strcpy(zusf.encoding_opts.source_codepage, "ISO8859-1");
                   zusf.encoding_opts.data_type = eDataTypeText;
@@ -1093,7 +1077,6 @@ void zusf_tests()
              it("should handle USS file encoding with source encoding set",
                 [&]() -> void
                 {
-                  ZUSF zusf = {0};
                   strcpy(zusf.encoding_opts.codepage, "UTF-8");
                   strcpy(zusf.encoding_opts.source_codepage, "IBM-1047");
                   zusf.encoding_opts.data_type = eDataTypeText;
@@ -1125,8 +1108,6 @@ void zusf_tests()
              it("should validate encoding field sizes and limits",
                 [&]() -> void
                 {
-                  ZUSF zusf = {0};
-
                   // Test maximum length encoding names (15 chars + null terminator)
                   string long_target = "IBM-1234567890A"; // 15 characters
                   string long_source = "UTF-1234567890B"; // 15 characters
@@ -1149,7 +1130,6 @@ void zusf_tests()
              it("should handle various encoding combinations for USS files",
                 [&]() -> void
                 {
-                  ZUSF zusf = {0};
                   zusf.encoding_opts.data_type = eDataTypeText;
 
                   // Test common USS file encoding conversions
@@ -1185,7 +1165,6 @@ void zusf_tests()
              it("should handle source encoding with file creation operations",
                 [&]() -> void
                 {
-                  ZUSF zusf = {0};
                   strcpy(zusf.encoding_opts.codepage, "IBM-1047");
                   strcpy(zusf.encoding_opts.source_codepage, "UTF-8");
                   zusf.encoding_opts.data_type = eDataTypeText;
@@ -1216,7 +1195,6 @@ void zusf_tests()
              it("should handle source encoding with directory operations",
                 [&]() -> void
                 {
-                  ZUSF zusf = {0};
                   strcpy(zusf.encoding_opts.codepage, "UTF-8");
                   strcpy(zusf.encoding_opts.source_codepage, "IBM-037");
                   zusf.encoding_opts.data_type = eDataTypeText;
@@ -1246,7 +1224,6 @@ void zusf_tests()
              it("should maintain source encoding through error conditions",
                 [&]() -> void
                 {
-                  ZUSF zusf = {0};
                   strcpy(zusf.encoding_opts.codepage, "IBM-1047");
                   strcpy(zusf.encoding_opts.source_codepage, "UTF-8");
                   zusf.encoding_opts.data_type = eDataTypeText;
