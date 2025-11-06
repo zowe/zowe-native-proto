@@ -250,7 +250,7 @@ int handle_data_set_view(InvocationContext &context)
     if (!volser_value.empty())
     {
       dds.push_back("alloc dd(input) da('" + dsn + "') shr vol(" + volser_value + ")");
-      ZDIAG diag = {0};
+      ZDIAG diag = {};
       rc = zut_loop_dynalloc(diag, dds);
       if (0 != rc)
       {
@@ -332,7 +332,7 @@ int handle_data_set_view(InvocationContext &context)
 
   if (dds.size() > 0)
   {
-    ZDIAG diag = {0};
+    ZDIAG diag = {};
     rc = zut_free_dynalloc_dds(diag, dds);
     if (0 != rc)
     {
@@ -537,7 +537,7 @@ int handle_data_set_write(InvocationContext &context)
     if (!volser_value.empty())
     {
       dds.push_back("alloc dd(output) da('" + dsn + "') shr vol(" + volser_value + ")");
-      ZDIAG diag = {0};
+      ZDIAG diag = {};
       rc = zut_loop_dynalloc(diag, dds);
       if (0 != rc)
       {
@@ -583,7 +583,7 @@ int handle_data_set_write(InvocationContext &context)
 
   if (dds.size() > 0)
   {
-    ZDIAG diag = {0};
+    ZDIAG diag = {};
     rc = zut_free_dynalloc_dds(diag, dds);
     if (0 != rc)
     {
@@ -645,7 +645,7 @@ int handle_data_set_restore(InvocationContext &context)
   dds.push_back("alloc da('" + dsn + "') shr");
   dds.push_back("free da('" + dsn + "')");
 
-  ZDIAG diag = {0};
+  ZDIAG diag = {};
   rc = zut_loop_dynalloc(diag, dds);
   if (0 != rc)
   {
@@ -697,7 +697,7 @@ int handle_data_set_compress(InvocationContext &context)
   dds.push_back("alloc dd(sysprint) lrecl(80) recfm(f,b) blksize(80)");
   dds.push_back("alloc dd(sysin) lrecl(80) recfm(f,b) blksize(80)");
 
-  ZDIAG diag = {0};
+  ZDIAG diag = {};
   rc = zut_loop_dynalloc(diag, dds);
   if (0 != rc)
   {
