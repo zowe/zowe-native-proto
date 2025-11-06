@@ -160,7 +160,7 @@ public:
 
     // Initialize logger with executable directory
     zowed::Logger::init_logger(exec_dir.c_str(), options.verbose);
-    LOG_INFO("Starting zowed with %lld workers, %lld second request timeout (verbose=%s)", options.num_workers, options.request_timeout, options.verbose ? "true" : "false");
+    LOG_INFO("Starting zowed with %lld workers and %lld seconds until request timeout (verbose=%s)", options.num_workers, options.request_timeout, options.verbose ? "true" : "false");
 
     // Set up signal handling
     setup_signal_handlers();
