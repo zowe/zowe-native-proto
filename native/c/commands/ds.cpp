@@ -368,7 +368,7 @@ int handle_data_set_list(InvocationContext &context)
   if (RTNCD_SUCCESS == rc || RTNCD_WARNING == rc)
   {
     vector<string> fields;
-    fields.reserve(attributes ? 5 : 1);
+    fields.reserve(attributes ? 11 : 1);
     const auto entries_array = arr();
 
     for (vector<ZDSEntry>::iterator it = entries.begin(); it != entries.end(); ++it)
@@ -378,11 +378,16 @@ int handle_data_set_list(InvocationContext &context)
         fields.push_back(it->name);
         if (attributes)
         {
-          fields.push_back(it->dsorg);
           fields.push_back(it->volser);
-          fields.push_back(it->migrated ? "true" : "false");
+          fields.push_back(it->devtype);
+          fields.push_back(it->dsorg);
           fields.push_back(it->recfm);
-          // TODO Add more attributes here
+          fields.push_back(zut_int_to_string(it->lrecl));
+          fields.push_back(zut_int_to_string(it->blksize));
+          fields.push_back(zut_int_to_string(it->primary));
+          fields.push_back(zut_int_to_string(it->secondary));
+          fields.push_back(it->dsntype);
+          fields.push_back(it->migrated ? "true" : "false");
         }
         context.output_stream() << zut_format_as_csv(fields) << endl;
         fields.clear();
