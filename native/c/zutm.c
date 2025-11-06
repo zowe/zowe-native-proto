@@ -24,6 +24,8 @@
 #include "ihapsa.h"
 #include "ikjtcb.h"
 #include "iezjscb.h"
+#include "zrecovery.h"
+#include "zecb.h"
 
 #define ZUT_BPXWDYN_SERVICE_FAILURE -2
 
@@ -257,7 +259,7 @@ int ZUTRUN(const char *program)
   return rc;
 }
 
-#pragma prolog(ZUTRUN24, " ZWEPROLG NEWDSA=(YES,4),LOC24=YES ")
+#pragma prolog(ZUTRUN24, " ZWEPROLG NEWDSA=(YES,8),LOC24=YES ")
 #pragma epilog(ZUTRUN24, " ZWEEPILG ")
 int ZUTRUN24(const char *program)
 {
@@ -268,12 +270,11 @@ int ZUTRUN24(const char *program)
   memset(name_truncated, ' ', sizeof(name_truncated) - 1);                                                                      // pad with spaces
   memcpy(name_truncated, program, strlen(program) > sizeof(name_truncated) - 1 ? sizeof(name_truncated) - 1 : strlen(program)); // truncate
 
-  zwto_debug("@TEST in ZUTRUN24 loading module: %s", name_truncated);
   Z31FUNC p = load_module31(name_truncated);
-
   if (p)
   {
-    rc = ((int (*)(void))p)();
+    // p();
+    return RTNCD_FAILURE; // TODO(Kelosky): debug in the future
   }
   else
   {
