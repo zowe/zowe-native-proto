@@ -1184,7 +1184,7 @@ int zusf_read_from_uss_file(ZUSF *zusf, const string &file, string &response)
 
   if (size > 0 && has_encoding)
   {
-    std::string temp = response;
+    string temp = response;
     const auto source_encoding = strlen(zusf->encoding_opts.source_codepage) > 0 ? string(zusf->encoding_opts.source_codepage) : "UTF-8";
     try
     {
@@ -1377,7 +1377,7 @@ int zusf_write_to_uss_file(ZUSF *zusf, const string &file, string &data)
     }
   }
 
-  std::string temp = data;
+  string temp = data;
   if (has_encoding)
   {
     const auto source_encoding = strlen(zusf->encoding_opts.source_codepage) > 0 ? string(zusf->encoding_opts.source_codepage) : "UTF-8";
@@ -1730,7 +1730,7 @@ int zusf_chown_uss_file_or_dir(ZUSF *zusf, string file, const string &owner, boo
 
   const auto uid = zusf_get_id_from_user_or_group(owner, true);
   const auto colon_pos = owner.find_first_of(":");
-  const auto group = colon_pos != std::string::npos ? owner.substr(colon_pos + 1) : std::string();
+  const auto group = colon_pos != std::string::npos ? owner.substr(colon_pos + 1) : string();
   const auto gid = group.empty() ? file_stats.st_gid : zusf_get_id_from_user_or_group(group, false);
   const auto rc = chown(file.c_str(), uid, gid);
 

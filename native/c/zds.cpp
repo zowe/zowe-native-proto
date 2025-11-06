@@ -331,7 +331,7 @@ int alloc_and_free(const string &alloc_dd, const string &dsn, unsigned int *code
 }
 
 // TODO(Kelosky): add attributues to ZDS and have other functions populate it
-int zds_create_dsn(ZDS *zds, std::string dsn, DS_ATTRIBUTES attributes, std::string &response)
+int zds_create_dsn(ZDS *zds, string dsn, DS_ATTRIBUTES attributes, string &response)
 {
   int rc = 0;
   unsigned int code = 0;
@@ -372,12 +372,12 @@ int zds_create_dsn(ZDS *zds, std::string dsn, DS_ATTRIBUTES attributes, std::str
   if (attributes.primary > 0)
   {
     memset(numberAsString, 0, sizeof(numberAsString));
-    parm += " SPACE(" + std::string(itoa(attributes.primary, numberAsString, 10));
+    parm += " SPACE(" + string(itoa(attributes.primary, numberAsString, 10));
 
     if (attributes.secondary > 0)
     {
       memset(numberAsString, 0, sizeof(numberAsString));
-      parm += "," + std::string(itoa(attributes.secondary, numberAsString, 10));
+      parm += "," + string(itoa(attributes.secondary, numberAsString, 10));
     }
 
     parm += ") " + attributes.alcunit;
@@ -386,7 +386,7 @@ int zds_create_dsn(ZDS *zds, std::string dsn, DS_ATTRIBUTES attributes, std::str
   if (attributes.lrecl > 0)
   {
     memset(numberAsString, 0, sizeof(numberAsString));
-    parm += " LRECL(" + std::string(itoa(attributes.lrecl, numberAsString, 10)) + ")";
+    parm += " LRECL(" + string(itoa(attributes.lrecl, numberAsString, 10)) + ")";
   }
 
   if (!attributes.recfm.empty())
@@ -395,7 +395,7 @@ int zds_create_dsn(ZDS *zds, std::string dsn, DS_ATTRIBUTES attributes, std::str
   if (attributes.dirblk > 0)
   {
     memset(numberAsString, 0, sizeof(numberAsString));
-    parm += " DIR(" + std::string(itoa(attributes.dirblk, numberAsString, 10)) + ")";
+    parm += " DIR(" + string(itoa(attributes.dirblk, numberAsString, 10)) + ")";
   }
 
   parm += " NEW KEEP";
@@ -416,7 +416,7 @@ int zds_create_dsn(ZDS *zds, std::string dsn, DS_ATTRIBUTES attributes, std::str
   if (attributes.blksize > 0)
   {
     memset(numberAsString, 0, sizeof(numberAsString));
-    parm += " BLKSIZE(" + std::string(itoa(attributes.blksize, numberAsString, 10)) + ")";
+    parm += " BLKSIZE(" + string(itoa(attributes.blksize, numberAsString, 10)) + ")";
   }
 
   return alloc_and_free(parm, dsn, &code, response);
@@ -1144,7 +1144,7 @@ int zds_read_from_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, 
   {
     dsname = "//DD:" + string(zds->ddname);
   }
-  const std::string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "rb" : "r";
+  const string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "rb" : "r";
   FileGuard fin(dsname.c_str(), fopen_flags.c_str());
   if (!fin)
   {
@@ -1272,7 +1272,7 @@ int zds_write_to_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, s
 
   const auto hasEncoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
   const auto codepage = string(zds->encoding_opts.codepage);
-  const auto fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "wb" : "w,recfm=*";
+  const string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "wb" : "w,recfm=*";
 
   {
     FileGuard fout(dsname.c_str(), fopen_flags.c_str());
