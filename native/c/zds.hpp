@@ -129,7 +129,7 @@ int zds_delete_dsn(ZDS *zds, std::string dsn);
  */
 int zds_list_members(ZDS *zds, std::string dsn, std::vector<ZDSMem> &members);
 
-int zds_list_data_sets(ZDS *zds, std::string dsn, std::vector<ZDSEntry> &attributes);
+int zds_list_data_sets(ZDS *zds, std::string dsn, std::vector<ZDSEntry> &datasets, bool show_attributes = false);
 #ifdef SWIG
 }
 #endif

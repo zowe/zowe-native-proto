@@ -364,7 +364,7 @@ int handle_data_set_list(InvocationContext &context)
   vector<ZDSEntry> entries;
 
   bool emit_csv = context.get<bool>("response-format-csv", false);
-  rc = zds_list_data_sets(&zds, dsn, entries);
+  rc = zds_list_data_sets(&zds, dsn, entries, attributes);
   if (RTNCD_SUCCESS == rc || RTNCD_WARNING == rc)
   {
     vector<string> fields;
