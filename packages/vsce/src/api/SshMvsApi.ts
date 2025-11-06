@@ -25,32 +25,34 @@ import { B64String, type Dataset, type DatasetAttributes, type ds } from "zowe-n
 import { SshCommonApi } from "./SshCommonApi";
 
 class SshAttributesProvider implements IAttributesProvider {
+    private readonly extensionName = require("../../package.json").displayName;
+
     public constructor(public cachedAttrs?: Dataset) {}
 
     public fetchAttributes(_context: DsInfo): AttributeInfo {
         const keys = new Map<string, AttributeEntryInfo>();
-        const addAttribute = <K extends keyof Dataset>(
-            prop: K,
-            label: string,
-            formatter?: (val: NonNullable<Dataset[K]>) => string,
-        ): void => {
+        const addAttribute = <K extends keyof Dataset>(prop: K, label: string, description?: string): void => {
             const value = this.cachedAttrs?.[prop];
             if (value != null) {
-                keys.set(label, { value: formatter ? formatter(value as NonNullable<Dataset[K]>) : value });
+                keys.set(label, {
+                    value: typeof value === "boolean" ? (value ? "YES" : "NO") : value.toLocaleString(),
+                    description,
+                });
             }
         };
 
-        addAttribute("alloc", "Allocated Units", (v) => v.toLocaleString());
-        addAttribute("allocx", "Allocated Extents", (v) => v.toLocaleString());
+        const spacu = this.cachedAttrs?.spacu?.toLocaleLowerCase() ?? "bytes";
+        addAttribute("alloc", "Allocated Units", `Allocated units (${spacu})`);
+        addAttribute("allocx", "Allocated Extents");
         addAttribute("dataclass", "Data Class");
-        addAttribute("encrypted", "Encryption", (v) => (v ? "YES" : "NO"));
+        addAttribute("encrypted", "Encryption");
         addAttribute("mgmtclass", "Management Class");
-        addAttribute("primary", "Primary Space", (v) => v.toLocaleString());
-        addAttribute("secondary", "Secondary Space", (v) => v.toLocaleString());
+        addAttribute("primary", "Primary Space", `Primary space (${spacu})`);
+        addAttribute("secondary", "Secondary Space", `Secondary space (${spacu})`);
         addAttribute("storclass", "Storage Class");
-        addAttribute("usedx", "Used Extents", (v) => v.toLocaleString());
+        addAttribute("usedx", "Used Extents");
 
-        return [{ title: "Zowe Native Proto", keys }];
+        return [{ title: this.extensionName, keys }];
     }
 }
 

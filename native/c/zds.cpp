@@ -800,134 +800,42 @@ void load_date_from_dscb(const char *date_in, string *date_out, bool is_expirati
   *date_out = buffer;
 }
 
-void load_extents_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry, uint32_t pds_max_track = 0)
+// Parse CCHH (Cylinder-Cylinder-Head-Head) format to get cylinder number
+static inline uint32_t parse_cchh_cylinder(const char *cchh)
 {
-  // allocx: Number of extents allocated on this volume
-  entry.allocx = dscb->ds1noepv;
+  uint16_t cyl_low = (static_cast<unsigned char>(cchh[0]) << 8) |
+                     static_cast<unsigned char>(cchh[1]);
+  uint16_t cyl_high = ((static_cast<unsigned char>(cchh[2]) << 4) |
+                       (static_cast<unsigned char>(cchh[3]) >> 4)) &
+                      0x0FFF;
+  return (cyl_high << 16) | cyl_low;
+}
 
-  // Parse DS1SCAL1 (ds1scalo[0]) for space allocation type
+// Parse CCHH format to get head (track) number
+static inline uint16_t parse_cchh_head(const char *cchh)
+{
+  return static_cast<unsigned char>(cchh[3]) & 0x0F;
+}
+
+// Calculate tracks in an extent given lower and upper CCHH values
+static inline int calculate_extent_tracks(const char *extent)
+{
+  uint32_t lower_cyl = parse_cchh_cylinder(extent + 2);
+  uint16_t lower_head = parse_cchh_head(extent + 2);
+  uint32_t upper_cyl = parse_cchh_cylinder(extent + 6);
+  uint16_t upper_head = parse_cchh_head(extent + 6);
+
+  if (upper_cyl < lower_cyl)
+    return 0;
+
+  return ((upper_cyl - lower_cyl) * 15) + (upper_head - lower_head) + 1;
+}
+
+// Load space unit (spacu) from DSCB
+void load_spacu_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
+{
   uint8_t scal1 = static_cast<uint8_t>(dscb->ds1scalo[0]);
   uint8_t dspac = (scal1 & 0xC0) >> 6; // Top 2 bits: space request type
-
-  // Parse DS1SCAL3 (ds1scalo[1-3]) - secondary allocation quantity (3 bytes)
-  uint32_t scal3 = (static_cast<unsigned char>(dscb->ds1scalo[1]) << 16) |
-                   (static_cast<unsigned char>(dscb->ds1scalo[2]) << 8) |
-                   static_cast<unsigned char>(dscb->ds1scalo[3]);
-
-  // Parse the extent information from ds1exnts (3 extents, 10 bytes each)
-  // Each extent has: type(1), seq(1), lower_limit(4), upper_limit(4)
-  const char *extent_data = dscb->ds1exnts;
-  int total_cylinders = 0;
-  int total_tracks = 0;
-  bool use_cylinders = (dspac == 0x03); // true if allocated in cylinders
-
-  for (int i = 0; i < 3; i++)
-  {
-    const char *extent = extent_data + (i * 10);
-    uint8_t extent_type = static_cast<uint8_t>(extent[0]);
-
-    // Check if this is a valid extent (not X'00')
-    if (extent_type == 0x00)
-      break;
-
-    // Parse lower limit CCHH (4 bytes)
-    // CCHH format: CC (bytes 2-3) = low 16 bits of cylinder
-    //              HH (bytes 4-5) = high 12 bits of cylinder (bits 0-11) + 4-bit head (bits 12-15)
-    uint16_t lower_cyl_low = (static_cast<unsigned char>(extent[2]) << 8) |
-                             static_cast<unsigned char>(extent[3]);
-    uint16_t lower_cyl_high = ((static_cast<unsigned char>(extent[4]) << 4) |
-                               (static_cast<unsigned char>(extent[5]) >> 4)) &
-                              0x0FFF;
-    uint16_t lower_head = static_cast<unsigned char>(extent[5]) & 0x0F;
-
-    // Parse upper limit CCHH (4 bytes)
-    uint16_t upper_cyl_low = (static_cast<unsigned char>(extent[6]) << 8) |
-                             static_cast<unsigned char>(extent[7]);
-    uint16_t upper_cyl_high = ((static_cast<unsigned char>(extent[8]) << 4) |
-                               (static_cast<unsigned char>(extent[9]) >> 4)) &
-                              0x0FFF;
-    uint16_t upper_head = static_cast<unsigned char>(extent[9]) & 0x0F;
-
-    // Calculate full cylinder numbers (28-bit)
-    uint32_t lower_cyl = (lower_cyl_high << 16) | lower_cyl_low;
-    uint32_t upper_cyl = (upper_cyl_high << 16) | upper_cyl_low;
-
-    // Calculate cylinders and tracks in this extent
-    if (upper_cyl >= lower_cyl)
-    {
-      int cylinders_in_extent = upper_cyl - lower_cyl + 1;
-      int tracks_in_extent = ((upper_cyl - lower_cyl) * 15) + (upper_head - lower_head) + 1;
-      total_cylinders += cylinders_in_extent;
-      total_tracks += tracks_in_extent;
-    }
-  }
-
-  // alloc: Total allocated space in native units (cylinders, tracks, or blocks)
-  if (dspac == 0x01) // Blocks (average block length)
-  {
-    // For block-allocated datasets, calculate blocks based on track capacity
-    // This is an approximation: tracks * (track_capacity / average_blksize)
-    // We'll report tracks for now as block calculation requires blksize from DSCB
-    entry.alloc = total_tracks;
-  }
-  else
-  {
-    entry.alloc = use_cylinders ? total_cylinders : total_tracks;
-  }
-
-  // primary: Primary extent size in allocation units (cylinders or tracks)
-  // The first extent is the primary allocation
-  if (entry.allocx > 0)
-  {
-    const char *first_extent = extent_data;
-    uint16_t lower_cyl_low = (static_cast<unsigned char>(first_extent[2]) << 8) |
-                             static_cast<unsigned char>(first_extent[3]);
-    uint16_t lower_cyl_high = ((static_cast<unsigned char>(first_extent[4]) << 4) |
-                               (static_cast<unsigned char>(first_extent[5]) >> 4)) &
-                              0x0FFF;
-    uint16_t upper_cyl_low = (static_cast<unsigned char>(first_extent[6]) << 8) |
-                             static_cast<unsigned char>(first_extent[7]);
-    uint16_t upper_cyl_high = ((static_cast<unsigned char>(first_extent[8]) << 4) |
-                               (static_cast<unsigned char>(first_extent[9]) >> 4)) &
-                              0x0FFF;
-
-    uint32_t lower_cyl = (lower_cyl_high << 16) | lower_cyl_low;
-    uint32_t upper_cyl = (upper_cyl_high << 16) | upper_cyl_low;
-
-    if (dspac == 0x03) // Cylinders
-    {
-      entry.primary = (upper_cyl - lower_cyl + 1);
-    }
-    else if (dspac == 0x02) // Tracks - report in tracks
-    {
-      uint16_t lower_head = static_cast<unsigned char>(first_extent[5]) & 0x0F;
-      uint16_t upper_head = static_cast<unsigned char>(first_extent[9]) & 0x0F;
-      int tracks = ((upper_cyl - lower_cyl) * 15) + (upper_head - lower_head) + 1;
-      entry.primary = tracks;
-    }
-    else if (dspac == 0x01) // Blocks (average block length)
-    {
-      // For block allocation, primary is calculated from extent size in tracks
-      // Convert to approximate block count
-      uint16_t lower_head = static_cast<unsigned char>(first_extent[5]) & 0x0F;
-      uint16_t upper_head = static_cast<unsigned char>(first_extent[9]) & 0x0F;
-      int tracks = ((upper_cyl - lower_cyl) * 15) + (upper_head - lower_head) + 1;
-      entry.primary = tracks; // Report in tracks for now
-    }
-    else // Unknown allocation type
-    {
-      entry.primary = 0;
-    }
-  }
-  else
-  {
-    entry.primary = 0;
-  }
-
-  // spacu: Determine allocation unit and whether to convert to bytes
-  // Note: ISPF and z/OSMF display track-allocated datasets with contiguous allocation as BYTES
-  // We need to determine this BEFORE calculating secondary, as it affects which field we read from
-  bool convert_to_bytes = false;
 
   if (dspac == 0x03) // 11 = DS1CYL - Cylinders
   {
@@ -940,7 +848,6 @@ void load_extents_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry, uint32_t p
     if (is_contiguous)
     {
       entry.spacu = "BYTES"; // Contiguous track allocation displayed as BYTES
-      convert_to_bytes = true;
     }
     else
     {
@@ -967,7 +874,6 @@ void load_extents_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry, uint32_t p
     else if (scxtf & 0x10) // DS1SCUB - bytes
     {
       entry.spacu = "BYTES";
-      convert_to_bytes = true;
     }
     else
     {
@@ -976,16 +882,50 @@ void load_extents_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry, uint32_t p
   }
   else
   {
-    // dspac == 0x00 (00 . 0) - Absolute track request (DS1DSABS)
-    // ISPF displays this allocation in bytes to the user
+    // dspac == 0x00 - Absolute track request (DS1DSABS)
     entry.spacu = "BYTES";
-    convert_to_bytes = true;
+  }
+}
+
+// Load primary and secondary allocation quantities from DSCB
+void load_primary_secondary_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
+{
+  uint8_t scal1 = static_cast<uint8_t>(dscb->ds1scalo[0]);
+  uint8_t dspac = (scal1 & 0xC0) >> 6;
+
+  // Parse DS1SCAL3 (ds1scalo[1-3]) - secondary allocation quantity (3 bytes)
+  uint32_t scal3 = (static_cast<unsigned char>(dscb->ds1scalo[1]) << 16) |
+                   (static_cast<unsigned char>(dscb->ds1scalo[2]) << 8) |
+                   static_cast<unsigned char>(dscb->ds1scalo[3]);
+
+  const char *extent_data = dscb->ds1exnts;
+
+  // Primary: First extent size
+  // Read allocx directly from DSCB to avoid dependency on entry.allocx being set
+  uint8_t allocx = dscb->ds1noepv;
+  if (allocx > 0)
+  {
+    const char *first_extent = extent_data;
+
+    if (dspac == 0x03) // Cylinders
+    {
+      uint32_t lower_cyl = parse_cchh_cylinder(first_extent + 2);
+      uint32_t upper_cyl = parse_cchh_cylinder(first_extent + 6);
+      entry.primary = (upper_cyl - lower_cyl + 1);
+    }
+    else // Tracks or Blocks
+    {
+      entry.primary = calculate_extent_tracks(first_extent);
+    }
+  }
+  else
+  {
+    entry.primary = 0;
   }
 
-  // secondary: Secondary allocation quantity
-  // For contiguous track allocations (convert_to_bytes=true), use DS1SCEXT instead of DS1SCAL3
-  // DS1SCEXT contains the secondary allocation in bytes (possibly compacted)
-  if (convert_to_bytes)
+  // Secondary: Allocation quantity from DS1SCEXT or DS1SCAL3
+  // For BYTES space unit, read from DS1SCEXT (contiguous/absolute allocations)
+  if (entry.spacu == "BYTES")
   {
     // Parse DS1SCEXT: ds1scext[0] = DS1SCXTF (flags), ds1scext[1-2] = DS1SCXTV (value)
     uint8_t scxtf = static_cast<uint8_t>(dscb->ds1scext[0]);
@@ -1006,31 +946,128 @@ void load_extents_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry, uint32_t p
       entry.secondary = scxtv;
     }
   }
-  else if (dspac == 0x03) // Cylinders
+  else
   {
     entry.secondary = scal3;
   }
-  else if (dspac == 0x02) // Tracks - report in tracks
+}
+
+// Load attributes categorized by ISPF as General Data (dsorg, recfm, etc)
+void load_general_attrs_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
+{
+  load_dsorg_from_dscb(dscb, &entry.dsorg);
+
+  // Determine space unit first (needed for other calculations)
+  load_spacu_from_dscb(dscb, entry);
+
+  // Check if this is a VSAM dataset
+  bool is_vsam = (dscb->ds1dsorg & DS1ACBM_MASK) != 0;
+
+  if (is_vsam)
   {
-    entry.secondary = scal3;
+    // VSAM datasets: blksize, lrecl, and recfm are not meaningful
+    entry.blksize = -1;
+    entry.lrecl = -1;
+    entry.recfm = "";
   }
-  else if (dspac == 0x01) // Blocks (average block length)
+  else
   {
-    // For block allocation, scal3 is in blocks
-    // But since we're reporting space in tracks for consistency, convert or report as-is
-    entry.secondary = scal3; // Report the block count from DSCB
-  }
-  else // Unknown allocation type
-  {
-    entry.secondary = 0;
+    load_recfm_from_dscb(dscb, &entry.recfm);
+    entry.blksize = (static_cast<unsigned char>(dscb->ds1blkl[0]) << 8) |
+                    static_cast<unsigned char>(dscb->ds1blkl[1]);
+    entry.lrecl = (static_cast<unsigned char>(dscb->ds1lrecl[0]) << 8) |
+                  static_cast<unsigned char>(dscb->ds1lrecl[1]);
   }
 
-  // Note: Conversion to bytes for alloc/primary/used is handled in zds_get_attrs_from_dscb after blksize is known
+  // Determine dsntype: PDS or LIBRARY (PDSE)
+  // DS1DSGPO (0x0200) in ds1dsorg indicates partitioned organization
+  bool is_partitioned = (dscb->ds1dsorg & DS1DSGPO_MASK) != 0;
+  // DS1PDSE (0x10) in ds1smsfg indicates PDSE
+  bool is_pdse = (dscb->ds1smsfg & DS1PDSE_MASK) != 0;
 
-  // used: Calculate used space in native units (cylinders or tracks)
-  // usedx: Calculate number of used extents
-  // DS1LSTAR contains the last used track (TTR format)
-  // Not defined/meaningful for VSAM, PDSE, HFS, and DA (direct/BDAM)
+  if (is_partitioned && is_pdse)
+  {
+    entry.dsntype = "LIBRARY";
+  }
+  else if (is_partitioned)
+  {
+    entry.dsntype = "PDS";
+  }
+  else
+  {
+    entry.dsntype = "";
+  }
+
+  // Check if dataset is encrypted
+  // DS1ENCRP (0x04) in ds1flag1 indicates access method encrypted dataset
+  entry.encrypted = (dscb->ds1flag1 & DS1ENCRP_MASK) != 0;
+
+  // Load primary and secondary allocations (part of General Data in ISPF)
+  load_primary_secondary_from_dscb(dscb, entry);
+}
+
+// Load Current Allocation attributes (allocated units/tracks/bytes, allocated extents)
+void load_alloc_attrs_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
+{
+  uint8_t scal1 = static_cast<uint8_t>(dscb->ds1scalo[0]);
+  uint8_t dspac = (scal1 & 0xC0) >> 6;
+
+  // allocx: Number of extents allocated on this volume
+  entry.allocx = dscb->ds1noepv;
+
+  // Parse the extent information from ds1exnts (3 extents, 10 bytes each)
+  const char *extent_data = dscb->ds1exnts;
+  int total_cylinders = 0;
+  int total_tracks = 0;
+  bool use_cylinders = (dspac == 0x03);
+
+  for (int i = 0; i < 3; i++)
+  {
+    const char *extent = extent_data + (i * 10);
+    uint8_t extent_type = static_cast<uint8_t>(extent[0]);
+
+    if (extent_type == 0x00)
+      break;
+
+    uint32_t lower_cyl = parse_cchh_cylinder(extent + 2);
+    uint32_t upper_cyl = parse_cchh_cylinder(extent + 6);
+
+    if (upper_cyl >= lower_cyl)
+    {
+      int cylinders_in_extent = upper_cyl - lower_cyl + 1;
+      int tracks_in_extent = calculate_extent_tracks(extent);
+      total_cylinders += cylinders_in_extent;
+      total_tracks += tracks_in_extent;
+    }
+  }
+
+  // alloc: Total allocated space in native units
+  entry.alloc = use_cylinders ? total_cylinders : total_tracks;
+
+  // Convert track-based values to bytes if spacu is BYTES
+  if (entry.spacu == "BYTES" && entry.blksize > 0)
+  {
+    int blocks_per_track = 56664 / entry.blksize;
+    if (blocks_per_track <= 0)
+      blocks_per_track = 1;
+    int base_bytes_per_track = blocks_per_track * entry.blksize;
+
+    // Convert alloc and primary from tracks to bytes
+    if (entry.alloc > 0)
+      entry.alloc *= base_bytes_per_track;
+    if (entry.primary > 0)
+      entry.primary *= base_bytes_per_track;
+
+    // Secondary allocation is already in bytes from DS1SCEXT for contiguous allocations
+  }
+}
+
+// Load Used Space attributes (used space percentage, used extents)
+void load_used_attrs_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
+{
+  uint8_t scal1 = static_cast<uint8_t>(dscb->ds1scalo[0]);
+  uint8_t dspac = (scal1 & 0xC0) >> 6;
+  bool use_cylinders = (dspac == 0x03);
 
   // Check if this is a PDSE
   bool is_pdse = (dscb->ds1smsfg & DS1PDSE_MASK) != 0;
@@ -1040,105 +1077,140 @@ void load_extents_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry, uint32_t p
     // DA (Direct Access/BDAM), VSAM, or PDSE: DS1LSTAR not meaningful
     entry.usedp = -1;
     entry.usedx = -1;
+    return;
+  }
+
+  // Parse DS1LSTAR (last used track in TTR format)
+  uint8_t lstar_tt_high = static_cast<unsigned char>(dscb->ds1lstar[0]);
+  uint8_t lstar_tt_low = static_cast<unsigned char>(dscb->ds1lstar[1]);
+  uint32_t last_used_track = (lstar_tt_high << 8) | lstar_tt_low;
+
+  // Check if this is a large format dataset that uses DS1TTHI
+  bool is_large = (dscb->ds1flag1 & 0x10) != 0;
+  if (is_large)
+  {
+    uint8_t lstar_tt_highest = static_cast<unsigned char>(dscb->ds1ttthi);
+    last_used_track |= (lstar_tt_highest << 16);
+  }
+
+  // Special case: DS1LSTAR = 0x000000 for blksize=0 means unused
+  bool is_blksize_zero = (entry.blksize == 0);
+  if (last_used_track == 0 && is_blksize_zero)
+  {
+    entry.usedp = 0;
+    entry.usedx = 0;
+    return;
+  }
+
+  // Store used space temporarily in tracks/cylinders (will convert to percentage later)
+  if (use_cylinders)
+  {
+    entry.usedp = (last_used_track + 1 + 14) / 15; // Round up to cylinders
   }
   else
   {
-    // DS1LSTAR is 3 bytes: TT (track) + R (record)
-    // We only need the TT part (bytes 0-1)
-    uint32_t last_used_track;
-    uint8_t lstar_tt_high = static_cast<unsigned char>(dscb->ds1lstar[0]);
-    uint8_t lstar_tt_low = static_cast<unsigned char>(dscb->ds1lstar[1]);
+    entry.usedp = last_used_track + 1; // Tracks (0-based, so +1)
+  }
 
-    // Parse last used track number (TT from TTR)
-    // TT is a 2-byte big-endian value representing the relative track number (0-based)
-    last_used_track = (lstar_tt_high << 8) | lstar_tt_low;
+  // Calculate how many extents contain data (count of used extents)
+  if (entry.usedp > 0)
+  {
+    const char *extent_data = dscb->ds1exnts;
+    int cumulative_tracks = 0;
+    entry.usedx = 0;
 
-    // Check if this is a large format dataset that uses DS1TTHI
-    bool is_large = (dscb->ds1flag1 & 0x10) != 0; // DS1LARGE bit
-    if (is_large)
+    for (int i = 0; i < 3; i++)
     {
-      // Include the high-order byte from DS1TTHI
-      uint8_t lstar_tt_highest = static_cast<unsigned char>(dscb->ds1ttthi);
-      last_used_track |= (lstar_tt_highest << 16);
-    }
+      const char *extent = extent_data + (i * 10);
+      uint8_t extent_type = static_cast<uint8_t>(extent[0]);
 
-    // Special case: DS1LSTAR = 0x000000 can mean either:
-    // 1. Track 0, record 0 is used (dataset has been written to)
-    // 2. Dataset has never been written to (unused)
-    // For datasets with blksize=0, DS1LSTAR = 0x000000 means unused
-    // This is common for checkpoint datasets and preallocated system datasets
-    bool is_blksize_zero = (entry.blksize == 0);
+      if (extent_type == 0x00)
+        break;
 
-    if (last_used_track == 0 && pds_max_track == 0 && is_blksize_zero)
-    {
-      // DS1LSTAR = 0x000000 for blksize=0 dataset = unused
-      entry.usedp = 0;
-      entry.usedx = 0;
-    }
-    else
-    {
-      // Store used space temporarily in tracks for later percentage calculation
-      // (will be converted to percentage in the bytes conversion section)
-      if (use_cylinders)
+      int tracks_in_extent = calculate_extent_tracks(extent);
+      cumulative_tracks += tracks_in_extent;
+
+      // Count this extent as used if it contains data up to the last used track
+      if (last_used_track < cumulative_tracks)
       {
-        // Convert tracks to cylinders (round up)
-        entry.usedp = (last_used_track + 1 + 14) / 15;
+        entry.usedx = i + 1;
+        break;
+      }
+    }
+  }
+
+  // Calculate used percentage
+  // Note: DS1TRBAL contains bytes remaining calculated by IBM TRKCALC,
+  // but since we don't have access to TRKCALC's exact capacity formula,
+  // we approximate by using simple track-based percentage calculation.
+
+  if (entry.spacu == "BYTES" && entry.blksize > 0)
+  {
+    // For BYTES space unit, calculate percentage from track counts
+    if (entry.usedp > 0 && entry.alloc > 0)
+    {
+      int blocks_per_track = 56664 / entry.blksize;
+      if (blocks_per_track <= 0)
+        blocks_per_track = 1;
+      int base_bytes_per_track = blocks_per_track * entry.blksize;
+
+      // entry.usedp currently contains used tracks
+      // entry.alloc now contains total allocated bytes
+      int used_tracks = entry.usedp;
+      int total_tracks = entry.alloc / base_bytes_per_track;
+
+      if (total_tracks > 0)
+      {
+        double percentage = (100.0 * used_tracks) / total_tracks;
+        entry.usedp = (int)percentage;
+
+        if (entry.usedp > 100)
+          entry.usedp = 100;
       }
       else
       {
-        // Report in tracks (temporarily, will convert to percentage later)
-        entry.usedp = last_used_track + 1;
+        entry.usedp = 0;
       }
     }
-
-    // Calculate how many extents contain data (count of used extents)
-    // Skip this calculation if we already determined the dataset is unused
-    if (entry.usedp > 0)
+    else if (entry.usedp == 0)
     {
-      int cumulative_tracks = 0;
-      entry.usedx = 0;
-
-      for (int i = 0; i < 3; i++)
-      {
-        const char *extent = extent_data + (i * 10);
-        uint8_t extent_type = static_cast<uint8_t>(extent[0]);
-
-        if (extent_type == 0x00)
-          break;
-
-        // Parse extent to get track count
-        uint16_t lower_cyl_low = (static_cast<unsigned char>(extent[2]) << 8) |
-                                 static_cast<unsigned char>(extent[3]);
-        uint16_t lower_cyl_high = ((static_cast<unsigned char>(extent[4]) << 4) |
-                                   (static_cast<unsigned char>(extent[5]) >> 4)) &
-                                  0x0FFF;
-        uint16_t lower_head = static_cast<unsigned char>(extent[5]) & 0x0F;
-        uint16_t upper_cyl_low = (static_cast<unsigned char>(extent[6]) << 8) |
-                                 static_cast<unsigned char>(extent[7]);
-        uint16_t upper_cyl_high = ((static_cast<unsigned char>(extent[8]) << 4) |
-                                   (static_cast<unsigned char>(extent[9]) >> 4)) &
-                                  0x0FFF;
-        uint16_t upper_head = static_cast<unsigned char>(extent[9]) & 0x0F;
-
-        uint32_t lower_cyl = (lower_cyl_high << 16) | lower_cyl_low;
-        uint32_t upper_cyl = (upper_cyl_high << 16) | upper_cyl_low;
-
-        if (upper_cyl >= lower_cyl)
-        {
-          int tracks_in_extent = ((upper_cyl - lower_cyl) * 15) + (upper_head - lower_head) + 1;
-          cumulative_tracks += tracks_in_extent;
-
-          // Count this extent as used if it contains data up to the last used track
-          // last_used_track is 0-based, cumulative_tracks is the total tracks so far
-          if (last_used_track < cumulative_tracks)
-          {
-            entry.usedx = i + 1; // This is the count of extents with data
-            break;
-          }
-        }
-      }
-    } // End if (entry.usedp > 0)
+      entry.usedp = 0;
+    }
+    else
+    {
+      entry.usedp = -1; // Unknown/not applicable
+    }
   }
+  else
+  {
+    // For non-BYTES space units (TRACKS, CYLINDERS, BLOCKS)
+    if (entry.usedp > 0 && entry.alloc > 0)
+    {
+      double percentage = (100.0 * entry.usedp) / entry.alloc;
+      entry.usedp = (int)percentage;
+
+      if (entry.usedp > 100)
+        entry.usedp = 100;
+    }
+    else if (entry.usedp == 0)
+    {
+      entry.usedp = 0;
+    }
+    else
+    {
+      entry.usedp = -1; // Unknown/not applicable
+    }
+  }
+
+  // Note: usedx (used extents) is already set by load_extents_from_dscb
+}
+
+// Load Date attributes (creation date, expiration date, referenced date)
+void load_date_attrs_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
+{
+  load_date_from_dscb(dscb->ds1credt, &entry.cdate, false);
+  load_date_from_dscb(dscb->ds1expdt, &entry.edate, true); // expiration date can have sentinel
+  load_date_from_dscb(dscb->ds1refd, &entry.rdate, false);
 }
 
 void zds_get_attrs_from_dscb(ZDS *zds, ZDSEntry &entry)
@@ -1152,161 +1224,13 @@ void zds_get_attrs_from_dscb(ZDS *zds, ZDSEntry &entry)
   memset(dscb, 0x00, sizeof(DSCBFormat1));
   const auto rc = ZDSDSCB1(zds, entry.name.c_str(), entry.volser.c_str(), dscb);
 
-  // DEBUG: Dump DSCB to file
   if (rc == RTNCD_SUCCESS)
   {
-    // FILE *debug_fp = fopen("/tmp/znp-ds-attrs.txt", "a");
-    // if (debug_fp)
-    // {
-    //   fprintf(debug_fp, "\n=== Dataset: %s ===\n", entry.name.c_str());
-    //   // DSCB Format-1 is 140 bytes (0x8C), use fixed size instead of sizeof
-    //   const size_t DSCB_SIZE = 140;
-    //   fprintf(debug_fp, "DSCB Hex Dump (%zu bytes, sizeof=%zu):\n", DSCB_SIZE, sizeof(DSCBFormat1));
-
-    //   unsigned char *dscb_bytes = (unsigned char *)dscb;
-    //   for (size_t i = 0; i < DSCB_SIZE; i++)
-    //   {
-    //     if (i % 16 == 0)
-    //       fprintf(debug_fp, "%04zX: ", i);
-    //     fprintf(debug_fp, "%02X ", dscb_bytes[i]);
-    //     if ((i + 1) % 16 == 0)
-    //       fprintf(debug_fp, "\n");
-    //   }
-    //   if (DSCB_SIZE % 16 != 0)
-    //     fprintf(debug_fp, "\n");
-
-    //   fclose(debug_fp);
-    // }
-  }
-
-  if (rc == RTNCD_SUCCESS)
-  {
-    load_dsorg_from_dscb(dscb, &entry.dsorg);
-
-    // Check if this is a VSAM dataset
-    bool is_vsam = (dscb->ds1dsorg & DS1ACBM_MASK) != 0;
-
-    if (is_vsam)
-    {
-      // VSAM datasets: blksize, lrecl, and recfm are not meaningful
-      entry.blksize = -1;
-      entry.lrecl = -1;
-      entry.recfm = "";
-    }
-    else
-    {
-      load_recfm_from_dscb(dscb, &entry.recfm);
-      entry.blksize = (static_cast<unsigned char>(dscb->ds1blkl[0]) << 8) |
-                      static_cast<unsigned char>(dscb->ds1blkl[1]);
-      entry.lrecl = (static_cast<unsigned char>(dscb->ds1lrecl[0]) << 8) |
-                    static_cast<unsigned char>(dscb->ds1lrecl[1]);
-    }
-
-    // Determine dsntype: PDS or LIBRARY (PDSE)
-    // DS1DSGPO (0x0200) in ds1dsorg indicates partitioned organization
-    bool is_partitioned = (dscb->ds1dsorg & DS1DSGPO_MASK) != 0;
-    // DS1PDSE (0x10) in ds1smsfg indicates PDSE
-    bool is_pdse = (dscb->ds1smsfg & DS1PDSE_MASK) != 0;
-    uint32_t max_member_track = 0;
-
-    if (is_partitioned && is_pdse)
-    {
-      entry.dsntype = "LIBRARY";
-    }
-    else if (is_partitioned)
-    {
-      entry.dsntype = "PDS";
-    }
-    else
-    {
-      entry.dsntype = "";
-    }
-
-    // Check if dataset is encrypted
-    // DS1ENCRP (0x04) in ds1flag1 indicates access method encrypted dataset
-    entry.encrypted = (dscb->ds1flag1 & DS1ENCRP_MASK) != 0;
-
-    load_date_from_dscb(dscb->ds1credt, &entry.cdate, false);
-    load_date_from_dscb(dscb->ds1expdt, &entry.edate, true); // expiration date can have sentinel
-    load_date_from_dscb(dscb->ds1refd, &entry.rdate, false);
-    load_extents_from_dscb(dscb, entry, max_member_track);
-
-    // Convert track-based values to bytes if spacu is BYTES
-    // This uses the block size to calculate usable bytes per track
-    if (entry.spacu == "BYTES" && entry.blksize > 0)
-    {
-      // Calculate capacity: floor(56664 / blksize) * blksize
-      int blocks_per_track = 56664 / entry.blksize;
-      if (blocks_per_track <= 0)
-        blocks_per_track = 1;
-      int base_bytes_per_track = blocks_per_track * entry.blksize;
-
-      // Convert alloc and primary from tracks to bytes
-      if (entry.alloc > 0)
-        entry.alloc *= base_bytes_per_track;
-      if (entry.primary > 0)
-        entry.primary *= base_bytes_per_track;
-
-      // Calculate used percentage
-      // Note: DS1TRBAL contains bytes remaining calculated by IBM TRKCALC,
-      // but since we don't have access to TRKCALC's exact capacity formula,
-      // we approximate by using simple track-based percentage calculation.
-      if (entry.usedp > 0 && entry.alloc > 0)
-      {
-        // entry.usedp currently contains used tracks (or cylinders)
-        // entry.alloc contains total allocated tracks (now converted to bytes)
-        int used_tracks = entry.usedp; // Store before overwriting
-        int total_tracks = entry.alloc / base_bytes_per_track;
-
-        if (total_tracks > 0)
-        {
-          // Calculate percentage and truncate (round down) to match z/OSMF behavior
-          double percentage = (100.0 * used_tracks) / total_tracks;
-          entry.usedp = (int)percentage; // Truncate to integer
-
-          // Clamp to 0-100 range
-          if (entry.usedp > 100)
-            entry.usedp = 100;
-        }
-        else
-        {
-          entry.usedp = 0;
-        }
-      }
-      else if (entry.usedp == 0)
-      {
-        entry.usedp = 0; // Already 0, keep it
-      }
-      else
-      {
-        entry.usedp = -1; // Unknown/not applicable
-      }
-
-      // Secondary allocation is already in bytes from DS1SCEXT for contiguous allocations
-      // No conversion needed
-    }
-    else
-    {
-      // For non-BYTES space units (TRACKS, CYLINDERS, BLOCKS), calculate percentage
-      // entry.usedp and entry.alloc are both in the same units (tracks or cylinders)
-      if (entry.usedp > 0 && entry.alloc > 0)
-      {
-        double percentage = (100.0 * entry.usedp) / entry.alloc;
-        entry.usedp = (int)percentage; // Truncate to integer to match z/OSMF
-
-        // Clamp to 0-100 range
-        if (entry.usedp > 100)
-          entry.usedp = 100;
-      }
-      else if (entry.usedp == 0)
-      {
-        entry.usedp = 0; // Already 0, keep it
-      }
-      else
-      {
-        entry.usedp = -1; // Unknown/not applicable
-      }
-    }
+    // Load attributes in logical order
+    load_general_attrs_from_dscb(dscb, entry);
+    load_alloc_attrs_from_dscb(dscb, entry);
+    load_used_attrs_from_dscb(dscb, entry);
+    load_date_attrs_from_dscb(dscb, entry);
   }
   else
   {

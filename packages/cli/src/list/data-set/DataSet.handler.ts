@@ -34,14 +34,15 @@ export default class ListDataSetsHandler extends SshBaseHandler {
         }
 
         // Sort object keys by "name" first, then alphabetically
-        response.items = response.items.map((item) =>
-            Object.keys(item)
-                .sort((a, b) => (a === "name" ? -1 : b === "name" ? 1 : a.localeCompare(b)))
-                .reduce((obj, key) => {
-                    (obj as any)[key] = (item as any)[key];
-                    return obj;
-                }, {} as Dataset),
-        );
+        response.items = response.items.map((item) => {
+            const sortedKeys = (Object.keys(item) as Array<keyof Dataset>).sort((a, b) =>
+                a === "name" ? -1 : b === "name" ? 1 : a.localeCompare(b),
+            );
+            return sortedKeys.reduce<Dataset>((obj: Partial<Dataset>, key) => {
+                (obj as Record<string, unknown>)[key] = item[key]!;
+                return obj as Dataset;
+            }, {} as Dataset);
+        });
 
         params.response.data.setMessage(
             "Successfully listed %d matching data sets for pattern '%s'",
