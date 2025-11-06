@@ -251,7 +251,7 @@ int zds_write_to_dsn(ZDS *zds, const string &dsn, string &data)
   {
     dsname = "//DD:" + string(zds->ddname);
   }
-  const string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "wb" : "w" + string(",recfm=*");
+  const string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "wb" : "w,recfm=*";
 
   {
     FileGuard fp(dsname.c_str(), fopen_flags.c_str());
@@ -496,7 +496,7 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &list)
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=pds-reading-directory-sequentially
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=pdse-reading-directory - long alias names omitted, use DESERV for those
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=pds-directory
-  FILE *fp = fopen(dsn.c_str(), "rb,recfm=u");
+  FILE *fp = fopen(dsn.c_str(), "rb,u");
 
   const int bufsize = 256;
   char buffer[bufsize] = {0};
@@ -1272,7 +1272,7 @@ int zds_write_to_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, s
 
   const auto hasEncoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
   const auto codepage = string(zds->encoding_opts.codepage);
-  const auto fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "wb" : "w" + string(",recfm=*");
+  const auto fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "wb" : "w,recfm=*";
 
   {
     FileGuard fout(dsname.c_str(), fopen_flags.c_str());
