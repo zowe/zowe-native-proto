@@ -33,7 +33,7 @@ export function deployWithProgress(session: SshSession, serverPath: string, loca
                 ZoweExplorerApiType.All,
                 "Server installation",
             );
-
+            // Pass callbacks for both progress and error handling
             await ZSshUtils.installServer(session, serverPath, localDir, {
                 onProgress: (progressIncrement) => {
                     progress.report({ increment: progressIncrement });
@@ -86,6 +86,7 @@ export function registerCommands(context: vscode.ExtensionContext): vscode.Dispo
             const localDir = path.join(context.extensionPath, "bin");
             await deployWithProgress(sshSession, deployDirectory, localDir);
             await ConfigUtils.showSessionInTree(profile.name!, true);
+
             const infoMsg = `Installed Zowe SSH server on ${profile.profile.host ?? profile.name}`;
             imperative.Logger.getAppLogger().info(infoMsg);
             await Gui.showMessage(infoMsg);
