@@ -510,7 +510,10 @@ void uss_tests()
                              ExpectWithContext(rc, view_response_hex_dump).ToBe(0);
 
                              // Remove Newline
-                             view_response_hex_dump.pop_back();
+                             if (view_response_hex_dump.back() == '\n')
+                             {
+                               view_response_hex_dump.pop_back();
+                             }
 
                              // Get last 2 characters
                              string newLine = view_response_hex_dump.substr(view_response_hex_dump.length() - 2);
