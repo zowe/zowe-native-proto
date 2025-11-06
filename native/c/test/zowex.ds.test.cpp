@@ -467,7 +467,7 @@ void zowex_ds_tests()
                            {
                              string ds = _ds.back() + ".GHOST";
                              string response;
-                             string command = zowex_command + " data-set create-member \"" + ds + "(TEST)\"";
+                             string command = zowex_command + " data-set create-member '" + ds + "(TEST)'";
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).Not().ToBe(0);
                              Expect(response).ToContain("Error: could not create data set member");
@@ -478,7 +478,7 @@ void zowex_ds_tests()
                            {
                              string ds = _ds.back();
                              string response;
-                             string command = zowex_command + " data-set create-member \"" + ds + "(TEST)\"";
+                             string command = zowex_command + " data-set create-member '" + ds + "(TEST)'";
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Data set and/or member created");
@@ -488,7 +488,7 @@ void zowex_ds_tests()
                         xit("should not overwrite existing members",
                             [&]() -> void
                             {
-                              string ds = "\"" + _ds.back() + "(TEST)\"";
+                              string ds = "'" + _ds.back() + "(TEST)'";
                               string response;
                               string command = zowex_command + " data-set create-member " + ds;
                               int rc = execute_command_with_output(command, response);
@@ -643,10 +643,11 @@ void zowex_ds_tests()
                              ExpectWithContext(rc, response).Not().ToBe(0);
                              Expect(response).ToContain("Error: could not delete data set: '" + ds + "'");
                            });
-                        it("should fail to delete a data set if not authorized",
-                           []() -> void {});
-                        it("should fail to delete a data set that is currently in use",
-                           []() -> void {});
+
+                        // TODO: What do?
+                        xit("should fail to delete a data set if not authorized", []() -> void {});
+                        // TODO: What do?
+                        xit("should fail to delete a data set that is currently in use", []() -> void {});
 
                         // TODO: https://github.com/zowe/zowe-native-proto/issues/665
                         xit("should delete multiple data sets specified in a list", []() -> void {});
@@ -887,18 +888,18 @@ void zowex_ds_tests()
                              _create_ds(ds, "--dsorg PO");
 
                              string response;
-                             string command = zowex_command + " data-set create-member \"" + ds + "(TEST)\"";
+                             string command = zowex_command + " data-set create-member '" + ds + "(TEST)'";
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Data set and/or member created");
 
                              string random_string = get_random_string(80, false);
-                             command = "echo " + random_string + " | " + zowex_command + " data-set write \"" + ds + "(TEST)\"";
+                             command = "echo " + random_string + " | " + zowex_command + " data-set write '" + ds + "(TEST)'";
                              rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Wrote data to '" + ds + "(TEST)'");
 
-                             command = zowex_command + " data-set view \"" + ds + "(TEST)\"";
+                             command = zowex_command + " data-set view '" + ds + "(TEST)'";
                              rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain(random_string);
@@ -911,8 +912,9 @@ void zowex_ds_tests()
 
                              string response;
                              string random_string = get_random_string(80, false);
+                             string random_string1 = get_random_string(80, false);
                              string random_string2 = get_random_string(80, false);
-                             string command = "echo " + random_string + " | " + zowex_command + " data-set write " + ds;
+                             string command = "echo '" + random_string + "^J" + random_string1 + "' | " + zowex_command + " data-set write " + ds;
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Wrote data to '" + ds + "'");
@@ -921,6 +923,7 @@ void zowex_ds_tests()
                              rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain(random_string);
+                             Expect(response).ToContain(random_string1);
                              Expect(response).Not().ToContain(random_string2);
 
                              command = "echo " + random_string2 + " | " + zowex_command + " data-set write " + ds;
@@ -933,21 +936,110 @@ void zowex_ds_tests()
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain(random_string2);
                              Expect(response).Not().ToContain(random_string);
+                             Expect(response).Not().ToContain(random_string1);
                            });
-                        it("should append content to a sequential data set",
-                           []() -> void {});
-                        it("should fail to write to a non-existent data set",
-                           []() -> void {});
-                        it("should fail to write to a data set if not authorized",
-                           []() -> void {});
+                        it("should overwrite content in a PDS member",
+                           [&]() -> void
+                           {
+                             string ds = _ds.back();
+                             _create_ds(ds, "--dsorg PO");
+
+                             string response;
+                             string command = zowex_command + " data-set create-member '" + ds + "(TEST)'";
+                             int rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("Data set and/or member created");
+
+                             string random_string = get_random_string(80, false);
+                             string random_string1 = get_random_string(80, false);
+                             string random_string2 = get_random_string(80, false);
+                             command = "echo '" + random_string + "^J" + random_string1 + "' | " + zowex_command + " data-set write '" + ds + "(TEST)'";
+                             rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("Wrote data to '" + ds + "(TEST)'");
+
+                             command = zowex_command + " data-set view '" + ds + "(TEST)'";
+                             rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain(random_string);
+                             Expect(response).ToContain(random_string1);
+                             Expect(response).Not().ToContain(random_string2);
+
+                             command = "echo " + random_string2 + " | " + zowex_command + " data-set write '" + ds + "(TEST)'";
+                             rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("Wrote data to '" + ds + "(TEST)'");
+
+                             command = zowex_command + " data-set view '" + ds + "(TEST)'";
+                             rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain(random_string2);
+                             Expect(response).Not().ToContain(random_string);
+                             Expect(response).Not().ToContain(random_string1);
+                           });
+
                         it("should write content to a data set with different encoding",
                            []() -> void {});
-                        it("should write content from a local file to a data set",
-                           []() -> void {});
-                        it("should error when the data set name is too long",
-                           []() -> void {});
-                        it("should fail if the data set is deleted before the write operation is completed",
-                           []() -> void {});
+
+                        // https://github.com/zowe/zowe-native-proto/issues/670
+                        xit("should fail to write to a non-existent data set",
+                            [&]() -> void
+                            {
+                              string ds = _ds.back() + ".GHOST";
+                              string response;
+                              string command = zowex_command + " data-set write " + ds;
+                              int rc = execute_command_with_output(command, response);
+                              ExpectWithContext(rc, response).Not().ToBe(0);
+                              Expect(response).ToContain("Error: could not write to data set: '" + ds + "'");
+                            });
+                        // https://github.com/zowe/zowe-native-proto/issues/670
+                        xit("should error when the data set name is too long",
+                            []() -> void
+                            {
+                              string ds = get_random_ds(8);
+                              string response;
+                              string command = zowex_command + " data-set write " + ds;
+                              int rc = execute_command_with_output(command, response);
+                              ExpectWithContext(rc, response).Not().ToBe(0);
+                              Expect(response).ToContain("Error: could not write to data set: '" + ds + "'");
+                            });
+                        it("should write content from a USS file to a sequential data set",
+                           [&]() -> void
+                           {
+                             string ds = _ds.back();
+                             _create_ds(ds, "--dsorg PS --lrecl 176");
+                             string response;
+                             string file = "./makefile";
+                             string get_uss_file_command = zowex_command + " uss view '" + file + "'";
+                             string command = get_uss_file_command + " | " + zowex_command + " data-set write " + ds;
+                             int rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("Wrote data to '" + ds + "'");
+
+                             ifstream in(file.c_str(), ifstream::in);
+                             Expect(in.is_open()).ToBe(true);
+
+                             in.seekg(0, ios::end);
+                             size_t size = in.tellg();
+                             in.seekg(0, ios::beg);
+
+                             vector<char> raw_data(size);
+                             in.read(&raw_data[0], size);
+                             in.close();
+
+                             string makefile_content;
+                             makefile_content.assign(raw_data.begin(), raw_data.end());
+
+                             command = zowex_command + " data-set view " + ds;
+                             rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain(makefile_content);
+                           });
+
+                        // TODO: What do?
+                        xit("should fail if the data set is deleted before the write operation is completed", []() -> void {});
+                        // TODO: What do?
+                        xit("should fail to write to a data set if not authorized", []() -> void {});
                       });
            });
 }
