@@ -481,7 +481,7 @@ export abstract class AbstractConfigManager {
                 password: config.privateKey ? undefined : config.password,
                 privateKey: config.privateKey ? readFileSync(path.normalize(config.privateKey), "utf8") : undefined,
                 passphrase: config.privateKey ? config.keyPassphrase : undefined,
-                readyTimeout: config.handshakeTimeout || this.getVscodeSetting("defaultHandshakeTimeout") || 30000,
+                readyTimeout: config.handshakeTimeout || this.getClientSetting("handshakeTimeout") || 30000,
             };
 
             // Attempt connection
