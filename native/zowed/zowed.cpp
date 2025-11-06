@@ -11,7 +11,6 @@
 
 #include <atomic>
 #include <chrono>
-#include <fstream>
 #include <map>
 #include <mutex>
 #include <signal.h>
@@ -27,7 +26,6 @@
 #include "server.hpp"
 #include "worker.hpp"
 #include "zowed.hpp"
-#include <_Nascii.h>
 
 using std::string;
 
@@ -114,7 +112,7 @@ private:
   void print_ready_message()
   {
     zjson::Value data = zjson::Value::create_object();
-    std::map<string, string> checksums = load_checksums();
+    const auto checksums = load_checksums();
     zjson::Value checksums_obj = zjson::Value::create_object();
     for (const auto &pair : checksums)
     {
