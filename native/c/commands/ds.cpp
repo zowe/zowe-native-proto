@@ -387,7 +387,7 @@ int handle_data_set_list(InvocationContext &context)
           fields.push_back(zut_int_to_string(it->primary));
           fields.push_back(zut_int_to_string(it->secondary));
           fields.push_back(it->dsntype);
-          fields.push_back(it->migrated ? "true" : "false");
+          fields.push_back(it->migrated ? "YES" : "NO");
         }
         context.output_stream() << zut_format_as_csv(fields) << endl;
         fields.clear();
@@ -396,7 +396,19 @@ int handle_data_set_list(InvocationContext &context)
       {
         if (attributes)
         {
-          context.output_stream() << left << setw(44) << it->name << " " << it->volser << " " << setw(4) << it->dsorg << " " << setw(6) << it->recfm << endl;
+          context.output_stream() << left
+                                  << setw(44) << it->name << " "
+                                  << setw(6) << it->volser << " "
+                                  << setw(6) << it->devtype << " "
+                                  << setw(4) << it->dsorg << " "
+                                  << setw(6) << it->recfm << " "
+                                  << setw(6) << it->lrecl << " "
+                                  << setw(6) << it->blksize << " "
+                                  << setw(10) << it->primary << " "
+                                  << setw(10) << it->secondary << " "
+                                  << setw(8) << it->dsntype << " "
+                                  << (it->migrated ? "YES" : "NO")
+                                  << endl;
         }
         else
         {
