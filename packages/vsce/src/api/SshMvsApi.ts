@@ -73,6 +73,8 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
                 pattern: filter,
                 attributes: options?.attributes,
             });
+            // Cache attributes for first data set to work around ZE issue
+            // See https://github.com/zowe/zowe-explorer-vscode/issues/3927
             this.attrProvider.cachedAttrs = response.items[0];
             return this.buildZosFilesResponse({
                 items: response.items.map((item) => {

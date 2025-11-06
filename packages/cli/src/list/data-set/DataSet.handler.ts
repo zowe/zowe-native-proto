@@ -52,7 +52,7 @@ export default class ListDataSetsHandler extends SshBaseHandler {
         params.response.format.output({
             output: response.items,
             format: "table",
-            fields: Object.keys(response.items[0]),
+            fields: response.items.length > 0 ? Object.keys(response.items[0]) : [],
         });
         return response;
     }
