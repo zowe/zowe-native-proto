@@ -602,20 +602,7 @@ int handle_data_set_write(InvocationContext &context)
     {
       istreambuf_iterator<char> begin(context.input_stream());
       istreambuf_iterator<char> end;
-
-      if (!context.is_redirecting_input())
-      {
-        vector<char> input(begin, end);
-        const auto temp = string(input.begin(), input.end());
-        input.clear();
-        const auto bytes = zut_get_contents_as_bytes(temp);
-
-        data.assign(bytes.begin(), bytes.end());
-      }
-      else
-      {
-        data.assign(begin, end);
-      }
+      data.assign(begin, end);
     }
     else
     {
