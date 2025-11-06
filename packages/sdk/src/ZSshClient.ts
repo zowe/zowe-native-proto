@@ -66,7 +66,10 @@ export class ZSshClient extends RpcClientApi implements Disposable {
             });
             client.mSshClient.on("ready", async () => {
                 const zowedBin = posix.join(opts.serverPath ?? ZSshClient.DEFAULT_SERVER_PATH, "zowed");
-                const zowedArgs = ["--num-workers", `${opts.numWorkers ?? 3}`];
+                const zowedArgs = [];
+                if (opts.numWorkers != null) {
+                    zowedArgs.push("--num-workers", `${opts.numWorkers}`);
+                }
                 if (opts.requestTimeout != null) {
                     zowedArgs.push("--request-timeout", `${opts.requestTimeout}`);
                 }
