@@ -134,15 +134,16 @@ export abstract class AbstractConfigManager {
                     user: foundProfile?.profile?.user,
                     password: foundProfile?.profile?.password,
                 });
-                if (validConfig.password) {
-                    foundProfile.profile.privateKey = foundProfile.profile.keyPassphrase = undefined;
-                }
+
                 if (validConfig === undefined) {
                     statusBar?.dispose();
                     return;
                 }
 
                 if (setExistingProfile || Object.keys(validConfig).length > 0) {
+                    if (validConfig.password) {
+                        foundProfile.profile.privateKey = foundProfile.profile.keyPassphrase = undefined;
+                    }
                     await this.setProfile(validConfig, foundProfile.name);
                 }
                 statusBar?.dispose();
