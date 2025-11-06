@@ -496,7 +496,7 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &list)
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=pds-reading-directory-sequentially
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=pdse-reading-directory - long alias names omitted, use DESERV for those
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=pds-directory
-  FILE *fp = fopen(dsn.c_str(), "rb,u");
+  FILE *fp = fopen(dsn.c_str(), "rb,recfm=u");
 
   const int bufsize = 256;
   char buffer[bufsize] = {0};
