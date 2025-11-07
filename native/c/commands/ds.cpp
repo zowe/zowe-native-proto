@@ -486,7 +486,7 @@ int handle_data_set_list_members(InvocationContext &context)
   }
   if (RTNCD_SUCCESS != rc && RTNCD_WARNING != rc)
   {
-    context.error_stream() << "Error: could not read data set: '" << dsn << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << "Error: could not list members: '" << dsn << "' rc: '" << rc << "'" << endl;
     context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
