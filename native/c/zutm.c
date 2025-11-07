@@ -349,7 +349,7 @@ void ZUTAOFF()
   {
     PSW psw = {0};
     get_psw(&psw);
-    int mode_switch = psw.p ? 1 : 0;
+    int mode_switch = psw.data.bits.p ? 1 : 0;
     unsigned char key = get_key();
     unsigned char key_zero = 0;
     if (mode_switch)

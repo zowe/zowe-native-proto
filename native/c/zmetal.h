@@ -431,25 +431,33 @@ static unsigned long long int get_raw_psw()
 
 typedef struct
 {
-  unsigned int z0 : 1;      // always 0
-  unsigned int r : 1;       // program event recording mask
-  unsigned int z1 : 3;      // always 0
-  unsigned int t : 1;       // DAT mode 0=off
-  unsigned int i : 1;       // I/O mask
-  unsigned int e : 1;       // extenal mask, 0 = no interupts
-  unsigned int key : 4;     // program mask
-  unsigned int a : 1;       // architecture 0 = z/Architecture
-  unsigned int m : 1;       // machine check mask
-  unsigned int w : 1;       // wait state, 0=ready
-  unsigned int p : 1;       // problem state, 0=supervisor
-  unsigned int as : 2;      // address space control
-  unsigned int cc : 2;      // condition code
-  unsigned int pgmmask : 4; // condition code
-  unsigned int z2 : 7;      // always 0
-  unsigned int ea : 1;      // extended addressing mode b'00' = 24, b'01' = 31, b'11' = 64
+  union
+  {
+    long double raw;
+    struct
+    {
+      unsigned int z0 : 1;      // always 0
+      unsigned int r : 1;       // program event recording mask
+      unsigned int z1 : 3;      // always 0
+      unsigned int t : 1;       // DAT mode 0=off
+      unsigned int i : 1;       // I/O mask
+      unsigned int e : 1;       // extenal mask, 0 = no interupts
+      unsigned int key : 4;     // program mask
+      unsigned int a : 1;       // architecture 0 = z/Architecture
+      unsigned int m : 1;       // machine check mask
+      unsigned int w : 1;       // wait state, 0=ready
+      unsigned int p : 1;       // problem state, 0=supervisor
+      unsigned int as : 2;      // address space control
+      unsigned int cc : 2;      // condition code
+      unsigned int pgmmask : 4; // condition code
+      unsigned int z2 : 7;      // always 0
+      unsigned int ea : 1;      // extended addressing mode b'00' = 24, b'01' = 31, b'11' = 64
 
-  unsigned int ba : 1;      // basic addressing mode
-  unsigned int unused : 31; // future use
+      unsigned int ba : 1;      // basic addressing mode
+      unsigned int unused : 31; // future use
+
+    } bits;
+  } data;
 } PSW;
 
 static void get_psw(PSW *psw)
