@@ -1227,13 +1227,11 @@ void zds_get_attrs_from_dscb(ZDS *zds, ZDSEntry &entry)
     entry.alloc = -1;
     entry.allocx = -1;
     entry.blksize = -1;
-    entry.dsorg = ZDS_DSORG_UNKNOWN;
     entry.lrecl = -1;
     entry.primary = -1;
     entry.secondary = -1;
     entry.usedp = -1;
     entry.usedx = -1;
-    entry.volser = ZDS_VOLSER_UNKNOWN;
   }
 
   free(dscb);
@@ -1448,7 +1446,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
 
         memset(buffer, 0x00, sizeof(buffer)); // clear buffer
         memcpy(buffer, data, *field_len);     // copy VOLSER
-        entry.volser = string(buffer);
+        entry.volser = strlen(buffer) == 0 ? ZDS_VOLSER_UNKNOWN : string(buffer);
 
 #define IPL_VOLUME "******"
 #define IPL_VOLUME_SYMBOL "&SYSR1" // https://www.ibm.com/docs/en/zos/3.1.0?topic=symbols-static-system

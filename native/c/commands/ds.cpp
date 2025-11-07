@@ -436,7 +436,8 @@ int handle_data_set_list(InvocationContext &context)
           entry->set("devtype", str(it->devtype));
         if (!it->dsntype.empty())
           entry->set("dsntype", str(it->dsntype));
-        entry->set("dsorg", str(it->dsorg));
+        if (!it->dsorg.empty())
+          entry->set("dsorg", str(it->dsorg));
         if (!it->edate.empty())
           entry->set("edate", str(it->edate));
         if (it->alloc != -1)
