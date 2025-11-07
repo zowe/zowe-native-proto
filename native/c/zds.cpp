@@ -1224,9 +1224,16 @@ void zds_get_attrs_from_dscb(ZDS *zds, ZDSEntry &entry)
   }
   else
   {
+    entry.alloc = -1;
+    entry.allocx = -1;
+    entry.blksize = -1;
     entry.dsorg = ZDS_DSORG_UNKNOWN;
+    entry.lrecl = -1;
+    entry.primary = -1;
+    entry.secondary = -1;
+    entry.usedp = -1;
+    entry.usedx = -1;
     entry.volser = ZDS_VOLSER_UNKNOWN;
-    entry.recfm = ZDS_RECFM_U;
   }
 
   free(dscb);
@@ -1389,11 +1396,11 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
     work_area_total -= sizeof(ZDS_CSI_HEADER);
     work_area_total -= sizeof(ZDS_CSI_CATALOG);
 
-    ZDSEntry entry = {0};
     char buffer[sizeof(f->name) + 1] = {0};
 
     while (work_area_total > 0)
     {
+      ZDSEntry entry = {0};
       f = (ZDS_CSI_ENTRY *)p;
 
       if (ERROR == f->flag)
@@ -1485,10 +1492,8 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
 
         switch (f->type)
         {
-
         case NON_VSAM_DATA_SET:
           // DSORG and PDSE/PDS determination is done via DSCB parsing in zds_get_attrs_from_dscb()
-          // No need to process NVSMATTR field from catalog
           break;
         case GENERATION_DATA_GROUP:
           entry.volser = ZDS_VOLSER_GDG;
@@ -1500,12 +1505,14 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
         case DATA_COMPONENT:
           entry.dsorg = ZDS_DSORG_VSAM;
           entry.volser = ZDS_VOLSER_VSAM;
+          entry.name.insert(entry.name.find_last_not_of(' ') + 1, ".DATA");
           break;
         case GENERATION_DATA_SET:
           break;
         case INDEX_COMPONENT:
           entry.dsorg = ZDS_DSORG_VSAM;
           entry.volser = ZDS_VOLSER_VSAM;
+          entry.name.insert(entry.name.find_last_not_of(' ') + 1, ".INDEX");
           break;
         case ALIAS:
           entry.dsorg = ZDS_DSORG_UNKNOWN;

@@ -382,8 +382,8 @@ int handle_data_set_list(InvocationContext &context)
           fields.push_back(it->devtype);
           fields.push_back(it->dsorg);
           fields.push_back(it->recfm);
-          fields.push_back(zut_int_to_string(it->lrecl));
-          fields.push_back(zut_int_to_string(it->blksize));
+          fields.push_back(it->lrecl == -1 ? "" : zut_int_to_string(it->lrecl));
+          fields.push_back(it->blksize == -1 ? "" : zut_int_to_string(it->blksize));
           fields.push_back(zut_int_to_string(it->primary));
           fields.push_back(zut_int_to_string(it->secondary));
           fields.push_back(it->dsntype);
@@ -402,8 +402,8 @@ int handle_data_set_list(InvocationContext &context)
                                   << setw(6) << it->devtype << " "
                                   << setw(4) << it->dsorg << " "
                                   << setw(6) << it->recfm << " "
-                                  << setw(6) << it->lrecl << " "
-                                  << setw(6) << it->blksize << " "
+                                  << setw(6) << (it->lrecl == -1 ? "" : zut_int_to_string(it->lrecl)) << " "
+                                  << setw(6) << (it->blksize == -1 ? "" : zut_int_to_string(it->blksize)) << " "
                                   << setw(10) << it->primary << " "
                                   << setw(10) << it->secondary << " "
                                   << setw(8) << it->dsntype << " "
@@ -422,48 +422,46 @@ int handle_data_set_list(InvocationContext &context)
       entry->set("name", str(trimmed_name));
       if (attributes)
       {
-        entry->set("alloc", i64(it->alloc));
-        entry->set("allocx", i64(it->allocx));
-        entry->set("blksize", i64(it->blksize));
-        entry->set("cdate", str(it->cdate));
+        if (it->alloc != -1)
+          entry->set("alloc", i64(it->alloc));
+        if (it->allocx != -1)
+          entry->set("allocx", i64(it->allocx));
+        if (it->blksize != -1)
+          entry->set("blksize", i64(it->blksize));
+        if (!it->cdate.empty())
+          entry->set("cdate", str(it->cdate));
         if (!it->dataclass.empty())
-        {
           entry->set("dataclass", str(it->dataclass));
-        }
-        entry->set("devtype", str(it->devtype));
+        if (!it->devtype.empty())
+          entry->set("devtype", str(it->devtype));
         if (!it->dsntype.empty())
-        {
           entry->set("dsntype", str(it->dsntype));
-        }
         entry->set("dsorg", str(it->dsorg));
         if (!it->edate.empty())
-        {
           entry->set("edate", str(it->edate));
-        }
-        entry->set("encrypted", boolean(it->encrypted));
-        entry->set("lrecl", i64(it->lrecl));
+        if (it->alloc != -1)
+          entry->set("encrypted", boolean(it->encrypted));
+        if (it->lrecl != -1)
+          entry->set("lrecl", i64(it->lrecl));
         if (!it->mgmtclass.empty())
-        {
           entry->set("mgmtclass", str(it->mgmtclass));
-        }
         entry->set("migrated", boolean(it->migrated));
-        entry->set("primary", i64(it->primary));
-        entry->set("rdate", str(it->rdate));
-        entry->set("recfm", str(it->recfm));
-        entry->set("secondary", i64(it->secondary));
-        entry->set("spacu", str(it->spacu));
+        if (it->primary != -1)
+          entry->set("primary", i64(it->primary));
+        if (!it->rdate.empty())
+          entry->set("rdate", str(it->rdate));
+        if (!it->recfm.empty())
+          entry->set("recfm", str(it->recfm));
+        if (it->secondary != -1)
+          entry->set("secondary", i64(it->secondary));
+        if (!it->spacu.empty())
+          entry->set("spacu", str(it->spacu));
         if (!it->storclass.empty())
-        {
           entry->set("storclass", str(it->storclass));
-        }
         if (it->usedp != -1)
-        {
           entry->set("usedp", i64(it->usedp));
-        }
         if (it->usedx != -1)
-        {
           entry->set("usedx", i64(it->usedx));
-        }
         entry->set("volser", str(it->volser));
       }
       entries_array->push(entry);
