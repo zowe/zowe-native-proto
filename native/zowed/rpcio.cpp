@@ -77,3 +77,8 @@ void MiddlewareContext::set_pending_notification(const RpcNotification &notifica
 {
   m_pending_notification.reset(new RpcNotification(notification));
 }
+
+void MiddlewareContext::store_large_data(const string &field_name, const string &data)
+{
+  m_large_data[field_name] = data;
+}

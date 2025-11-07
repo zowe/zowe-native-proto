@@ -19,6 +19,8 @@
 // Forward declaration
 struct RpcNotification;
 
+static constexpr size_t LARGE_DATA_THRESHOLD = 16 * 1024 * 1024; // 16MB
+
 class MiddlewareContext : public plugin::InvocationContext
 {
 public:
@@ -46,11 +48,21 @@ public:
   // Store pending notification for delayed sending
   void set_pending_notification(const RpcNotification &notification);
 
+  // Get large data map
+  const std::unordered_map<std::string, std::string> &get_large_data() const
+  {
+    return m_large_data;
+  }
+
+  // Store large data to optimize JSON serialization
+  void store_large_data(const std::string &field_name, const std::string &data);
+
 private:
   std::stringstream m_input_stream;
   std::stringstream m_output_stream;
   std::stringstream m_error_stream;
   zstd::unique_ptr<RpcNotification> m_pending_notification;
+  std::unordered_map<std::string, std::string> m_large_data;
 };
 
 #endif

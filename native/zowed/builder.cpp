@@ -363,7 +363,15 @@ void CommandBuilder::apply_output_transforms(MiddlewareContext &context) const
           data = zbase64::encode(data);
         }
 
-        obj->set(transform.arg_name, ast::str(data));
+        if (data.size() >= LARGE_DATA_THRESHOLD)
+        {
+          context.store_large_data(transform.arg_name, std::move(data));
+          obj->set(transform.arg_name, ast::str(""));
+        }
+        else
+        {
+          obj->set(transform.arg_name, ast::str(data));
+        }
       }
       catch (const std::exception &e)
       {

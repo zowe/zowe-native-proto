@@ -110,7 +110,7 @@ void RpcServer::process_request(const string &request_data)
     response.error = zstd::optional<ErrorDetails>();
     response.id = zstd::optional<int>(request.id);
 
-    print_response(response);
+    print_response(response, &context);
   }
   catch (const std::exception &e)
   {
@@ -279,7 +279,7 @@ zjson::Value RpcServer::convert_ast_to_json(const ast::Node &ast_node)
   }
 }
 
-void RpcServer::print_response(RpcResponse &response)
+void RpcServer::print_response(const RpcResponse &response, const MiddlewareContext *context)
 {
   // Log errors to the log file
   if (response.error.has_value())
@@ -297,19 +297,15 @@ void RpcServer::print_response(RpcResponse &response)
     }
   }
 
-  // Extract and replace large strings from result object
-  std::unordered_map<string, string> large_data_map;
-  if (response.result.has_value())
-  {
-    extract_large_strings(response.result.value(), large_data_map);
-  }
-
   string json_string = serialize_json(rpc_response_to_json(response));
 
-  // Replace placeholders with actual data
-  if (!large_data_map.empty())
+  // Replace placeholders with actual large data
+  if (context && context->get_large_data().size() > 0)
   {
-    json_string = replace_large_data_placeholders(json_string, large_data_map);
+    for (const auto &pair : context->get_large_data())
+    {
+      add_large_data_to_json(json_string, pair.first, pair.second);
+    }
   }
 
   auto &stream = response.error.has_value() ? std::cerr : std::cout;
@@ -317,60 +313,24 @@ void RpcServer::print_response(RpcResponse &response)
   stream << json_string << std::endl;
 }
 
-void RpcServer::extract_large_strings(zjson::Value &json_value, std::unordered_map<string, string> &large_data_map)
+void RpcServer::add_large_data_to_json(string &json_string, const string &field_name, const string &data)
 {
-  static constexpr size_t LARGE_DATA_THRESHOLD = 16 * 1024 * 1024;
-  static constexpr const char *PLACEHOLDER_PREFIX = "__LARGE_DATA__:";
+  // Find the field in JSON: "fieldName":""
+  const string search_pattern = "\"" + field_name + "\":\"\"";
+  size_t pos = json_string.find(search_pattern);
 
-  if (!json_value.is_object())
+  if (pos == string::npos)
   {
+    LOG_ERROR("Could not find empty field '%s' in JSON for large data replacement", field_name.c_str());
     return;
   }
 
-  size_t counter = 0;
-  const auto &obj = json_value.as_object();
-  for (const auto &pair : obj)
-  {
-    const string &key = pair.first;
-    const zjson::Value &value = pair.second;
+  // Assume that data has been base64 encoded so no JSON escaping needed
+  const string replacement = "\"" + field_name + "\":\"" + data + "\"";
 
-    if (value.is_string())
-    {
-      const string &str_value = value.as_string();
-      if (str_value.size() >= LARGE_DATA_THRESHOLD)
-      {
-        string placeholder = string(PLACEHOLDER_PREFIX) + std::to_string(counter++);
-        large_data_map[placeholder] = str_value;
-        json_value.add_to_object(key, zjson::Value(placeholder));
-        LOG_DEBUG("Extracted large string (%zu bytes) from field '%s' to placeholder %s",
-                  str_value.size(), key.c_str(), placeholder.c_str());
-      }
-    }
-  }
-}
+  json_string.replace(pos, search_pattern.length(), replacement);
 
-string RpcServer::replace_large_data_placeholders(const string &json_string, const std::unordered_map<string, string> &large_data_map)
-{
-  string result = json_string;
-
-  for (const auto &pair : large_data_map)
-  {
-    const string &placeholder = pair.first;
-    const string &actual_data = pair.second;
-
-    const string quoted_placeholder = "\"" + placeholder + "\"";
-    const string escaped_data = zjson::escape_json_string(actual_data);
-    const string quoted_data = "\"" + escaped_data + "\"";
-
-    size_t pos = result.find(quoted_placeholder);
-    if (pos != string::npos)
-    {
-      result.replace(pos, quoted_placeholder.length(), quoted_data);
-      LOG_DEBUG("Replaced placeholder %s with large data (%zu bytes)", placeholder.c_str(), actual_data.size());
-    }
-  }
-
-  return result;
+  LOG_DEBUG("Replaced empty field '%s' with large data (%zu bytes)", field_name.c_str(), data.size());
 }
 
 // Static utility methods
