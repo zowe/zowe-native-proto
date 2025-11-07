@@ -24,9 +24,6 @@
 #include <limits>
 #include <climits>
 
-#ifdef ZSHMEM_ENABLE
-#include "zshmem.hpp"
-#endif
 #include <algorithm>
 #include <sys/types.h>
 #include <sys/stat.h>
