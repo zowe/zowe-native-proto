@@ -433,7 +433,7 @@ typedef struct
 {
   union
   {
-    long double raw;
+    long double raw; // guarantees alignment of long double
     struct
     {
       unsigned int z0 : 1;      // always 0
