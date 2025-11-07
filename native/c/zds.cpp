@@ -1247,20 +1247,14 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
 
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=directory-catalog-field-names
   string fields_long[][FIELD_LEN] = {{"VOLSER"}, {"DATACLAS"}, {"MGMTCLAS"}, {"STORCLAS"}, {"DEVTYP"}};
-  string fields_short[][FIELD_LEN] = {{"VOLSER"}};
 
-  string(*fields)[FIELD_LEN];
-  int number_of_fields;
+  string(*fields)[FIELD_LEN] = nullptr;
+  int number_of_fields = 0;
 
   if (show_attributes)
   {
     fields = fields_long;
     number_of_fields = sizeof(fields_long) / sizeof(fields_long[0]);
-  }
-  else
-  {
-    fields = fields_short;
-    number_of_fields = sizeof(fields_short) / sizeof(fields_short[0]);
   }
 
   int internal_used_buffer_size = sizeof(CSIFIELD) + number_of_fields * FIELD_LEN;
@@ -1445,34 +1439,34 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
       memcpy(buffer, f->name, sizeof(f->name)); // copy all & leave a null
       entry.name = string(buffer);
 
-      int *field_len = &f->response.field.field_lens;
-      unsigned char *data = (unsigned char *)&f->response.field.field_lens;
-      data += (sizeof(f->response.field.field_lens) * number_fields);
+      // Only process catalog fields and DSCB if show_attributes is true
+      if (show_attributes)
+      {
+        int *field_len = &f->response.field.field_lens;
+        unsigned char *data = (unsigned char *)&f->response.field.field_lens;
+        data += (sizeof(f->response.field.field_lens) * number_fields);
 
-      memset(buffer, 0x00, sizeof(buffer)); // clear buffer
-      memcpy(buffer, data, *field_len);     // copy VOLSER
-      entry.volser = string(buffer);
+        memset(buffer, 0x00, sizeof(buffer)); // clear buffer
+        memcpy(buffer, data, *field_len);     // copy VOLSER
+        entry.volser = string(buffer);
 
 #define IPL_VOLUME "******"
 #define IPL_VOLUME_SYMBOL "&SYSR1" // https://www.ibm.com/docs/en/zos/3.1.0?topic=symbols-static-system
 
-      if (0 == strcmp(IPL_VOLUME, entry.volser.c_str()))
-      {
-        string symbol(IPL_VOLUME_SYMBOL);
-        string value;
-        rc = zut_substitute_symbol(symbol, value);
-        if (0 == rc)
+        if (0 == strcmp(IPL_VOLUME, entry.volser.c_str()))
         {
-          entry.volser = value;
+          string symbol(IPL_VOLUME_SYMBOL);
+          string value;
+          rc = zut_substitute_symbol(symbol, value);
+          if (0 == rc)
+          {
+            entry.volser = value;
+          }
         }
-      }
 
 #define MIGRAT_VOLUME "MIGRAT"
 #define ARCIVE_VOLUME "ARCIVE"
 
-      // Only load attributes if show_attributes is true
-      if (show_attributes)
-      {
         if (entry.volser == MIGRAT_VOLUME || entry.volser == ARCIVE_VOLUME)
         {
           entry.migrated = true;
@@ -1485,7 +1479,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
 
         // Load detailed attributes from DSCB if not migrated
         // This needs to happen before the switch statement as it sets entry.dsorg
-        if (show_attributes && !entry.migrated)
+        if (!entry.migrated)
         {
           zds_get_attrs_from_dscb(zds, entry);
         }
@@ -1523,11 +1517,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
           zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Unsupported entry type '%x' ", f->type);
           return RTNCD_FAILURE;
         };
-      } // End if (show_attributes)
 
-      // Parse additional fields only if show_attributes is true
-      if (show_attributes)
-      {
         // Parse DATACLAS field (8 bytes)
         data += *field_len;
         field_len++;
