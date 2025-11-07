@@ -11,6 +11,7 @@
 
 #include "ztest.hpp"
 #include <cstddef>
+#include <cstring>
 #include <ctime>
 #include <stdlib.h>
 #include <string>
@@ -523,15 +524,10 @@ void uss_tests()
                                // Update Dump to not include newline
                                view_response_hex_dump = view_response_hex_dump.substr(0, view_response_hex_dump.length() - 3);
                              }
-
                              string parsed_response_bytes = parse_hex_dump(view_response_hex_dump);
-                             TestLog("expected_ascii_text: " + expected_ascii_text + "\nlength: " + to_string(expected_ascii_text.length()) + "\ndata: " + expected_ascii_text.data());
-                             TestLog("parsed_response_bytes: " + parsed_response_bytes + "\nlength: " + to_string(parsed_response_bytes.length()) + "\ndata: " + parsed_response_bytes.data());
-                             TestLog("view_response_hex_dump: " + view_response_hex_dump);
+
+                             Expect(memcmp(parsed_response_bytes.data(), expected_ascii_text.data(), parsed_response_bytes.length())).ToBe(0);
                              Expect(parsed_response_bytes.length()).ToBe(expected_ascii_text.length());
-                             ExpectWithContext(memcmp(parsed_response_bytes.data(), expected_ascii_text.data(), parsed_response_bytes.length()),
-                                               "Byte-for-byte memory comparison failed.")
-                                 .ToBe(0);
                            });
                         it("should handle write and view for a FIFO pipe",
                            [&]() -> void
