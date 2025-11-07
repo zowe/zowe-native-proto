@@ -1203,6 +1203,101 @@ void load_date_attrs_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
   load_date_from_dscb(dscb->ds1refd, &entry.rdate, false);
 }
 
+// Load storage management attributes from catalog fields
+void load_storage_attrs_from_catalog(unsigned char *&data, int *&field_len, ZDSEntry &entry)
+{
+  // Parse DATACLAS field (8 bytes)
+  data += *field_len;
+  field_len++;
+  entry.dataclass = "";
+  if (*field_len > 2)
+  {
+    // First 2 bytes are a length prefix, extract actual length
+    uint16_t actual_len = (static_cast<unsigned char>(data[0]) << 8) | static_cast<unsigned char>(data[1]);
+    if (actual_len > 0 && actual_len <= (*field_len - 2))
+    {
+      entry.dataclass = string((char *)(data + 2), actual_len);
+    }
+  }
+
+  // Parse MGMTCLAS field (8 bytes)
+  data += *field_len;
+  field_len++;
+  entry.mgmtclass = "";
+  if (*field_len > 2)
+  {
+    // First 2 bytes are a length prefix, extract actual length
+    uint16_t actual_len = (static_cast<unsigned char>(data[0]) << 8) | static_cast<unsigned char>(data[1]);
+    if (actual_len > 0 && actual_len <= (*field_len - 2))
+    {
+      entry.mgmtclass = string((char *)(data + 2), actual_len);
+    }
+  }
+
+  // Parse STORCLAS field (8 bytes)
+  data += *field_len;
+  field_len++;
+  entry.storclass = "";
+  if (*field_len > 2)
+  {
+    // First 2 bytes are a length prefix, extract actual length
+    uint16_t actual_len = (static_cast<unsigned char>(data[0]) << 8) | static_cast<unsigned char>(data[1]);
+    if (actual_len > 0 && actual_len <= (*field_len - 2))
+    {
+      entry.storclass = string((char *)(data + 2), actual_len);
+    }
+  }
+
+  // Parse DEVTYP field (4-byte UCB device type)
+  data += *field_len;
+  field_len++;
+  entry.devtype = "";
+  if (*field_len >= 4)
+  {
+    uint32_t devtyp = (static_cast<unsigned char>(data[0]) << 24) |
+                      (static_cast<unsigned char>(data[1]) << 16) |
+                      (static_cast<unsigned char>(data[2]) << 8) |
+                      static_cast<unsigned char>(data[3]);
+
+    // If devtyp is all zeros, default to 3390 (most common modern DASD)
+    if (devtyp == 0x00000000)
+    {
+      entry.devtype = "3390";
+    }
+    else
+    {
+      // Extract the device type code from byte 3 (last byte)
+      uint8_t dev_code = static_cast<unsigned char>(data[3]);
+
+      // Map UCB device type to device name
+      switch (dev_code)
+      {
+      case 0x0B:
+        entry.devtype = "3340";
+        break;
+      case 0x0E:
+        entry.devtype = "3350";
+        break;
+      case 0x0F:
+        entry.devtype = "3390";
+        break;
+      case 0x10:
+        entry.devtype = "9345";
+        break;
+      case 0x2E:
+        entry.devtype = "3380";
+        break;
+      default:
+        // For unknown types, format as hex string
+        char dev_buffer[9];
+        sprintf(dev_buffer, "%08X", devtyp);
+        entry.devtype = string(dev_buffer);
+        break;
+      }
+    }
+  }
+}
+
 void zds_get_attrs_from_dscb(ZDS *zds, ZDSEntry &entry)
 {
   auto *dscb = (DSCBFormat1 *)__malloc31(sizeof(DSCBFormat1));
@@ -1516,97 +1611,8 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
           return RTNCD_FAILURE;
         };
 
-        // Parse DATACLAS field (8 bytes)
-        data += *field_len;
-        field_len++;
-        entry.dataclass = "";
-        if (*field_len > 2)
-        {
-          // First 2 bytes are a length prefix, extract actual length
-          uint16_t actual_len = (static_cast<unsigned char>(data[0]) << 8) | static_cast<unsigned char>(data[1]);
-          if (actual_len > 0 && actual_len <= (*field_len - 2))
-          {
-            entry.dataclass = string((char *)(data + 2), actual_len);
-          }
-        }
-
-        // Parse MGMTCLAS field (8 bytes)
-        data += *field_len;
-        field_len++;
-        entry.mgmtclass = "";
-        if (*field_len > 2)
-        {
-          // First 2 bytes are a length prefix, extract actual length
-          uint16_t actual_len = (static_cast<unsigned char>(data[0]) << 8) | static_cast<unsigned char>(data[1]);
-          if (actual_len > 0 && actual_len <= (*field_len - 2))
-          {
-            entry.mgmtclass = string((char *)(data + 2), actual_len);
-          }
-        }
-
-        // Parse STORCLAS field (8 bytes)
-        data += *field_len;
-        field_len++;
-        entry.storclass = "";
-        if (*field_len > 2)
-        {
-          // First 2 bytes are a length prefix, extract actual length
-          uint16_t actual_len = (static_cast<unsigned char>(data[0]) << 8) | static_cast<unsigned char>(data[1]);
-          if (actual_len > 0 && actual_len <= (*field_len - 2))
-          {
-            entry.storclass = string((char *)(data + 2), actual_len);
-          }
-        }
-
-        // Parse DEVTYP field (4-byte UCB device type)
-        data += *field_len;
-        field_len++;
-        entry.devtype = "";
-        if (*field_len >= 4)
-        {
-          uint32_t devtyp = (static_cast<unsigned char>(data[0]) << 24) |
-                            (static_cast<unsigned char>(data[1]) << 16) |
-                            (static_cast<unsigned char>(data[2]) << 8) |
-                            static_cast<unsigned char>(data[3]);
-
-          // If devtyp is all zeros, default to 3390 (most common modern DASD)
-          if (devtyp == 0x00000000)
-          {
-            entry.devtype = "3390";
-          }
-          else
-          {
-            // Extract the device type code from byte 3 (last byte)
-            uint8_t dev_code = static_cast<unsigned char>(data[3]);
-
-            // Map UCB device type to device name
-            // Reference: z/OS DFSMSdfp Advanced Services, UCB device type codes
-            switch (dev_code)
-            {
-            case 0x0B:
-              entry.devtype = "3340";
-              break;
-            case 0x0E:
-              entry.devtype = "3350";
-              break;
-            case 0x0F:
-              entry.devtype = "3390";
-              break; // Most common modern DASD
-            case 0x10:
-              entry.devtype = "9345";
-              break;
-            case 0x2E:
-              entry.devtype = "3380";
-              break;
-            default:
-              // For unknown types, format as hex string
-              char dev_buffer[9];
-              sprintf(dev_buffer, "%08X", devtyp);
-              entry.devtype = string(dev_buffer);
-              break;
-            }
-          }
-        }
+        // Parse storage management attributes (dataclass, mgmtclass, storclass, devtype)
+        load_storage_attrs_from_catalog(data, field_len, entry);
       }
 
       if (datasets.size() + 1 > zds->max_entries)
