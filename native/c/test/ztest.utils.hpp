@@ -59,6 +59,13 @@ string get_random_string(const int length = 7, const bool allNumbers = true)
     seeded = true;
   }
   string ret = "";
+  // A simple array to map an index (0-25) to an EBCDIC uppercase character code
+  const unsigned char EBCDIC_UPPERCASE_LETTERS[] = {
+      0xC1, 0xC2, 0xC3, 0xC4, 0xC5, 0xC6, 0xC7, 0xC8, 0xC9, // A-I
+      0xD1, 0xD2, 0xD3, 0xD4, 0xD5, 0xD6, 0xD7, 0xD8, 0xD9, // J-R
+      0xE2, 0xE3, 0xE4, 0xE5, 0xE6, 0xE7, 0xE8, 0xE9        // S-Z
+  };
+
   for (int i = 0; i < length; ++i)
   {
     if (allNumbers)
@@ -67,7 +74,7 @@ string get_random_string(const int length = 7, const bool allNumbers = true)
     }
     else
     {
-      ret += char(rand() % 26 + 'A');
+      ret += EBCDIC_UPPERCASE_LETTERS[rand() % 26];
     }
   }
   return ret;

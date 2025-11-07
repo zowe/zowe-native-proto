@@ -120,7 +120,7 @@ void zowex_ds_tests()
                             [&]() -> void
                             {
                               string ds = _ds.back();
-                              _create_ds(ds, "--dsorg PO --dsntype LIBRARY");
+                              _create_ds(ds, "--dsorg PO --dirblk 2 --dsntype LIBRARY");
 
                               string response;
                               string command = zowex_command + " data-set compress " + ds;
@@ -145,7 +145,7 @@ void zowex_ds_tests()
                              [&]() -> void
                              {
                                string ds = _ds.back();
-                               _create_ds(ds, "--dsorg PO");
+                               _create_ds(ds, "--dsorg PO --dirblk 2");
 
                                string response;
                                string command = zowex_command + " data-set compress " + ds;
@@ -199,7 +199,7 @@ void zowex_ds_tests()
                            [&]() -> void
                            {
                              string ds = _ds.back();
-                             _create_ds(ds, "--dsorg PO --dsntype LIBRARY");
+                             _create_ds(ds, "--dsorg PO --dirblk 2 --dsntype LIBRARY");
 
                              string response;
                              string command = zowex_command + " data-set list " + ds + " -a --rfc";
@@ -213,7 +213,7 @@ void zowex_ds_tests()
                            [&]() -> void
                            {
                              string ds = _ds.back();
-                             _create_ds(ds, "--recfm VB --dsorg PO");
+                             _create_ds(ds, "--recfm VB --dsorg PO --dirblk 2");
 
                              string response;
 
@@ -600,7 +600,7 @@ void zowex_ds_tests()
                            [&]() -> void
                            {
                              string ds = _ds.back();
-                             _create_ds(ds, "--dsorg PO");
+                             _create_ds(ds, "--dsorg PO --dirblk 2");
 
                              string response;
                              string command = zowex_command + " data-set delete " + ds;
@@ -612,7 +612,7 @@ void zowex_ds_tests()
                            [&]() -> void
                            {
                              string ds = _ds.back();
-                             _create_ds(ds, "--dsorg PO --dsntype LIBRARY");
+                             _create_ds(ds, "--dsorg PO --dirblk 2 --dsntype LIBRARY");
 
                              string response;
                              string command = zowex_command + " data-set delete " + ds;
@@ -793,7 +793,7 @@ void zowex_ds_tests()
                              string command = zowex_command + " data-set lm " + ds;
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).Not().ToBe(0);
-                             Expect(response).ToContain("Error: could not read data set: '" + ds + "'");
+                             Expect(response).ToContain("Error: could not list members: '" + ds + "'");
                            });
                       });
              // TODO: https://github.com/zowe/zowe-native-proto/issues/380
@@ -885,7 +885,7 @@ void zowex_ds_tests()
                            [&]() -> void
                            {
                              string ds = _ds.back();
-                             _create_ds(ds, "--dsorg PO");
+                             _create_ds(ds, "--dsorg PO --dirblk 2");
 
                              string response;
                              string command = zowex_command + " data-set create-member '" + ds + "(TEST)'";
@@ -914,7 +914,7 @@ void zowex_ds_tests()
                              string random_string = get_random_string(80, false);
                              string random_string1 = get_random_string(80, false);
                              string random_string2 = get_random_string(80, false);
-                             string command = "echo '" + random_string + "^J" + random_string1 + "' | " + zowex_command + " data-set write " + ds;
+                             string command = "echo '" + random_string + "\n" + random_string1 + "' | " + zowex_command + " data-set write " + ds;
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Wrote data to '" + ds + "'");
@@ -942,7 +942,7 @@ void zowex_ds_tests()
                            [&]() -> void
                            {
                              string ds = _ds.back();
-                             _create_ds(ds, "--dsorg PO");
+                             _create_ds(ds, "--dsorg PO --dirblk 2");
 
                              string response;
                              string command = zowex_command + " data-set create-member '" + ds + "(TEST)'";
@@ -953,7 +953,7 @@ void zowex_ds_tests()
                              string random_string = get_random_string(80, false);
                              string random_string1 = get_random_string(80, false);
                              string random_string2 = get_random_string(80, false);
-                             command = "echo '" + random_string + "^J" + random_string1 + "' | " + zowex_command + " data-set write '" + ds + "(TEST)'";
+                             command = "echo '" + random_string + "\n" + random_string1 + "' | " + zowex_command + " data-set write '" + ds + "(TEST)'";
                              rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("Wrote data to '" + ds + "(TEST)'");
@@ -1007,7 +1007,7 @@ void zowex_ds_tests()
                            [&]() -> void
                            {
                              string ds = _ds.back();
-                             _create_ds(ds, "--dsorg PS --lrecl 176");
+                             _create_ds(ds, "--dsorg PS --lrecl 120 --blksize 18480");
                              string response;
                              string file = "./makefile";
                              string get_uss_file_command = zowex_command + " uss view '" + file + "'";
