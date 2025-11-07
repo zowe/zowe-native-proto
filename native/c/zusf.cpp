@@ -24,9 +24,6 @@
 #include <limits>
 #include <climits>
 
-#ifdef ZSHMEM_ENABLE
-#include "zshmem.hpp"
-#endif
 #include <algorithm>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -1601,8 +1598,8 @@ int zusf_chmod_uss_file_or_dir(ZUSF *zusf, string file, mode_t mode, bool recurs
   chmod(file.c_str(), mode);
   if (recursive && S_ISDIR(file_stats.st_mode))
   {
-    DIR *dir;
-    if ((dir = opendir(file.c_str())) == nullptr)
+    DIR *dir = opendir(file.c_str());
+    if (dir == nullptr)
     {
       zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open directory '%s'", file.c_str());
       return RTNCD_FAILURE;
@@ -1647,8 +1644,8 @@ int zusf_delete_uss_item(ZUSF *zusf, string file, bool recursive)
 
   if (is_dir)
   {
-    DIR *dir;
-    if ((dir = opendir(file.c_str())) == nullptr)
+    DIR *dir = opendir(file.c_str());
+    if (dir == nullptr)
     {
       zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open directory '%s'", file.c_str());
       return RTNCD_FAILURE;
@@ -1733,7 +1730,8 @@ static bool resolve_uid_from_str(const std::string &s, uid_t &out)
     out = static_cast<uid_t>(v);
     return true;
   }
-  if (passwd *pw = getpwnam(s.c_str()))
+  auto *pw = getpwnam(s.c_str());
+  if (pw != nullptr)
   {
     out = pw->pw_uid;
     return true;
@@ -1762,7 +1760,8 @@ static bool resolve_gid_from_str(const std::string &s, gid_t &out)
     out = static_cast<gid_t>(v);
     return true;
   }
-  if (group *gr = getgrnam(s.c_str()))
+  auto *gr = getgrnam(s.c_str());
+  if (gr != nullptr)
   {
     out = gr->gr_gid;
     return true;
@@ -1922,8 +1921,8 @@ int zusf_chtag_uss_file_or_dir(ZUSF *zusf, const string &file, const string &tag
   }
   else if (recursive)
   {
-    DIR *dir;
-    if ((dir = opendir(file.c_str())) == nullptr)
+    DIR *dir = opendir(file.c_str());
+    if (dir == nullptr)
     {
       zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open directory '%s'", file.c_str());
       return RTNCD_FAILURE;
