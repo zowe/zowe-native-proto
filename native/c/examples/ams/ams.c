@@ -133,7 +133,7 @@ int AMSMAIN()
   }
 
   zwto_debug("@TEST sysprint->dcb.dcbblksi: %d", sysprint->dcb.dcbblksi);
-  return 7;
+  return 8;
 
   BLDL_PL bldl_pl = {0};
 
