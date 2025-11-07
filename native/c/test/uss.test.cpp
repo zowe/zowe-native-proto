@@ -46,8 +46,8 @@ void uss_tests()
                         { rc = 0; });
 
              // Clean up the test directory
-             afterAll([&response]() -> void
-                      { execute_command_with_output(zowex_command + " uss delete /tmp/zowex-uss --recursive", response); });
+             //  afterAll([&response]() -> void
+             //           { execute_command_with_output(zowex_command + " uss delete /tmp/zowex-uss --recursive", response); });
 
              // Helper function to create a test file
              auto create_test_file_cmd = [&](const string &uss_file, const string &options = "") -> void
@@ -503,7 +503,7 @@ void uss_tests()
                                  "\x61\x20"                 // "a "
                                  "\x74\x65\x73\x74\x2e";    // "test."
 
-                             string writeCommand = zowex_command + " uss write " + uss_path;
+                             string writeCommand = zowex_command + " uss write " + uss_path + " --lec IBM-1047 --ec UTF-8";
 
                              rc = execute_command_with_input(writeCommand, ebcdic_text);
                              ExpectWithContext(rc, "Write command failed").ToBe(0);
