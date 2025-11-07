@@ -145,12 +145,14 @@ int AMSMAIN()
     return -1;
   }
 
+  zwto_debug("@TEST sysprint->dcb.dcblrecl: %d", sysprint->dcb.dcblrecl);
   if (sysprint->dcb.dcblrecl != 80)
   {
     zwto_debug("@TEST sysprint->dcb.dcblrecl is not 80 (0x%x)", sysprint->dcb.dcblrecl);
     return -1;
   }
 
+  zwto_debug("@TEST sysprint->dcb.dcbblksi: %d", sysprint->dcb.dcbblksi);
   if (sysprint->dcb.dcbblksi < 1)
   {
     zwto_debug("@TEST sysprint->dcb.dcbblksi is less than 1 (0x%x)", sysprint->dcb.dcbblksi);
