@@ -24,9 +24,6 @@
 
 using std::string;
 
-// Forward declaration from server.hpp
-struct RpcNotification;
-
 CommandBuilder::CommandBuilder(CommandHandler handler)
     : handler_(handler), transforms_()
 {
