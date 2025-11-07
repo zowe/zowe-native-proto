@@ -325,9 +325,8 @@ void RpcServer::add_large_data_to_json(string &json_string, const string &field_
     return;
   }
 
-  // Assume that data has been base64 encoded so no JSON escaping needed
+  // Assume that data is Base64 encoded so no JSON escaping needed
   const string replacement = "\"" + field_name + "\":\"" + data + "\"";
-
   json_string.replace(pos, search_pattern.length(), replacement);
 
   LOG_DEBUG("Replaced empty field '%s' with large data (%zu bytes)", field_name.c_str(), data.size());
