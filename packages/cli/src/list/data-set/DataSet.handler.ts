@@ -39,7 +39,7 @@ export default class ListDataSetsHandler extends SshBaseHandler {
                 a === "name" ? -1 : b === "name" ? 1 : a.localeCompare(b),
             );
             return sortedKeys.reduce<Dataset>((obj: Partial<Dataset>, key) => {
-                (obj as Record<string, unknown>)[key] = item[key]!;
+                (obj as Record<string, unknown>)[key] = item[key];
                 return obj as Dataset;
             }, {} as Dataset);
         });
@@ -50,9 +50,22 @@ export default class ListDataSetsHandler extends SshBaseHandler {
             params.arguments.pattern,
         );
         params.response.format.output({
-            output: response.items,
+            output: response.items.map((item) => ({ ...item, migrated: item.migrated ? "YES" : "NO" })),
             format: "table",
-            fields: response.items.length > 0 ? Object.keys(response.items[0]) : [],
+            fields: [
+                "name",
+                "volser",
+                "devtype",
+                "dsorg",
+                "recfm",
+                "lrecl",
+                "blksize",
+                "primary",
+                "secondary",
+                "dsntype",
+                "migrated",
+            ],
+            header: true,
         });
         return response;
     }
