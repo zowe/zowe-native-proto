@@ -646,27 +646,9 @@ FileGuard::FileGuard(int fd, const char *mode)
 
 FileGuard::~FileGuard()
 {
-  this->reset();
-}
-
-void FileGuard::reset(const char *filename, const char *mode)
-{
-  this->reset();
-  fp = fopen(filename, mode);
-}
-
-void FileGuard::reset(int fd, const char *mode)
-{
-  this->reset();
-  fp = fdopen(fd, mode);
-}
-
-void FileGuard::reset()
-{
   if (fp)
   {
     fclose(fp);
-    fp = nullptr;
   }
 }
 
