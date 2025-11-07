@@ -1194,7 +1194,7 @@ int zusf_read_from_uss_file(ZUSF *zusf, const string &file, string &response)
 
   if (size > 0 && has_encoding)
   {
-    std::string temp = response;
+    string temp = response;
     const auto source_encoding = strlen(zusf->encoding_opts.source_codepage) > 0 ? string(zusf->encoding_opts.source_codepage) : "UTF-8";
     try
     {
@@ -1387,7 +1387,7 @@ int zusf_write_to_uss_file(ZUSF *zusf, const string &file, string &data)
     }
   }
 
-  std::string temp = data;
+  string temp = data;
   if (has_encoding)
   {
     const auto source_encoding = strlen(zusf->encoding_opts.source_codepage) > 0 ? string(zusf->encoding_opts.source_codepage) : "UTF-8";
@@ -1405,22 +1405,22 @@ int zusf_write_to_uss_file(ZUSF *zusf, const string &file, string &data)
 
   AutocvtGuard autocvt(false);
   const char *mode = (zusf->encoding_opts.data_type == eDataTypeBinary) ? "wb" : "w";
-  FileGuard fp(file.c_str(), mode);
-  if (!fp)
   {
-    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open '%s' for writing", file.c_str());
-    return RTNCD_FAILURE;
-  }
-
-  if (!temp.empty())
-  {
-    size_t bytes_written = fwrite(temp.data(), 1, temp.size(), fp);
-    const bool truncated = bytes_written != temp.size();
-    const int flush_rc = fflush(fp);
-    if (truncated || flush_rc != 0)
+    FileGuard fp(file.c_str(), mode);
+    if (!fp)
     {
-      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to write to '%s' (possibly out of space)", file.c_str());
+      zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open '%s' for writing", file.c_str());
       return RTNCD_FAILURE;
+    }
+
+    if (!temp.empty())
+    {
+      size_t bytes_written = fwrite(temp.data(), 1, temp.size(), fp);
+      if (bytes_written != temp.size())
+      {
+        zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to write to '%s' (possibly out of space)", file.c_str());
+        return RTNCD_FAILURE;
+      }
     }
   }
 
