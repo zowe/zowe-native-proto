@@ -16,6 +16,7 @@
 #include "ihadcbe.h"
 #include "jfcb.h"
 #include "ihaexlst.h"
+#include "ztype.h"
 #include "zecb.h"
 
 typedef struct ihadcb IHADCB;
@@ -168,8 +169,10 @@ typedef struct
   RDJFCB_PL rpl;
   OPEN_PL opl;
   STOW_LIST stow_list;
-  int input : 1;
+  char *PTR32 buffer;
+  int buffer_size;
   int output : 1;
+  int input : 1;
 } IO_CTRL;
 
 #endif

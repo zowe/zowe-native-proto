@@ -149,7 +149,7 @@ static int test_auth()
  * @param name name of module to load
  * @return void* address of entry point or NULL if not found
  */
-
+// NOTE(Kelosky): force NAB?
 static void *PTR64 load_module(const char *name)
 {
   int rc = 0;
