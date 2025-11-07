@@ -1493,26 +1493,18 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
         switch (f->type)
         {
         case NON_VSAM_DATA_SET:
-          // DSORG and PDSE/PDS determination is done via DSCB parsing in zds_get_attrs_from_dscb()
+          // DSORG and PDSE/PDS determination is done via DSCB parsing
           break;
         case GENERATION_DATA_GROUP:
           entry.volser = ZDS_VOLSER_GDG;
           break;
         case CLUSTER:
-          entry.dsorg = ZDS_DSORG_VSAM;
-          entry.volser = ZDS_VOLSER_VSAM;
-          break;
         case DATA_COMPONENT:
-          entry.dsorg = ZDS_DSORG_VSAM;
-          entry.volser = ZDS_VOLSER_VSAM;
-          entry.name.insert(entry.name.find_last_not_of(' ') + 1, ".DATA");
-          break;
-        case GENERATION_DATA_SET:
-          break;
         case INDEX_COMPONENT:
           entry.dsorg = ZDS_DSORG_VSAM;
           entry.volser = ZDS_VOLSER_VSAM;
-          entry.name.insert(entry.name.find_last_not_of(' ') + 1, ".INDEX");
+          break;
+        case GENERATION_DATA_SET:
           break;
         case ALIAS:
           entry.dsorg = ZDS_DSORG_UNKNOWN;
