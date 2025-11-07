@@ -13,6 +13,7 @@
 #include <cstddef>
 #include <cstring>
 #include <ctime>
+#include <iterator>
 #include <stdlib.h>
 #include <string>
 #include "zutils.hpp"
@@ -21,6 +22,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include "../zut.hpp"
 
 using namespace std;
 using namespace ztst;
@@ -525,8 +527,13 @@ void uss_tests()
                                view_response_hex_dump = view_response_hex_dump.substr(0, view_response_hex_dump.length() - 3);
                              }
                              string parsed_response_bytes = parse_hex_dump(view_response_hex_dump);
+                             cout << "expected ascii" << endl;
+                             zut_print_string_as_bytes(expected_ascii_text);
 
-                             Expect(memcmp(parsed_response_bytes.data(), expected_ascii_text.data(), parsed_response_bytes.length())).ToBe(0);
+                             cout << "view resp" << endl;
+                             zut_print_string_as_bytes(parsed_response_bytes);
+                             Expect(memcmp(parsed_response_bytes.data(), expected_ascii_text.data(), parsed_response_bytes.length()))
+                                 .ToBe(0);
                              Expect(parsed_response_bytes.length()).ToBe(expected_ascii_text.length());
                            });
                         it("should handle write and view for a FIFO pipe",
