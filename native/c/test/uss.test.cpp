@@ -525,7 +525,7 @@ void uss_tests()
                              }
 
                              string parsed_response_bytes = parse_hex_dump(view_response_hex_dump);
-                             TestLog("expected_ascii_text: " + expected_ascii_text + "\nlength: " + to_string(expected_ascii_text.length()));
+                             TestLog("expected_ascii_text: " + expected_ascii_text + "\nlength: " + to_string(expected_ascii_text.length()) + "\ndata: " + expected_ascii_text.data());
                              TestLog("parsed_response_bytes: " + parsed_response_bytes + "\nlength: " + to_string(parsed_response_bytes.length()) + "\ndata: " + parsed_response_bytes.data());
                              TestLog("view_response_hex_dump: " + view_response_hex_dump);
                              Expect(parsed_response_bytes.length()).ToBe(expected_ascii_text.length());
