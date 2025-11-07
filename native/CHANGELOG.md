@@ -8,6 +8,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 - `c`: Fixed issue where uploading changes to a data set did not always flush to disk. [#643](https://github.com/zowe/zowe-native-proto/issues/643)
 - `c`: Updated commands that read data from stdin to read literal text rather than parsing hex string. [#645](https://github.com/zowe/zowe-native-proto/pull/645)
+- `c`: Reverted previous fix to preserve ISPF stats on PDS members since it could cause uploading changes to fail. [#669](https://github.com/zowe/zowe-native-proto/pull/669)
 - `zowed`: Fixed issue where enabling verbose logging would cause a deadlock during initialization. [#652](https://github.com/zowe/zowe-native-proto/issues/652)
 - `zowed`: Implemented support for automatic worker recovery. If a worker crashes or throws an exception, it is replaced with a new worker. If the maximum number of replacement attempts have been exceeded, the worker is disabled to prevent thrashing the CPU with replacement requests. [#410](https://github.com/zowe/zowe-native-proto/issues/410)
 - `zowed`: Optimized the `get_ready_worker` function to avoid worst-case linear search for the next available worker. [#651](https://github.com/zowe/zowe-native-proto/pull/651)
