@@ -165,6 +165,9 @@ int AMSMAIN()
     return -1;
   }
 
+  /**
+   * @brief Obtain TTR and other attributes
+   */
   BLDL_PL bldl_pl = {0};
 
   bldl_pl.ff = 1;                                                                      // only one member in the list
@@ -179,7 +182,9 @@ int AMSMAIN()
     return -1;
   }
 
-  // zwto_debug("@TEST bldl_pl.list.c: 0x%x", bldl_pl.list.c & LEN_MASK);
+  /**
+   * @brief Validate that ISPF statistics are provided
+   */
   // TODO(Kelosky): if no stats are provided, should we add them?
   if ((bldl_pl.list.c & LEN_MASK) == 0)
   {
@@ -188,6 +193,10 @@ int AMSMAIN()
     return -1;
   }
 
+  /**
+   * @brief Find the member in the data set to obtain the TTR and other attributes
+   * Establish the beggingin of a data set member (BPAM)
+   */
   rc = find_member(sysprint, &rsn);
   if (0 != rc)
   {
@@ -197,33 +206,63 @@ int AMSMAIN()
   }
 
   char inbuff[80] = {0};
+
+  /**
+   * @brief Allocate a buffer to write the data set member into
+   */
   sysprint->buffer_size = sysprint->dcb.dcbblksi;
   sysprint->buffer = storage_obtain31(sysprint->buffer_size);
 
-  short int lines_written = 0;
+  // init buffer variables
   int bytes_in_buffer = 0;
   char *PTR32 free_location = sysprint->buffer;
+  memset(sysprint->buffer, 0x00, sysprint->buffer_size);
   int lrecl = sysprint->dcb.dcblrecl;
   int blocksize = sysprint->dcb.dcbblksi;
 
+  int lines_written = 0;
+
+  // loop read
   while (0 == read_sync(sysin, inbuff))
   {
     zwto_debug("@TEST read: %.80s", inbuff);
     memset(free_location, ' ', lrecl);
     memcpy(free_location, inbuff, lrecl);
 
+    lines_written++;
+
+    // track bytes in buffer and free space
     bytes_in_buffer += lrecl;
     free_location += lrecl;
+
+    // write block if buffer is full
     if (bytes_in_buffer >= blocksize)
     {
       write_sync(sysprint, sysprint->buffer);
+      // reset buffer variables
       bytes_in_buffer = 0;
       free_location = sysprint->buffer;
+      memset(sysprint->buffer, 0x00, sysprint->buffer_size);
       zwto_debug("@TEST wrote block");
     }
-    // write_sync(sysprint, writebuff);
   }
 
+  // write any remaining bytes in the buffer
+  if (bytes_in_buffer > 0)
+  {
+    sysprint->dcb.dcbblksi = bytes_in_buffer;
+    write_sync(sysprint, sysprint->buffer);
+    sysprint->dcb.dcbblksi = blocksize;
+
+    bytes_in_buffer = 0;
+    free_location = sysprint->buffer;
+    memset(sysprint->buffer, 0x00, sysprint->buffer_size);
+    zwto_debug("@TEST wrote block");
+  }
+
+  /**
+   * @brief Find the position last block written
+   */
   NOTE_RESPONSE note_response = {0};
   rc = note(sysprint, &note_response, &rsn);
   if (0 != rc)
@@ -233,13 +272,19 @@ int AMSMAIN()
     return -1;
   }
 
-  // Initially copy all user data
-  memcpy(sysprint->stow_list.name, bldl_pl.list.name, sizeof(bldl_pl.list.name));
-  sysprint->stow_list.c = bldl_pl.list.c;
-  memcpy(sysprint->stow_list.ttr, note_response.ttr, sizeof(note_response.ttr));
-  memcpy(sysprint->stow_list.user_data, bldl_pl.list.user_data, sizeof(bldl_pl.list.user_data)); // copy all user data
+  /**
+   * @brief Copy ISPF statistics
+   */
+  // Copy all user data
+  memcpy(sysprint->stow_list.name, bldl_pl.list.name, sizeof(bldl_pl.list.name)); // copy member name
+  memcpy(sysprint->stow_list.ttr, note_response.ttr, sizeof(note_response.ttr));  // copy NOTE TTR
+  sysprint->stow_list.c = bldl_pl.list.c;                                         // copy user data length
+  int user_data_len = (bldl_pl.list.c & LEN_MASK) * 2;                            // isolate number of halfwords in user data
+  memcpy(sysprint->stow_list.user_data, bldl_pl.list.user_data, user_data_len);   // copy all user data
 
-  // address ISPF statistics
+  /**
+   * @brief Update ISPF statistics
+   */
   ISPF_STATS *statsp = (ISPF_STATS *)sysprint->stow_list.user_data;
   zut_dump_storage_common("ISPFSTATS", statsp, sizeof(ISPF_STATS), 16, 0, zut_print_debug);
 
@@ -254,7 +299,7 @@ int AMSMAIN()
   }
   memcpy(statsp->userid, user, sizeof(user));
 
-// aupdate ISPF statistics modification level
+// update ISPF statistics modification level
 // https://www.ibm.com/docs/en/zos/3.2.0?topic=environment-version-modification-level-numbers
 // level 0x99 is the maximum level
 #define MAX_LEVEL 0x99
@@ -267,6 +312,9 @@ int AMSMAIN()
   statsp->modified_number_of_lines = lines_written; // update ISPF statistics number of lines
   statsp->current_number_of_lines = lines_written;  // update ISPF statistics number of lines
 
+  /**
+   * @brief Obtain the current date and time
+   */
   union
   {
     unsigned int timei;
@@ -288,6 +336,9 @@ int AMSMAIN()
   statsp->modified_time_minutes = timel.times.MM; // update ISPF statistics time minutes
   statsp->modified_time_seconds = timel.times.SS; // update ISPF statistics time seconds
 
+  /**
+   * @brief Update the directory entry with the new ISPF statistics
+   */
   rc = stow(sysprint, &rsn);
   if (0 != rc)
   {
@@ -296,6 +347,9 @@ int AMSMAIN()
     return -1;
   }
 
+  /**
+   * @brief Release resources
+   */
   release_resources(sysin, sysprint);
 
   return 0;
