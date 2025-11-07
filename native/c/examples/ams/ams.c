@@ -250,8 +250,8 @@ int AMSMAIN()
   // write any remaining bytes in the buffer
   if (bytes_in_buffer > 0)
   {
-    sysprint->dcb.dcbblksi = bytes_in_buffer;
-    write_sync(sysprint, sysprint->buffer);
+    sysprint->dcb.dcbblksi = bytes_in_buffer; // temporary update block size before writing
+    write_sync(sysprint, sysprint->buffer);   // TODO(Kelosky): if we abend, we MUST restore the original block size before CLOSE
     sysprint->dcb.dcbblksi = blocksize;
 
     bytes_in_buffer = 0;
