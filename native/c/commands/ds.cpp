@@ -486,7 +486,7 @@ int handle_data_set_list_members(InvocationContext &context)
   }
   if (RTNCD_SUCCESS != rc && RTNCD_WARNING != rc)
   {
-    context.error_stream() << "Error: could not read data set: '" << dsn << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << "Error: could not list members: '" << dsn << "' rc: '" << rc << "'" << endl;
     context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
@@ -557,20 +557,7 @@ int handle_data_set_write(InvocationContext &context)
     {
       istreambuf_iterator<char> begin(context.input_stream());
       istreambuf_iterator<char> end;
-
-      if (!context.is_redirecting_input())
-      {
-        vector<char> input(begin, end);
-        const auto temp = string(input.begin(), input.end());
-        input.clear();
-        const auto bytes = zut_get_contents_as_bytes(temp);
-
-        data.assign(bytes.begin(), bytes.end());
-      }
-      else
-      {
-        data.assign(begin, end);
-      }
+      data.assign(begin, end);
     }
     else
     {

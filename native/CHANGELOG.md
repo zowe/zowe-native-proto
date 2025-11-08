@@ -4,6 +4,12 @@ All notable changes to the native code for "zowe-native-proto" are documented in
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+
+- `c`: Fixed issue where uploading changes to a data set did not always flush to disk. [#643](https://github.com/zowe/zowe-native-proto/issues/643)
+- `c`: Updated commands that read data from stdin to read literal text rather than parsing hex string. [#645](https://github.com/zowe/zowe-native-proto/pull/645)
+- `c`: Reverted previous fix to preserve ISPF stats on PDS members since it could cause uploading changes to fail. [#669](https://github.com/zowe/zowe-native-proto/pull/669)
+
 ## `0.2.0`
 
 - `c`: Fixed issue where uploading changes to a PDS member removed its ISPF stats. [#556](https://github.com/zowe/zowe-native-proto/issues/556)
