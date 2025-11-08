@@ -108,7 +108,6 @@ struct FieldDescriptor
 
 /**
  * Schema registry - maps struct types to their schema definitions
- * Uses C arrays for lightweight, zero-allocation schema storage
  */
 template <typename T>
 struct SchemaRegistry
@@ -126,9 +125,6 @@ size_t SchemaRegistry<T>::field_count = 0;
 
 /**
  * Validation result type - either success (nullopt) or error (string message)
- * Similar to Rust Result<(), E> pattern
- * - nullopt = validation success
- * - some(message) = validation error with message
  */
 using ValidationResult = zstd::optional<std::string>;
 
@@ -139,7 +135,7 @@ using ValidationResult = zstd::optional<std::string>;
 using ValidatorFn = std::function<ValidationResult(const zjson::Value &)>;
 
 /**
- * Validate a JSON value against a schema (implementation in validator.cpp)
+ * Validate a JSON value against a schema
  */
 ValidationResult validate_schema(const zjson::Value &params,
                                  const FieldDescriptor *schema,

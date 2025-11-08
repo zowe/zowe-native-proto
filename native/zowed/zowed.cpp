@@ -11,7 +11,7 @@
 
 #include <atomic>
 #include <chrono>
-#include <unordered_map>
+#include <map>
 #include <mutex>
 #include <signal.h>
 #include <sstream>
@@ -79,9 +79,9 @@ private:
     return instance;
   }
 
-  const std::unordered_map<string, string> load_checksums()
+  const std::map<string, string> load_checksums()
   {
-    std::unordered_map<string, string> checksums;
+    std::map<string, string> checksums;
     ZUSF zusf = {.encoding_opts = {.data_type = eDataTypeText, .source_codepage = "IBM-1047"}};
     string checksums_file = exec_dir + "/checksums.asc";
     string checksums_content;

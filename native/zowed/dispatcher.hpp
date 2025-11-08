@@ -15,13 +15,13 @@
 #include "../c/extend/plugin.hpp"
 #include "../c/singleton.hpp"
 #include "builder.hpp"
-#include "rpcio.hpp"
 #include <string>
 #include <vector>
 #include <unordered_map>
 
-// Forward declaration
+// Forward declarations
 struct RpcNotification;
+class MiddlewareContext;
 
 class CommandDispatcher : public Singleton<CommandDispatcher>
 {
