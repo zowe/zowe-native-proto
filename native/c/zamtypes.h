@@ -93,9 +93,9 @@ typedef struct
 typedef struct
 {
   DCBE dcbe;
-  int ctrlLen;
-  int bufferLen;
-  int bufferCtrl;
+  int ctrl_len;
+  int buffer_len;
+  // int bufferCtrl;
   unsigned int eod : 1;
   char *PTR32 buffer;
 } FILE_CTRL;

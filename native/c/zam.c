@@ -49,7 +49,8 @@ IO_CTRL *open_output_assert(char *ddname, int lrecl, int blkSize, unsigned char 
 IO_CTRL *open_input_assert(char *ddname, int lrecl, int blkSize, unsigned char recfm)
 {
   IO_CTRL *ioc = new_read_io_ctrl(ddname, lrecl, blkSize, recfm);
-  set_dcb_dcbe(&ioc->dcb, eodad);
+  set_dcb_dcbe(&ioc->dcb);
+  set_eod(&ioc->dcb, eodad);
   IHADCB *dcb = &ioc->dcb;
   int rc = 0;
   dcb->dcbdsrg1 = dcbdsgps; // DSORG=PS
@@ -84,7 +85,7 @@ void close_assert(IO_CTRL *ioc)
     if (temp && ioc->input)
     {
       FILE_CTRL *fc = dcb->dcbdcbe;
-      storage_release(fc->ctrlLen, fc);
+      storage_release(fc->ctrl_len, fc);
     }
   }
 
@@ -215,7 +216,8 @@ int write_dcb(IHADCB *dcb, WRITE_PL *wpl, char *buffer)
 }
 
 // NOTE(Kelosky): simple function that is non inline so that when
-// it is called, NAB will be set.
+// it is called, NAB will be set. This is needed for the CHECK macro
+// which could trigger a call to EODAD (which requires NAB to be set).
 void force_nab() ATTRIBUTE(noinline);
 void force_nab()
 {

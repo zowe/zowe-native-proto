@@ -326,6 +326,8 @@ int AMSMAIN()
     zwto_debug("@TEST wrote block");
   }
 
+  zwto_debug("@TEST dcbe: %p", resources.sysprint->dcb.dcbdcbe);
+
   /**
    * @brief Find the position last block written
    */

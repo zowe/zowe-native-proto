@@ -391,16 +391,16 @@ static void set_dcb_info(IHADCB *PTR32 dcb, char *PTR32 ddname, int lrecl, int b
 
 typedef void (*PTR32 EODAD)() ATTRIBUTE(amode31);
 
-static void set_dcb_dcbe(IHADCB *PTR32 dcb, EODAD eodad)
+static void set_dcb_dcbe(IHADCB *PTR32 dcb)
 {
   // get space for DCBE + buffer
-  short ctrlLen = sizeof(FILE_CTRL) + dcb->dcbblksi;
-  FILE_CTRL *fc = storage_obtain31(ctrlLen);
-  memset(fc, 0x00, ctrlLen);
+  short ctrl_len = sizeof(FILE_CTRL) + dcb->dcbblksi;
+  FILE_CTRL *fc = storage_obtain31(ctrl_len);
+  memset(fc, 0x00, ctrl_len);
 
   // init file control
-  fc->ctrlLen = ctrlLen;
-  fc->bufferLen = dcb->dcbblksi;
+  fc->ctrl_len = ctrl_len;
+  fc->buffer_len = dcb->dcbblksi;
 
   // buffer is at the end of the structure
   fc->buffer = (unsigned char *PTR32)fc + offsetof(FILE_CTRL, buffer) + sizeof(fc->buffer);
@@ -411,8 +411,14 @@ static void set_dcb_dcbe(IHADCB *PTR32 dcb, EODAD eodad)
   memcpy(fc->dcbe.dcbeid, dcbeid, strlen(dcbeid));
 
   // retain access to DCB / file control
-  fc->dcbe.dcbeeoda = (void *PTR32)eodad;
   dcb->dcbdcbe = fc;
+}
+
+static void set_eod(IHADCB *PTR32 dcb, EODAD eodad)
+{
+  FILE_CTRL *fc = dcb->dcbdcbe;
+  // retain access to DCB / file control
+  fc->dcbe.dcbeeoda = (void *PTR32)eodad;
 }
 
 static IO_CTRL *PTR32 new_write_io_ctrl(char *PTR32 ddname, int lrecl, int blkSize, unsigned char recfm)
