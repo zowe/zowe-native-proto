@@ -53,25 +53,6 @@ enum class FieldType
   TYPE_ANY
 };
 
-// Forward declaration for nested schema support
-struct FieldDescriptor;
-
-/**
- * Schema field descriptor with nested schema support
- */
-struct NestedSchemaInfo
-{
-  const FieldDescriptor *fields;
-  size_t count;
-
-  NestedSchemaInfo() : fields(nullptr), count(0)
-  {
-  }
-  NestedSchemaInfo(const FieldDescriptor *f, size_t c) : fields(f), count(c)
-  {
-  }
-};
-
 /**
  * Schema field descriptor
  */
@@ -81,25 +62,26 @@ struct FieldDescriptor
   FieldType type;
   bool required;
   FieldType array_element_type;
-  NestedSchemaInfo nested_schema; // Nested schema with count
+  const FieldDescriptor *nested_schema = nullptr;
+  size_t nested_schema_count = 0;
 
   FieldDescriptor(const std::string &n, FieldType t, bool req)
-      : name(n), type(t), required(req), array_element_type(FieldType::TYPE_ANY), nested_schema()
+      : name(n), type(t), required(req), array_element_type(FieldType::TYPE_ANY)
   {
   }
 
   FieldDescriptor(const std::string &n, FieldType t, bool req, FieldType array_elem_type)
-      : name(n), type(t), required(req), array_element_type(array_elem_type), nested_schema()
+      : name(n), type(t), required(req), array_element_type(array_elem_type)
   {
   }
 
   FieldDescriptor(const std::string &n, FieldType t, bool req, const FieldDescriptor *nested, size_t nested_count)
-      : name(n), type(t), required(req), array_element_type(FieldType::TYPE_ANY), nested_schema(nested, nested_count)
+      : name(n), type(t), required(req), array_element_type(FieldType::TYPE_ANY), nested_schema(nested), nested_schema_count(nested_count)
   {
   }
 
   FieldDescriptor(const std::string &n, FieldType t, bool req, FieldType array_elem_type, const FieldDescriptor *nested, size_t nested_count)
-      : name(n), type(t), required(req), array_element_type(array_elem_type), nested_schema(nested, nested_count)
+      : name(n), type(t), required(req), array_element_type(array_elem_type), nested_schema(nested), nested_schema_count(nested_count)
   {
   }
 };

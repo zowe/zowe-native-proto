@@ -16,12 +16,15 @@
 #include <mutex>
 #include "../c/extend/plugin.hpp"
 #include "../c/singleton.hpp"
-#include "validator.hpp"
 
 // Forward declarations
 namespace zjson
 {
 class Value;
+}
+namespace validator
+{
+struct ValidationResult;
 }
 struct RpcRequest;
 struct RpcResponse;
