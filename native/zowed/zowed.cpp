@@ -79,7 +79,7 @@ private:
     return instance;
   }
 
-  const std::map<string, string> load_checksums()
+  std::map<string, string> load_checksums()
   {
     std::map<string, string> checksums;
     ZUSF zusf = {.encoding_opts = {.data_type = eDataTypeText, .source_codepage = "IBM-1047"}};

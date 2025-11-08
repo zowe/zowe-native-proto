@@ -61,8 +61,9 @@ static std::string type_name(FieldType type)
     return "object";
   case FieldType::TYPE_ANY:
     return "any";
+  default:
+    return "unknown";
   }
-  return "unknown";
 }
 
 /**

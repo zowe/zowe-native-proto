@@ -74,32 +74,31 @@ struct NestedSchemaInfo
 
 /**
  * Schema field descriptor
- * Note: const char* used for field names (lightweight, no std::string allocation)
  */
 struct FieldDescriptor
 {
-  const char *name; // Changed from std::string to const char* for constexpr compatibility
+  std::string name;
   FieldType type;
   bool required;
   FieldType array_element_type;
   NestedSchemaInfo nested_schema; // Nested schema with count
 
-  FieldDescriptor(const char *n, FieldType t, bool req)
+  FieldDescriptor(const std::string &n, FieldType t, bool req)
       : name(n), type(t), required(req), array_element_type(FieldType::TYPE_ANY), nested_schema()
   {
   }
 
-  FieldDescriptor(const char *n, FieldType t, bool req, FieldType array_elem_type)
+  FieldDescriptor(const std::string &n, FieldType t, bool req, FieldType array_elem_type)
       : name(n), type(t), required(req), array_element_type(array_elem_type), nested_schema()
   {
   }
 
-  FieldDescriptor(const char *n, FieldType t, bool req, const FieldDescriptor *nested, size_t nested_count)
+  FieldDescriptor(const std::string &n, FieldType t, bool req, const FieldDescriptor *nested, size_t nested_count)
       : name(n), type(t), required(req), array_element_type(FieldType::TYPE_ANY), nested_schema(nested, nested_count)
   {
   }
 
-  FieldDescriptor(const char *n, FieldType t, bool req, FieldType array_elem_type, const FieldDescriptor *nested, size_t nested_count)
+  FieldDescriptor(const std::string &n, FieldType t, bool req, FieldType array_elem_type, const FieldDescriptor *nested, size_t nested_count)
       : name(n), type(t), required(req), array_element_type(array_elem_type), nested_schema(nested, nested_count)
   {
   }
