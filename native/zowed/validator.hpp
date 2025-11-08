@@ -14,7 +14,6 @@
 
 #include <string>
 #include <functional>
-#include "../c/zstd.hpp"
 
 /**
  * Schema-based validation for JSON-RPC messages.
@@ -124,9 +123,23 @@ template <typename T>
 size_t SchemaRegistry<T>::field_count = 0;
 
 /**
- * Validation result type - either success (nullopt) or error (string message)
+ * Validation result type
  */
-using ValidationResult = zstd::optional<std::string>;
+struct ValidationResult
+{
+  bool is_valid;
+  std::string error_message;
+
+  static ValidationResult success()
+  {
+    return ValidationResult{true, ""};
+  }
+
+  static ValidationResult error(const std::string &message)
+  {
+    return ValidationResult{false, message};
+  }
+};
 
 /**
  * Validator function type - validates JSON parameters

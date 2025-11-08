@@ -95,7 +95,7 @@ ValidationResult validate_schema(const zjson::Value &params,
 {
   if (!params.is_object())
   {
-    return zstd::optional<std::string>("Parameters must be an object");
+    return ValidationResult::error("Parameters must be an object");
   }
 
   const auto &obj = params.as_object();
@@ -111,7 +111,7 @@ ValidationResult validate_schema(const zjson::Value &params,
     {
       if (field.required)
       {
-        return zstd::optional<std::string>(std::string("Missing required field: ") + field.name);
+        return ValidationResult::error(std::string("Missing required field: ") + field.name);
       }
       continue;
     }
@@ -128,17 +128,17 @@ ValidationResult validate_schema(const zjson::Value &params,
     // Check type
     if (!check_type(value, field.type))
     {
-      return zstd::optional<std::string>(std::string("Field '") + field.name + "' has wrong type. Expected " +
-                                         type_name(field.type) + ", got " + actual_type_name(value));
+      return ValidationResult::error(std::string("Field '") + field.name + "' has wrong type. Expected " +
+                                     type_name(field.type) + ", got " + actual_type_name(value));
     }
 
     // Validate nested object schema (1 level deep)
     if (field.type == FieldType::TYPE_OBJECT && field.nested_schema.fields != nullptr)
     {
       ValidationResult nested_result = validate_schema(value, field.nested_schema.fields, field.nested_schema.count, allow_unknown_fields);
-      if (nested_result.has_value())
+      if (!nested_result.is_valid)
       {
-        return zstd::optional<std::string>(std::string("Field '") + field.name + "': " + nested_result.value());
+        return ValidationResult::error(std::string("Field '") + field.name + "': " + nested_result.error_message);
       }
     }
 
@@ -150,17 +150,17 @@ ValidationResult validate_schema(const zjson::Value &params,
       {
         if (!check_type(arr[0], field.array_element_type))
         {
-          return zstd::optional<std::string>(std::string("Field '") + field.name + "' array element [0] has wrong type. Expected " +
-                                             type_name(field.array_element_type) + ", got " + actual_type_name(arr[0]));
+          return ValidationResult::error(std::string("Field '") + field.name + "' array element [0] has wrong type. Expected " +
+                                         type_name(field.array_element_type) + ", got " + actual_type_name(arr[0]));
         }
 
         // If it's an object with a schema, validate the schema
         if (field.array_element_type == FieldType::TYPE_OBJECT && field.nested_schema.fields != nullptr)
         {
           ValidationResult nested_result = validate_schema(arr[0], field.nested_schema.fields, field.nested_schema.count, allow_unknown_fields);
-          if (nested_result.has_value())
+          if (!nested_result.is_valid)
           {
-            return zstd::optional<std::string>(std::string("Field '") + field.name + "' array element [0]: " + nested_result.value());
+            return ValidationResult::error(std::string("Field '") + field.name + "' array element [0]: " + nested_result.error_message);
           }
         }
       }
@@ -174,12 +174,12 @@ ValidationResult validate_schema(const zjson::Value &params,
     {
       if (seen_fields.find(pair.first) == seen_fields.end())
       {
-        return zstd::optional<std::string>("Unknown field: " + pair.first);
+        return ValidationResult::error("Unknown field: " + pair.first);
       }
     }
   }
 
-  return zstd::optional<std::string>();
+  return ValidationResult::success();
 }
 
 } // namespace validator

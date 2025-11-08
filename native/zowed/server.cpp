@@ -47,11 +47,10 @@ void RpcServer::process_request(const string &request_data)
     // Validate params if a request validator is registered for this command
     if (request.params.has_value())
     {
-      auto validation_error = validate_json_with_schema(request.method, request.params.value(), true);
-      if (validation_error.has_value())
+      auto validation_result = validate_json_with_schema(request.method, request.params.value(), true);
+      if (!validation_result.is_valid)
       {
-        const string error_msg = validation_error.value();
-        print_error(request.id, RpcErrorCode::INVALID_PARAMS, "Request validation failed (" + request.method + ")", &error_msg);
+        print_error(request.id, RpcErrorCode::INVALID_PARAMS, "Request validation failed (" + request.method + ")", &validation_result.error_message);
         return;
       }
     }
@@ -96,13 +95,12 @@ void RpcServer::process_request(const string &request_data)
     result_json.add_to_object("success", zjson::Value(context.get_error_content().empty()));
 
     // Validate result if a response validator is registered for this command
-    auto validation_error = validate_json_with_schema(request.method, result_json, false);
-    if (validation_error.has_value())
+    auto validation_result = validate_json_with_schema(request.method, result_json, false);
+    if (!validation_result.is_valid)
     {
       // Response validation failed - return internal error
-      const string error_msg = validation_error.value();
       print_error(request.id, RpcErrorCode::INTERNAL_ERROR,
-                  "Response validation failed (" + request.method + ")", &error_msg);
+                  "Response validation failed (" + request.method + ")", &validation_result.error_message);
       return;
     }
 
@@ -370,7 +368,7 @@ void RpcServer::print_error(int request_id, int code, const string &message, con
   print_response(response);
 }
 
-zstd::optional<std::string> RpcServer::validate_json_with_schema(const string &method, const zjson::Value &data, bool is_request)
+validator::ValidationResult RpcServer::validate_json_with_schema(const string &method, const zjson::Value &data, bool is_request)
 {
   const auto &dispatcher = CommandDispatcher::get_instance();
 
@@ -378,7 +376,7 @@ zstd::optional<std::string> RpcServer::validate_json_with_schema(const string &m
   const auto &it = builders.find(method);
   if (it == builders.end())
   {
-    return zstd::optional<std::string>();
+    return validator::ValidationResult::success();
   }
 
   const CommandBuilder &builder = it->second;
@@ -386,7 +384,7 @@ zstd::optional<std::string> RpcServer::validate_json_with_schema(const string &m
 
   if (!validator)
   {
-    return zstd::optional<std::string>();
+    return validator::ValidationResult::success();
   }
 
   return validator(data);
