@@ -302,9 +302,11 @@ void RpcServer::print_response(const RpcResponse &response, const MiddlewareCont
   // Replace placeholders with actual large data
   if (context && context->get_large_data().size() > 0)
   {
-    for (const auto &pair : context->get_large_data())
+    auto &large_data_map = context->get_large_data();
+    for (auto it = large_data_map.begin(); it != large_data_map.end();)
     {
-      add_large_data_to_json(json_string, pair.first, pair.second);
+      add_large_data_to_json(json_string, it->first, it->second);
+      it = large_data_map.erase(it);
     }
   }
 

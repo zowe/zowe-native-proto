@@ -364,6 +364,9 @@ void CommandBuilder::apply_output_transforms(MiddlewareContext &context) const
         {
           context.store_large_data(transform.arg_name, std::move(data));
           obj->set(transform.arg_name, ast::str(""));
+
+          // Clear output buffer to free memory ASAP
+          std::stringstream().swap(context.get_output_stream());
         }
         else
         {

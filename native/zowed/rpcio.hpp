@@ -49,7 +49,7 @@ public:
   void set_pending_notification(const RpcNotification &notification);
 
   // Get large data map
-  const std::unordered_map<std::string, std::string> &get_large_data() const
+  std::unordered_map<std::string, std::string> &get_large_data()
   {
     return m_large_data;
   }
