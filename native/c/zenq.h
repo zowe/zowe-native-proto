@@ -15,13 +15,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "iefucbob.h"
 
 #if defined(__IBM_METAL__)
-#define ENQ_MODEL(enqm)                                       \
-  __asm(                                                      \
-      "*                                                  \n" \
-      " ENQ (,,,,),MF=L                                   \n" \
-      "*                                                    " \
+#define ENQ_MODEL(enqm)                                               \
+  __asm(                                                              \
+      "*                                                  \n"         \
+      " ENQ (,,E,,SYSTEMS),MF=L                                   \n" \
+      "*                                                    "         \
       : "DS"(enqm));
 #else
 #define ENQ_MODEL(enqm) void *enqm;
@@ -29,12 +30,13 @@
 
 ENQ_MODEL(enq_model); // make this copy in static storage
 
+// NOTE(Kelosky): this gives an S230 if not initialized properly which does not match the MF=E setting nor documentation
 #if defined(__IBM_METAL__)
-#define DEQ_MODEL(deqm)                                       \
-  __asm(                                                      \
-      "*                                                  \n" \
-      " DEQ (,,,,),MF=L                                   \n" \
-      "*                                                    " \
+#define DEQ_MODEL(deqm)                                             \
+  __asm(                                                            \
+      "*                                                  \n"       \
+      " DEQ (,,,SYSTEMS),MF=L                                   \n" \
+      "*                                                    "       \
       : "DS"(deqm));
 #else
 #define DEQ_MODEL(deqm) void *deqm;
@@ -46,55 +48,58 @@ DEQ_MODEL(deq_model); // make this copy in static storage
 #define ENQ(qname, rname, rlen, rc, plist)                     \
   __asm(                                                       \
       "*                                                  \n"  \
-      " ENQ (%1,"                                              \
-      "%2,"                                                    \
-      "E,"                                                     \
+      " ENQ (%2,"                                              \
       "%3,"                                                    \
+      "E,"                                                     \
+      "(%4),"                                                  \
       "SYSTEMS),"                                              \
       "RET=USE,"                                               \
-      "MF=(E,%4)                                           \n" \
+      "MF=(E,%0)                                           \n" \
       "*                                                  \n"  \
-      " ST 15,%0               Save RC                    \n"  \
+      " ST 15,%1               Save RC                    \n"  \
       "*                                                    "  \
-      : "=m"(rc)                                               \
-      : "m"(qname), "m"(rname), "m"(rlen), "m"(plist)          \
+      : "+m"(plist),                                           \
+        "=m"(rc)                                               \
+      : "m"(qname), "m"(rname), "r"(rlen)                      \
       : "r0", "r1", "r14", "r15");
 #else
 #define ENQ(qname, rname, rlen, rc, plist)
 #endif
 
-// TODO(Kelosky): handle UCB for RESERVE
 #if defined(__IBM_METAL__)
 #define DEQ(qname, rname, rlen, rc, plist)                     \
   __asm(                                                       \
       "*                                                  \n"  \
-      " DEQ (%1,"                                              \
-      "%2,"                                                    \
+      " DEQ (%2,"                                              \
       "%3,"                                                    \
+      "(%4),"                                                  \
       "SYSTEMS),"                                              \
       "RET=HAVE,"                                              \
-      "MF=(E,%4)                                           \n" \
+      "MF=(E,%0)                                           \n" \
       "*                                                   \n" \
-      " ST 15,%0               Save RC                     \n" \
+      " ST 15,%1               Save RC                     \n" \
       "*                                                    "  \
-      : "=m"(rc)                                               \
-      : "m"(qname), "m"(rname), "m"(rlen), "m"(plist)          \
+      : "+m"(plist),                                           \
+        "=m"(rc)                                               \
+      : "m"(qname), "m"(rname), "r"(rlen)                      \
       : "r0", "r1", "r14", "r15");
 #else
 #define DEQ(qname, rname, rlen, rc)
 #endif
 
+typedef struct ucbcmext UCB;
+
 #define MAX_QNAME_LENGTH 8
 typedef struct
 {
-  unsigned char qname[MAX_QNAME_LENGTH];
+  unsigned char value[MAX_QNAME_LENGTH];
 } QNAME;
 
 #define MAX_RNAME_LENGTH 255
 typedef struct
 {
   int rlen;
-  unsigned char rname[MAX_RNAME_LENGTH];
+  unsigned char value[MAX_RNAME_LENGTH];
 } RNAME;
 
 static int enq(QNAME *qname, RNAME *rname)
@@ -103,7 +108,16 @@ static int enq(QNAME *qname, RNAME *rname)
   ENQ_MODEL(dsa_enq_model);  // stack var
   dsa_enq_model = enq_model; // copy model
 
-  ENQ(qname->qname, rname->rname, rname->rlen, rc, dsa_enq_model);
+  ENQ(qname->value, rname->value, rname->rlen, rc, dsa_enq_model);
+
+  // NOTE(Kelosky): if RC != 0, RC is a pointer to the parameter list and byte 3 of the parameter list contains the return code :-(
+  if (0 != rc)
+  {
+    unsigned char *byte_pointer = (unsigned char *PTR32)rc;
+#define ENQ_RC_INDEX 3
+    rc = byte_pointer[ENQ_RC_INDEX];
+  }
+
   return rc;
 }
 
@@ -113,7 +127,16 @@ static int deq(QNAME *qname, RNAME *rname)
   DEQ_MODEL(dsa_deq_model);  // stack var
   dsa_deq_model = deq_model; // copy model
 
-  DEQ(qname->qname, rname->rname, rname->rlen, rc, dsa_deq_model);
+  DEQ(qname->value, rname->value, rname->rlen, rc, dsa_deq_model);
+
+  // NOTE(Kelosky): if RC != 0, RC is a pointer to the parameter list and byte 3 of the parameter list contains the return code :-(
+  if (0 != rc)
+  {
+    unsigned char *byte_pointer = (unsigned char *PTR32)rc;
+#define DEQ_RC_INDEX 3
+    rc = byte_pointer[DEQ_RC_INDEX];
+  }
+
   return rc;
 }
 

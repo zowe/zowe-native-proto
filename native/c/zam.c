@@ -73,15 +73,19 @@ void close_assert(IO_CTRL *ioc)
   IHADCB *dcb = &ioc->dcb;
   void *temp = dcb->dcbdcbe;
 
-  int rc = close_dcb(dcb);
-  if (0 != rc)
-    s0c3_abend(CLOSE_ASSERT_RC);
-
-  // free DCBE / file control if obtained
-  if (temp && ioc->input)
+  if (dcb->dcboflgs & dcbofopn)
   {
-    FILE_CTRL *fc = dcb->dcbdcbe;
-    storage_release(fc->ctrlLen, fc);
+    int rc = close_dcb(dcb);
+    if (0 != rc)
+    {
+      s0c3_abend(CLOSE_ASSERT_RC);
+    }
+    // free DCBE / file control if obtained
+    if (temp && ioc->input)
+    {
+      FILE_CTRL *fc = dcb->dcbdcbe;
+      storage_release(fc->ctrlLen, fc);
+    }
   }
 
   storage_release(sizeof(IO_CTRL), ioc);

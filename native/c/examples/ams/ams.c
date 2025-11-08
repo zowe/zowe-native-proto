@@ -9,6 +9,7 @@
  *
  */
 #include <stdio.h>
+#include <builtins.h>
 #include "zamtypes.h"
 #include "zmetal.h"
 #include "zutm.h"
@@ -19,7 +20,7 @@
 #include "zdbg.h"
 #include "zutm31.h"
 #include "ztime.h"
-#include <builtins.h>
+#include "zenq.h"
 
 // NOTE(Kelosky): We only use this path for write operations and to preserve and update ISPF statistics.  Read operations or DSORG=PS will use `fopen`.
 // In this path we must perform dynamic allocation on the data set.  We must perform RDJFCB to validate the data set and get the attributes prior to performing the OPEN.
@@ -36,19 +37,34 @@
 // TODO(Kelosky): what is PROMPT for in ISPF stats?
 // TODO(Kelosky): return errors as messages
 
-static void release_resources(IO_CTRL *PTR32 sysin, IO_CTRL *PTR32 sysprint)
+typedef struct
+{
+  IO_CTRL *PTR32 sysin;
+  IO_CTRL *PTR32 sysprint;
+} RESOURCES;
+
+static void release_resources(RESOURCES *resources)
 {
   zwto_debug("AMSMAIN cleanup started");
 
-  if (sysprint->buffer)
+  if (resources->sysprint->buffer)
   {
-    storage_release(sysprint->buffer_size, sysprint->buffer);
-    sysprint->buffer = NULL;
-    sysprint->buffer_size = 0;
+    storage_release(resources->sysprint->buffer_size, resources->sysprint->buffer);
+    resources->sysprint->buffer = NULL;
+    resources->sysprint->buffer_size = 0;
   }
 
-  close_assert(sysin);
-  close_assert(sysprint);
+  if (resources->sysin)
+  {
+    close_assert(resources->sysin);
+    resources->sysin = NULL;
+  }
+
+  if (resources->sysprint)
+  {
+    close_assert(resources->sysprint);
+    resources->sysprint = NULL;
+  }
 
   zwto_debug("AMSMAIN cleanup ended");
 }
@@ -66,25 +82,27 @@ int AMSMAIN()
   int rsn = 0;
   int rc = 0;
 
-  IO_CTRL *PTR32 sysin = open_input_assert("SYSIN", 80, 80, dcbrecf); // NOTE(Kelosky): we won't use this IO for reading apart from this test program
+  RESOURCES resources = {0};
+
+  resources.sysin = open_input_assert("SYSIN", 80, 80, dcbrecf); // NOTE(Kelosky): we won't use this IO for reading apart from this test program
 
   /**
    * @brief Obtain 24 bit structures for legacy macros for non-VSAM data sets and initialize the DCB.
    */
-  IO_CTRL *PTR32 sysprint = new_io_ctrl();
-  memcpy(&sysprint->dcb, &open_write_model, sizeof(IHADCB));
+  resources.sysprint = new_io_ctrl();
+  memcpy(&resources.sysprint->dcb, &open_write_model, sizeof(IHADCB));
 
   /**
    * @brief Set DD of data set we intend to open.  In the future, we'll probably have to require that the system provide use with a unique DD name.
    */
   char ddnam[9] = {0};
   sprintf(ddnam, "%-8.8s", "SYSPRINT");
-  memcpy(sysprint->dcb.dcbddnam, ddnam, sizeof(sysprint->dcb.dcbddnam));
+  memcpy(resources.sysprint->dcb.dcbddnam, ddnam, sizeof(resources.sysprint->dcb.dcbddnam));
 
   /**
    * @brief Perform a read of the Job File Control Block to see what has been allocated to this "job"
    */
-  rc = read_output_jfcb(sysprint);
+  rc = read_output_jfcb(resources.sysprint);
   if (0 != rc)
   {
     zwto_debug("@TEST read_output_jfcb failed: %d", rc);
@@ -94,29 +112,75 @@ int AMSMAIN()
   /**
    * @brief Validate that this is a member of a data set via PDS and member name
    */
-  if (sysprint->jfcb.jfcbind1 != jfcpds)
+  if (resources.sysprint->jfcb.jfcbind1 != jfcpds)
   {
-    zwto_debug("@TEST sysprint->jfcb.jfcbind1 is not PS (0x%x)", sysprint->jfcb.jfcbind1);
+    zwto_debug("@TEST resources.sysprint->jfcb.jfcbind1 is not PS (0x%x)", resources.sysprint->jfcb.jfcbind1);
     return -1;
   }
 
   // ensure member name (e.g. is a partitioned data set)
-  if (sysprint->jfcb.jfcbelnm[0] == ' ')
+  if (resources.sysprint->jfcb.jfcbelnm[0] == ' ')
   {
-    zwto_debug("@TEST sysprint->jfcb.jfcbelnm is empty");
+    zwto_debug("@TEST resources.sysprint->jfcb.jfcbelnm is empty");
     return -1;
   }
 
   /**
+   * @brief IBM recommends using ENQ SCOPE=SYSTEMS.  We may use RESERVE if one of the following is true:
+   * - GRS is not active (only applies to early IPL)
+   * - Installation is not using SMS
+   * https://www.ibm.com/docs/en/zos/3.2.0?topic=dasd-macros-used-shared-reserve-extract-getdsab
+   *
+   * ____ SYSDSN   DKELOSKY.IO.I.F80                             17 SYSTEM  SYSTEM  SHRD O
+   * ____ SPFEDIT  DKELOSKY.IO.I.F80                          +  52 SYSTEMS SYSTEMS EXCL O
+   */
+
+  QNAME qname = {0};
+  RNAME rname = {0};
+  strcpy(qname.value, "SPFEDIT ");
+  zwto_debug("@TEST resources.sysprint->jfcb.jfcbdsnm: %.*s", sizeof(resources.sysprint->jfcb.jfcbdsnm), resources.sysprint->jfcb.jfcbdsnm);
+  zwto_debug("@TEST resources.sysprint->jfcb.jfcbelnm: %.*s", sizeof(resources.sysprint->jfcb.jfcbelnm), resources.sysprint->jfcb.jfcbelnm);
+  rname.rlen = sprintf(rname.value, "%.*s%.*s", sizeof(resources.sysprint->jfcb.jfcbdsnm), resources.sysprint->jfcb.jfcbdsnm, sizeof(resources.sysprint->jfcb.jfcbelnm), resources.sysprint->jfcb.jfcbelnm);
+  zwto_debug("@TEST qname: %s and length: %d and rname: %.*s", qname.value, rname.rlen, rname.rlen, rname.value);
+
+  rc = enq(&qname, &rname);
+  if (0 != rc)
+  {
+    zwto_debug("@TEST reserve failed: %d", rc);
+    release_resources(&resources);
+    return -1;
+  }
+
+  /////////////////////////////////////////////////////////////
+
+  // WTO_BUF buf = {0};
+  // buf.len = sprintf(buf.msg, "Awaiting reply");
+
+  // ECB ecb = {0};
+
+  // WTOR_REPLY_BUF reply = {0};
+  // rc = wtor(&buf, &reply, &ecb);
+  // if (0 != rc)
+  // {
+  //   zwto_debug("@TEST wtor failed: %d", rc);
+  //   return -1;
+  // }
+  // zwto_debug("@TEST wtor reply: %s", reply.msg);
+
+  // ecb_wait(&ecb);
+  // zwto_debug("@TEST wtor reply: %s", reply.msg);
+  /////////////////////////////////////////////////////////////
+
+  /**
    * @brief Set items that we obtained from JFCB
    */
-  sysprint->dcb.dcbrecfm = sysprint->jfcb.jfcrecfm; // copy allocation attributes
-  sysprint->dcb.dcbdsrg1 = dcbdsgpo;                // DSORG=PO
+  resources.sysprint->dcb.dcbrecfm = resources.sysprint->jfcb.jfcrecfm; // copy allocation attributes
+  resources.sysprint->dcb.dcbdsrg1 = dcbdsgpo;                          // DSORG=PO
 
   /**
    * @brief Perform open
    */
-  rc = open_output(&sysprint->dcb);
+  rc = open_output(&resources.sysprint->dcb);
   if (0 != rc)
   {
     zwto_debug("@TEST open_output failed: %d", rc);
@@ -126,9 +190,9 @@ int AMSMAIN()
   /**
    * @brief Verify file is indeed open and no DCBABEND has occurred
    */
-  if (!(sysprint->dcb.dcboflgs & dcbofopn))
+  if (!(resources.sysprint->dcb.dcboflgs & dcbofopn))
   {
-    zwto_debug("@TEST sysprint->dcb.dcboflgs is not open (0x%x)", sysprint->dcb.dcboflgs);
+    zwto_debug("@TEST resources.sysprint->dcb.dcboflgs is not open (0x%x)", resources.sysprint->dcb.dcboflgs);
     return -1;
   }
 
@@ -138,32 +202,32 @@ int AMSMAIN()
   /**
    * @brief Validate data set attributes are Fixed, Variable, and/or blocked
    */
-  if (!(sysprint->dcb.dcbrecfm & dcbrecf)) // validate block or variable??
+  if (!(resources.sysprint->dcb.dcbrecfm & dcbrecf)) // validate block or variable??
   {
-    zwto_debug("@TEST sysprint->dcb.dcbrecfm is not fixed (0x%x)", sysprint->dcb.dcbrecfm);
-    release_resources(sysin, sysprint);
+    zwto_debug("@TEST resources.sysprint->dcb.dcbrecfm is not fixed (0x%x)", resources.sysprint->dcb.dcbrecfm);
+    release_resources(&resources);
     return -1;
   }
 
-  zwto_debug("@TEST sysprint->dcb.dcblrecl: %d", sysprint->dcb.dcblrecl);
-  if (sysprint->dcb.dcblrecl != 80)
+  zwto_debug("@TEST resources.sysprint->dcb.dcblrecl: %d", resources.sysprint->dcb.dcblrecl);
+  if (resources.sysprint->dcb.dcblrecl != 80)
   {
-    zwto_debug("@TEST sysprint->dcb.dcblrecl is not 80 (0x%x)", sysprint->dcb.dcblrecl);
+    zwto_debug("@TEST resources.sysprint->dcb.dcblrecl is not 80 (0x%x)", resources.sysprint->dcb.dcblrecl);
     return -1;
   }
 
-  zwto_debug("@TEST sysprint->dcb.dcbblksi: %d", sysprint->dcb.dcbblksi);
-  if (sysprint->dcb.dcbblksi < 1)
+  zwto_debug("@TEST resources.sysprint->dcb.dcbblksi: %d", resources.sysprint->dcb.dcbblksi);
+  if (resources.sysprint->dcb.dcbblksi < 1)
   {
-    zwto_debug("@TEST sysprint->dcb.dcbblksi is less than 1 (0x%x)", sysprint->dcb.dcbblksi);
-    release_resources(sysin, sysprint);
+    zwto_debug("@TEST resources.sysprint->dcb.dcbblksi is less than 1 (0x%x)", resources.sysprint->dcb.dcbblksi);
+    release_resources(&resources);
     return -1;
   }
 
-  if (sysprint->dcb.dcbblksi % sysprint->dcb.dcblrecl != 0)
+  if (resources.sysprint->dcb.dcbblksi % resources.sysprint->dcb.dcblrecl != 0)
   {
-    zwto_debug("@TEST sysprint->dcb.dcbblksi is not a multiple of sysprint->dcb.dcblrecl (0x%x, 0x%x)", sysprint->dcb.dcbblksi, sysprint->dcb.dcblrecl);
-    release_resources(sysin, sysprint);
+    zwto_debug("@TEST resources.sysprint->dcb.dcbblksi is not a multiple of resources.sysprint->dcb.dcblrecl (0x%x, 0x%x)", resources.sysprint->dcb.dcbblksi, resources.sysprint->dcb.dcblrecl);
+    release_resources(&resources);
     return -1;
   }
 
@@ -172,15 +236,15 @@ int AMSMAIN()
    */
   BLDL_PL bldl_pl = {0};
 
-  bldl_pl.ff = 1;                                                                      // only one member in the list
-  bldl_pl.ll = sizeof(bldl_pl.list);                                                   // length of each entry
-  memcpy(bldl_pl.list.name, sysprint->jfcb.jfcbelnm, sizeof(sysprint->jfcb.jfcbelnm)); // copy member name
-  rc = bldl(sysprint, &bldl_pl, &rsn);                                                 // obtain TTR and other attributes
+  bldl_pl.ff = 1;                                                                                          // only one member in the list
+  bldl_pl.ll = sizeof(bldl_pl.list);                                                                       // length of each entry
+  memcpy(bldl_pl.list.name, resources.sysprint->jfcb.jfcbelnm, sizeof(resources.sysprint->jfcb.jfcbelnm)); // copy member name
+  rc = bldl(resources.sysprint, &bldl_pl, &rsn);                                                           // obtain TTR and other attributes
 
   if (0 != rc)
   {
     zwto_debug("@TEST bldl failed: rc: %d, rsn: %d", rc, rsn);
-    release_resources(sysin, sysprint);
+    release_resources(&resources);
     return -1;
   }
 
@@ -191,7 +255,7 @@ int AMSMAIN()
   if ((bldl_pl.list.c & LEN_MASK) == 0)
   {
     zwto_debug("@TEST no ISPF statistics are provided (0x%02x)", bldl_pl.list.c);
-    release_resources(sysin, sysprint);
+    release_resources(&resources);
     return -1;
   }
 
@@ -199,11 +263,11 @@ int AMSMAIN()
    * @brief Find the member in the data set to obtain the TTR and other attributes
    * Establish the beggingin of a data set member (BPAM)
    */
-  rc = find_member(sysprint, &rsn);
+  rc = find_member(resources.sysprint, &rsn);
   if (0 != rc)
   {
     zwto_debug("@TEST find_member failed: rc: %d, rsn: %d", rc, rsn);
-    release_resources(sysin, sysprint);
+    release_resources(&resources);
     return -1;
   }
 
@@ -212,20 +276,20 @@ int AMSMAIN()
   /**
    * @brief Allocate a buffer to write the data set member into
    */
-  sysprint->buffer_size = sysprint->dcb.dcbblksi;
-  sysprint->buffer = storage_obtain31(sysprint->buffer_size);
+  resources.sysprint->buffer_size = resources.sysprint->dcb.dcbblksi;
+  resources.sysprint->buffer = storage_obtain31(resources.sysprint->buffer_size);
 
   // init buffer variables
   int bytes_in_buffer = 0;
-  char *PTR32 free_location = sysprint->buffer;
-  memset(sysprint->buffer, 0x00, sysprint->buffer_size);
-  int lrecl = sysprint->dcb.dcblrecl;
-  int blocksize = sysprint->dcb.dcbblksi;
+  char *PTR32 free_location = resources.sysprint->buffer;
+  memset(resources.sysprint->buffer, 0x00, resources.sysprint->buffer_size);
+  int lrecl = resources.sysprint->dcb.dcblrecl;
+  int blocksize = resources.sysprint->dcb.dcbblksi;
 
   int lines_written = 0;
 
   // loop read
-  while (0 == read_sync(sysin, inbuff))
+  while (0 == read_sync(resources.sysin, inbuff))
   {
     zwto_debug("@TEST read: %.80s", inbuff);
     memset(free_location, ' ', lrecl);
@@ -240,11 +304,11 @@ int AMSMAIN()
     // write block if buffer is full
     if (bytes_in_buffer >= blocksize)
     {
-      write_sync(sysprint, sysprint->buffer);
+      write_sync(resources.sysprint, resources.sysprint->buffer);
       // reset buffer variables
       bytes_in_buffer = 0;
-      free_location = sysprint->buffer;
-      memset(sysprint->buffer, 0x00, sysprint->buffer_size);
+      free_location = resources.sysprint->buffer;
+      memset(resources.sysprint->buffer, 0x00, resources.sysprint->buffer_size);
       zwto_debug("@TEST wrote block");
     }
   }
@@ -252,13 +316,13 @@ int AMSMAIN()
   // write any remaining bytes in the buffer
   if (bytes_in_buffer > 0)
   {
-    sysprint->dcb.dcbblksi = bytes_in_buffer; // temporary update block size before writing
-    write_sync(sysprint, sysprint->buffer);   // TODO(Kelosky): if we abend, we MUST restore the original block size before CLOSE
-    sysprint->dcb.dcbblksi = blocksize;
+    resources.sysprint->dcb.dcbblksi = bytes_in_buffer;         // temporary update block size before writing
+    write_sync(resources.sysprint, resources.sysprint->buffer); // TODO(Kelosky): if we abend, we MUST restore the original block size before CLOSE
+    resources.sysprint->dcb.dcbblksi = blocksize;
 
     bytes_in_buffer = 0;
-    free_location = sysprint->buffer;
-    memset(sysprint->buffer, 0x00, sysprint->buffer_size);
+    free_location = resources.sysprint->buffer;
+    memset(resources.sysprint->buffer, 0x00, resources.sysprint->buffer_size);
     zwto_debug("@TEST wrote block");
   }
 
@@ -266,11 +330,11 @@ int AMSMAIN()
    * @brief Find the position last block written
    */
   NOTE_RESPONSE note_response = {0};
-  rc = note(sysprint, &note_response, &rsn);
+  rc = note(resources.sysprint, &note_response, &rsn);
   if (0 != rc)
   {
     zwto_debug("@TEST note failed: rc: %d, rsn: %d", rc, rsn);
-    release_resources(sysin, sysprint);
+    release_resources(&resources);
     return -1;
   }
 
@@ -278,16 +342,16 @@ int AMSMAIN()
    * @brief Copy ISPF statistics
    */
   // Copy all user data
-  memcpy(sysprint->stow_list.name, bldl_pl.list.name, sizeof(bldl_pl.list.name)); // copy member name
-  memcpy(sysprint->stow_list.ttr, note_response.ttr, sizeof(note_response.ttr));  // copy NOTE TTR
-  sysprint->stow_list.c = bldl_pl.list.c;                                         // copy user data length
-  int user_data_len = (bldl_pl.list.c & LEN_MASK) * 2;                            // isolate number of halfwords in user data
-  memcpy(sysprint->stow_list.user_data, bldl_pl.list.user_data, user_data_len);   // copy all user data
+  memcpy(resources.sysprint->stow_list.name, bldl_pl.list.name, sizeof(bldl_pl.list.name)); // copy member name
+  memcpy(resources.sysprint->stow_list.ttr, note_response.ttr, sizeof(note_response.ttr));  // copy NOTE TTR
+  resources.sysprint->stow_list.c = bldl_pl.list.c;                                         // copy user data length
+  int user_data_len = (bldl_pl.list.c & LEN_MASK) * 2;                                      // isolate number of halfwords in user data
+  memcpy(resources.sysprint->stow_list.user_data, bldl_pl.list.user_data, user_data_len);   // copy all user data
 
   /**
    * @brief Update ISPF statistics
    */
-  ISPF_STATS *statsp = (ISPF_STATS *)sysprint->stow_list.user_data;
+  ISPF_STATS *statsp = (ISPF_STATS *)resources.sysprint->stow_list.user_data;
   zut_dump_storage_common("ISPFSTATS", statsp, sizeof(ISPF_STATS), 16, 0, zut_print_debug);
 
   // update ISPF statistics userid
@@ -296,7 +360,7 @@ int AMSMAIN()
   if (0 != rc)
   {
     zwto_debug("@TEST zutm1gur failed: rc: %d", rc);
-    release_resources(sysin, sysprint);
+    release_resources(&resources);
     return -1;
   }
   memcpy(statsp->userid, user, sizeof(user));
@@ -341,18 +405,26 @@ int AMSMAIN()
   /**
    * @brief Update the directory entry with the new ISPF statistics
    */
-  rc = stow(sysprint, &rsn);
+  rc = stow(resources.sysprint, &rsn);
   if (0 != rc)
   {
     zwto_debug("@TEST stow failed: rc: %d, rsn: %d", rc, rsn);
-    release_resources(sysin, sysprint);
+    release_resources(&resources);
+    return -1;
+  }
+
+  rc = deq(&qname, &rname);
+  if (0 != rc)
+  {
+    zwto_debug("@TEST deq failed: rc: %d", rc);
+    release_resources(&resources);
     return -1;
   }
 
   /**
    * @brief Release resources
    */
-  release_resources(sysin, sysprint);
+  release_resources(&resources);
 
   return 0;
 }
