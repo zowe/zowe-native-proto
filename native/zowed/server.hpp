@@ -29,8 +29,9 @@ enum
   INVALID_REQUEST = -32600,  // The JSON sent is not a valid Request object
   METHOD_NOT_FOUND = -32601, // The method does not exist / is not available
   INVALID_PARAMS = -32602,   // Invalid method parameter(s)
-  INTERNAL_ERROR = -32603    // Internal JSON-RPC error
+  INTERNAL_ERROR = -32603,   // Internal JSON-RPC error
   // -32000 to -32099 are reserved for implementation-defined server-errors
+  REQUEST_TIMEOUT = -32001 // Request exceeded timeout limit
 };
 }
 
@@ -137,6 +138,14 @@ public:
    * @param notification The RpcNotification to send
    */
   static void send_notification(const RpcNotification &notification);
+
+  /**
+   * Send a timeout error response for a request that exceeded the timeout limit
+   * This method parses the request to extract the ID and sends an appropriate error response
+   * @param request_data The raw JSON-RPC request string that timed out
+   * @param timeout_ms The timeout value that was exceeded (in milliseconds)
+   */
+  void send_timeout_error(const std::string &request_data, int64_t timeout_ms);
 };
 
 #endif

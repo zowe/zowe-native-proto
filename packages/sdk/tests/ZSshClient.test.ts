@@ -168,7 +168,7 @@ describe("ZSshClient", () => {
                 numWorkers: 1,
             });
             expect(execAsyncMock).toHaveBeenCalledTimes(1);
-            expect(execAsyncMock.mock.calls[0].slice(1)).toEqual(["-num-workers", "1"]);
+            expect(execAsyncMock.mock.calls[0].slice(1)).toEqual(["--num-workers", "1"]);
         });
 
         it("should respect responseTimeout option", async () => {

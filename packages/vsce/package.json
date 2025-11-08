@@ -75,6 +75,13 @@
           "maximum": 50,
           "description": "Number of worker threads for the Zowe SSH server. Each worker runs as a separate process in its own address space."
         },
+        "zowe-native-proto-vsce.requestTimeout": {
+          "type": "number",
+          "default": 60,
+          "minimum": 1,
+          "maximum": 600,
+          "description": "Request timeout in seconds before a worker is restarted. Set to a higher value if requests are expected to take longer to complete."
+        },
         "zowe-native-proto-vsce.defaultHandshakeTimeout": {
           "type": "number",
           "description": "Time in milliseconds to wait for the SSH handshake to complete.",

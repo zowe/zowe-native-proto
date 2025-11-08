@@ -150,57 +150,58 @@ public:
     bool &initialized = get_initialized();
     std::string &log_file_path = get_log_file_path();
 
-    const std::lock_guard<std::mutex> lock(log_mutex);
-
-    verbose_logging = verbose;
-
-    // Create logs directory
-    const std::string logs_dir = std::string(exec_dir) + "/logs";
-
-    if (mkdir(logs_dir.c_str(), 0700) != 0 && errno != EEXIST)
     {
-      std::cerr << "Failed to create logs directory: " << logs_dir << std::endl;
-      return;
+      const std::lock_guard<std::mutex> lock(log_mutex);
+
+      verbose_logging = verbose;
+
+      // Create logs directory
+      const std::string logs_dir = std::string(exec_dir) + "/logs";
+
+      if (mkdir(logs_dir.c_str(), 0700) != 0 && errno != EEXIST)
+      {
+        std::cerr << "Failed to create logs directory: " << logs_dir << std::endl;
+        return;
+      }
+
+      // Set log file path
+      log_file_path = logs_dir + "/zowed.log";
+
+      // Open log file
+      auto mode = std::ios::out;
+      if (truncate)
+      {
+        mode |= std::ios::trunc;
+      }
+      else
+      {
+        mode |= std::ios::app;
+      }
+
+      if (log_file.is_open())
+      {
+        log_file.close();
+      }
+
+      // Create/open file with restricted permissions (0600)
+      int fd = open(log_file_path.c_str(), O_WRONLY | O_CREAT | (truncate ? O_TRUNC : O_APPEND), 0600);
+      if (fd == -1)
+      {
+        std::cerr << "Failed to create log file: " << log_file_path << std::endl;
+        return;
+      }
+      close(fd);
+
+      // Now open with fstream
+      log_file.open(log_file_path.c_str(), mode);
+      if (!log_file.is_open())
+      {
+        std::cerr << "Failed to initialize logger: could not open " << log_file_path << std::endl;
+        return;
+      }
+
+      initialized = true;
     }
-
-    // Set log file path
-    log_file_path = logs_dir + "/zowed.log";
-
-    // Open log file
-    auto mode = std::ios::out;
-    if (truncate)
-    {
-      mode |= std::ios::trunc;
-    }
-    else
-    {
-      mode |= std::ios::app;
-    }
-
-    if (log_file.is_open())
-    {
-      log_file.close();
-    }
-
-    // Create/open file with restricted permissions (0600)
-    int fd = open(log_file_path.c_str(), O_WRONLY | O_CREAT | (truncate ? O_TRUNC : O_APPEND), 0600);
-    if (fd == -1)
-    {
-      std::cerr << "Failed to create log file: " << log_file_path << std::endl;
-      return;
-    }
-    close(fd);
-
-    // Now open with fstream
-    log_file.open(log_file_path.c_str(), mode);
-    if (!log_file.is_open())
-    {
-      std::cerr << "Failed to initialize logger: could not open " << log_file_path << std::endl;
-      return;
-    }
-
-    initialized = true;
-
     if (verbose)
     {
       log_debug("Verbose logging enabled");
