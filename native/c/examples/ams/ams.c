@@ -49,6 +49,8 @@ static void release_resources(RESOURCES *resources)
 
   if (resources->sysprint->buffer)
   {
+    zwto_debug("@TEST releasing buffer for sysprint");
+    zwto_debug("@TEST dcbe: %p", resources->sysprint->dcb.dcbdcbe);
     storage_release(resources->sysprint->buffer_size, resources->sysprint->buffer);
     resources->sysprint->buffer = NULL;
     resources->sysprint->buffer_size = 0;
@@ -56,12 +58,16 @@ static void release_resources(RESOURCES *resources)
 
   if (resources->sysin)
   {
+    zwto_debug("@TEST releasing sysin");
+    zwto_debug("@TEST dcbe: %p", resources->sysprint->dcb.dcbdcbe);
     close_assert(resources->sysin);
     resources->sysin = NULL;
   }
 
   if (resources->sysprint)
   {
+    zwto_debug("@TEST dcbe: %p", resources->sysprint->dcb.dcbdcbe);
+    zwto_debug("@TEST releasing sysprint");
     close_assert(resources->sysprint);
     resources->sysprint = NULL;
   }
@@ -143,7 +149,7 @@ int AMSMAIN()
   rname.rlen = sprintf(rname.value, "%.*s%.*s", sizeof(resources.sysprint->jfcb.jfcbdsnm), resources.sysprint->jfcb.jfcbdsnm, sizeof(resources.sysprint->jfcb.jfcbelnm), resources.sysprint->jfcb.jfcbelnm);
   zwto_debug("@TEST qname: %s and length: %d and rname: %.*s", qname.value, rname.rlen, rname.rlen, rname.value);
 
-  rc = enq(&qname, &rname);
+  rc = enq(&qname, &rname); // TODO(Kelosky): before open? How is directory entry protected?
   if (0 != rc)
   {
     zwto_debug("@TEST reserve failed: %d", rc);
@@ -172,6 +178,13 @@ int AMSMAIN()
   /////////////////////////////////////////////////////////////
 
   /**
+   * @brief Set DCBE
+   */
+
+  // set_dcb_dcbe(&resources.sysprint->dcb);
+  zwto_debug("@TEST resources.sysprint->dcb.dcbdcbe: %p", resources.sysprint->dcb.dcbdcbe);
+
+  /**
    * @brief Set items that we obtained from JFCB
    */
   resources.sysprint->dcb.dcbrecfm = resources.sysprint->jfcb.jfcrecfm; // copy allocation attributes
@@ -186,6 +199,8 @@ int AMSMAIN()
     zwto_debug("@TEST open_output failed: %d", rc);
     return -1;
   }
+
+  zwto_debug("@TEST resources.sysprint->dcb.dcbdcbe: %p", resources.sysprint->dcb.dcbdcbe);
 
   /**
    * @brief Verify file is indeed open and no DCBABEND has occurred
@@ -366,6 +381,7 @@ int AMSMAIN()
     return -1;
   }
   memcpy(statsp->userid, user, sizeof(user));
+  zwto_debug("@TEST1 dcbe: %p", resources.sysprint->dcb.dcbdcbe);
 
 // update ISPF statistics modification level
 // https://www.ibm.com/docs/en/zos/3.2.0?topic=environment-version-modification-level-numbers
@@ -404,6 +420,8 @@ int AMSMAIN()
   statsp->modified_time_minutes = timel.times.MM; // update ISPF statistics time minutes
   statsp->modified_time_seconds = timel.times.SS; // update ISPF statistics time seconds
 
+  zwto_debug("@TEST6 dcbe: %p", resources.sysprint->dcb.dcbdcbe);
+
   /**
    * @brief Update the directory entry with the new ISPF statistics
    */
@@ -414,6 +432,7 @@ int AMSMAIN()
     release_resources(&resources);
     return -1;
   }
+  zwto_debug("@TEST7 dcbe: %p", resources.sysprint->dcb.dcbdcbe);
 
   rc = deq(&qname, &rname);
   if (0 != rc)
@@ -422,6 +441,9 @@ int AMSMAIN()
     release_resources(&resources);
     return -1;
   }
+  zwto_debug("@TEST1 dcbe: %p", resources.sysprint->dcb.dcbdcbe);
+
+  zwto_debug("@TEST releasing resources");
 
   /**
    * @brief Release resources

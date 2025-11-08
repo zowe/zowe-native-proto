@@ -72,23 +72,27 @@ IO_CTRL *open_input_assert(char *ddname, int lrecl, int blkSize, unsigned char r
 void close_assert(IO_CTRL *ioc)
 {
   IHADCB *dcb = &ioc->dcb;
-  void *temp = dcb->dcbdcbe;
+  FILE_CTRL *fc = dcb->dcbdcbe;
+  zwto_debug("@TEST close_assert: %p", fc);
 
   if (dcb->dcboflgs & dcbofopn)
   {
+    zwto_debug("@TEST close_assert: closing dcb: %p", dcb);
     int rc = close_dcb(dcb);
     if (0 != rc)
     {
       s0c3_abend(CLOSE_ASSERT_RC);
     }
     // free DCBE / file control if obtained
-    if (temp && ioc->input)
+    if (fc && ioc->input)
     {
-      FILE_CTRL *fc = dcb->dcbdcbe;
+      zwto_debug("@TEST close_assert: releasing fc: %p", fc);
+      // FILE_CTRL *fc = dcb->dcbdcbe;
       storage_release(fc->ctrl_len, fc);
     }
   }
 
+  zwto_debug("@TEST close_assert: releasing ioc: %p", ioc);
   storage_release(sizeof(IO_CTRL), ioc);
 }
 

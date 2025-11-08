@@ -44,6 +44,7 @@
 //     write_sync(sysprintIoc, writeBuf);
 // }
 
+// "DCBE=*-*,"                                             \
 // TODO(KELOSKY): DCBE?
 #if defined(__IBM_METAL__)
 #define DCB_WRITE_MODEL(dcbwm)                                \
