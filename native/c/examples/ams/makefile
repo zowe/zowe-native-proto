@@ -97,7 +97,7 @@ MTL_FLAGS+=-g1
 MTL_FLAGS64+=-g1
 .END
 
-all: build-out build-out/ams_driver zam.c
+all: build-out build-out/ams_driver zam.c zam24.s
 
 ams: build-out/ams
 
@@ -107,6 +107,9 @@ build-out:
 
 zam.c:  ../../zam.c
 	cp ../../zam.c .
+
+zam24.s:  ../../zam24.s
+	cp ../../zam24.s .
 
 build-out/ams_driver.o: ams_driver.cpp
 	@echo 'Building $(OUT_DIR)/ams_driver.o'
@@ -121,6 +124,10 @@ build-out/zam.o: build-out/zam.s
 	@echo 'Building build-out/zam.s'
 	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
+build-out/zam24.o: zam24.s
+	@echo 'Building build-out/zam24.o'
+	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
+
 build-out/ams.s: ams.c
 	@echo 'Building build-out/ams.s'
 	$(CC) $(MTL_FLAGS64) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
@@ -129,7 +136,7 @@ build-out/ams.o: build-out/ams.s
 	@echo 'Building build-out/ams.s'
 	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
-build-out/ams_driver: build-out/ams_driver.o build-out/zam.o build-out/ams.o build-out/libzut.a
+build-out/ams_driver: build-out/ams_driver.o build-out/zam.o build-out/zam24.o build-out/ams.o build-out/libzut.a
 	$(CXX) $(CPP_BND_FLAGS) -o $@ $^ > $*.bind.lst
 
 clean:

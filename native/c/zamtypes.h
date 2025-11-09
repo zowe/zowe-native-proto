@@ -173,6 +173,8 @@ typedef struct
   int buffer_size;
   int output : 1;
   int input : 1;
+  void *PTR32 zam24;
+  int zam24_len;
 } IO_CTRL;
 
 #endif

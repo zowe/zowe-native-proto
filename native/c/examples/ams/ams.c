@@ -68,6 +68,7 @@ static void release_resources(RESOURCES *resources)
   {
     zwto_debug("@TEST dcbe: %p", resources->sysprint->dcb.dcbdcbe);
     zwto_debug("@TEST releasing sysprint");
+    // TODO(Kelosky): caller lower level services to avoid S0C3 in this function
     close_assert(resources->sysprint);
     resources->sysprint = NULL;
   }
@@ -120,7 +121,7 @@ int AMSMAIN()
    */
   if (resources.sysprint->jfcb.jfcbind1 != jfcpds)
   {
-    zwto_debug("@TEST resources.sysprint->jfcb.jfcbind1 is not PS (0x%x)", resources.sysprint->jfcb.jfcbind1);
+    zwto_debug("@TEST resources.sysprint->jfcb.jfcbind1 is not PDS (0x%x)", resources.sysprint->jfcb.jfcbind1);
     return -1;
   }
 
@@ -190,6 +191,8 @@ int AMSMAIN()
   resources.sysprint->dcb.dcbrecfm = resources.sysprint->jfcb.jfcrecfm; // copy allocation attributes
   resources.sysprint->dcb.dcbdsrg1 = dcbdsgpo;                          // DSORG=PO
 
+  zwto_debug("@TEST opening for output");
+
   /**
    * @brief Perform open
    */
@@ -199,7 +202,7 @@ int AMSMAIN()
     zwto_debug("@TEST open_output failed: %d", rc);
     return -1;
   }
-
+  zwto_debug("@TEST opened for output");
   zwto_debug("@TEST resources.sysprint->dcb.dcbdcbe: %p", resources.sysprint->dcb.dcbdcbe);
 
   /**
@@ -256,6 +259,7 @@ int AMSMAIN()
   memcpy(bldl_pl.list.name, resources.sysprint->jfcb.jfcbelnm, sizeof(resources.sysprint->jfcb.jfcbelnm)); // copy member name
   rc = bldl(resources.sysprint, &bldl_pl, &rsn);                                                           // obtain TTR and other attributes
 
+  // TODO(Kelosky): if BLDL fails with RC = 4, not found, should we create stats?
   if (0 != rc)
   {
     zwto_debug("@TEST bldl failed: rc: %d, rsn: %d", rc, rsn);
@@ -302,6 +306,13 @@ int AMSMAIN()
   int blocksize = resources.sysprint->dcb.dcbblksi;
 
   int lines_written = 0;
+
+  /////////////////////////////////////////////////////////////
+
+  // resources.sysprint->dcb.dcbblksi = 7; // NOTE(Kelosky): this can be used to drive a SYNAD exit
+  // allocate a data set for output, write to it, then attempt to read it
+
+  /////////////////////////////////////////////////////////////
 
   // loop read
   while (0 == read_sync(resources.sysin, inbuff))

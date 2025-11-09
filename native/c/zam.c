@@ -11,6 +11,7 @@
 
 #include "zam.h"
 #include "dcbd.h"
+#include "zam24.h"
 #include "zwto.h"
 
 // NOTE(Kelosky): must be assembled in AMODE31 code
@@ -54,6 +55,18 @@ IO_CTRL *open_input_assert(char *ddname, int lrecl, int blkSize, unsigned char r
   IHADCB *dcb = &ioc->dcb;
   int rc = 0;
   dcb->dcbdsrg1 = dcbdsgps; // DSORG=PS
+
+  /////////////////////////////////////////////////////////////
+  // rc = read_input_jfcb(ioc);
+  // if (0 != rc)
+  // {
+  //   zwto_debug("@TEST read_input_jfcb failed: %d", rc);
+  // }
+
+  // zwto_debug("@TEST read input jfcb");
+  // dcb->dcbdsrg1 = dcbdsgpo; // DSORG=PO @TEST
+  /////////////////////////////////////////////////////////////
+
   rc = open_input(dcb);
   ioc->input = 1;
 
@@ -90,6 +103,13 @@ void close_assert(IO_CTRL *ioc)
       // FILE_CTRL *fc = dcb->dcbdcbe;
       storage_release(fc->ctrl_len, fc);
     }
+  }
+
+  if (ioc->zam24)
+  {
+    zwto_debug("@TEST close_assert: releasing zam24: %p", ioc->zam24);
+    storage_release(ioc->zam24_len, ioc->zam24);
+    ioc->zam24 = NULL;
   }
 
   zwto_debug("@TEST close_assert: releasing ioc: %p", ioc);
@@ -132,11 +152,18 @@ int note(IO_CTRL *ioc, NOTE_RESPONSE *PTR32 note_response, int *rsn)
   return rc;
 }
 
+// TODO(Kelosky): common logic for both read_input_jfcb and read_output_jfcb should be combined
 int read_input_jfcb(IO_CTRL *ioc)
 {
   int rc = 0;
 
-  ioc->exlst[0].exlentrb = (unsigned int)0; // NOTE(Kelosky): DCBABEND needs to be copied to 24 bit storage or have some wrapper
+  int zam24_len = ZAM24Q();
+  zwto_debug("@TEST zam24_len: %d", zam24_len);
+  ioc->zam24_len = zam24_len;
+  ioc->zam24 = storage_obtain24(zam24_len);
+  memcpy(ioc->zam24, (void *PTR32)ZAM24, zam24_len);
+
+  ioc->exlst[0].exlentrb = (unsigned int)ioc->zam24;
   ioc->exlst[0].exlcodes = exldcbab;
   ioc->exlst[1].exlentrb = (unsigned int)&ioc->jfcb;
   ioc->exlst[1].exlcodes = exllaste + exlrjfcb;
@@ -155,7 +182,13 @@ int read_output_jfcb(IO_CTRL *ioc)
 {
   int rc = 0;
 
-  ioc->exlst[0].exlentrb = (unsigned int)0; // NOTE(Kelosky): DCBABEND needs to be copied to 24 bit storage or have some wrapper
+  int zam24_len = ZAM24Q();
+  zwto_debug("@TEST zam24_len: %d", zam24_len);
+  ioc->zam24_len = zam24_len;
+  ioc->zam24 = storage_obtain24(zam24_len);
+  memcpy(ioc->zam24, (void *PTR32)ZAM24, zam24_len);
+
+  ioc->exlst[0].exlentrb = (unsigned int)ioc->zam24; // NOTE(Kelosky): DCBABEND needs to be copied to 24 bit storage or have some wrapper
   ioc->exlst[0].exlcodes = exldcbab;
   ioc->exlst[1].exlentrb = (unsigned int)&ioc->jfcb;
   ioc->exlst[1].exlcodes = exllaste + exlrjfcb;
@@ -318,4 +351,12 @@ int read_sync(IO_CTRL *ioc, char *buffer)
 void eodad()
 {
   fc->eod = 1;
+}
+
+#pragma prolog(ZAMDA31, " ZWEPROLG NEWDSA=(YES,8),SAVE=BAKR ") // TODO(Kelosky): BSM=NO?
+#pragma epilog(ZAMDA31, " ZWEEPILG ")
+int ZAMDA31()
+{
+  zwto_debug("@TEST ZAMDA31: called");
+  return 0;
 }

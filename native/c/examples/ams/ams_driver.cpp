@@ -22,9 +22,18 @@ int main()
 
   std::vector<std::string> dds;
 
+  // dds.push_back("alloc dd(sysin) da('DKELOSKY.IO.O.ERROR(new)') shr lrecl(80) recfm(f) ");
   dds.push_back("alloc dd(sysin) da('DKELOSKY.IO.I.F80(data)') shr lrecl(80) recfm(f) ");
+  // dds.push_back("alloc dd(sysin) da('DKELOSKY.IO.O.PS') shr lrecl(80) recfm(f) ");
+  // dds.push_back("concat ddlist(sysin,sysin2)");
+
   // dds.push_back("alloc dd(sysprint) da('DKELOSKY.IO.O.F80(data)') shr lrecl(80) recfm(f) ");
-  dds.push_back("alloc dd(sysprint) da('DKELOSKY.IO.O.FB80(data)') shr lrecl(80) recfm(f,b) ");
+  dds.push_back("alloc dd(sysprint) da('DKELOSKY.IO.O.FB80(data)') shr lrecl(80) recfm(f,b)");
+  // dds.push_back("alloc dd(another) da('DKELOSKY.IO.O.PS') shr lrecl(80)");
+  // dds.push_back("concat ddlist(sysprint,another)");
+  // dds.push_back("alloc dd(sysprint) da('DKELOSKY.IO.O.ERROR(NEW)') shr lrecl(80) recfm(f,b) ");
+  // dds.push_back("alloc dd(sysprint) da('DKELOSKY.IO.O.PS','DKELOSKY.IO.O.FB80(data)') shr ");
+  // dds.push_back("alloc dd(sysprint) da('DKELOSKY.IO.O.FB80(data)' 'DKELOSKY.IO.O.PS') shr lrecl(80) recfm(f,b) ");
   // dds.push_back("alloc dd(sysprint) da('DKELOSKY.IO.O.FB80(data)') shr lrecl(80) blksize(160) recfm(f,b) ");
 
   // dds.push_back("alloc dd(sysprint) da('dkelosky.output.fixed(data)') shr lrecl(80) recfm(f) ");
