@@ -163,7 +163,7 @@ int read_input_jfcb(IO_CTRL *ioc)
   ioc->zam24 = storage_obtain24(zam24_len);
   memcpy(ioc->zam24, (void *PTR32)ZAM24, zam24_len);
 
-  ioc->exlst[0].exlentrb = (unsigned int)ioc->zam24;
+  // ioc->exlst[0].exlentrb = (unsigned int)ioc->zam24; uncommend to enable DCBABEND
   ioc->exlst[0].exlcodes = exldcbab;
   ioc->exlst[1].exlentrb = (unsigned int)&ioc->jfcb;
   ioc->exlst[1].exlcodes = exllaste + exlrjfcb;
@@ -188,7 +188,7 @@ int read_output_jfcb(IO_CTRL *ioc)
   ioc->zam24 = storage_obtain24(zam24_len);
   memcpy(ioc->zam24, (void *PTR32)ZAM24, zam24_len);
 
-  ioc->exlst[0].exlentrb = (unsigned int)ioc->zam24; // NOTE(Kelosky): DCBABEND needs to be copied to 24 bit storage or have some wrapper
+  // ioc->exlst[0].exlentrb = (unsigned int)ioc->zam24; uncommend to enable DCBABEND
   ioc->exlst[0].exlcodes = exldcbab;
   ioc->exlst[1].exlentrb = (unsigned int)&ioc->jfcb;
   ioc->exlst[1].exlcodes = exllaste + exlrjfcb;
