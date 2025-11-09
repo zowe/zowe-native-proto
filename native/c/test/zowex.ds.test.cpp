@@ -832,22 +832,44 @@ void zowex_ds_tests()
                          xit("should fail to restore if not authorized", [&]() -> void {});
                        });
              describe("view",
-                      []() -> void
+                      [&]() -> void
                       {
+                        beforeEach(
+                            [&]() -> void
+                            {
+                              _ds.push_back(get_random_ds());
+                            });
                         it("should view the content of a sequential data set",
                            []() -> void {});
                         it("should view the content of a PDS member",
                            []() -> void {});
                         it("should view a specific range of lines from a data set",
                            []() -> void {});
-                        it("should fail to view a non-existent data set",
-                           []() -> void {});
-                        it("should fail to view a data set if not authorized",
-                           []() -> void {});
                         it("should view a data set with different encoding",
                            []() -> void {});
-                        it("should error when the data set name is invalid",
-                           []() -> void {});
+                        it("should fail to view a non-existent data set",
+                           [&]() -> void
+                           {
+                             string ds = _ds.back() + ".GHOST";
+                             string response;
+                             string command = zowex_command + " data-set view " + ds;
+                             int rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).Not().ToBe(0);
+                             Expect(response).ToContain("Error: could not read data set: '" + ds + "'");
+                           });
+                        it("should error when the data set name too long",
+                           [&]() -> void
+                           {
+                             string ds = get_random_ds(8);
+                             string response;
+                             string command = zowex_command + " data-set view " + ds;
+                             int rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).Not().ToBe(0);
+                             Expect(response).ToContain("Error: could not read data set: '" + ds + "'");
+                           });
+
+                        // What do?
+                        xit("should fail to view a data set if not authorized", []() -> void {});
 
                         // TODO: https://github.com/zowe/zowe-native-proto/issues/666
                         xit("should view the content of a VSAM KSDS data set", []() -> void {});
@@ -978,31 +1000,79 @@ void zowex_ds_tests()
                              Expect(response).Not().ToContain(random_string1);
                            });
 
+                        it("should only print the etag when requested",
+                           [&]() -> void
+                           {
+                             string ds = _ds.back();
+                             _create_ds(ds, "--dsorg PS");
+                             string response;
+                             string command = "echo 'test' | " + zowex_command + " data-set write " + ds + " --etag-only";
+                             int rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("etag: 8890283"); // etag for "test"
+                             Expect(response).Not().ToContain("Wrote data to '" + ds + "'");
+                           });
+
+                        it("should fail if the provided etag is different from the current etag",
+                           [&]() -> void
+                           {
+                             string ds = _ds.back();
+                             _create_ds(ds, "--dsorg PS");
+                             string response;
+                             string command = "echo 'test' | " + zowex_command + " data-set write " + ds;
+                             int rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("Wrote data to '" + ds + "'");
+
+                             command = "echo 'zowe' | " + zowex_command + " data-set write " + ds + " --etag 8bb0280"; // etag for "zowe"
+                             rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).Not().ToBe(0);
+                             Expect(response).ToContain("Etag mismatch: expected 8bb0280, actual 8890283");
+                             Expect(response).Not().ToContain("Wrote data to '" + ds + "'");
+                           });
+
+                        // TODO: https://github.com/zowe/zowe-native-proto/issues/676
+                        xit("should fail if the provided etag is different and evaluates to a number",
+                            [&]() -> void
+                            {
+                              string ds = _ds.back();
+                              _create_ds(ds, "--dsorg PS");
+                              string response;
+                              string command = "echo 'zowe' | " + zowex_command + " data-set write " + ds;
+                              int rc = execute_command_with_output(command, response);
+                              ExpectWithContext(rc, response).ToBe(0);
+                              Expect(response).ToContain("Wrote data to '" + ds + "'");
+
+                              command = "echo 'test' | " + zowex_command + " data-set write " + ds + " --etag 8890283"; // etag for "test"
+                              rc = execute_command_with_output(command, response);
+                              ExpectWithContext(rc, response).Not().ToBe(0);
+                              Expect(response).ToContain("Etag mismatch: expected 8890283, actual 8bb0280");
+                              Expect(response).Not().ToContain("Wrote data to '" + ds + "'");
+                            });
+
                         it("should write content to a data set with different encoding",
                            []() -> void {});
 
-                        // https://github.com/zowe/zowe-native-proto/issues/670
-                        xit("should fail to write to a non-existent data set",
-                            [&]() -> void
-                            {
-                              string ds = _ds.back() + ".GHOST";
-                              string response;
-                              string command = zowex_command + " data-set write " + ds;
-                              int rc = execute_command_with_output(command, response);
-                              ExpectWithContext(rc, response).Not().ToBe(0);
-                              Expect(response).ToContain("Error: could not write to data set: '" + ds + "'");
-                            });
-                        // https://github.com/zowe/zowe-native-proto/issues/670
-                        xit("should error when the data set name is too long",
-                            []() -> void
-                            {
-                              string ds = get_random_ds(8);
-                              string response;
-                              string command = zowex_command + " data-set write " + ds;
-                              int rc = execute_command_with_output(command, response);
-                              ExpectWithContext(rc, response).Not().ToBe(0);
-                              Expect(response).ToContain("Error: could not write to data set: '" + ds + "'");
-                            });
+                        it("should fail to write to a non-existent data set",
+                           [&]() -> void
+                           {
+                             string ds = _ds.back() + ".GHOST";
+                             string response;
+                             string command = "echo 'test' | " + zowex_command + " data-set write " + ds;
+                             int rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).Not().ToBe(0);
+                             Expect(response).ToContain("Error: could not write to data set: '" + ds + "'");
+                           });
+                        it("should error when the data set name is too long",
+                           []() -> void
+                           {
+                             string ds = get_random_ds(8);
+                             string response;
+                             string command = "echo 'test' | " + zowex_command + " data-set write " + ds;
+                             int rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).Not().ToBe(0);
+                             Expect(response).ToContain("Error: could not write to data set: '" + ds + "'");
+                           });
                         it("should write content from a USS file to a sequential data set",
                            [&]() -> void
                            {
