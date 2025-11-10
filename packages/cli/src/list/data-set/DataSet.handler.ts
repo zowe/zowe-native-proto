@@ -38,9 +38,9 @@ export default class ListDataSetsHandler extends SshBaseHandler {
             const sortedKeys = (Object.keys(item) as Array<keyof Dataset>).sort((a, b) =>
                 a === "name" ? -1 : b === "name" ? 1 : a.localeCompare(b),
             );
-            return sortedKeys.reduce<Dataset>((obj: Partial<Dataset>, key) => {
-                (obj as Record<string, unknown>)[key] = item[key];
-                return obj as Dataset;
+            return sortedKeys.reduce((obj, key) => {
+                // biome-ignore lint/performance/noAccumulatingSpread: Spreading ds attrs is safe
+                return { ...obj, [key]: item[key] } as Dataset;
             }, {} as Dataset);
         });
 
