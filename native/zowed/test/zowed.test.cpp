@@ -16,8 +16,8 @@
 #include <sys/stat.h>
 #include <fstream>
 #include <fcntl.h>
-#include "ztest.hpp"
-#include "ztype.h"
+#include "../../c/test/ztest.hpp"
+#include "../../c/ztype.h"
 #include "zowed.test.hpp"
 
 using namespace std;

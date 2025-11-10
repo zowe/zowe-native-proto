@@ -12,13 +12,42 @@
 #include "worker.hpp"
 #include "server.hpp"
 #include "logger.hpp"
+#include <thread>
+#include <chrono>
 
 using std::string;
 
+namespace
+{
+
+const char *worker_state_to_string(WorkerState state)
+{
+  switch (state)
+  {
+  case WorkerState::Starting:
+    return "Starting";
+  case WorkerState::Idle:
+    return "Idle";
+  case WorkerState::Running:
+    return "Running";
+  case WorkerState::Stopping:
+    return "Stopping";
+  case WorkerState::Faulted:
+    return "Faulted";
+  case WorkerState::Exited:
+    return "Exited";
+  default:
+    return "Unknown";
+  }
+}
+
+} // namespace
+
 // Worker implementation
 Worker::Worker(int worker_id)
-    : id(worker_id), ready(false), should_stop(false)
+    : id(worker_id)
 {
+  LOG_DEBUG("Worker %d state -> %s (constructor)", id, worker_state_to_string(WorkerState::Starting));
 }
 
 Worker::~Worker()
@@ -28,23 +57,51 @@ Worker::~Worker()
 
 void Worker::start()
 {
-  worker_thread = std::thread(&Worker::worker_loop, this);
-  ready = true;
+  stop_requested.store(false, std::memory_order_release);
+  state.store(WorkerState::Starting, std::memory_order_release);
+  update_heartbeat();
+  LOG_DEBUG("Worker %d state -> %s (start invoked)", id, worker_state_to_string(WorkerState::Starting));
+
+  auto self = shared_from_this();
+
+  worker_thread = std::thread(&Worker::worker_loop, self);
+  state.store(WorkerState::Idle, std::memory_order_release);
+  update_heartbeat();
+  LOG_DEBUG("Worker %d state -> %s (worker thread started)", id, worker_state_to_string(WorkerState::Idle));
   LOG_DEBUG("Worker %d started", id);
 }
 
 void Worker::stop()
 {
-  should_stop = true;
+  WorkerState current_state = state.load(std::memory_order_acquire);
+  if (current_state == WorkerState::Exited)
+    return;
+
+  stop_requested.store(true, std::memory_order_release);
+
+  if (current_state != WorkerState::Faulted)
+  {
+    state.store(WorkerState::Stopping, std::memory_order_release);
+    LOG_DEBUG("Worker %d state -> %s (stop requested)", id, worker_state_to_string(WorkerState::Stopping));
+  }
+
   queue_condition.notify_all();
   if (worker_thread.joinable())
-  {
     worker_thread.join();
+
+  if (state.load(std::memory_order_acquire) != WorkerState::Faulted)
+  {
+    state.store(WorkerState::Exited, std::memory_order_release);
+    LOG_DEBUG("Worker %d state -> %s (stop complete)", id, worker_state_to_string(WorkerState::Exited));
   }
-  LOG_DEBUG("Worker %d stopped", id);
+
+  if (state.load(std::memory_order_acquire) != WorkerState::Faulted)
+    LOG_DEBUG("Worker %d stopped", id);
+  else
+    LOG_DEBUG("Worker %d stop requested while faulted/detached", id);
 }
 
-void Worker::add_request(const string &request)
+void Worker::add_request(const RequestMetadata &request)
 {
   {
     std::lock_guard<std::mutex> lock(queue_mutex);
@@ -55,24 +112,105 @@ void Worker::add_request(const string &request)
 
 void Worker::worker_loop()
 {
-  while (!should_stop)
+  try
   {
-    std::unique_lock<std::mutex> lock(queue_mutex);
-    queue_condition.wait(lock, [this]
-                         { return !request_queue.empty() || should_stop; });
-
-    if (should_stop)
-      break;
-
-    if (!request_queue.empty())
+    while (true)
     {
-      string request = request_queue.front();
-      request_queue.pop();
-      lock.unlock();
+      RequestMetadata request_metadata;
 
-      process_request(request);
+      {
+        std::unique_lock<std::mutex> lock(queue_mutex);
+        state.store(WorkerState::Idle, std::memory_order_release);
+        update_heartbeat();
+        queue_condition.wait(lock, [this]
+                             { return stop_requested.load(std::memory_order_acquire) || !request_queue.empty(); });
+
+        if (stop_requested.load(std::memory_order_acquire))
+        {
+          state.store(WorkerState::Stopping, std::memory_order_release);
+          update_heartbeat();
+          LOG_DEBUG("Worker %d state -> %s (stop signaled)", id, worker_state_to_string(WorkerState::Stopping));
+          break;
+        }
+
+        if (request_queue.empty())
+        {
+          update_heartbeat();
+          continue;
+        }
+
+        request_metadata = request_queue.front();
+        request_queue.pop();
+        state.store(WorkerState::Running, std::memory_order_release);
+        update_heartbeat();
+      }
+
+      // Track current request for potential recovery
+      {
+        std::lock_guard<std::mutex> lock(current_request_mutex);
+        current_request_data = request_metadata.data;
+      }
+
+      process_request(request_metadata.data);
+      update_heartbeat();
+
+      // Clear current request after successful processing
+      {
+        std::lock_guard<std::mutex> lock(current_request_mutex);
+        current_request_data.clear();
+      }
     }
+
+    state.store(WorkerState::Exited, std::memory_order_release);
+    update_heartbeat();
+    LOG_DEBUG("Worker %d state -> %s (worker loop exit)", id, worker_state_to_string(WorkerState::Exited));
   }
+  catch (const std::exception &e)
+  {
+    state.store(WorkerState::Faulted, std::memory_order_release);
+    update_heartbeat();
+    LOG_DEBUG("Worker %d state -> %s (exception)", id, worker_state_to_string(WorkerState::Faulted));
+    stop_requested.store(true, std::memory_order_release);
+    LOG_ERROR("Worker %d encountered fatal error: %s", id, e.what());
+  }
+  catch (...)
+  {
+    state.store(WorkerState::Faulted, std::memory_order_release);
+    update_heartbeat();
+    LOG_DEBUG("Worker %d state -> %s (unknown exception)", id, worker_state_to_string(WorkerState::Faulted));
+    stop_requested.store(true, std::memory_order_release);
+    LOG_ERROR("Worker %d encountered unknown fatal error", id);
+  }
+}
+
+bool Worker::is_ready() const
+{
+  WorkerState current = state.load(std::memory_order_acquire);
+  return current == WorkerState::Idle || current == WorkerState::Running;
+}
+
+bool Worker::is_running() const
+{
+  return state.load(std::memory_order_acquire) == WorkerState::Running;
+}
+
+bool Worker::has_fault() const
+{
+  return state.load(std::memory_order_acquire) == WorkerState::Faulted;
+}
+
+bool Worker::is_stop_requested() const
+{
+  WorkerState current = state.load(std::memory_order_acquire);
+  if (current == WorkerState::Stopping || current == WorkerState::Exited || current == WorkerState::Faulted)
+    return true;
+
+  return stop_requested.load(std::memory_order_acquire);
+}
+
+WorkerState Worker::get_state() const
+{
+  return state.load(std::memory_order_acquire);
 }
 
 void Worker::process_request(const string &data)
@@ -82,22 +220,88 @@ void Worker::process_request(const string &data)
   server.process_request(data);
 }
 
+void Worker::update_heartbeat()
+{
+  last_heartbeat_ms.store(steady_clock_now_ms(), std::memory_order_release);
+}
+
+std::chrono::steady_clock::time_point Worker::get_last_heartbeat() const
+{
+  const auto stored_ms = last_heartbeat_ms.load(std::memory_order_acquire);
+  const auto duration_ms = std::chrono::milliseconds(stored_ms);
+  const auto steady_duration = std::chrono::duration_cast<std::chrono::steady_clock::duration>(duration_ms);
+  return std::chrono::steady_clock::time_point(steady_duration);
+}
+
+void Worker::force_detach()
+{
+  stop_requested.store(true, std::memory_order_release);
+  state.store(WorkerState::Faulted, std::memory_order_release);
+  queue_condition.notify_all();
+  LOG_WARN(worker_thread.joinable() ? "Worker %d forcibly detached due to heartbeat timeout" : "Worker %d marked faulted due to heartbeat timeout (thread not joinable)", id);
+  if (worker_thread.joinable())
+    worker_thread.detach();
+  update_heartbeat();
+}
+
+std::vector<RequestMetadata> Worker::drain_pending_requests()
+{
+  std::vector<RequestMetadata> drained_requests;
+
+  {
+    std::lock_guard<std::mutex> lock(queue_mutex);
+    while (!request_queue.empty())
+    {
+      drained_requests.push_back(request_queue.front());
+      request_queue.pop();
+    }
+  }
+
+  if (!drained_requests.empty())
+  {
+    LOG_DEBUG("Worker %d: Drained %zu pending requests from queue", id, drained_requests.size());
+  }
+
+  return drained_requests;
+}
+
+std::string Worker::get_current_request()
+{
+  std::lock_guard<std::mutex> lock(current_request_mutex);
+  return current_request_data;
+}
+
 // WorkerPool implementation
-WorkerPool::WorkerPool(int num_workers) : ready_count(0), is_shutting_down(false), next_worker_index(0)
+WorkerPool::WorkerPool(long long num_workers,
+                       std::chrono::milliseconds request_timeout_param,
+                       size_t max_replacement_attempts,
+                       std::chrono::milliseconds base_replacement_backoff,
+                       std::chrono::milliseconds max_replacement_backoff)
+    : request_timeout(request_timeout_param <= std::chrono::milliseconds(0) ? std::chrono::seconds(60) : request_timeout_param),
+      max_replace_attempts(max_replacement_attempts),
+      base_replace_backoff(base_replacement_backoff),
+      max_replace_backoff(max_replacement_backoff)
 {
   workers.reserve(num_workers);
 
   // Create workers
-  for (int i = 0; i < num_workers; ++i)
+  for (auto i = 0LL; i < num_workers; ++i)
   {
-    std::unique_ptr<Worker> worker(new Worker(i));
+    auto worker = std::make_shared<Worker>(i);
     workers.push_back(std::move(worker));
   }
+  ready_list.resize(num_workers, false);
+  replacement_attempts.resize(num_workers, 0);
+  next_replacement_allowed.resize(num_workers, std::chrono::steady_clock::time_point::min());
 
   // Initialize workers asynchronously
-  for (int i = 0; i < num_workers; ++i)
-  {
+  for (auto i = 0LL; i < num_workers; ++i)
     std::thread(&WorkerPool::initialize_worker, this, i).detach();
+
+  if (num_workers > 0LL)
+  {
+    supervisor_running = true;
+    supervisor_thread = std::thread(&WorkerPool::monitor_workers, this);
   }
 }
 
@@ -125,15 +329,20 @@ void WorkerPool::initialize_worker(int worker_id)
 
 void WorkerPool::distribute_request(const string &request)
 {
+  // Wrap the request in metadata with retry_count = 0
+  RequestMetadata metadata(request, 0);
+  distribute_request_internal(metadata);
+}
+
+void WorkerPool::distribute_request_internal(const RequestMetadata &request)
+{
   if (is_shutting_down)
     return;
 
   // Simple round-robin distribution to ready workers
   Worker *worker = get_ready_worker();
   if (worker)
-  {
     worker->add_request(request);
-  }
 }
 
 Worker *WorkerPool::get_ready_worker()
@@ -145,20 +354,27 @@ Worker *WorkerPool::get_ready_worker()
   if (is_shutting_down)
     return nullptr;
 
-  // Round-robin selection for O(1) access
-  size_t workers_size = workers.size();
-  if (workers_size == 0)
-    return nullptr;
-
-  size_t start_index = next_worker_index.fetch_add(1) % workers_size;
-
-  // Try to find a ready worker starting from the next index
-  for (size_t i = 0; i < workers_size; ++i)
+  // Pop worker index from front for O(1) FIFO access (round-robin style)
+  // Note: The queue may contain stale entries for workers that are no longer ready.
+  // We validate each worker index as its popped from the queue.
+  // This keeps the common path at O(1) while gracefully handling rare state transitions.
+  while (!ready_queue.empty())
   {
-    size_t index = (start_index + i) % workers_size;
-    if (workers[index]->is_ready())
+    size_t worker_index = ready_queue.front();
+    ready_queue.pop_front();
+
+    // Validate worker is still ready and exists
+    if (worker_index < workers.size() && workers[worker_index] && workers[worker_index]->is_ready())
     {
-      return workers[index].get();
+      // Re-add worker to back of queue to maintain round-robin distribution
+      // Workers remain "ready" even while processing (Running state)
+      ready_queue.push_back(worker_index);
+      return workers[worker_index].get();
+    }
+    else
+    {
+      // Worker is no longer ready or doesn't exist, continue to next in queue
+      LOG_DEBUG("Worker %zu popped from ready queue but is no longer ready", worker_index);
     }
   }
 
@@ -167,15 +383,60 @@ Worker *WorkerPool::get_ready_worker()
 
 void WorkerPool::set_worker_ready(int worker_id)
 {
-  std::lock_guard<std::mutex> lock(ready_mutex);
-
-  if (worker_id >= 0 && worker_id < static_cast<int>(workers.size()))
+  if (worker_id < 0)
   {
-    if (workers[worker_id]->is_ready())
+    LOG_ERROR("Attempted to mark invalid worker %d as ready (negative index)", worker_id);
+    return;
+  }
+
+  bool notify_ready = false;
+
+  {
+    std::lock_guard<std::mutex> lock(ready_mutex);
+
+    // Bounds checking for worker ID to make sure the pool hasn't shifted the index out-of-bounds
+    if (worker_id >= static_cast<int>(workers.size()))
     {
-      ready_count++;
-      ready_condition.notify_one();
+      LOG_ERROR("Attempted to mark worker %d as ready but index is out of range", worker_id);
+      return;
     }
+    const auto worker_index = static_cast<size_t>(worker_id);
+
+    // Make sure a worker still exists at that index in the pool before using it
+    Worker *worker = workers[worker_index].get();
+    if (!worker)
+    {
+      LOG_WARN("Attempted to mark worker %d as ready but worker slot is empty", worker_id);
+      return;
+    }
+
+    if (worker_index >= ready_list.size())
+      ready_list.resize(workers.size(), false);
+
+    if (worker_index >= replacement_attempts.size())
+    {
+      replacement_attempts.resize(workers.size(), 0);
+      next_replacement_allowed.resize(workers.size(), std::chrono::steady_clock::time_point::min());
+    }
+
+    if (!ready_list[worker_index] && worker->is_ready())
+    {
+      // Mark worker as ready if we haven't marked it in the list
+      ready_list[worker_index] = true;
+      ready_count.fetch_add(1);
+      replacement_attempts[worker_index] = 0;
+      next_replacement_allowed[worker_index] = std::chrono::steady_clock::time_point::min();
+
+      ready_queue.push_back(worker_index);
+      notify_ready = true;
+    }
+  }
+
+  if (notify_ready)
+  {
+    // Notify `get_ready_worker` if its waiting for a worker to become available
+    LOG_DEBUG("Worker %d marked as ready. Ready workers: %d", worker_id, ready_count.load());
+    ready_condition.notify_one();
   }
 }
 
@@ -189,13 +450,310 @@ void WorkerPool::shutdown()
   LOG_DEBUG("Shutting down worker pool");
   is_shutting_down = true;
   ready_condition.notify_all();
+  supervisor_running = false;
+
+  if (supervisor_thread.joinable())
+    supervisor_thread.join();
 
   for (auto &worker : workers)
   {
     if (worker)
-    {
       worker->stop();
-    }
   }
   LOG_DEBUG("Worker pool shutdown complete");
+}
+
+void WorkerPool::monitor_workers()
+{
+  // Scan over the workers periodically to check their heartbeat (worker state)
+  while (supervisor_running && !is_shutting_down)
+  {
+    for (size_t i = 0; i < workers.size(); ++i)
+    {
+      if (!supervisor_running || is_shutting_down)
+        break;
+
+      Worker *worker = nullptr;
+      bool skip_due_to_backoff = false;
+
+      {
+        std::lock_guard<std::mutex> lock(ready_mutex);
+
+        if (i < next_replacement_allowed.size() &&
+            std::chrono::steady_clock::now() < next_replacement_allowed[i])
+        {
+          // Worker is already being replaced, skip monitoring
+          skip_due_to_backoff = true;
+        }
+        else if (i < workers.size())
+        {
+          worker = workers[i].get();
+        }
+      }
+
+      if (skip_due_to_backoff || worker == nullptr)
+        continue;
+
+      // If this worker has faulted, replace it
+      const auto worker_state = worker->get_state();
+      if (worker_state == WorkerState::Faulted)
+      {
+        replace_worker(i, "fault");
+        continue;
+      }
+
+      // If the worker has already crashed/exited, replace it
+      if (worker_state == WorkerState::Exited && !worker->is_stop_requested())
+      {
+        replace_worker(i, "unexpected exit");
+      }
+      else if (worker_state == WorkerState::Running && request_timeout.count() > 0)
+      {
+        const auto last_heartbeat = worker->get_last_heartbeat();
+        const auto now = std::chrono::steady_clock::now();
+        if (last_heartbeat != std::chrono::steady_clock::time_point::min() && now > last_heartbeat)
+        {
+          const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - last_heartbeat);
+          if (elapsed > request_timeout)
+          {
+            LOG_WARN("Worker %zu exceeded request timeout (%lld ms > %lld ms); scheduling replacement", i, static_cast<long long>(elapsed.count()), static_cast<long long>(request_timeout.count()));
+            replace_worker(i, "heartbeat timeout", true);
+            continue;
+          }
+        }
+      }
+    }
+
+    // Sleep loop to avoid busy waiting on CPU
+    for (int i = 0; i < 5 && supervisor_running && !is_shutting_down; i++)
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  }
+}
+
+bool WorkerPool::mark_worker_not_ready(size_t worker_index)
+{
+  std::lock_guard<std::mutex> lock(ready_mutex);
+
+  if (worker_index >= workers.size())
+  {
+    LOG_ERROR("Cannot mark worker at index %zu as not ready - out of range", worker_index);
+    return false;
+  }
+
+  // Ensure vectors are sized appropriately
+  if (worker_index >= ready_list.size())
+    ready_list.resize(workers.size(), false);
+  if (worker_index >= replacement_attempts.size())
+  {
+    replacement_attempts.resize(workers.size(), 0);
+    next_replacement_allowed.resize(workers.size(), std::chrono::steady_clock::time_point::min());
+  }
+
+  // Decrement ready count if it was ready
+  if (ready_list[worker_index])
+  {
+    ready_list[worker_index] = false;
+    int32_t previous_ready = ready_count.fetch_sub(1);
+    if (previous_ready <= 0)
+    {
+      // Critical: ready count and ready list are inconsistent
+      // Reset count to 0 and abort replacement to prevent further corruption
+      ready_count.store(0, std::memory_order_release);
+      LOG_ERROR("Ready count inconsistency detected for worker %zu (was %d). Aborting replacement to prevent corruption.",
+                worker_index, previous_ready);
+      return false;
+    }
+  }
+
+  return true;
+}
+
+struct ReplacementContext
+{
+  std::shared_ptr<Worker> old_worker;
+  bool max_attempts_reached{false};
+  size_t attempt_number{0UL};
+  std::chrono::milliseconds applied_backoff{0};
+};
+
+ReplacementContext WorkerPool::prepare_worker_replacement(size_t worker_index)
+{
+  ReplacementContext ctx;
+  std::lock_guard<std::mutex> lock(ready_mutex);
+
+  if (worker_index >= workers.size())
+  {
+    LOG_ERROR("Cannot prepare worker replacement at index %zu - out of range", worker_index);
+    return ctx;
+  }
+
+  const size_t attempts = replacement_attempts[worker_index];
+  const auto now = std::chrono::steady_clock::now();
+
+  if (attempts >= max_replace_attempts)
+  {
+    ctx.max_attempts_reached = true;
+  }
+  else
+  {
+    // Not max attempts, so schedule the next backoff time
+    ctx.attempt_number = attempts + 1;
+    replacement_attempts[worker_index] = ctx.attempt_number;
+
+    auto computed_backoff = base_replace_backoff * (1ULL << (ctx.attempt_number - 1));
+    if (computed_backoff > max_replace_backoff)
+      computed_backoff = max_replace_backoff;
+
+    ctx.applied_backoff = computed_backoff;
+    next_replacement_allowed[worker_index] = now + computed_backoff;
+  }
+
+  // Move worker out to be processed outside the lock
+  ctx.old_worker = std::move(workers[worker_index]);
+  return ctx;
+}
+
+std::vector<RequestMetadata> WorkerPool::recover_requests_from_worker(
+    std::shared_ptr<Worker> &old_worker,
+    size_t worker_index,
+    const char *reason,
+    bool force_detach)
+{
+  std::vector<RequestMetadata> recovered_requests;
+
+  if (!old_worker)
+    return recovered_requests;
+
+  // Get pending requests from queue
+  auto pending = old_worker->drain_pending_requests();
+  recovered_requests.insert(recovered_requests.end(), pending.begin(), pending.end());
+
+  // Recover in-flight request only if it wasn't a timeout/hang
+  std::string current_req = old_worker->get_current_request();
+  if (!current_req.empty())
+  {
+    if (!force_detach)
+    {
+      LOG_DEBUG("Worker %zu: Recovering in-flight request due to %s", worker_index, reason);
+      recovered_requests.emplace_back(current_req, 0);
+    }
+    else
+    {
+      LOG_DEBUG("Worker %zu: Sending timeout error for in-flight request", worker_index);
+      RpcServer &server = RpcServer::get_instance();
+      server.send_timeout_error(current_req, request_timeout.count());
+    }
+  }
+
+  // Stop/detach the old worker
+  if (force_detach)
+    old_worker->force_detach();
+  old_worker->stop();
+
+  return recovered_requests;
+}
+
+void WorkerPool::spawn_replacement_worker(size_t worker_index)
+{
+  auto new_worker = std::make_shared<Worker>(static_cast<int>(worker_index));
+
+  {
+    std::lock_guard<std::mutex> lock(ready_mutex);
+
+    // Re-check sizes in case of resize
+    if (worker_index >= workers.size())
+      workers.resize(worker_index + 1);
+    if (worker_index >= ready_list.size())
+      ready_list.resize(worker_index + 1, false);
+    if (worker_index >= replacement_attempts.size())
+    {
+      replacement_attempts.resize(worker_index + 1, 0);
+      next_replacement_allowed.resize(worker_index + 1, std::chrono::steady_clock::time_point::min());
+    }
+
+    workers[worker_index] = std::move(new_worker);
+    ready_list[worker_index] = false;
+  }
+
+  std::thread(&WorkerPool::initialize_worker, this, static_cast<int>(worker_index)).detach();
+  LOG_DEBUG("Replacement worker %zu spawned, awaiting readiness", worker_index);
+}
+
+void WorkerPool::replace_worker(size_t worker_index, const char *reason, bool force_detach)
+{
+  if (is_shutting_down.load())
+    return;
+
+  // Mark worker as not ready and decrement ready count
+  if (!mark_worker_not_ready(worker_index))
+    return;
+
+  // Check retry limits and prepare replacement context
+  ReplacementContext ctx = prepare_worker_replacement(worker_index);
+
+  // Recover requests and stop the old worker
+  std::vector<RequestMetadata> recovered_requests =
+      recover_requests_from_worker(ctx.old_worker, worker_index, reason, force_detach);
+
+  // Don't create new worker if we exceeded max attempts
+  if (ctx.max_attempts_reached)
+  {
+    LOG_ERROR("Worker %zu hit maximum replacement attempts (%zu) after %s; leaving worker offline",
+              worker_index, max_replace_attempts, reason);
+    if (!recovered_requests.empty())
+      redistribute_requests(recovered_requests, worker_index, reason);
+    return;
+  }
+
+  if (ctx.attempt_number > 0)
+  {
+    LOG_WARN("Replacing worker %zu due to %s (attempt %zu, next backoff %lld ms)",
+             worker_index, reason, ctx.attempt_number,
+             static_cast<long long>(ctx.applied_backoff.count()));
+  }
+
+  if (is_shutting_down.load())
+    return;
+
+  // Create and spawn the new worker
+  spawn_replacement_worker(worker_index);
+
+  // Redistribute recovered requests from old worker
+  if (!recovered_requests.empty())
+    redistribute_requests(recovered_requests, worker_index, reason);
+}
+
+void WorkerPool::redistribute_requests(std::vector<RequestMetadata> &requests, size_t worker_index, const char *reason)
+{
+  if (is_shutting_down.load())
+    return;
+
+  size_t redistributed_count = 0;
+  size_t failed_count = 0;
+
+  for (auto &req : requests)
+  {
+    // Check if request has exceeded max retry limit (poison pill protection)
+    if (req.retry_count >= kMaxRequestRetries)
+    {
+      LOG_ERROR("Request from worker %zu discarded after %zu retry attempts (poison pill protection). Reason: %s",
+                worker_index, req.retry_count, reason);
+      failed_count++;
+      continue;
+    }
+
+    // Increment retry count and re-distribute
+    req.retry_count++;
+    LOG_DEBUG("Re-routing request from worker %zu (attempt %zu/%zu). Reason: %s",
+              worker_index, req.retry_count, kMaxRequestRetries, reason);
+
+    distribute_request_internal(req);
+    redistributed_count++;
+  }
+
+  if (redistributed_count > 0)
+  {
+    LOG_INFO("Redistributed %zu requests from failed worker %zu. Failed: %zu (poison pills)",
+             redistributed_count, worker_index, failed_count);
+  }
 }

@@ -25,57 +25,88 @@
 #include <string>
 #include <cstdlib>
 #include <cstring>
+#include <vector>
 #ifdef __MVS__
 #define _OPEN_SYS_DLL_EXT
 #include <dll.h>
 #else
 #include <dlfcn.h>
 #endif
+#include "../c/parser.hpp"
 #include "zowed.hpp"
 
-IoserverOptions parse_options(int argc, char *argv[])
+ZowedOptions parse_options(int argc, char *argv[])
 {
-  IoserverOptions opts;
+  ZowedOptions opts;
 
-  // Simple argument parsing without getopt_long
-  for (int i = 1; i < argc; i++)
+  parser::ArgumentParser arg_parser(argv[0], "Zowe native IO server");
+  parser::Command &root_cmd = arg_parser.get_root_command();
+
+  root_cmd.add_keyword_arg(
+      "num-workers",
+      parser::make_aliases("-w", "--num-workers"),
+      "Number of worker threads",
+      parser::ArgType_Single,
+      false,
+      parser::ArgValue(opts.num_workers));
+
+  root_cmd.add_keyword_arg(
+      "verbose",
+      parser::make_aliases("-v", "--verbose"),
+      "Enable verbose logging",
+      parser::ArgType_Flag,
+      false,
+      parser::ArgValue(opts.verbose));
+
+  root_cmd.add_keyword_arg(
+      "request-timeout",
+      parser::make_aliases("-t", "--request-timeout"),
+      "Request timeout in seconds before a worker is restarted",
+      parser::ArgType_Single,
+      false,
+      parser::ArgValue(opts.request_timeout));
+
+  parser::ParseResult result =
+      arg_parser.parse(argc, argv);
+
+  if (result.status == parser::ParseResult::ParserStatus_HelpRequested)
   {
-    std::string arg = argv[i];
+    std::exit(0);
+  }
 
-    if (arg == "-w" || arg == "--num-workers" || arg == "-num-workers")
-    {
-      if (i + 1 < argc)
-      {
-        opts.num_workers = atoi(argv[++i]);
-        if (opts.num_workers <= 0)
-        {
-          std::cerr << "Number of workers must be greater than 0" << std::endl;
-          exit(1);
-        }
-      }
-      else
-      {
-        std::cerr << "Option " << arg << " requires an argument" << std::endl;
-        exit(1);
-      }
-    }
-    else if (arg == "-v" || arg == "--verbose" || arg == "-verbose")
-    {
-      opts.verbose = true;
-    }
-    else if (arg == "-h" || arg == "--help" || arg == "-help")
-    {
-      std::cout << "Usage: " << argv[0] << " [OPTIONS]\n"
-                << "  -w, --num-workers NUM  Number of worker threads (default: 10)\n"
-                << "  -v, --verbose          Enable verbose logging\n"
-                << "  -h, --help             Show this help message\n";
-      exit(0);
-    }
-    else
-    {
-      std::cerr << "Unknown option: " << arg << std::endl;
-      exit(1);
-    }
+  if (result.status == parser::ParseResult::ParserStatus_ParseError)
+  {
+    std::exit(result.exit_code == 0 ? 1 : result.exit_code);
+  }
+
+  const auto *num_workers_env = getenv("ZOWED_NUM_WORKERS");
+  if (num_workers_env != nullptr)
+  {
+    opts.num_workers = atoi(num_workers_env);
+  }
+  else
+  {
+    const long long parsed_num_workers =
+        result.get_value<long long>("num-workers", opts.num_workers);
+    opts.num_workers = parsed_num_workers;
+  }
+
+  opts.verbose = result.get_value<bool>("verbose", opts.verbose);
+
+  const long long parsed_request_timeout =
+      result.get_value<long long>("request-timeout", opts.request_timeout);
+  opts.request_timeout = parsed_request_timeout;
+
+  if (opts.num_workers <= 0)
+  {
+    std::cerr << "Number of workers must be greater than 0" << std::endl;
+    std::exit(1);
+  }
+
+  if (opts.request_timeout <= 0)
+  {
+    std::cerr << "Request timeout must be greater than 0 seconds" << std::endl;
+    std::exit(1);
   }
 
   return opts;
@@ -153,7 +184,7 @@ const char *dlerror_zos()
  */
 int main(int argc, char *argv[])
 {
-  IoserverOptions options = parse_options(argc, argv);
+  ZowedOptions options = parse_options(argc, argv);
 
   // Load the shared library at runtime from executable directory
   std::string executable_dir;
@@ -180,7 +211,7 @@ int main(int argc, char *argv[])
   }
 
   // Get the function pointer
-  typedef int (*run_zowed_server_func)(const IoserverOptions &, const char *);
+  typedef int (*run_zowed_server_func)(const ZowedOptions &, const char *);
   void *func_ptr = dlsym(handle, "run_zowed_server");
 
   const char *dlsym_error = dlerror();
