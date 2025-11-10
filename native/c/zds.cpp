@@ -810,8 +810,34 @@ static inline uint32_t parse_cchh_cylinder(const char *cchh)
   return (cyl_high << 16) | cyl_low;
 }
 
+// Get tracks per cylinder for a given device type
+static inline int get_tracks_per_cylinder(const string &devtype)
+{
+  if (devtype == "3340")
+    return 12;
+  else if (devtype == "3350")
+    return 30;
+  else
+    return 15; // Default to 3390 or similar
+}
+
+// Get bytes per track for a given device type
+static inline int get_bytes_per_track(const string &devtype)
+{
+  if (devtype == "3340")
+    return 8368;
+  else if (devtype == "3350")
+    return 19069;
+  else if (devtype == "3380")
+    return 47476;
+  else if (devtype == "9345")
+    return 46456;
+  else
+    return 56664; // Default to 3390 or similar
+}
+
 // Calculate tracks in an extent given lower and upper CCHH values
-static inline int calculate_extent_tracks(const char *extent)
+static inline int calculate_extent_tracks(const char *extent, const string &devtype)
 {
   uint32_t lower_cyl = parse_cchh_cylinder(extent + 2);
   uint16_t lower_head = static_cast<unsigned char>(extent[5]) & 0x0F;
@@ -821,7 +847,8 @@ static inline int calculate_extent_tracks(const char *extent)
   if (upper_cyl < lower_cyl)
     return 0;
 
-  return ((upper_cyl - lower_cyl) * 15) + (upper_head - lower_head) + 1;
+  int tracks_per_cyl = get_tracks_per_cylinder(devtype);
+  return ((upper_cyl - lower_cyl) * tracks_per_cyl) + (upper_head - lower_head) + 1;
 }
 
 // Load space unit (spacu) from DSCB
@@ -908,7 +935,7 @@ void load_primary_secondary_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
     }
     else // Tracks or Blocks
     {
-      entry.primary = calculate_extent_tracks(first_extent);
+      entry.primary = calculate_extent_tracks(first_extent, entry.devtype);
     }
   }
   else
@@ -1028,7 +1055,7 @@ void load_alloc_attrs_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
     if (upper_cyl >= lower_cyl)
     {
       int cylinders_in_extent = upper_cyl - lower_cyl + 1;
-      int tracks_in_extent = calculate_extent_tracks(extent);
+      int tracks_in_extent = calculate_extent_tracks(extent, entry.devtype);
       total_cylinders += cylinders_in_extent;
       total_tracks += tracks_in_extent;
     }
@@ -1039,7 +1066,8 @@ void load_alloc_attrs_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
   // Convert to bytes if spacu is BYTES
   if (entry.spacu == "BYTES" && entry.blksize > 0)
   {
-    int blocks_per_track = 56664 / entry.blksize;
+    int bytes_per_track = get_bytes_per_track(entry.devtype);
+    int blocks_per_track = bytes_per_track / entry.blksize;
     if (blocks_per_track <= 0)
       blocks_per_track = 1;
     int base_bytes_per_track = blocks_per_track * entry.blksize;
@@ -1096,7 +1124,8 @@ void load_used_attrs_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
   // Store used space temporarily in tracks/cylinders (will convert to percentage later)
   if (use_cylinders)
   {
-    entry.usedp = (last_used_track + 1 + 14) / 15; // Round up to cylinders
+    int tracks_per_cyl = get_tracks_per_cylinder(entry.devtype);
+    entry.usedp = (last_used_track + 1 + tracks_per_cyl - 1) / tracks_per_cyl; // Round up to cylinders
   }
   else
   {
@@ -1118,7 +1147,7 @@ void load_used_attrs_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
       if (extent_type == 0x00)
         break;
 
-      int tracks_in_extent = calculate_extent_tracks(extent);
+      int tracks_in_extent = calculate_extent_tracks(extent, entry.devtype);
       cumulative_tracks += tracks_in_extent;
 
       // Count this extent as used if it contains data up to the last used track
@@ -1135,58 +1164,35 @@ void load_used_attrs_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
   // but since we don't have access to TRKCALC's exact capacity formula,
   // we approximate by using simple track-based percentage calculation.
 
-  if (entry.spacu == "BYTES" && entry.blksize > 0)
+  // For BYTES space unit, convert to track-based calculation
+  if (entry.spacu == "BYTES" && entry.blksize > 0 && entry.usedp > 0 && entry.alloc > 0)
   {
-    if (entry.usedp > 0 && entry.alloc > 0)
-    {
-      int blocks_per_track = 56664 / entry.blksize;
-      if (blocks_per_track <= 0)
-        blocks_per_track = 1;
-      int base_bytes_per_track = blocks_per_track * entry.blksize;
+    int bytes_per_track = get_bytes_per_track(entry.devtype);
+    int blocks_per_track = bytes_per_track / entry.blksize;
+    if (blocks_per_track <= 0)
+      blocks_per_track = 1;
+    int base_bytes_per_track = blocks_per_track * entry.blksize;
 
-      int used_tracks = entry.usedp;
-      int total_tracks = entry.alloc / base_bytes_per_track;
+    int used_tracks = entry.usedp;
+    entry.usedp = used_tracks;                        // Keep as tracks for percentage calculation
+    entry.alloc = entry.alloc / base_bytes_per_track; // Convert alloc to tracks
+  }
 
-      if (total_tracks > 0)
-      {
-        double percentage = (100.0 * used_tracks) / total_tracks;
-        entry.usedp = (int)percentage;
+  if (entry.usedp > 0 && entry.alloc > 0)
+  {
+    double percentage = (100.0 * entry.usedp) / entry.alloc;
+    entry.usedp = (int)percentage;
 
-        if (entry.usedp > 100)
-          entry.usedp = 100;
-      }
-      else
-      {
-        entry.usedp = 0;
-      }
-    }
-    else if (entry.usedp == 0)
-    {
-      entry.usedp = 0;
-    }
-    else
-    {
-      entry.usedp = -1;
-    }
+    if (entry.usedp > 100)
+      entry.usedp = 100;
+  }
+  else if (entry.usedp == 0)
+  {
+    entry.usedp = 0;
   }
   else
   {
-    if (entry.usedp > 0 && entry.alloc > 0)
-    {
-      double percentage = (100.0 * entry.usedp) / entry.alloc;
-      entry.usedp = (int)percentage;
-
-      if (entry.usedp > 100)
-        entry.usedp = 100;
-    }
-    else if (entry.usedp == 0)
-    {
-      entry.usedp = 0;
-    }
-    else
-    {
-      entry.usedp = -1;
-    }
+    entry.usedp = -1;
   }
 }
 
@@ -1565,6 +1571,9 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
           entry.migrated = false;
         }
 
+        // Parse storage management attributes (dataclass, mgmtclass, storclass, devtype)
+        load_storage_attrs_from_catalog(data, field_len, entry);
+
         // Load detailed attributes from DSCB if not migrated
         // This needs to happen before the switch statement as it sets entry.dsorg
         if (!entry.migrated)
@@ -1605,9 +1614,6 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool sh
           zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Unsupported entry type '%x' ", f->type);
           return RTNCD_FAILURE;
         };
-
-        // Parse storage management attributes (dataclass, mgmtclass, storclass, devtype)
-        load_storage_attrs_from_catalog(data, field_len, entry);
       }
 
       if (datasets.size() + 1 > zds->max_entries)
