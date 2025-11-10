@@ -110,7 +110,7 @@ void RpcServer::process_request(const string &request_data)
     response.error = zstd::optional<ErrorDetails>();
     response.id = zstd::optional<int>(request.id);
 
-    print_response(response);
+    print_response(response, &context);
   }
   catch (const std::exception &e)
   {
@@ -279,7 +279,7 @@ zjson::Value RpcServer::convert_ast_to_json(const ast::Node &ast_node)
   }
 }
 
-void RpcServer::print_response(const RpcResponse &response)
+void RpcServer::print_response(const RpcResponse &response, MiddlewareContext *context)
 {
   // Log errors to the log file
   if (response.error.has_value())
@@ -298,9 +298,40 @@ void RpcServer::print_response(const RpcResponse &response)
   }
 
   string json_string = serialize_json(rpc_response_to_json(response));
+
+  // Replace placeholders with actual large data
+  if (context && context->get_large_data().size() > 0)
+  {
+    auto &large_data_map = context->get_large_data();
+    for (auto it = large_data_map.begin(); it != large_data_map.end();)
+    {
+      add_large_data_to_json(json_string, it->first, it->second);
+      it = large_data_map.erase(it);
+    }
+  }
+
   auto &stream = response.error.has_value() ? std::cerr : std::cout;
   std::lock_guard<std::mutex> lock(response_mutex);
   stream << json_string << std::endl;
+}
+
+void RpcServer::add_large_data_to_json(string &json_string, const string &field_name, const string &data)
+{
+  // Find the field in JSON: "fieldName":""
+  const string search_pattern = "\"" + field_name + "\":\"\"";
+  size_t pos = json_string.find(search_pattern);
+
+  if (pos == string::npos)
+  {
+    LOG_ERROR("Could not find empty field '%s' in JSON for large data replacement", field_name.c_str());
+    return;
+  }
+
+  // Assume that data is Base64 encoded so no JSON escaping needed
+  const string replacement = "\"" + field_name + "\":\"" + data + "\"";
+  json_string.replace(pos, search_pattern.length(), replacement);
+
+  LOG_DEBUG("Replaced empty field '%s' with large data (%zu bytes)", field_name.c_str(), data.size());
 }
 
 // Static utility methods
