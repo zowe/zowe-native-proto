@@ -14,37 +14,36 @@
 | ------------------------ | --------------- | --- | --------------- | ---------- | --- | --- | ---- |
 | _List data sets_         | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
 | _List data set members_  | ✅              | ✅  | 🚧 <sup>1</sup> | ✅         | ✅  | ✅  | ✅   |
-| _Read data set_          | ✅              | ✅  | 🚧 <sup>2</sup> | ✅         | ✅  | ✅  | ✅   |
-| _Read data set member_   | ✅              | ✅  | 🚧 <sup>2</sup> | ✅         | ✅  | ✅  | ✅   |
-| _Write data set_         | ✅              | ✅  | 🚧 <sup>2</sup> | ✅         | ✅  | ✅  | ✅   |
+| _Read data set_          | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
+| _Read data set member_   | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
+| _Write data set_         | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
 | _Write data set member_  | ✅              | ✅  | 🚧 <sup>2</sup> | ✅         | ✅  | ✅  | ✅   |
-| _Create data set_        | ✅              | ✅  | 🚧 <sup>3</sup> | ✅         | ✅  | ✅  | ✅   |
-| _Create data set member_ | ✅              | ✅  | 🚧 <sup>4</sup> | ✅         | ✅  | ✅  | ✅   |
+| _Create data set_        | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
+| _Create data set member_ | ✅              | ✅  | 🚧 <sup>3</sup> | ✅         | ✅  | ✅  | ✅   |
 | _Delete data set_        | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
 | _Delete data set member_ | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
-| Recall data set          | 🚧 <sup>5</sup> | ❌  | ✅              | ✅         | ✅  | ✅  | ✅   |
+| Recall data set          | 🚧 <sup>4</sup> | ❌  | ✅              | ✅         | ✅  | ✅  | ✅   |
 | Migrate data set         | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | Delete migrated data set | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | Rename data set          | ✅              | ✅  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | Copy data set            | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
-| Search data sets         | 🚧 <sup>6</sup> | ❌  | 🚧 <sup>6</sup> | ❌         | ❌  | ❌  | ❌   |
+| Search data sets         | 🚧 <sup>5</sup> | ❌  | 🚧 <sup>5</sup> | ❌         | ❌  | ❌  | ❌   |
 | Invoke AMS (VSAM)        | ✅              | ❌  | ❌              | ❌         | ❌  | ❌  | ➖   |
 
 1. Not all attributes are retrieved
-2. Streaming is not supported for large files
-3. Does not support allocation attributes (or templates in VSCE)
-4. If the member already exists that data will be overwritten
-5. Does not support some migration utilities like CA Disk
-6. Limited options compared to ISPF `srchfor`
+2. Write operation erases ISPF statistics
+3. If the member already exists that data will be overwritten
+4. Does not support some migration utilities like CA Disk
+5. Limited options compared to ISPF `srchfor`
 
 ## USS Files
 
 | Operation                | z/OSMF | FTP | Backend         | Middleware | SDK | CLI | VSCE |
 | ------------------------ | ------ | --- | --------------- | ---------- | --- | --- | ---- |
-| _List files/directories_ | ✅     | ✅  | 🚧 <sup>1</sup> | ✅         | ✅  | ✅  | ✅   |
-| _Read USS file_          | ✅     | ✅  | 🚧 <sup>2</sup> | ✅         | ✅  | ✅  | ✅   |
-| _Write USS file_         | ✅     | ✅  | 🚧 <sup>2</sup> | ✅         | ✅  | ✅  | ✅   |
-| _Create file/directory_  | ✅     | ✅  | 🚧 <sup>3</sup> | ✅         | ✅  | ✅  | ✅   |
+| _List files/directories_ | ✅     | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
+| _Read USS file_          | ✅     | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
+| _Write USS file_         | ✅     | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
+| _Create file/directory_  | ✅     | ✅  | 🚧 <sup>1</sup> | ✅         | ✅  | ✅  | ✅   |
 | _Delete file/directory_  | ✅     | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
 | Copy file/directory      | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | Move file/directory      | ✅     | ✅  | ❌              | ❌         | ❌  | ❌  | ❌   |
@@ -62,9 +61,7 @@
 | Mount file system        | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ➖   |
 | Unmount file system      | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ➖   |
 
-1. Not all attributes are retrieved
-2. Streaming is not supported for large files
-3. Recursive option is not supported
+1. Recursive option is not supported
 
 ## Jobs
 
@@ -89,7 +86,7 @@
 
 | Operation                | z/OSMF | FTP | Backend         | Middleware | SDK | CLI | VSCE |
 | ------------------------ | ------ | --- | --------------- | ---------- | --- | --- | ---- |
-| Issue MVS command        | ✅     | ❌  | ✅ <sup>1</sup> | ❌         | ❌  | ❌  | ❌   |
+| Issue MVS command        | ✅     | ❌  | ✅ <sup>1</sup> | ❌         | ✅  | ❌  | ❌   |
 | Get MVS command response | ✅     | ❌  | ❌              | ❌         | ❌  | ❌  | ❌   |
 | Get MVS detect result    | ✅     | ❌  | ❌              | ❌         | ❌  | ➖  | ➖   |
 

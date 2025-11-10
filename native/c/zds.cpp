@@ -251,45 +251,40 @@ int zds_write_to_dsn(ZDS *zds, const string &dsn, string &data)
   {
     dsname = "//DD:" + string(zds->ddname);
   }
-  const string fopen_extra_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "b" : "" + string(",recfm=*");
+  const string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "wb" : "w,recfm=*";
 
-  // If file already exists, open in read+write mode to avoid losing ISPF stats
-  FileGuard fp(dsname.c_str(), ("r+" + fopen_extra_flags).c_str());
-  if (!fp)
   {
-    fp.reset(dsname.c_str(), ("w" + fopen_extra_flags).c_str());
+    FileGuard fp(dsname.c_str(), fopen_flags.c_str());
     if (!fp)
     {
       zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open dsn '%s'", dsn.c_str());
       return RTNCD_FAILURE;
     }
-  }
 
-  string temp = data;
-  if (!data.empty())
-  {
-    if (hasEncoding)
+    string temp = data;
+    if (!data.empty())
     {
-      const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
-      try
+      if (hasEncoding)
       {
-        temp = zut_encode(temp, source_encoding, codepage, zds->diag);
+        const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
+        try
+        {
+          temp = zut_encode(temp, source_encoding, codepage, zds->diag);
+        }
+        catch (exception &e)
+        {
+          zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), codepage.c_str());
+          return RTNCD_FAILURE;
+        }
       }
-      catch (exception &e)
+      if (!temp.empty())
       {
-        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), codepage.c_str());
-        return RTNCD_FAILURE;
-      }
-    }
-    if (!temp.empty())
-    {
-      size_t bytes_written = fwrite(temp.c_str(), 1u, temp.length(), fp);
-      const bool truncated = bytes_written != temp.length();
-      const int flush_rc = fflush(fp);
-      if (truncated || flush_rc != 0)
-      {
-        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to write to '%s' (possibly out of space)", dsname.c_str());
-        return RTNCD_FAILURE;
+        size_t bytes_written = fwrite(temp.c_str(), 1u, temp.length(), fp);
+        if (bytes_written != temp.length())
+        {
+          zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to write to '%s' (possibly out of space)", dsname.c_str());
+          return RTNCD_FAILURE;
+        }
       }
     }
   }
@@ -336,7 +331,7 @@ int alloc_and_free(const string &alloc_dd, const string &dsn, unsigned int *code
 }
 
 // TODO(Kelosky): add attributues to ZDS and have other functions populate it
-int zds_create_dsn(ZDS *zds, std::string dsn, DS_ATTRIBUTES attributes, std::string &response)
+int zds_create_dsn(ZDS *zds, string dsn, DS_ATTRIBUTES attributes, string &response)
 {
   int rc = 0;
   unsigned int code = 0;
@@ -377,12 +372,12 @@ int zds_create_dsn(ZDS *zds, std::string dsn, DS_ATTRIBUTES attributes, std::str
   if (attributes.primary > 0)
   {
     memset(numberAsString, 0, sizeof(numberAsString));
-    parm += " SPACE(" + std::string(itoa(attributes.primary, numberAsString, 10));
+    parm += " SPACE(" + string(itoa(attributes.primary, numberAsString, 10));
 
     if (attributes.secondary > 0)
     {
       memset(numberAsString, 0, sizeof(numberAsString));
-      parm += "," + std::string(itoa(attributes.secondary, numberAsString, 10));
+      parm += "," + string(itoa(attributes.secondary, numberAsString, 10));
     }
 
     parm += ") " + attributes.alcunit;
@@ -391,7 +386,7 @@ int zds_create_dsn(ZDS *zds, std::string dsn, DS_ATTRIBUTES attributes, std::str
   if (attributes.lrecl > 0)
   {
     memset(numberAsString, 0, sizeof(numberAsString));
-    parm += " LRECL(" + std::string(itoa(attributes.lrecl, numberAsString, 10)) + ")";
+    parm += " LRECL(" + string(itoa(attributes.lrecl, numberAsString, 10)) + ")";
   }
 
   if (!attributes.recfm.empty())
@@ -400,7 +395,7 @@ int zds_create_dsn(ZDS *zds, std::string dsn, DS_ATTRIBUTES attributes, std::str
   if (attributes.dirblk > 0)
   {
     memset(numberAsString, 0, sizeof(numberAsString));
-    parm += " DIR(" + std::string(itoa(attributes.dirblk, numberAsString, 10)) + ")";
+    parm += " DIR(" + string(itoa(attributes.dirblk, numberAsString, 10)) + ")";
   }
 
   parm += " NEW KEEP";
@@ -421,7 +416,7 @@ int zds_create_dsn(ZDS *zds, std::string dsn, DS_ATTRIBUTES attributes, std::str
   if (attributes.blksize > 0)
   {
     memset(numberAsString, 0, sizeof(numberAsString));
-    parm += " BLKSIZE(" + std::string(itoa(attributes.blksize, numberAsString, 10)) + ")";
+    parm += " BLKSIZE(" + string(itoa(attributes.blksize, numberAsString, 10)) + ")";
   }
 
   return alloc_and_free(parm, dsn, &code, response);
@@ -1660,7 +1655,7 @@ int zds_read_from_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, 
   {
     dsname = "//DD:" + string(zds->ddname);
   }
-  const std::string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "rb" : "r";
+  const string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "rb" : "r";
   FileGuard fin(dsname.c_str(), fopen_flags.c_str());
   if (!fin)
   {
@@ -1788,78 +1783,75 @@ int zds_write_to_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, s
 
   const auto hasEncoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
   const auto codepage = string(zds->encoding_opts.codepage);
-  const auto fopen_extra_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "b" : "" + string(",recfm=*");
+  const string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "wb" : "w,recfm=*";
 
-  // If file already exists, open in read+write mode to avoid losing ISPF stats
-  FileGuard fout(dsname.c_str(), ("r+" + fopen_extra_flags).c_str());
-  if (!fout)
   {
-    fout.reset(dsname.c_str(), ("w" + fopen_extra_flags).c_str());
+    FileGuard fout(dsname.c_str(), fopen_flags.c_str());
     if (!fout)
     {
       zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open dsn '%s'", dsn.c_str());
       return RTNCD_FAILURE;
     }
-  }
 
-  int fifo_fd = open(pipe.c_str(), O_RDONLY);
-  if (fifo_fd == -1)
-  {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "open() failed on input pipe '%s', errno %d", pipe.c_str(), errno);
-    return RTNCD_FAILURE;
-  }
-
-  FileGuard fin(fifo_fd, "r");
-  if (!fin)
-  {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open input pipe '%s'", pipe.c_str());
-    close(fifo_fd);
-    return RTNCD_FAILURE;
-  }
-
-  std::vector<char> buf(FIFO_CHUNK_SIZE);
-  size_t bytes_read;
-  std::vector<char> temp_encoded;
-  std::vector<char> left_over;
-  bool truncated = false;
-
-  while ((bytes_read = fread(&buf[0], 1, FIFO_CHUNK_SIZE, fin)) > 0)
-  {
-    temp_encoded = zbase64::decode(&buf[0], bytes_read, &left_over);
-    const char *chunk = &temp_encoded[0];
-    int chunk_len = temp_encoded.size();
-    *content_len += chunk_len;
-
-    if (hasEncoding)
+    int fifo_fd = open(pipe.c_str(), O_RDONLY);
+    if (fifo_fd == -1)
     {
-      const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
-      try
-      {
-        temp_encoded = zut_encode(chunk, chunk_len, source_encoding, codepage, zds->diag);
-        chunk = &temp_encoded[0];
-        chunk_len = temp_encoded.size();
-      }
-      catch (std::exception &e)
-      {
-        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), codepage.c_str());
-        return RTNCD_FAILURE;
-      }
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "open() failed on input pipe '%s', errno %d", pipe.c_str(), errno);
+      return RTNCD_FAILURE;
     }
 
-    size_t bytes_written = fwrite(chunk, 1, chunk_len, fout);
-    if (bytes_written != chunk_len)
+    FileGuard fin(fifo_fd, "r");
+    if (!fin)
     {
-      truncated = true;
-      break;
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open input pipe '%s'", pipe.c_str());
+      close(fifo_fd);
+      return RTNCD_FAILURE;
     }
-    temp_encoded.clear();
-  }
 
-  const int flush_rc = fflush(fout);
-  if (truncated || flush_rc != 0)
-  {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to write to '%s' (possibly out of space)", dsname.c_str());
-    return RTNCD_FAILURE;
+    std::vector<char> buf(FIFO_CHUNK_SIZE);
+    size_t bytes_read;
+    std::vector<char> temp_encoded;
+    std::vector<char> left_over;
+    bool truncated = false;
+
+    while ((bytes_read = fread(&buf[0], 1, FIFO_CHUNK_SIZE, fin)) > 0)
+    {
+      temp_encoded = zbase64::decode(&buf[0], bytes_read, &left_over);
+      const char *chunk = &temp_encoded[0];
+      int chunk_len = temp_encoded.size();
+      *content_len += chunk_len;
+
+      if (hasEncoding)
+      {
+        const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
+        try
+        {
+          temp_encoded = zut_encode(chunk, chunk_len, source_encoding, codepage, zds->diag);
+          chunk = &temp_encoded[0];
+          chunk_len = temp_encoded.size();
+        }
+        catch (std::exception &e)
+        {
+          zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), codepage.c_str());
+          return RTNCD_FAILURE;
+        }
+      }
+
+      size_t bytes_written = fwrite(chunk, 1, chunk_len, fout);
+      if (bytes_written != chunk_len)
+      {
+        truncated = true;
+        break;
+      }
+      temp_encoded.clear();
+    }
+
+    const int flush_rc = fflush(fout);
+    if (truncated || flush_rc != 0)
+    {
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to write to '%s' (possibly out of space)", dsname.c_str());
+      return RTNCD_FAILURE;
+    }
   }
 
   // Update the etag

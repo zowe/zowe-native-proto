@@ -6,6 +6,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
+- Updated the `num-workers` option in the `ZSshClient` class to reflect the new format used for parsing `zowed` options. [#655](https://github.com/zowe/zowe-native-proto/issues/655)
 - Added missing properties to the `Dataset` type for listing data sets with attributes. [#629](https://github.com/zowe/zowe-native-proto/issues/629)
 
 ## `0.2.0`

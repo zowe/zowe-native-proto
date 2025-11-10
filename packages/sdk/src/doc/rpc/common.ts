@@ -11,6 +11,21 @@
 
 // Base Request/Response interfaces
 
+/**
+ * JSON-RPC 2.0 Standard Error Codes
+ */
+export const RpcErrorCode = {
+    PARSE_ERROR: -32700, // Invalid JSON was received
+    INVALID_REQUEST: -32600, // The JSON sent is not a valid Request object
+    METHOD_NOT_FOUND: -32601, // The method does not exist / is not available
+    INVALID_PARAMS: -32602, // Invalid method parameter(s)
+    INTERNAL_ERROR: -32603, // Internal JSON-RPC error
+    // -32000 to -32099 are reserved for implementation-defined server-errors
+    REQUEST_TIMEOUT: -32001, // Request exceeded timeout limit
+} as const;
+
+export type RpcErrorCodeType = (typeof RpcErrorCode)[keyof typeof RpcErrorCode];
+
 export interface RpcNotification {
     jsonrpc: "2.0";
     method: string;
