@@ -279,7 +279,7 @@ zjson::Value RpcServer::convert_ast_to_json(const ast::Node &ast_node)
   }
 }
 
-void RpcServer::print_response(const RpcResponse &response, const MiddlewareContext *context)
+void RpcServer::print_response(const RpcResponse &response, MiddlewareContext *context)
 {
   // Log errors to the log file
   if (response.error.has_value())
