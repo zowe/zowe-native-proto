@@ -26,7 +26,7 @@ int main()
 {
   PSW psw = {0};
   get_psw(&psw);
-  int mode_switch = psw.p ? 0 : 1;
+  int mode_switch = psw.data.bits.p ? 0 : 1;
 
   ZSETJMP_ENV zenv = {0};
 
