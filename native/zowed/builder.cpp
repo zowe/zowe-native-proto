@@ -111,7 +111,7 @@ void CommandBuilder::apply_input_transforms(MiddlewareContext &context) const
       // Rename: argument must exist
       if (arg_it == args.end())
       {
-        LOG_WARN("Argument '%s' not found for rename transform, skipping", transform.arg_name.c_str());
+        LOG_DEBUG("Argument '%s' not found for rename transform, skipping", transform.arg_name.c_str());
         continue;
       }
 
@@ -355,14 +355,23 @@ void CommandBuilder::apply_output_transforms(MiddlewareContext &context) const
       {
         string data = context.get_output_content();
 
-        // Encode base64 if requested
         if (transform.base64)
         {
           data = zbase64::encode(data);
         }
 
-        // Set the output field
-        obj->set(transform.arg_name, ast::str(data));
+        if (data.size() >= LARGE_DATA_THRESHOLD)
+        {
+          context.store_large_data(transform.arg_name, std::move(data));
+          obj->set(transform.arg_name, ast::str(""));
+
+          // Clear output buffer to free memory ASAP
+          std::stringstream().swap(context.get_output_stream());
+        }
+        else
+        {
+          obj->set(transform.arg_name, ast::str(data));
+        }
       }
       catch (const std::exception &e)
       {
@@ -391,10 +400,6 @@ void CommandBuilder::apply_output_transforms(MiddlewareContext &context) const
         {
           LOG_ERROR("Failed to delete FIFO pipe: %s, errno: %d", pipe_path.c_str(), errno);
         }
-      }
-      else
-      {
-        LOG_WARN("Failed to cleanup FIFO: pipe path not found in arguments");
       }
       break;
     }
