@@ -511,12 +511,6 @@ std::string &zut_trim(std::string &s, const char *t)
   return zut_ltrim(zut_rtrim(s, t), t);
 }
 
-/**
- * Formats a vector of strings as a CSV string.
- *
- * @param fields the vector of strings to format
- * @return the formatted CSV string
- */
 string zut_format_as_csv(std::vector<string> &fields)
 {
   string formatted;
@@ -532,16 +526,10 @@ string zut_format_as_csv(std::vector<string> &fields)
   return formatted;
 }
 
-/**
- * Converts an integer to a string using sprintf.
- *
- * @param value the integer value to convert
- * @return the string representation of the integer
- */
-string zut_int_to_string(int value)
+string zut_int_to_string(int value, bool is_hex)
 {
   char buffer[32];
-  sprintf(buffer, "%d", value);
+  sprintf(buffer, is_hex ? "%X" : "%d", value);
   return string(buffer);
 }
 

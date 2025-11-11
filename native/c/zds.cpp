@@ -799,6 +799,44 @@ void load_date_from_dscb(const char *date_in, string *date_out, bool is_expirati
   *date_out = buffer;
 }
 
+// Map UCB device type last byte to device type number
+static inline int ucb_to_devtype(uint8_t ucb_byte)
+{
+  switch (ucb_byte)
+  {
+  case ZDS_DEVTYPE_2311:
+    return 0x2311;
+  case ZDS_DEVTYPE_2301:
+    return 0x2301;
+  case ZDS_DEVTYPE_2303:
+    return 0x2303;
+  case ZDS_DEVTYPE_2302:
+    return 0x2302;
+  case ZDS_DEVTYPE_2321:
+    return 0x2321;
+  case ZDS_DEVTYPE_2305:
+    return 0x2305;
+  case ZDS_DEVTYPE_2314:
+    return 0x2314;
+  case ZDS_DEVTYPE_3330:
+    return 0x3330;
+  case ZDS_DEVTYPE_3340:
+    return 0x3340;
+  case ZDS_DEVTYPE_3350:
+    return 0x3350;
+  case ZDS_DEVTYPE_3375:
+    return 0x3375;
+  case ZDS_DEVTYPE_3380:
+    return 0x3380;
+  case ZDS_DEVTYPE_3390:
+    return 0x3390;
+  case ZDS_DEVTYPE_9345:
+    return 0x9345;
+  default:
+    return 0x0000;
+  }
+}
+
 // Parse CCHH (Cylinder-Cylinder-Head-Head) format to get cylinder number
 static inline uint32_t parse_cchh_cylinder(const char *cchh)
 {
@@ -811,35 +849,70 @@ static inline uint32_t parse_cchh_cylinder(const char *cchh)
 }
 
 // Get tracks per cylinder for a given device type
-static inline int get_tracks_per_cylinder(const string &devtype)
+static inline int get_tracks_per_cylinder(const int &devtype)
 {
-  static const std::unordered_map<string, int> tracks_map = {
-      {"3340", 12},
-      {"3350", 30},
-      {"3380", 15},
-      {"3390", 15},
-      {"9345", 15}};
-
-  auto it = tracks_map.find(devtype);
-  return (it != tracks_map.end()) ? it->second : 15; // Default to 15 (3390-like)
+  switch (devtype)
+  {
+  case 0x2302:
+    return 46;
+  case 0x2303:
+    return 800; // Drum storage (single cylinder)
+  case 0x2305:
+    return 8;
+  case 0x2311:
+    return 10;
+  case 0x2314:
+    return 20;
+  case 0x3330:
+    return 19;
+  case 0x3340:
+  case 0x3375:
+    return 12;
+  case 0x3350:
+    return 30;
+  case 0x3380:
+  case 0x3390:
+  case 0x9345:
+  default:
+    return 15;
+  }
 }
 
 // Get bytes per track for a given device type
-static inline int get_bytes_per_track(const string &devtype)
+static inline int get_bytes_per_track(const int &devtype)
 {
-  static const std::unordered_map<string, int> bytes_map = {
-      {"3340", 8368},
-      {"3350", 19069},
-      {"3380", 47476},
-      {"3390", 56664},
-      {"9345", 46456}};
-
-  auto it = bytes_map.find(devtype);
-  return (it != bytes_map.end()) ? it->second : 56664; // Default to 56664 (3390-like)
+  switch (devtype)
+  {
+  case 0x2302:
+    return 4985;
+  case 0x2303:
+    return 4892;
+  case 0x2305:
+    return 14660; // 2305-2 (higher density model)
+  case 0x2311:
+    return 3625;
+  case 0x2314:
+    return 7294;
+  case 0x3330:
+    return 13030;
+  case 0x3340:
+    return 8368;
+  case 0x3350:
+    return 19069;
+  case 0x3375:
+    return 35616;
+  case 0x3380:
+    return 47476;
+  case 0x9345:
+    return 46456;
+  case 0x3390:
+  default:
+    return 56664;
+  }
 }
 
 // Calculate tracks in an extent given lower and upper CCHH values
-static inline int calculate_extent_tracks(const char *extent, const string &devtype)
+static inline int calculate_extent_tracks(const char *extent, const int &devtype)
 {
   uint32_t lower_cyl = parse_cchh_cylinder(extent + 2);
   uint16_t lower_head = static_cast<unsigned char>(extent[5]) & 0x0F;
@@ -1166,23 +1239,25 @@ void load_used_attrs_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
   // but since we don't have access to TRKCALC's exact capacity formula,
   // we approximate by using simple track-based percentage calculation.
 
-  // For BYTES space unit, convert to track-based calculation
-  if (entry.spacu == "BYTES" && entry.blksize > 0 && entry.usedp > 0 && entry.alloc > 0)
-  {
-    int bytes_per_track = get_bytes_per_track(entry.devtype);
-    int blocks_per_track = bytes_per_track / entry.blksize;
-    if (blocks_per_track <= 0)
-      blocks_per_track = 1;
-    int base_bytes_per_track = blocks_per_track * entry.blksize;
-
-    int used_tracks = entry.usedp;
-    entry.usedp = used_tracks;                        // Keep as tracks for percentage calculation
-    entry.alloc = entry.alloc / base_bytes_per_track; // Convert alloc to tracks
-  }
-
   if (entry.usedp > 0 && entry.alloc > 0)
   {
-    double percentage = (100.0 * entry.usedp) / entry.alloc;
+    int used_value = entry.usedp;
+    int alloc_value = entry.alloc;
+
+    // For BYTES space unit, convert to track-based calculation for percentage
+    if (entry.spacu == "BYTES" && entry.blksize > 0)
+    {
+      int bytes_per_track = get_bytes_per_track(entry.devtype);
+      int blocks_per_track = bytes_per_track / entry.blksize;
+      if (blocks_per_track <= 0)
+        blocks_per_track = 1;
+      int base_bytes_per_track = blocks_per_track * entry.blksize;
+
+      // Convert alloc from bytes to tracks for percentage calculation
+      alloc_value = entry.alloc / base_bytes_per_track;
+    }
+
+    double percentage = (100.0 * used_value) / alloc_value;
     entry.usedp = (int)percentage;
 
     if (entry.usedp > 100)
@@ -1254,7 +1329,7 @@ void load_storage_attrs_from_catalog(unsigned char *&data, int *&field_len, ZDSE
   // Parse DEVTYP field (4-byte UCB device type)
   data += *field_len;
   field_len++;
-  entry.devtype = "";
+
   if (*field_len >= 4)
   {
     uint32_t devtyp = (static_cast<unsigned char>(data[0]) << 24) |
@@ -1265,38 +1340,12 @@ void load_storage_attrs_from_catalog(unsigned char *&data, int *&field_len, ZDSE
     // If devtyp is all zeros, default to 3390 (most common modern DASD)
     if (devtyp == 0x00000000)
     {
-      entry.devtype = "3390";
+      entry.devtype = 0x3390;
     }
     else
     {
-      // Extract the device type code from byte 3 (last byte)
-      uint8_t dev_code = static_cast<unsigned char>(data[3]);
-
-      // Map UCB device type to device name
-      switch (dev_code)
-      {
-      case 0x0B:
-        entry.devtype = "3340";
-        break;
-      case 0x0E:
-        entry.devtype = "3350";
-        break;
-      case 0x0F:
-        entry.devtype = "3390";
-        break;
-      case 0x10:
-        entry.devtype = "9345";
-        break;
-      case 0x2E:
-        entry.devtype = "3380";
-        break;
-      default:
-        // For unknown types, format as hex string
-        char dev_buffer[9];
-        sprintf(dev_buffer, "%08X", devtyp);
-        entry.devtype = string(dev_buffer);
-        break;
-      }
+      // Extract the device type code (last byte of UCB) and map to device type
+      entry.devtype = ucb_to_devtype(static_cast<uint8_t>(data[3]));
     }
   }
 }

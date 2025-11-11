@@ -379,7 +379,7 @@ int handle_data_set_list(InvocationContext &context)
         if (attributes)
         {
           fields.push_back(it->volser);
-          fields.push_back(it->devtype);
+          fields.push_back(it->devtype != 0 ? zut_int_to_string(it->devtype, true) : "");
           fields.push_back(it->dsorg);
           fields.push_back(it->recfm);
           fields.push_back(it->lrecl == -1 ? "" : zut_int_to_string(it->lrecl));
@@ -399,7 +399,7 @@ int handle_data_set_list(InvocationContext &context)
           context.output_stream() << left
                                   << setw(44) << it->name << " "
                                   << setw(6) << it->volser << " "
-                                  << setw(6) << it->devtype << " "
+                                  << setw(7) << (it->devtype != 0 ? zut_int_to_string(it->devtype, true) : "") << " "
                                   << setw(4) << it->dsorg << " "
                                   << setw(6) << it->recfm << " "
                                   << setw(6) << (it->lrecl == -1 ? "" : zut_int_to_string(it->lrecl)) << " "
@@ -432,8 +432,8 @@ int handle_data_set_list(InvocationContext &context)
           entry->set("cdate", str(it->cdate));
         if (!it->dataclass.empty())
           entry->set("dataclass", str(it->dataclass));
-        if (!it->devtype.empty())
-          entry->set("devtype", str(it->devtype));
+        if (it->devtype != 0)
+          entry->set("devtype", str(zut_int_to_string(it->devtype, true)));
         if (!it->dsntype.empty())
           entry->set("dsntype", str(it->dsntype));
         if (!it->dsorg.empty())
