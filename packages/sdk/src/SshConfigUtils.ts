@@ -50,10 +50,11 @@ export class SshConfigUtils {
         const SSHConfigs: ISshConfigExt[] = [];
 
         for (const config of parsedConfig) {
-            if (config.type === sshConfig.LineType.DIRECTIVE) {
+            if (config.type === sshConfig.LineType.DIRECTIVE && config.param === "Host") {
                 const session: ISshConfigExt = {};
                 // If it has multiple names, take the first
                 session.name = typeof config.value === "object" ? config.value[0].val : (config.value as string);
+                if (session.name.includes("*")) continue;
 
                 if (Array.isArray((config as sshConfig.Section).config)) {
                     for (const subConfig of (config as sshConfig.Section).config) {
