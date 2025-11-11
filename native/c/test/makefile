@@ -8,13 +8,10 @@
 #
 #  Copyright Contributors to the Zowe Project.
 #
-CXX=xlc++
-CC=xlc
-OCXX=xlclang++
 
-# https://www.ibm.com/docs/en/hla-and-tf/1.6?topic=options-assembler
-# https://www.ibm.com/docs/en/zos/3.1.0?topic=descriptions-as-use-hlasm-assembler-produce-object-files
-ASM=as
+.INCLUDE: ../toolchain.mk
+
+OCXX=$(CXXLANG)
 BIND=ld
 
 # https://www.ibm.com/docs/en/zos/3.1.0?topic=bor-binder-options
@@ -24,71 +21,23 @@ BIND_FLAGS_AUTH = -bRMODE=ANY,AC=1
 BIND_FLAGS_64 = -bRMODE=ANY,AMODE=64
 BIND_FLAGS_64_AUTH = -bRMODE=ANY,AMODE=64,AC=1
 
-MTL_BASE_OPTS=metal,\
- langlvl(extended),\
- sscom,\
- nolongname,\
- inline,\
- genasm,\
- csect,\
- nose,\
- warn64,\
- optimize(2)
-MTL_LIST_OPTS=
+MACLIBS= -I../../asmmac $(MACLIBS_BASE)
+MTL_HEADERS=$(MTL_HEADERS_BASE) -I../ -I../chdsect
 
-MACLIBS= -I../../asmmac \
- -ISYS1.MACLIB \
- -ISYS1.MODGEN \
- -ICBC.SCCNSAM
-
-MTL_HEADERS=-I/usr/include/metal\
--I/usr/include\
--I../\
--I../chdsect
-
-CPP_BND_BASE_FLAGS=-W "l,lp64,xplink,map"
-CPP_BND_DEBUG_FLAGS=-W "l,lp64,xplink,map,list"
-CPP_BND_BASE_FLAGS_AUTH=-W "l,lp64,xplink,map,ac=1"
-CPP_BND_DEBUG_FLAGS_AUTH=-W "l,lp64,xplink,map,list,ac=1"
-
-C_FLAGS=-W "c,lp64,langlvl(extended),xplink,exportall"\
- -c \
- -I./chdsect
-
-DLL_CPP_FLAGS=-W "c,lp64,langlvl(extended0x),dll,xplink,exportall"\
- -c \
- -I./chdsect
-
-DLL_BND_BASE_FLAGS=-W "l,lp64,dll,dynam=dll,xplink,map"
-DLL_BND_DEBUG_FLAGS=-W "l,lp64,dll,dynam=dll,xplink,map,list"
-
-CPP_FLAGS=-W "c,lp64,langlvl(extended0x),xplink"\
- -c
-
-CXXLANG_FLAGS=-W "c,lp64"\
- -c \
- -I../ \
- -I./chdsect
-
+C_FLAGS=$(C_FLAGS_BASE) -I./chdsect
+DLL_CPP_FLAGS=$(DLL_CPP_FLAGS_BASE) -I./chdsect
+CPP_FLAGS=$(CPP_FLAGS_BASE)
+CXXLANG_FLAGS=$(CXXLANG_FLAGS_BASE) -I../ -I./chdsect -std=c++14
 CXXLANG_BND_FLAGS=-W "l,lp64"
-
-ASM_FLAGS=-mRENT
-
-.IF $(ZLOG_ENABLE) == 1
-LOG_FLAGS=-DZLOG_ENABLE
-.END
 
 # make -DBuildType=DEBUG
 .IF $(BuildType) == DEBUG
-LOG_FLAGS=-DZLOG_ENABLE
 # -g generates debugging information
 DEBUGGER_FLAGS=-qSOURCE -qDEBUG
-CPP_BND_FLAGS+=$(DEBUGGER_FLAGS)
-CPP_BND_FLAGS_AUTH+=$(DEBUGGER_FLAGS)
+CPP_BND_FLAGS=$(CPP_BND_DEBUG_FLAGS) $(DEBUGGER_FLAGS)
+CPP_BND_FLAGS_AUTH=$(CPP_BND_DEBUG_FLAGS_AUTH) $(DEBUGGER_FLAGS)
 C_FLAGS+=$(DEBUGGER_FLAGS)
-DLL_BND_FLAGS+=$(DEBUGGER_FLAGS)
-# DLL_CPP_FLAGS+=$(DEBUGGER_FLAGS) -qSHOWINC
-# CPP_FLAGS+=$(DEBUGGER_FLAGS) -qSHOWINC
+DLL_BND_FLAGS=$(DLL_BND_DEBUG_FLAGS) $(DEBUGGER_FLAGS)
 MTL_FLAGS+=$(DEBUGGER_FLAGS) -qSHOWINC
 MTL_FLAGS64+=$(DEBUGGER_FLAGS) -qSHOWINC
 ASM_FLAGS+=--verbose
@@ -96,18 +45,13 @@ ASM_FLAGS+=--verbose
 CPP_LIST_FLAG=-qlist=$$*.cpp.lst
 MTL_LIST_FLAG=-qlist=$$*.mtl.lst
 ASM_LIST_FLAG=-a=$$*.s.lst
-MTL_LIST_OPTS=,inlrpt,list,showmacro,aggregate
-CPP_BND_FLAGS=$(CPP_BND_DEBUG_FLAGS)
-CPP_BND_FLAGS_AUTH=$(CPP_BND_DEBUG_FLAGS_AUTH)
-DLL_BND_FLAGS=$(DLL_BND_DEBUG_FLAGS)
 .ELSE
 PRODUCTION_FLAGS=-qNOSOURCE -qNODEBUG
-CPP_BND_FLAGS+=$(PRODUCTION_FLAGS)
-CPP_BND_FLAGS_AUTH+=$(PRODUCTION_FLAGS)
+CPP_BND_FLAGS=$(CPP_BND_BASE_FLAGS) $(PRODUCTION_FLAGS)
+CPP_BND_FLAGS_AUTH=$(CPP_BND_BASE_FLAGS_AUTH) $(PRODUCTION_FLAGS)
 C_FLAGS+=$(PRODUCTION_FLAGS)
-DLL_BND_FLAGS+=$(PRODUCTION_FLAGS)
+DLL_BND_FLAGS=$(DLL_BND_BASE_FLAGS) $(PRODUCTION_FLAGS)
 DLL_CPP_FLAGS+=$(PRODUCTION_FLAGS) -qNOSHOWINC
-# CPP_FLAGS+=$(PRODUCTION_FLAGS) -qNOSHOWINC
 MTL_FLAGS+=$(PRODUCTION_FLAGS) -qNOSHOWINC
 MTL_FLAGS64+=$(PRODUCTION_FLAGS) -qNOSHOWINC
 ASM_FLAGS+=--noverbose
@@ -115,16 +59,7 @@ ASM_FLAGS+=--noverbose
 CPP_LIST_FLAG=
 MTL_LIST_FLAG=
 ASM_LIST_FLAG=
-MTL_LIST_OPTS=
-CPP_BND_FLAGS=$(CPP_BND_BASE_FLAGS)
-CPP_BND_FLAGS_AUTH=$(CPP_BND_BASE_FLAGS_AUTH)
-DLL_BND_FLAGS=$(DLL_BND_BASE_FLAGS)
 .END
-
-MTL_OPTS=$(MTL_BASE_OPTS)$(MTL_LIST_OPTS)
-MTL_OPTS64=$(MTL_OPTS),lp64
-MTL_FLAGS=-S -W "c,$(MTL_OPTS)"
-MTL_FLAGS64=-S -W "c,$(MTL_OPTS64)"
 
 # Apply LOG_FLAGS to all relevant compilation flags if logging is enabled
 .IF DEFINED(LOG_FLAGS)
@@ -186,8 +121,7 @@ build-out/parser.test.o \
 build-out/zlogger.test.o \
 build-out/zlogger_metal.o \
 build-out/zjson.test.o \
-build-out/zjsonm.o \
-build-out/zowed.test.o
+build-out/zjsonm.o
 	$(OCXX) $(CXXLANG_BND_FLAGS) -o $@ $^ > $*.bind.lst
 
 build-out/zut.o:
@@ -303,9 +237,6 @@ build-out/zjsonm.s: ../zjsonm.c
 
 build-out/zjsonm.o: build-out/zjsonm.s
 	$(ASM) $(ASM_FLAGS) $(ASM_LIST_FLAG) $(MACLIBS) -o $@ $^
-
-build-out/zowed.test.o: zowed.test.cpp
-	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
 
 # build-out/testrcvy.s: testrcvy.c
 # 	$(CC) $(MTL_FLAGS64) $(MTL_LIST_FLAG) $(MTL_HEADERS) -o $@ $^
