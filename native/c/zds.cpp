@@ -813,27 +813,29 @@ static inline uint32_t parse_cchh_cylinder(const char *cchh)
 // Get tracks per cylinder for a given device type
 static inline int get_tracks_per_cylinder(const string &devtype)
 {
-  if (devtype == "3340")
-    return 12;
-  else if (devtype == "3350")
-    return 30;
-  else
-    return 15; // Default to 3390 or similar
+  static const std::unordered_map<string, int> tracks_map = {
+      {"3340", 12},
+      {"3350", 30},
+      {"3380", 15},
+      {"3390", 15},
+      {"9345", 15}};
+
+  auto it = tracks_map.find(devtype);
+  return (it != tracks_map.end()) ? it->second : 15; // Default to 15 (3390-like)
 }
 
 // Get bytes per track for a given device type
 static inline int get_bytes_per_track(const string &devtype)
 {
-  if (devtype == "3340")
-    return 8368;
-  else if (devtype == "3350")
-    return 19069;
-  else if (devtype == "3380")
-    return 47476;
-  else if (devtype == "9345")
-    return 46456;
-  else
-    return 56664; // Default to 3390 or similar
+  static const std::unordered_map<string, int> bytes_map = {
+      {"3340", 8368},
+      {"3350", 19069},
+      {"3380", 47476},
+      {"3390", 56664},
+      {"9345", 46456}};
+
+  auto it = bytes_map.find(devtype);
+  return (it != bytes_map.end()) ? it->second : 56664; // Default to 56664 (3390-like)
 }
 
 // Calculate tracks in an extent given lower and upper CCHH values
