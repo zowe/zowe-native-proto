@@ -1872,11 +1872,16 @@ int zusf_chown_uss_file_or_dir(ZUSF *zusf, const std::string &file, const std::s
       if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0)
       {
         const string child_path = zusf_join_path(file, string((const char *)entry->d_name));
-        struct stat file_stats;
-        stat(child_path.c_str(), &file_stats);
-
         struct stat child_stats;
         if (stat(child_path.c_str(), &child_stats) == -1)
+        {
+          closedir(dir);
+          zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not stat child path '%s'", child_path.c_str());
+          return RTNCD_FAILURE;
+        }
+
+        const auto rc = zusf_chown_uss_file_or_dir(zusf, child_path, owner, S_ISDIR(child_stats.st_mode));
+        if (rc != 0)
         {
           closedir(dir);
           return rc;
