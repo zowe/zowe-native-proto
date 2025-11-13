@@ -46,8 +46,8 @@ void uss_tests()
                         { rc = 0; });
 
              // Clean up the test directory
-             //  afterAll([&response]() -> void
-             //           { execute_command_with_output(zowex_command + " uss delete /tmp/zowex-uss --recursive", response); });
+             afterAll([&response]() -> void
+                      { int test = execute_command_with_output(zowex_command + " uss delete /tmp/zowex-uss --recursive", response); });
 
              // Helper function to create a test file
              auto create_test_file_cmd = [&](const string &uss_file, const string &options = "") -> void
@@ -137,88 +137,107 @@ void uss_tests()
                              Expect(response).ToContain("Path '" + uss_file + "' does not exist");
                            });
                       });
-             // Chown tests currently do not run. Will be ran once https://github.com/zowe/zowe-native-proto/issues/400 is resolved
-             xdescribe("zowex uss - chown",
-                       [&]() -> void
+             describe("zowex uss - chown",
+                      [&]() -> void
+                      {
+                        string uss_path;
+                        static int testUid;
+                        static int testGid;
+
+                        beforeAll([&]() -> void
+                                  {
+                       string resp;
+                       int rc;
+
+                       testGid = 60000;
+                       while (true)
                        {
-                         string uss_path;
+                         string idCheck = "id -g " + to_string(testGid) + " > /dev/null 2>&1";
+                         rc = execute_command_with_output(idCheck, resp);
+                         if (rc != 0) 
+                           break;
+                         testGid++;
+                         if (testGid > 65530) throw runtime_error("Could not find a free GID for testing");
+                       }
 
-                         describe("on a file",
-                                  [&]() -> void
-                                  {
-                                    beforeEach([&]() -> void
-                                               {
-                                                uss_path = get_random_uss(ussTestDir);
-                                                create_test_file_cmd(uss_path); });
+                       testUid = 60000;
+                       while (true)
+                       {
+                         string idCheck = "id -u " + to_string(testUid) + " > /dev/null 2>&1";
+                         rc = execute_command_with_output(idCheck, resp);
+                         if (rc != 0)
+                           break;
+                         testUid++;
+                         if (testUid > 65530) throw runtime_error("Could not find a free UID for testing");
+                       } });
 
-                                    it("should properly change the user on a file",
-                                       [&]() -> void
-                                       {
-                                         string newUserChownCommand = zowex_command + " uss chown newUser " + uss_path;
-                                         string listUser = "ls -l " + uss_path;
+                        describe("on a file",
+                                 [&]() -> void
+                                 {
+                                   beforeEach([&]() -> void
+                                              {
+                                   uss_path = get_random_uss(ussTestDir);
+                                   create_test_file_cmd(uss_path); });
 
-                                         rc = execute_command_with_output(newUserChownCommand, response);
-                                         ExpectWithContext(rc, response).ToBe(0);
-                                         Expect(response).ToContain("USS path '" + uss_path + "' owner changed to 'newUser'");
+                                   it("should properly change the group on a file using numeric GID",
+                                      [&]() -> void
+                                      {
+                                        string newGroupChownCommand = zowex_command + " uss chown :" + to_string(testGid) + " " + uss_path;
+                                        string listUser = "ls -n " + uss_path;
 
-                                         rc = execute_command_with_output(listUser, response);
-                                         ExpectWithContext(rc, response).ToBe(0);
-                                         Expect(response).ToContain("newUser");
-                                       });
-                                    it("should properly change the group on a file",
-                                       [&]() -> void
-                                       {
-                                         string newGroupChownCommand = zowex_command + " uss chown :newGroup " + uss_path;
-                                         string listUser = "ls -l " + uss_path;
-
-                                         rc = execute_command_with_output(newGroupChownCommand, response);
-                                         ExpectWithContext(rc, response).ToBe(0);
-                                         Expect(response).ToContain("USS path '" + uss_path + "' owner changed to ':newGroup'");
-
-                                         rc = execute_command_with_output(listUser, response);
-                                         ExpectWithContext(rc, response).ToBe(0);
-                                         Expect(response).ToContain("newGroup");
-                                       });
-                                    it("should properly change the group and user on a file",
-                                       [&]() -> void
-                                       {
-                                         string newUserNewGroupChownCommand = zowex_command + " uss chown newUser:newGroup " + uss_path;
-                                         string listUser = "ls -l " + uss_path;
-
-                                         rc = execute_command_with_output(newUserNewGroupChownCommand, response);
-                                         ExpectWithContext(rc, response).ToBe(0);
-                                         Expect(response).ToContain("USS path '" + uss_path + "' owner changed to 'newUser:newGroup'");
-
-                                         rc = execute_command_with_output(listUser, response);
+                                        rc = execute_command_with_output(newGroupChownCommand, response);
                                         ExpectWithContext(rc, response).ToBe(0);
-                                        Expect(response).ToContain("newUser");
-                                        Expect(response).ToContain("newGroup"); });
-                                  });
-                         describe("on a directory",
-                                  [&]() -> void
-                                  {
-                                    beforeEach([&]() -> void
-                                               {
-                                                uss_path = get_random_uss(ussTestDir) + "_dir";
-                                                create_test_dir_cmd(uss_path); });
+                                        Expect(response).ToContain("USS path '" + uss_path + "' owner changed to ':" + to_string(testGid) + "'");
 
-                                    it("should properly change the group and user on a directory",
-                                       [&]() -> void
-                                       {
-                                         string newUserNewGroupChownCommand = zowex_command + " uss chown newUser:newGroup " + uss_path + " -r";
-                                         string listUser = "ls -ld " + uss_path;
+                                        rc = execute_command_with_output(listUser, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain(to_string(testGid));
+                                      });
 
-                                         rc = execute_command_with_output(newUserNewGroupChownCommand, response);
-                                         ExpectWithContext(rc, response).ToBe(0);
-                                         Expect(response).ToContain("USS path '" + uss_path + "' owner changed to 'newUser:newGroup'");
+                                   it("should properly change the group and user on a file using numeric IDs",
+                                      [&]() -> void
+                                      {
+                                        string newUserNewGroupChownCommand = zowex_command + " uss chown " + to_string(testUid) + ":" + to_string(testGid) + " " + uss_path;
+                                        string listUser = "ls -n " + uss_path;
 
-                                         rc = execute_command_with_output(listUser, response);
-                                         ExpectWithContext(rc, response).ToBe(0);
-                                         Expect(response).ToContain("newUser");
-                                         Expect(response).ToContain("newGroup");
-                                       });
-                                  });
-                       });
+                                        rc = execute_command_with_output(newUserNewGroupChownCommand, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("USS path '" + uss_path + "' owner changed to '" + to_string(testUid) + ":" + to_string(testGid) + "'");
+
+                                        rc = execute_command_with_output(listUser, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain(to_string(testUid));
+                                        Expect(response).ToContain(to_string(testGid));
+                                      });
+                                 });
+
+                        describe("on a directory",
+                                 [&]() -> void
+                                 {
+                                   beforeEach([&]() -> void
+                                              {
+                                   uss_path = get_random_uss(ussTestDir) + "_dir";
+                                   create_test_dir_cmd(uss_path); });
+
+                                   it("should properly change the group and user on a directory using numeric IDs",
+                                      [&]() -> void
+                                      {
+                                        string newUserNewGroupChownCommand = zowex_command + " uss chown " + to_string(testUid) + ":" + to_string(testGid) + " " + uss_path + " -r";
+
+                                        // Use -nd to list directory details numerically without entering it
+                                        string listUser = "ls -nd " + uss_path;
+
+                                        rc = execute_command_with_output(newUserNewGroupChownCommand, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain("USS path '" + uss_path + "' owner changed to '" + to_string(testUid) + ":" + to_string(testGid) + "'");
+
+                                        rc = execute_command_with_output(listUser, response);
+                                        ExpectWithContext(rc, response).ToBe(0);
+                                        Expect(response).ToContain(to_string(testUid));
+                                        Expect(response).ToContain(to_string(testGid));
+                                      });
+                                 });
+                      });
              describe("zowex uss - chtag",
                       [&]() -> void
                       {
@@ -504,7 +523,6 @@ void uss_tests()
                                  "\x74\x65\x73\x74\x2e";    // "test."
 
                              string writeCommand = zowex_command + " uss write " + uss_path + " --lec IBM-1047 --ec UTF-8";
-                             TestLog(writeCommand);
                              rc = execute_command_with_input(writeCommand, ebcdic_text);
                              ExpectWithContext(rc, "Write command failed").ToBe(0);
 
@@ -513,11 +531,6 @@ void uss_tests()
                              rc = execute_command_with_output(viewCommand, view_response_hex_dump);
                              ExpectWithContext(rc, view_response_hex_dump).ToBe(0);
 
-                             cout << "expected ascii" << endl;
-                             zut_print_string_as_bytes(expected_ascii_text);
-
-                             cout << "view resp" << endl;
-                             zut_print_string_as_bytes(view_response_hex_dump);
                              Expect(memcmp(view_response_hex_dump.data(), expected_ascii_text.data(), view_response_hex_dump.length()))
                                  .ToBe(0);
                              Expect(view_response_hex_dump.length()).ToBe(expected_ascii_text.length());
@@ -560,6 +573,7 @@ void uss_tests()
                              ExpectWithContext(rc, view_response).ToBe(0);
 
                              Expect(view_response).ToContain("Hello World!");
+                             unlink(symPath.c_str());
                            });
                       });
 
