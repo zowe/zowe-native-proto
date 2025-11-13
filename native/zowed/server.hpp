@@ -51,9 +51,10 @@ private:
   plugin::ArgumentMap convert_json_params_to_argument_map(const zjson::Value &params);
   zjson::Value convert_output_to_json(const std::string &output);
   zjson::Value convert_ast_to_json(const ast::Node &ast_node);
-  void print_response(const RpcResponse &response);
+  void print_response(const RpcResponse &response, MiddlewareContext *context = nullptr);
   void print_error(int request_id, int code, const std::string &message, const std::string *data = nullptr);
   validator::ValidationResult validate_json_with_schema(const std::string &method, const zjson::Value &params, bool is_request);
+  void add_large_data_to_json(std::string &json_string, const std::string &field_name, const std::string &data);
 
 public:
   /**
@@ -99,6 +100,14 @@ public:
    * @param notification The RpcNotification to send
    */
   static void send_notification(const RpcNotification &notification);
+
+  /**
+   * Send a timeout error response for a request that exceeded the timeout limit
+   * This method parses the request to extract the ID and sends an appropriate error response
+   * @param request_data The raw JSON-RPC request string that timed out
+   * @param timeout_ms The timeout value that was exceeded (in milliseconds)
+   */
+  void send_timeout_error(const std::string &request_data, int64_t timeout_ms);
 };
 
 #endif

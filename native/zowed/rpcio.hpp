@@ -26,8 +26,9 @@ enum
   INVALID_REQUEST = -32600,  // The JSON sent is not a valid Request object
   METHOD_NOT_FOUND = -32601, // The method does not exist / is not available
   INVALID_PARAMS = -32602,   // Invalid method parameter(s)
-  INTERNAL_ERROR = -32603    // Internal JSON-RPC error
+  INTERNAL_ERROR = -32603,   // Internal JSON-RPC error
   // -32000 to -32099 are reserved for implementation-defined server-errors
+  REQUEST_TIMEOUT = -32001 // Request exceeded timeout limit
 };
 }
 
@@ -66,6 +67,8 @@ ZJSON_SERIALIZABLE(RpcResponse,
                    ZJSON_FIELD(RpcResponse, error).skip_serializing_if_none(),
                    ZJSON_FIELD(RpcResponse, id));
 
+static constexpr size_t LARGE_DATA_THRESHOLD = 16 * 1024 * 1024; // 16MB
+
 class MiddlewareContext : public plugin::InvocationContext
 {
 public:
@@ -93,11 +96,21 @@ public:
   // Store pending notification for delayed sending
   void set_pending_notification(const RpcNotification &notification);
 
+  // Get large data map
+  std::unordered_map<std::string, std::string> &get_large_data()
+  {
+    return m_large_data;
+  }
+
+  // Store large data to optimize JSON serialization
+  void store_large_data(const std::string &field_name, const std::string &data);
+
 private:
   std::stringstream m_input_stream;
   std::stringstream m_output_stream;
   std::stringstream m_error_stream;
   zstd::unique_ptr<RpcNotification> m_pending_notification;
+  std::unordered_map<std::string, std::string> m_large_data;
 };
 
 #endif

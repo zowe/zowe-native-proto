@@ -4,6 +4,10 @@ All notable changes to the Client code for "zowe-native-proto-sdk" are documente
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+
+- Updated the `num-workers` option in the `ZSshClient` class to reflect the new format used for parsing `zowed` options. [#655](https://github.com/zowe/zowe-native-proto/issues/655)
+
 ## `0.2.0`
 
 - Added unit tests for `SshConfigUtils` class. [#614](https://github.com/zowe/zowe-native-proto/pull/614)
