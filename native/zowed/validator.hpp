@@ -134,7 +134,8 @@ using ValidatorFn = std::function<ValidationResult(const zjson::Value &)>;
 ValidationResult validate_schema(const zjson::Value &params,
                                  const FieldDescriptor *schema,
                                  size_t field_count,
-                                 bool allow_unknown_fields = false);
+                                 bool allow_unknown_fields = false,
+                                 const std::string &parent_field = "");
 
 } // namespace validator
 

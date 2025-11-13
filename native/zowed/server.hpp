@@ -26,6 +26,7 @@ namespace validator
 {
 struct ValidationResult;
 }
+class MiddlewareContext;
 struct RpcRequest;
 struct RpcResponse;
 struct RpcNotification;
