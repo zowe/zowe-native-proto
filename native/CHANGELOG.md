@@ -7,9 +7,18 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## Recent Changes
 
 - `c`: Implemented system tests for the `zowex uss` command group. [#626](https://github.com/zowe/zowe-native-proto/pull/626)
+- `c`: Fixed issue where `zowex uss chown` (and `zusf_chown_uss_file_or_dir`) silently succeeded with exit code `0` when a non-existent user or group was supplied. The command now validates `user:group` input and returns a non-zero exit code with a clear error message when invalid. [#565](https://github.com/zowe/zowe-native-proto/pull/565)
 - `c`: Fixed issue where uploading changes to a data set did not always flush to disk. [#643](https://github.com/zowe/zowe-native-proto/issues/643)
 - `c`: Updated commands that read data from stdin to read literal text rather than parsing hex string. [#645](https://github.com/zowe/zowe-native-proto/pull/645)
 - `c`: Reverted previous fix to preserve ISPF stats on PDS members since it could cause uploading changes to fail. [#669](https://github.com/zowe/zowe-native-proto/pull/669)
+- `zowed`: Fixed issue where enabling verbose logging would cause a deadlock during initialization. [#652](https://github.com/zowe/zowe-native-proto/issues/652)
+- `zowed`: Implemented support for automatic worker recovery. If a worker crashes or throws an exception, it is replaced with a new worker. If the maximum number of replacement attempts have been exceeded, the worker is disabled to prevent thrashing the CPU with replacement requests. [#410](https://github.com/zowe/zowe-native-proto/issues/410)
+- `zowed`: Optimized the `get_ready_worker` function to avoid worst-case linear search for the next available worker. [#651](https://github.com/zowe/zowe-native-proto/pull/651)
+- `zowed`: Replaced the options logic with the parser library to avoid code duplication and establish consistency with backend. [#655](https://github.com/zowe/zowe-native-proto/issues/655)
+- `zowed`: Implemented support for server-side request timeouts. If the request timeout is exceeded for a single worker, the hanging worker is replaced and the ongoing request is discarded. [#416](https://github.com/zowe/zowe-native-proto/issues/416)
+- `c`: De-duplicated makefile contents through `.INCLUDE` keyword and separate toolchain file. [#651](https://github.com/zowe/zowe-native-proto/pull/651)
+- `zowed`: Fixed issue where opening a file larger than 10 MB could fail with "Invalid JSON" error. [#656](https://github.com/zowe/zowe-native-proto/issues/656)
+- `c`: Fix PSW alignment issue. [#559](https://github.com/zowe/zowe-native-proto/issues/559)
 
 
 ## `0.2.0`

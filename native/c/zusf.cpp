@@ -9,12 +9,21 @@
  *
  */
 
-#ifndef _LARGE_TIME_API
-#define _LARGE_TIME_API
+// z/OS UNIX extensions needed for st_tag in struct stat, etc.
+#ifndef _AE_BIMODAL
+#define _AE_BIMODAL 1
 #endif
 #ifndef _OPEN_SYS_FILE_EXT
 #define _OPEN_SYS_FILE_EXT 1
 #endif
+#ifndef _LARGE_TIME_API
+#define _LARGE_TIME_API
+#endif
+
+#include <limits.h>
+#include <limits>
+#include <climits>
+
 #include <algorithm>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -49,6 +58,7 @@
 #include <time.h>
 #include <iomanip>
 #include <sstream>
+#include <errno.h>
 
 using namespace std;
 
@@ -1603,8 +1613,8 @@ int zusf_chmod_uss_file_or_dir(ZUSF *zusf, string file, mode_t mode, bool recurs
   chmod(file.c_str(), mode);
   if (recursive && S_ISDIR(file_stats.st_mode))
   {
-    DIR *dir;
-    if ((dir = opendir(file.c_str())) == nullptr)
+    DIR *dir = opendir(file.c_str());
+    if (dir == nullptr)
     {
       zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open directory '%s'", file.c_str());
       return RTNCD_FAILURE;
@@ -1649,8 +1659,8 @@ int zusf_delete_uss_item(ZUSF *zusf, string file, bool recursive)
 
   if (is_dir)
   {
-    DIR *dir;
-    if ((dir = opendir(file.c_str())) == nullptr)
+    DIR *dir = opendir(file.c_str());
+    if (dir == nullptr)
     {
       zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open directory '%s'", file.c_str());
       return RTNCD_FAILURE;
@@ -1714,41 +1724,148 @@ short zusf_get_id_from_user_or_group(const string &user_or_group, bool is_user)
   return -1;
 }
 
-int zusf_chown_uss_file_or_dir(ZUSF *zusf, string file, const string &owner, bool recursive)
+/**
+ * Helper to convert user string to UID.
+ * Accepts empty (→ -1), numeric UID, or name (getpwnam).
+ * Returns true if resolved or empty, false if invalid/overflow.
+ */
+static bool resolve_uid_from_str(const std::string &s, uid_t &out)
+{
+  if (s.empty())
+  {
+    out = (uid_t)-1;
+    return true;
+  } // not user provided
+  bool digits = s.find_first_not_of("0123456789") == std::string::npos;
+  if (digits)
+  {
+    unsigned long v = strtoul(s.c_str(), nullptr, 10);
+    if (v > std::numeric_limits<uid_t>::max())
+      return false;
+    out = static_cast<uid_t>(v);
+    return true;
+  }
+  auto *pw = getpwnam(s.c_str());
+  if (pw != nullptr)
+  {
+    out = pw->pw_uid;
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Helper to convert group string to GID.
+ * Accepts empty (→ -1), numeric GID, or name (getgrnam).
+ * Returns true if resolved or empty, false if invalid/overflow.
+ */
+static bool resolve_gid_from_str(const std::string &s, gid_t &out)
+{
+  if (s.empty())
+  {
+    out = (gid_t)-1;
+    return true;
+  } // no group provided
+  bool digits = s.find_first_not_of("0123456789") == std::string::npos;
+  if (digits)
+  {
+    unsigned long v = strtoul(s.c_str(), nullptr, 10);
+    if (v > std::numeric_limits<gid_t>::max())
+      return false;
+    out = static_cast<gid_t>(v);
+    return true;
+  }
+  auto *gr = getgrnam(s.c_str());
+  if (gr != nullptr)
+  {
+    out = gr->gr_gid;
+    return true;
+  }
+  return false; // invalid group string
+}
+
+/**
+ * Change ownership of a USS file or directory (recursive optional).
+ *
+ * Supports "user", "user:group", ":group", or numeric IDs.
+ * Validates input, avoids silent -1, and returns RTNCD_FAILURE on error.
+ */
+int zusf_chown_uss_file_or_dir(ZUSF *zusf, const std::string &file, const std::string &owner, bool recursive)
 {
   struct stat file_stats;
+  // Verify target exists and capture current metadata
   if (stat(file.c_str(), &file_stats) == -1)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Path '%s' does not exist", file.c_str());
     return RTNCD_FAILURE;
   }
 
+  // Refuse to descend into a directory if caller didn’t request recursion
   if (S_ISDIR(file_stats.st_mode) && !recursive)
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Path '%s' is a folder and recursive is false", file.c_str());
     return RTNCD_FAILURE;
   }
 
-  const auto uid = zusf_get_id_from_user_or_group(owner, true);
-  const auto colon_pos = owner.find_first_of(":");
-  const auto group = colon_pos != std::string::npos ? owner.substr(colon_pos + 1) : string();
-  const auto gid = group.empty() ? file_stats.st_gid : zusf_get_id_from_user_or_group(group, false);
-  const auto rc = chown(file.c_str(), uid, gid);
-
-  if (0 != rc)
+  // Split owner into user[:group]
+  std::string userPart = owner;
+  std::string groupPart;
+  const auto colon_pos = owner.find(':');
+  if (colon_pos != std::string::npos)
   {
-    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "chmod failed for path '%s', errno %d", file.c_str(), errno);
+    userPart = owner.substr(0, colon_pos);
+    groupPart = owner.substr(colon_pos + 1);
+  }
+
+  uid_t uid;
+  gid_t gid;
+
+  // Resolve user to UID (numeric or name); return error on invalid input
+  if (!resolve_uid_from_str(userPart, uid))
+  {
+    errno = EINVAL;
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "chown error: invalid user '%s'", userPart.c_str());
     return RTNCD_FAILURE;
   }
 
+  // Resolve group to GID (numeric or name); return error on invalid input
+  if (!resolve_gid_from_str(groupPart, gid))
+  {
+    errno = EINVAL;
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "chown error: invalid group '%s'", groupPart.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  // If both were empty, refuse (otherwise chown(-1,-1) is a no-op)
+  if (uid == (uid_t)-1 && gid == (gid_t)-1)
+  {
+    errno = EINVAL;
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "chown error: neither user nor group specified");
+    return RTNCD_FAILURE;
+  }
+
+  // Preserve current group explicitly if only user was supplied
+  if (gid == (gid_t)-1)
+    gid = file_stats.st_gid;
+
+  // Attempt chown
+  const auto rc = chown(file.c_str(), uid, gid);
+  if (rc != 0)
+  {
+    zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "chown failed for path '%s', errno %d", file.c_str(), errno);
+    return RTNCD_FAILURE;
+  }
+
+  // Recurse into directories if requested
   if (recursive && S_ISDIR(file_stats.st_mode))
   {
-    DIR *dir;
-    if ((dir = opendir(file.c_str())) == nullptr)
+    DIR *dir = opendir(file.c_str());
+    if (!dir)
     {
       zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open directory '%s'", file.c_str());
       return RTNCD_FAILURE;
     }
+
     struct dirent *entry;
     while ((entry = readdir(dir)) != nullptr)
     {
@@ -1758,8 +1875,8 @@ int zusf_chown_uss_file_or_dir(ZUSF *zusf, string file, const string &owner, boo
         struct stat file_stats;
         stat(child_path.c_str(), &file_stats);
 
-        const auto rc = zusf_chown_uss_file_or_dir(zusf, child_path, owner, S_ISDIR(file_stats.st_mode));
-        if (0 != rc)
+        struct stat child_stats;
+        if (stat(child_path.c_str(), &child_stats) == -1)
         {
           closedir(dir);
           return rc;
@@ -1772,7 +1889,7 @@ int zusf_chown_uss_file_or_dir(ZUSF *zusf, string file, const string &owner, boo
   return 0;
 }
 
-int zusf_chtag_uss_file_or_dir(ZUSF *zusf, string file, string tag, bool recursive)
+int zusf_chtag_uss_file_or_dir(ZUSF *zusf, const string &file, const string &tag, bool recursive)
 {
   struct stat file_stats;
   if (stat(file.c_str(), &file_stats) == -1)
@@ -1786,7 +1903,6 @@ int zusf_chtag_uss_file_or_dir(ZUSF *zusf, string file, string tag, bool recursi
   // First try to parse as a numeric CCSID
   char *endptr;
   const auto parsed_ccsid = strtol(tag.c_str(), &endptr, 10);
-
   // If the entire string was consumed and it's a valid range, it's a numeric CCSID
   if (*endptr == '\0' && parsed_ccsid != LONG_MAX && parsed_ccsid != LONG_MIN)
   {
@@ -1820,8 +1936,8 @@ int zusf_chtag_uss_file_or_dir(ZUSF *zusf, string file, string tag, bool recursi
   }
   else if (recursive)
   {
-    DIR *dir;
-    if ((dir = opendir(file.c_str())) == nullptr)
+    DIR *dir = opendir(file.c_str());
+    if (dir == nullptr)
     {
       zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not open directory '%s'", file.c_str());
       return RTNCD_FAILURE;
