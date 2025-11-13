@@ -105,20 +105,3 @@ string parse_etag_from_output(const string &output)
 
   return etag;
 }
-
-string parse_hex_dump(const string &hex_dump)
-{
-  std::stringstream ss(hex_dump);
-  string parsed_bytes;
-  unsigned int byte_val;
-
-  // Tell the stringstream to read numbers as hex
-  ss >> std::hex;
-
-  // Read each hex value (separated by spaces)
-  while (ss >> byte_val)
-  {
-    parsed_bytes += static_cast<char>(byte_val);
-  }
-  return parsed_bytes;
-}
