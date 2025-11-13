@@ -54,7 +54,8 @@ export class SshConfigUtils {
                 const session: ISshConfigExt = {};
                 // If it has multiple names, take the first
                 session.name = typeof config.value === "object" ? config.value[0].val : (config.value as string);
-                if (session.name.includes("*")) continue;
+                // Skip host names that contain wildcard characters
+                if (session.name.includes("*") || session.name.includes("?")) continue;
 
                 if (Array.isArray((config as sshConfig.Section).config)) {
                     for (const subConfig of (config as sshConfig.Section).config) {
