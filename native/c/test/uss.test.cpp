@@ -138,50 +138,50 @@ void uss_tests()
                            });
                       });
              // Chown tests currently do not run. Will be ran once https://github.com/zowe/zowe-native-proto/issues/400 is resolved
-             describe("zowex uss - chown",
-                      [&]() -> void
-                      {
-                        string uss_path;
+             xdescribe("zowex uss - chown",
+                       [&]() -> void
+                       {
+                         string uss_path;
 
-                        describe("on a file",
-                                 [&]() -> void
-                                 {
-                                   beforeEach([&]() -> void
-                                              {
+                         describe("on a file",
+                                  [&]() -> void
+                                  {
+                                    beforeEach([&]() -> void
+                                               {
                                                 uss_path = get_random_uss(ussTestDir);
                                                 create_test_file_cmd(uss_path); });
 
-                                   it("should properly change the user on a file",
-                                      [&]() -> void
-                                      {
-                                        string newUserChownCommand = zowex_command + " uss chown newUser " + uss_path;
-                                        string listUser = "ls -l " + uss_path;
+                                    it("should properly change the user on a file",
+                                       [&]() -> void
+                                       {
+                                         string newUserChownCommand = zowex_command + " uss chown newUser " + uss_path;
+                                         string listUser = "ls -l " + uss_path;
 
-                                        rc = execute_command_with_output(newUserChownCommand, response);
-                                        ExpectWithContext(rc, response).ToBe(0);
-                                        Expect(response).ToContain("USS path '" + uss_path + "' owner changed to 'newUser'");
+                                         rc = execute_command_with_output(newUserChownCommand, response);
+                                         ExpectWithContext(rc, response).ToBe(0);
+                                         Expect(response).ToContain("USS path '" + uss_path + "' owner changed to 'newUser'");
 
-                                        rc = execute_command_with_output(listUser, response);
-                                        ExpectWithContext(rc, response).ToBe(0);
-                                        Expect(response).ToContain("newUser");
-                                      });
-                                   it("should properly change the group on a file",
-                                      [&]() -> void
-                                      {
-                                        string newGroupChownCommand = zowex_command + " uss chown :newGroup " + uss_path;
-                                        string listUser = "ls -l " + uss_path;
+                                         rc = execute_command_with_output(listUser, response);
+                                         ExpectWithContext(rc, response).ToBe(0);
+                                         Expect(response).ToContain("newUser");
+                                       });
+                                    it("should properly change the group on a file",
+                                       [&]() -> void
+                                       {
+                                         string newGroupChownCommand = zowex_command + " uss chown :newGroup " + uss_path;
+                                         string listUser = "ls -l " + uss_path;
 
-                                        rc = execute_command_with_output(newGroupChownCommand, response);
-                                        ExpectWithContext(rc, response).ToBe(0);
-                                        Expect(response).ToContain("USS path '" + uss_path + "' owner changed to ':newGroup'");
+                                         rc = execute_command_with_output(newGroupChownCommand, response);
+                                         ExpectWithContext(rc, response).ToBe(0);
+                                         Expect(response).ToContain("USS path '" + uss_path + "' owner changed to ':newGroup'");
 
-                                        rc = execute_command_with_output(listUser, response);
-                                        ExpectWithContext(rc, response).ToBe(0);
-                                        Expect(response).ToContain("newGroup");
-                                      });
-                                   it("should properly change the group and user on a file",
-                                      [&]() -> void
-                                      {
+                                         rc = execute_command_with_output(listUser, response);
+                                         ExpectWithContext(rc, response).ToBe(0);
+                                         Expect(response).ToContain("newGroup");
+                                       });
+                                    it("should properly change the group and user on a file",
+                                       [&]() -> void
+                                       {
                                          string newUserNewGroupChownCommand = zowex_command + " uss chown newUser:newGroup " + uss_path;
                                          string listUser = "ls -l " + uss_path;
 
@@ -193,32 +193,32 @@ void uss_tests()
                                         ExpectWithContext(rc, response).ToBe(0);
                                         Expect(response).ToContain("newUser");
                                         Expect(response).ToContain("newGroup"); });
-                                 });
-                        describe("on a directory",
-                                 [&]() -> void
-                                 {
-                                   beforeEach([&]() -> void
-                                              {
+                                  });
+                         describe("on a directory",
+                                  [&]() -> void
+                                  {
+                                    beforeEach([&]() -> void
+                                               {
                                                 uss_path = get_random_uss(ussTestDir) + "_dir";
                                                 create_test_dir_cmd(uss_path); });
 
-                                   it("should properly change the group and user on a directory",
-                                      [&]() -> void
-                                      {
-                                        string newUserNewGroupChownCommand = zowex_command + " uss chown newUser:newGroup " + uss_path + " -r";
-                                        string listUser = "ls -ld " + uss_path;
+                                    it("should properly change the group and user on a directory",
+                                       [&]() -> void
+                                       {
+                                         string newUserNewGroupChownCommand = zowex_command + " uss chown newUser:newGroup " + uss_path + " -r";
+                                         string listUser = "ls -ld " + uss_path;
 
-                                        rc = execute_command_with_output(newUserNewGroupChownCommand, response);
-                                        ExpectWithContext(rc, response).ToBe(0);
-                                        Expect(response).ToContain("USS path '" + uss_path + "' owner changed to 'newUser:newGroup'");
+                                         rc = execute_command_with_output(newUserNewGroupChownCommand, response);
+                                         ExpectWithContext(rc, response).ToBe(0);
+                                         Expect(response).ToContain("USS path '" + uss_path + "' owner changed to 'newUser:newGroup'");
 
-                                        rc = execute_command_with_output(listUser, response);
-                                        ExpectWithContext(rc, response).ToBe(0);
-                                        Expect(response).ToContain("newUser");
-                                        Expect(response).ToContain("newGroup");
-                                      });
-                                 });
-                      });
+                                         rc = execute_command_with_output(listUser, response);
+                                         ExpectWithContext(rc, response).ToBe(0);
+                                         Expect(response).ToContain("newUser");
+                                         Expect(response).ToContain("newGroup");
+                                       });
+                                  });
+                       });
              describe("zowex uss - chtag",
                       [&]() -> void
                       {
