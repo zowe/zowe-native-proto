@@ -9,9 +9,10 @@
  *
  */
 
+import { ImperativeError } from "@zowe/imperative";
 import { type ZoweExplorerApiType, ZoweVsCodeExtension } from "@zowe/zowe-explorer-api";
 import * as vscode from "vscode";
-import { SshErrors } from "zowe-native-proto-sdk";
+import { RpcErrorCode, SshErrors } from "zowe-native-proto-sdk";
 
 /**
  * Enhanced error handling utility for SSH operations using Zowe Explorer's ErrorCorrelator
@@ -75,12 +76,42 @@ export class SshErrorHandler {
     }
 
     /**
+     * Checks if an error is a timeout error
+     * @param error The error to check
+     * @returns True if the error is a timeout error
+     */
+    public isTimeoutError(error: Error | string): boolean {
+        if (error instanceof ImperativeError) {
+            const errorCode = error.errorCode;
+            if (errorCode === "ETIMEDOUT" || Number(errorCode) === RpcErrorCode.REQUEST_TIMEOUT) {
+                return true;
+            }
+        }
+
+        // Fall back to message pattern matching if error code checks aren't satisfied
+        const errorMessage = error instanceof Error ? error.message : error;
+        const timeoutMatches = SshErrors.REQUEST_TIMEOUT.matches;
+
+        return timeoutMatches.some((match) => {
+            if (typeof match === "string") {
+                return errorMessage.includes(match);
+            }
+            return match.test(errorMessage);
+        });
+    }
+
+    /**
      * Checks if an error is a fatal SSH error that should terminate the connection
      * @param error The error to check
      * @returns True if the error is fatal
      */
     public isFatalError(error: Error | string): boolean {
         const errorMessage = error instanceof Error ? error.message : error;
+
+        // Timeout errors are not fatal - they should allow retry
+        if (this.isTimeoutError(error)) {
+            return false;
+        }
 
         // Check for fatal OpenSSH error codes
         const fatalErrorCodes = Object.keys(SshErrors);

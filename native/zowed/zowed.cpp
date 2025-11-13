@@ -40,10 +40,10 @@ ZJSON_DERIVE(StatusMessage, status, message, data);
 class ZowedServer
 {
 private:
-  IoserverOptions options;
+  ZowedOptions options;
   string exec_dir;
   std::unique_ptr<WorkerPool> worker_pool;
-  std::atomic<bool> shutdown_requested;
+  std::atomic<bool> shutdown_requested{false};
   std::mutex shutdown_mutex;
   std::once_flag shutdown_flag;
 
@@ -140,7 +140,7 @@ private:
             while (!shutdown_requested) {
                 if (worker_pool) {
                     int32_t count = worker_pool->get_available_workers_count();
-                    LOG_DEBUG("Available workers: %d/%d", count, options.num_workers);
+                    LOG_DEBUG("Available workers: %d/%lld", count, options.num_workers);
                     std::this_thread::sleep_for(std::chrono::milliseconds(500));
                     if (count == options.num_workers) {
                         break;
@@ -152,18 +152,15 @@ private:
   }
 
 public:
-  ZowedServer() : shutdown_requested(false)
-  {
-  }
-
-  void run(const IoserverOptions &opts, const string &exec_dir_param)
+  ZowedServer() = default;
+  void run(const ZowedOptions &opts, const string &exec_dir_param)
   {
     options = opts;
     this->exec_dir = exec_dir_param;
 
     // Initialize logger with executable directory
     zowed::Logger::init_logger(exec_dir.c_str(), options.verbose);
-    LOG_INFO("Starting zowed with %d workers (verbose=%s)", options.num_workers, options.verbose ? "true" : "false");
+    LOG_INFO("Starting zowed with %lld workers and %lld seconds until request timeout (verbose=%s)", options.num_workers, options.request_timeout, options.verbose ? "true" : "false");
 
     // Set up signal handling
     setup_signal_handlers();
@@ -176,7 +173,7 @@ public:
     register_all_commands(dispatcher);
 
     // Create worker pool
-    worker_pool.reset(new WorkerPool(options.num_workers));
+    worker_pool.reset(new WorkerPool(options.num_workers, std::chrono::seconds(options.request_timeout)));
 
     // Ensure worker pool teardown on normal exit
     std::atexit([]()
@@ -210,7 +207,7 @@ public:
 };
 
 // Library implementation functions
-extern "C" int run_zowed_server(const IoserverOptions &options, const char *exec_dir)
+extern "C" int run_zowed_server(const ZowedOptions &options, const char *exec_dir)
 {
   try
   {

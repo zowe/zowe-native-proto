@@ -35,6 +35,12 @@ export interface ClientOptions {
     numWorkers?: number;
 
     /**
+     * Request timeout in seconds before a worker is restarted
+     * (default: 60)
+     */
+    requestTimeout?: number;
+
+    /**
      * Number of seconds to wait for a response
      * (default: 60)
      */

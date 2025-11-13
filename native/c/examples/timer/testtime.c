@@ -30,9 +30,9 @@ int main()
 
   PSW psw = {0};
   get_psw(&psw);
-  if (psw.ba)
+  if (psw.data.bits.ba)
     zwto_debug("@TEST ba mode");
-  if (psw.ea)
+  if (psw.data.bits.ea)
     zwto_debug("@TEST ea mode");
 
   zwto_debug("@TEST main");
