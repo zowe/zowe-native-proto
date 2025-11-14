@@ -18,6 +18,8 @@
 #define ZUT_RTNCD_SEARCH_SUCCESS 1
 #define ZUT_RTNCD_SEARCH_WARNING 6
 
+#define ZUT_RTNCD_SERVICE_FAILURE -2
+
 #if (defined(__IBMCPP__) || defined(__IBMC__))
 #if defined(__clang__)
 #pragma pack(1)

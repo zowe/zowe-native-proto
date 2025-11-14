@@ -26,6 +26,10 @@
 .*         #KBs: size of DSA in KBs (default 1024)
 .*         subpool: subpool of DSA (default 132)
 .*
+.*       LOC24=[NO,YES]
+.*         NO:  (default) use 31-bit LOC
+.*         YES: use 24-bit LOC
+.*
 .*       SAVE=[SA,BAKR]
 .*         SA: (default) save input regs
 .*         BAKR: save registers on linkage stack
@@ -46,13 +50,14 @@
 .*    &CCN_CSECT
 .*    CCN_IASM_MACRO
 .*
-&NAME    ZWEPROLG &NEWDSA=,&SAVE=SA,&SAM64=NO
+&NAME    ZWEPROLG &NEWDSA=,&SAVE=SA,&SAM64=NO,&LOC24=NO
 .*
          COPY  CCNZGBL
          GBLA  &ZG_DSASZ
          GBLA  &ZG_DSASP
          GBLB  &ZG_SAVE
          GBLB  &ZG_BAKR
+         GBLB  &ZG_LOC24
          GBLB  &ZG_SAM64
 .*
 &MACNM   SETC  '&SYSMAC(0)'
@@ -61,6 +66,7 @@
 &ZG_DSASP SETA  132
 &ZG_SAVE  SETB  0
 &ZG_BAKR  SETB  0
+&ZG_LOC24 SETB  0
 &ZG_SAM64 SETB  0
 &IS_64    SETB  (&CCN_LP64 OR '&SAM64' EQ 'YES')
 &IS_AR    SETB  ('&CCN_ASCM' EQ 'AR')
@@ -110,8 +116,14 @@
 .*
 .*       Set SAM64=YES if requested
 .*
-         AIF   ('&SAM64' NE 'YES').CONT200
+         AIF   ('&SAM64' NE 'YES').CONT150
 &ZG_SAM64 SETB  1
+.*
+.CONT150 ANOP ,
+         AIF   ('&LOC24' NE 'NO' AND '&LOC24' NE 'YES').ERR050
+         AIF   ('&LOC24' EQ 'NO').CONT200
+&ZG_LOC24 SETB  1
+         AGO   .CONT200
 .*
 .CONT200 ANOP ,
          AIF   ('&NEWDSA(1)' EQ 'YES').CONT240
@@ -171,12 +183,39 @@
          &LHIx 3,&KB#            Number of KBs
          &MHIx 3,1024            Multiply by 1024
 *
+         AIF   (&ZG_LOC24).CONT440
+*        STORAGE OBTAIN,                                               +
+               LENGTH=(3),                                             +
+               CALLRKY=YES,                                            +
+               SP=&ZG_DSASP.,                                          +
+               LOC=(31,64),                                            +
+               BNDRY=PAGE,                                             +
+               COND=NO
          STORAGE OBTAIN,                                               +
                LENGTH=(3),                                             +
                CALLRKY=YES,                                            +
                SP=&ZG_DSASP.,                                          +
+               LOC=(31,64),                                            +
                BNDRY=PAGE,                                             +
                COND=NO
+         AGO   .CONT480
+.*
+.CONT440 ANOP
+*        STORAGE OBTAIN,                                               +
+               LENGTH=(3),                                             +
+               CALLRKY=YES,                                            +
+               SP=&ZG_DSASP.,                                          +
+               LOC=(24,64),                                            +
+               BNDRY=PAGE,                                             +
+               COND=NO
+         STORAGE OBTAIN,                                               +
+               LENGTH=(3),                                             +
+               CALLRKY=YES,                                            +
+               SP=&ZG_DSASP.,                                          +
+               LOC=(24,64),                                            +
+               BNDRY=PAGE,                                             +
+               COND=NO
+.CONT480 ANOP
 .*
          &LRxx 2,1               -> New storage save
 .*
@@ -222,6 +261,9 @@
          AGO   .EXIT
 .ERR040  ANOP  ,
          MNOTE 8,'&MACNM. - SAM64=YES may only be used with SAVE=BAKR'
+         AGO   .EXIT
+.ERR050  ANOP  ,
+         MNOTE 8,'&MACNM. - LOC24= must be NO|YES'
          AGO   .EXIT
 .*
 .* Common exit

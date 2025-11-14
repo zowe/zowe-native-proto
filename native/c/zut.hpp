@@ -46,6 +46,13 @@ int zut_search(std::string input);
 int zut_run(std::string input);
 
 /**
+ * @brief Run a specified command or operation in 24-bit mode
+ * @param input The command string to execute
+ * @return Return code (0 for success, non-zero for error)
+ */
+int zut_run24(std::string input);
+
+/**
  * @brief Substitute a symbol in a string
  * @param symbol The symbol to substitute
  * @param result Reference to a string where the result will be stored
@@ -225,21 +232,22 @@ bool zut_string_compare_c(const std::string &a, const std::string &b);
 /**
  * @brief Loop through a list of dynamic allocation commands and call BPXWDYN for each one
  * @param list List of dynamic allocation commands
- * @param err_stream If provided, error details are sent to the given output stream
  * @return Return code (0 for success, non-zero for error)
  */
-int zut_loop_dynalloc(std::vector<std::string> &list, std::ostream *err_stream = nullptr);
+int zut_loop_dynalloc(ZDIAG &diag, std::vector<std::string> &list);
 
 /**
  * @brief Free a list of dynamic allocation commands
  * @param list List of dynamic allocation commands
- * @param err_stream If provided, error details are sent to the given output stream
+ * @param diag Reference to diagnostic information structure
  * @return Return code (0 for success, non-zero for error)
  */
-int zut_free_dynalloc_dds(std::vector<std::string> &list, std::ostream *err_stream = nullptr);
+int zut_free_dynalloc_dds(ZDIAG &diag, std::vector<std::string> &list);
 
 /**
  * @brief List a parmlib
+ * @param diag Reference to diagnostic information structure
+ * @param parmlibs Reference to vector of parmlib names
  * @return Return code (0 for success, non-zero for error)
  */
 int zut_list_parmlib(ZDIAG &diag, std::vector<std::string> &parmlibs);

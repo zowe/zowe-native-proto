@@ -1,0 +1,27 @@
+{
+  "configurations": [
+    {
+      "name": "Mac",
+      "includePath": [
+        "${workspaceFolder}/**",
+        "${workspaceFolder}/native/c",
+        "${workspaceFolder}/native/c/chdsect",
+        "${workspaceFolder}/native/asmmac",
+        "/usr/include/metal"
+      ],
+      "defines": [
+        "__IBM_METAL__"
+      ],
+      "macFrameworkPath": [],
+      "compilerPath": "/usr/bin/clang",
+      "cStandard": "c99",
+      "cppStandard": "c++17",
+      "intelliSenseMode": "macos-clang-x64",
+      "compilerArgs": [
+        "-Wc,lp64,langlvl(extended),xplink,exportall",
+        "-fms-extensions"
+      ]
+    }
+  ],
+  "version": 4
+}
