@@ -19,10 +19,28 @@
 struct Dataset {};
 ZJSON_SCHEMA(Dataset,
     FIELD_REQUIRED(name, STRING),
+    FIELD_OPTIONAL(alloc, NUMBER),
+    FIELD_OPTIONAL(allocx, NUMBER),
+    FIELD_OPTIONAL(blksize, NUMBER),
+    FIELD_OPTIONAL(cdate, STRING),
+    FIELD_OPTIONAL(dataclass, STRING),
+    FIELD_OPTIONAL(devtype, STRING),
+    FIELD_OPTIONAL(dsntype, STRING),
     FIELD_OPTIONAL(dsorg, STRING),
-    FIELD_OPTIONAL(volser, STRING),
-    FIELD_OPTIONAL(migr, BOOL),
-    FIELD_OPTIONAL(recfm, STRING)
+    FIELD_OPTIONAL(edate, STRING),
+    FIELD_OPTIONAL(encrypted, BOOL),
+    FIELD_OPTIONAL(lrecl, NUMBER),
+    FIELD_OPTIONAL(mgmtclass, STRING),
+    FIELD_OPTIONAL(migrated, BOOL),
+    FIELD_OPTIONAL(primary, NUMBER),
+    FIELD_OPTIONAL(rdate, STRING),
+    FIELD_OPTIONAL(recfm, STRING),
+    FIELD_OPTIONAL(secondary, NUMBER),
+    FIELD_OPTIONAL(spacu, STRING),
+    FIELD_OPTIONAL(storclass, STRING),
+    FIELD_OPTIONAL(usedp, NUMBER),
+    FIELD_OPTIONAL(usedx, NUMBER),
+    FIELD_OPTIONAL(volser, STRING)
 );
 
 struct DsMember {};

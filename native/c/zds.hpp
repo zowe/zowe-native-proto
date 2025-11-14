@@ -27,10 +27,30 @@ struct ZDSMem
 struct ZDSEntry
 {
   std::string name;
+  long long alloc;
+  int allocx;
+  int blksize;
+  std::string cdate;
+  std::string dataclass;
+  uint16_t devtype;
   std::string dsorg;
-  std::string volser;
+  std::string dsntype;
+  std::string edate;
+  bool encrypted;
+  int lrecl;
+  std::string mgmtclass;
+  bool migrated;
+  long long primary;
+  std::string rdate;
   std::string recfm;
-  bool migr;
+  long long secondary;
+  std::string spacu;
+  std::string storclass;
+  int usedp;
+  int usedx;
+  std::string volser;
+  // ISPF shows the following fields, but we omit them since they require reading PDS directory (too slow)
+  // Maximum dir. blocks, Used dir. blocks, Number of members
 };
 
 typedef struct
@@ -108,7 +128,7 @@ int zds_delete_dsn(ZDS *zds, std::string dsn);
  */
 int zds_list_members(ZDS *zds, std::string dsn, std::vector<ZDSMem> &members);
 
-int zds_list_data_sets(ZDS *zds, std::string dsn, std::vector<ZDSEntry> &attributes);
+int zds_list_data_sets(ZDS *zds, std::string dsn, std::vector<ZDSEntry> &datasets, bool show_attributes = false);
 #ifdef SWIG
 }
 #endif
