@@ -1257,6 +1257,7 @@ void load_used_attrs_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
       alloc_value = entry.alloc / base_bytes_per_track;
     }
 
+    // Calculate used percentage and round down to nearest int to match z/OSMF
     double percentage = (100.0 * used_value) / alloc_value;
     entry.usedp = (int)percentage;
 

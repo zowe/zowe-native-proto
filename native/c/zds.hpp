@@ -27,12 +27,12 @@ struct ZDSMem
 struct ZDSEntry
 {
   std::string name;
-  int alloc;
+  long long alloc;
   int allocx;
   int blksize;
   std::string cdate;
   std::string dataclass;
-  int devtype;
+  uint32_t devtype;
   std::string dsorg;
   std::string dsntype;
   std::string edate;
@@ -40,19 +40,17 @@ struct ZDSEntry
   int lrecl;
   std::string mgmtclass;
   bool migrated;
-  int primary;
+  long long primary;
   std::string rdate;
   std::string recfm;
-  int secondary;
+  long long secondary;
   std::string spacu;
   std::string storclass;
   int usedp;
   int usedx;
   std::string volser;
   // ISPF shows the following fields, but we omit them since they require reading PDS directory (too slow)
-  // int maxdb;
-  // int members;
-  // int useddb;
+  // Maximum dir. blocks, Used dir. blocks, Number of members
 };
 
 typedef struct
