@@ -140,6 +140,62 @@ int create_with_attributes(InvocationContext &context)
   return process_data_set_create_result(context, &zds, rc, dsn, response);
 }
 
+const ast::Node build_ds_object(const ZDSEntry &entry, bool attributes)
+{
+  const auto obj_entry = obj();
+  string trimmed_name = entry.name;
+  zut_rtrim(trimmed_name);
+  obj_entry->set("name", str(trimmed_name));
+
+  if (!attributes)
+    return obj_entry;
+
+  if (entry.alloc != -1)
+    obj_entry->set("alloc", i64(entry.alloc));
+  if (entry.allocx != -1)
+    obj_entry->set("allocx", i64(entry.allocx));
+  if (entry.blksize != -1)
+    obj_entry->set("blksize", i64(entry.blksize));
+  if (!entry.cdate.empty())
+    obj_entry->set("cdate", str(entry.cdate));
+  if (!entry.dataclass.empty())
+    obj_entry->set("dataclass", str(entry.dataclass));
+  if (entry.devtype != 0)
+    obj_entry->set("devtype", str(zut_int_to_string(entry.devtype, true)));
+  if (!entry.dsntype.empty())
+    obj_entry->set("dsntype", str(entry.dsntype));
+  if (!entry.dsorg.empty())
+    obj_entry->set("dsorg", str(entry.dsorg));
+  if (!entry.edate.empty())
+    obj_entry->set("edate", str(entry.edate));
+  if (entry.alloc != -1)
+    obj_entry->set("encrypted", boolean(entry.encrypted));
+  if (entry.lrecl != -1)
+    obj_entry->set("lrecl", i64(entry.lrecl));
+  if (!entry.mgmtclass.empty())
+    obj_entry->set("mgmtclass", str(entry.mgmtclass));
+  obj_entry->set("migrated", boolean(entry.migrated));
+  if (entry.primary != -1)
+    obj_entry->set("primary", i64(entry.primary));
+  if (!entry.rdate.empty())
+    obj_entry->set("rdate", str(entry.rdate));
+  if (!entry.recfm.empty())
+    obj_entry->set("recfm", str(entry.recfm));
+  if (entry.secondary != -1)
+    obj_entry->set("secondary", i64(entry.secondary));
+  if (!entry.spacu.empty())
+    obj_entry->set("spacu", str(entry.spacu));
+  if (!entry.storclass.empty())
+    obj_entry->set("storclass", str(entry.storclass));
+  if (entry.usedp != -1)
+    obj_entry->set("usedp", i64(entry.usedp));
+  if (entry.usedx != -1)
+    obj_entry->set("usedx", i64(entry.usedx));
+  obj_entry->set("volser", str(entry.volser));
+
+  return obj_entry;
+}
+
 int handle_data_set_create_fb(InvocationContext &context)
 {
   int rc = 0;
@@ -416,55 +472,7 @@ int handle_data_set_list(InvocationContext &context)
         }
       }
 
-      const auto entry = obj();
-      string trimmed_name = it->name;
-      zut_rtrim(trimmed_name);
-      entry->set("name", str(trimmed_name));
-      if (attributes)
-      {
-        if (it->alloc != -1)
-          entry->set("alloc", i64(it->alloc));
-        if (it->allocx != -1)
-          entry->set("allocx", i64(it->allocx));
-        if (it->blksize != -1)
-          entry->set("blksize", i64(it->blksize));
-        if (!it->cdate.empty())
-          entry->set("cdate", str(it->cdate));
-        if (!it->dataclass.empty())
-          entry->set("dataclass", str(it->dataclass));
-        if (it->devtype != 0)
-          entry->set("devtype", str(zut_int_to_string(it->devtype, true)));
-        if (!it->dsntype.empty())
-          entry->set("dsntype", str(it->dsntype));
-        if (!it->dsorg.empty())
-          entry->set("dsorg", str(it->dsorg));
-        if (!it->edate.empty())
-          entry->set("edate", str(it->edate));
-        if (it->alloc != -1)
-          entry->set("encrypted", boolean(it->encrypted));
-        if (it->lrecl != -1)
-          entry->set("lrecl", i64(it->lrecl));
-        if (!it->mgmtclass.empty())
-          entry->set("mgmtclass", str(it->mgmtclass));
-        entry->set("migrated", boolean(it->migrated));
-        if (it->primary != -1)
-          entry->set("primary", i64(it->primary));
-        if (!it->rdate.empty())
-          entry->set("rdate", str(it->rdate));
-        if (!it->recfm.empty())
-          entry->set("recfm", str(it->recfm));
-        if (it->secondary != -1)
-          entry->set("secondary", i64(it->secondary));
-        if (!it->spacu.empty())
-          entry->set("spacu", str(it->spacu));
-        if (!it->storclass.empty())
-          entry->set("storclass", str(it->storclass));
-        if (it->usedp != -1)
-          entry->set("usedp", i64(it->usedp));
-        if (it->usedx != -1)
-          entry->set("usedx", i64(it->usedx));
-        entry->set("volser", str(it->volser));
-      }
+      const auto entry = build_ds_object(*it, attributes);
       entries_array->push(entry);
     }
 
