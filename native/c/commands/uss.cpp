@@ -29,12 +29,9 @@ int handle_uss_create_file(InvocationContext &context)
   int rc = 0;
   string file_path = context.get<std::string>("file-path", "");
 
-  long long mode = context.get<long long>("mode", 0);
-  if (context.get<std::string>("mode", "").empty())
-  {
-    mode = 644;
-  }
-  else if (mode == 0 && context.get<std::string>("mode", "") != "0")
+  long long mode = context.get<long long>("mode", 644);
+
+  if (mode == 0)
   {
     context.error_stream() << "Error: invalid mode provided.\nExamples of valid modes: 777, 0644" << endl;
     return RTNCD_FAILURE;
@@ -74,12 +71,9 @@ int handle_uss_create_dir(InvocationContext &context)
   int rc = 0;
   string file_path = context.get<std::string>("file-path", "");
 
-  long long mode = context.get<long long>("mode", 0);
-  if (context.get<std::string>("mode", "").empty())
-  {
-    mode = 755;
-  }
-  else if (mode == 0 && context.get<std::string>("mode", "") != "0")
+  long long mode = context.get<long long>("mode", 755);
+
+  if (mode == 0)
   {
     context.error_stream() << "Error: invalid mode provided.\nExamples of valid modes: 777, 0644" << endl;
     return RTNCD_FAILURE;
