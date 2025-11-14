@@ -906,6 +906,7 @@ int zusf_create_uss_file_or_dir(ZUSF *zusf, const string &file, mode_t mode, boo
     {
       zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to create directory '%s', errno: %d", file.c_str(), errno);
     }
+    chmod(file.c_str(), mode);
     return rc;
   }
   else
@@ -1694,16 +1695,16 @@ int zusf_delete_uss_item(ZUSF *zusf, string file, bool recursive)
   return 0;
 }
 
-const char *zusf_get_owner_from_uid(uid_t uid)
+string zusf_get_owner_from_uid(uid_t uid)
 {
   auto *meta = getpwuid(uid);
-  return meta ? meta->pw_name : nullptr;
+  return meta && meta->pw_name ? meta->pw_name : string();
 }
 
-const char *zusf_get_group_from_gid(gid_t gid)
+string zusf_get_group_from_gid(gid_t gid)
 {
   auto *meta = getgrgid(gid);
-  return meta ? meta->gr_name : nullptr;
+  return meta && meta->gr_name ? meta->gr_name : string();
 }
 
 short zusf_get_id_from_user_or_group(const string &user_or_group, bool is_user)
@@ -1871,11 +1872,16 @@ int zusf_chown_uss_file_or_dir(ZUSF *zusf, const std::string &file, const std::s
       if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0)
       {
         const string child_path = zusf_join_path(file, string((const char *)entry->d_name));
-        struct stat file_stats;
-        stat(child_path.c_str(), &file_stats);
-
         struct stat child_stats;
         if (stat(child_path.c_str(), &child_stats) == -1)
+        {
+          closedir(dir);
+          zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Could not stat child path '%s'", child_path.c_str());
+          return RTNCD_FAILURE;
+        }
+
+        const auto rc = zusf_chown_uss_file_or_dir(zusf, child_path, owner, S_ISDIR(child_stats.st_mode));
+        if (rc != 0)
         {
           closedir(dir);
           return rc;

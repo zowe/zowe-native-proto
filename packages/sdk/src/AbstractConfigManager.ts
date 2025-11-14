@@ -194,7 +194,6 @@ export abstract class AbstractConfigManager {
             this.selectedProfile.privateKey = this.selectedProfile.keyPassphrase = undefined;
             this.selectedProfile = { ...this.selectedProfile, ...this.validationResult };
         }
-
         // If no private key or password is on the profile then there is no possible validation combination, thus return
         if (!this.selectedProfile?.privateKey && !this.selectedProfile?.password) {
             this.showMessage("SSH setup cancelled.", MESSAGE_TYPE.WARNING);
@@ -387,15 +386,14 @@ export abstract class AbstractConfigManager {
             await this.attemptConnection({ ...newConfig, ...configModifications });
         } catch (err) {
             const errorMessage = `${err}`;
-            if (
-                newConfig.privateKey &&
-                !newConfig.password &&
-                errorMessage.includes("All configured authentication methods failed")
-            ) {
+            if (newConfig.privateKey && errorMessage.includes("All configured authentication methods failed")) {
                 if (!(await this.handleInvalidPrivateKey(newConfig))) {
                     return undefined;
                 }
                 newConfig.privateKey = undefined;
+                if (newConfig.password) {
+                    return await this.validateConfig(newConfig, askForPassword);
+                }
             }
 
             if (errorMessage.includes("Invalid username")) {
@@ -480,9 +478,9 @@ export abstract class AbstractConfigManager {
                 host: config.hostname,
                 port: config.port || 22,
                 username: config.user,
-                password: config.password,
+                password: config.privateKey ? undefined : config.password,
                 privateKey: config.privateKey ? readFileSync(path.normalize(config.privateKey), "utf8") : undefined,
-                passphrase: config.keyPassphrase,
+                passphrase: config.privateKey ? config.keyPassphrase : undefined,
                 readyTimeout: config.handshakeTimeout || this.getClientSetting("handshakeTimeout") || 30000,
             };
 
@@ -831,6 +829,12 @@ export abstract class AbstractConfigManager {
                         }
                     },
                 });
+                if (shouldContinue) {
+                    const cachedProfile = this.sshProfiles.find((prof) => prof.name === config.name);
+                    if (cachedProfile) {
+                        cachedProfile.profile.privateKey = undefined;
+                    }
+                }
                 return shouldContinue;
             }
         } catch (error) {

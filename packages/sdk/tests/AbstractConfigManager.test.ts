@@ -22,8 +22,8 @@ import { ZoweVsCodeExtension } from "@zowe/zowe-explorer-api";
 import { type Config, NodeSSH } from "node-ssh";
 import type { ConnectConfig } from "ssh2";
 import type { MockInstance } from "vitest";
-import type { IDisposable } from "../lib";
-import { AbstractConfigManager, type ProgressCallback } from "../src/AbstractConfigManager";
+import type { IDisposable, ProgressCallback } from "../lib";
+import { AbstractConfigManager } from "../src/AbstractConfigManager";
 import { ConfigFileUtils } from "../src/ConfigFileUtils";
 import { type inputBoxOpts, MESSAGE_TYPE, type qpItem, type qpOpts } from "../src/doc";
 import { type ISshConfigExt, SshConfigUtils } from "../src/SshConfigUtils";
@@ -938,6 +938,32 @@ describe("AbstractConfigManager", async () => {
             );
 
             expect(result).toBeUndefined();
+        });
+        it("should remove privateKey and retry using password when All configured authentication methods failed", async () => {
+            const attemptConnectionSpy = vi
+                .spyOn(testManager as any, "attemptConnection")
+                .mockRejectedValueOnce(new Error("All configured authentication methods failed"))
+                .mockResolvedValueOnce(true);
+            const handleInvalidPrivateKeySpy = vi
+                .spyOn(testManager as any, "handleInvalidPrivateKey")
+                .mockResolvedValue(true);
+
+            const config = {
+                name: "ssh1",
+                hostname: "lpar1.com",
+                port: 22,
+                user: "user1",
+                privateKey: "/path/to/key",
+                password: "test",
+            };
+
+            const result = await (testManager as any).validateConfig(config, true);
+            expect(config.privateKey).toBeUndefined();
+
+            expect(result).toStrictEqual({});
+
+            expect(handleInvalidPrivateKeySpy).toHaveBeenCalledTimes(1);
+            expect(attemptConnectionSpy).toHaveBeenCalledTimes(2);
         });
     });
     describe("attemptConnection", async () => {
