@@ -9,35 +9,13 @@
  *
  */
 
-#include <stdexcept>
 #include "ztest.hpp"
 #include "ztype.h"
 #include "zowex.test.hpp"
+#include "zutils.hpp"
 
 using namespace std;
 using namespace ztst;
-
-// NOTE(Kelosky): consolidate this into ztest.hpp if additional use is found
-int execute_command_with_output(const std::string &command, std::string &output)
-{
-  output = "";
-  // TestLog("Running: " + command);
-
-  FILE *pipe = popen((command + " 2>&1").c_str(), "r");
-  if (!pipe)
-  {
-    throw std::runtime_error("Failed to open pipe");
-  }
-
-  char buffer[256];
-  while (fgets(buffer, sizeof(buffer), pipe) != nullptr)
-  {
-    output += buffer;
-  }
-
-  int exit_code = pclose(pipe);
-  return WEXITSTATUS(exit_code);
-}
 
 const string zowex_command = "./../build-out/zowex";
 

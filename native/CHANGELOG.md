@@ -6,6 +6,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
+- `c`: Implemented system tests for the `zowex uss` command group. [#626](https://github.com/zowe/zowe-native-proto/pull/626)
 - `c`: Fixed issue where `zowex uss chown` (and `zusf_chown_uss_file_or_dir`) silently succeeded with exit code `0` when a non-existent user or group was supplied. The command now validates `user:group` input and returns a non-zero exit code with a clear error message when invalid. [#565](https://github.com/zowe/zowe-native-proto/pull/565)
 - `c`: Fixed issue where uploading changes to a data set did not always flush to disk. [#643](https://github.com/zowe/zowe-native-proto/issues/643)
 - `c`: Updated commands that read data from stdin to read literal text rather than parsing hex string. [#645](https://github.com/zowe/zowe-native-proto/pull/645)
@@ -19,6 +20,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - `zowed`: Fixed issue where opening a file larger than 10 MB could fail with "Invalid JSON" error. [#656](https://github.com/zowe/zowe-native-proto/issues/656)
 - `c`: Fix PSW alignment issue. [#559](https://github.com/zowe/zowe-native-proto/issues/559)
 - When listing data sets with attributes, a comprehensive set is now retrieved that is similar to what ISPF displays. [#629](https://github.com/zowe/zowe-native-proto/issues/629)
+
 
 ## `0.2.0`
 
