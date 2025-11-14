@@ -800,7 +800,7 @@ void load_date_from_dscb(const char *date_in, string *date_out, bool is_expirati
 }
 
 // Map UCB device type last byte to device type number
-static inline int ucb_to_devtype(uint8_t ucb_byte)
+static inline uint16_t ucb_to_devtype(uint8_t ucb_byte)
 {
   switch (ucb_byte)
   {
@@ -849,7 +849,7 @@ static inline uint32_t parse_cchh_cylinder(const char *cchh)
 }
 
 // Get tracks per cylinder for a given device type
-static inline int get_tracks_per_cylinder(const int &devtype)
+static inline int get_tracks_per_cylinder(const uint16_t &devtype)
 {
   switch (devtype)
   {
@@ -879,7 +879,7 @@ static inline int get_tracks_per_cylinder(const int &devtype)
 }
 
 // Get bytes per track for a given device type
-static inline int get_bytes_per_track(const int &devtype)
+static inline int get_bytes_per_track(const uint16_t &devtype)
 {
   switch (devtype)
   {
@@ -912,7 +912,7 @@ static inline int get_bytes_per_track(const int &devtype)
 }
 
 // Calculate tracks in an extent given lower and upper CCHH values
-static inline int calculate_extent_tracks(const char *extent, const int &devtype)
+static inline int calculate_extent_tracks(const char *extent, const uint16_t &devtype)
 {
   uint32_t lower_cyl = parse_cchh_cylinder(extent + 2);
   uint16_t lower_head = static_cast<unsigned char>(extent[5]) & 0x0F;
@@ -1030,11 +1030,11 @@ void load_primary_secondary_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
     // Check if value is compacted
     if (scxtf & 0x08) // DS1SCCP1 - compacted by 256
     {
-      entry.secondary = scxtv * 256;
+      entry.secondary = scxtv * 256LL;
     }
     else if (scxtf & 0x04) // DS1SCCP2 - compacted by 65,536
     {
-      entry.secondary = scxtv * 65536;
+      entry.secondary = scxtv * 65536LL;
     }
     else
     {
@@ -1145,7 +1145,7 @@ void load_alloc_attrs_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
     int blocks_per_track = bytes_per_track / entry.blksize;
     if (blocks_per_track <= 0)
       blocks_per_track = 1;
-    int base_bytes_per_track = blocks_per_track * entry.blksize;
+    long long base_bytes_per_track = blocks_per_track * entry.blksize;
 
     if (entry.alloc > 0)
       entry.alloc *= base_bytes_per_track;
@@ -1226,7 +1226,7 @@ void load_used_attrs_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
       cumulative_tracks += tracks_in_extent;
 
       // Count this extent as used if it contains data up to the last used track
-      if (last_used_track < cumulative_tracks)
+      if (last_used_track <= cumulative_tracks)
       {
         entry.usedx = i + 1;
         break;
@@ -1242,7 +1242,7 @@ void load_used_attrs_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
   if (entry.usedp > 0 && entry.alloc > 0)
   {
     int used_value = entry.usedp;
-    int alloc_value = entry.alloc;
+    long long alloc_value = entry.alloc;
 
     // For BYTES space unit, convert to track-based calculation for percentage
     if (entry.spacu == "BYTES" && entry.blksize > 0)
@@ -1251,7 +1251,7 @@ void load_used_attrs_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
       int blocks_per_track = bytes_per_track / entry.blksize;
       if (blocks_per_track <= 0)
         blocks_per_track = 1;
-      int base_bytes_per_track = blocks_per_track * entry.blksize;
+      long long base_bytes_per_track = blocks_per_track * entry.blksize;
 
       // Convert alloc from bytes to tracks for percentage calculation
       alloc_value = entry.alloc / base_bytes_per_track;

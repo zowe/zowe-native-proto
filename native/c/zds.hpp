@@ -32,7 +32,7 @@ struct ZDSEntry
   int blksize;
   std::string cdate;
   std::string dataclass;
-  uint32_t devtype;
+  uint16_t devtype;
   std::string dsorg;
   std::string dsntype;
   std::string edate;
