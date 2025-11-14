@@ -170,6 +170,7 @@ std::string zut_format_as_csv(std::vector<std::string> &fields);
  */
 std::string zut_int_to_string(int value, bool is_hex = false);
 std::string zut_int_to_string(unsigned int value, bool is_hex = false);
+std::string zut_int_to_string(long value, bool is_hex = false);
 std::string zut_int_to_string(long long value, bool is_hex = false);
 
 /**

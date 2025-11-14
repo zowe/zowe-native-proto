@@ -545,6 +545,11 @@ string zut_int_to_string(unsigned int value, bool is_hex)
   return int_to_string_impl(value, is_hex, "%u", "%X");
 }
 
+string zut_int_to_string(long value, bool is_hex)
+{
+  return int_to_string_impl(value, is_hex, "%ld", "%lX");
+}
+
 string zut_int_to_string(long long value, bool is_hex)
 {
   return int_to_string_impl(value, is_hex, "%lld", "%llX");
