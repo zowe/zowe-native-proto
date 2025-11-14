@@ -47,7 +47,7 @@ void uss_tests()
 
              // Clean up the test directory
              afterAll([&response]() -> void
-                      { int test = execute_command_with_output(zowex_command + " uss delete /tmp/zowex-uss --recursive", response); });
+                      { execute_command_with_output(zowex_command + " uss delete /tmp/zowex-uss --recursive", response); });
 
              // Helper function to create a test file
              auto create_test_file_cmd = [&](const string &uss_file, const string &options = "") -> void
