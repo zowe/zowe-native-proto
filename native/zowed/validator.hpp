@@ -13,11 +13,7 @@
 #define VALIDATOR_HPP
 
 #include <string>
-#include <vector>
-#include <unordered_map>
-#include <unordered_set>
 #include <functional>
-#include "../c/zjson.hpp"
 
 /**
  * Schema-based validation for JSON-RPC messages.
@@ -35,11 +31,14 @@
  * Available field types: BOOL, NUMBER, STRING, ARRAY, OBJECT, ANY
  */
 
+// Forward declaration for types that depend on zjson
+namespace zjson
+{
+class Value;
+}
+
 namespace validator
 {
-
-// Forward declaration for ValidatorFn typedef
-struct ValidationResult;
 
 /**
  * Field types for schema validation
@@ -63,28 +62,46 @@ struct FieldDescriptor
   FieldType type;
   bool required;
   FieldType array_element_type;
-  const std::vector<FieldDescriptor> *nested_schema;
+  const FieldDescriptor *nested_schema = nullptr;
+  size_t nested_schema_count = 0;
 
   FieldDescriptor(const std::string &n, FieldType t, bool req)
-      : name(n), type(t), required(req), array_element_type(FieldType::TYPE_ANY), nested_schema(nullptr)
+      : name(n), type(t), required(req), array_element_type(FieldType::TYPE_ANY)
   {
   }
 
   FieldDescriptor(const std::string &n, FieldType t, bool req, FieldType array_elem_type)
-      : name(n), type(t), required(req), array_element_type(array_elem_type), nested_schema(nullptr)
+      : name(n), type(t), required(req), array_element_type(array_elem_type)
   {
   }
 
-  FieldDescriptor(const std::string &n, FieldType t, bool req, const std::vector<FieldDescriptor> *nested)
-      : name(n), type(t), required(req), array_element_type(FieldType::TYPE_ANY), nested_schema(nested)
+  FieldDescriptor(const std::string &n, FieldType t, bool req, const FieldDescriptor *nested, size_t nested_count)
+      : name(n), type(t), required(req), array_element_type(FieldType::TYPE_ANY), nested_schema(nested), nested_schema_count(nested_count)
   {
   }
 
-  FieldDescriptor(const std::string &n, FieldType t, bool req, FieldType array_elem_type, const std::vector<FieldDescriptor> *nested)
-      : name(n), type(t), required(req), array_element_type(array_elem_type), nested_schema(nested)
+  FieldDescriptor(const std::string &n, FieldType t, bool req, FieldType array_elem_type, const FieldDescriptor *nested, size_t nested_count)
+      : name(n), type(t), required(req), array_element_type(array_elem_type), nested_schema(nested), nested_schema_count(nested_count)
   {
   }
 };
+
+/**
+ * Schema registry - maps struct types to their schema definitions
+ */
+template <typename T>
+struct SchemaRegistry
+{
+  static const FieldDescriptor *fields;
+  static size_t field_count;
+};
+
+// Default values for unspecialized types
+template <typename T>
+const FieldDescriptor *SchemaRegistry<T>::fields = nullptr;
+
+template <typename T>
+size_t SchemaRegistry<T>::field_count = 0;
 
 /**
  * Validation result type
@@ -106,186 +123,19 @@ struct ValidationResult
 };
 
 /**
- * Check if a zjson::Value matches the expected type
+ * Validator function type - validates JSON parameters
+ * Can be null to indicate no validation is required
  */
-inline bool check_type(const zjson::Value &value, FieldType expected_type)
-{
-  switch (expected_type)
-  {
-  case FieldType::TYPE_BOOL:
-    return value.is_bool();
-  case FieldType::TYPE_NUMBER:
-    return value.is_integer() || value.is_double();
-  case FieldType::TYPE_STRING:
-    return value.is_string();
-  case FieldType::TYPE_ARRAY:
-    return value.is_array();
-  case FieldType::TYPE_OBJECT:
-    return value.is_object();
-  case FieldType::TYPE_ANY:
-    return true;
-  default:
-    return false;
-  }
-}
-
-/**
- * Get human-readable type name
- */
-inline std::string type_name(FieldType type)
-{
-  switch (type)
-  {
-  case FieldType::TYPE_BOOL:
-    return "boolean";
-  case FieldType::TYPE_NUMBER:
-    return "number";
-  case FieldType::TYPE_STRING:
-    return "string";
-  case FieldType::TYPE_ARRAY:
-    return "array";
-  case FieldType::TYPE_OBJECT:
-    return "object";
-  case FieldType::TYPE_ANY:
-    return "any";
-  default:
-    return "unknown";
-  }
-}
-
-/**
- * Get actual type name from zjson::Value
- */
-inline std::string actual_type_name(const zjson::Value &value)
-{
-  if (value.is_null())
-    return "null";
-  if (value.is_bool())
-    return "boolean";
-  if (value.is_integer() || value.is_double())
-    return "number";
-  if (value.is_string())
-    return "string";
-  if (value.is_array())
-    return "array";
-  if (value.is_object())
-    return "object";
-  return "unknown";
-}
+using ValidatorFn = std::function<ValidationResult(const zjson::Value &)>;
 
 /**
  * Validate a JSON value against a schema
  */
-inline ValidationResult validate_schema(const zjson::Value &params,
-                                        const std::vector<FieldDescriptor> &schema,
-                                        bool allow_unknown_fields = false)
-{
-  if (!params.is_object())
-  {
-    return ValidationResult::error("Parameters must be an object");
-  }
-
-  const std::unordered_map<std::string, zjson::Value> &obj = params.as_object();
-  std::unordered_set<std::string> seen_fields;
-
-  // Check each field in the schema
-  for (const auto &field : schema)
-  {
-    auto field_it = obj.find(field.name);
-
-    if (field_it == obj.end())
-    {
-      if (field.required)
-      {
-        return ValidationResult::error("Missing required field: " + field.name);
-      }
-      continue;
-    }
-
-    seen_fields.insert(field.name);
-    const zjson::Value &value = field_it->second;
-
-    // Allow null for optional fields
-    if (value.is_null() && !field.required)
-    {
-      continue;
-    }
-
-    // Check type
-    if (!check_type(value, field.type))
-    {
-      return ValidationResult::error("Field '" + field.name + "' has wrong type. Expected " +
-                                     type_name(field.type) + ", got " + actual_type_name(value));
-    }
-
-    // Validate nested object schema (1 level deep)
-    if (field.type == FieldType::TYPE_OBJECT && field.nested_schema != nullptr)
-    {
-      ValidationResult nested_result = validate_schema(value, *field.nested_schema, allow_unknown_fields);
-      if (!nested_result.is_valid)
-      {
-        return ValidationResult::error("Field '" + field.name + "': " + nested_result.error_message);
-      }
-    }
-
-    // For arrays, validate only first element (spot check for performance)
-    if (field.type == FieldType::TYPE_ARRAY && field.array_element_type != FieldType::TYPE_ANY)
-    {
-      const std::vector<zjson::Value> &arr = value.as_array();
-      if (!arr.empty())
-      {
-        if (!check_type(arr[0], field.array_element_type))
-        {
-          return ValidationResult::error("Field '" + field.name + "' array element [0] has wrong type. Expected " +
-                                         type_name(field.array_element_type) + ", got " + actual_type_name(arr[0]));
-        }
-
-        // If it's an object with a schema, validate the schema
-        if (field.array_element_type == FieldType::TYPE_OBJECT && field.nested_schema != nullptr)
-        {
-          ValidationResult nested_result = validate_schema(arr[0], *field.nested_schema, allow_unknown_fields);
-          if (!nested_result.is_valid)
-          {
-            return ValidationResult::error("Field '" + field.name + "' array element [0]: " + nested_result.error_message);
-          }
-        }
-      }
-    }
-  }
-
-  // Check for unknown fields if requested
-  if (!allow_unknown_fields)
-  {
-    for (const auto &pair : obj)
-    {
-      if (seen_fields.find(pair.first) == seen_fields.end())
-      {
-        return ValidationResult::error("Unknown field: " + pair.first);
-      }
-    }
-  }
-
-  return ValidationResult::success();
-}
-
-/**
- * Schema registry - maps struct types to their schema definitions
- */
-template <typename T>
-struct SchemaRegistry
-{
-  static std::vector<FieldDescriptor> fields;
-};
-
-template <typename T>
-std::vector<FieldDescriptor> SchemaRegistry<T>::fields;
-
-/**
- * Validator function type - a callable that validates JSON parameters
- * Used to store validation logic without requiring class hierarchies or heap allocations
- * Can be null to indicate no validation is required
- */
-using ValidatorFn = std::function<ValidationResult(const zjson::Value &)>;
+ValidationResult validate_schema(const zjson::Value &params,
+                                 const FieldDescriptor *schema,
+                                 size_t field_count,
+                                 bool allow_unknown_fields = false,
+                                 const std::string &parent_field = "");
 
 } // namespace validator
 
@@ -304,23 +154,28 @@ using ValidatorFn = std::function<ValidationResult(const zjson::Value &)>;
   validator::FieldDescriptor(#name, validator::FieldType::TYPE_ARRAY, false, validator::FieldType::TYPE_##element_type)
 
 #define FIELD_REQUIRED_OBJECT(name, StructType) \
-  validator::FieldDescriptor(#name, validator::FieldType::TYPE_OBJECT, true, &validator::SchemaRegistry<StructType>::fields)
+  validator::FieldDescriptor(#name, validator::FieldType::TYPE_OBJECT, true, validator::SchemaRegistry<StructType>::fields, validator::SchemaRegistry<StructType>::field_count)
 
 #define FIELD_OPTIONAL_OBJECT(name, StructType) \
-  validator::FieldDescriptor(#name, validator::FieldType::TYPE_OBJECT, false, &validator::SchemaRegistry<StructType>::fields)
+  validator::FieldDescriptor(#name, validator::FieldType::TYPE_OBJECT, false, validator::SchemaRegistry<StructType>::fields, validator::SchemaRegistry<StructType>::field_count)
 
 #define FIELD_REQUIRED_OBJECT_ARRAY(name, StructType) \
-  validator::FieldDescriptor(#name, validator::FieldType::TYPE_ARRAY, true, validator::FieldType::TYPE_OBJECT, &validator::SchemaRegistry<StructType>::fields)
+  validator::FieldDescriptor(#name, validator::FieldType::TYPE_ARRAY, true, validator::FieldType::TYPE_OBJECT, validator::SchemaRegistry<StructType>::fields, validator::SchemaRegistry<StructType>::field_count)
 
 #define FIELD_OPTIONAL_OBJECT_ARRAY(name, StructType) \
-  validator::FieldDescriptor(#name, validator::FieldType::TYPE_ARRAY, false, validator::FieldType::TYPE_OBJECT, &validator::SchemaRegistry<StructType>::fields)
+  validator::FieldDescriptor(#name, validator::FieldType::TYPE_ARRAY, false, validator::FieldType::TYPE_OBJECT, validator::SchemaRegistry<StructType>::fields, validator::SchemaRegistry<StructType>::field_count)
 
-#define ZJSON_SCHEMA(StructType, ...)                                 \
-  namespace validator                                                 \
-  {                                                                   \
-  template <>                                                         \
-  std::vector<FieldDescriptor> SchemaRegistry<StructType>::fields = { \
-      __VA_ARGS__};                                                   \
+#define ZJSON_SCHEMA(StructType, ...)                              \
+  namespace validator                                              \
+  {                                                                \
+  static const FieldDescriptor StructType##_schema_array[] = {     \
+      __VA_ARGS__};                                                \
+  template <>                                                      \
+  const FieldDescriptor *SchemaRegistry<StructType>::fields =      \
+      StructType##_schema_array;                                   \
+  template <>                                                      \
+  size_t SchemaRegistry<StructType>::field_count =                 \
+      sizeof(StructType##_schema_array) / sizeof(FieldDescriptor); \
   }
 
 #endif // VALIDATOR_HPP
