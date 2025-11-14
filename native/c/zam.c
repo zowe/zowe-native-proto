@@ -11,7 +11,7 @@
 
 #include "zam.h"
 #include "dcbd.h"
-#include "zam24.h"
+// #include "zam24.h"
 #include "zwto.h"
 
 // NOTE(Kelosky): must be assembled in AMODE31 code
@@ -105,12 +105,12 @@ void close_assert(IO_CTRL *ioc)
     }
   }
 
-  if (ioc->zam24)
-  {
-    zwto_debug("@TEST close_assert: releasing zam24: %p", ioc->zam24);
-    storage_release(ioc->zam24_len, ioc->zam24);
-    ioc->zam24 = NULL;
-  }
+  // if (ioc->zam24)
+  // {
+  //   zwto_debug("@TEST close_assert: releasing zam24: %p", ioc->zam24);
+  //   storage_release(ioc->zam24_len, ioc->zam24);
+  //   ioc->zam24 = NULL;
+  // }
 
   zwto_debug("@TEST close_assert: releasing ioc: %p", ioc);
   storage_release(sizeof(IO_CTRL), ioc);
@@ -157,16 +157,16 @@ int read_input_jfcb(IO_CTRL *ioc)
 {
   int rc = 0;
 
-  int zam24_len = ZAM24Q();
-  zwto_debug("@TEST zam24_len: %d", zam24_len);
-  ioc->zam24_len = zam24_len;
-  ioc->zam24 = storage_obtain24(zam24_len);
-  memcpy(ioc->zam24, (void *PTR32)ZAM24, zam24_len);
+  // int zam24_len = ZAM24Q();
+  // zwto_debug("@TEST zam24_len: %d", zam24_len);
+  // ioc->zam24_len = zam24_len;
+  // ioc->zam24 = storage_obtain24(zam24_len);
+  // memcpy(ioc->zam24, (void *PTR32)ZAM24, zam24_len);
 
   // ioc->exlst[0].exlentrb = (unsigned int)ioc->zam24; uncommend to enable DCBABEND
-  ioc->exlst[0].exlcodes = exldcbab;
-  ioc->exlst[1].exlentrb = (unsigned int)&ioc->jfcb;
-  ioc->exlst[1].exlcodes = exllaste + exlrjfcb;
+  // ioc->exlst[0].exlcodes = exldcbab;
+  ioc->exlst[0].exlentrb = (unsigned int)&ioc->jfcb;
+  ioc->exlst[0].exlcodes = exllaste + exlrjfcb;
   memcpy(&ioc->rpl, &rdfjfcb_model, sizeof(RDJFCB_PL));
 
   unsigned char recfm = ioc->dcb.dcbrecfm; // save the recfm
@@ -182,16 +182,16 @@ int read_output_jfcb(IO_CTRL *ioc)
 {
   int rc = 0;
 
-  int zam24_len = ZAM24Q();
-  zwto_debug("@TEST zam24_len: %d", zam24_len);
-  ioc->zam24_len = zam24_len;
-  ioc->zam24 = storage_obtain24(zam24_len);
-  memcpy(ioc->zam24, (void *PTR32)ZAM24, zam24_len);
+  // int zam24_len = ZAM24Q();
+  // zwto_debug("@TEST zam24_len: %d", zam24_len);
+  // ioc->zam24_len = zam24_len;
+  // ioc->zam24 = storage_obtain24(zam24_len);
+  // memcpy(ioc->zam24, (void *PTR32)ZAM24, zam24_len);
 
   // ioc->exlst[0].exlentrb = (unsigned int)ioc->zam24; uncommend to enable DCBABEND
-  ioc->exlst[0].exlcodes = exldcbab;
-  ioc->exlst[1].exlentrb = (unsigned int)&ioc->jfcb;
-  ioc->exlst[1].exlcodes = exllaste + exlrjfcb;
+  // ioc->exlst[0].exlcodes = exldcbab;
+  ioc->exlst[0].exlentrb = (unsigned int)&ioc->jfcb;
+  ioc->exlst[0].exlcodes = exllaste + exlrjfcb;
   memcpy(&ioc->rpl, &rdfjfcb_model, sizeof(RDJFCB_PL));
 
   unsigned char recfm = ioc->dcb.dcbrecfm; // save the recfm

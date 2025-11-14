@@ -204,10 +204,6 @@ libzut.a: $(OUT_DIRS) $(OUT_DIR)/libzut.a
 #
 # Data sets
 #
-$(OUT_DIR)/zam24.o: zam24.s
-	@echo 'Building $(OUT_DIR)/zam24.o'
-	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
-
 $(OUT_DIR)/zam.s: zam.c
 	@echo 'Building $(OUT_DIR)/zam.s'
 	$(CC) $(MTL_FLAGS) -qlist=$*.mtl.lst $(MTL_HEADERS) -o $@ $^
@@ -242,7 +238,7 @@ $(OUT_DIR)/libzds.so: $(OUT_DIR)/zds.o $(OUT_DIR)/zdsm.o $(OUT_DIR)/zam.o $(OUT_
 
 libzds.so: $(OUT_DIRS) $(OUT_DIR)/libzds.so
 
-$(OUT_DIR)/libzds.a: $(OUT_DIR)/zds.o $(OUT_DIR)/zdsm.o $(OUT_DIR)/zam.o $(OUT_DIR)/libzut.a
+$(OUT_DIR)/libzds.a: $(OUT_DIR)/zds.o $(OUT_DIR)/zdsm.o $(OUT_DIR)/zam.o $(OUT_DIR)/zam.o $(OUT_DIR)/libzut.a
 	@echo 'Building $(OUT_DIR)/libzds.a'
 	ar -rv $@ $^
 

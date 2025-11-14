@@ -369,9 +369,6 @@ enum AMS_ERR
   UNSUPPORTED_RECFM
 };
 
-// TODO(Kelosky): dbcabend
-// TODO(Kelosky): synad
-
 static IO_CTRL *PTR32 new_io_ctrl()
 {
   IO_CTRL *ioc = storage_obtain24(sizeof(IO_CTRL));

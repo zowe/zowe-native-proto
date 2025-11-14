@@ -22,6 +22,18 @@
 #include "ztime.h"
 #include "zenq.h"
 
+/**
+ *
+ * if in view mode, not spfedit enq on member name
+ * if in edit mode, spfedit enq on member name
+ * when writin isgenq with SGENQ SCOPE=SYSTEMS RESERVEVOLUME=YES is probably what we need to do
+ * no need to find - remove
+ * stow ttr set to zero still "works" and needs debugged
+ *  try wtritting two members on the same open with different data to see what happens
+ * bldl if member doesnt exist needs to create ispf stats
+ *
+ */
+
 // NOTE(Kelosky): We only use this path for write operations and to preserve and update ISPF statistics.  Read operations or DSORG=PS will use `fopen`.
 // In this path we must perform dynamic allocation on the data set.  We must perform RDJFCB to validate the data set and get the attributes prior to performing the OPEN.
 // To use a STOW macro, you must specify DSORG=PO|POU.
@@ -250,6 +262,23 @@ int AMSMAIN()
   }
 
   /**
+   * @brief Find the position last block written
+   */
+  NOTE_RESPONSE note_response = {0};
+  rc = note(resources.sysprint, &note_response, &rsn);
+  if (0 != rc)
+  {
+    zwto_debug("@TEST note failed: rc: %d, rsn: %d", rc, rsn);
+    release_resources(&resources);
+    return -1;
+  }
+  zut_dump_storage_common("NOTE TTR after open before memset", &note_response.ttr, 3, 16, 0, zut_print_debug);
+
+  memset(&note_response, 0x00, sizeof(NOTE_RESPONSE));
+
+  zut_dump_storage_common("NOTE TTR after open after memset", &note_response.ttr, 3, 16, 0, zut_print_debug);
+
+  /**
    * @brief Obtain TTR and other attributes
    */
   BLDL_PL bldl_pl = {0};
@@ -267,6 +296,8 @@ int AMSMAIN()
     return -1;
   }
 
+  zut_dump_storage_common("initial BLDL TTR", &bldl_pl.list.ttr, 3, 16, 0, zut_print_debug);
+
   /**
    * @brief Validate that ISPF statistics are provided
    */
@@ -278,17 +309,19 @@ int AMSMAIN()
     return -1;
   }
 
-  /**
-   * @brief Find the member in the data set to obtain the TTR and other attributes
-   * Establish the beggingin of a data set member (BPAM)
-   */
-  rc = find_member(resources.sysprint, &rsn);
-  if (0 != rc)
-  {
-    zwto_debug("@TEST find_member failed: rc: %d, rsn: %d", rc, rsn);
-    release_resources(&resources);
-    return -1;
-  }
+  // /**
+  //  * @brief Find the member in the data set to obtain the TTR and other attributes
+  //  * Establish the beggingin of a data set member (BPAM)
+  //  * // TODO(Kelosky): this could be a POINT
+  //  * // TODO(Kelosky): this find may not be needed ... .
+  //  */
+  // rc = find_member(resources.sysprint, &rsn);
+  // if (0 != rc)
+  // {
+  //   zwto_debug("@TEST find_member failed: rc: %d, rsn: %d", rc, rsn);
+  //   release_resources(&resources);
+  //   return -1;
+  // }
 
   char inbuff[80] = {0};
 
@@ -317,7 +350,7 @@ int AMSMAIN()
   // loop read
   while (0 == read_sync(resources.sysin, inbuff))
   {
-    zwto_debug("@TEST read: %.80s", inbuff);
+    // zwto_debug("@TEST read: %.80s", inbuff);
     memset(free_location, ' ', lrecl);
     memcpy(free_location, inbuff, lrecl);
 
@@ -349,22 +382,24 @@ int AMSMAIN()
     bytes_in_buffer = 0;
     free_location = resources.sysprint->buffer;
     memset(resources.sysprint->buffer, 0x00, resources.sysprint->buffer_size);
-    zwto_debug("@TEST wrote block");
+    // zwto_debug("@TEST wrote block");
   }
 
   zwto_debug("@TEST dcbe: %p", resources.sysprint->dcb.dcbdcbe);
 
-  /**
-   * @brief Find the position last block written
-   */
-  NOTE_RESPONSE note_response = {0};
-  rc = note(resources.sysprint, &note_response, &rsn);
-  if (0 != rc)
-  {
-    zwto_debug("@TEST note failed: rc: %d, rsn: %d", rc, rsn);
-    release_resources(&resources);
-    return -1;
-  }
+  // /**
+  //  * @brief Find the position last block written
+  //  */
+  // NOTE_RESPONSE note_response = {0};
+  // rc = note(resources.sysprint, &note_response, &rsn);
+  // if (0 != rc)
+  // {
+  //   zwto_debug("@TEST note failed: rc: %d, rsn: %d", rc, rsn);
+  //   release_resources(&resources);
+  //   return -1;
+  // }
+
+  // zut_dump_storage_common("NOTE TTR", &note_response.ttr, 3, 16, 0, zut_print_debug);
 
   /**
    * @brief Copy ISPF statistics
@@ -433,6 +468,8 @@ int AMSMAIN()
 
   zwto_debug("@TEST6 dcbe: %p", resources.sysprint->dcb.dcbdcbe);
 
+  zut_dump_storage_common("DIRECTORY ENTRY before stow", &resources.sysprint->stow_list.user_data, sizeof(STOW_LIST), 16, 0, zut_print_debug);
+
   /**
    * @brief Update the directory entry with the new ISPF statistics
    */
@@ -445,6 +482,9 @@ int AMSMAIN()
   }
   zwto_debug("@TEST7 dcbe: %p", resources.sysprint->dcb.dcbdcbe);
 
+  zut_dump_storage_common("DIRECTORY ENTRY after stow", &resources.sysprint->stow_list.user_data, sizeof(STOW_LIST), 16, 0, zut_print_debug);
+
+  // TODO(Kelosky): this enq should drop after we decided we're done editing the data set
   rc = deq(&qname, &rname);
   if (0 != rc)
   {
