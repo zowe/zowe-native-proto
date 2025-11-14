@@ -6,7 +6,9 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
+- Fixed an issue where `validateConfig` function would not fallback to password when both an invalid `privateKey` and `password` exist on a profile. [#525] (https://github.com/zowe/zowe-native-proto/issues/525)
 - Updated the `num-workers` option in the `ZSshClient` class to reflect the new format used for parsing `zowed` options. [#655](https://github.com/zowe/zowe-native-proto/issues/655)
+- Filtered out `Include` and `Host *` directives from SSH config files when creating new profiles. [#678](https://github.com/zowe/zowe-native-proto/pull/678)
 
 ## `0.2.0`
 
