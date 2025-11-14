@@ -11,6 +11,7 @@
 
 #include "dispatcher.hpp"
 #include "logger.hpp"
+#include "rpcio.hpp"
 #include "server.hpp"
 #include <algorithm>
 #include <vector>
