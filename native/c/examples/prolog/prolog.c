@@ -35,18 +35,18 @@ int main()
 
   PSW psw = {0};
   get_psw(&psw);
-  if (psw.ba)
+  if (psw.data.bits.ba)
     zwto_debug("main ba mode");
-  if (psw.ea)
+  if (psw.data.bits.ea)
     zwto_debug("main ea mode");
 
   int rc = sub();
   zwto_debug("main returned %d", rc);
 
   get_psw(&psw);
-  if (psw.ba)
+  if (psw.data.bits.ba)
     zwto_debug("main ba mode");
-  if (psw.ea)
+  if (psw.data.bits.ea)
     zwto_debug("main ea mode");
   // int mode_switch = psw.p ? 0 : 1;
 

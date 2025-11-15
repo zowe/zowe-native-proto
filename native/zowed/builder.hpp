@@ -16,7 +16,6 @@
 #include "validator.hpp"
 #include <string>
 #include <vector>
-#include <memory>
 
 // Forward declarations
 class CommandDispatcher;
@@ -123,11 +122,11 @@ public:
   {
     request_validator_ = [allow_unknown_fields](const zjson::Value &params) -> validator::ValidationResult
     {
-      return validator::validate_schema(params, validator::SchemaRegistry<RequestT>::fields, allow_unknown_fields);
+      return validator::validate_schema(params, validator::SchemaRegistry<RequestT>::fields, validator::SchemaRegistry<RequestT>::field_count, allow_unknown_fields);
     };
     response_validator_ = [allow_unknown_fields](const zjson::Value &params) -> validator::ValidationResult
     {
-      return validator::validate_schema(params, validator::SchemaRegistry<ResponseT>::fields, allow_unknown_fields);
+      return validator::validate_schema(params, validator::SchemaRegistry<ResponseT>::fields, validator::SchemaRegistry<ResponseT>::field_count, allow_unknown_fields);
     };
     return *this;
   }

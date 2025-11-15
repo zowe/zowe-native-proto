@@ -14,77 +14,23 @@ OUT_DIR_CXXLANG=$(OUT_DIR)/xlclang
 OUT_DIR_SWIG=$(OUT_DIR)/swig
 OUT_DIRS=$(OUT_DIR_CXXLANG) $(OUT_DIR_SWIG)
 
-XLC_FLAGS=_CC_ACCEPTABLE_RC=0 _C89_ACCEPTABLE_RC=0 _CXX_ACCEPTABLE_RC=0
-CXX=$(XLC_FLAGS) xlc++
-CXXLANG=xlclang++
-CC=$(XLC_FLAGS) xlc
-ASM=as
+.INCLUDE: toolchain.mk
 
-MTL_OPTS=metal,\
- langlvl(extended),\
- sscom,\
- nolongname,\
- inline,\
- genasm,\
- inlrpt,\
- csect,\
- nose,\
- list,\
- warn64,\
- optimize(2),\
- aggregate
+MACLIBS= -I../asmmac $(MACLIBS_BASE)
+MTL_HEADERS=$(MTL_HEADERS_BASE) -I./chdsect
 
-MTL_OPTS64=$(MTL_OPTS),lp64
-MTL_FLAGS=-S -W "c,$(MTL_OPTS)"
-MTL_FLAGS64=-S -W "c,$(MTL_OPTS64)"
+C_FLAGS=$(C_FLAGS_BASE) -I./chdsect
+CXXLANG_FLAGS=$(CXXLANG_FLAGS_BASE) -I./chdsect
+SWIG_FLAGS=$(SWIG_FLAGS_BASE) -I./chdsect
+DLL_CPP_FLAGS=$(DLL_CPP_FLAGS_BASE) -I./chdsect
+CPP_FLAGS=$(CPP_FLAGS_BASE)
 
-MACLIBS= -I../asmmac \
- -ISYS1.MACLIB \
- -ISYS1.MODGEN \
- -ICBC.SCCNSAM
-
-MTL_HEADERS=-I/usr/include/metal \
- -I./chdsect
-
-CPP_BND_FLAGS=-W "l,lp64,xplink,map,list"
-
-CPP_BND_FLAGS_AUTH=-W "l,lp64,xplink,map,list,ac=1"
-
-C_FLAGS=-W "c,lp64,langlvl(extended),xplink,exportall"\
- -c \
- -I./chdsect
-
-CXXLANG_FLAGS=-W "c,lp64"\
- -c \
- -I./chdsect
-
-SWIG_FLAGS=-W "c,lp64,define(SWIG)"\
- -c \
- -I./chdsect \
- -DSWIG
-
-DLL_CPP_FLAGS=-W "c,lp64,langlvl(extended0x),dll,xplink,exportall"\
- -c \
- -I./chdsect
-
-DLL_BND_FLAGS=-W "l,lp64,dll,dynam=dll,xplink,map,list"
-
-CPP_FLAGS=-W "c,lp64,langlvl(extended0x),dll,xplink"\
- -c -D__IBMCPP_TR1__=1
-
-ASM_FLAGS=-mRENT
-
-.IF $(ZLOG_ENABLE) == 1
-LOG_FLAGS=-DZLOG_ENABLE
-.END
+CPP_BND_FLAGS=$(CPP_BND_DEBUG_FLAGS)
+CPP_BND_FLAGS_AUTH=$(CPP_BND_DEBUG_FLAGS_AUTH)
+DLL_BND_FLAGS=$(DLL_BND_DEBUG_FLAGS)
 
 # make -DBuildType=DEBUG
 .IF $(BuildType) == DEBUG
-LOG_FLAGS=-DZLOG_ENABLE
-# -g generates debugging information
-DEBUGGER_FLAGS=-qSOURCE -g9
-OTHER_C_FLAGS=-qSHOWINC -qSHOWMACROS
-
 CPP_BND_FLAGS+=$(DEBUGGER_FLAGS)
 CPP_BND_FLAGS_AUTH+=$(DEBUGGER_FLAGS)
 C_FLAGS+=$(DEBUGGER_FLAGS)
@@ -94,13 +40,12 @@ CPP_FLAGS+=$(DEBUGGER_FLAGS) $(OTHER_C_FLAGS)
 MTL_FLAGS+=$(DEBUGGER_FLAGS) $(OTHER_C_FLAGS)
 MTL_FLAGS64+=$(DEBUGGER_FLAGS) $(OTHER_C_FLAGS)
 ASM_FLAGS+=--verbose
-
 .ELSE
 C_FLAGS+=-g0
 CPP_FLAGS+=-g0
-CPP_BND_FLAGS+=-g0
-CPP_BND_FLAGS_AUTH+=-g0
-DLL_BND_FLAGS+=-g0
+CPP_BND_FLAGS=$(CPP_BND_BASE_FLAGS)
+CPP_BND_FLAGS_AUTH=$(CPP_BND_BASE_FLAGS_AUTH)
+DLL_BND_FLAGS=$(DLL_BND_BASE_FLAGS)
 DLL_CPP_FLAGS+=-g0
 ASM_FLAGS+=--noverbose
 
@@ -130,7 +75,9 @@ all: libzut.so libzut.a libzds.so libzds.a libzusf.so libzusf.a libzcn.so libzcn
 xlclang-extenders: $(OUT_DIR_CXXLANG)/zut.o $(OUT_DIR_CXXLANG)/zds.o $(OUT_DIR_CXXLANG)/zjb.o $(OUT_DIR_CXXLANG)/zcn.o $(OUT_DIR_CXXLANG)/zusf.o $(OUT_DIR_CXXLANG)/ztso.o
 # SWIG extenders: compile C++ files with SWIG macro defined for Python bindings
 swig-extenders: $(OUT_DIR_SWIG)/zut.o $(OUT_DIR_SWIG)/zds.o $(OUT_DIR_SWIG)/zjb.o $(OUT_DIR_SWIG)/zcn.o $(OUT_DIR_SWIG)/zusf.o $(OUT_DIR_SWIG)/ztso.o
-tests:
+zowed-tests:
+	 $(MAKE) -c ../zowed/test
+tests: zowed-tests
 	 $(MAKE) -c test
 
 #

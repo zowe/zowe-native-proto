@@ -7,45 +7,19 @@
 #
 # Copyright Contributors to the Zowe Project.
 
+.INCLUDE: ../c/toolchain.mk
+
 # Compilers and flags
-CXX_LIB = xlclang++
-CXX_MAIN = xlc++
-CC = xlc
-ASM = as
+CXX_LIB = $(CXXLANG)
+CXX_MAIN = $(CXX)
 
 CXXFLAGS_LIB = -std=c++11 -Wall -Werror -MMD -MP -O2 -qlanglvl=extended0x -I../c -W "c,exportall,dll"
-CXXFLAGS_MAIN = -qlanglvl=extended0x -O2 -I../c -W "c,lp64,xplink"
-LDFLAGS = -W "l,lp64,xplink,map,list"
-DLL_BND_FLAGS = -W "l,lp64,dll,dynam=dll,xplink,map,list"
+CXXFLAGS_MAIN = -qlanglvl=extended0x -O2 -I../c -W "c,lp64,xplink" -D__IBMCPP_TR1__=1
+LDFLAGS = $(CPP_BND_DEBUG_FLAGS)
+DLL_BND_FLAGS = $(DLL_BND_DEBUG_FLAGS)
 
-MTL_OPTS=metal,\
- langlvl(extended),\
- sscom,\
- nolongname,\
- inline,\
- genasm,\
- inlrpt,\
- csect,\
- nose,\
- list,\
- warn64,\
- optimize(2),\
- aggregate
-
-MTL_OPTS64=$(MTL_OPTS),lp64
-MTL_FLAGS=-S -W "c,$(MTL_OPTS)"
-MTL_FLAGS64=-S -W "c,$(MTL_OPTS64)"
-
-MACLIBS= -I../asmmac \
- -ISYS1.MACLIB \
- -ISYS1.MODGEN \
- -ICBC.SCCNSAM
-
-MTL_HEADERS=-I/usr/include/metal \
- -I/usr/include \
- -I../c
-
-ASM_FLAGS=-mRENT
+MACLIBS= -I../asmmac $(MACLIBS_BASE)
+MTL_HEADERS=$(MTL_HEADERS_BASE) -I../c
 
 # Target executable and library
 OUT_DIR = build-out
@@ -54,7 +28,8 @@ LIBRARY = libzowed.so
 
 # Object files
 LIB_OBJECTS = $(OUT_DIR)/builder.o $(OUT_DIR)/commands.o $(OUT_DIR)/dispatcher.o \
-	$(OUT_DIR)/rpcio.o $(OUT_DIR)/server.o $(OUT_DIR)/worker.o $(OUT_DIR)/zowed.o
+	$(OUT_DIR)/rpcio.o $(OUT_DIR)/server.o $(OUT_DIR)/validator.o $(OUT_DIR)/worker.o \
+	$(OUT_DIR)/zowed.o
 CMDS_OBJECTS = $(OUT_DIR)/commands/ds.o $(OUT_DIR)/commands/job.o $(OUT_DIR)/commands/tso.o \
 	$(OUT_DIR)/commands/uss.o
 XLCLANG_OBJECTS = ../c/build-out/xlclang/zds.o ../c/build-out/xlclang/zjb.o \

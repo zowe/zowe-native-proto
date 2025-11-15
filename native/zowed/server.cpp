@@ -10,6 +10,7 @@
  */
 
 #include "server.hpp"
+#include "rpcio.hpp"
 #include "dispatcher.hpp"
 #include "logger.hpp"
 #include <iostream>
@@ -46,7 +47,7 @@ void RpcServer::process_request(const string &request_data)
     // Validate params if a request validator is registered for this command
     if (request.params.has_value())
     {
-      validator::ValidationResult validation_result = validate_json_with_schema(request.method, request.params.value(), true);
+      auto validation_result = validate_json_with_schema(request.method, request.params.value(), true);
       if (!validation_result.is_valid)
       {
         print_error(request.id, RpcErrorCode::INVALID_PARAMS, "Request validation failed (" + request.method + ")", &validation_result.error_message);
@@ -94,7 +95,7 @@ void RpcServer::process_request(const string &request_data)
     result_json.add_to_object("success", zjson::Value(context.get_error_content().empty()));
 
     // Validate result if a response validator is registered for this command
-    validator::ValidationResult validation_result = validate_json_with_schema(request.method, result_json, false);
+    auto validation_result = validate_json_with_schema(request.method, result_json, false);
     if (!validation_result.is_valid)
     {
       // Response validation failed - return internal error
@@ -110,7 +111,7 @@ void RpcServer::process_request(const string &request_data)
     response.error = zstd::optional<ErrorDetails>();
     response.id = zstd::optional<int>(request.id);
 
-    print_response(response);
+    print_response(response, &context);
   }
   catch (const std::exception &e)
   {
@@ -279,7 +280,7 @@ zjson::Value RpcServer::convert_ast_to_json(const ast::Node &ast_node)
   }
 }
 
-void RpcServer::print_response(const RpcResponse &response)
+void RpcServer::print_response(const RpcResponse &response, MiddlewareContext *context)
 {
   // Log errors to the log file
   if (response.error.has_value())
@@ -298,9 +299,40 @@ void RpcServer::print_response(const RpcResponse &response)
   }
 
   string json_string = serialize_json(rpc_response_to_json(response));
+
+  // Replace placeholders with actual large data
+  if (context && context->get_large_data().size() > 0)
+  {
+    auto &large_data_map = context->get_large_data();
+    for (auto it = large_data_map.begin(); it != large_data_map.end();)
+    {
+      add_large_data_to_json(json_string, it->first, it->second);
+      it = large_data_map.erase(it);
+    }
+  }
+
   auto &stream = response.error.has_value() ? std::cerr : std::cout;
   std::lock_guard<std::mutex> lock(response_mutex);
   stream << json_string << std::endl;
+}
+
+void RpcServer::add_large_data_to_json(string &json_string, const string &field_name, const string &data)
+{
+  // Find the field in JSON: "fieldName":""
+  const string search_pattern = "\"" + field_name + "\":\"\"";
+  size_t pos = json_string.find(search_pattern);
+
+  if (pos == string::npos)
+  {
+    LOG_ERROR("Could not find empty field '%s' in JSON for large data replacement", field_name.c_str());
+    return;
+  }
+
+  // Assume that data is Base64 encoded so no JSON escaping needed
+  const string replacement = "\"" + field_name + "\":\"" + data + "\"";
+  json_string.replace(pos, search_pattern.length(), replacement);
+
+  LOG_DEBUG("Replaced empty field '%s' with large data (%zu bytes)", field_name.c_str(), data.size());
 }
 
 // Static utility methods
@@ -347,6 +379,50 @@ void RpcServer::send_notification(const RpcNotification &notification)
   std::cout << json_string << std::endl;
 }
 
+void RpcServer::send_timeout_error(const string &request_data, int64_t timeout_ms)
+{
+  int request_id = -1;
+  string method = "unknown";
+
+  // Try to parse the request to extract the ID
+  try
+  {
+    auto parse_result = zjson::from_str<zjson::Value>(request_data);
+    if (parse_result.has_value())
+    {
+      const zjson::Value &json = parse_result.value();
+      if (json.is_object())
+      {
+        // Extract request ID if present
+        const zjson::Value &id_value = json["id"];
+        if (!id_value.is_null() && id_value.is_integer())
+        {
+          request_id = static_cast<int>(id_value.as_int64());
+        }
+
+        // Extract method name for better error messages
+        const zjson::Value &method_value = json["method"];
+        if (!method_value.is_null() && method_value.is_string())
+        {
+          method = method_value.as_string();
+        }
+      }
+    }
+  }
+  catch (const zjson::Error &e)
+  {
+    LOG_ERROR("Failed to parse timed-out request for error response: %s", e.what());
+  }
+
+  // Build timeout error message
+  const auto timeout_message = "Request timed out after " + std::to_string(timeout_ms) + " ms (method: " + method + ")";
+
+  // Send the error response
+  print_error(request_id, RpcErrorCode::REQUEST_TIMEOUT, timeout_message);
+
+  LOG_WARN("Sent timeout error response for request ID %d (method: %s)", request_id, method.c_str());
+}
+
 void RpcServer::print_error(int request_id, int code, const string &message, const string *data)
 {
   zstd::optional<zjson::Value> error_data;
@@ -379,8 +455,7 @@ validator::ValidationResult RpcServer::validate_json_with_schema(const string &m
   }
 
   const CommandBuilder &builder = it->second;
-  validator::ValidatorFn validator =
-      is_request ? builder.get_request_validator() : builder.get_response_validator();
+  auto validator = is_request ? builder.get_request_validator() : builder.get_response_validator();
 
   if (!validator)
   {

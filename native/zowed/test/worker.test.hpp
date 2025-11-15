@@ -9,7 +9,9 @@
  *
  */
 
-#ifndef ZOWEX_TEST_HPP
-#define ZOWEX_TEST_HPP
-void zowex_tests();
+#ifndef WORKER_TEST_HPP
+#define WORKER_TEST_HPP
+
+void worker_tests();
+
 #endif

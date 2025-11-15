@@ -9,7 +9,6 @@
  *
  */
 
-#include <iostream>
 #include "zstorage.test.hpp"
 #include "zut.test.hpp"
 #include "zjb.test.hpp"
@@ -24,8 +23,8 @@
 #include "parser.test.hpp"
 #include "zstd.test.hpp"
 #include "zjson.test.hpp"
-#include "zowed.test.hpp"
 #include "ztest.hpp"
+#include "uss.test.hpp"
 
 using namespace std;
 using namespace ztst;
@@ -46,11 +45,11 @@ int main(int argc, char *argv[])
         zusf_tests();
         zbase64_tests();
         zowex_tests();
+        uss_tests();
         zlogger_tests();
         parser_tests();
         zstd_tests();
         zjson_tests();
-        zowed_tests();
       });
 
   return rc;

@@ -223,6 +223,10 @@ describe("SshErrorHandler", () => {
             });
         });
 
+        it("should return false for timeout errors", () => {
+            expect(errorHandler.isFatalError("Request timed out after 200 ms")).toBe(false);
+        });
+
         it("should not identify non-fatal errors as fatal", () => {
             const nonFatalErrors = [
                 "FOTS1681 chdir error",
@@ -379,6 +383,18 @@ describe("SshErrorHandler", () => {
 
             expect(result).toBe("OK");
             expect(mockShowErrorMessage).toHaveBeenCalled();
+        });
+    });
+
+    describe("isTimeoutError", () => {
+        it("should return true for timeout errors", async () => {
+            expect(errorHandler.isTimeoutError("Request timed out after")).toBe(true);
+            expect(errorHandler.isTimeoutError(new Error("Request timed out after 200 ms"))).toBe(true);
+        });
+
+        it("should return false for non-timeout errors", () => {
+            expect(errorHandler.isTimeoutError("Authentication failed")).toBe(false);
+            expect(errorHandler.isTimeoutError(new Error("Authentication failed"))).toBe(false);
         });
     });
 });

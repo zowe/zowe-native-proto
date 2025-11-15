@@ -28,7 +28,7 @@ typedef tr1::enable_shared_from_this enable_shared_from_this;
 #else
 // Fallback for specialized compilers w/ standard headers but separation via tr1
 // namespace
-#if defined(__IBMCPP_TR1__)
+#if defined(__clang__) || defined(__IBMCPP_TR1__)
 #include <memory>
 #else
 #include <tr1/memory>

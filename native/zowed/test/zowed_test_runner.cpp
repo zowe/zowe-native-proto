@@ -9,7 +9,18 @@
  *
  */
 
-#ifndef ZOWEX_TEST_HPP
-#define ZOWEX_TEST_HPP
-void zowex_tests();
-#endif
+#include "../../c/test/ztest.hpp"
+#include "worker.test.hpp"
+#include "zowed.test.hpp"
+
+using namespace ztst;
+
+int main(int argc, char *argv[])
+{
+  return tests(
+      argc, argv,
+      []() {
+        zowed_tests();
+        worker_tests();
+      });
+}
