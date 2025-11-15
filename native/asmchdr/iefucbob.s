@@ -8,5 +8,5 @@
 *
 *  Copyright Contributors to the Zowe Project.
 *
-         IEFUCBOB
+         IEFUCBOB SSMD=YES
          END

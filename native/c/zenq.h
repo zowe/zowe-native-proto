@@ -17,6 +17,8 @@
 #include <string.h>
 #include "iefucbob.h"
 
+typedef struct ucb UCB;
+
 #if defined(__IBM_METAL__)
 #define ENQ_MODEL(enqm)                                               \
   __asm(                                                              \
@@ -29,6 +31,19 @@
 #endif
 
 ENQ_MODEL(enq_model); // make this copy in static storage
+
+#if defined(__IBM_METAL__)
+#define RESERVE_MODEL(resm)                                   \
+  __asm(                                                      \
+      "*                                                  \n" \
+      " RESERVE (,,E,,SYSTEMS),UCB=*-*,LOC=ANY,MF=L       \n" \
+      "*                                                    " \
+      : "DS"(resm));
+#else
+#define RESERVE_MODEL(resm) void *resm;
+#endif
+
+RESERVE_MODEL(reserve_model); // make this copy in static storage
 
 // NOTE(Kelosky): this gives an S230 if not initialized properly which does not match the MF=E setting nor documentation
 #if defined(__IBM_METAL__)
@@ -67,6 +82,29 @@ DEQ_MODEL(deq_model); // make this copy in static storage
 #endif
 
 #if defined(__IBM_METAL__)
+#define RESERVE(qname, rname, rlen, rc, ucb, plist)           \
+  __asm(                                                      \
+      "*                                                  \n" \
+      " RESERVE (%2,"                                         \
+      "%3,"                                                   \
+      "E,"                                                    \
+      "(%4),"                                                 \
+      "SYSTEMS),"                                             \
+      "RET=USE,"                                              \
+      "UCB=%5,"                                               \
+      "MF=(E,%0)                                          \n" \
+      "*                                                  \n" \
+      " ST 15,%1               Save RC                    \n" \
+      "*                                                    " \
+      : "+m"(plist),                                          \
+        "=m"(rc)                                              \
+      : "m"(qname), "m"(rname), "r"(rlen), "m"(ucb)           \
+      : "r0", "r1", "r14", "r15");
+#else
+#define RESERVE(qname, rname, rlen, rc, ucb, plist)
+#endif
+
+#if defined(__IBM_METAL__)
 #define DEQ(qname, rname, rlen, rc, plist)                     \
   __asm(                                                       \
       "*                                                  \n"  \
@@ -85,6 +123,28 @@ DEQ_MODEL(deq_model); // make this copy in static storage
       : "r0", "r1", "r14", "r15");
 #else
 #define DEQ(qname, rname, rlen, rc)
+#endif
+
+#if defined(__IBM_METAL__)
+#define DEQ_RESERVE(qname, rname, rlen, rc, ucb, plist)        \
+  __asm(                                                       \
+      "*                                                  \n"  \
+      " DEQ (%2,"                                              \
+      "%3,"                                                    \
+      "(%4),"                                                  \
+      "SYSTEMS),"                                              \
+      "RET=HAVE,"                                              \
+      "UCB=%5,"                                                \
+      "MF=(E,%0)                                           \n" \
+      "*                                                   \n" \
+      " ST 15,%1               Save RC                     \n" \
+      "*                                                    "  \
+      : "+m"(plist),                                           \
+        "=m"(rc)                                               \
+      : "m"(qname), "m"(rname), "r"(rlen), "m"(ucb)            \
+      : "r0", "r1", "r14", "r15");
+#else
+#define DEQ_RESERVE(qname, rname, rlen, rc, ucb, plist)
 #endif
 
 typedef struct ucbcmext UCB;
@@ -121,6 +181,25 @@ static int enq(QNAME *qname, RNAME *rname)
   return rc;
 }
 
+static int reserve(QNAME *qname, RNAME *rname, UCB *ucb)
+{
+  int rc = 0;
+  RESERVE_MODEL(dsa_reserve_model);  // stack var
+  dsa_reserve_model = reserve_model; // copy model
+
+  RESERVE(qname->value, rname->value, rname->rlen, rc, ucb, dsa_reserve_model);
+
+  // NOTE(Kelosky): if RC != 0, RC is a pointer to the parameter list and byte 3 of the parameter list contains the return code :-(
+  if (0 != rc)
+  {
+    unsigned char *byte_pointer = (unsigned char *PTR32)rc;
+#define ENQ_RC_INDEX 3
+    rc = byte_pointer[ENQ_RC_INDEX];
+  }
+
+  return rc;
+}
+
 static int deq(QNAME *qname, RNAME *rname)
 {
   int rc = 0;
@@ -135,6 +214,25 @@ static int deq(QNAME *qname, RNAME *rname)
     unsigned char *byte_pointer = (unsigned char *PTR32)rc;
 #define DEQ_RC_INDEX 3
     rc = byte_pointer[DEQ_RC_INDEX];
+  }
+
+  return rc;
+}
+
+static int deq_reserve(QNAME *qname, RNAME *rname, UCB *ucb)
+{
+  int rc = 0;
+  DEQ_RESERVE_MODEL(dsa_deq_reserve_model);  // stack var
+  dsa_deq_reserve_model = deq_reserve_model; // copy model
+
+  DEQ_RESERVE(qname->value, rname->value, rname->rlen, rc, ucb, dsa_deq_reserve_model);
+
+  // NOTE(Kelosky): if RC != 0, RC is a pointer to the parameter list and byte 3 of the parameter list contains the return code :-(
+  if (0 != rc)
+  {
+    unsigned char *byte_pointer = (unsigned char *PTR32)rc;
+#define DEQ_RESERVE_RC_INDEX 3
+    rc = byte_pointer[DEQ_RESERVE_RC_INDEX];
   }
 
   return rc;
