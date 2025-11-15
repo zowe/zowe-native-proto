@@ -33,17 +33,30 @@ typedef struct ucb UCB;
 ENQ_MODEL(enq_model); // make this copy in static storage
 
 #if defined(__IBM_METAL__)
-#define RESERVE_MODEL(resm)                                   \
-  __asm(                                                      \
-      "*                                                  \n" \
-      " RESERVE (,,E,,SYSTEMS),UCB=*-*,LOC=ANY,MF=L       \n" \
-      "*                                                    " \
+#define RESERVE_MODEL(resm)                                                               \
+  __asm(                                                                                  \
+      "*                                                  \n"                             \
+      " RESERVE (,,E,,SYSTEMS),UCB=*-*,LOC=ANY,MF=L                                   \n" \
+      "*                                                    "                             \
       : "DS"(resm));
 #else
 #define RESERVE_MODEL(resm) void *resm;
 #endif
 
 RESERVE_MODEL(reserve_model); // make this copy in static storage
+
+// #if defined(__IBM_METAL__)
+// #define RESERVE_MODEL(resm)                                   \
+//   __asm(                                                      \
+//       "*                                                  \n" \
+//       " RESERVE (,,E,,SYSTEMS),UCB=*-*,LOC=ANY,MF=L       \n" \
+//       "*                                                    " \
+//       : "DS"(resm));
+// #else
+// #define RESERVE_MODEL(resm) void *resm;
+// #endif
+
+// RESERVE_MODEL(reserve_model); // make this copy in static storage
 
 // NOTE(Kelosky): this gives an S230 if not initialized properly which does not match the MF=E setting nor documentation
 #if defined(__IBM_METAL__)
@@ -147,8 +160,6 @@ DEQ_MODEL(deq_model); // make this copy in static storage
 #define DEQ_RESERVE(qname, rname, rlen, rc, ucb, plist)
 #endif
 
-typedef struct ucbcmext UCB;
-
 #define MAX_QNAME_LENGTH 8
 typedef struct
 {
@@ -222,10 +233,10 @@ static int deq(QNAME *qname, RNAME *rname)
 static int deq_reserve(QNAME *qname, RNAME *rname, UCB *ucb)
 {
   int rc = 0;
-  DEQ_RESERVE_MODEL(dsa_deq_reserve_model);  // stack var
-  dsa_deq_reserve_model = deq_reserve_model; // copy model
+  DEQ_MODEL(dsa_deq_model);  // stack var
+  dsa_deq_model = deq_model; // copy model
 
-  DEQ_RESERVE(qname->value, rname->value, rname->rlen, rc, ucb, dsa_deq_reserve_model);
+  DEQ_RESERVE(qname->value, rname->value, rname->rlen, rc, ucb, dsa_deq_model);
 
   // NOTE(Kelosky): if RC != 0, RC is a pointer to the parameter list and byte 3 of the parameter list contains the return code :-(
   if (0 != rc)

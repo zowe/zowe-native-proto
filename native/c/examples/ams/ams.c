@@ -21,6 +21,9 @@
 #include "zutm31.h"
 #include "ztime.h"
 #include "zenq.h"
+#include "iezdeb.h"
+
+typedef struct deb DEB;
 
 /**
  * https://www.ibm.com/docs/en/zos/3.1.0?topic=defaults-ispf-ispfpdf
@@ -177,6 +180,14 @@ int AMSMAIN()
 
   QNAME qname = {0};
   RNAME rname = {0};
+
+  QNAME qname_reserve = {0};
+  RNAME rname_reserve = {0};
+
+  strcpy(qname_reserve.value, "SPFEDIT ");
+  rname_reserve.rlen = sprintf(rname_reserve.value, "%.*s", sizeof(resources.sysprint->jfcb.jfcbdsnm), resources.sysprint->jfcb.jfcbdsnm);
+  zwto_debug("@TEST qname_reserve: %s and length: %d and rname_reserve: %.*s", qname_reserve.value, rname_reserve.rlen, rname_reserve.rlen, rname_reserve.value);
+
   strcpy(qname.value, "SPFEDIT ");
   zwto_debug("@TEST resources.sysprint->jfcb.jfcbdsnm: %.*s", sizeof(resources.sysprint->jfcb.jfcbdsnm), resources.sysprint->jfcb.jfcbdsnm);
   zwto_debug("@TEST resources.sysprint->jfcb.jfcbelnm: %.*s", sizeof(resources.sysprint->jfcb.jfcbelnm), resources.sysprint->jfcb.jfcbelnm);
@@ -188,8 +199,32 @@ int AMSMAIN()
   {
     zwto_debug("@TEST reserve failed: %d", rc);
     release_resources(&resources);
-    return -1;
   }
+
+  DEB *PTR32 deb = (DEB * PTR32) & resources.sysprint->dcb.dcbiflgs; // flags followed by DEB
+  deb = (DEB * PTR32)((unsigned int)deb & 0x00FFFFFF);               // clear flags
+
+  zwto_debug("@TEST deb->debflgs2: %02x", deb->debflgs2);
+
+  if (deb->debflgs2 & deb31ucb)
+  {
+    zwto_debug("@TEST deb31ucb is set");
+  }
+  else
+  {
+    zwto_debug("@TEST deb31ucb is not set");
+  }
+
+  // TODO(Kelosky): ensure proper sequence, ensure conditional LOC= on RESREVE and perhaps the DEQ, ensure proper RESERVE model set
+  // rc = reserve(&qname_reserve, &rname_reserve, (UCB *)&resources.sysprint->dcb);
+  // if (0 != rc)
+  // {
+  //   zwto_debug("@TEST reserve failed: %d", rc);
+  //   release_resources(&resources);
+  //   return -1;
+  // }
+
+  // zwto_debug("@TEST reserve successful");
 
   /////////////////////////////////////////////////////////////
 
