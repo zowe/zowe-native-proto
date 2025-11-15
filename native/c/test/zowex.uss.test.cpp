@@ -34,7 +34,7 @@ void zowex_uss_tests()
 {
   int rc;
   string response;
-  describe("uss tests",
+  describe("uss",
            [&]() -> void
            {
              // Start by creating a /tmp/zowex-uss test directory
@@ -67,7 +67,7 @@ void zowex_uss_tests()
                Expect(response).ToContain("USS directory '" + uss_dir + "' created");
              };
 
-             describe("zowex uss - chmod",
+             describe("chmod",
                       [&]() -> void
                       {
                         string uss_path;
@@ -137,7 +137,7 @@ void zowex_uss_tests()
                              Expect(response).ToContain("Path '" + uss_file + "' does not exist");
                            });
                       });
-             describe("zowex uss - chown",
+             describe("chown",
                       [&]() -> void
                       {
                         string uss_path;
@@ -238,7 +238,7 @@ void zowex_uss_tests()
                                       });
                                  });
                       });
-             describe("zowex uss - chtag",
+             describe("chtag",
                       [&]() -> void
                       {
                         string uss_file;
@@ -297,7 +297,7 @@ void zowex_uss_tests()
                              Expect(response).ToContain("IBM-1047");
                            });
                       });
-             describe("zowex uss - create-dir",
+             describe("create-dir",
                       [&]() -> void
                       {
                         it("should properly create a directory with mode 777 specified",
@@ -346,7 +346,7 @@ void zowex_uss_tests()
                              Expect(response).ToContain("Failed to create directory '" + uss_dir + "/'");
                            });
                       });
-             describe("zowex uss - create-file",
+             describe("create-file",
                       [&]() -> void
                       {
                         it("should properly create a file with mode 777 specified",
@@ -384,7 +384,7 @@ void zowex_uss_tests()
                              Expect(response).ToContain("could not create USS file: '" + uss_file + "'");
                            });
                       });
-             describe("zowex uss - delete",
+             describe("delete",
                       [&]() -> void
                       {
                         it("should properly delete a file",
@@ -448,7 +448,7 @@ void zowex_uss_tests()
                            });
                       });
 
-             describe("zowex uss - write and view",
+             describe("write and view",
                       [&]() -> void
                       {
                         string uss_path;
@@ -577,7 +577,7 @@ void zowex_uss_tests()
                            });
                       });
 
-             describe("zowex uss - list (ls)",
+             describe("list (ls)",
                       [&]() -> void
                       {
                         beforeAll([&response]() -> void
