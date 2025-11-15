@@ -93,9 +93,9 @@ typedef struct
 typedef struct
 {
   DCBE dcbe;
-  int ctrlLen;
-  int bufferLen;
-  int bufferCtrl;
+  int ctrl_len;
+  int buffer_len;
+  // int bufferCtrl;
   unsigned int eod : 1;
   char *PTR32 buffer;
 } FILE_CTRL;
@@ -173,6 +173,8 @@ typedef struct
   int buffer_size;
   int output : 1;
   int input : 1;
+  void *PTR32 zam24;
+  int zam24_len;
 } IO_CTRL;
 
 #endif

@@ -11,6 +11,7 @@
 
 #include "zam.h"
 #include "dcbd.h"
+// #include "zam24.h"
 #include "zwto.h"
 
 // NOTE(Kelosky): must be assembled in AMODE31 code
@@ -49,10 +50,23 @@ IO_CTRL *open_output_assert(char *ddname, int lrecl, int blkSize, unsigned char 
 IO_CTRL *open_input_assert(char *ddname, int lrecl, int blkSize, unsigned char recfm)
 {
   IO_CTRL *ioc = new_read_io_ctrl(ddname, lrecl, blkSize, recfm);
-  set_dcb_dcbe(&ioc->dcb, eodad);
+  set_dcb_dcbe(&ioc->dcb);
+  set_eod(&ioc->dcb, eodad);
   IHADCB *dcb = &ioc->dcb;
   int rc = 0;
   dcb->dcbdsrg1 = dcbdsgps; // DSORG=PS
+
+  /////////////////////////////////////////////////////////////
+  // rc = read_input_jfcb(ioc);
+  // if (0 != rc)
+  // {
+  //   zwto_debug("@TEST read_input_jfcb failed: %d", rc);
+  // }
+
+  // zwto_debug("@TEST read input jfcb");
+  // dcb->dcbdsrg1 = dcbdsgpo; // DSORG=PO @TEST
+  /////////////////////////////////////////////////////////////
+
   rc = open_input(dcb);
   ioc->input = 1;
 
@@ -71,19 +85,34 @@ IO_CTRL *open_input_assert(char *ddname, int lrecl, int blkSize, unsigned char r
 void close_assert(IO_CTRL *ioc)
 {
   IHADCB *dcb = &ioc->dcb;
-  void *temp = dcb->dcbdcbe;
+  FILE_CTRL *fc = dcb->dcbdcbe;
+  zwto_debug("@TEST close_assert: %p", fc);
 
-  int rc = close_dcb(dcb);
-  if (0 != rc)
-    s0c3_abend(CLOSE_ASSERT_RC);
-
-  // free DCBE / file control if obtained
-  if (temp && ioc->input)
+  if (dcb->dcboflgs & dcbofopn)
   {
-    FILE_CTRL *fc = dcb->dcbdcbe;
-    storage_release(fc->ctrlLen, fc);
+    zwto_debug("@TEST close_assert: closing dcb: %p", dcb);
+    int rc = close_dcb(dcb);
+    if (0 != rc)
+    {
+      s0c3_abend(CLOSE_ASSERT_RC);
+    }
+    // free DCBE / file control if obtained
+    if (fc && ioc->input)
+    {
+      zwto_debug("@TEST close_assert: releasing fc: %p", fc);
+      // FILE_CTRL *fc = dcb->dcbdcbe;
+      storage_release(fc->ctrl_len, fc);
+    }
   }
 
+  // if (ioc->zam24)
+  // {
+  //   zwto_debug("@TEST close_assert: releasing zam24: %p", ioc->zam24);
+  //   storage_release(ioc->zam24_len, ioc->zam24);
+  //   ioc->zam24 = NULL;
+  // }
+
+  zwto_debug("@TEST close_assert: releasing ioc: %p", ioc);
   storage_release(sizeof(IO_CTRL), ioc);
 }
 
@@ -123,14 +152,21 @@ int note(IO_CTRL *ioc, NOTE_RESPONSE *PTR32 note_response, int *rsn)
   return rc;
 }
 
+// TODO(Kelosky): common logic for both read_input_jfcb and read_output_jfcb should be combined
 int read_input_jfcb(IO_CTRL *ioc)
 {
   int rc = 0;
 
-  ioc->exlst[0].exlentrb = (unsigned int)0; // NOTE(Kelosky): DCBABEND needs to be copied to 24 bit storage or have some wrapper
-  ioc->exlst[0].exlcodes = exldcbab;
-  ioc->exlst[1].exlentrb = (unsigned int)&ioc->jfcb;
-  ioc->exlst[1].exlcodes = exllaste + exlrjfcb;
+  // int zam24_len = ZAM24Q();
+  // zwto_debug("@TEST zam24_len: %d", zam24_len);
+  // ioc->zam24_len = zam24_len;
+  // ioc->zam24 = storage_obtain24(zam24_len);
+  // memcpy(ioc->zam24, (void *PTR32)ZAM24, zam24_len);
+
+  // ioc->exlst[0].exlentrb = (unsigned int)ioc->zam24; uncommend to enable DCBABEND
+  // ioc->exlst[0].exlcodes = exldcbab;
+  ioc->exlst[0].exlentrb = (unsigned int)&ioc->jfcb;
+  ioc->exlst[0].exlcodes = exllaste + exlrjfcb;
   memcpy(&ioc->rpl, &rdfjfcb_model, sizeof(RDJFCB_PL));
 
   unsigned char recfm = ioc->dcb.dcbrecfm; // save the recfm
@@ -146,10 +182,16 @@ int read_output_jfcb(IO_CTRL *ioc)
 {
   int rc = 0;
 
-  ioc->exlst[0].exlentrb = (unsigned int)0; // NOTE(Kelosky): DCBABEND needs to be copied to 24 bit storage or have some wrapper
-  ioc->exlst[0].exlcodes = exldcbab;
-  ioc->exlst[1].exlentrb = (unsigned int)&ioc->jfcb;
-  ioc->exlst[1].exlcodes = exllaste + exlrjfcb;
+  // int zam24_len = ZAM24Q();
+  // zwto_debug("@TEST zam24_len: %d", zam24_len);
+  // ioc->zam24_len = zam24_len;
+  // ioc->zam24 = storage_obtain24(zam24_len);
+  // memcpy(ioc->zam24, (void *PTR32)ZAM24, zam24_len);
+
+  // ioc->exlst[0].exlentrb = (unsigned int)ioc->zam24; uncommend to enable DCBABEND
+  // ioc->exlst[0].exlcodes = exldcbab;
+  ioc->exlst[0].exlentrb = (unsigned int)&ioc->jfcb;
+  ioc->exlst[0].exlcodes = exllaste + exlrjfcb;
   memcpy(&ioc->rpl, &rdfjfcb_model, sizeof(RDJFCB_PL));
 
   unsigned char recfm = ioc->dcb.dcbrecfm; // save the recfm
@@ -211,7 +253,8 @@ int write_dcb(IHADCB *dcb, WRITE_PL *wpl, char *buffer)
 }
 
 // NOTE(Kelosky): simple function that is non inline so that when
-// it is called, NAB will be set.
+// it is called, NAB will be set. This is needed for the CHECK macro
+// which could trigger a call to EODAD (which requires NAB to be set).
 void force_nab() ATTRIBUTE(noinline);
 void force_nab()
 {
@@ -308,4 +351,12 @@ int read_sync(IO_CTRL *ioc, char *buffer)
 void eodad()
 {
   fc->eod = 1;
+}
+
+#pragma prolog(ZAMDA31, " ZWEPROLG NEWDSA=(YES,8),SAVE=BAKR ") // TODO(Kelosky): BSM=NO?
+#pragma epilog(ZAMDA31, " ZWEEPILG ")
+int ZAMDA31()
+{
+  zwto_debug("@TEST ZAMDA31: called");
+  return 0;
 }
