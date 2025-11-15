@@ -30,7 +30,7 @@ using namespace ztst;
 const string zowex_command = "./../build-out/zowex";
 const string ussTestDir = "/tmp/zowex-uss";
 
-void uss_tests()
+void zowex_uss_tests()
 {
   int rc;
   string response;

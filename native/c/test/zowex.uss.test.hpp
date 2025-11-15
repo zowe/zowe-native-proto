@@ -9,7 +9,7 @@
  *
  */
 
-#ifndef USS_TEST_HPP
-#define USS_TEST_HPP
-void uss_tests();
+#ifndef ZOWEX_USS_TEST_HPP
+#define ZOWEX_USS_TEST_HPP
+void zowex_uss_tests();
 #endif

@@ -21,6 +21,7 @@
 #include "zowex.test.hpp"
 #include "zutils.hpp"
 #include "zowex.ds.test.hpp"
+#include "zowex.uss.test.hpp"
 
 using namespace std;
 using namespace ztst;
@@ -100,5 +101,6 @@ void zowex_tests()
                            Expect(stdout_output).ToContain("deleted"); });
                       });
              zowex_ds_tests();
+             zowex_uss_tests();
            });
 }
