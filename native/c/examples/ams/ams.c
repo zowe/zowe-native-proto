@@ -23,6 +23,27 @@
 #include "zenq.h"
 
 /**
+ * https://www.ibm.com/docs/en/zos/3.1.0?topic=defaults-ispf-ispfpdf
+ *
+To serialize access to resources with concurrent batch or TSO/E use of the resources, ISPF relies on MVS allocation (qname of SYSDSN).
+To ensure the integrity of shared data, batch, or TSO/E, users who are updating a data set must allocate it with DISP=OLD.
+Because MVS allocation does not satisfy an exclusive request and a shared request for the same resource at the same time, data set integrity is maintained between ISPF users and batch or TSO/E users.
+To serialize access to partitioned data sets among multiple ISPF users, ISPF also issues its own ENQ, DEQ, and RESERVE macros.
+To allow users to update a data set that has a record format of "U", ISPF serializes with the linkage editor to protect the entire partitioned data set.
+ *
+ */
+
+/**
+ *
+ * We can comment out the SPFEDIT enq and test ISPF + VS Code writing via STWO with ISGENQ RESERVEVOL=YES
+ * if bldl not found create stats
+ * handle the case matt found on 65356 line changes
+ * function to return stats
+ * stow works with any ttr value
+ *
+ */
+
+/**
  *
  * if in view mode, not spfedit enq on member name
  * if in edit mode, spfedit enq on member name
