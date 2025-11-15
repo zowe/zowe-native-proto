@@ -9,8 +9,12 @@
  *
  */
 
+#include "ztest.hpp"
 #include "zutils.hpp"
+#include <vector>
+#include <string>
 #include <sstream>
+#include <cstring>
 
 using namespace std;
 
@@ -65,9 +69,23 @@ string get_random_string(const int length, const bool allNumbers)
     seeded = true;
   }
   string ret = "";
+  // A simple array to map an index (0-25) to an EBCDIC uppercase character code
+  const unsigned char EBCDIC_UPPERCASE_LETTERS[] = {
+      0xC1, 0xC2, 0xC3, 0xC4, 0xC5, 0xC6, 0xC7, 0xC8, 0xC9, // A-I
+      0xD1, 0xD2, 0xD3, 0xD4, 0xD5, 0xD6, 0xD7, 0xD8, 0xD9, // J-R
+      0xE2, 0xE3, 0xE4, 0xE5, 0xE6, 0xE7, 0xE8, 0xE9        // S-Z
+  };
+
   for (int i = 0; i < length; ++i)
   {
-    ret += to_string(rand() % 10);
+    if (allNumbers)
+    {
+      ret += to_string(rand() % 10);
+    }
+    else
+    {
+      ret += EBCDIC_UPPERCASE_LETTERS[rand() % 26];
+    }
   }
   return ret;
 }
@@ -87,8 +105,35 @@ string get_random_uss(const string base_dir)
     ret += "/";
   }
 
-  ret += "test_" + get_random_string(10, true);
+  ret += "test_" + get_random_string(10);
 
+  return ret;
+}
+
+static std::string s_user = "";
+string get_user()
+{
+  if (s_user.empty())
+  {
+    string user;
+    execute_command_with_output("whoami", user);
+    s_user = ztst::TrimChars(user);
+  }
+  return s_user;
+}
+
+string get_random_ds(const int qualifier_count, const string hlq)
+{
+  string q = hlq;
+  if (q.length() == 0)
+  {
+    q = get_user();
+  }
+  string ret = q + ".ZNP#TEST";
+  for (int i = 0; i < qualifier_count - 2; ++i)
+  {
+    ret += ".Z" + get_random_string();
+  }
   return ret;
 }
 
@@ -115,4 +160,20 @@ string parse_etag_from_output(const string &output)
   string etag = output.substr(start_value_pos, end_value_pos - start_value_pos);
 
   return etag;
+}
+
+vector<string> parse_rfc_response(const string input, const char *delim)
+{
+  vector<string> ret;
+  char *cstr = new char[input.length() + 1];
+  strcpy(cstr, input.c_str());
+  char *token_ptr = strtok(cstr, delim);
+  while (token_ptr != NULL)
+  {
+    string token = token_ptr;
+    ret.push_back(ztst::TrimChars(token));
+    token_ptr = strtok(NULL, delim);
+  }
+  delete[] cstr;
+  return ret;
 }

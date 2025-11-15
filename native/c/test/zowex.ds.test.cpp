@@ -15,7 +15,7 @@
 #include <string>
 #include <vector>
 #include "ztest.hpp"
-#include "ztest.utils.hpp"
+#include "zutils.hpp"
 #include "ztype.h"
 #include "zowex.test.hpp"
 #include "zowex.ds.test.hpp"
@@ -190,7 +190,7 @@ void zowex_ds_tests()
                              string command = zowex_command + " data-set list " + ds + " -a --rfc";
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
-                             vector<string> tokens = split_rfc_response(response, ",");
+                             vector<string> tokens = parse_rfc_response(response, ",");
                              Expect(tokens[1]).ToBe("PS");
                              Expect(tokens[4]).ToBe("FB");
                            });
@@ -205,7 +205,7 @@ void zowex_ds_tests()
                              string command = zowex_command + " data-set list " + ds + " -a --rfc";
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
-                             vector<string> tokens = split_rfc_response(response, ",");
+                             vector<string> tokens = parse_rfc_response(response, ",");
                              Expect(tokens[1]).ToBe("PO-E");
                            });
 
@@ -220,7 +220,7 @@ void zowex_ds_tests()
                              string command = zowex_command + " data-set list " + ds + " -a --rfc";
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
-                             vector<string> tokens = split_rfc_response(response, ",");
+                             vector<string> tokens = parse_rfc_response(response, ",");
                              Expect(tokens[1]).ToBe("PO");
                              Expect(tokens[4]).ToBe("VB");
                            });
@@ -235,7 +235,7 @@ void zowex_ds_tests()
                              string command = zowex_command + " data-set list " + ds + " -a --rfc";
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
-                             vector<string> tokens = split_rfc_response(response, ",");
+                             vector<string> tokens = parse_rfc_response(response, ",");
                              Expect(tokens[1]).ToBe("PS");
                              Expect(tokens[4]).ToBe("VB");
                            });
@@ -251,7 +251,7 @@ void zowex_ds_tests()
                              string command = zowex_command + " data-set list " + ds + " -a --rfc";
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
-                             vector<string> tokens = split_rfc_response(response, ",");
+                             vector<string> tokens = parse_rfc_response(response, ",");
                              Expect(tokens[1]).ToBe("PO");
                              Expect(tokens[4]).ToBe("FB");
                              // primary = 10
@@ -292,7 +292,7 @@ void zowex_ds_tests()
                              command = zowex_command + " data-set list " + ds + " -a --rfc";
                              rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
-                             vector<string> tokens = split_rfc_response(response, ",");
+                             vector<string> tokens = parse_rfc_response(response, ",");
                              Expect(tokens[1]).ToBe("PO-E");
                              Expect(tokens[4]).ToBe("VB");
                              // lrecl = 32756
@@ -348,7 +348,7 @@ void zowex_ds_tests()
                              command = zowex_command + " data-set list " + ds + " -a --rfc";
                              rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
-                             vector<string> tokens = split_rfc_response(response, ",");
+                             vector<string> tokens = parse_rfc_response(response, ",");
                              Expect(tokens[1]).ToBe("PO-E");
                              Expect(tokens[4]).ToBe("FB");
                              // lrecl = 80
@@ -402,7 +402,7 @@ void zowex_ds_tests()
                              command = zowex_command + " data-set list " + ds + " -a --rfc";
                              rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
-                             vector<string> tokens = split_rfc_response(response, ",");
+                             vector<string> tokens = parse_rfc_response(response, ",");
                              Expect(tokens[1]).ToBe("PO-E");
                              Expect(tokens[4]).ToBe("U");
                              // lrecl = 0
@@ -542,7 +542,7 @@ void zowex_ds_tests()
                              command = zowex_command + " data-set list " + ds + " -a --rfc";
                              rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
-                             vector<string> tokens = split_rfc_response(response, ",");
+                             vector<string> tokens = parse_rfc_response(response, ",");
                              Expect(tokens[1]).ToBe("PO-E");
                              Expect(tokens[4]).ToBe("VB");
                              // lrecl = 255
