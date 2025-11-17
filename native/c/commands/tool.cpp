@@ -54,9 +54,12 @@ int handle_tool_convert_dsect(InvocationContext &context)
   dds.push_back("alloc fi(sysadata) da('" + adata_dsn + "') shr msg(2)");
   dds.push_back("alloc fi(edcdsect) da('" + chdr_dsn + "') shr msg(2)");
 
-  rc = zut_loop_dynalloc(dds);
+  ZDIAG diag = {};
+  rc = zut_loop_dynalloc(diag, dds);
   if (0 != rc)
   {
+    context.error_stream() << "Error: allocation failed" << endl;
+    context.error_stream() << "  Details: " << diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
@@ -72,7 +75,7 @@ int handle_tool_convert_dsect(InvocationContext &context)
   context.output_stream() << "Copy it via `cp \"//'" + chdr_dsn + "'\" <member>.h`" << endl;
 
   // Free dynalloc dds
-  zut_free_dynalloc_dds(dds, &context.error_stream());
+  zut_free_dynalloc_dds(diag, dds);
 
   return rc;
 }
@@ -119,7 +122,7 @@ int handle_tool_display_symbol(InvocationContext &context)
 int handle_tool_list_parmlib(InvocationContext &context)
 {
   int rc = 0;
-  ZDIAG diag = {0};
+  ZDIAG diag = {};
   std::vector<std::string> parmlibs;
   rc = zut_list_parmlib(diag, parmlibs);
   if (0 != rc)
@@ -152,9 +155,12 @@ int handle_tool_search(InvocationContext &context)
   dds.push_back("alloc dd(outdd)");
   dds.push_back("alloc dd(sysin)");
 
-  rc = zut_loop_dynalloc(dds);
+  ZDIAG diag = {};
+  rc = zut_loop_dynalloc(diag, dds);
   if (0 != rc)
   {
+    context.error_stream() << "Error: allocation failed" << endl;
+    context.error_stream() << "  Details: " << diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
@@ -180,7 +186,9 @@ int handle_tool_search(InvocationContext &context)
       ZUT_RTNCD_SEARCH_SUCCESS != rc &&
       ZUT_RTNCD_SEARCH_WARNING != rc)
   {
-    context.error_stream() << "Error: could error invoking ISRSUPC rc: '" << rc << "'" << endl;
+    context.error_stream() << "Error: could not invoke ISRSUPC rc: '" << rc << "'" << endl;
+    zut_free_dynalloc_dds(diag, dds);
+    return RTNCD_FAILURE;
   }
 
   // Read output from super c
@@ -190,12 +198,13 @@ int handle_tool_search(InvocationContext &context)
   {
     context.error_stream() << "Error: could not read from dd: '" << "outdd" << "' rc: '" << rc << "'" << endl;
     context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
+    zut_free_dynalloc_dds(diag, dds);
     return RTNCD_FAILURE;
   }
   context.output_stream() << output << endl;
 
   // Free dynalloc dds
-  zut_free_dynalloc_dds(dds, &context.error_stream());
+  zut_free_dynalloc_dds(diag, dds);
 
   return RTNCD_SUCCESS;
 }
@@ -214,9 +223,12 @@ int handle_tool_amblist(InvocationContext &context)
   dds.push_back("alloc dd(sysprint) lrecl(80) recfm(f,b) blksize(80)");
   dds.push_back("alloc dd(sysin) lrecl(80) recfm(f,b) blksize(80)");
 
-  rc = zut_loop_dynalloc(dds);
+  ZDIAG diag = {};
+  rc = zut_loop_dynalloc(diag, dds);
   if (0 != rc)
   {
+    context.error_stream() << "Error: allocation failed" << endl;
+    context.error_stream() << "  Details: " << diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
@@ -236,7 +248,8 @@ int handle_tool_amblist(InvocationContext &context)
   rc = zut_run("AMBLIST");
   if (RTNCD_SUCCESS != rc)
   {
-    context.error_stream() << "Error: could error invoking AMBLIST rc: '" << rc << "'" << endl;
+    context.error_stream() << "Error: could not invoke AMBLIST rc: '" << rc << "'" << endl;
+    return RTNCD_FAILURE;
   }
 
   // Read output from amblist
@@ -251,7 +264,7 @@ int handle_tool_amblist(InvocationContext &context)
   context.output_stream() << output << endl;
 
   // Free dynalloc dds
-  zut_free_dynalloc_dds(dds, &context.error_stream());
+  zut_free_dynalloc_dds(diag, dds);
 
   return RTNCD_SUCCESS;
 }
@@ -282,9 +295,12 @@ int handle_tool_run(InvocationContext &context)
     }
     in.close();
 
-    rc = zut_loop_dynalloc(dds);
+    ZDIAG diag = {};
+    rc = zut_loop_dynalloc(diag, dds);
     if (0 != rc)
     {
+      context.error_stream() << "Error: allocation failed" << endl;
+      context.error_stream() << "  Details: " << diag.e_msg << endl;
       return RTNCD_FAILURE;
     }
   }
@@ -356,7 +372,14 @@ int handle_tool_run(InvocationContext &context)
     }
     in.close();
 
-    zut_loop_dynalloc(dds);
+    ZDIAG diag = {};
+    rc = zut_loop_dynalloc(diag, dds);
+    if (0 != rc)
+    {
+      context.error_stream() << "Error: allocation failed" << endl;
+      context.error_stream() << "  Details: " << diag.e_msg << endl;
+      return RTNCD_FAILURE;
+    }
   }
 
   return rc;

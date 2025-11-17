@@ -5,7 +5,7 @@ AS=as
 LD=ld
 
 # Source files
-SOURCES = testasm1.s testasm4.s testaut1.s
+SOURCES = testasm1.s testasm4.s testaut1.s testload.s
 
 # Object files
 OBJECTS = $(SOURCES:.s=.o)

@@ -306,9 +306,11 @@ int handle_data_set_view(InvocationContext &context)
     if (!volser_value.empty())
     {
       dds.push_back("alloc dd(input) da('" + dsn + "') shr vol(" + volser_value + ")");
-      rc = zut_loop_dynalloc(dds);
+      ZDIAG diag = {};
+      rc = zut_loop_dynalloc(diag, dds);
       if (0 != rc)
       {
+        context.error_stream() << diag.e_msg << endl;
         return RTNCD_FAILURE;
       }
       strcpy(zds.ddname, "INPUT");
@@ -386,7 +388,13 @@ int handle_data_set_view(InvocationContext &context)
 
   if (dds.size() > 0)
   {
-    zut_free_dynalloc_dds(dds, &context.error_stream());
+    ZDIAG diag = {};
+    rc = zut_free_dynalloc_dds(diag, dds);
+    if (0 != rc)
+    {
+      context.error_stream() << diag.e_msg << endl;
+      return RTNCD_FAILURE;
+    }
   }
 
   context.set_object(result);
@@ -593,9 +601,11 @@ int handle_data_set_write(InvocationContext &context)
     if (!volser_value.empty())
     {
       dds.push_back("alloc dd(output) da('" + dsn + "') shr vol(" + volser_value + ")");
-      rc = zut_loop_dynalloc(dds);
+      ZDIAG diag = {};
+      rc = zut_loop_dynalloc(diag, dds);
       if (0 != rc)
       {
+        context.error_stream() << diag.e_msg << endl;
         return RTNCD_FAILURE;
       }
       strcpy(zds.ddname, "OUTPUT");
@@ -637,7 +647,13 @@ int handle_data_set_write(InvocationContext &context)
 
   if (dds.size() > 0)
   {
-    zut_free_dynalloc_dds(dds, &context.error_stream());
+    ZDIAG diag = {};
+    rc = zut_free_dynalloc_dds(diag, dds);
+    if (0 != rc)
+    {
+      context.error_stream() << diag.e_msg << endl;
+      return RTNCD_FAILURE;
+    }
   }
 
   if (0 != rc)
@@ -693,9 +709,11 @@ int handle_data_set_restore(InvocationContext &context)
   dds.push_back("alloc da('" + dsn + "') shr");
   dds.push_back("free da('" + dsn + "')");
 
-  rc = zut_loop_dynalloc(dds);
+  ZDIAG diag = {};
+  rc = zut_loop_dynalloc(diag, dds);
   if (0 != rc)
   {
+    context.error_stream() << diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
@@ -743,9 +761,12 @@ int handle_data_set_compress(InvocationContext &context)
   dds.push_back("alloc dd(sysprint) lrecl(80) recfm(f,b) blksize(80)");
   dds.push_back("alloc dd(sysin) lrecl(80) recfm(f,b) blksize(80)");
 
-  rc = zut_loop_dynalloc(dds);
+  ZDIAG diag = {};
+  rc = zut_loop_dynalloc(diag, dds);
   if (0 != rc)
   {
+    context.error_stream() << "Error: allocation failed" << endl;
+    context.error_stream() << "  Details: " << diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
@@ -760,10 +781,13 @@ int handle_data_set_compress(InvocationContext &context)
   }
 
   // perform compress
-  rc = zut_run("IEBCOPY");
+  rc = zut_run24("IEBCOPY");
   if (RTNCD_SUCCESS != rc)
   {
-    context.error_stream() << "Error: could error invoking IEBCOPY rc: '" << rc << "'" << endl;
+    context.error_stream() << "Error: could not invoke IEBCOPY rc: '" << rc << "'" << endl;
+
+    zut_free_dynalloc_dds(diag, dds);
+    return RTNCD_FAILURE;
   }
 
   // read output from iebcopy
@@ -779,7 +803,13 @@ int handle_data_set_compress(InvocationContext &context)
   context.output_stream() << "Data set '" << dsn << "' compressed" << endl;
 
   // free dynalloc dds
-  zut_free_dynalloc_dds(dds, &context.error_stream());
+  rc = zut_free_dynalloc_dds(diag, dds);
+  if (0 != rc)
+  {
+    context.error_stream() << "Error: allocation failed" << endl;
+    context.error_stream() << "  Details: " << diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
 
   return RTNCD_SUCCESS;
 }

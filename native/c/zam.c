@@ -11,74 +11,33 @@
 
 #include "zam.h"
 #include "dcbd.h"
+#include "zwto.h"
 
-register FILE_CTRL *fc ASMREG("r2");
+// NOTE(Kelosky): must be assembled in AMODE31 code
+#if defined(__IBM_METAL__)
+#define RDJFCB_MODEL(rdjfcbm)                                 \
+  __asm(                                                      \
+      "*                                                  \n" \
+      " RDJFCB (,),"                                          \
+      "MF=L                                               \n" \
+      "*                                                    " \
+      : "DS"(rdjfcbm));
+#else
+#define RDJFCB_MODEL(rdjfcbm)
+#endif
 
-static IO_CTRL *PTR32 newIoCtrl()
-{
-  IO_CTRL *ioc = storage_obtain24(sizeof(IO_CTRL));
-  memset(ioc, 0x00, sizeof(IO_CTRL));
-  return ioc;
-}
+RDJFCB_MODEL(rdfjfcb_model);
 
-static void setDcbInfo(IHADCB *PTR32 dcb, char *ddname, int lrecl, int blkSize, unsigned char recfm)
-{
-  char ddnam[9] = {0};
-  sprintf(ddnam, "%-8.8s", ddname);
-  memcpy(dcb->dcbddnam, ddnam, sizeof(dcb->dcbddnam));
-  dcb->dcblrecl = lrecl;
-  dcb->dcbblksi = blkSize;
-  dcb->dcbrecfm = recfm;
-}
-
-static void setDcbDcbe(IHADCB *PTR32 dcb)
-{
-  // get space for DCBE + buffer
-  short ctrlLen = sizeof(FILE_CTRL) + dcb->dcbblksi;
-  FILE_CTRL *fc = storage_obtain31(ctrlLen);
-  memset(fc, 0x00, ctrlLen);
-
-  // init file control
-  fc->ctrlLen = ctrlLen;
-  fc->bufferLen = dcb->dcbblksi;
-
-  // buffer is at the end of the structure
-  fc->buffer = (unsigned char *)fc + offsetof(FILE_CTRL, buffer) + sizeof(fc->buffer);
-
-  // init DCBE
-  fc->dcbe.dcbelen = 56;
-  memcpy(fc->dcbe.dcbeid, "DCBE", 4);
-
-  // retain access to DCB / file control
-  fc->dcbe.dcbeeoda = (void *)eodad;
-  dcb->dcbdcbe = fc;
-}
-
-static IO_CTRL *PTR32 newWriteIoCtrl(char *ddname, int lrecl, int blkSize, unsigned char recfm)
-{
-  IO_CTRL *ioc = newIoCtrl();
-  IHADCB *dcb = &ioc->dcb;
-  memcpy(dcb, &openWriteModel, sizeof(IHADCB));
-  setDcbInfo(dcb, ddname, lrecl, blkSize, recfm);
-  return ioc;
-}
-
-static IO_CTRL *PTR32 newReadIoCtrl(char *ddname, int lrecl, int blkSize, unsigned char recfm)
-{
-  IO_CTRL *ioc = newIoCtrl();
-  IHADCB *dcb = &ioc->dcb;
-  memcpy(dcb, &openReadModel, sizeof(IHADCB));
-  setDcbInfo(dcb, ddname, lrecl, blkSize, recfm);
-  setDcbDcbe(dcb);
-  return ioc;
-}
+register FILE_CTRL *fc ASMREG("r8");
 
 IO_CTRL *open_output_assert(char *ddname, int lrecl, int blkSize, unsigned char recfm)
 {
-  IO_CTRL *ioc = newWriteIoCtrl(ddname, lrecl, blkSize, recfm);
+  IO_CTRL *ioc = new_write_io_ctrl(ddname, lrecl, blkSize, recfm);
   IHADCB *dcb = &ioc->dcb;
   int rc = 0;
   rc = open_output(dcb);
+  dcb->dcbdsrg1 = dcbdsgps; // DSORG=PS
+  ioc->output = 1;
   if (0 != rc)
     s0c3_abend(OPEN_OUTPUT_ASSERT_RC);
   if (!(dcbofopn & dcb->dcboflgs))
@@ -89,10 +48,19 @@ IO_CTRL *open_output_assert(char *ddname, int lrecl, int blkSize, unsigned char 
 
 IO_CTRL *open_input_assert(char *ddname, int lrecl, int blkSize, unsigned char recfm)
 {
-  IO_CTRL *ioc = newReadIoCtrl(ddname, lrecl, blkSize, recfm);
+  IO_CTRL *ioc = new_read_io_ctrl(ddname, lrecl, blkSize, recfm);
+  set_dcb_dcbe(&ioc->dcb, eodad);
   IHADCB *dcb = &ioc->dcb;
   int rc = 0;
+  dcb->dcbdsrg1 = dcbdsgps; // DSORG=PS
   rc = open_input(dcb);
+  ioc->input = 1;
+
+  // TODO(Kelosky): TM    DCBOFLGS,DCBOFOPN
+  // TODO(Kelosky): TM    dcbabend if occurs
+  // TODO(Kelosky): duplicate in open_output_assert
+  // TODO(Kelosky): handle DUMMY / NULLFILE
+
   if (0 != rc)
     s0c3_abend(OPEN_INPUT_ASSERT_RC);
   if (!(dcbofopn & dcb->dcboflgs))
@@ -103,12 +71,14 @@ IO_CTRL *open_input_assert(char *ddname, int lrecl, int blkSize, unsigned char r
 void close_assert(IO_CTRL *ioc)
 {
   IHADCB *dcb = &ioc->dcb;
+  void *temp = dcb->dcbdcbe;
+
   int rc = close_dcb(dcb);
   if (0 != rc)
     s0c3_abend(CLOSE_ASSERT_RC);
 
   // free DCBE / file control if obtained
-  if (dcb->dcbdcbe)
+  if (temp && ioc->input)
   {
     FILE_CTRL *fc = dcb->dcbdcbe;
     storage_release(fc->ctrlLen, fc);
@@ -117,13 +87,97 @@ void close_assert(IO_CTRL *ioc)
   storage_release(sizeof(IO_CTRL), ioc);
 }
 
+int find_member(IO_CTRL *ioc, int *rsn)
+{
+  int rc = 0;
+  int local_rsn = 0;
+  FIND(ioc->dcb, ioc->jfcb.jfcbelnm, rc, local_rsn);
+  *rsn = local_rsn;
+  return rc;
+}
+
+int bldl(IO_CTRL *ioc, BLDL_PL *bldl_pl, int *rsn)
+{
+  int rc = 0;
+  int local_rsn = 0;
+  BLDL(ioc->dcb, bldl_pl->ff, rc, local_rsn);
+  *rsn = local_rsn;
+  return rc;
+}
+
+int stow(IO_CTRL *ioc, int *rsn)
+{
+  int rc = 0;
+  int local_rsn = 0;
+  STOW(ioc->dcb, ioc->stow_list, rc, local_rsn);
+  *rsn = local_rsn;
+  return rc;
+}
+
+int note(IO_CTRL *ioc, NOTE_RESPONSE *PTR32 note_response, int *rsn)
+{
+  int rc = 0;
+  int local_rsn = 0;
+  NOTE(ioc->dcb, *note_response, rc, local_rsn);
+  *rsn = local_rsn;
+  return rc;
+}
+
+int read_input_jfcb(IO_CTRL *ioc)
+{
+  int rc = 0;
+
+  ioc->exlst[0].exlentrb = (unsigned int)0; // NOTE(Kelosky): DCBABEND needs to be copied to 24 bit storage or have some wrapper
+  ioc->exlst[0].exlcodes = exldcbab;
+  ioc->exlst[1].exlentrb = (unsigned int)&ioc->jfcb;
+  ioc->exlst[1].exlcodes = exllaste + exlrjfcb;
+  memcpy(&ioc->rpl, &rdfjfcb_model, sizeof(RDJFCB_PL));
+
+  unsigned char recfm = ioc->dcb.dcbrecfm; // save the recfm
+  void *PTR32 exlst = &ioc->exlst;
+  memcpy(&ioc->dcb.dcbexlst, &exlst, sizeof(ioc->dcb.dcbexlst));
+  ioc->dcb.dcbrecfm = recfm; // restore the recfm
+
+  RDJFCB(ioc->dcb, ioc->rpl, rc, INPUT);
+  return rc;
+}
+
+int read_output_jfcb(IO_CTRL *ioc)
+{
+  int rc = 0;
+
+  ioc->exlst[0].exlentrb = (unsigned int)0; // NOTE(Kelosky): DCBABEND needs to be copied to 24 bit storage or have some wrapper
+  ioc->exlst[0].exlcodes = exldcbab;
+  ioc->exlst[1].exlentrb = (unsigned int)&ioc->jfcb;
+  ioc->exlst[1].exlcodes = exllaste + exlrjfcb;
+  memcpy(&ioc->rpl, &rdfjfcb_model, sizeof(RDJFCB_PL));
+
+  unsigned char recfm = ioc->dcb.dcbrecfm; // save the recfm
+  void *PTR32 exlst = &ioc->exlst;
+  memcpy(&ioc->dcb.dcbexlst, &exlst, sizeof(ioc->dcb.dcbexlst));
+  ioc->dcb.dcbrecfm = recfm; // restore the recfm
+
+  RDJFCB(ioc->dcb, ioc->rpl, rc, OUTPUT);
+  return rc;
+}
+
 int open_output(IHADCB *dcb)
 {
   int rc = 0;
   OPEN_PL opl = {0};
   opl.option = OPTION_BYTE;
 
-  OPEN_OUTPUT(*dcb, opl, rc);
+  OPEN(*dcb, opl, rc, OUTPUT);
+  return rc;
+}
+
+int open_update(IHADCB *dcb)
+{
+  int rc = 0;
+  OPEN_PL opl = {0};
+  opl.option = OPTION_BYTE;
+
+  OPEN(*dcb, opl, rc, OUTPUT);
   return rc;
 }
 
@@ -133,7 +187,7 @@ int open_input(IHADCB *dcb)
   OPEN_PL opl = {0};
   opl.option = OPTION_BYTE;
 
-  OPEN_INPUT(*dcb, opl, rc);
+  OPEN(*dcb, opl, rc, INPUT);
   return rc;
 }
 
@@ -158,8 +212,8 @@ int write_dcb(IHADCB *dcb, WRITE_PL *wpl, char *buffer)
 
 // NOTE(Kelosky): simple function that is non inline so that when
 // it is called, NAB will be set.
-void forceNab() ATTRIBUTE(noinline);
-void forceNab()
+void force_nab() ATTRIBUTE(noinline);
+void force_nab()
 {
   return;
 }
@@ -167,7 +221,7 @@ void forceNab()
 int check(DECB *cpl)
 {
   int rc = 0;
-  forceNab();
+  force_nab();
   CHECK(*cpl, rc)
   rc = 0;
   return rc;
@@ -190,7 +244,7 @@ int close_dcb(IHADCB *dcb)
   return rc;
 }
 
-int writeSync(IO_CTRL *ioc, char *buffer)
+int write_sync(IO_CTRL *ioc, char *buffer)
 {
   int rc = 0;
   WRITE_PL *wpl = &ioc->decb;
@@ -203,7 +257,7 @@ int writeSync(IO_CTRL *ioc, char *buffer)
   return check(&ioc->decb);
 }
 
-int readSync(IO_CTRL *ioc, char *buffer)
+int read_sync(IO_CTRL *ioc, char *buffer)
 {
   int rc = 0;
   READ_PL *rpl = &ioc->decb;
@@ -212,7 +266,6 @@ int readSync(IO_CTRL *ioc, char *buffer)
   if (dcb->dcbdcbe)
   {
     // file control begins at DCBE address
-    // __asm(" svc 199 ");
     fc = dcb->dcbdcbe;
 
     // fixed only records until rdjfcb

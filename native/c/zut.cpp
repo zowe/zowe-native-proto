@@ -22,6 +22,7 @@
 #include "zutm31.h"
 #include <ios>
 #include "zdyn.h"
+#include "zuttype.h"
 #include <_Nascii.h>
 
 using namespace std;
@@ -34,6 +35,11 @@ int zut_search(string parms)
 int zut_run(string program)
 {
   return ZUTRUN(program.c_str());
+}
+
+int zut_run24(string program)
+{
+  return ZUTRUN24(program.c_str());
 }
 
 unsigned char zut_get_key()
@@ -578,7 +584,7 @@ bool zut_string_compare_c(const std::string &a, const std::string &b)
   return strcmp(a.c_str(), b.c_str()) < 0;
 }
 
-int zut_loop_dynalloc(vector<string> &list, std::ostream *err_stream)
+int zut_loop_dynalloc(ZDIAG &diag, vector<string> &list)
 {
   int rc = 0;
   unsigned int code = 0;
@@ -590,19 +596,18 @@ int zut_loop_dynalloc(vector<string> &list, std::ostream *err_stream)
 
     if (0 != rc)
     {
-      if (err_stream != nullptr)
-      {
-        *err_stream << "Error: bpxwdyn failed with '" << *it << "' rc: '" << rc << "'" << endl;
-        *err_stream << "  Details: " << response << endl;
-      }
-      return -1;
+      diag.detail_rc = ZUT_RTNCD_SERVICE_FAILURE;
+      diag.service_rc = rc;
+      strcpy(diag.service_name, "bpxwdyn");
+      diag.e_msg_len = sprintf(diag.e_msg, "bpxwdyn failed with '%s' rc: '%d', emsg: '%s'", diag.service_name, rc, (*it).c_str());
+      return RTNCD_FAILURE;
     }
   }
 
   return rc;
 }
 
-int zut_free_dynalloc_dds(vector<string> &list, std::ostream *err_stream)
+int zut_free_dynalloc_dds(ZDIAG &diag, vector<string> &list)
 {
   vector<string> free_dds;
   free_dds.reserve(list.size());
@@ -614,10 +619,8 @@ int zut_free_dynalloc_dds(vector<string> &list, std::ostream *err_stream)
     size_t end = alloc_dd.find(")", start);
     if (start == string::npos || end == string::npos)
     {
-      if (err_stream != nullptr)
-      {
-        *err_stream << "Error: Invalid format in DD alloc string: " << alloc_dd << endl;
-      }
+      diag.e_msg_len = sprintf(diag.e_msg, "Invalid format in DD alloc string: %s", (*it).c_str());
+      return RTNCD_FAILURE;
     }
     else
     {
@@ -625,10 +628,11 @@ int zut_free_dynalloc_dds(vector<string> &list, std::ostream *err_stream)
     }
   }
 
-  return zut_loop_dynalloc(free_dds, err_stream);
+  return zut_loop_dynalloc(diag, free_dds);
 }
 
-AutocvtGuard::AutocvtGuard(bool enabled) : old_state(0)
+AutocvtGuard::AutocvtGuard(bool enabled)
+    : old_state(0)
 {
   old_state = __ae_autoconvert_state(enabled ? _CVTSTATE_ON : _CVTSTATE_OFF);
 }
@@ -638,12 +642,14 @@ AutocvtGuard::~AutocvtGuard()
   __ae_autoconvert_state(old_state);
 }
 
-FileGuard::FileGuard(const char *filename, const char *mode) : fp()
+FileGuard::FileGuard(const char *filename, const char *mode)
+    : fp()
 {
   fp = fopen(filename, mode);
 }
 
-FileGuard::FileGuard(int fd, const char *mode) : fp()
+FileGuard::FileGuard(int fd, const char *mode)
+    : fp()
 {
   fp = fdopen(fd, mode);
 }
