@@ -427,12 +427,13 @@ int handle_data_set_list(InvocationContext &context)
   }
   vector<ZDSEntry> entries;
 
+  const auto num_attr_fields = 10;
   bool emit_csv = context.get<bool>("response-format-csv", false);
   rc = zds_list_data_sets(&zds, dsn, entries, attributes);
   if (RTNCD_SUCCESS == rc || RTNCD_WARNING == rc)
   {
     vector<string> fields;
-    fields.reserve(attributes ? 11 : 1);
+    fields.reserve((attributes ? num_attr_fields : 0) + 1);
     const auto entries_array = arr();
 
     for (vector<ZDSEntry>::iterator it = entries.begin(); it != entries.end(); ++it)
