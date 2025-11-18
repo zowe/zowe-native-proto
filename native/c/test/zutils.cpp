@@ -124,11 +124,7 @@ string get_user()
 
 string get_random_ds(const int qualifier_count, const string hlq)
 {
-  string q = hlq;
-  if (q.length() == 0)
-  {
-    q = get_user();
-  }
+  const auto q = hlq.length() == 0 ? get_user() : hlq;
   string ret = q + ".ZNP#TEST";
   for (int i = 0; i < qualifier_count - 2; ++i)
   {
