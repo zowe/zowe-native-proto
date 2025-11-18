@@ -253,7 +253,7 @@ struct Ast
     {
       std::string out = "{";
       bool first = true;
-      for (auto it = o->begin(); it != o->end(); ++it)
+      for (auto it = o->begin(), obj_end = o->end(); it != obj_end; ++it)
       {
         if (!first)
           out += ", ";
@@ -282,7 +282,8 @@ struct Ast
   }
 
 private:
-  explicit Ast(Kind kind_) : k(kind_), b(false), i(0), d(0.0)
+  explicit Ast(Kind kind_)
+      : k(kind_), b(false), i(0), d(0.0)
   {
   }
 
@@ -349,7 +350,7 @@ private:
 
     bool first = true;
     const auto &obj = *o;
-    for (auto entry = obj.begin(); entry != obj.end(); ++entry)
+    for (auto entry = obj.begin(), obj_end = obj.end(); entry != obj_end; ++entry)
     {
       if (!first)
         out << '\n';
@@ -1186,8 +1187,9 @@ inline PluginManager::PluginManager()
 inline PluginManager::~PluginManager()
 {
   for (auto it =
-           m_command_providers.begin();
-       it != m_command_providers.end(); ++it)
+                m_command_providers.begin(),
+            providers_end = m_command_providers.end();
+       it != providers_end; ++it)
   {
     delete *it;
   }
@@ -1240,7 +1242,7 @@ inline bool PluginManager::is_display_name_in_use(const std::string &name) const
     return false;
   }
 
-  for (std::vector<LoadedPlugin>::const_iterator it = m_plugins.begin(); it != m_plugins.end(); ++it)
+  for (std::vector<LoadedPlugin>::const_iterator it = m_plugins.begin(), plugins_end = m_plugins.end(); it != plugins_end; ++it)
   {
     if (it->metadata.display_name == name)
     {

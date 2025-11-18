@@ -148,7 +148,7 @@ struct RenameAll
     case lowercase:
     {
       std::string result;
-      for (auto it = name.begin(); it != name.end(); ++it)
+      for (auto it = name.begin(), str_end = name.end(); it != str_end; ++it)
       {
         result += std::tolower(*it);
       }
@@ -157,7 +157,7 @@ struct RenameAll
     case UPPERCASE:
     {
       std::string result;
-      for (auto it = name.begin(); it != name.end(); ++it)
+      for (auto it = name.begin(), str_end = name.end(); it != str_end; ++it)
       {
         result += std::toupper(*it);
       }
@@ -169,7 +169,7 @@ struct RenameAll
     {
       std::string result;
       bool capitalize_next = false;
-      for (auto it = name.begin(); it != name.end(); ++it)
+      for (auto it = name.begin(), str_end = name.end(); it != str_end; ++it)
       {
         if (*it == '_')
         {
@@ -199,7 +199,7 @@ struct RenameAll
     case SCREAMING_SNAKE_CASE:
     {
       std::string result;
-      for (auto it = name.begin(); it != name.end(); ++it)
+      for (auto it = name.begin(), str_end = name.end(); it != str_end; ++it)
       {
         result += std::toupper(*it);
       }
@@ -208,7 +208,7 @@ struct RenameAll
     case kebab_case:
     {
       std::string result;
-      for (auto it = name.begin(); it != name.end(); ++it)
+      for (auto it = name.begin(), str_end = name.end(); it != str_end; ++it)
       {
         if (*it == '_')
         {
@@ -224,7 +224,7 @@ struct RenameAll
     case SCREAMING_KEBAB_CASE:
     {
       std::string result;
-      for (auto it = name.begin(); it != name.end(); ++it)
+      for (auto it = name.begin(), str_end = name.end(); it != str_end; ++it)
       {
         if (*it == '_')
         {
@@ -466,16 +466,20 @@ private:
   }
 
 public:
-  Value() : data_(zstd::monostate())
+  Value()
+      : data_(zstd::monostate())
   {
   }
-  Value(bool b) : data_(b)
+  Value(bool b)
+      : data_(b)
   {
   }
-  Value(int i) : data_(static_cast<long long>(i))
+  Value(int i)
+      : data_(static_cast<long long>(i))
   {
   }
-  Value(long long ll) : data_(ll)
+  Value(long long ll)
+      : data_(ll)
   {
   }
   Value(unsigned long long ull)
@@ -489,18 +493,22 @@ public:
       data_ = static_cast<double>(ull);
     }
   }
-  Value(double d) : data_(d)
+  Value(double d)
+      : data_(d)
   {
   }
-  Value(const std::string &s) : data_(s)
+  Value(const std::string &s)
+      : data_(s)
   {
   }
-  Value(const char *s) : data_(std::string(s))
+  Value(const char *s)
+      : data_(std::string(s))
   {
   }
 
   // Copy constructor and assignment
-  Value(const Value &other) : data_(other.data_)
+  Value(const Value &other)
+      : data_(other.data_)
   {
   }
 
@@ -1108,7 +1116,7 @@ struct Serializable<std::vector<T>>
     Value result = Value::create_array();
     result.reserve_array(vec.size());
 
-    for (auto it = vec.begin(); it != vec.end(); ++it)
+    for (auto it = vec.begin(), vec_end = vec.end(); it != vec_end; ++it)
     {
       result.add_to_array(Serializable<T>::serialize(*it));
     }
@@ -1131,7 +1139,7 @@ struct Deserializable<std::vector<T>>
     const std::vector<Value> &array = value.as_array();
     result.reserve(array.size());
 
-    for (auto it = array.begin(); it != array.end(); ++it)
+    for (auto it = array.begin(), arr_end = array.end(); it != arr_end; ++it)
     {
       zstd::expected<T, Error> item_result = Deserializable<T>::deserialize(*it);
       if (!item_result.has_value())
@@ -1395,7 +1403,7 @@ inline std::string escape_json_string(const std::string &input)
   std::string output;
   output.reserve(input.length());
 
-  for (auto it = input.begin(); it != input.end(); ++it)
+  for (auto it = input.begin(), str_end = input.end(); it != str_end; ++it)
   {
     char c = *it;
     switch (c)
@@ -1822,7 +1830,7 @@ inline std::string add_json_indentation(const std::string &json_str, int spaces)
   bool in_string = false;
   bool escape_next = false;
 
-  for (auto it = json_str.begin(); it != json_str.end(); ++it)
+  for (auto it = json_str.begin(), str_end = json_str.end(); it != str_end; ++it)
   {
     char ch = *it;
     if (escape_next)
@@ -1971,7 +1979,7 @@ inline int value_to_json_instance(JSON_INSTANCE *instance, KEY_HANDLE *parent_ha
 
     // Add all array elements
     const std::vector<Value> &arr = value.as_array();
-    for (auto it = arr.begin(); it != arr.end(); ++it)
+    for (auto it = arr.begin(), arr_end = arr.end(); it != arr_end; ++it)
     {
       rc = value_to_json_instance(instance, &new_entry_handle, "", *it);
       if (rc != 0)
@@ -1989,7 +1997,7 @@ inline int value_to_json_instance(JSON_INSTANCE *instance, KEY_HANDLE *parent_ha
 
     // Add all object properties
     const auto &obj = value.as_object();
-    for (auto it = obj.begin(); it != obj.end(); ++it)
+    for (auto it = obj.begin(), obj_end = obj.end(); it != obj_end; ++it)
     {
       rc = value_to_json_instance(instance, &new_entry_handle, it->first, it->second);
       if (rc != 0)
@@ -2042,7 +2050,7 @@ inline std::string value_to_json_string(const Value &value)
       if (value.is_object())
       {
         const auto &obj = value.as_object();
-        for (auto it = obj.begin(); it != obj.end(); ++it)
+        for (auto it = obj.begin(), obj_end = obj.end(); it != obj_end; ++it)
         {
           rc = value_to_json_instance(&instance, &root_handle, it->first, it->second);
           if (rc != 0)

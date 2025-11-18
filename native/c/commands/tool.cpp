@@ -132,7 +132,7 @@ int handle_tool_list_parmlib(InvocationContext &context)
     return RTNCD_FAILURE;
   }
 
-  for (vector<string>::iterator it = parmlibs.begin(); it != parmlibs.end(); ++it)
+  for (vector<string>::iterator it = parmlibs.begin(), end = parmlibs.end(); it != end; ++it)
   {
     context.output_stream() << *it << endl;
   }

@@ -580,7 +580,7 @@ int zut_loop_dynalloc(ZDIAG &diag, vector<string> &list)
   unsigned int code = 0;
   string response;
 
-  for (vector<string>::iterator it = list.begin(); it != list.end(); it++)
+  for (vector<string>::iterator it = list.begin(), end = list.end(); it != end; it++)
   {
     rc = zut_bpxwdyn(*it, &code, response);
 
@@ -602,7 +602,7 @@ int zut_free_dynalloc_dds(ZDIAG &diag, vector<string> &list)
   vector<string> free_dds;
   free_dds.reserve(list.size());
 
-  for (vector<string>::iterator it = list.begin(); it != list.end(); it++)
+  for (vector<string>::iterator it = list.begin(), end = list.end(); it != end; it++)
   {
     string alloc_dd = *it;
     size_t start = alloc_dd.find(" ");

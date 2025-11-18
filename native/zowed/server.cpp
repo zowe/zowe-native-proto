@@ -304,7 +304,7 @@ void RpcServer::print_response(const RpcResponse &response, MiddlewareContext *c
   if (context && context->get_large_data().size() > 0)
   {
     auto &large_data_map = context->get_large_data();
-    for (auto it = large_data_map.begin(); it != large_data_map.end();)
+    for (auto it = large_data_map.begin(), map_end = large_data_map.end(); it != map_end;)
     {
       add_large_data_to_json(json_string, it->first, it->second);
       it = large_data_map.erase(it);

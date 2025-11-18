@@ -1094,9 +1094,9 @@ inline void print_failed_tests()
   bool has_failures = false;
 
   // First pass: check if there are any failures
-  for (std::vector<TEST_SUITE>::iterator it = g.get_suites().begin(); it != g.get_suites().end(); it++)
+  for (std::vector<TEST_SUITE>::iterator it = g.get_suites().begin(), suites_end = g.get_suites().end(); it != suites_end; it++)
   {
-    for (std::vector<TEST_CASE>::iterator iit = it->tests.begin(); iit != it->tests.end(); iit++)
+    for (std::vector<TEST_CASE>::iterator iit = it->tests.begin(), tests_end = it->tests.end(); iit != tests_end; iit++)
     {
       if (!iit->success)
       {
@@ -1117,12 +1117,12 @@ inline void print_failed_tests()
   std::vector<std::string> suite_paths;
   std::vector<int> suite_nesting_levels;
 
-  for (std::vector<TEST_SUITE>::iterator it = g.get_suites().begin(); it != g.get_suites().end(); it++)
+  for (std::vector<TEST_SUITE>::iterator it = g.get_suites().begin(), suites_end = g.get_suites().end(); it != suites_end; it++)
   {
     bool suite_has_failures = false;
 
     // Check if this suite has any failures
-    for (std::vector<TEST_CASE>::iterator iit = it->tests.begin(); iit != it->tests.end(); iit++)
+    for (std::vector<TEST_CASE>::iterator iit = it->tests.begin(), tests_end = it->tests.end(); iit != tests_end; iit++)
     {
       if (!iit->success)
       {
@@ -1150,7 +1150,7 @@ inline void print_failed_tests()
 
       std::cout << colors.red << colors.cross << " FAIL " << full_path << colors.reset << std::endl;
 
-      for (std::vector<TEST_CASE>::iterator iit = it->tests.begin(); iit != it->tests.end(); iit++)
+      for (std::vector<TEST_CASE>::iterator iit = it->tests.begin(), tests_end = it->tests.end(); iit != tests_end; iit++)
       {
         if (!iit->success)
         {
@@ -1204,11 +1204,11 @@ inline int report()
 
   std::cout << "\n======== TESTS SUMMARY ========" << std::endl;
 
-  for (std::vector<TEST_SUITE>::iterator it = g.get_suites().begin(); it != g.get_suites().end(); it++)
+  for (std::vector<TEST_SUITE>::iterator it = g.get_suites().begin(), suites_end = g.get_suites().end(); it != suites_end; it++)
   {
     bool suite_success = true;
     bool suite_ran = false;
-    for (std::vector<TEST_CASE>::iterator iit = it->tests.begin(); iit != it->tests.end(); iit++)
+    for (std::vector<TEST_CASE>::iterator iit = it->tests.begin(), tests_end = it->tests.end(); iit != tests_end; iit++)
     {
       suite_ran = true;
       tests_total++;

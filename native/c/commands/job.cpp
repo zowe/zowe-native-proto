@@ -46,7 +46,7 @@ int handle_job_list(InvocationContext &context)
     bool emit_csv = context.get<bool>("response-format-csv", false);
     const auto entries_array = arr();
 
-    for (vector<ZJob>::iterator it = jobs.begin(); it != jobs.end(); it++)
+    for (vector<ZJob>::iterator it = jobs.begin(), end = jobs.end(); it != end; it++)
     {
       if (emit_csv)
       {
@@ -117,7 +117,7 @@ int handle_job_list_files(InvocationContext &context)
     fields.reserve(5);
     const auto entries_array = arr();
 
-    for (vector<ZJobDD>::iterator it = job_dds.begin(); it != job_dds.end(); ++it)
+    for (vector<ZJobDD>::iterator it = job_dds.begin(), end = job_dds.end(); it != end; ++it)
     {
       fields.push_back(it->ddn);
       fields.push_back(it->dsn);
@@ -188,7 +188,7 @@ int handle_job_list_proclib(InvocationContext &context)
     return RTNCD_FAILURE;
   }
 
-  for (vector<string>::iterator it = proclib.begin(); it != proclib.end(); it++)
+  for (vector<string>::iterator it = proclib.begin(), end = proclib.end(); it != end; it++)
   {
     context.output_stream() << *it << endl;
   }

@@ -65,7 +65,7 @@ int zjb_get_job_dsn_by_key(ZJB *zjb, string jobid, int key, string &job_dsn)
 
   rc = RTNCD_FAILURE; // assume failure
 
-  for (vector<ZJobDD>::iterator it = list.begin(); it != list.end(); ++it)
+  for (vector<ZJobDD>::iterator it = list.begin(), end = list.end(); it != end; ++it)
   {
     if (key == it->key)
     {

@@ -105,7 +105,7 @@ std::vector<string> CommandDispatcher::get_registered_commands() const
   std::vector<string> commands;
   commands.reserve(m_commands.size());
 
-  for (auto it = m_commands.begin(); it != m_commands.end(); ++it)
+  for (auto it = m_commands.begin(), cmd_end = m_commands.end(); it != cmd_end; ++it)
   {
     commands.push_back(it->first);
   }

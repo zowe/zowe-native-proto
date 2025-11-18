@@ -379,7 +379,7 @@ int handle_data_set_list(InvocationContext &context)
     fields.reserve(attributes ? 5 : 1);
     const auto entries_array = arr();
 
-    for (vector<ZDSEntry>::iterator it = entries.begin(); it != entries.end(); ++it)
+    for (vector<ZDSEntry>::iterator it = entries.begin(), end = entries.end(); it != end; ++it)
     {
       if (emit_csv)
       {
@@ -468,7 +468,7 @@ int handle_data_set_list_members(InvocationContext &context)
   if (RTNCD_SUCCESS == rc || RTNCD_WARNING == rc)
   {
     const auto entries_array = arr();
-    for (vector<ZDSMem>::iterator it = members.begin(); it != members.end(); ++it)
+    for (vector<ZDSMem>::iterator it = members.begin(), end = members.end(); it != end; ++it)
     {
       context.output_stream() << left << setw(12) << it->name << endl;
       const auto entry = obj();

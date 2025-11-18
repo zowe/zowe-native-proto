@@ -1025,7 +1025,7 @@ static int zusf_collect_directory_entries_recursive(ZUSF *zusf, const string &di
   sort(current_entries.begin(), current_entries.end(), zut_string_compare_c);
 
   // Add current level entries to the result
-  for (vector<string>::const_iterator it = current_entries.begin(); it != current_entries.end(); ++it)
+  for (vector<string>::const_iterator it = current_entries.begin(), end = current_entries.end(); it != end; ++it)
   {
     const string &name = *it;
     entry_names.push_back(name);
@@ -1041,7 +1041,7 @@ static int zusf_collect_directory_entries_recursive(ZUSF *zusf, const string &di
         if (zusf_collect_directory_entries_recursive(zusf, child_path, subdir_entries, options, current_depth + 1) == RTNCD_SUCCESS)
         {
           // Add subdirectory entries with path prefix
-          for (vector<string>::const_iterator sub_it = subdir_entries.begin(); sub_it != subdir_entries.end(); ++sub_it)
+          for (vector<string>::const_iterator sub_it = subdir_entries.begin(), sub_end = subdir_entries.end(); sub_it != sub_end; ++sub_it)
           {
             const string &subentry = *sub_it;
             entry_names.push_back(name + "/" + subentry);

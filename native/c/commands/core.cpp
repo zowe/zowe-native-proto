@@ -123,7 +123,7 @@ int handle_plugins_list(plugin::InvocationContext &context)
   if (manager != nullptr)
   {
     const auto &loaded_plugins = manager->get_loaded_plugins();
-    for (auto it = loaded_plugins.begin(); it != loaded_plugins.end(); ++it)
+    for (auto it = loaded_plugins.begin(), plugins_end = loaded_plugins.end(); it != plugins_end; ++it)
     {
       auto &plugin = *it;
       registered_files.insert(plugin.metadata.filename);
@@ -141,7 +141,7 @@ int handle_plugins_list(plugin::InvocationContext &context)
   }
 
   bool has_unregistered = false;
-  for (auto it = plugin_files.begin(); it != plugin_files.end(); ++it)
+  for (auto it = plugin_files.begin(), files_end = plugin_files.end(); it != files_end; ++it)
   {
     if (registered_files.find(*it) != registered_files.end())
     {

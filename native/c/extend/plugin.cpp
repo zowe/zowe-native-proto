@@ -31,8 +31,8 @@ public:
 
   ~RegistrationContextImpl()
   {
-    for (std::vector<CommandRecord *>::iterator it = m_records.begin();
-         it != m_records.end(); ++it)
+    for (std::vector<CommandRecord *>::iterator it = m_records.begin(), records_end = m_records.end();
+         it != records_end; ++it)
     {
       delete *it;
     }
@@ -269,7 +269,7 @@ void PluginManager::load_plugins()
 
 void PluginManager::unload_plugins()
 {
-  for (auto it = m_plugins.begin(); it != m_plugins.end(); ++it)
+  for (auto it = m_plugins.begin(), plugins_end = m_plugins.end(); it != plugins_end; ++it)
   {
     if (it->handle)
     {
@@ -304,8 +304,9 @@ void PluginManager::register_commands(parser::Command &rootCommand)
   RegistrationContextImpl context(rootCommand);
 
   for (std::vector<CommandProvider *>::iterator it =
-           m_command_providers.begin();
-       it != m_command_providers.end(); ++it)
+                                                    m_command_providers.begin(),
+                                                providers_end = m_command_providers.end();
+       it != providers_end; ++it)
   {
     CommandProvider *factory = *it;
     if (!factory)
