@@ -28,7 +28,7 @@ using namespace std;
 using namespace ztst;
 
 const string zowex_command = "./../build-out/zowex";
-const string ussTestDir = "/tmp/zowex-uss";
+const string ussTestDir = "/tmp/zowex-uss_" + get_random_string(10, true);
 
 void uss_tests()
 {
@@ -47,7 +47,7 @@ void uss_tests()
 
              // Clean up the test directory
              afterAll([&response]() -> void
-                      { execute_command_with_output(zowex_command + " uss delete /tmp/zowex-uss --recursive", response); });
+                      { execute_command_with_output(zowex_command + " uss delete " + ussTestDir + " --recursive", response); });
 
              // Helper function to create a test file
              auto create_test_file_cmd = [&](const string &uss_file, const string &options = "") -> void

@@ -14,9 +14,15 @@
 
 using namespace std;
 
-int execute_command_with_input(const std::string &command, const std::string &input)
+int execute_command_with_input(const std::string &command, const std::string &input, bool suppress_output)
 {
-  FILE *pipe = popen(command.c_str(), "w");
+  std::string final_command = command;
+  if (suppress_output)
+  {
+    final_command += " > /dev/null";
+  }
+
+  FILE *pipe = popen(final_command.c_str(), "w");
   if (!pipe)
   {
     throw std::runtime_error("Failed to open pipe for writing");
