@@ -23,6 +23,7 @@
 #include "ztest.hpp"
 #include "zusf.hpp"
 #include "ztype.h"
+#include "zutils.hpp"
 
 using namespace std;
 using namespace ztst;
@@ -35,7 +36,7 @@ void zusf_tests()
              ZUSF zusf;
              memset(&zusf, 0, sizeof(zusf));
 
-             const std::string tmp_base = "/tmp/zusf_chown_tests";
+             const std::string tmp_base = "/tmp/zusf_chown_tests_" + get_random_string(10);
              const std::string file_path = tmp_base + "/one.txt";
              const std::string dir_path = tmp_base + "/tree";
              const std::string dir_a = dir_path + "/subA";
