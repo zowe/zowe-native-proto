@@ -105,25 +105,97 @@ export interface ListDatasetOptions {
 
 export interface Dataset {
     /**
-     * Dataset name
+     * Data set name
      */
     name: string;
     /**
-     * Dataset organization
+     * Allocated units
+     */
+    alloc?: number;
+    /**
+     * Allocated extents
+     */
+    allocx?: number;
+    /**
+     * Block size
+     */
+    blksize?: number;
+    /**
+     * Creation date
+     */
+    cdate?: string;
+    /**
+     * Data class
+     */
+    dataclass?: string;
+    /**
+     * Device type
+     */
+    devtype?: string;
+    /**
+     * Dsname type (e.g., PDS, LIBRARY)
+     */
+    dsntype?: string;
+    /**
+     * Data set organization
      */
     dsorg?: string;
     /**
-     * Volume serial number
+     * Expiration date
      */
-    volser?: string;
+    edate?: string;
     /**
-     * Dataset migrated
+     * Whether the data set is encrypted
      */
-    migr?: boolean;
+    encrypted?: boolean;
+    /**
+     * Logical record length
+     */
+    lrecl?: number;
+    /**
+     * Management class
+     */
+    mgmtclass?: string;
+    /**
+     * Whether the data set is migrated
+     */
+    migrated?: boolean;
+    /**
+     * Primary units
+     */
+    primary?: number;
+    /**
+     * Date last referenced
+     */
+    rdate?: string;
     /**
      * Record format
      */
     recfm?: string;
+    /**
+     * Secondary units
+     */
+    secondary?: number;
+    /**
+     * Space units
+     */
+    spacu?: string;
+    /**
+     * Storage class
+     */
+    storclass?: string;
+    /**
+     * Used percentage
+     */
+    usedp?: number;
+    /**
+     * Used extents
+     */
+    usedx?: number;
+    /**
+     * Volume serial
+     */
+    volser?: string;
 }
 
 export interface DatasetAttributes {

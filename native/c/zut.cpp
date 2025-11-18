@@ -517,12 +517,6 @@ std::string &zut_trim(std::string &s, const char *t)
   return zut_ltrim(zut_rtrim(s, t), t);
 }
 
-/**
- * Formats a vector of strings as a CSV string.
- *
- * @param fields the vector of strings to format
- * @return the formatted CSV string
- */
 string zut_format_as_csv(std::vector<string> &fields)
 {
   string formatted;
@@ -538,17 +532,33 @@ string zut_format_as_csv(std::vector<string> &fields)
   return formatted;
 }
 
-/**
- * Converts an integer to a string using sprintf.
- *
- * @param value the integer value to convert
- * @return the string representation of the integer
- */
-string zut_int_to_string(int value)
+// Helper template for integer to string conversion
+template <typename T>
+static inline string int_to_string_impl(T value, bool is_hex, const char *dec_fmt, const char *hex_fmt)
 {
   char buffer[32];
-  sprintf(buffer, "%d", value);
+  sprintf(buffer, is_hex ? hex_fmt : dec_fmt, value);
   return string(buffer);
+}
+
+string zut_int_to_string(int value, bool is_hex)
+{
+  return int_to_string_impl(value, is_hex, "%d", "%X");
+}
+
+string zut_int_to_string(unsigned int value, bool is_hex)
+{
+  return int_to_string_impl(value, is_hex, "%u", "%X");
+}
+
+string zut_int_to_string(long value, bool is_hex)
+{
+  return int_to_string_impl(value, is_hex, "%ld", "%lX");
+}
+
+string zut_int_to_string(long long value, bool is_hex)
+{
+  return int_to_string_impl(value, is_hex, "%lld", "%llX");
 }
 
 int zut_alloc_debug()

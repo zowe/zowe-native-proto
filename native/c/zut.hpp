@@ -172,9 +172,13 @@ std::string zut_format_as_csv(std::vector<std::string> &fields);
 /**
  * @brief Convert an integer to a string using sprintf
  * @param value The integer value to convert
+ * @param is_hex Set to true to format as hexadecimal
  * @return The string representation of the integer
  */
-std::string zut_int_to_string(int value);
+std::string zut_int_to_string(int value, bool is_hex = false);
+std::string zut_int_to_string(unsigned int value, bool is_hex = false);
+std::string zut_int_to_string(long value, bool is_hex = false);
+std::string zut_int_to_string(long long value, bool is_hex = false);
 
 /**
  * @brief Trim whitespace from the right end of a string

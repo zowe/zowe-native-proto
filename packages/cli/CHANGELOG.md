@@ -4,6 +4,10 @@ All notable changes to the Client code for "zowe-native-proto-cli" are documente
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+
+- When listing data sets with attributes, a comprehensive set is now retrieved that is similar to what ISPF displays. [#629](https://github.com/zowe/zowe-native-proto/issues/629)
+
 ## `0.2.0`
 
 - Updated `CliPromptApi` class to gracefully handle unused functions from the `AbstractConfigManager` class. [#605](https://github.com/zowe/zowe-native-proto/pull/605)
