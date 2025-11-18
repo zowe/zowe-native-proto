@@ -99,13 +99,13 @@ ZowedOptions parse_options(int argc, char *argv[])
 
   if (opts.num_workers <= 0)
   {
-    std::cerr << "Number of workers must be greater than 0" << std::endl;
+    std::cerr << "Number of workers must be greater than 0" << '\n';
     std::exit(1);
   }
 
   if (opts.request_timeout <= 0)
   {
-    std::cerr << "Request timeout must be greater than 0 seconds" << std::endl;
+    std::cerr << "Request timeout must be greater than 0 seconds" << '\n';
     std::exit(1);
   }
 
@@ -204,9 +204,9 @@ int main(int argc, char *argv[])
   if (handle == NULL)
   {
     const char *error_msg = dlerror();
-    std::cerr << "Cannot load libzowed.so: " << (error_msg ? error_msg : "Unknown error") << std::endl;
-    std::cerr << "Expected location: " << lib_path << std::endl;
-    std::cerr << "Make sure libzowed.so is in the same directory as the zowed executable" << std::endl;
+    std::cerr << "Cannot load libzowed.so: " << (error_msg ? error_msg : "Unknown error") << '\n';
+    std::cerr << "Expected location: " << lib_path << '\n';
+    std::cerr << "Make sure libzowed.so is in the same directory as the zowed executable" << '\n';
     return 1;
   }
 
@@ -217,7 +217,7 @@ int main(int argc, char *argv[])
   const char *dlsym_error = dlerror();
   if (dlsym_error || func_ptr == NULL)
   {
-    std::cerr << "Cannot load symbol run_zowed_server: " << (dlsym_error ? dlsym_error : "Symbol not found") << std::endl;
+    std::cerr << "Cannot load symbol run_zowed_server: " << (dlsym_error ? dlsym_error : "Symbol not found") << '\n';
     dlclose(handle);
     return 1;
   }

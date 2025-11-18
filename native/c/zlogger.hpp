@@ -53,7 +53,7 @@ protected:
     {
       if (errno != EEXIST)
       {
-        std::cerr << "Failed to create logs directory: " << strerror(errno) << std::endl;
+        std::cerr << "Failed to create logs directory: " << strerror(errno) << '\n';
         return false;
       }
     }
@@ -136,7 +136,7 @@ public:
     m_initialized = ZLGINIT(log_path_str.c_str(), &initial_level) == 0;
     if (!m_initialized)
     {
-      std::cerr << "Failed to initialize Metal C logger" << std::endl;
+      std::cerr << "Failed to initialize Metal C logger" << '\n';
       return;
     }
   }

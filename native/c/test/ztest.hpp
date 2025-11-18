@@ -298,7 +298,7 @@ private:
       std::cout << " (" << std::fixed << std::setprecision(3)
                 << duration.count() / 1000.0 << "ms)";
     }
-    std::cout << std::endl;
+    std::cout << '\n';
 
     if (!tc.success)
     {
@@ -321,7 +321,7 @@ private:
 
     // Print exactly current_nesting * 2 spaces
     Globals::get_instance().pad_nesting(current_nesting);
-    std::cout << color << colors.arrow << colors.reset << " " << main_error << std::endl;
+    std::cout << color << colors.arrow << colors.reset << " " << main_error << '\n';
 
     if (!context.empty())
     {
@@ -330,7 +330,7 @@ private:
       {
         std::cout << " ";
       }
-      std::cout << context.substr(1) << std::endl;
+      std::cout << context.substr(1) << '\n';
     }
   }
 
@@ -409,7 +409,7 @@ public:
   void test_log(const std::string &message)
   {
     pad_nesting(get_nesting());
-    std::cout << "[TEST_INFO] " << message << std::endl;
+    std::cout << "[TEST_INFO] " << message << '\n';
   }
 
   // Execute a vector of hooks, catching and reporting any errors
@@ -941,7 +941,7 @@ void describe(const std::string &description, Callable suite)
   int current_suite_idx = static_cast<int>(g.get_suites().size()) - 1;
   g.push_suite_index(current_suite_idx);
 
-  std::cout << get_indent(ts.nesting_level) << description << std::endl;
+  std::cout << get_indent(ts.nesting_level) << description << '\n';
   g.increment_nesting();
 
   auto cleanup = [&]()
@@ -977,7 +977,7 @@ void describe(const std::string &description, Callable suite)
       {
         // Report afterAll hook failure
         g.pad_nesting(g.get_nesting());
-        std::cout << colors.red << colors.cross << " " << error_message << colors.reset << std::endl;
+        std::cout << colors.red << colors.cross << " " << error_message << colors.reset << '\n';
       }
     }
     current_suite.before_all_hooks.clear();
@@ -996,7 +996,7 @@ template <typename Callable,
 void xit(const std::string &description, Callable)
 {
   Globals &g = Globals::get_instance();
-  std::cout << get_indent(g.get_nesting()) << "/ SKIP " << description << std::endl;
+  std::cout << get_indent(g.get_nesting()) << "/ SKIP " << description << '\n';
 }
 
 template <typename Callable,
@@ -1005,7 +1005,7 @@ template <typename Callable,
 void xdescribe(const std::string &description, Callable)
 {
   Globals &g = Globals::get_instance();
-  std::cout << get_indent(g.get_nesting()) << "/ SKIP " << description << std::endl;
+  std::cout << get_indent(g.get_nesting()) << "/ SKIP " << description << '\n';
 }
 
 template <typename Callable,
@@ -1111,7 +1111,7 @@ inline void print_failed_tests()
   if (!has_failures)
     return;
 
-  std::cout << "\n======== FAILED TESTS ========" << std::endl;
+  std::cout << "\n======== FAILED TESTS ========" << '\n';
 
   // Build a map of suite paths for proper nesting display
   std::vector<std::string> suite_paths;
@@ -1148,16 +1148,16 @@ inline void print_failed_tests()
         }
       }
 
-      std::cout << colors.red << colors.cross << " FAIL " << full_path << colors.reset << std::endl;
+      std::cout << colors.red << colors.cross << " FAIL " << full_path << colors.reset << '\n';
 
       for (std::vector<TEST_CASE>::iterator iit = it->tests.begin(), tests_end = it->tests.end(); iit != tests_end; iit++)
       {
         if (!iit->success)
         {
-          std::cout << "  " << colors.red << colors.cross << " FAIL " << iit->description << colors.reset << std::endl;
+          std::cout << "  " << colors.red << colors.cross << " FAIL " << iit->description << colors.reset << '\n';
           if (!iit->fail_message.empty())
           {
-            std::cout << "    " << colors.arrow << " " << iit->fail_message << std::endl;
+            std::cout << "    " << colors.arrow << " " << iit->fail_message << '\n';
           }
         }
       }
@@ -1202,7 +1202,7 @@ inline int report()
   // Print failed tests summary before the main summary
   print_failed_tests();
 
-  std::cout << "\n======== TESTS SUMMARY ========" << std::endl;
+  std::cout << "\n======== TESTS SUMMARY ========" << '\n';
 
   for (std::vector<TEST_SUITE>::iterator it = g.get_suites().begin(), suites_end = g.get_suites().end(); it != suites_end; it++)
   {
@@ -1233,16 +1233,16 @@ inline int report()
   std::cout << std::left << std::setw(width) << "Suites:"
             << colors.green << suite_total - suite_fail << " passed" << colors.reset << ", "
             << colors.red << suite_fail << " failed" << colors.reset << ", "
-            << suite_total << " total" << std::endl;
+            << suite_total << " total" << '\n';
 
   std::cout << std::left << std::setw(width) << "Tests:"
             << colors.green << tests_total - tests_fail << " passed" << colors.reset << ", "
             << colors.red << tests_fail << " failed" << colors.reset << ", "
-            << tests_total << " total" << std::endl;
+            << tests_total << " total" << '\n';
 
   std::cout << std::left << std::setw(width) << "Time:"
             << std::fixed << std::setprecision(3)
-            << total_duration.count() / 1000.0 << "ms" << std::endl;
+            << total_duration.count() / 1000.0 << "ms" << '\n';
 
   return tests_fail > 0 ? 1 : 0;
 }
@@ -1546,16 +1546,16 @@ inline int execute_command(const std::string &command, std::string &stdout_outpu
 
 inline int tests(int argc, char *argv[], ztst::cb tests)
 {
-  std::cout << "======== TESTS ========" << std::endl;
+  std::cout << "======== TESTS ========" << '\n';
 
   if (argc > 1)
   {
-    std::cout << "Running tests matching: " << argv[1] << std::endl;
+    std::cout << "Running tests matching: " << argv[1] << '\n';
     Globals::get_instance().set_matcher(argv[1]);
   }
   else
   {
-    std::cout << "Running all tests" << std::endl;
+    std::cout << "Running all tests" << '\n';
   }
 
   tests();

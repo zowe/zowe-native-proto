@@ -2128,7 +2128,7 @@ public:
     }
     catch (const lexer::LexError &e)
     {
-      std::cerr << "Lexer error: " << e.what() << std::endl;
+      std::cerr << "Lexer error: " << e.what() << '\n';
       ParseResult error_result;
       error_result.status = ParseResult::ParserStatus_ParseError;
       error_result.error_message = e.what();
@@ -2141,7 +2141,7 @@ public:
     catch (const std::exception &e)
     {
       // catch standard exceptions that might arise
-      std::cerr << "Parser error: " << e.what() << std::endl;
+      std::cerr << "Parser error: " << e.what() << '\n';
       ParseResult error_result;
       error_result.status = ParseResult::ParserStatus_ParseError;
       error_result.error_message = e.what();

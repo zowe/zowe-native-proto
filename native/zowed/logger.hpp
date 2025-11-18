@@ -108,7 +108,7 @@ private:
         log_file.open(log_file_path.c_str(), std::ios::out | std::ios::trunc);
         if (!log_file.is_open())
         {
-          std::cerr << "Failed to truncate log file: " << log_file_path << std::endl;
+          std::cerr << "Failed to truncate log file: " << log_file_path << '\n';
           return;
         }
 
@@ -130,7 +130,7 @@ private:
     char buffer[LOG_BUFFER_SIZE];
     vsnprintf(buffer, sizeof(buffer), format, args);
 
-    log_file << get_current_timestamp() << " [" << level << "] " << buffer << std::endl;
+    log_file << get_current_timestamp() << " [" << level << "] " << buffer << '\n';
 
     check_and_truncate_log_file();
   }
@@ -160,7 +160,7 @@ public:
 
       if (mkdir(logs_dir.c_str(), 0700) != 0 && errno != EEXIST)
       {
-        std::cerr << "Failed to create logs directory: " << logs_dir << std::endl;
+        std::cerr << "Failed to create logs directory: " << logs_dir << '\n';
         return;
       }
 
@@ -187,7 +187,7 @@ public:
       int fd = open(log_file_path.c_str(), O_WRONLY | O_CREAT | (truncate ? O_TRUNC : O_APPEND), 0600);
       if (fd == -1)
       {
-        std::cerr << "Failed to create log file: " << log_file_path << std::endl;
+        std::cerr << "Failed to create log file: " << log_file_path << '\n';
         return;
       }
       close(fd);
@@ -196,7 +196,7 @@ public:
       log_file.open(log_file_path.c_str(), mode);
       if (!log_file.is_open())
       {
-        std::cerr << "Failed to initialize logger: could not open " << log_file_path << std::endl;
+        std::cerr << "Failed to initialize logger: could not open " << log_file_path << '\n';
         return;
       }
 
@@ -299,7 +299,7 @@ public:
     va_end(args);
 
     // Also print to stderr
-    std::cerr << "FATAL: " << buffer << std::endl;
+    std::cerr << "FATAL: " << buffer << '\n';
 
     exit(1);
   }

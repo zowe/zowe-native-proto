@@ -127,7 +127,7 @@ private:
     };
 
     string json_string = RpcServer::serialize_json(zjson::to_value(status_msg).value());
-    std::cout << json_string << std::endl;
+    std::cout << json_string << '\n';
   }
 
   void log_worker_count()
@@ -216,7 +216,7 @@ extern "C" int run_zowed_server(const ZowedOptions &options, const char *exec_di
   }
   catch (const std::exception &e)
   {
-    std::cerr << "Fatal error: " << e.what() << std::endl;
+    std::cerr << "Fatal error: " << e.what() << '\n';
     LOG_FATAL("Fatal error: %s", e.what());
     return 1;
   }

@@ -313,7 +313,7 @@ void RpcServer::print_response(const RpcResponse &response, MiddlewareContext *c
 
   auto &stream = response.error.has_value() ? std::cerr : std::cout;
   std::lock_guard<std::mutex> lock(response_mutex);
-  stream << json_string << std::endl;
+  stream << json_string << '\n';
 }
 
 void RpcServer::add_large_data_to_json(string &json_string, const string &field_name, const string &data)
@@ -376,7 +376,7 @@ zjson::Value RpcServer::error_details_to_json(const ErrorDetails &error)
 void RpcServer::send_notification(const RpcNotification &notification)
 {
   string json_string = serialize_json(zjson::to_value(notification).value());
-  std::cout << json_string << std::endl;
+  std::cout << json_string << '\n';
 }
 
 void RpcServer::send_timeout_error(const string &request_data, int64_t timeout_ms)

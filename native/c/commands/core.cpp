@@ -53,7 +53,7 @@ bool should_quit(const std::string &input)
 
 int interactive_mode(plugin::InvocationContext &context)
 {
-  context.output_stream() << "Started, enter command or 'quit' to quit..." << std::endl;
+  context.output_stream() << "Started, enter command or 'quit' to quit..." << '\n';
 
   std::string command;
   int rc = 0;
@@ -75,7 +75,7 @@ int interactive_mode(plugin::InvocationContext &context)
 
     if (!is_tty)
     {
-      context.output_stream() << "[" << rc << "]" << std::endl;
+      context.output_stream() << "[" << rc << "]" << '\n';
       // EBCDIC \x37 = ASCII \x04 = End of Transmission (Ctrl+D)
       context.output_stream() << '\x37' << std::flush;
       context.error_stream() << '\x37' << std::flush;
@@ -83,7 +83,7 @@ int interactive_mode(plugin::InvocationContext &context)
 
   } while (!should_quit(command));
 
-  context.output_stream() << "...terminated" << std::endl;
+  context.output_stream() << "...terminated" << '\n';
 
   return rc;
 }
