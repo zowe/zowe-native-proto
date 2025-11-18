@@ -12,7 +12,7 @@
 
 | Operation                | z/OSMF          | FTP | Backend         | Middleware | SDK | CLI | VSCE |
 | ------------------------ | --------------- | --- | --------------- | ---------- | --- | --- | ---- |
-| _List data sets_         | ✅              | ✅  | 🚧 <sup>1</sup> | ✅         | ✅  | ✅  | ✅   |
+| _List data sets_         | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
 | _List data set members_  | ✅              | ✅  | 🚧 <sup>1</sup> | ✅         | ✅  | ✅  | ✅   |
 | _Read data set_          | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |
 | _Read data set member_   | ✅              | ✅  | ✅              | ✅         | ✅  | ✅  | ✅   |

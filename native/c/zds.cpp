@@ -479,7 +479,7 @@ int zds_delete_dsn(ZDS *zds, string dsn)
   return 0;
 }
 
-int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &list)
+int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &members)
 {
   // PO
   // PO-E (PDS)
@@ -490,7 +490,7 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &list)
   if (0 == zds->max_entries)
     zds->max_entries = ZDS_DEFAULT_MAX_MEMBER_ENTRIES;
 
-  list.reserve(zds->max_entries);
+  members.reserve(zds->max_entries);
 
   RECORD rec = {0};
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=pds-reading-directory-sequentially
@@ -542,9 +542,9 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &list)
         {
           // TODO(Kelosky): // member name is an alias
         }
-        pointer_count & 0x60; // bits 1-2 contain number of user data TTRNs
-        pointer_count >>= 5;  // adjust to byte boundary
-        info &= 0x1F;         // bits 3-7 contain the number of half words of user data
+        pointer_count &= 0x60; // bits 1-2 contain number of user data TTRNs
+        pointer_count >>= 5;   // adjust to byte boundary
+        info &= 0x1F;          // bits 3-7 contain the number of half words of user data
 
         memcpy(name, entry.name, sizeof(entry.name));
 
@@ -558,7 +558,7 @@ int zds_list_members(ZDS *zds, string dsn, vector<ZDSMem> &list)
 
         ZDSMem mem = {0};
         mem.name = string(name);
-        list.push_back(mem);
+        members.push_back(mem);
 
         data = data + sizeof(entry) + (info * 2); // skip number of half words
         len = sizeof(entry) + (info * 2);
@@ -661,6 +661,8 @@ typedef struct
 #define DS1DSGPO_MASK 0x0200 // PO: Bit 7 is set
 #define DS1DSGU_MASK 0x0100  // Unmovable: Bit 8 is set
 #define DS1ACBM_MASK 0x0008  // VSAM: Bit 13 is set
+#define DS1PDSE_MASK 0x10    // PDSE: Bit 4 in ds1smsfg
+#define DS1ENCRP_MASK 0x04   // Encrypted: Bit 5 in ds1flag1
 
 void load_dsorg_from_dscb(const DSCBFormat1 *dscb, string *dsorg)
 {
@@ -743,6 +745,544 @@ void load_recfm_from_dscb(const DSCBFormat1 *dscb, string *recfm)
   }
 }
 
+void load_date_from_dscb(const char *date_in, string *date_out, bool is_expiration_date = false)
+{
+  // Date is in 'YDD' format (3 bytes): Year offset and day of year
+  // If all zeros, date is not maintained
+  unsigned char year_offset = static_cast<unsigned char>(date_in[0]);
+  unsigned char day_high = static_cast<unsigned char>(date_in[1]);
+  unsigned char day_low = static_cast<unsigned char>(date_in[2]);
+
+  // Check if date is zero (not maintained)
+  if (year_offset == 0 && day_high == 0 && day_low == 0)
+  {
+    *date_out = "";
+    return;
+  }
+
+  // Parse year: add 1900 to the year offset
+  int year = 1900 + year_offset;
+
+  // Parse day of year from 2-byte value (big-endian)
+  int day_of_year = (day_high << 8) | day_low;
+
+  // Check for sentinel date 1999/12/31 (year_offset=99, day=365)
+  // This is used to indicate "no expiration" for expiration dates only
+  if (is_expiration_date && year == 1999 && day_of_year == 365)
+  {
+    *date_out = "";
+    return;
+  }
+
+  // Convert day of year to month/day
+  static const int days_in_month[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+
+  // Check for leap year
+  bool is_leap = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
+
+  int month = 1;
+  int day = day_of_year;
+
+  for (int i = 0; i < 12 && day > days_in_month[i]; i++)
+  {
+    int days_this_month = days_in_month[i];
+    if (i == 1 && is_leap) // February in leap year
+      days_this_month = 29;
+
+    day -= days_this_month;
+    month++;
+  }
+
+  // Format as "YYYY/MM/DD"
+  char buffer[11];
+  sprintf(buffer, "%04d/%02d/%02d", year, month, day);
+  *date_out = buffer;
+}
+
+// Map UCB device type last byte to device type number
+static inline uint16_t ucb_to_devtype(uint8_t ucb_byte)
+{
+  // Support only the DASD unit types supported by DFSMShsm
+  // https://www.ibm.com/docs/en/zos/2.5.0?topic=command-unit-specifying-type-device
+  switch (ucb_byte)
+  {
+  case ZDS_DEVTYPE_3380:
+    return 0x3380;
+  case ZDS_DEVTYPE_3390:
+    return 0x3390;
+  case ZDS_DEVTYPE_9345:
+    return 0x9345;
+  default:
+    return 0x0000; // Unsupported device type
+  }
+}
+
+// Parse CCHH (Cylinder-Cylinder-Head-Head) format to get cylinder number
+static inline uint32_t parse_cchh_cylinder(const char *cchh)
+{
+  uint16_t cyl_low = (static_cast<unsigned char>(cchh[0]) << 8) |
+                     static_cast<unsigned char>(cchh[1]);
+  uint16_t cyl_high = ((static_cast<unsigned char>(cchh[2]) << 4) |
+                       (static_cast<unsigned char>(cchh[3]) >> 4)) &
+                      0x0FFF;
+  return (cyl_high << 16) | cyl_low;
+}
+
+// Get bytes per track for a given device type
+static inline int get_bytes_per_track(const uint16_t &devtype)
+{
+  switch (devtype)
+  {
+  case 0x3380:
+    return 47476;
+  case 0x9345:
+    return 46456;
+  case 0x3390:
+  default:
+    return 56664;
+  }
+}
+
+// Calculate tracks in an extent given lower and upper CCHH values
+static inline int calculate_extent_tracks(const char *extent, const uint16_t &devtype)
+{
+  uint32_t lower_cyl = parse_cchh_cylinder(extent + 2);
+  uint16_t lower_head = static_cast<unsigned char>(extent[5]) & 0x0F;
+  uint32_t upper_cyl = parse_cchh_cylinder(extent + 6);
+  uint16_t upper_head = static_cast<unsigned char>(extent[9]) & 0x0F;
+
+  if (upper_cyl < lower_cyl)
+    return 0;
+
+  const auto tracks_per_cyl = 15;
+  return ((upper_cyl - lower_cyl) * tracks_per_cyl) + (upper_head - lower_head) + 1;
+}
+
+// Load space unit (spacu) from DSCB
+void load_spacu_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
+{
+  uint8_t scal1 = static_cast<uint8_t>(dscb->ds1scalo[0]);
+  uint8_t dspac = (scal1 & 0xC0) >> 6; // Top 2 bits: space request type
+
+  if (dspac == 0x03) // 11 = DS1CYL - Cylinders
+  {
+    entry.spacu = "CYLINDERS";
+  }
+  else if (dspac == 0x02) // 10 = DS1TRK - Tracks
+  {
+    // Check bit 4 (0x10) - DS1CONTG (contiguous request)
+    bool is_contiguous = (scal1 & 0x10) != 0;
+    if (is_contiguous)
+    {
+      entry.spacu = "BYTES"; // Contiguous track allocation displayed as BYTES
+    }
+    else
+    {
+      entry.spacu = "TRACKS"; // Non-contiguous track allocation displayed as TRACKS
+    }
+  }
+  else if (dspac == 0x01) // 01 = DS1AVR - Average block length (blocks)
+  {
+    entry.spacu = "BLOCKS";
+  }
+  else if ((scal1 & 0x20) != 0) // Bit 2 set: DS1EXT - Extension to secondary space
+  {
+    // Fall back to ds1scext[0] (ds1scxtf) for extended units
+    uint8_t scxtf = static_cast<uint8_t>(dscb->ds1scext[0]);
+
+    if (scxtf & 0x40) // DS1SCMB - megabytes
+    {
+      entry.spacu = "MEGABYTES";
+    }
+    else if (scxtf & 0x20) // DS1SCKB - kilobytes
+    {
+      entry.spacu = "KILOBYTES";
+    }
+    else if (scxtf & 0x10) // DS1SCUB - bytes
+    {
+      entry.spacu = "BYTES";
+    }
+    else
+    {
+      entry.spacu = "TRACKS"; // Default fallback
+    }
+  }
+  else
+  {
+    // dspac == 0x00 - Absolute track request (DS1DSABS)
+    entry.spacu = "BYTES";
+  }
+}
+
+// Load primary and secondary allocation quantities from DSCB
+void load_primary_secondary_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
+{
+  uint8_t scal1 = static_cast<uint8_t>(dscb->ds1scalo[0]);
+  uint8_t dspac = (scal1 & 0xC0) >> 6;
+
+  // Parse DS1SCAL3 (ds1scalo[1-3]) - secondary allocation quantity (3 bytes)
+  uint32_t scal3 = (static_cast<unsigned char>(dscb->ds1scalo[1]) << 16) |
+                   (static_cast<unsigned char>(dscb->ds1scalo[2]) << 8) |
+                   static_cast<unsigned char>(dscb->ds1scalo[3]);
+
+  const char *extent_data = dscb->ds1exnts;
+
+  // Primary: First extent size
+  // Read allocx directly from DSCB to avoid dependency on entry.allocx being set
+  uint8_t allocx = dscb->ds1noepv;
+  if (allocx > 0)
+  {
+    const char *first_extent = extent_data;
+
+    if (dspac == 0x03) // Cylinders
+    {
+      uint32_t lower_cyl = parse_cchh_cylinder(first_extent + 2);
+      uint32_t upper_cyl = parse_cchh_cylinder(first_extent + 6);
+      entry.primary = (upper_cyl - lower_cyl + 1);
+    }
+    else // Tracks or Blocks
+    {
+      entry.primary = calculate_extent_tracks(first_extent, entry.devtype);
+    }
+  }
+  else
+  {
+    entry.primary = 0;
+  }
+
+  // Secondary: Allocation quantity from DS1SCEXT or DS1SCAL3
+  // For BYTES space unit, read from DS1SCEXT (contiguous/absolute allocations)
+  if (entry.spacu == "BYTES")
+  {
+    // Parse DS1SCEXT: ds1scext[0] = DS1SCXTF (flags), ds1scext[1-2] = DS1SCXTV (value)
+    uint8_t scxtf = static_cast<uint8_t>(dscb->ds1scext[0]);
+    uint16_t scxtv = (static_cast<unsigned char>(dscb->ds1scext[1]) << 8) |
+                     static_cast<unsigned char>(dscb->ds1scext[2]);
+
+    // Check if value is compacted
+    if (scxtf & 0x08) // DS1SCCP1 - compacted by 256
+    {
+      entry.secondary = scxtv * 256LL;
+    }
+    else if (scxtf & 0x04) // DS1SCCP2 - compacted by 65,536
+    {
+      entry.secondary = scxtv * 65536LL;
+    }
+    else
+    {
+      entry.secondary = scxtv;
+    }
+  }
+  else
+  {
+    entry.secondary = scal3;
+  }
+}
+
+// Load attributes categorized by ISPF as General Data (dsorg, recfm, etc)
+void load_general_attrs_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
+{
+  load_dsorg_from_dscb(dscb, &entry.dsorg);
+
+  // Determine space unit first (needed for other calculations)
+  load_spacu_from_dscb(dscb, entry);
+
+  // Check if this is a VSAM dataset
+  bool is_vsam = (dscb->ds1dsorg & DS1ACBM_MASK) != 0;
+
+  if (is_vsam)
+  {
+    // VSAM datasets: blksize, lrecl, and recfm are not meaningful
+    entry.blksize = -1;
+    entry.lrecl = -1;
+    entry.recfm = "";
+  }
+  else
+  {
+    load_recfm_from_dscb(dscb, &entry.recfm);
+    entry.blksize = (static_cast<unsigned char>(dscb->ds1blkl[0]) << 8) |
+                    static_cast<unsigned char>(dscb->ds1blkl[1]);
+    entry.lrecl = (static_cast<unsigned char>(dscb->ds1lrecl[0]) << 8) |
+                  static_cast<unsigned char>(dscb->ds1lrecl[1]);
+  }
+
+  // Determine dsntype: PDS or LIBRARY (PDSE)
+  // DS1DSGPO (0x0200) in ds1dsorg indicates partitioned organization
+  bool is_partitioned = (dscb->ds1dsorg & DS1DSGPO_MASK) != 0;
+  // DS1PDSE (0x10) in ds1smsfg indicates PDSE
+  bool is_pdse = (dscb->ds1smsfg & DS1PDSE_MASK) != 0;
+
+  if (is_partitioned && is_pdse)
+  {
+    entry.dsntype = "LIBRARY";
+  }
+  else if (is_partitioned)
+  {
+    entry.dsntype = "PDS";
+  }
+  else
+  {
+    entry.dsntype = "";
+  }
+
+  // Check if dataset is encrypted
+  // DS1ENCRP (0x04) in ds1flag1 indicates access method encrypted dataset
+  entry.encrypted = (dscb->ds1flag1 & DS1ENCRP_MASK) != 0;
+
+  // Load primary and secondary allocations (part of General Data in ISPF)
+  load_primary_secondary_from_dscb(dscb, entry);
+}
+
+// Load Current Allocation attributes (allocated units/tracks/bytes, allocated extents)
+void load_alloc_attrs_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
+{
+  uint8_t scal1 = static_cast<uint8_t>(dscb->ds1scalo[0]);
+  uint8_t dspac = (scal1 & 0xC0) >> 6;
+
+  // allocx: Number of extents allocated on this volume
+  entry.allocx = dscb->ds1noepv;
+
+  // Parse the extent information from ds1exnts (3 extents, 10 bytes each)
+  const char *extent_data = dscb->ds1exnts;
+  int total_cylinders = 0;
+  int total_tracks = 0;
+  bool use_cylinders = (dspac == 0x03);
+
+  for (int i = 0; i < 3; i++)
+  {
+    const char *extent = extent_data + (i * 10);
+    uint8_t extent_type = static_cast<uint8_t>(extent[0]);
+
+    if (extent_type == 0x00)
+      break;
+
+    uint32_t lower_cyl = parse_cchh_cylinder(extent + 2);
+    uint32_t upper_cyl = parse_cchh_cylinder(extent + 6);
+
+    if (upper_cyl >= lower_cyl)
+    {
+      int cylinders_in_extent = upper_cyl - lower_cyl + 1;
+      int tracks_in_extent = calculate_extent_tracks(extent, entry.devtype);
+      total_cylinders += cylinders_in_extent;
+      total_tracks += tracks_in_extent;
+    }
+  }
+
+  entry.alloc = use_cylinders ? total_cylinders : total_tracks;
+
+  // Convert to bytes if spacu is BYTES
+  if (entry.spacu == "BYTES" && entry.blksize > 0)
+  {
+    int bytes_per_track = get_bytes_per_track(entry.devtype);
+    int blocks_per_track = bytes_per_track / entry.blksize;
+    if (blocks_per_track <= 0)
+      blocks_per_track = 1;
+    long long base_bytes_per_track = blocks_per_track * entry.blksize;
+
+    if (entry.alloc > 0)
+      entry.alloc *= base_bytes_per_track;
+    if (entry.primary > 0)
+      entry.primary *= base_bytes_per_track;
+
+    // Secondary already in bytes from DS1SCEXT for contiguous allocations
+  }
+}
+
+// Load Used Space attributes (used space percentage, used extents)
+void load_used_attrs_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
+{
+  uint8_t scal1 = static_cast<uint8_t>(dscb->ds1scalo[0]);
+  uint8_t dspac = (scal1 & 0xC0) >> 6;
+  bool use_cylinders = (dspac == 0x03);
+
+  // Check if this is a PDSE
+  bool is_pdse = (dscb->ds1smsfg & DS1PDSE_MASK) != 0;
+
+  if ((dscb->ds1dsorg & DS1DSGDA_MASK) || (dscb->ds1dsorg & DS1ACBM_MASK) || is_pdse)
+  {
+    // DA (Direct Access/BDAM), VSAM, or PDSE: DS1LSTAR not meaningful
+    entry.usedp = -1;
+    entry.usedx = -1;
+    return;
+  }
+
+  // Parse DS1LSTAR (last used track in TTR format)
+  uint8_t lstar_tt_high = static_cast<unsigned char>(dscb->ds1lstar[0]);
+  uint8_t lstar_tt_low = static_cast<unsigned char>(dscb->ds1lstar[1]);
+  uint32_t last_used_track = (lstar_tt_high << 8) | lstar_tt_low;
+
+  // Check if this is a large format dataset that uses DS1TTHI
+  bool is_large = (dscb->ds1flag1 & 0x10) != 0;
+  if (is_large)
+  {
+    uint8_t lstar_tt_highest = static_cast<unsigned char>(dscb->ds1ttthi);
+    last_used_track |= (lstar_tt_highest << 16);
+  }
+
+  // Special case: DS1LSTAR = 0x000000 for blksize=0 means unused
+  bool is_blksize_zero = (entry.blksize == 0);
+  if (last_used_track == 0 && is_blksize_zero)
+  {
+    entry.usedp = 0;
+    entry.usedx = 0;
+    return;
+  }
+
+  // Store used space temporarily in tracks/cylinders (will convert to percentage later)
+  if (use_cylinders)
+  {
+    const auto tracks_per_cyl = 15;
+    entry.usedp = (last_used_track + 1 + tracks_per_cyl - 1) / tracks_per_cyl; // Round up to cylinders
+  }
+  else
+  {
+    entry.usedp = last_used_track + 1; // Tracks (0-based, so +1)
+  }
+
+  // Calculate how many extents contain data (count of used extents)
+  if (entry.usedp > 0)
+  {
+    const char *extent_data = dscb->ds1exnts;
+    int cumulative_tracks = 0;
+    entry.usedx = 0;
+
+    for (int i = 0; i < 3; i++)
+    {
+      const char *extent = extent_data + (i * 10);
+      uint8_t extent_type = static_cast<uint8_t>(extent[0]);
+
+      if (extent_type == 0x00)
+        break;
+
+      int tracks_in_extent = calculate_extent_tracks(extent, entry.devtype);
+      cumulative_tracks += tracks_in_extent;
+
+      // Count this extent as used if it contains data up to the last used track
+      if (last_used_track <= cumulative_tracks)
+      {
+        entry.usedx = i + 1;
+        break;
+      }
+    }
+  }
+
+  // Calculate used percentage
+  // Note: DS1TRBAL contains bytes remaining calculated by IBM TRKCALC,
+  // but since we don't have access to TRKCALC's exact capacity formula,
+  // we approximate by using simple track-based percentage calculation.
+
+  if (entry.usedp > 0 && entry.alloc > 0)
+  {
+    int used_value = entry.usedp;
+    long long alloc_value = entry.alloc;
+
+    // For BYTES space unit, convert to track-based calculation for percentage
+    if (entry.spacu == "BYTES" && entry.blksize > 0)
+    {
+      int bytes_per_track = get_bytes_per_track(entry.devtype);
+      int blocks_per_track = bytes_per_track / entry.blksize;
+      if (blocks_per_track <= 0)
+        blocks_per_track = 1;
+      long long base_bytes_per_track = blocks_per_track * entry.blksize;
+
+      // Convert alloc from bytes to tracks for percentage calculation
+      alloc_value = entry.alloc / base_bytes_per_track;
+    }
+
+    // Calculate used percentage and round down to nearest int to match z/OSMF
+    double percentage = (100.0 * used_value) / alloc_value;
+    entry.usedp = (int)percentage;
+
+    if (entry.usedp > 100)
+      entry.usedp = 100;
+  }
+  else if (entry.usedp == 0)
+  {
+    entry.usedp = 0;
+  }
+  else
+  {
+    entry.usedp = -1;
+  }
+}
+
+// Load Date attributes (creation date, expiration date, referenced date)
+void load_date_attrs_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
+{
+  load_date_from_dscb(dscb->ds1credt, &entry.cdate, false);
+  load_date_from_dscb(dscb->ds1expdt, &entry.edate, true); // expiration date can have sentinel
+  load_date_from_dscb(dscb->ds1refd, &entry.rdate, false);
+}
+
+// Load storage management attributes from catalog fields
+void load_storage_attrs_from_catalog(unsigned char *&data, int *&field_len, ZDSEntry &entry)
+{
+  // Parse DATACLAS field (8 bytes)
+  data += *field_len;
+  field_len++;
+  entry.dataclass = "";
+  if (*field_len > 2)
+  {
+    // First 2 bytes are a length prefix, extract actual length
+    uint16_t actual_len = (static_cast<unsigned char>(data[0]) << 8) | static_cast<unsigned char>(data[1]);
+    if (actual_len > 0 && actual_len <= (*field_len - 2))
+    {
+      entry.dataclass = string((char *)(data + 2), actual_len);
+    }
+  }
+
+  // Parse MGMTCLAS field (8 bytes)
+  data += *field_len;
+  field_len++;
+  entry.mgmtclass = "";
+  if (*field_len > 2)
+  {
+    // First 2 bytes are a length prefix, extract actual length
+    uint16_t actual_len = (static_cast<unsigned char>(data[0]) << 8) | static_cast<unsigned char>(data[1]);
+    if (actual_len > 0 && actual_len <= (*field_len - 2))
+    {
+      entry.mgmtclass = string((char *)(data + 2), actual_len);
+    }
+  }
+
+  // Parse STORCLAS field (8 bytes)
+  data += *field_len;
+  field_len++;
+  entry.storclass = "";
+  if (*field_len > 2)
+  {
+    // First 2 bytes are a length prefix, extract actual length
+    uint16_t actual_len = (static_cast<unsigned char>(data[0]) << 8) | static_cast<unsigned char>(data[1]);
+    if (actual_len > 0 && actual_len <= (*field_len - 2))
+    {
+      entry.storclass = string((char *)(data + 2), actual_len);
+    }
+  }
+
+  // Parse DEVTYP field (4-byte UCB device type)
+  data += *field_len;
+  field_len++;
+
+  if (*field_len >= 4)
+  {
+    uint32_t devtyp = (static_cast<unsigned char>(data[0]) << 24) |
+                      (static_cast<unsigned char>(data[1]) << 16) |
+                      (static_cast<unsigned char>(data[2]) << 8) |
+                      static_cast<unsigned char>(data[3]);
+
+    // If devtyp is all zeros, default to 3390 (most common modern DASD)
+    if (devtyp == 0x00000000)
+    {
+      entry.devtype = 0x3390;
+    }
+    else
+    {
+      // Extract the device type code (last byte of UCB) and map to device type
+      entry.devtype = ucb_to_devtype(static_cast<uint8_t>(data[3]));
+    }
+  }
+}
+
 void zds_get_attrs_from_dscb(ZDS *zds, ZDSEntry &entry)
 {
   auto *dscb = (DSCBFormat1 *)__malloc31(sizeof(DSCBFormat1));
@@ -756,31 +1296,46 @@ void zds_get_attrs_from_dscb(ZDS *zds, ZDSEntry &entry)
 
   if (rc == RTNCD_SUCCESS)
   {
-    load_dsorg_from_dscb(dscb, &entry.dsorg);
-    load_recfm_from_dscb(dscb, &entry.recfm);
+    // Load attributes in logical order
+    load_general_attrs_from_dscb(dscb, entry);
+    load_alloc_attrs_from_dscb(dscb, entry);
+    load_used_attrs_from_dscb(dscb, entry);
+    load_date_attrs_from_dscb(dscb, entry);
   }
   else
   {
-    entry.dsorg = ZDS_DSORG_UNKNOWN;
-    entry.volser = ZDS_VOLSER_UNKNOWN;
-    entry.recfm = ZDS_RECFM_U;
+    entry.alloc = -1;
+    entry.allocx = -1;
+    entry.blksize = -1;
+    entry.lrecl = -1;
+    entry.primary = -1;
+    entry.secondary = -1;
+    entry.usedp = -1;
+    entry.usedx = -1;
   }
 
   free(dscb);
 }
 
-int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
+int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &datasets, bool show_attributes)
 {
   int rc = 0;
 
   zds->csi = NULL;
 
   // https://www.ibm.com/docs/en/zos/3.1.0?topic=directory-catalog-field-names
-  string fields[][FIELD_LEN] = {{"VOLSER"}, {"NVSMATTR"}};
+  string fields_long[][FIELD_LEN] = {{"VOLSER"}, {"DATACLAS"}, {"MGMTCLAS"}, {"STORCLAS"}, {"DEVTYP"}};
 
-  int number_of_fields = sizeof(fields) / sizeof(fields[0]);
+  string(*fields)[FIELD_LEN] = nullptr;
+  int number_of_fields = 0;
 
-  int interal_used_buffer_size = sizeof(CSIFIELD) + number_of_fields * FIELD_LEN;
+  if (show_attributes)
+  {
+    fields = fields_long;
+    number_of_fields = sizeof(fields_long) / sizeof(fields_long[0]);
+  }
+
+  int internal_used_buffer_size = sizeof(CSIFIELD) + number_of_fields * FIELD_LEN;
 
   if (0 == zds->buffer_size)
     zds->buffer_size = ZDS_DEFAULT_BUFFER_SIZE;
@@ -789,7 +1344,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
 
 #define MIN_BUFFER_FIXED 1024
 
-  int min_buffer_size = MIN_BUFFER_FIXED + interal_used_buffer_size;
+  int min_buffer_size = MIN_BUFFER_FIXED + internal_used_buffer_size;
 
   if (zds->buffer_size < min_buffer_size)
   {
@@ -913,11 +1468,11 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
     work_area_total -= sizeof(ZDS_CSI_HEADER);
     work_area_total -= sizeof(ZDS_CSI_CATALOG);
 
-    ZDSEntry entry = {0};
     char buffer[sizeof(f->name) + 1] = {0};
 
     while (work_area_total > 0)
     {
+      ZDSEntry entry = {0};
       f = (ZDS_CSI_ENTRY *)p;
 
       if (ERROR == f->flag)
@@ -962,144 +1517,90 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
       memcpy(buffer, f->name, sizeof(f->name)); // copy all & leave a null
       entry.name = string(buffer);
 
-      int *field_len = &f->response.field.field_lens;
-      unsigned char *data = (unsigned char *)&f->response.field.field_lens;
-      data += (sizeof(f->response.field.field_lens) * number_fields);
+      // Only process catalog fields and DSCB if show_attributes is true
+      if (show_attributes)
+      {
+        int *field_len = &f->response.field.field_lens;
+        unsigned char *data = (unsigned char *)&f->response.field.field_lens;
+        data += (sizeof(f->response.field.field_lens) * number_fields);
 
-      memset(buffer, 0x00, sizeof(buffer)); // clear buffer
-      memcpy(buffer, data, *field_len);     // copy VOLSER
-      entry.volser = string(buffer);
+        memset(buffer, 0x00, sizeof(buffer)); // clear buffer
+        memcpy(buffer, data, *field_len);     // copy VOLSER
+        entry.volser = strlen(buffer) == 0 ? ZDS_VOLSER_UNKNOWN : string(buffer);
 
 #define IPL_VOLUME "******"
 #define IPL_VOLUME_SYMBOL "&SYSR1" // https://www.ibm.com/docs/en/zos/3.1.0?topic=symbols-static-system
 
-      if (0 == strcmp(IPL_VOLUME, entry.volser.c_str()))
-      {
-        string symbol(IPL_VOLUME_SYMBOL);
-        string value;
-        rc = zut_substitute_symbol(symbol, value);
-        if (0 == rc)
+        if (0 == strcmp(IPL_VOLUME, entry.volser.c_str()))
         {
-          entry.volser = value;
+          string symbol(IPL_VOLUME_SYMBOL);
+          string value;
+          rc = zut_substitute_symbol(symbol, value);
+          if (0 == rc)
+          {
+            entry.volser = value;
+          }
         }
-      }
 
 #define MIGRAT_VOLUME "MIGRAT"
 #define ARCIVE_VOLUME "ARCIVE"
 
-      if (entry.volser == MIGRAT_VOLUME || entry.volser == ARCIVE_VOLUME)
-      {
-        entry.migr = true;
-        entry.recfm = ZDS_RECFM_U;
-      }
-      else
-      {
-        entry.migr = false;
-      }
-
-      // attempt to load dsorg and recfm from vtoc if not migrated
-      if (!entry.migr)
-      {
-        zds_get_attrs_from_dscb(zds, entry);
-      }
-
-      switch (f->type)
-      {
-
-      case NON_VSAM_DATA_SET:
-      {
-        data += *field_len; // point to next data field
-        field_len++;        // point to next len field
-
-        char non_vsam_attribute = 0xFF;
-
-        if (*field_len > 0)
+        if (entry.volser == MIGRAT_VOLUME || entry.volser == ARCIVE_VOLUME)
         {
-          non_vsam_attribute = *(char *)data;
-
-#define SIMPLE_NON_VSAM_DATA_SET 0X00
-#define EXTENDED_PARTITIONED_DATA_SET 'L'
-
-          if (EXTENDED_PARTITIONED_DATA_SET == non_vsam_attribute)
-          {
-            entry.dsorg = ZDS_DSORG_PDSE;
-          }
+          entry.migrated = true;
+          entry.recfm = ZDS_RECFM_U;
         }
+        else
+        {
+          entry.migrated = false;
+        }
+
+        // Parse storage management attributes (dataclass, mgmtclass, storclass, devtype)
+        load_storage_attrs_from_catalog(data, field_len, entry);
+
+        // Load detailed attributes from DSCB if not migrated
+        // This needs to happen before the switch statement as it sets entry.dsorg
+        if (!entry.migrated)
+        {
+          zds_get_attrs_from_dscb(zds, entry);
+        }
+
+        switch (f->type)
+        {
+        case NON_VSAM_DATA_SET:
+          // DSORG and PDSE/PDS determination is done via DSCB parsing
+          break;
+        case GENERATION_DATA_GROUP:
+          entry.volser = ZDS_VOLSER_GDG;
+          break;
+        case CLUSTER:
+        case DATA_COMPONENT:
+        case INDEX_COMPONENT:
+          entry.dsorg = ZDS_DSORG_VSAM;
+          entry.volser = ZDS_VOLSER_VSAM;
+          break;
+        case GENERATION_DATA_SET:
+          break;
+        case ALIAS:
+          entry.dsorg = ZDS_DSORG_UNKNOWN;
+          entry.volser = ZDS_VOLSER_ALIAS;
+          break;
+        case ALTERNATE_INDEX:
+        case ATL_LIBRARY_ENTRY:
+        case PATH:
+        case USER_CATALOG_CONNECTOR_ENTRY:
+        case ATL_VOLUME_ENTRY:
+        default:
+          free(area);
+          ZDSDEL(zds);
+          zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
+          zds->diag.service_rc = ZDS_RTNCD_UNSUPPORTED_ERROR;
+          zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Unsupported entry type '%x' ", f->type);
+          return RTNCD_FAILURE;
+        };
       }
 
-      break;
-      case GENERATION_DATA_GROUP:
-        entry.volser = ZDS_VOLSER_GDG;
-        break;
-      case CLUSTER:
-        entry.dsorg = ZDS_DSORG_VSAM;
-        entry.volser = ZDS_VOLSER_VSAM;
-        break;
-      case DATA_COMPONENT:
-        entry.dsorg = ZDS_DSORG_VSAM;
-        entry.volser = ZDS_VOLSER_VSAM;
-        break;
-      case ALTERNATE_INDEX:
-        free(area);
-        ZDSDEL(zds);
-        zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
-        zds->diag.service_rc = ZDS_RTNCD_UNSUPPORTED_ERROR;
-        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Unsupported entry type '%x' ", f->type);
-        return RTNCD_FAILURE;
-        break;
-      case GENERATION_DATA_SET:
-        break;
-      case INDEX_COMPONENT:
-        entry.dsorg = ZDS_DSORG_VSAM;
-        entry.volser = ZDS_VOLSER_VSAM;
-        break;
-      case ATL_LIBRARY_ENTRY:
-        free(area);
-        ZDSDEL(zds);
-        zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
-        zds->diag.service_rc = ZDS_RTNCD_UNSUPPORTED_ERROR;
-        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Unsupported entry type '%x' ", f->type);
-        return RTNCD_FAILURE;
-        break;
-      case PATH:
-        free(area);
-        ZDSDEL(zds);
-        zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
-        zds->diag.service_rc = ZDS_RTNCD_UNSUPPORTED_ERROR;
-        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Unsupported entry type '%x' ", f->type);
-        return RTNCD_FAILURE;
-        break;
-      case USER_CATALOG_CONNECTOR_ENTRY:
-        free(area);
-        ZDSDEL(zds);
-        zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
-        zds->diag.service_rc = ZDS_RTNCD_UNSUPPORTED_ERROR;
-        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Unsupported entry type '%x' ", f->type);
-        return RTNCD_FAILURE;
-        break;
-      case ATL_VOLUME_ENTRY:
-        free(area);
-        ZDSDEL(zds);
-        zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
-        zds->diag.service_rc = ZDS_RTNCD_UNSUPPORTED_ERROR;
-        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Unsupported entry type '%x' ", f->type);
-        return RTNCD_FAILURE;
-        break;
-      case ALIAS:
-        entry.dsorg = ZDS_DSORG_UNKNOWN;
-        entry.volser = ZDS_VOLSER_ALIAS;
-        break;
-      default:
-        free(area);
-        ZDSDEL(zds);
-        zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
-        zds->diag.service_rc = ZDS_RTNCD_UNSUPPORTED_ERROR;
-        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Unsupported entry type '%x' ", f->type);
-        return RTNCD_FAILURE;
-        break;
-      };
-
-      if (attributes.size() + 1 > zds->max_entries)
+      if (datasets.size() + 1 > zds->max_entries)
       {
         free(area);
         ZDSDEL(zds);
@@ -1108,7 +1609,7 @@ int zds_list_data_sets(ZDS *zds, string dsn, vector<ZDSEntry> &attributes)
         return RTNCD_WARNING;
       }
 
-      attributes.push_back(entry);
+      datasets.push_back(entry);
 
       work_area_total -= ((sizeof(ZDS_CSI_ENTRY) - sizeof(ZDS_CSI_FIELD) + f->response.field.total_len));
       p = p + ((sizeof(ZDS_CSI_ENTRY) - sizeof(ZDS_CSI_FIELD) + f->response.field.total_len)); // next entry
