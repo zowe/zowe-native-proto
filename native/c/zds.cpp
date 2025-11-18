@@ -802,30 +802,10 @@ void load_date_from_dscb(const char *date_in, string *date_out, bool is_expirati
 // Map UCB device type last byte to device type number
 static inline uint16_t ucb_to_devtype(uint8_t ucb_byte)
 {
+  // Support only the DASD unit types supported by DFSMShsm
+  // https://www.ibm.com/docs/en/zos/2.5.0?topic=command-unit-specifying-type-device
   switch (ucb_byte)
   {
-  case ZDS_DEVTYPE_2311:
-    return 0x2311;
-  case ZDS_DEVTYPE_2301:
-    return 0x2301;
-  case ZDS_DEVTYPE_2303:
-    return 0x2303;
-  case ZDS_DEVTYPE_2302:
-    return 0x2302;
-  case ZDS_DEVTYPE_2321:
-    return 0x2321;
-  case ZDS_DEVTYPE_2305:
-    return 0x2305;
-  case ZDS_DEVTYPE_2314:
-    return 0x2314;
-  case ZDS_DEVTYPE_3330:
-    return 0x3330;
-  case ZDS_DEVTYPE_3340:
-    return 0x3340;
-  case ZDS_DEVTYPE_3350:
-    return 0x3350;
-  case ZDS_DEVTYPE_3375:
-    return 0x3375;
   case ZDS_DEVTYPE_3380:
     return 0x3380;
   case ZDS_DEVTYPE_3390:
@@ -833,7 +813,7 @@ static inline uint16_t ucb_to_devtype(uint8_t ucb_byte)
   case ZDS_DEVTYPE_9345:
     return 0x9345;
   default:
-    return 0x0000;
+    return 0x0000; // Unsupported device type
   }
 }
 
@@ -848,59 +828,11 @@ static inline uint32_t parse_cchh_cylinder(const char *cchh)
   return (cyl_high << 16) | cyl_low;
 }
 
-// Get tracks per cylinder for a given device type
-static inline int get_tracks_per_cylinder(const uint16_t &devtype)
-{
-  switch (devtype)
-  {
-  case 0x2302:
-    return 46;
-  case 0x2303:
-    return 800; // Drum storage (single cylinder)
-  case 0x2305:
-    return 8;
-  case 0x2311:
-    return 10;
-  case 0x2314:
-    return 20;
-  case 0x3330:
-    return 19;
-  case 0x3340:
-  case 0x3375:
-    return 12;
-  case 0x3350:
-    return 30;
-  case 0x3380:
-  case 0x3390:
-  case 0x9345:
-  default:
-    return 15;
-  }
-}
-
 // Get bytes per track for a given device type
 static inline int get_bytes_per_track(const uint16_t &devtype)
 {
   switch (devtype)
   {
-  case 0x2302:
-    return 4985;
-  case 0x2303:
-    return 4892;
-  case 0x2305:
-    return 14660; // 2305-2 (higher density model)
-  case 0x2311:
-    return 3625;
-  case 0x2314:
-    return 7294;
-  case 0x3330:
-    return 13030;
-  case 0x3340:
-    return 8368;
-  case 0x3350:
-    return 19069;
-  case 0x3375:
-    return 35616;
   case 0x3380:
     return 47476;
   case 0x9345:
@@ -922,7 +854,7 @@ static inline int calculate_extent_tracks(const char *extent, const uint16_t &de
   if (upper_cyl < lower_cyl)
     return 0;
 
-  int tracks_per_cyl = get_tracks_per_cylinder(devtype);
+  const auto tracks_per_cyl = 15;
   return ((upper_cyl - lower_cyl) * tracks_per_cyl) + (upper_head - lower_head) + 1;
 }
 
@@ -1199,7 +1131,7 @@ void load_used_attrs_from_dscb(const DSCBFormat1 *dscb, ZDSEntry &entry)
   // Store used space temporarily in tracks/cylinders (will convert to percentage later)
   if (use_cylinders)
   {
-    int tracks_per_cyl = get_tracks_per_cylinder(entry.devtype);
+    const auto tracks_per_cyl = 15;
     entry.usedp = (last_used_track + 1 + tracks_per_cyl - 1) / tracks_per_cyl; // Round up to cylinders
   }
   else
