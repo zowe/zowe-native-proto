@@ -25,22 +25,22 @@ using namespace ztst;
 
 const string zowex_command = "./../build-out/zowex";
 
+// Generic helper function for creating data sets
+void _create_ds(const string &ds_name, const string &ds_options = "")
+{
+  string response;
+  string command = zowex_command + " data-set create " + ds_name + " " + ds_options;
+  int rc = execute_command_with_output(command, response);
+  ExpectWithContext(rc, response).ToBe(0);
+  Expect(response).ToContain("Data set created");
+}
+
 void zowex_ds_tests()
 {
   vector<string> _ds;
   describe("data-set",
            [&]() -> void
            {
-             // Define a generic helper lambda for creating data sets
-             auto _create_ds = [](const string &ds_name, const string &ds_options = "") -> void
-             {
-               string response;
-               string command = zowex_command + " data-set create " + ds_name + " " + ds_options;
-               int rc = execute_command_with_output(command, response);
-               ExpectWithContext(rc, response).ToBe(0);
-               Expect(response).ToContain("Data set created");
-             };
-
              afterAll(
                  [&]() -> void
                  {
@@ -669,15 +669,15 @@ void zowex_ds_tests()
                         xit("should error when attempting to delete a GDG base with generations without the PURGE or FORCE option", []() -> void {});
                       });
              describe("list",
-                      [&_ds, _create_ds]() -> void
+                      [&]() -> void
                       {
                         beforeEach(
-                            [&_ds]() -> void
+                            [&]() -> void
                             {
                               _ds.push_back(get_random_ds());
                             });
                         it("should list a data set",
-                           [_ds, _create_ds]() -> void
+                           [&]() -> void
                            {
                              string ds = _ds.back();
                              _create_ds(ds);
@@ -689,7 +689,7 @@ void zowex_ds_tests()
                              Expect(response).ToContain(ds);
                            });
                         it("should list data sets based on pattern and warn about listing too many data sets",
-                           [&_ds, _create_ds]() -> void
+                           [&]() -> void
                            {
                              string ds = _ds.back();
                              _create_ds(ds);
@@ -706,7 +706,7 @@ void zowex_ds_tests()
                            });
 
                         it("should list up to the max entries specified and not warn",
-                           [&_ds, _create_ds]() -> void
+                           [&]() -> void
                            {
                              string ds = _ds.back();
                              _create_ds(ds);
@@ -723,7 +723,7 @@ void zowex_ds_tests()
                            });
 
                         it("should warn when listing a non-existent data set",
-                           [&_ds, _create_ds]() -> void
+                           [&]() -> void
                            {
                              string ds = _ds.back();
 
@@ -734,7 +734,7 @@ void zowex_ds_tests()
                              Expect(response).ToContain("Warning: no matching results found");
                            });
                         it("should error when the data set name is too long",
-                           [&_ds, _create_ds]() -> void
+                           [&]() -> void
                            {
                              string ds = get_random_ds(8);
 
