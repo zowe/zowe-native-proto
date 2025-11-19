@@ -242,7 +242,7 @@ zjson::Value RpcServer::convert_ast_to_json(const ast::Node &ast_node)
     return zjson::Value(ast_node->as_bool());
 
   case ast::Ast::Integer:
-    return zjson::Value(static_cast<int>(ast_node->as_integer()));
+    return zjson::Value(ast_node->as_integer());
 
   case ast::Ast::Number:
     return zjson::Value(ast_node->as_number());
