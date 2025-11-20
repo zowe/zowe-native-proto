@@ -29,7 +29,11 @@ class SshAttributesProvider implements IAttributesProvider {
 
     public constructor(public cachedAttrs?: Dataset) {}
 
-    public fetchAttributes(_context: DsInfo): AttributeInfo {
+    public fetchAttributes(context: DsInfo): AttributeInfo {
+        if (context.profile.type !== "ssh") {
+            return [];
+        }
+
         const keys = new Map<string, AttributeEntryInfo>();
         const addAttribute = <K extends keyof Dataset>(prop: K, label: string, description?: string): void => {
             const value = this.cachedAttrs?.[prop];
@@ -51,6 +55,7 @@ class SshAttributesProvider implements IAttributesProvider {
         addAttribute("secondary", "Secondary Space", `Secondary space (${spacu})`);
         addAttribute("storclass", "Storage Class");
         addAttribute("usedx", "Used Extents");
+        this.cachedAttrs = undefined;
 
         return [{ title: this.extensionName, keys }];
     }
