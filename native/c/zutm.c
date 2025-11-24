@@ -90,13 +90,13 @@ int ZUTWDYN(BPXWDYN_PARM *parm, BPXWDYN_RESPONSE *response)
   // // parameters[RTDDN_INDEX].len = RET_ARG_MAX_LEN - sizeof(parameters[RTDDN_INDEX].len);
   // strcpy(parameters[RTDDN_INDEX].str, "RTDDN");
 
-  parameters[MSG_INDEX].len = 3;
+  parameters[MSG_INDEX].len = sprintf(parameters[MSG_INDEX].str, "MSG");
   // parameters[MSG_INDEX].len = RET_ARG_MAX_LEN - sizeof(parameters[MSG_INDEX].len);
-  strcpy(parameters[MSG_INDEX].str, "MSG");
+  // strcpy(parameters[MSG_INDEX].str, "MSG");
 
   int index = 0;
 
-  // assign all response paramter stem values
+  // assign all response parameter stem values
   for (int i = INPUT_PARAMETERS; i < MSG_ENTRIES + INPUT_PARAMETERS; i++)
   {
     parameters[i].len = RET_ARG_MAX_LEN - sizeof(parameters[i].len);
@@ -105,7 +105,7 @@ int ZUTWDYN(BPXWDYN_PARM *parm, BPXWDYN_RESPONSE *response)
 
   // build a contiguous list of all parameters
   BPXWDYN_RET_ARG *PTR32 parms[MSG_ENTRIES + INPUT_PARAMETERS] = {0};
-  for (int i = 0; i <= MSG_ENTRIES + INPUT_PARAMETERS; i++)
+  for (int i = 0; i < MSG_ENTRIES + INPUT_PARAMETERS; i++)
   {
     parms[i] = &parameters[i];
   }
@@ -150,7 +150,7 @@ int ZUTWDYN(BPXWDYN_PARM *parm, BPXWDYN_RESPONSE *response)
 
   // obtain any messages returned
   char *respp = response->response;
-  for (int i = 0, j = atoi(parameters[1].str); i < j && i < MSG_ENTRIES + INPUT_PARAMETERS; i++)
+  for (int i = 0, j = atoi(parameters[MSG_INDEX].str); i < j && i < MSG_ENTRIES + INPUT_PARAMETERS; i++)
   {
     if (parameters[i + INPUT_PARAMETERS].len == RET_ARG_MAX_LEN - sizeof(parameters[i + INPUT_PARAMETERS].len))
     {
