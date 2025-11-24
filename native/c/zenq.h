@@ -230,7 +230,7 @@ static int deq(QNAME *qname, RNAME *rname)
   return rc;
 }
 
-static int deq_reserve(QNAME *qname, RNAME *rname, UCB *ucb)
+static int deq_reserve(QNAME *PTR32 qname, RNAME *PTR32 rname, UCB *PTR32 ucb)
 {
   int rc = 0;
   DEQ_MODEL(dsa_deq_model);  // stack var

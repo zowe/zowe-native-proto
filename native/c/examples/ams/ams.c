@@ -80,36 +80,67 @@ typedef struct
 {
   IO_CTRL *PTR32 sysin;
   IO_CTRL *PTR32 sysprint;
+  unsigned int enq : 1;
+  unsigned int reserve : 1;
+
+  QNAME qname;
+  RNAME rname;
+
+  QNAME qname_reserve;
+  RNAME rname_reserve;
+
+  UCB *PTR32 ucb;
+
 } RESOURCES;
 
 static void release_resources(RESOURCES *resources)
 {
   zwto_debug("AMSMAIN cleanup started");
 
+  int rc = 0;
+
+  if (resources->sysin)
+  {
+    zwto_debug("@TEST releasing sysin");
+    close_assert(resources->sysin);
+    resources->sysin = NULL;
+  }
+
   if (resources->sysprint->buffer)
   {
     zwto_debug("@TEST releasing buffer for sysprint");
-    zwto_debug("@TEST dcbe: %p", resources->sysprint->dcb.dcbdcbe);
     storage_release(resources->sysprint->buffer_size, resources->sysprint->buffer);
     resources->sysprint->buffer = NULL;
     resources->sysprint->buffer_size = 0;
   }
 
-  if (resources->sysin)
-  {
-    zwto_debug("@TEST releasing sysin");
-    zwto_debug("@TEST dcbe: %p", resources->sysprint->dcb.dcbdcbe);
-    close_assert(resources->sysin);
-    resources->sysin = NULL;
-  }
-
   if (resources->sysprint)
   {
-    zwto_debug("@TEST dcbe: %p", resources->sysprint->dcb.dcbdcbe);
-    zwto_debug("@TEST releasing sysprint");
-    // TODO(Kelosky): caller lower level services to avoid S0C3 in this function
+    zwto_debug("@TEST closing sysprint");
     close_assert(resources->sysprint);
     resources->sysprint = NULL;
+  }
+
+  if (resources->enq)
+  {
+    zwto_debug("@TEST deq'ing enq");
+    rc = deq(&resources->qname, &resources->rname);
+    if (0 != rc)
+    {
+      zwto_debug("@TEST deq failed: rc: %d", rc);
+    }
+    resources->enq = 0;
+  }
+
+  if (resources->reserve)
+  {
+    zwto_debug("@TEST deq'ing reserve");
+    rc = deq_reserve(&resources->qname_reserve, &resources->rname_reserve, resources->ucb);
+    if (0 != rc)
+    {
+      zwto_debug("@TEST deq_reserve failed: rc: %d", rc);
+    }
+    resources->reserve = 0;
   }
 
   zwto_debug("AMSMAIN cleanup ended");
@@ -124,6 +155,8 @@ static void release_resources(RESOURCES *resources)
 int AMSMAIN()
 {
   zwto_debug("AMSMAIN started");
+
+  const char *output_ddname = "SYSPRINT";
 
   int rsn = 0;
   int rc = 0;
@@ -142,7 +175,7 @@ int AMSMAIN()
    * @brief Set DD of data set we intend to open.  In the future, we'll probably have to require that the system provide use with a unique DD name.
    */
   char ddnam[9] = {0};
-  sprintf(ddnam, "%-8.8s", "SYSPRINT");
+  sprintf(ddnam, "%-8.8s", output_ddname);
   memcpy(resources.sysprint->dcb.dcbddnam, ddnam, sizeof(resources.sysprint->dcb.dcbddnam));
 
   /**
@@ -171,38 +204,23 @@ int AMSMAIN()
     return -1;
   }
 
-  /**
-   * @brief IBM recommends using ENQ SCOPE=SYSTEMS.  We may use RESERVE if one of the following is true:
-   * - GRS is not active (only applies to early IPL)
-   * - Installation is not using SMS
-   * https://www.ibm.com/docs/en/zos/3.2.0?topic=dasd-macros-used-shared-reserve-extract-getdsab
-   *
-   * ____ SYSDSN   DKELOSKY.IO.I.F80                             17 SYSTEM  SYSTEM  SHRD O
-   * ____ SPFEDIT  DKELOSKY.IO.I.F80                          +  52 SYSTEMS SYSTEMS EXCL O
-   */
+  if (!(resources.sysprint->jfcb.jfcrecfm & jfcfix))
+  {
+    zwto_debug("@TEST resources.sysprint->jfcb.jfcrecfm is not fixed ");
+    return -1;
+  }
 
-  QNAME qname = {0};
-  RNAME rname = {0};
+  strcpy(resources.qname.value, "SPFEDIT ");
+  resources.rname.rlen = sprintf(resources.rname.value, "%.*s%.*s", sizeof(resources.sysprint->jfcb.jfcbdsnm), resources.sysprint->jfcb.jfcbdsnm, sizeof(resources.sysprint->jfcb.jfcbelnm), resources.sysprint->jfcb.jfcbelnm);
 
-  QNAME qname_reserve = {0};
-  RNAME rname_reserve = {0};
-
-  strcpy(qname_reserve.value, "SPFEDIT ");
-  rname_reserve.rlen = sprintf(rname_reserve.value, "%.*s", sizeof(resources.sysprint->jfcb.jfcbdsnm), resources.sysprint->jfcb.jfcbdsnm);
-  zwto_debug("@TEST qname_reserve: %s and length: %d and rname_reserve: %.*s", qname_reserve.value, rname_reserve.rlen, rname_reserve.rlen, rname_reserve.value);
-
-  strcpy(qname.value, "SPFEDIT ");
-  zwto_debug("@TEST resources.sysprint->jfcb.jfcbdsnm: %.*s", sizeof(resources.sysprint->jfcb.jfcbdsnm), resources.sysprint->jfcb.jfcbdsnm);
-  zwto_debug("@TEST resources.sysprint->jfcb.jfcbelnm: %.*s", sizeof(resources.sysprint->jfcb.jfcbelnm), resources.sysprint->jfcb.jfcbelnm);
-  rname.rlen = sprintf(rname.value, "%.*s%.*s", sizeof(resources.sysprint->jfcb.jfcbdsnm), resources.sysprint->jfcb.jfcbdsnm, sizeof(resources.sysprint->jfcb.jfcbelnm), resources.sysprint->jfcb.jfcbelnm);
-  zwto_debug("@TEST qname: %s and length: %d and rname: %.*s", qname.value, rname.rlen, rname.rlen, rname.value);
-
-  rc = enq(&qname, &rname); // TODO(Kelosky): before open? How is directory entry protected?
+  rc = enq(&resources.qname, &resources.rname); // TODO(Kelosky): before open? How is directory entry protected?
   if (0 != rc)
   {
     zwto_debug("@TEST reserve failed: %d", rc);
-    release_resources(&resources);
+    return -1;
   }
+
+  resources.enq = 1; // now we have an ENQ
 
   typedef struct psa PSA;
   typedef struct tcb TCB;
@@ -211,66 +229,41 @@ int AMSMAIN()
   TCB *PTR32 tcb = psa->psatold;
   TIOT *PTR32 tiot = tcb->tcbtio;
 
-  // zwto_debug("@TEST tiot->tiocnjob: %s", tiot->tiocnjob);
-
-  zut_dump_storage_common("TIOT", tiot, sizeof(TIOT), 16, 0, zut_print_debug);
-
   unsigned char tiot_entry_len = tiot->tioelngh;
-
-  // zwto_debug("@TEST ddname: %-8.8s", tiot->tioeddnm);
-  // zwto_debug("@TEST tiotaddress: %p", tiot);
-  // zwto_debug("@TEST tiotddname length: %p", &tiot->tioeddnm[0]);
 
   unsigned int raw_ucb_address = 0;
   unsigned char *PTR32 tiot_entry = (unsigned char *PTR32)tiot;
-
-#define LOOP_MAX 100
-
-  int loop_count = 0;
 
   while (tiot_entry_len > 0)
   {
     tiot_entry += tiot_entry_len;
     tiot = (TIOT * PTR32) tiot_entry;
 
-    if (0 == strncmp(tiot->tioeddnm, "SYSPRINT", 8))
+    if (0 == strncmp(tiot->tioeddnm, output_ddname, strlen(output_ddname)))
     {
       unsigned char *PTR32 tioesttb = (unsigned char *PTR32) & tiot->tioesttb;
-      zwto_debug("@TEST tioesttb: %x", tioesttb[0]);
-      zwto_debug("@TEST tioesttb: %x", tioesttb[1]);
-      zwto_debug("@TEST tioesttb: %x", tioesttb[2]);
-      zwto_debug("@TEST tioesttb: %x", tioesttb[3]);
       memcpy(&raw_ucb_address, &tiot->tioesttb, sizeof(unsigned int));
-      // raw_ucb_address = (unsigned int)tiot->tioesttb;
       break;
     }
 
-    // zwto_debug("@TEST ddname: %-8.8s", tiot->tioeddnm);
-    // zwto_debug("@TEST tiotaddress: %p", tiot);
-    // zwto_debug("@TEST tiotddname length: %p", &tiot->tioeddnm[0]);
     tiot_entry_len = tiot->tioelngh;
-    loop_count++;
-    // if (loop_count > LOOP_MAX)
-    // {
-    //   zwto_debug("@TEST loop count exceeded: %d", loop_count);
-    //   return -1;
-    // }
   }
 
-  raw_ucb_address = (raw_ucb_address & 0x00FFFFFF);
-  zwto_debug("@TEST raw_ucb_address: %x", raw_ucb_address);
+#define MASK_24_BITS 0x00FFFFFF
+
+  raw_ucb_address = (raw_ucb_address & MASK_24_BITS);
   if (0 == raw_ucb_address)
   {
     zwto_debug("@TEST raw_ucb_address is zero");
     return -1;
   }
 
-  UCB *PTR32 ucb = NULL;
-  ucb = (UCB * PTR32) raw_ucb_address;
+  strcpy(resources.qname_reserve.value, "SPFEDIT ");
+  resources.rname_reserve.rlen = sprintf(resources.rname_reserve.value, "%.*s", sizeof(resources.sysprint->jfcb.jfcbdsnm), resources.sysprint->jfcb.jfcbdsnm);
 
-  zwto_debug("@TEST ucb: %p", ucb);
+  resources.ucb = (UCB * PTR32) raw_ucb_address;
 
-  rc = reserve(&qname_reserve, &rname_reserve, ucb);
+  rc = reserve(&resources.qname_reserve, &resources.rname_reserve, resources.ucb);
   if (0 != rc)
   {
     zwto_debug("@TEST reserve failed: %d", rc);
@@ -278,20 +271,7 @@ int AMSMAIN()
     return -1;
   }
 
-  zwto_debug("@TEST reserve successful");
-
-  // TODO(Kelosky): ensure proper sequence, ensure conditional LOC= on RESREVE and perhaps the DEQ, ensure proper RESERVE model set
-  // DEB *PTR32 deb = NULL;
-  // // deb = (DEB * PTR32)((unsigned int)resources.sysprint->dcb.dcbiflgs & 0x00FFFFFF); // clear flags
-  // rc = reserve(&qname_reserve, &rname_reserve, ucb);
-  // if (0 != rc)
-  // {
-  //   zwto_debug("@TEST reserve failed: %d", rc);
-  //   release_resources(&resources);
-  //   return -1;
-  // }
-
-  // zwto_debug("@TEST reserve successful");
+  resources.reserve = 1; // now we have a RESERVE
 
   // /////////////////////////////////////////////////////////////
 
@@ -314,13 +294,6 @@ int AMSMAIN()
   /////////////////////////////////////////////////////////////
 
   /**
-   * @brief Set DCBE
-   */
-
-  // set_dcb_dcbe(&resources.sysprint->dcb);
-  zwto_debug("@TEST resources.sysprint->dcb.dcbdcbe: %p", resources.sysprint->dcb.dcbdcbe);
-
-  /**
    * @brief Set items that we obtained from JFCB
    */
   resources.sysprint->dcb.dcbrecfm = resources.sysprint->jfcb.jfcrecfm; // copy allocation attributes
@@ -338,7 +311,6 @@ int AMSMAIN()
     return -1;
   }
   zwto_debug("@TEST opened for output");
-  zwto_debug("@TEST resources.sysprint->dcb.dcbdcbe: %p", resources.sysprint->dcb.dcbdcbe);
 
   /**
    * @brief Verify file is indeed open and no DCBABEND has occurred
@@ -355,12 +327,6 @@ int AMSMAIN()
   /**
    * @brief Validate data set attributes are Fixed, Variable, and/or blocked
    */
-  if (!(resources.sysprint->dcb.dcbrecfm & dcbrecf)) // validate block or variable??
-  {
-    zwto_debug("@TEST resources.sysprint->dcb.dcbrecfm is not fixed (0x%x)", resources.sysprint->dcb.dcbrecfm);
-    release_resources(&resources);
-    return -1;
-  }
 
   zwto_debug("@TEST resources.sysprint->dcb.dcblrecl: %d", resources.sysprint->dcb.dcblrecl);
   if (resources.sysprint->dcb.dcblrecl != 80)
@@ -384,71 +350,6 @@ int AMSMAIN()
     return -1;
   }
 
-  // DEB *PTR32 deb = NULL;
-  // memcpy(&deb, &resources.sysprint->dcb.dcbiflgs, sizeof(DEB * PTR32)); // flags followed by DEB
-  // deb = (DEB * PTR32)((unsigned int)deb & 0x00FFFFFF);                  // clear flags
-
-  // if (NULL == deb)
-  // {
-  //   zwto_debug("@TEST DEB is zero");
-  //   release_resources(&resources);
-  //   return -1;
-  // }
-
-  // zwto_debug("@TEST deb->debflgs2: %02x", deb->debflgs2);
-
-  // if (deb->debflgs2 & deb31ucb)
-  // {
-  //   zwto_debug("@TEST deb31ucb is set");
-  // }
-  // else
-  // {
-  //   zwto_debug("@TEST deb31ucb is not set");
-  // }
-
-  // zut_dump_storage_common("DEB", deb, sizeof(DEB), 16, 0, zut_print_debug);
-  // UCB *PTR32 ucb = NULL;
-  // unsigned char *temp2 = (unsigned char *PTR32) & deb->debsdvm;
-  // zwto_debug("@TEST temp2: %02x", temp2[0]);
-  // zwto_debug("@TEST temp2: %02x", temp2[1]);
-  // zwto_debug("@TEST temp2: %02x", temp2[2]);
-  // zwto_debug("@TEST temp2: %02x", temp2[3]);
-
-  // memcpy(&ucb, &deb->debsdvm, sizeof(UCB * PTR32));
-  // ucb = (UCB * PTR32)((unsigned int)ucb & 0x00FFFFFF);
-
-  // if (NULL == ucb)
-  // {
-  //   zwto_debug("@TEST UCB is zero");
-  //   release_resources(&resources);
-  //   return -1;
-  // }
-
-  // zut_dump_storage_common("UCB", ucb, sizeof(UCB), 16, 0, zut_print_debug);
-
-  // zut_dump_storage_common("DEB", deb, sizeof(DEB), 16, 0, zut_print_debug);
-  // // UCB *PTR32 ucb = NULL;
-  // memcpy(&ucb, &deb->debsdvm, sizeof(UCB * PTR32));
-  // ucb = (UCB * PTR32)((unsigned int)ucb & 0x00FFFFFF);
-  // zut_dump_storage_common("UCB", ucb, sizeof(UCB), 16, 0, zut_print_debug);
-
-  /**
-   * @brief Find the position last block written
-   */
-  // NOTE_RESPONSE note_response = {0};
-  // rc = note(resources.sysprint, &note_response, &rsn);
-  // if (0 != rc)
-  // {
-  //   zwto_debug("@TEST note failed: rc: %d, rsn: %d", rc, rsn);
-  //   release_resources(&resources);
-  //   return -1;
-  // }
-  // zut_dump_storage_common("NOTE TTR after open before memset", &note_response.ttr, 3, 16, 0, zut_print_debug);
-
-  // memset(&note_response, 0x00, sizeof(NOTE_RESPONSE));
-
-  // zut_dump_storage_common("NOTE TTR after open after memset", &note_response.ttr, 3, 16, 0, zut_print_debug);
-
   /**
    * @brief Obtain TTR and other attributes
    */
@@ -467,32 +368,16 @@ int AMSMAIN()
     return -1;
   }
 
-  zut_dump_storage_common("initial BLDL TTR", &bldl_pl.list.ttr, 3, 16, 0, zut_print_debug);
-
   /**
    * @brief Validate that ISPF statistics are provided
    */
-  // TODO(Kelosky): if no stats are provided, should we add them?
+  // TODO(Kelosky): if no stats are provided, should we add them? YES!
   if ((bldl_pl.list.c & LEN_MASK) == 0)
   {
     zwto_debug("@TEST no ISPF statistics are provided (0x%02x)", bldl_pl.list.c);
     release_resources(&resources);
     return -1;
   }
-
-  // /**
-  //  * @brief Find the member in the data set to obtain the TTR and other attributes
-  //  * Establish the beggingin of a data set member (BPAM)
-  //  * // TODO(Kelosky): this could be a POINT
-  //  * // TODO(Kelosky): this find may not be needed ... .
-  //  */
-  // rc = find_member(resources.sysprint, &rsn);
-  // if (0 != rc)
-  // {
-  //   zwto_debug("@TEST find_member failed: rc: %d, rsn: %d", rc, rsn);
-  //   release_resources(&resources);
-  //   return -1;
-  // }
 
   char inbuff[80] = {0};
 
@@ -553,24 +438,8 @@ int AMSMAIN()
     bytes_in_buffer = 0;
     free_location = resources.sysprint->buffer;
     memset(resources.sysprint->buffer, 0x00, resources.sysprint->buffer_size);
-    // zwto_debug("@TEST wrote block");
+    zwto_debug("@TEST wrote last block");
   }
-
-  zwto_debug("@TEST dcbe: %p", resources.sysprint->dcb.dcbdcbe);
-
-  // /**
-  //  * @brief Find the position last block written
-  //  */
-  // NOTE_RESPONSE note_response = {0};
-  // rc = note(resources.sysprint, &note_response, &rsn);
-  // if (0 != rc)
-  // {
-  //   zwto_debug("@TEST note failed: rc: %d, rsn: %d", rc, rsn);
-  //   release_resources(&resources);
-  //   return -1;
-  // }
-
-  // zut_dump_storage_common("NOTE TTR", &note_response.ttr, 3, 16, 0, zut_print_debug);
 
   /**
    * @brief Copy ISPF statistics
@@ -598,7 +467,6 @@ int AMSMAIN()
     return -1;
   }
   memcpy(statsp->userid, user, sizeof(user));
-  zwto_debug("@TEST1 dcbe: %p", resources.sysprint->dcb.dcbdcbe);
 
 // update ISPF statistics modification level
 // https://www.ibm.com/docs/en/zos/3.2.0?topic=environment-version-modification-level-numbers
@@ -637,8 +505,6 @@ int AMSMAIN()
   statsp->modified_time_minutes = timel.times.MM; // update ISPF statistics time minutes
   statsp->modified_time_seconds = timel.times.SS; // update ISPF statistics time seconds
 
-  zwto_debug("@TEST6 dcbe: %p", resources.sysprint->dcb.dcbdcbe);
-
   // zut_dump_storage_common("DIRECTORY ENTRY before stow", &resources.sysprint->stow_list.user_data, sizeof(STOW_LIST), 16, 0, zut_print_debug);
 
   /**
@@ -651,21 +517,6 @@ int AMSMAIN()
     release_resources(&resources);
     return -1;
   }
-  zwto_debug("@TEST7 dcbe: %p", resources.sysprint->dcb.dcbdcbe);
-
-  zut_dump_storage_common("DIRECTORY ENTRY after stow", &resources.sysprint->stow_list.user_data, sizeof(STOW_LIST), 16, 0, zut_print_debug);
-
-  // TODO(Kelosky): this enq should drop after we decided we're done editing the data set
-  rc = deq(&qname, &rname);
-  if (0 != rc)
-  {
-    zwto_debug("@TEST deq failed: rc: %d", rc);
-    release_resources(&resources);
-    return -1;
-  }
-  zwto_debug("@TEST1 dcbe: %p", resources.sysprint->dcb.dcbdcbe);
-
-  zwto_debug("@TEST releasing resources");
 
   /**
    * @brief Release resources
