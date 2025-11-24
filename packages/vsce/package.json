@@ -1,6 +1,6 @@
 {
   "name": "zowe-native-proto-vsce",
-  "displayName": "zowe-native-proto-vsce",
+  "displayName": "Zowe Remote SSH",
   "description": "Zowe Native Proto VS Code Extension for Zowe Explorer",
   "version": "0.2.0",
   "publisher": "Zowe",
@@ -109,7 +109,7 @@
   },
   "dependencies": {
     "@zowe/core-for-zowe-sdk": "^8.11.0",
-    "@zowe/zowe-explorer-api": "^3.1.0",
+    "@zowe/zowe-explorer-api": "^3.3.0",
     "ssh2": "^1.16.0",
     "zowe-native-proto-sdk": "0.2.0"
   },

@@ -140,6 +140,62 @@ int create_with_attributes(InvocationContext &context)
   return process_data_set_create_result(context, &zds, rc, dsn, response);
 }
 
+const ast::Node build_ds_object(const ZDSEntry &entry, bool attributes)
+{
+  const auto obj_entry = obj();
+  string trimmed_name = entry.name;
+  zut_rtrim(trimmed_name);
+  obj_entry->set("name", str(trimmed_name));
+
+  if (!attributes)
+    return obj_entry;
+
+  if (entry.alloc != -1)
+    obj_entry->set("alloc", i64(entry.alloc));
+  if (entry.allocx != -1)
+    obj_entry->set("allocx", i64(entry.allocx));
+  if (entry.blksize != -1)
+    obj_entry->set("blksize", i64(entry.blksize));
+  if (!entry.cdate.empty())
+    obj_entry->set("cdate", str(entry.cdate));
+  if (!entry.dataclass.empty())
+    obj_entry->set("dataclass", str(entry.dataclass));
+  if (entry.devtype != 0)
+    obj_entry->set("devtype", str(zut_int_to_string(entry.devtype, true)));
+  if (!entry.dsntype.empty())
+    obj_entry->set("dsntype", str(entry.dsntype));
+  if (!entry.dsorg.empty())
+    obj_entry->set("dsorg", str(entry.dsorg));
+  if (!entry.edate.empty())
+    obj_entry->set("edate", str(entry.edate));
+  if (entry.alloc != -1)
+    obj_entry->set("encrypted", boolean(entry.encrypted));
+  if (entry.lrecl != -1)
+    obj_entry->set("lrecl", i64(entry.lrecl));
+  if (!entry.mgmtclass.empty())
+    obj_entry->set("mgmtclass", str(entry.mgmtclass));
+  obj_entry->set("migrated", boolean(entry.migrated));
+  if (entry.primary != -1)
+    obj_entry->set("primary", i64(entry.primary));
+  if (!entry.rdate.empty())
+    obj_entry->set("rdate", str(entry.rdate));
+  if (!entry.recfm.empty())
+    obj_entry->set("recfm", str(entry.recfm));
+  if (entry.secondary != -1)
+    obj_entry->set("secondary", i64(entry.secondary));
+  if (!entry.spacu.empty())
+    obj_entry->set("spacu", str(entry.spacu));
+  if (!entry.storclass.empty())
+    obj_entry->set("storclass", str(entry.storclass));
+  if (entry.usedp != -1)
+    obj_entry->set("usedp", i64(entry.usedp));
+  if (entry.usedx != -1)
+    obj_entry->set("usedx", i64(entry.usedx));
+  obj_entry->set("volser", str(entry.volser));
+
+  return obj_entry;
+}
+
 int handle_data_set_create_fb(InvocationContext &context)
 {
   int rc = 0;
@@ -371,12 +427,13 @@ int handle_data_set_list(InvocationContext &context)
   }
   vector<ZDSEntry> entries;
 
+  const auto num_attr_fields = 10;
   bool emit_csv = context.get<bool>("response-format-csv", false);
-  rc = zds_list_data_sets(&zds, dsn, entries);
+  rc = zds_list_data_sets(&zds, dsn, entries, attributes);
   if (RTNCD_SUCCESS == rc || RTNCD_WARNING == rc)
   {
     vector<string> fields;
-    fields.reserve(attributes ? 5 : 1);
+    fields.reserve((attributes ? num_attr_fields : 0) + 1);
     const auto entries_array = arr();
 
     for (vector<ZDSEntry>::iterator it = entries.begin(); it != entries.end(); ++it)
@@ -386,10 +443,16 @@ int handle_data_set_list(InvocationContext &context)
         fields.push_back(it->name);
         if (attributes)
         {
-          fields.push_back(it->dsorg);
           fields.push_back(it->volser);
-          fields.push_back(it->migr ? "true" : "false");
+          fields.push_back(it->devtype != 0 ? zut_int_to_string(it->devtype, true) : "");
+          fields.push_back(it->dsorg);
           fields.push_back(it->recfm);
+          fields.push_back(it->lrecl == -1 ? "" : zut_int_to_string(it->lrecl));
+          fields.push_back(it->blksize == -1 ? "" : zut_int_to_string(it->blksize));
+          fields.push_back(zut_int_to_string(it->primary));
+          fields.push_back(zut_int_to_string(it->secondary));
+          fields.push_back(it->dsntype);
+          fields.push_back(it->migrated ? "YES" : "NO");
         }
         context.output_stream() << zut_format_as_csv(fields) << endl;
         fields.clear();
@@ -398,7 +461,19 @@ int handle_data_set_list(InvocationContext &context)
       {
         if (attributes)
         {
-          context.output_stream() << left << setw(44) << it->name << " " << it->volser << " " << setw(4) << it->dsorg << " " << setw(6) << it->recfm << endl;
+          context.output_stream() << left
+                                  << setw(44) << it->name << " "
+                                  << setw(6) << it->volser << " "
+                                  << setw(7) << (it->devtype != 0 ? zut_int_to_string(it->devtype, true) : "") << " "
+                                  << setw(4) << it->dsorg << " "
+                                  << setw(6) << it->recfm << " "
+                                  << setw(6) << (it->lrecl == -1 ? "" : zut_int_to_string(it->lrecl)) << " "
+                                  << setw(6) << (it->blksize == -1 ? "" : zut_int_to_string(it->blksize)) << " "
+                                  << setw(10) << it->primary << " "
+                                  << setw(10) << it->secondary << " "
+                                  << setw(8) << it->dsntype << " "
+                                  << (it->migrated ? "YES" : "NO")
+                                  << endl;
         }
         else
         {
@@ -406,17 +481,7 @@ int handle_data_set_list(InvocationContext &context)
         }
       }
 
-      const auto entry = obj();
-      string trimmed_name = it->name;
-      zut_rtrim(trimmed_name);
-      entry->set("name", str(trimmed_name));
-      if (attributes)
-      {
-        entry->set("dsorg", str(it->dsorg));
-        entry->set("volser", str(it->volser));
-        entry->set("migr", boolean(it->migr));
-        entry->set("recfm", str(it->recfm));
-      }
+      const auto entry = build_ds_object(*it, attributes);
       entries_array->push(entry);
     }
 

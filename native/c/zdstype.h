@@ -54,6 +54,11 @@
 #define ZDS_RECFM_FBS "FBS" // Fixed Blocked Spanned
 #define ZDS_RECFM_VBS "VBS" // Variable Blocked Spanned
 
+// Device type codes (last byte of UCB device type)
+#define ZDS_DEVTYPE_3380 0x0E
+#define ZDS_DEVTYPE_3390 0x0F
+#define ZDS_DEVTYPE_9345 0x04
+
 #if (defined(__IBMCPP__) || defined(__IBMC__))
 #if defined(__clang__)
 #pragma pack(1)
