@@ -49,7 +49,7 @@ int main()
   std::cout << "current user: " << getlogin() << std::endl;
 
   ZDIAG diag = {0};
-  rc = zut_loop_dynalloc(diag, dds);
+  // rc = zut_loop_dynalloc(diag, dds);
   if (0 != rc)
   {
     std::cout << diag.e_msg << std::endl;
@@ -57,8 +57,10 @@ int main()
   }
 
   std::string response;
-  std::string cmd = "alloc dd(happy) da('DKELOSKY.IO.O.VB256(data)') shr lrecl(80) recfm(f,b)";
-  // std::string cmd = "alloc RTDDN(yoyo) da('DKELOSKY.IO.O.VB256(data)') shr lrecl(80) recfm(f,b)";
+  // std::string cmd = "alloc dd(happy) da('DKELOSKY.IO.O.VB256(data)') shr lrecl(80) recfm(f,b)";
+  std::string cmd = "alloc da('DKELOSKY.NOT.FOUND') shr lrecl(80) recfm(f,b)";
+  // std::string cmd = "alloc da('DKELOSKY.IO.O.VB256(data)') shr lrecl(80) recfm(f,b)";
+  // std::string cmd = "alloc RTDDN(NAME) da('DKELOSKY.IO.O.VB256(data)') shr lrecl(80) recfm(f,b)";
   // std::string alloc = "alloc dd(sysprint) da('DKELOSKY.IO.O.VB256(data)') shr  ";
   rc = zut_bpxwdyn(cmd, &code, response);
   if (0 != rc)
@@ -69,16 +71,11 @@ int main()
     return -1;
   }
 
-  std::cout << "cmd: " << cmd << std::endl;
-  std::cout << "alloc success: " << response << std::endl;
-  std::cout << "code: " << std::hex << code << std::dec << std::endl;
-  std::cout << "rc: " << rc << std::endl;
-
   std::cout << "AMS started" << std::endl;
-  AMSMAIN();
+  // AMSMAIN();
   std::cout << "AMS ended" << std::endl;
 
-  rc = zut_free_dynalloc_dds(diag, dds);
+  // rc = zut_free_dynalloc_dds(diag, dds);
   if (0 != rc)
   {
     std::cout << diag.e_msg << std::endl;

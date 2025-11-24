@@ -26,6 +26,12 @@ extern "C"
 #define RET_ARG_MAX_LEN 260
 #define MSG_ENTRIES 25
 
+#define ALLOC_STRING_INDEX 0
+// #define RTDDN_INDEX 1
+#define MSG_INDEX 1
+
+#define INPUT_PARAMETERS 2 // always set to the number of input parameters
+
   typedef struct
   {
     short len;
