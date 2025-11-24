@@ -22,6 +22,9 @@
 #include "ztime.h"
 #include "zenq.h"
 #include "iezdeb.h"
+#include "ihapsa.h"
+#include "ikjtcb.h"
+#include "ieftiot1.h"
 
 typedef struct deb DEB;
 
@@ -201,22 +204,86 @@ int AMSMAIN()
     release_resources(&resources);
   }
 
-  DEB *PTR32 deb = (DEB * PTR32) & resources.sysprint->dcb.dcbiflgs; // flags followed by DEB
-  deb = (DEB * PTR32)((unsigned int)deb & 0x00FFFFFF);               // clear flags
+  typedef struct psa PSA;
+  typedef struct tcb TCB;
+  typedef struct tiot TIOT;
+  PSA *psa = (PSA *)0;
+  TCB *PTR32 tcb = psa->psatold;
+  TIOT *PTR32 tiot = tcb->tcbtio;
 
-  zwto_debug("@TEST deb->debflgs2: %02x", deb->debflgs2);
+  // zwto_debug("@TEST tiot->tiocnjob: %s", tiot->tiocnjob);
 
-  if (deb->debflgs2 & deb31ucb)
+  zut_dump_storage_common("TIOT", tiot, sizeof(TIOT), 16, 0, zut_print_debug);
+
+  unsigned char tiot_entry_len = tiot->tioelngh;
+
+  // zwto_debug("@TEST ddname: %-8.8s", tiot->tioeddnm);
+  // zwto_debug("@TEST tiotaddress: %p", tiot);
+  // zwto_debug("@TEST tiotddname length: %p", &tiot->tioeddnm[0]);
+
+  unsigned int raw_ucb_address = 0;
+  unsigned char *PTR32 tiot_entry = (unsigned char *PTR32)tiot;
+
+#define LOOP_MAX 100
+
+  int loop_count = 0;
+
+  while (tiot_entry_len > 0)
   {
-    zwto_debug("@TEST deb31ucb is set");
+    tiot_entry += tiot_entry_len;
+    tiot = (TIOT * PTR32) tiot_entry;
+
+    if (0 == strncmp(tiot->tioeddnm, "SYSPRINT", 8))
+    {
+      unsigned char *PTR32 tioesttb = (unsigned char *PTR32) & tiot->tioesttb;
+      zwto_debug("@TEST tioesttb: %x", tioesttb[0]);
+      zwto_debug("@TEST tioesttb: %x", tioesttb[1]);
+      zwto_debug("@TEST tioesttb: %x", tioesttb[2]);
+      zwto_debug("@TEST tioesttb: %x", tioesttb[3]);
+      memcpy(&raw_ucb_address, &tiot->tioesttb, sizeof(unsigned int));
+      // raw_ucb_address = (unsigned int)tiot->tioesttb;
+      break;
+    }
+
+    // zwto_debug("@TEST ddname: %-8.8s", tiot->tioeddnm);
+    // zwto_debug("@TEST tiotaddress: %p", tiot);
+    // zwto_debug("@TEST tiotddname length: %p", &tiot->tioeddnm[0]);
+    tiot_entry_len = tiot->tioelngh;
+    loop_count++;
+    // if (loop_count > LOOP_MAX)
+    // {
+    //   zwto_debug("@TEST loop count exceeded: %d", loop_count);
+    //   return -1;
+    // }
   }
-  else
+
+  raw_ucb_address = (raw_ucb_address & 0x00FFFFFF);
+  zwto_debug("@TEST raw_ucb_address: %x", raw_ucb_address);
+  if (0 == raw_ucb_address)
   {
-    zwto_debug("@TEST deb31ucb is not set");
+    zwto_debug("@TEST raw_ucb_address is zero");
+    return -1;
   }
+
+  UCB *PTR32 ucb = NULL;
+  ucb = (UCB * PTR32) raw_ucb_address;
+
+  zwto_debug("@TEST ucb: %p", ucb);
+
+  rc = reserve(&qname_reserve, &rname_reserve, ucb);
+  if (0 != rc)
+  {
+    zwto_debug("@TEST reserve failed: %d", rc);
+    release_resources(&resources);
+    return -1;
+  }
+
+  zwto_debug("@TEST reserve successful");
 
   // TODO(Kelosky): ensure proper sequence, ensure conditional LOC= on RESREVE and perhaps the DEQ, ensure proper RESERVE model set
-  // rc = reserve(&qname_reserve, &rname_reserve, (UCB *)&resources.sysprint->dcb);
+  // DEB *PTR32 deb = NULL;
+  // // deb = (DEB * PTR32)((unsigned int)resources.sysprint->dcb.dcbiflgs & 0x00FFFFFF); // clear flags
+  // rc = reserve(&qname_reserve, &rname_reserve, ucb);
   // if (0 != rc)
   // {
   //   zwto_debug("@TEST reserve failed: %d", rc);
@@ -226,7 +293,7 @@ int AMSMAIN()
 
   // zwto_debug("@TEST reserve successful");
 
-  /////////////////////////////////////////////////////////////
+  // /////////////////////////////////////////////////////////////
 
   // WTO_BUF buf = {0};
   // buf.len = sprintf(buf.msg, "Awaiting reply");
@@ -317,22 +384,70 @@ int AMSMAIN()
     return -1;
   }
 
+  // DEB *PTR32 deb = NULL;
+  // memcpy(&deb, &resources.sysprint->dcb.dcbiflgs, sizeof(DEB * PTR32)); // flags followed by DEB
+  // deb = (DEB * PTR32)((unsigned int)deb & 0x00FFFFFF);                  // clear flags
+
+  // if (NULL == deb)
+  // {
+  //   zwto_debug("@TEST DEB is zero");
+  //   release_resources(&resources);
+  //   return -1;
+  // }
+
+  // zwto_debug("@TEST deb->debflgs2: %02x", deb->debflgs2);
+
+  // if (deb->debflgs2 & deb31ucb)
+  // {
+  //   zwto_debug("@TEST deb31ucb is set");
+  // }
+  // else
+  // {
+  //   zwto_debug("@TEST deb31ucb is not set");
+  // }
+
+  // zut_dump_storage_common("DEB", deb, sizeof(DEB), 16, 0, zut_print_debug);
+  // UCB *PTR32 ucb = NULL;
+  // unsigned char *temp2 = (unsigned char *PTR32) & deb->debsdvm;
+  // zwto_debug("@TEST temp2: %02x", temp2[0]);
+  // zwto_debug("@TEST temp2: %02x", temp2[1]);
+  // zwto_debug("@TEST temp2: %02x", temp2[2]);
+  // zwto_debug("@TEST temp2: %02x", temp2[3]);
+
+  // memcpy(&ucb, &deb->debsdvm, sizeof(UCB * PTR32));
+  // ucb = (UCB * PTR32)((unsigned int)ucb & 0x00FFFFFF);
+
+  // if (NULL == ucb)
+  // {
+  //   zwto_debug("@TEST UCB is zero");
+  //   release_resources(&resources);
+  //   return -1;
+  // }
+
+  // zut_dump_storage_common("UCB", ucb, sizeof(UCB), 16, 0, zut_print_debug);
+
+  // zut_dump_storage_common("DEB", deb, sizeof(DEB), 16, 0, zut_print_debug);
+  // // UCB *PTR32 ucb = NULL;
+  // memcpy(&ucb, &deb->debsdvm, sizeof(UCB * PTR32));
+  // ucb = (UCB * PTR32)((unsigned int)ucb & 0x00FFFFFF);
+  // zut_dump_storage_common("UCB", ucb, sizeof(UCB), 16, 0, zut_print_debug);
+
   /**
    * @brief Find the position last block written
    */
-  NOTE_RESPONSE note_response = {0};
-  rc = note(resources.sysprint, &note_response, &rsn);
-  if (0 != rc)
-  {
-    zwto_debug("@TEST note failed: rc: %d, rsn: %d", rc, rsn);
-    release_resources(&resources);
-    return -1;
-  }
-  zut_dump_storage_common("NOTE TTR after open before memset", &note_response.ttr, 3, 16, 0, zut_print_debug);
+  // NOTE_RESPONSE note_response = {0};
+  // rc = note(resources.sysprint, &note_response, &rsn);
+  // if (0 != rc)
+  // {
+  //   zwto_debug("@TEST note failed: rc: %d, rsn: %d", rc, rsn);
+  //   release_resources(&resources);
+  //   return -1;
+  // }
+  // zut_dump_storage_common("NOTE TTR after open before memset", &note_response.ttr, 3, 16, 0, zut_print_debug);
 
-  memset(&note_response, 0x00, sizeof(NOTE_RESPONSE));
+  // memset(&note_response, 0x00, sizeof(NOTE_RESPONSE));
 
-  zut_dump_storage_common("NOTE TTR after open after memset", &note_response.ttr, 3, 16, 0, zut_print_debug);
+  // zut_dump_storage_common("NOTE TTR after open after memset", &note_response.ttr, 3, 16, 0, zut_print_debug);
 
   /**
    * @brief Obtain TTR and other attributes
@@ -462,10 +577,10 @@ int AMSMAIN()
    */
   // Copy all user data
   memcpy(resources.sysprint->stow_list.name, bldl_pl.list.name, sizeof(bldl_pl.list.name)); // copy member name
-  memcpy(resources.sysprint->stow_list.ttr, note_response.ttr, sizeof(note_response.ttr));  // copy NOTE TTR
-  resources.sysprint->stow_list.c = bldl_pl.list.c;                                         // copy user data length
-  int user_data_len = (bldl_pl.list.c & LEN_MASK) * 2;                                      // isolate number of halfwords in user data
-  memcpy(resources.sysprint->stow_list.user_data, bldl_pl.list.user_data, user_data_len);   // copy all user data
+  // memcpy(resources.sysprint->stow_list.ttr, note_response.ttr, sizeof(note_response.ttr));  // NOTE(Kelosky): the TTR will be maintained via OPEN/WRITE, no need to copy NOTE TTR
+  resources.sysprint->stow_list.c = bldl_pl.list.c;                                       // copy user data length
+  int user_data_len = (bldl_pl.list.c & LEN_MASK) * 2;                                    // isolate number of halfwords in user data
+  memcpy(resources.sysprint->stow_list.user_data, bldl_pl.list.user_data, user_data_len); // copy all user data
 
   /**
    * @brief Update ISPF statistics
@@ -524,7 +639,7 @@ int AMSMAIN()
 
   zwto_debug("@TEST6 dcbe: %p", resources.sysprint->dcb.dcbdcbe);
 
-  zut_dump_storage_common("DIRECTORY ENTRY before stow", &resources.sysprint->stow_list.user_data, sizeof(STOW_LIST), 16, 0, zut_print_debug);
+  // zut_dump_storage_common("DIRECTORY ENTRY before stow", &resources.sysprint->stow_list.user_data, sizeof(STOW_LIST), 16, 0, zut_print_debug);
 
   /**
    * @brief Update the directory entry with the new ISPF statistics

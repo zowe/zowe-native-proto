@@ -192,7 +192,7 @@ static int enq(QNAME *qname, RNAME *rname)
   return rc;
 }
 
-static int reserve(QNAME *qname, RNAME *rname, UCB *ucb)
+static int reserve(QNAME *PTR32 qname, RNAME *PTR32 rname, UCB *PTR32 ucb)
 {
   int rc = 0;
   RESERVE_MODEL(dsa_reserve_model);  // stack var
