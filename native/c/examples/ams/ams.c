@@ -41,20 +41,9 @@ To allow users to update a data set that has a record format of "U", ISPF serial
 
 /**
  *
- * We can comment out the SPFEDIT enq and test ISPF + VS Code writing via STWO with ISGENQ RESERVEVOL=YES
- * if bldl not found create stats
- * handle the case matt found on 65356 line changes
- * function to return stats
- * stow works with any ttr value
- *
- */
-
-/**
- *
  * if in view mode, not spfedit enq on member name
  * if in edit mode, spfedit enq on member name
  * when writin isgenq with SGENQ SCOPE=SYSTEMS RESERVEVOLUME=YES is probably what we need to do
- * no need to find - remove
  * stow ttr set to zero still "works" and needs debugged
  *  try wtritting two members on the same open with different data to see what happens
  * bldl if member doesnt exist needs to create ispf stats
@@ -71,7 +60,6 @@ To allow users to update a data set that has a record format of "U", ISPF serial
 // TODO(Kelosky): handling writing via DD name
 // TODO(Kelosky): handle supported formats
 // TODO(Kelosky): cleanup headers
-// TODO(Kelosky): use BLDL to get TTR and then on READ instead of FIND
 // TODO(Kelosky): test with PDSE, STOW implications
 // TODO(Kelosky): what is PROMPT for in ISPF stats?
 // TODO(Kelosky): return errors as messages
@@ -236,16 +224,17 @@ int AMSMAIN()
 
   while (tiot_entry_len > 0)
   {
-    tiot_entry += tiot_entry_len;
-    tiot = (TIOT * PTR32) tiot_entry;
+    zwto_debug("@TEST tiot->tioeddnm: %-8.8s", tiot->tioeddnm);
 
     if (0 == strncmp(tiot->tioeddnm, output_ddname, strlen(output_ddname)))
     {
       unsigned char *PTR32 tioesttb = (unsigned char *PTR32) & tiot->tioesttb;
       memcpy(&raw_ucb_address, &tiot->tioesttb, sizeof(unsigned int));
-      break;
+      // break; // @TEST@TEST@TEST@TEST@TEST@TEST@TEST@TEST@TEST@TEST@TEST@TEST@TEST@TEST@TEST@TEST@TEST@TEST enable this again
     }
 
+    tiot_entry += tiot_entry_len;
+    tiot = (TIOT * PTR32) tiot_entry;
     tiot_entry_len = tiot->tioelngh;
   }
 
@@ -274,6 +263,8 @@ int AMSMAIN()
   resources.reserve = 1; // now we have a RESERVE
 
   // /////////////////////////////////////////////////////////////
+  // use this with enq and/or reserve to wait for reply and test ISPF + this
+  // /////////////////////////////////////////////////////////////
 
   // WTO_BUF buf = {0};
   // buf.len = sprintf(buf.msg, "Awaiting reply");
@@ -287,10 +278,10 @@ int AMSMAIN()
   //   zwto_debug("@TEST wtor failed: %d", rc);
   //   return -1;
   // }
-  // zwto_debug("@TEST wtor reply: %s", reply.msg);
 
   // ecb_wait(&ecb);
   // zwto_debug("@TEST wtor reply: %s", reply.msg);
+
   /////////////////////////////////////////////////////////////
 
   /**

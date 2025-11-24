@@ -104,6 +104,7 @@ DEQ_MODEL(deq_model); // make this copy in static storage
       "(%4),"                                                 \
       "SYSTEMS),"                                             \
       "RET=USE,"                                              \
+      "LOC=ANY,"                                              \
       "UCB=%5,"                                               \
       "MF=(E,%0)                                          \n" \
       "*                                                  \n" \

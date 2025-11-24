@@ -15,14 +15,18 @@
 #include "ams.h"
 #include <unistd.h>
 
+// const char *data80 =
+// "";
+
 int main()
 {
   int rc = 0;
-  std::string dsn = "SYS1.AMBLIST.DATA";
+  unsigned int code = 0;
 
   std::vector<std::string> dds;
 
   // dds.push_back("alloc dd(sysin) da('DKELOSKY.IO.O.ERROR(new)') shr lrecl(80) recfm(f) ");
+  dds.push_back("alloc dd(example2) da('DKELOSKY.IO.O.VB256(data)') shr lrecl(80) recfm(f) ");
   dds.push_back("alloc dd(sysin) da('DKELOSKY.IO.I.F80(data)') shr lrecl(80) recfm(f) ");
   // dds.push_back("alloc dd(sysin) da('DKELOSKY.IO.O.PS') shr lrecl(80) recfm(f) ");
   // dds.push_back("concat ddlist(sysin,sysin2)");
@@ -51,6 +55,24 @@ int main()
     std::cout << diag.e_msg << std::endl;
     return 1;
   }
+
+  std::string response;
+  std::string cmd = "alloc dd(happy) da('DKELOSKY.IO.O.VB256(data)') shr lrecl(80) recfm(f,b)";
+  // std::string cmd = "alloc RTDDN(yoyo) da('DKELOSKY.IO.O.VB256(data)') shr lrecl(80) recfm(f,b)";
+  // std::string alloc = "alloc dd(sysprint) da('DKELOSKY.IO.O.VB256(data)') shr  ";
+  rc = zut_bpxwdyn(cmd, &code, response);
+  if (0 != rc)
+  {
+    std::cout << "alloc failed: " << response << std::endl;
+    std::cout << "code: " << std::hex << code << std::dec << std::endl;
+    std::cout << "rc: " << rc << std::endl;
+    return -1;
+  }
+
+  std::cout << "cmd: " << cmd << std::endl;
+  std::cout << "alloc success: " << response << std::endl;
+  std::cout << "code: " << std::hex << code << std::dec << std::endl;
+  std::cout << "rc: " << rc << std::endl;
 
   std::cout << "AMS started" << std::endl;
   AMSMAIN();

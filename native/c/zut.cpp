@@ -88,6 +88,8 @@ void zut_uppercase_pad_truncate(char *target, string source, int len)
   strncpy(target, source.c_str(), length);
 }
 
+// https://www.ibm.com/docs/en/zos/3.2.0?topic=output-requesting-dynamic-allocation
+// RTDDN
 int zut_bpxwdyn(string parm, unsigned int *code, string &resp)
 {
   char bpx_response[RET_ARG_MAX_LEN * MSG_ENTRIES + 1] = {0};
