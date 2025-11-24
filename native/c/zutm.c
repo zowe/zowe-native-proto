@@ -57,6 +57,7 @@ typedef int (*BPXWDYN)(
     BPXWDYN_PARM *PTR32,
     BPXWDYN_PARM *PTR32,
     BPXWDYN_PARM *PTR32,
+    BPXWDYN_PARM *PTR32,
     BPXWDYN_PARM *PTR32) ATTRIBUTE(amode31);
 
 // Doc:
@@ -90,9 +91,12 @@ int ZUTWDYN(BPXWDYN_PARM *parm, BPXWDYN_RESPONSE *response)
   // // parameters[RTDDN_INDEX].len = RET_ARG_MAX_LEN - sizeof(parameters[RTDDN_INDEX].len);
   // strcpy(parameters[RTDDN_INDEX].str, "RTDDN");
 
+  parameters[RTDDN_INDEX].len = 9;
+  sprintf(parameters[RTDDN_INDEX].str, "RTDDN");
   parameters[MSG_INDEX].len = sprintf(parameters[MSG_INDEX].str, "MSG");
   // parameters[MSG_INDEX].len = RET_ARG_MAX_LEN - sizeof(parameters[MSG_INDEX].len);
   // strcpy(parameters[MSG_INDEX].str, "MSG");
+  zwto_debug("@TEST input is: %s and len was %d", parameters[RTDDN_INDEX].str, parameters[RTDDN_INDEX].len);
 
   int index = 0;
 
@@ -103,7 +107,7 @@ int ZUTWDYN(BPXWDYN_PARM *parm, BPXWDYN_RESPONSE *response)
     sprintf(parameters[i].str, "MSG.%d", ++index);
   }
 
-  // build a contiguous list of all parameters
+  // build a contiguous list of pointers to all parameters
   BPXWDYN_RET_ARG *PTR32 parms[MSG_ENTRIES + INPUT_PARAMETERS] = {0};
   for (int i = 0; i < MSG_ENTRIES + INPUT_PARAMETERS; i++)
   {
@@ -142,7 +146,8 @@ int ZUTWDYN(BPXWDYN_PARM *parm, BPXWDYN_RESPONSE *response)
       parms[23],
       parms[24],
       parms[25],
-      parms[26]); // last parameter index is MSG_ENTRIES + INPUT_PARAMETERS - 1
+      parms[26],
+      parms[27]); // last parameter index is MSG_ENTRIES + INPUT_PARAMETERS - 1
 
   response->code = rc;
 
@@ -152,13 +157,17 @@ int ZUTWDYN(BPXWDYN_PARM *parm, BPXWDYN_RESPONSE *response)
   char *respp = response->response;
   for (int i = 0, j = atoi(parameters[MSG_INDEX].str); i < j && i < MSG_ENTRIES + INPUT_PARAMETERS; i++)
   {
+    // if we have messages but the message length is set to the original max length, return failure
     if (parameters[i + INPUT_PARAMETERS].len == RET_ARG_MAX_LEN - sizeof(parameters[i + INPUT_PARAMETERS].len))
     {
       return (0 != rc) ? ZUT_BPXWDYN_SERVICE_FAILURE : RTNCD_SUCCESS;
     }
+    // otherwise, append the message to the response
     int len = sprintf(respp, "%.*s\n", parameters[i + INPUT_PARAMETERS].len, parameters[i + INPUT_PARAMETERS].str);
     respp = respp + len;
   }
+
+  zwto_debug("ZUTWDYN response: %s and len was %d", parameters[RTDDN_INDEX].str, parameters[RTDDN_INDEX].len);
 
   return (0 != rc) ? ZUT_BPXWDYN_SERVICE_FAILURE : RTNCD_SUCCESS;
 }

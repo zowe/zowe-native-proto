@@ -58,7 +58,8 @@ int main()
 
   std::string response;
   // std::string cmd = "alloc dd(happy) da('DKELOSKY.IO.O.VB256(data)') shr lrecl(80) recfm(f,b)";
-  std::string cmd = "alloc da('DKELOSKY.NOT.FOUND') shr lrecl(80) recfm(f,b)";
+  std::string cmd = "alloc dd(happy) da('DKELOSKY.IO.O.VB256(data)') shr lrecl(80) recfm(f,b)";
+  // std::string cmd = "alloc da('DKELOSKY.NOT.FOUND') shr lrecl(80) recfm(f,b)";
   // std::string cmd = "alloc da('DKELOSKY.IO.O.VB256(data)') shr lrecl(80) recfm(f,b)";
   // std::string cmd = "alloc RTDDN(NAME) da('DKELOSKY.IO.O.VB256(data)') shr lrecl(80) recfm(f,b)";
   // std::string alloc = "alloc dd(sysprint) da('DKELOSKY.IO.O.VB256(data)') shr  ";
