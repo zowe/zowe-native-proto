@@ -101,6 +101,7 @@ int zds_read_from_dsn(ZDS *zds, const std::string &dsn, std::string &response);
 int zds_write_to_dsn(ZDS *zds, const std::string &dsn, std::string &data);
 
 int zds_open_output_bpam(ZDS *zds, std::string dsname, IO_CTRL **ioc);
+int zds_write_output_bpam(ZDS *zds, IO_CTRL *ioc, std::string &data);
 int zds_close_output_bpam(ZDS *zds, IO_CTRL *ioc);
 
 /**

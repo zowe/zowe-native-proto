@@ -33,6 +33,7 @@ extern "C"
   void ZDSDEL(ZDS *zds);
   int ZDSDSCB1(ZDS *zds, const char *dsn, const char *volser, DSCBFormat1 *dscb);
   int ZDSOBPAM(ZDS *zds, IO_CTRL **ioc, const char *ddname);
+  int ZDSWBPAM(ZDS *zds, IO_CTRL *ioc, const char *data, int *length);
   int ZDSCBPAM(ZDS *zds, IO_CTRL *ioc);
 
 #if defined(__cplusplus)

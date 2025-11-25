@@ -105,22 +105,22 @@ typedef struct
 // https://www.ibm.com/docs/en/zos/3.2.0?topic=di-ispf-statistics-entry-in-pds-directory
 typedef struct
 {
-  unsigned char version;                    // byte1: 0x01 thru 0x99
-  unsigned char level;                      // byte2: 0x00 thru 0x99
-  unsigned char flags;                      // byte3: bit1=sclm indicator, bit2=reserved, bit3=stats exist, bit4-7=reserved, bit8=reserved
-  unsigned char modified_time_seconds;      // byte4: packed decimal
-  unsigned char created_date_century;       // byte5: 0x00 = 1900 0x01=2000
-  unsigned char created_julian_date_year;   // byte6-8: packed decimal
-  unsigned char created_julian_date_day[2]; // byte6-8: packed decimal
-  unsigned char modified_date_century;      // byte9: 0x00 = 1900 0x01=2000
-  unsigned char modified_date_year;         // byte10-12: packed decimal
-  unsigned char modified_date_day[2];       // byte10-12: packed decimal
-  unsigned char modified_time_hours;        // byte13: packed decimal
-  unsigned char modified_time_minutes;      // byte14: packed decimal
-  short int current_number_of_lines;        // byte15-16: hexidcimal
-  short int initial_number_of_lines;        // byte17-18: hexidcimal
-  short int modified_number_of_lines;       // byte19-20: hexidcimal
-  char userid[8];                           // byte21-28: padded with blanks
+  unsigned char version;               // byte1: 0x01 thru 0x99
+  unsigned char level;                 // byte2: 0x00 thru 0x99
+  unsigned char flags;                 // byte3: bit1=sclm indicator, bit2=reserved, bit3=stats exist, bit4-7=reserved, bit8=reserved
+  unsigned char modified_time_seconds; // byte4: packed decimal
+  unsigned char created_date_century;  // byte5: 0x00 = 1900 0x01=2000
+  unsigned char created_date_year;     // byte6-8: packed decimal
+  unsigned char created_date_day[2];   // byte6-8: packed decimal
+  unsigned char modified_date_century; // byte9: 0x00 = 1900 0x01=2000
+  unsigned char modified_date_year;    // byte10-12: packed decimal
+  unsigned char modified_date_day[2];  // byte10-12: packed decimal
+  unsigned char modified_time_hours;   // byte13: packed decimal
+  unsigned char modified_time_minutes; // byte14: packed decimal
+  short int current_number_of_lines;   // byte15-16: hexidcimal
+  short int initial_number_of_lines;   // byte17-18: hexidcimal
+  short int modified_number_of_lines;  // byte19-20: hexidcimal
+  char userid[8];                      // byte21-28: padded with blanks
   // TODO(Kelosky): conditional data based on byte3 flags
 
 } ISPF_STATS;

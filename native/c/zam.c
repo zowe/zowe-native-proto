@@ -227,6 +227,13 @@ int open_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *P
   return rc;
 }
 
+int write_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, const char *PTR32 data, int length)
+{
+  int rc = 0;
+  zwto_debug("@TEST write_output_bpam length: %d", length);
+  return rc;
+}
+
 // TODO(Kelosky): handle when each fails... continue or return?
 int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 {
@@ -261,6 +268,53 @@ int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
     if ((bldl_pl.list.c & LEN_MASK) == 0)
     {
       zwto_debug("@TEST no ISPF statistics are provided (0x%02x)", bldl_pl.list.c);
+      memcpy(ioc->stow_list.name, bldl_pl.list.name, sizeof(bldl_pl.list.name));
+      ioc->stow_list.c = ISPF_STATS_MIN_LEN;
+      ISPF_STATS *statsp = (ISPF_STATS *)ioc->stow_list.user_data;
+      statsp->version = 0x01;
+      statsp->level = 0x00;
+      statsp->flags = 0x00;
+
+      char user[8] = {0};
+      rc = zutm1gur(user);
+      if (0 != rc)
+      {
+        zwto_debug("@TEST zutm1gur failed: rc: %d", rc);
+        return RTNCD_FAILURE;
+      }
+      memcpy(statsp->userid, user, sizeof(user));
+
+      // update ISPF statistics number of lines
+      statsp->modified_number_of_lines = ioc->modified_number_of_lines; // update ISPF statistics number of lines
+      statsp->current_number_of_lines = ioc->current_number_of_lines;   // update ISPF statistics number of lines
+
+      /**
+       * @brief Obtain the current date and time
+       */
+      union
+      {
+        unsigned int timei;
+        struct
+        {
+          unsigned char HH;
+          unsigned char MM;
+          unsigned char SS;
+          unsigned char unused;
+        } times;
+      } timel = {0};
+
+      unsigned int datel = 0;
+      time_local(&timel.timei, &datel);
+
+      // update ISPF statistics date & time
+      memcpy(&statsp->created_date_century, &datel, sizeof(datel));
+      memcpy(&statsp->modified_date_century, &datel, sizeof(datel));
+      statsp->modified_time_hours = timel.times.HH;   // update ISPF statistics time hours
+      statsp->modified_time_minutes = timel.times.MM; // update ISPF statistics time minutes
+      statsp->modified_time_seconds = timel.times.SS; // update ISPF statistics time seconds
+      statsp->initial_number_of_lines = 0;            // TODO
+      statsp->modified_number_of_lines = 0;           // TODO
+      statsp->current_number_of_lines = 0;            // TODO
     }
     else
     {
@@ -269,6 +323,8 @@ int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
       ioc->stow_list.c = bldl_pl.list.c;                                       // copy user data length
       int user_data_len = (bldl_pl.list.c & LEN_MASK) * 2;                     // isolate number of halfwords in user data
       memcpy(ioc->stow_list.user_data, bldl_pl.list.user_data, user_data_len); // copy all user data
+
+      zwto_debug("@TEST stowlist.c %d", ioc->stow_list.c);
 
       /**
        * @brief Update ISPF statistics

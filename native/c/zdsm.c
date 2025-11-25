@@ -165,7 +165,6 @@ int ZDSDSCB1(ZDS *zds, const char *dsn, const char *volser, DSCBFormat1 *dscb)
 
 #pragma prolog(ZDSOBPAM, " ZWEPROLG NEWDSA=(YES,24) ")
 #pragma epilog(ZDSOBPAM, " ZWEEPILG ")
-
 int ZDSOBPAM(ZDS *zds, IO_CTRL **ioc, const char *ddname)
 {
   int rc = 0;
@@ -179,6 +178,21 @@ int ZDSOBPAM(ZDS *zds, IO_CTRL **ioc, const char *ddname)
   rc = open_output_bpam(&zds31.diag, &ioc31, ddname31);
   zwto_debug("@TEST ioc31 after: %p", ioc31);
   *ioc = ioc31;
+  memcpy(zds, &zds31, sizeof(ZDS));
+  return rc;
+}
+
+#pragma prolog(ZDSWBPAM, " ZWEPROLG NEWDSA=(YES,24) ")
+#pragma epilog(ZDSWBPAM, " ZWEEPILG ")
+int ZDSWBPAM(ZDS *zds, IO_CTRL *ioc, const char *data, int *length)
+{
+  int rc = 0;
+  ZDS zds31 = {0};
+  memcpy(&zds31, zds, sizeof(ZDS));
+  char *data31 = (char *)__malloc31(*length);
+  memcpy(data31, data, *length);
+  rc = write_output_bpam(&zds31.diag, ioc, data31, *length);
+  free(data31);
   memcpy(zds, &zds31, sizeof(ZDS));
   return rc;
 }

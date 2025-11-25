@@ -334,6 +334,13 @@ int zds_open_output_bpam(ZDS *zds, std::string dsname, IO_CTRL **ioc)
   return RTNCD_SUCCESS;
 }
 
+int zds_write_output_bpam(ZDS *zds, IO_CTRL *ioc, string &data)
+{
+  int rc = 0;
+  cout << "yo i got dis data: " << data << endl;
+  return rc;
+}
+
 int zds_close_output_bpam(ZDS *zds, IO_CTRL *ioc)
 {
   int rc = 0;
