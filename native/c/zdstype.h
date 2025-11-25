@@ -25,9 +25,22 @@
 #define ZDS_RTNCD_UNSUPPORTED_ERROR -8
 #define ZDS_RTNCD_UNEXPECTED_ERROR -9
 #define ZDS_RTNCD_PARSING_ERROR -10
+#define ZDS_RTNCD_UNSUPPORTED_DATA_SET -11
+#define ZDS_RTNCD_UNSUPPORTED_DSORG -12
+#define ZDS_RTNCD_UNSUPPORTED_RECFM -13
+#define ZDS_RTNCD_ENQ_ERROR -14
+#define ZDS_RTNCD_RESERVE_ERROR -15
+#define ZDS_RTNCD_UCB_ERROR -16
+#define ZDS_RTNCD_OPEN_ERROR -17
+#define ZDS_RTNCD_NOT_OPEN_ERROR -18
+#define ZDS_RTNCD_UNSUPPORTED_BLOCK_SIZE -19
+#define ZDS_RTNCD_INVALID_BLOCK_SIZE -20
 
 #define ZDS_RSNCD_MAXED_ENTRIES_REACHED -1
 #define ZDS_RSNCD_NOT_FOUND -2
+
+#define ZDS_RSNCD_NO_IO_CTRL -1
+#define ZDS_RSNCD_NOT_DYNALLOC -2
 
 #define ZDS_DEFAULT_BUFFER_SIZE 8096
 #define ZDS_DEFAULT_MAX_ENTRIES 1000
@@ -82,6 +95,9 @@ typedef struct
   int32_t buffer_size;
 
   void *PTR64 csi;
+
+  unsigned int dynalloc : 1; // indicates that the data set was dynamically allocated
+  unsigned char reserve[20];
 
   ZDIAG diag;
 

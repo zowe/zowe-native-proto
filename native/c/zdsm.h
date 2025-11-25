@@ -16,6 +16,7 @@
 #include "ztype.h"
 #include "zdstype.h"
 #include "iggcsina.h"
+#include "zamtypes.h"
 
 #if defined(__cplusplus) && (defined(__IBMCPP__) || defined(__IBMC__))
 extern "OS"
@@ -31,6 +32,8 @@ extern "C"
   int ZDSCSI00(ZDS *zds, CSIFIELD *selection, void *work_area);
   void ZDSDEL(ZDS *zds);
   int ZDSDSCB1(ZDS *zds, const char *dsn, const char *volser, DSCBFormat1 *dscb);
+  int ZDSOBPAM(ZDS *zds, IO_CTRL **ioc, const char *ddname);
+  int ZDSCBPAM(ZDS *zds, IO_CTRL *ioc);
 
 #if defined(__cplusplus)
 }

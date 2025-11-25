@@ -15,6 +15,7 @@
 #include <vector>
 #include <string>
 #include "zdstype.h"
+#include "zamtypes.h"
 
 extern const size_t MAX_DS_LENGTH;
 
@@ -98,6 +99,9 @@ int zds_read_from_dsn(ZDS *zds, const std::string &dsn, std::string &response);
  * @return int 0 for success; non zero otherwise
  */
 int zds_write_to_dsn(ZDS *zds, const std::string &dsn, std::string &data);
+
+int zds_open_output_bpam(ZDS *zds, std::string dsname, IO_CTRL **ioc);
+int zds_close_output_bpam(ZDS *zds, IO_CTRL *ioc);
 
 /**
  * @brief Create a data set

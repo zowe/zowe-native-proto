@@ -341,6 +341,19 @@ int open_input(IHADCB *) ATTRIBUTE(amode31);
 int write_dcb(IHADCB *, WRITE_PL *, char *) ATTRIBUTE(amode31);
 void read_dcb(IHADCB *, READ_PL *, char *) ATTRIBUTE(amode31);
 
+#if defined(__IBM_METAL__)
+#pragma map(open_output_bpam, "OPNOBPAM")
+#pragma map(close_output_bpam, "CLOSBPAM")
+#endif
+
+int open_output_bpam(ZDIAG *PTR32, IO_CTRL *PTR32 *PTR32, const char *PTR32) ATTRIBUTE(amode31);
+int close_output_bpam(ZDIAG *PTR32, IO_CTRL *PTR32) ATTRIBUTE(amode31);
+
+#if defined(__IBM_METAL__)
+#pragma map(read_input_jfcb, "RIJFCB")
+#pragma map(read_output_jfcb, "ROJFCB")
+#endif
+
 int read_input_jfcb(IO_CTRL *ioc) ATTRIBUTE(amode31);
 int read_output_jfcb(IO_CTRL *ioc) ATTRIBUTE(amode31);
 

@@ -111,6 +111,7 @@ zam.c:  ../../zam.c
 build-out/ams_driver.o: ams_driver.cpp
 	@echo 'Building $(OUT_DIR)/ams_driver.o'
 	cp ../../build-out/libzut.a build-out
+	cp ../../build-out/libzds.a build-out
 	$(CXX) $(CPP_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
 
 build-out/zam.s: zam.c
@@ -129,7 +130,7 @@ build-out/ams.o: build-out/ams.s
 	@echo 'Building build-out/ams.s'
 	$(ASM) $(ASM_FLAGS) -a=$*.s.lst $(MACLIBS) -o $@ $^
 
-build-out/ams_driver: build-out/ams_driver.o build-out/zam.o build-out/ams.o build-out/libzut.a
+build-out/ams_driver: build-out/ams_driver.o build-out/zam.o build-out/ams.o build-out/libzut.a build-out/libzds.a
 	$(CXX) $(CPP_BND_FLAGS) -o $@ $^ > $*.bind.lst
 
 clean:

@@ -304,6 +304,89 @@ int zds_write_to_dsn(ZDS *zds, const string &dsn, string &data)
   return 0;
 }
 
+int zds_open_output_bpam(ZDS *zds, std::string dsname, IO_CTRL **ioc)
+{
+  //
+  // 1. Allocate the data set
+  // 2. Obtain control block for the data set
+  // 3. Obtain resource serialization
+  // 4. Open the data set
+  // 5. Return the IO_CTRL
+  //
+
+  string alloc_cmd = "ALLOC DA('" + dsname + "') SHR"; // TODO(Kelosky): log this command
+  unsigned int code = 0;
+  string resp = "";
+  string ddname = "        "; // set to empty string to request a dynamic DD name
+  int rc = zut_bpxwdyn(alloc_cmd, &code, resp, ddname);
+  if (0 != rc)
+  {
+    strcpy(zds->diag.service_name, "BPXWDYN");
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to allocate with code '%08X' on data set '%s': %s", code, dsname.c_str(), resp.c_str());
+    zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
+    zds->diag.service_rc = code;
+    return RTNCD_FAILURE;
+  }
+
+  zds->dynalloc = 1;
+  cout << "DDNAME: " << ddname << endl;
+  zut_uppercase_pad_truncate(zds->ddname, ddname.c_str(), sizeof(zds->ddname));
+
+  //
+  // 2. Obtain control block for the data set
+  //
+  cout << "ioc before: " << *ioc << endl;
+  rc = ZDSOBPAM(zds, ioc, zds->ddname);
+  if (0 != rc)
+  {
+    return rc;
+  }
+  cout << "ioc after: " << *ioc << endl;
+  return RTNCD_SUCCESS;
+}
+
+int zds_close_output_bpam(ZDS *zds, IO_CTRL *ioc)
+{
+  int rc = 0;
+  unsigned int code = 0;
+  string resp = "";
+  if (ioc == NULL)
+  {
+    zds->diag.detail_rc = RTNCD_WARNING;
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "IO_CTRL is NULL");
+    rc = RTNCD_WARNING;
+  }
+  else
+  {
+    rc = ZDSCBPAM(zds, ioc);
+  }
+
+  if (0 == zds->dynalloc)
+  {
+    zds->diag.detail_rc = RTNCD_WARNING;
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Data set was not dynamically allocated");
+    rc = RTNCD_WARNING;
+  }
+  else
+  {
+    string free_cmd = "FREE DD(" + string(zds->ddname, sizeof(zds->ddname)) + ")";
+    int rc = zut_bpxwdyn(free_cmd, &code, resp);
+    if (0 != rc)
+    {
+      zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
+      zds->diag.service_rc = code;
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to free with code '%08X' on data set '%s': %s", code, zds->ddname, resp.c_str());
+      rc = RTNCD_FAILURE;
+    }
+  }
+
+  cout << "ddname: " << string(zds->ddname, sizeof(zds->ddname)) << endl;
+  // cout << "IO_CTRL->dcb: " << ioc->dcb << endl;
+  // cout << "IO_CTRL->dcb->dcbddnam: " << ioc->dcb.dcbddnam << endl;
+
+  return rc;
+}
+
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=examples-listing-partitioned-data-set-members
 #define RECLEN 254
 

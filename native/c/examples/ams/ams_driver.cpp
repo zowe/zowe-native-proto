@@ -11,17 +11,44 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include "ztype.h"
 #include "zut.hpp"
 #include "ams.h"
 #include <unistd.h>
+#include "zds.hpp"
 
-// const char *data80 =
+const char *data80 =
+    "hello world                                                                     "
+    "01234567890123456789012345678901234567890123456789012345678901234567890123456789"
+    "          0123456789012345678901234567890123456789012345678901234567890123456789"
+    "0123456789          012345678901234567890123456789012345678901234567890123456789";
 // "";
 
 int main()
 {
   int rc = 0;
   unsigned int code = 0;
+
+  ZDS zds = {0};
+  IO_CTRL *ioc = NULL;
+  rc = zds_open_output_bpam(&zds, "DKELOSKY.IO.O.FB80(newnew)", &ioc);
+  if (0 != rc)
+  {
+    zds_close_output_bpam(&zds, ioc); // close what we can
+
+    std::cout << "zds_open_output_bpam failed: " << rc << std::endl;
+    std::cout << "  Details: " << zds.diag.e_msg << std::endl;
+    return -1;
+  }
+
+  rc = zds_close_output_bpam(&zds, ioc);
+  if (0 != rc && RTNCD_WARNING != rc) // ignore warnings
+  {
+    std::cout << "zds_close_output_bpam failed: " << rc << std::endl;
+    return -1;
+  }
+
+  return 0;
 
   std::vector<std::string> dds;
 
@@ -78,7 +105,7 @@ int main()
   std::cout << "ddname: " << ddname << std::endl;
 
   std::cout << "AMS started" << std::endl;
-  AMSMAIN(ddname.c_str());
+  AMSMAIN(ddname.c_str(), data80);
   std::cout << "AMS ended" << std::endl;
 
   std::string full = std::string("alloc dd(" + ddname + ") " + dsname + " shr lrecl(80) recfm(f,b)");

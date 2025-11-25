@@ -12,7 +12,12 @@
 #include "zam.h"
 #include "dcbd.h"
 // #include "zam24.h"
+#include "zdstype.h"
 #include "zwto.h"
+#include "zenq.h"
+#include "ihapsa.h"
+#include "ikjtcb.h"
+#include "ieftiot1.h"
 
 // NOTE(Kelosky): must be assembled in AMODE31 code
 #if defined(__IBM_METAL__)
@@ -30,6 +35,194 @@
 RDJFCB_MODEL(rdfjfcb_model);
 
 register FILE_CTRL *fc ASMREG("r8");
+
+int open_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *PTR32 ddname)
+{
+
+  int rc = 0;
+  IO_CTRL *PTR32 ioc31 = NULL;
+
+  //
+  // Obtain IO_CTRL for the data set
+  //
+  zwto_debug("@TEST get io ctrl for data set: %s", ddname);
+  IO_CTRL *PTR32 new_ioc = new_io_ctrl();
+  *ioc = new_ioc;
+  memcpy(&new_ioc->dcb, &open_write_model, sizeof(IHADCB));
+  memcpy(new_ioc->dcb.dcbddnam, ddname, sizeof(new_ioc->dcb.dcbddnam));
+
+  //
+  // Read the JFCB for the data set
+  //
+  zwto_debug("@TEST read output jfcb for data set: %s", ddname);
+  rc = read_output_jfcb(new_ioc);
+  if (0 != rc)
+  {
+    diag->detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
+    strcpy(diag->service_name, "RDJFCB");
+    diag->e_msg_len = sprintf(diag->e_msg, "Failed to read output JFCB rc was: %d", rc);
+    diag->service_rc = rc;
+    return RTNCD_FAILURE;
+  }
+
+  //
+  // Validate attributes of the data set
+  //
+  zwto_debug("@TEST validate attributes of data set: %44.44s", new_ioc->jfcb.jfcbdsnm);
+  if (new_ioc->jfcb.jfcbind1 != jfcpds)
+  {
+    diag->e_msg_len = sprintf(diag->e_msg, "Data set is not a PDS: %X", new_ioc->jfcb.jfcbind1);
+    diag->detail_rc = ZDS_RTNCD_UNSUPPORTED_DATA_SET;
+    return RTNCD_FAILURE;
+  }
+
+  // ensure member name (e.g. is a partitioned data set)
+  if (new_ioc->jfcb.jfcbelnm[0] == ' ')
+  {
+    diag->e_msg_len = sprintf(diag->e_msg, "Data set is not a partitioned data set: %s", new_ioc->jfcb.jfcbelnm);
+    diag->detail_rc = ZDS_RTNCD_UNSUPPORTED_DSORG;
+    return RTNCD_FAILURE;
+  }
+
+  //
+  // ENQ data set
+  //
+  zwto_debug("@TEST ENQ data set: %44.44s", new_ioc->jfcb.jfcbdsnm);
+  QNAME qname = {0};
+  RNAME rname = {0};
+  strcpy(qname.value, "SPFEDIT");
+  rname.rlen = sprintf(rname.value, "%.*s%.*s", sizeof(new_ioc->jfcb.jfcbdsnm), new_ioc->jfcb.jfcbdsnm, sizeof(new_ioc->jfcb.jfcbelnm), new_ioc->jfcb.jfcbelnm);
+  rc = enq(&qname, &rname);
+  if (0 != rc)
+  {
+    diag->service_rc = rc;
+    strcpy(diag->service_name, "ENQ");
+    diag->e_msg_len = sprintf(diag->e_msg, "Failed to ENQ data set: %s rc was: %d", new_ioc->jfcb.jfcbelnm, rc);
+    diag->detail_rc = ZDS_RTNCD_ENQ_ERROR;
+    return RTNCD_FAILURE;
+  }
+
+  //
+  // Get the UCB for the data set
+  //
+  typedef struct psa PSA;
+  typedef struct tcb TCB;
+  typedef struct tiot TIOT;
+  PSA *psa = (PSA *)0;
+  TCB *PTR32 tcb = psa->psatold;
+  TIOT *PTR32 tiot = tcb->tcbtio;
+
+  unsigned char tiot_entry_len = tiot->tioelngh;
+
+  unsigned int raw_ucb_address = 0;
+  unsigned char *PTR32 tiot_entry = (unsigned char *PTR32)tiot;
+
+  while (tiot_entry_len > 0)
+  {
+    zwto_debug("@TEST tiot->tioeddnm: %-8.8s", tiot->tioeddnm);
+
+    if (0 == strncmp(tiot->tioeddnm, ddname, sizeof(tiot->tioeddnm)))
+    {
+      unsigned char *PTR32 tioesttb = (unsigned char *PTR32) & tiot->tioesttb;
+      memcpy(&raw_ucb_address, &tiot->tioesttb, sizeof(unsigned int));
+      break;
+    }
+
+    tiot_entry += tiot_entry_len;
+    tiot = (TIOT * PTR32) tiot_entry;
+    tiot_entry_len = tiot->tioelngh;
+  }
+
+#define MASK_24_BITS 0x00FFFFFF
+
+  raw_ucb_address = (raw_ucb_address & MASK_24_BITS);
+  if (0 == raw_ucb_address)
+  {
+    zwto_debug("@TEST raw_ucb_address is zero");
+    diag->detail_rc = ZDS_RTNCD_UCB_ERROR;
+    diag->e_msg_len = sprintf(diag->e_msg, "Failed to get UCB for data set: %44.44s", new_ioc->jfcb.jfcbdsnm);
+    return RTNCD_FAILURE;
+  }
+
+  UCB *PTR32 ucb = (UCB * PTR32) raw_ucb_address;
+
+  //
+  // RESERVE the data set
+  //
+  zwto_debug("@TEST RESERVE data set: %44.44s", new_ioc->jfcb.jfcbdsnm);
+  QNAME qname_reserve = {0};
+  RNAME rname_reserve = {0};
+  strcpy(qname_reserve.value, "SPFEDIT");
+  rname_reserve.rlen = sprintf(rname_reserve.value, "%.*s", sizeof(new_ioc->jfcb.jfcbdsnm), new_ioc->jfcb.jfcbdsnm);
+  rc = reserve(&qname_reserve, &rname_reserve, ucb);
+  if (0 != rc)
+  {
+    diag->service_rc = rc;
+    strcpy(diag->service_name, "RESERVE");
+    diag->e_msg_len = sprintf(diag->e_msg, "Failed to RESERVE data set: %s rc was: %d", new_ioc->jfcb.jfcbelnm, rc);
+    diag->detail_rc = ZDS_RTNCD_RESERVE_ERROR;
+    return RTNCD_FAILURE;
+  }
+
+  //
+  // Set attributes of the DCB
+  //
+  new_ioc->dcb.dcbrecfm = new_ioc->jfcb.jfcrecfm; // copy allocation attributes
+  new_ioc->dcb.dcbdsrg1 = dcbdsgpo;               // DSORG=PO
+
+  //
+  // Open the data set
+  //
+  zwto_debug("@TEST open data set: %44.44s", new_ioc->jfcb.jfcbdsnm);
+  rc = open_output(&new_ioc->dcb);
+  if (0 != rc)
+  {
+    diag->service_rc = rc;
+    strcpy(diag->service_name, "OPEN");
+    diag->e_msg_len = sprintf(diag->e_msg, "Failed to open ddname: %8.8s for data set: %44.44s rc was: %d", ddname, new_ioc->jfcb.jfcbdsnm, rc);
+    diag->detail_rc = ZDS_RTNCD_OPEN_ERROR;
+    return RTNCD_FAILURE;
+  }
+
+  if (!(new_ioc->dcb.dcboflgs & dcbofopn))
+  {
+    diag->e_msg_len = sprintf(diag->e_msg, "Data set is not open: %44.44s", new_ioc->jfcb.jfcbdsnm);
+    diag->detail_rc = ZDS_RTNCD_NOT_OPEN_ERROR;
+    return RTNCD_FAILURE;
+  }
+
+  //
+  // Validate record format of the data set
+  //
+  if (!(new_ioc->dcb.dcbrecfm & dcbrecf))
+  {
+    diag->e_msg_len = sprintf(diag->e_msg, "Data set is not a fixed record format: %X", new_ioc->dcb.dcbrecfm);
+    diag->detail_rc = ZDS_RTNCD_UNSUPPORTED_RECFM;
+    return RTNCD_FAILURE;
+  }
+
+  if (new_ioc->dcb.dcbblksi < 1)
+  {
+    diag->e_msg_len = sprintf(diag->e_msg, "Data set has less than 1 block size: %X", new_ioc->dcb.dcbblksi);
+    diag->detail_rc = ZDS_RTNCD_UNSUPPORTED_BLOCK_SIZE;
+    return RTNCD_FAILURE;
+  }
+
+  if (new_ioc->dcb.dcbblksi % new_ioc->dcb.dcblrecl != 0)
+  {
+    diag->e_msg_len = sprintf(diag->e_msg, "Data set block size is not a multiple of the record length: %X, %X", new_ioc->dcb.dcbblksi, new_ioc->dcb.dcblrecl);
+    diag->detail_rc = ZDS_RTNCD_INVALID_BLOCK_SIZE;
+    return RTNCD_FAILURE;
+  }
+
+  return rc;
+}
+
+int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
+{
+  zwto_debug("@TEST close_output_bpam: %p", ioc);
+  return 0;
+}
 
 IO_CTRL *open_output_assert(char *ddname, int lrecl, int blkSize, unsigned char recfm)
 {
