@@ -65,7 +65,7 @@ int zut_substitute_symbol(std::string symbol, std::string &result);
  * @param command The command string
  * @param code Pointer to return code (output)
  * @param resp Reference to a string where the result will be stored
- * @param ddname Reference to a string where the DD name will be stored
+ * @param ddname Reference to a string where the DD name will be stored, set to "        " to request a dynamic DD name
  * @return Return code (0 for success, non-zero for error)
  */
 int zut_bpxwdyn(std::string command, unsigned int *code, std::string &resp);

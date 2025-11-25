@@ -26,14 +26,14 @@ int main()
   std::vector<std::string> dds;
 
   // dds.push_back("alloc dd(sysin) da('DKELOSKY.IO.O.ERROR(new)') shr lrecl(80) recfm(f) ");
-  dds.push_back("alloc dd(example2) da('DKELOSKY.IO.O.VB256(data)') shr lrecl(80) recfm(f) ");
+  // dds.push_back("alloc dd(example2) da('DKELOSKY.IO.O.VB256(data)') shr lrecl(80) recfm(f) ");
   dds.push_back("alloc dd(sysin) da('DKELOSKY.IO.I.F80(data)') shr lrecl(80) recfm(f) ");
   // dds.push_back("alloc dd(sysin) da('DKELOSKY.IO.O.PS') shr lrecl(80) recfm(f) ");
   // dds.push_back("concat ddlist(sysin,sysin2)");
 
   // dds.push_back("alloc dd(sysprint) da('DKELOSKY.IO.O.F80(data)') shr lrecl(80) recfm(f) ");
-  dds.push_back("alloc dd(sysprint) da('DKELOSKY.IO.O.FB80(data)') shr lrecl(80) recfm(f,b)");
-  dds.push_back("alloc dd(tep) da('sys1.maclib') shr lrecl(80) recfm(f,b)");
+  // dds.push_back("alloc dd(sysprint) da('DKELOSKY.IO.O.FB80(data)') shr lrecl(80) recfm(f,b)");
+  // dds.push_back("alloc dd(tep) da('sys1.maclib') shr lrecl(80) recfm(f,b)");
   // dds.push_back("alloc dd(another) da('DKELOSKY.IO.O.PS') shr lrecl(80)");
   // dds.push_back("concat ddlist(sysprint,another)");
   // dds.push_back("alloc dd(sysprint) da('DKELOSKY.IO.O.ERROR(NEW)') shr lrecl(80) recfm(f,b) ");
@@ -49,7 +49,7 @@ int main()
   std::cout << "current user: " << getlogin() << std::endl;
 
   ZDIAG diag = {0};
-  // rc = zut_loop_dynalloc(diag, dds);
+  rc = zut_loop_dynalloc(diag, dds);
   if (0 != rc)
   {
     std::cout << diag.e_msg << std::endl;
@@ -58,12 +58,15 @@ int main()
 
   std::string response;
   // std::string cmd = "alloc dd(happy) da('DKELOSKY.IO.O.VB256(data)') shr lrecl(80) recfm(f,b)";
-  std::string cmd = "alloc dd(happy) da('DKELOSKY.IO.O.VB256(data)') shr lrecl(80) recfm(f,b)";
+
+  std::string dsname = "da('DKELOSKY.IO.O.FB80(data)')";
+  std::string cmd = "alloc " + dsname + " shr lrecl(80) recfm(f,b)";
   // std::string cmd = "alloc da('DKELOSKY.NOT.FOUND') shr lrecl(80) recfm(f,b)";
   // std::string cmd = "alloc da('DKELOSKY.IO.O.VB256(data)') shr lrecl(80) recfm(f,b)";
   // std::string cmd = "alloc RTDDN(NAME) da('DKELOSKY.IO.O.VB256(data)') shr lrecl(80) recfm(f,b)";
   // std::string alloc = "alloc dd(sysprint) da('DKELOSKY.IO.O.VB256(data)') shr  ";
-  rc = zut_bpxwdyn(cmd, &code, response);
+  std::string ddname = "        ";
+  rc = zut_bpxwdyn(cmd, &code, response, ddname);
   if (0 != rc)
   {
     std::cout << "alloc failed: " << response << std::endl;
@@ -72,15 +75,29 @@ int main()
     return -1;
   }
 
+  std::cout << "ddname: " << ddname << std::endl;
+
   std::cout << "AMS started" << std::endl;
   // AMSMAIN();
   std::cout << "AMS ended" << std::endl;
 
-  // rc = zut_free_dynalloc_dds(diag, dds);
+  std::string full = std::string("alloc dd(" + ddname + ") " + dsname + " shr lrecl(80) recfm(f,b)");
+  // dds.push_back(full);
+
+  rc = zut_bpxwdyn("free fi(" + ddname + ")", &code, response);
+  if (0 != rc)
+  {
+    std::cout << "free failed: " << response << std::endl;
+    std::cout << "code: " << std::hex << code << std::dec << std::endl;
+    std::cout << "rc: " << rc << std::endl;
+    // return -1;
+  }
+
+  rc = zut_free_dynalloc_dds(diag, dds);
   if (0 != rc)
   {
     std::cout << diag.e_msg << std::endl;
-    return 1;
+    // return 1;
   }
 
   return 0;

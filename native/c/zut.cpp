@@ -103,6 +103,12 @@ int zut_bpxwdyn(string parm, unsigned int *code, string &resp, string &ddname)
   BPXWDYN_PARM *bparm = (BPXWDYN_PARM *)p;
   BPXWDYN_RESPONSE *response = (BPXWDYN_RESPONSE *)(p + sizeof(BPXWDYN_PARM));
 
+  // if input ddname is empty, set the rtdd flag
+  if (ddname == "        ")
+  {
+    bparm->rtdd = 1;
+  }
+
   bparm->len = sprintf(bparm->str, "%s", parm.c_str());
   int rc = ZUTWDYN(bparm, response);
 
@@ -634,6 +640,7 @@ int zut_free_dynalloc_dds(ZDIAG &diag, vector<string> &list)
     else
     {
       free_dds.push_back("free " + alloc_dd.substr(start + 1, end - start));
+      cout << "free_dds: " << free_dds.back() << endl;
     }
   }
 

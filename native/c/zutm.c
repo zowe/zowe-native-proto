@@ -72,6 +72,10 @@ int ZUTWDYN(BPXWDYN_PARM *parm, BPXWDYN_RESPONSE *response)
   int rc = 0;
   ZUTAOFF();
 
+  int rtddn_index = RTDDN_INDEX;
+  int msg_index = MSG_INDEX;
+  int input_parameters = INPUT_PARAMETERS;
+
   // load our service
   BPXWDYN dynalloc = (BPXWDYN)load_module31("BPXWDY2"); // EP which doesn't require R0 == 0
   if (!dynalloc)
@@ -87,14 +91,22 @@ int ZUTWDYN(BPXWDYN_PARM *parm, BPXWDYN_RESPONSE *response)
   BPXWDYN_RET_ARG parameters[MSG_ENTRIES + INPUT_PARAMETERS] = {0};
   memcpy(&parameters[ALLOC_STRING_INDEX], parm, sizeof(BPXWDYN_RESPONSE));
 
-  parameters[RTDDN_INDEX].len = 8 + 1; // max ddname length is 8 + 1 for the null terminator
-  strcpy(parameters[RTDDN_INDEX].str, "RTDDN");
-  parameters[MSG_INDEX].len = sprintf(parameters[MSG_INDEX].str, "MSG");
+  if (parm->rtdd)
+  {
+    parameters[rtddn_index].len = 8 + 1; // max ddname length is 8 + 1 for the null terminator
+    strcpy(parameters[rtddn_index].str, "RTDDN");
+  }
+  else
+  {
+    msg_index--;
+    input_parameters--;
+  }
+  parameters[msg_index].len = sprintf(parameters[msg_index].str, "MSG");
 
   int index = 0;
 
   // assign all response parameter stem values
-  for (int i = INPUT_PARAMETERS; i < MSG_ENTRIES + INPUT_PARAMETERS; i++)
+  for (int i = input_parameters; i < MSG_ENTRIES + input_parameters; i++)
   {
     parameters[i].len = RET_ARG_MAX_LEN - sizeof(parameters[i].len);
     sprintf(parameters[i].str, "MSG.%d", ++index);
@@ -102,13 +114,13 @@ int ZUTWDYN(BPXWDYN_PARM *parm, BPXWDYN_RESPONSE *response)
 
   // build a contiguous list of pointers to all parameters
   BPXWDYN_RET_ARG *PTR32 parms[MSG_ENTRIES + INPUT_PARAMETERS] = {0};
-  for (int i = 0; i < MSG_ENTRIES + INPUT_PARAMETERS; i++)
+  for (int i = 0; i < MSG_ENTRIES + input_parameters; i++)
   {
     parms[i] = &parameters[i];
   }
 
   // set the high bit on last parm
-  parms[MSG_ENTRIES + INPUT_PARAMETERS - 1] = (void *PTR32)((unsigned int)parms[MSG_ENTRIES + INPUT_PARAMETERS - 1] | 0x80000000);
+  parms[MSG_ENTRIES + input_parameters - 1] = (void *PTR32)((unsigned int)parms[MSG_ENTRIES + input_parameters - 1] | 0x80000000);
 
   // NOTE(Kelosky): to prevent the compiler optimizer from discarding any memory assignments,
   // we need to ensure a reference to all data is passed to this external function
@@ -148,19 +160,19 @@ int ZUTWDYN(BPXWDYN_PARM *parm, BPXWDYN_RESPONSE *response)
 
   // obtain any messages returned
   char *respp = response->response;
-  for (int i = 0, j = atoi(parameters[MSG_INDEX].str); i < j && i < MSG_ENTRIES + INPUT_PARAMETERS; i++)
+  for (int i = 0, j = atoi(parameters[msg_index].str); i < j && i < MSG_ENTRIES + input_parameters; i++)
   {
     // if we have messages but the message length is set to the original max length, return failure
-    if (parameters[i + INPUT_PARAMETERS].len == RET_ARG_MAX_LEN - sizeof(parameters[i + INPUT_PARAMETERS].len))
+    if (parameters[i + input_parameters].len == RET_ARG_MAX_LEN - sizeof(parameters[i + input_parameters].len))
     {
       return (0 != rc) ? ZUT_BPXWDYN_SERVICE_FAILURE : RTNCD_SUCCESS;
     }
     // otherwise, append the message to the response
-    int len = sprintf(respp, "%.*s\n", parameters[i + INPUT_PARAMETERS].len, parameters[i + INPUT_PARAMETERS].str);
+    int len = sprintf(respp, "%.*s\n", parameters[i + input_parameters].len, parameters[i + input_parameters].str);
     respp = respp + len;
   }
 
-  strcpy(response->ddname, parameters[RTDDN_INDEX].str);
+  strcpy(response->ddname, parameters[rtddn_index].str);
 
   return (0 != rc) ? ZUT_BPXWDYN_SERVICE_FAILURE : RTNCD_SUCCESS;
 }

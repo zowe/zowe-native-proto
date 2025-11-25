@@ -38,6 +38,8 @@ extern "C"
   {
     short len;
     char str[RET_ARG_MAX_LEN];
+    unsigned int rtdd : 1;
+    unsigned int rtdsn : 1; // NOTE(Kelosky): not implemented yet
   } BPXWDYN_RET_ARG;
 
   typedef BPXWDYN_RET_ARG BPXWDYN_PARM;
