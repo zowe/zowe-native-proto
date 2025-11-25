@@ -337,7 +337,14 @@ int zds_open_output_bpam(ZDS *zds, std::string dsname, IO_CTRL **ioc)
 int zds_write_output_bpam(ZDS *zds, IO_CTRL *ioc, string &data)
 {
   int rc = 0;
-  cout << "yo i got dis data: " << data << endl;
+  int length = data.length();
+  cout << "length: " << length << endl;
+  rc = ZDSWBPAM(zds, ioc, data.c_str(), &length);
+  if (0 != rc)
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to write output to BPAM: %s", data.c_str());
+    return RTNCD_FAILURE;
+  }
   return rc;
 }
 

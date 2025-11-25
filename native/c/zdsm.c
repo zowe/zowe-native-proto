@@ -189,10 +189,13 @@ int ZDSWBPAM(ZDS *zds, IO_CTRL *ioc, const char *data, int *length)
   int rc = 0;
   ZDS zds31 = {0};
   memcpy(&zds31, zds, sizeof(ZDS));
-  char *data31 = (char *)__malloc31(*length);
+  zwto_debug("@TEST ZDSWBPAM length: %d", *length);
+  char *data31 = (char *)storage_obtain31(*length);
+  zwto_debug("@TEST data31: %p", data31);
   memcpy(data31, data, *length);
+  zwto_debug("@TEST data31 after: %p", data31);
   rc = write_output_bpam(&zds31.diag, ioc, data31, *length);
-  free(data31);
+  storage_release(*length, data31);
   memcpy(zds, &zds31, sizeof(ZDS));
   return rc;
 }
