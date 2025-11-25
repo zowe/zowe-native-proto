@@ -87,16 +87,9 @@ int ZUTWDYN(BPXWDYN_PARM *parm, BPXWDYN_RESPONSE *response)
   BPXWDYN_RET_ARG parameters[MSG_ENTRIES + INPUT_PARAMETERS] = {0};
   memcpy(&parameters[ALLOC_STRING_INDEX], parm, sizeof(BPXWDYN_RESPONSE));
 
-  // parameters[RTDDN_INDEX].len = 9;
-  // // parameters[RTDDN_INDEX].len = RET_ARG_MAX_LEN - sizeof(parameters[RTDDN_INDEX].len);
-  // strcpy(parameters[RTDDN_INDEX].str, "RTDDN");
-
-  parameters[RTDDN_INDEX].len = 9;
-  sprintf(parameters[RTDDN_INDEX].str, "RTDDN");
+  parameters[RTDDN_INDEX].len = 8 + 1; // max ddname length is 8 + 1 for the null terminator
+  strcpy(parameters[RTDDN_INDEX].str, "RTDDN");
   parameters[MSG_INDEX].len = sprintf(parameters[MSG_INDEX].str, "MSG");
-  // parameters[MSG_INDEX].len = RET_ARG_MAX_LEN - sizeof(parameters[MSG_INDEX].len);
-  // strcpy(parameters[MSG_INDEX].str, "MSG");
-  zwto_debug("@TEST input is: %s and len was %d", parameters[RTDDN_INDEX].str, parameters[RTDDN_INDEX].len);
 
   int index = 0;
 
@@ -167,7 +160,7 @@ int ZUTWDYN(BPXWDYN_PARM *parm, BPXWDYN_RESPONSE *response)
     respp = respp + len;
   }
 
-  zwto_debug("ZUTWDYN response: %s and len was %d", parameters[RTDDN_INDEX].str, parameters[RTDDN_INDEX].len);
+  strcpy(response->ddname, parameters[RTDDN_INDEX].str);
 
   return (0 != rc) ? ZUT_BPXWDYN_SERVICE_FAILURE : RTNCD_SUCCESS;
 }

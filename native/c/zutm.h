@@ -46,6 +46,8 @@ extern "C"
   {
     unsigned int code;
     char response[RET_ARG_MAX_LEN * MSG_ENTRIES + 1];
+    char ddname[9];
+    char dsname[45]; // NOTE(Kelosky): not implemented yet
   } BPXWDYN_RESPONSE;
 
   typedef struct

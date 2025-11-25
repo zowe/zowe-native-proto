@@ -63,11 +63,13 @@ int zut_substitute_symbol(std::string symbol, std::string &result);
 /**
  * @brief Invoke BPXWDYN service with the given parameters
  * @param command The command string
- * @param rc Pointer to return code (output)
- * @param result Reference to a string where the result will be stored
+ * @param code Pointer to return code (output)
+ * @param resp Reference to a string where the result will be stored
+ * @param ddname Reference to a string where the DD name will be stored
  * @return Return code (0 for success, non-zero for error)
  */
-int zut_bpxwdyn(std::string command, unsigned int *rc, std::string &result);
+int zut_bpxwdyn(std::string command, unsigned int *code, std::string &resp);
+int zut_bpxwdyn(std::string command, unsigned int *code, std::string &resp, std::string &ddname);
 
 /**
  * @brief Print a hello message
