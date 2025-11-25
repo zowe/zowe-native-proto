@@ -140,11 +140,15 @@ static void release_resources(RESOURCES *resources)
  */
 #pragma prolog(AMSMAIN, " ZWEPROLG NEWDSA=(YES,256) ")
 #pragma epilog(AMSMAIN, " ZWEEPILG ")
-int AMSMAIN()
+int AMSMAIN(const char *ddname)
 {
   zwto_debug("AMSMAIN started");
 
-  const char *output_ddname = "SYSPRINT";
+  // const char *output_ddname = ddname;
+
+  char output_ddname[8 + 1] = {0};
+  memset(output_ddname, ' ', sizeof(output_ddname) - 1);                                                                  // pad with spaces
+  memcpy(output_ddname, ddname, strlen(ddname) > sizeof(output_ddname) - 1 ? sizeof(output_ddname) - 1 : strlen(ddname)); // truncate
 
   int rsn = 0;
   int rc = 0;

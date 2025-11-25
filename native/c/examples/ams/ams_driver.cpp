@@ -65,7 +65,7 @@ int main()
   // std::string cmd = "alloc da('DKELOSKY.IO.O.VB256(data)') shr lrecl(80) recfm(f,b)";
   // std::string cmd = "alloc RTDDN(NAME) da('DKELOSKY.IO.O.VB256(data)') shr lrecl(80) recfm(f,b)";
   // std::string alloc = "alloc dd(sysprint) da('DKELOSKY.IO.O.VB256(data)') shr  ";
-  std::string ddname = "        ";
+  std::string ddname = "        "; // set to empty string to request a dynamic DD name
   rc = zut_bpxwdyn(cmd, &code, response, ddname);
   if (0 != rc)
   {
@@ -78,7 +78,7 @@ int main()
   std::cout << "ddname: " << ddname << std::endl;
 
   std::cout << "AMS started" << std::endl;
-  // AMSMAIN();
+  AMSMAIN(ddname.c_str());
   std::cout << "AMS ended" << std::endl;
 
   std::string full = std::string("alloc dd(" + ddname + ") " + dsname + " shr lrecl(80) recfm(f,b)");

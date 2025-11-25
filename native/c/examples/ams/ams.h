@@ -18,7 +18,7 @@ extern "OS"
 extern "C"
 {
 #endif
-  int AMSMAIN();
+  int AMSMAIN(const char *ddname);
 #if defined(__cplusplus)
 }
 #endif

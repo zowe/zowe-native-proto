@@ -640,7 +640,6 @@ int zut_free_dynalloc_dds(ZDIAG &diag, vector<string> &list)
     else
     {
       free_dds.push_back("free " + alloc_dd.substr(start + 1, end - start));
-      cout << "free_dds: " << free_dds.back() << endl;
     }
   }
 
