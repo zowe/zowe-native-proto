@@ -306,14 +306,6 @@ int zds_write_to_dsn(ZDS *zds, const string &dsn, string &data)
 
 int zds_open_output_bpam(ZDS *zds, std::string dsname, IO_CTRL **ioc)
 {
-  //
-  // 1. Allocate the data set
-  // 2. Obtain control block for the data set
-  // 3. Obtain resource serialization
-  // 4. Open the data set
-  // 5. Return the IO_CTRL
-  //
-
   string alloc_cmd = "ALLOC DA('" + dsname + "') SHR"; // TODO(Kelosky): log this command
   unsigned int code = 0;
   string resp = "";
@@ -332,9 +324,6 @@ int zds_open_output_bpam(ZDS *zds, std::string dsname, IO_CTRL **ioc)
   cout << "DDNAME: " << ddname << endl;
   zut_uppercase_pad_truncate(zds->ddname, ddname.c_str(), sizeof(zds->ddname));
 
-  //
-  // 2. Obtain control block for the data set
-  //
   cout << "ioc before: " << *ioc << endl;
   rc = ZDSOBPAM(zds, ioc, zds->ddname);
   if (0 != rc)
@@ -365,7 +354,6 @@ int zds_close_output_bpam(ZDS *zds, IO_CTRL *ioc)
   {
     zds->diag.detail_rc = RTNCD_WARNING;
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Data set was not dynamically allocated");
-    rc = RTNCD_WARNING;
   }
   else
   {

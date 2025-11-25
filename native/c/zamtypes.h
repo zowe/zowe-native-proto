@@ -171,8 +171,11 @@ typedef struct
   STOW_LIST stow_list;
   char *PTR32 buffer;
   int buffer_size;
-  int output : 1;
-  int input : 1;
+  int output : 1; // TODO(Kelosky): remove this flag
+  int input : 1;  // TODO(Kelosky): remove this flag
+  unsigned int enq : 1;
+  unsigned int reserve : 1;
+  unsigned int ucb;
   void *PTR32 zam24;
   int zam24_len;
 } IO_CTRL;

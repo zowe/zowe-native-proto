@@ -38,7 +38,6 @@ register FILE_CTRL *fc ASMREG("r8");
 
 int open_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *PTR32 ddname)
 {
-
   int rc = 0;
   IO_CTRL *PTR32 ioc31 = NULL;
 
@@ -101,6 +100,7 @@ int open_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *P
     diag->detail_rc = ZDS_RTNCD_ENQ_ERROR;
     return RTNCD_FAILURE;
   }
+  new_ioc->enq = 1;
 
   //
   // Get the UCB for the data set
@@ -114,7 +114,6 @@ int open_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *P
 
   unsigned char tiot_entry_len = tiot->tioelngh;
 
-  unsigned int raw_ucb_address = 0;
   unsigned char *PTR32 tiot_entry = (unsigned char *PTR32)tiot;
 
   while (tiot_entry_len > 0)
@@ -124,7 +123,7 @@ int open_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *P
     if (0 == strncmp(tiot->tioeddnm, ddname, sizeof(tiot->tioeddnm)))
     {
       unsigned char *PTR32 tioesttb = (unsigned char *PTR32) & tiot->tioesttb;
-      memcpy(&raw_ucb_address, &tiot->tioesttb, sizeof(unsigned int));
+      memcpy(&new_ioc->ucb, &tiot->tioesttb, sizeof(unsigned int));
       break;
     }
 
@@ -135,8 +134,8 @@ int open_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *P
 
 #define MASK_24_BITS 0x00FFFFFF
 
-  raw_ucb_address = (raw_ucb_address & MASK_24_BITS);
-  if (0 == raw_ucb_address)
+  new_ioc->ucb = (new_ioc->ucb & MASK_24_BITS);
+  if (0 == new_ioc->ucb)
   {
     zwto_debug("@TEST raw_ucb_address is zero");
     diag->detail_rc = ZDS_RTNCD_UCB_ERROR;
@@ -144,7 +143,7 @@ int open_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *P
     return RTNCD_FAILURE;
   }
 
-  UCB *PTR32 ucb = (UCB * PTR32) raw_ucb_address;
+  UCB *PTR32 ucb = (UCB * PTR32) new_ioc->ucb;
 
   //
   // RESERVE the data set
@@ -163,6 +162,8 @@ int open_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *P
     diag->detail_rc = ZDS_RTNCD_RESERVE_ERROR;
     return RTNCD_FAILURE;
   }
+
+  new_ioc->reserve = 1;
 
   //
   // Set attributes of the DCB
@@ -215,13 +216,77 @@ int open_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *P
     return RTNCD_FAILURE;
   }
 
+  //
+  //  Obtain a buffer for the data set
+  //
+  new_ioc->buffer_size = new_ioc->dcb.dcbblksi;
+  new_ioc->buffer = storage_obtain31(new_ioc->buffer_size);
+
   return rc;
 }
 
 int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 {
+  int rc = 0;
   zwto_debug("@TEST close_output_bpam: %p", ioc);
-  return 0;
+
+  if (ioc->dcb.dcboflgs & dcbofopn)
+  {
+    zwto_debug("@TEST closing data set: %44.44s", ioc->jfcb.jfcbdsnm);
+    rc = close_dcb(&ioc->dcb);
+    if (0 != rc)
+    {
+      diag->service_rc = rc;
+      strcpy(diag->service_name, "CLOSE");
+      diag->e_msg_len = sprintf(diag->e_msg, "Failed to close data set: %44.44s rc was: %d", ioc->jfcb.jfcbdsnm, rc);
+      diag->detail_rc = ZDS_RTNCD_CLOSE_ERROR;
+    }
+  }
+
+  if (ioc->buffer)
+  {
+    zwto_debug("@TEST releasing buffer for data set: %44.44s", ioc->jfcb.jfcbdsnm);
+    storage_release(ioc->buffer_size, ioc->buffer);
+    ioc->buffer = NULL;
+    ioc->buffer_size = 0;
+  }
+
+  if (ioc->enq)
+  {
+    zwto_debug("@TEST DEQ data set: %44.44s", ioc->jfcb.jfcbdsnm);
+    RNAME rname = {0};
+    QNAME qname = {0};
+    strcpy(qname.value, "SPFEDIT");
+    rname.rlen = sprintf(rname.value, "%.*s%.*s", sizeof(ioc->jfcb.jfcbdsnm), ioc->jfcb.jfcbdsnm, sizeof(ioc->jfcb.jfcbelnm), ioc->jfcb.jfcbelnm);
+    rc = deq(&qname, &rname);
+    if (0 != rc)
+    {
+      diag->service_rc = rc;
+      strcpy(diag->service_name, "DEQ");
+      diag->e_msg_len = sprintf(diag->e_msg, "Failed to DEQ data set: %s rc was: %d", ioc->jfcb.jfcbelnm, rc);
+      diag->detail_rc = ZDS_RTNCD_DEQ_ERROR;
+    }
+  }
+
+  if (ioc->reserve)
+  {
+    zwto_debug("@TEST DEQ RESERVE data set: %44.44s", ioc->jfcb.jfcbdsnm);
+    QNAME qname_reserve = {0};
+    RNAME rname_reserve = {0};
+    strcpy(qname_reserve.value, "SPFEDIT");
+    rname_reserve.rlen = sprintf(rname_reserve.value, "%.*s", sizeof(ioc->jfcb.jfcbdsnm), ioc->jfcb.jfcbdsnm);
+    rc = deq_reserve(&qname_reserve, &rname_reserve, (UCB * PTR32) ioc->ucb);
+    if (0 != rc)
+    {
+      diag->service_rc = rc;
+      strcpy(diag->service_name, "DEQ RESERVE");
+      diag->e_msg_len = sprintf(diag->e_msg, "Failed to DEQ RESERVE data set: %s rc was: %d", ioc->jfcb.jfcbelnm, rc);
+      diag->detail_rc = ZDS_RTNCD_DEQ_RESERVE_ERROR;
+    }
+    return 0;
+  }
+
+  return rc;
 }
 
 IO_CTRL *open_output_assert(char *ddname, int lrecl, int blkSize, unsigned char recfm)
