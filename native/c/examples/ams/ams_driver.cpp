@@ -17,6 +17,7 @@
 #include <unistd.h>
 #include "zds.hpp"
 
+// TODO(Kelosky): test on archived data set
 int main()
 {
   int rc = 0;
