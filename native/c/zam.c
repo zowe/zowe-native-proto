@@ -18,6 +18,8 @@
 #include "ihapsa.h"
 #include "ikjtcb.h"
 #include "ieftiot1.h"
+#include "zutm31.h"
+#include "ztime.h"
 
 // NOTE(Kelosky): must be assembled in AMODE31 code
 #if defined(__IBM_METAL__)
@@ -70,7 +72,7 @@ int open_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *P
   zwto_debug("@TEST validate attributes of data set: %44.44s", new_ioc->jfcb.jfcbdsnm);
   if (new_ioc->jfcb.jfcbind1 != jfcpds)
   {
-    diag->e_msg_len = sprintf(diag->e_msg, "Data set is not a PDS: %X", new_ioc->jfcb.jfcbind1);
+    diag->e_msg_len = sprintf(diag->e_msg, "DDname: %8.8s data set: %44.44s is not a PDS: %X", ddname, new_ioc->jfcb.jfcbdsnm, new_ioc->jfcb.jfcbind1);
     diag->detail_rc = ZDS_RTNCD_UNSUPPORTED_DATA_SET;
     return RTNCD_FAILURE;
   }
@@ -78,7 +80,7 @@ int open_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *P
   // ensure member name (e.g. is a partitioned data set)
   if (new_ioc->jfcb.jfcbelnm[0] == ' ')
   {
-    diag->e_msg_len = sprintf(diag->e_msg, "Data set is not a partitioned data set: %s", new_ioc->jfcb.jfcbelnm);
+    diag->e_msg_len = sprintf(diag->e_msg, "DDname: %8.8s data set: %44.44s is not a partitioned data set: %s", ddname, new_ioc->jfcb.jfcbdsnm, new_ioc->jfcb.jfcbelnm);
     diag->detail_rc = ZDS_RTNCD_UNSUPPORTED_DSORG;
     return RTNCD_FAILURE;
   }
@@ -96,7 +98,7 @@ int open_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *P
   {
     diag->service_rc = rc;
     strcpy(diag->service_name, "ENQ");
-    diag->e_msg_len = sprintf(diag->e_msg, "Failed to ENQ data set: %s rc was: %d", new_ioc->jfcb.jfcbelnm, rc);
+    diag->e_msg_len = sprintf(diag->e_msg, "Failed to ENQ ddname: %8.8s data set: %44.44s rc was: %d", ddname, new_ioc->jfcb.jfcbdsnm, rc);
     diag->detail_rc = ZDS_RTNCD_ENQ_ERROR;
     return RTNCD_FAILURE;
   }
@@ -158,7 +160,7 @@ int open_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *P
   {
     diag->service_rc = rc;
     strcpy(diag->service_name, "RESERVE");
-    diag->e_msg_len = sprintf(diag->e_msg, "Failed to RESERVE data set: %s rc was: %d", new_ioc->jfcb.jfcbelnm, rc);
+    diag->e_msg_len = sprintf(diag->e_msg, "Failed to RESERVE ddname: %8.8s data set: %44.44s rc was: %d", ddname, new_ioc->jfcb.jfcbdsnm, rc);
     diag->detail_rc = ZDS_RTNCD_RESERVE_ERROR;
     return RTNCD_FAILURE;
   }
@@ -225,6 +227,7 @@ int open_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *P
   return rc;
 }
 
+// TODO(Kelosky): handle when each fails... continue or return?
 int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 {
   int rc = 0;
@@ -232,13 +235,117 @@ int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 
   if (ioc->dcb.dcboflgs & dcbofopn)
   {
+    int rsn = 0;
+
+    //
+    // BLDL for the data set that exists or was just created
+    //
+    zwto_debug("@TEST BLDL data set: %44.44s", ioc->jfcb.jfcbdsnm);
+    BLDL_PL bldl_pl = {0};
+
+    bldl_pl.ff = 1;                                                            // only one member in the list
+    bldl_pl.ll = sizeof(bldl_pl.list);                                         // length of each entry
+    memcpy(bldl_pl.list.name, ioc->jfcb.jfcbelnm, sizeof(ioc->jfcb.jfcbelnm)); // copy member name
+    rc = bldl(ioc, &bldl_pl, &rsn);
+
+    if (0 != rc)
+    {
+      diag->service_rc = rc;
+      strcpy(diag->service_name, "BLDL");
+      diag->e_msg_len = sprintf(diag->e_msg, "Failed to BLDL ddname: %8.8s data set: %44.44s rc was: %d", ioc->dcb.dcbddnam, ioc->jfcb.jfcbdsnm, rc);
+      diag->detail_rc = ZDS_RTNCD_BLDL_ERROR;
+    }
+
+    // Copy or create ISPF statistics
+    //
+    if ((bldl_pl.list.c & LEN_MASK) == 0)
+    {
+      zwto_debug("@TEST no ISPF statistics are provided (0x%02x)", bldl_pl.list.c);
+    }
+    else
+    {
+      memcpy(ioc->stow_list.name, bldl_pl.list.name, sizeof(bldl_pl.list.name)); // copy member name
+      // memcpy(resources.sysprint->stow_list.ttr, note_response.ttr, sizeof(note_response.ttr));  // NOTE(Kelosky): the TTR will be maintained via OPEN/WRITE, no need to copy NOTE TTR
+      ioc->stow_list.c = bldl_pl.list.c;                                       // copy user data length
+      int user_data_len = (bldl_pl.list.c & LEN_MASK) * 2;                     // isolate number of halfwords in user data
+      memcpy(ioc->stow_list.user_data, bldl_pl.list.user_data, user_data_len); // copy all user data
+
+      /**
+       * @brief Update ISPF statistics
+       */
+      ISPF_STATS *statsp = (ISPF_STATS *)ioc->stow_list.user_data;
+      // zut_dump_storage_common("ISPFSTATS", statsp, sizeof(ISPF_STATS), 16, 0, zut_print_debug);
+
+      // update ISPF statistics userid
+      char user[8] = {0};
+      rc = zutm1gur(user);
+      if (0 != rc)
+      {
+        zwto_debug("@TEST zutm1gur failed: rc: %d", rc);
+        return RTNCD_FAILURE;
+      }
+      memcpy(statsp->userid, user, sizeof(user));
+
+// update ISPF statistics modification level
+// https://www.ibm.com/docs/en/zos/3.2.0?topic=environment-version-modification-level-numbers
+// level 0x99 is the maximum level
+#define MAX_LEVEL 0x99
+      if (statsp->level < MAX_LEVEL)
+      {
+        statsp->level++; // update ISPF statistics level
+      }
+
+      // update ISPF statistics number of lines
+      statsp->modified_number_of_lines = ioc->modified_number_of_lines; // update ISPF statistics number of lines
+      statsp->current_number_of_lines = ioc->current_number_of_lines;   // update ISPF statistics number of lines
+
+      /**
+       * @brief Obtain the current date and time
+       */
+      union
+      {
+        unsigned int timei;
+        struct
+        {
+          unsigned char HH;
+          unsigned char MM;
+          unsigned char SS;
+          unsigned char unused;
+        } times;
+      } timel = {0};
+
+      unsigned int datel = 0;
+      time_local(&timel.timei, &datel);
+
+      // update ISPF statistics date & time
+      memcpy(&statsp->modified_date_century, &datel, sizeof(datel));
+      statsp->modified_time_hours = timel.times.HH;   // update ISPF statistics time hours
+      statsp->modified_time_minutes = timel.times.MM; // update ISPF statistics time minutes
+      statsp->modified_time_seconds = timel.times.SS; // update ISPF statistics time seconds
+    }
+
+    //
+    // STOW the ISPF statistics
+    //
+    rc = stow(ioc, &rsn);
+    if (0 != rc)
+    {
+      diag->service_rc = rc;
+      strcpy(diag->service_name, "STOW");
+      diag->e_msg_len = sprintf(diag->e_msg, "Failed to STOW ISPF statistics: %8.8s data set: %44.44s rsn was: %d", ioc->dcb.dcbddnam, ioc->jfcb.jfcbdsnm, rsn);
+      diag->detail_rc = ZDS_RTNCD_STOW_ERROR;
+    }
+
+    //
+    // Close the data set
+    //
     zwto_debug("@TEST closing data set: %44.44s", ioc->jfcb.jfcbdsnm);
     rc = close_dcb(&ioc->dcb);
     if (0 != rc)
     {
       diag->service_rc = rc;
       strcpy(diag->service_name, "CLOSE");
-      diag->e_msg_len = sprintf(diag->e_msg, "Failed to close data set: %44.44s rc was: %d", ioc->jfcb.jfcbdsnm, rc);
+      diag->e_msg_len = sprintf(diag->e_msg, "Failed to close ddname: %8.8s data set: %44.44s rc was: %d", ioc->dcb.dcbddnam, ioc->jfcb.jfcbdsnm, rc);
       diag->detail_rc = ZDS_RTNCD_CLOSE_ERROR;
     }
   }
@@ -263,7 +370,7 @@ int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
     {
       diag->service_rc = rc;
       strcpy(diag->service_name, "DEQ");
-      diag->e_msg_len = sprintf(diag->e_msg, "Failed to DEQ data set: %s rc was: %d", ioc->jfcb.jfcbelnm, rc);
+      diag->e_msg_len = sprintf(diag->e_msg, "Failed to DEQ ddname: %8.8s data set: %44.44s rc was: %d", ioc->dcb.dcbddnam, ioc->jfcb.jfcbdsnm, rc);
       diag->detail_rc = ZDS_RTNCD_DEQ_ERROR;
     }
   }
@@ -280,7 +387,7 @@ int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
     {
       diag->service_rc = rc;
       strcpy(diag->service_name, "DEQ RESERVE");
-      diag->e_msg_len = sprintf(diag->e_msg, "Failed to DEQ RESERVE data set: %s rc was: %d", ioc->jfcb.jfcbelnm, rc);
+      diag->e_msg_len = sprintf(diag->e_msg, "Failed to DEQ RESERVE ddname: %8.8s data set: %44.44s rc was: %d", ioc->dcb.dcbddnam, ioc->jfcb.jfcbdsnm, rc);
       diag->detail_rc = ZDS_RTNCD_DEQ_RESERVE_ERROR;
     }
     return 0;
