@@ -21,6 +21,7 @@
 #include "ieftiot1.h"
 #include "zutm31.h"
 #include "ztime.h"
+#include "zdbg.h"
 
 // NOTE(Kelosky): must be assembled in AMODE31 code
 #if defined(__IBM_METAL__)
@@ -204,6 +205,28 @@ static int validate_dcb_attributes(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
   return rc;
 }
 
+static int note_member(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, NOTE_RESPONSE *PTR32 note_response)
+{
+
+  int rc = 0;
+  int rsn = 0;
+
+  zwto_debug("@TEST note member: %8.8s", ioc->ddname);
+  rc = note(ioc, note_response, &rsn);
+  if (0 != rc)
+  {
+    if (0 == diag->e_msg_len)
+    {
+      diag->service_rc = rc;
+      strcpy(diag->service_name, "NOTE");
+      diag->e_msg_len = sprintf(diag->e_msg, "Failed to NOTE ddname: %8.8s data set: %44.44s rc was: %d", ioc->ddname, ioc->jfcb.jfcbdsnm, rc);
+      diag->detail_rc = ZDS_RTNCD_NOTE_ERROR;
+    }
+  }
+
+  return rc;
+}
+
 int open_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *PTR32 ddname)
 {
   int rc = 0;
@@ -293,6 +316,19 @@ int open_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *P
   {
     return rc;
   }
+
+  /////////////////////////////////////////////////////////////
+  int rsn = 0;
+  NOTE_RESPONSE note_response = {0};
+  rc = note_member(diag, new_ioc, &note_response);
+  if (0 != rc)
+  {
+    return rc;
+  }
+
+  zwto_debug("@TEST open note_response.ttr: %02x%02x%02x", note_response.ttr[0], note_response.ttr[1], note_response.ttr[2]);
+  memcpy(new_ioc->stow_list.ttr, note_response.ttr, sizeof(note_response.ttr));
+  /////////////////////////////////////////////////////////////
 
   //
   //  Obtain a buffer for the data set
@@ -395,6 +431,16 @@ static int update_ispf_statistics(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
   if (ioc->dcb.dcboflgs & dcbofopn)
   {
     int rsn = 0;
+    NOTE_RESPONSE note_response = {0};
+    rc = note_member(diag, ioc, &note_response);
+    if (0 != rc)
+    {
+      return rc;
+    }
+
+    zwto_debug("@TEST note_response.ttr: %02x%02x%02x", note_response.ttr[0], note_response.ttr[1], note_response.ttr[2]);
+
+    // memcpy(note_response.ttr, ioc->dcb.dcbtt, sizeof(ioc->dcb.dcbtt));
 
     //
     // BLDL for the data set that exists or was just created
@@ -406,6 +452,8 @@ static int update_ispf_statistics(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
     {
       return rc;
     }
+
+    zwto_debug("@TEST bldl_pl.list.ttr: %02x%02x%02x", bldl_pl.list.ttr[0], bldl_pl.list.ttr[1], bldl_pl.list.ttr[2]);
 
     //
     // Copy or create ISPF statistics
@@ -428,6 +476,9 @@ static int update_ispf_statistics(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
         return RTNCD_FAILURE;
       }
       memcpy(statsp->userid, user, sizeof(user));
+      memset(statsp->unused, ' ', sizeof(statsp->unused)); // NOTE(Kelosky): unclear what the 2 remaining bytes are for but if not set to spaces, stats will not be updated for a brand new member
+
+      zwto_debug("@TEST lines_written: %d", ioc->lines_written);
 
       // update ISPF statistics number of lines
       statsp->initial_number_of_lines = ioc->lines_written;  // update ISPF statistics number of lines
@@ -458,24 +509,33 @@ static int update_ispf_statistics(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
       statsp->modified_time_hours = timel.times.HH;   // update ISPF statistics time hours
       statsp->modified_time_minutes = timel.times.MM; // update ISPF statistics time minutes
       statsp->modified_time_seconds = timel.times.SS; // update ISPF statistics time seconds
-      statsp->initial_number_of_lines = 0;            // TODO
-      statsp->modified_number_of_lines = 0;           // TODO
-      statsp->current_number_of_lines = 0;            // TODO
+      // statsp->initial_number_of_lines = 0;            // TODO
+      // statsp->modified_number_of_lines = 0;           // TODO
+      // statsp->current_number_of_lines = 0;            // TODO
+
+      // statsp->initial_number_of_lines = 6;  // update ISPF statistics number of lines
+      // statsp->modified_number_of_lines = 6; // update ISPF statistics number of lines
+      // statsp->current_number_of_lines = 6;  // update ISPF statistics number of lines
+      zut_dump_storage_common("ISPFSTATS", statsp, sizeof(ISPF_STATS), 16, 0, zut_print_debug);
     }
     else
     {
+      zwto_debug("@TEST bldl_pl.list.c: %02x", bldl_pl.list.c);
       memcpy(ioc->stow_list.name, bldl_pl.list.name, sizeof(bldl_pl.list.name)); // copy member name
-      // memcpy(resources.sysprint->stow_list.ttr, note_response.ttr, sizeof(note_response.ttr));  // NOTE(Kelosky): the TTR will be maintained via OPEN/WRITE, no need to copy NOTE TTR
+      // memcpy(ioc->stow_list.ttr, note_response.ttr, sizeof(note_response.ttr));  // NOTE(Kelosky): the TTR will be maintained via OPEN/WRITE, no need to copy NOTE TTR
       ioc->stow_list.c = bldl_pl.list.c;                                       // copy user data length
       int user_data_len = (bldl_pl.list.c & LEN_MASK) * 2;                     // isolate number of halfwords in user data
       memcpy(ioc->stow_list.user_data, bldl_pl.list.user_data, user_data_len); // copy all user data
 
       zwto_debug("@TEST stowlist.c %d", ioc->stow_list.c);
+      zwto_debug("@TEST stowlist.ttr: %02x%02x%02x", ioc->stow_list.ttr[0], ioc->stow_list.ttr[1], ioc->stow_list.ttr[2]);
 
       /**
        * @brief Update ISPF statistics
        */
       ISPF_STATS *statsp = (ISPF_STATS *)ioc->stow_list.user_data;
+
+      zwto_debug("@TEST user data: %02x%02x%02x%02x%02x%02x%02x%02x", statsp->userid[0], statsp->userid[1], statsp->userid[2], statsp->userid[3], statsp->userid[4], statsp->userid[5], statsp->userid[6], statsp->userid[7]);
       // zut_dump_storage_common("ISPFSTATS", statsp, sizeof(ISPF_STATS), 16, 0, zut_print_debug);
 
       // update ISPF statistics userid
@@ -524,6 +584,8 @@ static int update_ispf_statistics(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
       statsp->modified_time_hours = timel.times.HH;   // update ISPF statistics time hours
       statsp->modified_time_minutes = timel.times.MM; // update ISPF statistics time minutes
       statsp->modified_time_seconds = timel.times.SS; // update ISPF statistics time seconds
+
+      zut_dump_storage_common("ISPFSTATS", statsp, sizeof(ISPF_STATS), 16, 0, zut_print_debug);
     }
   }
 }
@@ -534,14 +596,21 @@ static int stow_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
   int rsn = 0;
   if (ioc->dcb.dcboflgs & dcbofopn)
   {
-    zwto_debug("@TEST stow data set: %44.44s", ioc->jfcb.jfcbdsnm);
+    zwto_debug("@TEST stow ttr %02x%02x%02x  and c is %02x data set: %44.44s", ioc->stow_list.ttr[0], ioc->stow_list.ttr[1], ioc->stow_list.ttr[2], ioc->stow_list.c, ioc->jfcb.jfcbdsnm);
+
+    zut_dump_storage_common("STOW_LIST", &ioc->stow_list, sizeof(STOW_LIST), 16, 0, zut_print_debug);
+
     rc = stow(ioc, &rsn);
     if (0 != rc)
     {
-      diag->service_rc = rc;
-      strcpy(diag->service_name, "STOW");
-      diag->e_msg_len = sprintf(diag->e_msg, "Failed to STOW ISPF statistics: %8.8s data set: %44.44s rsn was: %d", ioc->ddname, ioc->jfcb.jfcbdsnm, rsn);
-      diag->detail_rc = ZDS_RTNCD_STOW_ERROR;
+      zwto_debug("@TEST stow failed: rc: %d", rc);
+      if (0 == diag->e_msg_len)
+      {
+        diag->service_rc = rc;
+        strcpy(diag->service_name, "STOW");
+        diag->e_msg_len = sprintf(diag->e_msg, "Failed to STOW ISPF statistics: %8.8s data set: %44.44s rsn was: %d", ioc->ddname, ioc->jfcb.jfcbdsnm, rsn);
+        diag->detail_rc = ZDS_RTNCD_STOW_ERROR;
+      }
     }
   }
   return rc;
@@ -556,10 +625,13 @@ static int close_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
     rc = close_dcb(&ioc->dcb);
     if (0 != rc)
     {
-      diag->service_rc = rc;
-      strcpy(diag->service_name, "CLOSE");
-      diag->e_msg_len = sprintf(diag->e_msg, "Failed to close ddname: %8.8s data set: %44.44s rc was: %d", ioc->ddname, ioc->jfcb.jfcbdsnm, rc);
-      diag->detail_rc = ZDS_RTNCD_CLOSE_ERROR;
+      if (0 == diag->e_msg_len) // only set error if no error message was already set
+      {
+        diag->service_rc = rc;
+        strcpy(diag->service_name, "CLOSE");
+        diag->e_msg_len = sprintf(diag->e_msg, "Failed to close ddname: %8.8s data set: %44.44s rc was: %d", ioc->ddname, ioc->jfcb.jfcbdsnm, rc);
+        diag->detail_rc = ZDS_RTNCD_CLOSE_ERROR;
+      }
     }
   }
   return rc;
@@ -578,12 +650,15 @@ static int deq_reserve_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
     rc = deq_reserve(&qname_reserve, &rname_reserve, (UCB * PTR32) ioc->ucb);
     if (0 != rc)
     {
-      diag->service_rc = rc;
-      strcpy(diag->service_name, "DEQ RESERVE");
-      diag->e_msg_len = sprintf(diag->e_msg, "Failed to DEQ RESERVE ddname: %8.8s data set: %44.44s rc was: %d", ioc->ddname, ioc->jfcb.jfcbdsnm, rc);
-      diag->detail_rc = ZDS_RTNCD_DEQ_RESERVE_ERROR;
+      if (0 == diag->e_msg_len) // only set error if no error message was already set
+      {
+        diag->service_rc = rc;
+        strcpy(diag->service_name, "DEQ RESERVE");
+        diag->e_msg_len = sprintf(diag->e_msg, "Failed to DEQ RESERVE ddname: %8.8s data set: %44.44s rc was: %d", ioc->ddname, ioc->jfcb.jfcbdsnm, rc);
+        diag->detail_rc = ZDS_RTNCD_DEQ_RESERVE_ERROR;
+      }
+      return 0;
     }
-    return 0;
   }
   return rc;
 }
@@ -602,10 +677,13 @@ static int deq_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
     rc = deq(&qname, &rname);
     if (0 != rc)
     {
-      diag->service_rc = rc;
-      strcpy(diag->service_name, "DEQ");
-      diag->e_msg_len = sprintf(diag->e_msg, "Failed to DEQ ddname: %8.8s data set: %44.44s rc was: %d", ioc->ddname, ioc->jfcb.jfcbdsnm, rc);
-      diag->detail_rc = ZDS_RTNCD_DEQ_ERROR;
+      if (0 == diag->e_msg_len) // only set error if no error message was already set
+      {
+        diag->service_rc = rc;
+        strcpy(diag->service_name, "DEQ");
+        diag->e_msg_len = sprintf(diag->e_msg, "Failed to DEQ ddname: %8.8s data set: %44.44s rc was: %d", ioc->ddname, ioc->jfcb.jfcbdsnm, rc);
+        diag->detail_rc = ZDS_RTNCD_DEQ_ERROR;
+      }
     }
   }
   return rc;
@@ -623,7 +701,7 @@ int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
   rc = write_flush(diag, ioc);
   if (0 != rc)
   {
-    return rc;
+    // return rc; // TODO(Kelosky): handle when this fails... continue or return?
   }
 
   //
@@ -632,7 +710,7 @@ int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
   rc = update_ispf_statistics(diag, ioc);
   if (0 != rc)
   {
-    return rc;
+    // return rc; // TODO(Kelosky): handle when this fails... continue or return?
   }
 
   //
@@ -641,7 +719,7 @@ int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
   rc = stow_data_set(diag, ioc);
   if (0 != rc)
   {
-    return rc;
+    // return rc; // TODO(Kelosky): handle when this fails... continue or return?
   }
 
   //
@@ -942,6 +1020,7 @@ int close_dcb(IHADCB *dcb)
   return rc;
 }
 
+// TODO(Kelosky): in the future, perhaps have a non-sync write?
 int write_sync(IO_CTRL *ioc, char *buffer)
 {
   int rc = 0;

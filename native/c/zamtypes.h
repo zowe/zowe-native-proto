@@ -121,6 +121,7 @@ typedef struct
   short int initial_number_of_lines;   // byte17-18: hexidcimal
   short int modified_number_of_lines;  // byte19-20: hexidcimal
   char userid[8];                      // byte21-28: padded with blanks
+  char unused[2];
   // TODO(Kelosky): conditional data based on byte3 flags
 
 } ISPF_STATS;
@@ -174,7 +175,7 @@ typedef struct
   int output : 1; // TODO(Kelosky): remove this flag
   int input : 1;  // TODO(Kelosky): remove this flag
   unsigned int enq : 1;
-  unsigned int reserve : 1;
+  unsigned int reserve : 1; // not reserved space... indicates RESERVE is outstanding
   unsigned int ucb;
   void *PTR32 zam24;
   int zam24_len;
