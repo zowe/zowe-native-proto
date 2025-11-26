@@ -179,8 +179,8 @@ typedef struct
   void *PTR32 zam24;
   int zam24_len;
   int lines_written;
-  int modified_number_of_lines;
-  int current_number_of_lines;
+  char *PTR32 free_location;
+  int bytes_in_buffer;
 } IO_CTRL;
 
 #endif

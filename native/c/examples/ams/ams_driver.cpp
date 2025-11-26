@@ -23,11 +23,13 @@ int main()
   int rc = 0;
   unsigned int code = 0;
 
-  std::string data80 =
-      "hello world                                                                     "
-      "01234567890123456789012345678901234567890123456789012345678901234567890123456789"
-      "          0123456789012345678901234567890123456789012345678901234567890123456789"
-      "0123456789          012345678901234567890123456789012345678901234567890123456789";
+  std::vector<std::string> data;
+  data.push_back("hello world                                                                     ");
+  data.push_back("01234567890123456789012345678901234567890123456789012345678901234567890123456789");
+  data.push_back("          0123456789012345678901234567890123456789012345678901234567890123456789");
+  data.push_back("0123456789          012345678901234567890123456789012345678901234567890123456789");
+  data.push_back(" hey workld");
+
   // "";
 
   ZDS zds = {0};
@@ -42,17 +44,30 @@ int main()
     return -1;
   }
 
-  rc = zds_write_output_bpam(&zds, ioc, data80);
-  if (0 != rc)
+  for (std::vector<std::string>::iterator it = data.begin(); it != data.end(); ++it)
   {
-    std::cout << "zds_write_output_bpam failed: " << rc << std::endl;
-    return -1;
+    rc = zds_write_output_bpam(&zds, ioc, *it);
+    if (0 != rc)
+    {
+      std::cout << "zds_write_output_bpam failed: " << rc << std::endl;
+      std::cout << "  Details: " << zds.diag.e_msg << std::endl;
+      return -1;
+    }
   }
+
+  // rc = zds_write_output_bpam(&zds, ioc, );
+  // if (0 != rc)
+  // {
+  //   std::cout << "zds_write_output_bpam failed: " << rc << std::endl;
+  //   std::cout << "  Details: " << zds.diag.e_msg << std::endl;
+  //   return -1;
+  // }
 
   rc = zds_close_output_bpam(&zds, ioc);
   if (0 != rc && RTNCD_WARNING != rc) // ignore warnings
   {
     std::cout << "zds_close_output_bpam failed: " << rc << std::endl;
+    std::cout << "  Details: " << zds.diag.e_msg << std::endl;
     return -1;
   }
 

@@ -297,6 +297,11 @@ int open_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *P
   new_ioc->buffer_size = new_ioc->dcb.dcbblksi;
   new_ioc->buffer = storage_obtain31(new_ioc->buffer_size);
 
+  // init vars
+  new_ioc->bytes_in_buffer = 0;
+  new_ioc->lines_written = 0;
+  new_ioc->free_location = new_ioc->buffer;
+
   return rc;
 }
 
@@ -304,6 +309,57 @@ int write_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, const char *PTR32 d
 {
   int rc = 0;
   zwto_debug("@TEST write_output_bpam length: %d", length);
+  zwto_debug("@TEST ioc in write is %p", ioc);
+
+  int lrecl = ioc->dcb.dcblrecl;
+  int blocksize = ioc->dcb.dcbblksi;
+
+  if (length > lrecl)
+  {
+    diag->e_msg_len = sprintf(diag->e_msg, "Data length is greater than the record length: %d > %d", length, lrecl);
+    diag->detail_rc = ZDS_RTNCD_INVALID_DATA_LENGTH;
+    return RTNCD_FAILURE;
+  }
+
+  memset(ioc->free_location, ' ', lrecl);
+  memcpy(ioc->free_location, data, length);
+
+  ioc->lines_written++;
+
+  // track bytes in buffer and free space
+  ioc->bytes_in_buffer += lrecl;
+  ioc->free_location += lrecl;
+
+  if (ioc->bytes_in_buffer >= blocksize)
+  {
+    write_sync(ioc, ioc->buffer);
+    ioc->bytes_in_buffer = 0;
+    ioc->free_location = ioc->buffer;
+    // memset(ioc->buffer, ' ', ioc->buffer_size);
+  }
+
+  return rc;
+}
+
+static int write_flush(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
+{
+  int rc = 0;
+
+  int blocksize = ioc->dcb.dcbblksi;
+  if (ioc->dcb.dcboflgs & dcbofopn)
+  {
+    if (ioc->bytes_in_buffer > 0)
+    {
+      ioc->dcb.dcbblksi = ioc->bytes_in_buffer; // temporary update block size before writing
+      write_sync(ioc, ioc->buffer);             // TODO(Kelosky): if we abend, we MUST restore the original block size before CLOSE
+      ioc->dcb.dcbblksi = blocksize;
+
+      ioc->bytes_in_buffer = 0;
+      ioc->free_location = ioc->buffer;
+      // memset(ioc->buffer, 0x00, ioc->buffer_size);
+      zwto_debug("@TEST wrote last block");
+    }
+  }
   return rc;
 }
 
@@ -368,8 +424,9 @@ static int update_ispf_statistics(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
       memcpy(statsp->userid, user, sizeof(user));
 
       // update ISPF statistics number of lines
-      statsp->modified_number_of_lines = ioc->modified_number_of_lines; // update ISPF statistics number of lines
-      statsp->current_number_of_lines = ioc->current_number_of_lines;   // update ISPF statistics number of lines
+      statsp->initial_number_of_lines = ioc->lines_written;  // update ISPF statistics number of lines
+      statsp->modified_number_of_lines = ioc->lines_written; // update ISPF statistics number of lines
+      statsp->current_number_of_lines = ioc->lines_written;  // update ISPF statistics number of lines
 
       /**
        * @brief Obtain the current date and time
@@ -435,8 +492,8 @@ static int update_ispf_statistics(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
       }
 
       // update ISPF statistics number of lines
-      statsp->modified_number_of_lines = ioc->modified_number_of_lines; // update ISPF statistics number of lines
-      statsp->current_number_of_lines = ioc->current_number_of_lines;   // update ISPF statistics number of lines
+      statsp->modified_number_of_lines = ioc->lines_written; // update ISPF statistics number of lines
+      statsp->current_number_of_lines = ioc->lines_written;  // update ISPF statistics number of lines
 
       /**
        * @brief Obtain the current date and time
@@ -554,6 +611,18 @@ int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
   int rc = 0;
   zwto_debug("@TEST close_output_bpam: %p", ioc);
 
+  //
+  // Write any remaining bytes in the buffer
+  //
+  rc = write_flush(diag, ioc);
+  if (0 != rc)
+  {
+    return rc;
+  }
+
+  //
+  // Update ISPF statistics
+  //
   rc = update_ispf_statistics(diag, ioc);
   if (0 != rc)
   {
@@ -578,20 +647,30 @@ int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
     return rc;
   }
 
+  //
+  // Release the buffer
+  //
   if (ioc->buffer)
   {
     zwto_debug("@TEST releasing buffer for data set: %44.44s", ioc->jfcb.jfcbdsnm);
+    zwto_debug("@TEST ioc->buffer: %p", ioc->buffer);
     storage_release(ioc->buffer_size, ioc->buffer);
     ioc->buffer = NULL;
     ioc->buffer_size = 0;
   }
 
+  //
+  // DEQ the reserve data set
+  //
   rc = deq_reserve_data_set(diag, ioc);
   if (0 != rc)
   {
     return rc;
   }
 
+  //
+  // DEQ the data set
+  //
   rc = deq_data_set(diag, ioc);
   if (0 != rc)
   {
