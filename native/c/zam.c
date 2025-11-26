@@ -317,19 +317,6 @@ int open_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *P
     return rc;
   }
 
-  /////////////////////////////////////////////////////////////
-  int rsn = 0;
-  NOTE_RESPONSE note_response = {0};
-  rc = note_member(diag, new_ioc, &note_response);
-  if (0 != rc)
-  {
-    return rc;
-  }
-
-  zwto_debug("@TEST open note_response.ttr: %02x%02x%02x", note_response.ttr[0], note_response.ttr[1], note_response.ttr[2]);
-  memcpy(new_ioc->stow_list.ttr, note_response.ttr, sizeof(note_response.ttr));
-  /////////////////////////////////////////////////////////////
-
   //
   //  Obtain a buffer for the data set
   //
@@ -481,9 +468,9 @@ static int update_ispf_statistics(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
       zwto_debug("@TEST lines_written: %d", ioc->lines_written);
 
       // update ISPF statistics number of lines
-      statsp->initial_number_of_lines = ioc->lines_written;  // update ISPF statistics number of lines
-      statsp->modified_number_of_lines = ioc->lines_written; // update ISPF statistics number of lines
-      statsp->current_number_of_lines = ioc->lines_written;  // update ISPF statistics number of lines
+      // TODO(Kelosky): handle extended line counts
+      statsp->initial_number_of_lines = ioc->lines_written; // update ISPF statistics number of lines
+      statsp->current_number_of_lines = ioc->lines_written; // update ISPF statistics number of lines
 
       /**
        * @brief Obtain the current date and time
