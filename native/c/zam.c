@@ -417,18 +417,6 @@ static int update_ispf_statistics(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 
   if (ioc->dcb.dcboflgs & dcbofopn)
   {
-    int rsn = 0;
-    NOTE_RESPONSE note_response = {0};
-    rc = note_member(diag, ioc, &note_response);
-    if (0 != rc)
-    {
-      return rc;
-    }
-
-    zwto_debug("@TEST note_response.ttr: %02x%02x%02x", note_response.ttr[0], note_response.ttr[1], note_response.ttr[2]);
-
-    // memcpy(note_response.ttr, ioc->dcb.dcbtt, sizeof(ioc->dcb.dcbtt));
-
     //
     // BLDL for the data set that exists or was just created
     //
@@ -440,21 +428,24 @@ static int update_ispf_statistics(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
       return rc;
     }
 
-    zwto_debug("@TEST bldl_pl.list.ttr: %02x%02x%02x", bldl_pl.list.ttr[0], bldl_pl.list.ttr[1], bldl_pl.list.ttr[2]);
+    //
+    // Create or update ISPF statistics
+    //
+    memcpy(ioc->stow_list.name, bldl_pl.list.name, sizeof(bldl_pl.list.name));
+    ISPF_STATS *statsp = (ISPF_STATS *)ioc->stow_list.user_data;
 
-    //
-    // Copy or create ISPF statistics
-    //
     if ((bldl_pl.list.c & LEN_MASK) == 0 || rc == BLDL_WARNING)
     {
-      zwto_debug("@TEST no ISPF statistics are provided (0x%02x)", bldl_pl.list.c);
-      memcpy(ioc->stow_list.name, bldl_pl.list.name, sizeof(bldl_pl.list.name));
       ioc->stow_list.c = ISPF_STATS_MIN_LEN;
-      ISPF_STATS *statsp = (ISPF_STATS *)ioc->stow_list.user_data;
-      statsp->version = 0x01;
-      statsp->level = 0x00;
-      statsp->flags = 0x00;
 
+      //
+      // Ensure this random spot in the user data is set to spaces :-(
+      //
+      memset(statsp->unused, ' ', sizeof(statsp->unused)); // NOTE(Kelosky): unclear what the 2 remaining bytes are for but if not set to spaces, stats will not be updated for a brand new member
+
+      //
+      // Set initial user
+      //
       char user[8] = {0};
       rc = zutm1gur(user);
       if (0 != rc)
@@ -463,69 +454,45 @@ static int update_ispf_statistics(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
         return RTNCD_FAILURE;
       }
       memcpy(statsp->userid, user, sizeof(user));
-      memset(statsp->unused, ' ', sizeof(statsp->unused)); // NOTE(Kelosky): unclear what the 2 remaining bytes are for but if not set to spaces, stats will not be updated for a brand new member
 
-      zwto_debug("@TEST lines_written: %d", ioc->lines_written);
+      //
+      // Set initial version and level
+      //
+      statsp->version = 0x01;
+      statsp->level = 0x00;
+      statsp->flags = 0x00;
 
-      // update ISPF statistics number of lines
-      // TODO(Kelosky): handle extended line counts
+      //
+      // Set initial and current number of lines
+      //
       statsp->initial_number_of_lines = ioc->lines_written; // update ISPF statistics number of lines
       statsp->current_number_of_lines = ioc->lines_written; // update ISPF statistics number of lines
 
-      /**
-       * @brief Obtain the current date and time
-       */
-      union
-      {
-        unsigned int timei;
-        struct
-        {
-          unsigned char HH;
-          unsigned char MM;
-          unsigned char SS;
-          unsigned char unused;
-        } times;
-      } timel = {0};
-
+      //
+      // Set created andmodified time
+      //
+      TIME_UNION timel = {0};
       unsigned int datel = 0;
       time_local(&timel.timei, &datel);
 
-      // update ISPF statistics date & time
       memcpy(&statsp->created_date_century, &datel, sizeof(datel));
       memcpy(&statsp->modified_date_century, &datel, sizeof(datel));
       statsp->modified_time_hours = timel.times.HH;   // update ISPF statistics time hours
       statsp->modified_time_minutes = timel.times.MM; // update ISPF statistics time minutes
       statsp->modified_time_seconds = timel.times.SS; // update ISPF statistics time seconds
-      // statsp->initial_number_of_lines = 0;            // TODO
-      // statsp->modified_number_of_lines = 0;           // TODO
-      // statsp->current_number_of_lines = 0;            // TODO
-
-      // statsp->initial_number_of_lines = 6;  // update ISPF statistics number of lines
-      // statsp->modified_number_of_lines = 6; // update ISPF statistics number of lines
-      // statsp->current_number_of_lines = 6;  // update ISPF statistics number of lines
-      zut_dump_storage_common("ISPFSTATS", statsp, sizeof(ISPF_STATS), 16, 0, zut_print_debug);
     }
     else
     {
-      zwto_debug("@TEST bldl_pl.list.c: %02x", bldl_pl.list.c);
-      memcpy(ioc->stow_list.name, bldl_pl.list.name, sizeof(bldl_pl.list.name)); // copy member name
-      // memcpy(ioc->stow_list.ttr, note_response.ttr, sizeof(note_response.ttr));  // NOTE(Kelosky): the TTR will be maintained via OPEN/WRITE, no need to copy NOTE TTR
+      //
+      // Initialize with existing user data / statistics
+      //
       ioc->stow_list.c = bldl_pl.list.c;                                       // copy user data length
       int user_data_len = (bldl_pl.list.c & LEN_MASK) * 2;                     // isolate number of halfwords in user data
       memcpy(ioc->stow_list.user_data, bldl_pl.list.user_data, user_data_len); // copy all user data
 
-      zwto_debug("@TEST stowlist.c %d", ioc->stow_list.c);
-      zwto_debug("@TEST stowlist.ttr: %02x%02x%02x", ioc->stow_list.ttr[0], ioc->stow_list.ttr[1], ioc->stow_list.ttr[2]);
-
-      /**
-       * @brief Update ISPF statistics
-       */
-      ISPF_STATS *statsp = (ISPF_STATS *)ioc->stow_list.user_data;
-
-      zwto_debug("@TEST user data: %02x%02x%02x%02x%02x%02x%02x%02x", statsp->userid[0], statsp->userid[1], statsp->userid[2], statsp->userid[3], statsp->userid[4], statsp->userid[5], statsp->userid[6], statsp->userid[7]);
-      // zut_dump_storage_common("ISPFSTATS", statsp, sizeof(ISPF_STATS), 16, 0, zut_print_debug);
-
-      // update ISPF statistics userid
+      //
+      // Set modified user
+      //
       char user[8] = {0};
       rc = zutm1gur(user);
       if (0 != rc)
@@ -534,45 +501,33 @@ static int update_ispf_statistics(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
         return RTNCD_FAILURE;
       }
       memcpy(statsp->userid, user, sizeof(user));
-
-// update ISPF statistics modification level
-// https://www.ibm.com/docs/en/zos/3.2.0?topic=environment-version-modification-level-numbers
-// level 0x99 is the maximum level
+//
+//    Increment modification level (level 0x99 is the max):
+//    https://www.ibm.com/docs/en/zos/3.2.0?topic=environment-version-modification-level-numbers
+//
 #define MAX_LEVEL 0x99
       if (statsp->level < MAX_LEVEL)
       {
         statsp->level++; // update ISPF statistics level
       }
 
-      // update ISPF statistics number of lines
+      //
+      // Set modified number of lines and current number of lines
+      //
       statsp->modified_number_of_lines = ioc->lines_written; // update ISPF statistics number of lines
       statsp->current_number_of_lines = ioc->lines_written;  // update ISPF statistics number of lines
 
-      /**
-       * @brief Obtain the current date and time
-       */
-      union
-      {
-        unsigned int timei;
-        struct
-        {
-          unsigned char HH;
-          unsigned char MM;
-          unsigned char SS;
-          unsigned char unused;
-        } times;
-      } timel = {0};
-
+      //
+      // Set modified time
+      //
+      TIME_UNION timel = {0};
       unsigned int datel = 0;
       time_local(&timel.timei, &datel);
 
-      // update ISPF statistics date & time
       memcpy(&statsp->modified_date_century, &datel, sizeof(datel));
-      statsp->modified_time_hours = timel.times.HH;   // update ISPF statistics time hours
-      statsp->modified_time_minutes = timel.times.MM; // update ISPF statistics time minutes
-      statsp->modified_time_seconds = timel.times.SS; // update ISPF statistics time seconds
-
-      zut_dump_storage_common("ISPFSTATS", statsp, sizeof(ISPF_STATS), 16, 0, zut_print_debug);
+      statsp->modified_time_hours = timel.times.HH;
+      statsp->modified_time_minutes = timel.times.MM;
+      statsp->modified_time_seconds = timel.times.SS;
     }
   }
 }
@@ -583,14 +538,10 @@ static int stow_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
   int rsn = 0;
   if (ioc->dcb.dcboflgs & dcbofopn)
   {
-    zwto_debug("@TEST stow ttr %02x%02x%02x  and c is %02x data set: %44.44s", ioc->stow_list.ttr[0], ioc->stow_list.ttr[1], ioc->stow_list.ttr[2], ioc->stow_list.c, ioc->jfcb.jfcbdsnm);
-
-    zut_dump_storage_common("STOW_LIST", &ioc->stow_list, sizeof(STOW_LIST), 16, 0, zut_print_debug);
 
     rc = stow(ioc, &rsn);
     if (0 != rc)
     {
-      zwto_debug("@TEST stow failed: rc: %d", rc);
       if (0 == diag->e_msg_len)
       {
         diag->service_rc = rc;
