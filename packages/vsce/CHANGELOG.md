@@ -8,6 +8,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 - Updated error handling to format request timeout errors. When a timeout error is received, the request is cancelled and the user receives a notification with context of where the error occurred. [#416](https://github.com/zowe/zowe-native-proto/issues/416)
 - When listing data sets with attributes, a comprehensive set is now retrieved that is similar to what ISPF displays. [#629](https://github.com/zowe/zowe-native-proto/issues/629)
+- Fixed profile validation hanging after deployment error. [#691](https://github.com/zowe/zowe-native-proto/pull/691)
 
 ## `0.2.0`
 
