@@ -307,11 +307,29 @@ int write_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, const char *PTR32 d
   return rc;
 }
 
-// TODO(Kelosky): handle when each fails... continue or return?
-int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
+static int bldl_member(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, BLDL_PL *PTR32 bldl_pl)
 {
   int rc = 0;
-  zwto_debug("@TEST close_output_bpam: %p", ioc);
+  int rsn = 0;
+  zwto_debug("@TEST bldl member: %44.44s", ioc->jfcb.jfcbdsnm);
+  bldl_pl->ff = 1;                                                            // only one member in the list
+  bldl_pl->ll = sizeof(bldl_pl->list);                                        // length of each entry
+  memcpy(bldl_pl->list.name, ioc->jfcb.jfcbelnm, sizeof(ioc->jfcb.jfcbelnm)); // copy member name
+  rc = bldl(ioc, bldl_pl, &rsn);
+
+  if (0 != rc)
+  {
+    diag->service_rc = rc;
+    strcpy(diag->service_name, "BLDL");
+    diag->e_msg_len = sprintf(diag->e_msg, "Failed to BLDL ddname: %8.8s data set: %44.44s rc was: %d", ioc->dcb.dcbddnam, ioc->jfcb.jfcbdsnm, rc);
+    diag->detail_rc = ZDS_RTNCD_BLDL_ERROR;
+  }
+  return rc;
+}
+
+static int update_ispf_statistics(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
+{
+  int rc = 0;
 
   if (ioc->dcb.dcboflgs & dcbofopn)
   {
@@ -320,22 +338,14 @@ int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
     //
     // BLDL for the data set that exists or was just created
     //
-    zwto_debug("@TEST BLDL data set: %44.44s", ioc->jfcb.jfcbdsnm);
     BLDL_PL bldl_pl = {0};
-
-    bldl_pl.ff = 1;                                                            // only one member in the list
-    bldl_pl.ll = sizeof(bldl_pl.list);                                         // length of each entry
-    memcpy(bldl_pl.list.name, ioc->jfcb.jfcbelnm, sizeof(ioc->jfcb.jfcbelnm)); // copy member name
-    rc = bldl(ioc, &bldl_pl, &rsn);
-
+    rc = bldl_member(diag, ioc, &bldl_pl);
     if (0 != rc)
     {
-      diag->service_rc = rc;
-      strcpy(diag->service_name, "BLDL");
-      diag->e_msg_len = sprintf(diag->e_msg, "Failed to BLDL ddname: %8.8s data set: %44.44s rc was: %d", ioc->dcb.dcbddnam, ioc->jfcb.jfcbdsnm, rc);
-      diag->detail_rc = ZDS_RTNCD_BLDL_ERROR;
+      return rc;
     }
 
+    //
     // Copy or create ISPF statistics
     //
     if ((bldl_pl.list.c & LEN_MASK) == 0)
@@ -452,10 +462,16 @@ int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
       statsp->modified_time_minutes = timel.times.MM; // update ISPF statistics time minutes
       statsp->modified_time_seconds = timel.times.SS; // update ISPF statistics time seconds
     }
+  }
+}
 
-    //
-    // STOW the ISPF statistics
-    //
+static int stow_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
+{
+  int rc = 0;
+  int rsn = 0;
+  if (ioc->dcb.dcboflgs & dcbofopn)
+  {
+    zwto_debug("@TEST stow data set: %44.44s", ioc->jfcb.jfcbdsnm);
     rc = stow(ioc, &rsn);
     if (0 != rc)
     {
@@ -464,10 +480,15 @@ int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
       diag->e_msg_len = sprintf(diag->e_msg, "Failed to STOW ISPF statistics: %8.8s data set: %44.44s rsn was: %d", ioc->dcb.dcbddnam, ioc->jfcb.jfcbdsnm, rsn);
       diag->detail_rc = ZDS_RTNCD_STOW_ERROR;
     }
+  }
+  return rc;
+}
 
-    //
-    // Close the data set
-    //
+static int close_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
+{
+  int rc = 0;
+  if (ioc->dcb.dcboflgs & dcbofopn)
+  {
     zwto_debug("@TEST closing data set: %44.44s", ioc->jfcb.jfcbdsnm);
     rc = close_dcb(&ioc->dcb);
     if (0 != rc)
@@ -478,14 +499,35 @@ int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
       diag->detail_rc = ZDS_RTNCD_CLOSE_ERROR;
     }
   }
+  return rc;
+}
 
-  if (ioc->buffer)
+static int deq_reserve_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
+{
+  int rc = 0;
+  if (ioc->reserve)
   {
-    zwto_debug("@TEST releasing buffer for data set: %44.44s", ioc->jfcb.jfcbdsnm);
-    storage_release(ioc->buffer_size, ioc->buffer);
-    ioc->buffer = NULL;
-    ioc->buffer_size = 0;
+    zwto_debug("@TEST DEQ RESERVE data set: %44.44s", ioc->jfcb.jfcbdsnm);
+    QNAME qname_reserve = {0};
+    RNAME rname_reserve = {0};
+    strcpy(qname_reserve.value, "SPFEDIT");
+    rname_reserve.rlen = sprintf(rname_reserve.value, "%.*s", sizeof(ioc->jfcb.jfcbdsnm), ioc->jfcb.jfcbdsnm);
+    rc = deq_reserve(&qname_reserve, &rname_reserve, (UCB * PTR32) ioc->ucb);
+    if (0 != rc)
+    {
+      diag->service_rc = rc;
+      strcpy(diag->service_name, "DEQ RESERVE");
+      diag->e_msg_len = sprintf(diag->e_msg, "Failed to DEQ RESERVE ddname: %8.8s data set: %44.44s rc was: %d", ioc->dcb.dcbddnam, ioc->jfcb.jfcbdsnm, rc);
+      diag->detail_rc = ZDS_RTNCD_DEQ_RESERVE_ERROR;
+    }
+    return 0;
   }
+  return rc;
+}
+
+static int deq_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
+{
+  int rc = 0;
 
   if (ioc->enq)
   {
@@ -503,23 +545,57 @@ int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
       diag->detail_rc = ZDS_RTNCD_DEQ_ERROR;
     }
   }
+  return rc;
+}
 
-  if (ioc->reserve)
+// TODO(Kelosky): handle when each fails... continue or return?
+int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
+{
+  int rc = 0;
+  zwto_debug("@TEST close_output_bpam: %p", ioc);
+
+  rc = update_ispf_statistics(diag, ioc);
+  if (0 != rc)
   {
-    zwto_debug("@TEST DEQ RESERVE data set: %44.44s", ioc->jfcb.jfcbdsnm);
-    QNAME qname_reserve = {0};
-    RNAME rname_reserve = {0};
-    strcpy(qname_reserve.value, "SPFEDIT");
-    rname_reserve.rlen = sprintf(rname_reserve.value, "%.*s", sizeof(ioc->jfcb.jfcbdsnm), ioc->jfcb.jfcbdsnm);
-    rc = deq_reserve(&qname_reserve, &rname_reserve, (UCB * PTR32) ioc->ucb);
-    if (0 != rc)
-    {
-      diag->service_rc = rc;
-      strcpy(diag->service_name, "DEQ RESERVE");
-      diag->e_msg_len = sprintf(diag->e_msg, "Failed to DEQ RESERVE ddname: %8.8s data set: %44.44s rc was: %d", ioc->dcb.dcbddnam, ioc->jfcb.jfcbdsnm, rc);
-      diag->detail_rc = ZDS_RTNCD_DEQ_RESERVE_ERROR;
-    }
-    return 0;
+    return rc;
+  }
+
+  //
+  // STOW the ISPF statistics
+  //
+  rc = stow_data_set(diag, ioc);
+  if (0 != rc)
+  {
+    return rc;
+  }
+
+  //
+  // Close the data set
+  //
+  rc = close_data_set(diag, ioc);
+  if (0 != rc)
+  {
+    return rc;
+  }
+
+  if (ioc->buffer)
+  {
+    zwto_debug("@TEST releasing buffer for data set: %44.44s", ioc->jfcb.jfcbdsnm);
+    storage_release(ioc->buffer_size, ioc->buffer);
+    ioc->buffer = NULL;
+    ioc->buffer_size = 0;
+  }
+
+  rc = deq_reserve_data_set(diag, ioc);
+  if (0 != rc)
+  {
+    return rc;
+  }
+
+  rc = deq_data_set(diag, ioc);
+  if (0 != rc)
+  {
+    return rc;
   }
 
   return rc;
