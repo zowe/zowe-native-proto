@@ -97,7 +97,7 @@ export class SshCommonApi implements MainframeInteraction.ICommon {
                         }
                     }
                 } else {
-                    await SshErrorHandler.getInstance().handleError(
+                    void SshErrorHandler.getInstance().handleError(
                         err as Error,
                         ZoweExplorerApiType.All,
                         "SSH connection status check failed",
