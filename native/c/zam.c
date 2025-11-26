@@ -13,6 +13,7 @@
 #include "dcbd.h"
 // #include "zam24.h"
 #include "zdstype.h"
+#include "ztype.h"
 #include "zwto.h"
 #include "zenq.h"
 #include "ihapsa.h"
@@ -216,6 +217,8 @@ int open_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *P
   *ioc = new_ioc;
   memcpy(&new_ioc->dcb, &open_write_model, sizeof(IHADCB));
   memcpy(new_ioc->dcb.dcbddnam, ddname, sizeof(new_ioc->dcb.dcbddnam));
+  memcpy(new_ioc->ddname, ddname, sizeof(new_ioc->ddname));
+  zwto_debug("@TEST get io ctrl for ddname: %s", new_ioc->dcb.dcbddnam);
 
   //
   // Read the JFCB for the data set
@@ -371,13 +374,15 @@ static int bldl_member(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, BLDL_PL *PTR32 bld
   bldl_pl->ff = 1;                                                            // only one member in the list
   bldl_pl->ll = sizeof(bldl_pl->list);                                        // length of each entry
   memcpy(bldl_pl->list.name, ioc->jfcb.jfcbelnm, sizeof(ioc->jfcb.jfcbelnm)); // copy member name
+
+  zwto_debug("@TEST bldl member: %8.8s", ioc->ddname);
   rc = bldl(ioc, bldl_pl, &rsn);
 
   if (0 != rc)
   {
     diag->service_rc = rc;
     strcpy(diag->service_name, "BLDL");
-    diag->e_msg_len = sprintf(diag->e_msg, "Failed to BLDL ddname: %8.8s data set: %44.44s rc was: %d", ioc->dcb.dcbddnam, ioc->jfcb.jfcbdsnm, rc);
+    diag->e_msg_len = sprintf(diag->e_msg, "Failed to BLDL ddname: %8.8s data set: %44.44s rc was: %d", ioc->ddname, ioc->jfcb.jfcbdsnm, rc);
     diag->detail_rc = ZDS_RTNCD_BLDL_ERROR;
   }
   return rc;
@@ -395,8 +400,9 @@ static int update_ispf_statistics(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
     // BLDL for the data set that exists or was just created
     //
     BLDL_PL bldl_pl = {0};
+#define BLDL_WARNING 4
     rc = bldl_member(diag, ioc, &bldl_pl);
-    if (0 != rc)
+    if (0 != rc && rc != BLDL_WARNING)
     {
       return rc;
     }
@@ -404,7 +410,7 @@ static int update_ispf_statistics(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
     //
     // Copy or create ISPF statistics
     //
-    if ((bldl_pl.list.c & LEN_MASK) == 0)
+    if ((bldl_pl.list.c & LEN_MASK) == 0 || rc == BLDL_WARNING)
     {
       zwto_debug("@TEST no ISPF statistics are provided (0x%02x)", bldl_pl.list.c);
       memcpy(ioc->stow_list.name, bldl_pl.list.name, sizeof(bldl_pl.list.name));
@@ -534,7 +540,7 @@ static int stow_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
     {
       diag->service_rc = rc;
       strcpy(diag->service_name, "STOW");
-      diag->e_msg_len = sprintf(diag->e_msg, "Failed to STOW ISPF statistics: %8.8s data set: %44.44s rsn was: %d", ioc->dcb.dcbddnam, ioc->jfcb.jfcbdsnm, rsn);
+      diag->e_msg_len = sprintf(diag->e_msg, "Failed to STOW ISPF statistics: %8.8s data set: %44.44s rsn was: %d", ioc->ddname, ioc->jfcb.jfcbdsnm, rsn);
       diag->detail_rc = ZDS_RTNCD_STOW_ERROR;
     }
   }
@@ -552,7 +558,7 @@ static int close_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
     {
       diag->service_rc = rc;
       strcpy(diag->service_name, "CLOSE");
-      diag->e_msg_len = sprintf(diag->e_msg, "Failed to close ddname: %8.8s data set: %44.44s rc was: %d", ioc->dcb.dcbddnam, ioc->jfcb.jfcbdsnm, rc);
+      diag->e_msg_len = sprintf(diag->e_msg, "Failed to close ddname: %8.8s data set: %44.44s rc was: %d", ioc->ddname, ioc->jfcb.jfcbdsnm, rc);
       diag->detail_rc = ZDS_RTNCD_CLOSE_ERROR;
     }
   }
@@ -574,7 +580,7 @@ static int deq_reserve_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
     {
       diag->service_rc = rc;
       strcpy(diag->service_name, "DEQ RESERVE");
-      diag->e_msg_len = sprintf(diag->e_msg, "Failed to DEQ RESERVE ddname: %8.8s data set: %44.44s rc was: %d", ioc->dcb.dcbddnam, ioc->jfcb.jfcbdsnm, rc);
+      diag->e_msg_len = sprintf(diag->e_msg, "Failed to DEQ RESERVE ddname: %8.8s data set: %44.44s rc was: %d", ioc->ddname, ioc->jfcb.jfcbdsnm, rc);
       diag->detail_rc = ZDS_RTNCD_DEQ_RESERVE_ERROR;
     }
     return 0;
@@ -598,7 +604,7 @@ static int deq_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
     {
       diag->service_rc = rc;
       strcpy(diag->service_name, "DEQ");
-      diag->e_msg_len = sprintf(diag->e_msg, "Failed to DEQ ddname: %8.8s data set: %44.44s rc was: %d", ioc->dcb.dcbddnam, ioc->jfcb.jfcbdsnm, rc);
+      diag->e_msg_len = sprintf(diag->e_msg, "Failed to DEQ ddname: %8.8s data set: %44.44s rc was: %d", ioc->ddname, ioc->jfcb.jfcbdsnm, rc);
       diag->detail_rc = ZDS_RTNCD_DEQ_ERROR;
     }
   }

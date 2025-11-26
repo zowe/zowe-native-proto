@@ -181,6 +181,7 @@ typedef struct
   int lines_written;
   char *PTR32 free_location;
   int bytes_in_buffer;
+  char ddname[8];
 } IO_CTRL;
 
 #endif

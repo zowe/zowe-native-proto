@@ -321,16 +321,14 @@ int zds_open_output_bpam(ZDS *zds, std::string dsname, IO_CTRL **ioc)
   }
 
   zds->dynalloc = 1;
-  cout << "DDNAME: " << ddname << endl;
+  cout << "@TEST DDNAME: " << ddname << endl;
   zut_uppercase_pad_truncate(zds->ddname, ddname.c_str(), sizeof(zds->ddname));
 
-  cout << "ioc before: " << *ioc << endl;
   rc = ZDSOBPAM(zds, ioc, zds->ddname);
   if (0 != rc)
   {
     return rc;
   }
-  cout << "ioc after: " << *ioc << endl;
   return RTNCD_SUCCESS;
 }
 
@@ -338,7 +336,7 @@ int zds_write_output_bpam(ZDS *zds, IO_CTRL *ioc, string &data)
 {
   int rc = 0;
   int length = data.length();
-  cout << "length: " << length << endl;
+  cout << "@TEST length: " << length << endl;
   rc = ZDSWBPAM(zds, ioc, data.c_str(), &length);
   if (0 != rc)
   {
@@ -355,19 +353,24 @@ int zds_close_output_bpam(ZDS *zds, IO_CTRL *ioc)
   string resp = "";
   if (ioc == NULL)
   {
+    cout << "@TEST IO_CTRL is NULL" << endl;
     zds->diag.detail_rc = RTNCD_WARNING;
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "IO_CTRL is NULL");
     rc = RTNCD_WARNING;
   }
   else
   {
+    cout << "@TEST calling ZDSCBPAM" << endl;
     rc = ZDSCBPAM(zds, ioc);
   }
 
   if (0 == zds->dynalloc)
   {
-    zds->diag.detail_rc = RTNCD_WARNING;
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Data set was not dynamically allocated");
+    if (0 == zds->diag.e_msg_len) // only set error if no error message was already set
+    {
+      zds->diag.detail_rc = RTNCD_WARNING;
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Data set was not dynamically allocated");
+    }
   }
   else
   {
@@ -375,14 +378,17 @@ int zds_close_output_bpam(ZDS *zds, IO_CTRL *ioc)
     int rc = zut_bpxwdyn(free_cmd, &code, resp);
     if (0 != rc)
     {
-      zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
-      zds->diag.service_rc = code;
-      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to free with code '%08X' on data set '%s': %s", code, zds->ddname, resp.c_str());
-      rc = RTNCD_FAILURE;
+      if (0 == zds->diag.e_msg_len) // only set error if no error message was already set
+      {
+        zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
+        zds->diag.service_rc = code;
+        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to free with code '%08X' on data set '%s': %s", code, zds->ddname, resp.c_str());
+        rc = RTNCD_FAILURE;
+      }
     }
   }
 
-  cout << "ddname: " << string(zds->ddname, sizeof(zds->ddname)) << endl;
+  cout << "@TEST ddname: " << string(zds->ddname, sizeof(zds->ddname)) << endl;
   // cout << "IO_CTRL->dcb: " << ioc->dcb << endl;
   // cout << "IO_CTRL->dcb->dcbddnam: " << ioc->dcb.dcbddnam << endl;
 
