@@ -4,7 +4,7 @@ All notable changes to the native code for "zowe-native-proto" are documented in
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## Recent Changes
+## `0.2.1`
 
 - `c`: Disallow `zowex compress ds` to prevent lurking abend.
 - `c`: Implemented system tests for the `zowex uss` command group. [#626](https://github.com/zowe/zowe-native-proto/pull/626)

@@ -4,7 +4,7 @@ All notable changes to the "zowe-native-proto-vsce" extension will be documented
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## Recent Changes
+## `0.2.1`
 
 - Updated error handling to format request timeout errors. When a timeout error is received, the request is cancelled and the user receives a notification with context of where the error occurred. [#416](https://github.com/zowe/zowe-native-proto/issues/416)
 - When listing data sets with attributes, a comprehensive set is now retrieved that is similar to what ISPF displays. [#629](https://github.com/zowe/zowe-native-proto/issues/629)
