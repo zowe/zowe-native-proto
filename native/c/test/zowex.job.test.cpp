@@ -343,5 +343,157 @@ void zowex_job_tests()
                              }
                            });
                       });
+
+             describe("commands",
+                      [&]() -> void
+                      {
+                        it("should hold and release job output",
+                           [&]()
+                           {
+                             // Submit and wait for output
+                             string jcl = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M\n//RUN EXEC PGM=IEFBR14";
+                             string command = "printf \"" + jcl + "\" | " + zowex_command + " job submit-jcl --wait output --only-jobid";
+                             string stdout_output, stderr_output;
+                             execute_command(command, stdout_output, stderr_output);
+                             string jobid = TrimChars(stdout_output);
+                             _jobs.push_back(jobid);
+
+                             // Hold
+                             int rc = execute_command_with_output(zowex_command + " job hold " + jobid, stdout_output);
+                             ExpectWithContext(rc, stdout_output).ToBe(0);
+                             Expect(stdout_output).ToContain("held");
+
+                             // Release
+                             rc = execute_command_with_output(zowex_command + " job release " + jobid, stdout_output);
+                             ExpectWithContext(rc, stdout_output).ToBe(0);
+                             Expect(stdout_output).ToContain("released");
+                           });
+
+                        it("should cancel a job",
+                           [&]()
+                           {
+                             // Submit with TYPRUN=HOLD so we can cancel it
+                             string jcl = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M,TYPRUN=HOLD\n//RUN EXEC PGM=IEFBR14";
+                             string command = "printf \"" + jcl + "\" | " + zowex_command + " job submit-jcl --only-jobid";
+                             string stdout_output, stderr_output;
+                             execute_command(command, stdout_output, stderr_output);
+                             string jobid = TrimChars(stdout_output);
+                             _jobs.push_back(jobid);
+
+                             // Cancel
+                             int rc = execute_command_with_output(zowex_command + " job cancel " + jobid, stdout_output);
+                             ExpectWithContext(rc, stdout_output).ToBe(0);
+                             Expect(stdout_output).ToContain("cancelled");
+                           });
+                      });
+
+             describe("correlator",
+                      [&]() -> void
+                      {
+                        string _jobid;
+                        string _correlator;
+
+                        beforeEach([&]()
+                                   {
+                             // Submit a job
+                             string jcl = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M\n//RUN EXEC PGM=IEFBR14";
+                             string command = "printf \"" + jcl + "\" | " + zowex_command + " job submit-jcl --wait output --only-jobid";
+                             string stdout_output, stderr_output;
+                             execute_command(command, stdout_output, stderr_output);
+                             _jobid = TrimChars(stdout_output);
+                             _jobs.push_back(_jobid);
+
+                             // Get correlator
+                             string response;
+                             execute_command_with_output(zowex_command + " job view-status " + _jobid + " --rfc", response);
+                             // Parse CSV to get correlator (5th column, index 4)
+                             vector<string> lines = parse_rfc_response(response, "\n");
+                             if (lines.size() > 0) {
+                                 vector<string> parts = parse_rfc_response(lines[0], ",");
+                                 if (parts.size() >= 5) {
+                                     _correlator = parts[4];
+                                 }
+                             }
+                             if (_correlator.empty()) {
+                                 TestLog("Could not get correlator for job " + _jobid);
+                             } });
+
+                        it("should view status by correlator",
+                           [&]()
+                           {
+                             if (_correlator.empty())
+                               return;
+                             string response;
+                             int rc = execute_command_with_output(zowex_command + " job view-status " + _correlator, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain(_jobid);
+                           });
+
+                        it("should view JCL by correlator",
+                           [&]()
+                           {
+                             if (_correlator.empty())
+                               return;
+                             string response;
+                             int rc = execute_command_with_output(zowex_command + " job view-jcl " + _correlator, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("IEFBR14");
+                           });
+
+                        it("should list files by correlator",
+                           [&]()
+                           {
+                             if (_correlator.empty())
+                               return;
+                             string response;
+                             int rc = execute_command_with_output(zowex_command + " job list-files " + _correlator, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("JESMSGLG");
+                           });
+
+                        it("should delete by correlator",
+                           [&]()
+                           {
+                             if (_correlator.empty())
+                               return;
+                             string response;
+                             int rc = execute_command_with_output(zowex_command + " job delete " + _correlator, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("deleted");
+
+                             // Remove from cleanup list
+                             for (auto it = _jobs.begin(); it != _jobs.end();)
+                             {
+                               if (*it == _jobid)
+                               {
+                                 it = _jobs.erase(it);
+                               }
+                               else
+                               {
+                                 ++it;
+                               }
+                             }
+                           });
+                      });
+
+             describe("input-mode",
+                      [&]() -> void
+                      {
+                        it("should view status of job in input mode",
+                           [&]()
+                           {
+                             string jcl = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M,TYPRUN=HOLD\n//RUN EXEC PGM=IEFBR14";
+                             string command = "printf \"" + jcl + "\" | " + zowex_command + " job submit-jcl --only-jobid";
+                             string stdout_output, stderr_output;
+                             execute_command(command, stdout_output, stderr_output);
+                             string jobid = TrimChars(stdout_output);
+                             _jobs.push_back(jobid);
+
+                             string response;
+                             int rc = execute_command_with_output(zowex_command + " job view-status " + jobid, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain(jobid);
+                           });
+                      });
            });
 }
