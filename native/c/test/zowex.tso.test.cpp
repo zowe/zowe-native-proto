@@ -27,26 +27,25 @@ void zowex_tso_tests()
              it("should display help", []() -> void
                 {
             string response;
-            string command = zowex_command + " tso issue command";
+            string command = zowex_command + " tso";
             int rc = execute_command_with_output(command, response);
 
             ExpectWithContext(rc, response).ToBe(0);
-            Expect(response).ToContain("issue");
-            Expect(response).ToContain("help"); });
+            Expect(response).ToContain("issue"); });
 
              it("should successfully issue a simple TSO command", []() -> void
                 {
             string response;
-            string command = zowex_command + " tso issue command status";
+            string command = zowex_command + " tso issue time";
             int rc = execute_command_with_output(command, response);
 
             ExpectWithContext(rc, response).ToBe(0);
-            Expect(response).ToContain("status"); });
+            Expect(response).ToContain("time"); });
 
              it("should fail when issuing a command with an invalid account", []() -> void
                 {
             string response;
-            string command = zowex_command + " tso issue command status --account ACCOUNT123";
+            string command = zowex_command + " tso issue time --account ACCOUNT123";
             int rc = execute_command_with_output(command, response);
 
             ExpectWithContext(rc, response).Not().ToBe(0);
@@ -61,7 +60,6 @@ void zowex_tso_tests()
             int rc = execute_command_with_output(command, response);
 
             ExpectWithContext(rc, response).Not().ToBe(0);
-            Expect(response).ToContain("Error");
-            Expect(response).ToContain("invalidCommand"); });
+            Expect(response).ToContain("Error running command"); });
            });
 }
