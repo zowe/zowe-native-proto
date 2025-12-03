@@ -19,7 +19,7 @@ const string zowex_command = "./../build-out/zoweax";
 
 void zoweax_console_tests()
 {
-  describe("console", [&]() -> void
+  describe("console issue command tests", [&]() -> void
            {
         it("should display help", []() -> void
         {

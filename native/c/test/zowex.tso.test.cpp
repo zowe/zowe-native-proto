@@ -18,7 +18,7 @@ using namespace ztst;
 const string zowex_command = "./../build-out/zowex";
 void zowex_tso_tests()
 {
-  describe("tso", [&]() -> void
+  describe("tso issue command tests", [&]() -> void
            {
         it("should display help", []() -> void
         {
