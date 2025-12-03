@@ -210,12 +210,15 @@ void zowex_job_tests()
                         string _jobid;
                         beforeEach([&]()
                                    {
-                             string jcl = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M\n//RUN EXEC PGM=IEFBR14";
-                             string command = "printf \"" + jcl + "\" | " + zowex_command + " job submit-jcl --only-jobid";
-                             string stdout_output, stderr_output;
-                             execute_command(command, stdout_output, stderr_output);
-                             _jobid = TrimChars(stdout_output);
-                             _jobs.push_back(_jobid); });
+                            // Submit and wait for output to ensure job completes
+                            string jcl = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M\n//RUN EXEC PGM=IEFBR14";
+                            string command = "printf \"" + jcl + "\" | " + zowex_command + " job submit-jcl --wait output --only-jobid";
+                            string stdout_output, stderr_output;
+                            int rc = execute_command(command, stdout_output, stderr_output);
+                            Expect(rc).ToBe(0);
+                            _jobid = TrimChars(stdout_output);
+                            Expect(_jobid).Not().ToBe("");
+                            _jobs.push_back(_jobid); });
 
                         it("should view job status",
                            [&]()
@@ -242,13 +245,15 @@ void zowex_job_tests()
                         string _jobid;
                         beforeEach([&]()
                                    {
-                             // Submit and wait for output to ensure spool files exist
-                             string jcl = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M\n//RUN EXEC PGM=IEFBR14";
-                             string command = "printf \"" + jcl + "\" | " + zowex_command + " job submit-jcl --wait output --only-jobid";
-                             string stdout_output, stderr_output;
-                             execute_command(command, stdout_output, stderr_output);
-                             _jobid = TrimChars(stdout_output);
-                             _jobs.push_back(_jobid); });
+                            // Submit and wait for output to ensure spool files exist
+                            string jcl = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M\n//RUN EXEC PGM=IEFBR14";
+                            string command = "printf \"" + jcl + "\" | " + zowex_command + " job submit-jcl --wait output --only-jobid";
+                            string stdout_output, stderr_output;
+                            int rc = execute_command(command, stdout_output, stderr_output);
+                            Expect(rc).ToBe(0);
+                            _jobid = TrimChars(stdout_output);
+                            Expect(_jobid).Not().ToBe("");
+                            _jobs.push_back(_jobid); });
 
                         it("should list job files",
                            [&]()
@@ -395,28 +400,30 @@ void zowex_job_tests()
 
                         beforeEach([&]()
                                    {
-                             // Submit a job
-                             string jcl = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M\n//RUN EXEC PGM=IEFBR14";
-                             string command = "printf \"" + jcl + "\" | " + zowex_command + " job submit-jcl --wait output --only-jobid";
-                             string stdout_output, stderr_output;
-                             execute_command(command, stdout_output, stderr_output);
-                             _jobid = TrimChars(stdout_output);
-                             _jobs.push_back(_jobid);
+                            // Submit a job
+                            string jcl = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M\n//RUN EXEC PGM=IEFBR14";
+                            string command = "printf \"" + jcl + "\" | " + zowex_command + " job submit-jcl --wait output --only-jobid";
+                            string stdout_output, stderr_output;
+                            int rc = execute_command(command, stdout_output, stderr_output);
+                            Expect(rc).ToBe(0);
+                            _jobid = TrimChars(stdout_output);
+                            Expect(_jobid).Not().ToBe("");
+                            _jobs.push_back(_jobid);
 
-                             // Get correlator
-                             string response;
-                             execute_command_with_output(zowex_command + " job view-status " + _jobid + " --rfc", response);
-                             // Parse CSV to get correlator (5th column, index 4)
-                             vector<string> lines = parse_rfc_response(response, "\n");
-                             if (lines.size() > 0) {
-                                 vector<string> parts = parse_rfc_response(lines[0], ",");
-                                 if (parts.size() >= 5) {
-                                     _correlator = parts[4];
-                                 }
-                             }
-                             if (_correlator.empty()) {
-                                 TestLog("Could not get correlator for job " + _jobid);
-                             } });
+                            // Get correlator
+                            string response;
+                            execute_command_with_output(zowex_command + " job view-status " + _jobid + " --rfc", response);
+                            // Parse CSV to get correlator (5th column, index 4)
+                            vector<string> lines = parse_rfc_response(response, "\n");
+                            if (lines.size() > 0) {
+                                vector<string> parts = parse_rfc_response(lines[0], ",");
+                                if (parts.size() >= 5) {
+                                    _correlator = parts[4];
+                                }
+                            }
+                            if (_correlator.empty()) {
+                                TestLog("Could not get correlator for job " + _jobid);
+                            } });
 
                         it("should view status by correlator",
                            [&]()
