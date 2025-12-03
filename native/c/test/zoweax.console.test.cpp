@@ -80,6 +80,7 @@ void zoweax_console_tests()
             int rc = execute_command_with_output(command, response);
 
             ExpectWithContext(rc, response).Not().ToBe(0);
+            Expect(response).ToContain("Error: could not activate console:");
 
         }); });
 }
