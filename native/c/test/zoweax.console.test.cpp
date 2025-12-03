@@ -9,8 +9,6 @@
  *
  */
 
-#include <stdlib.h>
-#include <string>
 #include "ztest.hpp"
 #include "zutils.hpp"
 
