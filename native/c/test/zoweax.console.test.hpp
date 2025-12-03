@@ -9,7 +9,7 @@
  *
  */
 
- #ifndef ZOWEX_CONSOLE_TEST_HPP
- #define ZOWEX_CONSOLE_TEST_HPP
- void zowex_console_tests();
- #endif
+#ifndef ZOWEX_CONSOLE_TEST_HPP
+#define ZOWEX_CONSOLE_TEST_HPP
+void zoweax_console_tests();
+#endif

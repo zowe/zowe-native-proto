@@ -11,5 +11,5 @@
 
 #ifndef ZOWEX_TSO_TEST_HPP
 #define ZOWEX_TSO_TEST_HPP
-void zowex_tso_tests()
+void zowex_tso_tests();
 #endif

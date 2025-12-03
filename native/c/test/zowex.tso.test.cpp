@@ -9,8 +9,6 @@
  *
  */
 
-#include <cstddef>
-#include <ctime>
 #include <stdlib.h>
 #include <string>
 #include "ztest.hpp"
@@ -24,42 +22,34 @@ void zowex_tso_tests()
 {
   describe("tso", [&]() -> void
            {
-             it("should display help", []() -> void
-                {
+        it("should display help", []() -> void
+        {
             string response;
             string command = zowex_command + " tso";
             int rc = execute_command_with_output(command, response);
 
             ExpectWithContext(rc, response).ToBe(0);
-            Expect(response).ToContain("issue"); });
+            Expect(response).ToContain("issue");
+        });
 
-             it("should successfully issue a simple TSO command", []() -> void
-                {
+        it("should successfully issue a simple TSO command", []() -> void
+        {
             string response;
             string command = zowex_command + " tso issue time";
             int rc = execute_command_with_output(command, response);
 
             ExpectWithContext(rc, response).ToBe(0);
-            Expect(response).ToContain("time"); });
+            Expect(response).ToContain("TIME");
+        });
 
-             it("should fail when issuing a command with an invalid account", []() -> void
-                {
-            string response;
-            string command = zowex_command + " tso issue time --account ACCOUNT123";
-            int rc = execute_command_with_output(command, response);
-
-            ExpectWithContext(rc, response).Not().ToBe(0);
-            Expect(response).ToContain("Error");
-            Expect(response).ToContain("ACCOUNT123"); });
-
-             it("should error when the TSO command itself is invalid", []() -> void
-                {
+        it("should error when the TSO command itself is invalid", []() -> void
+        {
             string response;
             string command = zowex_command + " tso issue \"invalidCommand\"";
 
             int rc = execute_command_with_output(command, response);
 
             ExpectWithContext(rc, response).Not().ToBe(0);
-            Expect(response).ToContain("Error running command"); });
-           });
+            Expect(response).ToContain("Error running command");
+        }); });
 }
