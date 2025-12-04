@@ -22,6 +22,7 @@ on:
         required: true
 
 permissions:
+  checks: write
   pull-requests: write
 
 jobs:
@@ -67,7 +68,7 @@ jobs:
         uses: dorny/test-reporter@v2
         if: ${{ !cancelled() }}
         with:
-          name: Native Tests
+          name: Test results
           path: native/c/test/test-results.xml,native/zowed/test/test-results.xml
           reporter: jest-junit
 
