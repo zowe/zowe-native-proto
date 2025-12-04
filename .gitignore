@@ -1,5 +1,6 @@
 # Directories
 .cache
+.clangd
 artifacts
 bin
 coverage
@@ -24,4 +25,4 @@ native/python/app/keystore/*
 !native/python/app/keystore/*.sh
 native/python/bindings/test/fixtures/env.yml
 test.py
-.clangd
+test-results.xml

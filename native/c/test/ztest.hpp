@@ -1312,49 +1312,83 @@ inline void report_xml(const std::string &filename = "test-results.xml")
            << "\" time=\"" << std::fixed << std::setprecision(3)
            << total_time.count() / 1000000.0 << "\">\n";
 
-  // Process each test suite
+  // Build hierarchical paths for all suites
+  std::vector<std::string> suite_paths;
+  std::vector<int> suite_nesting_levels;
+
   for (const auto &suite : g.get_suites())
   {
-    int suite_tests = 0;
-    int suite_failures = 0;
-    std::chrono::microseconds suite_time(0);
-
-    // Count suite totals
-    for (const auto &test : suite.tests)
+    std::string full_path = suite.description;
+    for (int i = suite_paths.size() - 1; i >= 0; i--)
     {
-      suite_tests++;
-      if (!test.success)
-        suite_failures++;
-      suite_time += std::chrono::duration_cast<std::chrono::microseconds>(
-          test.end_time - test.start_time);
+      if (suite_nesting_levels[i] < suite.nesting_level)
+      {
+        full_path = suite_paths[i] + " > " + suite.description;
+        break;
+      }
+    }
+    suite_paths.push_back(full_path);
+    suite_nesting_levels.push_back(suite.nesting_level);
+  }
+
+  // Write test suites (one per top-level suite, containing all descendant tests)
+  for (size_t i = 0; i < g.get_suites().size(); i++)
+  {
+    if (g.get_suites()[i].nesting_level != 0)
+      continue;
+
+    // Collect all descendant tests with their paths
+    std::vector<std::pair<std::string, const TEST_CASE *>> all_tests;
+    for (size_t j = i; j < g.get_suites().size(); j++)
+    {
+      if (j > i && g.get_suites()[j].nesting_level == 0)
+        break;
+      for (const auto &test : g.get_suites()[j].tests)
+        all_tests.push_back(std::make_pair(suite_paths[j], &test));
     }
 
-    std::string suite_name = suite.description;
-    escape_xml(suite_name);
+    if (all_tests.empty())
+      continue;
+
+    // Calculate suite totals
+    int suite_failures = 0;
+    std::chrono::microseconds suite_time(0);
+    for (const auto &test_pair : all_tests)
+    {
+      if (!test_pair.second->success)
+        suite_failures++;
+      suite_time += std::chrono::duration_cast<std::chrono::microseconds>(
+          test_pair.second->end_time - test_pair.second->start_time);
+    }
 
     // Write suite header
+    std::string suite_name = g.get_suites()[i].description;
+    escape_xml(suite_name);
     xml_file << "  <testsuite name=\"" << suite_name
-             << "\" tests=\"" << suite_tests
+             << "\" tests=\"" << all_tests.size()
              << "\" failures=\"" << suite_failures
              << "\" time=\"" << std::fixed << std::setprecision(3)
              << suite_time.count() / 1000000.0 << "\">\n";
 
-    // Process each test case
-    for (const auto &test : suite.tests)
+    // Write test cases
+    for (const auto &test_pair : all_tests)
     {
-      std::string test_name = test.description;
-      std::string failure_message = test.fail_message;
+      std::string classname = test_pair.first;
+      std::string test_name = test_pair.second->description;
+      std::string failure_message = test_pair.second->fail_message;
+      escape_xml(classname);
       escape_xml(test_name);
       escape_xml(failure_message);
 
       auto test_time = std::chrono::duration_cast<std::chrono::microseconds>(
-          test.end_time - test.start_time);
+          test_pair.second->end_time - test_pair.second->start_time);
 
-      xml_file << "    <testcase name=\"" << test_name
+      xml_file << "    <testcase classname=\"" << classname
+               << "\" name=\"" << test_name
                << "\" time=\"" << std::fixed << std::setprecision(3)
                << test_time.count() / 1000000.0 << "\"";
 
-      if (!test.success)
+      if (!test_pair.second->success)
       {
         xml_file << ">\n";
         xml_file << "      <failure message=\"" << failure_message << "\"/>\n";
