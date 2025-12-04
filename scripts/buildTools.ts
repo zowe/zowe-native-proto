@@ -737,24 +737,18 @@ async function uploadFile(sftpcon: SFTPWrapper, from: string, to: string, conver
 async function download(sftpcon: SFTPWrapper, from: string, to: string, convertAscii = false) {
     return new Promise<void>((finish) => {
         console.log(`Downloading '${from}' to ${to}`);
+        const callback = (err: Error | null) => {
+            if (err) {
+                console.log("Get err");
+                console.log(from, to);
+                throw err;
+            }
+            finish();
+        };
         if (convertAscii) {
-            pipeline(sftpcon.createReadStream(from), new EbcdicToAsciiTransform(), fs.createWriteStream(to), (err) => {
-                if (err) {
-                    console.log("Get err");
-                    console.log(from, to);
-                    throw err;
-                }
-                finish();
-            });
+            pipeline(sftpcon.createReadStream(from), new EbcdicToAsciiTransform(), fs.createWriteStream(to), callback);
         } else {
-            sftpcon.fastGet(from, to, (err) => {
-                if (err) {
-                    console.log("Get err");
-                    console.log(from, to);
-                    throw err;
-                }
-                finish();
-            });
+            sftpcon.fastGet(from, to, callback);
         }
     });
 }
