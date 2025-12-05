@@ -52,7 +52,7 @@ void zoweax_console_tests()
             Expect(response).ToContain("Error: could not activate console:");
         });
 
-        it("should create the console when the console name does not exist", []() -> void
+        it("should successfully issue a command when the console does not already exist", []() -> void
         {
             string response;
             string command = zowex_command +
