@@ -38,7 +38,7 @@ void zoweax_console_tests()
             int rc = execute_command_with_output(command, response);
 
             ExpectWithContext(rc, response).ToBe(0);
-            ExpectWithContext(response.find("IEE136I LOCAL: ")).Not().ToBe(std::string::npos);
+            Expect(response.find("IEE136I LOCAL: ")).Not().ToBe(std::string::npos);
         });
 
         it("should error when the console name is invalid", []() -> void
@@ -60,6 +60,7 @@ void zoweax_console_tests()
             int rc = execute_command_with_output(command, response);
 
             ExpectWithContext(rc, response).ToBe(0);
+            Expect(response.find("IEE254I")).Not().ToBe(std::string::npos);
         });
 
         it("should issue without waiting when boolean is set to false", []() -> void
