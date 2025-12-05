@@ -131,6 +131,51 @@ void zowex_job_tests()
                              rc = execute_command_with_output(zowex_command + " job list --max-entries 1 --warn", response);
                              ExpectWithContext(rc, response).ToBeGreaterThanOrEqualTo(0);
                            });
+
+                        it("should handle list with non-matching prefix",
+                           []()
+                           {
+                             int rc = 0;
+                             string response;
+                             rc = execute_command_with_output(zowex_command + " job list --prefix NONEXIST99", response);
+                             ExpectWithContext(rc, response).ToBeGreaterThanOrEqualTo(0);
+                           });
+
+                        it("should handle list with non-matching owner",
+                           []()
+                           {
+                             int rc = 0;
+                             string response;
+                             rc = execute_command_with_output(zowex_command + " job list --owner NONEXIST", response);
+                             ExpectWithContext(rc, response).ToBeGreaterThanOrEqualTo(0);
+                           });
+
+                        it("should handle list with max-entries 0",
+                           []()
+                           {
+                             int rc = 0;
+                             string response;
+                             rc = execute_command_with_output(zowex_command + " job list --max-entries 0", response);
+                             ExpectWithContext(rc, response).ToBeGreaterThanOrEqualTo(0);
+                           });
+
+                        it("should handle list with very large max-entries",
+                           []()
+                           {
+                             int rc = 0;
+                             string response;
+                             rc = execute_command_with_output(zowex_command + " job list --max-entries 10000", response);
+                             ExpectWithContext(rc, response).ToBeGreaterThanOrEqualTo(0);
+                           });
+
+                        it("should handle list with wildcard owner pattern",
+                           []()
+                           {
+                             int rc = 0;
+                             string response;
+                             rc = execute_command_with_output(zowex_command + " job list --owner *", response);
+                             ExpectWithContext(rc, response).ToBeGreaterThanOrEqualTo(0);
+                           });
                       });
 
              describe("list-proclib",
@@ -143,6 +188,148 @@ void zowex_job_tests()
                              string response;
                              rc = execute_command_with_output(zowex_command + " job list-proclib", response);
                              ExpectWithContext(rc, response).ToBeGreaterThanOrEqualTo(0);
+                           });
+                      });
+
+             describe("aliases",
+                      [&]() -> void
+                      {
+                        it("should use 'ls' alias for list command",
+                           []()
+                           {
+                             int rc = 0;
+                             string response;
+                             rc = execute_command_with_output(zowex_command + " job ls --max-entries 5", response);
+                             ExpectWithContext(rc, response).ToBeGreaterThanOrEqualTo(0);
+                           });
+
+                        it("should use 'lf' alias for list-files command",
+                           [&]()
+                           {
+                             string jcl = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M\n//RUN EXEC PGM=IEFBR14";
+                             string command = "printf \"" + jcl + "\" | " + zowex_command + " job submit-jcl --wait output --only-jobid";
+                             string stdout_output, stderr_output;
+                             int rc = execute_command(command, stdout_output, stderr_output);
+                             string jobid = TrimChars(stdout_output);
+                             _jobs.push_back(jobid);
+
+                             string response;
+                             rc = execute_command_with_output(zowex_command + " job lf " + jobid, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("JESMSGLG");
+                           });
+
+                        it("should use 'lp' alias for list-proclib command",
+                           []()
+                           {
+                             int rc = 0;
+                             string response;
+                             rc = execute_command_with_output(zowex_command + " job lp", response);
+                             ExpectWithContext(rc, response).ToBeGreaterThanOrEqualTo(0);
+                           });
+
+                        it("should use 'vs' alias for view-status command",
+                           [&]()
+                           {
+                             string jcl = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M\n//RUN EXEC PGM=IEFBR14";
+                             string command = "printf \"" + jcl + "\" | " + zowex_command + " job submit-jcl --wait output --only-jobid";
+                             string stdout_output, stderr_output;
+                             int rc = execute_command(command, stdout_output, stderr_output);
+                             string jobid = TrimChars(stdout_output);
+                             _jobs.push_back(jobid);
+
+                             string response;
+                             rc = execute_command_with_output(zowex_command + " job vs " + jobid, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain(jobid);
+                           });
+
+                        it("should use 'vj' alias for view-jcl command",
+                           [&]()
+                           {
+                             string jcl = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M\n//RUN EXEC PGM=IEFBR14";
+                             string command = "printf \"" + jcl + "\" | " + zowex_command + " job submit-jcl --wait output --only-jobid";
+                             string stdout_output, stderr_output;
+                             int rc = execute_command(command, stdout_output, stderr_output);
+                             string jobid = TrimChars(stdout_output);
+                             _jobs.push_back(jobid);
+
+                             string response;
+                             rc = execute_command_with_output(zowex_command + " job vj " + jobid, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("IEFBR14");
+                           });
+
+                        it("should use 'subj' alias for submit-jcl command",
+                           [&]()
+                           {
+                             string jcl = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M\n//RUN EXEC PGM=IEFBR14";
+                             string command = "printf \"" + jcl + "\" | " + zowex_command + " job subj --only-jobid";
+                             string stdout_output, stderr_output;
+                             int rc = execute_command(command, stdout_output, stderr_output);
+                             string jobid = TrimChars(stdout_output);
+                             ExpectWithContext(rc, stderr_output).ToBe(0);
+                             Expect(jobid).Not().ToBe("");
+                             _jobs.push_back(jobid);
+                           });
+
+                        it("should use 'del' alias for delete command",
+                           [&]()
+                           {
+                             string jcl = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M\n//RUN EXEC PGM=IEFBR14";
+                             string command = "printf \"" + jcl + "\" | " + zowex_command + " job submit-jcl --only-jobid";
+                             string stdout_output, stderr_output;
+                             int rc = execute_command(command, stdout_output, stderr_output);
+                             string jobid = TrimChars(stdout_output);
+
+                             rc = execute_command_with_output(zowex_command + " job del " + jobid, stdout_output);
+                             ExpectWithContext(rc, stdout_output).ToBe(0);
+                             Expect(stdout_output).ToContain("deleted");
+                           });
+
+                        it("should use 'cnl' alias for cancel command",
+                           [&]()
+                           {
+                             string jcl = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M,TYPRUN=HOLD\n//RUN EXEC PGM=IEFBR14";
+                             string command = "printf \"" + jcl + "\" | " + zowex_command + " job submit-jcl --only-jobid";
+                             string stdout_output, stderr_output;
+                             int rc = execute_command(command, stdout_output, stderr_output);
+                             string jobid = TrimChars(stdout_output);
+                             _jobs.push_back(jobid);
+
+                             rc = execute_command_with_output(zowex_command + " job cnl " + jobid, stdout_output);
+                             ExpectWithContext(rc, stdout_output).ToBe(0);
+                             Expect(stdout_output).ToContain("cancelled");
+                           });
+
+                        it("should use 'hld' alias for hold command",
+                           [&]()
+                           {
+                             string jcl = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M\n//RUN EXEC PGM=IEFBR14";
+                             string command = "printf \"" + jcl + "\" | " + zowex_command + " job submit-jcl --wait output --only-jobid";
+                             string stdout_output, stderr_output;
+                             int rc = execute_command(command, stdout_output, stderr_output);
+                             string jobid = TrimChars(stdout_output);
+                             _jobs.push_back(jobid);
+
+                             rc = execute_command_with_output(zowex_command + " job hld " + jobid, stdout_output);
+                             ExpectWithContext(rc, stdout_output).ToBe(0);
+                             Expect(stdout_output).ToContain("held");
+                           });
+
+                        it("should use 'rel' alias for release command",
+                           [&]()
+                           {
+                             string jcl = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M,TYPRUN=HOLD\n//RUN EXEC PGM=IEFBR14";
+                             string command = "printf \"" + jcl + "\" | " + zowex_command + " job submit-jcl --only-jobid";
+                             string stdout_output, stderr_output;
+                             int rc = execute_command(command, stdout_output, stderr_output);
+                             string jobid = TrimChars(stdout_output);
+                             _jobs.push_back(jobid);
+
+                             rc = execute_command_with_output(zowex_command + " job rel " + jobid, stdout_output);
+                             ExpectWithContext(rc, stdout_output).ToBe(0);
+                             Expect(stdout_output).ToContain("released");
                            });
                       });
 
@@ -336,6 +523,77 @@ void zowex_job_tests()
                            });
                       });
 
+             describe("submit-edge-cases",
+                      [&]() -> void
+                      {
+                        const string jcl_base = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M\n//RUN EXEC PGM=IEFBR14";
+
+                        it("should handle submit from non-existent dataset",
+                           [&]()
+                           {
+                             string ds = "NONEXIST.DS.NAME";
+                             string response;
+                             int rc = execute_command_with_output(zowex_command + " job submit " + ds, response);
+                             Expect(rc).Not().ToBe(0);
+                           });
+
+                        it("should handle submit from non-existent USS file",
+                           [&]()
+                           {
+                             string filename = "nonexistent_file_12345.jcl";
+                             string response;
+                             int rc = execute_command_with_output(zowex_command + " job submit-uss " + filename, response);
+                             Expect(rc).Not().ToBe(0);
+                           });
+
+                        it("should handle empty JCL submission",
+                           [&]()
+                           {
+                             string command = "echo \"\" | " + zowex_command + " job submit-jcl";
+                             string response;
+                             int rc = execute_command_with_output(command, response);
+                             Expect(rc).Not().ToBe(0);
+                           });
+
+                        it("should handle malformed JCL submission",
+                           [&]()
+                           {
+                             string bad_jcl = "THIS IS NOT VALID JCL";
+                             string command = "printf \"" + bad_jcl + "\" | " + zowex_command + " job submit-jcl";
+                             string response;
+                             int rc = execute_command_with_output(command, response);
+                             Expect(rc).Not().ToBe(0);
+                           });
+
+                        it("should handle submit with encoding option",
+                           [&]()
+                           {
+                             string command = "printf \"" + jcl_base + "\" | " + zowex_command + " job submit-jcl --encoding IBM-1047 --only-jobid";
+                             string stdout_output, stderr_output;
+                             int rc = execute_command(command, stdout_output, stderr_output);
+                             string jobid = TrimChars(stdout_output);
+                             if (rc == 0)
+                             {
+                               Expect(jobid).Not().ToBe("");
+                               _jobs.push_back(jobid);
+                             }
+                           });
+
+                        it("should handle submit with local-encoding option",
+                           [&]()
+                           {
+                             string command = "printf \"" + jcl_base + "\" | " + zowex_command + " job submit-jcl --local-encoding ISO8859-1 --only-jobid";
+                             string stdout_output, stderr_output;
+                             int rc = execute_command(command, stdout_output, stderr_output);
+                             string jobid = TrimChars(stdout_output);
+                             if (rc == 0)
+                             {
+                               Expect(jobid).Not().ToBe("");
+                               _jobs.push_back(jobid);
+                             }
+                           });
+                      });
+
              describe("view",
                       [&]() -> void
                       {
@@ -368,6 +626,42 @@ void zowex_job_tests()
                              int rc = execute_command_with_output(zowex_command + " job view-jcl " + _jobid, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("IEFBR14");
+                           });
+
+                        it("should handle view-status of non-existent job",
+                           [&]()
+                           {
+                             string fake_jobid = "JOB99999";
+                             string response;
+                             int rc = execute_command_with_output(zowex_command + " job view-status " + fake_jobid, response);
+                             Expect(rc).Not().ToBe(0);
+                           });
+
+                        it("should handle view-jcl of non-existent job",
+                           [&]()
+                           {
+                             string fake_jobid = "JOB99999";
+                             string response;
+                             int rc = execute_command_with_output(zowex_command + " job view-jcl " + fake_jobid, response);
+                             Expect(rc).Not().ToBe(0);
+                           });
+
+                        it("should handle view-status with invalid jobid format",
+                           [&]()
+                           {
+                             string invalid_jobid = "INVALID";
+                             string response;
+                             int rc = execute_command_with_output(zowex_command + " job view-status " + invalid_jobid, response);
+                             Expect(rc).Not().ToBe(0);
+                           });
+
+                        it("should handle view-status with invalid correlator",
+                           [&]()
+                           {
+                             string invalid_correlator = "INVALID_CORRELATOR";
+                             string response;
+                             int rc = execute_command_with_output(zowex_command + " job view-status " + invalid_correlator, response);
+                             Expect(rc).Not().ToBe(0);
                            });
                       });
 
@@ -550,6 +844,43 @@ void zowex_job_tests()
                              rc = execute_command_with_output(zowex_command + " job view-file " + _jobid + " " + file_id + " --response-format-bytes", response);
                              ExpectWithContext(rc, response).ToBe(0);
                            });
+
+                        it("should handle view-file with invalid file ID",
+                           [&]()
+                           {
+                             string invalid_file_id = "999";
+                             string response;
+                             int rc = execute_command_with_output(zowex_command + " job view-file " + _jobid + " " + invalid_file_id, response);
+                             Expect(rc).Not().ToBe(0);
+                           });
+
+                        it("should handle view-file with non-existent job",
+                           [&]()
+                           {
+                             string fake_jobid = "JOB99999";
+                             string file_id = "2";
+                             string response;
+                             int rc = execute_command_with_output(zowex_command + " job view-file " + fake_jobid + " " + file_id, response);
+                             Expect(rc).Not().ToBe(0);
+                           });
+
+                        it("should handle list-files with non-existent job",
+                           [&]()
+                           {
+                             string fake_jobid = "JOB99999";
+                             string response;
+                             int rc = execute_command_with_output(zowex_command + " job list-files " + fake_jobid, response);
+                             Expect(rc).Not().ToBe(0);
+                           });
+
+                        it("should handle list-files with invalid jobid format",
+                           [&]()
+                           {
+                             string invalid_jobid = "INVALID";
+                             string response;
+                             int rc = execute_command_with_output(zowex_command + " job list-files " + invalid_jobid, response);
+                             Expect(rc).Not().ToBe(0);
+                           });
                       });
 
              describe("lifecycle",
@@ -600,6 +931,58 @@ void zowex_job_tests()
                                  ++it;
                                }
                              }
+                           });
+
+                        it("should handle delete of non-existent job",
+                           [&]()
+                           {
+                             string fake_jobid = "JOB99999";
+                             string response;
+                             int rc = execute_command_with_output(zowex_command + " job delete " + fake_jobid, response);
+                             Expect(rc).Not().ToBe(0);
+                           });
+
+                        it("should handle cancel of non-existent job",
+                           [&]()
+                           {
+                             string fake_jobid = "JOB99999";
+                             string response;
+                             int rc = execute_command_with_output(zowex_command + " job cancel " + fake_jobid, response);
+                             Expect(rc).Not().ToBe(0);
+                           });
+
+                        it("should handle hold of non-existent job",
+                           [&]()
+                           {
+                             string fake_jobid = "JOB99999";
+                             string response;
+                             int rc = execute_command_with_output(zowex_command + " job hold " + fake_jobid, response);
+                             Expect(rc).Not().ToBe(0);
+                           });
+
+                        it("should handle release of non-existent job",
+                           [&]()
+                           {
+                             string fake_jobid = "JOB99999";
+                             string response;
+                             int rc = execute_command_with_output(zowex_command + " job release " + fake_jobid, response);
+                             Expect(rc).Not().ToBe(0);
+                           });
+
+                        it("should handle release of job that was not held",
+                           [&]()
+                           {
+                             string jcl = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M\n//RUN EXEC PGM=IEFBR14";
+                             string command = "printf \"" + jcl + "\" | " + zowex_command + " job submit-jcl --wait output --only-jobid";
+                             string stdout_output, stderr_output;
+                             int rc = execute_command(command, stdout_output, stderr_output);
+                             string jobid = TrimChars(stdout_output);
+                             _jobs.push_back(jobid);
+
+                             // Try to release without holding
+                             rc = execute_command_with_output(zowex_command + " job release " + jobid, stdout_output);
+                             // Should succeed or return specific error
+                             ExpectWithContext(rc, stdout_output).ToBeGreaterThanOrEqualTo(0);
                            });
                       });
 
@@ -760,7 +1143,7 @@ void zowex_job_tests()
                              if (_correlator.empty())
                                return;
                              string response;
-                             int rc = execute_command_with_output(zowex_command + " job view-status " + _correlator, response);
+                             int rc = execute_command_with_output(zowex_command + " job view-status \"" + _correlator + "\"", response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain(_jobid);
                            });
@@ -771,7 +1154,7 @@ void zowex_job_tests()
                              if (_correlator.empty())
                                return;
                              string response;
-                             int rc = execute_command_with_output(zowex_command + " job view-jcl " + _correlator, response);
+                             int rc = execute_command_with_output(zowex_command + " job view-jcl \"" + _correlator + "\"", response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("IEFBR14");
                            });
@@ -782,7 +1165,7 @@ void zowex_job_tests()
                              if (_correlator.empty())
                                return;
                              string response;
-                             int rc = execute_command_with_output(zowex_command + " job list-files " + _correlator, response);
+                             int rc = execute_command_with_output(zowex_command + " job list-files \"" + _correlator + "\"", response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("JESMSGLG");
                            });
@@ -793,7 +1176,7 @@ void zowex_job_tests()
                              if (_correlator.empty())
                                return;
                              string response;
-                             int rc = execute_command_with_output(zowex_command + " job delete " + _correlator, response);
+                             int rc = execute_command_with_output(zowex_command + " job delete \"" + _correlator + "\"", response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("deleted");
 
@@ -809,6 +1192,127 @@ void zowex_job_tests()
                                  ++it;
                                }
                              }
+                           });
+
+                        it("should hold by correlator",
+                           [&]()
+                           {
+                             // Submit a job and wait for it to complete
+                             string jcl = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M\n//RUN EXEC PGM=IEFBR14";
+                             string command = "printf \"" + jcl + "\" | " + zowex_command + " job submit-jcl --wait output --only-jobid";
+                             string stdout_output, stderr_output;
+                             int rc = execute_command(command, stdout_output, stderr_output);
+                             string jobid = TrimChars(stdout_output);
+                             _jobs.push_back(jobid);
+
+                             // Get correlator
+                             string response;
+                             execute_command_with_output(zowex_command + " job view-status " + jobid + " --rfc", response);
+                             vector<string> lines = parse_rfc_response(response, "\n");
+                             string correlator = "";
+                             if (lines.size() > 0)
+                             {
+                               vector<string> parts = parse_rfc_response(lines[0], ",");
+                               if (parts.size() >= 5)
+                               {
+                                 correlator = parts[4];
+                               }
+                             }
+
+                             if (correlator.empty())
+                             {
+                               TestLog("Could not get correlator, skipping hold test");
+                               return;
+                             }
+
+                             // Hold by correlator
+                             rc = execute_command_with_output(zowex_command + " job hold \"" + correlator + "\"", stdout_output);
+                             ExpectWithContext(rc, stdout_output).ToBe(0);
+                             Expect(stdout_output).ToContain("held");
+                           });
+
+                        it("should release by correlator",
+                           [&]()
+                           {
+                             // Submit a job and wait for it to complete, then hold it
+                             string jcl = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M\n//RUN EXEC PGM=IEFBR14";
+                             string command = "printf \"" + jcl + "\" | " + zowex_command + " job submit-jcl --wait output --only-jobid";
+                             string stdout_output, stderr_output;
+                             int rc = execute_command(command, stdout_output, stderr_output);
+                             string jobid = TrimChars(stdout_output);
+                             _jobs.push_back(jobid);
+
+                             // Hold the job first
+                             execute_command_with_output(zowex_command + " job hold " + jobid, stdout_output);
+
+                             // Get correlator
+                             string response;
+                             execute_command_with_output(zowex_command + " job view-status " + jobid + " --rfc", response);
+                             vector<string> lines = parse_rfc_response(response, "\n");
+                             string correlator = "";
+                             if (lines.size() > 0)
+                             {
+                               vector<string> parts = parse_rfc_response(lines[0], ",");
+                               if (parts.size() >= 5)
+                               {
+                                 correlator = parts[4];
+                               }
+                             }
+
+                             if (correlator.empty())
+                             {
+                               TestLog("Could not get correlator, skipping release test");
+                               return;
+                             }
+
+                             // Release by correlator
+                             rc = execute_command_with_output(zowex_command + " job release \"" + correlator + "\"", stdout_output);
+                             ExpectWithContext(rc, stdout_output).ToBe(0);
+                             Expect(stdout_output).ToContain("released");
+                           });
+
+                        it("should cancel by correlator",
+                           [&]()
+                           {
+                             // Submit a job with TYPRUN=HOLD (so we can cancel it)
+                             string jcl = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M,TYPRUN=HOLD\n//RUN EXEC PGM=IEFBR14";
+                             string command = "printf \"" + jcl + "\" | " + zowex_command + " job submit-jcl --only-jobid";
+                             string stdout_output, stderr_output;
+                             int rc = execute_command(command, stdout_output, stderr_output);
+                             string jobid = TrimChars(stdout_output);
+                             _jobs.push_back(jobid);
+
+                             // Release the job first so it starts executing, then we can cancel it
+                             execute_command_with_output(zowex_command + " job release " + jobid, stdout_output);
+
+                             // Give it a moment to start
+                             string list_response;
+                             execute_command_with_output(zowex_command + " job list --owner *", list_response);
+
+                             // Get correlator
+                             string response;
+                             execute_command_with_output(zowex_command + " job view-status " + jobid + " --rfc", response);
+                             vector<string> lines = parse_rfc_response(response, "\n");
+                             string correlator = "";
+                             if (lines.size() > 0)
+                             {
+                               vector<string> parts = parse_rfc_response(lines[0], ",");
+                               if (parts.size() >= 5)
+                               {
+                                 correlator = parts[4];
+                               }
+                             }
+
+                             if (correlator.empty())
+                             {
+                               TestLog("Could not get correlator, skipping cancel test");
+                               return;
+                             }
+
+                             // Cancel by correlator
+                             rc = execute_command_with_output(zowex_command + " job cancel \"" + correlator + "\"", stdout_output);
+                             ExpectWithContext(rc, stdout_output).ToBe(0);
+                             Expect(stdout_output).ToContain("cancelled");
                            });
                       });
 
