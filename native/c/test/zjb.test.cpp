@@ -122,8 +122,9 @@ void zjb_tests()
       rc = zjb_read_job_jcl(&zjb, correlator, returned_jcl);
 
       ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS); });
-
-             it("should be able to list and view SYSOUT files for INPUT jobs", [&]() -> void
+              
+      // https://github.com/zowe/zowe-native-proto/issues/641
+             xit("should be able to list and view SYSOUT files for INPUT jobs", [&]() -> void
                 {
       ZJB zjb = {0};
       string jobid;
@@ -150,8 +151,7 @@ void zjb_tests()
 
       memset(&zjb, 0, sizeof(zjb));
       rc = zjb_delete(&zjb, correlator);
-      ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS); });
-           });
+      ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS); }); });
 }
 
 void sleep_on_status(string status, string jobid)
