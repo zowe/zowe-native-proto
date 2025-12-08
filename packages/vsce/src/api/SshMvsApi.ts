@@ -11,25 +11,96 @@
 
 import { createReadStream, createWriteStream } from "node:fs";
 import type * as zosfiles from "@zowe/zos-files-for-zowe-sdk";
-import { Gui, imperative, type MainframeInteraction } from "@zowe/zowe-explorer-api";
-import { B64String, type DatasetAttributes, type ds } from "zowe-native-proto-sdk";
+import {
+    type AttributeEntryInfo,
+    type AttributeInfo,
+    type DataSetAttributesProvider,
+    type DsInfo,
+    Gui,
+    type IAttributesProvider,
+    imperative,
+    type MainframeInteraction,
+} from "@zowe/zowe-explorer-api";
+import { B64String, type Dataset, type DatasetAttributes, type ds } from "zowe-native-proto-sdk";
 import { SshCommonApi } from "./SshCommonApi";
 
+class SshAttributesProvider implements IAttributesProvider {
+    private readonly extensionName = require("../../package.json").displayName;
+
+    public constructor(public cachedAttrs?: Dataset) {}
+
+    public fetchAttributes(context: DsInfo): AttributeInfo {
+        if (context.profile.type !== "ssh") {
+            return [];
+        }
+
+        const keys = new Map<string, AttributeEntryInfo>();
+        const addAttribute = <K extends keyof Dataset>(prop: K, label: string, description?: string): void => {
+            const value = this.cachedAttrs?.[prop];
+            if (value != null) {
+                keys.set(label, {
+                    value: typeof value === "boolean" ? (value ? "YES" : "NO") : value.toLocaleString(),
+                    description,
+                });
+            }
+        };
+
+        const spacu = this.cachedAttrs?.spacu?.toLocaleLowerCase() ?? "bytes";
+        addAttribute("alloc", "Allocated Units", `Allocated units (${spacu})`);
+        addAttribute("allocx", "Allocated Extents");
+        addAttribute("dataclass", "Data Class");
+        addAttribute("encrypted", "Encryption");
+        addAttribute("mgmtclass", "Management Class");
+        addAttribute("primary", "Primary Space", `Primary space (${spacu})`);
+        addAttribute("secondary", "Secondary Space", `Secondary space (${spacu})`);
+        addAttribute("storclass", "Storage Class");
+        addAttribute("usedx", "Used Extents");
+        this.cachedAttrs = undefined;
+
+        return [{ title: this.extensionName, keys }];
+    }
+}
+
 export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs {
+    private attrProvider = new SshAttributesProvider();
+
+    public constructor(
+        dsAttrProvider?: DataSetAttributesProvider,
+        public profile?: imperative.IProfileLoaded,
+    ) {
+        super(profile);
+        dsAttrProvider?.register(this.attrProvider);
+    }
+
     public async dataSet(filter: string, options?: zosfiles.IListOptions): Promise<zosfiles.IZosFilesResponse> {
         try {
             const response = await (await this.client).ds.listDatasets({
                 pattern: filter,
                 attributes: options?.attributes,
             });
+            // Cache attributes for first data set to work around ZE issue
+            // See https://github.com/zowe/zowe-explorer-vscode/issues/3927
+            this.attrProvider.cachedAttrs = response.items[0];
             return this.buildZosFilesResponse({
-                items: response.items.map((item) => ({
-                    dsname: item.name,
-                    dsorg: item.dsorg,
-                    vols: item.volser,
-                    migr: item.migr ? "YES" : "NO",
-                    recfm: item.recfm,
-                })),
+                items: response.items.map((item) => {
+                    const entry: Record<string, unknown> = { dsname: item.name };
+                    if (options?.attributes) {
+                        entry.blksz = item.blksize;
+                        entry.cdate = item.cdate;
+                        entry.dev = item.devtype;
+                        entry.dsntp = item.dsntype;
+                        entry.dsorg = item.dsorg;
+                        entry.edate = item.edate;
+                        entry.lrecl = item.lrecl;
+                        entry.migr = item.migrated ? "YES" : "NO";
+                        entry.rdate = item.rdate;
+                        entry.recfm = item.recfm;
+                        entry.spacu = item.spacu;
+                        entry.used = `${item.usedp}%`;
+                        entry.vols = item.volser;
+                    }
+                    return entry;
+                }),
                 returnedRows: response.returnedRows,
             });
         } catch (_err) {

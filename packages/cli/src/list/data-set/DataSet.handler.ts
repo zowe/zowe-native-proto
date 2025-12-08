@@ -10,7 +10,7 @@
  */
 
 import { type IHandlerParameters, ImperativeError, TextUtils } from "@zowe/imperative";
-import type { ds, ZSshClient } from "zowe-native-proto-sdk";
+import type { Dataset, ds, ZSshClient } from "zowe-native-proto-sdk";
 import { SshBaseHandler } from "../../SshBaseHandler";
 
 export default class ListDataSetsHandler extends SshBaseHandler {
@@ -33,15 +33,39 @@ export default class ListDataSetsHandler extends SshBaseHandler {
             return { success: false, items: [], returnedRows: 0 };
         }
 
+        // Sort object keys by "name" first, then alphabetically
+        response.items = response.items.map((item) => {
+            const sortedKeys = (Object.keys(item) as Array<keyof Dataset>).sort((a, b) =>
+                a === "name" ? -1 : b === "name" ? 1 : a.localeCompare(b),
+            );
+            return sortedKeys.reduce((obj, key) => {
+                // biome-ignore lint/performance/noAccumulatingSpread: Spreading ds attrs is safe
+                return { ...obj, [key]: item[key] } as Dataset;
+            }, {} as Dataset);
+        });
+
         params.response.data.setMessage(
             "Successfully listed %d matching data sets for pattern '%s'",
             response.returnedRows,
             params.arguments.pattern,
         );
         params.response.format.output({
-            output: response.items,
+            output: response.items.map((item) => ({ ...item, migrated: item.migrated ? "YES" : "NO" })),
             format: "table",
-            fields: ["name", "dsorg", "volser"],
+            fields: [
+                "name",
+                "volser",
+                "devtype",
+                "dsorg",
+                "recfm",
+                "lrecl",
+                "blksize",
+                "primary",
+                "secondary",
+                "dsntype",
+                "migrated",
+            ],
+            header: true,
         });
         return response;
     }
