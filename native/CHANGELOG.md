@@ -4,7 +4,7 @@ All notable changes to the native code for "zowe-native-proto" are documented in
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## Recent Changes
+## `0.2.1`
 
 - `c`: Disallow `zowex compress ds` to prevent lurking abend.
 - `c`: Fixed issue where uploading changes to a data set did not always flush to disk. [#643](https://github.com/zowe/zowe-native-proto/issues/643)
