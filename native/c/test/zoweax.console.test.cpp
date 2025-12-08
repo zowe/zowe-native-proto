@@ -70,6 +70,7 @@ void zoweax_console_tests()
             int rc = execute_command_with_output(command, response);
 
             ExpectWithContext(rc, response).ToBe(0);
+            Expect(response.empty()).ToBe(true);
         });
 
         it("should fail when using a non-APF authorized binary", []() -> void
