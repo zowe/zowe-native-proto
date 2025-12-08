@@ -189,11 +189,11 @@ void zowex_ds_tests()
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              vector<string> tokens = parse_rfc_response(response, ",");
-                             Expect(tokens[1]).ToBe("PS");
+                             Expect(tokens[3]).ToBe("PS");
                              Expect(tokens[4]).ToBe("FB");
                            });
 
-                        it("should create a simple PDS/E data set - dsorg: PO-E",
+                        it("should create a simple PDS/E data set - dsorg: PO and dsntype: LIBRARY",
                            [&]() -> void
                            {
                              string ds = _ds.back();
@@ -204,7 +204,8 @@ void zowex_ds_tests()
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              vector<string> tokens = parse_rfc_response(response, ",");
-                             Expect(tokens[1]).ToBe("PO-E");
+                             Expect(tokens[3]).ToBe("PO");
+                             Expect(tokens[9]).ToBe("PDS");
                            });
 
                         it("should create a data set - recfm:VB dsorg:PO",
@@ -219,7 +220,7 @@ void zowex_ds_tests()
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              vector<string> tokens = parse_rfc_response(response, ",");
-                             Expect(tokens[1]).ToBe("PO");
+                             Expect(tokens[3]).ToBe("PO");
                              Expect(tokens[4]).ToBe("VB");
                            });
 
@@ -234,7 +235,7 @@ void zowex_ds_tests()
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              vector<string> tokens = parse_rfc_response(response, ",");
-                             Expect(tokens[1]).ToBe("PS");
+                             Expect(tokens[3]).ToBe("PS");
                              Expect(tokens[4]).ToBe("VB");
                            });
 
@@ -250,7 +251,7 @@ void zowex_ds_tests()
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              vector<string> tokens = parse_rfc_response(response, ",");
-                             Expect(tokens[1]).ToBe("PO");
+                             Expect(tokens[3]).ToBe("PO");
                              Expect(tokens[4]).ToBe("FB");
                              // primary = 10
                              // secondary = 2
@@ -291,8 +292,9 @@ void zowex_ds_tests()
                              rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              vector<string> tokens = parse_rfc_response(response, ",");
-                             Expect(tokens[1]).ToBe("PO-E");
+                             Expect(tokens[3]).ToBe("PO");
                              Expect(tokens[4]).ToBe("VB");
+                             Expect(tokens[9]).ToBe("PDS");
                              // lrecl = 32756
                            });
 
@@ -347,8 +349,9 @@ void zowex_ds_tests()
                              rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              vector<string> tokens = parse_rfc_response(response, ",");
-                             Expect(tokens[1]).ToBe("PO-E");
+                             Expect(tokens[3]).ToBe("PO");
                              Expect(tokens[4]).ToBe("FB");
+                             Expect(tokens[9]).ToBe("LIBRARY");
                              // lrecl = 80
                            });
                         it("should fail to create a data set if the data set already exists",
@@ -401,8 +404,9 @@ void zowex_ds_tests()
                              rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              vector<string> tokens = parse_rfc_response(response, ",");
-                             Expect(tokens[1]).ToBe("PO-E");
+                             Expect(tokens[3]).ToBe("PO");
                              Expect(tokens[4]).ToBe("U");
+                             Expect(tokens[9]).ToBe("PDS");
                              // lrecl = 0
                            });
                         it("should fail to create a data set if the data set already exists",
@@ -541,8 +545,9 @@ void zowex_ds_tests()
                              rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              vector<string> tokens = parse_rfc_response(response, ",");
-                             Expect(tokens[1]).ToBe("PO-E");
+                             Expect(tokens[3]).ToBe("PO");
                              Expect(tokens[4]).ToBe("VB");
+                             Expect(tokens[9]).ToBe("LIBRARY");
                              // lrecl = 255
                            });
                         it("should error when the data set already exists",
