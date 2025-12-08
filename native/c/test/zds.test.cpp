@@ -30,7 +30,7 @@ void zds_tests()
              describe("list",
                       []() -> void
                       {
-                        it("should list data sets in a DSN",
+                        it("should list data sets with a given DSN",
                            []() -> void
                            {
                              int rc = 0;

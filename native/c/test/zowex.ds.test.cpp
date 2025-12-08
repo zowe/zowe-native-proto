@@ -23,8 +23,6 @@
 using namespace std;
 using namespace ztst;
 
-const string zowex_command = "./../build-out/zowex";
-
 // Generic helper function for creating data sets
 void _create_ds(const string &ds_name, const string &ds_options = "")
 {

@@ -22,8 +22,6 @@
 using namespace std;
 using namespace ztst;
 
-const string zowex_command = "./../build-out/zowex";
-
 void zowex_tests()
 {
 

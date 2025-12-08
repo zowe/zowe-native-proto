@@ -27,7 +27,6 @@
 using namespace std;
 using namespace ztst;
 
-const string zowex_command = "./../build-out/zowex";
 const string ussTestDir = "/tmp/zowex-uss_" + get_random_string(10);
 
 void zowex_uss_tests()

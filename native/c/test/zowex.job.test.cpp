@@ -18,8 +18,6 @@
 using namespace std;
 using namespace ztst;
 
-const string zowex_command = "./../build-out/zowex";
-
 void zowex_job_tests()
 {
   describe("job",
@@ -45,29 +43,30 @@ void zowex_job_tests()
 
              it("should submit a job, view it, and delete it", []()
                 {
-         int rc = 0;
-         string stdout_output, stderr_output;
+                  int rc = 0;
+                  string stdout_output, stderr_output;
 
-         string jobname = "IEFBR14$";
-         string jcl = "//" + jobname + " JOB (IZUACCT),TEST,REGION=0M\n//RUN EXEC PGM=IEFBR14";
+                  string jobname = "IEFBR14$";
+                  string jcl = "//" + jobname + " JOB (IZUACCT),TEST,REGION=0M\n//RUN EXEC PGM=IEFBR14";
 
-         // write jcl to the data set
-         string submit_command = "printf \"" + jcl + "\" | " + zowex_command + " job submit-jcl --only-jobid";
-         rc = execute_command(submit_command, stdout_output, stderr_output);
-         string job_id = TrimChars(stdout_output);
-         ExpectWithContext(rc, stderr_output).ToBe(0);
-         Expect(job_id).Not().ToBe("");
+                  // write jcl to the data set
+                  string submit_command = "printf \"" + jcl + "\" | " + zowex_command + " job submit-jcl --only-jobid";
+                  rc = execute_command(submit_command, stdout_output, stderr_output);
+                  string job_id = TrimChars(stdout_output);
+                  ExpectWithContext(rc, stderr_output).ToBe(0);
+                  Expect(job_id).Not().ToBe("");
 
-         // view the job
-         string view_command = zowex_command + " job view-status " + job_id;
-         rc = execute_command(view_command, stdout_output, stderr_output);
-         ExpectWithContext(rc, stderr_output).ToBe(0);
-         Expect(stdout_output).ToContain(jobname);
+                  // view the job
+                  string view_command = zowex_command + " job view-status " + job_id;
+                  rc = execute_command(view_command, stdout_output, stderr_output);
+                  ExpectWithContext(rc, stderr_output).ToBe(0);
+                  Expect(stdout_output).ToContain(jobname);
 
-         // delete the job
-         string delete_command = zowex_command + " job delete " + job_id;
-         rc = execute_command(delete_command, stdout_output, stderr_output);
-         ExpectWithContext(rc, stderr_output).ToBe(0);
-         Expect(stdout_output).ToContain("deleted"); });
+                  // delete the job
+                  string delete_command = zowex_command + " job delete " + job_id;
+                  rc = execute_command(delete_command, stdout_output, stderr_output);
+                  ExpectWithContext(rc, stderr_output).ToBe(0);
+                  Expect(stdout_output).ToContain("deleted"); //
+                });
            });
 }
