@@ -427,6 +427,9 @@ static int update_ispf_statistics(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
     {
       return rc;
     }
+    // reset warning message if it exists
+    rc = RTNCD_SUCCESS;
+    diag->e_msg_len = 0;
 
     //
     // Create or update ISPF statistics

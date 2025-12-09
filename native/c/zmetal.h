@@ -125,7 +125,10 @@ static int test_auth()
       : "m"(name)                                               \
       : "r0", "r1", "r2", "r14", "r15");
 #else
-#define LOAD(name, ep, rc, rsn)
+#define LOAD(name, ep, rc, rsn) \
+  {                             \
+    rsn++;                      \
+  }
 #endif
 
 #if defined(__IBM_METAL__)
@@ -160,11 +163,6 @@ static void *PTR64 load_module(const char *name)
   memcpy(name_truncated, name, strlen(name) > sizeof(name_truncated) - 1 ? sizeof(name_truncated) - 1 : strlen(name)); // truncate
 
   void *PTR64 ep = NULL;
-  union
-  {
-    void *PTR64 ep;
-    unsigned long long int epValue;
-  } epData = {0};
 
   LOAD(name_truncated, ep, rc, rsn);
   if (0 != rc)

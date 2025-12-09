@@ -340,8 +340,11 @@ int zds_write_output_bpam(ZDS *zds, IO_CTRL *ioc, string &data)
   rc = ZDSWBPAM(zds, ioc, data.c_str(), &length);
   if (0 != rc)
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to write output to BPAM: %s", data.c_str());
-    return RTNCD_FAILURE;
+    if (0 == zds->diag.e_msg_len) // only set error if no error message was already set
+    {
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to write output to BPAM: %s", data.c_str());
+      return RTNCD_FAILURE;
+    }
   }
   return rc;
 }
