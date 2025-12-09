@@ -118,7 +118,7 @@ string get_user()
   if (s_user.empty())
   {
     string user;
-    execute_command_with_output("whoami", user);
+    execute_command_with_output("basename $HOME", user);
     s_user = ztst::TrimChars(user);
   }
   return s_user;
