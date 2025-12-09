@@ -331,6 +331,18 @@ int open_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *P
   return rc;
 }
 
+typedef struct
+{
+  short int len;
+  short int unused;
+} BDW;
+
+typedef struct
+{
+  short int len;
+  short int unused;
+} RDW;
+
 int write_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, const char *PTR32 data, int length)
 {
   int rc = 0;
@@ -349,26 +361,80 @@ int write_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, const char *PTR32 d
 
   if (ioc->dcb.dcbrecfm & dcbrecv)
   {
-    diag->e_msg_len = sprintf(diag->e_msg, "i aint ready for this yet");
-    diag->detail_rc = ZDS_RTNCD_INVALID_DATA_LENGTH;
-    return RTNCD_FAILURE;
+    // for now, fail if not blocked
+    if (!(ioc->dcb.dcbrecfm & dcbrecbr))
+    {
+      diag->e_msg_len = sprintf(diag->e_msg, "Cannot write to unblocked ddname: %8.8s data set: %44.44s with record format: %X", ioc->ddname, ioc->jfcb.jfcbdsnm, ioc->dcb.dcbrecfm);
+      diag->detail_rc = ZDS_RTNCD_INVALID_DATA_LENGTH;
+      return RTNCD_FAILURE;
+    }
+
+    // if buffer is empty on our first call or after a write_sync, point free location just beyond the bdw
+    BDW *PTR32 bdw_ptr = (BDW * PTR32) ioc->buffer;
+    if (0 == ioc->bytes_in_buffer)
+    {
+      ioc->free_location += sizeof(BDW);
+      ioc->bytes_in_buffer = sizeof(BDW);
+      zwto_debug("@TEST free location: %p and bytes in buffer: %d", ioc->free_location, ioc->bytes_in_buffer);
+    }
+
+    // block size minus bytes in buffer equals bytes remaining
+    int bytes_remaining = blocksize - ioc->bytes_in_buffer;
+    zwto_debug("@TEST bytes remaining: %d", bytes_remaining);
+
+    // if the remaining bytes are not enough to fit the record and rdw, we need to write the record and reinit
+    if (length + sizeof(RDW) >= bytes_remaining)
+    {
+      // set the bdw
+      bdw_ptr->len = ioc->bytes_in_buffer;
+
+      // write the record and reinit
+      ioc->dcb.dcbblksi = ioc->bytes_in_buffer; // temporary update block size before writing
+      write_sync(ioc, ioc->buffer);             // TODO(Kelosky): if we abend, we MUST restore the original block size before CLOSE
+      ioc->dcb.dcbblksi = blocksize;
+
+      zwto_debug("@TEST wrote block");
+
+      ioc->free_location = ioc->buffer;
+      ioc->free_location += sizeof(BDW);
+      ioc->bytes_in_buffer = sizeof(BDW);
+      bdw_ptr->len = 0;
+    }
+
+    // recalculate bytes remaining
+    bytes_remaining = blocksize - ioc->bytes_in_buffer;
+    zwto_debug("@TEST bytes now remaining: %d", bytes_remaining);
+
+    // add this record to the buffer (which may have just been written)
+    if (length + sizeof(RDW) < bytes_remaining)
+    {
+      ioc->lines_written++;
+      RDW *PTR32 rdw_ptr = (RDW * PTR32) ioc->free_location;
+      zwto_debug("@TEST free location: %p and bytes in buffer: %d", ioc->free_location, ioc->bytes_in_buffer);
+      rdw_ptr->len = sprintf(ioc->free_location + sizeof(RDW), "%.*s", length, data) + sizeof(RDW);
+      ioc->bytes_in_buffer += rdw_ptr->len;
+      zwto_debug("@TEST rdw length: %d and bytes in buffer: %d", rdw_ptr->len, ioc->bytes_in_buffer);
+      ioc->free_location += rdw_ptr->len;
+    }
   }
-
-  memset(ioc->free_location, ' ', lrecl);
-  memcpy(ioc->free_location, data, length);
-
-  ioc->lines_written++;
-
-  // track bytes in buffer and free space
-  ioc->bytes_in_buffer += lrecl;
-  ioc->free_location += lrecl;
-
-  if (ioc->bytes_in_buffer >= blocksize)
+  else
   {
-    write_sync(ioc, ioc->buffer);
-    ioc->bytes_in_buffer = 0;
-    ioc->free_location = ioc->buffer;
-    // memset(ioc->buffer, ' ', ioc->buffer_size);
+    memset(ioc->free_location, ' ', lrecl);
+    memcpy(ioc->free_location, data, length);
+
+    ioc->lines_written++;
+
+    // track bytes in buffer and free space
+    ioc->bytes_in_buffer += lrecl;
+    ioc->free_location += lrecl;
+
+    if (ioc->bytes_in_buffer >= blocksize)
+    {
+      write_sync(ioc, ioc->buffer);
+      ioc->bytes_in_buffer = 0;
+      ioc->free_location = ioc->buffer;
+      // memset(ioc->buffer, ' ', ioc->buffer_size);
+    }
   }
 
   return rc;
@@ -383,13 +449,20 @@ static int write_flush(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
   {
     if (ioc->bytes_in_buffer > 0)
     {
+
+      // if variable blocked, set the bdw
+      if (ioc->dcb.dcbrecfm & dcbrecv && ioc->dcb.dcbrecfm & dcbrecbr)
+      {
+        BDW *PTR32 bdw_ptr = (BDW * PTR32) ioc->buffer;
+        bdw_ptr->len = ioc->bytes_in_buffer;
+      }
+
       ioc->dcb.dcbblksi = ioc->bytes_in_buffer; // temporary update block size before writing
       write_sync(ioc, ioc->buffer);             // TODO(Kelosky): if we abend, we MUST restore the original block size before CLOSE
       ioc->dcb.dcbblksi = blocksize;
 
       ioc->bytes_in_buffer = 0;
       ioc->free_location = ioc->buffer;
-      // memset(ioc->buffer, 0x00, ioc->buffer_size);
       zwto_debug("@TEST wrote last block");
     }
   }
