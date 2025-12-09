@@ -64,14 +64,6 @@ jobs:
       - name: Build on z/OS
         run: npm run z:all
 
-      - name: Test Report
-        uses: dorny/test-reporter@v2
-        if: ${{ !cancelled() }}
-        with:
-          name: Test results
-          path: native/c/test/test-results.xml,native/zowed/test/test-results.xml
-          reporter: java-junit
-
       - uses: actions/upload-artifact@v4
         with:
           name: zowe-server-bin
@@ -92,6 +84,14 @@ jobs:
           message: |
             Server artifacts:
              - PAX: ${{ steps.pax-artifact-upload.outputs.artifact-url }}
+
+      - name: Test Report
+        uses: dorny/test-reporter@v2
+        if: ${{ !cancelled() }}
+        with:
+          name: Test results
+          path: native/c/test/test-results.xml,native/zowed/test/test-results.xml
+          reporter: java-junit
 
       - name: Clean up on z/OS
         if: always()
