@@ -352,9 +352,9 @@ int write_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, const char *PTR32 d
   int lrecl = ioc->dcb.dcblrecl;
   int blocksize = ioc->dcb.dcbblksi;
 
-  if (length > lrecl)
+  if (length + sizeof(RDW) > lrecl)
   {
-    diag->e_msg_len = sprintf(diag->e_msg, "Data length is greater than the record length: %d > %d", length, lrecl);
+    diag->e_msg_len = sprintf(diag->e_msg, "Data length (plus RDW) is greater than the record length: %d > %d", length + sizeof(RDW), lrecl);
     diag->detail_rc = ZDS_RTNCD_INVALID_DATA_LENGTH;
     return RTNCD_FAILURE;
   }
