@@ -70,7 +70,7 @@ jobs:
         with:
           name: Test results
           path: native/c/test/test-results.xml,native/zowed/test/test-results.xml
-          reporter: jest-junit
+          reporter: java-junit
 
       - uses: actions/upload-artifact@v4
         with:
