@@ -27,7 +27,7 @@ MTL_HEADERS=$(MTL_HEADERS_BASE) -I../ -I../chdsect
 C_FLAGS=$(C_FLAGS_BASE) -I./chdsect
 DLL_CPP_FLAGS=$(DLL_CPP_FLAGS_BASE) -I./chdsect
 CPP_FLAGS=$(CPP_FLAGS_BASE)
-CXXLANG_FLAGS=$(CXXLANG_FLAGS_BASE) -I../ -I./chdsect -std=c++14
+CXXLANG_FLAGS=$(CXXLANG_FLAGS_BASE) -I../ -I../chdsect -std=c++14
 CXXLANG_BND_FLAGS=-W "l,lp64"
 
 # make -DBuildType=DEBUG
@@ -224,7 +224,7 @@ build-out/zmetal.metal.test.o: build-out/zmetal.metal.test.s
 
 build-out/zusf.test.o: zusf.test.cpp
 	$(OCXX) $(CXXLANG_FLAGS) $(CPP_LIST_FLAG) -c $^ -o $@
-	
+
 build-out/parser.test.o: parser.test.cpp
 	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
 

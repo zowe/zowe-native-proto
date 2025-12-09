@@ -181,9 +181,9 @@ static int validate_dcb_attributes(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
   int rc = 0;
 
   zwto_debug("@TEST validate DCB attributes: %X", ioc->dcb.dcbrecfm);
-  if (!(ioc->dcb.dcbrecfm & dcbrecf))
+  if (!(ioc->dcb.dcbrecfm & (dcbrecf | dcbrecv)))
   {
-    diag->e_msg_len = sprintf(diag->e_msg, "Data set is not a fixed record format: %X", ioc->dcb.dcbrecfm);
+    diag->e_msg_len = sprintf(diag->e_msg, "Data set is not a fixed or variable record format: %X", ioc->dcb.dcbrecfm);
     diag->detail_rc = ZDS_RTNCD_UNSUPPORTED_RECFM;
     return RTNCD_FAILURE;
   }
@@ -343,6 +343,13 @@ int write_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, const char *PTR32 d
   if (length > lrecl)
   {
     diag->e_msg_len = sprintf(diag->e_msg, "Data length is greater than the record length: %d > %d", length, lrecl);
+    diag->detail_rc = ZDS_RTNCD_INVALID_DATA_LENGTH;
+    return RTNCD_FAILURE;
+  }
+
+  if (ioc->dcb.dcbrecfm & dcbrecv)
+  {
+    diag->e_msg_len = sprintf(diag->e_msg, "i aint ready for this yet");
     diag->detail_rc = ZDS_RTNCD_INVALID_DATA_LENGTH;
     return RTNCD_FAILURE;
   }
