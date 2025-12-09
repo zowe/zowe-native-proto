@@ -40,6 +40,18 @@ RDJFCB_MODEL(rdfjfcb_model);
 
 register FILE_CTRL *fc ASMREG("r8");
 
+typedef struct
+{
+  short int len;
+  short int unused;
+} BDW;
+
+typedef struct
+{
+  short int len;
+  short int unused;
+} RDW;
+
 static int validate_jfcb_attributes(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 {
   int rc = 0;
@@ -183,23 +195,43 @@ static int validate_dcb_attributes(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
   zwto_debug("@TEST validate DCB attributes: %X", ioc->dcb.dcbrecfm);
   if (!(ioc->dcb.dcbrecfm & (dcbrecf | dcbrecv)))
   {
+    zwto_debug("@TEST validate_dcb_attributes failed on recfm: %X", ioc->dcb.dcbrecfm);
     diag->e_msg_len = sprintf(diag->e_msg, "Data set is not a fixed or variable record format: %X", ioc->dcb.dcbrecfm);
     diag->detail_rc = ZDS_RTNCD_UNSUPPORTED_RECFM;
     return RTNCD_FAILURE;
   }
 
-  if (ioc->dcb.dcbblksi < 1)
+  int block_size = ioc->dcb.dcbblksi;
+
+  if (block_size < 1)
   {
-    diag->e_msg_len = sprintf(diag->e_msg, "Data set has less than 1 block size: %X", ioc->dcb.dcbblksi);
+    zwto_debug("@TEST validate_dcb_attributes failed on block size: %X", block_size);
+    diag->e_msg_len = sprintf(diag->e_msg, "Data set has less than 1 block size: %X", block_size);
     diag->detail_rc = ZDS_RTNCD_UNSUPPORTED_BLOCK_SIZE;
     return RTNCD_FAILURE;
   }
 
-  if (ioc->dcb.dcbblksi % ioc->dcb.dcblrecl != 0)
+  if (block_size % ioc->dcb.dcblrecl != 0)
   {
-    diag->e_msg_len = sprintf(diag->e_msg, "Data set block size is not a multiple of the record length: %X, %X", ioc->dcb.dcbblksi, ioc->dcb.dcblrecl);
-    diag->detail_rc = ZDS_RTNCD_INVALID_BLOCK_SIZE;
-    return RTNCD_FAILURE;
+    // if the data set is not blocked, we can subtract the size of the RDW
+    if (!(ioc->dcb.dcbrecfm & dcbrecbr))
+    {
+      block_size -= sizeof(RDW);
+
+      // perform the check again
+      if (block_size % ioc->dcb.dcblrecl != 0)
+      {
+        diag->e_msg_len = sprintf(diag->e_msg, "Data set block size (minus 4) is not a multiple of the record length: %d not evenly divisible by %d", ioc->dcb.dcbblksi, ioc->dcb.dcblrecl);
+        diag->detail_rc = ZDS_RTNCD_INVALID_BLOCK_SIZE;
+        return RTNCD_FAILURE;
+      }
+    }
+    else
+    {
+      diag->e_msg_len = sprintf(diag->e_msg, "Data set block size is not a multiple of the record length: %d not evenly divisible by %d", ioc->dcb.dcbblksi, ioc->dcb.dcblrecl);
+      diag->detail_rc = ZDS_RTNCD_INVALID_BLOCK_SIZE;
+      return RTNCD_FAILURE;
+    }
   }
 
   return rc;
@@ -314,6 +346,7 @@ int open_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *P
   rc = validate_dcb_attributes(diag, new_ioc);
   if (0 != rc)
   {
+    zwto_debug("@TEST validate_dcb_attributes failed: %d", rc);
     return rc;
   }
 
@@ -330,18 +363,6 @@ int open_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *P
 
   return rc;
 }
-
-typedef struct
-{
-  short int len;
-  short int unused;
-} BDW;
-
-typedef struct
-{
-  short int len;
-  short int unused;
-} RDW;
 
 int write_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, const char *PTR32 data, int length)
 {
@@ -509,6 +530,7 @@ static int update_ispf_statistics(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
     }
     // reset warning message if it exists
     rc = RTNCD_SUCCESS;
+    // memset(diag->e_msg, 0, diag->e_msg_len);
     diag->e_msg_len = 0;
 
     //
@@ -737,11 +759,16 @@ int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
   //
   // STOW the ISPF statistics
   //
-  rc = stow_data_set(diag, ioc);
-  if (0 != rc)
+  if (0 == rc)
   {
-    // return rc; // TODO(Kelosky): handle when this fails... continue or return?
+    rc = stow_data_set(diag, ioc);
+    if (0 != rc)
+    {
+      // return rc; // TODO(Kelosky): handle when this fails... continue or return?
+    }
   }
+
+  zwto_debug("@TEST rc is: %d and about to close", rc);
 
   //
   // Close the data set
@@ -763,6 +790,7 @@ int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
     ioc->buffer = NULL;
     ioc->buffer_size = 0;
   }
+  zwto_debug("@TEST rc is: %d and about to deq reserve", rc);
 
   //
   // DEQ the reserve data set
@@ -773,6 +801,7 @@ int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
     return rc;
   }
 
+  zwto_debug("@TEST rc is: %d and about to deq data set", rc);
   //
   // DEQ the data set
   //
