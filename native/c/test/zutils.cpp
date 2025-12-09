@@ -118,7 +118,9 @@ string get_user()
   if (s_user.empty())
   {
     string user;
-    execute_command_with_output("basename $HOME", user);
+    // Note: using `basename $HOME` instead of `whoami` to get the current user
+    // because `whoami` may be mapped to a kernel user instead of a real one.
+    execute_command_with_output("basename $HOME | tr '[:lower:]' '[:upper:]'", user);
     s_user = ztst::TrimChars(user);
   }
   return s_user;

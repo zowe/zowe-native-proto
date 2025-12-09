@@ -843,13 +843,68 @@ void zowex_ds_tests()
                               _ds.push_back(get_random_ds());
                             });
                         it("should view the content of a sequential data set",
-                           []() -> void {});
+                           [&]() -> void
+                           {
+                             string ds = _ds.back();
+                             _create_ds(ds, "--dsorg PS");
+                             string response;
+
+                             string random_string = get_random_string(80, false);
+                             string command = "echo " + random_string + " | " + zowex_command + " data-set write " + ds;
+                             int rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("Wrote data to '" + ds + "'");
+
+                             command = zowex_command + " data-set view " + ds;
+                             rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain(random_string);
+                           });
                         it("should view the content of a PDS member",
-                           []() -> void {});
-                        it("should view a specific range of lines from a data set",
-                           []() -> void {});
+                           [&]() -> void
+                           {
+                             string ds = _ds.back();
+                             _create_ds(ds, "--dsorg PO --dirblk 2");
+                             string response;
+
+                             string random_string = get_random_string(80, false);
+                             string command = "echo " + random_string + " | " + zowex_command + " data-set write '" + ds + "(TEST)'";
+                             int rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("Wrote data to '" + ds + "(TEST)'");
+
+                             command = zowex_command + " data-set view '" + ds + "(TEST)'";
+                             rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain(random_string);
+                           });
                         it("should view a data set with different encoding",
-                           []() -> void {});
+                           [&]() -> void
+                           {
+                             string ds = _ds.back();
+                             _create_ds(ds, "--dsorg PS");
+                             string response;
+                             string command = "echo 'test!' | " + zowex_command + " data-set write " + ds + " --local-encoding IBM-1047 --encoding IBM-1147";
+                             int rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("Wrote data to '" + ds + "'");
+
+                             command = zowex_command + " data-set view " + ds;
+                             rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("test|");
+
+                             command = zowex_command + " data-set view " + ds + " --local-encoding IBM-1047 --encoding IBM-1047";
+                             rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("test|");
+
+                             command = zowex_command + " data-set view " + ds + " --local-encoding IBM-1047 --encoding IBM-1147";
+                             rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("test!");
+                             //
+                           });
                         it("should fail to view a non-existent data set",
                            [&]() -> void
                            {
@@ -1054,7 +1109,26 @@ void zowex_ds_tests()
                             });
 
                         it("should write content to a data set with different encoding",
-                           []() -> void {});
+                           [&]() -> void
+                           {
+                             string ds = _ds.back();
+                             _create_ds(ds, "--dsorg PS");
+                             string response;
+                             string command = "echo 'test!' | " + zowex_command + " data-set write " + ds + " --local-encoding IBM-1047 --encoding IBM-1147";
+                             int rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("Wrote data to '" + ds + "'");
+
+                             command = zowex_command + " data-set view " + ds;
+                             rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("test|");
+
+                             command = zowex_command + " data-set view " + ds + " --rfb";
+                             rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("a3 85 a2 a3 4f 15");
+                           });
 
                         it("should fail to write to a non-existent data set",
                            [&]() -> void
