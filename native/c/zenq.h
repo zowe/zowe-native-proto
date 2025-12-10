@@ -45,19 +45,6 @@ ENQ_MODEL(enq_model); // make this copy in static storage
 
 RESERVE_MODEL(reserve_model); // make this copy in static storage
 
-// #if defined(__IBM_METAL__)
-// #define RESERVE_MODEL(resm)                                   \
-//   __asm(                                                      \
-//       "*                                                  \n" \
-//       " RESERVE (,,E,,SYSTEMS),UCB=*-*,LOC=ANY,MF=L       \n" \
-//       "*                                                    " \
-//       : "DS"(resm));
-// #else
-// #define RESERVE_MODEL(resm) void *resm;
-// #endif
-
-// RESERVE_MODEL(reserve_model); // make this copy in static storage
-
 // NOTE(Kelosky): this gives an S230 if not initialized properly which does not match the MF=E setting nor documentation
 #if defined(__IBM_METAL__)
 #define DEQ_MODEL(deqm)                                             \
