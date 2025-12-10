@@ -104,6 +104,26 @@ void zowex_job_tests()
                              ExpectWithContext(rc, response).ToBeGreaterThanOrEqualTo(0);
                            });
 
+                        it("should list jobs with -o short form for --owner",
+                           []()
+                           {
+                             int rc = 0;
+                             string response;
+                             rc = execute_command_with_output(zowex_command + " job list -o * --max-entries 5", response);
+                             ExpectWithContext(rc, response).ToBeGreaterThanOrEqualTo(0);
+                             Expect(response.length()).ToBeGreaterThan(0);
+                           });
+
+                        it("should list jobs with -p short form for --prefix",
+                           []()
+                           {
+                             int rc = 0;
+                             string response;
+                             rc = execute_command_with_output(zowex_command + " job list -p IEF* --max-entries 5", response);
+                             ExpectWithContext(rc, response).ToBeGreaterThanOrEqualTo(0);
+                             Expect(response.length()).ToBeGreaterThan(0);
+                           });
+
                         it("should list jobs with combined owner and prefix filters",
                            []()
                            {
@@ -121,6 +141,43 @@ void zowex_job_tests()
                              rc = execute_command_with_output(zowex_command + " job list --max-entries 5 --rfc", response);
                              ExpectWithContext(rc, response).ToBeGreaterThanOrEqualTo(0);
                              Expect(response).ToContain(",");
+                           });
+
+                        it("should validate RFC format structure for job list",
+                           []()
+                           {
+                             string response;
+                             int rc = execute_command_with_output(zowex_command + " job list --max-entries 5 --rfc", response);
+                             ExpectWithContext(rc, response).ToBeGreaterThanOrEqualTo(0);
+
+                             if (rc == 0 && !response.empty())
+                             {
+                               // Parse lines
+                               vector<string> lines = parse_rfc_response(response, "\n");
+                               for (const auto &line : lines)
+                               {
+                                 if (line.empty())
+                                   continue;
+
+                                 // Parse CSV columns
+                                 vector<string> columns = parse_rfc_response(line, ",");
+
+                                 // RFC format: jobid, retcode, jobname, status, correlator
+                                 Expect(columns.size()).ToBeGreaterThanOrEqualTo(5);
+
+                                 // Validate jobid is not empty
+                                 Expect(columns[0]).Not().ToBe("");
+
+                                 // Validate retcode is not empty
+                                 Expect(columns[1]).Not().ToBe("");
+
+                                 // Validate jobname is not empty
+                                 if (columns.size() >= 3)
+                                 {
+                                   Expect(columns[2]).Not().ToBe("");
+                                 }
+                               }
+                             }
                            });
 
                         it("should list jobs with --warn option",
@@ -168,13 +225,89 @@ void zowex_job_tests()
                              ExpectWithContext(rc, response).ToBeGreaterThanOrEqualTo(0);
                            });
 
-                        it("should handle list with wildcard owner pattern",
-                           []()
+                        it("should validate owner filter actually works",
+                           [&]()
                            {
-                             int rc = 0;
+                             // Submit a job to ensure we have a job from current user
+                             string jcl = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M\n//RUN EXEC PGM=IEFBR14";
+                             string command = "printf \"" + jcl + "\" | " + zowex_command + " job submit-jcl --only-jobid --wait output";
+                             string stdout_output, stderr_output;
+                             int rc = execute_command(command, stdout_output, stderr_output);
+                             string jobid = TrimChars(stdout_output);
+                             ExpectWithContext(rc, stderr_output).ToBe(0);
+                             _jobs.push_back(jobid);
+
+                             // Get current user
+                             string current_user = get_user();
+                             Expect(current_user).Not().ToBe("");
+
+                             // List jobs with current user as owner using --rfc for easier parsing
                              string response;
-                             rc = execute_command_with_output(zowex_command + " job list --owner *", response);
-                             ExpectWithContext(rc, response).ToBeGreaterThanOrEqualTo(0);
+                             rc = execute_command_with_output(zowex_command + " job list --owner " + current_user + " --rfc --max-entries 50", response);
+                             ExpectWithContext(rc, response).ToBe(0);
+
+                             // Parse and validate we found our job (RFC format: jobid,retcode,jobname,status,correlator)
+                             vector<string> lines = parse_rfc_response(response, "\n");
+                             bool found_our_job = false;
+                             for (const auto &line : lines)
+                             {
+                               if (line.empty())
+                                 continue;
+                               vector<string> parts = parse_rfc_response(line, ",");
+                               if (parts.size() >= 1)
+                               {
+                                 // Check if we found our submitted job (parts[0] is jobid)
+                                 if (parts[0] == jobid)
+                                 {
+                                   found_our_job = true;
+                                   break;
+                                 }
+                               }
+                             }
+                             // Verify our job was in the list (owner filter worked if our job is there)
+                             Expect(found_our_job).ToBe(true);
+                           });
+
+                        it("should validate prefix filter actually works",
+                           [&]()
+                           {
+                             // Submit a job with a known prefix
+                             string jcl = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M\n//RUN EXEC PGM=IEFBR14";
+                             string command = "printf \"" + jcl + "\" | " + zowex_command + " job submit-jcl --only-jobid --wait output";
+                             string stdout_output, stderr_output;
+                             int rc = execute_command(command, stdout_output, stderr_output);
+                             string jobid = TrimChars(stdout_output);
+                             ExpectWithContext(rc, stderr_output).ToBe(0);
+                             _jobs.push_back(jobid);
+
+                             // Extract job name from jobid (first part before the number)
+                             string job_name = "IEFBR14";
+                             string prefix = job_name.substr(0, 3) + "*"; // Use first 3 chars as prefix
+
+                             // List jobs with prefix filter using --rfc for easier parsing
+                             string response;
+                             rc = execute_command_with_output(zowex_command + " job list --prefix " + prefix + " --rfc --max-entries 50", response);
+                             ExpectWithContext(rc, response).ToBe(0);
+
+                             // Parse and validate all jobs match the prefix pattern (RFC format: jobid,retcode,jobname,status,correlator)
+                             vector<string> lines = parse_rfc_response(response, "\n");
+                             Expect(lines.size()).ToBeGreaterThan(0);
+
+                             for (const auto &line : lines)
+                             {
+                               if (line.empty())
+                                 continue;
+                               vector<string> parts = parse_rfc_response(line, ",");
+                               if (parts.size() >= 3)
+                               {
+                                 TestLog("line: " + line);
+                                 string listed_job_name = parts[2]; // jobname is at index 2
+                                 // Verify job name starts with the prefix (minus the wildcard)
+                                 string prefix_without_wildcard = prefix.substr(0, prefix.length() - 1);
+                                 bool matches = listed_job_name.substr(0, prefix_without_wildcard.length()) == prefix_without_wildcard;
+                                 ExpectWithContext(matches, line).ToBe(true);
+                               }
+                             }
                            });
                       });
 
@@ -207,7 +340,7 @@ void zowex_job_tests()
                            [&]()
                            {
                              string jcl = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M\n//RUN EXEC PGM=IEFBR14";
-                             string command = "printf \"" + jcl + "\" | " + zowex_command + " job submit-jcl --wait output --only-jobid";
+                             string command = "printf \"" + jcl + "\" | " + zowex_command + " job submit-jcl --wait OUTPUT --only-jobid";
                              string stdout_output, stderr_output;
                              int rc = execute_command(command, stdout_output, stderr_output);
                              string jobid = TrimChars(stdout_output);
@@ -232,7 +365,7 @@ void zowex_job_tests()
                            [&]()
                            {
                              string jcl = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M\n//RUN EXEC PGM=IEFBR14";
-                             string command = "printf \"" + jcl + "\" | " + zowex_command + " job submit-jcl --wait output --only-jobid";
+                             string command = "printf \"" + jcl + "\" | " + zowex_command + " job submit-jcl --wait OUTPUT --only-jobid";
                              string stdout_output, stderr_output;
                              int rc = execute_command(command, stdout_output, stderr_output);
                              string jobid = TrimChars(stdout_output);
@@ -331,6 +464,68 @@ void zowex_job_tests()
                              ExpectWithContext(rc, stdout_output).ToBe(0);
                              Expect(stdout_output).ToContain("released");
                            });
+
+                        it("should use 'sub-u' alias for submit-uss command",
+                           [&]()
+                           {
+                             string jcl = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M\n//RUN EXEC PGM=IEFBR14";
+                             string filename = "test_job_" + get_random_string(5) + ".jcl";
+                             _files.push_back(filename);
+
+                             string response;
+                             string cmd = "printf \"" + jcl + "\" > " + filename;
+                             int rc = execute_command_with_output(cmd, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             execute_command_with_output("chtag -r " + filename, response);
+
+                             string stdout_output, stderr_output;
+                             string command = zowex_command + " job sub-u " + filename + " --only-jobid";
+                             rc = execute_command(command, stdout_output, stderr_output);
+                             string jobid = TrimChars(stdout_output);
+                             ExpectWithContext(rc, stderr_output).ToBe(0);
+                             Expect(jobid).Not().ToBe("");
+                             _jobs.push_back(jobid);
+                           });
+
+                        it("should use 'vf' alias for view-file command",
+                           [&]()
+                           {
+                             string jcl = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M\n//RUN EXEC PGM=IEFBR14";
+                             string command = "printf \"" + jcl + "\" | " + zowex_command + " job submit-jcl --wait output --only-jobid";
+                             string stdout_output, stderr_output;
+                             int rc = execute_command(command, stdout_output, stderr_output);
+                             string jobid = TrimChars(stdout_output);
+                             _jobs.push_back(jobid);
+
+                             string response;
+                             rc = execute_command_with_output(zowex_command + " job list-files " + jobid + " --rfc", response);
+                             ExpectWithContext(rc, response).ToBe(0);
+
+                             vector<string> lines = parse_rfc_response(response, "\n");
+                             string file_id = "";
+                             for (const auto &line : lines)
+                             {
+                               if (line.find("JESMSGLG") != string::npos)
+                               {
+                                 vector<string> parts = parse_rfc_response(line, ",");
+                                 if (parts.size() >= 3)
+                                 {
+                                   file_id = parts[2];
+                                   break;
+                                 }
+                               }
+                             }
+
+                             if (file_id.empty())
+                             {
+                               TestLog("Could not find JESMSGLG file ID, skipping vf alias test");
+                               return;
+                             }
+
+                             rc = execute_command_with_output(zowex_command + " job vf " + jobid + " " + file_id, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("IEFBR14");
+                           });
                       });
 
              describe("submit",
@@ -353,6 +548,44 @@ void zowex_job_tests()
 
                              // Wait for it to finish
                              execute_command_with_output(zowex_command + " job list --owner *", stdout_output);
+                           });
+
+                        it("should submit JCL with --oj short form for --only-jobid",
+                           [&]()
+                           {
+                             string stdout_output, stderr_output;
+                             string command = "printf \"" + jcl_base + "\" | " + zowex_command + " job submit-jcl --oj";
+
+                             int rc = execute_command(command, stdout_output, stderr_output);
+                             string jobid = TrimChars(stdout_output);
+                             ExpectWithContext(rc, stderr_output).ToBe(0);
+                             Expect(jobid).Not().ToBe("");
+                             _jobs.push_back(jobid);
+                           });
+
+                        it("should submit JCL with --oc short form for --only-correlator",
+                           [&]()
+                           {
+                             string stdout_output, stderr_output;
+                             string command = "printf \"" + jcl_base + "\" | " + zowex_command + " job submit-jcl --oc";
+
+                             int rc = execute_command(command, stdout_output, stderr_output);
+                             string correlator = TrimChars(stdout_output);
+                             ExpectWithContext(rc, stderr_output).ToBe(0);
+                             Expect(correlator).Not().ToBe("");
+
+                             // Get jobid for cleanup using correlator (RFC format: jobid,retcode,jobname,status,correlator)
+                             string response;
+                             execute_command_with_output(zowex_command + " job view-status \"" + correlator + "\" --rfc", response);
+                             vector<string> lines = parse_rfc_response(response, "\n");
+                             if (lines.size() > 0)
+                             {
+                               vector<string> parts = parse_rfc_response(lines[0], ",");
+                               if (parts.size() >= 1)
+                               {
+                                 _jobs.push_back(parts[0]);
+                               }
+                             }
                            });
 
                         it("should submit JCL and wait for output",
@@ -438,16 +671,16 @@ void zowex_job_tests()
                              ExpectWithContext(rc, stderr_output).ToBe(0);
                              Expect(correlator).Not().ToBe("");
 
-                             // Get jobid for cleanup using correlator
+                             // Get jobid for cleanup using correlator (RFC format: jobid,retcode,jobname,status,correlator)
                              string response;
                              execute_command_with_output(zowex_command + " job view-status " + correlator + " --rfc", response);
                              vector<string> lines = parse_rfc_response(response, "\n");
                              if (lines.size() > 0)
                              {
                                vector<string> parts = parse_rfc_response(lines[0], ",");
-                               if (parts.size() >= 2)
+                               if (parts.size() >= 1)
                                {
-                                 _jobs.push_back(parts[1]);
+                                 _jobs.push_back(parts[0]);
                                }
                              }
                            });
@@ -475,15 +708,15 @@ void zowex_job_tests()
                              ExpectWithContext(rc, stderr_output).ToBe(0);
                              Expect(correlator).Not().ToBe("");
 
-                             // Get jobid for cleanup
+                             // Get jobid for cleanup (RFC format: jobid,retcode,jobname,status,correlator)
                              execute_command_with_output(zowex_command + " job view-status " + correlator + " --rfc", response);
                              vector<string> lines = parse_rfc_response(response, "\n");
                              if (lines.size() > 0)
                              {
                                vector<string> parts = parse_rfc_response(lines[0], ",");
-                               if (parts.size() >= 2)
+                               if (parts.size() >= 1)
                                {
-                                 _jobs.push_back(parts[1]);
+                                 _jobs.push_back(parts[0]);
                                }
                              }
                            });
@@ -509,15 +742,15 @@ void zowex_job_tests()
                              ExpectWithContext(rc, stderr_output).ToBe(0);
                              Expect(correlator).Not().ToBe("");
 
-                             // Get jobid for cleanup
+                             // Get jobid for cleanup (RFC format: jobid,retcode,jobname,status,correlator)
                              execute_command_with_output(zowex_command + " job view-status " + correlator + " --rfc", response);
                              vector<string> lines = parse_rfc_response(response, "\n");
                              if (lines.size() > 0)
                              {
                                vector<string> parts = parse_rfc_response(lines[0], ",");
-                               if (parts.size() >= 2)
+                               if (parts.size() >= 1)
                                {
-                                 _jobs.push_back(parts[1]);
+                                 _jobs.push_back(parts[0]);
                                }
                              }
                            });
@@ -592,6 +825,49 @@ void zowex_job_tests()
                                _jobs.push_back(jobid);
                              }
                            });
+
+                        it("should handle conflicting --only-jobid and --only-correlator options",
+                           [&]()
+                           {
+                             string command = "printf \"" + jcl_base + "\" | " + zowex_command + " job submit-jcl --only-jobid --only-correlator";
+                             string stdout_output, stderr_output;
+                             int rc = execute_command(command, stdout_output, stderr_output);
+
+                             // The command should either:
+                             // 1. Return an error (rc != 0) for conflicting options
+                             // 2. Use last option specified (implementation-dependent)
+                             // For now, we just verify it doesn't crash and produces output
+                             if (rc == 0)
+                             {
+                               string output = TrimChars(stdout_output);
+                               Expect(output).Not().ToBe("");
+
+                               // Try to determine if it's a jobid or correlator and clean up
+                               if (output.find("JOB") == 0 && output.length() == 8)
+                               {
+                                 // Looks like a jobid
+                                 _jobs.push_back(output);
+                               }
+                               else if (!output.empty())
+                               {
+                                 // Might be a correlator, try to get jobid (RFC format: jobid,retcode,jobname,status,correlator)
+                                 string response;
+                                 int status_rc = execute_command_with_output(zowex_command + " job view-status \"" + output + "\" --rfc", response);
+                                 if (status_rc == 0)
+                                 {
+                                   vector<string> lines = parse_rfc_response(response, "\n");
+                                   if (lines.size() > 0)
+                                   {
+                                     vector<string> parts = parse_rfc_response(lines[0], ",");
+                                     if (parts.size() >= 1)
+                                     {
+                                       _jobs.push_back(parts[0]);
+                                     }
+                                   }
+                                 }
+                               }
+                             }
+                           });
                       });
 
              describe("view",
@@ -617,6 +893,36 @@ void zowex_job_tests()
                              int rc = execute_command_with_output(zowex_command + " job view-status " + _jobid, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain(_jobid);
+                           });
+
+                        it("should view job status with --rfc format",
+                           [&]()
+                           {
+                             string response;
+                             int rc = execute_command_with_output(zowex_command + " job view-status " + _jobid + " --rfc", response);
+                             ExpectWithContext(rc, response).ToBe(0);
+
+                             // Validate RFC format structure
+                             vector<string> lines = parse_rfc_response(response, "\n");
+                             Expect(lines.size()).ToBeGreaterThan(0);
+
+                             // Parse the first line (should contain job status)
+                             vector<string> columns = parse_rfc_response(lines[0], ",");
+
+                             // RFC format: jobid, retcode, jobname, status, correlator, ...
+                             Expect(columns.size()).ToBeGreaterThanOrEqualTo(5);
+
+                             // Validate jobid matches
+                             Expect(columns[0]).ToBe(_jobid);
+
+                             // Validate retcode is not empty
+                             Expect(columns[1]).Not().ToBe("");
+
+                             // Validate jobname is not empty
+                             Expect(columns[2]).Not().ToBe("");
+
+                             // Validate status field exists (should be OUTPUT for completed job)
+                             Expect(columns[3]).Not().ToBe("");
                            });
 
                         it("should view job JCL",
@@ -1099,6 +1405,66 @@ void zowex_job_tests()
                              _jobs.push_back(jobid);
 
                              int rc = execute_command_with_output(zowex_command + " job cancel " + jobid + " --force --purge", stdout_output);
+                             ExpectWithContext(rc, stdout_output).ToBe(0);
+                             Expect(stdout_output).ToContain("cancelled");
+                           });
+
+                        it("should cancel a job with -d alias for --dump",
+                           [&]()
+                           {
+                             string jcl = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M,TYPRUN=HOLD\n//RUN EXEC PGM=IEFBR14";
+                             string command = "printf \"" + jcl + "\" | " + zowex_command + " job submit-jcl --only-jobid";
+                             string stdout_output, stderr_output;
+                             execute_command(command, stdout_output, stderr_output);
+                             string jobid = TrimChars(stdout_output);
+                             _jobs.push_back(jobid);
+
+                             int rc = execute_command_with_output(zowex_command + " job cancel " + jobid + " -d", stdout_output);
+                             ExpectWithContext(rc, stdout_output).ToBe(0);
+                             Expect(stdout_output).ToContain("cancelled");
+                           });
+
+                        it("should cancel a job with -f alias for --force",
+                           [&]()
+                           {
+                             string jcl = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M,TYPRUN=HOLD\n//RUN EXEC PGM=IEFBR14";
+                             string command = "printf \"" + jcl + "\" | " + zowex_command + " job submit-jcl --only-jobid";
+                             string stdout_output, stderr_output;
+                             execute_command(command, stdout_output, stderr_output);
+                             string jobid = TrimChars(stdout_output);
+                             _jobs.push_back(jobid);
+
+                             int rc = execute_command_with_output(zowex_command + " job cancel " + jobid + " -f", stdout_output);
+                             ExpectWithContext(rc, stdout_output).ToBe(0);
+                             Expect(stdout_output).ToContain("cancelled");
+                           });
+
+                        it("should cancel a job with -p alias for --purge",
+                           [&]()
+                           {
+                             string jcl = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M,TYPRUN=HOLD\n//RUN EXEC PGM=IEFBR14";
+                             string command = "printf \"" + jcl + "\" | " + zowex_command + " job submit-jcl --only-jobid";
+                             string stdout_output, stderr_output;
+                             execute_command(command, stdout_output, stderr_output);
+                             string jobid = TrimChars(stdout_output);
+                             _jobs.push_back(jobid);
+
+                             int rc = execute_command_with_output(zowex_command + " job cancel " + jobid + " -p", stdout_output);
+                             ExpectWithContext(rc, stdout_output).ToBe(0);
+                             Expect(stdout_output).ToContain("cancelled");
+                           });
+
+                        it("should cancel a job with -r alias for --restart",
+                           [&]()
+                           {
+                             string jcl = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M,TYPRUN=HOLD\n//RUN EXEC PGM=IEFBR14";
+                             string command = "printf \"" + jcl + "\" | " + zowex_command + " job submit-jcl --only-jobid";
+                             string stdout_output, stderr_output;
+                             execute_command(command, stdout_output, stderr_output);
+                             string jobid = TrimChars(stdout_output);
+                             _jobs.push_back(jobid);
+
+                             int rc = execute_command_with_output(zowex_command + " job cancel " + jobid + " -r", stdout_output);
                              ExpectWithContext(rc, stdout_output).ToBe(0);
                              Expect(stdout_output).ToContain("cancelled");
                            });
