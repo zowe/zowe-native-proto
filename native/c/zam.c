@@ -14,14 +14,13 @@
 // #include "zam24.h"
 #include "zdstype.h"
 #include "ztype.h"
-#include "zwto.h"
 #include "zenq.h"
 #include "ihapsa.h"
 #include "ikjtcb.h"
 #include "ieftiot1.h"
 #include "zutm31.h"
 #include "ztime.h"
-#include "zdbg.h"
+#include "zwto.h"
 
 // NOTE(Kelosky): must be assembled in AMODE31 code
 #if defined(__IBM_METAL__)
@@ -56,7 +55,6 @@ static int validate_jfcb_attributes(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 {
   int rc = 0;
 
-  zwto_debug("@TEST validate attributes of data set: %44.44s", ioc->jfcb.jfcbdsnm);
   if (ioc->jfcb.jfcbind1 != jfcpds)
   {
     diag->e_msg_len = sprintf(diag->e_msg, "DDname: %8.8s data set: %44.44s is not a PDS: %X", ioc->dcb.dcbddnam, ioc->jfcb.jfcbdsnm, ioc->jfcb.jfcbind1);
@@ -78,7 +76,6 @@ static int validate_jfcb_attributes(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 static int enq_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 {
   int rc = 0;
-  zwto_debug("@TEST ENQ data set: %44.44s", ioc->jfcb.jfcbdsnm);
   QNAME qname = {0};
   RNAME rname = {0};
   strcpy(qname.value, "SPFEDIT");
@@ -113,8 +110,6 @@ static int get_ucb(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 
   while (tiot_entry_len > 0)
   {
-    zwto_debug("@TEST tiot->tioeddnm: %-8.8s", tiot->tioeddnm);
-
     if (0 == strncmp(tiot->tioeddnm, ioc->dcb.dcbddnam, sizeof(tiot->tioeddnm)))
     {
       unsigned char *PTR32 tioesttb = (unsigned char *PTR32) & tiot->tioesttb;
@@ -132,7 +127,6 @@ static int get_ucb(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
   ioc->ucb = (ioc->ucb & MASK_24_BITS);
   if (0 == ioc->ucb)
   {
-    zwto_debug("@TEST raw_ucb_address is zero");
     diag->detail_rc = ZDS_RTNCD_UCB_ERROR;
     diag->e_msg_len = sprintf(diag->e_msg, "Failed to get UCB for data set: %44.44s", ioc->jfcb.jfcbdsnm);
     return RTNCD_FAILURE;
@@ -145,7 +139,6 @@ static int get_ucb(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 static int reserve_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 {
   int rc = 0;
-  zwto_debug("@TEST RESERVE data set: %44.44s", ioc->jfcb.jfcbdsnm);
   QNAME qname_reserve = {0};
   RNAME rname_reserve = {0};
   strcpy(qname_reserve.value, "SPFEDIT");
@@ -167,7 +160,6 @@ static int reserve_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 static int open_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 {
   int rc = 0;
-  zwto_debug("@TEST open data set: %44.44s", ioc->jfcb.jfcbdsnm);
   rc = open_output(&ioc->dcb);
   if (0 != rc)
   {
@@ -192,10 +184,8 @@ static int validate_dcb_attributes(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 {
   int rc = 0;
 
-  zwto_debug("@TEST validate DCB attributes: %X", ioc->dcb.dcbrecfm);
   if (!(ioc->dcb.dcbrecfm & (dcbrecf | dcbrecv)))
   {
-    zwto_debug("@TEST validate_dcb_attributes failed on recfm: %X", ioc->dcb.dcbrecfm);
     diag->e_msg_len = sprintf(diag->e_msg, "Data set is not a fixed or variable record format: %X", ioc->dcb.dcbrecfm);
     diag->detail_rc = ZDS_RTNCD_UNSUPPORTED_RECFM;
     return RTNCD_FAILURE;
@@ -205,7 +195,6 @@ static int validate_dcb_attributes(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 
   if (block_size < 1)
   {
-    zwto_debug("@TEST validate_dcb_attributes failed on block size: %X", block_size);
     diag->e_msg_len = sprintf(diag->e_msg, "Data set has less than 1 block size: %X", block_size);
     diag->detail_rc = ZDS_RTNCD_UNSUPPORTED_BLOCK_SIZE;
     return RTNCD_FAILURE;
@@ -243,7 +232,6 @@ static int note_member(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, NOTE_RESPONSE *PTR
   int rc = 0;
   int rsn = 0;
 
-  zwto_debug("@TEST note member: %8.8s", ioc->ddname);
   rc = note(ioc, note_response, &rsn);
   if (0 != rc)
   {
@@ -267,18 +255,15 @@ int open_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *P
   //
   // Obtain IO_CTRL for the data set
   //
-  zwto_debug("@TEST get io ctrl for data set: %s", ddname);
   IO_CTRL *PTR32 new_ioc = new_io_ctrl();
   *ioc = new_ioc;
   memcpy(&new_ioc->dcb, &open_write_model, sizeof(IHADCB));
   memcpy(new_ioc->dcb.dcbddnam, ddname, sizeof(new_ioc->dcb.dcbddnam));
   memcpy(new_ioc->ddname, ddname, sizeof(new_ioc->ddname));
-  zwto_debug("@TEST get io ctrl for ddname: %s", new_ioc->dcb.dcbddnam);
 
   //
   // Read the JFCB for the data set
   //
-  zwto_debug("@TEST read output jfcb for data set: %s", ddname);
   rc = read_output_jfcb(new_ioc);
   if (0 != rc)
   {
@@ -346,7 +331,6 @@ int open_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 *PTR32 ioc, const char *P
   rc = validate_dcb_attributes(diag, new_ioc);
   if (0 != rc)
   {
-    zwto_debug("@TEST validate_dcb_attributes failed: %d", rc);
     return rc;
   }
 
@@ -370,7 +354,6 @@ static int handle_fixed_record(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, const char
   int lrecl = ioc->dcb.dcblrecl;
   int blocksize = ioc->dcb.dcbblksi;
 
-  zwto_debug("@TEST handle fixed record: %d", length);
   memset(ioc->free_location, ' ', lrecl);
   memcpy(ioc->free_location, data, length);
 
@@ -402,21 +385,17 @@ static void init_bdw(IO_CTRL *PTR32 ioc)
 {
   BDW *PTR32 bdw_ptr = (BDW * PTR32) ioc->buffer;
   bdw_ptr->unused = 0;
-  zwto_debug("@TEST init bdw");
 
   if (0 == ioc->bytes_in_buffer)
   {
     ioc->free_location += sizeof(BDW);
     ioc->bytes_in_buffer = sizeof(BDW);
-    zwto_debug("@TEST initialized");
   }
-  zwto_debug("@TEST init free location: %p and bytes in buffer: %d", ioc->free_location, ioc->bytes_in_buffer);
 }
 
 static int write_variable_record(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, const char *PTR32 data, int length)
 {
   int rc = 0;
-  zwto_debug("@TEST write variable record");
 
   BDW *PTR32 bdw_ptr = (BDW * PTR32) ioc->buffer;
 
@@ -427,7 +406,6 @@ static int write_variable_record(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, const ch
   // write the record and reinit
   ioc->dcb.dcbblksi = ioc->bytes_in_buffer; // temporary update block size before writing
 
-  zut_dump_storage_common("BUFFER", ioc->buffer, ioc->bytes_in_buffer, 16, 0, zut_print_debug);
   rc = write_sync(ioc, ioc->buffer);
   if (0 != rc)
   {
@@ -443,21 +421,16 @@ static int write_variable_record(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, const ch
   ioc->bytes_in_buffer = sizeof(BDW);
   bdw_ptr->len = 0;
 
-  zwto_debug("@TEST write free location: %p and bytes in buffer: %d", ioc->free_location, ioc->bytes_in_buffer);
-
   return rc;
 }
 
 static void copy_variable_record(IO_CTRL *PTR32 ioc, const char *PTR32 data, int length)
 {
-  zwto_debug("@TEST copy");
   ioc->lines_written++;
   RDW *PTR32 rdw_ptr = (RDW * PTR32) ioc->free_location;
   rdw_ptr->unused = 0;
-  zwto_debug("@TEST free before location: %p and bytes in buffer: %d", ioc->free_location, ioc->bytes_in_buffer);
   rdw_ptr->len = sprintf(ioc->free_location + sizeof(RDW), "%.*s", length, data) + sizeof(RDW);
   ioc->bytes_in_buffer += rdw_ptr->len;
-  zwto_debug("@TEST rdw after length: %d and bytes in buffer: %d", rdw_ptr->len, ioc->bytes_in_buffer);
   ioc->free_location += rdw_ptr->len;
 }
 
@@ -467,24 +440,16 @@ static int handle_variable_record(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, const c
 
   int blocksize = ioc->dcb.dcbblksi;
   init_bdw(ioc);
-  // // for now, fail if not blocked
   if (!(ioc->dcb.dcbrecfm & dcbrecbr))
   {
-    zwto_debug("@TEST unblocked variable record");
-    //   diag->e_msg_len = sprintf(diag->e_msg, "Cannot write to unblocked ddname: %8.8s data set: %44.44s with record format: %X", ioc->ddname, ioc->jfcb.jfcbdsnm, ioc->dcb.dcbrecfm);
-    //   diag->detail_rc = ZDS_RTNCD_INVALID_DATA_LENGTH;
-    //   return RTNCD_FAILURE;
     copy_variable_record(ioc, data, length);
     rc = write_variable_record(diag, ioc, data, length);
   }
   else
   {
-    zwto_debug("@TEST blocked variable record");
-    // if buffer is empty on our first call or after a write_sync, point free location just beyond the bdw
 
     // block size minus bytes in buffer equals bytes remaining
     int bytes_remaining = blocksize - ioc->bytes_in_buffer;
-    zwto_debug("@TEST bytes remaining: %d", bytes_remaining);
 
     // if the remaining bytes are not enough to fit the record and rdw OR it is not blocked, we need to write the record and reinit
     if (length + sizeof(RDW) >= bytes_remaining || !(ioc->dcb.dcbrecfm & dcbrecbr))
@@ -498,7 +463,6 @@ static int handle_variable_record(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, const c
 
     // recalculate bytes remaining
     bytes_remaining = blocksize - ioc->bytes_in_buffer;
-    zwto_debug("@TEST bytes now remaining: %d", bytes_remaining);
 
     // add this record to the buffer (which may have just been written)
     if (length + sizeof(RDW) < bytes_remaining)
@@ -513,8 +477,6 @@ static int handle_variable_record(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, const c
 int write_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, const char *PTR32 data, int length)
 {
   int rc = 0;
-  zwto_debug("@TEST write_output_bpam length: %d", length);
-  zwto_debug("@TEST ioc in write is %p", ioc);
 
   int lrecl = ioc->dcb.dcblrecl;
   int blocksize = ioc->dcb.dcbblksi;
@@ -573,7 +535,6 @@ static int write_flush(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 
       ioc->bytes_in_buffer = 0;
       ioc->free_location = ioc->buffer;
-      zwto_debug("@TEST wrote last block");
     }
   }
   return rc;
@@ -583,12 +544,10 @@ static int bldl_member(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc, BLDL_PL *PTR32 bld
 {
   int rc = 0;
   int rsn = 0;
-  zwto_debug("@TEST bldl member: %44.44s", ioc->jfcb.jfcbdsnm);
   bldl_pl->ff = 1;                                                            // only one member in the list
   bldl_pl->ll = sizeof(bldl_pl->list);                                        // length of each entry
   memcpy(bldl_pl->list.name, ioc->jfcb.jfcbelnm, sizeof(ioc->jfcb.jfcbelnm)); // copy member name
 
-  zwto_debug("@TEST bldl member: %8.8s", ioc->ddname);
   rc = bldl(ioc, bldl_pl, &rsn);
 
   if (0 != rc)
@@ -605,6 +564,7 @@ static int update_ispf_statistics(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 {
   int rc = 0;
 
+  zwto_debug("@TEST update_ispf_statistics");
   if (ioc->dcb.dcboflgs & dcbofopn)
   {
     //
@@ -628,14 +588,15 @@ static int update_ispf_statistics(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
     memcpy(ioc->stow_list.name, bldl_pl.list.name, sizeof(bldl_pl.list.name));
     ISPF_STATS *statsp = (ISPF_STATS *)ioc->stow_list.user_data;
 
-    if ((bldl_pl.list.c & LEN_MASK) == 0 || rc == BLDL_WARNING)
+    if ((bldl_pl.list.c & LEN_MASK) == 0)
     {
+      zwto_debug("@TEST update_ispf_statistics with new user data");
       ioc->stow_list.c = ISPF_STATS_MIN_LEN;
 
       //
       // Ensure this random spot in the user data is set to spaces :-(
       //
-      memset(statsp->unused, ' ', sizeof(statsp->unused)); // NOTE(Kelosky): unclear what the 2 remaining bytes are for but if not set to spaces, stats will not be updated for a brand new member
+      memset(statsp->unused, ' ', sizeof(statsp->unused)); // NOTE(Kelosky): unclear what the 2 remaining bytes are for but if not set to spaces, stats will not be updated for a newly created member
 
       //
       // Set initial user
@@ -644,7 +605,9 @@ static int update_ispf_statistics(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
       rc = zutm1gur(user);
       if (0 != rc)
       {
-        zwto_debug("@TEST zutm1gur failed: rc: %d", rc);
+        diag->e_msg_len = sprintf(diag->e_msg, "Failed to get userid rc was: %d", rc);
+        diag->detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
+        diag->service_rc = rc;
         return RTNCD_FAILURE;
       }
       memcpy(statsp->userid, user, sizeof(user));
@@ -677,6 +640,7 @@ static int update_ispf_statistics(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
     }
     else
     {
+      zwto_debug("@TEST update_ispf_statistics with existing user data");
       //
       // Initialize with existing user data / statistics
       //
@@ -691,7 +655,9 @@ static int update_ispf_statistics(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
       rc = zutm1gur(user);
       if (0 != rc)
       {
-        zwto_debug("@TEST zutm1gur failed: rc: %d", rc);
+        diag->e_msg_len = sprintf(diag->e_msg, "Failed to get userid rc was: %d", rc);
+        diag->detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
+        diag->service_rc = rc;
         return RTNCD_FAILURE;
       }
       memcpy(statsp->userid, user, sizeof(user));
@@ -753,7 +719,6 @@ static int close_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
   int rc = 0;
   if (ioc->dcb.dcboflgs & dcbofopn)
   {
-    zwto_debug("@TEST closing data set: %44.44s", ioc->jfcb.jfcbdsnm);
     rc = close_dcb(&ioc->dcb);
     if (0 != rc)
     {
@@ -774,7 +739,6 @@ static int deq_reserve_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
   int rc = 0;
   if (ioc->reserve)
   {
-    zwto_debug("@TEST DEQ RESERVE data set: %44.44s", ioc->jfcb.jfcbdsnm);
     QNAME qname_reserve = {0};
     RNAME rname_reserve = {0};
     strcpy(qname_reserve.value, "SPFEDIT");
@@ -801,7 +765,6 @@ static int deq_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 
   if (ioc->enq)
   {
-    zwto_debug("@TEST DEQ data set: %44.44s", ioc->jfcb.jfcbdsnm);
     RNAME rname = {0};
     QNAME qname = {0};
     strcpy(qname.value, "SPFEDIT");
@@ -825,7 +788,6 @@ static int deq_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 {
   int rc = 0;
-  zwto_debug("@TEST close_output_bpam: %p", ioc);
 
   //
   // Write any remaining bytes in the buffer
@@ -857,8 +819,6 @@ int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
     }
   }
 
-  zwto_debug("@TEST rc is: %d and about to close", rc);
-
   //
   // Close the data set
   //
@@ -873,13 +833,10 @@ int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
   //
   if (ioc->buffer)
   {
-    zwto_debug("@TEST releasing buffer for data set: %44.44s", ioc->jfcb.jfcbdsnm);
-    zwto_debug("@TEST ioc->buffer: %p", ioc->buffer);
     storage_release(ioc->buffer_size, ioc->buffer);
     ioc->buffer = NULL;
     ioc->buffer_size = 0;
   }
-  zwto_debug("@TEST rc is: %d and about to deq reserve", rc);
 
   //
   // DEQ the reserve data set
@@ -890,7 +847,6 @@ int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
     return rc;
   }
 
-  zwto_debug("@TEST rc is: %d and about to deq data set", rc);
   //
   // DEQ the data set
   //
@@ -958,11 +914,9 @@ void close_assert(IO_CTRL *ioc)
 {
   IHADCB *dcb = &ioc->dcb;
   FILE_CTRL *fc = dcb->dcbdcbe;
-  zwto_debug("@TEST close_assert: %p", fc);
 
   if (dcb->dcboflgs & dcbofopn)
   {
-    zwto_debug("@TEST close_assert: closing dcb: %p", dcb);
     int rc = close_dcb(dcb);
     if (0 != rc)
     {
@@ -971,7 +925,6 @@ void close_assert(IO_CTRL *ioc)
     // free DCBE / file control if obtained
     if (fc && ioc->input)
     {
-      zwto_debug("@TEST close_assert: releasing fc: %p", fc);
       // FILE_CTRL *fc = dcb->dcbdcbe;
       storage_release(fc->ctrl_len, fc);
     }
@@ -984,7 +937,6 @@ void close_assert(IO_CTRL *ioc)
   //   ioc->zam24 = NULL;
   // }
 
-  zwto_debug("@TEST close_assert: releasing ioc: %p", ioc);
   storage_release(sizeof(IO_CTRL), ioc);
 }
 
@@ -1230,6 +1182,5 @@ void eodad()
 #pragma epilog(ZAMDA31, " ZWEEPILG ")
 int ZAMDA31()
 {
-  zwto_debug("@TEST ZAMDA31: called");
   return 0;
 }
