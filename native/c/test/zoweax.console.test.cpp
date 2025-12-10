@@ -22,7 +22,7 @@ void zoweax_console_tests()
         it("should display help", []() -> void
         {
             string response;
-            string command = zowex_command + " console";
+            string command = zoweax_command + " console";
             int rc = execute_command_with_output(command, response);
 
             ExpectWithContext(rc, response).ToBe(0);
@@ -32,7 +32,7 @@ void zoweax_console_tests()
         it("should issue console command successfully", []() -> void
         {
             string response;
-            string command = zowex_command + " console issue \"D T\"";
+            string command = zoweax_command + " console issue \"D T\"";
             int rc = execute_command_with_output(command, response);
 
             ExpectWithContext(rc, response).ToBe(0);
@@ -42,7 +42,7 @@ void zoweax_console_tests()
         it("should error when the console name is invalid", []() -> void
         {
             string response;
-            string command = zowex_command +
+            string command = zoweax_command +
                             " console issue \"D IPLINFO\" --console-name 1Invalid";
             int rc = execute_command_with_output(command, response);
 
@@ -53,7 +53,7 @@ void zoweax_console_tests()
         it("should successfully issue a command when the console does not already exist", []() -> void
         {
             string response;
-            string command = zowex_command +
+            string command = zoweax_command +
                             " console issue \"D IPLINFO\" --console-name newConsoleName";
             int rc = execute_command_with_output(command, response);
 
@@ -64,7 +64,7 @@ void zoweax_console_tests()
         it("should issue without waiting when boolean is set to false", []() -> void
         {
             string response;
-            string command = zowex_command + " console issue \"D IPLINFO\" --wait false";
+            string command = zoweax_command + " console issue \"D IPLINFO\" --wait false";
             int rc = execute_command_with_output(command, response);
 
             ExpectWithContext(rc, response).ToBe(0);
@@ -73,8 +73,7 @@ void zoweax_console_tests()
         it("should fail when using a non-APF authorized binary", []() -> void
         {
             string response;
-            string nonAPF = "./../build-out/zowex";
-            string command = nonAPF + " console issue \"D T\"";
+            string command = zowex_command + " console issue \"D T\"";
             int rc = execute_command_with_output(command, response);
 
             ExpectWithContext(rc, response).Not().ToBe(0);

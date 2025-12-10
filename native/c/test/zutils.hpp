@@ -14,6 +14,7 @@
 #include <string>
 #include <vector>
 const std::string zowex_command = "./../build-out/zowex";
+const std::string zoweax_command = "./../build-out/zoweax";
 int execute_command_with_input(const std::string &command, const std::string &input, bool suppress_output = true);
 int execute_command_with_output(const std::string &command, std::string &output);
 std::string get_random_string(const int length = 7, const bool allNumbers = true);
