@@ -321,7 +321,6 @@ int zds_open_output_bpam(ZDS *zds, std::string dsname, IO_CTRL **ioc)
   }
 
   zds->dynalloc = 1;
-  cout << "@TEST DDNAME: " << ddname << endl;
   zut_uppercase_pad_truncate(zds->ddname, ddname.c_str(), sizeof(zds->ddname));
 
   rc = ZDSOBPAM(zds, ioc, zds->ddname);
@@ -336,7 +335,6 @@ int zds_write_output_bpam(ZDS *zds, IO_CTRL *ioc, string &data)
 {
   int rc = 0;
   int length = data.length();
-  cout << "@TEST length: " << length << endl;
   rc = ZDSWBPAM(zds, ioc, data.c_str(), &length);
   if (0 != rc)
   {
@@ -356,14 +354,12 @@ int zds_close_output_bpam(ZDS *zds, IO_CTRL *ioc)
   string resp = "";
   if (ioc == NULL)
   {
-    cout << "@TEST IO_CTRL is NULL" << endl;
     zds->diag.detail_rc = RTNCD_WARNING;
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "IO_CTRL is NULL");
     rc = RTNCD_WARNING;
   }
   else
   {
-    cout << "@TEST calling ZDSCBPAM" << endl;
     rc = ZDSCBPAM(zds, ioc);
   }
 
@@ -390,10 +386,6 @@ int zds_close_output_bpam(ZDS *zds, IO_CTRL *ioc)
       }
     }
   }
-
-  cout << "@TEST ddname: " << string(zds->ddname, sizeof(zds->ddname)) << endl;
-  // cout << "IO_CTRL->dcb: " << ioc->dcb << endl;
-  // cout << "IO_CTRL->dcb->dcbddnam: " << ioc->dcb.dcbddnam << endl;
 
   return rc;
 }

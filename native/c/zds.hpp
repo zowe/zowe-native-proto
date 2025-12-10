@@ -100,8 +100,33 @@ int zds_read_from_dsn(ZDS *zds, const std::string &dsn, std::string &response);
  */
 int zds_write_to_dsn(ZDS *zds, const std::string &dsn, std::string &data);
 
+/**
+ * @brief Open a data set for using BPAM mode
+ *
+ * @param zds data set returned attributes and error information
+ * @param dsname data set name to open
+ * @param ioc IO_CTRL pointer to the data set
+ * @return int 0 for success; non zero otherwise
+ */
 int zds_open_output_bpam(ZDS *zds, std::string dsname, IO_CTRL **ioc);
+
+/**
+ * @brief Write data to a data set using BPAM mode
+ *
+ * @param zds data set returned attributes and error information
+ * @param ioc IO_CTRL pointer to the data set
+ * @param data data to write
+ * @return int 0 for success; non zero otherwise
+ */
 int zds_write_output_bpam(ZDS *zds, IO_CTRL *ioc, std::string &data);
+
+/**
+ * @brief Close a data set using BPAM mode
+ *
+ * @param zds data set returned attributes and error information
+ * @param ioc IO_CTRL pointer to the data set
+ * @return int 0 for success; non zero otherwise
+ */
 int zds_close_output_bpam(ZDS *zds, IO_CTRL *ioc);
 
 /**

@@ -176,7 +176,6 @@ int ZDSOBPAM(ZDS *zds, IO_CTRL **ioc, const char *ddname)
   IO_CTRL *PTR32 ioc31 = NULL;
   rc = open_output_bpam(&zds31.diag, &ioc31, ddname31);
   *ioc = ioc31;
-  zwto_debug("@TEST 31 %s", zds31.diag.e_msg);
   memcpy(zds, &zds31, sizeof(ZDS));
   return rc;
 }
