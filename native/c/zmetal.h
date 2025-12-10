@@ -125,10 +125,7 @@ static int test_auth()
       : "m"(name)                                               \
       : "r0", "r1", "r2", "r14", "r15");
 #else
-#define LOAD(name, ep, rc, rsn) \
-  {                             \
-    rsn++;                      \
-  }
+#define LOAD(name, ep, rc, rsn)
 #endif
 
 #if defined(__IBM_METAL__)
