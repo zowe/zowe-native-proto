@@ -20,7 +20,6 @@
 #include "ieftiot1.h"
 #include "zutm31.h"
 #include "ztime.h"
-#include "zwto.h"
 
 // NOTE(Kelosky): must be assembled in AMODE31 code
 #if defined(__IBM_METAL__)
@@ -564,7 +563,7 @@ static int update_ispf_statistics(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 {
   int rc = 0;
 
-  zwto_debug("@TEST update_ispf_statistics");
+  // zwto_debug("@TEST update_ispf_statistics");
   if (ioc->dcb.dcboflgs & dcbofopn)
   {
     //
@@ -590,7 +589,7 @@ static int update_ispf_statistics(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 
     if ((bldl_pl.list.c & LEN_MASK) == 0)
     {
-      zwto_debug("@TEST update_ispf_statistics with new user data");
+      // zwto_debug("@TEST update_ispf_statistics with new user data");
       ioc->stow_list.c = ISPF_STATS_MIN_LEN;
 
       //
@@ -640,7 +639,7 @@ static int update_ispf_statistics(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
     }
     else
     {
-      zwto_debug("@TEST update_ispf_statistics with existing user data");
+      // zwto_debug("@TEST update_ispf_statistics with existing user data");
       //
       // Initialize with existing user data / statistics
       //
@@ -690,6 +689,8 @@ static int update_ispf_statistics(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
       statsp->modified_time_seconds = timel.times.SS;
     }
   }
+
+  return rc;
 }
 
 static int stow_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
@@ -806,6 +807,8 @@ int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
   {
     // return rc; // TODO(Kelosky): handle when this fails... continue or return?
   }
+
+  // zwto_debug("@TEST user was: %8.8s", ioc->stow_list.name);
 
   //
   // STOW the ISPF statistics
