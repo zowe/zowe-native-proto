@@ -13,6 +13,7 @@
 #define ZUTILS_HPP
 #include <string>
 #include <vector>
+#include "../zjson.hpp"
 const std::string zowex_command = "./../build-out/zowex";
 const std::string zoweax_command = "./../build-out/zoweax";
 int execute_command_with_input(const std::string &command, const std::string &input, bool suppress_output = true);
@@ -23,4 +24,6 @@ std::string get_random_ds(const int qualifier_count = 4, const std::string hlq =
 std::string get_user();
 std::string parse_etag_from_output(const std::string &output);
 std::vector<std::string> parse_rfc_response(const std::string input, const char *delim = ",");
+std::string read_file(const std::string &filename);
+zjson::Value read_json_file(const std::string &filename);
 #endif
