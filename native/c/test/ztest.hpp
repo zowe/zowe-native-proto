@@ -198,6 +198,7 @@ private:
   jmp_buf jump_buf = {0};
   std::string matcher = "";
   std::vector<int> suite_stack;
+  std::string znp_test_log = "";
 
   Globals()
   {
@@ -408,8 +409,19 @@ public:
   }
   void test_log(const std::string &message)
   {
-    pad_nesting(get_nesting());
-    std::cout << "[TEST_INFO] " << message << std::endl;
+    static bool show_test_log = false;
+    if (znp_test_log.empty())
+    {
+      const char *debug = getenv("ZNP_TEST_LOG");
+      znp_test_log = debug == nullptr || strstr(debug, "ON") != nullptr ? "ON" : "OFF";
+      show_test_log = znp_test_log == "ON";
+    }
+
+    if (show_test_log)
+    {
+      pad_nesting(get_nesting());
+      std::cout << "[TEST_INFO] " << message << std::endl;
+    }
   }
 
   // Execute a vector of hooks, catching and reporting any errors

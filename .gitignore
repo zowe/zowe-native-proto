@@ -20,6 +20,7 @@ config.yaml
 tsconfig.tsbuildinfo
 zowe.config.json
 zowe.schema.json
+native/c/test/test.properties.json
 native/python/app/config/service-configuration.yml
 native/python/app/keystore/*
 !native/python/app/keystore/*.sh
