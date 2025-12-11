@@ -36,6 +36,7 @@ let deployDirs: {
     pythonDir: string;
     pythonTestDir: string;
     zowedDir: string;
+    zowedTestDir: string;
 };
 
 const asciiToEbcdicMap =
@@ -65,6 +66,40 @@ class AsciiToEbcdicTransform extends Transform {
         const output = Buffer.allocUnsafe(chunk.length);
         for (let i = 0; i < chunk.length; i++) {
             output[i] = asciiToEbcdicMap[chunk[i]];
+        }
+        callback(null, output);
+    }
+}
+
+// EBCDIC to ASCII conversion table (inverse of ASCII to EBCDIC)
+// This table maps EBCDIC byte values to their ASCII equivalents
+const ebcdicToAsciiMap =
+    // biome-ignore format: the array should not be formatted
+    [
+    /*       0     1     2     3     4     5     6     7     8     9     A     B     C     D     E     F */
+    /* 0 */ 0x00, 0x01, 0x02, 0x03, 0x00, 0x09, 0x00, 0x7f, 0x00, 0x00, 0x00, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
+    /* 1 */ 0x10, 0x11, 0x12, 0x13, 0x00, 0x0a, 0x08, 0x00, 0x18, 0x19, 0x00, 0x00, 0x1c, 0x1d, 0x1e, 0x1f,
+    /* 2 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x0a, 0x17, 0x1b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05, 0x06, 0x07,
+    /* 3 */ 0x00, 0x00, 0x16, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x14, 0x15, 0x00, 0x1a,
+    /* 4 */ 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xa2, 0x2e, 0x3c, 0x28, 0x2b, 0x7c,
+    /* 5 */ 0x26, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x21, 0x24, 0x2a, 0x29, 0x3b, 0x5e,
+    /* 6 */ 0x2d, 0x2f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xa6, 0x2c, 0x25, 0x5f, 0x3e, 0x3f,
+    /* 7 */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x60, 0x3a, 0x23, 0x40, 0x27, 0x3d, 0x22,
+    /* 8 */ 0x00, 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    /* 9 */ 0x00, 0x6a, 0x6b, 0x6c, 0x6d, 0x6e, 0x6f, 0x70, 0x71, 0x72, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    /* A */ 0x00, 0x7e, 0x73, 0x74, 0x75, 0x76, 0x77, 0x78, 0x79, 0x7a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    /* B */ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    /* C */ 0x7b, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    /* D */ 0x7d, 0x4a, 0x4b, 0x4c, 0x4d, 0x4e, 0x4f, 0x50, 0x51, 0x52, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    /* E */ 0x5c, 0x00, 0x53, 0x54, 0x55, 0x56, 0x57, 0x58, 0x59, 0x5a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    /* F */ 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    ];
+
+class EbcdicToAsciiTransform extends Transform {
+    _transform(chunk: Buffer, _encoding: BufferEncoding, callback: TransformCallback) {
+        const output = Buffer.allocUnsafe(chunk.length);
+        for (let i = 0; i < chunk.length; i++) {
+            output[i] = ebcdicToAsciiMap[chunk[i]];
         }
         callback(null, output);
     }
@@ -491,7 +526,13 @@ async function runCommandInShell(connection: Client, command: string) {
     });
 }
 
-async function retrieve(connection: Client, files: string[], targetDir: string, useBasename = false) {
+async function retrieve(
+    connection: Client,
+    files: string[],
+    targetDir: string,
+    useBasename = false,
+    convertAscii = false,
+) {
     return new Promise<void>((finish) => {
         console.log("Retrieving files...");
 
@@ -506,7 +547,7 @@ async function retrieve(connection: Client, files: string[], targetDir: string, 
                 if (!fs.existsSync(`${absTargetDir}`)) fs.mkdirSync(`${absTargetDir}`);
                 const to = `${absTargetDir}/${useBasename ? path.basename(files[i]) : files[i]}`;
                 const from = `${deployDirs.root}/${files[i]}`;
-                await download(sftpcon, from, to);
+                await download(sftpcon, from, to, convertAscii);
             }
             console.log("Get complete!");
             finish();
@@ -592,12 +633,13 @@ async function make(connection: Client, inDir?: string) {
 
 async function test(connection: Client) {
     console.log("Testing native/c ...");
-    const response = await runCommandInShell(
-        connection,
-        `cd ${deployDirs.cTestDir} && _CEE_RUNOPTS="TRAP(ON,NOSPIE)" ./build-out/ztest_runner ${args[1] ?? ""} && _CEE_RUNOPTS="TRAP(ON,NOSPIE)" ../../zowed/test/build-out/zowed_test_runner ${args[1] ?? ""} \n`,
-    );
+    const testEnv = '_CEE_RUNOPTS="TRAP(ON,NOSPIE)"';
+    const cTestCmd = `cd ${deployDirs.cTestDir} && ${testEnv} ./build-out/ztest_runner ${args[1] ?? ""}`;
+    const zowedTestCmd = `cd ${deployDirs.zowedTestDir} && ${testEnv} ./build-out/zowed_test_runner ${args[1] ?? ""}`;
+    const response = await runCommandInShell(connection, `${cTestCmd}; cd -; ${zowedTestCmd}\n`);
     console.log(response);
     console.log("Testing complete!");
+    await retrieve(connection, [`c/test/test-results.xml`, `zowed/test/test-results.xml`], "native", false, true);
 }
 
 async function chdsect(connection: Client) {
@@ -692,17 +734,22 @@ async function uploadFile(sftpcon: SFTPWrapper, from: string, to: string, conver
     });
 }
 
-async function download(sftpcon: SFTPWrapper, from: string, to: string) {
+async function download(sftpcon: SFTPWrapper, from: string, to: string, convertAscii = false) {
     return new Promise<void>((finish) => {
         console.log(`Downloading '${from}' to ${to}`);
-        sftpcon.fastGet(from, to, (err) => {
+        const callback = (err: Error | null) => {
             if (err) {
                 console.log("Get err");
                 console.log(from, to);
                 throw err;
             }
             finish();
-        });
+        };
+        if (convertAscii) {
+            pipeline(sftpcon.createReadStream(from), new EbcdicToAsciiTransform(), fs.createWriteStream(to), callback);
+        } else {
+            sftpcon.fastGet(from, to, callback);
+        }
     });
 }
 
@@ -768,6 +815,7 @@ async function main() {
         pythonDir: `${config.deployDir}/python/bindings`,
         pythonTestDir: `${config.deployDir}/python/bindings/test`,
         zowedDir: `${config.deployDir}/zowed`,
+        zowedTestDir: `${config.deployDir}/zowed/test`,
     };
     const sshClient = await buildSshClient(config.sshProfile as IProfile);
 

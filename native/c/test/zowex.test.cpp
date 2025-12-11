@@ -13,6 +13,8 @@
 #include "ztype.h"
 #include "zowex.test.hpp"
 #include "zutils.hpp"
+#include "zoweax.console.test.hpp"
+#include "zowex.tso.test.hpp"
 
 using namespace std;
 using namespace ztst;
@@ -189,5 +191,9 @@ void zowex_tests()
                         //               });
                         //          });
                       });
+             zowex_tso_tests();
            });
+
+  describe("zoweax test", []() -> void
+           { zoweax_console_tests(); });
 }
