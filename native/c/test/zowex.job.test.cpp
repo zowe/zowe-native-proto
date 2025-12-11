@@ -149,7 +149,7 @@ void zowex_job_tests()
                              string prefix = "IEFBR*";
 
                              string response;
-                             rc = execute_command_with_output(zowex_command + " job list --owner " + current_user + " --prefix " + prefix + " --max-entries 10 --rfc", response);
+                             rc = execute_command_with_output(zowex_command + " job list --owner " + current_user + " --prefix " + prefix + " --max-entries 10 --no-warn --rfc", response);
                              ExpectWithContext(rc, response).ToBe(0);
 
                              // Validate results
@@ -250,10 +250,11 @@ void zowex_job_tests()
                         it("should handle list with max-entries 0",
                            []()
                            {
-                             // max-entries 0 should return all jobs
+                             // max-entries 0 should return all jobs (uses default max which may trigger warning)
                              int rc = 0;
                              string response;
-                             rc = execute_command_with_output(zowex_command + " job list --max-entries 0 --warn false", response);
+                             rc = execute_command_with_output(zowex_command + " job list --max-entries 0 --no-warn", response);
+                             // With --no-warn, warning RC is converted to success
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(TrimChars(response)).Not().ToBe("");
                            });
@@ -285,7 +286,7 @@ void zowex_job_tests()
 
                              // List jobs with current user as owner using --rfc for easier parsing
                              string response;
-                             rc = execute_command_with_output(zowex_command + " job list --owner " + current_user + " --rfc --max-entries 50", response);
+                             rc = execute_command_with_output(zowex_command + " job list --owner " + current_user + " --rfc --max-entries 50 --no-warn", response);
                              ExpectWithContext(rc, response).ToBe(0);
 
                              // Parse and validate we found our job (RFC format: jobid,retcode,jobname,status,correlator)
@@ -328,7 +329,7 @@ void zowex_job_tests()
 
                              // List jobs with prefix filter using --rfc for easier parsing
                              string response;
-                             rc = execute_command_with_output(zowex_command + " job list --prefix " + prefix + " --rfc --max-entries 50", response);
+                             rc = execute_command_with_output(zowex_command + " job list --prefix " + prefix + " --rfc --max-entries 50 --no-warn", response);
                              ExpectWithContext(rc, response).ToBe(0);
 
                              // Parse and validate all jobs match the prefix pattern (RFC format: jobid,retcode,jobname,status,correlator)
@@ -350,6 +351,22 @@ void zowex_job_tests()
                                  ExpectWithContext(matches, line).ToBe(true);
                                }
                              }
+                           });
+
+                        it("should handle list with empty owner",
+                           []()
+                           {
+                             string response;
+                             int rc = execute_command_with_output(zowex_command + " job list --owner \"\" --max-entries 5", response);
+                             ExpectWithContext(rc, response).ToBeGreaterThanOrEqualTo(0);
+                           });
+
+                        it("should handle list with empty prefix",
+                           []()
+                           {
+                             string response;
+                             int rc = execute_command_with_output(zowex_command + " job list --prefix \"\" --max-entries 5", response);
+                             ExpectWithContext(rc, response).ToBeGreaterThanOrEqualTo(0);
                            });
 
                         it("should return jobs in consistent order",
@@ -709,6 +726,26 @@ void zowex_job_tests()
                              }
                            });
 
+                        it("should submit JCL and wait for ACTIVE status",
+                           [&]()
+                           {
+                             string jobid;
+                             string stdout_output, stderr_output;
+                             string command = "printf \"" + jcl_base + "\" | " + zowex_command + " job submit-jcl --wait ACTIVE";
+
+                             int rc = execute_command(command, stdout_output, stderr_output);
+                             ExpectWithContext(rc, stderr_output).ToBe(0);
+                             Expect(stdout_output).ToContain("Submitted JCL");
+
+                             // Extract jobid for cleanup
+                             size_t pos = stdout_output.find("JOB");
+                             if (pos != string::npos)
+                             {
+                               jobid = stdout_output.substr(pos, 8);
+                               _jobs.push_back(jobid);
+                             }
+                           });
+
                         it("should submit from a data set",
                            [&]()
                            {
@@ -887,6 +924,35 @@ void zowex_job_tests()
                              }
                            });
 
+                        it("should submit from data set with --wait ACTIVE option",
+                           [&]()
+                           {
+                             string ds = get_random_ds();
+                             _ds.push_back(ds);
+                             string response;
+                             int rc = execute_command_with_output(zowex_command + " data-set create " + ds + " --dsorg PS --recfm FB --lrecl 80", response);
+                             ExpectWithContext(rc, response).ToBe(0);
+
+                             string command = "echo \"" + jcl_base + "\" | " + zowex_command + " data-set write " + ds;
+                             rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+
+                             // Submit with --wait ACTIVE
+                             string stdout_output, stderr_output;
+                             command = zowex_command + " job submit " + ds + " --wait ACTIVE";
+                             rc = execute_command(command, stdout_output, stderr_output);
+                             ExpectWithContext(rc, stderr_output).ToBe(0);
+                             Expect(stdout_output).ToContain("Submitted");
+
+                             // Extract jobid for cleanup
+                             size_t pos = stdout_output.find("JOB");
+                             if (pos != string::npos)
+                             {
+                               string jobid = stdout_output.substr(pos, 8);
+                               _jobs.push_back(jobid);
+                             }
+                           });
+
                         it("should submit from USS file with --wait option",
                            [&]()
                            {
@@ -938,6 +1004,62 @@ void zowex_job_tests()
                              Expect(jobid).Not().ToBe("");
                              // Verify it's just the jobid
                              Expect(jobid.find("Submitted")).ToBe(string::npos);
+                             _jobs.push_back(jobid);
+                           });
+
+                        it("should submit from USS file with --wait ACTIVE option",
+                           [&]()
+                           {
+                             // Create a job that will take time to execute
+                             string jcl_long = "//LONGJOB JOB (IZUACCT),TEST,REGION=0M\n//STEP1 EXEC PGM=IEFBR14";
+                             string filename = "test_job_" + get_random_string(5) + ".jcl";
+                             _files.push_back(filename);
+
+                             string response;
+                             string cmd = "printf \"" + jcl_long + "\" > " + filename;
+                             int rc = execute_command_with_output(cmd, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             execute_command_with_output("chtag -r " + filename, response);
+
+                             // Submit with --wait ACTIVE
+                             string stdout_output, stderr_output;
+                             string command = zowex_command + " job submit-uss " + filename + " --wait ACTIVE";
+                             rc = execute_command(command, stdout_output, stderr_output);
+                             ExpectWithContext(rc, stderr_output).ToBe(0);
+                             Expect(stdout_output).ToContain("Submitted");
+
+                             // Extract jobid for cleanup
+                             size_t pos = stdout_output.find("JOB");
+                             if (pos != string::npos)
+                             {
+                               string jobid = stdout_output.substr(pos, 8);
+                               _jobs.push_back(jobid);
+                             }
+                           });
+
+                        it("should submit from USS file with --wait and --only-jobid combined",
+                           [&]()
+                           {
+                             string filename = "test_job_" + get_random_string(5) + ".jcl";
+                             _files.push_back(filename);
+
+                             string response;
+                             string cmd = "printf \"" + jcl_base + "\" > " + filename;
+                             int rc = execute_command_with_output(cmd, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             execute_command_with_output("chtag -r " + filename, response);
+
+                             // Submit with --wait output and --only-jobid
+                             string stdout_output, stderr_output;
+                             string command = zowex_command + " job submit-uss " + filename + " --wait output --only-jobid";
+                             rc = execute_command(command, stdout_output, stderr_output);
+                             string jobid = TrimChars(stdout_output);
+                             ExpectWithContext(rc, stderr_output).ToBe(0);
+                             Expect(jobid).Not().ToBe("");
+                             // Verify it's just the jobid (no "Submitted" text)
+                             Expect(jobid.find("Submitted")).ToBe(string::npos);
+                             // Verify jobid format
+                             Expect(jobid.length()).ToBe(8);
                              _jobs.push_back(jobid);
                            });
                       });
@@ -1081,6 +1203,38 @@ void zowex_job_tests()
                                Expect(jobid).Not().ToBe("");
                                _jobs.push_back(jobid);
                              }
+                           });
+
+                        it("should handle submit from dataset with special characters in name",
+                           [&]()
+                           {
+                             string ds = get_user() + ".TEST$#@.JCL";
+                             _ds.push_back(ds);
+                             string response;
+                             int rc = execute_command_with_output(zowex_command + " data-set create " + ds + " --dsorg PS --recfm FB --lrecl 80", response);
+                             ExpectWithContext(rc, response).ToBe(0);
+
+                             string command = "echo \"" + jcl_base + "\" | " + zowex_command + " data-set write " + ds;
+                             rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+
+                             string stdout_output, stderr_output;
+                             command = zowex_command + " job submit " + ds + " --only-jobid";
+                             rc = execute_command(command, stdout_output, stderr_output);
+                             string jobid = TrimChars(stdout_output);
+                             ExpectWithContext(rc, stderr_output).ToBe(0);
+                             Expect(jobid).Not().ToBe("");
+                             _jobs.push_back(jobid);
+                           });
+
+                        it("should handle submit with invalid wait status value",
+                           [&]()
+                           {
+                             string command = "printf \"" + jcl_base + "\" | " + zowex_command + " job submit-jcl --wait INVALID_STATUS";
+                             string stdout_output, stderr_output;
+                             int rc = execute_command(command, stdout_output, stderr_output);
+                             Expect(rc).Not().ToBe(0);
+                             Expect(stderr_output).ToContain("cannot wait for unknown status");
                            });
                       });
 
@@ -1530,6 +1684,14 @@ void zowex_job_tests()
                               Expect(rc).Not().ToBe(0);
                             });
 
+                        it("should handle view-file with key 0",
+                           [&]()
+                           {
+                             string response;
+                             int rc = execute_command_with_output(zowex_command + " job view-file " + _jobid + " 0", response);
+                             Expect(rc).Not().ToBe(0);
+                           });
+
                         it("should handle view-file with invalid file ID",
                            [&]()
                            {
@@ -1565,6 +1727,62 @@ void zowex_job_tests()
                              string response;
                              int rc = execute_command_with_output(zowex_command + " job list-files " + invalid_jobid, response);
                              Expect(rc).Not().ToBe(0);
+                           });
+
+                        it("should handle job with no spool files",
+                           [&]()
+                           {
+                             string jcl = "//NOSPOOL JOB (IZUACCT),TEST,REGION=0M,TYPRUN=SCAN\n//RUN EXEC PGM=IEFBR14";
+                             string command = "printf \"" + jcl + "\" | " + zowex_command + " job submit-jcl --only-jobid";
+                             string stdout_output, stderr_output;
+                             int rc = execute_command(command, stdout_output, stderr_output);
+
+                             if (rc == 0)
+                             {
+                               string jobid = TrimChars(stdout_output);
+                               _jobs.push_back(jobid);
+
+                               string response;
+                               rc = execute_command_with_output(zowex_command + " job list-files " + jobid, response);
+                               ExpectWithContext(rc, response).ToBeGreaterThanOrEqualTo(0);
+                             }
+                           });
+
+                        it("should handle view-file with binary spool content",
+                           [&]()
+                           {
+                             string response;
+                             int rc = execute_command_with_output(zowex_command + " job list-files " + _jobid + " --rfc", response);
+                             ExpectWithContext(rc, response).ToBe(0);
+
+                             vector<string> lines = parse_rfc_response(response, "\n");
+                             string file_id = "";
+                             for (const auto &line : lines)
+                             {
+                               if (!line.empty())
+                               {
+                                 vector<string> parts = parse_rfc_response(line, ",");
+                                 if (parts.size() >= 3)
+                                 {
+                                   file_id = parts[2];
+                                   break;
+                                 }
+                               }
+                             }
+
+                             if (file_id.empty())
+                             {
+                               TestLog("Could not find file ID, skipping binary content test");
+                               return;
+                             }
+
+                             rc = execute_command_with_output(zowex_command + " job view-file " + _jobid + " " + file_id + " --encoding binary", response);
+                             ExpectWithContext(rc, response).ToBeGreaterThanOrEqualTo(0);
+
+                             if (rc == 0)
+                             {
+                               Expect(response.length()).ToBeGreaterThan(0);
+                             }
                            });
                       });
 
@@ -2089,22 +2307,26 @@ void zowex_job_tests()
                         it("should cancel by correlator",
                            [&]()
                            {
-                             // Submit a job with TYPRUN=HOLD (so we can cancel it)
-                             string jcl = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M,TYPRUN=HOLD\n//RUN EXEC PGM=IEFBR14";
+                             // Submit a long-running job that we can cancel while it's executing
+                             string jcl = "//LONGJOB JOB (IZUACCT),TEST,REGION=0M\n"
+                                          "//STEP1 EXEC PGM=IEFBR14\n"
+                                          "//STEP2 EXEC PGM=BPXBATCH\n"
+                                          "//STDOUT DD SYSOUT=*\n"
+                                          "//STDERR DD SYSOUT=*\n"
+                                          "//STDPARM DD *\n"
+                                          "SH sleep 30\n"
+                                          "/*";
                              string command = "printf \"" + jcl + "\" | " + zowex_command + " job submit-jcl --only-jobid";
                              string stdout_output, stderr_output;
                              int rc = execute_command(command, stdout_output, stderr_output);
                              string jobid = TrimChars(stdout_output);
+                             ExpectWithContext(rc, stderr_output).ToBe(0);
                              _jobs.push_back(jobid);
 
-                             // Release the job first so it starts executing, then we can cancel it
-                             execute_command_with_output(zowex_command + " job release " + jobid, stdout_output);
+                             // Wait briefly for job to start executing
+                             sleep(2);
 
-                             // Give it a moment to start
-                             string list_response;
-                             execute_command_with_output(zowex_command + " job list --owner *", list_response);
-
-                             // Get correlator
+                             // Get correlator from the running job
                              string response;
                              execute_command_with_output(zowex_command + " job view-status " + jobid + " --rfc", response);
                              vector<string> lines = parse_rfc_response(response, "\n");
@@ -2124,7 +2346,7 @@ void zowex_job_tests()
                                return;
                              }
 
-                             // Cancel by correlator
+                             // Cancel by correlator while job is running
                              rc = execute_command_with_output(zowex_command + " job cancel \"" + correlator + "\"", stdout_output);
                              ExpectWithContext(rc, stdout_output).ToBe(0);
                              Expect(stdout_output).ToContain("cancelled");

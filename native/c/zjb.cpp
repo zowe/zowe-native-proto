@@ -299,6 +299,7 @@ int zjb_wait(ZJB *zjb, string status)
   int rc = 0;
   ZJob job = {0};
   string jobid(zjb->jobid, sizeof(zjb->jobid));
+  bool waiting_for_active = (status == "ACTIVE");
 
   do
   {
@@ -309,6 +310,13 @@ int zjb_wait(ZJB *zjb, string status)
     if (0 != rc)
     {
       return RTNCD_FAILURE;
+    }
+
+    // When waiting for ACTIVE, accept OUTPUT as a valid completion state
+    // (job transitioned through ACTIVE to OUTPUT before we could observe it)
+    if (waiting_for_active && job.status.find("OUTPUT") != string::npos)
+    {
+      return RTNCD_SUCCESS;
     }
 
   } while (job.status != status);
