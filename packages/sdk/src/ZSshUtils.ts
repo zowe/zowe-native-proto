@@ -76,10 +76,17 @@ export class ZSshUtils {
 
     public static async mkdirRecursive(sftp: SFTPWrapper, dir: string) {
         const directory = dir.split("/").filter(Boolean);
+<<<<<<< Updated upstream
         let cur = directory[0];
         for (let i = 1; i < directory.length; i++) {
             cur += `/${directory[i]}`;
             await promisify(sftp.mkdir.bind(sftp))(cur, { mode: 0o700 }).catch((err: SftpError) => {
+=======
+        let cur = "";
+        for (const dir of directory) {
+            cur += `/${dir}`;
+            await promisify(sftp.mkdir.bind(sftp))(cur, { mode: 0o755 }).catch((err: SftpError) => {
+>>>>>>> Stashed changes
                 if (err.code !== 4) throw err;
                 Logger.getAppLogger().debug(`Remote directory already exists: ${dir}`);
             });
@@ -94,6 +101,10 @@ export class ZSshUtils {
     ): Promise<void> {
         Logger.getAppLogger().debug(`Installing server to ${session.ISshSession.hostname} at path: ${serverPath}`);
         const remoteDir = serverPath.replace(/^~/, ".");
+<<<<<<< Updated upstream
+=======
+        // const remoteDir = serverPath;
+>>>>>>> Stashed changes
 
         return ZSshUtils.sftp(session, async (sftp, ssh) => {
             await ZSshUtils.mkdirRecursive(sftp, remoteDir);
