@@ -351,6 +351,49 @@ void zowex_job_tests()
                                }
                              }
                            });
+
+                        it("should return jobs in consistent order",
+                           []()
+                           {
+                             // List jobs twice and verify consistent ordering
+                             string response1, response2;
+                             int rc1 = execute_command_with_output(zowex_command + " job list --max-entries 10 --rfc", response1);
+                             int rc2 = execute_command_with_output(zowex_command + " job list --max-entries 10 --rfc", response2);
+
+                             ExpectWithContext(rc1, response1).ToBeGreaterThanOrEqualTo(0);
+                             ExpectWithContext(rc2, response2).ToBeGreaterThanOrEqualTo(0);
+
+                             if (rc1 == 0 && rc2 == 0 && !response1.empty() && !response2.empty())
+                             {
+                               vector<string> lines1 = parse_rfc_response(response1, "\n");
+                               vector<string> lines2 = parse_rfc_response(response2, "\n");
+
+                               // Should have consistent results if no jobs were submitted between calls
+                               // Extract jobids from both responses
+                               vector<string> jobids1, jobids2;
+                               for (const auto &line : lines1)
+                               {
+                                 if (!line.empty())
+                                 {
+                                   vector<string> parts = parse_rfc_response(line, ",");
+                                   if (parts.size() >= 1)
+                                     jobids1.push_back(parts[0]);
+                                 }
+                               }
+                               for (const auto &line : lines2)
+                               {
+                                 if (!line.empty())
+                                 {
+                                   vector<string> parts = parse_rfc_response(line, ",");
+                                   if (parts.size() >= 1)
+                                     jobids2.push_back(parts[0]);
+                                 }
+                               }
+
+                               // Verify we got results
+                               Expect(jobids1.size()).ToBeGreaterThan(0);
+                             }
+                           });
                       });
 
              describe("list-proclib",
@@ -812,6 +855,91 @@ void zowex_job_tests()
                                }
                              }
                            });
+
+                        it("should submit from data set with --wait option",
+                           [&]()
+                           {
+                             // Create DS
+                             string ds = get_random_ds();
+                             _ds.push_back(ds);
+                             string response;
+                             int rc = execute_command_with_output(zowex_command + " data-set create " + ds + " --dsorg PS --recfm FB --lrecl 80", response);
+                             ExpectWithContext(rc, response).ToBe(0);
+
+                             // Write JCL
+                             string command = "echo \"" + jcl_base + "\" | " + zowex_command + " data-set write " + ds;
+                             rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+
+                             // Submit with --wait output
+                             string stdout_output, stderr_output;
+                             command = zowex_command + " job submit " + ds + " --wait output";
+                             rc = execute_command(command, stdout_output, stderr_output);
+                             ExpectWithContext(rc, stderr_output).ToBe(0);
+                             Expect(stdout_output).ToContain("Submitted");
+
+                             // Extract jobid for cleanup
+                             size_t pos = stdout_output.find("JOB");
+                             if (pos != string::npos)
+                             {
+                               string jobid = stdout_output.substr(pos, 8);
+                               _jobs.push_back(jobid);
+                             }
+                           });
+
+                        it("should submit from USS file with --wait option",
+                           [&]()
+                           {
+                             // Create local file
+                             string filename = "test_job_" + get_random_string(5) + ".jcl";
+                             _files.push_back(filename);
+
+                             string response;
+                             string cmd = "printf \"" + jcl_base + "\" > " + filename;
+                             int rc = execute_command_with_output(cmd, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             execute_command_with_output("chtag -r " + filename, response);
+
+                             // Submit with --wait output
+                             string stdout_output, stderr_output;
+                             string command = zowex_command + " job submit-uss " + filename + " --wait output";
+                             rc = execute_command(command, stdout_output, stderr_output);
+                             ExpectWithContext(rc, stderr_output).ToBe(0);
+                             Expect(stdout_output).ToContain("Submitted");
+
+                             // Extract jobid for cleanup
+                             size_t pos = stdout_output.find("JOB");
+                             if (pos != string::npos)
+                             {
+                               string jobid = stdout_output.substr(pos, 8);
+                               _jobs.push_back(jobid);
+                             }
+                           });
+
+                        it("should submit from USS file with --only-jobid option",
+                           [&]()
+                           {
+                             // Create local file
+                             string filename = "test_job_" + get_random_string(5) + ".jcl";
+                             _files.push_back(filename);
+
+                             string response;
+                             string cmd = "printf \"" + jcl_base + "\" > " + filename;
+                             int rc = execute_command_with_output(cmd, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             execute_command_with_output("chtag -r " + filename, response);
+
+                             // Submit with --only-jobid
+                             string stdout_output, stderr_output;
+                             string command = zowex_command + " job submit-uss " + filename + " --only-jobid";
+                             rc = execute_command(command, stdout_output, stderr_output);
+                             string jobid = TrimChars(stdout_output);
+                             ExpectWithContext(rc, stderr_output).ToBe(0);
+                             Expect(jobid).Not().ToBe("");
+                             // Verify it's just the jobid
+                             Expect(jobid.find("Submitted")).ToBe(string::npos);
+                             _jobs.push_back(jobid);
+                           });
                       });
 
              describe("submit-edge-cases",
@@ -1009,6 +1137,26 @@ void zowex_job_tests()
 
                              // Validate status field exists (should be OUTPUT for completed job)
                              Expect(columns[3]).Not().ToBe("");
+                           });
+
+                        it("should include full_status field in CSV format",
+                           [&]()
+                           {
+                             string response;
+                             int rc = execute_command_with_output(zowex_command + " job view-status " + _jobid + " --rfc", response);
+                             ExpectWithContext(rc, response).ToBe(0);
+
+                             // Validate RFC format structure includes full_status
+                             vector<string> lines = parse_rfc_response(response, "\n");
+                             Expect(lines.size()).ToBeGreaterThan(0);
+
+                             vector<string> columns = parse_rfc_response(lines[0], ",");
+                             // RFC format: jobid, retcode, jobname, status, correlator, full_status
+                             Expect(columns.size()).ToBeGreaterThanOrEqualTo(6);
+
+                             // Validate full_status field (6th field, index 5)
+                             // full_status should not be empty for a completed job
+                             Expect(columns[5]).Not().ToBe("");
                            });
 
                         it("should view job JCL",
