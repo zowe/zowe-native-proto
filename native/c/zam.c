@@ -201,7 +201,7 @@ static int validate_dcb_attributes(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 
   if (block_size % ioc->dcb.dcblrecl != 0)
   {
-    // if the data set is not blocked, we can subtract the size of the RDW
+    // if the data set is not blocked, we can subtract the size of the BDW
     if (!(ioc->dcb.dcbrecfm & dcbrecbr))
     {
       block_size -= sizeof(BDW);
