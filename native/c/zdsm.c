@@ -177,6 +177,14 @@ int ZDSOBPAM(ZDS *zds, IO_CTRL **ioc, const char *ddname)
   rc = open_output_bpam(&zds31.diag, &ioc31, ddname31);
   *ioc = ioc31;
   memcpy(zds, &zds31, sizeof(ZDS));
+
+  if (0 != rc)
+  {
+    ZDS zds_close = {0};
+    close_output_bpam(&zds_close.diag, ioc31);
+    *ioc = NULL;
+  }
+
   return rc;
 }
 

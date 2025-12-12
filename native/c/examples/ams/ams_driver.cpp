@@ -50,14 +50,13 @@ int main()
   ZDS zds = {0};
   IO_CTRL *ioc = NULL;
   // rc = zds_open_output_bpam(&zds, "DKELOSKY.IO.O.FB80(data)", &ioc);
-  rc = zds_open_output_bpam(&zds, "DKELOSKY.IO.O.V25(OMGNESS)", &ioc);
+  rc = zds_open_output_bpam(&zds, "DKELOSKY.IO.O.V25(OMGNESS)", ioc);
   // rc = zds_open_output_bpam(&zds, "DKELOSKY.IO.O.V256(OMGNESS)", &ioc);
   // rc = zds_open_output_bpam(&zds, "DKELOSKY.IO.O.VB256(OMGNESS)", &ioc);
   if (0 != rc)
   {
     std::cout << "zds_open_output_bpam failed: " << rc << std::endl;
     std::cout << "  Details: " << zds.diag.e_msg << std::endl;
-    zds_close_output_bpam(&zds, ioc); // close what we can
 
     return -1;
   }

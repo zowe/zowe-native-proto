@@ -304,7 +304,7 @@ int zds_write_to_dsn(ZDS *zds, const string &dsn, string &data)
   return 0;
 }
 
-int zds_open_output_bpam(ZDS *zds, std::string dsname, IO_CTRL **ioc)
+int zds_open_output_bpam(ZDS *zds, std::string dsname, IO_CTRL *&ioc)
 {
   string alloc_cmd = "ALLOC DA('" + dsname + "') SHR"; // TODO(Kelosky): log this command
   unsigned int code = 0;
@@ -323,7 +323,7 @@ int zds_open_output_bpam(ZDS *zds, std::string dsname, IO_CTRL **ioc)
   zds->dynalloc = 1;
   zut_uppercase_pad_truncate(zds->ddname, ddname.c_str(), sizeof(zds->ddname));
 
-  rc = ZDSOBPAM(zds, ioc, zds->ddname);
+  rc = ZDSOBPAM(zds, &ioc, zds->ddname);
   if (0 != rc)
   {
     return rc;

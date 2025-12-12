@@ -108,7 +108,7 @@ int zds_write_to_dsn(ZDS *zds, const std::string &dsn, std::string &data);
  * @param ioc IO_CTRL pointer to the data set
  * @return int 0 for success; non zero otherwise
  */
-int zds_open_output_bpam(ZDS *zds, std::string dsname, IO_CTRL **ioc);
+int zds_open_output_bpam(ZDS *zds, std::string dsname, IO_CTRL *&ioc);
 
 /**
  * @brief Write data to a data set using BPAM mode

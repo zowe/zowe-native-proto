@@ -563,7 +563,6 @@ static int update_ispf_statistics(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 {
   int rc = 0;
 
-  // zwto_debug("@TEST update_ispf_statistics");
   if (ioc->dcb.dcboflgs & dcbofopn)
   {
     //
@@ -589,7 +588,6 @@ static int update_ispf_statistics(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 
     if ((bldl_pl.list.c & LEN_MASK) == 0)
     {
-      // zwto_debug("@TEST update_ispf_statistics with new user data");
       ioc->stow_list.c = ISPF_STATS_MIN_LEN;
 
       //
@@ -639,7 +637,6 @@ static int update_ispf_statistics(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
     }
     else
     {
-      // zwto_debug("@TEST update_ispf_statistics with existing user data");
       //
       // Initialize with existing user data / statistics
       //
@@ -808,8 +805,6 @@ int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
     // return rc; // TODO(Kelosky): handle when this fails... continue or return?
   }
 
-  // zwto_debug("@TEST user was: %8.8s", ioc->stow_list.name);
-
   //
   // STOW the ISPF statistics
   //
@@ -887,24 +882,8 @@ IO_CTRL *open_input_assert(char *ddname, int lrecl, int blkSize, unsigned char r
   int rc = 0;
   dcb->dcbdsrg1 = dcbdsgps; // DSORG=PS
 
-  /////////////////////////////////////////////////////////////
-  // rc = read_input_jfcb(ioc);
-  // if (0 != rc)
-  // {
-  //   zwto_debug("@TEST read_input_jfcb failed: %d", rc);
-  // }
-
-  // zwto_debug("@TEST read input jfcb");
-  // dcb->dcbdsrg1 = dcbdsgpo; // DSORG=PO @TEST
-  /////////////////////////////////////////////////////////////
-
   rc = open_input(dcb);
   ioc->input = 1;
-
-  // TODO(Kelosky): TM    DCBOFLGS,DCBOFOPN
-  // TODO(Kelosky): TM    dcbabend if occurs
-  // TODO(Kelosky): duplicate in open_output_assert
-  // TODO(Kelosky): handle DUMMY / NULLFILE
 
   if (0 != rc)
     s0c3_abend(OPEN_INPUT_ASSERT_RC);
