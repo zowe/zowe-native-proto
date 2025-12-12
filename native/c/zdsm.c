@@ -17,6 +17,7 @@
 #include "zwto.h"
 #include <ctype.h>
 #include <string.h>
+#include "zam.h"
 
 // OBTAIN option parameters for CAMLST
 const unsigned char OPTION_EADSCB = 0x08;  // EADSCB=OK
@@ -160,4 +161,56 @@ int ZDSDSCB1(ZDS *zds, const char *dsn, const char *volser, DSCBFormat1 *dscb)
       zds->diag.e_msg, "Could not find Format-1 or Format-8 DSCB, OBTAIN rc=%d, sizeof(dscb)=%d", rc, sizeof(IndexableDSCBFormat1));
   zds->diag.detail_rc = ZDS_RTNCD_UNEXPECTED_ERROR;
   return RTNCD_FAILURE;
+}
+
+#pragma prolog(ZDSOBPAM, " ZWEPROLG NEWDSA=(YES,24) ")
+#pragma epilog(ZDSOBPAM, " ZWEEPILG ")
+int ZDSOBPAM(ZDS *zds, IO_CTRL **ioc, const char *ddname)
+{
+  int rc = 0;
+  ZDS zds31 = {0};
+  memcpy(&zds31, zds, sizeof(ZDS));
+  char ddname31[8] = {0};
+  memcpy(ddname31, ddname, sizeof(ddname31));
+
+  IO_CTRL *PTR32 ioc31 = NULL;
+  rc = open_output_bpam(&zds31.diag, &ioc31, ddname31);
+  *ioc = ioc31;
+  memcpy(zds, &zds31, sizeof(ZDS));
+
+  if (0 != rc)
+  {
+    ZDS zds_close = {0};
+    close_output_bpam(&zds_close.diag, ioc31);
+    *ioc = NULL;
+  }
+
+  return rc;
+}
+
+#pragma prolog(ZDSWBPAM, " ZWEPROLG NEWDSA=(YES,24) ")
+#pragma epilog(ZDSWBPAM, " ZWEEPILG ")
+int ZDSWBPAM(ZDS *zds, IO_CTRL *ioc, const char *data, int *length)
+{
+  int rc = 0;
+  ZDS zds31 = {0};
+  memcpy(&zds31, zds, sizeof(ZDS));
+  char *data31 = (char *)storage_obtain31(*length);
+  memcpy(data31, data, *length);
+  rc = write_output_bpam(&zds31.diag, ioc, data31, *length);
+  storage_release(*length, data31);
+  memcpy(zds, &zds31, sizeof(ZDS));
+  return rc;
+}
+
+#pragma prolog(ZDSCBPAM, " ZWEPROLG NEWDSA=(YES,24) ")
+#pragma epilog(ZDSCBPAM, " ZWEEPILG ")
+int ZDSCBPAM(ZDS *zds, IO_CTRL *ioc)
+{
+  int rc = 0;
+  ZDS zds31 = {0};
+  memcpy(&zds31, zds, sizeof(ZDS));
+  rc = close_output_bpam(&zds31.diag, ioc);
+  memcpy(zds, &zds31, sizeof(ZDS));
+  return rc;
 }

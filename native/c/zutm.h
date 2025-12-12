@@ -26,10 +26,20 @@ extern "C"
 #define RET_ARG_MAX_LEN 260
 #define MSG_ENTRIES 25
 
+#define ALLOC_STRING_INDEX 0
+#define RTDDN_INDEX 1
+#define MSG_INDEX 2
+
+#define LAST_PARAMETER_INDEX MSG_INDEX // NOTE(Kelosky): this must be set to the last parameter index
+
+#define INPUT_PARAMETERS LAST_PARAMETER_INDEX + 1
+
   typedef struct
   {
     short len;
     char str[RET_ARG_MAX_LEN];
+    unsigned int rtdd : 1;
+    unsigned int rtdsn : 1; // NOTE(Kelosky): not implemented yet
   } BPXWDYN_RET_ARG;
 
   typedef BPXWDYN_RET_ARG BPXWDYN_PARM;
@@ -38,6 +48,8 @@ extern "C"
   {
     unsigned int code;
     char response[RET_ARG_MAX_LEN * MSG_ENTRIES + 1];
+    char ddname[9];
+    char dsname[45]; // NOTE(Kelosky): not implemented yet
   } BPXWDYN_RESPONSE;
 
   typedef struct

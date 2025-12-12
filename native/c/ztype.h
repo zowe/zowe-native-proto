@@ -58,13 +58,13 @@ typedef struct
   unsigned char version[1]; // future use
   int32_t len;              // future use
 
-  char service_name[24];
+  char service_name[24]; // name of the service that was called
 
-  int32_t detail_rc;
-  int32_t service_rc;
+  int32_t detail_rc;  // maps to #defines in various headers
+  int32_t service_rc; // return code from whatever service was called
 
-  int32_t service_rsn;
-  int32_t service_rsn_secondary;
+  int32_t service_rsn;           // reason code from whatever service was called
+  int32_t service_rsn_secondary; // secondary reason code from whatever service was called
 
   unsigned char reserve_1[4];
   int32_t e_msg_len;

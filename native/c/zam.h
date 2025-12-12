@@ -44,6 +44,7 @@
 //     write_sync(sysprintIoc, writeBuf);
 // }
 
+// "DCBE=*-*,"                                             \
 // TODO(KELOSKY): DCBE?
 #if defined(__IBM_METAL__)
 #define DCB_WRITE_MODEL(dcbwm)                                \
@@ -340,6 +341,21 @@ int open_input(IHADCB *) ATTRIBUTE(amode31);
 int write_dcb(IHADCB *, WRITE_PL *, char *) ATTRIBUTE(amode31);
 void read_dcb(IHADCB *, READ_PL *, char *) ATTRIBUTE(amode31);
 
+#if defined(__IBM_METAL__)
+#pragma map(open_output_bpam, "OPNOBPAM")
+#pragma map(close_output_bpam, "CLOSBPAM")
+#pragma map(write_output_bpam, "WRITBPAM")
+#endif
+
+int open_output_bpam(ZDIAG *PTR32, IO_CTRL *PTR32 *PTR32, const char *PTR32) ATTRIBUTE(amode31);
+int write_output_bpam(ZDIAG *PTR32, IO_CTRL *PTR32, const char *PTR32, int length) ATTRIBUTE(amode31);
+int close_output_bpam(ZDIAG *PTR32, IO_CTRL *PTR32) ATTRIBUTE(amode31);
+
+#if defined(__IBM_METAL__)
+#pragma map(read_input_jfcb, "RIJFCB")
+#pragma map(read_output_jfcb, "ROJFCB")
+#endif
+
 int read_input_jfcb(IO_CTRL *ioc) ATTRIBUTE(amode31);
 int read_output_jfcb(IO_CTRL *ioc) ATTRIBUTE(amode31);
 
@@ -368,9 +384,6 @@ enum AMS_ERR
   UNSUPPORTED_RECFM
 };
 
-// TODO(Kelosky): dbcabend
-// TODO(Kelosky): synad
-
 static IO_CTRL *PTR32 new_io_ctrl()
 {
   IO_CTRL *ioc = storage_obtain24(sizeof(IO_CTRL));
@@ -391,16 +404,16 @@ static void set_dcb_info(IHADCB *PTR32 dcb, char *PTR32 ddname, int lrecl, int b
 
 typedef void (*PTR32 EODAD)() ATTRIBUTE(amode31);
 
-static void set_dcb_dcbe(IHADCB *PTR32 dcb, EODAD eodad)
+static void set_dcb_dcbe(IHADCB *PTR32 dcb)
 {
   // get space for DCBE + buffer
-  short ctrlLen = sizeof(FILE_CTRL) + dcb->dcbblksi;
-  FILE_CTRL *fc = storage_obtain31(ctrlLen);
-  memset(fc, 0x00, ctrlLen);
+  short ctrl_len = sizeof(FILE_CTRL) + dcb->dcbblksi;
+  FILE_CTRL *fc = storage_obtain31(ctrl_len);
+  memset(fc, 0x00, ctrl_len);
 
   // init file control
-  fc->ctrlLen = ctrlLen;
-  fc->bufferLen = dcb->dcbblksi;
+  fc->ctrl_len = ctrl_len;
+  fc->buffer_len = dcb->dcbblksi;
 
   // buffer is at the end of the structure
   fc->buffer = (unsigned char *PTR32)fc + offsetof(FILE_CTRL, buffer) + sizeof(fc->buffer);
@@ -411,8 +424,14 @@ static void set_dcb_dcbe(IHADCB *PTR32 dcb, EODAD eodad)
   memcpy(fc->dcbe.dcbeid, dcbeid, strlen(dcbeid));
 
   // retain access to DCB / file control
-  fc->dcbe.dcbeeoda = (void *PTR32)eodad;
   dcb->dcbdcbe = fc;
+}
+
+static void set_eod(IHADCB *PTR32 dcb, EODAD eodad)
+{
+  FILE_CTRL *fc = dcb->dcbdcbe;
+  // retain access to DCB / file control
+  fc->dcbe.dcbeeoda = (void *PTR32)eodad;
 }
 
 static IO_CTRL *PTR32 new_write_io_ctrl(char *PTR32 ddname, int lrecl, int blkSize, unsigned char recfm)
