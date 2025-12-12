@@ -123,6 +123,8 @@ build-out/zowex.job.list.test.o \
 build-out/zowex.job.submit.test.o \
 build-out/zowex.job.manage.test.o \
 build-out/zowex.test.o \
+build-out/zowex.tso.test.o \
+build-out/zoweax.console.test.o \
 build-out/zutils.o \
 build-out/parser.test.o \
 build-out/zlogger.test.o \
@@ -190,6 +192,12 @@ build-out/zowex.job.submit.test.o: zowex.job.submit.test.cpp
 
 build-out/zowex.job.manage.test.o: zowex.job.manage.test.cpp
 	$(OCXX) $(CXXLANG_FLAGS) $(CPP_LIST_FLAG) -c $^ -o $@
+
+build-out/zowex.tso.test.o: zowex.tso.test.cpp
+	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
+
+build-out/zoweax.console.test.o: zoweax.console.test.cpp
+	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
 
 build-out/zowex.test.o: zowex.test.cpp
 	$(OCXX) $(CXXLANG_FLAGS) $(CPP_LIST_FLAG) -c $^ -o $@

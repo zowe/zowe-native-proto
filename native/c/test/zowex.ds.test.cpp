@@ -24,10 +24,19 @@ using namespace std;
 using namespace ztst;
 
 // Generic helper function for creating data sets
+string _storageClass = "SC1"; // default to SC1 if the file does not exist
 void _create_ds(const string &ds_name, const string &ds_options = "")
 {
+  // try {
+  //   string properties_file = "test.properties.json";
+  //   zjson::Value properties = read_json_file(properties_file);
+  //   _storageClass = properties["storageClass"].as_string();
+  // } catch (const std::exception &e) {
+  //   TestLog("Warning: Failed to read test.properties.json: " + string(e.what()));
+  // }
+
   string response;
-  string command = zowex_command + " data-set create " + ds_name + " " + ds_options;
+  string command = zowex_command + " data-set create " + ds_name + " " + ds_options + " --storclass " + _storageClass;
   int rc = execute_command_with_output(command, response);
   ExpectWithContext(rc, response).ToBe(0);
   Expect(response).ToContain("Data set created");
@@ -172,7 +181,7 @@ void zowex_ds_tests()
                              _create_ds(ds);
 
                              string response;
-                             string command = zowex_command + " data-set create " + ds;
+                             string command = zowex_command + " data-set create " + ds + " --storclass " + _storageClass;
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).Not().ToBe(0);
                              Expect(response).ToContain("Error: could not create data set");

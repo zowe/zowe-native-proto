@@ -18,6 +18,8 @@
 #include "zowex.ds.test.hpp"
 #include "zowex.uss.test.hpp"
 #include "zowex.job.test.hpp"
+#include "zoweax.console.test.hpp"
+#include "zowex.tso.test.hpp"
 
 using namespace std;
 using namespace ztst;
@@ -49,5 +51,9 @@ void zowex_tests()
              zowex_ds_tests();
              zowex_uss_tests();
              zowex_job_tests();
+             zowex_tso_tests();
            });
+
+  describe("zoweax", []() -> void
+           { zoweax_console_tests(); });
 }
