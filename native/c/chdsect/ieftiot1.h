@@ -3,34 +3,38 @@
 #ifndef __tiot__
 #define __tiot__
 
-struct tiot {
-  unsigned char  tiocnjob[8];   /* -         JOB NAME                                  */
-  struct {
-    struct {
-      unsigned char  _tiocpstn[8]; /* -         8-BYTE PROC STEP NAME FOR PROCS     @P1A */
-      } tiocstpn;
-    unsigned char  _tiocjstn[8]; /* -         8-BYTE JOBSTEP NAME FOR PROCS       @P1A */
-    } tiocstep;
-  char           tioelngh;      /* -          LENGTH, IN BYTES, OF THIS ENTRY          */
-  unsigned char  tioestta;      /* -            STATUS BYTE A                          */
-  struct {
-    unsigned char  _tioewtct; /* -          DURING ALLOCATION, NUMBER OF DEVICES */
-    unsigned char  _tioelink; /* -          DURING ALLOCATION, LINK TO THE       */
-    } tioerloc;
-  unsigned char  tioeddnm[8];   /* -          DD NAME                                  */
-  unsigned char  tioejfcb[3];   /* -          SWA virtual address token, mapped        */
-  unsigned char  tioesttc;      /* -            STATUS BYTE C.  USED DURING ALLOCATION */
-  unsigned char  tioesttb;      /* -            STATUS BYTE B - DURING ALLOCATION AND  */
-  unsigned int   tioefsrt : 24; /* -          DURING PROBLEM PROGRAM, ADDRESS OF UCB.  */
-  unsigned char  _filler1;      /* -          RESERVED                                 */
-  char           tiopnslt;      /* -          NUMBER OF SLOTS FOR POOL                 */
-  unsigned char  _filler2;      /* -          RESERVED                                 */
-  char           tiopnsrt;      /* -          NUMBER OF DEVICES (FILLED SLOTS)         */
-  unsigned char  tioppool[8];   /* -          POOL NAME                                */
-  unsigned char  tiopsttb;      /* -          STATUS OF SLOT                           */
-  unsigned int   tiopslot : 24; /* -          UCB ADDRESS OR EMPTY SLOT                */
-  unsigned char  tiotfend[4];   /* -          FINAL END OF THE TIOT - BINARY ZEROS     */
-  };
+struct tiot
+{
+  unsigned char tiocnjob[8]; /* -         JOB NAME                                  */
+  struct
+  {
+    struct
+    {
+      unsigned char _tiocpstn[8]; /* -         8-BYTE PROC STEP NAME FOR PROCS     @P1A */
+    } tiocstpn;
+    unsigned char _tiocjstn[8]; /* -         8-BYTE JOBSTEP NAME FOR PROCS       @P1A */
+  } tiocstep;
+  char tioelngh;          /* -          LENGTH, IN BYTES, OF THIS ENTRY          */
+  unsigned char tioestta; /* -            STATUS BYTE A                          */
+  struct
+  {
+    unsigned char _tioewtct; /* -          DURING ALLOCATION, NUMBER OF DEVICES */
+    unsigned char _tioelink; /* -          DURING ALLOCATION, LINK TO THE       */
+  } tioerloc;
+  unsigned char tioeddnm[8];  /* -          DD NAME                                  */
+  unsigned char tioejfcb[3];  /* -          SWA virtual address token, mapped        */
+  unsigned char tioesttc;     /* -            STATUS BYTE C.  USED DURING ALLOCATION */
+  unsigned char tioesttb;     /* -            STATUS BYTE B - DURING ALLOCATION AND  */
+  unsigned int tioefsrt : 24; /* -          DURING PROBLEM PROGRAM, ADDRESS OF UCB.  */
+  unsigned char _filler1;     /* -          RESERVED                                 */
+  char tiopnslt;              /* -          NUMBER OF SLOTS FOR POOL                 */
+  unsigned char _filler2;     /* -          RESERVED                                 */
+  char tiopnsrt;              /* -          NUMBER OF DEVICES (FILLED SLOTS)         */
+  unsigned char tioppool[8];  /* -          POOL NAME                                */
+  unsigned char tiopsttb;     /* -          STATUS OF SLOT                           */
+  unsigned int tiopslot : 24; /* -          UCB ADDRESS OR EMPTY SLOT                */
+  unsigned char tiotfend[4];  /* -          FINAL END OF THE TIOT - BINARY ZEROS     */
+};
 
 #define tiocpstn tiocstep.tiocstpn._tiocpstn
 #define tiocjstn tiocstep._tiocjstn
@@ -56,7 +60,7 @@ struct tiot {
 #define tioesyin 0x04 /* -        ENTRY FOR SPOOLED SYSIN DATA SET          */
 #define tioesyot 0x02 /* -        ENTRY FOR SPOOLED SYSOUT DATA SET         */
 #define tioessds 0x02 /* -        ENTRY FOR A SUBSYSTEM DATA SET            */
-#define tiotrem  0x01 /* -        ENTRY FOR A REMOTE DEVICE          ICB340 */
+#define tiotrem 0x01  /* -        ENTRY FOR A REMOTE DEVICE          ICB340 */
 
 /* Values for field "tioesttc" */
 #define tiosdkcr 0x80 /* -        MAIN STORAGE OR DASD ADDRESS              */
