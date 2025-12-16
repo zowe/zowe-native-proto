@@ -6,7 +6,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
-- Fixed an issue where the deploy directory was not being created recursively when a non-existent multi-level directory was inputted. [#705] (https://github.com/zowe/zowe-native-proto/pull/705)
+- Fixed an issue where the deploy directory was not created recursively when a non-existent multi-level directory was submitted. [#705] (https://github.com/zowe/zowe-native-proto/pull/705)
 
 ## `0.2.1`
 
