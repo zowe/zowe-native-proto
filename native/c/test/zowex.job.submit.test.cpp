@@ -584,27 +584,29 @@ void zowex_job_submit_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                   }
                 });
 
-             it("should handle submit from dataset with special characters in name",
-                [&]()
-                {
-                  string ds = get_user() + ".TEST$#@.JCL";
-                  _ds.push_back(ds);
-                  string response;
-                  int rc = execute_command_with_output(zowex_command + " data-set create " + ds + " --dsorg PS --recfm FB --lrecl 80", response);
-                  ExpectWithContext(rc, response).ToBe(0);
+            it("should handle submit from dataset with special characters in name",
+               [&]()
+               {
+                 string ds = get_user() + ".T" + get_random_string(3) + "#@.JCL";
+                 string response;
+                 int rc = execute_command_with_output(zowex_command + " data-set create " + ds + " --dsorg PS --recfm FB --lrecl 80", response);
+                 ExpectWithContext(rc, response).ToBe(0);
 
-                  string command = "echo \"" + jcl_base + "\" | " + zowex_command + " data-set write " + ds;
-                  rc = execute_command_with_output(command, response);
-                  ExpectWithContext(rc, response).ToBe(0);
+                 string command = "echo \"" + jcl_base + "\" | " + zowex_command + " data-set write " + ds;
+                 rc = execute_command_with_output(command, response);
+                 ExpectWithContext(rc, response).ToBe(0);
 
-                  string stdout_output, stderr_output;
-                  command = zowex_command + " job submit " + ds + " --only-jobid";
-                  rc = execute_command(command, stdout_output, stderr_output);
-                  string jobid = TrimChars(stdout_output);
-                  ExpectWithContext(rc, stderr_output).ToBe(0);
-                  Expect(jobid).Not().ToBe("");
-                  _jobs.push_back(jobid);
-                });
+                 string stdout_output, stderr_output;
+                 command = zowex_command + " job submit " + ds + " --only-jobid";
+                 rc = execute_command(command, stdout_output, stderr_output);
+                 string jobid = TrimChars(stdout_output);
+                 ExpectWithContext(rc, stderr_output).ToBe(0);
+                 Expect(jobid).Not().ToBe("");
+                 _jobs.push_back(jobid);
+
+                 // Clean up dataset
+                 execute_command_with_output(zowex_command + " data-set delete " + ds, response);
+               });
 
              it("should handle submit with invalid wait status value",
                 [&]()

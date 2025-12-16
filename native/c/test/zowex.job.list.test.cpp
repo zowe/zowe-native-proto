@@ -478,7 +478,7 @@ void zowex_job_list_tests(vector<string> &_jobs, vector<string> &_ds, vector<str
                 [&]()
                 {
                   string jcl = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M\n//RUN EXEC PGM=IEFBR14";
-                  string command = "printf \"" + jcl + "\" | " + zowex_command + " job submit-jcl --only-jobid";
+                  string command = "printf \"" + jcl + "\" | " + zowex_command + " job submit-jcl --only-jobid --wait output";
                   string stdout_output, stderr_output;
                   int rc = execute_command(command, stdout_output, stderr_output);
                   string jobid = TrimChars(stdout_output);
