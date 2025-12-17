@@ -74,6 +74,18 @@ export class ZSshUtils {
         };
     }
 
+    public static async mkdirRecursive(sftp: SFTPWrapper, dir: string) {
+        const directory = dir.split("/").filter(Boolean);
+        let cur = directory[0];
+        for (let i = 1; i < directory.length; i++) {
+            cur += `/${directory[i]}`;
+            await promisify(sftp.mkdir.bind(sftp))(cur, { mode: 0o700 }).catch((err: SftpError) => {
+                if (err.code !== 4) throw err;
+                Logger.getAppLogger().debug(`Remote directory already exists: ${dir}`);
+            });
+        }
+    }
+
     public static async installServer(
         session: SshSession,
         serverPath: string,
@@ -82,11 +94,9 @@ export class ZSshUtils {
     ): Promise<void> {
         Logger.getAppLogger().debug(`Installing server to ${session.ISshSession.hostname} at path: ${serverPath}`);
         const remoteDir = serverPath.replace(/^~/, ".");
+
         return ZSshUtils.sftp(session, async (sftp, ssh) => {
-            await promisify(sftp.mkdir.bind(sftp))(remoteDir, { mode: 0o700 }).catch((err: SftpError) => {
-                if (err.code !== 4) throw err;
-                Logger.getAppLogger().debug(`Remote directory already exists: ${serverPath}`);
-            });
+            await ZSshUtils.mkdirRecursive(sftp, remoteDir);
 
             // Track the previous progress percentage
             let previousPercentage = 0;
