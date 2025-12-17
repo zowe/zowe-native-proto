@@ -24,6 +24,4 @@ std::string get_random_ds(const int qualifier_count = 4, const std::string hlq =
 std::string get_user();
 std::string parse_etag_from_output(const std::string &output);
 std::vector<std::string> parse_rfc_response(const std::string input, const char *delim = ",");
-std::string read_file(const std::string &filename);
-zjson::Value read_json_file(const std::string &filename);
 #endif

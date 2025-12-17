@@ -184,27 +184,3 @@ vector<string> parse_rfc_response(const string input, const char *delim)
 
   return ret;
 }
-
-string read_file(const string &filename)
-{
-  ifstream file(filename);
-  if (!file.is_open())
-  {
-    throw std::runtime_error("Failed to open file");
-  }
-  string content;
-  content.assign(istreambuf_iterator<char>(file), istreambuf_iterator<char>());
-  file.close();
-  return content;
-}
-
-zjson::Value read_json_file(const string &filename)
-{
-  string content = read_file(filename);
-  auto json = zjson::from_str<zjson::Value>(content);
-  if (!json.has_value())
-  {
-    throw std::runtime_error("Failed to parse JSON file");
-  }
-  return json.value();
-}

@@ -24,19 +24,10 @@ using namespace std;
 using namespace ztst;
 
 // Generic helper function for creating data sets
-string _storageClass = "SC1"; // default to SC1 if the file does not exist
 void _create_ds(const string &ds_name, const string &ds_options = "")
 {
-  // try {
-  //   string properties_file = "test.properties.json";
-  //   zjson::Value properties = read_json_file(properties_file);
-  //   _storageClass = properties["storageClass"].as_string();
-  // } catch (const std::exception &e) {
-  //   TestLog("Warning: Failed to read test.properties.json: " + string(e.what()));
-  // }
-
   string response;
-  string command = zowex_command + " data-set create " + ds_name + " " + ds_options + " --storclass " + _storageClass;
+  string command = zowex_command + " data-set create " + ds_name + " " + ds_options;
   int rc = execute_command_with_output(command, response);
   ExpectWithContext(rc, response).ToBe(0);
   Expect(response).ToContain("Data set created");
@@ -181,7 +172,7 @@ void zowex_ds_tests()
                              _create_ds(ds);
 
                              string response;
-                             string command = zowex_command + " data-set create " + ds + " --storclass " + _storageClass;
+                             string command = zowex_command + " data-set create " + ds;
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).Not().ToBe(0);
                              Expect(response).ToContain("Error: could not create data set");
@@ -198,6 +189,7 @@ void zowex_ds_tests()
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              vector<string> tokens = parse_rfc_response(response, ",");
+                             // NOTE: Non-SMS managed systems return `--` for dsorg if not specified
                              Expect(tokens[3]).ToBe("PS");
                              Expect(tokens[4]).ToBe("FB");
                            });
@@ -260,14 +252,12 @@ void zowex_ds_tests()
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              vector<string> tokens = parse_rfc_response(response, ",");
-                             Expect(tokens[3]).ToBe("PO");
-                             Expect(tokens[4]).ToBe("FB");
-                             // primary = 10
-                             // secondary = 2
-                             // lrecl = 20
-                             // blksize = 10
-                             // dirblk = 5
-                             // alcunit = CYL
+                             Expect(tokens[3]).ToBe("PO"); // dsorg
+                             Expect(tokens[4]).ToBe("FB"); // recfm
+                             Expect(tokens[5]).ToBe("20"); // lrecl
+                             Expect(tokens[6]).ToBe("10"); // blksize
+                             Expect(tokens[7]).ToBe("10"); // primary
+                             Expect(tokens[8]).ToBe("2");  // secondary
                            });
                         it("should fail to create a data set if the data set name is too long",
                            []() -> void
@@ -360,7 +350,7 @@ void zowex_ds_tests()
                              vector<string> tokens = parse_rfc_response(response, ",");
                              Expect(tokens[3]).ToBe("PO");
                              Expect(tokens[4]).ToBe("FB");
-                             Expect(tokens[9]).ToBe("LIBRARY");
+                             Expect(tokens[9]).ToBe("PDS");
                              // lrecl = 80
                            });
                         it("should fail to create a data set if the data set already exists",
@@ -415,8 +405,8 @@ void zowex_ds_tests()
                              vector<string> tokens = parse_rfc_response(response, ",");
                              Expect(tokens[3]).ToBe("PO");
                              Expect(tokens[4]).ToBe("U");
+                             Expect(tokens[5]).ToBe("0"); // lrecl
                              Expect(tokens[9]).ToBe("PDS");
-                             // lrecl = 0
                            });
                         it("should fail to create a data set if the data set already exists",
                            [&]() -> void
@@ -556,8 +546,8 @@ void zowex_ds_tests()
                              vector<string> tokens = parse_rfc_response(response, ",");
                              Expect(tokens[3]).ToBe("PO");
                              Expect(tokens[4]).ToBe("VB");
-                             Expect(tokens[9]).ToBe("LIBRARY");
-                             // lrecl = 255
+                             Expect(tokens[9]).ToBe("PDS");
+                             Expect(tokens[5]).ToBe("255"); // lrecl
                            });
                         it("should error when the data set already exists",
                            [&]() -> void
