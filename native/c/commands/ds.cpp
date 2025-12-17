@@ -92,7 +92,7 @@ int create_with_attributes(InvocationContext &context)
   }
   if (context.has("lrecl"))
   {
-    attributes.lrecl = context.get<long long>("lrecl", 0);
+    attributes.lrecl = context.get<long long>("lrecl", -1);
   }
   if (context.has("dataclass"))
   {

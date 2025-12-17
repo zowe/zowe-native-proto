@@ -358,16 +358,20 @@ int zds_create_dsn(ZDS *zds, string dsn, DS_ATTRIBUTES attributes, string &respo
   {
     attributes.primary = 1; // Primary Space
   }
-  if (attributes.lrecl == 0)
+  if (attributes.lrecl < 0)
   {
     attributes.lrecl = 80; // Record Length
   }
 
   char numberAsString[6];
 
-  // Required options
+  // Required options, default to PS if not specified
   if (!attributes.dsorg.empty())
     parm += " DSORG(" + attributes.dsorg + ")";
+  else
+  {
+    parm += " DSORG(PS)";
+  }
 
   if (attributes.primary > 0)
   {
