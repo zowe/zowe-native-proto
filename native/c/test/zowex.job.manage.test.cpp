@@ -588,6 +588,9 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                   ExpectWithContext(rc, stderr_output).ToBe(0);
                   _jobs.push_back(jobid);
 
+                  // Wait for job to be visible in JES
+                  Expect(wait_for_job(jobid)).ToBe(true);
+
                   // Release
                   rc = execute_command_with_output(zowex_command + " job release " + jobid, stdout_output);
                   ExpectWithContext(rc, stdout_output).ToBe(0);
@@ -704,6 +707,9 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                   string jobid = TrimChars(stdout_output);
                   _jobs.push_back(jobid);
 
+                  // Wait for job to be visible in JES
+                  Expect(wait_for_job(jobid)).ToBe(true);
+
                   // First cancel
                   rc = execute_command_with_output(zowex_command + " job cancel " + jobid, stdout_output);
                   ExpectWithContext(rc, stdout_output).ToBe(0);
@@ -782,6 +788,9 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                   string jobid = TrimChars(stdout_output);
                   _jobs.push_back(jobid);
 
+                  // Wait for job to be visible in JES
+                  Expect(wait_for_job(jobid)).ToBe(true);
+
                   // Cancel
                   int rc = execute_command_with_output(zowex_command + " job cancel " + jobid, stdout_output);
                   ExpectWithContext(rc, stdout_output).ToBe(0);
@@ -798,6 +807,8 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                   string jobid = TrimChars(stdout_output);
                   _jobs.push_back(jobid);
 
+                  Expect(wait_for_job(jobid)).ToBe(true);
+
                   int rc = execute_command_with_output(zowex_command + " job cancel " + jobid + " --dump", stdout_output);
                   ExpectWithContext(rc, stdout_output).ToBe(0);
                   Expect(stdout_output).ToContain("cancelled");
@@ -812,6 +823,8 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                   execute_command(command, stdout_output, stderr_output);
                   string jobid = TrimChars(stdout_output);
                   _jobs.push_back(jobid);
+
+                  Expect(wait_for_job(jobid)).ToBe(true);
 
                   int rc = execute_command_with_output(zowex_command + " job cancel " + jobid + " --force", stdout_output);
                   ExpectWithContext(rc, stdout_output).ToBe(0);
@@ -828,6 +841,8 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                   string jobid = TrimChars(stdout_output);
                   _jobs.push_back(jobid);
 
+                  Expect(wait_for_job(jobid)).ToBe(true);
+
                   int rc = execute_command_with_output(zowex_command + " job cancel " + jobid + " --purge", stdout_output);
                   ExpectWithContext(rc, stdout_output).ToBe(0);
                   Expect(stdout_output).ToContain("cancelled");
@@ -842,6 +857,8 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                   execute_command(command, stdout_output, stderr_output);
                   string jobid = TrimChars(stdout_output);
                   _jobs.push_back(jobid);
+
+                  Expect(wait_for_job(jobid)).ToBe(true);
 
                   int rc = execute_command_with_output(zowex_command + " job cancel " + jobid + " --restart", stdout_output);
                   ExpectWithContext(rc, stdout_output).ToBe(0);
@@ -858,6 +875,8 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                   string jobid = TrimChars(stdout_output);
                   _jobs.push_back(jobid);
 
+                  Expect(wait_for_job(jobid)).ToBe(true);
+
                   int rc = execute_command_with_output(zowex_command + " job cancel " + jobid + " --force --purge", stdout_output);
                   ExpectWithContext(rc, stdout_output).ToBe(0);
                   Expect(stdout_output).ToContain("cancelled");
@@ -872,6 +891,8 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                   execute_command(command, stdout_output, stderr_output);
                   string jobid = TrimChars(stdout_output);
                   _jobs.push_back(jobid);
+
+                  Expect(wait_for_job(jobid)).ToBe(true);
 
                   int rc = execute_command_with_output(zowex_command + " job cancel " + jobid + " -d", stdout_output);
                   ExpectWithContext(rc, stdout_output).ToBe(0);
@@ -888,6 +909,8 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                   string jobid = TrimChars(stdout_output);
                   _jobs.push_back(jobid);
 
+                  Expect(wait_for_job(jobid)).ToBe(true);
+
                   int rc = execute_command_with_output(zowex_command + " job cancel " + jobid + " -f", stdout_output);
                   ExpectWithContext(rc, stdout_output).ToBe(0);
                   Expect(stdout_output).ToContain("cancelled");
@@ -903,6 +926,8 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                   string jobid = TrimChars(stdout_output);
                   _jobs.push_back(jobid);
 
+                  Expect(wait_for_job(jobid)).ToBe(true);
+
                   int rc = execute_command_with_output(zowex_command + " job cancel " + jobid + " -p", stdout_output);
                   ExpectWithContext(rc, stdout_output).ToBe(0);
                   Expect(stdout_output).ToContain("cancelled");
@@ -917,6 +942,8 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                   execute_command(command, stdout_output, stderr_output);
                   string jobid = TrimChars(stdout_output);
                   _jobs.push_back(jobid);
+
+                  Expect(wait_for_job(jobid)).ToBe(true);
 
                   int rc = execute_command_with_output(zowex_command + " job cancel " + jobid + " -r", stdout_output);
                   ExpectWithContext(rc, stdout_output).ToBe(0);

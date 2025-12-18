@@ -498,6 +498,8 @@ void zowex_job_list_tests(vector<string> &_jobs, vector<string> &_ds, vector<str
                   string jobid = TrimChars(stdout_output);
                   _jobs.push_back(jobid);
 
+                  Expect(wait_for_job(jobid)).ToBe(true);
+
                   rc = execute_command_with_output(zowex_command + " job cnl " + jobid, stdout_output);
                   ExpectWithContext(rc, stdout_output).ToBe(0);
                   Expect(stdout_output).ToContain("cancelled");
@@ -527,6 +529,8 @@ void zowex_job_list_tests(vector<string> &_jobs, vector<string> &_ds, vector<str
                   int rc = execute_command(command, stdout_output, stderr_output);
                   string jobid = TrimChars(stdout_output);
                   _jobs.push_back(jobid);
+
+                  Expect(wait_for_job(jobid)).ToBe(true);
 
                   rc = execute_command_with_output(zowex_command + " job rel " + jobid, stdout_output);
                   ExpectWithContext(rc, stdout_output).ToBe(0);

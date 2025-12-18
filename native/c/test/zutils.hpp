@@ -24,4 +24,6 @@ std::string get_random_ds(const int qualifier_count = 4, const std::string hlq =
 std::string get_user();
 std::string parse_etag_from_output(const std::string &output);
 std::vector<std::string> parse_rfc_response(const std::string input, const char *delim = ",");
+// Wait for a job to be visible in JES (returns true if found, false if timeout)
+bool wait_for_job(const std::string &jobid, int max_retries = 30, int delay_ms = 100);
 #endif

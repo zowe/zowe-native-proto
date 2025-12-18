@@ -15,6 +15,8 @@
 #include <string>
 #include <sstream>
 #include <cstring>
+#include <chrono>
+#include <thread>
 
 using namespace std;
 
@@ -183,4 +185,19 @@ vector<string> parse_rfc_response(const string input, const char *delim)
   ret.push_back(ztst::TrimChars(current));
 
   return ret;
+}
+
+bool wait_for_job(const string &jobid, int max_retries, int delay_ms)
+{
+  string output;
+  for (int i = 0; i < max_retries; ++i)
+  {
+    int rc = execute_command_with_output(zowex_command + " job view-status " + jobid, output);
+    if (rc == 0 && output.find(jobid) != string::npos)
+    {
+      return true;
+    }
+    this_thread::sleep_for(chrono::milliseconds(delay_ms));
+  }
+  return false;
 }
