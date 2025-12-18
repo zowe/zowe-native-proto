@@ -89,7 +89,7 @@ static int enq_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
     diag->detail_rc = ZDS_RTNCD_ENQ_ERROR;
     return RTNCD_FAILURE;
   }
-  ioc->enq = 1;
+  ioc->has_enq = 1;
 
   return rc;
 }
@@ -152,7 +152,7 @@ static int reserve_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
     return RTNCD_FAILURE;
   }
 
-  ioc->reserve = 1;
+  ioc->has_reserve = 1;
   return rc;
 }
 
@@ -740,7 +740,7 @@ static int close_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 static int deq_reserve_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 {
   int rc = 0;
-  if (ioc->reserve)
+  if (ioc->has_reserve)
   {
     QNAME qname_reserve = {0};
     RNAME rname_reserve = {0};
@@ -756,7 +756,7 @@ static int deq_reserve_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
         diag->e_msg_len = sprintf(diag->e_msg, "Failed to DEQ RESERVE ddname: %8.8s data set: %44.44s rc was: %d", ioc->ddname, ioc->jfcb.jfcbdsnm, rc);
         diag->detail_rc = ZDS_RTNCD_DEQ_RESERVE_ERROR;
       }
-      return 0;
+      return rc;
     }
   }
   return rc;
@@ -766,7 +766,7 @@ static int deq_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 {
   int rc = 0;
 
-  if (ioc->enq)
+  if (ioc->has_enq)
   {
     RNAME rname = {0};
     QNAME qname = {0};

@@ -104,7 +104,7 @@ int zut_bpxwdyn(string parm, unsigned int *code, string &resp, string &ddname)
   BPXWDYN_RESPONSE *response = (BPXWDYN_RESPONSE *)(p + sizeof(BPXWDYN_PARM));
 
   // if input ddname is empty, set the rtdd flag
-  if (ddname == "        ")
+  if (ddname == RTDDN)
   {
     bparm->rtdd = 1;
   }

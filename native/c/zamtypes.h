@@ -174,8 +174,8 @@ typedef struct
   int buffer_size;
   int output : 1; // TODO(Kelosky): remove this flag
   int input : 1;  // TODO(Kelosky): remove this flag
-  unsigned int enq : 1;
-  unsigned int reserve : 1; // not reserved space... indicates RESERVE is outstanding
+  unsigned int has_enq : 1;
+  unsigned int has_reserve : 1; // not reserved space... indicates RESERVE is outstanding
   unsigned int ucb;
   void *PTR32 zam24;
   int zam24_len;

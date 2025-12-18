@@ -18,6 +18,8 @@
 #include <string>
 #include "ztype.h"
 
+#define RTDDN "        "
+
 /**
  * @struct ZConvData
  * @brief Structure holding data for character set conversion

@@ -35,6 +35,6 @@ ZAM24Q   DS    0H
          LHI   R15,ZQM24LEN         = length of this module
          BR    R14                  return to caller
 *
-ZQM24LEN EQU *-ZAM24                Dyamically obtain len of module
+ZQM24LEN EQU *-ZAM24                Dynamically obtain length of module
 *
          END   ,

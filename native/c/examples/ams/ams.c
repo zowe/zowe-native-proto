@@ -39,17 +39,6 @@ To allow users to update a data set that has a record format of "U", ISPF serial
  *
  */
 
-/**
- *
- * if in view mode, not spfedit enq on member name
- * if in edit mode, spfedit enq on member name
- * when writin isgenq with SGENQ SCOPE=SYSTEMS RESERVEVOLUME=YES is probably what we need to do
- * stow ttr set to zero still "works" and needs debugged
- *  try wtritting two members on the same open with different data to see what happens
- * bldl if member doesnt exist needs to create ispf stats
- *
- */
-
 // NOTE(Kelosky): We only use this path for write operations and to preserve and update ISPF statistics.  Read operations or DSORG=PS will use `fopen`.
 // In this path we must perform dynamic allocation on the data set.  We must perform RDJFCB to validate the data set and get the attributes prior to performing the OPEN.
 // To use a STOW macro, you must specify DSORG=PO|POU.
@@ -109,7 +98,7 @@ static void release_resources(RESOURCES *resources)
     resources->sysprint = NULL;
   }
 
-  if (resources->enq)
+  if (resources->has_enq)
   {
     zwto_debug("@TEST deq'ing enq");
     rc = deq(&resources->qname, &resources->rname);
@@ -117,10 +106,10 @@ static void release_resources(RESOURCES *resources)
     {
       zwto_debug("@TEST deq failed: rc: %d", rc);
     }
-    resources->enq = 0;
+    resources->has_enq = 0;
   }
 
-  if (resources->reserve)
+  if (resources->has_reserve)
   {
     zwto_debug("@TEST deq'ing reserve");
     rc = deq_reserve(&resources->qname_reserve, &resources->rname_reserve, resources->ucb);
@@ -128,7 +117,7 @@ static void release_resources(RESOURCES *resources)
     {
       zwto_debug("@TEST deq_reserve failed: rc: %d", rc);
     }
-    resources->reserve = 0;
+    resources->has_reserve = 0;
   }
 
   zwto_debug("AMSMAIN cleanup ended");
@@ -212,7 +201,7 @@ int AMSMAIN(const char *ddname)
     return -1;
   }
 
-  resources.enq = 1; // now we have an ENQ
+  resources.has_enq = 1; // now we have an ENQ
 
   typedef struct psa PSA;
   typedef struct tcb TCB;
@@ -264,7 +253,7 @@ int AMSMAIN(const char *ddname)
     return -1;
   }
 
-  resources.reserve = 1; // now we have a RESERVE
+  resources.has_reserve = 1; // now we have a RESERVE
 
   // /////////////////////////////////////////////////////////////
   // use this with enq and/or reserve to wait for reply and test ISPF + this
