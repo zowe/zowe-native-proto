@@ -42,9 +42,9 @@ MTL_FLAGS+=$(DEBUGGER_FLAGS) -qSHOWINC
 MTL_FLAGS64+=$(DEBUGGER_FLAGS) -qSHOWINC
 ASM_FLAGS+=--verbose
 # List output flags for debugging
-CPP_LIST_FLAG=-qlist=$$*.cpp.lst
-MTL_LIST_FLAG=-qlist=$$*.mtl.lst
-ASM_LIST_FLAG=-a=$$*.s.lst
+CPP_LIST_FLAG=-qlist=$*.cpp.lst
+MTL_LIST_FLAG=-qlist=$*.mtl.lst
+ASM_LIST_FLAG=-a=$*.s.lst
 .ELSE
 PRODUCTION_FLAGS=-qNOSOURCE -qNODEBUG
 CPP_BND_FLAGS=$(CPP_BND_BASE_FLAGS) $(PRODUCTION_FLAGS)
