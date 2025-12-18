@@ -607,6 +607,8 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                   string jobid = TrimChars(stdout_output);
                   _jobs.push_back(jobid); // Add to list just in case test fails before delete
 
+                  Expect(wait_for_job(jobid)).ToBe(true);
+
                   // Delete
                   rc = execute_command_with_output(zowex_command + " job delete " + jobid, stdout_output);
                   ExpectWithContext(rc, stdout_output).ToBe(0);
