@@ -39,6 +39,20 @@ To allow users to update a data set that has a record format of "U", ISPF serial
  *
  */
 
+<<<<<<< HEAD
+=======
+/**
+ *
+ * if in view mode, not spfedit enq on member name
+ * if in edit mode, spfedit enq on member name
+ * when writing isgenq with SGENQ SCOPE=SYSTEMS RESERVEVOLUME=YES is probably what we need to do
+ * stow ttr set to zero still "works" and needs debugged
+ *  try writing two members on the same open with different data to see what happens
+ * bldl if member doesnt exist needs to create ispf stats
+ *
+ */
+
+>>>>>>> 88b35a338df842b475398be71ead3bcadae80480
 // NOTE(Kelosky): We only use this path for write operations and to preserve and update ISPF statistics.  Read operations or DSORG=PS will use `fopen`.
 // In this path we must perform dynamic allocation on the data set.  We must perform RDJFCB to validate the data set and get the attributes prior to performing the OPEN.
 // To use a STOW macro, you must specify DSORG=PO|POU.
