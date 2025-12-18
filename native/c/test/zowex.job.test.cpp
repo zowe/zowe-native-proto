@@ -29,8 +29,8 @@ using namespace ztst;
 void zowex_job_tests()
 {
   static vector<string> _jobs;
-  static vector<string> _ds;    // Track datasets to delete
-  static vector<string> _files; // Track USS files to delete
+  static vector<string> _ds;
+  static vector<string> _files;
 
   describe("job",
            [&]() -> void
@@ -77,7 +77,6 @@ void zowex_job_tests()
                    _cleanup_files();
                  });
 
-             // Call the split test functions
              zowex_job_list_tests(_jobs, _ds, _files);
              zowex_job_submit_tests(_jobs, _ds, _files);
              zowex_job_manage_tests(_jobs, _ds, _files);
