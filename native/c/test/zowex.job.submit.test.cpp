@@ -43,7 +43,6 @@ void zowex_job_submit_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                   Expect(jobid).Not().ToBe("");
                   _jobs.push_back(jobid);
 
-                  // Wait for it to finish
                   execute_command_with_output(zowex_command + " job list --owner *", stdout_output);
                 });
 
@@ -132,7 +131,6 @@ void zowex_job_submit_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                   string ds = get_random_ds();
                   _ds.push_back(ds);
                   string response;
-                  // Use create with explicit PS to allow direct writing
                   int rc = execute_command_with_output(zowex_command + " data-set create " + ds + " --dsorg PS --recfm FB --lrecl 80", response);
                   ExpectWithContext(rc, response).ToBe(0);
 
@@ -389,7 +387,6 @@ void zowex_job_submit_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
              it("should submit from USS file with --wait ACTIVE option",
                 [&]()
                 {
-                  // Create a job that will take time to execute
                   string jcl_long = "//LONGJOB JOB (IZUACCT),TEST,REGION=0M\n//STEP1 EXEC PGM=IEFBR14";
                   string filename = "test_job_" + get_random_string(5) + ".jcl";
                   _files.push_back(filename);
@@ -584,29 +581,29 @@ void zowex_job_submit_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                   }
                 });
 
-            it("should handle submit from dataset with special characters in name",
-               [&]()
-               {
-                 string ds = get_user() + ".T" + get_random_string(3) + "#@.JCL";
-                 string response;
-                 int rc = execute_command_with_output(zowex_command + " data-set create " + ds + " --dsorg PS --recfm FB --lrecl 80", response);
-                 ExpectWithContext(rc, response).ToBe(0);
+             it("should handle submit from dataset with special characters in name",
+                [&]()
+                {
+                  string ds = get_user() + ".T" + get_random_string(3) + "#@.JCL";
+                  string response;
+                  int rc = execute_command_with_output(zowex_command + " data-set create " + ds + " --dsorg PS --recfm FB --lrecl 80", response);
+                  ExpectWithContext(rc, response).ToBe(0);
 
-                 string command = "echo \"" + jcl_base + "\" | " + zowex_command + " data-set write " + ds;
-                 rc = execute_command_with_output(command, response);
-                 ExpectWithContext(rc, response).ToBe(0);
+                  string command = "echo \"" + jcl_base + "\" | " + zowex_command + " data-set write " + ds;
+                  rc = execute_command_with_output(command, response);
+                  ExpectWithContext(rc, response).ToBe(0);
 
-                 string stdout_output, stderr_output;
-                 command = zowex_command + " job submit " + ds + " --only-jobid";
-                 rc = execute_command(command, stdout_output, stderr_output);
-                 string jobid = TrimChars(stdout_output);
-                 ExpectWithContext(rc, stderr_output).ToBe(0);
-                 Expect(jobid).Not().ToBe("");
-                 _jobs.push_back(jobid);
+                  string stdout_output, stderr_output;
+                  command = zowex_command + " job submit " + ds + " --only-jobid";
+                  rc = execute_command(command, stdout_output, stderr_output);
+                  string jobid = TrimChars(stdout_output);
+                  ExpectWithContext(rc, stderr_output).ToBe(0);
+                  Expect(jobid).Not().ToBe("");
+                  _jobs.push_back(jobid);
 
-                 // Clean up dataset
-                 execute_command_with_output(zowex_command + " data-set delete " + ds, response);
-               });
+                  // Clean up dataset
+                  execute_command_with_output(zowex_command + " data-set delete " + ds, response);
+                });
 
              it("should handle submit with invalid wait status value",
                 [&]()
@@ -619,4 +616,3 @@ void zowex_job_submit_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                 });
            });
 }
-

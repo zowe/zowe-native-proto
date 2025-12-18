@@ -103,7 +103,6 @@ void zowex_job_list_tests(vector<string> &_jobs, vector<string> &_ds, vector<str
                   rc = execute_command_with_output(zowex_command + " job list --owner " + current_user + " --prefix " + prefix + " --max-entries 10 --no-warn --rfc", response);
                   ExpectWithContext(rc, response).ToBe(0);
 
-                  // Validate results
                   vector<string> lines = parse_rfc_response(response, "\n");
                   bool found_our_job = false;
                   for (const auto &line : lines)
@@ -115,8 +114,7 @@ void zowex_job_list_tests(vector<string> &_jobs, vector<string> &_ds, vector<str
                     {
                       if (parts[0] == jobid)
                         found_our_job = true;
-                      // Verify prefix matches (roughly)
-                      Expect(parts[2]).ToContain("IEFBR");
+                      Expect(parts[2]).ToBe("IEFBR14");
                     }
                   }
                   Expect(found_our_job).ToBe(true);
@@ -215,7 +213,7 @@ void zowex_job_list_tests(vector<string> &_jobs, vector<string> &_ds, vector<str
                 {
                   int rc = 0;
                   string response;
-                  rc = execute_command_with_output(zowex_command + " job list --max-entries 10000 --max-entries 5", response); // Limit to 5 to avoid spamming if it works
+                  rc = execute_command_with_output(zowex_command + " job list --max-entries 10000", response);
                   ExpectWithContext(rc, response).ToBeGreaterThanOrEqualTo(0);
                 });
 
@@ -231,7 +229,6 @@ void zowex_job_list_tests(vector<string> &_jobs, vector<string> &_ds, vector<str
                   ExpectWithContext(rc, stderr_output).ToBe(0);
                   _jobs.push_back(jobid);
 
-                  // Get current user
                   string current_user = get_user();
                   Expect(current_user).Not().ToBe("");
 
@@ -258,7 +255,6 @@ void zowex_job_list_tests(vector<string> &_jobs, vector<string> &_ds, vector<str
                       }
                     }
                   }
-                  // Verify our job was in the list (owner filter worked if our job is there)
                   Expect(found_our_job).ToBe(true);
                 });
 
@@ -294,7 +290,7 @@ void zowex_job_list_tests(vector<string> &_jobs, vector<string> &_ds, vector<str
                     vector<string> parts = parse_rfc_response(line, ",");
                     if (parts.size() >= 3)
                     {
-                      string listed_job_name = parts[2]; // jobname is at index 2
+                      string listed_job_name = parts[2];
                       // Verify job name starts with the prefix (minus the wildcard)
                       string prefix_without_wildcard = prefix.substr(0, prefix.length() - 1);
                       bool matches = listed_job_name.substr(0, prefix_without_wildcard.length()) == prefix_without_wildcard;
@@ -336,7 +332,6 @@ void zowex_job_list_tests(vector<string> &_jobs, vector<string> &_ds, vector<str
                     vector<string> lines2 = parse_rfc_response(response2, "\n");
 
                     // Should have consistent results if no jobs were submitted between calls
-                    // Extract jobids from both responses
                     vector<string> jobids1, jobids2;
                     for (const auto &line : lines1)
                     {
@@ -357,7 +352,6 @@ void zowex_job_list_tests(vector<string> &_jobs, vector<string> &_ds, vector<str
                       }
                     }
 
-                    // Verify we got results
                     Expect(jobids1.size()).ToBeGreaterThan(0);
                   }
                 });
