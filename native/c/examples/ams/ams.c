@@ -43,9 +43,9 @@ To allow users to update a data set that has a record format of "U", ISPF serial
  *
  * if in view mode, not spfedit enq on member name
  * if in edit mode, spfedit enq on member name
- * when writin isgenq with SGENQ SCOPE=SYSTEMS RESERVEVOLUME=YES is probably what we need to do
+ * when writing isgenq with SGENQ SCOPE=SYSTEMS RESERVEVOLUME=YES is probably what we need to do
  * stow ttr set to zero still "works" and needs debugged
- *  try wtritting two members on the same open with different data to see what happens
+ *  try writing two members on the same open with different data to see what happens
  * bldl if member doesnt exist needs to create ispf stats
  *
  */
