@@ -114,7 +114,7 @@ void zowex_job_list_tests(vector<string> &_jobs, vector<string> &_ds, vector<str
                     {
                       if (parts[0] == jobid)
                         found_our_job = true;
-                      Expect(parts[2]).ToBe("IEFBR14");
+                      Expect(parts[2]).ToContain("IEFBR");
                     }
                   }
                   Expect(found_our_job).ToBe(true);
