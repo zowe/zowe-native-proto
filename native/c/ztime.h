@@ -80,6 +80,18 @@ static void time(unsigned long long *tod)
   TIME(*tod);
 }
 
+typedef union
+{
+  unsigned int timei;
+  struct
+  {
+    unsigned char HH;
+    unsigned char MM;
+    unsigned char SS;
+    unsigned char unused;
+  } times;
+} TIME_UNION;
+
 // TODO(Kelosky): this must be AMODE 31
 static void time_local(unsigned int *time, unsigned int *date)
 {

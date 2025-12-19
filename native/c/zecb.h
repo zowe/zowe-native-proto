@@ -14,7 +14,6 @@
 
 #include "ihaecb.h"
 #include "ztype.h"
-#include "zmetal.h"
 
 typedef struct ecb ECB;
 
@@ -93,7 +92,10 @@ STIMERM_MODEL(stimerm_model); // make this copy in static storage
       : "r"(time), "m"(parm), "r"(exit)                       \
       : "r0", "r1", "r2", "r14", "r15");
 #else
-#define STIMERM_SET(time, parm, exit, id, plist)
+#define STIMERM_SET(time, parm, exit, id, plist) \
+  {                                              \
+    id++;                                        \
+  }
 #endif // __IBM_METAL__
 
 #if defined(__IBM_METAL__)
@@ -170,6 +172,8 @@ STIMERM_MODEL(stimerm_model); // make this copy in static storage
 #define ECBS_WAIT(count, list)
 #endif // __IBM_METAL__
 
+#if defined(__IBM_METAL__)
+
 static void ecb_post(ECB *ecb, int code)
 {
   ECB_POST(ecb, code);
@@ -245,5 +249,6 @@ static int cancel_timers()
   STIMERM_CANCEL(rc, dsa_stimerm_model);
   return rc;
 }
+#endif // __IBM_METAL__
 
 #endif // ECBWAIT_H

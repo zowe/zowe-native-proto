@@ -8,18 +8,13 @@
  * Copyright Contributors to the Zowe Project.
  *
  */
-#ifndef AMS_H
-#define AMS_H
 
-#if defined(__cplusplus) && (defined(__IBMCPP__) || defined(__IBMC__))
-extern "OS"
-{
-#elif defined(__cplusplus)
-extern "C"
-{
-#endif
-  int AMSMAIN(const char *ddname, const char *data);
-#if defined(__cplusplus)
-}
-#endif
+#ifndef ZAM24_H
+#define ZAM24_H
+
+#include "ztype.h"
+
+int ZAM24();
+int ZAM24Q();
+
 #endif

@@ -88,7 +88,8 @@ void zut_uppercase_pad_truncate(char *target, string source, int len)
   strncpy(target, source.c_str(), length);
 }
 
-int zut_bpxwdyn(string parm, unsigned int *code, string &resp)
+// https://www.ibm.com/docs/en/zos/3.2.0?topic=output-requesting-dynamic-allocation
+int zut_bpxwdyn(string parm, unsigned int *code, string &resp, string &ddname)
 {
   char bpx_response[RET_ARG_MAX_LEN * MSG_ENTRIES + 1] = {0};
 
@@ -102,8 +103,16 @@ int zut_bpxwdyn(string parm, unsigned int *code, string &resp)
   BPXWDYN_PARM *bparm = (BPXWDYN_PARM *)p;
   BPXWDYN_RESPONSE *response = (BPXWDYN_RESPONSE *)(p + sizeof(BPXWDYN_PARM));
 
+  // if input ddname is empty, set the rtdd flag
+  if (ddname == RTDDN)
+  {
+    bparm->rtdd = 1;
+  }
+
   bparm->len = sprintf(bparm->str, "%s", parm.c_str());
   int rc = ZUTWDYN(bparm, response);
+
+  ddname = string(response->ddname);
 
   resp = string(response->response);
   *code = response->code;
@@ -111,6 +120,12 @@ int zut_bpxwdyn(string parm, unsigned int *code, string &resp)
   free(p);
 
   return rc;
+}
+
+int zut_bpxwdyn(string parm, unsigned int *code, string &resp)
+{
+  string ddname;
+  return zut_bpxwdyn(parm, code, resp, ddname);
 }
 
 string zut_build_etag(const size_t mtime, const size_t byte_size)

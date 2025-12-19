@@ -160,11 +160,6 @@ static void *PTR64 load_module(const char *name)
   memcpy(name_truncated, name, strlen(name) > sizeof(name_truncated) - 1 ? sizeof(name_truncated) - 1 : strlen(name)); // truncate
 
   void *PTR64 ep = NULL;
-  union
-  {
-    void *PTR64 ep;
-    unsigned long long int epValue;
-  } epData = {0};
 
   LOAD(name_truncated, ep, rc, rsn);
   if (0 != rc)

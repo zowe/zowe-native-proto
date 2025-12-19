@@ -27,7 +27,7 @@ MTL_HEADERS=$(MTL_HEADERS_BASE) -I../ -I../chdsect
 C_FLAGS=$(C_FLAGS_BASE) -I./chdsect
 DLL_CPP_FLAGS=$(DLL_CPP_FLAGS_BASE) -I./chdsect
 CPP_FLAGS=$(CPP_FLAGS_BASE)
-CXXLANG_FLAGS=$(CXXLANG_FLAGS_BASE) -I../ -I./chdsect -std=c++14
+CXXLANG_FLAGS=$(CXXLANG_FLAGS_BASE) -I../ -I../chdsect -std=c++14
 CXXLANG_BND_FLAGS=-W "l,lp64"
 
 # make -DBuildType=DEBUG
@@ -42,9 +42,9 @@ MTL_FLAGS+=$(DEBUGGER_FLAGS) -qSHOWINC
 MTL_FLAGS64+=$(DEBUGGER_FLAGS) -qSHOWINC
 ASM_FLAGS+=--verbose
 # List output flags for debugging
-CPP_LIST_FLAG=-qlist=$$*.cpp.lst
-MTL_LIST_FLAG=-qlist=$$*.mtl.lst
-ASM_LIST_FLAG=-a=$$*.s.lst
+CPP_LIST_FLAG=-qlist=$*.cpp.lst
+MTL_LIST_FLAG=-qlist=$*.mtl.lst
+ASM_LIST_FLAG=-a=$*.s.lst
 .ELSE
 PRODUCTION_FLAGS=-qNOSOURCE -qNODEBUG
 CPP_BND_FLAGS=$(CPP_BND_BASE_FLAGS) $(PRODUCTION_FLAGS)
@@ -232,7 +232,7 @@ build-out/zmetal.metal.test.o: build-out/zmetal.metal.test.s
 
 build-out/zusf.test.o: zusf.test.cpp
 	$(OCXX) $(CXXLANG_FLAGS) $(CPP_LIST_FLAG) -c $^ -o $@
-	
+
 build-out/parser.test.o: parser.test.cpp
 	$(OCXX) $(CXXLANG_FLAGS) -qlist=$*.cpp.lst -c $^ -o $@
 
