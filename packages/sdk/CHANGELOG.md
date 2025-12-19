@@ -6,11 +6,12 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
-- Fixed an issue where the deploy directory was not created recursively when a non-existent multi-level directory was submitted. [#705] (https://github.com/zowe/zowe-native-proto/pull/705)
+- Fixed an issue where the deploy directory was not created recursively when a non-existent multi-level directory was submitted. [#705](https://github.com/zowe/zowe-native-proto/pull/705)
+- Fixed an issue where global team config was created rather than storing profile in existing team config in the active workspace directory. [#710](https://github.com/zowe/zowe-native-proto/pull/710)
 
 ## `0.2.1`
 
-- Fixed an issue where `validateConfig` function would not fallback to password when both an invalid `privateKey` and `password` exist on a profile. [#525] (https://github.com/zowe/zowe-native-proto/issues/525)
+- Fixed an issue where `validateConfig` function would not fallback to password when both an invalid `privateKey` and `password` exist on a profile. [#525](https://github.com/zowe/zowe-native-proto/issues/525)
 - Updated the `num-workers` option in the `ZSshClient` class to reflect the new format used for parsing `zowed` options. [#655](https://github.com/zowe/zowe-native-proto/issues/655)
 - Filtered out `Include` and `Host *` directives from SSH config files when creating new profiles. [#678](https://github.com/zowe/zowe-native-proto/pull/678)
 - Added missing properties to the `Dataset` type for listing data sets with attributes. [#629](https://github.com/zowe/zowe-native-proto/issues/629)
@@ -21,7 +22,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - Addressed an issue where `~` was not being resolved to the home directory within ssh configuration files. [#614](https://github.com/zowe/zowe-native-proto/pull/614)
 - Added additional error messages to the `AbstractConfigManager` class to provide better feedback during connection attempts. [#605](https://github.com/zowe/zowe-native-proto/pull/605)
 - Added `depth` property to the `ListFilesRequest` type for listing USS directories recursively. [#575](https://github.com/zowe/zowe-native-proto/pull/575)
-- Replaced `this.uninstallServer` with the class reference `ZSshUtils.uninstallServer` in `ZSshUtils.ts`. [#586] (https://github.com/zowe/zowe-native-proto/pull/586).
+- Replaced `this.uninstallServer` with the class reference `ZSshUtils.uninstallServer` in `ZSshUtils.ts`. [#586](https://github.com/zowe/zowe-native-proto/pull/586)
 - Added `recfm` property to the `Dataset` type for listing data sets with attributes. [#558](https://github.com/zowe/zowe-native-proto/pull/558)
 - Restructured RPC request and response types to be human-maintained rather than auto-generated to improve maintainability. [#590](https://github.com/zowe/zowe-native-proto/pull/590)
 - Made attribute properties optional in the `Dataset` and `UssItem` types. [#608](https://github.com/zowe/zowe-native-proto/pull/608)
@@ -29,11 +30,11 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## `0.1.10`
 
-- Added a `promptForDeployDirectory` function to prompt the users to choose a deploy directory aside from the default.[#527] (https://github.com/zowe/zowe-native-proto/issues/527)
+- Added a `promptForDeployDirectory` function to prompt the users to choose a deploy directory aside from the default. [#527](https://github.com/zowe/zowe-native-proto/issues/527)
 
 ## `0.1.9`
 
-- Updated the `ZSshUtils.uninstallServer` function to remove the deploy directory and all of its contents.[#484] (https://github.com/zowe/zowe-native-proto/issues/484)
+- Updated the `ZSshUtils.uninstallServer` function to remove the deploy directory and all of its contents. [#484](https://github.com/zowe/zowe-native-proto/issues/484)
 - Changed default number of `zowex` worker threads from 10 to 3 to reduce resource usage on z/OS. [#514](https://github.com/zowe/zowe-native-proto/pull/514)
 - Added support for `localEncoding` option in data set, USS file, and job file operations to specify the source encoding of content (defaults to UTF-8). [#511](https://github.com/zowe/zowe-native-proto/issues/511)
 - Added support for `volume` option when reading/writing data sets. [#439](https://github.com/zowe/zowe-native-proto/issues/439)
