@@ -4,6 +4,10 @@ All notable changes to the "zowe-native-proto-vsce" extension will be documented
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+
+- Fixed an issue where prompts could disappear when VS Code window loses focus while connecting to a new host. [#710](https://github.com/zowe/zowe-native-proto/pull/710)
+
 ## `0.2.1`
 
 - Updated error handling to format request timeout errors. When a timeout error is received, the request is cancelled and the user receives a notification with context of where the error occurred. [#416](https://github.com/zowe/zowe-native-proto/issues/416)

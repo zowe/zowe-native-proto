@@ -57,6 +57,7 @@ typedef int (*BPXWDYN)(
     BPXWDYN_PARM *PTR32,
     BPXWDYN_PARM *PTR32,
     BPXWDYN_PARM *PTR32,
+    BPXWDYN_PARM *PTR32,
     BPXWDYN_PARM *PTR32) ATTRIBUTE(amode31);
 
 // Doc:
@@ -71,6 +72,10 @@ int ZUTWDYN(BPXWDYN_PARM *parm, BPXWDYN_RESPONSE *response)
   int rc = 0;
   ZUTAOFF();
 
+  int rtddn_index = RTDDN_INDEX;
+  int msg_index = MSG_INDEX;
+  int input_parameters = INPUT_PARAMETERS;
+
   // load our service
   BPXWDYN dynalloc = (BPXWDYN)load_module31("BPXWDY2"); // EP which doesn't require R0 == 0
   if (!dynalloc)
@@ -83,31 +88,41 @@ int ZUTWDYN(BPXWDYN_PARM *parm, BPXWDYN_RESPONSE *response)
   }
 
   // allow for MSG_ENTRIES response parameters + 2 input parameters
-  BPXWDYN_RET_ARG parameters[MSG_ENTRIES + 2] = {0};
-  memcpy(&parameters[0], parm, sizeof(BPXWDYN_RESPONSE));
-  parameters[1].len = RET_ARG_MAX_LEN - sizeof(parameters[1].len);
-  strcpy(parameters[1].str, "MSG");
+  BPXWDYN_RET_ARG parameters[MSG_ENTRIES + INPUT_PARAMETERS] = {0};
+  memcpy(&parameters[ALLOC_STRING_INDEX], parm, sizeof(BPXWDYN_RESPONSE));
+
+  if (parm->rtdd)
+  {
+    parameters[rtddn_index].len = 8 + 1; // max ddname length is 8 + 1 for the null terminator
+    strcpy(parameters[rtddn_index].str, "RTDDN");
+  }
+  else
+  {
+    msg_index--;
+    input_parameters--;
+  }
+  parameters[msg_index].len = sprintf(parameters[msg_index].str, "MSG");
 
   int index = 0;
 
-  // assign all response paramter stem values
-  for (int i = 2; i < MSG_ENTRIES + 2; i++)
+  // assign all response parameter stem values
+  for (int i = input_parameters; i < MSG_ENTRIES + input_parameters; i++)
   {
     parameters[i].len = RET_ARG_MAX_LEN - sizeof(parameters[i].len);
     sprintf(parameters[i].str, "MSG.%d", ++index);
   }
 
-  // build a contiguous list of all parameters
-  BPXWDYN_RET_ARG *PTR32 parms[MSG_ENTRIES + 2] = {0};
-  for (int i = 0; i <= MSG_ENTRIES + 2; i++)
+  // build a contiguous list of pointers to all parameters
+  BPXWDYN_RET_ARG *PTR32 parms[MSG_ENTRIES + INPUT_PARAMETERS] = {0};
+  for (int i = 0; i < MSG_ENTRIES + input_parameters; i++)
   {
     parms[i] = &parameters[i];
   }
 
   // set the high bit on last parm
-  parms[MSG_ENTRIES + 1] = (void *PTR32)((unsigned int)parms[MSG_ENTRIES + 1] | 0x80000000);
+  parms[MSG_ENTRIES + input_parameters - 1] = (void *PTR32)((unsigned int)parms[MSG_ENTRIES + input_parameters - 1] | 0x80000000);
 
-  // NOTE(Kelosky): to prevent the compiler optimizer from discarding any memory assignements,
+  // NOTE(Kelosky): to prevent the compiler optimizer from discarding any memory assignments,
   // we need to ensure a reference to all data is passed to this external function
   rc = dynalloc(
       parms[0],
@@ -136,7 +151,8 @@ int ZUTWDYN(BPXWDYN_PARM *parm, BPXWDYN_RESPONSE *response)
       parms[23],
       parms[24],
       parms[25],
-      parms[26]);
+      parms[26],
+      parms[27]); // last parameter index is MSG_ENTRIES + INPUT_PARAMETERS - 1
 
   response->code = rc;
 
@@ -144,15 +160,19 @@ int ZUTWDYN(BPXWDYN_PARM *parm, BPXWDYN_RESPONSE *response)
 
   // obtain any messages returned
   char *respp = response->response;
-  for (int i = 0, j = atoi(parameters[1].str); i < j && i < MSG_ENTRIES + 2; i++)
+  for (int i = 0, j = atoi(parameters[msg_index].str); i < j && i < MSG_ENTRIES + input_parameters; i++)
   {
-    if (parameters[i + 2].len == RET_ARG_MAX_LEN - sizeof(parameters[i + 2].len))
+    // if we have messages but the message length is set to the original max length, return failure
+    if (parameters[i + input_parameters].len == RET_ARG_MAX_LEN - sizeof(parameters[i + input_parameters].len))
     {
       return (0 != rc) ? ZUT_BPXWDYN_SERVICE_FAILURE : RTNCD_SUCCESS;
     }
-    int len = sprintf(respp, "%.*s\n", parameters[i + 2].len, parameters[i + 2].str);
+    // otherwise, append the message to the response
+    int len = sprintf(respp, "%.*s\n", parameters[i + input_parameters].len, parameters[i + input_parameters].str);
     respp = respp + len;
   }
+
+  strcpy(response->ddname, parameters[rtddn_index].str);
 
   return (0 != rc) ? ZUT_BPXWDYN_SERVICE_FAILURE : RTNCD_SUCCESS;
 }

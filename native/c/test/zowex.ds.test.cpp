@@ -89,9 +89,7 @@ void zowex_ds_tests()
                   Expect(response).ToContain("list-members");
                   Expect(response).ToContain("restore");
                   Expect(response).ToContain("view");
-                  Expect(response).ToContain("write");
-                  //
-                });
+                  Expect(response).ToContain("write"); });
 
              // TODO: https://github.com/zowe/zowe-native-proto/issues/640
              xdescribe("compress",
@@ -902,7 +900,6 @@ void zowex_ds_tests()
                              rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
                              Expect(response).ToContain("test!");
-                             //
                            });
                         it("should fail to view a non-existent data set",
                            [&]() -> void
