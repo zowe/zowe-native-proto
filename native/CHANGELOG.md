@@ -4,6 +4,10 @@ All notable changes to the native code for "zowe-native-proto" are documented in
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+
+- `c`: Implemented system tests for the `zowex job` command group. [#700](https://github.com/zowe/zowe-native-proto/pull/700)
+
 ## `0.2.1`
 
 - `c`: Disallow `zowex compress ds` to prevent lurking abend.
@@ -21,7 +25,6 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - `zowed`: Fixed issue where opening a file larger than 10 MB could fail with "Invalid JSON" error. [#656](https://github.com/zowe/zowe-native-proto/issues/656)
 - `c`: Fix PSW alignment issue. [#559](https://github.com/zowe/zowe-native-proto/issues/559)
 - When listing data sets with attributes, a comprehensive set is now retrieved that is similar to what ISPF displays. [#629](https://github.com/zowe/zowe-native-proto/issues/629)
-
 
 ## `0.2.0`
 

@@ -15,6 +15,8 @@
 #include <string>
 #include <sstream>
 #include <cstring>
+#include <chrono>
+#include <thread>
 
 using namespace std;
 
@@ -165,15 +167,37 @@ string parse_etag_from_output(const string &output)
 vector<string> parse_rfc_response(const string input, const char *delim)
 {
   vector<string> ret;
-  char *cstr = new char[input.length() + 1];
-  strcpy(cstr, input.c_str());
-  char *token_ptr = strtok(cstr, delim);
-  while (token_ptr != NULL)
+  string current;
+  char delimiter = delim[0];
+
+  for (size_t i = 0; i < input.length(); ++i)
   {
-    string token = token_ptr;
-    ret.push_back(ztst::TrimChars(token));
-    token_ptr = strtok(NULL, delim);
+    if (input[i] == delimiter)
+    {
+      ret.push_back(ztst::TrimChars(current));
+      current.clear();
+    }
+    else
+    {
+      current += input[i];
+    }
   }
-  delete[] cstr;
+  ret.push_back(ztst::TrimChars(current));
+
   return ret;
+}
+
+bool wait_for_job(const string &jobid, int max_retries, int delay_ms)
+{
+  string output;
+  for (int i = 0; i < max_retries; ++i)
+  {
+    int rc = execute_command_with_output(zowex_command + " job view-status " + jobid, output);
+    if (rc == 0 && output.find(jobid) != string::npos)
+    {
+      return true;
+    }
+    this_thread::sleep_for(chrono::milliseconds(delay_ms));
+  }
+  return false;
 }

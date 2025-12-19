@@ -119,6 +119,9 @@ build-out/zusf.o \
 build-out/zowex.ds.test.o \
 build-out/zowex.uss.test.o \
 build-out/zowex.job.test.o \
+build-out/zowex.job.list.test.o \
+build-out/zowex.job.submit.test.o \
+build-out/zowex.job.manage.test.o \
 build-out/zowex.test.o \
 build-out/zowex.tso.test.o \
 build-out/zoweax.console.test.o \
@@ -179,6 +182,15 @@ build-out/zowex.uss.test.o: zowex.uss.test.cpp
 	$(OCXX) $(CXXLANG_FLAGS) $(CPP_LIST_FLAG) -c $^ -o $@
 
 build-out/zowex.job.test.o: zowex.job.test.cpp
+	$(OCXX) $(CXXLANG_FLAGS) $(CPP_LIST_FLAG) -c $^ -o $@
+
+build-out/zowex.job.list.test.o: zowex.job.list.test.cpp
+	$(OCXX) $(CXXLANG_FLAGS) $(CPP_LIST_FLAG) -c $^ -o $@
+
+build-out/zowex.job.submit.test.o: zowex.job.submit.test.cpp
+	$(OCXX) $(CXXLANG_FLAGS) $(CPP_LIST_FLAG) -c $^ -o $@
+
+build-out/zowex.job.manage.test.o: zowex.job.manage.test.cpp
 	$(OCXX) $(CXXLANG_FLAGS) $(CPP_LIST_FLAG) -c $^ -o $@
 
 build-out/zowex.tso.test.o: zowex.tso.test.cpp

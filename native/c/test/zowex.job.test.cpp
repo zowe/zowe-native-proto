@@ -9,64 +9,76 @@
  *
  */
 
+#include <cstddef>
+#include <ctime>
+#include <stdlib.h>
 #include <string>
+#include <vector>
+#include <fstream>
 #include "ztest.hpp"
 #include "zutils.hpp"
 #include "zowex.test.hpp"
 #include "zowex.job.test.hpp"
+#include "zowex.job.list.test.hpp"
+#include "zowex.job.submit.test.hpp"
+#include "zowex.job.manage.test.hpp"
 
 using namespace std;
 using namespace ztst;
 
 void zowex_job_tests()
 {
+  static vector<string> _jobs;
+  static vector<string> _ds;
+  static vector<string> _files;
+
   describe("job",
-           []() -> void
+           [&]() -> void
            {
-             it("should list jobs",
-                []()
-                {
-                  int rc = 0;
-                  string response;
-                  rc = execute_command_with_output(zowex_command + " job list", response);
-                  ExpectWithContext(rc, response).ToBeGreaterThanOrEqualTo(0); // results might be truncated
-                });
+             // Helper to delete tracked jobs
+             auto _cleanup_jobs = [&]() -> void
+             {
+               TestLog("Cleaning up " + to_string(_jobs.size()) + " jobs...");
+               for (const auto &jobid : _jobs)
+               {
+                 string response;
+                 execute_command_with_output(zowex_command + " job delete " + jobid, response);
+               }
+               _jobs.clear();
+             };
 
-             it("should list proclib",
-                []()
-                {
-                  int rc = 0;
-                  string response;
-                  rc = execute_command_with_output(zowex_command + " job list-proclib", response);
-                  ExpectWithContext(rc, response).ToBeGreaterThanOrEqualTo(0);
-                });
+             // Helper to delete tracked datasets
+             auto _cleanup_ds = [&]() -> void
+             {
+               TestLog("Cleaning up " + to_string(_ds.size()) + " data sets...");
+               for (const auto &ds : _ds)
+               {
+                 string response;
+                 execute_command_with_output(zowex_command + " data-set delete " + ds, response);
+               }
+               _ds.clear();
+             };
 
-             it("should submit a job, view it, and delete it", []()
-                {
-                  int rc = 0;
-                  string stdout_output, stderr_output;
+             // Helper to delete tracked files
+             auto _cleanup_files = [&]() -> void
+             {
+               for (const auto &file : _files)
+               {
+                 remove(file.c_str());
+               }
+               _files.clear();
+             };
 
-                  string jobname = "IEFBR14$";
-                  string jcl = "//" + jobname + " JOB (IZUACCT),TEST,REGION=0M\n//RUN EXEC PGM=IEFBR14";
+             afterAll(
+                 [&]() -> void
+                 {
+                   _cleanup_jobs();
+                   _cleanup_ds();
+                   _cleanup_files();
+                 });
 
-                  // write jcl to the data set
-                  string submit_command = "printf \"" + jcl + "\" | " + zowex_command + " job submit-jcl --only-jobid";
-                  rc = execute_command(submit_command, stdout_output, stderr_output);
-                  string job_id = TrimChars(stdout_output);
-                  ExpectWithContext(rc, stderr_output).ToBe(0);
-                  Expect(job_id).Not().ToBe("");
-
-                  // view the job
-                  string view_command = zowex_command + " job view-status " + job_id;
-                  rc = execute_command(view_command, stdout_output, stderr_output);
-                  ExpectWithContext(rc, stderr_output).ToBe(0);
-                  Expect(stdout_output).ToContain(jobname);
-
-                  // delete the job
-                  string delete_command = zowex_command + " job delete " + job_id;
-                  rc = execute_command(delete_command, stdout_output, stderr_output);
-                  ExpectWithContext(rc, stderr_output).ToBe(0);
-                  Expect(stdout_output).ToContain("deleted"); //
-                });
+             zowex_job_list_tests(_jobs, _ds, _files);
+             zowex_job_submit_tests(_jobs, _ds, _files);
+             zowex_job_manage_tests(_jobs, _ds, _files);
            });
 }
