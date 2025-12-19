@@ -444,16 +444,20 @@ int zds_create_dsn(ZDS *zds, string dsn, DS_ATTRIBUTES attributes, string &respo
   {
     attributes.primary = 1; // Primary Space
   }
-  if (attributes.lrecl == 0)
+  if (attributes.lrecl < 0)
   {
     attributes.lrecl = 80; // Record Length
   }
 
   char numberAsString[6];
 
-  // Required options
+  // Required options, default to PS if not specified
   if (!attributes.dsorg.empty())
     parm += " DSORG(" + attributes.dsorg + ")";
+  else
+  {
+    parm += " DSORG(PS)";
+  }
 
   if (attributes.primary > 0)
   {
@@ -484,7 +488,7 @@ int zds_create_dsn(ZDS *zds, string dsn, DS_ATTRIBUTES attributes, string &respo
     parm += " DIR(" + string(itoa(attributes.dirblk, numberAsString, 10)) + ")";
   }
 
-  parm += " NEW KEEP";
+  parm += " NEW CATALOG";
 
   if (!attributes.dsntype.empty())
     parm += " DSNTYPE(" + attributes.dsntype + ")";
@@ -512,36 +516,67 @@ int zds_create_dsn_fb(ZDS *zds, const string &dsn, string &response)
 {
   int rc = 0;
   unsigned int code = 0;
-  string parm = "ALLOC DA('" + dsn + "') DSORG(PO) SPACE(5,5) CYL LRECL(80) RECFM(F,B) DIR(5) NEW KEEP DSNTYPE(LIBRARY)";
 
-  return alloc_and_free(parm, dsn, &code, response);
+  DS_ATTRIBUTES attributes = {0};
+  attributes.dsorg = "PO";
+  attributes.primary = 5;
+  attributes.secondary = 5;
+  attributes.alcunit = "CYL";
+  attributes.lrecl = 80;
+  attributes.recfm = "F,B";
+  attributes.dirblk = 5;
+  attributes.dsntype = "LIBRARY";
+  return zds_create_dsn(zds, dsn, attributes, response);
 }
 
 int zds_create_dsn_vb(ZDS *zds, const string &dsn, string &response)
 {
   int rc = 0;
   unsigned int code = 0;
-  string parm = "ALLOC DA('" + dsn + "') DSORG(PO) SPACE(5,5) CYL LRECL(255) RECFM(V,B) DIR(5) NEW KEEP DSNTYPE(LIBRARY)";
-
-  return alloc_and_free(parm, dsn, &code, response);
+  DS_ATTRIBUTES attributes = {0};
+  attributes.dsorg = "PO";
+  attributes.primary = 5;
+  attributes.secondary = 5;
+  attributes.alcunit = "CYL";
+  attributes.lrecl = 255;
+  attributes.recfm = "V,B";
+  attributes.dirblk = 5;
+  attributes.dsntype = "LIBRARY";
+  return zds_create_dsn(zds, dsn, attributes, response);
 }
 
 int zds_create_dsn_adata(ZDS *zds, const string &dsn, string &response)
 {
   int rc = 0;
   unsigned int code = 0;
-  string parm = "ALLOC DA('" + dsn + "') DSORG(PO) SPACE(5,5) CYL LRECL(32756) BLKSIZE(32760) RECFM(V,B) DIR(5) NEW KEEP DSNTYPE(LIBRARY)";
-
-  return alloc_and_free(parm, dsn, &code, response);
+  DS_ATTRIBUTES attributes = {0};
+  attributes.dsorg = "PO";
+  attributes.primary = 5;
+  attributes.secondary = 5;
+  attributes.alcunit = "CYL";
+  attributes.lrecl = 32756;
+  attributes.blksize = 32760;
+  attributes.recfm = "V,B";
+  attributes.dirblk = 5;
+  attributes.dsntype = "LIBRARY";
+  return zds_create_dsn(zds, dsn, attributes, response);
 }
 
 int zds_create_dsn_loadlib(ZDS *zds, const string &dsn, string &response)
 {
   int rc = 0;
   unsigned int code = 0;
-  string parm = "ALLOC DA('" + dsn + "') DSORG(PO) SPACE(5,5) CYL LRECL(0) BLKSIZE(32760) RECFM(U) DIR(5) NEW KEEP DSNTYPE(LIBRARY)";
-
-  return alloc_and_free(parm, dsn, &code, response);
+  DS_ATTRIBUTES attributes = {0};
+  attributes.dsorg = "PO";
+  attributes.primary = 5;
+  attributes.secondary = 5;
+  attributes.alcunit = "CYL";
+  attributes.lrecl = 0;
+  attributes.blksize = 32760;
+  attributes.recfm = "U";
+  attributes.dirblk = 5;
+  attributes.dsntype = "LIBRARY";
+  return zds_create_dsn(zds, dsn, attributes, response);
 }
 
 #define NUM_DELETE_TEXT_UNITS 2

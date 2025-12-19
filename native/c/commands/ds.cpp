@@ -92,7 +92,7 @@ int create_with_attributes(InvocationContext &context)
   }
   if (context.has("lrecl"))
   {
-    attributes.lrecl = context.get<long long>("lrecl", 0);
+    attributes.lrecl = context.get<long long>("lrecl", -1);
   }
   if (context.has("dataclass"))
   {
@@ -714,7 +714,8 @@ int handle_data_set_restore(InvocationContext &context)
   rc = zut_loop_dynalloc(diag, dds);
   if (0 != rc)
   {
-    context.error_stream() << diag.e_msg << endl;
+    context.error_stream() << "Error: could not restore data set: '" << dsn << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << "Details: " << diag.e_msg << endl;
     return RTNCD_FAILURE;
   }
 
@@ -750,7 +751,7 @@ int handle_data_set_compress(InvocationContext &context)
 
   if (!is_pds)
   {
-    context.error_stream() << "Error: data set'" << dsn << "' is not a PDS'" << endl;
+    context.error_stream() << "Error: data set '" << dsn << "' is not a PDS'" << endl;
     return RTNCD_FAILURE;
   }
 
