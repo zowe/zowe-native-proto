@@ -13,8 +13,8 @@
 CXX_LIB = $(CXXLANG)
 CXX_MAIN = $(CXX)
 
-CXXFLAGS_LIB = -std=c++11 -Wall -Werror -MMD -MP -O2 -qlanglvl=extended0x -I../c -W "c,exportall,dll"
-CXXFLAGS_MAIN = -qlanglvl=extended0x -O2 -I../c -W "c,lp64,xplink" -D__IBMCPP_TR1__=1
+CXXFLAGS_LIB = -std=c++11 -Wall -Werror -MMD -MP -O2 -qlanglvl=extended0x -I../c -I../c/chdsect -W "c,exportall,dll"
+CXXFLAGS_MAIN = -qlanglvl=extended0x -O2 -I../c -I../c/chdsect -W "c,lp64,xplink" -D__IBMCPP_TR1__=1
 LDFLAGS = $(CPP_BND_DEBUG_FLAGS)
 DLL_BND_FLAGS = $(DLL_BND_DEBUG_FLAGS)
 

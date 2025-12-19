@@ -263,7 +263,7 @@ describe("AbstractConfigManager", async () => {
                         setupProfileCreationMocks();
                     });
 
-                    it("should handle creating new profile with valid input with createNewProfile and validateConfig functionality", async () => {
+                    it("should handle creating new profile with valid input", async () => {
                         const profileWithName = {
                             user: "user1",
                             name: "nameValue",
@@ -279,6 +279,7 @@ describe("AbstractConfigManager", async () => {
                         );
                         vi.spyOn(testManager as any, "getNewProfileName").mockReturnValue(profileWithName);
                         vi.spyOn(testManager as any, "attemptConnection").mockResolvedValue(true);
+                        const createZoweSchemaSpy = vi.spyOn(testManager as any, "createZoweSchema");
                         const setSpy = vi.spyOn(testManager as any, "setProfile").mockImplementation(() => {});
                         expect(await testManager.promptForProfile()).toStrictEqual({
                             name: profileWithName.name,
@@ -297,18 +298,8 @@ describe("AbstractConfigManager", async () => {
                             },
                         });
 
+                        expect(createZoweSchemaSpy).toHaveBeenCalledWith(true);
                         expect(setSpy).toHaveBeenCalledWith(profileWithName);
-                    });
-
-                    it("should handle creating new profile with valid input", async () => {
-                        vi.spyOn(testManager, "showCustomMenu").mockResolvedValueOnce({
-                            label: "$(plus) Add New SSH Host...",
-                        });
-                        vi.spyOn(testManager as any, "createNewProfile").mockReturnValueOnce(mockNewProfile);
-
-                        await testManager.promptForProfile();
-
-                        // Test passes if no errors are thrown during profile creation
                     });
 
                     it("should return undefined when profile creation fails", async () => {
@@ -316,9 +307,11 @@ describe("AbstractConfigManager", async () => {
                             label: "$(plus) Add New SSH Host...",
                         });
                         vi.spyOn(testManager as any, "createNewProfile").mockReturnValueOnce(undefined);
+                        const createZoweSchemaSpy = vi.spyOn(testManager as any, "createZoweSchema");
 
                         const result = await testManager.promptForProfile();
 
+                        expect(createZoweSchemaSpy).not.toHaveBeenCalled();
                         expect(result).toBeUndefined();
                     });
                 });

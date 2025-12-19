@@ -237,7 +237,10 @@ describe("SshConfigUtils", () => {
             });
             it("returns an input box", () => {
                 (instance as any).showInputBox({ prompt: "test prompt" });
-                expect(vscode.window.showInputBox).toHaveBeenCalledWith({ prompt: "test prompt" });
+                expect(vscode.window.showInputBox).toHaveBeenCalledWith({
+                    ignoreFocusOut: true,
+                    prompt: "test prompt",
+                });
             });
         });
         describe("showMenu", () => {

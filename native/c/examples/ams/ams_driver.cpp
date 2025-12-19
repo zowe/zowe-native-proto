@@ -8,50 +8,76 @@
  * Copyright Contributors to the Zowe Project.
  *
  */
-
 #include <iostream>
 #include <string>
 #include <vector>
-#include "zut.hpp"
-#include "ams.h"
+#include "ztype.h"
 #include <unistd.h>
+#include "zds.hpp"
 
+// TODO(Kelosky): test on archived data set
 int main()
 {
   int rc = 0;
-  std::string dsn = "SYS1.AMBLIST.DATA";
+  unsigned int code = 0;
 
-  std::vector<std::string> dds;
+  std::vector<std::string> data;
+  data.push_back("hello world                                                                     ");
+  // data.push_back("012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789abcdefghijkl");
+  data.push_back("          0123456789012345678901234567890123456789012345678901234567890123456789");
+  // data.push_back("0123456789          012345678901234567890123456789012345678901234567890123456789");
+  // data.push_back(" hey workld");
+  // data.push_back(" one more");
+  // data.push_back("hello world                                                                     ");
+  // data.push_back("012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789abcdefghijkl");
+  // data.push_back("          0123456789012345678901234567890123456789012345678901234567890123456789");
+  // data.push_back("0123456789          012345678901234567890123456789012345678901234567890123456789");
+  // data.push_back(" hey workld");
+  // data.push_back(" one more");
+  // data.push_back("hello world                                                                     ");
+  // data.push_back("012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789abcdefghijkl");
+  // data.push_back("          0123456789012345678901234567890123456789012345678901234567890123456789");
+  // data.push_back("0123456789          012345678901234567890123456789012345678901234567890123456789");
+  // data.push_back(" hey workld");
+  // data.push_back(" one more");
+  // data.push_back("hello world                                                                     ");
+  // data.push_back("012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789abcdefghijkl");
+  // data.push_back("          0123456789012345678901234567890123456789012345678901234567890123456789");
+  // data.push_back("0123456789          012345678901234567890123456789012345678901234567890123456789");
+  data.push_back(" hey workld");
+  data.push_back(" one more");
 
-  dds.push_back("alloc dd(sysin) da('DKELOSKY.IO.I.F80(data)') shr lrecl(80) recfm(f) ");
-  // dds.push_back("alloc dd(sysprint) da('DKELOSKY.IO.O.F80(data)') shr lrecl(80) recfm(f) ");
-  dds.push_back("alloc dd(sysprint) da('DKELOSKY.IO.O.FB80(data)') shr lrecl(80) recfm(f,b) ");
-  // dds.push_back("alloc dd(sysprint) da('DKELOSKY.IO.O.FB80(data)') shr lrecl(80) blksize(160) recfm(f,b) ");
-
-  // dds.push_back("alloc dd(sysprint) da('dkelosky.output.fixed(data)') shr lrecl(80) recfm(f) ");
-  // dds.push_back("alloc dd(sysin) da('dkelosky.input(data)') shr lrecl(80) recfm(f,b) blksize(160) ");
-  // dds.push_back("alloc dd(sysprint) da('dkelosky.output(test)') shr"); //  lrecl(80) recfm(f,b) blksize(160) ");
-  // dds.push_back("alloc dd(sysin) lrecl(80) recfm(f,b) blksize(80)");
-
-  std::cout << "current user: " << getlogin() << std::endl;
-
-  ZDIAG diag = {0};
-  rc = zut_loop_dynalloc(diag, dds);
+  ZDS zds = {0};
+  IO_CTRL *ioc = NULL;
+  rc = zds_open_output_bpam(&zds, "DKELOSKY.IO.O.FB80(data)", ioc);
+  // rc = zds_open_output_bpam(&zds, "DKELOSKY.IO.O.V25(OMGNESS)", ioc);
+  // rc = zds_open_output_bpam(&zds, "DKELOSKY.IO.O.V256(OMGNESS)", ioc);
+  // rc = zds_open_output_bpam(&zds, "DKELOSKY.IO.O.VB256(OMGNESS)", ioc);
   if (0 != rc)
   {
-    std::cout << diag.e_msg << std::endl;
-    return 1;
+    std::cout << "zds_open_output_bpam failed: " << rc << std::endl;
+    std::cout << "  Details: " << zds.diag.e_msg << std::endl;
+
+    return -1;
   }
 
-  std::cout << "AMS started" << std::endl;
-  AMSMAIN();
-  std::cout << "AMS ended" << std::endl;
-
-  rc = zut_free_dynalloc_dds(diag, dds);
-  if (0 != rc)
+  for (std::vector<std::string>::iterator it = data.begin(); it != data.end(); ++it)
   {
-    std::cout << diag.e_msg << std::endl;
-    return 1;
+    rc = zds_write_output_bpam(&zds, ioc, *it);
+    if (0 != rc)
+    {
+      std::cout << "zds_write_output_bpam failed: " << rc << std::endl;
+      std::cout << "  Details: " << zds.diag.e_msg << std::endl;
+      return -1;
+    }
+  }
+
+  rc = zds_close_output_bpam(&zds, ioc);
+  if (0 != rc && RTNCD_WARNING != rc) // ignore warnings
+  {
+    std::cout << "zds_close_output_bpam failed: " << rc << std::endl;
+    std::cout << "  Details: " << zds.diag.e_msg << std::endl;
+    return -1;
   }
 
   return 0;
