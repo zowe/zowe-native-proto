@@ -153,9 +153,10 @@ void zjb_tests()
                   ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS);
                   Expect(content).Not().ToBe(""); // expect some content returned
 
-      memset(&zjb, 0, sizeof(zjb));
-      rc = zjb_delete(&zjb, correlator);
-      ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS); }); });
+                  memset(&zjb, 0, sizeof(zjb));
+                  rc = zjb_delete(&zjb, correlator);
+                  ExpectWithContext(rc, zjb.diag.e_msg).ToBe(RTNCD_SUCCESS); 
+                }); });
 }
 
 void sleep_on_status(string status, string jobid)
