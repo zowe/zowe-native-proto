@@ -151,13 +151,10 @@ export abstract class AbstractConfigManager {
             }
         }
 
-        // Current directory open in vscode window
-        const workspaceDir = this.getCurrentDir();
-
         // Prioritize creating a team config in the local workspace if it exists even if a global config exists
         // TODO: This behavior is only for the POC phase
         ////////////////////////////////////////////////////////////////////////////////////////////////////////
-        const useProject = workspaceDir !== undefined && !this.mProfilesCache.getTeamConfig().layerExists(workspaceDir);
+        const useProject = this.getCurrentDir() !== undefined;
         await this.createZoweSchema(!useProject);
         ////////////////////////////////////////////////////////////////////////////////////////////////////////
 

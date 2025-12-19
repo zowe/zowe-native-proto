@@ -86,7 +86,7 @@ export class VscePromptApi extends AbstractConfigManager {
         }
     }
     protected async showInputBox(opts: inputBoxOpts): Promise<string | undefined> {
-        return vscode.window.showInputBox(opts);
+        return vscode.window.showInputBox({ ignoreFocusOut: true, ...opts });
     }
 
     protected async withProgress<T>(message: string, task: (progress: ProgressCallback) => Promise<T>): Promise<T> {
