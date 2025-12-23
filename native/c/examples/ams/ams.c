@@ -8,6 +8,7 @@
  * Copyright Contributors to the Zowe Project.
  *
  */
+
 #include <stdio.h>
 #include <builtins.h>
 #include "zamtypes.h"

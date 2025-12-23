@@ -17,6 +17,24 @@
 
 using std::string;
 
+// Process error output to extract message and data
+static void process_error_output(const string &error_output, string &out_message, string &out_data)
+{
+  // Find first newline and split the output into message and data
+  size_t newline_pos = error_output.find('\n');
+
+  if (newline_pos != string::npos)
+  {
+    out_message.assign(error_output, 0, newline_pos);
+    out_data.assign(error_output, newline_pos + 1, string::npos);
+  }
+  else
+  {
+    out_message.assign(error_output);
+    out_data.clear();
+  }
+}
+
 void RpcServer::process_request(const string &request_data)
 {
   try
@@ -71,8 +89,16 @@ void RpcServer::process_request(const string &request_data)
     if (result != 0)
     {
       const string error_output = context.get_error_content();
-      print_error(request.id, result, "Command execution failed (" + request.method + ")",
-                  error_output.empty() ? nullptr : &error_output);
+      string error_message;
+      string error_data;
+      process_error_output(error_output, error_message, error_data);
+
+      if (error_message.empty())
+      {
+        error_message = "Command execution failed (" + request.method + ")";
+      }
+      const string *detail_ptr = error_data.empty() ? nullptr : &error_data;
+      print_error(request.id, result, error_message, detail_ptr);
       return;
     }
 
