@@ -68,7 +68,6 @@ extern "C"
   int ZUTSYMBP(SYMBOL_DATA *);
   int ZUTSRCH(const char *);
   int ZUTRUN(const char *);
-  int ZUTRUN24(const char *);
   void ZUTDBGMG(const char *);
   unsigned char ZUTMGKEY();
   void ZUTAOFF();
