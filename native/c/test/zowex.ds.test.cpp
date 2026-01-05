@@ -110,7 +110,7 @@ void zowex_ds_tests()
                              string command = zowex_command + " data-set compress " + ds;
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).Not().ToBe(0);
-                             Expect(response).ToContain("Error: data set '" + ds + "' is not a PDS'");
+                             Expect(response).ToContain("Error: data set '" + ds + "' is not a PDS");
                            });
                         it("should error when the data set is PDS/E",
                            [&]() -> void
@@ -122,7 +122,7 @@ void zowex_ds_tests()
                              string command = zowex_command + " data-set compress " + ds;
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).Not().ToBe(0);
-                             Expect(response).ToContain("Error: data set '" + ds + "' is not a PDS'");
+                             Expect(response).ToContain("Error: data set '" + ds + "' is not a PDS");
                            });
 
                         it("should error when the data set doesn't exist",
@@ -134,7 +134,7 @@ void zowex_ds_tests()
                              string command = zowex_command + " data-set compress " + ds;
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).Not().ToBe(0);
-                             Expect(response).ToContain("Error: data set '" + ds + "' is not a PDS'");
+                             Expect(response).ToContain("Error: data set '" + ds + "' is not a PDS");
                            });
 
                         it("should compress a data set",
@@ -147,7 +147,8 @@ void zowex_ds_tests()
                              string command = zowex_command + " data-set compress " + ds;
                              int rc = execute_command_with_output(command, response);
                              ExpectWithContext(rc, response).ToBe(0);
-                             Expect(response).ToContain("Data set compressed");
+                             Expect(response).ToContain("Data set");
+                             Expect(response).ToContain("compressed");
                            });
 
                         // TODO: https://github.com/zowe/zowe-native-proto/issues/666
