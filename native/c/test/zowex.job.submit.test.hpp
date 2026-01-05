@@ -9,7 +9,10 @@
  *
  */
 
-#ifndef USS_TEST_HPP
-#define USS_TEST_HPP
-void uss_tests();
+#ifndef ZOWEX_JOB_SUBMIT_TEST_HPP
+#define ZOWEX_JOB_SUBMIT_TEST_HPP
+#include <string>
+#include <vector>
+void zowex_job_submit_tests(std::vector<std::string> &_jobs, std::vector<std::string> &_ds, std::vector<std::string> &_files);
 #endif
+

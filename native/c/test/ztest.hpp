@@ -198,6 +198,7 @@ private:
   jmp_buf jump_buf = {0};
   std::string matcher = "";
   std::vector<int> suite_stack;
+  std::string znp_test_log = "";
 
   Globals()
   {
@@ -408,8 +409,19 @@ public:
   }
   void test_log(const std::string &message)
   {
-    pad_nesting(get_nesting());
-    std::cout << "[TEST_INFO] " << message << std::endl;
+    static bool show_test_log = false;
+    if (znp_test_log.empty())
+    {
+      const char *debug = getenv("ZNP_TEST_LOG");
+      znp_test_log = debug == nullptr || strstr(debug, "ON") != nullptr ? "ON" : "OFF";
+      show_test_log = znp_test_log == "ON";
+    }
+
+    if (show_test_log)
+    {
+      pad_nesting(get_nesting());
+      std::cout << "[TEST_INFO] " << message << std::endl;
+    }
   }
 
   // Execute a vector of hooks, catching and reporting any errors
@@ -1468,6 +1480,8 @@ inline int execute_command(const std::string &command, std::string &stdout_outpu
     char buffer[256];
     ssize_t bytes_read;
     bool stdout_open = true, stderr_open = true;
+    int status = 0;
+    bool child_exited = false;
 
     while (stdout_open || stderr_open)
     {
@@ -1523,10 +1537,10 @@ inline int execute_command(const std::string &command, std::string &stdout_outpu
       else if (select_result == 0)
       {
         // Timeout - check if child is still running
-        int status;
         if (waitpid(pid, &status, WNOHANG) != 0)
         {
           // Child has exited, do final reads
+          child_exited = true;
           break;
         }
       }
@@ -1552,11 +1566,13 @@ inline int execute_command(const std::string &command, std::string &stdout_outpu
     close(stdout_pipe[0]);
     close(stderr_pipe[0]);
 
-    // Wait for child process to complete
-    int status;
-    if (waitpid(pid, &status, 0) == -1)
+    // Wait for child process to complete if it didn't already exit
+    if (!child_exited)
     {
-      throw std::runtime_error("Failed to wait for child process");
+      if (waitpid(pid, &status, 0) == -1)
+      {
+        throw std::runtime_error("Failed to wait for child process");
+      }
     }
 
     // Return exit code

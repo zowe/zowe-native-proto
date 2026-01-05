@@ -9,8 +9,14 @@
  *
  */
 
+#include "ztest.hpp"
 #include "zutils.hpp"
+#include <vector>
+#include <string>
 #include <sstream>
+#include <cstring>
+#include <chrono>
+#include <thread>
 
 using namespace std;
 
@@ -71,9 +77,19 @@ string get_random_string(const int length, const bool allNumbers)
     seeded = true;
   }
   string ret = "";
+  static const unsigned char EBCDIC_A = 0xC1;
+
   for (int i = 0; i < length; ++i)
   {
-    ret += to_string(rand() % 10);
+    if (allNumbers)
+    {
+      ret += to_string(rand() % 10);
+    }
+    else
+    {
+      const auto rand_num = rand() % 26;
+      ret += EBCDIC_A + (rand_num / 10 * 6) + (rand_num % 10);
+    }
   }
   return ret;
 }
@@ -93,8 +109,33 @@ string get_random_uss(const string base_dir)
     ret += "/";
   }
 
-  ret += "test_" + get_random_string(10, true);
+  ret += "test_" + get_random_string(10);
 
+  return ret;
+}
+
+static std::string s_user = "";
+string get_user()
+{
+  if (s_user.empty())
+  {
+    string user;
+    // Note: using `basename $HOME` instead of `whoami` to get the current user
+    // because `whoami` may be mapped to a kernel user instead of a real one.
+    execute_command_with_output("basename $HOME | tr '[:lower:]' '[:upper:]'", user);
+    s_user = ztst::TrimChars(user);
+  }
+  return s_user;
+}
+
+string get_random_ds(const int qualifier_count, const string hlq)
+{
+  const auto q = hlq.length() == 0 ? get_user() : hlq;
+  string ret = q + ".ZNP#TEST";
+  for (int i = 0; i < qualifier_count - 2; ++i)
+  {
+    ret += ".Z" + get_random_string();
+  }
   return ret;
 }
 
@@ -121,4 +162,42 @@ string parse_etag_from_output(const string &output)
   string etag = output.substr(start_value_pos, end_value_pos - start_value_pos);
 
   return etag;
+}
+
+vector<string> parse_rfc_response(const string input, const char *delim)
+{
+  vector<string> ret;
+  string current;
+  char delimiter = delim[0];
+
+  for (size_t i = 0; i < input.length(); ++i)
+  {
+    if (input[i] == delimiter)
+    {
+      ret.push_back(ztst::TrimChars(current));
+      current.clear();
+    }
+    else
+    {
+      current += input[i];
+    }
+  }
+  ret.push_back(ztst::TrimChars(current));
+
+  return ret;
+}
+
+bool wait_for_job(const string &jobid, int max_retries, int delay_ms)
+{
+  string output;
+  for (int i = 0; i < max_retries; ++i)
+  {
+    int rc = execute_command_with_output(zowex_command + " job view-status " + jobid, output);
+    if (rc == 0 && output.find(jobid) != string::npos)
+    {
+      return true;
+    }
+    this_thread::sleep_for(chrono::milliseconds(delay_ms));
+  }
+  return false;
 }
