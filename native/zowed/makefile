@@ -19,7 +19,7 @@ LDFLAGS = $(CPP_BND_DEBUG_FLAGS)
 DLL_BND_FLAGS = $(DLL_BND_DEBUG_FLAGS)
 
 MACLIBS= -I../asmmac $(MACLIBS_BASE)
-MTL_HEADERS=$(MTL_HEADERS_BASE) -I../c
+MTL_HEADERS=$(MTL_HEADERS_BASE) -I../c -I../c/chdsect
 
 # Target executable and library
 OUT_DIR = build-out

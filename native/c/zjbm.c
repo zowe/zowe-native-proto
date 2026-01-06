@@ -12,7 +12,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-
 #include "zjblkup.h"
 #include "iazjproc.h"
 #include "zssitype.h"
@@ -25,8 +24,6 @@
 #include "ihapsa.h"
 #include "cvt.h"
 #include "iefjesct.h"
-#include "zwto.h"
-#include "zdbg.h"
 
 // TODO(Kelosky):
 // https://www.ibm.com/docs/en/zos/3.1.0?topic=79-putget-requests
@@ -40,7 +37,6 @@ typedef struct
   unsigned char buffer[SYMBOL_ENTRIES * 16];
 } JSYMBOLO;
 
-typedef struct psa PSA;
 typedef struct cvt CVT;
 typedef struct jesct JESCT;
 

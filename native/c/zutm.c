@@ -21,9 +21,6 @@
 #include "zutm31.h"
 #include "zecb.h"
 #include "zam.h"
-#include "ihapsa.h"
-#include "ikjtcb.h"
-#include "iezjscb.h"
 #include "zrecovery.h"
 #include "zecb.h"
 
@@ -70,7 +67,6 @@ typedef int (*BPXWDYN)(
 int ZUTWDYN(BPXWDYN_PARM *parm, BPXWDYN_RESPONSE *response)
 {
   int rc = 0;
-  ZUTAOFF();
 
   int rtddn_index = RTDDN_INDEX;
   int msg_index = MSG_INDEX;
@@ -187,7 +183,6 @@ typedef int (*ASASYMBF)(SYMBFP) ATTRIBUTE(amode31);
 int ZUTSYMBP(SYMBOL_DATA *data)
 {
   int rc = 0;
-  ZUTAOFF();
 
   SYMBFP parms = {0};
 
@@ -223,7 +218,6 @@ typedef struct
 int ZUTSRCH(const char *parms)
 {
   int rc = 0;
-  ZUTAOFF();
 
   ISRSUPC_PARMS p = {0};
   p.len = sprintf(p.parms, "%s", parms);
@@ -243,7 +237,6 @@ typedef int (*PGM64)(void *) ATTRIBUTE(amode64);
 int ZUTRUN(const char *program)
 {
   int rc = 0;
-  ZUTAOFF();
 
   char name_truncated[8 + 1] = {0};
   memset(name_truncated, ' ', sizeof(name_truncated) - 1);                                                                      // pad with spaces
@@ -290,7 +283,6 @@ typedef int (*CCNEDSCT)(EDSCT_PARMS *) ATTRIBUTE(amode31);
 int ZUTEDSCT()
 {
   int rc = 0;
-  ZUTAOFF();
 
   CCNEDSCT convert = (CCNEDSCT)load_module31("CCNEDSCT");
   EDSCT_PARMS p = {0};
@@ -356,39 +348,6 @@ int ZUTMGT64(void **PTR64 data, int *len)
 unsigned char ZUTMGKEY()
 {
   return get_key();
-}
-
-typedef struct psa PSA;
-typedef struct tcb TCB;
-typedef struct iezjscb IEZJSCB;
-
-void ZUTAOFF()
-{
-  PSA *psa = (PSA *)0;
-  TCB *PTR32 tcb = psa->psatold;
-  IEZJSCB *PTR32 jscb = NULL;
-  memcpy(&jscb, &tcb->tcbjscb, sizeof(tcb->tcbjscb));
-  jscb = (IEZJSCB * PTR32)((unsigned int)jscb & 0x00FFFFFF);
-
-  if (0 == test_auth())
-  {
-    PSW psw = {0};
-    get_psw(&psw);
-    int mode_switch = psw.data.bits.p ? 1 : 0;
-    unsigned char key = get_key();
-    unsigned char key_zero = 0;
-    if (mode_switch)
-    {
-      mode_sup();
-    }
-    set_key(&key_zero);
-    jscb->jscbopts &= (0xFF - jscbauth);
-    set_key(&key);
-    if (mode_switch)
-    {
-      mode_prob();
-    }
-  }
 }
 
 void ZUTDBGMG(const char *msg)

@@ -96,8 +96,6 @@ static int enq_data_set(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 
 static int get_ucb(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 {
-  typedef struct psa PSA;
-  typedef struct tcb TCB;
   typedef struct tiot TIOT;
   PSA *psa = (PSA *)0;
   TCB *PTR32 tcb = psa->psatold;
