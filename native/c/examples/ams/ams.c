@@ -204,9 +204,6 @@ int AMSMAIN(const char *ddname)
 
   resources.has_enq = 1; // now we have an ENQ
 
-  typedef struct psa PSA;
-  typedef struct tcb TCB;
-  typedef struct tiot TIOT;
   PSA *psa = (PSA *)0;
   TCB *PTR32 tcb = psa->psatold;
   TIOT *PTR32 tiot = tcb->tcbtio;
