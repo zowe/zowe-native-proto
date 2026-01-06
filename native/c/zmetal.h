@@ -16,6 +16,12 @@
 #include <string.h>
 #include "ztype.h"
 
+#if defined(__IBM_METAL__)
+#include "ihapsa.h"
+#include "ikjtcb.h"
+#include "iezjscb.h"
+#endif
+
 #define MAX_PARM_LENGTH 100 + 1
 
 typedef struct
@@ -143,13 +149,172 @@ static int test_auth()
 #define DELETE(name, rc)
 #endif
 
+#if defined(__IBM_METAL__)
+#define GET_KEY(key)                                 \
+  __asm(                                             \
+      "*                                         \n" \
+      " IPK (2)    Get key from PSW              \n" \
+      " STC  2,%0  Save key                      \n" \
+      "*                                          "  \
+      : "=m"(key)                                    \
+      :                                              \
+      : "r2");
+#else
+#define GET_KEY(key)
+#endif
+
+#if defined(__IBM_METAL__)
+#define SET_KEY(key)                                 \
+  __asm(                                             \
+      "*                                         \n" \
+      " SLR  2,2          Clear                  \n" \
+      " IC   2,%0         Get key value          \n" \
+      " SPKA 0(2)         Set key in PSW         \n" \
+      "*                                          "  \
+      :                                              \
+      : "m"(key)                                     \
+      : "r2");
+#else
+#define SET_KEY(key)
+#endif
+
+#if defined(__IBM_METAL__)
+#define GET_PSW(psw)                             \
+  __asm(                                         \
+      "*                                     \n" \
+      " EPSW 0,1    Create stack entry       \n" \
+      " STM 0,1,%0  Create stack entry       \n" \
+      "*                                      "  \
+      : "=m"(psw)                                \
+      :                                          \
+      : "r0", "r1");
+#else
+#define GET_PSW(psw)
+#endif
+
+typedef struct
+{
+  union
+  {
+    long double raw; // guarantees alignment of long double
+    struct
+    {
+      unsigned int z0 : 1;      // always 0
+      unsigned int r : 1;       // program event recording mask
+      unsigned int z1 : 3;      // always 0
+      unsigned int t : 1;       // DAT mode 0=off
+      unsigned int i : 1;       // I/O mask
+      unsigned int e : 1;       // extenal mask, 0 = no interupts
+      unsigned int key : 4;     // program mask
+      unsigned int a : 1;       // architecture 0 = z/Architecture
+      unsigned int m : 1;       // machine check mask
+      unsigned int w : 1;       // wait state, 0=ready
+      unsigned int p : 1;       // problem state, 0=supervisor
+      unsigned int as : 2;      // address space control
+      unsigned int cc : 2;      // condition code
+      unsigned int pgmmask : 4; // condition code
+      unsigned int z2 : 7;      // always 0
+      unsigned int ea : 1;      // extended addressing mode b'00' = 24, b'01' = 31, b'11' = 64
+
+      unsigned int ba : 1;      // basic addressing mode
+      unsigned int unused : 31; // future use
+
+    } bits;
+  } data;
+} PSW;
+
+static unsigned long long int get_raw_psw()
+{
+  unsigned long long int psw = 0;
+  GET_PSW(psw);
+  return psw;
+}
+
+static void get_psw(PSW *psw)
+{
+  unsigned long long int psw_raw = get_raw_psw();
+  memcpy(psw, &psw_raw, sizeof(psw_raw));
+}
+
+static void set_key(unsigned char *key)
+{
+  SET_KEY(*key);
+}
+
+/**
+ * @brief Unconditionally attempt to enter supervisor state
+ */
+static void mode_sup()
+{
+  MODESET_MODE(SUP);
+}
+
+/**
+ * @brief Unconditionally attempt to enter problem state
+ */
+static void mode_prob()
+{
+  MODESET_MODE(PROB);
+}
+
+static void mode_zero()
+{
+  MODESET_KEY(ZERO);
+}
+
+static void mode_nzero()
+{
+  MODESET_KEY(NZERO);
+}
+
+static unsigned char get_key()
+{
+  unsigned char key = {0};
+  GET_KEY(key);
+  return key;
+}
+
+typedef struct psa PSA;
+typedef struct tcb TCB;
+typedef struct iezjscb IEZJSCB;
+
+static void auth_off()
+{
+#if defined(__IBM_METAL__)
+  PSA *psa = (PSA *)0;
+  TCB *PTR32 tcb = (TCB * PTR32) psa->psatold;
+  unsigned int ujjscb = 0;
+  memcpy(&ujjscb, &tcb->tcbjscb, sizeof(tcb->tcbjscb));
+  IEZJSCB *PTR32 jscb = (IEZJSCB * PTR32)(ujjscb & 0x00FFFFFF);
+
+  if (0 == test_auth())
+  {
+    PSW psw = {0};
+    get_psw(&psw);
+    int mode_switch = psw.data.bits.p ? 1 : 0;
+    unsigned char key = get_key();
+    unsigned char key_zero = 0;
+    if (mode_switch)
+    {
+      mode_sup();
+    }
+    set_key(&key_zero);
+    jscb->jscbopts &= (0xFF - jscbauth);
+    set_key(&key);
+    if (mode_switch)
+    {
+      mode_prob();
+    }
+  }
+#endif
+}
+
 /**
  * @brief Load a module into a 64-bit pointer
  *
  * @param name name of module to load
  * @return void* address of entry point or NULL if not found
  */
-// NOTE(Kelosky): force NAB?
 static void *PTR64 load_module(const char *name)
 {
   int rc = 0;
@@ -160,6 +325,8 @@ static void *PTR64 load_module(const char *name)
   memcpy(name_truncated, name, strlen(name) > sizeof(name_truncated) - 1 ? sizeof(name_truncated) - 1 : strlen(name)); // truncate
 
   void *PTR64 ep = NULL;
+
+  auth_off(); // NOTE(Kelosky): force auth off before loading any module
 
   LOAD(name_truncated, ep, rc, rsn);
   if (0 != rc)
@@ -208,32 +375,6 @@ static int delete_module(const char name[8])
   memcpy(name_truncated, name, strlen(name) > sizeof(name_truncated) - 1 ? sizeof(name_truncated) - 1 : strlen(name)); // truncate
   DELETE(name_truncated, rc);
   return rc;
-}
-
-/**
- * @brief Unconditionally attempt to enter supervisor state
- */
-static void mode_sup()
-{
-  MODESET_MODE(SUP);
-}
-
-/**
- * @brief Unconditionally attempt to enter problem state
- */
-static void mode_prob()
-{
-  MODESET_MODE(PROB);
-}
-
-static void mode_zero()
-{
-  MODESET_KEY(ZERO);
-}
-
-static void mode_nzero()
-{
-  MODESET_KEY(NZERO);
 }
 
 #if defined(__IBM_METAL__)
@@ -290,49 +431,6 @@ static void mode_nzero()
       : "r1");
 #else
 #define SET_PREV_REG64(reg, offset)
-#endif
-
-#if defined(__IBM_METAL__)
-#define GET_KEY(key)                                 \
-  __asm(                                             \
-      "*                                         \n" \
-      " IPK (2)    Get key from PSW              \n" \
-      " STC  2,%0  Save key                      \n" \
-      "*                                          "  \
-      : "=m"(key)                                    \
-      :                                              \
-      : "r2");
-#else
-#define GET_KEY(key)
-#endif
-
-#if defined(__IBM_METAL__)
-#define SET_KEY(key)                                 \
-  __asm(                                             \
-      "*                                         \n" \
-      " SLR  2,2          Clear                  \n" \
-      " IC   2,%0         Get key value          \n" \
-      " SPKA 0(2)         Set key in PSW         \n" \
-      "*                                          "  \
-      :                                              \
-      : "m"(key)                                     \
-      : "r2");
-#else
-#define SET_KEY(key)
-#endif
-
-#if defined(__IBM_METAL__)
-#define GET_PSW(psw)                             \
-  __asm(                                         \
-      "*                                     \n" \
-      " EPSW 0,1    Create stack entry       \n" \
-      " STM 0,1,%0  Create stack entry       \n" \
-      "*                                      "  \
-      : "=m"(psw)                                \
-      :                                          \
-      : "r0", "r1");
-#else
-#define GET_PSW(psw)
 #endif
 
 static unsigned long long int get_r0()
@@ -422,62 +520,6 @@ static unsigned long long int get_prev_r2()
   unsigned long long int reg = 0;
   GET_PREV_REG64(reg, 40);
   return reg;
-}
-
-static unsigned char get_key()
-{
-  unsigned char key = {0};
-  GET_KEY(key);
-  return key;
-}
-
-static unsigned long long int get_raw_psw()
-{
-  unsigned long long int psw = 0;
-  GET_PSW(psw);
-  return psw;
-}
-
-typedef struct
-{
-  union
-  {
-    long double raw; // guarantees alignment of long double
-    struct
-    {
-      unsigned int z0 : 1;      // always 0
-      unsigned int r : 1;       // program event recording mask
-      unsigned int z1 : 3;      // always 0
-      unsigned int t : 1;       // DAT mode 0=off
-      unsigned int i : 1;       // I/O mask
-      unsigned int e : 1;       // extenal mask, 0 = no interupts
-      unsigned int key : 4;     // program mask
-      unsigned int a : 1;       // architecture 0 = z/Architecture
-      unsigned int m : 1;       // machine check mask
-      unsigned int w : 1;       // wait state, 0=ready
-      unsigned int p : 1;       // problem state, 0=supervisor
-      unsigned int as : 2;      // address space control
-      unsigned int cc : 2;      // condition code
-      unsigned int pgmmask : 4; // condition code
-      unsigned int z2 : 7;      // always 0
-      unsigned int ea : 1;      // extended addressing mode b'00' = 24, b'01' = 31, b'11' = 64
-
-      unsigned int ba : 1;      // basic addressing mode
-      unsigned int unused : 31; // future use
-
-    } bits;
-  } data;
-} PSW;
-
-static void get_psw(PSW *psw)
-{
-  unsigned long long int psw_raw = get_raw_psw();
-  memcpy(psw, &psw_raw, sizeof(PSW));
-}
-
-static void set_key(unsigned char *key)
-{
-  SET_KEY(*key);
 }
 
 static void set_prev_r0(unsigned long long int reg)
