@@ -817,6 +817,18 @@ int handle_data_set_compress(InvocationContext &context)
   return RTNCD_SUCCESS;
 }
 
+int handle_data_set_copy(InvocationContext &context)
+{
+  int rc = 0;
+  string dsn = context.get<string>("dsn", "");
+  ZDS zds = {};
+  vector<string> dds;
+
+  context.output_stream() << "hi " << dsn << endl;
+
+  return rc;
+}
+
 void register_commands(parser::Command &root_command)
 {
   // Data set command group
@@ -947,6 +959,19 @@ void register_commands(parser::Command &root_command)
   ds_compress_cmd->add_positional_arg("dsn", "data set to compress", ArgType_Single, true);
   ds_compress_cmd->set_handler(handle_data_set_compress);
   data_set_cmd->add_command(ds_compress_cmd);
+
+  // Copy subcommand
+  auto ds_copy_cmd = command_ptr(new Command("copy", "copy data set"));
+  ds_copy_cmd->add_positional_arg("dsn1", "data set to copy", ArgType_Single, true);
+  ds_copy_cmd->add_positional_arg("dsn2", "new data set location", ArgType_Single, true);
+  // ds_copy_cmd->add_keyword_arg(INPUT_DS);
+  // ds_copy_cmd->add_keyword_arg(OUTPUT_DS);
+  // ds_copy_cmd->add_keyword_arg(RESPONSE_FORMAT_BYTES);
+  // ds_copy_cmd->add_keyword_arg(RETURN_ETAG);
+  // ds_copy_cmd->add_keyword_arg(PIPE_PATH);
+  // ds_copy_cmd->add_keyword_arg(VOLSER);
+  ds_copy_cmd->set_handler(handle_data_set_copy);
+  data_set_cmd->add_command(ds_copy_cmd);
 
   root_command.add_command(data_set_cmd);
 }

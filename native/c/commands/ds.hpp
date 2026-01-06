@@ -20,6 +20,7 @@ int handle_data_set_create_vb(InvocationContext &result);
 int handle_data_set_create_adata(InvocationContext &result);
 int handle_data_set_create_loadlib(InvocationContext &result);
 int handle_data_set_view(InvocationContext &result);
+int handle_data_set_copy(InvocationContext &result);
 int handle_data_set_list(InvocationContext &result);
 int handle_data_set_list_members(InvocationContext &result);
 int handle_data_set_write(InvocationContext &result);
