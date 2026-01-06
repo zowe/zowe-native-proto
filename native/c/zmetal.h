@@ -15,9 +15,12 @@
 #include <stdio.h>
 #include <string.h>
 #include "ztype.h"
+
+#if defined(__IBM_METAL__)
 #include "ihapsa.h"
 #include "ikjtcb.h"
 #include "iezjscb.h"
+#endif
 
 #define MAX_PARM_LENGTH 100 + 1
 
@@ -230,7 +233,7 @@ static unsigned long long int get_raw_psw()
 static void get_psw(PSW *psw)
 {
   unsigned long long int psw_raw = get_raw_psw();
-  memcpy(psw, &psw_raw, sizeof(PSW));
+  memcpy(psw, &psw_raw, sizeof(psw_raw));
 }
 
 static void set_key(unsigned char *key)
@@ -277,6 +280,7 @@ typedef struct iezjscb IEZJSCB;
 
 static void auth_off()
 {
+#if defined(__IBM_METAL__)
   PSA *psa = (PSA *)0;
   TCB *PTR32 tcb = (TCB * PTR32) psa->psatold;
   unsigned int ujjscb = 0;
@@ -302,6 +306,7 @@ static void auth_off()
       mode_prob();
     }
   }
+#endif
 }
 
 /**
