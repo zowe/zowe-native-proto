@@ -264,6 +264,10 @@ int zds_write_to_dsn(ZDS *zds, const string &dsn, string &data)
     string temp = data;
     if (!data.empty())
     {
+      if (zds->encoding_opts.data_type == eDataTypeText && temp[temp.size() - 1] != 0xA)
+      {
+        temp.push_back(0xA);
+      }
       if (hasEncoding)
       {
         const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
