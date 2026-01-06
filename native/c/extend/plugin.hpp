@@ -898,7 +898,7 @@ public:
   ArgumentMap dynamic_arguments() const
   {
     ArgumentMap dynamic_args;
-    for (ArgumentMap::const_iterator it = m_args.begin(); it != m_args.end(); ++it)
+    for (auto it = m_args.begin(); it != m_args.end(); ++it)
     {
       if (it->second.is_dynamic())
       {
