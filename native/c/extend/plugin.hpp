@@ -282,7 +282,8 @@ struct Ast
   }
 
 private:
-  explicit Ast(Kind kind_) : k(kind_), b(false), i(0), d(0.0)
+  explicit Ast(Kind kind_)
+      : k(kind_), b(false), i(0), d(0.0)
   {
   }
 
@@ -650,6 +651,15 @@ public:
     }
   }
 
+  bool is_dynamic() const
+  {
+    return m_is_dynamic;
+  }
+  void set_dynamic(bool is_dynamic)
+  {
+    m_is_dynamic = is_dynamic;
+  }
+
 private:
   void clear()
   {
@@ -712,6 +722,7 @@ private:
     std::string *s;
     std::vector<std::string> *sv;
   } m_value;
+  bool m_is_dynamic;
 };
 
 // Helper struct for type-safe argument retrieval
@@ -879,6 +890,19 @@ public:
   const ArgumentMap &arguments() const
   {
     return m_args;
+  }
+
+  ArgumentMap dynamic_arguments() const
+  {
+    ArgumentMap dynamic_args;
+    for (ArgumentMap::const_iterator it = m_args.begin(); it != m_args.end(); ++it)
+    {
+      if (it->second.is_dynamic())
+      {
+        dynamic_args[it->first] = it->second;
+      }
+    }
+    return dynamic_args;
   }
 
   const ArgumentMap &output() const
