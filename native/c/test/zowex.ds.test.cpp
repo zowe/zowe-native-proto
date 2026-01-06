@@ -91,7 +91,6 @@ void zowex_ds_tests()
                   Expect(response).ToContain("view");
                   Expect(response).ToContain("write"); });
 
-             // TODO: https://github.com/zowe/zowe-native-proto/issues/640
              describe("compress",
                       [&]() -> void
                       {
