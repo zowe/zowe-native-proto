@@ -8,6 +8,7 @@
  * Copyright Contributors to the Zowe Project.
  *
  */
+
 #ifndef AMS_H
 #define AMS_H
 
