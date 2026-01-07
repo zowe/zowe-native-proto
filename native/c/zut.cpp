@@ -403,6 +403,7 @@ bool zut_prepare_encoding(const std::string &encoding_value, ZEncode *opts)
  * @param cd `iconv` conversion descriptor
  * @param data required data (input, input size, output pointers) for conversion
  * @param diag diagnostic structure to store error information
+ * @param flush_state If true, flush the shift state for stateful encodings (e.g., IBM-939). Set to true on the last chunk.
  *
  * @return return code from `iconv`
  */
@@ -428,7 +429,6 @@ size_t zut_iconv(iconv_t cd, ZConvData &data, ZDIAG &diag, bool flush_state)
   }
 
   // Flush the shift state for stateful encodings (e.g., IBM-939 with SI/SO sequences)
-  // This should only be done on the last chunk of data
   if (flush_state)
   {
     size_t flush_rc = iconv(cd, NULL, NULL, &data.output_iter, &output_bytes_remaining);
@@ -440,6 +440,36 @@ size_t zut_iconv(iconv_t cd, ZConvData &data, ZDIAG &diag, bool flush_state)
   }
 
   return rc;
+}
+
+/**
+ * Flushes the shift state for stateful encodings (e.g., IBM-939 with SI/SO sequences).
+ * This should be called after all chunks have been processed.
+ *
+ * @param cd `iconv` conversion descriptor
+ * @param diag diagnostic structure to store error information
+ *
+ * @return vector containing the flushed bytes (empty on error)
+ */
+vector<char> zut_iconv_flush(iconv_t cd, ZDIAG &diag)
+{
+  const size_t max_output_size = 16; // Small buffer for shift state flush (SI/SO sequences are typically 1-2 bytes)
+  vector<char> output_buffer(max_output_size, 0);
+  char *output_iter = &output_buffer[0];
+  size_t output_bytes_remaining = max_output_size;
+
+  char *start_pos = output_iter;
+  size_t flush_rc = iconv(cd, NULL, NULL, &output_iter, &output_bytes_remaining);
+  if (-1 == flush_rc)
+  {
+    diag.e_msg_len = sprintf(diag.e_msg, "[zut_iconv_flush] Error flushing shift state. rc=%lu,errno=%d", flush_rc, errno);
+    return vector<char>(); // Return empty vector on error
+  }
+
+  // Resize to actual bytes written
+  size_t flush_bytes = output_iter - start_pos;
+  output_buffer.resize(flush_bytes);
+  return output_buffer;
 }
 
 /**
@@ -456,33 +486,8 @@ string zut_encode(const string &input_str, const string &from_encoding, const st
     return input_str;
   }
 
-  iconv_t cd = iconv_open(to_encoding.c_str(), from_encoding.c_str());
-  if (cd == (iconv_t)(-1))
-  {
-    diag.e_msg_len = sprintf(diag.e_msg, "Cannot open converter from %s to %s", from_encoding.c_str(), to_encoding.c_str());
-    return "";
-  }
-
-  const size_t input_size = input_str.size();
-  // maximum possible size assumes UTF-8 data with 4-byte character sequences
-  const size_t max_output_size = input_size * 4;
-
-  vector<char> output_buffer(max_output_size, 0);
-
-  // Prepare iconv parameters (copy output_buffer ptr to output_iter to cache start and end positions)
-  char *input = (char *)input_str.data();
-  char *output_iter = &output_buffer[0];
-
-  ZConvData data = {input, input_size, max_output_size, &output_buffer[0], output_iter};
-  size_t iconv_rc = zut_iconv(cd, data, diag);
-  iconv_close(cd);
-  if (-1 == iconv_rc)
-  {
-    throw std::runtime_error(diag.e_msg);
-  }
-
-  // Copy converted input into a new string and return it to the caller
-  return string(&output_buffer[0], data.output_iter - data.output_buffer);
+  vector<char> result = zut_encode(input_str.data(), input_str.size(), from_encoding, to_encoding, diag);
+  return string(result.begin(), result.end());
 }
 
 /**
@@ -525,6 +530,45 @@ vector<char> zut_encode(const char *input_str, size_t input_size, const string &
   }
 
   // Shrink output buffer and return it to the caller
+  output_buffer.resize(data.output_iter - data.output_buffer);
+  return output_buffer;
+}
+
+/**
+ * Converts the encoding for a string using an existing iconv descriptor.
+ * @param input_str input data to convert
+ * @param cd iconv descriptor (caller manages opening, flushing, and closing)
+ * @param diag diagnostic structure to store error information
+ */
+string zut_encode(const string &input_str, iconv_t cd, ZDIAG &diag)
+{
+  vector<char> result = zut_encode(input_str.data(), input_str.size(), cd, diag);
+  return string(result.begin(), result.end());
+}
+
+/**
+ * Converts the encoding for a string using an existing iconv descriptor.
+ * @param input_str input data to convert
+ * @param input_size size of the input data in bytes
+ * @param cd iconv descriptor (caller manages opening, flushing, and closing)
+ * @param diag diagnostic structure to store error information
+ */
+vector<char> zut_encode(const char *input_str, size_t input_size, iconv_t cd, ZDIAG &diag)
+{
+  const size_t max_output_size = input_size * 4;
+  vector<char> output_buffer(max_output_size, 0);
+
+  char *input = const_cast<char *>(input_str);
+  char *output_iter = &output_buffer[0];
+
+  ZConvData data = {input, input_size, max_output_size, &output_buffer[0], output_iter};
+
+  size_t iconv_rc = zut_iconv(cd, data, diag, false);
+  if (-1 == iconv_rc)
+  {
+    throw std::runtime_error(diag.e_msg);
+  }
+
   output_buffer.resize(data.output_iter - data.output_buffer);
   return output_buffer;
 }

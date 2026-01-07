@@ -148,6 +148,14 @@ uint32_t zut_calc_adler32_checksum(const std::string &input);
 size_t zut_iconv(iconv_t cd, ZConvData &data, ZDIAG &diag, bool flush_state = true);
 
 /**
+ * @brief Flush the shift state for stateful encodings (e.g., IBM-939) - simplified version
+ * @param cd iconv conversion descriptor
+ * @param diag Reference to diagnostic information structure
+ * @return Vector containing the flushed bytes (empty on error)
+ */
+std::vector<char> zut_iconv_flush(iconv_t cd, ZDIAG &diag);
+
+/**
  * @brief Build an ETag string from file modification time and size
  * @param mtime Modification time
  * @param byte_size File size in bytes
@@ -166,6 +174,17 @@ std::string zut_build_etag(const size_t mtime, const size_t byte_size);
 std::string zut_encode(const std::string &input_str, const std::string &from_encoding, const std::string &to_encoding, ZDIAG &diag);
 
 std::vector<char> zut_encode(const char *input_str, size_t input_size, const std::string &from_encoding, const std::string &to_encoding, ZDIAG &diag);
+
+/**
+ * @brief Encode a string using an existing iconv descriptor
+ * @param input_str The input string
+ * @param cd iconv descriptor (caller manages opening, flushing, and closing)
+ * @param diag Reference to diagnostic information structure
+ * @return The encoded string
+ */
+std::string zut_encode(const std::string &input_str, iconv_t cd, ZDIAG &diag);
+
+std::vector<char> zut_encode(const char *input_str, size_t input_size, iconv_t cd, ZDIAG &diag);
 
 /**
  * @brief Format a vector of strings as a CSV line
