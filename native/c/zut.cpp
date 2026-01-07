@@ -406,7 +406,7 @@ bool zut_prepare_encoding(const std::string &encoding_value, ZEncode *opts)
  *
  * @return return code from `iconv`
  */
-size_t zut_iconv(iconv_t cd, ZConvData &data, ZDIAG &diag)
+size_t zut_iconv(iconv_t cd, ZConvData &data, ZDIAG &diag, bool flush_state)
 {
   size_t input_bytes_remaining = data.input_size;
   size_t output_bytes_remaining = data.max_output_size;
@@ -425,6 +425,18 @@ size_t zut_iconv(iconv_t cd, ZConvData &data, ZDIAG &diag)
   {
     diag.e_msg_len = sprintf(diag.e_msg, "[zut_iconv] Failed to convert all input bytes. rc=%lu,errno=%d", rc, errno);
     return -1;
+  }
+
+  // Flush the shift state for stateful encodings (e.g., IBM-939 with SI/SO sequences)
+  // This should only be done on the last chunk of data
+  if (flush_state)
+  {
+    size_t flush_rc = iconv(cd, NULL, NULL, &data.output_iter, &output_bytes_remaining);
+    if (-1 == flush_rc)
+    {
+      diag.e_msg_len = sprintf(diag.e_msg, "[zut_iconv] Error flushing shift state. rc=%lu,errno=%d", flush_rc, errno);
+      return -1;
+    }
   }
 
   return rc;

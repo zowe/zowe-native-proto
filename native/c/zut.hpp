@@ -142,9 +142,10 @@ uint32_t zut_calc_adler32_checksum(const std::string &input);
  * @param cd iconv conversion descriptor
  * @param data Reference to ZConvData containing buffers and sizes
  * @param diag Reference to diagnostic information structure
+ * @param flush_state If true, flush the shift state for stateful encodings (e.g., IBM-939). Set to true on the last chunk.
  * @return Number of bytes converted or error code
  */
-size_t zut_iconv(iconv_t cd, ZConvData &data, ZDIAG &diag);
+size_t zut_iconv(iconv_t cd, ZConvData &data, ZDIAG &diag, bool flush_state = true);
 
 /**
  * @brief Build an ETag string from file modification time and size
