@@ -368,7 +368,7 @@ void ZUTAOFF()
   TCB *PTR32 tcb = psa->psatold;
   IEZJSCB *PTR32 jscb = NULL;
   memcpy(&jscb, &tcb->tcbjscb, sizeof(tcb->tcbjscb));
-  jscb = (IEZJSCB * PTR32)((unsigned int)jscb & 0x00FFFFFF);
+  jscb = (IEZJSCB * PTR32)((unsigned int)jscb & 0x7FFFFFFF);
 
   if (0 == test_auth())
   {

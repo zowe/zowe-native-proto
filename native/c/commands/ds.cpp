@@ -820,13 +820,108 @@ int handle_data_set_compress(InvocationContext &context)
 int handle_data_set_copy(InvocationContext &context)
 {
   int rc = 0;
-  string dsn = context.get<string>("dsn", "");
-  ZDS zds = {};
+  string dsn1 = context.get<string>("dsn1", ""); // fromDataSetName
+  string dsn2 = context.get<string>("dsn2", ""); // toDataSetName
+
+  // 1. Cleanup + transform
+  zut_trim(dsn1);
+  zut_trim(dsn2);
+  transform(dsn1.begin(), dsn1.end(), dsn1.begin(), ::toupper);
+  transform(dsn2.begin(), dsn2.end(), dsn2.begin(), ::toupper);
+
+  // 2. Determine if dsn1 is a PDS or Sequential
+  bool is_pds = false;
+  string dsn1_formatted = "//'" + dsn1 + "'";
+  FILE *f1 = fopen(dsn1_formatted.c_str(), "r");
+  if (f1)
+  {
+    fldata_t file_info = {0};
+    char file_name[64] = {0};
+    if (0 == fldata(f1, file_name, &file_info))
+    {
+      if (file_info.__dsorgPDSdir || file_info.__dsorgPDSE)
+      {
+        is_pds = true;
+      }
+    }
+    fclose(f1);
+  }
+
+  // 3. Perform dynalloc
   vector<string> dds;
+  dds.reserve(4);
+  string utility;
 
-  context.output_stream() << "hi " << dsn << endl;
+  if (is_pds)
+  {
+    utility = "IEBCOPY";
+    dds.push_back("alloc dd(input) da('" + dsn1 + "') shr");
+    dds.push_back("alloc dd(output) da('" + dsn2 + "') shr");
+    dds.push_back("alloc dd(sysin) lrecl(80) recfm(f,b) blksize(80)");
+  }
+  else
+  {
+    utility = "IEBGENER";
+    dds.push_back("alloc dd(sysut1) da('" + dsn1 + "') shr");
+    dds.push_back("alloc dd(sysut2) da('" + dsn2 + "') shr");
+    dds.push_back("alloc dd(sysin) dummy lrecl(80) recfm(f,b) blksize(80)");
+  }
 
-  return rc;
+  dds.push_back("alloc dd(sysprint) lrecl(121) recfm(f,b) blksize(121)");
+
+  ZDIAG diag = {};
+  rc = zut_loop_dynalloc(diag, dds);
+  if (0 != rc)
+  {
+    context.error_stream() << "Error: allocation failed" << endl;
+    context.error_stream() << "  Details: " << diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
+  // 4. Write control statements if using IEBCOPY
+  ZDS zds = {};
+  if (is_pds)
+  {
+    rc = zds_write_to_dd(&zds, "sysin", "        COPY OUTDD=output,INDD=input");
+    if (0 != rc)
+    {
+      context.error_stream() << "Error: could not write to dd: 'sysin' rc: '" << rc << "'" << endl;
+      context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
+      zut_free_dynalloc_dds(diag, dds);
+      return RTNCD_FAILURE;
+    }
+  }
+
+  // 5. Perform copy
+  rc = zut_run(utility);
+  if (RTNCD_SUCCESS != rc)
+  {
+    context.error_stream() << "Error: could not invoke " << utility << " rc: '" << rc << "'" << endl;
+
+    // Read SYSPRINT for details
+    string output;
+    if (0 == zds_read_from_dd(&zds, "sysprint", output))
+    {
+      context.error_stream() << "  Details:\n"
+                             << output << endl;
+    }
+
+    zut_free_dynalloc_dds(diag, dds);
+    return RTNCD_FAILURE;
+  }
+
+  context.output_stream() << "Data set '" << dsn1 << "' copied to '" << dsn2 << "'" << endl;
+
+  // 6. Free dynalloc dds
+  rc = zut_free_dynalloc_dds(diag, dds);
+  if (0 != rc)
+  {
+    context.error_stream() << "Error: freeing allocation failed" << endl;
+    context.error_stream() << "  Details: " << diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
+  return RTNCD_SUCCESS;
 }
 
 void register_commands(parser::Command &root_command)
@@ -963,7 +1058,7 @@ void register_commands(parser::Command &root_command)
   // Copy subcommand
   auto ds_copy_cmd = command_ptr(new Command("copy", "copy data set"));
   ds_copy_cmd->add_positional_arg("dsn1", "data set to copy", ArgType_Single, true);
-  ds_copy_cmd->add_positional_arg("dsn2", "new data set location", ArgType_Single, true);
+  ds_copy_cmd->add_positional_arg("dsn2", "new data set name and location", ArgType_Single, true);
   // ds_copy_cmd->add_keyword_arg(INPUT_DS);
   // ds_copy_cmd->add_keyword_arg(OUTPUT_DS);
   // ds_copy_cmd->add_keyword_arg(RESPONSE_FORMAT_BYTES);
