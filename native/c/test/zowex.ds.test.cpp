@@ -1126,6 +1126,23 @@ void zowex_ds_tests()
                              Expect(response).ToContain("a3 85 a2 a3 4f 15");
                            });
 
+                        it("should write content to a data set with multibyte encoding",
+                           [&]() -> void
+                           {
+                             string ds = _ds.back();
+                             _create_ds(ds, "--dsorg PS");
+                             string response;
+                             string command = "echo '\xe3\x81\x93\xe3\x82\x93\xe3\x81\xab\xe3\x81\xa1\xe3\x81\xaf' | " + zowex_command + " data-set write " + ds + " --encoding IBM-939";
+                             int rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("Wrote data to '" + ds + "'");
+
+                             command = zowex_command + " data-set view " + ds + " --rfb";
+                             rc = execute_command_with_output(command, response);
+                             ExpectWithContext(rc, response).ToBe(0);
+                             Expect(response).ToContain("0e 44 8a 44 bd 44 97 44 92 44 9d 0f");
+                           });
+
                         it("should fail to write to a non-existent data set",
                            [&]() -> void
                            {

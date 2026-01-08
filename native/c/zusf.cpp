@@ -1409,7 +1409,7 @@ int zusf_write_to_uss_file(ZUSF *zusf, const string &file, string &data)
     return RTNCD_FAILURE;
   zusf->created = stat_result == -1;
 
-  // Use file tag encoding if available, otherwise fall back to provided encoding
+  // Use encoding provided in arguments, otherwise fall back to file tag encoding
   string encoding_to_use;
   bool has_encoding = false;
 
@@ -1469,7 +1469,7 @@ int zusf_write_to_uss_file(ZUSF *zusf, const string &file, string &data)
     }
   }
 
-  if (zusf->created)
+  if (has_encoding)
   {
     zusf_chtag_uss_file_or_dir(zusf, file, encoding_to_use, false);
   }
@@ -1511,7 +1511,7 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, const string &file, const string
 
   struct stat file_stats;
 
-  // Use file tag encoding if available, otherwise fall back to provided encoding
+  // Use encoding provided in arguments, otherwise fall back to file tag encoding
   string encoding_to_use;
   bool has_encoding = false;
 
@@ -1661,6 +1661,11 @@ int zusf_write_to_uss_file_streamed(ZUSF *zusf, const string &file, const string
   {
     zusf->diag.e_msg_len = sprintf(zusf->diag.e_msg, "Failed to write to '%s' (possibly out of space)", file.c_str());
     return RTNCD_FAILURE;
+  }
+
+  if (has_encoding)
+  {
+    zusf_chtag_uss_file_or_dir(zusf, file, encoding_to_use, false);
   }
 
   if (stat(file.c_str(), &file_stats) == -1)
