@@ -266,7 +266,7 @@ int ZUTRUN(const char *program)
     return RTNCD_FAILURE;
   }
 
-  delete_module(program);
+  delete_module(name_truncated);
 
   return rc;
 }

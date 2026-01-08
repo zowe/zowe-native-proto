@@ -774,7 +774,7 @@ int handle_data_set_compress(InvocationContext &context)
 
   // write control statements
   ZDS zds = {};
-  zds_write_to_dd(&zds, "sysin", "        COPY OUTDD=B,INDD=A");
+  rc = zds_write_to_dd(&zds, "sysin", "        COPY OUTDD=B,INDD=A");
   if (0 != rc)
   {
     context.error_stream() << "Error: could not write to dd: '" << "sysin" << "' rc: '" << rc << "'" << endl;
