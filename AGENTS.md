@@ -41,11 +41,11 @@ Two different compilers with different C++ support levels:
 
 Two execution environments with different memory rules:
 
-- **Language Environment (LE)**: Standard C++ with RAII, exceptions, STL
-- **Metal C**: No LE services, manual memory management, no exceptions
+- **Language Environment (LE)**: Standard C++ with RAII, exceptions, STL - **use RAII for resource management**
+- **Metal C**: No LE services, manual memory management, no exceptions - **manual cleanup required**
 - **31-bit vs 64-bit**: Some system services require 31-bit storage below the bar
 
-**Critical:** Metal C code cannot use LE features - no exceptions, no STL, manual cleanup required.
+**Critical:** LE C++ code should use RAII patterns (constructors/destructors, smart pointers). Metal C code cannot use LE features - no exceptions, no STL, manual cleanup required.
 
 👉 **Full details:** [native/README.md](native/README.md)
 
@@ -107,16 +107,35 @@ TypeScript: RpcClientApi.ds.* → CLI: zssh ds list → VS Code: SshMvsApi
 
 👉 **Full step-by-step guide:** [doc/add-new-command.md](doc/add-new-command.md)
 
+## Coding Standards
+
+### TypeScript
+
+- Use TypeScript for all new code (avoid `any` types)
+- **Document public APIs** with JSDoc comments
+- Use async/await over Promises where possible
+- Follow consistent naming: camelCase for variables/functions, PascalCase for classes/interfaces
+
+### C++
+
+- **LE C++**: Use RAII patterns (constructors/destructors, smart pointers)
+- **Metal C**: Manual memory management, no exceptions, no STL
+- Use snake_case for variables and functions
+- Follow consistent formatting (use `clang-format`)
+- Document complex operations and mainframe-specific code
+
 ## Common Pitfalls
 
 ❌ Using C++17 features in `native/c/` (xlc) → Compilation errors  
 ❌ Using LE features in Metal C code → ABEND  
+❌ Not using RAII in LE C++ code → Memory leaks  
 ❌ Forgetting Base64 encoding for binary data → Corruption  
 ❌ Not handling EBCDIC/UTF-8 conversion → Garbled text  
 ❌ Missing FIFO cleanup → File descriptor leaks  
 ❌ Wrong storage mode (31-bit vs 64-bit) → ABEND  
 ❌ Not setting return object in command handler → Empty responses  
-❌ Forgetting to register command in dispatcher → Command not found errors
+❌ Forgetting to register command in dispatcher → Command not found errors  
+❌ Missing JSDoc on public TypeScript APIs → Poor documentation
 
 👉 **Troubleshooting:** [doc/troubleshooting.md](doc/troubleshooting.md)
 
@@ -354,14 +373,12 @@ ZNP follows Zowe conformance criteria:
 
 **Optimization tips:**
 
-- Use FIFO pipes for files > 1MB
 - Reuse SSH connections via `SshClientCache`
-- Enable Base64 encoding in Metal C for performance
 - Batch multiple operations when possible
-- Use streaming for large data transfers
+- Use streaming over FIFO pipes for large data transfers
 
 👉 **Performance comparison:** [doc/architecture-comparisons.md](doc/architecture-comparisons.md)
 
 ---
 
-**Remember:** Four layers (TypeScript → Middleware → Backend → z/OS), three environments (LE C++, Metal C, TypeScript), SSH is the transport, JSON-RPC is the protocol.
+**Remember:** Four layers (TypeScript → Middleware → Backend → z/OS), two compilers (xlc for backend, xlclang for middleware), two execution environments (LE C++, Metal C), SSH is the transport, JSON-RPC is the protocol.
