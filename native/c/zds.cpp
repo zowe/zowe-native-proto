@@ -203,6 +203,39 @@ int zds_write_to_dd(ZDS *zds, string ddname, const string &data)
   return 0;
 }
 
+int zds_validate_etag(ZDS *zds, const string &dsn, ZEncode *encoding_opts)
+{
+  string current_contents = "";
+  if (encoding_opts != nullptr)
+  {
+    memcpy(&zds->encoding_opts, encoding_opts, sizeof(ZEncode));
+  }
+  const auto read_rc = zds_read_from_dsn(zds, dsn, current_contents);
+  if (0 != read_rc)
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to read contents of data set for e-tag comparison: %s", zds->diag.e_msg);
+    return RTNCD_FAILURE;
+  }
+
+  const auto given_etag = strtoul(zds->etag, nullptr, 16);
+  const auto new_etag = zut_calc_adler32_checksum(current_contents);
+
+  if (given_etag != new_etag)
+  {
+    ostringstream ss;
+    ss << "Etag mismatch: expected ";
+    ss << hex << given_etag << dec;
+    ss << ", actual ";
+    ss << hex << new_etag << dec;
+
+    const auto error_msg = ss.str();
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "%s", error_msg.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  return RTNCD_SUCCESS;
+}
+
 int zds_write_to_dsn(ZDS *zds, const string &dsn, string &data)
 {
   if (!zds_dataset_exists(dsn))
@@ -217,31 +250,10 @@ int zds_write_to_dsn(ZDS *zds, const string &dsn, string &data)
   if (strlen(zds->etag) > 0)
   {
     ZDS read_ds = {0};
-    string current_contents = "";
-    if (hasEncoding)
+    const auto etag_rc = zds_validate_etag(&read_ds, dsn, hasEncoding ? &zds->encoding_opts : nullptr);
+    if (0 != etag_rc)
     {
-      memcpy(&read_ds.encoding_opts, &zds->encoding_opts, sizeof(ZEncode));
-    }
-    const auto read_rc = zds_read_from_dsn(&read_ds, dsn, current_contents);
-    if (0 != read_rc)
-    {
-      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to read contents of data set for e-tag comparison: %s", read_ds.diag.e_msg);
-      return RTNCD_FAILURE;
-    }
-
-    const auto given_etag = strtoul(zds->etag, nullptr, 16);
-    const auto new_etag = zut_calc_adler32_checksum(current_contents);
-
-    if (given_etag != new_etag)
-    {
-      ostringstream ss;
-      ss << "Etag mismatch: expected ";
-      ss << hex << given_etag << dec;
-      ss << ", actual ";
-      ss << hex << new_etag << dec;
-
-      const auto error_msg = ss.str();
-      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "%s", error_msg.c_str());
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "%s", read_ds.diag.e_msg);
       return RTNCD_FAILURE;
     }
   }
@@ -1898,47 +1910,25 @@ int zds_write_to_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, s
     return RTNCD_FAILURE;
   }
 
+  const auto hasEncoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
+  const auto codepage = string(zds->encoding_opts.codepage);
+
+  if (strlen(zds->etag) > 0)
+  {
+    ZDS read_ds = {0};
+    const auto etag_rc = zds_validate_etag(&read_ds, dsn, hasEncoding ? &zds->encoding_opts : nullptr);
+    if (0 != etag_rc)
+    {
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "%s", read_ds.diag.e_msg);
+      return RTNCD_FAILURE;
+    }
+  }
+
   string dsname = "//'" + dsn + "'";
   if (strlen(zds->ddname) > 0)
   {
     dsname = "//DD:" + string(zds->ddname);
   }
-
-  if (strlen(zds->etag) > 0)
-  {
-    // Get current data set content for etag check
-    ZDS read_ds = {0};
-    string current_contents = "";
-    if (zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0)
-    {
-      memcpy(&read_ds.encoding_opts, &zds->encoding_opts, sizeof(ZEncode));
-    }
-    const auto read_rc = zds_read_from_dsn(&read_ds, dsn, current_contents);
-    if (0 != read_rc)
-    {
-      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to read contents of data set for e-tag comparison: %s", read_ds.diag.e_msg);
-      return RTNCD_FAILURE;
-    }
-
-    const auto given_etag = strtoul(zds->etag, nullptr, 16);
-    const auto new_etag = zut_calc_adler32_checksum(current_contents);
-
-    if (given_etag != new_etag)
-    {
-      ostringstream ss;
-      ss << "Etag mismatch: expected ";
-      ss << std::hex << given_etag << std::dec;
-      ss << ", actual ";
-      ss << std::hex << new_etag << std::dec;
-
-      const auto error_msg = ss.str();
-      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "%s", error_msg.c_str());
-      return RTNCD_FAILURE;
-    }
-  }
-
-  const auto hasEncoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
-  const auto codepage = string(zds->encoding_opts.codepage);
   const string fopen_flags = zds->encoding_opts.data_type == eDataTypeBinary ? "wb" : "w,recfm=*";
 
   {
