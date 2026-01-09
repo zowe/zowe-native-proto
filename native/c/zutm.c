@@ -229,7 +229,7 @@ int ZUTSRCH(const char *parms)
   return rc;
 }
 
-#pragma prolog(ZUTRUN, " ZWEPROLG NEWDSA=(YES,4) ")
+#pragma prolog(ZUTRUN, " ZWEPROLG NEWDSA=(YES,16),LOC24=YES ")
 #pragma epilog(ZUTRUN, " ZWEEPILG ")
 typedef int (*PGM31)(void *) ATTRIBUTE(amode31);
 typedef int (*PGM64)(void *) ATTRIBUTE(amode64);
@@ -243,7 +243,6 @@ int ZUTRUN(const char *program)
   memcpy(name_truncated, program, strlen(program) > sizeof(name_truncated) - 1 ? sizeof(name_truncated) - 1 : strlen(program)); // truncate
 
   void *p = load_module(name_truncated);
-
   if (p)
   {
 
@@ -267,33 +266,7 @@ int ZUTRUN(const char *program)
     return RTNCD_FAILURE;
   }
 
-  delete_module(program);
-
-  return rc;
-}
-
-#pragma prolog(ZUTRUN24, " ZWEPROLG NEWDSA=(YES,8),LOC24=YES ")
-#pragma epilog(ZUTRUN24, " ZWEEPILG ")
-int ZUTRUN24(const char *program)
-{
-  int rc = 0;
-
-  char name_truncated[8 + 1] = {0};
-  memset(name_truncated, ' ', sizeof(name_truncated) - 1);                                                                      // pad with spaces
-  memcpy(name_truncated, program, strlen(program) > sizeof(name_truncated) - 1 ? sizeof(name_truncated) - 1 : strlen(program)); // truncate
-
-  Z31FUNC p = load_module31(name_truncated);
-  if (p)
-  {
-    // p();
-    return RTNCD_FAILURE; // TODO(Kelosky): debug in the future
-  }
-  else
-  {
-    return RTNCD_FAILURE;
-  }
-
-  delete_module(program);
+  delete_module(name_truncated);
 
   return rc;
 }
