@@ -10,6 +10,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - `c`: Fixed an issue where `--wait ACTIVE` on `zowex job` commands would wait indefinitely if the job was fast enough to reach the `OUTPUT` phase before polling its status. [#700](https://github.com/zowe/zowe-native-proto/pull/700)
 - `zowed`: Fixed `message` property of `error` object in the JSON response to contain valuable details about errors thrown by `zowex`. [#712](https://github.com/zowe/zowe-native-proto/pull/712)
 - `c`: You can now access dynamic arguments from a command handler through its `InvocationContext` parameter. [#715](https://github.com/zowe/zowe-native-proto/pull/715)
+- `zowed`: Fixed an issue where the `submitJcl` command failed if an encoding was not specified for the JCL contents. [#724](https://github.com/zowe/zowe-native-proto/pull/724)
 
 ## `0.2.1`
 
