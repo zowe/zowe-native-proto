@@ -251,7 +251,13 @@ export class SshMvsApi extends SshCommonApi implements MainframeInteraction.IMvs
         _currentDataSetName: string,
         _newDataSetName: string,
     ): Promise<zosfiles.IZosFilesResponse> {
-        throw new Error("Not yet implemented");
+        const response = await (await this.client).ds.renameDataset({
+            dsnameBefore: _currentDataSetName,
+            dsnameAfter: _newDataSetName,
+        });
+        return this.buildZosFilesResponse({
+            success: response.success,
+        });
     }
 
     public async renameDataSetMember(

@@ -15,6 +15,9 @@
 #ifndef _POSIX_SOURCE
 #define _POSIX_SOURCE
 #endif
+#include "ztype.h"
+#include <cerrno>
+#include <cstdio>
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -593,6 +596,29 @@ int zds_delete_dsn(ZDS *zds, string dsn)
     strcpy(zds->diag.service_name, "remove");
     zds->diag.service_rc = rc;
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not delete data set '%s', rc: '%d'", dsn.c_str(), rc);
+    zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
+    return RTNCD_FAILURE;
+  }
+
+  return 0;
+}
+
+int zds_rename_dsn(ZDS *zds, string dsnBefore, string dsnAfter)
+{
+  int rc = 0;
+
+  dsnBefore = "//'" + dsnBefore + "'";
+  dsnAfter = "//'" + dsnAfter + "'";
+
+  errno = 0;
+  rc = rename(dsnBefore.c_str(), dsnAfter.c_str());
+
+  if (rc != 0)
+  {
+    int err = errno;
+    strcpy(zds->diag.service_name, "rename");
+    zds->diag.service_rc = rc;
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not rename data set '%s', errno: '%d'", dsnBefore.c_str(), err);
     zds->diag.detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
     return RTNCD_FAILURE;
   }
