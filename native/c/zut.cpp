@@ -417,14 +417,14 @@ size_t zut_iconv(iconv_t cd, ZConvData &data, ZDIAG &diag, bool flush_state)
   // If an error occurred, throw an exception with iconv's return code and errno
   if (-1 == rc)
   {
-    diag.e_msg_len = sprintf(diag.e_msg, "[zut_iconv] Error when converting characters. rc=%lu,errno=%d", rc, errno);
+    diag.e_msg_len = sprintf(diag.e_msg, "[zut_iconv] Error when converting characters. rc=%zu,errno=%d", rc, errno);
     return -1;
   }
 
   // "If the input conversion is stopped... the value pointed to by inbytesleft will be nonzero and errno is set to indicate the condition"
   if (0 != input_bytes_remaining)
   {
-    diag.e_msg_len = sprintf(diag.e_msg, "[zut_iconv] Failed to convert all input bytes. rc=%lu,errno=%d", rc, errno);
+    diag.e_msg_len = sprintf(diag.e_msg, "[zut_iconv] Failed to convert all input bytes. rc=%zu,errno=%d", rc, errno);
     return -1;
   }
 
@@ -434,7 +434,7 @@ size_t zut_iconv(iconv_t cd, ZConvData &data, ZDIAG &diag, bool flush_state)
     size_t flush_rc = iconv(cd, NULL, NULL, &data.output_iter, &output_bytes_remaining);
     if (-1 == flush_rc)
     {
-      diag.e_msg_len = sprintf(diag.e_msg, "[zut_iconv] Error flushing shift state. rc=%lu,errno=%d", flush_rc, errno);
+      diag.e_msg_len = sprintf(diag.e_msg, "[zut_iconv] Error flushing shift state. rc=%zu,errno=%d", flush_rc, errno);
       return -1;
     }
   }
@@ -462,7 +462,7 @@ vector<char> zut_iconv_flush(iconv_t cd, ZDIAG &diag)
   size_t flush_rc = iconv(cd, NULL, NULL, &output_iter, &output_bytes_remaining);
   if (-1 == flush_rc)
   {
-    diag.e_msg_len = sprintf(diag.e_msg, "[zut_iconv_flush] Error flushing shift state. rc=%lu,errno=%d", flush_rc, errno);
+    diag.e_msg_len = sprintf(diag.e_msg, "[zut_iconv_flush] Error flushing shift state. rc=%zu,errno=%d", flush_rc, errno);
     return vector<char>(); // Return empty vector on error
   }
 

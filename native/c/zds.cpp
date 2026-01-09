@@ -1849,6 +1849,7 @@ int zds_read_from_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, 
       // Write any shift sequence bytes that were generated
       if (!flush_buffer.empty())
       {
+        *content_len += flush_buffer.size();
         temp_encoded = zbase64::encode(&flush_buffer[0], flush_buffer.size(), &left_over);
         fwrite(&temp_encoded[0], 1, temp_encoded.size(), fout);
       }
