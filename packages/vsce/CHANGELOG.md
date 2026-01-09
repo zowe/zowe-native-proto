@@ -8,6 +8,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 - Fixed an issue where prompts could disappear when VS Code window loses focus while connecting to a new host. [#710](https://github.com/zowe/zowe-native-proto/pull/710)
 - Fixed an issue where `usedp` attribute was not hidden in "Show Attributes" webview when its value is undefined. [#712](https://github.com/zowe/zowe-native-proto/pull/712)
+- Fixed an issue where listing data sets could silently fail when there is an authentication error. [#721](https://github.com/zowe/zowe-native-proto/pull/721)
 
 ## `0.2.1`
 
