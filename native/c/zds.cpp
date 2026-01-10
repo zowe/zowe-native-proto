@@ -73,17 +73,226 @@ string zds_get_recfm(const fldata_t &file_info)
   return recfm;
 }
 
+int zds_get_type_info(const string &dsn, ZDSTypeInfo &info)
+{
+  info.exists = false;
+  info.type = ZDS_TYPE_UNKNOWN;
+  info.base_dsn = dsn;
+  info.member_name = "";
+
+  size_t member_idx = dsn.find('(');
+  if (member_idx != string::npos)
+  {
+    info.base_dsn = dsn.substr(0, member_idx);
+    size_t end_idx = dsn.find(')', member_idx);
+    if (end_idx != string::npos && end_idx > member_idx + 1)
+    {
+      info.member_name = dsn.substr(member_idx + 1, end_idx - member_idx - 1);
+    }
+  }
+
+  zut_trim(info.base_dsn);
+  transform(info.base_dsn.begin(), info.base_dsn.end(), info.base_dsn.begin(), ::toupper);
+  zut_trim(info.member_name);
+  transform(info.member_name.begin(), info.member_name.end(), info.member_name.begin(), ::toupper);
+
+  ZDS zds = {};
+  vector<ZDSEntry> entries;
+  int rc = zds_list_data_sets(&zds, info.base_dsn, entries, true);
+  if ((rc == RTNCD_SUCCESS || rc == RTNCD_WARNING) && !entries.empty())
+  {
+    for (vector<ZDSEntry>::iterator it = entries.begin(); it != entries.end(); ++it)
+    {
+      string name = it->name;
+      zut_trim(name);
+      if (name == info.base_dsn)
+      {
+        info.exists = true;
+        info.entry = *it;
+
+        if (it->dsorg == ZDS_DSORG_PS)
+        {
+          info.type = ZDS_TYPE_PS;
+        }
+        else if (it->dsorg == ZDS_DSORG_PO || it->dsorg == ZDS_DSORG_PDSE || it->dsorg == "POU")
+        {
+          if (!info.member_name.empty())
+          {
+            info.type = ZDS_TYPE_MEMBER;
+          }
+          else
+          {
+            info.type = ZDS_TYPE_PDS;
+          }
+        }
+        else if (it->dsorg == ZDS_DSORG_VSAM)
+        {
+          info.type = ZDS_TYPE_VSAM;
+        }
+        break;
+      }
+    }
+  }
+
+  return RTNCD_SUCCESS;
+}
+
+int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2)
+{
+  int rc = 0;
+  ZDSTypeInfo info1 = {};
+  ZDSTypeInfo info2 = {};
+
+  zds_get_type_info(dsn1, info1);
+  zds_get_type_info(dsn2, info2);
+
+  if (!info1.exists)
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Source data set '%s' not found", info1.base_dsn.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  // 1. Create target if it doesn't exist
+  if (!info2.exists)
+  {
+    unsigned int code = 0;
+    string create_resp;
+
+    // For same-LPAR copies, use LIKE to ensure perfect attribute parity (RECFM, LRECL, etc.)
+    // This matches Zowe CLI's Create.dataSetLike behavior.
+    string parm = "ALLOC DA('" + info2.base_dsn + "') LIKE('" + info1.base_dsn + "') NEW CATALOG";
+
+    /*
+     * Logic Parity with Zowe SDK:
+     * If the source is a PDS or a Member, but the target name does not specify a member,
+     * we must force the target to be a Sequential (PS) data set.
+     */
+    if (info2.member_name.empty() && (info1.type == ZDS_TYPE_PDS || info1.type == ZDS_TYPE_MEMBER))
+    {
+      parm += " DSORG(PS) DIR(0)";
+    }
+
+    rc = zut_bpxwdyn(parm, &code, create_resp);
+    if (rc != RTNCD_SUCCESS)
+    {
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to create target data set '%s' using LIKE('%s'): %s",
+                                    info2.base_dsn.c_str(), info1.base_dsn.c_str(), create_resp.c_str());
+      return RTNCD_FAILURE;
+    }
+  }
+
+  // 2. Determine utility
+  bool is_pds_full_copy = (info1.type == ZDS_TYPE_PDS && info2.member_name.empty());
+
+  vector<string> dds;
+  string utility;
+
+  if (is_pds_full_copy)
+  {
+    utility = "IEBCOPY";
+    dds.push_back("alloc dd(input) da('" + info1.base_dsn + "') shr");
+    dds.push_back("alloc dd(output) da('" + info2.base_dsn + "') shr");
+    dds.push_back("alloc dd(sysin) lrecl(80) recfm(f,b) blksize(80)");
+  }
+  else
+  {
+    utility = "IEBGENER";
+    dds.push_back("alloc dd(sysut1) da('" + dsn1 + "') shr");
+    dds.push_back("alloc dd(sysut2) da('" + dsn2 + "') shr");
+    dds.push_back("alloc dd(sysin) dummy lrecl(80) recfm(f,b) blksize(80)");
+  }
+  dds.push_back("alloc dd(sysprint) lrecl(121) recfm(f,b) blksize(121)");
+
+  rc = zut_loop_dynalloc(zds->diag, dds);
+  if (0 != rc)
+  {
+    return RTNCD_FAILURE;
+  }
+
+  if (is_pds_full_copy)
+  {
+    rc = zds_write_to_dd(zds, "sysin", "        COPY OUTDD=output,INDD=input");
+    if (0 != rc)
+    {
+      zut_free_dynalloc_dds(zds->diag, dds);
+      return RTNCD_FAILURE;
+    }
+  }
+
+  rc = zut_run(utility);
+  if (RTNCD_SUCCESS != rc)
+  {
+    string output;
+    if (0 == zds_read_from_dd(zds, "sysprint", output))
+    {
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "%s failed. SYSPRINT:\n%s", utility.c_str(), output.c_str());
+    }
+    zut_free_dynalloc_dds(zds->diag, dds);
+    return RTNCD_FAILURE;
+  }
+
+  zut_free_dynalloc_dds(zds->diag, dds);
+  return RTNCD_SUCCESS;
+}
+
+int zds_compress_dsn(ZDS *zds, const string &dsn)
+{
+  int rc = 0;
+  ZDSTypeInfo info = {};
+  zds_get_type_info(dsn, info);
+
+  if (!info.exists)
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Data set '%s' not found", dsn.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  if (info.type != ZDS_TYPE_PDS || info.entry.dsntype == "LIBRARY")
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Data set '%s' is not a PDS (PDSEs cannot be compressed)", dsn.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  vector<string> dds;
+  dds.push_back("alloc dd(input) da('" + dsn + "') shr");
+  dds.push_back("alloc dd(output) da('" + dsn + "') shr");
+  dds.push_back("alloc dd(sysin) lrecl(80) recfm(f,b) blksize(80)");
+  dds.push_back("alloc dd(sysprint) lrecl(121) recfm(f,b) blksize(121)");
+
+  rc = zut_loop_dynalloc(zds->diag, dds);
+  if (0 != rc)
+  {
+    return RTNCD_FAILURE;
+  }
+
+  rc = zds_write_to_dd(zds, "sysin", "        COPY OUTDD=output,INDD=input");
+  if (0 != rc)
+  {
+    zut_free_dynalloc_dds(zds->diag, dds);
+    return RTNCD_FAILURE;
+  }
+
+  rc = zut_run("IEBCOPY");
+  if (RTNCD_SUCCESS != rc)
+  {
+    string output;
+    if (0 == zds_read_from_dd(zds, "sysprint", output))
+    {
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "IEBCOPY failed. SYSPRINT:\n%s", output.c_str());
+    }
+    zut_free_dynalloc_dds(zds->diag, dds);
+    return RTNCD_FAILURE;
+  }
+
+  zut_free_dynalloc_dds(zds->diag, dds);
+  return RTNCD_SUCCESS;
+}
+
 bool zds_dataset_exists(const string &dsn)
 {
-  const auto member_idx = dsn.find('(');
-  const string dsn_without_member = member_idx == string::npos ? dsn : dsn.substr(0, member_idx);
-  FILE *fp = fopen(("//'" + dsn_without_member + "'").c_str(), "r");
-  if (fp)
-  {
-    fclose(fp);
-    return true;
-  }
-  return false;
+  ZDSTypeInfo info = {};
+  zds_get_type_info(dsn, info);
+  return info.exists;
 }
 
 int zds_read_from_dd(ZDS *zds, string ddname, string &response)
@@ -99,14 +308,17 @@ int zds_read_from_dd(ZDS *zds, string ddname, string &response)
 
   int index = 0;
 
+  bool first = true;
   string line;
   while (getline(in, line))
   {
     if (index > 0 || line.size() > 0)
     {
+      if (!first)
+        response.push_back('\n');
       response += line;
-      response.push_back('\n');
       index++;
+      first = false;
     }
   }
   in.close();

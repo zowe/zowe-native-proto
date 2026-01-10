@@ -609,7 +609,7 @@ int zut_loop_dynalloc(ZDIAG &diag, vector<string> &list)
       diag.detail_rc = ZUT_RTNCD_SERVICE_FAILURE;
       diag.service_rc = rc;
       strcpy(diag.service_name, "bpxwdyn");
-      diag.e_msg_len = sprintf(diag.e_msg, "bpxwdyn failed with '%s' rc: '%d', emsg: '%s'", diag.service_name, rc, (*it).c_str());
+      diag.e_msg_len = sprintf(diag.e_msg, "bpxwdyn failed with rc: '%d', code: '%08X', emsg: '%s', response: '%s'", rc, code, (*it).c_str(), response.c_str());
       return RTNCD_FAILURE;
     }
   }
