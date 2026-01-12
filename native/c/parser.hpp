@@ -1288,6 +1288,7 @@ Command::parse(const std::vector<lexer::Token> &tokens,
               return result;
             }
 
+            parsed_value.set_dynamic(true);
             result.m_dynamic_values[flag_name_str] = parsed_value;
             current_token_index++;
             continue;
@@ -1332,7 +1333,9 @@ Command::parse(const std::vector<lexer::Token> &tokens,
               return result;
             }
 
-            result.m_dynamic_values[flag_name_str] = ArgValue(values);
+            ArgValue dynamic_val(values);
+            dynamic_val.set_dynamic(true);
+            result.m_dynamic_values[flag_name_str] = dynamic_val;
             continue;
           }
 
@@ -1838,6 +1841,12 @@ Command::parse(const std::vector<lexer::Token> &tokens,
     for (std::map<std::string, ArgValue>::const_iterator it =
              result.m_values.begin();
          it != result.m_values.end(); ++it)
+    {
+      invocation_args[it->first] = it->second;
+    }
+    for (std::map<std::string, ArgValue>::const_iterator it =
+             result.m_dynamic_values.begin();
+         it != result.m_dynamic_values.end(); ++it)
     {
       invocation_args[it->first] = it->second;
     }

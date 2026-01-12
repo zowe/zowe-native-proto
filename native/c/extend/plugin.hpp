@@ -282,7 +282,8 @@ struct Ast
   }
 
 private:
-  explicit Ast(Kind kind_) : k(kind_), b(false), i(0), d(0.0)
+  explicit Ast(Kind kind_)
+      : k(kind_), b(false), i(0), d(0.0)
   {
   }
 
@@ -459,49 +460,49 @@ public:
   };
 
   Argument()
-      : m_kind(ValueKind_None)
+      : m_kind(ValueKind_None), m_is_dynamic(false)
   {
     m_value.i = 0;
   }
 
   explicit Argument(bool val)
-      : m_kind(ValueKind_Bool)
+      : m_kind(ValueKind_Bool), m_is_dynamic(false)
   {
     m_value.b = val;
   }
 
   explicit Argument(long long val)
-      : m_kind(ValueKind_Int)
+      : m_kind(ValueKind_Int), m_is_dynamic(false)
   {
     m_value.i = val;
   }
 
   explicit Argument(double val)
-      : m_kind(ValueKind_Double)
+      : m_kind(ValueKind_Double), m_is_dynamic(false)
   {
     m_value.d = val;
   }
 
   explicit Argument(const std::string &val)
-      : m_kind(ValueKind_String)
+      : m_kind(ValueKind_String), m_is_dynamic(false)
   {
     m_value.s = new std::string(val);
   }
 
   explicit Argument(const char *val)
-      : m_kind(ValueKind_String)
+      : m_kind(ValueKind_String), m_is_dynamic(false)
   {
     m_value.s = val ? new std::string(val) : new std::string();
   }
 
   explicit Argument(const std::vector<std::string> &val)
-      : m_kind(ValueKind_List)
+      : m_kind(ValueKind_List), m_is_dynamic(false)
   {
     m_value.sv = new std::vector<std::string>(val);
   }
 
   Argument(const Argument &other)
-      : m_kind(ValueKind_None)
+      : m_kind(ValueKind_None), m_is_dynamic(false)
   {
     copy_from(other);
   }
@@ -517,7 +518,7 @@ public:
   }
 
   Argument(Argument &&other)
-      : m_kind(ValueKind_None)
+      : m_kind(ValueKind_None), m_is_dynamic(false)
   {
     move_from(other);
   }
@@ -650,6 +651,15 @@ public:
     }
   }
 
+  bool is_dynamic() const
+  {
+    return m_is_dynamic;
+  }
+  void set_dynamic(bool is_dynamic)
+  {
+    m_is_dynamic = is_dynamic;
+  }
+
 private:
   void clear()
   {
@@ -670,6 +680,7 @@ private:
   void copy_from(const Argument &other)
   {
     m_kind = other.m_kind;
+    m_is_dynamic = other.m_is_dynamic;
     switch (other.m_kind)
     {
     case ValueKind_None:
@@ -698,8 +709,10 @@ private:
   void move_from(Argument &other)
   {
     m_kind = other.m_kind;
+    m_is_dynamic = other.m_is_dynamic;
     m_value = other.m_value;
     other.m_kind = ValueKind_None;
+    other.m_is_dynamic = false;
     other.m_value.i = 0;
   }
 
@@ -712,6 +725,7 @@ private:
     std::string *s;
     std::vector<std::string> *sv;
   } m_value;
+  bool m_is_dynamic;
 };
 
 // Helper struct for type-safe argument retrieval
@@ -879,6 +893,19 @@ public:
   const ArgumentMap &arguments() const
   {
     return m_args;
+  }
+
+  ArgumentMap dynamic_arguments() const
+  {
+    ArgumentMap dynamic_args;
+    for (auto it = m_args.begin(); it != m_args.end(); ++it)
+    {
+      if (it->second.is_dynamic())
+      {
+        dynamic_args[it->first] = it->second;
+      }
+    }
+    return dynamic_args;
   }
 
   const ArgumentMap &output() const

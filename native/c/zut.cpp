@@ -37,11 +37,6 @@ int zut_run(string program)
   return ZUTRUN(program.c_str());
 }
 
-int zut_run24(string program)
-{
-  return ZUTRUN24(program.c_str());
-}
-
 unsigned char zut_get_key()
 {
   return ZUTMGKEY();

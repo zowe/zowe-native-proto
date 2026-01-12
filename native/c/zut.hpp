@@ -48,13 +48,6 @@ int zut_search(std::string input);
 int zut_run(std::string input);
 
 /**
- * @brief Run a specified command or operation in 24-bit mode
- * @param input The command string to execute
- * @return Return code (0 for success, non-zero for error)
- */
-int zut_run24(std::string input);
-
-/**
  * @brief Substitute a symbol in a string
  * @param symbol The symbol to substitute
  * @param result Reference to a string where the result will be stored
