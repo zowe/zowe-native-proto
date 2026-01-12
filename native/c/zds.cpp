@@ -203,48 +203,36 @@ int zds_write_to_dd(ZDS *zds, string ddname, const string &data)
   return 0;
 }
 
-int zds_write_to_dsn(ZDS *zds, const string &dsn, string &data)
+/**
+ * Helper function to check if a DSN contains a member name
+ */
+static bool zds_has_member(const string &dsn)
 {
-  if (!zds_dataset_exists(dsn))
-  {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not access '%s'", dsn.c_str());
-    return RTNCD_FAILURE;
-  }
+  const auto open_paren = dsn.find('(');
+  const auto close_paren = dsn.find(')');
+  return (open_paren != string::npos && close_paren != string::npos && close_paren > open_paren);
+}
 
+/**
+ * Helper function to extract the base DSN (without member) from a fully qualified DSN
+ */
+static string zds_get_base_dsn(const string &dsn)
+{
+  const auto open_paren = dsn.find('(');
+  if (open_paren != string::npos)
+  {
+    return dsn.substr(0, open_paren);
+  }
+  return dsn;
+}
+
+/**
+ * Internal function to write to a sequential data set using fopen/fwrite
+ */
+static int zds_write_sequential(ZDS *zds, const string &dsn, string &data)
+{
   const auto hasEncoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
   const auto codepage = string(zds->encoding_opts.codepage);
-
-  if (strlen(zds->etag) > 0)
-  {
-    ZDS read_ds = {0};
-    string current_contents = "";
-    if (hasEncoding)
-    {
-      memcpy(&read_ds.encoding_opts, &zds->encoding_opts, sizeof(ZEncode));
-    }
-    const auto read_rc = zds_read_from_dsn(&read_ds, dsn, current_contents);
-    if (0 != read_rc)
-    {
-      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to read contents of data set for e-tag comparison: %s", read_ds.diag.e_msg);
-      return RTNCD_FAILURE;
-    }
-
-    const auto given_etag = strtoul(zds->etag, nullptr, 16);
-    const auto new_etag = zut_calc_adler32_checksum(current_contents);
-
-    if (given_etag != new_etag)
-    {
-      ostringstream ss;
-      ss << "Etag mismatch: expected ";
-      ss << hex << given_etag << dec;
-      ss << ", actual ";
-      ss << hex << new_etag << dec;
-
-      const auto error_msg = ss.str();
-      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "%s", error_msg.c_str());
-      return RTNCD_FAILURE;
-    }
-  }
 
   string dsname = "//'" + dsn + "'";
   if (strlen(zds->ddname) > 0)
@@ -287,6 +275,142 @@ int zds_write_to_dsn(ZDS *zds, const string &dsn, string &data)
         }
       }
     }
+  }
+
+  return RTNCD_SUCCESS;
+}
+
+/**
+ * Internal function to write to a PDS/PDSE member using BPAM (updates ISPF stats)
+ */
+static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
+{
+  int rc = 0;
+  IO_CTRL *ioc = nullptr;
+
+  const auto hasEncoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
+  const auto codepage = string(zds->encoding_opts.codepage);
+
+  // Open the member for BPAM output
+  rc = zds_open_output_bpam(zds, dsn, ioc);
+  if (rc != RTNCD_SUCCESS)
+  {
+    return rc;
+  }
+
+  // Encode data if needed
+  string temp = data;
+  if (!data.empty() && hasEncoding)
+  {
+    const auto source_encoding = strlen(zds->encoding_opts.source_codepage) > 0 ? string(zds->encoding_opts.source_codepage) : "UTF-8";
+    try
+    {
+      temp = zut_encode(temp, source_encoding, codepage, zds->diag);
+    }
+    catch (exception &e)
+    {
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to convert input data from %s to %s", source_encoding.c_str(), codepage.c_str());
+      zds_close_output_bpam(zds, ioc);
+      return RTNCD_FAILURE;
+    }
+  }
+
+  // Write data line by line (records are buffered into blocks internally)
+  if (!temp.empty())
+  {
+    istringstream stream(temp);
+    string line;
+    while (getline(stream, line))
+    {
+      // Remove trailing carriage return if present (Windows line endings)
+      if (!line.empty() && line[line.size() - 1] == '\r')
+      {
+        line.erase(line.size() - 1);
+      }
+
+      rc = zds_write_output_bpam(zds, ioc, line);
+      if (rc != RTNCD_SUCCESS)
+      {
+        // Save error message before close overwrites it
+        char saved_msg[sizeof(zds->diag.e_msg)];
+        int saved_msg_len = zds->diag.e_msg_len;
+        memcpy(saved_msg, zds->diag.e_msg, sizeof(saved_msg));
+
+        zds_close_output_bpam(zds, ioc);
+
+        // Restore original error message
+        memcpy(zds->diag.e_msg, saved_msg, sizeof(saved_msg));
+        zds->diag.e_msg_len = saved_msg_len;
+        return rc;
+      }
+    }
+  }
+
+  // Close the member (this updates ISPF stats and STOWs the directory entry)
+  rc = zds_close_output_bpam(zds, ioc);
+
+  return rc;
+}
+
+int zds_write_to_dsn(ZDS *zds, const string &dsn, string &data)
+{
+  if (!zds_dataset_exists(dsn))
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not access '%s'", dsn.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  const auto hasEncoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
+
+  if (strlen(zds->etag) > 0)
+  {
+    ZDS read_ds = {0};
+    string current_contents = "";
+    if (hasEncoding)
+    {
+      memcpy(&read_ds.encoding_opts, &zds->encoding_opts, sizeof(ZEncode));
+    }
+    const auto read_rc = zds_read_from_dsn(&read_ds, dsn, current_contents);
+    if (0 != read_rc)
+    {
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to read contents of data set for e-tag comparison: %s", read_ds.diag.e_msg);
+      return RTNCD_FAILURE;
+    }
+
+    const auto given_etag = strtoul(zds->etag, nullptr, 16);
+    const auto new_etag = zut_calc_adler32_checksum(current_contents);
+
+    if (given_etag != new_etag)
+    {
+      ostringstream ss;
+      ss << "Etag mismatch: expected ";
+      ss << hex << given_etag << dec;
+      ss << ", actual ";
+      ss << hex << new_etag << dec;
+
+      const auto error_msg = ss.str();
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "%s", error_msg.c_str());
+      return RTNCD_FAILURE;
+    }
+  }
+
+  int rc = 0;
+
+  // Use BPAM path for PDS/PDSE members (updates ISPF stats), fopen/fwrite for sequential
+  if (zds_has_member(dsn))
+  {
+    rc = zds_write_member_bpam(zds, dsn, data);
+    // Clear ddname after BPAM close since the DD was freed
+    memset(zds->ddname, 0, sizeof(zds->ddname));
+  }
+  else
+  {
+    rc = zds_write_sequential(zds, dsn, data);
+  }
+
+  if (rc != RTNCD_SUCCESS)
+  {
+    return rc;
   }
 
   // Print new e-tag to stdout as response

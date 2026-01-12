@@ -197,24 +197,24 @@ static int validate_dcb_attributes(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
     return RTNCD_FAILURE;
   }
 
-  if (block_size % ioc->dcb.dcblrecl != 0)
+  // For variable-length records, block size just needs to accommodate at least one record (LRECL + BDW)
+  // For fixed-length records, block size must be a multiple of LRECL
+  if (ioc->dcb.dcbrecfm & dcbrecf)
   {
-    // if the data set is not blocked, we can subtract the size of the BDW
-    if (!(ioc->dcb.dcbrecfm & dcbrecbr))
-    {
-      block_size -= sizeof(BDW);
-
-      // perform the check again
-      if (block_size % ioc->dcb.dcblrecl != 0)
-      {
-        diag->e_msg_len = sprintf(diag->e_msg, "Data set block size (minus 4) is not a multiple of the record length: %d not evenly divisible by %d", ioc->dcb.dcbblksi, ioc->dcb.dcblrecl);
-        diag->detail_rc = ZDS_RTNCD_INVALID_BLOCK_SIZE;
-        return RTNCD_FAILURE;
-      }
-    }
-    else
+    // Fixed-length record validation
+    if (block_size % ioc->dcb.dcblrecl != 0)
     {
       diag->e_msg_len = sprintf(diag->e_msg, "Data set block size is not a multiple of the record length: %d not evenly divisible by %d", ioc->dcb.dcbblksi, ioc->dcb.dcblrecl);
+      diag->detail_rc = ZDS_RTNCD_INVALID_BLOCK_SIZE;
+      return RTNCD_FAILURE;
+    }
+  }
+  else if (ioc->dcb.dcbrecfm & dcbrecv)
+  {
+    // Variable-length record validation: block size must be >= LRECL + 4 (for BDW)
+    if (block_size < ioc->dcb.dcblrecl + sizeof(BDW))
+    {
+      diag->e_msg_len = sprintf(diag->e_msg, "Data set block size is too small for variable records: %d < %d (LRECL + 4)", block_size, ioc->dcb.dcblrecl + sizeof(BDW));
       diag->detail_rc = ZDS_RTNCD_INVALID_BLOCK_SIZE;
       return RTNCD_FAILURE;
     }
@@ -566,6 +566,12 @@ static int update_ispf_statistics(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 {
   int rc = 0;
 
+  // Skip ISPF stats for undefined record format (RECFM=U)
+  if ((ioc->dcb.dcbrecfm & dcbrecu) == dcbrecu)
+  {
+    return RTNCD_SUCCESS;
+  }
+
   if (ioc->dcb.dcboflgs & dcbofopn)
   {
     //
@@ -634,6 +640,7 @@ static int update_ispf_statistics(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 
       memcpy(&statsp->created_date_century, &datel, sizeof(datel));
       memcpy(&statsp->modified_date_century, &datel, sizeof(datel));
+
       statsp->modified_time_hours = timel.times.HH;   // update ISPF statistics time hours
       statsp->modified_time_minutes = timel.times.MM; // update ISPF statistics time minutes
       statsp->modified_time_seconds = timel.times.SS; // update ISPF statistics time seconds
@@ -684,6 +691,11 @@ static int update_ispf_statistics(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
       time_local(&timel.timei, &datel);
 
       memcpy(&statsp->modified_date_century, &datel, sizeof(datel));
+
+      diag->e_msg_len = sprintf(diag->e_msg, "Time: %d-%d-%d %d:%d:%d", timel.times.HH, timel.times.MM, timel.times.SS, datel);
+      diag->detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
+      diag->service_rc = rc;
+      return RTNCD_FAILURE;
       statsp->modified_time_hours = timel.times.HH;
       statsp->modified_time_minutes = timel.times.MM;
       statsp->modified_time_seconds = timel.times.SS;
@@ -805,7 +817,7 @@ int close_output_bpam(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
   rc = update_ispf_statistics(diag, ioc);
   if (0 != rc)
   {
-    // return rc; // TODO(Kelosky): handle when this fails... continue or return?
+    return rc; // TODO(Kelosky): handle when this fails... continue or return?
   }
 
   //
