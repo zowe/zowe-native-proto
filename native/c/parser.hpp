@@ -136,7 +136,7 @@ struct ArgumentDef
               ArgType t = ArgType_Flag, bool pos = false, bool req = false,
               ArgValue def_val = ArgValue(), bool help_flag = false)
       : name(n), aliases(als), help(h), type(t), positional(pos), required(req),
-        default_value(def_val), is_help_flag(help_flag)
+        hidden(false), default_value(def_val), is_help_flag(help_flag)
   {
   }
 
@@ -145,7 +145,7 @@ struct ArgumentDef
               ArgType t = ArgType_Flag, bool pos = false, bool req = false,
               ArgValue def_val = ArgValue(), bool help_flag = false)
       : name(n), help(h), type(t), positional(pos), required(req),
-        default_value(def_val), is_help_flag(help_flag)
+        hidden(false), default_value(def_val), is_help_flag(help_flag)
   {
     if (!alias.empty())
     {
@@ -156,7 +156,7 @@ struct ArgumentDef
   // Default constructor
   ArgumentDef()
       : type(ArgType_Flag), positional(false), required(false),
-        is_help_flag(false)
+        hidden(false), is_help_flag(false)
   {
   }
 
