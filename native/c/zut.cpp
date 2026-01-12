@@ -32,15 +32,15 @@ int zut_search(string parms)
   return ZUTSRCH(parms.c_str());
 }
 
-int zut_run(ZDIAG &diag, string program)
+int zut_run(ZDIAG &diag, string program, string parms)
 {
-  return ZUTRUN(&diag, program.c_str());
+  return ZUTRUN(&diag, program.c_str(), parms.c_str());
 }
 
 int zut_run(string program)
 {
   ZDIAG diag = {};
-  return ZUTRUN(&diag, program.c_str());
+  return ZUTRUN(&diag, program.c_str(), NULL);
 }
 
 unsigned char zut_get_key()

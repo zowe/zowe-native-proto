@@ -44,9 +44,10 @@ int zut_search(std::string input);
  * @brief Run a specified command or operation
  * @param diag Reference to diagnostic information structure
  * @param input The command string to execute
+ * @param parms The parameters string to execute
  * @return Return code (0 for success, non-zero for error)
  */
-int zut_run(ZDIAG &diag, std::string input);
+int zut_run(ZDIAG &diag, std::string input, std::string parms);
 
 /**
  * @brief Run a specified command or operation

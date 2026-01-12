@@ -271,19 +271,60 @@ int handle_tool_amblist(InvocationContext &context)
   return RTNCD_SUCCESS;
 }
 
+string parse_escape_chars(string &input)
+{
+  std::string result;
+  result.reserve(input.size());
+
+  for (size_t i = 0; i < input.size(); ++i)
+  {
+    if (input[i] == '\\' && i + 1 < input.size())
+    {
+      char next = input[i + 1];
+      switch (next)
+      {
+      case 'n':
+        result += '\n';
+        ++i;
+        break;
+      case 't':
+        result += '\t';
+        ++i;
+        break;
+      case '\\':
+        result += '\\';
+        ++i;
+        break;
+      case '"':
+        result += '"';
+        ++i;
+        break;
+      default:
+        // Unknown escape sequence, keep the backslash
+        result += input[i];
+        break;
+      }
+    }
+    else
+    {
+      result += input[i];
+    }
+  }
+
+  return result;
+}
+
 int handle_tool_run(InvocationContext &context)
 {
   int rc = 0;
   string program = context.get<std::string>("program", "");
+  string parms = context.get<std::string>("parms", "");
   vector<string> dds;
 
   const ArgumentMap &dynamic_args = context.dynamic_arguments();
   for (ArgumentMap::const_iterator it = dynamic_args.begin(); it != dynamic_args.end(); ++it)
   {
     dds.push_back("alloc dd(" + it->first + ") " + it->second.get_string_value());
-    // std::cout << "argument is dynamic" << std::endl;
-    std::cout << "arg name: " << it->first << " " << "arg value: " << it->second.get_string_value() << std::endl;
-    // it->second.print(std::cout);
   }
 
   ZDIAG diag = {};
@@ -307,8 +348,11 @@ int handle_tool_run(InvocationContext &context)
       return RTNCD_FAILURE;
     }
 
-    string input = context.get<std::string>("input", "");
-    if (context.has("input"))
+    string input = context.get<std::string>("in-dd-parms", "");
+    input = parse_escape_chars(input);
+    cout << "@TEST input: '" << input << "'" << endl;
+
+    if (context.has("in-dd-parms"))
     {
       out << input << endl;
     }
@@ -317,14 +361,19 @@ int handle_tool_run(InvocationContext &context)
   }
 
   transform(program.begin(), program.end(), program.begin(), ::toupper);
+  parms = parse_escape_chars(parms);
 
-  rc = zut_run(diag, program);
+  cout << "@TEST parms: '" << parms << "'" << endl;
+
+  rc = zut_run(diag, program, parms);
 
   if (0 != rc)
   {
     context.error_stream() << "Error: program '" << program << "' ended with rc: '" << rc << "'" << endl;
-    context.error_stream() << "  Details: " << diag.e_msg << endl;
-    zut_free_dynalloc_dds(diag, dds);
+    if (diag.e_msg_len > 0)
+    {
+      context.error_stream() << "  Details: " << diag.e_msg << endl;
+    }
     rc = RTNCD_FAILURE;
   }
 
@@ -414,18 +463,15 @@ void register_commands(parser::Command &root_command)
   // Run subcommand
   auto tool_run_cmd = command_ptr(new Command("run", "run a program"));
   tool_run_cmd->add_positional_arg("program", "name of program to run", ArgType_Single, true);
-  tool_run_cmd->add_keyword_arg("dynalloc-pre",
-                                make_aliases("--dynalloc-pre", "--dp"),
-                                "dynalloc pre run statements", ArgType_Single, false);
-  tool_run_cmd->add_keyword_arg("dynalloc-post",
-                                make_aliases("--dynalloc-post", "--dt"),
-                                "dynalloc post run statements", ArgType_Single, false);
   tool_run_cmd->add_keyword_arg("in-dd",
                                 make_aliases("--in-dd", "--idd"),
                                 "input ddname", ArgType_Single, false);
-  tool_run_cmd->add_keyword_arg("input",
+  tool_run_cmd->add_keyword_arg("in-dd-parms",
                                 make_aliases("--input", "--in"),
-                                "input", ArgType_Single, false);
+                                "input parameters writtent to in-dd", ArgType_Single, false);
+  tool_run_cmd->add_keyword_arg("parms",
+                                make_aliases("--parms", "--p"),
+                                "parms to pass to program, PARMS=", ArgType_Single, false);
   tool_run_cmd->add_keyword_arg("out-dd",
                                 make_aliases("--out-dd", "--odd"),
                                 "output ddname", ArgType_Single, false);
