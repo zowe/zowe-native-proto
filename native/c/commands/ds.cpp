@@ -751,7 +751,7 @@ int handle_data_set_compress(InvocationContext &context)
 
   if (!is_pds)
   {
-    context.error_stream() << "Error: data set '" << dsn << "' is not a PDS'" << endl;
+    context.error_stream() << "Error: data set '" << dsn << "' is not a PDS" << endl;
     return RTNCD_FAILURE;
   }
 
@@ -774,20 +774,20 @@ int handle_data_set_compress(InvocationContext &context)
 
   // write control statements
   ZDS zds = {};
-  zds_write_to_dd(&zds, "sysin", "        COPY OUTDD=B,INDD=A");
+  rc = zds_write_to_dd(&zds, "sysin", "        COPY OUTDD=B,INDD=A");
   if (0 != rc)
   {
     context.error_stream() << "Error: could not write to dd: '" << "sysin" << "' rc: '" << rc << "'" << endl;
     context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
+    zut_free_dynalloc_dds(diag, dds);
     return RTNCD_FAILURE;
   }
 
   // perform compress
-  rc = zut_run24("IEBCOPY");
+  rc = zut_run("IEBCOPY");
   if (RTNCD_SUCCESS != rc)
   {
     context.error_stream() << "Error: could not invoke IEBCOPY rc: '" << rc << "'" << endl;
-
     zut_free_dynalloc_dds(diag, dds);
     return RTNCD_FAILURE;
   }
@@ -800,6 +800,7 @@ int handle_data_set_compress(InvocationContext &context)
     context.error_stream() << "Error: could not read from dd: '" << "sysprint" << "' rc: '" << rc << "'" << endl;
     context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
     context.error_stream() << output << endl;
+    zut_free_dynalloc_dds(diag, dds);
     return RTNCD_FAILURE;
   }
   context.output_stream() << "Data set '" << dsn << "' compressed" << endl;
