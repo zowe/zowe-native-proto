@@ -465,7 +465,7 @@ void register_commands(parser::Command &root_command)
                                 "input ddname", ArgType_Single, false);
   tool_run_cmd->add_keyword_arg("in-dd-parms",
                                 make_aliases("--input", "--in"),
-                                "input parameters writtent to in-dd", ArgType_Single, false);
+                                "input parameters written to in-dd", ArgType_Single, false);
   tool_run_cmd->add_keyword_arg("parms",
                                 make_aliases("--parms", "--p"),
                                 "parms to pass to program, PARMS=", ArgType_Single, false);
