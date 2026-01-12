@@ -173,7 +173,7 @@ std::string zut_build_etag(const size_t mtime, const size_t byte_size);
  */
 std::string zut_encode(const std::string &input_str, const std::string &from_encoding, const std::string &to_encoding, ZDIAG &diag);
 
-std::vector<char> zut_encode(const char *input_str, size_t input_size, const std::string &from_encoding, const std::string &to_encoding, ZDIAG &diag);
+std::vector<char> zut_encode(const char *input_str, const size_t input_size, const std::string &from_encoding, const std::string &to_encoding, ZDIAG &diag);
 
 /**
  * @brief Encode a string using an existing iconv descriptor
@@ -184,7 +184,7 @@ std::vector<char> zut_encode(const char *input_str, size_t input_size, const std
  */
 std::string zut_encode(const std::string &input_str, iconv_t cd, ZDIAG &diag);
 
-std::vector<char> zut_encode(const char *input_str, size_t input_size, iconv_t cd, ZDIAG &diag);
+std::vector<char> zut_encode(const char *input_str, const size_t input_size, iconv_t cd, ZDIAG &diag);
 
 /**
  * @brief Format a vector of strings as a CSV line

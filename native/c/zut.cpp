@@ -498,7 +498,7 @@ string zut_encode(const string &input_str, const string &from_encoding, const st
  * @param to_encoding desired codepage for the data
  * @param diag diagnostic structure to store error information
  */
-vector<char> zut_encode(const char *input_str, size_t input_size, const string &from_encoding, const string &to_encoding, ZDIAG &diag)
+vector<char> zut_encode(const char *input_str, const size_t input_size, const string &from_encoding, const string &to_encoding, ZDIAG &diag)
 {
   if (from_encoding == to_encoding)
   {
@@ -553,7 +553,7 @@ string zut_encode(const string &input_str, iconv_t cd, ZDIAG &diag)
  * @param cd iconv descriptor (caller manages opening, flushing, and closing)
  * @param diag diagnostic structure to store error information
  */
-vector<char> zut_encode(const char *input_str, size_t input_size, iconv_t cd, ZDIAG &diag)
+vector<char> zut_encode(const char *input_str, const size_t input_size, iconv_t cd, ZDIAG &diag)
 {
   const size_t max_output_size = input_size * 4;
   vector<char> output_buffer(max_output_size, 0);

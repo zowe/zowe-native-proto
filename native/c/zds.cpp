@@ -203,17 +203,18 @@ int zds_write_to_dd(ZDS *zds, string ddname, const string &data)
   return 0;
 }
 
-int zds_validate_etag(ZDS *zds, const string &dsn, ZEncode *encoding_opts)
+int zds_validate_etag(ZDS *zds, const string &dsn, bool has_encoding)
 {
+  ZDS read_ds = {0};
   string current_contents = "";
-  if (encoding_opts != nullptr)
+  if (has_encoding)
   {
-    memcpy(&zds->encoding_opts, encoding_opts, sizeof(ZEncode));
+    memcpy(&read_ds.encoding_opts, &zds->encoding_opts, sizeof(ZEncode));
   }
-  const auto read_rc = zds_read_from_dsn(zds, dsn, current_contents);
+  const auto read_rc = zds_read_from_dsn(&read_ds, dsn, current_contents);
   if (0 != read_rc)
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to read contents of data set for e-tag comparison: %s", zds->diag.e_msg);
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to read contents of data set for e-tag comparison: %s", read_ds.diag.e_msg);
     return RTNCD_FAILURE;
   }
 
@@ -247,15 +248,9 @@ int zds_write_to_dsn(ZDS *zds, const string &dsn, string &data)
   const auto hasEncoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
   const auto codepage = string(zds->encoding_opts.codepage);
 
-  if (strlen(zds->etag) > 0)
+  if (strlen(zds->etag) > 0 && 0 != zds_validate_etag(zds, dsn, hasEncoding))
   {
-    ZDS read_ds = {0};
-    const auto etag_rc = zds_validate_etag(&read_ds, dsn, hasEncoding ? &zds->encoding_opts : nullptr);
-    if (0 != etag_rc)
-    {
-      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "%s", read_ds.diag.e_msg);
-      return RTNCD_FAILURE;
-    }
+    return RTNCD_FAILURE;
   }
 
   string dsname = "//'" + dsn + "'";
@@ -1913,15 +1908,9 @@ int zds_write_to_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, s
   const auto hasEncoding = zds->encoding_opts.data_type == eDataTypeText && strlen(zds->encoding_opts.codepage) > 0;
   const auto codepage = string(zds->encoding_opts.codepage);
 
-  if (strlen(zds->etag) > 0)
+  if (strlen(zds->etag) > 0 && 0 != zds_validate_etag(zds, dsn, hasEncoding))
   {
-    ZDS read_ds = {0};
-    const auto etag_rc = zds_validate_etag(&read_ds, dsn, hasEncoding ? &zds->encoding_opts : nullptr);
-    if (0 != etag_rc)
-    {
-      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "%s", read_ds.diag.e_msg);
-      return RTNCD_FAILURE;
-    }
+    return RTNCD_FAILURE;
   }
 
   string dsname = "//'" + dsn + "'";
