@@ -350,7 +350,6 @@ int handle_tool_run(InvocationContext &context)
 
     string input = context.get<std::string>("in-dd-parms", "");
     input = parse_escape_chars(input);
-    cout << "@TEST input: '" << input << "'" << endl;
 
     if (context.has("in-dd-parms"))
     {
@@ -362,8 +361,6 @@ int handle_tool_run(InvocationContext &context)
 
   transform(program.begin(), program.end(), program.begin(), ::toupper);
   parms = parse_escape_chars(parms);
-
-  cout << "@TEST parms: '" << parms << "'" << endl;
 
   rc = zut_run(diag, program, parms);
 
