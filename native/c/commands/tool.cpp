@@ -282,7 +282,7 @@ int handle_tool_run(InvocationContext &context)
   {
     dds.push_back("alloc dd(" + it->first + ") " + it->second.get_string_value());
     // std::cout << "argument is dynamic" << std::endl;
-    // std::cout << "arg name: " << it->first << " " << "arg value: " << it->second.get_string_value() << std::endl;
+    std::cout << "arg name: " << it->first << " " << "arg value: " << it->second.get_string_value() << std::endl;
     // it->second.print(std::cout);
   }
 
@@ -318,11 +318,12 @@ int handle_tool_run(InvocationContext &context)
 
   transform(program.begin(), program.end(), program.begin(), ::toupper);
 
-  rc = zut_run(program);
+  rc = zut_run(diag, program);
 
   if (0 != rc)
   {
     context.error_stream() << "Error: program '" << program << "' ended with rc: '" << rc << "'" << endl;
+    context.error_stream() << "  Details: " << diag.e_msg << endl;
     zut_free_dynalloc_dds(diag, dds);
     rc = RTNCD_FAILURE;
   }

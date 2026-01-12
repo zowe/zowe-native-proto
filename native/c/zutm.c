@@ -14,15 +14,11 @@
 #include <string.h>
 #include "zmetal.h"
 #include "asasymbp.h"
-#include "zattachx.h"
 #include "zstorage.h"
-#include "zwto.h"
 #include "zutm.h"
 #include "zutm31.h"
-#include "zecb.h"
 #include "zam.h"
-#include "zrecovery.h"
-#include "zecb.h"
+#include "zuttype.h"
 
 #define ZUT_BPXWDYN_SERVICE_FAILURE -2
 
@@ -234,7 +230,7 @@ int ZUTSRCH(const char *parms)
 typedef int (*PGM31)(void *) ATTRIBUTE(amode31);
 typedef int (*PGM64)(void *) ATTRIBUTE(amode64);
 
-int ZUTRUN(const char *program)
+int ZUTRUN(ZDIAG *diag, const char *program)
 {
   int rc = 0;
 
@@ -263,6 +259,8 @@ int ZUTRUN(const char *program)
   }
   else
   {
+    diag->e_msg_len = sprintf(diag->e_msg, "Load failure for program '%s', not found", name_truncated);
+    diag->detail_rc = ZUT_RTNCD_LOAD_FAILURE;
     return RTNCD_FAILURE;
   }
 

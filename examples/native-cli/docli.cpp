@@ -42,9 +42,7 @@ int handle_awesome(InvocationContext &context)
        it != dynamic_args.end(); ++it)
   {
     const std::pair<const std::string, plugin::Argument> &arg = *it;
-    std::cout << "argument is dynamic" << std::endl;
-    std::cout << "arg: " << arg.first << " " << std::endl;
-    arg.second.print(std::cout);
+    std::cout << "dynamic arg: " << arg.first << " " << arg.second.get_string_value() << std::endl;
   }
   return 0;
 }
