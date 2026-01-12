@@ -472,7 +472,7 @@ void register_commands(parser::Command &root_command)
   tool_run_cmd->add_keyword_arg("out-dd",
                                 make_aliases("--out-dd", "--odd"),
                                 "output ddname", ArgType_Single, false);
-  tool_run_cmd->enable_dynamic_keywords(ArgType_Single, "dd", "ddname to allocate, e.g. --sysprint \"sysout=*\" --sysut1 \"da(MY.DATA.SET) shr msg(2)\"");
+  tool_run_cmd->enable_dynamic_keywords(ArgType_Single, "dd", "ddname(s) to allocate, e.g. --sysprint \"sysout=*\" --sysut1 \"da(MY.DATA.SET) shr msg(2)\"");
   tool_run_cmd->set_handler(handle_tool_run);
   tool_cmd->add_command(tool_run_cmd);
 
