@@ -36,8 +36,12 @@ MTL_BASE_OPTS=metal,\
  nose,\
  warn64,\
  optimize(2)
+MTL_LIST_OPTS=,inlrpt,list,aggregate
 
-MTL_OPTS=$(MTL_BASE_OPTS),inlrpt,list,aggregate
+MTL_OPTS=$(MTL_BASE_OPTS)
+.IF $(BuildType) == DEBUG
+MTL_OPTS+=$(MTL_LIST_OPTS)
+.END
 MTL_OPTS64=$(MTL_OPTS),lp64
 MTL_FLAGS=-S -W "c,$(MTL_OPTS)"
 MTL_FLAGS64=-S -W "c,$(MTL_OPTS64)"
