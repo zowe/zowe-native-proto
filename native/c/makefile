@@ -20,8 +20,8 @@ MACLIBS= -I../asmmac $(MACLIBS_BASE)
 MTL_HEADERS=$(MTL_HEADERS_BASE) -I./chdsect
 
 C_FLAGS=$(C_FLAGS_BASE) -I./chdsect
-CXXLANG_FLAGS=$(CXXLANG_FLAGS_BASE) -I./chdsect
-SWIG_FLAGS=$(SWIG_FLAGS_BASE) -I./chdsect
+CXXLANG_FLAGS=$(CXXLANG_FLAGS_BASE) -I./chdsect -MMD -MP
+SWIG_FLAGS=$(SWIG_FLAGS_BASE) -I./chdsect -MMD -MP
 DLL_CPP_FLAGS=$(DLL_CPP_FLAGS_BASE) -I./chdsect
 CPP_FLAGS=$(CPP_FLAGS_BASE) -I./chdsect
 
@@ -71,10 +71,13 @@ COMMAND_OBJS = $(OUT_DIR)/commands/console.o \
 	$(OUT_DIR)/commands/uss.o \
 	$(OUT_DIR)/commands/tool.o
 
+XLCLANG_EXTENDER_OBJS = $(OUT_DIR_CXXLANG)/zut.o $(OUT_DIR_CXXLANG)/zds.o $(OUT_DIR_CXXLANG)/zjb.o $(OUT_DIR_CXXLANG)/zcn.o $(OUT_DIR_CXXLANG)/zusf.o $(OUT_DIR_CXXLANG)/ztso.o
+SWIG_EXTENDER_OBJS = $(OUT_DIR_SWIG)/zut.o $(OUT_DIR_SWIG)/zds.o $(OUT_DIR_SWIG)/zjb.o $(OUT_DIR_SWIG)/zcn.o $(OUT_DIR_SWIG)/zusf.o $(OUT_DIR_SWIG)/ztso.o
+
 all: libzut.so libzut.a libzds.so libzds.a libzusf.so libzusf.a libzcn.so libzcn.a libzjb.so libzjb.a zowex zoweax
-xlclang-extenders: $(OUT_DIR_CXXLANG)/zut.o $(OUT_DIR_CXXLANG)/zds.o $(OUT_DIR_CXXLANG)/zjb.o $(OUT_DIR_CXXLANG)/zcn.o $(OUT_DIR_CXXLANG)/zusf.o $(OUT_DIR_CXXLANG)/ztso.o
+xlclang-extenders: $(XLCLANG_EXTENDER_OBJS)
 # SWIG extenders: compile C++ files with SWIG macro defined for Python bindings
-swig-extenders: $(OUT_DIR_SWIG)/zut.o $(OUT_DIR_SWIG)/zds.o $(OUT_DIR_SWIG)/zjb.o $(OUT_DIR_SWIG)/zcn.o $(OUT_DIR_SWIG)/zusf.o $(OUT_DIR_SWIG)/ztso.o
+swig-extenders: $(SWIG_EXTENDER_OBJS)
 zowed-tests:
 	 $(MAKE) -c ../zowed/test
 tests: zowed-tests
@@ -395,3 +398,6 @@ clean:
 	rm -f *.lst
 	rm -f CEEDUMP.*
 	rm -rf $(OUT_DIR)
+
+# Include auto-generated dependency files for xlclang
+.INCLUDE .IGNORE: $(XLCLANG_EXTENDER_OBJS:.o=.d) $(SWIG_EXTENDER_OBJS:.o=.d)
