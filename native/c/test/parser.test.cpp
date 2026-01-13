@@ -581,5 +581,38 @@ void parser_tests()
                Expect(pass[1] == "--").ToBe(true);
                Expect(pass[2] == "arg2").ToBe(true);
              });
+
+             it("makes passthrough arguments accessible in command handler", []() {
+               static bool handler_called = false;
+               static std::vector<std::string> captured_passthrough;
+
+               handler_called = false;
+               captured_passthrough.clear();
+
+               auto handler = [](plugin::InvocationContext &context) -> int {
+                 handler_called = true;
+                 captured_passthrough = context.get_passthrough_args();
+                 return 0;
+               };
+
+               ArgumentParser arg_parser("prog", "passthrough handler sample");
+               Command &root = arg_parser.get_root_command();
+               root.add_keyword_arg("verbose", make_aliases("-v"), "verbose mode", ArgType_Flag);
+               root.enable_passthrough("Arguments to pass through");
+               root.set_handler(handler);
+
+               std::vector<std::string> raw = {"prog", "-v", "--", "ls", "-la", "/tmp"};
+               std::vector<char *> argv = to_argv(raw);
+
+               ParseResult result =
+                   arg_parser.parse(static_cast<int>(argv.size()), argv.data());
+
+               Expect(result.status).ToBe(ParseResult::ParserStatus_Success);
+               Expect(handler_called).ToBe(true);
+               Expect(captured_passthrough.size()).ToBe(static_cast<size_t>(3));
+               Expect(captured_passthrough[0] == "ls").ToBe(true);
+               Expect(captured_passthrough[1] == "-la").ToBe(true);
+               Expect(captured_passthrough[2] == "/tmp").ToBe(true);
+             });
              }); });
 }

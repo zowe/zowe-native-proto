@@ -1011,10 +1011,12 @@ class InvocationContext : public Io
 public:
   InvocationContext(const std::string &command_path,
                     const ArgumentMap &args,
+                    const std::vector<std::string> &passthrough_args = std::vector<std::string>(),
                     std::istream *in_stream = nullptr,
                     std::ostream *out_stream = nullptr,
                     std::ostream *err_stream = nullptr)
-      : Io(args, in_stream, out_stream, err_stream), m_command_path(command_path)
+      : Io(args, in_stream, out_stream, err_stream), m_command_path(command_path),
+        m_passthrough_args(passthrough_args)
   {
   }
 
@@ -1023,8 +1025,21 @@ public:
     return m_command_path;
   }
 
+  // Check if passthrough arguments were provided (after --)
+  bool has_passthrough() const
+  {
+    return !m_passthrough_args.empty();
+  }
+
+  // Get the passthrough arguments (arguments after -- delimiter)
+  const std::vector<std::string> &get_passthrough_args() const
+  {
+    return m_passthrough_args;
+  }
+
 private:
   std::string m_command_path;
+  std::vector<std::string> m_passthrough_args;
 };
 
 class CommandProviderImpl

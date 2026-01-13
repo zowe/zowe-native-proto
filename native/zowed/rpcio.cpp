@@ -16,7 +16,7 @@
 using std::string;
 
 MiddlewareContext::MiddlewareContext(const string &command_path, const plugin::ArgumentMap &args)
-    : plugin::InvocationContext(command_path, args, &m_input_stream, &m_output_stream, &m_error_stream)
+    : plugin::InvocationContext(command_path, args, std::vector<std::string>(), &m_input_stream, &m_output_stream, &m_error_stream)
 {
 }
 
