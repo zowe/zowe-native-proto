@@ -276,7 +276,8 @@ string parse_escape_chars(string &input)
   std::string result;
   result.reserve(input.size());
 
-  for (size_t i = 0; i < input.size(); ++i)
+  size_t i = 0;
+  while (i < input.size())
   {
     if (input[i] == '\\' && i + 1 < input.size())
     {
@@ -285,29 +286,32 @@ string parse_escape_chars(string &input)
       {
       case 'n':
         result += '\n';
-        ++i;
+        i += 2;
         break;
       case 't':
         result += '\t';
-        ++i;
+        i += 2;
         break;
       case '\\':
         result += '\\';
-        ++i;
+        i += 2;
         break;
       case '"':
         result += '"';
-        ++i;
+        i += 2;
         break;
       default:
-        // Unknown escape sequence, keep the backslash
+        // Unknown escape sequence, keep the backslash and the following character
         result += input[i];
+        result += next;
+        i += 2;
         break;
       }
     }
     else
     {
       result += input[i];
+      ++i;
     }
   }
 
