@@ -635,9 +635,9 @@ int handle_data_set_write(InvocationContext &context)
       data.assign(begin, end);
 
       // Remove trailing newline if present to avoid extra empty record on mainframe
-      if (!data.empty() && data.back() == '\n')
+      if (!data.empty() && data[data.length() - 1] == '\n')
       {
-        data.pop_back();
+        data.erase(data.length() - 1);
       }
     }
     else
@@ -742,10 +742,13 @@ int handle_data_set_compress(InvocationContext &context)
 
   if (rc != RTNCD_SUCCESS)
   {
-    context.error_stream() << "Error: compress failed" << endl;
     if (zds.diag.e_msg_len > 0)
     {
-      context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
+      context.error_stream() << "Error: " << zds.diag.e_msg << endl;
+    }
+    else
+    {
+      context.error_stream() << "Error: compress failed" << endl;
     }
     return RTNCD_FAILURE;
   }

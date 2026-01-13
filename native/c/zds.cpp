@@ -164,12 +164,20 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2)
 
     /*
      * Logic Parity with Zowe SDK:
-     * If the source is a PDS or a Member, but the target name does not specify a member,
+     * If the source is a Member, but the target name does not specify a member,
      * we must force the target to be a Sequential (PS) data set.
      */
-    if (info2.member_name.empty() && (info1.type == ZDS_TYPE_PDS || info1.type == ZDS_TYPE_MEMBER))
+    if (info2.member_name.empty() && info1.type == ZDS_TYPE_MEMBER)
     {
       parm += " DSORG(PS) DIR(0)";
+    }
+    /*
+     * If the target specifies a member but the source is Sequential (or we are creating from LIKE a Sequential),
+     * we must force the target to be a Partitioned (PO) data set.
+     */
+    else if (!info2.member_name.empty() && info1.type == ZDS_TYPE_PS)
+    {
+      parm += " DSORG(PO) DIR(10)";
     }
 
     rc = zut_bpxwdyn(parm, &code, create_resp);
@@ -190,16 +198,16 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2)
   if (is_pds_full_copy)
   {
     utility = "IEBCOPY";
-    dds.push_back("alloc dd(input) da('" + info1.base_dsn + "') shr");
-    dds.push_back("alloc dd(output) da('" + info2.base_dsn + "') shr");
+    dds.push_back("alloc dd(SYSUT1) da('" + info1.base_dsn + "') shr");
+    dds.push_back("alloc dd(SYSUT2) da('" + info2.base_dsn + "') shr");
     dds.push_back("alloc dd(sysin) lrecl(80) recfm(f,b) blksize(80)");
   }
   else
   {
     utility = "IEBGENER";
-    dds.push_back("alloc dd(sysut1) da('" + dsn1 + "') shr");
-    dds.push_back("alloc dd(sysut2) da('" + dsn2 + "') shr");
-    dds.push_back("alloc dd(sysin) dummy lrecl(80) recfm(f,b) blksize(80)");
+    dds.push_back("alloc dd(SYSUT1) da('" + dsn1 + "') shr");
+    dds.push_back("alloc dd(SYSUT2) da('" + dsn2 + "') old keep");
+    dds.push_back("alloc dd(sysin) dummy");
   }
   dds.push_back("alloc dd(sysprint) lrecl(121) recfm(f,b) blksize(121)");
 
@@ -211,7 +219,7 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2)
 
   if (is_pds_full_copy)
   {
-    rc = zds_write_to_dd(zds, "sysin", "        COPY OUTDD=output,INDD=input");
+    rc = zds_write_to_dd(zds, "sysin", "        COPY OUTDD=SYSUT2,INDD=SYSUT1");
     if (0 != rc)
     {
       zut_free_dynalloc_dds(zds->diag, dds);
@@ -241,15 +249,9 @@ int zds_compress_dsn(ZDS *zds, const string &dsn)
   ZDSTypeInfo info = {};
   zds_get_type_info(dsn, info);
 
-  if (!info.exists)
+  if (!info.exists || info.type != ZDS_TYPE_PDS || info.entry.dsntype == "LIBRARY")
   {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Data set '%s' not found", dsn.c_str());
-    return RTNCD_FAILURE;
-  }
-
-  if (info.type != ZDS_TYPE_PDS || info.entry.dsntype == "LIBRARY")
-  {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Data set '%s' is not a PDS (PDSEs cannot be compressed)", dsn.c_str());
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "data set '%s' is not a PDS", dsn.c_str());
     return RTNCD_FAILURE;
   }
 
