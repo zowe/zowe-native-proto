@@ -483,5 +483,103 @@ void parser_tests()
                Expect(result.get_value<std::string>("name", ""))
                    .ToBe("cli");
              });
+             });
+
+             describe("passthrough arguments", []() -> void
+                      {
+             it("captures arguments after -- delimiter", []() {
+               ArgumentParser arg_parser("prog", "passthrough sample");
+               Command &root = arg_parser.get_root_command();
+               root.add_positional_arg("target", "target to run", ArgType_Single, true);
+               root.enable_passthrough("Arguments to pass through");
+
+               std::vector<std::string> raw = {"prog", "my-target", "--", "ls", "-la"};
+               std::vector<char *> argv = to_argv(raw);
+
+               ParseResult result =
+                   arg_parser.parse(static_cast<int>(argv.size()), argv.data());
+
+               Expect(result.status).ToBe(ParseResult::ParserStatus_Success);
+               Expect(result.get_value<std::string>("target", "")).ToBe("my-target");
+               Expect(result.has_passthrough()).ToBe(true);
+               const std::vector<std::string> &pass = result.get_passthrough_args();
+               Expect(pass.size()).ToBe(static_cast<size_t>(2));
+               Expect(pass[0] == "ls").ToBe(true);
+               Expect(pass[1] == "-la").ToBe(true);
+             });
+
+             it("preserves flag-like arguments after -- as literals", []() {
+               ArgumentParser arg_parser("prog", "passthrough sample");
+               Command &root = arg_parser.get_root_command();
+               root.add_keyword_arg("verbose", make_aliases("-v"), "verbose mode", ArgType_Flag);
+               root.enable_passthrough("Passthrough args");
+
+               std::vector<std::string> raw = {"prog", "-v", "--", "--help", "-x"};
+               std::vector<char *> argv = to_argv(raw);
+
+               ParseResult result =
+                   arg_parser.parse(static_cast<int>(argv.size()), argv.data());
+
+               Expect(result.status).ToBe(ParseResult::ParserStatus_Success);
+               Expect(result.get_value<bool>("verbose")).ToBe(true);
+               const std::vector<std::string> &pass = result.get_passthrough_args();
+               Expect(pass.size()).ToBe(static_cast<size_t>(2));
+               Expect(pass[0] == "--help").ToBe(true);
+               Expect(pass[1] == "-x").ToBe(true);
+             });
+
+             it("allows empty passthrough arguments after --", []() {
+               ArgumentParser arg_parser("prog", "passthrough sample");
+               Command &root = arg_parser.get_root_command();
+               root.enable_passthrough("Passthrough args");
+
+               std::vector<std::string> raw = {"prog", "--"};
+               std::vector<char *> argv = to_argv(raw);
+
+               ParseResult result =
+                   arg_parser.parse(static_cast<int>(argv.size()), argv.data());
+
+               Expect(result.status).ToBe(ParseResult::ParserStatus_Success);
+               Expect(result.has_passthrough()).ToBe(false);  // empty but valid
+               Expect(result.get_passthrough_args().empty()).ToBe(true);
+             });
+
+             it("errors when -- is used without passthrough enabled", []() {
+               ArgumentParser arg_parser("prog", "passthrough sample");
+               Command &root = arg_parser.get_root_command();
+               root.add_positional_arg("target", "target", ArgType_Single, true);
+               // Note: passthrough NOT enabled
+
+               std::vector<std::string> raw = {"prog", "target", "--", "extra"};
+               std::vector<char *> argv = to_argv(raw);
+
+               ParseResult result;
+               {
+                 test_utils::ErrorStreamCapture error_capture;
+                 result = arg_parser.parse(static_cast<int>(argv.size()), argv.data());
+               }
+
+               Expect(result.status).ToBe(ParseResult::ParserStatus_ParseError);
+               Expect(result.error_message.find("--")).Not().ToBe(std::string::npos);
+             });
+
+             it("treats subsequent -- as literal strings after first", []() {
+               ArgumentParser arg_parser("prog", "passthrough sample");
+               Command &root = arg_parser.get_root_command();
+               root.enable_passthrough("Passthrough args");
+
+               std::vector<std::string> raw = {"prog", "--", "arg1", "--", "arg2"};
+               std::vector<char *> argv = to_argv(raw);
+
+               ParseResult result =
+                   arg_parser.parse(static_cast<int>(argv.size()), argv.data());
+
+               Expect(result.status).ToBe(ParseResult::ParserStatus_Success);
+               const std::vector<std::string> &pass = result.get_passthrough_args();
+               Expect(pass.size()).ToBe(static_cast<size_t>(3));
+               Expect(pass[0] == "arg1").ToBe(true);
+               Expect(pass[1] == "--").ToBe(true);
+               Expect(pass[2] == "arg2").ToBe(true);
+             });
              }); });
 }
