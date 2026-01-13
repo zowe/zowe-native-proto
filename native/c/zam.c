@@ -692,10 +692,6 @@ static int update_ispf_statistics(ZDIAG *PTR32 diag, IO_CTRL *PTR32 ioc)
 
       memcpy(&statsp->modified_date_century, &datel, sizeof(datel));
 
-      diag->e_msg_len = sprintf(diag->e_msg, "Time: %d-%d-%d %d:%d:%d", timel.times.HH, timel.times.MM, timel.times.SS, datel);
-      diag->detail_rc = ZDS_RTNCD_SERVICE_FAILURE;
-      diag->service_rc = rc;
-      return RTNCD_FAILURE;
       statsp->modified_time_hours = timel.times.HH;
       statsp->modified_time_minutes = timel.times.MM;
       statsp->modified_time_seconds = timel.times.SS;
