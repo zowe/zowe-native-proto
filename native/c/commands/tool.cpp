@@ -370,12 +370,11 @@ int handle_tool_run(InvocationContext &context)
 
   if (0 != rc)
   {
-    context.error_stream() << "Error: program '" << program << "' ended with rc: '" << rc << "'" << endl;
     if (diag.e_msg_len > 0)
     {
+      context.error_stream() << "Error: program '" << program << "' ended with rc: '" << rc << "'" << endl;
       context.error_stream() << "  Details: " << diag.e_msg << endl;
     }
-    rc = RTNCD_FAILURE;
   }
 
   string outdd = context.get<std::string>("out-dd", "");
