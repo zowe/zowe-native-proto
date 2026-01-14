@@ -23,11 +23,9 @@ export default class RenameDataSetHandler extends SshBaseHandler {
         const dsMessage = `Dataset "${dsnameBefore}" renamed to "${dsnameAfter}"`;
         params.response.data.setMessage(dsMessage);
         params.response.data.setObj(response);
-        console.log(response.success);
-        // if (response.success) {
-        //     params.response.console.log(dsMessage);
-        // }
-        params.response.console.log(dsMessage);
+        if (response.success) {
+            params.response.console.log(dsMessage);
+        }
         return response;
     }
 }
