@@ -113,6 +113,7 @@ void register_job_commands(CommandDispatcher &dispatcher)
   dispatcher.register_command("submitJcl",
                               CommandBuilder(job::handle_job_submit_jcl)
                                   .validate<SubmitJclRequest, SubmitJclResponse>()
+                                  .set_default("encoding", "IBM-1047")
                                   .write_stdin("jcl", true));
   dispatcher.register_command("submitJob",
                               create_ds_builder(job::handle_job_submit)

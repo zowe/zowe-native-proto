@@ -48,13 +48,6 @@ int zut_search(std::string input);
 int zut_run(std::string input);
 
 /**
- * @brief Run a specified command or operation in 24-bit mode
- * @param input The command string to execute
- * @return Return code (0 for success, non-zero for error)
- */
-int zut_run24(std::string input);
-
-/**
  * @brief Substitute a symbol in a string
  * @param symbol The symbol to substitute
  * @param result Reference to a string where the result will be stored
@@ -142,9 +135,18 @@ uint32_t zut_calc_adler32_checksum(const std::string &input);
  * @param cd iconv conversion descriptor
  * @param data Reference to ZConvData containing buffers and sizes
  * @param diag Reference to diagnostic information structure
+ * @param flush_state If true, flush the shift state for stateful encodings (e.g., IBM-939). Set to true on the last chunk.
  * @return Number of bytes converted or error code
  */
-size_t zut_iconv(iconv_t cd, ZConvData &data, ZDIAG &diag);
+size_t zut_iconv(iconv_t cd, ZConvData &data, ZDIAG &diag, bool flush_state = true);
+
+/**
+ * @brief Flush the shift state for stateful encodings (e.g., IBM-939) - simplified version
+ * @param cd iconv conversion descriptor
+ * @param diag Reference to diagnostic information structure
+ * @return Vector containing the flushed bytes (empty on error)
+ */
+std::vector<char> zut_iconv_flush(iconv_t cd, ZDIAG &diag);
 
 /**
  * @brief Build an ETag string from file modification time and size
@@ -164,7 +166,18 @@ std::string zut_build_etag(const size_t mtime, const size_t byte_size);
  */
 std::string zut_encode(const std::string &input_str, const std::string &from_encoding, const std::string &to_encoding, ZDIAG &diag);
 
-std::vector<char> zut_encode(const char *input_str, size_t input_size, const std::string &from_encoding, const std::string &to_encoding, ZDIAG &diag);
+std::vector<char> zut_encode(const char *input_str, const size_t input_size, const std::string &from_encoding, const std::string &to_encoding, ZDIAG &diag);
+
+/**
+ * @brief Encode a string using an existing iconv descriptor
+ * @param input_str The input string
+ * @param cd iconv descriptor (caller manages opening, flushing, and closing)
+ * @param diag Reference to diagnostic information structure
+ * @return The encoded string
+ */
+std::string zut_encode(const std::string &input_str, iconv_t cd, ZDIAG &diag);
+
+std::vector<char> zut_encode(const char *input_str, const size_t input_size, iconv_t cd, ZDIAG &diag);
 
 /**
  * @brief Format a vector of strings as a CSV line
