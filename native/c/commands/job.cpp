@@ -484,7 +484,7 @@ int job_submit_common(InvocationContext &context, string jcl, string &jobid, str
   }
 
   ZJob job = {};
-  rc = zjb_view(&zjb, jobid, job);
+  rc = zjb_view(&zjb, string(zjb.correlator, sizeof(zjb.correlator)), job);
   if (0 != rc)
   {
     context.error_stream() << "Error: could not get job status for: '" << jobid << "' rc: '" << rc << "'" << endl;
