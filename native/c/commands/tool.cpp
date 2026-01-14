@@ -348,6 +348,14 @@ int handle_tool_run(InvocationContext &context)
     if (!out.is_open())
     {
       context.error_stream() << "Error: could not open input '" << ddname << "'" << endl;
+      if (dds.size() > 0)
+      {
+        context.error_stream() << "  Allocations: " << endl;
+        for (vector<string>::iterator it = dds.begin(); it != dds.end(); ++it)
+        {
+          context.error_stream() << "    " << *it << endl;
+        }
+      }
       zut_free_dynalloc_dds(diag, dds);
       return RTNCD_FAILURE;
     }
@@ -374,6 +382,14 @@ int handle_tool_run(InvocationContext &context)
     {
       context.error_stream() << "Error: program '" << program << "' ended with rc: '" << rc << "'" << endl;
       context.error_stream() << "  Details: " << diag.e_msg << endl;
+      if (dds.size() > 0)
+      {
+        context.error_stream() << "  Allocations: " << endl;
+        for (vector<string>::iterator it = dds.begin(); it != dds.end(); ++it)
+        {
+          context.error_stream() << "    " << *it << endl;
+        }
+      }
     }
   }
 
@@ -385,6 +401,14 @@ int handle_tool_run(InvocationContext &context)
     if (!in.is_open())
     {
       context.error_stream() << "Error: could not open output '" << ddname << "'" << endl;
+      if (dds.size() > 0)
+      {
+        context.error_stream() << "  Allocations: " << endl;
+        for (vector<string>::iterator it = dds.begin(); it != dds.end(); ++it)
+        {
+          context.error_stream() << "    " << *it << endl;
+        }
+      }
       zut_free_dynalloc_dds(diag, dds);
       return RTNCD_FAILURE;
     }
