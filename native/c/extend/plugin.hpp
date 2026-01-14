@@ -1006,17 +1006,34 @@ inline bool Io::get(const std::string &key, const bool &default_value)
   return ptr ? *ptr : default_value;
 }
 
+struct ContextArgs
+{
+  std::string command_path;
+  ArgumentMap args;
+  std::vector<std::string> passthrough_args;
+  std::istream *in_stream;
+  std::ostream *out_stream;
+  std::ostream *err_stream;
+
+  ContextArgs(const std::string &cmd_path,
+              const ArgumentMap &arguments,
+              const std::vector<std::string> &passthrough = std::vector<std::string>(),
+              std::istream *input = nullptr,
+              std::ostream *output = nullptr,
+              std::ostream *error = nullptr)
+      : command_path(cmd_path), args(arguments), passthrough_args(passthrough),
+        in_stream(input), out_stream(output), err_stream(error)
+  {
+  }
+};
+
 class InvocationContext : public Io
 {
 public:
-  InvocationContext(const std::string &command_path,
-                    const ArgumentMap &args,
-                    const std::vector<std::string> &passthrough_args = std::vector<std::string>(),
-                    std::istream *in_stream = nullptr,
-                    std::ostream *out_stream = nullptr,
-                    std::ostream *err_stream = nullptr)
-      : Io(args, in_stream, out_stream, err_stream), m_command_path(command_path),
-        m_passthrough_args(passthrough_args)
+  explicit InvocationContext(const ContextArgs &context_args)
+      : Io(context_args.args, context_args.in_stream, context_args.out_stream, context_args.err_stream),
+        m_command_path(context_args.command_path),
+        m_passthrough_args(context_args.passthrough_args)
   {
   }
 
