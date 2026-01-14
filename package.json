@@ -1,6 +1,6 @@
 {
   "name": "zowe-native-proto",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "private": true,
   "scripts": {
     "all": "npm run z:rebuild && concurrently \"npm run z:artifacts\" \"npm run build\"",
