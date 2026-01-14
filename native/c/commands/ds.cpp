@@ -705,7 +705,6 @@ int handle_data_set_rename(InvocationContext &context)
   string dsnBefore = context.get<string>("dsname-before", "");
   string dsnAfter = context.get<string>("dsname-after", "");
   ZDS zds = {};
-  context.error_stream() << " before='" << dsnBefore << "' after='" << dsnAfter << "'" << endl;
 
   rc = zds_rename_dsn(&zds, dsnBefore, dsnAfter);
 
