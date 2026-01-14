@@ -588,7 +588,7 @@ void zowex_job_list_tests(vector<string> &_jobs, vector<string> &_ds, vector<str
                     return;
                   }
 
-                  rc = execute_command_with_output(zowex_command + " job vf " + jobid + " " + file_id, response);
+                  rc = execute_command_with_output(zowex_command + " job vfbi " + jobid + " " + file_id, response);
                   ExpectWithContext(rc, response).ToBe(0);
                   Expect(response).ToContain("IEFBR14");
                 });
