@@ -83,20 +83,14 @@ export class SshJesApi extends SshCommonApi implements MainframeInteraction.IJes
         const response = await (await this.client).jobs.submitJcl({
             jcl: B64String.encode(jcl),
         });
-        const jobname = this.extractJobName(jcl);
-        return { jobid: response.jobId, jobname } as zosjobs.IJob;
+        return { jobid: response.jobId, jobname: response.jobName } as zosjobs.IJob;
     }
 
     public async submitJob(jobDataSet: string): Promise<zosjobs.IJob> {
         const response = await (await this.client).jobs.submitJob({
             dsname: jobDataSet,
         });
-        return this.getJob(response.jobId);
-    }
-
-    private extractJobName(jcl: string): string {
-        const match = jcl.match(/^\/\/([A-Z$#@][A-Z0-9$#@]{0,7})\s+JOB\s/im);
-        return match?.[1] ?? "";
+        return { jobid: response.jobId, jobname: response.jobName } as zosjobs.IJob;
     }
 
     public async deleteJob(_jobname: string, jobid: string): Promise<void> {
