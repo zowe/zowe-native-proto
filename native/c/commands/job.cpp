@@ -502,7 +502,7 @@ int job_submit_common(InvocationContext &context, string jcl, string &jobid, str
   else if (only_correlator)
     context.output_stream() << string(zjb.correlator, sizeof(zjb.correlator)) << endl;
   else
-    context.output_stream() << "Submitted " << identifier << ", " << jobid << endl;
+    context.output_stream() << "Submitted " << identifier << ", " << job.jobname << "(" << jobid << ")" << endl;
 
 #define JOB_STATUS_OUTPUT "OUTPUT"
 #define JOB_STATUS_INPUT "ACTIVE"
