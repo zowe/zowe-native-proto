@@ -6,7 +6,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Recent Changes
 
-- Fixed an issue where connecting to host with an expired password resulted in a ambiguous error. [#732](https://github.com/zowe/zowe-native-proto/issues/732)
+- Fixed an issue where connecting to the host with an expired password resulted in a ambiguous error. [#732](https://github.com/zowe/zowe-native-proto/issues/732)
 - The `submitJcl` and `submitJob` functions in the `SshJesApi` class now return the job name as a property (`jobname`) within the response object. [#733](https://github.com/zowe/zowe-native-proto/issues/733)
 
 ## `0.2.2`
