@@ -1,7 +1,7 @@
 import type { ICommandDefinition } from "@zowe/imperative";
 import { SshSession } from "@zowe/zos-uss-for-zowe-sdk";
 import { Constants } from "../Constants";
-import { RenameDataSetDefinition } from "./data-set/DataSet.defiition";
+import { RenameDataSetDefinition } from "./data-set/DataSet.definition";
 
 const RenameDefinition: ICommandDefinition = {
     name: "rename",

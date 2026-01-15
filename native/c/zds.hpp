@@ -152,11 +152,11 @@ int zds_delete_dsn(ZDS *zds, std::string dsn);
  * @brief Delete a data set
  *
  * @param zds data set returned attributes and error information
- * @param dsnBefore data set name to rename
- * @param dsnAfter new data set name
+ * @param dsn_Before data set name to rename
+ * @param dsn_After new data set name
  * @return int 0 for success; non zero otherwise
  */
-int zds_rename_dsn(ZDS *zds, std::string dsnBefore, std::string dsnAfter);
+int zds_rename_dsn(ZDS *zds, std::string dsn_Before, std::string dsn_After);
 
 /**
  * @brief Obtain list of members in a z/OS data set
