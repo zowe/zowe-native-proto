@@ -27,6 +27,7 @@ typedef struct
 {
   STATJQTR statjqtr;
   char phase_text[64 + 1];
+  char subsystem[8 + 1];
 } ZJB_JOB_INFO;
 
 #if (defined(__IBMCPP__) || defined(__IBMC__))

@@ -602,6 +602,11 @@ int zjb_list_by_owner(ZJB *zjb, string owner_name, vector<ZJob> &jobs)
 
 int zjb_list_by_owner(ZJB *zjb, string owner_name, string prefix_name, vector<ZJob> &jobs)
 {
+  return zjb_list_by_owner(zjb, owner_name, "", "", jobs);
+}
+
+int zjb_list_by_owner(ZJB *zjb, string owner_name, string prefix_name, string status_name, vector<ZJob> &jobs)
+{
   int rc = 0;
   ZJB_JOB_INFO *PTR64 job_info = nullptr;
   int entries = 0;
@@ -619,6 +624,7 @@ int zjb_list_by_owner(ZJB *zjb, string owner_name, string prefix_name, vector<ZJ
 
   zut_uppercase_pad_truncate(zjb->owner_name, owner_name, sizeof(zjb->owner_name));
   zut_uppercase_pad_truncate(zjb->prefix_name, prefix_name, sizeof(zjb->prefix_name));
+  zut_uppercase_pad_truncate(zjb->status_name, status_name, sizeof(zjb->status_name));
 
   rc = ZJBMLIST(zjb, &job_info, &entries);
   if (RTNCD_SUCCESS != rc && RTNCD_WARNING != rc)
@@ -663,19 +669,25 @@ void zjb_build_job_response(ZJB_JOB_INFO *PTR64 job_info, int entries, vector<ZJ
   {
     char temp_job_name[9] = {0};
     char temp_jobid[9] = {0};
+    char temp_subsystem[9] = {0};
     char temp_job_owner[9] = {0};
+    char temp_job_class[9] = {0};
     char temp_correlator[65] = {0};
 
     strncpy(temp_job_name, (char *)job_info_next[i].statjqtr.sttrname, sizeof(job_info->statjqtr.sttrname));
     strncpy(temp_jobid, (char *)job_info_next[i].statjqtr.sttrjid, sizeof(job_info->statjqtr.sttrjid));
+    strncpy(temp_subsystem, (char *)job_info_next[i].subsystem, sizeof(job_info->subsystem));
     strncpy(temp_job_owner, (char *)job_info_next[i].statjqtr.sttrouid, sizeof(job_info->statjqtr.sttrouid));
+    strncpy(temp_job_class, (char *)job_info_next[i].statjqtr.sttrclas, sizeof(job_info->statjqtr.sttrclas));
     strncpy(temp_correlator, (char *)job_info_next[i].statjqtr.sttrjcor, sizeof(job_info->statjqtr.sttrjcor));
 
     ZJob zjob = {0};
 
     string jobname(temp_job_name);
     string jobid(temp_jobid);
+    string subsystem(temp_subsystem);
     string owner(temp_job_owner);
+    string jobclass(temp_job_class);
     string correlator(temp_correlator);
 
     union cc
@@ -744,10 +756,26 @@ void zjb_build_job_response(ZJB_JOB_INFO *PTR64 job_info, int entries, vector<ZJ
       zjob.retcode = "SEC ERROR";
     }
 
+    if ((unsigned char)job_info_next[i].statjqtr.sttrjtyp == sttrstc)
+    {
+      zjob.type = "STC";
+    }
+    else if ((unsigned char)job_info_next[i].statjqtr.sttrjtyp == sttrtsu)
+    {
+      zjob.type = "TSU";
+    }
+    else
+    {
+      zjob.type = "JOB";
+    }
+
     zjob.jobname = jobname;
     zjob.jobid = jobid;
+    zjob.subsystem = subsystem;
     zjob.owner = owner;
+    zjob.jobclass = jobclass;
     zjob.correlator = correlator;
+    zjob.phase = job_info_next[i].statjqtr.sttrphaz;
 
     jobs.push_back(zjob);
   }

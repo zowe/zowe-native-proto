@@ -28,8 +28,9 @@ int handle_job_list(InvocationContext &context)
 {
   int rc = 0;
   ZJB zjb = {};
-  string owner_name = context.get<string>("owner", "*");
+  string owner_name = context.get<string>("owner");
   string prefix_name = context.get<string>("prefix", "*");
+  string status_name = context.get<string>("status", "*");
   long long max_entries = context.get<long long>("max-entries", 0);
   bool warn = context.get<bool>("warn", true);
 
@@ -39,7 +40,7 @@ int handle_job_list(InvocationContext &context)
   }
 
   vector<ZJob> jobs;
-  rc = zjb_list_by_owner(&zjb, owner_name, prefix_name, jobs);
+  rc = zjb_list_by_owner(&zjb, owner_name, prefix_name, status_name, jobs);
 
   if (RTNCD_SUCCESS == rc || RTNCD_WARNING == rc)
   {
@@ -69,8 +70,23 @@ int handle_job_list(InvocationContext &context)
       string trimmed_name = it->jobname;
       zut_rtrim(trimmed_name);
       entry->set("name", str(trimmed_name));
-      entry->set("retcode", str(it->retcode));
+      string trimmed_subsystem = it->subsystem;
+      zut_rtrim(trimmed_subsystem);
+      if (!trimmed_subsystem.empty())
+        entry->set("subsystem", str(trimmed_subsystem));
+      string trimmed_owner = it->owner;
+      zut_rtrim(trimmed_owner);
+      entry->set("owner", str(trimmed_owner));
       entry->set("status", str(it->status));
+      entry->set("type", str(it->type));
+      string trimmed_class = it->jobclass;
+      zut_rtrim(trimmed_class);
+      entry->set("class", str(trimmed_class));
+      entry->set("retcode", it->retcode.empty() ? nil() : str(it->retcode));
+      string trimmed_correlator = it->correlator;
+      zut_rtrim(trimmed_correlator);
+      entry->set("correlator", str(trimmed_correlator));
+      entry->set("phase", i64(it->phase));
       entries_array->push(entry);
     }
 
@@ -590,6 +606,7 @@ void register_commands(parser::Command &root_command)
   job_list_cmd->add_alias("ls");
   job_list_cmd->add_keyword_arg("owner", make_aliases("--owner", "-o"), "filter by owner", ArgType_Single, false);
   job_list_cmd->add_keyword_arg("prefix", make_aliases("--prefix", "-p"), "filter by prefix", ArgType_Single, false);
+  job_list_cmd->add_keyword_arg("status", make_aliases("--status", "-s"), "filter by status", ArgType_Single, false);
   job_list_cmd->add_keyword_arg(MAX_ENTRIES);
   job_list_cmd->add_keyword_arg(WARN);
   job_list_cmd->add_keyword_arg(RESPONSE_FORMAT_CSV);
