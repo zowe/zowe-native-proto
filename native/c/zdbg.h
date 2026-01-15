@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <ctype.h>
 #include "zutm.h"
+#include "zwto.h"
 
 typedef void (*zut_print_func)(const char *fmt);
 
@@ -132,6 +133,17 @@ static void zut_dump_storage_common(const char *title, const void *data, int siz
   cb_print(buf);
   memset(buf, 0, sizeof(buf));
   len = 0;
+}
+
+// example usage: zut_dump_storage_common("jprhdr", jprhdr, sizeof(JPRHDR), 16, 0, zut_print_debug);
+static void zut_print_debug(const char *fmt)
+{
+  zwto_debug(fmt);
+}
+
+static void zut_dump_storage_wto(const char *title, const void *data, int size)
+{
+  zut_dump_storage_common(title, data, size, 16, 0, zut_print_debug);
 }
 
 static void zut_dump_storage(const char *title, const void *data, int size, zut_print_func cb_print)
