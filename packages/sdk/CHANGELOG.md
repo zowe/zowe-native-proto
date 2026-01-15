@@ -4,6 +4,10 @@ All notable changes to the Client code for "zowe-native-proto-sdk" are documente
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+
+- The `submitJcl` and `submitJob` functions in the `SshJesApi` class now return the job name as a property (`jobname`) within the response object. [#733](https://github.com/zowe/zowe-native-proto/issues/733)
+
 ## `0.2.2`
 
 - Fixed an issue where the deploy directory was not created recursively when a non-existent multi-level directory was submitted. [#705](https://github.com/zowe/zowe-native-proto/pull/705)

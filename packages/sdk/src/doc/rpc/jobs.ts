@@ -157,6 +157,10 @@ export interface SubmitJclResponse extends common.CommandResponse {
      * The ID of the new job
      */
     jobId: string;
+    /**
+     * The name of the new job
+     */
+    jobName: string;
 }
 
 export interface SubmitJobRequest extends common.CommandRequest<"submitJob"> {
