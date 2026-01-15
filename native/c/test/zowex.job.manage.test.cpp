@@ -297,7 +297,7 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                   ExpectWithContext(rc, response).ToBe(0);
 
                   string duplicate_response;
-                  rc = execute_command_with_output(zowex_command + " job view-file " + dsn, duplicate_response);
+                  rc = execute_command_with_output(zowex_command + " job view-file " + dsn + " --encoding ISO8859-1", duplicate_response);
                   ExpectWithContext(rc, duplicate_response).ToBe(0);
                   Expect(duplicate_response).ToBe(response);
                 });
