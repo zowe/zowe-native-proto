@@ -483,6 +483,15 @@ int job_submit_common(InvocationContext &context, string jcl, string &jobid, str
     return RTNCD_FAILURE;
   }
 
+  ZJob job = {};
+  rc = zjb_view(&zjb, string(zjb.correlator, sizeof(zjb.correlator)), job);
+  if (0 != rc)
+  {
+    context.error_stream() << "Error: could not get job status for: '" << jobid << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << "  Details: " << zjb.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
   bool only_jobid = context.get<bool>("only-jobid", false);
   bool only_correlator = context.get<bool>("only-correlator", false);
   string wait = context.get<std::string>("wait", "");
@@ -493,7 +502,7 @@ int job_submit_common(InvocationContext &context, string jcl, string &jobid, str
   else if (only_correlator)
     context.output_stream() << string(zjb.correlator, sizeof(zjb.correlator)) << endl;
   else
-    context.output_stream() << "Submitted " << identifier << ", " << jobid << endl;
+    context.output_stream() << "Submitted " << identifier << ", " << job.jobname << "(" << jobid << ")" << endl;
 
 #define JOB_STATUS_OUTPUT "OUTPUT"
 #define JOB_STATUS_INPUT "ACTIVE"
@@ -516,6 +525,7 @@ int job_submit_common(InvocationContext &context, string jcl, string &jobid, str
 
   const auto result = obj();
   result->set("jobId", str(jobid));
+  result->set("jobName", str(job.jobname));
   context.set_object(result);
 
   return rc;
