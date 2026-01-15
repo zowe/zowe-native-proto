@@ -553,7 +553,7 @@ void zowex_job_list_tests(vector<string> &_jobs, vector<string> &_ds, vector<str
                   _jobs.push_back(jobid);
                 });
 
-             it("should use 'vf' alias for view-file command",
+             it("should use 'vfbi' alias for view-file-by-id command",
                 [&]()
                 {
                   string jcl = "//IEFBR14 JOB (IZUACCT),TEST,REGION=0M\n//RUN EXEC PGM=IEFBR14";
@@ -588,7 +588,7 @@ void zowex_job_list_tests(vector<string> &_jobs, vector<string> &_ds, vector<str
                     return;
                   }
 
-                  rc = execute_command_with_output(zowex_command + " job vf " + jobid + " " + file_id, response);
+                  rc = execute_command_with_output(zowex_command + " job vfbi " + jobid + " " + file_id, response);
                   ExpectWithContext(rc, response).ToBe(0);
                   Expect(response).ToContain("IEFBR14");
                 });
