@@ -4,6 +4,10 @@ All notable changes to the Client code for "zowe-native-proto-sdk" are documente
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Recent Changes
+
+- Fixed an issue where connecting to host with an expired password resulted in a ambiguous error. [#732](https://github.com/zowe/zowe-native-proto/issues/732)
+
 ## `0.2.2`
 
 - Fixed an issue where the deploy directory was not created recursively when a non-existent multi-level directory was submitted. [#705](https://github.com/zowe/zowe-native-proto/pull/705)

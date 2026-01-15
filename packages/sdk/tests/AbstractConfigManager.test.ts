@@ -868,6 +868,21 @@ describe("AbstractConfigManager", async () => {
             expect(result).toBeUndefined();
         });
 
+        it("should return undefined if connection attempt is made with an expired password", async () => {
+            vi.spyOn(testManager, "showInputBox").mockResolvedValue("newUser");
+            const errorText =
+                "FOTS1668 WARNING: Your password has expired.\nFOTS1669 Password change required but no TTY available.";
+            vi.spyOn(testManager as any, "attemptConnection").mockRejectedValue(new Error(errorText));
+            const showMessageSpy = vi.spyOn(testManager, "showMessage");
+            const result = await (testManager as any).validateConfig(
+                { name: "ssh1", hostname: "lpar1.com", port: 22, user: "badUser", password: "expired" },
+                true,
+            );
+
+            expect(showMessageSpy).toHaveBeenCalledWith(`Error: ${errorText}`, MESSAGE_TYPE.ERROR);
+            expect(result).toBeUndefined();
+        });
+
         it("should clear privateKey and keyPassphrase after 3 failed passphrase attempts", async () => {
             vi.spyOn(testManager, "showInputBox").mockResolvedValue("wrongPass"); // always fails
             vi.spyOn(testManager as any, "attemptConnection").mockRejectedValue(new Error("integrity check failed"));
