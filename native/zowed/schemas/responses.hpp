@@ -237,76 +237,88 @@ struct SubmitJclResponse
 ZJSON_SCHEMA(SubmitJclResponse,
              FIELD_REQUIRED(success, BOOL),
              FIELD_REQUIRED(jobId, STRING));
+    FIELD_REQUIRED(success, BOOL),
+    FIELD_REQUIRED(jobId, STRING),
+    FIELD_REQUIRED(jobName, STRING)
+);
 
-struct SubmitJobResponse
-{
-};
-ZJSON_SCHEMA(SubmitJobResponse,
-             FIELD_REQUIRED(success, BOOL),
-             FIELD_REQUIRED(jobId, STRING));
+    struct SubmitJobResponse
+    {
+    };
+    ZJSON_SCHEMA(SubmitJobResponse,
+                 FIELD_REQUIRED(success, BOOL),
+                 FIELD_REQUIRED(jobId, STRING));
+    FIELD_REQUIRED(success, BOOL),
+    FIELD_REQUIRED(jobId, STRING),
+    FIELD_REQUIRED(jobName, STRING)
+);
 
-struct SubmitUssResponse
-{
-};
-ZJSON_SCHEMA(SubmitUssResponse,
-             FIELD_REQUIRED(success, BOOL),
-             FIELD_REQUIRED(jobId, STRING));
+    struct SubmitUssResponse
+    {
+    };
+    ZJSON_SCHEMA(SubmitUssResponse,
+                 FIELD_REQUIRED(success, BOOL),
+                 FIELD_REQUIRED(jobId, STRING));
+    FIELD_REQUIRED(success, BOOL),
+    FIELD_REQUIRED(jobId, STRING),
+    FIELD_REQUIRED(jobName, STRING)
+);
 
-struct ChmodFileResponse
-{
-};
-ZJSON_SCHEMA(ChmodFileResponse,
-             FIELD_REQUIRED(success, BOOL));
+    struct ChmodFileResponse
+    {
+    };
+    ZJSON_SCHEMA(ChmodFileResponse,
+                 FIELD_REQUIRED(success, BOOL));
 
-struct ChownFileResponse
-{
-};
-ZJSON_SCHEMA(ChownFileResponse,
-             FIELD_REQUIRED(success, BOOL));
+    struct ChownFileResponse
+    {
+    };
+    ZJSON_SCHEMA(ChownFileResponse,
+                 FIELD_REQUIRED(success, BOOL));
 
-struct ChtagFileResponse
-{
-};
-ZJSON_SCHEMA(ChtagFileResponse,
-             FIELD_REQUIRED(success, BOOL));
+    struct ChtagFileResponse
+    {
+    };
+    ZJSON_SCHEMA(ChtagFileResponse,
+                 FIELD_REQUIRED(success, BOOL));
 
-struct CreateFileResponse
-{
-};
-ZJSON_SCHEMA(CreateFileResponse,
-             FIELD_REQUIRED(success, BOOL));
+    struct CreateFileResponse
+    {
+    };
+    ZJSON_SCHEMA(CreateFileResponse,
+                 FIELD_REQUIRED(success, BOOL));
 
-struct DeleteFileResponse
-{
-};
-ZJSON_SCHEMA(DeleteFileResponse,
-             FIELD_REQUIRED(success, BOOL));
+    struct DeleteFileResponse
+    {
+    };
+    ZJSON_SCHEMA(DeleteFileResponse,
+                 FIELD_REQUIRED(success, BOOL));
 
-struct ListFilesResponse
-{
-};
-ZJSON_SCHEMA(ListFilesResponse,
-             FIELD_REQUIRED(success, BOOL),
-             FIELD_REQUIRED_OBJECT_ARRAY(items, UssItem),
-             FIELD_REQUIRED(returnedRows, NUMBER));
+    struct ListFilesResponse
+    {
+    };
+    ZJSON_SCHEMA(ListFilesResponse,
+                 FIELD_REQUIRED(success, BOOL),
+                 FIELD_REQUIRED_OBJECT_ARRAY(items, UssItem),
+                 FIELD_REQUIRED(returnedRows, NUMBER));
 
-struct ReadFileResponse
-{
-};
-ZJSON_SCHEMA(ReadFileResponse,
-             FIELD_REQUIRED(success, BOOL),
-             FIELD_OPTIONAL(encoding, STRING),
-             FIELD_REQUIRED(etag, STRING),
-             FIELD_REQUIRED(data, STRING),
-             FIELD_OPTIONAL(contentLen, NUMBER));
+    struct ReadFileResponse
+    {
+    };
+    ZJSON_SCHEMA(ReadFileResponse,
+                 FIELD_REQUIRED(success, BOOL),
+                 FIELD_OPTIONAL(encoding, STRING),
+                 FIELD_REQUIRED(etag, STRING),
+                 FIELD_REQUIRED(data, STRING),
+                 FIELD_OPTIONAL(contentLen, NUMBER));
 
-struct WriteFileResponse
-{
-};
-ZJSON_SCHEMA(WriteFileResponse,
-             FIELD_REQUIRED(success, BOOL),
-             FIELD_REQUIRED(etag, STRING),
-             FIELD_REQUIRED(created, BOOL),
-             FIELD_OPTIONAL(contentLen, NUMBER));
+    struct WriteFileResponse
+    {
+    };
+    ZJSON_SCHEMA(WriteFileResponse,
+                 FIELD_REQUIRED(success, BOOL),
+                 FIELD_REQUIRED(etag, STRING),
+                 FIELD_REQUIRED(created, BOOL),
+                 FIELD_OPTIONAL(contentLen, NUMBER));
 
 #endif

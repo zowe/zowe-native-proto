@@ -272,7 +272,7 @@ class WatchUtils {
         if (cSourceChanged) {
             result = await this.makeTask();
         }
-        if (zowedSourceChanged || (typeof result === "string" && result.length > 0)) {
+        if (zowedSourceChanged || typeof result === "string") {
             await this.makeTask(deployDirs.zowedDir);
         }
     }
@@ -784,6 +784,28 @@ async function loadConfig(): Promise<IConfig> {
     return config;
 }
 
+async function testConnection(client: Client): Promise<void> {
+    return new Promise((resolve, reject) => {
+        client.exec('echo "SSH connection established successfully"', (err, stream) => {
+            if (err) {
+                return reject(err);
+            }
+            stream
+                .on("close", (code: number) => {
+                    if (code === 0) {
+                        resolve();
+                    } else {
+                        reject(new Error(`SSH test failed with exit code ${code}`));
+                    }
+                })
+                .on("data", () => {})
+                .stderr.on("data", (data: Buffer) => {
+                    console.error(`STDERR: ${data}`);
+                });
+        });
+    });
+}
+
 async function buildSshClient(sshProfile: IProfile): Promise<Client> {
     const client = new Client();
     return new Promise((resolve, reject) => {
@@ -818,7 +840,7 @@ async function main() {
         zowedTestDir: `${config.deployDir}/zowed/test`,
     };
     const sshClient = await buildSshClient(config.sshProfile as IProfile);
-
+    await testConnection(sshClient);
     try {
         switch (args[0]) {
             case "artifacts":
