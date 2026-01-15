@@ -462,6 +462,11 @@ export abstract class AbstractConfigManager {
                 await this.handleInvalidPrivateKey(newConfig);
                 return undefined;
             }
+
+            if (errorMessage.includes("FOTS1668") || errorMessage.includes("FOTS1669")) {
+                this.showMessage(errorMessage, MESSAGE_TYPE.ERROR);
+                return undefined;
+            }
         }
         return configModifications;
     }
