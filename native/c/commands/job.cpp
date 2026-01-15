@@ -245,6 +245,50 @@ int handle_job_view_file(InvocationContext &context)
 {
   int rc = 0;
   ZJB zjb = {};
+  string dsn = context.get<std::string>("dsn", "");
+
+  if (context.has("encoding"))
+  {
+    zut_prepare_encoding(context.get<std::string>("encoding", ""), &zjb.encoding_opts);
+  }
+  if (context.has("local-encoding"))
+  {
+    const auto source_encoding = context.get<std::string>("local-encoding", "");
+    if (!source_encoding.empty() && source_encoding.size() < sizeof(zjb.encoding_opts.source_codepage))
+    {
+      memcpy(zjb.encoding_opts.source_codepage, source_encoding.data(), source_encoding.length() + 1);
+    }
+  }
+
+  string resp;
+  rc = zjb_read_job_content_by_dsn(&zjb, dsn, resp);
+
+  if (0 != rc)
+  {
+    context.error_stream() << "Error: could not view job file for: '" << dsn << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << "  Details: " << zjb.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+
+  bool has_encoding = context.has("encoding");
+  bool response_format_bytes = context.get<bool>("response-format-bytes", false);
+
+  if (has_encoding && response_format_bytes)
+  {
+    zut_print_string_as_bytes(resp, &context.output_stream());
+  }
+  else
+  {
+    context.output_stream() << resp;
+  }
+
+  return RTNCD_SUCCESS;
+}
+
+int handle_job_view_file_by_id(InvocationContext &context)
+{
+  int rc = 0;
+  ZJB zjb = {};
   string jobid = context.get<std::string>("jobid", "");
   long long key = context.get<long long>("key", 0);
 
@@ -567,15 +611,25 @@ void register_commands(parser::Command &root_command)
   job_group->add_command(job_view_status_cmd);
 
   // View-file subcommand
-  auto job_view_file_cmd = command_ptr(new Command("view-file-by-id", "view job file output by id"));
-  job_view_file_cmd->add_alias("vfbi");
-  job_view_file_cmd->add_positional_arg(JOB_ID);
-  job_view_file_cmd->add_positional_arg("key", "valid job dsn key via 'job list-files'", ArgType_Single, true);
+  auto job_view_file_cmd = command_ptr(new Command("view-file", "view job file output"));
+  job_view_file_cmd->add_alias("vf");
+  job_view_file_cmd->add_positional_arg("dsn", "job dsn via 'job list-files'", ArgType_Single, true);
   job_view_file_cmd->add_keyword_arg(ENCODING);
   job_view_file_cmd->add_keyword_arg(LOCAL_ENCODING);
   job_view_file_cmd->add_keyword_arg(RESPONSE_FORMAT_BYTES);
   job_view_file_cmd->set_handler(handle_job_view_file);
   job_group->add_command(job_view_file_cmd);
+
+  // View-file-by-id subcommand
+  auto job_view_file_by_id_cmd = command_ptr(new Command("view-file-by-id", "view job file output by id"));
+  job_view_file_by_id_cmd->add_alias("vfbi");
+  job_view_file_by_id_cmd->add_positional_arg(JOB_ID);
+  job_view_file_by_id_cmd->add_positional_arg("key", "valid job dsn key via 'job list-files'", ArgType_Single, true);
+  job_view_file_by_id_cmd->add_keyword_arg(ENCODING);
+  job_view_file_by_id_cmd->add_keyword_arg(LOCAL_ENCODING);
+  job_view_file_by_id_cmd->add_keyword_arg(RESPONSE_FORMAT_BYTES);
+  job_view_file_by_id_cmd->set_handler(handle_job_view_file_by_id);
+  job_group->add_command(job_view_file_by_id_cmd);
 
   // View-jcl subcommand
   auto job_view_jcl_cmd = command_ptr(new Command("view-jcl", "view job jcl from input jobid"));
