@@ -50,10 +50,12 @@ void register_ds_commands(CommandDispatcher &dispatcher)
                               CommandBuilder(ds::handle_data_set_list)
                                   .validate<ListDatasetsRequest, ListDatasetsResponse>()
                                   .rename_arg("pattern", "dsn")
+                                  .rename_arg("maxItems", "max-entries")
                                   .set_default("warn", false));
   dispatcher.register_command("listDsMembers",
                               create_ds_builder(ds::handle_data_set_list_members)
                                   .validate<ListDsMembersRequest, ListDsMembersResponse>()
+                                  .rename_arg("maxItems", "max-entries")
                                   .set_default("warn", false));
   dispatcher.register_command("readDataset",
                               create_ds_builder(ds::handle_data_set_view)
@@ -96,6 +98,7 @@ void register_job_commands(CommandDispatcher &dispatcher)
   dispatcher.register_command("listJobs",
                               CommandBuilder(job::handle_job_list)
                                   .validate<ListJobsRequest, ListJobsResponse>()
+                                  .rename_arg("maxItems", "max-entries")
                                   .set_default("warn", false));
   dispatcher.register_command("listSpools",
                               create_job_builder(job::handle_job_list_files)
