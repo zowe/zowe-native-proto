@@ -73,6 +73,7 @@ void register_ds_commands(CommandDispatcher &dispatcher)
                                   .set_default("encoding", "IBM-1047")
                                   .write_stdin("data", true)
                                   .handle_fifo("stream", "pipe-path", FifoMode::PUT));
+  dispatcher.register_command("renameDataset", create_ds_builder(ds::handle_data_set_rename).validate<RenameDatasetRequest, RenameDatasetResponse>());
 }
 
 void register_job_commands(CommandDispatcher &dispatcher)

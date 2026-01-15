@@ -699,6 +699,26 @@ int handle_data_set_delete(InvocationContext &context)
   return rc;
 }
 
+int handle_data_set_rename(InvocationContext &context)
+{
+  int rc = 0;
+  string dsn_Before = context.get<string>("dsname-before", "");
+  string dsn_After = context.get<string>("dsname-after", "");
+  ZDS zds = {};
+
+  rc = zds_rename_dsn(&zds, dsn_Before, dsn_After);
+
+  if (0 != rc)
+  {
+    context.error_stream() << "Error: Could not rename data set: '" << dsn_Before << "' rc: '" << rc << "'" << endl;
+    context.error_stream() << " Details: " << zds.diag.e_msg << endl;
+    return RTNCD_FAILURE;
+  }
+  context.output_stream() << "Data set '" << dsn_Before << "' renamed to '" << dsn_After << "'" << endl;
+
+  return rc;
+}
+
 int handle_data_set_restore(InvocationContext &context)
 {
   int rc = 0;
@@ -941,6 +961,13 @@ void register_commands(parser::Command &root_command)
   ds_restore_cmd->add_positional_arg(DSN);
   ds_restore_cmd->set_handler(handle_data_set_restore);
   data_set_cmd->add_command(ds_restore_cmd);
+
+  // Rename subcommand
+  auto ds_rename_cmd = command_ptr(new Command("rename", "rename data set"));
+  ds_rename_cmd->add_positional_arg("dsname-before", "data set to rename", ArgType_Single, true);
+  ds_rename_cmd->add_positional_arg("dsname-after", "new data set name", ArgType_Single, true);
+  ds_rename_cmd->set_handler(handle_data_set_rename);
+  data_set_cmd->add_command(ds_rename_cmd);
 
   // Compress subcommand
   auto ds_compress_cmd = command_ptr(new Command("compress", "compress data set"));

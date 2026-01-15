@@ -44,6 +44,20 @@ export interface DeleteDatasetRequest extends common.CommandRequest<"deleteDatas
 
 export type DeleteDatasetResponse = common.CommandResponse;
 
+export interface RenameDatasetRequest extends common.CommandRequest<"renameDataset"> {
+    /**
+     * Dataset name before
+     */
+    dsnameBefore: string;
+
+    /**
+     * Dataset name after
+     */
+    dsnameAfter: string;
+}
+
+export type RenameDatasetResponse = common.CommandResponse;
+
 export interface ListDatasetsRequest
     extends common.CommandRequest<"listDatasets">,
         common.ListOptions,
