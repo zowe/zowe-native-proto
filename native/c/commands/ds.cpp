@@ -649,15 +649,22 @@ int handle_data_set_write(InvocationContext &context)
   if (dds.size() > 0)
   {
     ZDIAG diag = {};
-    rc = zut_free_dynalloc_dds(diag, dds);
-    if (0 != rc)
+    int free_rc = zut_free_dynalloc_dds(diag, dds);
+    if (0 != free_rc)
     {
       context.error_stream() << diag.e_msg << endl;
       return RTNCD_FAILURE;
     }
   }
 
-  if (0 != rc)
+  // Handle truncation warning
+  if (RTNCD_WARNING == rc && zds.diag.detail_rc == ZDS_RSNCD_TRUNCATION_WARNING)
+  {
+    context.error_stream() << "Warning: " << zds.diag.e_msg << endl;
+    result->set("truncationWarning", str(zds.diag.e_msg));
+    // Continue to output success message - operation succeeded with warning
+  }
+  else if (0 != rc)
   {
     context.error_stream() << "Error: could not write to data set: '" << dsn << "' rc: '" << rc << "'" << endl;
     context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
@@ -678,7 +685,8 @@ int handle_data_set_write(InvocationContext &context)
   result->set("etag", str(zds.etag));
   context.set_object(result);
 
-  return rc;
+  // Return success even for truncation warning - data was written
+  return RTNCD_SUCCESS;
 }
 
 int handle_data_set_delete(InvocationContext &context)

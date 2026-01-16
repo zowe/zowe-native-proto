@@ -40,6 +40,83 @@ const size_t MAX_DS_LENGTH = 44u;
 
 using namespace std;
 
+/**
+ * Helper struct to track truncated lines with range compression.
+ * Consecutive lines are compressed into ranges (e.g., "5-8, 12, 45-46").
+ */
+struct TruncationTracker
+{
+  int count;
+  int range_start;
+  int range_end;
+  string lines_str;
+
+  TruncationTracker()
+      : count(0), range_start(-1), range_end(-1), lines_str("")
+  {
+  }
+
+  void flush_range()
+  {
+    if (range_start == -1)
+      return;
+
+    if (!lines_str.empty())
+      lines_str += ", ";
+
+    ostringstream ss;
+    if (range_start == range_end)
+    {
+      ss << range_start;
+    }
+    else
+    {
+      ss << range_start << "-" << range_end;
+    }
+    lines_str += ss.str();
+    range_start = range_end = -1;
+  }
+
+  void add_line(int line_num)
+  {
+    count++;
+    if (range_start == -1)
+    {
+      range_start = range_end = line_num;
+    }
+    else if (line_num == range_end + 1)
+    {
+      range_end = line_num;
+    }
+    else
+    {
+      flush_range();
+      range_start = range_end = line_num;
+    }
+  }
+
+  string get_warning_message() const
+  {
+    ostringstream ss;
+    ss << count << " line(s) truncated to fit LRECL: " << lines_str;
+    return ss.str();
+  }
+};
+
+/**
+ * Get the effective LRECL for writing, accounting for RDW in variable records.
+ */
+static int get_effective_lrecl(IO_CTRL *ioc)
+{
+  int lrecl = ioc->dcb.dcblrecl;
+  // For variable records, subtract RDW size (4 bytes)
+  if (ioc->dcb.dcbrecfm & dcbrecv)
+  {
+    lrecl -= 4;
+  }
+  return lrecl;
+}
+
 // https://www.ibm.com/docs/en/zos/2.5.0?topic=functions-fldata-retrieve-file-information#fldata__fldat
 string zds_get_recfm(const fldata_t &file_info)
 {
@@ -206,29 +283,25 @@ int zds_write_to_dd(ZDS *zds, string ddname, const string &data)
 /**
  * Helper function to check if a data set has RECFM=U (undefined record format)
  * Returns true if the data set is RECFM=U, false otherwise
+ *
+ * Uses catalog lookup and DSCB to get the actual RECFM, which is more reliable
+ * than fopen/fldata (which doesn't work correctly for PDS without a member).
  */
 static bool zds_is_recfm_u(const string &dsn)
 {
   const string base_dsn = dsn.find('(') != string::npos ? dsn.substr(0, dsn.find('(')) : dsn;
-  const string dsname = "//'" + base_dsn + "'";
 
-  FILE *fp = fopen(dsname.c_str(), "r");
-  if (!fp)
+  ZDS zds = {0};
+  vector<ZDSEntry> datasets;
+
+  // Use catalog lookup with DSCB to get the actual RECFM
+  int rc = zds_list_data_sets(&zds, base_dsn, datasets, true);
+  if (rc != RTNCD_SUCCESS || datasets.empty())
   {
     return false;
   }
 
-  fldata_t file_info = {0};
-  char file_name[64] = {0};
-  bool is_recfm_u = false;
-
-  if (fldata(fp, file_name, &file_info) == 0)
-  {
-    is_recfm_u = file_info.__recfmU != 0;
-  }
-
-  fclose(fp);
-  return is_recfm_u;
+  return datasets[0].recfm == ZDS_RECFM_U;
 }
 
 /**
@@ -343,6 +416,11 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
     }
   }
 
+  // Track truncated lines
+  TruncationTracker truncation;
+  int line_num = 0;
+  const int max_len = get_effective_lrecl(ioc);
+
   // Write data line by line (records are buffered into blocks internally)
   if (!temp.empty())
   {
@@ -350,10 +428,18 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
     string line;
     while (getline(stream, line))
     {
+      line_num++;
+
       // Remove trailing carriage return if present (Windows line endings)
       if (!line.empty() && line[line.size() - 1] == '\r')
       {
         line.erase(line.size() - 1);
+      }
+
+      // Check if line will be truncated
+      if (static_cast<int>(line.length()) > max_len)
+      {
+        truncation.add_line(line_num);
       }
 
       rc = zds_write_output_bpam(zds, ioc, line);
@@ -374,8 +460,20 @@ static int zds_write_member_bpam(ZDS *zds, const string &dsn, string &data)
     }
   }
 
+  // Finalize any pending range
+  truncation.flush_range();
+
   // Close the member (this updates ISPF stats and STOWs the directory entry)
   rc = zds_close_output_bpam(zds, ioc);
+
+  // Report truncation warning if lines were truncated and close succeeded
+  if (truncation.count > 0 && rc == RTNCD_SUCCESS)
+  {
+    const auto warning_msg = truncation.get_warning_message();
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "%s", warning_msg.c_str());
+    zds->diag.detail_rc = ZDS_RSNCD_TRUNCATION_WARNING;
+    return RTNCD_WARNING;
+  }
 
   return rc;
 }
@@ -2112,6 +2210,11 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
     return RTNCD_FAILURE;
   }
 
+  // Track truncated lines
+  TruncationTracker truncation;
+  int line_num = 0;
+  const int max_len = get_effective_lrecl(ioc);
+
   std::vector<char> buf(FIFO_CHUNK_SIZE);
   size_t bytes_read;
   std::vector<char> temp_encoded;
@@ -2149,12 +2252,19 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
     size_t newline_pos;
     while ((newline_pos = line_buffer.find('\n', pos)) != string::npos)
     {
+      line_num++;
       string line = line_buffer.substr(pos, newline_pos - pos);
 
       // Remove trailing carriage return if present (Windows line endings)
       if (!line.empty() && line[line.size() - 1] == '\r')
       {
         line.erase(line.size() - 1);
+      }
+
+      // Check if line will be truncated
+      if (static_cast<int>(line.length()) > max_len)
+      {
+        truncation.add_line(line_num);
       }
 
       rc = zds_write_output_bpam(zds, ioc, line);
@@ -2184,6 +2294,8 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
   // Write any remaining content that didn't end with a newline
   if (!line_buffer.empty())
   {
+    line_num++;
+
     // Remove trailing carriage return if present
     if (line_buffer[line_buffer.size() - 1] == '\r')
     {
@@ -2192,6 +2304,12 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
 
     if (!line_buffer.empty())
     {
+      // Check if line will be truncated
+      if (static_cast<int>(line_buffer.length()) > max_len)
+      {
+        truncation.add_line(line_num);
+      }
+
       rc = zds_write_output_bpam(zds, ioc, line_buffer);
       if (rc != RTNCD_SUCCESS)
       {
@@ -2208,8 +2326,20 @@ static int zds_write_member_bpam_streamed(ZDS *zds, const string &dsn, const str
     }
   }
 
+  // Finalize any pending range
+  truncation.flush_range();
+
   // Close the member (this updates ISPF stats and STOWs the directory entry)
   rc = zds_close_output_bpam(zds, ioc);
+
+  // Report truncation warning if lines were truncated and close succeeded
+  if (truncation.count > 0 && rc == RTNCD_SUCCESS)
+  {
+    const auto warning_msg = truncation.get_warning_message();
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "%s", warning_msg.c_str());
+    zds->diag.detail_rc = ZDS_RSNCD_TRUNCATION_WARNING;
+    return RTNCD_WARNING;
+  }
 
   return rc;
 }
