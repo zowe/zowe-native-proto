@@ -202,19 +202,22 @@ ZJSON_SCHEMA(ReleaseJobResponse,
 struct SubmitJclResponse {};
 ZJSON_SCHEMA(SubmitJclResponse,
     FIELD_REQUIRED(success, BOOL),
-    FIELD_REQUIRED(jobId, STRING)
+    FIELD_REQUIRED(jobId, STRING),
+    FIELD_REQUIRED(jobName, STRING)
 );
 
 struct SubmitJobResponse {};
 ZJSON_SCHEMA(SubmitJobResponse,
     FIELD_REQUIRED(success, BOOL),
-    FIELD_REQUIRED(jobId, STRING)
+    FIELD_REQUIRED(jobId, STRING),
+    FIELD_REQUIRED(jobName, STRING)
 );
 
 struct SubmitUssResponse {};
 ZJSON_SCHEMA(SubmitUssResponse,
     FIELD_REQUIRED(success, BOOL),
-    FIELD_REQUIRED(jobId, STRING)
+    FIELD_REQUIRED(jobId, STRING),
+    FIELD_REQUIRED(jobName, STRING)
 );
 
 struct ChmodFileResponse {};
