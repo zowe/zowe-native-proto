@@ -524,20 +524,10 @@ int zjb_list_dds(ZJB *zjb, string jobid, vector<ZJobDD> &jobDDs)
 
   for (int i = 0; i < entries; i++)
   {
-    char tempDDn[9] = {0};
-    char tempsn[9] = {0};
-    char temppn[9] = {0};
-    char tempDSN[45] = {0};
-
-    strncpy(tempDDn, (char *)sysoutInfoNext[i].stvsddnd, sizeof(sysoutInfo->stvsddnd));
-    strncpy(tempsn, (char *)sysoutInfoNext[i].stvsstpd, sizeof(sysoutInfo->stvsstpd));
-    strncpy(temppn, (char *)sysoutInfoNext[i].stvsprcd, sizeof(sysoutInfo->stvsprcd));
-    strncpy(tempDSN, (char *)sysoutInfoNext[i].stvsdsn, sizeof(sysoutInfo->stvsdsn));
-
-    string ddn(tempDDn);
-    string stepname(tempsn);
-    string procstep(temppn);
-    string dsn(tempDSN);
+    string ddn((char *)sysoutInfoNext[i].stvsddnd, sizeof(sysoutInfo->stvsddnd));
+    string stepname((char *)sysoutInfoNext[i].stvsstpd, sizeof(sysoutInfo->stvsstpd));
+    string procstep((char *)sysoutInfoNext[i].stvsprcd, sizeof(sysoutInfo->stvsprcd));
+    string dsn((char *)sysoutInfoNext[i].stvsdsn, sizeof(sysoutInfo->stvsdsn));
 
     ZJobDD zjobdd = {0};
 
@@ -667,28 +657,14 @@ void zjb_build_job_response(ZJB_JOB_INFO *PTR64 job_info, int entries, vector<ZJ
 
   for (int i = 0; i < entries; i++)
   {
-    char temp_job_name[9] = {0};
-    char temp_jobid[9] = {0};
-    char temp_subsystem[9] = {0};
-    char temp_job_owner[9] = {0};
-    char temp_job_class[9] = {0};
-    char temp_correlator[65] = {0};
-
-    strncpy(temp_job_name, (char *)job_info_next[i].statjqtr.sttrname, sizeof(job_info->statjqtr.sttrname));
-    strncpy(temp_jobid, (char *)job_info_next[i].statjqtr.sttrjid, sizeof(job_info->statjqtr.sttrjid));
-    strncpy(temp_subsystem, (char *)job_info_next[i].subsystem, sizeof(job_info->subsystem));
-    strncpy(temp_job_owner, (char *)job_info_next[i].statjqtr.sttrouid, sizeof(job_info->statjqtr.sttrouid));
-    strncpy(temp_job_class, (char *)job_info_next[i].statjqtr.sttrclas, sizeof(job_info->statjqtr.sttrclas));
-    strncpy(temp_correlator, (char *)job_info_next[i].statjqtr.sttrjcor, sizeof(job_info->statjqtr.sttrjcor));
+    string jobname((char *)job_info_next[i].statjqtr.sttrname, sizeof(job_info->statjqtr.sttrname));
+    string jobid((char *)job_info_next[i].statjqtr.sttrjid, sizeof(job_info->statjqtr.sttrjid));
+    string subsystem((char *)job_info_next[i].subsystem, sizeof(job_info->subsystem));
+    string owner((char *)job_info_next[i].statjqtr.sttrouid, sizeof(job_info->statjqtr.sttrouid));
+    string jobclass((char *)job_info_next[i].statjqtr.sttrclas, sizeof(job_info->statjqtr.sttrclas));
+    string correlator((char *)job_info_next[i].statjqtr.sttrjcor, sizeof(job_info->statjqtr.sttrjcor));
 
     ZJob zjob = {0};
-
-    string jobname(temp_job_name);
-    string jobid(temp_jobid);
-    string subsystem(temp_subsystem);
-    string owner(temp_job_owner);
-    string jobclass(temp_job_class);
-    string correlator(temp_correlator);
 
     union cc
     {
