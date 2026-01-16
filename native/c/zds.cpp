@@ -222,7 +222,7 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2)
     utility = "IEBCOPY";
     dds.push_back("alloc dd(SYSUT1) da('" + info1.base_dsn + "') shr");
     dds.push_back("alloc dd(SYSUT2) da('" + info2.base_dsn + "') shr");
-    dds.push_back("alloc dd(sysin) lrecl(80) recfm(f,b) blksize(80)");
+    dds.push_back("alloc dd(sysin) new lrecl(80) recfm(f,b) blksize(80)");
   }
   else
   {
@@ -231,7 +231,7 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2)
     dds.push_back("alloc dd(SYSUT2) da('" + dsn2 + "') shr");
     dds.push_back("alloc dd(sysin) dummy lrecl(80) recfm(f,b) blksize(80)");
   }
-  dds.push_back("alloc dd(sysprint) lrecl(121) recfm(f,b) blksize(121)");
+  dds.push_back("alloc dd(sysprint) new lrecl(121) recfm(f,b) blksize(121)");
 
   rc = zut_loop_dynalloc(zds->diag, dds);
   if (0 != rc)
@@ -283,8 +283,8 @@ int zds_compress_dsn(ZDS *zds, const string &dsn)
   vector<string> dds;
   dds.push_back("alloc dd(input) da('" + dsn + "') shr");
   dds.push_back("alloc dd(output) da('" + dsn + "') shr");
-  dds.push_back("alloc dd(sysin) lrecl(80) recfm(f,b) blksize(80)");
-  dds.push_back("alloc dd(sysprint) lrecl(121) recfm(f,b) blksize(80)");
+  dds.push_back("alloc dd(sysin) new lrecl(80) recfm(f,b) blksize(80)");
+  dds.push_back("alloc dd(sysprint) new lrecl(121) recfm(f,b) blksize(121)");
 
   rc = zut_loop_dynalloc(zds->diag, dds);
   if (0 != rc)

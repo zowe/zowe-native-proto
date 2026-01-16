@@ -628,18 +628,27 @@ int handle_data_set_write(InvocationContext &context)
     string data;
     string line;
 
-    if (!isatty(fileno(stdout)))
+    if (!isatty(fileno(stdin)))
     {
       istreambuf_iterator<char> begin(context.input_stream());
       istreambuf_iterator<char> end;
       data.assign(begin, end);
+
+      // Remove trailing newline if present to avoid extra empty record on mainframe
+      if (!data.empty() && data[data.length() - 1] == '\n')
+      {
+        data.erase(data.length() - 1);
+      }
     }
     else
     {
+      bool first = true;
       while (getline(context.input_stream(), line))
       {
+        if (!first)
+          data.push_back('\n');
         data += line;
-        data.push_back('\n');
+        first = false;
       }
     }
 
@@ -726,94 +735,47 @@ int handle_data_set_restore(InvocationContext &context)
 
 int handle_data_set_compress(InvocationContext &context)
 {
-  int rc = 0;
   string dsn = context.get<string>("dsn", "");
 
-  transform(dsn.begin(), dsn.end(), dsn.begin(), ::toupper);
-
-  bool is_pds = false;
-
-  string dsn_formatted = "//'" + dsn + "'";
-  FILE *dir = fopen(dsn_formatted.c_str(), "r");
-  if (dir)
-  {
-    fldata_t file_info = {0};
-    char file_name[64] = {0};
-    if (0 == fldata(dir, file_name, &file_info))
-    {
-      if (file_info.__dsorgPDSdir && !file_info.__dsorgPDSE)
-      {
-        is_pds = true;
-      }
-    }
-    fclose(dir);
-  }
-
-  if (!is_pds)
-  {
-    context.error_stream() << "Error: data set '" << dsn << "' is not a PDS" << endl;
-    return RTNCD_FAILURE;
-  }
-
-  // perform dynalloc
-  vector<string> dds;
-  dds.reserve(4);
-  dds.push_back("alloc dd(a) da('" + dsn + "') shr");
-  dds.push_back("alloc dd(b) da('" + dsn + "') shr");
-  dds.push_back("alloc dd(sysprint) lrecl(80) recfm(f,b) blksize(80)");
-  dds.push_back("alloc dd(sysin) lrecl(80) recfm(f,b) blksize(80)");
-
-  ZDIAG diag = {};
-  rc = zut_loop_dynalloc(diag, dds);
-  if (0 != rc)
-  {
-    context.error_stream() << "Error: allocation failed" << endl;
-    context.error_stream() << "  Details: " << diag.e_msg << endl;
-    return RTNCD_FAILURE;
-  }
-
-  // write control statements
   ZDS zds = {};
-  rc = zds_write_to_dd(&zds, "sysin", "        COPY OUTDD=B,INDD=A");
-  if (0 != rc)
+  int rc = zds_compress_dsn(&zds, dsn);
+
+  if (rc != RTNCD_SUCCESS)
   {
-    context.error_stream() << "Error: could not write to dd: '" << "sysin" << "' rc: '" << rc << "'" << endl;
-    context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
-    zut_free_dynalloc_dds(diag, dds);
+    if (zds.diag.e_msg_len > 0)
+    {
+      context.error_stream() << "Error: " << zds.diag.e_msg << endl;
+    }
+    else
+    {
+      context.error_stream() << "Error: compress failed" << endl;
+    }
     return RTNCD_FAILURE;
   }
 
-  // perform compress
-  rc = zut_run("IEBCOPY");
-  if (RTNCD_SUCCESS != rc)
-  {
-    context.error_stream() << "Error: could not invoke IEBCOPY rc: '" << rc << "'" << endl;
-    zut_free_dynalloc_dds(diag, dds);
-    return RTNCD_FAILURE;
-  }
-
-  // read output from iebcopy
-  string output;
-  rc = zds_read_from_dd(&zds, "sysprint", output);
-  if (0 != rc)
-  {
-    context.error_stream() << "Error: could not read from dd: '" << "sysprint" << "' rc: '" << rc << "'" << endl;
-    context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
-    context.error_stream() << output << endl;
-    zut_free_dynalloc_dds(diag, dds);
-    return RTNCD_FAILURE;
-  }
   context.output_stream() << "Data set '" << dsn << "' compressed" << endl;
+  return RTNCD_SUCCESS;
+}
 
-  // free dynalloc dds
-  rc = zut_free_dynalloc_dds(diag, dds);
-  if (0 != rc)
+int handle_data_set_copy(InvocationContext &context)
+{
+  string dsn1 = context.get<string>("dsn1", ""); // fromDataSetName
+  string dsn2 = context.get<string>("dsn2", ""); // toDataSetName
+
+  ZDS zds = {};
+  int rc = zds_copy_dsn(&zds, dsn1, dsn2);
+
+  if (rc != RTNCD_SUCCESS)
   {
-    context.error_stream() << "Error: allocation failed" << endl;
-    context.error_stream() << "  Details: " << diag.e_msg << endl;
+    context.error_stream() << "Error: copy failed" << endl;
+    if (zds.diag.e_msg_len > 0)
+    {
+      context.error_stream() << "  Details: " << zds.diag.e_msg << endl;
+    }
     return RTNCD_FAILURE;
   }
 
+  context.output_stream() << "Data set '" << dsn1 << "' copied to '" << dsn2 << "'" << endl;
   return RTNCD_SUCCESS;
 }
 
@@ -947,6 +909,19 @@ void register_commands(parser::Command &root_command)
   ds_compress_cmd->add_positional_arg("dsn", "data set to compress", ArgType_Single, true);
   ds_compress_cmd->set_handler(handle_data_set_compress);
   data_set_cmd->add_command(ds_compress_cmd);
+
+  // Copy subcommand
+  auto ds_copy_cmd = command_ptr(new Command("copy", "copy data set"));
+  ds_copy_cmd->add_positional_arg("dsn1", "data set to copy", ArgType_Single, true);
+  ds_copy_cmd->add_positional_arg("dsn2", "new data set name and location", ArgType_Single, true);
+  // ds_copy_cmd->add_keyword_arg(INPUT_DS);
+  // ds_copy_cmd->add_keyword_arg(OUTPUT_DS);
+  // ds_copy_cmd->add_keyword_arg(RESPONSE_FORMAT_BYTES);
+  // ds_copy_cmd->add_keyword_arg(RETURN_ETAG);
+  // ds_copy_cmd->add_keyword_arg(PIPE_PATH);
+  // ds_copy_cmd->add_keyword_arg(VOLSER);
+  ds_copy_cmd->set_handler(handle_data_set_copy);
+  data_set_cmd->add_command(ds_copy_cmd);
 
   root_command.add_command(data_set_cmd);
 }
