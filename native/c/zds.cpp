@@ -136,7 +136,7 @@ int zds_get_type_info(const string &dsn, ZDSTypeInfo &info)
   return RTNCD_SUCCESS;
 }
 
-int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2)
+int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace)
 {
   int rc = 0;
   ZDSTypeInfo info1 = {};
@@ -210,16 +210,16 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2)
     utility = "IEBCOPY";
     dds.push_back("alloc dd(SYSUT1) da('" + info1.base_dsn + "') shr");
     dds.push_back("alloc dd(SYSUT2) da('" + info2.base_dsn + "') shr");
-    dds.push_back("alloc dd(sysin) new lrecl(80) recfm(f,b) blksize(80)");
+    dds.push_back("alloc dd(sysin) lrecl(80) recfm(f,b) blksize(800)");
   }
   else
   {
     utility = "IEBGENER";
     dds.push_back("alloc dd(SYSUT1) da('" + dsn1 + "') shr");
     dds.push_back("alloc dd(SYSUT2) da('" + dsn2 + "') shr");
-    dds.push_back("alloc dd(sysin) dummy lrecl(80) recfm(f,b) blksize(80)");
+    dds.push_back("alloc dd(sysin) dummy lrecl(80) recfm(f,b) blksize(800)");
   }
-  dds.push_back("alloc dd(sysprint) new lrecl(121) recfm(f,b) blksize(121)");
+  dds.push_back("alloc dd(sysprint) lrecl(121) recfm(f,b,a) blksize(1210)");
 
   rc = zut_loop_dynalloc(zds->diag, dds);
   if (0 != rc)
@@ -232,7 +232,10 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2)
 
   if (is_pds_full_copy)
   {
-    rc = zds_write_to_dd(zds, "sysin", "        COPY OUTDD=SYSUT2,INDD=SYSUT1");
+    // For IEBCOPY: COPY OUTDD=SYSUT2,INDD=((SYSUT1,R)) where R means replace like-named members
+    string control_stmt = replace ? "        COPY OUTDD=SYSUT2,INDD=((SYSUT1,R))"
+                                  : "        COPY OUTDD=SYSUT2,INDD=SYSUT1";
+    rc = zds_write_to_dd(zds, "sysin", control_stmt);
     if (0 != rc)
     {
       zut_free_dynalloc_dds(zds->diag, dds);
@@ -271,8 +274,8 @@ int zds_compress_dsn(ZDS *zds, const string &dsn)
   vector<string> dds;
   dds.push_back("alloc dd(input) da('" + dsn + "') shr");
   dds.push_back("alloc dd(output) da('" + dsn + "') shr");
-  dds.push_back("alloc dd(sysin) new lrecl(80) recfm(f,b) blksize(80)");
-  dds.push_back("alloc dd(sysprint) new lrecl(121) recfm(f,b) blksize(121)");
+  dds.push_back("alloc dd(sysin) lrecl(80) recfm(f,b) blksize(800)");
+  dds.push_back("alloc dd(sysprint) lrecl(121) recfm(f,b,a) blksize(1210)");
 
   rc = zut_loop_dynalloc(zds->diag, dds);
   if (0 != rc)

@@ -79,6 +79,7 @@ typedef struct
 extern "C"
 {
 #endif
+
 enum ZDS_TYPE
 {
   ZDS_TYPE_UNKNOWN = 0,
@@ -87,28 +88,6 @@ enum ZDS_TYPE
   ZDS_TYPE_MEMBER, // Member of a PDS
   ZDS_TYPE_VSAM    // VSAM
 };
-
-/**
- * @brief Get detailed information and type of a data set
- *
- * @param zds data set context
- * @param dsn data set name (can include member)
- * @param type returned type (Sequential, PDS, or Member)
- * @param info returned entry details from catalog/DSCB
- * @return int 0 for success; non-zero if not found or error
- */
-int zds_get_type(ZDS *zds, const std::string &dsn, ZDS_TYPE &type, ZDSEntry &info);
-
-/**
- * @brief Copy a data set or member to another
- *
- * @param zds data set context
- * @param dsn1 source data set/member
- * @param dsn2 destination data set/member
- * @param response detailed error/output messages
- * @return int 0 for success; non-zero otherwise
- */
-int zds_copy(ZDS *zds, const std::string &dsn1, const std::string &dsn2, std::string &response);
 
 struct ZDSTypeInfo
 {
@@ -134,9 +113,10 @@ int zds_get_type_info(const std::string &dsn, ZDSTypeInfo &info);
  * @param zds data set returned attributes and error information
  * @param dsn1 source data set name
  * @param dsn2 destination data set name
+ * @param replace if true, replace like-named members in target (for PDS copy)
  * @return int 0 for success; non zero otherwise
  */
-int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2);
+int zds_copy_dsn(ZDS *zds, const std::string &dsn1, const std::string &dsn2, bool replace = false);
 
 /**
  * @brief Compress a PDS data set
