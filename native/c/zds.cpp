@@ -199,63 +199,90 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace)
     }
   }
 
-  // 2. Determine utility
+  // 2. Determine copy method
   bool is_pds_full_copy = (info1.type == ZDS_TYPE_PDS && info2.member_name.empty());
 
-  vector<string> dds;
-  string utility;
-
   if (is_pds_full_copy)
   {
-    utility = "IEBCOPY";
-    dds.push_back("alloc dd(SYSUT1) da('" + info1.base_dsn + "') shr");
-    dds.push_back("alloc dd(SYSUT2) da('" + info2.base_dsn + "') shr");
-    dds.push_back("alloc dd(sysin) lrecl(80) recfm(f,b) blksize(800)");
-  }
-  else
-  {
-    utility = "IEBGENER";
-    dds.push_back("alloc dd(SYSUT1) da('" + dsn1 + "') shr");
-    dds.push_back("alloc dd(SYSUT2) da('" + dsn2 + "') shr");
-    dds.push_back("alloc dd(sysin) dummy lrecl(80) recfm(f,b) blksize(800)");
-  }
-  dds.push_back("alloc dd(sysprint) lrecl(121) recfm(f,b,a) blksize(1210)");
+    // Use IEBCOPY for PDS-to-PDS copy
+    vector<string> dds;
+    string indd_name = "INDD";
+    string outdd_name = "OUTDD";
+    dds.push_back("alloc dd(" + indd_name + ") da('" + info1.base_dsn + "') shr");
+    dds.push_back("alloc dd(" + outdd_name + ") da('" + info2.base_dsn + "') old");
+    dds.push_back("alloc dd(sysprint) lrecl(80) recfm(f,b) blksize(80)");
+    dds.push_back("alloc dd(sysin) lrecl(80) recfm(f,b) blksize(80)");
 
-  rc = zut_loop_dynalloc(zds->diag, dds);
-  if (0 != rc)
-  {
-    // Note: zut_loop_dynalloc may have partially succeeded, so we need to attempt cleanup
-    // zut_free_dynalloc_dds will fail gracefully for DDs that weren't allocated
-    zut_free_dynalloc_dds(zds->diag, dds);
-    return RTNCD_FAILURE;
-  }
+    rc = zut_loop_dynalloc(zds->diag, dds);
+    if (0 != rc)
+    {
+      zut_free_dynalloc_dds(zds->diag, dds);
+      return RTNCD_FAILURE;
+    }
 
-  if (is_pds_full_copy)
-  {
-    // For IEBCOPY: COPY OUTDD=SYSUT2,INDD=((SYSUT1,R)) where R means replace like-named members
-    string control_stmt = replace ? "        COPY OUTDD=SYSUT2,INDD=((SYSUT1,R))"
-                                  : "        COPY OUTDD=SYSUT2,INDD=SYSUT1";
+    // For IEBCOPY: COPY OUTDD=outdd,INDD=((indd,R)) where R means replace like-named members
+    string control_stmt = replace
+                              ? "        COPY OUTDD=" + outdd_name + ",INDD=((" + indd_name + ",R))"
+                              : "        COPY OUTDD=" + outdd_name + ",INDD=" + indd_name;
     rc = zds_write_to_dd(zds, "sysin", control_stmt);
     if (0 != rc)
     {
       zut_free_dynalloc_dds(zds->diag, dds);
       return RTNCD_FAILURE;
     }
-  }
 
-  rc = zut_run(utility);
-  if (RTNCD_SUCCESS != rc)
-  {
-    string output;
-    if (0 == zds_read_from_dd(zds, "sysprint", output))
+    rc = zut_run("IEBCOPY");
+    if (RTNCD_SUCCESS != rc)
     {
-      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "%s failed. SYSPRINT:\n%s", utility.c_str(), output.c_str());
+      string output;
+      if (0 == zds_read_from_dd(zds, "sysprint", output))
+      {
+        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "IEBCOPY failed. SYSPRINT:\n%s", output.c_str());
+      }
+      zut_free_dynalloc_dds(zds->diag, dds);
+      return RTNCD_FAILURE;
     }
-    zut_free_dynalloc_dds(zds->diag, dds);
-    return RTNCD_FAILURE;
-  }
 
-  zut_free_dynalloc_dds(zds->diag, dds);
+    zut_free_dynalloc_dds(zds->diag, dds);
+  }
+  else
+  {
+    // Use standard file I/O for sequential/member copy (avoids IEBGENER issues)
+    string src_path = "//'" + dsn1 + "'";
+    string dst_path = "//'" + dsn2 + "'";
+
+    FILE *fin = fopen(src_path.c_str(), "rb,type=record");
+    if (!fin)
+    {
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open source '%s'", dsn1.c_str());
+      return RTNCD_FAILURE;
+    }
+
+    FILE *fout = fopen(dst_path.c_str(), "wb,type=record");
+    if (!fout)
+    {
+      fclose(fin);
+      zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open target '%s'", dsn2.c_str());
+      return RTNCD_FAILURE;
+    }
+
+    char buffer[32760];
+    size_t bytes_read;
+    while ((bytes_read = fread(buffer, 1, sizeof(buffer), fin)) > 0)
+    {
+      size_t bytes_written = fwrite(buffer, 1, bytes_read, fout);
+      if (bytes_written != bytes_read)
+      {
+        fclose(fin);
+        fclose(fout);
+        zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Write error copying to '%s'", dsn2.c_str());
+        return RTNCD_FAILURE;
+      }
+    }
+
+    fclose(fin);
+    fclose(fout);
+  }
   return RTNCD_SUCCESS;
 }
 
@@ -271,11 +298,12 @@ int zds_compress_dsn(ZDS *zds, const string &dsn)
     return RTNCD_FAILURE;
   }
 
+  // Use same pattern as original working compress: simple DD names, same blksize
   vector<string> dds;
-  dds.push_back("alloc dd(input) da('" + dsn + "') shr");
-  dds.push_back("alloc dd(output) da('" + dsn + "') shr");
-  dds.push_back("alloc dd(sysin) lrecl(80) recfm(f,b) blksize(800)");
-  dds.push_back("alloc dd(sysprint) lrecl(121) recfm(f,b,a) blksize(1210)");
+  dds.push_back("alloc dd(a) da('" + dsn + "') shr");
+  dds.push_back("alloc dd(b) da('" + dsn + "') shr");
+  dds.push_back("alloc dd(sysprint) lrecl(80) recfm(f,b) blksize(80)");
+  dds.push_back("alloc dd(sysin) lrecl(80) recfm(f,b) blksize(80)");
 
   rc = zut_loop_dynalloc(zds->diag, dds);
   if (0 != rc)
@@ -286,7 +314,7 @@ int zds_compress_dsn(ZDS *zds, const string &dsn)
     return RTNCD_FAILURE;
   }
 
-  rc = zds_write_to_dd(zds, "sysin", "        COPY OUTDD=output,INDD=input");
+  rc = zds_write_to_dd(zds, "sysin", "        COPY OUTDD=B,INDD=A");
   if (0 != rc)
   {
     zut_free_dynalloc_dds(zds->diag, dds);
