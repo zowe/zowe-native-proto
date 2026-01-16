@@ -177,9 +177,12 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace)
     return RTNCD_FAILURE;
   }
 
-  // 1. Create target if it doesn't exist
+  // 1. Handle target dataset existence
+  bool is_pds_full_copy = (info1.type == ZDS_TYPE_PDS && info2.member_name.empty());
+
   if (!info2.exists)
   {
+    // Create target if it doesn't exist
     unsigned int code = 0;
     string create_resp;
 
@@ -195,9 +198,16 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace)
       return RTNCD_FAILURE;
     }
   }
+  else if (!replace && !is_pds_full_copy)
+  {
+    // Target exists and --replace not specified for sequential/member copy
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
+                                  "Target '%s' already exists. Use --replace to overwrite.",
+                                  dsn2.c_str());
+    return RTNCD_FAILURE;
+  }
 
   // 2. Determine copy method
-  bool is_pds_full_copy = (info1.type == ZDS_TYPE_PDS && info2.member_name.empty());
 
   if (is_pds_full_copy)
   {
@@ -217,11 +227,49 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace)
       return RTNCD_FAILURE;
     }
 
-    // For IEBCOPY: COPY OUTDD=outdd,INDD=((indd,R)) where R means replace like-named members
-    string control_stmt = replace
-                              ? "        COPY OUTDD=" + outdd_name + ",INDD=((" + indd_name + ",R))"
-                              : "        COPY OUTDD=" + outdd_name + ",INDD=" + indd_name;
-    rc = zds_write_to_dd(zds, "sysin", control_stmt);
+    // Build IEBCOPY control statements
+    string control_stmts;
+
+    if (replace)
+    {
+      // With --replace: copy all members, replacing like-named ones
+      control_stmts = "        COPY OUTDD=" + outdd_name + ",INDD=((" + indd_name + ",R))";
+    }
+    else
+    {
+      // Without --replace: exclude members that already exist in target
+      // Get list of existing members in target PDS
+      vector<ZDSMem> target_members;
+      ZDS temp_zds = {};
+      zds_list_members(&temp_zds, info2.base_dsn, target_members);
+
+      if (target_members.empty())
+      {
+        // No existing members, just do a simple copy
+        control_stmts = "        COPY OUTDD=" + outdd_name + ",INDD=" + indd_name;
+      }
+      else
+      {
+        // Use EXCLUDE to skip members that already exist in target
+        control_stmts = "        COPY OUTDD=" + outdd_name + ",INDD=" + indd_name + "\n";
+        control_stmts += "        EXCLUDE MEMBER=(";
+
+        for (size_t i = 0; i < target_members.size(); i++)
+        {
+          if (i > 0)
+            control_stmts += ",";
+          // Check if we need to continue on next line (IEBCOPY has 71 char limit)
+          if (control_stmts.length() - control_stmts.rfind('\n') > 60)
+          {
+            control_stmts += "\n               ";
+          }
+          control_stmts += target_members[i].name;
+        }
+        control_stmts += ")";
+      }
+    }
+
+    rc = zds_write_to_dd(zds, "sysin", control_stmts);
     if (0 != rc)
     {
       zut_free_dynalloc_dds(zds->diag, dds);
