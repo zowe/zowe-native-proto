@@ -274,7 +274,7 @@ export interface Job {
      */
     name: string;
     /**
-     * JES subsystem
+     * JES subsystem (undefined if job was processed by the primary subsystem)
      */
     subsystem?: string;
     /**
@@ -294,11 +294,11 @@ export interface Job {
      */
     class: string;
     /**
-     * Job return code
+     * Job return code (undefined if job is not complete)
      */
-    retcode: string;
+    retcode?: string;
     /**
-     * Job correlator
+     * Job correlator (undefined for JES3 jobs)
      */
     correlator?: string;
     /**

@@ -42,8 +42,7 @@ void zds_tests()
                              string found = "";
                              for (vector<ZDSEntry>::iterator it = entries.begin(); it != entries.end(); ++it)
                              {
-                               string trimmed_name = it->name;
-                               zut_rtrim(trimmed_name);
+                               const auto trimmed_name = zut_rtrim(it->name);
                                if (trimmed_name == dsn)
                                {
                                  found = trimmed_name;
@@ -65,8 +64,7 @@ void zds_tests()
                              string found = "";
                              for (vector<ZDSEntry>::iterator it = entries.begin(); it != entries.end(); ++it)
                              {
-                               string trimmed_name = it->name;
-                               zut_rtrim(trimmed_name);
+                               const auto trimmed_name = zut_rtrim(it->name);
                                if (trimmed_name == dsn)
                                {
                                  found = trimmed_name;

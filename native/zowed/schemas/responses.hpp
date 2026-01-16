@@ -57,7 +57,7 @@ ZJSON_SCHEMA(Job,
     FIELD_REQUIRED(status, STRING),
     FIELD_REQUIRED(type, STRING),
     FIELD_REQUIRED(class, STRING),
-    FIELD_REQUIRED(retcode, STRING),
+    FIELD_OPTIONAL(retcode, STRING),
     FIELD_OPTIONAL(correlator, STRING),
     FIELD_REQUIRED(phase, NUMBER)
 );
@@ -177,7 +177,7 @@ ZJSON_SCHEMA(GetJobStatusResponse,
     FIELD_REQUIRED(status, STRING),
     FIELD_REQUIRED(type, STRING),
     FIELD_REQUIRED(class, STRING),
-    FIELD_REQUIRED(retcode, STRING),
+    FIELD_OPTIONAL(retcode, STRING),
     FIELD_OPTIONAL(correlator, STRING),
     FIELD_REQUIRED(phase, NUMBER)
 );

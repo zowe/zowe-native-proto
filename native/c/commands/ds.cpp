@@ -143,9 +143,7 @@ int create_with_attributes(InvocationContext &context)
 const ast::Node build_ds_object(const ZDSEntry &entry, bool attributes)
 {
   const auto obj_entry = obj();
-  string trimmed_name = entry.name;
-  zut_rtrim(trimmed_name);
-  obj_entry->set("name", str(trimmed_name));
+  obj_entry->set("name", str(zut_rtrim(entry.name)));
 
   if (!attributes)
     return obj_entry;
@@ -537,9 +535,7 @@ int handle_data_set_list_members(InvocationContext &context)
     {
       context.output_stream() << left << setw(12) << it->name << endl;
       const auto entry = obj();
-      string trimmed_name = it->name;
-      zut_rtrim(trimmed_name);
-      entry->set("name", str(trimmed_name));
+      entry->set("name", str(zut_rtrim(it->name)));
       entries_array->push(entry);
     }
     const auto result = obj();

@@ -67,24 +67,19 @@ int handle_job_list(InvocationContext &context)
 
       const auto entry = obj();
       entry->set("id", str(it->jobid));
-      string trimmed_name = it->jobname;
-      zut_rtrim(trimmed_name);
-      entry->set("name", str(trimmed_name));
-      string trimmed_subsystem = it->subsystem;
-      zut_rtrim(trimmed_subsystem);
-      entry->set("subsystem", trimmed_subsystem.empty() ? nil() : str(trimmed_subsystem));
-      string trimmed_owner = it->owner;
-      zut_rtrim(trimmed_owner);
-      entry->set("owner", str(trimmed_owner));
+      entry->set("name", str(zut_rtrim(it->jobname)));
+      const auto trimmed_subsystem = zut_rtrim(it->subsystem);
+      if (!trimmed_subsystem.empty())
+        entry->set("subsystem", str(trimmed_subsystem));
+      entry->set("owner", str(zut_rtrim(it->owner)));
       entry->set("status", str(it->status));
       entry->set("type", str(it->type));
-      string trimmed_class = it->jobclass;
-      zut_rtrim(trimmed_class);
-      entry->set("class", str(trimmed_class));
-      entry->set("retcode", it->retcode.empty() ? nil() : str(it->retcode));
-      string trimmed_correlator = it->correlator;
-      zut_rtrim(trimmed_correlator);
-      entry->set("correlator", trimmed_correlator.empty() ? nil() : str(trimmed_correlator));
+      entry->set("class", str(zut_rtrim(it->jobclass)));
+      if (!it->retcode.empty())
+        entry->set("retcode", str(it->retcode));
+      const auto trimmed_correlator = zut_rtrim(it->correlator);
+      if (!trimmed_correlator.empty())
+        entry->set("correlator", str(trimmed_correlator));
       entry->set("phase", i64(it->phase));
       entries_array->push(entry);
     }
@@ -149,20 +144,11 @@ int handle_job_list_files(InvocationContext &context)
       }
 
       const auto entry = obj();
-      string trimmed_name = it->ddn;
-      trimmed_name = it->ddn;
-      zut_rtrim(trimmed_name);
-      entry->set("ddname", str(trimmed_name));
-      trimmed_name = it->dsn;
-      zut_rtrim(trimmed_name);
-      entry->set("dsname", str(trimmed_name));
+      entry->set("ddname", str(zut_rtrim(it->ddn)));
+      entry->set("dsname", str(zut_rtrim(it->dsn)));
       entry->set("id", i64(it->key));
-      trimmed_name = it->stepname;
-      zut_rtrim(trimmed_name);
-      entry->set("stepname", str(trimmed_name));
-      trimmed_name = it->procstep;
-      zut_rtrim(trimmed_name);
-      entry->set("procstep", str(trimmed_name));
+      entry->set("stepname", str(zut_rtrim(it->stepname)));
+      entry->set("procstep", str(zut_rtrim(it->procstep)));
       entries_array->push(entry);
     }
 
