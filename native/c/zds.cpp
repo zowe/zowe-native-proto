@@ -204,6 +204,34 @@ int zds_write_to_dd(ZDS *zds, string ddname, const string &data)
 }
 
 /**
+ * Helper function to check if a data set has RECFM=U (undefined record format)
+ * Returns true if the data set is RECFM=U, false otherwise
+ */
+static bool zds_is_recfm_u(const string &dsn)
+{
+  const string base_dsn = dsn.find('(') != string::npos ? dsn.substr(0, dsn.find('(')) : dsn;
+  const string dsname = "//'" + base_dsn + "'";
+
+  FILE *fp = fopen(dsname.c_str(), "r");
+  if (!fp)
+  {
+    return false;
+  }
+
+  fldata_t file_info = {0};
+  char file_name[64] = {0};
+  bool is_recfm_u = false;
+
+  if (fldata(fp, file_name, &file_info) == 0)
+  {
+    is_recfm_u = file_info.__recfmU != 0;
+  }
+
+  fclose(fp);
+  return is_recfm_u;
+}
+
+/**
  * Helper function to check if a DSN contains a member name
  */
 static bool zds_has_member(const string &dsn)
@@ -357,6 +385,13 @@ int zds_write_to_dsn(ZDS *zds, const string &dsn, string &data)
   if (!zds_dataset_exists(dsn))
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not access '%s'", dsn.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  if (zds_is_recfm_u(dsn))
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Writing to RECFM=U data sets is not supported");
+    zds->diag.detail_rc = ZDS_RTNCD_UNSUPPORTED_RECFM;
     return RTNCD_FAILURE;
   }
 
@@ -2199,6 +2234,13 @@ int zds_write_to_dsn_streamed(ZDS *zds, const string &dsn, const string &pipe, s
   else if (!zds_dataset_exists(dsn))
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not access '%s'", dsn.c_str());
+    return RTNCD_FAILURE;
+  }
+
+  if (zds_is_recfm_u(dsn))
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Writing to RECFM=U data sets is not supported");
+    zds->diag.detail_rc = ZDS_RTNCD_UNSUPPORTED_RECFM;
     return RTNCD_FAILURE;
   }
 
