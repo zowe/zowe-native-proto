@@ -222,45 +222,6 @@ std::string &zut_ltrim(std::string &s, const char *t = " ");
 std::string &zut_trim(std::string &s, const char *t = " ");
 
 /**
- * @brief Trim whitespace from the right end of a string (returns copy)
- * @param s String to trim
- * @param t Characters to trim (default is space)
- * @return Trimmed copy of the string
- */
-inline std::string zut_rtrim(const std::string &s, const char *t = " ")
-{
-  std::string result = s;
-  zut_rtrim(result, t);
-  return result;
-}
-
-/**
- * @brief Trim whitespace from the left end of a string (returns copy)
- * @param s String to trim
- * @param t Characters to trim (default is space)
- * @return Trimmed copy of the string
- */
-inline std::string zut_ltrim(const std::string &s, const char *t = " ")
-{
-  std::string result = s;
-  zut_ltrim(result, t);
-  return result;
-}
-
-/**
- * @brief Trim whitespace from both ends of a string (returns copy)
- * @param s String to trim
- * @param t Characters to trim (default is space)
- * @return Trimmed copy of the string
- */
-inline std::string zut_trim(const std::string &s, const char *t = " ")
-{
-  std::string result = s;
-  zut_trim(result, t);
-  return result;
-}
-
-/**
  * @brief Function to dynamically allocate output debug DD
  *
  * @return int rc Return code (0 for success, non-zero for error)

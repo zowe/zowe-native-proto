@@ -67,19 +67,22 @@ int handle_job_list(InvocationContext &context)
 
       const auto entry = obj();
       entry->set("id", str(it->jobid));
-      entry->set("name", str(zut_rtrim(it->jobname)));
-      const auto trimmed_subsystem = zut_rtrim(it->subsystem);
-      if (!trimmed_subsystem.empty())
-        entry->set("subsystem", str(trimmed_subsystem));
-      entry->set("owner", str(zut_rtrim(it->owner)));
+      string trimmed_name = it->jobname;
+      entry->set("name", str(zut_rtrim(trimmed_name)));
+      trimmed_name = it->subsystem;
+      if (!zut_rtrim(trimmed_name).empty())
+        entry->set("subsystem", str(trimmed_name));
+      trimmed_name = it->owner;
+      entry->set("owner", str(zut_rtrim(trimmed_name)));
       entry->set("status", str(it->status));
       entry->set("type", str(it->type));
-      entry->set("class", str(zut_rtrim(it->jobclass)));
+      trimmed_name = it->jobclass;
+      entry->set("class", str(zut_rtrim(trimmed_name)));
       if (!it->retcode.empty())
         entry->set("retcode", str(it->retcode));
-      const auto trimmed_correlator = zut_rtrim(it->correlator);
-      if (!trimmed_correlator.empty())
-        entry->set("correlator", str(trimmed_correlator));
+      trimmed_name = it->correlator;
+      if (!zut_rtrim(trimmed_name).empty())
+        entry->set("correlator", str(trimmed_name));
       entry->set("phase", i64(it->phase));
       entries_array->push(entry);
     }
@@ -144,11 +147,15 @@ int handle_job_list_files(InvocationContext &context)
       }
 
       const auto entry = obj();
-      entry->set("ddname", str(zut_rtrim(it->ddn)));
-      entry->set("dsname", str(zut_rtrim(it->dsn)));
+      string trimmed_name = it->ddn;
+      entry->set("ddname", str(zut_rtrim(trimmed_name)));
+      trimmed_name = it->dsn;
+      entry->set("dsname", str(zut_rtrim(trimmed_name)));
       entry->set("id", i64(it->key));
-      entry->set("stepname", str(zut_rtrim(it->stepname)));
-      entry->set("procstep", str(zut_rtrim(it->procstep)));
+      trimmed_name = it->stepname;
+      entry->set("stepname", str(zut_rtrim(trimmed_name)));
+      trimmed_name = it->procstep;
+      entry->set("procstep", str(zut_rtrim(trimmed_name)));
       entries_array->push(entry);
     }
 

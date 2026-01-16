@@ -697,7 +697,9 @@ void zjb_build_job_response(ZJB_JOB_INFO *PTR64 job_info, int entries, vector<ZJ
     } mycc = {0};
     memcpy(&mycc, &job_info_next[i].statjqtr.sttrxind, sizeof(cc));
 
-    zjob.full_status = zut_rtrim(job_info_next[i].phase_text);
+    zjob.full_status = string(job_info_next[i].phase_text);
+    zut_rtrim(zjob.full_status);
+
     zjob.retcode = ZJB_UNKNOWN_RC;
 
     if ("AWAIT MAIN SELECT" == zjob.full_status)
