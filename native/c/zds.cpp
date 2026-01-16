@@ -151,14 +151,29 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace)
     return RTNCD_FAILURE;
   }
 
-  // Validate: Cannot copy sequential dataset to PDS member using IEBGENER
-  // IEBGENER requires member name in both source and target, or neither
-  if (info1.type == ZDS_TYPE_PS && !info2.member_name.empty() && info2.exists)
+  // Validate copy scenarios - only allow like-to-like copies:
+  // PS → PS, Member → Member, PDS → PDS
+  if (info1.type == ZDS_TYPE_PS && !info2.member_name.empty())
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
-                                  "Cannot copy sequential dataset '%s' to existing PDS member '%s'. "
-                                  "Use member-to-member copy or create target as sequential dataset.",
-                                  dsn1.c_str(), dsn2.c_str());
+                                  "Cannot copy sequential dataset to PDS member. "
+                                  "Target must be a sequential dataset.");
+    return RTNCD_FAILURE;
+  }
+
+  if (info1.type == ZDS_TYPE_MEMBER && info2.member_name.empty())
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
+                                  "Cannot copy PDS member without specifying target member. "
+                                  "Use: zowex ds copy 'PDS(MEMBER)' 'TARGET.PDS(MEMBER)'");
+    return RTNCD_FAILURE;
+  }
+
+  if (info1.type == ZDS_TYPE_PDS && !info2.member_name.empty())
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg,
+                                  "Cannot copy entire PDS to a member. "
+                                  "Target must be a PDS.");
     return RTNCD_FAILURE;
   }
 
@@ -171,24 +186,6 @@ int zds_copy_dsn(ZDS *zds, const string &dsn1, const string &dsn2, bool replace)
     // For same-LPAR copies, use LIKE to ensure perfect attribute parity (RECFM, LRECL, etc.)
     // This matches Zowe CLI's Create.dataSetLike behavior.
     string parm = "ALLOC DA('" + info2.base_dsn + "') LIKE('" + info1.base_dsn + "') NEW CATALOG";
-
-    /*
-     * Logic Parity with Zowe SDK:
-     * If the source is a Member, but the target name does not specify a member,
-     * we must force the target to be a Sequential (PS) data set.
-     */
-    if (info2.member_name.empty() && info1.type == ZDS_TYPE_MEMBER)
-    {
-      parm += " DSORG(PS) DIR(0)";
-    }
-    /*
-     * If the target specifies a member but the source is Sequential (or we are creating from LIKE a Sequential),
-     * we must force the target to be a Partitioned (PO) data set.
-     */
-    else if (!info2.member_name.empty() && info1.type == ZDS_TYPE_PS)
-    {
-      parm += " DSORG(PO) DIR(10)";
-    }
 
     rc = zut_bpxwdyn(parm, &code, create_resp);
     if (rc != RTNCD_SUCCESS)
