@@ -21,11 +21,11 @@ export const RenameDataSetDefinition: ICommandDefinition = {
     examples: [
         {
             description: "Rename a sequential data set",
-            options: '"ibmuser.test.seq.cntl"',
+            options: '"ibmuser.test.seq.cntl" "ibmuser.test.seq.cntl2"',
         },
         {
             description: "Rename a partitioned data set",
-            options: '"ibmuser.test.pds.cntl"',
+            options: '"ibmuser.test.pds.cntl" "ibmuser.test.pds.newcntl"',
         },
     ],
     positionals: [
