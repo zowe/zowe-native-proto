@@ -34,18 +34,6 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include "zbase64.h"
-#include "zdsm.h"
-#include "zamtypes.h"
-
-// Forward declarations for BSAM functions (defined in zam.c)
-extern "C"
-{
-  IO_CTRL *open_input_assert(char *, int, int, unsigned char);
-  IO_CTRL *open_output_assert(char *, int, int, unsigned char);
-  void close_assert(IO_CTRL *);
-  int read_sync(IO_CTRL *, char *);
-  int write_sync(IO_CTRL *, char *);
-}
 
 const size_t MAX_DS_LENGTH = 44u;
 
@@ -333,53 +321,25 @@ bool zds_dataset_exists(const string &dsn)
 
 int zds_read_from_dd(ZDS *zds, string ddname, string &response)
 {
-  // Use BSAM for safer DD access instead of C++ streams
-  // Use a large buffer to accommodate various DD allocations (SYSPRINT=121, etc.)
-  const int max_lrecl = 512;
-  char *buffer = (char *)malloc(max_lrecl);
-  if (!buffer)
-  {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to allocate buffer for DD read");
-    return RTNCD_FAILURE;
-  }
+  ddname = "DD:" + ddname;
 
-  // Open DD using BSAM - let DCB merge determine actual attributes
-  IO_CTRL *ioc = open_input_assert((char *)ddname.c_str(), max_lrecl, max_lrecl, dcbrecf + dcbrecbr);
-  if (!ioc)
+  ifstream in(ddname.c_str());
+  if (!in.is_open())
   {
-    free(buffer);
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open DD '%s'", ddname.c_str());
     return RTNCD_FAILURE;
   }
 
-  // Get actual lrecl after DCB merge
-  int actual_lrecl = ioc->dcb.dcblrecl;
-
   bool first = true;
-  int rc = 0;
-
-  // Read records using BSAM
-  while (0 == (rc = read_sync(ioc, buffer)))
+  string line;
+  while (getline(in, line))
   {
-    // Trim trailing spaces from fixed-length record
-    int len = actual_lrecl;
-    while (len > 0 && buffer[len - 1] == ' ')
-    {
-      len--;
-    }
-
-    if (len > 0)
-    {
-      if (!first)
-        response.push_back('\n');
-      response.append(buffer, len);
-      first = false;
-    }
+    if (!first)
+      response.push_back('\n');
+    response += line;
+    first = false;
   }
-
-  // Close the DD
-  close_assert(ioc);
-  free(buffer);
+  in.close();
 
   const size_t size = response.size() + 1;
   if (size > 0 && strlen(zds->encoding_opts.codepage) > 0)
@@ -458,37 +418,17 @@ int zds_read_from_dsn(ZDS *zds, const string &dsn, string &response)
 
 int zds_write_to_dd(ZDS *zds, string ddname, const string &data)
 {
-  // Use BSAM for safer DD access instead of C++ streams
-  const int lrecl = 80;
-  const int blksize = 80;
+  ddname = "DD:" + ddname;
+  ofstream out(ddname.c_str());
 
-  // Open DD using BSAM
-  IO_CTRL *ioc = open_output_assert((char *)ddname.c_str(), lrecl, blksize, dcbrecf + dcbrecbr);
-  if (!ioc)
+  if (!out.is_open())
   {
     zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Could not open DD '%s'", ddname.c_str());
     return RTNCD_FAILURE;
   }
 
-  // Prepare fixed-length record buffer
-  char buffer[80];
-  memset(buffer, ' ', sizeof(buffer));
-
-  // Copy data to buffer (truncate if too long)
-  size_t copy_len = data.length() > lrecl ? lrecl : data.length();
-  memcpy(buffer, data.c_str(), copy_len);
-
-  // Write record using BSAM
-  int rc = write_sync(ioc, buffer);
-
-  // Close the DD
-  close_assert(ioc);
-
-  if (rc != 0)
-  {
-    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Failed to write to DD '%s', rc=%d", ddname.c_str(), rc);
-    return RTNCD_FAILURE;
-  }
+  out << data;
+  out.close();
 
   return 0;
 }
