@@ -149,7 +149,7 @@ int zds_create_dsn(ZDS *zds, std::string dsn, DS_ATTRIBUTES attributes, std::str
 int zds_delete_dsn(ZDS *zds, std::string dsn);
 
 /**
- * @brief Delete a data set
+ * @brief Rename a data set
  *
  * @param zds data set returned attributes and error information
  * @param dsn_Before data set name to rename
