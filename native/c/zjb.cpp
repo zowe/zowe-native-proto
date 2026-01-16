@@ -602,7 +602,7 @@ int zjb_list_by_owner(ZJB *zjb, string owner_name, vector<ZJob> &jobs)
 
 int zjb_list_by_owner(ZJB *zjb, string owner_name, string prefix_name, vector<ZJob> &jobs)
 {
-  return zjb_list_by_owner(zjb, owner_name, "", "", jobs);
+  return zjb_list_by_owner(zjb, owner_name, prefix_name, "", jobs);
 }
 
 int zjb_list_by_owner(ZJB *zjb, string owner_name, string prefix_name, string status_name, vector<ZJob> &jobs)

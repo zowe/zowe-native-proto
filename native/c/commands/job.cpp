@@ -28,7 +28,7 @@ int handle_job_list(InvocationContext &context)
 {
   int rc = 0;
   ZJB zjb = {};
-  string owner_name = context.get<string>("owner");
+  string owner_name = context.get<string>("owner", "");
   string prefix_name = context.get<string>("prefix", "*");
   string status_name = context.get<string>("status", "*");
   long long max_entries = context.get<long long>("max-entries", 0);
@@ -72,8 +72,7 @@ int handle_job_list(InvocationContext &context)
       entry->set("name", str(trimmed_name));
       string trimmed_subsystem = it->subsystem;
       zut_rtrim(trimmed_subsystem);
-      if (!trimmed_subsystem.empty())
-        entry->set("subsystem", str(trimmed_subsystem));
+      entry->set("subsystem", trimmed_subsystem.empty() ? nil() : str(trimmed_subsystem));
       string trimmed_owner = it->owner;
       zut_rtrim(trimmed_owner);
       entry->set("owner", str(trimmed_owner));
@@ -85,7 +84,7 @@ int handle_job_list(InvocationContext &context)
       entry->set("retcode", it->retcode.empty() ? nil() : str(it->retcode));
       string trimmed_correlator = it->correlator;
       zut_rtrim(trimmed_correlator);
-      entry->set("correlator", str(trimmed_correlator));
+      entry->set("correlator", trimmed_correlator.empty() ? nil() : str(trimmed_correlator));
       entry->set("phase", i64(it->phase));
       entries_array->push(entry);
     }
