@@ -31,7 +31,7 @@
 #define ZJB_RSNCD_CORRELATOR_NOT_FOUND -3
 
 #define ZJB_DEFAULT_BUFFER_SIZE 128000
-#define ZJB_DEFAULT_MAX_JOBS 100
+#define ZJB_DEFAULT_MAX_JOBS 1000
 #define ZJB_DEFAULT_MAX_DDS 100
 
 #define ZJB_UNKNOWN_RC ""
@@ -64,6 +64,7 @@ typedef struct
   char jobid[8];       // job id
   char owner_name[8];  // owner name used, upper cased/padded/truncated
   char prefix_name[8]; // prefix used, upper cased/padded/truncated
+  char status_name[8]; // status used, upper cased/padded/truncated
 
   ZEncode encoding_opts; // User-specified, desired encoding options for spool contents
 

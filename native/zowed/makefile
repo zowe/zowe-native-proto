@@ -45,7 +45,7 @@ $(OUT_DIR):
 	mkdir -p $(OUT_DIR)/commands
 
 # Build the shared library (.so file)
-$(OUT_DIR)/$(LIBRARY): $(OUT_DIR) $(LIB_OBJECTS) $(CMDS_OBJECTS) $(XLCLANG_OBJECTS) $(OUT_DIR)/zjsonm.o
+$(OUT_DIR)/$(LIBRARY): $(OUT_DIR) $(LIB_OBJECTS) $(CMDS_OBJECTS) $(XLCLANG_OBJECTS) $(METAL_OBJECTS) $(OUT_DIR)/zjsonm.o
 	$(CXX_LIB) $(DLL_BND_FLAGS) -o $(OUT_DIR)/$(LIBRARY) $(LIB_OBJECTS) $(CMDS_OBJECTS) \
 	$(XLCLANG_OBJECTS) $(METAL_OBJECTS) $(OUT_DIR)/zjsonm.o > $(OUT_DIR)/libzowed.bind.lst
 

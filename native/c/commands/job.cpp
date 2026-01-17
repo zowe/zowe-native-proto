@@ -28,8 +28,9 @@ int handle_job_list(InvocationContext &context)
 {
   int rc = 0;
   ZJB zjb = {};
-  string owner_name = context.get<string>("owner", "*");
+  string owner_name = context.get<string>("owner", "");
   string prefix_name = context.get<string>("prefix", "*");
+  string status_name = context.get<string>("status", "*");
   long long max_entries = context.get<long long>("max-entries", 0);
   bool warn = context.get<bool>("warn", true);
 
@@ -39,7 +40,7 @@ int handle_job_list(InvocationContext &context)
   }
 
   vector<ZJob> jobs;
-  rc = zjb_list_by_owner(&zjb, owner_name, prefix_name, jobs);
+  rc = zjb_list_by_owner(&zjb, owner_name, prefix_name, status_name, jobs);
 
   if (RTNCD_SUCCESS == rc || RTNCD_WARNING == rc)
   {
@@ -67,10 +68,22 @@ int handle_job_list(InvocationContext &context)
       const auto entry = obj();
       entry->set("id", str(it->jobid));
       string trimmed_name = it->jobname;
-      zut_rtrim(trimmed_name);
-      entry->set("name", str(trimmed_name));
-      entry->set("retcode", str(it->retcode));
+      entry->set("name", str(zut_rtrim(trimmed_name)));
+      trimmed_name = it->subsystem;
+      if (!zut_rtrim(trimmed_name).empty())
+        entry->set("subsystem", str(trimmed_name));
+      trimmed_name = it->owner;
+      entry->set("owner", str(zut_rtrim(trimmed_name)));
       entry->set("status", str(it->status));
+      entry->set("type", str(it->type));
+      trimmed_name = it->jobclass;
+      entry->set("class", str(zut_rtrim(trimmed_name)));
+      if (!it->retcode.empty())
+        entry->set("retcode", str(it->retcode));
+      trimmed_name = it->correlator;
+      if (!zut_rtrim(trimmed_name).empty())
+        entry->set("correlator", str(trimmed_name));
+      entry->set("phase", i64(it->phase));
       entries_array->push(entry);
     }
 
@@ -135,19 +148,14 @@ int handle_job_list_files(InvocationContext &context)
 
       const auto entry = obj();
       string trimmed_name = it->ddn;
-      trimmed_name = it->ddn;
-      zut_rtrim(trimmed_name);
-      entry->set("ddname", str(trimmed_name));
+      entry->set("ddname", str(zut_rtrim(trimmed_name)));
       trimmed_name = it->dsn;
-      zut_rtrim(trimmed_name);
-      entry->set("dsname", str(trimmed_name));
+      entry->set("dsname", str(zut_rtrim(trimmed_name)));
       entry->set("id", i64(it->key));
       trimmed_name = it->stepname;
-      zut_rtrim(trimmed_name);
-      entry->set("stepname", str(trimmed_name));
+      entry->set("stepname", str(zut_rtrim(trimmed_name)));
       trimmed_name = it->procstep;
-      zut_rtrim(trimmed_name);
-      entry->set("procstep", str(trimmed_name));
+      entry->set("procstep", str(zut_rtrim(trimmed_name)));
       entries_array->push(entry);
     }
 
@@ -590,6 +598,7 @@ void register_commands(parser::Command &root_command)
   job_list_cmd->add_alias("ls");
   job_list_cmd->add_keyword_arg("owner", make_aliases("--owner", "-o"), "filter by owner", ArgType_Single, false);
   job_list_cmd->add_keyword_arg("prefix", make_aliases("--prefix", "-p"), "filter by prefix", ArgType_Single, false);
+  job_list_cmd->add_keyword_arg("status", make_aliases("--status", "-s"), "filter by status", ArgType_Single, false);
   job_list_cmd->add_keyword_arg(MAX_ENTRIES);
   job_list_cmd->add_keyword_arg(WARN);
   job_list_cmd->add_keyword_arg(RESPONSE_FORMAT_CSV);
