@@ -340,7 +340,8 @@ int ZJBMLIST(ZJB *zjb, ZJB_JOB_INFO **PTR64 job_info, int *entries)
 
   if (0 == strcmp(zjb->status_name, "ACTIVE  "))
   {
-    stat.statsel3 |= statssys;
+    stat.statphaz = stat___onmain;
+    stat.statsel3 |= statsphz;
   }
   else if (0 == strcmp(zjb->status_name, "HELD    "))
   {

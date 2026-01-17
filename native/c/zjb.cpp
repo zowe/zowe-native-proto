@@ -603,8 +603,7 @@ int zjb_list_by_owner(ZJB *zjb, string owner_name, string prefix_name, string st
 
   if ("" == owner_name)
   {
-    char *name = getlogin();
-    owner_name = string(name);
+    zut_get_current_user(owner_name);
   }
 
   if (0 == zjb->buffer_size)
@@ -659,7 +658,7 @@ void zjb_build_job_response(ZJB_JOB_INFO *PTR64 job_info, int entries, vector<ZJ
   {
     string jobname((char *)job_info_next[i].statjqtr.sttrname, sizeof(job_info->statjqtr.sttrname));
     string jobid((char *)job_info_next[i].statjqtr.sttrjid, sizeof(job_info->statjqtr.sttrjid));
-    string subsystem((char *)job_info_next[i].subsystem, sizeof(job_info->subsystem));
+    string subsystem((char *)job_info_next[i].subsystem, strlen(job_info->subsystem));
     string owner((char *)job_info_next[i].statjqtr.sttrouid, sizeof(job_info->statjqtr.sttrouid));
     string jobclass((char *)job_info_next[i].statjqtr.sttrclas, sizeof(job_info->statjqtr.sttrclas));
     string correlator((char *)job_info_next[i].statjqtr.sttrjcor, sizeof(job_info->statjqtr.sttrjcor));
