@@ -232,6 +232,7 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
 
                   vector<string> lines = parse_rfc_response(response, "\n");
                   string file_id = "";
+                  string dsn = "";
                   for (const auto &line : lines)
                   {
                     if (line.find("JESMSGLG") != string::npos)
@@ -240,6 +241,7 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                       if (parts.size() >= 3)
                       {
                         file_id = parts[2];
+                        dsn = parts[1];
                         break;
                       }
                     }
@@ -254,6 +256,11 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                   rc = execute_command_with_output(zowex_command + " job view-file-by-id " + _jobid + " " + file_id, response);
                   ExpectWithContext(rc, response).ToBe(0);
                   Expect(response).ToContain("IEFBR14");
+
+                  string duplicate_response;
+                  rc = execute_command_with_output(zowex_command + " job view-file " + dsn, duplicate_response);
+                  ExpectWithContext(rc, duplicate_response).ToBe(0);
+                  Expect(duplicate_response).ToBe(response);
                 });
 
              it("should view job file with --encoding option",
@@ -265,6 +272,7 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
 
                   vector<string> lines = parse_rfc_response(response, "\n");
                   string file_id = "";
+                  string dsn = "";
                   for (const auto &line : lines)
                   {
                     if (line.find("JESMSGLG") != string::npos)
@@ -273,6 +281,7 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                       if (parts.size() >= 3)
                       {
                         file_id = parts[2];
+                        dsn = parts[1];
                         break;
                       }
                     }
@@ -286,6 +295,11 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
 
                   rc = execute_command_with_output(zowex_command + " job view-file-by-id " + _jobid + " " + file_id + " --encoding ISO8859-1", response);
                   ExpectWithContext(rc, response).ToBe(0);
+
+                  string duplicate_response;
+                  rc = execute_command_with_output(zowex_command + " job view-file " + dsn + " --encoding ISO8859-1", duplicate_response);
+                  ExpectWithContext(rc, duplicate_response).ToBe(0);
+                  Expect(duplicate_response).ToBe(response);
                 });
 
              it("should view job file with --local-encoding option",
@@ -358,6 +372,7 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
 
                   vector<string> lines = parse_rfc_response(response, "\n");
                   string file_id = "";
+                  string dsn = "";
                   for (const auto &line : lines)
                   {
                     if (line.find("JESMSGLG") != string::npos)
@@ -366,6 +381,7 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                       if (parts.size() >= 3)
                       {
                         file_id = parts[2];
+                        dsn = parts[1];
                         break;
                       }
                     }
@@ -376,6 +392,11 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
 
                   rc = execute_command_with_output(zowex_command + " job view-file-by-id " + _jobid + " " + file_id + " --lec IBM-1047", response);
                   ExpectWithContext(rc, response).ToBe(0);
+
+                  string duplicate_response;
+                  rc = execute_command_with_output(zowex_command + " job view-file " + dsn, duplicate_response);
+                  ExpectWithContext(rc, duplicate_response).ToBe(0);
+                  Expect(duplicate_response).ToBe(response);
                 });
 
              it("should view job file with --response-format-bytes option",
@@ -498,6 +519,15 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                   Expect(rc).Not().ToBe(0);
                 });
 
+             it("should handle view-file with non-existent dsn",
+                [&]()
+                {
+                  string response;
+                  string dsn = "DOES.NOT.EXIST";
+                  int rc = execute_command_with_output(zowex_command + " job view-file " + dsn, response);
+                  Expect(rc).Not().ToBe(0);
+                });
+
              it("should handle list-files with non-existent job",
                 [&]()
                 {
@@ -544,6 +574,7 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
 
                   vector<string> lines = parse_rfc_response(response, "\n");
                   string file_id = "";
+                  string dsn = "";
                   for (const auto &line : lines)
                   {
                     if (!line.empty())
@@ -552,6 +583,7 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
                       if (parts.size() >= 3)
                       {
                         file_id = parts[2];
+                        dsn = parts[1];
                         break;
                       }
                     }
@@ -565,11 +597,12 @@ void zowex_job_manage_tests(vector<string> &_jobs, vector<string> &_ds, vector<s
 
                   rc = execute_command_with_output(zowex_command + " job view-file-by-id " + _jobid + " " + file_id + " --encoding binary", response);
                   ExpectWithContext(rc, response).ToBeGreaterThanOrEqualTo(0);
+                  Expect(response.length()).ToBeGreaterThan(0);
 
-                  if (rc == 0)
-                  {
-                    Expect(response.length()).ToBeGreaterThan(0);
-                  }
+                  string duplicate_response;
+                  rc = execute_command_with_output(zowex_command + " job view-file " + dsn, duplicate_response);
+                  ExpectWithContext(rc, duplicate_response).ToBe(0);
+                  Expect(duplicate_response.length()).ToBe(response.length());
                 });
            });
 
