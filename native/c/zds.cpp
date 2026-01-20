@@ -613,6 +613,26 @@ int zds_delete_dsn(ZDS *zds, string dsn)
 int zds_rename_dsn(ZDS *zds, string dsn_Before, string dsn_After)
 {
   int rc = 0;
+  if (dsn_Before.empty() || dsn_After.empty())
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Data set names must be valid");
+    return RTNCD_FAILURE;
+  }
+  if (dsn_After.length() > 44)
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Target data set name exceeds max character length of 44");
+    return RTNCD_FAILURE;
+  }
+  if (!zds_dataset_exists(dsn_Before))
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Source data set does not exist '%s'", dsn_Before.c_str());
+    return RTNCD_FAILURE;
+  }
+  if (zds_dataset_exists(dsn_After))
+  {
+    zds->diag.e_msg_len = sprintf(zds->diag.e_msg, "Target data already exists '%s'", dsn_After.c_str());
+    return RTNCD_FAILURE;
+  }
 
   dsn_Before = "//'" + dsn_Before + "'";
   dsn_After = "//'" + dsn_After + "'";
